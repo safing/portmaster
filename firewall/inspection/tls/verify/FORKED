@@ -1,0 +1,12 @@
+from: https://github.com/cloudflare/cfssl
+commit: https://github.com/cloudflare/cfssl/commit/851e4b77bb0e13a97e7d836a2f069d17ed5478c1
+license: BSD 2-clause "Simplified" License
+original files imported:
+  - revoke/revoke.go sha256:95e3b14c1dc3d99a37f3da914c0137df80145e82295a817acf7382f9ce4bcc7e
+  - helpers/helpers.go sha256:f2642d23b3f48a9dd7d0a72d3538f95aeadbc652df30fe2f52e4e9207e256e07
+
+from: https://github.com/golang/go
+commit: https://github.com/golang/go/commit/220e0e0f7383a79fda0ba61bd1bf2076f5f74d72
+license: BSD 3-clause "New" or "Revised" License
+original files imported:
+  - src/crypto/x509/verify.go sha256:8d31581662e28a35af65166a98e8dadd60de750a83bfa7e25efad2500832b8ed
