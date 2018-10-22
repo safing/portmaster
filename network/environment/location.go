@@ -8,8 +8,9 @@ import (
 	"log"
 	"net"
 	"os"
-	"github.com/Safing/safing-core/network/netutils"
 	"time"
+
+	"github.com/Safing/portmaster/network/netutils"
 
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
