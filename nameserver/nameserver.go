@@ -4,38 +4,39 @@ package nameserver
 
 import (
 	"net"
+	"time"
 
 	"github.com/miekg/dns"
 
-	"github.com/Safing/safing-core/analytics/algs"
-	"github.com/Safing/safing-core/intel"
-	"github.com/Safing/safing-core/log"
-	"github.com/Safing/safing-core/modules"
-	"github.com/Safing/safing-core/network"
-	"github.com/Safing/safing-core/network/netutils"
-	"github.com/Safing/safing-core/portmaster"
-)
+	"github.com/Safing/portbase/log"
+	"github.com/Safing/portbase/modules"
 
-var (
-	nameserverModule *modules.Module
+	"github.com/Safing/portmaster/analytics/algs"
+	"github.com/Safing/portmaster/intel"
+	"github.com/Safing/portmaster/network"
+	"github.com/Safing/portmaster/network/netutils"
+	"github.com/Safing/portmaster/portmaster"
 )
 
 func init() {
-	nameserverModule = modules.Register("Nameserver", 128)
+	modules.Register("nameserver", nil, start, nil, "intel")
 }
 
-func Start() {
+func start() error {
 	server := &dns.Server{Addr: "127.0.0.1:53", Net: "udp"}
 	dns.HandleFunc(".", handleRequest)
-	go func() {
+	go run()
+}
+
+func run(server *dns.Server) {
+	for {
 		err := server.ListenAndServe()
 		if err != nil {
 			log.Errorf("nameserver: server failed: %s", err)
+			log.Info("nameserver: restarting server in 10 seconds")
+			time.Sleep(10 * time.Second)
 		}
-	}()
-	// TODO: stop mocking
-	defer nameserverModule.StopComplete()
-	<-nameserverModule.Stop
+	}
 }
 
 func nxDomain(w dns.ResponseWriter, query *dns.Msg) {
