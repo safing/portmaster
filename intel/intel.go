@@ -3,44 +3,66 @@
 package intel
 
 import (
-	"github.com/Safing/safing-core/database"
-	"github.com/Safing/safing-core/modules"
+	"fmt"
+	"sync"
 
-	"github.com/miekg/dns"
+	"github.com/Safing/portbase/database"
+	"github.com/Safing/portbase/database/record"
 )
 
 var (
-	intelModule *modules.Module
+	intelDatabase = database.NewInterface(&database.Options{
+		AlwaysSetRelativateExpiry: 2592000, // 30 days
+	})
 )
 
-func init() {
-	intelModule = modules.Register("Intel", 128)
-	go Start()
+// Intel holds intelligence data for a domain.
+type Intel struct {
+	record.Base
+	sync.Mutex
+
+	Domain string
 }
 
-// GetIntel returns an Intel object of the given domain. The returned Intel object MUST not be modified.
-func GetIntel(domain string) *Intel {
-	fqdn := dns.Fqdn(domain)
-	intel, err := getIntel(fqdn)
+func makeIntelKey(domain string) string {
+	return fmt.Sprintf("intel:Intel/%s", domain)
+}
+
+// GetIntelFromDB gets an Intel record from the database.
+func GetIntelFromDB(domain string) (*Intel, error) {
+	key := makeIntelKey(domain)
+
+	r, err := intelDatabase.Get(key)
 	if err != nil {
-		if err == database.ErrNotFound {
-			intel = &Intel{Domain: fqdn}
-			intel.Create(fqdn)
-		} else {
-			return nil
-		}
+		return nil, err
 	}
-	return intel
+
+	// unwrap
+	if r.IsWrapped() {
+		// only allocate a new struct, if we need it
+		new := &Intel{}
+		err = record.Unwrap(r, new)
+		if err != nil {
+			return nil, err
+		}
+		return new, nil
+	}
+
+	// or adjust type
+	new, ok := r.(*Intel)
+	if !ok {
+		return nil, fmt.Errorf("record not of type *Intel, but %T", r)
+	}
+	return new, nil
 }
 
-func GetIntelAndRRs(domain string, qtype dns.Type, securityLevel int8) (intel *Intel, rrs *RRCache) {
-	intel = GetIntel(domain)
-	rrs = Resolve(domain, qtype, securityLevel)
-	return
+// Save saves the Intel record to the database.
+func (intel *Intel) Save() error {
+	intel.SetKey(makeIntelKey(intel.Domain))
+	return intelDatabase.PutNew(intel)
 }
 
-func Start() {
-	// mocking until intel has its own goroutines
-	defer intelModule.StopComplete()
-	<-intelModule.Stop
+// GetIntel fetches intelligence data for the given domain.
+func GetIntel(domain string) (*Intel, error) {
+	return &Intel{Domain: domain}, nil
 }

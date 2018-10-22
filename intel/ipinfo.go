@@ -1,61 +1,69 @@
-// Copyright Safing ICS Technologies GmbH. Use of this source code is governed by the AGPL license that can be found in the LICENSE file.
-
 package intel
 
 import (
+	"fmt"
+	"net"
 	"strings"
+	"sync"
 
-	"github.com/Safing/safing-core/database"
+	"github.com/Safing/portbase/database"
+	"github.com/Safing/portbase/database/record"
+)
 
-	datastore "github.com/ipfs/go-datastore"
+var (
+	ipInfoDatabase = database.NewInterface(&database.Options{
+		AlwaysSetRelativateExpiry: 86400, // 24 hours
+	})
 )
 
 // IPInfo represents various information about an IP.
 type IPInfo struct {
-	database.Base
+	record.Base
+	sync.Mutex
+
+	IP      net.IP
 	Domains []string
 }
 
-var ipInfoModel *IPInfo // only use this as parameter for database.EnsureModel-like functions
-
-func init() {
-	database.RegisterModel(ipInfoModel, func() database.Model { return new(IPInfo) })
+func makeIPInfoKey(ip net.IP) string {
+	return fmt.Sprintf("intel:IPInfo/%s", ip.String())
 }
 
-// Create saves the IPInfo with the provided name in the default namespace.
-func (m *IPInfo) Create(name string) error {
-	return m.CreateObject(&database.IPInfoCache, name, m)
-}
+// GetIPInfo gets an IPInfo record from the database.
+func GetIPInfo(ip net.IP) (*IPInfo, error) {
+	key := makeIPInfoKey(ip)
 
-// CreateInNamespace saves the IPInfo with the provided name in the provided namespace.
-func (m *IPInfo) CreateInNamespace(namespace *datastore.Key, name string) error {
-	return m.CreateObject(namespace, name, m)
-}
-
-// Save saves the IPInfo.
-func (m *IPInfo) Save() error {
-	return m.SaveObject(m)
-}
-
-// GetIPInfo fetches the IPInfo with the provided name in the default namespace.
-func GetIPInfo(name string) (*IPInfo, error) {
-	return GetIPInfoFromNamespace(&database.IPInfoCache, name)
-}
-
-// GetIPInfoFromNamespace fetches the IPInfo with the provided name in the provided namespace.
-func GetIPInfoFromNamespace(namespace *datastore.Key, name string) (*IPInfo, error) {
-	object, err := database.GetAndEnsureModel(namespace, name, ipInfoModel)
+	r, err := ipInfoDatabase.Get(key)
 	if err != nil {
 		return nil, err
 	}
-	model, ok := object.(*IPInfo)
-	if !ok {
-		return nil, database.NewMismatchError(object, ipInfoModel)
+
+	// unwrap
+	if r.IsWrapped() {
+		// only allocate a new struct, if we need it
+		new := &IPInfo{}
+		err = record.Unwrap(r, new)
+		if err != nil {
+			return nil, err
+		}
+		return new, nil
 	}
-	return model, nil
+
+	// or adjust type
+	new, ok := r.(*IPInfo)
+	if !ok {
+		return nil, fmt.Errorf("record not of type *IPInfo, but %T", r)
+	}
+	return new, nil
+}
+
+// Save saves the IPInfo record to the database.
+func (ipi *IPInfo) Save() error {
+	ipi.SetKey(makeIPInfoKey(ipi.IP))
+	return ipInfoDatabase.PutNew(ipi)
 }
 
 // FmtDomains returns a string consisting of the domains that have seen to use this IP, joined by " or "
-func (m *IPInfo) FmtDomains() string {
-	return strings.Join(m.Domains, " or ")
+func (ipi *IPInfo) FmtDomains() string {
+	return strings.Join(ipi.Domains, " or ")
 }
