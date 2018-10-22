@@ -3,8 +3,8 @@ package status
 import "sync"
 
 var (
-	sysStatusLock sync.RWMutex
 	sysStatus     *SystemStatus
+	sysStatusLock sync.RWMutex
 )
 
 func init() {
@@ -29,8 +29,8 @@ type SystemStatus struct {
 
 // FmtSecurityLevel returns the current security level as a string.
 func FmtSecurityLevel() string {
-	current := GetCurrentSecurityLevel()
-	selected := GetSelectedSecurityLevel()
+	current := CurrentSecurityLevel()
+	selected := SelectedSecurityLevel()
 	var s string
 	switch current {
 	case SecurityLevelOff:
