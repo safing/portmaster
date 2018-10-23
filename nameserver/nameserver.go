@@ -25,7 +25,8 @@ func init() {
 func start() error {
 	server := &dns.Server{Addr: "127.0.0.1:53", Net: "udp"}
 	dns.HandleFunc(".", handleRequest)
-	go run()
+	go run(server)
+	return nil
 }
 
 func run(server *dns.Server) {
