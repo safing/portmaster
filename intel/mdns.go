@@ -34,10 +34,6 @@ type savedQuestion struct {
 	expires  int64
 }
 
-func init() {
-	go listenToMDNS()
-}
-
 func indexOfRR(entry *dns.RR_Header, list *[]dns.RR) int {
 	for k, v := range *list {
 		if entry.Name == v.Header().Name && entry.Rrtype == v.Header().Rrtype {

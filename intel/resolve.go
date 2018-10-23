@@ -108,6 +108,7 @@ func Resolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCache {
 	}
 
 	if rrCache.TTL <= time.Now().Unix() {
+		log.Tracef("intel: serving cache, requesting new. TTL=%d, now=%d", rrCache.TTL, time.Now().Unix())
 		rrCache.requestingNew = true
 		go resolveAndCache(fqdn, qtype, securityLevel)
 	}
@@ -149,7 +150,7 @@ func resolveAndCache(fqdn string, qtype dns.Type, securityLevel uint8) (rrCache 
 	}
 	defer func() {
 		dupReqLock.Lock()
-		delete(dupReqMap, fqdn)
+		delete(dupReqMap, dupKey)
 		dupReqLock.Unlock()
 		mutex.Unlock()
 	}()
@@ -331,25 +332,39 @@ func query(resolver *Resolver, fqdn string, qtype dns.Type) (*RRCache, error) {
 
 	var reply *dns.Msg
 	var err error
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 3; i++ {
+
+		// log query time
+		// qStart := time.Now()
 		reply, _, err = resolver.clientManager.getDNSClient().Exchange(q, resolver.ServerAddress)
+		// log.Tracef("intel: query to %s took %s", resolver.Server, time.Now().Sub(qStart))
+
+		// error handling
 		if err != nil {
+			log.Tracef("intel: query to %s encountered error: %s", resolver.Server, err)
 
 			// TODO: handle special cases
 			// 1. connect: network is unreachable
 			// 2. timeout
 
+			// temporary error
 			if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
 				log.Tracef("intel: retrying to resolve %s%s with %s, error was: %s", fqdn, qtype.String(), resolver.Server, err)
 				continue
 			}
+
+			// permanent error
 			break
 		}
+
+		// no error
+		break
 	}
 
 	if err != nil {
-		log.Warningf("resolving %s%s failed: %s", fqdn, qtype.String(), err)
-		return nil, fmt.Errorf("resolving %s%s failed: %s", fqdn, qtype.String(), err)
+		err = fmt.Errorf("resolving %s%s failed: %s", fqdn, qtype.String(), err)
+		log.Warning(err.Error())
+		return nil, err
 	}
 
 	new := &RRCache{

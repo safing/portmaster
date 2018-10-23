@@ -44,6 +44,7 @@ func (m *RRCache) Clean(minExpires uint32) {
 		lowestTTL = minExpires
 	}
 
+	// log.Tracef("lowest TTL is %d", lowestTTL)
 	m.TTL = time.Now().Unix() + int64(lowestTTL)
 }
 
@@ -99,8 +100,7 @@ func (m *RRCache) Save() error {
 
 // GetRRCache tries to load the corresponding NameRecord from the database and convert it.
 func GetRRCache(domain string, question dns.Type) (*RRCache, error) {
-	var m RRCache
-	rr := &RRCache{
+	rrCache := &RRCache{
 		Domain:   domain,
 		Question: question,
 	}
@@ -110,28 +110,28 @@ func GetRRCache(domain string, question dns.Type) (*RRCache, error) {
 		return nil, err
 	}
 
-	rr.TTL = nameRecord.TTL
+	rrCache.TTL = nameRecord.TTL
 	for _, entry := range nameRecord.Answer {
 		rr, err := dns.NewRR(entry)
 		if err == nil {
-			m.Answer = append(m.Answer, rr)
+			rrCache.Answer = append(rrCache.Answer, rr)
 		}
 	}
 	for _, entry := range nameRecord.Ns {
 		rr, err := dns.NewRR(entry)
 		if err == nil {
-			m.Ns = append(m.Ns, rr)
+			rrCache.Ns = append(rrCache.Ns, rr)
 		}
 	}
 	for _, entry := range nameRecord.Extra {
 		rr, err := dns.NewRR(entry)
 		if err == nil {
-			m.Extra = append(m.Extra, rr)
+			rrCache.Extra = append(rrCache.Extra, rr)
 		}
 	}
 
-	m.servedFromCache = true
-	return &m, nil
+	rrCache.servedFromCache = true
+	return rrCache, nil
 }
 
 // ServedFromCache marks the RRCache as served from cache.

@@ -23,8 +23,8 @@ var (
 	doNotResolveSpecialDomains  status.SecurityLevelOption
 )
 
-func init() {
-	config.Register(&config.Option{
+func prep() error {
+	err := config.Register(&config.Option{
 		Name:            "Nameservers (DNS)",
 		Key:             "intel/nameservers",
 		Description:     "Nameserver to use for resolving DNS requests.",
@@ -33,9 +33,12 @@ func init() {
 		DefaultValue:    defaultNameServers,
 		ValidationRegex: "^(dns|tcp|tls|https)$",
 	})
+	if err != nil {
+		return err
+	}
 	configuredNameServers = config.Concurrent.GetAsStringArray("intel/nameservers", defaultNameServers)
 
-	config.Register(&config.Option{
+	err = config.Register(&config.Option{
 		Name:           "Nameserver Retry Rate",
 		Key:            "intel/nameserverRetryRate",
 		Description:    "Rate at which to retry failed nameservers, in seconds.",
@@ -43,21 +46,27 @@ func init() {
 		OptType:        config.OptTypeInt,
 		DefaultValue:   600,
 	})
+	if err != nil {
+		return err
+	}
 	nameserverRetryRate = config.Concurrent.GetAsInt("intel/nameserverRetryRate", 0)
 
-	config.Register(&config.Option{
+	err = config.Register(&config.Option{
 		Name:            "Do not use Multicast DNS",
 		Key:             "intel/doNotUseMulticastDNS",
-		Description:     "",
+		Description:     "Multicast DNS queries other devices in the local network",
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
 		DefaultValue:    3,
 		ValidationRegex: "^(1|2|3)$",
 	})
+	if err != nil {
+		return err
+	}
 	doNotUseMulticastDNS = status.ConfigIsActiveConcurrent("intel/doNotUseMulticastDNS")
 
-	config.Register(&config.Option{
+	err = config.Register(&config.Option{
 		Name:            "Do not use assigned Nameservers",
 		Key:             "intel/doNotUseAssignedNameservers",
 		Description:     "that were acquired by the network (dhcp) or system",
@@ -67,9 +76,12 @@ func init() {
 		DefaultValue:    3,
 		ValidationRegex: "^(1|2|3)$",
 	})
+	if err != nil {
+		return err
+	}
 	doNotUseAssignedNameservers = status.ConfigIsActiveConcurrent("intel/doNotUseAssignedNameservers")
 
-	config.Register(&config.Option{
+	err = config.Register(&config.Option{
 		Name:            "Do not resolve special domains",
 		Key:             "intel/doNotResolveSpecialDomains",
 		Description:     "Do not resolve special (top level) domains: example, example.com, example.net, example.org, invalid, test, onion. (RFC6761, RFC7686)",
@@ -79,5 +91,10 @@ func init() {
 		DefaultValue:    3,
 		ValidationRegex: "^(1|2|3)$",
 	})
+	if err != nil {
+		return err
+	}
 	doNotResolveSpecialDomains = status.ConfigIsActiveConcurrent("intel/doNotResolveSpecialDomains")
+
+	return nil
 }

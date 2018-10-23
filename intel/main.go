@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	modules.Register("intel", nil, start, nil, "database")
+	modules.Register("intel", prep, start, nil, "database")
 }
 
 func start() error {
@@ -25,6 +25,8 @@ func start() error {
 
 	// load resolvers from config and environment
 	loadResolvers(false)
+
+	go listenToMDNS()
 
 	return nil
 }
