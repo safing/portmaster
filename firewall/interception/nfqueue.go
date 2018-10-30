@@ -5,27 +5,33 @@
 package interception
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/coreos/go-iptables/iptables"
 
-	"github.com/Safing/safing-core/firewall/interception/nfqueue"
-	"github.com/Safing/safing-core/log"
-	"github.com/Safing/safing-core/modules"
+	"github.com/Safing/portmaster/firewall/interception/nfqueue"
 )
 
 // iptables -A OUTPUT -p icmp -j", "NFQUEUE", "--queue-num", "1", "--queue-bypass
 
-var nfqueueModule *modules.Module
+var (
+	v4chains []string
+	v4rules  []string
+	v4once   []string
 
-var v4chains []string
-var v4rules []string
-var v4once []string
+	v6chains []string
+	v6rules  []string
+	v6once   []string
 
-var v6chains []string
-var v6rules []string
-var v6once []string
+	out4Queue *nfqueue.NFQueue
+	in4Queue  *nfqueue.NFQueue
+	out6Queue *nfqueue.NFQueue
+	in6Queue  *nfqueue.NFQueue
+
+	shutdownSignal = make(chan struct{})
+)
 
 func init() {
 
@@ -238,70 +244,84 @@ func deactivateNfqueueFirewall() error {
 	return nil
 }
 
-func Start() {
+// Start starts the nfqueue interception.
+func Start() (err error) {
 
-	nfqueueModule = modules.Register("Firewall:Interception:Nfqueue", 192)
-
-	if err := activateNfqueueFirewall(); err != nil {
-		log.Criticalf("could not activate firewall for nfqueue: %q", err)
+	err = activateNfqueueFirewall()
+	if err != nil {
+		Stop()
+		return fmt.Errorf("could not initialize nfqueue: %s", err)
 	}
 
-	out4Queue := nfqueue.NewNFQueue(17040)
-	in4Queue := nfqueue.NewNFQueue(17140)
-	out6Queue := nfqueue.NewNFQueue(17060)
-	in6Queue := nfqueue.NewNFQueue(17160)
+	out4Queue, err = nfqueue.NewNFQueue(17040)
+	if err != nil {
+		Stop()
+		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
+	}
+	in4Queue, err = nfqueue.NewNFQueue(17140)
+	if err != nil {
+		Stop()
+		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
+	}
+	out6Queue, err = nfqueue.NewNFQueue(17060)
+	if err != nil {
+		Stop()
+		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
+	}
+	in6Queue, err = nfqueue.NewNFQueue(17160)
+	if err != nil {
+		Stop()
+		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
+	}
 
-	out4Channel := out4Queue.Process()
-	// if err != nil {
-	// log.Criticalf("could not open nfqueue out4")
-	// } else {
-	defer out4Queue.Destroy()
-	// }
-	in4Channel := in4Queue.Process()
-	// if err != nil {
-	// log.Criticalf("could not open nfqueue in4")
-	// } else {
-	defer in4Queue.Destroy()
-	// }
-	out6Channel := out6Queue.Process()
-	// if err != nil {
-	// log.Criticalf("could not open nfqueue out6")
-	// } else {
-	defer out6Queue.Destroy()
-	// }
-	in6Channel := in6Queue.Process()
-	// if err != nil {
-	// log.Criticalf("could not open nfqueue in6")
-	// } else {
-	defer in6Queue.Destroy()
-	// }
+	go handleInterception()
+	return nil
+}
 
-packetInterceptionLoop:
+// Stop stops the nfqueue interception.
+func Stop() error {
+	defer close(shutdownSignal)
+
+	if out4Queue != nil {
+		out4Queue.Destroy()
+	}
+	if in4Queue != nil {
+		in4Queue.Destroy()
+	}
+	if out6Queue != nil {
+		out6Queue.Destroy()
+	}
+	if in6Queue != nil {
+		in6Queue.Destroy()
+	}
+
+	err := deactivateNfqueueFirewall()
+	if err != nil {
+		return fmt.Errorf("interception: error while deactivating nfqueue: %s", err)
+	}
+
+	return nil
+}
+
+func handleInterception() {
 	for {
 		select {
-		case <-nfqueueModule.Stop:
-			break packetInterceptionLoop
-		case pkt := <-out4Channel:
+		case <-shutdownSignal:
+			return
+		case pkt := <-out4Queue.Packets:
 			pkt.SetOutbound()
 			Packets <- pkt
-		case pkt := <-in4Channel:
+		case pkt := <-in4Queue.Packets:
 			pkt.SetInbound()
 			Packets <- pkt
-		case pkt := <-out6Channel:
+		case pkt := <-out6Queue.Packets:
 			pkt.SetOutbound()
 			Packets <- pkt
-		case pkt := <-in6Channel:
+		case pkt := <-in6Queue.Packets:
 			pkt.SetInbound()
 			Packets <- pkt
 		}
 	}
-
-	if err := deactivateNfqueueFirewall(); err != nil {
-		log.Criticalf("could not deactivate firewall for nfqueue: %q", err)
-	}
-
-	nfqueueModule.StopComplete()
-
 }
 
 func stringInSlice(slice []string, value string) bool {

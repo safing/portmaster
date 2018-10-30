@@ -8,17 +8,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Safing/safing-core/configuration"
-	"github.com/Safing/safing-core/firewall/inspection"
-	"github.com/Safing/safing-core/firewall/interception"
-	"github.com/Safing/safing-core/log"
-	"github.com/Safing/safing-core/modules"
-	"github.com/Safing/safing-core/network"
-	"github.com/Safing/safing-core/network/packet"
-	"github.com/Safing/safing-core/port17/entry"
-	"github.com/Safing/safing-core/port17/mode"
-	"github.com/Safing/safing-core/portmaster"
-	"github.com/Safing/safing-core/process"
+	"github.com/Safing/portbase/config"
+	"github.com/Safing/portbase/log"
+	"github.com/Safing/portbase/modules"
+	"github.com/Safing/portmaster/firewall/inspection"
+	"github.com/Safing/portmaster/firewall/interception"
+	"github.com/Safing/portmaster/network"
+	"github.com/Safing/portmaster/network/packet"
+	"github.com/Safing/portmaster/portmaster"
+	"github.com/Safing/portmaster/process"
 )
 
 var (
@@ -46,23 +44,25 @@ var (
 )
 
 func init() {
+	modules.Register("firewall", prep, start, stop, "database", "nameserver")
+}
 
-	var err error
+func prep() (err error) {
 
 	_, localNet4, err = net.ParseCIDR("127.0.0.0/24")
 	// Yes, this would normally be 127.0.0.0/8
 	// TODO: figure out any side effects
 	if err != nil {
-		log.Criticalf("firewall: failed to parse cidr 127.0.0.0/24: %s", err)
+		return fmt.Errorf("firewall: failed to parse cidr 127.0.0.0/24: %s", err)
 	}
 
 	_, tunnelNet4, err = net.ParseCIDR("127.17.0.0/16")
 	if err != nil {
-		log.Criticalf("firewall: failed to parse cidr 127.17.0.0/16: %s", err)
+		return fmt.Errorf("firewall: failed to parse cidr 127.17.0.0/16: %s", err)
 	}
 	_, tunnelNet6, err = net.ParseCIDR("fd17::/64")
 	if err != nil {
-		log.Criticalf("firewall: failed to parse cidr fd17::/64: %s", err)
+		return fmt.Errorf("firewall: failed to parse cidr fd17::/64: %s", err)
 	}
 
 	var pA uint64
@@ -71,20 +71,19 @@ func init() {
 	packetsBlocked = &pB
 	var pD uint64
 	packetsDropped = &pD
+
+	return nil
 }
 
-func Start() {
-	firewallModule = modules.Register("Firewall", 128)
-	defer firewallModule.StopComplete()
-
+func start() {
 	// start interceptor
-	go interception.Start()
-	go statLogger()
+	interception.Start()
 
+	go statLogger()
+	go run()
 	// go run()
 	// go run()
 	// go run()
-	run()
 }
 
 func handlePacket(pkt packet.Packet) {
@@ -189,19 +188,19 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 	logInitialVerdict(link)
 
 	// TODO: link this to real status
-	port17Active := mode.Client()
+	// port17Active := mode.Client()
 
 	switch {
-	case port17Active && link.Inspect:
-		// tunnel link, but also inspect (after reroute)
-		link.Tunneled = true
-		link.SetFirewallHandler(inspectThenVerdict)
-		verdict(pkt, link.Verdict)
-	case port17Active:
-		// tunnel link, don't inspect
-		link.Tunneled = true
-		link.StopFirewallHandler()
-		permanentVerdict(pkt, network.ACCEPT)
+	// case port17Active && link.Inspect:
+	// 	// tunnel link, but also inspect (after reroute)
+	// 	link.Tunneled = true
+	// 	link.SetFirewallHandler(inspectThenVerdict)
+	// 	verdict(pkt, link.Verdict)
+	// case port17Active:
+	// 	// tunnel link, don't inspect
+	// 	link.Tunneled = true
+	// 	link.StopFirewallHandler()
+	// 	permanentVerdict(pkt, network.ACCEPT)
 	case link.Inspect:
 		link.SetFirewallHandler(inspectThenVerdict)
 		inspectThenVerdict(pkt, link)
@@ -227,11 +226,7 @@ func inspectThenVerdict(pkt packet.Packet, link *network.Link) {
 	// we are done with inspecting
 	link.StopFirewallHandler()
 
-	config.Changed()
-	config.RLock()
-	link.VerdictPermanent = config.PermanentVerdicts
-	config.RUnlock()
-
+	link.VerdictPermanent = permanentVerdicts()
 	if link.VerdictPermanent {
 		link.Save()
 		permanentVerdict(pkt, link.Verdict)
@@ -276,18 +271,18 @@ func verdict(pkt packet.Packet, action network.Verdict) {
 	pkt.Drop()
 }
 
-func tunnelHandler(pkt packet.Packet) {
-	tunnelInfo := portmaster.GetTunnelInfo(pkt.GetIPHeader().Dst)
-	if tunnelInfo == nil {
-		pkt.Block()
-		return
-	}
-
-	entry.CreateTunnel(pkt, tunnelInfo.Domain, tunnelInfo.RRCache.ExportAllARecords())
-	log.Tracef("firewall: rerouting %s to tunnel entry point", pkt)
-	pkt.RerouteToTunnel()
-	return
-}
+// func tunnelHandler(pkt packet.Packet) {
+// 	tunnelInfo := portmaster.GetTunnelInfo(pkt.GetIPHeader().Dst)
+// 	if tunnelInfo == nil {
+// 		pkt.Block()
+// 		return
+// 	}
+//
+// 	entry.CreateTunnel(pkt, tunnelInfo.Domain, tunnelInfo.RRCache.ExportAllARecords())
+// 	log.Tracef("firewall: rerouting %s to tunnel entry point", pkt)
+// 	pkt.RerouteToTunnel()
+// 	return
+// }
 
 func logInitialVerdict(link *network.Link) {
 	// switch link.Verdict {
@@ -312,25 +307,26 @@ func logChangedVerdict(link *network.Link) {
 }
 
 func run() {
-
-packetProcessingLoop:
 	for {
 		select {
-		case <-firewallModule.Stop:
-			break packetProcessingLoop
+		case <-modules.ShuttingDown():
+			return
 		case pkt := <-interception.Packets:
 			handlePacket(pkt)
 		}
 	}
-
 }
 
 func statLogger() {
 	for {
-		time.Sleep(10 * time.Second)
-		log.Tracef("firewall: packets accepted %d, blocked %d, dropped %d", atomic.LoadUint64(packetsAccepted), atomic.LoadUint64(packetsBlocked), atomic.LoadUint64(packetsDropped))
-		atomic.StoreUint64(packetsAccepted, 0)
-		atomic.StoreUint64(packetsBlocked, 0)
-		atomic.StoreUint64(packetsDropped, 0)
+		select {
+		case <-modules.ShuttingDown():
+			return
+		case <-time.After(10 * time.Second):
+			log.Tracef("firewall: packets accepted %d, blocked %d, dropped %d", atomic.LoadUint64(packetsAccepted), atomic.LoadUint64(packetsBlocked), atomic.LoadUint64(packetsDropped))
+			atomic.StoreUint64(packetsAccepted, 0)
+			atomic.StoreUint64(packetsBlocked, 0)
+			atomic.StoreUint64(packetsDropped, 0)
+		}
 	}
 }

@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Safing/safing-core/crypto/random"
-	"github.com/Safing/safing-core/intel"
+	"github.com/Safing/portbase/crypto/random"
+	"github.com/Safing/portmaster/intel"
 	"github.com/miekg/dns"
 )
 

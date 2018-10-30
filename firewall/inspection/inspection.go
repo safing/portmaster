@@ -3,9 +3,10 @@
 package inspection
 
 import (
-	"github.com/Safing/safing-core/network"
-	"github.com/Safing/safing-core/network/packet"
 	"sync"
+
+	"github.com/Safing/portmaster/network"
+	"github.com/Safing/portmaster/network/packet"
 )
 
 const (

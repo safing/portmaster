@@ -17,17 +17,19 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
+	"errors"
+	"fmt"
 
-	"github.com/Safing/safing-core/network/packet"
+	"github.com/Safing/portmaster/network/packet"
 )
 
-var queues map[uint16]*nfQueue
+var queues map[uint16]*NFQueue
 
 func init() {
-	queues = make(map[uint16]*nfQueue)
+	queues = make(map[uint16]*NFQueue)
 }
 
-type nfQueue struct {
+type NFQueue struct {
 	DefaultVerdict uint32
 	Timeout        time.Duration
 	qid            uint16
@@ -38,83 +40,77 @@ type nfQueue struct {
 	fd int
 	lk sync.Mutex
 
-	pktch chan packet.Packet
+	Packets chan packet.Packet
 }
 
-func NewNFQueue(qid uint16) (nfq *nfQueue) {
+func NewNFQueue(qid uint16) (nfq *NFQueue, err error) {
 	if os.Geteuid() != 0 {
-		panic("Must be ran by root.")
+		return nil, errors.New("must be root to intercept packets")
 	}
-	nfq = &nfQueue{DefaultVerdict: NFQ_ACCEPT, Timeout: 100 * time.Millisecond, qid: qid, qidptr: &qid}
+	nfq = &NFQueue{DefaultVerdict: NFQ_ACCEPT, Timeout: 100 * time.Millisecond, qid: qid, qidptr: &qid}
 	queues[nfq.qid] = nfq
-	return nfq
-}
 
-/*
-This returns a channel that will recieve packets,
-the user then must call pkt.Accept() or pkt.Drop()
-*/
-func (this *nfQueue) Process() <-chan packet.Packet {
-	if this.h != nil {
-		return this.pktch
+	err = nfq.init()
+	if err != nil {
+		return nil, err
 	}
-	this.init()
 
 	go func() {
 		runtime.LockOSThread()
-		C.loop_for_packets(this.h)
+		C.loop_for_packets(nfq.h)
 	}()
 
-	return this.pktch
+	return nfq, nil
 }
 
-func (this *nfQueue) init() {
+func (this *NFQueue) init() error {
 	var err error
 	if this.h, err = C.nfq_open(); err != nil || this.h == nil {
-		panic(err)
+		fmt.Errorf("could not open nfqueue: %s", err)
 	}
 
 	//if this.qh, err = C.nfq_create_queue(this.h, qid, C.get_cb(), unsafe.Pointer(nfq)); err != nil || this.qh == nil {
 
-	this.pktch = make(chan packet.Packet, 1)
+	this.Packets = make(chan packet.Packet, 1)
 
 	if C.nfq_unbind_pf(this.h, C.AF_INET) < 0 {
 		this.Destroy()
-		panic("nfq_unbind_pf(AF_INET) failed, are you running root?.")
+		return errors.New("nfq_unbind_pf(AF_INET) failed, are you root?")
 	}
 	if C.nfq_unbind_pf(this.h, C.AF_INET6) < 0 {
 		this.Destroy()
-		panic("nfq_unbind_pf(AF_INET6) failed.")
+		return errors.New("nfq_unbind_pf(AF_INET6) failed")
 	}
 
 	if C.nfq_bind_pf(this.h, C.AF_INET) < 0 {
 		this.Destroy()
-		panic("nfq_bind_pf(AF_INET) failed.")
+		return errors.New("nfq_bind_pf(AF_INET) failed")
 	}
-
 	if C.nfq_bind_pf(this.h, C.AF_INET6) < 0 {
 		this.Destroy()
-		panic("nfq_bind_pf(AF_INET6) failed.")
+		return errors.New("nfq_bind_pf(AF_INET6) failed")
 	}
 
 	if this.qh, err = C.create_queue(this.h, C.uint16_t(this.qid)); err != nil || this.qh == nil {
 		C.nfq_close(this.h)
-		panic(err)
+		return fmt.Errorf("could not create queue: %s", err)
 	}
 
 	this.fd = int(C.nfq_fd(this.h))
 
 	if C.nfq_set_mode(this.qh, C.NFQNL_COPY_PACKET, 0xffff) < 0 {
 		this.Destroy()
-		panic("nfq_set_mode(NFQNL_COPY_PACKET) failed.")
+		return errors.New("nfq_set_mode(NFQNL_COPY_PACKET) failed")
 	}
 	if C.nfq_set_queue_maxlen(this.qh, 1024*8) < 0 {
 		this.Destroy()
-		panic("nfq_set_queue_maxlen(1024 * 8) failed.")
+		return errors.New("nfq_set_queue_maxlen(1024 * 8) failed")
 	}
+
+	return nil
 }
 
-func (this *nfQueue) Destroy() {
+func (this *NFQueue) Destroy() {
 	this.lk.Lock()
 	defer this.lk.Unlock()
 
@@ -131,12 +127,12 @@ func (this *nfQueue) Destroy() {
 	}
 
 	// TODO: don't close, we're exiting anyway
-	// if this.pktch != nil {
-	// 	close(this.pktch)
+	// if this.Packets != nil {
+	// 	close(this.Packets)
 	// }
 }
 
-func (this *nfQueue) Valid() bool {
+func (this *NFQueue) Valid() bool {
 	return this.h != nil && this.qh != nil
 }
 
@@ -148,7 +144,7 @@ func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark *uint32,
 	qidptr := (*uint16)(data)
 	qid := uint16(*qidptr)
 
-	// nfq := (*nfQueue)(nfqptr)
+	// nfq := (*NFQueue)(nfqptr)
 	new_version := version
 	ipver := packet.IPVersion(new_version)
 	ipsz := C.int(ipver.ByteSize())
@@ -187,7 +183,7 @@ func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark *uint32,
 
 	// fmt.Printf("%s queuing packet\n", time.Now().Format("060102 15:04:05.000"))
 	// BUG: "panic: send on closed channel" when shutting down
-	queues[qid].pktch <- &pkt
+	queues[qid].Packets <- &pkt
 
 	select {
 	case v = <-pkt.verdict:

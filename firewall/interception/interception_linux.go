@@ -2,10 +2,8 @@
 
 package interception
 
-import "github.com/Safing/safing-core/network/packet"
+import "github.com/Safing/portmaster/network/packet"
 
-var Packets chan packet.Packet
-
-func init() {
+var (
 	Packets = make(chan packet.Packet, 1000)
-}
+)

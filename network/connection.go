@@ -7,10 +7,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/Safing/safing-core/database"
-	"github.com/Safing/safing-core/intel"
-	"github.com/Safing/safing-core/network/packet"
-	"github.com/Safing/safing-core/process"
+	"github.com/Safing/portbase/database"
+	"github.com/Safing/portmaster/intel"
+	"github.com/Safing/portmaster/network/packet"
+	"github.com/Safing/portmaster/process"
 
 	datastore "github.com/ipfs/go-datastore"
 )
