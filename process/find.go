@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net"
 
-	"github.com/Safing/safing-core/network/packet"
+	"github.com/Safing/portmaster/network/packet"
 )
 
 var (

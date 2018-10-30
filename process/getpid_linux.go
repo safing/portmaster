@@ -1,6 +1,6 @@
 package process
 
-import "github.com/Safing/safing-core/process/proc"
+import "github.com/Safing/portmaster/process/proc"
 
 var (
 	getTCP4PacketInfo      = proc.GetTCP4PacketInfo
