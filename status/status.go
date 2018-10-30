@@ -27,23 +27,37 @@ type SystemStatus struct {
 	Gate17StatusMsg string `json:",omitempty" bson:",omitempty"`
 }
 
-// FmtSecurityLevel returns the current security level as a string.
-func FmtSecurityLevel() string {
+// FmtCurrentSecurityLevel returns the current security level as a string.
+func FmtCurrentSecurityLevel() string {
 	current := CurrentSecurityLevel()
 	selected := SelectedSecurityLevel()
-	var s string
-	switch current {
-	case SecurityLevelOff:
-		s = "Off"
-	case SecurityLevelDynamic:
-		s = "Dynamic"
-	case SecurityLevelSecure:
-		s = "Secure"
-	case SecurityLevelFortress:
-		s = "Fortress"
-	}
+	s := FmtSecurityLevel(current)
 	if current != selected {
 		s += "*"
 	}
 	return s
+}
+
+// FmtSecurityLevel returns the given security level as a string.
+func FmtSecurityLevel(level uint8) string {
+	switch level {
+	case SecurityLevelOff:
+		return "Off"
+	case SecurityLevelDynamic:
+		return "Dynamic"
+	case SecurityLevelSecure:
+		return "Secure"
+	case SecurityLevelFortress:
+		return "Fortress"
+	case SecurityLevelsDynamicAndSecure:
+		return "Dynamic and Secure"
+	case SecurityLevelsDynamicAndFortress:
+		return "Dynamic and Fortress"
+	case SecurityLevelsSecureAndFortress:
+		return "Secure and Fortress"
+	case SecurityLevelsAll:
+		return "Dynamic, Secure and Fortress"
+	default:
+		return "INVALID"
+	}
 }
