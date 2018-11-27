@@ -1,5 +1,3 @@
-// Copyright Safing ICS Technologies GmbH. Use of this source code is governed by the AGPL license that can be found in the LICENSE file.
-
 package verify
 
 import (
@@ -14,16 +12,15 @@ import (
 	"sync"
 	"time"
 
-	datastore "github.com/ipfs/go-datastore"
-
-	"github.com/Safing/safing-core/crypto/hash"
-	"github.com/Safing/safing-core/database"
-	"github.com/Safing/safing-core/log"
+	"github.com/Safing/portbase/crypto/hash"
+	"github.com/Safing/portbase/database"
+	"github.com/Safing/portbase/database/record"
+	"github.com/Safing/portbase/log"
 )
 
 // CARevocationInfo saves Information on revokation of Certificates of a Certificate Authority.
 type CARevocationInfo struct {
-	database.Base
+	record.Record
 
 	CRLDistributionPoints []string
 	OCSPServers           []string
@@ -39,15 +36,9 @@ type CARevocationInfo struct {
 }
 
 var (
-	caRevocationInfoModel *CARevocationInfo // only use this as parameter for database.EnsureModel-like functions
-
 	dupCrlReqMap  = make(map[string]*sync.Mutex)
 	dupCrlReqLock sync.Mutex
 )
-
-func init() {
-	database.RegisterModel(caRevocationInfoModel, func() database.Model { return new(CARevocationInfo) })
-}
 
 // Create saves CARevocationInfo with the provided name in the default namespace.
 func (m *CARevocationInfo) Create(name string) error {
@@ -55,7 +46,7 @@ func (m *CARevocationInfo) Create(name string) error {
 }
 
 // CreateInNamespace saves CARevocationInfo with the provided name in the provided namespace.
-func (m *CARevocationInfo) CreateInNamespace(namespace *datastore.Key, name string) error {
+func (m *CARevocationInfo) CreateInNamespace(namespace string, name string) error {
 	return m.CreateObject(namespace, name, m)
 }
 
@@ -78,7 +69,7 @@ func GetCARevocationInfo(name string) (*CARevocationInfo, error) {
 }
 
 // GetCARevocationInfoFromNamespace fetches CARevocationInfo with the provided name from the provided namespace.
-func GetCARevocationInfoFromNamespace(namespace *datastore.Key, name string) (*CARevocationInfo, error) {
+func GetCARevocationInfoFromNamespace(namespace string, name string) (*CARevocationInfo, error) {
 	object, err := database.GetAndEnsureModel(namespace, name, caRevocationInfoModel)
 	if err != nil {
 		return nil, err

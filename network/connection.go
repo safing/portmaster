@@ -5,19 +5,20 @@ package network
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
-	"github.com/Safing/portbase/database"
+	"github.com/Safing/portbase/database/record"
 	"github.com/Safing/portmaster/intel"
 	"github.com/Safing/portmaster/network/packet"
 	"github.com/Safing/portmaster/process"
-
-	datastore "github.com/ipfs/go-datastore"
 )
 
 // Connection describes a connection between a process and a domain
 type Connection struct {
-	database.Base
+	record.Base
+	sync.Mutex
+
 	Domain               string
 	Direction            bool
 	Intel                *intel.Intel
@@ -26,76 +27,62 @@ type Connection struct {
 	Reason               string
 	Inspect              bool
 	FirstLinkEstablished int64
+	LastLinkEstablished  int64
 }
 
-var connectionModel *Connection // only use this as parameter for database.EnsureModel-like functions
-
-func init() {
-	database.RegisterModel(connectionModel, func() database.Model { return new(Connection) })
-}
-
+// Process returns the process that owns the connection.
 func (m *Connection) Process() *process.Process {
 	return m.process
 }
 
-// Create creates a new database entry in the database in the default namespace for this object
-func (m *Connection) Create(name string) error {
-	return m.CreateObject(&database.OrphanedConnection, name, m)
-}
-
-// CreateInProcessNamespace creates a new database entry in the namespace of the connection's process
-func (m *Connection) CreateInProcessNamespace() error {
-	if m.process != nil {
-		return m.CreateObject(m.process.GetKey(), m.Domain, m)
-	}
-	return m.CreateObject(&database.OrphanedConnection, m.Domain, m)
-}
-
-// Save saves the object to the database (It must have been either already created or loaded from the database)
-func (m *Connection) Save() error {
-	return m.SaveObject(m)
-}
-
+// CantSay sets the connection verdict to "can't say", the connection will be further analysed.
 func (m *Connection) CantSay() {
 	if m.Verdict != CANTSAY {
 		m.Verdict = CANTSAY
-		m.SaveObject(m)
+		m.Save()
 	}
 	return
 }
 
+// Drop sets the connection verdict to drop.
 func (m *Connection) Drop() {
 	if m.Verdict != DROP {
 		m.Verdict = DROP
-		m.SaveObject(m)
+		m.Save()
 	}
 	return
 }
 
+// Block sets the connection verdict to block.
 func (m *Connection) Block() {
 	if m.Verdict != BLOCK {
 		m.Verdict = BLOCK
-		m.SaveObject(m)
+		m.Save()
 	}
 	return
 }
 
+// Accept sets the connection verdict to accept.
 func (m *Connection) Accept() {
 	if m.Verdict != ACCEPT {
 		m.Verdict = ACCEPT
-		m.SaveObject(m)
+		m.Save()
 	}
 	return
 }
 
 // AddReason adds a human readable string as to why a certain verdict was set in regard to this connection
 func (m *Connection) AddReason(newReason string) {
+	m.Lock()
+	defer m.Unlock()
+
 	if m.Reason != "" {
 		m.Reason += " | "
 	}
 	m.Reason += newReason
 }
 
+// GetConnectionByFirstPacket returns the matching connection from the internal storage.
 func GetConnectionByFirstPacket(pkt packet.Packet) (*Connection, error) {
 	// get Process
 	proc, direction, err := process.GetProcessByPacket(pkt)
@@ -154,6 +141,7 @@ var (
 	dnsPort    uint16 = 53
 )
 
+// GetConnectionByDNSRequest returns the matching connection from the internal storage.
 func GetConnectionByDNSRequest(ip net.IP, port uint16, fqdn string) (*Connection, error) {
 	// get Process
 	proc, err := process.GetProcessByEndpoints(ip, port, dnsAddress, dnsPort, packet.UDP)
@@ -173,38 +161,22 @@ func GetConnectionByDNSRequest(ip net.IP, port uint16, fqdn string) (*Connection
 	return connection, nil
 }
 
-// GetConnection fetches a Connection from the database from the default namespace for this object
-func GetConnection(name string) (*Connection, error) {
-	return GetConnectionFromNamespace(&database.OrphanedConnection, name)
-}
+// AddLink applies the connection to the link.
+func (conn *Connection) AddLink(link *Link) {
+	link.Lock()
+	defer link.Unlock()
+	link.connection = conn
+	link.Verdict = conn.Verdict
+	link.Inspect = conn.Inspect
+	link.Save()
 
-// GetConnectionFromProcessNamespace fetches a Connection from the namespace of its process
-func GetConnectionFromProcessNamespace(process *process.Process, domain string) (*Connection, error) {
-	return GetConnectionFromNamespace(process.GetKey(), domain)
-}
-
-// GetConnectionFromNamespace fetches a Connection form the database, but from a custom namespace
-func GetConnectionFromNamespace(namespace *datastore.Key, name string) (*Connection, error) {
-	object, err := database.GetAndEnsureModel(namespace, name, connectionModel)
-	if err != nil {
-		return nil, err
+	conn.Lock()
+	defer conn.Unlock()
+	conn.LastLinkEstablished = time.Now().Unix()
+	if conn.FirstLinkEstablished == 0 {
+		conn.FirstLinkEstablished = conn.FirstLinkEstablished
 	}
-	model, ok := object.(*Connection)
-	if !ok {
-		return nil, database.NewMismatchError(object, connectionModel)
-	}
-	return model, nil
-}
-
-func (m *Connection) AddLink(link *Link, pkt packet.Packet) {
-	link.connection = m
-	link.Verdict = m.Verdict
-	link.Inspect = m.Inspect
-	if m.FirstLinkEstablished == 0 {
-		m.FirstLinkEstablished = time.Now().Unix()
-		m.Save()
-	}
-	link.CreateInConnectionNamespace(pkt.GetConnectionID())
+	conn.Save()
 }
 
 // FORMATTING

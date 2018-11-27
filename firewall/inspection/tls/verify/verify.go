@@ -1,5 +1,3 @@
-// Copyright Safing ICS Technologies GmbH. Use of this source code is governed by the AGPL license that can be found in the LICENSE file.
-
 package verify
 
 import (
@@ -8,9 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Safing/safing-core/configuration"
-	"github.com/Safing/safing-core/crypto/hash"
-	"github.com/Safing/safing-core/database"
+	"github.com/Safing/portbase/crypto/hash"
+	"github.com/Safing/portbase/database"
 )
 
 // useful references:
@@ -23,10 +20,6 @@ import (
 // https://www.imperialviolet.org/2012/02/05/crlsets.html
 // RE: https://www.grc.com/revocation/crlsets.htm
 // RE: RE: https://www.imperialviolet.org/2014/04/29/revocationagain.html
-
-var (
-	config = configuration.Get()
-)
 
 // FullCheckBytes does a full certificate check, certificates are provided as raw bytes.
 // It parses the raw certificates and calls FullCheck.

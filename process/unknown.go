@@ -1,0 +1,15 @@
+package process
+
+var (
+	UnknownProcess = &Process{
+		UserID:    -1,
+		UserName:  "Unknown",
+		Pid:       -1,
+		ParentPid: -1,
+		Name:      "Unknown Processes",
+	}
+)
+
+func init() {
+	UnknownProcess.Save()
+}

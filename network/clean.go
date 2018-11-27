@@ -5,7 +5,7 @@ package network
 import (
 	"time"
 
-	"github.com/Safing/safing-core/process"
+	"github.com/Safing/portmaster/process"
 )
 
 func init() {

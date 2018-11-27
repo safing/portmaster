@@ -1,12 +1,10 @@
-// Copyright Safing ICS Technologies GmbH. Use of this source code is governed by the AGPL license that can be found in the LICENSE file.
-
 package interception
 
 import (
-	"github.com/Safing/safing-core/firewall/interception/windivert"
-	"github.com/Safing/safing-core/log"
-	"github.com/Safing/safing-core/modules"
-	"github.com/Safing/safing-core/network/packet"
+	"github.com/Safing/portbase/log"
+	"github.com/Safing/portbase/modules"
+	"github.com/Safing/portmaster/firewall/interception/windivert"
+	"github.com/Safing/portmaster/network/packet"
 )
 
 var Packets chan packet.Packet

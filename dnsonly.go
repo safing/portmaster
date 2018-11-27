@@ -9,6 +9,7 @@ import (
 	"github.com/Safing/portbase/info"
 	"github.com/Safing/portbase/log"
 	"github.com/Safing/portbase/modules"
+
 	// include packages here
 
 	_ "github.com/Safing/portbase/database/dbmodule"

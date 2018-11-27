@@ -7,11 +7,13 @@ import (
 	"github.com/Safing/portmaster/network/packet"
 )
 
+// Errors
 var (
 	ErrConnectionNotFound = errors.New("could not find connection")
 	ErrProcessNotFound    = errors.New("could not find process")
 )
 
+// GetPidByPacket returns the pid of the owner of the packet.
 func GetPidByPacket(pkt packet.Packet) (pid int, direction bool, err error) {
 
 	var localIP net.IP
@@ -50,6 +52,7 @@ func GetPidByPacket(pkt packet.Packet) (pid int, direction bool, err error) {
 
 }
 
+// GetProcessByPacket returns the process that owns the given packet.
 func GetProcessByPacket(pkt packet.Packet) (process *Process, direction bool, err error) {
 
 	var pid int
@@ -70,6 +73,7 @@ func GetProcessByPacket(pkt packet.Packet) (process *Process, direction bool, er
 
 }
 
+// GetPidByEndpoints returns the pid of the owner of the described link.
 func GetPidByEndpoints(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, protocol packet.IPProtocol) (pid int, direction bool, err error) {
 
 	ipVersion := packet.IPv4
@@ -92,6 +96,7 @@ func GetPidByEndpoints(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 
 }
 
+// GetProcessByEndpoints returns the process that owns the described link.
 func GetProcessByEndpoints(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, protocol packet.IPProtocol) (process *Process, err error) {
 
 	var pid int
@@ -112,37 +117,7 @@ func GetProcessByEndpoints(localIP net.IP, localPort uint16, remoteIP net.IP, re
 
 }
 
+// GetActiveConnectionIDs returns a list of all active connection IDs.
 func GetActiveConnectionIDs() []string {
 	return getActiveConnectionIDs()
 }
-
-// func GetProcessByPid(pid int) *Process {
-// 	process, err := GetOrFindProcess(pid)
-// 	if err != nil {
-// 		log.Warningf("process: failed to get process %d: %s", pid, err)
-// 		return nil
-// 	}
-// 	return process
-// }
-
-// func GetProcessOfConnection(localIP *net.IP, localPort uint16, protocol uint8) (process *Process, status uint8) {
-// 	pid, status := GetPidOfConnection(localIP, localPort, protocol)
-// 	if status == Success {
-// 		process = GetProcessByPid(pid)
-// 		if process == nil {
-// 			return nil, NoProcessInfo
-// 		}
-// 	}
-// 	return
-// }
-
-// func GetProcessByPacket(pkt packet.Packet) (process *Process, direction bool, status uint8) {
-// 	pid, direction, status := GetPidByPacket(pkt)
-// 	if status == Success {
-// 		process = GetProcessByPid(pid)
-// 		if process == nil {
-// 			return nil, direction, NoProcessInfo
-// 		}
-// 	}
-// 	return
-// }

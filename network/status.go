@@ -2,7 +2,7 @@
 
 package network
 
-// Status describes the status of a connection.
+// Verdict describes the decision made about a connection or link.
 type Verdict uint8
 
 // List of values a Status can have
@@ -15,6 +15,7 @@ const (
 	DROP
 )
 
+// Packer Directions
 const (
 	Inbound  = true
 	Outbound = false

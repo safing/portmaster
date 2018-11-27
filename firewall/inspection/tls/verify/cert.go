@@ -1,5 +1,3 @@
-// Copyright Safing ICS Technologies GmbH. Use of this source code is governed by the AGPL license that can be found in the LICENSE file.
-
 package verify
 
 import (
@@ -14,15 +12,15 @@ import (
 	"strings"
 
 	"github.com/cloudflare/cfssl/crypto/pkcs7"
-	datastore "github.com/ipfs/go-datastore"
 
-	"github.com/Safing/safing-core/crypto/hash"
-	"github.com/Safing/safing-core/database"
+	"github.com/Safing/portbase/crypto/hash"
+	"github.com/Safing/portbase/database"
+	"github.com/Safing/portbase/database/record"
 )
 
 // Cert saves a certificate.
 type Cert struct {
-	database.Base
+	record.Record
 
 	cert *x509.Certificate
 	Raw  []byte
@@ -120,7 +118,7 @@ func (m *Cert) CreateRevokedCert(caID string, serialNumber *big.Int) error {
 }
 
 // CreateInNamespace saves Cert with the provided name in the provided namespace.
-func (m *Cert) CreateInNamespace(namespace *datastore.Key, name string) error {
+func (m *Cert) CreateInNamespace(namespace string, name string) error {
 	return m.CreateObject(namespace, name, m)
 }
 
@@ -140,7 +138,7 @@ func GetCertWithSPKI(spki []byte) (*Cert, error) {
 }
 
 // GetCertFromNamespace gets Cert with the provided name from the provided namespace.
-func GetCertFromNamespace(namespace *datastore.Key, name string) (*Cert, error) {
+func GetCertFromNamespace(namespace string, name string) (*Cert, error) {
 	object, err := database.GetAndEnsureModel(namespace, name, certModel)
 	if err != nil {
 		return nil, err

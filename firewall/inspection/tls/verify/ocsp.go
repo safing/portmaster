@@ -1,5 +1,3 @@
-// Copyright Safing ICS Technologies GmbH. Use of this source code is governed by the AGPL license that can be found in the LICENSE file.
-
 package verify
 
 import (
@@ -16,8 +14,8 @@ import (
 
 	"golang.org/x/crypto/ocsp"
 
-	"github.com/Safing/safing-core/crypto/hash"
-	"github.com/Safing/safing-core/log"
+	"github.com/Safing/portbase/crypto/hash"
+	"github.com/Safing/portbase/log"
 )
 
 var (

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/Safing/portbase/database/record"
 	"github.com/Safing/portmaster/status"
@@ -49,10 +49,12 @@ func New() *Profile {
 // Save saves the profile to the database
 func (profile *Profile) Save(namespace string) error {
 	if profile.ID == "" {
-		u, err := uuid.NewV4()
-		if err != nil {
-			return err
-		}
+		// FIXME: this is weird, the docs says that it also returns an error
+		u := uuid.NewV4()
+		// u, err := uuid.NewV4()
+		// if err != nil {
+		// 	return err
+		// }
 		profile.ID = u.String()
 	}
 

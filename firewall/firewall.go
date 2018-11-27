@@ -1,14 +1,12 @@
-// Copyright Safing ICS Technologies GmbH. Use of this source code is governed by the AGPL license that can be found in the LICENSE file.
-
 package firewall
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"sync/atomic"
 	"time"
 
-	"github.com/Safing/portbase/config"
 	"github.com/Safing/portbase/log"
 	"github.com/Safing/portbase/modules"
 	"github.com/Safing/portmaster/firewall/inspection"
@@ -20,7 +18,6 @@ import (
 )
 
 var (
-	firewallModule *modules.Module
 	// localNet        net.IPNet
 	localhost       net.IP
 	dnsServer       net.IPNet
@@ -154,11 +151,22 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 	// get Connection
 	connection, err := network.GetConnectionByFirstPacket(pkt)
 	if err != nil {
+		link.Lock()
 		if err != process.ErrConnectionNotFound {
 			log.Warningf("firewall: could not find process of packet (dropping link %s): %s", pkt.String(), err)
+			link.AddReason(fmt.Sprintf("could not find process or it does not exist (unsolicited packet): %s", err))
+		} else {
+			log.Warningf("firewall: internal error finding process of packet (dropping link %s): %s", pkt.String(), err)
+			link.AddReason(fmt.Sprintf("internal error finding process: %s", err))
 		}
-		link.UpdateVerdict(network.DROP)
-		verdict(pkt, network.DROP)
+		link.Unlock()
+
+		if pkt.IsInbound() {
+			network.UnknownIncomingConnection.AddLink(link)
+		} else {
+			network.UnknownDirectConnection.AddLink(link)
+		}
+		verdict(pkt, link.Verdict)
 		return
 	}
 

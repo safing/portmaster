@@ -3,10 +3,8 @@
 package process
 
 import (
-	"errors"
 	"fmt"
 	"runtime"
-	"strconv"
 	"sync"
 
 	processInfo "github.com/shirou/gopsutil/process"
@@ -36,11 +34,7 @@ type Process struct {
 	// Icon is a path to the icon and is either prefixed "f:" for filepath, "d:" for database cache path or "c:"/"a:" for a the icon key to fetch it from a company / authoritative node and cache it in its own cache.
 }
 
-// GetProcess fetches Process with the provided name from the default namespace.
-func GetProcess(name string) (*Process, error) {
-	return nil, errors.New("NIY")
-}
-
+// Strings returns a string represenation of process
 func (m *Process) String() string {
 	if m == nil {
 		return "?"
@@ -48,9 +42,10 @@ func (m *Process) String() string {
 	return fmt.Sprintf("%s:%s:%d", m.UserName, m.Path, m.Pid)
 }
 
+// GetOrFindProcess returns the process for the given PID.
 func GetOrFindProcess(pid int) (*Process, error) {
-	process, err := GetProcess(strconv.Itoa(pid))
-	if err == nil {
+	process, ok := GetProcessFromStorage(pid)
+	if ok {
 		return process, nil
 	}
 
@@ -59,7 +54,7 @@ func GetOrFindProcess(pid int) (*Process, error) {
 	}
 
 	switch {
-	case (pid == 0 && runtime.GOOS == "linux") || (pid == 4 && runtime.GOOS == "windows"):
+	case new.IsKernel():
 		new.UserName = "Kernel"
 		new.Name = "Operating System"
 	default:
@@ -72,7 +67,8 @@ func GetOrFindProcess(pid int) (*Process, error) {
 		// UID
 		// net yet implemented for windows
 		if runtime.GOOS == "linux" {
-			uids, err := pInfo.Uids()
+			var uids []int32
+			uids, err = pInfo.Uids()
 			if err != nil {
 				log.Warningf("process: failed to get UID: %s", err)
 			} else {
@@ -203,8 +199,8 @@ func GetOrFindProcess(pid int) (*Process, error) {
 
 	}
 
-	// save to DB
-	// new.Save()
+	// save to storage
+	new.Save()
 
 	return new, nil
 }
