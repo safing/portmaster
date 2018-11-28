@@ -8,6 +8,11 @@ import (
 	"github.com/Safing/portmaster/process"
 )
 
+var (
+	deadLinksTimeout  = 5 * time.Minute
+	thresholdDuration = 1 * time.Minute
+)
+
 func init() {
 	go cleaner()
 }
@@ -21,18 +26,21 @@ func cleaner() {
 	}
 }
 
-func markDeadLinks() {
+func cleanLinks() {
 	activeIDs := process.GetActiveConnectionIDs()
 
-	allLinksLock.RLock()
-	defer allLinksLock.RUnlock()
+	dataLock.Lock()
+	defer dataLock.Lock()
 
 	now := time.Now().Unix()
-	var found bool
-	for key, link := range allLinks {
+	deleteOlderThan := time.Now().Add(-deadLinksTimeout).Unix()
 
-		// skip dead links
-		if link.Ended > 0 {
+	var found bool
+	for key, link := range links {
+
+		// delete dead links
+		if link.Ended > 0 && link.Ended < deleteOlderThan {
+			link.Delete()
 			continue
 		}
 
@@ -54,50 +62,18 @@ func markDeadLinks() {
 	}
 }
 
-func purgeDeadFor(age time.Duration) {
-	connections := make(map[*Connection]bool)
-	processes := make(map[*process.Process]bool)
+func cleanConnections() {
+	dataLock.Lock()
+	defer dataLock.Lock()
 
-	allLinksLock.Lock()
-	defer allLinksLock.Unlock()
-
-	// delete old dead links
-	// make a list of connections without links
-	ageAgo := time.Now().Add(-1 * age).Unix()
-	for key, link := range allLinks {
-		if link.Ended != 0 && link.Ended < ageAgo {
-			link.Delete()
-			delete(allLinks, key)
-			_, ok := connections[link.Connection()]
-			if !ok {
-				connections[link.Connection()] = false
-			}
-		} else {
-			connections[link.Connection()] = true
+	threshold := time.Now().Add(-thresholdDuration).Unix()
+	for _, conn := range connections {
+		if conn.FirstLinkEstablished < threshold && conn.LinkCount == 0 {
+			conn.Delete()
 		}
 	}
+}
 
-	// delete connections without links
-	// make a list of processes without connections
-	for conn, active := range connections {
-		if conn != nil {
-			if !active {
-				conn.Delete()
-				_, ok := processes[conn.Process()]
-				if !ok {
-					processes[conn.Process()] = false
-				}
-			} else {
-				processes[conn.Process()] = true
-			}
-		}
-	}
-
-	// delete processes without connections
-	for proc, active := range processes {
-		if proc != nil && !active {
-			proc.Delete()
-		}
-	}
-
+func cleanProcesses() {
+	process.CleanProcessStorage(thresholdDuration)
 }

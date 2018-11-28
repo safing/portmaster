@@ -1,6 +1,7 @@
 package process
 
 var (
+	// UnknownProcess is used when a process cannot be found.
 	UnknownProcess = &Process{
 		UserID:    -1,
 		UserName:  "Unknown",

@@ -31,6 +31,7 @@ func start() error {
 	return nil
 }
 
+// GetIntelAndRRs returns intel and DNS resource records for the given domain.
 func GetIntelAndRRs(domain string, qtype dns.Type, securityLevel uint8) (intel *Intel, rrs *RRCache) {
 	intel, err := GetIntel(domain)
 	if err != nil {

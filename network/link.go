@@ -17,14 +17,12 @@ import (
 type FirewallHandler func(pkt packet.Packet, link *Link)
 
 var (
-	linkTimeout  = 10 * time.Minute
-	allLinks     = make(map[string]*Link)
-	allLinksLock sync.RWMutex
+	linkTimeout = 10 * time.Minute
 )
 
 // Link describes a distinct physical connection (e.g. TCP connection) - like an instance - of a Connection.
 type Link struct {
-	record.Record
+	record.Base
 	sync.Mutex
 
 	ID string
@@ -120,21 +118,22 @@ func (link *Link) Save() error {
 	}
 
 	if link.DatabaseKey() == "" {
-
 		link.SetKey(fmt.Sprintf("network:tree/%d/%s/%s", link.connection.Process().Pid, link.connection.Domain, link.ID))
 		link.CreateMeta()
-
-		dataLock.Lock()
-		defer dataLock.Unlock()
-
-		links[link.ID] = link
 	}
 
-	if link.orphaned && link.connection != nil {
-		p.SetKey()
+	dataLock.RLock()
+	_, ok := links[link.ID]
+	dataLock.RUnlock()
+
+	if !ok {
+		dataLock.Lock()
+		links[link.ID] = link
+		dataLock.Unlock()
 	}
 
 	dbController.PushUpdate(link)
+	return nil
 }
 
 // Delete deletes a link from the storage and propagates the change.
@@ -146,6 +145,7 @@ func (link *Link) Delete() {
 	defer link.Lock()
 	link.Meta().Delete()
 	dbController.PushUpdate(link)
+	link.connection.RemoveLink()
 }
 
 // GetLink fetches a Link from the database from the default namespace for this object
@@ -159,7 +159,7 @@ func GetLink(id string) (*Link, bool) {
 
 // GetOrCreateLinkByPacket returns the associated Link for a packet and a bool expressing if the Link was newly created
 func GetOrCreateLinkByPacket(pkt packet.Packet) (*Link, bool) {
-	link, ok := GetLink(pkt.GetConnectionID())
+	link, ok := GetLink(pkt.GetLinkID())
 	if ok {
 		return link, false
 	}
@@ -169,7 +169,7 @@ func GetOrCreateLinkByPacket(pkt packet.Packet) (*Link, bool) {
 // CreateLinkFromPacket creates a new Link based on Packet.
 func CreateLinkFromPacket(pkt packet.Packet) *Link {
 	link := &Link{
-		ID:            pkt.GetConnectionID(),
+		ID:            pkt.GetLinkID(),
 		Verdict:       UNDECIDED,
 		Started:       time.Now().Unix(),
 		RemoteAddress: pkt.FmtRemoteAddress(),

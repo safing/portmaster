@@ -2,12 +2,12 @@ package intel
 
 import (
 	"fmt"
-	"net"
 	"strings"
 	"sync"
 
 	"github.com/Safing/portbase/database"
 	"github.com/Safing/portbase/database/record"
+	"github.com/Safing/portbase/utils"
 )
 
 var (
@@ -21,16 +21,16 @@ type IPInfo struct {
 	record.Base
 	sync.Mutex
 
-	IP      net.IP
+	IP      string
 	Domains []string
 }
 
-func makeIPInfoKey(ip net.IP) string {
-	return fmt.Sprintf("intel:IPInfo/%s", ip.String())
+func makeIPInfoKey(ip string) string {
+	return fmt.Sprintf("intel:IPInfo/%s", ip)
 }
 
 // GetIPInfo gets an IPInfo record from the database.
-func GetIPInfo(ip net.IP) (*IPInfo, error) {
+func GetIPInfo(ip string) (*IPInfo, error) {
 	key := makeIPInfoKey(ip)
 
 	r, err := ipInfoDatabase.Get(key)
@@ -55,6 +55,17 @@ func GetIPInfo(ip net.IP) (*IPInfo, error) {
 		return nil, fmt.Errorf("record not of type *IPInfo, but %T", r)
 	}
 	return new, nil
+}
+
+// AddDomain adds a domain to the list and reports back if it was added, or was already present.
+func (ipi *IPInfo) AddDomain(domain string) (added bool) {
+	if !utils.StringInSlice(ipi.Domains, domain) {
+		newDomains := make([]string, 1, len(ipi.Domains)+1)
+		newDomains[0] = domain
+		ipi.Domains = append(newDomains, ipi.Domains...)
+		return true
+	}
+	return false
 }
 
 // Save saves the IPInfo record to the database.

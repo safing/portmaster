@@ -15,7 +15,7 @@ import (
 	"github.com/Safing/portmaster/intel"
 	"github.com/Safing/portmaster/network"
 	"github.com/Safing/portmaster/network/netutils"
-	"github.com/Safing/portmaster/portmaster"
+	"github.com/Safing/portmaster/firewall"
 )
 
 func init() {
@@ -113,7 +113,7 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	// check profile before we even get intel and rr
 	if connection.Verdict == network.UNDECIDED {
 		// start = time.Now()
-		portmaster.DecideOnConnectionBeforeIntel(connection, fqdn)
+		firewall.DecideOnConnectionBeforeIntel(connection, fqdn)
 		// log.Tracef("nameserver: took %s to make decision", time.Since(start))
 	}
 	if connection.Verdict == network.BLOCK || connection.Verdict == network.DROP {
@@ -138,7 +138,7 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 
 	// do a full check with intel
 	if connection.Verdict == network.UNDECIDED {
-		rrCache = portmaster.DecideOnConnectionAfterIntel(connection, fqdn, rrCache)
+		rrCache = firewall.DecideOnConnectionAfterIntel(connection, fqdn, rrCache)
 	}
 	if rrCache == nil || connection.Verdict == network.BLOCK || connection.Verdict == network.DROP {
 		nxDomain(w, query)
@@ -163,6 +163,7 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 			ipInfo, err := intel.GetIPInfo(v.AAAA.String())
 			if err != nil {
 				ipInfo = &intel.IPInfo{
+					IP:
 					Domains: []string{fqdn},
 				}
 				ipInfo.Create(v.AAAA.String())

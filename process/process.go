@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"time"
 
 	processInfo "github.com/shirou/gopsutil/process"
 
@@ -32,14 +33,38 @@ type Process struct {
 	Name       string
 	Icon       string
 	// Icon is a path to the icon and is either prefixed "f:" for filepath, "d:" for database cache path or "c:"/"a:" for a the icon key to fetch it from a company / authoritative node and cache it in its own cache.
+
+	FirstConnectionEstablished int64
+	LastConnectionEstablished  int64
+	ConnectionCount            uint
 }
 
 // Strings returns a string represenation of process
-func (m *Process) String() string {
-	if m == nil {
+func (p *Process) String() string {
+	if p == nil {
 		return "?"
 	}
-	return fmt.Sprintf("%s:%s:%d", m.UserName, m.Path, m.Pid)
+	return fmt.Sprintf("%s:%s:%d", p.UserName, p.Path, p.Pid)
+}
+
+// AddConnection increases the connection counter and the last connection timestamp.
+func (p *Process) AddConnection() {
+	p.Lock()
+	defer p.Unlock()
+	p.ConnectionCount++
+	p.LastConnectionEstablished = time.Now().Unix()
+	if p.FirstConnectionEstablished == 0 {
+		p.FirstConnectionEstablished = p.LastConnectionEstablished
+	}
+}
+
+// RemoveConnection lowers the connection counter by one.
+func (p *Process) RemoveConnection() {
+	p.Lock()
+	defer p.Unlock()
+	if p.ConnectionCount > 0 {
+		p.ConnectionCount--
+	}
 }
 
 // GetOrFindProcess returns the process for the given PID.

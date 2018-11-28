@@ -10,8 +10,6 @@ import (
 	"github.com/Safing/portmaster/network"
 	"github.com/Safing/portmaster/network/netutils"
 	"github.com/Safing/portmaster/network/packet"
-	"github.com/Safing/portmaster/port17/mode"
-	"github.com/Safing/portmaster/profiles"
 
 	"github.com/agext/levenshtein"
 )
@@ -51,7 +49,7 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 	}
 
 	// check user class
-	if profile.Flags.Has(profiles.System) {
+	if profile.Flags.Has(profile.System) {
 		if !connection.Process().IsSystem() {
 			log.Infof("sheriff: denying connection %s, profile has System flag set, but process is not executed by System", connection)
 			connection.AddReason("must be executed by system")
@@ -59,7 +57,7 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 			return
 		}
 	}
-	if profile.Flags.Has(profiles.Admin) {
+	if profile.Flags.Has(profile.Admin) {
 		if !connection.Process().IsAdmin() {
 			log.Infof("sheriff: denying connection %s, profile has Admin flag set, but process is not executed by Admin", connection)
 			connection.AddReason("must be executed by admin")
@@ -67,7 +65,7 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 			return
 		}
 	}
-	if profile.Flags.Has(profiles.User) {
+	if profile.Flags.Has(profile.User) {
 		if !connection.Process().IsUser() {
 			log.Infof("sheriff: denying connection %s, profile has User flag set, but process is not executed by a User", connection)
 			connection.AddReason("must be executed by user")
@@ -77,7 +75,7 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 	}
 
 	// check for any network access
-	if !profile.Flags.Has(profiles.Internet) && !profile.Flags.Has(profiles.LocalNet) {
+	if !profile.Flags.Has(profile.Internet) && !profile.Flags.Has(profile.LocalNet) {
 		log.Infof("sheriff: denying connection %s, profile denies Internet and local network access", connection)
 		connection.Block()
 		return
@@ -139,7 +137,7 @@ func DecideOnConnectionAfterIntel(connection *network.Connection, fqdn string, r
 
 	// check Strict flag
 	// TODO: drastically improve this!
-	if profile.Flags.Has(profiles.Strict) {
+	if profile.Flags.Has(profile.Strict) {
 		matched := false
 		pathElements := strings.Split(connection.Process().Path, "/")
 		if len(pathElements) > 2 {
@@ -173,18 +171,18 @@ func DecideOnConnectionAfterIntel(connection *network.Connection, fqdn string, r
 
 	// tunneling
 	// TODO: link this to real status
-	port17Active := mode.Client()
-	if port17Active {
-		tunnelInfo, err := AssignTunnelIP(fqdn)
-		if err != nil {
-			log.Errorf("portmaster: could not get tunnel IP for routing %s: %s", connection, err)
-			return nil // return nxDomain
-		}
-		// save original reply
-		tunnelInfo.RRCache = rrCache
-		// return tunnel IP
-		return tunnelInfo.ExportTunnelIP()
-	}
+	// gate17Active := mode.Client()
+	// if gate17Active {
+	// 	tunnelInfo, err := AssignTunnelIP(fqdn)
+	// 	if err != nil {
+	// 		log.Errorf("portmaster: could not get tunnel IP for routing %s: %s", connection, err)
+	// 		return nil // return nxDomain
+	// 	}
+	// 	// save original reply
+	// 	tunnelInfo.RRCache = rrCache
+	// 	// return tunnel IP
+	// 	return tunnelInfo.ExportTunnelIP()
+	// }
 
 	return rrCache
 }
@@ -212,7 +210,7 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 	}
 
 	// check user class
-	if profile.Flags.Has(profiles.System) {
+	if profile.Flags.Has(profile.System) {
 		if !connection.Process().IsSystem() {
 			log.Infof("sheriff: denying connection %s, profile has System flag set, but process is not executed by System", connection)
 			connection.AddReason("must be executed by system")
@@ -220,7 +218,7 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 			return
 		}
 	}
-	if profile.Flags.Has(profiles.Admin) {
+	if profile.Flags.Has(profile.Admin) {
 		if !connection.Process().IsAdmin() {
 			log.Infof("sheriff: denying connection %s, profile has Admin flag set, but process is not executed by Admin", connection)
 			connection.AddReason("must be executed by admin")
@@ -228,7 +226,7 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 			return
 		}
 	}
-	if profile.Flags.Has(profiles.User) {
+	if profile.Flags.Has(profile.User) {
 		if !connection.Process().IsUser() {
 			log.Infof("sheriff: denying connection %s, profile has User flag set, but process is not executed by a User", connection)
 			connection.AddReason("must be executed by user")
@@ -238,7 +236,7 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 	}
 
 	// check for any network access
-	if !profile.Flags.Has(profiles.Internet) && !profile.Flags.Has(profiles.LocalNet) {
+	if !profile.Flags.Has(profile.Internet) && !profile.Flags.Has(profile.LocalNet) {
 		log.Infof("sheriff: denying connection %s, profile denies Internet and local network access", connection)
 		connection.AddReason("no network access allowed")
 		connection.Block()
@@ -248,21 +246,21 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 	switch connection.Domain {
 	case "I":
 		// check Service flag
-		if !profile.Flags.Has(profiles.Service) {
+		if !profile.Flags.Has(profile.Service) {
 			log.Infof("sheriff: denying connection %s, profile does not declare service", connection)
 			connection.AddReason("not a service")
 			connection.Drop()
 			return
 		}
 		// check if incoming connections are allowed on any port, but only if there no other restrictions
-		if !!profile.Flags.Has(profiles.Internet) && !!profile.Flags.Has(profiles.LocalNet) && len(profile.ListenPorts) == 0 {
+		if !!profile.Flags.Has(profile.Internet) && !!profile.Flags.Has(profile.LocalNet) && len(profile.ListenPorts) == 0 {
 			log.Infof("sheriff: granting connection %s, profile allows incoming connections from anywhere and on any port", connection)
 			connection.Accept()
 			return
 		}
 	case "D":
 		// check Directconnect flag
-		if !profile.Flags.Has(profiles.Directconnect) {
+		if !profile.Flags.Has(profile.Directconnect) {
 			log.Infof("sheriff: denying connection %s, profile does not declare direct connections", connection)
 			connection.AddReason("direct connections (without DNS) not allowed")
 			connection.Drop()
@@ -298,14 +296,14 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 		remoteIP = pkt.GetIPHeader().Dst
 	}
 	if netutils.IPIsLocal(remoteIP) {
-		if !profile.Flags.Has(profiles.LocalNet) {
+		if !profile.Flags.Has(profile.LocalNet) {
 			log.Infof("sheriff: dropping link %s, profile does not allow communication in the local network", link)
 			link.AddReason("profile does not allow access to local network")
 			link.UpdateVerdict(network.BLOCK)
 			return
 		}
 	} else {
-		if !profile.Flags.Has(profiles.Internet) {
+		if !profile.Flags.Has(profile.Internet) {
 			log.Infof("sheriff: dropping link %s, profile does not allow communication with the Internet", link)
 			link.AddReason("profile does not allow access to the Internet")
 			link.UpdateVerdict(network.BLOCK)

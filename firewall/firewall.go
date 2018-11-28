@@ -13,7 +13,6 @@ import (
 	"github.com/Safing/portmaster/firewall/interception"
 	"github.com/Safing/portmaster/network"
 	"github.com/Safing/portmaster/network/packet"
-	"github.com/Safing/portmaster/portmaster"
 	"github.com/Safing/portmaster/process"
 )
 
@@ -122,11 +121,11 @@ func handlePacket(pkt packet.Packet) {
 	// check if packet is destined for tunnel
 	switch pkt.IPVersion() {
 	case packet.IPv4:
-		if portmaster.TunnelNet4 != nil && portmaster.TunnelNet4.Contains(pkt.GetIPHeader().Dst) {
+		if TunnelNet4 != nil && TunnelNet4.Contains(pkt.GetIPHeader().Dst) {
 			tunnelHandler(pkt)
 		}
 	case packet.IPv6:
-		if portmaster.TunnelNet6 != nil && portmaster.TunnelNet6.Contains(pkt.GetIPHeader().Dst) {
+		if TunnelNet6 != nil && TunnelNet6.Contains(pkt.GetIPHeader().Dst) {
 			tunnelHandler(pkt)
 		}
 	}
@@ -184,12 +183,12 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 
 	// make a decision if not made already
 	if connection.Verdict == network.UNDECIDED {
-		portmaster.DecideOnConnection(connection, pkt)
+		DecideOnConnection(connection, pkt)
 	}
 	if connection.Verdict != network.CANTSAY {
 		link.UpdateVerdict(connection.Verdict)
 	} else {
-		portmaster.DecideOnLink(connection, link, pkt)
+		DecideOnLink(connection, link, pkt)
 	}
 
 	// log decision
@@ -280,7 +279,7 @@ func verdict(pkt packet.Packet, action network.Verdict) {
 }
 
 // func tunnelHandler(pkt packet.Packet) {
-// 	tunnelInfo := portmaster.GetTunnelInfo(pkt.GetIPHeader().Dst)
+// 	tunnelInfo := GetTunnelInfo(pkt.GetIPHeader().Dst)
 // 	if tunnelInfo == nil {
 // 		pkt.Block()
 // 		return

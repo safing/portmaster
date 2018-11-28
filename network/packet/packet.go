@@ -106,10 +106,10 @@ type TCPUDPHeader struct {
 }
 
 type PacketBase struct {
-	connectionID string
-	Direction    bool
-	InTunnel     bool
-	Payload      []byte
+	linkID    string
+	Direction bool
+	InTunnel  bool
+	Payload   []byte
 	*IPHeader
 	*TCPUDPHeader
 }
@@ -146,25 +146,25 @@ func (pkt *PacketBase) IPVersion() IPVersion {
 	return pkt.Version
 }
 
-func (pkt *PacketBase) GetConnectionID() string {
-	if pkt.connectionID == "" {
-		pkt.createConnectionID()
+func (pkt *PacketBase) GetLinkID() string {
+	if pkt.linkID == "" {
+		pkt.createLinkID()
 	}
-	return pkt.connectionID
+	return pkt.linkID
 }
 
-func (pkt *PacketBase) createConnectionID() {
+func (pkt *PacketBase) createLinkID() {
 	if pkt.IPHeader.Protocol == TCP || pkt.IPHeader.Protocol == UDP {
 		if pkt.Direction {
-			pkt.connectionID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.Protocol, pkt.Dst, pkt.DstPort, pkt.Src, pkt.SrcPort)
+			pkt.linkID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.Protocol, pkt.Dst, pkt.DstPort, pkt.Src, pkt.SrcPort)
 		} else {
-			pkt.connectionID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.Protocol, pkt.Src, pkt.SrcPort, pkt.Dst, pkt.DstPort)
+			pkt.linkID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.Protocol, pkt.Src, pkt.SrcPort, pkt.Dst, pkt.DstPort)
 		}
 	} else {
 		if pkt.Direction {
-			pkt.connectionID = fmt.Sprintf("%d-%s-%s", pkt.Protocol, pkt.Dst, pkt.Src)
+			pkt.linkID = fmt.Sprintf("%d-%s-%s", pkt.Protocol, pkt.Dst, pkt.Src)
 		} else {
-			pkt.connectionID = fmt.Sprintf("%d-%s-%s", pkt.Protocol, pkt.Src, pkt.Dst)
+			pkt.linkID = fmt.Sprintf("%d-%s-%s", pkt.Protocol, pkt.Src, pkt.Dst)
 		}
 	}
 }
@@ -299,7 +299,7 @@ type Packet interface {
 	IsOutbound() bool
 	SetInbound()
 	SetOutbound()
-	GetConnectionID() string
+	GetLinkID() string
 	IPVersion() IPVersion
 
 	// MATCHING

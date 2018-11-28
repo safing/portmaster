@@ -15,6 +15,7 @@ import (
 	"github.com/Safing/portbase/log"
 )
 
+// DNS Classes
 const (
 	DNSClassMulticast = dns.ClassINET | 1<<15
 )

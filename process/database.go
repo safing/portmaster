@@ -3,6 +3,7 @@ package process
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/Safing/portbase/database"
 	"github.com/tevino/abool"
@@ -15,10 +16,6 @@ var (
 	dbController     *database.Controller
 	dbControllerFlag = abool.NewBool(false)
 )
-
-func makeProcessKey(pid int) string {
-	return fmt.Sprintf("network:tree/%d", pid)
-}
 
 // GetProcessFromStorage returns a process from the internal storage.
 func GetProcessFromStorage(pid int) (*Process, bool) {
@@ -48,17 +45,49 @@ func (p *Process) Save() {
 	defer p.Unlock()
 
 	if p.DatabaseKey() == "" {
-		p.SetKey(makeProcessKey(p.Pid))
+		p.SetKey(fmt.Sprintf("network:tree/%d", p.Pid))
 		p.CreateMeta()
+	}
 
+	processesLock.RLock()
+	_, ok := processes[p.Pid]
+	processesLock.RUnlock()
+
+	if !ok {
 		processesLock.Lock()
-		defer processesLock.Unlock()
-
 		processes[p.Pid] = p
+		processesLock.Unlock()
 	}
 
 	if dbControllerFlag.IsSet() {
 		dbController.PushUpdate(p)
+	}
+}
+
+// Delete deletes a process from the storage and propagates the change.
+func (p *Process) Delete() {
+	processesLock.Lock()
+	defer processesLock.Unlock()
+	delete(processes, p.Pid)
+	p.Lock()
+	defer p.Lock()
+	p.Meta().Delete()
+
+	if dbControllerFlag.IsSet() {
+		dbController.PushUpdate(p)
+	}
+}
+
+// CleanProcessStorage cleans the storage from old processes.
+func CleanProcessStorage(thresholdDuration time.Duration) {
+	processesLock.Lock()
+	defer processesLock.Unlock()
+
+	threshold := time.Now().Add(-thresholdDuration).Unix()
+	for _, p := range processes {
+		if p.FirstConnectionEstablished < threshold && p.ConnectionCount == 0 {
+			p.Delete()
+		}
 	}
 }
 
