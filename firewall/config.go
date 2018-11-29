@@ -8,7 +8,7 @@ var (
 	permanentVerdicts config.BoolOption
 )
 
-func prep() error {
+func registerConfig() error {
 	err := config.Register(&config.Option{
 		Name:           "Permanent Verdicts",
 		Key:            "firewall/permanentVerdicts",
@@ -20,5 +20,7 @@ func prep() error {
 	if err != nil {
 		return err
 	}
-	configuredNameServers = config.Concurrent.GetAsBool("firewall/permanentVerdicts", true)
+	permanentVerdicts = config.Concurrent.GetAsBool("firewall/permanentVerdicts", true)
+
+	return nil
 }

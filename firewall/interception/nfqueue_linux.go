@@ -1,7 +1,3 @@
-// Copyright Safing ICS Technologies GmbH. Use of this source code is governed by the AGPL license that can be found in the LICENSE file.
-
-// +build linux
-
 package interception
 
 import (
@@ -106,8 +102,8 @@ func init() {
 	}
 
 	// Reverse because we'd like to insert in a loop
-	sort.Reverse(sort.StringSlice(v4once))
-	sort.Reverse(sort.StringSlice(v6once))
+	_ = sort.Reverse(sort.StringSlice(v4once)) // silence vet (sort is used just like in the docs)
+	_ = sort.Reverse(sort.StringSlice(v6once)) // silence vet (sort is used just like in the docs)
 
 }
 
@@ -133,9 +129,10 @@ func activateNfqueueFirewall() error {
 		}
 	}
 
+	var ok bool
 	for _, rule := range v4once {
 		splittedRule := strings.Split(rule, " ")
-		ok, err := ip4tables.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
+		ok, err = ip4tables.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
 		if err != nil {
 			return err
 		}
@@ -189,9 +186,10 @@ func deactivateNfqueueFirewall() error {
 		return err
 	}
 
+	var ok bool
 	for _, rule := range v4once {
 		splittedRule := strings.Split(rule, " ")
-		ok, err := ip4tables.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
+		ok, err = ip4tables.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
 		if err != nil {
 			return err
 		}
@@ -204,10 +202,10 @@ func deactivateNfqueueFirewall() error {
 
 	for _, chain := range v4chains {
 		splittedRule := strings.Split(chain, " ")
-		if err := ip4tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
+		if err = ip4tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
 			return err
 		}
-		if err := ip4tables.DeleteChain(splittedRule[0], splittedRule[1]); err != nil {
+		if err = ip4tables.DeleteChain(splittedRule[0], splittedRule[1]); err != nil {
 			return err
 		}
 	}
@@ -244,8 +242,8 @@ func deactivateNfqueueFirewall() error {
 	return nil
 }
 
-// Start starts the nfqueue interception.
-func Start() (err error) {
+// StartNfqueueInterception starts the nfqueue interception.
+func StartNfqueueInterception() (err error) {
 
 	err = activateNfqueueFirewall()
 	if err != nil {
@@ -278,8 +276,8 @@ func Start() (err error) {
 	return nil
 }
 
-// Stop stops the nfqueue interception.
-func Stop() error {
+// StopNfqueueInterception stops the nfqueue interception.
+func StopNfqueueInterception() error {
 	defer close(shutdownSignal)
 
 	if out4Queue != nil {

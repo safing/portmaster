@@ -1,119 +1,132 @@
 package profile
 
+import "github.com/Safing/portmaster/status"
+
 var (
-  emptyFlags = ProfileFlags{}
-  emptyPorts = Ports{}
+	emptyFlags = Flags{}
+	emptyPorts = Ports{}
 )
 
-// ProfileSet handles Profile chaining.
-type ProfileSet struct {
-	Profiles [4]*Profile
+// Set handles Profile chaining.
+type Set struct {
+	profiles [4]*Profile
 	// Application
 	// Global
 	// Stamp
 	// Default
 
-  Independent bool
+	securityLevel uint8
+	independent   bool
 }
 
 // NewSet returns a new profile set with given the profiles.
-func NewSet(user, stamp *Profile) *ProfileSet {
-	new := &ProfileSet{
-		Profiles: [4]*Profile{
-			user, // Application
-			nil, // Global
+func NewSet(user, stamp *Profile) *Set {
+	new := &Set{
+		profiles: [4]*Profile{
+			user,  // Application
+			nil,   // Global
 			stamp, // Stamp
-			nil, // Default
+			nil,   // Default
 		},
 	}
-  new.Update()
-  return new
+	new.Update(status.SecurityLevelFortress)
+	return new
 }
 
 // Update gets the new global and default profile and updates the independence status. It must be called when reusing a profile set for a series of calls.
-func (ps *ProfileSet) Update() {
-  specialProfileLock.RLock()
-  defer specialProfileLock.RUnlock()
+func (set *Set) Update(securityLevel uint8) {
+	specialProfileLock.RLock()
+	defer specialProfileLock.RUnlock()
 
-  // update profiles
-  ps.Profiles[1] = globalProfile
-  ps.Profiles[3] = defaultProfile
+	// update profiles
+	set.profiles[1] = globalProfile
+	set.profiles[3] = defaultProfile
 
-  // update independence
-  if ps.Flags().Has(Independent, ps.SecurityLevel()) {
-    // Stamp profiles do not have the Independent flag
-    ps.Independent = true
-  } else {
-    ps.Independent = false
-  }
-}
-
-// Flags returns the highest prioritized ProfileFlags configuration.
-func (ps *ProfileSet) Flags() ProfileFlags {
-
-	for _, profile := range ps.Profiles {
-    if profile != nil {
-      if profile.Flags.IsSet() {
-        return profile.Flags
-      }
-    }
+	// update security level
+	profileSecurityLevel := set.getProfileSecurityLevel()
+	if profileSecurityLevel > securityLevel {
+		set.securityLevel = profileSecurityLevel
+	} else {
+		set.securityLevel = securityLevel
 	}
 
-	return emptyFlags
+	// update independence
+	if active, ok := set.CheckFlag(Independent); active && ok {
+		set.independent = true
+	} else {
+		set.independent = false
+	}
 }
 
-// CheckDomainStatus checks if the given domain is governed in any the lists of domains and returns whether it is permitted.
-func (ps *ProfileSet) CheckDomainStatus(domain string) (permit, ok bool) {
+// CheckFlag returns whether a given flag is set.
+func (set *Set) CheckFlag(flag) (active bool) {
 
-  for i, profile := range ps.Profiles {
-    if i == 2 && ps.Independent {
-      continue
-    }
+	for i, profile := range set.profiles {
+		if i == 2 && set.independent {
+			continue
+		}
 
-    if profile != nil {
-      if profile.Domains.IsSet() {
-        permit, ok = profile.Domains.CheckStatus(domain)
-        if ok {
-          return
-        }
-      }
-    }
+		if profile != nil {
+			active, ok := profile.Flags.Check(flag, set.securityLevel)
+			if ok {
+				return active
+			}
+		}
+	}
+
+	return false
+}
+
+// CheckDomain checks if the given domain is governed in any the lists of domains and returns whether it is permitted.
+func (set *Set) CheckDomain(domain string) (permit, ok bool) {
+
+	for i, profile := range set.profiles {
+		if i == 2 && set.independent {
+			continue
+		}
+
+		if profile != nil {
+			permit, ok = profile.Domains.Check(domain)
+			if ok {
+				return
+			}
+		}
+	}
+
+	return false, false
+}
+
+// Ports returns the highest prioritized Ports configuration.
+func (set *Set) CheckPort() (permit, ok bool) {
+
+	for i, profile := range set.profiles {
+		if i == 2 && set.independent {
+			continue
+		}
+
+		if profile != nil {
+			if profile.Ports.Check() {
+				return profile.Ports
+			}
+		}
 	}
 
   return false, false
 }
 
-// Ports returns the highest prioritized Ports configuration.
-func (ps *ProfileSet) Ports() Ports {
-
-  for i, profile := range ps.Profiles {
-    if i == 2 && ps.Independent {
-      continue
-    }
-
-    if profile != nil {
-      if profile.Ports.IsSet() {
-        return profile.Ports
-      }
-    }
-	}
-
-  return emptyPorts
-}
-
 // SecurityLevel returns the highest prioritized security level.
-func (ps *ProfileSet) SecurityLevel() uint8 {
+func (set *Set) getProfileSecurityLevel() uint8 {
 
-	for i, profile := range ps.Profiles {
-    if i == 2 {
-      // Stamp profiles do not have the SecurityLevel setting
-      continue
-    }
+	for i, profile := range set.profiles {
+		if i == 2 {
+			// Stamp profiles do not have the SecurityLevel setting
+			continue
+		}
 
-    if profile != nil {
-      if profile.SecurityLevel > 0 {
-		     return profile.SecurityLevel
-       }
+		if profile != nil {
+			if profile.SecurityLevel > 0 {
+				return profile.SecurityLevel
+			}
 		}
 	}
 

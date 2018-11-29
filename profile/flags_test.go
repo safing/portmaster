@@ -2,6 +2,8 @@ package profile
 
 import (
 	"testing"
+
+	"github.com/Safing/portmaster/status"
 )
 
 func TestProfileFlags(t *testing.T) {
@@ -18,6 +20,19 @@ func TestProfileFlags(t *testing.T) {
 		if _, ok := flagIDs[entry]; !ok {
 			t.Errorf("could not find entry for %d in flagNames", key)
 		}
+	}
+
+	testFlags := Flags{
+		Prompt:        status.SecurityLevelsAll,
+		Internet:      status.SecurityLevelsDynamicAndSecure,
+		LAN:           status.SecurityLevelsDynamicAndSecure,
+		Localhost:     status.SecurityLevelsAll,
+		Related:       status.SecurityLevelDynamic,
+		RequireGate17: status.SecurityLevelsSecureAndFortress,
+	}
+
+	if testFlags.String() != "Prompt, Internet++-, LAN++-, Localhost, Related+--, RequireGate17-++" {
+		t.Errorf("unexpected output: %s", testFlags.String())
 	}
 
 	// // check Has

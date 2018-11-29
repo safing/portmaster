@@ -14,15 +14,13 @@ import (
 
 	_ "github.com/Safing/portbase/database/dbmodule"
 	_ "github.com/Safing/portbase/database/storage/badger"
-	_ "github.com/Safing/portmaster/intel"
-	_ "github.com/Safing/portmaster/nameserver/only"
-	_ "github.com/Safing/portmaster/nameserver/only"
+	_ "github.com/Safing/portmaster/firewall"
 )
 
 func main() {
 
 	// Set Info
-	info.Set("Portmaster", "0.0.1")
+	info.Set("Portmaster", "0.2.0")
 
 	// Start
 	err := modules.Start()

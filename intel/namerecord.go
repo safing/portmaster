@@ -30,7 +30,7 @@ type NameRecord struct {
 }
 
 func makeNameRecordKey(domain string, question string) string {
-	return fmt.Sprintf("intel:NameRecords/%s%s", domain, question)
+	return fmt.Sprintf("cache:intel/nameRecord/%s%s", domain, question)
 }
 
 // GetNameRecord gets a NameRecord from the database.

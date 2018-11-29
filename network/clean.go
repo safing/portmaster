@@ -9,20 +9,17 @@ import (
 )
 
 var (
-	deadLinksTimeout  = 5 * time.Minute
-	thresholdDuration = 1 * time.Minute
+	cleanerTickDuration = 1 * time.Minute
+	deadLinksTimeout    = 5 * time.Minute
+	thresholdDuration   = 1 * time.Minute
 )
 
-func init() {
-	go cleaner()
-}
-
 func cleaner() {
-	time.Sleep(15 * time.Second)
 	for {
-		markDeadLinks()
-		purgeDeadFor(5 * time.Minute)
-		time.Sleep(15 * time.Second)
+		time.Sleep(cleanerTickDuration)
+		cleanLinks()
+		cleanConnections()
+		cleanProcesses()
 	}
 }
 

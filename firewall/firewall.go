@@ -24,8 +24,6 @@ var (
 	packetsBlocked  *uint64
 	packetsDropped  *uint64
 
-	config = configuration.Get()
-
 	localNet4 *net.IPNet
 	// Yes, this would normally be 127.0.0.0/8
 	// TODO: figure out any side effects
@@ -40,10 +38,15 @@ var (
 )
 
 func init() {
-	modules.Register("firewall", prep, start, stop, "database", "nameserver")
+	modules.Register("firewall", prep, start, stop, "global", "network", "nameserver")
 }
 
 func prep() (err error) {
+
+	err = registerConfig()
+	if err != nil {
+		return err
+	}
 
 	_, localNet4, err = net.ParseCIDR("127.0.0.0/24")
 	// Yes, this would normally be 127.0.0.0/8
@@ -71,15 +74,18 @@ func prep() (err error) {
 	return nil
 }
 
-func start() {
-	// start interceptor
-	interception.Start()
-
+func start() error {
 	go statLogger()
 	go run()
 	// go run()
 	// go run()
 	// go run()
+
+	return interception.Start()
+}
+
+func stop() error {
+	return interception.Stop()
 }
 
 func handlePacket(pkt packet.Packet) {
@@ -119,16 +125,16 @@ func handlePacket(pkt packet.Packet) {
 	// defer log.Tracef("firewall: took %s to process packet %s", time.Now().Sub(timed).String(), pkt)
 
 	// check if packet is destined for tunnel
-	switch pkt.IPVersion() {
-	case packet.IPv4:
-		if TunnelNet4 != nil && TunnelNet4.Contains(pkt.GetIPHeader().Dst) {
-			tunnelHandler(pkt)
-		}
-	case packet.IPv6:
-		if TunnelNet6 != nil && TunnelNet6.Contains(pkt.GetIPHeader().Dst) {
-			tunnelHandler(pkt)
-		}
-	}
+	// switch pkt.IPVersion() {
+	// case packet.IPv4:
+	// 	if TunnelNet4 != nil && TunnelNet4.Contains(pkt.GetIPHeader().Dst) {
+	// 		tunnelHandler(pkt)
+	// 	}
+	// case packet.IPv6:
+	// 	if TunnelNet6 != nil && TunnelNet6.Contains(pkt.GetIPHeader().Dst) {
+	// 		tunnelHandler(pkt)
+	// 	}
+	// }
 
 	// associate packet to link and handle
 	link, created := network.GetOrCreateLinkByPacket(pkt)
@@ -175,11 +181,8 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 		return
 	}
 
-	// persist connection
-	connection.CreateInProcessNamespace()
-
-	// add new Link to Connection
-	connection.AddLink(link, pkt)
+	// add new Link to Connection (and save both)
+	connection.AddLink(link)
 
 	// make a decision if not made already
 	if connection.Verdict == network.UNDECIDED {

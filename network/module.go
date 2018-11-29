@@ -5,9 +5,10 @@ import (
 )
 
 func init() {
-	modules.Register("network", prep, start, nil, "database")
+	modules.Register("network", nil, start, nil, "database")
 }
 
 func start() error {
+	go cleaner()
 	return registerAsDatabase()
 }

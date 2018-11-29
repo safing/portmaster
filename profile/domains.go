@@ -20,8 +20,8 @@ func (d Domains) IsSet() bool {
 	return false
 }
 
-// CheckStatus checks if the given domain is governed in the list of domains and returns whether it is permitted.
-func (d Domains) CheckStatus(domain string) (permit, ok bool) {
+// Check checks if the given domain is governed in the list of domains and returns whether it is permitted.
+func (d Domains) Check(domain string) (permit, ok bool) {
 	// check for exact domain
 	dd, ok := d[domain]
 	if ok {

@@ -29,7 +29,7 @@ type Profile struct {
 
 	// The mininum security level to apply to connections made with this profile
 	SecurityLevel uint8
-	Flags         ProfileFlags
+	Flags         Flags
 	Domains       Domains
 	Ports         Ports
 
@@ -42,6 +42,7 @@ type Profile struct {
 	ApproxLastUsed int64
 }
 
+// New returns a new Profile.
 func New() *Profile {
 	return &Profile{}
 }
@@ -49,12 +50,10 @@ func New() *Profile {
 // Save saves the profile to the database
 func (profile *Profile) Save(namespace string) error {
 	if profile.ID == "" {
-		// FIXME: this is weird, the docs says that it also returns an error
-		u := uuid.NewV4()
-		// u, err := uuid.NewV4()
-		// if err != nil {
-		// 	return err
-		// }
+		u, err := uuid.NewV4()
+		if err != nil {
+			return err
+		}
 		profile.ID = u.String()
 	}
 

@@ -38,8 +38,11 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 		switch len(splitted) {
 		case 2:
 			pid, err := strconv.Atoi(splitted[1])
-			if err != nil {
-				return process.GetProcessByPID(pid)
+			if err == nil {
+				proc, ok := process.GetProcessFromStorage(pid)
+				if ok {
+					return proc, nil
+				}
 			}
 		case 3:
 			conn, ok := connections[splitted[2]]
@@ -69,7 +72,7 @@ func (s *StorageInterface) Query(q *query.Query, local, internal bool) (*iterato
 func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 	// processes
 	for _, proc := range process.All() {
-		if strings.HasPrefix(proc.Meta().DatabaseKey, q.DatabaseKeyPrefix()) {
+		if strings.HasPrefix(proc.DatabaseKey(), q.DatabaseKeyPrefix()) {
 			it.Next <- proc
 		}
 	}
@@ -79,14 +82,14 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 
 	// connections
 	for _, conn := range connections {
-		if strings.HasPrefix(conn.Meta().DatabaseKey, q.DatabaseKeyPrefix()) {
+		if strings.HasPrefix(conn.DatabaseKey(), q.DatabaseKeyPrefix()) {
 			it.Next <- conn
 		}
 	}
 
 	// links
 	for _, link := range links {
-		if strings.HasPrefix(opt.Meta().DatabaseKey, q.DatabaseKeyPrefix()) {
+		if strings.HasPrefix(link.DatabaseKey(), q.DatabaseKeyPrefix()) {
 			it.Next <- link
 		}
 	}
@@ -105,7 +108,7 @@ func registerAsDatabase() error {
 		return err
 	}
 
-	controller, err := database.InjectDatabase("network", &ConfigStorageInterface{})
+	controller, err := database.InjectDatabase("network", &StorageInterface{})
 	if err != nil {
 		return err
 	}

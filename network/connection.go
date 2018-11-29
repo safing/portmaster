@@ -234,7 +234,7 @@ func (conn *Connection) AddLink(link *Link) {
 	conn.LinkCount++
 	conn.LastLinkEstablished = time.Now().Unix()
 	if conn.FirstLinkEstablished == 0 {
-		conn.FirstLinkEstablished = conn.FirstLinkEstablished
+		conn.FirstLinkEstablished = conn.LastLinkEstablished
 	}
 	conn.Save()
 }

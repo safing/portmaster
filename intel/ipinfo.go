@@ -26,7 +26,7 @@ type IPInfo struct {
 }
 
 func makeIPInfoKey(ip string) string {
-	return fmt.Sprintf("intel:IPInfo/%s", ip)
+	return fmt.Sprintf("cache:intel/ipInfo/%s", ip)
 }
 
 // GetIPInfo gets an IPInfo record from the database.

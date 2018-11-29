@@ -3,26 +3,18 @@ package intel
 import (
 	"github.com/miekg/dns"
 
-	"github.com/Safing/portbase/database"
 	"github.com/Safing/portbase/log"
 	"github.com/Safing/portbase/modules"
+
+	// module dependencies
+	_ "github.com/Safing/portmaster/global"
 )
 
 func init() {
-	modules.Register("intel", prep, start, nil, "database")
+	modules.Register("intel", prep, start, nil, "global")
 }
 
 func start() error {
-	_, err := database.Register(&database.Database{
-		Name:        "intel",
-		Description: "Intelligence and DNS Data",
-		StorageType: "badger",
-		PrimaryAPI:  "",
-	})
-	if err != nil {
-		return err
-	}
-
 	// load resolvers from config and environment
 	loadResolvers(false)
 

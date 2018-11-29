@@ -25,7 +25,7 @@ type Intel struct {
 }
 
 func makeIntelKey(domain string) string {
-	return fmt.Sprintf("intel:Intel/%s", domain)
+	return fmt.Sprintf("cache:intel/domain/%s", domain)
 }
 
 // GetIntelFromDB gets an Intel record from the database.

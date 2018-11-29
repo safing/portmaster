@@ -7,8 +7,8 @@ import (
 	"github.com/Safing/portmaster/status"
 )
 
-// ProfileFlags are used to quickly add common attributes to profiles
-type ProfileFlags map[uint8]uint8
+// Flags are used to quickly add common attributes to profiles
+type Flags map[uint8]uint8
 
 // Profile Flags
 const (
@@ -31,8 +31,8 @@ const (
 )
 
 var (
-	// ErrProfileFlagsParseFailed is returned if a an invalid flag is encountered while parsing
-	ErrProfileFlagsParseFailed = errors.New("profiles: failed to parse flags")
+	// ErrFlagsParseFailed is returned if a an invalid flag is encountered while parsing
+	ErrFlagsParseFailed = errors.New("profiles: failed to parse flags")
 
 	sortedFlags = []uint8{
 		Prompt,
@@ -77,34 +77,33 @@ var (
 	}
 )
 
-// FlagsFromNames creates ProfileFlags from a comma seperated list of flagnames (e.g. "System,Strict,Secure")
-// func FlagsFromNames(words []string) (*ProfileFlags, error) {
-// 	var flags ProfileFlags
+// FlagsFromNames creates Flags from a comma seperated list of flagnames (e.g. "System,Strict,Secure")
+// func FlagsFromNames(words []string) (*Flags, error) {
+// 	var flags Flags
 // 	for _, entry := range words {
 // 		flag, ok := flagIDs[entry]
 // 		if !ok {
-// 			return nil, ErrProfileFlagsParseFailed
+// 			return nil, ErrFlagsParseFailed
 // 		}
 // 		flags = append(flags, flag)
 // 	}
 // 	return &flags, nil
 // }
 
-// IsSet returns whether the ProfileFlags object is "set".
-func (pf ProfileFlags) IsSet() bool {
-	if pf != nil {
-		return true
+// Check checks if a flag is set at all and if it's active in the given security level.
+func (flags Flags) Check(flag, level uint8) (active bool, ok bool) {
+	if flags == nil {
+		return false, false
 	}
-	return false
-}
 
-// Has checks if a ProfileFlags object has a flag set in the given security level
-func (pf ProfileFlags) Has(flag, level uint8) bool {
-	setting, ok := pf[flag]
-	if ok && setting&level > 0 {
-		return true
+	setting, ok := flags[flag]
+	if ok {
+		if setting&level > 0 {
+			return true, true
+		}
+		return false, true
 	}
-	return false
+	return false, false
 }
 
 func getLevelMarker(levels, level uint8) string {
@@ -114,11 +113,11 @@ func getLevelMarker(levels, level uint8) string {
 	return "-"
 }
 
-// String return a string representation of ProfileFlags
-func (pf ProfileFlags) String() string {
-	var namedFlags []string
+// String return a string representation of Flags
+func (flags Flags) String() string {
+	var markedFlags []string
 	for _, flag := range sortedFlags {
-		levels, ok := pf[flag]
+		levels, ok := flags[flag]
 		if ok {
 			s := flagNames[flag]
 			if levels != status.SecurityLevelsAll {
@@ -126,20 +125,18 @@ func (pf ProfileFlags) String() string {
 				s += getLevelMarker(levels, status.SecurityLevelSecure)
 				s += getLevelMarker(levels, status.SecurityLevelFortress)
 			}
+			markedFlags = append(markedFlags, s)
 		}
 	}
-	for _, flag := range pf {
-		namedFlags = append(namedFlags, flagNames[flag])
-	}
-	return strings.Join(namedFlags, ", ")
+	return strings.Join(markedFlags, ", ")
 }
 
 // Add adds a flag to the Flags with the given level.
-func (pf ProfileFlags) Add(flag, levels uint8) {
-	pf[flag] = levels
+func (flags Flags) Add(flag, levels uint8) {
+	flags[flag] = levels
 }
 
 // Remove removes a flag from the Flags.
-func (pf ProfileFlags) Remove(flag uint8) {
-	delete(pf, flag)
+func (flags Flags) Remove(flag uint8) {
+	delete(flags, flag)
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/Safing/portbase/database/record"
 	"github.com/Safing/portbase/log"
+	"github.com/Safing/portmaster/profile"
 )
 
 // A Process represents a process running on the operating system
@@ -19,17 +20,18 @@ type Process struct {
 	record.Base
 	sync.Mutex
 
-	UserID     int
-	UserName   string
-	UserHome   string
-	Pid        int
-	ParentPid  int
-	Path       string
-	Cwd        string
-	FileInfo   *FileInfo
-	CmdLine    string
-	FirstArg   string
-	ProfileKey string
+	UserID    int
+	UserName  string
+	UserHome  string
+	Pid       int
+	ParentPid int
+	Path      string
+	Cwd       string
+	FileInfo  *FileInfo
+	CmdLine   string
+	FirstArg  string
+
+	profileSet *profile.Set
 	Name       string
 	Icon       string
 	// Icon is a path to the icon and is either prefixed "f:" for filepath, "d:" for database cache path or "c:"/"a:" for a the icon key to fetch it from a company / authoritative node and cache it in its own cache.
@@ -39,7 +41,12 @@ type Process struct {
 	ConnectionCount            uint
 }
 
-// Strings returns a string represenation of process
+// ProfileSet returns the assigned profile set.
+func (p *Process) ProfileSet() *profile.Set {
+	return p.profileSet
+}
+
+// Strings returns a string represenation of process.
 func (p *Process) String() string {
 	if p == nil {
 		return "?"

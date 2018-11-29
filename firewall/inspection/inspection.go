@@ -41,24 +41,28 @@ func RunInspectors(pkt packet.Packet, link *network.Link) (network.Verdict, bool
 	// inspectorsLock.Lock()
 	// defer inspectorsLock.Unlock()
 
-	if link.ActiveInspectors == nil {
-		link.ActiveInspectors = make([]bool, len(inspectors), len(inspectors))
+	activeInspectors := link.GetActiveInspectors()
+	if activeInspectors == nil {
+		activeInspectors = make([]bool, len(inspectors), len(inspectors))
+		link.SetActiveInspectors(activeInspectors)
 	}
 
-	if link.InspectorData == nil {
-		link.InspectorData = make(map[uint8]interface{})
+	inspectorData := link.GetInspectorData()
+	if inspectorData == nil {
+		inspectorData = make(map[uint8]interface{})
+		link.SetInspectorData(inspectorData)
 	}
 
 	continueInspection := false
 	verdict := network.UNDECIDED
 
-	for key, skip := range link.ActiveInspectors {
+	for key, skip := range activeInspectors {
 
 		if skip {
 			continue
 		}
 		if link.Verdict > inspectVerdicts[key] {
-			link.ActiveInspectors[key] = true
+			activeInspectors[key] = true
 			continue
 		}
 
@@ -79,16 +83,16 @@ func RunInspectors(pkt packet.Packet, link *network.Link) (network.Verdict, bool
 			continueInspection = true
 		case BLOCK_LINK:
 			link.UpdateVerdict(network.BLOCK)
-			link.ActiveInspectors[key] = true
+			activeInspectors[key] = true
 			if verdict < network.BLOCK {
 				verdict = network.BLOCK
 			}
 		case DROP_LINK:
 			link.UpdateVerdict(network.DROP)
-			link.ActiveInspectors[key] = true
+			activeInspectors[key] = true
 			verdict = network.DROP
 		case STOP_INSPECTING:
-			link.ActiveInspectors[key] = true
+			activeInspectors[key] = true
 		}
 
 	}

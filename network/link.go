@@ -177,6 +177,34 @@ func CreateLinkFromPacket(pkt packet.Packet) *Link {
 	return link
 }
 
+// GetActiveInspectors returns the list of active inspectors.
+func (link *Link) GetActiveInspectors() []bool {
+	link.Lock()
+	defer link.Unlock()
+	return link.activeInspectors
+}
+
+// SetActiveInspectors sets the list of active inspectors.
+func (link *Link) SetActiveInspectors(new []bool) {
+	link.Lock()
+	defer link.Unlock()
+	link.activeInspectors = new
+}
+
+// GetInspectorData returns the list of inspector data.
+func (link *Link) GetInspectorData() map[uint8]interface{} {
+	link.Lock()
+	defer link.Unlock()
+	return link.inspectorData
+}
+
+// SetInspectorData set the list of inspector data.
+func (link *Link) SetInspectorData(new map[uint8]interface{}) {
+	link.Lock()
+	defer link.Unlock()
+	link.inspectorData = new
+}
+
 // String returns a string representation of Link.
 func (link *Link) String() string {
 	if link.connection == nil {

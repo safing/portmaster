@@ -1,8 +1,8 @@
 package interception
 
 import (
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portbase/modules"
+	"fmt"
+
 	"github.com/Safing/portmaster/firewall/interception/windivert"
 	"github.com/Safing/portmaster/network/packet"
 )
@@ -10,20 +10,22 @@ import (
 var Packets chan packet.Packet
 
 func init() {
+	// Packets channel for feeding the firewall.
 	Packets = make(chan packet.Packet, 1000)
 }
 
-func Start() {
-
-	windivertModule := modules.Register("Firewall:Interception:WinDivert", 192)
+// Start starts the interception.
+func Start() error {
 
 	wd, err := windivert.New("/WinDivert.dll", "")
 	if err != nil {
-		log.Criticalf("firewall/interception: could not init windivert: %s", err)
-	} else {
-		wd.Packets(Packets)
+		return fmt.Errorf("firewall/interception: could not init windivert: %s", err)
 	}
 
-	<-windivertModule.Stop
-	windivertModule.StopComplete()
+	return wd.Packets(Packets)
+}
+
+// Stop starts the interception.
+func Stop() error {
+	return nil
 }

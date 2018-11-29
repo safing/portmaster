@@ -9,19 +9,12 @@ import (
 // Ports is a list of permitted or denied ports
 type Ports map[string][]*Port
 
-// IsSet returns whether the Ports object is "set".
-func (p Ports) IsSet() bool {
-	if p != nil {
-		return true
-	}
-	return false
-}
-
-// CheckStatus returns whether listening/connecting to a certain port is allowed, and if this option is even set.
-func (p Ports) CheckStatus(listen bool, protocol string, port uint16) (permit, ok bool) {
+// Check returns whether listening/connecting to a certain port is allowed, if set.
+func (p Ports) Check(listen bool, protocol string, port uint16) (permit, ok bool) {
 	if p == nil {
 		return false, false
 	}
+
 	if listen {
 		protocol = "<" + protocol
 	}
@@ -33,7 +26,7 @@ func (p Ports) CheckStatus(listen bool, protocol string, port uint16) (permit, o
 			}
 		}
 	}
-	return false, true
+	return false, false
 }
 
 func (p Ports) String() string {
