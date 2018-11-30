@@ -51,7 +51,7 @@ func (set *Set) Update(securityLevel uint8) {
 	}
 
 	// update independence
-	if active, ok := set.CheckFlag(Independent); active && ok {
+	if set.CheckFlag(Independent) {
 		set.independent = true
 	} else {
 		set.independent = false
@@ -59,7 +59,7 @@ func (set *Set) Update(securityLevel uint8) {
 }
 
 // CheckFlag returns whether a given flag is set.
-func (set *Set) CheckFlag(flag) (active bool) {
+func (set *Set) CheckFlag(flag uint8) (active bool) {
 
 	for i, profile := range set.profiles {
 		if i == 2 && set.independent {
@@ -97,7 +97,12 @@ func (set *Set) CheckDomain(domain string) (permit, ok bool) {
 }
 
 // Ports returns the highest prioritized Ports configuration.
-func (set *Set) CheckPort() (permit, ok bool) {
+func (set *Set) CheckPort(listen bool, protocol uint8, port uint16) (permit, ok bool) {
+
+	signedProtocol := int16(protocol)
+	if listen {
+		signedProtocol = -1 * signedProtocol
+	}
 
 	for i, profile := range set.profiles {
 		if i == 2 && set.independent {
@@ -105,13 +110,13 @@ func (set *Set) CheckPort() (permit, ok bool) {
 		}
 
 		if profile != nil {
-			if profile.Ports.Check() {
-				return profile.Ports
+			if permit, ok = profile.Ports.Check(signedProtocol, port); ok {
+				return
 			}
 		}
 	}
 
-  return false, false
+	return false, false
 }
 
 // SecurityLevel returns the highest prioritized security level.

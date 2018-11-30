@@ -1,6 +1,6 @@
 package profile
 
-// OS Identifier Prefix
+// OS Identifier
 const (
-	IdentifierPrefix = "lin:"
+	osIdentifier = "lin"
 )

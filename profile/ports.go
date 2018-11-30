@@ -4,21 +4,20 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/Safing/portmaster/network/reference"
 )
 
 // Ports is a list of permitted or denied ports
-type Ports map[string][]*Port
+type Ports map[int16][]*Port
 
 // Check returns whether listening/connecting to a certain port is allowed, if set.
-func (p Ports) Check(listen bool, protocol string, port uint16) (permit, ok bool) {
+func (p Ports) Check(signedProtocol int16, port uint16) (permit, ok bool) {
 	if p == nil {
 		return false, false
 	}
 
-	if listen {
-		protocol = "<" + protocol
-	}
-	portDefinitions, ok := p[protocol]
+	portDefinitions, ok := p[signedProtocol]
 	if ok {
 		for _, portD := range portDefinitions {
 			if portD.Matches(port) {
@@ -29,16 +28,23 @@ func (p Ports) Check(listen bool, protocol string, port uint16) (permit, ok bool
 	return false, false
 }
 
+func formatSignedProtocol(sP int16) string {
+	if sP < 0 {
+		return fmt.Sprintf("<%s", reference.GetProtocolName(uint8(-1*sP)))
+	}
+	return reference.GetProtocolName(uint8(sP))
+}
+
 func (p Ports) String() string {
 	var s []string
 
-	for protocol, ports := range p {
+	for signedProtocol, ports := range p {
 		var portStrings []string
 		for _, port := range ports {
 			portStrings = append(portStrings, port.String())
 		}
 
-		s = append(s, fmt.Sprintf("%s:[%s]", protocol, strings.Join(portStrings, ", ")))
+		s = append(s, fmt.Sprintf("%s:[%s]", formatSignedProtocol(signedProtocol), strings.Join(portStrings, ", ")))
 	}
 
 	if len(s) == 0 {

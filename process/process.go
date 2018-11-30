@@ -5,6 +5,7 @@ package process
 import (
 	"fmt"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,13 +28,18 @@ type Process struct {
 	ParentPid int
 	Path      string
 	Cwd       string
-	FileInfo  *FileInfo
 	CmdLine   string
 	FirstArg  string
 
-	profileSet *profile.Set
-	Name       string
-	Icon       string
+	ExecName   string
+	ExecHashes map[string]string
+	// ExecOwner ...
+	// ExecSignature ...
+
+	UserProfileKey string
+	profileSet     *profile.Set
+	Name           string
+	Icon           string
 	// Icon is a path to the icon and is either prefixed "f:" for filepath, "d:" for database cache path or "c:"/"a:" for a the icon key to fetch it from a company / authoritative node and cache it in its own cache.
 
 	FirstConnectionEstablished int64
@@ -226,8 +232,11 @@ func GetOrFindProcess(pid int) (*Process, error) {
 		// 	}
 		// }
 
-		// get FileInfo
-		new.FileInfo = GetFileInfo(new.Path)
+		// Executable Information
+
+		// FIXME: use os specific path seperator
+		splittedPath := strings.Split("/", new.Path)
+		new.ExecName = strings.ToTitle(splittedPath[len(splittedPath)-1])
 
 	}
 

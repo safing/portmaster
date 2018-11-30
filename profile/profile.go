@@ -23,8 +23,7 @@ type Profile struct {
 	// Icon is a path to the icon and is either prefixed "f:" for filepath, "d:" for a database path or "e:" for the encoded data.
 	Icon string
 
-	// Identification
-	Identifiers  []string
+	// Fingerprints
 	Fingerprints []string
 
 	// The mininum security level to apply to connections made with this profile
@@ -33,7 +32,8 @@ type Profile struct {
 	Domains       Domains
 	Ports         Ports
 
-	StampProfileKey string
+	StampProfileKey      string
+	StampProfileAssigned int64
 
 	// If a Profile is declared as a Framework (i.e. an Interpreter and the likes), then the real process must be found
 	// Framework *Framework `json:",omitempty bson:",omitempty"`

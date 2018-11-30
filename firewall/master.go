@@ -34,40 +34,40 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 
 	// grant self
 	if connection.Process().Pid == os.Getpid() {
-		log.Infof("sheriff: granting own connection %s", connection)
+		log.Infof("firewall: granting own connection %s", connection)
 		connection.Accept()
 		return
 	}
 
 	// check if there is a profile
-	profile := connection.Process().Profile
+	profileSet := connection.Process().ProfileSetSet
 	if profile == nil {
-		log.Infof("sheriff: no profile, denying connection %s", connection)
+		log.Infof("firewall: no profile, denying connection %s", connection)
 		connection.AddReason("no profile")
 		connection.Block()
 		return
 	}
 
 	// check user class
-	if profile.Flags.Has(profile.System) {
+	if profileSet.CheckFlag(profile.System) {
 		if !connection.Process().IsSystem() {
-			log.Infof("sheriff: denying connection %s, profile has System flag set, but process is not executed by System", connection)
+			log.Infof("firewall: denying connection %s, profile has System flag set, but process is not executed by System", connection)
 			connection.AddReason("must be executed by system")
 			connection.Block()
 			return
 		}
 	}
-	if profile.Flags.Has(profile.Admin) {
+	if profileSet.CheckFlag(profile.Admin) {
 		if !connection.Process().IsAdmin() {
-			log.Infof("sheriff: denying connection %s, profile has Admin flag set, but process is not executed by Admin", connection)
+			log.Infof("firewall: denying connection %s, profile has Admin flag set, but process is not executed by Admin", connection)
 			connection.AddReason("must be executed by admin")
 			connection.Block()
 			return
 		}
 	}
-	if profile.Flags.Has(profile.User) {
+	if profileSet.CheckFlag(profile.User) {
 		if !connection.Process().IsUser() {
-			log.Infof("sheriff: denying connection %s, profile has User flag set, but process is not executed by a User", connection)
+			log.Infof("firewall: denying connection %s, profile has User flag set, but process is not executed by a User", connection)
 			connection.AddReason("must be executed by user")
 			connection.Block()
 			return
@@ -75,8 +75,8 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 	}
 
 	// check for any network access
-	if !profile.Flags.Has(profile.Internet) && !profile.Flags.Has(profile.LocalNet) {
-		log.Infof("sheriff: denying connection %s, profile denies Internet and local network access", connection)
+	if !profileSet.CheckFlag(profile.Internet) && !profileSet.CheckFlag(profile.LocalNet) {
+		log.Infof("firewall: denying connection %s, profile denies Internet and local network access", connection)
 		connection.Block()
 		return
 	}
@@ -102,14 +102,14 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 		}
 		if matched {
 			if profile.DomainWhitelistIsBlacklist {
-				log.Infof("sheriff: denying connection %s, profile has %s in domain blacklist", connection, fqdn)
+				log.Infof("firewall: denying connection %s, profile has %s in domain blacklist", connection, fqdn)
 				connection.AddReason("domain blacklisted")
 				connection.Block()
 				return
 			}
 		} else {
 			if !profile.DomainWhitelistIsBlacklist {
-				log.Infof("sheriff: denying connection %s, profile does not have %s in domain whitelist", connection, fqdn)
+				log.Infof("firewall: denying connection %s, profile does not have %s in domain whitelist", connection, fqdn)
 				connection.AddReason("domain not in whitelist")
 				connection.Block()
 				return
@@ -127,9 +127,10 @@ func DecideOnConnectionAfterIntel(connection *network.Connection, fqdn string, r
 	// - network specific: Strict
 
 	// check if there is a profile
-	profile := connection.Process().Profile
-	if profile == nil {
-		log.Infof("sheriff: no profile, denying connection %s", connection)
+	profileSet := connection.Process().ProfileSet
+	// FIXME: there should always be a profile
+	if profileSet == nil {
+		log.Infof("firewall: no profile, denying connection %s", connection)
 		connection.AddReason("no profile")
 		connection.Block()
 		return rrCache
@@ -137,7 +138,7 @@ func DecideOnConnectionAfterIntel(connection *network.Connection, fqdn string, r
 
 	// check Strict flag
 	// TODO: drastically improve this!
-	if profile.Flags.Has(profile.Strict) {
+	if profileSet.CheckFlag(profile.Related) {
 		matched := false
 		pathElements := strings.Split(connection.Process().Path, "/")
 		if len(pathElements) > 2 {
@@ -162,7 +163,7 @@ func DecideOnConnectionAfterIntel(connection *network.Connection, fqdn string, r
 			}
 		}
 		if !matched {
-			log.Infof("sheriff: denying connection %s, profile has declared Strict flag and no match to domain was found", connection)
+			log.Infof("firewall: denying connection %s, profile has declared Strict flag and no match to domain was found", connection)
 			connection.AddReason("domain does not relate to process")
 			connection.Block()
 			return rrCache
@@ -195,40 +196,40 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 
 	// grant self
 	if connection.Process().Pid == os.Getpid() {
-		log.Infof("sheriff: granting own connection %s", connection)
+		log.Infof("firewall: granting own connection %s", connection)
 		connection.Accept()
 		return
 	}
 
 	// check if there is a profile
-	profile := connection.Process().Profile
+	profileSet := connection.Process().ProfileSet
 	if profile == nil {
-		log.Infof("sheriff: no profile, denying connection %s", connection)
+		log.Infof("firewall: no profile, denying connection %s", connection)
 		connection.AddReason("no profile")
 		connection.Block()
 		return
 	}
 
 	// check user class
-	if profile.Flags.Has(profile.System) {
+	if profileSet.CheckFlag(profile.System) {
 		if !connection.Process().IsSystem() {
-			log.Infof("sheriff: denying connection %s, profile has System flag set, but process is not executed by System", connection)
+			log.Infof("firewall: denying connection %s, profile has System flag set, but process is not executed by System", connection)
 			connection.AddReason("must be executed by system")
 			connection.Block()
 			return
 		}
 	}
-	if profile.Flags.Has(profile.Admin) {
+	if profileSet.CheckFlag(profile.Admin) {
 		if !connection.Process().IsAdmin() {
-			log.Infof("sheriff: denying connection %s, profile has Admin flag set, but process is not executed by Admin", connection)
+			log.Infof("firewall: denying connection %s, profile has Admin flag set, but process is not executed by Admin", connection)
 			connection.AddReason("must be executed by admin")
 			connection.Block()
 			return
 		}
 	}
-	if profile.Flags.Has(profile.User) {
+	if profileSet.CheckFlag(profile.User) {
 		if !connection.Process().IsUser() {
-			log.Infof("sheriff: denying connection %s, profile has User flag set, but process is not executed by a User", connection)
+			log.Infof("firewall: denying connection %s, profile has User flag set, but process is not executed by a User", connection)
 			connection.AddReason("must be executed by user")
 			connection.Block()
 			return
@@ -236,8 +237,8 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 	}
 
 	// check for any network access
-	if !profile.Flags.Has(profile.Internet) && !profile.Flags.Has(profile.LocalNet) {
-		log.Infof("sheriff: denying connection %s, profile denies Internet and local network access", connection)
+	if !profileSet.CheckFlag(profile.Internet) && !profileSet.CheckFlag(profile.LocalNet) {
+		log.Infof("firewall: denying connection %s, profile denies Internet and local network access", connection)
 		connection.AddReason("no network access allowed")
 		connection.Block()
 		return
@@ -246,29 +247,29 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 	switch connection.Domain {
 	case "I":
 		// check Service flag
-		if !profile.Flags.Has(profile.Service) {
-			log.Infof("sheriff: denying connection %s, profile does not declare service", connection)
+		if !profileSet.CheckFlag(profile.Service) {
+			log.Infof("firewall: denying connection %s, profile does not declare service", connection)
 			connection.AddReason("not a service")
 			connection.Drop()
 			return
 		}
 		// check if incoming connections are allowed on any port, but only if there no other restrictions
-		if !!profile.Flags.Has(profile.Internet) && !!profile.Flags.Has(profile.LocalNet) && len(profile.ListenPorts) == 0 {
-			log.Infof("sheriff: granting connection %s, profile allows incoming connections from anywhere and on any port", connection)
+		if !!profileSet.CheckFlag(profile.Internet) && !!profileSet.CheckFlag(profile.LocalNet) && len(profile.ListenPorts) == 0 {
+			log.Infof("firewall: granting connection %s, profile allows incoming connections from anywhere and on any port", connection)
 			connection.Accept()
 			return
 		}
 	case "D":
-		// check Directconnect flag
-		if !profile.Flags.Has(profile.Directconnect) {
-			log.Infof("sheriff: denying connection %s, profile does not declare direct connections", connection)
+		// check PeerToPeer flag
+		if !profileSet.CheckFlag(profile.PeerToPeer) {
+			log.Infof("firewall: denying connection %s, profile does not declare direct connections", connection)
 			connection.AddReason("direct connections (without DNS) not allowed")
 			connection.Drop()
 			return
 		}
 	}
 
-	log.Infof("sheriff: could not decide on connection %s, deciding on per-link basis", connection)
+	log.Infof("firewall: could not decide on connection %s, deciding on per-link basis", connection)
 	connection.CantSay()
 }
 
@@ -280,9 +281,9 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 	// Profile.ListenPorts
 
 	// check if there is a profile
-	profile := connection.Process().Profile
+	profileSet := connection.Process().ProfileSet
 	if profile == nil {
-		log.Infof("sheriff: no profile, denying %s", link)
+		log.Infof("firewall: no profile, denying %s", link)
 		link.AddReason("no profile")
 		link.UpdateVerdict(network.BLOCK)
 		return
@@ -296,15 +297,15 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 		remoteIP = pkt.GetIPHeader().Dst
 	}
 	if netutils.IPIsLocal(remoteIP) {
-		if !profile.Flags.Has(profile.LocalNet) {
-			log.Infof("sheriff: dropping link %s, profile does not allow communication in the local network", link)
+		if !profileSet.CheckFlag(profile.LocalNet) {
+			log.Infof("firewall: dropping link %s, profile does not allow communication in the local network", link)
 			link.AddReason("profile does not allow access to local network")
 			link.UpdateVerdict(network.BLOCK)
 			return
 		}
 	} else {
-		if !profile.Flags.Has(profile.Internet) {
-			log.Infof("sheriff: dropping link %s, profile does not allow communication with the Internet", link)
+		if !profileSet.CheckFlag(profile.Internet) {
+			log.Infof("firewall: dropping link %s, profile does not allow communication with the Internet", link)
 			link.AddReason("profile does not allow access to the Internet")
 			link.UpdateVerdict(network.BLOCK)
 			return
@@ -316,7 +317,7 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 
 		tcpUdpHeader := pkt.GetTCPUDPHeader()
 		if tcpUdpHeader == nil {
-			log.Infof("sheriff: blocking link %s, profile has declared connect port whitelist, but link is not TCP/UDP", link)
+			log.Infof("firewall: blocking link %s, profile has declared connect port whitelist, but link is not TCP/UDP", link)
 			link.AddReason("profile has declared connect port whitelist, but link is not TCP/UDP")
 			link.UpdateVerdict(network.BLOCK)
 			return
@@ -339,7 +340,7 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 		}
 
 		if !matched {
-			log.Infof("sheriff: blocking link %s, remote port %d not in profile connect port whitelist", link, remotePort)
+			log.Infof("firewall: blocking link %s, remote port %d not in profile connect port whitelist", link, remotePort)
 			link.AddReason("destination port not in whitelist")
 			link.UpdateVerdict(network.BLOCK)
 			return
@@ -352,7 +353,7 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 
 		tcpUdpHeader := pkt.GetTCPUDPHeader()
 		if tcpUdpHeader == nil {
-			log.Infof("sheriff: dropping link %s, profile has declared listen port whitelist, but link is not TCP/UDP", link)
+			log.Infof("firewall: dropping link %s, profile has declared listen port whitelist, but link is not TCP/UDP", link)
 			link.AddReason("profile has declared listen port whitelist, but link is not TCP/UDP")
 			link.UpdateVerdict(network.DROP)
 			return
@@ -375,7 +376,7 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 		}
 
 		if !matched {
-			log.Infof("sheriff: blocking link %s, local port %d not in profile listen port whitelist", link, localPort)
+			log.Infof("firewall: blocking link %s, local port %d not in profile listen port whitelist", link, localPort)
 			link.AddReason("listen port not in whitelist")
 			link.UpdateVerdict(network.BLOCK)
 			return
@@ -383,7 +384,7 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 
 	}
 
-	log.Infof("sheriff: accepting link %s", link)
+	log.Infof("firewall: accepting link %s", link)
 	link.UpdateVerdict(network.ACCEPT)
 
 }
