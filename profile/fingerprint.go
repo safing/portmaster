@@ -63,14 +63,14 @@ func GetFingerprintWeight(fpType string) (weight int) {
 //   return
 // }
 //
-// func (p *Profile) AddFingerprint(fp *Fingerprint) error {
-//   if fp.OS == "" {
-//     fp.OS = osIdentifier
-//   }
-//
-//   p.Fingerprints = append(p.Fingerprints, fp)
-//   return p.Save()
-// }
+func (p *Profile) AddFingerprint(fp *Fingerprint) {
+	if fp.OS == "" {
+		fp.OS = osIdentifier
+	}
+
+	p.Fingerprints = append(p.Fingerprints, fp)
+}
+
 //
 // func (p *Profile) GetApplicableFingerprintTypes() (types []string) {
 //   for _, fp := range p.Fingerprints {

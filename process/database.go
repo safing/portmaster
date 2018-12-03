@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Safing/portbase/database"
+	"github.com/Safing/portmaster/profile"
 	"github.com/tevino/abool"
 )
 
@@ -76,6 +77,8 @@ func (p *Process) Delete() {
 	if dbControllerFlag.IsSet() {
 		dbController.PushUpdate(p)
 	}
+
+	profile.DeactivateProfileSet(p.profileSet)
 }
 
 // CleanProcessStorage cleans the storage from old processes.

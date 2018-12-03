@@ -1,4 +1,4 @@
-package matcher
+package matching
 
 import (
 	"github.com/Safing/portbase/database"

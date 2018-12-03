@@ -2,8 +2,7 @@ package profile
 
 // Platform identifiers
 const (
-	PlatformAny     = "any"
-	PlatformLinux   = "lin"
-	PlatformWindows = "win"
-	PlatformMac     = "mac"
+	PlatformLinux   = "linux"
+	PlatformWindows = "windows"
+	PlatformMac     = "macos"
 )

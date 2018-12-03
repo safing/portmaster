@@ -1,6 +1,10 @@
 package profile
 
-import "github.com/Safing/portmaster/status"
+import (
+	"sync"
+
+	"github.com/Safing/portmaster/status"
+)
 
 var (
 	emptyFlags = Flags{}
@@ -9,6 +13,8 @@ var (
 
 // Set handles Profile chaining.
 type Set struct {
+	sync.Mutex
+
 	profiles [4]*Profile
 	// Application
 	// Global
@@ -29,6 +35,7 @@ func NewSet(user, stamp *Profile) *Set {
 			nil,   // Default
 		},
 	}
+	activateProfileSet(new)
 	new.Update(status.SecurityLevelFortress)
 	return new
 }
@@ -40,7 +47,7 @@ func (set *Set) Update(securityLevel uint8) {
 
 	// update profiles
 	set.profiles[1] = globalProfile
-	set.profiles[3] = defaultProfile
+	set.profiles[3] = fallbackProfile
 
 	// update security level
 	profileSecurityLevel := set.getProfileSecurityLevel()
@@ -96,7 +103,7 @@ func (set *Set) CheckDomain(domain string) (permit, ok bool) {
 	return false, false
 }
 
-// Ports returns the highest prioritized Ports configuration.
+// CheckPort checks if the given protocol and port are governed in any the lists of ports and returns whether it is permitted.
 func (set *Set) CheckPort(listen bool, protocol uint8, port uint16) (permit, ok bool) {
 
 	signedProtocol := int16(protocol)

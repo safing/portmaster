@@ -2,5 +2,5 @@ package profile
 
 // OS Identifier
 const (
-	osIdentifier = "lin"
+	osIdentifier = PlatformLinux
 )
