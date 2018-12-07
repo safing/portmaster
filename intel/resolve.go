@@ -15,6 +15,7 @@ import (
 
 	"github.com/Safing/portbase/database"
 	"github.com/Safing/portbase/log"
+	"github.com/Safing/portmaster/network/netutils"
 	"github.com/Safing/portmaster/status"
 )
 
@@ -75,26 +76,6 @@ func Resolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCache {
 	// use this to time how long it takes resolve this domain
 	// timed := time.Now()
 	// defer log.Tracef("intel: took %s to get resolve %s%s", time.Now().Sub(timed).String(), fqdn, qtype.String())
-
-	// handle request for localhost
-	if fqdn == "localhost." {
-		var rr dns.RR
-		var err error
-		switch uint16(qtype) {
-		case dns.TypeA:
-			rr, err = dns.NewRR("localhost. 17 IN A 127.0.0.1")
-		case dns.TypeAAAA:
-			rr, err = dns.NewRR("localhost. 17 IN AAAA ::1")
-		default:
-			return nil
-		}
-		if err != nil {
-			return nil
-		}
-		return &RRCache{
-			Answer: []dns.RR{rr},
-		}
-	}
 
 	// check cache
 	rrCache, err := GetRRCache(fqdn, qtype)
@@ -322,6 +303,14 @@ func tryResolver(resolver *Resolver, lastFailBoundary int64, fqdn string, qtype 
 		return nil, false
 	}
 	resolver.Initialized.SetToIf(false, true)
+
+	// remove localhost entries, remove LAN entries if server is in global IP space.
+	if resolver.ServerIPScope == netutils.Global {
+		rrCache.FilterEntries(true, false, false)
+	} else {
+		rrCache.FilterEntries(true, true, false)
+	}
+
 	return rrCache, true
 }
 
@@ -368,11 +357,11 @@ func query(resolver *Resolver, fqdn string, qtype dns.Type) (*RRCache, error) {
 	}
 
 	new := &RRCache{
-		Domain: fqdn,
+		Domain:   fqdn,
 		Question: qtype,
-		Answer: reply.Answer,
-		Ns:     reply.Ns,
-		Extra:  reply.Extra,
+		Answer:   reply.Answer,
+		Ns:       reply.Ns,
+		Extra:    reply.Extra,
 	}
 
 	// TODO: check if reply.Answer is valid

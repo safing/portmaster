@@ -1,15 +1,14 @@
 package firewall
 
 import (
-	"net"
 	"os"
 	"strings"
 
 	"github.com/Safing/portbase/log"
 	"github.com/Safing/portmaster/intel"
 	"github.com/Safing/portmaster/network"
-	"github.com/Safing/portmaster/network/netutils"
 	"github.com/Safing/portmaster/network/packet"
+	"github.com/Safing/portmaster/status"
 
 	"github.com/agext/levenshtein"
 )
@@ -25,6 +24,7 @@ import (
 // 4. DecideOnLink
 //		is called when when the first packet of a link arrives only if connection has verdict UNDECIDED or CANTSAY
 
+// DecideOnConnectionBeforeIntel makes a decision about a connection before the dns query is resolved and intel is gathered.
 func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) {
 	// check:
 	// Profile.DomainWhitelist
@@ -35,244 +35,227 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 	// grant self
 	if connection.Process().Pid == os.Getpid() {
 		log.Infof("firewall: granting own connection %s", connection)
-		connection.Accept()
+		connection.Accept("")
 		return
 	}
 
 	// check if there is a profile
-	profileSet := connection.Process().ProfileSetSet
-	if profile == nil {
-		log.Infof("firewall: no profile, denying connection %s", connection)
-		connection.AddReason("no profile")
-		connection.Block()
+	profileSet := connection.Process().ProfileSet()
+	if profileSet == nil {
+		log.Errorf("firewall: denying connection %s, no profile set", connection)
+		connection.Deny("no profile set")
 		return
 	}
-
-	// check user class
-	if profileSet.CheckFlag(profile.System) {
-		if !connection.Process().IsSystem() {
-			log.Infof("firewall: denying connection %s, profile has System flag set, but process is not executed by System", connection)
-			connection.AddReason("must be executed by system")
-			connection.Block()
-			return
-		}
-	}
-	if profileSet.CheckFlag(profile.Admin) {
-		if !connection.Process().IsAdmin() {
-			log.Infof("firewall: denying connection %s, profile has Admin flag set, but process is not executed by Admin", connection)
-			connection.AddReason("must be executed by admin")
-			connection.Block()
-			return
-		}
-	}
-	if profileSet.CheckFlag(profile.User) {
-		if !connection.Process().IsUser() {
-			log.Infof("firewall: denying connection %s, profile has User flag set, but process is not executed by a User", connection)
-			connection.AddReason("must be executed by user")
-			connection.Block()
-			return
-		}
-	}
+	profileSet.Update(status.CurrentSecurityLevel())
 
 	// check for any network access
-	if !profileSet.CheckFlag(profile.Internet) && !profileSet.CheckFlag(profile.LocalNet) {
-		log.Infof("firewall: denying connection %s, profile denies Internet and local network access", connection)
-		connection.Block()
+	if !profileSet.CheckFlag(profile.Internet) && !profileSet.CheckFlag(profile.LAN) {
+		log.Infof("firewall: denying connection %s, accessing Internet or LAN not allowed", connection)
+		connection.Deny("accessing Internet or LAN not allowed")
 		return
 	}
 
-	// check domain whitelist/blacklist
-	if len(profile.DomainWhitelist) > 0 {
-		matched := false
-		for _, entry := range profile.DomainWhitelist {
-			if !strings.HasSuffix(entry, ".") {
-				entry += "."
-			}
-			if strings.HasPrefix(entry, "*") {
-				if strings.HasSuffix(fqdn, strings.Trim(entry, "*")) {
-					matched = true
-					break
-				}
-			} else {
-				if entry == fqdn {
-					matched = true
-					break
-				}
-			}
-		}
-		if matched {
-			if profile.DomainWhitelistIsBlacklist {
-				log.Infof("firewall: denying connection %s, profile has %s in domain blacklist", connection, fqdn)
-				connection.AddReason("domain blacklisted")
-				connection.Block()
-				return
-			}
+	// check domain list
+	permitted, ok := profileSet.CheckDomain(fqdn)
+	if ok {
+		if permitted {
+			log.Infof("firewall: accepting connection %s, domain is whitelisted", connection, domainElement, processElement)
+			connection.Accept("domain is whitelisted")
 		} else {
-			if !profile.DomainWhitelistIsBlacklist {
-				log.Infof("firewall: denying connection %s, profile does not have %s in domain whitelist", connection, fqdn)
-				connection.AddReason("domain not in whitelist")
-				connection.Block()
-				return
+			log.Infof("firewall: denying connection %s, domain is blacklisted", connection, domainElement, processElement)
+			connection.Deny("domain is blacklisted")
+		}
+		return
+	}
+
+	switch profileSet.GetProfileMode() {
+	case profile.Whitelist:
+		log.Infof("firewall: denying connection %s, domain is not whitelisted", connection, domainElement, processElement)
+		connection.Deny("domain is not whitelisted")
+	case profile.Prompt:
+
+		// check Related flag
+		// TODO: improve this!
+		if profileSet.CheckFlag(profile.Related) {
+			matched := false
+			pathElements := strings.Split(connection.Process().Path, "/") // FIXME: path seperator
+			// only look at the last two path segments
+			if len(pathElements) > 2 {
+				pathElements = pathElements[len(pathElements)-2:]
 			}
-		}
-	}
+			domainElements := strings.Split(fqdn, ".")
 
-}
+			var domainElement string
+			var processElement string
 
-func DecideOnConnectionAfterIntel(connection *network.Connection, fqdn string, rrCache *intel.RRCache) *intel.RRCache {
-	// check:
-	// TODO: Profile.ClassificationBlacklist
-	// TODO: Profile.ClassificationWhitelist
-	// Profile.Flags
-	// - network specific: Strict
-
-	// check if there is a profile
-	profileSet := connection.Process().ProfileSet
-	// FIXME: there should always be a profile
-	if profileSet == nil {
-		log.Infof("firewall: no profile, denying connection %s", connection)
-		connection.AddReason("no profile")
-		connection.Block()
-		return rrCache
-	}
-
-	// check Strict flag
-	// TODO: drastically improve this!
-	if profileSet.CheckFlag(profile.Related) {
-		matched := false
-		pathElements := strings.Split(connection.Process().Path, "/")
-		if len(pathElements) > 2 {
-			pathElements = pathElements[len(pathElements)-2:]
-		}
-		domainElements := strings.Split(fqdn, ".")
-	matchLoop:
-		for _, domainElement := range domainElements {
-			for _, pathElement := range pathElements {
-				if levenshtein.Match(domainElement, pathElement, nil) > 0.5 {
+		matchLoop:
+			for _, domainElement = range domainElements {
+				for _, pathElement := range pathElements {
+					if levenshtein.Match(domainElement, pathElement, nil) > 0.5 {
+						matched = true
+						processElement = pathElement
+						break matchLoop
+					}
+				}
+				if levenshtein.Match(domainElement, profile.Name, nil) > 0.5 {
 					matched = true
+					processElement = profile.Name
+					break matchLoop
+				}
+				if levenshtein.Match(domainElement, connection.Process().Name, nil) > 0.5 {
+					matched = true
+					processElement = connection.Process().Name
 					break matchLoop
 				}
 			}
-			if levenshtein.Match(domainElement, profile.Name, nil) > 0.5 {
-				matched = true
-				break matchLoop
-			}
-			if levenshtein.Match(domainElement, connection.Process().Name, nil) > 0.5 {
-				matched = true
-				break matchLoop
+
+			if matched {
+				log.Infof("firewall: accepting connection %s, match to domain was found: %s ~= %s", connection, domainElement, processElement)
+				connection.Accept("domain is related to process")
 			}
 		}
-		if !matched {
-			log.Infof("firewall: denying connection %s, profile has declared Strict flag and no match to domain was found", connection)
-			connection.AddReason("domain does not relate to process")
-			connection.Block()
-			return rrCache
+
+		if connection.Verdict != network.ACCEPT {
+			// TODO
+			log.Infof("firewall: accepting connection %s, domain permitted (prompting is not yet implemented)", connection, domainElement, processElement)
+			connection.Accept("domain permitted (prompting is not yet implemented)")
 		}
+
+	case profile.Blacklist:
+		log.Infof("firewall: denying connection %s, domain is not blacklisted", connection, domainElement, processElement)
+		connection.Deny("domain is not blacklisted")
 	}
 
-	// tunneling
-	// TODO: link this to real status
-	// gate17Active := mode.Client()
-	// if gate17Active {
-	// 	tunnelInfo, err := AssignTunnelIP(fqdn)
-	// 	if err != nil {
-	// 		log.Errorf("portmaster: could not get tunnel IP for routing %s: %s", connection, err)
-	// 		return nil // return nxDomain
-	// 	}
-	// 	// save original reply
-	// 	tunnelInfo.RRCache = rrCache
-	// 	// return tunnel IP
-	// 	return tunnelInfo.ExportTunnelIP()
-	// }
-
-	return rrCache
 }
 
-func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
-	// check:
-	// Profile.Flags
-	// - process specific: System, Admin, User
-	// - network specific: Internet, LocalNet, Service, Directconnect
+// DecideOnConnectionAfterIntel makes a decision about a connection after the dns query is resolved and intel is gathered.
+func DecideOnConnectionAfterIntel(connection *network.Connection, fqdn string, rrCache *intel.RRCache) *intel.RRCache {
 
 	// grant self
 	if connection.Process().Pid == os.Getpid() {
 		log.Infof("firewall: granting own connection %s", connection)
-		connection.Accept()
+		connection.Accept("")
+		return rrCache
+	}
+
+	// check if there is a profile
+	profileSet := connection.Process().ProfileSet()
+	if profileSet == nil {
+		log.Errorf("firewall: denying connection %s, no profile set", connection)
+		connection.Deny("no profile")
+		return rrCache
+	}
+	profileSet.Update(status.CurrentSecurityLevel())
+
+	// TODO: Stamp integration
+
+	// TODO: Gate17 integration
+	// tunnelInfo, err := AssignTunnelIP(fqdn)
+
+	rrCache.Duplicate().FilterEntries(profileSet.CheckFlag(profile.Internet), profileSet.CheckFlag(profile.LAN), false)
+	if len(rrCache.Answer) == 0 {
+		if profileSet.CheckFlag(profile.Internet) {
+			connection.Deny("server is located in the LAN, but LAN access is not permitted")
+		} else {
+			connection.Deny("server is located in the Internet, but Internet access is not permitted")
+		}
+	}
+
+	return rrCache
+}
+
+// DeciceOnConnection makes a decision about a connection with its first packet.
+func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
+
+	// grant self
+	if connection.Process().Pid == os.Getpid() {
+		log.Infof("firewall: granting own connection %s", connection)
+		connection.Accept("")
 		return
 	}
 
 	// check if there is a profile
 	profileSet := connection.Process().ProfileSet
 	if profile == nil {
-		log.Infof("firewall: no profile, denying connection %s", connection)
-		connection.AddReason("no profile")
-		connection.Block()
+		log.Errorf("firewall: denying connection %s, no profile set", connection)
+		connection.Deny("no profile")
 		return
 	}
+	profileSet.Update(status.CurrentSecurityLevel())
 
-	// check user class
-	if profileSet.CheckFlag(profile.System) {
-		if !connection.Process().IsSystem() {
-			log.Infof("firewall: denying connection %s, profile has System flag set, but process is not executed by System", connection)
-			connection.AddReason("must be executed by system")
-			connection.Block()
-			return
-		}
-	}
-	if profileSet.CheckFlag(profile.Admin) {
-		if !connection.Process().IsAdmin() {
-			log.Infof("firewall: denying connection %s, profile has Admin flag set, but process is not executed by Admin", connection)
-			connection.AddReason("must be executed by admin")
-			connection.Block()
-			return
-		}
-	}
-	if profileSet.CheckFlag(profile.User) {
-		if !connection.Process().IsUser() {
-			log.Infof("firewall: denying connection %s, profile has User flag set, but process is not executed by a User", connection)
-			connection.AddReason("must be executed by user")
-			connection.Block()
-			return
-		}
-	}
-
-	// check for any network access
-	if !profileSet.CheckFlag(profile.Internet) && !profileSet.CheckFlag(profile.LocalNet) {
-		log.Infof("firewall: denying connection %s, profile denies Internet and local network access", connection)
-		connection.AddReason("no network access allowed")
-		connection.Block()
-		return
-	}
-
+	// check connection type
 	switch connection.Domain {
-	case "I":
-		// check Service flag
+	case IncomingHost, IncomingLAN, IncomingInternet, IncomingInvalid:
 		if !profileSet.CheckFlag(profile.Service) {
-			log.Infof("firewall: denying connection %s, profile does not declare service", connection)
-			connection.AddReason("not a service")
-			connection.Drop()
+			log.Infof("firewall: denying connection %s, not a service", connection)
+			if connection.Domain == IncomingHost {
+				connection.Block("not a service")
+			} else {
+				connection.Drop("not a service")
+			}
 			return
 		}
-		// check if incoming connections are allowed on any port, but only if there no other restrictions
-		if !!profileSet.CheckFlag(profile.Internet) && !!profileSet.CheckFlag(profile.LocalNet) && len(profile.ListenPorts) == 0 {
-			log.Infof("firewall: granting connection %s, profile allows incoming connections from anywhere and on any port", connection)
-			connection.Accept()
-			return
-		}
-	case "D":
-		// check PeerToPeer flag
+	case PeerLAN, PeerInternet, PeerInvalid: // Important: PeerHost is and should be missing!
 		if !profileSet.CheckFlag(profile.PeerToPeer) {
-			log.Infof("firewall: denying connection %s, profile does not declare direct connections", connection)
-			connection.AddReason("direct connections (without DNS) not allowed")
-			connection.Drop()
+			log.Infof("firewall: denying connection %s, peer to peer connections (to an IP) not allowed", connection)
+			connection.Deny("peer to peer connections (to an IP) not allowed")
 			return
 		}
 	}
 
-	log.Infof("firewall: could not decide on connection %s, deciding on per-link basis", connection)
-	connection.CantSay()
+	// check network scope
+	switch connection.Domain {
+	case IncomingHost:
+		if !profileSet.CheckFlag(profile.Localhost) {
+			log.Infof("firewall: denying connection %s, serving localhost not allowed", connection)
+			connection.Block("serving localhost not allowed")
+			return
+		}
+	case IncomingLAN:
+		if !profileSet.CheckFlag(profile.LAN) {
+			log.Infof("firewall: denying connection %s, serving LAN not allowed", connection)
+			connection.Deny("serving LAN not allowed")
+			return
+		}
+	case IncomingInternet:
+		if !profileSet.CheckFlag(profile.Internet) {
+			log.Infof("firewall: denying connection %s, serving Internet not allowed", connection)
+			connection.Deny("serving Internet not allowed")
+			return
+		}
+	case IncomingInvalid:
+		log.Infof("firewall: denying connection %s, invalid IP address", connection)
+		connection.Drop("invalid IP address")
+		return
+	case PeerHost:
+		if !profileSet.CheckFlag(profile.Localhost) {
+			log.Infof("firewall: denying connection %s, accessing localhost not allowed", connection)
+			connection.Block("accessing localhost not allowed")
+			return
+		}
+	case PeerLAN:
+		if !profileSet.CheckFlag(profile.LAN) {
+			log.Infof("firewall: denying connection %s, accessing the LAN not allowed", connection)
+			connection.Deny("accessing the LAN not allowed")
+			return
+		}
+	case PeerInternet:
+		if !profileSet.CheckFlag(profile.Internet) {
+			log.Infof("firewall: denying connection %s, accessing the Internet not allowed", connection)
+			connection.Deny("accessing the Internet not allowed")
+			return
+		}
+	case PeerInvalid:
+		log.Infof("firewall: denying connection %s, invalid IP address", connection)
+		connection.Deny("invalid IP address")
+		return
+	}
+
+	log.Infof("firewall: accepting connection %s", connection)
+	connection.Accept()
 }
 
+// DecideOnLink makes a decision about a link with the first packet.
 func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet.Packet) {
 	// check:
 	// Profile.Flags
@@ -284,107 +267,44 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 	profileSet := connection.Process().ProfileSet
 	if profile == nil {
 		log.Infof("firewall: no profile, denying %s", link)
-		link.AddReason("no profile")
-		link.UpdateVerdict(network.BLOCK)
+		link.Block("no profile")
+		return
+	}
+	profileSet.Update(status.CurrentSecurityLevel())
+
+	// get remote Port
+	protocol := pkt.GetIPHeader().Protocol
+	var remotePort uint16
+	tcpUdpHeader := pkt.GetTCPUDPHeader()
+	if tcpUdpHeader != nil {
+		remotePort = tcpUdpHeader.DstPort
+	}
+
+	// check port list
+	permitted, ok := profileSet.CheckPort(connection.Direction, protocol, remotePort)
+	if ok {
+		if permitted {
+			log.Infof("firewall: accepting link %s", link)
+			link.Accept("port whitelisted")
+		} else {
+			log.Infof("firewall: denying link %s: port %d is blacklisted", link, remotePort)
+			link.Deny("port blacklisted")
+		}
 		return
 	}
 
-	// check LocalNet and Internet flags
-	var remoteIP net.IP
-	if connection.Direction {
-		remoteIP = pkt.GetIPHeader().Src
-	} else {
-		remoteIP = pkt.GetIPHeader().Dst
-	}
-	if netutils.IPIsLocal(remoteIP) {
-		if !profileSet.CheckFlag(profile.LocalNet) {
-			log.Infof("firewall: dropping link %s, profile does not allow communication in the local network", link)
-			link.AddReason("profile does not allow access to local network")
-			link.UpdateVerdict(network.BLOCK)
-			return
-		}
-	} else {
-		if !profileSet.CheckFlag(profile.Internet) {
-			log.Infof("firewall: dropping link %s, profile does not allow communication with the Internet", link)
-			link.AddReason("profile does not allow access to the Internet")
-			link.UpdateVerdict(network.BLOCK)
-			return
-		}
-	}
-
-	// check connect ports
-	if connection.Domain != "I" && len(profile.ConnectPorts) > 0 {
-
-		tcpUdpHeader := pkt.GetTCPUDPHeader()
-		if tcpUdpHeader == nil {
-			log.Infof("firewall: blocking link %s, profile has declared connect port whitelist, but link is not TCP/UDP", link)
-			link.AddReason("profile has declared connect port whitelist, but link is not TCP/UDP")
-			link.UpdateVerdict(network.BLOCK)
-			return
-		}
-
-		// packet *should* be outbound, but we could be deciding on an already active connection.
-		var remotePort uint16
-		if connection.Direction {
-			remotePort = tcpUdpHeader.SrcPort
-		} else {
-			remotePort = tcpUdpHeader.DstPort
-		}
-
-		matched := false
-		for _, port := range profile.ConnectPorts {
-			if remotePort == port {
-				matched = true
-				break
-			}
-		}
-
-		if !matched {
-			log.Infof("firewall: blocking link %s, remote port %d not in profile connect port whitelist", link, remotePort)
-			link.AddReason("destination port not in whitelist")
-			link.UpdateVerdict(network.BLOCK)
-			return
-		}
-
-	}
-
-	// check listen ports
-	if connection.Domain == "I" && len(profile.ListenPorts) > 0 {
-
-		tcpUdpHeader := pkt.GetTCPUDPHeader()
-		if tcpUdpHeader == nil {
-			log.Infof("firewall: dropping link %s, profile has declared listen port whitelist, but link is not TCP/UDP", link)
-			link.AddReason("profile has declared listen port whitelist, but link is not TCP/UDP")
-			link.UpdateVerdict(network.DROP)
-			return
-		}
-
-		// packet *should* be inbound, but we could be deciding on an already active connection.
-		var localPort uint16
-		if connection.Direction {
-			localPort = tcpUdpHeader.DstPort
-		} else {
-			localPort = tcpUdpHeader.SrcPort
-		}
-
-		matched := false
-		for _, port := range profile.ListenPorts {
-			if localPort == port {
-				matched = true
-				break
-			}
-		}
-
-		if !matched {
-			log.Infof("firewall: blocking link %s, local port %d not in profile listen port whitelist", link, localPort)
-			link.AddReason("listen port not in whitelist")
-			link.UpdateVerdict(network.BLOCK)
-			return
-		}
-
+	switch profileSet.GetProfileMode() {
+	case profile.Whitelist:
+		log.Infof("firewall: denying link %s: port %d is not whitelisted", link, remotePort)
+		link.Deny("port is not whitelisted")
+	case profile.Prompt:
+		log.Infof("firewall: denying link %s: port %d is blacklisted", link, remotePort)
+		link.Accept("port permitted (prompting is not yet implemented)")
+	case profile.Blacklist:
+		log.Infof("firewall: denying link %s: port %d is blacklisted", link, remotePort)
+		link.Deny("port is not blacklisted")
 	}
 
 	log.Infof("firewall: accepting link %s", link)
-	link.UpdateVerdict(network.ACCEPT)
-
+	link.Accept("")
 }

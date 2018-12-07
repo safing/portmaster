@@ -9,7 +9,6 @@ type Verdict uint8
 const (
 	// UNDECIDED is the default status of new connections
 	UNDECIDED Verdict = iota
-	CANTSAY
 	ACCEPT
 	BLOCK
 	DROP
@@ -19,4 +18,16 @@ const (
 const (
 	Inbound  = true
 	Outbound = false
+)
+
+// Non-Domain Connections
+const (
+	IncomingHost     = "IH"
+	IncomingLAN      = "IL"
+	IncomingInternet = "II"
+	IncomingInvalid  = "IX"
+	PeerHost         = "PH"
+	PeerLAN          = "PL"
+	PeerInternet     = "PI"
+	PeerInvalid      = "PX"
 )

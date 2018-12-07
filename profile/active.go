@@ -35,29 +35,17 @@ func updateActiveUserProfile(profile *Profile) {
 	}
 }
 
-func updateActiveGlobalProfile(profile *Profile) {
-	updateActiveProfile(1, profile)
-}
-
 func updateActiveStampProfile(profile *Profile) {
-	updateActiveProfile(2, profile)
-}
-
-func updateActiveFallbackProfile(profile *Profile) {
-	updateActiveProfile(3, profile)
-}
-
-func updateActiveProfile(setID int, profile *Profile) {
 	activeProfileSetsLock.RLock()
 	defer activeProfileSetsLock.RUnlock()
 
 	for _, activeSet := range activeProfileSets {
 		activeSet.Lock()
-		activeProfile := activeSet.profiles[setID]
+		activeProfile := activeSet.profiles[2]
 		if activeProfile != nil {
 			activeProfile.Lock()
 			if activeProfile.ID == profile.ID {
-				activeSet.profiles[setID] = profile
+				activeSet.profiles[2] = profile
 			}
 			activeProfile.Unlock()
 		}

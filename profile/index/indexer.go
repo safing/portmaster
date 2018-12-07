@@ -1,8 +1,6 @@
 package index
 
 import (
-	"strings"
-
 	"github.com/Safing/portbase/database"
 	"github.com/Safing/portbase/database/query"
 	"github.com/Safing/portbase/database/record"
@@ -25,7 +23,7 @@ var (
 )
 
 func init() {
-	modules.Register("profile:index", nil, start, stop, "database")
+	modules.Register("profile:index", nil, start, stop, "profile", "database")
 }
 
 func start() (err error) {
@@ -49,13 +47,17 @@ func indexer() {
 		case <-shutdownIndexer:
 			return
 		case r := <-indexSub.Feed:
+			if r == nil {
+				return
+			}
+
 			prof := ensureProfile(r)
 			if prof != nil {
-				for _, id := range prof.Identifiers {
-					if strings.HasPrefix(id, profile.IdentifierPrefix) {
+				for _, fp := range prof.Fingerprints {
+					if fp.MatchesOS() && fp.Type == "full_path" {
 
 						// get Profile and ensure identifier is set
-						pi, err := GetIndex(id)
+						pi, err := Get("full_path", fp.Value)
 						if err != nil {
 							if err == database.ErrNotFound {
 								pi = NewIndex(id)

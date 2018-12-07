@@ -77,19 +77,6 @@ var (
 	}
 )
 
-// FlagsFromNames creates Flags from a comma seperated list of flagnames (e.g. "System,Strict,Secure")
-// func FlagsFromNames(words []string) (*Flags, error) {
-// 	var flags Flags
-// 	for _, entry := range words {
-// 		flag, ok := flagIDs[entry]
-// 		if !ok {
-// 			return nil, ErrFlagsParseFailed
-// 		}
-// 		flags = append(flags, flag)
-// 	}
-// 	return &flags, nil
-// }
-
 // Check checks if a flag is set at all and if it's active in the given security level.
 func (flags Flags) Check(flag, level uint8) (active bool, ok bool) {
 	if flags == nil {

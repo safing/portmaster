@@ -38,51 +38,57 @@ func (conn *Connection) Process() *process.Process {
 	return conn.process
 }
 
-// CantSay sets the connection verdict to "can't say", the connection will be further analysed.
-func (conn *Connection) CantSay() {
-	if conn.Verdict != CANTSAY {
-		conn.Verdict = CANTSAY
-		conn.Save()
-	}
-	return
+// Accept accepts the connection and adds the given reason.
+func (conn *Link) Accept(reason string) {
+	conn.AddReason(reason)
+	conn.UpdateVerdict(ACCEPT)
 }
 
-// Drop sets the connection verdict to drop.
-func (conn *Connection) Drop() {
-	if conn.Verdict != DROP {
-		conn.Verdict = DROP
-		conn.Save()
+// Deny blocks or drops the connection depending on the connection direction and adds the given reason.
+func (conn *Link) Deny(reason string) {
+	if conn.Direction {
+		conn.Drop(reason)
+	} else {
+		conn.Block(reason)
 	}
-	return
 }
 
-// Block sets the connection verdict to block.
-func (conn *Connection) Block() {
-	if conn.Verdict != BLOCK {
-		conn.Verdict = BLOCK
-		conn.Save()
-	}
-	return
+// Block blocks the connection and adds the given reason.
+func (conn *Link) Block(reason string) {
+	conn.AddReason(reason)
+	conn.UpdateVerdict(BLOCK)
 }
 
-// Accept sets the connection verdict to accept.
-func (conn *Connection) Accept() {
-	if conn.Verdict != ACCEPT {
-		conn.Verdict = ACCEPT
+// Drop drops the connection and adds the given reason.
+func (conn *Link) Drop(reason string) {
+	conn.AddReason(reason)
+	conn.UpdateVerdict(DROP)
+}
+
+// UpdateVerdict sets a new verdict for this link, making sure it does not interfere with previous verdicts
+func (conn *Connection) UpdateVerdict(newVerdict Verdict) {
+	conn.Lock()
+	defer conn.Unlock()
+
+	if newVerdict > conn.Verdict {
+		conn.Verdict = newVerdict
 		conn.Save()
 	}
-	return
 }
 
 // AddReason adds a human readable string as to why a certain verdict was set in regard to this connection
-func (conn *Connection) AddReason(newReason string) {
+func (conn *Connection) AddReason(reason string) {
+	if reason == "" {
+		return
+	}
+
 	conn.Lock()
 	defer conn.Unlock()
 
 	if conn.Reason != "" {
 		conn.Reason += " | "
 	}
-	conn.Reason += newReason
+	conn.Reason += reason
 }
 
 // GetConnectionByFirstPacket returns the matching connection from the internal storage.
@@ -92,13 +98,25 @@ func GetConnectionByFirstPacket(pkt packet.Packet) (*Connection, error) {
 	if err != nil {
 		return nil, err
 	}
+	var domain string
 
-	// if INBOUND
+	// Incoming
 	if direction {
-		connection, ok := GetConnection(proc.Pid, "I")
+		switch netutils.ClassifyIP(pkt.GetIPHeader().Src) {
+		case HostLocal:
+			domain = IncomingHost
+		case LinkLocal, SiteLocal, LocalMulticast:
+			domain = IncomingLAN
+		case Global, GlobalMulticast:
+			domain = IncomingInternet
+		case Invalid:
+			domain = IncomingInvalid
+		}
+
+		connection, ok := GetConnection(proc.Pid, domain)
 		if !ok {
 			connection = &Connection{
-				Domain:               "I",
+				Domain:               domain,
 				Direction:            Inbound,
 				process:              proc,
 				Inspect:              true,
@@ -111,12 +129,26 @@ func GetConnectionByFirstPacket(pkt packet.Packet) (*Connection, error) {
 
 	// get domain
 	ipinfo, err := intel.GetIPInfo(pkt.FmtRemoteIP())
+
+	// PeerToPeer
 	if err != nil {
 		// if no domain could be found, it must be a direct connection
-		connection, ok := GetConnection(proc.Pid, "D")
+
+		switch netutils.ClassifyIP(pkt.GetIPHeader().Dst) {
+		case HostLocal:
+			domain = PeerHost
+		case LinkLocal, SiteLocal, LocalMulticast:
+			domain = PeerLAN
+		case Global, GlobalMulticast:
+			domain = PeerInternet
+		case Invalid:
+			domain = PeerInvalid
+		}
+
+		connection, ok := GetConnection(proc.Pid, domain)
 		if !ok {
 			connection = &Connection{
-				Domain:               "D",
+				Domain:               domain,
 				Direction:            Outbound,
 				process:              proc,
 				Inspect:              true,
@@ -127,6 +159,7 @@ func GetConnectionByFirstPacket(pkt packet.Packet) (*Connection, error) {
 		return connection, nil
 	}
 
+	// To Domain
 	// FIXME: how to handle multiple possible domains?
 	connection, ok := GetConnection(proc.Pid, ipinfo.Domains[0])
 	if !ok {

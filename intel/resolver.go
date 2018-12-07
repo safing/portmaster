@@ -26,6 +26,7 @@ type Resolver struct {
 	ServerType    string
 	ServerAddress string
 	ServerIP      net.IP
+	ServerIPScope int8
 	ServerPort    uint16
 	VerifyDomain  string
 	Source        string
@@ -151,6 +152,7 @@ configuredServersLoop:
 				ServerType:    parts[0],
 				ServerAddress: parts[1],
 				ServerIP:      ip,
+				ServerIPScope: netutils.ClassifyAddress(ip),
 				ServerPort:    port,
 				LastFail:      &lastFail,
 				Source:        "config",
@@ -205,6 +207,7 @@ assignedServersLoop:
 				ServerType:           "dns",
 				ServerAddress:        urlFormatAddress(nameserver.IP, 53),
 				ServerIP:             nameserver.IP,
+				ServerIPScope:        netutils.ClassifyAddress(nameserver.IP),
 				ServerPort:           53,
 				LastFail:             &lastFail,
 				Source:               "dhcp",
@@ -213,7 +216,7 @@ assignedServersLoop:
 			}
 			new.clientManager = newDNSClientManager(new)
 
-			if netutils.IPIsLocal(nameserver.IP) && len(nameserver.Search) > 0 {
+			if netutils.IPIsLAN(nameserver.IP) && len(nameserver.Search) > 0 {
 				// only allow searches for local resolvers
 				var newSearch []string
 				for _, value := range nameserver.Search {
@@ -236,7 +239,7 @@ assignedServersLoop:
 	// make list with local resolvers
 	localResolvers = make([]*Resolver, 0)
 	for _, resolver := range globalResolvers {
-		if resolver.ServerIP != nil && netutils.IPIsLocal(resolver.ServerIP) {
+		if resolver.ServerIP != nil && netutils.IPIsLAN(resolver.ServerIP) {
 			localResolvers = append(localResolvers, resolver)
 		}
 	}

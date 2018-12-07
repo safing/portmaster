@@ -1,5 +1,7 @@
 package profile
 
+import "time"
+
 var (
 	fingerprintWeights = map[string]int{
 		"full_path":    2,
@@ -10,41 +12,21 @@ var (
 	}
 )
 
+// Fingerprint links processes to profiles.
 type Fingerprint struct {
-	OS      string
-	Type    string
-	Value   string
-	Comment string
+	OS       string
+	Type     string
+	Value    string
+	Comment  string
+	LastUsed int64
 }
 
+// MatchesOS returns whether the Fingerprint is applicable for the current OS.
 func (fp *Fingerprint) MatchesOS() bool {
 	return fp.OS == osIdentifier
 }
 
-//
-// func (fp *Fingerprint) Equals(other *Fingerprint) bool {
-//   return fp.OS == other.OS &&
-//     fp.Type == other.Type &&
-//     fp.Value == other.Value
-// }
-//
-// func (fp *Fingerprint) Check(type, value string) (weight int) {
-//   if fp.Match(fpType, value) {
-//     return GetFingerprintWeight(fpType)
-//   }
-//   return 0
-// }
-//
-// func (fp *Fingerprint) Match(fpType, value string) (matches bool) {
-//   switch fp.Type {
-//   case "partial_path":
-//     return
-//   default:
-//   return fp.OS == osIdentifier &&
-//     fp.Type == fpType &&
-//     fp.Value == value
-// }
-//
+// GetFingerprintWeight returns the weight of the given fingerprint type.
 func GetFingerprintWeight(fpType string) (weight int) {
 	weight, ok := fingerprintWeights[fpType]
 	if ok {
@@ -53,47 +35,14 @@ func GetFingerprintWeight(fpType string) (weight int) {
 	return 0
 }
 
-//
-// func (p *Profile) GetApplicableFingerprints() (fingerprints []*Fingerprint) {
-//   for _, fp := range p.Fingerprints {
-//     if fp.OS == osIdentifier {
-//       fingerprints = append(fingerprints, fp)
-//     }
-//   }
-//   return
-// }
-//
+// AddFingerprint adds the given fingerprint to the profile.
 func (p *Profile) AddFingerprint(fp *Fingerprint) {
 	if fp.OS == "" {
 		fp.OS = osIdentifier
 	}
+	if fp.LastUsed == 0 {
+		fp.LastUsed = time.Now().Unix()
+	}
 
 	p.Fingerprints = append(p.Fingerprints, fp)
 }
-
-//
-// func (p *Profile) GetApplicableFingerprintTypes() (types []string) {
-//   for _, fp := range p.Fingerprints {
-//     if fp.OS == osIdentifier && !utils.StringInSlice(types, fp.Type) {
-//       types = append(types, fp.Type)
-//     }
-//   }
-//   return
-// }
-//
-// func (p *Profile) MatchFingerprints(fingerprints map[string]string) (score int) {
-//   for _, fp := range p.Fingerprints {
-//     if fp.OS == osIdentifier {
-//
-//     }
-//   }
-//   return
-// }
-//
-// func FindUserProfiles() {
-//
-// }
-//
-// func FindProfiles(path string) (*ProfileSet, error) {
-//
-// }

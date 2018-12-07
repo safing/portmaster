@@ -100,7 +100,7 @@ next:
 					if ip == nil {
 						return nil, errors.New(fmt.Sprintf("failed to parse IP: %s", peer.String()))
 					}
-					if !netutils.IPIsLocal(ip) {
+					if !netutils.IPIsLAN(ip) {
 						return ip, nil
 					}
 					continue next

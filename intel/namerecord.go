@@ -27,6 +27,7 @@ type NameRecord struct {
 	Ns       []string
 	Extra    []string
 	TTL      int64
+	Filtered bool
 }
 
 func makeNameRecordKey(domain string, question string) string {

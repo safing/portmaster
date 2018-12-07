@@ -15,12 +15,14 @@ type ProfileIndex struct {
 	record.Base
 	sync.Mutex
 
+	ID string
+
 	UserProfiles  []string
 	StampProfiles []string
 }
 
-func makeIndexRecordKey(id string) string {
-	return fmt.Sprintf("index:profiles/%s", base64.RawURLEncoding.EncodeToString([]byte(id)))
+func makeIndexRecordKey(fpType, id string) string {
+	return fmt.Sprintf("index:profiles/%s:%s", fpType, base64.RawURLEncoding.EncodeToString([]byte(id)))
 }
 
 // NewIndex returns a new ProfileIndex.
@@ -32,8 +34,8 @@ func NewIndex(id string) *ProfileIndex {
 
 // AddUserProfile adds a User Profile to the index.
 func (pi *ProfileIndex) AddUserProfile(identifier string) (changed bool) {
-	if !utils.StringInSlice(pi.UserProfiles, id) {
-		pi.UserProfiles = append(pi.UserProfiles, id)
+	if !utils.StringInSlice(pi.UserProfiles, identifier) {
+		pi.UserProfiles = append(pi.UserProfiles, identifier)
 		return true
 	}
 	return false
@@ -41,8 +43,8 @@ func (pi *ProfileIndex) AddUserProfile(identifier string) (changed bool) {
 
 // AddStampProfile adds a Stamp Profile to the index.
 func (pi *ProfileIndex) AddStampProfile(identifier string) (changed bool) {
-	if !utils.StringInSlice(pi.StampProfiles, id) {
-		pi.StampProfiles = append(pi.StampProfiles, id)
+	if !utils.StringInSlice(pi.StampProfiles, identifier) {
+		pi.StampProfiles = append(pi.StampProfiles, identifier)
 		return true
 	}
 	return false
@@ -59,8 +61,8 @@ func (pi *ProfileIndex) RemoveStampProfile(id string) {
 }
 
 // Get gets a ProfileIndex from the database.
-func Get(id string) (*ProfileIndex, error) {
-	key := makeIndexRecordKey(id)
+func Get(fpType, id string) (*ProfileIndex, error) {
+	key := makeIndexRecordKey(fpType, id)
 
 	r, err := indexDB.Get(key)
 	if err != nil {

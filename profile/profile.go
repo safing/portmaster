@@ -37,8 +37,10 @@ type Profile struct {
 	Domains       Domains
 	Ports         Ports
 
-	StampProfileKey      string
-	StampProfileAssigned int64
+	// User Profile Only
+	CoupledPath          string `json:",omitempty"`
+	StampProfileKey      string `json:",omitempty"`
+	StampProfileAssigned int64  `json:",omitempty"`
 
 	// If a Profile is declared as a Framework (i.e. an Interpreter and the likes), then the real process must be found
 	// Framework *Framework `json:",omitempty bson:",omitempty"`

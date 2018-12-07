@@ -1,7 +1,6 @@
 package profile
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/Safing/portbase/database"
@@ -19,35 +18,41 @@ func initUpdateListener() error {
 	return nil
 }
 
-var (
-	slashedUserNamespace  = fmt.Sprintf("/%s/", userNamespace)
-	slashedStampNamespace = fmt.Sprintf("/%s/", stampNamespace)
-)
-
 func updateListener(sub *database.Subscription) {
-	for r := range sub.Feed {
-		profile, err := ensureProfile(r)
-		if err != nil {
-			log.Errorf("profile: received update for special profile, but could not read: %s", err)
-			continue
-		}
+	for {
+		select {
+		case <-shutdownSignal:
+			return
+		case r := <-sub.Feed:
 
-		specialProfileLock.Lock()
-		switch profile.ID {
-		case "global":
-			globalProfile = profile
-			updateActiveGlobalProfile(profile)
-		case "fallback":
-			fallbackProfile = profile
-			updateActiveFallbackProfile(profile)
-		default:
-			switch {
-			case strings.HasPrefix(profile.Key(), makeProfileKey(userNamespace, "")):
-				updateActiveUserProfile(profile)
-			case strings.HasPrefix(profile.Key(), makeProfileKey(stampNamespace, "")):
-				updateActiveStampProfile(profile)
+			if r.Meta().IsDeleted() {
+				continue
 			}
+
+			profile, err := ensureProfile(r)
+			if err != nil {
+				log.Errorf("profile: received update for special profile, but could not read: %s", err)
+				continue
+			}
+
+			switch profile.ID {
+			case "global":
+				specialProfileLock.Lock()
+				globalProfile = profile
+				specialProfileLock.Unlock()
+			case "fallback":
+				specialProfileLock.Lock()
+				fallbackProfile = profile
+				specialProfileLock.Unlock()
+			default:
+				switch {
+				case strings.HasPrefix(profile.Key(), makeProfileKey(userNamespace, "")):
+					updateActiveUserProfile(profile)
+				case strings.HasPrefix(profile.Key(), makeProfileKey(stampNamespace, "")):
+					updateActiveStampProfile(profile)
+				}
+			}
+
 		}
-		specialProfileLock.Unlock()
 	}
 }

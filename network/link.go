@@ -80,8 +80,38 @@ func (link *Link) HandlePacket(pkt packet.Packet) {
 	pkt.Drop()
 }
 
+// Accept accepts the link and adds the given reason.
+func (link *Link) Accept(reason string) {
+	link.AddReason(reason)
+	link.UpdateVerdict(ACCEPT)
+}
+
+// Deny blocks or drops the link depending on the connection direction and adds the given reason.
+func (link *Link) Deny(reason string) {
+	if link.connection.Direction {
+		link.Drop(reason)
+	} else {
+		link.Block(reason)
+	}
+}
+
+// Block blocks the link and adds the given reason.
+func (link *Link) Block(reason string) {
+	link.AddReason(reason)
+	link.UpdateVerdict(BLOCK)
+}
+
+// Drop drops the link and adds the given reason.
+func (link *Link) Drop(reason string) {
+	link.AddReason(reason)
+	link.UpdateVerdict(DROP)
+}
+
 // UpdateVerdict sets a new verdict for this link, making sure it does not interfere with previous verdicts
 func (link *Link) UpdateVerdict(newVerdict Verdict) {
+	link.Lock()
+	defer link.Unlock()
+
 	if newVerdict > link.Verdict {
 		link.Verdict = newVerdict
 		link.Save()
@@ -89,14 +119,18 @@ func (link *Link) UpdateVerdict(newVerdict Verdict) {
 }
 
 // AddReason adds a human readable string as to why a certain verdict was set in regard to this link
-func (link *Link) AddReason(newReason string) {
+func (link *Link) AddReason(reason string) {
+	if reason == "" {
+		return
+	}
+
 	link.Lock()
 	defer link.Unlock()
 
 	if link.Reason != "" {
 		link.Reason += " | "
 	}
-	link.Reason += newReason
+	link.Reason += reason
 }
 
 // packetHandler sequentially handles queued packets

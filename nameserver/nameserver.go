@@ -18,8 +18,28 @@ import (
 	"github.com/Safing/portmaster/firewall"
 )
 
+var (
+	localhostIPs []dns.RR
+)
+
 func init() {
-	modules.Register("nameserver", nil, start, nil, "intel")
+	modules.Register("nameserver", prep, start, nil, "intel")
+}
+
+func prep() error {
+	localhostIPv4, err := dns.NewRR("localhost. 17 IN A 127.0.0.1")
+	if err != nil {
+		return err
+	}
+
+	localhostIPv6, err := dns.NewRR("localhost. 17 IN AAAA ::1")
+	if err != nil {
+		return err
+	}
+
+	localhostIPs = []dns.RR{localhostIPv4, localhostIPv6}
+
+	return nil
 }
 
 func start() error {
@@ -49,7 +69,6 @@ func nxDomain(w dns.ResponseWriter, query *dns.Msg) {
 func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 
 	// TODO: if there are 3 request for the same domain/type in a row, delete all caches of that domain
-	// TODO: handle securityLevelOff
 
 	// only process first question, that's how everyone does it.
 	question := query.Question[0]
@@ -82,6 +101,14 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 		// we only serve IN records, send NXDOMAIN
 		nxDomain(w, query)
 		return
+	}
+
+	// handle request for localhost
+	if fqdn == "localhost." {
+		m := new(dns.Msg)
+		m.SetReply(query)
+		m.Answer = localhostIPs
+		w.WriteMsg(m)
 	}
 
 	// get remote address
