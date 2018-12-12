@@ -46,16 +46,33 @@ type Link struct {
 
 // Connection returns the Connection the Link is part of
 func (link *Link) Connection() *Connection {
+	link.Lock()
+	defer link.Unlock()
+
 	return link.connection
+}
+
+// GetVerdict returns the current verdict.
+func (link *Link) GetVerdict() Verdict {
+	link.Lock()
+	defer link.Unlock()
+
+	return link.Verdict
 }
 
 // FirewallHandlerIsSet returns whether a firewall handler is set or not
 func (link *Link) FirewallHandlerIsSet() bool {
+	link.Lock()
+	defer link.Unlock()
+
 	return link.firewallHandler != nil
 }
 
 // SetFirewallHandler sets the firewall handler for this link
 func (link *Link) SetFirewallHandler(handler FirewallHandler) {
+	link.Lock()
+	defer link.Unlock()
+
 	if link.firewallHandler == nil {
 		link.firewallHandler = handler
 		link.pktQueue = make(chan packet.Packet, 1000)
@@ -67,16 +84,22 @@ func (link *Link) SetFirewallHandler(handler FirewallHandler) {
 
 // StopFirewallHandler unsets the firewall handler
 func (link *Link) StopFirewallHandler() {
+	link.Lock()
+	link.firewallHandler = nil
+	link.Unlock()
 	link.pktQueue <- nil
 }
 
 // HandlePacket queues packet of Link for handling
 func (link *Link) HandlePacket(pkt packet.Packet) {
+	link.Lock()
+	defer link.Unlock()
+
 	if link.firewallHandler != nil {
 		link.pktQueue <- pkt
 		return
 	}
-	log.Criticalf("network: link %s does not have a firewallHandler (maybe it's a copy), dropping packet", link)
+	log.Criticalf("network: link %s does not have a firewallHandler, dropping packet", link)
 	pkt.Drop()
 }
 
@@ -88,7 +111,7 @@ func (link *Link) Accept(reason string) {
 
 // Deny blocks or drops the link depending on the connection direction and adds the given reason.
 func (link *Link) Deny(reason string) {
-	if link.connection.Direction {
+	if link.connection != nil && link.connection.Direction {
 		link.Drop(reason)
 	} else {
 		link.Block(reason)
@@ -107,6 +130,17 @@ func (link *Link) Drop(reason string) {
 	link.UpdateVerdict(DROP)
 }
 
+// RerouteToNameserver reroutes the link to the portmaster nameserver.
+func (link *Link) RerouteToNameserver() {
+	link.UpdateVerdict(RerouteToNameserver)
+}
+
+// RerouteToTunnel reroutes the link to the tunnel entrypoint and adds the given reason for accepting the connection.
+func (link *Link) RerouteToTunnel(reason string) {
+	link.AddReason(reason)
+	link.UpdateVerdict(RerouteToTunnel)
+}
+
 // UpdateVerdict sets a new verdict for this link, making sure it does not interfere with previous verdicts
 func (link *Link) UpdateVerdict(newVerdict Verdict) {
 	link.Lock()
@@ -114,7 +148,7 @@ func (link *Link) UpdateVerdict(newVerdict Verdict) {
 
 	if newVerdict > link.Verdict {
 		link.Verdict = newVerdict
-		link.Save()
+		go link.Save()
 	}
 }
 
@@ -138,54 +172,103 @@ func (link *Link) packetHandler() {
 	for {
 		pkt := <-link.pktQueue
 		if pkt == nil {
-			break
+			return
 		}
-		link.firewallHandler(pkt, link)
+		link.Lock()
+		fwH := link.firewallHandler
+		link.Unlock()
+		if fwH != nil {
+			fwH(pkt, link)
+		} else {
+			link.ApplyVerdict(pkt)
+		}
 	}
-	link.firewallHandler = nil
+}
+
+// ApplyVerdict appies the link verdict to a packet.
+func (link *Link) ApplyVerdict(pkt packet.Packet) {
+	link.Lock()
+	defer link.Unlock()
+
+	if link.VerdictPermanent {
+		switch link.Verdict {
+		case ACCEPT:
+			pkt.PermanentAccept()
+		case BLOCK:
+			pkt.PermanentBlock()
+		case DROP:
+			pkt.PermanentDrop()
+		case RerouteToNameserver:
+			pkt.RerouteToNameserver()
+		case RerouteToTunnel:
+			pkt.RerouteToTunnel()
+		default:
+			pkt.Drop()
+		}
+	} else {
+		switch link.Verdict {
+		case ACCEPT:
+			pkt.Accept()
+		case BLOCK:
+			pkt.Block()
+		case DROP:
+			pkt.Drop()
+		case RerouteToNameserver:
+			pkt.RerouteToNameserver()
+		case RerouteToTunnel:
+			pkt.RerouteToTunnel()
+		default:
+			pkt.Drop()
+		}
+	}
 }
 
 // Save saves the link object in the storage and propagates the change.
 func (link *Link) Save() error {
+	link.Lock()
+	defer link.Unlock()
+
 	if link.connection == nil {
 		return errors.New("cannot save link without connection")
 	}
 
-	if link.DatabaseKey() == "" {
+	if !link.KeyIsSet() {
 		link.SetKey(fmt.Sprintf("network:tree/%d/%s/%s", link.connection.Process().Pid, link.connection.Domain, link.ID))
 		link.CreateMeta()
 	}
 
-	dataLock.RLock()
+	linksLock.RLock()
 	_, ok := links[link.ID]
-	dataLock.RUnlock()
+	linksLock.RUnlock()
 
 	if !ok {
-		dataLock.Lock()
+		linksLock.Lock()
 		links[link.ID] = link
-		dataLock.Unlock()
+		linksLock.Unlock()
 	}
 
-	dbController.PushUpdate(link)
+	go dbController.PushUpdate(link)
 	return nil
 }
 
 // Delete deletes a link from the storage and propagates the change.
 func (link *Link) Delete() {
-	dataLock.Lock()
-	defer dataLock.Unlock()
-	delete(links, link.ID)
 	link.Lock()
-	defer link.Lock()
+	defer link.Unlock()
+
+	linksLock.Lock()
+	delete(links, link.ID)
+	linksLock.Unlock()
+
 	link.Meta().Delete()
-	dbController.PushUpdate(link)
+	go dbController.PushUpdate(link)
 	link.connection.RemoveLink()
 }
 
 // GetLink fetches a Link from the database from the default namespace for this object
 func GetLink(id string) (*Link, bool) {
-	dataLock.RLock()
-	defer dataLock.RUnlock()
+	linksLock.RLock()
+	defer linksLock.RUnlock()
 
 	link, ok := links[id]
 	return link, ok
@@ -215,6 +298,7 @@ func CreateLinkFromPacket(pkt packet.Packet) *Link {
 func (link *Link) GetActiveInspectors() []bool {
 	link.Lock()
 	defer link.Unlock()
+
 	return link.activeInspectors
 }
 
@@ -222,6 +306,7 @@ func (link *Link) GetActiveInspectors() []bool {
 func (link *Link) SetActiveInspectors(new []bool) {
 	link.Lock()
 	defer link.Unlock()
+
 	link.activeInspectors = new
 }
 
@@ -229,6 +314,7 @@ func (link *Link) SetActiveInspectors(new []bool) {
 func (link *Link) GetInspectorData() map[uint8]interface{} {
 	link.Lock()
 	defer link.Unlock()
+
 	return link.inspectorData
 }
 
@@ -236,11 +322,15 @@ func (link *Link) GetInspectorData() map[uint8]interface{} {
 func (link *Link) SetInspectorData(new map[uint8]interface{}) {
 	link.Lock()
 	defer link.Unlock()
+
 	link.inspectorData = new
 }
 
 // String returns a string representation of Link.
 func (link *Link) String() string {
+	link.Lock()
+	defer link.Unlock()
+
 	if link.connection == nil {
 		return fmt.Sprintf("? <-> %s", link.RemoteAddress)
 	}

@@ -33,7 +33,9 @@ func TestPorts(t *testing.T) {
 			},
 		},
 	}
-	if ports.String() != "TCP:[permit:22], <UDP:[deny:80-81], 93:[permit:93]" {
+	if ports.String() != "TCP:[permit:22], <UDP:[deny:80-81], 93:[permit:93]" &&
+		ports.String() != "93:[permit:93], TCP:[permit:22], <UDP:[deny:80-81]" &&
+		ports.String() != "<UDP:[deny:80-81], 93:[permit:93], TCP:[permit:22]" {
 		t.Errorf("unexpected result: %s", ports.String())
 	}
 

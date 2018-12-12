@@ -59,10 +59,10 @@ func GetIPInfo(ip string) (*IPInfo, error) {
 
 // AddDomain adds a domain to the list and reports back if it was added, or was already present.
 func (ipi *IPInfo) AddDomain(domain string) (added bool) {
+	ipi.Lock()
+	defer ipi.Unlock()
 	if !utils.StringInSlice(ipi.Domains, domain) {
-		newDomains := make([]string, 1, len(ipi.Domains)+1)
-		newDomains[0] = domain
-		ipi.Domains = append(newDomains, ipi.Domains...)
+		ipi.Domains = append([]string{domain}, ipi.Domains...)
 		return true
 	}
 	return false
@@ -70,11 +70,22 @@ func (ipi *IPInfo) AddDomain(domain string) (added bool) {
 
 // Save saves the IPInfo record to the database.
 func (ipi *IPInfo) Save() error {
-	ipi.SetKey(makeIPInfoKey(ipi.IP))
-	return ipInfoDatabase.PutNew(ipi)
+	ipi.Lock()
+	if !ipi.KeyIsSet() {
+		ipi.SetKey(makeIPInfoKey(ipi.IP))
+	}
+	ipi.Unlock()
+	return ipInfoDatabase.Put(ipi)
 }
 
 // FmtDomains returns a string consisting of the domains that have seen to use this IP, joined by " or "
 func (ipi *IPInfo) FmtDomains() string {
 	return strings.Join(ipi.Domains, " or ")
+}
+
+// FmtDomains returns a string consisting of the domains that have seen to use this IP, joined by " or "
+func (ipi *IPInfo) String() string {
+	ipi.Lock()
+	defer ipi.Unlock()
+	return fmt.Sprintf("<IPInfo[%s] %s: %s", ipi.Key(), ipi.IP, ipi.FmtDomains())
 }

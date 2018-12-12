@@ -12,6 +12,8 @@ const (
 	ACCEPT
 	BLOCK
 	DROP
+	RerouteToNameserver
+	RerouteToTunnel
 )
 
 // Packer Directions

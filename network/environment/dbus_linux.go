@@ -24,6 +24,9 @@ func getNameserversFromDbus() ([]Nameserver, error) {
 	var nameservers []Nameserver
 	var err error
 
+	dbusConnLock.Lock()
+	defer dbusConnLock.Unlock()
+
 	if dbusConn == nil {
 		dbusConn, err = dbus.SystemBus()
 	}
@@ -157,6 +160,9 @@ func getNameserversFromDbus() ([]Nameserver, error) {
 
 func getConnectivityStateFromDbus() (uint8, error) {
 	var err error
+
+	dbusConnLock.Lock()
+	defer dbusConnLock.Unlock()
 
 	if dbusConn == nil {
 		dbusConn, err = dbus.SystemBus()

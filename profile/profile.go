@@ -28,6 +28,11 @@ type Profile struct {
 	// Icon is a path to the icon and is either prefixed "f:" for filepath, "d:" for a database path or "e:" for the encoded data.
 	Icon string
 
+	// User Profile Only
+	LinkedPath           string `json:",omitempty"`
+	StampProfileID       string `json:",omitempty"`
+	StampProfileAssigned int64  `json:",omitempty"`
+
 	// Fingerprints
 	Fingerprints []*Fingerprint
 
@@ -37,24 +42,22 @@ type Profile struct {
 	Domains       Domains
 	Ports         Ports
 
-	// User Profile Only
-	CoupledPath          string `json:",omitempty"`
-	StampProfileKey      string `json:",omitempty"`
-	StampProfileAssigned int64  `json:",omitempty"`
-
 	// If a Profile is declared as a Framework (i.e. an Interpreter and the likes), then the real process must be found
 	// Framework *Framework `json:",omitempty bson:",omitempty"`
 
 	// When this Profile was approximately last used (for performance reasons not every single usage is saved)
+	Created        int64
 	ApproxLastUsed int64
 }
 
 // New returns a new Profile.
 func New() *Profile {
-	return &Profile{}
+	return &Profile{
+		Created: time.Now().Unix(),
+	}
 }
 
-func makeProfileKey(namespace, ID string) string {
+func MakeProfileKey(namespace, ID string) string {
 	return fmt.Sprintf("core:profiles/%s/%s", namespace, ID)
 }
 
@@ -68,11 +71,11 @@ func (profile *Profile) Save(namespace string) error {
 		profile.ID = u.String()
 	}
 
-	if profile.Key() == "" {
+	if !profile.KeyIsSet() {
 		if namespace == "" {
 			return fmt.Errorf("no key or namespace defined for profile %s", profile.String())
 		}
-		profile.SetKey(makeProfileKey(namespace, profile.ID))
+		profile.SetKey(MakeProfileKey(namespace, profile.ID))
 	}
 
 	return profileDB.Put(profile)
@@ -99,23 +102,24 @@ func (profile *Profile) DetailedString() string {
 
 // GetUserProfile loads a profile from the database.
 func GetUserProfile(ID string) (*Profile, error) {
-	return getProfile(userNamespace, ID)
+	return getProfile(UserNamespace, ID)
 }
 
 // GetStampProfile loads a profile from the database.
 func GetStampProfile(ID string) (*Profile, error) {
-	return getProfile(stampNamespace, ID)
+	return getProfile(StampNamespace, ID)
 }
 
 func getProfile(namespace, ID string) (*Profile, error) {
-	r, err := profileDB.Get(makeProfileKey(namespace, ID))
+	r, err := profileDB.Get(MakeProfileKey(namespace, ID))
 	if err != nil {
 		return nil, err
 	}
-	return ensureProfile(r)
+	return EnsureProfile(r)
 }
 
-func ensureProfile(r record.Record) (*Profile, error) {
+// EnsureProfile ensures that the given record is a *Profile, and returns it.
+func EnsureProfile(r record.Record) (*Profile, error) {
 	// unwrap
 	if r.IsWrapped() {
 		// only allocate a new struct, if we need it

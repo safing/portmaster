@@ -45,7 +45,7 @@ func (p *Process) Save() {
 	p.Lock()
 	defer p.Unlock()
 
-	if p.DatabaseKey() == "" {
+	if !p.KeyIsSet() {
 		p.SetKey(fmt.Sprintf("network:tree/%d", p.Pid))
 		p.CreateMeta()
 	}
@@ -61,21 +61,22 @@ func (p *Process) Save() {
 	}
 
 	if dbControllerFlag.IsSet() {
-		dbController.PushUpdate(p)
+		go dbController.PushUpdate(p)
 	}
 }
 
 // Delete deletes a process from the storage and propagates the change.
 func (p *Process) Delete() {
-	processesLock.Lock()
-	defer processesLock.Unlock()
-	delete(processes, p.Pid)
 	p.Lock()
 	defer p.Lock()
-	p.Meta().Delete()
 
+	processesLock.Lock()
+	delete(processes, p.Pid)
+	processesLock.Unlock()
+
+	p.Meta().Delete()
 	if dbControllerFlag.IsSet() {
-		dbController.PushUpdate(p)
+		go dbController.PushUpdate(p)
 	}
 
 	profile.DeactivateProfileSet(p.profileSet)
@@ -88,9 +89,11 @@ func CleanProcessStorage(thresholdDuration time.Duration) {
 
 	threshold := time.Now().Add(-thresholdDuration).Unix()
 	for _, p := range processes {
+		p.Lock()
 		if p.FirstConnectionEstablished < threshold && p.ConnectionCount == 0 {
-			p.Delete()
+			go p.Delete()
 		}
+		p.Unlock()
 	}
 }
 

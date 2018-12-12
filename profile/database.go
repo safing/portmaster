@@ -12,9 +12,9 @@ import (
 
 // Namespaces
 const (
-	userNamespace    = "user"
-	stampNamespace   = "stamp"
-	specialNamespace = "special"
+	UserNamespace    = "user"
+	StampNamespace   = "stamp"
+	SpecialNamespace = "special"
 )
 
 var (

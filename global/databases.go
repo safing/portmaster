@@ -7,10 +7,11 @@ import (
 	// module dependencies
 	_ "github.com/Safing/portbase/database/dbmodule"
 	_ "github.com/Safing/portbase/database/storage/badger"
+	_ "github.com/Safing/portmaster/status"
 )
 
 func init() {
-	modules.Register("global", nil, start, nil, "database")
+	modules.Register("global", nil, start, nil, "database", "status")
 }
 
 func start() error {

@@ -8,6 +8,7 @@ import (
 	"github.com/Safing/portmaster/intel"
 	"github.com/Safing/portmaster/network"
 	"github.com/Safing/portmaster/network/packet"
+	"github.com/Safing/portmaster/profile"
 	"github.com/Safing/portmaster/status"
 
 	"github.com/agext/levenshtein"
@@ -59,10 +60,10 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 	permitted, ok := profileSet.CheckDomain(fqdn)
 	if ok {
 		if permitted {
-			log.Infof("firewall: accepting connection %s, domain is whitelisted", connection, domainElement, processElement)
+			log.Infof("firewall: accepting connection %s, domain is whitelisted", connection)
 			connection.Accept("domain is whitelisted")
 		} else {
-			log.Infof("firewall: denying connection %s, domain is blacklisted", connection, domainElement, processElement)
+			log.Infof("firewall: denying connection %s, domain is blacklisted", connection)
 			connection.Deny("domain is blacklisted")
 		}
 		return
@@ -70,7 +71,7 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 
 	switch profileSet.GetProfileMode() {
 	case profile.Whitelist:
-		log.Infof("firewall: denying connection %s, domain is not whitelisted", connection, domainElement, processElement)
+		log.Infof("firewall: denying connection %s, domain is not whitelisted", connection)
 		connection.Deny("domain is not whitelisted")
 	case profile.Prompt:
 
@@ -97,14 +98,19 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 						break matchLoop
 					}
 				}
-				if levenshtein.Match(domainElement, profile.Name, nil) > 0.5 {
+				if levenshtein.Match(domainElement, profileSet.UserProfile().Name, nil) > 0.5 {
 					matched = true
-					processElement = profile.Name
+					processElement = profileSet.UserProfile().Name
 					break matchLoop
 				}
 				if levenshtein.Match(domainElement, connection.Process().Name, nil) > 0.5 {
 					matched = true
 					processElement = connection.Process().Name
+					break matchLoop
+				}
+				if levenshtein.Match(domainElement, connection.Process().ExecName, nil) > 0.5 {
+					matched = true
+					processElement = connection.Process().ExecName
 					break matchLoop
 				}
 			}
@@ -115,15 +121,15 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 			}
 		}
 
-		if connection.Verdict != network.ACCEPT {
+		if connection.GetVerdict() != network.ACCEPT {
 			// TODO
-			log.Infof("firewall: accepting connection %s, domain permitted (prompting is not yet implemented)", connection, domainElement, processElement)
+			log.Infof("firewall: accepting connection %s, domain permitted (prompting is not yet implemented)", connection)
 			connection.Accept("domain permitted (prompting is not yet implemented)")
 		}
 
 	case profile.Blacklist:
-		log.Infof("firewall: denying connection %s, domain is not blacklisted", connection, domainElement, processElement)
-		connection.Deny("domain is not blacklisted")
+		log.Infof("firewall: accepting connection %s, domain is not blacklisted", connection)
+		connection.Accept("domain is not blacklisted")
 	}
 
 }
@@ -175,8 +181,8 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 	}
 
 	// check if there is a profile
-	profileSet := connection.Process().ProfileSet
-	if profile == nil {
+	profileSet := connection.Process().ProfileSet()
+	if profileSet == nil {
 		log.Errorf("firewall: denying connection %s, no profile set", connection)
 		connection.Deny("no profile")
 		return
@@ -185,17 +191,17 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 
 	// check connection type
 	switch connection.Domain {
-	case IncomingHost, IncomingLAN, IncomingInternet, IncomingInvalid:
+	case network.IncomingHost, network.IncomingLAN, network.IncomingInternet, network.IncomingInvalid:
 		if !profileSet.CheckFlag(profile.Service) {
 			log.Infof("firewall: denying connection %s, not a service", connection)
-			if connection.Domain == IncomingHost {
+			if connection.Domain == network.IncomingHost {
 				connection.Block("not a service")
 			} else {
 				connection.Drop("not a service")
 			}
 			return
 		}
-	case PeerLAN, PeerInternet, PeerInvalid: // Important: PeerHost is and should be missing!
+	case network.PeerLAN, network.PeerInternet, network.PeerInvalid: // Important: PeerHost is and should be missing!
 		if !profileSet.CheckFlag(profile.PeerToPeer) {
 			log.Infof("firewall: denying connection %s, peer to peer connections (to an IP) not allowed", connection)
 			connection.Deny("peer to peer connections (to an IP) not allowed")
@@ -205,54 +211,54 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 
 	// check network scope
 	switch connection.Domain {
-	case IncomingHost:
+	case network.IncomingHost:
 		if !profileSet.CheckFlag(profile.Localhost) {
 			log.Infof("firewall: denying connection %s, serving localhost not allowed", connection)
 			connection.Block("serving localhost not allowed")
 			return
 		}
-	case IncomingLAN:
+	case network.IncomingLAN:
 		if !profileSet.CheckFlag(profile.LAN) {
 			log.Infof("firewall: denying connection %s, serving LAN not allowed", connection)
 			connection.Deny("serving LAN not allowed")
 			return
 		}
-	case IncomingInternet:
+	case network.IncomingInternet:
 		if !profileSet.CheckFlag(profile.Internet) {
 			log.Infof("firewall: denying connection %s, serving Internet not allowed", connection)
 			connection.Deny("serving Internet not allowed")
 			return
 		}
-	case IncomingInvalid:
+	case network.IncomingInvalid:
 		log.Infof("firewall: denying connection %s, invalid IP address", connection)
 		connection.Drop("invalid IP address")
 		return
-	case PeerHost:
+	case network.PeerHost:
 		if !profileSet.CheckFlag(profile.Localhost) {
 			log.Infof("firewall: denying connection %s, accessing localhost not allowed", connection)
 			connection.Block("accessing localhost not allowed")
 			return
 		}
-	case PeerLAN:
+	case network.PeerLAN:
 		if !profileSet.CheckFlag(profile.LAN) {
 			log.Infof("firewall: denying connection %s, accessing the LAN not allowed", connection)
 			connection.Deny("accessing the LAN not allowed")
 			return
 		}
-	case PeerInternet:
+	case network.PeerInternet:
 		if !profileSet.CheckFlag(profile.Internet) {
 			log.Infof("firewall: denying connection %s, accessing the Internet not allowed", connection)
 			connection.Deny("accessing the Internet not allowed")
 			return
 		}
-	case PeerInvalid:
+	case network.PeerInvalid:
 		log.Infof("firewall: denying connection %s, invalid IP address", connection)
 		connection.Deny("invalid IP address")
 		return
 	}
 
 	log.Infof("firewall: accepting connection %s", connection)
-	connection.Accept()
+	connection.Accept("")
 }
 
 // DecideOnLink makes a decision about a link with the first packet.
@@ -264,8 +270,8 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 	// Profile.ListenPorts
 
 	// check if there is a profile
-	profileSet := connection.Process().ProfileSet
-	if profile == nil {
+	profileSet := connection.Process().ProfileSet()
+	if profileSet == nil {
 		log.Infof("firewall: no profile, denying %s", link)
 		link.Block("no profile")
 		return
@@ -274,20 +280,20 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 
 	// get remote Port
 	protocol := pkt.GetIPHeader().Protocol
-	var remotePort uint16
-	tcpUdpHeader := pkt.GetTCPUDPHeader()
-	if tcpUdpHeader != nil {
-		remotePort = tcpUdpHeader.DstPort
+	var dstPort uint16
+	tcpUDPHeader := pkt.GetTCPUDPHeader()
+	if tcpUDPHeader != nil {
+		dstPort = tcpUDPHeader.DstPort
 	}
 
 	// check port list
-	permitted, ok := profileSet.CheckPort(connection.Direction, protocol, remotePort)
+	permitted, ok := profileSet.CheckPort(connection.Direction, uint8(protocol), dstPort)
 	if ok {
 		if permitted {
 			log.Infof("firewall: accepting link %s", link)
 			link.Accept("port whitelisted")
 		} else {
-			log.Infof("firewall: denying link %s: port %d is blacklisted", link, remotePort)
+			log.Infof("firewall: denying link %s: port %d is blacklisted", link, dstPort)
 			link.Deny("port blacklisted")
 		}
 		return
@@ -295,14 +301,17 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 
 	switch profileSet.GetProfileMode() {
 	case profile.Whitelist:
-		log.Infof("firewall: denying link %s: port %d is not whitelisted", link, remotePort)
+		log.Infof("firewall: denying link %s: port %d is not whitelisted", link, dstPort)
 		link.Deny("port is not whitelisted")
+		return
 	case profile.Prompt:
-		log.Infof("firewall: denying link %s: port %d is blacklisted", link, remotePort)
+		log.Infof("firewall: accepting link %s: port %d is blacklisted", link, dstPort)
 		link.Accept("port permitted (prompting is not yet implemented)")
+		return
 	case profile.Blacklist:
-		log.Infof("firewall: denying link %s: port %d is blacklisted", link, remotePort)
-		link.Deny("port is not blacklisted")
+		log.Infof("firewall: accepting link %s: port %d is not blacklisted", link, dstPort)
+		link.Accept("port is not blacklisted")
+		return
 	}
 
 	log.Infof("firewall: accepting link %s", link)

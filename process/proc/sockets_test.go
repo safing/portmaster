@@ -22,14 +22,14 @@ func TestSockets(t *testing.T) {
 	t.Logf("addressListeningUDP6: %v", addressListeningUDP6)
 	t.Logf("globalListeningUDP6: %v", globalListeningUDP6)
 
-	getListeningSocket(&net.IPv4zero, 53, TCP4)
-	getListeningSocket(&net.IPv4zero, 53, UDP4)
-	getListeningSocket(&net.IPv6zero, 53, TCP6)
-	getListeningSocket(&net.IPv6zero, 53, UDP6)
+	getListeningSocket(net.IPv4zero, 53, TCP4)
+	getListeningSocket(net.IPv4zero, 53, UDP4)
+	getListeningSocket(net.IPv6zero, 53, TCP6)
+	getListeningSocket(net.IPv6zero, 53, UDP6)
 
 	// spotify: 192.168.0.102:5353     192.121.140.65:80
 	localIP := net.IPv4(192, 168, 127, 10)
-	uid, inode, ok := getConnectionSocket(&localIP, 46634, TCP4)
+	uid, inode, ok := getConnectionSocket(localIP, 46634, TCP4)
 	t.Logf("getConnectionSocket: %d %d %v", uid, inode, ok)
 
 	activeConnectionIDs := GetActiveConnectionIDs()

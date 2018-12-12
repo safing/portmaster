@@ -17,8 +17,11 @@ var (
 func cleaner() {
 	for {
 		time.Sleep(cleanerTickDuration)
+
 		cleanLinks()
+		time.Sleep(10 * time.Second)
 		cleanConnections()
+		time.Sleep(10 * time.Second)
 		cleanProcesses()
 	}
 }
@@ -26,18 +29,21 @@ func cleaner() {
 func cleanLinks() {
 	activeIDs := process.GetActiveConnectionIDs()
 
-	dataLock.Lock()
-	defer dataLock.Lock()
-
 	now := time.Now().Unix()
 	deleteOlderThan := time.Now().Add(-deadLinksTimeout).Unix()
+
+	linksLock.RLock()
+	defer linksLock.RUnlock()
 
 	var found bool
 	for key, link := range links {
 
 		// delete dead links
-		if link.Ended > 0 && link.Ended < deleteOlderThan {
-			link.Delete()
+		link.Lock()
+		deleteThis := link.Ended > 0 && link.Ended < deleteOlderThan
+		link.Unlock()
+		if deleteThis {
+			go link.Delete()
 			continue
 		}
 
@@ -53,21 +59,23 @@ func cleanLinks() {
 		// mark end time
 		if !found {
 			link.Ended = now
-			link.Save()
+			go link.Save()
 		}
 
 	}
 }
 
 func cleanConnections() {
-	dataLock.Lock()
-	defer dataLock.Lock()
+	connectionsLock.RLock()
+	defer connectionsLock.RUnlock()
 
 	threshold := time.Now().Add(-thresholdDuration).Unix()
 	for _, conn := range connections {
+		conn.Lock()
 		if conn.FirstLinkEstablished < threshold && conn.LinkCount == 0 {
-			conn.Delete()
+			go conn.Delete()
 		}
+		conn.Unlock()
 	}
 }
 

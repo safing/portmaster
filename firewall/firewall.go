@@ -38,7 +38,7 @@ var (
 )
 
 func init() {
-	modules.Register("firewall", prep, start, stop, "global", "network", "nameserver")
+	modules.Register("firewall", prep, start, stop, "global", "network", "nameserver", "profile")
 }
 
 func prep() (err error) {
@@ -112,12 +112,6 @@ func handlePacket(pkt packet.Packet) {
 		return
 	}
 
-	// allow anything that goes to a tunnel entrypoint
-	if pkt.IsOutbound() && (pkt.GetIPHeader().Dst.Equal(tunnelEntry4) || pkt.GetIPHeader().Dst.Equal(tunnelEntry6)) {
-		pkt.PermanentAccept()
-		return
-	}
-
 	// log.Debugf("firewall: pkt %s has ID %s", pkt, pkt.GetConnectionID())
 
 	// use this to time how long it takes process packet
@@ -147,7 +141,7 @@ func handlePacket(pkt packet.Packet) {
 		link.HandlePacket(pkt)
 		return
 	}
-	verdict(pkt, link.Verdict)
+	verdict(pkt, link.GetVerdict())
 
 }
 
@@ -156,42 +150,45 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 	// get Connection
 	connection, err := network.GetConnectionByFirstPacket(pkt)
 	if err != nil {
-		link.Lock()
 		if err != process.ErrConnectionNotFound {
 			log.Warningf("firewall: could not find process of packet (dropping link %s): %s", pkt.String(), err)
-			link.AddReason(fmt.Sprintf("could not find process or it does not exist (unsolicited packet): %s", err))
+			link.Deny(fmt.Sprintf("could not find process or it does not exist (unsolicited packet): %s", err))
 		} else {
 			log.Warningf("firewall: internal error finding process of packet (dropping link %s): %s", pkt.String(), err)
-			link.AddReason(fmt.Sprintf("internal error finding process: %s", err))
+			link.Deny(fmt.Sprintf("internal error finding process: %s", err))
 		}
-		link.Unlock()
 
 		if pkt.IsInbound() {
 			network.UnknownIncomingConnection.AddLink(link)
 		} else {
 			network.UnknownDirectConnection.AddLink(link)
 		}
-		verdict(pkt, link.Verdict)
-		return
-	}
 
-	// reroute dns requests to nameserver
-	if connection.Process().Pid != os.Getpid() && pkt.IsOutbound() && pkt.GetTCPUDPHeader() != nil && !pkt.GetIPHeader().Dst.Equal(localhost) && pkt.GetTCPUDPHeader().DstPort == 53 {
-		pkt.RerouteToNameserver()
+		verdict(pkt, link.GetVerdict())
+		link.StopFirewallHandler()
+
 		return
 	}
 
 	// add new Link to Connection (and save both)
 	connection.AddLink(link)
 
+	// reroute dns requests to nameserver
+	if connection.Process().Pid != os.Getpid() && pkt.IsOutbound() && pkt.GetTCPUDPHeader() != nil && !pkt.GetIPHeader().Dst.Equal(localhost) && pkt.GetTCPUDPHeader().DstPort == 53 {
+		link.RerouteToNameserver()
+		verdict(pkt, link.GetVerdict())
+		link.StopFirewallHandler()
+		return
+	}
+
 	// make a decision if not made already
-	if connection.Verdict == network.UNDECIDED {
+	if connection.GetVerdict() == network.UNDECIDED {
 		DecideOnConnection(connection, pkt)
 	}
-	if connection.Verdict != network.CANTSAY {
-		link.UpdateVerdict(connection.Verdict)
-	} else {
+	if connection.GetVerdict() == network.ACCEPT {
 		DecideOnLink(connection, link, pkt)
+	} else {
+		link.UpdateVerdict(connection.GetVerdict())
 	}
 
 	// log decision
@@ -205,7 +202,7 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 	// 	// tunnel link, but also inspect (after reroute)
 	// 	link.Tunneled = true
 	// 	link.SetFirewallHandler(inspectThenVerdict)
-	// 	verdict(pkt, link.Verdict)
+	// 	verdict(pkt, link.GetVerdict())
 	// case port17Active:
 	// 	// tunnel link, don't inspect
 	// 	link.Tunneled = true
@@ -216,7 +213,7 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 		inspectThenVerdict(pkt, link)
 	default:
 		link.StopFirewallHandler()
-		verdict(pkt, link.Verdict)
+		verdict(pkt, link.GetVerdict())
 	}
 
 }
@@ -225,10 +222,11 @@ func inspectThenVerdict(pkt packet.Packet, link *network.Link) {
 	pktVerdict, continueInspection := inspection.RunInspectors(pkt, link)
 	if continueInspection {
 		// do not allow to circumvent link decision: e.g. to ACCEPT packets from a DROP-ed link
-		if pktVerdict > link.Verdict {
+		linkVerdict := link.GetVerdict()
+		if pktVerdict > linkVerdict {
 			verdict(pkt, pktVerdict)
 		} else {
-			verdict(pkt, link.Verdict)
+			verdict(pkt, linkVerdict)
 		}
 		return
 	}
@@ -236,9 +234,11 @@ func inspectThenVerdict(pkt packet.Packet, link *network.Link) {
 	// we are done with inspecting
 	link.StopFirewallHandler()
 
+	link.Lock()
+	defer link.Unlock()
 	link.VerdictPermanent = permanentVerdicts()
 	if link.VerdictPermanent {
-		link.Save()
+		go link.Save()
 		permanentVerdict(pkt, link.Verdict)
 	} else {
 		verdict(pkt, link.Verdict)
@@ -259,6 +259,12 @@ func permanentVerdict(pkt packet.Packet, action network.Verdict) {
 		atomic.AddUint64(packetsDropped, 1)
 		pkt.PermanentDrop()
 		return
+	case network.RerouteToNameserver:
+		pkt.RerouteToNameserver()
+		return
+	case network.RerouteToTunnel:
+		pkt.RerouteToTunnel()
+		return
 	}
 	pkt.Drop()
 }
@@ -276,6 +282,12 @@ func verdict(pkt packet.Packet, action network.Verdict) {
 	case network.DROP:
 		atomic.AddUint64(packetsDropped, 1)
 		pkt.Drop()
+		return
+	case network.RerouteToNameserver:
+		pkt.RerouteToNameserver()
+		return
+	case network.RerouteToTunnel:
+		pkt.RerouteToTunnel()
 		return
 	}
 	pkt.Drop()
@@ -295,18 +307,22 @@ func verdict(pkt packet.Packet, action network.Verdict) {
 // }
 
 func logInitialVerdict(link *network.Link) {
-	// switch link.Verdict {
+	// switch link.GetVerdict() {
 	// case network.ACCEPT:
 	// 	log.Infof("firewall: accepting new link: %s", link.String())
 	// case network.BLOCK:
 	// 	log.Infof("firewall: blocking new link: %s", link.String())
 	// case network.DROP:
 	// 	log.Infof("firewall: dropping new link: %s", link.String())
+	// case network.RerouteToNameserver:
+	// 	log.Infof("firewall: rerouting new link to nameserver: %s", link.String())
+	// case network.RerouteToTunnel:
+	// 	log.Infof("firewall: rerouting new link to tunnel: %s", link.String())
 	// }
 }
 
 func logChangedVerdict(link *network.Link) {
-	// switch link.Verdict {
+	// switch link.GetVerdict() {
 	// case network.ACCEPT:
 	// 	log.Infof("firewall: change! - now accepting link: %s", link.String())
 	// case network.BLOCK:

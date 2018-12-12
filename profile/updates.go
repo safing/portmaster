@@ -9,7 +9,7 @@ import (
 )
 
 func initUpdateListener() error {
-	sub, err := profileDB.Subscribe(query.New(makeProfileKey(specialNamespace, "")))
+	sub, err := profileDB.Subscribe(query.New(MakeProfileKey(SpecialNamespace, "")))
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func updateListener(sub *database.Subscription) {
 				continue
 			}
 
-			profile, err := ensureProfile(r)
+			profile, err := EnsureProfile(r)
 			if err != nil {
 				log.Errorf("profile: received update for special profile, but could not read: %s", err)
 				continue
@@ -46,9 +46,9 @@ func updateListener(sub *database.Subscription) {
 				specialProfileLock.Unlock()
 			default:
 				switch {
-				case strings.HasPrefix(profile.Key(), makeProfileKey(userNamespace, "")):
+				case strings.HasPrefix(profile.Key(), MakeProfileKey(UserNamespace, "")):
 					updateActiveUserProfile(profile)
-				case strings.HasPrefix(profile.Key(), makeProfileKey(stampNamespace, "")):
+				case strings.HasPrefix(profile.Key(), MakeProfileKey(StampNamespace, "")):
 					updateActiveStampProfile(profile)
 				}
 			}

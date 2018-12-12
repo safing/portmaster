@@ -81,7 +81,7 @@ var (
 	globalListeningUDP6  = make(map[uint16][]int)
 )
 
-func getConnectionSocket(localIP *net.IP, localPort uint16, protocol uint8) (int, int, bool) {
+func getConnectionSocket(localIP net.IP, localPort uint16, protocol uint8) (int, int, bool) {
 	// listeningSocketsLock.Lock()
 	// defer listeningSocketsLock.Unlock()
 
@@ -98,10 +98,10 @@ func getConnectionSocket(localIP *net.IP, localPort uint16, protocol uint8) (int
 		localIPHex = strings.ToUpper(hex.EncodeToString([]byte{localIPBytes[3], localIPBytes[2], localIPBytes[1], localIPBytes[0]}))
 	case TCP6:
 		procFile = TCP6Data
-		localIPHex = hex.EncodeToString([]byte(*localIP))
+		localIPHex = hex.EncodeToString([]byte(localIP))
 	case UDP6:
 		procFile = UDP6Data
-		localIPHex = hex.EncodeToString([]byte(*localIP))
+		localIPHex = hex.EncodeToString([]byte(localIP))
 	}
 
 	localPortHex := fmt.Sprintf("%04X", localPort)
@@ -162,38 +162,38 @@ func getConnectionSocket(localIP *net.IP, localPort uint16, protocol uint8) (int
 
 }
 
-func getListeningSocket(localIP *net.IP, localPort uint16, protocol uint8) (uid, inode int, ok bool) {
+func getListeningSocket(localIP net.IP, localPort uint16, protocol uint8) (uid, inode int, ok bool) {
 	listeningSocketsLock.Lock()
 	defer listeningSocketsLock.Unlock()
 
-	var addressListening *map[string][]int
-	var globalListening *map[uint16][]int
+	var addressListening map[string][]int
+	var globalListening map[uint16][]int
 	switch protocol {
 	case TCP4:
-		addressListening = &addressListeningTCP4
-		globalListening = &globalListeningTCP4
+		addressListening = addressListeningTCP4
+		globalListening = globalListeningTCP4
 	case UDP4:
-		addressListening = &addressListeningUDP4
-		globalListening = &globalListeningUDP4
+		addressListening = addressListeningUDP4
+		globalListening = globalListeningUDP4
 	case TCP6:
-		addressListening = &addressListeningTCP6
-		globalListening = &globalListeningTCP6
+		addressListening = addressListeningTCP6
+		globalListening = globalListeningTCP6
 	case UDP6:
-		addressListening = &addressListeningUDP6
-		globalListening = &globalListeningUDP6
+		addressListening = addressListeningUDP6
+		globalListening = globalListeningUDP6
 	}
 
-	data, ok := (*addressListening)[fmt.Sprintf("%s:%d", localIP, localPort)]
+	data, ok := addressListening[fmt.Sprintf("%s:%d", localIP, localPort)]
 	if !ok {
-		data, ok = (*globalListening)[localPort]
+		data, ok = globalListening[localPort]
 	}
 	if ok {
 		return data[0], data[1], true
 	}
 	updateListeners(protocol)
-	data, ok = (*addressListening)[fmt.Sprintf("%s:%d", localIP, localPort)]
+	data, ok = addressListening[fmt.Sprintf("%s:%d", localIP, localPort)]
 	if !ok {
-		data, ok = (*globalListening)[localPort]
+		data, ok = globalListening[localPort]
 	}
 	if ok {
 		return data[0], data[1], true
@@ -206,7 +206,7 @@ func procDelimiter(c rune) bool {
 	return unicode.IsSpace(c) || c == ':'
 }
 
-func convertIPv4(data string) *net.IP {
+func convertIPv4(data string) net.IP {
 	decoded, err := hex.DecodeString(data)
 	if err != nil {
 		log.Warningf("process: could not parse IPv4 %s: %s", data, err)
@@ -217,10 +217,10 @@ func convertIPv4(data string) *net.IP {
 		return nil
 	}
 	ip := net.IPv4(decoded[3], decoded[2], decoded[1], decoded[0])
-	return &ip
+	return ip
 }
 
-func convertIPv6(data string) *net.IP {
+func convertIPv6(data string) net.IP {
 	decoded, err := hex.DecodeString(data)
 	if err != nil {
 		log.Warningf("process: could not parse IPv6 %s: %s", data, err)
@@ -231,7 +231,7 @@ func convertIPv6(data string) *net.IP {
 		return nil
 	}
 	ip := net.IP(decoded)
-	return &ip
+	return ip
 }
 
 func updateListeners(protocol uint8) {
@@ -247,7 +247,7 @@ func updateListeners(protocol uint8) {
 	}
 }
 
-func getListenerMaps(procFile, zeroIP, socketStatusListening string, ipConverter func(string) *net.IP) (map[string][]int, map[uint16][]int) {
+func getListenerMaps(procFile, zeroIP, socketStatusListening string, ipConverter func(string) net.IP) (map[string][]int, map[uint16][]int) {
 	addressListening := make(map[string][]int)
 	globalListening := make(map[uint16][]int)
 
@@ -312,6 +312,7 @@ func getListenerMaps(procFile, zeroIP, socketStatusListening string, ipConverter
 	return addressListening, globalListening
 }
 
+// GetActiveConnectionIDs returns all connection IDs that are still marked as active by the OS.
 func GetActiveConnectionIDs() []string {
 	var connections []string
 
@@ -323,7 +324,7 @@ func GetActiveConnectionIDs() []string {
 	return connections
 }
 
-func getConnectionIDsFromSource(source string, protocol uint16, ipConverter func(string) *net.IP) []string {
+func getConnectionIDsFromSource(source string, protocol uint16, ipConverter func(string) net.IP) []string {
 	var connections []string
 
 	// open file

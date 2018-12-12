@@ -24,7 +24,7 @@ func initSpecialProfiles() (err error) {
 			return err
 		}
 		globalProfile = makeDefaultGlobalProfile()
-		globalProfile.Save(specialNamespace)
+		globalProfile.Save(SpecialNamespace)
 	}
 
 	fallbackProfile, err = getSpecialProfile("fallback")
@@ -33,12 +33,12 @@ func initSpecialProfiles() (err error) {
 			return err
 		}
 		fallbackProfile = makeDefaultFallbackProfile()
-		fallbackProfile.Save(specialNamespace)
+		fallbackProfile.Save(SpecialNamespace)
 	}
 
 	return nil
 }
 
 func getSpecialProfile(ID string) (*Profile, error) {
-	return getProfile(specialNamespace, ID)
+	return getProfile(SpecialNamespace, ID)
 }

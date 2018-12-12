@@ -12,10 +12,10 @@ import (
 	"github.com/Safing/portbase/modules"
 
 	"github.com/Safing/portmaster/analytics/algs"
+	"github.com/Safing/portmaster/firewall"
 	"github.com/Safing/portmaster/intel"
 	"github.com/Safing/portmaster/network"
 	"github.com/Safing/portmaster/network/netutils"
-	"github.com/Safing/portmaster/firewall"
 )
 
 var (
@@ -138,19 +138,19 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	// log.Tracef("nameserver: took %s to get connection/process of %s request", time.Now().Sub(timed).String(), fqdn)
 
 	// check profile before we even get intel and rr
-	if connection.Verdict == network.UNDECIDED {
+	if connection.GetVerdict() == network.UNDECIDED {
 		// start = time.Now()
 		firewall.DecideOnConnectionBeforeIntel(connection, fqdn)
 		// log.Tracef("nameserver: took %s to make decision", time.Since(start))
 	}
-	if connection.Verdict == network.BLOCK || connection.Verdict == network.DROP {
+	if connection.GetVerdict() == network.BLOCK || connection.GetVerdict() == network.DROP {
 		nxDomain(w, query)
 		return
 	}
 
 	// get intel and RRs
 	// start = time.Now()
-	domainIntel, rrCache := intel.GetIntelAndRRs(fqdn, qtype, connection.Process().Profile.SecurityLevel)
+	domainIntel, rrCache := intel.GetIntelAndRRs(fqdn, qtype, connection.Process().ProfileSet().SecurityLevel())
 	// log.Tracef("nameserver: took %s to get intel and RRs", time.Since(start))
 	if rrCache == nil {
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
@@ -160,14 +160,16 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	}
 
 	// set intel
+	connection.Lock()
 	connection.Intel = domainIntel
+	connection.Unlock()
 	connection.Save()
 
 	// do a full check with intel
-	if connection.Verdict == network.UNDECIDED {
+	if connection.GetVerdict() == network.UNDECIDED {
 		rrCache = firewall.DecideOnConnectionAfterIntel(connection, fqdn, rrCache)
 	}
-	if rrCache == nil || connection.Verdict == network.BLOCK || connection.Verdict == network.DROP {
+	if rrCache == nil || connection.GetVerdict() == network.BLOCK || connection.GetVerdict() == network.DROP {
 		nxDomain(w, query)
 		return
 	}
@@ -179,24 +181,27 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 			ipInfo, err := intel.GetIPInfo(v.A.String())
 			if err != nil {
 				ipInfo = &intel.IPInfo{
+					IP:      v.A.String(),
 					Domains: []string{fqdn},
 				}
-				ipInfo.Create(v.A.String())
-			} else {
-				ipInfo.Domains = append(ipInfo.Domains, fqdn)
 				ipInfo.Save()
+			} else {
+				if ipInfo.AddDomain(fqdn) {
+					ipInfo.Save()
+				}
 			}
 		case *dns.AAAA:
 			ipInfo, err := intel.GetIPInfo(v.AAAA.String())
 			if err != nil {
 				ipInfo = &intel.IPInfo{
-					IP:
+					IP:      v.AAAA.String(),
 					Domains: []string{fqdn},
 				}
-				ipInfo.Create(v.AAAA.String())
-			} else {
-				ipInfo.Domains = append(ipInfo.Domains, fqdn)
 				ipInfo.Save()
+			} else {
+				if ipInfo.AddDomain(fqdn) {
+					ipInfo.Save()
+				}
 			}
 		}
 	}

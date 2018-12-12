@@ -13,7 +13,7 @@ func TestIPClassification(t *testing.T) {
 }
 
 func testClassification(t *testing.T, ip net.IP, expectedClassification int8) {
-	c := ClassifyAddress(ip)
+	c := ClassifyIP(ip)
 	if c != expectedClassification {
 		t.Errorf("%s is %s, expected %s", ip, classificationString(c), classificationString(expectedClassification))
 	}

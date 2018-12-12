@@ -90,7 +90,7 @@ func Get(fpType, id string) (*ProfileIndex, error) {
 
 // Save saves the Identifiers to the database
 func (pi *ProfileIndex) Save() error {
-	if pi.Key() == "" {
+	if !pi.KeyIsSet() {
 		if pi.ID != "" {
 			pi.SetKey(makeIndexRecordKey(pi.ID))
 		} else {

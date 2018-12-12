@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	links       map[string]*Link
-	connections map[string]*Connection
-	dataLock    sync.RWMutex
+	links           = make(map[string]*Link)
+	linksLock       sync.RWMutex
+	connections     = make(map[string]*Connection)
+	connectionsLock sync.RWMutex
 
 	dbController *database.Controller
 )
@@ -28,9 +29,6 @@ type StorageInterface struct {
 
 // Get returns a database record.
 func (s *StorageInterface) Get(key string) (record.Record, error) {
-
-	dataLock.RLock()
-	defer dataLock.RUnlock()
 
 	splitted := strings.Split(key, "/")
 	switch splitted[0] {
@@ -45,11 +43,15 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 				}
 			}
 		case 3:
+			connectionsLock.RLock()
+			defer connectionsLock.RUnlock()
 			conn, ok := connections[splitted[2]]
 			if ok {
 				return conn, nil
 			}
 		case 4:
+			linksLock.RLock()
+			defer linksLock.RUnlock()
 			link, ok := links[splitted[3]]
 			if ok {
 				return link, nil
@@ -77,22 +79,23 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 		}
 	}
 
-	dataLock.RLock()
-	defer dataLock.RUnlock()
-
 	// connections
+	connectionsLock.RLock()
 	for _, conn := range connections {
 		if strings.HasPrefix(conn.DatabaseKey(), q.DatabaseKeyPrefix()) {
 			it.Next <- conn
 		}
 	}
+	connectionsLock.RUnlock()
 
 	// links
+	linksLock.RLock()
 	for _, link := range links {
 		if strings.HasPrefix(link.DatabaseKey(), q.DatabaseKeyPrefix()) {
 			it.Next <- link
 		}
 	}
+	linksLock.RUnlock()
 
 	it.Finish(nil)
 }

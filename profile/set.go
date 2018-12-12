@@ -21,8 +21,8 @@ type Set struct {
 	// Stamp
 	// Default
 
-	securityLevel uint8
-	independent   bool
+	combinedSecurityLevel uint8
+	independent           bool
 }
 
 // NewSet returns a new profile set with given the profiles.
@@ -40,6 +40,11 @@ func NewSet(user, stamp *Profile) *Set {
 	return new
 }
 
+// UserProfile returns the user profile.
+func (set *Set) UserProfile() *Profile {
+	return set.profiles[0]
+}
+
 // Update gets the new global and default profile and updates the independence status. It must be called when reusing a profile set for a series of calls.
 func (set *Set) Update(securityLevel uint8) {
 	set.Lock()
@@ -52,15 +57,15 @@ func (set *Set) Update(securityLevel uint8) {
 	set.profiles[3] = fallbackProfile
 
 	// update security level
-	profileSecurityLevel := set.getProfileSecurityLevel()
+	profileSecurityLevel := set.getSecurityLevel()
 	if profileSecurityLevel > securityLevel {
-		set.securityLevel = profileSecurityLevel
+		set.combinedSecurityLevel = profileSecurityLevel
 	} else {
-		set.securityLevel = securityLevel
+		set.combinedSecurityLevel = securityLevel
 	}
 
-	// update independence
 	set.Unlock()
+	// update independence
 	if set.CheckFlag(Independent) {
 		set.Lock()
 		set.independent = true
@@ -70,6 +75,14 @@ func (set *Set) Update(securityLevel uint8) {
 		set.independent = false
 		set.Unlock()
 	}
+}
+
+// SecurityLevel returns the applicable security level for the profile set.
+func (set *Set) SecurityLevel() uint8 {
+	set.Lock()
+	defer set.Unlock()
+
+	return set.combinedSecurityLevel
 }
 
 // GetProfileMode returns the active profile mode.
@@ -97,7 +110,7 @@ func (set *Set) CheckFlag(flag uint8) (active bool) {
 		}
 
 		if profile != nil {
-			active, ok := profile.Flags.Check(flag, set.securityLevel)
+			active, ok := profile.Flags.Check(flag, set.combinedSecurityLevel)
 			if ok {
 				return active
 			}
@@ -153,8 +166,11 @@ func (set *Set) CheckPort(listen bool, protocol uint8, port uint16) (permit, ok 
 	return false, false
 }
 
-// SecurityLevel returns the highest prioritized security level.
-func (set *Set) getProfileSecurityLevel() uint8 {
+// getSecurityLevel returns the highest prioritized security level.
+func (set *Set) getSecurityLevel() uint8 {
+	if set == nil {
+		return 0
+	}
 
 	for i, profile := range set.profiles {
 		if i == 2 {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Safing/portbase/database/record"
 	"github.com/Safing/portmaster/intel"
+	"github.com/Safing/portmaster/network/netutils"
 	"github.com/Safing/portmaster/network/packet"
 	"github.com/Safing/portmaster/process"
 )
@@ -35,17 +36,28 @@ type Connection struct {
 
 // Process returns the process that owns the connection.
 func (conn *Connection) Process() *process.Process {
+	conn.Lock()
+	defer conn.Unlock()
+
 	return conn.process
 }
 
+// GetVerdict returns the current verdict.
+func (conn *Connection) GetVerdict() Verdict {
+	conn.Lock()
+	defer conn.Unlock()
+
+	return conn.Verdict
+}
+
 // Accept accepts the connection and adds the given reason.
-func (conn *Link) Accept(reason string) {
+func (conn *Connection) Accept(reason string) {
 	conn.AddReason(reason)
 	conn.UpdateVerdict(ACCEPT)
 }
 
 // Deny blocks or drops the connection depending on the connection direction and adds the given reason.
-func (conn *Link) Deny(reason string) {
+func (conn *Connection) Deny(reason string) {
 	if conn.Direction {
 		conn.Drop(reason)
 	} else {
@@ -54,13 +66,13 @@ func (conn *Link) Deny(reason string) {
 }
 
 // Block blocks the connection and adds the given reason.
-func (conn *Link) Block(reason string) {
+func (conn *Connection) Block(reason string) {
 	conn.AddReason(reason)
 	conn.UpdateVerdict(BLOCK)
 }
 
 // Drop drops the connection and adds the given reason.
-func (conn *Link) Drop(reason string) {
+func (conn *Connection) Drop(reason string) {
 	conn.AddReason(reason)
 	conn.UpdateVerdict(DROP)
 }
@@ -72,7 +84,7 @@ func (conn *Connection) UpdateVerdict(newVerdict Verdict) {
 
 	if newVerdict > conn.Verdict {
 		conn.Verdict = newVerdict
-		conn.Save()
+		go conn.Save()
 	}
 }
 
@@ -103,13 +115,13 @@ func GetConnectionByFirstPacket(pkt packet.Packet) (*Connection, error) {
 	// Incoming
 	if direction {
 		switch netutils.ClassifyIP(pkt.GetIPHeader().Src) {
-		case HostLocal:
+		case netutils.HostLocal:
 			domain = IncomingHost
-		case LinkLocal, SiteLocal, LocalMulticast:
+		case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
 			domain = IncomingLAN
-		case Global, GlobalMulticast:
+		case netutils.Global, netutils.GlobalMulticast:
 			domain = IncomingInternet
-		case Invalid:
+		case netutils.Invalid:
 			domain = IncomingInvalid
 		}
 
@@ -135,13 +147,13 @@ func GetConnectionByFirstPacket(pkt packet.Packet) (*Connection, error) {
 		// if no domain could be found, it must be a direct connection
 
 		switch netutils.ClassifyIP(pkt.GetIPHeader().Dst) {
-		case HostLocal:
+		case netutils.HostLocal:
 			domain = PeerHost
-		case LinkLocal, SiteLocal, LocalMulticast:
+		case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
 			domain = PeerLAN
-		case Global, GlobalMulticast:
+		case netutils.Global, netutils.GlobalMulticast:
 			domain = PeerInternet
-		case Invalid:
+		case netutils.Invalid:
 			domain = PeerInvalid
 		}
 
@@ -205,8 +217,8 @@ func GetConnectionByDNSRequest(ip net.IP, port uint16, fqdn string) (*Connection
 
 // GetConnection fetches a connection object from the internal storage.
 func GetConnection(pid int, domain string) (conn *Connection, ok bool) {
-	dataLock.RLock()
-	defer dataLock.RUnlock()
+	connectionsLock.RLock()
+	defer connectionsLock.RUnlock()
 	conn, ok = connections[fmt.Sprintf("%d/%s", pid, domain)]
 	return
 }
@@ -217,58 +229,63 @@ func (conn *Connection) makeKey() string {
 
 // Save saves the connection object in the storage and propagates the change.
 func (conn *Connection) Save() error {
+	conn.Lock()
+	defer conn.Unlock()
+
 	if conn.process == nil {
 		return errors.New("cannot save connection without process")
 	}
 
-	if conn.DatabaseKey() == "" {
+	if !conn.KeyIsSet() {
 		conn.SetKey(fmt.Sprintf("network:tree/%d/%s", conn.process.Pid, conn.Domain))
 		conn.CreateMeta()
 	}
 
 	key := conn.makeKey()
-	dataLock.RLock()
+	connectionsLock.RLock()
 	_, ok := connections[key]
-	dataLock.RUnlock()
+	connectionsLock.RUnlock()
 
 	if !ok {
-		dataLock.Lock()
+		connectionsLock.Lock()
 		connections[key] = conn
-		dataLock.Unlock()
+		connectionsLock.Unlock()
 	}
 
-	dbController.PushUpdate(conn)
+	go dbController.PushUpdate(conn)
 	return nil
 }
 
 // Delete deletes a connection from the storage and propagates the change.
 func (conn *Connection) Delete() {
-	dataLock.Lock()
-	defer dataLock.Unlock()
-	delete(connections, conn.makeKey())
 	conn.Lock()
-	defer conn.Lock()
+	defer conn.Unlock()
+
+	connectionsLock.Lock()
+	delete(connections, conn.makeKey())
+	connectionsLock.Unlock()
+
 	conn.Meta().Delete()
-	dbController.PushUpdate(conn)
+	go dbController.PushUpdate(conn)
 	conn.process.RemoveConnection()
 }
 
 // AddLink applies the connection to the link and increases sets counter and timestamps.
 func (conn *Connection) AddLink(link *Link) {
 	link.Lock()
-	defer link.Unlock()
 	link.connection = conn
 	link.Verdict = conn.Verdict
 	link.Inspect = conn.Inspect
+	link.Unlock()
 	link.Save()
 
 	conn.Lock()
-	defer conn.Unlock()
 	conn.LinkCount++
 	conn.LastLinkEstablished = time.Now().Unix()
 	if conn.FirstLinkEstablished == 0 {
 		conn.FirstLinkEstablished = conn.LastLinkEstablished
 	}
+	conn.Unlock()
 	conn.Save()
 }
 
@@ -276,6 +293,7 @@ func (conn *Connection) AddLink(link *Link) {
 func (conn *Connection) RemoveLink() {
 	conn.Lock()
 	defer conn.Unlock()
+
 	if conn.LinkCount > 0 {
 		conn.LinkCount--
 	}
@@ -283,13 +301,16 @@ func (conn *Connection) RemoveLink() {
 
 // String returns a string representation of Connection.
 func (conn *Connection) String() string {
+	conn.Lock()
+	defer conn.Unlock()
+
 	switch conn.Domain {
-	case "I":
+	case IncomingHost, IncomingLAN, IncomingInternet, IncomingInvalid:
 		if conn.process == nil {
 			return "? <- *"
 		}
 		return fmt.Sprintf("%s <- *", conn.process.String())
-	case "D":
+	case PeerHost, PeerLAN, PeerInternet, PeerInvalid:
 		if conn.process == nil {
 			return "? -> *"
 		}

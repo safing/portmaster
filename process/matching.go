@@ -1,52 +1,59 @@
 package process
 
 import (
-	"fmt"
-
 	"github.com/Safing/portbase/database"
+	"github.com/Safing/portbase/database/query"
 	"github.com/Safing/portbase/log"
 	"github.com/Safing/portmaster/profile"
-	"github.com/Safing/portmaster/profile/index"
+)
+
+var (
+	profileDB = database.NewInterface(nil)
 )
 
 // FindProfiles finds and assigns a profile set to the process.
 func (p *Process) FindProfiles() error {
 
-	// Get fingerprints of process
+	p.Lock()
+	defer p.Unlock()
 
-	// Check if user profile already exists, else create new
-	pathIdentifier := profile.GetPathIdentifier(p.Path)
-	indexRecord, err := index.Get(pathIdentifier)
-	if err != nil && err != database.ErrNotFound {
-		log.Errorf("process: could not get profile index for %s: %s", pathIdentifier, err)
+	// only find profiles if not already done.
+	if p.profileSet != nil {
+		return nil
 	}
 
-	var possibleProfiles []*profile.Profile
-	if indexRecord != nil {
-		for _, profileID := range indexRecord.UserProfiles {
-			prof, err := profile.Get(profileID)
-			if err != nil {
-				log.Errorf("process: failed to load profile %s: %s", profileID, err)
-			}
-				possibleProfiles = append(possibleProfiles, prof)
-			}
+	// User Profile
+	it, err := profileDB.Query(query.New(profile.MakeProfileKey(profile.UserNamespace, "")).Where(query.Where("LinkedPath", query.SameAs, p.Path)))
+	if err != nil {
+		return err
+	}
+
+	var userProfile *profile.Profile
+	for r := range it.Next {
+		it.Cancel()
+		userProfile, err = profile.EnsureProfile(r)
+		if err != nil {
+			return err
 		}
+		break
+	}
+	if it.Err() != nil {
+		return it.Err()
 	}
 
-	prof := selectProfile(p, possibleProfiles)
-	if prof == nil {
+	// create new profile if it does not exist.
+	if userProfile == nil {
 		// create new profile
-		prof := profile.New()
-		prof.Name = p.ExecName
-		prof.AddFingerprint(&profile.Fingerprint{
-			Type:  "full_path",
-			Value: p.Path,
-		})
-		// TODO: maybe add sha256_sum?
-		prof.MarkUsed()
-		prof.Save()
+		userProfile = profile.New()
+		userProfile.Name = p.ExecName
+		userProfile.LinkedPath = p.Path
 	}
 
+	if userProfile.MarkUsed() {
+		userProfile.Save(profile.UserNamespace)
+	}
+
+	// Stamp
 	// Find/Re-evaluate Stamp profile
 	// 1. check linked stamp profile
 	// 2. if last check is was more than a week ago, fetch from stamp:
@@ -56,13 +63,9 @@ func (p *Process) FindProfiles() error {
 	// 6. link stamp profile to user profile
 	// FIXME: implement!
 
-	if prof.MarkUsed() {
-		prof.Save()
-	}
-
-	p.UserProfileKey = prof.Key()
-	p.profileSet = profile.NewSet(prof, nil)
-	p.Save()
+	p.UserProfileKey = userProfile.Key()
+	p.profileSet = profile.NewSet(userProfile, nil)
+	go p.Save()
 
 	return nil
 }

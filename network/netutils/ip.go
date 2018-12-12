@@ -15,8 +15,8 @@ const (
 	Invalid
 )
 
-// ClassifyAddress returns the classification for the given IP address.
-func ClassifyAddress(ip net.IP) int8 {
+// ClassifyIP returns the classification for the given IP address.
+func ClassifyIP(ip net.IP) int8 {
 	if ip4 := ip.To4(); ip4 != nil {
 		// IPv4
 		switch {
@@ -73,12 +73,12 @@ func ClassifyAddress(ip net.IP) int8 {
 
 // IPIsLocalhost returns whether the IP refers to the host itself.
 func IPIsLocalhost(ip net.IP) bool {
-	return ClassifyAddress(ip) == HostLocal
+	return ClassifyIP(ip) == HostLocal
 }
 
 // IPIsLAN returns true if the given IP is a site-local or link-local address.
 func IPIsLAN(ip net.IP) bool {
-	switch ClassifyAddress(ip) {
+	switch ClassifyIP(ip) {
 	case SiteLocal:
 		return true
 	case LinkLocal:
@@ -90,15 +90,15 @@ func IPIsLAN(ip net.IP) bool {
 
 // IPIsGlobal returns true if the given IP is a global address.
 func IPIsGlobal(ip net.IP) bool {
-	return ClassifyAddress(ip) == Global
+	return ClassifyIP(ip) == Global
 }
 
 // IPIsLinkLocal returns true if the given IP is a link-local address.
 func IPIsLinkLocal(ip net.IP) bool {
-	return ClassifyAddress(ip) == LinkLocal
+	return ClassifyIP(ip) == LinkLocal
 }
 
 // IPIsSiteLocal returns true if the given IP is a site-local address.
 func IPIsSiteLocal(ip net.IP) bool {
-	return ClassifyAddress(ip) == SiteLocal
+	return ClassifyIP(ip) == SiteLocal
 }

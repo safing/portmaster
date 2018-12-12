@@ -216,9 +216,9 @@ entryLoop:
 		classification = -1
 		switch v := rr.(type) {
 		case *dns.A:
-			classification = netutils.ClassifyAddress(v.A)
+			classification = netutils.ClassifyIP(v.A)
 		case *dns.AAAA:
-			classification = netutils.ClassifyAddress(v.AAAA)
+			classification = netutils.ClassifyIP(v.AAAA)
 		}
 
 		if classification >= 0 {

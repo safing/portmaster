@@ -4,13 +4,14 @@ import (
 	"errors"
 	"net"
 
+	"github.com/Safing/portbase/log"
 	"github.com/Safing/portmaster/network/packet"
 )
 
 // Errors
 var (
-	ErrConnectionNotFound = errors.New("could not find connection")
-	ErrProcessNotFound    = errors.New("could not find process")
+	ErrConnectionNotFound = errors.New("could not find connection in system state tables")
+	ErrProcessNotFound    = errors.New("could not find process in system state tables")
 )
 
 // GetPidByPacket returns the pid of the owner of the packet.
@@ -57,16 +58,21 @@ func GetProcessByPacket(pkt packet.Packet) (process *Process, direction bool, er
 
 	var pid int
 	pid, direction, err = GetPidByPacket(pkt)
-	if pid < 0 {
-		return nil, direction, ErrConnectionNotFound
-	}
 	if err != nil {
 		return nil, direction, err
+	}
+	if pid < 0 {
+		return nil, direction, ErrConnectionNotFound
 	}
 
 	process, err = GetOrFindProcess(pid)
 	if err != nil {
 		return nil, direction, err
+	}
+
+	err = process.FindProfiles()
+	if err != nil {
+		log.Errorf("failed to find profiles for process %s: %s", process.String(), err)
 	}
 
 	return process, direction, nil
@@ -111,6 +117,11 @@ func GetProcessByEndpoints(localIP net.IP, localPort uint16, remoteIP net.IP, re
 	process, err = GetOrFindProcess(pid)
 	if err != nil {
 		return nil, err
+	}
+
+	err = process.FindProfiles()
+	if err != nil {
+		log.Errorf("failed to find profiles for process %s: %s", process.String(), err)
 	}
 
 	return process, nil

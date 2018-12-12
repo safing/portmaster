@@ -7,7 +7,7 @@ var (
 )
 
 func init() {
-	modules.Register("profile", nil, start, stop, "database")
+	modules.Register("profile", nil, start, stop, "global", "database")
 }
 
 func start() error {

@@ -49,11 +49,17 @@ type Process struct {
 
 // ProfileSet returns the assigned profile set.
 func (p *Process) ProfileSet() *profile.Set {
+	p.Lock()
+	defer p.Unlock()
+
 	return p.profileSet
 }
 
 // Strings returns a string represenation of process.
 func (p *Process) String() string {
+	p.Lock()
+	defer p.Unlock()
+
 	if p == nil {
 		return "?"
 	}
@@ -64,6 +70,7 @@ func (p *Process) String() string {
 func (p *Process) AddConnection() {
 	p.Lock()
 	defer p.Unlock()
+
 	p.ConnectionCount++
 	p.LastConnectionEstablished = time.Now().Unix()
 	if p.FirstConnectionEstablished == 0 {
@@ -75,6 +82,7 @@ func (p *Process) AddConnection() {
 func (p *Process) RemoveConnection() {
 	p.Lock()
 	defer p.Unlock()
+
 	if p.ConnectionCount > 0 {
 		p.ConnectionCount--
 	}
@@ -235,9 +243,8 @@ func GetOrFindProcess(pid int) (*Process, error) {
 		// Executable Information
 
 		// FIXME: use os specific path seperator
-		splittedPath := strings.Split("/", new.Path)
-		new.ExecName = strings.ToTitle(splittedPath[len(splittedPath)-1])
-
+		splittedPath := strings.Split(new.Path, "/")
+		new.ExecName = splittedPath[len(splittedPath)-1]
 	}
 
 	// save to storage
