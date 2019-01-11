@@ -263,6 +263,7 @@ func (link *Link) Delete() {
 	link.Meta().Delete()
 	go dbController.PushUpdate(link)
 	link.connection.RemoveLink()
+	go link.connection.Save()
 }
 
 // GetLink fetches a Link from the database from the default namespace for this object

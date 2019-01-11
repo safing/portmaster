@@ -9,7 +9,7 @@ const (
 
 var (
 	UnknownDirectConnection = &Connection{
-		Domain:    "D",
+		Domain:    "PI",
 		Direction: Outbound,
 		Verdict:   DROP,
 		Reason:    ReasonUnknownProcess,
@@ -17,7 +17,7 @@ var (
 	}
 
 	UnknownIncomingConnection = &Connection{
-		Domain:    "I",
+		Domain:    "II",
 		Direction: Inbound,
 		Verdict:   DROP,
 		Reason:    ReasonUnknownProcess,

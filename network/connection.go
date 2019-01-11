@@ -268,6 +268,7 @@ func (conn *Connection) Delete() {
 	conn.Meta().Delete()
 	go dbController.PushUpdate(conn)
 	conn.process.RemoveConnection()
+	go conn.process.Save()
 }
 
 // AddLink applies the connection to the link and increases sets counter and timestamps.

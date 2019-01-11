@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	cleanerTickDuration = 1 * time.Minute
-	deadLinksTimeout    = 5 * time.Minute
-	thresholdDuration   = 1 * time.Minute
+	cleanerTickDuration = 10 * time.Second
+	deadLinksTimeout    = 3 * time.Minute
+	thresholdDuration   = 3 * time.Minute
 )
 
 func cleaner() {
@@ -19,9 +19,9 @@ func cleaner() {
 		time.Sleep(cleanerTickDuration)
 
 		cleanLinks()
-		time.Sleep(10 * time.Second)
+		time.Sleep(2 * time.Second)
 		cleanConnections()
-		time.Sleep(10 * time.Second)
+		time.Sleep(2 * time.Second)
 		cleanProcesses()
 	}
 }
@@ -32,6 +32,9 @@ func cleanLinks() {
 	now := time.Now().Unix()
 	deleteOlderThan := time.Now().Add(-deadLinksTimeout).Unix()
 
+	// log.Tracef("network.clean: now=%d", now)
+	// log.Tracef("network.clean: deleteOlderThan=%d", deleteOlderThan)
+
 	linksLock.RLock()
 	defer linksLock.RUnlock()
 
@@ -39,11 +42,15 @@ func cleanLinks() {
 	for key, link := range links {
 
 		// delete dead links
-		link.Lock()
-		deleteThis := link.Ended > 0 && link.Ended < deleteOlderThan
-		link.Unlock()
-		if deleteThis {
-			go link.Delete()
+		if link.Ended > 0 {
+			link.Lock()
+			deleteThis := link.Ended < deleteOlderThan
+			link.Unlock()
+			if deleteThis {
+				// log.Tracef("network.clean: deleted %s", link.DatabaseKey())
+				go link.Delete()
+			}
+
 			continue
 		}
 
@@ -59,6 +66,7 @@ func cleanLinks() {
 		// mark end time
 		if !found {
 			link.Ended = now
+			// log.Tracef("network.clean: marked %s as ended.", link.DatabaseKey())
 			go link.Save()
 		}
 
@@ -73,6 +81,7 @@ func cleanConnections() {
 	for _, conn := range connections {
 		conn.Lock()
 		if conn.FirstLinkEstablished < threshold && conn.LinkCount == 0 {
+			// log.Tracef("network.clean: deleted %s", conn.DatabaseKey())
 			go conn.Delete()
 		}
 		conn.Unlock()

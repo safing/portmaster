@@ -72,15 +72,13 @@ func main() {
 		}
 
 		go func() {
-			modules.Shutdown()
-			os.Exit(0)
-		}()
-		go func() {
 			time.Sleep(3 * time.Second)
 			fmt.Println("===== TAKING TOO LONG FOR SHUTDOWN - PRINTING STACK TRACES =====")
 			pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
 			os.Exit(1)
 		}()
+		modules.Shutdown()
+		os.Exit(0)
 
 	case <-modules.ShuttingDown():
 	}

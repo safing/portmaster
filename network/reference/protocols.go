@@ -9,6 +9,7 @@ var (
 		6:   "TCP",
 		17:  "UDP",
 		27:  "RDP",
+		58:  "ICMPv6",
 		33:  "DCCP",
 		136: "UDPLite",
 	}
@@ -20,6 +21,7 @@ var (
 		"UDP":     17,
 		"RDP":     27,
 		"DCCP":    33,
+		"ICMPv6":  58,
 		"UDPLite": 136,
 	}
 )
