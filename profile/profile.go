@@ -29,9 +29,9 @@ type Profile struct {
 	Icon string
 
 	// User Profile Only
-	LinkedPath           string `json:",omitempty"`
-	StampProfileID       string `json:",omitempty"`
-	StampProfileAssigned int64  `json:",omitempty"`
+	LinkedPath           string
+	StampProfileID       string
+	StampProfileAssigned int64
 
 	// Fingerprints
 	Fingerprints []*Fingerprint
