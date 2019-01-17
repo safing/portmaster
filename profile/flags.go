@@ -2,6 +2,7 @@ package profile
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/Safing/portmaster/status"
@@ -115,7 +116,7 @@ func (flags Flags) String() string {
 			markedFlags = append(markedFlags, s)
 		}
 	}
-	return strings.Join(markedFlags, ", ")
+	return fmt.Sprintf("[%s]", strings.Join(markedFlags, ", "))
 }
 
 // Add adds a flag to the Flags with the given level.

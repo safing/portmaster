@@ -8,7 +8,6 @@ import (
 
 var (
 	emptyFlags = Flags{}
-	emptyPorts = Ports{}
 )
 
 // Set handles Profile chaining.
@@ -120,8 +119,8 @@ func (set *Set) CheckFlag(flag uint8) (active bool) {
 	return false
 }
 
-// CheckDomain checks if the given domain is governed in any the lists of domains and returns whether it is permitted.
-func (set *Set) CheckDomain(domain string) (permit, ok bool) {
+// CheckEndpoint checks if the given protocol and port are governed in any the lists of ports and returns whether it is permitted.
+func (set *Set) CheckEndpoint(domainOrIP string, protocol uint8, port uint16, inbound bool) (permit bool, reason string, ok bool) {
 	set.Lock()
 	defer set.Unlock()
 
@@ -131,39 +130,19 @@ func (set *Set) CheckDomain(domain string) (permit, ok bool) {
 		}
 
 		if profile != nil {
-			permit, ok = profile.Domains.Check(domain)
-			if ok {
-				return
+			if inbound {
+				if permit, reason, ok = profile.ServiceEndpoints.Check(domainOrIP, protocol, port, inbound, set.combinedSecurityLevel); ok {
+					return
+				}
+			} else {
+				if permit, reason, ok = profile.Endpoints.Check(domainOrIP, protocol, port, inbound, set.combinedSecurityLevel); ok {
+					return
+				}
 			}
 		}
 	}
 
-	return false, false
-}
-
-// CheckPort checks if the given protocol and port are governed in any the lists of ports and returns whether it is permitted.
-func (set *Set) CheckPort(listen bool, protocol uint8, port uint16) (permit, ok bool) {
-	set.Lock()
-	defer set.Unlock()
-
-	signedProtocol := int16(protocol)
-	if listen {
-		signedProtocol = -1 * signedProtocol
-	}
-
-	for i, profile := range set.profiles {
-		if i == 2 && set.independent {
-			continue
-		}
-
-		if profile != nil {
-			if permit, ok = profile.Ports.Check(signedProtocol, port); ok {
-				return
-			}
-		}
-	}
-
-	return false, false
+	return false, "", false
 }
 
 // getSecurityLevel returns the highest prioritized security level.

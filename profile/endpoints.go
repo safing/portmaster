@@ -3,6 +3,9 @@ package profile
 import (
 	"fmt"
 	"strconv"
+	"strings"
+
+	"github.com/Safing/portmaster/intel"
 )
 
 // Endpoints is a list of permitted or denied endpoints.
@@ -10,13 +13,13 @@ type Endpoints []*EndpointPermission
 
 // EndpointPermission holds a decision about an endpoint.
 type EndpointPermission struct {
-	DomainOrIP        string
-	IncludeSubdomains bool
-	Protocol          uint8
-	PortStart         uint16
-	PortEnd           uint16
-	Permit            bool
-	Created           int64
+	DomainOrIP string
+	Wildcard   bool
+	Protocol   uint8
+	StartPort  uint16
+	EndPort    uint16
+	Permit     bool
+	Created    int64
 }
 
 // IsSet returns whether the Endpoints object is "set".
@@ -28,59 +31,105 @@ func (e Endpoints) IsSet() bool {
 }
 
 // Check checks if the given domain is governed in the list of domains and returns whether it is permitted.
-func (e Endpoints) Check(domainOrIP string, protocol uint8, port uint16) (permit, ok bool) {
-	// check for exact domain
-	ed, ok := d[domain]
-	if ok {
-		return ed.Permit, true
-	}
+// If getDomainOfIP (returns reverse and forward dns matching domain name) is supplied, an IP will be resolved to a domain, if necessary.
+func (e Endpoints) Check(domainOrIP string, protocol uint8, port uint16, checkReverseIP bool, securityLevel uint8) (permit bool, reason string, ok bool) {
 
-	for _, entry := range e {
-		if entry.Matches(domainOrIP, protocol, port) {
-			return entry.Permit, true
+	// ip resolving
+	var cachedGetDomainOfIP func() string
+	if checkReverseIP {
+		var ipResolved bool
+		var ipName string
+		// setup caching wrapper
+		cachedGetDomainOfIP = func() string {
+			if !ipResolved {
+				result, err := intel.ResolveIPAndValidate(domainOrIP, securityLevel)
+				if err != nil {
+					// log.Debug()
+					ipName = result
+				}
+				ipResolved = true
+			}
+			return ipName
 		}
 	}
 
-	return false, false
+	isDomain := strings.HasSuffix(domainOrIP, ".")
+
+	for _, entry := range e {
+		if ok, reason := entry.Matches(domainOrIP, protocol, port, isDomain, cachedGetDomainOfIP); ok {
+			return entry.Permit, reason, true
+		}
+	}
+
+	return false, "", false
 }
 
-// Matches checks whether a port object matches the given port.
-func (ep EndpointPermission) Matches(domainOrIP string, protocol uint8, port uint16) bool {
-	if domainOrIP != ep.DomainOrIP {
-		return false
-	}
+func isSubdomainOf(domain, subdomain string) bool {
+	dotPrefixedDomain := "." + domain
+	return strings.HasSuffix(subdomain, dotPrefixedDomain)
+}
 
+// Matches checks whether the given endpoint has a managed permission. If getDomainOfIP (returns reverse and forward dns matching domain name) is supplied, this declares an incoming connection.
+func (ep EndpointPermission) Matches(domainOrIP string, protocol uint8, port uint16, isDomain bool, getDomainOfIP func() string) (match bool, reason string) {
 	if ep.Protocol > 0 && protocol != ep.Protocol {
-		return false
+		return false, ""
 	}
 
-	if ep.PortStart > 0 && (port < ep.PortStart || port > ep.PortEnd) {
-		return false
+	if ep.StartPort > 0 && (port < ep.StartPort || port > ep.EndPort) {
+		return false, ""
 	}
 
-	return true
+	switch {
+	case ep.Wildcard && len(ep.DomainOrIP) == 0:
+		// host wildcard
+		return true, fmt.Sprintf("%s matches %s", domainOrIP, ep)
+	case domainOrIP == ep.DomainOrIP:
+		// host match
+		return true, fmt.Sprintf("%s matches %s", domainOrIP, ep)
+	case isDomain && ep.Wildcard && isSubdomainOf(ep.DomainOrIP, domainOrIP):
+		// subdomain match
+		return true, fmt.Sprintf("%s matches %s", domainOrIP, ep)
+	case !isDomain && getDomainOfIP != nil && getDomainOfIP() == ep.DomainOrIP:
+		// resolved IP match
+		return true, fmt.Sprintf("%s->%s matches %s", domainOrIP, getDomainOfIP(), ep)
+	case !isDomain && getDomainOfIP != nil && ep.Wildcard && isSubdomainOf(ep.DomainOrIP, getDomainOfIP()):
+		// resolved IP subdomain match
+		return true, fmt.Sprintf("%s->%s matches %s", domainOrIP, getDomainOfIP(), ep)
+	default:
+		// no match
+		return false, ""
+	}
+}
+
+func (e Endpoints) String() string {
+	var s []string
+	for _, entry := range e {
+		s = append(s, entry.String())
+	}
+	return fmt.Sprintf("[%s]", strings.Join(s, ", "))
 }
 
 func (ep EndpointPermission) String() string {
 	s := ep.DomainOrIP
 
-	if ep.Protocol > 0 || ep.Start {
-		s += " "
-	}
+	s += " "
 
 	if ep.Protocol > 0 {
 		s += strconv.Itoa(int(ep.Protocol))
-		if ep.Start > 0 {
-			s += "/"
-		}
+	} else {
+		s += "*"
 	}
 
-	if ep.Start > 0 {
-		if p.Start == p.End {
-			s += strconv.Itoa(int(ep.Start))
+	s += "/"
+
+	if ep.StartPort > 0 {
+		if ep.StartPort == ep.EndPort {
+			s += strconv.Itoa(int(ep.StartPort))
 		} else {
-			s += fmt.Sprintf("%d-%d", ep.Start, ep.End)
+			s += fmt.Sprintf("%d-%d", ep.StartPort, ep.EndPort)
 		}
+	} else {
+		s += "*"
 	}
 
 	return s

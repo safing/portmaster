@@ -37,10 +37,10 @@ type Profile struct {
 	Fingerprints []*Fingerprint
 
 	// The mininum security level to apply to connections made with this profile
-	SecurityLevel uint8
-	Flags         Flags
-	Domains       Domains
-	Ports         Ports
+	SecurityLevel    uint8
+	Flags            Flags
+	Endpoints        Endpoints
+	ServiceEndpoints Endpoints
 
 	// If a Profile is declared as a Framework (i.e. an Interpreter and the likes), then the real process must be found
 	// Framework *Framework `json:",omitempty bson:",omitempty"`
@@ -97,7 +97,7 @@ func (profile *Profile) String() string {
 
 // DetailedString returns a more detailed string representation of  theProfile.
 func (profile *Profile) DetailedString() string {
-	return fmt.Sprintf("%s(SL=%s Flags=[%s] Ports=[%s] #Domains=%d)", profile.Name, status.FmtSecurityLevel(profile.SecurityLevel), profile.Flags.String(), profile.Ports.String(), len(profile.Domains))
+	return fmt.Sprintf("%s(SL=%s Flags=%s Endpoints=%s)", profile.Name, status.FmtSecurityLevel(profile.SecurityLevel), profile.Flags.String(), profile.Endpoints.String())
 }
 
 // GetUserProfile loads a profile from the database.

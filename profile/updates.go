@@ -35,12 +35,20 @@ func updateListener(sub *database.Subscription) {
 				continue
 			}
 
-			switch profile.ID {
-			case "global":
+			switch profile.DatabaseKey() {
+			case "profiles/special/global":
 				specialProfileLock.Lock()
 				globalProfile = profile
 				specialProfileLock.Unlock()
-			case "fallback":
+			case "profiles/special/fallback":
+				profile.Lock()
+				if ensureServiceEndpointsDenyAll(profile) {
+					profile.Unlock()
+					profile.Save(SpecialNamespace)
+					continue
+				}
+				profile.Unlock()
+
 				specialProfileLock.Lock()
 				fallbackProfile = profile
 				specialProfileLock.Unlock()

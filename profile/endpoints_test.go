@@ -2,47 +2,60 @@ package profile
 
 import (
 	"testing"
-	"time"
 )
 
-func TestPorts(t *testing.T) {
-	var ports Ports
-	ports = map[int16][]*Port{
-		6: []*Port{
-			&Port{ // SSH
-				Permit:  true,
-				Created: time.Now().Unix(),
-				Start:   22,
-				End:     22,
-			},
+// TODO: RETIRED
+// func testdeMatcher(t *testing.T, value string, expectedResult bool) {
+// 	if domainEndingMatcher.MatchString(value) != expectedResult {
+// 		if expectedResult {
+// 			t.Errorf("domainEndingMatcher should match %s", value)
+// 		} else {
+// 			t.Errorf("domainEndingMatcher should not match %s", value)
+// 		}
+// 	}
+// }
+//
+// func TestdomainEndingMatcher(t *testing.T) {
+// 	testdeMatcher(t, "example.com", true)
+// 	testdeMatcher(t, "com", true)
+// 	testdeMatcher(t, "example.xn--lgbbat1ad8j", true)
+// 	testdeMatcher(t, "xn--lgbbat1ad8j", true)
+// 	testdeMatcher(t, "fe80::beef", false)
+// 	testdeMatcher(t, "fe80::dead:beef", false)
+// 	testdeMatcher(t, "10.2.3.4", false)
+// 	testdeMatcher(t, "4", false)
+// }
+
+func TestEPString(t *testing.T) {
+	var endpoints Endpoints
+	endpoints = []*EndpointPermission{
+		&EndpointPermission{
+			DomainOrIP: "example.com",
+			Wildcard:   false,
+			Protocol:   6,
+			Permit:     true,
 		},
-		-17: []*Port{
-			&Port{ // HTTP
-				Permit:  false,
-				Created: time.Now().Unix(),
-				Start:   80,
-				End:     81,
-			},
+		&EndpointPermission{
+			DomainOrIP: "8.8.8.8",
+			Protocol:   17, // TCP
+			StartPort:  53, // DNS
+			EndPort:    53,
+			Permit:     false,
 		},
-		93: []*Port{
-			&Port{ // HTTP
-				Permit:  true,
-				Created: time.Now().Unix(),
-				Start:   93,
-				End:     93,
-			},
+		&EndpointPermission{
+			DomainOrIP: "google.com",
+			Wildcard:   true,
+			Permit:     false,
 		},
 	}
-	if ports.String() != "TCP:[permit:22], <UDP:[deny:80-81], 93:[permit:93]" &&
-		ports.String() != "93:[permit:93], TCP:[permit:22], <UDP:[deny:80-81]" &&
-		ports.String() != "<UDP:[deny:80-81], 93:[permit:93], TCP:[permit:22]" {
-		t.Errorf("unexpected result: %s", ports.String())
+	if endpoints.String() != "[example.com 6/*, 8.8.8.8 17/53, google.com */*]" {
+		t.Errorf("unexpected result: %s", endpoints.String())
 	}
 
-	var noPorts Ports
-	noPorts = map[int16][]*Port{}
-	if noPorts.String() != "None" {
-		t.Errorf("unexpected result: %s", ports.String())
+	var noEndpoints Endpoints
+	noEndpoints = []*EndpointPermission{}
+	if noEndpoints.String() != "[]" {
+		t.Errorf("unexpected result: %s", noEndpoints.String())
 	}
 
 }

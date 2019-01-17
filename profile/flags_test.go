@@ -31,7 +31,7 @@ func TestProfileFlags(t *testing.T) {
 		RequireGate17: status.SecurityLevelsSecureAndFortress,
 	}
 
-	if testFlags.String() != "Prompt, Internet++-, LAN++-, Localhost, Related+--, RequireGate17-++" {
+	if testFlags.String() != "[Prompt, Internet++-, LAN++-, Localhost, Related+--, RequireGate17-++]" {
 		t.Errorf("unexpected output: %s", testFlags.String())
 	}
 
