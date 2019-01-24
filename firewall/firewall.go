@@ -1,36 +1,28 @@
-// Copyright Safing ICS Technologies GmbH. Use of this source code is governed by the AGPL license that can be found in the LICENSE file.
-
 package firewall
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"sync/atomic"
 	"time"
 
-	"github.com/Safing/safing-core/configuration"
-	"github.com/Safing/safing-core/firewall/inspection"
-	"github.com/Safing/safing-core/firewall/interception"
-	"github.com/Safing/safing-core/log"
-	"github.com/Safing/safing-core/modules"
-	"github.com/Safing/safing-core/network"
-	"github.com/Safing/safing-core/network/packet"
-	"github.com/Safing/safing-core/port17/entry"
-	"github.com/Safing/safing-core/port17/mode"
-	"github.com/Safing/safing-core/portmaster"
-	"github.com/Safing/safing-core/process"
+	"github.com/Safing/portbase/log"
+	"github.com/Safing/portbase/modules"
+	"github.com/Safing/portmaster/firewall/inspection"
+	"github.com/Safing/portmaster/firewall/interception"
+	"github.com/Safing/portmaster/network"
+	"github.com/Safing/portmaster/network/packet"
+	"github.com/Safing/portmaster/process"
 )
 
 var (
-	firewallModule *modules.Module
 	// localNet        net.IPNet
 	localhost       net.IP
 	dnsServer       net.IPNet
 	packetsAccepted *uint64
 	packetsBlocked  *uint64
 	packetsDropped  *uint64
-
-	config = configuration.Get()
 
 	localNet4 *net.IPNet
 	// Yes, this would normally be 127.0.0.0/8
@@ -46,23 +38,30 @@ var (
 )
 
 func init() {
+	modules.Register("firewall", prep, start, stop, "global", "network", "nameserver", "profile")
+}
 
-	var err error
+func prep() (err error) {
+
+	err = registerConfig()
+	if err != nil {
+		return err
+	}
 
 	_, localNet4, err = net.ParseCIDR("127.0.0.0/24")
 	// Yes, this would normally be 127.0.0.0/8
 	// TODO: figure out any side effects
 	if err != nil {
-		log.Criticalf("firewall: failed to parse cidr 127.0.0.0/24: %s", err)
+		return fmt.Errorf("firewall: failed to parse cidr 127.0.0.0/24: %s", err)
 	}
 
 	_, tunnelNet4, err = net.ParseCIDR("127.17.0.0/16")
 	if err != nil {
-		log.Criticalf("firewall: failed to parse cidr 127.17.0.0/16: %s", err)
+		return fmt.Errorf("firewall: failed to parse cidr 127.17.0.0/16: %s", err)
 	}
 	_, tunnelNet6, err = net.ParseCIDR("fd17::/64")
 	if err != nil {
-		log.Criticalf("firewall: failed to parse cidr fd17::/64: %s", err)
+		return fmt.Errorf("firewall: failed to parse cidr fd17::/64: %s", err)
 	}
 
 	var pA uint64
@@ -71,20 +70,22 @@ func init() {
 	packetsBlocked = &pB
 	var pD uint64
 	packetsDropped = &pD
+
+	return nil
 }
 
-func Start() {
-	firewallModule = modules.Register("Firewall", 128)
-	defer firewallModule.StopComplete()
-
-	// start interceptor
-	go interception.Start()
+func start() error {
 	go statLogger()
+	go run()
+	// go run()
+	// go run()
+	// go run()
 
-	// go run()
-	// go run()
-	// go run()
-	run()
+	return interception.Start()
+}
+
+func stop() error {
+	return interception.Stop()
 }
 
 func handlePacket(pkt packet.Packet) {
@@ -111,12 +112,6 @@ func handlePacket(pkt packet.Packet) {
 		return
 	}
 
-	// allow anything that goes to a tunnel entrypoint
-	if pkt.IsOutbound() && (pkt.GetIPHeader().Dst.Equal(tunnelEntry4) || pkt.GetIPHeader().Dst.Equal(tunnelEntry6)) {
-		pkt.PermanentAccept()
-		return
-	}
-
 	// log.Debugf("firewall: pkt %s has ID %s", pkt, pkt.GetConnectionID())
 
 	// use this to time how long it takes process packet
@@ -124,16 +119,16 @@ func handlePacket(pkt packet.Packet) {
 	// defer log.Tracef("firewall: took %s to process packet %s", time.Now().Sub(timed).String(), pkt)
 
 	// check if packet is destined for tunnel
-	switch pkt.IPVersion() {
-	case packet.IPv4:
-		if portmaster.TunnelNet4 != nil && portmaster.TunnelNet4.Contains(pkt.GetIPHeader().Dst) {
-			tunnelHandler(pkt)
-		}
-	case packet.IPv6:
-		if portmaster.TunnelNet6 != nil && portmaster.TunnelNet6.Contains(pkt.GetIPHeader().Dst) {
-			tunnelHandler(pkt)
-		}
-	}
+	// switch pkt.IPVersion() {
+	// case packet.IPv4:
+	// 	if TunnelNet4 != nil && TunnelNet4.Contains(pkt.GetIPHeader().Dst) {
+	// 		tunnelHandler(pkt)
+	// 	}
+	// case packet.IPv6:
+	// 	if TunnelNet6 != nil && TunnelNet6.Contains(pkt.GetIPHeader().Dst) {
+	// 		tunnelHandler(pkt)
+	// 	}
+	// }
 
 	// associate packet to link and handle
 	link, created := network.GetOrCreateLinkByPacket(pkt)
@@ -146,7 +141,7 @@ func handlePacket(pkt packet.Packet) {
 		link.HandlePacket(pkt)
 		return
 	}
-	verdict(pkt, link.Verdict)
+	verdict(pkt, link.GetVerdict())
 
 }
 
@@ -157,57 +152,68 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 	if err != nil {
 		if err != process.ErrConnectionNotFound {
 			log.Warningf("firewall: could not find process of packet (dropping link %s): %s", pkt.String(), err)
+			link.Deny(fmt.Sprintf("could not find process or it does not exist (unsolicited packet): %s", err))
+		} else {
+			log.Warningf("firewall: internal error finding process of packet (dropping link %s): %s", pkt.String(), err)
+			link.Deny(fmt.Sprintf("internal error finding process: %s", err))
 		}
-		link.UpdateVerdict(network.DROP)
-		verdict(pkt, network.DROP)
+
+		if pkt.IsInbound() {
+			network.UnknownIncomingConnection.AddLink(link)
+		} else {
+			network.UnknownDirectConnection.AddLink(link)
+		}
+
+		verdict(pkt, link.GetVerdict())
+		link.StopFirewallHandler()
+
 		return
 	}
+
+	// add new Link to Connection (and save both)
+	connection.AddLink(link)
 
 	// reroute dns requests to nameserver
 	if connection.Process().Pid != os.Getpid() && pkt.IsOutbound() && pkt.GetTCPUDPHeader() != nil && !pkt.GetIPHeader().Dst.Equal(localhost) && pkt.GetTCPUDPHeader().DstPort == 53 {
-		pkt.RerouteToNameserver()
+		link.RerouteToNameserver()
+		verdict(pkt, link.GetVerdict())
+		link.StopFirewallHandler()
 		return
 	}
 
-	// persist connection
-	connection.CreateInProcessNamespace()
-
-	// add new Link to Connection
-	connection.AddLink(link, pkt)
-
 	// make a decision if not made already
-	if connection.Verdict == network.UNDECIDED {
-		portmaster.DecideOnConnection(connection, pkt)
+	if connection.GetVerdict() == network.UNDECIDED {
+		DecideOnConnection(connection, pkt)
 	}
-	if connection.Verdict != network.CANTSAY {
-		link.UpdateVerdict(connection.Verdict)
+	if connection.GetVerdict() == network.ACCEPT {
+		DecideOnLink(connection, link, pkt)
 	} else {
-		portmaster.DecideOnLink(connection, link, pkt)
+		link.UpdateVerdict(connection.GetVerdict())
 	}
 
 	// log decision
 	logInitialVerdict(link)
 
 	// TODO: link this to real status
-	port17Active := mode.Client()
+	// port17Active := mode.Client()
 
 	switch {
-	case port17Active && link.Inspect:
-		// tunnel link, but also inspect (after reroute)
-		link.Tunneled = true
-		link.SetFirewallHandler(inspectThenVerdict)
-		verdict(pkt, link.Verdict)
-	case port17Active:
-		// tunnel link, don't inspect
-		link.Tunneled = true
-		link.StopFirewallHandler()
-		permanentVerdict(pkt, network.ACCEPT)
+	// case port17Active && link.Inspect:
+	// 	// tunnel link, but also inspect (after reroute)
+	// 	link.Tunneled = true
+	// 	link.SetFirewallHandler(inspectThenVerdict)
+	// 	verdict(pkt, link.GetVerdict())
+	// case port17Active:
+	// 	// tunnel link, don't inspect
+	// 	link.Tunneled = true
+	// 	link.StopFirewallHandler()
+	// 	permanentVerdict(pkt, network.ACCEPT)
 	case link.Inspect:
 		link.SetFirewallHandler(inspectThenVerdict)
 		inspectThenVerdict(pkt, link)
 	default:
 		link.StopFirewallHandler()
-		verdict(pkt, link.Verdict)
+		verdict(pkt, link.GetVerdict())
 	}
 
 }
@@ -216,10 +222,11 @@ func inspectThenVerdict(pkt packet.Packet, link *network.Link) {
 	pktVerdict, continueInspection := inspection.RunInspectors(pkt, link)
 	if continueInspection {
 		// do not allow to circumvent link decision: e.g. to ACCEPT packets from a DROP-ed link
-		if pktVerdict > link.Verdict {
+		linkVerdict := link.GetVerdict()
+		if pktVerdict > linkVerdict {
 			verdict(pkt, pktVerdict)
 		} else {
-			verdict(pkt, link.Verdict)
+			verdict(pkt, linkVerdict)
 		}
 		return
 	}
@@ -227,13 +234,11 @@ func inspectThenVerdict(pkt packet.Packet, link *network.Link) {
 	// we are done with inspecting
 	link.StopFirewallHandler()
 
-	config.Changed()
-	config.RLock()
-	link.VerdictPermanent = config.PermanentVerdicts
-	config.RUnlock()
-
+	link.Lock()
+	defer link.Unlock()
+	link.VerdictPermanent = permanentVerdicts()
 	if link.VerdictPermanent {
-		link.Save()
+		go link.Save()
 		permanentVerdict(pkt, link.Verdict)
 	} else {
 		verdict(pkt, link.Verdict)
@@ -254,6 +259,12 @@ func permanentVerdict(pkt packet.Packet, action network.Verdict) {
 		atomic.AddUint64(packetsDropped, 1)
 		pkt.PermanentDrop()
 		return
+	case network.RerouteToNameserver:
+		pkt.RerouteToNameserver()
+		return
+	case network.RerouteToTunnel:
+		pkt.RerouteToTunnel()
+		return
 	}
 	pkt.Drop()
 }
@@ -272,36 +283,46 @@ func verdict(pkt packet.Packet, action network.Verdict) {
 		atomic.AddUint64(packetsDropped, 1)
 		pkt.Drop()
 		return
+	case network.RerouteToNameserver:
+		pkt.RerouteToNameserver()
+		return
+	case network.RerouteToTunnel:
+		pkt.RerouteToTunnel()
+		return
 	}
 	pkt.Drop()
 }
 
-func tunnelHandler(pkt packet.Packet) {
-	tunnelInfo := portmaster.GetTunnelInfo(pkt.GetIPHeader().Dst)
-	if tunnelInfo == nil {
-		pkt.Block()
-		return
-	}
-
-	entry.CreateTunnel(pkt, tunnelInfo.Domain, tunnelInfo.RRCache.ExportAllARecords())
-	log.Tracef("firewall: rerouting %s to tunnel entry point", pkt)
-	pkt.RerouteToTunnel()
-	return
-}
+// func tunnelHandler(pkt packet.Packet) {
+// 	tunnelInfo := GetTunnelInfo(pkt.GetIPHeader().Dst)
+// 	if tunnelInfo == nil {
+// 		pkt.Block()
+// 		return
+// 	}
+//
+// 	entry.CreateTunnel(pkt, tunnelInfo.Domain, tunnelInfo.RRCache.ExportAllARecords())
+// 	log.Tracef("firewall: rerouting %s to tunnel entry point", pkt)
+// 	pkt.RerouteToTunnel()
+// 	return
+// }
 
 func logInitialVerdict(link *network.Link) {
-	// switch link.Verdict {
+	// switch link.GetVerdict() {
 	// case network.ACCEPT:
 	// 	log.Infof("firewall: accepting new link: %s", link.String())
 	// case network.BLOCK:
 	// 	log.Infof("firewall: blocking new link: %s", link.String())
 	// case network.DROP:
 	// 	log.Infof("firewall: dropping new link: %s", link.String())
+	// case network.RerouteToNameserver:
+	// 	log.Infof("firewall: rerouting new link to nameserver: %s", link.String())
+	// case network.RerouteToTunnel:
+	// 	log.Infof("firewall: rerouting new link to tunnel: %s", link.String())
 	// }
 }
 
 func logChangedVerdict(link *network.Link) {
-	// switch link.Verdict {
+	// switch link.GetVerdict() {
 	// case network.ACCEPT:
 	// 	log.Infof("firewall: change! - now accepting link: %s", link.String())
 	// case network.BLOCK:
@@ -312,25 +333,26 @@ func logChangedVerdict(link *network.Link) {
 }
 
 func run() {
-
-packetProcessingLoop:
 	for {
 		select {
-		case <-firewallModule.Stop:
-			break packetProcessingLoop
+		case <-modules.ShuttingDown():
+			return
 		case pkt := <-interception.Packets:
 			handlePacket(pkt)
 		}
 	}
-
 }
 
 func statLogger() {
 	for {
-		time.Sleep(10 * time.Second)
-		log.Tracef("firewall: packets accepted %d, blocked %d, dropped %d", atomic.LoadUint64(packetsAccepted), atomic.LoadUint64(packetsBlocked), atomic.LoadUint64(packetsDropped))
-		atomic.StoreUint64(packetsAccepted, 0)
-		atomic.StoreUint64(packetsBlocked, 0)
-		atomic.StoreUint64(packetsDropped, 0)
+		select {
+		case <-modules.ShuttingDown():
+			return
+		case <-time.After(10 * time.Second):
+			log.Tracef("firewall: packets accepted %d, blocked %d, dropped %d", atomic.LoadUint64(packetsAccepted), atomic.LoadUint64(packetsBlocked), atomic.LoadUint64(packetsDropped))
+			atomic.StoreUint64(packetsAccepted, 0)
+			atomic.StoreUint64(packetsBlocked, 0)
+			atomic.StoreUint64(packetsDropped, 0)
+		}
 	}
 }

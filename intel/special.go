@@ -5,7 +5,7 @@ package intel
 import "strings"
 
 var (
-	localReverseScopes = &[]string{
+	localReverseScopes = []string{
 		".10.in-addr.arpa.",
 		".16.172.in-addr.arpa.",
 		".17.172.in-addr.arpa.",
@@ -31,7 +31,8 @@ var (
 		".b.e.f.ip6.arpa.",
 	}
 
-	specialScopes = &[]string{
+	// RFC6761, RFC7686
+	specialScopes = []string{
 		".example.",
 		".example.com.",
 		".example.net.",
@@ -42,8 +43,8 @@ var (
 	}
 )
 
-func domainInScopes(fqdn string, list *[]string) bool {
-	for _, scope := range *list {
+func domainInScopes(fqdn string, list []string) bool {
+	for _, scope := range list {
 		if strings.HasSuffix(fqdn, scope) {
 			return true
 		}

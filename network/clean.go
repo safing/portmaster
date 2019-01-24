@@ -5,34 +5,52 @@ package network
 import (
 	"time"
 
-	"github.com/Safing/safing-core/process"
+	"github.com/Safing/portmaster/process"
 )
 
-func init() {
-	go cleaner()
-}
+var (
+	cleanerTickDuration = 10 * time.Second
+	deadLinksTimeout    = 3 * time.Minute
+	thresholdDuration   = 3 * time.Minute
+)
 
 func cleaner() {
-	time.Sleep(15 * time.Second)
 	for {
-		markDeadLinks()
-		purgeDeadFor(5 * time.Minute)
-		time.Sleep(15 * time.Second)
+		time.Sleep(cleanerTickDuration)
+
+		cleanLinks()
+		time.Sleep(2 * time.Second)
+		cleanConnections()
+		time.Sleep(2 * time.Second)
+		cleanProcesses()
 	}
 }
 
-func markDeadLinks() {
+func cleanLinks() {
 	activeIDs := process.GetActiveConnectionIDs()
 
-	allLinksLock.RLock()
-	defer allLinksLock.RUnlock()
-
 	now := time.Now().Unix()
-	var found bool
-	for key, link := range allLinks {
+	deleteOlderThan := time.Now().Add(-deadLinksTimeout).Unix()
 
-		// skip dead links
+	// log.Tracef("network.clean: now=%d", now)
+	// log.Tracef("network.clean: deleteOlderThan=%d", deleteOlderThan)
+
+	linksLock.RLock()
+	defer linksLock.RUnlock()
+
+	var found bool
+	for key, link := range links {
+
+		// delete dead links
 		if link.Ended > 0 {
+			link.Lock()
+			deleteThis := link.Ended < deleteOlderThan
+			link.Unlock()
+			if deleteThis {
+				// log.Tracef("network.clean: deleted %s", link.DatabaseKey())
+				go link.Delete()
+			}
+
 			continue
 		}
 
@@ -48,56 +66,28 @@ func markDeadLinks() {
 		// mark end time
 		if !found {
 			link.Ended = now
-			link.Save()
+			// log.Tracef("network.clean: marked %s as ended.", link.DatabaseKey())
+			go link.Save()
 		}
 
 	}
 }
 
-func purgeDeadFor(age time.Duration) {
-	connections := make(map[*Connection]bool)
-	processes := make(map[*process.Process]bool)
+func cleanConnections() {
+	connectionsLock.RLock()
+	defer connectionsLock.RUnlock()
 
-	allLinksLock.Lock()
-	defer allLinksLock.Unlock()
-
-	// delete old dead links
-	// make a list of connections without links
-	ageAgo := time.Now().Add(-1 * age).Unix()
-	for key, link := range allLinks {
-		if link.Ended != 0 && link.Ended < ageAgo {
-			link.Delete()
-			delete(allLinks, key)
-			_, ok := connections[link.Connection()]
-			if !ok {
-				connections[link.Connection()] = false
-			}
-		} else {
-			connections[link.Connection()] = true
+	threshold := time.Now().Add(-thresholdDuration).Unix()
+	for _, conn := range connections {
+		conn.Lock()
+		if conn.FirstLinkEstablished < threshold && conn.LinkCount == 0 {
+			// log.Tracef("network.clean: deleted %s", conn.DatabaseKey())
+			go conn.Delete()
 		}
+		conn.Unlock()
 	}
+}
 
-	// delete connections without links
-	// make a list of processes without connections
-	for conn, active := range connections {
-		if conn != nil {
-			if !active {
-				conn.Delete()
-				_, ok := processes[conn.Process()]
-				if !ok {
-					processes[conn.Process()] = false
-				}
-			} else {
-				processes[conn.Process()] = true
-			}
-		}
-	}
-
-	// delete processes without connections
-	for proc, active := range processes {
-		if proc != nil && !active {
-			proc.Delete()
-		}
-	}
-
+func cleanProcesses() {
+	process.CleanProcessStorage(thresholdDuration)
 }

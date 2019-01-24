@@ -1,5 +1,3 @@
-// Copyright Safing ICS Technologies GmbH. Use of this source code is governed by the AGPL license that can be found in the LICENSE file.
-
 package tls
 
 import (
@@ -12,14 +10,13 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/tcpassembly"
 
-	"github.com/Safing/safing-core/configuration"
-	"github.com/Safing/safing-core/crypto/verify"
-	"github.com/Safing/safing-core/firewall/inspection"
-	"github.com/Safing/safing-core/firewall/inspection/tls/tlslib"
-	"github.com/Safing/safing-core/log"
-	"github.com/Safing/safing-core/network"
-	"github.com/Safing/safing-core/network/netutils"
-	"github.com/Safing/safing-core/network/packet"
+	"github.com/Safing/portbase/log"
+	"github.com/Safing/portmaster/firewall/inspection"
+	"github.com/Safing/portmaster/firewall/inspection/tls/tlslib"
+	"github.com/Safing/portmaster/firewall/inspection/tls/verify"
+	"github.com/Safing/portmaster/network"
+	"github.com/Safing/portmaster/network/netutils"
+	"github.com/Safing/portmaster/network/packet"
 )
 
 // TODO:
@@ -31,8 +28,6 @@ var (
 	tlsInspectorIndex int
 	assemblerManager  *netutils.SimpleStreamAssemblerManager
 	assembler         *tcpassembly.Assembler
-
-	config = configuration.Get()
 )
 
 const (

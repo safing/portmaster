@@ -3,147 +3,187 @@
 package network
 
 import (
+	"errors"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
-	"github.com/Safing/safing-core/database"
-	"github.com/Safing/safing-core/intel"
-	"github.com/Safing/safing-core/network/packet"
-	"github.com/Safing/safing-core/process"
-
-	datastore "github.com/ipfs/go-datastore"
+	"github.com/Safing/portbase/database/record"
+	"github.com/Safing/portmaster/intel"
+	"github.com/Safing/portmaster/network/netutils"
+	"github.com/Safing/portmaster/network/packet"
+	"github.com/Safing/portmaster/process"
 )
 
 // Connection describes a connection between a process and a domain
 type Connection struct {
-	database.Base
-	Domain               string
-	Direction            bool
-	Intel                *intel.Intel
-	process              *process.Process
-	Verdict              Verdict
-	Reason               string
-	Inspect              bool
+	record.Base
+	sync.Mutex
+
+	Domain    string
+	Direction bool
+	Intel     *intel.Intel
+	process   *process.Process
+	Verdict   Verdict
+	Reason    string
+	Inspect   bool
+
 	FirstLinkEstablished int64
+	LastLinkEstablished  int64
+	LinkCount            uint
 }
 
-var connectionModel *Connection // only use this as parameter for database.EnsureModel-like functions
+// Process returns the process that owns the connection.
+func (conn *Connection) Process() *process.Process {
+	conn.Lock()
+	defer conn.Unlock()
 
-func init() {
-	database.RegisterModel(connectionModel, func() database.Model { return new(Connection) })
+	return conn.process
 }
 
-func (m *Connection) Process() *process.Process {
-	return m.process
+// GetVerdict returns the current verdict.
+func (conn *Connection) GetVerdict() Verdict {
+	conn.Lock()
+	defer conn.Unlock()
+
+	return conn.Verdict
 }
 
-// Create creates a new database entry in the database in the default namespace for this object
-func (m *Connection) Create(name string) error {
-	return m.CreateObject(&database.OrphanedConnection, name, m)
+// Accept accepts the connection and adds the given reason.
+func (conn *Connection) Accept(reason string) {
+	conn.AddReason(reason)
+	conn.UpdateVerdict(ACCEPT)
 }
 
-// CreateInProcessNamespace creates a new database entry in the namespace of the connection's process
-func (m *Connection) CreateInProcessNamespace() error {
-	if m.process != nil {
-		return m.CreateObject(m.process.GetKey(), m.Domain, m)
+// Deny blocks or drops the connection depending on the connection direction and adds the given reason.
+func (conn *Connection) Deny(reason string) {
+	if conn.Direction {
+		conn.Drop(reason)
+	} else {
+		conn.Block(reason)
 	}
-	return m.CreateObject(&database.OrphanedConnection, m.Domain, m)
 }
 
-// Save saves the object to the database (It must have been either already created or loaded from the database)
-func (m *Connection) Save() error {
-	return m.SaveObject(m)
+// Block blocks the connection and adds the given reason.
+func (conn *Connection) Block(reason string) {
+	conn.AddReason(reason)
+	conn.UpdateVerdict(BLOCK)
 }
 
-func (m *Connection) CantSay() {
-	if m.Verdict != CANTSAY {
-		m.Verdict = CANTSAY
-		m.SaveObject(m)
+// Drop drops the connection and adds the given reason.
+func (conn *Connection) Drop(reason string) {
+	conn.AddReason(reason)
+	conn.UpdateVerdict(DROP)
+}
+
+// UpdateVerdict sets a new verdict for this link, making sure it does not interfere with previous verdicts
+func (conn *Connection) UpdateVerdict(newVerdict Verdict) {
+	conn.Lock()
+	defer conn.Unlock()
+
+	if newVerdict > conn.Verdict {
+		conn.Verdict = newVerdict
+		go conn.Save()
 	}
-	return
-}
-
-func (m *Connection) Drop() {
-	if m.Verdict != DROP {
-		m.Verdict = DROP
-		m.SaveObject(m)
-	}
-	return
-}
-
-func (m *Connection) Block() {
-	if m.Verdict != BLOCK {
-		m.Verdict = BLOCK
-		m.SaveObject(m)
-	}
-	return
-}
-
-func (m *Connection) Accept() {
-	if m.Verdict != ACCEPT {
-		m.Verdict = ACCEPT
-		m.SaveObject(m)
-	}
-	return
 }
 
 // AddReason adds a human readable string as to why a certain verdict was set in regard to this connection
-func (m *Connection) AddReason(newReason string) {
-	if m.Reason != "" {
-		m.Reason += " | "
+func (conn *Connection) AddReason(reason string) {
+	if reason == "" {
+		return
 	}
-	m.Reason += newReason
+
+	conn.Lock()
+	defer conn.Unlock()
+
+	if conn.Reason != "" {
+		conn.Reason += " | "
+	}
+	conn.Reason += reason
 }
 
+// GetConnectionByFirstPacket returns the matching connection from the internal storage.
 func GetConnectionByFirstPacket(pkt packet.Packet) (*Connection, error) {
 	// get Process
 	proc, direction, err := process.GetProcessByPacket(pkt)
 	if err != nil {
 		return nil, err
 	}
+	var domain string
 
-	// if INBOUND
+	// Incoming
 	if direction {
-		connection, err := GetConnectionFromProcessNamespace(proc, "I")
-		if err != nil {
+		switch netutils.ClassifyIP(pkt.GetIPHeader().Src) {
+		case netutils.HostLocal:
+			domain = IncomingHost
+		case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
+			domain = IncomingLAN
+		case netutils.Global, netutils.GlobalMulticast:
+			domain = IncomingInternet
+		case netutils.Invalid:
+			domain = IncomingInvalid
+		}
+
+		connection, ok := GetConnection(proc.Pid, domain)
+		if !ok {
 			connection = &Connection{
-				Domain:               "I",
-				Direction:            true,
+				Domain:               domain,
+				Direction:            Inbound,
 				process:              proc,
 				Inspect:              true,
 				FirstLinkEstablished: time.Now().Unix(),
 			}
 		}
+		connection.process.AddConnection()
 		return connection, nil
 	}
 
 	// get domain
 	ipinfo, err := intel.GetIPInfo(pkt.FmtRemoteIP())
+
+	// PeerToPeer
 	if err != nil {
 		// if no domain could be found, it must be a direct connection
-		connection, err := GetConnectionFromProcessNamespace(proc, "D")
-		if err != nil {
+
+		switch netutils.ClassifyIP(pkt.GetIPHeader().Dst) {
+		case netutils.HostLocal:
+			domain = PeerHost
+		case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
+			domain = PeerLAN
+		case netutils.Global, netutils.GlobalMulticast:
+			domain = PeerInternet
+		case netutils.Invalid:
+			domain = PeerInvalid
+		}
+
+		connection, ok := GetConnection(proc.Pid, domain)
+		if !ok {
 			connection = &Connection{
-				Domain:               "D",
+				Domain:               domain,
+				Direction:            Outbound,
 				process:              proc,
 				Inspect:              true,
 				FirstLinkEstablished: time.Now().Unix(),
 			}
 		}
+		connection.process.AddConnection()
 		return connection, nil
 	}
 
+	// To Domain
 	// FIXME: how to handle multiple possible domains?
-	connection, err := GetConnectionFromProcessNamespace(proc, ipinfo.Domains[0])
-	if err != nil {
+	connection, ok := GetConnection(proc.Pid, ipinfo.Domains[0])
+	if !ok {
 		connection = &Connection{
 			Domain:               ipinfo.Domains[0],
+			Direction:            Outbound,
 			process:              proc,
 			Inspect:              true,
 			FirstLinkEstablished: time.Now().Unix(),
 		}
 	}
+	connection.process.AddConnection()
 	return connection, nil
 }
 
@@ -154,6 +194,7 @@ var (
 	dnsPort    uint16 = 53
 )
 
+// GetConnectionByDNSRequest returns the matching connection from the internal storage.
 func GetConnectionByDNSRequest(ip net.IP, port uint16, fqdn string) (*Connection, error) {
 	// get Process
 	proc, err := process.GetProcessByEndpoints(ip, port, dnsAddress, dnsPort, packet.UDP)
@@ -161,70 +202,124 @@ func GetConnectionByDNSRequest(ip net.IP, port uint16, fqdn string) (*Connection
 		return nil, err
 	}
 
-	connection, err := GetConnectionFromProcessNamespace(proc, fqdn)
-	if err != nil {
+	connection, ok := GetConnection(proc.Pid, fqdn)
+	if !ok {
 		connection = &Connection{
 			Domain:  fqdn,
 			process: proc,
 			Inspect: true,
 		}
-		connection.CreateInProcessNamespace()
+		connection.process.AddConnection()
+		connection.Save()
 	}
 	return connection, nil
 }
 
-// GetConnection fetches a Connection from the database from the default namespace for this object
-func GetConnection(name string) (*Connection, error) {
-	return GetConnectionFromNamespace(&database.OrphanedConnection, name)
+// GetConnection fetches a connection object from the internal storage.
+func GetConnection(pid int, domain string) (conn *Connection, ok bool) {
+	connectionsLock.RLock()
+	defer connectionsLock.RUnlock()
+	conn, ok = connections[fmt.Sprintf("%d/%s", pid, domain)]
+	return
 }
 
-// GetConnectionFromProcessNamespace fetches a Connection from the namespace of its process
-func GetConnectionFromProcessNamespace(process *process.Process, domain string) (*Connection, error) {
-	return GetConnectionFromNamespace(process.GetKey(), domain)
+func (conn *Connection) makeKey() string {
+	return fmt.Sprintf("%d/%s", conn.process.Pid, conn.Domain)
 }
 
-// GetConnectionFromNamespace fetches a Connection form the database, but from a custom namespace
-func GetConnectionFromNamespace(namespace *datastore.Key, name string) (*Connection, error) {
-	object, err := database.GetAndEnsureModel(namespace, name, connectionModel)
-	if err != nil {
-		return nil, err
+// Save saves the connection object in the storage and propagates the change.
+func (conn *Connection) Save() error {
+	conn.Lock()
+	defer conn.Unlock()
+
+	if conn.process == nil {
+		return errors.New("cannot save connection without process")
 	}
-	model, ok := object.(*Connection)
+
+	if !conn.KeyIsSet() {
+		conn.SetKey(fmt.Sprintf("network:tree/%d/%s", conn.process.Pid, conn.Domain))
+		conn.CreateMeta()
+	}
+
+	key := conn.makeKey()
+	connectionsLock.RLock()
+	_, ok := connections[key]
+	connectionsLock.RUnlock()
+
 	if !ok {
-		return nil, database.NewMismatchError(object, connectionModel)
+		connectionsLock.Lock()
+		connections[key] = conn
+		connectionsLock.Unlock()
 	}
-	return model, nil
+
+	go dbController.PushUpdate(conn)
+	return nil
 }
 
-func (m *Connection) AddLink(link *Link, pkt packet.Packet) {
-	link.connection = m
-	link.Verdict = m.Verdict
-	link.Inspect = m.Inspect
-	if m.FirstLinkEstablished == 0 {
-		m.FirstLinkEstablished = time.Now().Unix()
-		m.Save()
-	}
-	link.CreateInConnectionNamespace(pkt.GetConnectionID())
+// Delete deletes a connection from the storage and propagates the change.
+func (conn *Connection) Delete() {
+	conn.Lock()
+	defer conn.Unlock()
+
+	connectionsLock.Lock()
+	delete(connections, conn.makeKey())
+	connectionsLock.Unlock()
+
+	conn.Meta().Delete()
+	go dbController.PushUpdate(conn)
+	conn.process.RemoveConnection()
+	go conn.process.Save()
 }
 
-// FORMATTING
+// AddLink applies the connection to the link and increases sets counter and timestamps.
+func (conn *Connection) AddLink(link *Link) {
+	link.Lock()
+	link.connection = conn
+	link.Verdict = conn.Verdict
+	link.Inspect = conn.Inspect
+	link.Unlock()
+	link.Save()
 
-func (m *Connection) String() string {
-	switch m.Domain {
-	case "I":
-		if m.process == nil {
+	conn.Lock()
+	conn.LinkCount++
+	conn.LastLinkEstablished = time.Now().Unix()
+	if conn.FirstLinkEstablished == 0 {
+		conn.FirstLinkEstablished = conn.LastLinkEstablished
+	}
+	conn.Unlock()
+	conn.Save()
+}
+
+// RemoveLink lowers the link counter by one.
+func (conn *Connection) RemoveLink() {
+	conn.Lock()
+	defer conn.Unlock()
+
+	if conn.LinkCount > 0 {
+		conn.LinkCount--
+	}
+}
+
+// String returns a string representation of Connection.
+func (conn *Connection) String() string {
+	conn.Lock()
+	defer conn.Unlock()
+
+	switch conn.Domain {
+	case IncomingHost, IncomingLAN, IncomingInternet, IncomingInvalid:
+		if conn.process == nil {
 			return "? <- *"
 		}
-		return fmt.Sprintf("%s <- *", m.process.String())
-	case "D":
-		if m.process == nil {
+		return fmt.Sprintf("%s <- *", conn.process.String())
+	case PeerHost, PeerLAN, PeerInternet, PeerInvalid:
+		if conn.process == nil {
 			return "? -> *"
 		}
-		return fmt.Sprintf("%s -> *", m.process.String())
+		return fmt.Sprintf("%s -> *", conn.process.String())
 	default:
-		if m.process == nil {
-			return fmt.Sprintf("? -> %s", m.Domain)
+		if conn.process == nil {
+			return fmt.Sprintf("? -> %s", conn.Domain)
 		}
-		return fmt.Sprintf("%s -> %s", m.process.String(), m.Domain)
+		return fmt.Sprintf("%s -> %s", conn.process.String(), conn.Domain)
 	}
 }

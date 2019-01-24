@@ -6,14 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"github.com/Safing/safing-core/log"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/miekg/dns"
+
+	"github.com/Safing/portbase/log"
 )
 
+// DNS Classes
 const (
 	DNSClassMulticast = dns.ClassINET | 1<<15
 )
@@ -31,10 +33,6 @@ var (
 type savedQuestion struct {
 	question dns.Question
 	expires  int64
-}
-
-func init() {
-	go listenToMDNS()
 }
 
 func indexOfRR(entry *dns.RR_Header, list *[]dns.RR) int {
@@ -89,7 +87,7 @@ func listenToMDNS() {
 
 			var question *dns.Question
 			var saveFullRequest bool
-			scavengedRecords := make(map[string]*dns.RR)
+			scavengedRecords := make(map[string]dns.RR)
 			var rrCache *RRCache
 
 			// save every received response
@@ -114,7 +112,7 @@ func listenToMDNS() {
 				continue
 			}
 
-			// continue if no question
+			// get question, some servers do not reply with question
 			if len(message.Question) == 0 {
 				questionsLock.Lock()
 				savedQ, ok := questions[message.MsgHdr.Id]
@@ -138,8 +136,11 @@ func listenToMDNS() {
 			// get entry from database
 			if saveFullRequest {
 				rrCache, err = GetRRCache(question.Name, dns.Type(question.Qtype))
-				if err != nil || rrCache.Modified < time.Now().Add(-2*time.Second).Unix() || rrCache.Expires < time.Now().Unix() {
-					rrCache = &RRCache{}
+				if err != nil || rrCache.updated < time.Now().Add(-2*time.Second).Unix() || rrCache.TTL < time.Now().Unix() {
+					rrCache = &RRCache{
+						Domain:   question.Name,
+						Question: dns.Type(question.Qtype),
+					}
 				}
 			}
 
@@ -155,12 +156,12 @@ func listenToMDNS() {
 					}
 					switch entry.(type) {
 					case *dns.A:
-						scavengedRecords[fmt.Sprintf("%sA", entry.Header().Name)] = &entry
+						scavengedRecords[fmt.Sprintf("%sA", entry.Header().Name)] = entry
 					case *dns.AAAA:
-						scavengedRecords[fmt.Sprintf("%sAAAA", entry.Header().Name)] = &entry
+						scavengedRecords[fmt.Sprintf("%sAAAA", entry.Header().Name)] = entry
 					case *dns.PTR:
 						if !strings.HasPrefix(entry.Header().Name, "_") {
-							scavengedRecords[fmt.Sprintf("%sPTR", entry.Header().Name)] = &entry
+							scavengedRecords[fmt.Sprintf("%sPTR", entry.Header().Name)] = entry
 						}
 					}
 				}
@@ -177,17 +178,16 @@ func listenToMDNS() {
 					}
 					switch entry.(type) {
 					case *dns.A:
-						scavengedRecords[fmt.Sprintf("%sA", entry.Header().Name)] = &entry
+						scavengedRecords[fmt.Sprintf("%s_A", entry.Header().Name)] = entry
 					case *dns.AAAA:
-						scavengedRecords[fmt.Sprintf("%sAAAA", entry.Header().Name)] = &entry
+						scavengedRecords[fmt.Sprintf("%s_AAAA", entry.Header().Name)] = entry
 					case *dns.PTR:
 						if !strings.HasPrefix(entry.Header().Name, "_") {
-							scavengedRecords[fmt.Sprintf("%sPTR", entry.Header().Name)] = &entry
+							scavengedRecords[fmt.Sprintf("%s_PTR", entry.Header().Name)] = entry
 						}
 					}
 				}
 			}
-			// TODO: scan Extra for A and AAAA records and save them seperately
 			for _, entry := range message.Extra {
 				if strings.HasSuffix(entry.Header().Name, ".local.") || domainInScopes(entry.Header().Name, localReverseScopes) {
 					if saveFullRequest {
@@ -200,34 +200,35 @@ func listenToMDNS() {
 					}
 					switch entry.(type) {
 					case *dns.A:
-						scavengedRecords[fmt.Sprintf("%sA", entry.Header().Name)] = &entry
+						scavengedRecords[fmt.Sprintf("%sA", entry.Header().Name)] = entry
 					case *dns.AAAA:
-						scavengedRecords[fmt.Sprintf("%sAAAA", entry.Header().Name)] = &entry
+						scavengedRecords[fmt.Sprintf("%sAAAA", entry.Header().Name)] = entry
 					case *dns.PTR:
 						if !strings.HasPrefix(entry.Header().Name, "_") {
-							scavengedRecords[fmt.Sprintf("%sPTR", entry.Header().Name)] = &entry
+							scavengedRecords[fmt.Sprintf("%sPTR", entry.Header().Name)] = entry
 						}
 					}
 				}
 			}
 
+			var questionID string
 			if saveFullRequest {
 				rrCache.Clean(60)
-				rrCache.CreateWithType(question.Name, dns.Type(question.Qtype))
-				// log.Tracef("intel: mdns saved full reply to %s%s", question.Name, dns.Type(question.Qtype).String())
+				rrCache.Save()
+				questionID = fmt.Sprintf("%s%s", question.Name, dns.Type(question.Qtype).String())
 			}
 
 			for k, v := range scavengedRecords {
-				if saveFullRequest {
-					if k == fmt.Sprintf("%s%s", question.Name, dns.Type(question.Qtype).String()) {
-						continue
-					}
+				if saveFullRequest && k == questionID {
+					continue
 				}
 				rrCache = &RRCache{
-					Answer: []dns.RR{*v},
+					Domain:   v.Header().Name,
+					Question: dns.Type(v.Header().Class),
+					Answer:   []dns.RR{v},
 				}
 				rrCache.Clean(60)
-				rrCache.Create(k)
+				rrCache.Save()
 				// log.Tracef("intel: mdns scavenged %s", k)
 			}
 
@@ -261,7 +262,7 @@ func listenForDNSPackets(conn *net.UDPConn, messages chan *dns.Msg) {
 	}
 }
 
-func queryMulticastDNS(resolver *Resolver, fqdn string, qtype dns.Type) (*RRCache, error) {
+func queryMulticastDNS(fqdn string, qtype dns.Type) (*RRCache, error) {
 	q := new(dns.Msg)
 	q.SetQuestion(fqdn, uint16(qtype))
 	// request unicast response

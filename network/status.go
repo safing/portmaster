@@ -2,20 +2,34 @@
 
 package network
 
-// Status describes the status of a connection.
+// Verdict describes the decision made about a connection or link.
 type Verdict uint8
 
 // List of values a Status can have
 const (
 	// UNDECIDED is the default status of new connections
 	UNDECIDED Verdict = iota
-	CANTSAY
 	ACCEPT
 	BLOCK
 	DROP
+	RerouteToNameserver
+	RerouteToTunnel
 )
 
+// Packer Directions
 const (
 	Inbound  = true
 	Outbound = false
+)
+
+// Non-Domain Connections
+const (
+	IncomingHost     = "IH"
+	IncomingLAN      = "IL"
+	IncomingInternet = "II"
+	IncomingInvalid  = "IX"
+	PeerHost         = "PH"
+	PeerLAN          = "PL"
+	PeerInternet     = "PI"
+	PeerInvalid      = "PX"
 )

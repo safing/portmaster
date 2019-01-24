@@ -4,7 +4,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/Safing/safing-core/network/netutils"
+	"github.com/Safing/portmaster/network/netutils"
 )
 
 func GetAssignedAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {

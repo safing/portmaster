@@ -10,7 +10,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/Safing/safing-core/log"
+	"github.com/Safing/portbase/log"
 )
 
 var (

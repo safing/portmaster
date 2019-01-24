@@ -4,95 +4,101 @@ package netutils
 
 import "net"
 
-// IP types
+// IP classifications
 const (
-	hostLocal int8 = iota
-	linkLocal
-	siteLocal
-	global
-	localMulticast
-	globalMulticast
-	invalid
+	HostLocal int8 = iota
+	LinkLocal
+	SiteLocal
+	Global
+	LocalMulticast
+	GlobalMulticast
+	Invalid
 )
 
-func classifyAddress(ip net.IP) int8 {
+// ClassifyIP returns the classification for the given IP address.
+func ClassifyIP(ip net.IP) int8 {
 	if ip4 := ip.To4(); ip4 != nil {
 		// IPv4
 		switch {
 		case ip4[0] == 127:
 			// 127.0.0.0/8
-			return hostLocal
+			return HostLocal
 		case ip4[0] == 169 && ip4[1] == 254:
 			// 169.254.0.0/16
-			return linkLocal
+			return LinkLocal
 		case ip4[0] == 10:
 			// 10.0.0.0/8
-			return siteLocal
+			return SiteLocal
 		case ip4[0] == 172 && ip4[1]&0xf0 == 16:
 			// 172.16.0.0/12
-			return siteLocal
+			return SiteLocal
 		case ip4[0] == 192 && ip4[1] == 168:
 			// 192.168.0.0/16
-			return siteLocal
+			return SiteLocal
 		case ip4[0] == 224:
 			// 224.0.0.0/8
-			return localMulticast
+			return LocalMulticast
 		case ip4[0] >= 225 && ip4[0] <= 239:
 			// 225.0.0.0/8 - 239.0.0.0/8
-			return globalMulticast
+			return GlobalMulticast
 		case ip4[0] >= 240:
 			// 240.0.0.0/8 - 255.0.0.0/8
-			return invalid
+			return Invalid
 		default:
-			return global
+			return Global
 		}
 	} else if len(ip) == net.IPv6len {
 		// IPv6
 		switch {
 		case ip.Equal(net.IPv6loopback):
-			return hostLocal
+			return HostLocal
 		case ip[0]&0xfe == 0xfc:
 			// fc00::/7
-			return siteLocal
+			return SiteLocal
 		case ip[0] == 0xfe && ip[1]&0xc0 == 0x80:
 			// fe80::/10
-			return linkLocal
+			return LinkLocal
 		case ip[0] == 0xff && ip[1] <= 0x05:
 			// ff00::/16 - ff05::/16
-			return localMulticast
+			return LocalMulticast
 		case ip[0] == 0xff:
 			// other ff00::/8
-			return globalMulticast
+			return GlobalMulticast
 		default:
-			return global
+			return Global
 		}
 	}
-	return invalid
+	return Invalid
 }
 
-// IPIsLocal returns true if the given IP is a site-local or link-local address
-func IPIsLocal(ip net.IP) bool {
-	switch classifyAddress(ip) {
-	case siteLocal:
+// IPIsLocalhost returns whether the IP refers to the host itself.
+func IPIsLocalhost(ip net.IP) bool {
+	return ClassifyIP(ip) == HostLocal
+}
+
+// IPIsLAN returns true if the given IP is a site-local or link-local address.
+func IPIsLAN(ip net.IP) bool {
+	switch ClassifyIP(ip) {
+	case SiteLocal:
 		return true
-	case linkLocal:
+	case LinkLocal:
 		return true
 	default:
 		return false
 	}
 }
 
-// IPIsGlobal returns true if the given IP is a global address
+// IPIsGlobal returns true if the given IP is a global address.
 func IPIsGlobal(ip net.IP) bool {
-	return classifyAddress(ip) == global
+	return ClassifyIP(ip) == Global
 }
 
-// IPIsLinkLocal returns true if the given IP is a link-local address
+// IPIsLinkLocal returns true if the given IP is a link-local address.
 func IPIsLinkLocal(ip net.IP) bool {
-	return classifyAddress(ip) == linkLocal
+	return ClassifyIP(ip) == LinkLocal
 }
 
-// IPIsSiteLocal returns true if the given IP is a site-local address
+// IPIsSiteLocal returns true if the given IP is a site-local address.
 func IPIsSiteLocal(ip net.IP) bool {
-	return classifyAddress(ip) == siteLocal
+	return ClassifyIP(ip) == SiteLocal
 }
