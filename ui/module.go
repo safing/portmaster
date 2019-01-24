@@ -5,13 +5,14 @@ import (
 )
 
 func init() {
-	modules.Register("ui", prep, start, stop, "database", "api")
+	modules.Register("ui", prep, nil, nil, "updates", "api")
 }
 
 func prep() error {
-	return nil
-}
+	err := launchUIByFlag()
+	if err != nil {
+		return err
+	}
 
-func stop() error {
-	return nil
+	return registerRoutes()
 }

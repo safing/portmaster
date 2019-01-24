@@ -20,6 +20,7 @@ import (
 	_ "github.com/Safing/portbase/database/storage/badger"
 	_ "github.com/Safing/portmaster/firewall"
 	_ "github.com/Safing/portmaster/nameserver"
+	_ "github.com/Safing/portmaster/ui"
 )
 
 var (

@@ -1,6 +1,7 @@
 package firewall
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -57,14 +58,14 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 	}
 
 	// check domain list
-	permitted, ok := profileSet.CheckDomain(fqdn)
+	permitted, reason, ok := profileSet.CheckEndpoint(fqdn, 0, 0, false)
 	if ok {
 		if permitted {
-			log.Infof("firewall: accepting connection %s, domain is whitelisted", connection)
-			connection.Accept("domain is whitelisted")
+			log.Infof("firewall: accepting connection %s, endpoint is whitelisted: %s", connection, reason)
+			connection.Accept(fmt.Sprintf("endpoint is whitelisted: %s", reason))
 		} else {
-			log.Infof("firewall: denying connection %s, domain is blacklisted", connection)
-			connection.Deny("domain is blacklisted")
+			log.Infof("firewall: denying connection %s, endpoint is blacklisted", connection)
+			connection.Deny("endpoint is blacklisted")
 		}
 		return
 	}
@@ -207,6 +208,8 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 			connection.Deny("peer to peer connections (to an IP) not allowed")
 			return
 		}
+	default:
+
 	}
 
 	// check network scope
@@ -269,6 +272,13 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 	// Profile.ConnectPorts
 	// Profile.ListenPorts
 
+	// grant self
+	if connection.Process().Pid == os.Getpid() {
+		log.Infof("firewall: granting own link %s", connection)
+		connection.Accept("")
+		return
+	}
+
 	// check if there is a profile
 	profileSet := connection.Process().ProfileSet()
 	if profileSet == nil {
@@ -278,7 +288,18 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 	}
 	profileSet.Update(status.CurrentSecurityLevel())
 
-	// get remote Port
+	// get host
+	var domainOrIP string
+	switch {
+	case strings.HasSuffix(connection.Domain, "."):
+		domainOrIP = connection.Domain
+	case connection.Direction:
+		domainOrIP = pkt.GetIPHeader().Src.String()
+	default:
+		domainOrIP = pkt.GetIPHeader().Dst.String()
+	}
+
+	// get protocol / destination port
 	protocol := pkt.GetIPHeader().Protocol
 	var dstPort uint16
 	tcpUDPHeader := pkt.GetTCPUDPHeader()
@@ -286,12 +307,12 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 		dstPort = tcpUDPHeader.DstPort
 	}
 
-	// check port list
-	permitted, ok := profileSet.CheckPort(connection.Direction, uint8(protocol), dstPort)
+	// check endpoints list
+	permitted, reason, ok := profileSet.CheckEndpoint(domainOrIP, uint8(protocol), dstPort, connection.Direction)
 	if ok {
 		if permitted {
-			log.Infof("firewall: accepting link %s", link)
-			link.Accept("port whitelisted")
+			log.Infof("firewall: accepting link %s, endpoint is whitelisted: %s", link, reason)
+			link.Accept(fmt.Sprintf("port whitelisted: %s", reason))
 		} else {
 			log.Infof("firewall: denying link %s: port %d is blacklisted", link, dstPort)
 			link.Deny("port blacklisted")
@@ -301,16 +322,16 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 
 	switch profileSet.GetProfileMode() {
 	case profile.Whitelist:
-		log.Infof("firewall: denying link %s: port %d is not whitelisted", link, dstPort)
-		link.Deny("port is not whitelisted")
+		log.Infof("firewall: denying link %s: endpoint %d is not whitelisted", link, dstPort)
+		link.Deny("endpoint is not whitelisted")
 		return
 	case profile.Prompt:
-		log.Infof("firewall: accepting link %s: port %d is blacklisted", link, dstPort)
-		link.Accept("port permitted (prompting is not yet implemented)")
+		log.Infof("firewall: accepting link %s: endpoint %d is blacklisted", link, dstPort)
+		link.Accept("endpoint permitted (prompting is not yet implemented)")
 		return
 	case profile.Blacklist:
-		log.Infof("firewall: accepting link %s: port %d is not blacklisted", link, dstPort)
-		link.Accept("port is not blacklisted")
+		log.Infof("firewall: accepting link %s: endpoint %d is not blacklisted", link, dstPort)
+		link.Accept("endpoint is not blacklisted")
 		return
 	}
 

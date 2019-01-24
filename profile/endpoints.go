@@ -56,8 +56,10 @@ func (e Endpoints) Check(domainOrIP string, protocol uint8, port uint16, checkRe
 	isDomain := strings.HasSuffix(domainOrIP, ".")
 
 	for _, entry := range e {
-		if ok, reason := entry.Matches(domainOrIP, protocol, port, isDomain, cachedGetDomainOfIP); ok {
-			return entry.Permit, reason, true
+		if entry != nil {
+			if ok, reason := entry.Matches(domainOrIP, protocol, port, isDomain, cachedGetDomainOfIP); ok {
+				return entry.Permit, reason, true
+			}
 		}
 	}
 

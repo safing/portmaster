@@ -47,13 +47,15 @@ func getSpecialProfile(ID string) (*Profile, error) {
 
 func ensureServiceEndpointsDenyAll(p *Profile) (changed bool) {
 	for _, ep := range p.ServiceEndpoints {
-		if ep.DomainOrIP == "" &&
-			ep.Wildcard == true &&
-			ep.Protocol == 0 &&
-			ep.StartPort == 0 &&
-			ep.EndPort == 0 &&
-			ep.Permit == false {
-			return false
+		if ep != nil {
+			if ep.DomainOrIP == "" &&
+				ep.Wildcard == true &&
+				ep.Protocol == 0 &&
+				ep.StartPort == 0 &&
+				ep.EndPort == 0 &&
+				ep.Permit == false {
+				return false
+			}
 		}
 	}
 

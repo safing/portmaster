@@ -68,7 +68,7 @@ func (p *Process) Save() {
 // Delete deletes a process from the storage and propagates the change.
 func (p *Process) Delete() {
 	p.Lock()
-	defer p.Lock()
+	defer p.Unlock()
 
 	processesLock.Lock()
 	delete(processes, p.Pid)
@@ -79,7 +79,10 @@ func (p *Process) Delete() {
 		go dbController.PushUpdate(p)
 	}
 
-	profile.DeactivateProfileSet(p.profileSet)
+	// TODO: this should not be necessary, as processes should always have a profileSet.
+	if p.profileSet != nil {
+		profile.DeactivateProfileSet(p.profileSet)
+	}
 }
 
 // CleanProcessStorage cleans the storage from old processes.

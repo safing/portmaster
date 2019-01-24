@@ -57,6 +57,7 @@ func New() *Profile {
 	}
 }
 
+// MakeProfileKey creates the correct key for a profile with the given namespace and ID.
 func MakeProfileKey(namespace, ID string) string {
 	return fmt.Sprintf("core:profiles/%s/%s", namespace, ID)
 }
