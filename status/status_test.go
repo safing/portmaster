@@ -4,33 +4,31 @@ import "testing"
 
 func TestStatus(t *testing.T) {
 
-	SetCurrentSecurityLevel(SecurityLevelOff)
-	SetSelectedSecurityLevel(SecurityLevelOff)
-	if FmtCurrentSecurityLevel() != "Off" {
-		t.Error("unexpected string representation")
+	setSelectedSecurityLevel(SecurityLevelOff)
+	if FmtActiveSecurityLevel() != "Dynamic" {
+		t.Errorf("unexpected string representation: %s", FmtActiveSecurityLevel())
 	}
 
-	SetCurrentSecurityLevel(SecurityLevelDynamic)
-	SetSelectedSecurityLevel(SecurityLevelDynamic)
-	if FmtCurrentSecurityLevel() != "Dynamic" {
-		t.Error("unexpected string representation")
+	setSelectedSecurityLevel(SecurityLevelDynamic)
+	AddOrUpdateThreat(&Threat{MitigationLevel: SecurityLevelSecure})
+	if FmtActiveSecurityLevel() != "Dynamic*" {
+		t.Errorf("unexpected string representation: %s", FmtActiveSecurityLevel())
 	}
 
-	SetCurrentSecurityLevel(SecurityLevelSecure)
-	SetSelectedSecurityLevel(SecurityLevelSecure)
-	if FmtCurrentSecurityLevel() != "Secure" {
-		t.Error("unexpected string representation")
+	setSelectedSecurityLevel(SecurityLevelSecure)
+	if FmtActiveSecurityLevel() != "Secure" {
+		t.Errorf("unexpected string representation: %s", FmtActiveSecurityLevel())
 	}
 
-	SetCurrentSecurityLevel(SecurityLevelFortress)
-	SetSelectedSecurityLevel(SecurityLevelFortress)
-	if FmtCurrentSecurityLevel() != "Fortress" {
-		t.Error("unexpected string representation")
+	setSelectedSecurityLevel(SecurityLevelSecure)
+	AddOrUpdateThreat(&Threat{MitigationLevel: SecurityLevelFortress})
+	if FmtActiveSecurityLevel() != "Secure*" {
+		t.Errorf("unexpected string representation: %s", FmtActiveSecurityLevel())
 	}
 
-	SetSelectedSecurityLevel(SecurityLevelDynamic)
-	if FmtCurrentSecurityLevel() != "Fortress*" {
-		t.Error("unexpected string representation")
+	setSelectedSecurityLevel(SecurityLevelFortress)
+	if FmtActiveSecurityLevel() != "Fortress" {
+		t.Errorf("unexpected string representation: %s", FmtActiveSecurityLevel())
 	}
 
 }

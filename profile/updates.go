@@ -31,7 +31,7 @@ func updateListener(sub *database.Subscription) {
 
 			profile, err := EnsureProfile(r)
 			if err != nil {
-				log.Errorf("profile: received update for special profile, but could not read: %s", err)
+				log.Errorf("profile: received update for profile, but could not read: %s", err)
 				continue
 			}
 

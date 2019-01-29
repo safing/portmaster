@@ -20,7 +20,7 @@ func max(a, b uint8) uint8 {
 func ConfigIsActive(name string) SecurityLevelOption {
 	activeAtLevel := config.GetAsInt(name, int64(SecurityLevelDynamic))
 	return func(minSecurityLevel uint8) bool {
-		return uint8(activeAtLevel()) <= max(CurrentSecurityLevel(), minSecurityLevel)
+		return uint8(activeAtLevel()) <= max(ActiveSecurityLevel(), minSecurityLevel)
 	}
 }
 
@@ -28,6 +28,6 @@ func ConfigIsActive(name string) SecurityLevelOption {
 func ConfigIsActiveConcurrent(name string) SecurityLevelOption {
 	activeAtLevel := config.Concurrent.GetAsInt(name, int64(SecurityLevelDynamic))
 	return func(minSecurityLevel uint8) bool {
-		return uint8(activeAtLevel()) <= max(CurrentSecurityLevel(), minSecurityLevel)
+		return uint8(activeAtLevel()) <= max(ActiveSecurityLevel(), minSecurityLevel)
 	}
 }

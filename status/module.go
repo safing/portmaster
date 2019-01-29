@@ -1,25 +1,59 @@
 package status
 
 import (
+	"github.com/Safing/portbase/database"
 	"github.com/Safing/portbase/log"
 	"github.com/Safing/portbase/modules"
 )
 
+var (
+	shutdownSignal = make(chan struct{})
+)
+
 func init() {
-	modules.Register("status", prep, nil, nil)
+	modules.Register("status", nil, start, stop)
 }
 
-func prep() error {
+func start() error {
+	var loadedStatus *SystemStatus
 
-	if CurrentSecurityLevel() == SecurityLevelOff {
-		log.Infof("switching to default active security level: dynamic")
-		SetCurrentSecurityLevel(SecurityLevelDynamic)
+	// load status from database
+	r, err := statusDB.Get(statusDBKey)
+	switch err {
+	case nil:
+		loadedStatus, err = EnsureSystemStatus(r)
+		if err != nil {
+			log.Criticalf("status: failed to unwrap system status: %s", err)
+			loadedStatus = nil
+		}
+	case database.ErrNotFound:
+		// create new status
+	default:
+		log.Criticalf("status: failed to load system status: %s", err)
 	}
 
-	if SelectedSecurityLevel() == SecurityLevelOff {
-		log.Infof("switching to default selected security level: dynamic")
-		SetSelectedSecurityLevel(SecurityLevelDynamic)
+	// activate loaded status, if available
+	if loadedStatus != nil {
+		status = loadedStatus
 	}
+	status.Lock()
+	defer status.Unlock()
 
+	// load status into atomic getters
+	atomicUpdateSelectedSecurityLevel(status.SelectedSecurityLevel)
+	atomicUpdatePortmasterStatus(status.PortmasterStatus)
+	atomicUpdateGate17Status(status.Gate17Status)
+
+	// update status
+	status.updateThreatMitigationLevel()
+	status.autopilot()
+
+	go status.Save()
+
+	return initStatusHook()
+}
+
+func stop() error {
+	close(shutdownSignal)
 	return nil
 }

@@ -135,7 +135,7 @@ func EnsureProfile(r record.Record) (*Profile, error) {
 	// or adjust type
 	new, ok := r.(*Profile)
 	if !ok {
-		return nil, fmt.Errorf("record not of type *Example, but %T", r)
+		return nil, fmt.Errorf("record not of type *Profile, but %T", r)
 	}
 	return new, nil
 }

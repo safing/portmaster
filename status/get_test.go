@@ -5,9 +5,9 @@ import "testing"
 func TestGet(t *testing.T) {
 
 	// only test for panics
-	CurrentSecurityLevel()
+	// TODO: write real tests
+	ActiveSecurityLevel()
 	SelectedSecurityLevel()
-	ThreatLevel()
 	PortmasterStatus()
 	Gate17Status()
 	option := ConfigIsActive("invalid")

@@ -1,38 +1,81 @@
 package status
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+
+	"github.com/Safing/portbase/database/record"
+	"github.com/Safing/portbase/log"
+)
 
 var (
-	sysStatus     *SystemStatus
-	sysStatusLock sync.RWMutex
+	status *SystemStatus
 )
 
 func init() {
-	sysStatus = &SystemStatus{}
+	status = &SystemStatus{
+		Threats: make(map[string]*Threat),
+	}
+	status.SetKey(statusDBKey)
 }
 
 // SystemStatus saves basic information about the current system status.
 type SystemStatus struct {
-	// database.Base
-	CurrentSecurityLevel  uint8
+	record.Base
+	sync.Mutex
+
+	ActiveSecurityLevel   uint8
 	SelectedSecurityLevel uint8
 
-	ThreatLevel  uint8  `json:",omitempty" bson:",omitempty"`
-	ThreatReason string `json:",omitempty" bson:",omitempty"`
+	PortmasterStatus    uint8
+	PortmasterStatusMsg string
 
-	PortmasterStatus    uint8  `json:",omitempty" bson:",omitempty"`
-	PortmasterStatusMsg string `json:",omitempty" bson:",omitempty"`
+	Gate17Status    uint8
+	Gate17StatusMsg string
 
-	Gate17Status    uint8  `json:",omitempty" bson:",omitempty"`
-	Gate17StatusMsg string `json:",omitempty" bson:",omitempty"`
+	ThreatMitigationLevel uint8
+	Threats               map[string]*Threat
+
+	UpdateStatus string
 }
 
-// FmtCurrentSecurityLevel returns the current security level as a string.
-func FmtCurrentSecurityLevel() string {
-	current := CurrentSecurityLevel()
-	selected := SelectedSecurityLevel()
-	s := FmtSecurityLevel(current)
-	if current != selected {
+// Save saves the SystemStatus to the database
+func (s *SystemStatus) Save() {
+	err := statusDB.Put(s)
+	if err != nil {
+		log.Errorf("status: could not save status to database: %s", err)
+	}
+}
+
+// EnsureSystemStatus ensures that the given record is of type SystemStatus and unwraps it, if needed.
+func EnsureSystemStatus(r record.Record) (*SystemStatus, error) {
+	// unwrap
+	if r.IsWrapped() {
+		// only allocate a new struct, if we need it
+		new := &SystemStatus{}
+		err := record.Unwrap(r, new)
+		if err != nil {
+			return nil, err
+		}
+		return new, nil
+	}
+
+	// or adjust type
+	new, ok := r.(*SystemStatus)
+	if !ok {
+		return nil, fmt.Errorf("record not of type *SystemStatus, but %T", r)
+	}
+	return new, nil
+}
+
+// FmtActiveSecurityLevel returns the current security level as a string.
+func FmtActiveSecurityLevel() string {
+	status.Lock()
+	mitigationLevel := status.ThreatMitigationLevel
+	status.Unlock()
+	active := ActiveSecurityLevel()
+	s := FmtSecurityLevel(active)
+	if mitigationLevel > 0 && active != mitigationLevel {
 		s += "*"
 	}
 	return s
