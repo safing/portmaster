@@ -205,8 +205,8 @@ func (wd *WinDivert) GetParam(param uintptr) (uint64, error) {
 	var value uint64
 
 	r1, _, lastErr := wd.getParam.Call(
-		wd.handle, // __in        HANDLE handle
-		param,     // __in        WINDIVERT_PARAM param
+		wd.handle,                       // __in        HANDLE handle
+		param,                           // __in        WINDIVERT_PARAM param
 		uintptr(unsafe.Pointer(&value)), // __out       UINT64 *pValue
 	)
 	if r1 == rvFalse {
@@ -220,7 +220,7 @@ func (wd *WinDivert) HelperCalcChecksums(packetData []byte, address *WinDivertAd
 		byteSliceToPtr(packetData),       // __inout     PVOID pPacket
 		uintptr(len(packetData)),         // __in        UINT packetLen
 		uintptr(unsafe.Pointer(address)), // __in_opt    PWINDIVERT_ADDRESS pAddr
-		flags, // __in        UINT64 flags
+		flags,                            // __in        UINT64 flags
 	)
 	if r1 == rvFalse {
 		return lastErr
