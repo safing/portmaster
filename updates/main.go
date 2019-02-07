@@ -15,7 +15,7 @@ var (
 )
 
 func init() {
-	modules.Register("updates", prep, start, nil, "database")
+	modules.Register("updates", prep, start, nil, "global", "database")
 }
 
 func prep() error {
@@ -30,7 +30,12 @@ func prep() error {
 }
 
 func start() error {
-	err := ReloadLatest()
+	err := initUpdateStatusHook()
+	if err != nil {
+		return err
+	}
+
+	err = ReloadLatest()
 	if err != nil {
 		return err
 	}

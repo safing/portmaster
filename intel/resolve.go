@@ -251,13 +251,13 @@ func intelligentResolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCac
 
 func tryResolver(resolver *Resolver, lastFailBoundary int64, fqdn string, qtype dns.Type, securityLevel uint8) (*RRCache, bool) {
 	// skip if not allowed in current security level
-	if resolver.AllowedSecurityLevel < status.CurrentSecurityLevel() || resolver.AllowedSecurityLevel < securityLevel {
-		log.Tracef("intel: skipping resolver %s, because it isn't allowed to operate on the current security level: %d|%d", resolver, status.CurrentSecurityLevel(), securityLevel)
+	if resolver.AllowedSecurityLevel < status.ActiveSecurityLevel() || resolver.AllowedSecurityLevel < securityLevel {
+		log.Tracef("intel: skipping resolver %s, because it isn't allowed to operate on the current security level: %d|%d", resolver, status.ActiveSecurityLevel(), securityLevel)
 		return nil, false
 	}
 	// skip if not security level denies assigned dns servers
 	if doNotUseAssignedNameservers(securityLevel) && resolver.Source == "dhcp" {
-		log.Tracef("intel: skipping resolver %s, because assigned nameservers are not allowed on the current security level: %d|%d", resolver, status.CurrentSecurityLevel(), securityLevel)
+		log.Tracef("intel: skipping resolver %s, because assigned nameservers are not allowed on the current security level: %d|%d", resolver, status.ActiveSecurityLevel(), securityLevel)
 		return nil, false
 	}
 	// check if failed recently

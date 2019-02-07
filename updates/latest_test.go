@@ -32,14 +32,14 @@ func testLoadLatestScope(t *testing.T, basePath, filePath, expectedIdentifier, e
 		return
 	}
 	for key, val := range latest {
-		latestUpdates[key] = val
+		localUpdates[key] = val
 	}
 
 	// test result
-	version, ok := latestUpdates[expectedIdentifier]
+	version, ok := localUpdates[expectedIdentifier]
 	if !ok {
 		t.Errorf("identifier %s not in map", expectedIdentifier)
-		t.Errorf("current map: %v", latestUpdates)
+		t.Errorf("current map: %v", localUpdates)
 	}
 	if version != expectedVersion {
 		t.Errorf("unexpected version for %s: %s", filePath, version)

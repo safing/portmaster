@@ -17,24 +17,26 @@ import (
 var (
 	stableUpdates = make(map[string]string)
 	betaUpdates   = make(map[string]string)
-	latestUpdates = make(map[string]string)
+	localUpdates  = make(map[string]string)
 	updatesLock   sync.RWMutex
 )
 
 // ReloadLatest reloads available updates from disk.
 func ReloadLatest() error {
-	newLatestUpdates := make(map[string]string)
+	newLocalUpdates := make(map[string]string)
 
 	// all
-	new, err1 := ScanForLatest(filepath.Join(updateStoragePath, "all"), false)
+	prefix := "all"
+	new, err1 := ScanForLatest(filepath.Join(updateStoragePath, prefix), false)
 	for key, val := range new {
-		newLatestUpdates[key] = val
+		newLocalUpdates[filepath.Join(prefix, key)] = val
 	}
 
 	// os_platform
-	new, err2 := ScanForLatest(filepath.Join(updateStoragePath, fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH)), false)
+	prefix = fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH)
+	new, err2 := ScanForLatest(filepath.Join(updateStoragePath, prefix), false)
 	for key, val := range new {
-		newLatestUpdates[key] = val
+		newLocalUpdates[filepath.Join(prefix, key)] = val
 	}
 
 	if err1 != nil && err2 != nil {
@@ -43,12 +45,12 @@ func ReloadLatest() error {
 
 	log.Tracef("updates: loading latest updates:")
 
-	for key, val := range newLatestUpdates {
+	for key, val := range newLocalUpdates {
 		log.Tracef("updates: %s v%s", key, val)
 	}
 
 	updatesLock.Lock()
-	latestUpdates = newLatestUpdates
+	localUpdates = newLocalUpdates
 	updatesLock.Unlock()
 
 	log.Tracef("updates: load complete")
@@ -59,6 +61,11 @@ func ReloadLatest() error {
 			return err
 		}
 	}
+
+	// update version status
+	updatesLock.RLock()
+	defer updatesLock.RUnlock()
+	updateStatus(versionClassLocal, localUpdates)
 
 	return nil
 }
@@ -136,6 +143,11 @@ func loadIndexesFromDisk() error {
 	updatesLock.Lock()
 	stableUpdates = newStableUpdates
 	updatesLock.Unlock()
+
+	// update version status
+	updatesLock.RLock()
+	defer updatesLock.RUnlock()
+	updateStatus(versionClassStable, stableUpdates)
 
 	return nil
 }

@@ -26,15 +26,18 @@ func (sh *statusHook) UsesPrePut() bool {
 
 // PrePut implements the Hook interface.
 func (sh *statusHook) PrePut(r record.Record) (record.Record, error) {
+	// record is already locked!
+
 	newStatus, err := EnsureSystemStatus(r)
 	if err != nil {
 		return nil, err
 	}
-	newStatus.Lock()
-	defer newStatus.Unlock()
 
 	// apply applicable settings
-	setSelectedSecurityLevel(newStatus.SelectedSecurityLevel)
+	if SelectedSecurityLevel() != newStatus.SelectedSecurityLevel {
+		go setSelectedSecurityLevel(newStatus.SelectedSecurityLevel)
+	}
+
 	// TODO: allow setting of Gate17 status (on/off)
 
 	// return original status

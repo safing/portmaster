@@ -48,7 +48,7 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 		connection.Deny("no profile set")
 		return
 	}
-	profileSet.Update(status.CurrentSecurityLevel())
+	profileSet.Update(status.ActiveSecurityLevel())
 
 	// check for any network access
 	if !profileSet.CheckFlag(profile.Internet) && !profileSet.CheckFlag(profile.LAN) {
@@ -152,7 +152,7 @@ func DecideOnConnectionAfterIntel(connection *network.Connection, fqdn string, r
 		connection.Deny("no profile")
 		return rrCache
 	}
-	profileSet.Update(status.CurrentSecurityLevel())
+	profileSet.Update(status.ActiveSecurityLevel())
 
 	// TODO: Stamp integration
 
@@ -188,7 +188,7 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 		connection.Deny("no profile")
 		return
 	}
-	profileSet.Update(status.CurrentSecurityLevel())
+	profileSet.Update(status.ActiveSecurityLevel())
 
 	// check connection type
 	switch connection.Domain {
@@ -286,7 +286,7 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 		link.Block("no profile")
 		return
 	}
-	profileSet.Update(status.CurrentSecurityLevel())
+	profileSet.Update(status.ActiveSecurityLevel())
 
 	// get host
 	var domainOrIP string

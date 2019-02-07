@@ -53,7 +53,7 @@ func checkForUpdates() error {
 	log.Tracef("updates: updating existing files")
 	updatesLock.RLock()
 	for identifier, newVersion := range newStableUpdates {
-		oldVersion, ok := latestUpdates[identifier]
+		oldVersion, ok := localUpdates[identifier]
 		if ok && newVersion != oldVersion {
 
 			filePath := getVersionedPath(identifier, newVersion)
@@ -83,6 +83,11 @@ func checkForUpdates() error {
 	if err != nil {
 		log.Warningf("updates: failed to save new version of stable.json: %s", err)
 	}
+
+	// update version status
+	updatesLock.RLock()
+	defer updatesLock.RUnlock()
+	updateStatus(versionClassStable, stableUpdates)
 
 	return nil
 }

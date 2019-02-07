@@ -33,7 +33,7 @@ func getLatestFilePath(identifier string) (versionedFilePath, version string, st
 	updatesLock.RLock()
 	version, ok = stableUpdates[identifier]
 	if !ok {
-		version, ok = latestUpdates[identifier]
+		version, ok = localUpdates[identifier]
 		if !ok {
 			log.Tracef("updates: file %s does not exist", identifier)
 			return "", "", false, false
@@ -58,6 +58,7 @@ func loadOrFetchFile(identifier string) (*File, error) {
 	realFilePath := filepath.Join(updateStoragePath, versionedFilePath)
 	if _, err := os.Stat(realFilePath); err == nil {
 		// file exists
+		updateUsedStatus(identifier, version)
 		return newFile(realFilePath, version, stable), nil
 	}
 
@@ -69,6 +70,7 @@ func loadOrFetchFile(identifier string) (*File, error) {
 		if err != nil {
 			log.Tracef("updates: failed to download %s: %s, retrying (%d)", versionedFilePath, err, tries+1)
 		} else {
+			updateUsedStatus(identifier, version)
 			return newFile(realFilePath, version, stable), nil
 		}
 	}
