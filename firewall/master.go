@@ -44,8 +44,8 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 	// check if there is a profile
 	profileSet := connection.Process().ProfileSet()
 	if profileSet == nil {
-		log.Errorf("firewall: denying connection %s, no profile set", connection)
-		connection.Deny("no profile set")
+		log.Errorf("firewall: denying connection %s, no Profile Set", connection)
+		connection.Deny("no Profile Set")
 		return
 	}
 	profileSet.Update(status.ActiveSecurityLevel())
@@ -64,8 +64,8 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 			log.Infof("firewall: accepting connection %s, endpoint is whitelisted: %s", connection, reason)
 			connection.Accept(fmt.Sprintf("endpoint is whitelisted: %s", reason))
 		} else {
-			log.Infof("firewall: denying connection %s, endpoint is blacklisted", connection)
-			connection.Deny("endpoint is blacklisted")
+			log.Infof("firewall: denying connection %s, endpoint is blacklisted: %s", connection, reason)
+			connection.Deny(fmt.Sprintf("endpoint is blacklisted: %s", reason))
 		}
 		return
 	}
@@ -117,7 +117,7 @@ func DecideOnConnectionBeforeIntel(connection *network.Connection, fqdn string) 
 			}
 
 			if matched {
-				log.Infof("firewall: accepting connection %s, match to domain was found: %s ~= %s", connection, domainElement, processElement)
+				log.Infof("firewall: accepting connection %s, match to domain was found: %s ~== %s", connection, domainElement, processElement)
 				connection.Accept("domain is related to process")
 			}
 		}
@@ -148,8 +148,8 @@ func DecideOnConnectionAfterIntel(connection *network.Connection, fqdn string, r
 	// check if there is a profile
 	profileSet := connection.Process().ProfileSet()
 	if profileSet == nil {
-		log.Errorf("firewall: denying connection %s, no profile set", connection)
-		connection.Deny("no profile")
+		log.Errorf("firewall: denying connection %s, no Profile Set", connection)
+		connection.Deny("no Profile Set")
 		return rrCache
 	}
 	profileSet.Update(status.ActiveSecurityLevel())
@@ -184,8 +184,8 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 	// check if there is a profile
 	profileSet := connection.Process().ProfileSet()
 	if profileSet == nil {
-		log.Errorf("firewall: denying connection %s, no profile set", connection)
-		connection.Deny("no profile")
+		log.Errorf("firewall: denying connection %s, no Profile Set", connection)
+		connection.Deny("no Profile Set")
 		return
 	}
 	profileSet.Update(status.ActiveSecurityLevel())
@@ -209,7 +209,6 @@ func DecideOnConnection(connection *network.Connection, pkt packet.Packet) {
 			return
 		}
 	default:
-
 	}
 
 	// check network scope
@@ -282,8 +281,8 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 	// check if there is a profile
 	profileSet := connection.Process().ProfileSet()
 	if profileSet == nil {
-		log.Infof("firewall: no profile, denying %s", link)
-		link.Block("no profile")
+		log.Infof("firewall: no Profile Set, denying %s", link)
+		link.Block("no Profile Set")
 		return
 	}
 	profileSet.Update(status.ActiveSecurityLevel())
@@ -314,7 +313,7 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 			log.Infof("firewall: accepting link %s, endpoint is whitelisted: %s", link, reason)
 			link.Accept(fmt.Sprintf("port whitelisted: %s", reason))
 		} else {
-			log.Infof("firewall: denying link %s: port %d is blacklisted", link, dstPort)
+			log.Infof("firewall: denying link %s: endpoint is blacklisted: %s", link, reason)
 			link.Deny("port blacklisted")
 		}
 		return
@@ -322,15 +321,15 @@ func DecideOnLink(connection *network.Connection, link *network.Link, pkt packet
 
 	switch profileSet.GetProfileMode() {
 	case profile.Whitelist:
-		log.Infof("firewall: denying link %s: endpoint %d is not whitelisted", link, dstPort)
+		log.Infof("firewall: denying link %s: endpoint is not whitelisted", link)
 		link.Deny("endpoint is not whitelisted")
 		return
 	case profile.Prompt:
-		log.Infof("firewall: accepting link %s: endpoint %d is blacklisted", link, dstPort)
-		link.Accept("endpoint permitted (prompting is not yet implemented)")
+		log.Infof("firewall: accepting link %s: endpoint is not blacklisted (prompting is not yet implemented)", link)
+		link.Accept("endpoint is not blacklisted (prompting is not yet implemented)")
 		return
 	case profile.Blacklist:
-		log.Infof("firewall: accepting link %s: endpoint %d is not blacklisted", link, dstPort)
+		log.Infof("firewall: accepting link %s: endpoint is not blacklisted", link)
 		link.Accept("endpoint is not blacklisted")
 		return
 	}

@@ -13,7 +13,6 @@ import (
 	"github.com/Safing/portmaster/firewall/interception"
 	"github.com/Safing/portmaster/network"
 	"github.com/Safing/portmaster/network/packet"
-	"github.com/Safing/portmaster/process"
 )
 
 var (
@@ -92,8 +91,8 @@ func handlePacket(pkt packet.Packet) {
 
 	// log.Tracef("handling packet: %s", pkt)
 
-	// allow anything local, that is not dns
-	if pkt.MatchesIP(packet.Remote, localNet4) && !(pkt.GetTCPUDPHeader() != nil && pkt.GetTCPUDPHeader().DstPort == 53) {
+	// allow local dns
+	if pkt.MatchesIP(packet.Remote, localNet4) && pkt.GetTCPUDPHeader() != nil && pkt.GetTCPUDPHeader().DstPort == 53 {
 		pkt.PermanentAccept()
 		return
 	}
@@ -150,24 +149,19 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 	// get Connection
 	connection, err := network.GetConnectionByFirstPacket(pkt)
 	if err != nil {
-		if err != process.ErrConnectionNotFound {
-			log.Warningf("firewall: could not find process of packet (dropping link %s): %s", pkt.String(), err)
-			link.Deny(fmt.Sprintf("could not find process or it does not exist (unsolicited packet): %s", err))
-		} else {
-			log.Warningf("firewall: internal error finding process of packet (dropping link %s): %s", pkt.String(), err)
-			link.Deny(fmt.Sprintf("internal error finding process: %s", err))
+		// get "unknown" connection
+		link.Deny(fmt.Sprintf("could not get process: %s", err))
+		connection, err = network.GetUnknownConnection(pkt)
+
+		if err != nil {
+			// all failed
+			log.Errorf("firewall: could not get unknown connection (dropping %s): %s", pkt.String(), err)
+			link.UpdateVerdict(network.DROP)
+			verdict(pkt, network.DROP)
+			link.StopFirewallHandler()
+			return
 		}
 
-		if pkt.IsInbound() {
-			network.UnknownIncomingConnection.AddLink(link)
-		} else {
-			network.UnknownDirectConnection.AddLink(link)
-		}
-
-		verdict(pkt, link.GetVerdict())
-		link.StopFirewallHandler()
-
-		return
 	}
 
 	// add new Link to Connection (and save both)
@@ -195,15 +189,15 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 	logInitialVerdict(link)
 
 	// TODO: link this to real status
-	// port17Active := mode.Client()
+	// gate17Active := mode.Client()
 
 	switch {
-	// case port17Active && link.Inspect:
+	// case gate17Active && link.Inspect:
 	// 	// tunnel link, but also inspect (after reroute)
 	// 	link.Tunneled = true
 	// 	link.SetFirewallHandler(inspectThenVerdict)
 	// 	verdict(pkt, link.GetVerdict())
-	// case port17Active:
+	// case gate17Active:
 	// 	// tunnel link, don't inspect
 	// 	link.Tunneled = true
 	// 	link.StopFirewallHandler()
