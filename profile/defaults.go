@@ -27,17 +27,15 @@ func makeDefaultFallbackProfile() *Profile {
 			Localhost: status.SecurityLevelsAll,
 
 			// Specials
-			Related:    status.SecurityLevelDynamic,
-			PeerToPeer: status.SecurityLevelDynamic,
+			Related: status.SecurityLevelDynamic,
 		},
 		ServiceEndpoints: []*EndpointPermission{
 			&EndpointPermission{
-				DomainOrIP: "",
-				Wildcard:   true,
-				Protocol:   0,
-				StartPort:  0,
-				EndPort:    0,
-				Permit:     false,
+				Type:      EptAny,
+				Protocol:  0,
+				StartPort: 0,
+				EndPort:   0,
+				Permit:    false,
 			},
 		},
 	}

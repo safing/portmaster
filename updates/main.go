@@ -7,7 +7,11 @@ import (
 	"runtime"
 
 	"github.com/Safing/portbase/database"
+	"github.com/Safing/portbase/info"
 	"github.com/Safing/portbase/modules"
+
+	// module dependencies
+	_ "github.com/Safing/portmaster/core"
 )
 
 var (
@@ -15,10 +19,11 @@ var (
 )
 
 func init() {
-	modules.Register("updates", prep, start, nil, "global", "database")
+	modules.Register("updates", prep, start, nil, "core")
 }
 
 func prep() error {
+	status.Core = info.GetInfo()
 	updateStoragePath = filepath.Join(database.GetDatabaseRoot(), "updates")
 
 	err := checkUpdateDirs()

@@ -93,7 +93,7 @@ func CleanProcessStorage(thresholdDuration time.Duration) {
 	threshold := time.Now().Add(-thresholdDuration).Unix()
 	for _, p := range processes {
 		p.Lock()
-		if p.FirstConnectionEstablished < threshold && p.ConnectionCount == 0 {
+		if p.FirstCommEstablished < threshold && p.CommCount == 0 {
 			go p.Delete()
 		}
 		p.Unlock()

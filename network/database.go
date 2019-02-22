@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	links           = make(map[string]*Link)
-	linksLock       sync.RWMutex
-	connections     = make(map[string]*Connection)
-	connectionsLock sync.RWMutex
+	links     = make(map[string]*Link)
+	linksLock sync.RWMutex
+	comms     = make(map[string]*Communication)
+	commsLock sync.RWMutex
 
 	dbController *database.Controller
 )
@@ -43,9 +43,9 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 				}
 			}
 		case 3:
-			connectionsLock.RLock()
-			defer connectionsLock.RUnlock()
-			conn, ok := connections[splitted[2]]
+			commsLock.RLock()
+			defer commsLock.RUnlock()
+			conn, ok := comms[splitted[2]]
 			if ok {
 				return conn, nil
 			}
@@ -79,14 +79,14 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 		}
 	}
 
-	// connections
-	connectionsLock.RLock()
-	for _, conn := range connections {
+	// comms
+	commsLock.RLock()
+	for _, conn := range comms {
 		if strings.HasPrefix(conn.DatabaseKey(), q.DatabaseKeyPrefix()) {
 			it.Next <- conn
 		}
 	}
-	connectionsLock.RUnlock()
+	commsLock.RUnlock()
 
 	// links
 	linksLock.RLock()

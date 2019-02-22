@@ -15,7 +15,6 @@ import (
 
 	"github.com/Safing/portbase/database"
 	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/network/netutils"
 	"github.com/Safing/portmaster/status"
 )
 
@@ -304,13 +303,6 @@ func tryResolver(resolver *Resolver, lastFailBoundary int64, fqdn string, qtype 
 	}
 	resolver.Initialized.SetToIf(false, true)
 
-	// remove localhost entries, remove LAN entries if server is in global IP space.
-	if resolver.ServerIPScope == netutils.Global {
-		rrCache.FilterEntries(true, false, false)
-	} else {
-		rrCache.FilterEntries(true, true, false)
-	}
-
 	return rrCache, true
 }
 
@@ -357,11 +349,13 @@ func query(resolver *Resolver, fqdn string, qtype dns.Type) (*RRCache, error) {
 	}
 
 	new := &RRCache{
-		Domain:   fqdn,
-		Question: qtype,
-		Answer:   reply.Answer,
-		Ns:       reply.Ns,
-		Extra:    reply.Extra,
+		Domain:      fqdn,
+		Question:    qtype,
+		Answer:      reply.Answer,
+		Ns:          reply.Ns,
+		Extra:       reply.Extra,
+		Server:      resolver.Server,
+		ServerScope: resolver.ServerIPScope,
 	}
 
 	// TODO: check if reply.Answer is valid

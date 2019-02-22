@@ -103,6 +103,7 @@ func ServeFileFromBundle(w http.ResponseWriter, r *http.Request, bundleName stri
 		return
 	}
 
+	// set content type
 	_, ok := w.Header()["Content-Type"]
 	if !ok {
 		contentType := mime.TypeByExtension(filepath.Ext(path))
@@ -110,6 +111,9 @@ func ServeFileFromBundle(w http.ResponseWriter, r *http.Request, bundleName stri
 			w.Header().Set("Content-Type", contentType)
 		}
 	}
+
+	// set content security policy
+	w.Header().Set("Content-Security-Policy", "default-src 'self'")
 
 	w.WriteHeader(http.StatusOK)
 	if r.Method != "HEAD" {

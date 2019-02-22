@@ -5,11 +5,8 @@ package intel
 import (
 	"fmt"
 	"net"
-	"strings"
 	"time"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/network/netutils"
 	"github.com/miekg/dns"
 )
 
@@ -23,10 +20,14 @@ type RRCache struct {
 	Extra  []dns.RR
 	TTL    int64
 
+	Server      string
+	ServerScope int8
+
 	updated         int64
 	servedFromCache bool
 	requestingNew   bool
 	Filtered        bool
+	FilteredEntries []string
 }
 
 // Clean sets all TTLs to 17 and sets cache expiry with specified minimum.
@@ -79,10 +80,11 @@ func (m *RRCache) ExportAllARecords() (ips []net.IP) {
 // ToNameRecord converts the RRCache to a NameRecord for cleaner persistence.
 func (m *RRCache) ToNameRecord() *NameRecord {
 	new := &NameRecord{
-		Domain:   m.Domain,
-		Question: m.Question.String(),
-		TTL:      m.TTL,
-		Filtered: m.Filtered,
+		Domain:      m.Domain,
+		Question:    m.Question.String(),
+		TTL:         m.TTL,
+		Server:      m.Server,
+		ServerScope: m.ServerScope,
 	}
 
 	// stringify RR entries
@@ -136,7 +138,8 @@ func GetRRCache(domain string, question dns.Type) (*RRCache, error) {
 		}
 	}
 
-	rrCache.Filtered = nameRecord.Filtered
+	rrCache.Server = nameRecord.Server
+	rrCache.ServerScope = nameRecord.ServerScope
 	rrCache.servedFromCache = true
 	return rrCache, nil
 }
@@ -175,82 +178,23 @@ func (m *RRCache) IsNXDomain() bool {
 	return len(m.Answer) == 0
 }
 
-// Duplicate returns a duplicate of the cache. slices are not copied, but referenced.
-func (m *RRCache) Duplicate() *RRCache {
+// ShallowCopy returns a shallow copy of the cache. slices are not copied, but referenced.
+func (m *RRCache) ShallowCopy() *RRCache {
 	return &RRCache{
-		Domain:          m.Domain,
-		Question:        m.Question,
-		Answer:          m.Answer,
-		Ns:              m.Ns,
-		Extra:           m.Extra,
-		TTL:             m.TTL,
+		Domain:   m.Domain,
+		Question: m.Question,
+		Answer:   m.Answer,
+		Ns:       m.Ns,
+		Extra:    m.Extra,
+		TTL:      m.TTL,
+
+		Server:      m.Server,
+		ServerScope: m.ServerScope,
+
 		updated:         m.updated,
 		servedFromCache: m.servedFromCache,
 		requestingNew:   m.requestingNew,
 		Filtered:        m.Filtered,
+		FilteredEntries: m.FilteredEntries,
 	}
-}
-
-// FilterEntries filters resource records according to the given permission scope.
-func (m *RRCache) FilterEntries(internet, lan, host bool) {
-	var filtered bool
-
-	m.Answer, filtered = filterEntries(m, m.Answer, internet, lan, host)
-	if filtered {
-		m.Filtered = true
-	}
-	m.Extra, filtered = filterEntries(m, m.Extra, internet, lan, host)
-	if filtered {
-		m.Filtered = true
-	}
-}
-
-func filterEntries(m *RRCache, entries []dns.RR, internet, lan, host bool) (filteredEntries []dns.RR, filtered bool) {
-	filteredEntries = make([]dns.RR, 0, len(entries))
-	var classification int8
-	var deletedEntries []string
-
-entryLoop:
-	for _, rr := range entries {
-
-		classification = -1
-		switch v := rr.(type) {
-		case *dns.A:
-			classification = netutils.ClassifyIP(v.A)
-		case *dns.AAAA:
-			classification = netutils.ClassifyIP(v.AAAA)
-		}
-
-		if classification >= 0 {
-			switch {
-			case !internet && classification == netutils.Global:
-				filtered = true
-				deletedEntries = append(deletedEntries, rr.String())
-				continue entryLoop
-			case !lan && (classification == netutils.SiteLocal || classification == netutils.LinkLocal):
-				filtered = true
-				deletedEntries = append(deletedEntries, rr.String())
-				continue entryLoop
-			case !host && classification == netutils.HostLocal:
-				filtered = true
-				deletedEntries = append(deletedEntries, rr.String())
-				continue entryLoop
-			}
-		}
-
-		filteredEntries = append(filteredEntries, rr)
-	}
-
-	if len(deletedEntries) > 0 {
-		log.Infof("intel: filtered DNS replies for %s%s: %s (Settings: Int=%v LAN=%v Host=%v)",
-			m.Domain,
-			m.Question.String(),
-			strings.Join(deletedEntries, ", "),
-			internet,
-			lan,
-			host,
-		)
-	}
-
-	return
 }

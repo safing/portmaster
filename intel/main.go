@@ -7,11 +7,11 @@ import (
 	"github.com/Safing/portbase/modules"
 
 	// module dependencies
-	_ "github.com/Safing/portmaster/global"
+	_ "github.com/Safing/portmaster/core"
 )
 
 func init() {
-	modules.Register("intel", prep, start, nil, "global")
+	modules.Register("intel", prep, start, nil, "core")
 }
 
 func start() error {

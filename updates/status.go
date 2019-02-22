@@ -7,6 +7,7 @@ import (
 	"github.com/Safing/portbase/database"
 	"github.com/Safing/portbase/database/query"
 	"github.com/Safing/portbase/database/record"
+	"github.com/Safing/portbase/info"
 	"github.com/Safing/portbase/log"
 	"github.com/tevino/abool"
 )
@@ -36,7 +37,7 @@ var (
 
 func init() {
 	status = &versionStatus{
-		Versions: make(map[string]*versionStatusEntry),
+		Modules: make(map[string]*versionStatusEntry),
 	}
 	status.SetKey(statusDBKey)
 }
@@ -45,7 +46,9 @@ func init() {
 type versionStatus struct {
 	record.Base
 	sync.Mutex
-	Versions map[string]*versionStatusEntry
+
+	Core    *info.Info
+	Modules map[string]*versionStatusEntry
 }
 
 func (vs *versionStatus) save() {
@@ -68,10 +71,10 @@ func updateUsedStatus(identifier string, version string) {
 	status.Lock()
 	defer status.Unlock()
 
-	entry, ok := status.Versions[identifier]
+	entry, ok := status.Modules[identifier]
 	if !ok {
 		entry = &versionStatusEntry{}
-		status.Versions[identifier] = entry
+		status.Modules[identifier] = entry
 	}
 
 	entry.LastVersionUsed = version
@@ -87,10 +90,10 @@ func updateStatus(vClass versionClass, state map[string]string) {
 
 	for identifier, version := range state {
 
-		entry, ok := status.Versions[identifier]
+		entry, ok := status.Modules[identifier]
 		if !ok {
 			entry = &versionStatusEntry{}
-			status.Versions[identifier] = entry
+			status.Modules[identifier] = entry
 		}
 
 		switch vClass {

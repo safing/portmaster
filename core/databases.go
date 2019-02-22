@@ -1,4 +1,4 @@
-package global
+package core
 
 import (
 	"github.com/Safing/portbase/database"
@@ -7,11 +7,10 @@ import (
 	// module dependencies
 	_ "github.com/Safing/portbase/database/dbmodule"
 	_ "github.com/Safing/portbase/database/storage/badger"
-	_ "github.com/Safing/portmaster/status"
 )
 
 func init() {
-	modules.Register("global", nil, start, nil, "database", "status")
+	modules.Register("core", nil, start, nil, "database")
 }
 
 func start() error {

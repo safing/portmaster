@@ -38,18 +38,18 @@ type Link struct {
 
 	pktQueue        chan packet.Packet
 	firewallHandler FirewallHandler
-	connection      *Connection
+	comm            *Communication
 
 	activeInspectors []bool
 	inspectorData    map[uint8]interface{}
 }
 
-// Connection returns the Connection the Link is part of
-func (link *Link) Connection() *Connection {
+// Communication returns the Communication the Link is part of
+func (link *Link) Communication() *Communication {
 	link.Lock()
 	defer link.Unlock()
 
-	return link.connection
+	return link.comm
 }
 
 // GetVerdict returns the current verdict.
@@ -106,12 +106,12 @@ func (link *Link) HandlePacket(pkt packet.Packet) {
 // Accept accepts the link and adds the given reason.
 func (link *Link) Accept(reason string) {
 	link.AddReason(reason)
-	link.UpdateVerdict(ACCEPT)
+	link.UpdateVerdict(VerdictAccept)
 }
 
 // Deny blocks or drops the link depending on the connection direction and adds the given reason.
 func (link *Link) Deny(reason string) {
-	if link.connection != nil && link.connection.Direction {
+	if link.comm != nil && link.comm.Direction {
 		link.Drop(reason)
 	} else {
 		link.Block(reason)
@@ -121,24 +121,24 @@ func (link *Link) Deny(reason string) {
 // Block blocks the link and adds the given reason.
 func (link *Link) Block(reason string) {
 	link.AddReason(reason)
-	link.UpdateVerdict(BLOCK)
+	link.UpdateVerdict(VerdictBlock)
 }
 
 // Drop drops the link and adds the given reason.
 func (link *Link) Drop(reason string) {
 	link.AddReason(reason)
-	link.UpdateVerdict(DROP)
+	link.UpdateVerdict(VerdictDrop)
 }
 
 // RerouteToNameserver reroutes the link to the portmaster nameserver.
 func (link *Link) RerouteToNameserver() {
-	link.UpdateVerdict(RerouteToNameserver)
+	link.UpdateVerdict(VerdictRerouteToNameserver)
 }
 
 // RerouteToTunnel reroutes the link to the tunnel entrypoint and adds the given reason for accepting the connection.
 func (link *Link) RerouteToTunnel(reason string) {
 	link.AddReason(reason)
-	link.UpdateVerdict(RerouteToTunnel)
+	link.UpdateVerdict(VerdictRerouteToTunnel)
 }
 
 // UpdateVerdict sets a new verdict for this link, making sure it does not interfere with previous verdicts
@@ -192,30 +192,30 @@ func (link *Link) ApplyVerdict(pkt packet.Packet) {
 
 	if link.VerdictPermanent {
 		switch link.Verdict {
-		case ACCEPT:
+		case VerdictAccept:
 			pkt.PermanentAccept()
-		case BLOCK:
+		case VerdictBlock:
 			pkt.PermanentBlock()
-		case DROP:
+		case VerdictDrop:
 			pkt.PermanentDrop()
-		case RerouteToNameserver:
+		case VerdictRerouteToNameserver:
 			pkt.RerouteToNameserver()
-		case RerouteToTunnel:
+		case VerdictRerouteToTunnel:
 			pkt.RerouteToTunnel()
 		default:
 			pkt.Drop()
 		}
 	} else {
 		switch link.Verdict {
-		case ACCEPT:
+		case VerdictAccept:
 			pkt.Accept()
-		case BLOCK:
+		case VerdictBlock:
 			pkt.Block()
-		case DROP:
+		case VerdictDrop:
 			pkt.Drop()
-		case RerouteToNameserver:
+		case VerdictRerouteToNameserver:
 			pkt.RerouteToNameserver()
-		case RerouteToTunnel:
+		case VerdictRerouteToTunnel:
 			pkt.RerouteToTunnel()
 		default:
 			pkt.Drop()
@@ -228,12 +228,12 @@ func (link *Link) Save() error {
 	link.Lock()
 	defer link.Unlock()
 
-	if link.connection == nil {
-		return errors.New("cannot save link without connection")
+	if link.comm == nil {
+		return errors.New("cannot save link without comms")
 	}
 
 	if !link.KeyIsSet() {
-		link.SetKey(fmt.Sprintf("network:tree/%d/%s/%s", link.connection.Process().Pid, link.connection.Domain, link.ID))
+		link.SetKey(fmt.Sprintf("network:tree/%d/%s/%s", link.comm.Process().Pid, link.comm.Domain, link.ID))
 		link.CreateMeta()
 	}
 
@@ -262,8 +262,8 @@ func (link *Link) Delete() {
 
 	link.Meta().Delete()
 	go dbController.PushUpdate(link)
-	link.connection.RemoveLink()
-	go link.connection.Save()
+	link.comm.RemoveLink()
+	go link.comm.Save()
 }
 
 // GetLink fetches a Link from the database from the default namespace for this object
@@ -288,7 +288,7 @@ func GetOrCreateLinkByPacket(pkt packet.Packet) (*Link, bool) {
 func CreateLinkFromPacket(pkt packet.Packet) *Link {
 	link := &Link{
 		ID:            pkt.GetLinkID(),
-		Verdict:       UNDECIDED,
+		Verdict:       VerdictUndecided,
 		Started:       time.Now().Unix(),
 		RemoteAddress: pkt.FmtRemoteAddress(),
 	}
@@ -332,24 +332,24 @@ func (link *Link) String() string {
 	link.Lock()
 	defer link.Unlock()
 
-	if link.connection == nil {
+	if link.comm == nil {
 		return fmt.Sprintf("? <-> %s", link.RemoteAddress)
 	}
-	switch link.connection.Domain {
+	switch link.comm.Domain {
 	case "I":
-		if link.connection.process == nil {
+		if link.comm.process == nil {
 			return fmt.Sprintf("? <- %s", link.RemoteAddress)
 		}
-		return fmt.Sprintf("%s <- %s", link.connection.process.String(), link.RemoteAddress)
+		return fmt.Sprintf("%s <- %s", link.comm.process.String(), link.RemoteAddress)
 	case "D":
-		if link.connection.process == nil {
+		if link.comm.process == nil {
 			return fmt.Sprintf("? -> %s", link.RemoteAddress)
 		}
-		return fmt.Sprintf("%s -> %s", link.connection.process.String(), link.RemoteAddress)
+		return fmt.Sprintf("%s -> %s", link.comm.process.String(), link.RemoteAddress)
 	default:
-		if link.connection.process == nil {
-			return fmt.Sprintf("? -> %s (%s)", link.connection.Domain, link.RemoteAddress)
+		if link.comm.process == nil {
+			return fmt.Sprintf("? -> %s (%s)", link.comm.Domain, link.RemoteAddress)
 		}
-		return fmt.Sprintf("%s to %s (%s)", link.connection.process.String(), link.connection.Domain, link.RemoteAddress)
+		return fmt.Sprintf("%s to %s (%s)", link.comm.process.String(), link.comm.Domain, link.RemoteAddress)
 	}
 }

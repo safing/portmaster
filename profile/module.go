@@ -1,13 +1,18 @@
 package profile
 
-import "github.com/Safing/portbase/modules"
+import (
+	"github.com/Safing/portbase/modules"
+
+	// module dependencies
+	_ "github.com/Safing/portmaster/core"
+)
 
 var (
 	shutdownSignal = make(chan struct{})
 )
 
 func init() {
-	modules.Register("profile", nil, start, stop, "global", "database")
+	modules.Register("profile", nil, start, stop, "core")
 }
 
 func start() error {

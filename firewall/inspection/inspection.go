@@ -54,7 +54,7 @@ func RunInspectors(pkt packet.Packet, link *network.Link) (network.Verdict, bool
 	}
 
 	continueInspection := false
-	verdict := network.UNDECIDED
+	verdict := network.VerdictUndecided
 
 	for key, skip := range activeInspectors {
 
@@ -69,28 +69,28 @@ func RunInspectors(pkt packet.Packet, link *network.Link) (network.Verdict, bool
 		action := inspectors[key](pkt, link)
 		switch action {
 		case DO_NOTHING:
-			if verdict < network.ACCEPT {
-				verdict = network.ACCEPT
+			if verdict < network.VerdictAccept {
+				verdict = network.VerdictAccept
 			}
 			continueInspection = true
 		case BLOCK_PACKET:
-			if verdict < network.BLOCK {
-				verdict = network.BLOCK
+			if verdict < network.VerdictBlock {
+				verdict = network.VerdictBlock
 			}
 			continueInspection = true
 		case DROP_PACKET:
-			verdict = network.DROP
+			verdict = network.VerdictDrop
 			continueInspection = true
 		case BLOCK_LINK:
-			link.UpdateVerdict(network.BLOCK)
+			link.UpdateVerdict(network.VerdictBlock)
 			activeInspectors[key] = true
-			if verdict < network.BLOCK {
-				verdict = network.BLOCK
+			if verdict < network.VerdictBlock {
+				verdict = network.VerdictBlock
 			}
 		case DROP_LINK:
-			link.UpdateVerdict(network.DROP)
+			link.UpdateVerdict(network.VerdictDrop)
 			activeInspectors[key] = true
-			verdict = network.DROP
+			verdict = network.VerdictDrop
 		case STOP_INSPECTING:
 			activeInspectors[key] = true
 		}

@@ -2,6 +2,7 @@ package profile
 
 import (
 	"strings"
+	"sync/atomic"
 
 	"github.com/Safing/portbase/database"
 	"github.com/Safing/portbase/database/query"
@@ -56,11 +57,27 @@ func updateListener(sub *database.Subscription) {
 				switch {
 				case strings.HasPrefix(profile.Key(), MakeProfileKey(UserNamespace, "")):
 					updateActiveUserProfile(profile)
+					increaseUpdateVersion()
 				case strings.HasPrefix(profile.Key(), MakeProfileKey(StampNamespace, "")):
 					updateActiveStampProfile(profile)
+					increaseUpdateVersion()
 				}
 			}
 
 		}
 	}
+}
+
+var (
+	updateVersion uint32
+)
+
+// GetUpdateVersion returns the current profiles internal update version
+func GetUpdateVersion() uint32 {
+	return atomic.LoadUint32(&updateVersion)
+}
+
+func increaseUpdateVersion() {
+	// we intentially want to wrap
+	atomic.AddUint32(&updateVersion, 1)
 }

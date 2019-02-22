@@ -13,52 +13,52 @@ const (
 	ReasonUnknownProcess = "unknown connection owner: process could not be found"
 )
 
-// GetUnknownConnection returns the connection to a packet of unknown owner.
-func GetUnknownConnection(pkt packet.Packet) (*Connection, error) {
+// GetUnknownCommunication returns the connection to a packet of unknown owner.
+func GetUnknownCommunication(pkt packet.Packet) (*Communication, error) {
 	if pkt.IsInbound() {
 		switch netutils.ClassifyIP(pkt.GetIPHeader().Src) {
 		case netutils.HostLocal:
-			return getOrCreateUnknownConnection(pkt, IncomingHost)
+			return getOrCreateUnknownCommunication(pkt, IncomingHost)
 		case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
-			return getOrCreateUnknownConnection(pkt, IncomingLAN)
+			return getOrCreateUnknownCommunication(pkt, IncomingLAN)
 		case netutils.Global, netutils.GlobalMulticast:
-			return getOrCreateUnknownConnection(pkt, IncomingInternet)
+			return getOrCreateUnknownCommunication(pkt, IncomingInternet)
 		case netutils.Invalid:
-			return getOrCreateUnknownConnection(pkt, IncomingInvalid)
+			return getOrCreateUnknownCommunication(pkt, IncomingInvalid)
 		}
 	}
 
 	switch netutils.ClassifyIP(pkt.GetIPHeader().Dst) {
 	case netutils.HostLocal:
-		return getOrCreateUnknownConnection(pkt, PeerHost)
+		return getOrCreateUnknownCommunication(pkt, PeerHost)
 	case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
-		return getOrCreateUnknownConnection(pkt, PeerLAN)
+		return getOrCreateUnknownCommunication(pkt, PeerLAN)
 	case netutils.Global, netutils.GlobalMulticast:
-		return getOrCreateUnknownConnection(pkt, PeerInternet)
+		return getOrCreateUnknownCommunication(pkt, PeerInternet)
 	case netutils.Invalid:
-		return getOrCreateUnknownConnection(pkt, PeerInvalid)
+		return getOrCreateUnknownCommunication(pkt, PeerInvalid)
 	}
 
 	// this should never happen
-	return getOrCreateUnknownConnection(pkt, PeerInvalid)
+	return getOrCreateUnknownCommunication(pkt, PeerInvalid)
 }
 
-func getOrCreateUnknownConnection(pkt packet.Packet, connClass string) (*Connection, error) {
-	connection, ok := GetConnection(process.UnknownProcess.Pid, connClass)
+func getOrCreateUnknownCommunication(pkt packet.Packet, connClass string) (*Communication, error) {
+	connection, ok := GetCommunication(process.UnknownProcess.Pid, connClass)
 	if !ok {
-		connection = &Connection{
+		connection = &Communication{
 			Domain:               connClass,
 			Direction:            pkt.IsInbound(),
-			Verdict:              DROP,
+			Verdict:              VerdictDrop,
 			Reason:               ReasonUnknownProcess,
 			process:              process.UnknownProcess,
 			Inspect:              true,
 			FirstLinkEstablished: time.Now().Unix(),
 		}
 		if pkt.IsOutbound() {
-			connection.Verdict = BLOCK
+			connection.Verdict = VerdictBlock
 		}
 	}
-	connection.process.AddConnection()
+	connection.process.AddCommunication()
 	return connection, nil
 }

@@ -20,7 +20,7 @@ func cleaner() {
 
 		cleanLinks()
 		time.Sleep(2 * time.Second)
-		cleanConnections()
+		cleanComms()
 		time.Sleep(2 * time.Second)
 		cleanProcesses()
 	}
@@ -73,18 +73,18 @@ func cleanLinks() {
 	}
 }
 
-func cleanConnections() {
-	connectionsLock.RLock()
-	defer connectionsLock.RUnlock()
+func cleanComms() {
+	commsLock.RLock()
+	defer commsLock.RUnlock()
 
 	threshold := time.Now().Add(-thresholdDuration).Unix()
-	for _, conn := range connections {
-		conn.Lock()
-		if conn.FirstLinkEstablished < threshold && conn.LinkCount == 0 {
-			// log.Tracef("network.clean: deleted %s", conn.DatabaseKey())
-			go conn.Delete()
+	for _, comm := range comms {
+		comm.Lock()
+		if comm.FirstLinkEstablished < threshold && comm.LinkCount == 0 {
+			// log.Tracef("network.clean: deleted %s", comm.DatabaseKey())
+			go comm.Delete()
 		}
-		conn.Unlock()
+		comm.Unlock()
 	}
 }
 

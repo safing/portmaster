@@ -14,10 +14,7 @@ import (
 	"github.com/Safing/portbase/modules"
 
 	// include packages here
-
-	_ "github.com/Safing/portbase/api"
-	_ "github.com/Safing/portbase/database/dbmodule"
-	_ "github.com/Safing/portbase/database/storage/badger"
+	_ "github.com/Safing/portmaster/core"
 	_ "github.com/Safing/portmaster/firewall"
 	_ "github.com/Safing/portmaster/nameserver"
 	_ "github.com/Safing/portmaster/ui"

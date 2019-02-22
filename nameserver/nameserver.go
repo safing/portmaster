@@ -126,8 +126,8 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 
 	// get connection
 	// start = time.Now()
-	connection, err := network.GetConnectionByDNSRequest(rAddr.IP, uint16(rAddr.Port), fqdn)
-	// log.Tracef("nameserver: took %s to get connection (and maybe process)", time.Since(start))
+	comm, err := network.GetCommunicationByDNSRequest(rAddr.IP, uint16(rAddr.Port), fqdn)
+	// log.Tracef("nameserver: took %s to get comms (and maybe process)", time.Since(start))
 	if err != nil {
 		log.Warningf("nameserver: someone is requesting %s, but could not identify process: %s, returning nxdomain", fqdn, err)
 		nxDomain(w, query)
@@ -137,39 +137,51 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	// [2/2] use this to time how long it takes to get process info
 	// log.Tracef("nameserver: took %s to get connection/process of %s request", time.Now().Sub(timed).String(), fqdn)
 
+	// check if communication needs reevaluation
+	if comm.NeedsReevaluation() {
+		comm.ResetVerdict()
+	}
+
 	// check profile before we even get intel and rr
-	if connection.GetVerdict() == network.UNDECIDED {
+	if comm.GetVerdict() == network.VerdictUndecided || comm.GetVerdict() == network.VerdictUndeterminable {
 		// start = time.Now()
-		firewall.DecideOnConnectionBeforeIntel(connection, fqdn)
+		firewall.DecideOnCommunicationBeforeIntel(comm, fqdn)
 		// log.Tracef("nameserver: took %s to make decision", time.Since(start))
 	}
-	if connection.GetVerdict() == network.BLOCK || connection.GetVerdict() == network.DROP {
+	if comm.GetVerdict() == network.VerdictBlock || comm.GetVerdict() == network.VerdictDrop {
 		nxDomain(w, query)
 		return
 	}
 
 	// get intel and RRs
 	// start = time.Now()
-	domainIntel, rrCache := intel.GetIntelAndRRs(fqdn, qtype, connection.Process().ProfileSet().SecurityLevel())
+	domainIntel, rrCache := intel.GetIntelAndRRs(fqdn, qtype, comm.Process().ProfileSet().SecurityLevel())
 	// log.Tracef("nameserver: took %s to get intel and RRs", time.Since(start))
 	if rrCache == nil {
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
-		log.Infof("nameserver: %s tried to query %s, but is nxdomain", connection.Process().String(), fqdn)
+		log.Infof("nameserver: %s tried to query %s, but is nxdomain", comm.Process().String(), fqdn)
 		nxDomain(w, query)
 		return
 	}
 
 	// set intel
-	connection.Lock()
-	connection.Intel = domainIntel
-	connection.Unlock()
-	connection.Save()
+	comm.Lock()
+	comm.Intel = domainIntel
+	comm.Unlock()
+	comm.Save()
 
 	// do a full check with intel
-	if connection.GetVerdict() == network.UNDECIDED {
-		rrCache = firewall.DecideOnConnectionAfterIntel(connection, fqdn, rrCache)
+	if comm.GetVerdict() == network.VerdictUndecided || comm.GetVerdict() == network.VerdictUndeterminable {
+		firewall.DecideOnCommunicationAfterIntel(comm, fqdn, rrCache)
 	}
-	if rrCache == nil || connection.GetVerdict() == network.BLOCK || connection.GetVerdict() == network.DROP {
+	if comm.GetVerdict() == network.VerdictBlock || comm.GetVerdict() == network.VerdictDrop {
+		nxDomain(w, query)
+		return
+	}
+
+	// filter DNS response
+	rrCache = firewall.FilterDNSResponse(comm, fqdn, rrCache)
+	if rrCache == nil {
 		nxDomain(w, query)
 		return
 	}

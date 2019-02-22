@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"net"
 	"sync"
 
 	"github.com/Safing/portmaster/status"
@@ -119,8 +120,28 @@ func (set *Set) CheckFlag(flag uint8) (active bool) {
 	return false
 }
 
-// CheckEndpoint checks if the given protocol and port are governed in any the lists of ports and returns whether it is permitted.
-func (set *Set) CheckEndpoint(domainOrIP string, protocol uint8, port uint16, inbound bool) (permit bool, reason string, ok bool) {
+// CheckEndpointDomain checks if the given endpoint matches an entry in the corresponding list. This is for outbound communication only.
+func (set *Set) CheckEndpointDomain(domain string) (result EPResult, reason string) {
+	set.Lock()
+	defer set.Unlock()
+
+	for i, profile := range set.profiles {
+		if i == 2 && set.independent {
+			continue
+		}
+
+		if profile != nil {
+			if result, reason = profile.Endpoints.CheckDomain(domain); result != NoMatch {
+				return
+			}
+		}
+	}
+
+	return NoMatch, ""
+}
+
+// CheckEndpointIP checks if the given endpoint matches an entry in the corresponding list.
+func (set *Set) CheckEndpointIP(domain string, ip net.IP, protocol uint8, port uint16, inbound bool) (result EPResult, reason string) {
 	set.Lock()
 	defer set.Unlock()
 
@@ -131,18 +152,18 @@ func (set *Set) CheckEndpoint(domainOrIP string, protocol uint8, port uint16, in
 
 		if profile != nil {
 			if inbound {
-				if permit, reason, ok = profile.ServiceEndpoints.Check(domainOrIP, protocol, port, inbound, set.combinedSecurityLevel); ok {
+				if result, reason = profile.ServiceEndpoints.CheckIP(domain, ip, protocol, port, inbound, set.combinedSecurityLevel); result != NoMatch {
 					return
 				}
 			} else {
-				if permit, reason, ok = profile.Endpoints.Check(domainOrIP, protocol, port, inbound, set.combinedSecurityLevel); ok {
+				if result, reason = profile.Endpoints.CheckIP(domain, ip, protocol, port, inbound, set.combinedSecurityLevel); result != NoMatch {
 					return
 				}
 			}
 		}
 	}
 
-	return false, "", false
+	return NoMatch, ""
 }
 
 // getSecurityLevel returns the highest prioritized security level.

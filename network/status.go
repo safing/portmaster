@@ -8,12 +8,13 @@ type Verdict uint8
 // List of values a Status can have
 const (
 	// UNDECIDED is the default status of new connections
-	UNDECIDED Verdict = iota
-	ACCEPT
-	BLOCK
-	DROP
-	RerouteToNameserver
-	RerouteToTunnel
+	VerdictUndecided           Verdict = 0
+	VerdictUndeterminable      Verdict = 1
+	VerdictAccept              Verdict = 2
+	VerdictBlock               Verdict = 3
+	VerdictDrop                Verdict = 4
+	VerdictRerouteToNameserver Verdict = 5
+	VerdictRerouteToTunnel     Verdict = 6
 )
 
 // Packer Directions

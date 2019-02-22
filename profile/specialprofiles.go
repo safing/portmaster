@@ -48,8 +48,7 @@ func getSpecialProfile(ID string) (*Profile, error) {
 func ensureServiceEndpointsDenyAll(p *Profile) (changed bool) {
 	for _, ep := range p.ServiceEndpoints {
 		if ep != nil {
-			if ep.DomainOrIP == "" &&
-				ep.Wildcard == true &&
+			if ep.Type == EptAny &&
 				ep.Protocol == 0 &&
 				ep.StartPort == 0 &&
 				ep.EndPort == 0 &&
@@ -60,12 +59,11 @@ func ensureServiceEndpointsDenyAll(p *Profile) (changed bool) {
 	}
 
 	p.ServiceEndpoints = append(p.ServiceEndpoints, &EndpointPermission{
-		DomainOrIP: "",
-		Wildcard:   true,
-		Protocol:   0,
-		StartPort:  0,
-		EndPort:    0,
-		Permit:     false,
+		Type:      EptAny,
+		Protocol:  0,
+		StartPort: 0,
+		EndPort:   0,
+		Permit:    false,
 	})
 	return true
 }
