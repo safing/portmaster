@@ -58,7 +58,7 @@ func prep() error {
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    7,
+		DefaultValue:    6,
 		ValidationRegex: "^(7|6|4)$",
 	})
 	if err != nil {
@@ -73,7 +73,7 @@ func prep() error {
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    7,
+		DefaultValue:    6,
 		ValidationRegex: "^(7|6|4)$",
 	})
 	if err != nil {
@@ -88,7 +88,7 @@ func prep() error {
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    7,
+		DefaultValue:    6,
 		ValidationRegex: "^(7|6|4)$",
 	})
 	if err != nil {
