@@ -57,6 +57,11 @@ func start() error {
 }
 
 func stop() error {
-	close(shutdownSignal)
+	select {
+	case <-shutdownSignal:
+		// already closed
+	default:
+		close(shutdownSignal)
+	}
 	return nil
 }
