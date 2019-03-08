@@ -179,23 +179,8 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 		return
 	}
 
-	// check if communication needs reevaluation
-	if comm.NeedsReevaluation() {
-		comm.ResetVerdict()
-	}
-
-	// make a decision if not made already
-	switch comm.GetVerdict() {
-	case network.VerdictUndecided, network.VerdictUndeterminable:
-		DecideOnCommunication(comm, pkt)
-	}
-
-	switch comm.GetVerdict() {
-	case network.VerdictUndecided, network.VerdictUndeterminable, network.VerdictAccept:
-		DecideOnLink(comm, link, pkt)
-	default:
-		link.UpdateVerdict(comm.GetVerdict())
-	}
+	DecideOnCommunication(comm, pkt)
+	DecideOnLink(comm, link, pkt)
 
 	// log decision
 	logInitialVerdict(link)

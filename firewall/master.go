@@ -5,8 +5,10 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Safing/portbase/log"
+	"github.com/Safing/portbase/notifications"
 	"github.com/Safing/portmaster/intel"
 	"github.com/Safing/portmaster/network"
 	"github.com/Safing/portmaster/network/netutils"
@@ -31,6 +33,16 @@ import (
 
 // DecideOnCommunicationBeforeIntel makes a decision about a communication before the dns query is resolved and intel is gathered.
 func DecideOnCommunicationBeforeIntel(comm *network.Communication, fqdn string) {
+
+	// check if communication needs reevaluation
+	if comm.NeedsReevaluation() {
+		comm.ResetVerdict()
+	}
+
+	// check if need to run
+	if comm.GetVerdict() != network.VerdictUndecided {
+		return
+	}
 
 	// grant self
 	if comm.Process().Pid == os.Getpid() {
@@ -60,77 +72,51 @@ func DecideOnCommunicationBeforeIntel(comm *network.Communication, fqdn string) 
 	switch result {
 	case profile.NoMatch:
 		comm.UpdateVerdict(network.VerdictUndecided)
+		if profileSet.GetProfileMode() == profile.Whitelist {
+			log.Infof("firewall: denying communication %s, domain is not whitelisted", comm)
+			comm.Deny("domain is not whitelisted")
+		}
 	case profile.Undeterminable:
 		comm.UpdateVerdict(network.VerdictUndeterminable)
-		return
 	case profile.Denied:
 		log.Infof("firewall: denying communication %s, endpoint is blacklisted: %s", comm, reason)
 		comm.Deny(fmt.Sprintf("endpoint is blacklisted: %s", reason))
-		return
 	case profile.Permitted:
 		log.Infof("firewall: permitting communication %s, endpoint is whitelisted: %s", comm, reason)
 		comm.Accept(fmt.Sprintf("endpoint is whitelisted: %s", reason))
+	}
+}
+
+// DecideOnCommunicationAfterIntel makes a decision about a communication after the dns query is resolved and intel is gathered.
+func DecideOnCommunicationAfterIntel(comm *network.Communication, fqdn string, rrCache *intel.RRCache) {
+
+	// check if need to run
+	if comm.GetVerdict() != network.VerdictUndecided {
 		return
 	}
+
+	// grant self - should not get here
+	if comm.Process().Pid == os.Getpid() {
+		log.Infof("firewall: granting own communication %s", comm)
+		comm.Accept("")
+		return
+	}
+
+	// check if there is a profile
+	profileSet := comm.Process().ProfileSet()
+	if profileSet == nil {
+		log.Errorf("firewall: denying communication %s, no Profile Set", comm)
+		comm.Deny("no Profile Set")
+		return
+	}
+	profileSet.Update(status.ActiveSecurityLevel())
+
+	// TODO: Stamp integration
 
 	switch profileSet.GetProfileMode() {
 	case profile.Whitelist:
 		log.Infof("firewall: denying communication %s, domain is not whitelisted", comm)
 		comm.Deny("domain is not whitelisted")
-		return
-	case profile.Prompt:
-
-		// check Related flag
-		// TODO: improve this!
-		if profileSet.CheckFlag(profile.Related) {
-			matched := false
-			pathElements := strings.Split(comm.Process().Path, "/") // FIXME: path seperator
-			// only look at the last two path segments
-			if len(pathElements) > 2 {
-				pathElements = pathElements[len(pathElements)-2:]
-			}
-			domainElements := strings.Split(fqdn, ".")
-
-			var domainElement string
-			var processElement string
-
-		matchLoop:
-			for _, domainElement = range domainElements {
-				for _, pathElement := range pathElements {
-					if levenshtein.Match(domainElement, pathElement, nil) > 0.5 {
-						matched = true
-						processElement = pathElement
-						break matchLoop
-					}
-				}
-				if levenshtein.Match(domainElement, profileSet.UserProfile().Name, nil) > 0.5 {
-					matched = true
-					processElement = profileSet.UserProfile().Name
-					break matchLoop
-				}
-				if levenshtein.Match(domainElement, comm.Process().Name, nil) > 0.5 {
-					matched = true
-					processElement = comm.Process().Name
-					break matchLoop
-				}
-				if levenshtein.Match(domainElement, comm.Process().ExecName, nil) > 0.5 {
-					matched = true
-					processElement = comm.Process().ExecName
-					break matchLoop
-				}
-			}
-
-			if matched {
-				log.Infof("firewall: permitting communication %s, match to domain was found: %s ~== %s", comm, domainElement, processElement)
-				comm.Accept("domain is related to process")
-			}
-		}
-
-		if comm.GetVerdict() != network.VerdictAccept {
-			// TODO
-			log.Infof("firewall: permitting communication %s, domain permitted (prompting is not yet implemented)", comm)
-			comm.Accept("domain permitted (prompting is not yet implemented)")
-		}
 		return
 	case profile.Blacklist:
 		log.Infof("firewall: permitting communication %s, domain is not blacklisted", comm)
@@ -138,34 +124,103 @@ func DecideOnCommunicationBeforeIntel(comm *network.Communication, fqdn string) 
 		return
 	}
 
-	log.Infof("firewall: denying communication %s, no profile mode set", comm)
-	comm.Deny("no profile mode set")
-}
+	// ProfileMode == Prompt
 
-// DecideOnCommunicationAfterIntel makes a decision about a communication after the dns query is resolved and intel is gathered.
-func DecideOnCommunicationAfterIntel(comm *network.Communication, fqdn string, rrCache *intel.RRCache) {
+	// check relation
+	if profileSet.CheckFlag(profile.Related) {
+		if checkRelation(comm, fqdn) {
+			return
+		}
+	}
 
-	// SUSPENDED until Stamp integration is finished
+	// prompt
 
-	// grant self - should not get here
-	// if comm.Process().Pid == os.Getpid() {
-	// 	log.Infof("firewall: granting own communication %s", comm)
-	// 	comm.Accept("")
-	// 	return
-	// }
+	// first check if there is an existing notification for this.
+	nID := fmt.Sprintf("firewall-prompt-%d-%s", comm.Process().Pid, comm.Domain)
+	nTTL := 15 * time.Second
+	n := notifications.Get(nID)
+	if n != nil {
+		// we were not here first, only get verdict, do not make changes
+		select {
+		case promptResponse := <-n.Response():
+			switch promptResponse {
+			case "permit-all", "permit-distinct":
+				comm.Accept("permitted by user")
+			default:
+				comm.Deny("denied by user")
+			}
+		case <-time.After(nTTL):
+			comm.SetReason("user did not respond to prompt")
+		}
+		return
+	}
 
-	// check if there is a profile
-	// profileSet := comm.Process().ProfileSet()
-	// if profileSet == nil {
-	// 	log.Errorf("firewall: denying communication %s, no Profile Set", comm)
-	// 	comm.Deny("no Profile Set")
-	// 	return
-	// }
-	// profileSet.Update(status.ActiveSecurityLevel())
+	// create new notification
+	n = (&notifications.Notification{
+		ID:      nID,
+		Message: fmt.Sprintf("Application %s wants to connect to %s", comm.Process(), comm.Domain),
+		Type:    notifications.Prompt,
+		AvailableActions: []*notifications.Action{
+			&notifications.Action{
+				ID:   "permit-all",
+				Text: fmt.Sprintf("Permit all %s", comm.Domain),
+			},
+			&notifications.Action{
+				ID:   "permit-distinct",
+				Text: fmt.Sprintf("Permit %s", comm.Domain),
+			},
+			&notifications.Action{
+				ID:   "deny",
+				Text: "Deny",
+			},
+		},
+		Expires: time.Now().Add(nTTL).Unix(),
+	}).Init().Save()
 
-	// TODO: Stamp integration
+	// react
+	select {
+	case promptResponse := <-n.Response():
+		n.Cancel()
 
-	return
+		new := &profile.EndpointPermission{
+			Type:    profile.EptDomain,
+			Value:   comm.Domain,
+			Permit:  true,
+			Created: time.Now().Unix(),
+		}
+
+		switch promptResponse {
+		case "permit-all":
+			new.Value = "." + new.Value
+		case "permit-distinct":
+			// everything already set
+		default:
+			// deny
+			new.Permit = false
+		}
+
+		if new.Permit {
+			log.Infof("firewall: user permitted communication %s -> %s", comm.Process(), new.Value)
+			comm.Accept("permitted by user")
+		} else {
+			log.Infof("firewall: user denied communication %s -> %s", comm.Process(), new.Value)
+			comm.Deny("denied by user")
+		}
+
+		profileSet.Lock()
+		defer profileSet.Unlock()
+		userProfile := profileSet.UserProfile()
+		userProfile.Lock()
+		defer userProfile.Unlock()
+
+		userProfile.Endpoints = append(userProfile.Endpoints, new)
+		go userProfile.Save("")
+
+	case <-time.After(nTTL):
+		n.Cancel()
+		comm.SetReason("user did not respond to prompt")
+
+	}
 }
 
 // FilterDNSResponse filters a dns response according to the application profile and settings.
@@ -258,7 +313,7 @@ func FilterDNSResponse(comm *network.Communication, fqdn string, rrCache *intel.
 				}
 
 				// filter by endpoints
-				result, _ = profileSet.CheckEndpointIP("", ip, 0, 0, false)
+				result, _ = profileSet.CheckEndpointIP(fqdn, ip, 0, 0, false)
 				if result == profile.Denied {
 					addressesRemoved++
 					rrCache.FilteredEntries = append(rrCache.FilteredEntries, rr.String())
@@ -298,6 +353,16 @@ func FilterDNSResponse(comm *network.Communication, fqdn string, rrCache *intel.
 // DecideOnCommunication makes a decision about a communication with its first packet.
 func DecideOnCommunication(comm *network.Communication, pkt packet.Packet) {
 
+	// check if communication needs reevaluation
+	if comm.NeedsReevaluation() {
+		comm.ResetVerdict()
+	}
+
+	// check if need to run
+	if comm.GetVerdict() != network.VerdictUndecided {
+		return
+	}
+
 	// grant self
 	if comm.Process().Pid == os.Getpid() {
 		log.Infof("firewall: granting own communication %s", comm)
@@ -322,7 +387,7 @@ func DecideOnCommunication(comm *network.Communication, pkt packet.Packet) {
 			if comm.Domain == network.IncomingHost {
 				comm.Block("not a service")
 			} else {
-				comm.Drop("not a service")
+				comm.Deny("not a service")
 			}
 			return
 		}
@@ -383,15 +448,19 @@ func DecideOnCommunication(comm *network.Communication, pkt packet.Packet) {
 	}
 
 	log.Infof("firewall: undeterminable verdict for communication %s", comm)
+	comm.UpdateVerdict(network.VerdictUndeterminable)
 }
 
 // DecideOnLink makes a decision about a link with the first packet.
 func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Packet) {
-	// check:
-	// Profile.Flags
-	// - network specific: Internet, LocalNet
-	// Profile.ConnectPorts
-	// Profile.ListenPorts
+
+	switch comm.GetVerdict() {
+	case network.VerdictUndecided, network.VerdictUndeterminable:
+		// continue
+	default:
+		link.UpdateVerdict(comm.GetVerdict())
+		return
+	}
 
 	// grant self
 	if comm.Process().Pid == os.Getpid() {
@@ -410,9 +479,9 @@ func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Pa
 	profileSet.Update(status.ActiveSecurityLevel())
 
 	// get domain
-	var domain string
+	var fqdn string
 	if strings.HasSuffix(comm.Domain, ".") {
-		domain = comm.Domain
+		fqdn = comm.Domain
 	}
 
 	// remoteIP
@@ -432,10 +501,8 @@ func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Pa
 	}
 
 	// check endpoints list
-	result, reason := profileSet.CheckEndpointIP(domain, remoteIP, protocol, dstPort, comm.Direction)
+	result, reason := profileSet.CheckEndpointIP(fqdn, remoteIP, protocol, dstPort, comm.Direction)
 	switch result {
-	// case profile.NoMatch, profile.Undeterminable:
-	// 	continue
 	case profile.Denied:
 		log.Infof("firewall: denying link %s, endpoint is blacklisted: %s", link, reason)
 		link.Deny(fmt.Sprintf("endpoint is blacklisted: %s", reason))
@@ -446,14 +513,12 @@ func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Pa
 		return
 	}
 
+	// TODO: Stamp integration
+
 	switch profileSet.GetProfileMode() {
 	case profile.Whitelist:
 		log.Infof("firewall: denying link %s: endpoint is not whitelisted", link)
 		link.Deny("endpoint is not whitelisted")
-		return
-	case profile.Prompt:
-		log.Infof("firewall: permitting link %s: endpoint is not blacklisted (prompting is not yet implemented)", link)
-		link.Accept("endpoint is not blacklisted (prompting is not yet implemented)")
 		return
 	case profile.Blacklist:
 		log.Infof("firewall: permitting link %s: endpoint is not blacklisted", link)
@@ -461,6 +526,192 @@ func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Pa
 		return
 	}
 
-	log.Infof("firewall: denying link %s, no profile mode set", link)
-	link.Deny("no profile mode set")
+	// ProfileMode == Prompt
+
+	// check relation
+	if fqdn != "" && profileSet.CheckFlag(profile.Related) {
+		if checkRelation(comm, fqdn) {
+			return
+		}
+	}
+
+	// first check if there is an existing notification for this.
+	var nID string
+	switch {
+	case comm.Direction:
+		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s-%d-%d", comm.Process().Pid, comm.Domain, remoteIP, protocol, dstPort)
+	case fqdn == "":
+		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s-%d-%d", comm.Process().Pid, comm.Domain, remoteIP, protocol, dstPort)
+	default:
+		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s-%d-%d", comm.Process().Pid, comm.Domain, remoteIP, protocol, dstPort)
+	}
+	nTTL := 15 * time.Second
+	n := notifications.Get(nID)
+
+	if n != nil {
+		// we were not here first, only get verdict, do not make changes
+		select {
+		case promptResponse := <-n.Response():
+			switch promptResponse {
+			case "permit-domain-all", "permit-domain-distinct", "permit-ip", "permit-ip-incoming":
+				link.Accept("permitted by user")
+			default:
+				link.Deny("denied by user")
+			}
+		case <-time.After(nTTL):
+			link.Deny("user did not respond to prompt")
+		}
+		return
+	}
+
+	// create new notification
+	n = (&notifications.Notification{
+		ID:      nID,
+		Type:    notifications.Prompt,
+		Expires: time.Now().Add(nTTL).Unix(),
+	})
+
+	switch {
+	case comm.Direction:
+		n.Message = fmt.Sprintf("Application %s wants to accept connections from %s (%d/%d)", comm.Process(), remoteIP, protocol, dstPort)
+		n.AvailableActions = []*notifications.Action{
+			&notifications.Action{
+				ID:   "permit-ip-incoming",
+				Text: fmt.Sprintf("Permit serving to %s", remoteIP),
+			},
+		}
+	case fqdn == "":
+		n.Message = fmt.Sprintf("Application %s wants to connect to %s (%d/%d)", comm.Process(), remoteIP, protocol, dstPort)
+		n.AvailableActions = []*notifications.Action{
+			&notifications.Action{
+				ID:   "permit-ip",
+				Text: fmt.Sprintf("Permit %s", remoteIP),
+			},
+		}
+	default:
+		n.Message = fmt.Sprintf("Application %s wants to connect to %s (%s %d/%d)", comm.Process(), comm.Domain, remoteIP, protocol, dstPort)
+		n.AvailableActions = []*notifications.Action{
+			&notifications.Action{
+				ID:   "permit-domain-all",
+				Text: fmt.Sprintf("Permit all %s", comm.Domain),
+			},
+			&notifications.Action{
+				ID:   "permit-domain-distinct",
+				Text: fmt.Sprintf("Permit %s", comm.Domain),
+			},
+		}
+	}
+
+	n.AvailableActions = append(n.AvailableActions, &notifications.Action{
+		ID:   "deny",
+		Text: "deny",
+	})
+	n.Init().Save()
+
+	// react
+	select {
+	case promptResponse := <-n.Response():
+		n.Cancel()
+
+		new := &profile.EndpointPermission{
+			Type:    profile.EptDomain,
+			Value:   comm.Domain,
+			Permit:  true,
+			Created: time.Now().Unix(),
+		}
+
+		switch promptResponse {
+		case "permit-domain-all":
+			new.Value = "." + new.Value
+		case "permit-domain-distinct":
+			// everything already set
+		case "permit-ip", "permit-ip-incoming":
+			if pkt.GetIPHeader().Version == packet.IPv4 {
+				new.Type = profile.EptIPv4
+			} else {
+				new.Type = profile.EptIPv6
+			}
+			new.Value = remoteIP.String()
+		default:
+			// deny
+			new.Permit = false
+		}
+
+		if new.Permit {
+			log.Infof("firewall: user permitted link %s -> %s", comm.Process(), new.Value)
+			link.Accept("permitted by user")
+		} else {
+			log.Infof("firewall: user denied link %s -> %s", comm.Process(), new.Value)
+			link.Deny("denied by user")
+		}
+
+		profileSet.Lock()
+		defer profileSet.Unlock()
+		userProfile := profileSet.UserProfile()
+		userProfile.Lock()
+		defer userProfile.Unlock()
+
+		if promptResponse == "permit-ip-incoming" {
+			userProfile.ServiceEndpoints = append(userProfile.ServiceEndpoints, new)
+		} else {
+			userProfile.Endpoints = append(userProfile.Endpoints, new)
+		}
+		go userProfile.Save("")
+
+	case <-time.After(nTTL):
+		n.Cancel()
+		link.Deny("user did not respond to prompt")
+
+	}
+}
+
+func checkRelation(comm *network.Communication, fqdn string) (related bool) {
+	profileSet := comm.Process().ProfileSet()
+	if profileSet == nil {
+		return
+	}
+
+	// TODO: add #AI
+
+	pathElements := strings.Split(comm.Process().Path, "/") // FIXME: path seperator
+	// only look at the last two path segments
+	if len(pathElements) > 2 {
+		pathElements = pathElements[len(pathElements)-2:]
+	}
+	domainElements := strings.Split(fqdn, ".")
+
+	var domainElement string
+	var processElement string
+
+matchLoop:
+	for _, domainElement = range domainElements {
+		for _, pathElement := range pathElements {
+			if levenshtein.Match(domainElement, pathElement, nil) > 0.5 {
+				related = true
+				processElement = pathElement
+				break matchLoop
+			}
+		}
+		if levenshtein.Match(domainElement, profileSet.UserProfile().Name, nil) > 0.5 {
+			related = true
+			processElement = profileSet.UserProfile().Name
+			break matchLoop
+		}
+		if levenshtein.Match(domainElement, comm.Process().Name, nil) > 0.5 {
+			related = true
+			processElement = comm.Process().Name
+			break matchLoop
+		}
+		if levenshtein.Match(domainElement, comm.Process().ExecName, nil) > 0.5 {
+			related = true
+			processElement = comm.Process().ExecName
+			break matchLoop
+		}
+	}
+
+	if related {
+		log.Infof("firewall: permitting communication %s, match to domain was found: %s is related to %s", comm, domainElement, processElement)
+		comm.Accept(fmt.Sprintf("domain is related to process: %s is related to %s", domainElement, processElement))
+	}
+	return
 }

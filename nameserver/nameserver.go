@@ -137,17 +137,11 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	// [2/2] use this to time how long it takes to get process info
 	// log.Tracef("nameserver: took %s to get connection/process of %s request", time.Now().Sub(timed).String(), fqdn)
 
-	// check if communication needs reevaluation
-	if comm.NeedsReevaluation() {
-		comm.ResetVerdict()
-	}
-
 	// check profile before we even get intel and rr
-	if comm.GetVerdict() == network.VerdictUndecided || comm.GetVerdict() == network.VerdictUndeterminable {
-		// start = time.Now()
-		firewall.DecideOnCommunicationBeforeIntel(comm, fqdn)
-		// log.Tracef("nameserver: took %s to make decision", time.Since(start))
-	}
+	// start = time.Now()
+	firewall.DecideOnCommunicationBeforeIntel(comm, fqdn)
+	// log.Tracef("nameserver: took %s to make decision", time.Since(start))
+
 	if comm.GetVerdict() == network.VerdictBlock || comm.GetVerdict() == network.VerdictDrop {
 		nxDomain(w, query)
 		return
@@ -170,11 +164,10 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	comm.Unlock()
 	comm.Save()
 
-	// do a full check with intel
-	if comm.GetVerdict() == network.VerdictUndecided || comm.GetVerdict() == network.VerdictUndeterminable {
-		firewall.DecideOnCommunicationAfterIntel(comm, fqdn, rrCache)
-	}
-	if comm.GetVerdict() == network.VerdictBlock || comm.GetVerdict() == network.VerdictDrop {
+	// check with intel
+	firewall.DecideOnCommunicationAfterIntel(comm, fqdn, rrCache)
+	switch comm.GetVerdict() {
+	case network.VerdictUndecided, network.VerdictBlock, network.VerdictDrop:
 		nxDomain(w, query)
 		return
 	}

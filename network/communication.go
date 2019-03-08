@@ -51,6 +51,7 @@ func (comm *Communication) ResetVerdict() {
 	defer comm.Unlock()
 
 	comm.Verdict = VerdictUndecided
+	comm.Reason = ""
 }
 
 // GetVerdict returns the current verdict.
@@ -97,6 +98,17 @@ func (comm *Communication) UpdateVerdict(newVerdict Verdict) {
 		comm.Verdict = newVerdict
 		go comm.Save()
 	}
+}
+
+// SetReason sets/replaces a human readable string as to why a certain verdict was set in regard to this communication.
+func (comm *Communication) SetReason(reason string) {
+	if reason == "" {
+		return
+	}
+
+	comm.Lock()
+	defer comm.Unlock()
+	comm.Reason = reason
 }
 
 // AddReason adds a human readable string as to why a certain verdict was set in regard to this communication.

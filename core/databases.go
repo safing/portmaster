@@ -3,6 +3,7 @@ package core
 import (
 	"github.com/Safing/portbase/database"
 	"github.com/Safing/portbase/modules"
+	"github.com/Safing/portbase/notifications"
 
 	// module dependencies
 	_ "github.com/Safing/portbase/database/dbmodule"
@@ -11,6 +12,8 @@ import (
 
 func init() {
 	modules.Register("core", nil, start, nil, "database")
+
+	notifications.SetPersistenceBasePath("core:notifications")
 }
 
 func start() error {
