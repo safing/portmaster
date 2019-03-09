@@ -31,6 +31,11 @@ func prep() error {
 		return err
 	}
 
+	err = upgradeByFlag()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -46,6 +51,7 @@ func start() error {
 	}
 
 	go updater()
+	go updateNotifier()
 	return nil
 }
 
