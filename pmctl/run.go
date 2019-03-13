@@ -26,7 +26,7 @@ var runCore = &cobra.Command{
 	Use:   "core",
 	Short: "Run the Portmaster Core",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return run("core/portmaster", cmd, args)
+		return run("core/portmaster", cmd, false)
 	},
 	FParseErrWhitelist: cobra.FParseErrWhitelist{
 		// UnknownFlags will ignore unknown flags errors and continue parsing rest of the flags
@@ -38,7 +38,7 @@ var runApp = &cobra.Command{
 	Use:   "app",
 	Short: "Run the Portmaster App",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return run("app/portmaster-app", cmd, args)
+		return run("app/portmaster-app", cmd, true)
 	},
 	FParseErrWhitelist: cobra.FParseErrWhitelist{
 		// UnknownFlags will ignore unknown flags errors and continue parsing rest of the flags
@@ -50,7 +50,7 @@ var runNotifier = &cobra.Command{
 	Use:   "notifier",
 	Short: "Run the Portmaster Notifier",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return run("notifier/portmaster-notifier", cmd, args)
+		return run("notifier/portmaster-notifier", cmd, true)
 	},
 	FParseErrWhitelist: cobra.FParseErrWhitelist{
 		// UnknownFlags will ignore unknown flags errors and continue parsing rest of the flags
@@ -58,13 +58,41 @@ var runNotifier = &cobra.Command{
 	},
 }
 
-func run(identifier string, cmd *cobra.Command, args []string) error {
+func run(identifier string, cmd *cobra.Command, filterDatabaseFlag bool) error {
 
+	// get original arguments
 	if len(os.Args) <= 3 {
 		return cmd.Help()
 	}
-	args = os.Args[3:]
+	var args []string
 
+	// filter out database flag
+	if filterDatabaseFlag {
+		skip := false
+		for _, arg := range os.Args[3:] {
+			if skip {
+				skip = false
+				continue
+			}
+
+			if arg == "--db" {
+				// flag is seperated, skip two arguments
+				skip = true
+				continue
+			}
+
+			if strings.HasPrefix(arg, "--db=") {
+				// flag is one string, skip one argument
+				continue
+			}
+
+			args = append(args, arg)
+		}
+	} else {
+		args = os.Args[3:]
+	}
+
+	// run
 	for {
 		file, err := getFile(identifier)
 		if err != nil {
@@ -119,18 +147,18 @@ func run(identifier string, cmd *cobra.Command, args []string) error {
 				case 0:
 					// clean exit
 					fmt.Printf("%s clean exit of %s, but with error: %s\n", logPrefix, identifier, err)
-					break
+					os.Exit(1)
 				case 1:
 					// error exit
 					fmt.Printf("%s error during execution of %s: %s\n", logPrefix, identifier, err)
 					os.Exit(1)
-				case 2:
+				case 2357427: // Leet Speak for "restart"
 					// restart request
 					fmt.Printf("%s restarting %s\n", logPrefix, identifier)
 					continue
 				default:
 					fmt.Printf("%s unexpected error during execution of %s: %s\n", logPrefix, identifier, err)
-					os.Exit(1)
+					os.Exit(exErr.ProcessState.ExitCode())
 				}
 			} else {
 				fmt.Printf("%s unexpected error type during execution of %s: %s\n", logPrefix, identifier, err)
@@ -141,5 +169,7 @@ func run(identifier string, cmd *cobra.Command, args []string) error {
 		// clean exit
 		break
 	}
+
+	fmt.Printf("%s %s completed successfully\n", logPrefix, identifier)
 	return nil
 }
