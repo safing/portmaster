@@ -9,10 +9,5 @@ func init() {
 }
 
 func prep() error {
-	err := launchUIByFlag()
-	if err != nil {
-		return err
-	}
-
 	return registerRoutes()
 }
