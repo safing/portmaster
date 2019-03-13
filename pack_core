@@ -1,0 +1,72 @@
+#!/bin/bash
+
+baseDir="$( cd "$(dirname "$0")" && pwd )"
+cd "$baseDir"
+
+COL_OFF="\033[00m"
+COL_BOLD="\033[01;01m"
+COL_YELLOW="\033[33m"
+
+destDirPart1="./dist"
+destDirPart2="core"
+
+function check {
+  # get version
+  version=$(grep "info.Set" main.go | cut -d'"' -f4)
+  # build versioned file name
+  filename="portmaster_v${version//./-}"
+  # build destination path
+  destPath=${destDirPart1}/linux_amd64/${destDirPart2}/$filename
+
+  # check if file exists
+  if [[ -f $destPath ]]; then
+    echo "[core] linux_amd64 $version already built"
+  else
+    echo -e "${COL_BOLD}[core] linux_amd64 $version${COL_OFF}"
+  fi
+}
+
+function build {
+  # get version
+  version=$(grep "info.Set" main.go | cut -d'"' -f4)
+  # build versioned file name
+  filename="portmaster_v${version//./-}"
+  # build destination path
+  destPath=${destDirPart1}/linux_amd64/${destDirPart2}/$filename
+
+  # check if file exists
+  if [[ -f $destPath ]]; then
+    echo "core[linux_amd64] already built in version $version, skipping..."
+    exit 0
+  fi
+
+  # build
+  GOOS=linux GOARCH=amd64 ./build main.go
+  cp main $destPath
+  if [[ $? -ne 0 ]]; then
+    echo -e "\nlinux_amd64: BUILD FAILED."
+    exit 1
+  fi
+}
+
+case $1 in
+  "check" )
+    check
+    ;;
+  "build" )
+    build
+    ;;
+  * )
+    echo ""
+    echo "build list:"
+    echo ""
+    check
+    echo ""
+    read -p "press [Enter] to start building" x
+    echo ""
+    build
+    echo ""
+    echo "finished building."
+    echo ""
+    ;;
+esac

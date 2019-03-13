@@ -1,0 +1,35 @@
+#!/bin/bash
+
+baseDir="$( cd "$(dirname "$0")" && pwd )"
+cd "$baseDir"
+
+# first check what will be built
+
+echo ""
+echo "pack list:"
+echo ""
+
+./pmctl/pack check
+./pack_core check
+
+# confirm
+
+echo ""
+read -p "press [Enter] to start packing" x
+echo ""
+
+# build
+
+./pmctl/pack build
+if [[ $? -ne 0 ]]; then
+  exit 1
+fi
+
+./pack_core build
+if [[ $? -ne 0 ]]; then
+  exit 1
+fi
+
+echo ""
+echo "finished packing."
+echo ""
