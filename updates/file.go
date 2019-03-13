@@ -7,7 +7,7 @@ type File struct {
 	stable   bool
 }
 
-func newFile(filepath string, version string, stable bool) *File {
+func NewFile(filepath string, version string, stable bool) *File {
 	return &File{
 		filepath: filepath,
 		version:  version,

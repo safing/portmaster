@@ -31,6 +31,8 @@ func GetFile(identifier string) (*File, error) {
 
 func getLatestFilePath(identifier string) (versionedFilePath, version string, stable bool, ok bool) {
 	updatesLock.RLock()
+	defer updatesLock.RUnlock()
+
 	version, ok = stableUpdates[identifier]
 	if !ok {
 		version, ok = localUpdates[identifier]
@@ -41,10 +43,9 @@ func getLatestFilePath(identifier string) (versionedFilePath, version string, st
 			// err := reloadLatest()
 		}
 	}
-	updatesLock.RUnlock()
 
 	// TODO: Fix for stable release
-	return getVersionedPath(identifier, version), version, false, true
+	return GetVersionedPath(identifier, version), version, false, true
 }
 
 func loadOrFetchFile(identifier string) (*File, error) {
@@ -59,19 +60,24 @@ func loadOrFetchFile(identifier string) (*File, error) {
 	if _, err := os.Stat(realFilePath); err == nil {
 		// file exists
 		updateUsedStatus(identifier, version)
-		return newFile(realFilePath, version, stable), nil
+		return NewFile(realFilePath, version, stable), nil
+	}
+
+	// check download dir
+	err := CheckDir(filepath.Join(updateStoragePath, "tmp"))
+	if err != nil {
+		return nil, fmt.Errorf("could not prepare tmp directory for download: %s", err)
 	}
 
 	// download file
 	log.Tracef("updates: starting download of %s", versionedFilePath)
-	var err error
 	for tries := 0; tries < 5; tries++ {
-		err := fetchFile(realFilePath, versionedFilePath, tries)
+		err = fetchFile(realFilePath, versionedFilePath, tries)
 		if err != nil {
 			log.Tracef("updates: failed to download %s: %s, retrying (%d)", versionedFilePath, err, tries+1)
 		} else {
 			updateUsedStatus(identifier, version)
-			return newFile(realFilePath, version, stable), nil
+			return NewFile(realFilePath, version, stable), nil
 		}
 	}
 	log.Warningf("updates: failed to download %s: %s", versionedFilePath, err)

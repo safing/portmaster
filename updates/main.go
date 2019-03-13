@@ -1,40 +1,45 @@
 package updates
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/Safing/portbase/database"
 	"github.com/Safing/portbase/info"
+	"github.com/Safing/portbase/log"
 	"github.com/Safing/portbase/modules"
-
-	// module dependencies
-	_ "github.com/Safing/portmaster/core"
 )
 
 var (
 	updateStoragePath string
 )
 
+// SetDatabaseRoot tells the updates module where the database is - and where to put its stuff.
+func SetDatabaseRoot(path string) {
+	if updateStoragePath == "" {
+		updateStoragePath = filepath.Join(path, "updates")
+	}
+}
+
 func init() {
 	modules.Register("updates", prep, start, nil, "core")
 }
 
 func prep() error {
+	dbRoot := database.GetDatabaseRoot()
+	if dbRoot == "" {
+		return errors.New("database root is not set")
+	}
+	updateStoragePath = filepath.Join(dbRoot, "updates")
+
+	err := CheckDir(updateStoragePath)
+	if err != nil {
+		return err
+	}
+
 	status.Core = info.GetInfo()
-	updateStoragePath = filepath.Join(database.GetDatabaseRoot(), "updates")
-
-	err := checkUpdateDirs()
-	if err != nil {
-		return err
-	}
-
-	err = upgradeByFlag()
-	if err != nil {
-		return err
-	}
 
 	return nil
 }
@@ -45,7 +50,16 @@ func start() error {
 		return err
 	}
 
-	err = ReloadLatest()
+	err = LoadIndexes()
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Infof("updates: stable.json does not yet exist, waiting for first update cycle")
+		} else {
+			return err
+		}
+	}
+
+	err = LoadLatest()
 	if err != nil {
 		return err
 	}
@@ -59,29 +73,7 @@ func stop() error {
 	return os.RemoveAll(filepath.Join(updateStoragePath, "tmp"))
 }
 
-func checkUpdateDirs() error {
-	// all
-	err := checkDir(filepath.Join(updateStoragePath, "all"))
-	if err != nil {
-		return err
-	}
-
-	// os_platform
-	err = checkDir(filepath.Join(updateStoragePath, fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH)))
-	if err != nil {
-		return err
-	}
-
-	// tmp
-	err = checkDir(filepath.Join(updateStoragePath, "tmp"))
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func checkDir(dirPath string) error {
+func CheckDir(dirPath string) error {
 	f, err := os.Stat(dirPath)
 	if err == nil {
 		// file exists

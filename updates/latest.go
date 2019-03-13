@@ -21,8 +21,8 @@ var (
 	updatesLock   sync.RWMutex
 )
 
-// ReloadLatest reloads available updates from disk.
-func ReloadLatest() error {
+// LoadLatest (re)loads the latest available updates from disk.
+func LoadLatest() error {
 	newLocalUpdates := make(map[string]string)
 
 	// all
@@ -55,13 +55,6 @@ func ReloadLatest() error {
 
 	log.Tracef("updates: load complete")
 
-	if len(stableUpdates) == 0 {
-		err := loadIndexesFromDisk()
-		if err != nil {
-			return err
-		}
-	}
-
 	// update version status
 	updatesLock.RLock()
 	defer updatesLock.RUnlock()
@@ -76,11 +69,13 @@ func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, las
 
 	filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			lastError = err
-			if hardFail {
-				return err
+			if !os.IsNotExist(err) {
+				lastError = err
+				if hardFail {
+					return err
+				}
+				log.Warningf("updates: could not read %s", path)
 			}
-			log.Warningf("updates: could not read %s", path)
 			return nil
 		}
 		if !info.IsDir() {
@@ -88,7 +83,7 @@ func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, las
 		}
 
 		relativePath := strings.TrimLeft(strings.TrimPrefix(path, baseDir), "/")
-		identifierPath, version, ok := getIdentifierAndVersion(relativePath)
+		identifierPath, version, ok := GetIdentifierAndVersion(relativePath)
 		if !ok {
 			return nil
 		}
@@ -118,13 +113,9 @@ func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, las
 	return latest, nil
 }
 
-func loadIndexesFromDisk() error {
+func LoadIndexes() error {
 	data, err := ioutil.ReadFile(filepath.Join(updateStoragePath, "stable.json"))
 	if err != nil {
-		if os.IsNotExist(err) {
-			log.Infof("updates: stable.json does not yet exist, waiting for first update cycle")
-			return nil
-		}
 		return err
 	}
 

@@ -34,9 +34,9 @@ func fetchFile(realFilepath, updateFilepath string, tries int) error {
 		return fmt.Errorf("error build url (%s + %s): %s", updateURLs[tries%len(updateURLs)], updateFilepath, err)
 	}
 
-	// create destination dir
+	// check destination dir
 	dirPath := filepath.Dir(realFilepath)
-	err = os.MkdirAll(dirPath, 0755)
+	err = CheckDir(dirPath)
 	if err != nil {
 		return fmt.Errorf("updates: could not create updates folder: %s", dirPath)
 	}
@@ -75,7 +75,7 @@ func fetchFile(realFilepath, updateFilepath string, tries int) error {
 		log.Warningf("updates: failed to set permissions on downloaded file %s: %s", realFilepath, err)
 	}
 
-	log.Infof("update: fetched %s (stored to %s)", downloadURL, realFilepath)
+	log.Infof("updates: fetched %s (stored to %s)", downloadURL, realFilepath)
 	return nil
 }
 

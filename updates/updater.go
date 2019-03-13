@@ -13,7 +13,7 @@ import (
 func updater() {
 	time.Sleep(10 * time.Second)
 	for {
-		err := checkForUpdates()
+		err := CheckForUpdates()
 		if err != nil {
 			log.Warningf("updates: failed to check for updates: %s", err)
 		}
@@ -21,7 +21,7 @@ func updater() {
 	}
 }
 
-func checkForUpdates() error {
+func CheckForUpdates() error {
 
 	// download new index
 	var data []byte
@@ -46,7 +46,7 @@ func checkForUpdates() error {
 		return errors.New("stable.json is empty")
 	}
 
-	// FIXINSTABLE: correct log line
+	// FIXME IN STABLE: correct log line
 	log.Infof("updates: downloaded new update index: stable.json (alpha until we actually reach stable)")
 
 	// update existing files
@@ -56,7 +56,7 @@ func checkForUpdates() error {
 		oldVersion, ok := localUpdates[identifier]
 		if ok && newVersion != oldVersion {
 
-			filePath := getVersionedPath(identifier, newVersion)
+			filePath := GetVersionedPath(identifier, newVersion)
 			realFilePath := filepath.Join(updateStoragePath, filePath)
 			for tries := 0; tries < 3; tries++ {
 				err := fetchFile(realFilePath, filePath, tries)
