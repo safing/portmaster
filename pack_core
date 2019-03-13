@@ -5,9 +5,9 @@ cd "$baseDir"
 
 COL_OFF="\033[00m"
 COL_BOLD="\033[01;01m"
-COL_YELLOW="\033[33m"
+COL_RED="\033[31m"
 
-destDirPart1="./dist"
+destDirPart1="dist"
 destDirPart2="core"
 
 function check {
@@ -15,14 +15,16 @@ function check {
   version=$(grep "info.Set" main.go | cut -d'"' -f4)
   # build versioned file name
   filename="portmaster_v${version//./-}"
+  # platform
+  platform="${GOOS}_${GOARCH}"
   # build destination path
-  destPath=${destDirPart1}/linux_amd64/${destDirPart2}/$filename
+  destPath=${destDirPart1}/${platform}/${destDirPart2}/$filename
 
   # check if file exists
   if [[ -f $destPath ]]; then
-    echo "[core] linux_amd64 $version already built"
+    echo "[core] $platform $version already built"
   else
-    echo -e "${COL_BOLD}[core] linux_amd64 $version${COL_OFF}"
+    echo -e "${COL_BOLD}[core] $platform $version${COL_OFF}"
   fi
 }
 
@@ -31,40 +33,52 @@ function build {
   version=$(grep "info.Set" main.go | cut -d'"' -f4)
   # build versioned file name
   filename="portmaster_v${version//./-}"
+  # platform
+  platform="${GOOS}_${GOARCH}"
   # build destination path
-  destPath=${destDirPart1}/linux_amd64/${destDirPart2}/$filename
+  destPath=${destDirPart1}/${platform}/${destDirPart2}/$filename
 
   # check if file exists
   if [[ -f $destPath ]]; then
-    echo "core[linux_amd64] already built in version $version, skipping..."
+    echo "[core] $platform already built in version $version, skipping..."
     exit 0
   fi
 
   # build
-  GOOS=linux GOARCH=amd64 ./build main.go
-  cp main $destPath
+  ./build main.go
   if [[ $? -ne 0 ]]; then
-    echo -e "\nlinux_amd64: BUILD FAILED."
+    echo -e "\n${COL_BOLD}[core] $platform: ${COL_RED}BUILD FAILED.${COL_OFF}"
     exit 1
   fi
+  mkdir -p $(dirname $destPath)
+  cp main $destPath
+  echo -e "\n${COL_BOLD}[core] $platform: successfully built.${COL_OFF}"
+}
+
+function check_all {
+  GOOS=linux GOARCH=amd64 check
+}
+
+function build_all {
+  GOOS=linux GOARCH=amd64 build
 }
 
 case $1 in
   "check" )
-    check
+    check_all
     ;;
   "build" )
-    build
+    build_all
     ;;
   * )
     echo ""
     echo "build list:"
     echo ""
-    check
+    check_all
     echo ""
     read -p "press [Enter] to start building" x
     echo ""
-    build
+    build_all
     echo ""
     echo "finished building."
     echo ""
