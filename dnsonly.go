@@ -17,7 +17,7 @@ import (
 func main() {
 
 	// Set Info
-	info.Set("Portmaster (DNS only)", "0.2.0")
+	info.Set("Portmaster (DNS only)", "0.2.0", "AGPLv3", false)
 
 	// Start
 	err := modules.Start()

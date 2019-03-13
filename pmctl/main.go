@@ -55,7 +55,7 @@ func main() {
 	// }()
 
 	// set meta info
-	info.Set("Portmaster Control", "0.1.1")
+	info.Set("Portmaster Control", "0.1.2", "AGPLv3", true)
 
 	// check if meta info is ok
 	err := info.CheckVersion()

@@ -31,7 +31,7 @@ func init() {
 func main() {
 
 	// Set Info
-	info.Set("Portmaster", "0.2.2")
+	info.Set("Portmaster", "0.2.3", "AGPLv3", true)
 
 	// Start
 	err := modules.Start()
