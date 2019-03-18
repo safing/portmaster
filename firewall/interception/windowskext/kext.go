@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"unsafe"
 
-	"golang.org/x/sys/windows"
-
 	"github.com/tevino/abool"
+	"golang.org/x/sys/windows"
 )
 
 type WinKext struct {
@@ -22,11 +21,11 @@ type VerdictRequest struct {
 	ProcessID uint32
 	Direction bool
 	IPv6      bool
+	Protocol  uint8
 	SrcIP     [4]uint32
 	DstIP     [4]uint32
 	SrcPort   uint16
 	DstPort   uint16
-	Protocol  uint8
 }
 
 func New(dllLocation string) (*WinKext, error) {
