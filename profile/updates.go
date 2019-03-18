@@ -10,7 +10,7 @@ import (
 )
 
 func initUpdateListener() error {
-	sub, err := profileDB.Subscribe(query.New(MakeProfileKey(SpecialNamespace, "")))
+	sub, err := profileDB.Subscribe(query.New("core:profiles/"))
 	if err != nil {
 		return err
 	}
@@ -36,34 +36,40 @@ func updateListener(sub *database.Subscription) {
 				continue
 			}
 
+			log.Infof("profile: updated %s", profile.ID)
+
 			switch profile.DatabaseKey() {
 			case "profiles/special/global":
+
 				specialProfileLock.Lock()
 				globalProfile = profile
 				specialProfileLock.Unlock()
+
 			case "profiles/special/fallback":
+
 				profile.Lock()
-				if ensureServiceEndpointsDenyAll(profile) {
-					profile.Unlock()
+				profileChanged := ensureServiceEndpointsDenyAll(profile)
+				profile.Unlock()
+
+				if profileChanged {
 					profile.Save(SpecialNamespace)
 					continue
 				}
-				profile.Unlock()
 
 				specialProfileLock.Lock()
 				fallbackProfile = profile
 				specialProfileLock.Unlock()
+
 			default:
+
 				switch {
 				case strings.HasPrefix(profile.Key(), MakeProfileKey(UserNamespace, "")):
-					updateActiveUserProfile(profile)
-					increaseUpdateVersion()
+					updateActiveProfile(profile, true /* User Profile */)
 				case strings.HasPrefix(profile.Key(), MakeProfileKey(StampNamespace, "")):
-					updateActiveStampProfile(profile)
-					increaseUpdateVersion()
+					updateActiveProfile(profile, false /* Stamp Profile */)
 				}
-			}
 
+			}
 		}
 	}
 }

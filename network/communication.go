@@ -131,9 +131,13 @@ func (comm *Communication) NeedsReevaluation() bool {
 	comm.Lock()
 	defer comm.Unlock()
 
-	updateVersion := profile.GetUpdateVersion()
-	if comm.profileUpdateVersion != updateVersion {
-		comm.profileUpdateVersion = updateVersion
+	oldVersion := comm.profileUpdateVersion
+	comm.profileUpdateVersion = profile.GetUpdateVersion()
+
+	if oldVersion == 0 {
+		return false
+	}
+	if oldVersion != comm.profileUpdateVersion {
 		return true
 	}
 	return false

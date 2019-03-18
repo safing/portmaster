@@ -114,9 +114,16 @@ func (e Endpoints) CheckIP(domain string, ip net.IP, protocol uint8, port uint16
 }
 
 func (ep EndpointPermission) matchesDomainOnly(domain string) (matches bool, reason string) {
+	dotInFront := strings.HasPrefix(ep.Value, ".")
 	wildcardInFront := strings.HasPrefix(ep.Value, "*")
 	wildcardInBack := strings.HasSuffix(ep.Value, "*")
+
 	switch {
+	case dotInFront && !wildcardInFront && !wildcardInBack:
+		// subdomain or domain
+		if strings.HasSuffix(domain, ep.Value) || domain == strings.TrimPrefix(ep.Value, ".") {
+			return true, fmt.Sprintf("%s matches %s", domain, ep.Value)
+		}
 	case wildcardInFront && wildcardInBack:
 		if strings.Contains(domain, strings.Trim(ep.Value, "*")) {
 			return true, fmt.Sprintf("%s matches %s", domain, ep.Value)
