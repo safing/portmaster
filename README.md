@@ -75,3 +75,15 @@ Documentation _in progress_ can be found here: [docs.safing.io](http://docs.safi
   - debian/ubuntu:  `sudo apt-get install libnetfilter-queue-dev`
   - fedora:         `?`
   - arch:           `?`
+
+## TCP/UDP Ports
+
+The Portmaster (with Gate17) uses the following ports:
+- ` 17` Gate17 port for connecting to Gate17 nodes
+- ` 53` DNS server (local only)
+- `717` Gate17 entrypoint as the local endpoint for tunneled connections (local only)
+- `817` Portmaster API for integration with UI elements and other helpers (local only)
+
+Learn more about [why we chose these ports](https://docs.safing.io/docs/portmaster/os-integration.html).
+
+Gate17 nodes additionally uses other common ports like `80` and `443` to provide access in restricted network environments.
