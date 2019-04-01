@@ -59,13 +59,39 @@ func TestEndpointMatching(t *testing.T) {
 	ep.Value = "*example.com."
 	testEndpointDomainMatch(t, ep, "example.com.", Permitted)
 	testEndpointIPMatch(t, ep, "example.com.", net.ParseIP("10.2.3.4"), 6, 443, Permitted)
+	testEndpointDomainMatch(t, ep, "abc.example.com.", Permitted)
+	testEndpointIPMatch(t, ep, "abc.example.com.", net.ParseIP("10.2.3.4"), 6, 443, Permitted)
+	testEndpointDomainMatch(t, ep, "abc-example.com.", Permitted)
+	testEndpointIPMatch(t, ep, "abc-example.com.", net.ParseIP("10.2.3.4"), 6, 443, Permitted)
 
-	ep.Type = EptDomain
+	ep.Value = "*.example.com."
+	testEndpointDomainMatch(t, ep, "example.com.", NoMatch)
+	testEndpointIPMatch(t, ep, "example.com.", net.ParseIP("10.2.3.4"), 6, 443, NoMatch)
+	testEndpointDomainMatch(t, ep, "abc.example.com.", Permitted)
+	testEndpointIPMatch(t, ep, "abc.example.com.", net.ParseIP("10.2.3.4"), 6, 443, Permitted)
+	testEndpointDomainMatch(t, ep, "abc-example.com.", NoMatch)
+	testEndpointIPMatch(t, ep, "abc-example.com.", net.ParseIP("10.2.3.4"), 6, 443, NoMatch)
+
+	ep.Value = ".example.com."
+	testEndpointDomainMatch(t, ep, "example.com.", Permitted)
+	testEndpointIPMatch(t, ep, "example.com.", net.ParseIP("10.2.3.4"), 6, 443, Permitted)
+	testEndpointDomainMatch(t, ep, "abc.example.com.", Permitted)
+	testEndpointIPMatch(t, ep, "abc.example.com.", net.ParseIP("10.2.3.4"), 6, 443, Permitted)
+	testEndpointDomainMatch(t, ep, "abc-example.com.", NoMatch)
+	testEndpointIPMatch(t, ep, "abc-example.com.", net.ParseIP("10.2.3.4"), 6, 443, NoMatch)
+
 	ep.Value = "example.*"
 	testEndpointDomainMatch(t, ep, "example.com.", Permitted)
 	testEndpointIPMatch(t, ep, "example.com.", net.ParseIP("10.2.3.4"), 6, 443, Permitted)
+	testEndpointDomainMatch(t, ep, "abc.example.com.", NoMatch)
+	testEndpointIPMatch(t, ep, "abc.example.com.", net.ParseIP("10.2.3.4"), 6, 443, NoMatch)
 
-	ep.Type = EptDomain
+	ep.Value = ".example.*"
+	testEndpointDomainMatch(t, ep, "example.com.", NoMatch)
+	testEndpointIPMatch(t, ep, "example.com.", net.ParseIP("10.2.3.4"), 6, 443, NoMatch)
+	testEndpointDomainMatch(t, ep, "abc.example.com.", NoMatch)
+	testEndpointIPMatch(t, ep, "abc.example.com.", net.ParseIP("10.2.3.4"), 6, 443, NoMatch)
+
 	ep.Value = "*.exampl*"
 	testEndpointDomainMatch(t, ep, "abc.example.com.", Permitted)
 	testEndpointIPMatch(t, ep, "abc.example.com.", net.ParseIP("10.2.3.4"), 6, 443, Permitted)

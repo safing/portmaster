@@ -1,6 +1,8 @@
 package process
 
 import (
+	"fmt"
+
 	"github.com/Safing/portbase/database"
 	"github.com/Safing/portbase/database/query"
 	"github.com/Safing/portbase/log"
@@ -64,7 +66,7 @@ func (p *Process) FindProfiles() error {
 	// FIXME: implement!
 
 	p.UserProfileKey = userProfile.Key()
-	p.profileSet = profile.NewSet(userProfile, nil)
+	p.profileSet = profile.NewSet(fmt.Sprintf("%d-%s", p.Pid, p.Path), userProfile, nil)
 	go p.Save()
 
 	return nil

@@ -28,8 +28,6 @@ var (
 	packetsDropped  *uint64
 
 	localNet4 *net.IPNet
-	// Yes, this would normally be 127.0.0.0/8
-	// TODO: figure out any side effects
 
 	localhost4 = net.IPv4(127, 0, 0, 1)
 	localhost6 = net.IPv6loopback

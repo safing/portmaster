@@ -70,16 +70,19 @@ func (p *Process) Delete() {
 	p.Lock()
 	defer p.Unlock()
 
+	// delete from internal storage
 	processesLock.Lock()
 	delete(processes, p.Pid)
 	processesLock.Unlock()
 
+	// propagate delete
 	p.Meta().Delete()
 	if dbControllerFlag.IsSet() {
 		go dbController.PushUpdate(p)
 	}
 
-	// TODO: this should not be necessary, as processes should always have a profileSet.
+	// deactivate profile
+	// TODO: check if there is another process using the same profile set
 	if p.profileSet != nil {
 		profile.DeactivateProfileSet(p.profileSet)
 	}

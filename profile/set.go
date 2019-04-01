@@ -15,6 +15,7 @@ var (
 type Set struct {
 	sync.Mutex
 
+	id       string
 	profiles [4]*Profile
 	// Application
 	// Global
@@ -26,8 +27,9 @@ type Set struct {
 }
 
 // NewSet returns a new profile set with given the profiles.
-func NewSet(user, stamp *Profile) *Set {
+func NewSet(id string, user, stamp *Profile) *Set {
 	new := &Set{
+		id: id,
 		profiles: [4]*Profile{
 			user,  // Application
 			nil,   // Global

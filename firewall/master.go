@@ -36,6 +36,7 @@ func DecideOnCommunicationBeforeIntel(comm *network.Communication, fqdn string) 
 
 	// check if communication needs reevaluation
 	if comm.NeedsReevaluation() {
+		log.Infof("firewall: re-evaluating verdict on %s", comm)
 		comm.ResetVerdict()
 	}
 
@@ -89,6 +90,7 @@ func DecideOnCommunicationBeforeIntel(comm *network.Communication, fqdn string) 
 
 // DecideOnCommunicationAfterIntel makes a decision about a communication after the dns query is resolved and intel is gathered.
 func DecideOnCommunicationAfterIntel(comm *network.Communication, fqdn string, rrCache *intel.RRCache) {
+	// rrCache may be nil, when function is called for re-evaluation by DecideOnCommunication
 
 	// check if need to run
 	if comm.GetVerdict() != network.VerdictUndecided {
@@ -353,9 +355,16 @@ func FilterDNSResponse(comm *network.Communication, fqdn string, rrCache *intel.
 // DecideOnCommunication makes a decision about a communication with its first packet.
 func DecideOnCommunication(comm *network.Communication, pkt packet.Packet) {
 
-	// check if communication needs reevaluation
+	// check if communication needs reevaluation, if it's not with a domain
 	if comm.NeedsReevaluation() {
+		log.Infof("firewall: re-evaluating verdict on %s", comm)
 		comm.ResetVerdict()
+
+		// if communicating with a domain entity, re-evaluate with Before/AfterIntel
+		if strings.HasSuffix(comm.Domain, ".") {
+			DecideOnCommunicationBeforeIntel(comm, comm.Domain)
+			DecideOnCommunicationAfterIntel(comm, comm.Domain, nil)
+		}
 	}
 
 	// check if need to run
