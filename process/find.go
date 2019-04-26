@@ -65,7 +65,7 @@ func GetProcessByPacket(pkt packet.Packet) (process *Process, direction bool, er
 		return nil, direction, ErrConnectionNotFound
 	}
 
-	process, err = GetOrFindProcess(pid)
+	process, err = GetOrFindPrimaryProcess(pid)
 	if err != nil {
 		return nil, direction, err
 	}
@@ -114,7 +114,7 @@ func GetProcessByEndpoints(localIP net.IP, localPort uint16, remoteIP net.IP, re
 		return nil, ErrConnectionNotFound
 	}
 
-	process, err = GetOrFindProcess(pid)
+	process, err = GetOrFindPrimaryProcess(pid)
 	if err != nil {
 		return nil, err
 	}

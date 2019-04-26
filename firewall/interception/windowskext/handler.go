@@ -2,7 +2,6 @@ package windowskext
 
 import (
 	"encoding/binary"
-	"fmt"
 	"net"
 
 	"github.com/tevino/abool"
@@ -23,7 +22,7 @@ type VerdictRequest struct {
 	remoteIP          [4]uint32 /* Destination Address */
 	localPort         uint16    /* Source Port */
 	remotePort        uint16    /* Destination port */
-	compartmentId     uint32
+	compartmentID     uint32
 	interfaceIndex    uint32
 	subInterfaceIndex uint32
 	packetSize        uint32

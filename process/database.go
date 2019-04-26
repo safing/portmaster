@@ -94,10 +94,24 @@ func CleanProcessStorage(thresholdDuration time.Duration) {
 	defer processesLock.Unlock()
 
 	threshold := time.Now().Add(-thresholdDuration).Unix()
+
+	// clean primary processes
 	for _, p := range processes {
 		p.Lock()
-		if p.FirstCommEstablished < threshold && p.CommCount == 0 {
+		if !p.Virtual && p.LastCommEstablished < threshold && p.CommCount == 0 {
 			go p.Delete()
+		}
+		p.Unlock()
+	}
+
+	// clean virtual processes
+	for _, p := range processes {
+		p.Lock()
+		if p.Virtual {
+			_, parentIsAlive := processes[p.ParentPid]
+			if !parentIsAlive {
+				go p.Delete()
+			}
 		}
 		p.Unlock()
 	}
