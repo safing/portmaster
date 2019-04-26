@@ -3,7 +3,7 @@
 package network
 
 // Verdict describes the decision made about a connection or link.
-type Verdict uint8
+type Verdict int8
 
 // List of values a Status can have
 const (

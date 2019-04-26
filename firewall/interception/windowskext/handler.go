@@ -1,154 +1,130 @@
 package windowskext
 
 import (
-	"errors"
+	"encoding/binary"
 	"fmt"
+	"net"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
+	"github.com/tevino/abool"
 
 	"github.com/Safing/portbase/log"
 	"github.com/Safing/portmaster/network/packet"
-
-	"github.com/tevino/abool"
 )
 
-func (wd *WinDivert) Packets(packets chan packet.Packet) error {
-	go wd.packetHandler(packets)
-	return nil
+// VerdictRequest is the request structure from the Kext.
+type VerdictRequest struct {
+	id                uint32 /* ID from RegisterPacket */
+	processID         uint64 /* Process ID. Nice to have*/
+	direction         uint8
+	ipV6              uint8 /* True: IPv6, False: IPv4 */
+	protocol          uint8 /* Protocol */
+	_                 uint8
+	localIP           [4]uint32 /* Source Address */
+	remoteIP          [4]uint32 /* Destination Address */
+	localPort         uint16    /* Source Port */
+	remotePort        uint16    /* Destination port */
+	compartmentId     uint32
+	interfaceIndex    uint32
+	subInterfaceIndex uint32
+	packetSize        uint32
 }
 
-func (wd *WinDivert) packetHandler(packets chan packet.Packet) {
+// Handler transforms received packets to the Packet interface.
+func Handler(packets chan packet.Packet) {
+	if !ready.IsSet() {
+		return
+	}
+
 	defer close(packets)
 
 	for {
-		if !wd.valid.IsSet() {
+		if !ready.IsSet() {
 			return
 		}
 
-		packetData, packetAddress, err := wd.Recv()
+		packetInfo, err := RecvVerdictRequest()
 		if err != nil {
-			log.Warningf("failed to get packet from windivert: %s", err)
+			log.Warningf("failed to get packet from windows kext: %s", err)
 			continue
 		}
 
-		ipHeader, tpcUdpHeader, payload, err := parseIpPacket(packetData)
-		if err != nil {
-			log.Warningf("failed to parse packet from windivert: %s", err)
-			log.Warningf("failed packet payload (%d): %s", len(packetData), string(packetData))
+		if packetInfo == nil {
 			continue
 		}
 
+		// log.Tracef("packet: %+v", packetInfo)
+
+		// New Packet
 		new := &Packet{
-			windivert:     wd,
-			packetData:    packetData,
-			packetAddress: packetAddress,
-			verdictSet:    abool.NewBool(false),
+			verdictRequest: packetInfo,
+			verdictSet:     abool.NewBool(false),
 		}
-		new.IPHeader = ipHeader
-		new.TCPUDPHeader = tpcUdpHeader
-		new.Payload = payload
-		if packetAddress.Direction == directionInbound {
-			new.Direction = packet.InBound
+
+		info := new.Info()
+		info.Direction = packetInfo.direction > 0
+		info.InTunnel = false
+		info.Protocol = packet.IPProtocol(packetInfo.protocol)
+
+		// IP version
+		if packetInfo.ipV6 == 1 {
+			info.Version = packet.IPv6
 		} else {
-			new.Direction = packet.OutBound
+			info.Version = packet.IPv4
+		}
+
+		// IPs
+		if info.Version == packet.IPv4 {
+			// IPv4
+			if info.Direction {
+				// Inbound
+				info.Src = convertIPv4(packetInfo.remoteIP)
+				info.Dst = convertIPv4(packetInfo.localIP)
+			} else {
+				// Outbound
+				info.Src = convertIPv4(packetInfo.localIP)
+				info.Dst = convertIPv4(packetInfo.remoteIP)
+			}
+		} else {
+			// IPv6
+			if info.Direction {
+				// Inbound
+				info.Src = convertIPv6(packetInfo.remoteIP)
+				info.Dst = convertIPv6(packetInfo.localIP)
+			} else {
+				// Outbound
+				info.Src = convertIPv6(packetInfo.localIP)
+				info.Dst = convertIPv6(packetInfo.remoteIP)
+			}
+		}
+
+		// Ports
+		if info.Direction {
+			// Inbound
+			info.SrcPort = packetInfo.remotePort
+			info.DstPort = packetInfo.localPort
+		} else {
+			// Outbound
+			info.SrcPort = packetInfo.localPort
+			info.DstPort = packetInfo.remotePort
 		}
 
 		packets <- new
 	}
 }
 
-func parseIpPacket(packetData []byte) (ipHeader *packet.IPHeader, tpcUdpHeader *packet.TCPUDPHeader, payload []byte, err error) {
+func convertIPv4(input [4]uint32) net.IP {
+	return net.IPv4(
+		uint8(input[0]>>24&0xFF),
+		uint8(input[0]>>16&0xFF),
+		uint8(input[0]>>8&0xFF),
+		uint8(input[0]&0xFF),
+	)
+}
 
-	var parsedPacket gopacket.Packet
-
-	if len(packetData) == 0 {
-		return nil, nil, nil, errors.New("empty packet")
+func convertIPv6(input [4]uint32) net.IP {
+	addressBuf := make([]byte, 16)
+	for i := 0; i < 4; i++ {
+		binary.BigEndian.PutUint32(addressBuf[i:i+3], input[i])
 	}
-
-	switch packetData[0] >> 4 {
-	case 4:
-		parsedPacket = gopacket.NewPacket(packetData, layers.LayerTypeIPv4, gopacket.DecodeOptions{Lazy: true, NoCopy: true})
-		if ipv4Layer := parsedPacket.Layer(layers.LayerTypeIPv4); ipv4Layer != nil {
-			ipv4, _ := ipv4Layer.(*layers.IPv4)
-			ipHeader = &packet.IPHeader{
-				Version:  4,
-				Protocol: packet.IPProtocol(ipv4.Protocol),
-				Tos:      ipv4.TOS,
-				TTL:      ipv4.TTL,
-				Src:      ipv4.SrcIP,
-				Dst:      ipv4.DstIP,
-			}
-		} else {
-			var err error
-			if errLayer := parsedPacket.ErrorLayer(); errLayer != nil {
-				err = errLayer.Error()
-			}
-			return nil, nil, nil, fmt.Errorf("failed to parse IPv4 packet: %s", err)
-		}
-	case 6:
-		parsedPacket = gopacket.NewPacket(packetData, layers.LayerTypeIPv6, gopacket.DecodeOptions{Lazy: true, NoCopy: true})
-		if ipv6Layer := parsedPacket.Layer(layers.LayerTypeIPv6); ipv6Layer != nil {
-			ipv6, _ := ipv6Layer.(*layers.IPv6)
-			ipHeader = &packet.IPHeader{
-				Version:  6,
-				Protocol: packet.IPProtocol(ipv6.NextHeader),
-				Tos:      ipv6.TrafficClass,
-				TTL:      ipv6.HopLimit,
-				Src:      ipv6.SrcIP,
-				Dst:      ipv6.DstIP,
-			}
-		} else {
-			var err error
-			if errLayer := parsedPacket.ErrorLayer(); errLayer != nil {
-				err = errLayer.Error()
-			}
-			return nil, nil, nil, fmt.Errorf("failed to parse IPv6 packet: %s", err)
-		}
-	default:
-		return nil, nil, nil, errors.New("unknown IP version")
-	}
-
-	switch ipHeader.Protocol {
-	case packet.TCP:
-		if tcpLayer := parsedPacket.Layer(layers.LayerTypeTCP); tcpLayer != nil {
-			tcp, _ := tcpLayer.(*layers.TCP)
-			tpcUdpHeader = &packet.TCPUDPHeader{
-				SrcPort:  uint16(tcp.SrcPort),
-				DstPort:  uint16(tcp.DstPort),
-				Checksum: tcp.Checksum,
-			}
-		} else {
-			var err error
-			if errLayer := parsedPacket.ErrorLayer(); errLayer != nil {
-				err = errLayer.Error()
-			}
-			return nil, nil, nil, fmt.Errorf("could not parse TCP layer: %s", err)
-		}
-	case packet.UDP:
-		if udpLayer := parsedPacket.Layer(layers.LayerTypeUDP); udpLayer != nil {
-			udp, _ := udpLayer.(*layers.UDP)
-			tpcUdpHeader = &packet.TCPUDPHeader{
-				SrcPort:  uint16(udp.SrcPort),
-				DstPort:  uint16(udp.DstPort),
-				Checksum: udp.Checksum,
-			}
-		} else {
-			var err error
-			if errLayer := parsedPacket.ErrorLayer(); errLayer != nil {
-				err = errLayer.Error()
-			}
-			return nil, nil, nil, fmt.Errorf("could not parse UDP layer: %s", err)
-		}
-	}
-
-	if appLayer := parsedPacket.ApplicationLayer(); appLayer != nil {
-		payload = appLayer.Payload()
-	}
-
-	if errLayer := parsedPacket.ErrorLayer(); errLayer != nil {
-		return nil, nil, nil, errLayer.Error()
-	}
-
-	return
+	return net.IP(addressBuf)
 }

@@ -56,7 +56,7 @@ func loadOrFetchFile(identifier string) (*File, error) {
 	}
 
 	// build final filepath
-	realFilePath := filepath.Join(updateStoragePath, versionedFilePath)
+	realFilePath := filepath.Join(updateStoragePath, filepath.FromSlash(versionedFilePath))
 	if _, err := os.Stat(realFilePath); err == nil {
 		// file exists
 		updateUsedStatus(identifier, version)

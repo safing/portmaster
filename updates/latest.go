@@ -92,6 +92,7 @@ func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, las
 		storedVersion, ok := latest[identifierPath]
 		if ok {
 			// FIXME: this will fail on multi-digit version segments!
+			// FIXME: use https://github.com/hashicorp/go-version
 			if version > storedVersion {
 				latest[identifierPath] = version
 			}

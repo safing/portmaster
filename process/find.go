@@ -22,30 +22,30 @@ func GetPidByPacket(pkt packet.Packet) (pid int, direction bool, err error) {
 	var remoteIP net.IP
 	var remotePort uint16
 	if pkt.IsInbound() {
-		localIP = pkt.GetIPHeader().Dst
-		remoteIP = pkt.GetIPHeader().Src
+		localIP = pkt.Info().Dst
+		remoteIP = pkt.Info().Src
 	} else {
-		localIP = pkt.GetIPHeader().Src
-		remoteIP = pkt.GetIPHeader().Dst
+		localIP = pkt.Info().Src
+		remoteIP = pkt.Info().Dst
 	}
-	if pkt.GetIPHeader().Protocol == packet.TCP || pkt.GetIPHeader().Protocol == packet.UDP {
+	if pkt.HasPorts() {
 		if pkt.IsInbound() {
-			localPort = pkt.GetTCPUDPHeader().DstPort
-			remotePort = pkt.GetTCPUDPHeader().SrcPort
+			localPort = pkt.Info().DstPort
+			remotePort = pkt.Info().SrcPort
 		} else {
-			localPort = pkt.GetTCPUDPHeader().SrcPort
-			remotePort = pkt.GetTCPUDPHeader().DstPort
+			localPort = pkt.Info().SrcPort
+			remotePort = pkt.Info().DstPort
 		}
 	}
 
 	switch {
-	case pkt.GetIPHeader().Protocol == packet.TCP && pkt.IPVersion() == packet.IPv4:
+	case pkt.Info().Protocol == packet.TCP && pkt.Info().Version == packet.IPv4:
 		return getTCP4PacketInfo(localIP, localPort, remoteIP, remotePort, pkt.IsInbound())
-	case pkt.GetIPHeader().Protocol == packet.UDP && pkt.IPVersion() == packet.IPv4:
+	case pkt.Info().Protocol == packet.UDP && pkt.Info().Version == packet.IPv4:
 		return getUDP4PacketInfo(localIP, localPort, remoteIP, remotePort, pkt.IsInbound())
-	case pkt.GetIPHeader().Protocol == packet.TCP && pkt.IPVersion() == packet.IPv6:
+	case pkt.Info().Protocol == packet.TCP && pkt.Info().Version == packet.IPv6:
 		return getTCP6PacketInfo(localIP, localPort, remoteIP, remotePort, pkt.IsInbound())
-	case pkt.GetIPHeader().Protocol == packet.UDP && pkt.IPVersion() == packet.IPv6:
+	case pkt.Info().Protocol == packet.UDP && pkt.Info().Version == packet.IPv6:
 		return getUDP6PacketInfo(localIP, localPort, remoteIP, remotePort, pkt.IsInbound())
 	default:
 		return -1, false, errors.New("unsupported protocol for finding process")

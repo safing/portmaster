@@ -1,7 +1,7 @@
 package process
 
 import (
-	"github.com/Safing/safing-core/process/iphelper"
+	"github.com/Safing/portmaster/process/iphelper"
 )
 
 var (

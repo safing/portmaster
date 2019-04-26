@@ -154,7 +154,7 @@ func GetCommunicationByFirstPacket(pkt packet.Packet) (*Communication, error) {
 
 	// Incoming
 	if direction {
-		switch netutils.ClassifyIP(pkt.GetIPHeader().Src) {
+		switch netutils.ClassifyIP(pkt.Info().Src) {
 		case netutils.HostLocal:
 			domain = IncomingHost
 		case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
@@ -186,7 +186,7 @@ func GetCommunicationByFirstPacket(pkt packet.Packet) (*Communication, error) {
 	if err != nil {
 		// if no domain could be found, it must be a direct connection (ie. no DNS)
 
-		switch netutils.ClassifyIP(pkt.GetIPHeader().Dst) {
+		switch netutils.ClassifyIP(pkt.Info().Dst) {
 		case netutils.HostLocal:
 			domain = PeerHost
 		case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:

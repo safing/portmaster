@@ -16,7 +16,7 @@ const (
 // GetUnknownCommunication returns the connection to a packet of unknown owner.
 func GetUnknownCommunication(pkt packet.Packet) (*Communication, error) {
 	if pkt.IsInbound() {
-		switch netutils.ClassifyIP(pkt.GetIPHeader().Src) {
+		switch netutils.ClassifyIP(pkt.Info().Src) {
 		case netutils.HostLocal:
 			return getOrCreateUnknownCommunication(pkt, IncomingHost)
 		case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
@@ -28,7 +28,7 @@ func GetUnknownCommunication(pkt packet.Packet) (*Communication, error) {
 		}
 	}
 
-	switch netutils.ClassifyIP(pkt.GetIPHeader().Dst) {
+	switch netutils.ClassifyIP(pkt.Info().Dst) {
 	case netutils.HostLocal:
 		return getOrCreateUnknownCommunication(pkt, PeerHost)
 	case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:

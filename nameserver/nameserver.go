@@ -43,7 +43,7 @@ func prep() error {
 }
 
 func start() error {
-	server := &dns.Server{Addr: "127.0.0.1:53", Net: "udp"}
+	server := &dns.Server{Addr: "0.0.0.0:53", Net: "udp"}
 	dns.HandleFunc(".", handleRequest)
 	go run(server)
 	return nil
@@ -68,16 +68,47 @@ func nxDomain(w dns.ResponseWriter, query *dns.Msg) {
 
 func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 
-	// TODO: if there are 3 request for the same domain/type in a row, delete all caches of that domain
-
 	// only process first question, that's how everyone does it.
 	question := query.Question[0]
 	fqdn := dns.Fqdn(question.Name)
 	qtype := dns.Type(question.Qtype)
 
-	// use this to time how long it takes process this request
-	// timed := time.Now()
-	// defer log.Tracef("nameserver: took %s to handle request for %s%s", time.Now().Sub(timed).String(), fqdn, qtype.String())
+	// get addresses
+	remoteAddr, ok := w.RemoteAddr().(*net.UDPAddr)
+	if !ok {
+		log.Warningf("nameserver: could not get remote address of request for %s%s, ignoring", fqdn, qtype)
+		return
+	}
+	localAddr, ok := w.RemoteAddr().(*net.UDPAddr)
+	if !ok {
+		log.Warningf("nameserver: could not get local address of request for %s%s, ignoring", fqdn, qtype)
+		return
+	}
+
+	// ignore external request
+	if !remoteAddr.IP.Equal(localAddr.IP) {
+		log.Warningf("nameserver: external request for %s%s, ignoring", fqdn, qtype)
+		return
+	}
+
+	log.Tracef("nameserver: handling request for %s%s from %s:%d", fqdn, qtype, remoteAddr.IP, remoteAddr.Port)
+
+	// TODO: if there are 3 request for the same domain/type in a row, delete all caches of that domain
+
+	// check class
+	if question.Qclass != dns.ClassINET {
+		// we only serve IN records, return nxdomain
+		nxDomain(w, query)
+		return
+	}
+
+	// handle request for localhost
+	if fqdn == "localhost." {
+		m := new(dns.Msg)
+		m.SetReply(query)
+		m.Answer = localhostIPs
+		w.WriteMsg(m)
+	}
 
 	// check if valid domain name
 	if !netutils.IsValidFqdn(fqdn) {
@@ -96,37 +127,12 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 		return
 	}
 
-	// check class
-	if question.Qclass != dns.ClassINET {
-		// we only serve IN records, send NXDOMAIN
-		nxDomain(w, query)
-		return
-	}
-
-	// handle request for localhost
-	if fqdn == "localhost." {
-		m := new(dns.Msg)
-		m.SetReply(query)
-		m.Answer = localhostIPs
-		w.WriteMsg(m)
-	}
-
-	// get remote address
-	// start := time.Now()
-	rAddr, ok := w.RemoteAddr().(*net.UDPAddr)
-	// log.Tracef("nameserver: took %s to get remote address", time.Since(start))
-	if !ok {
-		log.Warningf("nameserver: could not get address of request, returning nxdomain")
-		nxDomain(w, query)
-		return
-	}
-
 	// [1/2] use this to time how long it takes to get process info
 	// timed := time.Now()
 
 	// get connection
 	// start = time.Now()
-	comm, err := network.GetCommunicationByDNSRequest(rAddr.IP, uint16(rAddr.Port), fqdn)
+	comm, err := network.GetCommunicationByDNSRequest(remoteAddr.IP, uint16(remoteAddr.Port), fqdn)
 	// log.Tracef("nameserver: took %s to get comms (and maybe process)", time.Since(start))
 	if err != nil {
 		log.Warningf("nameserver: someone is requesting %s, but could not identify process: %s, returning nxdomain", fqdn, err)

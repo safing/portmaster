@@ -32,3 +32,9 @@ _testmain.go
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# OS specifics
+.DS_Store
+
+# Custom dev scripts
+win_dev_*

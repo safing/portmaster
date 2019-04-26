@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/google/renameio"
@@ -70,9 +71,11 @@ func fetchFile(realFilepath, updateFilepath string, tries int) error {
 		return fmt.Errorf("updates: failed to finalize file %s: %s", realFilepath, err)
 	}
 	// set permissions
-	err = os.Chmod(realFilepath, 0644)
-	if err != nil {
-		log.Warningf("updates: failed to set permissions on downloaded file %s: %s", realFilepath, err)
+	if runtime.GOOS != "windows" {
+		err = os.Chmod(realFilepath, 0644)
+		if err != nil {
+			log.Warningf("updates: failed to set permissions on downloaded file %s: %s", realFilepath, err)
+		}
 	}
 
 	log.Infof("updates: fetched %s (stored to %s)", downloadURL, realFilepath)

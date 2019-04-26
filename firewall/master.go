@@ -496,18 +496,14 @@ func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Pa
 	// remoteIP
 	var remoteIP net.IP
 	if comm.Direction {
-		remoteIP = pkt.GetIPHeader().Src
+		remoteIP = pkt.Info().Src
 	} else {
-		remoteIP = pkt.GetIPHeader().Dst
+		remoteIP = pkt.Info().Dst
 	}
 
 	// protocol and destination port
-	protocol := uint8(pkt.GetIPHeader().Protocol)
-	var dstPort uint16
-	tcpUDPHeader := pkt.GetTCPUDPHeader()
-	if tcpUDPHeader != nil {
-		dstPort = tcpUDPHeader.DstPort
-	}
+	protocol := uint8(pkt.Info().Protocol)
+	dstPort := pkt.Info().DstPort
 
 	// check endpoints list
 	result, reason := profileSet.CheckEndpointIP(fqdn, remoteIP, protocol, dstPort, comm.Direction)
@@ -635,7 +631,7 @@ func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Pa
 		case "permit-domain-distinct":
 			// everything already set
 		case "permit-ip", "permit-ip-incoming":
-			if pkt.GetIPHeader().Version == packet.IPv4 {
+			if pkt.Info().Version == packet.IPv4 {
 				new.Type = profile.EptIPv4
 			} else {
 				new.Type = profile.EptIPv6

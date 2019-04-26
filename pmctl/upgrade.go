@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/Safing/portbase/info"
 	"github.com/Safing/portmaster/updates"
@@ -51,14 +52,18 @@ func doSelfUpgrade(file *updates.File) error {
 	}
 
 	// check permission
-	info, err := os.Stat(dst)
-	if info.Mode() != 0755 {
-		err := os.Chmod(dst, 0755)
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(dst)
 		if err != nil {
-			return fmt.Errorf("failed to set permissions on %s: %s", dst, err)
+			return fmt.Errorf("failed to get file info on %s: %s", dst, err)
+		}
+		if info.Mode() != 0755 {
+			err := os.Chmod(dst, 0755)
+			if err != nil {
+				return fmt.Errorf("failed to set permissions on %s: %s", dst, err)
+			}
 		}
 	}
-
 	return nil
 }
 

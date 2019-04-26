@@ -3,6 +3,7 @@
 package packet
 
 import (
+	"errors"
 	"fmt"
 	"net"
 )
@@ -41,6 +42,10 @@ const (
 	QUEUE
 	REPEAT
 	STOP
+)
+
+var (
+	ErrFailedToLoadPayload = errors.New("could not load packet payload")
 )
 
 // Returns the byte size of the ip, IPv4 = 4 bytes, IPv6 = 16
@@ -92,58 +97,59 @@ func (v Verdict) String() string {
 	return fmt.Sprintf("<unsupported verdict, %d>", uint8(v))
 }
 
-type IPHeader struct {
-	Version IPVersion
+// PacketInfo holds IP and TCP/UDP header information
+type PacketInfo struct {
+	Direction bool
+	InTunnel  bool
 
-	Tos, TTL uint8
-	Protocol IPProtocol
-	Src, Dst net.IP
-}
-
-type TCPUDPHeader struct {
+	Version          IPVersion
+	Src, Dst         net.IP
+	Protocol         IPProtocol
 	SrcPort, DstPort uint16
-	Checksum         uint16 //not implemented
 }
 
 type PacketBase struct {
-	linkID    string
-	Direction bool
-	InTunnel  bool
-	Payload   []byte
-	*IPHeader
-	*TCPUDPHeader
+	info    PacketInfo
+	linkID  string
+	Payload []byte
 }
 
-func (pkt *PacketBase) GetIPHeader() *IPHeader {
-	return pkt.IPHeader
+func (pkt *PacketBase) Info() *PacketInfo {
+	return &pkt.info
 }
 
-func (pkt *PacketBase) GetTCPUDPHeader() *TCPUDPHeader {
-	return pkt.TCPUDPHeader
-}
-
-func (pkt *PacketBase) GetPayload() []byte {
-	return pkt.Payload
+func (pkt *PacketBase) SetPacketInfo(packetInfo PacketInfo) {
+	pkt.info = packetInfo
 }
 
 func (pkt *PacketBase) SetInbound() {
-	pkt.Direction = true
+	pkt.info.Direction = true
 }
 
 func (pkt *PacketBase) SetOutbound() {
-	pkt.Direction = false
+	pkt.info.Direction = false
 }
 
 func (pkt *PacketBase) IsInbound() bool {
-	return pkt.Direction
+	return pkt.info.Direction
 }
 
 func (pkt *PacketBase) IsOutbound() bool {
-	return !pkt.Direction
+	return !pkt.info.Direction
 }
 
-func (pkt *PacketBase) IPVersion() IPVersion {
-	return pkt.Version
+func (pkt *PacketBase) HasPorts() bool {
+	switch pkt.info.Protocol {
+	case TCP:
+		return true
+	case UDP:
+		return true
+	}
+	return false
+}
+
+func (pkt *PacketBase) GetPayload() ([]byte, error) {
+	return pkt.Payload, ErrFailedToLoadPayload
 }
 
 func (pkt *PacketBase) GetLinkID() string {
@@ -154,81 +160,62 @@ func (pkt *PacketBase) GetLinkID() string {
 }
 
 func (pkt *PacketBase) createLinkID() {
-	if pkt.IPHeader.Protocol == TCP || pkt.IPHeader.Protocol == UDP {
-		if pkt.Direction {
-			pkt.linkID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.Protocol, pkt.Dst, pkt.DstPort, pkt.Src, pkt.SrcPort)
+	if pkt.info.Protocol == TCP || pkt.info.Protocol == UDP {
+		if pkt.info.Direction {
+			pkt.linkID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.info.Protocol, pkt.info.Dst, pkt.info.DstPort, pkt.info.Src, pkt.info.SrcPort)
 		} else {
-			pkt.linkID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.Protocol, pkt.Src, pkt.SrcPort, pkt.Dst, pkt.DstPort)
+			pkt.linkID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.info.Protocol, pkt.info.Src, pkt.info.SrcPort, pkt.info.Dst, pkt.info.DstPort)
 		}
 	} else {
-		if pkt.Direction {
-			pkt.linkID = fmt.Sprintf("%d-%s-%s", pkt.Protocol, pkt.Dst, pkt.Src)
+		if pkt.info.Direction {
+			pkt.linkID = fmt.Sprintf("%d-%s-%s", pkt.info.Protocol, pkt.info.Dst, pkt.info.Src)
 		} else {
-			pkt.linkID = fmt.Sprintf("%d-%s-%s", pkt.Protocol, pkt.Src, pkt.Dst)
+			pkt.linkID = fmt.Sprintf("%d-%s-%s", pkt.info.Protocol, pkt.info.Src, pkt.info.Dst)
 		}
 	}
 }
 
 // Matches checks if a the packet matches a given endpoint (remote or local) in protocol, network and port.
 //
+// Comparison matrix:
 //         IN   OUT
 // Local   Dst  Src
 // Remote  Src  Dst
 //
-func (pkt *PacketBase) MatchesAddress(endpoint bool, protocol IPProtocol, network *net.IPNet, port uint16) bool {
-	if pkt.Protocol != protocol {
+func (pkt *PacketBase) MatchesAddress(remote bool, protocol IPProtocol, network *net.IPNet, port uint16) bool {
+	if pkt.info.Protocol != protocol {
 		return false
 	}
-	if pkt.Direction != endpoint {
-		if !network.Contains(pkt.Src) {
+	if pkt.info.Direction != remote {
+		if !network.Contains(pkt.info.Src) {
 			return false
 		}
-		if port != 0 && pkt.TCPUDPHeader != nil {
-			if pkt.SrcPort != port {
-				return false
-			}
+		if pkt.info.SrcPort != port {
+			return false
 		}
 	} else {
-		if !network.Contains(pkt.Dst) {
+		if !network.Contains(pkt.info.Dst) {
 			return false
 		}
-		if port != 0 && pkt.TCPUDPHeader != nil {
-			if pkt.DstPort != port {
-				return false
-			}
+		if pkt.info.DstPort != port {
+			return false
 		}
 	}
 	return true
 }
 
 func (pkt *PacketBase) MatchesIP(endpoint bool, network *net.IPNet) bool {
-	if pkt.Direction != endpoint {
-		if network.Contains(pkt.Src) {
+	if pkt.info.Direction != endpoint {
+		if network.Contains(pkt.info.Src) {
 			return true
 		}
 	} else {
-		if network.Contains(pkt.Dst) {
+		if network.Contains(pkt.info.Dst) {
 			return true
 		}
 	}
 	return false
 }
-
-// func (pkt *PacketBase) Accept() error {
-//   return nil
-// }
-//
-// func (pkt *PacketBase) Drop() error {
-//   return nil
-// }
-//
-// func (pkt *PacketBase) Block() error {
-//   return nil
-// }
-//
-// func (pkt *PacketBase) Verdict(verdict Verdict) error {
-//   return nil
-// }
 
 // FORMATTING
 
@@ -238,45 +225,45 @@ func (pkt *PacketBase) String() string {
 
 // FmtPacket returns the most important information about the packet as a string
 func (pkt *PacketBase) FmtPacket() string {
-	if pkt.IPHeader.Protocol == TCP || pkt.IPHeader.Protocol == UDP {
-		if pkt.Direction {
-			return fmt.Sprintf("IN %s %s:%d <-> %s:%d", pkt.Protocol, pkt.Dst, pkt.DstPort, pkt.Src, pkt.SrcPort)
+	if pkt.info.Protocol == TCP || pkt.info.Protocol == UDP {
+		if pkt.info.Direction {
+			return fmt.Sprintf("IN %s %s:%d <-> %s:%d", pkt.info.Protocol, pkt.info.Dst, pkt.info.DstPort, pkt.info.Src, pkt.info.SrcPort)
 		}
-		return fmt.Sprintf("OUT %s %s:%d <-> %s:%d", pkt.Protocol, pkt.Src, pkt.SrcPort, pkt.Dst, pkt.DstPort)
+		return fmt.Sprintf("OUT %s %s:%d <-> %s:%d", pkt.info.Protocol, pkt.info.Src, pkt.info.SrcPort, pkt.info.Dst, pkt.info.DstPort)
 	}
-	if pkt.Direction {
-		return fmt.Sprintf("IN %s %s <-> %s", pkt.Protocol, pkt.Dst, pkt.Src)
+	if pkt.info.Direction {
+		return fmt.Sprintf("IN %s %s <-> %s", pkt.info.Protocol, pkt.info.Dst, pkt.info.Src)
 	}
-	return fmt.Sprintf("OUT %s %s <-> %s", pkt.Protocol, pkt.Src, pkt.Dst)
+	return fmt.Sprintf("OUT %s %s <-> %s", pkt.info.Protocol, pkt.info.Src, pkt.info.Dst)
 }
 
 // FmtProtocol returns the protocol as a string
 func (pkt *PacketBase) FmtProtocol() string {
-	return pkt.IPHeader.Protocol.String()
+	return pkt.info.Protocol.String()
 }
 
 // FmtRemoteIP returns the remote IP address as a string
 func (pkt *PacketBase) FmtRemoteIP() string {
-	if pkt.Direction {
-		return pkt.IPHeader.Src.String()
+	if pkt.info.Direction {
+		return pkt.info.Src.String()
 	}
-	return pkt.IPHeader.Dst.String()
+	return pkt.info.Dst.String()
 }
 
 // FmtRemotePort returns the remote port as a string
 func (pkt *PacketBase) FmtRemotePort() string {
-	if pkt.TCPUDPHeader != nil {
-		if pkt.Direction {
-			return fmt.Sprintf("%d", pkt.TCPUDPHeader.SrcPort)
+	if pkt.info.SrcPort != 0 {
+		if pkt.info.Direction {
+			return fmt.Sprintf("%d", pkt.info.SrcPort)
 		}
-		return fmt.Sprintf("%d", pkt.TCPUDPHeader.DstPort)
+		return fmt.Sprintf("%d", pkt.info.DstPort)
 	}
 	return "-"
 }
 
 // FmtRemoteAddress returns the full remote address (protocol, IP, port) as a string
 func (pkt *PacketBase) FmtRemoteAddress() string {
-	return fmt.Sprintf("%s:%s:%s", pkt.IPHeader.Protocol.String(), pkt.FmtRemoteIP(), pkt.FmtRemotePort())
+	return fmt.Sprintf("%s:%s:%s", pkt.info.Protocol.String(), pkt.FmtRemoteIP(), pkt.FmtRemotePort())
 }
 
 // Packet is an interface to a network packet to provide object behaviour the same across all systems
@@ -292,15 +279,15 @@ type Packet interface {
 	RerouteToTunnel() error
 
 	// INFO
-	GetIPHeader() *IPHeader
-	GetTCPUDPHeader() *TCPUDPHeader
-	GetPayload() []byte
+	Info() *PacketInfo
+	SetPacketInfo(PacketInfo)
 	IsInbound() bool
 	IsOutbound() bool
 	SetInbound()
 	SetOutbound()
+	HasPorts() bool
+	GetPayload() ([]byte, error)
 	GetLinkID() string
-	IPVersion() IPVersion
 
 	// MATCHING
 	MatchesAddress(bool, IPProtocol, *net.IPNet, uint16) bool

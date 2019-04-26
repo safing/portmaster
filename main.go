@@ -39,10 +39,7 @@ func main() {
 		if err == modules.ErrCleanExit {
 			os.Exit(0)
 		} else {
-			err = modules.Shutdown()
-			if err != nil {
-				log.Shutdown()
-			}
+			modules.Shutdown()
 			os.Exit(1)
 		}
 	}
@@ -53,6 +50,7 @@ func main() {
 	signal.Notify(
 		signalCh,
 		os.Interrupt,
+		os.Kill,
 		syscall.SIGHUP,
 		syscall.SIGINT,
 		syscall.SIGTERM,
@@ -60,8 +58,17 @@ func main() {
 	)
 	select {
 	case <-signalCh:
+
 		fmt.Println(" <INTERRUPT>")
 		log.Warning("main: program was interrupted, shutting down.")
+
+		// catch signals during shutdown
+		go func() {
+			for {
+				<-signalCh
+				fmt.Println(" <INTERRUPT> again, but already shutting down")
+			}
+		}()
 
 		if printStackOnExit {
 			fmt.Println("=== PRINTING STACK ===")
@@ -70,13 +77,18 @@ func main() {
 		}
 
 		go func() {
-			time.Sleep(3 * time.Second)
+			time.Sleep(5 * time.Second)
 			fmt.Println("===== TAKING TOO LONG FOR SHUTDOWN - PRINTING STACK TRACES =====")
 			pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
 			os.Exit(1)
 		}()
-		modules.Shutdown()
-		os.Exit(0)
+
+		err := modules.Shutdown()
+		if err != nil {
+			os.Exit(1)
+		} else {
+			os.Exit(0)
+		}
 
 	case <-modules.ShuttingDown():
 	}

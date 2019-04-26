@@ -5,7 +5,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/Safing/safing-core/process/iphelper"
+	"github.com/Safing/portmaster/process/iphelper"
 )
 
 func main() {

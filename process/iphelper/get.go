@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 )
 
 var (
@@ -21,6 +22,8 @@ var (
 
 	ipHelper *IPHelper
 	lock     sync.RWMutex
+
+	waitTime = 15 * time.Millisecond
 )
 
 func checkIPHelper() (err error) {
@@ -34,57 +37,71 @@ func checkIPHelper() (err error) {
 func GetTCP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, pktDirection bool) (pid int, direction bool, err error) {
 
 	// search
-	pid, direction = search(tcp4Connections, tcp4Listeners, localIP, remoteIP, localPort, remotePort, pktDirection)
+	pid, _ = search(tcp4Connections, tcp4Listeners, localIP, remoteIP, localPort, remotePort, pktDirection)
 	if pid >= 0 {
-		return
+		return pid, pktDirection, nil
 	}
 
-	// if unable to find, refresh
-	lock.Lock()
-	err = checkIPHelper()
-	if err == nil {
-		tcp4Connections, tcp4Listeners, err = ipHelper.GetTables(TCP, IPv4)
-	}
-	lock.Unlock()
-	if err != nil {
-		return -1, direction, err
+	for i := 0; i < 3; i++ {
+		// give kernel some time, then try again
+		// log.Tracef("process: giving kernel some time to think")
+
+		// if unable to find, refresh
+		lock.Lock()
+		err = checkIPHelper()
+		if err == nil {
+			tcp4Connections, tcp4Listeners, err = ipHelper.GetTables(TCP, IPv4)
+		}
+		lock.Unlock()
+		if err != nil {
+			return -1, pktDirection, err
+		}
+
+		// search
+		pid, _ = search(tcp4Connections, tcp4Listeners, localIP, remoteIP, localPort, remotePort, pktDirection)
+		if pid >= 0 {
+			return pid, pktDirection, nil
+		}
+
+		time.Sleep(waitTime)
 	}
 
-	// search
-	pid, direction = search(tcp4Connections, tcp4Listeners, localIP, remoteIP, localPort, remotePort, pktDirection)
-	if pid >= 0 {
-		return
-	}
-
-	return -1, direction, nil
+	return -1, pktDirection, nil
 }
 
 func GetTCP6PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, pktDirection bool) (pid int, direction bool, err error) {
 
 	// search
-	pid, direction = search(tcp6Connections, tcp6Listeners, localIP, remoteIP, localPort, remotePort, pktDirection)
+	pid, _ = search(tcp6Connections, tcp6Listeners, localIP, remoteIP, localPort, remotePort, pktDirection)
 	if pid >= 0 {
-		return
+		return pid, pktDirection, nil
 	}
 
-	// if unable to find, refresh
-	lock.Lock()
-	err = checkIPHelper()
-	if err == nil {
-		tcp6Connections, tcp6Listeners, err = ipHelper.GetTables(TCP, IPv6)
-	}
-	lock.Unlock()
-	if err != nil {
-		return -1, direction, err
+	for i := 0; i < 3; i++ {
+		// give kernel some time, then try again
+		// log.Tracef("process: giving kernel some time to think")
+
+		// if unable to find, refresh
+		lock.Lock()
+		err = checkIPHelper()
+		if err == nil {
+			tcp6Connections, tcp6Listeners, err = ipHelper.GetTables(TCP, IPv6)
+		}
+		lock.Unlock()
+		if err != nil {
+			return -1, pktDirection, err
+		}
+
+		// search
+		pid, _ = search(tcp6Connections, tcp6Listeners, localIP, remoteIP, localPort, remotePort, pktDirection)
+		if pid >= 0 {
+			return pid, pktDirection, nil
+		}
+
+		time.Sleep(waitTime)
 	}
 
-	// search
-	pid, direction = search(tcp6Connections, tcp6Listeners, localIP, remoteIP, localPort, remotePort, pktDirection)
-	if pid >= 0 {
-		return
-	}
-
-	return -1, direction, nil
+	return -1, pktDirection, nil
 }
 
 func GetUDP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, pktDirection bool) (pid int, direction bool, err error) {
@@ -95,21 +112,28 @@ func GetUDP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 		return pid, pktDirection, nil
 	}
 
-	// if unable to find, refresh
-	lock.Lock()
-	err = checkIPHelper()
-	if err == nil {
-		udp4Connections, udp4Listeners, err = ipHelper.GetTables(UDP, IPv4)
-	}
-	lock.Unlock()
-	if err != nil {
-		return -1, pktDirection, err
-	}
+	for i := 0; i < 3; i++ {
+		// give kernel some time, then try again
+		// log.Tracef("process: giving kernel some time to think")
 
-	// search
-	pid, _ = search(udp4Connections, udp4Listeners, localIP, remoteIP, localPort, remotePort, pktDirection)
-	if pid >= 0 {
-		return pid, pktDirection, nil
+		// if unable to find, refresh
+		lock.Lock()
+		err = checkIPHelper()
+		if err == nil {
+			udp4Connections, udp4Listeners, err = ipHelper.GetTables(UDP, IPv4)
+		}
+		lock.Unlock()
+		if err != nil {
+			return -1, pktDirection, err
+		}
+
+		// search
+		pid, _ = search(udp4Connections, udp4Listeners, localIP, remoteIP, localPort, remotePort, pktDirection)
+		if pid >= 0 {
+			return pid, pktDirection, nil
+		}
+
+		time.Sleep(waitTime)
 	}
 
 	return -1, pktDirection, nil
@@ -123,21 +147,28 @@ func GetUDP6PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 		return pid, pktDirection, nil
 	}
 
-	// if unable to find, refresh
-	lock.Lock()
-	err = checkIPHelper()
-	if err == nil {
-		udp6Connections, udp6Listeners, err = ipHelper.GetTables(UDP, IPv6)
-	}
-	lock.Unlock()
-	if err != nil {
-		return -1, pktDirection, err
-	}
+	for i := 0; i < 3; i++ {
+		// give kernel some time, then try again
+		// log.Tracef("process: giving kernel some time to think")
 
-	// search
-	pid, _ = search(udp6Connections, udp6Listeners, localIP, remoteIP, localPort, remotePort, pktDirection)
-	if pid >= 0 {
-		return pid, pktDirection, nil
+		// if unable to find, refresh
+		lock.Lock()
+		err = checkIPHelper()
+		if err == nil {
+			udp6Connections, udp6Listeners, err = ipHelper.GetTables(UDP, IPv6)
+		}
+		lock.Unlock()
+		if err != nil {
+			return -1, pktDirection, err
+		}
+
+		// search
+		pid, _ = search(udp6Connections, udp6Listeners, localIP, remoteIP, localPort, remotePort, pktDirection)
+		if pid >= 0 {
+			return pid, pktDirection, nil
+		}
+
+		time.Sleep(waitTime)
 	}
 
 	return -1, pktDirection, nil
@@ -190,8 +221,8 @@ func searchListeners(list []*connectionEntry, localIP net.IP, localPort uint16) 
 
 	for _, entry := range list {
 		if localPort == entry.localPort &&
-			entry.localIP == nil || // nil IP means zero IP, see tables.go
-			localIP.Equal(entry.localIP) {
+			(entry.localIP == nil || // nil IP means zero IP, see tables.go
+				localIP.Equal(entry.localIP)) {
 			return entry.pid
 		}
 	}

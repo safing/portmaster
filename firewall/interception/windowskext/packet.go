@@ -1,55 +1,108 @@
 package windowskext
 
 import (
+	"sync"
+
 	"github.com/tevino/abool"
 
+	"github.com/Safing/portbase/log"
+	"github.com/Safing/portmaster/network"
 	"github.com/Safing/portmaster/network/packet"
 )
 
+// Packet represents an IP packet.
 type Packet struct {
 	packet.PacketBase
 
-	kextID     uint32
-	packetData []byte
+	verdictRequest *VerdictRequest
+	verdictSet     *abool.AtomicBool
 
-	verdictSet *abool.AtomicBool
+	payloadLoaded bool
+	lock          sync.Mutex
 }
 
+// GetPayload returns the full raw packet.
+func (pkt *Packet) GetPayload() ([]byte, error) {
+	pkt.lock.Lock()
+	defer pkt.lock.Unlock()
+
+	if !pkt.payloadLoaded {
+		pkt.payloadLoaded = true
+
+		payload, err := GetPayload(pkt.verdictRequest.id, pkt.verdictRequest.packetSize)
+		if err != nil {
+			log.Errorf("windowskext: failed to load payload %s", err)
+			return nil, packet.ErrFailedToLoadPayload
+		}
+		pkt.Payload = payload
+	}
+
+	if len(pkt.Payload) == 0 {
+		return nil, packet.ErrFailedToLoadPayload
+	}
+	return pkt.Payload, nil
+}
+
+// Accept accepts the packet.
 func (pkt *Packet) Accept() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return pkt.windivert.Send(pkt.packetData, pkt.packetAddress)
+		return SetVerdict(pkt.verdictRequest.id, -network.VerdictAccept)
 	}
 	return nil
 }
 
+// Block blocks the packet.
 func (pkt *Packet) Block() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		// TODO: implement blocking mechanism
-		return nil
+		return SetVerdict(pkt.verdictRequest.id, -network.VerdictBlock)
 	}
 	return nil
 }
 
+// Drop drops the packet.
 func (pkt *Packet) Drop() error {
+	if pkt.verdictSet.SetToIf(false, true) {
+		return SetVerdict(pkt.verdictRequest.id, -network.VerdictDrop)
+	}
 	return nil
 }
 
+// PermanentAccept permanently accepts connection (and the current packet).
 func (pkt *Packet) PermanentAccept() error {
-	return pkt.Accept()
-}
-
-func (pkt *Packet) PermanentBlock() error {
-	return pkt.Block()
-}
-
-func (pkt *Packet) PermanentDrop() error {
-	return pkt.Drop()
-}
-
-func (pkt *Packet) RerouteToNameserver() error {
+	if pkt.verdictSet.SetToIf(false, true) {
+		return SetVerdict(pkt.verdictRequest.id, network.VerdictAccept)
+	}
 	return nil
 }
 
+// PermanentBlock permanently blocks connection (and the current packet).
+func (pkt *Packet) PermanentBlock() error {
+	if pkt.verdictSet.SetToIf(false, true) {
+		return SetVerdict(pkt.verdictRequest.id, network.VerdictBlock)
+	}
+	return nil
+}
+
+// PermanentDrop permanently drops connection (and the current packet).
+func (pkt *Packet) PermanentDrop() error {
+	if pkt.verdictSet.SetToIf(false, true) {
+		return SetVerdict(pkt.verdictRequest.id, network.VerdictDrop)
+	}
+	return nil
+}
+
+// RerouteToNameserver permanently reroutes the connection to the local nameserver (and the current packet).
+func (pkt *Packet) RerouteToNameserver() error {
+	if pkt.verdictSet.SetToIf(false, true) {
+		return SetVerdict(pkt.verdictRequest.id, network.VerdictRerouteToNameserver)
+	}
+	return nil
+}
+
+// RerouteToTunnel permanently reroutes the connection to the local tunnel entrypoint (and the current packet).
 func (pkt *Packet) RerouteToTunnel() error {
+	if pkt.verdictSet.SetToIf(false, true) {
+		return SetVerdict(pkt.verdictRequest.id, network.VerdictRerouteToTunnel)
+	}
 	return nil
 }

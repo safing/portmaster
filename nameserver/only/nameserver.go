@@ -1,6 +1,7 @@
 package only
 
 import (
+	"net"
 	"time"
 
 	"github.com/miekg/dns"
@@ -18,7 +19,7 @@ func init() {
 }
 
 func start() error {
-	server := &dns.Server{Addr: "127.0.0.1:53", Net: "udp"}
+	server := &dns.Server{Addr: "0.0.0.0:53", Net: "udp"}
 	dns.HandleFunc(".", handleRequest)
 	go run(server)
 	return nil
@@ -51,6 +52,15 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	fqdn := dns.Fqdn(question.Name)
 	qtype := dns.Type(question.Qtype)
 
+	// debug log
+	rAddr, ok := w.RemoteAddr().(*net.UDPAddr)
+	if !ok {
+		log.Warningf("nameserver: could not get address of request, returning nxdomain")
+		nxDomain(w, query)
+		return
+	}
+	// log.Tracef("nameserver: got request for %s%s from %s:%d", fqdn, qtype, rAddr.IP, uint16(rAddr.Port))
+
 	// use this to time how long it takes process this request
 	// timed := time.Now()
 	// defer log.Tracef("nameserver: took %s to handle request for %s%s", time.Now().Sub(timed).String(), fqdn, qtype.String())
@@ -65,7 +75,7 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	// check for possible DNS tunneling / data transmission
 	// TODO: improve this
 	lms := algs.LmsScoreOfDomain(fqdn)
-	// log.Tracef("nameserver: domain %s has lms score of %f", fqdn, lms)
+	log.Tracef("nameserver: domain %s has lms score of %f", fqdn, lms)
 	if lms < 10 {
 		log.Tracef("nameserver: possible data tunnel: %s has lms score of %f, returning nxdomain", fqdn, lms)
 		nxDomain(w, query)
@@ -85,7 +95,7 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	// log.Tracef("nameserver: took %s to get intel and RRs", time.Since(start))
 	if rrCache == nil {
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
-		log.Infof("nameserver: %s is nxdomain", fqdn)
+		log.Infof("nameserver: %s%s is nxdomain", fqdn, qtype)
 		nxDomain(w, query)
 		return
 	}
@@ -97,4 +107,5 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	m.Ns = rrCache.Ns
 	m.Extra = rrCache.Extra
 	w.WriteMsg(m)
+	log.Tracef("nameserver: replied to request for %s%s from %s:%d", fqdn, qtype, rAddr.IP, uint16(rAddr.Port))
 }

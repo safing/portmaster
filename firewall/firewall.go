@@ -39,7 +39,7 @@ var (
 )
 
 func init() {
-	modules.Register("firewall", prep, start, stop, "core", "network", "nameserver", "profile")
+	modules.Register("firewall", prep, start, stop, "core", "network", "nameserver", "profile", "updates")
 }
 
 func prep() (err error) {
@@ -91,26 +91,36 @@ func stop() error {
 
 func handlePacket(pkt packet.Packet) {
 
-	// log.Tracef("handling packet: %s", pkt)
+	log.Tracef("handling packet: %s", pkt)
 
 	// allow local dns
-	if pkt.MatchesIP(packet.Remote, localNet4) && pkt.GetTCPUDPHeader() != nil && pkt.GetTCPUDPHeader().DstPort == 53 {
+	if pkt.Info().Src.Equal(pkt.Info().Dst) && pkt.Info().DstPort == 53 {
+		log.Tracef("accepting local dns: %s", pkt)
 		pkt.PermanentAccept()
 		return
 	}
 
-	// allow ICMP and IGMP
+	// allow ICMP, IGMP and DHCP
 	// TODO: actually handle these
-	switch pkt.GetIPHeader().Protocol {
+	switch pkt.Info().Protocol {
 	case packet.ICMP:
+		log.Tracef("accepting ICMP: %s", pkt)
 		pkt.PermanentAccept()
 		return
 	case packet.ICMPv6:
+		log.Tracef("accepting ICMPv6: %s", pkt)
 		pkt.PermanentAccept()
 		return
 	case packet.IGMP:
+		log.Tracef("accepting IGMP: %s", pkt)
 		pkt.PermanentAccept()
 		return
+	case packet.UDP:
+		if pkt.Info().DstPort == 67 || pkt.Info().DstPort == 68 {
+			log.Tracef("accepting DHCP: %s", pkt)
+			pkt.PermanentAccept()
+			return
+		}
 	}
 
 	// log.Debugf("firewall: pkt %s has ID %s", pkt, pkt.GetLinkID())
@@ -122,11 +132,11 @@ func handlePacket(pkt packet.Packet) {
 	// check if packet is destined for tunnel
 	// switch pkt.IPVersion() {
 	// case packet.IPv4:
-	// 	if TunnelNet4 != nil && TunnelNet4.Contains(pkt.GetIPHeader().Dst) {
+	// 	if TunnelNet4 != nil && TunnelNet4.Contains(pkt.Info().Dst) {
 	// 		tunnelHandler(pkt)
 	// 	}
 	// case packet.IPv6:
-	// 	if TunnelNet6 != nil && TunnelNet6.Contains(pkt.GetIPHeader().Dst) {
+	// 	if TunnelNet6 != nil && TunnelNet6.Contains(pkt.Info().Dst) {
 	// 		tunnelHandler(pkt)
 	// 	}
 	// }
@@ -169,8 +179,11 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 	// add new Link to Communication (and save both)
 	comm.AddLink(link)
 
+	log.Tracef("comm [%s] has new link [%s]", comm, link)
+
 	// reroute dns requests to nameserver
-	if comm.Process().Pid != os.Getpid() && pkt.IsOutbound() && pkt.GetTCPUDPHeader() != nil && !pkt.GetIPHeader().Dst.Equal(localhost) && pkt.GetTCPUDPHeader().DstPort == 53 {
+	if comm.Process().Pid != os.Getpid() && pkt.IsOutbound() && pkt.Info().DstPort == 53 && !pkt.Info().Src.Equal(pkt.Info().Dst) {
+		log.Tracef("redirecting [%s] to nameserver", link)
 		link.RerouteToNameserver()
 		verdict(pkt, link.GetVerdict())
 		link.StopFirewallHandler()
@@ -283,7 +296,7 @@ func verdict(pkt packet.Packet, action network.Verdict) {
 }
 
 // func tunnelHandler(pkt packet.Packet) {
-// 	tunnelInfo := GetTunnelInfo(pkt.GetIPHeader().Dst)
+// 	tunnelInfo := GetTunnelInfo(pkt.Info().Dst)
 // 	if tunnelInfo == nil {
 // 		pkt.Block()
 // 		return

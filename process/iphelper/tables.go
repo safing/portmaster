@@ -3,7 +3,6 @@
 package iphelper
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
@@ -125,19 +124,19 @@ func (ipHelper *IPHelper) GetTables(protocol uint8, ipVersion uint8) (connection
 		r1, _, err = ipHelper.getExtendedTcpTable.Call(
 			uintptr(unsafe.Pointer(&buf[0])),  // _Out_   PVOID           pTcpTable
 			uintptr(unsafe.Pointer(&bufSize)), // _Inout_ PDWORD          pdwSize
-			0,                                // _In_    BOOL            bOrder
-			uintptr(afClass),                 // _In_    ULONG           ulAf
-			iphelper_TCP_TABLE_OWNER_PID_ALL, // _In_    TCP_TABLE_CLASS TableClass
-			0, // _In_    ULONG           Reserved
+			0,                                 // _In_    BOOL            bOrder
+			uintptr(afClass),                  // _In_    ULONG           ulAf
+			iphelper_TCP_TABLE_OWNER_PID_ALL,  // _In_    TCP_TABLE_CLASS TableClass
+			0,                                 // _In_    ULONG           Reserved
 		)
 	case UDP:
 		r1, _, err = ipHelper.getExtendedUdpTable.Call(
 			uintptr(unsafe.Pointer(&buf[0])),  // _Out_   PVOID           pUdpTable,
 			uintptr(unsafe.Pointer(&bufSize)), // _Inout_ PDWORD          pdwSize,
-			0,                            // _In_    BOOL            bOrder,
-			uintptr(afClass),             // _In_    ULONG           ulAf,
-			iphelper_UDP_TABLE_OWNER_PID, // _In_    UDP_TABLE_CLASS TableClass,
-			0, // _In_    ULONG           Reserved
+			0,                                 // _In_    BOOL            bOrder,
+			uintptr(afClass),                  // _In_    ULONG           ulAf,
+			iphelper_UDP_TABLE_OWNER_PID,      // _In_    UDP_TABLE_CLASS TableClass,
+			0,                                 // _In_    ULONG           Reserved
 		)
 	}
 
@@ -165,19 +164,16 @@ func (ipHelper *IPHelper) GetTables(protocol uint8, ipVersion uint8) (connection
 			new.pid = int(row.owningPid)
 
 			// local
-			new.localIP = make([]byte, 4)
-			binary.LittleEndian.PutUint32(new.localIP, row.localAddr)
+			if row.localAddr != 0 {
+				new.localIP = convertIPv4(row.localAddr)
+			}
 			new.localPort = uint16(row.localPort>>8 | row.localPort<<8)
 
 			// remote
 			if row.state == iphelper_TCP_STATE_LISTEN {
-				if new.localIP.Equal(net.IPv4zero) {
-					new.localIP = nil
-				}
 				listeners = append(listeners, new)
 			} else {
-				new.remoteIP = make([]byte, 4)
-				binary.LittleEndian.PutUint32(new.remoteIP, row.remoteAddr)
+				new.remoteIP = convertIPv4(row.remoteAddr)
 				new.remotePort = uint16(row.remotePort>>8 | row.remotePort<<8)
 				connections = append(connections, new)
 			}
@@ -229,8 +225,7 @@ func (ipHelper *IPHelper) GetTables(protocol uint8, ipVersion uint8) (connection
 			if row.localAddr == 0 {
 				listeners = append(listeners, new)
 			} else {
-				new.localIP = make([]byte, 4)
-				binary.LittleEndian.PutUint32(new.localIP, row.localAddr)
+				new.localIP = convertIPv4(row.localAddr)
 				connections = append(connections, new)
 			}
 		}
@@ -260,4 +255,13 @@ func (ipHelper *IPHelper) GetTables(protocol uint8, ipVersion uint8) (connection
 	}
 
 	return connections, listeners, nil
+}
+
+func convertIPv4(input uint32) net.IP {
+	return net.IPv4(
+		uint8(input&0xFF),
+		uint8(input>>8&0xFF),
+		uint8(input>>16&0xFF),
+		uint8(input>>24&0xFF),
+	)
 }

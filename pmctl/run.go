@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -100,11 +101,16 @@ func run(identifier string, cmd *cobra.Command, filterDatabaseFlag bool) error {
 		}
 
 		// check permission
-		info, err := os.Stat(file.Path())
-		if info.Mode() != 0755 {
-			err := os.Chmod(file.Path(), 0755)
+		if runtime.GOOS != "windows" {
+			info, err := os.Stat(file.Path())
 			if err != nil {
-				return fmt.Errorf("%s failed to set exec permissions on %s: %s", logPrefix, file.Path(), err)
+				return fmt.Errorf("%s failed to get file info on %s: %s", logPrefix, file.Path(), err)
+			}
+			if info.Mode() != 0755 {
+				err := os.Chmod(file.Path(), 0755)
+				if err != nil {
+					return fmt.Errorf("%s failed to set exec permissions on %s: %s", logPrefix, file.Path(), err)
+				}
 			}
 		}
 

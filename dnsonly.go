@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/Safing/portbase/info"
@@ -16,6 +17,8 @@ import (
 
 func main() {
 
+	runtime.GOMAXPROCS(4)
+
 	// Set Info
 	info.Set("Portmaster (DNS only)", "0.2.0", "AGPLv3", false)
 
@@ -25,10 +28,7 @@ func main() {
 		if err == modules.ErrCleanExit {
 			os.Exit(0)
 		} else {
-			err = modules.Shutdown()
-			if err != nil {
-				log.Shutdown()
-			}
+			modules.Shutdown()
 			os.Exit(1)
 		}
 	}
