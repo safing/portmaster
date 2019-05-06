@@ -22,7 +22,7 @@ const (
 )
 
 type Packet struct {
-	packet.PacketBase
+	packet.Base
 
 	QueueId    uint16
 	Id         uint32

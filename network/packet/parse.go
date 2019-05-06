@@ -9,7 +9,7 @@ import (
 )
 
 // Parse parses an IP packet and saves the information in the given packet object.
-func Parse(packetData []byte, packet *PacketBase) error {
+func Parse(packetData []byte, packet *Base) error {
 
 	var parsedPacket gopacket.Packet
 

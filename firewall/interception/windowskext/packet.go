@@ -12,7 +12,7 @@ import (
 
 // Packet represents an IP packet.
 type Packet struct {
-	packet.PacketBase
+	packet.Base
 
 	verdictRequest *VerdictRequest
 	verdictSet     *abool.AtomicBool

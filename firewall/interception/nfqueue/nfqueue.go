@@ -10,6 +10,8 @@ package nfqueue
 import "C"
 
 import (
+	"errors"
+	"fmt"
 	"net"
 	"os"
 	"runtime"
@@ -17,8 +19,6 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
-	"errors"
-	"fmt"
 
 	"github.com/Safing/portmaster/network/packet"
 )
@@ -145,9 +145,8 @@ func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark *uint32,
 	qid := uint16(*qidptr)
 
 	// nfq := (*NFQueue)(nfqptr)
-	new_version := version
-	ipver := packet.IPVersion(new_version)
-	ipsz := C.int(ipver.ByteSize())
+	ipVersion := packet.IPVersion(version)
+	ipsz := C.int(ipVersion.ByteSize())
 	bs := C.GoBytes(payload, (C.int)(payload_len))
 
 	verdict := make(chan uint32, 1)
@@ -164,22 +163,19 @@ func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark *uint32,
 	// Payload
 	pkt.Payload = bs
 
-	// IPHeader
-	pkt.IPHeader = &packet.IPHeader{
-		Version:  4,
-		Protocol: packet.IPProtocol(protocol),
-		Tos:      tos,
-		TTL:      ttl,
-		Src:      net.IP(C.GoBytes(saddr, ipsz)),
-		Dst:      net.IP(C.GoBytes(daddr, ipsz)),
-	}
+	// Info
+	info := pkt.Info()
+	info.Version = ipVersion
+	info.InTunnel = false
+	info.Protocol = packet.IPProtocol(protocol)
 
-	// TCPUDPHeader
-	pkt.TCPUDPHeader = &packet.TCPUDPHeader{
-		SrcPort:  sport,
-		DstPort:  dport,
-		Checksum: checksum,
-	}
+	// IPs
+	info.Src = net.IP(C.GoBytes(saddr, ipsz))
+	info.Dst = net.IP(C.GoBytes(daddr, ipsz))
+
+	// Ports
+	info.SrcPort = sport
+	info.DstPort = dport
 
 	// fmt.Printf("%s queuing packet\n", time.Now().Format("060102 15:04:05.000"))
 	// BUG: "panic: send on closed channel" when shutting down
