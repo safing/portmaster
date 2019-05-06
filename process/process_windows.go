@@ -1,24 +1,46 @@
 package process
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/Safing/portbase/log"
+	"github.com/Safing/portbase/utils/osdetail"
+)
 
 // IsUser returns whether the process is run by a normal user.
-func (m *Process) IsUser() bool {
-	return m.Pid != 4 && // Kernel
-		!strings.HasPrefix(m.UserName, "NT") // NT-Authority (localized!)
+func (p *Process) IsUser() bool {
+	return p.Pid != 4 && // Kernel
+		!strings.HasPrefix(p.UserName, "NT") // NT-Authority (localized!)
 }
 
 // IsAdmin returns whether the process is run by an admin user.
-func (m *Process) IsAdmin() bool {
-	return strings.HasPrefix(m.UserName, "NT") // NT-Authority (localized!)
+func (p *Process) IsAdmin() bool {
+	return strings.HasPrefix(p.UserName, "NT") // NT-Authority (localized!)
 }
 
 // IsSystem returns whether the process is run by the operating system.
-func (m *Process) IsSystem() bool {
-	return m.Pid == 4
+func (p *Process) IsSystem() bool {
+	return p.Pid == 4
 }
 
 // IsKernel returns whether the process is the Kernel.
-func (m *Process) IsKernel() bool {
-	return m.Pid == 4
+func (p *Process) IsKernel() bool {
+	return p.Pid == 4
+}
+
+// specialOSInit does special OS specific Process initialization.
+func (p *Process) specialOSInit() {
+	// add svchost.exe service names to Name
+	if p.ExecName == "svchost.exe" {
+		svcNames, err := osdetail.GetServiceNames(int32(p.Pid))
+		switch err {
+		case nil:
+			p.Name += fmt.Sprintf(" (%s)", svcNames)
+		case osdetail.ErrServiceNotFound:
+			log.Tracef("process: failed to get service name for svchost.exe (pid %d): %s", p.Pid, err)
+		default:
+			log.Warningf("process: failed to get service name for svchost.exe (pid %d): %s", p.Pid, err)
+		}
+	}
 }

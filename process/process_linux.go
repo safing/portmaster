@@ -19,3 +19,8 @@ func (m *Process) IsSystem() bool {
 func (m *Process) IsKernel() bool {
 	return m.Pid == 0
 }
+
+// specialOSInit does special OS specific Process initialization.
+func (m *Process) specialOSInit() {
+
+}

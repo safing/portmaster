@@ -90,30 +90,40 @@ func (p *Process) Delete() {
 
 // CleanProcessStorage cleans the storage from old processes.
 func CleanProcessStorage(thresholdDuration time.Duration) {
-	processesLock.Lock()
-	defer processesLock.Unlock()
+	processesCopy := All()
 
 	threshold := time.Now().Add(-thresholdDuration).Unix()
+	delete := false
 
 	// clean primary processes
-	for _, p := range processes {
+	for _, p := range processesCopy {
 		p.Lock()
 		if !p.Virtual && p.LastCommEstablished < threshold && p.CommCount == 0 {
-			go p.Delete()
+			delete = true
 		}
 		p.Unlock()
+
+		if delete {
+			p.Delete()
+			delete = false
+		}
 	}
 
 	// clean virtual processes
-	for _, p := range processes {
+	for _, p := range processesCopy {
 		p.Lock()
 		if p.Virtual {
 			_, parentIsAlive := processes[p.ParentPid]
 			if !parentIsAlive {
-				go p.Delete()
+				delete = true
 			}
 		}
 		p.Unlock()
+
+		if delete {
+			p.Delete()
+			delete = false
+		}
 	}
 }
 

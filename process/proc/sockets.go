@@ -199,7 +199,7 @@ func getListeningSocket(localIP net.IP, localPort uint16, protocol uint8) (uid, 
 		return data[0], data[1], true
 	}
 
-	return 0, 0, false
+	return -1, -1, false
 }
 
 func procDelimiter(c rune) bool {

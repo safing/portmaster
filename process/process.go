@@ -91,12 +91,22 @@ func (p *Process) RemoveCommunication() {
 
 // GetOrFindPrimaryProcess returns the highest process in the tree that matches the given PID.
 func GetOrFindPrimaryProcess(pid int) (*Process, error) {
+	if pid == -1 {
+		return UnknownProcess, nil
+	}
+	if pid == 0 {
+		return OSProcess, nil
+	}
+
 	process, err := loadProcess(pid)
 	if err != nil {
 		return nil, err
 	}
 
 	for {
+		if process.ParentPid == 0 {
+			return OSProcess, nil
+		}
 		parentProcess, err := loadProcess(process.ParentPid)
 		if err != nil {
 			log.Tracef("process: could not get parent (%d): %s", process.Pid, err)
@@ -126,6 +136,13 @@ func GetOrFindPrimaryProcess(pid int) (*Process, error) {
 
 // GetOrFindProcess returns the process for the given PID.
 func GetOrFindProcess(pid int) (*Process, error) {
+	if pid == -1 {
+		return UnknownProcess, nil
+	}
+	if pid == 0 {
+		return OSProcess, nil
+	}
+
 	p, err := loadProcess(pid)
 	if err != nil {
 		return nil, err
@@ -137,6 +154,13 @@ func GetOrFindProcess(pid int) (*Process, error) {
 }
 
 func loadProcess(pid int) (*Process, error) {
+	if pid == -1 {
+		return UnknownProcess, nil
+	}
+	if pid == 0 {
+		return OSProcess, nil
+	}
+
 	process, ok := GetProcessFromStorage(pid)
 	if ok {
 		return process, nil
