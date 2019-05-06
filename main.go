@@ -71,9 +71,14 @@ func main() {
 		}()
 
 		if printStackOnExit {
-			fmt.Println("=== PRINTING STACK ===")
+			fmt.Println("=== PRINTING TRACES ===")
+			fmt.Println("=== GOROUTINES ===")
 			pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
-			fmt.Println("=== END STACK ===")
+			fmt.Println("=== BLOCKING ===")
+			pprof.Lookup("block").WriteTo(os.Stdout, 1)
+			fmt.Println("=== MUTEXES ===")
+			pprof.Lookup("mutex").WriteTo(os.Stdout, 1)
+			fmt.Println("=== END TRACES ===")
 		}
 
 		go func() {
