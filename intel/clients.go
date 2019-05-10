@@ -2,11 +2,23 @@ package intel
 
 import (
 	"crypto/tls"
+	"net"
 	"sync"
 	"time"
 
 	"github.com/miekg/dns"
 )
+
+var (
+	localAddrFactory func(network string) net.Addr
+)
+
+// SetLocalAddrFactory supplied the intel package with a function to set local addresses for connections.
+func SetLocalAddrFactory(laf func(network string) net.Addr) {
+	if localAddrFactory == nil {
+		localAddrFactory = laf
+	}
+}
 
 type clientManager struct {
 	dnsClient *dns.Client
@@ -21,10 +33,13 @@ type clientManager struct {
 
 func newDNSClientManager(resolver *Resolver) *clientManager {
 	return &clientManager{
-		ttl: -1 * time.Minute,
+		// ttl: 1 * time.Minute,
 		factory: func() *dns.Client {
 			return &dns.Client{
 				Timeout: 5 * time.Second,
+				Dialer: &net.Dialer{
+					LocalAddr: localAddrFactory("udp"),
+				},
 			}
 		},
 	}
@@ -32,11 +47,14 @@ func newDNSClientManager(resolver *Resolver) *clientManager {
 
 func newTCPClientManager(resolver *Resolver) *clientManager {
 	return &clientManager{
-		ttl: -15 * time.Minute,
+		// ttl: 5 * time.Minute,
 		factory: func() *dns.Client {
 			return &dns.Client{
 				Net:     "tcp",
 				Timeout: 5 * time.Second,
+				Dialer: &net.Dialer{
+					LocalAddr: localAddrFactory("tcp"),
+				},
 			}
 		},
 	}
@@ -44,7 +62,7 @@ func newTCPClientManager(resolver *Resolver) *clientManager {
 
 func newTLSClientManager(resolver *Resolver) *clientManager {
 	return &clientManager{
-		ttl: -15 * time.Minute,
+		// ttl: 5 * time.Minute,
 		factory: func() *dns.Client {
 			return &dns.Client{
 				Net: "tcp-tls",
@@ -55,6 +73,9 @@ func newTLSClientManager(resolver *Resolver) *clientManager {
 					// Rand: io.Reader,
 				},
 				Timeout: 5 * time.Second,
+				Dialer: &net.Dialer{
+					LocalAddr: localAddrFactory("tcp"),
+				},
 			}
 		},
 	}
@@ -62,7 +83,7 @@ func newTLSClientManager(resolver *Resolver) *clientManager {
 
 func newHTTPSClientManager(resolver *Resolver) *clientManager {
 	return &clientManager{
-		ttl: -15 * time.Minute,
+		// ttl: 5 * time.Minute,
 		factory: func() *dns.Client {
 			new := &dns.Client{
 				Net: "https",
@@ -72,6 +93,9 @@ func newHTTPSClientManager(resolver *Resolver) *clientManager {
 					// Rand: io.Reader,
 				},
 				Timeout: 5 * time.Second,
+				Dialer: &net.Dialer{
+					LocalAddr: localAddrFactory("tcp"),
+				},
 			}
 			if resolver.VerifyDomain != "" {
 				new.TLSConfig.ServerName = resolver.VerifyDomain
@@ -85,7 +109,7 @@ func (cm *clientManager) getDNSClient() *dns.Client {
 	cm.lock.Lock()
 	defer cm.lock.Unlock()
 
-	if cm.dnsClient == nil || time.Now().After(cm.refreshAfter) {
+	if cm.dnsClient == nil || cm.ttl == 0 || time.Now().After(cm.refreshAfter) {
 		cm.dnsClient = cm.factory()
 		cm.refreshAfter = time.Now().Add(cm.ttl)
 	}

@@ -3,6 +3,7 @@
 package nameserver
 
 import (
+	"context"
 	"net"
 	"time"
 
@@ -73,6 +74,21 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	fqdn := dns.Fqdn(question.Name)
 	qtype := dns.Type(question.Qtype)
 
+	// check class
+	if question.Qclass != dns.ClassINET {
+		// we only serve IN records, return nxdomain
+		nxDomain(w, query)
+		return
+	}
+
+	// handle request for localhost
+	if fqdn == "localhost." {
+		m := new(dns.Msg)
+		m.SetReply(query)
+		m.Answer = localhostIPs
+		w.WriteMsg(m)
+	}
+
 	// get addresses
 	remoteAddr, ok := w.RemoteAddr().(*net.UDPAddr)
 	if !ok {
@@ -91,28 +107,25 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 		return
 	}
 
-	log.Tracef("nameserver: handling request for %s%s from %s:%d", fqdn, qtype, remoteAddr.IP, remoteAddr.Port)
-
-	// TODO: if there are 3 request for the same domain/type in a row, delete all caches of that domain
-
-	// check class
-	if question.Qclass != dns.ClassINET {
-		// we only serve IN records, return nxdomain
+	// check if valid domain name
+	if !netutils.IsValidFqdn(fqdn) {
+		log.Debugf("nameserver: domain name %s is invalid, returning nxdomain", fqdn)
 		nxDomain(w, query)
 		return
 	}
 
-	// handle request for localhost
-	if fqdn == "localhost." {
-		m := new(dns.Msg)
-		m.SetReply(query)
-		m.Answer = localhostIPs
-		w.WriteMsg(m)
-	}
+	// start tracer
+	ctx := log.AddTracer(context.Background())
+	log.Tracer(ctx).Tracef("nameserver: handling new request for %s%s from %s:%d", fqdn, qtype, remoteAddr.IP, remoteAddr.Port)
 
-	// check if valid domain name
-	if !netutils.IsValidFqdn(fqdn) {
-		log.Tracef("nameserver: domain name %s is invalid, returning nxdomain", fqdn)
+	// TODO: if there are 3 request for the same domain/type in a row, delete all caches of that domain
+
+	// get connection
+	// start = time.Now()
+	comm, err := network.GetCommunicationByDNSRequest(ctx, remoteAddr.IP, uint16(remoteAddr.Port), fqdn)
+	// log.Tracef("nameserver: took %s to get comms (and maybe process)", time.Since(start))
+	if err != nil {
+		log.ErrorTracef(ctx, "nameserver: could not identify process of %s:%d, returning nxdomain: %s", remoteAddr.IP, remoteAddr.Port, err)
 		nxDomain(w, query)
 		return
 	}
@@ -122,26 +135,10 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	lms := algs.LmsScoreOfDomain(fqdn)
 	// log.Tracef("nameserver: domain %s has lms score of %f", fqdn, lms)
 	if lms < 10 {
-		log.Tracef("nameserver: possible data tunnel: %s has lms score of %f, returning nxdomain", fqdn, lms)
+		log.WarningTracef(ctx, "nameserver: possible data tunnel by %s: %s has lms score of %f, returning nxdomain", comm.Process(), fqdn, lms)
 		nxDomain(w, query)
 		return
 	}
-
-	// [1/2] use this to time how long it takes to get process info
-	// timed := time.Now()
-
-	// get connection
-	// start = time.Now()
-	comm, err := network.GetCommunicationByDNSRequest(remoteAddr.IP, uint16(remoteAddr.Port), fqdn)
-	// log.Tracef("nameserver: took %s to get comms (and maybe process)", time.Since(start))
-	if err != nil {
-		log.Warningf("nameserver: someone is requesting %s, but could not identify process: %s, returning nxdomain", fqdn, err)
-		nxDomain(w, query)
-		return
-	}
-
-	// [2/2] use this to time how long it takes to get process info
-	// log.Tracef("nameserver: took %s to get connection/process of %s request", time.Now().Sub(timed).String(), fqdn)
 
 	// check profile before we even get intel and rr
 	// start = time.Now()
@@ -149,17 +146,18 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	// log.Tracef("nameserver: took %s to make decision", time.Since(start))
 
 	if comm.GetVerdict() == network.VerdictBlock || comm.GetVerdict() == network.VerdictDrop {
+		log.InfoTracef(ctx, "nameserver: %s denied before intel, returning nxdomain", comm)
 		nxDomain(w, query)
 		return
 	}
 
 	// get intel and RRs
 	// start = time.Now()
-	domainIntel, rrCache := intel.GetIntelAndRRs(fqdn, qtype, comm.Process().ProfileSet().SecurityLevel())
+	domainIntel, rrCache := intel.GetIntelAndRRs(ctx, fqdn, qtype, comm.Process().ProfileSet().SecurityLevel())
 	// log.Tracef("nameserver: took %s to get intel and RRs", time.Since(start))
 	if rrCache == nil {
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
-		log.Infof("nameserver: %s tried to query %s, but is nxdomain", comm.Process().String(), fqdn)
+		log.WarningTracef(ctx, "nameserver: %s requested %s%s, is nxdomain", comm.Process(), fqdn, qtype)
 		nxDomain(w, query)
 		return
 	}
@@ -174,6 +172,7 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	firewall.DecideOnCommunicationAfterIntel(comm, fqdn, rrCache)
 	switch comm.GetVerdict() {
 	case network.VerdictUndecided, network.VerdictBlock, network.VerdictDrop:
+		log.InfoTracef(ctx, "nameserver: %s denied after intel, returning nxdomain", comm)
 		nxDomain(w, query)
 		return
 	}
@@ -181,6 +180,7 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	// filter DNS response
 	rrCache = firewall.FilterDNSResponse(comm, fqdn, rrCache)
 	if rrCache == nil {
+		log.InfoTracef(ctx, "nameserver: %s implicitly denied by filtering the dns response, returning nxdomain", comm)
 		nxDomain(w, query)
 		return
 	}
@@ -224,4 +224,5 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	m.Ns = rrCache.Ns
 	m.Extra = rrCache.Extra
 	w.WriteMsg(m)
+	log.DebugTracef(ctx, "nameserver: returning response %s%s to %s", fqdn, qtype, comm.Process())
 }

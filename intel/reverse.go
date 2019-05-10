@@ -18,7 +18,7 @@ func ResolveIPAndValidate(ip string, securityLevel uint8) (domain string, err er
 	}
 
 	// get PTR record
-	rrCache := Resolve(rQ, dns.Type(dns.TypePTR), securityLevel)
+	rrCache := Resolve(nil, rQ, dns.Type(dns.TypePTR), securityLevel)
 	if rrCache == nil {
 		return "", errors.New("querying for PTR record failed (may be NXDomain)")
 	}
@@ -42,9 +42,9 @@ func ResolveIPAndValidate(ip string, securityLevel uint8) (domain string, err er
 
 	// get forward record
 	if strings.Contains(ip, ":") {
-		rrCache = Resolve(ptrName, dns.Type(dns.TypeAAAA), securityLevel)
+		rrCache = Resolve(nil, ptrName, dns.Type(dns.TypeAAAA), securityLevel)
 	} else {
-		rrCache = Resolve(ptrName, dns.Type(dns.TypeA), securityLevel)
+		rrCache = Resolve(nil, ptrName, dns.Type(dns.TypeA), securityLevel)
 	}
 	if rrCache == nil {
 		return "", errors.New("querying for A/AAAA record failed (may be NXDomain)")

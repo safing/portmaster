@@ -3,6 +3,7 @@
 package intel
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -262,7 +263,9 @@ func listenForDNSPackets(conn *net.UDPConn, messages chan *dns.Msg) {
 	}
 }
 
-func queryMulticastDNS(fqdn string, qtype dns.Type) (*RRCache, error) {
+func queryMulticastDNS(ctx context.Context, fqdn string, qtype dns.Type) (*RRCache, error) {
+	log.Tracer(ctx).Trace("intel: resolving with mDNS")
+
 	q := new(dns.Msg)
 	q.SetQuestion(fqdn, uint16(qtype))
 	// request unicast response

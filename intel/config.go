@@ -8,18 +8,19 @@ import (
 var (
 	configuredNameServers config.StringArrayOption
 	defaultNameServers    = []string{
+		"dns|1.1.1.1:53",                     // Cloudflare
+		"dns|1.0.0.1:53",                     // Cloudflare
+		"dns|9.9.9.9:53",                     // Quad9
 		"tls|1.1.1.1:853|cloudflare-dns.com", // Cloudflare
 		"tls|1.0.0.1:853|cloudflare-dns.com", // Cloudflare
 		"tls|9.9.9.9:853|dns.quad9.net",      // Quad9
 		// "https|cloudflare-dns.com/dns-query", // HTTPS still experimental
-		"dns|1.1.1.1:53", // Cloudflare
-		"dns|1.0.0.1:53", // Cloudflare
-		"dns|9.9.9.9:53", // Quad9
 	}
 
 	nameserverRetryRate         config.IntOption
 	doNotUseMulticastDNS        status.SecurityLevelOption
 	doNotUseAssignedNameservers status.SecurityLevelOption
+	doNotUseInsecureProtocols   status.SecurityLevelOption
 	doNotResolveSpecialDomains  status.SecurityLevelOption
 )
 
@@ -73,13 +74,28 @@ func prep() error {
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    6,
+		DefaultValue:    4,
 		ValidationRegex: "^(7|6|4)$",
 	})
 	if err != nil {
 		return err
 	}
 	doNotUseAssignedNameservers = status.ConfigIsActiveConcurrent("intel/doNotUseAssignedNameservers")
+
+	err = config.Register(&config.Option{
+		Name:            "Do not resolve insecurely",
+		Key:             "intel/doNotUseInsecureProtocols",
+		Description:     "Do not resolve domains with insecure protocols, ie. plain DNS",
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
+		OptType:         config.OptTypeInt,
+		ExternalOptType: "security level",
+		DefaultValue:    4,
+		ValidationRegex: "^(7|6|4)$",
+	})
+	if err != nil {
+		return err
+	}
+	doNotUseInsecureProtocols = status.ConfigIsActiveConcurrent("intel/doNotUseInsecureProtocols")
 
 	err = config.Register(&config.Option{
 		Name:            "Do not resolve special domains",

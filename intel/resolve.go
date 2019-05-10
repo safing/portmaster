@@ -3,6 +3,7 @@
 package intel
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
@@ -69,7 +70,7 @@ import (
 // special -> local scopes, local
 
 // Resolve resolves the given query for a domain and type and returns a RRCache object or nil, if the query failed.
-func Resolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCache {
+func Resolve(ctx context.Context, fqdn string, qtype dns.Type, securityLevel uint8) *RRCache {
 	fqdn = dns.Fqdn(fqdn)
 
 	// use this to time how long it takes resolve this domain
@@ -82,15 +83,17 @@ func Resolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCache {
 		switch err {
 		case database.ErrNotFound:
 		default:
+			log.Tracer(ctx).Warningf("intel: getting RRCache %s%s from database failed: %s", fqdn, qtype.String(), err)
 			log.Warningf("intel: getting RRCache %s%s from database failed: %s", fqdn, qtype.String(), err)
 		}
-		return resolveAndCache(fqdn, qtype, securityLevel)
+		return resolveAndCache(ctx, fqdn, qtype, securityLevel)
 	}
 
 	if rrCache.TTL <= time.Now().Unix() {
-		log.Tracef("intel: serving cache, requesting new. TTL=%d, now=%d", rrCache.TTL, time.Now().Unix())
+		log.Tracer(ctx).Tracef("intel: serving from cache, requesting new. TTL=%d, now=%d", rrCache.TTL, time.Now().Unix())
+		// log.Tracef("intel: serving cache, requesting new. TTL=%d, now=%d", rrCache.TTL, time.Now().Unix())
 		rrCache.requestingNew = true
-		go resolveAndCache(fqdn, qtype, securityLevel)
+		go resolveAndCache(nil, fqdn, qtype, securityLevel)
 	}
 
 	// randomize records to allow dumb clients (who only look at the first record) to reliably connect
@@ -102,8 +105,8 @@ func Resolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCache {
 	return rrCache
 }
 
-func resolveAndCache(fqdn string, qtype dns.Type, securityLevel uint8) (rrCache *RRCache) {
-	// log.Tracef("intel: resolving %s%s", fqdn, qtype.String())
+func resolveAndCache(ctx context.Context, fqdn string, qtype dns.Type, securityLevel uint8) (rrCache *RRCache) {
+	log.Tracer(ctx).Tracef("intel: resolving %s%s", fqdn, qtype.String())
 
 	// dedup requests
 	dupKey := fmt.Sprintf("%s%s", fqdn, qtype.String())
@@ -116,7 +119,8 @@ func resolveAndCache(fqdn string, qtype dns.Type, securityLevel uint8) (rrCache 
 		dupReqLock.Unlock()
 	} else {
 		dupReqLock.Unlock()
-		log.Tracef("intel: waiting for duplicate query for %s to complete", dupKey)
+		log.Tracer(ctx).Tracef("intel: waiting for duplicate query for %s to complete", dupKey)
+		// log.Tracef("intel: waiting for duplicate query for %s to complete", dupKey)
 		mutex.Lock()
 		// wait until duplicate request is finished, then fetch current RRCache and return
 		mutex.Unlock()
@@ -136,7 +140,7 @@ func resolveAndCache(fqdn string, qtype dns.Type, securityLevel uint8) (rrCache 
 	}()
 
 	// resolve
-	rrCache = intelligentResolve(fqdn, qtype, securityLevel)
+	rrCache = intelligentResolve(ctx, fqdn, qtype, securityLevel)
 	if rrCache == nil {
 		return nil
 	}
@@ -148,7 +152,7 @@ func resolveAndCache(fqdn string, qtype dns.Type, securityLevel uint8) (rrCache 
 	return rrCache
 }
 
-func intelligentResolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCache {
+func intelligentResolve(ctx context.Context, fqdn string, qtype dns.Type, securityLevel uint8) *RRCache {
 
 	// TODO: handle being offline
 	// TODO: handle multiple network connections
@@ -178,7 +182,7 @@ func intelligentResolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCac
 	if domainInScopes(preDottedFqdn, localReverseScopes) {
 		// try local resolvers
 		for _, resolver := range localResolvers {
-			rrCache, ok := tryResolver(resolver, lastFailBoundary, fqdn, qtype, securityLevel)
+			rrCache, ok := tryResolver(ctx, resolver, lastFailBoundary, fqdn, qtype, securityLevel)
 			if ok && rrCache != nil && !rrCache.IsNXDomain() {
 				return rrCache
 			}
@@ -188,8 +192,9 @@ func intelligentResolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCac
 			return nil
 		}
 		// try mdns
-		rrCache, err := queryMulticastDNS(fqdn, qtype)
+		rrCache, err := queryMulticastDNS(ctx, fqdn, qtype)
 		if err != nil {
+			log.Tracer(ctx).Warningf("intel: failed to query mdns: %s", err)
 			log.Errorf("intel: failed to query mdns: %s", err)
 		}
 		return rrCache
@@ -199,7 +204,7 @@ func intelligentResolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCac
 	for _, scope := range localScopes {
 		if strings.HasSuffix(preDottedFqdn, scope.Domain) {
 			for _, resolver := range scope.Resolvers {
-				rrCache, ok := tryResolver(resolver, lastFailBoundary, fqdn, qtype, securityLevel)
+				rrCache, ok := tryResolver(ctx, resolver, lastFailBoundary, fqdn, qtype, securityLevel)
 				if ok && rrCache != nil && !rrCache.IsNXDomain() {
 					return rrCache
 				}
@@ -214,8 +219,9 @@ func intelligentResolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCac
 			return nil
 		}
 		// try mdns
-		rrCache, err := queryMulticastDNS(fqdn, qtype)
+		rrCache, err := queryMulticastDNS(ctx, fqdn, qtype)
 		if err != nil {
+			log.Tracer(ctx).Warningf("intel: failed to query mdns: %s", err)
 			log.Errorf("intel: failed to query mdns: %s", err)
 		}
 		return rrCache
@@ -226,7 +232,7 @@ func intelligentResolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCac
 		}
 		// try local resolvers
 		for _, resolver := range localResolvers {
-			rrCache, ok := tryResolver(resolver, lastFailBoundary, fqdn, qtype, securityLevel)
+			rrCache, ok := tryResolver(ctx, resolver, lastFailBoundary, fqdn, qtype, securityLevel)
 			if ok {
 				return rrCache
 			}
@@ -234,13 +240,14 @@ func intelligentResolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCac
 	default:
 		// try global resolvers
 		for _, resolver := range globalResolvers {
-			rrCache, ok := tryResolver(resolver, lastFailBoundary, fqdn, qtype, securityLevel)
+			rrCache, ok := tryResolver(ctx, resolver, lastFailBoundary, fqdn, qtype, securityLevel)
 			if ok {
 				return rrCache
 			}
 		}
 	}
 
+	log.Tracer(ctx).Warningf("intel: failed to resolve %s%s: all resolvers failed (or were skipped to fulfill the security level)", fqdn, qtype.String())
 	log.Criticalf("intel: failed to resolve %s%s: all resolvers failed (or were skipped to fulfill the security level)", fqdn, qtype.String())
 	return nil
 
@@ -248,24 +255,29 @@ func intelligentResolve(fqdn string, qtype dns.Type, securityLevel uint8) *RRCac
 
 }
 
-func tryResolver(resolver *Resolver, lastFailBoundary int64, fqdn string, qtype dns.Type, securityLevel uint8) (*RRCache, bool) {
-	// skip if not allowed in current security level
-	if resolver.AllowedSecurityLevel < status.ActiveSecurityLevel() || resolver.AllowedSecurityLevel < securityLevel {
-		log.Tracef("intel: skipping resolver %s, because it isn't allowed to operate on the current security level: %d|%d", resolver, status.ActiveSecurityLevel(), securityLevel)
+func tryResolver(ctx context.Context, resolver *Resolver, lastFailBoundary int64, fqdn string, qtype dns.Type, securityLevel uint8) (*RRCache, bool) {
+	log.Tracer(ctx).Tracef("intel: resolving with %s", resolver)
+
+	// skip if not security level denies insecure protocols
+	if doNotUseInsecureProtocols(securityLevel) && resolver.ServerType == "dns" {
+		log.Tracer(ctx).Tracef("intel: skipping resolver %s, because it isn't allowed to operate on the current security level: %d|%d", resolver, status.ActiveSecurityLevel(), securityLevel)
 		return nil, false
 	}
+
 	// skip if not security level denies assigned dns servers
 	if doNotUseAssignedNameservers(securityLevel) && resolver.Source == "dhcp" {
-		log.Tracef("intel: skipping resolver %s, because assigned nameservers are not allowed on the current security level: %d|%d", resolver, status.ActiveSecurityLevel(), securityLevel)
+		log.Tracer(ctx).Tracef("intel: skipping resolver %s, because assigned nameservers are not allowed on the current security level: %d|%d", resolver, status.ActiveSecurityLevel(), securityLevel)
 		return nil, false
 	}
 	// check if failed recently
 	if atomic.LoadInt64(resolver.LastFail) > lastFailBoundary {
+		log.Tracer(ctx).Tracef("intel: skipping resolver %s, because it failed recently", resolver)
 		return nil, false
 	}
 	// TODO: put SkipFqdnBeforeInit back into !resolver.Initialized.IsSet() as soon as Go1.9 arrives and we can use a custom resolver
 	// skip resolver if initializing and fqdn is set to skip
 	if fqdn == resolver.SkipFqdnBeforeInit {
+		log.Tracer(ctx).Tracef("intel: skipping resolver %s, because %s is set to be skipped before init", resolver, fqdn)
 		return nil, false
 	}
 	// check if resolver is already initialized
@@ -285,15 +297,16 @@ func tryResolver(resolver *Resolver, lastFailBoundary int64, fqdn string, qtype 
 		}
 	}
 	// resolve
-	log.Tracef("intel: trying to resolve %s%s with %s", fqdn, qtype.String(), resolver.Server)
-	rrCache, err := query(resolver, fqdn, qtype)
+	rrCache, err := query(ctx, resolver, fqdn, qtype)
 	if err != nil {
 		// check if failing is disabled
 		if atomic.LoadInt64(resolver.LastFail) == -1 {
-			log.Tracef("intel: non-failing resolver %s failed (%s), moving to next", resolver, err)
+			log.Tracer(ctx).Tracef("intel: non-failing resolver %s failed, moving to next: %s", resolver, err)
+			// log.Tracef("intel: non-failing resolver %s failed (%s), moving to next", resolver, err)
 			return nil, false
 		}
-		log.Warningf("intel: resolver %s failed (%s), moving to next", resolver, err)
+		log.Tracer(ctx).Warningf("intel: resolver %s failed, moving to next: %s", resolver, err)
+		log.Warningf("intel: resolver %s failed, moving to next: %s", resolver, err)
 		resolver.LockReason.Lock()
 		resolver.FailReason = err.Error()
 		resolver.LockReason.Unlock()
@@ -306,7 +319,7 @@ func tryResolver(resolver *Resolver, lastFailBoundary int64, fqdn string, qtype 
 	return rrCache, true
 }
 
-func query(resolver *Resolver, fqdn string, qtype dns.Type) (*RRCache, error) {
+func query(ctx context.Context, resolver *Resolver, fqdn string, qtype dns.Type) (*RRCache, error) {
 
 	q := new(dns.Msg)
 	q.SetQuestion(fqdn, uint16(qtype))
@@ -322,7 +335,7 @@ func query(resolver *Resolver, fqdn string, qtype dns.Type) (*RRCache, error) {
 
 		// error handling
 		if err != nil {
-			log.Tracef("intel: query to %s encountered error: %s", resolver.Server, err)
+			log.Tracer(ctx).Tracef("intel: query to %s encountered error: %s", resolver.Server, err)
 
 			// TODO: handle special cases
 			// 1. connect: network is unreachable
@@ -330,7 +343,7 @@ func query(resolver *Resolver, fqdn string, qtype dns.Type) (*RRCache, error) {
 
 			// temporary error
 			if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
-				log.Tracef("intel: retrying to resolve %s%s with %s, error was: %s", fqdn, qtype.String(), resolver.Server, err)
+				log.Tracer(ctx).Tracef("intel: retrying to resolve %s%s with %s, error is temporary", fqdn, qtype, resolver.Server)
 				continue
 			}
 
@@ -343,8 +356,6 @@ func query(resolver *Resolver, fqdn string, qtype dns.Type) (*RRCache, error) {
 	}
 
 	if err != nil {
-		err = fmt.Errorf("resolving %s%s failed: %s", fqdn, qtype.String(), err)
-		log.Warning(err.Error())
 		return nil, err
 	}
 

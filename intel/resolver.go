@@ -16,7 +16,6 @@ import (
 
 	"github.com/Safing/portmaster/network/environment"
 	"github.com/Safing/portmaster/network/netutils"
-	"github.com/Safing/portmaster/status"
 )
 
 // Resolver holds information about an active resolver.
@@ -32,9 +31,8 @@ type Resolver struct {
 	Source        string
 	clientManager *clientManager
 
-	Search               *[]string
-	AllowedSecurityLevel uint8
-	SkipFqdnBeforeInit   string
+	Search             *[]string
+	SkipFqdnBeforeInit string
 
 	// atomic
 	Initialized *abool.AtomicBool
@@ -149,7 +147,7 @@ configuredServersLoop:
 			var lastFail int64
 			new := &Resolver{
 				Server:        server,
-				ServerType:    parts[0],
+				ServerType:    strings.ToLower(parts[0]),
 				ServerAddress: parts[1],
 				ServerIP:      ip,
 				ServerIPScope: netutils.ClassifyIP(ip),
@@ -159,13 +157,12 @@ configuredServersLoop:
 				Initialized:   abool.NewBool(false),
 			}
 
-			switch strings.ToLower(parts[0]) {
+			switch new.ServerType {
 			case "dns":
 				new.clientManager = newDNSClientManager(new)
 			case "tcp":
 				new.clientManager = newTCPClientManager(new)
 			case "tls":
-				new.AllowedSecurityLevel = status.SecurityLevelFortress
 				if len(parts) < 3 {
 					log.Warningf("intel: nameserver missing verification domain as third parameter: %s", server)
 					continue configuredServersLoop
@@ -173,7 +170,6 @@ configuredServersLoop:
 				new.VerifyDomain = parts[2]
 				new.clientManager = newTLSClientManager(new)
 			case "https":
-				new.AllowedSecurityLevel = status.SecurityLevelFortress
 				new.SkipFqdnBeforeInit = dns.Fqdn(strings.Split(parts[1], ":")[0])
 				if len(parts) > 2 {
 					new.VerifyDomain = parts[2]
@@ -203,16 +199,15 @@ assignedServersLoop:
 
 			var lastFail int64
 			new := &Resolver{
-				Server:               server,
-				ServerType:           "dns",
-				ServerAddress:        urlFormatAddress(nameserver.IP, 53),
-				ServerIP:             nameserver.IP,
-				ServerIPScope:        netutils.ClassifyIP(nameserver.IP),
-				ServerPort:           53,
-				LastFail:             &lastFail,
-				Source:               "dhcp",
-				Initialized:          abool.NewBool(false),
-				AllowedSecurityLevel: status.SecurityLevelSecure,
+				Server:        server,
+				ServerType:    "dns",
+				ServerAddress: urlFormatAddress(nameserver.IP, 53),
+				ServerIP:      nameserver.IP,
+				ServerIPScope: netutils.ClassifyIP(nameserver.IP),
+				ServerPort:    53,
+				LastFail:      &lastFail,
+				Source:        "dhcp",
+				Initialized:   abool.NewBool(false),
 			}
 			new.clientManager = newDNSClientManager(new)
 
