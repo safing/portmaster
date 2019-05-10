@@ -279,9 +279,12 @@ func GetLink(id string) (*Link, bool) {
 func GetOrCreateLinkByPacket(pkt packet.Packet) (*Link, bool) {
 	link, ok := GetLink(pkt.GetLinkID())
 	if ok {
+		log.Tracer(pkt.Ctx()).Tracef("network: assigned to link %s", link.ID)
 		return link, false
 	}
-	return CreateLinkFromPacket(pkt), true
+	link = CreateLinkFromPacket(pkt)
+	log.Tracer(pkt.Ctx()).Tracef("network: created new link %s", link.ID)
+	return link, true
 }
 
 // CreateLinkFromPacket creates a new Link based on Packet.

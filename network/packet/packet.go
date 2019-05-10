@@ -3,15 +3,27 @@
 package packet
 
 import (
+	"context"
 	"fmt"
 	"net"
 )
 
 // Base is a base structure for satisfying the Packet interface.
 type Base struct {
+	ctx     context.Context
 	info    Info
 	linkID  string
 	Payload []byte
+}
+
+// SetCtx sets the packet context.
+func (pkt *Base) SetCtx(ctx context.Context) {
+	pkt.ctx = ctx
+}
+
+// Ctx returns the packet context.
+func (pkt *Base) Ctx() context.Context {
+	return pkt.ctx
 }
 
 // Info returns the packet Info.
@@ -195,6 +207,8 @@ type Packet interface {
 	RerouteToTunnel() error
 
 	// INFO
+	SetCtx(context.Context)
+	Ctx() context.Context
 	Info() *Info
 	SetPacketInfo(Info)
 	IsInbound() bool

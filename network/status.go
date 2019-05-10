@@ -17,6 +17,27 @@ const (
 	VerdictRerouteToTunnel     Verdict = 6
 )
 
+func (v Verdict) String() string {
+	switch v {
+	case VerdictUndecided:
+		return "<Undecided>"
+	case VerdictUndeterminable:
+		return "<Undeterminable>"
+	case VerdictAccept:
+		return "Accept"
+	case VerdictBlock:
+		return "Block"
+	case VerdictDrop:
+		return "Drop"
+	case VerdictRerouteToNameserver:
+		return "RerouteToNameserver"
+	case VerdictRerouteToTunnel:
+		return "RerouteToTunnel"
+	default:
+		return "<INVALID VERDICT>"
+	}
+}
+
 // Packer Directions
 const (
 	Inbound  = true

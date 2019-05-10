@@ -3,6 +3,7 @@
 package network
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -235,9 +236,9 @@ var (
 )
 
 // GetCommunicationByDNSRequest returns the matching communication from the internal storage.
-func GetCommunicationByDNSRequest(ip net.IP, port uint16, fqdn string) (*Communication, error) {
+func GetCommunicationByDNSRequest(ctx context.Context, ip net.IP, port uint16, fqdn string) (*Communication, error) {
 	// get Process
-	proc, err := process.GetProcessByEndpoints(ip, port, dnsAddress, dnsPort, packet.UDP)
+	proc, err := process.GetProcessByEndpoints(ctx, ip, port, dnsAddress, dnsPort, packet.UDP)
 	if err != nil {
 		return nil, err
 	}
