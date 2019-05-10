@@ -13,6 +13,7 @@ import (
 	"github.com/Safing/portmaster/network"
 	"github.com/Safing/portmaster/network/netutils"
 	"github.com/Safing/portmaster/network/packet"
+	"github.com/Safing/portmaster/process"
 	"github.com/Safing/portmaster/profile"
 	"github.com/Safing/portmaster/status"
 	"github.com/miekg/dns"
@@ -463,18 +464,45 @@ func DecideOnCommunication(comm *network.Communication, pkt packet.Packet) {
 // DecideOnLink makes a decision about a link with the first packet.
 func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Packet) {
 
+	// grant self
+	if comm.Process().Pid == os.Getpid() {
+		log.Infof("firewall: granting own link %s", comm)
+		link.Accept("")
+		return
+	}
+
+	// check if communicating with self
+	if comm.Process().Pid >= 0 && pkt.Info().Src.Equal(pkt.Info().Dst) {
+		// get PID
+		otherPid, _, err := process.GetPidByEndpoints(
+			pkt.Info().RemoteIP(),
+			pkt.Info().RemotePort(),
+			pkt.Info().LocalIP(),
+			pkt.Info().LocalPort(),
+			pkt.Info().Protocol,
+		)
+		if err == nil {
+
+			// get primary process
+			otherProcess, err := process.GetOrFindPrimaryProcess(pkt.Ctx(), otherPid)
+			if err == nil {
+
+				if otherProcess.Pid == comm.Process().Pid {
+					log.Infof("firewall: permitting connection to self %s", comm)
+					link.Accept("connection to self")
+					return
+				}
+
+			}
+		}
+	}
+
+	// check if we aleady have a verdict
 	switch comm.GetVerdict() {
 	case network.VerdictUndecided, network.VerdictUndeterminable:
 		// continue
 	default:
 		link.UpdateVerdict(comm.GetVerdict())
-		return
-	}
-
-	// grant self
-	if comm.Process().Pid == os.Getpid() {
-		log.Infof("firewall: granting own link %s", comm)
-		link.Accept("")
 		return
 	}
 
