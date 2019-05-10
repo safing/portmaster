@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 
@@ -16,7 +17,7 @@ var (
 
 // GetPlatformFile returns the latest platform specific file identified by the given identifier.
 func GetPlatformFile(identifier string) (*File, error) {
-	identifier = filepath.Join(fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), identifier)
+	identifier = path.Join(fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), identifier)
 	// From https://golang.org/pkg/runtime/#GOARCH
 	// GOOS is the running program's operating system target: one of darwin, freebsd, linux, and so on.
 	// GOARCH is the running program's architecture target: one of 386, amd64, arm, s390x, and so on.
@@ -25,7 +26,7 @@ func GetPlatformFile(identifier string) (*File, error) {
 
 // GetFile returns the latest generic file identified by the given identifier.
 func GetFile(identifier string) (*File, error) {
-	identifier = filepath.Join("all", identifier)
+	identifier = path.Join("all", identifier)
 	return loadOrFetchFile(identifier)
 }
 

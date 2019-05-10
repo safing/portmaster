@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 
 	"github.com/Safing/portbase/log"
@@ -29,14 +28,14 @@ func LoadLatest() error {
 	prefix := "all"
 	new, err1 := ScanForLatest(filepath.Join(updateStoragePath, prefix), false)
 	for key, val := range new {
-		newLocalUpdates[filepath.Join(prefix, key)] = val
+		newLocalUpdates[filepath.ToSlash(filepath.Join(prefix, key))] = val
 	}
 
 	// os_platform
 	prefix = fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH)
 	new, err2 := ScanForLatest(filepath.Join(updateStoragePath, prefix), false)
 	for key, val := range new {
-		newLocalUpdates[filepath.Join(prefix, key)] = val
+		newLocalUpdates[filepath.ToSlash(filepath.Join(prefix, key))] = val
 	}
 
 	if err1 != nil && err2 != nil {
@@ -82,7 +81,11 @@ func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, las
 			added++
 		}
 
-		relativePath := strings.TrimLeft(strings.TrimPrefix(path, baseDir), "/")
+		relativePath, err := filepath.Rel(baseDir, path)
+		if err != nil {
+			return err
+		}
+		relativePath = filepath.ToSlash(relativePath)
 		identifierPath, version, ok := GetIdentifierAndVersion(relativePath)
 		if !ok {
 			return nil
