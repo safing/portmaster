@@ -7,7 +7,7 @@ import (
 
 	// module dependencies
 	_ "github.com/Safing/portbase/database/dbmodule"
-	_ "github.com/Safing/portbase/database/storage/badger"
+	_ "github.com/Safing/portbase/database/storage/bbolt"
 )
 
 func init() {
@@ -20,7 +20,7 @@ func start() error {
 	_, err := database.Register(&database.Database{
 		Name:        "core",
 		Description: "Holds core data, such as settings and profiles",
-		StorageType: "badger",
+		StorageType: "bbolt",
 		PrimaryAPI:  "",
 	})
 	if err != nil {
@@ -30,7 +30,7 @@ func start() error {
 	_, err = database.Register(&database.Database{
 		Name:        "cache",
 		Description: "Cached data, such as Intelligence and DNS Records",
-		StorageType: "badger",
+		StorageType: "bbolt",
 		PrimaryAPI:  "",
 	})
 	if err != nil {
@@ -40,7 +40,7 @@ func start() error {
 	// _, err = database.Register(&database.Database{
 	//   Name:        "history",
 	//   Description: "Historic event data",
-	//   StorageType: "badger",
+	//   StorageType: "bbolt",
 	//   PrimaryAPI:  "",
 	// })
 	// if err != nil {
