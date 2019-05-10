@@ -31,6 +31,7 @@ func (pkt *Packet) GetPayload() ([]byte, error) {
 
 		payload, err := GetPayload(pkt.verdictRequest.id, pkt.verdictRequest.packetSize)
 		if err != nil {
+			log.Tracer(pkt.Ctx()).Warningf("windowskext: failed to load payload %s", err)
 			log.Errorf("windowskext: failed to load payload %s", err)
 			return nil, packet.ErrFailedToLoadPayload
 		}

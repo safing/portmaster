@@ -68,7 +68,7 @@ func main() {
 	// stop
 	err = windowskext.Stop()
 	if err != nil {
-		fmt.Printf("error stopping: %s\n", err)
+		panic(err)
 	}
 
 	log.Info("shutdown complete")
