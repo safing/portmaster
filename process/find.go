@@ -1,6 +1,7 @@
 package process
 
 import (
+	"context"
 	"errors"
 	"net"
 
@@ -55,24 +56,29 @@ func GetPidByPacket(pkt packet.Packet) (pid int, direction bool, err error) {
 
 // GetProcessByPacket returns the process that owns the given packet.
 func GetProcessByPacket(pkt packet.Packet) (process *Process, direction bool, err error) {
+	log.Tracer(pkt.Ctx()).Tracef("process: getting process and profile by packet")
 
 	var pid int
 	pid, direction, err = GetPidByPacket(pkt)
 	if err != nil {
+		log.Tracer(pkt.Ctx()).Errorf("process: failed to find PID of connection: %s", err)
 		return nil, direction, err
 	}
 	if pid < 0 {
+		log.Tracer(pkt.Ctx()).Errorf("process: %s", ErrConnectionNotFound.Error())
 		return nil, direction, ErrConnectionNotFound
 	}
 
-	process, err = GetOrFindPrimaryProcess(pid)
+	process, err = GetOrFindPrimaryProcess(pkt.Ctx(), pid)
 	if err != nil {
+		log.Tracer(pkt.Ctx()).Errorf("process: failed to find (primary) process with PID: %s", err)
 		return nil, direction, err
 	}
 
-	err = process.FindProfiles()
+	err = process.FindProfiles(pkt.Ctx())
 	if err != nil {
-		log.Errorf("failed to find profiles for process %s: %s", process.String(), err)
+		log.Tracer(pkt.Ctx()).Errorf("process: failed to find profiles for process %s: %s", process, err)
+		log.Errorf("failed to find profiles for process %s: %s", process, err)
 	}
 
 	return process, direction, nil
@@ -103,29 +109,33 @@ func GetPidByEndpoints(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 }
 
 // GetProcessByEndpoints returns the process that owns the described link.
-func GetProcessByEndpoints(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, protocol packet.IPProtocol) (process *Process, err error) {
+func GetProcessByEndpoints(ctx context.Context, localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, protocol packet.IPProtocol) (process *Process, err error) {
+	log.Tracer(ctx).Tracef("process: getting process and profile by endpoints")
 
 	var pid int
 	pid, _, err = GetPidByEndpoints(localIP, localPort, remoteIP, remotePort, protocol)
 	if err != nil {
+		log.Tracer(ctx).Errorf("process: failed to find PID of connection: %s", err)
 		return nil, err
 	}
 	if pid < 0 {
+		log.Tracer(ctx).Errorf("process: %s", ErrConnectionNotFound.Error())
 		return nil, ErrConnectionNotFound
 	}
 
-	process, err = GetOrFindPrimaryProcess(pid)
+	process, err = GetOrFindPrimaryProcess(ctx, pid)
 	if err != nil {
+		log.Tracer(ctx).Errorf("process: failed to find (primary) process with PID: %s", err)
 		return nil, err
 	}
 
-	err = process.FindProfiles()
+	err = process.FindProfiles(ctx)
 	if err != nil {
-		log.Errorf("failed to find profiles for process %s: %s", process.String(), err)
+		log.Tracer(ctx).Errorf("process: failed to find profiles for process %s: %s", process, err)
+		log.Errorf("process: failed to find profiles for process %s: %s", process, err)
 	}
 
 	return process, nil
-
 }
 
 // GetActiveConnectionIDs returns a list of all active connection IDs.

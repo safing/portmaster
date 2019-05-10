@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"context"
 	"sync"
 
 	"github.com/Safing/portbase/log"
@@ -11,13 +12,13 @@ var (
 	activeProfileSetsLock sync.RWMutex
 )
 
-func activateProfileSet(set *Set) {
+func activateProfileSet(ctx context.Context, set *Set) {
 	activeProfileSetsLock.Lock()
 	defer activeProfileSetsLock.Unlock()
 	set.Lock()
 	defer set.Unlock()
 	activeProfileSets[set.id] = set
-	log.Tracef("profile: activated profile set %s", set.id)
+	log.Tracer(ctx).Tracef("profile: activated profile set %s", set.id)
 }
 
 // DeactivateProfileSet marks a profile set as not active.

@@ -60,7 +60,7 @@ func (p *Process) Save() {
 		processesLock.Unlock()
 	}
 
-	if dbControllerFlag.IsSet() {
+	if dbControllerFlag.IsSet() && p.Error == "" {
 		go dbController.PushUpdate(p)
 	}
 }
@@ -109,10 +109,15 @@ func CleanProcessStorage(thresholdDuration time.Duration) {
 		}
 	}
 
-	// clean virtual processes
+	// clean virtual/failed processes
 	for _, p := range processesCopy {
 		p.Lock()
-		if p.Virtual {
+		switch {
+		case p.Error != "":
+			if p.Meta().Created < threshold {
+				delete = true
+			}
+		case p.Virtual:
 			_, parentIsAlive := processes[p.ParentPid]
 			if !parentIsAlive {
 				delete = true

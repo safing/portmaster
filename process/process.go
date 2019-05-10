@@ -3,6 +3,7 @@
 package process
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -14,6 +15,11 @@ import (
 	"github.com/Safing/portbase/database/record"
 	"github.com/Safing/portbase/log"
 	"github.com/Safing/portmaster/profile"
+)
+
+var (
+	dupReqMap  = make(map[int]*sync.Mutex)
+	dupReqLock sync.Mutex
 )
 
 // A Process represents a process running on the operating system
@@ -45,7 +51,9 @@ type Process struct {
 	FirstCommEstablished int64
 	LastCommEstablished  int64
 	CommCount            uint
-	Virtual              bool // This process is merged into another process
+
+	Virtual bool   // This process is either merged into another process or is not needed.
+	Error   string // If this is set, the process is invalid. This is used to cache failing or inexistent processes.
 }
 
 // ProfileSet returns the assigned profile set.
@@ -90,7 +98,9 @@ func (p *Process) RemoveCommunication() {
 }
 
 // GetOrFindPrimaryProcess returns the highest process in the tree that matches the given PID.
-func GetOrFindPrimaryProcess(pid int) (*Process, error) {
+func GetOrFindPrimaryProcess(ctx context.Context, pid int) (*Process, error) {
+	log.Tracer(ctx).Tracef("process: getting primary process for PID %d", pid)
+
 	if pid == -1 {
 		return UnknownProcess, nil
 	}
@@ -98,36 +108,42 @@ func GetOrFindPrimaryProcess(pid int) (*Process, error) {
 		return OSProcess, nil
 	}
 
-	process, err := loadProcess(pid)
+	process, err := loadProcess(ctx, pid)
 	if err != nil {
 		return nil, err
+	}
+	if process.Error != "" {
+		return nil, fmt.Errorf("%s [cached error]", process.Error)
 	}
 
 	for {
 		if process.ParentPid == 0 {
 			return OSProcess, nil
 		}
-		parentProcess, err := loadProcess(process.ParentPid)
+		parentProcess, err := loadProcess(ctx, process.ParentPid)
 		if err != nil {
-			log.Tracef("process: could not get parent (%d): %s", process.Pid, err)
+			log.Tracer(ctx).Tracef("process: could not get parent of %d: %d: %s", process.Pid, process.ParentPid, err)
+			return process, nil
+		}
+		if parentProcess.Error != "" {
+			log.Tracer(ctx).Tracef("process: could not get parent of %d: %d: %s [cached error]", process.Pid, process.ParentPid, parentProcess.Error)
 			return process, nil
 		}
 
-		// parent process does not match, we reached the top of the tree of matching processes
+		// if parent process path does not match, we have reached the top of the tree of matching processes
 		if process.Path != parentProcess.Path {
-			// save to storage
-			process.Save()
-			// return primary process
+			// found primary process
+
+			// mark for use, save to storage
+			process.Lock()
+			if process.Virtual {
+				process.Virtual = false
+				go process.Save()
+			}
+			process.Unlock()
+
 			return process, nil
 		}
-
-		// mark as virtual
-		process.Lock()
-		process.Virtual = true
-		process.Unlock()
-
-		// save to storage
-		process.Save()
 
 		// continue up to process tree
 		process = parentProcess
@@ -135,7 +151,9 @@ func GetOrFindPrimaryProcess(pid int) (*Process, error) {
 }
 
 // GetOrFindProcess returns the process for the given PID.
-func GetOrFindProcess(pid int) (*Process, error) {
+func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
+	log.Tracer(ctx).Tracef("process: getting process for PID %d", pid)
+
 	if pid == -1 {
 		return UnknownProcess, nil
 	}
@@ -143,17 +161,25 @@ func GetOrFindProcess(pid int) (*Process, error) {
 		return OSProcess, nil
 	}
 
-	p, err := loadProcess(pid)
+	p, err := loadProcess(ctx, pid)
 	if err != nil {
 		return nil, err
 	}
+	if p.Error != "" {
+		return nil, fmt.Errorf("%s [cached error]", p.Error)
+	}
 
-	// save to storage
-	p.Save()
+	// mark for use, save to storage
+	p.Lock()
+	if p.Virtual {
+		p.Virtual = false
+		go p.Save()
+	}
+	p.Unlock()
 	return p, nil
 }
 
-func loadProcess(pid int) (*Process, error) {
+func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	if pid == -1 {
 		return UnknownProcess, nil
 	}
@@ -166,8 +192,39 @@ func loadProcess(pid int) (*Process, error) {
 		return process, nil
 	}
 
+	// dedup requests
+	dupReqLock.Lock()
+	mutex, requestActive := dupReqMap[pid]
+	if !requestActive {
+		mutex = new(sync.Mutex)
+		mutex.Lock()
+		dupReqMap[pid] = mutex
+		dupReqLock.Unlock()
+	} else {
+		dupReqLock.Unlock()
+		log.Tracer(ctx).Tracef("process: waiting for duplicate request for PID %d to complete", pid)
+		mutex.Lock()
+		// wait until duplicate request is finished, then fetch current Process and return
+		mutex.Unlock()
+		process, ok = GetProcessFromStorage(pid)
+		if ok {
+			return process, nil
+		}
+		return nil, fmt.Errorf("previous request for process with PID %d failed", pid)
+	}
+
+	// lock request for this pid
+	defer func() {
+		dupReqLock.Lock()
+		delete(dupReqMap, pid)
+		dupReqLock.Unlock()
+		mutex.Unlock()
+	}()
+
+	// create new process
 	new := &Process{
-		Pid: pid,
+		Pid:     pid,
+		Virtual: true, // caller must decide to actually use the process - we need to save now.
 	}
 
 	switch {
@@ -187,16 +244,15 @@ func loadProcess(pid int) (*Process, error) {
 			var uids []int32
 			uids, err = pInfo.Uids()
 			if err != nil {
-				log.Warningf("process: failed to get UID for p%d: %s", pid, err)
-			} else {
-				new.UserID = int(uids[0])
+				return failedToLoad(new, fmt.Errorf("failed to get UID for p%d: %s", pid, err))
 			}
+			new.UserID = int(uids[0])
 		}
 
 		// Username
 		new.UserName, err = pInfo.Username()
 		if err != nil {
-			log.Warningf("process: failed to get Username for p%d: %s", pid, err)
+			return failedToLoad(new, fmt.Errorf("process: failed to get Username for p%d: %s", pid, err))
 		}
 
 		// TODO: User Home
@@ -205,15 +261,14 @@ func loadProcess(pid int) (*Process, error) {
 		// PPID
 		ppid, err := pInfo.Ppid()
 		if err != nil {
-			log.Warningf("process: failed to get PPID for p%d: %s", pid, err)
-		} else {
-			new.ParentPid = int(ppid)
+			return failedToLoad(new, fmt.Errorf("failed to get PPID for p%d: %s", pid, err))
 		}
+		new.ParentPid = int(ppid)
 
 		// Path
 		new.Path, err = pInfo.Exe()
 		if err != nil {
-			log.Warningf("process: failed to get Path for p%d: %s", pid, err)
+			return failedToLoad(new, fmt.Errorf("failed to get Path for p%d: %s", pid, err))
 		}
 		// Executable Name
 		_, new.ExecName = filepath.Split(new.Path)
@@ -228,17 +283,20 @@ func loadProcess(pid int) (*Process, error) {
 		// Command line arguments
 		new.CmdLine, err = pInfo.Cmdline()
 		if err != nil {
-			log.Warningf("process: failed to get Cmdline for p%d: %s", pid, err)
+			return failedToLoad(new, fmt.Errorf("failed to get Cmdline for p%d: %s", pid, err))
 		}
 
 		// Name
 		new.Name, err = pInfo.Name()
 		if err != nil {
-			log.Warningf("process: failed to get Name for p%d: %s", pid, err)
+			return failedToLoad(new, fmt.Errorf("failed to get Name for p%d: %s", pid, err))
 		}
 		if new.Name == "" {
 			new.Name = new.ExecName
 		}
+
+		// OS specifics
+		new.specialOSInit()
 
 		// TODO: App Icon
 		// new.Icon, err =
@@ -317,5 +375,12 @@ func loadProcess(pid int) (*Process, error) {
 		// }
 	}
 
+	new.Save()
 	return new, nil
+}
+
+func failedToLoad(p *Process, err error) (*Process, error) {
+	p.Error = err.Error()
+	p.Save()
+	return nil, err
 }

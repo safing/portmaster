@@ -10,15 +10,15 @@ import (
 )
 
 var (
-	tcp4Connections []*connectionEntry
-	tcp4Listeners   []*connectionEntry
-	tcp6Connections []*connectionEntry
-	tcp6Listeners   []*connectionEntry
+	tcp4Connections []*ConnectionEntry
+	tcp4Listeners   []*ConnectionEntry
+	tcp6Connections []*ConnectionEntry
+	tcp6Listeners   []*ConnectionEntry
 
-	udp4Connections []*connectionEntry
-	udp4Listeners   []*connectionEntry
-	udp6Connections []*connectionEntry
-	udp6Listeners   []*connectionEntry
+	udp4Connections []*ConnectionEntry
+	udp4Listeners   []*ConnectionEntry
+	udp6Connections []*ConnectionEntry
+	udp6Listeners   []*ConnectionEntry
 
 	ipHelper *IPHelper
 	lock     sync.RWMutex
@@ -34,6 +34,7 @@ func checkIPHelper() (err error) {
 	return nil
 }
 
+// GetTCP4PacketInfo returns the pid of the given IPv4/TCP connection.
 func GetTCP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, pktDirection bool) (pid int, direction bool, err error) {
 
 	// search
@@ -69,6 +70,7 @@ func GetTCP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 	return -1, pktDirection, nil
 }
 
+// GetTCP6PacketInfo returns the pid of the given IPv6/TCP connection.
 func GetTCP6PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, pktDirection bool) (pid int, direction bool, err error) {
 
 	// search
@@ -104,6 +106,7 @@ func GetTCP6PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 	return -1, pktDirection, nil
 }
 
+// GetUDP4PacketInfo returns the pid of the given IPv4/UDP connection.
 func GetUDP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, pktDirection bool) (pid int, direction bool, err error) {
 
 	// search
@@ -139,6 +142,7 @@ func GetUDP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 	return -1, pktDirection, nil
 }
 
+// GetUDP6PacketInfo returns the pid of the given IPv6/UDP connection.
 func GetUDP6PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, pktDirection bool) (pid int, direction bool, err error) {
 
 	// search
@@ -174,7 +178,7 @@ func GetUDP6PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 	return -1, pktDirection, nil
 }
 
-func search(connections, listeners []*connectionEntry, localIP, remoteIP net.IP, localPort, remotePort uint16, pktDirection bool) (pid int, direction bool) {
+func search(connections, listeners []*ConnectionEntry, localIP, remoteIP net.IP, localPort, remotePort uint16, pktDirection bool) (pid int, direction bool) {
 	lock.RLock()
 	defer lock.RUnlock()
 
@@ -203,7 +207,7 @@ func search(connections, listeners []*connectionEntry, localIP, remoteIP net.IP,
 	return -1, pktDirection
 }
 
-func searchConnections(list []*connectionEntry, localIP, remoteIP net.IP, localPort, remotePort uint16) (pid int) {
+func searchConnections(list []*ConnectionEntry, localIP, remoteIP net.IP, localPort, remotePort uint16) (pid int) {
 
 	for _, entry := range list {
 		if localPort == entry.localPort &&
@@ -217,7 +221,7 @@ func searchConnections(list []*connectionEntry, localIP, remoteIP net.IP, localP
 	return -1
 }
 
-func searchListeners(list []*connectionEntry, localIP net.IP, localPort uint16) (pid int) {
+func searchListeners(list []*ConnectionEntry, localIP net.IP, localPort uint16) (pid int) {
 
 	for _, entry := range list {
 		if localPort == entry.localPort &&
@@ -230,6 +234,7 @@ func searchListeners(list []*connectionEntry, localIP net.IP, localPort uint16) 
 	return -1
 }
 
+// GetActiveConnectionIDs returns all currently active connection IDs.
 func GetActiveConnectionIDs() (connections []string) {
 	lock.Lock()
 	defer lock.Unlock()

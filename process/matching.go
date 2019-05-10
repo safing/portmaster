@@ -1,6 +1,7 @@
 package process
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Safing/portbase/database"
@@ -14,7 +15,8 @@ var (
 )
 
 // FindProfiles finds and assigns a profile set to the process.
-func (p *Process) FindProfiles() error {
+func (p *Process) FindProfiles(ctx context.Context) error {
+	log.Tracer(ctx).Trace("process: loading profile set")
 
 	p.Lock()
 	defer p.Unlock()
@@ -66,7 +68,7 @@ func (p *Process) FindProfiles() error {
 	// FIXME: implement!
 
 	p.UserProfileKey = userProfile.Key()
-	p.profileSet = profile.NewSet(fmt.Sprintf("%d-%s", p.Pid, p.Path), userProfile, nil)
+	p.profileSet = profile.NewSet(ctx, fmt.Sprintf("%d-%s", p.Pid, p.Path), userProfile, nil)
 	go p.Save()
 
 	return nil

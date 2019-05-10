@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"context"
 	"net"
 	"sync"
 
@@ -27,7 +28,7 @@ type Set struct {
 }
 
 // NewSet returns a new profile set with given the profiles.
-func NewSet(id string, user, stamp *Profile) *Set {
+func NewSet(ctx context.Context, id string, user, stamp *Profile) *Set {
 	new := &Set{
 		id: id,
 		profiles: [4]*Profile{
@@ -37,7 +38,7 @@ func NewSet(id string, user, stamp *Profile) *Set {
 			nil,   // Default
 		},
 	}
-	activateProfileSet(new)
+	activateProfileSet(ctx, new)
 	new.Update(status.SecurityLevelFortress)
 	return new
 }

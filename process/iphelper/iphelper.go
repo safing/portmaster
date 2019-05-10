@@ -14,11 +14,12 @@ var (
 	errInvalid = errors.New("IPHelper not initialzed or broken")
 )
 
+// IPHelper represents a subset of the Windows iphlpapi.dll.
 type IPHelper struct {
 	dll *windows.LazyDLL
 
-	getExtendedTcpTable *windows.LazyProc
-	getExtendedUdpTable *windows.LazyProc
+	getExtendedTCPTable *windows.LazyProc
+	getExtendedUDPTable *windows.LazyProc
 	// getOwnerModuleFromTcpEntry  *windows.LazyProc
 	// getOwnerModuleFromTcp6Entry *windows.LazyProc
 	// getOwnerModuleFromUdpEntry  *windows.LazyProc
@@ -27,6 +28,7 @@ type IPHelper struct {
 	valid *abool.AtomicBool
 }
 
+// New returns a new IPHelper API (with an instance of iphlpapi.dll loaded).
 func New() (*IPHelper, error) {
 
 	new := &IPHelper{}
@@ -41,13 +43,13 @@ func New() (*IPHelper, error) {
 	}
 
 	// load functions
-	new.getExtendedTcpTable = new.dll.NewProc("GetExtendedTcpTable")
-	err = new.getExtendedTcpTable.Find()
+	new.getExtendedTCPTable = new.dll.NewProc("GetExtendedTcpTable")
+	err = new.getExtendedTCPTable.Find()
 	if err != nil {
 		return nil, fmt.Errorf("could find proc GetExtendedTcpTable: %s", err)
 	}
-	new.getExtendedUdpTable = new.dll.NewProc("GetExtendedUdpTable")
-	err = new.getExtendedUdpTable.Find()
+	new.getExtendedUDPTable = new.dll.NewProc("GetExtendedUdpTable")
+	err = new.getExtendedUDPTable.Find()
 	if err != nil {
 		return nil, fmt.Errorf("could find proc GetExtendedUdpTable: %s", err)
 	}
