@@ -20,6 +20,13 @@ func SetLocalAddrFactory(laf func(network string) net.Addr) {
 	}
 }
 
+func getLocalAddr(network string) net.Addr {
+	if localAddrFactory != nil {
+		return localAddrFactory(network)
+	}
+	return nil
+}
+
 type clientManager struct {
 	dnsClient *dns.Client
 	factory   func() *dns.Client
@@ -38,7 +45,7 @@ func newDNSClientManager(resolver *Resolver) *clientManager {
 			return &dns.Client{
 				Timeout: 5 * time.Second,
 				Dialer: &net.Dialer{
-					LocalAddr: localAddrFactory("udp"),
+					LocalAddr: getLocalAddr("udp"),
 				},
 			}
 		},
@@ -53,7 +60,7 @@ func newTCPClientManager(resolver *Resolver) *clientManager {
 				Net:     "tcp",
 				Timeout: 5 * time.Second,
 				Dialer: &net.Dialer{
-					LocalAddr: localAddrFactory("tcp"),
+					LocalAddr: getLocalAddr("tcp"),
 				},
 			}
 		},
@@ -74,7 +81,7 @@ func newTLSClientManager(resolver *Resolver) *clientManager {
 				},
 				Timeout: 5 * time.Second,
 				Dialer: &net.Dialer{
-					LocalAddr: localAddrFactory("tcp"),
+					LocalAddr: getLocalAddr("tcp"),
 				},
 			}
 		},
@@ -94,7 +101,7 @@ func newHTTPSClientManager(resolver *Resolver) *clientManager {
 				},
 				Timeout: 5 * time.Second,
 				Dialer: &net.Dialer{
-					LocalAddr: localAddrFactory("tcp"),
+					LocalAddr: getLocalAddr("tcp"),
 				},
 			}
 			if resolver.VerifyDomain != "" {
