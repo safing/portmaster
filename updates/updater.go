@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/Safing/portbase/log"
@@ -23,8 +24,13 @@ func updater() {
 
 func CheckForUpdates() error {
 
-	// be sure that pmctl is part of the "used" updates
-	_, err := GetLocalFile("pmctl/pmctl")
+	// ensure core components are updated
+	var err error
+	if runtime.GOOS == "windows" {
+		_, err = GetPlatformFile("pmctl/pmctl.exe")
+	} else {
+		_, err = GetPlatformFile("pmctl/pmctl")
+	}
 	if err != nil {
 		log.Errorf("updates: failed to mark pmctl/pmctl as used to ensure updates: %s", err)
 	}

@@ -93,6 +93,11 @@ func run(identifier string, cmd *cobra.Command, filterDatabaseFlag bool) error {
 		args = os.Args[3:]
 	}
 
+	// adapt identifier
+	if windows() {
+		identifier += ".exe"
+	}
+
 	// run
 	for {
 		file, err := getFile(identifier)
@@ -101,7 +106,7 @@ func run(identifier string, cmd *cobra.Command, filterDatabaseFlag bool) error {
 		}
 
 		// check permission
-		if runtime.GOOS != "windows" {
+		if !windows() {
 			info, err := os.Stat(file.Path())
 			if err != nil {
 				return fmt.Errorf("%s failed to get file info on %s: %s", logPrefix, file.Path(), err)
@@ -178,4 +183,8 @@ func run(identifier string, cmd *cobra.Command, filterDatabaseFlag bool) error {
 
 	fmt.Printf("%s %s completed successfully\n", logPrefix, identifier)
 	return nil
+}
+
+func windows() bool {
+	return runtime.GOOS == "windows"
 }
