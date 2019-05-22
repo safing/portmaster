@@ -32,7 +32,7 @@ func prep() error {
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		OptType:         config.OptTypeStringArray,
 		DefaultValue:    defaultNameServers,
-		ValidationRegex: "^(dns|tcp|tls|https)$",
+		ValidationRegex: "^(dns|tcp|tls|https)|[a-z0-9\\.|-]+$",
 	})
 	if err != nil {
 		return err
