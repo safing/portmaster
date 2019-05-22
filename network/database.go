@@ -1,6 +1,7 @@
 package network
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,9 +15,9 @@ import (
 )
 
 var (
-	links     = make(map[string]*Link)
+	links     = make(map[string]*Link) // key: Link ID
 	linksLock sync.RWMutex
-	comms     = make(map[string]*Communication)
+	comms     = make(map[string]*Communication) //  key: PID/Domain
 	commsLock sync.RWMutex
 
 	dbController *database.Controller
@@ -45,7 +46,7 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 		case 3:
 			commsLock.RLock()
 			defer commsLock.RUnlock()
-			conn, ok := comms[splitted[2]]
+			conn, ok := comms[fmt.Sprintf("%s/%s", splitted[1], splitted[2])]
 			if ok {
 				return conn, nil
 			}
@@ -72,30 +73,38 @@ func (s *StorageInterface) Query(q *query.Query, local, internal bool) (*iterato
 }
 
 func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
-	// processes
-	for _, proc := range process.All() {
-		if strings.HasPrefix(proc.DatabaseKey(), q.DatabaseKeyPrefix()) {
-			it.Next <- proc
+	slashes := strings.Count(q.DatabaseKeyPrefix(), "/")
+
+	if slashes <= 1 {
+		// processes
+		for _, proc := range process.All() {
+			if strings.HasPrefix(proc.DatabaseKey(), q.DatabaseKeyPrefix()) {
+				it.Next <- proc
+			}
 		}
 	}
 
-	// comms
-	commsLock.RLock()
-	for _, conn := range comms {
-		if strings.HasPrefix(conn.DatabaseKey(), q.DatabaseKeyPrefix()) {
-			it.Next <- conn
+	if slashes <= 2 {
+		// comms
+		commsLock.RLock()
+		for _, conn := range comms {
+			if strings.HasPrefix(conn.DatabaseKey(), q.DatabaseKeyPrefix()) {
+				it.Next <- conn
+			}
 		}
+		commsLock.RUnlock()
 	}
-	commsLock.RUnlock()
 
-	// links
-	linksLock.RLock()
-	for _, link := range links {
-		if strings.HasPrefix(link.DatabaseKey(), q.DatabaseKeyPrefix()) {
-			it.Next <- link
+	if slashes <= 3 {
+		// links
+		linksLock.RLock()
+		for _, link := range links {
+			if strings.HasPrefix(link.DatabaseKey(), q.DatabaseKeyPrefix()) {
+				it.Next <- link
+			}
 		}
+		linksLock.RUnlock()
 	}
-	linksLock.RUnlock()
 
 	it.Finish(nil)
 }

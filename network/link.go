@@ -42,6 +42,7 @@ type Link struct {
 
 	activeInspectors []bool
 	inspectorData    map[uint8]interface{}
+	saveWhenFinished bool
 }
 
 // Communication returns the Communication the Link is part of
@@ -148,7 +149,7 @@ func (link *Link) UpdateVerdict(newVerdict Verdict) {
 
 	if newVerdict > link.Verdict {
 		link.Verdict = newVerdict
-		go link.Save()
+		link.saveWhenFinished = true
 	}
 }
 
@@ -165,6 +166,8 @@ func (link *Link) AddReason(reason string) {
 		link.Reason += " | "
 	}
 	link.Reason += reason
+
+	link.saveWhenFinished = true
 }
 
 // packetHandler sequentially handles queued packets
@@ -223,20 +226,42 @@ func (link *Link) ApplyVerdict(pkt packet.Packet) {
 	}
 }
 
-// Save saves the link object in the storage and propagates the change.
-func (link *Link) Save() error {
-	link.Lock()
-	defer link.Unlock()
+// SaveWhenFinished marks the Link for saving after all current actions are finished.
+func (link *Link) SaveWhenFinished() {
+	link.saveWhenFinished = true
+}
 
+// SaveIfNeeded saves the Link if it is marked for saving when finished.
+func (link *Link) SaveIfNeeded() {
+	link.Lock()
+	save := link.saveWhenFinished
+	if save {
+		link.saveWhenFinished = false
+	}
+	link.Unlock()
+
+	if save {
+		link.save()
+	}
+}
+
+// Save saves the link object in the storage and propagates the change.
+func (link *Link) save() error {
+	// update link
+	link.Lock()
 	if link.comm == nil {
+		link.Unlock()
 		return errors.New("cannot save link without comms")
 	}
 
 	if !link.KeyIsSet() {
 		link.SetKey(fmt.Sprintf("network:tree/%d/%s/%s", link.comm.Process().Pid, link.comm.Domain, link.ID))
-		link.CreateMeta()
+		link.UpdateMeta()
 	}
+	link.saveWhenFinished = false
+	link.Unlock()
 
+	// save link
 	linksLock.RLock()
 	_, ok := links[link.ID]
 	linksLock.RUnlock()
@@ -253,17 +278,15 @@ func (link *Link) Save() error {
 
 // Delete deletes a link from the storage and propagates the change.
 func (link *Link) Delete() {
+	linksLock.Lock()
+	defer linksLock.Unlock()
 	link.Lock()
 	defer link.Unlock()
 
-	linksLock.Lock()
 	delete(links, link.ID)
-	linksLock.Unlock()
 
 	link.Meta().Delete()
 	go dbController.PushUpdate(link)
-	link.comm.RemoveLink()
-	go link.comm.Save()
 }
 
 // GetLink fetches a Link from the database from the default namespace for this object
@@ -294,6 +317,7 @@ func CreateLinkFromPacket(pkt packet.Packet) *Link {
 		Verdict:       VerdictUndecided,
 		Started:       time.Now().Unix(),
 		RemoteAddress: pkt.FmtRemoteAddress(),
+		saveWhenFinished: true,
 	}
 	return link
 }

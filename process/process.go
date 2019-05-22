@@ -50,7 +50,6 @@ type Process struct {
 
 	FirstCommEstablished int64
 	LastCommEstablished  int64
-	CommCount            uint
 
 	Virtual bool   // This process is either merged into another process or is not needed.
 	Error   string // If this is set, the process is invalid. This is used to cache failing or inexistent processes.
@@ -80,22 +79,52 @@ func (p *Process) AddCommunication() {
 	p.Lock()
 	defer p.Unlock()
 
-	p.CommCount++
+	// check if we should save
+	save := false
+	if p.LastCommEstablished < time.Now().Add(-3*time.Second).Unix() {
+		save = true
+	}
+
+	// update LastCommEstablished
 	p.LastCommEstablished = time.Now().Unix()
 	if p.FirstCommEstablished == 0 {
 		p.FirstCommEstablished = p.LastCommEstablished
 	}
-}
 
-// RemoveCommunication lowers the connection counter by one.
-func (p *Process) RemoveCommunication() {
-	p.Lock()
-	defer p.Unlock()
-
-	if p.CommCount > 0 {
-		p.CommCount--
+	if save {
+		go p.Save()
 	}
 }
+
+// var db = database.NewInterface(nil)
+
+// CountConnections returns the count of connections of a process
+// func (p *Process) CountConnections() int {
+// 	q, err := query.New(fmt.Sprintf("%s/%d/", processDatabaseNamespace, p.Pid)).
+// 		Where(query.Where("Pid", query.Exists, nil)).
+// 		Check()
+// 	if err != nil {
+// 		log.Warningf("process: failed to build query to get connection count of process: %s", err)
+// 		return -1
+// 	}
+//
+// 	it, err := db.Query(q)
+// 	if err != nil {
+// 		log.Warningf("process: failed to query db to get connection count of process: %s", err)
+// 		return -1
+// 	}
+//
+// 	cnt := 0
+// 	for _ = range it.Next {
+// 		cnt++
+// 	}
+// 	if it.Err() != nil {
+// 		log.Warningf("process: failed to query db to get connection count of process: %s", err)
+// 		return -1
+// 	}
+//
+// 	return cnt
+// }
 
 // GetOrFindPrimaryProcess returns the highest process in the tree that matches the given PID.
 func GetOrFindPrimaryProcess(ctx context.Context, pid int) (*Process, error) {

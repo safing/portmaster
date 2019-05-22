@@ -139,6 +139,9 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 		nxDomain(w, query)
 		return
 	}
+	defer func() {
+		go comm.SaveIfNeeded()
+	}()
 
 	// check for possible DNS tunneling / data transmission
 	// TODO: improve this
@@ -152,6 +155,9 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 
 	// check profile before we even get intel and rr
 	firewall.DecideOnCommunicationBeforeIntel(comm, fqdn)
+	comm.Lock()
+	comm.SaveWhenFinished()
+	comm.Unlock()
 
 	if comm.GetVerdict() == network.VerdictBlock || comm.GetVerdict() == network.VerdictDrop {
 		log.InfoTracef(ctx, "nameserver: %s denied before intel, returning nxdomain", comm)
@@ -172,7 +178,6 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	comm.Lock()
 	comm.Intel = domainIntel
 	comm.Unlock()
-	comm.Save()
 
 	// check with intel
 	firewall.DecideOnCommunicationAfterIntel(comm, fqdn, rrCache)

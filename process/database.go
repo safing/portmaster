@@ -5,9 +5,16 @@ import (
 	"sync"
 	"time"
 
+	processInfo "github.com/shirou/gopsutil/process"
+
 	"github.com/Safing/portbase/database"
+	"github.com/Safing/portbase/log"
 	"github.com/Safing/portmaster/profile"
 	"github.com/tevino/abool"
+)
+
+const (
+	processDatabaseNamespace = "network:tree"
 )
 
 var (
@@ -16,6 +23,9 @@ var (
 
 	dbController     *database.Controller
 	dbControllerFlag = abool.NewBool(false)
+
+	deleteProcessesThreshold       = 15 * time.Minute
+	lastEstablishedUpdateThreshold = 30 * time.Second
 )
 
 // GetProcessFromStorage returns a process from the internal storage.
@@ -28,13 +38,13 @@ func GetProcessFromStorage(pid int) (*Process, bool) {
 }
 
 // All returns a copy of all process objects.
-func All() []*Process {
+func All() map[int]*Process {
 	processesLock.RLock()
 	defer processesLock.RUnlock()
 
-	all := make([]*Process, 0, len(processes))
+	all := make(map[int]*Process)
 	for _, proc := range processes {
-		all = append(all, proc)
+		all[proc.Pid] = proc
 	}
 
 	return all
@@ -46,7 +56,7 @@ func (p *Process) Save() {
 	defer p.Unlock()
 
 	if !p.KeyIsSet() {
-		p.SetKey(fmt.Sprintf("network:tree/%d", p.Pid))
+		p.SetKey(fmt.Sprintf("%s/%d", processDatabaseNamespace, p.Pid))
 		p.CreateMeta()
 	}
 
@@ -89,47 +99,88 @@ func (p *Process) Delete() {
 }
 
 // CleanProcessStorage cleans the storage from old processes.
-func CleanProcessStorage(thresholdDuration time.Duration) {
+func CleanProcessStorage(activeComms map[string]struct{}) {
+	activePIDs, err := getActivePIDs()
+	if err != nil {
+		log.Warningf("process: failed to get list of active PIDs: %s", err)
+		activePIDs = nil
+	}
 	processesCopy := All()
 
-	threshold := time.Now().Add(-thresholdDuration).Unix()
+	threshold := time.Now().Add(-deleteProcessesThreshold).Unix()
 	delete := false
 
 	// clean primary processes
 	for _, p := range processesCopy {
 		p.Lock()
-		if !p.Virtual && p.LastCommEstablished < threshold && p.CommCount == 0 {
-			delete = true
+		// check if internal
+		if p.Pid <= 0 {
+			p.Unlock()
+			continue
+		}
+
+		// has comms?
+		_, hasComms := activeComms[p.DatabaseKey()]
+
+		// virtual / active
+		virtual := p.Virtual
+		active := false
+		if activePIDs != nil {
+			_, active = activePIDs[p.Pid]
 		}
 		p.Unlock()
 
-		if delete {
-			p.Delete()
-			delete = false
+		if !virtual && !hasComms && !active && p.LastCommEstablished < threshold {
+			go p.Delete()
 		}
 	}
 
 	// clean virtual/failed processes
 	for _, p := range processesCopy {
 		p.Lock()
+		// check if internal
+		if p.Pid <= 0 {
+			p.Unlock()
+			continue
+		}
+
 		switch {
 		case p.Error != "":
 			if p.Meta().Created < threshold {
 				delete = true
 			}
 		case p.Virtual:
-			_, parentIsAlive := processes[p.ParentPid]
-			if !parentIsAlive {
+			_, parentIsActive := processesCopy[p.ParentPid]
+			active := true
+			if activePIDs != nil {
+				_, active = activePIDs[p.Pid]
+			}
+			if !parentIsActive || !active {
 				delete = true
 			}
 		}
 		p.Unlock()
 
 		if delete {
-			p.Delete()
+			log.Tracef("process.clean: deleted %s", p.DatabaseKey())
+			go p.Delete()
 			delete = false
 		}
 	}
+}
+
+func getActivePIDs() (map[int]struct{}, error) {
+	procs, err := processInfo.Processes()
+	if err != nil {
+		return nil, err
+	}
+
+	activePIDs := make(map[int]struct{})
+	for _, p := range procs {
+		activePIDs[int(p.Pid)] = struct{}{}
+	}
+
+	return activePIDs, nil
 }
 
 // SetDBController sets the database controller and allows the package to push database updates on a save. It must be set by the package that registers the "network" database.

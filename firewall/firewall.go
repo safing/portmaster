@@ -95,11 +95,11 @@ func stop() error {
 func handlePacket(pkt packet.Packet) {
 
 	// allow localhost, for now
-	if pkt.Info().Src.Equal(pkt.Info().Dst) {
-		log.Debugf("accepting localhost communication: %s", pkt)
-		pkt.PermanentAccept()
-		return
-	}
+	// if pkt.Info().Src.Equal(pkt.Info().Dst) {
+	// 	log.Debugf("accepting localhost communication: %s", pkt)
+	// 	pkt.PermanentAccept()
+	// 	return
+	// }
 
 	// allow local dns
 	if (pkt.Info().DstPort == 53 || pkt.Info().SrcPort == 53) && pkt.Info().Src.Equal(pkt.Info().Dst) {
@@ -160,6 +160,9 @@ func handlePacket(pkt packet.Packet) {
 
 	// associate packet to link and handle
 	link, created := network.GetOrCreateLinkByPacket(pkt)
+	defer func() {
+		go link.SaveIfNeeded()
+	}()
 	if created {
 		link.SetFirewallHandler(initialHandler)
 		link.HandlePacket(pkt)
@@ -169,7 +172,7 @@ func handlePacket(pkt packet.Packet) {
 		link.HandlePacket(pkt)
 		return
 	}
-	issueVerdict(pkt, link, 0, true, false)
+	issueVerdict(pkt, link, 0, true)
 }
 
 func initialHandler(pkt packet.Packet, link *network.Link) {
@@ -186,6 +189,9 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 		} else {
 			comm.AddLink(link)
 		}
+		defer func() {
+			go comm.SaveIfNeeded()
+		}()
 
 		// approve
 		link.Accept("internally approved")
@@ -193,8 +199,7 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 
 		// finish
 		link.StopFirewallHandler()
-		issueVerdict(pkt, link, 0, true, true)
-
+		issueVerdict(pkt, link, 0, true)
 		return
 	}
 
@@ -212,11 +217,13 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 			log.Tracer(pkt.Ctx()).Errorf("firewall: could not get unknown comm: %s", err)
 			link.UpdateVerdict(network.VerdictDrop)
 			link.StopFirewallHandler()
-			issueVerdict(pkt, link, 0, true, true)
+			issueVerdict(pkt, link, 0, true)
 			return
 		}
-
 	}
+	defer func() {
+		go comm.SaveIfNeeded()
+	}()
 
 	// add new Link to Communication (and save both)
 	comm.AddLink(link)
@@ -226,11 +233,12 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 	if comm.Process().Pid != os.Getpid() && pkt.IsOutbound() && pkt.Info().DstPort == 53 && !pkt.Info().Src.Equal(pkt.Info().Dst) {
 		link.UpdateVerdict(network.VerdictRerouteToNameserver)
 		link.StopFirewallHandler()
-		issueVerdict(pkt, link, 0, true, true)
+		issueVerdict(pkt, link, 0, true)
 		return
 	}
 
 	log.Tracer(pkt.Ctx()).Trace("firewall: starting decision process")
+
 	DecideOnCommunication(comm, pkt)
 	DecideOnLink(comm, link, pkt)
 
@@ -253,7 +261,7 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 		inspectThenVerdict(pkt, link)
 	default:
 		link.StopFirewallHandler()
-		issueVerdict(pkt, link, 0, true, false)
+		issueVerdict(pkt, link, 0, true)
 	}
 
 }
@@ -261,23 +269,23 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 func inspectThenVerdict(pkt packet.Packet, link *network.Link) {
 	pktVerdict, continueInspection := inspection.RunInspectors(pkt, link)
 	if continueInspection {
-		issueVerdict(pkt, link, pktVerdict, false, false)
+		issueVerdict(pkt, link, pktVerdict, false)
 		return
 	}
 
 	// we are done with inspecting
 	link.StopFirewallHandler()
-	issueVerdict(pkt, link, 0, true, false)
+	issueVerdict(pkt, link, 0, true)
 }
 
-func issueVerdict(pkt packet.Packet, link *network.Link, verdict network.Verdict, allowPermanent, forceSave bool) {
+func issueVerdict(pkt packet.Packet, link *network.Link, verdict network.Verdict, allowPermanent bool) {
 	link.Lock()
 
 	// enable permanent verdict
 	if allowPermanent && !link.VerdictPermanent {
 		link.VerdictPermanent = permanentVerdicts()
 		if link.VerdictPermanent {
-			forceSave = true
+			link.SaveWhenFinished()
 		}
 	}
 
@@ -320,11 +328,6 @@ func issueVerdict(pkt packet.Packet, link *network.Link, verdict network.Verdict
 	link.Unlock()
 
 	log.InfoTracef(pkt.Ctx(), "firewall: %s %s", link.Verdict, link)
-
-	if forceSave && !link.KeyIsSet() {
-		// always save if not yet saved
-		go link.Save()
-	}
 }
 
 // func tunnelHandler(pkt packet.Packet) {

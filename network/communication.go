@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Safing/portbase/database/record"
+	"github.com/Safing/portbase/log"
 	"github.com/Safing/portmaster/intel"
 	"github.com/Safing/portmaster/network/netutils"
 	"github.com/Safing/portmaster/network/packet"
@@ -33,9 +34,9 @@ type Communication struct {
 
 	FirstLinkEstablished int64
 	LastLinkEstablished  int64
-	LinkCount            uint
 
 	profileUpdateVersion uint32
+	saveWhenFinished     bool
 }
 
 // Process returns the process that owns the connection.
@@ -53,6 +54,7 @@ func (comm *Communication) ResetVerdict() {
 
 	comm.Verdict = VerdictUndecided
 	comm.Reason = ""
+	comm.saveWhenFinished = true
 }
 
 // GetVerdict returns the current verdict.
@@ -97,7 +99,7 @@ func (comm *Communication) UpdateVerdict(newVerdict Verdict) {
 
 	if newVerdict > comm.Verdict {
 		comm.Verdict = newVerdict
-		go comm.Save()
+		comm.saveWhenFinished = true
 	}
 }
 
@@ -110,6 +112,7 @@ func (comm *Communication) SetReason(reason string) {
 	comm.Lock()
 	defer comm.Unlock()
 	comm.Reason = reason
+	comm.saveWhenFinished = true
 }
 
 // AddReason adds a human readable string as to why a certain verdict was set in regard to this communication.
@@ -174,6 +177,7 @@ func GetCommunicationByFirstPacket(pkt packet.Packet) (*Communication, error) {
 				process:              proc,
 				Inspect:              true,
 				FirstLinkEstablished: time.Now().Unix(),
+				saveWhenFinished:     true,
 			}
 		}
 		communication.process.AddCommunication()
@@ -206,6 +210,7 @@ func GetCommunicationByFirstPacket(pkt packet.Packet) (*Communication, error) {
 				process:              proc,
 				Inspect:              true,
 				FirstLinkEstablished: time.Now().Unix(),
+				saveWhenFinished:     true,
 			}
 		}
 		communication.process.AddCommunication()
@@ -222,6 +227,7 @@ func GetCommunicationByFirstPacket(pkt packet.Packet) (*Communication, error) {
 			process:              proc,
 			Inspect:              true,
 			FirstLinkEstablished: time.Now().Unix(),
+			saveWhenFinished:     true,
 		}
 	}
 	communication.process.AddCommunication()
@@ -246,12 +252,13 @@ func GetCommunicationByDNSRequest(ctx context.Context, ip net.IP, port uint16, f
 	communication, ok := GetCommunication(proc.Pid, fqdn)
 	if !ok {
 		communication = &Communication{
-			Domain:  fqdn,
-			process: proc,
-			Inspect: true,
+			Domain:           fqdn,
+			process:          proc,
+			Inspect:          true,
+			saveWhenFinished: true,
 		}
 		communication.process.AddCommunication()
-		communication.Save()
+		communication.saveWhenFinished = true
 	}
 	return communication, nil
 }
@@ -268,21 +275,47 @@ func (comm *Communication) makeKey() string {
 	return fmt.Sprintf("%d/%s", comm.process.Pid, comm.Domain)
 }
 
-// Save saves the connection object in the storage and propagates the change.
-func (comm *Communication) Save() error {
-	comm.Lock()
-	defer comm.Unlock()
+// SaveWhenFinished marks the Connection for saving after all current actions are finished.
+func (comm *Communication) SaveWhenFinished() {
+	comm.saveWhenFinished = true
+}
 
+// SaveIfNeeded saves the Connection if it is marked for saving when finished.
+func (comm *Communication) SaveIfNeeded() {
+	comm.Lock()
+	save := comm.saveWhenFinished
+	if save {
+		comm.saveWhenFinished = false
+	}
+	comm.Unlock()
+
+	if save {
+		comm.save()
+	}
+}
+
+// Save saves the Connection object in the storage and propagates the change.
+func (comm *Communication) save() error {
+	// update comm
+	comm.Lock()
 	if comm.process == nil {
+		comm.Unlock()
 		return errors.New("cannot save connection without process")
 	}
 
 	if !comm.KeyIsSet() {
 		comm.SetKey(fmt.Sprintf("network:tree/%d/%s", comm.process.Pid, comm.Domain))
-		comm.CreateMeta()
+		comm.UpdateMeta()
 	}
-
+	if comm.Meta().Deleted > 0 {
+		log.Criticalf("network: revieving dead comm %s", comm)
+		comm.Meta().Deleted = 0
+	}
 	key := comm.makeKey()
+	comm.saveWhenFinished = false
+	comm.Unlock()
+
+	// save comm
 	commsLock.RLock()
 	_, ok := comms[key]
 	commsLock.RUnlock()
@@ -299,46 +332,42 @@ func (comm *Communication) Save() error {
 
 // Delete deletes a connection from the storage and propagates the change.
 func (comm *Communication) Delete() {
+	commsLock.Lock()
+	defer commsLock.Unlock()
 	comm.Lock()
 	defer comm.Unlock()
 
-	commsLock.Lock()
 	delete(comms, comm.makeKey())
-	commsLock.Unlock()
 
 	comm.Meta().Delete()
 	go dbController.PushUpdate(comm)
-	comm.process.RemoveCommunication()
-	go comm.process.Save()
 }
 
-// AddLink applies the Communication to the Link and increases sets counter and timestamps.
+// AddLink applies the Communication to the Link and sets timestamps.
 func (comm *Communication) AddLink(link *Link) {
+	// apply comm to link
 	link.Lock()
 	link.comm = comm
 	link.Verdict = comm.Verdict
 	link.Inspect = comm.Inspect
+	link.saveWhenFinished = true
 	link.Unlock()
-	link.Save()
 
+	// update comm LastLinkEstablished
 	comm.Lock()
-	comm.LinkCount++
+
+	// check if we should save
+	if comm.LastLinkEstablished < time.Now().Add(-3*time.Second).Unix() {
+		comm.saveWhenFinished = true
+	}
+
+	// update LastLinkEstablished
 	comm.LastLinkEstablished = time.Now().Unix()
 	if comm.FirstLinkEstablished == 0 {
 		comm.FirstLinkEstablished = comm.LastLinkEstablished
 	}
+
 	comm.Unlock()
-	comm.Save()
-}
-
-// RemoveLink lowers the link counter by one.
-func (comm *Communication) RemoveLink() {
-	comm.Lock()
-	defer comm.Unlock()
-
-	if comm.LinkCount > 0 {
-		comm.LinkCount--
-	}
 }
 
 // String returns a string representation of Communication.

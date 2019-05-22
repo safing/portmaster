@@ -52,7 +52,7 @@ func getOrCreateUnknownCommunication(pkt packet.Packet, connClass string) (*Comm
 			Verdict:              VerdictDrop,
 			Reason:               ReasonUnknownProcess,
 			process:              process.UnknownProcess,
-			Inspect:              true,
+			Inspect:              false,
 			FirstLinkEstablished: time.Now().Unix(),
 		}
 		if pkt.IsOutbound() {
