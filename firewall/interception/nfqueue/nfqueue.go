@@ -47,7 +47,7 @@ func NewNFQueue(qid uint16) (nfq *NFQueue, err error) {
 	if os.Geteuid() != 0 {
 		return nil, errors.New("must be root to intercept packets")
 	}
-	nfq = &NFQueue{DefaultVerdict: NFQ_ACCEPT, Timeout: 100 * time.Millisecond, qid: qid, qidptr: &qid}
+	nfq = &NFQueue{DefaultVerdict: NFQ_DROP, Timeout: 3000 * time.Millisecond, qid: qid, qidptr: &qid}
 	queues[nfq.qid] = nfq
 
 	err = nfq.init()
