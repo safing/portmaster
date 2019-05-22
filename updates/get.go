@@ -13,6 +13,7 @@ import (
 
 var (
 	ErrNotFound = errors.New("the requested file could not be found")
+	ErrNotAvailableLocally = errors.New("the requested file is not available locally")
 )
 
 // GetPlatformFile returns the latest platform specific file identified by the given identifier.
@@ -21,13 +22,28 @@ func GetPlatformFile(identifier string) (*File, error) {
 	// From https://golang.org/pkg/runtime/#GOARCH
 	// GOOS is the running program's operating system target: one of darwin, freebsd, linux, and so on.
 	// GOARCH is the running program's architecture target: one of 386, amd64, arm, s390x, and so on.
-	return loadOrFetchFile(identifier)
+	return loadOrFetchFile(identifier, true)
+}
+
+// GetLocalPlatformFile returns the latest platform specific file identified by the given identifier, that is available locally.
+func GetLocalPlatformFile(identifier string) (*File, error) {
+	identifier = path.Join(fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), identifier)
+	// From https://golang.org/pkg/runtime/#GOARCH
+	// GOOS is the running program's operating system target: one of darwin, freebsd, linux, and so on.
+	// GOARCH is the running program's architecture target: one of 386, amd64, arm, s390x, and so on.
+	return loadOrFetchFile(identifier, false)
 }
 
 // GetFile returns the latest generic file identified by the given identifier.
 func GetFile(identifier string) (*File, error) {
 	identifier = path.Join("all", identifier)
-	return loadOrFetchFile(identifier)
+	return loadOrFetchFile(identifier, true)
+}
+
+// GetLocalFile returns the latest generic file identified by the given identifier, that is available locally.
+func GetLocalFile(identifier string) (*File, error) {
+	identifier = path.Join("all", identifier)
+	return loadOrFetchFile(identifier, false)
 }
 
 func getLatestFilePath(identifier string) (versionedFilePath, version string, stable bool, ok bool) {
@@ -49,7 +65,7 @@ func getLatestFilePath(identifier string) (versionedFilePath, version string, st
 	return GetVersionedPath(identifier, version), version, false, true
 }
 
-func loadOrFetchFile(identifier string) (*File, error) {
+func loadOrFetchFile(identifier string, fetch bool) (*File, error) {
 	versionedFilePath, version, stable, ok := getLatestFilePath(identifier)
 	if !ok {
 		// TODO: if in development mode, search updates dir for sideloaded apps
@@ -68,6 +84,10 @@ func loadOrFetchFile(identifier string) (*File, error) {
 	err := CheckDir(filepath.Join(updateStoragePath, "tmp"))
 	if err != nil {
 		return nil, fmt.Errorf("could not prepare tmp directory for download: %s", err)
+	}
+
+	if (!fetch) {
+		return nil, ErrNotAvailableLocally
 	}
 
 	// download file

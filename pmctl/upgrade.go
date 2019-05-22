@@ -13,7 +13,7 @@ import (
 
 func checkForUpgrade() (update *updates.File) {
 	info := info.GetInfo()
-	file, err := getFile("pmctl/pmctl")
+	file, err := updates.GetLocalPlatformFile("pmctl/pmctl")
 	if err != nil {
 		return nil
 	}

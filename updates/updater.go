@@ -23,9 +23,14 @@ func updater() {
 
 func CheckForUpdates() error {
 
+	// be sure that pmctl is part of the "used" updates
+	_, err := GetLocalFile("pmctl/pmctl")
+	if err != nil {
+		log.Errorf("updates: failed to mark pmctl/pmctl as used to ensure updates: %s", err)
+	}
+
 	// download new index
 	var data []byte
-	var err error
 	for tries := 0; tries < 3; tries++ {
 		data, err = fetchData("stable.json", tries)
 		if err == nil {
