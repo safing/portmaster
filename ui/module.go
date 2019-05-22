@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/Safing/portbase/api"
 	"github.com/Safing/portbase/modules"
 )
 
@@ -9,5 +10,6 @@ func init() {
 }
 
 func prep() error {
+	api.SetDefaultAPIListenAddress("127.0.0.1:817")
 	return registerRoutes()
 }
