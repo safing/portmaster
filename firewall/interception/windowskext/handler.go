@@ -123,7 +123,7 @@ func convertIPv4(input [4]uint32) net.IP {
 func convertIPv6(input [4]uint32) net.IP {
 	addressBuf := make([]byte, 16)
 	for i := 0; i < 4; i++ {
-		binary.BigEndian.PutUint32(addressBuf[i:i+3], input[i])
+		binary.LittleEndian.PutUint32(addressBuf[i*4:i*4+4], input[i])
 	}
 	return net.IP(addressBuf)
 }
