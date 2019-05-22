@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/miekg/dns"
-	"github.com/tevino/abool"
 
 	"github.com/Safing/portbase/log"
 
@@ -20,6 +19,8 @@ import (
 
 // Resolver holds information about an active resolver.
 type Resolver struct {
+	sync.Mutex
+
 	// static
 	Server        string
 	ServerType    string
@@ -34,20 +35,51 @@ type Resolver struct {
 	Search             *[]string
 	SkipFqdnBeforeInit string
 
-	// atomic
-	Initialized *abool.AtomicBool
-	InitLock    sync.Mutex
-	LastFail    *int64
-	Expires     *int64
+	InitLock sync.Mutex
 
 	// must be locked
-	LockReason sync.Mutex
-	FailReason string
+	initialized bool
+	lastFail    int64
+	failReason  string
+	fails       int
+	expires     int64
 
-	// TODO: add:
-	// Expiration (for server got from DHCP / ICMPv6)
-	// bootstrapping (first query is already sent, wait for it to either succeed or fail - think about http bootstrapping here!)
-	// expanded server info: type, server address, server port, options - so we do not have to parse this every time!
+	// TODO: add Expiration (for server got from DHCP / ICMPv6)
+}
+
+// Initialized returns the internal initialized value while locking the Resolver.
+func (r *Resolver) Initialized() bool {
+	r.Lock()
+	defer r.Unlock()
+	return r.initialized
+}
+
+// LastFail returns the internal lastfail value while locking the Resolver.
+func (r *Resolver) LastFail() int64 {
+	r.Lock()
+	defer r.Unlock()
+	return r.lastFail
+}
+
+// FailReason returns the internal failreason value while locking the Resolver.
+func (r *Resolver) FailReason() string {
+	r.Lock()
+	defer r.Unlock()
+	return r.failReason
+}
+
+// Fails returns the internal fails value while locking the Resolver.
+func (r *Resolver) Fails() int {
+	r.Lock()
+	defer r.Unlock()
+	return r.fails
+}
+
+// Expires returns the internal expires value while locking the Resolver.
+func (r *Resolver) Expires() int64 {
+	r.Lock()
+	defer r.Unlock()
+	return r.expires
 }
 
 func (r *Resolver) String() string {
@@ -144,7 +176,6 @@ configuredServersLoop:
 				continue configuredServersLoop
 			}
 
-			var lastFail int64
 			new := &Resolver{
 				Server:        server,
 				ServerType:    strings.ToLower(parts[0]),
@@ -152,9 +183,7 @@ configuredServersLoop:
 				ServerIP:      ip,
 				ServerIPScope: netutils.ClassifyIP(ip),
 				ServerPort:    port,
-				LastFail:      &lastFail,
 				Source:        "config",
-				Initialized:   abool.NewBool(false),
 			}
 
 			switch new.ServerType {
@@ -197,7 +226,6 @@ assignedServersLoop:
 		key = indexOfResolver(server, globalResolvers)
 		if resetResolvers || key == -1 {
 
-			var lastFail int64
 			new := &Resolver{
 				Server:        server,
 				ServerType:    "dns",
@@ -205,9 +233,7 @@ assignedServersLoop:
 				ServerIP:      nameserver.IP,
 				ServerIPScope: netutils.ClassifyIP(nameserver.IP),
 				ServerPort:    53,
-				LastFail:      &lastFail,
 				Source:        "dhcp",
-				Initialized:   abool.NewBool(false),
 			}
 			new.clientManager = newDNSClientManager(new)
 
@@ -287,4 +313,19 @@ assignedServersLoop:
 		log.Tracef("intel: %s: %s", scope.Domain, strings.Join(scopeServers, ", "))
 	}
 
+}
+
+// resetResolverFailStatus resets all resolver failures.
+func resetResolverFailStatus() {
+	resolversLock.Lock()
+	defer resolversLock.Unlock()
+
+	log.Tracef("old: %+v %+v, ", globalResolvers, localResolvers)
+	for _, resolver := range append(globalResolvers, localResolvers...) {
+		resolver.Lock()
+		resolver.failReason = ""
+		resolver.lastFail = 0
+		resolver.Unlock()
+	}
+	log.Tracef("new: %+v %+v, ", globalResolvers, localResolvers)
 }

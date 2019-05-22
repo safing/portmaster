@@ -9,7 +9,6 @@ import (
 	"net"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/miekg/dns"
@@ -248,11 +247,12 @@ func intelligentResolve(ctx context.Context, fqdn string, qtype dns.Type, securi
 	}
 
 	log.Tracer(ctx).Warningf("intel: failed to resolve %s%s: all resolvers failed (or were skipped to fulfill the security level)", fqdn, qtype.String())
-	log.Criticalf("intel: failed to resolve %s%s: all resolvers failed (or were skipped to fulfill the security level)", fqdn, qtype.String())
+	log.Criticalf("intel: failed to resolve %s%s: all resolvers failed (or were skipped to fulfill the security level), resetting servers...", fqdn, qtype.String())
+	go resetResolverFailStatus()
+
 	return nil
 
 	// TODO: check if there would be resolvers available in lower security modes and alert user
-
 }
 
 func tryResolver(ctx context.Context, resolver *Resolver, lastFailBoundary int64, fqdn string, qtype dns.Type, securityLevel uint8) (*RRCache, bool) {
@@ -270,7 +270,7 @@ func tryResolver(ctx context.Context, resolver *Resolver, lastFailBoundary int64
 		return nil, false
 	}
 	// check if failed recently
-	if atomic.LoadInt64(resolver.LastFail) > lastFailBoundary {
+	if resolver.LastFail() > lastFailBoundary {
 		log.Tracer(ctx).Tracef("intel: skipping resolver %s, because it failed recently", resolver)
 		return nil, false
 	}
@@ -281,10 +281,10 @@ func tryResolver(ctx context.Context, resolver *Resolver, lastFailBoundary int64
 		return nil, false
 	}
 	// check if resolver is already initialized
-	if !resolver.Initialized.IsSet() {
+	if !resolver.Initialized() {
 		// first should init, others wait
 		resolver.InitLock.Lock()
-		if resolver.Initialized.IsSet() {
+		if resolver.Initialized() {
 			// unlock immediately if resolver was initialized
 			resolver.InitLock.Unlock()
 		} else {
@@ -292,7 +292,7 @@ func tryResolver(ctx context.Context, resolver *Resolver, lastFailBoundary int64
 			defer resolver.InitLock.Unlock()
 		}
 		// check if previous init failed
-		if atomic.LoadInt64(resolver.LastFail) > lastFailBoundary {
+		if resolver.LastFail() > lastFailBoundary {
 			return nil, false
 		}
 	}
@@ -300,21 +300,23 @@ func tryResolver(ctx context.Context, resolver *Resolver, lastFailBoundary int64
 	rrCache, err := query(ctx, resolver, fqdn, qtype)
 	if err != nil {
 		// check if failing is disabled
-		if atomic.LoadInt64(resolver.LastFail) == -1 {
+		if resolver.LastFail() == -1 {
 			log.Tracer(ctx).Tracef("intel: non-failing resolver %s failed, moving to next: %s", resolver, err)
 			// log.Tracef("intel: non-failing resolver %s failed (%s), moving to next", resolver, err)
 			return nil, false
 		}
 		log.Tracer(ctx).Warningf("intel: resolver %s failed, moving to next: %s", resolver, err)
 		log.Warningf("intel: resolver %s failed, moving to next: %s", resolver, err)
-		resolver.LockReason.Lock()
-		resolver.FailReason = err.Error()
-		resolver.LockReason.Unlock()
-		atomic.StoreInt64(resolver.LastFail, time.Now().Unix())
-		resolver.Initialized.UnSet()
+		resolver.Lock()
+		resolver.failReason = err.Error()
+		resolver.lastFail = time.Now().Unix()
+		resolver.initialized = false
+		resolver.Unlock()
 		return nil, false
 	}
-	resolver.Initialized.SetToIf(false, true)
+	resolver.Lock()
+	resolver.initialized = true
+	resolver.Unlock()
 
 	return rrCache, true
 }
