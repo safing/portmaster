@@ -489,7 +489,12 @@ func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Pa
 
 				if otherProcess.Pid == comm.Process().Pid {
 					log.Infof("firewall: permitting connection to self %s", comm)
-					link.Accept("connection to self")
+					link.AddReason("connection to self")
+
+					link.Lock()
+					link.Verdict = network.VerdictAccept
+					link.SaveWhenFinished()
+					link.Unlock()
 					return
 				}
 
