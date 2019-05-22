@@ -5,7 +5,7 @@ package nameserver
 import (
 	"context"
 	"net"
-	"time"
+	"runtime"
 
 	"github.com/miekg/dns"
 
@@ -23,8 +23,17 @@ var (
 	localhostIPs []dns.RR
 )
 
+var (
+	listenAddress = "127.0.0.1:53"
+	localhostIP   = net.IPv4(127, 0, 0, 1)
+)
+
 func init() {
 	modules.Register("nameserver", prep, start, nil, "intel")
+
+	if runtime.GOOS == "windows" {
+		listenAddress = "0.0.0.0:53"
+	}
 }
 
 func prep() error {
@@ -44,7 +53,7 @@ func prep() error {
 }
 
 func start() error {
-	server := &dns.Server{Addr: "0.0.0.0:53", Net: "udp"}
+	server := &dns.Server{Addr: listenAddress, Net: "udp"}
 	dns.HandleFunc(".", handleRequest)
 	go run(server)
 	return nil
@@ -55,8 +64,7 @@ func run(server *dns.Server) {
 		err := server.ListenAndServe()
 		if err != nil {
 			log.Errorf("nameserver: server failed: %s", err)
-			log.Info("nameserver: restarting server in 10 seconds")
-			time.Sleep(10 * time.Second)
+			checkForConflictingService(err)
 		}
 	}
 }
@@ -95,16 +103,20 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 		log.Warningf("nameserver: could not get remote address of request for %s%s, ignoring", fqdn, qtype)
 		return
 	}
-	localAddr, ok := w.RemoteAddr().(*net.UDPAddr)
-	if !ok {
-		log.Warningf("nameserver: could not get local address of request for %s%s, ignoring", fqdn, qtype)
-		return
-	}
+	if !remoteAddr.IP.Equal(localhostIP) {
+		// if request is not coming from 127.0.0.1, check if it's really local
 
-	// ignore external request
-	if !remoteAddr.IP.Equal(localAddr.IP) {
-		log.Warningf("nameserver: external request for %s%s, ignoring", fqdn, qtype)
-		return
+		localAddr, ok := w.RemoteAddr().(*net.UDPAddr)
+		if !ok {
+			log.Warningf("nameserver: could not get local address of request for %s%s, ignoring", fqdn, qtype)
+			return
+		}
+
+		// ignore external request
+		if !remoteAddr.IP.Equal(localAddr.IP) {
+			log.Warningf("nameserver: external request for %s%s, ignoring", fqdn, qtype)
+			return
+		}
 	}
 
 	// check if valid domain name
@@ -121,9 +133,7 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	// TODO: if there are 3 request for the same domain/type in a row, delete all caches of that domain
 
 	// get connection
-	// start = time.Now()
 	comm, err := network.GetCommunicationByDNSRequest(ctx, remoteAddr.IP, uint16(remoteAddr.Port), fqdn)
-	// log.Tracef("nameserver: took %s to get comms (and maybe process)", time.Since(start))
 	if err != nil {
 		log.ErrorTracef(ctx, "nameserver: could not identify process of %s:%d, returning nxdomain: %s", remoteAddr.IP, remoteAddr.Port, err)
 		nxDomain(w, query)
@@ -141,9 +151,7 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	}
 
 	// check profile before we even get intel and rr
-	// start = time.Now()
 	firewall.DecideOnCommunicationBeforeIntel(comm, fqdn)
-	// log.Tracef("nameserver: took %s to make decision", time.Since(start))
 
 	if comm.GetVerdict() == network.VerdictBlock || comm.GetVerdict() == network.VerdictDrop {
 		log.InfoTracef(ctx, "nameserver: %s denied before intel, returning nxdomain", comm)
@@ -152,9 +160,7 @@ func handleRequest(w dns.ResponseWriter, query *dns.Msg) {
 	}
 
 	// get intel and RRs
-	// start = time.Now()
 	domainIntel, rrCache := intel.GetIntelAndRRs(ctx, fqdn, qtype, comm.Process().ProfileSet().SecurityLevel())
-	// log.Tracef("nameserver: took %s to get intel and RRs", time.Since(start))
 	if rrCache == nil {
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
 		log.WarningTracef(ctx, "nameserver: %s requested %s%s, is nxdomain", comm.Process(), fqdn, qtype)
