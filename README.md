@@ -40,10 +40,10 @@ Just download `pmctl` from the [releases page](https://github.com/Safing/portmas
     # already active connections may not be handled correctly, please restart programs for clean behavior
 
     # then start the app:
-    ./pmctl run app -db=/opt/pm_db
+    ./pmctl run app --db=/opt/pm_db
 
     # and the notifier:
-    ./pmctl run notifier -db=/opt/pm_db
+    ./pmctl run notifier --db=/opt/pm_db
 
 #### Feedback
 
