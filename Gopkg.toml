@@ -1,0 +1,5 @@
+ignored = ["github.com/Safing/portbase", "github.com/Safing/safing-core", "github.com/Safing/safing-core/formats/varint"]
+
+[prune]
+  go-tests = true
+  unused-packages = true
