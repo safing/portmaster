@@ -13,9 +13,9 @@ import (
 	resources "github.com/cookieo9/resources-go"
 	"github.com/gorilla/mux"
 
-	"github.com/Safing/portbase/api"
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/updates"
+	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/updates"
 )
 
 var (

@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"github.com/Safing/portbase/api"
-	"github.com/Safing/portbase/modules"
+	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/modules"
 )
 
 func init() {

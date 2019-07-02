@@ -1,7 +1,7 @@
 package profile
 
 import (
-	"github.com/Safing/portmaster/status"
+	"github.com/safing/portmaster/status"
 )
 
 func makeDefaultGlobalProfile() *Profile {

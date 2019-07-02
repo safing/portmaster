@@ -5,7 +5,7 @@ package nfqueue
 import (
 	"fmt"
 
-	"github.com/Safing/portmaster/network/packet"
+	"github.com/safing/portmaster/network/packet"
 )
 
 var (

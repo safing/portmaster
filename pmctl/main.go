@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Safing/portbase/info"
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/updates"
+	"github.com/safing/portbase/info"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/updates"
 	"github.com/spf13/cobra"
 )
 

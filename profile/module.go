@@ -1,10 +1,10 @@
 package profile
 
 import (
-	"github.com/Safing/portbase/modules"
+	"github.com/safing/portbase/modules"
 
 	// module dependencies
-	_ "github.com/Safing/portmaster/core"
+	_ "github.com/safing/portmaster/core"
 )
 
 var (

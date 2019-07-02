@@ -2,7 +2,7 @@
 
 package interception
 
-import "github.com/Safing/portmaster/network/packet"
+import "github.com/safing/portmaster/network/packet"
 
 var (
 	// Packets channel for feeding the firewall.

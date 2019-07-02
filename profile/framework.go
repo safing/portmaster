@@ -9,7 +9,7 @@ package profile
 // 	"regexp"
 // 	"strings"
 //
-// 	"github.com/Safing/portbase/log"
+// 	"github.com/safing/portbase/log"
 // )
 //
 // type Framework struct {

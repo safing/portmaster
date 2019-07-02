@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Safing/portbase/utils"
+	"github.com/safing/portbase/utils"
 )
 
 // GetPathIdentifier returns the identifier from the given path

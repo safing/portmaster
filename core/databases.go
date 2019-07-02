@@ -1,13 +1,13 @@
 package core
 
 import (
-	"github.com/Safing/portbase/database"
-	"github.com/Safing/portbase/modules"
-	"github.com/Safing/portbase/notifications"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/modules"
+	"github.com/safing/portbase/notifications"
 
 	// module dependencies
-	_ "github.com/Safing/portbase/database/dbmodule"
-	_ "github.com/Safing/portbase/database/storage/bbolt"
+	_ "github.com/safing/portbase/database/dbmodule"
+	_ "github.com/safing/portbase/database/storage/bbolt"
 )
 
 func init() {

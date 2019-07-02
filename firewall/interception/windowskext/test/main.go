@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/firewall/interception/windowskext"
-	"github.com/Safing/portmaster/network/packet"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/firewall/interception/windowskext"
+	"github.com/safing/portmaster/network/packet"
 )
 
 var (

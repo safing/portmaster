@@ -5,9 +5,9 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/network"
-	"github.com/Safing/portmaster/network/packet"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network"
+	"github.com/safing/portmaster/network/packet"
 )
 
 // Packet represents an IP packet.

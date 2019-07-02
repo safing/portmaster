@@ -13,9 +13,9 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/Safing/portbase/database"
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/status"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/status"
 )
 
 // TODO: make resolver interface for http package

@@ -7,12 +7,12 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/Safing/portbase/info"
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portbase/modules"
+	"github.com/safing/portbase/info"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
 
 	// include packages here
-	_ "github.com/Safing/portmaster/nameserver/only"
+	_ "github.com/safing/portmaster/nameserver/only"
 )
 
 func main() {

@@ -3,7 +3,7 @@ package profile
 import (
 	"sync"
 
-	"github.com/Safing/portbase/database"
+	"github.com/safing/portbase/database"
 )
 
 var (

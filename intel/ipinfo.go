@@ -5,9 +5,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Safing/portbase/database"
-	"github.com/Safing/portbase/database/record"
-	"github.com/Safing/portbase/utils"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/utils"
 )
 
 var (

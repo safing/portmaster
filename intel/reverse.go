@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/log"
 	"github.com/miekg/dns"
 )
 

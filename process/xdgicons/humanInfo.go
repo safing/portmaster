@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/log"
 )
 
 var (

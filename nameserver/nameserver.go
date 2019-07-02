@@ -9,14 +9,14 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portbase/modules"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
 
-	"github.com/Safing/portmaster/analytics/algs"
-	"github.com/Safing/portmaster/firewall"
-	"github.com/Safing/portmaster/intel"
-	"github.com/Safing/portmaster/network"
-	"github.com/Safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/analytics/algs"
+	"github.com/safing/portmaster/firewall"
+	"github.com/safing/portmaster/intel"
+	"github.com/safing/portmaster/network"
+	"github.com/safing/portmaster/network/netutils"
 )
 
 var (

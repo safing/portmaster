@@ -5,7 +5,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/Safing/portmaster/status"
+	"github.com/safing/portmaster/status"
 )
 
 var (

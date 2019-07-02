@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Safing/portbase/crypto/hash"
-	"github.com/Safing/portbase/database"
-	"github.com/Safing/portbase/database/record"
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/crypto/hash"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/log"
 )
 
 // CARevocationInfo saves Information on revokation of Certificates of a Certificate Authority.

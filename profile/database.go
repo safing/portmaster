@@ -1,7 +1,7 @@
 package profile
 
 import (
-	"github.com/Safing/portbase/database"
+	"github.com/safing/portbase/database"
 )
 
 // core:profiles/user/12345-1234-125-1234-1235

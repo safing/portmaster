@@ -4,9 +4,9 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/Safing/portbase/database"
-	"github.com/Safing/portbase/database/query"
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/database/query"
+	"github.com/safing/portbase/log"
 )
 
 func initUpdateListener() error {

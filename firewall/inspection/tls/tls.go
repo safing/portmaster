@@ -10,13 +10,13 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/tcpassembly"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/firewall/inspection"
-	"github.com/Safing/portmaster/firewall/inspection/tls/tlslib"
-	"github.com/Safing/portmaster/firewall/inspection/tls/verify"
-	"github.com/Safing/portmaster/network"
-	"github.com/Safing/portmaster/network/netutils"
-	"github.com/Safing/portmaster/network/packet"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/firewall/inspection"
+	"github.com/safing/portmaster/firewall/inspection/tls/tlslib"
+	"github.com/safing/portmaster/firewall/inspection/tls/verify"
+	"github.com/safing/portmaster/network"
+	"github.com/safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/network/packet"
 )
 
 // TODO:

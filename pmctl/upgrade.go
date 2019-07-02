@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/Safing/portbase/info"
-	"github.com/Safing/portmaster/updates"
+	"github.com/safing/portbase/info"
+	"github.com/safing/portmaster/updates"
 )
 
 func checkForUpgrade() (update *updates.File) {

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Safing/portbase/crypto/hash"
-	"github.com/Safing/portbase/database"
+	"github.com/safing/portbase/crypto/hash"
+	"github.com/safing/portbase/database"
 )
 
 // useful references:

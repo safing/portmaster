@@ -8,16 +8,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portbase/modules"
-	"github.com/Safing/portmaster/firewall/inspection"
-	"github.com/Safing/portmaster/firewall/interception"
-	"github.com/Safing/portmaster/network"
-	"github.com/Safing/portmaster/network/packet"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/firewall/inspection"
+	"github.com/safing/portmaster/firewall/interception"
+	"github.com/safing/portmaster/network"
+	"github.com/safing/portmaster/network/packet"
 
 	// module dependencies
-	_ "github.com/Safing/portmaster/core"
-	_ "github.com/Safing/portmaster/profile"
+	_ "github.com/safing/portmaster/core"
+	_ "github.com/safing/portmaster/profile"
 )
 
 var (

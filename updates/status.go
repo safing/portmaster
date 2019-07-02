@@ -4,11 +4,11 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Safing/portbase/database"
-	"github.com/Safing/portbase/database/query"
-	"github.com/Safing/portbase/database/record"
-	"github.com/Safing/portbase/info"
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/database/query"
+	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/info"
+	"github.com/safing/portbase/log"
 	"github.com/tevino/abool"
 )
 

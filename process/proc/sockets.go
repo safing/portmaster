@@ -13,7 +13,7 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/log"
 )
 
 /*

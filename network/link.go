@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Safing/portbase/database/record"
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/network/packet"
+	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network/packet"
 )
 
 // FirewallHandler defines the function signature for a firewall handle function

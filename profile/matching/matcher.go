@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/process"
-	"github.com/Safing/portmaster/profile"
-	"github.com/Safing/portmaster/profile/index"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/process"
+	"github.com/safing/portmaster/profile"
+	"github.com/safing/portmaster/profile/index"
 )
 
 // GetProfileSet finds a local profile.

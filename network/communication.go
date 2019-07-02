@@ -10,13 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Safing/portbase/database/record"
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/intel"
-	"github.com/Safing/portmaster/network/netutils"
-	"github.com/Safing/portmaster/network/packet"
-	"github.com/Safing/portmaster/process"
-	"github.com/Safing/portmaster/profile"
+	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/intel"
+	"github.com/safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/process"
+	"github.com/safing/portmaster/profile"
 )
 
 // Communication describes a logical connection between a process and a domain.

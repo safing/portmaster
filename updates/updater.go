@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/log"
 )
 
 func updater() {

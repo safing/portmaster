@@ -4,7 +4,7 @@
 [[projects]]
   branch = "master"
   digest = "1:636265d7c62365795e14a5d323a48db1409795adf96241bea7335d054f9d1879"
-  name = "github.com/Safing/portbase"
+  name = "github.com/safing/portbase"
   packages = [
     "api",
     "config",
@@ -349,24 +349,24 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/Safing/portbase/api",
-    "github.com/Safing/portbase/config",
-    "github.com/Safing/portbase/crypto/hash",
-    "github.com/Safing/portbase/crypto/random",
-    "github.com/Safing/portbase/database",
-    "github.com/Safing/portbase/database/dbmodule",
-    "github.com/Safing/portbase/database/iterator",
-    "github.com/Safing/portbase/database/query",
-    "github.com/Safing/portbase/database/record",
-    "github.com/Safing/portbase/database/storage",
-    "github.com/Safing/portbase/database/storage/bbolt",
-    "github.com/Safing/portbase/info",
-    "github.com/Safing/portbase/log",
-    "github.com/Safing/portbase/modules",
-    "github.com/Safing/portbase/notifications",
-    "github.com/Safing/portbase/utils",
-    "github.com/Safing/portbase/utils/osdetail",
-    "github.com/Safing/portbase/utils/testutils",
+    "github.com/safing/portbase/api",
+    "github.com/safing/portbase/config",
+    "github.com/safing/portbase/crypto/hash",
+    "github.com/safing/portbase/crypto/random",
+    "github.com/safing/portbase/database",
+    "github.com/safing/portbase/database/dbmodule",
+    "github.com/safing/portbase/database/iterator",
+    "github.com/safing/portbase/database/query",
+    "github.com/safing/portbase/database/record",
+    "github.com/safing/portbase/database/storage",
+    "github.com/safing/portbase/database/storage/bbolt",
+    "github.com/safing/portbase/info",
+    "github.com/safing/portbase/log",
+    "github.com/safing/portbase/modules",
+    "github.com/safing/portbase/notifications",
+    "github.com/safing/portbase/utils",
+    "github.com/safing/portbase/utils/osdetail",
+    "github.com/safing/portbase/utils/testutils",
     "github.com/agext/levenshtein",
     "github.com/cloudflare/cfssl/crypto/pkcs7",
     "github.com/cookieo9/resources-go",

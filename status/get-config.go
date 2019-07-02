@@ -1,7 +1,7 @@
 package status
 
 import (
-	"github.com/Safing/portbase/config"
+	"github.com/safing/portbase/config"
 )
 
 type (

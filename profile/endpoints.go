@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Safing/portmaster/intel"
+	"github.com/safing/portmaster/intel"
 )
 
 // Endpoints is a list of permitted or denied endpoints.

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/network/packet"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network/packet"
 )
 
 // Errors

@@ -1,7 +1,7 @@
 package network
 
 import (
-	"github.com/Safing/portbase/modules"
+	"github.com/safing/portbase/modules"
 )
 
 func init() {

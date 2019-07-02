@@ -3,8 +3,8 @@ package matcher
 import (
 	"strings"
 
-	"github.com/Safing/portmaster/process"
-	"github.com/Safing/portmaster/profile"
+	"github.com/safing/portmaster/process"
+	"github.com/safing/portmaster/profile"
 )
 
 // CheckFingerprints checks what fingerprints match and returns the total score.

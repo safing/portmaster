@@ -3,7 +3,7 @@ package profile
 import (
 	"testing"
 
-	"github.com/Safing/portmaster/status"
+	"github.com/safing/portmaster/status"
 )
 
 func TestProfileFlags(t *testing.T) {

@@ -1,8 +1,8 @@
 package firewall
 
 import (
-	"github.com/Safing/portbase/config"
-	"github.com/Safing/portmaster/status"
+	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/status"
 )
 
 var (

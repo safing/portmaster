@@ -1,7 +1,7 @@
 package process
 
 import (
-	"github.com/Safing/portmaster/process/proc"
+	"github.com/safing/portmaster/process/proc"
 )
 
 var (

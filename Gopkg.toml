@@ -1,4 +1,4 @@
-ignored = ["github.com/Safing/portbase", "github.com/Safing/safing-core", "github.com/Safing/safing-core/formats/varint"]
+ignored = ["github.com/safing/portbase", "github.com/safing/safing-core", "github.com/safing/safing-core/formats/varint"]
 
 [prune]
   go-tests = true

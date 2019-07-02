@@ -7,8 +7,8 @@ import (
 
 	uuid "github.com/satori/go.uuid"
 
-	"github.com/Safing/portbase/database/record"
-	"github.com/Safing/portmaster/status"
+	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/status"
 )
 
 var (

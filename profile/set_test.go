@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Safing/portbase/utils/testutils"
-	"github.com/Safing/portmaster/status"
+	"github.com/safing/portbase/utils/testutils"
+	"github.com/safing/portmaster/status"
 )
 
 var (

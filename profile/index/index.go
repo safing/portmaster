@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Safing/portbase/database/record"
-	"github.com/Safing/portbase/utils"
+	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/utils"
 )
 
 // ProfileIndex links an Identifier to Profiles

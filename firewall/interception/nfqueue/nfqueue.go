@@ -20,7 +20,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/Safing/portmaster/network/packet"
+	"github.com/safing/portmaster/network/packet"
 )
 
 var queues map[uint16]*NFQueue

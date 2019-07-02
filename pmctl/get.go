@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Safing/portmaster/updates"
+	"github.com/safing/portmaster/updates"
 )
 
 func getFile(identifier string) (*updates.File, error) {

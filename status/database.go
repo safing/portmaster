@@ -1,9 +1,9 @@
 package status
 
 import (
-	"github.com/Safing/portbase/database"
-	"github.com/Safing/portbase/database/query"
-	"github.com/Safing/portbase/database/record"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/database/query"
+	"github.com/safing/portbase/database/record"
 )
 
 const (

@@ -3,7 +3,7 @@ package status
 import (
 	"sync/atomic"
 
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/log"
 )
 
 // autopilot automatically adjusts the security level as needed

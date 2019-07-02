@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Safing/portmaster/process"
-	"github.com/Safing/portmaster/profile"
+	"github.com/safing/portmaster/process"
+	"github.com/safing/portmaster/profile"
 )
 
 // GetIdentificationPath returns the identifier for the given process (linux edition).

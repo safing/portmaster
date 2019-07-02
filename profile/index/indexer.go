@@ -1,13 +1,13 @@
 package index
 
 import (
-	"github.com/Safing/portbase/database"
-	"github.com/Safing/portbase/database/query"
-	"github.com/Safing/portbase/database/record"
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portbase/modules"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/database/query"
+	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
 
-	"github.com/Safing/portmaster/profile"
+	"github.com/safing/portmaster/profile"
 )
 
 // FIXME: listen for profile changes and update the index

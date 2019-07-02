@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Safing/portmaster/firewall/inspection/tls/tlslib"
+	"github.com/safing/portmaster/firewall/inspection/tls/tlslib"
 )
 
 var clientHelloSample = []byte{
