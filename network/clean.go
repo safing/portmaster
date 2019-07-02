@@ -5,8 +5,8 @@ package network
 import (
 	"time"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/process"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/process"
 )
 
 var (

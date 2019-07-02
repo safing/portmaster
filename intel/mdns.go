@@ -13,7 +13,7 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/log"
 )
 
 // DNS Classes

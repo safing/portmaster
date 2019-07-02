@@ -14,8 +14,8 @@ import (
 
 	"golang.org/x/crypto/ocsp"
 
-	"github.com/Safing/portbase/crypto/hash"
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/crypto/hash"
+	"github.com/safing/portbase/log"
 )
 
 var (

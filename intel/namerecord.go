@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Safing/portbase/database"
-	"github.com/Safing/portbase/database/record"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/database/record"
 )
 
 var (

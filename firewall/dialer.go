@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/Safing/portmaster/intel"
+	"github.com/safing/portmaster/intel"
 )
 
 func init() {

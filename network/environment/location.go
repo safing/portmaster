@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/network/netutils"
 
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"

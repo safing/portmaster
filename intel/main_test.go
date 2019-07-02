@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Safing/portbase/database/dbmodule"
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portbase/modules"
+	"github.com/safing/portbase/database/dbmodule"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
 )
 
 func TestMain(m *testing.M) {

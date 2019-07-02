@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/Safing/portbase/utils/testutils"
+	"github.com/safing/portbase/utils/testutils"
 )
 
 func testEndpointDomainMatch(t *testing.T, ep *EndpointPermission, domain string, expectedResult EPResult) {

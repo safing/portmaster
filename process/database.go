@@ -7,9 +7,9 @@ import (
 
 	processInfo "github.com/shirou/gopsutil/process"
 
-	"github.com/Safing/portbase/database"
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/profile"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/profile"
 	"github.com/tevino/abool"
 )
 

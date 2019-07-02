@@ -32,7 +32,7 @@ If you want to know more, here are [the docs](http://docs.safing.io/).
 
 The `pmctl` command will help you get up and running. It will bootstrap your the environment and download additional files it needs. All commands need the `--db` parameter with the database location, as this is where all the data and also the binaries live.
 
-Just download `pmctl` from the [releases page](https://github.com/Safing/portmaster/releases) and put it somewhere comfortable. You may freely choose where you want to put the database - it needs to be the same for all commands. Here we go - run every command in a seperate terminal window:
+Just download `pmctl` from the [releases page](https://github.com/safing/portmaster/releases) and put it somewhere comfortable. You may freely choose where you want to put the database - it needs to be the same for all commands. Here we go - run every command in a seperate terminal window:
 
     # start the portmaster:
     sudo ./pmctl run core --db=/opt/pm_db
@@ -48,7 +48,7 @@ Just download `pmctl` from the [releases page](https://github.com/Safing/portmas
 #### Feedback
 
 We'd love to know what you think, drop by on [our forum](https://discourse.safing.community/) and let us know!  
-If you want to report a bug, please [open an issue on Github](https://github.com/Safing/portmaster/issues/new).
+If you want to report a bug, please [open an issue on Github](https://github.com/safing/portmaster/issues/new).
 
 ## Documentation
 

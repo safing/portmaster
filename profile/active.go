@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/log"
 )
 
 var (

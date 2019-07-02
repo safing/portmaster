@@ -3,7 +3,7 @@ package matcher
 import (
 	"testing"
 
-	"github.com/Safing/portmaster/process"
+	"github.com/safing/portmaster/process"
 )
 
 func TestGetIdentifierLinux(t *testing.T) {

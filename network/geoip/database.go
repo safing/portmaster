@@ -6,8 +6,8 @@ import (
 
 	maxminddb "github.com/oschwald/maxminddb-golang"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/updates"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/updates"
 )
 
 var (

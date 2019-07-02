@@ -13,9 +13,9 @@ import (
 
 	"github.com/cloudflare/cfssl/crypto/pkcs7"
 
-	"github.com/Safing/portbase/crypto/hash"
-	"github.com/Safing/portbase/database"
-	"github.com/Safing/portbase/database/record"
+	"github.com/safing/portbase/crypto/hash"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/database/record"
 )
 
 // Cert saves a certificate.

@@ -12,9 +12,9 @@ import (
 
 	processInfo "github.com/shirou/gopsutil/process"
 
-	"github.com/Safing/portbase/database/record"
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/profile"
+	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/profile"
 )
 
 var (

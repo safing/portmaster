@@ -7,7 +7,7 @@ package nfqueue
 // import (
 // 	"sync"
 //
-// 	"github.com/Safing/portmaster/network/packet"
+// 	"github.com/safing/portmaster/network/packet"
 // )
 //
 // type multiQueue struct {

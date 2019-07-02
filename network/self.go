@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/Safing/portmaster/network/netutils"
-	"github.com/Safing/portmaster/network/packet"
-	"github.com/Safing/portmaster/process"
+	"github.com/safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/process"
 )
 
 // GetOwnComm returns the communication for the given packet, that originates from

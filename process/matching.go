@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Safing/portbase/database"
-	"github.com/Safing/portbase/database/query"
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/profile"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/database/query"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/profile"
 )
 
 var (

@@ -3,9 +3,9 @@ package network
 import (
 	"time"
 
-	"github.com/Safing/portmaster/network/netutils"
-	"github.com/Safing/portmaster/network/packet"
-	"github.com/Safing/portmaster/process"
+	"github.com/safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/process"
 )
 
 // Static reasons

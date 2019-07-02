@@ -7,7 +7,7 @@ import (
 
 	"github.com/coreos/go-iptables/iptables"
 
-	"github.com/Safing/portmaster/firewall/interception/nfqueue"
+	"github.com/safing/portmaster/firewall/interception/nfqueue"
 )
 
 // iptables -A OUTPUT -p icmp -j", "NFQUEUE", "--queue-num", "1", "--queue-bypass

@@ -1,12 +1,13 @@
 package profile
 
 import (
+	"context"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/Safing/portbase/utils/testutils"
-	"github.com/Safing/portmaster/status"
+	"github.com/safing/portbase/utils/testutils"
+	"github.com/safing/portmaster/status"
 )
 
 var (
@@ -140,7 +141,7 @@ func testEndpointIP(t *testing.T, set *Set, domain string, ip net.IP, protocol u
 
 func TestProfileSet(t *testing.T) {
 
-	set := NewSet("[pid]-/path/to/bin", testUserProfile, testStampProfile)
+	set := NewSet(context.Background(), "[pid]-/path/to/bin", testUserProfile, testStampProfile)
 
 	set.Update(status.SecurityLevelDynamic)
 	testFlag(t, set, Whitelist, false)

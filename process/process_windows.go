@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portbase/utils/osdetail"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/utils/osdetail"
 )
 
 // IsUser returns whether the process is run by a normal user.

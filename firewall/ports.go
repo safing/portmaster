@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Safing/portbase/crypto/random"
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/crypto/random"
+	"github.com/safing/portbase/log"
 )
 
 type portStatus struct {

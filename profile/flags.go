@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Safing/portmaster/status"
+	"github.com/safing/portmaster/status"
 )
 
 // Flags are used to quickly add common attributes to profiles

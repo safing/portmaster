@@ -5,8 +5,8 @@ package inspection
 import (
 	"sync"
 
-	"github.com/Safing/portmaster/network"
-	"github.com/Safing/portmaster/network/packet"
+	"github.com/safing/portmaster/network"
+	"github.com/safing/portmaster/network/packet"
 )
 
 const (

@@ -9,8 +9,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portmaster/network"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network"
 	"github.com/tevino/abool"
 	"golang.org/x/sys/windows"
 )

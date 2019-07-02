@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Safing/portmaster/updates"
+	"github.com/safing/portmaster/updates"
 	"github.com/spf13/cobra"
 )
 

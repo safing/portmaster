@@ -9,15 +9,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Safing/portbase/info"
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portbase/modules"
+	"github.com/safing/portbase/info"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
 
 	// include packages here
-	_ "github.com/Safing/portmaster/core"
-	_ "github.com/Safing/portmaster/firewall"
-	_ "github.com/Safing/portmaster/nameserver"
-	_ "github.com/Safing/portmaster/ui"
+	_ "github.com/safing/portmaster/core"
+	_ "github.com/safing/portmaster/firewall"
+	_ "github.com/safing/portmaster/nameserver"
+	_ "github.com/safing/portmaster/ui"
 )
 
 var (

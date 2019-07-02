@@ -11,10 +11,10 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/Safing/portbase/log"
+	"github.com/safing/portbase/log"
 
-	"github.com/Safing/portmaster/network/environment"
-	"github.com/Safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/network/environment"
+	"github.com/safing/portmaster/network/netutils"
 )
 
 // Resolver holds information about an active resolver.

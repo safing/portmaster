@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portbase/notifications"
-	"github.com/Safing/portmaster/network/packet"
-	"github.com/Safing/portmaster/process"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/process"
 )
 
 func checkForConflictingService(err error) {

@@ -3,12 +3,12 @@ package interception
 import (
 	"fmt"
 
-	"github.com/Safing/portbase/log"
-	"github.com/Safing/portbase/notifications"
-	"github.com/Safing/portbase/utils/osdetail"
-	"github.com/Safing/portmaster/firewall/interception/windowskext"
-	"github.com/Safing/portmaster/network/packet"
-	"github.com/Safing/portmaster/updates"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/notifications"
+	"github.com/safing/portbase/utils/osdetail"
+	"github.com/safing/portmaster/firewall/interception/windowskext"
+	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/updates"
 )
 
 var Packets chan packet.Packet
