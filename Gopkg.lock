@@ -2,309 +2,194 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:636265d7c62365795e14a5d323a48db1409795adf96241bea7335d054f9d1879"
-  name = "github.com/safing/portbase"
-  packages = [
-    "api",
-    "config",
-    "container",
-    "crypto/hash",
-    "crypto/random",
-    "database",
-    "database/accessor",
-    "database/dbmodule",
-    "database/iterator",
-    "database/query",
-    "database/record",
-    "database/storage",
-    "database/storage/bbolt",
-    "formats/dsd",
-    "formats/varint",
-    "info",
-    "log",
-    "modules",
-    "notifications",
-    "taskmanager",
-    "utils",
-    "utils/osdetail",
-    "utils/testutils",
-  ]
-  pruneopts = ""
-  revision = "60dbbe55e94597e23305ebb7ed1ddbb074fa25b7"
-
-[[projects]]
-  digest = "1:f82b8ac36058904227087141017bb82f4b0fc58272990a4cdae3e2d6d222644e"
+  digest = "1:e92f5581902c345eb4ceffdcd4a854fb8f73cf436d47d837d1ec98ef1fe0a214"
   name = "github.com/StackExchange/wmi"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "5d049714c4a64225c3c79a7cf7d02f7fb5b96338"
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:3b186fcaa1c0b374249e76601cd4d5c8c7f0712f8ad419f2e8288c7b9e7ed520"
-  name = "github.com/aead/serpent"
-  packages = ["."]
-  pruneopts = ""
-  revision = "fba169763ea663f7496376e5cdf709e4c7504704"
-  version = "v0.1"
-
-[[projects]]
-  digest = "1:3c753679736345f50125ae993e0a2614da126859921ea7faeecda6d217501ce2"
+  digest = "1:90afd0cfdffcc3df7855160ee2954cbca286e23c4eb9cb3d075536c9e4e1b04f"
   name = "github.com/agext/levenshtein"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "0ded9c86537917af2ff89bc9c78de6bd58477894"
   version = "v1.2.2"
 
 [[projects]]
-  branch = "master"
-  digest = "1:baf770c4efa1883bb5e444614e85b8028bbad33913aca290a43298f65d9df485"
-  name = "github.com/bluele/gcache"
-  packages = ["."]
-  pruneopts = ""
-  revision = "bc40bd6538339bd4be8cb0b48fc33fdf012ddb6e"
-
-[[projects]]
-  digest = "1:04be39ea2e9e54ccb36ad938cc7fd991845b07efa7cd5b497a534085df2155ec"
+  digest = "1:e097b70eeb55d10325f576ec2f97221d8ae18a3569cb0bc404863bde944788b8"
   name = "github.com/cloudflare/cfssl"
   packages = [
     "crypto/pkcs7",
     "errors",
   ]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "768cd563887febaad559b511aaa5964823ccb4ab"
   version = "1.3.3"
 
 [[projects]]
   branch = "v2.1"
-  digest = "1:3fc5d0d9cb474736e8e6c2f2292e0763b5132c6e7d8cbedf7bde404a470c8c3b"
+  digest = "1:1a2c0956b86c464f8ee91a46e0947dac7251f1d6fb7d3ad89cb9b376273ece82"
   name = "github.com/cookieo9/resources-go"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "d27c04069d0d5dfe11c202dacbf745ae8d1ab181"
 
 [[projects]]
-  digest = "1:166e24c91c2732657d2f791d3ee3897e7d85ece7cbb62ad991250e6b51fc1d4c"
+  digest = "1:3b4fcce8036672adc21c09d8e288f7b7590e76a468fae5a13346366e778e5ff8"
   name = "github.com/coreos/go-iptables"
   packages = ["iptables"]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "78b5fff24e6df8886ef8eca9411f683a884349a5"
   version = "v0.4.1"
 
 [[projects]]
-  digest = "1:b6581f9180e0f2d5549280d71819ab951db9d511478c87daca95669589d505c0"
+  digest = "1:440028f55cb322d8cb5b9d5ebec298a00b7d74690a658fe6b1c0c0b44341bfae"
   name = "github.com/go-ole/go-ole"
   packages = [
     ".",
     "oleutil",
   ]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "97b6244175ae18ea6eef668034fd6565847501c9"
   version = "v1.2.4"
 
 [[projects]]
-  digest = "1:cc1255e2fef3819bfab3540277001e602892dd431ef9ab5499bcdbc425923d64"
+  digest = "1:b3d20bcdedab2050e6bc58e52f4fdc46f710b4c74e1a1ecee262ebec1aee7b6e"
   name = "github.com/godbus/dbus"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "2ff6f7ffd60f0f2410b3105864bdd12c7894f844"
   version = "v5.0.1"
 
 [[projects]]
-  digest = "1:e85e59c4152d8576341daf54f40d96c404c264e04941a4a36b97a0f427eb9e5e"
+  digest = "1:0d40612c9acf7173aa742ee335bf344524add9c8d7e818992b610f3982350101"
   name = "github.com/google/gopacket"
   packages = [
     ".",
     "layers",
     "tcpassembly",
   ]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "6d3e2615da4ed2ed2a349918fe74e7e6d03482fa"
   version = "v1.1.17"
 
 [[projects]]
-  digest = "1:20dc576ad8f98fe64777c62f090a9b37dd67c62b23fe42b429c2c41936aa8a9c"
+  digest = "1:c3388642e07731a240e14f4bc7207df59cfcc009447c657b9de87fec072d07e3"
   name = "github.com/google/renameio"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "f0e32980c006571efd537032e5f9cd8c1a92819e"
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:ec5262e6c65f9fcedc01d7789ee4e18ad429dde822cfd50e57e3fd77c4d70c73"
+  digest = "1:cbec35fe4d5a4fba369a656a8cd65e244ea2c743007d8f6c1ccb132acf9d1296"
   name = "github.com/gorilla/mux"
   packages = ["."]
-  pruneopts = ""
-  revision = "ed099d42384823742bba0bf9a72b53b55c9e2e38"
-  version = "v1.7.2"
-
-[[projects]]
-  digest = "1:09aa5dd1332b93c96bde671bafb053249dc813febf7d5ca84e8f382ba255d67d"
-  name = "github.com/gorilla/websocket"
-  packages = ["."]
-  pruneopts = ""
-  revision = "66b9c49e59c6c48f0ffce28c2d8b8a5678502c6d"
-  version = "v1.4.0"
+  pruneopts = "UT"
+  revision = "00bdffe0f3c77e27d2cf6f5c70232a2d3e4d9c15"
+  version = "v1.7.3"
 
 [[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
 
 [[projects]]
   branch = "master"
-  digest = "1:e71cc6b377264002aec0d9c235087e51ad7a3c1fb341bb4baa84709308b94fe8"
+  digest = "1:f433da6fbabb0bd1bd730fd340782015c644123d02eb78c20c69ce03352daad1"
   name = "github.com/kardianos/osext"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "2bc1f35cddc0cc527b4bc3dce8578fc2a6c11384"
 
 [[projects]]
-  digest = "1:49b2165427f1eecc536ccc1b34129f1f9240b85d1c54228f3aeb6d4275e3daf3"
+  digest = "1:66def2f80d5127123c81ffa876242c12d3b7b06188f6645d79b3cc4acba637b3"
   name = "github.com/miekg/dns"
   packages = ["."]
-  pruneopts = ""
-  revision = "d16ecb693e3f8d524769fefce2192a4c92207ff9"
-  version = "v1.1.13"
+  pruneopts = "UT"
+  revision = "b13675009d59c97f3721247d9efa8914e1866a5b"
+  version = "v1.1.15"
 
 [[projects]]
-  digest = "1:3819cd861b7abd7d12dc1ea52ecb998ad1171826a76ecf0aefa09545781091f9"
+  digest = "1:8186cc518f5dcea736d7725e284632937971fdf29fa2953fdfa53f631e21a799"
   name = "github.com/oschwald/maxminddb-golang"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "2905694a1b00c5574f1418a7dbf8a22a7d247559"
   version = "v1.3.1"
 
 [[projects]]
-  digest = "1:7f569d906bdd20d906b606415b7d794f798f91a62fcfb6a4daa6d50690fb7a3f"
+  digest = "1:274f67cb6fed9588ea2521ecdac05a6d62a8c51c074c1fccc6a49a40ba80e925"
   name = "github.com/satori/go.uuid"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
   version = "v1.2.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:8ea5e33ea56cafca3c9636a8251d651f33431450ecb11bcb21ecf9e5d5017c7e"
-  name = "github.com/seehuhn/fortuna"
-  packages = ["."]
-  pruneopts = ""
-  revision = "f376bbcd33f446d4431a641aead7851fcbeafa08"
-
-[[projects]]
-  branch = "master"
-  digest = "1:3e67cb161714c815dfe346a3c1d386b44bab7bd907473acf437171f5577bee88"
-  name = "github.com/seehuhn/sha256d"
-  packages = ["."]
-  pruneopts = ""
-  revision = "e9f377c596061894b7f9ee69aab61e62c3ccc13e"
-
-[[projects]]
-  digest = "1:ab6d9cca43e0a89aacd6657db0adb5a6597ed51f81ad0e4f2db516728eb63185"
+  digest = "1:36ff5e7a8aa3e7d01b9ca22d441484d9c43247b6e34e379c404d17a2e0098091"
   name = "github.com/shirou/gopsutil"
   packages = [
     "cpu",
-    "host",
     "internal/common",
     "mem",
     "net",
     "process",
   ]
-  pruneopts = ""
-  revision = "fa9845945e5b5c6ffb19b436586ff702a30417c5"
-  version = "v2.19.04"
+  pruneopts = "UT"
+  revision = "4c8b404ee5c53b04b04f34b1744a26bf5d2910de"
+  version = "v2.19.6"
 
 [[projects]]
   branch = "master"
   digest = "1:99c6a6dab47067c9b898e8c8b13d130c6ab4ffbcc4b7cc6236c2cd0b1e344f5b"
   name = "github.com/shirou/w32"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
-  digest = "1:78715f4ed019d19795e67eed1dc63f525461d925616b1ed02b72582c01362440"
+  digest = "1:e096613fb7cf34743d49af87d197663cfccd61876e2219853005a57baedfa562"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  pruneopts = ""
-  revision = "67fc4837d267bc9bfd6e47f77783fcc3dffc68de"
-  version = "v0.0.4"
+  pruneopts = "UT"
+  revision = "f2b07da1e2c38d5f12845a4f607e2e1018cbb1f5"
+  version = "v0.0.5"
 
 [[projects]]
-  digest = "1:cbaf13cdbfef0e4734ed8a7504f57fe893d471d62a35b982bf6fb3f036449a66"
+  digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
   name = "github.com/spf13/pflag"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
   version = "v1.0.3"
 
 [[projects]]
   branch = "master"
-  digest = "1:86e6712cfd4070a2120c03fcec41cfcbbc51813504a74e28d74479edfaf669ee"
+  digest = "1:93d6687fc19da8a35c7352d72117a6acd2072dfb7e9bfd65646227bf2a913b2a"
   name = "github.com/tevino/abool"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "9b9efcf221b50905aab9bbabd3daed56dc10f339"
 
 [[projects]]
-  digest = "1:eade4ea6782f5eed4a6b3138a648f9a332900650804fd206e5daaf99cc5613ea"
-  name = "github.com/tidwall/gjson"
-  packages = ["."]
-  pruneopts = ""
-  revision = "eee0b6226f0d1db2675a176fdfaa8419bcad4ca8"
-  version = "v1.2.1"
-
-[[projects]]
-  digest = "1:72511ec1089fee111c995492d1d390a38ac7ab888aabdb1188985f2a1719c599"
-  name = "github.com/tidwall/match"
-  packages = ["."]
-  pruneopts = ""
-  revision = "33827db735fff6510490d69a8622612558a557ed"
-  version = "v1.0.1"
-
-[[projects]]
   branch = "master"
-  digest = "1:1d7cab09854959fe179fe2f209400626f3dda9ec8e8b719c661d7b2add7b54b5"
-  name = "github.com/tidwall/pretty"
-  packages = ["."]
-  pruneopts = ""
-  revision = "1166b9ac2b65e46a43d8618d30d1554f4652d49b"
-
-[[projects]]
-  digest = "1:04a1f04f50d734222dc3da57368771a1d6a4e4c7418d19e17285d7c1d1936939"
-  name = "github.com/tidwall/sjson"
-  packages = ["."]
-  pruneopts = ""
-  revision = "25fb082a20e29e83fb7b7ef5f5919166aad1f084"
-  version = "v1.0.4"
-
-[[projects]]
-  branch = "master"
-  digest = "1:21097653bd7914de1262f2429e277933507442f892815a791ce1c0dbf0a8dc20"
+  digest = "1:2a9f7ca80c3035b7e68a927db100922d4a266a31cea2568d9a5185a90b469279"
   name = "github.com/umahmood/haversine"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "808ab04add26660fd241ddb7973886c6dd6669e8"
 
 [[projects]]
-  digest = "1:8fe1bf6222077787bf88db4eae509f1c910743be1b82e1a6a57444fe092fc4a5"
-  name = "go.etcd.io/bbolt"
-  packages = ["."]
-  pruneopts = ""
-  revision = "63597a96ec0ad9e6d43c3fc81e809909e0237461"
-  version = "v1.3.2"
-
-[[projects]]
   branch = "master"
-  digest = "1:23603929c559ebf5fa44cc2ed4a72ae729292e2b7e0295ab0e743641f0a47535"
+  digest = "1:bf3f59dec5aa79945bd4b45c0c649c99d03609565acdd6a087f4cd6e9e5b5544"
   name = "golang.org/x/crypto"
   packages = [
-    "blake2b",
-    "blake2s",
     "chacha20poly1305",
     "curve25519",
     "ed25519",
@@ -313,14 +198,13 @@
     "internal/subtle",
     "ocsp",
     "poly1305",
-    "sha3",
   ]
-  pruneopts = ""
-  revision = "20be4c3c3ed52bfccdb2d59a412ee1a936d175a7"
+  pruneopts = "UT"
+  revision = "4def268fd1a49955bfb3dda92fe3db4f924f2285"
 
 [[projects]]
   branch = "master"
-  digest = "1:3fcc745bd071aa073bd666e01ff8df5fc72ab15f493ae7246710c66c738aab45"
+  digest = "1:caffb9a4f8c756941de4b3eb577abd167e7fd4b570f2078c05ceb8835a1514cb"
   name = "golang.org/x/net"
   packages = [
     "bpf",
@@ -330,43 +214,25 @@
     "ipv4",
     "ipv6",
   ]
-  pruneopts = ""
-  revision = "f3200d17e092c607f615320ecaad13d87ad9a2b3"
+  pruneopts = "UT"
+  revision = "da137c7871d730100384dbcf36e6f8fa493aef5b"
 
 [[projects]]
   branch = "master"
-  digest = "1:42729e4b5f90f33713c3eb772316cac71baf3344965a9fd9a86ab54b46bff88b"
+  digest = "1:7e3e63385ebe2dd5210be1534c516d8ae33c7ffac74126e5243d43ba7222e0d4"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
     "windows",
   ]
-  pruneopts = ""
-  revision = "69e3a3a65b5bed52b8194d33c59d955757d87523"
+  pruneopts = "UT"
+  revision = "04f50cda93cbb67f2afa353c52f342100e80e625"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/safing/portbase/api",
-    "github.com/safing/portbase/config",
-    "github.com/safing/portbase/crypto/hash",
-    "github.com/safing/portbase/crypto/random",
-    "github.com/safing/portbase/database",
-    "github.com/safing/portbase/database/dbmodule",
-    "github.com/safing/portbase/database/iterator",
-    "github.com/safing/portbase/database/query",
-    "github.com/safing/portbase/database/record",
-    "github.com/safing/portbase/database/storage",
-    "github.com/safing/portbase/database/storage/bbolt",
-    "github.com/safing/portbase/info",
-    "github.com/safing/portbase/log",
-    "github.com/safing/portbase/modules",
-    "github.com/safing/portbase/notifications",
-    "github.com/safing/portbase/utils",
-    "github.com/safing/portbase/utils/osdetail",
-    "github.com/safing/portbase/utils/testutils",
     "github.com/agext/levenshtein",
     "github.com/cloudflare/cfssl/crypto/pkcs7",
     "github.com/cookieo9/resources-go",
