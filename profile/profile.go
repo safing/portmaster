@@ -65,11 +65,7 @@ func MakeProfileKey(namespace, ID string) string {
 // Save saves the profile to the database
 func (profile *Profile) Save(namespace string) error {
 	if profile.ID == "" {
-		u, err := uuid.NewV4()
-		if err != nil {
-			return err
-		}
-		profile.ID = u.String()
+		profile.ID = uuid.NewV4().String()
 	}
 
 	if !profile.KeyIsSet() {

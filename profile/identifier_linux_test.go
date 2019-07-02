@@ -15,7 +15,6 @@ func TestGetPathIdentifier(t *testing.T) {
 	testPathID(t, "/home/user/project/main", "project/main")
 	testPathID(t, "/root/project/main", "project/main")
 	testPathID(t, "/tmp/a/b/c/d/install.sh", "c/d/install.sh")
-	testPathID(t, "/sbin/init", "sbin/init")
 	testPathID(t, "/lib/systemd/systemd-udevd", "lib/systemd/systemd-udevd")
 	testPathID(t, "/bundle/ruby/2.4.0/bin/passenger", "bin/passenger")
 	testPathID(t, "/usr/sbin/cron", "sbin/cron")
