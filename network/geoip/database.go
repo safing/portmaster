@@ -1,13 +1,13 @@
 package geoip
 
 import (
-	"errors"
+	"fmt"
 	"sync"
 
 	maxminddb "github.com/oschwald/maxminddb-golang"
 
-	"github.com/Safing/safing-core/log"
-	"github.com/Safing/safing-core/update"
+	"github.com/Safing/portbase/log"
+	"github.com/Safing/portmaster/updates"
 )
 
 var (
@@ -17,9 +17,6 @@ var (
 	dbLock     sync.Mutex
 	dbInUse    = false // only activate if used for first time
 	dbDoReload = true  // if database should be reloaded
-
-	// mmdbCityFile = "/opt/safing/GeoLite2-City.mmdb"
-	// mmdbASNFile  = "/opt/safing/GeoLite2-ASN.mmdb"
 )
 
 func ReloadDatabases() error {
@@ -56,19 +53,19 @@ func doReload() error {
 
 func openDBs() error {
 	var err error
-	filepath := update.GetGeoIPCityPath()
-	if filepath == "" {
-		return errors.New("could not get GeoIP City filepath")
+	file, err := updates.GetFile("intel/geoip-city.mmdb")
+	if err != nil {
+		return fmt.Errorf("could not get GeoIP City database file: %s", err)
 	}
-	dbCity, err = maxminddb.Open(filepath)
+	dbCity, err = maxminddb.Open(file.Path())
 	if err != nil {
 		return err
 	}
-	filepath = update.GetGeoIPASNPath()
-	if filepath == "" {
-		return errors.New("could not get GeoIP ASN filepath")
+	file, err = updates.GetFile("intel/geoip-asn.mmdb")
+	if err != nil {
+		return fmt.Errorf("could not get GeoIP ASN database file: %s", err)
 	}
-	dbASN, err = maxminddb.Open(filepath)
+	dbASN, err = maxminddb.Open(file.Path())
 	if err != nil {
 		return err
 	}
