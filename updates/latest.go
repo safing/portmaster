@@ -62,6 +62,7 @@ func LoadLatest() error {
 	return nil
 }
 
+// ScanForLatest scan the local update directory and returns a map of the latest/newest component versions.
 func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, lastError error) {
 	var added int
 	latest = make(map[string]string)
@@ -117,6 +118,7 @@ func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, las
 	return latest, nil
 }
 
+// LoadIndexes loads the current update indexes from disk.
 func LoadIndexes() error {
 	data, err := ioutil.ReadFile(filepath.Join(updateStoragePath, "stable.json"))
 	if err != nil {

@@ -3,7 +3,9 @@ package updates
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"path"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -22,18 +24,24 @@ func updater() {
 	}
 }
 
-func CheckForUpdates() error {
+func markFileForDownload(identifier string) {
+	// get file
+	_, ok := localUpdates[identifier]
+	// only mark if it does not yet exist
+	if !ok {
+		localUpdates[identifier] = "loading..."
+	}
+}
 
-	// ensure core components are updated
-	var err error
-	if runtime.GOOS == "windows" {
-		_, err = GetPlatformFile("pmctl/pmctl.exe")
-	} else {
-		_, err = GetPlatformFile("pmctl/pmctl")
-	}
-	if err != nil {
-		log.Errorf("updates: failed to mark pmctl/pmctl as used to ensure updates: %s", err)
-	}
+func markPlatformFileForDownload(identifier string) {
+	// add platform prefix
+	identifier = path.Join(fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), identifier)
+	// mark file
+	markFileForDownload(identifier)
+}
+
+// CheckForUpdates checks if updates are available and downloads updates of used components.
+func CheckForUpdates() (err error) {
 
 	// download new index
 	var data []byte
@@ -60,6 +68,19 @@ func CheckForUpdates() error {
 	// FIXME IN STABLE: correct log line
 	log.Infof("updates: downloaded new update index: stable.json (alpha until we actually reach stable)")
 
+	// ensure important components are always updated
+	updatesLock.Lock()
+	if runtime.GOOS == "windows" {
+		markPlatformFileForDownload("control/portmaster-control.exe")
+		markPlatformFileForDownload("app/portmaster-app.exe")
+		markPlatformFileForDownload("notifier/portmaster-notifier.exe")
+	} else {
+		markPlatformFileForDownload("control/portmaster-control")
+		markPlatformFileForDownload("app/portmaster-app")
+		markPlatformFileForDownload("notifier/portmaster-notifier")
+	}
+	updatesLock.Unlock()
+
 	// update existing files
 	log.Tracef("updates: updating existing files")
 	updatesLock.RLock()
@@ -67,16 +88,17 @@ func CheckForUpdates() error {
 		oldVersion, ok := localUpdates[identifier]
 		if ok && newVersion != oldVersion {
 
+			log.Tracef("updates: updating %s to %s", identifier, newVersion)
 			filePath := GetVersionedPath(identifier, newVersion)
 			realFilePath := filepath.Join(updateStoragePath, filePath)
 			for tries := 0; tries < 3; tries++ {
-				err := fetchFile(realFilePath, filePath, tries)
+				err = fetchFile(realFilePath, filePath, tries)
 				if err == nil {
 					break
 				}
 			}
 			if err != nil {
-				log.Warningf("failed to update %s to %s: %s", identifier, newVersion, err)
+				log.Warningf("updates: failed to update %s to %s: %s", identifier, newVersion, err)
 			}
 
 		}

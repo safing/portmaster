@@ -2,7 +2,6 @@ package updates
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -10,21 +9,24 @@ import (
 	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portbase/utils"
 )
 
 var (
 	updateStoragePath string
+	downloadTmpPath   string
 )
 
 // SetDatabaseRoot tells the updates module where the database is - and where to put its stuff.
 func SetDatabaseRoot(path string) {
 	if updateStoragePath == "" {
 		updateStoragePath = filepath.Join(path, "updates")
+		downloadTmpPath = filepath.Join(updateStoragePath, "tmp")
 	}
 }
 
 func init() {
-	modules.Register("updates", prep, start, nil, "core")
+	modules.Register("updates", prep, start, stop, "core")
 }
 
 func prep() error {
@@ -33,8 +35,14 @@ func prep() error {
 		return errors.New("database root is not set")
 	}
 	updateStoragePath = filepath.Join(dbRoot, "updates")
+	downloadTmpPath = filepath.Join(updateStoragePath, "tmp")
 
-	err := CheckDir(updateStoragePath)
+	err := utils.EnsureDirectory(updateStoragePath, 0755)
+	if err != nil {
+		return err
+	}
+
+	err = utils.EnsureDirectory(downloadTmpPath, 0700)
 	if err != nil {
 		return err
 	}
@@ -70,34 +78,6 @@ func start() error {
 }
 
 func stop() error {
-	return os.RemoveAll(filepath.Join(updateStoragePath, "tmp"))
-}
-
-func CheckDir(dirPath string) error {
-	f, err := os.Stat(dirPath)
-	if err == nil {
-		// file exists
-		if f.IsDir() {
-			return nil
-		}
-		err = os.Remove(dirPath)
-		if err != nil {
-			return fmt.Errorf("could not remove file %s to place dir: %s", dirPath, err)
-		}
-		err = os.MkdirAll(dirPath, 0755)
-		if err != nil {
-			return fmt.Errorf("could not create dir %s: %s", dirPath, err)
-		}
-		return nil
-	}
-	// file does not exist
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(dirPath, 0755)
-		if err != nil {
-			return fmt.Errorf("could not create dir %s: %s", dirPath, err)
-		}
-		return nil
-	}
-	// other error
-	return fmt.Errorf("failed to access %s: %s", dirPath, err)
+	// delete download tmp dir
+	return os.RemoveAll(downloadTmpPath)
 }

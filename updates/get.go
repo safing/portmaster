@@ -9,10 +9,12 @@ import (
 	"runtime"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/utils"
 )
 
+// Errors
 var (
-	ErrNotFound = errors.New("the requested file could not be found")
+	ErrNotFound            = errors.New("the requested file could not be found")
 	ErrNotAvailableLocally = errors.New("the requested file is not available locally")
 )
 
@@ -81,12 +83,12 @@ func loadOrFetchFile(identifier string, fetch bool) (*File, error) {
 	}
 
 	// check download dir
-	err := CheckDir(filepath.Join(updateStoragePath, "tmp"))
+	err := utils.EnsureDirectory(downloadTmpPath, 0755)
 	if err != nil {
 		return nil, fmt.Errorf("could not prepare tmp directory for download: %s", err)
 	}
 
-	if (!fetch) {
+	if !fetch {
 		return nil, ErrNotAvailableLocally
 	}
 

@@ -15,6 +15,7 @@ import (
 	"github.com/google/renameio"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/utils"
 )
 
 var (
@@ -37,15 +38,15 @@ func fetchFile(realFilepath, updateFilepath string, tries int) error {
 
 	// check destination dir
 	dirPath := filepath.Dir(realFilepath)
-	err = CheckDir(dirPath)
+	err = utils.EnsureDirectory(dirPath, 0755)
 	if err != nil {
-		return fmt.Errorf("updates: could not create updates folder: %s", dirPath)
+		return fmt.Errorf("could not create updates folder: %s", dirPath)
 	}
 
 	// open file for writing
-	atomicFile, err := renameio.TempFile(filepath.Join(updateStoragePath, "tmp"), realFilepath)
+	atomicFile, err := renameio.TempFile(downloadTmpPath, realFilepath)
 	if err != nil {
-		return fmt.Errorf("updates: could not create temp file for download: %s", err)
+		return fmt.Errorf("could not create temp file for download: %s", err)
 	}
 	defer atomicFile.Cleanup()
 
@@ -62,7 +63,7 @@ func fetchFile(realFilepath, updateFilepath string, tries int) error {
 		return fmt.Errorf("failed downloading %s: %s", downloadURL, err)
 	}
 	if resp.ContentLength != n {
-		return fmt.Errorf("download unfinished, written %d out of %d bytes.", n, resp.ContentLength)
+		return fmt.Errorf("download unfinished, written %d out of %d bytes", n, resp.ContentLength)
 	}
 
 	// finalize file
@@ -72,7 +73,8 @@ func fetchFile(realFilepath, updateFilepath string, tries int) error {
 	}
 	// set permissions
 	if runtime.GOOS != "windows" {
-		err = os.Chmod(realFilepath, 0644)
+		// FIXME: only set executable files to 0755, set other to 0644
+		err = os.Chmod(realFilepath, 0755)
 		if err != nil {
 			log.Warningf("updates: failed to set permissions on downloaded file %s: %s", realFilepath, err)
 		}
@@ -108,7 +110,7 @@ func fetchData(downloadPath string, tries int) ([]byte, error) {
 		return nil, fmt.Errorf("failed downloading %s: %s", downloadURL, err)
 	}
 	if resp.ContentLength != n {
-		return nil, fmt.Errorf("download unfinished, written %d out of %d bytes.", n, resp.ContentLength)
+		return nil, fmt.Errorf("download unfinished, written %d out of %d bytes", n, resp.ContentLength)
 	}
 
 	return buf.Bytes(), nil
