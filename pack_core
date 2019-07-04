@@ -16,7 +16,7 @@ function check {
   # get version
   version=$(grep "info.Set" main.go | cut -d'"' -f4)
   # build versioned file name
-  filename="portmaster_v${version//./-}"
+  filename="portmaster-core_v${version//./-}"
   # platform
   platform="${GOOS}_${GOARCH}"
   if [[ $GOOS == "windows" ]]; then
@@ -40,7 +40,7 @@ function build {
   # get version
   version=$(grep "info.Set" main.go | cut -d'"' -f4)
   # build versioned file name
-  filename="portmaster_v${version//./-}"
+  filename="portmaster-core_v${version//./-}"
   # platform
   platform="${GOOS}_${GOARCH}"
   if [[ $GOOS == "windows" ]]; then

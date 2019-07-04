@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	logPrefix = "[pmctl]"
+	logPrefix = "[control]"
 )
 
 var (
@@ -22,7 +22,7 @@ var (
 	databaseRootDir   *string
 
 	rootCmd = &cobra.Command{
-		Use:               "pmctl",
+		Use:               "portmaster-control",
 		Short:             "contoller for all portmaster components",
 		PersistentPreRunE: initPmCtl,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -55,7 +55,7 @@ func main() {
 	// }()
 
 	// set meta info
-	info.Set("Portmaster Control", "0.1.3", "AGPLv3", true)
+	info.Set("Portmaster Control", "0.2.0", "AGPLv3", true)
 
 	// check if meta info is ok
 	err := info.CheckVersion()
@@ -97,7 +97,7 @@ func initPmCtl(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("%s failed to upgrade self: %s", logPrefix, err)
 		}
-		fmt.Println("upgraded pmctl")
+		fmt.Println("upgraded portmaster-control")
 	}
 
 	return nil

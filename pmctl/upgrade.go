@@ -13,7 +13,7 @@ import (
 
 func checkForUpgrade() (update *updates.File) {
 	info := info.GetInfo()
-	file, err := updates.GetLocalPlatformFile("pmctl/pmctl")
+	file, err := updates.GetLocalPlatformFile("control/portmaster-control")
 	if err != nil {
 		return nil
 	}
@@ -113,6 +113,6 @@ func removeOldBin() error {
 		return nil
 	}
 
-	fmt.Println("removed previous pmctl")
+	fmt.Println("removed previous portmaster-control")
 	return nil
 }

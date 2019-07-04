@@ -27,7 +27,7 @@ var runCore = &cobra.Command{
 	Use:   "core",
 	Short: "Run the Portmaster Core",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return run("core/portmaster", cmd, false)
+		return run("core/portmaster-core", cmd, false)
 	},
 	FParseErrWhitelist: cobra.FParseErrWhitelist{
 		// UnknownFlags will ignore unknown flags errors and continue parsing rest of the flags

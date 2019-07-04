@@ -8,7 +8,7 @@ COL_BOLD="\033[01;01m"
 COL_RED="\033[31m"
 
 destDirPart1="../dist"
-destDirPart2="pmctl"
+destDirPart2="control"
 
 function check {
   # output
@@ -16,7 +16,7 @@ function check {
   # get version
   version=$(grep "info.Set" main.go | cut -d'"' -f4)
   # build versioned file name
-  filename="pmctl_v${version//./-}"
+  filename="portmaster-control_v${version//./-}"
   # platform
   platform="${GOOS}_${GOARCH}"
   if [[ $GOOS == "windows" ]]; then
@@ -28,9 +28,9 @@ function check {
 
   # check if file exists
   if [[ -f $destPath ]]; then
-    echo "[pmctl] $platform $version already built"
+    echo "[control] $platform $version already built"
   else
-    echo -e "${COL_BOLD}[pmctl] $platform $version${COL_OFF}"
+    echo -e "${COL_BOLD}[control] $platform $version${COL_OFF}"
   fi
 }
 
@@ -40,7 +40,7 @@ function build {
   # get version
   version=$(grep "info.Set" main.go | cut -d'"' -f4)
   # build versioned file name
-  filename="pmctl_v${version//./-}"
+  filename="portmaster-control_v${version//./-}"
   # platform
   platform="${GOOS}_${GOARCH}"
   if [[ $GOOS == "windows" ]]; then
@@ -52,19 +52,19 @@ function build {
 
   # check if file exists
   if [[ -f $destPath ]]; then
-    echo "[pmctl] $platform already built in version $version, skipping..."
+    echo "[control] $platform already built in version $version, skipping..."
     return
   fi
 
   # build
   ./build
   if [[ $? -ne 0 ]]; then
-    echo -e "\n${COL_BOLD}[pmctl] $platform: ${COL_RED}BUILD FAILED.${COL_OFF}"
+    echo -e "\n${COL_BOLD}[control] $platform: ${COL_RED}BUILD FAILED.${COL_OFF}"
     exit 1
   fi
   mkdir -p $(dirname $destPath)
   cp $output $destPath
-  echo -e "\n${COL_BOLD}[pmctl] $platform: successfully built.${COL_OFF}"
+  echo -e "\n${COL_BOLD}[control] $platform: successfully built.${COL_OFF}"
 }
 
 function check_all {
