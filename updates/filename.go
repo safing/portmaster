@@ -8,6 +8,7 @@ import (
 
 var versionRegex = regexp.MustCompile("_v[0-9]+-[0-9]+-[0-9]+b?")
 
+// GetIdentifierAndVersion splits the given file path into its identifier and version.
 func GetIdentifierAndVersion(versionedPath string) (identifier, version string, ok bool) {
 	// extract version
 	rawVersion := versionRegex.FindString(versionedPath)
@@ -27,6 +28,7 @@ func GetIdentifierAndVersion(versionedPath string) (identifier, version string, 
 	return versionedPath[:i] + versionedPath[i+len(rawVersion):], version, true
 }
 
+// GetVersionedPath combines the identifier and version and returns it as a file path.
 func GetVersionedPath(identifier, version string) (versionedPath string) {
 	// split in half
 	splittedFilePath := strings.SplitN(identifier, ".", 2)

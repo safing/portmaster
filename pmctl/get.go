@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/updates"
 )
 
@@ -25,7 +26,7 @@ func getFile(identifier string) (*updates.File, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// create dirs
-			err = updates.CheckDir(updateStoragePath)
+			err = utils.EnsureDirectory(updateStoragePath, 0755)
 			if err != nil {
 				return nil, err
 			}

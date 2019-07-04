@@ -7,6 +7,7 @@ type File struct {
 	stable   bool
 }
 
+// NewFile combines update file attributes into an easy to use object.
 func NewFile(filepath string, version string, stable bool) *File {
 	return &File{
 		filepath: filepath,
