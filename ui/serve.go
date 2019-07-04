@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	resources "github.com/cookieo9/resources-go"
-	"github.com/gorilla/mux"
 
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/log"
@@ -41,7 +40,7 @@ func ServeBundle(defaultModuleName string) func(w http.ResponseWriter, r *http.R
 
 		// log.Tracef("ui: request for %s", r.RequestURI)
 
-		vars := mux.Vars(r)
+		vars := api.GetMuxVars(r)
 		moduleName, ok := vars["moduleName"]
 		if !ok {
 			moduleName = defaultModuleName
@@ -98,8 +97,13 @@ func ServeBundle(defaultModuleName string) func(w http.ResponseWriter, r *http.R
 func ServeFileFromBundle(w http.ResponseWriter, r *http.Request, bundleName string, bundle *resources.BundleSequence, path string) {
 	readCloser, err := bundle.Open(path)
 	if err != nil {
-		log.Tracef("ui: error opening module %s: %s", bundleName, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err == resources.ErrNotFound {
+			log.Tracef("ui: requested resource \"%s\" not found in bundle %s: %s", path, bundleName, err)
+			http.Error(w, err.Error(), http.StatusNotFound)
+		} else {
+			log.Tracef("ui: error opening module %s: %s", bundleName, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
