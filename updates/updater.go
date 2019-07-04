@@ -11,14 +11,19 @@ import (
 	"time"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/utils"
 )
 
 func updater() {
 	time.Sleep(10 * time.Second)
 	for {
-		err := CheckForUpdates()
+		err := UpdateIndexes()
 		if err != nil {
-			log.Warningf("updates: failed to check for updates: %s", err)
+			log.Warningf("updates: updating index failed: %s", err)
+		}
+		err = DownloadUpdates()
+		if err != nil {
+			log.Warningf("updates: downloading updates failed: %s", err)
 		}
 		time.Sleep(1 * time.Hour)
 	}
@@ -40,10 +45,9 @@ func markPlatformFileForDownload(identifier string) {
 	markFileForDownload(identifier)
 }
 
-// CheckForUpdates checks if updates are available and downloads updates of used components.
-func CheckForUpdates() (err error) {
-
-	// download new index
+// UpdateIndexes downloads the current update indexes.
+func UpdateIndexes() (err error) {
+	// download new indexes
 	var data []byte
 	for tries := 0; tries < 3; tries++ {
 		data, err = fetchData("stable.json", tries)
@@ -52,39 +56,72 @@ func CheckForUpdates() (err error) {
 		}
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to download: %s", err)
 	}
 
 	newStableUpdates := make(map[string]string)
 	err = json.Unmarshal(data, &newStableUpdates)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse: %s", err)
 	}
 
 	if len(newStableUpdates) == 0 {
-		return errors.New("stable.json is empty")
+		return errors.New("index is empty")
 	}
 
+	// update stable index
+	updatesLock.Lock()
+	stableUpdates = newStableUpdates
+	updatesLock.Unlock()
+
+	// check dir
+	err = utils.EnsureDirectory(updateStoragePath, 0755)
+	if err != nil {
+		return err
+	}
+
+	// save stable index
+	err = ioutil.WriteFile(filepath.Join(updateStoragePath, "stable.json"), data, 0644)
+	if err != nil {
+		log.Warningf("updates: failed to save new version of stable.json: %s", err)
+	}
+
+	// update version status
+	updatesLock.RLock()
+	updateStatus(versionClassStable, stableUpdates)
+	updatesLock.RUnlock()
+
 	// FIXME IN STABLE: correct log line
-	log.Infof("updates: downloaded new update index: stable.json (alpha until we actually reach stable)")
+	log.Infof("updates: updated index stable.json (alpha/beta until we actually reach stable)")
+
+	return nil
+}
+
+// DownloadUpdates checks if updates are available and downloads updates of used components.
+func DownloadUpdates() (err error) {
 
 	// ensure important components are always updated
 	updatesLock.Lock()
 	if runtime.GOOS == "windows" {
+		markPlatformFileForDownload("core/portmaster-core.exe")
 		markPlatformFileForDownload("control/portmaster-control.exe")
 		markPlatformFileForDownload("app/portmaster-app.exe")
 		markPlatformFileForDownload("notifier/portmaster-notifier.exe")
 	} else {
+		markPlatformFileForDownload("core/portmaster-core")
 		markPlatformFileForDownload("control/portmaster-control")
 		markPlatformFileForDownload("app/portmaster-app")
 		markPlatformFileForDownload("notifier/portmaster-notifier")
 	}
 	updatesLock.Unlock()
 
+	// RLock for the remaining function
+	updatesLock.RLock()
+	defer updatesLock.RUnlock()
+
 	// update existing files
 	log.Tracef("updates: updating existing files")
-	updatesLock.RLock()
-	for identifier, newVersion := range newStableUpdates {
+	for identifier, newVersion := range stableUpdates {
 		oldVersion, ok := localUpdates[identifier]
 		if ok && newVersion != oldVersion {
 
@@ -103,24 +140,7 @@ func CheckForUpdates() (err error) {
 
 		}
 	}
-	updatesLock.RUnlock()
 	log.Tracef("updates: finished updating existing files")
-
-	// update stable index
-	updatesLock.Lock()
-	stableUpdates = newStableUpdates
-	updatesLock.Unlock()
-
-	// save stable index
-	err = ioutil.WriteFile(filepath.Join(updateStoragePath, "stable.json"), data, 0644)
-	if err != nil {
-		log.Warningf("updates: failed to save new version of stable.json: %s", err)
-	}
-
-	// update version status
-	updatesLock.RLock()
-	defer updatesLock.RUnlock()
-	updateStatus(versionClassStable, stableUpdates)
 
 	return nil
 }
