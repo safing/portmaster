@@ -1,17 +1,18 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"os"
+	"time"
 
-	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/updates"
 )
 
-func getFile(identifier string) (*updates.File, error) {
+func getFile(opts *Options) (*updates.File, error) {
 	// get newest local file
 	updates.LoadLatest()
-	file, err := updates.GetPlatformFile(identifier)
+
+	file, err := updates.GetLocalPlatformFile(opts.Identifier)
 	if err == nil {
 		return file, nil
 	}
@@ -19,28 +20,42 @@ func getFile(identifier string) (*updates.File, error) {
 		return nil, err
 	}
 
-	fmt.Printf("%s downloading %s...\n", logPrefix, identifier)
+	// download
+	if opts.AllowDownload {
+		fmt.Printf("%s downloading %s...\n", logPrefix, opts.Identifier)
 
-	// if no matching file exists, load index
-	err = updates.LoadIndexes()
-	if err != nil {
-		if os.IsNotExist(err) {
-			// create dirs
-			err = utils.EnsureDirectory(updateStoragePath, 0755)
-			if err != nil {
-				return nil, err
-			}
+		// download indexes
+		err = updates.UpdateIndexes()
+		if err != nil {
+			return nil, err
+		}
 
-			// download indexes
-			err = updates.CheckForUpdates()
-			if err != nil {
-				return nil, err
-			}
-		} else {
+		// download file
+		file, err := updates.GetPlatformFile(opts.Identifier)
+		if err != nil {
+			return nil, err
+		}
+		return file, nil
+	}
+
+	// wait for 30 seconds
+	fmt.Printf("%s waiting for download of %s (by Portmaster Core) to complete...\n", logPrefix, opts.Identifier)
+
+	// try every 0.5 secs
+	for tries := 0; tries < 60; tries++ {
+		time.Sleep(500 * time.Millisecond)
+
+		// reload local files
+		updates.LoadLatest()
+
+		// get file
+		file, err := updates.GetLocalPlatformFile(opts.Identifier)
+		if err == nil {
+			return file, nil
+		}
+		if err != updates.ErrNotFound {
 			return nil, err
 		}
 	}
-
-	// get file
-	return updates.GetPlatformFile(identifier)
+	return nil, errors.New("please try again later or check the Portmaster logs")
 }

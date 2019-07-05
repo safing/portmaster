@@ -11,6 +11,10 @@ import (
 	"github.com/safing/portmaster/updates"
 )
 
+var (
+	oldBinSuffix = "-old"
+)
+
 func checkForUpgrade() (update *updates.File) {
 	info := info.GetInfo()
 	file, err := updates.GetLocalPlatformFile("control/portmaster-control")
@@ -25,6 +29,8 @@ func checkForUpgrade() (update *updates.File) {
 
 func doSelfUpgrade(file *updates.File) error {
 
+	// FIXME: fix permissions if needed
+
 	// get destination
 	dst, err := os.Executable()
 	if err != nil {
@@ -36,7 +42,7 @@ func doSelfUpgrade(file *updates.File) error {
 	}
 
 	// mv destination
-	err = os.Rename(dst, dst+"_old")
+	err = os.Rename(dst, dst+oldBinSuffix)
 	if err != nil {
 		return err
 	}
@@ -105,7 +111,7 @@ func removeOldBin() error {
 	}
 
 	// delete old
-	err = os.Remove(dst + "_old")
+	err = os.Remove(dst + oldBinSuffix)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return err

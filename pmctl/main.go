@@ -5,7 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/log"
@@ -55,7 +58,7 @@ func main() {
 	// }()
 
 	// set meta info
-	info.Set("Portmaster Control", "0.2.0", "AGPLv3", true)
+	info.Set("Portmaster Control", "0.2.1", "AGPLv3", true)
 
 	// check if meta info is ok
 	err := info.CheckVersion()
@@ -86,7 +89,23 @@ func initPmCtl(cmd *cobra.Command, args []string) error {
 		return errors.New("please supply the database directory using the --db flag")
 	}
 
-	err := removeOldBin()
+	// check if we are root/admin for self upgrade
+	userInfo, err := user.Current()
+	if err != nil {
+		return nil
+	}
+	switch runtime.GOOS {
+	case "linux":
+		if userInfo.Username != "root" {
+			return nil
+		}
+	case "windows":
+		if !strings.HasSuffix(userInfo.Username, "SYSTEM") { // is this correct?
+			return nil
+		}
+	}
+
+	err = removeOldBin()
 	if err != nil {
 		fmt.Printf("%s warning: failed to remove old upgrade: %s\n", logPrefix, err)
 	}
