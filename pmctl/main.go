@@ -89,35 +89,5 @@ func initPmCtl(cmd *cobra.Command, args []string) error {
 		return errors.New("please supply the database directory using the --db flag")
 	}
 
-	// check if we are root/admin for self upgrade
-	userInfo, err := user.Current()
-	if err != nil {
-		return nil
-	}
-	switch runtime.GOOS {
-	case "linux":
-		if userInfo.Username != "root" {
-			return nil
-		}
-	case "windows":
-		if !strings.HasSuffix(userInfo.Username, "SYSTEM") { // is this correct?
-			return nil
-		}
-	}
-
-	err = removeOldBin()
-	if err != nil {
-		fmt.Printf("%s warning: failed to remove old upgrade: %s\n", logPrefix, err)
-	}
-
-	update := checkForUpgrade()
-	if update != nil {
-		err = doSelfUpgrade(update)
-		if err != nil {
-			return fmt.Errorf("%s failed to upgrade self: %s", logPrefix, err)
-		}
-		fmt.Println("upgraded portmaster-control")
-	}
-
 	return nil
 }
