@@ -2,13 +2,9 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
-	"runtime"
-	"strings"
 
 	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/log"
@@ -35,6 +31,9 @@ var (
 )
 
 func init() {
+	// Let cobra ignore if we are running as "GUI" or not
+	cobra.MousetrapHelpText = ""
+
 	databaseRootDir = rootCmd.PersistentFlags().String("db", "", "set database directory")
 	err := rootCmd.MarkPersistentFlagRequired("db")
 	if err != nil {
@@ -43,7 +42,14 @@ func init() {
 }
 
 func main() {
-	flag.Parse()
+	var err error
+
+	// check if we are running in a console (try to attach to parent console if available)
+	runningInConsole, err = attachToParentConsole()
+	if err != nil {
+		fmt.Printf("failed to attach to parent console: %s\n", err)
+		os.Exit(1)
+	}
 
 	// not using portbase logger
 	log.SetLogLevel(log.CriticalLevel)
@@ -58,10 +64,10 @@ func main() {
 	// }()
 
 	// set meta info
-	info.Set("Portmaster Control", "0.2.1", "AGPLv3", true)
+	info.Set("Portmaster Control", "0.2.5", "AGPLv3", true)
 
 	// check if meta info is ok
-	err := info.CheckVersion()
+	err = info.CheckVersion()
 	if err != nil {
 		fmt.Printf("%s compile error: please compile using the provided build script\n", logPrefix)
 		os.Exit(1)
@@ -73,14 +79,13 @@ func main() {
 	}
 
 	// start root command
-	if err := rootCmd.Execute(); err != nil {
+	if err = rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 	os.Exit(0)
 }
 
-func initPmCtl(cmd *cobra.Command, args []string) error {
-
+func initPmCtl(cmd *cobra.Command, args []string) (err error) {
 	// transform from db base path to updates path
 	if *databaseRootDir != "" {
 		updates.SetDatabaseRoot(*databaseRootDir)

@@ -13,10 +13,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	runningInConsole bool
+	onWindows        = runtime.GOOS == "windows"
+)
+
 // Options for starting component
 type Options struct {
-	Identifier    string
-	AllowDownload bool
+	Identifier        string
+	AllowDownload     bool
+	AllowHidingWindow bool
 }
 
 func init() {
@@ -36,8 +42,9 @@ var runCore = &cobra.Command{
 	Short: "Run the Portmaster Core",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return run(cmd, &Options{
-			Identifier:    "core/portmaster-core",
-			AllowDownload: true,
+			Identifier:        "core/portmaster-core",
+			AllowDownload:     true,
+			AllowHidingWindow: true,
 		})
 	},
 	FParseErrWhitelist: cobra.FParseErrWhitelist{
@@ -51,8 +58,9 @@ var runApp = &cobra.Command{
 	Short: "Run the Portmaster App",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return run(cmd, &Options{
-			Identifier:    "app/portmaster-app",
-			AllowDownload: false,
+			Identifier:        "app/portmaster-app",
+			AllowDownload:     false,
+			AllowHidingWindow: false,
 		})
 	},
 	FParseErrWhitelist: cobra.FParseErrWhitelist{
@@ -66,8 +74,9 @@ var runNotifier = &cobra.Command{
 	Short: "Run the Portmaster Notifier",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return run(cmd, &Options{
-			Identifier:    "notifier/portmaster-notifier",
-			AllowDownload: false,
+			Identifier:        "notifier/portmaster-notifier",
+			AllowDownload:     false,
+			AllowHidingWindow: true,
 		})
 	},
 	FParseErrWhitelist: cobra.FParseErrWhitelist{
@@ -86,7 +95,7 @@ func run(cmd *cobra.Command, opts *Options) error {
 	args = os.Args[3:]
 
 	// adapt identifier
-	if windows() {
+	if onWindows {
 		opts.Identifier += ".exe"
 	}
 
@@ -98,7 +107,7 @@ func run(cmd *cobra.Command, opts *Options) error {
 		}
 
 		// check permission
-		if !windows() {
+		if !onWindows {
 			info, err := os.Stat(file.Path())
 			if err != nil {
 				return fmt.Errorf("failed to get file info on %s: %s", file.Path(), err)
@@ -115,6 +124,12 @@ func run(cmd *cobra.Command, opts *Options) error {
 
 		// create command
 		exc := exec.Command(file.Path(), args...)
+
+		if !runningInConsole && opts.AllowHidingWindow {
+			// Windows only:
+			// only hide (all) windows of program if we are not running in console and windows may be hidden
+			hideWindow(exc)
+		}
 
 		// consume stdout/stderr
 		stdout, err := exc.StdoutPipe()
@@ -191,8 +206,4 @@ func run(cmd *cobra.Command, opts *Options) error {
 
 	fmt.Printf("%s %s completed successfully\n", logPrefix, opts.Identifier)
 	return nil
-}
-
-func windows() bool {
-	return runtime.GOOS == "windows"
 }
