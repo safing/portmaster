@@ -61,7 +61,13 @@ func start() error {
 	err = LoadIndexes()
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Infof("updates: stable.json does not yet exist, waiting for first update cycle")
+			// download indexes
+			log.Infof("updates: downloading update index...")
+
+			err = UpdateIndexes()
+			if err != nil {
+				return err
+			}
 		} else {
 			return err
 		}
