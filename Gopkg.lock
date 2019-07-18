@@ -84,14 +84,6 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:cbec35fe4d5a4fba369a656a8cd65e244ea2c743007d8f6c1ccb132acf9d1296"
-  name = "github.com/gorilla/mux"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "00bdffe0f3c77e27d2cf6f5c70232a2d3e4d9c15"
-  version = "v1.7.3"
-
-[[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
@@ -219,12 +211,15 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7e3e63385ebe2dd5210be1534c516d8ae33c7ffac74126e5243d43ba7222e0d4"
+  digest = "1:a931c816b1c08002eddb0ec1b920ed1987a0e873dad1f9f443e4905d70b59c66"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
     "windows",
+    "windows/registry",
+    "windows/svc",
+    "windows/svc/eventlog",
   ]
   pruneopts = "UT"
   revision = "04f50cda93cbb67f2afa353c52f342100e80e625"
@@ -242,7 +237,6 @@
     "github.com/google/gopacket/layers",
     "github.com/google/gopacket/tcpassembly",
     "github.com/google/renameio",
-    "github.com/gorilla/mux",
     "github.com/miekg/dns",
     "github.com/oschwald/maxminddb-golang",
     "github.com/satori/go.uuid",
@@ -256,6 +250,8 @@
     "golang.org/x/net/icmp",
     "golang.org/x/net/ipv4",
     "golang.org/x/sys/windows",
+    "golang.org/x/sys/windows/svc",
+    "golang.org/x/sys/windows/svc/eventlog",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

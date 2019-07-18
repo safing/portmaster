@@ -4,7 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"runtime"
+	"syscall"
 
 	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/log"
@@ -51,18 +54,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// not using portbase logger
-	log.SetLogLevel(log.CriticalLevel)
-
-	// for debugging
-	// log.Start()
-	// log.SetLogLevel(log.TraceLevel)
-	// go func() {
-	// 	time.Sleep(3 * time.Second)
-	// 	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
-	// 	os.Exit(1)
-	// }()
-
 	// set meta info
 	info.Set("Portmaster Control", "0.2.5", "AGPLv3", true)
 
@@ -78,11 +69,53 @@ func main() {
 		os.Exit(0)
 	}
 
-	// start root command
-	if err = rootCmd.Execute(); err != nil {
-		os.Exit(1)
+	// warn about CTRL-C on windows
+	if runningInConsole && runtime.GOOS == "windows" {
+		fmt.Printf("%s WARNING: portmaster-control is marked as a GUI application in order to get rid of the console window.\n", logPrefix)
+		fmt.Printf("%s WARNING: CTRL-C will immediately kill without clean shutdown.\n", logPrefix)
 	}
-	os.Exit(0)
+
+	// not using portbase logger
+	log.SetLogLevel(log.CriticalLevel)
+
+	// for debugging
+	// log.Start()
+	// log.SetLogLevel(log.TraceLevel)
+	// go func() {
+	// 	time.Sleep(3 * time.Second)
+	// 	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+	// 	os.Exit(1)
+	// }()
+
+	// catch interrupt for clean shutdown
+	signalCh := make(chan os.Signal)
+	signal.Notify(
+		signalCh,
+		os.Interrupt,
+		os.Kill,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
+
+	// start root command
+	go func() {
+		if err = rootCmd.Execute(); err != nil {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}()
+
+	// wait for signals
+	for sig := range signalCh {
+		if childIsRunning.IsSet() {
+			fmt.Printf("%s got %s signal (ignoring), waiting for child to exit...\n", logPrefix, sig)
+		} else {
+			fmt.Printf("%s got %s signal, exiting... (not executing anything)\n", logPrefix, sig)
+			os.Exit(0)
+		}
+	}
 }
 
 func initPmCtl(cmd *cobra.Command, args []string) (err error) {
