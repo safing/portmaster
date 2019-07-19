@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -21,11 +22,13 @@ import (
 )
 
 var (
-	printStackOnExit bool
+	printStackOnExit   bool
+	enableInputSignals bool
 )
 
 func init() {
 	flag.BoolVar(&printStackOnExit, "print-stack-on-exit", false, "prints the stack before of shutting down")
+	flag.BoolVar(&enableInputSignals, "input-signals", false, "emulate signals using stdin")
 }
 
 func main() {
@@ -47,6 +50,9 @@ func main() {
 	// Shutdown
 	// catch interrupt for clean shutdown
 	signalCh := make(chan os.Signal)
+	if enableInputSignals {
+		go inputSignals(signalCh)
+	}
 	signal.Notify(
 		signalCh,
 		os.Interrupt,
@@ -98,4 +104,20 @@ func main() {
 	case <-modules.ShuttingDown():
 	}
 
+}
+
+func inputSignals(signalCh chan os.Signal) {
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		switch scanner.Text() {
+		case "SIGHUP":
+			signalCh <- syscall.SIGHUP
+		case "SIGINT":
+			signalCh <- syscall.SIGINT
+		case "SIGQUIT":
+			signalCh <- syscall.SIGQUIT
+		case "SIGTERM":
+			signalCh <- syscall.SIGTERM
+		}
+	}
 }
