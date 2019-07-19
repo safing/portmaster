@@ -211,7 +211,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a931c816b1c08002eddb0ec1b920ed1987a0e873dad1f9f443e4905d70b59c66"
+  digest = "1:84945c0665ea5fc3ccbd067c35890a7d28e369131ac411b8a820b40115245c19"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -219,7 +219,9 @@
     "windows",
     "windows/registry",
     "windows/svc",
+    "windows/svc/debug",
     "windows/svc/eventlog",
+    "windows/svc/mgr",
   ]
   pruneopts = "UT"
   revision = "04f50cda93cbb67f2afa353c52f342100e80e625"
@@ -251,7 +253,9 @@
     "golang.org/x/net/ipv4",
     "golang.org/x/sys/windows",
     "golang.org/x/sys/windows/svc",
+    "golang.org/x/sys/windows/svc/debug",
     "golang.org/x/sys/windows/svc/eventlog",
+    "golang.org/x/sys/windows/svc/mgr",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

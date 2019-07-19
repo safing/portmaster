@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/safing/portbase/container"
@@ -190,6 +191,15 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 		hideWindow(exc)
 	}
 
+	// check if input signals are enabled
+	inputSignalsEnabled := false
+	for _, arg := range args {
+		if strings.HasSuffix(arg, "-input-signals") {
+			inputSignalsEnabled = true
+			break
+		}
+	}
+
 	// consume stdout/stderr
 	stdout, err := exc.StdoutPipe()
 	if err != nil {
@@ -198,6 +208,13 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 	stderr, err := exc.StderrPipe()
 	if err != nil {
 		return true, fmt.Errorf("failed to connect stderr: %s", err)
+	}
+	var stdin io.WriteCloser
+	if inputSignalsEnabled {
+		stdin, err = exc.StdinPipe()
+		if err != nil {
+			return true, fmt.Errorf("failed to connect stdin: %s", err)
+		}
 	}
 
 	// start
@@ -208,6 +225,8 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 	childIsRunning.Set()
 
 	// start output writers
+	var wg sync.WaitGroup
+	wg.Add(2)
 	go func() {
 		var logFileError error
 		if logFile == nil {
@@ -218,6 +237,7 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 		if logFileError != nil {
 			fmt.Printf("%s failed write logs: %s\n", logPrefix, logFileError)
 		}
+		wg.Done()
 	}()
 	go func() {
 		var errorFileError error
@@ -229,10 +249,11 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 		if errorFileError != nil {
 			fmt.Printf("%s failed write error logs: %s\n", logPrefix, errorFileError)
 		}
+		wg.Done()
 	}()
 	// give some time to finish log file writing
 	defer func() {
-		time.Sleep(100 * time.Millisecond)
+		wg.Wait()
 		childIsRunning.UnSet()
 	}()
 
@@ -247,14 +268,25 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 	for {
 		select {
 		case <-shuttingDown:
-			err := exc.Process.Signal(os.Interrupt)
+			// signal process shutdown
+			if inputSignalsEnabled {
+				// for windows
+				_, err = stdin.Write([]byte("SIGINT\n"))
+			} else {
+				err = exc.Process.Signal(os.Interrupt)
+			}
 			if err != nil {
 				fmt.Printf("%s failed to signal %s to shutdown: %s\n", logPrefix, opts.Identifier, err)
-				fmt.Printf("%s forcing shutdown...\n", logPrefix)
-				// wait until shut down
-				<-finished
-				return false, nil
+				err = exc.Process.Kill()
+				if err != nil {
+					fmt.Printf("%s failed to kill %s: %s\n", logPrefix, opts.Identifier, err)
+				} else {
+					fmt.Printf("%s killed %s\n", logPrefix, opts.Identifier)
+				}
 			}
+			// wait until shut down
+			<-finished
+			return false, nil
 		case err := <-finished:
 			if err != nil {
 				exErr, ok := err.(*exec.ExitError)
