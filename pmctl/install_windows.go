@@ -7,8 +7,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -43,7 +45,11 @@ var installService = &cobra.Command{
 var uninstallService = &cobra.Command{
 	Use:   "core-service",
 	Short: "Uninstall Portmaster Core Windows Service",
-	RunE:  uninstallWindowsService,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// non-nil dummy to override db flag requirement
+		return nil
+	},
+	RunE: uninstallWindowsService,
 }
 
 func getExePath() (string, error) {
@@ -75,12 +81,15 @@ func getExePath() (string, error) {
 	return "", err
 }
 
-func getServiceExecCommand(exePath string) string {
-	return fmt.Sprintf(
-		"%s run core-service --db %s --input-signals",
+func getServiceExecCommand(exePath string) []string {
+	return []string{
 		windows.EscapeArg(exePath),
+		"run",
+		"core-service",
+		"--db",
 		windows.EscapeArg(*databaseRootDir),
-	)
+		"--input-signals",
+	}
 }
 
 func getServiceConfig(exePath string) mgr.Config {
@@ -88,7 +97,7 @@ func getServiceConfig(exePath string) mgr.Config {
 		ServiceType:    windows.SERVICE_WIN32_OWN_PROCESS,
 		StartType:      mgr.StartAutomatic,
 		ErrorControl:   mgr.ErrorNormal,
-		BinaryPathName: getServiceExecCommand(exePath),
+		BinaryPathName: strings.Join(getServiceExecCommand(exePath), " "),
 		DisplayName:    "Portmaster Core",
 		Description:    "Portmaster Application Firewall - Core Service",
 	}
@@ -130,7 +139,8 @@ func installWindowsService(cmd *cobra.Command, args []string) error {
 	s, err := m.OpenService(serviceName)
 	if err != nil {
 		// create service
-		s, err = m.CreateService(serviceName, getServiceExecCommand(exePath), getServiceConfig(exePath))
+		cmd := getServiceExecCommand(exePath)
+		s, err = m.CreateService(serviceName, cmd[0], getServiceConfig(exePath), cmd[1:]...)
 		if err != nil {
 			return fmt.Errorf("failed to create service: %s", err)
 		}
@@ -152,9 +162,9 @@ func installWindowsService(cmd *cobra.Command, args []string) error {
 	}
 
 	if created {
-		fmt.Printf("%s created service %s\n", logPrefix, serviceName)
+		log.Printf("created service %s\n", serviceName)
 	} else {
-		fmt.Printf("%s updated service %s\n", logPrefix, serviceName)
+		log.Printf("updated service %s\n", serviceName)
 	}
 
 	return nil
@@ -181,6 +191,6 @@ func uninstallWindowsService(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete service: %s", err)
 	}
 
-	fmt.Printf("%s uninstalled service %s\n", logPrefix, serviceName)
+	log.Printf("uninstalled service %s\n", serviceName)
 	return nil
 }

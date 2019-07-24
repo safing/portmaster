@@ -11,7 +11,7 @@ package main
 // MS AttachConsole: https://docs.microsoft.com/en-us/windows/console/attachconsole
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"syscall"
@@ -116,11 +116,11 @@ func attachToParentConsole() (attached bool, err error) {
 		var st uint32
 		err := windows.GetConsoleMode(h, &st)
 		if err != nil {
-			fmt.Printf("%s failed to get console mode: %s\n", logPrefix, err)
+			log.Printf("failed to get console mode: %s\n", err)
 		} else {
 			err = windows.SetConsoleMode(h, st&^windows.DISABLE_NEWLINE_AUTO_RETURN)
 			if err != nil {
-				fmt.Printf("%s failed to set console mode: %s\n", logPrefix, err)
+				log.Printf("failed to set console mode: %s\n", err)
 			}
 		}
 	}
@@ -128,18 +128,18 @@ func attachToParentConsole() (attached bool, err error) {
 	// fix std handles to correct values (ie. redirects)
 	if stdin != invalid {
 		os.Stdin = os.NewFile(uintptr(stdin), "stdin")
-		fmt.Printf("%s fixed os.Stdin after attaching to parent console\n", logPrefix)
+		log.Printf("fixed os.Stdin after attaching to parent console\n")
 	}
 	if stdout != invalid {
 		os.Stdout = os.NewFile(uintptr(stdout), "stdout")
-		fmt.Printf("%s fixed os.Stdout after attaching to parent console\n", logPrefix)
+		log.Printf("fixed os.Stdout after attaching to parent console\n")
 	}
 	if stderr != invalid {
 		os.Stderr = os.NewFile(uintptr(stderr), "stderr")
-		fmt.Printf("%s fixed os.Stderr after attaching to parent console\n", logPrefix)
+		log.Printf("fixed os.Stderr after attaching to parent console\n")
 	}
 
-	fmt.Printf("%s attached to parent console\n", logPrefix)
+	log.Println("attached to parent console")
 	return true, nil
 }
 

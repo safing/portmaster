@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -63,8 +64,6 @@ var showNotifier = &cobra.Command{
 }
 
 func show(cmd *cobra.Command, opts *Options) error {
-	defer close(programEnded)
-
 	// get original arguments
 	var args []string
 	if len(os.Args) < 4 {
@@ -82,8 +81,8 @@ func show(cmd *cobra.Command, opts *Options) error {
 		return fmt.Errorf("could not get component: %s", err)
 	}
 
-	fmt.Printf("%s command:\n", logPrefix)
-	fmt.Printf("%s %s\n", file.Path(), strings.Join(args, " "))
+	log.Println("command:")
+	log.Printf("%s %s\n", file.Path(), strings.Join(args, " "))
 
 	return nil
 }
