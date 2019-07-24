@@ -15,6 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/windows"
+	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
@@ -184,6 +185,11 @@ func uninstallWindowsService(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("service %s is not installed", serviceName)
 	}
 	defer s.Close()
+
+	_, err = s.Control(svc.Stop)
+	if err != nil {
+		log.Printf("failed to stop service: %s\n", err)
+	}
 
 	// delete service
 	err = s.Delete()
