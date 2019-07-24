@@ -88,9 +88,9 @@ func main() {
 		}
 
 		go func() {
-			time.Sleep(5 * time.Second)
-			fmt.Println("===== TAKING TOO LONG FOR SHUTDOWN - PRINTING STACK TRACES =====")
-			pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+			time.Sleep(10 * time.Second)
+			fmt.Fprintln(os.Stderr, "===== TAKING TOO LONG FOR SHUTDOWN - PRINTING STACK TRACES =====")
+			pprof.Lookup("goroutine").WriteTo(os.Stderr, 1)
 			os.Exit(1)
 		}()
 
