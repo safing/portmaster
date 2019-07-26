@@ -75,7 +75,7 @@ func finalizeLogFile(logFile *os.File, logFilePath string) {
 
 func initControlLogFile() *os.File {
 	// create logging dir
-	logFileBasePath := filepath.Join(*databaseRootDir, "logs", "fstree", "control")
+	logFileBasePath := filepath.Join(databaseRootDir, "logs", "fstree", "control")
 	err := os.MkdirAll(logFileBasePath, 0777)
 	if err != nil {
 		log.Printf("failed to create log file folder %s: %s\n", logFileBasePath, err)
@@ -94,7 +94,7 @@ func logControlError(cErr error) {
 	}
 
 	// create dir
-	logFileBasePath := filepath.Join(*databaseRootDir, "logs", "fstree", "control")
+	logFileBasePath := filepath.Join(databaseRootDir, "logs", "fstree", "control")
 	err := os.MkdirAll(logFileBasePath, 0777)
 	if err != nil {
 		log.Printf("failed to create log file folder %s: %s\n", logFileBasePath, err)
@@ -114,7 +114,7 @@ func logControlError(cErr error) {
 
 func logControlStack() {
 	// create dir
-	logFileBasePath := filepath.Join(*databaseRootDir, "logs", "fstree", "control")
+	logFileBasePath := filepath.Join(databaseRootDir, "logs", "fstree", "control")
 	err := os.MkdirAll(logFileBasePath, 0777)
 	if err != nil {
 		log.Printf("failed to create log file folder %s: %s\n", logFileBasePath, err)

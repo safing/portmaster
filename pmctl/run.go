@@ -207,7 +207,7 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 
 	// log files
 	var logFile, errorFile *os.File
-	logFileBasePath := filepath.Join(*databaseRootDir, "logs", "fstree", opts.ShortIdentifier)
+	logFileBasePath := filepath.Join(databaseRootDir, "logs", "fstree", opts.ShortIdentifier)
 	err = os.MkdirAll(logFileBasePath, 0777)
 	if err != nil {
 		log.Printf("failed to create log file folder %s: %s\n", logFileBasePath, err)

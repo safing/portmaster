@@ -88,7 +88,7 @@ func getServiceExecCommand(exePath string) []string {
 		"run",
 		"core-service",
 		"--db",
-		windows.EscapeArg(*databaseRootDir),
+		windows.EscapeArg(databaseRootDir),
 		"--input-signals",
 	}
 }

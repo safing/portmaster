@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -16,13 +17,23 @@ import (
 )
 
 var (
-	databaseRootDir *string
+	databaseRootDir  string
+	showShortVersion bool
+	showFullVersion  bool
 
 	rootCmd = &cobra.Command{
 		Use:               "portmaster-control",
 		Short:             "contoller for all portmaster components",
 		PersistentPreRunE: cmdSetup,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if showShortVersion {
+				fmt.Println(info.Version())
+				return nil
+			}
+			if showFullVersion {
+				fmt.Println(info.FullVersion())
+				return nil
+			}
 			return cmd.Help()
 		},
 	}
@@ -32,53 +43,14 @@ func init() {
 	// Let cobra ignore if we are running as "GUI" or not
 	cobra.MousetrapHelpText = ""
 
-	databaseRootDir = rootCmd.PersistentFlags().String("db", "", "set database directory")
-	err := rootCmd.MarkPersistentFlagRequired("db")
-	if err != nil {
-		panic(err)
-	}
+	rootCmd.PersistentFlags().StringVar(&databaseRootDir, "db", "", "set database directory")
+	rootCmd.Flags().BoolVar(&showFullVersion, "version", false, "print version")
+	rootCmd.Flags().BoolVar(&showShortVersion, "ver", false, "print version number only")
 }
 
 func main() {
-	var err error
-
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
 	// set meta info
 	info.Set("Portmaster Control", "0.2.5", "AGPLv3", true)
-
-	// check if we are running in a console (try to attach to parent console if available)
-	runningInConsole, err = attachToParentConsole()
-	if err != nil {
-		log.Printf("failed to attach to parent console: %s\n", err)
-		os.Exit(1)
-	}
-
-	// set up logging
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
-	log.SetPrefix("[control] ")
-	log.SetOutput(os.Stdout)
-
-	// check if meta info is ok
-	err = info.CheckVersion()
-	if err != nil {
-		log.Println("compile error: please compile using the provided build script")
-		os.Exit(1)
-	}
-
-	// react to version flag
-	if info.PrintVersion() {
-		os.Exit(0)
-	}
-
-	// warn about CTRL-C on windows
-	if runningInConsole && runtime.GOOS == "windows" {
-		log.Println("WARNING: portmaster-control is marked as a GUI application in order to get rid of the console window.")
-		log.Println("WARNING: CTRL-C will immediately kill without clean shutdown.")
-	}
-
-	// not using portbase logger
-	portlog.SetLogLevel(portlog.CriticalLevel)
 
 	// for debugging
 	// log.Start()
@@ -103,7 +75,7 @@ func main() {
 
 	// start root command
 	go func() {
-		if err = rootCmd.Execute(); err != nil {
+		if err := rootCmd.Execute(); err != nil {
 			os.Exit(1)
 		}
 		os.Exit(0)
@@ -128,15 +100,44 @@ func main() {
 }
 
 func cmdSetup(cmd *cobra.Command, args []string) (err error) {
-	// check for database root path
-	// transform from db base path to updates path
-	if *databaseRootDir != "" {
-		// remove redundant escape characters and quotes
-		*databaseRootDir = strings.Trim(*databaseRootDir, `\"`)
-		// set updates path
-		updates.SetDatabaseRoot(*databaseRootDir)
-	} else {
-		return errors.New("please supply the database directory using the --db flag")
+	// check if we are running in a console (try to attach to parent console if available)
+	runningInConsole, err = attachToParentConsole()
+	if err != nil {
+		log.Printf("failed to attach to parent console: %s\n", err)
+		os.Exit(1)
+	}
+
+	// check if meta info is ok
+	err = info.CheckVersion()
+	if err != nil {
+		fmt.Println("compile error: please compile using the provided build script")
+		os.Exit(1)
+	}
+
+	// set up logging
+	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
+	log.SetPrefix("[control] ")
+	log.SetOutput(os.Stdout)
+
+	// not using portbase logger
+	portlog.SetLogLevel(portlog.CriticalLevel)
+
+	if !showShortVersion && !showFullVersion {
+		// set database root
+		if databaseRootDir != "" {
+			// remove redundant escape characters and quotes
+			databaseRootDir = strings.Trim(databaseRootDir, `\"`)
+			// set updates path
+			updates.SetDatabaseRoot(databaseRootDir)
+		} else {
+			return errors.New("please supply the database directory using the --db flag")
+		}
+
+		// warn about CTRL-C on windows
+		if runningInConsole && runtime.GOOS == "windows" {
+			log.Println("WARNING: portmaster-control is marked as a GUI application in order to get rid of the console window.")
+			log.Println("WARNING: CTRL-C will immediately kill without clean shutdown.")
+		}
 	}
 
 	return nil

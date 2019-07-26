@@ -13,7 +13,7 @@ import (
 )
 
 func checkAndCreateInstanceLock(name string) (pid int32, err error) {
-	lockFilePath := filepath.Join(*databaseRootDir, fmt.Sprintf("%s-lock.pid", name))
+	lockFilePath := filepath.Join(databaseRootDir, fmt.Sprintf("%s-lock.pid", name))
 
 	// read current pid file
 	data, err := ioutil.ReadFile(lockFilePath)
@@ -31,8 +31,6 @@ func checkAndCreateInstanceLock(name string) (pid int32, err error) {
 		log.Printf("failed to parse existing lock pid file (ignoring): %s\n", err)
 		return 0, createInstanceLock(lockFilePath)
 	}
-
-	log.Printf("===== checking if PID %d exists\n", int32(parsedPid))
 
 	// check if process exists
 	p, err := processInfo.NewProcess(int32(parsedPid))
@@ -52,7 +50,7 @@ func checkAndCreateInstanceLock(name string) (pid int32, err error) {
 
 func createInstanceLock(lockFilePath string) error {
 	// create database dir
-	err := os.MkdirAll(*databaseRootDir, 0777)
+	err := os.MkdirAll(databaseRootDir, 0777)
 	if err != nil {
 		log.Printf("failed to create base folder: %s\n", err)
 	}
@@ -67,6 +65,6 @@ func createInstanceLock(lockFilePath string) error {
 }
 
 func deleteInstanceLock(name string) error {
-	lockFilePath := filepath.Join(*databaseRootDir, fmt.Sprintf("%s-lock.pid", name))
+	lockFilePath := filepath.Join(databaseRootDir, fmt.Sprintf("%s-lock.pid", name))
 	return os.Remove(lockFilePath)
 }
