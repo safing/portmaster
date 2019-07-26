@@ -107,6 +107,7 @@ func DownloadUpdates() (err error) {
 		markPlatformFileForDownload("control/portmaster-control.exe")
 		markPlatformFileForDownload("app/portmaster-app.exe")
 		markPlatformFileForDownload("notifier/portmaster-notifier.exe")
+		markPlatformFileForDownload("notifier/portmaster-snoretoast.exe")
 	} else {
 		markPlatformFileForDownload("core/portmaster-core")
 		markPlatformFileForDownload("control/portmaster-control")
