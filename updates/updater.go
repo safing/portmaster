@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -24,6 +25,14 @@ func updater() {
 		err = DownloadUpdates()
 		if err != nil {
 			log.Warningf("updates: downloading updates failed: %s", err)
+		}
+		err = runFileUpgrades()
+		if err != nil {
+			log.Warningf("updates: failed to upgrade portmaster-control: %s", err)
+		}
+		err = cleanOldUpgradedFiles()
+		if err != nil {
+			log.Warningf("updates: failed to clean old upgraded files: %s", err)
 		}
 		time.Sleep(1 * time.Hour)
 	}
@@ -142,6 +151,12 @@ func DownloadUpdates() (err error) {
 		}
 	}
 	log.Tracef("updates: finished updating existing files")
+
+	// remove tmp folder after we are finished
+	err = os.RemoveAll(updateStoragePath)
+	if err != nil {
+		log.Tracef("updates: failed to remove tmp dir %s after downloading updates: %s", updateStoragePath, err)
+	}
 
 	return nil
 }
