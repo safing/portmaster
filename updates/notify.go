@@ -7,7 +7,7 @@ import (
 	"github.com/safing/portbase/notifications"
 )
 
-const coreIdentifier = "core/portmaster"
+const coreIdentifier = "core/portmaster-core"
 
 var lastNotified time.Time
 
