@@ -153,7 +153,7 @@ func DownloadUpdates() (err error) {
 	log.Tracef("updates: finished updating existing files")
 
 	// remove tmp folder after we are finished
-	err = os.RemoveAll(updateStoragePath)
+	err = os.RemoveAll(downloadTmpPath)
 	if err != nil {
 		log.Tracef("updates: failed to remove tmp dir %s after downloading updates: %s", updateStoragePath, err)
 	}

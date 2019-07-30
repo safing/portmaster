@@ -83,7 +83,7 @@ func loadOrFetchFile(identifier string, fetch bool) (*File, error) {
 	}
 
 	// check download dir
-	err := utils.EnsureDirectory(downloadTmpPath, 0755)
+	err := utils.EnsureDirectory(downloadTmpPath, 0700)
 	if err != nil {
 		return nil, fmt.Errorf("could not prepare tmp directory for download: %s", err)
 	}

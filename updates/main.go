@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/info"
@@ -15,6 +16,7 @@ import (
 var (
 	updateStoragePath string
 	downloadTmpPath   string
+	isWindows         = runtime.GOOS == "windows"
 )
 
 // SetDatabaseRoot tells the updates module where the database is - and where to put its stuff.
@@ -66,7 +68,7 @@ func start() error {
 
 			err = UpdateIndexes()
 			if err != nil {
-				return err
+				log.Errorf("updates: failed to download update index: %s", err)
 			}
 		} else {
 			return err
