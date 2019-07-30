@@ -50,6 +50,11 @@ func prep() (err error) {
 		return err
 	}
 
+	err = prepAPIAuth()
+	if err != nil {
+		return err
+	}
+
 	_, localNet4, err = net.ParseCIDR("127.0.0.0/24")
 	// Yes, this would normally be 127.0.0.0/8
 	// TODO: figure out any side effects
@@ -77,12 +82,9 @@ func prep() (err error) {
 }
 
 func start() error {
+	startAPIAuth()
 	go statLogger()
 	go run()
-	// go run()
-	// go run()
-	// go run()
-
 	go portsInUseCleaner()
 
 	return interception.Start()
@@ -106,6 +108,15 @@ func handlePacket(pkt packet.Packet) {
 		log.Debugf("accepting local dns: %s", pkt)
 		pkt.PermanentAccept()
 		return
+	}
+
+	// allow api access, if address was parsed successfully
+	if apiAddressSet {
+		if (pkt.Info().DstPort == apiPort && pkt.Info().Dst.Equal(apiIP)) || (pkt.Info().SrcPort == apiPort && pkt.Info().Src.Equal(apiIP)) {
+			log.Debugf("accepting api connection: %s", pkt)
+			pkt.PermanentAccept()
+			return
+		}
 	}
 
 	// // redirect dns (if we know that it's not our own request)
