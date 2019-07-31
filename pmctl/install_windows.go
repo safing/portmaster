@@ -82,15 +82,22 @@ func getExePath() (string, error) {
 	return "", err
 }
 
-func getServiceExecCommand(exePath string) []string {
+func getServiceExecCommand(exePath string, escape bool) []string {
 	return []string{
-		windows.EscapeArg(exePath),
+		maybeEscape(exePath, escape),
 		"run",
 		"core-service",
 		"--db",
-		windows.EscapeArg(databaseRootDir),
+		maybeEscape(dataRoot.Path, escape),
 		"--input-signals",
 	}
+}
+
+func maybeEscape(s string, escape bool) string {
+	if escape {
+		return windows.EscapeArg(s)
+	}
+	return s
 }
 
 func getServiceConfig(exePath string) mgr.Config {
@@ -98,7 +105,7 @@ func getServiceConfig(exePath string) mgr.Config {
 		ServiceType:    windows.SERVICE_WIN32_OWN_PROCESS,
 		StartType:      mgr.StartAutomatic,
 		ErrorControl:   mgr.ErrorNormal,
-		BinaryPathName: strings.Join(getServiceExecCommand(exePath), " "),
+		BinaryPathName: strings.Join(getServiceExecCommand(exePath, true), " "),
 		DisplayName:    "Portmaster Core",
 		Description:    "Portmaster Application Firewall - Core Service",
 	}
@@ -140,7 +147,7 @@ func installWindowsService(cmd *cobra.Command, args []string) error {
 	s, err := m.OpenService(serviceName)
 	if err != nil {
 		// create service
-		cmd := getServiceExecCommand(exePath)
+		cmd := getServiceExecCommand(exePath, false)
 		s, err = m.CreateService(serviceName, cmd[0], getServiceConfig(exePath), cmd[1:]...)
 		if err != nil {
 			return fmt.Errorf("failed to create service: %s", err)
