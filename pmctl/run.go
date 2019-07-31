@@ -207,10 +207,10 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 
 	// log files
 	var logFile, errorFile *os.File
-	logFileBasePath := filepath.Join(databaseRootDir, "logs", "fstree", opts.ShortIdentifier)
-	err = os.MkdirAll(logFileBasePath, 0777)
+	logFileBasePath := filepath.Join(logsRoot.Path, "fstree", opts.ShortIdentifier)
+	err = logsRoot.EnsureAbsPath(logFileBasePath)
 	if err != nil {
-		log.Printf("failed to create log file folder %s: %s\n", logFileBasePath, err)
+		log.Printf("failed to check/create log file dir %s: %s\n", logFileBasePath, err)
 	} else {
 		// open log file
 		logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.log", time.Now().UTC().Format("2006-02-01-15-04-05")))

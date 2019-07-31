@@ -13,7 +13,7 @@ import (
 )
 
 func checkAndCreateInstanceLock(name string) (pid int32, err error) {
-	lockFilePath := filepath.Join(databaseRootDir, fmt.Sprintf("%s-lock.pid", name))
+	lockFilePath := filepath.Join(dataRoot.Path, fmt.Sprintf("%s-lock.pid", name))
 
 	// read current pid file
 	data, err := ioutil.ReadFile(lockFilePath)
@@ -49,10 +49,10 @@ func checkAndCreateInstanceLock(name string) (pid int32, err error) {
 }
 
 func createInstanceLock(lockFilePath string) error {
-	// create database dir
-	err := os.MkdirAll(databaseRootDir, 0777)
+	// check data root dir
+	err := dataRoot.Ensure()
 	if err != nil {
-		log.Printf("failed to create base folder: %s\n", err)
+		log.Printf("failed to check data root dir: %s\n", err)
 	}
 
 	// create lock file
@@ -65,6 +65,6 @@ func createInstanceLock(lockFilePath string) error {
 }
 
 func deleteInstanceLock(name string) error {
-	lockFilePath := filepath.Join(databaseRootDir, fmt.Sprintf("%s-lock.pid", name))
+	lockFilePath := filepath.Join(dataRoot.Path, fmt.Sprintf("%s-lock.pid", name))
 	return os.Remove(lockFilePath)
 }

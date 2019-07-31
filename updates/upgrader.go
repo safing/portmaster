@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/renameio"
-	"github.com/safing/portbase/utils"
 
 	"github.com/safing/portbase/log"
 
@@ -35,7 +34,7 @@ func runFileUpgrades() error {
 	}
 
 	// update portmaster-control in data root
-	rootControlPath := filepath.Join(filepath.Dir(updateStoragePath), filename)
+	rootControlPath := filepath.Join(filepath.Dir(updateStorage.Path), filename)
 	err = upgradeFile(rootControlPath, newFile)
 	if err != nil {
 		return err
@@ -76,6 +75,12 @@ func upgradeFile(fileToUpgrade string, file *File) error {
 		fileExists = true
 	}
 
+	// ensure that the tmp dir exists
+	err = tmpStorage.Ensure()
+	if err != nil {
+		return fmt.Errorf("unable to create directory for upgrade process: %s", err)
+	}
+
 	if fileExists {
 		// get current version
 		var currentVersion string
@@ -103,14 +108,8 @@ func upgradeFile(fileToUpgrade string, file *File) error {
 		err = os.Remove(fileToUpgrade)
 		if err != nil {
 			// maybe we're on windows and it's in use, try moving
-			// create dir
-			err = utils.EnsureDirectory(downloadTmpPath, 0700)
-			if err != nil {
-				return fmt.Errorf("unable to create directory for upgrade process: %s", err)
-			}
-			// move
 			err = os.Rename(fileToUpgrade, filepath.Join(
-				downloadTmpPath,
+				tmpStorage.Path,
 				fmt.Sprintf(
 					"%s-%d%s",
 					GetVersionedPath(filepath.Base(fileToUpgrade), currentVersion),
@@ -154,7 +153,7 @@ func upgradeFile(fileToUpgrade string, file *File) error {
 
 func copyFile(srcPath, dstPath string) (err error) {
 	// open file for writing
-	atomicDstFile, err := renameio.TempFile(downloadTmpPath, dstPath)
+	atomicDstFile, err := renameio.TempFile(tmpStorage.Path, dstPath)
 	if err != nil {
 		return fmt.Errorf("could not create temp file for atomic copy: %s", err)
 	}
@@ -183,5 +182,5 @@ func copyFile(srcPath, dstPath string) (err error) {
 }
 
 func cleanOldUpgradedFiles() error {
-	return os.RemoveAll(downloadTmpPath)
+	return os.RemoveAll(tmpStorage.Path)
 }

@@ -26,7 +26,7 @@ func checkForConflictingService(err error) {
 	(&notifications.Notification{
 		ID:      "nameserver-stopped-conflicting-service",
 		Message: fmt.Sprintf("Portmaster stopped a conflicting name service (pid %d) to gain required system integration.", pid),
-	}).Init().Save()
+	}).Save()
 
 	// wait for a short duration for the other service to shut down
 	time.Sleep(100 * time.Millisecond)

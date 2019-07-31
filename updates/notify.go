@@ -33,7 +33,7 @@ func updateNotifier() {
 					Message: fmt.Sprintf("There is an update available for the Portmaster core (v%s), please restart the Portmaster to apply the update.", file.Version()),
 					Type:    notifications.Info,
 					Expires: time.Now().Add(1 * time.Minute).Unix(),
-				}).Init().Save()
+				}).Save()
 
 			}
 		}

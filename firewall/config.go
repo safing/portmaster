@@ -9,6 +9,7 @@ var (
 	permanentVerdicts  config.BoolOption
 	filterDNSByScope   status.SecurityLevelOption
 	filterDNSByProfile status.SecurityLevelOption
+	devMode            config.BoolOption
 )
 
 func registerConfig() error {
@@ -54,6 +55,8 @@ func registerConfig() error {
 		return err
 	}
 	filterDNSByProfile = status.ConfigIsActiveConcurrent("firewall/filterDNSByProfile")
+
+	devMode = config.Concurrent.GetAsBool("firewall/permanentVerdicts", true)
 
 	return nil
 }

@@ -18,7 +18,7 @@ import (
 )
 
 func initializeLogFile(logFilePath string, identifier string, updateFile *updates.File) *os.File {
-	logFile, err := os.OpenFile(logFilePath, os.O_RDWR|os.O_CREATE, 0644)
+	logFile, err := os.OpenFile(logFilePath, os.O_RDWR|os.O_CREATE, 0444)
 	if err != nil {
 		log.Printf("failed to create log file %s: %s\n", logFilePath, err)
 		return nil
@@ -74,12 +74,11 @@ func finalizeLogFile(logFile *os.File, logFilePath string) {
 }
 
 func initControlLogFile() *os.File {
-	// create logging dir
-	logFileBasePath := filepath.Join(databaseRootDir, "logs", "fstree", "control")
-	err := os.MkdirAll(logFileBasePath, 0777)
+	// check logging dir
+	logFileBasePath := filepath.Join(logsRoot.Path, "fstree", "control")
+	err := logsRoot.EnsureAbsPath(logFileBasePath)
 	if err != nil {
-		log.Printf("failed to create log file folder %s: %s\n", logFileBasePath, err)
-		return nil
+		log.Printf("failed to check/create log file folder %s: %s\n", logFileBasePath, err)
 	}
 
 	// open log file
@@ -93,11 +92,11 @@ func logControlError(cErr error) {
 		return
 	}
 
-	// create dir
-	logFileBasePath := filepath.Join(databaseRootDir, "logs", "fstree", "control")
-	err := os.MkdirAll(logFileBasePath, 0777)
+	// check logging dir
+	logFileBasePath := filepath.Join(logsRoot.Path, "fstree", "control")
+	err := logsRoot.EnsureAbsPath(logFileBasePath)
 	if err != nil {
-		log.Printf("failed to create log file folder %s: %s\n", logFileBasePath, err)
+		log.Printf("failed to check/create log file folder %s: %s\n", logFileBasePath, err)
 	}
 
 	// open log file
@@ -113,11 +112,11 @@ func logControlError(cErr error) {
 }
 
 func logControlStack() {
-	// create dir
-	logFileBasePath := filepath.Join(databaseRootDir, "logs", "fstree", "control")
-	err := os.MkdirAll(logFileBasePath, 0777)
+	// check logging dir
+	logFileBasePath := filepath.Join(logsRoot.Path, "fstree", "control")
+	err := logsRoot.EnsureAbsPath(logFileBasePath)
 	if err != nil {
-		log.Printf("failed to create log file folder %s: %s\n", logFileBasePath, err)
+		log.Printf("failed to check/create log file folder %s: %s\n", logFileBasePath, err)
 	}
 
 	// open log file

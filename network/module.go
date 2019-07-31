@@ -5,7 +5,7 @@ import (
 )
 
 func init() {
-	modules.Register("network", nil, start, nil, "database")
+	modules.Register("network", nil, start, nil, "core")
 }
 
 func start() error {

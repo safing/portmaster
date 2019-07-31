@@ -15,7 +15,6 @@ import (
 	"github.com/google/renameio"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils"
 )
 
 var (
@@ -38,13 +37,13 @@ func fetchFile(realFilepath, updateFilepath string, tries int) error {
 
 	// check destination dir
 	dirPath := filepath.Dir(realFilepath)
-	err = utils.EnsureDirectory(dirPath, 0755)
+	err = updateStorage.EnsureAbsPath(dirPath)
 	if err != nil {
 		return fmt.Errorf("could not create updates folder: %s", dirPath)
 	}
 
 	// open file for writing
-	atomicFile, err := renameio.TempFile(downloadTmpPath, realFilepath)
+	atomicFile, err := renameio.TempFile(tmpStorage.Path, realFilepath)
 	if err != nil {
 		return fmt.Errorf("could not create temp file for download: %s", err)
 	}

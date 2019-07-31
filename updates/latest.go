@@ -26,14 +26,14 @@ func LoadLatest() error {
 
 	// all
 	prefix := "all"
-	new, err1 := ScanForLatest(filepath.Join(updateStoragePath, prefix), false)
+	new, err1 := ScanForLatest(filepath.Join(updateStorage.Path, prefix), false)
 	for key, val := range new {
 		newLocalUpdates[filepath.ToSlash(filepath.Join(prefix, key))] = val
 	}
 
 	// os_platform
 	prefix = fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH)
-	new, err2 := ScanForLatest(filepath.Join(updateStoragePath, prefix), false)
+	new, err2 := ScanForLatest(filepath.Join(updateStorage.Path, prefix), false)
 	for key, val := range new {
 		newLocalUpdates[filepath.ToSlash(filepath.Join(prefix, key))] = val
 	}
@@ -120,7 +120,7 @@ func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, las
 
 // LoadIndexes loads the current update indexes from disk.
 func LoadIndexes() error {
-	data, err := ioutil.ReadFile(filepath.Join(updateStoragePath, "stable.json"))
+	data, err := ioutil.ReadFile(filepath.Join(updateStorage.Path, "stable.json"))
 	if err != nil {
 		return err
 	}

@@ -9,7 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/core/structure"
+
 	"github.com/safing/portbase/log"
 
 	"github.com/safing/portmaster/network/packet"
@@ -19,7 +21,7 @@ import (
 )
 
 var (
-	dbRoot string
+	dataRoot *utils.DirStructure
 
 	apiAddressSet bool
 	apiIP         net.IP
@@ -27,7 +29,7 @@ var (
 )
 
 func prepAPIAuth() error {
-	dbRoot = database.GetDatabaseRoot()
+	dataRoot = structure.Root()
 	return api.SetAuthenticator(apiAuthenticator)
 }
 
@@ -41,6 +43,10 @@ func startAPIAuth() {
 }
 
 func apiAuthenticator(s *http.Server, r *http.Request) (grantAccess bool, err error) {
+	if devMode() {
+		return true, nil
+	}
+
 	// get local IP/Port
 	localIP, localPort, err := parseHostPort(s.Addr)
 	if err != nil {
@@ -64,7 +70,7 @@ func apiAuthenticator(s *http.Server, r *http.Request) (grantAccess bool, err er
 	// go up up to two levels, if we don't match
 	for i := 0; i < 3; i++ {
 		// check if the requesting process is in database root / updates dir
-		if strings.HasPrefix(proc.Path, dbRoot) {
+		if strings.HasPrefix(proc.Path, dataRoot.Path) {
 			return true, nil
 		}
 		// add checked process to list
@@ -79,8 +85,8 @@ func apiAuthenticator(s *http.Server, r *http.Request) (grantAccess bool, err er
 		}
 	}
 
-	log.Debugf("firewall: denying api access to %s - also checked %s (trusted root is %s)", procsChecked[0], strings.Join(procsChecked[1:], " "), dbRoot)
-	return true, nil
+	log.Debugf("firewall: denying api access to %s - also checked %s (trusted root is %s)", procsChecked[0], strings.Join(procsChecked[1:], " "), dataRoot.Path)
+	return false, nil
 }
 
 func parseHostPort(address string) (net.IP, uint16, error) {

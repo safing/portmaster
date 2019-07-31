@@ -10,14 +10,22 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/safing/portmaster/core/structure"
+	"github.com/safing/portmaster/updates"
+
+	"github.com/safing/portbase/utils"
+
 	"github.com/safing/portbase/info"
 	portlog "github.com/safing/portbase/log"
-	"github.com/safing/portmaster/updates"
 	"github.com/spf13/cobra"
 )
 
 var (
-	databaseRootDir  string
+	dataDir     string
+	databaseDir string
+	dataRoot    *utils.DirStructure
+	logsRoot    *utils.DirStructure
+
 	showShortVersion bool
 	showFullVersion  bool
 
@@ -43,7 +51,8 @@ func init() {
 	// Let cobra ignore if we are running as "GUI" or not
 	cobra.MousetrapHelpText = ""
 
-	rootCmd.PersistentFlags().StringVar(&databaseRootDir, "db", "", "set database directory")
+	rootCmd.PersistentFlags().StringVar(&dataDir, "data", "", "set data directory")
+	rootCmd.PersistentFlags().StringVar(&databaseDir, "db", "", "alias to --data (deprecated)")
 	rootCmd.Flags().BoolVar(&showFullVersion, "version", false, "print version")
 	rootCmd.Flags().BoolVar(&showShortVersion, "ver", false, "print version number only")
 }
@@ -123,14 +132,30 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 	portlog.SetLogLevel(portlog.CriticalLevel)
 
 	if !showShortVersion && !showFullVersion {
-		// set database root
-		if databaseRootDir != "" {
-			// remove redundant escape characters and quotes
-			databaseRootDir = strings.Trim(databaseRootDir, `\"`)
-			// set updates path
-			updates.SetDatabaseRoot(databaseRootDir)
-		} else {
-			return errors.New("please supply the database directory using the --db flag")
+		// set data root
+		// backwards compatibility
+		if dataDir == "" {
+			dataDir = databaseDir
+		}
+		// check data dir
+		if dataDir == "" {
+			return errors.New("please set the data directory using --data=/path/to/data/dir")
+		}
+		// remove redundant escape characters and quotes
+		dataDir = strings.Trim(dataDir, `\"`)
+		// initialize structure
+		err = structure.Initialize(dataDir, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to initialize data root: %s", err)
+		}
+		dataRoot = structure.Root()
+		// manually set updates root (no modules)
+		updates.SetDataRoot(structure.Root())
+		// set up logs root
+		logsRoot = structure.NewRootDir("logs", 0777)
+		err = logsRoot.Ensure()
+		if err != nil {
+			return fmt.Errorf("failed to initialize logs root: %s", err)
 		}
 
 		// warn about CTRL-C on windows
