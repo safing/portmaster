@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/intel"
@@ -16,7 +17,6 @@ import (
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
 	"github.com/safing/portmaster/status"
-	"github.com/miekg/dns"
 
 	"github.com/agext/levenshtein"
 )
@@ -178,7 +178,7 @@ func DecideOnCommunicationAfterIntel(comm *network.Communication, fqdn string, r
 			},
 		},
 		Expires: time.Now().Add(nTTL).Unix(),
-	}).Init().Save()
+	}).Save()
 
 	// react
 	select {
@@ -644,7 +644,7 @@ func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Pa
 		ID:   "deny",
 		Text: "deny",
 	})
-	n.Init().Save()
+	n.Save()
 
 	// react
 	select {
