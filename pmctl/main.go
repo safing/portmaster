@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"runtime"
 	"strings"
 	"syscall"
 
@@ -59,7 +58,7 @@ func init() {
 
 func main() {
 	// set meta info
-	info.Set("Portmaster Control", "0.2.9", "AGPLv3", true)
+	info.Set("Portmaster Control", "0.2.10", "AGPLv3", true)
 
 	// for debugging
 	// log.Start()
@@ -131,6 +130,7 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 	// not using portbase logger
 	portlog.SetLogLevel(portlog.CriticalLevel)
 
+	// data directory
 	if !showShortVersion && !showFullVersion {
 		// set data root
 		// backwards compatibility
@@ -141,6 +141,7 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 		if dataDir == "" {
 			return errors.New("please set the data directory using --data=/path/to/data/dir")
 		}
+
 		// remove redundant escape characters and quotes
 		dataDir = strings.Trim(dataDir, `\"`)
 		// initialize structure
@@ -151,6 +152,10 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 		dataRoot = structure.Root()
 		// manually set updates root (no modules)
 		updates.SetDataRoot(structure.Root())
+	}
+
+	// logs and warning
+	if !showShortVersion && !showFullVersion && !strings.Contains(cmd.CommandPath(), " show ") {
 		// set up logs root
 		logsRoot = structure.NewRootDir("logs", 0777)
 		err = logsRoot.Ensure()
@@ -159,7 +164,7 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 		}
 
 		// warn about CTRL-C on windows
-		if runningInConsole && runtime.GOOS == "windows" {
+		if runningInConsole && onWindows {
 			log.Println("WARNING: portmaster-control is marked as a GUI application in order to get rid of the console window.")
 			log.Println("WARNING: CTRL-C will immediately kill without clean shutdown.")
 		}
