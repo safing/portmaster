@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 
+	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/notifications"
 
@@ -37,11 +38,22 @@ func prep() error {
 		return errors.New("please set the data directory using --data=/path/to/data/dir")
 	}
 
+	// set api listen address
+	api.SetDefaultAPIListenAddress("127.0.0.1:817")
+
+	// init config
+	err := registerConfig()
+	if err != nil {
+		return err
+	}
+
 	// initialize structure
 	return structure.Initialize(dataDir, 0755)
 }
 
 func start() error {
+	logFlagOverrides()
+
 	// init DB
 	err := startDB()
 	if err != nil {
