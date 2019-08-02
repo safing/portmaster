@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -81,8 +80,7 @@ func show(cmd *cobra.Command, opts *Options) error {
 		return fmt.Errorf("could not get component: %s", err)
 	}
 
-	log.Println("command:")
-	log.Printf("%s %s\n", file.Path(), strings.Join(args, " "))
+	fmt.Printf("%s %s\n", file.Path(), strings.Join(args, " "))
 
 	return nil
 }
