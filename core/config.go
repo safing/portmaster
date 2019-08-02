@@ -26,7 +26,7 @@ func registerConfig() error {
 	err := config.Register(&config.Option{
 		Name:           "Development Mode",
 		Key:            "core/devMode",
-		Description:    "In Development Mode security restrictions are lifted/softened to enable easier access to Portmaster for debugging and testing purposes. This is potentially very insecure, only activate if you know what you are doing.",
+		Description:    "In Development Mode security restrictions are lifted/softened to enable easier access to Portmaster for debugging and testing purposes.",
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		OptType:        config.OptTypeBool,
 		DefaultValue:   defaultDevMode,
