@@ -53,7 +53,8 @@ var showNotifier = &cobra.Command{
 	Short: "Show command to run the Portmaster Notifier",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return show(cmd, &Options{
-			Identifier: "notifier/portmaster-notifier",
+			Identifier:   "notifier/portmaster-notifier",
+			SuppressArgs: true,
 		})
 	},
 	FParseErrWhitelist: cobra.FParseErrWhitelist{
@@ -69,6 +70,9 @@ func show(cmd *cobra.Command, opts *Options) error {
 		return cmd.Help()
 	}
 	args = os.Args[3:]
+	if opts.SuppressArgs {
+		args = nil
+	}
 
 	// adapt identifier
 	if onWindows {

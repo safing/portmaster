@@ -12,7 +12,8 @@ var showSnoreToast = &cobra.Command{
 	Short: "Show command to run the Notifier component SnoreToast",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return show(cmd, &Options{
-			Identifier: "notifier/portmaster-snoretoast",
+			Identifier:   "notifier/portmaster-snoretoast",
+			SuppressArgs: true,
 		})
 	},
 	FParseErrWhitelist: cobra.FParseErrWhitelist{
@@ -29,6 +30,7 @@ var runSnoreToast = &cobra.Command{
 			Identifier:        "notifier/portmaster-snoretoast",
 			AllowDownload:     false,
 			AllowHidingWindow: true,
+			SuppressArgs:      true,
 		})
 	},
 	FParseErrWhitelist: cobra.FParseErrWhitelist{

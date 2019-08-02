@@ -28,6 +28,7 @@ var (
 type Options struct {
 	Identifier        string // component identifier
 	ShortIdentifier   string // populated automatically
+	SuppressArgs      bool   // do not use any args
 	AllowDownload     bool   // allow download of component if it is not yet available
 	AllowHidingWindow bool   // allow hiding the window of the subprocess
 	NoOutput          bool   // do not use stdout/err if logging to file is available (did not fail to open log file)
@@ -134,6 +135,9 @@ func run(cmd *cobra.Command, opts *Options) (err error) {
 		return cmd.Help()
 	}
 	args = os.Args[3:]
+	if opts.SuppressArgs {
+		args = nil
+	}
 
 	// adapt identifier
 	if onWindows {
