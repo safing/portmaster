@@ -10,6 +10,7 @@ var (
 	filterDNSByScope   status.SecurityLevelOption
 	filterDNSByProfile status.SecurityLevelOption
 	devMode            config.BoolOption
+	apiListenAddress   config.StringOption
 )
 
 func registerConfig() error {
@@ -56,7 +57,8 @@ func registerConfig() error {
 	}
 	filterDNSByProfile = status.ConfigIsActiveConcurrent("firewall/filterDNSByProfile")
 
-	devMode = config.Concurrent.GetAsBool("firewall/permanentVerdicts", true)
+	devMode = config.Concurrent.GetAsBool("firewall/permanentVerdicts", false)
+	apiListenAddress = config.GetAsString("api/listenAddress", "")
 
 	return nil
 }

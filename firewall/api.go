@@ -35,7 +35,7 @@ func prepAPIAuth() error {
 
 func startAPIAuth() {
 	var err error
-	apiIP, apiPort, err = parseHostPort(api.GetAPIAddress())
+	apiIP, apiPort, err = parseHostPort(apiListenAddress())
 	if err != nil {
 		log.Warningf("firewall: failed to parse API address for improved api auth mechanism: %s", err)
 	}
