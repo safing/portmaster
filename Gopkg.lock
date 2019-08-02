@@ -84,6 +84,14 @@
   version = "v0.1.0"
 
 [[projects]]
+  digest = "1:88e0b0baeb9072f0a4afbcf12dda615fc8be001d1802357538591155998da21b"
+  name = "github.com/hashicorp/go-version"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ac23dc3fea5d1a983c43f6a0f6e2c13f0195d8bd"
+  version = "v1.2.0"
+
+[[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
@@ -239,6 +247,7 @@
     "github.com/google/gopacket/layers",
     "github.com/google/gopacket/tcpassembly",
     "github.com/google/renameio",
+    "github.com/hashicorp/go-version",
     "github.com/miekg/dns",
     "github.com/oschwald/maxminddb-golang",
     "github.com/satori/go.uuid",

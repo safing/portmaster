@@ -11,6 +11,8 @@ import (
 	"sync"
 
 	"github.com/safing/portbase/log"
+
+	semver "github.com/hashicorp/go-version"
 )
 
 var (
@@ -70,11 +72,11 @@ func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, las
 	filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			if !os.IsNotExist(err) {
-				lastError = err
+				lastError = fmt.Errorf("updates: could not read %s: %s", path, err)
 				if hardFail {
-					return err
+					return lastError
 				}
-				log.Warningf("updates: could not read %s", path)
+				log.Warning(lastError.Error())
 			}
 			return nil
 		}
@@ -95,9 +97,24 @@ func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, las
 		// add/update index
 		storedVersion, ok := latest[identifierPath]
 		if ok {
-			// FIXME: this will fail on multi-digit version segments!
-			// FIXME: use https://github.com/hashicorp/go-version
-			if version > storedVersion {
+			parsedVersion, err := semver.NewVersion(version)
+			if err != nil {
+				lastError = fmt.Errorf("updates: could not parse version of %s: %s", path, err)
+				if hardFail {
+					return lastError
+				}
+				log.Warning(lastError.Error())
+			}
+			parsedStoredVersion, err := semver.NewVersion(storedVersion)
+			if err != nil {
+				lastError = fmt.Errorf("updates: could not parse version of %s: %s", path, err)
+				if hardFail {
+					return lastError
+				}
+				log.Warning(lastError.Error())
+			}
+			// compare
+			if parsedVersion.GreaterThan(parsedStoredVersion) {
 				latest[identifierPath] = version
 			}
 		} else {

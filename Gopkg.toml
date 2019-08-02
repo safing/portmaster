@@ -97,3 +97,7 @@ ignored = ["github.com/safing/portbase/*"]
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  name = "github.com/hashicorp/go-version"
+  version = "1.2.0"
