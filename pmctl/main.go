@@ -30,7 +30,7 @@ var (
 
 	rootCmd = &cobra.Command{
 		Use:               "portmaster-control",
-		Short:             "contoller for all portmaster components",
+		Short:             "Controller for all portmaster components",
 		PersistentPreRunE: cmdSetup,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if showShortVersion {
@@ -43,6 +43,7 @@ var (
 			}
 			return cmd.Help()
 		},
+		SilenceUsage: true,
 	}
 )
 
@@ -52,6 +53,8 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data", "", "set data directory")
 	rootCmd.PersistentFlags().StringVar(&databaseDir, "db", "", "alias to --data (deprecated)")
+	rootCmd.MarkPersistentFlagDirname("data")
+	rootCmd.MarkPersistentFlagDirname("db")
 	rootCmd.Flags().BoolVar(&showFullVersion, "version", false, "print version")
 	rootCmd.Flags().BoolVar(&showShortVersion, "ver", false, "print version number only")
 }
