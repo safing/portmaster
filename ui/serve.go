@@ -140,7 +140,7 @@ func RedirectToBase(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, r.URL.ResolveReference(u).String(), http.StatusPermanentRedirect)
+	http.Redirect(w, r, r.URL.ResolveReference(u).String(), http.StatusTemporaryRedirect)
 }
 
 func redirAddSlash(w http.ResponseWriter, r *http.Request) {
