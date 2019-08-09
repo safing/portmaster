@@ -27,7 +27,7 @@ var (
 )
 
 func init() {
-	modules.Register("nameserver", prep, start, nil, "intel")
+	modules.Register("nameserver", prep, start, nil, "core", "intel")
 
 	if runtime.GOOS == "windows" {
 		listenAddress = "0.0.0.0:53"

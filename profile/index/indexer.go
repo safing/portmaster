@@ -23,7 +23,7 @@ var (
 )
 
 func init() {
-	modules.Register("profile:index", nil, start, stop, "profile", "database")
+	modules.Register("profile:index", nil, start, stop, "core", "profile")
 }
 
 func start() (err error) {

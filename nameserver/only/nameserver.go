@@ -21,7 +21,7 @@ var (
 )
 
 func init() {
-	modules.Register("nameserver", prep, start, nil, "intel")
+	modules.Register("nameserver", prep, start, nil, "core", "intel")
 }
 
 func prep() error {

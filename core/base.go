@@ -5,6 +5,7 @@ import (
 	"flag"
 
 	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/database/dbmodule"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/notifications"
 
@@ -15,19 +16,17 @@ var (
 	dataDir     string
 	databaseDir string
 
-	shuttingDown = make(chan struct{})
+	baseModule = modules.Register("base", prepBase, nil, nil)
 )
 
 func init() {
 	flag.StringVar(&dataDir, "data", "", "set data directory")
 	flag.StringVar(&databaseDir, "db", "", "alias to --data (deprecated)")
 
-	modules.Register("core", prep, start, stop)
-
 	notifications.SetPersistenceBasePath("core:notifications")
 }
 
-func prep() error {
+func prepBase() error {
 	// backwards compatibility
 	if dataDir == "" {
 		dataDir = databaseDir
@@ -38,33 +37,24 @@ func prep() error {
 		return errors.New("please set the data directory using --data=/path/to/data/dir")
 	}
 
+	// initialize structure
+	err := structure.Initialize(dataDir, 0755)
+	if err != nil {
+		return err
+	}
+
+	// set database location
+	dbmodule.SetDatabaseLocation("", structure.Root())
+
+	// init config
+	logFlagOverrides()
+	err = registerConfig()
+	if err != nil {
+		return err
+	}
+
 	// set api listen address
 	api.SetDefaultAPIListenAddress("127.0.0.1:817")
 
-	// init config
-	err := registerConfig()
-	if err != nil {
-		return err
-	}
-
-	// initialize structure
-	return structure.Initialize(dataDir, 0755)
-}
-
-func start() error {
-	logFlagOverrides()
-
-	// init DB
-	err := startDB()
-	if err != nil {
-		return err
-	}
-
-	// register DBs
-	return registerDatabases()
-}
-
-func stop() error {
-	close(shuttingDown)
-	return stopDB()
+	return nil
 }
