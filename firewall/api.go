@@ -23,9 +23,8 @@ import (
 var (
 	dataRoot *utils.DirStructure
 
-	apiAddressSet bool
-	apiIP         net.IP
-	apiPort       uint16
+	apiPortSet bool
+	apiPort    uint16
 )
 
 func prepAPIAuth() error {
@@ -35,11 +34,13 @@ func prepAPIAuth() error {
 
 func startAPIAuth() {
 	var err error
-	apiIP, apiPort, err = parseHostPort(apiListenAddress())
+	_, apiPort, err = parseHostPort(apiListenAddress())
 	if err != nil {
 		log.Warningf("firewall: failed to parse API address for improved api auth mechanism: %s", err)
+		return
 	}
-	apiAddressSet = true
+	apiPortSet = true
+	log.Tracef("firewall: api port set to %d", apiPort)
 }
 
 func apiAuthenticator(s *http.Server, r *http.Request) (grantAccess bool, err error) {

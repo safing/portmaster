@@ -111,8 +111,8 @@ func handlePacket(pkt packet.Packet) {
 	}
 
 	// allow api access, if address was parsed successfully
-	if apiAddressSet {
-		if (pkt.Info().DstPort == apiPort && pkt.Info().Dst.Equal(apiIP)) || (pkt.Info().SrcPort == apiPort && pkt.Info().Src.Equal(apiIP)) {
+	if apiPortSet {
+		if (pkt.Info().DstPort == apiPort || pkt.Info().SrcPort == apiPort) && pkt.Info().Src.Equal(pkt.Info().Dst) {
 			log.Debugf("accepting api connection: %s", pkt)
 			pkt.PermanentAccept()
 			return
