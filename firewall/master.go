@@ -5,11 +5,9 @@ import (
 	"net"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
@@ -137,93 +135,7 @@ func DecideOnCommunicationAfterIntel(comm *network.Communication, fqdn string, r
 	}
 
 	// prompt
-
-	// first check if there is an existing notification for this.
-	nID := fmt.Sprintf("firewall-prompt-%d-%s", comm.Process().Pid, comm.Domain)
-	nTTL := 15 * time.Second
-	n := notifications.Get(nID)
-	if n != nil {
-		// we were not here first, only get verdict, do not make changes
-		select {
-		case promptResponse := <-n.Response():
-			switch promptResponse {
-			case "permit-all", "permit-distinct":
-				comm.Accept("permitted by user")
-			default:
-				comm.Deny("denied by user")
-			}
-		case <-time.After(nTTL):
-			comm.SetReason("user did not respond to prompt")
-		}
-		return
-	}
-
-	// create new notification
-	n = (&notifications.Notification{
-		ID:      nID,
-		Message: fmt.Sprintf("Application %s wants to connect to %s", comm.Process(), comm.Domain),
-		Type:    notifications.Prompt,
-		AvailableActions: []*notifications.Action{
-			&notifications.Action{
-				ID:   "permit-all",
-				Text: fmt.Sprintf("Permit all %s", comm.Domain),
-			},
-			&notifications.Action{
-				ID:   "permit-distinct",
-				Text: fmt.Sprintf("Permit %s", comm.Domain),
-			},
-			&notifications.Action{
-				ID:   "deny",
-				Text: "Deny",
-			},
-		},
-		Expires: time.Now().Add(nTTL).Unix(),
-	}).Save()
-
-	// react
-	select {
-	case promptResponse := <-n.Response():
-		n.Cancel()
-
-		new := &profile.EndpointPermission{
-			Type:    profile.EptDomain,
-			Value:   comm.Domain,
-			Permit:  true,
-			Created: time.Now().Unix(),
-		}
-
-		switch promptResponse {
-		case "permit-all":
-			new.Value = "." + new.Value
-		case "permit-distinct":
-			// everything already set
-		default:
-			// deny
-			new.Permit = false
-		}
-
-		if new.Permit {
-			log.Infof("firewall: user permitted communication %s -> %s", comm.Process(), new.Value)
-			comm.Accept("permitted by user")
-		} else {
-			log.Infof("firewall: user denied communication %s -> %s", comm.Process(), new.Value)
-			comm.Deny("denied by user")
-		}
-
-		profileSet.Lock()
-		defer profileSet.Unlock()
-		userProfile := profileSet.UserProfile()
-		userProfile.Lock()
-		defer userProfile.Unlock()
-
-		userProfile.Endpoints = append(userProfile.Endpoints, new)
-		go userProfile.Save("")
-
-	case <-time.After(nTTL):
-		n.Cancel()
-		comm.SetReason("user did not respond to prompt")
-
-	}
+	prompt(comm, nil, nil, fqdn)
 }
 
 // FilterDNSResponse filters a dns response according to the application profile and settings.
@@ -573,134 +485,8 @@ func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Pa
 		}
 	}
 
-	// first check if there is an existing notification for this.
-	var nID string
-	switch {
-	case comm.Direction:
-		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s-%d-%d", comm.Process().Pid, comm.Domain, remoteIP, protocol, dstPort)
-	case fqdn == "":
-		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s-%d-%d", comm.Process().Pid, comm.Domain, remoteIP, protocol, dstPort)
-	default:
-		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s-%d-%d", comm.Process().Pid, comm.Domain, remoteIP, protocol, dstPort)
-	}
-	nTTL := 15 * time.Second
-	n := notifications.Get(nID)
-
-	if n != nil {
-		// we were not here first, only get verdict, do not make changes
-		select {
-		case promptResponse := <-n.Response():
-			switch promptResponse {
-			case "permit-domain-all", "permit-domain-distinct", "permit-ip", "permit-ip-incoming":
-				link.Accept("permitted by user")
-			default:
-				link.Deny("denied by user")
-			}
-		case <-time.After(nTTL):
-			link.Deny("user did not respond to prompt")
-		}
-		return
-	}
-
-	// create new notification
-	n = (&notifications.Notification{
-		ID:      nID,
-		Type:    notifications.Prompt,
-		Expires: time.Now().Add(nTTL).Unix(),
-	})
-
-	switch {
-	case comm.Direction:
-		n.Message = fmt.Sprintf("Application %s wants to accept connections from %s (%d/%d)", comm.Process(), remoteIP, protocol, dstPort)
-		n.AvailableActions = []*notifications.Action{
-			&notifications.Action{
-				ID:   "permit-ip-incoming",
-				Text: fmt.Sprintf("Permit serving to %s", remoteIP),
-			},
-		}
-	case fqdn == "":
-		n.Message = fmt.Sprintf("Application %s wants to connect to %s (%d/%d)", comm.Process(), remoteIP, protocol, dstPort)
-		n.AvailableActions = []*notifications.Action{
-			&notifications.Action{
-				ID:   "permit-ip",
-				Text: fmt.Sprintf("Permit %s", remoteIP),
-			},
-		}
-	default:
-		n.Message = fmt.Sprintf("Application %s wants to connect to %s (%s %d/%d)", comm.Process(), comm.Domain, remoteIP, protocol, dstPort)
-		n.AvailableActions = []*notifications.Action{
-			&notifications.Action{
-				ID:   "permit-domain-all",
-				Text: fmt.Sprintf("Permit all %s", comm.Domain),
-			},
-			&notifications.Action{
-				ID:   "permit-domain-distinct",
-				Text: fmt.Sprintf("Permit %s", comm.Domain),
-			},
-		}
-	}
-
-	n.AvailableActions = append(n.AvailableActions, &notifications.Action{
-		ID:   "deny",
-		Text: "deny",
-	})
-	n.Save()
-
-	// react
-	select {
-	case promptResponse := <-n.Response():
-		n.Cancel()
-
-		new := &profile.EndpointPermission{
-			Type:    profile.EptDomain,
-			Value:   comm.Domain,
-			Permit:  true,
-			Created: time.Now().Unix(),
-		}
-
-		switch promptResponse {
-		case "permit-domain-all":
-			new.Value = "." + new.Value
-		case "permit-domain-distinct":
-			// everything already set
-		case "permit-ip", "permit-ip-incoming":
-			if pkt.Info().Version == packet.IPv4 {
-				new.Type = profile.EptIPv4
-			} else {
-				new.Type = profile.EptIPv6
-			}
-			new.Value = remoteIP.String()
-		default:
-			// deny
-			new.Permit = false
-		}
-
-		if new.Permit {
-			log.Infof("firewall: user permitted link %s -> %s", comm.Process(), new.Value)
-			link.Accept("permitted by user")
-		} else {
-			log.Infof("firewall: user denied link %s -> %s", comm.Process(), new.Value)
-			link.Deny("denied by user")
-		}
-
-		profileSet.Lock()
-		defer profileSet.Unlock()
-		userProfile := profileSet.UserProfile()
-		userProfile.Lock()
-		defer userProfile.Unlock()
-
-		if promptResponse == "permit-ip-incoming" {
-			userProfile.ServiceEndpoints = append(userProfile.ServiceEndpoints, new)
-		} else {
-			userProfile.Endpoints = append(userProfile.Endpoints, new)
-		}
-		go userProfile.Save("")
-
-	case <-time.After(nTTL):
-		n.Cancel()
-		link.Deny("user did not respond to prompt")
-
-	}
+	// prompt
+	prompt(comm, link, pkt, fqdn)
 }
 
 func checkRelation(comm *network.Communication, fqdn string) (related bool) {
