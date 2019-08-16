@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/utils"
 
 	semver "github.com/hashicorp/go-version"
 )
@@ -162,6 +163,42 @@ func LoadIndexes() error {
 	updatesLock.RLock()
 	defer updatesLock.RUnlock()
 	updateStatus(versionClassStable, stableUpdates)
+
+	return nil
+}
+
+// CreateSymlinks creates a directory structure with unversions symlinks to the given updates list.
+func CreateSymlinks(symlinkRoot, updateStorage *utils.DirStructure, updatesList map[string]string) error {
+	err := os.RemoveAll(symlinkRoot.Path)
+	if err != nil {
+		return fmt.Errorf("failed to wipe symlink root: %s", err)
+	}
+
+	err = symlinkRoot.Ensure()
+	if err != nil {
+		return fmt.Errorf("failed to create symlink root: %s", err)
+	}
+
+	for identifier, version := range updatesList {
+		targetPath := filepath.Join(updateStorage.Path, filepath.FromSlash(GetVersionedPath(identifier, version)))
+		linkPath := filepath.Join(symlinkRoot.Path, filepath.FromSlash(identifier))
+		linkPathDir := filepath.Dir(linkPath)
+
+		err = symlinkRoot.EnsureAbsPath(linkPathDir)
+		if err != nil {
+			return fmt.Errorf("failed to create dir for link: %s", err)
+		}
+
+		relativeTargetPath, err := filepath.Rel(linkPathDir, targetPath)
+		if err != nil {
+			return fmt.Errorf("failed to get relative target path: %s", err)
+		}
+
+		err = os.Symlink(relativeTargetPath, linkPath)
+		if err != nil {
+			return fmt.Errorf("failed to link %s: %s", identifier, err)
+		}
+	}
 
 	return nil
 }

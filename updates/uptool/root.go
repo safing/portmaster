@@ -1,10 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"os"
+	"path/filepath"
+
+	"github.com/safing/portbase/utils"
 
 	"github.com/spf13/cobra"
+)
+
+var (
+	updatesStorage *utils.DirStructure
 )
 
 var rootCmd = &cobra.Command{
@@ -13,11 +19,20 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Usage()
 	},
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		absPath, err := filepath.Abs(".")
+		if err != nil {
+			return err
+		}
+
+		updatesStorage = utils.NewDirStructure(absPath, 0755)
+		return nil
+	},
+	SilenceUsage: true,
 }
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }
