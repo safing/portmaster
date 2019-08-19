@@ -9,6 +9,10 @@ var (
 	permanentVerdicts  config.BoolOption
 	filterDNSByScope   status.SecurityLevelOption
 	filterDNSByProfile status.SecurityLevelOption
+	promptTimeout      config.IntOption
+
+	devMode          config.BoolOption
+	apiListenAddress config.StringOption
 )
 
 func registerConfig() error {
@@ -54,6 +58,22 @@ func registerConfig() error {
 		return err
 	}
 	filterDNSByProfile = status.ConfigIsActiveConcurrent("firewall/filterDNSByProfile")
+
+	err = config.Register(&config.Option{
+		Name:           "Timeout for prompt notifications",
+		Key:            "firewall/promptTimeout",
+		Description:    "Amount of time how long Portmaster will wait for a response when prompting about a connection via a notification. In seconds.",
+		ExpertiseLevel: config.ExpertiseLevelUser,
+		OptType:        config.OptTypeInt,
+		DefaultValue:   60,
+	})
+	if err != nil {
+		return err
+	}
+	promptTimeout = config.Concurrent.GetAsInt("firewall/promptTimeout", 30)
+
+	devMode = config.Concurrent.GetAsBool("firewall/permanentVerdicts", false)
+	apiListenAddress = config.GetAsString("api/listenAddress", "")
 
 	return nil
 }

@@ -1,5 +1,3 @@
-// Copyright Safing ICS Technologies GmbH. Use of this source code is governed by the AGPL license that can be found in the LICENSE file.
-
 package process
 
 import (
@@ -264,7 +262,13 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 
 		pInfo, err := processInfo.NewProcess(int32(pid))
 		if err != nil {
-			return nil, err
+			// TODO: remove this workaround as soon as NewProcess really returns an error on windows when the process does not exist
+			// Issue: https://github.com/shirou/gopsutil/issues/729
+			_, err = pInfo.Name()
+			if err != nil {
+				// process does not exists
+				return nil, err
+			}
 		}
 
 		// UID

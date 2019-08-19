@@ -7,29 +7,33 @@ import (
 	"github.com/safing/portbase/notifications"
 )
 
-const coreIdentifier = "core/portmaster"
+const coreIdentifier = "core/portmaster-core"
 
 var lastNotified time.Time
 
 func updateNotifier() {
-	time.Sleep(30 * time.Second)
+	time.Sleep(5 * time.Minute)
 	for {
+		ident := coreIdentifier
+		if isWindows {
+			ident += ".exe"
+		}
 
-		_, version, _, ok := getLatestFilePath(coreIdentifier)
-		if ok {
+		file, err := GetLocalPlatformFile(ident)
+		if err == nil {
 			status.Lock()
 			liveVersion := status.Core.Version
 			status.Unlock()
 
-			if version != liveVersion {
+			if file.Version() != liveVersion {
 
 				// create notification
 				(&notifications.Notification{
 					ID:      "updates-core-update-available",
-					Message: fmt.Sprintf("There is an update available for the Portmaster core (v%s), please restart the Portmaster to apply the update.", version),
+					Message: fmt.Sprintf("There is an update available for the Portmaster core (v%s), please restart the Portmaster to apply the update.", file.Version()),
 					Type:    notifications.Info,
 					Expires: time.Now().Add(1 * time.Minute).Unix(),
-				}).Init().Save()
+				}).Save()
 
 			}
 		}

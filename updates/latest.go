@@ -11,6 +11,9 @@ import (
 	"sync"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/utils"
+
+	semver "github.com/hashicorp/go-version"
 )
 
 var (
@@ -26,14 +29,14 @@ func LoadLatest() error {
 
 	// all
 	prefix := "all"
-	new, err1 := ScanForLatest(filepath.Join(updateStoragePath, prefix), false)
+	new, err1 := ScanForLatest(filepath.Join(updateStorage.Path, prefix), false)
 	for key, val := range new {
 		newLocalUpdates[filepath.ToSlash(filepath.Join(prefix, key))] = val
 	}
 
 	// os_platform
 	prefix = fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH)
-	new, err2 := ScanForLatest(filepath.Join(updateStoragePath, prefix), false)
+	new, err2 := ScanForLatest(filepath.Join(updateStorage.Path, prefix), false)
 	for key, val := range new {
 		newLocalUpdates[filepath.ToSlash(filepath.Join(prefix, key))] = val
 	}
@@ -70,11 +73,11 @@ func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, las
 	filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			if !os.IsNotExist(err) {
-				lastError = err
+				lastError = fmt.Errorf("updates: could not read %s: %s", path, err)
 				if hardFail {
-					return err
+					return lastError
 				}
-				log.Warningf("updates: could not read %s", path)
+				log.Warning(lastError.Error())
 			}
 			return nil
 		}
@@ -95,9 +98,24 @@ func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, las
 		// add/update index
 		storedVersion, ok := latest[identifierPath]
 		if ok {
-			// FIXME: this will fail on multi-digit version segments!
-			// FIXME: use https://github.com/hashicorp/go-version
-			if version > storedVersion {
+			parsedVersion, err := semver.NewVersion(version)
+			if err != nil {
+				lastError = fmt.Errorf("updates: could not parse version of %s: %s", path, err)
+				if hardFail {
+					return lastError
+				}
+				log.Warning(lastError.Error())
+			}
+			parsedStoredVersion, err := semver.NewVersion(storedVersion)
+			if err != nil {
+				lastError = fmt.Errorf("updates: could not parse version of %s: %s", path, err)
+				if hardFail {
+					return lastError
+				}
+				log.Warning(lastError.Error())
+			}
+			// compare
+			if parsedVersion.GreaterThan(parsedStoredVersion) {
 				latest[identifierPath] = version
 			}
 		} else {
@@ -120,7 +138,7 @@ func ScanForLatest(baseDir string, hardFail bool) (latest map[string]string, las
 
 // LoadIndexes loads the current update indexes from disk.
 func LoadIndexes() error {
-	data, err := ioutil.ReadFile(filepath.Join(updateStoragePath, "stable.json"))
+	data, err := ioutil.ReadFile(filepath.Join(updateStorage.Path, "stable.json"))
 	if err != nil {
 		return err
 	}
@@ -145,6 +163,42 @@ func LoadIndexes() error {
 	updatesLock.RLock()
 	defer updatesLock.RUnlock()
 	updateStatus(versionClassStable, stableUpdates)
+
+	return nil
+}
+
+// CreateSymlinks creates a directory structure with unversions symlinks to the given updates list.
+func CreateSymlinks(symlinkRoot, updateStorage *utils.DirStructure, updatesList map[string]string) error {
+	err := os.RemoveAll(symlinkRoot.Path)
+	if err != nil {
+		return fmt.Errorf("failed to wipe symlink root: %s", err)
+	}
+
+	err = symlinkRoot.Ensure()
+	if err != nil {
+		return fmt.Errorf("failed to create symlink root: %s", err)
+	}
+
+	for identifier, version := range updatesList {
+		targetPath := filepath.Join(updateStorage.Path, filepath.FromSlash(GetVersionedPath(identifier, version)))
+		linkPath := filepath.Join(symlinkRoot.Path, filepath.FromSlash(identifier))
+		linkPathDir := filepath.Dir(linkPath)
+
+		err = symlinkRoot.EnsureAbsPath(linkPathDir)
+		if err != nil {
+			return fmt.Errorf("failed to create dir for link: %s", err)
+		}
+
+		relativeTargetPath, err := filepath.Rel(linkPathDir, targetPath)
+		if err != nil {
+			return fmt.Errorf("failed to get relative target path: %s", err)
+		}
+
+		err = os.Symlink(relativeTargetPath, linkPath)
+		if err != nil {
+			return fmt.Errorf("failed to link %s: %s", identifier, err)
+		}
+	}
 
 	return nil
 }

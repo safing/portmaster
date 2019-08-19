@@ -3,25 +3,30 @@ package updates
 import (
 	"errors"
 	"os"
-	"path/filepath"
+	"runtime"
 
-	"github.com/safing/portbase/database"
+	"github.com/safing/portmaster/core/structure"
+
 	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/utils"
 )
 
-var (
-	updateStoragePath string
-	downloadTmpPath   string
+const (
+	isWindows = runtime.GOOS == "windows"
 )
 
-// SetDatabaseRoot tells the updates module where the database is - and where to put its stuff.
-func SetDatabaseRoot(path string) {
-	if updateStoragePath == "" {
-		updateStoragePath = filepath.Join(path, "updates")
-		downloadTmpPath = filepath.Join(updateStoragePath, "tmp")
+var (
+	updateStorage *utils.DirStructure
+	tmpStorage    *utils.DirStructure
+)
+
+// SetDataRoot sets the data root from which the updates module derives its paths.
+func SetDataRoot(root *utils.DirStructure) {
+	if root != nil && updateStorage == nil {
+		updateStorage = root.ChildDir("updates", 0755)
+		tmpStorage = updateStorage.ChildDir("tmp", 0777)
 	}
 }
 
@@ -30,19 +35,12 @@ func init() {
 }
 
 func prep() error {
-	dbRoot := database.GetDatabaseRoot()
-	if dbRoot == "" {
-		return errors.New("database root is not set")
-	}
-	updateStoragePath = filepath.Join(dbRoot, "updates")
-	downloadTmpPath = filepath.Join(updateStoragePath, "tmp")
-
-	err := utils.EnsureDirectory(updateStoragePath, 0755)
-	if err != nil {
-		return err
+	SetDataRoot(structure.Root())
+	if updateStorage == nil {
+		return errors.New("update storage path is not set")
 	}
 
-	err = utils.EnsureDirectory(downloadTmpPath, 0700)
+	err := updateStorage.Ensure()
 	if err != nil {
 		return err
 	}
@@ -61,7 +59,13 @@ func start() error {
 	err = LoadIndexes()
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Infof("updates: stable.json does not yet exist, waiting for first update cycle")
+			// download indexes
+			log.Infof("updates: downloading update index...")
+
+			err = UpdateIndexes()
+			if err != nil {
+				log.Errorf("updates: failed to download update index: %s", err)
+			}
 		} else {
 			return err
 		}
@@ -79,5 +83,5 @@ func start() error {
 
 func stop() error {
 	// delete download tmp dir
-	return os.RemoveAll(downloadTmpPath)
+	return os.RemoveAll(tmpStorage.Path)
 }

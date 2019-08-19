@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 	"runtime"
 	"time"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils"
 )
 
 func updater() {
@@ -24,6 +24,14 @@ func updater() {
 		err = DownloadUpdates()
 		if err != nil {
 			log.Warningf("updates: downloading updates failed: %s", err)
+		}
+		err = runFileUpgrades()
+		if err != nil {
+			log.Warningf("updates: failed to upgrade portmaster-control: %s", err)
+		}
+		err = cleanOldUpgradedFiles()
+		if err != nil {
+			log.Warningf("updates: failed to clean old upgraded files: %s", err)
 		}
 		time.Sleep(1 * time.Hour)
 	}
@@ -75,13 +83,13 @@ func UpdateIndexes() (err error) {
 	updatesLock.Unlock()
 
 	// check dir
-	err = utils.EnsureDirectory(updateStoragePath, 0755)
+	err = updateStorage.Ensure()
 	if err != nil {
 		return err
 	}
 
 	// save stable index
-	err = ioutil.WriteFile(filepath.Join(updateStoragePath, "stable.json"), data, 0644)
+	err = ioutil.WriteFile(filepath.Join(updateStorage.Path, "stable.json"), data, 0644)
 	if err != nil {
 		log.Warningf("updates: failed to save new version of stable.json: %s", err)
 	}
@@ -107,6 +115,7 @@ func DownloadUpdates() (err error) {
 		markPlatformFileForDownload("control/portmaster-control.exe")
 		markPlatformFileForDownload("app/portmaster-app.exe")
 		markPlatformFileForDownload("notifier/portmaster-notifier.exe")
+		markPlatformFileForDownload("notifier/portmaster-snoretoast.exe")
 	} else {
 		markPlatformFileForDownload("core/portmaster-core")
 		markPlatformFileForDownload("control/portmaster-control")
@@ -114,6 +123,12 @@ func DownloadUpdates() (err error) {
 		markPlatformFileForDownload("notifier/portmaster-notifier")
 	}
 	updatesLock.Unlock()
+
+	// check download dir
+	err = tmpStorage.Ensure()
+	if err != nil {
+		return fmt.Errorf("could not prepare tmp directory for download: %s", err)
+	}
 
 	// RLock for the remaining function
 	updatesLock.RLock()
@@ -127,7 +142,7 @@ func DownloadUpdates() (err error) {
 
 			log.Tracef("updates: updating %s to %s", identifier, newVersion)
 			filePath := GetVersionedPath(identifier, newVersion)
-			realFilePath := filepath.Join(updateStoragePath, filePath)
+			realFilePath := filepath.Join(updateStorage.Path, filePath)
 			for tries := 0; tries < 3; tries++ {
 				err = fetchFile(realFilePath, filePath, tries)
 				if err == nil {
@@ -141,6 +156,12 @@ func DownloadUpdates() (err error) {
 		}
 	}
 	log.Tracef("updates: finished updating existing files")
+
+	// remove tmp folder after we are finished
+	err = os.RemoveAll(tmpStorage.Path)
+	if err != nil {
+		log.Tracef("updates: failed to remove tmp dir %s after downloading updates: %s", updateStorage.Path, err)
+	}
 
 	return nil
 }

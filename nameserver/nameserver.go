@@ -1,5 +1,3 @@
-// Copyright Safing ICS Technologies GmbH. Use of this source code is governed by the AGPL license that can be found in the LICENSE file.
-
 package nameserver
 
 import (
@@ -29,7 +27,7 @@ var (
 )
 
 func init() {
-	modules.Register("nameserver", prep, start, nil, "intel")
+	modules.Register("nameserver", prep, start, nil, "core", "intel")
 
 	if runtime.GOOS == "windows" {
 		listenAddress = "0.0.0.0:53"

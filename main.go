@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -21,17 +22,18 @@ import (
 )
 
 var (
-	printStackOnExit bool
+	printStackOnExit   bool
+	enableInputSignals bool
 )
 
 func init() {
 	flag.BoolVar(&printStackOnExit, "print-stack-on-exit", false, "prints the stack before of shutting down")
+	flag.BoolVar(&enableInputSignals, "input-signals", false, "emulate signals using stdin")
 }
 
 func main() {
-
 	// Set Info
-	info.Set("Portmaster", "0.3.1", "AGPLv3", true)
+	info.Set("Portmaster", "0.3.8", "AGPLv3", true)
 
 	// Start
 	err := modules.Start()
@@ -47,6 +49,9 @@ func main() {
 	// Shutdown
 	// catch interrupt for clean shutdown
 	signalCh := make(chan os.Signal)
+	if enableInputSignals {
+		go inputSignals(signalCh)
+	}
 	signal.Notify(
 		signalCh,
 		os.Interrupt,
@@ -82,9 +87,9 @@ func main() {
 		}
 
 		go func() {
-			time.Sleep(5 * time.Second)
-			fmt.Println("===== TAKING TOO LONG FOR SHUTDOWN - PRINTING STACK TRACES =====")
-			pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+			time.Sleep(10 * time.Second)
+			fmt.Fprintln(os.Stderr, "===== TAKING TOO LONG FOR SHUTDOWN - PRINTING STACK TRACES =====")
+			pprof.Lookup("goroutine").WriteTo(os.Stderr, 1)
 			os.Exit(1)
 		}()
 
@@ -98,4 +103,20 @@ func main() {
 	case <-modules.ShuttingDown():
 	}
 
+}
+
+func inputSignals(signalCh chan os.Signal) {
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		switch scanner.Text() {
+		case "SIGHUP":
+			signalCh <- syscall.SIGHUP
+		case "SIGINT":
+			signalCh <- syscall.SIGINT
+		case "SIGQUIT":
+			signalCh <- syscall.SIGQUIT
+		case "SIGTERM":
+			signalCh <- syscall.SIGTERM
+		}
+	}
 }

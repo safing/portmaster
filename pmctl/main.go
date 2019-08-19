@@ -2,51 +2,66 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
+	"log"
 	"os"
-	"os/user"
-	"path/filepath"
-	"runtime"
+	"os/signal"
 	"strings"
+	"syscall"
+
+	"github.com/safing/portmaster/core/structure"
+	"github.com/safing/portmaster/updates"
+
+	"github.com/safing/portbase/utils"
 
 	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/updates"
+	portlog "github.com/safing/portbase/log"
 	"github.com/spf13/cobra"
 )
 
-const (
-	logPrefix = "[control]"
-)
-
 var (
-	updateStoragePath string
-	databaseRootDir   *string
+	dataDir     string
+	databaseDir string
+	dataRoot    *utils.DirStructure
+	logsRoot    *utils.DirStructure
+
+	showShortVersion bool
+	showFullVersion  bool
 
 	rootCmd = &cobra.Command{
 		Use:               "portmaster-control",
-		Short:             "contoller for all portmaster components",
-		PersistentPreRunE: initPmCtl,
+		Short:             "Controller for all portmaster components",
+		PersistentPreRunE: cmdSetup,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if showShortVersion {
+				fmt.Println(info.Version())
+				return nil
+			}
+			if showFullVersion {
+				fmt.Println(info.FullVersion())
+				return nil
+			}
 			return cmd.Help()
 		},
+		SilenceUsage: true,
 	}
 )
 
 func init() {
-	databaseRootDir = rootCmd.PersistentFlags().String("db", "", "set database directory")
-	err := rootCmd.MarkPersistentFlagRequired("db")
-	if err != nil {
-		panic(err)
-	}
+	// Let cobra ignore if we are running as "GUI" or not
+	cobra.MousetrapHelpText = ""
+
+	rootCmd.PersistentFlags().StringVar(&dataDir, "data", "", "set data directory")
+	rootCmd.PersistentFlags().StringVar(&databaseDir, "db", "", "alias to --data (deprecated)")
+	rootCmd.MarkPersistentFlagDirname("data")
+	rootCmd.MarkPersistentFlagDirname("db")
+	rootCmd.Flags().BoolVar(&showFullVersion, "version", false, "print version")
+	rootCmd.Flags().BoolVar(&showShortVersion, "ver", false, "print version number only")
 }
 
 func main() {
-	flag.Parse()
-
-	// not using portbase logger
-	log.SetLogLevel(log.CriticalLevel)
+	// set meta info
+	info.Set("Portmaster Control", "0.2.11", "AGPLv3", true)
 
 	// for debugging
 	// log.Start()
@@ -57,66 +72,105 @@ func main() {
 	// 	os.Exit(1)
 	// }()
 
-	// set meta info
-	info.Set("Portmaster Control", "0.2.1", "AGPLv3", true)
-
-	// check if meta info is ok
-	err := info.CheckVersion()
-	if err != nil {
-		fmt.Printf("%s compile error: please compile using the provided build script\n", logPrefix)
-		os.Exit(1)
-	}
-
-	// react to version flag
-	if info.PrintVersion() {
-		os.Exit(0)
-	}
+	// catch interrupt for clean shutdown
+	signalCh := make(chan os.Signal)
+	signal.Notify(
+		signalCh,
+		os.Interrupt,
+		os.Kill,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
 
 	// start root command
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+	go func() {
+		if err := rootCmd.Execute(); err != nil {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}()
+
+	// for debugging windows service (no stdout/err)
+	// go func() {
+	// 	time.Sleep(10 * time.Second)
+	// 	// initiateShutdown(nil)
+	// 	// logControlStack()
+	// }()
+
+	// wait for signals
+	for sig := range signalCh {
+		if childIsRunning.IsSet() {
+			log.Printf("got %s signal (ignoring), waiting for child to exit...\n", sig)
+		} else {
+			log.Printf("got %s signal, exiting... (not executing anything)\n", sig)
+			os.Exit(0)
+		}
 	}
-	os.Exit(0)
 }
 
-func initPmCtl(cmd *cobra.Command, args []string) error {
-
-	// transform from db base path to updates path
-	if *databaseRootDir != "" {
-		updates.SetDatabaseRoot(*databaseRootDir)
-		updateStoragePath = filepath.Join(*databaseRootDir, "updates")
-	} else {
-		return errors.New("please supply the database directory using the --db flag")
-	}
-
-	// check if we are root/admin for self upgrade
-	userInfo, err := user.Current()
+func cmdSetup(cmd *cobra.Command, args []string) (err error) {
+	// check if we are running in a console (try to attach to parent console if available)
+	runningInConsole, err = attachToParentConsole()
 	if err != nil {
-		return nil
-	}
-	switch runtime.GOOS {
-	case "linux":
-		if userInfo.Username != "root" {
-			return nil
-		}
-	case "windows":
-		if !strings.HasSuffix(userInfo.Username, "SYSTEM") { // is this correct?
-			return nil
-		}
+		log.Printf("failed to attach to parent console: %s\n", err)
+		os.Exit(1)
 	}
 
-	err = removeOldBin()
+	// check if meta info is ok
+	err = info.CheckVersion()
 	if err != nil {
-		fmt.Printf("%s warning: failed to remove old upgrade: %s\n", logPrefix, err)
+		fmt.Println("compile error: please compile using the provided build script")
+		os.Exit(1)
 	}
 
-	update := checkForUpgrade()
-	if update != nil {
-		err = doSelfUpgrade(update)
+	// set up logging
+	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
+	log.SetPrefix("[control] ")
+	log.SetOutput(os.Stdout)
+
+	// not using portbase logger
+	portlog.SetLogLevel(portlog.CriticalLevel)
+
+	// data directory
+	if !showShortVersion && !showFullVersion {
+		// set data root
+		// backwards compatibility
+		if dataDir == "" {
+			dataDir = databaseDir
+		}
+		// check data dir
+		if dataDir == "" {
+			return errors.New("please set the data directory using --data=/path/to/data/dir")
+		}
+
+		// remove redundant escape characters and quotes
+		dataDir = strings.Trim(dataDir, `\"`)
+		// initialize structure
+		err = structure.Initialize(dataDir, 0755)
 		if err != nil {
-			return fmt.Errorf("%s failed to upgrade self: %s", logPrefix, err)
+			return fmt.Errorf("failed to initialize data root: %s", err)
 		}
-		fmt.Println("upgraded portmaster-control")
+		dataRoot = structure.Root()
+		// manually set updates root (no modules)
+		updates.SetDataRoot(structure.Root())
+	}
+
+	// logs and warning
+	if !showShortVersion && !showFullVersion && !strings.Contains(cmd.CommandPath(), " show ") {
+		// set up logs root
+		logsRoot = structure.NewRootDir("logs", 0777)
+		err = logsRoot.Ensure()
+		if err != nil {
+			return fmt.Errorf("failed to initialize logs root: %s", err)
+		}
+
+		// warn about CTRL-C on windows
+		if runningInConsole && onWindows {
+			log.Println("WARNING: portmaster-control is marked as a GUI application in order to get rid of the console window.")
+			log.Println("WARNING: CTRL-C will immediately kill without clean shutdown.")
+		}
 	}
 
 	return nil

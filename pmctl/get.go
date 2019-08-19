@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/safing/portmaster/updates"
@@ -22,7 +22,7 @@ func getFile(opts *Options) (*updates.File, error) {
 
 	// download
 	if opts.AllowDownload {
-		fmt.Printf("%s downloading %s...\n", logPrefix, opts.Identifier)
+		log.Printf("downloading %s...\n", opts.Identifier)
 
 		// download indexes
 		err = updates.UpdateIndexes()
@@ -39,7 +39,7 @@ func getFile(opts *Options) (*updates.File, error) {
 	}
 
 	// wait for 30 seconds
-	fmt.Printf("%s waiting for download of %s (by Portmaster Core) to complete...\n", logPrefix, opts.Identifier)
+	log.Printf("waiting for download of %s (by Portmaster Core) to complete...\n", opts.Identifier)
 
 	// try every 0.5 secs
 	for tries := 0; tries < 60; tries++ {

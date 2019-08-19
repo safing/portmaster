@@ -9,7 +9,6 @@ import (
 	"runtime"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils"
 )
 
 // Errors
@@ -75,7 +74,7 @@ func loadOrFetchFile(identifier string, fetch bool) (*File, error) {
 	}
 
 	// build final filepath
-	realFilePath := filepath.Join(updateStoragePath, filepath.FromSlash(versionedFilePath))
+	realFilePath := filepath.Join(updateStorage.Path, filepath.FromSlash(versionedFilePath))
 	if _, err := os.Stat(realFilePath); err == nil {
 		// file exists
 		updateUsedStatus(identifier, version)
@@ -83,7 +82,7 @@ func loadOrFetchFile(identifier string, fetch bool) (*File, error) {
 	}
 
 	// check download dir
-	err := utils.EnsureDirectory(downloadTmpPath, 0755)
+	err := tmpStorage.Ensure()
 	if err != nil {
 		return nil, fmt.Errorf("could not prepare tmp directory for download: %s", err)
 	}

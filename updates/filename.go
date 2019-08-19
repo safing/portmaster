@@ -6,12 +6,15 @@ import (
 	"strings"
 )
 
-var versionRegex = regexp.MustCompile("_v[0-9]+-[0-9]+-[0-9]+b?")
+var (
+	fileVersionRegex = regexp.MustCompile(`_v[0-9]+-[0-9]+-[0-9]+b?`)
+	rawVersionRegex  = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+b?\*?$`)
+)
 
 // GetIdentifierAndVersion splits the given file path into its identifier and version.
 func GetIdentifierAndVersion(versionedPath string) (identifier, version string, ok bool) {
 	// extract version
-	rawVersion := versionRegex.FindString(versionedPath)
+	rawVersion := fileVersionRegex.FindString(versionedPath)
 	if rawVersion == "" {
 		return "", "", false
 	}

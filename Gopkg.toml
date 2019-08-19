@@ -55,10 +55,6 @@ ignored = ["github.com/safing/portbase/*"]
   version = "0.1.0"
 
 [[constraint]]
-  name = "github.com/gorilla/mux"
-  version = "1.7.3"
-
-[[constraint]]
   name = "github.com/miekg/dns"
   version = "1.1.15"
 
@@ -101,3 +97,7 @@ ignored = ["github.com/safing/portbase/*"]
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  name = "github.com/hashicorp/go-version"
+  version = "1.2.0"
