@@ -17,13 +17,12 @@ func makeDefaultFallbackProfile() *Profile {
 		Name: "Fallback Profile",
 		Flags: map[uint8]uint8{
 			// Profile Modes
-			Blacklist: status.SecurityLevelDynamic,
-			Prompt:    status.SecurityLevelSecure,
+			Blacklist: status.SecurityLevelsDynamicAndSecure,
 			Whitelist: status.SecurityLevelFortress,
 
 			// Network Locations
-			Internet:  status.SecurityLevelsDynamicAndSecure,
-			LAN:       status.SecurityLevelsDynamicAndSecure,
+			Internet:  status.SecurityLevelsAll,
+			LAN:       status.SecurityLevelDynamic,
 			Localhost: status.SecurityLevelsAll,
 
 			// Specials
