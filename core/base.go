@@ -4,6 +4,8 @@ import (
 	"errors"
 	"flag"
 
+	"github.com/safing/portbase/config"
+
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/database/dbmodule"
 	"github.com/safing/portbase/modules"
@@ -43,8 +45,9 @@ func prepBase() error {
 		return err
 	}
 
-	// set database location
+	// set data location
 	dbmodule.SetDatabaseLocation("", structure.Root())
+	config.SetDataRoot(structure.Root())
 
 	// init config
 	logFlagOverrides()
