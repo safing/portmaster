@@ -64,7 +64,7 @@ func RunInspectors(pkt packet.Packet, link *network.Link) (network.Verdict, bool
 			continue
 		}
 
-		action := inspectors[key](pkt, link)
+		action := inspectors[key](pkt, link) // Actually run inspector
 		switch action {
 		case DO_NOTHING:
 			if verdict < network.VerdictAccept {
