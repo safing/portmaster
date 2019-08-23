@@ -146,6 +146,7 @@ func handlePacket(pkt packet.Packet) {
 			pkt.PermanentAccept()
 			return
 		}
+		// TODO: Howto handle NetBios?
 	}
 
 	// log.Debugf("firewall: pkt %s has ID %s", pkt, pkt.GetLinkID())
@@ -268,6 +269,7 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 	// 	link.StopFirewallHandler()
 	// 	permanentVerdict(pkt, network.VerdictAccept)
 	case link.Inspect:
+		log.Tracer(pkt.Ctx()).Trace("firewall: start inspecting")
 		link.SetFirewallHandler(inspectThenVerdict)
 		inspectThenVerdict(pkt, link)
 	default:
