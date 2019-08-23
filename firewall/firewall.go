@@ -271,7 +271,7 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 	case link.Inspect:
 		log.Tracer(pkt.Ctx()).Trace("firewall: start inspecting")
 		link.SetFirewallHandler(inspectThenVerdict)
-		inspectThenVerdict(pkt, link) // TODO: corrent?: concurrently also called in link.SetFirewallHandler->go link.packetHandler()->fwH(pkt, link)
+		inspectThenVerdict(pkt, link)
 	default:
 		link.StopFirewallHandler()
 		issueVerdict(pkt, link, 0, true)
