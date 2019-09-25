@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"path/filepath"
 
 	"github.com/safing/portmaster/updates"
 	"github.com/spf13/cobra"
@@ -14,13 +15,13 @@ func init() {
 
 var updateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "Update scans the current directory and updates the index and symlink structure",
+	Short: "Update scans the specified directory and updates the index and symlink structure",
+	Args:  cobra.ExactArgs(1),
 	RunE:  update,
 }
 
 func update(cmd *cobra.Command, args []string) error {
-
-	latest, err := updates.ScanForLatest(".", true)
+	latest, err := updates.ScanForLatest(updatesStorage.Path, true)
 	if err != nil {
 		return err
 	}
@@ -30,7 +31,7 @@ func update(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = ioutil.WriteFile("stable.json", data, 0755)
+	err = ioutil.WriteFile(filepath.Join(updatesStorage.Path, "stable.json"), data, 0755)
 	if err != nil {
 		return err
 	}

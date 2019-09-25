@@ -16,11 +16,14 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "uptool",
 	Short: "helper tool for the update process",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Usage()
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		absPath, err := filepath.Abs(".")
+		dir := args[0]
+
+		absPath, err := filepath.Abs(dir)
 		if err != nil {
 			return err
 		}

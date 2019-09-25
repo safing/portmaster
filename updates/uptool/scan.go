@@ -14,13 +14,13 @@ func init() {
 
 var scanCmd = &cobra.Command{
 	Use:   "scan",
-	Short: "Scan the current directory and print the result",
+	Short: "Scan the specified directory and print the result",
+	Args:  cobra.ExactArgs(1),
 	RunE:  scan,
 }
 
 func scan(cmd *cobra.Command, args []string) error {
-
-	latest, err := updates.ScanForLatest(".", true)
+	latest, err := updates.ScanForLatest(updatesStorage.Path, true)
 	if err != nil {
 		return err
 	}
