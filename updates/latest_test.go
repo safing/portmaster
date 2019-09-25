@@ -59,8 +59,8 @@ func TestLoadLatestScope(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	testLoadLatestScope(t, tmpDir, "all/ui/assets_v1-2-3.zip", "all/ui/assets.zip", "1.2.3")
-	testLoadLatestScope(t, tmpDir, "all/ui/assets_v1-2-3b.zip", "all/ui/assets.zip", "1.2.3b")
-	testLoadLatestScope(t, tmpDir, "all/ui/assets_v1-2-4.zip", "all/ui/assets.zip", "1.2.4")
+	testLoadLatestScope(t, tmpDir, "all/ui/assets_v1-2-4b.zip", "all/ui/assets.zip", "1.2.4b")
+	testLoadLatestScope(t, tmpDir, "all/ui/assets_v1-2-5.zip", "all/ui/assets.zip", "1.2.5")
 	testLoadLatestScope(t, tmpDir, "all/ui/assets_v1-3-4.zip", "all/ui/assets.zip", "1.3.4")
 	testLoadLatestScope(t, tmpDir, "all/ui/assets_v2-3-4.zip", "all/ui/assets.zip", "2.3.4")
 	testLoadLatestScope(t, tmpDir, "all/ui/assets_v1-2-3.zip", "all/ui/assets.zip", "2.3.4")
