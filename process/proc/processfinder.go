@@ -16,6 +16,7 @@ var (
 	pidsByUser     = make(map[int][]int)
 )
 
+// GetPidOfInode returns the pid of the given uid and socket inode.
 func GetPidOfInode(uid, inode int) (int, bool) {
 	pidsByUserLock.Lock()
 	defer pidsByUserLock.Unlock()

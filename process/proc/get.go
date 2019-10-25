@@ -5,18 +5,22 @@ import (
 	"net"
 )
 
+// GetTCP4PacketInfo searches the network state tables for a TCP4 connection
 func GetTCP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, pktDirection bool) (pid int, direction bool, err error) {
 	return search(TCP4, localIP, localPort, pktDirection)
 }
 
+// GetTCP6PacketInfo searches the network state tables for a TCP6 connection
 func GetTCP6PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, pktDirection bool) (pid int, direction bool, err error) {
 	return search(TCP6, localIP, localPort, pktDirection)
 }
 
+// GetUDP4PacketInfo searches the network state tables for a UDP4 connection
 func GetUDP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, pktDirection bool) (pid int, direction bool, err error) {
 	return search(UDP4, localIP, localPort, pktDirection)
 }
 
+// GetUDP6PacketInfo searches the network state tables for a UDP6 connection
 func GetUDP6PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, pktDirection bool) (pid int, direction bool, err error) {
 	return search(UDP6, localIP, localPort, pktDirection)
 }

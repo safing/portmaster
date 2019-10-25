@@ -32,6 +32,7 @@ Cache every step!
 
 */
 
+// Network Related Constants
 const (
 	TCP4 uint8 = iota
 	UDP4
@@ -211,7 +212,7 @@ func convertIPv4(data string) net.IP {
 		return nil
 	}
 	if len(decoded) != 4 {
-		log.Warningf("process: decoded IPv4 %s has wrong length")
+		log.Warningf("process: decoded IPv4 %s has wrong length", decoded)
 		return nil
 	}
 	ip := net.IPv4(decoded[3], decoded[2], decoded[1], decoded[0])
@@ -225,7 +226,7 @@ func convertIPv6(data string) net.IP {
 		return nil
 	}
 	if len(decoded) != 16 {
-		log.Warningf("process: decoded IPv6 %s has wrong length")
+		log.Warningf("process: decoded IPv6 %s has wrong length", decoded)
 		return nil
 	}
 	ip := net.IP(decoded)

@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// PID querying return codes
 const (
 	Success uint8 = iota
 	NoSocket
@@ -48,7 +49,7 @@ func GetPidOfConnection(localIP net.IP, localPort uint16, protocol uint8) (pid i
 	return
 }
 
-// GetPidOfConnection returns the PID of the given incoming connection.
+// GetPidOfIncomingConnection returns the PID of the given incoming connection.
 func GetPidOfIncomingConnection(localIP net.IP, localPort uint16, protocol uint8) (pid int, status uint8) {
 	uid, inode, ok := getListeningSocket(localIP, localPort, protocol)
 	if !ok {
