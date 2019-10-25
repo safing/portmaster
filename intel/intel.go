@@ -1,11 +1,13 @@
 package intel
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/log"
 )
 
 var (
@@ -61,6 +63,13 @@ func (intel *Intel) Save() error {
 }
 
 // GetIntel fetches intelligence data for the given domain.
-func GetIntel(domain string) (*Intel, error) {
-	return &Intel{Domain: domain}, nil
+func GetIntel(ctx context.Context, q *Query) (*Intel, error) {
+	// sanity check
+	if q == nil || !q.check() {
+		return nil, ErrInvalid
+	}
+
+	log.Tracer(ctx).Trace("intel: getting intel")
+	// TODO
+	return &Intel{Domain: q.FQDN}, nil
 }

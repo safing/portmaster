@@ -13,7 +13,7 @@ var (
 	localAddrFactory func(network string) net.Addr
 )
 
-// SetLocalAddrFactory supplied the intel package with a function to set local addresses for connections.
+// SetLocalAddrFactory supplies the intel package with a function to get permitted local addresses for connections.
 func SetLocalAddrFactory(laf func(network string) net.Addr) {
 	if localAddrFactory == nil {
 		localAddrFactory = laf
@@ -36,11 +36,9 @@ type clientManager struct {
 	ttl          time.Duration // force refresh of connection to reduce traceability
 }
 
-// ref: https://godoc.org/github.com/miekg/dns#Client
-
-func newDNSClientManager(resolver *Resolver) *clientManager {
+func newDNSClientManager(_ *Resolver) *clientManager {
 	return &clientManager{
-		// ttl: 1 * time.Minute,
+		ttl: 0, // new client for every request, as we need to randomize the port
 		factory: func() *dns.Client {
 			return &dns.Client{
 				Timeout: 5 * time.Second,
@@ -52,15 +50,16 @@ func newDNSClientManager(resolver *Resolver) *clientManager {
 	}
 }
 
-func newTCPClientManager(resolver *Resolver) *clientManager {
+func newTCPClientManager(_ *Resolver) *clientManager {
 	return &clientManager{
-		// ttl: 5 * time.Minute,
+		ttl: 0, // TODO: build a custom client that can reuse connections to some degree (performance / privacy tradeoff)
 		factory: func() *dns.Client {
 			return &dns.Client{
 				Net:     "tcp",
 				Timeout: 5 * time.Second,
 				Dialer: &net.Dialer{
 					LocalAddr: getLocalAddr("tcp"),
+					KeepAlive: 15 * time.Second,
 				},
 			}
 		},
@@ -69,19 +68,19 @@ func newTCPClientManager(resolver *Resolver) *clientManager {
 
 func newTLSClientManager(resolver *Resolver) *clientManager {
 	return &clientManager{
-		// ttl: 5 * time.Minute,
+		ttl: 0, // TODO: build a custom client that can reuse connections to some degree (performance / privacy tradeoff)
 		factory: func() *dns.Client {
 			return &dns.Client{
 				Net: "tcp-tls",
 				TLSConfig: &tls.Config{
 					MinVersion: tls.VersionTLS12,
 					ServerName: resolver.VerifyDomain,
-					// TODO: use custom random
-					// Rand: io.Reader,
+					// TODO: use portbase rng
 				},
 				Timeout: 5 * time.Second,
 				Dialer: &net.Dialer{
 					LocalAddr: getLocalAddr("tcp"),
+					KeepAlive: 15 * time.Second,
 				},
 			}
 		},
@@ -90,18 +89,18 @@ func newTLSClientManager(resolver *Resolver) *clientManager {
 
 func newHTTPSClientManager(resolver *Resolver) *clientManager {
 	return &clientManager{
-		// ttl: 5 * time.Minute,
+		ttl: 0, // TODO: build a custom client that can reuse connections to some degree (performance / privacy tradeoff)
 		factory: func() *dns.Client {
 			new := &dns.Client{
 				Net: "https",
 				TLSConfig: &tls.Config{
 					MinVersion: tls.VersionTLS12,
-					// TODO: use custom random
-					// Rand: io.Reader,
+					// TODO: use portbase rng
 				},
 				Timeout: 5 * time.Second,
 				Dialer: &net.Dialer{
 					LocalAddr: getLocalAddr("tcp"),
+					KeepAlive: 15 * time.Second,
 				},
 			}
 			if resolver.VerifyDomain != "" {

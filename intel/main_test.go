@@ -4,34 +4,29 @@ import (
 	"os"
 	"testing"
 
-	"github.com/safing/portbase/database/dbmodule"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/core"
 )
 
 func TestMain(m *testing.M) {
 	// setup
-	testDir := os.TempDir()
-	dbmodule.SetDatabaseLocation(testDir)
-	err := modules.Start()
+	tmpDir, err := core.InitForTesting()
 	if err != nil {
-		if err == modules.ErrCleanExit {
-			os.Exit(0)
-		} else {
-			err = modules.Shutdown()
-			if err != nil {
-				log.Shutdown()
-			}
-			os.Exit(1)
-		}
+		panic(err)
 	}
+
+	// setup package
+	err = prep()
+	if err != nil {
+		panic(err)
+	}
+	loadResolvers()
 
 	// run tests
 	rv := m.Run()
 
 	// teardown
-	modules.Shutdown()
-	os.RemoveAll(testDir)
+	core.StopTesting()
+	_ = os.RemoveAll(tmpDir)
 
 	// exit with test run return value
 	os.Exit(rv)

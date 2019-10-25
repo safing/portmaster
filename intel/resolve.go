@@ -2,10 +2,8 @@ package intel
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"math/rand"
-	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -13,362 +11,261 @@ import (
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/status"
 )
 
-// TODO: make resolver interface for http package
+var (
+	mtAsyncResolve = "async resolve"
 
-// special tlds:
+	// basic errors
 
-// localhost. [RFC6761] - respond with 127.0.0.1 and ::1 to A and AAAA queries, else nxdomain
+	// ErrNotFound is a basic error that will match all "not found" errors
+	ErrNotFound = errors.New("record does not exist")
+	// ErrBlocked is basic error that will match all "blocked" errors
+	ErrBlocked = errors.New("query was blocked")
+	// ErrLocalhost is returned to *.localhost queries
+	ErrLocalhost = errors.New("query for localhost")
 
-// local. [RFC6762] - resolve if search, else resolve with mdns
-// 10.in-addr.arpa. [RFC6761]
-// 16.172.in-addr.arpa. [RFC6761]
-// 17.172.in-addr.arpa. [RFC6761]
-// 18.172.in-addr.arpa. [RFC6761]
-// 19.172.in-addr.arpa. [RFC6761]
-// 20.172.in-addr.arpa. [RFC6761]
-// 21.172.in-addr.arpa. [RFC6761]
-// 22.172.in-addr.arpa. [RFC6761]
-// 23.172.in-addr.arpa. [RFC6761]
-// 24.172.in-addr.arpa. [RFC6761]
-// 25.172.in-addr.arpa. [RFC6761]
-// 26.172.in-addr.arpa. [RFC6761]
-// 27.172.in-addr.arpa. [RFC6761]
-// 28.172.in-addr.arpa. [RFC6761]
-// 29.172.in-addr.arpa. [RFC6761]
-// 30.172.in-addr.arpa. [RFC6761]
-// 31.172.in-addr.arpa. [RFC6761]
-// 168.192.in-addr.arpa. [RFC6761]
-// 254.169.in-addr.arpa. [RFC6762]
-// 8.e.f.ip6.arpa. [RFC6762]
-// 9.e.f.ip6.arpa. [RFC6762]
-// a.e.f.ip6.arpa. [RFC6762]
-// b.e.f.ip6.arpa. [RFC6762]
+	// detailed errors
 
-// example. [RFC6761] - resolve if search, else return nxdomain
-// example.com. [RFC6761] - resolve if search, else return nxdomain
-// example.net. [RFC6761] - resolve if search, else return nxdomain
-// example.org. [RFC6761] - resolve if search, else return nxdomain
-// invalid. [RFC6761] - resolve if search, else return nxdomain
-// test. [RFC6761] - resolve if search, else return nxdomain
-// onion. [RFC7686] - resolve if search, else return nxdomain
+	// ErrTestDomainsDisabled wraps ErrBlocked
+	ErrTestDomainsDisabled = fmt.Errorf("%w: test domains disabled", ErrBlocked)
+	// ErrSpecialDomainsDisabled wraps ErrBlocked
+	ErrSpecialDomainsDisabled = fmt.Errorf("%w: special domains disabled", ErrBlocked)
+	// ErrInvalid wraps ErrNotFound
+	ErrInvalid = fmt.Errorf("%w: invalid request", ErrNotFound)
+	// ErrNoCompliance wraps ErrBlocked and is returned when no resolvers were able to comply with the current settings
+	ErrNoCompliance = fmt.Errorf("%w: no compliant resolvers for this query", ErrBlocked)
+)
 
-// resolvers:
-// local
-// global
-// mdns
+type Query struct {
+	FQDN               string
+	QType              dns.Type
+	SecurityLevel      uint8
+	NoCaching          bool
+	IgnoreFailing      bool
+	LocalResolversOnly bool
 
-// scopes:
-// local-inaddr -> local, mdns
-// local -> local scopes, mdns
-// global -> local scopes, global
-// special -> local scopes, local
+	// internal
+	dotPrefixedFQDN string
+}
+
+// check runs sanity checks and does some initialization. Returns whether the query passed the basic checks.
+func (q *Query) check() (ok bool) {
+	if q.FQDN == "" {
+		return false
+	}
+
+	// init
+	q.FQDN = dns.Fqdn(q.FQDN)
+	if q.FQDN == "." {
+		q.dotPrefixedFQDN = q.FQDN
+	} else {
+		q.dotPrefixedFQDN = "." + q.FQDN
+	}
+
+	return true
+}
 
 // Resolve resolves the given query for a domain and type and returns a RRCache object or nil, if the query failed.
-func Resolve(ctx context.Context, fqdn string, qtype dns.Type, securityLevel uint8) *RRCache {
-	fqdn = dns.Fqdn(fqdn)
+func Resolve(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
+	// sanity check
+	if q == nil || !q.check() {
+		return nil, ErrInvalid
+	}
 
-	// use this to time how long it takes resolve this domain
-	// timed := time.Now()
-	// defer log.Tracef("intel: took %s to get resolve %s%s", time.Now().Sub(timed).String(), fqdn, qtype.String())
+	// log
+	log.Tracer(ctx).Tracef("intel: resolving %s%s", q.FQDN, q.QType)
 
-	// check cache
-	rrCache, err := GetRRCache(fqdn, qtype)
-	if err != nil {
-		switch err {
-		case database.ErrNotFound:
-		default:
-			log.Tracer(ctx).Warningf("intel: getting RRCache %s%s from database failed: %s", fqdn, qtype.String(), err)
-			log.Warningf("intel: getting RRCache %s%s from database failed: %s", fqdn, qtype.String(), err)
+	// check query compliance
+	if err = q.checkCompliance(); err != nil {
+		return nil, err
+	}
+
+	// check the cache
+	if !q.NoCaching {
+		rrCache = checkCache(ctx, q)
+		if rrCache != nil {
+			rrCache.MixAnswers()
+			return rrCache, nil
 		}
-		return resolveAndCache(ctx, fqdn, qtype, securityLevel)
-	}
 
-	if rrCache.TTL <= time.Now().Unix() {
-		log.Tracer(ctx).Tracef("intel: serving from cache, requesting new. TTL=%d, now=%d", rrCache.TTL, time.Now().Unix())
-		// log.Tracef("intel: serving cache, requesting new. TTL=%d, now=%d", rrCache.TTL, time.Now().Unix())
-		rrCache.requestingNew = true
-		go resolveAndCache(nil, fqdn, qtype, securityLevel)
-	}
-
-	// randomize records to allow dumb clients (who only look at the first record) to reliably connect
-	for i := range rrCache.Answer {
-		j := rand.Intn(i + 1)
-		rrCache.Answer[i], rrCache.Answer[j] = rrCache.Answer[j], rrCache.Answer[i]
-	}
-
-	return rrCache
-}
-
-func resolveAndCache(ctx context.Context, fqdn string, qtype dns.Type, securityLevel uint8) (rrCache *RRCache) {
-	log.Tracer(ctx).Tracef("intel: resolving %s%s", fqdn, qtype.String())
-
-	// dedup requests
-	dupKey := fmt.Sprintf("%s%s", fqdn, qtype.String())
-	dupReqLock.Lock()
-	mutex, requestActive := dupReqMap[dupKey]
-	if !requestActive {
-		mutex = new(sync.Mutex)
-		mutex.Lock()
-		dupReqMap[dupKey] = mutex
-		dupReqLock.Unlock()
-	} else {
-		dupReqLock.Unlock()
-		log.Tracer(ctx).Tracef("intel: waiting for duplicate query for %s to complete", dupKey)
-		// log.Tracef("intel: waiting for duplicate query for %s to complete", dupKey)
-		mutex.Lock()
-		// wait until duplicate request is finished, then fetch current RRCache and return
-		mutex.Unlock()
-		var err error
-		rrCache, err = GetRRCache(dupKey, qtype)
-		if err == nil {
-			return rrCache
-		}
-		// must have been nxdomain if we cannot get RRCache
-		return nil
-	}
-	defer func() {
-		dupReqLock.Lock()
-		delete(dupReqMap, dupKey)
-		dupReqLock.Unlock()
-		mutex.Unlock()
-	}()
-
-	// resolve
-	rrCache = intelligentResolve(ctx, fqdn, qtype, securityLevel)
-	if rrCache == nil {
-		return nil
-	}
-
-	// persist to database
-	rrCache.Clean(600)
-	rrCache.Save()
-
-	return rrCache
-}
-
-func intelligentResolve(ctx context.Context, fqdn string, qtype dns.Type, securityLevel uint8) *RRCache {
-
-	// TODO: handle being offline
-	// TODO: handle multiple network connections
-
-	// TODO: handle these in a separate goroutine
-	// if config.Changed() {
-	// 	log.Info("intel: config changed, reloading resolvers")
-	// 	loadResolvers(false)
-	// } else if env.NetworkChanged() {
-	// 	log.Info("intel: network changed, reloading resolvers")
-	// 	loadResolvers(true)
-	// }
-
-	resolversLock.RLock()
-	defer resolversLock.RUnlock()
-
-	lastFailBoundary := time.Now().Unix() - nameserverRetryRate()
-	preDottedFqdn := "." + fqdn
-
-	// resolve:
-	// reverse local -> local, mdns
-	// local -> local scopes, mdns
-	// special -> local scopes, local
-	// global -> local scopes, global
-
-	// local reverse scope
-	if domainInScopes(preDottedFqdn, localReverseScopes) {
-		// try local resolvers
-		for _, resolver := range localResolvers {
-			rrCache, ok := tryResolver(ctx, resolver, lastFailBoundary, fqdn, qtype, securityLevel)
-			if ok && rrCache != nil && !rrCache.IsNXDomain() {
-				return rrCache
+		// dedupe!
+		markRequestFinished := deduplicateRequest(ctx, q)
+		if markRequestFinished == nil {
+			// we waited for another request, recheck the cache!
+			rrCache = checkCache(ctx, q)
+			if rrCache != nil {
+				rrCache.MixAnswers()
+				return rrCache, nil
 			}
-		}
-		// check config
-		if doNotUseMulticastDNS(securityLevel) {
-			return nil
-		}
-		// try mdns
-		rrCache, err := queryMulticastDNS(ctx, fqdn, qtype)
-		if err != nil {
-			log.Tracer(ctx).Warningf("intel: failed to query mdns: %s", err)
-			log.Errorf("intel: failed to query mdns: %s", err)
-		}
-		return rrCache
-	}
-
-	// local scopes
-	for _, scope := range localScopes {
-		if strings.HasSuffix(preDottedFqdn, scope.Domain) {
-			for _, resolver := range scope.Resolvers {
-				rrCache, ok := tryResolver(ctx, resolver, lastFailBoundary, fqdn, qtype, securityLevel)
-				if ok && rrCache != nil && !rrCache.IsNXDomain() {
-					return rrCache
-				}
-			}
-		}
-	}
-
-	switch {
-	case strings.HasSuffix(preDottedFqdn, ".local."):
-		// check config
-		if doNotUseMulticastDNS(securityLevel) {
-			return nil
-		}
-		// try mdns
-		rrCache, err := queryMulticastDNS(ctx, fqdn, qtype)
-		if err != nil {
-			log.Tracer(ctx).Warningf("intel: failed to query mdns: %s", err)
-			log.Errorf("intel: failed to query mdns: %s", err)
-		}
-		return rrCache
-	case domainInScopes(preDottedFqdn, specialScopes):
-		// check config
-		if doNotResolveSpecialDomains(securityLevel) {
-			return nil
-		}
-		// try local resolvers
-		for _, resolver := range localResolvers {
-			rrCache, ok := tryResolver(ctx, resolver, lastFailBoundary, fqdn, qtype, securityLevel)
-			if ok {
-				return rrCache
-			}
-		}
-	default:
-		// try global resolvers
-		for _, resolver := range globalResolvers {
-			rrCache, ok := tryResolver(ctx, resolver, lastFailBoundary, fqdn, qtype, securityLevel)
-			if ok {
-				return rrCache
-			}
-		}
-	}
-
-	log.Tracer(ctx).Warningf("intel: failed to resolve %s%s: all resolvers failed (or were skipped to fulfill the security level)", fqdn, qtype.String())
-	log.Criticalf("intel: failed to resolve %s%s: all resolvers failed (or were skipped to fulfill the security level), resetting servers...", fqdn, qtype.String())
-	go resetResolverFailStatus()
-
-	return nil
-
-	// TODO: check if there would be resolvers available in lower security modes and alert user
-}
-
-func tryResolver(ctx context.Context, resolver *Resolver, lastFailBoundary int64, fqdn string, qtype dns.Type, securityLevel uint8) (*RRCache, bool) {
-	log.Tracer(ctx).Tracef("intel: resolving with %s", resolver)
-
-	// skip if not security level denies insecure protocols
-	if doNotUseInsecureProtocols(securityLevel) && resolver.ServerType == "dns" {
-		log.Tracer(ctx).Tracef("intel: skipping resolver %s, because it isn't allowed to operate on the current security level: %d|%d", resolver, status.ActiveSecurityLevel(), securityLevel)
-		return nil, false
-	}
-
-	// skip if not security level denies assigned dns servers
-	if doNotUseAssignedNameservers(securityLevel) && resolver.Source == "dhcp" {
-		log.Tracer(ctx).Tracef("intel: skipping resolver %s, because assigned nameservers are not allowed on the current security level: %d|%d", resolver, status.ActiveSecurityLevel(), securityLevel)
-		return nil, false
-	}
-	// check if failed recently
-	if resolver.LastFail() > lastFailBoundary {
-		log.Tracer(ctx).Tracef("intel: skipping resolver %s, because it failed recently", resolver)
-		return nil, false
-	}
-	// TODO: put SkipFqdnBeforeInit back into !resolver.Initialized.IsSet() as soon as Go1.9 arrives and we can use a custom resolver
-	// skip resolver if initializing and fqdn is set to skip
-	if fqdn == resolver.SkipFqdnBeforeInit {
-		log.Tracer(ctx).Tracef("intel: skipping resolver %s, because %s is set to be skipped before init", resolver, fqdn)
-		return nil, false
-	}
-	// check if resolver is already initialized
-	if !resolver.Initialized() {
-		// first should init, others wait
-		resolver.InitLock.Lock()
-		if resolver.Initialized() {
-			// unlock immediately if resolver was initialized
-			resolver.InitLock.Unlock()
+			// if cache is still empty or non-compliant, go ahead and just query
 		} else {
-			// initialize and unlock when finished
-			defer resolver.InitLock.Unlock()
-		}
-		// check if previous init failed
-		if resolver.LastFail() > lastFailBoundary {
-			return nil, false
-		}
-	}
-	// resolve
-	rrCache, err := query(ctx, resolver, fqdn, qtype)
-	if err != nil {
-		// check if failing is disabled
-		if resolver.LastFail() == -1 {
-			log.Tracer(ctx).Tracef("intel: non-failing resolver %s failed, moving to next: %s", resolver, err)
-			// log.Tracef("intel: non-failing resolver %s failed (%s), moving to next", resolver, err)
-			return nil, false
-		}
-		log.Tracer(ctx).Warningf("intel: resolver %s failed, moving to next: %s", resolver, err)
-		log.Warningf("intel: resolver %s failed, moving to next: %s", resolver, err)
-		resolver.Lock()
-		resolver.failReason = err.Error()
-		resolver.lastFail = time.Now().Unix()
-		resolver.initialized = false
-		resolver.Unlock()
-		return nil, false
-	}
-	resolver.Lock()
-	resolver.initialized = true
-	resolver.Unlock()
+			// we are the first!
+			defer markRequestFinished()
 
-	return rrCache, true
+		}
+	}
+
+	return resolveAndCache(ctx, q)
 }
 
-func query(ctx context.Context, resolver *Resolver, fqdn string, qtype dns.Type) (*RRCache, error) {
+func checkCache(ctx context.Context, q *Query) *RRCache {
+	rrCache, err := GetRRCache(q.FQDN, q.QType)
 
-	q := new(dns.Msg)
-	q.SetQuestion(fqdn, uint16(qtype))
+	// failed to get from cache
+	if err != nil {
+		if err != database.ErrNotFound {
+			log.Tracer(ctx).Warningf("intel: getting RRCache %s%s from database failed: %s", q.FQDN, q.QType.String(), err)
+			log.Warningf("intel: getting RRCache %s%s from database failed: %s", q.FQDN, q.QType.String(), err)
+		}
+		return nil
+	}
 
-	var reply *dns.Msg
-	var err error
-	for i := 0; i < 3; i++ {
+	// get resolver that rrCache was resolved with
+	resolver := getResolverByIDWithLocking(rrCache.Server)
+	if resolver == nil {
+		return nil
+	}
 
-		// log query time
-		// qStart := time.Now()
-		reply, _, err = resolver.clientManager.getDNSClient().Exchange(q, resolver.ServerAddress)
-		// log.Tracef("intel: query to %s took %s", resolver.Server, time.Now().Sub(qStart))
+	// check compliance of resolver
+	err = resolver.checkCompliance(ctx, q)
+	if err != nil {
+		log.Tracer(ctx).Debugf("intel: cached entry for %s%s does not comply to query parameters: %s", q.FQDN, q.QType.String(), err)
+		return nil
+	}
 
-		// error handling
-		if err != nil {
-			log.Tracer(ctx).Tracef("intel: query to %s encountered error: %s", resolver.Server, err)
+	// check if expired
+	if rrCache.Expired() {
+		rrCache.Lock()
+		rrCache.requestingNew = true
+		rrCache.Unlock()
 
-			// TODO: handle special cases
-			// 1. connect: network is unreachable
-			// 2. timeout
+		log.Tracer(ctx).Trace("intel: serving from cache, requesting new")
 
-			// temporary error
-			if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
-				log.Tracer(ctx).Tracef("intel: retrying to resolve %s%s with %s, error is temporary", fqdn, qtype, resolver.Server)
+		// resolve async
+		module.StartMediumPriorityMicroTask(&mtAsyncResolve, func(ctx context.Context) error {
+			_, _ = resolveAndCache(ctx, q)
+			return nil
+		})
+	}
+
+	return rrCache
+}
+
+func deduplicateRequest(ctx context.Context, q *Query) (finishRequest func()) {
+	// create identifier key
+	dupKey := fmt.Sprintf("%s%s", q.FQDN, q.QType.String())
+
+	dupReqLock.Lock()
+	defer dupReqLock.Unlock()
+
+	// get  duplicate request waitgroup
+	wg, requestActive := dupReqMap[dupKey]
+
+	// someone else is already on it!
+	if requestActive {
+		// log that we are waiting
+		log.Tracer(ctx).Tracef("intel: waiting for duplicate query for %s to complete", dupKey)
+		// wait
+		wg.Wait()
+		// done!
+		return nil
+	}
+
+	// we are currently the only one doing a request for this
+
+	// create new waitgroup
+	wg = new(sync.WaitGroup)
+	// add worker (us!)
+	wg.Add(1)
+	// add to registry
+	dupReqMap[dupKey] = wg
+
+	// return function to mark request as finished
+	return func() {
+		dupReqLock.Lock()
+		defer dupReqLock.Unlock()
+		// mark request as done
+		wg.Done()
+		// delete from registry
+		delete(dupReqMap, dupKey)
+	}
+}
+
+func resolveAndCache(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
+	// get resolvers
+	resolvers := GetResolversInScope(ctx, q)
+	if len(resolvers) == 0 {
+		return nil, ErrNoCompliance
+	}
+
+	// prep
+	lastFailBoundary := time.Now().Add(
+		-time.Duration(nameserverRetryRate()) * time.Second,
+	)
+
+	// start resolving
+
+	var i int
+	// once with skipping recently failed resolvers, once without
+resolveLoop:
+	for i = 0; i < 2; i++ {
+		for _, resolver := range resolvers {
+			// check if resolver failed recently (on first run)
+			if i == 0 && resolver.Conn.LastFail().After(lastFailBoundary) {
+				log.Tracer(ctx).Tracef("intel: skipping resolver %s, because it failed recently", resolver)
 				continue
 			}
 
-			// permanent error
-			break
-		}
+			// resolve
+			rrCache, err = resolver.Conn.Query(ctx, q)
+			if err != nil {
 
-		// no error
-		break
+				// FIXME: check if we are online?
+
+				switch {
+				case errors.Is(err, ErrNotFound):
+					// NXDomain, or similar
+					return nil, err
+				case errors.Is(err, ErrBlocked):
+					// some resolvers might also block
+					return nil, err
+				}
+			} else {
+				// no error
+				if rrCache == nil {
+					// defensive: assume NXDomain
+					return nil, ErrNotFound
+				}
+				break resolveLoop
+			}
+		}
 	}
 
+	// tried all resolvers, possibly twice
+	if i > 1 {
+		return nil, fmt.Errorf("all %d query-compliant resolvers failed, last error: %s", len(resolvers), err)
+	}
+
+	// check for error
 	if err != nil {
 		return nil, err
 	}
 
-	new := &RRCache{
-		Domain:      fqdn,
-		Question:    qtype,
-		Answer:      reply.Answer,
-		Ns:          reply.Ns,
-		Extra:       reply.Extra,
-		Server:      resolver.Server,
-		ServerScope: resolver.ServerIPScope,
+	// check for result
+	if rrCache == nil /* defensive */ {
+		return nil, ErrNotFound
 	}
 
-	// TODO: check if reply.Answer is valid
-	return new, nil
+	// cache if enabled
+	if !q.NoCaching {
+		// persist to database
+		rrCache.Clean(600)
+		err = rrCache.Save()
+		if err != nil {
+			log.Warningf("intel: failed to cache RR for %s%s: %s", q.FQDN, q.QType.String(), err)
+		}
+	}
+
+	return rrCache, nil
 }
