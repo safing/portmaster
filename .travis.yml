@@ -1,0 +1,20 @@
+language: go
+
+os:
+  - linux
+  - windows
+
+branches:
+  only:
+    - master
+    - develop
+    - /^feature\/travis\/.+$/ # feature/travis/*
+    - /^fix\/travis\/.+$/ # fix/travis/*
+
+install:
+  - go get -d -u github.com/golang/dep
+  - go install github.com/golang/dep/cmd/dep
+  - dep ensure
+  - ./test install
+
+script: ./test --scripted

@@ -1,0 +1,10 @@
+linters:
+  enable-all: true
+  disable:
+    - lll
+    - gochecknoinits
+    - gochecknoglobals
+    - funlen
+    - whitespace
+    - wsl
+    - godox
