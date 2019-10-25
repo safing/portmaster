@@ -102,6 +102,11 @@ func handleRun(cmd *cobra.Command, opts *Options) (err error) {
 
 func run(cmd *cobra.Command, opts *Options) (err error) {
 
+	// set download option
+	if opts.AllowDownload {
+		registry.Online = true
+	}
+
 	// parse identifier
 	opts.ShortIdentifier = path.Dir(opts.Identifier)
 
@@ -124,7 +129,7 @@ func run(cmd *cobra.Command, opts *Options) (err error) {
 
 	// notify service after some time
 	go func() {
-		// assume that after 5 seconds service has finished starting
+		// assume that after 3 seconds service has finished starting
 		time.Sleep(3 * time.Second)
 		startupComplete <- struct{}{}
 	}()
@@ -188,7 +193,7 @@ func run(cmd *cobra.Command, opts *Options) (err error) {
 }
 
 func execute(opts *Options, args []string) (cont bool, err error) {
-	file, err := getFile(opts)
+	file, err := registry.GetFile(platform(opts.Identifier))
 	if err != nil {
 		return true, fmt.Errorf("could not get component: %s", err)
 	}
@@ -218,13 +223,13 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 	} else {
 		// open log file
 		logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.log", time.Now().UTC().Format("2006-02-01-15-04-05")))
-		logFile = initializeLogFile(logFilePath, opts.Identifier, file)
+		logFile = initializeLogFile(logFilePath, opts.Identifier, file.Version())
 		if logFile != nil {
 			defer finalizeLogFile(logFile, logFilePath)
 		}
 		// open error log file
 		errorFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.error.log", time.Now().UTC().Format("2006-02-01-15-04-05")))
-		errorFile = initializeLogFile(errorFilePath, opts.Identifier, file)
+		errorFile = initializeLogFile(errorFilePath, opts.Identifier, file.Version())
 		if errorFile != nil {
 			defer finalizeLogFile(errorFile, errorFilePath)
 		}

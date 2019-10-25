@@ -9,8 +9,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/safing/portbase/updater"
+
 	"github.com/safing/portmaster/core/structure"
-	"github.com/safing/portmaster/updates"
 
 	"github.com/safing/portbase/utils"
 
@@ -27,6 +28,17 @@ var (
 
 	showShortVersion bool
 	showFullVersion  bool
+
+	// create registry
+	registry = &updater.ResourceRegistry{
+		Name: "updates",
+		UpdateURLs: []string{
+			"https://updates.safing.io",
+		},
+		Beta:    false,
+		DevMode: false,
+		Online:  false,
+	}
 
 	rootCmd = &cobra.Command{
 		Use:               "portmaster-control",
@@ -153,8 +165,24 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 			return fmt.Errorf("failed to initialize data root: %s", err)
 		}
 		dataRoot = structure.Root()
-		// manually set updates root (no modules)
-		updates.SetDataRoot(structure.Root())
+
+		// initialize registry
+		err := registry.Initialize(structure.Root().ChildDir("updates", 0755))
+		if err != nil {
+			return err
+		}
+
+		err = registry.LoadIndexes()
+		if err != nil {
+			return err
+		}
+
+		err = registry.ScanStorage("")
+		if err != nil {
+			log.Printf("WARNING: error during storage scan: %s\n", err)
+		}
+
+		registry.SelectVersions()
 	}
 
 	// logs and warning

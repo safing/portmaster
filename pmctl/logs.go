@@ -13,11 +13,10 @@ import (
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/formats/dsd"
 	"github.com/safing/portbase/info"
-	"github.com/safing/portmaster/updates"
 	"github.com/spf13/cobra"
 )
 
-func initializeLogFile(logFilePath string, identifier string, updateFile *updates.File) *os.File {
+func initializeLogFile(logFilePath string, identifier string, version string) *os.File {
 	logFile, err := os.OpenFile(logFilePath, os.O_RDWR|os.O_CREATE, 0444)
 	if err != nil {
 		log.Printf("failed to create log file %s: %s\n", logFilePath, err)
@@ -42,7 +41,7 @@ func initializeLogFile(logFilePath string, identifier string, updateFile *update
 	c.AppendAsBlock(metaSection)
 	// log file data type (string) and newline for better manual viewing
 	c.Append([]byte("S\n"))
-	c.Append([]byte(fmt.Sprintf("executing %s version %s on %s %s\n", identifier, updateFile.Version(), runtime.GOOS, runtime.GOARCH)))
+	c.Append([]byte(fmt.Sprintf("executing %s version %s on %s %s\n", identifier, version, runtime.GOOS, runtime.GOARCH)))
 
 	_, err = logFile.Write(c.CompileData())
 	if err != nil {
@@ -83,7 +82,7 @@ func initControlLogFile() *os.File {
 
 	// open log file
 	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.log", time.Now().UTC().Format("2006-02-01-15-04-05")))
-	return initializeLogFile(logFilePath, "control/portmaster-control", updates.NewFile("", info.Version(), false))
+	return initializeLogFile(logFilePath, "control/portmaster-control", info.Version())
 }
 
 func logControlError(cErr error) {
@@ -101,7 +100,7 @@ func logControlError(cErr error) {
 
 	// open log file
 	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.error.log", time.Now().UTC().Format("2006-02-01-15-04-05")))
-	errorFile := initializeLogFile(logFilePath, "control/portmaster-control", updates.NewFile("", info.Version(), false))
+	errorFile := initializeLogFile(logFilePath, "control/portmaster-control", info.Version())
 	if errorFile == nil {
 		return
 	}
@@ -121,7 +120,7 @@ func logControlStack() {
 
 	// open log file
 	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.stack.log", time.Now().UTC().Format("2006-02-01-15-04-05")))
-	errorFile := initializeLogFile(logFilePath, "control/portmaster-control", updates.NewFile("", info.Version(), false))
+	errorFile := initializeLogFile(logFilePath, "control/portmaster-control", info.Version())
 	if errorFile == nil {
 		return
 	}
