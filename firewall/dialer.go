@@ -5,10 +5,12 @@ import (
 	"net"
 
 	"github.com/safing/portmaster/intel"
+	"github.com/safing/portmaster/network/environment"
 )
 
 func init() {
 	intel.SetLocalAddrFactory(PermittedAddr)
+	environment.SetLocalAddrFactory(PermittedAddr)
 }
 
 // PermittedAddr returns an already permitted local address for the given network for reliable connectivity.

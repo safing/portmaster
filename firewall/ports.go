@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/crypto/random"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/rng"
 )
 
 type portStatus struct {
@@ -48,7 +48,7 @@ func GetPermittedPort() uint16 {
 
 	for i := 0; i < 1000; i++ {
 		// generate port between 10000 and 65535
-		rN, err := random.Number(55535)
+		rN, err := rng.Number(55535)
 		if err != nil {
 			log.Warningf("firewall: failed to generate random port: %s", err)
 			return 0

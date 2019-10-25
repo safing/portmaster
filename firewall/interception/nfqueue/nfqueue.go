@@ -64,7 +64,7 @@ func NewNFQueue(qid uint16) (nfq *NFQueue, err error) {
 func (this *NFQueue) init() error {
 	var err error
 	if this.h, err = C.nfq_open(); err != nil || this.h == nil {
-		fmt.Errorf("could not open nfqueue: %s", err)
+		return fmt.Errorf("could not open nfqueue: %s", err)
 	}
 
 	//if this.qh, err = C.nfq_create_queue(this.h, qid, C.get_cb(), unsafe.Pointer(nfq)); err != nil || this.qh == nil {

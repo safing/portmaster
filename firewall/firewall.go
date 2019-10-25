@@ -167,8 +167,11 @@ func handlePacket(pkt packet.Packet) {
 	// 	}
 	// }
 
-	pkt.SetCtx(log.AddTracer(context.Background()))
-	log.Tracer(pkt.Ctx()).Tracef("firewall: handling packet: %s", pkt)
+	traceCtx, tracer := log.AddTracer(context.Background())
+	if tracer != nil {
+		pkt.SetCtx(traceCtx)
+		tracer.Tracef("firewall: handling packet: %s", pkt)
+	}
 
 	// associate packet to link and handle
 	link, created := network.GetOrCreateLinkByPacket(pkt)
@@ -340,7 +343,7 @@ func issueVerdict(pkt packet.Packet, link *network.Link, verdict network.Verdict
 
 	link.Unlock()
 
-	log.InfoTracef(pkt.Ctx(), "firewall: %s %s", link.Verdict, link)
+	log.Tracer(pkt.Ctx()).Infof("firewall: %s %s", link.Verdict, link)
 }
 
 // func tunnelHandler(pkt packet.Packet) {

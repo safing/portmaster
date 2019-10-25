@@ -139,7 +139,7 @@ func DecideOnCommunicationAfterIntel(comm *network.Communication, fqdn string, r
 }
 
 // FilterDNSResponse filters a dns response according to the application profile and settings.
-func FilterDNSResponse(comm *network.Communication, fqdn string, rrCache *intel.RRCache) *intel.RRCache {
+func FilterDNSResponse(comm *network.Communication, q *intel.Query, rrCache *intel.RRCache) *intel.RRCache {
 	// do not modify own queries - this should not happen anyway
 	if comm.Process().Pid == os.Getpid() {
 		return rrCache
@@ -228,7 +228,7 @@ func FilterDNSResponse(comm *network.Communication, fqdn string, rrCache *intel.
 				}
 
 				// filter by endpoints
-				result, _ = profileSet.CheckEndpointIP(fqdn, ip, 0, 0, false)
+				result, _ = profileSet.CheckEndpointIP(q.FQDN, ip, 0, 0, false)
 				if result == profile.Denied {
 					addressesRemoved++
 					rrCache.FilteredEntries = append(rrCache.FilteredEntries, rr.String())

@@ -41,7 +41,7 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, 
 			}
 			return
 		}
-		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s", comm.Process().Pid, comm.Domain, pkt.Info().RemoteIP)
+		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s", comm.Process().Pid, comm.Domain, pkt.Info().RemoteIP())
 	default: // connection to domain
 		nID = fmt.Sprintf("firewall-prompt-%d-%s", comm.Process().Pid, comm.Domain)
 	}
