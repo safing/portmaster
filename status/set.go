@@ -58,7 +58,7 @@ func SetPortmasterStatus(pmStatus uint8, msg string) {
 
 		go status.Save()
 	default:
-		log.Errorf("status: tried to set portmaster to invalid status: %d", status)
+		log.Errorf("status: tried to set portmaster to invalid status: %d", pmStatus)
 	}
 }
 
@@ -75,7 +75,7 @@ func SetGate17Status(g17Status uint8, msg string) {
 
 		go status.Save()
 	default:
-		log.Errorf("status: tried to set gate17 to invalid status: %d", status)
+		log.Errorf("status: tried to set gate17 to invalid status: %d", g17Status)
 	}
 }
 

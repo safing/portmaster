@@ -20,6 +20,7 @@ func init() {
 }
 
 // SystemStatus saves basic information about the current system status.
+//nolint:maligned // TODO
 type SystemStatus struct {
 	record.Base
 	sync.Mutex
