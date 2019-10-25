@@ -1,18 +1,24 @@
 package updates
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/tevino/abool"
+
 	"github.com/google/renameio"
 
+	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/notifications"
+	"github.com/safing/portbase/updater"
 
 	processInfo "github.com/shirou/gopsutil/process"
 )
@@ -21,21 +27,102 @@ const (
 	upgradedSuffix = "-upgraded"
 )
 
-func runFileUpgrades() error {
+var (
+	upgraderActive    = abool.NewBool(false)
+	dontUpgradeBefore = time.Now().Add(5 * time.Minute)
+	pmCtrlUpdate      *updater.File
+	pmCoreUpdate      *updater.File
+
+	rawVersionRegex = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+b?\*?$`)
+)
+
+func initUpgrader() {
+	module.RegisterEventHook(
+		"updates",
+		eventResourceUpdate,
+		"run upgrades",
+		upgrader,
+	)
+}
+
+func upgrader(_ context.Context, _ interface{}) error {
+	// like a lock, but discard additional runs
+	if !upgraderActive.SetToIf(false, true) {
+		return nil
+	}
+	defer upgraderActive.SetTo(false)
+
+	// upgrade portmaster control
+	err := upgradePortmasterControl()
+	if err != nil {
+		log.Warningf("updates: failed to upgrade portmaster-control: %s", err)
+	}
+
+	err = upgradeCoreNotify()
+	if err != nil {
+		log.Warningf("updates: failed to notify about core upgrade: %s", err)
+	}
+
+	return nil
+}
+
+func upgradeCoreNotify() error {
+	identifier := "core/portmaster-core" // identifier, use forward slash!
+	if onWindows {
+		identifier += ".exe"
+	}
+
+	// check if we can upgrade
+	if pmCoreUpdate == nil || pmCoreUpdate.UpgradeAvailable() {
+		// get newest portmaster-control
+		new, err := GetPlatformFile(identifier)
+		if err != nil {
+			return err
+		}
+		pmCoreUpdate = new
+	} else {
+		return nil
+	}
+
+	if info.GetInfo().Version != pmCoreUpdate.Version() {
+		// create notification
+		(&notifications.Notification{
+			ID:      "updates-core-update-available",
+			Message: fmt.Sprintf("There is an update available for the Portmaster core (v%s), please restart the Portmaster to apply the update.", pmCoreUpdate.Version()),
+			Type:    notifications.Info,
+		}).Save()
+	}
+
+	return nil
+}
+
+func upgradePortmasterControl() error {
 	filename := "portmaster-control"
-	if runtime.GOOS == "windows" {
+	if onWindows {
 		filename += ".exe"
 	}
 
-	// get newest portmaster-control
-	newFile, err := GetPlatformFile("control/" + filename) // identifier, use forward slash!
+	// check if we can upgrade
+	if pmCtrlUpdate == nil || pmCtrlUpdate.UpgradeAvailable() {
+		// get newest portmaster-control
+		new, err := GetPlatformFile("control/" + filename) // identifier, use forward slash!
+		if err != nil {
+			return err
+		}
+		pmCtrlUpdate = new
+	} else {
+		return nil
+	}
+
+	// check if registry tmp dir is ok
+	err := registry.TmpDir().Ensure()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to prep updates tmp dir: %s", err)
 	}
 
 	// update portmaster-control in data root
-	rootControlPath := filepath.Join(filepath.Dir(updateStorage.Path), filename)
-	err = upgradeFile(rootControlPath, newFile)
+	rootControlPath := filepath.Join(filepath.Dir(registry.StorageDir().Path), filename)
+	err = upgradeFile(rootControlPath, pmCtrlUpdate)
 	if err != nil {
 		return err
 	}
@@ -50,7 +137,7 @@ func runFileUpgrades() error {
 	if err != nil {
 		return fmt.Errorf("could not get parent process name for upgrade checks: %s", err)
 	}
-	if !strings.HasPrefix(parentName, filename) {
+	if parentName != filename {
 		log.Tracef("updates: parent process does not seem to be portmaster-control, name is %s", parentName)
 		return nil
 	}
@@ -58,7 +145,7 @@ func runFileUpgrades() error {
 	if err != nil {
 		return fmt.Errorf("could not get parent process path for upgrade: %s", err)
 	}
-	err = upgradeFile(parentPath, newFile)
+	err = upgradeFile(parentPath, pmCtrlUpdate)
 	if err != nil {
 		return err
 	}
@@ -67,18 +154,12 @@ func runFileUpgrades() error {
 	return nil
 }
 
-func upgradeFile(fileToUpgrade string, file *File) error {
+func upgradeFile(fileToUpgrade string, file *updater.File) error {
 	fileExists := false
 	_, err := os.Stat(fileToUpgrade)
 	if err == nil {
 		// file exists and is accessible
 		fileExists = true
-	}
-
-	// ensure that the tmp dir exists
-	err = tmpStorage.Ensure()
-	if err != nil {
-		return fmt.Errorf("unable to create directory for upgrade process: %s", err)
 	}
 
 	if fileExists {
@@ -107,12 +188,18 @@ func upgradeFile(fileToUpgrade string, file *File) error {
 		// try removing old version
 		err = os.Remove(fileToUpgrade)
 		if err != nil {
+			// ensure tmp dir is here
+			err = registry.TmpDir().Ensure()
+			if err != nil {
+				return fmt.Errorf("unable to check updates tmp dir for moving file that needs upgrade: %s", err)
+			}
+
 			// maybe we're on windows and it's in use, try moving
 			err = os.Rename(fileToUpgrade, filepath.Join(
-				tmpStorage.Path,
+				registry.TmpDir().Path,
 				fmt.Sprintf(
 					"%s-%d%s",
-					GetVersionedPath(filepath.Base(fileToUpgrade), currentVersion),
+					updater.GetVersionedPath(filepath.Base(fileToUpgrade), currentVersion),
 					time.Now().UTC().Unix(),
 					upgradedSuffix,
 				),
@@ -124,11 +211,10 @@ func upgradeFile(fileToUpgrade string, file *File) error {
 	}
 
 	// copy upgrade
-	// TODO: handle copy failure
 	err = copyFile(file.Path(), fileToUpgrade)
 	if err != nil {
-		time.Sleep(1 * time.Second)
 		// try again
+		time.Sleep(1 * time.Second)
 		err = copyFile(file.Path(), fileToUpgrade)
 		if err != nil {
 			return err
@@ -136,7 +222,7 @@ func upgradeFile(fileToUpgrade string, file *File) error {
 	}
 
 	// check permissions
-	if runtime.GOOS != "windows" {
+	if !onWindows {
 		info, err := os.Stat(fileToUpgrade)
 		if err != nil {
 			return fmt.Errorf("failed to get file info on %s: %s", fileToUpgrade, err)
@@ -153,11 +239,11 @@ func upgradeFile(fileToUpgrade string, file *File) error {
 
 func copyFile(srcPath, dstPath string) (err error) {
 	// open file for writing
-	atomicDstFile, err := renameio.TempFile(tmpStorage.Path, dstPath)
+	atomicDstFile, err := renameio.TempFile(registry.TmpDir().Path, dstPath)
 	if err != nil {
 		return fmt.Errorf("could not create temp file for atomic copy: %s", err)
 	}
-	defer atomicDstFile.Cleanup()
+	defer atomicDstFile.Cleanup() //nolint:errcheck // ignore error for now, tmp dir will be cleaned later again anyway
 
 	// open source
 	srcFile, err := os.Open(srcPath)
@@ -179,8 +265,4 @@ func copyFile(srcPath, dstPath string) (err error) {
 	}
 
 	return nil
-}
-
-func cleanOldUpgradedFiles() error {
-	return os.RemoveAll(tmpStorage.Path)
 }

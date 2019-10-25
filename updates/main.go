@@ -1,87 +1,118 @@
 package updates
 
 import (
-	"errors"
-	"os"
+	"context"
+	"fmt"
 	"runtime"
+	"time"
 
-	"github.com/safing/portmaster/core/structure"
-
-	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/core/structure"
 )
 
 const (
-	isWindows = runtime.GOOS == "windows"
+	onWindows = runtime.GOOS == "windows"
+
+	releaseChannelKey    = "core/releaseChannel"
+	releaseChannelStable = "stable"
+	releaseChannelBeta   = "beta"
+
+	eventVersionUpdate  = "active version update"
+	eventResourceUpdate = "resource update"
 )
 
 var (
-	updateStorage *utils.DirStructure
-	tmpStorage    *utils.DirStructure
+	module   *modules.Module
+	registry *updater.ResourceRegistry
 )
 
-// SetDataRoot sets the data root from which the updates module derives its paths.
-func SetDataRoot(root *utils.DirStructure) {
-	if root != nil && updateStorage == nil {
-		updateStorage = root.ChildDir("updates", 0755)
-		tmpStorage = updateStorage.ChildDir("tmp", 0777)
-	}
-}
-
 func init() {
-	modules.Register("updates", prep, start, stop, "core")
-}
-
-func prep() error {
-	SetDataRoot(structure.Root())
-	if updateStorage == nil {
-		return errors.New("update storage path is not set")
-	}
-
-	err := updateStorage.Ensure()
-	if err != nil {
-		return err
-	}
-
-	status.Core = info.GetInfo()
-
-	return nil
+	module = modules.Register("updates", registerConfig, start, stop, "core")
+	module.RegisterEvent(eventVersionUpdate)
+	module.RegisterEvent(eventResourceUpdate)
 }
 
 func start() error {
-	err := initUpdateStatusHook()
-	if err != nil {
-		return err
-	}
+	initConfig()
 
-	err = LoadIndexes()
-	if err != nil {
-		if os.IsNotExist(err) {
-			// download indexes
-			log.Infof("updates: downloading update index...")
-
-			err = UpdateIndexes()
-			if err != nil {
-				log.Errorf("updates: failed to download update index: %s", err)
-			}
-		} else {
-			return err
+	var mandatoryUpdates []string
+	if onWindows {
+		mandatoryUpdates = []string{
+			platform("core/portmaster-core.exe"),
+			platform("control/portmaster-control.exe"),
+			platform("app/portmaster-app.exe"),
+			platform("notifier/portmaster-notifier.exe"),
+			platform("notifier/portmaster-snoretoast.exe"),
+		}
+	} else {
+		mandatoryUpdates = []string{
+			platform("core/portmaster-core"),
+			platform("control/portmaster-control"),
+			platform("app/portmaster-app"),
+			platform("notifier/portmaster-notifier"),
 		}
 	}
 
-	err = LoadLatest()
+	// create registry
+	registry = &updater.ResourceRegistry{
+		Name: "updates",
+		UpdateURLs: []string{
+			"https://updates.safing.io",
+		},
+		MandatoryUpdates: mandatoryUpdates,
+		Beta:             releaseChannel() == releaseChannelBeta,
+		DevMode:          devMode(),
+		Online:           true,
+	}
+	// initialize
+	err := registry.Initialize(structure.Root().ChildDir("updates", 0755))
 	if err != nil {
 		return err
 	}
 
-	go updater()
-	go updateNotifier()
+	err = registry.LoadIndexes()
+	if err != nil {
+		return err
+	}
+
+	err = registry.ScanStorage("")
+	if err != nil {
+		log.Warningf("updates: error during storage scan: %s", err)
+	}
+
+	registry.SelectVersions()
+	module.TriggerEvent(eventVersionUpdate, nil)
+
+	err = initVersionExport()
+	if err != nil {
+		return err
+	}
+
+	// start updater task
+	module.NewTask("updater", func(ctx context.Context, task *modules.Task) {
+		err := registry.DownloadUpdates(ctx)
+		if err != nil {
+			log.Warningf("updates: failed to update: %s", err)
+		}
+		module.TriggerEvent(eventResourceUpdate, nil)
+	}).Repeat(24 * time.Hour).MaxDelay(1 * time.Hour).Schedule(time.Now().Add(10 * time.Second))
+
+	// react to upgrades
+	initUpgrader()
+
 	return nil
 }
 
 func stop() error {
-	// delete download tmp dir
-	return os.RemoveAll(tmpStorage.Path)
+	if registry != nil {
+		return registry.Cleanup()
+	}
+
+	return stopVersionExport()
+}
+
+func platform(identifier string) string {
+	return fmt.Sprintf("%s_%s/%s", runtime.GOOS, runtime.GOARCH, identifier)
 }
