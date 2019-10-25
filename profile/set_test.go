@@ -3,10 +3,10 @@ package profile
 import (
 	"context"
 	"net"
+	"runtime"
 	"testing"
 	"time"
 
-	"github.com/safing/portbase/utils/testutils"
 	"github.com/safing/portmaster/status"
 )
 
@@ -113,7 +113,7 @@ func testEndpointDomain(t *testing.T, set *Set, domain string, expectedResult EP
 	if result != expectedResult {
 		t.Errorf(
 			"line %d: unexpected result for endpoint domain %s: result=%s, expected=%s",
-			testutils.GetLineNumberOfCaller(1),
+			getLineNumberOfCaller(1),
 			domain,
 			result,
 			expectedResult,
@@ -127,7 +127,7 @@ func testEndpointIP(t *testing.T, set *Set, domain string, ip net.IP, protocol u
 	if result != expectedResult {
 		t.Errorf(
 			"line %d: unexpected result for endpoint %s/%s/%d/%d/%v: result=%s, expected=%s",
-			testutils.GetLineNumberOfCaller(1),
+			getLineNumberOfCaller(1),
 			domain,
 			ip,
 			protocol,
@@ -170,4 +170,9 @@ func TestProfileSet(t *testing.T) {
 	testEndpointIP(t, set, "", net.ParseIP("fd00::1"), 17, 12347, true, Denied)
 	testEndpointIP(t, set, "", net.ParseIP("10.2.3.4"), 6, 80, false, NoMatch)
 	testEndpointDomain(t, set, "bad2.example.com.", Undeterminable)
+}
+
+func getLineNumberOfCaller(levels int) int {
+	_, _, line, _ := runtime.Caller(levels + 1)
+	return line
 }

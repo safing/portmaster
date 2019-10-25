@@ -3,8 +3,6 @@ package profile
 import (
 	"net"
 	"testing"
-
-	"github.com/safing/portbase/utils/testutils"
 )
 
 func testEndpointDomainMatch(t *testing.T, ep *EndpointPermission, domain string, expectedResult EPResult) {
@@ -13,7 +11,7 @@ func testEndpointDomainMatch(t *testing.T, ep *EndpointPermission, domain string
 	if result != expectedResult {
 		t.Errorf(
 			"line %d: unexpected result for endpoint domain match %s: result=%s, expected=%s",
-			testutils.GetLineNumberOfCaller(1),
+			getLineNumberOfCaller(1),
 			domain,
 			result,
 			expectedResult,
@@ -27,7 +25,7 @@ func testEndpointIPMatch(t *testing.T, ep *EndpointPermission, domain string, ip
 	if result != expectedResult {
 		t.Errorf(
 			"line %d: unexpected result for endpoint %s/%s/%d/%d: result=%s, expected=%s",
-			testutils.GetLineNumberOfCaller(1),
+			getLineNumberOfCaller(1),
 			domain,
 			ip,
 			protocol,

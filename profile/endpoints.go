@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
@@ -91,7 +92,7 @@ func (e Endpoints) CheckIP(domain string, ip net.IP, protocol uint8, port uint16
 		// setup caching wrapper
 		cachedGetDomainOfIP = func() string {
 			if !ipResolved {
-				result, err := intel.ResolveIPAndValidate(ip.String(), securityLevel)
+				result, err := intel.ResolveIPAndValidate(context.TODO(), ip.String(), securityLevel)
 				if err != nil {
 					// log.Debug()
 					ipName = result
