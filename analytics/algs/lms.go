@@ -4,6 +4,7 @@ import (
 	"strings"
 )
 
+// LmsScoreOfDomain calculates the mean longest meaningful substring of a domain. It follows some special rules to increase accuracy. It returns a value between 0 and 100, representing the length-based percentage of the meaningful substring.
 func LmsScoreOfDomain(domain string) float64 {
 	var totalScore float64
 	domain = strings.ToLower(domain)
@@ -26,29 +27,30 @@ func LmsScoreOfDomain(domain string) float64 {
 	return totalScore
 }
 
+// LmsScore calculates the longest meaningful substring of a domain. It returns a value between 0 and 100, representing the length-based percentage of the meaningful substring.
 func LmsScore(subject string) float64 {
-	lms_start := -1
-	lms_stop := -1
-	longest_lms := 0
+	lmsStart := -1
+	lmsStop := -1
+	longestLms := 0
 
 	for i, c := range subject {
 		if int(c) >= int('a') && int(c) <= int('z') {
-			if lms_start == -1 {
-				lms_start = i
+			if lmsStart == -1 {
+				lmsStart = i
 			}
 		} else {
-			if lms_start > -1 {
-				lms_stop = i
-				if lms_stop-lms_start > longest_lms {
-					longest_lms = lms_stop - lms_start
+			if lmsStart > -1 {
+				lmsStop = i
+				if lmsStop-lmsStart > longestLms {
+					longestLms = lmsStop - lmsStart
 				}
-				lms_start = -1
+				lmsStart = -1
 			}
 		}
 	}
-	if lms_stop == -1 {
-		longest_lms = len(subject)
+	if lmsStop == -1 {
+		longestLms = len(subject)
 	}
 	// fmt.Printf("algs: lms score of %s is %.2f\n", subject, (float64(longest_lms) * 100.0 / float64(len(subject))))
-	return (float64(longest_lms) * 100.0 / float64(len(subject)))
+	return (float64(longestLms) * 100.0 / float64(len(subject)))
 }
