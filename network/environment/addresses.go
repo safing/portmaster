@@ -7,6 +7,7 @@ import (
 	"github.com/safing/portmaster/network/netutils"
 )
 
+// GetAssignedAddresses returns the assigned IPv4 and IPv6 addresses of the host.
 func GetAssignedAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
@@ -25,6 +26,7 @@ func GetAssignedAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
 	return
 }
 
+// GetAssignedGlobalAddresses returns the assigned global IPv4 and IPv6 addresses of the host.
 func GetAssignedGlobalAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
 	allv4, allv6, err := GetAssignedAddresses()
 	if err != nil {

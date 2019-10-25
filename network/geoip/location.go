@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	earthCircumferenceKm float64 = 40100 // earth circumference in km
+	earthCircumferenceInKm float64 = 40100 // earth circumference in km
 )
 
 // Location holds information regarding the geographical and network location of an IP address
@@ -42,7 +42,7 @@ type Location struct {
 // Conclusion:
 // - Ignore location data completely if accuracy_radius > 500
 
-// EstimateNetworkProximity aims to calculate a distance value between 0 and 100.
+// EstimateNetworkProximity aims to calculate the distance between two network locations. Returns a proximity value between 0 (far away) and 100 (nearby).
 func (l *Location) EstimateNetworkProximity(to *Location) (proximity int) {
 	// Distance Value:
 	// 0: other side of the Internet
@@ -50,12 +50,10 @@ func (l *Location) EstimateNetworkProximity(to *Location) (proximity int) {
 
 	// Weighting:
 	// coordinate distance: 0-50
-	// continent match: 10
+	// continent match: 15
 	// country match: 10
 	// AS owner match: 15
-	// AS network match: 15
-	//
-	// We prioritize AS information over country information, as it is more accurate and we expect better privacy if we already are in the destination AS.
+	// AS network match: 10
 
 	// coordinate distance: 0-50
 	fromCoords := haversine.Coord{Lat: l.Coordinates.Latitude, Lon: l.Coordinates.Longitude}
@@ -69,19 +67,19 @@ func (l *Location) EstimateNetworkProximity(to *Location) (proximity int) {
 		accuracy = to.Coordinates.AccuracyRadius
 	}
 
-	if km <= 10 && accuracy <= 200 {
+	if km <= 10 && accuracy <= 100 {
 		proximity += 50
 	} else {
-		distanceIn50Percent := ((earthCircumferenceKm - km) / earthCircumferenceKm) * 50
+		distanceIn50Percent := ((earthCircumferenceInKm - km) / earthCircumferenceInKm) * 50
 
-		// apply penalty for values high values (targeting >100)
+		// apply penalty for locations with low accuracy (targeting accuracy radius >100)
 		accuracyModifier := 1 - float64(accuracy)/1000
 		proximity += int(distanceIn50Percent * accuracyModifier)
 	}
 
-	// continent match: 10
+	// continent match: 15
 	if l.Continent.Code == to.Continent.Code {
-		proximity += 10
+		proximity += 15
 		// country match: 10
 		if l.Country.ISOCode == to.Country.ISOCode {
 			proximity += 10
@@ -91,16 +89,16 @@ func (l *Location) EstimateNetworkProximity(to *Location) (proximity int) {
 	// AS owner match: 15
 	if l.AutonomousSystemOrganization == to.AutonomousSystemOrganization {
 		proximity += 15
-		// AS network match: 15
+		// AS network match: 10
 		if l.AutonomousSystemNumber == to.AutonomousSystemNumber {
-			proximity += 15
+			proximity += 10
 		}
 	}
 
-	return
-
+	return //nolint:nakedreturn
 }
 
+// PrimitiveNetworkProximity calculates the numerical distance between two IP addresses. Returns a proximity value between 0 (far away) and 100 (nearby).
 func PrimitiveNetworkProximity(from net.IP, to net.IP, ipVersion uint8) int {
 
 	var diff float64
@@ -128,7 +126,7 @@ func PrimitiveNetworkProximity(from net.IP, to net.IP, ipVersion uint8) int {
 
 	switch ipVersion {
 	case 4:
-		diff = diff / 256
+		diff /= 256
 		return int((1 - diff/16777216) * 100)
 	case 6:
 		return int((1 - diff/18446744073709552000) * 100)

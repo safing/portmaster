@@ -57,7 +57,7 @@ func Gateways() []*net.IP {
 				continue
 			}
 			if len(decoded) != 4 {
-				log.Warningf("environment: decoded gateway %s from /proc/net/route has wrong length")
+				log.Warningf("environment: decoded gateway %s from /proc/net/route has wrong length", decoded)
 				continue
 			}
 			gate := net.IPv4(decoded[3], decoded[2], decoded[1], decoded[0])
@@ -90,7 +90,7 @@ func Gateways() []*net.IP {
 				continue
 			}
 			if len(decoded) != 16 {
-				log.Warningf("environment: decoded gateway %s from /proc/net/ipv6_route has wrong length")
+				log.Warningf("environment: decoded gateway %s from /proc/net/ipv6_route has wrong length", decoded)
 				continue
 			}
 			gate := net.IP(decoded)
@@ -134,7 +134,6 @@ func Nameservers() []Nameserver {
 	resolvconfNameservers, err := getNameserversFromResolvconf()
 	if err != nil {
 		log.Warningf("environment: could not get nameservers from resolvconf: %s", err)
-		resolvconfNameservers = make([]Nameserver, 0)
 	} else {
 		nameservers = addNameservers(nameservers, resolvconfNameservers)
 	}
@@ -178,7 +177,7 @@ func getNameserversFromResolvconf() ([]Nameserver, error) {
 	}
 
 	// build array
-	var nameservers []Nameserver
+	nameservers := make([]Nameserver, 0, len(servers))
 	for _, server := range servers {
 		nameservers = append(nameservers, Nameserver{
 			IP:     server,

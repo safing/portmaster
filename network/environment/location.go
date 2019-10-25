@@ -1,7 +1,6 @@
 package environment
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -14,20 +13,21 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
-// TODO: reference forking
 // TODO: Create IPv6 version of GetApproximateInternetLocation
 
 // GetApproximateInternetLocation returns the IP-address of the nearest ping-answering internet node
+//nolint:gocognit // TODO
 func GetApproximateInternetLocation() (net.IP, error) {
 	// TODO: first check if we have a public IP
 	// net.InterfaceAddrs()
 
 	// Traceroute example
 
-	var dst net.IPAddr
-	dst.IP = net.IPv4(8, 8, 8, 8)
+	dst := net.IPAddr{
+		IP: net.IPv4(1, 1, 1, 1),
+	}
 
-	c, err := net.ListenPacket("ip4:1", "0.0.0.0") // ICMP for IPv4
+	c, err := net.ListenPacket("ip4:icmp", "0.0.0.0") // ICMP for IPv4
 	if err != nil {
 		return nil, err
 	}
@@ -42,9 +42,8 @@ func GetApproximateInternetLocation() (net.IP, error) {
 	wm := icmp.Message{
 		Type: ipv4.ICMPTypeEcho, Code: 0,
 		Body: &icmp.Echo{
-			ID: os.Getpid() & 0xffff,
-			// TODO: think of something better and not suspicious
-			Data: []byte("HELLO-R-U-THERE"),
+			ID:   os.Getpid() & 0xffff,
+			Data: []byte{0},
 		},
 	}
 	rb := make([]byte, 1500)
@@ -96,7 +95,7 @@ next:
 				case ipv4.ICMPTypeTimeExceeded:
 					ip := net.ParseIP(peer.String())
 					if ip == nil {
-						return nil, errors.New(fmt.Sprintf("failed to parse IP: %s", peer.String()))
+						return nil, fmt.Errorf("failed to parse IP: %s", peer.String())
 					}
 					if !netutils.IPIsLAN(ip) {
 						return ip, nil

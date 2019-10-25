@@ -156,7 +156,7 @@ func getNameserversFromDbus() ([]Nameserver, error) {
 	return nameservers, nil
 }
 
-func getConnectivityStateFromDbus() (uint8, error) {
+func getConnectivityStateFromDbus() (OnlineStatus, error) {
 	var err error
 
 	dbusConnLock.Lock()
@@ -187,18 +187,18 @@ func getConnectivityStateFromDbus() (uint8, error) {
 
 	switch connectivityState {
 	case 0:
-		return UNKNOWN, nil
+		return StatusUnknown, nil
 	case 1:
-		return OFFLINE, nil
+		return StatusOffline, nil
 	case 2:
-		return PORTAL, nil
+		return StatusPortal, nil
 	case 3:
-		return LIMITED, nil
+		return StatusLimited, nil
 	case 4:
-		return ONLINE, nil
+		return StatusOnline, nil
 	}
 
-	return UNKNOWN, nil
+	return StatusUnknown, nil
 }
 
 func getNetworkManagerProperty(conn *dbus.Conn, objectPath dbus.ObjectPath, property string) (dbus.Variant, error) {

@@ -7,32 +7,34 @@ import (
 	"github.com/google/gopacket/tcpassembly"
 )
 
+// SimpleStreamAssemblerManager is a simple manager for github.com/google/gopacket/tcpassembly
 type SimpleStreamAssemblerManager struct {
 	InitLock      sync.Mutex
 	lastAssembler *SimpleStreamAssembler
 }
 
+// New returns a new stream assembler.
 func (m *SimpleStreamAssemblerManager) New(net, transport gopacket.Flow) tcpassembly.Stream {
 	assembler := new(SimpleStreamAssembler)
 	m.lastAssembler = assembler
 	return assembler
 }
 
+// GetLastAssembler returns the newest created stream assembler.
 func (m *SimpleStreamAssemblerManager) GetLastAssembler() *SimpleStreamAssembler {
-	// defer func() {
-	// 	m.lastAssembler = nil
-	// }()
 	return m.lastAssembler
 }
 
+// SimpleStreamAssembler is a simple assembler for github.com/google/gopacket/tcpassembly
 type SimpleStreamAssembler struct {
 	Cumulated    []byte
 	CumulatedLen int
 	Complete     bool
 }
 
+// NewSimpleStreamAssembler returns a new SimpleStreamAssembler.
 func NewSimpleStreamAssembler() *SimpleStreamAssembler {
-	return new(SimpleStreamAssembler)
+	return &SimpleStreamAssembler{}
 }
 
 // Reassembled implements tcpassembly.Stream's Reassembled function.

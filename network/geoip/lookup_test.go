@@ -3,9 +3,16 @@ package geoip
 import (
 	"net"
 	"testing"
+
+	"github.com/safing/portmaster/updates"
 )
 
 func TestLocationLookup(t *testing.T) {
+	err := updates.InitForTesting()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ip1 := net.ParseIP("81.2.69.142")
 	loc1, err := GetLocation(ip1)
 	if err != nil {

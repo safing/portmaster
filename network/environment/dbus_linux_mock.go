@@ -8,5 +8,5 @@ func getNameserversFromDbus() ([]Nameserver, error) {
 }
 
 func getConnectivityStateFromDbus() (uint8, error) {
-	return UNKNOWN, nil
+	return StatusUnknown, nil
 }

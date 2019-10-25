@@ -98,7 +98,7 @@ func (link *Link) HandlePacket(pkt packet.Packet) {
 		link.pktQueue <- pkt
 		return
 	}
-	log.Criticalf("network: link %s does not have a firewallHandler, dropping packet", link)
+	log.Warningf("network: link %s does not have a firewallHandler, dropping packet", link)
 	pkt.Drop()
 }
 
@@ -175,14 +175,18 @@ func (link *Link) packetHandler() {
 		if pkt == nil {
 			return
 		}
+		// get handler
 		link.Lock()
-		fwH := link.firewallHandler
+		handler := link.firewallHandler
 		link.Unlock()
-		if fwH != nil {
-			fwH(pkt, link)
+		// execute handler or verdict
+		if handler != nil {
+			handler(pkt, link)
 		} else {
 			link.ApplyVerdict(pkt)
 		}
+		// submit trace logs
+		log.Tracer(pkt.Ctx()).Submit()
 	}
 }
 
@@ -311,10 +315,10 @@ func GetOrCreateLinkByPacket(pkt packet.Packet) (*Link, bool) {
 // CreateLinkFromPacket creates a new Link based on Packet.
 func CreateLinkFromPacket(pkt packet.Packet) *Link {
 	link := &Link{
-		ID:            pkt.GetLinkID(),
-		Verdict:       VerdictUndecided,
-		Started:       time.Now().Unix(),
-		RemoteAddress: pkt.FmtRemoteAddress(),
+		ID:               pkt.GetLinkID(),
+		Verdict:          VerdictUndecided,
+		Started:          time.Now().Unix(),
+		RemoteAddress:    pkt.FmtRemoteAddress(),
 		saveWhenFinished: true,
 	}
 	return link
