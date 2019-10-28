@@ -4,6 +4,8 @@ The Portmaster enables you to protect your data on your device. You are back in 
 
 ## Current Status
 
+**NOTE: Portmaster is currently in development freeze in order to focus on our upcoming [privacy network](https://safing.io/technology/#gate17) (Codename: Gate17)**
+
 The Portmaster is currently in alpha. Expect dragons.  
 Supported platforms:
 
