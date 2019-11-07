@@ -4,46 +4,52 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/tevino/abool"
+
 	maxminddb "github.com/oschwald/maxminddb-golang"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/updater"
 	"github.com/safing/portmaster/updates"
 )
 
 var (
+	dbCityFile *updater.File
+	dbASNFile  *updater.File
+	dbFileLock sync.Mutex
+
 	dbCity *maxminddb.Reader
 	dbASN  *maxminddb.Reader
+	dbLock sync.Mutex
 
-	dbLock     sync.Mutex
-	dbInUse    = false // only activate if used for first time
-	dbDoReload = true  // if database should be reloaded
+	dbInUse    = abool.NewBool(false) // only activate if used for first time
+	dbDoReload = abool.NewBool(true)  // if database should be reloaded
 )
 
+// ReloadDatabases reloads the geoip database, if they are in use.
 func ReloadDatabases() error {
-	dbLock.Lock()
-	defer dbLock.Unlock()
-
 	// don't do anything if the database isn't actually used
-	if !dbInUse {
+	if !dbInUse.IsSet() {
 		return nil
 	}
 
-	dbDoReload = true
+	dbFileLock.Lock()
+	defer dbFileLock.Unlock()
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
+	dbDoReload.Set()
 	return doReload()
 }
 
 func prepDatabaseForUse() error {
-	dbInUse = true
+	dbInUse.Set()
 	return doReload()
 }
 
 func doReload() error {
 	// reload if needed
-	if dbDoReload {
-		defer func() {
-			dbDoReload = false
-		}()
-
+	if dbDoReload.SetToIf(true, false) {
 		closeDBs()
 		return openDBs()
 	}
@@ -53,7 +59,7 @@ func doReload() error {
 
 func openDBs() error {
 	var err error
-	file, err := updates.GetFile("intel/geoip-city.mmdb")
+	file, err := updates.GetFile("intel/geoip/geoip-city.mmdb")
 	if err != nil {
 		return fmt.Errorf("could not get GeoIP City database file: %s", err)
 	}
@@ -61,7 +67,8 @@ func openDBs() error {
 	if err != nil {
 		return err
 	}
-	file, err = updates.GetFile("intel/geoip-asn.mmdb")
+
+	file, err = updates.GetFile("intel/geoip/geoip-asn.mmdb")
 	if err != nil {
 		return fmt.Errorf("could not get GeoIP ASN database file: %s", err)
 	}
@@ -73,8 +80,8 @@ func openDBs() error {
 }
 
 func handleError(err error) {
-	log.Warningf("network/geoip: lookup failed, reloading databases...")
-	dbDoReload = true
+	log.Errorf("network/geoip: lookup failed, reloading databases: %s", err)
+	dbDoReload.Set()
 }
 
 func closeDBs() {

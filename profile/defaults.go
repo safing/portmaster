@@ -29,7 +29,7 @@ func makeDefaultFallbackProfile() *Profile {
 			Related: status.SecurityLevelDynamic,
 		},
 		ServiceEndpoints: []*EndpointPermission{
-			&EndpointPermission{
+			{
 				Type:      EptAny,
 				Protocol:  0,
 				StartPort: 0,

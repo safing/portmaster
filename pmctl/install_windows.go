@@ -87,7 +87,7 @@ func getServiceExecCommand(exePath string, escape bool) []string {
 		maybeEscape(exePath, escape),
 		"run",
 		"core-service",
-		"--db",
+		"--data",
 		maybeEscape(dataRoot.Path, escape),
 		"--input-signals",
 	}

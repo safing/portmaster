@@ -48,3 +48,7 @@ func initStatusHook() (err error) {
 	hook, err = database.RegisterHook(query.New(statusDBKey), &statusHook{})
 	return err
 }
+
+func stopStatusHook() error {
+	return hook.Cancel()
+}

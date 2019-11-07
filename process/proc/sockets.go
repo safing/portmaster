@@ -32,6 +32,7 @@ Cache every step!
 
 */
 
+// Network Related Constants
 const (
 	TCP4 uint8 = iota
 	UDP4
@@ -46,19 +47,6 @@ const (
 	UDP6Data  = "/proc/net/udp6"
 	ICMP4Data = "/proc/net/icmp"
 	ICMP6Data = "/proc/net/icmp6"
-
-	TCP_ESTABLISHED = iota + 1
-	TCP_SYN_SENT
-	TCP_SYN_RECV
-	TCP_FIN_WAIT1
-	TCP_FIN_WAIT2
-	TCP_TIME_WAIT
-	TCP_CLOSE
-	TCP_CLOSE_WAIT
-	TCP_LAST_ACK
-	TCP_LISTEN
-	TCP_CLOSING
-	TCP_NEW_SYN_RECV
 )
 
 var (
@@ -211,7 +199,7 @@ func convertIPv4(data string) net.IP {
 		return nil
 	}
 	if len(decoded) != 4 {
-		log.Warningf("process: decoded IPv4 %s has wrong length")
+		log.Warningf("process: decoded IPv4 %s has wrong length", decoded)
 		return nil
 	}
 	ip := net.IPv4(decoded[3], decoded[2], decoded[1], decoded[0])
@@ -225,7 +213,7 @@ func convertIPv6(data string) net.IP {
 		return nil
 	}
 	if len(decoded) != 16 {
-		log.Warningf("process: decoded IPv6 %s has wrong length")
+		log.Warningf("process: decoded IPv6 %s has wrong length", decoded)
 		return nil
 	}
 	ip := net.IP(decoded)

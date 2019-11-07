@@ -14,14 +14,13 @@ import (
 
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/updater"
 	"github.com/safing/portmaster/updates"
 )
 
 var (
-	apps       = make(map[string]*resources.BundleSequence)
-	appsLock   sync.RWMutex
-	assets     *resources.BundleSequence
-	assetsLock sync.RWMutex
+	apps     = make(map[string]*resources.BundleSequence)
+	appsLock sync.RWMutex
 )
 
 func registerRoutes() error {
@@ -66,7 +65,7 @@ func ServeBundle(defaultModuleName string) func(w http.ResponseWriter, r *http.R
 		// get file from update system
 		zipFile, err := updates.GetFile(fmt.Sprintf("ui/modules/%s.zip", moduleName))
 		if err != nil {
-			if err == updates.ErrNotFound {
+			if err == updater.ErrNotFound {
 				log.Tracef("ui: requested module %s does not exist", moduleName)
 				http.Error(w, err.Error(), http.StatusNotFound)
 			} else {
@@ -130,7 +129,6 @@ func ServeFileFromBundle(w http.ResponseWriter, r *http.Request, bundleName stri
 	}
 
 	readCloser.Close()
-	return
 }
 
 // RedirectToBase redirects the requests to the control app

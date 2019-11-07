@@ -1,12 +1,13 @@
+//nolint:unparam
 package profile
 
 import (
 	"context"
 	"net"
+	"runtime"
 	"testing"
 	"time"
 
-	"github.com/safing/portbase/utils/testutils"
 	"github.com/safing/portmaster/status"
 )
 
@@ -30,25 +31,25 @@ func init() {
 			Independent: status.SecurityLevelFortress,
 		},
 		Endpoints: []*EndpointPermission{
-			&EndpointPermission{
+			{
 				Type:    EptDomain,
 				Value:   "good.bad.example.com.",
 				Permit:  true,
 				Created: time.Now().Unix(),
 			},
-			&EndpointPermission{
+			{
 				Type:    EptDomain,
 				Value:   "*bad.example.com.",
 				Permit:  false,
 				Created: time.Now().Unix(),
 			},
-			&EndpointPermission{
+			{
 				Type:    EptDomain,
 				Value:   "example.com.",
 				Permit:  true,
 				Created: time.Now().Unix(),
 			},
-			&EndpointPermission{
+			{
 				Type:      EptAny,
 				Permit:    true,
 				Protocol:  6,
@@ -67,13 +68,13 @@ func init() {
 		// 	Internet: status.SecurityLevelsAll,
 		// },
 		Endpoints: []*EndpointPermission{
-			&EndpointPermission{
+			{
 				Type:    EptDomain,
 				Value:   "*bad2.example.com.",
 				Permit:  false,
 				Created: time.Now().Unix(),
 			},
-			&EndpointPermission{
+			{
 				Type:      EptAny,
 				Permit:    true,
 				Protocol:  6,
@@ -83,7 +84,7 @@ func init() {
 			},
 		},
 		ServiceEndpoints: []*EndpointPermission{
-			&EndpointPermission{
+			{
 				Type:      EptAny,
 				Permit:    true,
 				Protocol:  17,
@@ -91,7 +92,7 @@ func init() {
 				EndPort:   12347,
 				Created:   time.Now().Unix(),
 			},
-			&EndpointPermission{ // default deny
+			{ // default deny
 				Type:    EptAny,
 				Permit:  false,
 				Created: time.Now().Unix(),
@@ -113,7 +114,7 @@ func testEndpointDomain(t *testing.T, set *Set, domain string, expectedResult EP
 	if result != expectedResult {
 		t.Errorf(
 			"line %d: unexpected result for endpoint domain %s: result=%s, expected=%s",
-			testutils.GetLineNumberOfCaller(1),
+			getLineNumberOfCaller(1),
 			domain,
 			result,
 			expectedResult,
@@ -127,7 +128,7 @@ func testEndpointIP(t *testing.T, set *Set, domain string, ip net.IP, protocol u
 	if result != expectedResult {
 		t.Errorf(
 			"line %d: unexpected result for endpoint %s/%s/%d/%d/%v: result=%s, expected=%s",
-			testutils.GetLineNumberOfCaller(1),
+			getLineNumberOfCaller(1),
 			domain,
 			ip,
 			protocol,
@@ -170,4 +171,9 @@ func TestProfileSet(t *testing.T) {
 	testEndpointIP(t, set, "", net.ParseIP("fd00::1"), 17, 12347, true, Denied)
 	testEndpointIP(t, set, "", net.ParseIP("10.2.3.4"), 6, 80, false, NoMatch)
 	testEndpointDomain(t, set, "bad2.example.com.", Undeterminable)
+}
+
+func getLineNumberOfCaller(levels int) int {
+	_, _, line, _ := runtime.Caller(levels + 1) //nolint:dogsled
+	return line
 }

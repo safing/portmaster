@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	dupReqMap  = make(map[int]*sync.Mutex)
+	dupReqMap  = make(map[int]*sync.WaitGroup)
 	dupReqLock sync.Mutex
 )
 
@@ -61,7 +61,7 @@ func (p *Process) ProfileSet() *profile.Set {
 	return p.profileSet
 }
 
-// Strings returns a string represenation of process.
+// Strings returns a string representation of process.
 func (p *Process) String() string {
 	p.Lock()
 	defer p.Unlock()
@@ -79,7 +79,7 @@ func (p *Process) AddCommunication() {
 
 	// check if we should save
 	save := false
-	if p.LastCommEstablished < time.Now().Add(-3*time.Second).Unix() {
+	if p.LastCommEstablished == 0 || p.LastCommEstablished < time.Now().Add(-3*time.Second).Unix() {
 		save = true
 	}
 
@@ -206,6 +206,43 @@ func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 	return p, nil
 }
 
+func deduplicateRequest(ctx context.Context, pid int) (finishRequest func()) {
+	dupReqLock.Lock()
+	defer dupReqLock.Unlock()
+
+	// get  duplicate request waitgroup
+	wg, requestActive := dupReqMap[pid]
+
+	// someone else is already on it!
+	if requestActive {
+		// log that we are waiting
+		log.Tracer(ctx).Tracef("intel: waiting for duplicate request for PID %d to complete", pid)
+		// wait
+		wg.Wait()
+		// done!
+		return nil
+	}
+
+	// we are currently the only one doing a request for this
+
+	// create new waitgroup
+	wg = new(sync.WaitGroup)
+	// add worker (us!)
+	wg.Add(1)
+	// add to registry
+	dupReqMap[pid] = wg
+
+	// return function to mark request as finished
+	return func() {
+		dupReqLock.Lock()
+		defer dupReqLock.Unlock()
+		// mark request as done
+		wg.Done()
+		// delete from registry
+		delete(dupReqMap, pid)
+	}
+}
+
 func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	if pid == -1 {
 		return UnknownProcess, nil
@@ -219,34 +256,19 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 		return process, nil
 	}
 
-	// dedup requests
-	dupReqLock.Lock()
-	mutex, requestActive := dupReqMap[pid]
-	if !requestActive {
-		mutex = new(sync.Mutex)
-		mutex.Lock()
-		dupReqMap[pid] = mutex
-		dupReqLock.Unlock()
-	} else {
-		dupReqLock.Unlock()
-		log.Tracer(ctx).Tracef("process: waiting for duplicate request for PID %d to complete", pid)
-		mutex.Lock()
-		// wait until duplicate request is finished, then fetch current Process and return
-		mutex.Unlock()
+	// dedupe!
+	markRequestFinished := deduplicateRequest(ctx, pid)
+	if markRequestFinished == nil {
+		// we waited for another request, recheck the storage!
 		process, ok = GetProcessFromStorage(pid)
 		if ok {
 			return process, nil
 		}
-		return nil, fmt.Errorf("previous request for process with PID %d failed", pid)
+		// if cache is still empty, go ahead
+	} else {
+		// we are the first!
+		defer markRequestFinished()
 	}
-
-	// lock request for this pid
-	defer func() {
-		dupReqLock.Lock()
-		delete(dupReqMap, pid)
-		dupReqLock.Unlock()
-		mutex.Unlock()
-	}()
 
 	// create new process
 	new := &Process{

@@ -36,7 +36,7 @@ func GetFingerprintWeight(fpType string) (weight int) {
 }
 
 // AddFingerprint adds the given fingerprint to the profile.
-func (p *Profile) AddFingerprint(fp *Fingerprint) {
+func (profile *Profile) AddFingerprint(fp *Fingerprint) {
 	if fp.OS == "" {
 		fp.OS = osIdentifier
 	}
@@ -44,5 +44,5 @@ func (p *Profile) AddFingerprint(fp *Fingerprint) {
 		fp.LastUsed = time.Now().Unix()
 	}
 
-	p.Fingerprints = append(p.Fingerprints, fp)
+	profile.Fingerprints = append(profile.Fingerprints, fp)
 }

@@ -3,8 +3,6 @@ package profile
 import (
 	"net"
 	"testing"
-
-	"github.com/safing/portbase/utils/testutils"
 )
 
 func testEndpointDomainMatch(t *testing.T, ep *EndpointPermission, domain string, expectedResult EPResult) {
@@ -13,7 +11,7 @@ func testEndpointDomainMatch(t *testing.T, ep *EndpointPermission, domain string
 	if result != expectedResult {
 		t.Errorf(
 			"line %d: unexpected result for endpoint domain match %s: result=%s, expected=%s",
-			testutils.GetLineNumberOfCaller(1),
+			getLineNumberOfCaller(1),
 			domain,
 			result,
 			expectedResult,
@@ -27,7 +25,7 @@ func testEndpointIPMatch(t *testing.T, ep *EndpointPermission, domain string, ip
 	if result != expectedResult {
 		t.Errorf(
 			"line %d: unexpected result for endpoint %s/%s/%d/%d: result=%s, expected=%s",
-			testutils.GetLineNumberOfCaller(1),
+			getLineNumberOfCaller(1),
 			domain,
 			ip,
 			protocol,
@@ -157,15 +155,14 @@ func TestEndpointMatching(t *testing.T) {
 }
 
 func TestEPString(t *testing.T) {
-	var endpoints Endpoints
-	endpoints = []*EndpointPermission{
-		&EndpointPermission{
+	var endpoints Endpoints = []*EndpointPermission{
+		{
 			Type:     EptDomain,
 			Value:    "example.com",
 			Protocol: 6,
 			Permit:   true,
 		},
-		&EndpointPermission{
+		{
 			Type:      EptIPv4,
 			Value:     "1.1.1.1",
 			Protocol:  17, // TCP
@@ -173,7 +170,7 @@ func TestEPString(t *testing.T) {
 			EndPort:   53,
 			Permit:    false,
 		},
-		&EndpointPermission{
+		{
 			Type:   EptDomain,
 			Value:  "example.org",
 			Permit: false,
@@ -183,8 +180,7 @@ func TestEPString(t *testing.T) {
 		t.Errorf("unexpected result: %s", endpoints.String())
 	}
 
-	var noEndpoints Endpoints
-	noEndpoints = []*EndpointPermission{}
+	var noEndpoints Endpoints = []*EndpointPermission{}
 	if noEndpoints.String() != "[]" {
 		t.Errorf("unexpected result: %s", noEndpoints.String())
 	}

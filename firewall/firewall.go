@@ -3,7 +3,6 @@ package firewall
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"sync/atomic"
 	"time"
@@ -21,26 +20,28 @@ import (
 )
 
 var (
+	module *modules.Module
+
 	// localNet        net.IPNet
-	localhost       net.IP
-	dnsServer       net.IPNet
+	// localhost net.IP
+	// dnsServer       net.IPNet
 	packetsAccepted *uint64
 	packetsBlocked  *uint64
 	packetsDropped  *uint64
 
-	localNet4 *net.IPNet
+	// localNet4 *net.IPNet
 
-	localhost4 = net.IPv4(127, 0, 0, 1)
-	localhost6 = net.IPv6loopback
+	// localhost4 = net.IPv4(127, 0, 0, 1)
+	// localhost6 = net.IPv6loopback
 
-	tunnelNet4   *net.IPNet
-	tunnelNet6   *net.IPNet
-	tunnelEntry4 = net.IPv4(127, 0, 0, 17)
-	tunnelEntry6 = net.ParseIP("fd17::17")
+	// tunnelNet4 *net.IPNet
+	// tunnelNet6 *net.IPNet
+	// tunnelEntry4 = net.IPv4(127, 0, 0, 17)
+	// tunnelEntry6 = net.ParseIP("fd17::17")
 )
 
 func init() {
-	modules.Register("firewall", prep, start, stop, "core", "network", "nameserver", "profile", "updates")
+	module = modules.Register("firewall", prep, start, stop, "core", "network", "nameserver", "profile", "updates")
 }
 
 func prep() (err error) {
@@ -55,21 +56,21 @@ func prep() (err error) {
 		return err
 	}
 
-	_, localNet4, err = net.ParseCIDR("127.0.0.0/24")
-	// Yes, this would normally be 127.0.0.0/8
-	// TODO: figure out any side effects
-	if err != nil {
-		return fmt.Errorf("firewall: failed to parse cidr 127.0.0.0/24: %s", err)
-	}
+	// _, localNet4, err = net.ParseCIDR("127.0.0.0/24")
+	// // Yes, this would normally be 127.0.0.0/8
+	// // TODO: figure out any side effects
+	// if err != nil {
+	// 	return fmt.Errorf("firewall: failed to parse cidr 127.0.0.0/24: %s", err)
+	// }
 
-	_, tunnelNet4, err = net.ParseCIDR("127.17.0.0/16")
-	if err != nil {
-		return fmt.Errorf("firewall: failed to parse cidr 127.17.0.0/16: %s", err)
-	}
-	_, tunnelNet6, err = net.ParseCIDR("fd17::/64")
-	if err != nil {
-		return fmt.Errorf("firewall: failed to parse cidr fd17::/64: %s", err)
-	}
+	// _, tunnelNet4, err = net.ParseCIDR("127.17.0.0/16")
+	// if err != nil {
+	// 	return fmt.Errorf("firewall: failed to parse cidr 127.17.0.0/16: %s", err)
+	// }
+	// _, tunnelNet6, err = net.ParseCIDR("fd17::/64")
+	// if err != nil {
+	// 	return fmt.Errorf("firewall: failed to parse cidr fd17::/64: %s", err)
+	// }
 
 	var pA uint64
 	packetsAccepted = &pA
@@ -83,9 +84,21 @@ func prep() (err error) {
 
 func start() error {
 	startAPIAuth()
-	go statLogger()
-	go run()
-	go portsInUseCleaner()
+
+	module.StartWorker("stat logger", func(ctx context.Context) error {
+		statLogger()
+		return nil
+	})
+
+	module.StartWorker("packet handler", func(ctx context.Context) error {
+		run()
+		return nil
+	})
+
+	module.StartWorker("ports state cleaner", func(ctx context.Context) error {
+		portsInUseCleaner()
+		return nil
+	})
 
 	return interception.Start()
 }
@@ -106,7 +119,7 @@ func handlePacket(pkt packet.Packet) {
 	// allow local dns
 	if (pkt.Info().DstPort == 53 || pkt.Info().SrcPort == 53) && pkt.Info().Src.Equal(pkt.Info().Dst) {
 		log.Debugf("accepting local dns: %s", pkt)
-		pkt.PermanentAccept()
+		_ = pkt.PermanentAccept()
 		return
 	}
 
@@ -114,7 +127,7 @@ func handlePacket(pkt packet.Packet) {
 	if apiPortSet {
 		if (pkt.Info().DstPort == apiPort || pkt.Info().SrcPort == apiPort) && pkt.Info().Src.Equal(pkt.Info().Dst) {
 			log.Debugf("accepting api connection: %s", pkt)
-			pkt.PermanentAccept()
+			_ = pkt.PermanentAccept()
 			return
 		}
 	}
@@ -130,20 +143,20 @@ func handlePacket(pkt packet.Packet) {
 	switch pkt.Info().Protocol {
 	case packet.ICMP:
 		log.Debugf("accepting ICMP: %s", pkt)
-		pkt.PermanentAccept()
+		_ = pkt.PermanentAccept()
 		return
 	case packet.ICMPv6:
 		log.Debugf("accepting ICMPv6: %s", pkt)
-		pkt.PermanentAccept()
+		_ = pkt.PermanentAccept()
 		return
 	case packet.IGMP:
 		log.Debugf("accepting IGMP: %s", pkt)
-		pkt.PermanentAccept()
+		_ = pkt.PermanentAccept()
 		return
 	case packet.UDP:
 		if pkt.Info().DstPort == 67 || pkt.Info().DstPort == 68 {
 			log.Debugf("accepting DHCP: %s", pkt)
-			pkt.PermanentAccept()
+			_ = pkt.PermanentAccept()
 			return
 		}
 		// TODO: Howto handle NetBios?
@@ -167,8 +180,11 @@ func handlePacket(pkt packet.Packet) {
 	// 	}
 	// }
 
-	pkt.SetCtx(log.AddTracer(context.Background()))
-	log.Tracer(pkt.Ctx()).Tracef("firewall: handling packet: %s", pkt)
+	traceCtx, tracer := log.AddTracer(context.Background())
+	if tracer != nil {
+		pkt.SetCtx(traceCtx)
+		tracer.Tracef("firewall: handling packet: %s", pkt)
+	}
 
 	// associate packet to link and handle
 	link, created := network.GetOrCreateLinkByPacket(pkt)
@@ -307,40 +323,45 @@ func issueVerdict(pkt packet.Packet, link *network.Link, verdict network.Verdict
 		verdict = link.Verdict
 	}
 
+	var err error
 	switch verdict {
 	case network.VerdictAccept:
 		atomic.AddUint64(packetsAccepted, 1)
 		if link.VerdictPermanent {
-			pkt.PermanentAccept()
+			err = pkt.PermanentAccept()
 		} else {
-			pkt.Accept()
+			err = pkt.Accept()
 		}
 	case network.VerdictBlock:
 		atomic.AddUint64(packetsBlocked, 1)
 		if link.VerdictPermanent {
-			pkt.PermanentBlock()
+			err = pkt.PermanentBlock()
 		} else {
-			pkt.Block()
+			err = pkt.Block()
 		}
 	case network.VerdictDrop:
 		atomic.AddUint64(packetsDropped, 1)
 		if link.VerdictPermanent {
-			pkt.PermanentDrop()
+			err = pkt.PermanentDrop()
 		} else {
-			pkt.Drop()
+			err = pkt.Drop()
 		}
 	case network.VerdictRerouteToNameserver:
-		pkt.RerouteToNameserver()
+		err = pkt.RerouteToNameserver()
 	case network.VerdictRerouteToTunnel:
-		pkt.RerouteToTunnel()
+		err = pkt.RerouteToTunnel()
 	default:
 		atomic.AddUint64(packetsDropped, 1)
-		pkt.Drop()
+		err = pkt.Drop()
 	}
 
 	link.Unlock()
 
-	log.InfoTracef(pkt.Ctx(), "firewall: %s %s", link.Verdict, link)
+	if err != nil {
+		log.Warningf("firewall: failed to apply verdict to pkt %s: %s", pkt, err)
+	}
+
+	log.Tracer(pkt.Ctx()).Infof("firewall: %s %s", link.Verdict, link)
 }
 
 // func tunnelHandler(pkt packet.Packet) {

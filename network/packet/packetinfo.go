@@ -10,9 +10,9 @@ type Info struct {
 	InTunnel  bool
 
 	Version          IPVersion
-	Src, Dst         net.IP
 	Protocol         IPProtocol
 	SrcPort, DstPort uint16
+	Src, Dst         net.IP
 }
 
 // LocalIP returns the local IP of the packet.

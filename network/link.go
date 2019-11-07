@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -14,11 +15,8 @@ import (
 // FirewallHandler defines the function signature for a firewall handle function
 type FirewallHandler func(pkt packet.Packet, link *Link)
 
-var (
-	linkTimeout = 10 * time.Minute
-)
-
 // Link describes a distinct physical connection (e.g. TCP connection) - like an instance - of a Connection.
+//nolint:maligned // TODO: fix alignment
 type Link struct {
 	record.Base
 	sync.Mutex
@@ -75,7 +73,13 @@ func (link *Link) SetFirewallHandler(handler FirewallHandler) {
 	if link.firewallHandler == nil {
 		link.firewallHandler = handler
 		link.pktQueue = make(chan packet.Packet, 1000)
-		go link.packetHandler()
+
+		// start handling
+		module.StartWorker("", func(ctx context.Context) error {
+			link.packetHandler()
+			return nil
+		})
+
 		return
 	}
 	link.firewallHandler = handler
@@ -98,8 +102,13 @@ func (link *Link) HandlePacket(pkt packet.Packet) {
 		link.pktQueue <- pkt
 		return
 	}
-	log.Criticalf("network: link %s does not have a firewallHandler, dropping packet", link)
-	pkt.Drop()
+
+	log.Warningf("network: link %s does not have a firewallHandler, dropping packet", link)
+
+	err := pkt.Drop()
+	if err != nil {
+		log.Warningf("network: failed to drop packet %s: %s", pkt, err)
+	}
 }
 
 // Accept accepts the link and adds the given reason.
@@ -175,14 +184,18 @@ func (link *Link) packetHandler() {
 		if pkt == nil {
 			return
 		}
+		// get handler
 		link.Lock()
-		fwH := link.firewallHandler
+		handler := link.firewallHandler
 		link.Unlock()
-		if fwH != nil {
-			fwH(pkt, link)
+		// execute handler or verdict
+		if handler != nil {
+			handler(pkt, link)
 		} else {
 			link.ApplyVerdict(pkt)
 		}
+		// submit trace logs
+		log.Tracer(pkt.Ctx()).Submit()
 	}
 }
 
@@ -191,41 +204,48 @@ func (link *Link) ApplyVerdict(pkt packet.Packet) {
 	link.Lock()
 	defer link.Unlock()
 
+	var err error
+
 	if link.VerdictPermanent {
 		switch link.Verdict {
 		case VerdictAccept:
-			pkt.PermanentAccept()
+			err = pkt.PermanentAccept()
 		case VerdictBlock:
-			pkt.PermanentBlock()
+			err = pkt.PermanentBlock()
 		case VerdictDrop:
-			pkt.PermanentDrop()
+			err = pkt.PermanentDrop()
 		case VerdictRerouteToNameserver:
-			pkt.RerouteToNameserver()
+			err = pkt.RerouteToNameserver()
 		case VerdictRerouteToTunnel:
-			pkt.RerouteToTunnel()
+			err = pkt.RerouteToTunnel()
 		default:
-			pkt.Drop()
+			err = pkt.Drop()
 		}
 	} else {
 		switch link.Verdict {
 		case VerdictAccept:
-			pkt.Accept()
+			err = pkt.Accept()
 		case VerdictBlock:
-			pkt.Block()
+			err = pkt.Block()
 		case VerdictDrop:
-			pkt.Drop()
+			err = pkt.Drop()
 		case VerdictRerouteToNameserver:
-			pkt.RerouteToNameserver()
+			err = pkt.RerouteToNameserver()
 		case VerdictRerouteToTunnel:
-			pkt.RerouteToTunnel()
+			err = pkt.RerouteToTunnel()
 		default:
-			pkt.Drop()
+			err = pkt.Drop()
 		}
+	}
+
+	if err != nil {
+		log.Warningf("network: failed to apply link verdict to packet %s: %s", pkt, err)
 	}
 }
 
 // SaveWhenFinished marks the Link for saving after all current actions are finished.
 func (link *Link) SaveWhenFinished() {
+	// FIXME: check if we should lock here
 	link.saveWhenFinished = true
 }
 
@@ -239,11 +259,19 @@ func (link *Link) SaveIfNeeded() {
 	link.Unlock()
 
 	if save {
-		link.save()
+		link.saveAndLog()
 	}
 }
 
-// Save saves the link object in the storage and propagates the change.
+// saveAndLog saves the link object in the storage and propagates the change. It does not return an error, but logs it.
+func (link *Link) saveAndLog() {
+	err := link.save()
+	if err != nil {
+		log.Warningf("network: failed to save link %s: %s", link, err)
+	}
+}
+
+// save saves the link object in the storage and propagates the change.
 func (link *Link) save() error {
 	// update link
 	link.Lock()
@@ -311,10 +339,10 @@ func GetOrCreateLinkByPacket(pkt packet.Packet) (*Link, bool) {
 // CreateLinkFromPacket creates a new Link based on Packet.
 func CreateLinkFromPacket(pkt packet.Packet) *Link {
 	link := &Link{
-		ID:            pkt.GetLinkID(),
-		Verdict:       VerdictUndecided,
-		Started:       time.Now().Unix(),
-		RemoteAddress: pkt.FmtRemoteAddress(),
+		ID:               pkt.GetLinkID(),
+		Verdict:          VerdictUndecided,
+		Started:          time.Now().Unix(),
+		RemoteAddress:    pkt.FmtRemoteAddress(),
 		saveWhenFinished: true,
 	}
 	return link

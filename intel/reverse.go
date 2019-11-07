@@ -1,26 +1,32 @@
 package intel
 
 import (
-	"errors"
+	"context"
+	"fmt"
 	"strings"
 
-	"github.com/safing/portbase/log"
 	"github.com/miekg/dns"
+	"github.com/safing/portbase/log"
 )
 
 // ResolveIPAndValidate finds (reverse DNS), validates (forward DNS) and returns the domain name assigned to the given IP.
-func ResolveIPAndValidate(ip string, securityLevel uint8) (domain string, err error) {
+func ResolveIPAndValidate(ctx context.Context, ip string, securityLevel uint8) (domain string, err error) {
 	// get reversed DNS address
-	rQ, err := dns.ReverseAddr(ip)
+	reverseIP, err := dns.ReverseAddr(ip)
 	if err != nil {
 		log.Tracef("intel: failed to get reverse address of %s: %s", ip, err)
-		return "", err
+		return "", ErrInvalid
 	}
 
 	// get PTR record
-	rrCache := Resolve(nil, rQ, dns.Type(dns.TypePTR), securityLevel)
-	if rrCache == nil {
-		return "", errors.New("querying for PTR record failed (may be NXDomain)")
+	q := &Query{
+		FQDN:          reverseIP,
+		QType:         dns.Type(dns.TypePTR),
+		SecurityLevel: securityLevel,
+	}
+	rrCache, err := Resolve(ctx, q)
+	if err != nil || rrCache == nil {
+		return "", fmt.Errorf("failed to resolve %s%s: %w", q.FQDN, q.QType, err)
 	}
 
 	// get result from record
@@ -35,23 +41,27 @@ func ResolveIPAndValidate(ip string, securityLevel uint8) (domain string, err er
 
 	// check for nxDomain
 	if ptrName == "" {
-		return "", errors.New("no PTR record for IP (nxDomain)")
+		return "", fmt.Errorf("%w: %s%s", ErrNotFound, q.FQDN, q.QType)
 	}
-
-	log.Infof("ptrName: %s", ptrName)
 
 	// get forward record
-	if strings.Contains(ip, ":") {
-		rrCache = Resolve(nil, ptrName, dns.Type(dns.TypeAAAA), securityLevel)
-	} else {
-		rrCache = Resolve(nil, ptrName, dns.Type(dns.TypeA), securityLevel)
+	q = &Query{
+		FQDN:          ptrName,
+		SecurityLevel: securityLevel,
 	}
-	if rrCache == nil {
-		return "", errors.New("querying for A/AAAA record failed (may be NXDomain)")
+	// IPv4/6 switch
+	if strings.Contains(ip, ":") {
+		q.QType = dns.Type(dns.TypeAAAA)
+	} else {
+		q.QType = dns.Type(dns.TypeA)
+	}
+	// resolve
+	rrCache, err = Resolve(ctx, q)
+	if err != nil || rrCache == nil {
+		return "", fmt.Errorf("failed to resolve %s%s: %w", q.FQDN, q.QType, err)
 	}
 
 	// check for matching A/AAAA record
-	log.Infof("rr: %s", rrCache)
 	for _, rr := range rrCache.Answer {
 		switch v := rr.(type) {
 		case *dns.A:
@@ -68,5 +78,5 @@ func ResolveIPAndValidate(ip string, securityLevel uint8) (domain string, err er
 	}
 
 	// no match
-	return "", errors.New("validation failed")
+	return "", ErrBlocked
 }

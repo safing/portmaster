@@ -1,6 +1,7 @@
 package firewall
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -24,6 +25,11 @@ const (
 	denyServingIP   = "deny-serving-ip"
 )
 
+var (
+	mtSaveProfile = "save profile"
+)
+
+//nolint:gocognit // FIXME
 func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, fqdn string) {
 	nTTL := time.Duration(promptTimeout()) * time.Second
 
@@ -41,7 +47,7 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, 
 			}
 			return
 		}
-		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s", comm.Process().Pid, comm.Domain, pkt.Info().RemoteIP)
+		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s", comm.Process().Pid, comm.Domain, pkt.Info().RemoteIP())
 	default: // connection to domain
 		nID = fmt.Sprintf("firewall-prompt-%d-%s", comm.Process().Pid, comm.Domain)
 	}
@@ -66,11 +72,11 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, 
 		case comm.Direction: // incoming
 			n.Message = fmt.Sprintf("Application %s wants to accept connections from %s (on %d/%d)", comm.Process(), pkt.Info().RemoteIP(), pkt.Info().Protocol, pkt.Info().LocalPort())
 			n.AvailableActions = []*notifications.Action{
-				&notifications.Action{
+				{
 					ID:   permitServingIP,
 					Text: "Permit",
 				},
-				&notifications.Action{
+				{
 					ID:   denyServingIP,
 					Text: "Deny",
 				},
@@ -78,11 +84,11 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, 
 		case fqdn == "": // direct connection
 			n.Message = fmt.Sprintf("Application %s wants to connect to %s (on %d/%d)", comm.Process(), pkt.Info().RemoteIP(), pkt.Info().Protocol, pkt.Info().RemotePort())
 			n.AvailableActions = []*notifications.Action{
-				&notifications.Action{
+				{
 					ID:   permitIP,
 					Text: "Permit",
 				},
-				&notifications.Action{
+				{
 					ID:   denyIP,
 					Text: "Deny",
 				},
@@ -94,15 +100,15 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, 
 				n.Message = fmt.Sprintf("Application %s wants to connect to %s", comm.Process(), comm.Domain)
 			}
 			n.AvailableActions = []*notifications.Action{
-				&notifications.Action{
+				{
 					ID:   permitDomainAll,
 					Text: "Permit all",
 				},
-				&notifications.Action{
+				{
 					ID:   permitDomainDistinct,
 					Text: "Permit",
 				},
-				&notifications.Action{
+				{
 					ID:   denyDomainDistinct,
 					Text: "Deny",
 				},
@@ -182,7 +188,9 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, 
 		}
 
 		// save!
-		go userProfile.Save("")
+		module.StartMicroTask(&mtSaveProfile, func(ctx context.Context) error {
+			return userProfile.Save("")
+		})
 
 	case <-n.Expired():
 		if link != nil {

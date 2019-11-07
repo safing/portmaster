@@ -32,7 +32,7 @@ type StorageInterface struct {
 func (s *StorageInterface) Get(key string) (record.Record, error) {
 
 	splitted := strings.Split(key, "/")
-	switch splitted[0] {
+	switch splitted[0] { //nolint:gocritic // TODO: implement full key space
 	case "tree":
 		switch len(splitted) {
 		case 2:

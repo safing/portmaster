@@ -102,6 +102,11 @@ func handleRun(cmd *cobra.Command, opts *Options) (err error) {
 
 func run(cmd *cobra.Command, opts *Options) (err error) {
 
+	// set download option
+	if opts.AllowDownload {
+		registry.Online = true
+	}
+
 	// parse identifier
 	opts.ShortIdentifier = path.Dir(opts.Identifier)
 
@@ -119,12 +124,18 @@ func run(cmd *cobra.Command, opts *Options) (err error) {
 		if pid != 0 {
 			return fmt.Errorf("another instance of Portmaster Core is already running: PID %d", pid)
 		}
-		defer deleteInstanceLock(opts.ShortIdentifier)
+		defer func() {
+			err := deleteInstanceLock(opts.ShortIdentifier)
+			if err != nil {
+				log.Printf("failed to delete instance lock: %s\n", err)
+			}
+		}()
+
 	}
 
 	// notify service after some time
 	go func() {
-		// assume that after 5 seconds service has finished starting
+		// assume that after 3 seconds service has finished starting
 		time.Sleep(3 * time.Second)
 		startupComplete <- struct{}{}
 	}()
@@ -187,8 +198,9 @@ func run(cmd *cobra.Command, opts *Options) (err error) {
 	}
 }
 
+// nolint:gocyclo,gocognit // TODO: simplify
 func execute(opts *Options, args []string) (cont bool, err error) {
-	file, err := getFile(opts)
+	file, err := registry.GetFile(platform(opts.Identifier))
 	if err != nil {
 		return true, fmt.Errorf("could not get component: %s", err)
 	}
@@ -218,20 +230,20 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 	} else {
 		// open log file
 		logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.log", time.Now().UTC().Format("2006-02-01-15-04-05")))
-		logFile = initializeLogFile(logFilePath, opts.Identifier, file)
+		logFile = initializeLogFile(logFilePath, opts.Identifier, file.Version())
 		if logFile != nil {
 			defer finalizeLogFile(logFile, logFilePath)
 		}
 		// open error log file
 		errorFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.error.log", time.Now().UTC().Format("2006-02-01-15-04-05")))
-		errorFile = initializeLogFile(errorFilePath, opts.Identifier, file)
+		errorFile = initializeLogFile(errorFilePath, opts.Identifier, file.Version())
 		if errorFile != nil {
 			defer finalizeLogFile(errorFile, errorFilePath)
 		}
 	}
 
 	// create command
-	exc := exec.Command(file.Path(), args...)
+	exc := exec.Command(file.Path(), args...) //nolint:gosec // everything is okay
 
 	if !runningInConsole && opts.AllowHidingWindow {
 		// Windows only:

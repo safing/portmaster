@@ -2,40 +2,62 @@ package intel
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/miekg/dns"
 )
 
 // RRCache is used to cache DNS data
+//nolint:maligned // TODO
 type RRCache struct {
-	Domain   string
-	Question dns.Type
+	sync.Mutex
 
-	Answer []dns.RR
-	Ns     []dns.RR
-	Extra  []dns.RR
-	TTL    int64
+	Domain   string   // constant
+	Question dns.Type // constant
 
-	Server      string
-	ServerScope int8
+	Answer []dns.RR // might be mixed
+	Ns     []dns.RR // constant
+	Extra  []dns.RR // constant
+	TTL    int64    // constant
 
-	updated         int64
-	servedFromCache bool
-	requestingNew   bool
-	Filtered        bool
-	FilteredEntries []string
+	Server      string // constant
+	ServerScope int8   // constant
+
+	servedFromCache bool     // mutable
+	requestingNew   bool     // mutable
+	Filtered        bool     // mutable
+	FilteredEntries []string // mutable
+
+	updated int64 // mutable
+}
+
+// Expired returns whether the record has expired.
+func (rrCache *RRCache) Expired() bool {
+	return rrCache.TTL <= time.Now().Unix()
+}
+
+// MixAnswers randomizes the answer records to allow dumb clients (who only look at the first record) to reliably connect.
+func (rrCache *RRCache) MixAnswers() {
+	rrCache.Lock()
+	defer rrCache.Unlock()
+
+	for i := range rrCache.Answer {
+		j := rand.Intn(i + 1)
+		rrCache.Answer[i], rrCache.Answer[j] = rrCache.Answer[j], rrCache.Answer[i]
+	}
 }
 
 // Clean sets all TTLs to 17 and sets cache expiry with specified minimum.
-func (m *RRCache) Clean(minExpires uint32) {
+func (rrCache *RRCache) Clean(minExpires uint32) {
 	var lowestTTL uint32 = 0xFFFFFFFF
 	var header *dns.RR_Header
 
 	// set TTLs to 17
 	// TODO: double append? is there something more elegant?
-	for _, rr := range append(m.Answer, append(m.Ns, m.Extra...)...) {
+	for _, rr := range append(rrCache.Answer, append(rrCache.Ns, rrCache.Extra...)...) {
 		header = rr.Header()
 		if lowestTTL > header.Ttl {
 			lowestTTL = header.Ttl
@@ -49,12 +71,12 @@ func (m *RRCache) Clean(minExpires uint32) {
 	}
 
 	// log.Tracef("lowest TTL is %d", lowestTTL)
-	m.TTL = time.Now().Unix() + int64(lowestTTL)
+	rrCache.TTL = time.Now().Unix() + int64(lowestTTL)
 }
 
 // ExportAllARecords return of a list of all A and AAAA IP addresses.
-func (m *RRCache) ExportAllARecords() (ips []net.IP) {
-	for _, rr := range m.Answer {
+func (rrCache *RRCache) ExportAllARecords() (ips []net.IP) {
+	for _, rr := range rrCache.Answer {
 		if rr.Header().Class != dns.ClassINET {
 			continue
 		}
@@ -76,23 +98,23 @@ func (m *RRCache) ExportAllARecords() (ips []net.IP) {
 }
 
 // ToNameRecord converts the RRCache to a NameRecord for cleaner persistence.
-func (m *RRCache) ToNameRecord() *NameRecord {
+func (rrCache *RRCache) ToNameRecord() *NameRecord {
 	new := &NameRecord{
-		Domain:      m.Domain,
-		Question:    m.Question.String(),
-		TTL:         m.TTL,
-		Server:      m.Server,
-		ServerScope: m.ServerScope,
+		Domain:      rrCache.Domain,
+		Question:    rrCache.Question.String(),
+		TTL:         rrCache.TTL,
+		Server:      rrCache.Server,
+		ServerScope: rrCache.ServerScope,
 	}
 
 	// stringify RR entries
-	for _, entry := range m.Answer {
+	for _, entry := range rrCache.Answer {
 		new.Answer = append(new.Answer, entry.String())
 	}
-	for _, entry := range m.Ns {
+	for _, entry := range rrCache.Ns {
 		new.Ns = append(new.Ns, entry.String())
 	}
-	for _, entry := range m.Extra {
+	for _, entry := range rrCache.Extra {
 		new.Extra = append(new.Extra, entry.String())
 	}
 
@@ -100,8 +122,8 @@ func (m *RRCache) ToNameRecord() *NameRecord {
 }
 
 // Save saves the RRCache to the database as a NameRecord.
-func (m *RRCache) Save() error {
-	return m.ToNameRecord().Save()
+func (rrCache *RRCache) Save() error {
+	return rrCache.ToNameRecord().Save()
 }
 
 // GetRRCache tries to load the corresponding NameRecord from the database and convert it.
@@ -143,25 +165,25 @@ func GetRRCache(domain string, question dns.Type) (*RRCache, error) {
 }
 
 // ServedFromCache marks the RRCache as served from cache.
-func (m *RRCache) ServedFromCache() bool {
-	return m.servedFromCache
+func (rrCache *RRCache) ServedFromCache() bool {
+	return rrCache.servedFromCache
 }
 
 // RequestingNew informs that it has expired and new RRs are being fetched.
-func (m *RRCache) RequestingNew() bool {
-	return m.requestingNew
+func (rrCache *RRCache) RequestingNew() bool {
+	return rrCache.requestingNew
 }
 
 // Flags formats ServedFromCache and RequestingNew to a condensed, flag-like format.
-func (m *RRCache) Flags() string {
+func (rrCache *RRCache) Flags() string {
 	var s string
-	if m.servedFromCache {
+	if rrCache.servedFromCache {
 		s += "C"
 	}
-	if m.requestingNew {
+	if rrCache.requestingNew {
 		s += "R"
 	}
-	if m.Filtered {
+	if rrCache.Filtered {
 		s += "F"
 	}
 
@@ -172,27 +194,27 @@ func (m *RRCache) Flags() string {
 }
 
 // IsNXDomain returnes whether the result is nxdomain.
-func (m *RRCache) IsNXDomain() bool {
-	return len(m.Answer) == 0
+func (rrCache *RRCache) IsNXDomain() bool {
+	return len(rrCache.Answer) == 0
 }
 
 // ShallowCopy returns a shallow copy of the cache. slices are not copied, but referenced.
-func (m *RRCache) ShallowCopy() *RRCache {
+func (rrCache *RRCache) ShallowCopy() *RRCache {
 	return &RRCache{
-		Domain:   m.Domain,
-		Question: m.Question,
-		Answer:   m.Answer,
-		Ns:       m.Ns,
-		Extra:    m.Extra,
-		TTL:      m.TTL,
+		Domain:   rrCache.Domain,
+		Question: rrCache.Question,
+		Answer:   rrCache.Answer,
+		Ns:       rrCache.Ns,
+		Extra:    rrCache.Extra,
+		TTL:      rrCache.TTL,
 
-		Server:      m.Server,
-		ServerScope: m.ServerScope,
+		Server:      rrCache.Server,
+		ServerScope: rrCache.ServerScope,
 
-		updated:         m.updated,
-		servedFromCache: m.servedFromCache,
-		requestingNew:   m.requestingNew,
-		Filtered:        m.Filtered,
-		FilteredEntries: m.FilteredEntries,
+		updated:         rrCache.updated,
+		servedFromCache: rrCache.servedFromCache,
+		requestingNew:   rrCache.requestingNew,
+		Filtered:        rrCache.Filtered,
+		FilteredEntries: rrCache.FilteredEntries,
 	}
 }

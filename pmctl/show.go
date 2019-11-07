@@ -79,7 +79,7 @@ func show(cmd *cobra.Command, opts *Options) error {
 		opts.Identifier += ".exe"
 	}
 
-	file, err := getFile(opts)
+	file, err := registry.GetFile(platform(opts.Identifier))
 	if err != nil {
 		return fmt.Errorf("could not get component: %s", err)
 	}

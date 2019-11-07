@@ -17,15 +17,13 @@ import (
 var (
 	dataDir     string
 	databaseDir string
-
-	baseModule = modules.Register("base", prepBase, nil, nil)
 )
 
 func init() {
 	flag.StringVar(&dataDir, "data", "", "set data directory")
 	flag.StringVar(&databaseDir, "db", "", "alias to --data (deprecated)")
 
-	notifications.SetPersistenceBasePath("core:notifications")
+	modules.Register("base", prepBase, nil, nil, "info")
 }
 
 func prepBase() error {
@@ -58,6 +56,9 @@ func prepBase() error {
 
 	// set api listen address
 	api.SetDefaultAPIListenAddress("127.0.0.1:817")
+
+	// set notification persistence
+	notifications.SetPersistenceBasePath("core:notifications")
 
 	return nil
 }

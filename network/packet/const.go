@@ -5,13 +5,17 @@ import (
 	"fmt"
 )
 
+// Basic Types
 type (
-	IPVersion  uint8
+	// IPVersion represents an IP version.
+	IPVersion uint8
+	// IPProtocol represents an IP protocol.
 	IPProtocol uint8
-	Verdict    uint8
-	Endpoint   bool
+	// Verdict describes the decision on a packet.
+	Verdict uint8
 )
 
+// Basic Constants
 const (
 	IPv4 = IPVersion(4)
 	IPv6 = IPVersion(6)
@@ -19,18 +23,15 @@ const (
 	InBound  = true
 	OutBound = false
 
-	Local  = true
-	Remote = false
-
-	// convenience
+	ICMP   = IPProtocol(1)
 	IGMP   = IPProtocol(2)
-	RAW    = IPProtocol(255)
 	TCP    = IPProtocol(6)
 	UDP    = IPProtocol(17)
-	ICMP   = IPProtocol(1)
 	ICMPv6 = IPProtocol(58)
+	RAW    = IPProtocol(255)
 )
 
+// Verdicts
 const (
 	DROP Verdict = iota
 	BLOCK
@@ -42,10 +43,11 @@ const (
 )
 
 var (
+	// ErrFailedToLoadPayload is returned by GetPayload if it failed for an unspecified reason, or is not implemented on the current system.
 	ErrFailedToLoadPayload = errors.New("could not load packet payload")
 )
 
-// Returns the byte size of the ip, IPv4 = 4 bytes, IPv6 = 16
+// ByteSize returns the byte size of the ip, IPv4 = 4 bytes, IPv6 = 16
 func (v IPVersion) ByteSize() int {
 	switch v {
 	case IPv4:
@@ -56,6 +58,7 @@ func (v IPVersion) ByteSize() int {
 	return 0
 }
 
+// String returns the string representation of the IP version: "IPv4" or "IPv6".
 func (v IPVersion) String() string {
 	switch v {
 	case IPv4:
@@ -66,6 +69,7 @@ func (v IPVersion) String() string {
 	return fmt.Sprintf("<unknown ip version, %d>", uint8(v))
 }
 
+// String returns the string representation (abbreviation) of the protocol.
 func (p IPProtocol) String() string {
 	switch p {
 	case RAW:
@@ -84,12 +88,24 @@ func (p IPProtocol) String() string {
 	return fmt.Sprintf("<unknown protocol, %d>", uint8(p))
 }
 
+// String returns the string representation of the verdict.
 func (v Verdict) String() string {
 	switch v {
 	case DROP:
 		return "DROP"
+	case BLOCK:
+		return "BLOCK"
 	case ACCEPT:
 		return "ACCEPT"
+	case STOLEN:
+		return "STOLEN"
+	case QUEUE:
+		return "QUEUE"
+	case REPEAT:
+		return "REPEAT"
+	case STOP:
+		return "STOP"
+	default:
+		return fmt.Sprintf("<unsupported verdict, %d>", uint8(v))
 	}
-	return fmt.Sprintf("<unsupported verdict, %d>", uint8(v))
 }

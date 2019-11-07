@@ -24,8 +24,7 @@ var (
 	dbController     *database.Controller
 	dbControllerFlag = abool.NewBool(false)
 
-	deleteProcessesThreshold       = 15 * time.Minute
-	lastEstablishedUpdateThreshold = 30 * time.Second
+	deleteProcessesThreshold = 15 * time.Minute
 )
 
 // GetProcessFromStorage returns a process from the internal storage.

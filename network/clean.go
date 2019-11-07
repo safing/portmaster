@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"time"
 
 	"github.com/safing/portbase/log"
@@ -11,7 +12,8 @@ var (
 	cleanerTickDuration               = 10 * time.Second
 	deleteLinksAfterEndedThreshold    = 5 * time.Minute
 	deleteCommsWithoutLinksThreshhold = 3 * time.Minute
-	lastEstablishedUpdateThreshold    = 30 * time.Second
+
+	mtSaveLink = "save network link"
 )
 
 func cleaner() {
@@ -68,12 +70,17 @@ func cleanLinks() (activeComms map[string]struct{}) {
 			link.Ended = now
 			link.Unlock()
 			log.Tracef("network.clean: marked %s as ended", link.DatabaseKey())
-			go link.save()
+			// save
+			linkToSave := link
+			module.StartMicroTask(&mtSaveLink, func(ctx context.Context) error {
+				linkToSave.saveAndLog()
+				return nil
+			})
 		}
 
 	}
 
-	return
+	return activeComms
 }
 
 func cleanComms(activeLinks map[string]struct{}) (activeComms map[string]struct{}) {

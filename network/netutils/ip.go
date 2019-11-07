@@ -10,7 +10,7 @@ const (
 	Global
 	LocalMulticast
 	GlobalMulticast
-	Invalid
+	Invalid int8 = -1
 )
 
 // ClassifyIP returns the classification for the given IP address.
@@ -77,9 +77,7 @@ func IPIsLocalhost(ip net.IP) bool {
 // IPIsLAN returns true if the given IP is a site-local or link-local address.
 func IPIsLAN(ip net.IP) bool {
 	switch ClassifyIP(ip) {
-	case SiteLocal:
-		return true
-	case LinkLocal:
+	case SiteLocal, LinkLocal:
 		return true
 	default:
 		return false

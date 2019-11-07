@@ -9,8 +9,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/safing/portbase/updater"
+
 	"github.com/safing/portmaster/core/structure"
-	"github.com/safing/portmaster/updates"
 
 	"github.com/safing/portbase/utils"
 
@@ -27,6 +28,17 @@ var (
 
 	showShortVersion bool
 	showFullVersion  bool
+
+	// create registry
+	registry = &updater.ResourceRegistry{
+		Name: "updates",
+		UpdateURLs: []string{
+			"https://updates.safing.io",
+		},
+		Beta:    false,
+		DevMode: false,
+		Online:  false,
+	}
 
 	rootCmd = &cobra.Command{
 		Use:               "portmaster-control",
@@ -53,8 +65,8 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data", "", "set data directory")
 	rootCmd.PersistentFlags().StringVar(&databaseDir, "db", "", "alias to --data (deprecated)")
-	rootCmd.MarkPersistentFlagDirname("data")
-	rootCmd.MarkPersistentFlagDirname("db")
+	_ = rootCmd.MarkPersistentFlagDirname("data")
+	_ = rootCmd.MarkPersistentFlagDirname("db")
 	rootCmd.Flags().BoolVar(&showFullVersion, "version", false, "print version")
 	rootCmd.Flags().BoolVar(&showShortVersion, "ver", false, "print version number only")
 }
@@ -73,11 +85,10 @@ func main() {
 	// }()
 
 	// catch interrupt for clean shutdown
-	signalCh := make(chan os.Signal)
+	signalCh := make(chan os.Signal, 2)
 	signal.Notify(
 		signalCh,
 		os.Interrupt,
-		os.Kill,
 		syscall.SIGHUP,
 		syscall.SIGINT,
 		syscall.SIGTERM,
@@ -153,8 +164,24 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 			return fmt.Errorf("failed to initialize data root: %s", err)
 		}
 		dataRoot = structure.Root()
-		// manually set updates root (no modules)
-		updates.SetDataRoot(structure.Root())
+
+		// initialize registry
+		err := registry.Initialize(structure.Root().ChildDir("updates", 0755))
+		if err != nil {
+			return err
+		}
+
+		err = registry.LoadIndexes()
+		if err != nil {
+			return err
+		}
+
+		err = registry.ScanStorage("")
+		if err != nil {
+			log.Printf("WARNING: error during storage scan: %s\n", err)
+		}
+
+		registry.SelectVersions()
 	}
 
 	// logs and warning

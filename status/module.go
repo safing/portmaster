@@ -9,10 +9,6 @@ import (
 	_ "github.com/safing/portmaster/core"
 )
 
-var (
-	shutdownSignal = make(chan struct{})
-)
-
 func init() {
 	modules.Register("status", nil, start, stop, "core")
 }
@@ -57,11 +53,5 @@ func start() error {
 }
 
 func stop() error {
-	select {
-	case <-shutdownSignal:
-		// already closed
-	default:
-		close(shutdownSignal)
-	}
-	return nil
+	return stopStatusHook()
 }

@@ -8,7 +8,6 @@ import (
 )
 
 var (
-	devMode        config.BoolOption
 	defaultDevMode bool
 )
 
@@ -27,8 +26,9 @@ func registerConfig() error {
 		Name:           "Development Mode",
 		Key:            "core/devMode",
 		Description:    "In Development Mode security restrictions are lifted/softened to enable easier access to Portmaster for debugging and testing purposes.",
-		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		OptType:        config.OptTypeBool,
+		ExpertiseLevel: config.ExpertiseLevelDeveloper,
+		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   defaultDevMode,
 	})
 	if err != nil {

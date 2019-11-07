@@ -20,8 +20,9 @@ func registerConfig() error {
 		Name:           "Permanent Verdicts",
 		Key:            "firewall/permanentVerdicts",
 		Description:    "With permanent verdicts, control of a connection is fully handed back to the OS after the initial decision. This brings a great performance increase, but makes it impossible to change the decision of a link later on.",
-		ExpertiseLevel: config.ExpertiseLevelExpert,
 		OptType:        config.OptTypeBool,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   true,
 	})
 	if err != nil {
@@ -33,8 +34,9 @@ func registerConfig() error {
 		Name:            "Filter DNS Responses by Server Scope",
 		Key:             "firewall/filterDNSByScope",
 		Description:     "This option will filter out DNS answers that are outside of the scope of the server. A server on the public Internet may not respond with a private LAN address.",
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		OptType:         config.OptTypeInt,
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
+		ReleaseLevel:    config.ReleaseLevelBeta,
 		ExternalOptType: "security level",
 		DefaultValue:    7,
 		ValidationRegex: "^(7|6|4)$",
@@ -48,8 +50,9 @@ func registerConfig() error {
 		Name:            "Filter DNS Responses by Application Profile",
 		Key:             "firewall/filterDNSByProfile",
 		Description:     "This option will filter out DNS answers that an application would not be allowed to connect, based on its profile.",
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		OptType:         config.OptTypeInt,
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
+		ReleaseLevel:    config.ReleaseLevelBeta,
 		ExternalOptType: "security level",
 		DefaultValue:    7,
 		ValidationRegex: "^(7|6|4)$",
@@ -63,8 +66,9 @@ func registerConfig() error {
 		Name:           "Timeout for prompt notifications",
 		Key:            "firewall/promptTimeout",
 		Description:    "Amount of time how long Portmaster will wait for a response when prompting about a connection via a notification. In seconds.",
-		ExpertiseLevel: config.ExpertiseLevelUser,
 		OptType:        config.OptTypeInt,
+		ExpertiseLevel: config.ExpertiseLevelUser,
+		ReleaseLevel:   config.ReleaseLevelBeta,
 		DefaultValue:   60,
 	})
 	if err != nil {

@@ -7,20 +7,45 @@ import (
 	"time"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/process"
 )
 
-func checkForConflictingService(err error) {
-	pid, err := takeover()
-	if err != nil || pid == 0 {
-		log.Info("nameserver: restarting server in 10 seconds")
-		time.Sleep(10 * time.Second)
-		return
+var (
+	otherResolverIPs = []net.IP{
+		net.IPv4(127, 0, 0, 1),  // default
+		net.IPv4(127, 0, 0, 53), // some resolvers on Linux
+	}
+)
+
+func checkForConflictingService() error {
+	var pid int
+	var err error
+
+	// check multiple IPs for other resolvers
+	for _, resolverIP := range otherResolverIPs {
+		pid, err = takeover(resolverIP)
+		if err == nil && pid != 0 {
+			break
+		}
+	}
+	// handle returns
+	if err != nil {
+		log.Infof("nameserver: could not stop conflicting service: %s", err)
+		// leave original service-worker error intact
+		return nil
+	}
+	if pid == 0 {
+		// no conflicting service identified
+		return nil
 	}
 
-	log.Infof("nameserver: stopped conflicting name service with pid %d", pid)
+	// we killed something!
+
+	// wait for a short duration for the other service to shut down
+	time.Sleep(10 * time.Millisecond)
 
 	// notify user
 	(&notifications.Notification{
@@ -28,15 +53,14 @@ func checkForConflictingService(err error) {
 		Message: fmt.Sprintf("Portmaster stopped a conflicting name service (pid %d) to gain required system integration.", pid),
 	}).Save()
 
-	// wait for a short duration for the other service to shut down
-	time.Sleep(100 * time.Millisecond)
+	// restart via service-worker logic
+	return fmt.Errorf("%w: stopped conflicting name service with pid %d", modules.ErrRestartNow, pid)
 }
 
-func takeover() (int, error) {
-	pid, _, err := process.GetPidByEndpoints(net.IPv4(127, 0, 0, 1), 53, net.IPv4(127, 0, 0, 1), 65535, packet.UDP)
+func takeover(resolverIP net.IP) (int, error) {
+	pid, _, err := process.GetPidByEndpoints(resolverIP, 53, resolverIP, 65535, packet.UDP)
 	if err != nil {
 		// there may be nothing listening on :53
-		log.Tracef("nameserver: expected conflicting name service, but could not find anything listenting on :53")
 		return 0, nil
 	}
 
