@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path"
@@ -146,7 +147,9 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 
 	// Trigger further metadata fetching from system if profile was created.
 	if created && profile.UsePresentationPath && !special {
-		module.StartWorker("get profile metadata", profile.updateMetadataFromSystem)
+		module.StartWorker("get profile metadata", func(ctx context.Context) error {
+			return profile.updateMetadataFromSystem(ctx, md)
+		})
 	}
 
 	// Prepare profile for first use.
