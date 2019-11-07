@@ -1,4 +1,4 @@
-package algs
+package dga
 
 import "testing"
 

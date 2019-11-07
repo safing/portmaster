@@ -12,7 +12,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 
-	"github.com/safing/portmaster/analytics/algs"
+	"github.com/safing/portmaster/detection/dga"
 	"github.com/safing/portmaster/firewall"
 	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/network"
@@ -180,7 +180,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 
 	// check for possible DNS tunneling / data transmission
 	// TODO: improve this
-	lms := algs.LmsScoreOfDomain(q.FQDN)
+	lms := dga.LmsScoreOfDomain(q.FQDN)
 	// log.Tracef("nameserver: domain %s has lms score of %f", fqdn, lms)
 	if lms < 10 {
 		tracer.Warningf("nameserver: possible data tunnel by %s: %s has lms score of %f, returning nxdomain", comm.Process(), q.FQDN, lms)
