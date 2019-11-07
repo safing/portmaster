@@ -7,6 +7,7 @@ import (
 	"github.com/safing/portmaster/network/packet"
 )
 
+//nolint:golint,stylecheck // FIXME
 const (
 	DO_NOTHING uint8 = iota
 	BLOCK_PACKET
@@ -25,6 +26,7 @@ var (
 	inspectorsLock  sync.Mutex
 )
 
+// RegisterInspector registers a traffic inspector.
 func RegisterInspector(name string, inspector inspectorFn, inspectVerdict network.Verdict) (index int) {
 	inspectorsLock.Lock()
 	defer inspectorsLock.Unlock()
@@ -35,13 +37,14 @@ func RegisterInspector(name string, inspector inspectorFn, inspectVerdict networ
 	return
 }
 
+// RunInspectors runs all the applicable inspectors on the given packet.
 func RunInspectors(pkt packet.Packet, link *network.Link) (network.Verdict, bool) {
 	// inspectorsLock.Lock()
 	// defer inspectorsLock.Unlock()
 
 	activeInspectors := link.GetActiveInspectors()
 	if activeInspectors == nil {
-		activeInspectors = make([]bool, len(inspectors), len(inspectors))
+		activeInspectors = make([]bool, len(inspectors))
 		link.SetActiveInspectors(activeInspectors)
 	}
 

@@ -28,16 +28,15 @@ const (
 )
 
 var (
-	upgraderActive    = abool.NewBool(false)
-	dontUpgradeBefore = time.Now().Add(5 * time.Minute)
-	pmCtrlUpdate      *updater.File
-	pmCoreUpdate      *updater.File
+	upgraderActive = abool.NewBool(false)
+	pmCtrlUpdate   *updater.File
+	pmCoreUpdate   *updater.File
 
 	rawVersionRegex = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+b?\*?$`)
 )
 
-func initUpgrader() {
-	module.RegisterEventHook(
+func initUpgrader() error {
+	return module.RegisterEventHook(
 		"updates",
 		eventResourceUpdate,
 		"run upgrades",

@@ -52,7 +52,7 @@ func updateListener(sub *database.Subscription) {
 				profile.Unlock()
 
 				if profileChanged {
-					profile.Save(SpecialNamespace)
+					_ = profile.Save(SpecialNamespace)
 					continue
 				}
 

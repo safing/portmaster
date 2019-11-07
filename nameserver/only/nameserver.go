@@ -22,7 +22,7 @@ var (
 	mtDNSRequest = "dns request"
 
 	listenAddress = "127.0.0.1:53"
-	IPv4Localhost = net.IPv4(127, 0, 0, 1)
+	ipv4Localhost = net.IPv4(127, 0, 0, 1)
 	localhostRRs  []dns.RR
 )
 
@@ -127,7 +127,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		log.Warningf("nameserver: could not get remote address of request for %s%s, ignoring", q.FQDN, q.QType)
 		return nil
 	}
-	if !remoteAddr.IP.Equal(IPv4Localhost) {
+	if !remoteAddr.IP.Equal(ipv4Localhost) {
 		// if request is not coming from 127.0.0.1, check if it's really local
 
 		localAddr, ok := w.RemoteAddr().(*net.UDPAddr)

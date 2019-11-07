@@ -49,21 +49,19 @@ func initVersionExport() (err error) {
 		return err
 	}
 
-	module.RegisterEventHook(
+	return module.RegisterEventHook(
 		"updates",
 		eventVersionUpdate,
 		"export version status",
 		export,
 	)
-	return nil
 }
 
 func stopVersionExport() error {
 	return versionExportHook.Cancel()
 }
 
-var exportMicroTaskName = "update version status"
-
+// export is an event hook
 func export(_ context.Context, _ interface{}) error {
 	// populate
 	versionExport.lock.Lock()

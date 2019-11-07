@@ -155,7 +155,7 @@ func readDirNames(dir string) (names []string) {
 	defer file.Close()
 	names, err = file.Readdirnames(0)
 	if err != nil {
-		log.Warningf("process: could not get entries from direcotry %s: %s", dir, err)
+		log.Warningf("process: could not get entries from directory %s: %s", dir, err)
 		return []string{}
 	}
 	return

@@ -24,7 +24,7 @@ func initSpecialProfiles() (err error) {
 			return err
 		}
 		globalProfile = makeDefaultGlobalProfile()
-		globalProfile.Save(SpecialNamespace)
+		_ = globalProfile.Save(SpecialNamespace)
 	}
 
 	fallbackProfile, err = getSpecialProfile("fallback")
@@ -34,15 +34,15 @@ func initSpecialProfiles() (err error) {
 		}
 		fallbackProfile = makeDefaultFallbackProfile()
 		ensureServiceEndpointsDenyAll(fallbackProfile)
-		fallbackProfile.Save(SpecialNamespace)
+		_ = fallbackProfile.Save(SpecialNamespace)
 	}
 	ensureServiceEndpointsDenyAll(fallbackProfile)
 
 	return nil
 }
 
-func getSpecialProfile(ID string) (*Profile, error) {
-	return getProfile(SpecialNamespace, ID)
+func getSpecialProfile(id string) (*Profile, error) {
+	return getProfile(SpecialNamespace, id)
 }
 
 func ensureServiceEndpointsDenyAll(p *Profile) (changed bool) {
@@ -52,7 +52,7 @@ func ensureServiceEndpointsDenyAll(p *Profile) (changed bool) {
 				ep.Protocol == 0 &&
 				ep.StartPort == 0 &&
 				ep.EndPort == 0 &&
-				ep.Permit == false {
+				!ep.Permit {
 				return false
 			}
 		}

@@ -80,10 +80,10 @@ func cleanPortsInUse() {
 	portsInUseLock.Lock()
 	defer portsInUseLock.Unlock()
 
-	threshhold := time.Now().Add(-cleanTimeout)
+	threshold := time.Now().Add(-cleanTimeout)
 
 	for port, status := range portsInUse {
-		if status.lastSeen.Before(threshhold) {
+		if status.lastSeen.Before(threshold) {
 			delete(portsInUse, port)
 		}
 	}

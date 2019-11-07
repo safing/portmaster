@@ -18,6 +18,7 @@ import (
 )
 
 // Communication describes a logical connection between a process and a domain.
+//nolint:maligned // TODO: fix alignment
 type Communication struct {
 	record.Base
 	sync.Mutex
@@ -288,7 +289,10 @@ func (comm *Communication) SaveIfNeeded() {
 	comm.Unlock()
 
 	if save {
-		comm.save()
+		err := comm.save()
+		if err != nil {
+			log.Warningf("network: failed to save comm %s: %s", comm, err)
+		}
 	}
 }
 

@@ -155,15 +155,14 @@ func TestEndpointMatching(t *testing.T) {
 }
 
 func TestEPString(t *testing.T) {
-	var endpoints Endpoints
-	endpoints = []*EndpointPermission{
-		&EndpointPermission{
+	var endpoints Endpoints = []*EndpointPermission{
+		{
 			Type:     EptDomain,
 			Value:    "example.com",
 			Protocol: 6,
 			Permit:   true,
 		},
-		&EndpointPermission{
+		{
 			Type:      EptIPv4,
 			Value:     "1.1.1.1",
 			Protocol:  17, // TCP
@@ -171,7 +170,7 @@ func TestEPString(t *testing.T) {
 			EndPort:   53,
 			Permit:    false,
 		},
-		&EndpointPermission{
+		{
 			Type:   EptDomain,
 			Value:  "example.org",
 			Permit: false,
@@ -181,8 +180,7 @@ func TestEPString(t *testing.T) {
 		t.Errorf("unexpected result: %s", endpoints.String())
 	}
 
-	var noEndpoints Endpoints
-	noEndpoints = []*EndpointPermission{}
+	var noEndpoints Endpoints = []*EndpointPermission{}
 	if noEndpoints.String() != "[]" {
 		t.Errorf("unexpected result: %s", noEndpoints.String())
 	}

@@ -129,7 +129,6 @@ func ServeFileFromBundle(w http.ResponseWriter, r *http.Request, bundleName stri
 	}
 
 	readCloser.Close()
-	return
 }
 
 // RedirectToBase redirects the requests to the control app

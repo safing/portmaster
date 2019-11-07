@@ -37,6 +37,7 @@ var (
 	ErrNoCompliance = fmt.Errorf("%w: no compliant resolvers for this query", ErrBlocked)
 )
 
+// Query describes a dns query.
 type Query struct {
 	FQDN               string
 	QType              dns.Type

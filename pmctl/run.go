@@ -124,7 +124,13 @@ func run(cmd *cobra.Command, opts *Options) (err error) {
 		if pid != 0 {
 			return fmt.Errorf("another instance of Portmaster Core is already running: PID %d", pid)
 		}
-		defer deleteInstanceLock(opts.ShortIdentifier)
+		defer func() {
+			err := deleteInstanceLock(opts.ShortIdentifier)
+			if err != nil {
+				log.Printf("failed to delete instance lock: %s\n", err)
+			}
+		}()
+
 	}
 
 	// notify service after some time
@@ -192,6 +198,7 @@ func run(cmd *cobra.Command, opts *Options) (err error) {
 	}
 }
 
+// nolint:gocyclo,gocognit // TODO: simplify
 func execute(opts *Options, args []string) (cont bool, err error) {
 	file, err := registry.GetFile(platform(opts.Identifier))
 	if err != nil {
@@ -236,7 +243,7 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 	}
 
 	// create command
-	exc := exec.Command(file.Path(), args...)
+	exc := exec.Command(file.Path(), args...) //nolint:gosec // everything is okay
 
 	if !runningInConsole && opts.AllowHidingWindow {
 		// Windows only:

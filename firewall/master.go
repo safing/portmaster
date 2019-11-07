@@ -139,6 +139,7 @@ func DecideOnCommunicationAfterIntel(comm *network.Communication, fqdn string, r
 }
 
 // FilterDNSResponse filters a dns response according to the application profile and settings.
+//nolint:gocognit // FIXME
 func FilterDNSResponse(comm *network.Communication, q *intel.Query, rrCache *intel.RRCache) *intel.RRCache {
 	// do not modify own queries - this should not happen anyway
 	if comm.Process().Pid == os.Getpid() {
@@ -497,7 +498,7 @@ func checkRelation(comm *network.Communication, fqdn string) (related bool) {
 
 	// TODO: add #AI
 
-	pathElements := strings.Split(comm.Process().Path, "/") // FIXME: path seperator
+	pathElements := strings.Split(comm.Process().Path, "/") // FIXME: path separator
 	// only look at the last two path segments
 	if len(pathElements) > 2 {
 		pathElements = pathElements[len(pathElements)-2:]
@@ -537,5 +538,5 @@ matchLoop:
 		log.Infof("firewall: permitting communication %s, match to domain was found: %s is related to %s", comm, domainElement, processElement)
 		comm.Accept(fmt.Sprintf("domain is related to process: %s is related to %s", domainElement, processElement))
 	}
-	return
+	return related
 }

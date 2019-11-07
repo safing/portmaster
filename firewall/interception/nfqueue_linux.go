@@ -247,28 +247,28 @@ func StartNfqueueInterception() (err error) {
 
 	err = activateNfqueueFirewall()
 	if err != nil {
-		Stop()
+		_ = Stop()
 		return fmt.Errorf("could not initialize nfqueue: %s", err)
 	}
 
 	out4Queue, err = nfqueue.NewNFQueue(17040)
 	if err != nil {
-		Stop()
+		_ = Stop()
 		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
 	}
 	in4Queue, err = nfqueue.NewNFQueue(17140)
 	if err != nil {
-		Stop()
+		_ = Stop()
 		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
 	}
 	out6Queue, err = nfqueue.NewNFQueue(17060)
 	if err != nil {
-		Stop()
+		_ = Stop()
 		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
 	}
 	in6Queue, err = nfqueue.NewNFQueue(17160)
 	if err != nil {
-		Stop()
+		_ = Stop()
 		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
 	}
 
@@ -320,13 +320,4 @@ func handleInterception() {
 			Packets <- pkt
 		}
 	}
-}
-
-func stringInSlice(slice []string, value string) bool {
-	for _, entry := range slice {
-		if value == entry {
-			return true
-		}
-	}
-	return false
 }

@@ -100,9 +100,7 @@ func start() error {
 	}).Repeat(24 * time.Hour).MaxDelay(1 * time.Hour).Schedule(time.Now().Add(10 * time.Second))
 
 	// react to upgrades
-	initUpgrader()
-
-	return nil
+	return initUpgrader()
 }
 
 func stop() error {

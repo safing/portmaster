@@ -11,6 +11,7 @@ import (
 	"github.com/safing/portmaster/network/environment"
 )
 
+// DNS Resolver Attributes
 const (
 	ServerTypeDNS = "dns"
 	ServerTypeTCP = "tcp"
@@ -85,6 +86,7 @@ func (brc *BasicResolverConn) LastFail() time.Time {
 	return brc.lastFail
 }
 
+// Query executes the given query against the resolver.
 func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	// convenience
 	resolver := brc.resolver

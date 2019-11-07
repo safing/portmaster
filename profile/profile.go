@@ -58,8 +58,8 @@ func New() *Profile {
 }
 
 // MakeProfileKey creates the correct key for a profile with the given namespace and ID.
-func MakeProfileKey(namespace, ID string) string {
-	return fmt.Sprintf("core:profiles/%s/%s", namespace, ID)
+func MakeProfileKey(namespace, id string) string {
+	return fmt.Sprintf("core:profiles/%s/%s", namespace, id)
 }
 
 // Save saves the profile to the database
@@ -98,17 +98,17 @@ func (profile *Profile) DetailedString() string {
 }
 
 // GetUserProfile loads a profile from the database.
-func GetUserProfile(ID string) (*Profile, error) {
-	return getProfile(UserNamespace, ID)
+func GetUserProfile(id string) (*Profile, error) {
+	return getProfile(UserNamespace, id)
 }
 
 // GetStampProfile loads a profile from the database.
-func GetStampProfile(ID string) (*Profile, error) {
-	return getProfile(StampNamespace, ID)
+func GetStampProfile(id string) (*Profile, error) {
+	return getProfile(StampNamespace, id)
 }
 
-func getProfile(namespace, ID string) (*Profile, error) {
-	r, err := profileDB.Get(MakeProfileKey(namespace, ID))
+func getProfile(namespace, id string) (*Profile, error) {
+	r, err := profileDB.Get(MakeProfileKey(namespace, id))
 	if err != nil {
 		return nil, err
 	}

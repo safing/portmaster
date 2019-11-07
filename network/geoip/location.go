@@ -95,7 +95,7 @@ func (l *Location) EstimateNetworkProximity(to *Location) (proximity int) {
 		}
 	}
 
-	return //nolint:nakedreturn
+	return //nolint:nakedret
 }
 
 // PrimitiveNetworkProximity calculates the numerical distance between two IP addresses. Returns a proximity value between 0 (far away) and 100 (nearby).

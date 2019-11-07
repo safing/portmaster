@@ -85,6 +85,7 @@ func initControlLogFile() *os.File {
 	return initializeLogFile(logFilePath, "control/portmaster-control", info.Version())
 }
 
+//nolint:deadcode,unused // false positive on linux, currently used by windows only
 func logControlError(cErr error) {
 	// check if error present
 	if cErr == nil {
@@ -110,6 +111,7 @@ func logControlError(cErr error) {
 	errorFile.Close()
 }
 
+//nolint:deadcode,unused // TODO
 func logControlStack() {
 	// check logging dir
 	logFileBasePath := filepath.Join(logsRoot.Path, "fstree", "control")
@@ -126,10 +128,11 @@ func logControlStack() {
 	}
 
 	// write error and close
-	pprof.Lookup("goroutine").WriteTo(errorFile, 1)
+	_ = pprof.Lookup("goroutine").WriteTo(errorFile, 2)
 	errorFile.Close()
 }
 
+//nolint:deadcode,unused // false positive on linux, currently used by windows only
 func runAndLogControlError(wrappedFunc func(cmd *cobra.Command, args []string) error) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		err := wrappedFunc(cmd, args)

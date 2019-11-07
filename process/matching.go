@@ -33,16 +33,14 @@ func (p *Process) FindProfiles(ctx context.Context) error {
 	}
 
 	var userProfile *profile.Profile
-	for r := range it.Next {
-		it.Cancel()
-		userProfile, err = profile.EnsureProfile(r)
-		if err != nil {
-			return err
-		}
-		break
-	}
-	if it.Err() != nil {
-		return it.Err()
+	// get first result
+	r := <-it.Next
+	// cancel immediately
+	it.Cancel()
+	// ensure its a profile
+	userProfile, err = profile.EnsureProfile(r)
+	if err != nil {
+		return err
 	}
 
 	// create new profile if it does not exist.
@@ -54,7 +52,7 @@ func (p *Process) FindProfiles(ctx context.Context) error {
 	}
 
 	if userProfile.MarkUsed() {
-		userProfile.Save(profile.UserNamespace)
+		_ = userProfile.Save(profile.UserNamespace)
 	}
 
 	// Stamp
@@ -74,17 +72,7 @@ func (p *Process) FindProfiles(ctx context.Context) error {
 	return nil
 }
 
-func selectProfile(p *Process, profs []*profile.Profile) (selectedProfile *profile.Profile) {
-	var highestScore int
-	for _, prof := range profs {
-		score := matchProfile(p, prof)
-		if score > highestScore {
-			selectedProfile = prof
-		}
-	}
-	return
-}
-
+//nolint:deadcode,unused // FIXME
 func matchProfile(p *Process, prof *profile.Profile) (score int) {
 	for _, fp := range prof.Fingerprints {
 		score += matchFingerprint(p, fp)
@@ -92,6 +80,7 @@ func matchProfile(p *Process, prof *profile.Profile) (score int) {
 	return
 }
 
+//nolint:deadcode,unused // FIXME
 func matchFingerprint(p *Process, fp *profile.Fingerprint) (score int) {
 	if !fp.MatchesOS() {
 		return 0
@@ -100,8 +89,8 @@ func matchFingerprint(p *Process, fp *profile.Fingerprint) (score int) {
 	switch fp.Type {
 	case "full_path":
 		if p.Path == fp.Value {
+			return profile.GetFingerprintWeight(fp.Type)
 		}
-		return profile.GetFingerprintWeight(fp.Type)
 	case "partial_path":
 		// FIXME: if full_path matches, do not match partial paths
 		return profile.GetFingerprintWeight(fp.Type)

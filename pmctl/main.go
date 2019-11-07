@@ -65,8 +65,8 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data", "", "set data directory")
 	rootCmd.PersistentFlags().StringVar(&databaseDir, "db", "", "alias to --data (deprecated)")
-	rootCmd.MarkPersistentFlagDirname("data")
-	rootCmd.MarkPersistentFlagDirname("db")
+	_ = rootCmd.MarkPersistentFlagDirname("data")
+	_ = rootCmd.MarkPersistentFlagDirname("db")
 	rootCmd.Flags().BoolVar(&showFullVersion, "version", false, "print version")
 	rootCmd.Flags().BoolVar(&showShortVersion, "ver", false, "print version number only")
 }
@@ -85,11 +85,10 @@ func main() {
 	// }()
 
 	// catch interrupt for clean shutdown
-	signalCh := make(chan os.Signal)
+	signalCh := make(chan os.Signal, 2)
 	signal.Notify(
 		signalCh,
 		os.Interrupt,
-		os.Kill,
 		syscall.SIGHUP,
 		syscall.SIGINT,
 		syscall.SIGTERM,

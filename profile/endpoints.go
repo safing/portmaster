@@ -15,8 +15,8 @@ type Endpoints []*EndpointPermission
 
 // EndpointPermission holds a decision about an endpoint.
 type EndpointPermission struct {
-	Type  EPType
 	Value string
+	Type  EPType
 
 	Protocol  uint8
 	StartPort uint16
@@ -55,10 +55,7 @@ const (
 
 // IsSet returns whether the Endpoints object is "set".
 func (e Endpoints) IsSet() bool {
-	if len(e) > 0 {
-		return true
-	}
-	return false
+	return len(e) > 0
 }
 
 // CheckDomain checks the if the given endpoint matches a EndpointPermission in the list.
@@ -246,7 +243,7 @@ func (ep EndpointPermission) MatchesIP(domain string, ip net.IP, protocol uint8,
 }
 
 func (e Endpoints) String() string {
-	var s []string
+	s := make([]string, 0, len(e))
 	for _, entry := range e {
 		s = append(s, entry.String())
 	}

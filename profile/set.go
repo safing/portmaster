@@ -8,10 +8,6 @@ import (
 	"github.com/safing/portmaster/status"
 )
 
-var (
-	emptyFlags = Flags{}
-)
-
 // Set handles Profile chaining.
 type Set struct {
 	sync.Mutex

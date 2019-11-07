@@ -1,3 +1,4 @@
+//nolint:unparam
 package profile
 
 import (
@@ -30,25 +31,25 @@ func init() {
 			Independent: status.SecurityLevelFortress,
 		},
 		Endpoints: []*EndpointPermission{
-			&EndpointPermission{
+			{
 				Type:    EptDomain,
 				Value:   "good.bad.example.com.",
 				Permit:  true,
 				Created: time.Now().Unix(),
 			},
-			&EndpointPermission{
+			{
 				Type:    EptDomain,
 				Value:   "*bad.example.com.",
 				Permit:  false,
 				Created: time.Now().Unix(),
 			},
-			&EndpointPermission{
+			{
 				Type:    EptDomain,
 				Value:   "example.com.",
 				Permit:  true,
 				Created: time.Now().Unix(),
 			},
-			&EndpointPermission{
+			{
 				Type:      EptAny,
 				Permit:    true,
 				Protocol:  6,
@@ -67,13 +68,13 @@ func init() {
 		// 	Internet: status.SecurityLevelsAll,
 		// },
 		Endpoints: []*EndpointPermission{
-			&EndpointPermission{
+			{
 				Type:    EptDomain,
 				Value:   "*bad2.example.com.",
 				Permit:  false,
 				Created: time.Now().Unix(),
 			},
-			&EndpointPermission{
+			{
 				Type:      EptAny,
 				Permit:    true,
 				Protocol:  6,
@@ -83,7 +84,7 @@ func init() {
 			},
 		},
 		ServiceEndpoints: []*EndpointPermission{
-			&EndpointPermission{
+			{
 				Type:      EptAny,
 				Permit:    true,
 				Protocol:  17,
@@ -91,7 +92,7 @@ func init() {
 				EndPort:   12347,
 				Created:   time.Now().Unix(),
 			},
-			&EndpointPermission{ // default deny
+			{ // default deny
 				Type:    EptAny,
 				Permit:  false,
 				Created: time.Now().Unix(),
@@ -173,6 +174,6 @@ func TestProfileSet(t *testing.T) {
 }
 
 func getLineNumberOfCaller(levels int) int {
-	_, _, line, _ := runtime.Caller(levels + 1)
+	_, _, line, _ := runtime.Caller(levels + 1) //nolint:dogsled
 	return line
 }
