@@ -3,15 +3,22 @@ package core
 import (
 	"github.com/safing/portbase/database"
 
+	// database module
+	_ "github.com/safing/portbase/database/dbmodule"
+
 	// module dependencies
 	_ "github.com/safing/portbase/database/storage/bbolt"
+)
+
+var (
+	DefaultDatabaseStorageType = "bbolt"
 )
 
 func registerDatabases() error {
 	_, err := database.Register(&database.Database{
 		Name:        "core",
 		Description: "Holds core data, such as settings and profiles",
-		StorageType: "bbolt",
+		StorageType: DefaultDatabaseStorageType,
 		PrimaryAPI:  "",
 	})
 	if err != nil {
@@ -21,7 +28,7 @@ func registerDatabases() error {
 	_, err = database.Register(&database.Database{
 		Name:        "cache",
 		Description: "Cached data, such as Intelligence and DNS Records",
-		StorageType: "bbolt",
+		StorageType: DefaultDatabaseStorageType,
 		PrimaryAPI:  "",
 	})
 	if err != nil {
@@ -31,7 +38,7 @@ func registerDatabases() error {
 	// _, err = database.Register(&database.Database{
 	//   Name:        "history",
 	//   Description: "Historic event data",
-	//   StorageType: "bbolt",
+	//   StorageType: DefaultDatabaseStorageType,
 	//   PrimaryAPI:  "",
 	// })
 	// if err != nil {

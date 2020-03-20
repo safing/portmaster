@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	modules.Register("core", nil, startCore, nil, "base", "database", "config", "api", "random")
+	modules.Register("core", nil, startCore, nil, "database", "config", "api", "random")
 }
 
 func startCore() error {
