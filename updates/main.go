@@ -6,10 +6,10 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/updater"
-	"github.com/safing/portmaster/core/structure"
 )
 
 const (
@@ -67,7 +67,7 @@ func start() error {
 		Online:           true,
 	}
 	// initialize
-	err := registry.Initialize(structure.Root().ChildDir("updates", 0755))
+	err := registry.Initialize(dataroot.Root().ChildDir("updates", 0755))
 	if err != nil {
 		return err
 	}
@@ -91,12 +91,13 @@ func start() error {
 	}
 
 	// start updater task
-	module.NewTask("updater", func(ctx context.Context, task *modules.Task) {
+	module.NewTask("updater", func(ctx context.Context, task *modules.Task) error {
 		err := registry.DownloadUpdates(ctx)
 		if err != nil {
-			log.Warningf("updates: failed to update: %s", err)
+			return fmt.Errorf("updates: failed to update: %s", err)
 		}
 		module.TriggerEvent(eventResourceUpdate, nil)
+		return nil
 	}).Repeat(24 * time.Hour).MaxDelay(1 * time.Hour).Schedule(time.Now().Add(10 * time.Second))
 
 	// react to upgrades
