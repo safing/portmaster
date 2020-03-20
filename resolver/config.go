@@ -1,4 +1,4 @@
-package intel
+package resolver
 
 import (
 	"fmt"

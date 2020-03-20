@@ -1,4 +1,4 @@
-package intel
+package resolver
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/intel"
 
 	// module dependencies
 	_ "github.com/safing/portmaster/core"
@@ -16,10 +17,12 @@ var (
 )
 
 func init() {
-	module = modules.Register("intel", prep, start, nil, "core", "network")
+	module = modules.Register("resolver", prep, start, nil, "core", "network")
 }
 
 func prep() error {
+	intel.SetReverseResolver(ResolveIPAndValidate)
+
 	return prepConfig()
 }
 

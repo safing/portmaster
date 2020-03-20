@@ -1,4 +1,4 @@
-package intel
+package resolver
 
 // DISABLE TESTING FOR NOW: find a way to have tests with the module system
 

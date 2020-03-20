@@ -1,4 +1,4 @@
-package intel
+package resolver
 
 import (
 	"context"
@@ -313,7 +313,7 @@ func listenForDNSPackets(conn *net.UDPConn, messages chan *dns.Msg) error {
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
-			if module.ShutdownInProgress() {
+			if module.IsStopping() {
 				return nil
 			}
 			log.Debugf("intel: failed to read packet: %s", err)

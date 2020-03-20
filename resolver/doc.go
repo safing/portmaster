@@ -1,5 +1,5 @@
 /*
-Package intel is responsible for fetching intelligence data, including DNS, on remote entities.
+package resolver is responsible for fetching intelligence data, including DNS, on remote entities.
 
 DNS Servers
 
@@ -27,4 +27,4 @@ All other domains are resolved using search scopes and all available resolvers.
 
 
 */
-package intel
+package resolver
