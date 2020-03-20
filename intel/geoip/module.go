@@ -2,7 +2,6 @@ package geoip
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/safing/portbase/modules"
 )
@@ -12,15 +11,10 @@ var (
 )
 
 func init() {
-	module = modules.Register("geoip", nil, start, nil, "updates")
+	module = modules.Register("geoip", prep, nil, nil, "updates")
 }
 
-func start() error {
-	err := prepDatabaseForUse()
-	if err != nil {
-		return fmt.Errorf("goeip: failed to load databases: %s", err)
-	}
-
+func prep() error {
 	return module.RegisterEventHook(
 		"updates",
 		"resource update",

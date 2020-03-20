@@ -3,16 +3,9 @@ package geoip
 import (
 	"net"
 	"testing"
-
-	"github.com/safing/portmaster/updates"
 )
 
 func TestLocationLookup(t *testing.T) {
-	err := updates.InitForTesting()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	ip1 := net.ParseIP("81.2.69.142")
 	loc1, err := GetLocation(ip1)
 	if err != nil {
@@ -39,7 +32,21 @@ func TestLocationLookup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("%v", loc1)
+	t.Logf("%v", loc4)
+
+	ip5 := net.ParseIP("194.232.1.1")
+	loc5, err := GetLocation(ip5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%v", loc5)
+
+	ip6 := net.ParseIP("151.101.1.164")
+	loc6, err := GetLocation(ip6)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%v", loc6)
 
 	dist1 := loc1.EstimateNetworkProximity(loc2)
 	dist2 := loc2.EstimateNetworkProximity(loc3)
@@ -50,5 +57,4 @@ func TestLocationLookup(t *testing.T) {
 	t.Logf("proximity %s <> %s: %d", ip2, ip3, dist2)
 	t.Logf("proximity %s <> %s: %d", ip1, ip3, dist3)
 	t.Logf("proximity %s <> %s: %d", ip1, ip4, dist4)
-
 }

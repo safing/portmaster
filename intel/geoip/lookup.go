@@ -41,5 +41,6 @@ func GetLocation(ip net.IP) (record *Location, err error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return record, nil
 }
