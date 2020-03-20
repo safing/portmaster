@@ -8,22 +8,37 @@ import (
 )
 
 var (
-	shutdownSignal = make(chan struct{})
+	module *modules.Module
 )
 
 func init() {
-	modules.Register("profile", nil, start, stop, "core")
+	module = modules.Register("profiles", prep, start, nil, "core")
 }
 
-func start() error {
-	err := initSpecialProfiles()
+func prep() error {
+	err := registerConfiguration()
 	if err != nil {
 		return err
 	}
-	return initUpdateListener()
+
+	err = registerConfigUpdater()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func stop() error {
-	close(shutdownSignal)
+func start() error {
+	err := registerValidationDBHook()
+	if err != nil {
+		return err
+	}
+
+	err = startProfileUpdateChecker()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
