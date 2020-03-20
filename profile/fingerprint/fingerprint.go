@@ -1,7 +1,5 @@
 package profile
 
-import "time"
-
 var (
 	fingerprintWeights = map[string]int{
 		"full_path":    2,
@@ -35,6 +33,8 @@ func GetFingerprintWeight(fpType string) (weight int) {
 	return 0
 }
 
+// TODO: move to profile
+/*
 // AddFingerprint adds the given fingerprint to the profile.
 func (profile *Profile) AddFingerprint(fp *Fingerprint) {
 	if fp.OS == "" {
@@ -46,3 +46,4 @@ func (profile *Profile) AddFingerprint(fp *Fingerprint) {
 
 	profile.Fingerprints = append(profile.Fingerprints, fp)
 }
+*/
