@@ -23,8 +23,9 @@ var (
 type LayeredProfile struct {
 	lock sync.Mutex
 
-	localProfile *Profile
-	layers       []*Profile
+	localProfile    *Profile
+	layers          []*Profile
+	revisionCounter uint64
 
 	validityFlag       *abool.AtomicBool
 	validityFlagLock   sync.Mutex
@@ -32,13 +33,15 @@ type LayeredProfile struct {
 
 	securityLevel *uint32
 
-	DisableAutoPermit  config.BoolOption
-	BlockScopeLocal    config.BoolOption
-	BlockScopeLAN      config.BoolOption
-	BlockScopeInternet config.BoolOption
-	BlockP2P           config.BoolOption
-	BlockInbound       config.BoolOption
-	EnforceSPN         config.BoolOption
+	DisableAutoPermit   config.BoolOption
+	BlockScopeLocal     config.BoolOption
+	BlockScopeLAN       config.BoolOption
+	BlockScopeInternet  config.BoolOption
+	BlockP2P            config.BoolOption
+	BlockInbound        config.BoolOption
+	EnforceSPN          config.BoolOption
+	RemoveOutOfScopeDNS config.BoolOption
+	RemoveBlockedDNS    config.BoolOption
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -48,38 +51,47 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	new := &LayeredProfile{
 		localProfile:       localProfile,
 		layers:             make([]*Profile, 0, len(localProfile.LinkedProfiles)+1),
+		revisionCounter:    0,
 		validityFlag:       abool.NewBool(true),
 		globalValidityFlag: config.NewValidityFlag(),
 		securityLevel:      &securityLevelVal,
 	}
 
 	new.DisableAutoPermit = new.wrapSecurityLevelOption(
-		cfgOptionDisableAutoPermitKey,
+		CfgOptionDisableAutoPermitKey,
 		cfgOptionDisableAutoPermit,
 	)
 	new.BlockScopeLocal = new.wrapSecurityLevelOption(
-		cfgOptionBlockScopeLocalKey,
+		CfgOptionBlockScopeLocalKey,
 		cfgOptionBlockScopeLocal,
 	)
 	new.BlockScopeLAN = new.wrapSecurityLevelOption(
-		cfgOptionBlockScopeLANKey,
+		CfgOptionBlockScopeLANKey,
 		cfgOptionBlockScopeLAN,
 	)
 	new.BlockScopeInternet = new.wrapSecurityLevelOption(
-		cfgOptionBlockScopeInternetKey,
+		CfgOptionBlockScopeInternetKey,
 		cfgOptionBlockScopeInternet,
 	)
 	new.BlockP2P = new.wrapSecurityLevelOption(
-		cfgOptionBlockP2PKey,
+		CfgOptionBlockP2PKey,
 		cfgOptionBlockP2P,
 	)
 	new.BlockInbound = new.wrapSecurityLevelOption(
-		cfgOptionBlockInboundKey,
+		CfgOptionBlockInboundKey,
 		cfgOptionBlockInbound,
 	)
 	new.EnforceSPN = new.wrapSecurityLevelOption(
-		cfgOptionEnforceSPNKey,
+		CfgOptionEnforceSPNKey,
 		cfgOptionEnforceSPN,
+	)
+	new.RemoveOutOfScopeDNS = new.wrapSecurityLevelOption(
+		CfgOptionRemoveOutOfScopeDNSKey,
+		cfgOptionRemoveOutOfScopeDNS,
+	)
+	new.RemoveBlockedDNS = new.wrapSecurityLevelOption(
+		CfgOptionRemoveBlockedDNSKey,
+		cfgOptionRemoveBlockedDNS,
 	)
 
 	// TODO: load referenced profiles
@@ -100,9 +112,9 @@ func (lp *LayeredProfile) getValidityFlag() *abool.AtomicBool {
 }
 
 // Update checks for updated profiles and replaces any outdated profiles.
-func (lp *LayeredProfile) Update() {
+func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 	lp.lock.Lock()
-	defer lp.lock.Lock()
+	defer lp.lock.Unlock()
 
 	var changed bool
 	for i, layer := range lp.layers {
@@ -130,8 +142,14 @@ func (lp *LayeredProfile) Update() {
 		// get global config validity flag
 		lp.globalValidityFlag.Refresh()
 
+		// update cached data fields
 		lp.updateCaches()
+
+		// bump revision counter
+		lp.revisionCounter++
 	}
+
+	return lp.revisionCounter
 }
 
 func (lp *LayeredProfile) updateCaches() {
@@ -156,12 +174,14 @@ func (lp *LayeredProfile) SecurityLevel() uint8 {
 func (lp *LayeredProfile) DefaultAction() uint8 {
 	for _, layer := range lp.layers {
 		if layer.defaultAction > 0 {
+			log.Tracef("profile: default action by layer = %d", layer.defaultAction)
 			return layer.defaultAction
 		}
 	}
 
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
+	log.Tracef("profile: default action from global = %d", cfgDefaultAction)
 	return cfgDefaultAction
 }
 
@@ -199,38 +219,15 @@ func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (result end
 	return cfgServiceEndpoints.Match(entity)
 }
 
-/*
-func (lp *LayeredProfile) wrapSecurityLevelOption(configKey string, globalConfig config.IntOption) config.BoolOption {
-	valid := no
-	var activeAtLevels uint8
-
-	return func() bool {
-		if !valid.IsSet() {
-			valid = lp.getValidityFlag()
-
-			found := false
-		layerLoop:
-			for _, layer := range lp.layers {
-				layerLevel, ok := layer.configPerspective.GetAsInt(configKey)
-				if ok {
-					found = true
-					// TODO: add instead?
-					activeAtLevels = uint8(layerLevel)
-					break layerLoop
-				}
-			}
-			if !found {
-				activeAtLevels = uint8(globalConfig())
-			}
-		}
-
-		return activeAtLevels&max(
-			lp.SecurityLevel(),           // layered profile security level
-			status.ActiveSecurityLevel(), // global security level
-		) > 0
-	}
+// AddEndpoint adds an endpoint to the local endpoint list, saves the local profile and reloads the configuration.
+func (lp *LayeredProfile) AddEndpoint(newEntry string) {
+	lp.localProfile.AddEndpoint(newEntry)
 }
-*/
+
+// AddServiceEndpoint adds a service endpoint to the local endpoint list, saves the local profile and reloads the configuration.
+func (lp *LayeredProfile) AddServiceEndpoint(newEntry string) {
+	lp.localProfile.AddServiceEndpoint(newEntry)
+}
 
 func (lp *LayeredProfile) wrapSecurityLevelOption(configKey string, globalConfig config.IntOption) config.BoolOption {
 	activeAtLevels := lp.wrapIntOption(configKey, globalConfig)

@@ -1,6 +1,8 @@
 package profile
 
 import (
+	"github.com/safing/portbase/log"
+
 	"github.com/safing/portbase/modules"
 
 	// module dependencies
@@ -38,6 +40,11 @@ func start() error {
 	err = startProfileUpdateChecker()
 	if err != nil {
 		return err
+	}
+
+	err = updateGlobalConfigProfile(module.Ctx, nil)
+	if err != nil {
+		log.Warningf("profile: error during loading global profile from configuration: %s", err)
 	}
 
 	return nil

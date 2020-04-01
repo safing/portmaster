@@ -158,13 +158,14 @@ func deduplicateRequest(ctx context.Context, q *Query) (finishRequest func()) {
 	dupKey := fmt.Sprintf("%s%s", q.FQDN, q.QType.String())
 
 	dupReqLock.Lock()
-	defer dupReqLock.Unlock()
 
 	// get  duplicate request waitgroup
 	wg, requestActive := dupReqMap[dupKey]
 
 	// someone else is already on it!
 	if requestActive {
+		dupReqLock.Unlock()
+
 		// log that we are waiting
 		log.Tracer(ctx).Tracef("intel: waiting for duplicate query for %s to complete", dupKey)
 		// wait
@@ -181,6 +182,8 @@ func deduplicateRequest(ctx context.Context, q *Query) (finishRequest func()) {
 	wg.Add(1)
 	// add to registry
 	dupReqMap[dupKey] = wg
+
+	dupReqLock.Unlock()
 
 	// return function to mark request as finished
 	return func() {
@@ -222,7 +225,7 @@ resolveLoop:
 			rrCache, err = resolver.Conn.Query(ctx, q)
 			if err != nil {
 
-				// FIXME: check if we are online?
+				// TODO: check if we are online?
 
 				switch {
 				case errors.Is(err, ErrNotFound):

@@ -90,18 +90,13 @@ type Profile struct { //nolint:maligned // not worth the effort
 }
 
 func (profile *Profile) prepConfig() (err error) {
-	profile.Lock()
-	defer profile.Unlock()
-
 	// prepare configuration
 	profile.configPerspective, err = config.NewPerspective(profile.Config)
+	profile.oudated = abool.New()
 	return
 }
 
 func (profile *Profile) parseConfig() error {
-	profile.Lock()
-	defer profile.Unlock()
-
 	if profile.configPerspective == nil {
 		return errors.New("config not prepared")
 	}
@@ -115,7 +110,7 @@ func (profile *Profile) parseConfig() error {
 	var err error
 	var lastErr error
 
-	action, ok := profile.configPerspective.GetAsString(cfgOptionDefaultActionKey)
+	action, ok := profile.configPerspective.GetAsString(CfgOptionBlockInboundKey)
 	if ok {
 		switch action {
 		case "permit":
@@ -129,7 +124,7 @@ func (profile *Profile) parseConfig() error {
 		}
 	}
 
-	list, ok := profile.configPerspective.GetAsStringArray(cfgOptionEndpointsKey)
+	list, ok := profile.configPerspective.GetAsStringArray(CfgOptionEndpointsKey)
 	if ok {
 		profile.endpoints, err = endpoints.ParseEndpoints(list)
 		if err != nil {
@@ -137,7 +132,7 @@ func (profile *Profile) parseConfig() error {
 		}
 	}
 
-	list, ok = profile.configPerspective.GetAsStringArray(cfgOptionServiceEndpointsKey)
+	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionServiceEndpointsKey)
 	if ok {
 		profile.serviceEndpoints, err = endpoints.ParseEndpoints(list)
 		if err != nil {
@@ -150,11 +145,18 @@ func (profile *Profile) parseConfig() error {
 
 // New returns a new Profile.
 func New() *Profile {
-	return &Profile{
+	profile := &Profile{
 		ID:      uuid.NewV4().String(),
 		Source:  SourceLocal,
 		Created: time.Now().Unix(),
+		Config:  make(map[string]interface{}),
 	}
+
+	// create placeholders
+	_ = profile.prepConfig()
+	_ = profile.parseConfig()
+
+	return profile
 }
 
 // ScopedID returns the scoped ID (Source + ID) of the profile.
@@ -192,6 +194,41 @@ func (profile *Profile) String() string {
 	return profile.Name
 }
 
+// AddEndpoint adds an endpoint to the endpoint list, saves the profile and reloads the configuration.
+func (profile *Profile) AddEndpoint(newEntry string) {
+	profile.addEndpointyEntry(CfgOptionEndpointsKey, newEntry)
+}
+
+// AddServiceEndpoint adds a service endpoint to the endpoint list, saves the profile and reloads the configuration.
+func (profile *Profile) AddServiceEndpoint(newEntry string) {
+	profile.addEndpointyEntry(CfgOptionServiceEndpointsKey, newEntry)
+}
+
+func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
+	profile.Lock()
+	// get, update, save endpoints list
+	endpointList, ok := profile.configPerspective.GetAsStringArray(cfgKey)
+	if !ok {
+		endpointList = make([]string, 0, 1)
+	}
+	endpointList = append(endpointList, newEntry)
+	profile.Config[cfgKey] = endpointList
+
+	// save without full reload
+	profile.internalSave = true
+	profile.Unlock()
+	err := profile.Save()
+	if err != nil {
+		log.Warningf("profile: failed to save profile after adding endpoint: %s", err)
+	}
+
+	// reload manually
+	err = profile.parseConfig()
+	if err != nil {
+		log.Warningf("profile: failed to parse profile config after adding endpoint: %s", err)
+	}
+}
+
 // GetProfile loads a profile from the database.
 func GetProfile(source, id string) (*Profile, error) {
 	return GetProfileByScopedID(makeScopedID(source, id))
@@ -216,6 +253,10 @@ func GetProfileByScopedID(scopedID string) (*Profile, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// lock for prepping
+	profile.Lock()
+	defer profile.Unlock()
 
 	// prepare config
 	err = profile.prepConfig()

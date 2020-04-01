@@ -114,7 +114,7 @@ func domainInScope(dotPrefixedFQDN string, scopeList []string) bool {
 }
 
 // GetResolversInScope returns all resolvers that are in scope the resolve the given query and options.
-func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver) {
+func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver) { //nolint:gocognit // TODO
 	resolversLock.RLock()
 	defer resolversLock.RUnlock()
 
@@ -226,13 +226,13 @@ func (q *Query) checkCompliance() error {
 	}
 
 	// special TLDs
-	if doNotResolveSpecialDomains(q.SecurityLevel) &&
+	if dontResolveSpecialDomains(q.SecurityLevel) &&
 		domainInScope(q.dotPrefixedFQDN, specialServiceScopes) {
 		return ErrSpecialDomainsDisabled
 	}
 
 	// testing TLDs
-	if doNotResolveTestDomains(q.SecurityLevel) &&
+	if dontResolveTestDomains(q.SecurityLevel) &&
 		domainInScope(q.dotPrefixedFQDN, localTestScopes) {
 		return ErrTestDomainsDisabled
 	}
@@ -245,7 +245,7 @@ func (resolver *Resolver) checkCompliance(_ context.Context, q *Query) error {
 		return errSkip
 	}
 
-	if doNotUseInsecureProtocols(q.SecurityLevel) {
+	if noInsecureProtocols(q.SecurityLevel) {
 		switch resolver.ServerType {
 		case ServerTypeDNS:
 			return errInsecureProtocol
@@ -260,13 +260,13 @@ func (resolver *Resolver) checkCompliance(_ context.Context, q *Query) error {
 		}
 	}
 
-	if doNotUseAssignedNameservers(q.SecurityLevel) {
+	if noAssignedNameservers(q.SecurityLevel) {
 		if resolver.Source == ServerSourceAssigned {
 			return errAssignedServer
 		}
 	}
 
-	if doNotUseMulticastDNS(q.SecurityLevel) {
+	if noMulticastDNS(q.SecurityLevel) {
 		if resolver.Source == ServerSourceMDNS {
 			return errMulticastDNS
 		}

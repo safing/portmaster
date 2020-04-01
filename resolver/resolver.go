@@ -52,7 +52,7 @@ func (resolver *Resolver) String() string {
 }
 
 // ResolverConn is an interface to implement different types of query backends.
-type ResolverConn interface {
+type ResolverConn interface { //nolint:go-lint // TODO
 	Query(ctx context.Context, q *Query) (*RRCache, error)
 	MarkFailed()
 	LastFail() time.Time

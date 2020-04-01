@@ -19,7 +19,7 @@ var (
 func registerConfigUpdater() error {
 	return module.RegisterEventHook(
 		"config",
-		"config changed",
+		"config change",
 		"update global config profile",
 		updateGlobalConfigProfile,
 	)
