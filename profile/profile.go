@@ -14,6 +14,7 @@ import (
 
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/intel/filterlist"
 	"github.com/safing/portmaster/profile/endpoints"
 )
 
@@ -73,6 +74,7 @@ type Profile struct { //nolint:maligned // not worth the effort
 	defaultAction     uint8
 	endpoints         endpoints.Endpoints
 	serviceEndpoints  endpoints.Endpoints
+	filterListIDs     []string
 
 	// Lifecycle Management
 	oudated *abool.AtomicBool
@@ -135,6 +137,14 @@ func (profile *Profile) parseConfig() error {
 	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionServiceEndpointsKey)
 	if ok {
 		profile.serviceEndpoints, err = endpoints.ParseEndpoints(list)
+		if err != nil {
+			lastErr = err
+		}
+	}
+
+	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionFilterListKey)
+	if ok {
+		profile.filterListIDs, err = filterlist.ResolveListIDs(list)
 		if err != nil {
 			lastErr = err
 		}

@@ -24,6 +24,9 @@ var (
 	CfgOptionServiceEndpointsKey = "filter/serviceEndpoints"
 	cfgOptionServiceEndpoints    config.StringArrayOption
 
+	CfgOptionFilterListKey = "filter/lists"
+	cfgOptionFilterLists   config.StringArrayOption
+
 	CfgOptionBlockScopeLocalKey = "filter/blockLocal"
 	cfgOptionBlockScopeLocal    config.IntOption // security level option
 
@@ -134,6 +137,22 @@ Examples:
 	}
 	cfgOptionServiceEndpoints = config.Concurrent.GetAsStringArray(CfgOptionServiceEndpointsKey, []string{})
 	cfgStringArrayOptions[CfgOptionServiceEndpointsKey] = cfgOptionServiceEndpoints
+
+	// Filter list IDs
+	err = config.Register(&config.Option{
+		Name:            "Filterlists",
+		Key:             CfgOptionFilterListKey,
+		Description:     "Filter connections by matching the endpoint against configured filterlists",
+		OptType:         config.OptTypeStringArray,
+		DefaultValue:    []string{},
+		ExternalOptType: "filter list",
+		ValidationRegex: `^[a-zA-Z0-9\-]+$`,
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionFilterLists = config.Concurrent.GetAsStringArray(CfgOptionFilterListKey, []string{})
+	cfgStringArrayOptions[CfgOptionFilterListKey] = cfgOptionFilterLists
 
 	// Block Scope Local
 	err = config.Register(&config.Option{

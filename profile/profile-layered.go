@@ -6,6 +6,7 @@ import (
 
 	"github.com/safing/portbase/log"
 
+	"github.com/safing/portmaster/intel/filterlist"
 	"github.com/safing/portmaster/status"
 
 	"github.com/tevino/abool"
@@ -94,7 +95,7 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 		cfgOptionRemoveBlockedDNS,
 	)
 
-	// TODO: load referenced profiles
+	// TODO: load linked profiles.
 
 	// FUTURE: load forced company profile
 	new.layers = append(new.layers, localProfile)
@@ -154,7 +155,7 @@ func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 
 func (lp *LayeredProfile) updateCaches() {
 	// update security level
-	var newLevel uint8 = 0
+	var newLevel uint8
 	for _, layer := range lp.layers {
 		if newLevel < layer.SecurityLevel {
 			newLevel = layer.SecurityLevel
@@ -215,6 +216,45 @@ func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (result end
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
 	return cfgServiceEndpoints.Match(entity)
+}
+
+// MatchFilterLists matches the entity against the set of filter
+// lists.
+func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (result endpoints.EPResult, reason string) {
+	lookupMap, hasLists := entity.GetListsMap()
+	if !hasLists {
+		return endpoints.NoMatch, ""
+	}
+
+	log.Errorf("number of layers: %d", len(lp.layers))
+	for _, layer := range lp.layers {
+		if id := lookupMap.Match(layer.filterListIDs); id != "" {
+			return endpoints.Denied, id
+		}
+
+		// only check the first layer that has filter list
+		// IDs defined.
+		if len(layer.filterListIDs) > 0 {
+			return endpoints.NoMatch, ""
+		}
+	}
+
+	// TODO(ppacher): re-resolving global list IDs is a bit overkill,
+	// add some caching here.
+	cfgLock.RLock()
+	defer cfgLock.RUnlock()
+
+	globalIds, err := filterlist.ResolveListIDs(cfgOptionFilterLists())
+	if err != nil {
+		log.Errorf("filter: failed to get global filter list IDs: %s", err)
+		return endpoints.NoMatch, ""
+	}
+
+	if id := lookupMap.Match(globalIds); id != "" {
+		return endpoints.Denied, id
+	}
+
+	return endpoints.NoMatch, ""
 }
 
 // AddEndpoint adds an endpoint to the local endpoint list, saves the local profile and reloads the configuration.

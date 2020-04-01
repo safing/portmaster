@@ -154,6 +154,18 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:
 	}
 	// continuing with result == NoMatch
 
+	// apply privacy filter lists
+	result, reason = p.MatchFilterLists(conn.Entity)
+	switch result {
+	case endpoints.Denied:
+		conn.Deny("endpoint in filterlist: " + reason)
+		return
+	case endpoints.NoMatch:
+		// nothing to do
+	default:
+		log.Debugf("filter: filter lists returned unsupported verdict: %s", result)
+	}
+
 	// implicit default=block for inbound
 	if conn.Inbound {
 		conn.Drop("endpoint is not whitelisted (incoming is always default=block)")

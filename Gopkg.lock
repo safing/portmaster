@@ -10,6 +10,14 @@
   version = "1.0.0"
 
 [[projects]]
+  digest = "1:e010d6b45ee6c721df761eae89961c634ceb55feff166a48d15504729309f267"
+  name = "github.com/TheTannerRyan/ring"
+  packages = ["."]
+  pruneopts = ""
+  revision = "7b27005873e31b5d5a035e166636a09e03aaf40e"
+  version = "v1.1.1"
+
+[[projects]]
   digest = "1:3c753679736345f50125ae993e0a2614da126859921ea7faeecda6d217501ce2"
   name = "github.com/agext/levenshtein"
   packages = ["."]
@@ -32,6 +40,14 @@
   pruneopts = ""
   revision = "78b5fff24e6df8886ef8eca9411f683a884349a5"
   version = "v0.4.1"
+
+[[projects]]
+  digest = "1:0deddd908b6b4b768cfc272c16ee61e7088a60f7fe2f06c547bd3d8e1f8b8e77"
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  pruneopts = ""
+  revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
+  version = "v1.1.1"
 
 [[projects]]
   digest = "1:b6581f9180e0f2d5549280d71819ab951db9d511478c87daca95669589d505c0"
@@ -73,6 +89,14 @@
   version = "v0.1.0"
 
 [[projects]]
+  digest = "1:2f0c811248aeb64978037b357178b1593372439146bda860cb16f2c80785ea93"
+  name = "github.com/hashicorp/go-version"
+  packages = ["."]
+  pruneopts = ""
+  revision = "ac23dc3fea5d1a983c43f6a0f6e2c13f0195d8bd"
+  version = "v1.2.0"
+
+[[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
@@ -103,6 +127,14 @@
   pruneopts = ""
   revision = "2905694a1b00c5574f1418a7dbf8a22a7d247559"
   version = "v1.3.1"
+
+[[projects]]
+  digest = "1:256484dbbcd271f9ecebc6795b2df8cad4c458dd0f5fd82a8c2fa0c29f233411"
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  pruneopts = ""
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:7f569d906bdd20d906b606415b7d794f798f91a62fcfb6a4daa6d50690fb7a3f"
@@ -149,6 +181,14 @@
   pruneopts = ""
   revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
   version = "v1.0.3"
+
+[[projects]]
+  digest = "1:cc4eb6813da8d08694e557fcafae8fcc24f47f61a0717f952da130ca9a486dfc"
+  name = "github.com/stretchr/testify"
+  packages = ["assert"]
+  pruneopts = ""
+  revision = "3ebf1ddaeb260c4b1ae502a01c7844fa8c1fa0e9"
+  version = "v1.5.1"
 
 [[projects]]
   branch = "master"
@@ -235,10 +275,19 @@
   revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
   version = "v0.3.2"
 
+[[projects]]
+  digest = "1:2efc9662a6a1ff28c65c84fc2f9030f13d3afecdb2ecad445f3b0c80e75fc281"
+  name = "gopkg.in/yaml.v2"
+  packages = ["."]
+  pruneopts = ""
+  revision = "53403b58ad1b561927d19068c655246f2db79d48"
+  version = "v2.2.8"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/TheTannerRyan/ring",
     "github.com/agext/levenshtein",
     "github.com/cookieo9/resources-go",
     "github.com/coreos/go-iptables/iptables",
@@ -247,11 +296,13 @@
     "github.com/google/gopacket/layers",
     "github.com/google/gopacket/tcpassembly",
     "github.com/google/renameio",
+    "github.com/hashicorp/go-version",
     "github.com/miekg/dns",
     "github.com/oschwald/maxminddb-golang",
     "github.com/satori/go.uuid",
     "github.com/shirou/gopsutil/process",
     "github.com/spf13/cobra",
+    "github.com/stretchr/testify/assert",
     "github.com/tevino/abool",
     "github.com/umahmood/haversine",
     "golang.org/x/net/icmp",
