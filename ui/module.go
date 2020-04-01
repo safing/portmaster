@@ -5,7 +5,7 @@ import (
 )
 
 func init() {
-	modules.Register("ui", prep, nil, nil, "core", "updates")
+	modules.Register("ui", prep, nil, nil, "api", "updates")
 }
 
 func prep() error {

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"flag"
 
+	"github.com/safing/portbase/modules/subsystems"
+
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/modules"
@@ -55,6 +57,9 @@ func globalPrep() error {
 
 	// set notification persistence
 	notifications.SetPersistenceBasePath("core:notifications")
+
+	// set subsystem status dir
+	subsystems.SetDatabaseKeySpace("core:status/subsystems")
 
 	return nil
 }

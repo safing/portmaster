@@ -11,7 +11,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("geoip", prep, nil, nil, "updates")
+	module = modules.Register("geoip", prep, nil, nil, "core")
 }
 
 func prep() error {
