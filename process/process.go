@@ -40,10 +40,10 @@ type Process struct {
 	// ExecOwner ...
 	// ExecSignature ...
 
-	UserProfileKey string
-	profileSet     *profile.Set
-	Name           string
-	Icon           string
+	LocalProfileKey string
+	profile         *profile.LayeredProfile
+	Name            string
+	Icon            string
 	// Icon is a path to the icon and is either prefixed "f:" for filepath, "d:" for database cache path or "c:"/"a:" for a the icon key to fetch it from a company / authoritative node and cache it in its own cache.
 
 	FirstCommEstablished int64
@@ -53,12 +53,12 @@ type Process struct {
 	Error   string // If this is set, the process is invalid. This is used to cache failing or inexistent processes.
 }
 
-// ProfileSet returns the assigned profile set.
-func (p *Process) ProfileSet() *profile.Set {
+// Profile returns the assigned layered profile.
+func (p *Process) Profile() *profile.LayeredProfile {
 	p.Lock()
 	defer p.Unlock()
 
-	return p.profileSet
+	return p.profile
 }
 
 // Strings returns a string representation of process.
@@ -208,13 +208,14 @@ func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 
 func deduplicateRequest(ctx context.Context, pid int) (finishRequest func()) {
 	dupReqLock.Lock()
-	defer dupReqLock.Unlock()
 
 	// get  duplicate request waitgroup
 	wg, requestActive := dupReqMap[pid]
 
 	// someone else is already on it!
 	if requestActive {
+		dupReqLock.Unlock()
+
 		// log that we are waiting
 		log.Tracer(ctx).Tracef("intel: waiting for duplicate request for PID %d to complete", pid)
 		// wait
@@ -231,6 +232,8 @@ func deduplicateRequest(ctx context.Context, pid int) (finishRequest func()) {
 	wg.Add(1)
 	// add to registry
 	dupReqMap[pid] = wg
+
+	dupReqLock.Unlock()
 
 	// return function to mark request as finished
 	return func() {

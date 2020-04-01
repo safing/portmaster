@@ -9,7 +9,6 @@ import (
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/profile"
 	"github.com/tevino/abool"
 )
 
@@ -90,11 +89,7 @@ func (p *Process) Delete() {
 		go dbController.PushUpdate(p)
 	}
 
-	// deactivate profile
-	// TODO: check if there is another process using the same profile set
-	if p.profileSet != nil {
-		profile.DeactivateProfileSet(p.profileSet)
-	}
+	// TODO: maybe mark the assigned profiles as no longer needed?
 }
 
 // CleanProcessStorage cleans the storage from old processes.

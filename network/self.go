@@ -5,36 +5,38 @@ import (
 	"os"
 	"time"
 
+	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/process"
 )
 
-// GetOwnComm returns the communication for the given packet, that originates from
+// GetOwnComm returns the communication for the given packet, that originates from the Portmaster itself.
 func GetOwnComm(pkt packet.Packet) (*Communication, error) {
-	var domain string
+	var scope string
 
 	// Incoming
 	if pkt.IsInbound() {
 		switch netutils.ClassifyIP(pkt.Info().RemoteIP()) {
 		case netutils.HostLocal:
-			domain = IncomingHost
+			scope = IncomingHost
 		case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
-			domain = IncomingLAN
+			scope = IncomingLAN
 		case netutils.Global, netutils.GlobalMulticast:
-			domain = IncomingInternet
+			scope = IncomingInternet
 		case netutils.Invalid:
-			domain = IncomingInvalid
+			scope = IncomingInvalid
 		}
 
-		communication, ok := GetCommunication(os.Getpid(), domain)
+		communication, ok := GetCommunication(os.Getpid(), scope)
 		if !ok {
 			proc, err := process.GetOrFindProcess(pkt.Ctx(), os.Getpid())
 			if err != nil {
 				return nil, fmt.Errorf("could not get own process")
 			}
 			communication = &Communication{
-				Domain:               domain,
+				Scope:                scope,
+				Entity:               (&intel.Entity{}).Init(),
 				Direction:            Inbound,
 				process:              proc,
 				Inspect:              true,
@@ -48,23 +50,24 @@ func GetOwnComm(pkt packet.Packet) (*Communication, error) {
 	// PeerToPeer
 	switch netutils.ClassifyIP(pkt.Info().RemoteIP()) {
 	case netutils.HostLocal:
-		domain = PeerHost
+		scope = PeerHost
 	case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
-		domain = PeerLAN
+		scope = PeerLAN
 	case netutils.Global, netutils.GlobalMulticast:
-		domain = PeerInternet
+		scope = PeerInternet
 	case netutils.Invalid:
-		domain = PeerInvalid
+		scope = PeerInvalid
 	}
 
-	communication, ok := GetCommunication(os.Getpid(), domain)
+	communication, ok := GetCommunication(os.Getpid(), scope)
 	if !ok {
 		proc, err := process.GetOrFindProcess(pkt.Ctx(), os.Getpid())
 		if err != nil {
 			return nil, fmt.Errorf("could not get own process")
 		}
 		communication = &Communication{
-			Domain:               domain,
+			Scope:                scope,
+			Entity:               (&intel.Entity{}).Init(),
 			Direction:            Outbound,
 			process:              proc,
 			Inspect:              true,

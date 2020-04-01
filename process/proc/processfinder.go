@@ -17,7 +17,7 @@ var (
 )
 
 // GetPidOfInode returns the pid of the given uid and socket inode.
-func GetPidOfInode(uid, inode int) (int, bool) {
+func GetPidOfInode(uid, inode int) (int, bool) { //nolint:gocognit // TODO
 	pidsByUserLock.Lock()
 	defer pidsByUserLock.Unlock()
 
