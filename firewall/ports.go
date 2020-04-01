@@ -71,8 +71,12 @@ func GetPermittedPort() uint16 {
 
 func portsInUseCleaner() {
 	for {
-		time.Sleep(cleanerTickDuration)
-		cleanPortsInUse()
+		select {
+		case <-module.Stopping():
+			return
+		case <-time.After(cleanerTickDuration):
+			cleanPortsInUse()
+		}
 	}
 }
 

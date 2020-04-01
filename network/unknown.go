@@ -3,6 +3,7 @@ package network
 import (
 	"time"
 
+	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/process"
@@ -43,11 +44,12 @@ func GetUnknownCommunication(pkt packet.Packet) (*Communication, error) {
 	return getOrCreateUnknownCommunication(pkt, PeerInvalid)
 }
 
-func getOrCreateUnknownCommunication(pkt packet.Packet, connClass string) (*Communication, error) {
-	connection, ok := GetCommunication(process.UnknownProcess.Pid, connClass)
+func getOrCreateUnknownCommunication(pkt packet.Packet, connScope string) (*Communication, error) {
+	connection, ok := GetCommunication(process.UnknownProcess.Pid, connScope)
 	if !ok {
 		connection = &Communication{
-			Domain:               connClass,
+			Scope:                connScope,
+			Entity:               (&intel.Entity{}).Init(),
 			Direction:            pkt.IsInbound(),
 			Verdict:              VerdictDrop,
 			Reason:               ReasonUnknownProcess,

@@ -9,15 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/safing/portbase/utils"
-	"github.com/safing/portmaster/core/structure"
-
+	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
-
+	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/process"
-
-	"github.com/safing/portbase/api"
 )
 
 var (
@@ -28,7 +25,7 @@ var (
 )
 
 func prepAPIAuth() error {
-	dataRoot = structure.Root()
+	dataRoot = dataroot.Root()
 	return api.SetAuthenticator(apiAuthenticator)
 }
 

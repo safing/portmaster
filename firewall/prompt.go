@@ -1,15 +1,15 @@
 package firewall
 
 import (
-	"context"
 	"fmt"
 	"time"
+
+	"github.com/safing/portmaster/profile/endpoints"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
-	"github.com/safing/portmaster/profile"
 )
 
 const (
@@ -30,14 +30,14 @@ var (
 )
 
 //nolint:gocognit // FIXME
-func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, fqdn string) {
+func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet) {
 	nTTL := time.Duration(promptTimeout()) * time.Second
 
 	// first check if there is an existing notification for this.
 	// build notification ID
 	var nID string
 	switch {
-	case comm.Direction, fqdn == "": // connection to/from IP
+	case comm.Direction, comm.Entity.Domain == "": // connection to/from IP
 		if pkt == nil {
 			log.Error("firewall: could not prompt for incoming/direct connection: missing pkt")
 			if link != nil {
@@ -47,9 +47,9 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, 
 			}
 			return
 		}
-		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s", comm.Process().Pid, comm.Domain, pkt.Info().RemoteIP())
+		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s", comm.Process().Pid, comm.Scope, pkt.Info().RemoteIP())
 	default: // connection to domain
-		nID = fmt.Sprintf("firewall-prompt-%d-%s", comm.Process().Pid, comm.Domain)
+		nID = fmt.Sprintf("firewall-prompt-%d-%s", comm.Process().Pid, comm.Scope)
 	}
 	n := notifications.Get(nID)
 	saveResponse := true
@@ -70,7 +70,7 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, 
 		// add message and actions
 		switch {
 		case comm.Direction: // incoming
-			n.Message = fmt.Sprintf("Application %s wants to accept connections from %s (on %d/%d)", comm.Process(), pkt.Info().RemoteIP(), pkt.Info().Protocol, pkt.Info().LocalPort())
+			n.Message = fmt.Sprintf("Application %s wants to accept connections from %s (%d/%d)", comm.Process(), link.Entity.IP.String(), link.Entity.Protocol, link.Entity.Port)
 			n.AvailableActions = []*notifications.Action{
 				{
 					ID:   permitServingIP,
@@ -81,8 +81,8 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, 
 					Text: "Deny",
 				},
 			}
-		case fqdn == "": // direct connection
-			n.Message = fmt.Sprintf("Application %s wants to connect to %s (on %d/%d)", comm.Process(), pkt.Info().RemoteIP(), pkt.Info().Protocol, pkt.Info().RemotePort())
+		case comm.Entity.Domain == "": // direct connection
+			n.Message = fmt.Sprintf("Application %s wants to connect to %s (%d/%d)", comm.Process(), link.Entity.IP.String(), link.Entity.Protocol, link.Entity.Port)
 			n.AvailableActions = []*notifications.Action{
 				{
 					ID:   permitIP,
@@ -94,10 +94,10 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, 
 				},
 			}
 		default: // connection to domain
-			if pkt != nil {
-				n.Message = fmt.Sprintf("Application %s wants to connect to %s (%s %d/%d)", comm.Process(), comm.Domain, pkt.Info().RemoteIP(), pkt.Info().Protocol, pkt.Info().RemotePort())
+			if link != nil {
+				n.Message = fmt.Sprintf("Application %s wants to connect to %s (%s %d/%d)", comm.Process(), comm.Entity.Domain, link.Entity.IP.String(), link.Entity.Protocol, link.Entity.Port)
 			} else {
-				n.Message = fmt.Sprintf("Application %s wants to connect to %s", comm.Process(), comm.Domain)
+				n.Message = fmt.Sprintf("Application %s wants to connect to %s", comm.Process(), comm.Entity.Domain)
 			}
 			n.AvailableActions = []*notifications.Action{
 				{
@@ -141,62 +141,57 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet, 
 			return
 		}
 
-		new := &profile.EndpointPermission{
-			Type:    profile.EptDomain,
-			Value:   comm.Domain,
-			Permit:  false,
-			Created: time.Now().Unix(),
-		}
+		// get profile
+		p := comm.Process().Profile()
 
-		// permission type
+		var ep endpoints.Endpoint
 		switch promptResponse {
-		case permitDomainAll, denyDomainAll:
-			new.Value = "." + new.Value
-		case permitIP, permitServingIP, denyIP, denyServingIP:
-			if pkt == nil {
-				log.Warningf("firewall: received invalid prompt response: %s for %s", promptResponse, comm.Domain)
-				return
+		case permitDomainAll:
+			ep = &endpoints.EndpointDomain{
+				EndpointBase: endpoints.EndpointBase{Permitted: true},
+				Domain:       "." + comm.Entity.Domain,
 			}
-			if pkt.Info().Version == packet.IPv4 {
-				new.Type = profile.EptIPv4
-			} else {
-				new.Type = profile.EptIPv6
+		case permitDomainDistinct:
+			ep = &endpoints.EndpointDomain{
+				EndpointBase: endpoints.EndpointBase{Permitted: true},
+				Domain:       comm.Entity.Domain,
 			}
-			new.Value = pkt.Info().RemoteIP().String()
+		case denyDomainAll:
+			ep = &endpoints.EndpointDomain{
+				EndpointBase: endpoints.EndpointBase{Permitted: false},
+				Domain:       "." + comm.Entity.Domain,
+			}
+		case denyDomainDistinct:
+			ep = &endpoints.EndpointDomain{
+				EndpointBase: endpoints.EndpointBase{Permitted: false},
+				Domain:       comm.Entity.Domain,
+			}
+		case permitIP, permitServingIP:
+			ep = &endpoints.EndpointIP{
+				EndpointBase: endpoints.EndpointBase{Permitted: true},
+				IP:           comm.Entity.IP,
+			}
+		case denyIP, denyServingIP:
+			ep = &endpoints.EndpointIP{
+				EndpointBase: endpoints.EndpointBase{Permitted: false},
+				IP:           comm.Entity.IP,
+			}
+		default:
+			log.Warningf("filter: unknown prompt response: %s", promptResponse)
 		}
 
-		// permission verdict
-		switch promptResponse {
-		case permitDomainAll, permitDomainDistinct, permitIP, permitServingIP:
-			new.Permit = false
-		}
-
-		// get user profile
-		profileSet := comm.Process().ProfileSet()
-		profileSet.Lock()
-		defer profileSet.Unlock()
-		userProfile := profileSet.UserProfile()
-		userProfile.Lock()
-		defer userProfile.Unlock()
-
-		// add to correct list
 		switch promptResponse {
 		case permitServingIP, denyServingIP:
-			userProfile.ServiceEndpoints = append(userProfile.ServiceEndpoints, new)
+			p.AddServiceEndpoint(ep.String())
 		default:
-			userProfile.Endpoints = append(userProfile.Endpoints, new)
+			p.AddEndpoint(ep.String())
 		}
-
-		// save!
-		module.StartMicroTask(&mtSaveProfile, func(ctx context.Context) error {
-			return userProfile.Save("")
-		})
 
 	case <-n.Expired():
 		if link != nil {
-			link.Accept("no response to prompt")
+			link.Deny("no response to prompt")
 		} else {
-			comm.Accept("no response to prompt")
+			comm.Deny("no response to prompt")
 		}
 	}
 }

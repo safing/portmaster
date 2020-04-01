@@ -1,78 +1,180 @@
 package profile
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/safing/portbase/log"
+
+	"github.com/tevino/abool"
+
 	uuid "github.com/satori/go.uuid"
 
+	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/database/record"
-	"github.com/safing/portmaster/status"
+	"github.com/safing/portmaster/profile/endpoints"
 )
 
 var (
 	lastUsedUpdateThreshold = 1 * time.Hour
 )
 
+// Profile Sources
+const (
+	SourceLocal      string = "local"
+	SourceCommunity  string = "community"
+	SourceEnterprise string = "enterprise"
+	SourceGlobal     string = "global"
+)
+
+// Default Action IDs
+const (
+	DefaultActionNotSet uint8 = 0
+	DefaultActionBlock  uint8 = 1
+	DefaultActionAsk    uint8 = 2
+	DefaultActionPermit uint8 = 3
+)
+
 // Profile is used to predefine a security profile for applications.
-type Profile struct {
+type Profile struct { //nolint:maligned // not worth the effort
 	record.Base
 	sync.Mutex
 
-	// Profile Metadata
-	ID          string
+	// Identity
+	ID     string
+	Source string
+
+	// App Information
 	Name        string
 	Description string
 	Homepage    string
 	// Icon is a path to the icon and is either prefixed "f:" for filepath, "d:" for a database path or "e:" for the encoded data.
 	Icon string
 
-	// User Profile Only
-	LinkedPath           string
-	StampProfileID       string
-	StampProfileAssigned int64
+	// References - local profiles only
+	// LinkedPath is a filesystem path to the executable this profile was created for.
+	LinkedPath string
+	// LinkedProfiles is a list of other profiles
+	LinkedProfiles []string
 
 	// Fingerprints
-	Fingerprints []*Fingerprint
+	// TODO: Fingerprints []*Fingerprint
 
+	// Configuration
 	// The mininum security level to apply to connections made with this profile
-	SecurityLevel    uint8
-	Flags            Flags
-	Endpoints        Endpoints
-	ServiceEndpoints Endpoints
+	SecurityLevel uint8
+	Config        map[string]interface{}
 
-	// If a Profile is declared as a Framework (i.e. an Interpreter and the likes), then the real process must be found
-	// Framework *Framework `json:",omitempty bson:",omitempty"`
+	// Interpreted Data
+	configPerspective *config.Perspective
+	dataParsed        bool
+	defaultAction     uint8
+	endpoints         endpoints.Endpoints
+	serviceEndpoints  endpoints.Endpoints
 
-	// When this Profile was approximately last used (for performance reasons not every single usage is saved)
-	Created        int64
+	// Lifecycle Management
+	oudated *abool.AtomicBool
+
+	// Framework
+	// If a Profile is declared as a Framework (i.e. an Interpreter and the likes), then the real process/actor must be found
+	// TODO: Framework *Framework
+
+	// When this Profile was approximately last used.
+	// For performance reasons not every single usage is saved.
 	ApproxLastUsed int64
+	Created        int64
+
+	internalSave bool
+}
+
+func (profile *Profile) prepConfig() (err error) {
+	// prepare configuration
+	profile.configPerspective, err = config.NewPerspective(profile.Config)
+	profile.oudated = abool.New()
+	return
+}
+
+func (profile *Profile) parseConfig() error {
+	if profile.configPerspective == nil {
+		return errors.New("config not prepared")
+	}
+
+	// check if already parsed
+	if profile.dataParsed {
+		return nil
+	}
+	profile.dataParsed = true
+
+	var err error
+	var lastErr error
+
+	action, ok := profile.configPerspective.GetAsString(CfgOptionBlockInboundKey)
+	if ok {
+		switch action {
+		case "permit":
+			profile.defaultAction = DefaultActionPermit
+		case "ask":
+			profile.defaultAction = DefaultActionAsk
+		case "block":
+			profile.defaultAction = DefaultActionBlock
+		default:
+			lastErr = fmt.Errorf(`default action "%s" invalid`, action)
+		}
+	}
+
+	list, ok := profile.configPerspective.GetAsStringArray(CfgOptionEndpointsKey)
+	if ok {
+		profile.endpoints, err = endpoints.ParseEndpoints(list)
+		if err != nil {
+			lastErr = err
+		}
+	}
+
+	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionServiceEndpointsKey)
+	if ok {
+		profile.serviceEndpoints, err = endpoints.ParseEndpoints(list)
+		if err != nil {
+			lastErr = err
+		}
+	}
+
+	return lastErr
 }
 
 // New returns a new Profile.
 func New() *Profile {
-	return &Profile{
+	profile := &Profile{
+		ID:      uuid.NewV4().String(),
+		Source:  SourceLocal,
 		Created: time.Now().Unix(),
+		Config:  make(map[string]interface{}),
 	}
+
+	// create placeholders
+	_ = profile.prepConfig()
+	_ = profile.parseConfig()
+
+	return profile
 }
 
-// MakeProfileKey creates the correct key for a profile with the given namespace and ID.
-func MakeProfileKey(namespace, id string) string {
-	return fmt.Sprintf("core:profiles/%s/%s", namespace, id)
+// ScopedID returns the scoped ID (Source + ID) of the profile.
+func (profile *Profile) ScopedID() string {
+	return makeScopedID(profile.Source, profile.ID)
 }
 
 // Save saves the profile to the database
-func (profile *Profile) Save(namespace string) error {
+func (profile *Profile) Save() error {
 	if profile.ID == "" {
-		profile.ID = uuid.NewV4().String()
+		return errors.New("profile: tried to save profile without ID")
+	}
+	if profile.Source == "" {
+		return fmt.Errorf("profile: profile %s does not specify a source", profile.ID)
 	}
 
 	if !profile.KeyIsSet() {
-		if namespace == "" {
-			return fmt.Errorf("no key or namespace defined for profile %s", profile.String())
-		}
-		profile.SetKey(MakeProfileKey(namespace, profile.ID))
+		profile.SetKey(makeProfileKey(profile.Source, profile.ID))
 	}
 
 	return profileDB.Put(profile)
@@ -92,27 +194,86 @@ func (profile *Profile) String() string {
 	return profile.Name
 }
 
-// DetailedString returns a more detailed string representation of  theProfile.
-func (profile *Profile) DetailedString() string {
-	return fmt.Sprintf("%s(SL=%s Flags=%s Endpoints=%s)", profile.Name, status.FmtSecurityLevel(profile.SecurityLevel), profile.Flags.String(), profile.Endpoints.String())
+// AddEndpoint adds an endpoint to the endpoint list, saves the profile and reloads the configuration.
+func (profile *Profile) AddEndpoint(newEntry string) {
+	profile.addEndpointyEntry(CfgOptionEndpointsKey, newEntry)
 }
 
-// GetUserProfile loads a profile from the database.
-func GetUserProfile(id string) (*Profile, error) {
-	return getProfile(UserNamespace, id)
+// AddServiceEndpoint adds a service endpoint to the endpoint list, saves the profile and reloads the configuration.
+func (profile *Profile) AddServiceEndpoint(newEntry string) {
+	profile.addEndpointyEntry(CfgOptionServiceEndpointsKey, newEntry)
 }
 
-// GetStampProfile loads a profile from the database.
-func GetStampProfile(id string) (*Profile, error) {
-	return getProfile(StampNamespace, id)
+func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
+	profile.Lock()
+	// get, update, save endpoints list
+	endpointList, ok := profile.configPerspective.GetAsStringArray(cfgKey)
+	if !ok {
+		endpointList = make([]string, 0, 1)
+	}
+	endpointList = append(endpointList, newEntry)
+	profile.Config[cfgKey] = endpointList
+
+	// save without full reload
+	profile.internalSave = true
+	profile.Unlock()
+	err := profile.Save()
+	if err != nil {
+		log.Warningf("profile: failed to save profile after adding endpoint: %s", err)
+	}
+
+	// reload manually
+	err = profile.parseConfig()
+	if err != nil {
+		log.Warningf("profile: failed to parse profile config after adding endpoint: %s", err)
+	}
 }
 
-func getProfile(namespace, id string) (*Profile, error) {
-	r, err := profileDB.Get(MakeProfileKey(namespace, id))
+// GetProfile loads a profile from the database.
+func GetProfile(source, id string) (*Profile, error) {
+	return GetProfileByScopedID(makeScopedID(source, id))
+}
+
+// GetProfileByScopedID loads a profile from the database using a scoped ID like "local/id" or "community/id".
+func GetProfileByScopedID(scopedID string) (*Profile, error) {
+	// check cache
+	profile := getActiveProfile(scopedID)
+	if profile != nil {
+		return profile, nil
+	}
+
+	// get from database
+	r, err := profileDB.Get(profilesDBPath + scopedID)
 	if err != nil {
 		return nil, err
 	}
-	return EnsureProfile(r)
+
+	// convert
+	profile, err = EnsureProfile(r)
+	if err != nil {
+		return nil, err
+	}
+
+	// lock for prepping
+	profile.Lock()
+	defer profile.Unlock()
+
+	// prepare config
+	err = profile.prepConfig()
+	if err != nil {
+		log.Warningf("profiles: profile %s has (partly) invalid configuration: %s", profile.ID, err)
+	}
+
+	// parse config
+	err = profile.parseConfig()
+	if err != nil {
+		log.Warningf("profiles: profile %s has (partly) invalid configuration: %s", profile.ID, err)
+	}
+
+	// mark active
+	markProfileActive(profile)
+
+	return profile, nil
 }
 
 // EnsureProfile ensures that the given record is a *Profile, and returns it.

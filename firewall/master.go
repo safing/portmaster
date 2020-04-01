@@ -4,19 +4,20 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 
-	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
-	"github.com/safing/portmaster/status"
+	"github.com/safing/portmaster/profile/endpoints"
+	"github.com/safing/portmaster/resolver"
 
 	"github.com/agext/levenshtein"
+	"github.com/miekg/dns"
 )
 
 // Call order:
@@ -30,11 +31,10 @@ import (
 // 4. DecideOnLink
 //		is called when when the first packet of a link arrives only if communication has verdict UNDECIDED or CANTSAY
 
-// DecideOnCommunicationBeforeIntel makes a decision about a communication before the dns query is resolved and intel is gathered.
-func DecideOnCommunicationBeforeIntel(comm *network.Communication, fqdn string) {
-
-	// check if communication needs reevaluation
-	if comm.NeedsReevaluation() {
+// DecideOnCommunicationBeforeDNS makes a decision about a communication before the dns query is resolved and intel is gathered.
+func DecideOnCommunicationBeforeDNS(comm *network.Communication) {
+	// update profiles and check if communication needs reevaluation
+	if comm.UpdateAndCheck() {
 		log.Infof("firewall: re-evaluating verdict on %s", comm)
 		comm.ResetVerdict()
 	}
@@ -51,116 +51,74 @@ func DecideOnCommunicationBeforeIntel(comm *network.Communication, fqdn string) 
 		return
 	}
 
-	// get and check profile set
-	profileSet := comm.Process().ProfileSet()
-	if profileSet == nil {
-		log.Errorf("firewall: denying communication %s, no Profile Set", comm)
-		comm.Deny("no Profile Set")
-		return
-	}
-	profileSet.Update(status.ActiveSecurityLevel())
+	// get profile
+	p := comm.Process().Profile()
 
 	// check for any network access
-	if !profileSet.CheckFlag(profile.Internet) && !profileSet.CheckFlag(profile.LAN) {
+	if p.BlockScopeInternet() && p.BlockScopeLAN() {
 		log.Infof("firewall: denying communication %s, accessing Internet or LAN not permitted", comm)
 		comm.Deny("accessing Internet or LAN not permitted")
 		return
 	}
+	// continueing with access to either Internet or LAN
 
 	// check endpoint list
-	result, reason := profileSet.CheckEndpointDomain(fqdn)
+	// FIXME: comm.Entity.Lock()
+	result, reason := p.MatchEndpoint(comm.Entity)
+	// FIXME: comm.Entity.Unlock()
 	switch result {
-	case profile.NoMatch:
-		comm.UpdateVerdict(network.VerdictUndecided)
-		if profileSet.GetProfileMode() == profile.Whitelist {
-			log.Infof("firewall: denying communication %s, domain is not whitelisted", comm)
-			comm.Deny("domain is not whitelisted")
-		}
-	case profile.Undeterminable:
+	case endpoints.Undeterminable:
 		comm.UpdateVerdict(network.VerdictUndeterminable)
-	case profile.Denied:
-		log.Infof("firewall: denying communication %s, endpoint is blacklisted: %s", comm, reason)
-		comm.Deny(fmt.Sprintf("endpoint is blacklisted: %s", reason))
-	case profile.Permitted:
-		log.Infof("firewall: permitting communication %s, endpoint is whitelisted: %s", comm, reason)
-		comm.Accept(fmt.Sprintf("endpoint is whitelisted: %s", reason))
-	}
-}
-
-// DecideOnCommunicationAfterIntel makes a decision about a communication after the dns query is resolved and intel is gathered.
-func DecideOnCommunicationAfterIntel(comm *network.Communication, fqdn string, rrCache *intel.RRCache) {
-	// rrCache may be nil, when function is called for re-evaluation by DecideOnCommunication
-
-	// check if need to run
-	if comm.GetVerdict() != network.VerdictUndecided {
+		return
+	case endpoints.Denied:
+		log.Infof("firewall: denying communication %s, domain is blacklisted: %s", comm, reason)
+		comm.Deny(fmt.Sprintf("domain is blacklisted: %s", reason))
+		return
+	case endpoints.Permitted:
+		log.Infof("firewall: permitting communication %s, domain is whitelisted: %s", comm, reason)
+		comm.Accept(fmt.Sprintf("domain is whitelisted: %s", reason))
 		return
 	}
+	// continueing with result == NoMatch
 
-	// grant self - should not get here
-	if comm.Process().Pid == os.Getpid() {
-		log.Infof("firewall: granting own communication %s", comm)
-		comm.Accept("")
+	// check default action
+	if p.DefaultAction() == profile.DefaultActionPermit {
+		log.Infof("firewall: permitting communication %s, domain is not blacklisted (default=permit)", comm)
+		comm.Accept("domain is not blacklisted (default=permit)")
 		return
 	}
-
-	// check if there is a profile
-	profileSet := comm.Process().ProfileSet()
-	if profileSet == nil {
-		log.Errorf("firewall: denying communication %s, no Profile Set", comm)
-		comm.Deny("no Profile Set")
-		return
-	}
-	profileSet.Update(status.ActiveSecurityLevel())
-
-	// TODO: Stamp integration
-
-	switch profileSet.GetProfileMode() {
-	case profile.Whitelist:
-		log.Infof("firewall: denying communication %s, domain is not whitelisted", comm)
-		comm.Deny("domain is not whitelisted")
-		return
-	case profile.Blacklist:
-		log.Infof("firewall: permitting communication %s, domain is not blacklisted", comm)
-		comm.Accept("domain is not blacklisted")
-		return
-	}
-
-	// ProfileMode == Prompt
 
 	// check relation
-	if profileSet.CheckFlag(profile.Related) {
-		if checkRelation(comm, fqdn) {
+	if !p.DisableAutoPermit() {
+		if checkRelation(comm) {
 			return
 		}
 	}
 
 	// prompt
-	prompt(comm, nil, nil, fqdn)
+	if p.DefaultAction() == profile.DefaultActionAsk {
+		prompt(comm, nil, nil)
+		return
+	}
+
+	// DefaultAction == DefaultActionBlock
+	log.Infof("firewall: denying communication %s, domain is not whitelisted (default=block)", comm)
+	comm.Deny("domain is not whitelisted (default=block)")
+	return
 }
 
 // FilterDNSResponse filters a dns response according to the application profile and settings.
-//nolint:gocognit // FIXME
-func FilterDNSResponse(comm *network.Communication, q *intel.Query, rrCache *intel.RRCache) *intel.RRCache {
+func FilterDNSResponse(comm *network.Communication, q *resolver.Query, rrCache *resolver.RRCache) *resolver.RRCache { //nolint:gocognit // TODO
 	// do not modify own queries - this should not happen anyway
 	if comm.Process().Pid == os.Getpid() {
 		return rrCache
 	}
 
-	// check if there is a profile
-	profileSet := comm.Process().ProfileSet()
-	if profileSet == nil {
-		log.Infof("firewall: blocking dns query of communication %s, no Profile Set", comm)
-		return nil
-	}
-	profileSet.Update(status.ActiveSecurityLevel())
-
-	// save config for consistency during function call
-	secLevel := profileSet.SecurityLevel()
-	filterByScope := filterDNSByScope(secLevel)
-	filterByProfile := filterDNSByProfile(secLevel)
+	// get profile
+	p := comm.Process().Profile()
 
 	// check if DNS response filtering is completely turned off
-	if !filterByScope && !filterByProfile {
+	if !p.RemoveOutOfScopeDNS() && !p.RemoveBlockedDNS() {
 		return rrCache
 	}
 
@@ -175,7 +133,6 @@ func FilterDNSResponse(comm *network.Communication, q *intel.Query, rrCache *int
 	// loop vars
 	var classification int8
 	var ip net.IP
-	var result profile.EPResult
 
 	// filter function
 	filterEntries := func(entries []dns.RR) (goodEntries []dns.RR) {
@@ -196,7 +153,7 @@ func FilterDNSResponse(comm *network.Communication, q *intel.Query, rrCache *int
 			}
 			classification = netutils.ClassifyIP(ip)
 
-			if filterByScope {
+			if p.RemoveOutOfScopeDNS() {
 				switch {
 				case classification == netutils.HostLocal:
 					// No DNS should return localhost addresses
@@ -211,30 +168,24 @@ func FilterDNSResponse(comm *network.Communication, q *intel.Query, rrCache *int
 				}
 			}
 
-			if filterByProfile {
+			if p.RemoveBlockedDNS() {
 				// filter by flags
 				switch {
-				case !profileSet.CheckFlag(profile.Internet) && classification == netutils.Global:
+				case p.BlockScopeInternet() && classification == netutils.Global:
 					addressesRemoved++
 					rrCache.FilteredEntries = append(rrCache.FilteredEntries, rr.String())
 					continue
-				case !profileSet.CheckFlag(profile.LAN) && (classification == netutils.SiteLocal || classification == netutils.LinkLocal):
+				case p.BlockScopeLAN() && (classification == netutils.SiteLocal || classification == netutils.LinkLocal):
 					addressesRemoved++
 					rrCache.FilteredEntries = append(rrCache.FilteredEntries, rr.String())
 					continue
-				case !profileSet.CheckFlag(profile.Localhost) && classification == netutils.HostLocal:
+				case p.BlockScopeLocal() && classification == netutils.HostLocal:
 					addressesRemoved++
 					rrCache.FilteredEntries = append(rrCache.FilteredEntries, rr.String())
 					continue
 				}
 
-				// filter by endpoints
-				result, _ = profileSet.CheckEndpointIP(q.FQDN, ip, 0, 0, false)
-				if result == profile.Denied {
-					addressesRemoved++
-					rrCache.FilteredEntries = append(rrCache.FilteredEntries, rr.String())
-					continue
-				}
+				// TODO: filter by endpoint list (IP only)
 			}
 
 			// if survived, add to good entries
@@ -267,17 +218,15 @@ func FilterDNSResponse(comm *network.Communication, q *intel.Query, rrCache *int
 }
 
 // DecideOnCommunication makes a decision about a communication with its first packet.
-func DecideOnCommunication(comm *network.Communication, pkt packet.Packet) {
-
-	// check if communication needs reevaluation, if it's not with a domain
-	if comm.NeedsReevaluation() {
+func DecideOnCommunication(comm *network.Communication) {
+	// update profiles and check if communication needs reevaluation
+	if comm.UpdateAndCheck() {
 		log.Infof("firewall: re-evaluating verdict on %s", comm)
 		comm.ResetVerdict()
 
-		// if communicating with a domain entity, re-evaluate with Before/AfterIntel
-		if strings.HasSuffix(comm.Domain, ".") {
-			DecideOnCommunicationBeforeIntel(comm, comm.Domain)
-			DecideOnCommunicationAfterIntel(comm, comm.Domain, nil)
+		// if communicating with a domain entity, re-evaluate with BeforeDNS
+		if strings.HasSuffix(comm.Scope, ".") {
+			DecideOnCommunicationBeforeDNS(comm)
 		}
 	}
 
@@ -293,29 +242,24 @@ func DecideOnCommunication(comm *network.Communication, pkt packet.Packet) {
 		return
 	}
 
-	// check if there is a profile
-	profileSet := comm.Process().ProfileSet()
-	if profileSet == nil {
-		log.Errorf("firewall: denying communication %s, no Profile Set", comm)
-		comm.Deny("no Profile Set")
-		return
-	}
-	profileSet.Update(status.ActiveSecurityLevel())
+	// get profile
+	p := comm.Process().Profile()
 
 	// check comm type
-	switch comm.Domain {
+	switch comm.Scope {
 	case network.IncomingHost, network.IncomingLAN, network.IncomingInternet, network.IncomingInvalid:
-		if !profileSet.CheckFlag(profile.Service) {
+		if p.BlockInbound() {
 			log.Infof("firewall: denying communication %s, not a service", comm)
-			if comm.Domain == network.IncomingHost {
+			if comm.Scope == network.IncomingHost {
 				comm.Block("not a service")
 			} else {
 				comm.Deny("not a service")
 			}
 			return
 		}
-	case network.PeerLAN, network.PeerInternet, network.PeerInvalid: // Important: PeerHost is and should be missing!
-		if !profileSet.CheckFlag(profile.PeerToPeer) {
+	case network.PeerLAN, network.PeerInternet, network.PeerInvalid:
+		// Important: PeerHost is and should be missing!
+		if p.BlockP2P() {
 			log.Infof("firewall: denying communication %s, peer to peer comms (to an IP) not allowed", comm)
 			comm.Deny("peer to peer comms (to an IP) not allowed")
 			return
@@ -323,21 +267,21 @@ func DecideOnCommunication(comm *network.Communication, pkt packet.Packet) {
 	}
 
 	// check network scope
-	switch comm.Domain {
+	switch comm.Scope {
 	case network.IncomingHost:
-		if !profileSet.CheckFlag(profile.Localhost) {
+		if p.BlockScopeLocal() {
 			log.Infof("firewall: denying communication %s, serving localhost not allowed", comm)
 			comm.Block("serving localhost not allowed")
 			return
 		}
 	case network.IncomingLAN:
-		if !profileSet.CheckFlag(profile.LAN) {
+		if p.BlockScopeLAN() {
 			log.Infof("firewall: denying communication %s, serving LAN not allowed", comm)
 			comm.Deny("serving LAN not allowed")
 			return
 		}
 	case network.IncomingInternet:
-		if !profileSet.CheckFlag(profile.Internet) {
+		if p.BlockScopeInternet() {
 			log.Infof("firewall: denying communication %s, serving Internet not allowed", comm)
 			comm.Deny("serving Internet not allowed")
 			return
@@ -347,19 +291,19 @@ func DecideOnCommunication(comm *network.Communication, pkt packet.Packet) {
 		comm.Drop("invalid IP address")
 		return
 	case network.PeerHost:
-		if !profileSet.CheckFlag(profile.Localhost) {
+		if p.BlockScopeLocal() {
 			log.Infof("firewall: denying communication %s, accessing localhost not allowed", comm)
 			comm.Block("accessing localhost not allowed")
 			return
 		}
 	case network.PeerLAN:
-		if !profileSet.CheckFlag(profile.LAN) {
+		if p.BlockScopeLAN() {
 			log.Infof("firewall: denying communication %s, accessing the LAN not allowed", comm)
 			comm.Deny("accessing the LAN not allowed")
 			return
 		}
 	case network.PeerInternet:
-		if !profileSet.CheckFlag(profile.Internet) {
+		if p.BlockScopeInternet() {
 			log.Infof("firewall: denying communication %s, accessing the Internet not allowed", comm)
 			comm.Deny("accessing the Internet not allowed")
 			return
@@ -384,7 +328,7 @@ func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Pa
 		return
 	}
 
-	// check if communicating with self
+	// check if process is communicating with itself
 	if comm.Process().Pid >= 0 && pkt.Info().Src.Equal(pkt.Info().Dst) {
 		// get PID
 		otherPid, _, err := process.GetPidByEndpoints(
@@ -424,86 +368,80 @@ func DecideOnLink(comm *network.Communication, link *network.Link, pkt packet.Pa
 		return
 	}
 
-	// check if there is a profile
-	profileSet := comm.Process().ProfileSet()
-	if profileSet == nil {
-		log.Infof("firewall: no Profile Set, denying %s", link)
-		link.Deny("no Profile Set")
-		return
-	}
-	profileSet.Update(status.ActiveSecurityLevel())
-
-	// get domain
-	var fqdn string
-	if strings.HasSuffix(comm.Domain, ".") {
-		fqdn = comm.Domain
-	}
-
-	// remoteIP
-	var remoteIP net.IP
-	if comm.Direction {
-		remoteIP = pkt.Info().Src
-	} else {
-		remoteIP = pkt.Info().Dst
-	}
-
-	// protocol and destination port
-	protocol := uint8(pkt.Info().Protocol)
-	dstPort := pkt.Info().DstPort
+	// get profile
+	p := comm.Process().Profile()
 
 	// check endpoints list
-	result, reason := profileSet.CheckEndpointIP(fqdn, remoteIP, protocol, dstPort, comm.Direction)
+	var result endpoints.EPResult
+	var reason string
+	// FIXME: link.Entity.Lock()
+	if comm.Direction {
+		result, reason = p.MatchServiceEndpoint(link.Entity)
+	} else {
+		result, reason = p.MatchEndpoint(link.Entity)
+	}
+	// FIXME: link.Entity.Unlock()
 	switch result {
-	case profile.Denied:
+	case endpoints.Denied:
 		log.Infof("firewall: denying link %s, endpoint is blacklisted: %s", link, reason)
 		link.Deny(fmt.Sprintf("endpoint is blacklisted: %s", reason))
 		return
-	case profile.Permitted:
+	case endpoints.Permitted:
 		log.Infof("firewall: permitting link %s, endpoint is whitelisted: %s", link, reason)
 		link.Accept(fmt.Sprintf("endpoint is whitelisted: %s", reason))
 		return
 	}
+	// continueing with result == NoMatch
 
-	// TODO: Stamp integration
-
-	switch profileSet.GetProfileMode() {
-	case profile.Whitelist:
-		log.Infof("firewall: denying link %s: endpoint is not whitelisted", link)
-		link.Deny("endpoint is not whitelisted")
-		return
-	case profile.Blacklist:
-		log.Infof("firewall: permitting link %s: endpoint is not blacklisted", link)
-		link.Accept("endpoint is not blacklisted")
+	// implicit default=block for incoming
+	if comm.Direction {
+		log.Infof("firewall: denying link %s: endpoint is not whitelisted (incoming is always default=block)", link)
+		link.Deny("endpoint is not whitelisted (incoming is always default=block)")
 		return
 	}
 
-	// ProfileMode == Prompt
+	// check default action
+	if p.DefaultAction() == profile.DefaultActionPermit {
+		log.Infof("firewall: permitting link %s: endpoint is not blacklisted (default=permit)", link)
+		link.Accept("endpoint is not blacklisted (default=permit)")
+		return
+	}
 
 	// check relation
-	if fqdn != "" && profileSet.CheckFlag(profile.Related) {
-		if checkRelation(comm, fqdn) {
+	if !p.DisableAutoPermit() {
+		if checkRelation(comm) {
 			return
 		}
 	}
 
 	// prompt
-	prompt(comm, link, pkt, fqdn)
-}
-
-func checkRelation(comm *network.Communication, fqdn string) (related bool) {
-	profileSet := comm.Process().ProfileSet()
-	if profileSet == nil {
+	if p.DefaultAction() == profile.DefaultActionAsk {
+		prompt(comm, link, pkt)
 		return
 	}
 
-	// TODO: add #AI
+	// DefaultAction == DefaultActionBlock
+	log.Infof("firewall: denying link %s: endpoint is not whitelisted (default=block)", link)
+	link.Deny("endpoint is not whitelisted (default=block)")
+	return
+}
 
-	pathElements := strings.Split(comm.Process().Path, "/") // FIXME: path separator
+// checkRelation tries to find a relation between a process and a communication. This is for better out of the box experience and is _not_ meant to thwart intentional malware.
+func checkRelation(comm *network.Communication) (related bool) {
+	if comm.Entity.Domain != "" {
+		return false
+	}
+	// don't check for unknown processes
+	if comm.Process().Pid < 0 {
+		return false
+	}
+
+	pathElements := strings.Split(comm.Process().Path, string(filepath.Separator))
 	// only look at the last two path segments
 	if len(pathElements) > 2 {
 		pathElements = pathElements[len(pathElements)-2:]
 	}
-	domainElements := strings.Split(fqdn, ".")
+	domainElements := strings.Split(comm.Entity.Domain, ".")
 
 	var domainElement string
 	var processElement string
@@ -516,11 +454,6 @@ matchLoop:
 				processElement = pathElement
 				break matchLoop
 			}
-		}
-		if levenshtein.Match(domainElement, profileSet.UserProfile().Name, nil) > 0.5 {
-			related = true
-			processElement = profileSet.UserProfile().Name
-			break matchLoop
 		}
 		if levenshtein.Match(domainElement, comm.Process().Name, nil) > 0.5 {
 			related = true

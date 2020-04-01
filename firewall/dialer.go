@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/network/environment"
+	"github.com/safing/portmaster/resolver"
 )
 
 func init() {
-	intel.SetLocalAddrFactory(PermittedAddr)
+	resolver.SetLocalAddrFactory(PermittedAddr)
 	environment.SetLocalAddrFactory(PermittedAddr)
 }
 

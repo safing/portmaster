@@ -56,6 +56,11 @@ func GetPidByPacket(pkt packet.Packet) (pid int, direction bool, err error) {
 
 // GetProcessByPacket returns the process that owns the given packet.
 func GetProcessByPacket(pkt packet.Packet) (process *Process, direction bool, err error) {
+	if !enableProcessDetection() {
+		log.Tracer(pkt.Ctx()).Tracef("process: process detection disabled")
+		return UnknownProcess, direction, nil
+	}
+
 	log.Tracer(pkt.Ctx()).Tracef("process: getting process and profile by packet")
 
 	var pid int
@@ -75,10 +80,9 @@ func GetProcessByPacket(pkt packet.Packet) (process *Process, direction bool, er
 		return nil, direction, err
 	}
 
-	err = process.FindProfiles(pkt.Ctx())
+	err = process.GetProfile(pkt.Ctx())
 	if err != nil {
-		log.Tracer(pkt.Ctx()).Errorf("process: failed to find profiles for process %s: %s", process, err)
-		log.Errorf("failed to find profiles for process %s: %s", process, err)
+		log.Tracer(pkt.Ctx()).Errorf("process: failed to get profile for process %s: %s", process, err)
 	}
 
 	return process, direction, nil
@@ -110,6 +114,11 @@ func GetPidByEndpoints(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 
 // GetProcessByEndpoints returns the process that owns the described link.
 func GetProcessByEndpoints(ctx context.Context, localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, protocol packet.IPProtocol) (process *Process, err error) {
+	if !enableProcessDetection() {
+		log.Tracer(ctx).Tracef("process: process detection disabled")
+		return UnknownProcess, nil
+	}
+
 	log.Tracer(ctx).Tracef("process: getting process and profile by endpoints")
 
 	var pid int
@@ -129,10 +138,9 @@ func GetProcessByEndpoints(ctx context.Context, localIP net.IP, localPort uint16
 		return nil, err
 	}
 
-	err = process.FindProfiles(ctx)
+	err = process.GetProfile(ctx)
 	if err != nil {
-		log.Tracer(ctx).Errorf("process: failed to find profiles for process %s: %s", process, err)
-		log.Errorf("process: failed to find profiles for process %s: %s", process, err)
+		log.Tracer(ctx).Errorf("process: failed to get profile for process %s: %s", process, err)
 	}
 
 	return process, nil

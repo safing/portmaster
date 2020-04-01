@@ -40,9 +40,9 @@ func cleanLinks() (activeComms map[string]struct{}) {
 	for key, link := range links {
 
 		// delete dead links
-		link.Lock()
+		link.lock.Lock()
 		deleteThis := link.Ended > 0 && link.Ended < deleteOlderThan
-		link.Unlock()
+		link.lock.Unlock()
 		if deleteThis {
 			log.Tracef("network.clean: deleted %s (ended at %d)", link.DatabaseKey(), link.Ended)
 			go link.Delete()
@@ -51,9 +51,9 @@ func cleanLinks() (activeComms map[string]struct{}) {
 
 		// not yet deleted, so its still a valid link regarding link count
 		comm := link.Communication()
-		comm.Lock()
+		comm.lock.Lock()
 		markActive(activeComms, comm.DatabaseKey())
-		comm.Unlock()
+		comm.lock.Unlock()
 
 		// check if link is dead
 		found = false
@@ -66,9 +66,9 @@ func cleanLinks() (activeComms map[string]struct{}) {
 
 		if !found {
 			// mark end time
-			link.Lock()
+			link.lock.Lock()
 			link.Ended = now
-			link.Unlock()
+			link.lock.Unlock()
 			log.Tracef("network.clean: marked %s as ended", link.DatabaseKey())
 			// save
 			linkToSave := link
@@ -95,9 +95,9 @@ func cleanComms(activeLinks map[string]struct{}) (activeComms map[string]struct{
 		_, hasLinks := activeLinks[comm.DatabaseKey()]
 
 		// comm created
-		comm.Lock()
+		comm.lock.Lock()
 		created := comm.Meta().Created
-		comm.Unlock()
+		comm.lock.Unlock()
 
 		if !hasLinks && created < threshold {
 			log.Tracef("network.clean: deleted %s", comm.DatabaseKey())

@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	CfgDevModeKey  = "core/devMode"
 	defaultDevMode bool
 )
 
@@ -24,7 +25,7 @@ func logFlagOverrides() {
 func registerConfig() error {
 	err := config.Register(&config.Option{
 		Name:           "Development Mode",
-		Key:            "core/devMode",
+		Key:            CfgDevModeKey,
 		Description:    "In Development Mode security restrictions are lifted/softened to enable easier access to Portmaster for debugging and testing purposes.",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,

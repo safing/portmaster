@@ -1,6 +1,8 @@
 package profile
 
 import (
+	"github.com/safing/portbase/log"
+
 	"github.com/safing/portbase/modules"
 
 	// module dependencies
@@ -8,22 +10,42 @@ import (
 )
 
 var (
-	shutdownSignal = make(chan struct{})
+	module *modules.Module
 )
 
 func init() {
-	modules.Register("profile", nil, start, stop, "core")
+	module = modules.Register("profiles", prep, start, nil, "core")
 }
 
-func start() error {
-	err := initSpecialProfiles()
+func prep() error {
+	err := registerConfiguration()
 	if err != nil {
 		return err
 	}
-	return initUpdateListener()
+
+	err = registerConfigUpdater()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func stop() error {
-	close(shutdownSignal)
+func start() error {
+	err := registerValidationDBHook()
+	if err != nil {
+		return err
+	}
+
+	err = startProfileUpdateChecker()
+	if err != nil {
+		return err
+	}
+
+	err = updateGlobalConfigProfile(module.Ctx, nil)
+	if err != nil {
+		log.Warningf("profile: error during loading global profile from configuration: %s", err)
+	}
+
 	return nil
 }

@@ -5,18 +5,18 @@ import (
 	"net"
 	"strings"
 
-	"github.com/safing/portmaster/network/environment"
-
-	"github.com/miekg/dns"
+	"github.com/safing/portbase/modules/subsystems"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
-
 	"github.com/safing/portmaster/detection/dga"
 	"github.com/safing/portmaster/firewall"
-	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/network"
+	"github.com/safing/portmaster/network/environment"
 	"github.com/safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/resolver"
+
+	"github.com/miekg/dns"
 )
 
 var (
@@ -30,10 +30,18 @@ var (
 )
 
 func init() {
-	module = modules.Register("nameserver", initLocalhostRRs, start, stop, "core", "intel", "network")
+	module = modules.Register("nameserver", prep, start, stop, "core", "resolver", "network")
+	subsystems.Register(
+		"dns",
+		"Secure DNS",
+		"DNS resolver with scoping and DNS-over-TLS",
+		module,
+		"config:dns/",
+		nil,
+	)
 }
 
-func initLocalhostRRs() error {
+func prep() error {
 	localhostIPv4, err := dns.NewRR("localhost. 17 IN A 127.0.0.1")
 	if err != nil {
 		return err
@@ -45,6 +53,7 @@ func initLocalhostRRs() error {
 	}
 
 	localhostRRs = []dns.RR{localhostIPv4, localhostIPv6}
+
 	return nil
 }
 
@@ -56,7 +65,7 @@ func start() error {
 		err := dnsServer.ListenAndServe()
 		if err != nil {
 			// check if we are shutting down
-			if module.ShutdownInProgress() {
+			if module.IsStopping() {
 				return nil
 			}
 			// is something blocking our port?
@@ -108,7 +117,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 
 	// only process first question, that's how everyone does it.
 	question := query.Question[0]
-	q := &intel.Query{
+	q := &resolver.Query{
 		FQDN:  question.Name,
 		QType: dns.Type(question.Qtype),
 	}
@@ -176,7 +185,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	}()
 
 	// save security level to query
-	q.SecurityLevel = comm.Process().ProfileSet().SecurityLevel()
+	q.SecurityLevel = comm.Process().Profile().SecurityLevel()
 
 	// check for possible DNS tunneling / data transmission
 	// TODO: improve this
@@ -189,7 +198,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	}
 
 	// check profile before we even get intel and rr
-	firewall.DecideOnCommunicationBeforeIntel(comm, q.FQDN)
+	firewall.DecideOnCommunicationBeforeDNS(comm)
 	comm.Lock()
 	comm.SaveWhenFinished()
 	comm.Unlock()
@@ -200,36 +209,11 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		return nil
 	}
 
-	// get intel and RRs
-	rrCache, err := intel.Resolve(ctx, q)
+	// resolve
+	rrCache, err := resolver.Resolve(ctx, q)
 	if err != nil {
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
 		tracer.Warningf("nameserver: %s requested %s%s: %s", comm.Process(), q.FQDN, q.QType, err)
-		returnNXDomain(w, query)
-		return nil
-	}
-
-	// get current intel
-	comm.Lock()
-	domainIntel := comm.Intel
-	comm.Unlock()
-	if domainIntel == nil {
-		// fetch intel
-		domainIntel, err = intel.GetIntel(ctx, q)
-		if err != nil {
-			tracer.Warningf("nameserver: failed to get intel for %s%s: %s", q.FQDN, q.QType, err)
-			returnNXDomain(w, query)
-		}
-		comm.Lock()
-		comm.Intel = domainIntel
-		comm.Unlock()
-	}
-
-	// check with intel
-	firewall.DecideOnCommunicationAfterIntel(comm, q.FQDN, rrCache)
-	switch comm.GetVerdict() {
-	case network.VerdictUndecided, network.VerdictBlock, network.VerdictDrop:
-		tracer.Infof("nameserver: %s denied after intel, returning nxdomain", comm)
 		returnNXDomain(w, query)
 		return nil
 	}
@@ -246,9 +230,9 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	for _, rr := range append(rrCache.Answer, rrCache.Extra...) {
 		switch v := rr.(type) {
 		case *dns.A:
-			ipInfo, err := intel.GetIPInfo(v.A.String())
+			ipInfo, err := resolver.GetIPInfo(v.A.String())
 			if err != nil {
-				ipInfo = &intel.IPInfo{
+				ipInfo = &resolver.IPInfo{
 					IP:      v.A.String(),
 					Domains: []string{q.FQDN},
 				}
@@ -260,9 +244,9 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 				}
 			}
 		case *dns.AAAA:
-			ipInfo, err := intel.GetIPInfo(v.AAAA.String())
+			ipInfo, err := resolver.GetIPInfo(v.AAAA.String())
 			if err != nil {
-				ipInfo = &intel.IPInfo{
+				ipInfo = &resolver.IPInfo{
 					IP:      v.AAAA.String(),
 					Domains: []string{q.FQDN},
 				}

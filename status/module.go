@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	modules.Register("status", nil, start, stop, "core")
+	modules.Register("status", nil, start, stop, "config", "database")
 }
 
 func start() error {

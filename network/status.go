@@ -42,7 +42,7 @@ const (
 	Outbound = false
 )
 
-// Non-Domain Connections
+// Non-Domain Scopes
 const (
 	IncomingHost     = "IH"
 	IncomingLAN      = "IL"

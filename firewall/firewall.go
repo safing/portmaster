@@ -7,6 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/safing/portbase/config"
+	"github.com/safing/portbase/modules/subsystems"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/firewall/inspection"
@@ -41,11 +44,26 @@ var (
 )
 
 func init() {
-	module = modules.Register("firewall", prep, start, stop, "core", "network", "nameserver", "profile", "updates")
+	module = modules.Register("firewall", prep, start, stop, "core", "network", "resolver", "intel", "processes")
+	subsystems.Register(
+		"filter",
+		"Privacy Filter",
+		"DNS and Network Filter",
+		module,
+		"config:filter/",
+		&config.Option{
+			Name:           "Enable Privacy Filter",
+			Key:            CfgOptionEnableFilterKey,
+			Description:    "Enable the Privacy Filter Subsystem to filter DNS queries and network requests.",
+			OptType:        config.OptTypeBool,
+			ExpertiseLevel: config.ExpertiseLevelUser,
+			ReleaseLevel:   config.ReleaseLevelBeta,
+			DefaultValue:   true,
+		},
+	)
 }
 
 func prep() (err error) {
-
 	err = registerConfig()
 	if err != nil {
 		return err
@@ -188,22 +206,18 @@ func handlePacket(pkt packet.Packet) {
 
 	// associate packet to link and handle
 	link, created := network.GetOrCreateLinkByPacket(pkt)
-	defer func() {
-		go link.SaveIfNeeded()
-	}()
 	if created {
 		link.SetFirewallHandler(initialHandler)
-		link.HandlePacket(pkt)
-		return
 	}
-	if link.FirewallHandlerIsSet() {
-		link.HandlePacket(pkt)
-		return
-	}
-	issueVerdict(pkt, link, 0, true)
+
+	link.HandlePacket(pkt)
 }
 
 func initialHandler(pkt packet.Packet, link *network.Link) {
+	defer func() {
+		go link.SaveIfNeeded()
+	}()
+
 	log.Tracer(pkt.Ctx()).Trace("firewall: [initial handler]")
 
 	// check for internal firewall bypass
@@ -217,9 +231,6 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 		} else {
 			comm.AddLink(link)
 		}
-		defer func() {
-			go comm.SaveIfNeeded()
-		}()
 
 		// approve
 		link.Accept("internally approved")
@@ -249,9 +260,6 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 			return
 		}
 	}
-	defer func() {
-		go comm.SaveIfNeeded()
-	}()
 
 	// add new Link to Communication (and save both)
 	comm.AddLink(link)
@@ -267,7 +275,8 @@ func initialHandler(pkt packet.Packet, link *network.Link) {
 
 	log.Tracer(pkt.Ctx()).Trace("firewall: starting decision process")
 
-	DecideOnCommunication(comm, pkt)
+	// TODO: filter lists may have IPs in the future!
+	DecideOnCommunication(comm)
 	DecideOnLink(comm, link, pkt)
 
 	// TODO: link this to real status
@@ -380,7 +389,7 @@ func issueVerdict(pkt packet.Packet, link *network.Link, verdict network.Verdict
 func run() {
 	for {
 		select {
-		case <-modules.ShuttingDown():
+		case <-module.Stopping():
 			return
 		case pkt := <-interception.Packets:
 			handlePacket(pkt)
@@ -391,7 +400,7 @@ func run() {
 func statLogger() {
 	for {
 		select {
-		case <-modules.ShuttingDown():
+		case <-module.Stopping():
 			return
 		case <-time.After(10 * time.Second):
 			log.Tracef("firewall: packets accepted %d, blocked %d, dropped %d", atomic.LoadUint64(packetsAccepted), atomic.LoadUint64(packetsBlocked), atomic.LoadUint64(packetsDropped))
