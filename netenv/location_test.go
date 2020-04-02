@@ -1,6 +1,6 @@
 // +build root
 
-package environment
+package netenv
 
 import "testing"
 

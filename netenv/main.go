@@ -1,8 +1,6 @@
-package environment
+package netenv
 
 import (
-	"errors"
-
 	"github.com/safing/portbase/modules"
 )
 
@@ -15,19 +13,13 @@ var (
 	module *modules.Module
 )
 
-// InitSubModule initializes module specific things with the given module. Intended to be used as part of the "network" module.
-func InitSubModule(m *modules.Module) {
-	module = m
+func init() {
+	module = modules.Register("netenv", nil, start, nil)
 	module.RegisterEvent(networkChangedEvent)
 	module.RegisterEvent(onlineStatusChangedEvent)
 }
 
-// StartSubModule starts module specific things with the given module. Intended to be used as part of the "network" module.
-func StartSubModule() error {
-	if module == nil {
-		return errors.New("not initialized")
-	}
-
+func start() error {
 	module.StartServiceWorker(
 		"monitor network changes",
 		0,

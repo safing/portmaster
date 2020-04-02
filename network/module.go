@@ -2,7 +2,6 @@ package network
 
 import (
 	"github.com/safing/portbase/modules"
-	"github.com/safing/portmaster/network/environment"
 )
 
 var (
@@ -10,8 +9,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("network", nil, start, nil, "core")
-	environment.InitSubModule(module)
+	module = modules.Register("network", nil, start, nil, "core", "processes")
 }
 
 func start() error {
@@ -22,5 +20,5 @@ func start() error {
 
 	go cleaner()
 
-	return environment.StartSubModule()
+	return nil
 }

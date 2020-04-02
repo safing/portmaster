@@ -1,6 +1,6 @@
 // +build !server
 
-package environment
+package netenv
 
 import (
 	"errors"
@@ -16,7 +16,7 @@ var (
 	dbusConnLock sync.Mutex
 )
 
-func getNameserversFromDbus() ([]Nameserver, error) {
+func getNameserversFromDbus() ([]Nameserver, error) { //nolint:gocognit // TODO
 	// cmdline tool for exploring: gdbus introspect --system --dest org.freedesktop.NetworkManager --object-path /org/freedesktop/NetworkManager
 
 	var nameservers []Nameserver
