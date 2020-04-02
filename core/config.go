@@ -7,6 +7,7 @@ import (
 	"github.com/safing/portbase/log"
 )
 
+// Configuration Keys
 var (
 	CfgDevModeKey  = "core/devMode"
 	defaultDevMode bool

@@ -9,14 +9,12 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/safing/portbase/updater"
-
-	"github.com/safing/portmaster/core/structure"
-
-	"github.com/safing/portbase/utils"
-
+	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/info"
 	portlog "github.com/safing/portbase/log"
+	"github.com/safing/portbase/updater"
+	"github.com/safing/portbase/utils"
+
 	"github.com/spf13/cobra"
 )
 
@@ -158,15 +156,15 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 
 		// remove redundant escape characters and quotes
 		dataDir = strings.Trim(dataDir, `\"`)
-		// initialize structure
-		err = structure.Initialize(dataDir, 0755)
+		// initialize dataroot
+		err = dataroot.Initialize(dataDir, 0755)
 		if err != nil {
 			return fmt.Errorf("failed to initialize data root: %s", err)
 		}
-		dataRoot = structure.Root()
+		dataRoot = dataroot.Root()
 
 		// initialize registry
-		err := registry.Initialize(structure.Root().ChildDir("updates", 0755))
+		err := registry.Initialize(dataRoot.ChildDir("updates", 0755))
 		if err != nil {
 			return err
 		}
@@ -187,7 +185,7 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 	// logs and warning
 	if !showShortVersion && !showFullVersion && !strings.Contains(cmd.CommandPath(), " show ") {
 		// set up logs root
-		logsRoot = structure.NewRootDir("logs", 0777)
+		logsRoot = dataRoot.ChildDir("logs", 0777)
 		err = logsRoot.Ensure()
 		if err != nil {
 			return fmt.Errorf("failed to initialize logs root: %s", err)

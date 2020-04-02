@@ -5,15 +5,13 @@ import (
 	"net"
 	"strings"
 
-	"github.com/safing/portmaster/network/environment"
-
-	"github.com/miekg/dns"
-
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
-
-	"github.com/safing/portmaster/intel"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/resolver"
+
+	"github.com/miekg/dns"
 )
 
 var (
@@ -27,7 +25,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("nameserver", initLocalhostRRs, start, stop, "core", "intel", "network")
+	module = modules.Register("nameserver", initLocalhostRRs, start, stop, "core", "resolver", "network", "netenv")
 }
 
 func initLocalhostRRs() error {
@@ -53,7 +51,7 @@ func start() error {
 		err := dnsServer.ListenAndServe()
 		if err != nil {
 			// check if we are shutting down
-			if module.ShutdownInProgress() {
+			if module.IsStopping() {
 				return nil
 			}
 		}
@@ -87,20 +85,20 @@ func handleRequestAsMicroTask(w dns.ResponseWriter, query *dns.Msg) {
 		return handleRequest(ctx, w, query)
 	})
 	if err != nil {
-		log.Warningf("intel: failed to handle dns request: %s", err)
+		log.Warningf("nameserver: failed to handle dns request: %s", err)
 	}
 }
 
 func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) error {
 	// return with server failure if offline
-	if environment.GetOnlineStatus() == environment.StatusOffline {
+	if netenv.GetOnlineStatus() == netenv.StatusOffline {
 		returnServerFailure(w, query)
 		return nil
 	}
 
 	// only process first question, that's how everyone does it.
 	question := query.Question[0]
-	q := &intel.Query{
+	q := &resolver.Query{
 		FQDN:  question.Name,
 		QType: dns.Type(question.Qtype),
 	}
@@ -157,7 +155,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	// TODO: if there are 3 request for the same domain/type in a row, delete all caches of that domain
 
 	// get intel and RRs
-	rrCache, err := intel.Resolve(ctx, q)
+	rrCache, err := resolver.Resolve(ctx, q)
 	if err != nil {
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
 		tracer.Warningf("nameserver: request for %s%s: %s", q.FQDN, q.QType, err)
@@ -169,9 +167,9 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	for _, rr := range append(rrCache.Answer, rrCache.Extra...) {
 		switch v := rr.(type) {
 		case *dns.A:
-			ipInfo, err := intel.GetIPInfo(v.A.String())
+			ipInfo, err := resolver.GetIPInfo(v.A.String())
 			if err != nil {
-				ipInfo = &intel.IPInfo{
+				ipInfo = &resolver.IPInfo{
 					IP:      v.A.String(),
 					Domains: []string{q.FQDN},
 				}
@@ -183,9 +181,9 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 				}
 			}
 		case *dns.AAAA:
-			ipInfo, err := intel.GetIPInfo(v.AAAA.String())
+			ipInfo, err := resolver.GetIPInfo(v.AAAA.String())
 			if err != nil {
-				ipInfo = &intel.IPInfo{
+				ipInfo = &resolver.IPInfo{
 					IP:      v.AAAA.String(),
 					Domains: []string{q.FQDN},
 				}

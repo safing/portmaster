@@ -4,6 +4,7 @@ import (
 	"github.com/safing/portbase/config"
 )
 
+// Configuration Keys
 var (
 	CfgOptionEnableFilterKey = "filter/enable"
 

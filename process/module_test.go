@@ -1,4 +1,4 @@
-package geoip
+package process
 
 import (
 	"testing"

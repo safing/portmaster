@@ -4,6 +4,7 @@ import (
 	"github.com/safing/portbase/config"
 )
 
+// Configuration Keys
 var (
 	CfgOptionEnableProcessDetectionKey = "core/enableProcessDetection"
 	enableProcessDetection             config.BoolOption

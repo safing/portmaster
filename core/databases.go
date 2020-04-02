@@ -10,6 +10,7 @@ import (
 	_ "github.com/safing/portbase/database/storage/bbolt"
 )
 
+// Default Values (changeable for testing)
 var (
 	DefaultDatabaseStorageType = "bbolt"
 )

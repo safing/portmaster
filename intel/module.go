@@ -4,6 +4,11 @@ import (
 	"github.com/safing/portbase/modules"
 )
 
+var (
+	// Module of this package. Export needed for testing of the endpoints package.
+	Module *modules.Module
+)
+
 func init() {
-	modules.Register("intel", nil, nil, nil, "geoip")
+	Module = modules.Register("intel", nil, nil, nil, "geoip")
 }

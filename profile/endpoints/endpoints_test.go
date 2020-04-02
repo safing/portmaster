@@ -10,7 +10,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	pmtesting.TestMain(m)
+	pmtesting.TestMain(m, intel.Module)
 }
 
 func testEndpointMatch(t *testing.T, ep Endpoint, entity *intel.Entity, expectedResult EPResult) {

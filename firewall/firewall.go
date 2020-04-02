@@ -44,7 +44,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("firewall", prep, start, stop, "core", "network", "resolver", "intel", "processes")
+	module = modules.Register("filter", prep, start, stop, "core", "network", "nameserver", "intel")
 	subsystems.Register(
 		"filter",
 		"Privacy Filter",

@@ -5,6 +5,7 @@ import (
 	"github.com/safing/portbase/log"
 )
 
+// FindOrCreateLocalProfileByPath returns an existing or new profile for the given application path.
 func FindOrCreateLocalProfileByPath(fullPath string) (profile *Profile, new bool, err error) {
 	// find local profile
 	it, err := profileDB.Query(

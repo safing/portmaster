@@ -1,4 +1,4 @@
-package geoip
+package profile
 
 import (
 	"testing"

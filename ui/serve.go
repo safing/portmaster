@@ -115,8 +115,8 @@ func ServeFileFromBundle(w http.ResponseWriter, r *http.Request, bundleName stri
 		}
 	}
 
-	// set content security policy
-	// FIXME: this breaks the ui client
+	// TODO: Set content security policy
+	// For some reason, this breaks the ui client
 	// w.Header().Set("Content-Security-Policy", "default-src 'self'")
 
 	w.WriteHeader(http.StatusOK)

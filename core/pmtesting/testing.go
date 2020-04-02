@@ -1,6 +1,18 @@
-// package coretest provides a simple unit test setup routine.
+// Package pmtesting provides a simple unit test setup routine.
 //
-// Just include `_ "github.com/safing/portmaster/core/pmtesting"`
+// Usage:
+//
+// 		package name
+//
+// 		import (
+// 			"testing"
+//
+// 			"github.com/safing/portmaster/core/pmtesting"
+// 		)
+//
+// 		func TestMain(m *testing.M) {
+// 			pmtesting.TestMain(m, module)
+// 		}
 //
 package pmtesting
 
@@ -29,9 +41,16 @@ func init() {
 	flag.BoolVar(&printStackOnExit, "print-stack-on-exit", false, "prints the stack before of shutting down")
 }
 
-func TestMain(m *testing.M) {
+// TestMain provides a simple unit test setup routine.
+func TestMain(m *testing.M, module *modules.Module) {
+	// enable module for testing
+	module.Enable()
+
 	// switch databases to memory only
 	core.DefaultDatabaseStorageType = "hashmap"
+
+	// switch API to high port
+	core.DefaultAPIListenAddress = "127.0.0.1:10817"
 
 	// set log level
 	log.SetLogLevel(log.TraceLevel)
@@ -40,19 +59,22 @@ func TestMain(m *testing.M) {
 	tmpDir := filepath.Join(os.TempDir(), "portmaster-testing")
 	// initialize data dir
 	err := dataroot.Initialize(tmpDir, 0755)
-	// start modules
-	if err == nil {
-		err = modules.Start()
-	}
-	// handle setup error
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to setup test: %s\n", err)
-		printStack()
+		fmt.Fprintf(os.Stderr, "failed to initialize data root: %s\n", err)
 		os.Exit(1)
 	}
 
-	// run tests
-	exitCode := m.Run()
+	// start modules
+	var exitCode int
+	err = modules.Start()
+	if err != nil {
+		// starting failed
+		fmt.Fprintf(os.Stderr, "failed to setup test: %s\n", err)
+		exitCode = 1
+	} else {
+		// run tests
+		exitCode = m.Run()
+	}
 
 	// shutdown
 	_ = modules.Shutdown()
@@ -63,7 +85,14 @@ func TestMain(m *testing.M) {
 	printStack()
 
 	// clean up and exit
-	// keep! os.RemoveAll(tmpDir)
+
+	// Important: Do not remove tmpDir, as it is used as a cache for updates.
+	// remove config
+	_ = os.Remove(filepath.Join(tmpDir, "config.json"))
+	// remove databases
+	_ = os.Remove(filepath.Join(tmpDir, "databases.json"))
+	_ = os.RemoveAll(filepath.Join(tmpDir, "databases"))
+
 	os.Exit(exitCode)
 }
 

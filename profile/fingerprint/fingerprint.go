@@ -47,3 +47,41 @@ func (profile *Profile) AddFingerprint(fp *Fingerprint) {
 	profile.Fingerprints = append(profile.Fingerprints, fp)
 }
 */
+
+// TODO: matching
+/*
+//nolint:deadcode,unused // FIXME
+func matchProfile(p *Process, prof *profile.Profile) (score int) {
+	for _, fp := range prof.Fingerprints {
+		score += matchFingerprint(p, fp)
+	}
+	return
+}
+
+//nolint:deadcode,unused // FIXME
+func matchFingerprint(p *Process, fp *profile.Fingerprint) (score int) {
+	if !fp.MatchesOS() {
+		return 0
+	}
+
+	switch fp.Type {
+	case "full_path":
+		if p.Path == fp.Value {
+			return profile.GetFingerprintWeight(fp.Type)
+		}
+	case "partial_path":
+		// FIXME: if full_path matches, do not match partial paths
+		return profile.GetFingerprintWeight(fp.Type)
+	case "md5_sum", "sha1_sum", "sha256_sum":
+		// FIXME: one sum is enough, check sums in a grouped form, start with the best
+		sum, err := p.GetExecHash(fp.Type)
+		if err != nil {
+			log.Errorf("process: failed to get hash of executable: %s", err)
+		} else if sum == fp.Value {
+			return profile.GetFingerprintWeight(fp.Type)
+		}
+	}
+
+	return 0
+}
+*/

@@ -4,6 +4,7 @@ import (
 	"github.com/safing/portbase/config"
 )
 
+// Configuration Keys
 var (
 	cfgStringOptions      = make(map[string]config.StringOption)
 	cfgStringArrayOptions = make(map[string]config.StringArrayOption)

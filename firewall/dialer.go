@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/safing/portmaster/network/environment"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/resolver"
 )
 
 func init() {
 	resolver.SetLocalAddrFactory(PermittedAddr)
-	environment.SetLocalAddrFactory(PermittedAddr)
+	netenv.SetLocalAddrFactory(PermittedAddr)
 }
 
 // PermittedAddr returns an already permitted local address for the given network for reliable connectivity.

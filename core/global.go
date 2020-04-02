@@ -12,7 +12,10 @@ import (
 	"github.com/safing/portbase/notifications"
 )
 
+// Default Values (changeable for testing)
 var (
+	DefaultAPIListenAddress = "127.0.0.1:817"
+
 	dataDir     string
 	databaseDir string
 )
@@ -53,7 +56,7 @@ func globalPrep() error {
 	}
 
 	// set api listen address
-	api.SetDefaultAPIListenAddress("127.0.0.1:817")
+	api.SetDefaultAPIListenAddress(DefaultAPIListenAddress)
 
 	// set notification persistence
 	notifications.SetPersistenceBasePath("core:notifications")

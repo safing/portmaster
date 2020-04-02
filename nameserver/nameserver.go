@@ -11,8 +11,8 @@ import (
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/detection/dga"
 	"github.com/safing/portmaster/firewall"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
-	"github.com/safing/portmaster/network/environment"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/resolver"
 
@@ -30,7 +30,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("nameserver", prep, start, stop, "core", "resolver", "network")
+	module = modules.Register("nameserver", prep, start, stop, "core", "resolver", "network", "netenv")
 	subsystems.Register(
 		"dns",
 		"Secure DNS",
@@ -108,9 +108,9 @@ func handleRequestAsMicroTask(w dns.ResponseWriter, query *dns.Msg) {
 	}
 }
 
-func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) error {
+func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) error { //nolint:gocognit // TODO
 	// return with server failure if offline
-	if environment.GetOnlineStatus() == environment.StatusOffline {
+	if netenv.GetOnlineStatus() == netenv.StatusOffline {
 		returnServerFailure(w, query)
 		return nil
 	}

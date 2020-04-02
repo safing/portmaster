@@ -3,9 +3,14 @@ package core
 import (
 	"fmt"
 
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
 
-	"github.com/safing/portbase/modules"
+	// module dependencies
+	_ "github.com/safing/portbase/rng"
+	_ "github.com/safing/portmaster/status"
+	_ "github.com/safing/portmaster/ui"
+	_ "github.com/safing/portmaster/updates"
 )
 
 var (
@@ -13,7 +18,9 @@ var (
 )
 
 func init() {
-	module = modules.Register("core", nil, start, nil, "database", "config", "api", "random", "notifications", "subsystems", "ui", "updates", "status")
+	modules.Register("base", nil, registerDatabases, nil, "database", "config", "random")
+
+	module = modules.Register("core", nil, start, nil, "base", "subsystems", "status", "updates", "api", "notifications", "ui")
 	subsystems.Register(
 		"core",
 		"Core",
@@ -29,5 +36,5 @@ func start() error {
 		return fmt.Errorf("failed to start plattform-specific components: %s", err)
 	}
 
-	return registerDatabases()
+	return nil
 }

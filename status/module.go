@@ -4,13 +4,10 @@ import (
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
-
-	// module dependencies
-	_ "github.com/safing/portmaster/core"
 )
 
 func init() {
-	modules.Register("status", nil, start, stop, "config", "database")
+	modules.Register("status", nil, start, stop, "base")
 }
 
 func start() error {

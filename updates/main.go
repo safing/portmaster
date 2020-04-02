@@ -29,7 +29,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("updates", registerConfig, start, stop, "config", "database")
+	module = modules.Register("updates", registerConfig, start, stop, "base")
 	module.RegisterEvent(eventVersionUpdate)
 	module.RegisterEvent(eventResourceUpdate)
 }
