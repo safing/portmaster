@@ -1,5 +1,5 @@
 /*
-package resolver is responsible for fetching intelligence data, including DNS, on remote entities.
+Package resolver is responsible for querying DNS.
 
 DNS Servers
 
@@ -24,7 +24,6 @@ Queries for "localhost." are immediately responded with 127.0.0.1 and ::1, for A
 Reverse lookups on local address ranges (10/8, 172.16/12, 192.168/16, fe80::/7) will be tried against every local resolver and finally mDNS until a successful, non-NXDomain answer is received.
 Special domains ("example.", "example.com.", "example.net.", "example.org.", "invalid.", "test.", "onion.") are resolved using search scopes and local resolvers.
 All other domains are resolved using search scopes and all available resolvers.
-
 
 */
 package resolver

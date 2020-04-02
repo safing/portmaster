@@ -8,7 +8,7 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/network/environment"
+	"github.com/safing/portmaster/netenv"
 )
 
 // DNS Resolver Attributes
@@ -69,7 +69,7 @@ type BasicResolverConn struct {
 
 // MarkFailed marks the resolver as failed.
 func (brc *BasicResolverConn) MarkFailed() {
-	if !environment.Online() {
+	if !netenv.Online() {
 		// don't mark failed if we are offline
 		return
 	}
@@ -103,22 +103,22 @@ func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, er
 		// log query time
 		// qStart := time.Now()
 		reply, _, err = brc.clientManager.getDNSClient().Exchange(dnsQuery, resolver.ServerAddress)
-		// log.Tracef("intel: query to %s took %s", resolver.Server, time.Now().Sub(qStart))
+		// log.Tracef("resolver: query to %s took %s", resolver.Server, time.Now().Sub(qStart))
 
 		// error handling
 		if err != nil {
-			log.Tracer(ctx).Tracef("intel: query to %s encountered error: %s", resolver.Server, err)
+			log.Tracer(ctx).Tracef("resolver: query to %s encountered error: %s", resolver.Server, err)
 
 			// TODO: handle special cases
 			// 1. connect: network is unreachable
 			// 2. timeout
 
 			// hint network environment at failed connection
-			environment.ReportFailedConnection()
+			netenv.ReportFailedConnection()
 
 			// temporary error
 			if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
-				log.Tracer(ctx).Tracef("intel: retrying to resolve %s%s with %s, error is temporary", q.FQDN, q.QType, resolver.Server)
+				log.Tracer(ctx).Tracef("resolver: retrying to resolve %s%s with %s, error is temporary", q.FQDN, q.QType, resolver.Server)
 				continue
 			}
 
@@ -132,11 +132,11 @@ func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, er
 
 	if err != nil {
 		return nil, err
-		// FIXME: mark as failed
+		// TODO: mark as failed
 	}
 
 	// hint network environment at successful connection
-	environment.ReportSuccessfulConnection()
+	netenv.ReportSuccessfulConnection()
 
 	new := &RRCache{
 		Domain:      q.FQDN,

@@ -75,7 +75,7 @@ func Resolve(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
 	}
 
 	// log
-	log.Tracer(ctx).Tracef("intel: resolving %s%s", q.FQDN, q.QType)
+	log.Tracer(ctx).Tracef("resolver: resolving %s%s", q.FQDN, q.QType)
 
 	// check query compliance
 	if err = q.checkCompliance(); err != nil {
@@ -116,8 +116,8 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 	// failed to get from cache
 	if err != nil {
 		if err != database.ErrNotFound {
-			log.Tracer(ctx).Warningf("intel: getting RRCache %s%s from database failed: %s", q.FQDN, q.QType.String(), err)
-			log.Warningf("intel: getting RRCache %s%s from database failed: %s", q.FQDN, q.QType.String(), err)
+			log.Tracer(ctx).Warningf("resolver: getting RRCache %s%s from database failed: %s", q.FQDN, q.QType.String(), err)
+			log.Warningf("resolver: getting RRCache %s%s from database failed: %s", q.FQDN, q.QType.String(), err)
 		}
 		return nil
 	}
@@ -131,7 +131,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 	// check compliance of resolver
 	err = resolver.checkCompliance(ctx, q)
 	if err != nil {
-		log.Tracer(ctx).Debugf("intel: cached entry for %s%s does not comply to query parameters: %s", q.FQDN, q.QType.String(), err)
+		log.Tracer(ctx).Debugf("resolver: cached entry for %s%s does not comply to query parameters: %s", q.FQDN, q.QType.String(), err)
 		return nil
 	}
 
@@ -141,7 +141,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		rrCache.requestingNew = true
 		rrCache.Unlock()
 
-		log.Tracer(ctx).Trace("intel: serving from cache, requesting new")
+		log.Tracer(ctx).Trace("resolver: serving from cache, requesting new")
 
 		// resolve async
 		module.StartMediumPriorityMicroTask(&mtAsyncResolve, func(ctx context.Context) error {
@@ -167,7 +167,7 @@ func deduplicateRequest(ctx context.Context, q *Query) (finishRequest func()) {
 		dupReqLock.Unlock()
 
 		// log that we are waiting
-		log.Tracer(ctx).Tracef("intel: waiting for duplicate query for %s to complete", dupKey)
+		log.Tracer(ctx).Tracef("resolver: waiting for duplicate query for %s to complete", dupKey)
 		// wait
 		wg.Wait()
 		// done!
@@ -217,7 +217,7 @@ resolveLoop:
 		for _, resolver := range resolvers {
 			// check if resolver failed recently (on first run)
 			if i == 0 && resolver.Conn.LastFail().After(lastFailBoundary) {
-				log.Tracer(ctx).Tracef("intel: skipping resolver %s, because it failed recently", resolver)
+				log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it failed recently", resolver)
 				continue
 			}
 
@@ -267,7 +267,7 @@ resolveLoop:
 		rrCache.Clean(600)
 		err = rrCache.Save()
 		if err != nil {
-			log.Warningf("intel: failed to cache RR for %s%s: %s", q.FQDN, q.QType.String(), err)
+			log.Warningf("resolver: failed to cache RR for %s%s: %s", q.FQDN, q.QType.String(), err)
 		}
 	}
 

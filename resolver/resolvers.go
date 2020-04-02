@@ -13,7 +13,7 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/network/environment"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/netutils"
 )
 
@@ -108,7 +108,7 @@ configuredServersLoop:
 
 			parts := strings.Split(server, "|")
 			if len(parts) < 2 {
-				log.Warningf("intel: nameserver format invalid: %s", server)
+				log.Warningf("resolver: nameserver format invalid: %s", server)
 				continue configuredServersLoop
 			}
 
@@ -117,14 +117,14 @@ configuredServersLoop:
 			if err == nil {
 				ipScope = netutils.ClassifyIP(ip)
 				if ipScope == netutils.HostLocal {
-					log.Warningf(`intel: cannot use configured localhost nameserver "%s"`, server)
+					log.Warningf(`resolver: cannot use configured localhost nameserver "%s"`, server)
 					continue configuredServersLoop
 				}
 			} else {
 				if strings.ToLower(parts[0]) == "doh" {
 					ipScope = netutils.Global
 				} else {
-					log.Warningf("intel: nameserver (%s) address invalid: %s", server, err)
+					log.Warningf("resolver: nameserver (%s) address invalid: %s", server, err)
 					continue configuredServersLoop
 				}
 			}
@@ -152,7 +152,7 @@ configuredServersLoop:
 				newConn.clientManager = newTCPClientManager(new)
 			case "dot":
 				if len(parts) < 3 {
-					log.Warningf("intel: nameserver missing verification domain as third parameter: %s", server)
+					log.Warningf("resolver: nameserver missing verification domain as third parameter: %s", server)
 					continue configuredServersLoop
 				}
 				new.VerifyDomain = parts[2]
@@ -164,7 +164,7 @@ configuredServersLoop:
 				}
 				newConn.clientManager = newHTTPSClientManager(new)
 			default:
-				log.Warningf("intel: nameserver (%s) type invalid: %s", server, parts[0])
+				log.Warningf("resolver: nameserver (%s) type invalid: %s", server, parts[0])
 				continue configuredServersLoop
 			}
 			newResolvers = append(newResolvers, new)
@@ -174,7 +174,7 @@ configuredServersLoop:
 	}
 
 	// add local resolvers
-	assignedNameservers := environment.Nameservers()
+	assignedNameservers := netenv.Nameservers()
 assignedServersLoop:
 	for _, nameserver := range assignedNameservers {
 		server := fmt.Sprintf("dns|%s", urlFormatAddress(nameserver.IP, 53))
@@ -187,7 +187,7 @@ assignedServersLoop:
 
 			ipScope := netutils.ClassifyIP(nameserver.IP)
 			if ipScope == netutils.HostLocal {
-				log.Infof(`intel: cannot use assigned localhost nameserver at %s`, nameserver.IP)
+				log.Infof(`resolver: cannot use assigned localhost nameserver at %s`, nameserver.IP)
 				continue assignedServersLoop
 			}
 
@@ -232,7 +232,7 @@ assignedServersLoop:
 	// save resolvers
 	globalResolvers = newResolvers
 	if len(globalResolvers) == 0 {
-		log.Criticalf("intel: no (valid) dns servers found in configuration and system")
+		log.Criticalf("resolver: no (valid) dns servers found in configuration and system")
 	}
 
 	// make list with local resolvers
@@ -276,41 +276,41 @@ assignedServersLoop:
 
 	// log global resolvers
 	if len(globalResolvers) > 0 {
-		log.Trace("intel: loaded global resolvers:")
+		log.Trace("resolver: loaded global resolvers:")
 		for _, resolver := range globalResolvers {
-			log.Tracef("intel: %s", resolver.Server)
+			log.Tracef("resolver: %s", resolver.Server)
 		}
 	} else {
-		log.Warning("intel: no global resolvers loaded")
+		log.Warning("resolver: no global resolvers loaded")
 	}
 
 	// log local resolvers
 	if len(localResolvers) > 0 {
-		log.Trace("intel: loaded local resolvers:")
+		log.Trace("resolver: loaded local resolvers:")
 		for _, resolver := range localResolvers {
-			log.Tracef("intel: %s", resolver.Server)
+			log.Tracef("resolver: %s", resolver.Server)
 		}
 	} else {
-		log.Info("intel: no local resolvers loaded")
+		log.Info("resolver: no local resolvers loaded")
 	}
 
 	// log scopes
 	if len(localScopes) > 0 {
-		log.Trace("intel: loaded scopes:")
+		log.Trace("resolver: loaded scopes:")
 		for _, scope := range localScopes {
 			var scopeServers []string
 			for _, resolver := range scope.Resolvers {
 				scopeServers = append(scopeServers, resolver.Server)
 			}
-			log.Tracef("intel: %s: %s", scope.Domain, strings.Join(scopeServers, ", "))
+			log.Tracef("resolver: %s: %s", scope.Domain, strings.Join(scopeServers, ", "))
 		}
 	} else {
-		log.Info("intel: no scopes loaded")
+		log.Info("resolver: no scopes loaded")
 	}
 
 	// alert if no resolvers are loaded
 	if len(globalResolvers) == 0 && len(localResolvers) == 0 {
-		log.Critical("intel: no resolvers loaded!")
+		log.Critical("resolver: no resolvers loaded!")
 	}
 }
 

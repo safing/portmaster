@@ -1,6 +1,11 @@
 package resolver
 
 import (
-	// portmaster tests helper
-	_ "github.com/safing/portmaster/core/pmtesting"
+	"testing"
+
+	"github.com/safing/portmaster/core/pmtesting"
 )
+
+func TestMain(m *testing.M) {
+	pmtesting.TestMain(m, module)
+}

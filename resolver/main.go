@@ -17,7 +17,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("resolver", prep, start, nil, "core", "network")
+	module = modules.Register("resolver", prep, start, nil, "core", "netenv")
 }
 
 func prep() error {
@@ -31,12 +31,12 @@ func start() error {
 	loadResolvers()
 
 	err := module.RegisterEventHook(
-		"network",
+		"netenv",
 		"network changed",
 		"update nameservers",
 		func(_ context.Context, _ interface{}) error {
 			loadResolvers()
-			log.Debug("intel: reloaded nameservers due to network change")
+			log.Debug("resolver: reloaded nameservers due to network change")
 			return nil
 		},
 	)

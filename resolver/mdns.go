@@ -132,7 +132,7 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 		case <-ctx.Done():
 			return nil
 		case message := <-messages:
-			// log.Tracef("intel: got net mdns message: %s", message)
+			// log.Tracef("resolver: got net mdns message: %s", message)
 
 			var err error
 			var question *dns.Question
@@ -146,19 +146,19 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 
 			// continue if not response
 			if !message.Response {
-				// log.Tracef("intel: mdns message has no response, ignoring")
+				// log.Tracef("resolver: mdns message has no response, ignoring")
 				continue
 			}
 
 			// continue if rcode is not success
 			if message.Rcode != dns.RcodeSuccess {
-				// log.Tracef("intel: mdns message has error, ignoring")
+				// log.Tracef("resolver: mdns message has error, ignoring")
 				continue
 			}
 
 			// continue if answer section is empty
 			if len(message.Answer) == 0 {
-				// log.Tracef("intel: mdns message has no answers, ignoring")
+				// log.Tracef("resolver: mdns message has no answers, ignoring")
 				continue
 			}
 
@@ -270,7 +270,7 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 				rrCache.Clean(60)
 				err := rrCache.Save()
 				if err != nil {
-					log.Warningf("intel: failed to cache RR %s: %s", rrCache.Domain, err)
+					log.Warningf("resolver: failed to cache RR %s: %s", rrCache.Domain, err)
 				}
 
 				// return finished response
@@ -296,9 +296,9 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 				rrCache.Clean(60)
 				err := rrCache.Save()
 				if err != nil {
-					log.Warningf("intel: failed to cache RR %s: %s", rrCache.Domain, err)
+					log.Warningf("resolver: failed to cache RR %s: %s", rrCache.Domain, err)
 				}
-				// log.Tracef("intel: mdns scavenged %s", k)
+				// log.Tracef("resolver: mdns scavenged %s", k)
 			}
 
 		}
@@ -316,12 +316,12 @@ func listenForDNSPackets(conn *net.UDPConn, messages chan *dns.Msg) error {
 			if module.IsStopping() {
 				return nil
 			}
-			log.Debugf("intel: failed to read packet: %s", err)
+			log.Debugf("resolver: failed to read packet: %s", err)
 			return err
 		}
 		message := new(dns.Msg)
 		if err = message.Unpack(buf[:n]); err != nil {
-			log.Debugf("intel: failed to unpack message: %s", err)
+			log.Debugf("resolver: failed to unpack message: %s", err)
 			continue
 		}
 		messages <- message
@@ -335,7 +335,7 @@ func queryMulticastDNS(ctx context.Context, q *Query) (*RRCache, error) {
 	}
 
 	// trace log
-	log.Tracer(ctx).Trace("intel: resolving with mDNS")
+	log.Tracer(ctx).Trace("resolver: resolving with mDNS")
 
 	// create query
 	dnsQuery := new(dns.Msg)
