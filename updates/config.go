@@ -56,7 +56,7 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 
 	if changed {
 		registry.SelectVersions()
-		module.TriggerEvent(eventVersionUpdate, nil)
+		module.TriggerEvent(VersionUpdateEvent, nil)
 	}
 
 	return nil

@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	networkChangedEvent      = "network changed"
-	onlineStatusChangedEvent = "online status changed"
+	NetworkChangedEvent      = "network changed"
+	OnlineStatusChangedEvent = "online status changed"
 )
 
 var (
@@ -15,8 +15,8 @@ var (
 
 func init() {
 	module = modules.Register("netenv", nil, start, nil)
-	module.RegisterEvent(networkChangedEvent)
-	module.RegisterEvent(onlineStatusChangedEvent)
+	module.RegisterEvent(NetworkChangedEvent)
+	module.RegisterEvent(OnlineStatusChangedEvent)
 }
 
 func start() error {

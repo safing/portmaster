@@ -50,8 +50,8 @@ func initVersionExport() (err error) {
 	}
 
 	return module.RegisterEventHook(
-		"updates",
-		eventVersionUpdate,
+		ModuleName,
+		VersionUpdateEvent,
 		"export version status",
 		export,
 	)

@@ -20,7 +20,7 @@ func GetPlatformFile(identifier string) (*updater.File, error) {
 		return nil, err
 	}
 
-	module.TriggerEvent(eventVersionUpdate, nil)
+	module.TriggerEvent(VersionUpdateEvent, nil)
 	return file, nil
 }
 
@@ -33,6 +33,6 @@ func GetFile(identifier string) (*updater.File, error) {
 		return nil, err
 	}
 
-	module.TriggerEvent(eventVersionUpdate, nil)
+	module.TriggerEvent(VersionUpdateEvent, nil)
 	return file, nil
 }
