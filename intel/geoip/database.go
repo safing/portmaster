@@ -59,20 +59,20 @@ func doReload() error {
 
 func openDBs() error {
 	var err error
-	file, err := updates.GetFile("intel/geoip/geoip-city.mmdb")
+	dbCityFile, err = updates.GetFile("intel/geoip/geoip-city.mmdb")
 	if err != nil {
 		return fmt.Errorf("could not get GeoIP City database file: %s", err)
 	}
-	dbCity, err = maxminddb.Open(file.Path())
+	dbCity, err = maxminddb.Open(dbCityFile.Path())
 	if err != nil {
 		return err
 	}
 
-	file, err = updates.GetFile("intel/geoip/geoip-asn.mmdb")
+	dbASNFile, err = updates.GetFile("intel/geoip/geoip-asn.mmdb")
 	if err != nil {
 		return fmt.Errorf("could not get GeoIP ASN database file: %s", err)
 	}
-	dbASN, err = maxminddb.Open(file.Path())
+	dbASN, err = maxminddb.Open(dbASNFile.Path())
 	if err != nil {
 		return err
 	}

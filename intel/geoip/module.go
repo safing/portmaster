@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/updates"
 )
 
 var (
@@ -16,9 +17,9 @@ func init() {
 
 func prep() error {
 	return module.RegisterEventHook(
-		"updates",
-		"resource update",
-		"upgrade databases",
+		updates.ModuleName,
+		updates.ResourceUpdateEvent,
+		"Check for GeoIP database updates",
 		upgradeDatabases,
 	)
 }
