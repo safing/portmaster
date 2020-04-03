@@ -29,23 +29,21 @@ serviceLoop:
 	for {
 		trigger := false
 
+		timeout := time.Minute
+		if GetOnlineStatus() != StatusOnline {
+			timeout = time.Second
+		}
 		// wait for trigger
-		if GetOnlineStatus() == StatusOnline {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-networkChangeCheckTrigger:
-			case <-time.After(1 * time.Minute):
-				trigger = true
-			}
-		} else {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-networkChangeCheckTrigger:
-			case <-time.After(1 * time.Second):
-				trigger = true
-			}
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-networkChangeCheckTrigger:
+			// don't fall through because the online change check
+			// triggers the networkChangeCheck this way. If we would set
+			// trigger == true we would trigger the online check again
+			// resulting in a loop of pointless checks.
+		case <-time.After(timeout):
+			trigger = true
 		}
 
 		// check network for changes
@@ -84,7 +82,7 @@ serviceLoop:
 			if trigger {
 				triggerOnlineStatusInvestigation()
 			}
-			module.TriggerEvent(networkChangedEvent, nil)
+			module.TriggerEvent(NetworkChangedEvent, nil)
 		}
 
 	}

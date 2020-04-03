@@ -156,7 +156,7 @@ func updateOnlineStatus(status OnlineStatus, portalURL, comment string) {
 
 	// trigger event
 	if changed {
-		module.TriggerEvent(onlineStatusChangedEvent, nil)
+		module.TriggerEvent(OnlineStatusChangedEvent, nil)
 		if status == StatusPortal {
 			log.Infof(`network: setting online status to %s at "%s" (%s)`, status, captivePortalURL, comment)
 		} else {
@@ -201,21 +201,17 @@ func triggerOnlineStatusInvestigation() {
 
 func monitorOnlineStatus(ctx context.Context) error {
 	for {
+		timeout := time.Minute
+		if GetOnlineStatus() != StatusOnline {
+			timeout = time.Second
+		}
 		// wait for trigger
-		if GetOnlineStatus() == StatusOnline {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-onlineStatusInvestigationTrigger:
-			case <-time.After(1 * time.Minute):
-			}
-		} else {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-onlineStatusInvestigationTrigger:
-			case <-time.After(1 * time.Second):
-			}
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-onlineStatusInvestigationTrigger:
+
+		case <-time.After(timeout):
 		}
 
 		// enable waiting
