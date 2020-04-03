@@ -19,8 +19,23 @@ const (
 	releaseChannelStable = "stable"
 	releaseChannelBeta   = "beta"
 
-	eventVersionUpdate  = "active version update"
-	eventResourceUpdate = "resource update"
+	// ModuleName is the name of the update module
+	// and can be used when declaring module dependencies.
+	ModuleName = "updates"
+
+	// VersionUpdateEvent is emitted every time a new
+	// version of a monitored resource is selected.
+	// During module initialization VersionUpdateEvent
+	// is also emitted.
+	VersionUpdateEvent = "active version update"
+
+	// ResourceUpdateEvent is emitted every time the
+	// updater successfully performed a resource update.
+	// ResourceUpdateEvent is emitted even if no new
+	// versions are available. Subscribers are expected
+	// to check if new versions of their resources are
+	// available by checking File.UpgradeAvailable().
+	ResourceUpdateEvent = "resource update"
 )
 
 var (
@@ -29,9 +44,9 @@ var (
 )
 
 func init() {
-	module = modules.Register("updates", registerConfig, start, stop, "base")
-	module.RegisterEvent(eventVersionUpdate)
-	module.RegisterEvent(eventResourceUpdate)
+	module = modules.Register(ModuleName, registerConfig, start, stop, "base")
+	module.RegisterEvent(VersionUpdateEvent)
+	module.RegisterEvent(ResourceUpdateEvent)
 }
 
 func start() error {
@@ -57,7 +72,7 @@ func start() error {
 
 	// create registry
 	registry = &updater.ResourceRegistry{
-		Name: "updates",
+		Name: ModuleName,
 		UpdateURLs: []string{
 			"https://updates.safing.io",
 		},
@@ -83,7 +98,7 @@ func start() error {
 	}
 
 	registry.SelectVersions()
-	module.TriggerEvent(eventVersionUpdate, nil)
+	module.TriggerEvent(VersionUpdateEvent, nil)
 
 	err = initVersionExport()
 	if err != nil {
@@ -96,7 +111,7 @@ func start() error {
 		if err != nil {
 			return fmt.Errorf("updates: failed to update: %s", err)
 		}
-		module.TriggerEvent(eventResourceUpdate, nil)
+		module.TriggerEvent(ResourceUpdateEvent, nil)
 		return nil
 	}).Repeat(24 * time.Hour).MaxDelay(1 * time.Hour).Schedule(time.Now().Add(10 * time.Second))
 

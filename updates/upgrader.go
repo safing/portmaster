@@ -37,8 +37,8 @@ var (
 
 func initUpgrader() error {
 	return module.RegisterEventHook(
-		"updates",
-		eventResourceUpdate,
+		ModuleName,
+		ResourceUpdateEvent,
 		"run upgrades",
 		upgrader,
 	)
