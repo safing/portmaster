@@ -81,14 +81,19 @@ func TestMainWithHooks(m *testing.M, module *modules.Module, afterStartFn, befor
 		fmt.Fprintf(os.Stderr, "failed to setup test: %s\n", err)
 		exitCode = 1
 	} else {
+		runTests := true
 		if afterStartFn != nil {
 			if err := afterStartFn(); err != nil {
 				fmt.Fprintf(os.Stderr, "failed to run test start hook: %s\n", err)
+				runTests = false
 				exitCode = 1
 			}
 		}
-		// run tests
-		exitCode = m.Run()
+
+		if runTests {
+			// run tests
+			exitCode = m.Run()
+		}
 	}
 
 	if beforeStopFn != nil {
