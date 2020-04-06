@@ -61,7 +61,7 @@ func init() {
 	// Let cobra ignore if we are running as "GUI" or not
 	cobra.MousetrapHelpText = ""
 
-	rootCmd.PersistentFlags().StringVar(&dataDir, "data", "", "Configures the data directory. It's also possible to configure the PORTMASTER_DATA environment variable.")
+	rootCmd.PersistentFlags().StringVar(&dataDir, "data", "", "Configures the data directory. Alternatively, this can also be set via the environment variable PORTMASTER_DATA.")
 	rootCmd.PersistentFlags().StringVar(&databaseDir, "db", "", "Alias to --data (deprecated)")
 	_ = rootCmd.MarkPersistentFlagDirname("data")
 	_ = rootCmd.MarkPersistentFlagDirname("db")
