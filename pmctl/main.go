@@ -61,12 +61,12 @@ func init() {
 	// Let cobra ignore if we are running as "GUI" or not
 	cobra.MousetrapHelpText = ""
 
-	rootCmd.PersistentFlags().StringVar(&dataDir, "data", "", "set data directory")
-	rootCmd.PersistentFlags().StringVar(&databaseDir, "db", "", "alias to --data (deprecated)")
+	rootCmd.PersistentFlags().StringVar(&dataDir, "data", "", "Configures the data directory. It's also possible to configure the PORTMASTER_DATA environment variable.")
+	rootCmd.PersistentFlags().StringVar(&databaseDir, "db", "", "Alias to --data (deprecated)")
 	_ = rootCmd.MarkPersistentFlagDirname("data")
 	_ = rootCmd.MarkPersistentFlagDirname("db")
-	rootCmd.Flags().BoolVar(&showFullVersion, "version", false, "print version")
-	rootCmd.Flags().BoolVar(&showShortVersion, "ver", false, "print version number only")
+	rootCmd.Flags().BoolVar(&showFullVersion, "version", false, "Print version of portmaster-control.")
+	rootCmd.Flags().BoolVar(&showShortVersion, "ver", false, "Print version number only")
 }
 
 func main() {
@@ -149,6 +149,13 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 		if dataDir == "" {
 			dataDir = databaseDir
 		}
+
+		// check for environment variable
+		// PORTMASTER_DATA
+		if dataDir == "" {
+			dataDir = os.Getenv("PORTMASTER_DATA")
+		}
+
 		// check data dir
 		if dataDir == "" {
 			return errors.New("please set the data directory using --data=/path/to/data/dir")

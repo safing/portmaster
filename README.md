@@ -24,28 +24,35 @@ The main way to configure the application firewall is by configuring application
 You can also see what is going on right now. The monitor page in the app lets you see the network like the Portmaster sees it: `Communications` represent a logical connection between a program and a domain. These second level objects group `Links` (physical connections: IP->IP) together for easier handling and viewing.
 
 The Portmaster consists of three parts:
-- The _core_ (ie. the _daemon_) that runs as an administrator and does all the work. (`sudo ./pmctl run core --db=/opt/pm_db`)
-- The _app_, a user interface to set preferences, monitor apps and configure application profiles (`sudo ./pmctl run app --db=/opt/pm_db`)
-- The _notifier_, a little menu/tray app for quick access and notifications (`sudo ./pmctl run notifier --db=/opt/pm_db`)
+- The _core_ (ie. the _daemon_) that runs as an administrator and does all the work. (`sudo ./pmctl run core --data=/opt/pm_db`)
+- The _app_, a user interface to set preferences, monitor apps and configure application profiles (`sudo ./pmctl run app --data=/opt/pm_db`)
+- The _notifier_, a little menu/tray app for quick access and notifications (`sudo ./pmctl run notifier --data=/opt/pm_db`)
 
 If you want to know more, here are [the docs](http://docs.safing.io/).
 
 #### Installation
 
-The `pmctl` command will help you get up and running. It will bootstrap your the environment and download additional files it needs. All commands need the `--db` parameter with the database location, as this is where all the data and also the binaries live.
+The `pmctl` command will help you get up and running. It will bootstrap your the environment and download additional files it needs. All commands need the `--data` parameter with the database location, as this is where all the data and also the binaries live.
 
 Just download `pmctl` from the [releases page](https://github.com/safing/portmaster/releases) and put it somewhere comfortable. You may freely choose where you want to put the database - it needs to be the same for all commands. Here we go - run every command in a seperate terminal window:
 
-    # start the portmaster:
-    sudo ./pmctl run core --db=/opt/pm_db
-    # this will add some rules to iptables for traffic interception via nfqueue (and will clean up afterwards!)
-    # already active connections may not be handled correctly, please restart programs for clean behavior
+```bash
+# Either export the PORTMASTER_DATA environment variable or add
+# --data=/opt/pm_db to all commands below. If you use pmctl a
+# lot you may move the export line to your ~/.bashrc
+export PORTMASTER_DATA=/opt/pm_db
 
-    # then start the app:
-    ./pmctl run app --db=/opt/pm_db
+# start the portmaster:
+sudo ./pmctl run core
+# this will add some rules to iptables for traffic interception via nfqueue (and will clean up afterwards!)
+# already active connections may not be handled correctly, please restart programs for clean behavior
 
-    # and the notifier:
-    ./pmctl run notifier --db=/opt/pm_db
+# then start the app:
+./pmctl run app
+
+# and the notifier:
+./pmctl run notifier
+```
 
 #### Feedback
 
@@ -76,7 +83,7 @@ Documentation _in progress_ can be found here: [docs.safing.io](http://docs.safi
 - libnetfilter_queue development files
   - debian/ubuntu:  `sudo apt-get install libnetfilter-queue-dev`
   - fedora:         `?`
-  - arch:           `?`
+  - arch:           `sudo pacman -S libnetfilter_queue`
 
 ## TCP/UDP Ports
 
