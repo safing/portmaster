@@ -10,7 +10,6 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/updater"
-	"github.com/tevino/abool"
 )
 
 const (
@@ -43,7 +42,7 @@ var (
 	module              *modules.Module
 	registry            *updater.ResourceRegistry
 	updateTask          *modules.Task
-	updateASAP          = abool.New()
+	updateASAP          bool
 	disableTaskSchedule bool
 )
 
@@ -121,7 +120,7 @@ func start() error {
 			Schedule(time.Now().Add(10 * time.Second))
 	}
 
-	if updateASAP.IsSet() {
+	if updateASAP {
 		updateTask.StartASAP()
 	}
 
@@ -131,14 +130,14 @@ func start() error {
 
 // TriggerUpdate queues the update task to execute ASAP.
 func TriggerUpdate() error {
-	if updateTask == nil {
+	if !module.Online() {
 		if !module.OnlineSoon() {
-			return fmt.Errorf("module not started")
+			return fmt.Errorf("module not enabled")
 		}
 
-		updateASAP.Set()
+		updateASAP = true
 	} else {
-		updateTask.Queue()
+		updateTask.StartASAP()
 	}
 
 	return nil
@@ -148,7 +147,7 @@ func TriggerUpdate() error {
 // If called, updates are only checked when TriggerUpdate()
 // is called.
 func DisableUpdateSchedule() error {
-	if module.Online() {
+	if module.OnlineSoon() {
 		return fmt.Errorf("module already online")
 	}
 
