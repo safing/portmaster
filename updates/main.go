@@ -39,8 +39,11 @@ const (
 )
 
 var (
-	module   *modules.Module
-	registry *updater.ResourceRegistry
+	module              *modules.Module
+	registry            *updater.ResourceRegistry
+	updateTask          *modules.Task
+	updateASAP          bool
+	disableTaskSchedule bool
 )
 
 func init() {
@@ -106,17 +109,60 @@ func start() error {
 	}
 
 	// start updater task
-	module.NewTask("updater", func(ctx context.Context, task *modules.Task) error {
-		err := registry.DownloadUpdates(ctx)
-		if err != nil {
-			return fmt.Errorf("updates: failed to update: %s", err)
-		}
-		module.TriggerEvent(ResourceUpdateEvent, nil)
-		return nil
-	}).Repeat(24 * time.Hour).MaxDelay(1 * time.Hour).Schedule(time.Now().Add(10 * time.Second))
+	updateTask = module.NewTask("updater", func(ctx context.Context, task *modules.Task) error {
+		return checkForUpdates(ctx)
+	})
+
+	if !disableTaskSchedule {
+		updateTask.
+			Repeat(24 * time.Hour).
+			MaxDelay(1 * time.Hour).
+			Schedule(time.Now().Add(10 * time.Second))
+	}
+
+	if updateASAP {
+		updateTask.StartASAP()
+	}
 
 	// react to upgrades
 	return initUpgrader()
+}
+
+// TriggerUpdate queues the update task to execute ASAP.
+func TriggerUpdate() error {
+	if !module.Online() {
+		if !module.OnlineSoon() {
+			return fmt.Errorf("module not enabled")
+		}
+
+		updateASAP = true
+	} else {
+		updateTask.StartASAP()
+	}
+
+	return nil
+}
+
+// DisableUpdateSchedule disables the update schedule.
+// If called, updates are only checked when TriggerUpdate()
+// is called.
+func DisableUpdateSchedule() error {
+	if module.OnlineSoon() {
+		return fmt.Errorf("module already online")
+	}
+
+	disableTaskSchedule = true
+
+	return nil
+}
+
+func checkForUpdates(ctx context.Context) error {
+	err := registry.DownloadUpdates(ctx)
+	if err != nil {
+		return fmt.Errorf("updates: failed to update: %s", err)
+	}
+	module.TriggerEvent(ResourceUpdateEvent, nil)
+	return nil
 }
 
 func stop() error {
