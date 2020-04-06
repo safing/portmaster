@@ -40,10 +40,11 @@ const (
 )
 
 var (
-	module     *modules.Module
-	registry   *updater.ResourceRegistry
-	updateTask *modules.Task
-	updateASAP = abool.New()
+	module              *modules.Module
+	registry            *updater.ResourceRegistry
+	updateTask          *modules.Task
+	updateASAP          = abool.New()
+	disableTaskSchedule bool
 )
 
 func init() {
@@ -111,7 +112,14 @@ func start() error {
 	// start updater task
 	updateTask = module.NewTask("updater", func(ctx context.Context, task *modules.Task) error {
 		return checkForUpdates(ctx)
-	}).Repeat(24 * time.Hour).MaxDelay(1 * time.Hour).Schedule(time.Now().Add(10 * time.Second))
+	})
+
+	if !disableTaskSchedule {
+		updateTask.
+			Repeat(24 * time.Hour).
+			MaxDelay(1 * time.Hour).
+			Schedule(time.Now().Add(10 * time.Second))
+	}
 
 	if updateASAP.IsSet() {
 		updateTask.StartASAP()
@@ -132,6 +140,19 @@ func TriggerUpdate() error {
 	} else {
 		updateTask.Queue()
 	}
+
+	return nil
+}
+
+// DisableUpdateSchedule disables the update schedule.
+// If called, updates are only checked when TriggerUpdate()
+// is called.
+func DisableUpdateSchedule() error {
+	if module.Online() {
+		return fmt.Errorf("module already online")
+	}
+
+	disableTaskSchedule = true
 
 	return nil
 }
