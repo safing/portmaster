@@ -10,6 +10,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/updater"
+	"github.com/tevino/abool"
 )
 
 const (
@@ -39,8 +40,10 @@ const (
 )
 
 var (
-	module   *modules.Module
-	registry *updater.ResourceRegistry
+	module     *modules.Module
+	registry   *updater.ResourceRegistry
+	updateTask *modules.Task
+	updateASAP = abool.New()
 )
 
 func init() {
@@ -106,17 +109,40 @@ func start() error {
 	}
 
 	// start updater task
-	module.NewTask("updater", func(ctx context.Context, task *modules.Task) error {
-		err := registry.DownloadUpdates(ctx)
-		if err != nil {
-			return fmt.Errorf("updates: failed to update: %s", err)
-		}
-		module.TriggerEvent(ResourceUpdateEvent, nil)
-		return nil
+	updateTask = module.NewTask("updater", func(ctx context.Context, task *modules.Task) error {
+		return checkForUpdates(ctx)
 	}).Repeat(24 * time.Hour).MaxDelay(1 * time.Hour).Schedule(time.Now().Add(10 * time.Second))
+
+	if updateASAP.IsSet() {
+		updateTask.StartASAP()
+	}
 
 	// react to upgrades
 	return initUpgrader()
+}
+
+// TriggerUpdate queues the update task to execute ASAP.
+func TriggerUpdate() error {
+	if updateTask == nil {
+		if !module.OnlineSoon() {
+			return fmt.Errorf("module not started")
+		}
+
+		updateASAP.Set()
+	} else {
+		updateTask.Queue()
+	}
+
+	return nil
+}
+
+func checkForUpdates(ctx context.Context) error {
+	err := registry.DownloadUpdates(ctx)
+	if err != nil {
+		return fmt.Errorf("updates: failed to update: %s", err)
+	}
+	module.TriggerEvent(ResourceUpdateEvent, nil)
+	return nil
 }
 
 func stop() error {
