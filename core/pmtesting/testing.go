@@ -41,8 +41,17 @@ func init() {
 	flag.BoolVar(&printStackOnExit, "print-stack-on-exit", false, "prints the stack before of shutting down")
 }
 
+type TestHookFunc func() error
+
 // TestMain provides a simple unit test setup routine.
 func TestMain(m *testing.M, module *modules.Module) {
+	TestMainWithHooks(m, module, nil, nil)
+}
+
+// TestMainWithHooks provides a simple unit test setup routine and calls
+// afterStartFn after modules have started and beforeStopFn before modules
+// are shutdown.
+func TestMainWithHooks(m *testing.M, module *modules.Module, afterStartFn, beforeStopFn TestHookFunc) {
 	// enable module for testing
 	module.Enable()
 
@@ -72,8 +81,25 @@ func TestMain(m *testing.M, module *modules.Module) {
 		fmt.Fprintf(os.Stderr, "failed to setup test: %s\n", err)
 		exitCode = 1
 	} else {
-		// run tests
-		exitCode = m.Run()
+		runTests := true
+		if afterStartFn != nil {
+			if err := afterStartFn(); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to run test start hook: %s\n", err)
+				runTests = false
+				exitCode = 1
+			}
+		}
+
+		if runTests {
+			// run tests
+			exitCode = m.Run()
+		}
+	}
+
+	if beforeStopFn != nil {
+		if err := beforeStopFn(); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to run test shutdown hook: %s\n", err)
+		}
 	}
 
 	// shutdown
