@@ -1,7 +1,6 @@
 package network
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,10 +14,10 @@ import (
 )
 
 var (
-	links     = make(map[string]*Link) // key: Link ID
-	linksLock sync.RWMutex
-	comms     = make(map[string]*Communication) //  key: PID/Domain
-	commsLock sync.RWMutex
+	dnsConns     = make(map[string]*Connection) // key: <PID>/Scope
+	dnsConnsLock sync.RWMutex
+	conns        = make(map[string]*Connection) // key: Connection ID
+	connsLock    sync.RWMutex
 
 	dbController *database.Controller
 )
@@ -44,18 +43,18 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 				}
 			}
 		case 3:
-			commsLock.RLock()
-			defer commsLock.RUnlock()
-			conn, ok := comms[fmt.Sprintf("%s/%s", splitted[1], splitted[2])]
+			dnsConnsLock.RLock()
+			defer dnsConnsLock.RUnlock()
+			conn, ok := dnsConns[splitted[1]+"/"+splitted[2]]
 			if ok {
 				return conn, nil
 			}
 		case 4:
-			linksLock.RLock()
-			defer linksLock.RUnlock()
-			link, ok := links[splitted[3]]
+			connsLock.RLock()
+			defer connsLock.RUnlock()
+			conn, ok := conns[splitted[3]]
 			if ok {
-				return link, nil
+				return conn, nil
 			}
 		}
 	}
@@ -85,25 +84,25 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 	}
 
 	if slashes <= 2 {
-		// comms
-		commsLock.RLock()
-		for _, conn := range comms {
+		// dns scopes only
+		dnsConnsLock.RLock()
+		for _, dnsConns := range dnsConns {
+			if strings.HasPrefix(dnsConns.DatabaseKey(), q.DatabaseKeyPrefix()) {
+				it.Next <- dnsConns
+			}
+		}
+		dnsConnsLock.RUnlock()
+	}
+
+	if slashes <= 3 {
+		// connections
+		connsLock.RLock()
+		for _, conn := range conns {
 			if strings.HasPrefix(conn.DatabaseKey(), q.DatabaseKeyPrefix()) {
 				it.Next <- conn
 			}
 		}
-		commsLock.RUnlock()
-	}
-
-	if slashes <= 3 {
-		// links
-		linksLock.RLock()
-		for _, link := range links {
-			if strings.HasPrefix(link.DatabaseKey(), q.DatabaseKeyPrefix()) {
-				it.Next <- link
-			}
-		}
-		linksLock.RUnlock()
+		connsLock.RUnlock()
 	}
 
 	it.Finish(nil)

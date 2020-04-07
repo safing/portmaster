@@ -174,14 +174,12 @@ func (lp *LayeredProfile) SecurityLevel() uint8 {
 func (lp *LayeredProfile) DefaultAction() uint8 {
 	for _, layer := range lp.layers {
 		if layer.defaultAction > 0 {
-			log.Tracef("profile: default action by layer = %d", layer.defaultAction)
 			return layer.defaultAction
 		}
 	}
 
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
-	log.Tracef("profile: default action from global = %d", cfgDefaultAction)
 	return cfgDefaultAction
 }
 

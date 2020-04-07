@@ -51,7 +51,7 @@ func (pkt *Packet) setVerdict(v uint32) (err error) {
 	}()
 	pkt.verdict <- v
 	close(pkt.verdict)
-	// log.Tracef("firewall: packet %s verdict %d", pkt, v)
+	// log.Tracef("filter: packet %s verdict %d", pkt, v)
 	return err
 }
 

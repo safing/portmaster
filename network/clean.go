@@ -9,113 +9,73 @@ import (
 )
 
 var (
-	cleanerTickDuration               = 10 * time.Second
-	deleteLinksAfterEndedThreshold    = 5 * time.Minute
-	deleteCommsWithoutLinksThreshhold = 3 * time.Minute
-
-	mtSaveLink = "save network link"
+	cleanerTickDuration            = 5 * time.Second
+	deleteConnsAfterEndedThreshold = 5 * time.Minute
 )
 
-func cleaner() {
+func connectionCleaner(ctx context.Context) error {
+	ticker := time.NewTicker(cleanerTickDuration)
+
 	for {
-		time.Sleep(cleanerTickDuration)
-
-		activeComms := cleanLinks()
-		activeProcs := cleanComms(activeComms)
-		process.CleanProcessStorage(activeProcs)
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return nil
+		case <-ticker.C:
+			activePIDs := cleanConnections()
+			process.CleanProcessStorage(activePIDs)
+		}
 	}
 }
 
-func cleanLinks() (activeComms map[string]struct{}) {
-	activeComms = make(map[string]struct{})
-	activeIDs := process.GetActiveConnectionIDs()
+func cleanConnections() (activePIDs map[int]struct{}) {
+	activePIDs = make(map[int]struct{})
 
-	now := time.Now().Unix()
-	deleteOlderThan := time.Now().Add(-deleteLinksAfterEndedThreshold).Unix()
-
-	linksLock.RLock()
-	defer linksLock.RUnlock()
-
-	var found bool
-	for key, link := range links {
-
-		// delete dead links
-		link.lock.Lock()
-		deleteThis := link.Ended > 0 && link.Ended < deleteOlderThan
-		link.lock.Unlock()
-		if deleteThis {
-			log.Tracef("network.clean: deleted %s (ended at %d)", link.DatabaseKey(), link.Ended)
-			go link.Delete()
-			continue
+	name := "clean connections" // TODO: change to new fn
+	module.RunMediumPriorityMicroTask(&name, func(ctx context.Context) error {
+		activeIDs := make(map[string]struct{})
+		for _, cID := range process.GetActiveConnectionIDs() {
+			activeIDs[cID] = struct{}{}
 		}
 
-		// not yet deleted, so its still a valid link regarding link count
-		comm := link.Communication()
-		comm.lock.Lock()
-		markActive(activeComms, comm.DatabaseKey())
-		comm.lock.Unlock()
+		now := time.Now().Unix()
+		deleteOlderThan := time.Now().Add(-deleteConnsAfterEndedThreshold).Unix()
 
-		// check if link is dead
-		found = false
-		for _, activeID := range activeIDs {
-			if key == activeID {
-				found = true
-				break
+		connsLock.Lock()
+		defer connsLock.Unlock()
+
+		for key, conn := range conns {
+			// get conn.Ended
+			conn.Lock()
+			ended := conn.Ended
+			conn.Unlock()
+
+			// delete inactive connections
+			switch {
+			case ended == 0:
+				// Step 1: check if still active
+				_, ok := activeIDs[key]
+				if ok {
+					activePIDs[conn.process.Pid] = struct{}{}
+				} else {
+					// Step 2: mark end
+					activePIDs[conn.process.Pid] = struct{}{}
+					conn.Lock()
+					conn.Ended = now
+					conn.Unlock()
+					// "save"
+					dbController.PushUpdate(conn)
+				}
+			case ended < deleteOlderThan:
+				// Step 3: delete
+				log.Tracef("network.clean: deleted %s (ended at %s)", conn.DatabaseKey(), time.Unix(conn.Ended, 0))
+				conn.delete()
 			}
+
 		}
 
-		if !found {
-			// mark end time
-			link.lock.Lock()
-			link.Ended = now
-			link.lock.Unlock()
-			log.Tracef("network.clean: marked %s as ended", link.DatabaseKey())
-			// save
-			linkToSave := link
-			module.StartMicroTask(&mtSaveLink, func(ctx context.Context) error {
-				linkToSave.saveAndLog()
-				return nil
-			})
-		}
+		return nil
+	})
 
-	}
-
-	return activeComms
-}
-
-func cleanComms(activeLinks map[string]struct{}) (activeComms map[string]struct{}) {
-	activeComms = make(map[string]struct{})
-
-	commsLock.RLock()
-	defer commsLock.RUnlock()
-
-	threshold := time.Now().Add(-deleteCommsWithoutLinksThreshhold).Unix()
-	for _, comm := range comms {
-		// has links?
-		_, hasLinks := activeLinks[comm.DatabaseKey()]
-
-		// comm created
-		comm.lock.Lock()
-		created := comm.Meta().Created
-		comm.lock.Unlock()
-
-		if !hasLinks && created < threshold {
-			log.Tracef("network.clean: deleted %s", comm.DatabaseKey())
-			go comm.Delete()
-		} else {
-			p := comm.Process()
-			p.Lock()
-			markActive(activeComms, p.DatabaseKey())
-			p.Unlock()
-		}
-
-	}
-	return
-}
-
-func markActive(activeMap map[string]struct{}, key string) {
-	_, ok := activeMap[key]
-	if !ok {
-		activeMap[key] = struct{}{}
-	}
+	return activePIDs
 }

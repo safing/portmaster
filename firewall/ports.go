@@ -50,7 +50,7 @@ func GetPermittedPort() uint16 {
 		// generate port between 10000 and 65535
 		rN, err := rng.Number(55535)
 		if err != nil {
-			log.Warningf("firewall: failed to generate random port: %s", err)
+			log.Warningf("filter: failed to generate random port: %s", err)
 			return 0
 		}
 		port := uint16(rN + 10000)
