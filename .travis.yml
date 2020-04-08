@@ -17,6 +17,7 @@ branches:
 install:
   - go get -d -u github.com/golang/dep
   - go install github.com/golang/dep/cmd/dep
+  - ./.ci-inject-internal-deps.sh
   - dep ensure
   - ./test install
 
