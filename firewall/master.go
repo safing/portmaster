@@ -22,17 +22,19 @@ import (
 
 // Call order:
 //
-// 1. DecideOnCommunicationBeforeIntel (if connecting to domain)
-//    is called when a DNS query is made, before the query is resolved
-// 2. DecideOnCommunicationAfterIntel (if connecting to domain)
-//    is called when a DNS query is made, after the query is resolved
-// 3. DecideOnCommunication
-//    is called when the first packet of the first link of the communication arrives
-// 4. DecideOnLink
-//		is called when when the first packet of a link arrives only if communication has verdict UNDECIDED or CANTSAY
+// DNS Query:
+// 1. DecideOnConnection
+//    is called when a DNS query is made, may set verdict to Undeterminable to permit a DNS reply.
+//    is called with a nil packet.
+// 2. FilterDNSResponse
+//    is called to (possibly) filter out A/AAAA records that the filter would deny later.
+//
+// Network Connection:
+// 3. DecideOnConnection
+//    is called with the first packet of a network connection.
 
 // DecideOnConnection makes a decision about a connection.
-func DecideOnConnection(conn *network.Connection, pkt packet.Packet) {
+func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:gocognit,gocyclo // TODO
 	// update profiles and check if communication needs reevaluation
 	if conn.UpdateAndCheck() {
 		log.Infof("filter: re-evaluating verdict on %s", conn)
@@ -48,6 +50,7 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) {
 
 	// check if process is communicating with itself
 	if pkt != nil {
+		// TODO: evaluate the case where different IPs in the 127/8 net are used.
 		if conn.Process().Pid >= 0 && pkt.Info().Src.Equal(pkt.Info().Dst) {
 			// get PID
 			otherPid, _, err := process.GetPidByEndpoints(
@@ -57,16 +60,16 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) {
 				pkt.Info().LocalPort(),
 				pkt.Info().Protocol,
 			)
-			if err == nil {
-
+			if err != nil {
+				log.Warningf("filter: failed to find local peer process PID: %s", err)
+			} else {
 				// get primary process
 				otherProcess, err := process.GetOrFindPrimaryProcess(pkt.Ctx(), otherPid)
-				if err == nil {
-
-					if otherProcess.Pid == conn.Process().Pid {
-						conn.Accept("connection to self")
-						return
-					}
+				if err != nil {
+					log.Warningf("filter: failed to find load local peer process with PID %d: %s", otherPid, err)
+				} else if otherProcess.Pid == conn.Process().Pid {
+					conn.Accept("connection to self")
+					return
 				}
 			}
 		}
@@ -86,7 +89,7 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) {
 			if conn.Scope == network.IncomingHost {
 				conn.Block("inbound connections blocked")
 			} else {
-				conn.Deny("inbound connections blocked")
+				conn.Drop("inbound connections blocked")
 			}
 			return
 		}
@@ -179,12 +182,11 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) {
 
 	// DefaultAction == DefaultActionBlock
 	conn.Deny("endpoint is not whitelisted (default=block)")
-	return
 }
 
 // FilterDNSResponse filters a dns response according to the application profile and settings.
 func FilterDNSResponse(conn *network.Connection, q *resolver.Query, rrCache *resolver.RRCache) *resolver.RRCache { //nolint:gocognit // TODO
-	// do not modify own queries - this should not happen anyway
+	// do not modify own queries
 	if conn.Process().Pid == os.Getpid() {
 		return rrCache
 	}
@@ -339,5 +341,5 @@ matchLoop:
 	if related {
 		reason = fmt.Sprintf("domain is related to process: %s is related to %s", domainElement, processElement)
 	}
-	return
+	return related, reason
 }

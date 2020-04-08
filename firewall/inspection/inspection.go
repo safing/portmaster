@@ -62,6 +62,8 @@ func RunInspectors(conn *network.Connection, pkt packet.Packet) (network.Verdict
 		if skip {
 			continue
 		}
+
+		// check if the current verdict is already past the inspection criteria.
 		if conn.Verdict > inspectVerdicts[key] {
 			activeInspectors[key] = true
 			continue

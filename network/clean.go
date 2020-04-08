@@ -32,7 +32,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 	activePIDs = make(map[int]struct{})
 
 	name := "clean connections" // TODO: change to new fn
-	module.RunMediumPriorityMicroTask(&name, func(ctx context.Context) error {
+	_ = module.RunMediumPriorityMicroTask(&name, func(ctx context.Context) error {
 		activeIDs := make(map[string]struct{})
 		for _, cID := range process.GetActiveConnectionIDs() {
 			activeIDs[cID] = struct{}{}

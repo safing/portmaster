@@ -52,7 +52,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	profileRevisionCounter uint64
 }
 
-// NewConnectionFromDNSRequest
+// NewConnectionFromDNSRequest returns a new connection based on the given dns request.
 func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, ip net.IP, port uint16) *Connection {
 	// get Process
 	proc, err := process.GetProcessByEndpoints(ctx, ip, port, dnsAddress, dnsPort, packet.UDP)
@@ -75,6 +75,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, ip net.IP, po
 	return dnsConn
 }
 
+// NewConnectionFromFirstPacket returns a new connection based on the given packet.
 func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	// get Process
 	proc, inbound, err := process.GetProcessByPacket(pkt)
@@ -229,14 +230,12 @@ func (conn *Connection) save() {
 		// save to internal state
 		// check if it already exists
 		mapKey := strconv.Itoa(conn.process.Pid) + "/" + conn.Scope
-		dnsConnsLock.RLock()
+		dnsConnsLock.Lock()
 		_, ok := dnsConns[mapKey]
-		dnsConnsLock.RUnlock()
 		if !ok {
-			dnsConnsLock.Lock()
 			dnsConns[mapKey] = conn
-			dnsConnsLock.Unlock()
 		}
+		dnsConnsLock.Unlock()
 
 	} else {
 
@@ -247,14 +246,12 @@ func (conn *Connection) save() {
 		}
 		// save to internal state
 		// check if it already exists
-		connsLock.RLock()
+		connsLock.Lock()
 		_, ok := conns[conn.ID]
-		connsLock.RUnlock()
 		if !ok {
-			connsLock.Lock()
 			conns[conn.ID] = conn
-			connsLock.Unlock()
 		}
+		connsLock.Unlock()
 
 	}
 

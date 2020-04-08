@@ -25,10 +25,6 @@ const (
 	denyServingIP   = "deny-serving-ip"
 )
 
-var (
-	mtSaveProfile = "save profile"
-)
-
 func prompt(conn *network.Connection, pkt packet.Packet) { //nolint:gocognit // TODO
 	nTTL := time.Duration(promptTimeout()) * time.Second
 
