@@ -41,18 +41,14 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 		now := time.Now().Unix()
 		deleteOlderThan := time.Now().Add(-deleteConnsAfterEndedThreshold).Unix()
 
+		// network connections
 		connsLock.Lock()
-		defer connsLock.Unlock()
-
 		for key, conn := range conns {
-			// get conn.Ended
 			conn.Lock()
-			ended := conn.Ended
-			conn.Unlock()
 
 			// delete inactive connections
 			switch {
-			case ended == 0:
+			case conn.Ended == 0:
 				// Step 1: check if still active
 				_, ok := activeIDs[key]
 				if ok {
@@ -60,19 +56,34 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 				} else {
 					// Step 2: mark end
 					activePIDs[conn.process.Pid] = struct{}{}
-					conn.Lock()
 					conn.Ended = now
-					conn.Unlock()
 					// "save"
 					dbController.PushUpdate(conn)
 				}
-			case ended < deleteOlderThan:
+			case conn.Ended < deleteOlderThan:
 				// Step 3: delete
 				log.Tracef("network.clean: deleted %s (ended at %s)", conn.DatabaseKey(), time.Unix(conn.Ended, 0))
 				conn.delete()
 			}
 
+			conn.Unlock()
 		}
+		connsLock.Unlock()
+
+		// dns requests
+		dnsConnsLock.Lock()
+		for _, conn := range dnsConns {
+			conn.Lock()
+
+			// delete old dns connections
+			if conn.Ended < deleteOlderThan {
+				log.Tracef("network.clean: deleted %s (ended at %s)", conn.DatabaseKey(), time.Unix(conn.Ended, 0))
+				conn.delete()
+			}
+
+			conn.Unlock()
+		}
+		dnsConnsLock.Unlock()
 
 		return nil
 	})
