@@ -26,7 +26,8 @@ func removeOpenDNSRequest(pid int, fqdn string) {
 	delete(openDNSRequests, key)
 }
 
-func saveOpenDNSRequest(conn *Connection) {
+// SaveOpenDNSRequest saves a dns request connection that was allowed to proceed.
+func SaveOpenDNSRequest(conn *Connection) {
 	openDNSRequestsLock.Lock()
 	defer openDNSRequestsLock.Unlock()
 
@@ -65,7 +66,7 @@ func writeOpenDNSRequestsToDB() {
 	for id, conn := range openDNSRequests {
 		conn.Lock()
 		if conn.Ended < threshold {
-			conn.save()
+			conn.Save()
 			delete(openDNSRequests, id)
 		}
 		conn.Unlock()

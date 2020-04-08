@@ -71,7 +71,6 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, ip net.IP, po
 		Started: timestamp,
 		Ended:   timestamp,
 	}
-	saveOpenDNSRequest(dnsConn)
 	return dnsConn
 }
 
@@ -218,8 +217,8 @@ func (conn *Connection) SaveWhenFinished() {
 	conn.saveWhenFinished = true
 }
 
-// save saves the link object in the storage and propagates the change.
-func (conn *Connection) save() {
+// Save saves the connection in the storage and propagates the change through the database system.
+func (conn *Connection) Save() {
 	if conn.ID == "" {
 
 		// dns request
@@ -336,7 +335,7 @@ func (conn *Connection) packetHandler() {
 		// must not be locked, will deadlock with cleaner functions
 		if conn.saveWhenFinished {
 			conn.saveWhenFinished = false
-			conn.save()
+			conn.Save()
 		}
 		// submit trace logs
 		log.Tracer(pkt.Ctx()).Submit()

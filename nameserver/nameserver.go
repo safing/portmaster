@@ -195,11 +195,11 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	case network.VerdictBlock:
 		tracer.Infof("nameserver: %s blocked, returning nxdomain", conn)
 		returnNXDomain(w, query)
-		// FIXME: save denied dns connection
+		conn.Save() // save blocked request
 		return nil
 	case network.VerdictDrop:
 		tracer.Infof("nameserver: %s dropped, not replying", conn)
-		// FIXME: save denied dns connection
+		conn.Save() // save dropped request
 		return nil
 	}
 
@@ -218,7 +218,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	if rrCache == nil {
 		tracer.Infof("nameserver: %s implicitly denied by filtering the dns response, returning nxdomain", conn)
 		returnNXDomain(w, query)
-		// FIXME: save denied dns connection
+		conn.Save() // save blocked request
 		return nil
 	}
 
@@ -264,6 +264,9 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	m.Extra = rrCache.Extra
 	_ = w.WriteMsg(m)
 	tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
+
+	// save dns request as open
+	network.SaveOpenDNSRequest(conn)
 
 	return nil
 }
