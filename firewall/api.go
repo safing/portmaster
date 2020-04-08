@@ -33,11 +33,11 @@ func startAPIAuth() {
 	var err error
 	_, apiPort, err = parseHostPort(apiListenAddress())
 	if err != nil {
-		log.Warningf("firewall: failed to parse API address for improved api auth mechanism: %s", err)
+		log.Warningf("filter: failed to parse API address for improved api auth mechanism: %s", err)
 		return
 	}
 	apiPortSet = true
-	log.Tracef("firewall: api port set to %d", apiPort)
+	log.Tracef("filter: api port set to %d", apiPort)
 }
 
 func apiAuthenticator(s *http.Server, r *http.Request) (grantAccess bool, err error) {
@@ -83,7 +83,7 @@ func apiAuthenticator(s *http.Server, r *http.Request) (grantAccess bool, err er
 		}
 	}
 
-	log.Debugf("firewall: denying api access to %s - also checked %s (trusted root is %s)", procsChecked[0], strings.Join(procsChecked[1:], " "), dataRoot.Path)
+	log.Debugf("filter: denying api access to %s - also checked %s (trusted root is %s)", procsChecked[0], strings.Join(procsChecked[1:], " "), dataRoot.Path)
 	return false, nil
 }
 

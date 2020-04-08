@@ -23,7 +23,7 @@ var (
 	dbController     *database.Controller
 	dbControllerFlag = abool.NewBool(false)
 
-	deleteProcessesThreshold = 15 * time.Minute
+	deleteProcessesThreshold = 7 * time.Minute
 )
 
 // GetProcessFromStorage returns a process from the internal storage.
@@ -68,7 +68,7 @@ func (p *Process) Save() {
 		processesLock.Unlock()
 	}
 
-	if dbControllerFlag.IsSet() && p.Error == "" {
+	if dbControllerFlag.IsSet() {
 		go dbController.PushUpdate(p)
 	}
 }
@@ -93,88 +93,47 @@ func (p *Process) Delete() {
 }
 
 // CleanProcessStorage cleans the storage from old processes.
-func CleanProcessStorage(activeComms map[string]struct{}) {
-	activePIDs, err := getActivePIDs()
+func CleanProcessStorage(activePIDs map[int]struct{}) {
+	// add system table of processes
+	procs, err := processInfo.Processes()
 	if err != nil {
 		log.Warningf("process: failed to get list of active PIDs: %s", err)
-		activePIDs = nil
+	} else {
+		for _, p := range procs {
+			activePIDs[int(p.Pid)] = struct{}{}
+		}
 	}
-	processesCopy := All()
 
+	processesCopy := All()
 	threshold := time.Now().Add(-deleteProcessesThreshold).Unix()
-	delete := false
 
 	// clean primary processes
 	for _, p := range processesCopy {
 		p.Lock()
-		// check if internal
-		if p.Pid <= 0 {
-			p.Unlock()
-			continue
-		}
 
-		// has comms?
-		_, hasComms := activeComms[p.DatabaseKey()]
-
-		// virtual / active
-		virtual := p.Virtual
-		active := false
-		if activePIDs != nil {
-			_, active = activePIDs[p.Pid]
-		}
-		p.Unlock()
-
-		if !virtual && !hasComms && !active && p.LastCommEstablished < threshold {
-			go p.Delete()
-		}
-	}
-
-	// clean virtual/failed processes
-	for _, p := range processesCopy {
-		p.Lock()
-		// check if internal
-		if p.Pid <= 0 {
-			p.Unlock()
-			continue
-		}
-
+		_, active := activePIDs[p.Pid]
 		switch {
-		case p.Error != "":
-			if p.Meta().Created < threshold {
-				delete = true
-			}
-		case p.Virtual:
-			_, parentIsActive := processesCopy[p.ParentPid]
-			active := true
-			if activePIDs != nil {
-				_, active = activePIDs[p.Pid]
-			}
-			if !parentIsActive || !active {
-				delete = true
+		case p.Pid <= 0:
+			// internal
+		case active:
+			// process in system process table or recently seen on the network
+		default:
+			// delete now or soon
+			switch {
+			case p.LastSeen == 0:
+				// add last
+				p.LastSeen = time.Now().Unix()
+			case p.LastSeen > threshold:
+				// within keep period
+			default:
+				// delete now
+				log.Tracef("process.clean: deleted %s", p.DatabaseKey())
+				go p.Delete()
 			}
 		}
+
 		p.Unlock()
-
-		if delete {
-			log.Tracef("process.clean: deleted %s", p.DatabaseKey())
-			go p.Delete()
-			delete = false
-		}
 	}
-}
-
-func getActivePIDs() (map[int]struct{}, error) {
-	procs, err := processInfo.Processes()
-	if err != nil {
-		return nil, err
-	}
-
-	activePIDs := make(map[int]struct{})
-	for _, p := range procs {
-		activePIDs[int(p.Pid)] = struct{}{}
-	}
-
-	return activePIDs, nil
 }
 
 // SetDBController sets the database controller and allows the package to push database updates on a save. It must be set by the package that registers the "network" database.

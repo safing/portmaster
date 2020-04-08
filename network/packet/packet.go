@@ -10,7 +10,7 @@ import (
 type Base struct {
 	ctx     context.Context
 	info    Info
-	linkID  string
+	connID  string
 	Payload []byte
 }
 
@@ -70,26 +70,26 @@ func (pkt *Base) GetPayload() ([]byte, error) {
 	return pkt.Payload, ErrFailedToLoadPayload
 }
 
-// GetLinkID returns the link ID for this packet.
-func (pkt *Base) GetLinkID() string {
-	if pkt.linkID == "" {
-		pkt.createLinkID()
+// GetConnectionID returns the link ID for this packet.
+func (pkt *Base) GetConnectionID() string {
+	if pkt.connID == "" {
+		pkt.createConnectionID()
 	}
-	return pkt.linkID
+	return pkt.connID
 }
 
-func (pkt *Base) createLinkID() {
+func (pkt *Base) createConnectionID() {
 	if pkt.info.Protocol == TCP || pkt.info.Protocol == UDP {
 		if pkt.info.Direction {
-			pkt.linkID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.info.Protocol, pkt.info.Dst, pkt.info.DstPort, pkt.info.Src, pkt.info.SrcPort)
+			pkt.connID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.info.Protocol, pkt.info.Dst, pkt.info.DstPort, pkt.info.Src, pkt.info.SrcPort)
 		} else {
-			pkt.linkID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.info.Protocol, pkt.info.Src, pkt.info.SrcPort, pkt.info.Dst, pkt.info.DstPort)
+			pkt.connID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.info.Protocol, pkt.info.Src, pkt.info.SrcPort, pkt.info.Dst, pkt.info.DstPort)
 		}
 	} else {
 		if pkt.info.Direction {
-			pkt.linkID = fmt.Sprintf("%d-%s-%s", pkt.info.Protocol, pkt.info.Dst, pkt.info.Src)
+			pkt.connID = fmt.Sprintf("%d-%s-%s", pkt.info.Protocol, pkt.info.Dst, pkt.info.Src)
 		} else {
-			pkt.linkID = fmt.Sprintf("%d-%s-%s", pkt.info.Protocol, pkt.info.Src, pkt.info.Dst)
+			pkt.connID = fmt.Sprintf("%d-%s-%s", pkt.info.Protocol, pkt.info.Src, pkt.info.Dst)
 		}
 	}
 }
@@ -215,7 +215,7 @@ type Packet interface {
 	SetOutbound()
 	HasPorts() bool
 	GetPayload() ([]byte, error)
-	GetLinkID() string
+	GetConnectionID() string
 
 	// MATCHING
 	MatchesAddress(bool, IPProtocol, *net.IPNet, uint16) bool

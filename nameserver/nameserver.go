@@ -174,38 +174,32 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	// TODO: if there are 3 request for the same domain/type in a row, delete all caches of that domain
 
 	// get connection
-	comm, err := network.GetCommunicationByDNSRequest(ctx, remoteAddr.IP, uint16(remoteAddr.Port), q.FQDN)
-	if err != nil {
-		tracer.Errorf("nameserver: could not identify process of %s:%d, returning nxdomain: %s", remoteAddr.IP, remoteAddr.Port, err)
-		returnNXDomain(w, query)
-		return nil
-	}
-	defer func() {
-		go comm.SaveIfNeeded()
-	}()
+	conn := network.NewConnectionFromDNSRequest(ctx, q.FQDN, remoteAddr.IP, uint16(remoteAddr.Port))
 
 	// save security level to query
-	q.SecurityLevel = comm.Process().Profile().SecurityLevel()
+	q.SecurityLevel = conn.Process().Profile().SecurityLevel()
 
 	// check for possible DNS tunneling / data transmission
 	// TODO: improve this
 	lms := dga.LmsScoreOfDomain(q.FQDN)
 	// log.Tracef("nameserver: domain %s has lms score of %f", fqdn, lms)
 	if lms < 10 {
-		tracer.Warningf("nameserver: possible data tunnel by %s: %s has lms score of %f, returning nxdomain", comm.Process(), q.FQDN, lms)
+		tracer.Warningf("nameserver: possible data tunnel by %s: %s has lms score of %f, returning nxdomain", conn.Process(), q.FQDN, lms)
 		returnNXDomain(w, query)
 		return nil
 	}
 
 	// check profile before we even get intel and rr
-	firewall.DecideOnCommunicationBeforeDNS(comm)
-	comm.Lock()
-	comm.SaveWhenFinished()
-	comm.Unlock()
-
-	if comm.GetVerdict() == network.VerdictBlock || comm.GetVerdict() == network.VerdictDrop {
-		tracer.Infof("nameserver: %s denied before intel, returning nxdomain", comm)
+	firewall.DecideOnConnection(conn, nil)
+	switch conn.Verdict {
+	case network.VerdictBlock:
+		tracer.Infof("nameserver: %s blocked, returning nxdomain", conn)
 		returnNXDomain(w, query)
+		conn.Save() // save blocked request
+		return nil
+	case network.VerdictDrop:
+		tracer.Infof("nameserver: %s dropped, not replying", conn)
+		conn.Save() // save dropped request
 		return nil
 	}
 
@@ -213,16 +207,18 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	rrCache, err := resolver.Resolve(ctx, q)
 	if err != nil {
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
-		tracer.Warningf("nameserver: %s requested %s%s: %s", comm.Process(), q.FQDN, q.QType, err)
+		tracer.Warningf("nameserver: %s requested %s%s: %s", conn.Process(), q.FQDN, q.QType, err)
 		returnNXDomain(w, query)
 		return nil
 	}
 
 	// filter DNS response
-	rrCache = firewall.FilterDNSResponse(comm, q, rrCache)
+	rrCache = firewall.FilterDNSResponse(conn, q, rrCache)
+	// TODO: FilterDNSResponse also sets a connection verdict
 	if rrCache == nil {
-		tracer.Infof("nameserver: %s implicitly denied by filtering the dns response, returning nxdomain", comm)
+		tracer.Infof("nameserver: %s implicitly denied by filtering the dns response, returning nxdomain", conn)
 		returnNXDomain(w, query)
+		conn.Save() // save blocked request
 		return nil
 	}
 
@@ -267,7 +263,10 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	m.Ns = rrCache.Ns
 	m.Extra = rrCache.Extra
 	_ = w.WriteMsg(m)
-	tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, comm.Process())
+	tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
+
+	// save dns request as open
+	network.SaveOpenDNSRequest(conn)
 
 	return nil
 }

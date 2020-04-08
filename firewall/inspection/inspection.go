@@ -12,12 +12,12 @@ const (
 	DO_NOTHING uint8 = iota
 	BLOCK_PACKET
 	DROP_PACKET
-	BLOCK_LINK
-	DROP_LINK
+	BLOCK_CONN
+	DROP_CONN
 	STOP_INSPECTING
 )
 
-type inspectorFn func(packet.Packet, *network.Link) uint8
+type inspectorFn func(*network.Connection, packet.Packet) uint8
 
 var (
 	inspectors      []inspectorFn
@@ -38,20 +38,20 @@ func RegisterInspector(name string, inspector inspectorFn, inspectVerdict networ
 }
 
 // RunInspectors runs all the applicable inspectors on the given packet.
-func RunInspectors(pkt packet.Packet, link *network.Link) (network.Verdict, bool) {
+func RunInspectors(conn *network.Connection, pkt packet.Packet) (network.Verdict, bool) {
 	// inspectorsLock.Lock()
 	// defer inspectorsLock.Unlock()
 
-	activeInspectors := link.GetActiveInspectors()
+	activeInspectors := conn.GetActiveInspectors()
 	if activeInspectors == nil {
 		activeInspectors = make([]bool, len(inspectors))
-		link.SetActiveInspectors(activeInspectors)
+		conn.SetActiveInspectors(activeInspectors)
 	}
 
-	inspectorData := link.GetInspectorData()
+	inspectorData := conn.GetInspectorData()
 	if inspectorData == nil {
 		inspectorData = make(map[uint8]interface{})
-		link.SetInspectorData(inspectorData)
+		conn.SetInspectorData(inspectorData)
 	}
 
 	continueInspection := false
@@ -62,12 +62,14 @@ func RunInspectors(pkt packet.Packet, link *network.Link) (network.Verdict, bool
 		if skip {
 			continue
 		}
-		if link.Verdict > inspectVerdicts[key] {
+
+		// check if the current verdict is already past the inspection criteria.
+		if conn.Verdict > inspectVerdicts[key] {
 			activeInspectors[key] = true
 			continue
 		}
 
-		action := inspectors[key](pkt, link) // Actually run inspector
+		action := inspectors[key](conn, pkt) // Actually run inspector
 		switch action {
 		case DO_NOTHING:
 			if verdict < network.VerdictAccept {
@@ -82,16 +84,14 @@ func RunInspectors(pkt packet.Packet, link *network.Link) (network.Verdict, bool
 		case DROP_PACKET:
 			verdict = network.VerdictDrop
 			continueInspection = true
-		case BLOCK_LINK:
-			link.UpdateVerdict(network.VerdictBlock)
+		case BLOCK_CONN:
+			conn.SetVerdict(network.VerdictBlock)
+			verdict = conn.Verdict
 			activeInspectors[key] = true
-			if verdict < network.VerdictBlock {
-				verdict = network.VerdictBlock
-			}
-		case DROP_LINK:
-			link.UpdateVerdict(network.VerdictDrop)
+		case DROP_CONN:
+			conn.SetVerdict(network.VerdictDrop)
+			verdict = conn.Verdict
 			activeInspectors[key] = true
-			verdict = network.VerdictDrop
 		case STOP_INSPECTING:
 			activeInspectors[key] = true
 		}

@@ -25,31 +25,17 @@ const (
 	denyServingIP   = "deny-serving-ip"
 )
 
-var (
-	mtSaveProfile = "save profile"
-)
-
-//nolint:gocognit // FIXME
-func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet) {
+func prompt(conn *network.Connection, pkt packet.Packet) { //nolint:gocognit // TODO
 	nTTL := time.Duration(promptTimeout()) * time.Second
 
 	// first check if there is an existing notification for this.
 	// build notification ID
 	var nID string
 	switch {
-	case comm.Direction, comm.Entity.Domain == "": // connection to/from IP
-		if pkt == nil {
-			log.Error("firewall: could not prompt for incoming/direct connection: missing pkt")
-			if link != nil {
-				link.Deny("internal error")
-			} else {
-				comm.Deny("internal error")
-			}
-			return
-		}
-		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s", comm.Process().Pid, comm.Scope, pkt.Info().RemoteIP())
+	case conn.Inbound, conn.Entity.Domain == "": // connection to/from IP
+		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s", conn.Process().Pid, conn.Scope, pkt.Info().RemoteIP())
 	default: // connection to domain
-		nID = fmt.Sprintf("firewall-prompt-%d-%s", comm.Process().Pid, comm.Scope)
+		nID = fmt.Sprintf("firewall-prompt-%d-%s", conn.Process().Pid, conn.Scope)
 	}
 	n := notifications.Get(nID)
 	saveResponse := true
@@ -69,8 +55,8 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet) 
 
 		// add message and actions
 		switch {
-		case comm.Direction: // incoming
-			n.Message = fmt.Sprintf("Application %s wants to accept connections from %s (%d/%d)", comm.Process(), link.Entity.IP.String(), link.Entity.Protocol, link.Entity.Port)
+		case conn.Inbound:
+			n.Message = fmt.Sprintf("Application %s wants to accept connections from %s (%d/%d)", conn.Process(), conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
 			n.AvailableActions = []*notifications.Action{
 				{
 					ID:   permitServingIP,
@@ -81,8 +67,8 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet) 
 					Text: "Deny",
 				},
 			}
-		case comm.Entity.Domain == "": // direct connection
-			n.Message = fmt.Sprintf("Application %s wants to connect to %s (%d/%d)", comm.Process(), link.Entity.IP.String(), link.Entity.Protocol, link.Entity.Port)
+		case conn.Entity.Domain == "": // direct connection
+			n.Message = fmt.Sprintf("Application %s wants to connect to %s (%d/%d)", conn.Process(), conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
 			n.AvailableActions = []*notifications.Action{
 				{
 					ID:   permitIP,
@@ -94,10 +80,10 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet) 
 				},
 			}
 		default: // connection to domain
-			if link != nil {
-				n.Message = fmt.Sprintf("Application %s wants to connect to %s (%s %d/%d)", comm.Process(), comm.Entity.Domain, link.Entity.IP.String(), link.Entity.Protocol, link.Entity.Port)
+			if pkt != nil {
+				n.Message = fmt.Sprintf("Application %s wants to connect to %s (%s %d/%d)", conn.Process(), conn.Entity.Domain, conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
 			} else {
-				n.Message = fmt.Sprintf("Application %s wants to connect to %s", comm.Process(), comm.Entity.Domain)
+				n.Message = fmt.Sprintf("Application %s wants to connect to %s", conn.Process(), conn.Entity.Domain)
 			}
 			n.AvailableActions = []*notifications.Action{
 				{
@@ -123,17 +109,9 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet) 
 	case promptResponse := <-n.Response():
 		switch promptResponse {
 		case permitDomainAll, permitDomainDistinct, permitIP, permitServingIP:
-			if link != nil {
-				link.Accept("permitted by user")
-			} else {
-				comm.Accept("permitted by user")
-			}
+			conn.Accept("permitted by user")
 		default: // deny
-			if link != nil {
-				link.Accept("denied by user")
-			} else {
-				comm.Accept("denied by user")
-			}
+			conn.Deny("denied by user")
 		}
 
 		// end here if we won't save the response to the profile
@@ -142,42 +120,43 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet) 
 		}
 
 		// get profile
-		p := comm.Process().Profile()
+		p := conn.Process().Profile()
 
 		var ep endpoints.Endpoint
 		switch promptResponse {
 		case permitDomainAll:
 			ep = &endpoints.EndpointDomain{
 				EndpointBase: endpoints.EndpointBase{Permitted: true},
-				Domain:       "." + comm.Entity.Domain,
+				Domain:       "." + conn.Entity.Domain,
 			}
 		case permitDomainDistinct:
 			ep = &endpoints.EndpointDomain{
 				EndpointBase: endpoints.EndpointBase{Permitted: true},
-				Domain:       comm.Entity.Domain,
+				Domain:       conn.Entity.Domain,
 			}
 		case denyDomainAll:
 			ep = &endpoints.EndpointDomain{
 				EndpointBase: endpoints.EndpointBase{Permitted: false},
-				Domain:       "." + comm.Entity.Domain,
+				Domain:       "." + conn.Entity.Domain,
 			}
 		case denyDomainDistinct:
 			ep = &endpoints.EndpointDomain{
 				EndpointBase: endpoints.EndpointBase{Permitted: false},
-				Domain:       comm.Entity.Domain,
+				Domain:       conn.Entity.Domain,
 			}
 		case permitIP, permitServingIP:
 			ep = &endpoints.EndpointIP{
 				EndpointBase: endpoints.EndpointBase{Permitted: true},
-				IP:           comm.Entity.IP,
+				IP:           conn.Entity.IP,
 			}
 		case denyIP, denyServingIP:
 			ep = &endpoints.EndpointIP{
 				EndpointBase: endpoints.EndpointBase{Permitted: false},
-				IP:           comm.Entity.IP,
+				IP:           conn.Entity.IP,
 			}
 		default:
 			log.Warningf("filter: unknown prompt response: %s", promptResponse)
+			return
 		}
 
 		switch promptResponse {
@@ -188,10 +167,6 @@ func prompt(comm *network.Communication, link *network.Link, pkt packet.Packet) 
 		}
 
 	case <-n.Expired():
-		if link != nil {
-			link.Deny("no response to prompt")
-		} else {
-			comm.Deny("no response to prompt")
-		}
+		conn.Deny("no response to prompt")
 	}
 }

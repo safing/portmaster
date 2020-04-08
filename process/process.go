@@ -46,11 +46,10 @@ type Process struct {
 	Icon            string
 	// Icon is a path to the icon and is either prefixed "f:" for filepath, "d:" for database cache path or "c:"/"a:" for a the icon key to fetch it from a company / authoritative node and cache it in its own cache.
 
-	FirstCommEstablished int64
-	LastCommEstablished  int64
+	FirstSeen int64
+	LastSeen  int64
 
-	Virtual bool   // This process is either merged into another process or is not needed.
-	Error   string // If this is set, the process is invalid. This is used to cache failing or inexistent processes.
+	Virtual bool // This process is either merged into another process or is not needed.
 }
 
 // Profile returns the assigned layered profile.
@@ -63,66 +62,14 @@ func (p *Process) Profile() *profile.LayeredProfile {
 
 // Strings returns a string representation of process.
 func (p *Process) String() string {
-	p.Lock()
-	defer p.Unlock()
-
 	if p == nil {
 		return "?"
 	}
-	return fmt.Sprintf("%s:%s:%d", p.UserName, p.Path, p.Pid)
-}
 
-// AddCommunication increases the connection counter and the last connection timestamp.
-func (p *Process) AddCommunication() {
 	p.Lock()
 	defer p.Unlock()
-
-	// check if we should save
-	save := false
-	if p.LastCommEstablished == 0 || p.LastCommEstablished < time.Now().Add(-3*time.Second).Unix() {
-		save = true
-	}
-
-	// update LastCommEstablished
-	p.LastCommEstablished = time.Now().Unix()
-	if p.FirstCommEstablished == 0 {
-		p.FirstCommEstablished = p.LastCommEstablished
-	}
-
-	if save {
-		go p.Save()
-	}
+	return fmt.Sprintf("%s:%s:%d", p.UserName, p.Path, p.Pid)
 }
-
-// var db = database.NewInterface(nil)
-
-// CountConnections returns the count of connections of a process
-// func (p *Process) CountConnections() int {
-// 	q, err := query.New(fmt.Sprintf("%s/%d/", processDatabaseNamespace, p.Pid)).
-// 		Where(query.Where("Pid", query.Exists, nil)).
-// 		Check()
-// 	if err != nil {
-// 		log.Warningf("process: failed to build query to get connection count of process: %s", err)
-// 		return -1
-// 	}
-//
-// 	it, err := db.Query(q)
-// 	if err != nil {
-// 		log.Warningf("process: failed to query db to get connection count of process: %s", err)
-// 		return -1
-// 	}
-//
-// 	cnt := 0
-// 	for _ = range it.Next {
-// 		cnt++
-// 	}
-// 	if it.Err() != nil {
-// 		log.Warningf("process: failed to query db to get connection count of process: %s", err)
-// 		return -1
-// 	}
-//
-// 	return cnt
-// }
 
 // GetOrFindPrimaryProcess returns the highest process in the tree that matches the given PID.
 func GetOrFindPrimaryProcess(ctx context.Context, pid int) (*Process, error) {
@@ -139,9 +86,6 @@ func GetOrFindPrimaryProcess(ctx context.Context, pid int) (*Process, error) {
 	if err != nil {
 		return nil, err
 	}
-	if process.Error != "" {
-		return nil, fmt.Errorf("%s [cached error]", process.Error)
-	}
 
 	for {
 		if process.ParentPid == 0 {
@@ -150,10 +94,6 @@ func GetOrFindPrimaryProcess(ctx context.Context, pid int) (*Process, error) {
 		parentProcess, err := loadProcess(ctx, process.ParentPid)
 		if err != nil {
 			log.Tracer(ctx).Tracef("process: could not get parent of %d: %d: %s", process.Pid, process.ParentPid, err)
-			return process, nil
-		}
-		if parentProcess.Error != "" {
-			log.Tracer(ctx).Tracef("process: could not get parent of %d: %d: %s [cached error]", process.Pid, process.ParentPid, parentProcess.Error)
 			return process, nil
 		}
 
@@ -191,9 +131,6 @@ func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 	p, err := loadProcess(ctx, pid)
 	if err != nil {
 		return nil, err
-	}
-	if p.Error != "" {
-		return nil, fmt.Errorf("%s [cached error]", p.Error)
 	}
 
 	// mark for use, save to storage
@@ -275,8 +212,9 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 
 	// create new process
 	new := &Process{
-		Pid:     pid,
-		Virtual: true, // caller must decide to actually use the process - we need to save now.
+		Pid:       pid,
+		Virtual:   true, // caller must decide to actually use the process - we need to save now.
+		FirstSeen: time.Now().Unix(),
 	}
 
 	switch {
@@ -302,7 +240,7 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 			var uids []int32
 			uids, err = pInfo.Uids()
 			if err != nil {
-				return failedToLoad(new, fmt.Errorf("failed to get UID for p%d: %s", pid, err))
+				return nil, fmt.Errorf("failed to get UID for p%d: %s", pid, err)
 			}
 			new.UserID = int(uids[0])
 		}
@@ -310,7 +248,7 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 		// Username
 		new.UserName, err = pInfo.Username()
 		if err != nil {
-			return failedToLoad(new, fmt.Errorf("process: failed to get Username for p%d: %s", pid, err))
+			return nil, fmt.Errorf("process: failed to get Username for p%d: %s", pid, err)
 		}
 
 		// TODO: User Home
@@ -319,14 +257,14 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 		// PPID
 		ppid, err := pInfo.Ppid()
 		if err != nil {
-			return failedToLoad(new, fmt.Errorf("failed to get PPID for p%d: %s", pid, err))
+			return nil, fmt.Errorf("failed to get PPID for p%d: %s", pid, err)
 		}
 		new.ParentPid = int(ppid)
 
 		// Path
 		new.Path, err = pInfo.Exe()
 		if err != nil {
-			return failedToLoad(new, fmt.Errorf("failed to get Path for p%d: %s", pid, err))
+			return nil, fmt.Errorf("failed to get Path for p%d: %s", pid, err)
 		}
 		// Executable Name
 		_, new.ExecName = filepath.Split(new.Path)
@@ -341,13 +279,13 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 		// Command line arguments
 		new.CmdLine, err = pInfo.Cmdline()
 		if err != nil {
-			return failedToLoad(new, fmt.Errorf("failed to get Cmdline for p%d: %s", pid, err))
+			return nil, fmt.Errorf("failed to get Cmdline for p%d: %s", pid, err)
 		}
 
 		// Name
 		new.Name, err = pInfo.Name()
 		if err != nil {
-			return failedToLoad(new, fmt.Errorf("failed to get Name for p%d: %s", pid, err))
+			return nil, fmt.Errorf("failed to get Name for p%d: %s", pid, err)
 		}
 		if new.Name == "" {
 			new.Name = new.ExecName
@@ -435,10 +373,4 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 
 	new.Save()
 	return new, nil
-}
-
-func failedToLoad(p *Process, err error) (*Process, error) {
-	p.Error = err.Error()
-	p.Save()
-	return nil, err
 }
