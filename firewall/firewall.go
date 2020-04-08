@@ -136,11 +136,14 @@ func handlePacket(pkt packet.Packet) {
 	// 	return
 	// }
 
+	// for UX and performance
+	meta := pkt.Info()
+
 	// allow local dns
-	if (pkt.Info().DstPort == 53 || pkt.Info().SrcPort == 53) &&
-		(pkt.Info().Src.Equal(pkt.Info().Dst) || // Windows redirects back to same interface
-			pkt.Info().Src.Equal(localhost4) || // Linux sometimes does 127.0.0.1->127.0.0.53
-			pkt.Info().Dst.Equal(localhost4)) {
+	if (meta.DstPort == 53 || meta.SrcPort == 53) &&
+		(meta.Src.Equal(meta.Dst) || // Windows redirects back to same interface
+			meta.Src.Equal(localhost4) || // Linux sometimes does 127.0.0.1->127.0.0.53
+			meta.Dst.Equal(localhost4)) {
 		log.Debugf("accepting local dns: %s", pkt)
 		_ = pkt.PermanentAccept()
 		return
@@ -148,7 +151,7 @@ func handlePacket(pkt packet.Packet) {
 
 	// allow api access, if address was parsed successfully
 	if apiPortSet {
-		if (pkt.Info().DstPort == apiPort || pkt.Info().SrcPort == apiPort) && pkt.Info().Src.Equal(pkt.Info().Dst) {
+		if (meta.DstPort == apiPort || meta.SrcPort == apiPort) && meta.Src.Equal(meta.Dst) {
 			log.Debugf("accepting api connection: %s", pkt)
 			_ = pkt.PermanentAccept()
 			return
@@ -163,7 +166,7 @@ func handlePacket(pkt packet.Packet) {
 
 	// allow ICMP, IGMP and DHCP
 	// TODO: actually handle these
-	switch pkt.Info().Protocol {
+	switch meta.Protocol {
 	case packet.ICMP:
 		log.Debugf("accepting ICMP: %s", pkt)
 		_ = pkt.PermanentAccept()
@@ -177,7 +180,7 @@ func handlePacket(pkt packet.Packet) {
 		_ = pkt.PermanentAccept()
 		return
 	case packet.UDP:
-		if pkt.Info().DstPort == 67 || pkt.Info().DstPort == 68 {
+		if meta.DstPort == 67 || meta.DstPort == 68 {
 			log.Debugf("accepting DHCP: %s", pkt)
 			_ = pkt.PermanentAccept()
 			return
@@ -194,11 +197,11 @@ func handlePacket(pkt packet.Packet) {
 	// check if packet is destined for tunnel
 	// switch pkt.IPVersion() {
 	// case packet.IPv4:
-	// 	if TunnelNet4 != nil && TunnelNet4.Contains(pkt.Info().Dst) {
+	// 	if TunnelNet4 != nil && TunnelNet4.Contains(meta.Dst) {
 	// 		tunnelHandler(pkt)
 	// 	}
 	// case packet.IPv6:
-	// 	if TunnelNet6 != nil && TunnelNet6.Contains(pkt.Info().Dst) {
+	// 	if TunnelNet6 != nil && TunnelNet6.Contains(meta.Dst) {
 	// 		tunnelHandler(pkt)
 	// 	}
 	// }

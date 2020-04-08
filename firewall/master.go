@@ -51,14 +51,15 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:
 	// check if process is communicating with itself
 	if pkt != nil {
 		// TODO: evaluate the case where different IPs in the 127/8 net are used.
-		if conn.Process().Pid >= 0 && pkt.Info().Src.Equal(pkt.Info().Dst) {
+		pktInfo := pkt.Info()
+		if conn.Process().Pid >= 0 && pktInfo.Src.Equal(pktInfo.Dst) {
 			// get PID
 			otherPid, _, err := process.GetPidByEndpoints(
-				pkt.Info().RemoteIP(),
-				pkt.Info().RemotePort(),
-				pkt.Info().LocalIP(),
-				pkt.Info().LocalPort(),
-				pkt.Info().Protocol,
+				pktInfo.RemoteIP(),
+				pktInfo.RemotePort(),
+				pktInfo.LocalIP(),
+				pktInfo.LocalPort(),
+				pktInfo.Protocol,
 			)
 			if err != nil {
 				log.Warningf("filter: failed to find local peer process PID: %s", err)
