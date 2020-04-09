@@ -204,6 +204,7 @@ func monitorOnlineStatus(ctx context.Context) error {
 		timeout := time.Minute
 		if GetOnlineStatus() != StatusOnline {
 			timeout = time.Second
+			log.Debugf("checking online status again in %s because current status is %s", timeout, GetOnlineStatus())
 		}
 		// wait for trigger
 		select {
@@ -271,13 +272,15 @@ func checkOnlineStatus(ctx context.Context) {
 	// TODO: find (array of) alternatives to detectportal.firefox.com
 	// TODO: find something about usage terms of detectportal.firefox.com
 
+	dialer := &net.Dialer{
+		Timeout:   5 * time.Second,
+		LocalAddr: getLocalAddr("tcp"),
+		DualStack: true,
+	}
+
 	client := &http.Client{
 		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout:   5 * time.Second,
-				LocalAddr: getLocalAddr("tcp"),
-				DualStack: true,
-			}).DialContext,
+			DialContext:        dialer.DialContext,
 			DisableKeepAlives:  true,
 			DisableCompression: true,
 			WriteBufferSize:    1024,
@@ -326,8 +329,11 @@ func checkOnlineStatus(ctx context.Context) {
 		// this might be a weird captive portal, just direct the user there
 		updateOnlineStatus(StatusPortal, "detectportal.firefox.com", "http request succeeded, response content not as expected")
 	}
+	// close the body now as we plan to re-uise the http.Client
+	response.Body.Close()
 
 	// 3) try a https request
+	dialer.LocalAddr = getLocalAddr("tcp")
 
 	request = (&http.Request{
 		Method: "HEAD",
@@ -339,7 +345,7 @@ func checkOnlineStatus(ctx context.Context) {
 	response, err = client.Do(request)
 	if err != nil {
 		// if we fail, something is really weird
-		updateOnlineStatus(StatusSemiOnline, "", "http request failed")
+		updateOnlineStatus(StatusSemiOnline, "", "http request failed to "+parsedHTTPSTestURL.String()+" with error "+err.Error())
 		return
 	}
 	defer response.Body.Close()
