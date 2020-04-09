@@ -87,20 +87,20 @@ func FmtSecurityLevel(level uint8) string {
 	switch level {
 	case SecurityLevelOff:
 		return "Off"
-	case SecurityLevelDynamic:
-		return "Dynamic"
-	case SecurityLevelSecure:
-		return "Secure"
-	case SecurityLevelFortress:
-		return "Fortress"
-	case SecurityLevelsDynamicAndSecure:
-		return "Dynamic and Secure"
-	case SecurityLevelsDynamicAndFortress:
-		return "Dynamic and Fortress"
-	case SecurityLevelsSecureAndFortress:
-		return "Secure and Fortress"
+	case SecurityLevelNormal:
+		return "Normal"
+	case SecurityLevelHigh:
+		return "High"
+	case SecurityLevelExtreme:
+		return "Extreme"
+	case SecurityLevelsNormalAndHigh:
+		return "Normal and High"
+	case SecurityLevelsNormalAndExtreme:
+		return "Normal and Extreme"
+	case SecurityLevelsHighAndExtreme:
+		return "High and Extreme"
 	case SecurityLevelsAll:
-		return "Dynamic, Secure and Fortress"
+		return "Normal, High and Extreme"
 	default:
 		return "INVALID"
 	}

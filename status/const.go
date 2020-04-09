@@ -4,14 +4,14 @@ package status
 const (
 	SecurityLevelOff uint8 = 0
 
-	SecurityLevelDynamic  uint8 = 1
-	SecurityLevelSecure   uint8 = 2
-	SecurityLevelFortress uint8 = 4
+	SecurityLevelNormal  uint8 = 1
+	SecurityLevelHigh    uint8 = 2
+	SecurityLevelExtreme uint8 = 4
 
-	SecurityLevelsDynamicAndSecure   uint8 = SecurityLevelDynamic | SecurityLevelSecure
-	SecurityLevelsDynamicAndFortress uint8 = SecurityLevelDynamic | SecurityLevelFortress
-	SecurityLevelsSecureAndFortress  uint8 = SecurityLevelSecure | SecurityLevelFortress
-	SecurityLevelsAll                uint8 = SecurityLevelDynamic | SecurityLevelSecure | SecurityLevelFortress
+	SecurityLevelsNormalAndHigh    uint8 = SecurityLevelNormal | SecurityLevelHigh
+	SecurityLevelsNormalAndExtreme uint8 = SecurityLevelNormal | SecurityLevelExtreme
+	SecurityLevelsHighAndExtreme   uint8 = SecurityLevelHigh | SecurityLevelExtreme
+	SecurityLevelsAll              uint8 = SecurityLevelNormal | SecurityLevelHigh | SecurityLevelExtreme
 
 	StatusOff     uint8 = 0
 	StatusError   uint8 = 1

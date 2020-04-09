@@ -83,7 +83,7 @@ func (e *Entity) reverseResolve() {
 			return
 		}
 		// TODO: security level
-		domain, err := reverseResolver(context.TODO(), e.IP.String(), status.SecurityLevelDynamic)
+		domain, err := reverseResolver(context.TODO(), e.IP.String(), status.SecurityLevelNormal)
 		if err != nil {
 			log.Warningf("intel: failed to resolve IP %s: %s", e.IP, err)
 			return
