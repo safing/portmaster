@@ -19,7 +19,7 @@ addons:
     update: true
 
 before_install:
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get -y install libnetfilter-queue-dev
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get -y install libnetfilter-queue-dev; fi
 
 install:
   - go get -d -u github.com/golang/dep
