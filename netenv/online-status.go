@@ -204,6 +204,7 @@ func monitorOnlineStatus(ctx context.Context) error {
 		timeout := time.Minute
 		if GetOnlineStatus() != StatusOnline {
 			timeout = time.Second
+			log.Debugf("checking online status again in %s because current status is %s", timeout, GetOnlineStatus())
 		}
 		// wait for trigger
 		select {
@@ -271,13 +272,15 @@ func checkOnlineStatus(ctx context.Context) {
 	// TODO: find (array of) alternatives to detectportal.firefox.com
 	// TODO: find something about usage terms of detectportal.firefox.com
 
+	dialer := &net.Dialer{
+		Timeout:   5 * time.Second,
+		LocalAddr: getLocalAddr("tcp"),
+		DualStack: true,
+	}
+
 	client := &http.Client{
 		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout:   5 * time.Second,
-				LocalAddr: getLocalAddr("tcp"),
-				DualStack: true,
-			}).DialContext,
+			DialContext:        dialer.DialContext,
 			DisableKeepAlives:  true,
 			DisableCompression: true,
 			WriteBufferSize:    1024,
@@ -330,6 +333,7 @@ func checkOnlineStatus(ctx context.Context) {
 	response.Body.Close()
 
 	// 3) try a https request
+	dialer.LocalAddr = getLocalAddr("tcp")
 
 	request = (&http.Request{
 		Method: "HEAD",
