@@ -329,7 +329,7 @@ func checkOnlineStatus(ctx context.Context) {
 		// this might be a weird captive portal, just direct the user there
 		updateOnlineStatus(StatusPortal, "detectportal.firefox.com", "http request succeeded, response content not as expected")
 	}
-	// close the body now as we plan to re-uise the http.Client
+	// close the body now as we plan to reuse the http.Client
 	response.Body.Close()
 
 	// 3) try a https request

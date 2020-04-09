@@ -4,6 +4,7 @@ import (
 	"github.com/safing/portbase/modules"
 )
 
+// Event Names
 const (
 	NetworkChangedEvent      = "network changed"
 	OnlineStatusChangedEvent = "online status changed"

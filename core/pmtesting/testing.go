@@ -41,6 +41,7 @@ func init() {
 	flag.BoolVar(&printStackOnExit, "print-stack-on-exit", false, "prints the stack before of shutting down")
 }
 
+// TestHookFunc describes the functions passed to TestMainWithHooks.
 type TestHookFunc func() error
 
 // TestMain provides a simple unit test setup routine.
