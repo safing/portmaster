@@ -211,7 +211,7 @@ Examples:
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockInbound = config.Concurrent.GetAsInt(CfgOptionBlockInboundKey, 6)
+	cfgOptionBlockInbound = config.Concurrent.GetAsInt(CfgOptionBlockInboundKey, 4)
 	cfgIntOptions[CfgOptionBlockInboundKey] = cfgOptionBlockInbound
 
 	// Enforce SPN
@@ -247,7 +247,7 @@ Examples:
 		return err
 	}
 	cfgOptionRemoveOutOfScopeDNS = config.Concurrent.GetAsInt(CfgOptionRemoveOutOfScopeDNSKey, 7)
-	cfgIntOptions[CfgOptionRemoveOutOfScopeDNSKey] = cfgOptionEnforceSPN
+	cfgIntOptions[CfgOptionRemoveOutOfScopeDNSKey] = cfgOptionRemoveOutOfScopeDNS
 
 	// Filter DNS Records that would be blocked
 	err = config.Register(&config.Option{
@@ -265,7 +265,7 @@ Examples:
 		return err
 	}
 	cfgOptionRemoveBlockedDNS = config.Concurrent.GetAsInt(CfgOptionRemoveBlockedDNSKey, 7)
-	cfgIntOptions[CfgOptionRemoveBlockedDNSKey] = cfgOptionEnforceSPN
+	cfgIntOptions[CfgOptionRemoveBlockedDNSKey] = cfgOptionRemoveBlockedDNS
 
 	return nil
 }
