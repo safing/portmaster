@@ -14,6 +14,13 @@ branches:
     - /^feature\/travis\/.+$/ # feature/travis/*
     - /^fix\/travis\/.+$/ # fix/travis/*
 
+addons:
+  apt:
+    update: true
+
+before_install:
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get -y install libnetfilter-queue-dev
+
 install:
   - go get -d -u github.com/golang/dep
   - go install github.com/golang/dep/cmd/dep
