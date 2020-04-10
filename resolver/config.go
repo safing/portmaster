@@ -120,8 +120,8 @@ func prepConfig() error {
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		ExternalOptType: "security level",
-		DefaultValue:    6,
-		ValidationRegex: "^(7|6|4)$",
+		DefaultValue:    status.SecurityLevelsHighAndExtreme,
+		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
 		return err
@@ -136,8 +136,8 @@ func prepConfig() error {
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		ExternalOptType: "security level",
-		DefaultValue:    4,
-		ValidationRegex: "^(7|6|4)$",
+		DefaultValue:    status.SecurityLevelsHighAndExtreme,
+		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
 		return err
@@ -152,8 +152,8 @@ func prepConfig() error {
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		ExternalOptType: "security level",
-		DefaultValue:    6,
-		ValidationRegex: "^(7|6|4)$",
+		DefaultValue:    status.SecurityLevelsHighAndExtreme,
+		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
 		return err
@@ -168,8 +168,8 @@ func prepConfig() error {
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		ExternalOptType: "security level",
-		DefaultValue:    7,
-		ValidationRegex: "^(7|6|4)$",
+		DefaultValue:    status.SecurityLevelsAll,
+		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
 		return err
@@ -184,8 +184,8 @@ func prepConfig() error {
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		ExternalOptType: "security level",
-		DefaultValue:    6,
-		ValidationRegex: "^(7|6|4)$",
+		DefaultValue:    status.SecurityLevelsHighAndExtreme,
+		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
 		return err
