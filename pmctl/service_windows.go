@@ -1,6 +1,6 @@
 package main
 
-// Based on the offical Go examples from
+// Based on the official Go examples from
 // https://github.com/golang/sys/blob/master/windows/svc/example
 // by The Go Authors.
 // Original LICENSE (sha256sum: 2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067) can be found in vendor/pkg cache directory.
@@ -84,7 +84,8 @@ service:
 	changes <- svc.Status{State: svc.Stopped}
 	// wait a little for the status to reach Windows
 	time.Sleep(100 * time.Millisecond)
-	return
+
+	return ssec, errno
 }
 
 func runService(cmd *cobra.Command, opts *Options) error {
@@ -121,7 +122,7 @@ func runService(cmd *cobra.Command, opts *Options) error {
 	go func() {
 		// run slightly delayed
 		time.Sleep(250 * time.Millisecond)
-		handleRun(cmd, opts)
+		_ = handleRun(cmd, opts) // error handled by shutdown routine
 		finishWg.Done()
 		runWg.Done()
 	}()
@@ -131,7 +132,7 @@ func runService(cmd *cobra.Command, opts *Options) error {
 	err = getShutdownError()
 	if err != nil {
 		log.Printf("%s service experienced an error: %s\n", serviceName, err)
-		elog.Error(1, fmt.Sprintf("%s experienced an error: %s", serviceName, err))
+		_ = elog.Error(1, fmt.Sprintf("%s experienced an error: %s", serviceName, err))
 	}
 
 	return err

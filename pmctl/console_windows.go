@@ -83,7 +83,7 @@ func attachToParentConsole() (attached bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	r1, _, err := procAttachConsole.Call(windowsAttachParentProcess)
+	r1, _, _ := procAttachConsole.Call(windowsAttachParentProcess)
 	if r1 == 0 {
 		// possible errors:
 		// ERROR_ACCESS_DENIED: already attached to console
