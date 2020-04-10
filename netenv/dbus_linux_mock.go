@@ -7,6 +7,6 @@ func getNameserversFromDbus() ([]Nameserver, error) {
 	return nameservers, nil
 }
 
-func getConnectivityStateFromDbus() (uint8, error) {
+func getConnectivityStateFromDbus() (OnlineStatus, error) {
 	return StatusUnknown, nil
 }
