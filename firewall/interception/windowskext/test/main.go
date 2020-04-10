@@ -32,7 +32,7 @@ func main() {
 	}
 
 	// logging
-	log.Start()
+	_ = log.Start()
 	log.Info("starting Portmaster Windows Kext Test Program")
 
 	// init
@@ -52,7 +52,7 @@ func main() {
 	go handlePackets()
 
 	// catch interrupt for clean shutdown
-	signalCh := make(chan os.Signal)
+	signalCh := make(chan os.Signal, 1)
 	signal.Notify(
 		signalCh,
 		os.Interrupt,
@@ -98,13 +98,19 @@ func handlePackets() {
 		// reroute dns requests to nameserver
 		if pkt.IsOutbound() && !pkt.Info().Src.Equal(pkt.Info().Dst) && pkt.Info().DstPort == 53 {
 			log.Infof("rerouting %s", pkt)
-			pkt.RerouteToNameserver()
+			err = pkt.RerouteToNameserver()
+			if err != nil {
+				log.Errorf("failed to reroute: %s", err)
+			}
 			continue
 		}
 
 		// accept all
 		log.Infof("accepting %s", pkt)
-		pkt.PermanentAccept()
+		err = pkt.PermanentAccept()
+		if err != nil {
+			log.Errorf("failed to accept: %s", err)
+		}
 
 	}
 }

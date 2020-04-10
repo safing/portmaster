@@ -11,12 +11,8 @@ import (
 	"github.com/safing/portmaster/updates"
 )
 
-var Packets chan packet.Packet
-
-func init() {
-	// Packets channel for feeding the firewall.
-	Packets = make(chan packet.Packet, 1000)
-}
+// Packets channel for feeding the firewall.
+var Packets = make(chan packet.Packet, 1000)
 
 // Start starts the interception.
 func Start() error {
