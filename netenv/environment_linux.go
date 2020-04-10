@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -14,7 +15,22 @@ import (
 	"github.com/safing/portmaster/network/netutils"
 )
 
-// Gateways returns the currently active gateways
+const (
+	gatewaysRecheck    = 2 * time.Second
+	nameserversRecheck = 2 * time.Second
+)
+
+var (
+	gateways        = make([]*net.IP, 0)
+	gatewaysLock    sync.Mutex
+	gatewaysExpires = time.Now()
+
+	nameservers        = make([]Nameserver, 0)
+	nameserversLock    sync.Mutex
+	nameserversExpires = time.Now()
+)
+
+// Gateways returns the currently active gateways.
 func Gateways() []*net.IP {
 	// locking
 	gatewaysLock.Lock()
@@ -101,7 +117,7 @@ func Gateways() []*net.IP {
 	return newGateways
 }
 
-// Nameservers returns the currently active nameservers
+// Nameservers returns the currently active nameservers.
 func Nameservers() []Nameserver {
 	// locking
 	nameserversLock.Lock()
