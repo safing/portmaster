@@ -2,6 +2,7 @@ package profile
 
 import (
 	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/status"
 )
 
 // Configuration Keys
@@ -74,13 +75,13 @@ func registerConfiguration() error {
 		Description:     "Auto Permit searches for a relation between an app and the destionation of a connection - if there is a correlation, the connection will be permitted. This setting is negated in order to provide a streamlined user experience, where higher settings are better.",
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    4,
+		DefaultValue:    status.SecurityLevelsAll,
 		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionDisableAutoPermit = config.Concurrent.GetAsInt(CfgOptionDisableAutoPermitKey, 4)
+	cfgOptionDisableAutoPermit = config.Concurrent.GetAsInt(CfgOptionDisableAutoPermitKey, int64(status.SecurityLevelsAll))
 	cfgIntOptions[CfgOptionDisableAutoPermitKey] = cfgOptionDisableAutoPermit
 
 	// Endpoint Filter List
@@ -141,13 +142,13 @@ Examples:
 		Description:     "Block connections to your own device, ie. localhost.",
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    0,
+		DefaultValue:    status.SecurityLevelOff,
 		ValidationRegex: "^(0|4|6|7)$",
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockScopeLocal = config.Concurrent.GetAsInt(CfgOptionBlockScopeLocalKey, 0)
+	cfgOptionBlockScopeLocal = config.Concurrent.GetAsInt(CfgOptionBlockScopeLocalKey, int64(status.SecurityLevelOff))
 	cfgIntOptions[CfgOptionBlockScopeLocalKey] = cfgOptionBlockScopeLocal
 
 	// Block Scope LAN
@@ -157,13 +158,13 @@ Examples:
 		Description:     "Block connections to the Local Area Network.",
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    0,
+		DefaultValue:    status.SecurityLevelOff,
 		ValidationRegex: "^(0|4|6|7)$",
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockScopeLAN = config.Concurrent.GetAsInt(CfgOptionBlockScopeLANKey, 0)
+	cfgOptionBlockScopeLAN = config.Concurrent.GetAsInt(CfgOptionBlockScopeLANKey, int64(status.SecurityLevelOff))
 	cfgIntOptions[CfgOptionBlockScopeLANKey] = cfgOptionBlockScopeLAN
 
 	// Block Scope Internet
@@ -173,13 +174,13 @@ Examples:
 		Description:     "Block connections to the Internet.",
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    0,
+		DefaultValue:    status.SecurityLevelOff,
 		ValidationRegex: "^(0|4|6|7)$",
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockScopeInternet = config.Concurrent.GetAsInt(CfgOptionBlockScopeInternetKey, 0)
+	cfgOptionBlockScopeInternet = config.Concurrent.GetAsInt(CfgOptionBlockScopeInternetKey, int64(status.SecurityLevelOff))
 	cfgIntOptions[CfgOptionBlockScopeInternetKey] = cfgOptionBlockScopeInternet
 
 	// Block Peer to Peer Connections
@@ -189,13 +190,13 @@ Examples:
 		Description:     "Block peer to peer connections. These are connections that are established directly to an IP address on the Internet without resolving a domain name via DNS first.",
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    7,
+		DefaultValue:    status.SecurityLevelsAll,
 		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockP2P = config.Concurrent.GetAsInt(CfgOptionBlockP2PKey, 7)
+	cfgOptionBlockP2P = config.Concurrent.GetAsInt(CfgOptionBlockP2PKey, int64(status.SecurityLevelsAll))
 	cfgIntOptions[CfgOptionBlockP2PKey] = cfgOptionBlockP2P
 
 	// Block Inbound Connections
@@ -205,13 +206,13 @@ Examples:
 		Description:     "Block inbound connections to your device. This will usually only be the case if you are running a network service or are using peer to peer software.",
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    4,
+		DefaultValue:    status.SecurityLevelsHighAndExtreme,
 		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockInbound = config.Concurrent.GetAsInt(CfgOptionBlockInboundKey, 6)
+	cfgOptionBlockInbound = config.Concurrent.GetAsInt(CfgOptionBlockInboundKey, int64(status.SecurityLevelsHighAndExtreme))
 	cfgIntOptions[CfgOptionBlockInboundKey] = cfgOptionBlockInbound
 
 	// Enforce SPN
@@ -222,13 +223,13 @@ Examples:
 		OptType:         config.OptTypeInt,
 		ReleaseLevel:    config.ReleaseLevelExperimental,
 		ExternalOptType: "security level",
-		DefaultValue:    0,
+		DefaultValue:    status.SecurityLevelOff,
 		ValidationRegex: "^(0|4|6|7)$",
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionEnforceSPN = config.Concurrent.GetAsInt(CfgOptionEnforceSPNKey, 0)
+	cfgOptionEnforceSPN = config.Concurrent.GetAsInt(CfgOptionEnforceSPNKey, int64(status.SecurityLevelOff))
 	cfgIntOptions[CfgOptionEnforceSPNKey] = cfgOptionEnforceSPN
 
 	// Filter Out-of-Scope DNS Records
@@ -240,14 +241,14 @@ Examples:
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelBeta,
 		ExternalOptType: "security level",
-		DefaultValue:    7,
+		DefaultValue:    status.SecurityLevelsAll,
 		ValidationRegex: "^(7|6|4)$",
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionRemoveOutOfScopeDNS = config.Concurrent.GetAsInt(CfgOptionRemoveOutOfScopeDNSKey, 7)
-	cfgIntOptions[CfgOptionRemoveOutOfScopeDNSKey] = cfgOptionEnforceSPN
+	cfgOptionRemoveOutOfScopeDNS = config.Concurrent.GetAsInt(CfgOptionRemoveOutOfScopeDNSKey, int64(status.SecurityLevelsAll))
+	cfgIntOptions[CfgOptionRemoveOutOfScopeDNSKey] = cfgOptionRemoveOutOfScopeDNS
 
 	// Filter DNS Records that would be blocked
 	err = config.Register(&config.Option{
@@ -258,14 +259,14 @@ Examples:
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelBeta,
 		ExternalOptType: "security level",
-		DefaultValue:    7,
+		DefaultValue:    status.SecurityLevelsAll,
 		ValidationRegex: "^(7|6|4)$",
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionRemoveBlockedDNS = config.Concurrent.GetAsInt(CfgOptionRemoveBlockedDNSKey, 7)
-	cfgIntOptions[CfgOptionRemoveBlockedDNSKey] = cfgOptionEnforceSPN
+	cfgOptionRemoveBlockedDNS = config.Concurrent.GetAsInt(CfgOptionRemoveBlockedDNSKey, int64(status.SecurityLevelsAll))
+	cfgIntOptions[CfgOptionRemoveBlockedDNSKey] = cfgOptionRemoveBlockedDNS
 
 	return nil
 }

@@ -71,16 +71,16 @@ func updateGlobalConfigProfile(ctx context.Context, data interface{}) error {
 
 	// fill profile config options
 	for key, value := range cfgStringOptions {
-		profile.Config[key] = value
+		profile.Config[key] = value()
 	}
 	for key, value := range cfgStringArrayOptions {
-		profile.Config[key] = value
+		profile.Config[key] = value()
 	}
 	for key, value := range cfgIntOptions {
-		profile.Config[key] = value
+		profile.Config[key] = value()
 	}
 	for key, value := range cfgBoolOptions {
-		profile.Config[key] = value
+		profile.Config[key] = value()
 	}
 
 	// save profile

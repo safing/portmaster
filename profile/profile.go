@@ -110,7 +110,7 @@ func (profile *Profile) parseConfig() error {
 	var err error
 	var lastErr error
 
-	action, ok := profile.configPerspective.GetAsString(CfgOptionBlockInboundKey)
+	action, ok := profile.configPerspective.GetAsString(CfgOptionDefaultActionKey)
 	if ok {
 		switch action {
 		case "permit":
