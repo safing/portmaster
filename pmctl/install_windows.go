@@ -1,6 +1,6 @@
 package main
 
-// Based on the offical Go examples from
+// Based on the official Go examples from
 // https://github.com/golang/sys/blob/master/windows/svc/example
 // by The Go Authors.
 // Original LICENSE (sha256sum: 2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067) can be found in vendor/pkg cache directory.
@@ -17,6 +17,10 @@ import (
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
+)
+
+const (
+	exeSuffix = ".exe"
 )
 
 func init() {
@@ -70,8 +74,8 @@ func getExePath() (string, error) {
 	}
 	// check if we have a .exe extension, add and check if not
 	if filepath.Ext(p) == "" {
-		p += ".exe"
-		fi, err := os.Stat(p)
+		p += exeSuffix
+		fi, err = os.Stat(p)
 		if err == nil {
 			if !fi.Mode().IsDir() {
 				return p, nil
@@ -113,15 +117,7 @@ func getServiceConfig(exePath string) mgr.Config {
 
 func getRecoveryActions() (recoveryActions []mgr.RecoveryAction, resetPeriod uint32) {
 	return []mgr.RecoveryAction{
-		//mgr.RecoveryAction{
-		//	Type:  mgr.ServiceRestart, // one of NoAction, ComputerReboot, ServiceRestart or RunCommand
-		//	Delay: 1 * time.Minute,    // the time to wait before performing the specified action
-		//},
-		// mgr.RecoveryAction{
-		// 	Type:  mgr.ServiceRestart, // one of NoAction, ComputerReboot, ServiceRestart or RunCommand
-		// 	Delay: 1 * time.Minute,    // the time to wait before performing the specified action
-		// },
-		mgr.RecoveryAction{
+		{
 			Type:  mgr.ServiceRestart, // one of NoAction, ComputerReboot, ServiceRestart or RunCommand
 			Delay: 1 * time.Minute,    // the time to wait before performing the specified action
 		},
@@ -140,7 +136,7 @@ func installWindowsService(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to service manager: %s", err)
 	}
-	defer m.Disconnect()
+	defer m.Disconnect() //nolint:errcheck // TODO
 
 	// open service
 	created := false
@@ -156,7 +152,7 @@ func installWindowsService(cmd *cobra.Command, args []string) error {
 		created = true
 	} else {
 		// update service
-		s.UpdateConfig(getServiceConfig(exePath))
+		err = s.UpdateConfig(getServiceConfig(exePath))
 		if err != nil {
 			return fmt.Errorf("failed to update service: %s", err)
 		}
@@ -184,7 +180,7 @@ func uninstallWindowsService(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer m.Disconnect()
+	defer m.Disconnect() //nolint:errcheck // TODO
 
 	// open service
 	s, err := m.OpenService(serviceName)

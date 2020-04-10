@@ -14,20 +14,20 @@ import (
 
 // VerdictRequest is the request structure from the Kext.
 type VerdictRequest struct {
-	id                uint32 /* ID from RegisterPacket */
-	processID         uint64 /* Process ID. Nice to have*/
-	direction         uint8
-	ipV6              uint8 /* True: IPv6, False: IPv4 */
-	protocol          uint8 /* Protocol */
-	_                 uint8
-	localIP           [4]uint32 /* Source Address */
-	remoteIP          [4]uint32 /* Destination Address */
-	localPort         uint16    /* Source Port */
-	remotePort        uint16    /* Destination port */
-	compartmentID     uint32
-	interfaceIndex    uint32
-	subInterfaceIndex uint32
-	packetSize        uint32
+	id         uint32 // ID from RegisterPacket
+	_          uint64 // Process ID - does not yet work
+	direction  uint8
+	ipV6       uint8 // True: IPv6, False: IPv4
+	protocol   uint8 // Protocol
+	_          uint8
+	localIP    [4]uint32 // Source Address
+	remoteIP   [4]uint32 // Destination Address
+	localPort  uint16    // Source Port
+	remotePort uint16    // Destination port
+	_          uint32    // compartmentID
+	_          uint32    // interfaceIndex
+	_          uint32    // subInterfaceIndex
+	packetSize uint32
 }
 
 // Handler transforms received packets to the Packet interface.

@@ -4,7 +4,6 @@ warnings=0
 errors=0
 scripted=0
 goUp="\\e[1A"
-all=0
 fullTestFlags="-short"
 install=0
 
@@ -99,7 +98,6 @@ while true; do
     shift 1
     ;;
   "all")
-    all=1
     fullTestFlags=""
     shift 1
     ;;
@@ -119,10 +117,8 @@ if [[ $install -eq 1 ]]; then
   echo "installing dependencies..."
   echo "$ go get -u golang.org/x/lint/golint"
   go get -u golang.org/x/lint/golint
-  if [[ $all -eq 1 ]]; then
-    echo "$ go get -u github.com/golangci/golangci-lint/cmd/golangci-lint"
-    go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
-  fi
+  echo "$ go get -u github.com/golangci/golangci-lint/cmd/golangci-lint"
+  go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
   exit 0
 fi
 
@@ -141,16 +137,14 @@ if [[ $(which golint) == "" ]]; then
   echo "or run: ./test install"
   exit 1
 fi
-if [[ $all -eq 1 ]]; then
-  if [[ $(which golangci-lint) == "" ]]; then
-    echo "golangci-lint command not found"
-    echo "install locally with: go get -u github.com/golangci/golangci-lint/cmd/golangci-lint"
-    echo "or run: ./test install all"
-    echo ""
-    echo "hint: install for CI with: curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin vX.Y.Z"
-    echo "don't forget to specify the version you want"
-    exit 1
-  fi
+if [[ $(which golangci-lint) == "" ]]; then
+  echo "golangci-lint command not found"
+  echo "install locally with: go get -u github.com/golangci/golangci-lint/cmd/golangci-lint"
+  echo "or run: ./test install all"
+  echo ""
+  echo "hint: install for CI with: curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin vX.Y.Z"
+  echo "don't forget to specify the version you want"
+  exit 1
 fi
 
 # target selection
@@ -179,9 +173,7 @@ for package in $packages; do
   checkformat $package
   run golint -set_exit_status -min_confidence 1.0 $package
   run go vet $package
-  if [[ $all -eq 1 ]]; then
-    run golangci-lint run $GOPATH/src/$package
-  fi
+  run golangci-lint run $GOPATH/src/$package
   run go test -cover $fullTestFlags $package
 done
 
