@@ -61,7 +61,7 @@ func (s *SystemStatus) updateThreatMitigationLevel() {
 	var mitigationLevel uint8
 	for _, threat := range s.Threats {
 		switch threat.MitigationLevel {
-		case SecurityLevelDynamic, SecurityLevelSecure, SecurityLevelFortress:
+		case SecurityLevelNormal, SecurityLevelHigh, SecurityLevelExtreme:
 			if threat.MitigationLevel > mitigationLevel {
 				mitigationLevel = threat.MitigationLevel
 			}

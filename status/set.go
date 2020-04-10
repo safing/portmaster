@@ -18,9 +18,9 @@ func (s *SystemStatus) autopilot() {
 	// update active security level
 	switch s.ThreatMitigationLevel {
 	case SecurityLevelOff:
-		s.ActiveSecurityLevel = SecurityLevelDynamic
-		atomicUpdateActiveSecurityLevel(SecurityLevelDynamic)
-	case SecurityLevelDynamic, SecurityLevelSecure, SecurityLevelFortress:
+		s.ActiveSecurityLevel = SecurityLevelNormal
+		atomicUpdateActiveSecurityLevel(SecurityLevelNormal)
+	case SecurityLevelNormal, SecurityLevelHigh, SecurityLevelExtreme:
 		s.ActiveSecurityLevel = s.ThreatMitigationLevel
 		atomicUpdateActiveSecurityLevel(s.ThreatMitigationLevel)
 	default:
@@ -31,7 +31,7 @@ func (s *SystemStatus) autopilot() {
 // setSelectedSecurityLevel sets the selected security level.
 func setSelectedSecurityLevel(level uint8) {
 	switch level {
-	case SecurityLevelOff, SecurityLevelDynamic, SecurityLevelSecure, SecurityLevelFortress:
+	case SecurityLevelOff, SecurityLevelNormal, SecurityLevelHigh, SecurityLevelExtreme:
 		status.Lock()
 		defer status.Unlock()
 
