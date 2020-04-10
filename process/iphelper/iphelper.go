@@ -37,7 +37,7 @@ func New() (*IPHelper, error) {
 
 	// load dll
 	new.dll = windows.NewLazySystemDLL("iphlpapi.dll")
-	new.dll.Load()
+	err = new.dll.Load()
 	if err != nil {
 		return nil, err
 	}

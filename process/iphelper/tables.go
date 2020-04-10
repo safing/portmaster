@@ -59,14 +59,14 @@ type iphelperTCP6Table struct {
 
 type iphelperTCP6Row struct {
 	// docs: https://msdn.microsoft.com/en-us/library/windows/desktop/aa366896(v=vs.85).aspx
-	localAddr     [16]byte
-	localScopeID  uint32
-	localPort     uint32
-	remoteAddr    [16]byte
-	remoteScopeID uint32
-	remotePort    uint32
-	state         uint32
-	owningPid     uint32
+	localAddr  [16]byte
+	_          uint32 // localScopeID
+	localPort  uint32
+	remoteAddr [16]byte
+	_          uint32 // remoteScopeID
+	remotePort uint32
+	state      uint32
+	owningPid  uint32
 }
 
 type iphelperUDPTable struct {
@@ -90,10 +90,10 @@ type iphelperUDP6Table struct {
 
 type iphelperUDP6Row struct {
 	// docs: https://msdn.microsoft.com/en-us/library/windows/desktop/aa366923(v=vs.85).aspx
-	localAddr    [16]byte
-	localScopeID uint32
-	localPort    uint32
-	owningPid    uint32
+	localAddr [16]byte
+	_         uint32 // localScopeID
+	localPort uint32
+	owningPid uint32
 }
 
 // IP and Protocol constants
@@ -137,7 +137,7 @@ func increaseBufSize() int {
 	defer bufSizeLock.Unlock()
 
 	// increase
-	bufSize = bufSize * 2
+	bufSize *= 2
 	// not too much
 	if bufSize > 65536 {
 		bufSize = 65536
@@ -149,7 +149,7 @@ func increaseBufSize() int {
 }
 
 // GetTables returns the current connection state table of Windows of the given protocol and IP version.
-func (ipHelper *IPHelper) GetTables(protocol uint8, ipVersion uint8) (connections []*ConnectionEntry, listeners []*ConnectionEntry, err error) {
+func (ipHelper *IPHelper) GetTables(protocol uint8, ipVersion uint8) (connections []*ConnectionEntry, listeners []*ConnectionEntry, err error) { //nolint:gocognit,gocycle // TODO
 	// docs: https://msdn.microsoft.com/en-us/library/windows/desktop/aa365928(v=vs.85).aspx
 
 	if !ipHelper.valid.IsSet() {
