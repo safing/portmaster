@@ -176,6 +176,18 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	// get connection
 	conn := network.NewConnectionFromDNSRequest(ctx, q.FQDN, remoteAddr.IP, uint16(remoteAddr.Port))
 
+	if conn.Process() == nil {
+		tracer.Infof("nameserver: failed to find process for request %s, returning NXDOMAIN", conn)
+		returnNXDomain(w, query)
+		return nil
+	}
+
+	if conn.Process().Profile() == nil {
+		tracer.Infof("nameserver: process %s does not have a profile associated, returning NXDOMAIN", conn.Process())
+		returnNXDomain(w, query)
+		return nil
+	}
+
 	// save security level to query
 	q.SecurityLevel = conn.Process().Profile().SecurityLevel()
 
