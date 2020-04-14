@@ -76,7 +76,7 @@ func (bf *scopedBloom) add(scope, value string) {
 		// not have support for it. We just drop the value
 		// as a call to Test() for that scope will always
 		// return "true"
-		log.Warningf("failed to add unknown entity type %q", scope)
+		log.Warningf("failed to add unknown entity type %q with value %q", scope, value)
 		return
 	}
 

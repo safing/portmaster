@@ -15,6 +15,14 @@ var (
 	module *modules.Module
 )
 
+const (
+	filterlistsDisabled              = "filterlists:disabled"
+	filterlistsStaleDataSurvived     = "filterlists:staledata"
+	filterlistsStaleDataDescr        = "Removing stale filter list records failed. Some connections may be overblocked."
+	filterlistsUpdateInProgress      = "filterlists:update-in-progress"
+	filterlistsUpdateInProgressDescr = "Performance slightly degraded during list update."
+)
+
 // booleans mainly used to decouple the module
 // during testing.
 var (
@@ -23,6 +31,8 @@ var (
 )
 
 func init() {
+	ignoreNetEnvEvents.Set()
+
 	module = modules.Register("filterlists", prep, start, nil, "core", "netenv")
 }
 

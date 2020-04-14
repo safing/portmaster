@@ -28,8 +28,10 @@ func tryListUpdate(ctx context.Context) error {
 		return err
 	}
 
-	// if the module is in an error state resolve that right now.
+	// if the module is in an error, warning or hint state resolve that right now.
 	module.Resolve(filterlistsDisabled)
+	module.Resolve(filterlistsStaleDataSurvived)
+	module.Resolve(filterlistsUpdateInProgress)
 	return nil
 }
 
@@ -38,11 +40,15 @@ func performUpdate(ctx context.Context) error {
 		log.Debugf("intel/filterlists: upgrade already in progress")
 		return nil
 	}
+	defer updateInProgress.UnSet()
+
+	module.Hint(filterlistsUpdateInProgress, filterlistsUpdateInProgressDescr)
 
 	upgradables, err := getUpgradableFiles()
 	if err != nil {
 		return err
 	}
+	log.Debugf("intel/filterlists: resources to update: %v", upgradables)
 
 	if len(upgradables) == 0 {
 		log.Debugf("intel/filterlists: ignoring update, latest version is already used")
@@ -55,7 +61,7 @@ func performUpdate(ctx context.Context) error {
 	// perform the actual upgrade by processing each file
 	// in the returned order.
 	for idx, file := range upgradables {
-		log.Debugf("applying update %s version %s", file.Identifier(), file.Version())
+		log.Debugf("intel/filterlists: applying update (%d) %s version %s", idx, file.Identifier(), file.Version())
 
 		if file == baseFile {
 			if idx != 0 {
@@ -101,7 +107,13 @@ func performUpdate(ctx context.Context) error {
 	// been updated now. Once we are done, start a worker
 	// for that purpose.
 	if cleanupRequired {
-		defer module.StartWorker("filterlists:cleanup", removeAllObsoleteFilterEntries)
+		if err := module.RunWorker("filterlists:cleanup", removeAllObsoleteFilterEntries); err != nil {
+			// if we failed to remove all stale cache entries
+			// we abort now WITHOUT updating the database version. This means
+			// we'll try again during the next update.
+			module.Warning(filterlistsStaleDataSurvived, filterlistsStaleDataDescr)
+			return fmt.Errorf("failed to cleanup stale cache records: %w", err)
+		}
 	}
 
 	// try to save the highest version of our files.
@@ -114,8 +126,9 @@ func performUpdate(ctx context.Context) error {
 }
 
 func removeAllObsoleteFilterEntries(_ context.Context) error {
+	log.Infof("intel/filterlists: cleanup task started, removing obsolete filter list entries ...")
 	for {
-		done, err := removeObsoleteFilterEntries(1000)
+		done, err := removeObsoleteFilterEntries(10000)
 		if err != nil {
 			return err
 		}
@@ -127,7 +140,6 @@ func removeAllObsoleteFilterEntries(_ context.Context) error {
 }
 
 func removeObsoleteFilterEntries(batchSize int) (bool, error) {
-	log.Infof("intel/filterlists: cleanup task started, removing obsolete filter list entries ...")
 
 	iter, err := cache.Query(
 		query.New(filterListKeyPrefix).Where(

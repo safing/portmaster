@@ -34,7 +34,6 @@ const (
 )
 
 const bfFalsePositiveRate = 0.001
-const filterlistsDisabled = "filterlists:disabled"
 
 var (
 	filterListLock sync.RWMutex
@@ -128,12 +127,19 @@ func processListFile(ctx context.Context, filter *scopedBloom, file *updater.Fil
 		return nil
 	})
 
+	persistRecords(startSafe, records)
+
+	return g.Wait()
+}
+
+func persistRecords(startJob func(func() error), records <-chan record.Record) {
 	var cnt int
 	start := time.Now()
 
 	batch := database.NewInterface(&database.Options{Local: true, Internal: true})
-	var startBatch func()
-	processBatch := func() error {
+	var processBatch func() error
+
+	processBatch = func() error {
 		batchPut := batch.PutMany("cache")
 		for r := range records {
 			if err := batchPut(r); err != nil {
@@ -152,7 +158,7 @@ func processListFile(ctx context.Context, filter *scopedBloom, file *updater.Fil
 					return err
 				}
 
-				startBatch()
+				startJob(processBatch)
 
 				return nil
 			}
@@ -160,13 +166,8 @@ func processListFile(ctx context.Context, filter *scopedBloom, file *updater.Fil
 
 		return batchPut(nil)
 	}
-	startBatch = func() {
-		startSafe(processBatch)
-	}
 
-	startBatch()
-
-	return g.Wait()
+	startJob(processBatch)
 }
 
 func normalizeEntry(entry *listEntry) {
