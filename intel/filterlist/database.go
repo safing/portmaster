@@ -2,6 +2,7 @@ package filterlist
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sort"
 	"strings"
@@ -90,12 +91,33 @@ func processListFile(ctx context.Context, filter *scopedBloom, file *updater.Fil
 
 	g, ctx := errgroup.WithContext(ctx)
 
-	g.Go(func() error {
+	// startSafe runs fn inside the error group but wrapped
+	// in recovered function.
+	startSafe := func(fn func() error) {
+		g.Go(func() (err error) {
+			defer func() {
+				if x := recover(); x != nil {
+					if e, ok := x.(error); ok {
+						err = e
+					} else {
+						err = fmt.Errorf("%v", x)
+					}
+				}
+			}()
+
+			err = fn()
+			return err
+		})
+	}
+
+	startSafe(func() (err error) {
 		defer close(values)
-		return decodeFile(ctx, f, values)
+
+		err = decodeFile(ctx, f, values)
+		return
 	})
 
-	g.Go(func() error {
+	startSafe(func() error {
 		defer close(records)
 		for entry := range values {
 			if err := processEntry(ctx, filter, entry, records); err != nil {
@@ -139,7 +161,7 @@ func processListFile(ctx context.Context, filter *scopedBloom, file *updater.Fil
 		return batchPut(nil)
 	}
 	startBatch = func() {
-		g.Go(processBatch)
+		startSafe(processBatch)
 	}
 
 	startBatch()

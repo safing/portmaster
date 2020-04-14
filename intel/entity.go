@@ -10,6 +10,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/intel/filterlist"
 	"github.com/safing/portmaster/intel/geoip"
+	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/status"
 )
 
@@ -303,15 +304,12 @@ func (e *Entity) getIPLists() {
 	if ip == nil {
 		return
 	}
-	// abort if it's not a global unicast (not that IPv6 link local unicasts are treated
-	// as global)
-	if !ip.IsGlobalUnicast() {
+
+	// only load lists for IP addresses that are classified as global.
+	if netutils.ClassifyIP(ip) != netutils.Global {
 		return
 	}
-	// ingore linc local unicasts as well (not done by IsGlobalUnicast above).
-	if ip.IsLinkLocalUnicast() {
-		return
-	}
+
 	log.Debugf("intel: loading IP list for %s", ip)
 	e.loadIPListOnce.Do(func() {
 		list, err := filterlist.LookupIP(ip)

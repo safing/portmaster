@@ -191,6 +191,8 @@ func updateListIndex() error {
 	return nil
 }
 
+// ResolveListIDs resolves a slice of source or category IDs into
+// a slice of distinct source IDs.
 func ResolveListIDs(ids []string) ([]string, error) {
 	index, err := getListIndexFromCache()
 

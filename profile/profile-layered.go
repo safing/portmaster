@@ -6,7 +6,6 @@ import (
 
 	"github.com/safing/portbase/log"
 
-	"github.com/safing/portmaster/intel/filterlist"
 	"github.com/safing/portmaster/status"
 
 	"github.com/tevino/abool"
@@ -228,8 +227,8 @@ func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (result endpoin
 
 	log.Errorf("number of layers: %d", len(lp.layers))
 	for _, layer := range lp.layers {
-		if id := lookupMap.Match(layer.filterListIDs); id != "" {
-			return endpoints.Denied, id
+		if reason := lookupMap.Match(layer.filterListIDs); reason != "" {
+			return endpoints.Denied, reason
 		}
 
 		// only check the first layer that has filter list
@@ -239,19 +238,10 @@ func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (result endpoin
 		}
 	}
 
-	// TODO(ppacher): re-resolving global list IDs is a bit overkill,
-	// add some caching here.
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
-
-	globalIds, err := filterlist.ResolveListIDs(cfgOptionFilterLists())
-	if err != nil {
-		log.Errorf("filter: failed to get global filter list IDs: %s", err)
-		return endpoints.NoMatch, ""
-	}
-
-	if id := lookupMap.Match(globalIds); id != "" {
-		return endpoints.Denied, id
+	if reason := lookupMap.Match(cfgFilterLists); reason != "" {
+		return endpoints.Denied, reason
 	}
 
 	return endpoints.NoMatch, ""

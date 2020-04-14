@@ -101,7 +101,7 @@ func performUpdate(ctx context.Context) error {
 	// been updated now. Once we are done, start a worker
 	// for that purpose.
 	if cleanupRequired {
-		defer module.StartWorker("filterlist:cleanup", removeObsoleteFilterEntries)
+		defer module.StartWorker("filterlist:cleanup", removeAllObsoleteFilterEntries)
 	}
 
 	// try to save the highest version of our files.
@@ -113,7 +113,20 @@ func performUpdate(ctx context.Context) error {
 	return nil
 }
 
-func removeObsoleteFilterEntries(_ context.Context) error {
+func removeAllObsoleteFilterEntries(_ context.Context) error {
+	for {
+		done, err := removeObsoleteFilterEntries(1000)
+		if err != nil {
+			return err
+		}
+
+		if done {
+			return nil
+		}
+	}
+}
+
+func removeObsoleteFilterEntries(batchSize int) (bool, error) {
 	log.Infof("intel/filterlists: cleanup task started, removing obsolete filter list entries ...")
 
 	iter, err := cache.Query(
@@ -124,20 +137,33 @@ func removeObsoleteFilterEntries(_ context.Context) error {
 		),
 	)
 	if err != nil {
-		return err
+		return false, err
 	}
+
+	keys := make([]string, 0, batchSize)
 
 	var cnt int
 	for r := range iter.Next {
 		cnt++
-		r.Meta().Delete()
-		if err := cache.Put(r); err != nil {
-			log.Errorf("intel/filterlists: failed to remove stale cache entry %q: %s", r.Key(), err)
+		keys = append(keys, r.Key())
+
+		if cnt == batchSize {
+			break
+		}
+	}
+	iter.Cancel()
+
+	for _, key := range keys {
+		if err := cache.Delete(key); err != nil {
+			log.Errorf("intel/filterlists: failed to remove stale cache entry %q: %s", key, err)
 		}
 	}
 
 	log.Debugf("intel/filterlists: successfully removed %d obsolete entries", cnt)
-	return nil
+
+	// if we removed less entries that the batch size we
+	// are done and no more entries exist
+	return cnt < batchSize, nil
 }
 
 // getUpgradableFiles returns a slice of filterlist files

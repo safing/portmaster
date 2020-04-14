@@ -63,6 +63,7 @@ func registerConfiguration() error {
 		Description:     `The default filter action when nothing else permits or blocks a connection.`,
 		OptType:         config.OptTypeString,
 		DefaultValue:    "permit",
+		ExternalOptType: "string list",
 		ValidationRegex: "^(permit|ask|block)$",
 	})
 	if err != nil {
