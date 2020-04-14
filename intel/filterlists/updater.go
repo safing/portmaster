@@ -120,13 +120,15 @@ func performUpdate(ctx context.Context) error {
 	highestVersion := upgradables[len(upgradables)-1]
 	if err := setCacheDatabaseVersion(highestVersion.Version()); err != nil {
 		log.Errorf("intel/filterlists: failed to save cache database version: %s", err)
+	} else {
+		log.Infof("intel/filterlists: successfully migrated cache database to %s", highestVersion)
 	}
 
 	return nil
 }
 
 func removeAllObsoleteFilterEntries(_ context.Context) error {
-	log.Infof("intel/filterlists: cleanup task started, removing obsolete filter list entries ...")
+	log.Debugf("intel/filterlists: cleanup task started, removing obsolete filter list entries ...")
 	for {
 		done, err := removeObsoleteFilterEntries(10000)
 		if err != nil {
@@ -140,7 +142,6 @@ func removeAllObsoleteFilterEntries(_ context.Context) error {
 }
 
 func removeObsoleteFilterEntries(batchSize int) (bool, error) {
-
 	iter, err := cache.Query(
 		query.New(filterListKeyPrefix).Where(
 			// TODO(ppacher): remember the timestamp we started the last update
@@ -192,6 +193,7 @@ func getUpgradableFiles() ([]*updater.File, error) {
 		if err != nil {
 			return nil, err
 		}
+		log.Tracef("intel/filterlists: base file needs update, selected version %s", baseFile.Version())
 		updateOrder = append(updateOrder, baseFile)
 	}
 
@@ -203,6 +205,7 @@ func getUpgradableFiles() ([]*updater.File, error) {
 		}
 
 		if err == nil {
+			log.Tracef("intel/filterlists: intermediate file needs update, selected version %s", intermediateFile.Version())
 			updateOrder = append(updateOrder, intermediateFile)
 		}
 	}
@@ -215,7 +218,8 @@ func getUpgradableFiles() ([]*updater.File, error) {
 		}
 
 		if err == nil {
-			updateOrder = append(updateOrder, intermediateFile)
+			log.Tracef("intel/filterlists: urgent file needs update, selected version %s", urgentFile.Version())
+			updateOrder = append(updateOrder, urgentFile)
 		}
 	}
 
@@ -225,6 +229,7 @@ func getUpgradableFiles() ([]*updater.File, error) {
 func resolveUpdateOrder(updateOrder []*updater.File) ([]*updater.File, error) {
 	// sort the update order by ascending version
 	sort.Sort(byAscVersion(updateOrder))
+	log.Tracef("intel/filterlists: order of updates: %v", updateOrder)
 
 	var cacheDBVersion *version.Version
 	if !isLoaded() {

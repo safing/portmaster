@@ -165,6 +165,9 @@ func checkForUpdates(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("updates: failed to update: %w", err)
 	}
+
+	registry.SelectVersions()
+
 	module.TriggerEvent(ResourceUpdateEvent, nil)
 	return nil
 }
