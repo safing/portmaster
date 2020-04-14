@@ -157,10 +157,17 @@ func DisableUpdateSchedule() error {
 }
 
 func checkForUpdates(ctx context.Context) error {
+	if err := registry.UpdateIndexes(); err != nil {
+		return fmt.Errorf("updates: failed to update indexes: %w", err)
+	}
+
 	err := registry.DownloadUpdates(ctx)
 	if err != nil {
-		return fmt.Errorf("updates: failed to update: %s", err)
+		return fmt.Errorf("updates: failed to update: %w", err)
 	}
+
+	registry.SelectVersions()
+
 	module.TriggerEvent(ResourceUpdateEvent, nil)
 	return nil
 }

@@ -94,7 +94,7 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 		cfgOptionRemoveBlockedDNS,
 	)
 
-	// TODO: load referenced profiles
+	// TODO: load linked profiles.
 
 	// FUTURE: load forced company profile
 	new.layers = append(new.layers, localProfile)
@@ -154,7 +154,7 @@ func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 
 func (lp *LayeredProfile) updateCaches() {
 	// update security level
-	var newLevel uint8 = 0
+	var newLevel uint8
 	for _, layer := range lp.layers {
 		if newLevel < layer.SecurityLevel {
 			newLevel = layer.SecurityLevel
@@ -215,6 +215,35 @@ func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (result end
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
 	return cfgServiceEndpoints.Match(entity)
+}
+
+// MatchFilterLists matches the entity against the set of filter
+// lists.
+func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (result endpoints.EPResult, reason string) {
+	lookupMap, hasLists := entity.GetListsMap()
+	if !hasLists {
+		return endpoints.NoMatch, ""
+	}
+
+	for _, layer := range lp.layers {
+		if reason := lookupMap.Match(layer.filterListIDs); reason != "" {
+			return endpoints.Denied, reason
+		}
+
+		// only check the first layer that has filter list
+		// IDs defined.
+		if len(layer.filterListIDs) > 0 {
+			return endpoints.NoMatch, ""
+		}
+	}
+
+	cfgLock.RLock()
+	defer cfgLock.RUnlock()
+	if reason := lookupMap.Match(cfgFilterLists); reason != "" {
+		return endpoints.Denied, reason
+	}
+
+	return endpoints.NoMatch, ""
 }
 
 // AddEndpoint adds an endpoint to the local endpoint list, saves the local profile and reloads the configuration.
