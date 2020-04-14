@@ -225,7 +225,6 @@ func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (result endpoin
 		return endpoints.NoMatch, ""
 	}
 
-	log.Errorf("number of layers: %d", len(lp.layers))
 	for _, layer := range lp.layers {
 		if reason := lookupMap.Match(layer.filterListIDs); reason != "" {
 			return endpoints.Denied, reason
