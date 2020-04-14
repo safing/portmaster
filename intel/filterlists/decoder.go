@@ -1,4 +1,4 @@
-package filterlist
+package filterlists
 
 import (
 	"compress/gzip"
@@ -17,7 +17,7 @@ type listEntry struct {
 	Type      string   `json:"type"`
 }
 
-// decodeFile decodes a DSDL filterlist file and sends decoded entities to
+// decodeFile decodes a DSDL filterlists file and sends decoded entities to
 // ch. It blocks until all list entries have been consumed or ctx is cancelled.
 func decodeFile(ctx context.Context, r io.Reader, ch chan<- *listEntry) error {
 	compressed, format, err := parseHeader(r)

@@ -1,4 +1,4 @@
-package filterlist
+package filterlists
 
 import (
 	"encoding/hex"
@@ -59,7 +59,7 @@ func (bf *scopedBloom) getBloomForType(entityType string) (*ring.Ring, error) {
 	case "country":
 		r = bf.country
 	default:
-		return nil, fmt.Errorf("unsupported filterlist entity type %q", entityType)
+		return nil, fmt.Errorf("unsupported filterlists entity type %q", entityType)
 	}
 
 	return r, nil

@@ -1,4 +1,4 @@
-package filterlist
+package filterlists
 
 import (
 	"fmt"
@@ -37,7 +37,7 @@ type Category struct {
 	Description string `json:"description,omitempty"`
 }
 
-// Source defines an external filterlist source.
+// Source defines an external filterlists source.
 type Source struct {
 	// ID is a unique ID for the source. Entities always reference the
 	// sources they have been observed in using this ID. Refer to the
@@ -56,7 +56,7 @@ type Source struct {
 	// to the Type definition for more information and well-known types.
 	Type string `json:"type"`
 
-	// URL points to the filterlist file.
+	// URL points to the filterlists file.
 	URL string `json:"url"`
 
 	// Category holds the unique ID of a category the source belongs to. Since

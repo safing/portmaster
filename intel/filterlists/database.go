@@ -1,4 +1,4 @@
-package filterlist
+package filterlists
 
 import (
 	"context"
@@ -78,7 +78,7 @@ func isLoaded() bool {
 }
 
 // processListFile opens the latest version of f	ile and decodes it's DSDL
-// content. It calls processEntry for each decoded filterlist entry.
+// content. It calls processEntry for each decoded filterlists entry.
 func processListFile(ctx context.Context, filter *scopedBloom, file *updater.File) error {
 	f, err := os.Open(file.Path())
 	if err != nil {

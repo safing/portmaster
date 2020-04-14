@@ -1,4 +1,4 @@
-package filterlist
+package filterlists
 
 import (
 	"errors"
@@ -18,7 +18,7 @@ import (
 func lookupBlockLists(entity, value string) ([]string, error) {
 	key := makeListCacheKey(entity, value)
 	if !isLoaded() {
-		log.Warningf("intel/filterlist: not searching for %s because filterlists not loaded", key)
+		log.Warningf("intel/filterlists: not searching for %s because filterlists not loaded", key)
 		// filterLists have not yet been loaded so
 		// there's no point querying into the cache
 		// database.
@@ -32,7 +32,7 @@ func lookupBlockLists(entity, value string) ([]string, error) {
 		return nil, nil
 	}
 
-	log.Debugf("intel/filterlist: searching for entries with %s", key)
+	log.Debugf("intel/filterlists: searching for entries with %s", key)
 	entry, err := getEntityRecordByKey(key)
 	if err != nil {
 		if err == database.ErrNotFound {

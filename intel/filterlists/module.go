@@ -1,4 +1,4 @@
-package filterlist
+package filterlists
 
 import (
 	"context"
@@ -23,7 +23,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("filterlist", prep, start, nil, "core", "netenv")
+	module = modules.Register("filterlists", prep, start, nil, "core", "netenv")
 }
 
 func prep() error {

@@ -1,4 +1,4 @@
-package filterlist
+package filterlists
 
 import (
 	"context"
@@ -97,11 +97,11 @@ func performUpdate(ctx context.Context) error {
 	}
 
 	// if we processed the base file we need to perform
-	// some cleanup on filterlist entities that have not
+	// some cleanup on filterlists entities that have not
 	// been updated now. Once we are done, start a worker
 	// for that purpose.
 	if cleanupRequired {
-		defer module.StartWorker("filterlist:cleanup", removeAllObsoleteFilterEntries)
+		defer module.StartWorker("filterlists:cleanup", removeAllObsoleteFilterEntries)
 	}
 
 	// try to save the highest version of our files.
@@ -166,7 +166,7 @@ func removeObsoleteFilterEntries(batchSize int) (bool, error) {
 	return cnt < batchSize, nil
 }
 
-// getUpgradableFiles returns a slice of filterlist files
+// getUpgradableFiles returns a slice of filterlists files
 // that should be updated. The files MUST be updated and
 // processed in the returned order!
 func getUpgradableFiles() ([]*updater.File, error) {

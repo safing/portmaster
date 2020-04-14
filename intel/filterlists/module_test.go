@@ -1,4 +1,4 @@
-package filterlist
+package filterlists
 
 /*
 func TestMain(m *testing.M) {

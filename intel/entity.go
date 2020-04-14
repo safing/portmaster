@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/intel/filterlist"
+	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/intel/geoip"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/status"
@@ -35,7 +35,7 @@ type Entity struct {
 	fetchLocationOnce sync.Once
 
 	Lists    []string
-	ListsMap filterlist.LookupMap
+	ListsMap filterlists.LookupMap
 
 	// we only load each data above at most once
 	loadDomainListOnce sync.Once
@@ -231,7 +231,7 @@ func (e *Entity) getDomainLists() {
 
 	e.loadDomainListOnce.Do(func() {
 		log.Debugf("intel: loading domain list for %s", domain)
-		list, err := filterlist.LookupDomain(domain)
+		list, err := filterlists.LookupDomain(domain)
 		if err != nil {
 			log.Errorf("intel: failed to get domain blocklists for %s: %s", domain, err)
 			e.loadDomainListOnce = sync.Once{}
@@ -255,7 +255,7 @@ func (e *Entity) getASNLists() {
 
 	log.Debugf("intel: loading ASN list for %d", asn)
 	e.loadAsnListOnce.Do(func() {
-		list, err := filterlist.LookupASNString(fmt.Sprintf("%d", asn))
+		list, err := filterlists.LookupASNString(fmt.Sprintf("%d", asn))
 		if err != nil {
 			log.Errorf("intel: failed to get ASN blocklist for %d: %s", asn, err)
 			e.loadAsnListOnce = sync.Once{}
@@ -279,7 +279,7 @@ func (e *Entity) getCountryLists() {
 
 	log.Debugf("intel: loading country list for %s", country)
 	e.loadCoutryListOnce.Do(func() {
-		list, err := filterlist.LookupCountry(country)
+		list, err := filterlists.LookupCountry(country)
 		if err != nil {
 			log.Errorf("intel: failed to load country blocklist for %s: %s", country, err)
 			e.loadCoutryListOnce = sync.Once{}
@@ -312,7 +312,7 @@ func (e *Entity) getIPLists() {
 
 	log.Debugf("intel: loading IP list for %s", ip)
 	e.loadIPListOnce.Do(func() {
-		list, err := filterlist.LookupIP(ip)
+		list, err := filterlists.LookupIP(ip)
 
 		if err != nil {
 			log.Errorf("intel: failed to get IP blocklist for %s: %s", ip.String(), err)
@@ -335,7 +335,7 @@ func (e *Entity) GetLists() ([]string, bool) {
 }
 
 // GetListsMap is like GetLists but returns a lookup map for list IDs.
-func (e *Entity) GetListsMap() (filterlist.LookupMap, bool) {
+func (e *Entity) GetListsMap() (filterlists.LookupMap, bool) {
 	e.getLists()
 
 	if e.ListsMap == nil {
@@ -361,8 +361,8 @@ func mergeStringList(a, b []string) []string {
 	return res
 }
 
-func buildLookupMap(l []string) filterlist.LookupMap {
-	m := make(filterlist.LookupMap, len(l))
+func buildLookupMap(l []string) filterlists.LookupMap {
+	m := make(filterlists.LookupMap, len(l))
 
 	for _, s := range l {
 		m[s] = struct{}{}

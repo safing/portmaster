@@ -14,7 +14,7 @@ import (
 
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/database/record"
-	"github.com/safing/portmaster/intel/filterlist"
+	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/profile/endpoints"
 )
 
@@ -144,7 +144,7 @@ func (profile *Profile) parseConfig() error {
 
 	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionFilterListKey)
 	if ok {
-		profile.filterListIDs, err = filterlist.ResolveListIDs(list)
+		profile.filterListIDs, err = filterlists.ResolveListIDs(list)
 		if err != nil {
 			lastErr = err
 		}

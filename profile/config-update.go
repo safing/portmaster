@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/safing/portmaster/intel/filterlist"
+	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/profile/endpoints"
 )
 
@@ -63,7 +63,7 @@ func updateGlobalConfigProfile(ctx context.Context, data interface{}) error {
 	}
 
 	list = cfgOptionFilterLists()
-	cfgFilterLists, err = filterlist.ResolveListIDs(list)
+	cfgFilterLists, err = filterlists.ResolveListIDs(list)
 	if err != nil {
 		lastErr = err
 	}

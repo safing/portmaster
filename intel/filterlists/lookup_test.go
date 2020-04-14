@@ -1,4 +1,4 @@
-package filterlist
+package filterlists
 
 /*
 
@@ -63,7 +63,7 @@ func TestLookupDomain(t *testing.T) {
 }
 
 // testMarkNotLoaded ensures that functions believe
-// filterlist are not yet loaded. It returns a
+// filterlists are not yet loaded. It returns a
 // func that restores the previous state.
 func testMarkNotLoaded() func() {
 	if isLoaded() {

@@ -10,5 +10,5 @@ var (
 )
 
 func init() {
-	Module = modules.Register("intel", nil, nil, nil, "geoip", "filterlist")
+	Module = modules.Register("intel", nil, nil, nil, "geoip", "filterlists")
 }
