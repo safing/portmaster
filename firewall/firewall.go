@@ -31,6 +31,7 @@ var (
 	packetsAccepted *uint64
 	packetsBlocked  *uint64
 	packetsDropped  *uint64
+	packetsFailed   *uint64
 
 	// localNet4 *net.IPNet
 
@@ -92,12 +93,10 @@ func prep() (err error) {
 	// 	return fmt.Errorf("filter: failed to parse cidr fd17::/64: %s", err)
 	// }
 
-	var pA uint64
-	packetsAccepted = &pA
-	var pB uint64
-	packetsBlocked = &pB
-	var pD uint64
-	packetsDropped = &pD
+	packetsAccepted = new(uint64)
+	packetsBlocked = new(uint64)
+	packetsDropped = new(uint64)
+	packetsFailed = new(uint64)
 
 	return nil
 }
@@ -321,6 +320,9 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 		err = pkt.RerouteToNameserver()
 	case network.VerdictRerouteToTunnel:
 		err = pkt.RerouteToTunnel()
+	case network.VerdictFailed:
+		atomic.AddUint64(packetsFailed, 1)
+		fallthrough
 	default:
 		atomic.AddUint64(packetsDropped, 1)
 		err = pkt.Drop()
@@ -361,10 +363,17 @@ func statLogger() {
 		case <-module.Stopping():
 			return
 		case <-time.After(10 * time.Second):
-			log.Tracef("filter: packets accepted %d, blocked %d, dropped %d", atomic.LoadUint64(packetsAccepted), atomic.LoadUint64(packetsBlocked), atomic.LoadUint64(packetsDropped))
+			log.Tracef(
+				"filter: packets accepted %d, blocked %d, dropped %d, failed %d",
+				atomic.LoadUint64(packetsAccepted),
+				atomic.LoadUint64(packetsBlocked),
+				atomic.LoadUint64(packetsDropped),
+				atomic.LoadUint64(packetsFailed),
+			)
 			atomic.StoreUint64(packetsAccepted, 0)
 			atomic.StoreUint64(packetsBlocked, 0)
 			atomic.StoreUint64(packetsDropped, 0)
+			atomic.StoreUint64(packetsFailed, 0)
 		}
 	}
 }

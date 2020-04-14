@@ -13,6 +13,7 @@ const (
 	VerdictDrop                Verdict = 4
 	VerdictRerouteToNameserver Verdict = 5
 	VerdictRerouteToTunnel     Verdict = 6
+	VerdictFailed              Verdict = 7
 )
 
 func (v Verdict) String() string {
@@ -31,6 +32,8 @@ func (v Verdict) String() string {
 		return "RerouteToNameserver"
 	case VerdictRerouteToTunnel:
 		return "RerouteToTunnel"
+	case VerdictFailed:
+		return "Failed"
 	default:
 		return "<INVALID VERDICT>"
 	}
