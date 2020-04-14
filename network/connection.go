@@ -198,6 +198,16 @@ func (conn *Connection) Deny(reason string) {
 	}
 }
 
+// Failed marks the connection with VerdictFailed and stores the reason.
+func (conn *Connection) Failed(reason string) {
+	if conn.SetVerdict(VerdictFailed) {
+		conn.Reason = reason
+		log.Infof("filter: dropping connection %s because of an internal error: %s", conn, reason)
+	} else {
+		log.Warningf("filter: tried to drop %s due to error but current verdict is %s", conn, conn.Verdict)
+	}
+}
+
 // SetVerdict sets a new verdict for the connection, making sure it does not interfere with previous verdicts.
 func (conn *Connection) SetVerdict(newVerdict Verdict) (ok bool) {
 	if newVerdict >= conn.Verdict {

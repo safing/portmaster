@@ -125,6 +125,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	// check class
 	if question.Qclass != dns.ClassINET {
 		// we only serve IN records, return nxdomain
+		log.Warningf("nameserver: only IN record requests are supported but received Qclass %d, returning NXDOMAIN", question.Qclass)
 		returnNXDomain(w, query)
 		return nil
 	}
@@ -134,7 +135,9 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		m := new(dns.Msg)
 		m.SetReply(query)
 		m.Answer = localhostRRs
-		_ = w.WriteMsg(m)
+		if err := w.WriteMsg(m); err != nil {
+			log.Warningf("nameserver: failed to handle request to %s: %s", q.FQDN, err)
+		}
 		return nil
 	}
 
@@ -176,10 +179,32 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	// get connection
 	conn := network.NewConnectionFromDNSRequest(ctx, q.FQDN, remoteAddr.IP, uint16(remoteAddr.Port))
 
+	// once we decided on the connection we might need to save it to the database
+	// so we defer that check right now.
+	defer func() {
+		switch conn.Verdict {
+		// we immediately save blocked, dropped or failed verdicts so
+		// the pop up in the UI.
+		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
+			conn.Save()
+
+		// for undecided or accepted connections we don't save them yet because
+		// that will happen later anyway.
+		case network.VerdictUndecided, network.VerdictAccept:
+			return
+
+		// FIXME(ppacher): how to handle undeterminable and the SPN re-routing here?
+		default:
+			log.Warningf("nameserver: unexpected verdict %s for connection %s, not saving", conn.Verdict, conn)
+		}
+	}()
+
 	if conn.Process().Profile() == nil {
 		tracer.Infof("nameserver: failed to find process for request %s, returning NXDOMAIN", conn)
 		returnNXDomain(w, query)
-		conn.Save() // save blocked request
+		// FIXME(ppacher): if we save the connection (by marking it as failed)
+		// we might collect A LOT of connections for the UI.
+		//conn.Failed("Unknown process")
 		return nil
 	}
 
@@ -193,20 +218,20 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	if lms < 10 {
 		tracer.Warningf("nameserver: possible data tunnel by %s: %s has lms score of %f, returning nxdomain", conn.Process(), q.FQDN, lms)
 		returnNXDomain(w, query)
+		conn.Block("Possible data tunnel")
 		return nil
 	}
 
 	// check profile before we even get intel and rr
 	firewall.DecideOnConnection(conn, nil)
+
 	switch conn.Verdict {
 	case network.VerdictBlock:
 		tracer.Infof("nameserver: %s blocked, returning nxdomain", conn)
 		returnNXDomain(w, query)
-		conn.Save() // save blocked request
 		return nil
-	case network.VerdictDrop:
+	case network.VerdictDrop, network.VerdictFailed:
 		tracer.Infof("nameserver: %s dropped, not replying", conn)
-		conn.Save() // save dropped request
 		return nil
 	}
 
@@ -216,6 +241,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
 		tracer.Warningf("nameserver: %s requested %s%s: %s", conn.Process(), q.FQDN, q.QType, err)
 		returnNXDomain(w, query)
+		conn.Failed("failed to resolve: " + err.Error())
 		return nil
 	}
 
@@ -225,7 +251,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	if rrCache == nil {
 		tracer.Infof("nameserver: %s implicitly denied by filtering the dns response, returning nxdomain", conn)
 		returnNXDomain(w, query)
-		conn.Save() // save blocked request
+		conn.Block("DNS response filtered")
 		return nil
 	}
 
@@ -269,8 +295,12 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	m.Answer = rrCache.Answer
 	m.Ns = rrCache.Ns
 	m.Extra = rrCache.Extra
-	_ = w.WriteMsg(m)
-	tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
+
+	if err := w.WriteMsg(m); err != nil {
+		log.Warningf("nameserver: failed to return reponse %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
+	} else {
+		tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
+	}
 
 	// save dns request as open
 	network.SaveOpenDNSRequest(conn)

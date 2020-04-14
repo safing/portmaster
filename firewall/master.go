@@ -34,11 +34,16 @@ import (
 //    is called with the first packet of a network connection.
 
 // DecideOnConnection makes a decision about a connection.
+// When called, the connection and profile is already locked.
 func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:gocognit,gocyclo // TODO
 	// update profiles and check if communication needs reevaluation
 	if conn.UpdateAndCheck() {
 		log.Infof("filter: re-evaluating verdict on %s", conn)
 		conn.Verdict = network.VerdictUndecided
+
+		if conn.Entity != nil {
+			//conn.Entity.ResetLists()
+		}
 	}
 
 	// grant self
@@ -158,7 +163,7 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:
 	result, reason = p.MatchFilterLists(conn.Entity)
 	switch result {
 	case endpoints.Denied:
-		conn.Deny("endpoint in filterlist: " + reason)
+		conn.Deny("endpoint in filterlists: " + reason)
 		return
 	case endpoints.NoMatch:
 		// nothing to do
