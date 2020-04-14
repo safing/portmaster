@@ -141,7 +141,7 @@ Examples:
 
 	// Filter list IDs
 	err = config.Register(&config.Option{
-		Name:            "Filterlists",
+		Name:            "Filter List",
 		Key:             CfgOptionFilterListKey,
 		Description:     "Filter connections by matching the endpoint against configured filterlists",
 		OptType:         config.OptTypeStringArray,
