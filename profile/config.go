@@ -27,6 +27,9 @@ var (
 	CfgOptionFilterListKey = "filter/lists"
 	cfgOptionFilterLists   config.StringArrayOption
 
+	CfgOptionFilterSubDomainsKey = "filter/includeSubdomains"
+	cfgOptionFilterSubDomains    config.IntOption // security level option
+
 	CfgOptionBlockScopeLocalKey = "filter/blockLocal"
 	cfgOptionBlockScopeLocal    config.IntOption // security level option
 
@@ -154,6 +157,21 @@ Examples:
 	}
 	cfgOptionFilterLists = config.Concurrent.GetAsStringArray(CfgOptionFilterListKey, []string{})
 	cfgStringArrayOptions[CfgOptionFilterListKey] = cfgOptionFilterLists
+
+	err = config.Register(&config.Option{
+		Name:            "Filter SubDomains",
+		Key:             CfgOptionFilterSubDomainsKey,
+		Description:     "Also filter sub-domains if a parent domain is blocked by a filter list",
+		OptType:         config.OptTypeInt,
+		ExternalOptType: "security level",
+		DefaultValue:    status.SecurityLevelOff,
+		ValidationRegex: "^(0|4|6|7)$",
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionFilterSubDomains = config.Concurrent.GetAsInt(CfgOptionFilterSubDomainsKey, int64(status.SecurityLevelOff))
+	cfgIntOptions[CfgOptionFilterSubDomainsKey] = cfgOptionFilterSubDomains
 
 	// Block Scope Local
 	err = config.Register(&config.Option{

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/safing/portbase/log"
@@ -12,6 +13,7 @@ import (
 	"github.com/safing/portmaster/intel/geoip"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/status"
+	"golang.org/x/net/publicsuffix"
 )
 
 // Entity describes a remote endpoint in many different ways.
@@ -29,6 +31,7 @@ type Entity struct {
 	countryListLoaded     bool
 	asnListLoaded         bool
 	reverseResolveEnabled bool
+	resolveSubDomainLists bool
 
 	Protocol uint8
 	Port     uint16
@@ -61,6 +64,34 @@ func (e *Entity) Init() *Entity {
 func (e *Entity) FetchData() {
 	e.getLocation()
 	e.getLists()
+}
+
+// ResetLists resets the current list data and forces
+// all list sources to be re-acquired when calling GetLists().
+func (e *Entity) ResetLists() {
+	// TODO(ppacher): our actual goal is to reset the domain
+	// list right now so we could be more efficient by keeping
+	// the other lists around.
+	e.Lists = nil
+	e.ListsMap = nil
+	e.domainListLoaded = false
+	e.ipListLoaded = false
+	e.countryListLoaded = false
+	e.asnListLoaded = false
+	e.resolveSubDomainLists = false
+	e.loadDomainListOnce = sync.Once{}
+	e.loadIPListOnce = sync.Once{}
+	e.loadCoutryListOnce = sync.Once{}
+	e.loadAsnListOnce = sync.Once{}
+}
+
+// ResolveSubDomainLists enables or disables list lookups for
+// sub-domains.
+func (e *Entity) ResolveSubDomainLists(enabled bool) {
+	if e.domainListLoaded {
+		log.Warningf("intel/filterlists: tried to change sub-domain resolving for %s but lists are already fetched", e.Domain)
+	}
+	e.resolveSubDomainLists = enabled
 }
 
 // Domain and IP
@@ -190,17 +221,51 @@ func (e *Entity) getDomainLists() {
 	}
 
 	e.loadDomainListOnce.Do(func() {
-		log.Debugf("intel: loading domain list for %s", domain)
-		list, err := filterlists.LookupDomain(domain)
-		if err != nil {
-			log.Errorf("intel: failed to get domain blocklists for %s: %s", domain, err)
-			e.loadDomainListOnce = sync.Once{}
-			return
+		var domains = []string{domain}
+		if e.resolveSubDomainLists {
+			domains = splitDomain(domain)
+			log.Debugf("intel: subdomain list resolving is enabled, checking %v", domains)
 		}
 
+		for _, d := range domains {
+			log.Debugf("intel: loading domain list for %s", d)
+			list, err := filterlists.LookupDomain(d)
+			if err != nil {
+				log.Errorf("intel: failed to get domain blocklists for %s: %s", d, err)
+				e.loadDomainListOnce = sync.Once{}
+				return
+			}
+
+			e.mergeList(list)
+		}
 		e.domainListLoaded = true
-		e.mergeList(list)
 	})
+}
+
+func splitDomain(domain string) []string {
+	domain = strings.Trim(domain, ".")
+	suffix, _ := publicsuffix.PublicSuffix(domain)
+	if suffix == domain {
+		return []string{domain}
+	}
+
+	domainWithoutSuffix := domain[:len(domain)-len(suffix)]
+	domainWithoutSuffix = strings.Trim(domainWithoutSuffix, ".")
+
+	splitted := strings.FieldsFunc(domainWithoutSuffix, func(r rune) bool {
+		return r == '.'
+	})
+
+	domains := make([]string, 0, len(splitted))
+	for idx := range splitted {
+
+		d := strings.Join(splitted[idx:], ".") + "." + suffix
+		if d[len(d)-1] != '.' {
+			d += "."
+		}
+		domains = append(domains, d)
+	}
+	return domains
 }
 
 func (e *Entity) getASNLists() {

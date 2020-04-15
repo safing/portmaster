@@ -41,9 +41,9 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:
 		log.Infof("filter: re-evaluating verdict on %s", conn)
 		conn.Verdict = network.VerdictUndecided
 
-		//if conn.Entity != nil {
-		//conn.Entity.ResetLists()
-		//}
+		if conn.Entity != nil {
+			conn.Entity.ResetLists()
+		}
 	}
 
 	// grant self
