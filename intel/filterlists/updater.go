@@ -121,7 +121,7 @@ func performUpdate(ctx context.Context) error {
 	if err := setCacheDatabaseVersion(highestVersion.Version()); err != nil {
 		log.Errorf("intel/filterlists: failed to save cache database version: %s", err)
 	} else {
-		log.Infof("intel/filterlists: successfully migrated cache database to %s", highestVersion)
+		log.Infof("intel/filterlists: successfully migrated cache database to %s", highestVersion.Version())
 	}
 
 	return nil
