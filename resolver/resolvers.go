@@ -1,17 +1,15 @@
 package resolver
 
 import (
-	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/netutils"
@@ -34,15 +32,6 @@ var (
 	dupReqLock sync.Mutex
 )
 
-func indexOfResolver(server string, list []*Resolver) int {
-	for k, v := range list {
-		if v.Server == server {
-			return k
-		}
-	}
-	return -1
-}
-
 func indexOfScope(domain string, list []*Scope) int {
 	for k, v := range list {
 		if v.Domain == domain {
@@ -63,23 +52,7 @@ func getResolverByIDWithLocking(server string) *Resolver {
 	return nil
 }
 
-func parseAddress(server string) (net.IP, uint16, error) {
-	delimiter := strings.LastIndex(server, ":")
-	if delimiter < 0 {
-		return nil, 0, errors.New("port missing")
-	}
-	ip := net.ParseIP(strings.Trim(server[:delimiter], "[]"))
-	if ip == nil {
-		return nil, 0, errors.New("invalid IP address")
-	}
-	port, err := strconv.Atoi(server[delimiter+1:])
-	if err != nil || port < 1 || port > 65536 {
-		return nil, 0, errors.New("invalid port")
-	}
-	return ip, uint16(port), nil
-}
-
-func urlFormatAddress(ip net.IP, port uint16) string {
+func formatIPAndPort(ip net.IP, port uint16) string {
 	var address string
 	if ipv4 := ip.To4(); ipv4 != nil {
 		address = fmt.Sprintf("%s:%d", ipv4.String(), port)
@@ -89,190 +62,142 @@ func urlFormatAddress(ip net.IP, port uint16) string {
 	return address
 }
 
-//nolint:gocyclo,gocognit
+func clientManagerFactory(serverType string) func(*Resolver) *clientManager {
+	switch serverType {
+	case ServerTypeDNS:
+		return newDNSClientManager
+	case ServerTypeDoT:
+		return newTLSClientManager
+	case ServerTypeTCP:
+		return newTCPClientManager
+	default:
+		return nil
+	}
+}
+
+func createResolver(resolverURL, source string) (*Resolver, bool, error) {
+	u, err := url.Parse(resolverURL)
+	if err != nil {
+		return nil, false, err
+	}
+
+	switch u.Scheme {
+	case ServerTypeDNS, ServerTypeDoT, ServerTypeTCP:
+	default:
+		return nil, false, fmt.Errorf("invalid DNS resolver scheme %q", u.Scheme)
+	}
+
+	ip := net.ParseIP(u.Hostname())
+	if ip == nil {
+		return nil, false, fmt.Errorf("invalid resolver IP")
+	}
+
+	scope := netutils.ClassifyIP(ip)
+	if scope == netutils.HostLocal {
+		return nil, true, nil // skip
+	}
+
+	query := u.Query()
+	verifyDomain := query.Get("verify")
+	if verifyDomain != "" && u.Scheme != ServerTypeDoT {
+		return nil, false, fmt.Errorf("domain verification only supported in DOT")
+	}
+
+	if verifyDomain == "" && u.Scheme == ServerTypeDoT {
+		return nil, false, fmt.Errorf("DOT must have a verify query parameter set")
+	}
+
+	new := &Resolver{
+		Server:        resolverURL,
+		ServerType:    u.Scheme,
+		ServerAddress: u.Host,
+		ServerIPScope: scope,
+		Source:        source,
+		VerifyDomain:  verifyDomain,
+	}
+
+	newConn := &BasicResolverConn{
+		clientManager: clientManagerFactory(u.Scheme)(new),
+		resolver:      new,
+	}
+
+	new.Conn = newConn
+	return new, false, nil
+}
+
+func configureSearchDomains(resolver *Resolver, searches []string) {
+	// only allow searches for local resolvers
+	for _, value := range searches {
+		trimmedDomain := strings.Trim(value, ".")
+		if checkSearchScope(trimmedDomain) {
+			resolver.Search = append(resolver.Search, fmt.Sprintf(".%s.", strings.Trim(value, ".")))
+		}
+	}
+	// cap to mitigate exploitation via malicious local resolver
+	if len(resolver.Search) > 100 {
+		resolver.Search = resolver.Search[:100]
+	}
+}
+
+func getConfiguredResolvers() (resolvers []*Resolver) {
+	for _, server := range configuredNameServers() {
+		resolver, skip, err := createResolver(server, "config")
+		if err != nil {
+			// TODO(ppacher): module error
+			log.Errorf("cannot use resolver %s: %s", server, err)
+			continue
+		}
+
+		if skip {
+			continue
+		}
+
+		resolvers = append(resolvers, resolver)
+	}
+	return resolvers
+}
+
+func getSystemResolvers() (resolvers []*Resolver) {
+	for _, nameserver := range netenv.Nameservers() {
+		serverURL := fmt.Sprintf("dns://%s", formatIPAndPort(nameserver.IP, 53))
+		resolver, skip, err := createResolver(serverURL, "dhcp") // TODO(ppacher): DHCP can actually be wrong
+		if err != nil {
+			// that shouldn't happen but handle it anyway ...
+			log.Errorf("cannot use system resolver %s: %s", serverURL, err)
+			continue
+		}
+
+		if skip {
+			continue
+		}
+
+		if netutils.IPIsLAN(nameserver.IP) {
+			configureSearchDomains(resolver, nameserver.Search)
+		}
+
+		resolvers = append(resolvers, resolver)
+	}
+	return resolvers
+}
+
 func loadResolvers() {
 	// TODO: what happens when a lot of processes want to reload at once? we do not need to run this multiple times in a short time frame.
 	resolversLock.Lock()
 	defer resolversLock.Unlock()
 
-	var newResolvers []*Resolver
-
-configuredServersLoop:
-	for _, server := range configuredNameServers() {
-		key := indexOfResolver(server, newResolvers)
-		if key >= 0 {
-			continue configuredServersLoop
-		}
-		key = indexOfResolver(server, globalResolvers)
-		if key == -1 {
-
-			parts := strings.Split(server, "|")
-			if len(parts) < 2 {
-				log.Warningf("resolver: nameserver format invalid: %s", server)
-				continue configuredServersLoop
-			}
-
-			var ipScope int8
-			ip, port, err := parseAddress(parts[1])
-			if err == nil {
-				ipScope = netutils.ClassifyIP(ip)
-				if ipScope == netutils.HostLocal {
-					log.Warningf(`resolver: cannot use configured localhost nameserver "%s"`, server)
-					continue configuredServersLoop
-				}
-			} else {
-				if strings.ToLower(parts[0]) == "doh" {
-					ipScope = netutils.Global
-				} else {
-					log.Warningf("resolver: nameserver (%s) address invalid: %s", server, err)
-					continue configuredServersLoop
-				}
-			}
-
-			// create new structs
-			newConn := &BasicResolverConn{}
-			new := &Resolver{
-				Server:        server,
-				ServerType:    strings.ToLower(parts[0]),
-				ServerAddress: parts[1],
-				ServerIP:      ip,
-				ServerIPScope: ipScope,
-				ServerPort:    port,
-				Source:        "config",
-				Conn:          newConn,
-			}
-
-			// refer back
-			newConn.resolver = new
-
-			switch new.ServerType {
-			case "dns":
-				newConn.clientManager = newDNSClientManager(new)
-			case "tcp":
-				newConn.clientManager = newTCPClientManager(new)
-			case "dot":
-				if len(parts) < 3 {
-					log.Warningf("resolver: nameserver missing verification domain as third parameter: %s", server)
-					continue configuredServersLoop
-				}
-				new.VerifyDomain = parts[2]
-				newConn.clientManager = newTLSClientManager(new)
-			case "doh":
-				new.SkipFQDN = dns.Fqdn(strings.Split(parts[1], ":")[0])
-				if len(parts) > 2 {
-					new.VerifyDomain = parts[2]
-				}
-				newConn.clientManager = newHTTPSClientManager(new)
-			default:
-				log.Warningf("resolver: nameserver (%s) type invalid: %s", server, parts[0])
-				continue configuredServersLoop
-			}
-			newResolvers = append(newResolvers, new)
-		} else {
-			newResolvers = append(newResolvers, globalResolvers[key])
-		}
-	}
-
-	// add local resolvers
-	assignedNameservers := netenv.Nameservers()
-assignedServersLoop:
-	for _, nameserver := range assignedNameservers {
-		server := fmt.Sprintf("dns|%s", urlFormatAddress(nameserver.IP, 53))
-		key := indexOfResolver(server, newResolvers)
-		if key >= 0 {
-			continue assignedServersLoop
-		}
-		key = indexOfResolver(server, globalResolvers)
-		if key == -1 {
-
-			ipScope := netutils.ClassifyIP(nameserver.IP)
-			if ipScope == netutils.HostLocal {
-				log.Infof(`resolver: cannot use assigned localhost nameserver at %s`, nameserver.IP)
-				continue assignedServersLoop
-			}
-
-			// create new structs
-			newConn := &BasicResolverConn{}
-			new := &Resolver{
-				Server:        server,
-				ServerType:    "dns",
-				ServerAddress: urlFormatAddress(nameserver.IP, 53),
-				ServerIP:      nameserver.IP,
-				ServerIPScope: ipScope,
-				ServerPort:    53,
-				Source:        "dhcp",
-				Conn:          newConn,
-			}
-
-			// refer back
-			newConn.resolver = new
-
-			// add client manager
-			newConn.clientManager = newDNSClientManager(new)
-
-			if netutils.IPIsLAN(nameserver.IP) && len(nameserver.Search) > 0 {
-				// only allow searches for local resolvers
-				for _, value := range nameserver.Search {
-					trimmedDomain := strings.Trim(value, ".")
-					if checkSearchScope(trimmedDomain) {
-						new.Search = append(new.Search, fmt.Sprintf(".%s.", strings.Trim(value, ".")))
-					}
-				}
-				// cap to mitigate exploitation via malicious local resolver
-				if len(new.Search) > 100 {
-					new.Search = new.Search[:100]
-				}
-			}
-			newResolvers = append(newResolvers, new)
-		} else {
-			newResolvers = append(newResolvers, globalResolvers[key])
-		}
-	}
+	newResolvers := append(
+		getConfiguredResolvers(),
+		getSystemResolvers()...,
+	)
 
 	// save resolvers
 	globalResolvers = newResolvers
 	if len(globalResolvers) == 0 {
 		log.Criticalf("resolver: no (valid) dns servers found in configuration and system")
+		// TODO(module error)
 	}
 
-	// make list with local resolvers
-	localResolvers = make([]*Resolver, 0)
-	for _, resolver := range globalResolvers {
-		if resolver.ServerIP != nil && netutils.IPIsLAN(resolver.ServerIP) {
-			localResolvers = append(localResolvers, resolver)
-		}
-	}
-
-	// add resolvers to every scope the cover
-	localScopes = make([]*Scope, 0)
-	for _, resolver := range globalResolvers {
-
-		if resolver.Search != nil {
-			// add resolver to custom searches
-			for _, search := range resolver.Search {
-				if search == "." {
-					continue
-				}
-				key := indexOfScope(search, localScopes)
-				if key == -1 {
-					localScopes = append(localScopes, &Scope{
-						Domain:    search,
-						Resolvers: []*Resolver{resolver},
-					})
-				} else {
-					localScopes[key].Resolvers = append(localScopes[key].Resolvers, resolver)
-				}
-			}
-
-		}
-	}
-
-	// sort scopes by length
-	sort.Slice(localScopes,
-		func(i, j int) bool {
-			return len(localScopes[i].Domain) > len(localScopes[j].Domain)
-		},
-	)
+	setLocalAndScopeResolvers(globalResolvers)
 
 	// log global resolvers
 	if len(globalResolvers) > 0 {
@@ -312,6 +237,43 @@ assignedServersLoop:
 	if len(globalResolvers) == 0 && len(localResolvers) == 0 {
 		log.Critical("resolver: no resolvers loaded!")
 	}
+}
+
+func setLocalAndScopeResolvers(resolvers []*Resolver) {
+	// make list with local resolvers
+	localResolvers = make([]*Resolver, 0)
+	localScopes = make([]*Scope, 0)
+
+	for _, resolver := range resolvers {
+		if resolver.ServerIP != nil && netutils.IPIsLAN(resolver.ServerIP) {
+			localResolvers = append(localResolvers, resolver)
+		}
+
+		if resolver.Search != nil {
+			// add resolver to custom searches
+			for _, search := range resolver.Search {
+				if search == "." {
+					continue
+				}
+				key := indexOfScope(search, localScopes)
+				if key == -1 {
+					localScopes = append(localScopes, &Scope{
+						Domain:    search,
+						Resolvers: []*Resolver{resolver},
+					})
+					continue
+				}
+				localScopes[key].Resolvers = append(localScopes[key].Resolvers, resolver)
+			}
+		}
+	}
+
+	// sort scopes by length
+	sort.Slice(localScopes,
+		func(i, j int) bool {
+			return len(localScopes[i].Domain) > len(localScopes[j].Domain)
+		},
+	)
 }
 
 func checkSearchScope(searchDomain string) (ok bool) {

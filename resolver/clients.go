@@ -87,30 +87,6 @@ func newTLSClientManager(resolver *Resolver) *clientManager {
 	}
 }
 
-func newHTTPSClientManager(resolver *Resolver) *clientManager {
-	return &clientManager{
-		ttl: 0, // TODO: build a custom client that can reuse connections to some degree (performance / privacy tradeoff)
-		factory: func() *dns.Client {
-			new := &dns.Client{
-				Net: "https",
-				TLSConfig: &tls.Config{
-					MinVersion: tls.VersionTLS12,
-					// TODO: use portbase rng
-				},
-				Timeout: 5 * time.Second,
-				Dialer: &net.Dialer{
-					LocalAddr: getLocalAddr("tcp"),
-					KeepAlive: 15 * time.Second,
-				},
-			}
-			if resolver.VerifyDomain != "" {
-				new.TLSConfig.ServerName = resolver.VerifyDomain
-			}
-			return new
-		},
-	}
-}
-
 func (cm *clientManager) getDNSClient() *dns.Client {
 	cm.lock.Lock()
 	defer cm.lock.Unlock()
