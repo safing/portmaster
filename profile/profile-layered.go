@@ -42,6 +42,7 @@ type LayeredProfile struct {
 	EnforceSPN          config.BoolOption
 	RemoveOutOfScopeDNS config.BoolOption
 	RemoveBlockedDNS    config.BoolOption
+	FilterSubDomains    config.BoolOption
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -92,6 +93,10 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	new.RemoveBlockedDNS = new.wrapSecurityLevelOption(
 		CfgOptionRemoveBlockedDNSKey,
 		cfgOptionRemoveBlockedDNS,
+	)
+	new.FilterSubDomains = new.wrapSecurityLevelOption(
+		CfgOptionFilterSubDomainsKey,
+		cfgOptionFilterSubDomains,
 	)
 
 	// TODO: load linked profiles.
@@ -220,6 +225,8 @@ func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (result end
 // MatchFilterLists matches the entity against the set of filter
 // lists.
 func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (result endpoints.EPResult, reason string) {
+	entity.ResolveSubDomainLists(lp.FilterSubDomains())
+
 	lookupMap, hasLists := entity.GetListsMap()
 	if !hasLists {
 		return endpoints.NoMatch, ""
