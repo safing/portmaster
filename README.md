@@ -1,4 +1,4 @@
-# Portmaster Wiki
+# Portmaster
 
 The Portmaster is a privacy app that at its core simply intercepts _all_ your network connections. Different modules with different privacy features are built on top of it, which can all be enabled or disabled as desired:
 
