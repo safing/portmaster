@@ -71,7 +71,7 @@ func init() {
 
 func main() {
 	// set meta info
-	info.Set("Portmaster Control", "0.2.11", "AGPLv3", true)
+	info.Set("Portmaster Control", "0.3.0", "AGPLv3", true)
 
 	// for debugging
 	// log.Start()
