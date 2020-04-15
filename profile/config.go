@@ -128,9 +128,28 @@ Examples:
 
 	// Service Endpoint Filter List
 	err = config.Register(&config.Option{
-		Name:            "Service Endpoint Filter List",
-		Key:             CfgOptionServiceEndpointsKey,
-		Description:     "Filter incoming connections by matching the source endpoint. Network Scope restrictions and the inbound permission still apply. Also not that the implicit default action of this list is to always block.",
+		Name:        "Service Endpoint Filter List",
+		Key:         CfgOptionServiceEndpointsKey,
+		Description: "Filter incoming connections by matching the source endpoint. Network Scope restrictions and the inbound permission still apply. Also not that the implicit default action of this list is to always block.",
+		Help: `Format:
+	Permission:
+		"+": permit
+		"-": block
+	Host Matching:
+		IP, CIDR, Country Code, ASN, "*" for any
+		Domains:
+			"example.com": exact match
+			".example.com": exact match + subdomains
+			"*xample.com": prefix wildcard
+			"example.*": suffix wildcard
+			"*example*": prefix and suffix wildcard  
+	Protocol and Port Matching (optional):
+		<protocol>/<port>
+
+Examples:
+	+ .example.com */HTTP
+	- .example.com
+	+ 192.168.0.1/24`,
 		OptType:         config.OptTypeStringArray,
 		DefaultValue:    []string{},
 		ExternalOptType: "endpoint list",
@@ -148,7 +167,7 @@ Examples:
 		Key:             CfgOptionFilterListKey,
 		Description:     "Filter connections by matching the endpoint against configured filterlists",
 		OptType:         config.OptTypeStringArray,
-		DefaultValue:    []string{},
+		DefaultValue:    []string{"TRAC", "MAL"},
 		ExternalOptType: "filter list",
 		ValidationRegex: `^[a-zA-Z0-9\-]+$`,
 	})
