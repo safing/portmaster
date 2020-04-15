@@ -1,98 +1,54 @@
-# Portmaster
+# Portmaster Wiki
 
-The Portmaster enables you to protect your data on your device. You are back in charge of your outgoing connections: you choose what data you share and what data stays private. Read more on [docs.safing.io](http://docs.safing.io/).
+The Portmaster is a privacy app that at its core simply intercepts _all_ your network connections. Different modules with different privacy features are built on top of it, which can all be enabled or disabled as desired:
 
-## Current Status
+![portmaster modules](https://safing.io/assets/img/portmaster/modules.png)
 
-**NOTE: Portmaster is currently in development freeze in order to focus on our upcoming [privacy network](https://safing.io/technology/#gate17) (Codename: Gate17)**
+#### ⚠️ Disclaimer
 
-The Portmaster is currently in alpha. Expect dragons.  
-Supported platforms:
+> The Portmaster is still in its early "pre-alpha" development stage. It is functional, but has not yet been tested widely. We are glad if you want to try out the Portmaster right away but please expect bugs and rather technical problems. We'll push updates and fixes as we go. A list of known problems can be found at the bottom of this page.
 
-- linux_amd64
-- windows_amd64 (_soon_)
-- darwin_amd64 (_later_)
+#### 🔄 Automatic Updates
 
-## Using the Alpha Version
+We have set up update servers so we can push fixes and improvements as we go.
 
-#### Must-Know Basics
+# Modules
 
-The Portmaster is all about protecting your privacy. As soon as it starts, it will start to intercept network connections. If other programs are already running, this may cause them to lose Internet connectivity for a short duration.
+## DNS-over-TLS Resolver
 
-The main way to configure the application firewall is by configuring application profiles. For every program that is active on the network the Portmaster automatically creates a profile for it the first it's seen. These profiles are empty at first and only fed by a fallback profile. By changing these profiles in the app, you change what programs are allowed to do.
+**Status:** _pre-alpha_
 
-You can also see what is going on right now. The monitor page in the app lets you see the network like the Portmaster sees it: `Communications` represent a logical connection between a program and a domain. These second level objects group `Links` (physical connections: IP->IP) together for easier handling and viewing.
+A DNS resolver that does not only encrypt your queries, but figures out where it makes the most sense to send your queries. Queries for local domains will not be sent to the upstream servers. This means it won't break your or your company's network setup.
 
-The Portmaster consists of three parts:
-- The _core_ (ie. the _daemon_) that runs as an administrator and does all the work. (`sudo ./pmctl run core --data=/opt/pm_db`)
-- The _app_, a user interface to set preferences, monitor apps and configure application profiles (`sudo ./pmctl run app --data=/opt/pm_db`)
-- The _notifier_, a little menu/tray app for quick access and notifications (`sudo ./pmctl run notifier --data=/opt/pm_db`)
+**Features/Settings:**
 
-If you want to know more, here are [the docs](http://docs.safing.io/).
+- Configure upstream DNS resolvers
+- Don't use assigned Nameserver (by DHCP / local network - public WiFi!)
+- Don't use Multicast DNS (public WiFi!)
 
-#### Installation
+## Privacy Filter
 
-The `pmctl` command will help you get up and running. It will bootstrap your the environment and download additional files it needs. All commands need the `--data` parameter with the database location, as this is where all the data and also the binaries live.
+**Status:** _unreleased - pre-alpha scheduled for the next days_
 
-Just download `pmctl` from the [releases page](https://github.com/safing/portmaster/releases) and put it somewhere comfortable. You may freely choose where you want to put the database - it needs to be the same for all commands. Here we go - run every command in a seperate terminal window:
+Think of a pi-hole for your computer. Or an ad-blocker that blocks ads on your whole computer, not only on your browser. With you everywhere you go and every network you visit.
 
-```bash
-# Either export the PORTMASTER_DATA environment variable or add
-# --data=/opt/pm_db to all commands below. If you use pmctl a
-# lot you may move the export line to your ~/.bashrc
-export PORTMASTER_DATA=/opt/pm_db
+**Features/Settings:**
 
-# start the portmaster:
-sudo ./pmctl run core
-# this will add some rules to iptables for traffic interception via nfqueue (and will clean up afterwards!)
-# already active connections may not be handled correctly, please restart programs for clean behavior
+- Select and activate block-lists
+- Manually black/whitelist domains
+  - You can whitelist domains in case something breaks
+- CNAME Blocking (block these new nasty "unblockable" ads/trackers - coming soon)
+- Block all subdomains of a domain in the block-lists
 
-# then start the app:
-./pmctl run app
+## Safing Privacy Network (SPN)
 
-# and the notifier:
-./pmctl run notifier
-```
+**Status:** _unreleased - pre-alpha scheduled for June_
 
-#### Feedback
+Please [visit our Kickstarter campaign](https://www.kickstarter.com/projects/safingio/spn/) to read all about this module.
 
-We'd love to know what you think, drop by on [our forum](https://discourse.safing.community/) and let us know!  
-If you want to report a bug, please [open an issue on Github](https://github.com/safing/portmaster/issues/new).
+# Installation
 
-## Documentation
+Installation instructions for your platform as well as known issues can be found at the respective wiki pages:
 
-Documentation _in progress_ can be found here: [docs.safing.io](http://docs.safing.io/)
-
-## Usage Dependencies
-
-#### Linux
-- libnetfilter_queue
-  - debian/ubuntu:  `sudo apt-get install libnetfilter-queue1`
-  - fedora:         `sudo yum install libnetfilter_queue`
-  - arch:           `sudo pacman -S libnetfilter_queue`
-- [Network Manager](https://wiki.gnome.org/Projects/NetworkManager) (_optional_)
-
-#### Windows
-- Windows 7 (with update KB3033929) or up
-  - [KB3033929](https://docs.microsoft.com/en-us/security-updates/SecurityAdvisories/2015/3033929) (a 2015 security update) is required for correctly verifying the driver signature
-- Windows Server 2016 systems must have secure boot disabled. (_clarification needed_)
-
-## Build Dependencies
-
-#### Linux
-- libnetfilter_queue development files
-  - debian/ubuntu:  `sudo apt-get install libnetfilter-queue-dev`
-  - fedora:         `?`
-  - arch:           `sudo pacman -S libnetfilter_queue`
-
-## TCP/UDP Ports
-
-The Portmaster (with Gate17) uses the following ports:
-- ` 17` Gate17 port for connecting to Gate17 nodes
-- ` 53` DNS server (local only)
-- `717` Gate17 entrypoint as the local endpoint for tunneled connections (local only)
-- `817` Portmaster API for integration with UI elements and other helpers (local only)
-
-Learn more about [why we chose these ports](https://docs.safing.io/docs/portmaster/os-integration.html).
-
-Gate17 nodes additionally uses other common ports like `80` and `443` to provide access in restricted network environments.
+- [Linux](https://github.com/safing/portmaster/wiki/Linux)
+- [Windows](https://github.com/safing/portmaster/wiki/Windows)
