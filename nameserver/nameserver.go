@@ -190,10 +190,10 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 
 		// for undecided or accepted connections we don't save them yet because
 		// that will happen later anyway.
-		case network.VerdictUndecided, network.VerdictAccept:
+		case network.VerdictUndecided, network.VerdictAccept,
+			network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel:
 			return
 
-		// FIXME(ppacher): how to handle undeterminable and the SPN re-routing here?
 		default:
 			log.Warningf("nameserver: unexpected verdict %s for connection %s, not saving", conn.Verdict, conn)
 		}
@@ -202,9 +202,9 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	if conn.Process().Profile() == nil {
 		tracer.Infof("nameserver: failed to find process for request %s, returning NXDOMAIN", conn)
 		returnNXDomain(w, query)
-		// FIXME(ppacher): if we save the connection (by marking it as failed)
-		// we might collect A LOT of connections for the UI.
-		//conn.Failed("Unknown process")
+		// NOTE(ppacher): saving unknown process connection might end up in a lot of
+		// processes. Consider disabling that via config.
+		conn.Failed("Unknown process")
 		return nil
 	}
 
@@ -297,7 +297,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	m.Extra = rrCache.Extra
 
 	if err := w.WriteMsg(m); err != nil {
-		log.Warningf("nameserver: failed to return reponse %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
+		log.Warningf("nameserver: failed to return response %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
 	} else {
 		tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
 	}

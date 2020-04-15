@@ -22,78 +22,38 @@ import (
 type Entity struct {
 	sync.Mutex
 
-	Domain                string
-	IP                    net.IP
-	Protocol              uint8
-	Port                  uint16
+	// lists exist for most entity information and
+	// we need to know which one we loaded
+	domainListLoaded      bool
+	ipListLoaded          bool
+	countryListLoaded     bool
+	asnListLoaded         bool
 	reverseResolveEnabled bool
-	reverseResolveOnce    sync.Once
 
-	Country           string
-	ASN               uint
-	location          *geoip.Location
-	fetchLocationOnce sync.Once
+	Protocol uint8
+	Port     uint16
+	Domain   string
+	IP       net.IP
+
+	Country  string
+	ASN      uint
+	location *geoip.Location
 
 	Lists    []string
 	ListsMap filterlists.LookupMap
 
 	// we only load each data above at most once
+	fetchLocationOnce  sync.Once
+	reverseResolveOnce sync.Once
 	loadDomainListOnce sync.Once
 	loadIPListOnce     sync.Once
 	loadCoutryListOnce sync.Once
 	loadAsnListOnce    sync.Once
-
-	// lists exist for most entity information and
-	// we need to know which one we loaded
-	domainListLoaded  bool
-	ipListLoaded      bool
-	countryListLoaded bool
-	asnListLoaded     bool
 }
 
 // Init initializes the internal state and returns the entity.
 func (e *Entity) Init() *Entity {
 	// for backwards compatibility, remove that one
-	return e
-}
-
-// MergeDomain copies the Domain from other to e. It does
-// not lock e or other so the caller must ensure
-// proper locking of entities.
-func (e *Entity) MergeDomain(other *Entity) *Entity {
-
-	// FIXME(ppacher): should we disable reverse lookups now?
-	e.Domain = other.Domain
-
-	return e
-}
-
-// MergeLists merges the intel lists stored in other with the
-// lists stored in e. Neither e nor other are locked so the
-// caller must ensure proper locking on both entities.
-// MergeLists ensures list entries are unique and sorted.
-func (e *Entity) MergeLists(other *Entity) *Entity {
-	e.Lists = mergeStringList(e.Lists, other.Lists)
-	e.ListsMap = buildLookupMap(e.Lists)
-
-	// mark every list other has loaded also as
-	// loaded in e. Don't copy values of lists
-	// not loaded in other because they might have
-	// been loaded in e.
-
-	if other.domainListLoaded {
-		e.domainListLoaded = true
-	}
-	if other.ipListLoaded {
-		e.ipListLoaded = true
-	}
-	if other.countryListLoaded {
-		e.countryListLoaded = true
-	}
-	if other.asnListLoaded {
-		e.asnListLoaded = true
-	}
-
 	return e
 }
 
