@@ -1,7 +1,6 @@
 package profile
 
 import (
-	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -101,8 +100,8 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 		cfgOptionFilterSubDomains,
 	)
 	new.PreventBypassing = new.wrapSecurityLevelOption(
-		CfgOptionBypassProtectionKey,
-		cfgOptionBypassProtection,
+		CfgOptionPreventBypassingKey,
+		cfgOptionPreventBypassing,
 	)
 
 	// TODO: load linked profiles.
@@ -254,22 +253,6 @@ func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (endpoints.EPRe
 	defer cfgLock.RUnlock()
 	if reason := lookupMap.Match(cfgFilterLists); reason != "" {
 		return endpoints.Denied, reason
-	}
-
-	return endpoints.NoMatch, ""
-}
-
-// MatchBypassProtection checks if the entity should be denied or permitted
-// based on some bypass protection checks.
-func (lp *LayeredProfile) MatchBypassProtection(entity *intel.Entity) (endpoints.EPResult, string) {
-	if !lp.PreventBypassing() {
-		return endpoints.NoMatch, ""
-	}
-
-	// Block firefox canary domain to disable DoH
-	if strings.ToLower(entity.Domain) == "use-application-dns.net." {
-		log.Warningf("bypass protection for firefox canary")
-		return endpoints.Denied, "Firefox canary domain"
 	}
 
 	return endpoints.NoMatch, ""

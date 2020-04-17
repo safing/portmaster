@@ -54,8 +54,8 @@ var (
 	CfgOptionRemoveBlockedDNSKey = "filter/removeBlockedDNS"
 	cfgOptionRemoveBlockedDNS    config.IntOption // security level option
 
-	CfgOptionBypassProtectionKey = "filter/preventBypassing"
-	cfgOptionBypassProtection    config.IntOption // security level option
+	CfgOptionPreventBypassingKey = "filter/preventBypassing"
+	cfgOptionPreventBypassing    config.IntOption // security level option
 )
 
 func registerConfiguration() error {
@@ -330,20 +330,20 @@ Examples:
 
 	err = config.Register(&config.Option{
 		Name:            "Prevent Bypassing",
-		Key:             CfgOptionBypassProtectionKey,
-		Description:     "Prevent apps from bypassing the privacy filter:\n- Firefox: Disable DNS-over-HTTPs",
+		Key:             CfgOptionPreventBypassingKey,
+		Description:     "Prevent apps from bypassing the privacy filter: Firefox by disabling DNS-over-HTTPs",
 		OptType:         config.OptTypeInt,
 		ExpertiseLevel:  config.ExpertiseLevelUser,
 		ReleaseLevel:    config.ReleaseLevelBeta,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(7|6|4|0)",
+		ValidationRegex: "^(7|6|4)",
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionBypassProtection = config.Concurrent.GetAsInt((CfgOptionBypassProtectionKey), int64(status.SecurityLevelsAll))
-	cfgIntOptions[CfgOptionBypassProtectionKey] = cfgOptionBypassProtection
+	cfgOptionPreventBypassing = config.Concurrent.GetAsInt((CfgOptionPreventBypassingKey), int64(status.SecurityLevelsAll))
+	cfgIntOptions[CfgOptionPreventBypassingKey] = cfgOptionPreventBypassing
 
 	return nil
 }
