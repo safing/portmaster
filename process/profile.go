@@ -15,6 +15,8 @@ func (p *Process) GetProfile(ctx context.Context) error {
 	// only find profiles if not already done.
 	if p.profile != nil {
 		log.Tracer(ctx).Trace("process: profile already loaded")
+		// mark profile as used
+		p.profile.MarkUsed()
 		return nil
 	}
 	log.Tracer(ctx).Trace("process: loading profile")
@@ -29,10 +31,8 @@ func (p *Process) GetProfile(ctx context.Context) error {
 		localProfile.Name = p.ExecName
 	}
 
-	// mark as used and save
-	if localProfile.MarkUsed() {
-		_ = localProfile.Save()
-	}
+	// mark profile as used
+	localProfile.MarkUsed()
 
 	p.LocalProfileKey = localProfile.Key()
 	p.profile = profile.NewLayeredProfile(localProfile)

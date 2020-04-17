@@ -123,7 +123,7 @@ func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 
 	var changed bool
 	for i, layer := range lp.layers {
-		if layer.oudated.IsSet() {
+		if layer.outdated.IsSet() {
 			changed = true
 			// update layer
 			newLayer, err := GetProfile(layer.Source, layer.ID)
@@ -168,6 +168,11 @@ func (lp *LayeredProfile) updateCaches() {
 	atomic.StoreUint32(lp.securityLevel, uint32(newLevel))
 
 	// TODO: ignore community profiles
+}
+
+// MarkUsed marks the localProfile as used.
+func (lp *LayeredProfile) MarkUsed() {
+	lp.localProfile.MarkUsed()
 }
 
 // SecurityLevel returns the highest security level of all layered profiles.

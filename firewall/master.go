@@ -50,6 +50,7 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:
 	if conn.Process().Pid == os.Getpid() {
 		log.Infof("filter: granting own connection %s", conn)
 		conn.Verdict = network.VerdictAccept
+		conn.Hidden = true
 		return
 	}
 
@@ -75,6 +76,7 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:
 					log.Warningf("filter: failed to find load local peer process with PID %d: %s", otherPid, err)
 				} else if otherProcess.Pid == conn.Process().Pid {
 					conn.Accept("connection to self")
+					conn.Hidden = true
 					return
 				}
 			}

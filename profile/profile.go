@@ -19,15 +19,15 @@ import (
 )
 
 var (
-	lastUsedUpdateThreshold = 1 * time.Hour
+	lastUsedUpdateThreshold = 24 * time.Hour
 )
 
 // Profile Sources
 const (
-	SourceLocal      string = "local"
+	SourceLocal      string = "local"   // local, editable
+	SourceSpecial    string = "special" // specials (read-only)
 	SourceCommunity  string = "community"
 	SourceEnterprise string = "enterprise"
-	SourceGlobal     string = "global"
 )
 
 // Default Action IDs
@@ -77,7 +77,8 @@ type Profile struct { //nolint:maligned // not worth the effort
 	filterListIDs     []string
 
 	// Lifecycle Management
-	oudated *abool.AtomicBool
+	outdated *abool.AtomicBool
+	lastUsed time.Time
 
 	// Framework
 	// If a Profile is declared as a Framework (i.e. an Interpreter and the likes), then the real process/actor must be found
@@ -94,7 +95,7 @@ type Profile struct { //nolint:maligned // not worth the effort
 func (profile *Profile) prepConfig() (err error) {
 	// prepare configuration
 	profile.configPerspective, err = config.NewPerspective(profile.Config)
-	profile.oudated = abool.New()
+	profile.outdated = abool.New()
 	return
 }
 
@@ -156,10 +157,11 @@ func (profile *Profile) parseConfig() error {
 // New returns a new Profile.
 func New() *Profile {
 	profile := &Profile{
-		ID:      uuid.NewV4().String(),
-		Source:  SourceLocal,
-		Created: time.Now().Unix(),
-		Config:  make(map[string]interface{}),
+		ID:           uuid.NewV4().String(),
+		Source:       SourceLocal,
+		Created:      time.Now().Unix(),
+		Config:       make(map[string]interface{}),
+		internalSave: true,
 	}
 
 	// create placeholders
@@ -190,13 +192,26 @@ func (profile *Profile) Save() error {
 	return profileDB.Put(profile)
 }
 
-// MarkUsed marks the profile as used, eventually.
-func (profile *Profile) MarkUsed() (updated bool) {
+// MarkUsed marks the profile as used and saves it when it has changed.
+func (profile *Profile) MarkUsed() {
+	profile.Lock()
+	// lastUsed
+	profile.lastUsed = time.Now()
+
+	// ApproxLastUsed
+	save := false
 	if time.Now().Add(-lastUsedUpdateThreshold).Unix() > profile.ApproxLastUsed {
 		profile.ApproxLastUsed = time.Now().Unix()
-		return true
+		save = true
 	}
-	return false
+	profile.Unlock()
+
+	if save {
+		err := profile.Save()
+		if err != nil {
+			log.Warningf("profiles: failed to save profile %s after marking as used: %s", profile.ScopedID(), err)
+		}
+	}
 }
 
 // String returns a string representation of the Profile.
@@ -224,8 +239,6 @@ func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
 	endpointList = append(endpointList, newEntry)
 	profile.Config[cfgKey] = endpointList
 
-	// save without full reload
-	profile.internalSave = true
 	profile.Unlock()
 	err := profile.Save()
 	if err != nil {
@@ -233,10 +246,13 @@ func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
 	}
 
 	// reload manually
+	profile.Lock()
+	profile.dataParsed = false
 	err = profile.parseConfig()
 	if err != nil {
 		log.Warningf("profile: failed to parse profile config after adding endpoint: %s", err)
 	}
+	profile.Unlock()
 }
 
 // GetProfile loads a profile from the database.
@@ -249,6 +265,7 @@ func GetProfileByScopedID(scopedID string) (*Profile, error) {
 	// check cache
 	profile := getActiveProfile(scopedID)
 	if profile != nil {
+		profile.MarkUsed()
 		return profile, nil
 	}
 
@@ -266,7 +283,6 @@ func GetProfileByScopedID(scopedID string) (*Profile, error) {
 
 	// lock for prepping
 	profile.Lock()
-	defer profile.Unlock()
 
 	// prepare config
 	err = profile.prepConfig()
@@ -280,7 +296,13 @@ func GetProfileByScopedID(scopedID string) (*Profile, error) {
 		log.Warningf("profiles: profile %s has (partly) invalid configuration: %s", profile.ID, err)
 	}
 
+	// mark as internal
+	profile.internalSave = true
+
+	profile.Unlock()
+
 	// mark active
+	profile.MarkUsed()
 	markProfileActive(profile)
 
 	return profile, nil

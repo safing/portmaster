@@ -41,6 +41,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	VerdictPermanent bool
 	Inspecting       bool
 	Encrypted        bool // TODO
+	Hidden           bool
 
 	pktQueue        chan packet.Packet
 	firewallHandler FirewallHandler
@@ -58,7 +59,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, ip net.IP, po
 	proc, err := process.GetProcessByEndpoints(ctx, ip, port, dnsAddress, dnsPort, packet.UDP)
 	if err != nil {
 		log.Warningf("network: failed to find process of dns request for %s: %s", fqdn, err)
-		proc = process.UnknownProcess
+		proc = process.GetUnidentifiedProcess(ctx)
 	}
 
 	timestamp := time.Now().Unix()
@@ -80,7 +81,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	proc, inbound, err := process.GetProcessByPacket(pkt)
 	if err != nil {
 		log.Warningf("network: failed to find process of packet %s: %s", pkt, err)
-		proc = process.UnknownProcess
+		proc = process.GetUnidentifiedProcess(pkt.Ctx())
 	}
 
 	var scope string
@@ -270,7 +271,11 @@ func (conn *Connection) Save() {
 
 // delete deletes a link from the storage and propagates the change. Nothing is locked - both the conns map and the connection itself require locking
 func (conn *Connection) delete() {
-	delete(conns, conn.ID)
+	if conn.ID == "" {
+		delete(dnsConns, strconv.Itoa(conn.process.Pid)+"/"+conn.Scope)
+	} else {
+		delete(conns, conn.ID)
+	}
 
 	conn.Meta().Delete()
 	dbController.PushUpdate(conn)

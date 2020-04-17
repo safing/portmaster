@@ -23,7 +23,16 @@ func removeOpenDNSRequest(pid int, fqdn string) {
 	defer openDNSRequestsLock.Unlock()
 
 	key := strconv.Itoa(pid) + "/" + fqdn
-	delete(openDNSRequests, key)
+	_, ok := openDNSRequests[key]
+	if ok {
+		delete(openDNSRequests, key)
+		return
+	}
+
+	// check if there is an open dns request from an unidentified process
+	if pid >= 0 {
+		delete(openDNSRequests, "-1/"+fqdn)
+	}
 }
 
 // SaveOpenDNSRequest saves a dns request connection that was allowed to proceed.
