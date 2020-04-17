@@ -1,25 +1,48 @@
 package resolver
 
-import "testing"
+import (
+	"testing"
 
-func testDomains(t *testing.T, ipi *IPInfo, expectedDomains string) {
-	if ipi.FmtDomains() != expectedDomains {
-		t.Errorf("unexpected domains '%s', expected '%s'", ipi.FmtDomains(), expectedDomains)
-	}
-}
+	"github.com/stretchr/testify/assert"
+)
 
 func TestIPInfo(t *testing.T) {
-	ipi := &IPInfo{
-		IP:      "1.2.3.4",
-		Domains: []string{"example.com.", "sub.example.com."},
+	example := ResolvedDomain{
+		Domain: "example.com.",
+	}
+	subExample := ResolvedDomain{
+		Domain: "sub1.example.com",
+		CNAMEs: []string{"example.com"},
 	}
 
-	testDomains(t, ipi, "example.com. or sub.example.com.")
-	ipi.AddDomain("added.example.com.")
-	testDomains(t, ipi, "added.example.com. or example.com. or sub.example.com.")
-	ipi.AddDomain("sub.example.com.")
-	testDomains(t, ipi, "added.example.com. or example.com. or sub.example.com.")
-	ipi.AddDomain("added.example.com.")
-	testDomains(t, ipi, "added.example.com. or example.com. or sub.example.com.")
+	ipi := &IPInfo{
+		IP: "1.2.3.4",
+		ResolvedDomains: ResolvedDomains{
+			example,
+			subExample,
+		},
+	}
 
+	sub2Example := ResolvedDomain{
+		Domain: "sub2.example.com",
+		CNAMEs: []string{"sub1.example.com", "example.com"},
+	}
+	added := ipi.AddDomain(sub2Example)
+
+	assert.True(t, added)
+	assert.Equal(t, ResolvedDomains{example, subExample, sub2Example}, ipi.ResolvedDomains)
+
+	// try again, should do nothing now
+	added = ipi.AddDomain(sub2Example)
+	assert.False(t, added)
+	assert.Equal(t, ResolvedDomains{example, subExample, sub2Example}, ipi.ResolvedDomains)
+
+	subOverWrite := ResolvedDomain{
+		Domain: "sub1.example.com",
+		CNAMEs: []string{}, // now without CNAMEs
+	}
+
+	added = ipi.AddDomain(subOverWrite)
+	assert.True(t, added)
+	assert.Equal(t, ResolvedDomains{example, sub2Example, subOverWrite}, ipi.ResolvedDomains)
 }

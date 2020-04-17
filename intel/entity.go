@@ -32,14 +32,32 @@ type Entity struct {
 	asnListLoaded         bool
 	reverseResolveEnabled bool
 	resolveSubDomainLists bool
+	checkCNAMEs           bool
 
+	// Protocol is the protcol number used by the connection.
 	Protocol uint8
-	Port     uint16
-	Domain   string
-	IP       net.IP
 
-	Country  string
-	ASN      uint
+	// Port is the destination port of the connection
+	Port uint16
+
+	// Domain is the target domain of the connection.
+	Domain string
+
+	// CNAME is a list of domain names that have been
+	// resolved for Domain.
+	CNAME []string
+
+	// IP is the IP address of the connection. If domain is
+	// set, IP has been resolved by following all CNAMEs.
+	IP net.IP
+
+	// Country holds the country the IP address (ASN) is
+	// located in.
+	Country string
+
+	// ASN holds the autonomous system number of the IP.
+	ASN uint
+
 	location *geoip.Location
 
 	Lists    []string
@@ -79,6 +97,7 @@ func (e *Entity) ResetLists() {
 	e.countryListLoaded = false
 	e.asnListLoaded = false
 	e.resolveSubDomainLists = false
+	e.checkCNAMEs = false
 	e.loadDomainListOnce = sync.Once{}
 	e.loadIPListOnce = sync.Once{}
 	e.loadCoutryListOnce = sync.Once{}
@@ -92,6 +111,21 @@ func (e *Entity) ResolveSubDomainLists(enabled bool) {
 		log.Warningf("intel/filterlists: tried to change sub-domain resolving for %s but lists are already fetched", e.Domain)
 	}
 	e.resolveSubDomainLists = enabled
+}
+
+// EnableCNAMECheck enalbes or disables list lookups for
+// entity CNAMEs.
+func (e *Entity) EnableCNAMECheck(enabled bool) {
+	if e.domainListLoaded {
+		log.Warningf("intel/filterlists: tried to change CNAME resolving for %s but lists are already fetched", e.Domain)
+	}
+	e.checkCNAMEs = enabled
+}
+
+// CNAMECheckEnabled returns true if the entities CNAMEs should
+// also be checked.
+func (e *Entity) CNAMECheckEnabled() bool {
+	return e.checkCNAMEs
 }
 
 // Domain and IP
@@ -220,10 +254,23 @@ func (e *Entity) getDomainLists() {
 	}
 
 	e.loadDomainListOnce.Do(func() {
-		var domains = []string{domain}
+		var domainsToInspect = []string{domain}
+
+		if e.checkCNAMEs {
+			log.Tracef("intel: CNAME filtering enabled, checking %v too", e.CNAME)
+			domainsToInspect = append(domainsToInspect, e.CNAME...)
+		}
+
+		var domains []string
 		if e.resolveSubDomainLists {
-			domains = splitDomain(domain)
-			log.Tracef("intel: subdomain list resolving is enabled, checking %v", domains)
+			for _, domain := range domainsToInspect {
+				subdomains := splitDomain(domain)
+				domains = append(domains, subdomains...)
+
+				log.Tracef("intel: subdomain list resolving is enabled: %s => %v", domains, subdomains)
+			}
+		} else {
+			domains = domainsToInspect
 		}
 
 		for _, d := range domains {

@@ -54,9 +54,9 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 }
 
 // NewConnectionFromDNSRequest returns a new connection based on the given dns request.
-func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, ip net.IP, port uint16) *Connection {
+func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, localIP net.IP, localPort uint16) *Connection {
 	// get Process
-	proc, err := process.GetProcessByEndpoints(ctx, ip, port, dnsAddress, dnsPort, packet.UDP)
+	proc, err := process.GetProcessByEndpoints(ctx, localIP, localPort, dnsAddress, dnsPort, packet.UDP)
 	if err != nil {
 		log.Warningf("network: failed to find process of dns request for %s: %s", fqdn, err)
 		proc = process.GetUnidentifiedProcess(ctx)
@@ -67,7 +67,8 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, ip net.IP, po
 		Scope: fqdn,
 		Entity: (&intel.Entity{
 			Domain: fqdn,
-		}).Init(),
+			CNAME:  cnames,
+		}),
 		process: proc,
 		Started: timestamp,
 		Ended:   timestamp,
@@ -104,7 +105,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 			IP:       pkt.Info().Src,
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().SrcPort,
-		}).Init()
+		})
 
 	} else {
 
@@ -113,18 +114,21 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 			IP:       pkt.Info().Dst,
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().DstPort,
-		}).Init()
+		})
 
 		// check if we can find a domain for that IP
 		ipinfo, err := resolver.GetIPInfo(pkt.Info().Dst.String())
 		if err == nil {
+			lastResolvedDomain := ipinfo.ResolvedDomains.MostRecentDomain()
+			if lastResolvedDomain != nil {
+				scope = lastResolvedDomain.Domain
+				entity.Domain = lastResolvedDomain.Domain
+				entity.CNAME = lastResolvedDomain.CNAMEs
+				removeOpenDNSRequest(proc.Pid, lastResolvedDomain.Domain)
+			}
+		}
 
-			// outbound to domain
-			scope = ipinfo.Domains[0]
-			entity.Domain = scope
-			removeOpenDNSRequest(proc.Pid, scope)
-
-		} else {
+		if scope == "" {
 
 			// outbound direct (possibly P2P) connection
 			switch netutils.ClassifyIP(pkt.Info().Dst) {

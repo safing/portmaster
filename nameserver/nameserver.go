@@ -2,9 +2,11 @@ package nameserver
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strings"
 
+	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/modules/subsystems"
 
 	"github.com/safing/portbase/log"
@@ -14,6 +16,7 @@ import (
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/profile/endpoints"
 	"github.com/safing/portmaster/resolver"
 
 	"github.com/miekg/dns"
@@ -87,9 +90,11 @@ func stop() error {
 	return nil
 }
 
-func returnNXDomain(w dns.ResponseWriter, query *dns.Msg) {
+func returnNXDomain(w dns.ResponseWriter, query *dns.Msg, reason string) {
 	m := new(dns.Msg)
 	m.SetRcode(query, dns.RcodeNameError)
+	rr, _ := dns.NewRR("portmaster.block.reason.	0	IN	TXT		" + fmt.Sprintf("%q", reason))
+	m.Extra = []dns.RR{rr}
 	_ = w.WriteMsg(m)
 }
 
@@ -126,7 +131,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	if question.Qclass != dns.ClassINET {
 		// we only serve IN records, return nxdomain
 		log.Warningf("nameserver: only IN record requests are supported but received Qclass %d, returning NXDOMAIN", question.Qclass)
-		returnNXDomain(w, query)
+		returnNXDomain(w, query, "wrong type")
 		return nil
 	}
 
@@ -166,7 +171,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	// check if valid domain name
 	if !netutils.IsValidFqdn(q.FQDN) {
 		log.Debugf("nameserver: domain name %s is invalid, returning nxdomain", q.FQDN)
-		returnNXDomain(w, query)
+		returnNXDomain(w, query, "invalid domain")
 		return nil
 	}
 
@@ -177,7 +182,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	// TODO: if there are 3 request for the same domain/type in a row, delete all caches of that domain
 
 	// get connection
-	conn := network.NewConnectionFromDNSRequest(ctx, q.FQDN, remoteAddr.IP, uint16(remoteAddr.Port))
+	conn := network.NewConnectionFromDNSRequest(ctx, q.FQDN, nil, remoteAddr.IP, uint16(remoteAddr.Port))
 
 	// once we decided on the connection we might need to save it to the database
 	// so we defer that check right now.
@@ -202,7 +207,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	// TODO: this has been obsoleted due to special profiles
 	if conn.Process().Profile() == nil {
 		tracer.Infof("nameserver: failed to find process for request %s, returning NXDOMAIN", conn)
-		returnNXDomain(w, query)
+		returnNXDomain(w, query, "unknown process")
 		// NOTE(ppacher): saving unknown process connection might end up in a lot of
 		// processes. Consider disabling that via config.
 		conn.Failed("Unknown process")
@@ -218,7 +223,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	// log.Tracef("nameserver: domain %s has lms score of %f", fqdn, lms)
 	if lms < 10 {
 		tracer.Warningf("nameserver: possible data tunnel by %s: %s has lms score of %f, returning nxdomain", conn.Process(), q.FQDN, lms)
-		returnNXDomain(w, query)
+		returnNXDomain(w, query, "lms")
 		conn.Block("Possible data tunnel")
 		return nil
 	}
@@ -229,7 +234,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	switch conn.Verdict {
 	case network.VerdictBlock:
 		tracer.Infof("nameserver: %s blocked, returning nxdomain", conn)
-		returnNXDomain(w, query)
+		returnNXDomain(w, query, conn.Reason)
 		return nil
 	case network.VerdictDrop, network.VerdictFailed:
 		tracer.Infof("nameserver: %s dropped, not replying", conn)
@@ -241,7 +246,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	if err != nil {
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
 		tracer.Warningf("nameserver: %s requested %s%s: %s", conn.Process(), q.FQDN, q.QType, err)
-		returnNXDomain(w, query)
+		returnNXDomain(w, query, conn.Reason)
 		conn.Failed("failed to resolve: " + err.Error())
 		return nil
 	}
@@ -251,41 +256,92 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	// TODO: FilterDNSResponse also sets a connection verdict
 	if rrCache == nil {
 		tracer.Infof("nameserver: %s implicitly denied by filtering the dns response, returning nxdomain", conn)
-		returnNXDomain(w, query)
+		returnNXDomain(w, query, conn.Reason)
 		conn.Block("DNS response filtered")
 		return nil
 	}
 
 	// save IP addresses to IPInfo
+	cnames := make(map[string]string)
+	ips := make(map[string]struct{})
+
 	for _, rr := range append(rrCache.Answer, rrCache.Extra...) {
 		switch v := rr.(type) {
+		case *dns.CNAME:
+			cnames[v.Hdr.Name] = v.Target
+
 		case *dns.A:
-			ipInfo, err := resolver.GetIPInfo(v.A.String())
-			if err != nil {
-				ipInfo = &resolver.IPInfo{
-					IP:      v.A.String(),
-					Domains: []string{q.FQDN},
-				}
-				_ = ipInfo.Save()
-			} else {
-				added := ipInfo.AddDomain(q.FQDN)
-				if added {
-					_ = ipInfo.Save()
-				}
-			}
+			ips[v.A.String()] = struct{}{}
+
 		case *dns.AAAA:
-			ipInfo, err := resolver.GetIPInfo(v.AAAA.String())
-			if err != nil {
-				ipInfo = &resolver.IPInfo{
-					IP:      v.AAAA.String(),
-					Domains: []string{q.FQDN},
-				}
-				_ = ipInfo.Save()
-			} else {
-				added := ipInfo.AddDomain(q.FQDN)
-				if added {
-					_ = ipInfo.Save()
-				}
+			ips[v.AAAA.String()] = struct{}{}
+		}
+	}
+
+	for ip := range ips {
+		record := resolver.ResolvedDomain{
+			Domain: q.FQDN,
+		}
+
+		// resolve all CNAMEs in the correct order.
+		var domain = q.FQDN
+		for {
+			nextDomain, isCNAME := cnames[domain]
+			if !isCNAME {
+				break
+			}
+
+			record.CNAMEs = append(record.CNAMEs, nextDomain)
+			domain = nextDomain
+		}
+
+		// update the entity to include the cnames
+		conn.Entity.CNAME = record.CNAMEs
+
+		// get the existing IP info or create a new  one
+		var save bool
+		info, err := resolver.GetIPInfo(ip)
+		if err != nil {
+			if err != database.ErrNotFound {
+				log.Errorf("nameserver: failed to search for IP info record: %s", err)
+			}
+
+			info = &resolver.IPInfo{
+				IP: ip,
+			}
+			save = true
+		}
+
+		// and the new resolved domain record and save
+		if new := info.AddDomain(record); new {
+			save = true
+		}
+		if save {
+			if err := info.Save(); err != nil {
+				log.Errorf("nameserver: failed to save IP info record: %s", err)
+			}
+		}
+	}
+
+	// if we have CNAMEs and the profile is configured to filter them
+	// we need to re-check the lists and endpoints here
+	if conn.Process().Profile().FilterCNAMEs() {
+		conn.Entity.ResetLists()
+		conn.Entity.EnableCNAMECheck(true)
+
+		result, reason := conn.Process().Profile().MatchEndpoint(conn.Entity)
+		if result == endpoints.Denied {
+			conn.Block("endpoint in blocklist: " + reason)
+			returnNXDomain(w, query, conn.Reason)
+			return nil
+		}
+
+		if result == endpoints.NoMatch {
+			result, reason = conn.Process().Profile().MatchFilterLists(conn.Entity)
+			if result == endpoints.Denied {
+				conn.Block("endpoint in filterlists: " + reason)
+				returnNXDomain(w, query, conn.Reason)
+				return nil
 			}
 		}
 	}

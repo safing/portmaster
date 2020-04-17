@@ -5,6 +5,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/netenv"
@@ -164,35 +165,60 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	}
 
 	// save IP addresses to IPInfo
+	cnames := make(map[string]string)
+	ips := make(map[string]struct{})
+
 	for _, rr := range append(rrCache.Answer, rrCache.Extra...) {
 		switch v := rr.(type) {
+		case *dns.CNAME:
+			cnames[v.Hdr.Name] = v.Target
+
 		case *dns.A:
-			ipInfo, err := resolver.GetIPInfo(v.A.String())
-			if err != nil {
-				ipInfo = &resolver.IPInfo{
-					IP:      v.A.String(),
-					Domains: []string{q.FQDN},
-				}
-				_ = ipInfo.Save()
-			} else {
-				added := ipInfo.AddDomain(q.FQDN)
-				if added {
-					_ = ipInfo.Save()
-				}
-			}
+			ips[v.A.String()] = struct{}{}
+
 		case *dns.AAAA:
-			ipInfo, err := resolver.GetIPInfo(v.AAAA.String())
-			if err != nil {
-				ipInfo = &resolver.IPInfo{
-					IP:      v.AAAA.String(),
-					Domains: []string{q.FQDN},
-				}
-				_ = ipInfo.Save()
-			} else {
-				added := ipInfo.AddDomain(q.FQDN)
-				if added {
-					_ = ipInfo.Save()
-				}
+			ips[v.AAAA.String()] = struct{}{}
+		}
+	}
+
+	for ip := range ips {
+		record := resolver.ResolvedDomain{
+			Domain: q.FQDN,
+		}
+
+		// resolve all CNAMEs in the correct order.
+		var domain = q.FQDN
+		for {
+			nextDomain, isCNAME := cnames[domain]
+			if !isCNAME {
+				break
+			}
+
+			record.CNAMEs = append(record.CNAMEs, nextDomain)
+			domain = nextDomain
+		}
+
+		// get the existing IP info or create a new  one
+		var save bool
+		info, err := resolver.GetIPInfo(ip)
+		if err != nil {
+			if err != database.ErrNotFound {
+				log.Errorf("nameserver: failed to search for IP info record: %s", err)
+			}
+
+			info = &resolver.IPInfo{
+				IP: ip,
+			}
+			save = true
+		}
+
+		// and the new resolved domain record and save
+		if new := info.AddDomain(record); new {
+			save = true
+		}
+		if save {
+			if err := info.Save(); err != nil {
+				log.Errorf("nameserver: failed to save IP info record: %s", err)
 			}
 		}
 	}

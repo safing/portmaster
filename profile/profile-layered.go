@@ -43,6 +43,7 @@ type LayeredProfile struct {
 	RemoveOutOfScopeDNS config.BoolOption
 	RemoveBlockedDNS    config.BoolOption
 	FilterSubDomains    config.BoolOption
+	FilterCNAMEs        config.BoolOption
 	PreventBypassing    config.BoolOption
 }
 
@@ -98,6 +99,10 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	new.FilterSubDomains = new.wrapSecurityLevelOption(
 		CfgOptionFilterSubDomainsKey,
 		cfgOptionFilterSubDomains,
+	)
+	new.FilterCNAMEs = new.wrapSecurityLevelOption(
+		CfgOptionFilterCNAMEKey,
+		cfgOptionFilterCNAME,
 	)
 	new.PreventBypassing = new.wrapSecurityLevelOption(
 		CfgOptionPreventBypassingKey,
@@ -236,6 +241,7 @@ func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (result end
 // lists.
 func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (endpoints.EPResult, string) {
 	entity.ResolveSubDomainLists(lp.FilterSubDomains())
+	entity.EnableCNAMECheck(lp.FilterCNAMEs())
 
 	lookupMap, hasLists := entity.GetListsMap()
 	if !hasLists {
