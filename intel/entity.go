@@ -223,11 +223,11 @@ func (e *Entity) getDomainLists() {
 		var domains = []string{domain}
 		if e.resolveSubDomainLists {
 			domains = splitDomain(domain)
-			log.Debugf("intel: subdomain list resolving is enabled, checking %v", domains)
+			log.Tracef("intel: subdomain list resolving is enabled, checking %v", domains)
 		}
 
 		for _, d := range domains {
-			log.Debugf("intel: loading domain list for %s", d)
+			log.Tracef("intel: loading domain list for %s", d)
 			list, err := filterlists.LookupDomain(d)
 			if err != nil {
 				log.Errorf("intel: failed to get domain blocklists for %s: %s", d, err)
@@ -277,7 +277,7 @@ func (e *Entity) getASNLists() {
 		return
 	}
 
-	log.Debugf("intel: loading ASN list for %d", asn)
+	log.Tracef("intel: loading ASN list for %d", asn)
 	e.loadAsnListOnce.Do(func() {
 		list, err := filterlists.LookupASNString(fmt.Sprintf("%d", asn))
 		if err != nil {
@@ -301,7 +301,7 @@ func (e *Entity) getCountryLists() {
 		return
 	}
 
-	log.Debugf("intel: loading country list for %s", country)
+	log.Tracef("intel: loading country list for %s", country)
 	e.loadCoutryListOnce.Do(func() {
 		list, err := filterlists.LookupCountry(country)
 		if err != nil {
@@ -334,7 +334,7 @@ func (e *Entity) getIPLists() {
 		return
 	}
 
-	log.Debugf("intel: loading IP list for %s", ip)
+	log.Tracef("intel: loading IP list for %s", ip)
 	e.loadIPListOnce.Do(func() {
 		list, err := filterlists.LookupIP(ip)
 
