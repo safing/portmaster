@@ -18,7 +18,7 @@ var (
 )
 
 func init() {
-	modules.Register("base", nil, registerDatabases, nil, "database", "config", "random")
+	modules.Register("base", nil, registerDatabases, nil, "database", "config", "rng")
 
 	module = modules.Register("core", nil, start, nil, "base", "subsystems", "status", "updates", "api", "notifications", "ui")
 	subsystems.Register(
