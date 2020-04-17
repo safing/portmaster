@@ -141,9 +141,19 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:
 		}
 	}
 
+	// check for bypass protection
+	result, reason := p.MatchBypassProtection(conn.Entity)
+	switch result {
+	case endpoints.Denied:
+		conn.Block("bypass prevention: " + reason)
+		return
+	case endpoints.Permitted:
+		conn.Accept("bypass prevention: " + reason)
+		return
+	case endpoints.NoMatch:
+	}
+
 	// check endpoints list
-	var result endpoints.EPResult
-	var reason string
 	if conn.Inbound {
 		result, reason = p.MatchServiceEndpoint(conn.Entity)
 	} else {

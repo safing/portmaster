@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -43,6 +44,7 @@ type LayeredProfile struct {
 	RemoveOutOfScopeDNS config.BoolOption
 	RemoveBlockedDNS    config.BoolOption
 	FilterSubDomains    config.BoolOption
+	PreventBypassing    config.BoolOption
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -97,6 +99,10 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	new.FilterSubDomains = new.wrapSecurityLevelOption(
 		CfgOptionFilterSubDomainsKey,
 		cfgOptionFilterSubDomains,
+	)
+	new.PreventBypassing = new.wrapSecurityLevelOption(
+		CfgOptionBypassProtectionKey,
+		cfgOptionBypassProtection,
 	)
 
 	// TODO: load linked profiles.
@@ -224,7 +230,7 @@ func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (result end
 
 // MatchFilterLists matches the entity against the set of filter
 // lists.
-func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (result endpoints.EPResult, reason string) {
+func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (endpoints.EPResult, string) {
 	entity.ResolveSubDomainLists(lp.FilterSubDomains())
 
 	lookupMap, hasLists := entity.GetListsMap()
@@ -248,6 +254,22 @@ func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (result endpoin
 	defer cfgLock.RUnlock()
 	if reason := lookupMap.Match(cfgFilterLists); reason != "" {
 		return endpoints.Denied, reason
+	}
+
+	return endpoints.NoMatch, ""
+}
+
+// MatchBypassProtection checks if the entity should be denied or permitted
+// based on some bypass protection checks.
+func (lp *LayeredProfile) MatchBypassProtection(entity *intel.Entity) (endpoints.EPResult, string) {
+	if !lp.PreventBypassing() {
+		return endpoints.NoMatch, ""
+	}
+
+	// Block firefox canary domain to disable DoH
+	if strings.ToLower(entity.Domain) == "use-application-dns.net." {
+		log.Warningf("bypass protection for firefox canary")
+		return endpoints.Denied, "Firefox canary domain"
 	}
 
 	return endpoints.NoMatch, ""

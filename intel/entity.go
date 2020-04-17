@@ -151,7 +151,6 @@ func (e *Entity) getLocation() {
 	e.fetchLocationOnce.Do(func() {
 		// need IP!
 		if e.IP == nil {
-			log.Warningf("intel: cannot get location for %s data without IP", e.Domain)
 			return
 		}
 
