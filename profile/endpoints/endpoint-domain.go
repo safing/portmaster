@@ -73,32 +73,7 @@ func (ep *EndpointDomain) Matches(entity *intel.Entity) (result EPResult, reason
 
 	if entity.CNAMECheckEnabled() {
 		for _, domain := range entity.CNAME {
-			switch ep.MatchType {
-			case domainMatchTypeExact:
-				if domain == ep.Domain {
-					result, reason = ep.matchesPPP(entity), ep.Reason
-				}
-			case domainMatchTypeZone:
-				if domain == ep.Domain {
-					result, reason = ep.matchesPPP(entity), ep.Reason
-				}
-				if strings.HasSuffix(domain, ep.DomainZone) {
-					result, reason = ep.matchesPPP(entity), ep.Reason
-				}
-			case domainMatchTypeSuffix:
-				if strings.HasSuffix(domain, ep.Domain) {
-					result, reason = ep.matchesPPP(entity), ep.Reason
-				}
-			case domainMatchTypePrefix:
-				if strings.HasPrefix(domain, ep.Domain) {
-					result, reason = ep.matchesPPP(entity), ep.Reason
-				}
-			case domainMatchTypeContains:
-				if strings.Contains(domain, ep.Domain) {
-					result, reason = ep.matchesPPP(entity), ep.Reason
-				}
-			}
-
+			result, reason = ep.check(entity, domain)
 			if result == Denied {
 				return result, reason
 			}

@@ -107,13 +107,26 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		return nil, false, fmt.Errorf("DOT must have a verify query parameter set")
 	}
 
+	blockType := query.Get("blockedif")
+	if blockType == "" {
+		blockType = BlockDetectionRefused
+	}
+
+	switch blockType {
+	case BlockDetectionDisabled, BlockDetectionEmptyAnswer, BlockDetectionRefused, BlockDetectionZeroIP:
+	default:
+		return nil, false, fmt.Errorf("invalid value for upstream block detection (blockedif=)")
+	}
+
 	new := &Resolver{
-		Server:        resolverURL,
-		ServerType:    u.Scheme,
-		ServerAddress: u.Host,
-		ServerIPScope: scope,
-		Source:        source,
-		VerifyDomain:  verifyDomain,
+		Server:                 resolverURL,
+		ServerType:             u.Scheme,
+		ServerAddress:          u.Host,
+		ServerIPScope:          scope,
+		Source:                 source,
+		VerifyDomain:           verifyDomain,
+		Name:                   query.Get("name"),
+		UpstreamBlockDetection: blockType,
 	}
 
 	newConn := &BasicResolverConn{

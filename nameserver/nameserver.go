@@ -246,8 +246,14 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	if err != nil {
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
 		tracer.Warningf("nameserver: %s requested %s%s: %s", conn.Process(), q.FQDN, q.QType, err)
+
+		if _, ok := err.(*resolver.BlockedUpstreamError); ok {
+			conn.Block(err.Error())
+		} else {
+			conn.Failed("failed to resolve: " + err.Error())
+		}
+
 		returnNXDomain(w, query, conn.Reason)
-		conn.Failed("failed to resolve: " + err.Error())
 		return nil
 	}
 
@@ -261,6 +267,51 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		return nil
 	}
 
+	updateIPsAndCNAMEs(q, rrCache, conn)
+
+	// if we have CNAMEs and the profile is configured to filter them
+	// we need to re-check the lists and endpoints here
+	if conn.Process().Profile().FilterCNAMEs() {
+		conn.Entity.ResetLists()
+		conn.Entity.EnableCNAMECheck(true)
+
+		result, reason := conn.Process().Profile().MatchEndpoint(conn.Entity)
+		if result == endpoints.Denied {
+			conn.Block("endpoint in blocklist: " + reason)
+			returnNXDomain(w, query, conn.Reason)
+			return nil
+		}
+
+		if result == endpoints.NoMatch {
+			result, reason = conn.Process().Profile().MatchFilterLists(conn.Entity)
+			if result == endpoints.Denied {
+				conn.Block("endpoint in filterlists: " + reason)
+				returnNXDomain(w, query, conn.Reason)
+				return nil
+			}
+		}
+	}
+
+	// reply to query
+	m := new(dns.Msg)
+	m.SetReply(query)
+	m.Answer = rrCache.Answer
+	m.Ns = rrCache.Ns
+	m.Extra = rrCache.Extra
+
+	if err := w.WriteMsg(m); err != nil {
+		log.Warningf("nameserver: failed to return response %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
+	} else {
+		tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
+	}
+
+	// save dns request as open
+	network.SaveOpenDNSRequest(conn)
+
+	return nil
+}
+
+func updateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *network.Connection) {
 	// save IP addresses to IPInfo
 	cnames := make(map[string]string)
 	ips := make(map[string]struct{})
@@ -322,45 +373,4 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 			}
 		}
 	}
-
-	// if we have CNAMEs and the profile is configured to filter them
-	// we need to re-check the lists and endpoints here
-	if conn.Process().Profile().FilterCNAMEs() {
-		conn.Entity.ResetLists()
-		conn.Entity.EnableCNAMECheck(true)
-
-		result, reason := conn.Process().Profile().MatchEndpoint(conn.Entity)
-		if result == endpoints.Denied {
-			conn.Block("endpoint in blocklist: " + reason)
-			returnNXDomain(w, query, conn.Reason)
-			return nil
-		}
-
-		if result == endpoints.NoMatch {
-			result, reason = conn.Process().Profile().MatchFilterLists(conn.Entity)
-			if result == endpoints.Denied {
-				conn.Block("endpoint in filterlists: " + reason)
-				returnNXDomain(w, query, conn.Reason)
-				return nil
-			}
-		}
-	}
-
-	// reply to query
-	m := new(dns.Msg)
-	m.SetReply(query)
-	m.Answer = rrCache.Answer
-	m.Ns = rrCache.Ns
-	m.Extra = rrCache.Extra
-
-	if err := w.WriteMsg(m); err != nil {
-		log.Warningf("nameserver: failed to return response %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
-	} else {
-		tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
-	}
-
-	// save dns request as open
-	network.SaveOpenDNSRequest(conn)
-
-	return nil
 }
