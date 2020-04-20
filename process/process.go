@@ -75,10 +75,10 @@ func (p *Process) String() string {
 func GetOrFindPrimaryProcess(ctx context.Context, pid int) (*Process, error) {
 	log.Tracer(ctx).Tracef("process: getting primary process for PID %d", pid)
 
-	if pid <= -1 {
+	switch pid {
+	case UnidentifiedProcessID:
 		return GetUnidentifiedProcess(ctx), nil
-	}
-	if pid == 0 {
+	case SystemProcessID:
 		return GetSystemProcess(ctx), nil
 	}
 
@@ -121,10 +121,10 @@ func GetOrFindPrimaryProcess(ctx context.Context, pid int) (*Process, error) {
 func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 	log.Tracer(ctx).Tracef("process: getting process for PID %d", pid)
 
-	if pid <= -1 {
+	switch pid {
+	case UnidentifiedProcessID:
 		return GetUnidentifiedProcess(ctx), nil
-	}
-	if pid == 0 {
+	case SystemProcessID:
 		return GetSystemProcess(ctx), nil
 	}
 
@@ -184,10 +184,11 @@ func deduplicateRequest(ctx context.Context, pid int) (finishRequest func()) {
 }
 
 func loadProcess(ctx context.Context, pid int) (*Process, error) {
-	if pid <= -1 {
+
+	switch pid {
+	case UnidentifiedProcessID:
 		return GetUnidentifiedProcess(ctx), nil
-	}
-	if pid == 0 {
+	case SystemProcessID:
 		return GetSystemProcess(ctx), nil
 	}
 

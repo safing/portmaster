@@ -50,7 +50,7 @@ func markActiveProfileAsOutdated(scopedID string) {
 	}
 }
 
-func cleanActiveProfiles(ctx context.Context) error { //nolint:param // need to conform to interface
+func cleanActiveProfiles(ctx context.Context) error {
 	for {
 		select {
 		case <-time.After(activeProfileCleanerTickDuration):

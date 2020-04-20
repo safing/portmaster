@@ -49,7 +49,7 @@ func GetPidByPacket(pkt packet.Packet) (pid int, direction bool, err error) {
 	case pkt.Info().Protocol == packet.UDP && pkt.Info().Version == packet.IPv6:
 		return getUDP6PacketInfo(localIP, localPort, remoteIP, remotePort, pkt.IsInbound())
 	default:
-		return -1, false, errors.New("unsupported protocol for finding process")
+		return UnidentifiedProcessID, false, errors.New("unsupported protocol for finding process")
 	}
 
 }
@@ -107,7 +107,7 @@ func GetPidByEndpoints(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 	case protocol == packet.UDP && ipVersion == packet.IPv6:
 		return getUDP6PacketInfo(localIP, localPort, remoteIP, remotePort, false)
 	default:
-		return -1, false, errors.New("unsupported protocol for finding process")
+		return UnidentifiedProcessID, false, errors.New("unsupported protocol for finding process")
 	}
 
 }

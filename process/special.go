@@ -8,35 +8,52 @@ import (
 	"github.com/safing/portmaster/profile"
 )
 
+// Special Process IDs
+const (
+	UnidentifiedProcessID = -1
+	SystemProcessID       = 0
+)
+
 var (
 	// unidentifiedProcess is used when a process cannot be found.
 	unidentifiedProcess = &Process{
-		UserID:    -1,
+		UserID:    UnidentifiedProcessID,
 		UserName:  "Unknown",
-		Pid:       -1,
-		ParentPid: -1,
+		Pid:       UnidentifiedProcessID,
+		ParentPid: UnidentifiedProcessID,
 		Name:      "Unidentified Processes",
 	}
 
 	// systemProcess is used to represent the Kernel.
 	systemProcess = &Process{
-		UserID:    0,
+		UserID:    SystemProcessID,
 		UserName:  "Kernel",
-		Pid:       0,
-		ParentPid: 0,
+		Pid:       SystemProcessID,
+		ParentPid: SystemProcessID,
 		Name:      "Operating System",
 	}
 )
 
+// GetUnidentifiedProcess returns the special process assigned to unidentified processes.
 func GetUnidentifiedProcess(ctx context.Context) *Process {
-	return getSpecialProcess(ctx, unidentifiedProcess, profile.GetUnidentifiedProfile)
+	return getSpecialProcess(ctx, UnidentifiedProcessID, unidentifiedProcess, profile.GetUnidentifiedProfile)
 }
 
+// GetSystemProcess returns the special process used for the Kernel.
 func GetSystemProcess(ctx context.Context) *Process {
-	return getSpecialProcess(ctx, systemProcess, profile.GetSystemProfile)
+	return getSpecialProcess(ctx, SystemProcessID, systemProcess, profile.GetSystemProfile)
 }
 
-func getSpecialProcess(ctx context.Context, p *Process, getProfile func() *profile.Profile) *Process {
+func getSpecialProcess(ctx context.Context, pid int, template *Process, getProfile func() *profile.Profile) *Process {
+	// check storage
+	p, ok := GetProcessFromStorage(pid)
+	if ok {
+		return p
+	}
+
+	// assign template
+	p = template
+
 	p.Lock()
 	defer p.Unlock()
 

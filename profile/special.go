@@ -9,6 +9,7 @@ const (
 	systemProfileID       = "_system"
 )
 
+// GetUnidentifiedProfile returns the special profile assigned to unidentified processes.
 func GetUnidentifiedProfile() *Profile {
 	// get profile
 	profile, err := GetProfile(SourceLocal, unidentifiedProfileID)
@@ -31,6 +32,7 @@ func GetUnidentifiedProfile() *Profile {
 	return profile
 }
 
+// GetSystemProfile returns the special profile used for the Kernel.
 func GetSystemProfile() *Profile {
 	// get profile
 	profile, err := GetProfile(SourceLocal, systemProfileID)

@@ -7,6 +7,10 @@ import (
 	"net"
 )
 
+const (
+	unidentifiedProcessID = -1
+)
+
 // GetTCP4PacketInfo searches the network state tables for a TCP4 connection
 func GetTCP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, pktDirection bool) (pid int, direction bool, err error) {
 	return search(TCP4, localIP, localPort, pktDirection)
@@ -52,11 +56,11 @@ func search(protocol uint8, localIP net.IP, localPort uint16, pktDirection bool)
 
 	switch status {
 	case NoSocket:
-		return -1, direction, errors.New("could not find socket")
+		return unidentifiedProcessID, direction, errors.New("could not find socket")
 	case NoProcess:
-		return -1, direction, errors.New("could not find PID")
+		return unidentifiedProcessID, direction, errors.New("could not find PID")
 	default:
-		return -1, direction, nil
+		return unidentifiedProcessID, direction, nil
 	}
 
 }

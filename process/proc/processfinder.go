@@ -77,7 +77,7 @@ func GetPidOfInode(uid, inode int) (int, bool) { //nolint:gocognit // TODO
 		}
 	}
 
-	return -1, false
+	return unidentifiedProcessID, false
 }
 
 func findSocketFromPid(pid, inode int) bool {

@@ -41,7 +41,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	VerdictPermanent bool
 	Inspecting       bool
 	Encrypted        bool // TODO
-	Hidden           bool
+	Internal         bool // Portmaster internal connections are marked in order to easily filter these out in the UI
 
 	pktQueue        chan packet.Packet
 	firewallHandler FirewallHandler
