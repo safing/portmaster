@@ -278,7 +278,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 
 		result, reason := conn.Process().Profile().MatchEndpoint(conn.Entity)
 		if result == endpoints.Denied {
-			conn.Block("endpoint in blocklist: " + reason)
+			conn.BlockWithContext(reason.String(), reason.Context())
 			returnNXDomain(w, query, conn.Reason)
 			return nil
 		}
@@ -286,7 +286,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		if result == endpoints.NoMatch {
 			result, reason = conn.Process().Profile().MatchFilterLists(conn.Entity)
 			if result == endpoints.Denied {
-				conn.Block("endpoint in filterlists: " + reason)
+				conn.BlockWithContext(reason.String(), reason.Context())
 				returnNXDomain(w, query, conn.Reason)
 				return nil
 			}

@@ -10,19 +10,19 @@ import (
 type EndpointIP struct {
 	EndpointBase
 
-	IP     net.IP
-	Reason string
+	IP net.IP
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointIP) Matches(entity *intel.Entity) (result EPResult, reason string) {
+func (ep *EndpointIP) Matches(entity *intel.Entity) (EPResult, Reason) {
 	if entity.IP == nil {
-		return Undeterminable, ""
+		return Undeterminable, nil
 	}
+
 	if ep.IP.Equal(entity.IP) {
-		return ep.matchesPPP(entity), ep.Reason
+		return ep.match(ep, entity, ep.IP.String(), "IP matches")
 	}
-	return NoMatch, ""
+	return NoMatch, nil
 }
 
 func (ep *EndpointIP) String() string {
@@ -33,8 +33,7 @@ func parseTypeIP(fields []string) (Endpoint, error) {
 	ip := net.ParseIP(fields[1])
 	if ip != nil {
 		ep := &EndpointIP{
-			IP:     ip,
-			Reason: "IP is " + ip.String(),
+			IP: ip,
 		}
 		return ep.parsePPP(ep, fields)
 	}

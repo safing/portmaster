@@ -143,9 +143,6 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:
 		}
 	}
 
-	var result endpoints.EPResult
-	var reason string
-
 	if p.PreventBypassing() {
 		// check for bypass protection
 		result, reason := PreventBypassing(conn)
@@ -160,6 +157,9 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:
 		}
 	}
 
+	var result endpoints.EPResult
+	var reason endpoints.Reason
+
 	// check endpoints list
 	if conn.Inbound {
 		result, reason = p.MatchServiceEndpoint(conn.Entity)
@@ -168,10 +168,10 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:
 	}
 	switch result {
 	case endpoints.Denied:
-		conn.Deny("endpoint is blacklisted: " + reason) // Block Outbound / Drop Inbound
+		conn.DenyWithContext(reason.String(), reason.Context())
 		return
 	case endpoints.Permitted:
-		conn.Accept("endpoint is whitelisted: " + reason)
+		conn.AcceptWithContext(reason.String(), reason.Context())
 		return
 	}
 	// continuing with result == NoMatch
@@ -180,7 +180,7 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) { //nolint:
 	result, reason = p.MatchFilterLists(conn.Entity)
 	switch result {
 	case endpoints.Denied:
-		conn.Deny("endpoint in filterlists: " + reason)
+		conn.DenyWithContext(reason.String(), reason.Context())
 		return
 	case endpoints.NoMatch:
 		// nothing to do

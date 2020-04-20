@@ -12,18 +12,19 @@ type EndpointLists struct {
 
 	ListSet []string
 	Lists   string
-	Reason  string
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointLists) Matches(entity *intel.Entity) (result EPResult, reason string) {
-	entity.LoadLists()
-
-	if entity.MatchLists(ep.ListSet) {
-		return ep.matchesPPP(entity), entity.ListBlockReason().String()
+func (ep *EndpointLists) Matches(entity *intel.Entity) (EPResult, Reason) {
+	if !entity.LoadLists() {
+		return Undeterminable, nil
 	}
 
-	return NoMatch, ""
+	if entity.MatchLists(ep.ListSet) {
+		return ep.match(ep, entity, ep.Lists, "filterlist contains", "filterlist", entity.ListBlockReason())
+	}
+
+	return NoMatch, nil
 }
 
 func (ep *EndpointLists) String() string {
@@ -36,7 +37,6 @@ func parseTypeList(fields []string) (Endpoint, error) {
 		ep := &EndpointLists{
 			ListSet: lists,
 			Lists:   "L:" + strings.Join(lists, ","),
-			Reason:  "matched lists " + strings.Join(lists, ","),
 		}
 		return ep.parsePPP(ep, fields)
 	}

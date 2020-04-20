@@ -16,43 +16,6 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
-// ListMatch represents an entity that has been
-// matched against filterlists.
-type ListMatch struct {
-	Entity        string
-	ActiveLists   []string
-	InactiveLists []string
-}
-
-func (lm *ListMatch) String() string {
-	inactive := ""
-	if len(lm.InactiveLists) > 0 {
-		inactive = " and in deactivated lists " + strings.Join(lm.InactiveLists, ", ")
-	}
-	return fmt.Sprintf(
-		"%s in activated lists %s%s",
-		lm.Entity,
-		strings.Join(lm.ActiveLists, ","),
-		inactive,
-	)
-}
-
-// ListBlockReason is a list of list matches.
-type ListBlockReason []ListMatch
-
-func (br ListBlockReason) String() string {
-	if len(br) == 0 {
-		return ""
-	}
-
-	matches := make([]string, len(br))
-	for idx, lm := range br {
-		matches[idx] = lm.String()
-	}
-
-	return strings.Join(matches, " and ")
-}
-
 // Entity describes a remote endpoint in many different ways.
 // It embeddes a sync.Mutex but none of the endpoints own
 // functions performs locking. The caller MUST ENSURE

@@ -19,19 +19,16 @@ type EndpointCountry struct {
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointCountry) Matches(entity *intel.Entity) (result EPResult, reason string) {
-	if entity.IP == nil {
-		return Undeterminable, ""
-	}
-
+func (ep *EndpointCountry) Matches(entity *intel.Entity) (EPResult, Reason) {
 	country, ok := entity.GetCountry()
 	if !ok {
-		return Undeterminable, ""
+		return Undeterminable, nil
 	}
+
 	if country == ep.Country {
-		return ep.matchesPPP(entity), "IP is located in " + country
+		return ep.match(ep, entity, country, "IP is located in")
 	}
-	return NoMatch, ""
+	return NoMatch, nil
 }
 
 func (ep *EndpointCountry) String() string {

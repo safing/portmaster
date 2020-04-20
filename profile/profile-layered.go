@@ -204,12 +204,12 @@ func (lp *LayeredProfile) DefaultAction() uint8 {
 }
 
 // MatchEndpoint checks if the given endpoint matches an entry in any of the profiles.
-func (lp *LayeredProfile) MatchEndpoint(entity *intel.Entity) (result endpoints.EPResult, reason string) {
+func (lp *LayeredProfile) MatchEndpoint(entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
 	for _, layer := range lp.layers {
 		if layer.endpoints.IsSet() {
-			result, reason = layer.endpoints.Match(entity)
-			if result != endpoints.NoMatch {
-				return
+			result, reason := layer.endpoints.Match(entity)
+			if endpoints.IsDecision(result) {
+				return result, reason
 			}
 		}
 	}
@@ -220,14 +220,14 @@ func (lp *LayeredProfile) MatchEndpoint(entity *intel.Entity) (result endpoints.
 }
 
 // MatchServiceEndpoint checks if the given endpoint of an inbound connection matches an entry in any of the profiles.
-func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (result endpoints.EPResult, reason string) {
+func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
 	entity.EnableReverseResolving()
 
 	for _, layer := range lp.layers {
 		if layer.serviceEndpoints.IsSet() {
-			result, reason = layer.serviceEndpoints.Match(entity)
-			if result != endpoints.NoMatch {
-				return
+			result, reason := layer.serviceEndpoints.Match(entity)
+			if endpoints.IsDecision(result) {
+				return result, reason
 			}
 		}
 	}
@@ -239,7 +239,7 @@ func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (result end
 
 // MatchFilterLists matches the entity against the set of filter
 // lists.
-func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (endpoints.EPResult, string) {
+func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
 	entity.ResolveSubDomainLists(lp.FilterSubDomains())
 	entity.EnableCNAMECheck(lp.FilterCNAMEs())
 
@@ -249,10 +249,10 @@ func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (endpoints.EPRe
 			entity.LoadLists()
 
 			if entity.MatchLists(layer.filterListIDs) {
-				return endpoints.Denied, entity.ListBlockReason().String()
+				return endpoints.Denied, entity.ListBlockReason()
 			}
 
-			return endpoints.NoMatch, ""
+			return endpoints.NoMatch, nil
 		}
 	}
 
@@ -262,11 +262,11 @@ func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (endpoints.EPRe
 		entity.LoadLists()
 
 		if entity.MatchLists(cfgFilterLists) {
-			return endpoints.Denied, entity.ListBlockReason().String()
+			return endpoints.Denied, entity.ListBlockReason()
 		}
 	}
 
-	return endpoints.NoMatch, ""
+	return endpoints.NoMatch, nil
 }
 
 // AddEndpoint adds an endpoint to the local endpoint list, saves the local profile and reloads the configuration.

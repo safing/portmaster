@@ -16,24 +16,22 @@ var (
 type EndpointASN struct {
 	EndpointBase
 
-	ASN    uint
-	Reason string
+	ASN uint
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointASN) Matches(entity *intel.Entity) (result EPResult, reason string) {
-	if entity.IP == nil {
-		return Undeterminable, ""
-	}
-
+func (ep *EndpointASN) Matches(entity *intel.Entity) (EPResult, Reason) {
 	asn, ok := entity.GetASN()
 	if !ok {
-		return Undeterminable, ""
+		return Undeterminable, nil
 	}
+
 	if asn == ep.ASN {
-		return ep.matchesPPP(entity), ep.Reason
+		asnStr := strconv.Itoa(int(ep.ASN))
+		return ep.match(ep, entity, asnStr, "IP is part of AS")
 	}
-	return NoMatch, ""
+
+	return NoMatch, nil
 }
 
 func (ep *EndpointASN) String() string {
@@ -48,8 +46,7 @@ func parseTypeASN(fields []string) (Endpoint, error) {
 		}
 
 		ep := &EndpointASN{
-			ASN:    uint(asn),
-			Reason: "IP is part of AS" + strconv.FormatInt(int64(asn), 10),
+			ASN: uint(asn),
 		}
 		return ep.parsePPP(ep, fields)
 	}

@@ -21,6 +21,12 @@ const (
 	Permitted
 )
 
+// IsDecision returns true if result represents a decision
+// and false if result is NoMatch or Undeterminable.
+func IsDecision(result EPResult) bool {
+	return result == Denied || result == Permitted
+}
+
 // ParseEndpoints parses a list of endpoints and returns a list of Endpoints for matching.
 func ParseEndpoints(entries []string) (Endpoints, error) {
 	var firstErr error
@@ -57,7 +63,7 @@ func (e Endpoints) IsSet() bool {
 }
 
 // Match checks whether the given entity matches any of the endpoint definitions in the list.
-func (e Endpoints) Match(entity *intel.Entity) (result EPResult, reason string) {
+func (e Endpoints) Match(entity *intel.Entity) (result EPResult, reason Reason) {
 	for _, entry := range e {
 		if entry != nil {
 			if result, reason = entry.Matches(entity); result != NoMatch {
@@ -66,7 +72,7 @@ func (e Endpoints) Match(entity *intel.Entity) (result EPResult, reason string) 
 		}
 	}
 
-	return NoMatch, ""
+	return NoMatch, nil
 }
 
 func (e Endpoints) String() string {
