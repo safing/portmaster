@@ -11,7 +11,7 @@ import (
 
 // Endpoint describes an Endpoint Matcher
 type Endpoint interface {
-	Matches(entity *intel.Entity) (result EPResult, reason string)
+	Matches(entity *intel.Entity) (EPResult, string)
 	String() string
 }
 

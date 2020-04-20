@@ -243,27 +243,27 @@ func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (endpoints.EPRe
 	entity.ResolveSubDomainLists(lp.FilterSubDomains())
 	entity.EnableCNAMECheck(lp.FilterCNAMEs())
 
-	lookupMap, hasLists := entity.GetListsMap()
-	if !hasLists {
-		return endpoints.NoMatch, ""
-	}
-
 	for _, layer := range lp.layers {
-		if reason := lookupMap.Match(layer.filterListIDs); reason != "" {
-			return endpoints.Denied, reason
-		}
-
-		// only check the first layer that has filter list
-		// IDs defined.
+		// search for the first layer that has filterListIDs set
 		if len(layer.filterListIDs) > 0 {
+			entity.LoadLists()
+
+			if entity.MatchLists(layer.filterListIDs) {
+				return endpoints.Denied, entity.ListBlockReason().String()
+			}
+
 			return endpoints.NoMatch, ""
 		}
 	}
 
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
-	if reason := lookupMap.Match(cfgFilterLists); reason != "" {
-		return endpoints.Denied, reason
+	if len(cfgFilterLists) > 0 {
+		entity.LoadLists()
+
+		if entity.MatchLists(cfgFilterLists) {
+			return endpoints.Denied, entity.ListBlockReason().String()
+		}
 	}
 
 	return endpoints.NoMatch, ""
