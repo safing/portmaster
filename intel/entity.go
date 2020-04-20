@@ -273,6 +273,8 @@ func (e *Entity) getDomainLists() {
 			domains = domainsToInspect
 		}
 
+		domains = makeDistinct(domains)
+
 		for _, d := range domains {
 			log.Tracef("intel: loading domain list for %s", d)
 			list, err := filterlists.LookupDomain(d)
@@ -440,4 +442,13 @@ func buildLookupMap(l []string) filterlists.LookupMap {
 	}
 
 	return m
+}
+
+func makeDistinct(slice []string) []string {
+	lm := buildLookupMap(slice)
+	result := make([]string, 0, len(lm))
+	for key := range lm {
+		result = append(result, key)
+	}
+	return result
 }

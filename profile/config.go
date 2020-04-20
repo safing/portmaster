@@ -192,6 +192,7 @@ Examples:
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelsAll,
 		ValidationRegex: "^(7|6|4)$",
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
 	})
 	if err != nil {
 		return err
