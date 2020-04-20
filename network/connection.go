@@ -230,39 +230,31 @@ func (conn *Connection) SaveWhenFinished() {
 
 // Save saves the connection in the storage and propagates the change through the database system.
 func (conn *Connection) Save() {
-	if conn.ID == "" {
+	conn.UpdateMeta()
 
-		// dns request
-		if !conn.KeyIsSet() {
+	if !conn.KeyIsSet() {
+		if conn.ID == "" {
+			// dns request
+
+			// set key
 			conn.SetKey(fmt.Sprintf("network:tree/%d/%s", conn.process.Pid, conn.Scope))
-			conn.UpdateMeta()
-		}
-		// save to internal state
-		// check if it already exists
-		mapKey := strconv.Itoa(conn.process.Pid) + "/" + conn.Scope
-		dnsConnsLock.Lock()
-		_, ok := dnsConns[mapKey]
-		if !ok {
+			mapKey := strconv.Itoa(conn.process.Pid) + "/" + conn.Scope
+
+			// save
+			dnsConnsLock.Lock()
 			dnsConns[mapKey] = conn
-		}
-		dnsConnsLock.Unlock()
+			dnsConnsLock.Unlock()
+		} else {
+			// network connection
 
-	} else {
-
-		// connection
-		if !conn.KeyIsSet() {
+			// set key
 			conn.SetKey(fmt.Sprintf("network:tree/%d/%s/%s", conn.process.Pid, conn.Scope, conn.ID))
-			conn.UpdateMeta()
-		}
-		// save to internal state
-		// check if it already exists
-		connsLock.Lock()
-		_, ok := conns[conn.ID]
-		if !ok {
-			conns[conn.ID] = conn
-		}
-		connsLock.Unlock()
 
+			// save
+			connsLock.Lock()
+			conns[conn.ID] = conn
+			connsLock.Unlock()
+		}
 	}
 
 	// notify database controller

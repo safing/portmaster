@@ -57,8 +57,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 					// Step 2: mark end
 					activePIDs[conn.process.Pid] = struct{}{}
 					conn.Ended = now
-					// "save"
-					dbController.PushUpdate(conn)
+					conn.Save()
 				}
 			case conn.Ended < deleteOlderThan:
 				// Step 3: delete
