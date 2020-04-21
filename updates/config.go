@@ -71,7 +71,7 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 	}
 
 	if devMode() != previousDevMode {
-		registry.SetBeta(devMode())
+		registry.SetDevMode(devMode())
 		previousDevMode = devMode()
 		changed = true
 	}
