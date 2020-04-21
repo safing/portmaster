@@ -31,9 +31,10 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	Entity  *intel.Entity // needs locking, instance is never shared
 	process *process.Process
 
-	Verdict  Verdict
-	Reason   string
-	ReasonID string // format source[:id[:id]] // TODO
+	Verdict       Verdict
+	Reason        string
+	ReasonContext interface{}
+	ReasonID      string // format source[:id[:id]] // TODO
 
 	Started          int64
 	Ended            int64
@@ -41,6 +42,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	VerdictPermanent bool
 	Inspecting       bool
 	Encrypted        bool // TODO
+	Internal         bool // Portmaster internal connections are marked in order to easily filter these out in the UI
 
 	pktQueue        chan packet.Packet
 	firewallHandler FirewallHandler
@@ -53,12 +55,12 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 }
 
 // NewConnectionFromDNSRequest returns a new connection based on the given dns request.
-func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, ip net.IP, port uint16) *Connection {
+func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, localIP net.IP, localPort uint16) *Connection {
 	// get Process
-	proc, err := process.GetProcessByEndpoints(ctx, ip, port, dnsAddress, dnsPort, packet.UDP)
+	proc, err := process.GetProcessByEndpoints(ctx, localIP, localPort, dnsAddress, dnsPort, packet.UDP)
 	if err != nil {
 		log.Warningf("network: failed to find process of dns request for %s: %s", fqdn, err)
-		proc = process.UnknownProcess
+		proc = process.GetUnidentifiedProcess(ctx)
 	}
 
 	timestamp := time.Now().Unix()
@@ -66,7 +68,8 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, ip net.IP, po
 		Scope: fqdn,
 		Entity: (&intel.Entity{
 			Domain: fqdn,
-		}).Init(),
+			CNAME:  cnames,
+		}),
 		process: proc,
 		Started: timestamp,
 		Ended:   timestamp,
@@ -80,7 +83,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	proc, inbound, err := process.GetProcessByPacket(pkt)
 	if err != nil {
 		log.Warningf("network: failed to find process of packet %s: %s", pkt, err)
-		proc = process.UnknownProcess
+		proc = process.GetUnidentifiedProcess(pkt.Ctx())
 	}
 
 	var scope string
@@ -103,7 +106,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 			IP:       pkt.Info().Src,
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().SrcPort,
-		}).Init()
+		})
 
 	} else {
 
@@ -112,18 +115,21 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 			IP:       pkt.Info().Dst,
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().DstPort,
-		}).Init()
+		})
 
 		// check if we can find a domain for that IP
 		ipinfo, err := resolver.GetIPInfo(pkt.Info().Dst.String())
 		if err == nil {
+			lastResolvedDomain := ipinfo.ResolvedDomains.MostRecentDomain()
+			if lastResolvedDomain != nil {
+				scope = lastResolvedDomain.Domain
+				entity.Domain = lastResolvedDomain.Domain
+				entity.CNAME = lastResolvedDomain.CNAMEs
+				removeOpenDNSRequest(proc.Pid, lastResolvedDomain.Domain)
+			}
+		}
 
-			// outbound to domain
-			scope = ipinfo.Domains[0]
-			entity.Domain = scope
-			removeOpenDNSRequest(proc.Pid, scope)
-
-		} else {
+		if scope == "" {
 
 			// outbound direct (possibly P2P) connection
 			switch netutils.ClassifyIP(pkt.Info().Dst) {
@@ -159,59 +165,82 @@ func GetConnection(id string) (*Connection, bool) {
 	return conn, ok
 }
 
-// Accept accepts the connection.
-func (conn *Connection) Accept(reason string) {
-	if conn.SetVerdict(VerdictAccept) {
-		conn.Reason = reason
+// AcceptWithContext accepts the connection.
+func (conn *Connection) AcceptWithContext(reason string, ctx interface{}) {
+	if conn.SetVerdict(VerdictAccept, reason, ctx) {
 		log.Infof("filter: granting connection %s, %s", conn, conn.Reason)
 	} else {
 		log.Warningf("filter: tried to accept %s, but current verdict is %s", conn, conn.Verdict)
 	}
 }
 
-// Block blocks the connection.
-func (conn *Connection) Block(reason string) {
-	if conn.SetVerdict(VerdictBlock) {
-		conn.Reason = reason
+// Accept is like AcceptWithContext but only accepts a reason.
+func (conn *Connection) Accept(reason string) {
+	conn.AcceptWithContext(reason, nil)
+}
+
+// BlockWithContext blocks the connection.
+func (conn *Connection) BlockWithContext(reason string, ctx interface{}) {
+	if conn.SetVerdict(VerdictBlock, reason, ctx) {
 		log.Infof("filter: blocking connection %s, %s", conn, conn.Reason)
 	} else {
 		log.Warningf("filter: tried to block %s, but current verdict is %s", conn, conn.Verdict)
 	}
 }
 
-// Drop drops the connection.
-func (conn *Connection) Drop(reason string) {
-	if conn.SetVerdict(VerdictDrop) {
-		conn.Reason = reason
+// Block is like BlockWithContext but does only accepts a reason.
+func (conn *Connection) Block(reason string) {
+	conn.BlockWithContext(reason, nil)
+}
+
+// DropWithContext drops the connection.
+func (conn *Connection) DropWithContext(reason string, ctx interface{}) {
+	if conn.SetVerdict(VerdictDrop, reason, ctx) {
 		log.Infof("filter: dropping connection %s, %s", conn, conn.Reason)
 	} else {
 		log.Warningf("filter: tried to drop %s, but current verdict is %s", conn, conn.Verdict)
 	}
 }
 
-// Deny blocks or drops the link depending on the connection direction.
-func (conn *Connection) Deny(reason string) {
+// Drop is like DropWithContext but does only accepts a reason.
+func (conn *Connection) Drop(reason string) {
+	conn.DropWithContext(reason, nil)
+}
+
+// DenyWithContext blocks or drops the link depending on the connection direction.
+func (conn *Connection) DenyWithContext(reason string, ctx interface{}) {
 	if conn.Inbound {
-		conn.Drop(reason)
+		conn.DropWithContext(reason, ctx)
 	} else {
-		conn.Block(reason)
+		conn.BlockWithContext(reason, ctx)
 	}
 }
 
-// Failed marks the connection with VerdictFailed and stores the reason.
-func (conn *Connection) Failed(reason string) {
-	if conn.SetVerdict(VerdictFailed) {
-		conn.Reason = reason
+// Deny is like DenyWithContext but only accepts a reason.
+func (conn *Connection) Deny(reason string) {
+	conn.DenyWithContext(reason, nil)
+}
+
+// FailedWithContext marks the connection with VerdictFailed and stores the reason.
+func (conn *Connection) FailedWithContext(reason string, ctx interface{}) {
+	if conn.SetVerdict(VerdictFailed, reason, ctx) {
 		log.Infof("filter: dropping connection %s because of an internal error: %s", conn, reason)
 	} else {
 		log.Warningf("filter: tried to drop %s due to error but current verdict is %s", conn, conn.Verdict)
 	}
 }
 
+// Failed is like FailedWithContext but only accepts a string.
+func (conn *Connection) Failed(reason string) {
+	conn.FailedWithContext(reason, nil)
+}
+
 // SetVerdict sets a new verdict for the connection, making sure it does not interfere with previous verdicts.
-func (conn *Connection) SetVerdict(newVerdict Verdict) (ok bool) {
+func (conn *Connection) SetVerdict(newVerdict Verdict, reason string, ctx interface{}) (ok bool) {
 	if newVerdict >= conn.Verdict {
 		conn.Verdict = newVerdict
+		conn.Reason = reason
+		conn.ReasonContext = ctx
 		return true
 	}
 	return false
@@ -229,39 +258,31 @@ func (conn *Connection) SaveWhenFinished() {
 
 // Save saves the connection in the storage and propagates the change through the database system.
 func (conn *Connection) Save() {
-	if conn.ID == "" {
+	conn.UpdateMeta()
 
-		// dns request
-		if !conn.KeyIsSet() {
+	if !conn.KeyIsSet() {
+		if conn.ID == "" {
+			// dns request
+
+			// set key
 			conn.SetKey(fmt.Sprintf("network:tree/%d/%s", conn.process.Pid, conn.Scope))
-			conn.UpdateMeta()
-		}
-		// save to internal state
-		// check if it already exists
-		mapKey := strconv.Itoa(conn.process.Pid) + "/" + conn.Scope
-		dnsConnsLock.Lock()
-		_, ok := dnsConns[mapKey]
-		if !ok {
+			mapKey := strconv.Itoa(conn.process.Pid) + "/" + conn.Scope
+
+			// save
+			dnsConnsLock.Lock()
 			dnsConns[mapKey] = conn
-		}
-		dnsConnsLock.Unlock()
+			dnsConnsLock.Unlock()
+		} else {
+			// network connection
 
-	} else {
-
-		// connection
-		if !conn.KeyIsSet() {
+			// set key
 			conn.SetKey(fmt.Sprintf("network:tree/%d/%s/%s", conn.process.Pid, conn.Scope, conn.ID))
-			conn.UpdateMeta()
-		}
-		// save to internal state
-		// check if it already exists
-		connsLock.Lock()
-		_, ok := conns[conn.ID]
-		if !ok {
-			conns[conn.ID] = conn
-		}
-		connsLock.Unlock()
 
+			// save
+			connsLock.Lock()
+			conns[conn.ID] = conn
+			connsLock.Unlock()
+		}
 	}
 
 	// notify database controller
@@ -270,7 +291,11 @@ func (conn *Connection) Save() {
 
 // delete deletes a link from the storage and propagates the change. Nothing is locked - both the conns map and the connection itself require locking
 func (conn *Connection) delete() {
-	delete(conns, conn.ID)
+	if conn.ID == "" {
+		delete(dnsConns, strconv.Itoa(conn.process.Pid)+"/"+conn.Scope)
+	} else {
+		delete(conns, conn.ID)
+	}
 
 	conn.Meta().Delete()
 	dbController.PushUpdate(conn)

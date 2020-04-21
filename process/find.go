@@ -49,7 +49,7 @@ func GetPidByPacket(pkt packet.Packet) (pid int, direction bool, err error) {
 	case pkt.Info().Protocol == packet.UDP && pkt.Info().Version == packet.IPv6:
 		return getUDP6PacketInfo(localIP, localPort, remoteIP, remotePort, pkt.IsInbound())
 	default:
-		return -1, false, errors.New("unsupported protocol for finding process")
+		return UnidentifiedProcessID, false, errors.New("unsupported protocol for finding process")
 	}
 
 }
@@ -58,7 +58,7 @@ func GetPidByPacket(pkt packet.Packet) (pid int, direction bool, err error) {
 func GetProcessByPacket(pkt packet.Packet) (process *Process, direction bool, err error) {
 	if !enableProcessDetection() {
 		log.Tracer(pkt.Ctx()).Tracef("process: process detection disabled")
-		return UnknownProcess, direction, nil
+		return GetUnidentifiedProcess(pkt.Ctx()), pkt.Info().Direction, nil
 	}
 
 	log.Tracer(pkt.Ctx()).Tracef("process: getting process and profile by packet")
@@ -107,7 +107,7 @@ func GetPidByEndpoints(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 	case protocol == packet.UDP && ipVersion == packet.IPv6:
 		return getUDP6PacketInfo(localIP, localPort, remoteIP, remotePort, false)
 	default:
-		return -1, false, errors.New("unsupported protocol for finding process")
+		return UnidentifiedProcessID, false, errors.New("unsupported protocol for finding process")
 	}
 
 }
@@ -116,7 +116,7 @@ func GetPidByEndpoints(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 func GetProcessByEndpoints(ctx context.Context, localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, protocol packet.IPProtocol) (process *Process, err error) {
 	if !enableProcessDetection() {
 		log.Tracer(ctx).Tracef("process: process detection disabled")
-		return UnknownProcess, nil
+		return GetUnidentifiedProcess(ctx), nil
 	}
 
 	log.Tracer(ctx).Tracef("process: getting process and profile by endpoints")

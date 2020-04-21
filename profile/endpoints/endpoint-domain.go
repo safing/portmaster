@@ -28,42 +28,60 @@ type EndpointDomain struct {
 	Domain        string
 	DomainZone    string
 	MatchType     uint8
-	Reason        string
 }
 
-// Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointDomain) Matches(entity *intel.Entity) (result EPResult, reason string) {
-	if entity.Domain == "" {
-		return NoMatch, ""
-	}
+func (ep *EndpointDomain) check(entity *intel.Entity, domain string) (EPResult, Reason) {
+	result, reason := ep.match(ep, entity, ep.Domain, "domain matches")
 
 	switch ep.MatchType {
 	case domainMatchTypeExact:
-		if entity.Domain == ep.Domain {
-			return ep.matchesPPP(entity), ep.Reason
+		if domain == ep.Domain {
+			return result, reason
 		}
 	case domainMatchTypeZone:
-		if entity.Domain == ep.Domain {
-			return ep.matchesPPP(entity), ep.Reason
+		if domain == ep.Domain {
+			return result, reason
 		}
-		if strings.HasSuffix(entity.Domain, ep.DomainZone) {
-			return ep.matchesPPP(entity), ep.Reason
+		if strings.HasSuffix(domain, ep.DomainZone) {
+			return result, reason
 		}
 	case domainMatchTypeSuffix:
-		if strings.HasSuffix(entity.Domain, ep.Domain) {
-			return ep.matchesPPP(entity), ep.Reason
+		if strings.HasSuffix(domain, ep.Domain) {
+			return result, reason
 		}
 	case domainMatchTypePrefix:
-		if strings.HasPrefix(entity.Domain, ep.Domain) {
-			return ep.matchesPPP(entity), ep.Reason
+		if strings.HasPrefix(domain, ep.Domain) {
+			return result, reason
 		}
 	case domainMatchTypeContains:
-		if strings.Contains(entity.Domain, ep.Domain) {
-			return ep.matchesPPP(entity), ep.Reason
+		if strings.Contains(domain, ep.Domain) {
+			return result, reason
+		}
+	}
+	return NoMatch, nil
+}
+
+// Matches checks whether the given entity matches this endpoint definition.
+func (ep *EndpointDomain) Matches(entity *intel.Entity) (EPResult, Reason) {
+	if entity.Domain == "" {
+		return NoMatch, nil
+	}
+
+	result, reason := ep.check(entity, entity.Domain)
+	if result != NoMatch {
+		return result, reason
+	}
+
+	if entity.CNAMECheckEnabled() {
+		for _, domain := range entity.CNAME {
+			result, reason = ep.check(entity, domain)
+			if result == Denied {
+				return result, reason
+			}
 		}
 	}
 
-	return NoMatch, ""
+	return NoMatch, nil
 }
 
 func (ep *EndpointDomain) String() string {
@@ -76,7 +94,6 @@ func parseTypeDomain(fields []string) (Endpoint, error) {
 	if domainRegex.MatchString(domain) || altDomainRegex.MatchString(domain) {
 		ep := &EndpointDomain{
 			OriginalValue: domain,
-			Reason:        "domain matches " + domain,
 		}
 
 		// fix domain ending

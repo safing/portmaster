@@ -43,6 +43,8 @@ type LayeredProfile struct {
 	RemoveOutOfScopeDNS config.BoolOption
 	RemoveBlockedDNS    config.BoolOption
 	FilterSubDomains    config.BoolOption
+	FilterCNAMEs        config.BoolOption
+	PreventBypassing    config.BoolOption
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -98,6 +100,14 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 		CfgOptionFilterSubDomainsKey,
 		cfgOptionFilterSubDomains,
 	)
+	new.FilterCNAMEs = new.wrapSecurityLevelOption(
+		CfgOptionFilterCNAMEKey,
+		cfgOptionFilterCNAME,
+	)
+	new.PreventBypassing = new.wrapSecurityLevelOption(
+		CfgOptionPreventBypassingKey,
+		cfgOptionPreventBypassing,
+	)
 
 	// TODO: load linked profiles.
 
@@ -123,7 +133,7 @@ func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 
 	var changed bool
 	for i, layer := range lp.layers {
-		if layer.oudated.IsSet() {
+		if layer.outdated.IsSet() {
 			changed = true
 			// update layer
 			newLayer, err := GetProfile(layer.Source, layer.ID)
@@ -170,6 +180,11 @@ func (lp *LayeredProfile) updateCaches() {
 	// TODO: ignore community profiles
 }
 
+// MarkUsed marks the localProfile as used.
+func (lp *LayeredProfile) MarkUsed() {
+	lp.localProfile.MarkUsed()
+}
+
 // SecurityLevel returns the highest security level of all layered profiles.
 func (lp *LayeredProfile) SecurityLevel() uint8 {
 	return uint8(atomic.LoadUint32(lp.securityLevel))
@@ -189,12 +204,12 @@ func (lp *LayeredProfile) DefaultAction() uint8 {
 }
 
 // MatchEndpoint checks if the given endpoint matches an entry in any of the profiles.
-func (lp *LayeredProfile) MatchEndpoint(entity *intel.Entity) (result endpoints.EPResult, reason string) {
+func (lp *LayeredProfile) MatchEndpoint(entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
 	for _, layer := range lp.layers {
 		if layer.endpoints.IsSet() {
-			result, reason = layer.endpoints.Match(entity)
-			if result != endpoints.NoMatch {
-				return
+			result, reason := layer.endpoints.Match(entity)
+			if endpoints.IsDecision(result) {
+				return result, reason
 			}
 		}
 	}
@@ -205,14 +220,14 @@ func (lp *LayeredProfile) MatchEndpoint(entity *intel.Entity) (result endpoints.
 }
 
 // MatchServiceEndpoint checks if the given endpoint of an inbound connection matches an entry in any of the profiles.
-func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (result endpoints.EPResult, reason string) {
+func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
 	entity.EnableReverseResolving()
 
 	for _, layer := range lp.layers {
 		if layer.serviceEndpoints.IsSet() {
-			result, reason = layer.serviceEndpoints.Match(entity)
-			if result != endpoints.NoMatch {
-				return
+			result, reason := layer.serviceEndpoints.Match(entity)
+			if endpoints.IsDecision(result) {
+				return result, reason
 			}
 		}
 	}
@@ -224,33 +239,34 @@ func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (result end
 
 // MatchFilterLists matches the entity against the set of filter
 // lists.
-func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (result endpoints.EPResult, reason string) {
+func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
 	entity.ResolveSubDomainLists(lp.FilterSubDomains())
-
-	lookupMap, hasLists := entity.GetListsMap()
-	if !hasLists {
-		return endpoints.NoMatch, ""
-	}
+	entity.EnableCNAMECheck(lp.FilterCNAMEs())
 
 	for _, layer := range lp.layers {
-		if reason := lookupMap.Match(layer.filterListIDs); reason != "" {
-			return endpoints.Denied, reason
-		}
-
-		// only check the first layer that has filter list
-		// IDs defined.
+		// search for the first layer that has filterListIDs set
 		if len(layer.filterListIDs) > 0 {
-			return endpoints.NoMatch, ""
+			entity.LoadLists()
+
+			if entity.MatchLists(layer.filterListIDs) {
+				return endpoints.Denied, entity.ListBlockReason()
+			}
+
+			return endpoints.NoMatch, nil
 		}
 	}
 
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
-	if reason := lookupMap.Match(cfgFilterLists); reason != "" {
-		return endpoints.Denied, reason
+	if len(cfgFilterLists) > 0 {
+		entity.LoadLists()
+
+		if entity.MatchLists(cfgFilterLists) {
+			return endpoints.Denied, entity.ListBlockReason()
+		}
 	}
 
-	return endpoints.NoMatch, ""
+	return endpoints.NoMatch, nil
 }
 
 // AddEndpoint adds an endpoint to the local endpoint list, saves the local profile and reloads the configuration.

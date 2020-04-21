@@ -28,6 +28,19 @@ type Resolver struct {
 	// Server config url (and ID)
 	Server string
 
+	// Name is the name of the resolver as passed via
+	// ?name=.
+	Name string
+
+	// UpstreamBlockDetection defines the detection type
+	// to identifier upstream DNS query blocking.
+	// Valid values are:
+	//	 - zeroip
+	//	 - empty
+	//   - refused (default)
+	//	 - disabled
+	UpstreamBlockDetection string
+
 	// Parsed config
 	ServerType    string
 	ServerAddress string
@@ -46,9 +59,25 @@ type Resolver struct {
 	Conn ResolverConn
 }
 
+// IsBlockedUpstream returns true if the request has been blocked
+// upstream.
+func (resolver *Resolver) IsBlockedUpstream(answer *dns.Msg) bool {
+	return isBlockedUpstream(resolver, answer)
+}
+
+// GetName returns the name of the server. If no name
+// is configured the server address is returned.
+func (resolver *Resolver) GetName() string {
+	if resolver.Name != "" {
+		return resolver.Name
+	}
+
+	return resolver.Server
+}
+
 // String returns the URL representation of the resolver.
 func (resolver *Resolver) String() string {
-	return resolver.Server
+	return resolver.GetName()
 }
 
 // ResolverConn is an interface to implement different types of query backends.
@@ -124,6 +153,10 @@ func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, er
 
 			// permanent error
 			break
+		}
+
+		if resolver.IsBlockedUpstream(reply) {
+			return nil, &BlockedUpstreamError{resolver.GetName()}
 		}
 
 		// no error

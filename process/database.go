@@ -53,16 +53,13 @@ func (p *Process) Save() {
 	p.Lock()
 	defer p.Unlock()
 
+	p.UpdateMeta()
+
 	if !p.KeyIsSet() {
+		// set key
 		p.SetKey(fmt.Sprintf("%s/%d", processDatabaseNamespace, p.Pid))
-		p.CreateMeta()
-	}
 
-	processesLock.RLock()
-	_, ok := processes[p.Pid]
-	processesLock.RUnlock()
-
-	if !ok {
+		// save
 		processesLock.Lock()
 		processes[p.Pid] = p
 		processesLock.Unlock()
@@ -113,7 +110,9 @@ func CleanProcessStorage(activePIDs map[int]struct{}) {
 
 		_, active := activePIDs[p.Pid]
 		switch {
-		case p.Pid <= 0:
+		case p.Pid == UnidentifiedProcessID:
+			// internal
+		case p.Pid == SystemProcessID:
 			// internal
 		case active:
 			// process in system process table or recently seen on the network

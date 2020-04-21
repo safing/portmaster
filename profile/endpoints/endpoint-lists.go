@@ -10,22 +10,21 @@ import (
 type EndpointLists struct {
 	EndpointBase
 
-	ListSet *intel.ListSet
+	ListSet []string
 	Lists   string
-	Reason  string
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointLists) Matches(entity *intel.Entity) (result EPResult, reason string) {
-	lists, ok := entity.GetLists()
-	if !ok {
-		return Undeterminable, ""
+func (ep *EndpointLists) Matches(entity *intel.Entity) (EPResult, Reason) {
+	if !entity.LoadLists() {
+		return Undeterminable, nil
 	}
-	matched := ep.ListSet.MatchSet(lists)
-	if len(matched) > 0 {
-		return ep.matchesPPP(entity), ep.Reason
+
+	if entity.MatchLists(ep.ListSet) {
+		return ep.match(ep, entity, ep.Lists, "filterlist contains", "filterlist", entity.ListBlockReason())
 	}
-	return NoMatch, ""
+
+	return NoMatch, nil
 }
 
 func (ep *EndpointLists) String() string {
@@ -36,9 +35,8 @@ func parseTypeList(fields []string) (Endpoint, error) {
 	if strings.HasPrefix(fields[1], "L:") {
 		lists := strings.Split(strings.TrimPrefix(fields[1], "L:"), ",")
 		ep := &EndpointLists{
-			ListSet: intel.NewListSet(lists),
+			ListSet: lists,
 			Lists:   "L:" + strings.Join(lists, ","),
-			Reason:  "matched lists " + strings.Join(lists, ","),
 		}
 		return ep.parsePPP(ep, fields)
 	}

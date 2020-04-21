@@ -33,7 +33,7 @@ func GetPidOfConnection(localIP net.IP, localPort uint16, protocol uint8) (pid i
 			}
 		}
 		if !ok {
-			return -1, NoSocket
+			return unidentifiedProcessID, NoSocket
 		}
 	}
 
@@ -45,7 +45,7 @@ func GetPidOfConnection(localIP net.IP, localPort uint16, protocol uint8) (pid i
 		pid, ok = GetPidOfInode(uid, inode)
 	}
 	if !ok {
-		return -1, NoProcess
+		return unidentifiedProcessID, NoProcess
 	}
 
 	return
@@ -64,7 +64,7 @@ func GetPidOfIncomingConnection(localIP net.IP, localPort uint16, protocol uint8
 		}
 
 		if !ok {
-			return -1, NoSocket
+			return unidentifiedProcessID, NoSocket
 		}
 	}
 
@@ -76,7 +76,7 @@ func GetPidOfIncomingConnection(localIP net.IP, localPort uint16, protocol uint8
 		pid, ok = GetPidOfInode(uid, inode)
 	}
 	if !ok {
-		return -1, NoProcess
+		return unidentifiedProcessID, NoProcess
 	}
 
 	return

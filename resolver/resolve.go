@@ -37,6 +37,21 @@ var (
 	ErrNoCompliance = fmt.Errorf("%w: no compliant resolvers for this query", ErrBlocked)
 )
 
+// BlockedUpstreamError is returned when a DNS request
+// has been blocked by the upstream server.
+type BlockedUpstreamError struct {
+	ResolverName string
+}
+
+func (blocked *BlockedUpstreamError) Error() string {
+	return fmt.Sprintf("Endpoint blocked by upstream DNS resolver %s", blocked.ResolverName)
+}
+
+// Unwrap implements errors.Unwrapper
+func (blocked *BlockedUpstreamError) Unwrap() error {
+	return ErrBlocked
+}
+
 // Query describes a dns query.
 type Query struct {
 	FQDN               string

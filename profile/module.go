@@ -42,6 +42,8 @@ func start() error {
 		return err
 	}
 
+	module.StartServiceWorker("clean active profiles", 0, cleanActiveProfiles)
+
 	err = updateGlobalConfigProfile(module.Ctx, nil)
 	if err != nil {
 		log.Warningf("profile: error during loading global profile from configuration: %s", err)

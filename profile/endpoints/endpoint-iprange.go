@@ -10,19 +10,18 @@ import (
 type EndpointIPRange struct {
 	EndpointBase
 
-	Net    *net.IPNet
-	Reason string
+	Net *net.IPNet
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointIPRange) Matches(entity *intel.Entity) (result EPResult, reason string) {
+func (ep *EndpointIPRange) Matches(entity *intel.Entity) (EPResult, Reason) {
 	if entity.IP == nil {
-		return Undeterminable, ""
+		return Undeterminable, nil
 	}
 	if ep.Net.Contains(entity.IP) {
-		return ep.matchesPPP(entity), ep.Reason
+		return ep.match(ep, entity, ep.Net.String(), "IP is in")
 	}
-	return NoMatch, ""
+	return NoMatch, nil
 }
 
 func (ep *EndpointIPRange) String() string {
@@ -33,8 +32,7 @@ func parseTypeIPRange(fields []string) (Endpoint, error) {
 	_, net, err := net.ParseCIDR(fields[1])
 	if err == nil {
 		ep := &EndpointIPRange{
-			Net:    net,
-			Reason: "IP is part of " + net.String(),
+			Net: net,
 		}
 		return ep.parsePPP(ep, fields)
 	}

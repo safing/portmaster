@@ -8,8 +8,8 @@ type EndpointAny struct {
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointAny) Matches(entity *intel.Entity) (result EPResult, reason string) {
-	return ep.matchesPPP(entity), "matches *"
+func (ep *EndpointAny) Matches(entity *intel.Entity) (EPResult, Reason) {
+	return ep.match(ep, entity, "*", "matches")
 }
 
 func (ep *EndpointAny) String() string {

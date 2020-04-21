@@ -233,6 +233,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	if ps.isMe {
 		// approve
 		conn.Accept("internally approved")
+		conn.Internal = true
 		// finish
 		conn.StopFirewallHandler()
 		issueVerdict(conn, pkt, 0, true)

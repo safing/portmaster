@@ -100,7 +100,7 @@ func getConnectionSocket(localIP net.IP, localPort uint16, protocol uint8) (int,
 	socketData, err := os.Open(procFile)
 	if err != nil {
 		log.Warningf("process/proc: could not read %s: %s", procFile, err)
-		return -1, -1, false
+		return unidentifiedProcessID, unidentifiedProcessID, false
 	}
 	defer socketData.Close()
 
@@ -146,7 +146,7 @@ func getConnectionSocket(localIP net.IP, localPort uint16, protocol uint8) (int,
 
 	}
 
-	return -1, -1, false
+	return unidentifiedProcessID, unidentifiedProcessID, false
 
 }
 
@@ -187,7 +187,7 @@ func getListeningSocket(localIP net.IP, localPort uint16, protocol uint8) (uid, 
 		return data[0], data[1], true
 	}
 
-	return -1, -1, false
+	return unidentifiedProcessID, unidentifiedProcessID, false
 }
 
 func procDelimiter(c rune) bool {
