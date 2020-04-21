@@ -6,6 +6,7 @@ contact_links:
   url: https://www.reddit.com/r/safing
   about: Please ask questions and support requests here
 - name: Security related issues 🔐
+  url: mailto:support@safing.io
   about: |
     Please report security related bugs and issues
     privately to security@safing.io.
