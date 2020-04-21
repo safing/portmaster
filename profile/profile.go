@@ -143,7 +143,7 @@ func (profile *Profile) parseConfig() error {
 		}
 	}
 
-	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionFilterListKey)
+	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionFilterListsKey)
 	if ok {
 		profile.filterListIDs, err = filterlists.ResolveListIDs(list)
 		if err != nil {

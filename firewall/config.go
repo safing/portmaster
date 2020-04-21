@@ -8,11 +8,13 @@ import (
 var (
 	CfgOptionEnableFilterKey = "filter/enable"
 
-	CfgOptionPermanentVerdictsKey = "filter/permanentVerdicts"
-	permanentVerdicts             config.BoolOption
+	CfgOptionPromptTimeoutKey   = "filter/promptTimeout"
+	CfgOptionPromptTimeoutOrder = 2
+	promptTimeout               config.IntOption
 
-	CfgOptionPromptTimeoutKey = "filter/promptTimeout"
-	promptTimeout             config.IntOption
+	CfgOptionPermanentVerdictsKey   = "filter/permanentVerdicts"
+	CfgOptionPermanentVerdictsOrder = 128
+	permanentVerdicts               config.BoolOption
 
 	devMode          config.BoolOption
 	apiListenAddress config.StringOption
@@ -23,6 +25,7 @@ func registerConfig() error {
 		Name:           "Permanent Verdicts",
 		Key:            CfgOptionPermanentVerdictsKey,
 		Description:    "With permanent verdicts, control of a connection is fully handed back to the OS after the initial decision. This brings a great performance increase, but makes it impossible to change the decision of a link later on.",
+		Order:          CfgOptionPermanentVerdictsOrder,
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
@@ -37,6 +40,7 @@ func registerConfig() error {
 		Name:           "Timeout for prompt notifications",
 		Key:            CfgOptionPromptTimeoutKey,
 		Description:    "Amount of time how long Portmaster will wait for a response when prompting about a connection via a notification. In seconds.",
+		Order:          CfgOptionPromptTimeoutOrder,
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelBeta,
