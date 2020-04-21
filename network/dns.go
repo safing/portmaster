@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/safing/portmaster/process"
 )
 
 var (
@@ -16,6 +18,9 @@ var (
 
 	// duration after which DNS requests without a following connection are logged
 	openDNSRequestLimit = 3 * time.Second
+
+	// scope prefix
+	unidentifiedProcessScopePrefix = strconv.Itoa(process.UnidentifiedProcessID) + "/"
 )
 
 func removeOpenDNSRequest(pid int, fqdn string) {
@@ -23,7 +28,13 @@ func removeOpenDNSRequest(pid int, fqdn string) {
 	defer openDNSRequestsLock.Unlock()
 
 	key := strconv.Itoa(pid) + "/" + fqdn
-	delete(openDNSRequests, key)
+	_, ok := openDNSRequests[key]
+	if ok {
+		delete(openDNSRequests, key)
+	} else if pid != process.UnidentifiedProcessID {
+		// check if there is an open dns request from an unidentified process
+		delete(openDNSRequests, unidentifiedProcessScopePrefix+fqdn)
+	}
 }
 
 // SaveOpenDNSRequest saves a dns request connection that was allowed to proceed.

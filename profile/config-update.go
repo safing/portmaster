@@ -70,8 +70,8 @@ func updateGlobalConfigProfile(ctx context.Context, data interface{}) error {
 
 	// build global profile for reference
 	profile := &Profile{
-		ID:           "config",
-		Source:       SourceGlobal,
+		ID:           "global-config",
+		Source:       SourceSpecial,
 		Name:         "Global Configuration",
 		Config:       make(map[string]interface{}),
 		internalSave: true,

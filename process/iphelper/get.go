@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+const (
+	unidentifiedProcessID = -1
+)
+
 var (
 	tcp4Connections []*ConnectionEntry
 	tcp4Listeners   []*ConnectionEntry
@@ -55,7 +59,7 @@ func GetTCP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 		}
 		lock.Unlock()
 		if err != nil {
-			return -1, pktDirection, err
+			return unidentifiedProcessID, pktDirection, err
 		}
 
 		// search
@@ -67,7 +71,7 @@ func GetTCP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 		time.Sleep(waitTime)
 	}
 
-	return -1, pktDirection, nil
+	return unidentifiedProcessID, pktDirection, nil
 }
 
 // GetTCP6PacketInfo returns the pid of the given IPv6/TCP connection.
@@ -91,7 +95,7 @@ func GetTCP6PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 		}
 		lock.Unlock()
 		if err != nil {
-			return -1, pktDirection, err
+			return unidentifiedProcessID, pktDirection, err
 		}
 
 		// search
@@ -103,7 +107,7 @@ func GetTCP6PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 		time.Sleep(waitTime)
 	}
 
-	return -1, pktDirection, nil
+	return unidentifiedProcessID, pktDirection, nil
 }
 
 // GetUDP4PacketInfo returns the pid of the given IPv4/UDP connection.
@@ -127,7 +131,7 @@ func GetUDP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 		}
 		lock.Unlock()
 		if err != nil {
-			return -1, pktDirection, err
+			return unidentifiedProcessID, pktDirection, err
 		}
 
 		// search
@@ -139,7 +143,7 @@ func GetUDP4PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 		time.Sleep(waitTime)
 	}
 
-	return -1, pktDirection, nil
+	return unidentifiedProcessID, pktDirection, nil
 }
 
 // GetUDP6PacketInfo returns the pid of the given IPv6/UDP connection.
@@ -163,7 +167,7 @@ func GetUDP6PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 		}
 		lock.Unlock()
 		if err != nil {
-			return -1, pktDirection, err
+			return unidentifiedProcessID, pktDirection, err
 		}
 
 		// search
@@ -175,7 +179,7 @@ func GetUDP6PacketInfo(localIP net.IP, localPort uint16, remoteIP net.IP, remote
 		time.Sleep(waitTime)
 	}
 
-	return -1, pktDirection, nil
+	return unidentifiedProcessID, pktDirection, nil
 }
 
 func search(connections, listeners []*ConnectionEntry, localIP, remoteIP net.IP, localPort, remotePort uint16, pktDirection bool) (pid int, direction bool) { //nolint:unparam // TODO: use direction, it may not be used because results caused problems, investigate.
@@ -204,7 +208,7 @@ func search(connections, listeners []*ConnectionEntry, localIP, remoteIP net.IP,
 		}
 	}
 
-	return -1, pktDirection
+	return unidentifiedProcessID, pktDirection
 }
 
 func searchConnections(list []*ConnectionEntry, localIP, remoteIP net.IP, localPort, remotePort uint16) (pid int) {
@@ -218,7 +222,7 @@ func searchConnections(list []*ConnectionEntry, localIP, remoteIP net.IP, localP
 		}
 	}
 
-	return -1
+	return unidentifiedProcessID
 }
 
 func searchListeners(list []*ConnectionEntry, localIP net.IP, localPort uint16) (pid int) {
@@ -231,7 +235,7 @@ func searchListeners(list []*ConnectionEntry, localIP net.IP, localPort uint16) 
 		}
 	}
 
-	return -1
+	return unidentifiedProcessID
 }
 
 // GetActiveConnectionIDs returns all currently active connection IDs.

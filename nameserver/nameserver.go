@@ -199,6 +199,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		}
 	}()
 
+	// TODO: this has been obsoleted due to special profiles
 	if conn.Process().Profile() == nil {
 		tracer.Infof("nameserver: failed to find process for request %s, returning NXDOMAIN", conn)
 		returnNXDomain(w, query)

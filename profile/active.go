@@ -1,7 +1,14 @@
 package profile
 
 import (
+	"context"
 	"sync"
+	"time"
+)
+
+const (
+	activeProfileCleanerTickDuration = 10 * time.Minute
+	activeProfileCleanerThreshold    = 1 * time.Hour
 )
 
 var (
@@ -38,7 +45,34 @@ func markActiveProfileAsOutdated(scopedID string) {
 
 	profile, ok := activeProfiles[scopedID]
 	if ok {
-		profile.oudated.Set()
+		profile.outdated.Set()
 		delete(activeProfiles, scopedID)
+	}
+}
+
+func cleanActiveProfiles(ctx context.Context) error {
+	for {
+		select {
+		case <-time.After(activeProfileCleanerTickDuration):
+
+			threshold := time.Now().Add(-activeProfileCleanerThreshold)
+
+			activeProfilesLock.Lock()
+			for id, profile := range activeProfiles {
+				// get last used
+				profile.Lock()
+				lastUsed := profile.lastUsed
+				profile.Unlock()
+				// remove if not used for a while
+				if lastUsed.Before(threshold) {
+					profile.outdated.Set()
+					delete(activeProfiles, id)
+				}
+			}
+			activeProfilesLock.Unlock()
+
+		case <-ctx.Done():
+			return nil
+		}
 	}
 }

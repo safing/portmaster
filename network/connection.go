@@ -41,6 +41,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	VerdictPermanent bool
 	Inspecting       bool
 	Encrypted        bool // TODO
+	Internal         bool // Portmaster internal connections are marked in order to easily filter these out in the UI
 
 	pktQueue        chan packet.Packet
 	firewallHandler FirewallHandler
@@ -58,7 +59,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, ip net.IP, po
 	proc, err := process.GetProcessByEndpoints(ctx, ip, port, dnsAddress, dnsPort, packet.UDP)
 	if err != nil {
 		log.Warningf("network: failed to find process of dns request for %s: %s", fqdn, err)
-		proc = process.UnknownProcess
+		proc = process.GetUnidentifiedProcess(ctx)
 	}
 
 	timestamp := time.Now().Unix()
@@ -80,7 +81,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	proc, inbound, err := process.GetProcessByPacket(pkt)
 	if err != nil {
 		log.Warningf("network: failed to find process of packet %s: %s", pkt, err)
-		proc = process.UnknownProcess
+		proc = process.GetUnidentifiedProcess(pkt.Ctx())
 	}
 
 	var scope string
@@ -229,39 +230,31 @@ func (conn *Connection) SaveWhenFinished() {
 
 // Save saves the connection in the storage and propagates the change through the database system.
 func (conn *Connection) Save() {
-	if conn.ID == "" {
+	conn.UpdateMeta()
 
-		// dns request
-		if !conn.KeyIsSet() {
+	if !conn.KeyIsSet() {
+		if conn.ID == "" {
+			// dns request
+
+			// set key
 			conn.SetKey(fmt.Sprintf("network:tree/%d/%s", conn.process.Pid, conn.Scope))
-			conn.UpdateMeta()
-		}
-		// save to internal state
-		// check if it already exists
-		mapKey := strconv.Itoa(conn.process.Pid) + "/" + conn.Scope
-		dnsConnsLock.Lock()
-		_, ok := dnsConns[mapKey]
-		if !ok {
+			mapKey := strconv.Itoa(conn.process.Pid) + "/" + conn.Scope
+
+			// save
+			dnsConnsLock.Lock()
 			dnsConns[mapKey] = conn
-		}
-		dnsConnsLock.Unlock()
+			dnsConnsLock.Unlock()
+		} else {
+			// network connection
 
-	} else {
-
-		// connection
-		if !conn.KeyIsSet() {
+			// set key
 			conn.SetKey(fmt.Sprintf("network:tree/%d/%s/%s", conn.process.Pid, conn.Scope, conn.ID))
-			conn.UpdateMeta()
-		}
-		// save to internal state
-		// check if it already exists
-		connsLock.Lock()
-		_, ok := conns[conn.ID]
-		if !ok {
-			conns[conn.ID] = conn
-		}
-		connsLock.Unlock()
 
+			// save
+			connsLock.Lock()
+			conns[conn.ID] = conn
+			connsLock.Unlock()
+		}
 	}
 
 	// notify database controller
@@ -270,7 +263,11 @@ func (conn *Connection) Save() {
 
 // delete deletes a link from the storage and propagates the change. Nothing is locked - both the conns map and the connection itself require locking
 func (conn *Connection) delete() {
-	delete(conns, conn.ID)
+	if conn.ID == "" {
+		delete(dnsConns, strconv.Itoa(conn.process.Pid)+"/"+conn.Scope)
+	} else {
+		delete(conns, conn.ID)
+	}
 
 	conn.Meta().Delete()
 	dbController.PushUpdate(conn)

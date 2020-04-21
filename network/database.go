@@ -77,7 +77,7 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 	if slashes <= 1 {
 		// processes
 		for _, proc := range process.All() {
-			if strings.HasPrefix(proc.DatabaseKey(), q.DatabaseKeyPrefix()) {
+			if q.Matches(proc) {
 				it.Next <- proc
 			}
 		}
@@ -86,9 +86,9 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 	if slashes <= 2 {
 		// dns scopes only
 		dnsConnsLock.RLock()
-		for _, dnsConns := range dnsConns {
-			if strings.HasPrefix(dnsConns.DatabaseKey(), q.DatabaseKeyPrefix()) {
-				it.Next <- dnsConns
+		for _, dnsConn := range dnsConns {
+			if q.Matches(dnsConn) {
+				it.Next <- dnsConn
 			}
 		}
 		dnsConnsLock.RUnlock()
@@ -98,7 +98,7 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 		// connections
 		connsLock.RLock()
 		for _, conn := range conns {
-			if strings.HasPrefix(conn.DatabaseKey(), q.DatabaseKeyPrefix()) {
+			if q.Matches(conn) {
 				it.Next <- conn
 			}
 		}
