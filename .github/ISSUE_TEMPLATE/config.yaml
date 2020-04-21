@@ -1,0 +1,14 @@
+ 
+# Ref: https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository#configuring-the-template-chooser
+blank_issues_enabled: false  # default: true
+contact_links:
+- name: Community Support 🤷
+  url: https://www.reddit.com/r/safing
+  about: Please ask questions and support requests here
+- name: Security related issues 🔐
+  about: |
+    Please report security related bugs and issues
+    privately to security@safing.io.
+- name: Code of Conduct 📝
+  url: https://github.com/safing/portmaster/blob/develop/CODE_OF_CONDUCT.md
+  about: Be nice to other community members ❤
