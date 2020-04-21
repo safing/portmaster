@@ -90,7 +90,7 @@ func start() error {
 		TriggerUpdateEvent,
 		"Check for and download available updates",
 		func(context.Context, interface{}) error {
-			TriggerUpdate()
+			_ = TriggerUpdate()
 			return nil
 		},
 	); err != nil {

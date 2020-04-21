@@ -88,7 +88,7 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 
 		if forceUpdate {
 			module.Resolve(updateFailed)
-			TriggerUpdate()
+			_ = TriggerUpdate()
 			log.Infof("Automatic updates enabled again.")
 		} else {
 			module.Warning(updateFailed, "Updates are disabled!")
