@@ -15,7 +15,7 @@ a UI issue please report it at https://github.com/safing/portmaster-ui/issues/ne
 
 Thank you!
 
-For security related reports, please disclose it privately to security@safing.io.
+For security related reports, please disclose it privately to support@safing.io.
 -->
 
 **Checklist**:
