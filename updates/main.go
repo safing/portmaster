@@ -19,6 +19,8 @@ const (
 	releaseChannelStable = "stable"
 	releaseChannelBeta   = "beta"
 
+	disableUpdatesKey = "core/disableUpdates"
+
 	// ModuleName is the name of the update module
 	// and can be used when declaring module dependencies.
 	ModuleName = "updates"
@@ -36,6 +38,10 @@ const (
 	// to check if new versions of their resources are
 	// available by checking File.UpgradeAvailable().
 	ResourceUpdateEvent = "resource update"
+
+	// TriggerUpdateEvent is the event that can be emitted
+	// by the updates module to trigger an update.
+	TriggerUpdateEvent = "trigger update"
 )
 
 var (
@@ -46,14 +52,50 @@ var (
 	disableTaskSchedule bool
 )
 
+const (
+	updateInProgress     = "update-in-progress"
+	updateInProcessDescr = "Portmaster is currently checking and downloading updates."
+	updateFailed         = "update-failed"
+)
+
 func init() {
-	module = modules.Register(ModuleName, registerConfig, start, stop, "base")
+	module = modules.Register(ModuleName, prep, start, stop, "base")
 	module.RegisterEvent(VersionUpdateEvent)
 	module.RegisterEvent(ResourceUpdateEvent)
 }
 
+func prep() error {
+	if err := registerConfig(); err != nil {
+		return err
+	}
+
+	module.RegisterEvent(TriggerUpdateEvent)
+
+	return nil
+}
+
 func start() error {
 	initConfig()
+
+	if err := module.RegisterEventHook(
+		"config",
+		"config change",
+		"update registry config",
+		updateRegistryConfig); err != nil {
+		return err
+	}
+
+	if err := module.RegisterEventHook(
+		module.Name,
+		TriggerUpdateEvent,
+		"Check for and download available updates",
+		func(context.Context, interface{}) error {
+			TriggerUpdate()
+			return nil
+		},
+	); err != nil {
+		return err
+	}
 
 	var mandatoryUpdates []string
 	if onWindows {
@@ -115,8 +157,8 @@ func start() error {
 
 	if !disableTaskSchedule {
 		updateTask.
-			Repeat(24 * time.Hour).
-			MaxDelay(1 * time.Hour).
+			Repeat(1 * time.Hour).
+			MaxDelay(30 * time.Minute).
 			Schedule(time.Now().Add(10 * time.Second))
 	}
 
@@ -138,6 +180,7 @@ func TriggerUpdate() error {
 		updateASAP = true
 	} else {
 		updateTask.StartASAP()
+		log.Debugf("updates: triggering update to run as soon as possible")
 	}
 
 	return nil
@@ -156,14 +199,33 @@ func DisableUpdateSchedule() error {
 	return nil
 }
 
-func checkForUpdates(ctx context.Context) error {
-	if err := registry.UpdateIndexes(); err != nil {
-		return fmt.Errorf("updates: failed to update indexes: %w", err)
+func checkForUpdates(ctx context.Context) (err error) {
+	if updatesCurrentlyDisabled {
+		log.Debugf("updates: automatic updates are disabled")
+		return nil
+	}
+	defer log.Debugf("updates: finished checking for updates")
+
+	module.Hint(updateInProgress, updateInProcessDescr)
+
+	defer func() {
+		if err == nil {
+			module.Resolve(updateInProgress)
+			module.Resolve(updateFailed)
+		} else {
+			module.Warning(updateFailed, "Failed to check for updates: "+err.Error())
+		}
+	}()
+
+	if err = registry.UpdateIndexes(); err != nil {
+		err = fmt.Errorf("failed to update indexes: %w", err)
+		return
 	}
 
-	err := registry.DownloadUpdates(ctx)
+	err = registry.DownloadUpdates(ctx)
 	if err != nil {
-		return fmt.Errorf("updates: failed to update: %w", err)
+		err = fmt.Errorf("failed to update: %w", err)
+		return
 	}
 
 	registry.SelectVersions()
