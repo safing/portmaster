@@ -104,7 +104,7 @@ func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache) *res
 	rrCache.Answer, filteredRecords, validIPs = filterDNSSection(rrCache.Answer, p, rrCache.ServerScope)
 	rrCache.FilteredEntries = append(rrCache.FilteredEntries, filteredRecords...)
 
-	// FIXME(ppacher): should we consider valid IPs from the extra section?
+	// we don't count the valid IPs in the extra section
 	rrCache.Extra, filteredRecords, _ = filterDNSSection(rrCache.Extra, p, rrCache.ServerScope)
 	rrCache.FilteredEntries = append(rrCache.FilteredEntries, filteredRecords...)
 

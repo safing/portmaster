@@ -83,7 +83,7 @@ func (br ListBlockReason) ToRRs() []dns.RR {
 			wouldBeBlockedBy, err := dns.NewRR(fmt.Sprintf(
 				"%s-wouldBeBlockedBy.		0	IN	TXT 	%q",
 				strings.TrimRight(lm.Entity, "."),
-				strings.Join(lm.ActiveLists, ","),
+				strings.Join(lm.InactiveLists, ","),
 			))
 			if err == nil {
 				rrs = append(rrs, wouldBeBlockedBy)
