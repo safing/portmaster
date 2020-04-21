@@ -1,10 +1,10 @@
  
 # Ref: https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository#configuring-the-template-chooser
-blank_issues_enabled: false  # default: true
+blank_issues_enabled: true  # default: true
 contact_links:
-- name: Community Support 🤷
+- name: Support Requests & Community 🤷
   url: https://www.reddit.com/r/safing
-  about: Please ask any questions you have here
+  about: Ask for support and any questions you might have on reddit.
 - name: Code of Conduct 📝
   url: https://github.com/safing/portmaster/blob/develop/CODE_OF_CONDUCT.md
   about: Be nice to other community members ❤
