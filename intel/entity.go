@@ -32,18 +32,46 @@ type Entity struct {
 	asnListLoaded         bool
 	reverseResolveEnabled bool
 	resolveSubDomainLists bool
+	checkCNAMEs           bool
 
+	// Protocol is the protcol number used by the connection.
 	Protocol uint8
-	Port     uint16
-	Domain   string
-	IP       net.IP
 
-	Country  string
-	ASN      uint
+	// Port is the destination port of the connection
+	Port uint16
+
+	// Domain is the target domain of the connection.
+	Domain string
+
+	// CNAME is a list of domain names that have been
+	// resolved for Domain.
+	CNAME []string
+
+	// IP is the IP address of the connection. If domain is
+	// set, IP has been resolved by following all CNAMEs.
+	IP net.IP
+
+	// Country holds the country the IP address (ASN) is
+	// located in.
+	Country string
+
+	// ASN holds the autonomous system number of the IP.
+	ASN uint
+
 	location *geoip.Location
 
-	Lists    []string
-	ListsMap filterlists.LookupMap
+	// BlockedByLists holds list source IDs that
+	// are used to block the entity.
+	BlockedByLists []string
+
+	// BlockedEntities holds a list of entities that
+	// have been blocked. Values can be used as a key
+	// for the ListOccurences map.
+	BlockedEntities []string
+
+	// ListOccurences is a map that matches an entity (Domain, IPs, ASN, Country, Sub-domain)
+	// to a list of sources where the entity has been observed in.
+	ListOccurences map[string][]string
 
 	// we only load each data above at most once
 	fetchLocationOnce  sync.Once
@@ -72,13 +100,17 @@ func (e *Entity) ResetLists() {
 	// TODO(ppacher): our actual goal is to reset the domain
 	// list right now so we could be more efficient by keeping
 	// the other lists around.
-	e.Lists = nil
-	e.ListsMap = nil
+
+	e.BlockedByLists = nil
+	e.BlockedEntities = nil
+	e.ListOccurences = nil
+
 	e.domainListLoaded = false
 	e.ipListLoaded = false
 	e.countryListLoaded = false
 	e.asnListLoaded = false
 	e.resolveSubDomainLists = false
+	e.checkCNAMEs = false
 	e.loadDomainListOnce = sync.Once{}
 	e.loadIPListOnce = sync.Once{}
 	e.loadCoutryListOnce = sync.Once{}
@@ -92,6 +124,21 @@ func (e *Entity) ResolveSubDomainLists(enabled bool) {
 		log.Warningf("intel/filterlists: tried to change sub-domain resolving for %s but lists are already fetched", e.Domain)
 	}
 	e.resolveSubDomainLists = enabled
+}
+
+// EnableCNAMECheck enalbes or disables list lookups for
+// entity CNAMEs.
+func (e *Entity) EnableCNAMECheck(enabled bool) {
+	if e.domainListLoaded {
+		log.Warningf("intel/filterlists: tried to change CNAME resolving for %s but lists are already fetched", e.Domain)
+	}
+	e.checkCNAMEs = enabled
+}
+
+// CNAMECheckEnabled returns true if the entities CNAMEs should
+// also be checked.
+func (e *Entity) CNAMECheckEnabled() bool {
+	return e.checkCNAMEs
 }
 
 // Domain and IP
@@ -204,9 +251,19 @@ func (e *Entity) getLists() {
 	e.getCountryLists()
 }
 
-func (e *Entity) mergeList(list []string) {
-	e.Lists = mergeStringList(e.Lists, list)
-	e.ListsMap = buildLookupMap(e.Lists)
+func (e *Entity) mergeList(key string, list []string) {
+	if len(list) == 0 {
+		return
+	}
+
+	if e.ListOccurences == nil {
+		e.ListOccurences = make(map[string][]string)
+	}
+
+	e.ListOccurences[key] = mergeStringList(e.ListOccurences[key], list)
+
+	//e.Lists = mergeStringList(e.Lists, list)
+	//e.ListsMap = buildLookupMap(e.Lists)
 }
 
 func (e *Entity) getDomainLists() {
@@ -220,11 +277,26 @@ func (e *Entity) getDomainLists() {
 	}
 
 	e.loadDomainListOnce.Do(func() {
-		var domains = []string{domain}
-		if e.resolveSubDomainLists {
-			domains = splitDomain(domain)
-			log.Tracef("intel: subdomain list resolving is enabled, checking %v", domains)
+		var domainsToInspect = []string{domain}
+
+		if e.checkCNAMEs {
+			log.Tracef("intel: CNAME filtering enabled, checking %v too", e.CNAME)
+			domainsToInspect = append(domainsToInspect, e.CNAME...)
 		}
+
+		var domains []string
+		if e.resolveSubDomainLists {
+			for _, domain := range domainsToInspect {
+				subdomains := splitDomain(domain)
+				domains = append(domains, subdomains...)
+
+				log.Tracef("intel: subdomain list resolving is enabled: %s => %v", domains, subdomains)
+			}
+		} else {
+			domains = domainsToInspect
+		}
+
+		domains = makeDistinct(domains)
 
 		for _, d := range domains {
 			log.Tracef("intel: loading domain list for %s", d)
@@ -235,7 +307,7 @@ func (e *Entity) getDomainLists() {
 				return
 			}
 
-			e.mergeList(list)
+			e.mergeList(d, list)
 		}
 		e.domainListLoaded = true
 	})
@@ -279,7 +351,8 @@ func (e *Entity) getASNLists() {
 
 	log.Tracef("intel: loading ASN list for %d", asn)
 	e.loadAsnListOnce.Do(func() {
-		list, err := filterlists.LookupASNString(fmt.Sprintf("%d", asn))
+		asnStr := fmt.Sprintf("%d", asn)
+		list, err := filterlists.LookupASNString(asnStr)
 		if err != nil {
 			log.Errorf("intel: failed to get ASN blocklist for %d: %s", asn, err)
 			e.loadAsnListOnce = sync.Once{}
@@ -287,7 +360,7 @@ func (e *Entity) getASNLists() {
 		}
 
 		e.asnListLoaded = true
-		e.mergeList(list)
+		e.mergeList(asnStr, list)
 	})
 }
 
@@ -311,7 +384,7 @@ func (e *Entity) getCountryLists() {
 		}
 
 		e.countryListLoaded = true
-		e.mergeList(list)
+		e.mergeList(country, list)
 	})
 }
 
@@ -344,28 +417,69 @@ func (e *Entity) getIPLists() {
 			return
 		}
 		e.ipListLoaded = true
-		e.mergeList(list)
+		e.mergeList(ip.String(), list)
 	})
 }
 
-// GetLists returns the filter list identifiers the entity matched and whether this data is set.
-func (e *Entity) GetLists() ([]string, bool) {
+// LoadLists searches all filterlists for all occurrences of
+// this entity.
+func (e *Entity) LoadLists() bool {
 	e.getLists()
 
-	if e.Lists == nil {
-		return nil, false
-	}
-	return e.Lists, true
+	return e.ListOccurences != nil
 }
 
-// GetListsMap is like GetLists but returns a lookup map for list IDs.
-func (e *Entity) GetListsMap() (filterlists.LookupMap, bool) {
-	e.getLists()
+// MatchLists matches the entities lists against a slice
+// of source IDs and  updates various entity properties
+// like BlockedByLists, ListOccurences and BlockedEntitites.
+func (e *Entity) MatchLists(lists []string) bool {
+	e.BlockedByLists = nil
+	e.BlockedEntities = nil
 
-	if e.ListsMap == nil {
-		return nil, false
+	lm := makeMap(lists)
+	for key, keyLists := range e.ListOccurences {
+		for _, keyListID := range keyLists {
+			if _, ok := lm[keyListID]; ok {
+				e.BlockedByLists = append(e.BlockedByLists, keyListID)
+				e.BlockedEntities = append(e.BlockedEntities, key)
+			}
+		}
 	}
-	return e.ListsMap, true
+
+	makeDistinct(e.BlockedByLists)
+	makeDistinct(e.BlockedEntities)
+
+	return len(e.BlockedByLists) > 0
+}
+
+// ListBlockReason returns the block reason for this entity.
+func (e *Entity) ListBlockReason() ListBlockReason {
+	blockedBy := make([]ListMatch, len(e.BlockedEntities))
+
+	lm := makeMap(e.BlockedByLists)
+
+	for idx, blockedEntity := range e.BlockedEntities {
+		if entityLists, ok := e.ListOccurences[blockedEntity]; ok {
+			var activeLists []string
+			var inactiveLists []string
+
+			for _, l := range entityLists {
+				if _, ok := lm[l]; ok {
+					activeLists = append(activeLists, l)
+				} else {
+					inactiveLists = append(inactiveLists, l)
+				}
+			}
+
+			blockedBy[idx] = ListMatch{
+				Entity:        blockedEntity,
+				ActiveLists:   activeLists,
+				InactiveLists: inactiveLists,
+			}
+		}
+	}
+
+	return blockedBy
 }
 
 func mergeStringList(a, b []string) []string {
@@ -385,12 +499,26 @@ func mergeStringList(a, b []string) []string {
 	return res
 }
 
-func buildLookupMap(l []string) filterlists.LookupMap {
-	m := make(filterlists.LookupMap, len(l))
+func makeDistinct(slice []string) []string {
+	m := make(map[string]struct{}, len(slice))
+	result := make([]string, 0, len(slice))
 
-	for _, s := range l {
-		m[s] = struct{}{}
+	for _, v := range slice {
+		if _, ok := m[v]; ok {
+			continue
+		}
+
+		m[v] = struct{}{}
+		result = append(result, v)
 	}
 
-	return m
+	return result
+}
+
+func makeMap(slice []string) map[string]struct{} {
+	lm := make(map[string]struct{})
+	for _, v := range slice {
+		lm[v] = struct{}{}
+	}
+	return lm
 }

@@ -29,28 +29,30 @@ var (
 		// We encourage everyone who has the technical abilities to set their own preferred servers.
 
 		// Default 1: Cloudflare
-		"dot://1.1.1.1:853?verify=cloudflare-dns.com", // Cloudflare
-		"dot://1.0.0.1:853?verify=cloudflare-dns.com", // Cloudflare
+		"dot://1.1.1.1:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip", // Cloudflare
+		"dot://1.0.0.1:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip", // Cloudflare
 
 		// Default 2: Quad9
-		"dot://9.9.9.9:853?verify=dns.quad9.net",         // Quad9
-		"dot://149.112.112.112:853?verify=dns.quad9.net", // Quad9
+		"dot://9.9.9.9:853?verify=dns.quad9.net&name=Quad9&blockedif=empty",         // Quad9
+		"dot://149.112.112.112:853?verify=dns.quad9.net&name=Quad9&blockedif=empty", // Quad9
 
 		// Fallback 1: Cloudflare
-		"dns://1.1.1.1:53", // Cloudflare
-		"dns://1.0.0.1:53", // Cloudflare
+		"dns://1.1.1.1:53?name=Cloudflare&blockedif=zeroip", // Cloudflare
+		"dns://1.0.0.1:53?name=Cloudflare&blockedif=zeroip", // Cloudflare
 
 		// Fallback 2: Quad9
-		"dns://9.9.9.9:53",         // Quad9
-		"dns://149.112.112.112:53", // Quad9
+		"dns://9.9.9.9:53?name=Quad9&blockedif=empty",         // Quad9
+		"dns://149.112.112.112:53?name=Quad9&blockedif=empty", // Quad9
 
 		// supported parameters
 		// - `verify=domain`: verify domain (dot only)
 		// future parameters:
 		//
 		// - `name=name`: human readable name for resolver
-		// - `blockedif=baredns`: how to detect if the dns service blocked something
-		//	- `baredns`: NXDomain result, but without any other record in any section
+		// - `blockedif=empty`: how to detect if the dns service blocked something
+		//	- `empty`: NXDomain result, but without any other record in any section
+		//  - `refused`: Request was refused
+		//	- `zeroip`: Answer only contains zeroip
 	}
 
 	CfgOptionNameServersKey = "dns/nameservers"

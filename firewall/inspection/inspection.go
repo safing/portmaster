@@ -85,11 +85,11 @@ func RunInspectors(conn *network.Connection, pkt packet.Packet) (network.Verdict
 			verdict = network.VerdictDrop
 			continueInspection = true
 		case BLOCK_CONN:
-			conn.SetVerdict(network.VerdictBlock)
+			conn.SetVerdict(network.VerdictBlock, "", nil)
 			verdict = conn.Verdict
 			activeInspectors[key] = true
 		case DROP_CONN:
-			conn.SetVerdict(network.VerdictDrop)
+			conn.SetVerdict(network.VerdictDrop, "", nil)
 			verdict = conn.Verdict
 			activeInspectors[key] = true
 		case STOP_INSPECTING:

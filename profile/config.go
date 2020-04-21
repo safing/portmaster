@@ -30,6 +30,9 @@ var (
 	CfgOptionFilterSubDomainsKey = "filter/includeSubdomains"
 	cfgOptionFilterSubDomains    config.IntOption // security level option
 
+	CfgOptionFilterCNAMEKey = "filter/includeCNAMEs"
+	cfgOptionFilterCNAME    config.IntOption // security level option
+
 	CfgOptionBlockScopeLocalKey = "filter/blockLocal"
 	cfgOptionBlockScopeLocal    config.IntOption // security level option
 
@@ -180,6 +183,24 @@ Examples:
 	cfgOptionFilterLists = config.Concurrent.GetAsStringArray(CfgOptionFilterListKey, []string{})
 	cfgStringArrayOptions[CfgOptionFilterListKey] = cfgOptionFilterLists
 
+	// Include CNAMEs
+	err = config.Register(&config.Option{
+		Name:            "Filter CNAMEs",
+		Key:             CfgOptionFilterCNAMEKey,
+		Description:     "Also filter requests where a CNAME would be blocked",
+		OptType:         config.OptTypeInt,
+		ExternalOptType: "security level",
+		DefaultValue:    status.SecurityLevelsAll,
+		ValidationRegex: "^(7|6|4)$",
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionFilterCNAME = config.Concurrent.GetAsInt(CfgOptionFilterCNAMEKey, int64(status.SecurityLevelsAll))
+	cfgIntOptions[CfgOptionFilterCNAMEKey] = cfgOptionFilterCNAME
+
+	// Include subdomains
 	err = config.Register(&config.Option{
 		Name:            "Filter SubDomains",
 		Key:             CfgOptionFilterSubDomainsKey,

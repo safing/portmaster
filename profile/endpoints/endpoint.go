@@ -11,7 +11,7 @@ import (
 
 // Endpoint describes an Endpoint Matcher
 type Endpoint interface {
-	Matches(entity *intel.Entity) (result EPResult, reason string)
+	Matches(entity *intel.Entity) (EPResult, Reason)
 	String() string
 }
 
@@ -22,6 +22,35 @@ type EndpointBase struct { //nolint:maligned // TODO
 	EndPort   uint16
 
 	Permitted bool
+}
+
+func (ep *EndpointBase) match(s fmt.Stringer, entity *intel.Entity, value, desc string, keyval ...interface{}) (EPResult, Reason) {
+	result := ep.matchesPPP(entity)
+	if result == Undeterminable || result == NoMatch {
+		return result, nil
+	}
+
+	return result, ep.makeReason(s, value, desc, keyval...)
+}
+
+func (ep *EndpointBase) makeReason(s fmt.Stringer, value, desc string, keyval ...interface{}) Reason {
+	r := &reason{
+		description: desc,
+		Filter:      ep.renderPPP(s.String()),
+		Permitted:   ep.Permitted,
+		Value:       value,
+	}
+
+	r.Extra = make(map[string]interface{})
+
+	for idx := 0; idx < len(keyval)/2; idx += 2 {
+		key := keyval[idx]
+		val := keyval[idx+1]
+
+		r.Extra[key.(string)] = val
+	}
+
+	return r
 }
 
 func (ep *EndpointBase) matchesPPP(entity *intel.Entity) (result EPResult) {
