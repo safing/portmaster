@@ -5,14 +5,17 @@ import (
 	"fmt"
 
 	"github.com/safing/portbase/config"
+	"github.com/safing/portbase/log"
 )
 
 var (
 	releaseChannel config.StringOption
 	devMode        config.BoolOption
+	disableUpdates config.BoolOption
 
-	previousReleaseChannel string
-	previousDevMode        bool
+	previousReleaseChannel   string
+	updatesCurrentlyDisabled bool
+	previousDevMode          bool
 )
 
 func registerConfig() error {
@@ -32,16 +35,35 @@ func registerConfig() error {
 		return err
 	}
 
-	return module.RegisterEventHook("config", "config change", "update registry config", updateRegistryConfig)
+	err = config.Register(&config.Option{
+		Name:            "Disable Updates",
+		Key:             disableUpdatesKey,
+		Description:     "Disable automatic updates.",
+		OptType:         config.OptTypeBool,
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
+		ReleaseLevel:    config.ReleaseLevelStable,
+		RequiresRestart: false,
+		DefaultValue:    false,
+		ExternalOptType: "disable updates",
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func initConfig() {
 	releaseChannel = config.GetAsString(releaseChannelKey, releaseChannelStable)
+	disableUpdates = config.GetAsBool(disableUpdatesKey, false)
+
 	devMode = config.GetAsBool("core/devMode", false)
 }
 
 func updateRegistryConfig(_ context.Context, _ interface{}) error {
 	changed := false
+	forceUpdate := false
+
 	if releaseChannel() != previousReleaseChannel {
 		registry.SetBeta(releaseChannel() == releaseChannelBeta)
 		previousReleaseChannel = releaseChannel()
@@ -49,14 +71,29 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 	}
 
 	if devMode() != previousDevMode {
-		registry.SetBeta(devMode())
+		registry.SetDevMode(devMode())
 		previousDevMode = devMode()
 		changed = true
+	}
+
+	if disableUpdates() != updatesCurrentlyDisabled {
+		updatesCurrentlyDisabled = disableUpdates()
+		changed = true
+		forceUpdate = !updatesCurrentlyDisabled
 	}
 
 	if changed {
 		registry.SelectVersions()
 		module.TriggerEvent(VersionUpdateEvent, nil)
+
+		if forceUpdate {
+			module.Resolve(updateFailed)
+			_ = TriggerUpdate()
+			log.Infof("updates: automatic updates enabled again.")
+		} else {
+			module.Warning(updateFailed, "Updates are disabled!")
+			log.Warningf("updates: automatic updates are now disabled.")
+		}
 	}
 
 	return nil
