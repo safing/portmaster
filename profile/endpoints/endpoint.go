@@ -24,13 +24,13 @@ type EndpointBase struct { //nolint:maligned // TODO
 	Permitted bool
 }
 
-func (ep *EndpointBase) match(s fmt.Stringer, entity *intel.Entity, value, desc string, keval ...interface{}) (EPResult, Reason) {
+func (ep *EndpointBase) match(s fmt.Stringer, entity *intel.Entity, value, desc string, keyval ...interface{}) (EPResult, Reason) {
 	result := ep.matchesPPP(entity)
 	if result == Undeterminable || result == NoMatch {
 		return result, nil
 	}
 
-	return result, ep.makeReason(s, value, desc)
+	return result, ep.makeReason(s, value, desc, keyval...)
 }
 
 func (ep *EndpointBase) makeReason(s fmt.Stringer, value, desc string, keyval ...interface{}) Reason {
@@ -43,7 +43,7 @@ func (ep *EndpointBase) makeReason(s fmt.Stringer, value, desc string, keyval ..
 
 	r.Extra = make(map[string]interface{})
 
-	for idx := 0; idx < int(len(keyval)/2); idx += 2 {
+	for idx := 0; idx < len(keyval)/2; idx += 2 {
 		key := keyval[idx]
 		val := keyval[idx+1]
 

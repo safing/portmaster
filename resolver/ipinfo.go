@@ -47,9 +47,9 @@ type ResolvedDomains []ResolvedDomain
 // String returns a string representation of all domains joined
 // to a single string.
 func (rds ResolvedDomains) String() string {
-	var domains []string
-	for _, n := range rds {
-		domains = append(domains, n.String())
+	domains := make([]string, len(rds))
+	for idx, n := range rds {
+		domains[idx] = n.String()
 	}
 	return strings.Join(domains, " or ")
 }

@@ -24,7 +24,7 @@ const (
 // IsDecision returns true if result represents a decision
 // and false if result is NoMatch or Undeterminable.
 func IsDecision(result EPResult) bool {
-	return result == Denied || result == Permitted
+	return result == Denied || result == Permitted || result == Undeterminable
 }
 
 // ParseEndpoints parses a list of endpoints and returns a list of Endpoints for matching.

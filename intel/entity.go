@@ -101,10 +101,10 @@ func (e *Entity) ResetLists() {
 	// list right now so we could be more efficient by keeping
 	// the other lists around.
 
-	// FIXME
-	//e.Lists = nil
-	//e.ListsMap = nil
+	e.BlockedByLists = nil
+	e.BlockedEntities = nil
 	e.ListOccurences = nil
+
 	e.domainListLoaded = false
 	e.ipListLoaded = false
 	e.countryListLoaded = false
@@ -421,15 +421,12 @@ func (e *Entity) getIPLists() {
 	})
 }
 
-// LoadLists searches all filterlists for all occurences of
+// LoadLists searches all filterlists for all occurrences of
 // this entity.
 func (e *Entity) LoadLists() bool {
 	e.getLists()
 
-	if e.ListOccurences == nil {
-		return false
-	}
-	return true
+	return e.ListOccurences != nil
 }
 
 // MatchLists matches the entities lists against a slice
@@ -450,6 +447,7 @@ func (e *Entity) MatchLists(lists []string) bool {
 	}
 
 	makeDistinct(e.BlockedByLists)
+	makeDistinct(e.BlockedEntities)
 
 	return len(e.BlockedByLists) > 0
 }
@@ -503,7 +501,7 @@ func mergeStringList(a, b []string) []string {
 
 func makeDistinct(slice []string) []string {
 	m := make(map[string]struct{}, len(slice))
-	var result []string
+	result := make([]string, 0, len(slice))
 
 	for _, v := range slice {
 		if _, ok := m[v]; ok {
