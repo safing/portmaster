@@ -6,10 +6,8 @@ labels: bug
 ---
 
 <!--
-
 Please use this template when reporting a bug and provide as much info as possible.
 Not doing so may cause the bug to receive lower priority.
-
 You can remove any sections from this template that does not fit your issue.
 
 Note that this repository is for the Portmaster service daemon, if you want to report
@@ -17,7 +15,7 @@ a UI issue please report it at https://github.com/safing/portmaster-ui/issues/ne
 
 Thank you!
 
-For security related reports, please disclose it privately to noc@safing.io.
+For security related reports, please disclose it privately to security@safing.io.
 -->
 
 **Checklist**:
@@ -39,7 +37,7 @@ For security related reports, please disclose it privately to noc@safing.io.
 Portmaster Version: 
 
 <details>
-  <summary>`portmaster-control --version`</summary>
+  <summary>Versions from the `About` page in Portmaster's UI</summary>
   <!-- Copy output here -->
 </details>
 
@@ -50,4 +48,6 @@ Operating System:
 - [ ] Linux
   - Please provide the output of `cat /etc/os-release`
 
-If applicable you can provide related sections from the log files (Typically at `/opt/portmaster/logs`) and ensure to **remove sensitive or otherwise private information**.
+If applicable you can provide related sections from the log files and ensure to **remove sensitive or otherwise private information**.
+ - Linux: `/var/lib/portmaster/logs`
+ - Windows: `%PROGRAMDATA%\Portmaster\ļogs`
