@@ -211,7 +211,6 @@ func checkForUpdates(ctx context.Context) (err error) {
 	defer func() {
 		if err == nil {
 			module.Resolve(updateInProgress)
-			module.Resolve(updateFailed)
 		} else {
 			module.Warning(updateFailed, "Failed to check for updates: "+err.Error())
 		}
