@@ -77,9 +77,11 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 	if slashes <= 1 {
 		// processes
 		for _, proc := range process.All() {
+			proc.Lock()
 			if q.Matches(proc) {
 				it.Next <- proc
 			}
+			proc.Unlock()
 		}
 	}
 
@@ -87,9 +89,11 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 		// dns scopes only
 		dnsConnsLock.RLock()
 		for _, dnsConn := range dnsConns {
+			dnsConn.Lock()
 			if q.Matches(dnsConn) {
 				it.Next <- dnsConn
 			}
+			dnsConn.Unlock()
 		}
 		dnsConnsLock.RUnlock()
 	}
@@ -98,9 +102,11 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 		// connections
 		connsLock.RLock()
 		for _, conn := range conns {
+			conn.Lock()
 			if q.Matches(conn) {
 				it.Next <- conn
 			}
+			conn.Unlock()
 		}
 		connsLock.RUnlock()
 	}

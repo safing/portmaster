@@ -41,8 +41,14 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 		now := time.Now().Unix()
 		deleteOlderThan := time.Now().Add(-deleteConnsAfterEndedThreshold).Unix()
 
-		// network connections
+		// lock both together because we cannot fully guarantee in which map a connection lands
+		// of course every connection should land in the correct map, but this increases resilience
 		connsLock.Lock()
+		defer connsLock.Unlock()
+		dnsConnsLock.Lock()
+		defer dnsConnsLock.Unlock()
+
+		// network connections
 		for key, conn := range conns {
 			conn.Lock()
 
@@ -67,10 +73,8 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 
 			conn.Unlock()
 		}
-		connsLock.Unlock()
 
 		// dns requests
-		dnsConnsLock.Lock()
 		for _, conn := range dnsConns {
 			conn.Lock()
 
@@ -82,7 +86,6 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 
 			conn.Unlock()
 		}
-		dnsConnsLock.Unlock()
 
 		return nil
 	})
