@@ -61,9 +61,13 @@ func registerConfig() error {
 
 func initConfig() {
 	releaseChannel = config.GetAsString(releaseChannelKey, releaseChannelStable)
-	disableUpdates = config.GetAsBool(disableUpdatesKey, false)
+	previousReleaseChannel = releaseChannel()
 
-	devMode = config.GetAsBool("core/devMode", false)
+	disableUpdates = config.GetAsBool(disableUpdatesKey, false)
+	updatesCurrentlyDisabled = disableUpdates()
+
+	devMode = config.GetAsBool(cfgDevModeKey, false)
+	previousDevMode = devMode()
 }
 
 func updateRegistryConfig(_ context.Context, _ interface{}) error {
@@ -96,8 +100,8 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 			module.Resolve(updateFailed)
 			_ = TriggerUpdate()
 			log.Infof("updates: automatic updates enabled again.")
-		} else {
-			module.Warning(updateFailed, "Updates are disabled!")
+		} else if updatesCurrentlyDisabled {
+			module.Warning(updateFailed, "Automatic updates are disabled! This also affects security updates and threat intelligence.")
 			log.Warningf("updates: automatic updates are now disabled.")
 		}
 	}
