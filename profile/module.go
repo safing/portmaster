@@ -14,7 +14,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("profiles", prep, start, nil, "core")
+	module = modules.Register("profiles", prep, start, nil, "base")
 }
 
 func prep() error {
