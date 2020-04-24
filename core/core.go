@@ -31,9 +31,18 @@ func init() {
 	)
 }
 
+func prep() error {
+	registerEvents()
+	return nil
+}
+
 func start() error {
 	if err := startPlatformSpecific(); err != nil {
 		return fmt.Errorf("failed to start plattform-specific components: %s", err)
+	}
+
+	if err := registerEventHooks(); err != nil {
+		return err
 	}
 
 	return nil
