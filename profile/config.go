@@ -300,7 +300,7 @@ Examples:
 	err = config.Register(&config.Option{
 		Name:            "Block Peer to Peer Connections",
 		Key:             CfgOptionBlockP2PKey,
-		Description:     "Block peer to peer connections. These are connections that are established directly to an IP address on the Internet without resolving a domain name via DNS first.",
+		Description:     "These are connections that are established directly to an IP address on the Internet without resolving a domain name via DNS first.",
 		Order:           cfgOptionBlockP2POrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
@@ -317,7 +317,7 @@ Examples:
 	err = config.Register(&config.Option{
 		Name:            "Block Inbound Connections",
 		Key:             CfgOptionBlockInboundKey,
-		Description:     "Block inbound connections to your device. This will usually only be the case if you are running a network service or are using peer to peer software.",
+		Description:     "Connections initiated towards your device. This will usually only be the case if you are running a network service or are using peer to peer software.",
 		Order:           cfgOptionBlockInboundOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",

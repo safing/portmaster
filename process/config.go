@@ -17,6 +17,7 @@ func registerConfiguration() error {
 		Name:           "Enable Process Detection",
 		Key:            CfgOptionEnableProcessDetectionKey,
 		Description:    "This option enables the attribution of network traffic to processes. This should be always enabled, and effectively disables app profiles if disabled.",
+		Order:          144,
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		DefaultValue:   true,

@@ -8,6 +8,10 @@ import (
 	"github.com/safing/portbase/log"
 )
 
+const (
+	cfgDevModeKey = "core/devMode"
+)
+
 var (
 	releaseChannel config.StringOption
 	devMode        config.BoolOption
@@ -23,6 +27,7 @@ func registerConfig() error {
 		Name:            "Release Channel",
 		Key:             releaseChannelKey,
 		Description:     "The Release Channel changes which updates are applied. When using beta, you will receive new features earlier and Portmaster will update more frequently. Some beta or experimental features are also available in the stable release channel.",
+		Order:           1,
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelBeta,
@@ -39,6 +44,7 @@ func registerConfig() error {
 		Name:            "Disable Updates",
 		Key:             disableUpdatesKey,
 		Description:     "Disable automatic updates.",
+		Order:           64,
 		OptType:         config.OptTypeBool,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,

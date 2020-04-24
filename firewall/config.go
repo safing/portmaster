@@ -1,16 +1,23 @@
 package firewall
 
 import (
+	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/core"
 )
 
 // Configuration Keys
 var (
 	CfgOptionEnableFilterKey = "filter/enable"
 
-	CfgOptionPromptTimeoutKey   = "filter/promptTimeout"
-	CfgOptionPromptTimeoutOrder = 2
-	promptTimeout               config.IntOption
+	CfgOptionAskWithSystemNotificationsKey   = "filter/askWithSystemNotifications"
+	CfgOptionAskWithSystemNotificationsOrder = 2
+	askWithSystemNotifications               config.BoolOption
+	useSystemNotifications                   config.BoolOption
+
+	CfgOptionAskTimeoutKey   = "filter/askTimeout"
+	CfgOptionAskTimeoutOrder = 3
+	askTimeout               config.IntOption
 
 	CfgOptionPermanentVerdictsKey   = "filter/permanentVerdicts"
 	CfgOptionPermanentVerdictsOrder = 128
@@ -37,22 +44,38 @@ func registerConfig() error {
 	permanentVerdicts = config.Concurrent.GetAsBool(CfgOptionPermanentVerdictsKey, true)
 
 	err = config.Register(&config.Option{
-		Name:           "Timeout for prompt notifications",
-		Key:            CfgOptionPromptTimeoutKey,
-		Description:    "Amount of time how long Portmaster will wait for a response when prompting about a connection via a notification. In seconds.",
-		Order:          CfgOptionPromptTimeoutOrder,
+		Name:           "Ask with System Notifications",
+		Key:            CfgOptionAskWithSystemNotificationsKey,
+		Description:    `Ask about connections using your operating system's notification system. For this to be enabled, the setting "Use System Notifications" must enabled too. This only affects questions from the Privacy Filter, and does not affect alerts from the Portmaster.`,
+		Order:          CfgOptionAskWithSystemNotificationsOrder,
+		OptType:        config.OptTypeBool,
+		ExpertiseLevel: config.ExpertiseLevelUser,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   true,
+	})
+	if err != nil {
+		return err
+	}
+	askWithSystemNotifications = config.Concurrent.GetAsBool(CfgOptionAskWithSystemNotificationsKey, true)
+	useSystemNotifications = config.Concurrent.GetAsBool(core.CfgUseSystemNotificationsKey, true)
+
+	err = config.Register(&config.Option{
+		Name:           "Timeout for Ask Notifications",
+		Key:            CfgOptionAskTimeoutKey,
+		Description:    "Amount of time (in seconds) how long the Portmaster will wait for a response when prompting about a connection via a notification. Please note that system notifications might not respect this or have it's own limits.",
+		Order:          CfgOptionAskTimeoutOrder,
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
-		ReleaseLevel:   config.ReleaseLevelBeta,
+		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   60,
 	})
 	if err != nil {
 		return err
 	}
-	promptTimeout = config.Concurrent.GetAsInt(CfgOptionPromptTimeoutKey, 60)
+	askTimeout = config.Concurrent.GetAsInt(CfgOptionAskTimeoutKey, 60)
 
-	devMode = config.Concurrent.GetAsBool("core/devMode", false)
-	apiListenAddress = config.GetAsString("api/listenAddress", "")
+	devMode = config.Concurrent.GetAsBool(core.CfgDevModeKey, false)
+	apiListenAddress = config.GetAsString(api.CfgDefaultListenAddressKey, "")
 
 	return nil
 }
