@@ -28,16 +28,8 @@ type SystemStatus struct {
 	ActiveSecurityLevel   uint8
 	SelectedSecurityLevel uint8
 
-	PortmasterStatus    uint8
-	PortmasterStatusMsg string
-
-	Gate17Status    uint8
-	Gate17StatusMsg string
-
 	ThreatMitigationLevel uint8
 	Threats               map[string]*Threat
-
-	UpdateStatus string
 }
 
 // Save saves the SystemStatus to the database
