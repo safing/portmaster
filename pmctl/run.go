@@ -17,6 +17,10 @@ import (
 	"github.com/tevino/abool"
 )
 
+const (
+	restartCode = 23
+)
+
 var (
 	runningInConsole bool
 	onWindows        = runtime.GOOS == "windows"
@@ -375,7 +379,7 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 					case 1:
 						// error exit
 						return true, fmt.Errorf("error during execution: %s", err)
-					case 2357427: // Leet Speak for "restart"
+					case restartCode:
 						// restart request
 						log.Printf("restarting %s\n", opts.Identifier)
 						return true, nil
