@@ -28,7 +28,7 @@ A DNS resolver that does not only encrypt your queries, but figures out where it
 
 ## Privacy Filter
 
-**Status:** _unreleased - pre-alpha scheduled for the next days_
+**Status:** - _pre-alpha_
 
 Think of a pi-hole for your computer. Or an ad-blocker that blocks ads on your whole computer, not only on your browser. With you everywhere you go and every network you visit.
 
@@ -37,7 +37,7 @@ Think of a pi-hole for your computer. Or an ad-blocker that blocks ads on your w
 - Select and activate block-lists
 - Manually black/whitelist domains
   - You can whitelist domains in case something breaks
-- CNAME Blocking (block these new nasty "unblockable" ads/trackers - coming soon)
+- CNAME Blocking (block these new nasty "unblockable" ads/trackers)
 - Block all subdomains of a domain in the block-lists
 
 ## Safing Privacy Network (SPN)
