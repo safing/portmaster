@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/safing/portbase/config"
+
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/database/record"
@@ -86,6 +88,9 @@ func (h *databaseHook) PrePut(r record.Record) (record.Record, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// clean config
+	config.CleanHierarchicalConfig(profile.Config)
 
 	// prepare config
 	err = profile.prepConfig()

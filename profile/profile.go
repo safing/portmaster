@@ -237,7 +237,7 @@ func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
 		endpointList = make([]string, 0, 1)
 	}
 	endpointList = append(endpointList, newEntry)
-	profile.Config[cfgKey] = endpointList
+	config.PutValueIntoHierarchicalConfig(profile.Config, cfgKey, endpointList)
 
 	profile.Unlock()
 	err := profile.Save()
