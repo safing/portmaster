@@ -131,7 +131,7 @@ func registerConfiguration() error {
 		"+": permit
 		"-": block
 	Host Matching:
-		IP, CIDR, Country Code, ASN, "*" for any
+		IP, CIDR, Country Code, ASN, Filterlist, "*" for any
 		Domains:
 			"example.com": exact match
 			".example.com": exact match + subdomains
@@ -144,7 +144,11 @@ func registerConfiguration() error {
 Examples:
 	+ .example.com */HTTP
 	- .example.com
-	+ 192.168.0.1/24`,
+	+ 192.168.0.1/24
+	- L:MAL
+	- AS0
+	+ AT
+	- *`,
 		Order:           cfgOptionEndpointsOrder,
 		OptType:         config.OptTypeStringArray,
 		DefaultValue:    []string{},
@@ -167,7 +171,7 @@ Examples:
 		"+": permit
 		"-": block
 	Host Matching:
-		IP, CIDR, Country Code, ASN, "*" for any
+		IP, CIDR, Country Code, ASN, Filterlist, "*" for any
 		Domains:
 			"example.com": exact match
 			".example.com": exact match + subdomains
@@ -180,7 +184,11 @@ Examples:
 Examples:
 	+ .example.com */HTTP
 	- .example.com
-	+ 192.168.0.1/24`,
+	+ 192.168.0.1/24
+	- L:MAL
+	- AS0
+	+ AT
+	- *`,
 		Order:           cfgOptionServiceEndpointsOrder,
 		OptType:         config.OptTypeStringArray,
 		DefaultValue:    []string{},
