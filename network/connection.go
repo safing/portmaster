@@ -146,13 +146,13 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		}
 	}
 
-	timestamp := time.Now().Unix()
 	return &Connection{
 		ID:      pkt.GetConnectionID(),
 		Scope:   scope,
+		Inbound: inbound,
 		Entity:  entity,
 		process: proc,
-		Started: timestamp,
+		Started: time.Now().Unix(),
 	}
 }
 
