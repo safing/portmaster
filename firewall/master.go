@@ -163,8 +163,8 @@ func checkConnectionType(conn *network.Connection, _ packet.Packet) bool {
 			}
 			return true
 		}
-	case network.PeerLAN, network.PeerInternet, network.PeerInvalid:
-		// Important: PeerHost is and should be missing!
+	case network.PeerInternet:
+		// BlockP2P only applies to connections to the Internet
 		if p.BlockP2P() {
 			conn.Block("direct connections (P2P) blocked")
 			return true
