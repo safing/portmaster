@@ -26,16 +26,16 @@ const (
 )
 
 func prompt(conn *network.Connection, pkt packet.Packet) { //nolint:gocognit // TODO
-	nTTL := time.Duration(promptTimeout()) * time.Second
+	nTTL := time.Duration(askTimeout()) * time.Second
 
 	// first check if there is an existing notification for this.
 	// build notification ID
 	var nID string
 	switch {
 	case conn.Inbound, conn.Entity.Domain == "": // connection to/from IP
-		nID = fmt.Sprintf("firewall-prompt-%d-%s-%s", conn.Process().Pid, conn.Scope, pkt.Info().RemoteIP())
+		nID = fmt.Sprintf("filter:prompt-%d-%s-%s", conn.Process().Pid, conn.Scope, pkt.Info().RemoteIP())
 	default: // connection to domain
-		nID = fmt.Sprintf("firewall-prompt-%d-%s", conn.Process().Pid, conn.Scope)
+		nID = fmt.Sprintf("filter:prompt-%d-%s", conn.Process().Pid, conn.Scope)
 	}
 	n := notifications.Get(nID)
 	saveResponse := true

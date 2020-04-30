@@ -37,8 +37,6 @@ func start() error {
 
 	// load status into atomic getters
 	atomicUpdateSelectedSecurityLevel(status.SelectedSecurityLevel)
-	atomicUpdatePortmasterStatus(status.PortmasterStatus)
-	atomicUpdateGate17Status(status.Gate17Status)
 
 	// update status
 	status.updateThreatMitigationLevel()

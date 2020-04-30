@@ -45,40 +45,6 @@ func setSelectedSecurityLevel(level uint8) {
 	}
 }
 
-// SetPortmasterStatus sets the current Portmaster status.
-func SetPortmasterStatus(pmStatus uint8, msg string) {
-	switch pmStatus {
-	case StatusOff, StatusError, StatusWarning, StatusOk:
-		status.Lock()
-		defer status.Unlock()
-
-		status.PortmasterStatus = pmStatus
-		status.PortmasterStatusMsg = msg
-		atomicUpdatePortmasterStatus(pmStatus)
-
-		go status.Save()
-	default:
-		log.Errorf("status: tried to set portmaster to invalid status: %d", pmStatus)
-	}
-}
-
-// SetGate17Status sets the current Gate17 status.
-func SetGate17Status(g17Status uint8, msg string) {
-	switch g17Status {
-	case StatusOff, StatusError, StatusWarning, StatusOk:
-		status.Lock()
-		defer status.Unlock()
-
-		status.Gate17Status = g17Status
-		status.Gate17StatusMsg = msg
-		atomicUpdateGate17Status(g17Status)
-
-		go status.Save()
-	default:
-		log.Errorf("status: tried to set gate17 to invalid status: %d", g17Status)
-	}
-}
-
 // update functions for atomic stuff
 func atomicUpdateActiveSecurityLevel(level uint8) {
 	atomic.StoreUint32(activeSecurityLevel, uint32(level))
@@ -86,12 +52,4 @@ func atomicUpdateActiveSecurityLevel(level uint8) {
 
 func atomicUpdateSelectedSecurityLevel(level uint8) {
 	atomic.StoreUint32(selectedSecurityLevel, uint32(level))
-}
-
-func atomicUpdatePortmasterStatus(status uint8) {
-	atomic.StoreUint32(portmasterStatus, uint32(status))
-}
-
-func atomicUpdateGate17Status(status uint8) {
-	atomic.StoreUint32(gate17Status, uint32(status))
 }

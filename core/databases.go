@@ -46,5 +46,5 @@ func registerDatabases() error {
 	//   return err
 	// }
 
-	return nil
+	return registerControlDatabase()
 }

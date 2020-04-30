@@ -33,7 +33,7 @@ var (
 func init() {
 	ignoreNetEnvEvents.Set()
 
-	module = modules.Register("filterlists", prep, start, nil, "core", "netenv")
+	module = modules.Register("filterlists", prep, start, stop, "core")
 }
 
 func prep() error {
@@ -96,5 +96,10 @@ func start() error {
 		close(filterListsLoaded)
 	}
 
+	return nil
+}
+
+func stop() error {
+	filterListsLoaded = make(chan struct{})
 	return nil
 }

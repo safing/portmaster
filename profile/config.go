@@ -131,7 +131,7 @@ func registerConfiguration() error {
 		"+": permit
 		"-": block
 	Host Matching:
-		IP, CIDR, Country Code, ASN, "*" for any
+		IP, CIDR, Country Code, ASN, Filterlist, "*" for any
 		Domains:
 			"example.com": exact match
 			".example.com": exact match + subdomains
@@ -144,7 +144,11 @@ func registerConfiguration() error {
 Examples:
 	+ .example.com */HTTP
 	- .example.com
-	+ 192.168.0.1/24`,
+	+ 192.168.0.1/24
+	- L:MAL
+	- AS0
+	+ AT
+	- *`,
 		Order:           cfgOptionEndpointsOrder,
 		OptType:         config.OptTypeStringArray,
 		DefaultValue:    []string{},
@@ -167,7 +171,7 @@ Examples:
 		"+": permit
 		"-": block
 	Host Matching:
-		IP, CIDR, Country Code, ASN, "*" for any
+		IP, CIDR, Country Code, ASN, Filterlist, "*" for any
 		Domains:
 			"example.com": exact match
 			".example.com": exact match + subdomains
@@ -180,7 +184,11 @@ Examples:
 Examples:
 	+ .example.com */HTTP
 	- .example.com
-	+ 192.168.0.1/24`,
+	+ 192.168.0.1/24
+	- L:MAL
+	- AS0
+	+ AT
+	- *`,
 		Order:           cfgOptionServiceEndpointsOrder,
 		OptType:         config.OptTypeStringArray,
 		DefaultValue:    []string{},
@@ -249,9 +257,10 @@ Examples:
 	err = config.Register(&config.Option{
 		Name:            "Block Scope Local",
 		Key:             CfgOptionBlockScopeLocalKey,
-		Description:     "Block connections to your own device, ie. localhost.",
+		Description:     "Block internal connections on your own device, ie. localhost.",
 		Order:           cfgOptionBlockScopeLocalOrder,
 		OptType:         config.OptTypeInt,
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelOff,
 		ValidationRegex: "^(0|4|6|7)$",
@@ -270,7 +279,7 @@ Examples:
 		Order:           cfgOptionBlockScopeLANOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelOff,
+		DefaultValue:    status.SecurityLevelsHighAndExtreme,
 		ValidationRegex: "^(0|4|6|7)$",
 	})
 	if err != nil {
@@ -300,7 +309,7 @@ Examples:
 	err = config.Register(&config.Option{
 		Name:            "Block Peer to Peer Connections",
 		Key:             CfgOptionBlockP2PKey,
-		Description:     "Block peer to peer connections. These are connections that are established directly to an IP address on the Internet without resolving a domain name via DNS first.",
+		Description:     "These are connections that are established directly to an IP address on the Internet without resolving a domain name via DNS first.",
 		Order:           cfgOptionBlockP2POrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
@@ -317,7 +326,7 @@ Examples:
 	err = config.Register(&config.Option{
 		Name:            "Block Inbound Connections",
 		Key:             CfgOptionBlockInboundKey,
-		Description:     "Block inbound connections to your device. This will usually only be the case if you are running a network service or are using peer to peer software.",
+		Description:     "Connections initiated towards your device. This will usually only be the case if you are running a network service or are using peer to peer software.",
 		Order:           cfgOptionBlockInboundOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",

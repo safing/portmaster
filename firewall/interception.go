@@ -7,9 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/modules/subsystems"
-
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/firewall/inspection"
@@ -23,7 +20,7 @@ import (
 )
 
 var (
-	module *modules.Module
+	interceptionModule *modules.Module
 
 	// localNet        net.IPNet
 	// localhost net.IP
@@ -45,33 +42,12 @@ var (
 )
 
 func init() {
-	module = modules.Register("filter", prep, start, stop, "core", "network", "nameserver", "intel")
-	subsystems.Register(
-		"filter",
-		"Privacy Filter",
-		"DNS and Network Filter",
-		module,
-		"config:filter/",
-		&config.Option{
-			Name:           "Enable Privacy Filter",
-			Key:            CfgOptionEnableFilterKey,
-			Description:    "Enable the Privacy Filter Subsystem to filter DNS queries and network requests.",
-			OptType:        config.OptTypeBool,
-			ExpertiseLevel: config.ExpertiseLevelUser,
-			ReleaseLevel:   config.ReleaseLevelBeta,
-			DefaultValue:   true,
-		},
-	)
+	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base")
 
 	network.SetDefaultFirewallHandler(defaultHandler)
 }
 
-func prep() (err error) {
-	err = registerConfig()
-	if err != nil {
-		return err
-	}
-
+func interceptionPrep() (err error) {
 	err = prepAPIAuth()
 	if err != nil {
 		return err
@@ -101,20 +77,20 @@ func prep() (err error) {
 	return nil
 }
 
-func start() error {
+func interceptionStart() error {
 	startAPIAuth()
 
-	module.StartWorker("stat logger", func(ctx context.Context) error {
+	interceptionModule.StartWorker("stat logger", func(ctx context.Context) error {
 		statLogger()
 		return nil
 	})
 
-	module.StartWorker("packet handler", func(ctx context.Context) error {
+	interceptionModule.StartWorker("packet handler", func(ctx context.Context) error {
 		run()
 		return nil
 	})
 
-	module.StartWorker("ports state cleaner", func(ctx context.Context) error {
+	interceptionModule.StartWorker("ports state cleaner", func(ctx context.Context) error {
 		portsInUseCleaner()
 		return nil
 	})
@@ -122,7 +98,7 @@ func start() error {
 	return interception.Start()
 }
 
-func stop() error {
+func interceptionStop() error {
 	return interception.Stop()
 }
 
@@ -248,6 +224,15 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		return
 	}
 
+	// check if filtering is enabled
+	if !filterEnabled() {
+		conn.Inspecting = false
+		conn.SetVerdict(network.VerdictAccept, "privacy filter disabled", nil)
+		conn.StopFirewallHandler()
+		issueVerdict(conn, pkt, 0, true)
+		return
+	}
+
 	log.Tracer(pkt.Ctx()).Trace("filter: starting decision process")
 	DecideOnConnection(conn, pkt)
 	conn.Inspecting = false // TODO: enable inspecting again
@@ -350,7 +335,7 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 func run() {
 	for {
 		select {
-		case <-module.Stopping():
+		case <-interceptionModule.Stopping():
 			return
 		case pkt := <-interception.Packets:
 			handlePacket(pkt)
@@ -361,7 +346,7 @@ func run() {
 func statLogger() {
 	for {
 		select {
-		case <-module.Stopping():
+		case <-interceptionModule.Stopping():
 			return
 		case <-time.After(10 * time.Second):
 			log.Tracef(

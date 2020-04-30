@@ -45,14 +45,14 @@ func init() {
 		"mangle C171 -m mark --mark 0 -j NFQUEUE --queue-num 17140 --queue-bypass",
 
 		"filter C17 -m mark --mark 0 -j DROP",
-		"filter C17 -m mark --mark 1700 -j ACCEPT",
+		"filter C17 -m mark --mark 1700 -j RETURN",
 		"filter C17 -m mark --mark 1701 -j REJECT --reject-with icmp-host-prohibited",
 		"filter C17 -m mark --mark 1702 -j DROP",
 		"filter C17 -j CONNMARK --save-mark",
-		"filter C17 -m mark --mark 1710 -j ACCEPT",
+		"filter C17 -m mark --mark 1710 -j RETURN",
 		"filter C17 -m mark --mark 1711 -j REJECT --reject-with icmp-host-prohibited",
 		"filter C17 -m mark --mark 1712 -j DROP",
-		"filter C17 -m mark --mark 1717 -j ACCEPT",
+		"filter C17 -m mark --mark 1717 -j RETURN",
 	}
 
 	v4once = []string{
@@ -80,14 +80,14 @@ func init() {
 		"mangle C171 -m mark --mark 0 -j NFQUEUE --queue-num 17160 --queue-bypass",
 
 		"filter C17 -m mark --mark 0 -j DROP",
-		"filter C17 -m mark --mark 1700 -j ACCEPT",
+		"filter C17 -m mark --mark 1700 -j RETURN",
 		"filter C17 -m mark --mark 1701 -j REJECT --reject-with icmp6-adm-prohibited",
 		"filter C17 -m mark --mark 1702 -j DROP",
 		"filter C17 -j CONNMARK --save-mark",
-		"filter C17 -m mark --mark 1710 -j ACCEPT",
+		"filter C17 -m mark --mark 1710 -j RETURN",
 		"filter C17 -m mark --mark 1711 -j REJECT --reject-with icmp6-adm-prohibited",
 		"filter C17 -m mark --mark 1712 -j DROP",
-		"filter C17 -m mark --mark 1717 -j ACCEPT",
+		"filter C17 -m mark --mark 1717 -j RETURN",
 	}
 
 	v6once = []string{

@@ -20,7 +20,19 @@ var (
 func init() {
 	modules.Register("base", nil, registerDatabases, nil, "database", "config", "rng")
 
-	module = modules.Register("core", nil, start, nil, "base", "subsystems", "status", "updates", "api", "notifications", "ui")
+	// For prettier subsystem graph, printed with --print-subsystem-graph
+	/*
+		subsystems.Register(
+			"base",
+			"Base",
+			"THE GROUND.",
+			baseModule,
+			"",
+			nil,
+		)
+	*/
+
+	module = modules.Register("core", prep, start, nil, "base", "subsystems", "status", "updates", "api", "notifications", "ui", "netenv", "network", "interception")
 	subsystems.Register(
 		"core",
 		"Core",
@@ -31,9 +43,18 @@ func init() {
 	)
 }
 
+func prep() error {
+	registerEvents()
+	return nil
+}
+
 func start() error {
 	if err := startPlatformSpecific(); err != nil {
 		return fmt.Errorf("failed to start plattform-specific components: %s", err)
+	}
+
+	if err := registerEventHooks(); err != nil {
+		return err
 	}
 
 	return nil

@@ -146,13 +146,13 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		}
 	}
 
-	timestamp := time.Now().Unix()
 	return &Connection{
 		ID:      pkt.GetConnectionID(),
 		Scope:   scope,
+		Inbound: inbound,
 		Entity:  entity,
 		process: proc,
-		Started: timestamp,
+		Started: time.Now().Unix(),
 	}
 }
 
@@ -236,11 +236,11 @@ func (conn *Connection) Failed(reason string) {
 }
 
 // SetVerdict sets a new verdict for the connection, making sure it does not interfere with previous verdicts.
-func (conn *Connection) SetVerdict(newVerdict Verdict, reason string, ctx interface{}) (ok bool) {
+func (conn *Connection) SetVerdict(newVerdict Verdict, reason string, reasonCtx interface{}) (ok bool) {
 	if newVerdict >= conn.Verdict {
 		conn.Verdict = newVerdict
 		conn.Reason = reason
-		conn.ReasonContext = ctx
+		conn.ReasonContext = reasonCtx
 		return true
 	}
 	return false

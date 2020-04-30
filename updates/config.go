@@ -8,6 +8,10 @@ import (
 	"github.com/safing/portbase/log"
 )
 
+const (
+	cfgDevModeKey = "core/devMode"
+)
+
 var (
 	releaseChannel config.StringOption
 	devMode        config.BoolOption
@@ -23,6 +27,7 @@ func registerConfig() error {
 		Name:            "Release Channel",
 		Key:             releaseChannelKey,
 		Description:     "The Release Channel changes which updates are applied. When using beta, you will receive new features earlier and Portmaster will update more frequently. Some beta or experimental features are also available in the stable release channel.",
+		Order:           1,
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelBeta,
@@ -39,6 +44,7 @@ func registerConfig() error {
 		Name:            "Disable Updates",
 		Key:             disableUpdatesKey,
 		Description:     "Disable automatic updates.",
+		Order:           64,
 		OptType:         config.OptTypeBool,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
@@ -55,9 +61,13 @@ func registerConfig() error {
 
 func initConfig() {
 	releaseChannel = config.GetAsString(releaseChannelKey, releaseChannelStable)
-	disableUpdates = config.GetAsBool(disableUpdatesKey, false)
+	previousReleaseChannel = releaseChannel()
 
-	devMode = config.GetAsBool("core/devMode", false)
+	disableUpdates = config.GetAsBool(disableUpdatesKey, false)
+	updatesCurrentlyDisabled = disableUpdates()
+
+	devMode = config.GetAsBool(cfgDevModeKey, false)
+	previousDevMode = devMode()
 }
 
 func updateRegistryConfig(_ context.Context, _ interface{}) error {
@@ -90,8 +100,8 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 			module.Resolve(updateFailed)
 			_ = TriggerUpdate()
 			log.Infof("updates: automatic updates enabled again.")
-		} else {
-			module.Warning(updateFailed, "Updates are disabled!")
+		} else if updatesCurrentlyDisabled {
+			module.Warning(updateFailed, "Automatic updates are disabled! This also affects security updates and threat intelligence.")
 			log.Warningf("updates: automatic updates are now disabled.")
 		}
 	}
