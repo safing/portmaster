@@ -14,7 +14,7 @@ const (
 )
 
 // ClassifyIP returns the classification for the given IP address.
-func ClassifyIP(ip net.IP) int8 {
+func ClassifyIP(ip net.IP) int8 { //nolint:gocognit
 	if ip4 := ip.To4(); ip4 != nil {
 		// IPv4
 		switch {
@@ -36,11 +36,18 @@ func ClassifyIP(ip net.IP) int8 {
 		case ip4[0] == 224:
 			// 224.0.0.0/8
 			return LocalMulticast
-		case ip4[0] >= 225 && ip4[0] <= 239:
-			// 225.0.0.0/8 - 239.0.0.0/8
+		case ip4[0] >= 225 && ip4[0] <= 238:
+			// 225.0.0.0/8 - 238.0.0.0/8
 			return GlobalMulticast
+		case ip4[0] == 239:
+			// 239.0.0.0/8
+			// RFC2365 - https://tools.ietf.org/html/rfc2365
+			return LocalMulticast
+		case ip4[0] == 255 && ip4[1] == 255 && ip4[2] == 255 && ip4[3] == 255:
+			// 255.255.255.255/32
+			return LocalMulticast
 		case ip4[0] >= 240:
-			// 240.0.0.0/8 - 255.0.0.0/8
+			// 240.0.0.0/8 - 255.0.0.0/8 (minus 255.255.255.255/32)
 			return Invalid
 		default:
 			return Global
