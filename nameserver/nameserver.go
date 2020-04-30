@@ -3,7 +3,6 @@ package nameserver
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/detection/dga"
 	"github.com/safing/portmaster/firewall"
+	"github.com/safing/portmaster/nameserver/nsutil"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
@@ -89,29 +89,6 @@ func stop() error {
 	return nil
 }
 
-func returnNXDomain(w dns.ResponseWriter, query *dns.Msg, reason string, reasonContext interface{}) {
-	m := new(dns.Msg)
-	m.SetRcode(query, dns.RcodeNameError)
-	rr, _ := dns.NewRR("portmaster.block-reason.	0	IN	TXT		" + fmt.Sprintf("%q", reason))
-	m.Extra = []dns.RR{rr}
-
-	if reasonContext != nil {
-		if v, ok := reasonContext.(interface {
-			ToRRs() []dns.RR
-		}); ok {
-			m.Extra = append(m.Extra, v.ToRRs()...)
-		} else if v, ok := reasonContext.(interface {
-			ToRR() dns.RR
-		}); ok {
-			m.Extra = append(m.Extra, v.ToRR())
-		}
-	}
-
-	if err := w.WriteMsg(m); err != nil {
-		log.Errorf("nameserver: failed to send response: %s", err)
-	}
-}
-
 func returnServerFailure(w dns.ResponseWriter, query *dns.Msg) {
 	m := new(dns.Msg)
 	m.SetRcode(query, dns.RcodeServerFailure)
@@ -145,7 +122,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	if question.Qclass != dns.ClassINET {
 		// we only serve IN records, return nxdomain
 		log.Warningf("nameserver: only IN record requests are supported but received Qclass %d, returning NXDOMAIN", question.Qclass)
-		returnNXDomain(w, query, "wrong type", nil)
+		sendResponse(w, query, 0, "qclass not served", nsutil.Refused())
 		return nil
 	}
 
@@ -185,7 +162,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	// check if valid domain name
 	if !netutils.IsValidFqdn(q.FQDN) {
 		log.Debugf("nameserver: domain name %s is invalid, returning nxdomain", q.FQDN)
-		returnNXDomain(w, query, "invalid domain", nil)
+		sendResponse(w, query, 0, "invalid FQDN", nsutil.Refused())
 		return nil
 	}
 
@@ -224,7 +201,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		// NOTE(ppacher): saving unknown process connection might end up in a lot of
 		// processes. Consider disabling that via config.
 		conn.Failed("Unknown process")
-		returnNXDomain(w, query, "unknown process", conn.ReasonContext)
+		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
 		return nil
 	}
 
@@ -238,7 +215,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	if lms < 10 {
 		tracer.Warningf("nameserver: possible data tunnel by %s: %s has lms score of %f, returning nxdomain", conn.Process(), q.FQDN, lms)
 		conn.Block("Possible data tunnel")
-		returnNXDomain(w, query, "lms", conn.ReasonContext)
+		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
 		return nil
 	}
 
@@ -248,10 +225,31 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	switch conn.Verdict {
 	case network.VerdictBlock:
 		tracer.Infof("nameserver: %s blocked, returning nxdomain", conn)
-		returnNXDomain(w, query, conn.Reason, conn.ReasonContext)
+		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
 		return nil
 	case network.VerdictDrop, network.VerdictFailed:
 		tracer.Infof("nameserver: %s dropped, not replying", conn)
+		return nil
+	}
+
+	// the firewall now decided on the connection and set it to accept
+	// If we have a reason context and that context implements nsutil.Responder
+	// we may need to responde with something else.
+	// A reason for this might be that the request is sink-holed to a forced
+	// ip address in which case we "Accept" it but handle the resolving
+	// differently.
+	if responder, ok := conn.ReasonContext.(nsutil.Responder); ok {
+		tracer.Infof("nameserver: %s handing over to reason-responder: %s", q.FQDN, conn.Reason)
+		reply := responder.ReplyWithDNS(query, conn.Reason, conn.ReasonContext)
+		if err := w.WriteMsg(reply); err != nil {
+			log.Warningf("nameserver: failed to return response %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
+		} else {
+			tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
+		}
+
+		// save dns request as open
+		network.SaveOpenDNSRequest(conn)
+
 		return nil
 	}
 
@@ -267,13 +265,13 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 			conn.Failed("failed to resolve: " + err.Error())
 		}
 
-		returnNXDomain(w, query, conn.Reason, conn.ReasonContext)
+		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
 		return nil
 	}
 
 	rrCache = firewall.DecideOnResolvedDNS(conn, q, rrCache)
 	if rrCache == nil {
-		returnNXDomain(w, query, conn.Reason, conn.ReasonContext)
+		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
 		return nil
 	}
 

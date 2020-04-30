@@ -261,9 +261,6 @@ func (e *Entity) mergeList(key string, list []string) {
 	}
 
 	e.ListOccurences[key] = mergeStringList(e.ListOccurences[key], list)
-
-	//e.Lists = mergeStringList(e.Lists, list)
-	//e.ListsMap = buildLookupMap(e.Lists)
 }
 
 func (e *Entity) getDomainLists() {
@@ -289,8 +286,6 @@ func (e *Entity) getDomainLists() {
 			for _, domain := range domainsToInspect {
 				subdomains := splitDomain(domain)
 				domains = append(domains, subdomains...)
-
-				log.Tracef("intel: subdomain list resolving is enabled: %s => %v", domains, subdomains)
 			}
 		} else {
 			domains = domainsToInspect
@@ -446,8 +441,8 @@ func (e *Entity) MatchLists(lists []string) bool {
 		}
 	}
 
-	makeDistinct(e.BlockedByLists)
-	makeDistinct(e.BlockedEntities)
+	e.BlockedByLists = makeDistinct(e.BlockedByLists)
+	e.BlockedEntities = makeDistinct(e.BlockedEntities)
 
 	return len(e.BlockedByLists) > 0
 }
