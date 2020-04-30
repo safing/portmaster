@@ -257,9 +257,10 @@ Examples:
 	err = config.Register(&config.Option{
 		Name:            "Block Scope Local",
 		Key:             CfgOptionBlockScopeLocalKey,
-		Description:     "Block connections to your own device, ie. localhost.",
+		Description:     "Block connections internally on own device, ie. localhost.",
 		Order:           cfgOptionBlockScopeLocalOrder,
 		OptType:         config.OptTypeInt,
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelOff,
 		ValidationRegex: "^(0|4|6|7)$",
@@ -278,7 +279,7 @@ Examples:
 		Order:           cfgOptionBlockScopeLANOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelOff,
+		DefaultValue:    status.SecurityLevelsNormalAndExtreme,
 		ValidationRegex: "^(0|4|6|7)$",
 	})
 	if err != nil {
