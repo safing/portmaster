@@ -8,7 +8,6 @@ import (
 
 	// module dependencies
 	_ "github.com/safing/portmaster/core"
-	_ "github.com/safing/portmaster/profile"
 )
 
 var (

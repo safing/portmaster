@@ -15,8 +15,7 @@ import (
 	"github.com/safing/portmaster/network/packet"
 
 	// module dependencies
-	_ "github.com/safing/portmaster/core"
-	_ "github.com/safing/portmaster/profile"
+	_ "github.com/safing/portmaster/core/base"
 )
 
 var (
@@ -42,7 +41,7 @@ var (
 )
 
 func init() {
-	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base")
+	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network")
 
 	network.SetDefaultFirewallHandler(defaultHandler)
 }
