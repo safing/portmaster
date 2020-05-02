@@ -1,4 +1,4 @@
-package core
+package base
 
 import (
 	"github.com/safing/portbase/database"
@@ -46,5 +46,5 @@ func registerDatabases() error {
 	//   return err
 	// }
 
-	return registerControlDatabase()
+	return nil
 }

@@ -6,7 +6,8 @@ import (
 	"github.com/safing/portbase/modules"
 
 	// module dependencies
-	_ "github.com/safing/portmaster/core"
+	_ "github.com/safing/portmaster/core/base"
+	_ "github.com/safing/portmaster/updates" // dependency of semi-dependency filterlists
 )
 
 var (
@@ -14,7 +15,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("profiles", prep, start, nil, "base")
+	module = modules.Register("profiles", prep, start, nil, "base", "updates")
 }
 
 func prep() error {

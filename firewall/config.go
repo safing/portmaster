@@ -12,8 +12,6 @@ var (
 
 	CfgOptionAskWithSystemNotificationsKey   = "filter/askWithSystemNotifications"
 	CfgOptionAskWithSystemNotificationsOrder = 2
-	askWithSystemNotifications               config.BoolOption
-	useSystemNotifications                   config.BoolOption
 
 	CfgOptionAskTimeoutKey   = "filter/askTimeout"
 	CfgOptionAskTimeoutOrder = 3
@@ -56,8 +54,6 @@ func registerConfig() error {
 	if err != nil {
 		return err
 	}
-	askWithSystemNotifications = config.Concurrent.GetAsBool(CfgOptionAskWithSystemNotificationsKey, true)
-	useSystemNotifications = config.Concurrent.GetAsBool(core.CfgUseSystemNotificationsKey, true)
 
 	err = config.Register(&config.Option{
 		Name:           "Timeout for Ask Notifications",
