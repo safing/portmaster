@@ -7,6 +7,7 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/nameserver/nsutil"
 )
 
 // ListMatch represents an entity that has been
@@ -62,9 +63,10 @@ func (br ListBlockReason) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// ToRRs returns a set of dns TXT records that describe the
-// block reason.
-func (br ListBlockReason) ToRRs() []dns.RR {
+// GetExtraRR implements the nsutil.RRProvider interface
+// and adds additional TXT records justifying the reason
+// the request was blocked.
+func (br ListBlockReason) GetExtraRR(_ *dns.Msg, _ string, _ interface{}) []dns.RR {
 	rrs := make([]dns.RR, 0, len(br))
 
 	for _, lm := range br {
@@ -95,3 +97,5 @@ func (br ListBlockReason) ToRRs() []dns.RR {
 
 	return rrs
 }
+
+var _ nsutil.RRProvider = ListBlockReason(nil)

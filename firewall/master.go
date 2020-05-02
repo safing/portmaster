@@ -163,8 +163,8 @@ func checkConnectionType(conn *network.Connection, _ packet.Packet) bool {
 			}
 			return true
 		}
-	case network.PeerLAN, network.PeerInternet, network.PeerInvalid:
-		// Important: PeerHost is and should be missing!
+	case network.PeerInternet:
+		// BlockP2P only applies to connections to the Internet
 		if p.BlockP2P() {
 			conn.Block("direct connections (P2P) blocked")
 			return true
@@ -216,13 +216,13 @@ func checkConnectionScope(conn *network.Connection, _ packet.Packet) bool {
 func checkBypassPrevention(conn *network.Connection, _ packet.Packet) bool {
 	if conn.Process().Profile().PreventBypassing() {
 		// check for bypass protection
-		result, reason := PreventBypassing(conn)
+		result, reason, reasonCtx := PreventBypassing(conn)
 		switch result {
 		case endpoints.Denied:
-			conn.Block("bypass prevention: " + reason)
+			conn.BlockWithContext("bypass prevention: "+reason, reasonCtx)
 			return true
 		case endpoints.Permitted:
-			conn.Accept("bypass prevention: " + reason)
+			conn.AcceptWithContext("bypass prevention: "+reason, reasonCtx)
 			return true
 		case endpoints.NoMatch:
 		}

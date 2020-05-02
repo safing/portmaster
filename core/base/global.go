@@ -1,4 +1,4 @@
-package core
+package base
 
 import (
 	"errors"
@@ -46,13 +46,6 @@ func globalPrep() error {
 		if err != nil {
 			return err
 		}
-	}
-
-	// init config
-	logFlagOverrides()
-	err := registerConfig()
-	if err != nil {
-		return err
 	}
 
 	// set api listen address

@@ -12,53 +12,75 @@ var (
 	cfgIntOptions         = make(map[string]config.IntOption)
 	cfgBoolOptions        = make(map[string]config.BoolOption)
 
-	CfgOptionDefaultActionKey = "filter/defaultAction"
-	cfgOptionDefaultAction    config.StringOption
+	// Enable Filter Order = 0
 
-	CfgOptionDisableAutoPermitKey = "filter/disableAutoPermit"
-	cfgOptionDisableAutoPermit    config.IntOption // security level option
+	CfgOptionDefaultActionKey   = "filter/defaultAction"
+	cfgOptionDefaultAction      config.StringOption
+	cfgOptionDefaultActionOrder = 1
 
-	CfgOptionEndpointsKey = "filter/endpoints"
-	cfgOptionEndpoints    config.StringArrayOption
+	// Prompt Timeout Order = 2
 
-	CfgOptionServiceEndpointsKey = "filter/serviceEndpoints"
-	cfgOptionServiceEndpoints    config.StringArrayOption
+	CfgOptionBlockScopeInternetKey   = "filter/blockInternet"
+	cfgOptionBlockScopeInternet      config.IntOption // security level option
+	cfgOptionBlockScopeInternetOrder = 16
 
-	CfgOptionFilterListKey = "filter/lists"
-	cfgOptionFilterLists   config.StringArrayOption
+	CfgOptionBlockScopeLANKey   = "filter/blockLAN"
+	cfgOptionBlockScopeLAN      config.IntOption // security level option
+	cfgOptionBlockScopeLANOrder = 17
 
-	CfgOptionFilterSubDomainsKey = "filter/includeSubdomains"
-	cfgOptionFilterSubDomains    config.IntOption // security level option
+	CfgOptionBlockScopeLocalKey   = "filter/blockLocal"
+	cfgOptionBlockScopeLocal      config.IntOption // security level option
+	cfgOptionBlockScopeLocalOrder = 18
 
-	CfgOptionFilterCNAMEKey = "filter/includeCNAMEs"
-	cfgOptionFilterCNAME    config.IntOption // security level option
+	CfgOptionBlockP2PKey   = "filter/blockP2P"
+	cfgOptionBlockP2P      config.IntOption // security level option
+	cfgOptionBlockP2POrder = 19
 
-	CfgOptionBlockScopeLocalKey = "filter/blockLocal"
-	cfgOptionBlockScopeLocal    config.IntOption // security level option
+	CfgOptionBlockInboundKey   = "filter/blockInbound"
+	cfgOptionBlockInbound      config.IntOption // security level option
+	cfgOptionBlockInboundOrder = 20
 
-	CfgOptionBlockScopeLANKey = "filter/blockLAN"
-	cfgOptionBlockScopeLAN    config.IntOption // security level option
+	CfgOptionEndpointsKey   = "filter/endpoints"
+	cfgOptionEndpoints      config.StringArrayOption
+	cfgOptionEndpointsOrder = 32
 
-	CfgOptionBlockScopeInternetKey = "filter/blockInternet"
-	cfgOptionBlockScopeInternet    config.IntOption // security level option
+	CfgOptionServiceEndpointsKey   = "filter/serviceEndpoints"
+	cfgOptionServiceEndpoints      config.StringArrayOption
+	cfgOptionServiceEndpointsOrder = 33
 
-	CfgOptionBlockP2PKey = "filter/blockP2P"
-	cfgOptionBlockP2P    config.IntOption // security level option
+	CfgOptionPreventBypassingKey   = "filter/preventBypassing"
+	cfgOptionPreventBypassing      config.IntOption // security level option
+	cfgOptionPreventBypassingOrder = 48
 
-	CfgOptionBlockInboundKey = "filter/blockInbound"
-	cfgOptionBlockInbound    config.IntOption // security level option
+	CfgOptionFilterListsKey   = "filter/lists"
+	cfgOptionFilterLists      config.StringArrayOption
+	cfgOptionFilterListsOrder = 64
 
-	CfgOptionEnforceSPNKey = "filter/enforceSPN"
-	cfgOptionEnforceSPN    config.IntOption // security level option
+	CfgOptionFilterSubDomainsKey   = "filter/includeSubdomains"
+	cfgOptionFilterSubDomains      config.IntOption // security level option
+	cfgOptionFilterSubDomainsOrder = 65
 
-	CfgOptionRemoveOutOfScopeDNSKey = "filter/removeOutOfScopeDNS"
-	cfgOptionRemoveOutOfScopeDNS    config.IntOption // security level option
+	CfgOptionFilterCNAMEKey   = "filter/includeCNAMEs"
+	cfgOptionFilterCNAME      config.IntOption // security level option
+	cfgOptionFilterCNAMEOrder = 66
 
-	CfgOptionRemoveBlockedDNSKey = "filter/removeBlockedDNS"
-	cfgOptionRemoveBlockedDNS    config.IntOption // security level option
+	CfgOptionDisableAutoPermitKey   = "filter/disableAutoPermit"
+	cfgOptionDisableAutoPermit      config.IntOption // security level option
+	cfgOptionDisableAutoPermitOrder = 80
 
-	CfgOptionPreventBypassingKey = "filter/preventBypassing"
-	cfgOptionPreventBypassing    config.IntOption // security level option
+	CfgOptionEnforceSPNKey   = "filter/enforceSPN"
+	cfgOptionEnforceSPN      config.IntOption // security level option
+	cfgOptionEnforceSPNOrder = 96
+
+	CfgOptionRemoveOutOfScopeDNSKey   = "filter/removeOutOfScopeDNS"
+	cfgOptionRemoveOutOfScopeDNS      config.IntOption // security level option
+	cfgOptionRemoveOutOfScopeDNSOrder = 112
+
+	CfgOptionRemoveBlockedDNSKey   = "filter/removeBlockedDNS"
+	cfgOptionRemoveBlockedDNS      config.IntOption // security level option
+	cfgOptionRemoveBlockedDNSOrder = 113
+
+	// Permanent Verdicts Order = 128
 )
 
 func registerConfiguration() error {
@@ -70,6 +92,7 @@ func registerConfiguration() error {
 		Name:            "Default Filter Action",
 		Key:             CfgOptionDefaultActionKey,
 		Description:     `The default filter action when nothing else permits or blocks a connection.`,
+		Order:           cfgOptionDefaultActionOrder,
 		OptType:         config.OptTypeString,
 		DefaultValue:    "permit",
 		ExternalOptType: "string list",
@@ -86,6 +109,7 @@ func registerConfiguration() error {
 		Name:            "Disable Auto Permit",
 		Key:             CfgOptionDisableAutoPermitKey,
 		Description:     "Auto Permit searches for a relation between an app and the destionation of a connection - if there is a correlation, the connection will be permitted. This setting is negated in order to provide a streamlined user experience, where higher settings are better.",
+		Order:           cfgOptionDisableAutoPermitOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelsAll,
@@ -107,7 +131,7 @@ func registerConfiguration() error {
 		"+": permit
 		"-": block
 	Host Matching:
-		IP, CIDR, Country Code, ASN, "*" for any
+		IP, CIDR, Country Code, ASN, Filterlist, "*" for any
 		Domains:
 			"example.com": exact match
 			".example.com": exact match + subdomains
@@ -120,7 +144,12 @@ func registerConfiguration() error {
 Examples:
 	+ .example.com */HTTP
 	- .example.com
-	+ 192.168.0.1/24`,
+	+ 192.168.0.1/24
+	- L:MAL
+	- AS0
+	+ AT
+	- *`,
+		Order:           cfgOptionEndpointsOrder,
 		OptType:         config.OptTypeStringArray,
 		DefaultValue:    []string{},
 		ExternalOptType: "endpoint list",
@@ -142,7 +171,7 @@ Examples:
 		"+": permit
 		"-": block
 	Host Matching:
-		IP, CIDR, Country Code, ASN, "*" for any
+		IP, CIDR, Country Code, ASN, Filterlist, "*" for any
 		Domains:
 			"example.com": exact match
 			".example.com": exact match + subdomains
@@ -155,7 +184,12 @@ Examples:
 Examples:
 	+ .example.com */HTTP
 	- .example.com
-	+ 192.168.0.1/24`,
+	+ 192.168.0.1/24
+	- L:MAL
+	- AS0
+	+ AT
+	- *`,
+		Order:           cfgOptionServiceEndpointsOrder,
 		OptType:         config.OptTypeStringArray,
 		DefaultValue:    []string{},
 		ExternalOptType: "endpoint list",
@@ -170,8 +204,9 @@ Examples:
 	// Filter list IDs
 	err = config.Register(&config.Option{
 		Name:            "Filter List",
-		Key:             CfgOptionFilterListKey,
+		Key:             CfgOptionFilterListsKey,
 		Description:     "Filter connections by matching the endpoint against configured filterlists",
+		Order:           cfgOptionFilterListsOrder,
 		OptType:         config.OptTypeStringArray,
 		DefaultValue:    []string{"TRAC", "MAL"},
 		ExternalOptType: "filter list",
@@ -180,14 +215,15 @@ Examples:
 	if err != nil {
 		return err
 	}
-	cfgOptionFilterLists = config.Concurrent.GetAsStringArray(CfgOptionFilterListKey, []string{})
-	cfgStringArrayOptions[CfgOptionFilterListKey] = cfgOptionFilterLists
+	cfgOptionFilterLists = config.Concurrent.GetAsStringArray(CfgOptionFilterListsKey, []string{})
+	cfgStringArrayOptions[CfgOptionFilterListsKey] = cfgOptionFilterLists
 
 	// Include CNAMEs
 	err = config.Register(&config.Option{
 		Name:            "Filter CNAMEs",
 		Key:             CfgOptionFilterCNAMEKey,
 		Description:     "Also filter requests where a CNAME would be blocked",
+		Order:           cfgOptionFilterCNAMEOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelsAll,
@@ -205,6 +241,7 @@ Examples:
 		Name:            "Filter SubDomains",
 		Key:             CfgOptionFilterSubDomainsKey,
 		Description:     "Also filter sub-domains if a parent domain is blocked by a filter list",
+		Order:           cfgOptionFilterSubDomainsOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelOff,
@@ -220,8 +257,10 @@ Examples:
 	err = config.Register(&config.Option{
 		Name:            "Block Scope Local",
 		Key:             CfgOptionBlockScopeLocalKey,
-		Description:     "Block connections to your own device, ie. localhost.",
+		Description:     "Block internal connections on your own device, ie. localhost.",
+		Order:           cfgOptionBlockScopeLocalOrder,
 		OptType:         config.OptTypeInt,
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelOff,
 		ValidationRegex: "^(0|4|6|7)$",
@@ -237,9 +276,10 @@ Examples:
 		Name:            "Block Scope LAN",
 		Key:             CfgOptionBlockScopeLANKey,
 		Description:     "Block connections to the Local Area Network.",
+		Order:           cfgOptionBlockScopeLANOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelOff,
+		DefaultValue:    status.SecurityLevelsHighAndExtreme,
 		ValidationRegex: "^(0|4|6|7)$",
 	})
 	if err != nil {
@@ -253,6 +293,7 @@ Examples:
 		Name:            "Block Scope Internet",
 		Key:             CfgOptionBlockScopeInternetKey,
 		Description:     "Block connections to the Internet.",
+		Order:           cfgOptionBlockScopeInternetOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelOff,
@@ -268,7 +309,8 @@ Examples:
 	err = config.Register(&config.Option{
 		Name:            "Block Peer to Peer Connections",
 		Key:             CfgOptionBlockP2PKey,
-		Description:     "Block peer to peer connections. These are connections that are established directly to an IP address on the Internet without resolving a domain name via DNS first.",
+		Description:     "These are connections that are established directly to an IP address on the Internet without resolving a domain name via DNS first.",
+		Order:           cfgOptionBlockP2POrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelsAll,
@@ -284,7 +326,8 @@ Examples:
 	err = config.Register(&config.Option{
 		Name:            "Block Inbound Connections",
 		Key:             CfgOptionBlockInboundKey,
-		Description:     "Block inbound connections to your device. This will usually only be the case if you are running a network service or are using peer to peer software.",
+		Description:     "Connections initiated towards your device. This will usually only be the case if you are running a network service or are using peer to peer software.",
+		Order:           cfgOptionBlockInboundOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelsHighAndExtreme,
@@ -301,6 +344,7 @@ Examples:
 		Name:            "Enforce SPN",
 		Key:             CfgOptionEnforceSPNKey,
 		Description:     "This setting enforces connections to be routed over the SPN. If this is not possible for any reason, connections will be blocked.",
+		Order:           cfgOptionEnforceSPNOrder,
 		OptType:         config.OptTypeInt,
 		ReleaseLevel:    config.ReleaseLevelExperimental,
 		ExternalOptType: "security level",
@@ -318,6 +362,7 @@ Examples:
 		Name:            "Filter Out-of-Scope DNS Records",
 		Key:             CfgOptionRemoveOutOfScopeDNSKey,
 		Description:     "Filter DNS answers that are outside of the scope of the server. A server on the public Internet may not respond with a private LAN address.",
+		Order:           cfgOptionRemoveOutOfScopeDNSOrder,
 		OptType:         config.OptTypeInt,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelBeta,
@@ -336,6 +381,7 @@ Examples:
 		Name:            "Filter DNS Records that would be blocked",
 		Key:             CfgOptionRemoveBlockedDNSKey,
 		Description:     "Pre-filter DNS answers that an application would not be allowed to connect to.",
+		Order:           cfgOptionRemoveBlockedDNSOrder,
 		OptType:         config.OptTypeInt,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelBeta,
@@ -353,6 +399,7 @@ Examples:
 		Name:            "Prevent Bypassing",
 		Key:             CfgOptionPreventBypassingKey,
 		Description:     "Prevent apps from bypassing the privacy filter: Firefox by disabling DNS-over-HTTPs",
+		Order:           cfgOptionPreventBypassingOrder,
 		OptType:         config.OptTypeInt,
 		ExpertiseLevel:  config.ExpertiseLevelUser,
 		ReleaseLevel:    config.ReleaseLevelBeta,

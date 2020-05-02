@@ -9,7 +9,7 @@ import (
 	"github.com/safing/portmaster/intel"
 
 	// module dependencies
-	_ "github.com/safing/portmaster/core"
+	_ "github.com/safing/portmaster/core/base"
 )
 
 var (
@@ -17,7 +17,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("resolver", prep, start, nil, "core", "netenv")
+	module = modules.Register("resolver", prep, start, nil, "base", "netenv")
 }
 
 func prep() error {

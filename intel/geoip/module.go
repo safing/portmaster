@@ -12,7 +12,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("geoip", prep, nil, nil, "core")
+	module = modules.Register("geoip", prep, nil, nil, "base", "updates")
 }
 
 func prep() error {

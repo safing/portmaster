@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/safing/portbase/config"
+
 	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/profile/endpoints"
 )
@@ -77,19 +79,23 @@ func updateGlobalConfigProfile(ctx context.Context, data interface{}) error {
 		internalSave: true,
 	}
 
+	newConfig := make(map[string]interface{})
 	// fill profile config options
 	for key, value := range cfgStringOptions {
-		profile.Config[key] = value()
+		newConfig[key] = value()
 	}
 	for key, value := range cfgStringArrayOptions {
-		profile.Config[key] = value()
+		newConfig[key] = value()
 	}
 	for key, value := range cfgIntOptions {
-		profile.Config[key] = value()
+		newConfig[key] = value()
 	}
 	for key, value := range cfgBoolOptions {
-		profile.Config[key] = value()
+		newConfig[key] = value()
 	}
+
+	// expand and assign
+	profile.Config = config.Expand(newConfig)
 
 	// save profile
 	err = profile.Save()

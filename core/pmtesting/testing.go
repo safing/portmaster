@@ -27,7 +27,7 @@ import (
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
-	"github.com/safing/portmaster/core"
+	"github.com/safing/portmaster/core/base"
 
 	// module dependencies
 	_ "github.com/safing/portbase/database/storage/hashmap"
@@ -57,10 +57,10 @@ func TestMainWithHooks(m *testing.M, module *modules.Module, afterStartFn, befor
 	module.Enable()
 
 	// switch databases to memory only
-	core.DefaultDatabaseStorageType = "hashmap"
+	base.DefaultDatabaseStorageType = "hashmap"
 
 	// switch API to high port
-	core.DefaultAPIListenAddress = "127.0.0.1:10817"
+	base.DefaultAPIListenAddress = "127.0.0.1:10817"
 
 	// set log level
 	log.SetLogLevel(log.TraceLevel)
