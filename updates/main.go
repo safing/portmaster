@@ -132,6 +132,24 @@ func start() error {
 		return err
 	}
 
+	registry.AddIndex(updater.Index{
+		Path:   "stable.json",
+		Stable: true,
+		Beta:   false,
+	})
+
+	registry.AddIndex(updater.Index{
+		Path:   "beta.json",
+		Stable: false,
+		Beta:   true,
+	})
+
+	registry.AddIndex(updater.Index{
+		Path:   "all/intel/intel.json",
+		Stable: true,
+		Beta:   false,
+	})
+
 	err = registry.LoadIndexes()
 	if err != nil {
 		return err
