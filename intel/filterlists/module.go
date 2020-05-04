@@ -17,6 +17,7 @@ var (
 
 const (
 	filterlistsDisabled              = "filterlists:disabled"
+	filterlistsUpdateFailed          = "filterlists:update-failed"
 	filterlistsStaleDataSurvived     = "filterlists:staledata"
 	filterlistsStaleDataDescr        = "Removing stale filter list records failed. Some connections may be overblocked."
 	filterlistsUpdateInProgress      = "filterlists:update-in-progress"

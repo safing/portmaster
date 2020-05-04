@@ -24,6 +24,8 @@ func tryListUpdate(ctx context.Context) error {
 	if err != nil {
 		if !isLoaded() {
 			module.Error(filterlistsDisabled, err.Error())
+		} else {
+			module.Warning(filterlistsUpdateFailed, err.Error())
 		}
 		return err
 	}
