@@ -73,7 +73,7 @@ func upgradeCoreNotify() error {
 
 	// check if we can upgrade
 	if pmCoreUpdate == nil || pmCoreUpdate.UpgradeAvailable() {
-		// get newest portmaster-control
+		// get newest portmaster-core
 		new, err := GetPlatformFile(identifier)
 		if err != nil {
 			return err
@@ -84,12 +84,12 @@ func upgradeCoreNotify() error {
 	}
 
 	if info.GetInfo().Version != pmCoreUpdate.Version() {
-		// create notification
-		(&notifications.Notification{
-			ID:      "updates-core-update-available",
-			Message: fmt.Sprintf("There is an update available for the Portmaster core (v%s), please restart the Portmaster to apply the update.", pmCoreUpdate.Version()),
-			Type:    notifications.Info,
-		}).Save()
+		notifications.NotifyInfo(
+			"updates-core-update-available",
+			fmt.Sprintf("There is an update available for the Portmaster core (v%s), please restart the Portmaster to apply the update.", pmCoreUpdate.Version()),
+		)
+
+		log.Debugf("updates: new portmaster version available, sending notification to user")
 	}
 
 	return nil
