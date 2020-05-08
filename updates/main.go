@@ -103,6 +103,8 @@ func start() error {
 			platform("core/portmaster-core.exe"),
 			platform("control/portmaster-control.exe"),
 			platform("app/portmaster-app.exe"),
+			platform("app/webview.dll"),
+			platform("app/WebView2Loader.dll"),
 			platform("notifier/portmaster-notifier.exe"),
 			platform("notifier/portmaster-snoretoast.exe"),
 		}

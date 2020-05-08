@@ -28,6 +28,10 @@ func prep() error {
 
 func start() error {
 	return module.RegisterEventHook("ui", eventReload, "reload assets", reloadUI)
+	err = initDLLCopier()
+	if err != nil {
+		return err
+	}
 }
 
 func reloadUI(ctx context.Context, _ interface{}) error {
