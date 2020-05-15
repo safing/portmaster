@@ -157,7 +157,7 @@ func checkConnectionType(conn *network.Connection, _ packet.Packet) bool {
 
 	// check conn type
 	switch conn.Scope {
-	case network.IncomingHost, network.IncomingLAN, network.IncomingInternet, network.IncomingInvalid:
+	case network.IncomingLAN, network.IncomingInternet, network.IncomingInvalid:
 		if p.BlockInbound() {
 			if conn.Scope == network.IncomingHost {
 				conn.Block("inbound connections blocked")

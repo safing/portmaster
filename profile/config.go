@@ -326,7 +326,7 @@ Examples:
 	err = config.Register(&config.Option{
 		Name:            "Block Inbound Connections",
 		Key:             CfgOptionBlockInboundKey,
-		Description:     "Connections initiated towards your device. This will usually only be the case if you are running a network service or are using peer to peer software.",
+		Description:     "Connections initiated towards your device from the LAN or Internet. This will usually only be the case if you are running a network service or are using peer to peer software.",
 		Order:           cfgOptionBlockInboundOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
