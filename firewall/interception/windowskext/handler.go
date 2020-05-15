@@ -114,18 +114,15 @@ func Handler(packets chan packet.Packet) {
 }
 
 func convertIPv4(input [4]uint32) net.IP {
-	return net.IPv4(
-		uint8(input[0]>>24&0xFF),
-		uint8(input[0]>>16&0xFF),
-		uint8(input[0]>>8&0xFF),
-		uint8(input[0]&0xFF),
-	)
+	addressBuf := make([]byte, 4)
+	binary.BigEndian.PutUint32(addressBuf, input[0])
+	return net.IP(addressBuf)
 }
 
 func convertIPv6(input [4]uint32) net.IP {
 	addressBuf := make([]byte, 16)
 	for i := 0; i < 4; i++ {
-		binary.LittleEndian.PutUint32(addressBuf[i*4:i*4+4], input[i])
+		binary.BigEndian.PutUint32(addressBuf[i*4:i*4+4], input[i])
 	}
 	return net.IP(addressBuf)
 }
