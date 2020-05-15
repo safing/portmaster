@@ -231,6 +231,10 @@ func parseEndpoint(value string) (endpoint Endpoint, err error) {
 	if endpoint, err = parseTypeASN(fields); endpoint != nil || err != nil {
 		return
 	}
+	// scopes
+	if endpoint, err = parseTypeScope(fields); endpoint != nil || err != nil {
+		return
+	}
 	// lists
 	if endpoint, err = parseTypeList(fields); endpoint != nil || err != nil {
 		return
