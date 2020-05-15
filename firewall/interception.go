@@ -138,7 +138,7 @@ func handlePacket(pkt packet.Packet) {
 	// 	pkt.RedirToNameserver()
 	// }
 
-	// allow ICMP, IGMP and DHCP
+	// allow ICMP and DHCP
 	// TODO: actually handle these
 	switch meta.Protocol {
 	case packet.ICMP:
@@ -147,10 +147,6 @@ func handlePacket(pkt packet.Packet) {
 		return
 	case packet.ICMPv6:
 		log.Debugf("accepting ICMPv6: %s", pkt)
-		_ = pkt.PermanentAccept()
-		return
-	case packet.IGMP:
-		log.Debugf("accepting IGMP: %s", pkt)
 		_ = pkt.PermanentAccept()
 		return
 	case packet.UDP:
