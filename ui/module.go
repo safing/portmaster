@@ -3,6 +3,8 @@ package ui
 import (
 	"context"
 
+	"github.com/safing/portbase/dataroot"
+
 	resources "github.com/cookieo9/resources-go"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
@@ -27,6 +29,11 @@ func prep() error {
 }
 
 func start() error {
+	err := dataroot.Root().ChildDir("exec", 0777).Ensure()
+	if err != nil {
+		log.Warningf("ui: failed to create safe exec dir: %s", err)
+	}
+
 	return module.RegisterEventHook("ui", eventReload, "reload assets", reloadUI)
 }
 
