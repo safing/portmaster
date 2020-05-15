@@ -49,7 +49,8 @@ type Process struct {
 	FirstSeen int64
 	LastSeen  int64
 
-	Virtual bool // This process is either merged into another process or is not needed.
+	Virtual bool   // This process is either merged into another process or is not needed.
+	Error   string // Cache errors
 }
 
 // Profile returns the assigned layered profile.
@@ -94,6 +95,7 @@ func GetOrFindPrimaryProcess(ctx context.Context, pid int) (*Process, error) {
 		parentProcess, err := loadProcess(ctx, process.ParentPid)
 		if err != nil {
 			log.Tracer(ctx).Tracef("process: could not get parent of %d: %d: %s", process.Pid, process.ParentPid, err)
+			saveFailedProcess(process.ParentPid, err.Error())
 			return process, nil
 		}
 
@@ -226,13 +228,7 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 
 		pInfo, err := processInfo.NewProcess(int32(pid))
 		if err != nil {
-			// TODO: remove this workaround as soon as NewProcess really returns an error on windows when the process does not exist
-			// Issue: https://github.com/shirou/gopsutil/issues/729
-			_, err = pInfo.Name()
-			if err != nil {
-				// process does not exists
-				return nil, err
-			}
+			return nil, err
 		}
 
 		// UID
@@ -374,4 +370,15 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 
 	new.Save()
 	return new, nil
+}
+
+func saveFailedProcess(pid int, err string) {
+	failed := &Process{
+		Pid:       pid,
+		FirstSeen: time.Now().Unix(),
+		Virtual:   true, // not needed
+		Error:     err,
+	}
+
+	failed.Save()
 }
