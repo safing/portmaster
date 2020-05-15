@@ -6,6 +6,8 @@ import (
 	"net"
 	"strings"
 
+	"github.com/safing/portmaster/network/packet"
+
 	"github.com/safing/portbase/modules/subsystems"
 
 	"github.com/safing/portbase/log"
@@ -167,13 +169,14 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	}
 
 	// start tracer
-	ctx, tracer := log.AddTracer(ctx)
-	tracer.Tracef("nameserver: handling new request for %s%s from %s:%d", q.FQDN, q.QType, remoteAddr.IP, remoteAddr.Port)
+	ctx, tracer := log.AddTracer(context.Background())
+	defer tracer.Submit()
+	tracer.Tracef("nameserver: handling new request for %s%s from %s:%d, getting connection", q.FQDN, q.QType, remoteAddr.IP, remoteAddr.Port)
 
 	// TODO: if there are 3 request for the same domain/type in a row, delete all caches of that domain
 
 	// get connection
-	conn := network.NewConnectionFromDNSRequest(ctx, q.FQDN, nil, remoteAddr.IP, uint16(remoteAddr.Port))
+	conn := network.NewConnectionFromDNSRequest(ctx, q.FQDN, nil, packet.IPv4, remoteAddr.IP, uint16(remoteAddr.Port))
 
 	// once we decided on the connection we might need to save it to the database
 	// so we defer that check right now.
@@ -191,7 +194,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 			return
 
 		default:
-			log.Warningf("nameserver: unexpected verdict %s for connection %s, not saving", conn.Verdict, conn)
+			tracer.Warningf("nameserver: unexpected verdict %s for connection %s, not saving", conn.Verdict, conn)
 		}
 	}()
 
@@ -242,7 +245,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		tracer.Infof("nameserver: %s handing over to reason-responder: %s", q.FQDN, conn.Reason)
 		reply := responder.ReplyWithDNS(query, conn.Reason, conn.ReasonContext)
 		if err := w.WriteMsg(reply); err != nil {
-			log.Warningf("nameserver: failed to return response %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
+			tracer.Warningf("nameserver: failed to return response %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
 		} else {
 			tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
 		}
@@ -269,6 +272,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		return nil
 	}
 
+	tracer.Trace("nameserver: deciding on resolved dns")
 	rrCache = firewall.DecideOnResolvedDNS(conn, q, rrCache)
 	if rrCache == nil {
 		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
@@ -283,7 +287,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	m.Extra = rrCache.Extra
 
 	if err := w.WriteMsg(m); err != nil {
-		log.Warningf("nameserver: failed to return response %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
+		tracer.Warningf("nameserver: failed to return response %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
 	} else {
 		tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
 	}

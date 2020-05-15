@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/safing/portmaster/network/state"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/process"
 )
@@ -22,8 +24,12 @@ func connectionCleaner(ctx context.Context) error {
 			ticker.Stop()
 			return nil
 		case <-ticker.C:
+			// clean connections and processes
 			activePIDs := cleanConnections()
 			process.CleanProcessStorage(activePIDs)
+
+			// clean udp connection states
+			state.CleanUDPStates(ctx)
 		}
 	}
 }
@@ -33,12 +39,9 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 
 	name := "clean connections" // TODO: change to new fn
 	_ = module.RunMediumPriorityMicroTask(&name, func(ctx context.Context) error {
-		activeIDs := make(map[string]struct{})
-		for _, cID := range process.GetActiveConnectionIDs() {
-			activeIDs[cID] = struct{}{}
-		}
 
-		now := time.Now().Unix()
+		now := time.Now().UTC()
+		nowUnix := now.Unix()
 		deleteOlderThan := time.Now().Add(-deleteConnsAfterEndedThreshold).Unix()
 
 		// lock both together because we cannot fully guarantee in which map a connection lands
@@ -49,20 +52,20 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 		defer dnsConnsLock.Unlock()
 
 		// network connections
-		for key, conn := range conns {
+		for _, conn := range conns {
 			conn.Lock()
 
 			// delete inactive connections
 			switch {
 			case conn.Ended == 0:
 				// Step 1: check if still active
-				_, ok := activeIDs[key]
-				if ok {
+				exists := state.Exists(conn.IPVersion, conn.IPProtocol, conn.LocalIP, conn.LocalPort, conn.Entity.IP, conn.Entity.Port, now)
+				if exists {
 					activePIDs[conn.process.Pid] = struct{}{}
 				} else {
 					// Step 2: mark end
 					activePIDs[conn.process.Pid] = struct{}{}
-					conn.Ended = now
+					conn.Ended = nowUnix
 					conn.Save()
 				}
 			case conn.Ended < deleteOlderThan:

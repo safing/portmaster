@@ -57,6 +57,13 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 				return conn, nil
 			}
 		}
+		// case "system":
+		// 	if len(splitted) >= 2 {
+		// 		switch splitted[1] {
+		// 		case "":
+		// 			process.Get
+		// 		}
+		// 	}
 	}
 
 	return nil, storage.ErrNotFound

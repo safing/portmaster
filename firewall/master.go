@@ -10,6 +10,7 @@ import (
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/network/state"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
 	"github.com/safing/portmaster/profile/endpoints"
@@ -90,12 +91,14 @@ func checkSelfCommunication(conn *network.Connection, pkt packet.Packet) bool {
 		pktInfo := pkt.Info()
 		if conn.Process().Pid >= 0 && pktInfo.Src.Equal(pktInfo.Dst) {
 			// get PID
-			otherPid, _, err := process.GetPidByEndpoints(
+			otherPid, _, err := state.Lookup(
+				pktInfo.Version,
+				pktInfo.Protocol,
 				pktInfo.RemoteIP(),
 				pktInfo.RemotePort(),
 				pktInfo.LocalIP(),
 				pktInfo.LocalPort(),
-				pktInfo.Protocol,
+				pktInfo.Direction,
 			)
 			if err != nil {
 				log.Warningf("filter: failed to find local peer process PID: %s", err)

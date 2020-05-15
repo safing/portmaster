@@ -10,7 +10,7 @@ import (
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/network/packet"
-	"github.com/safing/portmaster/process"
+	"github.com/safing/portmaster/network/state"
 )
 
 var (
@@ -58,7 +58,7 @@ func checkForConflictingService() error {
 }
 
 func takeover(resolverIP net.IP) (int, error) {
-	pid, _, err := process.GetPidByEndpoints(resolverIP, 53, resolverIP, 65535, packet.UDP)
+	pid, _, err := state.Lookup(0, packet.UDP, resolverIP, 53, nil, 0, false)
 	if err != nil {
 		// there may be nothing listening on :53
 		return 0, nil

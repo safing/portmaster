@@ -25,11 +25,19 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	record.Base
 	sync.Mutex
 
-	ID      string
-	Scope   string
-	Inbound bool
-	Entity  *intel.Entity // needs locking, instance is never shared
-	process *process.Process
+	ID        string
+	Scope     string
+	IPVersion packet.IPVersion
+	Inbound   bool
+
+	// local endpoint
+	IPProtocol packet.IPProtocol
+	LocalIP    net.IP
+	LocalPort  uint16
+	process    *process.Process
+
+	// remote endpoint
+	Entity *intel.Entity // needs locking, instance is never shared
 
 	Verdict       Verdict
 	Reason        string
@@ -55,9 +63,18 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 }
 
 // NewConnectionFromDNSRequest returns a new connection based on the given dns request.
-func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, localIP net.IP, localPort uint16) *Connection {
+func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, ipVersion packet.IPVersion, localIP net.IP, localPort uint16) *Connection {
 	// get Process
-	proc, err := process.GetProcessByEndpoints(ctx, localIP, localPort, dnsAddress, dnsPort, packet.UDP)
+	proc, _, err := process.GetProcessByEndpoints(
+		ctx,
+		ipVersion,
+		packet.UDP,
+		localIP,
+		localPort,
+		dnsAddress, // this might not be correct, but it does not matter, as matching only occurs on the local address
+		dnsPort,
+		false, // inbound, irrevelant
+	)
 	if err != nil {
 		log.Warningf("network: failed to find process of dns request for %s: %s", fqdn, err)
 		proc = process.GetUnidentifiedProcess(ctx)
@@ -147,11 +164,18 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	}
 
 	return &Connection{
-		ID:      pkt.GetConnectionID(),
-		Scope:   scope,
-		Inbound: inbound,
-		Entity:  entity,
-		process: proc,
+		ID:        pkt.GetConnectionID(),
+		Scope:     scope,
+		IPVersion: pkt.Info().Version,
+		Inbound:   inbound,
+		// local endpoint
+		IPProtocol: pkt.Info().Protocol,
+		LocalIP:    pkt.Info().LocalIP(),
+		LocalPort:  pkt.Info().LocalPort(),
+		process:    proc,
+		// remote endpoint
+		Entity: entity,
+		// meta
 		Started: time.Now().Unix(),
 	}
 }

@@ -113,15 +113,9 @@ func upgradePortmasterControl() error {
 		return nil
 	}
 
-	// check if registry tmp dir is ok
-	err := registry.TmpDir().Ensure()
-	if err != nil {
-		return fmt.Errorf("failed to prep updates tmp dir: %s", err)
-	}
-
 	// update portmaster-control in data root
 	rootControlPath := filepath.Join(filepath.Dir(registry.StorageDir().Path), filename)
-	err = upgradeFile(rootControlPath, pmCtrlUpdate)
+	err := upgradeFile(rootControlPath, pmCtrlUpdate)
 	if err != nil {
 		return err
 	}
@@ -130,11 +124,11 @@ func upgradePortmasterControl() error {
 	// upgrade parent process, if it's portmaster-control
 	parent, err := processInfo.NewProcess(int32(os.Getppid()))
 	if err != nil {
-		return fmt.Errorf("could not get parent process for upgrade checks: %s", err)
+		return fmt.Errorf("could not get parent process for upgrade checks: %w", err)
 	}
 	parentName, err := parent.Name()
 	if err != nil {
-		return fmt.Errorf("could not get parent process name for upgrade checks: %s", err)
+		return fmt.Errorf("could not get parent process name for upgrade checks: %w", err)
 	}
 	if parentName != filename {
 		log.Tracef("updates: parent process does not seem to be portmaster-control, name is %s", parentName)
@@ -142,7 +136,7 @@ func upgradePortmasterControl() error {
 	}
 	parentPath, err := parent.Exe()
 	if err != nil {
-		return fmt.Errorf("could not get parent process path for upgrade: %s", err)
+		return fmt.Errorf("could not get parent process path for upgrade: %w", err)
 	}
 	err = upgradeFile(parentPath, pmCtrlUpdate)
 	if err != nil {
@@ -190,7 +184,7 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 			// ensure tmp dir is here
 			err = registry.TmpDir().Ensure()
 			if err != nil {
-				return fmt.Errorf("unable to check updates tmp dir for moving file that needs upgrade: %s", err)
+				return fmt.Errorf("could not prepare tmp directory for moving file that needs upgrade: %w", err)
 			}
 
 			// maybe we're on windows and it's in use, try moving
@@ -204,17 +198,17 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 				),
 			))
 			if err != nil {
-				return fmt.Errorf("unable to move file that needs upgrade: %s", err)
+				return fmt.Errorf("unable to move file that needs upgrade: %w", err)
 			}
 		}
 	}
 
 	// copy upgrade
-	err = copyFile(file.Path(), fileToUpgrade)
+	err = CopyFile(file.Path(), fileToUpgrade)
 	if err != nil {
 		// try again
 		time.Sleep(1 * time.Second)
-		err = copyFile(file.Path(), fileToUpgrade)
+		err = CopyFile(file.Path(), fileToUpgrade)
 		if err != nil {
 			return err
 		}
@@ -224,23 +218,30 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 	if !onWindows {
 		info, err := os.Stat(fileToUpgrade)
 		if err != nil {
-			return fmt.Errorf("failed to get file info on %s: %s", fileToUpgrade, err)
+			return fmt.Errorf("failed to get file info on %s: %w", fileToUpgrade, err)
 		}
 		if info.Mode() != 0755 {
 			err := os.Chmod(fileToUpgrade, 0755)
 			if err != nil {
-				return fmt.Errorf("failed to set permissions on %s: %s", fileToUpgrade, err)
+				return fmt.Errorf("failed to set permissions on %s: %w", fileToUpgrade, err)
 			}
 		}
 	}
 	return nil
 }
 
-func copyFile(srcPath, dstPath string) (err error) {
+func CopyFile(srcPath, dstPath string) (err error) {
+
+	// check tmp dir
+	err = registry.TmpDir().Ensure()
+	if err != nil {
+		return fmt.Errorf("could not prepare tmp directory for copying file: %w", err)
+	}
+
 	// open file for writing
 	atomicDstFile, err := renameio.TempFile(registry.TmpDir().Path, dstPath)
 	if err != nil {
-		return fmt.Errorf("could not create temp file for atomic copy: %s", err)
+		return fmt.Errorf("could not create temp file for atomic copy: %w", err)
 	}
 	defer atomicDstFile.Cleanup() //nolint:errcheck // ignore error for now, tmp dir will be cleaned later again anyway
 
@@ -260,7 +261,7 @@ func copyFile(srcPath, dstPath string) (err error) {
 	// finalize file
 	err = atomicDstFile.CloseAtomicallyReplace()
 	if err != nil {
-		return fmt.Errorf("updates: failed to finalize copy to file %s: %s", dstPath, err)
+		return fmt.Errorf("updates: failed to finalize copy to file %s: %w", dstPath, err)
 	}
 
 	return nil

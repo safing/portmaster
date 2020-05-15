@@ -13,13 +13,17 @@ import (
 	"github.com/safing/portbase/log"
 )
 
+const (
+	unidentifiedProcessID = -1
+)
+
 var (
 	pidsByUserLock sync.Mutex
 	pidsByUser     = make(map[int][]int)
 )
 
-// GetPidOfInode returns the pid of the given uid and socket inode.
-func GetPidOfInode(uid, inode int) (int, bool) { //nolint:gocognit // TODO
+// FindPID returns the pid of the given uid and socket inode.
+func FindPID(uid, inode int) (pid int, ok bool) { //nolint:gocognit // TODO
 	pidsByUserLock.Lock()
 	defer pidsByUserLock.Unlock()
 
