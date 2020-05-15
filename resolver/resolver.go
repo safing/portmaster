@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"context"
+	"errors"
 	"net"
 	"sync"
 	"time"
@@ -92,7 +93,7 @@ type BasicResolverConn struct {
 	sync.Mutex // for lastFail
 
 	resolver      *Resolver
-	clientManager *clientManager
+	clientManager *dnsClientManager
 	lastFail      time.Time
 }
 
@@ -126,17 +127,40 @@ func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, er
 
 	// start
 	var reply *dns.Msg
+	var ttl time.Duration
 	var err error
-	for i := 0; i < 3; i++ {
+	var conn *dns.Conn
+	var new bool
+	var i int
 
-		// log query time
-		// qStart := time.Now()
-		reply, _, err = brc.clientManager.getDNSClient().Exchange(dnsQuery, resolver.ServerAddress)
-		// log.Tracef("resolver: query to %s took %s", resolver.Server, time.Now().Sub(qStart))
+	for ; i < 5; i++ {
+
+		// first get connection
+		dc := brc.clientManager.getDNSClient()
+		conn, new, err = dc.getConn()
+		if err != nil {
+			log.Tracer(ctx).Tracef("resolver: failed to connect to %s: %s", resolver.Server, err)
+			// remove client from pool
+			dc.destroy()
+			// try again
+			continue
+		}
+		if new {
+			log.Tracer(ctx).Tracef("resolver: created new connection to %s", resolver.ServerAddress)
+		} else {
+			log.Tracer(ctx).Tracef("resolver: reusing connection to %s", resolver.ServerAddress)
+		}
+
+		// query server
+		reply, ttl, err = dc.client.ExchangeWithConn(dnsQuery, conn)
+		log.Tracer(ctx).Tracef("resolver: query took %s", ttl)
 
 		// error handling
 		if err != nil {
 			log.Tracer(ctx).Tracef("resolver: query to %s encountered error: %s", resolver.Server, err)
+
+			// remove client from pool
+			dc.destroy()
 
 			// TODO: handle special cases
 			// 1. connect: network is unreachable
@@ -148,12 +172,22 @@ func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, er
 			// temporary error
 			if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
 				log.Tracer(ctx).Tracef("resolver: retrying to resolve %s%s with %s, error is temporary", q.FQDN, q.QType, resolver.Server)
+				// try again
 				continue
 			}
 
 			// permanent error
 			break
+		} else if reply == nil {
+			// remove client from pool
+			dc.destroy()
+
+			log.Errorf("resolver: successful query for %s%s to %s, but reply was nil", q.FQDN, q.QType, resolver.Server)
+			return nil, errors.New("internal error")
 		}
+
+		// make client available again
+		dc.done()
 
 		if resolver.IsBlockedUpstream(reply) {
 			return nil, &BlockedUpstreamError{resolver.GetName()}
@@ -166,12 +200,15 @@ func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, er
 	if err != nil {
 		return nil, err
 		// TODO: mark as failed
+	} else if reply == nil {
+		log.Errorf("resolver: queried %s for %s%s (%d tries), but reply was nil", q.FQDN, q.QType, resolver.GetName(), i+1)
+		return nil, errors.New("internal error")
 	}
 
 	// hint network environment at successful connection
 	netenv.ReportSuccessfulConnection()
 
-	new := &RRCache{
+	newRecord := &RRCache{
 		Domain:      q.FQDN,
 		Question:    q.QType,
 		Answer:      reply.Answer,
@@ -182,5 +219,5 @@ func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, er
 	}
 
 	// TODO: check if reply.Answer is valid
-	return new, nil
+	return newRecord, nil
 }

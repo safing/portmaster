@@ -114,6 +114,7 @@ func Resolve(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
 				rrCache.MixAnswers()
 				return rrCache, nil
 			}
+			log.Tracer(ctx).Debugf("resolver: waited for another %s%s query, but cache missed!", q.FQDN, q.QType)
 			// if cache is still empty or non-compliant, go ahead and just query
 		} else {
 			// we are the first!
@@ -132,14 +133,14 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 	if err != nil {
 		if err != database.ErrNotFound {
 			log.Tracer(ctx).Warningf("resolver: getting RRCache %s%s from database failed: %s", q.FQDN, q.QType.String(), err)
-			log.Warningf("resolver: getting RRCache %s%s from database failed: %s", q.FQDN, q.QType.String(), err)
 		}
 		return nil
 	}
 
 	// get resolver that rrCache was resolved with
-	resolver := getResolverByIDWithLocking(rrCache.Server)
+	resolver := getActiveResolverByIDWithLocking(rrCache.Server)
 	if resolver == nil {
+		log.Tracer(ctx).Debugf("resolver: ignoring RRCache %s%s because source server %s has been removed", q.FQDN, q.QType.String(), rrCache.Server)
 		return nil
 	}
 
@@ -165,6 +166,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		})
 	}
 
+	log.Tracer(ctx).Tracef("resolver: using cached RR (expires in %s)", time.Until(time.Unix(rrCache.TTL, 0)))
 	return rrCache
 }
 

@@ -65,12 +65,12 @@ func ResolveIPAndValidate(ctx context.Context, ip string, securityLevel uint8) (
 	for _, rr := range rrCache.Answer {
 		switch v := rr.(type) {
 		case *dns.A:
-			log.Infof("A: %s", v.A.String())
+			// log.Debugf("A: %s", v.A.String())
 			if ip == v.A.String() {
 				return ptrName, nil
 			}
 		case *dns.AAAA:
-			log.Infof("AAAA: %s", v.AAAA.String())
+			// log.Debugf("AAAA: %s", v.AAAA.String())
 			if ip == v.AAAA.String() {
 				return ptrName, nil
 			}

@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/safing/portmaster/network/netutils"
+
 	"github.com/miekg/dns"
 
 	"github.com/safing/portbase/log"
@@ -29,10 +31,11 @@ var (
 	questionsLock sync.Mutex
 
 	mDNSResolver = &Resolver{
-		Server:     ServerSourceMDNS,
-		ServerType: ServerTypeDNS,
-		Source:     ServerSourceMDNS,
-		Conn:       &mDNSResolverConn{},
+		Server:        ServerSourceMDNS,
+		ServerType:    ServerTypeDNS,
+		ServerIPScope: netutils.SiteLocal,
+		Source:        ServerSourceMDNS,
+		Conn:          &mDNSResolverConn{},
 	}
 )
 
@@ -189,15 +192,21 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 
 			// get entry from database
 			if saveFullRequest {
+				// get from database
 				rrCache, err = GetRRCache(question.Name, dns.Type(question.Qtype))
+				// if we have no cached entry, or it has been updated less more than two seconds ago, or if it expired:
+				// create new and do not append
 				if err != nil || rrCache.updated < time.Now().Add(-2*time.Second).Unix() || rrCache.TTL < time.Now().Unix() {
 					rrCache = &RRCache{
-						Domain:   question.Name,
-						Question: dns.Type(question.Qtype),
+						Domain:      question.Name,
+						Question:    dns.Type(question.Qtype),
+						Server:      mDNSResolver.Server,
+						ServerScope: mDNSResolver.ServerIPScope,
 					}
 				}
 			}
 
+			// add all entries to RRCache
 			for _, entry := range message.Answer {
 				if strings.HasSuffix(entry.Header().Name, ".local.") || domainInScope(entry.Header().Name, localReverseScopes) {
 					if saveFullRequest {
@@ -289,9 +298,11 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 					continue
 				}
 				rrCache = &RRCache{
-					Domain:   v.Header().Name,
-					Question: dns.Type(v.Header().Class),
-					Answer:   []dns.RR{v},
+					Domain:      v.Header().Name,
+					Question:    dns.Type(v.Header().Class),
+					Answer:      []dns.RR{v},
+					Server:      mDNSResolver.Server,
+					ServerScope: mDNSResolver.ServerIPScope,
 				}
 				rrCache.Clean(60)
 				err := rrCache.Save()

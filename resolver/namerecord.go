@@ -12,7 +12,7 @@ import (
 var (
 	recordDatabase = database.NewInterface(&database.Options{
 		AlwaysSetRelativateExpiry: 2592000, // 30 days
-		CacheSize:                 128,
+		CacheSize:                 256,
 	})
 )
 
