@@ -214,6 +214,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	// reroute dns requests to nameserver
 	if conn.Process().Pid != os.Getpid() && pkt.IsOutbound() && pkt.Info().DstPort == 53 && !pkt.Info().Src.Equal(pkt.Info().Dst) {
 		conn.Verdict = network.VerdictRerouteToNameserver
+		conn.Internal = true
 		conn.StopFirewallHandler()
 		issueVerdict(conn, pkt, 0, true)
 		return
