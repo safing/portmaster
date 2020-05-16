@@ -113,6 +113,7 @@ func Handler(packets chan packet.Packet) {
 	}
 }
 
+// convertIPv4 as needed for data from the kernel
 func convertIPv4(input [4]uint32) net.IP {
 	addressBuf := make([]byte, 4)
 	binary.BigEndian.PutUint32(addressBuf, input[0])

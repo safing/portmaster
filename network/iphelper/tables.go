@@ -297,8 +297,9 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 	return connections, binds, nil
 }
 
+// convertIPv4 as needed for iphlpapi.dll
 func convertIPv4(input uint32) net.IP {
 	addressBuf := make([]byte, 4)
-	binary.BigEndian.PutUint32(addressBuf, input)
+	binary.LittleEndian.PutUint32(addressBuf, input)
 	return net.IP(addressBuf)
 }
