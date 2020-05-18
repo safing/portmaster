@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/network/socket"
 )
@@ -160,12 +161,20 @@ func searchUDP(
 	err error,
 ) {
 
+	isInboundMulticast := pktInbound && netutils.ClassifyIP(localIP) == netutils.LocalMulticast
+	// TODO: Currently broadcast/multicast scopes are not checked, so we might
+	// attribute an incoming broadcast/multicast packet to the wrong process if
+	// there are multiple processes listening on the same local port, but
+	// binding to different addresses. This highly unusual for clients.
+
 	// search until we find something
 	for i := 0; i < 5; i++ {
 		// search binds
 		for _, socketInfo := range binds {
 			if localPort == socketInfo.Local.Port &&
-				(socketInfo.Local.IP[0] == 0 || localIP.Equal(socketInfo.Local.IP)) {
+				(socketInfo.Local.IP[0] == 0 || // zero IP
+					isInboundMulticast || // inbound broadcast, multicast
+					localIP.Equal(socketInfo.Local.IP)) {
 
 				// do not check direction if remoteIP/Port is not given
 				if remotePort == 0 {
