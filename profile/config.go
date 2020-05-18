@@ -295,7 +295,7 @@ Examples:
 		Order:           cfgOptionBlockP2POrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsAll,
+		DefaultValue:    status.SecurityLevelExtreme,
 		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
