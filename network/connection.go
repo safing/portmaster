@@ -76,7 +76,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		false, // inbound, irrevelant
 	)
 	if err != nil {
-		log.Warningf("network: failed to find process of dns request for %s: %s", fqdn, err)
+		log.Debugf("network: failed to find process of dns request for %s: %s", fqdn, err)
 		proc = process.GetUnidentifiedProcess(ctx)
 	}
 
@@ -99,7 +99,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	// get Process
 	proc, inbound, err := process.GetProcessByPacket(pkt)
 	if err != nil {
-		log.Warningf("network: failed to find process of packet %s: %s", pkt, err)
+		log.Debugf("network: failed to find process of packet %s: %s", pkt, err)
 		proc = process.GetUnidentifiedProcess(pkt.Ctx())
 	}
 

@@ -56,13 +56,13 @@ func GetProcessByEndpoints(
 	var pid int
 	pid, connInbound, err = state.Lookup(ipVersion, protocol, localIP, localPort, remoteIP, remotePort, pktInbound)
 	if err != nil {
-		log.Tracer(ctx).Errorf("process: failed to find PID of connection: %s", err)
+		log.Tracer(ctx).Debugf("process: failed to find PID of connection: %s", err)
 		return nil, connInbound, err
 	}
 
 	process, err = GetOrFindPrimaryProcess(ctx, pid)
 	if err != nil {
-		log.Tracer(ctx).Errorf("process: failed to find (primary) process with PID: %s", err)
+		log.Tracer(ctx).Debugf("process: failed to find (primary) process with PID: %s", err)
 		return nil, connInbound, err
 	}
 
