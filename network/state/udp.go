@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/network/socket"
 )
 
@@ -34,7 +35,7 @@ func getUDPConnState(socketInfo *socket.BindInfo, udpStates map[string]map[strin
 	return nil, false
 }
 
-func getUDPDirection(socketInfo *socket.BindInfo, udpStates map[string]map[string]*udpState, remoteIP net.IP, remotePort uint16, pktInbound bool) (connDirection bool) {
+func getUDPDirection(socketInfo *socket.BindInfo, udpStates map[string]map[string]*udpState, pktInfo *packet.Info) (connDirection bool) {
 	localKey := makeUDPStateKey(socketInfo.Local.IP, socketInfo.Local.Port)
 
 	bindMap, ok := udpStates[localKey]
@@ -43,14 +44,14 @@ func getUDPDirection(socketInfo *socket.BindInfo, udpStates map[string]map[strin
 		udpStates[localKey] = bindMap
 	}
 
-	remoteKey := makeUDPStateKey(remoteIP, remotePort)
+	remoteKey := makeUDPStateKey(pktInfo.RemoteIP(), pktInfo.RemotePort())
 	udpConnState, ok := bindMap[remoteKey]
 	if !ok {
 		bindMap[remoteKey] = &udpState{
-			inbound:  pktInbound,
+			inbound:  pktInfo.Inbound,
 			lastSeen: time.Now().UTC(),
 		}
-		return pktInbound
+		return pktInfo.Inbound
 	}
 
 	udpConnState.lastSeen = time.Now().UTC()

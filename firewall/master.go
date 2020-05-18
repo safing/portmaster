@@ -91,15 +91,15 @@ func checkSelfCommunication(conn *network.Connection, pkt packet.Packet) bool {
 		pktInfo := pkt.Info()
 		if conn.Process().Pid >= 0 && pktInfo.Src.Equal(pktInfo.Dst) {
 			// get PID
-			otherPid, _, err := state.Lookup(
-				pktInfo.Version,
-				pktInfo.Protocol,
-				pktInfo.RemoteIP(),
-				pktInfo.RemotePort(),
-				pktInfo.LocalIP(),
-				pktInfo.LocalPort(),
-				pktInfo.Direction,
-			)
+			otherPid, _, err := state.Lookup(&packet.Info{
+				Inbound:  !pktInfo.Inbound, // we want to know the process on the other end
+				Version:  pktInfo.Version,
+				Protocol: pktInfo.Protocol,
+				Src:      pktInfo.Src,
+				SrcPort:  pktInfo.SrcPort,
+				Dst:      pktInfo.Dst,
+				DstPort:  pktInfo.DstPort,
+			})
 			if err != nil {
 				log.Warningf("filter: failed to find local peer process PID: %s", err)
 			} else {

@@ -58,7 +58,15 @@ func checkForConflictingService() error {
 }
 
 func takeover(resolverIP net.IP) (int, error) {
-	pid, _, err := state.Lookup(0, packet.UDP, resolverIP, 53, nil, 0, false)
+	pid, _, err := state.Lookup(&packet.Info{
+		Inbound:  true,
+		Version:  0, // auto-detect
+		Protocol: packet.UDP,
+		Src:      nil, // do not record direction
+		SrcPort:  0,   // do not record direction
+		Dst:      resolverIP,
+		DstPort:  53,
+	})
 	if err != nil {
 		// there may be nothing listening on :53
 		return 0, nil

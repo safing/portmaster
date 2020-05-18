@@ -2,7 +2,6 @@ package state
 
 import (
 	"errors"
-	"net"
 	"sync"
 	"time"
 
@@ -44,62 +43,36 @@ var (
 	waitTime = 3 * time.Millisecond
 )
 
-func LookupWithPacket(pkt packet.Packet) (pid int, inbound bool, err error) {
-	meta := pkt.Info()
-	return Lookup(
-		meta.Version,
-		meta.Protocol,
-		meta.LocalIP(),
-		meta.LocalPort(),
-		meta.RemoteIP(),
-		meta.RemotePort(),
-		meta.Direction,
-	)
-}
-
-func Lookup(
-	ipVersion packet.IPVersion,
-	protocol packet.IPProtocol,
-	localIP net.IP,
-	localPort uint16,
-	remoteIP net.IP,
-	remotePort uint16,
-	pktInbound bool,
-) (
-	pid int,
-	inbound bool,
-	err error,
-) {
-
+func Lookup(pktInfo *packet.Info) (pid int, inbound bool, err error) {
 	// auto-detect version
-	if ipVersion == 0 {
-		if ip := localIP.To4(); ip != nil {
-			ipVersion = packet.IPv4
+	if pktInfo.Version == 0 {
+		if ip := pktInfo.LocalIP().To4(); ip != nil {
+			pktInfo.Version = packet.IPv4
 		} else {
-			ipVersion = packet.IPv6
+			pktInfo.Version = packet.IPv6
 		}
 	}
 
 	switch {
-	case ipVersion == packet.IPv4 && protocol == packet.TCP:
+	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.TCP:
 		tcp4Lock.Lock()
 		defer tcp4Lock.Unlock()
-		return searchTCP(tcp4Connections, tcp4Listeners, updateTCP4Tables, localIP, localPort)
+		return searchTCP(tcp4Connections, tcp4Listeners, updateTCP4Tables, pktInfo)
 
-	case ipVersion == packet.IPv6 && protocol == packet.TCP:
+	case pktInfo.Version == packet.IPv6 && pktInfo.Protocol == packet.TCP:
 		tcp6Lock.Lock()
 		defer tcp6Lock.Unlock()
-		return searchTCP(tcp6Connections, tcp6Listeners, updateTCP6Tables, localIP, localPort)
+		return searchTCP(tcp6Connections, tcp6Listeners, updateTCP6Tables, pktInfo)
 
-	case ipVersion == packet.IPv4 && protocol == packet.UDP:
+	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.UDP:
 		udp4Lock.Lock()
 		defer udp4Lock.Unlock()
-		return searchUDP(udp4Binds, udp4States, updateUDP4Table, localIP, localPort, remoteIP, remotePort, pktInbound)
+		return searchUDP(udp4Binds, udp4States, updateUDP4Table, pktInfo)
 
-	case ipVersion == packet.IPv6 && protocol == packet.UDP:
+	case pktInfo.Version == packet.IPv6 && pktInfo.Protocol == packet.UDP:
 		udp6Lock.Lock()
 		defer udp6Lock.Unlock()
-		return searchUDP(udp6Binds, udp6States, updateUDP6Table, localIP, localPort, remoteIP, remotePort, pktInbound)
+		return searchUDP(udp6Binds, udp6States, updateUDP6Table, pktInfo)
 
 	default:
 		return UnidentifiedProcessID, false, errors.New("unsupported protocol for finding process")
@@ -110,13 +83,15 @@ func searchTCP(
 	connections []*socket.ConnectionInfo,
 	listeners []*socket.BindInfo,
 	updateTables func() ([]*socket.ConnectionInfo, []*socket.BindInfo),
-	localIP net.IP,
-	localPort uint16,
+	pktInfo *packet.Info,
 ) (
 	pid int,
 	inbound bool,
 	err error,
 ) {
+
+	localIP := pktInfo.LocalIP()
+	localPort := pktInfo.LocalPort()
 
 	// search until we find something
 	for i := 0; i < 5; i++ {
@@ -150,18 +125,17 @@ func searchUDP(
 	binds []*socket.BindInfo,
 	udpStates map[string]map[string]*udpState,
 	updateTable func() []*socket.BindInfo,
-	localIP net.IP,
-	localPort uint16,
-	remoteIP net.IP,
-	remotePort uint16,
-	pktInbound bool,
+	pktInfo *packet.Info,
 ) (
 	pid int,
 	inbound bool,
 	err error,
 ) {
 
-	isInboundMulticast := pktInbound && netutils.ClassifyIP(localIP) == netutils.LocalMulticast
+	localIP := pktInfo.LocalIP()
+	localPort := pktInfo.LocalPort()
+
+	isInboundMulticast := pktInfo.Inbound && netutils.ClassifyIP(localIP) == netutils.LocalMulticast
 	// TODO: Currently broadcast/multicast scopes are not checked, so we might
 	// attribute an incoming broadcast/multicast packet to the wrong process if
 	// there are multiple processes listening on the same local port, but
@@ -177,12 +151,12 @@ func searchUDP(
 					localIP.Equal(socketInfo.Local.IP)) {
 
 				// do not check direction if remoteIP/Port is not given
-				if remotePort == 0 {
-					return checkBindPID(socketInfo, pktInbound)
+				if pktInfo.RemotePort() == 0 {
+					return checkBindPID(socketInfo, pktInfo.Inbound)
 				}
 
 				// get direction and return
-				connInbound := getUDPDirection(socketInfo, udpStates, remoteIP, remotePort, pktInbound)
+				connInbound := getUDPDirection(socketInfo, udpStates, pktInfo)
 				return checkBindPID(socketInfo, connInbound)
 			}
 		}
@@ -194,5 +168,5 @@ func searchUDP(
 		binds = updateTable()
 	}
 
-	return UnidentifiedProcessID, pktInbound, ErrConnectionNotFound
+	return UnidentifiedProcessID, pktInfo.Inbound, ErrConnectionNotFound
 }

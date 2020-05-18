@@ -3,7 +3,6 @@ package process
 import (
 	"context"
 	"errors"
-	"net"
 
 	"github.com/safing/portmaster/network/state"
 
@@ -16,45 +15,16 @@ var (
 	ErrProcessNotFound = errors.New("could not find process in system state tables")
 )
 
-// GetProcessByPacket returns the process that owns the given packet.
-func GetProcessByPacket(pkt packet.Packet) (process *Process, inbound bool, err error) {
-	meta := pkt.Info()
-	return GetProcessByEndpoints(
-		pkt.Ctx(),
-		meta.Version,
-		meta.Protocol,
-		meta.LocalIP(),
-		meta.LocalPort(),
-		meta.RemoteIP(),
-		meta.RemotePort(),
-		meta.Direction,
-	)
-}
-
 // GetProcessByEndpoints returns the process that owns the described link.
-func GetProcessByEndpoints(
-	ctx context.Context,
-	ipVersion packet.IPVersion,
-	protocol packet.IPProtocol,
-	localIP net.IP,
-	localPort uint16,
-	remoteIP net.IP,
-	remotePort uint16,
-	pktInbound bool,
-) (
-	process *Process,
-	connInbound bool,
-	err error,
-) {
-
+func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process *Process, connInbound bool, err error) {
 	if !enableProcessDetection() {
 		log.Tracer(ctx).Tracef("process: process detection disabled")
-		return GetUnidentifiedProcess(ctx), pktInbound, nil
+		return GetUnidentifiedProcess(ctx), pktInfo.Inbound, nil
 	}
 
 	log.Tracer(ctx).Tracef("process: getting pid from system network state")
 	var pid int
-	pid, connInbound, err = state.Lookup(ipVersion, protocol, localIP, localPort, remoteIP, remotePort, pktInbound)
+	pid, connInbound, err = state.Lookup(pktInfo)
 	if err != nil {
 		log.Tracer(ctx).Debugf("process: failed to find PID of connection: %s", err)
 		return nil, connInbound, err

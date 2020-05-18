@@ -6,8 +6,8 @@ import (
 
 // Info holds IP and TCP/UDP header information
 type Info struct {
-	Direction bool
-	InTunnel  bool
+	Inbound  bool
+	InTunnel bool
 
 	Version          IPVersion
 	Protocol         IPProtocol
@@ -17,7 +17,7 @@ type Info struct {
 
 // LocalIP returns the local IP of the packet.
 func (pi *Info) LocalIP() net.IP {
-	if pi.Direction {
+	if pi.Inbound {
 		return pi.Dst
 	}
 	return pi.Src
@@ -25,7 +25,7 @@ func (pi *Info) LocalIP() net.IP {
 
 // RemoteIP returns the remote IP of the packet.
 func (pi *Info) RemoteIP() net.IP {
-	if pi.Direction {
+	if pi.Inbound {
 		return pi.Src
 	}
 	return pi.Dst
@@ -33,7 +33,7 @@ func (pi *Info) RemoteIP() net.IP {
 
 // LocalPort returns the local port of the packet.
 func (pi *Info) LocalPort() uint16 {
-	if pi.Direction {
+	if pi.Inbound {
 		return pi.DstPort
 	}
 	return pi.SrcPort
@@ -41,7 +41,7 @@ func (pi *Info) LocalPort() uint16 {
 
 // RemotePort returns the remote port of the packet.
 func (pi *Info) RemotePort() uint16 {
-	if pi.Direction {
+	if pi.Inbound {
 		return pi.SrcPort
 	}
 	return pi.DstPort

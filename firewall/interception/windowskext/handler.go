@@ -62,7 +62,7 @@ func Handler(packets chan packet.Packet) {
 		}
 
 		info := new.Info()
-		info.Direction = packetInfo.direction > 0
+		info.Inbound = packetInfo.direction > 0
 		info.InTunnel = false
 		info.Protocol = packet.IPProtocol(packetInfo.protocol)
 
@@ -76,7 +76,7 @@ func Handler(packets chan packet.Packet) {
 		// IPs
 		if info.Version == packet.IPv4 {
 			// IPv4
-			if info.Direction {
+			if info.Inbound {
 				// Inbound
 				info.Src = convertIPv4(packetInfo.remoteIP)
 				info.Dst = convertIPv4(packetInfo.localIP)
@@ -87,7 +87,7 @@ func Handler(packets chan packet.Packet) {
 			}
 		} else {
 			// IPv6
-			if info.Direction {
+			if info.Inbound {
 				// Inbound
 				info.Src = convertIPv6(packetInfo.remoteIP)
 				info.Dst = convertIPv6(packetInfo.localIP)
@@ -99,7 +99,7 @@ func Handler(packets chan packet.Packet) {
 		}
 
 		// Ports
-		if info.Direction {
+		if info.Inbound {
 			// Inbound
 			info.SrcPort = packetInfo.remotePort
 			info.DstPort = packetInfo.localPort

@@ -65,15 +65,17 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 // NewConnectionFromDNSRequest returns a new connection based on the given dns request.
 func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, ipVersion packet.IPVersion, localIP net.IP, localPort uint16) *Connection {
 	// get Process
-	proc, _, err := process.GetProcessByEndpoints(
+	proc, _, err := process.GetProcessByConnection(
 		ctx,
-		ipVersion,
-		packet.UDP,
-		localIP,
-		localPort,
-		dnsAddress, // this might not be correct, but it does not matter, as matching only occurs on the local address
-		dnsPort,
-		false, // inbound, irrevelant
+		&packet.Info{
+			Inbound:  false, // outbound as we are looking for the process of the source address
+			Version:  ipVersion,
+			Protocol: packet.UDP,
+			Src:      localIP,   // source as in the process we are looking for
+			SrcPort:  localPort, // source as in the process we are looking for
+			Dst:      nil,       // do not record direction
+			DstPort:  0,         // do not record direction
+		},
 	)
 	if err != nil {
 		log.Debugf("network: failed to find process of dns request for %s: %s", fqdn, err)
@@ -97,7 +99,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 // NewConnectionFromFirstPacket returns a new connection based on the given packet.
 func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	// get Process
-	proc, inbound, err := process.GetProcessByPacket(pkt)
+	proc, inbound, err := process.GetProcessByConnection(pkt.Ctx(), pkt.Info())
 	if err != nil {
 		log.Debugf("network: failed to find process of packet %s: %s", pkt, err)
 		proc = process.GetUnidentifiedProcess(pkt.Ctx())

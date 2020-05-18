@@ -60,16 +60,17 @@ func apiAuthenticator(s *http.Server, r *http.Request) (grantAccess bool, err er
 	var procsChecked []string
 
 	// get process
-	proc, _, err := process.GetProcessByEndpoints(
+	proc, _, err := process.GetProcessByConnection(
 		r.Context(),
-		packet.IPv4,
-		packet.TCP,
-		// switch reverse/local to get remote process
-		remoteIP,
-		remotePort,
-		localIP,
-		localPort,
-		false,
+		&packet.Info{
+			Inbound:  false, // outbound as we are looking for the process of the source address
+			Version:  packet.IPv4,
+			Protocol: packet.TCP,
+			Src:      remoteIP,   // source as in the process we are looking for
+			SrcPort:  remotePort, // source as in the process we are looking for
+			Dst:      localIP,
+			DstPort:  localPort,
+		},
 	)
 	if err != nil {
 		return false, fmt.Errorf("failed to get process: %s", err)
