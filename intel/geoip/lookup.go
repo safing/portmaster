@@ -2,7 +2,17 @@ package geoip
 
 import (
 	"net"
+
+	"github.com/oschwald/maxminddb-golang"
+	"github.com/safing/portbase/log"
 )
+
+func getReader(ip net.IP) *maxminddb.Reader {
+	if v4 := ip.To4(); v4 != nil {
+		return geoDBv4Reader
+	}
+	return geoDBv6Reader
+}
 
 // GetLocation returns Location data of an IP address
 func GetLocation(ip net.IP) (record *Location, err error) {
@@ -14,13 +24,12 @@ func GetLocation(ip net.IP) (record *Location, err error) {
 		return nil, err
 	}
 
+	db := getReader(ip)
+
 	record = &Location{}
 
 	// fetch
-	err = dbCity.Lookup(ip, record)
-	if err == nil {
-		err = dbASN.Lookup(ip, record)
-	}
+	err = db.Lookup(ip, record)
 
 	// retry
 	if err != nil {
@@ -30,17 +39,17 @@ func GetLocation(ip net.IP) (record *Location, err error) {
 		if err != nil {
 			return nil, err
 		}
+		db = getReader(ip)
 
 		// refetch
-		err = dbCity.Lookup(ip, record)
-		if err == nil {
-			err = dbASN.Lookup(ip, record)
-		}
+		err = db.Lookup(ip, record)
 	}
 
 	if err != nil {
 		return nil, err
 	}
+
+	log.Tracef("geoip: record: %+v", record)
 
 	return record, nil
 }

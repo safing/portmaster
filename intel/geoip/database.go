@@ -14,13 +14,13 @@ import (
 )
 
 var (
-	dbCityFile *updater.File
-	dbASNFile  *updater.File
-	dbFileLock sync.Mutex
+	geoDBv4File *updater.File
+	geoDBv6File *updater.File
+	dbFileLock  sync.Mutex
 
-	dbCity *maxminddb.Reader
-	dbASN  *maxminddb.Reader
-	dbLock sync.Mutex
+	geoDBv4Reader *maxminddb.Reader
+	geoDBv6Reader *maxminddb.Reader
+	dbLock        sync.Mutex
 
 	dbInUse    = abool.NewBool(false) // only activate if used for first time
 	dbDoReload = abool.NewBool(true)  // if database should be reloaded
@@ -51,7 +51,11 @@ func doReload() error {
 	// reload if needed
 	if dbDoReload.SetToIf(true, false) {
 		closeDBs()
-		return openDBs()
+		if err := openDBs(); err != nil {
+			// try again the next time
+			dbDoReload.SetTo(true)
+			return err
+		}
 	}
 
 	return nil
@@ -59,23 +63,33 @@ func doReload() error {
 
 func openDBs() error {
 	var err error
-	dbCityFile, err = updates.GetFile("intel/geoip/geoip-city.mmdb")
+
+	geoDBv4File, err = updates.GetFile("intel/geoip/geoipv4.mmdb.gz")
 	if err != nil {
-		return fmt.Errorf("could not get GeoIP City database file: %s", err)
+		return fmt.Errorf("could not get GeoIP v4 database file: %s", err)
 	}
-	dbCity, err = maxminddb.Open(dbCityFile.Path())
+	unpackedV4, err := geoDBv4File.Unpack(".gz", updater.UnpackGZIP)
+	if err != nil {
+		return err
+	}
+	geoDBv4Reader, err = maxminddb.Open(unpackedV4)
 	if err != nil {
 		return err
 	}
 
-	dbASNFile, err = updates.GetFile("intel/geoip/geoip-asn.mmdb")
+	geoDBv6File, err = updates.GetFile("intel/geoip/geoipv6.mmdb.gz")
 	if err != nil {
-		return fmt.Errorf("could not get GeoIP ASN database file: %s", err)
+		return fmt.Errorf("could not get GeoIP v6 database file: %s", err)
 	}
-	dbASN, err = maxminddb.Open(dbASNFile.Path())
+	unpackedV6, err := geoDBv6File.Unpack(".gz", updater.UnpackGZIP)
 	if err != nil {
 		return err
 	}
+	geoDBv6Reader, err = maxminddb.Open(unpackedV6)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -85,19 +99,19 @@ func handleError(err error) {
 }
 
 func closeDBs() {
-	if dbCity != nil {
-		err := dbCity.Close()
+	if geoDBv4Reader != nil {
+		err := geoDBv4Reader.Close()
 		if err != nil {
 			log.Warningf("network/geoip: failed to close database: %s", err)
 		}
 	}
-	dbCity = nil
+	geoDBv4Reader = nil
 
-	if dbASN != nil {
-		err := dbASN.Close()
+	if geoDBv6Reader != nil {
+		err := geoDBv6Reader.Close()
 		if err != nil {
 			log.Warningf("network/geoip: failed to close database: %s", err)
 		}
 	}
-	dbASN = nil
+	geoDBv6Reader = nil
 }

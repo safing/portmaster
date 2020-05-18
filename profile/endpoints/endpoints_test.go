@@ -322,7 +322,7 @@ func TestEndpointMatching(t *testing.T) {
 	}
 
 	testEndpointMatch(t, ep, (&intel.Entity{
-		IP: net.ParseIP("1.1.1.1"),
+		IP: net.ParseIP("1.1.1.2"),
 	}).Init(), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		IP: net.ParseIP("8.8.8.8"),
