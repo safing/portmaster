@@ -160,7 +160,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		log.Tracer(ctx).Trace("resolver: serving from cache, requesting new")
 
 		// resolve async
-		module.StartMediumPriorityMicroTask(&mtAsyncResolve, func(ctx context.Context) error {
+		module.StartLowPriorityMicroTask(&mtAsyncResolve, func(ctx context.Context) error {
 			_, _ = resolveAndCache(ctx, q)
 			return nil
 		})
