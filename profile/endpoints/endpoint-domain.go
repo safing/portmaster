@@ -31,7 +31,7 @@ type EndpointDomain struct {
 }
 
 func (ep *EndpointDomain) check(entity *intel.Entity, domain string) (EPResult, Reason) {
-	result, reason := ep.match(ep, entity, ep.Domain, "domain matches")
+	result, reason := ep.match(ep, entity, ep.OriginalValue, "domain matches")
 
 	switch ep.MatchType {
 	case domainMatchTypeExact:
