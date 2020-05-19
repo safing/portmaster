@@ -25,3 +25,7 @@
 #   unused-packages = true
 
 ignored = ["github.com/safing/portbase/*"]
+
+[[constraint]]
+  name = "github.com/miekg/dns"
+  branch = "master" # switch back to semver releases when https://github.com/miekg/dns/pull/1110 is released
