@@ -40,7 +40,7 @@ var (
 	udp4Lock sync.Mutex
 	udp6Lock sync.Mutex
 
-	waitTime = 3 * time.Millisecond
+	baseWaitTime = 3 * time.Millisecond
 )
 
 func Lookup(pktInfo *packet.Info) (pid int, inbound bool, err error) {
@@ -94,7 +94,7 @@ func searchTCP(
 	localPort := pktInfo.LocalPort()
 
 	// search until we find something
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 7; i++ {
 		// always search listeners first
 		for _, socketInfo := range listeners {
 			if localPort == socketInfo.Local.Port &&
@@ -112,7 +112,8 @@ func searchTCP(
 		}
 
 		// we found nothing, we could have been too fast, give the kernel some time to think
-		time.Sleep(waitTime)
+		// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
+		time.Sleep(time.Duration(i+1) * baseWaitTime)
 
 		// refetch lists
 		connections, listeners = updateTables()
@@ -162,7 +163,8 @@ func searchUDP(
 		}
 
 		// we found nothing, we could have been too fast, give the kernel some time to think
-		time.Sleep(waitTime)
+		// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
+		time.Sleep(time.Duration(i+1) * baseWaitTime)
 
 		// refetch lists
 		binds = updateTable()
