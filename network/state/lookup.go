@@ -24,10 +24,6 @@ import (
 //       - switch direction to outbound if outbound packet is seen?
 // - IP: Unidentified Process
 
-const (
-	UnidentifiedProcessID = -1
-)
-
 // Errors
 var (
 	ErrConnectionNotFound = errors.New("could not find connection in system state tables")
@@ -75,7 +71,7 @@ func Lookup(pktInfo *packet.Info) (pid int, inbound bool, err error) {
 		return searchUDP(udp6Binds, udp6States, updateUDP6Table, pktInfo)
 
 	default:
-		return UnidentifiedProcessID, false, errors.New("unsupported protocol for finding process")
+		return socket.UnidentifiedProcessID, false, errors.New("unsupported protocol for finding process")
 	}
 }
 
@@ -119,7 +115,7 @@ func searchTCP(
 		connections, listeners = updateTables()
 	}
 
-	return UnidentifiedProcessID, false, ErrConnectionNotFound
+	return socket.UnidentifiedProcessID, false, ErrConnectionNotFound
 }
 
 func searchUDP(
@@ -170,5 +166,5 @@ func searchUDP(
 		binds = updateTable()
 	}
 
-	return UnidentifiedProcessID, pktInfo.Inbound, ErrConnectionNotFound
+	return socket.UnidentifiedProcessID, pktInfo.Inbound, ErrConnectionNotFound
 }

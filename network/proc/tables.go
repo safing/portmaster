@@ -5,6 +5,7 @@ package proc
 import (
 	"bufio"
 	"encoding/hex"
+	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -43,12 +44,10 @@ const (
 	ICMP4
 	ICMP6
 
-	TCP4Data  = "/proc/net/tcp"
-	UDP4Data  = "/proc/net/udp"
-	TCP6Data  = "/proc/net/tcp6"
-	UDP6Data  = "/proc/net/udp6"
-	ICMP4Data = "/proc/net/icmp"
-	ICMP6Data = "/proc/net/icmp6"
+	tcp4ProcFile = "/proc/net/tcp"
+	tcp6ProcFile = "/proc/net/tcp6"
+	udp4ProcFile = "/proc/net/udp"
+	udp6ProcFile = "/proc/net/udp6"
 
 	UnfetchedProcessID = -2
 
@@ -57,27 +56,47 @@ const (
 
 // GetTCP4Table returns the system table for IPv4 TCP activity.
 func GetTCP4Table() (connections []*socket.ConnectionInfo, listeners []*socket.BindInfo, err error) {
-	return getTableFromSource(TCP4, TCP4Data, convertIPv4)
+	return getTableFromSource(TCP4, tcp4ProcFile)
 }
 
 // GetTCP6Table returns the system table for IPv6 TCP activity.
 func GetTCP6Table() (connections []*socket.ConnectionInfo, listeners []*socket.BindInfo, err error) {
-	return getTableFromSource(TCP6, TCP6Data, convertIPv6)
+	return getTableFromSource(TCP6, tcp6ProcFile)
 }
 
 // GetUDP4Table returns the system table for IPv4 UDP activity.
 func GetUDP4Table() (binds []*socket.BindInfo, err error) {
-	_, binds, err = getTableFromSource(UDP4, UDP4Data, convertIPv4)
+	_, binds, err = getTableFromSource(UDP4, udp4ProcFile)
 	return
 }
 
 // GetUDP6Table returns the system table for IPv6 UDP activity.
 func GetUDP6Table() (binds []*socket.BindInfo, err error) {
-	_, binds, err = getTableFromSource(UDP6, UDP6Data, convertIPv6)
+	_, binds, err = getTableFromSource(UDP6, udp6ProcFile)
 	return
 }
 
-func getTableFromSource(stack uint8, procFile string, ipConverter func(string) net.IP) (connections []*socket.ConnectionInfo, binds []*socket.BindInfo, err error) {
+const (
+	// hint: we split fields by multiple delimiters, see procDelimiter
+	fieldIndexLocalIP    = 1
+	fieldIndexLocalPort  = 2
+	fieldIndexRemoteIP   = 3
+	fieldIndexRemotePort = 4
+	fieldIndexUID        = 11
+	fieldIndexInode      = 13
+)
+
+func getTableFromSource(stack uint8, procFile string) (connections []*socket.ConnectionInfo, binds []*socket.BindInfo, err error) {
+
+	var ipConverter func(string) net.IP
+	switch stack {
+	case TCP4, UDP4:
+		ipConverter = convertIPv4
+	case TCP6, UDP6:
+		ipConverter = convertIPv6
+	default:
+		return nil, nil, fmt.Errorf("unsupported table stack: %d", stack)
+	}
 
 	// open file
 	socketData, err := os.Open(procFile)
@@ -91,36 +110,36 @@ func getTableFromSource(stack uint8, procFile string, ipConverter func(string) n
 	scanner.Split(bufio.ScanLines)
 
 	// parse
-	scanner.Scan() // skip first line
+	scanner.Scan() // skip first row
 	for scanner.Scan() {
-		line := strings.FieldsFunc(scanner.Text(), procDelimiter)
-		if len(line) < 14 {
-			// log.Tracef("process: too short: %s", line)
+		fields := strings.FieldsFunc(scanner.Text(), procDelimiter)
+		if len(fields) < 14 {
+			// log.Tracef("process: too short: %s", fields)
 			continue
 		}
 
-		localIP := ipConverter(line[1])
+		localIP := ipConverter(fields[fieldIndexLocalIP])
 		if localIP == nil {
 			continue
 		}
 
-		localPort, err := strconv.ParseUint(line[2], 16, 16)
+		localPort, err := strconv.ParseUint(fields[fieldIndexLocalPort], 16, 16)
 		if err != nil {
 			log.Warningf("process: could not parse port: %s", err)
 			continue
 		}
 
-		uid, err := strconv.ParseInt(line[11], 10, 32)
-		// log.Tracef("uid: %s", line[11])
+		uid, err := strconv.ParseInt(fields[fieldIndexUID], 10, 32)
+		// log.Tracef("uid: %s", fields[fieldIndexUID])
 		if err != nil {
-			log.Warningf("process: could not parse uid %s: %s", line[11], err)
+			log.Warningf("process: could not parse uid %s: %s", fields[11], err)
 			continue
 		}
 
-		inode, err := strconv.ParseInt(line[13], 10, 32)
-		// log.Tracef("inode: %s", line[13])
+		inode, err := strconv.ParseInt(fields[fieldIndexInode], 10, 32)
+		// log.Tracef("inode: %s", fields[fieldIndexInode])
 		if err != nil {
-			log.Warningf("process: could not parse inode %s: %s", line[13], err)
+			log.Warningf("process: could not parse inode %s: %s", fields[13], err)
 			continue
 		}
 
@@ -139,7 +158,7 @@ func getTableFromSource(stack uint8, procFile string, ipConverter func(string) n
 
 		case TCP4, TCP6:
 
-			if line[5] == tcpListenStateHex {
+			if fields[5] == tcpListenStateHex {
 				// listener
 
 				binds = append(binds, &socket.BindInfo{
@@ -154,12 +173,12 @@ func getTableFromSource(stack uint8, procFile string, ipConverter func(string) n
 			} else {
 				// connection
 
-				remoteIP := ipConverter(line[3])
+				remoteIP := ipConverter(fields[fieldIndexRemoteIP])
 				if remoteIP == nil {
 					continue
 				}
 
-				remotePort, err := strconv.ParseUint(line[4], 16, 16)
+				remotePort, err := strconv.ParseUint(fields[fieldIndexRemotePort], 16, 16)
 				if err != nil {
 					log.Warningf("process: could not parse port: %s", err)
 					continue

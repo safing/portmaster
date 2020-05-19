@@ -214,7 +214,7 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 				binds = append(binds, &socket.BindInfo{
 					Local: socket.Address{
 						IP:   convertIPv4(row.localAddr),
-						Port: uint16(row.localPort>>8 | row.localPort<<8),
+						Port: convertPort(row.localPort),
 					},
 					PID: int(row.owningPid),
 				})
@@ -222,11 +222,11 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 				connections = append(connections, &socket.ConnectionInfo{
 					Local: socket.Address{
 						IP:   convertIPv4(row.localAddr),
-						Port: uint16(row.localPort>>8 | row.localPort<<8),
+						Port: convertPort(row.localPort),
 					},
 					Remote: socket.Address{
 						IP:   convertIPv4(row.remoteAddr),
-						Port: uint16(row.remotePort>>8 | row.remotePort<<8),
+						Port: convertPort(row.remotePort),
 					},
 					PID: int(row.owningPid),
 				})
@@ -243,7 +243,7 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 				binds = append(binds, &socket.BindInfo{
 					Local: socket.Address{
 						IP:   net.IP(row.localAddr[:]),
-						Port: uint16(row.localPort>>8 | row.localPort<<8),
+						Port: convertPort(row.localPort),
 					},
 					PID: int(row.owningPid),
 				})
@@ -251,11 +251,11 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 				connections = append(connections, &socket.ConnectionInfo{
 					Local: socket.Address{
 						IP:   net.IP(row.localAddr[:]),
-						Port: uint16(row.localPort>>8 | row.localPort<<8),
+						Port: convertPort(row.localPort),
 					},
 					Remote: socket.Address{
 						IP:   net.IP(row.remoteAddr[:]),
-						Port: uint16(row.remotePort>>8 | row.remotePort<<8),
+						Port: convertPort(row.remotePort),
 					},
 					PID: int(row.owningPid),
 				})
@@ -271,7 +271,7 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 			binds = append(binds, &socket.BindInfo{
 				Local: socket.Address{
 					IP:   convertIPv4(row.localAddr),
-					Port: uint16(row.localPort>>8 | row.localPort<<8),
+					Port: convertPort(row.localPort),
 				},
 				PID: int(row.owningPid),
 			})
@@ -286,7 +286,7 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 			binds = append(binds, &socket.BindInfo{
 				Local: socket.Address{
 					IP:   net.IP(row.localAddr[:]),
-					Port: uint16(row.localPort>>8 | row.localPort<<8),
+					Port: convertPort(row.localPort),
 				},
 				PID: int(row.owningPid),
 			})
@@ -302,4 +302,9 @@ func convertIPv4(input uint32) net.IP {
 	addressBuf := make([]byte, 4)
 	binary.LittleEndian.PutUint32(addressBuf, input)
 	return net.IP(addressBuf)
+}
+
+// convertPort converts ports received from iphlpapi.dll
+func convertPort(input uint32) uint16 {
+	return uint16(input>>8 | input<<8)
 }

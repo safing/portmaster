@@ -8,13 +8,12 @@ import (
 	"github.com/safing/portmaster/network/socket"
 )
 
-const (
-	unidentifiedProcessID = -1
-)
-
 var (
 	ipHelper *IPHelper
-	lock     sync.RWMutex
+
+	// lock locks access to the whole DLL.
+	// TODO: It's unproven if we can access the iphlpapi.dll concurrently, especially as we might be encountering various versions of the DLL. In the future, we could possibly investigate and improve performance here.
+	lock sync.RWMutex
 )
 
 // GetTCP4Table returns the system table for IPv4 TCP activity.

@@ -18,9 +18,8 @@ var (
 )
 
 func updateTCP4Tables() (connections []*socket.ConnectionInfo, listeners []*socket.BindInfo) {
-	// FIXME: repeatable once
-
-	connections, listeners, err := getTCP4Table()
+	var err error
+	connections, listeners, err = getTCP4Table()
 	if err != nil {
 		log.Warningf("state: failed to get TCP4 socket table: %s", err)
 		return
@@ -28,11 +27,12 @@ func updateTCP4Tables() (connections []*socket.ConnectionInfo, listeners []*sock
 
 	tcp4Connections = connections
 	tcp4Listeners = listeners
-	return tcp4Connections, tcp4Listeners
+	return
 }
 
 func updateTCP6Tables() (connections []*socket.ConnectionInfo, listeners []*socket.BindInfo) {
-	connections, listeners, err := getTCP6Table()
+	var err error
+	connections, listeners, err = getTCP6Table()
 	if err != nil {
 		log.Warningf("state: failed to get TCP6 socket table: %s", err)
 		return
@@ -40,27 +40,29 @@ func updateTCP6Tables() (connections []*socket.ConnectionInfo, listeners []*sock
 
 	tcp6Connections = connections
 	tcp6Listeners = listeners
-	return tcp6Connections, tcp6Listeners
+	return
 }
 
 func updateUDP4Table() (binds []*socket.BindInfo) {
-	binds, err := getUDP4Table()
+	var err error
+	binds, err = getUDP4Table()
 	if err != nil {
 		log.Warningf("state: failed to get UDP4 socket table: %s", err)
 		return
 	}
 
 	udp4Binds = binds
-	return udp4Binds
+	return
 }
 
 func updateUDP6Table() (binds []*socket.BindInfo) {
-	binds, err := getUDP6Table()
+	var err error
+	binds, err = getUDP6Table()
 	if err != nil {
 		log.Warningf("state: failed to get UDP6 socket table: %s", err)
 		return
 	}
 
 	udp6Binds = binds
-	return udp6Binds
+	return
 }

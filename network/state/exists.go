@@ -11,7 +11,11 @@ const (
 	UDPConnectionTTL = 10 * time.Minute
 )
 
+// Exists checks if the given connection is present in the system state tables.
 func Exists(pktInfo *packet.Info, now time.Time) (exists bool) {
+
+	// TODO: create lookup maps before running a flurry of Exists() checks.
+
 	switch {
 	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.TCP:
 		tcp4Lock.Lock()
@@ -76,7 +80,10 @@ func existsUDP(
 		if localPort == socketInfo.Local.Port &&
 			(socketInfo.Local.IP[0] == 0 || localIP.Equal(socketInfo.Local.IP)) {
 
-			udpConnState, ok := getUDPConnState(socketInfo, udpStates, remoteIP, remotePort)
+			udpConnState, ok := getUDPConnState(socketInfo, udpStates, socket.Address{
+				IP:   remoteIP,
+				Port: remotePort,
+			})
 			switch {
 			case !ok:
 				return false

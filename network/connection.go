@@ -37,7 +37,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	process    *process.Process
 
 	// remote endpoint
-	Entity *intel.Entity // needs locking, instance is never shared
+	Entity *intel.Entity
 
 	Verdict       Verdict
 	Reason        string

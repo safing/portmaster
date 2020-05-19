@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"net"
 	"time"
 
 	"github.com/safing/portmaster/network/packet"
@@ -15,7 +14,7 @@ type udpState struct {
 }
 
 const (
-	UpdConnStateTTL             = 72 * time.Hour
+	UdpConnStateTTL             = 72 * time.Hour
 	UdpConnStateShortenedTTL    = 3 * time.Hour
 	AggressiveCleaningThreshold = 256
 )
@@ -25,10 +24,10 @@ var (
 	udp6States = make(map[string]map[string]*udpState) // locked with udp6Lock
 )
 
-func getUDPConnState(socketInfo *socket.BindInfo, udpStates map[string]map[string]*udpState, remoteIP net.IP, remotePort uint16) (udpConnState *udpState, ok bool) {
-	bindMap, ok := udpStates[makeUDPStateKey(socketInfo.Local.IP, socketInfo.Local.Port)]
+func getUDPConnState(socketInfo *socket.BindInfo, udpStates map[string]map[string]*udpState, remoteAddress socket.Address) (udpConnState *udpState, ok bool) {
+	bindMap, ok := udpStates[makeUDPStateKey(socketInfo.Local)]
 	if ok {
-		udpConnState, ok = bindMap[makeUDPStateKey(remoteIP, remotePort)]
+		udpConnState, ok = bindMap[makeUDPStateKey(remoteAddress)]
 		return
 	}
 
@@ -36,7 +35,7 @@ func getUDPConnState(socketInfo *socket.BindInfo, udpStates map[string]map[strin
 }
 
 func getUDPDirection(socketInfo *socket.BindInfo, udpStates map[string]map[string]*udpState, pktInfo *packet.Info) (connDirection bool) {
-	localKey := makeUDPStateKey(socketInfo.Local.IP, socketInfo.Local.Port)
+	localKey := makeUDPStateKey(socketInfo.Local)
 
 	bindMap, ok := udpStates[localKey]
 	if !ok {
@@ -44,7 +43,10 @@ func getUDPDirection(socketInfo *socket.BindInfo, udpStates map[string]map[strin
 		udpStates[localKey] = bindMap
 	}
 
-	remoteKey := makeUDPStateKey(pktInfo.RemoteIP(), pktInfo.RemotePort())
+	remoteKey := makeUDPStateKey(socket.Address{
+		IP:   pktInfo.RemoteIP(),
+		Port: pktInfo.RemotePort(),
+	})
 	udpConnState, ok := bindMap[remoteKey]
 	if !ok {
 		bindMap[remoteKey] = &udpState{
@@ -79,19 +81,18 @@ func cleanStates(
 	now time.Time,
 ) {
 	// compute thresholds
-	threshold := now.Add(-UpdConnStateTTL)
+	threshold := now.Add(-UdpConnStateTTL)
 	shortThreshhold := now.Add(-UdpConnStateShortenedTTL)
 
-	// make list of all active keys
+	// make lookup map of all active keys
 	bindKeys := make(map[string]struct{})
 	for _, socketInfo := range binds {
-		bindKeys[makeUDPStateKey(socketInfo.Local.IP, socketInfo.Local.Port)] = struct{}{}
+		bindKeys[makeUDPStateKey(socketInfo.Local)] = struct{}{}
 	}
 
 	// clean the udp state storage
 	for localKey, bindMap := range udpStates {
-		_, active := bindKeys[localKey]
-		if active {
+		if _, active := bindKeys[localKey]; active {
 			// clean old entries
 			for remoteKey, udpConnState := range bindMap {
 				if udpConnState.lastSeen.Before(threshold) {
@@ -113,7 +114,7 @@ func cleanStates(
 	}
 }
 
-func makeUDPStateKey(ip net.IP, port uint16) string {
+func makeUDPStateKey(address socket.Address) string {
 	// This could potentially go wrong, but as all IPs are created by the same source, everything should be fine.
-	return string(ip) + string(port)
+	return string(address.IP) + string(address.Port)
 }

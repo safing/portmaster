@@ -14,24 +14,14 @@ var (
 
 func checkConnectionPID(socketInfo *socket.ConnectionInfo, connInbound bool) (pid int, inbound bool, err error) {
 	if socketInfo.PID == proc.UnfetchedProcessID {
-		pid, ok := proc.FindPID(socketInfo.UID, socketInfo.Inode)
-		if ok {
-			socketInfo.PID = pid
-		} else {
-			socketInfo.PID = UnidentifiedProcessID
-		}
+		socketInfo.PID = proc.FindPID(socketInfo.UID, socketInfo.Inode)
 	}
 	return socketInfo.PID, connInbound, nil
 }
 
 func checkBindPID(socketInfo *socket.BindInfo, connInbound bool) (pid int, inbound bool, err error) {
 	if socketInfo.PID == proc.UnfetchedProcessID {
-		pid, ok := proc.FindPID(socketInfo.UID, socketInfo.Inode)
-		if ok {
-			socketInfo.PID = pid
-		} else {
-			socketInfo.PID = UnidentifiedProcessID
-		}
+		socketInfo.PID = proc.FindPID(socketInfo.UID, socketInfo.Inode)
 	}
 	return socketInfo.PID, connInbound, nil
 }

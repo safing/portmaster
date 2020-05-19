@@ -169,7 +169,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	}
 
 	// start tracer
-	ctx, tracer := log.AddTracer(context.Background())
+	ctx, tracer := log.AddTracer(ctx)
 	defer tracer.Submit()
 	tracer.Tracef("nameserver: handling new request for %s%s from %s:%d, getting connection", q.FQDN, q.QType, remoteAddr.IP, remoteAddr.Port)
 

@@ -2,6 +2,11 @@ package socket
 
 import "net"
 
+const (
+	// UnidentifiedProcessID is originally defined in the process pkg, but duplicated here because of import loops.
+	UnidentifiedProcessID = -1
+)
+
 // ConnectionInfo holds socket information returned by the system.
 type ConnectionInfo struct {
 	Local  Address
