@@ -27,10 +27,10 @@ func prep() error {
 func upgradeDatabases(_ context.Context, _ interface{}) error {
 	dbFileLock.Lock()
 	reload := false
-	if dbCityFile != nil && dbCityFile.UpgradeAvailable() {
+	if geoDBv4File != nil && geoDBv4File.UpgradeAvailable() {
 		reload = true
 	}
-	if dbASNFile != nil && dbASNFile.UpgradeAvailable() {
+	if geoDBv6File != nil && geoDBv6File.UpgradeAvailable() {
 		reload = true
 	}
 	dbFileLock.Unlock()
