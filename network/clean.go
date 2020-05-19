@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/safing/portmaster/network/packet"
+
 	"github.com/safing/portmaster/network/state"
 
 	"github.com/safing/portbase/log"
@@ -42,7 +44,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 
 		now := time.Now().UTC()
 		nowUnix := now.Unix()
-		deleteOlderThan := time.Now().Add(-deleteConnsAfterEndedThreshold).Unix()
+		deleteOlderThan := now.Add(-deleteConnsAfterEndedThreshold).Unix()
 
 		// lock both together because we cannot fully guarantee in which map a connection lands
 		// of course every connection should land in the correct map, but this increases resilience
@@ -59,12 +61,19 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 			switch {
 			case conn.Ended == 0:
 				// Step 1: check if still active
-				exists := state.Exists(conn.IPVersion, conn.IPProtocol, conn.LocalIP, conn.LocalPort, conn.Entity.IP, conn.Entity.Port, now)
-				if exists {
-					activePIDs[conn.process.Pid] = struct{}{}
-				} else {
+				exists := state.Exists(&packet.Info{
+					Inbound:  false, // src == local
+					Version:  conn.IPVersion,
+					Protocol: conn.IPProtocol,
+					Src:      conn.LocalIP,
+					SrcPort:  conn.LocalPort,
+					Dst:      conn.Entity.IP,
+					DstPort:  conn.Entity.Port,
+				}, now)
+				activePIDs[conn.process.Pid] = struct{}{}
+
+				if !exists {
 					// Step 2: mark end
-					activePIDs[conn.process.Pid] = struct{}{}
 					conn.Ended = nowUnix
 					conn.Save()
 				}

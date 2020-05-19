@@ -1,7 +1,6 @@
 package state
 
 import (
-	"net"
 	"time"
 
 	"github.com/safing/portmaster/network/packet"
@@ -12,49 +11,38 @@ const (
 	UDPConnectionTTL = 10 * time.Minute
 )
 
-func Exists(
-	ipVersion packet.IPVersion,
-	protocol packet.IPProtocol,
-	localIP net.IP,
-	localPort uint16,
-	remoteIP net.IP,
-	remotePort uint16,
-	now time.Time,
-) (exists bool) {
-
+func Exists(pktInfo *packet.Info, now time.Time) (exists bool) {
 	switch {
-	case ipVersion == packet.IPv4 && protocol == packet.TCP:
+	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.TCP:
 		tcp4Lock.Lock()
 		defer tcp4Lock.Unlock()
-		return existsTCP(tcp4Connections, localIP, localPort, remoteIP, remotePort)
+		return existsTCP(tcp4Connections, pktInfo)
 
-	case ipVersion == packet.IPv6 && protocol == packet.TCP:
+	case pktInfo.Version == packet.IPv6 && pktInfo.Protocol == packet.TCP:
 		tcp6Lock.Lock()
 		defer tcp6Lock.Unlock()
-		return existsTCP(tcp6Connections, localIP, localPort, remoteIP, remotePort)
+		return existsTCP(tcp6Connections, pktInfo)
 
-	case ipVersion == packet.IPv4 && protocol == packet.UDP:
+	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.UDP:
 		udp4Lock.Lock()
 		defer udp4Lock.Unlock()
-		return existsUDP(udp4Binds, udp4States, localIP, localPort, remoteIP, remotePort, now)
+		return existsUDP(udp4Binds, udp4States, pktInfo, now)
 
-	case ipVersion == packet.IPv6 && protocol == packet.UDP:
+	case pktInfo.Version == packet.IPv6 && pktInfo.Protocol == packet.UDP:
 		udp6Lock.Lock()
 		defer udp6Lock.Unlock()
-		return existsUDP(udp6Binds, udp6States, localIP, localPort, remoteIP, remotePort, now)
+		return existsUDP(udp6Binds, udp6States, pktInfo, now)
 
 	default:
 		return false
 	}
 }
 
-func existsTCP(
-	connections []*socket.ConnectionInfo,
-	localIP net.IP,
-	localPort uint16,
-	remoteIP net.IP,
-	remotePort uint16,
-) (exists bool) {
+func existsTCP(connections []*socket.ConnectionInfo, pktInfo *packet.Info) (exists bool) {
+	localIP := pktInfo.LocalIP()
+	localPort := pktInfo.LocalPort()
+	remoteIP := pktInfo.RemoteIP()
+	remotePort := pktInfo.RemotePort()
 
 	// search connections
 	for _, socketInfo := range connections {
@@ -72,12 +60,14 @@ func existsTCP(
 func existsUDP(
 	binds []*socket.BindInfo,
 	udpStates map[string]map[string]*udpState,
-	localIP net.IP,
-	localPort uint16,
-	remoteIP net.IP,
-	remotePort uint16,
+	pktInfo *packet.Info,
 	now time.Time,
 ) (exists bool) {
+
+	localIP := pktInfo.LocalIP()
+	localPort := pktInfo.LocalPort()
+	remoteIP := pktInfo.RemoteIP()
+	remotePort := pktInfo.RemotePort()
 
 	connThreshhold := now.Add(-UDPConnectionTTL)
 
