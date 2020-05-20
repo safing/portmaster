@@ -215,8 +215,8 @@ func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, er
 			return nil, errors.New("internal error")
 		}
 
-		// make client available again
-		dc.done()
+		// make client available (again)
+		dc.addToPool()
 
 		if resolver.IsBlockedUpstream(reply) {
 			return nil, &BlockedUpstreamError{resolver.GetName()}

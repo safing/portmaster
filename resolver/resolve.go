@@ -14,8 +14,6 @@ import (
 )
 
 var (
-	mtAsyncResolve = "async resolve"
-
 	// basic errors
 
 	// ErrNotFound is a basic error that will match all "not found" errors
@@ -160,7 +158,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		log.Tracer(ctx).Trace("resolver: serving from cache, requesting new")
 
 		// resolve async
-		module.StartLowPriorityMicroTask(&mtAsyncResolve, func(ctx context.Context) error {
+		module.StartWorker("resolve async", func(ctx context.Context) error {
 			_, _ = resolveAndCache(ctx, q)
 			return nil
 		})
@@ -219,11 +217,6 @@ func resolveAndCache(ctx context.Context, q *Query) (rrCache *RRCache, err error
 	if len(resolvers) == 0 {
 		return nil, ErrNoCompliance
 	}
-
-	// prep
-	lastFailBoundary := time.Now().Add(
-		-time.Duration(nameserverRetryRate()) * time.Second,
-	)
 
 	// start resolving
 

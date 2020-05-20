@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/miekg/dns"
@@ -11,7 +12,7 @@ var (
 	domainFeed = make(chan string)
 )
 
-func testQuery(t *testing.T, wg *sync.WaitGroup, brc *BasicResolverConn, q *Query) {
+func testQuery(t *testing.T, wg *sync.WaitGroup, newCnt *uint32, brc *BasicResolverConn, q *Query) {
 	dnsClient := brc.clientManager.getDNSClient()
 
 	// create query
@@ -23,6 +24,9 @@ func testQuery(t *testing.T, wg *sync.WaitGroup, brc *BasicResolverConn, q *Quer
 	if err != nil {
 		t.Fatalf("failed to connect: %s", err) //nolint:staticcheck
 	}
+	if new {
+		atomic.AddUint32(newCnt, 1)
+	}
 
 	// query server
 	reply, ttl, err := dnsClient.client.ExchangeWithConn(dnsQuery, conn)
@@ -33,8 +37,8 @@ func testQuery(t *testing.T, wg *sync.WaitGroup, brc *BasicResolverConn, q *Quer
 		t.Fatalf("resolved %s, but reply was empty!", q.FQDN) //nolint:staticcheck
 	}
 
-	t.Logf("resolved %s with resolver %d (new=%v) in %s", q.FQDN, dnsClient.poolIndex, new, ttl)
-	dnsClient.done()
+	t.Logf("resolved %s [new resolver = %v] in %s", q.FQDN, new, ttl)
+	dnsClient.addToPool()
 	wg.Done()
 }
 
@@ -54,17 +58,18 @@ func TestClientPooling(t *testing.T) {
 	brc := resolver.Conn.(*BasicResolverConn)
 
 	wg := &sync.WaitGroup{}
+	var newCnt uint32
 	for i := 0; i < 10; i++ {
 		wg.Add(10)
 		for i := 0; i < 10; i++ {
-			go testQuery(t, wg, brc, &Query{
+			go testQuery(t, wg, &newCnt, brc, &Query{ //nolint:staticcheck
 				FQDN:  <-domainFeed,
 				QType: dns.Type(dns.TypeA),
 			})
 		}
 		wg.Wait()
-		if len(brc.clientManager.pool) != 10 {
-			t.Fatalf("unexpected pool size: %d", len(brc.clientManager.pool))
+		if newCnt > uint32(10+i) {
+			t.Fatalf("unexpected pool size: %d (limit is %d)", newCnt, 10+i)
 		}
 	}
 }

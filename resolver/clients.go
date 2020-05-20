@@ -12,8 +12,9 @@ import (
 
 const (
 	defaultClientTTL         = 5 * time.Minute
-	defaultRequestTimeout    = 5 * time.Second
-	connectionEOLGracePeriod = 10 * time.Second
+	defaultRequestTimeout    = 3 * time.Second // dns query
+	defaultConnectTimeout    = 2 * time.Second // tcp/tls
+	connectionEOLGracePeriod = 7 * time.Second
 )
 
 var (
@@ -43,23 +44,17 @@ type dnsClientManager struct {
 	factory       func() *dns.Client
 
 	// internal
-	pool []*dnsClient
+	pool sync.Pool
 }
 
 type dnsClient struct {
-	mgr *dnsClientManager
-
-	inUse     bool
-	useUntil  time.Time
-	dead      bool
-	inPool    bool
-	poolIndex int
-
-	client *dns.Client
-	conn   *dns.Conn
+	mgr      *dnsClientManager
+	client   *dns.Client
+	conn     *dns.Conn
+	useUntil time.Time
 }
 
-// conn returns the *dns.Conn and if it's new. This function may only be called between clientManager.getDNSClient() and dnsClient.done().
+// getConn returns the *dns.Conn and if it's new. This function may only be called between clientManager.getDNSClient() and dnsClient.done().
 func (dc *dnsClient) getConn() (c *dns.Conn, new bool, err error) {
 	if dc.conn == nil {
 		dc.conn, err = dc.client.Dial(dc.mgr.serverAddress)
@@ -71,23 +66,11 @@ func (dc *dnsClient) getConn() (c *dns.Conn, new bool, err error) {
 	return dc.conn, false, nil
 }
 
-func (dc *dnsClient) done() {
-	dc.mgr.lock.Lock()
-	defer dc.mgr.lock.Unlock()
-
-	dc.inUse = false
+func (dc *dnsClient) addToPool() {
+	dc.mgr.pool.Put(dc)
 }
 
 func (dc *dnsClient) destroy() {
-	dc.mgr.lock.Lock()
-	dc.inUse = true // block from being used
-	dc.dead = true  // abort cleaning
-	if dc.inPool {
-		dc.inPool = false
-		dc.mgr.pool[dc.poolIndex] = nil
-	}
-	dc.mgr.lock.Unlock()
-
 	if dc.conn != nil {
 		_ = dc.conn.Close()
 	}
@@ -118,6 +101,7 @@ func newTCPClientManager(resolver *Resolver) *dnsClientManager {
 				Timeout: defaultRequestTimeout,
 				Dialer: &net.Dialer{
 					LocalAddr: getLocalAddr("tcp"),
+					Timeout:   defaultConnectTimeout,
 					KeepAlive: defaultClientTTL,
 				},
 			}
@@ -140,6 +124,7 @@ func newTLSClientManager(resolver *Resolver) *dnsClientManager {
 				Timeout: defaultRequestTimeout,
 				Dialer: &net.Dialer{
 					LocalAddr: getLocalAddr("tcp"),
+					Timeout:   defaultConnectTimeout,
 					KeepAlive: defaultClientTTL,
 				},
 			}
@@ -159,11 +144,18 @@ func (cm *dnsClientManager) getDNSClient() *dnsClient {
 		}
 	}
 
-	// get first unused from pool
+	// get cached client from pool
 	now := time.Now().UTC()
-	for _, dc := range cm.pool {
-		if dc != nil && !dc.inUse && now.Before(dc.useUntil) {
-			dc.inUse = true
+
+poolLoop:
+	for {
+		dc, ok := cm.pool.Get().(*dnsClient)
+		switch {
+		case !ok || dc == nil: // cache empty (probably, pool may always return nil!)
+			break poolLoop // create new
+		case now.After(dc.useUntil):
+			continue // get next
+		default:
 			return dc
 		}
 	}
@@ -171,26 +163,10 @@ func (cm *dnsClientManager) getDNSClient() *dnsClient {
 	// no available in pool, create new
 	newClient := &dnsClient{
 		mgr:      cm,
-		inUse:    true,
-		useUntil: now.Add(cm.ttl),
-		inPool:   true,
 		client:   cm.factory(),
+		useUntil: now.Add(cm.ttl),
 	}
 	newClient.startCleaner()
-
-	// find free spot in pool
-	for poolIndex, dc := range cm.pool {
-		if dc == nil {
-			cm.pool[poolIndex] = newClient
-			newClient.poolIndex = poolIndex
-			return newClient
-		}
-	}
-
-	// append to pool
-	cm.pool = append(cm.pool, newClient)
-	newClient.poolIndex = len(cm.pool) - 1
-	// TODO: shrink pool again?
 
 	return newClient
 }
@@ -200,26 +176,12 @@ func (dc *dnsClient) startCleaner() {
 	// While a single worker to clean all connections may be slightly more performant, this approach focuses on least as possible locking and is simpler, thus less error prone.
 	module.StartWorker("dns client cleanup", func(ctx context.Context) error {
 		select {
-		case <-time.After(dc.mgr.ttl + time.Second):
-			dc.mgr.lock.Lock()
-			cleanNow := dc.dead || !dc.inUse
-			dc.mgr.lock.Unlock()
-
-			if cleanNow {
-				dc.destroy()
-				return nil
-			}
+		case <-time.After(dc.mgr.ttl + connectionEOLGracePeriod):
+			// destroy
 		case <-ctx.Done():
 			// give a short time before kill for graceful request completion
 			time.Sleep(100 * time.Millisecond)
 		}
-
-		// wait for grace period to end, then kill
-		select {
-		case <-time.After(connectionEOLGracePeriod):
-		case <-ctx.Done():
-		}
-
 		dc.destroy()
 		return nil
 	})
