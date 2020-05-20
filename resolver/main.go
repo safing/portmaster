@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/safing/portbase/log"
@@ -30,6 +31,7 @@ func start() error {
 	// load resolvers from config and environment
 	loadResolvers()
 
+	// reload after network change
 	err := module.RegisterEventHook(
 		"netenv",
 		"network changed",
@@ -37,6 +39,27 @@ func start() error {
 		func(_ context.Context, _ interface{}) error {
 			loadResolvers()
 			log.Debug("resolver: reloaded nameservers due to network change")
+			return nil
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	// reload after config change
+	prevNameservers := strings.Join(configuredNameServers(), " ")
+	err = module.RegisterEventHook(
+		"config",
+		"config change",
+		"update nameservers",
+		func(_ context.Context, _ interface{}) error {
+			newNameservers := strings.Join(configuredNameServers(), " ")
+			if newNameservers != prevNameservers {
+				prevNameservers = newNameservers
+
+				loadResolvers()
+				log.Debug("resolver: reloaded nameservers due to config change")
+			}
 			return nil
 		},
 	)
