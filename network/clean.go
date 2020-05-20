@@ -4,6 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/safing/portmaster/network/packet"
+
+	"github.com/safing/portmaster/network/state"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/process"
 )
@@ -22,8 +26,12 @@ func connectionCleaner(ctx context.Context) error {
 			ticker.Stop()
 			return nil
 		case <-ticker.C:
+			// clean connections and processes
 			activePIDs := cleanConnections()
 			process.CleanProcessStorage(activePIDs)
+
+			// clean udp connection states
+			state.CleanUDPStates(ctx)
 		}
 	}
 }
@@ -33,13 +41,10 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 
 	name := "clean connections" // TODO: change to new fn
 	_ = module.RunMediumPriorityMicroTask(&name, func(ctx context.Context) error {
-		activeIDs := make(map[string]struct{})
-		for _, cID := range process.GetActiveConnectionIDs() {
-			activeIDs[cID] = struct{}{}
-		}
 
-		now := time.Now().Unix()
-		deleteOlderThan := time.Now().Add(-deleteConnsAfterEndedThreshold).Unix()
+		now := time.Now().UTC()
+		nowUnix := now.Unix()
+		deleteOlderThan := now.Add(-deleteConnsAfterEndedThreshold).Unix()
 
 		// lock both together because we cannot fully guarantee in which map a connection lands
 		// of course every connection should land in the correct map, but this increases resilience
@@ -49,20 +54,27 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 		defer dnsConnsLock.Unlock()
 
 		// network connections
-		for key, conn := range conns {
+		for _, conn := range conns {
 			conn.Lock()
 
 			// delete inactive connections
 			switch {
 			case conn.Ended == 0:
 				// Step 1: check if still active
-				_, ok := activeIDs[key]
-				if ok {
-					activePIDs[conn.process.Pid] = struct{}{}
-				} else {
+				exists := state.Exists(&packet.Info{
+					Inbound:  false, // src == local
+					Version:  conn.IPVersion,
+					Protocol: conn.IPProtocol,
+					Src:      conn.LocalIP,
+					SrcPort:  conn.LocalPort,
+					Dst:      conn.Entity.IP,
+					DstPort:  conn.Entity.Port,
+				}, now)
+				activePIDs[conn.process.Pid] = struct{}{}
+
+				if !exists {
 					// Step 2: mark end
-					activePIDs[conn.process.Pid] = struct{}{}
-					conn.Ended = now
+					conn.Ended = nowUnix
 					conn.Save()
 				}
 			case conn.Ended < deleteOlderThan:

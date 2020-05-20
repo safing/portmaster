@@ -201,7 +201,7 @@ func invalidDefinitionError(fields []string, msg string) error {
 	return fmt.Errorf(`invalid endpoint definition: "%s" - %s`, strings.Join(fields, " "), msg)
 }
 
-func parseEndpoint(value string) (endpoint Endpoint, err error) {
+func parseEndpoint(value string) (endpoint Endpoint, err error) { //nolint:gocognit
 	fields := strings.Fields(value)
 	if len(fields) < 2 {
 		return nil, fmt.Errorf(`invalid endpoint definition: "%s"`, value)
@@ -229,6 +229,10 @@ func parseEndpoint(value string) (endpoint Endpoint, err error) {
 	}
 	// asn
 	if endpoint, err = parseTypeASN(fields); endpoint != nil || err != nil {
+		return
+	}
+	// scopes
+	if endpoint, err = parseTypeScope(fields); endpoint != nil || err != nil {
 		return
 	}
 	// lists

@@ -43,6 +43,12 @@ func TestEndpointParsing(t *testing.T) {
 	testParsing(t, "+ AS1234")
 	testParsing(t, "+ AS12345")
 
+	// network scope
+	testParsing(t, "+ Localhost")
+	testParsing(t, "+ LAN")
+	testParsing(t, "+ Internet")
+	testParsing(t, "+ Localhost,LAN,Internet")
+
 	// protocol and ports
 	testParsing(t, "+ * TCP/1-1024")
 	testParsing(t, "+ * */DNS")

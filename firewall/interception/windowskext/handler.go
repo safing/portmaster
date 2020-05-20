@@ -62,7 +62,7 @@ func Handler(packets chan packet.Packet) {
 		}
 
 		info := new.Info()
-		info.Direction = packetInfo.direction > 0
+		info.Inbound = packetInfo.direction > 0
 		info.InTunnel = false
 		info.Protocol = packet.IPProtocol(packetInfo.protocol)
 
@@ -76,7 +76,7 @@ func Handler(packets chan packet.Packet) {
 		// IPs
 		if info.Version == packet.IPv4 {
 			// IPv4
-			if info.Direction {
+			if info.Inbound {
 				// Inbound
 				info.Src = convertIPv4(packetInfo.remoteIP)
 				info.Dst = convertIPv4(packetInfo.localIP)
@@ -87,7 +87,7 @@ func Handler(packets chan packet.Packet) {
 			}
 		} else {
 			// IPv6
-			if info.Direction {
+			if info.Inbound {
 				// Inbound
 				info.Src = convertIPv6(packetInfo.remoteIP)
 				info.Dst = convertIPv6(packetInfo.localIP)
@@ -99,7 +99,7 @@ func Handler(packets chan packet.Packet) {
 		}
 
 		// Ports
-		if info.Direction {
+		if info.Inbound {
 			// Inbound
 			info.SrcPort = packetInfo.remotePort
 			info.DstPort = packetInfo.localPort
@@ -113,19 +113,17 @@ func Handler(packets chan packet.Packet) {
 	}
 }
 
+// convertIPv4 as needed for data from the kernel
 func convertIPv4(input [4]uint32) net.IP {
-	return net.IPv4(
-		uint8(input[0]>>24&0xFF),
-		uint8(input[0]>>16&0xFF),
-		uint8(input[0]>>8&0xFF),
-		uint8(input[0]&0xFF),
-	)
+	addressBuf := make([]byte, 4)
+	binary.BigEndian.PutUint32(addressBuf, input[0])
+	return net.IP(addressBuf)
 }
 
 func convertIPv6(input [4]uint32) net.IP {
 	addressBuf := make([]byte, 16)
 	for i := 0; i < 4; i++ {
-		binary.LittleEndian.PutUint32(addressBuf[i*4:i*4+4], input[i])
+		binary.BigEndian.PutUint32(addressBuf[i*4:i*4+4], input[i])
 	}
 	return net.IP(addressBuf)
 }

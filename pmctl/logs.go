@@ -74,7 +74,7 @@ func finalizeLogFile(logFile *os.File, logFilePath string) {
 
 func initControlLogFile() *os.File {
 	// check logging dir
-	logFileBasePath := filepath.Join(logsRoot.Path, "fstree", "control")
+	logFileBasePath := filepath.Join(logsRoot.Path, "control")
 	err := logsRoot.EnsureAbsPath(logFileBasePath)
 	if err != nil {
 		log.Printf("failed to check/create log file folder %s: %s\n", logFileBasePath, err)
@@ -93,7 +93,7 @@ func logControlError(cErr error) {
 	}
 
 	// check logging dir
-	logFileBasePath := filepath.Join(logsRoot.Path, "fstree", "control")
+	logFileBasePath := filepath.Join(logsRoot.Path, "control")
 	err := logsRoot.EnsureAbsPath(logFileBasePath)
 	if err != nil {
 		log.Printf("failed to check/create log file folder %s: %s\n", logFileBasePath, err)
@@ -114,7 +114,7 @@ func logControlError(cErr error) {
 //nolint:deadcode,unused // TODO
 func logControlStack() {
 	// check logging dir
-	logFileBasePath := filepath.Join(logsRoot.Path, "fstree", "control")
+	logFileBasePath := filepath.Join(logsRoot.Path, "control")
 	err := logsRoot.EnsureAbsPath(logFileBasePath)
 	if err != nil {
 		log.Printf("failed to check/create log file folder %s: %s\n", logFileBasePath, err)

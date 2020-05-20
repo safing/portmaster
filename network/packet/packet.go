@@ -36,22 +36,22 @@ func (pkt *Base) SetPacketInfo(packetInfo Info) {
 
 // SetInbound sets a the packet direction to inbound. This must only used when initializing the packet structure.
 func (pkt *Base) SetInbound() {
-	pkt.info.Direction = true
+	pkt.info.Inbound = true
 }
 
 // SetOutbound sets a the packet direction to outbound. This must only used when initializing the packet structure.
 func (pkt *Base) SetOutbound() {
-	pkt.info.Direction = false
+	pkt.info.Inbound = false
 }
 
 // IsInbound checks if the packet is inbound.
 func (pkt *Base) IsInbound() bool {
-	return pkt.info.Direction
+	return pkt.info.Inbound
 }
 
 // IsOutbound checks if the packet is outbound.
 func (pkt *Base) IsOutbound() bool {
-	return !pkt.info.Direction
+	return !pkt.info.Inbound
 }
 
 // HasPorts checks if the packet has a protocol that uses ports.
@@ -80,13 +80,13 @@ func (pkt *Base) GetConnectionID() string {
 
 func (pkt *Base) createConnectionID() {
 	if pkt.info.Protocol == TCP || pkt.info.Protocol == UDP {
-		if pkt.info.Direction {
+		if pkt.info.Inbound {
 			pkt.connID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.info.Protocol, pkt.info.Dst, pkt.info.DstPort, pkt.info.Src, pkt.info.SrcPort)
 		} else {
 			pkt.connID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.info.Protocol, pkt.info.Src, pkt.info.SrcPort, pkt.info.Dst, pkt.info.DstPort)
 		}
 	} else {
-		if pkt.info.Direction {
+		if pkt.info.Inbound {
 			pkt.connID = fmt.Sprintf("%d-%s-%s", pkt.info.Protocol, pkt.info.Dst, pkt.info.Src)
 		} else {
 			pkt.connID = fmt.Sprintf("%d-%s-%s", pkt.info.Protocol, pkt.info.Src, pkt.info.Dst)
@@ -105,7 +105,7 @@ func (pkt *Base) MatchesAddress(remote bool, protocol IPProtocol, network *net.I
 	if pkt.info.Protocol != protocol {
 		return false
 	}
-	if pkt.info.Direction != remote {
+	if pkt.info.Inbound != remote {
 		if !network.Contains(pkt.info.Src) {
 			return false
 		}
@@ -131,7 +131,7 @@ func (pkt *Base) MatchesAddress(remote bool, protocol IPProtocol, network *net.I
 // Remote  Src  Dst
 //
 func (pkt *Base) MatchesIP(endpoint bool, network *net.IPNet) bool {
-	if pkt.info.Direction != endpoint {
+	if pkt.info.Inbound != endpoint {
 		if network.Contains(pkt.info.Src) {
 			return true
 		}
@@ -152,12 +152,12 @@ func (pkt *Base) String() string {
 // FmtPacket returns the most important information about the packet as a string
 func (pkt *Base) FmtPacket() string {
 	if pkt.info.Protocol == TCP || pkt.info.Protocol == UDP {
-		if pkt.info.Direction {
+		if pkt.info.Inbound {
 			return fmt.Sprintf("IN %s %s:%d <-> %s:%d", pkt.info.Protocol, pkt.info.Dst, pkt.info.DstPort, pkt.info.Src, pkt.info.SrcPort)
 		}
 		return fmt.Sprintf("OUT %s %s:%d <-> %s:%d", pkt.info.Protocol, pkt.info.Src, pkt.info.SrcPort, pkt.info.Dst, pkt.info.DstPort)
 	}
-	if pkt.info.Direction {
+	if pkt.info.Inbound {
 		return fmt.Sprintf("IN %s %s <-> %s", pkt.info.Protocol, pkt.info.Dst, pkt.info.Src)
 	}
 	return fmt.Sprintf("OUT %s %s <-> %s", pkt.info.Protocol, pkt.info.Src, pkt.info.Dst)
@@ -170,7 +170,7 @@ func (pkt *Base) FmtProtocol() string {
 
 // FmtRemoteIP returns the remote IP address as a string
 func (pkt *Base) FmtRemoteIP() string {
-	if pkt.info.Direction {
+	if pkt.info.Inbound {
 		return pkt.info.Src.String()
 	}
 	return pkt.info.Dst.String()
@@ -179,7 +179,7 @@ func (pkt *Base) FmtRemoteIP() string {
 // FmtRemotePort returns the remote port as a string
 func (pkt *Base) FmtRemotePort() string {
 	if pkt.info.SrcPort != 0 {
-		if pkt.info.Direction {
+		if pkt.info.Inbound {
 			return fmt.Sprintf("%d", pkt.info.SrcPort)
 		}
 		return fmt.Sprintf("%d", pkt.info.DstPort)

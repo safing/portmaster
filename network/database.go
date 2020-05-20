@@ -5,6 +5,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/safing/portmaster/network/state"
+
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/iterator"
 	"github.com/safing/portbase/database/query"
@@ -55,6 +57,14 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 			conn, ok := conns[splitted[3]]
 			if ok {
 				return conn, nil
+			}
+		}
+	case "system":
+		if len(splitted) >= 2 {
+			switch splitted[1] {
+			case "state":
+				return state.GetInfo(), nil
+			default:
 			}
 		}
 	}

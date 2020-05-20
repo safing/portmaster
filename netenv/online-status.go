@@ -201,20 +201,11 @@ func triggerOnlineStatusInvestigation() {
 
 func monitorOnlineStatus(ctx context.Context) error {
 	for {
-		timeout := 5 * time.Minute
-		/*
-			if GetOnlineStatus() != StatusOnline {
-				timeout = time.Second
-				log.Debugf("checking online status again in %s because current status is %s", timeout, GetOnlineStatus())
-			}
-		*/
 		// wait for trigger
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-onlineStatusInvestigationTrigger:
-
-		case <-time.After(timeout):
 		}
 
 		// enable waiting

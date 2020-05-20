@@ -152,7 +152,7 @@ func start() error {
 
 	err = registry.LoadIndexes()
 	if err != nil {
-		return err
+		log.Warningf("updates: failed to load indexes: %s", err)
 	}
 
 	err = registry.ScanStorage("")
@@ -235,8 +235,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 	}()
 
 	if err = registry.UpdateIndexes(); err != nil {
-		err = fmt.Errorf("failed to update indexes: %w", err)
-		return
+		log.Warningf("updates: failed to update indexes: %s", err)
 	}
 
 	err = registry.DownloadUpdates(ctx)

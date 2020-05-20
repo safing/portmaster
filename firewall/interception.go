@@ -138,7 +138,7 @@ func handlePacket(pkt packet.Packet) {
 	// 	pkt.RedirToNameserver()
 	// }
 
-	// allow ICMP, IGMP and DHCP
+	// allow ICMP and DHCP
 	// TODO: actually handle these
 	switch meta.Protocol {
 	case packet.ICMP:
@@ -147,10 +147,6 @@ func handlePacket(pkt packet.Packet) {
 		return
 	case packet.ICMPv6:
 		log.Debugf("accepting ICMPv6: %s", pkt)
-		_ = pkt.PermanentAccept()
-		return
-	case packet.IGMP:
-		log.Debugf("accepting IGMP: %s", pkt)
 		_ = pkt.PermanentAccept()
 		return
 	case packet.UDP:
@@ -218,6 +214,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	// reroute dns requests to nameserver
 	if conn.Process().Pid != os.Getpid() && pkt.IsOutbound() && pkt.Info().DstPort == 53 && !pkt.Info().Src.Equal(pkt.Info().Dst) {
 		conn.Verdict = network.VerdictRerouteToNameserver
+		conn.Internal = true
 		conn.StopFirewallHandler()
 		issueVerdict(conn, pkt, 0, true)
 		return
@@ -233,7 +230,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	log.Tracer(pkt.Ctx()).Trace("filter: starting decision process")
-	DecideOnConnection(conn, pkt)
+	DecideOnConnection(pkt.Ctx(), conn, pkt)
 	conn.Inspecting = false // TODO: enable inspecting again
 
 	switch {

@@ -342,7 +342,26 @@ func TestEndpointMatching(t *testing.T) {
 		IP: net.ParseIP("151.101.1.164"), // nytimes.com
 	}).Init(), NoMatch)
 
+	// Scope
+
+	ep, err = parseEndpoint("+ Localhost,LAN")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testEndpointMatch(t, ep, (&intel.Entity{
+		IP: net.ParseIP("192.168.0.1"),
+	}).Init(), Permitted)
+	testEndpointMatch(t, ep, (&intel.Entity{
+		IP: net.ParseIP("151.101.1.164"), // nytimes.com
+	}).Init(), NoMatch)
+
 	// Lists
+
+	_, err = parseEndpoint("+ L:A,B,C")
+	if err != nil {
+		t.Fatal(err)
+	}
 	// TODO: write test for lists matcher
 
 }

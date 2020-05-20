@@ -10,6 +10,8 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/safing/portmaster/network/socket"
+
 	"github.com/safing/portbase/log"
 )
 
@@ -18,8 +20,8 @@ var (
 	pidsByUser     = make(map[int][]int)
 )
 
-// GetPidOfInode returns the pid of the given uid and socket inode.
-func GetPidOfInode(uid, inode int) (int, bool) { //nolint:gocognit // TODO
+// FindPID returns the pid of the given uid and socket inode.
+func FindPID(uid, inode int) (pid int) { //nolint:gocognit // TODO
 	pidsByUserLock.Lock()
 	defer pidsByUserLock.Unlock()
 
@@ -38,7 +40,7 @@ func GetPidOfInode(uid, inode int) (int, bool) { //nolint:gocognit // TODO
 		var checkedUserPids []int
 		for _, possiblePID := range pids {
 			if findSocketFromPid(possiblePID, inode) {
-				return possiblePID, true
+				return possiblePID
 			}
 			checkedUserPids = append(checkedUserPids, possiblePID)
 		}
@@ -57,7 +59,7 @@ func GetPidOfInode(uid, inode int) (int, bool) { //nolint:gocognit // TODO
 				// only check if not already checked
 				if sort.SearchInts(checkedUserPids, possiblePID) == len {
 					if findSocketFromPid(possiblePID, inode) {
-						return possiblePID, true
+						return possiblePID
 					}
 				}
 			}
@@ -71,13 +73,13 @@ func GetPidOfInode(uid, inode int) (int, bool) { //nolint:gocognit // TODO
 		if possibleUID != uid {
 			for _, possiblePID := range pids {
 				if findSocketFromPid(possiblePID, inode) {
-					return possiblePID, true
+					return possiblePID
 				}
 			}
 		}
 	}
 
-	return unidentifiedProcessID, false
+	return socket.UnidentifiedProcessID
 }
 
 func findSocketFromPid(pid, inode int) bool {

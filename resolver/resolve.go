@@ -14,8 +14,6 @@ import (
 )
 
 var (
-	mtAsyncResolve = "async resolve"
-
 	// basic errors
 
 	// ErrNotFound is a basic error that will match all "not found" errors
@@ -114,6 +112,7 @@ func Resolve(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
 				rrCache.MixAnswers()
 				return rrCache, nil
 			}
+			log.Tracer(ctx).Debugf("resolver: waited for another %s%s query, but cache missed!", q.FQDN, q.QType)
 			// if cache is still empty or non-compliant, go ahead and just query
 		} else {
 			// we are the first!
@@ -132,14 +131,14 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 	if err != nil {
 		if err != database.ErrNotFound {
 			log.Tracer(ctx).Warningf("resolver: getting RRCache %s%s from database failed: %s", q.FQDN, q.QType.String(), err)
-			log.Warningf("resolver: getting RRCache %s%s from database failed: %s", q.FQDN, q.QType.String(), err)
 		}
 		return nil
 	}
 
 	// get resolver that rrCache was resolved with
-	resolver := getResolverByIDWithLocking(rrCache.Server)
+	resolver := getActiveResolverByIDWithLocking(rrCache.Server)
 	if resolver == nil {
+		log.Tracer(ctx).Debugf("resolver: ignoring RRCache %s%s because source server %s has been removed", q.FQDN, q.QType.String(), rrCache.Server)
 		return nil
 	}
 
@@ -159,12 +158,13 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		log.Tracer(ctx).Trace("resolver: serving from cache, requesting new")
 
 		// resolve async
-		module.StartMediumPriorityMicroTask(&mtAsyncResolve, func(ctx context.Context) error {
+		module.StartWorker("resolve async", func(ctx context.Context) error {
 			_, _ = resolveAndCache(ctx, q)
 			return nil
 		})
 	}
 
+	log.Tracer(ctx).Tracef("resolver: using cached RR (expires in %s)", time.Until(time.Unix(rrCache.TTL, 0)))
 	return rrCache
 }
 
@@ -218,11 +218,6 @@ func resolveAndCache(ctx context.Context, q *Query) (rrCache *RRCache, err error
 		return nil, ErrNoCompliance
 	}
 
-	// prep
-	lastFailBoundary := time.Now().Add(
-		-time.Duration(nameserverRetryRate()) * time.Second,
-	)
-
 	// start resolving
 
 	var i int
@@ -231,7 +226,7 @@ resolveLoop:
 	for i = 0; i < 2; i++ {
 		for _, resolver := range resolvers {
 			// check if resolver failed recently (on first run)
-			if i == 0 && resolver.Conn.LastFail().After(lastFailBoundary) {
+			if i == 0 && resolver.Conn.IsFailing() {
 				log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it failed recently", resolver)
 				continue
 			}

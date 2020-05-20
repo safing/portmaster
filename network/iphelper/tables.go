@@ -3,11 +3,14 @@
 package iphelper
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
 	"sync"
 	"unsafe"
+
+	"github.com/safing/portmaster/network/socket"
 
 	"golang.org/x/sys/windows"
 )
@@ -21,19 +24,6 @@ const (
 	winErrInsufficientBuffer = uintptr(windows.ERROR_INSUFFICIENT_BUFFER)
 	winErrInvalidParameter   = uintptr(windows.ERROR_INVALID_PARAMETER)
 )
-
-// ConnectionEntry describes a connection state table entry.
-type ConnectionEntry struct {
-	localIP    net.IP
-	remoteIP   net.IP
-	localPort  uint16
-	remotePort uint16
-	pid        int
-}
-
-func (entry *ConnectionEntry) String() string {
-	return fmt.Sprintf("PID=%d %s:%d <> %s:%d", entry.pid, entry.localIP, entry.localPort, entry.remoteIP, entry.remotePort)
-}
 
 type iphelperTCPTable struct {
 	// docs: https://msdn.microsoft.com/en-us/library/windows/desktop/aa366921(v=vs.85).aspx
@@ -148,9 +138,9 @@ func increaseBufSize() int {
 	return bufSize
 }
 
-// GetTables returns the current connection state table of Windows of the given protocol and IP version.
-func (ipHelper *IPHelper) GetTables(protocol uint8, ipVersion uint8) (connections []*ConnectionEntry, listeners []*ConnectionEntry, err error) { //nolint:gocognit,gocycle // TODO
-	// docs: https://msdn.microsoft.com/en-us/library/windows/desktop/aa365928(v=vs.85).aspx
+// getTable returns the current connection state table of Windows of the given protocol and IP version.
+func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*socket.ConnectionInfo, binds []*socket.BindInfo, err error) { //nolint:gocognit,gocycle // TODO
+	// docs: https://docs.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-getextendedtcptable
 
 	if !ipHelper.valid.IsSet() {
 		return nil, nil, errInvalid
@@ -220,26 +210,27 @@ func (ipHelper *IPHelper) GetTables(protocol uint8, ipVersion uint8) (connection
 		table := tcpTable.table[:tcpTable.numEntries]
 
 		for _, row := range table {
-			new := &ConnectionEntry{}
-
-			// PID
-			new.pid = int(row.owningPid)
-
-			// local
-			if row.localAddr != 0 {
-				new.localIP = convertIPv4(row.localAddr)
-			}
-			new.localPort = uint16(row.localPort>>8 | row.localPort<<8)
-
-			// remote
 			if row.state == iphelperTCPStateListen {
-				listeners = append(listeners, new)
+				binds = append(binds, &socket.BindInfo{
+					Local: socket.Address{
+						IP:   convertIPv4(row.localAddr),
+						Port: convertPort(row.localPort),
+					},
+					PID: int(row.owningPid),
+				})
 			} else {
-				new.remoteIP = convertIPv4(row.remoteAddr)
-				new.remotePort = uint16(row.remotePort>>8 | row.remotePort<<8)
-				connections = append(connections, new)
+				connections = append(connections, &socket.ConnectionInfo{
+					Local: socket.Address{
+						IP:   convertIPv4(row.localAddr),
+						Port: convertPort(row.localPort),
+					},
+					Remote: socket.Address{
+						IP:   convertIPv4(row.remoteAddr),
+						Port: convertPort(row.remotePort),
+					},
+					PID: int(row.owningPid),
+				})
 			}
-
 		}
 
 	case protocol == TCP && ipVersion == IPv6:
@@ -248,27 +239,27 @@ func (ipHelper *IPHelper) GetTables(protocol uint8, ipVersion uint8) (connection
 		table := tcpTable.table[:tcpTable.numEntries]
 
 		for _, row := range table {
-			new := &ConnectionEntry{}
-
-			// PID
-			new.pid = int(row.owningPid)
-
-			// local
-			new.localIP = net.IP(row.localAddr[:])
-			new.localPort = uint16(row.localPort>>8 | row.localPort<<8)
-
-			// remote
 			if row.state == iphelperTCPStateListen {
-				if new.localIP.Equal(net.IPv6zero) {
-					new.localIP = nil
-				}
-				listeners = append(listeners, new)
+				binds = append(binds, &socket.BindInfo{
+					Local: socket.Address{
+						IP:   net.IP(row.localAddr[:]),
+						Port: convertPort(row.localPort),
+					},
+					PID: int(row.owningPid),
+				})
 			} else {
-				new.remoteIP = net.IP(row.remoteAddr[:])
-				new.remotePort = uint16(row.remotePort>>8 | row.remotePort<<8)
-				connections = append(connections, new)
+				connections = append(connections, &socket.ConnectionInfo{
+					Local: socket.Address{
+						IP:   net.IP(row.localAddr[:]),
+						Port: convertPort(row.localPort),
+					},
+					Remote: socket.Address{
+						IP:   net.IP(row.remoteAddr[:]),
+						Port: convertPort(row.remotePort),
+					},
+					PID: int(row.owningPid),
+				})
 			}
-
 		}
 
 	case protocol == UDP && ipVersion == IPv4:
@@ -277,19 +268,13 @@ func (ipHelper *IPHelper) GetTables(protocol uint8, ipVersion uint8) (connection
 		table := udpTable.table[:udpTable.numEntries]
 
 		for _, row := range table {
-			new := &ConnectionEntry{}
-
-			// PID
-			new.pid = int(row.owningPid)
-
-			// local
-			new.localPort = uint16(row.localPort>>8 | row.localPort<<8)
-			if row.localAddr == 0 {
-				listeners = append(listeners, new)
-			} else {
-				new.localIP = convertIPv4(row.localAddr)
-				connections = append(connections, new)
-			}
+			binds = append(binds, &socket.BindInfo{
+				Local: socket.Address{
+					IP:   convertIPv4(row.localAddr),
+					Port: convertPort(row.localPort),
+				},
+				PID: int(row.owningPid),
+			})
 		}
 
 	case protocol == UDP && ipVersion == IPv6:
@@ -298,32 +283,28 @@ func (ipHelper *IPHelper) GetTables(protocol uint8, ipVersion uint8) (connection
 		table := udpTable.table[:udpTable.numEntries]
 
 		for _, row := range table {
-			new := &ConnectionEntry{}
-
-			// PID
-			new.pid = int(row.owningPid)
-
-			// local
-			new.localIP = net.IP(row.localAddr[:])
-			new.localPort = uint16(row.localPort>>8 | row.localPort<<8)
-			if new.localIP.Equal(net.IPv6zero) {
-				new.localIP = nil
-				listeners = append(listeners, new)
-			} else {
-				connections = append(connections, new)
-			}
+			binds = append(binds, &socket.BindInfo{
+				Local: socket.Address{
+					IP:   net.IP(row.localAddr[:]),
+					Port: convertPort(row.localPort),
+				},
+				PID: int(row.owningPid),
+			})
 		}
 
 	}
 
-	return connections, listeners, nil
+	return connections, binds, nil
 }
 
+// convertIPv4 as needed for iphlpapi.dll
 func convertIPv4(input uint32) net.IP {
-	return net.IPv4(
-		uint8(input&0xFF),
-		uint8(input>>8&0xFF),
-		uint8(input>>16&0xFF),
-		uint8(input>>24&0xFF),
-	)
+	addressBuf := make([]byte, 4)
+	binary.LittleEndian.PutUint32(addressBuf, input)
+	return net.IP(addressBuf)
+}
+
+// convertPort converts ports received from iphlpapi.dll
+func convertPort(input uint32) uint16 {
+	return uint16(input>>8 | input<<8)
 }

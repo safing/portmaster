@@ -71,9 +71,9 @@ func (br ListBlockReason) GetExtraRR(_ *dns.Msg, _ string, _ interface{}) []dns.
 
 	for _, lm := range br {
 		blockedBy, err := dns.NewRR(fmt.Sprintf(
-			"%s-blockedBy.		0	IN	TXT 	%q",
-			strings.TrimRight(lm.Entity, "."),
-			strings.Join(lm.ActiveLists, ","),
+			`%s 0 IN TXT "blocked by filter lists %s"`,
+			lm.Entity,
+			strings.Join(lm.ActiveLists, ", "),
 		))
 		if err == nil {
 			rrs = append(rrs, blockedBy)
@@ -83,9 +83,9 @@ func (br ListBlockReason) GetExtraRR(_ *dns.Msg, _ string, _ interface{}) []dns.
 
 		if len(lm.InactiveLists) > 0 {
 			wouldBeBlockedBy, err := dns.NewRR(fmt.Sprintf(
-				"%s-wouldBeBlockedBy.		0	IN	TXT 	%q",
-				strings.TrimRight(lm.Entity, "."),
-				strings.Join(lm.InactiveLists, ","),
+				`%s 0 IN TXT "would be blocked by filter lists %s"`,
+				lm.Entity,
+				strings.Join(lm.InactiveLists, ", "),
 			))
 			if err == nil {
 				rrs = append(rrs, wouldBeBlockedBy)

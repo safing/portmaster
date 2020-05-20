@@ -227,7 +227,7 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 
 	// log files
 	var logFile, errorFile *os.File
-	logFileBasePath := filepath.Join(logsRoot.Path, "fstree", opts.ShortIdentifier)
+	logFileBasePath := filepath.Join(logsRoot.Path, opts.ShortIdentifier)
 	err = logsRoot.EnsureAbsPath(logFileBasePath)
 	if err != nil {
 		log.Printf("failed to check/create log file dir %s: %s\n", logFileBasePath, err)

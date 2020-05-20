@@ -94,6 +94,7 @@ func registerConfiguration() error {
 		Description:     `The default filter action when nothing else permits or blocks a connection.`,
 		Order:           cfgOptionDefaultActionOrder,
 		OptType:         config.OptTypeString,
+		ReleaseLevel:    config.ReleaseLevelExperimental,
 		DefaultValue:    "permit",
 		ExternalOptType: "string list",
 		ValidationRegex: "^(permit|ask|block)$",
@@ -121,17 +122,12 @@ func registerConfiguration() error {
 	cfgOptionDisableAutoPermit = config.Concurrent.GetAsInt(CfgOptionDisableAutoPermitKey, int64(status.SecurityLevelsAll))
 	cfgIntOptions[CfgOptionDisableAutoPermitKey] = cfgOptionDisableAutoPermit
 
-	// Endpoint Filter List
-	err = config.Register(&config.Option{
-		Name:        "Endpoint Filter List",
-		Key:         CfgOptionEndpointsKey,
-		Description: "Filter outgoing connections by matching the destination endpoint. Network Scope restrictions still apply.",
-		Help: `Format:
+	filterListHelp := `Format:
 	Permission:
 		"+": permit
 		"-": block
 	Host Matching:
-		IP, CIDR, Country Code, ASN, Filterlist, "*" for any
+		IP, CIDR, Country Code, ASN, Filterlist, Network Scope, "*" for any
 		Domains:
 			"example.com": exact match
 			".example.com": exact match + subdomains
@@ -144,11 +140,20 @@ func registerConfiguration() error {
 Examples:
 	+ .example.com */HTTP
 	- .example.com
-	+ 192.168.0.1/24
+	+ 192.168.0.1
+	+ 192.168.1.1/24
+	+ Localhost,LAN
+	- AS123456789
 	- L:MAL
-	- AS0
 	+ AT
-	- *`,
+	- *`
+
+	// Endpoint Filter List
+	err = config.Register(&config.Option{
+		Name:            "Endpoint Filter List",
+		Key:             CfgOptionEndpointsKey,
+		Description:     "Filter outgoing connections by matching the destination endpoint. Network Scope restrictions still apply.",
+		Help:            filterListHelp,
 		Order:           cfgOptionEndpointsOrder,
 		OptType:         config.OptTypeStringArray,
 		DefaultValue:    []string{},
@@ -163,35 +168,13 @@ Examples:
 
 	// Service Endpoint Filter List
 	err = config.Register(&config.Option{
-		Name:        "Service Endpoint Filter List",
-		Key:         CfgOptionServiceEndpointsKey,
-		Description: "Filter incoming connections by matching the source endpoint. Network Scope restrictions and the inbound permission still apply. Also not that the implicit default action of this list is to always block.",
-		Help: `Format:
-	Permission:
-		"+": permit
-		"-": block
-	Host Matching:
-		IP, CIDR, Country Code, ASN, Filterlist, "*" for any
-		Domains:
-			"example.com": exact match
-			".example.com": exact match + subdomains
-			"*xample.com": prefix wildcard
-			"example.*": suffix wildcard
-			"*example*": prefix and suffix wildcard  
-	Protocol and Port Matching (optional):
-		<protocol>/<port>
-
-Examples:
-	+ .example.com */HTTP
-	- .example.com
-	+ 192.168.0.1/24
-	- L:MAL
-	- AS0
-	+ AT
-	- *`,
+		Name:            "Service Endpoint Filter List",
+		Key:             CfgOptionServiceEndpointsKey,
+		Description:     "Filter incoming connections by matching the source endpoint. Network Scope restrictions and the inbound permission still apply. Also not that the implicit default action of this list is to always block.",
+		Help:            filterListHelp,
 		Order:           cfgOptionServiceEndpointsOrder,
 		OptType:         config.OptTypeStringArray,
-		DefaultValue:    []string{},
+		DefaultValue:    []string{"+ Localhost"},
 		ExternalOptType: "endpoint list",
 		ValidationRegex: `^(\+|\-) [A-z0-9\.:\-*/]+( [A-z0-9/]+)?$`,
 	})
@@ -313,7 +296,7 @@ Examples:
 		Order:           cfgOptionBlockP2POrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsAll,
+		DefaultValue:    status.SecurityLevelExtreme,
 		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
@@ -326,7 +309,7 @@ Examples:
 	err = config.Register(&config.Option{
 		Name:            "Block Inbound Connections",
 		Key:             CfgOptionBlockInboundKey,
-		Description:     "Connections initiated towards your device. This will usually only be the case if you are running a network service or are using peer to peer software.",
+		Description:     "Connections initiated towards your device from the LAN or Internet. This will usually only be the case if you are running a network service or are using peer to peer software.",
 		Order:           cfgOptionBlockInboundOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",

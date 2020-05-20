@@ -25,7 +25,7 @@ var (
 	globalResolvers []*Resolver          // all (global) resolvers
 	localResolvers  []*Resolver          // all resolvers that are in site-local or link-local IP ranges
 	localScopes     []*Scope             // list of scopes with a list of local resolvers that can resolve the scope
-	allResolvers    map[string]*Resolver // lookup map of all resolvers
+	activeResolvers map[string]*Resolver // lookup map of all resolvers
 	resolversLock   sync.RWMutex
 
 	dupReqMap  = make(map[string]*sync.WaitGroup)
@@ -41,11 +41,11 @@ func indexOfScope(domain string, list []*Scope) int {
 	return -1
 }
 
-func getResolverByIDWithLocking(server string) *Resolver {
-	resolversLock.Lock()
-	defer resolversLock.Unlock()
+func getActiveResolverByIDWithLocking(server string) *Resolver {
+	resolversLock.RLock()
+	defer resolversLock.RUnlock()
 
-	resolver, ok := allResolvers[server]
+	resolver, ok := activeResolvers[server]
 	if ok {
 		return resolver
 	}
@@ -62,7 +62,7 @@ func formatIPAndPort(ip net.IP, port uint16) string {
 	return address
 }
 
-func clientManagerFactory(serverType string) func(*Resolver) *clientManager {
+func clientManagerFactory(serverType string) func(*Resolver) *dnsClientManager {
 	switch serverType {
 	case ServerTypeDNS:
 		return newDNSClientManager
@@ -152,8 +152,8 @@ func configureSearchDomains(resolver *Resolver, searches []string) {
 	}
 }
 
-func getConfiguredResolvers() (resolvers []*Resolver) {
-	for _, server := range configuredNameServers() {
+func getConfiguredResolvers(list []string) (resolvers []*Resolver) {
+	for _, server := range list {
 		resolver, skip, err := createResolver(server, "config")
 		if err != nil {
 			// TODO(ppacher): module error
@@ -199,18 +199,39 @@ func loadResolvers() {
 	defer resolversLock.Unlock()
 
 	newResolvers := append(
-		getConfiguredResolvers(),
+		getConfiguredResolvers(configuredNameServers()),
 		getSystemResolvers()...,
 	)
 
-	// save resolvers
-	globalResolvers = newResolvers
-	if len(globalResolvers) == 0 {
-		log.Criticalf("resolver: no (valid) dns servers found in configuration and system")
-		// TODO(module error)
+	if len(newResolvers) == 0 {
+		msg := "no (valid) dns servers found in (user) configuration or system, falling back to defaults"
+		log.Warningf("resolver: %s", msg)
+		module.Warning("no-valid-user-resolvers", msg)
+
+		// load defaults directly, overriding config system
+		newResolvers = getConfiguredResolvers(defaultNameServers)
+		if len(newResolvers) == 0 {
+			msg = "no (valid) dns servers found in configuration or system"
+			log.Criticalf("resolver: %s", msg)
+			module.Error("no-valid-default-resolvers", msg)
+			return
+		}
 	}
 
+	// save resolvers
+	globalResolvers = newResolvers
+
+	// assing resolvers to scopes
 	setLocalAndScopeResolvers(globalResolvers)
+
+	// set active resolvers (for cache validation)
+	// reset
+	activeResolvers = make(map[string]*Resolver)
+	// add
+	for _, resolver := range newResolvers {
+		activeResolvers[resolver.Server] = resolver
+	}
+	activeResolvers[mDNSResolver.Server] = mDNSResolver
 
 	// log global resolvers
 	if len(globalResolvers) > 0 {

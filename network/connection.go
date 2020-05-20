@@ -25,11 +25,19 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	record.Base
 	sync.Mutex
 
-	ID      string
-	Scope   string
-	Inbound bool
-	Entity  *intel.Entity // needs locking, instance is never shared
-	process *process.Process
+	ID        string
+	Scope     string
+	IPVersion packet.IPVersion
+	Inbound   bool
+
+	// local endpoint
+	IPProtocol packet.IPProtocol
+	LocalIP    net.IP
+	LocalPort  uint16
+	process    *process.Process
+
+	// remote endpoint
+	Entity *intel.Entity
 
 	Verdict       Verdict
 	Reason        string
@@ -55,11 +63,22 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 }
 
 // NewConnectionFromDNSRequest returns a new connection based on the given dns request.
-func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, localIP net.IP, localPort uint16) *Connection {
+func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, ipVersion packet.IPVersion, localIP net.IP, localPort uint16) *Connection {
 	// get Process
-	proc, err := process.GetProcessByEndpoints(ctx, localIP, localPort, dnsAddress, dnsPort, packet.UDP)
+	proc, _, err := process.GetProcessByConnection(
+		ctx,
+		&packet.Info{
+			Inbound:  false, // outbound as we are looking for the process of the source address
+			Version:  ipVersion,
+			Protocol: packet.UDP,
+			Src:      localIP,   // source as in the process we are looking for
+			SrcPort:  localPort, // source as in the process we are looking for
+			Dst:      nil,       // do not record direction
+			DstPort:  0,         // do not record direction
+		},
+	)
 	if err != nil {
-		log.Warningf("network: failed to find process of dns request for %s: %s", fqdn, err)
+		log.Debugf("network: failed to find process of dns request for %s: %s", fqdn, err)
 		proc = process.GetUnidentifiedProcess(ctx)
 	}
 
@@ -80,9 +99,9 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 // NewConnectionFromFirstPacket returns a new connection based on the given packet.
 func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	// get Process
-	proc, inbound, err := process.GetProcessByPacket(pkt)
+	proc, inbound, err := process.GetProcessByConnection(pkt.Ctx(), pkt.Info())
 	if err != nil {
-		log.Warningf("network: failed to find process of packet %s: %s", pkt, err)
+		log.Debugf("network: failed to find process of packet %s: %s", pkt, err)
 		proc = process.GetUnidentifiedProcess(pkt.Ctx())
 	}
 
@@ -147,12 +166,20 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	}
 
 	return &Connection{
-		ID:      pkt.GetConnectionID(),
-		Scope:   scope,
-		Inbound: inbound,
-		Entity:  entity,
-		process: proc,
-		Started: time.Now().Unix(),
+		ID:        pkt.GetConnectionID(),
+		Scope:     scope,
+		IPVersion: pkt.Info().Version,
+		Inbound:   inbound,
+		// local endpoint
+		IPProtocol: pkt.Info().Protocol,
+		LocalIP:    pkt.Info().LocalIP(),
+		LocalPort:  pkt.Info().LocalPort(),
+		process:    proc,
+		// remote endpoint
+		Entity: entity,
+		// meta
+		Started:                time.Now().Unix(),
+		profileRevisionCounter: proc.Profile().RevisionCnt(),
 	}
 }
 

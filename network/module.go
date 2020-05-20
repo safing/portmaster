@@ -1,16 +1,11 @@
 package network
 
 import (
-	"net"
-
 	"github.com/safing/portbase/modules"
 )
 
 var (
 	module *modules.Module
-
-	dnsAddress        = net.IPv4(127, 0, 0, 1)
-	dnsPort    uint16 = 53
 
 	defaultFirewallHandler FirewallHandler
 )
