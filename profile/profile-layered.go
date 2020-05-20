@@ -126,6 +126,18 @@ func (lp *LayeredProfile) getValidityFlag() *abool.AtomicBool {
 	return lp.validityFlag
 }
 
+// RevisionCnt returns the current profile revision counter.
+func (lp *LayeredProfile) RevisionCnt() (revisionCounter uint64) {
+	if lp == nil {
+		return 0
+	}
+
+	lp.lock.Lock()
+	defer lp.lock.Unlock()
+
+	return lp.revisionCounter
+}
+
 // Update checks for updated profiles and replaces any outdated profiles.
 func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 	lp.lock.Lock()

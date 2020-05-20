@@ -178,7 +178,8 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		// remote endpoint
 		Entity: entity,
 		// meta
-		Started: time.Now().Unix(),
+		Started:                time.Now().Unix(),
+		profileRevisionCounter: proc.Profile().RevisionCnt(),
 	}
 }
 
