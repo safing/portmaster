@@ -29,10 +29,6 @@ type EndpointScope struct {
 	scopes uint8
 }
 
-// Localhost
-// LAN
-// Internet
-
 // Matches checks whether the given entity matches this endpoint definition.
 func (ep *EndpointScope) Matches(entity *intel.Entity) (EPResult, Reason) {
 	if entity.IP == nil {
@@ -64,16 +60,14 @@ func (ep *EndpointScope) Matches(entity *intel.Entity) (EPResult, Reason) {
 
 // Scopes returns the string representation of all scopes.
 func (ep *EndpointScope) Scopes() string {
-	if ep.scopes == 3 || ep.scopes > 4 {
-		// single scope
-		switch ep.scopes {
-		case scopeLocalhost:
-			return scopeLocalhostName
-		case scopeLAN:
-			return scopeLANName
-		case scopeInternet:
-			return scopeInternetName
-		}
+	// single scope
+	switch ep.scopes {
+	case scopeLocalhost:
+		return scopeLocalhostName
+	case scopeLAN:
+		return scopeLANName
+	case scopeInternet:
+		return scopeInternetName
 	}
 
 	// multiple scopes
@@ -99,11 +93,11 @@ func parseTypeScope(fields []string) (Endpoint, error) {
 	for _, val := range strings.Split(strings.ToLower(fields[1]), ",") {
 		switch val {
 		case scopeLocalhostMatcher:
-			ep.scopes &= scopeLocalhost
+			ep.scopes ^= scopeLocalhost
 		case scopeLANMatcher:
-			ep.scopes &= scopeLAN
+			ep.scopes ^= scopeLAN
 		case scopeInternetMatcher:
-			ep.scopes &= scopeInternet
+			ep.scopes ^= scopeInternet
 		default:
 			return nil, nil
 		}

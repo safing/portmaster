@@ -358,7 +358,7 @@ func TestEndpointMatching(t *testing.T) {
 
 	// Lists
 
-	ep, err = parseEndpoint("+ L:A,B,C")
+	_, err = parseEndpoint("+ L:A,B,C")
 	if err != nil {
 		t.Fatal(err)
 	}
