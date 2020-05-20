@@ -39,6 +39,7 @@ var (
 	baseWaitTime = 3 * time.Millisecond
 )
 
+// Lookup looks for the given connection in the system state tables and returns the PID of the associated process and whether the connection is inbound.
 func Lookup(pktInfo *packet.Info) (pid int, inbound bool, err error) {
 	// auto-detect version
 	if pktInfo.Version == 0 {

@@ -63,7 +63,8 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 		if len(splitted) >= 2 {
 			switch splitted[1] {
 			case "state":
-				return state.GetStateInfo(), nil
+				return state.GetInfo(), nil
+			default:
 			}
 		}
 	}

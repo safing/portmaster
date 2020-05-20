@@ -8,7 +8,8 @@ import (
 	"github.com/safing/portmaster/network/socket"
 )
 
-type StateInfo struct {
+// Info holds network state information as provided by the system.
+type Info struct {
 	record.Base
 	sync.Mutex
 
@@ -20,8 +21,9 @@ type StateInfo struct {
 	UDP6Binds       []*socket.BindInfo
 }
 
-func GetStateInfo() *StateInfo {
-	info := &StateInfo{}
+// GetInfo returns all system state tables. The returned data must not be modified.
+func GetInfo() *Info {
+	info := &Info{}
 
 	tcp4Lock.Lock()
 	updateTCP4Tables()

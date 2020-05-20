@@ -230,6 +230,7 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 	return nil
 }
 
+// CopyFile atomically copies a file using the update registry's tmp dir.
 func CopyFile(srcPath, dstPath string) (err error) {
 
 	// check tmp dir

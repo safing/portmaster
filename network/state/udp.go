@@ -14,8 +14,13 @@ type udpState struct {
 }
 
 const (
-	UdpConnStateTTL             = 72 * time.Hour
-	UdpConnStateShortenedTTL    = 3 * time.Hour
+	// UDPConnStateTTL is the maximum time a udp connection state is held.
+	UDPConnStateTTL = 72 * time.Hour
+
+	// UDPConnStateShortenedTTL is a shortened maximum time a udp connection state is held, if there more entries than defined by AggressiveCleaningThreshold.
+	UDPConnStateShortenedTTL = 3 * time.Hour
+
+	// AggressiveCleaningThreshold defines the soft limit of udp connection state held per udp socket.
 	AggressiveCleaningThreshold = 256
 )
 
@@ -60,29 +65,29 @@ func getUDPDirection(socketInfo *socket.BindInfo, udpStates map[string]map[strin
 	return udpConnState.inbound
 }
 
-func CleanUDPStates(ctx context.Context) {
+// CleanUDPStates cleans the udp connection states which save connection directions.
+func CleanUDPStates(_ context.Context) {
 	now := time.Now().UTC()
 
 	udp4Lock.Lock()
 	updateUDP4Table()
-	cleanStates(ctx, udp4Binds, udp4States, now)
+	cleanStates(udp4Binds, udp4States, now)
 	udp4Lock.Unlock()
 
 	udp6Lock.Lock()
 	updateUDP6Table()
-	cleanStates(ctx, udp6Binds, udp6States, now)
+	cleanStates(udp6Binds, udp6States, now)
 	udp6Lock.Unlock()
 }
 
 func cleanStates(
-	ctx context.Context,
 	binds []*socket.BindInfo,
 	udpStates map[string]map[string]*udpState,
 	now time.Time,
 ) {
 	// compute thresholds
-	threshold := now.Add(-UdpConnStateTTL)
-	shortThreshhold := now.Add(-UdpConnStateShortenedTTL)
+	threshold := now.Add(-UDPConnStateTTL)
+	shortThreshhold := now.Add(-UDPConnStateShortenedTTL)
 
 	// make lookup map of all active keys
 	bindKeys := make(map[string]struct{})

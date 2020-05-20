@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	// UDPConnectionTTL defines the duration after which unseen UDP connections are regarded as ended.
 	UDPConnectionTTL = 10 * time.Minute
 )
 

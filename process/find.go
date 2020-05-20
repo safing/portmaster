@@ -15,7 +15,7 @@ var (
 	ErrProcessNotFound = errors.New("could not find process in system state tables")
 )
 
-// GetProcessByEndpoints returns the process that owns the described link.
+// GetProcessByConnection returns the process that owns the described connection.
 func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process *Process, connInbound bool, err error) {
 	if !enableProcessDetection() {
 		log.Tracer(ctx).Tracef("process: process detection disabled")
