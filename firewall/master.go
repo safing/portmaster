@@ -1,6 +1,7 @@
 package firewall
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,10 +34,10 @@ import (
 
 // DecideOnConnection makes a decision about a connection.
 // When called, the connection and profile is already locked.
-func DecideOnConnection(conn *network.Connection, pkt packet.Packet) {
+func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
 	// update profiles and check if communication needs reevaluation
 	if conn.UpdateAndCheck() {
-		log.Tracer(pkt.Ctx()).Infof("filter: re-evaluating verdict on %s", conn)
+		log.Tracer(ctx).Infof("filter: re-evaluating verdict on %s", conn)
 		conn.Verdict = network.VerdictUndecided
 
 		if conn.Entity != nil {
@@ -44,7 +45,7 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) {
 		}
 	}
 
-	var deciders = []func(*network.Connection, packet.Packet) bool{
+	var deciders = []func(context.Context, *network.Connection, packet.Packet) bool{
 		checkPortmasterConnection,
 		checkSelfCommunication,
 		checkProfileExists,
@@ -60,7 +61,7 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	for _, decider := range deciders {
-		if decider(conn, pkt) {
+		if decider(ctx, conn, pkt) {
 			return
 		}
 	}
@@ -71,10 +72,10 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) {
 
 // checkPortmasterConnection allows all connection that originate from
 // portmaster itself.
-func checkPortmasterConnection(conn *network.Connection, pkt packet.Packet) bool {
+func checkPortmasterConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet) bool {
 	// grant self
 	if conn.Process().Pid == os.Getpid() {
-		log.Tracer(pkt.Ctx()).Infof("filter: granting own connection %s", conn)
+		log.Tracer(ctx).Infof("filter: granting own connection %s", conn)
 		conn.Verdict = network.VerdictAccept
 		conn.Internal = true
 		return true
@@ -84,7 +85,7 @@ func checkPortmasterConnection(conn *network.Connection, pkt packet.Packet) bool
 }
 
 // checkSelfCommunication checks if the process is communicating with itself.
-func checkSelfCommunication(conn *network.Connection, pkt packet.Packet) bool {
+func checkSelfCommunication(ctx context.Context, conn *network.Connection, pkt packet.Packet) bool {
 	// check if process is communicating with itself
 	if pkt != nil {
 		// TODO: evaluate the case where different IPs in the 127/8 net are used.
@@ -101,12 +102,12 @@ func checkSelfCommunication(conn *network.Connection, pkt packet.Packet) bool {
 				DstPort:  pktInfo.DstPort,
 			})
 			if err != nil {
-				log.Tracer(pkt.Ctx()).Warningf("filter: failed to find local peer process PID: %s", err)
+				log.Tracer(ctx).Warningf("filter: failed to find local peer process PID: %s", err)
 			} else {
 				// get primary process
-				otherProcess, err := process.GetOrFindPrimaryProcess(pkt.Ctx(), otherPid)
+				otherProcess, err := process.GetOrFindPrimaryProcess(ctx, otherPid)
 				if err != nil {
-					log.Tracer(pkt.Ctx()).Warningf("filter: failed to find load local peer process with PID %d: %s", otherPid, err)
+					log.Tracer(ctx).Warningf("filter: failed to find load local peer process with PID %d: %s", otherPid, err)
 				} else if otherProcess.Pid == conn.Process().Pid {
 					conn.Accept("connection to self")
 					conn.Internal = true
@@ -119,7 +120,7 @@ func checkSelfCommunication(conn *network.Connection, pkt packet.Packet) bool {
 	return false
 }
 
-func checkProfileExists(conn *network.Connection, _ packet.Packet) bool {
+func checkProfileExists(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
 	if conn.Process().Profile() == nil {
 		conn.Block("unknown process or profile")
 		return true
@@ -127,7 +128,7 @@ func checkProfileExists(conn *network.Connection, _ packet.Packet) bool {
 	return false
 }
 
-func checkEndpointLists(conn *network.Connection, _ packet.Packet) bool {
+func checkEndpointLists(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
 	var result endpoints.EPResult
 	var reason endpoints.Reason
 
@@ -152,7 +153,7 @@ func checkEndpointLists(conn *network.Connection, _ packet.Packet) bool {
 	return false
 }
 
-func checkConnectionType(conn *network.Connection, _ packet.Packet) bool {
+func checkConnectionType(ctx context.Context, conn *network.Connection, _ packet.Packet) bool {
 	p := conn.Process().Profile()
 
 	// check conn type
@@ -177,7 +178,7 @@ func checkConnectionType(conn *network.Connection, _ packet.Packet) bool {
 	return false
 }
 
-func checkConnectionScope(conn *network.Connection, _ packet.Packet) bool {
+func checkConnectionScope(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
 	p := conn.Process().Profile()
 
 	// check scopes
@@ -216,7 +217,7 @@ func checkConnectionScope(conn *network.Connection, _ packet.Packet) bool {
 	return false
 }
 
-func checkBypassPrevention(conn *network.Connection, _ packet.Packet) bool {
+func checkBypassPrevention(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
 	if conn.Process().Profile().PreventBypassing() {
 		// check for bypass protection
 		result, reason, reasonCtx := PreventBypassing(conn)
@@ -233,7 +234,7 @@ func checkBypassPrevention(conn *network.Connection, _ packet.Packet) bool {
 	return false
 }
 
-func checkFilterLists(conn *network.Connection, pkt packet.Packet) bool {
+func checkFilterLists(ctx context.Context, conn *network.Connection, pkt packet.Packet) bool {
 	// apply privacy filter lists
 	p := conn.Process().Profile()
 
@@ -245,12 +246,12 @@ func checkFilterLists(conn *network.Connection, pkt packet.Packet) bool {
 	case endpoints.NoMatch:
 		// nothing to do
 	default:
-		log.Tracer(pkt.Ctx()).Debugf("filter: filter lists returned unsupported verdict: %s", result)
+		log.Tracer(ctx).Debugf("filter: filter lists returned unsupported verdict: %s", result)
 	}
 	return false
 }
 
-func checkInbound(conn *network.Connection, _ packet.Packet) bool {
+func checkInbound(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
 	// implicit default=block for inbound
 	if conn.Inbound {
 		conn.Drop("endpoint is not whitelisted (incoming is always default=block)")
@@ -259,7 +260,7 @@ func checkInbound(conn *network.Connection, _ packet.Packet) bool {
 	return false
 }
 
-func checkDefaultPermit(conn *network.Connection, _ packet.Packet) bool {
+func checkDefaultPermit(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
 	// check default action
 	p := conn.Process().Profile()
 	if p.DefaultAction() == profile.DefaultActionPermit {
@@ -269,7 +270,7 @@ func checkDefaultPermit(conn *network.Connection, _ packet.Packet) bool {
 	return false
 }
 
-func checkAutoPermitRelated(conn *network.Connection, _ packet.Packet) bool {
+func checkAutoPermitRelated(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
 	p := conn.Process().Profile()
 	if !p.DisableAutoPermit() {
 		related, reason := checkRelation(conn)
@@ -281,7 +282,7 @@ func checkAutoPermitRelated(conn *network.Connection, _ packet.Packet) bool {
 	return false
 }
 
-func checkDefaultAction(conn *network.Connection, pkt packet.Packet) bool {
+func checkDefaultAction(_ context.Context, conn *network.Connection, pkt packet.Packet) bool {
 	p := conn.Process().Profile()
 	if p.DefaultAction() == profile.DefaultActionAsk {
 		prompt(conn, pkt)

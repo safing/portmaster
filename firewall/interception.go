@@ -230,7 +230,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	log.Tracer(pkt.Ctx()).Trace("filter: starting decision process")
-	DecideOnConnection(conn, pkt)
+	DecideOnConnection(pkt.Ctx(), conn, pkt)
 	conn.Inspecting = false // TODO: enable inspecting again
 
 	switch {

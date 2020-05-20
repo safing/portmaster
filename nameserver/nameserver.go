@@ -222,7 +222,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	}
 
 	// check profile before we even get intel and rr
-	firewall.DecideOnConnection(conn, nil)
+	firewall.DecideOnConnection(ctx, conn, nil)
 
 	switch conn.Verdict {
 	case network.VerdictBlock:
