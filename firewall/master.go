@@ -36,7 +36,7 @@ import (
 func DecideOnConnection(conn *network.Connection, pkt packet.Packet) {
 	// update profiles and check if communication needs reevaluation
 	if conn.UpdateAndCheck() {
-		log.Infof("filter: re-evaluating verdict on %s", conn)
+		log.Tracer(pkt.Ctx()).Infof("filter: re-evaluating verdict on %s", conn)
 		conn.Verdict = network.VerdictUndecided
 
 		if conn.Entity != nil {
@@ -71,10 +71,10 @@ func DecideOnConnection(conn *network.Connection, pkt packet.Packet) {
 
 // checkPortmasterConnection allows all connection that originate from
 // portmaster itself.
-func checkPortmasterConnection(conn *network.Connection, _ packet.Packet) bool {
+func checkPortmasterConnection(conn *network.Connection, pkt packet.Packet) bool {
 	// grant self
 	if conn.Process().Pid == os.Getpid() {
-		log.Infof("filter: granting own connection %s", conn)
+		log.Tracer(pkt.Ctx()).Infof("filter: granting own connection %s", conn)
 		conn.Verdict = network.VerdictAccept
 		conn.Internal = true
 		return true
@@ -101,12 +101,12 @@ func checkSelfCommunication(conn *network.Connection, pkt packet.Packet) bool {
 				DstPort:  pktInfo.DstPort,
 			})
 			if err != nil {
-				log.Warningf("filter: failed to find local peer process PID: %s", err)
+				log.Tracer(pkt.Ctx()).Warningf("filter: failed to find local peer process PID: %s", err)
 			} else {
 				// get primary process
 				otherProcess, err := process.GetOrFindPrimaryProcess(pkt.Ctx(), otherPid)
 				if err != nil {
-					log.Warningf("filter: failed to find load local peer process with PID %d: %s", otherPid, err)
+					log.Tracer(pkt.Ctx()).Warningf("filter: failed to find load local peer process with PID %d: %s", otherPid, err)
 				} else if otherProcess.Pid == conn.Process().Pid {
 					conn.Accept("connection to self")
 					conn.Internal = true
@@ -233,7 +233,7 @@ func checkBypassPrevention(conn *network.Connection, _ packet.Packet) bool {
 	return false
 }
 
-func checkFilterLists(conn *network.Connection, _ packet.Packet) bool {
+func checkFilterLists(conn *network.Connection, pkt packet.Packet) bool {
 	// apply privacy filter lists
 	p := conn.Process().Profile()
 
@@ -245,7 +245,7 @@ func checkFilterLists(conn *network.Connection, _ packet.Packet) bool {
 	case endpoints.NoMatch:
 		// nothing to do
 	default:
-		log.Debugf("filter: filter lists returned unsupported verdict: %s", result)
+		log.Tracer(pkt.Ctx()).Debugf("filter: filter lists returned unsupported verdict: %s", result)
 	}
 	return false
 }
