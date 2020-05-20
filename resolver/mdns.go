@@ -45,10 +45,10 @@ func (mrc *mDNSResolverConn) Query(ctx context.Context, q *Query) (*RRCache, err
 	return queryMulticastDNS(ctx, q)
 }
 
-func (mrc *mDNSResolverConn) MarkFailed() {}
+func (mrc *mDNSResolverConn) ReportFailure() {}
 
-func (mrc *mDNSResolverConn) LastFail() time.Time {
-	return time.Time{}
+func (mrc *mDNSResolverConn) IsFailing() bool {
+	return false
 }
 
 type savedQuestion struct {

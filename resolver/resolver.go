@@ -24,6 +24,11 @@ const (
 	ServerSourceMDNS       = "mdns"
 )
 
+var (
+	// FailThreshold is amount of errors a resolvers must experience in order to be regarded as failed.
+	FailThreshold = 5
+)
+
 // Resolver holds information about an active resolver.
 type Resolver struct {
 	// Server config url (and ID)
@@ -84,8 +89,8 @@ func (resolver *Resolver) String() string {
 // ResolverConn is an interface to implement different types of query backends.
 type ResolverConn interface { //nolint:go-lint // TODO
 	Query(ctx context.Context, q *Query) (*RRCache, error)
-	MarkFailed()
-	LastFail() time.Time
+	ReportFailure()
+	IsFailing() bool
 }
 
 // BasicResolverConn implements ResolverConn for standard dns clients.
@@ -94,11 +99,13 @@ type BasicResolverConn struct {
 
 	resolver      *Resolver
 	clientManager *dnsClientManager
-	lastFail      time.Time
+
+	lastFail time.Time
+	fails    int
 }
 
-// MarkFailed marks the resolver as failed.
-func (brc *BasicResolverConn) MarkFailed() {
+// ReportFailure reports that an error occurred with this resolver.
+func (brc *BasicResolverConn) ReportFailure() {
 	if !netenv.Online() {
 		// don't mark failed if we are offline
 		return
@@ -106,14 +113,26 @@ func (brc *BasicResolverConn) MarkFailed() {
 
 	brc.Lock()
 	defer brc.Unlock()
-	brc.lastFail = time.Now()
+	now := time.Now().UTC()
+	failDuration := time.Duration(nameserverRetryRate()) * time.Second
+
+	// reset fail counter if currently not failing
+	if now.Add(-failDuration).After(brc.lastFail) {
+		brc.fails = 0
+	}
+
+	// update
+	brc.lastFail = now
+	brc.fails++
 }
 
-// LastFail returns the internal lastfail value while locking the Resolver.
-func (brc *BasicResolverConn) LastFail() time.Time {
+// IsFailing returns if this resolver is currently failing.
+func (brc *BasicResolverConn) IsFailing() bool {
 	brc.Lock()
 	defer brc.Unlock()
-	return brc.lastFail
+
+	failDuration := time.Duration(nameserverRetryRate()) * time.Second
+	return brc.fails >= FailThreshold && time.Now().UTC().Add(-failDuration).Before(brc.lastFail)
 }
 
 // Query executes the given query against the resolver.
@@ -131,9 +150,9 @@ func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, er
 	var err error
 	var conn *dns.Conn
 	var new bool
-	var i int
+	var tries int
 
-	for ; i < 5; i++ {
+	for ; tries < 3; tries++ {
 
 		// first get connection
 		dc := brc.clientManager.getDNSClient()
@@ -142,13 +161,22 @@ func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, er
 			log.Tracer(ctx).Tracef("resolver: failed to connect to %s: %s", resolver.Server, err)
 			// remove client from pool
 			dc.destroy()
+			// report that resolver had an error
+			brc.ReportFailure()
+			// hint network environment at failed connection
+			netenv.ReportFailedConnection()
+
+			// TODO: handle special cases
+			// 1. connect: network is unreachable
+			// 2. timeout
+
 			// try again
 			continue
 		}
 		if new {
-			log.Tracer(ctx).Tracef("resolver: created new connection to %s", resolver.ServerAddress)
+			log.Tracer(ctx).Tracef("resolver: created new connection to %s (%s)", resolver.Name, resolver.ServerAddress)
 		} else {
-			log.Tracer(ctx).Tracef("resolver: reusing connection to %s", resolver.ServerAddress)
+			log.Tracer(ctx).Tracef("resolver: reusing connection to %s (%s)", resolver.Name, resolver.ServerAddress)
 		}
 
 		// query server
@@ -162,18 +190,19 @@ func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, er
 			// remove client from pool
 			dc.destroy()
 
-			// TODO: handle special cases
-			// 1. connect: network is unreachable
-			// 2. timeout
-
-			// hint network environment at failed connection
-			netenv.ReportFailedConnection()
-
 			// temporary error
 			if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
 				log.Tracer(ctx).Tracef("resolver: retrying to resolve %s%s with %s, error is temporary", q.FQDN, q.QType, resolver.Server)
 				// try again
 				continue
+			}
+
+			// report failed if dns (nothing happens at getConn())
+			if resolver.ServerType == ServerTypeDNS {
+				// report that resolver had an error
+				brc.ReportFailure()
+				// hint network environment at failed connection
+				netenv.ReportFailedConnection()
 			}
 
 			// permanent error
@@ -201,7 +230,7 @@ func (brc *BasicResolverConn) Query(ctx context.Context, q *Query) (*RRCache, er
 		return nil, err
 		// TODO: mark as failed
 	} else if reply == nil {
-		log.Errorf("resolver: queried %s for %s%s (%d tries), but reply was nil", q.FQDN, q.QType, resolver.GetName(), i+1)
+		log.Errorf("resolver: queried %s for %s%s (%d tries), but reply was nil", q.FQDN, q.QType, resolver.GetName(), tries+1)
 		return nil, errors.New("internal error")
 	}
 

@@ -233,7 +233,7 @@ resolveLoop:
 	for i = 0; i < 2; i++ {
 		for _, resolver := range resolvers {
 			// check if resolver failed recently (on first run)
-			if i == 0 && resolver.Conn.LastFail().After(lastFailBoundary) {
+			if i == 0 && resolver.Conn.IsFailing() {
 				log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it failed recently", resolver)
 				continue
 			}
