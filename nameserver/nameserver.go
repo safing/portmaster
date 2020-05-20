@@ -24,9 +24,8 @@ import (
 )
 
 var (
-	module       *modules.Module
-	dnsServer    *dns.Server
-	mtDNSRequest = "dns request"
+	module    *modules.Module
+	dnsServer *dns.Server
 
 	listenAddress = "0.0.0.0:53"
 	ipv4Localhost = net.IPv4(127, 0, 0, 1)
@@ -63,7 +62,7 @@ func prep() error {
 
 func start() error {
 	dnsServer = &dns.Server{Addr: listenAddress, Net: "udp"}
-	dns.HandleFunc(".", handleRequestAsMicroTask)
+	dns.HandleFunc(".", handleRequestAsWorker)
 
 	module.StartServiceWorker("dns resolver", 0, func(ctx context.Context) error {
 		err := dnsServer.ListenAndServe()
@@ -97,8 +96,8 @@ func returnServerFailure(w dns.ResponseWriter, query *dns.Msg) {
 	_ = w.WriteMsg(m)
 }
 
-func handleRequestAsMicroTask(w dns.ResponseWriter, query *dns.Msg) {
-	err := module.RunMicroTask(&mtDNSRequest, func(ctx context.Context) error {
+func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
+	err := module.RunWorker("dns request", func(ctx context.Context) error {
 		return handleRequest(ctx, w, query)
 	})
 	if err != nil {
