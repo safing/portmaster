@@ -48,7 +48,7 @@ func registerConfig() error {
 		Order:          CfgOptionAskWithSystemNotificationsOrder,
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelUser,
-		ReleaseLevel:   config.ReleaseLevelStable,
+		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   true,
 	})
 	if err != nil {
@@ -62,7 +62,7 @@ func registerConfig() error {
 		Order:          CfgOptionAskTimeoutOrder,
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
-		ReleaseLevel:   config.ReleaseLevelStable,
+		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   60,
 	})
 	if err != nil {
