@@ -175,7 +175,6 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 		// test currentVersion for sanity
 		if !rawVersionRegex.MatchString(currentVersion) {
 			log.Tracef("updates: version string returned by %s is invalid: %s", fileToUpgrade, currentVersion)
-			currentVersion = "0.0.0"
 		}
 
 		// try removing old version
@@ -192,7 +191,7 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 				registry.TmpDir().Path,
 				fmt.Sprintf(
 					"%s-%d%s",
-					updater.GetVersionedPath(filepath.Base(fileToUpgrade), currentVersion),
+					filepath.Base(fileToUpgrade),
 					time.Now().UTC().Unix(),
 					upgradedSuffix,
 				),
