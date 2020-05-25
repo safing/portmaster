@@ -30,7 +30,8 @@ var (
 )
 
 var (
-	baseWaitTime = 3 * time.Millisecond
+	baseWaitTime  = 3 * time.Millisecond
+	lookupRetries = 7
 )
 
 // Lookup looks for the given connection in the system state tables and returns the PID of the associated process and whether the connection is inbound.
@@ -72,7 +73,7 @@ func (table *tcpTable) lookup(pktInfo *packet.Info) (
 	localPort := pktInfo.LocalPort()
 
 	// search until we find something
-	for i := 0; i < 7; i++ {
+	for i := 0; i <= lookupRetries; i++ {
 		table.lock.RLock()
 
 		// always search listeners first
@@ -95,12 +96,15 @@ func (table *tcpTable) lookup(pktInfo *packet.Info) (
 
 		table.lock.RUnlock()
 
-		// we found nothing, we could have been too fast, give the kernel some time to think
-		// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
-		time.Sleep(time.Duration(i+1) * baseWaitTime)
+		// every time, except for the last iteration
+		if i < lookupRetries {
+			// we found nothing, we could have been too fast, give the kernel some time to think
+			// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
+			time.Sleep(time.Duration(i+1) * baseWaitTime)
 
-		// refetch lists
-		table.updateTables()
+			// refetch lists
+			table.updateTables()
+		}
 	}
 
 	return socket.UnidentifiedProcessID, false, ErrConnectionNotFound
@@ -121,7 +125,7 @@ func (table *udpTable) lookup(pktInfo *packet.Info) (
 	// binding to different addresses. This highly unusual for clients.
 
 	// search until we find something
-	for i := 0; i < 5; i++ {
+	for i := 0; i <= lookupRetries; i++ {
 		table.lock.RLock()
 
 		// search binds
@@ -145,12 +149,15 @@ func (table *udpTable) lookup(pktInfo *packet.Info) (
 
 		table.lock.RUnlock()
 
-		// we found nothing, we could have been too fast, give the kernel some time to think
-		// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
-		time.Sleep(time.Duration(i+1) * baseWaitTime)
+		// every time, except for the last iteration
+		if i < lookupRetries {
+			// we found nothing, we could have been too fast, give the kernel some time to think
+			// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
+			time.Sleep(time.Duration(i+1) * baseWaitTime)
 
-		// refetch lists
-		table.updateTable()
+			// refetch lists
+			table.updateTable()
+		}
 	}
 
 	return socket.UnidentifiedProcessID, pktInfo.Inbound, ErrConnectionNotFound
