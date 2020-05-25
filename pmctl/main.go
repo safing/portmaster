@@ -194,17 +194,7 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 			Beta:   false,
 		})
 
-		err = registry.LoadIndexes()
-		if err != nil {
-			return err
-		}
-
-		err = registry.ScanStorage("")
-		if err != nil {
-			log.Printf("WARNING: error during storage scan: %s\n", err)
-		}
-
-		registry.SelectVersions()
+		updateRegistryIndex()
 	}
 
 	// logs and warning
@@ -224,4 +214,18 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	return nil
+}
+
+func updateRegistryIndex() {
+	err := registry.LoadIndexes()
+	if err != nil {
+		log.Printf("WARNING: error loading indexes: %s\n", err)
+	}
+
+	err = registry.ScanStorage("")
+	if err != nil {
+		log.Printf("WARNING: error during storage scan: %s\n", err)
+	}
+
+	registry.SelectVersions()
 }
