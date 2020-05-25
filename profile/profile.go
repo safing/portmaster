@@ -6,14 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/log"
-
+	"github.com/gofrs/uuid"
 	"github.com/tevino/abool"
-
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/profile/endpoints"
 )
