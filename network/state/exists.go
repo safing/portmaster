@@ -19,38 +19,33 @@ func Exists(pktInfo *packet.Info, now time.Time) (exists bool) {
 
 	switch {
 	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.TCP:
-		tcp4Lock.Lock()
-		defer tcp4Lock.Unlock()
-		return existsTCP(tcp4Connections, pktInfo)
+		return tcp4Table.exists(pktInfo)
 
 	case pktInfo.Version == packet.IPv6 && pktInfo.Protocol == packet.TCP:
-		tcp6Lock.Lock()
-		defer tcp6Lock.Unlock()
-		return existsTCP(tcp6Connections, pktInfo)
+		return tcp6Table.exists(pktInfo)
 
 	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.UDP:
-		udp4Lock.Lock()
-		defer udp4Lock.Unlock()
-		return existsUDP(udp4Binds, udp4States, pktInfo, now)
+		return udp4Table.exists(pktInfo, now)
 
 	case pktInfo.Version == packet.IPv6 && pktInfo.Protocol == packet.UDP:
-		udp6Lock.Lock()
-		defer udp6Lock.Unlock()
-		return existsUDP(udp6Binds, udp6States, pktInfo, now)
+		return udp6Table.exists(pktInfo, now)
 
 	default:
 		return false
 	}
 }
 
-func existsTCP(connections []*socket.ConnectionInfo, pktInfo *packet.Info) (exists bool) {
+func (table *tcpTable) exists(pktInfo *packet.Info) (exists bool) {
+	table.lock.RLock()
+	defer table.lock.RUnlock()
+
 	localIP := pktInfo.LocalIP()
 	localPort := pktInfo.LocalPort()
 	remoteIP := pktInfo.RemoteIP()
 	remotePort := pktInfo.RemotePort()
 
 	// search connections
-	for _, socketInfo := range connections {
+	for _, socketInfo := range table.connections {
 		if localPort == socketInfo.Local.Port &&
 			remotePort == socketInfo.Remote.Port &&
 			remoteIP.Equal(socketInfo.Remote.IP) &&
@@ -62,12 +57,9 @@ func existsTCP(connections []*socket.ConnectionInfo, pktInfo *packet.Info) (exis
 	return false
 }
 
-func existsUDP(
-	binds []*socket.BindInfo,
-	udpStates map[string]map[string]*udpState,
-	pktInfo *packet.Info,
-	now time.Time,
-) (exists bool) {
+func (table *udpTable) exists(pktInfo *packet.Info, now time.Time) (exists bool) {
+	table.lock.RLock()
+	defer table.lock.RUnlock()
 
 	localIP := pktInfo.LocalIP()
 	localPort := pktInfo.LocalPort()
@@ -77,11 +69,11 @@ func existsUDP(
 	connThreshhold := now.Add(-UDPConnectionTTL)
 
 	// search binds
-	for _, socketInfo := range binds {
+	for _, socketInfo := range table.binds {
 		if localPort == socketInfo.Local.Port &&
 			(socketInfo.Local.IP[0] == 0 || localIP.Equal(socketInfo.Local.IP)) {
 
-			udpConnState, ok := getUDPConnState(socketInfo, udpStates, socket.Address{
+			udpConnState, ok := table.getConnState(socketInfo, socket.Address{
 				IP:   remoteIP,
 				Port: remotePort,
 			})

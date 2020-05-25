@@ -2,11 +2,26 @@ package state
 
 import (
 	"context"
+	"sync"
 	"time"
 
+	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/network/socket"
 )
+
+type udpTable struct {
+	version int
+
+	binds []*socket.BindInfo
+	lock  sync.RWMutex
+
+	fetchOnceAgain utils.OnceAgain
+	fetchTable     func() (binds []*socket.BindInfo, err error)
+
+	states     map[string]map[string]*udpState
+	statesLock sync.Mutex
+}
 
 type udpState struct {
 	inbound  bool
@@ -25,12 +40,38 @@ const (
 )
 
 var (
-	udp4States = make(map[string]map[string]*udpState) // locked with udp4Lock
-	udp6States = make(map[string]map[string]*udpState) // locked with udp6Lock
+	udp4Table = &udpTable{
+		version:    4,
+		fetchTable: getUDP4Table,
+		states:     make(map[string]map[string]*udpState),
+	}
+
+	udp6Table = &udpTable{
+		version:    6,
+		fetchTable: getUDP6Table,
+		states:     make(map[string]map[string]*udpState),
+	}
 )
 
-func getUDPConnState(socketInfo *socket.BindInfo, udpStates map[string]map[string]*udpState, remoteAddress socket.Address) (udpConnState *udpState, ok bool) {
-	bindMap, ok := udpStates[makeUDPStateKey(socketInfo.Local)]
+// CleanUDPStates cleans the udp connection states which save connection directions.
+func CleanUDPStates(_ context.Context) {
+	now := time.Now().UTC()
+
+	udp4Table.updateTable()
+	udp4Table.cleanStates(now)
+
+	udp6Table.updateTable()
+	udp6Table.cleanStates(now)
+}
+
+func (table *udpTable) getConnState(
+	socketInfo *socket.BindInfo,
+	remoteAddress socket.Address,
+) (udpConnState *udpState, ok bool) {
+	table.statesLock.Lock()
+	defer table.statesLock.Unlock()
+
+	bindMap, ok := table.states[makeUDPStateKey(socketInfo.Local)]
 	if ok {
 		udpConnState, ok = bindMap[makeUDPStateKey(remoteAddress)]
 		return
@@ -39,13 +80,19 @@ func getUDPConnState(socketInfo *socket.BindInfo, udpStates map[string]map[strin
 	return nil, false
 }
 
-func getUDPDirection(socketInfo *socket.BindInfo, udpStates map[string]map[string]*udpState, pktInfo *packet.Info) (connDirection bool) {
+func (table *udpTable) getDirection(
+	socketInfo *socket.BindInfo,
+	pktInfo *packet.Info,
+) (connDirection bool) {
+	table.statesLock.Lock()
+	defer table.statesLock.Unlock()
+
 	localKey := makeUDPStateKey(socketInfo.Local)
 
-	bindMap, ok := udpStates[localKey]
+	bindMap, ok := table.states[localKey]
 	if !ok {
 		bindMap = make(map[string]*udpState)
-		udpStates[localKey] = bindMap
+		table.states[localKey] = bindMap
 	}
 
 	remoteKey := makeUDPStateKey(socket.Address{
@@ -65,38 +112,25 @@ func getUDPDirection(socketInfo *socket.BindInfo, udpStates map[string]map[strin
 	return udpConnState.inbound
 }
 
-// CleanUDPStates cleans the udp connection states which save connection directions.
-func CleanUDPStates(_ context.Context) {
-	now := time.Now().UTC()
+func (table *udpTable) cleanStates(now time.Time) {
 
-	udp4Lock.Lock()
-	updateUDP4Table()
-	cleanStates(udp4Binds, udp4States, now)
-	udp4Lock.Unlock()
-
-	udp6Lock.Lock()
-	updateUDP6Table()
-	cleanStates(udp6Binds, udp6States, now)
-	udp6Lock.Unlock()
-}
-
-func cleanStates(
-	binds []*socket.BindInfo,
-	udpStates map[string]map[string]*udpState,
-	now time.Time,
-) {
 	// compute thresholds
 	threshold := now.Add(-UDPConnStateTTL)
 	shortThreshhold := now.Add(-UDPConnStateShortenedTTL)
 
 	// make lookup map of all active keys
 	bindKeys := make(map[string]struct{})
-	for _, socketInfo := range binds {
+	table.lock.RLock()
+	for _, socketInfo := range table.binds {
 		bindKeys[makeUDPStateKey(socketInfo.Local)] = struct{}{}
 	}
+	table.lock.RUnlock()
+
+	table.statesLock.Lock()
+	defer table.statesLock.Unlock()
 
 	// clean the udp state storage
-	for localKey, bindMap := range udpStates {
+	for localKey, bindMap := range table.states {
 		if _, active := bindKeys[localKey]; active {
 			// clean old entries
 			for remoteKey, udpConnState := range bindMap {
@@ -114,7 +148,7 @@ func cleanStates(
 			}
 		} else {
 			// delete the whole thing
-			delete(udpStates, localKey)
+			delete(table.states, localKey)
 		}
 	}
 }
