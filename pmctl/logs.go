@@ -81,7 +81,7 @@ func initControlLogFile() *os.File {
 	}
 
 	// open log file
-	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.log", time.Now().UTC().Format("2006-02-01-15-04-05")))
+	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.log", time.Now().UTC().Format("2006-01-02-15-04-05")))
 	return initializeLogFile(logFilePath, "control/portmaster-control", info.Version())
 }
 
@@ -100,7 +100,7 @@ func logControlError(cErr error) {
 	}
 
 	// open log file
-	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.error.log", time.Now().UTC().Format("2006-02-01-15-04-05")))
+	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.error.log", time.Now().UTC().Format("2006-01-02-15-04-05")))
 	errorFile := initializeLogFile(logFilePath, "control/portmaster-control", info.Version())
 	if errorFile == nil {
 		return
@@ -121,7 +121,7 @@ func logControlStack() {
 	}
 
 	// open log file
-	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.stack.log", time.Now().UTC().Format("2006-02-01-15-04-05")))
+	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.stack.log", time.Now().UTC().Format("2006-01-02-15-04-05")))
 	errorFile := initializeLogFile(logFilePath, "control/portmaster-control", info.Version())
 	if errorFile == nil {
 		return

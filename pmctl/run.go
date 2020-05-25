@@ -233,13 +233,13 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 		log.Printf("failed to check/create log file dir %s: %s\n", logFileBasePath, err)
 	} else {
 		// open log file
-		logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.log", time.Now().UTC().Format("2006-02-01-15-04-05")))
+		logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.log", time.Now().UTC().Format("2006-01-02-15-04-05")))
 		logFile = initializeLogFile(logFilePath, opts.Identifier, file.Version())
 		if logFile != nil {
 			defer finalizeLogFile(logFile, logFilePath)
 		}
 		// open error log file
-		errorFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.error.log", time.Now().UTC().Format("2006-02-01-15-04-05")))
+		errorFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.error.log", time.Now().UTC().Format("2006-01-02-15-04-05")))
 		errorFile = initializeLogFile(errorFilePath, opts.Identifier, file.Version())
 		if errorFile != nil {
 			defer finalizeLogFile(errorFile, errorFilePath)
