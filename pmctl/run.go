@@ -191,6 +191,9 @@ func run(cmd *cobra.Command, opts *Options) (err error) {
 		case tryAgain && err == nil:
 			// upgrade
 			log.Println("restarting by request...")
+			// update index
+			log.Println("checking versions...")
+			updateRegistryIndex()
 		case !tryAgain && err != nil:
 			// fatal error
 			return err
