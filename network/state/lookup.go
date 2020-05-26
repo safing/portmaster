@@ -2,7 +2,6 @@ package state
 
 import (
 	"errors"
-	"sync"
 	"time"
 
 	"github.com/safing/portmaster/network/netutils"
@@ -31,12 +30,8 @@ var (
 )
 
 var (
-	tcp4Lock sync.Mutex
-	tcp6Lock sync.Mutex
-	udp4Lock sync.Mutex
-	udp6Lock sync.Mutex
-
-	baseWaitTime = 3 * time.Millisecond
+	baseWaitTime  = 3 * time.Millisecond
+	lookupRetries = 7
 )
 
 // Lookup looks for the given connection in the system state tables and returns the PID of the associated process and whether the connection is inbound.
@@ -52,36 +47,23 @@ func Lookup(pktInfo *packet.Info) (pid int, inbound bool, err error) {
 
 	switch {
 	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.TCP:
-		tcp4Lock.Lock()
-		defer tcp4Lock.Unlock()
-		return searchTCP(tcp4Connections, tcp4Listeners, updateTCP4Tables, pktInfo)
+		return tcp4Table.lookup(pktInfo)
 
 	case pktInfo.Version == packet.IPv6 && pktInfo.Protocol == packet.TCP:
-		tcp6Lock.Lock()
-		defer tcp6Lock.Unlock()
-		return searchTCP(tcp6Connections, tcp6Listeners, updateTCP6Tables, pktInfo)
+		return tcp6Table.lookup(pktInfo)
 
 	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.UDP:
-		udp4Lock.Lock()
-		defer udp4Lock.Unlock()
-		return searchUDP(udp4Binds, udp4States, updateUDP4Table, pktInfo)
+		return udp4Table.lookup(pktInfo)
 
 	case pktInfo.Version == packet.IPv6 && pktInfo.Protocol == packet.UDP:
-		udp6Lock.Lock()
-		defer udp6Lock.Unlock()
-		return searchUDP(udp6Binds, udp6States, updateUDP6Table, pktInfo)
+		return udp6Table.lookup(pktInfo)
 
 	default:
 		return socket.UnidentifiedProcessID, false, errors.New("unsupported protocol for finding process")
 	}
 }
 
-func searchTCP(
-	connections []*socket.ConnectionInfo,
-	listeners []*socket.BindInfo,
-	updateTables func() ([]*socket.ConnectionInfo, []*socket.BindInfo),
-	pktInfo *packet.Info,
-) (
+func (table *tcpTable) lookup(pktInfo *packet.Info) (
 	pid int,
 	inbound bool,
 	err error,
@@ -91,45 +73,48 @@ func searchTCP(
 	localPort := pktInfo.LocalPort()
 
 	// search until we find something
-	for i := 0; i < 7; i++ {
+	for i := 0; i <= lookupRetries; i++ {
+		table.lock.RLock()
+
 		// always search listeners first
-		for _, socketInfo := range listeners {
+		for _, socketInfo := range table.listeners {
 			if localPort == socketInfo.Local.Port &&
 				(socketInfo.Local.IP[0] == 0 || localIP.Equal(socketInfo.Local.IP)) {
+				table.lock.RUnlock()
 				return checkBindPID(socketInfo, true)
 			}
 		}
 
 		// search connections
-		for _, socketInfo := range connections {
+		for _, socketInfo := range table.connections {
 			if localPort == socketInfo.Local.Port &&
 				localIP.Equal(socketInfo.Local.IP) {
+				table.lock.RUnlock()
 				return checkConnectionPID(socketInfo, false)
 			}
 		}
 
-		// we found nothing, we could have been too fast, give the kernel some time to think
-		// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
-		time.Sleep(time.Duration(i+1) * baseWaitTime)
+		table.lock.RUnlock()
 
-		// refetch lists
-		connections, listeners = updateTables()
+		// every time, except for the last iteration
+		if i < lookupRetries {
+			// we found nothing, we could have been too fast, give the kernel some time to think
+			// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
+			time.Sleep(time.Duration(i+1) * baseWaitTime)
+
+			// refetch lists
+			table.updateTables()
+		}
 	}
 
 	return socket.UnidentifiedProcessID, false, ErrConnectionNotFound
 }
 
-func searchUDP(
-	binds []*socket.BindInfo,
-	udpStates map[string]map[string]*udpState,
-	updateTable func() []*socket.BindInfo,
-	pktInfo *packet.Info,
-) (
+func (table *udpTable) lookup(pktInfo *packet.Info) (
 	pid int,
 	inbound bool,
 	err error,
 ) {
-
 	localIP := pktInfo.LocalIP()
 	localPort := pktInfo.LocalPort()
 
@@ -140,13 +125,16 @@ func searchUDP(
 	// binding to different addresses. This highly unusual for clients.
 
 	// search until we find something
-	for i := 0; i < 5; i++ {
+	for i := 0; i <= lookupRetries; i++ {
+		table.lock.RLock()
+
 		// search binds
-		for _, socketInfo := range binds {
+		for _, socketInfo := range table.binds {
 			if localPort == socketInfo.Local.Port &&
 				(socketInfo.Local.IP[0] == 0 || // zero IP
 					isInboundMulticast || // inbound broadcast, multicast
 					localIP.Equal(socketInfo.Local.IP)) {
+				table.lock.RUnlock()
 
 				// do not check direction if remoteIP/Port is not given
 				if pktInfo.RemotePort() == 0 {
@@ -154,17 +142,22 @@ func searchUDP(
 				}
 
 				// get direction and return
-				connInbound := getUDPDirection(socketInfo, udpStates, pktInfo)
+				connInbound := table.getDirection(socketInfo, pktInfo)
 				return checkBindPID(socketInfo, connInbound)
 			}
 		}
 
-		// we found nothing, we could have been too fast, give the kernel some time to think
-		// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
-		time.Sleep(time.Duration(i+1) * baseWaitTime)
+		table.lock.RUnlock()
 
-		// refetch lists
-		binds = updateTable()
+		// every time, except for the last iteration
+		if i < lookupRetries {
+			// we found nothing, we could have been too fast, give the kernel some time to think
+			// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
+			time.Sleep(time.Duration(i+1) * baseWaitTime)
+
+			// refetch lists
+			table.updateTable()
+		}
 	}
 
 	return socket.UnidentifiedProcessID, pktInfo.Inbound, ErrConnectionNotFound

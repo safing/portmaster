@@ -25,27 +25,27 @@ type Info struct {
 func GetInfo() *Info {
 	info := &Info{}
 
-	tcp4Lock.Lock()
-	updateTCP4Tables()
-	info.TCP4Connections = tcp4Connections
-	info.TCP4Listeners = tcp4Listeners
-	tcp4Lock.Unlock()
+	tcp4Table.updateTables()
+	tcp4Table.lock.RLock()
+	info.TCP4Connections = tcp4Table.connections
+	info.TCP4Listeners = tcp4Table.listeners
+	tcp4Table.lock.RUnlock()
 
-	tcp6Lock.Lock()
-	updateTCP6Tables()
-	info.TCP6Connections = tcp6Connections
-	info.TCP6Listeners = tcp6Listeners
-	tcp6Lock.Unlock()
+	tcp6Table.updateTables()
+	tcp6Table.lock.RLock()
+	info.TCP6Connections = tcp6Table.connections
+	info.TCP6Listeners = tcp6Table.listeners
+	tcp6Table.lock.RUnlock()
 
-	udp4Lock.Lock()
-	updateUDP4Table()
-	info.UDP4Binds = udp4Binds
-	udp4Lock.Unlock()
+	udp4Table.updateTable()
+	udp4Table.lock.RLock()
+	info.UDP4Binds = udp4Table.binds
+	udp4Table.lock.RUnlock()
 
-	udp6Lock.Lock()
-	updateUDP6Table()
-	info.UDP6Binds = udp6Binds
-	udp6Lock.Unlock()
+	udp6Table.updateTable()
+	udp6Table.lock.RLock()
+	info.UDP6Binds = udp6Table.binds
+	udp6Table.lock.RUnlock()
 
 	info.UpdateMeta()
 	return info
