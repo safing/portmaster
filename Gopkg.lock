@@ -69,14 +69,6 @@
   version = "v5.0.3"
 
 [[projects]]
-  digest = "1:fd608a9f543f30dd5a086b2cdd0bce71b65bca62798ff7ce21348806cdf1412d"
-  name = "github.com/gofrs/uuid"
-  packages = ["."]
-  pruneopts = ""
-  revision = "abfe1881e60ef34074c1b8d8c63b42565c356ed6"
-  version = "v3.3.0"
-
-[[projects]]
   digest = "1:e85e59c4152d8576341daf54f40d96c404c264e04941a4a36b97a0f427eb9e5e"
   name = "github.com/google/gopacket"
   packages = [
@@ -325,7 +317,6 @@
     "github.com/cookieo9/resources-go",
     "github.com/coreos/go-iptables/iptables",
     "github.com/godbus/dbus",
-    "github.com/gofrs/uuid",
     "github.com/google/gopacket",
     "github.com/google/gopacket/layers",
     "github.com/google/gopacket/tcpassembly",
