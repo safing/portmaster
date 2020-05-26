@@ -114,11 +114,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c140772b00f0c26cf6627aee32f62d9f9d89dffcda648861266c482c36a5344a"
+  digest = "1:742865d3c8c267f108f852411bd8385c53c209e96813a3b0e859855cce4a0ed7"
   name = "github.com/miekg/dns"
   packages = ["."]
   pruneopts = ""
-  revision = "b7703d0fa022e159d01efa2de82e6173d5ec04c8"
+  revision = "0ffcea329570529aedabbc11c1651cba0d46029d"
 
 [[projects]]
   digest = "1:b962a528cbecf7662bee4d84a600f7a0a6a130368666d7d461757ba4d1341906"
@@ -135,14 +135,6 @@
   pruneopts = ""
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
-
-[[projects]]
-  digest = "1:7f569d906bdd20d906b606415b7d794f798f91a62fcfb6a4daa6d50690fb7a3f"
-  name = "github.com/satori/go.uuid"
-  packages = ["."]
-  pruneopts = ""
-  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
-  version = "v1.2.0"
 
 [[projects]]
   digest = "1:16f319cf21ddf49f27b3a2093d68316840dc25ec5c2a0a431a4a4fc01ea707e2"
@@ -200,18 +192,18 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bf61fa9b53be5ce096004599b957e5957b28a5e421b724250aa06ecb7ee6dc57"
+  digest = "1:90f8aa620559abef3e8222064705e420dcb3498085b20782d128e5fa477b3a89"
   name = "golang.org/x/crypto"
   packages = [
     "ed25519",
     "ed25519/internal/edwards25519",
   ]
   pruneopts = ""
-  revision = "4b2356b1ed79e6be3deca3737a3db3d132d2847a"
+  revision = "06a226fb4e3765ef3f48aa2852b401bc7b98e981"
 
 [[projects]]
   branch = "master"
-  digest = "1:ea84836e35d7a66c9b8944796295912509c80c921244bc4e098c5417219895f2"
+  digest = "1:305d718b88fcd3b251b910416367de49af1e7944a9a17efabedab5f0ba7745de"
   name = "golang.org/x/net"
   packages = [
     "bpf",
@@ -224,7 +216,7 @@
     "publicsuffix",
   ]
   pruneopts = ""
-  revision = "7e3656a0809f6f95abd88ac65313578f80b00df2"
+  revision = "0ba52f642ac2f9371a88bfdde41f4b4e195a37c0"
 
 [[projects]]
   branch = "master"
@@ -236,7 +228,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:acb3b56e190190ac9497faf5f0c30c5da4d3e8278d6b7a7042f2aa3332ff7022"
+  digest = "1:bf837d996e7dfe7b819cbe53c8c9733e93228577f0561e43996b9ef0ea8a68a9"
   name = "golang.org/x/sys"
   packages = [
     "internal/unsafeheader",
@@ -249,7 +241,7 @@
     "windows/svc/mgr",
   ]
   pruneopts = ""
-  revision = "bc7a7d42d5c30f4d0fe808715c002826ce2c624e"
+  revision = "05986578812163b26672dabd9b425240ae2bb0ad"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -278,7 +270,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3416c611e00178b07c8fc347ba96398e4d6709fe7d3fab17f0b0fa6f933b4bd1"
+  digest = "1:1c04ddbfd1b1132654a9febab8bdd7a89de852ce0e7a0e1b295eff1718fa26e5"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -295,7 +287,7 @@
     "internal/packagesinternal",
   ]
   pruneopts = ""
-  revision = "b8469989bc69e50ec6dc4e4513fc3ff9ce48b8af"
+  revision = "cb1345f3a375367f8439bba882e90348348288d9"
 
 [[projects]]
   branch = "master"
@@ -309,12 +301,12 @@
   revision = "9bdfabe68543c54f90421aeb9a60ef8061b5b544"
 
 [[projects]]
-  digest = "1:2efc9662a6a1ff28c65c84fc2f9030f13d3afecdb2ecad445f3b0c80e75fc281"
+  digest = "1:43eca683d801087f3acacfd036474638bc5e293ff6078758d710d99c40ec3f7c"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = ""
-  revision = "53403b58ad1b561927d19068c655246f2db79d48"
-  version = "v2.2.8"
+  revision = "0b1645d91e851e735d3e23330303ce81f70adbe3"
+  version = "v2.3.0"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -332,7 +324,6 @@
     "github.com/hashicorp/go-version",
     "github.com/miekg/dns",
     "github.com/oschwald/maxminddb-golang",
-    "github.com/satori/go.uuid",
     "github.com/shirou/gopsutil/process",
     "github.com/spf13/cobra",
     "github.com/stretchr/testify/assert",

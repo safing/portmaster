@@ -6,14 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/log"
-
 	"github.com/tevino/abool"
-
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/profile/endpoints"
 )
@@ -157,7 +155,7 @@ func (profile *Profile) parseConfig() error {
 // New returns a new Profile.
 func New() *Profile {
 	profile := &Profile{
-		ID:           uuid.NewV4().String(),
+		ID:           utils.RandomUUID("").String(),
 		Source:       SourceLocal,
 		Created:      time.Now().Unix(),
 		Config:       make(map[string]interface{}),
