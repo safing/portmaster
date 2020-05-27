@@ -52,3 +52,18 @@ Installation instructions for your platform as well as known issues can be found
 
 - [Linux](https://github.com/safing/portmaster/wiki/Linux)
 - [Windows](https://github.com/safing/portmaster/wiki/Windows)
+
+# Sceenshot Tour
+
+Please note that so far only the dashboard has gotten attention from our designer.
+All views will be updated with proper UX.
+
+![Screenshot Tour #1](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-1.png)
+![Screenshot Tour #2](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-2.png)
+![Screenshot Tour #3](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-3.png)
+![Screenshot Tour #4](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-4.png)
+![Screenshot Tour #5](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-5.png)
+![Screenshot Tour #6](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-6.png)
+![Screenshot Tour #7](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-7.png)
+![Screenshot Tour #8](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-8.png)
+![Screenshot Tour #9](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-9.png)
