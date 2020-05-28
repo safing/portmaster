@@ -210,7 +210,7 @@ Examples:
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(7|6|4)$",
+		ValidationRegex: "^(4|6|7)$",
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 	})
 	if err != nil {
@@ -221,14 +221,14 @@ Examples:
 
 	// Include subdomains
 	err = config.Register(&config.Option{
-		Name:            "Filter SubDomains",
+		Name:            "Filter Subdomains",
 		Key:             CfgOptionFilterSubDomainsKey,
-		Description:     "Also filter sub-domains if a parent domain is blocked by a filter list",
+		Description:     "Also filter a domain if any parent domain is blocked by a filter list",
 		Order:           cfgOptionFilterSubDomainsOrder,
 		OptType:         config.OptTypeInt,
 		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelOff,
-		ValidationRegex: "^(0|4|6|7)$",
+		DefaultValue:    status.SecurityLevelsAll,
+		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
 		return err
@@ -351,7 +351,7 @@ Examples:
 		ReleaseLevel:    config.ReleaseLevelBeta,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(7|6|4)$",
+		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
 		return err
@@ -370,7 +370,7 @@ Examples:
 		ReleaseLevel:    config.ReleaseLevelBeta,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(7|6|4)$",
+		ValidationRegex: "^(4|6|7)$",
 	})
 	if err != nil {
 		return err
@@ -388,7 +388,7 @@ Examples:
 		ReleaseLevel:    config.ReleaseLevelBeta,
 		ExternalOptType: "security level",
 		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(7|6|4)",
+		ValidationRegex: "^(4|6|7)",
 	})
 	if err != nil {
 		return err
