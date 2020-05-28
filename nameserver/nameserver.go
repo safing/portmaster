@@ -261,7 +261,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
 		tracer.Warningf("nameserver: %s requested %s%s: %s", conn.Process(), q.FQDN, q.QType, err)
 
-		if errors.Is(err, &resolver.BlockedUpstreamError{}) {
+		if errors.Is(err, resolver.ErrBlocked) {
 			conn.Block(err.Error())
 		} else {
 			conn.Failed("failed to resolve: " + err.Error())

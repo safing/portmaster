@@ -42,7 +42,7 @@ type BlockedUpstreamError struct {
 }
 
 func (blocked *BlockedUpstreamError) Error() string {
-	return fmt.Sprintf("Endpoint blocked by upstream DNS resolver %s", blocked.ResolverName)
+	return fmt.Sprintf("%s by upstream DNS resolver %s", ErrBlocked, blocked.ResolverName)
 }
 
 // Unwrap implements errors.Unwrapper
