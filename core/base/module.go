@@ -8,8 +8,12 @@ import (
 	_ "github.com/safing/portbase/rng"
 )
 
+var (
+	module *modules.Module
+)
+
 func init() {
-	modules.Register("base", nil, registerDatabases, nil, "database", "config", "rng")
+	module = modules.Register("base", nil, start, nil, "database", "config", "rng")
 
 	// For prettier subsystem graph, printed with --print-subsystem-graph
 	/*
@@ -22,4 +26,10 @@ func init() {
 			nil,
 		)
 	*/
+}
+
+func start() error {
+	startProfiling()
+
+	return registerDatabases()
 }
