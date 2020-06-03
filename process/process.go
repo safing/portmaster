@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +14,10 @@ import (
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/profile"
+)
+
+const (
+	onLinux = runtime.GOOS == "linux"
 )
 
 var (
@@ -262,6 +267,10 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 		new.Path, err = pInfo.Exe()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get Path for p%d: %s", pid, err)
+		}
+		// remove linux " (deleted)" suffix for deleted files
+		if onLinux {
+			new.Path = strings.TrimSuffix(new.Path, " (deleted)")
 		}
 		// Executable Name
 		_, new.ExecName = filepath.Split(new.Path)
