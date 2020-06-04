@@ -18,6 +18,21 @@ import (
 	"github.com/safing/portmaster/process"
 )
 
+const (
+	deniedMsgUnidentified = `%wFailed to identify the requesting process.
+You can enable the Development Mode to disable API authentication for development purposes.`
+
+	deniedMsgSystem = `%wSystem access to the Portmaster API is not permitted.
+You can enable the Development Mode to disable API authentication for development purposes.`
+
+	deniedMsgUnauthorized = `%wThe requesting process is not authorized to access the Portmaster API.
+Checked process paths:
+%s
+
+The authorized root path is %s.
+You can enable the Development Mode to disable API authentication for development purposes.`
+)
+
 var (
 	dataRoot *utils.DirStructure
 
@@ -58,10 +73,15 @@ func apiAuthenticator(s *http.Server, r *http.Request) (err error) {
 		return fmt.Errorf("failed to get remote IP/Port: %s", err)
 	}
 
+	ctx, tracer := log.AddTracer(r.Context())
+	tracer.Tracef("filter: authenticating API request from %s", r.RemoteAddr)
+	defer tracer.Submit()
+
 	// It is very important that this works, retry extensively (every 250ms for 5s)
+	var retry bool
 	for tries := 0; tries < 20; tries++ {
-		err = authenticateAPIRequest(
-			r.Context(),
+		retry, err = authenticateAPIRequest(
+			ctx,
 			&packet.Info{
 				Inbound:  false, // outbound as we are looking for the process of the source address
 				Version:  packet.IPv4,
@@ -72,8 +92,8 @@ func apiAuthenticator(s *http.Server, r *http.Request) (err error) {
 				DstPort:  localPort,
 			},
 		)
-		if err != nil {
-			return nil
+		if !retry {
+			return err
 		}
 
 		// wait a little
@@ -83,13 +103,13 @@ func apiAuthenticator(s *http.Server, r *http.Request) (err error) {
 	return err
 }
 
-func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) error {
+func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bool, err error) {
 	var procsChecked []string
 
 	// get process
 	proc, _, err := process.GetProcessByConnection(ctx, pktInfo)
 	if err != nil {
-		return fmt.Errorf("failed to get process: %s", err)
+		return true, fmt.Errorf("failed to get process: %s", err)
 	}
 	originalPid := proc.Pid
 
@@ -102,43 +122,38 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) error {
 		default: // normal process
 			// check if the requesting process is in database root / updates dir
 			if strings.HasPrefix(proc.Path, dataRoot.Path) {
-				return nil
+				return false, nil
 			}
 		}
 
 		// add checked process to list
 		procsChecked = append(procsChecked, proc.Path)
 
-		if i < 2 {
+		if i < 4 {
 			// get parent process
-			proc, err = process.GetOrFindProcess(context.Background(), proc.ParentPid)
+			proc, err = process.GetOrFindProcess(ctx, proc.ParentPid)
 			if err != nil {
-				return fmt.Errorf("failed to get process: %s", err)
+				return true, fmt.Errorf("failed to get process: %s", err)
 			}
 		}
 	}
 
 	switch originalPid {
 	case process.UnidentifiedProcessID:
-		log.Warningf("filter: denying api access: failed to identify process")
-		return fmt.Errorf("%wFailed to identify the requesting process. You can enable the Development Mode to disable API authentication for development purposes.", api.ErrAPIAccessDeniedMessage)
+		log.Tracer(ctx).Warningf("filter: denying api access: failed to identify process")
+		return true, fmt.Errorf(deniedMsgUnidentified, api.ErrAPIAccessDeniedMessage) //nolint:stylecheck // message for user
 
 	case process.SystemProcessID:
-		log.Warningf("filter: denying api access: request by system")
-		return fmt.Errorf("%wSystem access to the Portmaster API is not permitted. You can enable the Development Mode to disable API authentication for development purposes.", api.ErrAPIAccessDeniedMessage)
+		log.Tracer(ctx).Warningf("filter: denying api access: request by system")
+		return false, fmt.Errorf(deniedMsgSystem, api.ErrAPIAccessDeniedMessage) //nolint:stylecheck // message for user
 
-	default: //
-		log.Warningf("filter: denying api access to %s - also checked %s (trusted root is %s)", procsChecked[0], strings.Join(procsChecked[1:], " "), dataRoot.Path)
-		return fmt.Errorf(
-			`%wThe requesting process is not authorized to access the Portmaster API.
-Checked process paths:
-%s
-
-The authorithed root path is %s.
-You can enable the Development Mode to disable API authentication for development purposes.`,
+	default: // normal process
+		log.Tracer(ctx).Warningf("filter: denying api access to %s - also checked %s (trusted root is %s)", procsChecked[0], strings.Join(procsChecked[1:], " "), dataRoot.Path)
+		return false, fmt.Errorf( //nolint:stylecheck // message for user
+			deniedMsgUnauthorized,
 			api.ErrAPIAccessDeniedMessage,
-			dataRoot.Path,
 			strings.Join(procsChecked, "\n"),
+			dataRoot.Path,
 		)
 	}
 }
