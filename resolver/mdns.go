@@ -69,7 +69,7 @@ func indexOfRR(entry *dns.RR_Header, list *[]dns.RR) int {
 //nolint:gocyclo,gocognit // TODO: make simpler
 func listenToMDNS(ctx context.Context) error {
 	var err error
-	messages := make(chan *dns.Msg)
+	messages := make(chan *dns.Msg, 32)
 
 	// TODO: init and start every listener in its own service worker
 	// this will make the more resilient and actually able to restart
@@ -80,7 +80,7 @@ func listenToMDNS(ctx context.Context) error {
 		log.Warningf("intel(mdns): failed to create udp4 listen multicast socket: %s", err)
 	} else {
 		module.StartServiceWorker("mdns udp4 multicast listener", 0, func(ctx context.Context) error {
-			return listenForDNSPackets(multicast4Conn, messages)
+			return listenForDNSPackets(ctx, multicast4Conn, messages)
 		})
 		defer multicast4Conn.Close()
 	}
@@ -91,7 +91,7 @@ func listenToMDNS(ctx context.Context) error {
 		log.Warningf("intel(mdns): failed to create udp6 listen multicast socket: %s", err)
 	} else {
 		module.StartServiceWorker("mdns udp6 multicast listener", 0, func(ctx context.Context) error {
-			return listenForDNSPackets(multicast6Conn, messages)
+			return listenForDNSPackets(ctx, multicast6Conn, messages)
 		})
 		defer multicast6Conn.Close()
 	}
@@ -102,7 +102,7 @@ func listenToMDNS(ctx context.Context) error {
 		log.Warningf("intel(mdns): failed to create udp4 listen socket: %s", err)
 	} else {
 		module.StartServiceWorker("mdns udp4 unicast listener", 0, func(ctx context.Context) error {
-			return listenForDNSPackets(unicast4Conn, messages)
+			return listenForDNSPackets(ctx, unicast4Conn, messages)
 		})
 		defer unicast4Conn.Close()
 	}
@@ -113,7 +113,7 @@ func listenToMDNS(ctx context.Context) error {
 		log.Warningf("intel(mdns): failed to create udp6 listen socket: %s", err)
 	} else {
 		module.StartServiceWorker("mdns udp6 unicast listener", 0, func(ctx context.Context) error {
-			return listenForDNSPackets(unicast6Conn, messages)
+			return listenForDNSPackets(ctx, unicast6Conn, messages)
 		})
 		defer unicast6Conn.Close()
 	}
@@ -319,7 +319,7 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 
 }
 
-func listenForDNSPackets(conn *net.UDPConn, messages chan *dns.Msg) error {
+func listenForDNSPackets(ctx context.Context, conn *net.UDPConn, messages chan *dns.Msg) error {
 	buf := make([]byte, 65536)
 	for {
 		n, err := conn.Read(buf)
@@ -335,7 +335,11 @@ func listenForDNSPackets(conn *net.UDPConn, messages chan *dns.Msg) error {
 			log.Debugf("resolver: failed to unpack message: %s", err)
 			continue
 		}
-		messages <- message
+		select {
+		case messages <- message:
+		case <-ctx.Done():
+			return nil
+		}
 	}
 }
 
