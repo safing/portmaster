@@ -112,6 +112,7 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 		return true, fmt.Errorf("failed to get process: %s", err)
 	}
 	originalPid := proc.Pid
+	var previousPid int
 
 	// go up up to two levels, if we don't match
 	for i := 0; i < 5; i++ {
@@ -130,10 +131,19 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 		procsChecked = append(procsChecked, proc.Path)
 
 		if i < 4 {
+			// save previous PID
+			previousPid = proc.Pid
+
 			// get parent process
 			proc, err = process.GetOrFindProcess(ctx, proc.ParentPid)
 			if err != nil {
 				return true, fmt.Errorf("failed to get process: %s", err)
+			}
+
+			// abort if we are looping
+			if proc.Pid == previousPid {
+				// this also catches -1 pid loops
+				break
 			}
 		}
 	}
