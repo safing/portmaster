@@ -44,7 +44,7 @@ Think of a pi-hole for your computer. Or an ad-blocker that blocks ads on your w
 
 **Status:** _unreleased - pre-alpha scheduled for June_
 
-Please [visit our Kickstarter campaign](https://www.kickstarter.com/projects/safingio/spn/) to read all about this module.
+[Visit our homepage](https://safing.io/spn/) to read all about this module.
 
 # Installation
 
