@@ -49,8 +49,6 @@ const (
 	udp4ProcFile = "/proc/net/udp"
 	udp6ProcFile = "/proc/net/udp6"
 
-	UnfetchedProcessID = -2
-
 	tcpListenStateHex = "0A"
 )
 
@@ -114,7 +112,7 @@ func getTableFromSource(stack uint8, procFile string) (connections []*socket.Con
 	for scanner.Scan() {
 		fields := strings.FieldsFunc(scanner.Text(), procDelimiter)
 		if len(fields) < 14 {
-			// log.Tracef("process: too short: %s", fields)
+			// log.Tracef("proc: too short: %s", fields)
 			continue
 		}
 
@@ -125,21 +123,21 @@ func getTableFromSource(stack uint8, procFile string) (connections []*socket.Con
 
 		localPort, err := strconv.ParseUint(fields[fieldIndexLocalPort], 16, 16)
 		if err != nil {
-			log.Warningf("process: could not parse port: %s", err)
+			log.Warningf("proc: could not parse port: %s", err)
 			continue
 		}
 
 		uid, err := strconv.ParseInt(fields[fieldIndexUID], 10, 32)
 		// log.Tracef("uid: %s", fields[fieldIndexUID])
 		if err != nil {
-			log.Warningf("process: could not parse uid %s: %s", fields[11], err)
+			log.Warningf("proc: could not parse uid %s: %s", fields[11], err)
 			continue
 		}
 
 		inode, err := strconv.ParseInt(fields[fieldIndexInode], 10, 32)
 		// log.Tracef("inode: %s", fields[fieldIndexInode])
 		if err != nil {
-			log.Warningf("process: could not parse inode %s: %s", fields[13], err)
+			log.Warningf("proc: could not parse inode %s: %s", fields[13], err)
 			continue
 		}
 
@@ -151,7 +149,7 @@ func getTableFromSource(stack uint8, procFile string) (connections []*socket.Con
 					IP:   localIP,
 					Port: uint16(localPort),
 				},
-				PID:   UnfetchedProcessID,
+				PID:   socket.UnidentifiedProcessID,
 				UID:   int(uid),
 				Inode: int(inode),
 			})
@@ -166,7 +164,7 @@ func getTableFromSource(stack uint8, procFile string) (connections []*socket.Con
 						IP:   localIP,
 						Port: uint16(localPort),
 					},
-					PID:   UnfetchedProcessID,
+					PID:   socket.UnidentifiedProcessID,
 					UID:   int(uid),
 					Inode: int(inode),
 				})
@@ -180,7 +178,7 @@ func getTableFromSource(stack uint8, procFile string) (connections []*socket.Con
 
 				remotePort, err := strconv.ParseUint(fields[fieldIndexRemotePort], 16, 16)
 				if err != nil {
-					log.Warningf("process: could not parse port: %s", err)
+					log.Warningf("proc: could not parse port: %s", err)
 					continue
 				}
 
@@ -193,7 +191,7 @@ func getTableFromSource(stack uint8, procFile string) (connections []*socket.Con
 						IP:   remoteIP,
 						Port: uint16(remotePort),
 					},
-					PID:   UnfetchedProcessID,
+					PID:   socket.UnidentifiedProcessID,
 					UID:   int(uid),
 					Inode: int(inode),
 				})
@@ -211,11 +209,11 @@ func procDelimiter(c rune) bool {
 func convertIPv4(data string) net.IP {
 	decoded, err := hex.DecodeString(data)
 	if err != nil {
-		log.Warningf("process: could not parse IPv4 %s: %s", data, err)
+		log.Warningf("proc: could not parse IPv4 %s: %s", data, err)
 		return nil
 	}
 	if len(decoded) != 4 {
-		log.Warningf("process: decoded IPv4 %s has wrong length", decoded)
+		log.Warningf("proc: decoded IPv4 %s has wrong length", decoded)
 		return nil
 	}
 	ip := net.IPv4(decoded[3], decoded[2], decoded[1], decoded[0])
@@ -225,11 +223,11 @@ func convertIPv4(data string) net.IP {
 func convertIPv6(data string) net.IP {
 	decoded, err := hex.DecodeString(data)
 	if err != nil {
-		log.Warningf("process: could not parse IPv6 %s: %s", data, err)
+		log.Warningf("proc: could not parse IPv6 %s: %s", data, err)
 		return nil
 	}
 	if len(decoded) != 16 {
-		log.Warningf("process: decoded IPv6 %s has wrong length", decoded)
+		log.Warningf("proc: decoded IPv6 %s has wrong length", decoded)
 		return nil
 	}
 	ip := net.IP(decoded)
