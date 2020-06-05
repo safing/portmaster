@@ -20,7 +20,10 @@ import (
 
 const (
 	deniedMsgUnidentified = `%wFailed to identify the requesting process.
-You can enable the Development Mode to disable API authentication for development purposes.`
+You can enable the Development Mode to disable API authentication for development purposes.
+
+If you are seeing this message in the Portmaster App, please restart the app or right-click and select "Reload".
+In the future, this issue will be remediated automatically.`
 
 	deniedMsgSystem = `%wSystem access to the Portmaster API is not permitted.
 You can enable the Development Mode to disable API authentication for development purposes.`
@@ -56,7 +59,7 @@ func startAPIAuth() {
 	log.Tracef("filter: api port set to %d", apiPort)
 }
 
-func apiAuthenticator(s *http.Server, r *http.Request) (err error) {
+func apiAuthenticator(ctx context.Context, s *http.Server, r *http.Request) (err error) {
 	if devMode() {
 		return nil
 	}
@@ -73,9 +76,7 @@ func apiAuthenticator(s *http.Server, r *http.Request) (err error) {
 		return fmt.Errorf("failed to get remote IP/Port: %s", err)
 	}
 
-	ctx, tracer := log.AddTracer(r.Context())
-	tracer.Tracef("filter: authenticating API request from %s", r.RemoteAddr)
-	defer tracer.Submit()
+	log.Tracer(r.Context()).Tracef("filter: authenticating API request from %s", r.RemoteAddr)
 
 	// It is very important that this works, retry extensively (every 250ms for 5s)
 	var retry bool
