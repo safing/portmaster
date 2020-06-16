@@ -62,6 +62,20 @@ func formatIPAndPort(ip net.IP, port uint16) string {
 	return address
 }
 
+func resolverConnFactory(resolver *Resolver) ResolverConn {
+	switch resolver.ServerType {
+	case ServerTypeTCP:
+		return NewTCPResolver(resolver)
+	case ServerTypeDoT:
+		return NewTCPResolver(resolver).UseTLS()
+	default:
+		return &BasicResolverConn{
+			clientManager: clientManagerFactory(resolver.ServerType)(resolver),
+			resolver:      resolver,
+		}
+	}
+}
+
 func clientManagerFactory(serverType string) func(*Resolver) *dnsClientManager {
 	switch serverType {
 	case ServerTypeDNS:
@@ -129,12 +143,7 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		UpstreamBlockDetection: blockType,
 	}
 
-	newConn := &BasicResolverConn{
-		clientManager: clientManagerFactory(u.Scheme)(new),
-		resolver:      new,
-	}
-
-	new.Conn = newConn
+	new.Conn = resolverConnFactory(new)
 	return new, false, nil
 }
 
