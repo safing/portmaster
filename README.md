@@ -6,7 +6,7 @@ The Portmaster is a privacy app that at its core simply intercepts _all_ your ne
 
 #### ⚠️ Disclaimer
 
-> The Portmaster is still in its early "pre-alpha" development stage. It is functional, but has not yet been tested widely. We are glad if you want to try out the Portmaster right away but please expect bugs and rather technical problems. We'll push updates and fixes as we go. A list of known problems can be found at the bottom of this page.
+> The Portmaster is still in its early "alpha" development stage. While some features might still have bugs, it runs quite stable and can easily be uninstalled again. We'll push updates and fixes as we go. A list of known problems can be found at the bottom of this page.
 
 #### 🔄 Automatic Updates
 
@@ -16,7 +16,7 @@ We have set up update servers so we can push fixes and improvements as we go.
 
 ## DNS-over-TLS Resolver
 
-**Status:** _pre-alpha_
+**Status:** _alpha_
 
 A DNS resolver that does not only encrypt your queries, but figures out where it makes the most sense to send your queries. Queries for local domains will not be sent to the upstream servers. This means it won't break your or your company's network setup.
 
@@ -28,7 +28,7 @@ A DNS resolver that does not only encrypt your queries, but figures out where it
 
 ## Privacy Filter
 
-**Status:** - _pre-alpha_
+**Status:** _alpha_
 
 Think of a pi-hole for your computer. Or an ad-blocker that blocks ads on your whole computer, not only on your browser. With you everywhere you go and every network you visit.
 
