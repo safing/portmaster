@@ -54,7 +54,9 @@ func TestMain(m *testing.M, module *modules.Module) {
 // are shutdown.
 func TestMainWithHooks(m *testing.M, module *modules.Module, afterStartFn, beforeStopFn TestHookFunc) {
 	// enable module for testing
-	module.Enable()
+	if module != nil {
+		module.Enable()
+	}
 
 	// switch databases to memory only
 	base.DefaultDatabaseStorageType = "hashmap"

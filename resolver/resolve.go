@@ -22,6 +22,8 @@ var (
 	ErrBlocked = errors.New("query was blocked")
 	// ErrLocalhost is returned to *.localhost queries
 	ErrLocalhost = errors.New("query for localhost")
+	// ErrTimeout is returned when a query times out
+	ErrTimeout = errors.New("query timed out")
 
 	// detailed errors
 

@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/safing/portbase/utils"
 )
 
 const (
 	defaultClientTTL         = 5 * time.Minute
 	defaultRequestTimeout    = 3 * time.Second // dns query
-	defaultConnectTimeout    = 2 * time.Second // tcp/tls
+	defaultConnectTimeout    = 5 * time.Second // tcp/tls
 	connectionEOLGracePeriod = 7 * time.Second
 )
 
@@ -39,12 +40,12 @@ type dnsClientManager struct {
 	lock sync.Mutex
 
 	// set by creator
-	serverAddress string
-	ttl           time.Duration // force refresh of connection to reduce traceability
-	factory       func() *dns.Client
+	resolver *Resolver
+	ttl      time.Duration // force refresh of connection to reduce traceability
+	factory  func() *dns.Client
 
 	// internal
-	pool sync.Pool
+	pool utils.StablePool
 }
 
 type dnsClient struct {
@@ -57,7 +58,7 @@ type dnsClient struct {
 // getConn returns the *dns.Conn and if it's new. This function may only be called between clientManager.getDNSClient() and dnsClient.done().
 func (dc *dnsClient) getConn() (c *dns.Conn, new bool, err error) {
 	if dc.conn == nil {
-		dc.conn, err = dc.client.Dial(dc.mgr.serverAddress)
+		dc.conn, err = dc.client.Dial(dc.mgr.resolver.ServerAddress)
 		if err != nil {
 			return nil, false, err
 		}
@@ -78,8 +79,8 @@ func (dc *dnsClient) destroy() {
 
 func newDNSClientManager(resolver *Resolver) *dnsClientManager {
 	return &dnsClientManager{
-		serverAddress: resolver.ServerAddress,
-		ttl:           0, // new client for every request, as we need to randomize the port
+		resolver: resolver,
+		ttl:      0, // new client for every request, as we need to randomize the port
 		factory: func() *dns.Client {
 			return &dns.Client{
 				Timeout: defaultRequestTimeout,
@@ -93,8 +94,8 @@ func newDNSClientManager(resolver *Resolver) *dnsClientManager {
 
 func newTCPClientManager(resolver *Resolver) *dnsClientManager {
 	return &dnsClientManager{
-		serverAddress: resolver.ServerAddress,
-		ttl:           defaultClientTTL,
+		resolver: resolver,
+		ttl:      defaultClientTTL,
 		factory: func() *dns.Client {
 			return &dns.Client{
 				Net:     "tcp",
@@ -111,8 +112,8 @@ func newTCPClientManager(resolver *Resolver) *dnsClientManager {
 
 func newTLSClientManager(resolver *Resolver) *dnsClientManager {
 	return &dnsClientManager{
-		serverAddress: resolver.ServerAddress,
-		ttl:           defaultClientTTL,
+		resolver: resolver,
+		ttl:      defaultClientTTL,
 		factory: func() *dns.Client {
 			return &dns.Client{
 				Net: "tcp-tls",
