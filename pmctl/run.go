@@ -107,9 +107,7 @@ func handleRun(cmd *cobra.Command, opts *Options) (err error) {
 func run(cmd *cobra.Command, opts *Options) (err error) {
 
 	// set download option
-	if opts.AllowDownload {
-		registry.Online = true
-	}
+	registry.Online = opts.AllowDownload
 
 	// parse identifier
 	opts.ShortIdentifier = path.Dir(opts.Identifier)

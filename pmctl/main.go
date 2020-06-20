@@ -35,7 +35,7 @@ var (
 		},
 		Beta:    false,
 		DevMode: false,
-		Online:  false,
+		Online:  true, // is disabled later based on command
 	}
 
 	rootCmd = &cobra.Command{
