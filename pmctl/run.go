@@ -185,8 +185,16 @@ func run(cmd *cobra.Command, opts *Options) (err error) {
 				log.Println("error seems to be permanent, giving up...")
 				return err
 			}
+			// resilience
+			time.Sleep(time.Duration(tries) * 2 * time.Second)
+			if tries >= 2 {
+				// try updating
+				updateRegistryIndex()
+			}
 			log.Println("trying again...")
 		case tryAgain && err == nil:
+			// reset error count
+			tries = 0
 			// upgrade
 			log.Println("restarting by request...")
 			// update index
