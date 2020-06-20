@@ -104,7 +104,7 @@ func handleRun(cmd *cobra.Command, opts *Options) (err error) {
 	return
 }
 
-func run(cmd *cobra.Command, opts *Options) (err error) {
+func run(cmd *cobra.Command, opts *Options) (err error) { //nolint:gocognit
 
 	// set download option
 	registry.Online = opts.AllowDownload
