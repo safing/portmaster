@@ -182,17 +182,12 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 			Beta:   false,
 		})
 
-		registry.AddIndex(updater.Index{
-			Path:   "beta.json",
-			Stable: false,
-			Beta:   true,
-		})
-
-		registry.AddIndex(updater.Index{
-			Path:   "all/intel/intel.json",
-			Stable: true,
-			Beta:   false,
-		})
+		// TODO: enable loading beta versions
+		// registry.AddIndex(updater.Index{
+		// Path:   "beta.json",
+		// Stable: false,
+		// Beta:   true,
+		// })
 
 		updateRegistryIndex()
 	}
