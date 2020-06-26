@@ -106,6 +106,8 @@ var (
 
 	captivePortalURL  string
 	captivePortalLock sync.Mutex
+
+	waitForever = make(chan time.Time)
 )
 
 func init() {
@@ -200,12 +202,14 @@ func triggerOnlineStatusInvestigation() {
 }
 
 func monitorOnlineStatus(ctx context.Context) error {
+	triggerOnlineStatusInvestigation()
 	for {
 		// wait for trigger
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-onlineStatusInvestigationTrigger:
+		case <-getDynamicStatusTrigger():
 		}
 
 		// enable waiting
@@ -218,6 +222,21 @@ func monitorOnlineStatus(ctx context.Context) error {
 		// finished!
 		onlineStatusInvestigationWg.Done()
 		onlineStatusInvestigationInProgress.UnSet()
+	}
+}
+
+func getDynamicStatusTrigger() <-chan time.Time {
+	switch GetOnlineStatus() {
+	case StatusOffline:
+		return time.After(10 * time.Second)
+	case StatusLimited, StatusPortal:
+		return time.After(1 * time.Minute)
+	case StatusSemiOnline:
+		return time.After(5 * time.Minute)
+	case StatusOnline:
+		return waitForever
+	default: // unknown status
+		return time.After(5 * time.Minute)
 	}
 }
 

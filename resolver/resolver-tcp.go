@@ -93,10 +93,8 @@ func (tr *TCPResolver) client(workerCtx context.Context) error { //nolint:gocogn
 	var cancelConnCtx func()
 	var recycleConn bool
 	var shuttingDown bool
+	var failCnt int
 	var incoming = make(chan *dns.Msg, 100)
-
-	// enable client restarting after crash
-	defer tr.clientStarted.UnSet()
 
 connMgmt:
 	for {
@@ -111,7 +109,7 @@ connMgmt:
 		}
 
 		// check if we are shutting down or failing
-		if shuttingDown || tr.IsFailing() {
+		if shuttingDown || failCnt >= FailThreshold || tr.IsFailing() {
 			// reply to all waiting queries
 			tr.Lock()
 			for id, inFlight := range tr.inFlightQueries {
@@ -181,7 +179,12 @@ connMgmt:
 		c, err := tr.dnsClient.Dial(tr.resolver.ServerAddress)
 		if err != nil {
 			tr.ReportFailure()
+			failCnt++
+			if tr.IsFailing() {
+				shuttingDown = true
+			}
 			log.Debugf("resolver: failed to connect to %s (%s)", tr.resolver.Name, tr.resolver.ServerAddress)
+			netenv.ReportFailedConnection()
 			continue connMgmt
 		}
 		tr.dnsConnection = c
@@ -208,6 +211,10 @@ connMgmt:
 					if connClosing.SetToIf(false, true) {
 						cancelConnCtx()
 						tr.ReportFailure()
+						failCnt++
+						if tr.IsFailing() {
+							shuttingDown = true
+						}
 						log.Warningf("resolver: read error from %s (%s): %s", tr.resolver.Name, tr.dnsConnection.RemoteAddr(), err)
 					}
 					return nil
@@ -244,6 +251,10 @@ connMgmt:
 					if connClosing.SetToIf(false, true) {
 						cancelConnCtx()
 						tr.ReportFailure()
+						failCnt++
+						if tr.IsFailing() {
+							shuttingDown = true
+						}
 						log.Warningf("resolver: write error to %s (%s): %s", tr.resolver.Name, tr.dnsConnection.RemoteAddr(), err)
 					}
 					continue connMgmt
@@ -263,6 +274,7 @@ connMgmt:
 					if ok {
 						select {
 						case inFlight.Response <- msg:
+							failCnt = 0 // reset fail counter
 							// responded!
 						default:
 							// save to cache, if enabled
@@ -349,6 +361,11 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	case <-time.After(defaultRequestTimeout):
 		tr.ReportFailure()
 		return nil, ErrTimeout
+	}
+
+	if reply == nil {
+		// Resolver is shutting down, could be server failure or we are offline
+		return nil, ErrFailure
 	}
 
 	if tr.resolver.IsBlockedUpstream(reply) {
