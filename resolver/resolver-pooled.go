@@ -11,14 +11,12 @@ import (
 	"github.com/safing/portbase/utils"
 )
 
-const (
+var (
 	defaultClientTTL         = 5 * time.Minute
 	defaultRequestTimeout    = 3 * time.Second // dns query
 	defaultConnectTimeout    = 5 * time.Second // tcp/tls
 	connectionEOLGracePeriod = 7 * time.Second
-)
 
-var (
 	localAddrFactory func(network string) net.Addr
 )
 
