@@ -106,17 +106,19 @@ func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
 }
 
 func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) error { //nolint:gocognit // TODO
-	// return with server failure if offline
-	if netenv.GetOnlineStatus() == netenv.StatusOffline {
-		returnServerFailure(w, query)
-		return nil
-	}
-
 	// only process first question, that's how everyone does it.
 	question := query.Question[0]
 	q := &resolver.Query{
 		FQDN:  question.Name,
 		QType: dns.Type(question.Qtype),
+	}
+
+	// return with server failure if offline
+	if netenv.GetOnlineStatus() == netenv.StatusOffline &&
+		!netenv.IsOnlineStatusTestDomain(q.FQDN) {
+		log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
+		returnServerFailure(w, query)
+		return nil
 	}
 
 	// check class

@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/safing/portmaster/netenv"
+
 	"github.com/miekg/dns"
 
 	"github.com/safing/portbase/database"
@@ -24,6 +26,10 @@ var (
 	ErrLocalhost = errors.New("query for localhost")
 	// ErrTimeout is returned when a query times out
 	ErrTimeout = errors.New("query timed out")
+	// ErrOffline is returned when no network connection is detected
+	ErrOffline = errors.New("device is offine")
+	// ErrFailure is returned when the type of failure is unclear
+	ErrFailure = errors.New("query failed")
 
 	// detailed errors
 
@@ -213,11 +219,22 @@ func deduplicateRequest(ctx context.Context, q *Query) (finishRequest func()) {
 	}
 }
 
-func resolveAndCache(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
+func resolveAndCache(ctx context.Context, q *Query) (rrCache *RRCache, err error) { //nolint:gocognit
 	// get resolvers
 	resolvers := GetResolversInScope(ctx, q)
 	if len(resolvers) == 0 {
 		return nil, ErrNoCompliance
+	}
+
+	// check if we are online
+	if netenv.GetOnlineStatus() == netenv.StatusOffline {
+		if netenv.IsOnlineStatusTestDomain(q.FQDN) {
+			log.Tracer(ctx).Debugf("resolver: permitting online status test domain %s to resolve even though offline", q.FQDN)
+		} else {
+			log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
+			// we are offline and this is not an online check query
+			return nil, ErrOffline
+		}
 	}
 
 	// start resolving
@@ -246,6 +263,11 @@ resolveLoop:
 				case errors.Is(err, ErrBlocked):
 					// some resolvers might also block
 					return nil, err
+				case netenv.GetOnlineStatus() == netenv.StatusOffline &&
+					!netenv.IsOnlineStatusTestDomain(q.FQDN):
+					log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
+					// we are offline and this is not an online check query
+					return nil, ErrOffline
 				}
 			} else {
 				// no error
