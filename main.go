@@ -15,6 +15,6 @@ import (
 )
 
 func main() {
-	info.Set("Portmaster", "0.4.10", "AGPLv3", true)
+	info.Set("Portmaster", "0.4.11", "AGPLv3", true)
 	os.Exit(run.Run())
 }
