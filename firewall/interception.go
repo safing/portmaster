@@ -357,7 +357,6 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 
 	log.Tracer(pkt.Ctx()).Trace("filter: starting decision process")
 	DecideOnConnection(pkt.Ctx(), conn, pkt)
-	conn.Inspecting = false // TODO: enable inspecting again
 
 	// tunneling
 	// TODO: add implementation for forced tunneling
@@ -377,8 +376,11 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 
 	switch {
 	case conn.Inspecting:
-		log.Tracer(pkt.Ctx()).Trace("filter: start inspecting")
+		log.Tracer(pkt.Ctx()).Trace("filter: starting inspection")
+		// setup inspectors and inspection handler
+		inspection.InitializeInspectors(conn, pkt)
 		conn.SetFirewallHandler(inspectThenVerdict)
+		// execute inspection handler
 		inspectThenVerdict(conn, pkt)
 	default:
 		conn.StopFirewallHandler()
@@ -400,6 +402,8 @@ func inspectThenVerdict(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	// we are done with inspecting
+	conn.Inspecting = false
+	conn.SaveWhenFinished()
 	conn.StopFirewallHandler()
 	issueVerdict(conn, pkt, 0, true)
 }

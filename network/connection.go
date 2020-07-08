@@ -158,14 +158,6 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// a connection and signals the firewallHandler that a Save()
 	// should be issued after processing the connection.
 	saveWhenFinished bool
-	// activeInspectors is a slice of booleans where each entry
-	// maps to the index of an available inspector. If the value
-	// is true the inspector is currently active. False indicates
-	// that the inspector has finished and should be skipped.
-	activeInspectors []bool
-	// inspectorData holds additional meta data for the inspectors.
-	// using the inspectors index as a map key.
-	inspectorData map[uint8]interface{}
 	// ProfileRevisionCounter is used to track changes to the process
 	// profile and required for correct re-evaluation of a connections
 	// verdict.
@@ -173,6 +165,8 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// addedToMetrics signifies if the connection has already been counted in
 	// the metrics.
 	addedToMetrics bool
+
+	inspectors []Inspector
 }
 
 // Reason holds information justifying a verdict, as well as additional
@@ -407,6 +401,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		// meta
 		Started:                time.Now().Unix(),
 		ProfileRevisionCounter: proc.Profile().RevisionCnt(),
+		Inspecting:             true,
 	}
 	newConn.SetLocalIP(pkt.Info().LocalIP())
 
@@ -628,24 +623,14 @@ func (conn *Connection) packetHandler() {
 	}
 }
 
-// GetActiveInspectors returns the list of active inspectors.
-func (conn *Connection) GetActiveInspectors() []bool {
-	return conn.activeInspectors
+// GetInspectors returns the list of inspectors.
+func (conn *Connection) GetInspectors() []Inspector {
+	return conn.inspectors
 }
 
-// SetActiveInspectors sets the list of active inspectors.
-func (conn *Connection) SetActiveInspectors(new []bool) {
-	conn.activeInspectors = new
-}
-
-// GetInspectorData returns the list of inspector data.
-func (conn *Connection) GetInspectorData() map[uint8]interface{} {
-	return conn.inspectorData
-}
-
-// SetInspectorData set the list of inspector data.
-func (conn *Connection) SetInspectorData(new map[uint8]interface{}) {
-	conn.inspectorData = new
+// SetInspectors sets the list of inspectors.
+func (conn *Connection) SetInspectors(new []Inspector) {
+	conn.inspectors = new
 }
 
 // String returns a string representation of conn.
