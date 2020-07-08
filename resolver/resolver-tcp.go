@@ -102,7 +102,9 @@ connMgmt:
 		if tr.dnsConnection != nil {
 			connClosing.Set()
 			_ = tr.dnsConnection.Close()
-			cancelConnCtx()
+			if cancelConnCtx != nil {
+				cancelConnCtx()
+			}
 
 			tr.dnsConnection = nil
 			atomic.AddUint32(tr.connInstanceID, 1)
@@ -120,9 +122,15 @@ connMgmt:
 			tr.Unlock()
 
 			// hint network environment at failed connection
-			netenv.ReportFailedConnection()
+			if failCnt >= FailThreshold {
+				netenv.ReportFailedConnection()
+			}
 
-			cancelConnCtx() // The linter said so. Don't even...
+			// The linter said so. Don't even...
+			if cancelConnCtx != nil {
+				cancelConnCtx()
+			}
+
 			return nil
 		}
 
@@ -209,7 +217,9 @@ connMgmt:
 				msg, err := conn.ReadMsg()
 				if err != nil {
 					if connClosing.SetToIf(false, true) {
-						cancelConnCtx()
+						if cancelConnCtx != nil {
+							cancelConnCtx()
+						}
 						tr.ReportFailure()
 						failCnt++
 						if tr.IsFailing() {
@@ -249,7 +259,9 @@ connMgmt:
 				err := tr.dnsConnection.WriteMsg(msg)
 				if err != nil {
 					if connClosing.SetToIf(false, true) {
-						cancelConnCtx()
+						if cancelConnCtx != nil {
+							cancelConnCtx()
+						}
 						tr.ReportFailure()
 						failCnt++
 						if tr.IsFailing() {
@@ -344,7 +356,7 @@ func (tr *TCPResolver) submitQuery(_ context.Context, q *Query) *InFlightQuery {
 
 	// make sure client is started
 	if tr.clientStarted.SetToIf(false, true) {
-		module.StartWorker("dns client", tr.client)
+		module.StartServiceWorker("dns client", 10*time.Millisecond, tr.client)
 	}
 
 	return inFlight
