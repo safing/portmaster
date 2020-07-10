@@ -9,6 +9,7 @@ require (
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833 // indirect
 	github.com/cookieo9/resources-go v0.0.0-20150225115733-d27c04069d0d
 	github.com/coreos/go-iptables v0.4.5
+	github.com/dgraph-io/badger v1.6.1 // indirect
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/godbus/dbus/v5 v5.0.3
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
@@ -23,6 +24,7 @@ require (
 	github.com/seehuhn/fortuna v1.0.1 // indirect
 	github.com/shirou/gopsutil v2.20.6+incompatible
 	github.com/spf13/cobra v1.0.0
+	github.com/stretchr/testify v1.6.1
 	github.com/tevino/abool v0.0.0-20200707075104-d91eb651d517
 	github.com/thetannerryan/ring v1.1.1
 	github.com/tidwall/sjson v1.1.1 // indirect
