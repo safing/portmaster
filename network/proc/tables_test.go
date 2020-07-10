@@ -14,12 +14,12 @@ func TestSockets(t *testing.T) {
 	}
 	fmt.Println("\nTCP 4 connections:")
 	for _, connection := range connections {
-		pid := FindConnectionPID(connection)
+		pid := GetPID(connection)
 		fmt.Printf("%d: %+v\n", pid, connection)
 	}
 	fmt.Println("\nTCP 4 listeners:")
 	for _, listener := range listeners {
-		pid := FindBindPID(listener)
+		pid := GetPID(listener)
 		fmt.Printf("%d: %+v\n", pid, listener)
 	}
 
@@ -29,12 +29,12 @@ func TestSockets(t *testing.T) {
 	}
 	fmt.Println("\nTCP 6 connections:")
 	for _, connection := range connections {
-		pid := FindConnectionPID(connection)
+		pid := GetPID(connection)
 		fmt.Printf("%d: %+v\n", pid, connection)
 	}
 	fmt.Println("\nTCP 6 listeners:")
 	for _, listener := range listeners {
-		pid := FindBindPID(listener)
+		pid := GetPID(listener)
 		fmt.Printf("%d: %+v\n", pid, listener)
 	}
 
@@ -44,7 +44,7 @@ func TestSockets(t *testing.T) {
 	}
 	fmt.Println("\nUDP 4 binds:")
 	for _, bind := range binds {
-		pid := FindBindPID(bind)
+		pid := GetPID(bind)
 		fmt.Printf("%d: %+v\n", pid, bind)
 	}
 
@@ -54,7 +54,7 @@ func TestSockets(t *testing.T) {
 	}
 	fmt.Println("\nUDP 6 binds:")
 	for _, bind := range binds {
-		pid := FindBindPID(bind)
+		pid := GetPID(bind)
 		fmt.Printf("%d: %+v\n", pid, bind)
 	}
 }
