@@ -50,8 +50,7 @@ func TestClientPooling(t *testing.T) {
 	}
 
 	// create separate resolver for this test
-	resolver, _, err := createResolver("dot://9.9.9.9:853?verify=dns.quad9.net&name=Quad9&blockedif=empty", "config")
-	// resolver, _, err := createResolver("dot://1.1.1.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip", "config")
+	resolver, _, err := createResolver(testResolver, "config")
 	if err != nil {
 		t.Fatal(err)
 	}
