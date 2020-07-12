@@ -228,13 +228,12 @@ func resolveAndCache(ctx context.Context, q *Query) (rrCache *RRCache, err error
 
 	// check if we are online
 	if netenv.GetOnlineStatus() == netenv.StatusOffline {
-		if netenv.IsOnlineStatusTestDomain(q.FQDN) {
-			log.Tracer(ctx).Debugf("resolver: permitting online status test domain %s to resolve even though offline", q.FQDN)
-		} else {
+		if !netenv.IsOnlineStatusTestDomain(q.FQDN) {
 			log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
 			// we are offline and this is not an online check query
 			return nil, ErrOffline
 		}
+		log.Tracer(ctx).Debugf("resolver: permitting online status test domain %s to resolve even though offline", q.FQDN)
 	}
 
 	// start resolving
@@ -253,9 +252,6 @@ resolveLoop:
 			// resolve
 			rrCache, err = resolver.Conn.Query(ctx, q)
 			if err != nil {
-
-				// TODO: check if we are online?
-
 				switch {
 				case errors.Is(err, ErrNotFound):
 					// NXDomain, or similar
@@ -268,6 +264,8 @@ resolveLoop:
 					log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
 					// we are offline and this is not an online check query
 					return nil, ErrOffline
+				default:
+					log.Tracer(ctx).Debugf("resolver: failed to resolve %s: %s", q.FQDN, err)
 				}
 			} else {
 				// no error
