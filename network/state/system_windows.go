@@ -13,5 +13,5 @@ var (
 )
 
 func checkPID(socketInfo socket.Info, connInbound bool) (pid int, inbound bool, err error) {
-	return socketInfo.PID, connInbound, nil
+	return socketInfo.GetPID(), connInbound, nil
 }
