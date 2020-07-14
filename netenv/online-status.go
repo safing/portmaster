@@ -106,8 +106,6 @@ var (
 
 	captivePortalURL  string
 	captivePortalLock sync.Mutex
-
-	waitForever = make(chan time.Time)
 )
 
 func init() {
@@ -234,7 +232,7 @@ func getDynamicStatusTrigger() <-chan time.Time {
 	case StatusSemiOnline:
 		return time.After(5 * time.Minute)
 	case StatusOnline:
-		return waitForever
+		return nil
 	default: // unknown status
 		return time.After(5 * time.Minute)
 	}

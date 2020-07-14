@@ -21,31 +21,18 @@ var (
 	pidsByUser     = make(map[int][]int)
 )
 
-// FindConnectionPID returns the pid of the given socket info.
-func FindConnectionPID(socketInfo *socket.ConnectionInfo) (pid int) {
+// GetPID returns the already existing pid of the given socket info or searches for it.
+// This also acts as a getter for socket.*Info.PID, as locking for that occurs here.
+func GetPID(socketInfo socket.Info) (pid int) {
 	pidsByUserLock.Lock()
 	defer pidsByUserLock.Unlock()
 
-	if socketInfo.PID != socket.UnidentifiedProcessID {
-		return socket.UnidentifiedProcessID
+	if socketInfo.GetPID() != socket.UnidentifiedProcessID {
+		return socketInfo.GetPID()
 	}
 
-	pid = findPID(socketInfo.UID, socketInfo.Inode)
-	socketInfo.PID = pid
-	return pid
-}
-
-// FindBindPID returns the pid of the given socket info.
-func FindBindPID(socketInfo *socket.BindInfo) (pid int) {
-	pidsByUserLock.Lock()
-	defer pidsByUserLock.Unlock()
-
-	if socketInfo.PID != socket.UnidentifiedProcessID {
-		return socket.UnidentifiedProcessID
-	}
-
-	pid = findPID(socketInfo.UID, socketInfo.Inode)
-	socketInfo.PID = pid
+	pid = findPID(socketInfo.GetUID(), socketInfo.GetInode())
+	socketInfo.SetPID(pid)
 	return pid
 }
 
@@ -175,6 +162,9 @@ entryLoop:
 
 }
 
+// readDirNames only reads the directory names. Using ioutil.ReadDir() would call `lstat` on every
+// resulting directory name, which we don't need. This function will be called a lot, so we should
+// refrain from unnecessary work.
 func readDirNames(dir string) (names []string) {
 	file, err := os.Open(dir)
 	if err != nil {

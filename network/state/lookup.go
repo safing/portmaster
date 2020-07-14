@@ -81,7 +81,7 @@ func (table *tcpTable) lookup(pktInfo *packet.Info) (
 			if localPort == socketInfo.Local.Port &&
 				(socketInfo.Local.IP[0] == 0 || localIP.Equal(socketInfo.Local.IP)) {
 				table.lock.RUnlock()
-				return checkBindPID(socketInfo, true)
+				return checkPID(socketInfo, true)
 			}
 		}
 
@@ -90,7 +90,7 @@ func (table *tcpTable) lookup(pktInfo *packet.Info) (
 			if localPort == socketInfo.Local.Port &&
 				localIP.Equal(socketInfo.Local.IP) {
 				table.lock.RUnlock()
-				return checkConnectionPID(socketInfo, false)
+				return checkPID(socketInfo, false)
 			}
 		}
 
@@ -138,12 +138,12 @@ func (table *udpTable) lookup(pktInfo *packet.Info) (
 
 				// do not check direction if remoteIP/Port is not given
 				if pktInfo.RemotePort() == 0 {
-					return checkBindPID(socketInfo, pktInfo.Inbound)
+					return checkPID(socketInfo, pktInfo.Inbound)
 				}
 
 				// get direction and return
 				connInbound := table.getDirection(socketInfo, pktInfo)
-				return checkBindPID(socketInfo, connInbound)
+				return checkPID(socketInfo, connInbound)
 			}
 		}
 
