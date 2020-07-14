@@ -32,6 +32,13 @@ var (
 // Resolver holds information about an active resolver.
 type Resolver struct {
 	// Server config url (and ID)
+	// Supported parameters:
+	// - `verify=domain`: verify domain (dot only)
+	// - `name=name`: human readable name for resolver
+	// - `blockedif=empty`: how to detect if the dns service blocked something
+	//	- `empty`: NXDomain result, but without any other record in any section
+	//  - `refused`: Request was refused
+	//	- `zeroip`: Answer only contains zeroip
 	Server string
 
 	// Name is the name of the resolver as passed via
