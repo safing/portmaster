@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/safing/portmaster/netenv"
+
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/intel"
@@ -146,6 +148,13 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 				entity.CNAME = lastResolvedDomain.CNAMEs
 				removeOpenDNSRequest(proc.Pid, lastResolvedDomain.Domain)
 			}
+		}
+
+		// check if destination IP is the captive portal's IP
+		portal := netenv.GetCaptivePortal()
+		if pkt.Info().Dst.Equal(portal.IP) {
+			scope = portal.Domain
+			entity.Domain = portal.Domain
 		}
 
 		if scope == "" {

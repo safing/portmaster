@@ -1,6 +1,8 @@
 package netutils
 
 import (
+	"fmt"
+	"net"
 	"regexp"
 
 	"github.com/miekg/dns"
@@ -55,4 +57,25 @@ func IsValidFqdn(fqdn string) bool {
 	// octet wire format limit.
 	_, ok := dns.IsDomainName(fqdn)
 	return ok
+}
+
+// IPsToRRs transforms the given IPs to resource records.
+func IPsToRRs(domain string, ips []net.IP) ([]dns.RR, error) {
+	records := make([]dns.RR, 0, len(ips))
+	var rr dns.RR
+	var err error
+
+	for _, ip := range ips {
+		if ip.To4() != nil {
+			rr, err = dns.NewRR(fmt.Sprintf("%s 17 IN A %s", domain, ip))
+		} else {
+			rr, err = dns.NewRR(fmt.Sprintf("%s 17 IN AAAA %s", domain, ip))
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to create record for %s: %w", ip, err)
+		}
+		records = append(records, rr)
+	}
+
+	return records, nil
 }

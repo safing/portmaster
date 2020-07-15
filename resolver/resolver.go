@@ -18,10 +18,12 @@ const (
 	ServerTypeTCP = "tcp"
 	ServerTypeDoT = "dot"
 	ServerTypeDoH = "doh"
+	ServerTypeEnv = "env"
 
 	ServerSourceConfigured = "config"
 	ServerSourceAssigned   = "dhcp"
 	ServerSourceMDNS       = "mdns"
+	ServerSourceEnv        = "env"
 )
 
 var (

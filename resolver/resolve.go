@@ -19,7 +19,7 @@ var (
 	// basic errors
 
 	// ErrNotFound is a basic error that will match all "not found" errors
-	ErrNotFound = errors.New("record does not exist")
+	ErrNotFound = errors.New("record could not be found")
 	// ErrBlocked is basic error that will match all "blocked" errors
 	ErrBlocked = errors.New("query was blocked")
 	// ErrLocalhost is returned to *.localhost queries
@@ -30,6 +30,8 @@ var (
 	ErrOffline = errors.New("device is offine")
 	// ErrFailure is returned when the type of failure is unclear
 	ErrFailure = errors.New("query failed")
+	// ErrContinue is returned when the resolver has no answer, and the next resolver should be asked
+	ErrContinue = errors.New("resolver has no answer")
 
 	// detailed errors
 
@@ -228,7 +230,7 @@ func resolveAndCache(ctx context.Context, q *Query) (rrCache *RRCache, err error
 
 	// check if we are online
 	if netenv.GetOnlineStatus() == netenv.StatusOffline {
-		if !netenv.IsOnlineStatusTestDomain(q.FQDN) {
+		if !netenv.IsConnectivityDomain(q.FQDN) {
 			log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
 			// we are offline and this is not an online check query
 			return nil, ErrOffline
@@ -259,8 +261,10 @@ resolveLoop:
 				case errors.Is(err, ErrBlocked):
 					// some resolvers might also block
 					return nil, err
+				case errors.Is(err, ErrContinue):
+					continue
 				case netenv.GetOnlineStatus() == netenv.StatusOffline &&
-					!netenv.IsOnlineStatusTestDomain(q.FQDN):
+					!netenv.IsConnectivityDomain(q.FQDN):
 					log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
 					// we are offline and this is not an online check query
 					return nil, ErrOffline

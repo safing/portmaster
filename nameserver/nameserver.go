@@ -115,7 +115,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 
 	// return with server failure if offline
 	if netenv.GetOnlineStatus() == netenv.StatusOffline &&
-		!netenv.IsOnlineStatusTestDomain(q.FQDN) {
+		!netenv.IsConnectivityDomain(q.FQDN) {
 		log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
 		returnServerFailure(w, query)
 		return nil
