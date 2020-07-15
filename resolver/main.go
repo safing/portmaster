@@ -24,6 +24,10 @@ func init() {
 func prep() error {
 	intel.SetReverseResolver(ResolveIPAndValidate)
 
+	if err := prepEnvResolver(); err != nil {
+		return err
+	}
+
 	return prepConfig()
 }
 

@@ -261,6 +261,8 @@ resolveLoop:
 				case errors.Is(err, ErrBlocked):
 					// some resolvers might also block
 					return nil, err
+				case errors.Is(err, ErrContinue):
+					continue
 				case netenv.GetOnlineStatus() == netenv.StatusOffline &&
 					!netenv.IsConnectivityDomain(q.FQDN):
 					log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)

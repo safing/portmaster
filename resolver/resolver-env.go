@@ -2,7 +2,6 @@ package resolver
 
 import (
 	"context"
-	"fmt"
 	"net"
 
 	"github.com/miekg/dns"
@@ -19,7 +18,14 @@ var (
 		Source:        ServerSourceEnv,
 		Conn:          &envResolverConn{},
 	}
+
+	localSOA dns.RR
 )
+
+func prepEnvResolver() (err error) {
+	localSOA, err = dns.NewRR("local. 17 IN SOA localhost. none.localhost. 17 17 17 17 17")
+	return err
+}
 
 type envResolverConn struct{}
 
@@ -29,14 +35,22 @@ func (er *envResolverConn) Query(ctx context.Context, q *Query) (*RRCache, error
 
 	// check for matching name
 	switch q.FQDN {
+	case "local.":
+		// Firefox requests the SOA request for local. before resolving any local. domains.
+		// Others might be doing this too. We guessed this behaviour, weren't able to find docs.
+		if q.QType == dns.Type(dns.TypeSOA) {
+			return er.makeRRCache(q, []dns.RR{localSOA}), nil
+		}
+		return nil, ErrNotFound
+
 	case netenv.SpecialCaptivePortalDomain:
 		if portal.IP != nil {
-			rr, err := portal.IPasRR()
+			records, err := netutils.IPsToRRs(q.FQDN, []net.IP{portal.IP})
 			if err != nil {
 				log.Warningf("nameserver: failed to create captive portal response to %s: %s", q.FQDN, err)
 				return nil, ErrNotFound
 			}
-			return er.makeRRCache(q, []dns.RR{rr}), nil
+			return er.makeRRCache(q, records), nil
 		}
 		return nil, ErrNotFound
 
@@ -45,7 +59,7 @@ func (er *envResolverConn) Query(ctx context.Context, q *Query) (*RRCache, error
 		if len(routers) == 0 {
 			return nil, ErrNotFound
 		}
-		records, err := ipsToRRs(q.FQDN, routers)
+		records, err := netutils.IPsToRRs(q.FQDN, routers)
 		if err != nil {
 			log.Warningf("nameserver: failed to create gateway response to %s: %s", q.FQDN, err)
 			return nil, ErrNotFound
@@ -72,24 +86,4 @@ func (er *envResolverConn) ReportFailure() {}
 
 func (er *envResolverConn) IsFailing() bool {
 	return false
-}
-
-func ipsToRRs(domain string, ips []net.IP) ([]dns.RR, error) {
-	var records []dns.RR
-	var rr dns.RR
-	var err error
-
-	for _, ip := range ips {
-		if ip.To4() != nil {
-			rr, err = dns.NewRR(domain + " 17 IN A " + ip.String())
-		} else {
-			rr, err = dns.NewRR(domain + " 17 IN AAAA " + ip.String())
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to create record for %s: %w", ip, err)
-		}
-		records = append(records, rr)
-	}
-
-	return records, nil
 }

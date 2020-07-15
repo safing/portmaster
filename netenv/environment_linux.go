@@ -45,14 +45,14 @@ func Gateways() []net.IP {
 	}()
 	// logic
 
-	newGateways := make([]net.IP, 0)
+	gateways = make([]net.IP, 0)
 	var decoded []byte
 
 	// open file
 	route, err := os.Open("/proc/net/route")
 	if err != nil {
 		log.Warningf("environment: could not read /proc/net/route: %s", err)
-		return newGateways
+		return gateways
 	}
 	defer route.Close()
 
@@ -77,7 +77,7 @@ func Gateways() []net.IP {
 				continue
 			}
 			gate := net.IPv4(decoded[3], decoded[2], decoded[1], decoded[0])
-			newGateways = append(newGateways, gate)
+			gateways = append(gateways, gate)
 		}
 	}
 
@@ -85,7 +85,7 @@ func Gateways() []net.IP {
 	v6route, err := os.Open("/proc/net/ipv6_route")
 	if err != nil {
 		log.Warningf("environment: could not read /proc/net/ipv6_route: %s", err)
-		return newGateways
+		return gateways
 	}
 	defer v6route.Close()
 
@@ -110,11 +110,11 @@ func Gateways() []net.IP {
 				continue
 			}
 			gate := net.IP(decoded)
-			newGateways = append(newGateways, gate)
+			gateways = append(gateways, gate)
 		}
 	}
 
-	return newGateways
+	return gateways
 }
 
 // Nameservers returns the currently active nameservers.

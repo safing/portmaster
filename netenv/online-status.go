@@ -2,7 +2,6 @@ package netenv
 
 import (
 	"context"
-	"errors"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -111,28 +110,11 @@ var (
 	captivePortalLock sync.Mutex
 )
 
+// CaptivePortal holds information about a detected captive portal.
 type CaptivePortal struct {
 	URL    string
 	Domain string
 	IP     net.IP
-}
-
-// IPasRR returns the captive portal IP as a DNS resource record.
-func (p *CaptivePortal) IPasRR() (rr dns.RR, err error) {
-	switch {
-	case p.IP == nil:
-		return nil, errors.New("no portal IP present")
-	case p.Domain == "":
-		return nil, errors.New("no portal domain present")
-	case p.IP.To4() != nil:
-		rr, err = dns.NewRR(p.Domain + " 17 IN A " + p.IP.String())
-	default:
-		rr, err = dns.NewRR(p.Domain + " 17 IN AAAA " + p.IP.String())
-	}
-	if err != nil {
-		return nil, err
-	}
-	return rr, nil
 }
 
 func init() {

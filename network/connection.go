@@ -152,7 +152,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 
 		// check if destination IP is the captive portal's IP
 		portal := netenv.GetCaptivePortal()
-		if portal.IP != nil && pkt.Info().Dst.Equal(portal.IP) {
+		if pkt.Info().Dst.Equal(portal.IP) {
 			scope = portal.Domain
 			entity.Domain = portal.Domain
 		}

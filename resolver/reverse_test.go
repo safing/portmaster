@@ -32,6 +32,6 @@ func TestResolveIPAndValidate(t *testing.T) {
 	testReverse(t, "1.1.1.1", "one.one.one.one.", "")
 	testReverse(t, "2606:4700:4700::1111", "one.one.one.one.", "")
 
-	testReverse(t, "93.184.216.34", "example.com.", "record does not exist: 34.216.184.93.in-addr.arpa.PTR")
-	testReverse(t, "185.199.109.153", "sites.github.io.", "record does not exist: 153.109.199.185.in-addr.arpa.PTR")
+	testReverse(t, "93.184.216.34", "example.com.", "record could not be found: 34.216.184.93.in-addr.arpa.PTR")
+	testReverse(t, "185.199.109.153", "sites.github.io.", "record could not be found: 153.109.199.185.in-addr.arpa.PTR")
 }
