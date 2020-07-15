@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/safing/portmaster/netenv"
+
 	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
 )
@@ -124,6 +126,13 @@ func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver) {
 	// global -> local scopes, global
 	// special -> local scopes, local
 
+	// special connectivity domains
+	if netenv.IsConnectivityDomain(q.FQDN) && len(systemResolvers) > 0 {
+		selected = append(selected, envResolver)
+		selected = append(selected, systemResolvers...) // dhcp assigned resolvers
+		return selected
+	}
+
 	// check local scopes
 	for _, scope := range localScopes {
 		if strings.HasSuffix(q.dotPrefixedFQDN, scope.Domain) {
@@ -169,6 +178,8 @@ func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver) {
 
 	// check for .local mdns
 	if strings.HasSuffix(q.dotPrefixedFQDN, local) {
+		// add env resolver
+		selected = append(selected, envResolver)
 		// add mdns
 		if err := mDNSResolver.checkCompliance(ctx, q); err == nil {
 			selected = append(selected, mDNSResolver)
@@ -255,6 +266,8 @@ func (resolver *Resolver) checkCompliance(_ context.Context, q *Query) error {
 			// compliant
 		case ServerTypeDoH:
 			// compliant
+		case ServerTypeEnv:
+			// compliant (data is sources from local network only and is highly limited)
 		default:
 			return errInsecureProtocol
 		}

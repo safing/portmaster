@@ -2,6 +2,7 @@ package netenv
 
 import (
 	"context"
+	"errors"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -41,6 +42,8 @@ const (
 	ResolverTestFqdn             = "one.one.one.one."
 	ResolverTestRRType           = dns.TypeA
 	ResolverTestExpectedResponse = "1.1.1.1"
+
+	SpecialCaptivePortalDomain = "captiveportal.local."
 )
 
 var (
@@ -62,12 +65,12 @@ func init() {
 	}
 }
 
-// IsOnlineStatusTestDomain checks whether the given fqdn is used for testing online status.
-func IsOnlineStatusTestDomain(domain string) bool {
+// IsConnectivityDomain checks whether the given domain (fqdn) is used for any connectivity related network connections and should always be resolved using the network assigned DNS server.
+func IsConnectivityDomain(domain string) bool {
 	switch domain {
-	case "detectportal.firefox.com.":
-		return true
-	case "one.one.one.one.":
+	case "detectportal.firefox.com.",
+		"one.one.one.one.",
+		GetCaptivePortal().Domain:
 		return true
 	}
 
@@ -104,9 +107,33 @@ var (
 	onlineStatusInvestigationInProgress = abool.NewBool(false)
 	onlineStatusInvestigationWg         sync.WaitGroup
 
-	captivePortalURL  string
+	captivePortal     = &CaptivePortal{}
 	captivePortalLock sync.Mutex
 )
+
+type CaptivePortal struct {
+	URL    string
+	Domain string
+	IP     net.IP
+}
+
+// IPasRR returns the captive portal IP as a DNS resource record.
+func (p *CaptivePortal) IPasRR() (rr dns.RR, err error) {
+	switch {
+	case p.IP == nil:
+		return nil, errors.New("no portal IP present")
+	case p.Domain == "":
+		return nil, errors.New("no portal domain present")
+	case p.IP.To4() != nil:
+		rr, err = dns.NewRR(p.Domain + " 17 IN A " + p.IP.String())
+	default:
+		rr, err = dns.NewRR(p.Domain + " 17 IN AAAA " + p.IP.String())
+	}
+	if err != nil {
+		return nil, err
+	}
+	return rr, nil
+}
 
 func init() {
 	var onlineStatusValue int32
@@ -147,18 +174,16 @@ func updateOnlineStatus(status OnlineStatus, portalURL, comment string) {
 	}
 
 	// captive portal
-	captivePortalLock.Lock()
-	defer captivePortalLock.Unlock()
-	if portalURL != captivePortalURL {
-		captivePortalURL = portalURL
-		changed = true
+	// delete if offline, update only if there is a new value
+	if status == StatusOffline || portalURL != "" {
+		setCaptivePortal(portalURL)
 	}
 
 	// trigger event
 	if changed {
 		module.TriggerEvent(OnlineStatusChangedEvent, nil)
 		if status == StatusPortal {
-			log.Infof(`network: setting online status to %s at "%s" (%s)`, status, captivePortalURL, comment)
+			log.Infof(`network: setting online status to %s at "%s" (%s)`, status, portalURL, comment)
 		} else {
 			log.Infof("network: setting online status to %s (%s)", status, comment)
 		}
@@ -166,12 +191,56 @@ func updateOnlineStatus(status OnlineStatus, portalURL, comment string) {
 	}
 }
 
-// GetCaptivePortalURL returns the current captive portal url as a string.
-func GetCaptivePortalURL() string {
+func setCaptivePortal(portalURL string) {
 	captivePortalLock.Lock()
 	defer captivePortalLock.Unlock()
 
-	return captivePortalURL
+	// delete
+	if portalURL == "" {
+		captivePortal = &CaptivePortal{}
+		return
+	}
+
+	// set
+	captivePortal = &CaptivePortal{
+		URL: portalURL,
+	}
+	parsedURL, err := url.Parse(portalURL)
+	switch {
+	case err != nil:
+		log.Debugf(`netenv: failed to parse captive portal URL "%s": %s`, portalURL, err)
+		return
+	case parsedURL.Hostname() == "":
+		log.Debugf(`netenv: captive portal URL "%s" has no domain or IP`, portalURL)
+		return
+	default:
+		// try to parse an IP
+		portalIP := net.ParseIP(parsedURL.Hostname())
+		if portalIP != nil {
+			captivePortal.IP = portalIP
+			captivePortal.Domain = SpecialCaptivePortalDomain
+			return
+		}
+
+		// try to parse domain
+		// ensure fqdn format
+		domain := dns.Fqdn(parsedURL.Hostname())
+		// check validity
+		if !netutils.IsValidFqdn(domain) {
+			log.Debugf(`netenv: captive portal domain/IP "%s" is invalid`, parsedURL.Hostname())
+			return
+		}
+		// set domain
+		captivePortal.Domain = domain
+	}
+}
+
+// GetCaptivePortal returns the current captive portal. The returned struct must not be edited.
+func GetCaptivePortal() *CaptivePortal {
+	captivePortalLock.Lock()
+	defer captivePortalLock.Unlock()
+
+	return captivePortal
 }
 
 // ReportSuccessfulConnection hints the online status monitoring system that a connection attempt was successful.

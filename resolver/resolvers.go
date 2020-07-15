@@ -24,6 +24,7 @@ type Scope struct {
 var (
 	globalResolvers []*Resolver          // all (global) resolvers
 	localResolvers  []*Resolver          // all resolvers that are in site-local or link-local IP ranges
+	systemResolvers []*Resolver          // all resolvers that were assigned by the system
 	localScopes     []*Scope             // list of scopes with a list of local resolvers that can resolve the scope
 	activeResolvers map[string]*Resolver // lookup map of all resolvers
 	resolversLock   sync.RWMutex
@@ -231,7 +232,7 @@ func loadResolvers() {
 	globalResolvers = newResolvers
 
 	// assing resolvers to scopes
-	setLocalAndScopeResolvers(globalResolvers)
+	setScopedResolvers(globalResolvers)
 
 	// set active resolvers (for cache validation)
 	// reset
@@ -241,6 +242,7 @@ func loadResolvers() {
 		activeResolvers[resolver.Server] = resolver
 	}
 	activeResolvers[mDNSResolver.Server] = mDNSResolver
+	activeResolvers[envResolver.Server] = envResolver
 
 	// log global resolvers
 	if len(globalResolvers) > 0 {
@@ -282,14 +284,19 @@ func loadResolvers() {
 	}
 }
 
-func setLocalAndScopeResolvers(resolvers []*Resolver) {
+func setScopedResolvers(resolvers []*Resolver) {
 	// make list with local resolvers
 	localResolvers = make([]*Resolver, 0)
+	systemResolvers = make([]*Resolver, 0)
 	localScopes = make([]*Scope, 0)
 
 	for _, resolver := range resolvers {
 		if resolver.ServerIP != nil && netutils.IPIsLAN(resolver.ServerIP) {
 			localResolvers = append(localResolvers, resolver)
+		}
+
+		if resolver.Source == "dhcp" {
+			systemResolvers = append(systemResolvers, resolver)
 		}
 
 		if resolver.Search != nil {

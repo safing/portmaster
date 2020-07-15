@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	gateways        = make([]*net.IP, 0)
+	gateways        = make([]net.IP, 0)
 	gatewaysLock    sync.Mutex
 	gatewaysExpires = time.Now()
 
@@ -31,7 +31,7 @@ var (
 )
 
 // Gateways returns the currently active gateways.
-func Gateways() []*net.IP {
+func Gateways() []net.IP {
 	// locking
 	gatewaysLock.Lock()
 	defer gatewaysLock.Unlock()
@@ -45,7 +45,7 @@ func Gateways() []*net.IP {
 	}()
 	// logic
 
-	newGateways := make([]*net.IP, 0)
+	newGateways := make([]net.IP, 0)
 	var decoded []byte
 
 	// open file
@@ -77,7 +77,7 @@ func Gateways() []*net.IP {
 				continue
 			}
 			gate := net.IPv4(decoded[3], decoded[2], decoded[1], decoded[0])
-			newGateways = append(newGateways, &gate)
+			newGateways = append(newGateways, gate)
 		}
 	}
 
@@ -110,7 +110,7 @@ func Gateways() []*net.IP {
 				continue
 			}
 			gate := net.IP(decoded)
-			newGateways = append(newGateways, &gate)
+			newGateways = append(newGateways, gate)
 		}
 	}
 

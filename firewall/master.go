@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/safing/portmaster/netenv"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
@@ -50,6 +52,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 		checkSelfCommunication,
 		checkProfileExists,
 		checkConnectionType,
+		checkCaptivePortal,
 		checkConnectionScope,
 		checkEndpointLists,
 		checkBypassPrevention,
@@ -173,6 +176,16 @@ func checkConnectionType(ctx context.Context, conn *network.Connection, _ packet
 			conn.Block("direct connections (P2P) blocked")
 			return true
 		}
+	}
+
+	return false
+}
+
+func checkCaptivePortal(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
+	if netenv.GetOnlineStatus() == netenv.StatusPortal &&
+		conn.Entity.Domain == netenv.GetCaptivePortal().Domain {
+		conn.Accept("captive portal access permitted")
+		return true
 	}
 
 	return false
