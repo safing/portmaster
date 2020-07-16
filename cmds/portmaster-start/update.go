@@ -26,7 +26,7 @@ func downloadUpdates() error {
 	if onWindows {
 		registry.MandatoryUpdates = []string{
 			platform("core/portmaster-core.exe"),
-			platform("control/portmaster-control.exe"),
+			platform("start/portmaster-start.exe"),
 			platform("app/portmaster-app.exe"),
 			platform("notifier/portmaster-notifier.exe"),
 			platform("notifier/portmaster-snoretoast.exe"),
@@ -34,7 +34,7 @@ func downloadUpdates() error {
 	} else {
 		registry.MandatoryUpdates = []string{
 			platform("core/portmaster-core"),
-			platform("control/portmaster-control"),
+			platform("start/portmaster-start"),
 			platform("app/portmaster-app"),
 			platform("notifier/portmaster-notifier"),
 		}

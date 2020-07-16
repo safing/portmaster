@@ -5,11 +5,10 @@ import (
 )
 
 var (
-	startupComplete   = make(chan struct{}) // signal that the start procedure completed (is never closed, just signaled once)
-	shuttingDown      = make(chan struct{}) // signal that we are shutting down (will be closed, may not be closed directly, use initiateShutdown)
-	shutdownInitiated = false               // not to be used directly
+	startupComplete = make(chan struct{}) // signal that the start procedure completed (is never closed, just signaled once)
+	shuttingDown    = make(chan struct{}) // signal that we are shutting down (will be closed, may not be closed directly, use initiateShutdown)
 	//nolint:deadcode,unused // false positive on linux, currently used by windows only
-	shutdownError error // may not be read or written to directly
+	shutdownError error // protected by shutdownLock
 	shutdownLock  sync.Mutex
 )
 
@@ -17,10 +16,21 @@ func initiateShutdown(err error) {
 	shutdownLock.Lock()
 	defer shutdownLock.Unlock()
 
-	if !shutdownInitiated {
-		shutdownInitiated = true
+	select {
+	case <-shuttingDown:
+		return
+	default:
 		shutdownError = err
 		close(shuttingDown)
+	}
+}
+
+func isShutdown() bool {
+	select {
+	case <-shuttingDown:
+		return true
+	default:
+		return false
 	}
 }
 

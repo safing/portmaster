@@ -27,7 +27,7 @@ var (
 				AllowDownload:     true,
 				AllowHidingWindow: false,
 				NoOutput:          true,
-			})
+			}, args)
 		}),
 		FParseErrWhitelist: cobra.FParseErrWhitelist{
 			// UnknownFlags will ignore unknown flags errors and continue parsing rest of the flags
@@ -41,7 +41,7 @@ var (
 )
 
 func init() {
-	runCmd.AddCommand(runCoreService)
+	rootCmd.AddCommand(runCoreService)
 }
 
 const serviceName = "PortmasterCore"
@@ -88,7 +88,7 @@ service:
 	return ssec, errno
 }
 
-func runService(cmd *cobra.Command, opts *Options) error {
+func runService(cmd *cobra.Command, opts *Options, cmdArgs []string) error {
 	// check if we are running interactively
 	isDebug, err := svc.IsAnInteractiveSession()
 	if err != nil {
@@ -122,7 +122,8 @@ func runService(cmd *cobra.Command, opts *Options) error {
 	go func() {
 		// run slightly delayed
 		time.Sleep(250 * time.Millisecond)
-		_ = handleRun(cmd, opts) // error handled by shutdown routine
+		err := run(cmd, opts, getExecArgs(opts, cmdArgs))
+		initiateShutdown(err)
 		finishWg.Done()
 		runWg.Done()
 	}()
