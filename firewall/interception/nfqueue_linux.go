@@ -179,7 +179,8 @@ func activateNfqueueFirewall() error {
 	return nil
 }
 
-func deactivateNfqueueFirewall() error {
+// DeactivateNfqueueFirewall drops portmaster related IP tables rules.
+func DeactivateNfqueueFirewall(force bool) error {
 	// IPv4
 	ip4tables, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
 	if err != nil {
@@ -194,7 +195,7 @@ func deactivateNfqueueFirewall() error {
 			return err
 		}
 		if ok {
-			if err = ip4tables.Delete(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
+			if err = ip4tables.Delete(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil && !force {
 				return err
 			}
 		}
@@ -202,10 +203,10 @@ func deactivateNfqueueFirewall() error {
 
 	for _, chain := range v4chains {
 		splittedRule := strings.Split(chain, " ")
-		if err = ip4tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
+		if err = ip4tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil && !force {
 			return err
 		}
-		if err = ip4tables.DeleteChain(splittedRule[0], splittedRule[1]); err != nil {
+		if err = ip4tables.DeleteChain(splittedRule[0], splittedRule[1]); err != nil && !force {
 			return err
 		}
 	}
@@ -223,7 +224,7 @@ func deactivateNfqueueFirewall() error {
 			return err
 		}
 		if ok {
-			if err = ip6tables.Delete(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
+			if err = ip6tables.Delete(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil && !force {
 				return err
 			}
 		}
@@ -231,10 +232,10 @@ func deactivateNfqueueFirewall() error {
 
 	for _, chain := range v6chains {
 		splittedRule := strings.Split(chain, " ")
-		if err := ip6tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
+		if err := ip6tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil && !force {
 			return err
 		}
-		if err := ip6tables.DeleteChain(splittedRule[0], splittedRule[1]); err != nil {
+		if err := ip6tables.DeleteChain(splittedRule[0], splittedRule[1]); err != nil && !force {
 			return err
 		}
 	}
@@ -293,7 +294,7 @@ func StopNfqueueInterception() error {
 		in6Queue.Destroy()
 	}
 
-	err := deactivateNfqueueFirewall()
+	err := DeactivateNfqueueFirewall(false)
 	if err != nil {
 		return fmt.Errorf("interception: error while deactivating nfqueue: %s", err)
 	}
