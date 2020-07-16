@@ -51,10 +51,10 @@ func upgrader(_ context.Context, _ interface{}) error {
 	}
 	defer upgraderActive.SetTo(false)
 
-	// upgrade portmaster control
-	err := upgradePortmasterControl()
+	// upgrade portmaster-start
+	err := upgradePortmasterStart()
 	if err != nil {
-		log.Warningf("updates: failed to upgrade portmaster-control: %s", err)
+		log.Warningf("updates: failed to upgrade portmaster-start: %s", err)
 	}
 
 	err = upgradeCoreNotify()
@@ -122,16 +122,16 @@ func upgradeCoreNotifyActionHandler(n *notifications.Notification) {
 	}
 }
 
-func upgradePortmasterControl() error {
-	filename := "portmaster-control"
+func upgradePortmasterStart() error {
+	filename := "portmaster-start"
 	if onWindows {
 		filename += ".exe"
 	}
 
 	// check if we can upgrade
 	if pmCtrlUpdate == nil || pmCtrlUpdate.UpgradeAvailable() {
-		// get newest portmaster-control
-		new, err := GetPlatformFile("control/" + filename) // identifier, use forward slash!
+		// get newest portmaster-start
+		new, err := GetPlatformFile("start/" + filename) // identifier, use forward slash!
 		if err != nil {
 			return err
 		}
@@ -140,15 +140,15 @@ func upgradePortmasterControl() error {
 		return nil
 	}
 
-	// update portmaster-control in data root
-	rootControlPath := filepath.Join(filepath.Dir(registry.StorageDir().Path), filename)
-	err := upgradeFile(rootControlPath, pmCtrlUpdate)
+	// update portmaster-start in data root
+	rootPmStartPath := filepath.Join(filepath.Dir(registry.StorageDir().Path), filename)
+	err := upgradeFile(rootPmStartPath, pmCtrlUpdate)
 	if err != nil {
 		return err
 	}
-	log.Infof("updates: upgraded %s", rootControlPath)
+	log.Infof("updates: upgraded %s", rootPmStartPath)
 
-	// upgrade parent process, if it's portmaster-control
+	// upgrade parent process, if it's portmaster-start
 	parent, err := processInfo.NewProcess(int32(os.Getppid()))
 	if err != nil {
 		return fmt.Errorf("could not get parent process for upgrade checks: %w", err)
@@ -158,7 +158,7 @@ func upgradePortmasterControl() error {
 		return fmt.Errorf("could not get parent process name for upgrade checks: %w", err)
 	}
 	if parentName != filename {
-		log.Tracef("updates: parent process does not seem to be portmaster-control, name is %s", parentName)
+		log.Tracef("updates: parent process does not seem to be portmaster-start, name is %s", parentName)
 		return nil
 	}
 	parentPath, err := parent.Exe()
