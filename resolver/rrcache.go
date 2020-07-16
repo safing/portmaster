@@ -34,6 +34,11 @@ type RRCache struct {
 	updated int64 // mutable
 }
 
+// ID returns the ID of the RRCache consisting of the domain and question type.
+func (rrCache *RRCache) ID() string {
+	return rrCache.Domain + rrCache.Question.String()
+}
+
 // Expired returns whether the record has expired.
 func (rrCache *RRCache) Expired() bool {
 	return rrCache.TTL <= time.Now().Unix()
@@ -68,6 +73,11 @@ func (rrCache *RRCache) Clean(minExpires uint32) {
 	// TTL must be at least minExpires
 	if lowestTTL < minExpires {
 		lowestTTL = minExpires
+	}
+
+	// shorten NXDomain caching
+	if len(rrCache.Answer) == 0 {
+		lowestTTL = 10
 	}
 
 	// log.Tracef("lowest TTL is %d", lowestTTL)

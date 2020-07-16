@@ -73,6 +73,11 @@ type Query struct {
 	dotPrefixedFQDN string
 }
 
+// ID returns the ID of the query consisting of the domain and question type.
+func (q *Query) ID() string {
+	return q.FQDN + q.QType.String()
+}
+
 // check runs sanity checks and does some initialization. Returns whether the query passed the basic checks.
 func (q *Query) check() (ok bool) {
 	if q.FQDN == "" {
@@ -159,6 +164,20 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		return nil
 	}
 
+	// check if we want to reset the cache
+	if shouldResetCache(q) {
+		err := DeleteNameRecord(q.FQDN, q.QType.String())
+		switch {
+		case err == nil:
+			log.Tracer(ctx).Tracef("resolver: cache for %s%s was reset", q.FQDN, q.QType)
+		case errors.Is(err, database.ErrNotFound):
+			log.Tracer(ctx).Tracef("resolver: cache for %s%s was already reset (is empty)", q.FQDN, q.QType)
+		default:
+			log.Tracer(ctx).Warningf("resolver: failed to reset cache for %s%s: %s", q.FQDN, q.QType, err)
+		}
+		return nil
+	}
+
 	// check if expired
 	if rrCache.Expired() {
 		rrCache.Lock()
@@ -169,7 +188,10 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 
 		// resolve async
 		module.StartWorker("resolve async", func(ctx context.Context) error {
-			_, _ = resolveAndCache(ctx, q)
+			_, err := resolveAndCache(ctx, q)
+			if err != nil {
+				log.Warningf("resolver: async query for %s%s failed: %s", q.FQDN, q.QType, err)
+			}
 			return nil
 		})
 	}
@@ -180,7 +202,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 
 func deduplicateRequest(ctx context.Context, q *Query) (finishRequest func()) {
 	// create identifier key
-	dupKey := fmt.Sprintf("%s%s", q.FQDN, q.QType.String())
+	dupKey := q.ID()
 
 	dupReqLock.Lock()
 
@@ -282,13 +304,12 @@ resolveLoop:
 		}
 	}
 
-	// tried all resolvers, possibly twice
-	if i > 1 {
-		return nil, fmt.Errorf("all %d query-compliant resolvers failed, last error: %s", len(resolvers), err)
-	}
-
 	// check for error
 	if err != nil {
+		// tried all resolvers, possibly twice
+		if i > 1 {
+			return nil, fmt.Errorf("all %d query-compliant resolvers failed, last error: %s", len(resolvers), err)
+		}
 		return nil, err
 	}
 
@@ -308,4 +329,32 @@ resolveLoop:
 	}
 
 	return rrCache, nil
+}
+
+var (
+	cacheResetLock    sync.Mutex
+	cacheResetID      string
+	cacheResetSeenCnt int
+)
+
+func shouldResetCache(q *Query) (reset bool) {
+	cacheResetLock.Lock()
+	defer cacheResetLock.Unlock()
+
+	// reset to new domain
+	qID := q.ID()
+	if qID != cacheResetID {
+		cacheResetID = qID
+		cacheResetSeenCnt = 1
+		return false
+	}
+
+	// increase and check if threshold is reached
+	cacheResetSeenCnt++
+	if cacheResetSeenCnt >= 3 { // 3 to trigger reset
+		cacheResetSeenCnt = -7 // 10 for follow-up resets
+		return true
+	}
+
+	return false
 }
