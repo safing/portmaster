@@ -122,7 +122,7 @@ func runService(cmd *cobra.Command, opts *Options, cmdArgs []string) error {
 	go func() {
 		// run slightly delayed
 		time.Sleep(250 * time.Millisecond)
-		err := run(cmd, opts, getExecArgs(opts, cmdArgs))
+		err := run(opts, getExecArgs(opts, cmdArgs))
 		initiateShutdown(err)
 		finishWg.Done()
 		runWg.Done()

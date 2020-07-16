@@ -74,7 +74,7 @@ func registerComponent(opts []Options) {
 				Use:   opt.ShortIdentifier,
 				Short: "Run the " + opt.Name,
 				RunE: func(cmd *cobra.Command, args []string) error {
-					err := run(cmd, opt, args)
+					err := run(opt, args)
 					initiateShutdown(err)
 					return err
 				},
@@ -86,7 +86,7 @@ func registerComponent(opts []Options) {
 				Use:   opt.ShortIdentifier,
 				Short: "Show command to execute the " + opt.Name,
 				RunE: func(cmd *cobra.Command, args []string) error {
-					return show(cmd, opt, args)
+					return show(opt, args)
 				},
 			},
 		)
@@ -106,7 +106,7 @@ func getExecArgs(opts *Options, cmdArgs []string) []string {
 	return args
 }
 
-func run(cmd *cobra.Command, opts *Options, cmdArgs []string) (err error) {
+func run(opts *Options, cmdArgs []string) (err error) {
 	// set download option
 	registry.Online = opts.AllowDownload
 
@@ -230,7 +230,7 @@ func copyLogs(opts *Options, consoleSink io.Writer, version, ext string, logSour
 	}
 
 	if bytes, err := io.Copy(sink, logSource); err != nil {
-		log.Printf("%s: writting logs failed after %d bytes: %s", fileSink.Name(), bytes, err)
+		log.Printf("%s: writing logs failed after %d bytes: %s", fileSink.Name(), bytes, err)
 	}
 }
 

@@ -21,7 +21,7 @@ var showCmd = &cobra.Command{
 	Short: "Show the command to run a Portmaster component yourself",
 }
 
-func show(cmd *cobra.Command, opts *Options, cmdArgs []string) error {
+func show(opts *Options, cmdArgs []string) error {
 	// get original arguments
 	args := getExecArgs(opts, cmdArgs)
 

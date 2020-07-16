@@ -71,7 +71,7 @@ var versionCmd = &cobra.Command{
 func init() {
 	flags := versionCmd.Flags()
 	{
-		flags.BoolVar(&showShortVersion, "short", false, "Print only the verison number.")
+		flags.BoolVar(&showShortVersion, "short", false, "Print only the version number.")
 		flags.BoolVar(&showAllVersions, "all", false, "Dump versions for all components.")
 	}
 
