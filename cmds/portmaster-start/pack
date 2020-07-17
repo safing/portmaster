@@ -7,7 +7,7 @@ COL_OFF="\033[00m"
 COL_BOLD="\033[01;01m"
 COL_RED="\033[31m"
 
-destDirPart1="../dist"
+destDirPart1="../../dist"
 destDirPart2="start"
 
 function check {

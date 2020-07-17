@@ -5,12 +5,19 @@ cd "$baseDir"
 
 # first check what will be built
 
+function packAll() {
+  for i in ./cmds/* ; do
+    if [ -e $i/pack ]; then
+      $i/pack $1
+    fi
+  done
+}
+
 echo ""
 echo "pack list:"
 echo ""
 
-./pmctl/pack check
-./pack_core check
+packAll check
 
 # confirm
 
@@ -20,15 +27,8 @@ echo ""
 
 # build
 
-./pmctl/pack build
-if [[ $? -ne 0 ]]; then
-  exit 1
-fi
-
-./pack_core build
-if [[ $? -ne 0 ]]; then
-  exit 1
-fi
+set -e
+packAll build
 
 echo ""
 echo "finished packing."

@@ -46,7 +46,7 @@ func downloadUpdates() error {
 		"all/ui/modules/base.zip",
 	)
 
-	// logging is configured as a presistent pre-run method inherited from
+	// logging is configured as a persistent pre-run method inherited from
 	// the root command but since we don't use run.Run() we need to start
 	// logging ourself.
 	err := log.Start()
