@@ -209,7 +209,7 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 	if fileExists {
 		// get current version
 		var currentVersion string
-		cmd := exec.Command(fileToUpgrade, "--ver")
+		cmd := exec.Command(fileToUpgrade, "version", "--short")
 		out, err := cmd.Output()
 		if err == nil {
 			// abort if version matches
