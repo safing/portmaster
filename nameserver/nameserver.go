@@ -274,7 +274,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	}
 
 	tracer.Trace("nameserver: deciding on resolved dns")
-	rrCache = firewall.DecideOnResolvedDNS(conn, q, rrCache)
+	rrCache = firewall.DecideOnResolvedDNS(ctx, conn, q, rrCache)
 	if rrCache == nil {
 		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
 		return nil

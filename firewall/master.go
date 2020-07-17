@@ -52,7 +52,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 		checkSelfCommunication,
 		checkProfileExists,
 		checkConnectionType,
-		checkCaptivePortal,
+		checkConnectivityDomain,
 		checkConnectionScope,
 		checkEndpointLists,
 		checkBypassPrevention,
@@ -181,10 +181,17 @@ func checkConnectionType(ctx context.Context, conn *network.Connection, _ packet
 	return false
 }
 
-func checkCaptivePortal(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
-	if netenv.GetOnlineStatus() == netenv.StatusPortal &&
-		conn.Entity.Domain == netenv.GetCaptivePortal().Domain {
-		conn.Accept("captive portal access permitted")
+func checkConnectivityDomain(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
+	p := conn.Process().Profile()
+
+	if !p.BlockScopeInternet() {
+		// Special grant only applies if application is allowed to connect to the Internet.
+		return false
+	}
+
+	if netenv.GetOnlineStatus() <= netenv.StatusPortal &&
+		netenv.IsConnectivityDomain(conn.Entity.Domain) {
+		conn.Accept("special grant for connectivity domain during network bootstrap")
 		return true
 	}
 

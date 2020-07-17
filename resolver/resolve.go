@@ -180,6 +180,11 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 
 	// check if expired
 	if rrCache.Expired() {
+		if netenv.IsConnectivityDomain(rrCache.Domain) {
+			// do not use cache, resolve immediately
+			return nil
+		}
+
 		rrCache.Lock()
 		rrCache.requestingNew = true
 		rrCache.Unlock()

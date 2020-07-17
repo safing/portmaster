@@ -6,21 +6,40 @@ import (
 	"github.com/safing/portbase/modules"
 )
 
+var (
+	module *modules.Module
+)
+
 func init() {
-	modules.Register("status", nil, start, stop, "base")
+	module = modules.Register("status", nil, start, stop, "base")
 }
 
 func start() error {
-	var loadedStatus *SystemStatus
+	err := initSystemStatus()
+	if err != nil {
+		return err
+	}
 
+	err = startNetEnvHooking()
+	if err != nil {
+		return err
+	}
+
+	status.Save()
+
+	return initStatusHook()
+}
+
+func initSystemStatus() error {
 	// load status from database
 	r, err := statusDB.Get(statusDBKey)
 	switch err {
 	case nil:
-		loadedStatus, err = EnsureSystemStatus(r)
+		loadedStatus, err := EnsureSystemStatus(r)
 		if err != nil {
 			log.Criticalf("status: failed to unwrap system status: %s", err)
-			loadedStatus = nil
+		} else {
+			status = loadedStatus
 		}
 	case database.ErrNotFound:
 		// create new status
@@ -28,10 +47,6 @@ func start() error {
 		log.Criticalf("status: failed to load system status: %s", err)
 	}
 
-	// activate loaded status, if available
-	if loadedStatus != nil {
-		status = loadedStatus
-	}
 	status.Lock()
 	defer status.Unlock()
 
@@ -41,10 +56,9 @@ func start() error {
 	// update status
 	status.updateThreatMitigationLevel()
 	status.autopilot()
+	status.updateOnlineStatus()
 
-	go status.Save()
-
-	return initStatusHook()
+	return nil
 }
 
 func stop() error {

@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/safing/portmaster/netenv"
+
 	"github.com/miekg/dns"
 )
 
@@ -75,9 +77,17 @@ func (rrCache *RRCache) Clean(minExpires uint32) {
 		lowestTTL = minExpires
 	}
 
-	// shorten NXDomain caching
-	if len(rrCache.Answer) == 0 {
+	// shorten caching
+	switch {
+	case rrCache.IsNXDomain():
+		// NXDomain
 		lowestTTL = 10
+	case netenv.IsConnectivityDomain(rrCache.Domain):
+		// Responses from these domains might change very quickly depending on the environment.
+		lowestTTL = 3
+	case !netenv.Online():
+		// Not being fully online could mean that we get funny responses.
+		lowestTTL = 60
 	}
 
 	// log.Tracef("lowest TTL is %d", lowestTTL)
