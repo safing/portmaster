@@ -75,15 +75,6 @@ func main() {
 	// set meta info
 	info.Set("Portmaster Start", "0.3.5", "AGPLv3", false)
 
-	// for debugging
-	// log.Start()
-	// log.SetLogLevel(log.TraceLevel)
-	// go func() {
-	// 	time.Sleep(3 * time.Second)
-	// 	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
-	// 	os.Exit(1)
-	// }()
-
 	// catch interrupt for clean shutdown
 	signalCh := make(chan os.Signal, 2)
 	signal.Notify(
@@ -102,13 +93,6 @@ func main() {
 		}
 		os.Exit(0)
 	}()
-
-	// for debugging windows service (no stdout/err)
-	// go func() {
-	// 	time.Sleep(10 * time.Second)
-	// 	// initiateShutdown(nil)
-	// 	// logControlStack()
-	// }()
 
 	// wait for signals
 	for sig := range signalCh {

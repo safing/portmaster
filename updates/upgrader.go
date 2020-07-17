@@ -148,30 +148,54 @@ func upgradePortmasterStart() error {
 	}
 	log.Infof("updates: upgraded %s", rootPmStartPath)
 
+	// TODO(ppacher): remove once we released a few more versions ...
+	warnOnIncorrectParentPath(filename)
+
+	return nil
+}
+
+func warnOnIncorrectParentPath(expectedFileName string) {
 	// upgrade parent process, if it's portmaster-start
 	parent, err := processInfo.NewProcess(int32(os.Getppid()))
 	if err != nil {
-		return fmt.Errorf("could not get parent process for upgrade checks: %w", err)
+		log.Tracef("could not get parent process: %s", err)
+		return
 	}
 	parentName, err := parent.Name()
 	if err != nil {
-		return fmt.Errorf("could not get parent process name for upgrade checks: %w", err)
+		log.Tracef("could not get parent process name: %s", err)
+		return
 	}
-	if parentName != filename {
-		log.Tracef("updates: parent process does not seem to be portmaster-start, name is %s", parentName)
-		return nil
+	if parentName != expectedFileName {
+		log.Warningf("updates: parent process does not seem to be portmaster-start, name is %s", parentName)
+
+		// TODO(ppacher): once we released a new installer and folks had time
+		//                to update we should send a module warning/hint to the
+		//                UI notifying the user that he's still using portmaster-control.
+		return
 	}
+
 	parentPath, err := parent.Exe()
 	if err != nil {
-		return fmt.Errorf("could not get parent process path for upgrade: %w", err)
+		log.Tracef("could not get parent process path: %s", err)
+		return
 	}
-	err = upgradeFile(parentPath, pmCtrlUpdate)
-	if err != nil {
-		return err
-	}
-	log.Infof("updates: upgraded %s", parentPath)
 
-	return nil
+	absPath, err := filepath.Abs(parentPath)
+	if err != nil {
+		log.Tracef("could not get absolut parent process path: %s", err)
+		return
+	}
+
+	root := filepath.Dir(registry.StorageDir().Path)
+	if !strings.HasPrefix(absPath, root) {
+		log.Warningf("detected unexpected path %s for portmaster-start", absPath)
+
+		// TODO(ppacher): once we released a new installer and folks had time
+		//                to update we should send a module warning/hint to the
+		//                UI notifying the user that he's using portmaster-start
+		//                from a wrong location.
+	}
 }
 
 func upgradeFile(fileToUpgrade string, file *updater.File) error {

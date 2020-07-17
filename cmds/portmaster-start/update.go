@@ -40,7 +40,15 @@ func downloadUpdates() error {
 		}
 	}
 
-	// ok, now we want logging.
+	// add updates that we require on all platforms.
+	registry.MandatoryUpdates = append(
+		registry.MandatoryUpdates,
+		"all/ui/modules/base.zip",
+	)
+
+	// logging is configured as a presistent pre-run method inherited from
+	// the root command but since we don't use run.Run() we need to start
+	// logging ourself.
 	err := log.Start()
 	if err != nil {
 		fmt.Printf("failed to start logging: %s\n", err)

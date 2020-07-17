@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"runtime/pprof"
 	"time"
 
 	"github.com/safing/portbase/container"
@@ -111,18 +110,6 @@ func logControlError(cErr error) {
 	defer errorFile.Close()
 
 	fmt.Fprintln(errorFile, cErr.Error())
-}
-
-//nolint:deadcode,unused // TODO
-func logControlStack() {
-	fp := getPmStartLogFile(".stack.log")
-	if fp == nil {
-		return
-	}
-	defer fp.Close()
-
-	// write error and close
-	_ = pprof.Lookup("goroutine").WriteTo(fp, 2)
 }
 
 //nolint:deadcode,unused // false positive on linux, currently used by windows only

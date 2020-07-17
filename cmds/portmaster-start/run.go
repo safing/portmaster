@@ -100,7 +100,7 @@ func getExecArgs(opts *Options, cmdArgs []string) []string {
 
 	args := []string{"--data", dataDir}
 	if stdinSignals {
-		args = append(args, "-input-signals")
+		args = append(args, "--input-signals")
 	}
 	args = append(args, cmdArgs...)
 	return args
@@ -110,7 +110,7 @@ func run(opts *Options, cmdArgs []string) (err error) {
 	// set download option
 	registry.Online = opts.AllowDownload
 
-	if isShutdown() {
+	if isShuttingDown() {
 		return nil
 	}
 
@@ -328,8 +328,7 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 		// wait until shut down
 		select {
 		case <-finished:
-		case <-time.After(11 * time.Second): // portmaster core prints stack if not able to shutdown in 10 seconds
-			// kill
+		case <-time.After(3 * time.Minute): // portmaster core prints stack if not able to shutdown in 3 minutes, give it one more ...
 			err = exc.Process.Kill()
 			if err != nil {
 				return false, fmt.Errorf("failed to kill %s: %s", opts.Identifier, err)

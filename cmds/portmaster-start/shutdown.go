@@ -25,7 +25,7 @@ func initiateShutdown(err error) {
 	}
 }
 
-func isShutdown() bool {
+func isShuttingDown() bool {
 	select {
 	case <-shuttingDown:
 		return true
