@@ -11,6 +11,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/safing/portbase/database"
+
+	"github.com/safing/portbase/notifications"
+
 	"github.com/miekg/dns"
 
 	"github.com/safing/portbase/log"
@@ -67,8 +71,41 @@ func init() {
 // IsConnectivityDomain checks whether the given domain (fqdn) is used for any connectivity related network connections and should always be resolved using the network assigned DNS server.
 func IsConnectivityDomain(domain string) bool {
 	switch domain {
-	case "detectportal.firefox.com.",
-		"one.one.one.one.",
+	case "one.one.one.one.", // Internal DNS Check
+
+		// Windows
+		"dns.msftncsi.com.", // DNS Check
+		"msftncsi.com.",     // Older
+		"www.msftncsi.com.",
+		"microsoftconnecttest.com.", // Newer
+		"www.microsoftconnecttest.com.",
+		"ipv6.microsoftconnecttest.com.",
+		// https://de.wikipedia.org/wiki/Captive_Portal
+		// https://docs.microsoft.com/en-us/windows-hardware/drivers/mobilebroadband/captive-portals
+		// TODO: read value from registry: HKLM:\SYSTEM\CurrentControlSet\Services\NlaSvc\Parameters\Internet
+
+		// Apple
+		"captive.apple.com.",
+		// https://de.wikipedia.org/wiki/Captive_Portal
+
+		// Linux
+		"connectivity-check.ubuntu.com.", // Ubuntu
+		"nmcheck.gnome.org.",             // Gnome DE
+		"network-test.debian.org.",       // Debian
+		// There are probably a lot more domains for all the Linux Distro/DE Variants. Please raise issues and/or submit PRs!
+		// https://github.com/solus-project/budgie-desktop/issues/807
+		// https://www.lguruprasad.in/blog/2015/07/21/enabling-captive-portal-detection-in-gnome-3-14-on-debian-jessie/
+		// TODO: read value from NetworkManager config: /etc/NetworkManager/conf.d/*.conf
+
+		// Android
+		"connectivitycheck.gstatic.com.",
+		// https://de.wikipedia.org/wiki/Captive_Portal
+
+		// Other
+		"neverssl.com.",             // Common Community Service
+		"detectportal.firefox.com.", // Firefox
+
+		// Redirected Domain
 		GetCaptivePortal().Domain:
 		return true
 	}
@@ -106,8 +143,9 @@ var (
 	onlineStatusInvestigationInProgress = abool.NewBool(false)
 	onlineStatusInvestigationWg         sync.WaitGroup
 
-	captivePortal     = &CaptivePortal{}
-	captivePortalLock sync.Mutex
+	captivePortal             = &CaptivePortal{}
+	captivePortalLock         sync.Mutex
+	captivePortalNotification *notifications.Notification
 )
 
 // CaptivePortal holds information about a detected captive portal.
@@ -180,8 +218,26 @@ func setCaptivePortal(portalURL string) {
 	// delete
 	if portalURL == "" {
 		captivePortal = &CaptivePortal{}
+		if captivePortalNotification != nil {
+			err := captivePortalNotification.Delete()
+			if err != nil && err != database.ErrNotFound {
+				log.Warningf("netenv: failed to delete old captive portal notification: %s", err)
+			}
+			captivePortalNotification = nil
+		}
 		return
 	}
+
+	// return if unchanged
+	if portalURL == captivePortal.URL {
+		return
+	}
+
+	// notify
+	defer notifications.NotifyInfo(
+		"netenv:captive-portal:"+captivePortal.Domain,
+		"Portmaster detected a captive portal at "+captivePortal.Domain,
+	)
 
 	// set
 	captivePortal = &CaptivePortal{
@@ -378,17 +434,17 @@ func checkOnlineStatus(ctx context.Context) {
 	if err != nil {
 		log.Warningf("network: failed to read http body of captive portal testing response: %s", err)
 		// assume we are online nonetheless
+		// TODO: improve handling this case
 		updateOnlineStatus(StatusOnline, "", "http request succeeded, albeit failing later")
 		return
 	}
 
 	// check body contents
-	if strings.TrimSpace(string(data)) == HTTPExpectedContent {
-		updateOnlineStatus(StatusOnline, "", "http request succeeded")
-	} else {
-		// something is interfering with the website content
-		// this might be a weird captive portal, just direct the user there
+	if strings.TrimSpace(string(data)) != HTTPExpectedContent {
+		// Something is interfering with the website content.
+		// This probably is a captive portal, just direct the user there.
 		updateOnlineStatus(StatusPortal, "detectportal.firefox.com", "http request succeeded, response content not as expected")
+		return
 	}
 	// close the body now as we plan to reuse the http.Client
 	response.Body.Close()

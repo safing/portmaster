@@ -1,6 +1,6 @@
 package status
 
-// Definitions of Security and Status Levels
+// Definitions of Security and Status Levels.
 const (
 	SecurityLevelOff uint8 = 0
 

@@ -1,6 +1,8 @@
 package status
 
 import (
+	"context"
+
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/database/record"
@@ -35,7 +37,10 @@ func (sh *statusHook) PrePut(r record.Record) (record.Record, error) {
 
 	// apply applicable settings
 	if SelectedSecurityLevel() != newStatus.SelectedSecurityLevel {
-		go setSelectedSecurityLevel(newStatus.SelectedSecurityLevel)
+		module.StartWorker("set selected security level", func(_ context.Context) error {
+			setSelectedSecurityLevel(newStatus.SelectedSecurityLevel)
+			return nil
+		})
 	}
 
 	// TODO: allow setting of Gate17 status (on/off)

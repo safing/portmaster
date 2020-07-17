@@ -26,7 +26,7 @@ func AddOrUpdateThreat(new *Threat) {
 	status.updateThreatMitigationLevel()
 	status.autopilot()
 
-	go status.Save()
+	status.SaveAsync()
 }
 
 // DeleteThreat deletes a threat from the system status.
@@ -38,7 +38,7 @@ func DeleteThreat(id string) {
 	status.updateThreatMitigationLevel()
 	status.autopilot()
 
-	go status.Save()
+	status.SaveAsync()
 }
 
 // GetThreats returns all threats who's IDs are prefixed by the given string, and also a locker for editing them.
