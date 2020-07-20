@@ -29,11 +29,11 @@ var (
 
 		// Cloudflare (encrypted DNS, with malware protection)
 		`dot://1.1.1.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip`,
-		`dot://1.0.0.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip`,
+		// `dot://1.0.0.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip`,
 
 		// AdGuard (encrypted DNS, default flavor)
-		`dot://176.103.130.130:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
-		`dot://176.103.130.131:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
+		// `dot://176.103.130.130:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
+		// `dot://176.103.130.131:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
 
 		// Foundation for Applied Privacy (encrypted DNS)
 		// `dot://94.130.106.88:853?verify=dot1.applied-privacy.net&name=AppliedPrivacy`,
