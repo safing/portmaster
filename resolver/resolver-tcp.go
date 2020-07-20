@@ -419,7 +419,7 @@ func (mgr *tcpResolverConnMgr) handleQueryResponse(conn *dns.Conn, msg *dns.Msg)
 
 	// persist to database
 	rrCache := inFlight.MakeCacheRecord(msg)
-	rrCache.Clean(600)
+	rrCache.Clean(minTTL)
 	err := rrCache.Save()
 	if err != nil {
 		log.Warningf(
