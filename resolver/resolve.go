@@ -302,16 +302,14 @@ resolveLoop:
 					// we are offline and this is not an online check query
 					return nil, ErrOffline
 				default:
+					// includes ErrTimeout
 					log.Tracer(ctx).Debugf("resolver: failed to resolve %s: %s", q.FQDN, err)
 				}
-			} else {
-				// no error
-				if rrCache == nil {
-					// defensive: assume NXDomain
-					return nil, ErrNotFound
-				}
-				break resolveLoop
 			}
+			if rrCache == nil {
+				continue
+			}
+			break resolveLoop
 		}
 	}
 

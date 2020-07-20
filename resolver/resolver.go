@@ -28,7 +28,7 @@ const (
 
 var (
 	// FailThreshold is amount of errors a resolvers must experience in order to be regarded as failed.
-	FailThreshold = 5
+	FailThreshold = 20
 )
 
 // Resolver holds information about an active resolver.
