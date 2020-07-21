@@ -241,12 +241,12 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 					}
 					switch entry.(type) {
 					case *dns.A:
-						scavengedRecords[fmt.Sprintf("%s_A", entry.Header().Name)] = entry
+						scavengedRecords[fmt.Sprintf("%sA", entry.Header().Name)] = entry
 					case *dns.AAAA:
-						scavengedRecords[fmt.Sprintf("%s_AAAA", entry.Header().Name)] = entry
+						scavengedRecords[fmt.Sprintf("%sAAAA", entry.Header().Name)] = entry
 					case *dns.PTR:
 						if !strings.HasPrefix(entry.Header().Name, "_") {
-							scavengedRecords[fmt.Sprintf("%s_PTR", entry.Header().Name)] = entry
+							scavengedRecords[fmt.Sprintf("%sPTR", entry.Header().Name)] = entry
 						}
 					}
 				}
