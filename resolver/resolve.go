@@ -278,6 +278,10 @@ func resolveAndCache(ctx context.Context, q *Query) (rrCache *RRCache, err error
 resolveLoop:
 	for i = 0; i < 2; i++ {
 		for _, resolver := range resolvers {
+			if module.IsStopping() {
+				return nil, errors.New("shutting down")
+			}
+
 			// check if resolver failed recently (on first run)
 			if i == 0 && resolver.Conn.IsFailing() {
 				log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it failed recently", resolver)
@@ -294,19 +298,25 @@ resolveLoop:
 				case errors.Is(err, ErrBlocked):
 					// some resolvers might also block
 					return nil, err
-				case errors.Is(err, ErrContinue):
-					continue
 				case netenv.GetOnlineStatus() == netenv.StatusOffline &&
 					!netenv.IsConnectivityDomain(q.FQDN):
 					log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
 					// we are offline and this is not an online check query
 					return nil, ErrOffline
+				case errors.Is(err, ErrContinue):
+					continue
+				case errors.Is(err, ErrTimeout):
+					resolver.Conn.ReportFailure()
+					log.Tracer(ctx).Debugf("resolver: query to %s timed out", resolver.GetName())
+					continue
 				default:
-					// includes ErrTimeout
-					log.Tracer(ctx).Debugf("resolver: failed to resolve %s: %s", q.FQDN, err)
+					resolver.Conn.ReportFailure()
+					log.Tracer(ctx).Debugf("resolver: query to %s failed: %s", resolver.GetName(), err)
+					continue
 				}
 			}
 			if rrCache == nil {
+				// Defensive: This should normally not happen.
 				continue
 			}
 			break resolveLoop
