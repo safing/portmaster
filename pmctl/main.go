@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -212,7 +213,7 @@ func cmdSetup(cmd *cobra.Command, args []string) (err error) {
 }
 
 func updateRegistryIndex() {
-	err := registry.LoadIndexes()
+	err := registry.LoadIndexes(context.TODO())
 	if err != nil {
 		log.Printf("WARNING: error loading indexes: %s\n", err)
 	}
