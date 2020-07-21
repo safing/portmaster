@@ -145,7 +145,6 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	select {
 	case reply = <-inFlight.Response:
 	case <-time.After(defaultRequestTimeout):
-		tr.ReportFailure()
 		return nil, ErrTimeout
 	}
 
@@ -180,6 +179,14 @@ func (tr *TCPResolver) startClient() {
 func (mgr *tcpResolverConnMgr) run(workerCtx context.Context) error {
 	// connection lifecycle loop
 	for {
+		// check if we are shutting down
+		select {
+		case <-workerCtx.Done():
+			mgr.shutdown()
+			return nil
+		default:
+		}
+
 		// check if we are failing
 		if mgr.failCnt >= FailThreshold || mgr.tr.IsFailing() {
 			mgr.shutdown()
