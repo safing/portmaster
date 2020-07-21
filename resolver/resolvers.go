@@ -69,22 +69,8 @@ func resolverConnFactory(resolver *Resolver) ResolverConn {
 		return NewTCPResolver(resolver)
 	case ServerTypeDoT:
 		return NewTCPResolver(resolver).UseTLS()
-	default:
-		return &BasicResolverConn{
-			clientManager: clientManagerFactory(resolver.ServerType)(resolver),
-			resolver:      resolver,
-		}
-	}
-}
-
-func clientManagerFactory(serverType string) func(*Resolver) *dnsClientManager {
-	switch serverType {
 	case ServerTypeDNS:
-		return newDNSClientManager
-	case ServerTypeDoT:
-		return newTLSClientManager
-	case ServerTypeTCP:
-		return newTCPClientManager
+		return NewPlainResolver(resolver)
 	default:
 		return nil
 	}
