@@ -258,7 +258,7 @@ func (mgr *tcpResolverConnMgr) waitForWork(workerCtx context.Context) (proceed b
 				select {
 				case mgr.tr.queries <- inFlight.Msg:
 				default:
-					log.Warningf("resolver: failed to re-inject abandoned query to %s", mgr.tr.resolver.Name)
+					log.Warningf("resolver: failed to re-inject abandoned query to %s", mgr.tr.resolver.GetName())
 				}
 			}
 			// in-flight queries that match the connection instance ID are not changed. They are already in the queue.
@@ -276,7 +276,7 @@ func (mgr *tcpResolverConnMgr) waitForWork(workerCtx context.Context) (proceed b
 			select {
 			case mgr.tr.queries <- msg:
 			case <-time.After(2 * time.Second):
-				log.Warningf("resolver: failed to re-inject waking query to %s", mgr.tr.resolver.Name)
+				log.Warningf("resolver: failed to re-inject waking query to %s", mgr.tr.resolver.GetName())
 			}
 			return nil
 		})
@@ -302,13 +302,13 @@ func (mgr *tcpResolverConnMgr) establishConnection(workerCtx context.Context) (
 	var err error
 	conn, err = mgr.tr.dnsClient.Dial(mgr.tr.resolver.ServerAddress)
 	if err != nil {
-		log.Debugf("resolver: failed to connect to %s (%s)", mgr.tr.resolver.Name, mgr.tr.resolver.ServerAddress)
+		log.Debugf("resolver: failed to connect to %s (%s)", mgr.tr.resolver.GetName(), mgr.tr.resolver.ServerAddress)
 		return nil, nil, nil, nil
 	}
 	connCtx, cancelConnCtx = context.WithCancel(workerCtx)
 	connClosing = abool.New()
 
-	log.Debugf("resolver: connected to %s (%s)", mgr.tr.resolver.Name, conn.RemoteAddr())
+	log.Debugf("resolver: connected to %s (%s)", mgr.tr.resolver.GetName(), conn.RemoteAddr())
 
 	// start reader
 	module.StartServiceWorker("dns client reader", 10*time.Millisecond, func(workerCtx context.Context) error {
@@ -365,7 +365,7 @@ func (mgr *tcpResolverConnMgr) queryHandler( //nolint:golint // context.Context 
 			err := conn.WriteMsg(msg)
 			if err != nil {
 				if connClosing.SetToIf(false, true) {
-					log.Warningf("resolver: write error to %s (%s): %s", mgr.tr.resolver.Name, conn.RemoteAddr(), err)
+					log.Warningf("resolver: write error to %s (%s): %s", mgr.tr.resolver.GetName(), conn.RemoteAddr(), err)
 				}
 				return true
 			}
@@ -381,7 +381,7 @@ func (mgr *tcpResolverConnMgr) queryHandler( //nolint:golint // context.Context 
 				activeQueries := len(mgr.tr.inFlightQueries)
 				mgr.tr.Unlock()
 				if activeQueries == 0 {
-					log.Debugf("resolver: recycling conn to %s (%s)", mgr.tr.resolver.Name, conn.RemoteAddr())
+					log.Debugf("resolver: recycling conn to %s (%s)", mgr.tr.resolver.GetName(), conn.RemoteAddr())
 					return true
 				}
 			}
@@ -402,7 +402,7 @@ func (mgr *tcpResolverConnMgr) handleQueryResponse(conn *dns.Conn, msg *dns.Msg)
 	if !ok {
 		log.Debugf(
 			"resolver: received possibly unsolicited reply from %s (%s): txid=%d q=%+v",
-			mgr.tr.resolver.Name,
+			mgr.tr.resolver.GetName(),
 			conn.RemoteAddr(),
 			msg.Id,
 			msg.Question,
@@ -448,7 +448,7 @@ func (mgr *tcpResolverConnMgr) msgReader(
 		msg, err := conn.ReadMsg()
 		if err != nil {
 			if connClosing.SetToIf(false, true) {
-				log.Warningf("resolver: read error from %s (%s): %s", mgr.tr.resolver.Name, conn.RemoteAddr(), err)
+				log.Warningf("resolver: read error from %s (%s): %s", mgr.tr.resolver.GetName(), conn.RemoteAddr(), err)
 			}
 			return nil
 		}
