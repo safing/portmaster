@@ -15,9 +15,13 @@ var (
 )
 
 func init() {
-	module = modules.Register("netenv", nil, start, nil)
+	module = modules.Register("netenv", prep, start, nil)
 	module.RegisterEvent(NetworkChangedEvent)
 	module.RegisterEvent(OnlineStatusChangedEvent)
+}
+
+func prep() error {
+	return prepOnlineStatus()
 }
 
 func start() error {
