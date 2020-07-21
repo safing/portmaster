@@ -72,9 +72,12 @@ func (rrCache *RRCache) Clean(minExpires uint32) {
 		header.Ttl = 17
 	}
 
-	// TTL must be at least minExpires
-	if lowestTTL < minExpires {
+	// TTL range limits
+	switch {
+	case lowestTTL < minExpires:
 		lowestTTL = minExpires
+	case lowestTTL > maxTTL:
+		lowestTTL = maxTTL
 	}
 
 	// shorten caching

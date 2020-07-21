@@ -276,7 +276,7 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 
 			var questionID string
 			if saveFullRequest {
-				rrCache.Clean(60)
+				rrCache.Clean(minMDnsTTL)
 				err := rrCache.Save()
 				if err != nil {
 					log.Warningf("resolver: failed to cache RR %s: %s", rrCache.Domain, err)
@@ -304,7 +304,7 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 					Server:      mDNSResolver.Server,
 					ServerScope: mDNSResolver.ServerIPScope,
 				}
-				rrCache.Clean(60)
+				rrCache.Clean(minMDnsTTL)
 				err := rrCache.Save()
 				if err != nil {
 					log.Warningf("resolver: failed to cache RR %s: %s", rrCache.Domain, err)

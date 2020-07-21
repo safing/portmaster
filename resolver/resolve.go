@@ -45,6 +45,12 @@ var (
 	ErrNoCompliance = fmt.Errorf("%w: no compliant resolvers for this query", ErrBlocked)
 )
 
+const (
+	minTTL     = 60           // 1 Minute
+	minMDnsTTL = 60           // 1 Minute
+	maxTTL     = 24 * 60 * 60 // 24 hours
+)
+
 // BlockedUpstreamError is returned when a DNS request
 // has been blocked by the upstream server.
 type BlockedUpstreamError struct {
@@ -296,16 +302,14 @@ resolveLoop:
 					// we are offline and this is not an online check query
 					return nil, ErrOffline
 				default:
+					// includes ErrTimeout
 					log.Tracer(ctx).Debugf("resolver: failed to resolve %s: %s", q.FQDN, err)
 				}
-			} else {
-				// no error
-				if rrCache == nil {
-					// defensive: assume NXDomain
-					return nil, ErrNotFound
-				}
-				break resolveLoop
 			}
+			if rrCache == nil {
+				continue
+			}
+			break resolveLoop
 		}
 	}
 
@@ -326,7 +330,7 @@ resolveLoop:
 	// cache if enabled
 	if !q.NoCaching {
 		// persist to database
-		rrCache.Clean(600)
+		rrCache.Clean(minTTL)
 		err = rrCache.Save()
 		if err != nil {
 			log.Warningf("resolver: failed to cache RR for %s%s: %s", q.FQDN, q.QType.String(), err)
