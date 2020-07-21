@@ -44,15 +44,17 @@ func (er *envResolverConn) Query(ctx context.Context, q *Query) (*RRCache, error
 		return nil, ErrNotFound
 
 	case netenv.SpecialCaptivePortalDomain:
-		if portal.IP != nil {
-			records, err := netutils.IPsToRRs(q.FQDN, []net.IP{portal.IP})
-			if err != nil {
-				log.Warningf("nameserver: failed to create captive portal response to %s: %s", q.FQDN, err)
-				return nil, ErrNotFound
-			}
-			return er.makeRRCache(q, records), nil
+		portalIP := portal.IP
+		if portal.IP == nil {
+			portalIP = netenv.PortalTestIP
 		}
-		return nil, ErrNotFound
+
+		records, err := netutils.IPsToRRs(q.FQDN, []net.IP{portalIP})
+		if err != nil {
+			log.Warningf("nameserver: failed to create captive portal response to %s: %s", q.FQDN, err)
+			return nil, ErrNotFound
+		}
+		return er.makeRRCache(q, records), nil
 
 	case "router.local.":
 		routers := netenv.Gateways()

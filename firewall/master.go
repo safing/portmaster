@@ -184,18 +184,28 @@ func checkConnectionType(ctx context.Context, conn *network.Connection, _ packet
 func checkConnectivityDomain(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
 	p := conn.Process().Profile()
 
-	if !p.BlockScopeInternet() {
+	switch {
+	case netenv.GetOnlineStatus() > netenv.StatusPortal:
+		// Special grant only applies if network status is Portal (or even more limited).
+		return false
+
+	case conn.Inbound:
+		// Special grant only applies to outgoing connections.
+		return false
+
+	case p.BlockScopeInternet():
 		// Special grant only applies if application is allowed to connect to the Internet.
 		return false
-	}
 
-	if netenv.GetOnlineStatus() <= netenv.StatusPortal &&
-		netenv.IsConnectivityDomain(conn.Entity.Domain) {
+	case netenv.IsConnectivityDomain(conn.Entity.Domain):
+		// Special grant!
 		conn.Accept("special grant for connectivity domain during network bootstrap")
 		return true
-	}
 
-	return false
+	default:
+		// Not a special grant domain
+		return false
+	}
 }
 
 func checkConnectionScope(_ context.Context, conn *network.Connection, _ packet.Packet) bool {

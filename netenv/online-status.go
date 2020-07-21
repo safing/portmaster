@@ -2,11 +2,10 @@ package netenv
 
 import (
 	"context"
-	"io/ioutil"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,8 +13,6 @@ import (
 	"github.com/safing/portbase/database"
 
 	"github.com/safing/portbase/notifications"
-
-	"github.com/miekg/dns"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network/netutils"
@@ -37,41 +34,30 @@ const (
 )
 
 // Online Status and Resolver
-const (
-	HTTPTestURL         = "http://detectportal.firefox.com/success.txt"
-	HTTPExpectedContent = "success"
-	HTTPSTestURL        = "https://one.one.one.one/"
+var (
+	PortalTestIP  = net.IPv4(255, 255, 255, 254)
+	PortalTestURL = fmt.Sprintf("http://%s/", PortalTestIP)
 
-	ResolverTestFqdn             = "one.one.one.one."
-	ResolverTestRRType           = dns.TypeA
-	ResolverTestExpectedResponse = "1.1.1.1"
+	DNSTestDomain     = "one.one.one.one."
+	DNSTestExpectedIP = net.IPv4(1, 1, 1, 1)
 
 	SpecialCaptivePortalDomain = "captiveportal.local."
 )
 
 var (
-	parsedHTTPTestURL  *url.URL
-	parsedHTTPSTestURL *url.URL
+	parsedPortalTestURL *url.URL
 )
 
-func init() {
-	var err error
-
-	parsedHTTPTestURL, err = url.Parse(HTTPTestURL)
-	if err != nil {
-		panic(err)
-	}
-
-	parsedHTTPSTestURL, err = url.Parse(HTTPSTestURL)
-	if err != nil {
-		panic(err)
-	}
+func prepOnlineStatus() (err error) {
+	parsedPortalTestURL, err = url.Parse(PortalTestURL)
+	return err
 }
 
 // IsConnectivityDomain checks whether the given domain (fqdn) is used for any connectivity related network connections and should always be resolved using the network assigned DNS server.
 func IsConnectivityDomain(domain string) bool {
 	switch domain {
-	case "one.one.one.one.", // Internal DNS Check
+	case SpecialCaptivePortalDomain,
+		"one.one.one.one.", // Internal DNS Check
 
 		// Windows
 		"dns.msftncsi.com.", // DNS Check
@@ -111,11 +97,6 @@ func IsConnectivityDomain(domain string) bool {
 	}
 
 	return false
-}
-
-// GetResolverTestingRequestData returns request information that should be used to test DNS resolvers for availability and basic correct behaviour.
-func GetResolverTestingRequestData() (fqdn string, rrType uint16, expectedResponse string) {
-	return ResolverTestFqdn, ResolverTestRRType, ResolverTestExpectedResponse
 }
 
 func (os OnlineStatus) String() string {
@@ -180,7 +161,7 @@ func CheckAndGetOnlineStatus() OnlineStatus {
 	return GetOnlineStatus()
 }
 
-func updateOnlineStatus(status OnlineStatus, portalURL, comment string) {
+func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string) {
 	changed := false
 
 	// status
@@ -195,81 +176,70 @@ func updateOnlineStatus(status OnlineStatus, portalURL, comment string) {
 
 	// captive portal
 	// delete if offline, update only if there is a new value
-	if status == StatusOffline || portalURL != "" {
+	if status == StatusOffline || portalURL != nil {
 		setCaptivePortal(portalURL)
+	} else if status == StatusOnline {
+		cleanUpPortalNotification()
 	}
 
 	// trigger event
 	if changed {
 		module.TriggerEvent(OnlineStatusChangedEvent, nil)
 		if status == StatusPortal {
-			log.Infof(`network: setting online status to %s at "%s" (%s)`, status, portalURL, comment)
+			log.Infof(`netenv: setting online status to %s at "%s" (%s)`, status, portalURL, comment)
 		} else {
-			log.Infof("network: setting online status to %s (%s)", status, comment)
+			log.Infof("netenv: setting online status to %s (%s)", status, comment)
 		}
 		triggerNetworkChangeCheck()
 	}
 }
 
-func setCaptivePortal(portalURL string) {
+func setCaptivePortal(portalURL *url.URL) {
 	captivePortalLock.Lock()
 	defer captivePortalLock.Unlock()
 
 	// delete
-	if portalURL == "" {
+	if portalURL == nil {
 		captivePortal = &CaptivePortal{}
-		if captivePortalNotification != nil {
-			err := captivePortalNotification.Delete()
-			if err != nil && err != database.ErrNotFound {
-				log.Warningf("netenv: failed to delete old captive portal notification: %s", err)
-			}
-			captivePortalNotification = nil
-		}
+		cleanUpPortalNotification()
 		return
 	}
 
 	// return if unchanged
-	if portalURL == captivePortal.URL {
+	if portalURL.String() == captivePortal.URL {
 		return
 	}
 
 	// notify
-	defer notifications.NotifyInfo(
-		"netenv:captive-portal:"+captivePortal.Domain,
-		"Portmaster detected a captive portal at "+captivePortal.Domain,
-	)
+	cleanUpPortalNotification()
+	defer func() {
+		// TODO: add "open" button
+		captivePortalNotification = notifications.NotifyInfo(
+			"netenv:captive-portal:"+captivePortal.Domain,
+			"Portmaster detected a captive portal at "+captivePortal.Domain,
+		)
+	}()
 
 	// set
 	captivePortal = &CaptivePortal{
-		URL: portalURL,
+		URL: portalURL.String(),
 	}
-	parsedURL, err := url.Parse(portalURL)
-	switch {
-	case err != nil:
-		log.Debugf(`netenv: failed to parse captive portal URL "%s": %s`, portalURL, err)
-		return
-	case parsedURL.Hostname() == "":
-		log.Debugf(`netenv: captive portal URL "%s" has no domain or IP`, portalURL)
-		return
-	default:
-		// try to parse an IP
-		portalIP := net.ParseIP(parsedURL.Hostname())
-		if portalIP != nil {
-			captivePortal.IP = portalIP
-			captivePortal.Domain = SpecialCaptivePortalDomain
-			return
-		}
+	portalIP := net.ParseIP(portalURL.Hostname())
+	if portalIP != nil {
+		captivePortal.IP = portalIP
+		captivePortal.Domain = SpecialCaptivePortalDomain
+	} else {
+		captivePortal.Domain = portalURL.Hostname()
+	}
+}
 
-		// try to parse domain
-		// ensure fqdn format
-		domain := dns.Fqdn(parsedURL.Hostname())
-		// check validity
-		if !netutils.IsValidFqdn(domain) {
-			log.Debugf(`netenv: captive portal domain/IP "%s" is invalid`, parsedURL.Hostname())
-			return
+func cleanUpPortalNotification() {
+	if captivePortalNotification != nil {
+		err := captivePortalNotification.Delete()
+		if err != nil && err != database.ErrNotFound {
+			log.Warningf("netenv: failed to delete old captive portal notification: %s", err)
 		}
-		// set domain
-		captivePortal.Domain = domain
+		captivePortalNotification = nil
 	}
 }
 
@@ -333,15 +303,17 @@ func monitorOnlineStatus(ctx context.Context) error {
 func getDynamicStatusTrigger() <-chan time.Time {
 	switch GetOnlineStatus() {
 	case StatusOffline:
-		return time.After(10 * time.Second)
+		return time.After(5 * time.Second)
 	case StatusLimited, StatusPortal:
-		return time.After(1 * time.Minute)
+		return time.After(10 * time.Second)
 	case StatusSemiOnline:
-		return time.After(5 * time.Minute)
+		return time.After(1 * time.Minute)
 	case StatusOnline:
 		return nil
-	default: // unknown status
-		return time.After(5 * time.Minute)
+	case StatusUnknown:
+		return time.After(2 * time.Second)
+	default: // other unknown status
+		return time.After(1 * time.Minute)
 	}
 }
 
@@ -367,7 +339,7 @@ func checkOnlineStatus(ctx context.Context) {
 				lan = true
 			case netutils.Global:
 				// we _are_ the Internet ;)
-				updateOnlineStatus(StatusOnline, "", "global IPv4 interface detected")
+				updateOnlineStatus(StatusOnline, nil, "global IPv4 interface detected")
 				return
 			}
 		}
@@ -379,20 +351,16 @@ func checkOnlineStatus(ctx context.Context) {
 			}
 		}
 		if !lan {
-			updateOnlineStatus(StatusOffline, "", "no local or global interfaces detected")
+			updateOnlineStatus(StatusOffline, nil, "no local or global interfaces detected")
 			return
 		}
 	}
 
 	// 2) try a http request
 
-	// TODO: find (array of) alternatives to detectportal.firefox.com
-	// TODO: find something about usage terms of detectportal.firefox.com
-
 	dialer := &net.Dialer{
 		Timeout:   5 * time.Second,
 		LocalAddr: getLocalAddr("tcp"),
-		DualStack: true,
 	}
 
 	client := &http.Client{
@@ -406,67 +374,63 @@ func checkOnlineStatus(ctx context.Context) {
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Timeout: 5 * time.Second,
+		Timeout: 1 * time.Second,
 	}
 
 	request := (&http.Request{
 		Method: "GET",
-		URL:    parsedHTTPTestURL,
+		URL:    parsedPortalTestURL,
 		Close:  true,
 	}).WithContext(ctx)
 
 	response, err := client.Do(request)
 	if err != nil {
-		updateOnlineStatus(StatusLimited, "", "http request failed")
-		return
-	}
-	defer response.Body.Close()
+		nErr, ok := err.(net.Error)
+		if !ok || !nErr.Timeout() {
+			// Timeout is the expected error when there is no portal
+			log.Debugf("netenv: http portal test failed: %s", err)
+			// TODO: discern between errors to detect StatusLimited
+		}
+	} else {
+		defer response.Body.Close()
+		// Got a response, something is messing with the request
 
-	// check location
-	portalURL, err := response.Location()
-	if err == nil {
-		updateOnlineStatus(StatusPortal, portalURL.String(), "http request succeeded with redirect")
-		return
+		// check location
+		portalURL, err := response.Location()
+		if err == nil {
+			updateOnlineStatus(StatusPortal, portalURL, "portal test request succeeded with redirect")
+			return
+		}
+
+		// direct response
+		if response.StatusCode == 200 {
+			updateOnlineStatus(StatusPortal, &url.URL{
+				Scheme: "http",
+				Host:   SpecialCaptivePortalDomain,
+				Path:   "/",
+			}, "portal test request succeeded")
+			return
+		}
+
+		log.Debugf("netenv: unexpected http portal test response code: %d", response.StatusCode)
+		// other responses are undefined, continue with next test
 	}
 
-	// read the body
-	data, err := ioutil.ReadAll(response.Body)
+	// 3) resolve a query
+
+	// make DNS request
+	ips, err := net.LookupIP(DNSTestDomain)
 	if err != nil {
-		log.Warningf("network: failed to read http body of captive portal testing response: %s", err)
-		// assume we are online nonetheless
-		// TODO: improve handling this case
-		updateOnlineStatus(StatusOnline, "", "http request succeeded, albeit failing later")
+		updateOnlineStatus(StatusSemiOnline, nil, "dns check query failed")
 		return
 	}
-
-	// check body contents
-	if strings.TrimSpace(string(data)) != HTTPExpectedContent {
-		// Something is interfering with the website content.
-		// This probably is a captive portal, just direct the user there.
-		updateOnlineStatus(StatusPortal, "detectportal.firefox.com", "http request succeeded, response content not as expected")
-		return
+	// check for expected response
+	for _, ip := range ips {
+		if ip.Equal(DNSTestExpectedIP) {
+			updateOnlineStatus(StatusOnline, nil, "all checks passed")
+			return
+		}
 	}
-	// close the body now as we plan to reuse the http.Client
-	response.Body.Close()
-
-	// 3) try a https request
-	dialer.LocalAddr = getLocalAddr("tcp")
-
-	request = (&http.Request{
-		Method: "HEAD",
-		URL:    parsedHTTPSTestURL,
-		Close:  true,
-	}).WithContext(ctx)
-
-	// only test if we can get the headers
-	response, err = client.Do(request)
-	if err != nil {
-		// if we fail, something is really weird
-		updateOnlineStatus(StatusSemiOnline, "", "http request failed to "+parsedHTTPSTestURL.String()+" with error "+err.Error())
-		return
-	}
-	defer response.Body.Close()
-
-	// finally
-	updateOnlineStatus(StatusOnline, "", "all checks successful")
+	// unexpected response
+	updateOnlineStatus(StatusSemiOnline, nil, "dns check query response mismatched")
 }
