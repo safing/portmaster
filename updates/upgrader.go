@@ -84,15 +84,42 @@ func upgradeCoreNotify() error {
 	}
 
 	if info.GetInfo().Version != pmCoreUpdate.Version() {
-		notifications.NotifyInfo(
-			"updates-core-update-available",
+		n := notifications.NotifyInfo(
+			"updates:core-update-available",
 			fmt.Sprintf("There is an update available for the Portmaster core (v%s), please restart the Portmaster to apply the update.", pmCoreUpdate.Version()),
+			notifications.Action{
+				ID:   "later",
+				Text: "Later",
+			},
+			notifications.Action{
+				ID:   "restart",
+				Text: "Restart Portmaster Now",
+			},
 		)
+		n.SetActionFunction(upgradeCoreNotifyActionHandler)
 
 		log.Debugf("updates: new portmaster version available, sending notification to user")
 	}
 
 	return nil
+}
+
+func upgradeCoreNotifyActionHandler(n *notifications.Notification) {
+	switch n.SelectedActionID {
+	case "restart":
+		// Cannot directly trigger due to import loop.
+		err := module.InjectEvent(
+			"user triggered restart via notification",
+			"core",
+			"restart",
+			nil,
+		)
+		if err != nil {
+			log.Warningf("updates: failed to trigger restart via notification: %s", err)
+		}
+	case "later":
+		n.Expires = time.Now().Unix() // expire immediately
+	}
 }
 
 func upgradePortmasterControl() error {

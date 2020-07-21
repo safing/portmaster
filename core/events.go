@@ -32,15 +32,19 @@ func registerEventHooks() error {
 	return nil
 }
 
+// shutdown shuts the Portmaster down.
 func shutdown(ctx context.Context, _ interface{}) error {
 	log.Warning("core: user requested shutdown")
+	// Do not use a worker, as this would block itself here.
 	go modules.Shutdown() //nolint:errcheck
 	return nil
 }
 
+// restart restarts the Portmaster.
 func restart(ctx context.Context, data interface{}) error {
 	log.Info("core: user requested restart")
 	modules.SetExitStatusCode(restartCode)
+	// Do not use a worker, as this would block itself here.
 	go modules.Shutdown() //nolint:errcheck
 	return nil
 }
