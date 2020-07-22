@@ -2,17 +2,11 @@ package process
 
 import (
 	"context"
-	"errors"
 
 	"github.com/safing/portmaster/network/state"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network/packet"
-)
-
-// Errors
-var (
-	ErrProcessNotFound = errors.New("could not find process in system state tables")
 )
 
 // GetProcessByConnection returns the process that owns the described connection.
@@ -27,7 +21,7 @@ func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process 
 	pid, connInbound, err = state.Lookup(pktInfo)
 	if err != nil {
 		log.Tracer(ctx).Debugf("process: failed to find PID of connection: %s", err)
-		return nil, connInbound, err
+		return nil, pktInfo.Inbound, err
 	}
 
 	process, err = GetOrFindPrimaryProcess(ctx, pid)
