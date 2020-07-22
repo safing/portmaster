@@ -25,6 +25,7 @@ import (
 
 const (
 	upgradedSuffix = "-upgraded"
+	exeExt         = ".exe"
 )
 
 var (
@@ -68,7 +69,7 @@ func upgrader(_ context.Context, _ interface{}) error {
 func upgradeCoreNotify() error {
 	identifier := "core/portmaster-core" // identifier, use forward slash!
 	if onWindows {
-		identifier += ".exe"
+		identifier += exeExt
 	}
 
 	// check if we can upgrade
@@ -125,7 +126,7 @@ func upgradeCoreNotifyActionHandler(n *notifications.Notification) {
 func upgradePortmasterStart() error {
 	filename := "portmaster-start"
 	if onWindows {
-		filename += ".exe"
+		filename += exeExt
 	}
 
 	// check if we can upgrade
@@ -154,7 +155,7 @@ func upgradePortmasterStart() error {
 func warnOnIncorrectParentPath() {
 	expectedFileName := "portmaster-start"
 	if onWindows {
-		expectedFileName += ".exe"
+		expectedFileName += exeExt
 	}
 
 	// upgrade parent process, if it's portmaster-start

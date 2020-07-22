@@ -188,7 +188,7 @@ func runAndRestart(opts *Options, args []string) error {
 			// if we are constantly failing or a restart was requested
 			// try to update the resources.
 			log.Printf("updating registry index")
-			updateRegistryIndex(false)
+			_ = updateRegistryIndex(false) // will always return nil
 		}
 	}
 }
