@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -137,7 +138,12 @@ func configureDataRoot() error {
 		dataDir = os.Getenv("PORTMASTER_DATA")
 	}
 
-	// check data dir
+	// if it's still empty try to auto-detect it
+	if dataDir == "" {
+		dataDir = detectInstallationDir()
+	}
+
+	// finally, if it's still empty the user must provide it
 	if dataDir == "" {
 		return errors.New("please set the data directory using --data=/path/to/data/dir")
 	}
@@ -202,4 +208,24 @@ func updateRegistryIndex() {
 	}
 
 	registry.SelectVersions()
+}
+
+func detectInstallationDir() string {
+	exePath, err := filepath.Abs(os.Args[0])
+	if err != nil {
+		return ""
+	}
+
+	parent := filepath.Dir(exePath)
+	stableJSONFile := filepath.Join(parent, "updates", "stable.json")
+	stat, err := os.Stat(stableJSONFile)
+	if err != nil {
+		return ""
+	}
+
+	if stat.IsDir() {
+		return ""
+	}
+
+	return parent
 }
