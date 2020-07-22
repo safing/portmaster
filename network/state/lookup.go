@@ -107,7 +107,7 @@ func (table *tcpTable) lookup(pktInfo *packet.Info) (
 		}
 	}
 
-	return socket.UnidentifiedProcessID, false, ErrConnectionNotFound
+	return socket.UnidentifiedProcessID, pktInfo.Inbound, ErrConnectionNotFound
 }
 
 func (table *udpTable) lookup(pktInfo *packet.Info) (
