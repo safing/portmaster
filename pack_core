@@ -70,11 +70,13 @@ function build {
 function check_all {
   GOOS=linux GOARCH=amd64 check
   GOOS=windows GOARCH=amd64 check
+  GOOS=darwin GOARCH=amd64 check
 }
 
 function build_all {
   GOOS=linux GOARCH=amd64 build
   GOOS=windows GOARCH=amd64 build
+  GOOS=darwin GOARCH=amd64 build
 }
 
 case $1 in

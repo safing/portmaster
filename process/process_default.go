@@ -1,3 +1,5 @@
+//+build !windows,!linux
+
 package process
 
 // IsKernel returns whether the process is the Kernel.
