@@ -19,9 +19,7 @@ import (
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
-const (
-	exeSuffix = ".exe"
-)
+const exeSuffix = ".exe"
 
 func init() {
 	rootCmd.AddCommand(installCmd)
@@ -57,39 +55,18 @@ var uninstallService = &cobra.Command{
 	RunE: uninstallWindowsService,
 }
 
-func getExePath() (string, error) {
-	// get own filepath
-	prog := os.Args[0]
-	p, err := filepath.Abs(prog)
+func getAbsBinaryPath() (string, error) {
+	p, err := filepath.Abs(os.Args[0])
 	if err != nil {
 		return "", err
 	}
-	// check if the path is valid
-	fi, err := os.Stat(p)
-	if err == nil {
-		if !fi.Mode().IsDir() {
-			return p, nil
-		}
-		err = fmt.Errorf("%s is directory", p)
-	}
-	// check if we have a .exe extension, add and check if not
-	if filepath.Ext(p) == "" {
-		p += exeSuffix
-		fi, err = os.Stat(p)
-		if err == nil {
-			if !fi.Mode().IsDir() {
-				return p, nil
-			}
-			err = fmt.Errorf("%s is directory", p)
-		}
-	}
-	return "", err
+
+	return p, nil
 }
 
 func getServiceExecCommand(exePath string, escape bool) []string {
 	return []string{
 		maybeEscape(exePath, escape),
-		"run",
 		"core-service",
 		"--data",
 		maybeEscape(dataRoot.Path, escape),
@@ -126,7 +103,7 @@ func getRecoveryActions() (recoveryActions []mgr.RecoveryAction, resetPeriod uin
 
 func installWindowsService(cmd *cobra.Command, args []string) error {
 	// get exe path
-	exePath, err := getExePath()
+	exePath, err := getAbsBinaryPath()
 	if err != nil {
 		return fmt.Errorf("failed to get exe path: %s", err)
 	}
@@ -180,7 +157,7 @@ func uninstallWindowsService(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer m.Disconnect() //nolint:errcheck // TODO
+	defer m.Disconnect() //nolint:errcheck // we don't care if we failed to disconnect from the service manager, we're quitting anyway.
 
 	// open service
 	s, err := m.OpenService(serviceName)

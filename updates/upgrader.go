@@ -25,6 +25,7 @@ import (
 
 const (
 	upgradedSuffix = "-upgraded"
+	exeExt         = ".exe"
 )
 
 var (
@@ -51,10 +52,10 @@ func upgrader(_ context.Context, _ interface{}) error {
 	}
 	defer upgraderActive.SetTo(false)
 
-	// upgrade portmaster control
-	err := upgradePortmasterControl()
+	// upgrade portmaster-start
+	err := upgradePortmasterStart()
 	if err != nil {
-		log.Warningf("updates: failed to upgrade portmaster-control: %s", err)
+		log.Warningf("updates: failed to upgrade portmaster-start: %s", err)
 	}
 
 	err = upgradeCoreNotify()
@@ -68,7 +69,7 @@ func upgrader(_ context.Context, _ interface{}) error {
 func upgradeCoreNotify() error {
 	identifier := "core/portmaster-core" // identifier, use forward slash!
 	if onWindows {
-		identifier += ".exe"
+		identifier += exeExt
 	}
 
 	// check if we can upgrade
@@ -122,16 +123,16 @@ func upgradeCoreNotifyActionHandler(n *notifications.Notification) {
 	}
 }
 
-func upgradePortmasterControl() error {
-	filename := "portmaster-control"
+func upgradePortmasterStart() error {
+	filename := "portmaster-start"
 	if onWindows {
-		filename += ".exe"
+		filename += exeExt
 	}
 
 	// check if we can upgrade
 	if pmCtrlUpdate == nil || pmCtrlUpdate.UpgradeAvailable() {
-		// get newest portmaster-control
-		new, err := GetPlatformFile("control/" + filename) // identifier, use forward slash!
+		// get newest portmaster-start
+		new, err := GetPlatformFile("start/" + filename) // identifier, use forward slash!
 		if err != nil {
 			return err
 		}
@@ -140,38 +141,64 @@ func upgradePortmasterControl() error {
 		return nil
 	}
 
-	// update portmaster-control in data root
-	rootControlPath := filepath.Join(filepath.Dir(registry.StorageDir().Path), filename)
-	err := upgradeFile(rootControlPath, pmCtrlUpdate)
+	// update portmaster-start in data root
+	rootPmStartPath := filepath.Join(filepath.Dir(registry.StorageDir().Path), filename)
+	err := upgradeFile(rootPmStartPath, pmCtrlUpdate)
 	if err != nil {
 		return err
 	}
-	log.Infof("updates: upgraded %s", rootControlPath)
+	log.Infof("updates: upgraded %s", rootPmStartPath)
 
-	// upgrade parent process, if it's portmaster-control
+	return nil
+}
+
+func warnOnIncorrectParentPath() {
+	expectedFileName := "portmaster-start"
+	if onWindows {
+		expectedFileName += exeExt
+	}
+
+	// upgrade parent process, if it's portmaster-start
 	parent, err := processInfo.NewProcess(int32(os.Getppid()))
 	if err != nil {
-		return fmt.Errorf("could not get parent process for upgrade checks: %w", err)
+		log.Tracef("could not get parent process: %s", err)
+		return
 	}
 	parentName, err := parent.Name()
 	if err != nil {
-		return fmt.Errorf("could not get parent process name for upgrade checks: %w", err)
+		log.Tracef("could not get parent process name: %s", err)
+		return
 	}
-	if parentName != filename {
-		log.Tracef("updates: parent process does not seem to be portmaster-control, name is %s", parentName)
-		return nil
+	if parentName != expectedFileName {
+		log.Warningf("updates: parent process does not seem to be portmaster-start, name is %s", parentName)
+
+		// TODO(ppacher): once we released a new installer and folks had time
+		//                to update we should send a module warning/hint to the
+		//                UI notifying the user that he's still using portmaster-control.
+		return
 	}
+
 	parentPath, err := parent.Exe()
 	if err != nil {
-		return fmt.Errorf("could not get parent process path for upgrade: %w", err)
+		log.Tracef("could not get parent process path: %s", err)
+		return
 	}
-	err = upgradeFile(parentPath, pmCtrlUpdate)
-	if err != nil {
-		return err
-	}
-	log.Infof("updates: upgraded %s", parentPath)
 
-	return nil
+	absPath, err := filepath.Abs(parentPath)
+	if err != nil {
+		log.Tracef("could not get absolut parent process path: %s", err)
+		return
+	}
+
+	root := filepath.Dir(registry.StorageDir().Path)
+	if !strings.HasPrefix(absPath, root) {
+		log.Warningf("detected unexpected path %s for portmaster-start", absPath)
+
+		notifications.NotifyWarn(
+			"updates:unsupported-parent",
+			fmt.Sprintf("The portmaster has been launched by an unexpected %s binary at %s. Please configure your system to use the binary at %s as this version will be kept up to date automatically.", expectedFileName, absPath, filepath.Join(root, expectedFileName)),
+		)
+	}
 }
 
 func upgradeFile(fileToUpgrade string, file *updater.File) error {
@@ -185,7 +212,7 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 	if fileExists {
 		// get current version
 		var currentVersion string
-		cmd := exec.Command(fileToUpgrade, "--ver")
+		cmd := exec.Command(fileToUpgrade, "version", "--short")
 		out, err := cmd.Output()
 		if err == nil {
 			// abort if version matches

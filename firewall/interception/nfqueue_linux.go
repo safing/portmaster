@@ -108,69 +108,58 @@ func init() {
 }
 
 func activateNfqueueFirewall() error {
-
-	// IPv4
-	ip4tables, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
-	if err != nil {
+	if err := activateIPTables(iptables.ProtocolIPv4, v4rules, v4once, v4chains); err != nil {
 		return err
 	}
 
-	for _, chain := range v4chains {
-		splittedRule := strings.Split(chain, " ")
-		if err = ip4tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
-			return err
-		}
+	if err := activateIPTables(iptables.ProtocolIPv6, v6rules, v6once, v6chains); err != nil {
+		return err
 	}
 
-	for _, rule := range v4rules {
-		splittedRule := strings.Split(rule, " ")
-		if err = ip4tables.Append(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
-			return err
-		}
-	}
+	return nil
+}
 
-	var ok bool
-	for _, rule := range v4once {
-		splittedRule := strings.Split(rule, " ")
-		ok, err = ip4tables.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			if err = ip4tables.Insert(splittedRule[0], splittedRule[1], 1, splittedRule[2:]...); err != nil {
-				return err
-			}
-		}
-	}
+// DeactivateNfqueueFirewall drops portmaster related IP tables rules.
+func DeactivateNfqueueFirewall() error {
+	// IPv4
+	errV4 := deactivateIPTables(iptables.ProtocolIPv4, v4once, v4chains)
 
 	// IPv6
-	ip6tables, err := iptables.NewWithProtocol(iptables.ProtocolIPv6)
+	if errV6 := deactivateIPTables(iptables.ProtocolIPv6, v6once, v6chains); errV6 != nil && errV4 == nil {
+		return errV6
+	}
+
+	return errV4
+}
+
+func activateIPTables(protocol iptables.Protocol, rules, once, chains []string) error {
+	tbls, err := iptables.NewWithProtocol(protocol)
 	if err != nil {
 		return err
 	}
 
-	for _, chain := range v6chains {
+	for _, chain := range chains {
 		splittedRule := strings.Split(chain, " ")
-		if err = ip6tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
+		if err = tbls.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
 			return err
 		}
 	}
 
-	for _, rule := range v6rules {
+	for _, rule := range rules {
 		splittedRule := strings.Split(rule, " ")
-		if err = ip6tables.Append(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
+		if err = tbls.Append(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
 			return err
 		}
 	}
 
-	for _, rule := range v6once {
+	for _, rule := range once {
 		splittedRule := strings.Split(rule, " ")
-		ok, err := ip6tables.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
+		ok, err := tbls.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
 		if err != nil {
 			return err
 		}
 		if !ok {
-			if err = ip6tables.Insert(splittedRule[0], splittedRule[1], 1, splittedRule[2:]...); err != nil {
+			if err = tbls.Insert(splittedRule[0], splittedRule[1], 1, splittedRule[2:]...); err != nil {
 				return err
 			}
 		}
@@ -179,67 +168,37 @@ func activateNfqueueFirewall() error {
 	return nil
 }
 
-func deactivateNfqueueFirewall() error {
-	// IPv4
-	ip4tables, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
+func deactivateIPTables(protocol iptables.Protocol, rules, chains []string) error {
+	tbls, err := iptables.NewWithProtocol(protocol)
 	if err != nil {
 		return err
 	}
 
-	var ok bool
-	for _, rule := range v4once {
+	var firstErr error
+	for _, rule := range rules {
 		splittedRule := strings.Split(rule, " ")
-		ok, err = ip4tables.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
-		if err != nil {
-			return err
+		ok, err := tbls.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
+		if err != nil && firstErr == nil {
+			firstErr = err
 		}
 		if ok {
-			if err = ip4tables.Delete(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
-				return err
+			if err = tbls.Delete(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil && firstErr == nil {
+				firstErr = err
 			}
 		}
 	}
 
-	for _, chain := range v4chains {
+	for _, chain := range chains {
 		splittedRule := strings.Split(chain, " ")
-		if err = ip4tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
-			return err
+		if err = tbls.ClearChain(splittedRule[0], splittedRule[1]); err != nil && firstErr == nil {
+			firstErr = err
 		}
-		if err = ip4tables.DeleteChain(splittedRule[0], splittedRule[1]); err != nil {
-			return err
-		}
-	}
-
-	// IPv6
-	ip6tables, err := iptables.NewWithProtocol(iptables.ProtocolIPv6)
-	if err != nil {
-		return err
-	}
-
-	for _, rule := range v6once {
-		splittedRule := strings.Split(rule, " ")
-		ok, err := ip6tables.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
-		if err != nil {
-			return err
-		}
-		if ok {
-			if err = ip6tables.Delete(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
-				return err
-			}
+		if err = tbls.DeleteChain(splittedRule[0], splittedRule[1]); err != nil && firstErr == nil {
+			firstErr = err
 		}
 	}
 
-	for _, chain := range v6chains {
-		splittedRule := strings.Split(chain, " ")
-		if err := ip6tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
-			return err
-		}
-		if err := ip6tables.DeleteChain(splittedRule[0], splittedRule[1]); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return firstErr
 }
 
 // StartNfqueueInterception starts the nfqueue interception.
@@ -293,7 +252,7 @@ func StopNfqueueInterception() error {
 		in6Queue.Destroy()
 	}
 
-	err := deactivateNfqueueFirewall()
+	err := DeactivateNfqueueFirewall()
 	if err != nil {
 		return fmt.Errorf("interception: error while deactivating nfqueue: %s", err)
 	}
