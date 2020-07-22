@@ -7,16 +7,11 @@ import (
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/firewall/interception/windowskext"
-	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/updates"
 )
 
-// Packets channel for feeding the firewall.
-var Packets = make(chan packet.Packet, 1000)
-
-// Start starts the interception.
-func Start() error {
-
+// start starts the interception.
+func start() error {
 	dllFile, err := updates.GetPlatformFile("kext/portmaster-kext.dll")
 	if err != nil {
 		return fmt.Errorf("interception: could not get kext dll: %s", err)
@@ -42,8 +37,8 @@ func Start() error {
 	return nil
 }
 
-// Stop starts the interception.
-func Stop() error {
+// stop starts the interception.
+func stop() error {
 	return windowskext.Stop()
 }
 
