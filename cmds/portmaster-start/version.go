@@ -33,6 +33,7 @@ var versionCmd = &cobra.Command{
 		if !showAllVersions {
 			if showShortVersion {
 				fmt.Println(info.Version())
+				return nil
 			}
 
 			fmt.Println(info.FullVersion())
@@ -40,7 +41,7 @@ var versionCmd = &cobra.Command{
 		}
 
 		fmt.Printf("portmaster-start %s\n\n", info.Version())
-		fmt.Printf("Components:\n")
+		fmt.Printf("Assets:\n")
 
 		all := registry.Export()
 		keys := make([]string, 0, len(all))
@@ -72,7 +73,7 @@ func init() {
 	flags := versionCmd.Flags()
 	{
 		flags.BoolVar(&showShortVersion, "short", false, "Print only the version number.")
-		flags.BoolVar(&showAllVersions, "all", false, "Dump versions for all components.")
+		flags.BoolVar(&showAllVersions, "all", false, "Dump versions for all assets.")
 	}
 
 	rootCmd.AddCommand(versionCmd)
