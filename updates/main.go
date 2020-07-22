@@ -185,7 +185,13 @@ func start() error {
 	}
 
 	// react to upgrades
-	return initUpgrader()
+	if err := initUpgrader(); err != nil {
+		return err
+	}
+
+	warnOnIncorrectParentPath()
+
+	return nil
 }
 
 // TriggerUpdate queues the update task to execute ASAP.

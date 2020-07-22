@@ -148,13 +148,15 @@ func upgradePortmasterStart() error {
 	}
 	log.Infof("updates: upgraded %s", rootPmStartPath)
 
-	// TODO(ppacher): remove once we released a few more versions ...
-	warnOnIncorrectParentPath(filename)
-
 	return nil
 }
 
-func warnOnIncorrectParentPath(expectedFileName string) {
+func warnOnIncorrectParentPath() {
+	expectedFileName := "portmaster-start"
+	if onWindows {
+		expectedFileName += ".exe"
+	}
+
 	// upgrade parent process, if it's portmaster-start
 	parent, err := processInfo.NewProcess(int32(os.Getppid()))
 	if err != nil {
@@ -191,10 +193,10 @@ func warnOnIncorrectParentPath(expectedFileName string) {
 	if !strings.HasPrefix(absPath, root) {
 		log.Warningf("detected unexpected path %s for portmaster-start", absPath)
 
-		// TODO(ppacher): once we released a new installer and folks had time
-		//                to update we should send a module warning/hint to the
-		//                UI notifying the user that he's using portmaster-start
-		//                from a wrong location.
+		notifications.NotifyWarn(
+			"updates:unsupported-parent",
+			fmt.Sprintf("The portmaster has been launched by an unexpected %s binary at %s. Please configure your system to use the binary at %s as this version will be kept up to date automatically.", expectedFileName, absPath, filepath.Join(root, expectedFileName)),
+		)
 	}
 }
 
