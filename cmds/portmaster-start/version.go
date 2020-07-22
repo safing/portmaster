@@ -22,7 +22,7 @@ var versionCmd = &cobra.Command{
 		if showAllVersions {
 			// if we are going to show all component versions
 			// we need the dataroot to be configured.
-			if err := configureDataRoot(); err != nil {
+			if err := configureDataRoot(false); err != nil {
 				return err
 			}
 		}

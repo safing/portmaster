@@ -41,8 +41,8 @@ var (
 		Use:   "portmaster-start",
 		Short: "Start Portmaster components",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
-
-			if err := configureDataRoot(); err != nil {
+			mustLoadIndex := cmd == updatesCmd
+			if err := configureDataRoot(mustLoadIndex); err != nil {
 				return err
 			}
 
@@ -130,7 +130,7 @@ func initCobra() {
 	portlog.SetLogLevel(portlog.CriticalLevel)
 }
 
-func configureDataRoot() error {
+func configureDataRoot(mustLoadIndex bool) error {
 	// The data directory is not
 	// check for environment variable
 	// PORTMASTER_DATA
@@ -176,8 +176,7 @@ func configureDataRoot() error {
 	// Beta:   true,
 	// })
 
-	updateRegistryIndex()
-	return nil
+	return updateRegistryIndex(mustLoadIndex)
 }
 
 func configureLogging() error {
@@ -196,10 +195,13 @@ func configureLogging() error {
 	return nil
 }
 
-func updateRegistryIndex() {
+func updateRegistryIndex(mustLoadIndex bool) error {
 	err := registry.LoadIndexes(context.Background())
 	if err != nil {
 		log.Printf("WARNING: error loading indexes: %s\n", err)
+		if mustLoadIndex {
+			return err
+		}
 	}
 
 	err = registry.ScanStorage("")
@@ -208,6 +210,7 @@ func updateRegistryIndex() {
 	}
 
 	registry.SelectVersions()
+	return nil
 }
 
 func detectInstallationDir() string {

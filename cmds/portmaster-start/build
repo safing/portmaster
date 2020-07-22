@@ -46,19 +46,6 @@ fi
 # build tools
 EXTRA_LD_FLAGS=""
 if [[ $GOOS == "windows" ]]; then
-  # checks
-  if [[ $CC_FOR_windows_amd64 == "" ]]; then
-    echo "ENV variable CC_FOR_windows_amd64 (c compiler) is not set. Please set it to the cross compiler you want to use for compiling for windows_amd64"
-    exit 1
-  fi
-  if [[ $CXX_FOR_windows_amd64 == "" ]]; then
-    echo "ENV variable CXX_FOR_windows_amd64 (c++ compiler) is not set. Please set it to the cross compiler you want to use for compiling for windows_amd64"
-    exit 1
-  fi
-  # compilers
-  export CC=$CC_FOR_windows_amd64
-  export CXX=$CXX_FOR_windows_amd64
-  # custom
   export CGO_ENABLED=1
   EXTRA_LD_FLAGS='-H windowsgui' # Hide console window by default (but we attach to parent console if available)
   # generate resource.syso for windows metadata / icon

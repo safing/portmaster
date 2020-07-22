@@ -16,7 +16,7 @@ var showCmd = &cobra.Command{
 	Use: "show",
 	PersistentPreRunE: func(*cobra.Command, []string) error {
 		// all show sub-commands need the data-root but no logging.
-		return configureDataRoot()
+		return configureDataRoot(false)
 	},
 	Short: "Show the command to run a Portmaster component yourself",
 }
