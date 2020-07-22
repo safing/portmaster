@@ -1,3 +1,5 @@
+//+build !windows,!linux
+
 package netenv
 
 import "net"

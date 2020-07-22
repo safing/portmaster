@@ -1,18 +1,20 @@
+//+build !windows,!linux
+
 package process
 
 // IsUser returns whether the process is run by a normal user.
 func (p *Process) IsUser() bool {
-	return p.UserID >= 1000
+	return true
 }
 
 // IsAdmin returns whether the process is run by an admin user.
 func (p *Process) IsAdmin() bool {
-	return p.UserID >= 0 && p.UserID < 1000
+	return false
 }
 
 // IsSystem returns whether the process is run by the operating system.
 func (p *Process) IsSystem() bool {
-	return p.UserID == 0
+	return false
 }
 
 // IsKernel returns whether the process is the Kernel.
