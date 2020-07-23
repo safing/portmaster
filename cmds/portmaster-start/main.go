@@ -63,6 +63,7 @@ func init() {
 	flags := rootCmd.PersistentFlags()
 	{
 		flags.StringVar(&dataDir, "data", "", "Configures the data directory. Alternatively, this can also be set via the environment variable PORTMASTER_DATA.")
+		flags.StringVar(&registry.UserAgent, "update-agent", "Start", "Sets the user agent for requests to the update server")
 		flags.IntVar(&maxRetries, "max-retries", 5, "Maximum number of retries when starting a Portmaster component")
 		flags.BoolVar(&stdinSignals, "input-signals", false, "Emulate signals using stdid.")
 		_ = rootCmd.MarkPersistentFlagDirname("data")

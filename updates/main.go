@@ -2,6 +2,7 @@ package updates
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"runtime"
 	"time"
@@ -45,11 +46,18 @@ const (
 )
 
 var (
-	module              *modules.Module
-	registry            *updater.ResourceRegistry
+	module            *modules.Module
+	registry          *updater.ResourceRegistry
+	userAgentFromFlag string
+
 	updateTask          *modules.Task
 	updateASAP          bool
 	disableTaskSchedule bool
+
+	// UserAgent is an HTTP User-Agent that is used to add
+	// more context to requests made by the registry when
+	// fetching resources from the update server.
+	UserAgent = "Core"
 )
 
 const (
@@ -62,6 +70,8 @@ func init() {
 	module = modules.Register(ModuleName, prep, start, stop, "base")
 	module.RegisterEvent(VersionUpdateEvent)
 	module.RegisterEvent(ResourceUpdateEvent)
+
+	flag.StringVar(&userAgentFromFlag, "update-agent", "", "Sets the user agent for requests to the update server")
 }
 
 func prep() error {
@@ -121,10 +131,15 @@ func start() error {
 		UpdateURLs: []string{
 			"https://updates.safing.io",
 		},
+		UserAgent:        UserAgent,
 		MandatoryUpdates: mandatoryUpdates,
 		Beta:             releaseChannel() == releaseChannelBeta,
 		DevMode:          devMode(),
 		Online:           true,
+	}
+	if userAgentFromFlag != "" {
+		// override with flag value
+		registry.UserAgent = userAgentFromFlag
 	}
 	// initialize
 	err := registry.Initialize(dataroot.Root().ChildDir("updates", 0755))
