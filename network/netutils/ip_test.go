@@ -10,6 +10,10 @@ func TestIPClassification(t *testing.T) {
 	testClassification(t, net.IPv4(127, 0, 0, 1), HostLocal)
 	testClassification(t, net.IPv4(127, 255, 255, 1), HostLocal)
 	testClassification(t, net.IPv4(192, 168, 172, 24), SiteLocal)
+	testClassification(t, net.IPv4(172, 15, 1, 1), Global)
+	testClassification(t, net.IPv4(172, 16, 1, 1), SiteLocal)
+	testClassification(t, net.IPv4(172, 31, 1, 1), SiteLocal)
+	testClassification(t, net.IPv4(172, 32, 1, 1), Global)
 }
 
 func testClassification(t *testing.T, ip net.IP, expectedClassification int8) {
