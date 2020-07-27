@@ -123,6 +123,7 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		Server:                 resolverURL,
 		ServerType:             u.Scheme,
 		ServerAddress:          u.Host,
+		ServerIP:               ip,
 		ServerIPScope:          scope,
 		Source:                 source,
 		VerifyDomain:           verifyDomain,
@@ -150,7 +151,7 @@ func configureSearchDomains(resolver *Resolver, searches []string) {
 
 func getConfiguredResolvers(list []string) (resolvers []*Resolver) {
 	for _, server := range list {
-		resolver, skip, err := createResolver(server, "config")
+		resolver, skip, err := createResolver(server, ServerSourceConfigured)
 		if err != nil {
 			// TODO(ppacher): module error
 			log.Errorf("cannot use resolver %s: %s", server, err)
@@ -169,7 +170,7 @@ func getConfiguredResolvers(list []string) (resolvers []*Resolver) {
 func getSystemResolvers() (resolvers []*Resolver) {
 	for _, nameserver := range netenv.Nameservers() {
 		serverURL := fmt.Sprintf("dns://%s", formatIPAndPort(nameserver.IP, 53))
-		resolver, skip, err := createResolver(serverURL, "dhcp") // TODO(ppacher): DHCP can actually be wrong
+		resolver, skip, err := createResolver(serverURL, ServerSourceOperatingSystem)
 		if err != nil {
 			// that shouldn't happen but handle it anyway ...
 			log.Errorf("cannot use system resolver %s: %s", serverURL, err)
@@ -250,6 +251,16 @@ func loadResolvers() {
 		log.Info("resolver: no local resolvers loaded")
 	}
 
+	// log system resolvers
+	if len(systemResolvers) > 0 {
+		log.Trace("resolver: loaded system/network-assigned resolvers:")
+		for _, resolver := range systemResolvers {
+			log.Tracef("resolver: %s", resolver.Server)
+		}
+	} else {
+		log.Info("resolver: no system/network-assigned resolvers loaded")
+	}
+
 	// log scopes
 	if len(localScopes) > 0 {
 		log.Trace("resolver: loaded scopes:")
@@ -281,7 +292,7 @@ func setScopedResolvers(resolvers []*Resolver) {
 			localResolvers = append(localResolvers, resolver)
 		}
 
-		if resolver.Source == "dhcp" {
+		if resolver.Source == ServerSourceOperatingSystem {
 			systemResolvers = append(systemResolvers, resolver)
 		}
 
