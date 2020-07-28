@@ -18,10 +18,10 @@ const (
 	ServerTypeDoH = "doh"
 	ServerTypeEnv = "env"
 
-	ServerSourceConfigured = "config"
-	ServerSourceAssigned   = "dhcp"
-	ServerSourceMDNS       = "mdns"
-	ServerSourceEnv        = "env"
+	ServerSourceConfigured      = "config"
+	ServerSourceOperatingSystem = "system"
+	ServerSourceMDNS            = "mdns"
+	ServerSourceEnv             = "env"
 )
 
 var (

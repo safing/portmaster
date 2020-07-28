@@ -274,7 +274,7 @@ func (resolver *Resolver) checkCompliance(_ context.Context, q *Query) error {
 	}
 
 	if noAssignedNameservers(q.SecurityLevel) {
-		if resolver.Source == ServerSourceAssigned {
+		if resolver.Source == ServerSourceOperatingSystem {
 			return errAssignedServer
 		}
 	}
