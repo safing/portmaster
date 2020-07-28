@@ -9,7 +9,7 @@ import (
 )
 
 // Parse parses an IP packet and saves the information in the given packet object.
-func Parse(packetData []byte, packet *Base) error {
+func Parse(packetData []byte, pktInfo *Info) error {
 
 	var parsedPacket gopacket.Packet
 
@@ -22,10 +22,10 @@ func Parse(packetData []byte, packet *Base) error {
 		parsedPacket = gopacket.NewPacket(packetData, layers.LayerTypeIPv4, gopacket.DecodeOptions{Lazy: true, NoCopy: true})
 		if ipv4Layer := parsedPacket.Layer(layers.LayerTypeIPv4); ipv4Layer != nil {
 			ipv4, _ := ipv4Layer.(*layers.IPv4)
-			packet.info.Version = IPv4
-			packet.info.Protocol = IPProtocol(ipv4.Protocol)
-			packet.info.Src = ipv4.SrcIP
-			packet.info.Dst = ipv4.DstIP
+			pktInfo.Version = IPv4
+			pktInfo.Protocol = IPProtocol(ipv4.Protocol)
+			pktInfo.Src = ipv4.SrcIP
+			pktInfo.Dst = ipv4.DstIP
 		} else {
 			var err error
 			if errLayer := parsedPacket.ErrorLayer(); errLayer != nil {
@@ -37,10 +37,10 @@ func Parse(packetData []byte, packet *Base) error {
 		parsedPacket = gopacket.NewPacket(packetData, layers.LayerTypeIPv6, gopacket.DecodeOptions{Lazy: true, NoCopy: true})
 		if ipv6Layer := parsedPacket.Layer(layers.LayerTypeIPv6); ipv6Layer != nil {
 			ipv6, _ := ipv6Layer.(*layers.IPv6)
-			packet.info.Version = IPv6
-			packet.info.Protocol = IPProtocol(ipv6.NextHeader)
-			packet.info.Src = ipv6.SrcIP
-			packet.info.Dst = ipv6.DstIP
+			pktInfo.Version = IPv6
+			pktInfo.Protocol = IPProtocol(ipv6.NextHeader)
+			pktInfo.Src = ipv6.SrcIP
+			pktInfo.Dst = ipv6.DstIP
 		} else {
 			var err error
 			if errLayer := parsedPacket.ErrorLayer(); errLayer != nil {
@@ -52,12 +52,12 @@ func Parse(packetData []byte, packet *Base) error {
 		return errors.New("unknown IP version")
 	}
 
-	switch packet.info.Protocol {
+	switch pktInfo.Protocol {
 	case TCP:
 		if tcpLayer := parsedPacket.Layer(layers.LayerTypeTCP); tcpLayer != nil {
 			tcp, _ := tcpLayer.(*layers.TCP)
-			packet.info.SrcPort = uint16(tcp.SrcPort)
-			packet.info.DstPort = uint16(tcp.DstPort)
+			pktInfo.SrcPort = uint16(tcp.SrcPort)
+			pktInfo.DstPort = uint16(tcp.DstPort)
 		} else {
 			var err error
 			if errLayer := parsedPacket.ErrorLayer(); errLayer != nil {
@@ -68,8 +68,8 @@ func Parse(packetData []byte, packet *Base) error {
 	case UDP:
 		if udpLayer := parsedPacket.Layer(layers.LayerTypeUDP); udpLayer != nil {
 			udp, _ := udpLayer.(*layers.UDP)
-			packet.info.SrcPort = uint16(udp.SrcPort)
-			packet.info.DstPort = uint16(udp.DstPort)
+			pktInfo.SrcPort = uint16(udp.SrcPort)
+			pktInfo.DstPort = uint16(udp.DstPort)
 		} else {
 			var err error
 			if errLayer := parsedPacket.ErrorLayer(); errLayer != nil {
@@ -77,10 +77,6 @@ func Parse(packetData []byte, packet *Base) error {
 			}
 			return fmt.Errorf("could not parse UDP layer: %s", err)
 		}
-	}
-
-	if appLayer := parsedPacket.ApplicationLayer(); appLayer != nil {
-		packet.Payload = appLayer.Payload()
 	}
 
 	if errLayer := parsedPacket.ErrorLayer(); errLayer != nil {
