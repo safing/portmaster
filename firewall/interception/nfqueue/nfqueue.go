@@ -12,7 +12,6 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"runtime"
 	"sync"
@@ -20,6 +19,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network/packet"
 )
 
@@ -155,8 +155,6 @@ func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark *uint32,
 	qid := *qidptr
 
 	// nfq := (*NFQueue)(nfqptr)
-	ipVersion := packet.IPVersion(version)
-	ipsz := C.int(ipVersion.ByteSize())
 	bs := C.GoBytes(payload, (C.int)(payloadLen))
 
 	verdict := make(chan uint32, 1)
@@ -173,19 +171,11 @@ func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark *uint32,
 	// Payload
 	pkt.Payload = bs
 
-	// Info
-	info := pkt.Info()
-	info.Version = ipVersion
-	info.InTunnel = false
-	info.Protocol = packet.IPProtocol(protocol)
-
-	// IPs
-	info.Src = net.IP(C.GoBytes(saddr, ipsz))
-	info.Dst = net.IP(C.GoBytes(daddr, ipsz))
-
-	// Ports
-	info.SrcPort = sport
-	info.DstPort = dport
+	if err := packet.Parse(bs, pkt.Info()); err != nil {
+		log.Warningf("nfqueue: failed to parse packet: %s; dropping", err)
+		*mark = 1702
+		return queues[qid].DefaultVerdict
+	}
 
 	// fmt.Printf("%s queuing packet\n", time.Now().Format("060102 15:04:05.000"))
 	// BUG: "panic: send on closed channel" when shutting down

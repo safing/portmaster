@@ -59,7 +59,7 @@ func (pkt *Base) HasPorts() bool {
 	switch pkt.info.Protocol {
 	case TCP:
 		return true
-	case UDP:
+	case UDP, UDPLite:
 		return true
 	}
 	return false

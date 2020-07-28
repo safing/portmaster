@@ -23,12 +23,13 @@ const (
 	InBound  = true
 	OutBound = false
 
-	ICMP   = IPProtocol(1)
-	IGMP   = IPProtocol(2)
-	TCP    = IPProtocol(6)
-	UDP    = IPProtocol(17)
-	ICMPv6 = IPProtocol(58)
-	RAW    = IPProtocol(255)
+	ICMP    = IPProtocol(1)
+	IGMP    = IPProtocol(2)
+	TCP     = IPProtocol(6)
+	UDP     = IPProtocol(17)
+	ICMPv6  = IPProtocol(58)
+	UDPLite = IPProtocol(136)
+	RAW     = IPProtocol(255)
 )
 
 // Verdicts
@@ -78,6 +79,8 @@ func (p IPProtocol) String() string {
 		return "TCP"
 	case UDP:
 		return "UDP"
+	case UDPLite:
+		return "UDPLite"
 	case ICMP:
 		return "ICMP"
 	case ICMPv6:
