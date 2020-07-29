@@ -173,7 +173,7 @@ func go_nfq_callback(id uint32, hwproto uint16, hook uint8, mark *uint32,
 	// Payload
 	pkt.Payload = bs
 
-	if err := packet.Parse(bs, &pkt); err != nil {
+	if err := packet.Parse(bs, pkt.Info()); err != nil {
 		//fixme
 	}
 	// Info

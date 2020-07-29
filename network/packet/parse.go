@@ -8,6 +8,15 @@ import (
 	"github.com/google/gopacket/layers"
 )
 
+var LayerType2IPProtocol map[gopacket.LayerType]IPProtocol
+
+func genIPProtocolFromLayerType() {
+	LayerType2IPProtocol = make(map[gopacket.LayerType]IPProtocol)
+	for k, v := range layers.IPProtocolMetadata {
+		LayerType2IPProtocol[v.LayerType] = IPProtocol(k)
+	}
+}
+
 // Parse parses an IP packet and saves the information in the given packet object.
 func Parse(packetData []byte, pktInfo *Info) error {
 
@@ -38,7 +47,7 @@ func Parse(packetData []byte, pktInfo *Info) error {
 		if ipv6Layer := parsedPacket.Layer(layers.LayerTypeIPv6); ipv6Layer != nil {
 			ipv6, _ := ipv6Layer.(*layers.IPv6)
 			pktInfo.Version = IPv6
-			pktInfo.Protocol = IPProtocol(ipv6.NextHeader)
+			pktInfo.Protocol = LayerType2IPProtocol[ipv6.NextLayerType()]
 			pktInfo.Src = ipv6.SrcIP
 			pktInfo.Dst = ipv6.DstIP
 		} else {
@@ -84,4 +93,8 @@ func Parse(packetData []byte, pktInfo *Info) error {
 	}
 
 	return nil
+}
+
+func init() {
+	genIPProtocolFromLayerType()
 }
