@@ -1,13 +1,17 @@
 package interception
 
 import (
+	"flag"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/coreos/go-iptables/iptables"
 
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/firewall/interception/nfqexp"
 	"github.com/safing/portmaster/firewall/interception/nfqueue"
+	"github.com/safing/portmaster/network/packet"
 )
 
 // iptables -A OUTPUT -p icmp -j", "NFQUEUE", "--queue-num", "1", "--queue-bypass
@@ -21,13 +25,28 @@ var (
 	v6rules  []string
 	v6once   []string
 
-	out4Queue *nfqueue.NFQueue
-	in4Queue  *nfqueue.NFQueue
-	out6Queue *nfqueue.NFQueue
-	in6Queue  *nfqueue.NFQueue
+	out4Queue nfQueue
+	in4Queue  nfQueue
+	out6Queue nfQueue
+	in6Queue  nfQueue
 
 	shutdownSignal = make(chan struct{})
+
+	experimentalNfqueueBackend bool
 )
+
+func init() {
+	flag.BoolVar(&experimentalNfqueueBackend, "experimental-nfqueue", false, "use experimental nfqueue packet")
+}
+
+// nfQueueFactoryFunc creates a new nfQueue with qid as the queue number.
+type nfQueueFactoryFunc func(qid uint16, v6 bool) (nfQueue, error)
+
+// nfQueue encapsulates nfQueue providers
+type nfQueue interface {
+	PacketChannel() <-chan packet.Packet
+	Destroy()
+}
 
 func init() {
 
@@ -203,6 +222,16 @@ func deactivateIPTables(protocol iptables.Protocol, rules, chains []string) erro
 
 // StartNfqueueInterception starts the nfqueue interception.
 func StartNfqueueInterception() (err error) {
+	var nfQueueFactory nfQueueFactoryFunc = func(qid uint16, v6 bool) (nfQueue, error) {
+		return nfqueue.NewNFQueue(qid)
+	}
+
+	if experimentalNfqueueBackend {
+		log.Infof("nfqueue: using experimental nfqueue backend")
+		nfQueueFactory = func(qid uint16, v6 bool) (nfQueue, error) {
+			return nfqexp.New(qid, v6)
+		}
+	}
 
 	err = activateNfqueueFirewall()
 	if err != nil {
@@ -210,25 +239,25 @@ func StartNfqueueInterception() (err error) {
 		return fmt.Errorf("could not initialize nfqueue: %s", err)
 	}
 
-	out4Queue, err = nfqueue.NewNFQueue(17040)
+	out4Queue, err = nfQueueFactory(17040, false)
 	if err != nil {
 		_ = Stop()
-		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
+		return fmt.Errorf("nfqueue(IPv4, out): %w", err)
 	}
-	in4Queue, err = nfqueue.NewNFQueue(17140)
+	in4Queue, err = nfQueueFactory(17140, false)
 	if err != nil {
 		_ = Stop()
-		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
+		return fmt.Errorf("nfqueue(IPv4, in): %w", err)
 	}
-	out6Queue, err = nfqueue.NewNFQueue(17060)
+	out6Queue, err = nfQueueFactory(17060, true)
 	if err != nil {
 		_ = Stop()
-		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
+		return fmt.Errorf("nfqueue(IPv6, out): %w", err)
 	}
-	in6Queue, err = nfqueue.NewNFQueue(17160)
+	in6Queue, err = nfQueueFactory(17160, true)
 	if err != nil {
 		_ = Stop()
-		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
+		return fmt.Errorf("nfqueue(IPv6, in): %w", err)
 	}
 
 	go handleInterception()
@@ -265,16 +294,16 @@ func handleInterception() {
 		select {
 		case <-shutdownSignal:
 			return
-		case pkt := <-out4Queue.Packets:
+		case pkt := <-out4Queue.PacketChannel():
 			pkt.SetOutbound()
 			Packets <- pkt
-		case pkt := <-in4Queue.Packets:
+		case pkt := <-in4Queue.PacketChannel():
 			pkt.SetInbound()
 			Packets <- pkt
-		case pkt := <-out6Queue.Packets:
+		case pkt := <-out6Queue.PacketChannel():
 			pkt.SetOutbound()
 			Packets <- pkt
-		case pkt := <-in6Queue.Packets:
+		case pkt := <-in6Queue.PacketChannel():
 			pkt.SetInbound()
 			Packets <- pkt
 		}

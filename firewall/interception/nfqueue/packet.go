@@ -44,7 +44,7 @@ type Packet struct {
 //     pkt.QueueID, pkt.Id, pkt.Protocol, pkt.Src, pkt.SrcPort, pkt.Dst, pkt.DstPort, pkt.Mark, pkt.Checksum, pkt.Tos, pkt.TTL)
 // }
 
-//nolint:unparam // FIXME
+// nolint:unparam
 func (pkt *Packet) setVerdict(v uint32) (err error) {
 	defer func() {
 		if x := recover(); x != nil {
