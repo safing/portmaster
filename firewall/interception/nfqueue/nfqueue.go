@@ -66,6 +66,11 @@ func NewNFQueue(qid uint16) (nfq *NFQueue, err error) {
 	return nfq, nil
 }
 
+// PacketChannel returns a packet channel
+func (nfq *NFQueue) PacketChannel() <-chan packet.Packet {
+	return nfq.Packets
+}
+
 func (nfq *NFQueue) init() error {
 	var err error
 	if nfq.h, err = C.nfq_open(); err != nil || nfq.h == nil {
