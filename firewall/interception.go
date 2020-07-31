@@ -79,20 +79,9 @@ func interceptionPrep() (err error) {
 func interceptionStart() error {
 	startAPIAuth()
 
-	interceptionModule.StartWorker("stat logger", func(ctx context.Context) error {
-		statLogger()
-		return nil
-	})
-
-	interceptionModule.StartWorker("packet handler", func(ctx context.Context) error {
-		run()
-		return nil
-	})
-
-	interceptionModule.StartWorker("ports state cleaner", func(ctx context.Context) error {
-		portsInUseCleaner()
-		return nil
-	})
+	interceptionModule.StartWorker("stat logger", statLogger)
+	interceptionModule.StartWorker("packet handler", packetHandler)
+	interceptionModule.StartWorker("ports state cleaner", portsInUseCleaner)
 
 	return interception.Start()
 }
@@ -328,22 +317,22 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 // 	return
 // }
 
-func run() {
+func packetHandler(ctx context.Context) error {
 	for {
 		select {
-		case <-interceptionModule.Stopping():
-			return
+		case <-ctx.Done():
+			return nil
 		case pkt := <-interception.Packets:
 			handlePacket(pkt)
 		}
 	}
 }
 
-func statLogger() {
+func statLogger(ctx context.Context) error {
 	for {
 		select {
-		case <-interceptionModule.Stopping():
-			return
+		case <-ctx.Done():
+			return nil
 		case <-time.After(10 * time.Second):
 			log.Tracef(
 				"filter: packets accepted %d, blocked %d, dropped %d, failed %d",

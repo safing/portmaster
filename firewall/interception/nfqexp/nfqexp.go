@@ -69,7 +69,7 @@ func New(qid uint16, v6 bool) (*Queue, error) {
 			pkt.Payload = *attrs.Payload
 		}
 
-		if err := pmpacket.Parse(pkt.Payload, &pkt.Base); err != nil {
+		if err := pmpacket.Parse(pkt.Payload, pkt.Info()); err != nil {
 			log.Warningf("nfqexp: failed to parse payload: %s", err)
 			_ = pkt.Drop()
 			return 0
