@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/safing/portbase/log"
 )
 
 var layerType2IPProtocol map[gopacket.LayerType]IPProtocol
@@ -33,6 +32,10 @@ func parseIPv6(packet gopacket.Packet, info *Info) error {
 		info.Version = IPv6
 		info.Src = ipv6.SrcIP
 		info.Dst = ipv6.DstIP
+		// we set Protocol to NextHeader as a fallback. If TCP or
+		// UDP layers are detected (somewhere in the list of options)
+		// the Protocol field is adjusted correctly.
+		info.Protocol = IPProtocol(ipv6.NextHeader)
 	}
 	return nil
 }
@@ -96,21 +99,6 @@ func checkError(packet gopacket.Packet, _ *Info) error {
 	return nil
 }
 
-func tryFindIPv6TransportProtocol(packet gopacket.Packet, info *Info) {
-	if transport := packet.TransportLayer(); transport != nil {
-		proto, ok := layerType2IPProtocol[transport.LayerType()]
-
-		if ok {
-			info.Protocol = proto
-			log.Tracef("packet: unsupported IPv6 protocol %02x (%d)", proto)
-		} else {
-			log.Warningf("packet: unsupported or unknown gopacket layer type: %d", transport.LayerType())
-		}
-		return
-	}
-	log.Tracef("packet: failed to get IPv6 transport protocol number")
-}
-
 // Parse parses an IP packet and saves the information in the given packet object.
 func Parse(packetData []byte, pktInfo *Info) error {
 	if len(packetData) == 0 {
@@ -128,9 +116,6 @@ func Parse(packetData []byte, pktInfo *Info) error {
 	default:
 		return fmt.Errorf("unknown IP version or network protocol: %02x", ipVersion)
 	}
-
-	// 255 is reserved by IANA so we use it as a "failed-to-detect" marker.
-	pktInfo.Protocol = 255
 
 	packet := gopacket.NewPacket(packetData, networkLayerType, gopacket.DecodeOptions{
 		Lazy:   true,
@@ -153,12 +138,6 @@ func Parse(packetData []byte, pktInfo *Info) error {
 		if err := dec(packet, pktInfo); err != nil {
 			return err
 		}
-	}
-
-	// 255 is reserved by IANA and used as a "failed-to-detect"
-	// marker for IPv6 (parseIPv4 always sets the protocl field)
-	if pktInfo.Protocol == 255 {
-		tryFindIPv6TransportProtocol(packet, pktInfo)
 	}
 
 	return nil
