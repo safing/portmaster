@@ -46,6 +46,8 @@ func downloadUpdates() error {
 		"all/ui/modules/base.zip",
 	)
 
+	log.SetLogLevel(log.InfoLevel)
+
 	// logging is configured as a persistent pre-run method inherited from
 	// the root command but since we don't use run.Run() we need to start
 	// logging ourself.
@@ -53,6 +55,7 @@ func downloadUpdates() error {
 	if err != nil {
 		fmt.Printf("failed to start logging: %s\n", err)
 	}
+	defer log.Shutdown()
 
 	return registry.DownloadUpdates(context.TODO())
 }
