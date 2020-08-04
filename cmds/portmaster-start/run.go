@@ -59,6 +59,13 @@ func init() {
 			AllowDownload:     false,
 			AllowHidingWindow: true,
 		},
+		{
+			Name:              "Safing Privacy Network",
+			Identifier:        "hub/spn-hub",
+			ShortIdentifier:   "hub",
+			AllowDownload:     true,
+			AllowHidingWindow: true,
+		},
 	})
 }
 
@@ -119,10 +126,10 @@ func run(opts *Options, cmdArgs []string) (err error) {
 	args := getExecArgs(opts, cmdArgs)
 
 	// check for duplicate instances
-	if opts.ShortIdentifier == "core" {
+	if opts.ShortIdentifier == "core" || opts.ShortIdentifier == "hub" {
 		pid, _ := checkAndCreateInstanceLock(opts.ShortIdentifier)
 		if pid != 0 {
-			return fmt.Errorf("another instance of Portmaster Core is already running: PID %d", pid)
+			return fmt.Errorf("another instance of %s is already running: PID %d", opts.Name, pid)
 		}
 		defer func() {
 			err := deleteInstanceLock(opts.ShortIdentifier)
