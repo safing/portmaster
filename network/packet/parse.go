@@ -58,6 +58,7 @@ func parseUDP(packet gopacket.Packet, info *Info) error {
 	return nil
 }
 
+/*
 func parseUDPLite(packet gopacket.Packet, info *Info) error {
 	if udpLite, ok := packet.TransportLayer().(*layers.UDPLite); ok {
 		info.Protocol = UDPLite
@@ -66,6 +67,7 @@ func parseUDPLite(packet gopacket.Packet, info *Info) error {
 	}
 	return nil
 }
+*/
 
 func parseICMPv4(packet gopacket.Packet, info *Info) error {
 	if icmp, ok := packet.Layer(layers.LayerTypeICMPv4).(*layers.ICMPv4); ok {
