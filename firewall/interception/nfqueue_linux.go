@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/coreos/go-iptables/iptables"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/firewall/interception/nfqexp"
@@ -139,16 +140,20 @@ func activateNfqueueFirewall() error {
 }
 
 // DeactivateNfqueueFirewall drops portmaster related IP tables rules.
+// Any errors encountered accumulated into a *multierror.Error.
 func DeactivateNfqueueFirewall() error {
 	// IPv4
-	errV4 := deactivateIPTables(iptables.ProtocolIPv4, v4once, v4chains)
-
-	// IPv6
-	if errV6 := deactivateIPTables(iptables.ProtocolIPv6, v6once, v6chains); errV6 != nil && errV4 == nil {
-		return errV6
+	var result *multierror.Error
+	if err := deactivateIPTables(iptables.ProtocolIPv4, v4once, v4chains); err != nil {
+		result = multierror.Append(result, err)
 	}
 
-	return errV4
+	// IPv6
+	if err := deactivateIPTables(iptables.ProtocolIPv6, v6once, v6chains); err != nil {
+		result = multierror.Append(result, err)
+	}
+
+	return result
 }
 
 func activateIPTables(protocol iptables.Protocol, rules, once, chains []string) error {
@@ -193,31 +198,32 @@ func deactivateIPTables(protocol iptables.Protocol, rules, chains []string) erro
 		return err
 	}
 
-	var firstErr error
+	var multierr *multierror.Error
+
 	for _, rule := range rules {
 		splittedRule := strings.Split(rule, " ")
 		ok, err := tbls.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
-		if err != nil && firstErr == nil {
-			firstErr = err
+		if err != nil {
+			multierr = multierror.Append(multierr, err)
 		}
 		if ok {
-			if err = tbls.Delete(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil && firstErr == nil {
-				firstErr = err
+			if err = tbls.Delete(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
+				multierr = multierror.Append(multierr, err)
 			}
 		}
 	}
 
 	for _, chain := range chains {
 		splittedRule := strings.Split(chain, " ")
-		if err = tbls.ClearChain(splittedRule[0], splittedRule[1]); err != nil && firstErr == nil {
-			firstErr = err
+		if err = tbls.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
+			multierr = multierror.Append(multierr, err)
 		}
-		if err = tbls.DeleteChain(splittedRule[0], splittedRule[1]); err != nil && firstErr == nil {
-			firstErr = err
+		if err = tbls.DeleteChain(splittedRule[0], splittedRule[1]); err != nil {
+			multierr = multierror.Append(multierr, err)
 		}
 	}
 
-	return firstErr
+	return multierr
 }
 
 // StartNfqueueInterception starts the nfqueue interception.
