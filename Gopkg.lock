@@ -50,6 +50,14 @@
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:979299da1a605fc6fddc4d8fcc09ebfc6cfa6a10b05df825a3ec59773d59d0d5"
+  name = "github.com/florianl/go-nfqueue"
+  packages = ["."]
+  pruneopts = ""
+  revision = "327225dbfdfcc1fc52bb676256bee46e5c8a7a3d"
+  version = "v2.0.0"
+
+[[projects]]
   digest = "1:b6581f9180e0f2d5549280d71819ab951db9d511478c87daca95669589d505c0"
   name = "github.com/go-ole/go-ole"
   packages = [
@@ -89,6 +97,22 @@
   version = "v0.1.0"
 
 [[projects]]
+  digest = "1:8e3bd93036b4a925fe2250d3e4f38f21cadb8ef623561cd80c3c50c114b13201"
+  name = "github.com/hashicorp/errwrap"
+  packages = ["."]
+  pruneopts = ""
+  revision = "8a6fb523712970c966eefc6b39ed2c5e74880354"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:c6e569ffa34fcd24febd3562bff0520a104d15d1a600199cb3141debf2e58c89"
+  name = "github.com/hashicorp/go-multierror"
+  packages = ["."]
+  pruneopts = ""
+  revision = "2004d9dba6b07a5b8d133209244f376680f9d472"
+  version = "v1.1.0"
+
+[[projects]]
   digest = "1:2f0c811248aeb64978037b357178b1593372439146bda860cb16f2c80785ea93"
   name = "github.com/hashicorp/go-version"
   packages = ["."]
@@ -113,6 +137,17 @@
   revision = "2bc1f35cddc0cc527b4bc3dce8578fc2a6c11384"
 
 [[projects]]
+  digest = "1:4f0792bf942a61626dfdc06d228aa79783e51f214faacba73992a73f9485c0a8"
+  name = "github.com/mdlayher/netlink"
+  packages = [
+    ".",
+    "nlenc",
+  ]
+  pruneopts = ""
+  revision = "ad88bf8eff5c1fd8d6a29299addeeb23d05f1ec1"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   digest = "1:742865d3c8c267f108f852411bd8385c53c209e96813a3b0e859855cce4a0ed7"
   name = "github.com/miekg/dns"
@@ -127,6 +162,14 @@
   pruneopts = ""
   revision = "6a033e62c03b7dab4c37f7c9eb2ebb3b10e8f13a"
   version = "v1.6.0"
+
+[[projects]]
+  digest = "1:c45802472e0c06928cd997661f2af610accd85217023b1d5f6331bebce0671d3"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = ""
+  revision = "614d223910a179a466c1767a985424175c39b465"
+  version = "v0.9.1"
 
 [[projects]]
   digest = "1:256484dbbcd271f9ecebc6795b2df8cad4c458dd0f5fd82a8c2fa0c29f233411"
@@ -316,12 +359,15 @@
     "github.com/agext/levenshtein",
     "github.com/cookieo9/resources-go",
     "github.com/coreos/go-iptables/iptables",
+    "github.com/florianl/go-nfqueue",
     "github.com/godbus/dbus",
     "github.com/google/gopacket",
     "github.com/google/gopacket/layers",
     "github.com/google/gopacket/tcpassembly",
     "github.com/google/renameio",
+    "github.com/hashicorp/go-multierror",
     "github.com/hashicorp/go-version",
+    "github.com/mdlayher/netlink",
     "github.com/miekg/dns",
     "github.com/oschwald/maxminddb-golang",
     "github.com/shirou/gopsutil/process",
@@ -333,6 +379,7 @@
     "golang.org/x/net/ipv4",
     "golang.org/x/net/publicsuffix",
     "golang.org/x/sync/errgroup",
+    "golang.org/x/sys/unix",
     "golang.org/x/sys/windows",
     "golang.org/x/sys/windows/svc",
     "golang.org/x/sys/windows/svc/debug",

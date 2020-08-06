@@ -24,7 +24,7 @@
 #   go-tests = true
 #   unused-packages = true
 
-ignored = ["github.com/safing/portbase/*"]
+ignored = ["github.com/safing/portbase/*", "github.com/safing/spn/*"]
 
 [[constraint]]
   name = "github.com/miekg/dns"

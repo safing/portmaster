@@ -12,7 +12,10 @@ import (
 	"github.com/safing/portmaster/firewall/inspection"
 	"github.com/safing/portmaster/firewall/interception"
 	"github.com/safing/portmaster/network"
+	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/spn/captain"
+	"github.com/safing/spn/sluice"
 
 	// module dependencies
 	_ "github.com/safing/portmaster/core/base"
@@ -221,6 +224,22 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	log.Tracer(pkt.Ctx()).Trace("filter: starting decision process")
 	DecideOnConnection(pkt.Ctx(), conn, pkt)
 	conn.Inspecting = false // TODO: enable inspecting again
+
+	// tunneling
+	// TODO: add implementation for forced tunneling
+	if pkt.IsOutbound() &&
+		captain.ClientReady() &&
+		netutils.IPIsGlobal(conn.Entity.IP) &&
+		conn.Verdict == network.VerdictAccept {
+		// try to tunnel
+		err := sluice.AwaitRequest(pkt.Info(), conn.Entity.Domain)
+		if err != nil {
+			log.Tracer(pkt.Ctx()).Tracef("filter: not tunneling: %s", err)
+		} else {
+			log.Tracer(pkt.Ctx()).Trace("filter: tunneling request")
+			conn.Verdict = network.VerdictRerouteToTunnel
+		}
+	}
 
 	switch {
 	case conn.Inspecting:

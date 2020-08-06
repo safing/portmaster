@@ -29,6 +29,9 @@ const (
 )
 
 var (
+	// UpgradeCore specifies if portmaster-core should be upgraded.
+	UpgradeCore = true
+
 	upgraderActive = abool.NewBool(false)
 	pmCtrlUpdate   *updater.File
 	pmCoreUpdate   *updater.File
@@ -58,9 +61,11 @@ func upgrader(_ context.Context, _ interface{}) error {
 		log.Warningf("updates: failed to upgrade portmaster-start: %s", err)
 	}
 
-	err = upgradeCoreNotify()
-	if err != nil {
-		log.Warningf("updates: failed to notify about core upgrade: %s", err)
+	if UpgradeCore {
+		err = upgradeCoreNotify()
+		if err != nil {
+			log.Warningf("updates: failed to notify about core upgrade: %s", err)
+		}
 	}
 
 	return nil
