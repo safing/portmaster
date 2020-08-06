@@ -54,6 +54,10 @@ var (
 	updateASAP          bool
 	disableTaskSchedule bool
 
+	// MandatoryUpdates is a list of full identifiers that
+	// should always be kept up to date.
+	MandatoryUpdates []string
+
 	// UserAgent is an HTTP User-Agent that is used to add
 	// more context to requests made by the registry when
 	// fetching resources from the update server.
@@ -72,6 +76,24 @@ func init() {
 	module.RegisterEvent(ResourceUpdateEvent)
 
 	flag.StringVar(&userAgentFromFlag, "update-agent", "", "Sets the user agent for requests to the update server")
+
+	// initialize mandatory updates
+	if onWindows {
+		MandatoryUpdates = []string{
+			platform("core/portmaster-core.exe"),
+			platform("start/portmaster-start.exe"),
+			platform("app/portmaster-app.exe"),
+			platform("notifier/portmaster-notifier.exe"),
+			platform("notifier/portmaster-snoretoast.exe"),
+		}
+	} else {
+		MandatoryUpdates = []string{
+			platform("core/portmaster-core"),
+			platform("start/portmaster-start"),
+			platform("app/portmaster-app"),
+			platform("notifier/portmaster-notifier"),
+		}
+	}
 }
 
 func prep() error {
@@ -107,24 +129,6 @@ func start() error {
 		return err
 	}
 
-	var mandatoryUpdates []string
-	if onWindows {
-		mandatoryUpdates = []string{
-			platform("core/portmaster-core.exe"),
-			platform("start/portmaster-start.exe"),
-			platform("app/portmaster-app.exe"),
-			platform("notifier/portmaster-notifier.exe"),
-			platform("notifier/portmaster-snoretoast.exe"),
-		}
-	} else {
-		mandatoryUpdates = []string{
-			platform("core/portmaster-core"),
-			platform("start/portmaster-start"),
-			platform("app/portmaster-app"),
-			platform("notifier/portmaster-notifier"),
-		}
-	}
-
 	// create registry
 	registry = &updater.ResourceRegistry{
 		Name: ModuleName,
@@ -132,7 +136,7 @@ func start() error {
 			"https://updates.safing.io",
 		},
 		UserAgent:        UserAgent,
-		MandatoryUpdates: mandatoryUpdates,
+		MandatoryUpdates: MandatoryUpdates,
 		Beta:             releaseChannel() == releaseChannelBeta,
 		DevMode:          devMode(),
 		Online:           true,

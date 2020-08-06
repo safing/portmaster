@@ -15,4 +15,8 @@ echo "
 [[constraint]]
   name = \"github.com/safing/portbase\"
   branch = \"${PORTBASE_BRANCH}\"
+
+[[constraint]]
+  name = \"github.com/safing/spn\"
+  branch = \"${PORTBASE_BRANCH}\"
 " >> $DEP_FILE
