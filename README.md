@@ -42,9 +42,9 @@ Think of a pi-hole for your computer. Or an ad-blocker that blocks ads on your w
 
 ## Safing Privacy Network (SPN)
 
-**Status:** _unreleased - pre-alpha scheduled for June_
+**Status:** _currently in closed pre-alpha_
 
-[Visit our homepage](https://safing.io/spn/) to read all about this module.
+[Visit our homepage](https://safing.io/spn/) or [its Kickstarter campaign](https://www.kickstarter.com/projects/safingio/spn) to read all about this module.
 
 # Installation
 
