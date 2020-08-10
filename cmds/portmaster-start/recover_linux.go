@@ -48,7 +48,7 @@ var recoverIPTablesCmd = &cobra.Command{
 
 		if filteredErrors != nil {
 			filteredErrors.ErrorFormat = formatNfqErrors
-			return filteredErrors
+			return filteredErrors.ErrorOrNil()
 		}
 
 		return nil

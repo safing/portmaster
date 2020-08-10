@@ -153,7 +153,7 @@ func DeactivateNfqueueFirewall() error {
 		result = multierror.Append(result, err)
 	}
 
-	return result
+	return result.ErrorOrNil()
 }
 
 func activateIPTables(protocol iptables.Protocol, rules, once, chains []string) error {
@@ -223,7 +223,7 @@ func deactivateIPTables(protocol iptables.Protocol, rules, chains []string) erro
 		}
 	}
 
-	return multierr
+	return multierr.ErrorOrNil()
 }
 
 // StartNfqueueInterception starts the nfqueue interception.
