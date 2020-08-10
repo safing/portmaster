@@ -75,7 +75,10 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 				if !exists {
 					// Step 2: mark end
 					conn.Ended = nowUnix
-					conn.Save()
+					if conn.KeyIsSet() {
+						// Be absolutely sure that we have a key set here, else conn.Save() will deadlock.
+						conn.Save()
+					}
 				}
 			case conn.Ended < deleteOlderThan:
 				// Step 3: delete

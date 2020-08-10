@@ -1,13 +1,29 @@
-// +build root
-
 package netenv
 
-import "testing"
+import (
+	"flag"
+	"testing"
+)
+
+var (
+	privileged bool
+)
+
+func init() {
+	flag.BoolVar(&privileged, "privileged", false, "run tests that require root/admin privileges")
+}
 
 func TestGetApproximateInternetLocation(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+	if !privileged {
+		t.Skip("skipping privileged test, active with -privileged argument")
+	}
+
 	ip, err := GetApproximateInternetLocation()
 	if err != nil {
-		t.Errorf("GetApproximateInternetLocation failed: %s", err)
+		t.Fatalf("GetApproximateInternetLocation failed: %s", err)
 	}
 	t.Logf("GetApproximateInternetLocation: %s", ip.String())
 }
