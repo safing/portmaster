@@ -12,7 +12,6 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
-	"github.com/safing/portmaster/detection/dga"
 	"github.com/safing/portmaster/firewall"
 	"github.com/safing/portmaster/nameserver/nsutil"
 	"github.com/safing/portmaster/netenv"
@@ -210,17 +209,6 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 
 	// save security level to query
 	q.SecurityLevel = conn.Process().Profile().SecurityLevel()
-
-	// check for possible DNS tunneling / data transmission
-	// TODO: improve this
-	lms := dga.LmsScoreOfDomain(q.FQDN)
-	// log.Tracef("nameserver: domain %s has lms score of %f", fqdn, lms)
-	if lms < 10 {
-		tracer.Warningf("nameserver: possible data tunnel by %s: %s has lms score of %f, returning nxdomain", conn.Process(), q.FQDN, lms)
-		conn.Block("Possible data tunnel")
-		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
-		return nil
-	}
 
 	// check profile before we even get intel and rr
 	firewall.DecideOnConnection(ctx, conn, nil)

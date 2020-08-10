@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/safing/portmaster/detection/dga"
 	"github.com/safing/portmaster/netenv"
 
 	"github.com/safing/portbase/log"
@@ -58,6 +59,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 		checkBypassPrevention,
 		checkFilterLists,
 		checkInbound,
+		checkLMSScore,
 		checkDefaultPermit,
 		checkAutoPermitRelated,
 		checkDefaultAction,
@@ -70,7 +72,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 	}
 
 	// DefaultAction == DefaultActionBlock
-	conn.Deny("endpoint is not whitelisted (default=block)")
+	conn.Deny("endpoint is not allowed (default=block)")
 }
 
 // checkPortmasterConnection allows all connection that originate from
@@ -281,10 +283,26 @@ func checkFilterLists(ctx context.Context, conn *network.Connection, pkt packet.
 	return false
 }
 
+func checkLMSScore(ctx context.Context, conn *network.Connection, _ packet.Packet) bool {
+	if conn.Entity.Domain == "" {
+		return false
+	}
+
+	// check for possible DNS tunneling / data transmission
+	lms := dga.LmsScoreOfDomain(conn.Entity.Domain)
+	if lms < 10 {
+		log.Tracer(ctx).Warningf("nameserver: possible data tunnel by %s: %s has lms score of %f, returning nxdomain", conn.Process(), conn.Entity.Domain, lms)
+		conn.BlockWithContext("Possible data tunnel", conn.ReasonContext)
+
+		return true
+	}
+	return false
+}
+
 func checkInbound(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
 	// implicit default=block for inbound
 	if conn.Inbound {
-		conn.Drop("endpoint is not whitelisted (incoming is always default=block)")
+		conn.Drop("endpoint is not allowed (incoming is always default=block)")
 		return true
 	}
 	return false
@@ -294,7 +312,7 @@ func checkDefaultPermit(_ context.Context, conn *network.Connection, _ packet.Pa
 	// check default action
 	p := conn.Process().Profile()
 	if p.DefaultAction() == profile.DefaultActionPermit {
-		conn.Accept("endpoint is not blacklisted (default=permit)")
+		conn.Accept("endpoint is not blocked (default=permit)")
 		return true
 	}
 	return false

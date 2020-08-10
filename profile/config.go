@@ -85,9 +85,9 @@ var (
 
 func registerConfiguration() error {
 	// Default Filter Action
-	// permit - blacklist mode: everything is permitted unless blocked
+	// permit - blocklist mode: everything is permitted unless blocked
 	// ask - ask mode: if not verdict is found, the user is consulted
-	// block - whitelist mode: everything is blocked unless permitted
+	// block - allowlist mode: everything is blocked unless permitted
 	err := config.Register(&config.Option{
 		Name:            "Default Filter Action",
 		Key:             CfgOptionDefaultActionKey,
