@@ -5,12 +5,12 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/updates"
 )
 
 const (
 	eventShutdown = "shutdown"
 	eventRestart  = "restart"
-	restartCode   = 23
 )
 
 func registerEvents() {
@@ -43,7 +43,7 @@ func shutdown(ctx context.Context, _ interface{}) error {
 // restart restarts the Portmaster.
 func restart(ctx context.Context, data interface{}) error {
 	log.Info("core: user requested restart")
-	modules.SetExitStatusCode(restartCode)
+	modules.SetExitStatusCode(updates.RestartExitCode)
 	// Do not use a worker, as this would block itself here.
 	go modules.Shutdown() //nolint:errcheck
 	return nil

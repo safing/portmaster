@@ -11,16 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tevino/abool"
-
 	"github.com/google/renameio"
+	processInfo "github.com/shirou/gopsutil/process"
+	"github.com/tevino/abool"
 
 	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/notifications"
+	"github.com/safing/portbase/rng"
 	"github.com/safing/portbase/updater"
-
-	processInfo "github.com/shirou/gopsutil/process"
 )
 
 const (
@@ -29,12 +28,13 @@ const (
 )
 
 var (
-	// UpgradeCore specifies if portmaster-core should be upgraded.
-	UpgradeCore = true
-
 	upgraderActive = abool.NewBool(false)
-	pmCtrlUpdate   *updater.File
-	pmCoreUpdate   *updater.File
+
+	pmCtrlUpdate *updater.File
+	pmCoreUpdate *updater.File
+
+	spnHubUpdate      *updater.File
+	hubUpgradeStarted bool
 
 	rawVersionRegex = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+b?\*?$`)
 )
@@ -61,10 +61,21 @@ func upgrader(_ context.Context, _ interface{}) error {
 		log.Warningf("updates: failed to upgrade portmaster-start: %s", err)
 	}
 
-	if UpgradeCore {
+	binName := strings.TrimSuffix(
+		filepath.Base(os.Args[0]),
+		".exe",
+	)
+	switch binName {
+	case "portmaster-core":
 		err = upgradeCoreNotify()
 		if err != nil {
 			log.Warningf("updates: failed to notify about core upgrade: %s", err)
+		}
+
+	case "spn-hub":
+		err = upgradeHub()
+		if err != nil {
+			log.Warningf("updates: failed to initiate hub upgrade: %s", err)
 		}
 	}
 
@@ -72,13 +83,13 @@ func upgrader(_ context.Context, _ interface{}) error {
 }
 
 func upgradeCoreNotify() error {
-	identifier := "core/portmaster-core" // identifier, use forward slash!
-	if onWindows {
-		identifier += exeExt
-	}
-
 	// check if we can upgrade
 	if pmCoreUpdate == nil || pmCoreUpdate.UpgradeAvailable() {
+		identifier := "core/portmaster-core" // identifier, use forward slash!
+		if onWindows {
+			identifier += exeExt
+		}
+
 		// get newest portmaster-core
 		new, err := GetPlatformFile(identifier)
 		if err != nil {
@@ -126,6 +137,42 @@ func upgradeCoreNotifyActionHandler(n *notifications.Notification) {
 	case "later":
 		n.Expires = time.Now().Unix() // expire immediately
 	}
+}
+
+func upgradeHub() error {
+	if hubUpgradeStarted {
+		return nil
+	}
+
+	// check if we can upgrade
+	if spnHubUpdate == nil || spnHubUpdate.UpgradeAvailable() {
+		identifier := "hub/spn-hub" // identifier, use forward slash!
+		if onWindows {
+			identifier += exeExt
+		}
+
+		// get newest spn-hub
+		new, err := GetPlatformFile(identifier)
+		if err != nil {
+			return err
+		}
+		spnHubUpdate = new
+	} else {
+		return nil
+	}
+
+	if info.GetInfo().Version != spnHubUpdate.Version() {
+		// get random delay with up to three hours
+		delayMinutes, err := rng.Number(3 * 60)
+		if err != nil {
+			return err
+		}
+
+		triggerRestart(time.Duration(delayMinutes) * time.Minute)
+		hubUpgradeStarted = true
+	}
+
+	return nil
 }
 
 func upgradePortmasterStart() error {
