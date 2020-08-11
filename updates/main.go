@@ -2,6 +2,7 @@ package updates
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"runtime"
 	"time"
@@ -45,11 +46,22 @@ const (
 )
 
 var (
-	module              *modules.Module
-	registry            *updater.ResourceRegistry
+	module            *modules.Module
+	registry          *updater.ResourceRegistry
+	userAgentFromFlag string
+
 	updateTask          *modules.Task
 	updateASAP          bool
 	disableTaskSchedule bool
+
+	// MandatoryUpdates is a list of full identifiers that
+	// should always be kept up to date.
+	MandatoryUpdates []string
+
+	// UserAgent is an HTTP User-Agent that is used to add
+	// more context to requests made by the registry when
+	// fetching resources from the update server.
+	UserAgent = "Core"
 )
 
 const (
@@ -62,6 +74,26 @@ func init() {
 	module = modules.Register(ModuleName, prep, start, stop, "base")
 	module.RegisterEvent(VersionUpdateEvent)
 	module.RegisterEvent(ResourceUpdateEvent)
+
+	flag.StringVar(&userAgentFromFlag, "update-agent", "", "Sets the user agent for requests to the update server")
+
+	// initialize mandatory updates
+	if onWindows {
+		MandatoryUpdates = []string{
+			platform("core/portmaster-core.exe"),
+			platform("start/portmaster-start.exe"),
+			platform("app/portmaster-app.exe"),
+			platform("notifier/portmaster-notifier.exe"),
+			platform("notifier/portmaster-snoretoast.exe"),
+		}
+	} else {
+		MandatoryUpdates = []string{
+			platform("core/portmaster-core"),
+			platform("start/portmaster-start"),
+			platform("app/portmaster-app"),
+			platform("notifier/portmaster-notifier"),
+		}
+	}
 }
 
 func prep() error {
@@ -97,34 +129,21 @@ func start() error {
 		return err
 	}
 
-	var mandatoryUpdates []string
-	if onWindows {
-		mandatoryUpdates = []string{
-			platform("core/portmaster-core.exe"),
-			platform("control/portmaster-control.exe"),
-			platform("app/portmaster-app.exe"),
-			platform("notifier/portmaster-notifier.exe"),
-			platform("notifier/portmaster-snoretoast.exe"),
-		}
-	} else {
-		mandatoryUpdates = []string{
-			platform("core/portmaster-core"),
-			platform("control/portmaster-control"),
-			platform("app/portmaster-app"),
-			platform("notifier/portmaster-notifier"),
-		}
-	}
-
 	// create registry
 	registry = &updater.ResourceRegistry{
 		Name: ModuleName,
 		UpdateURLs: []string{
 			"https://updates.safing.io",
 		},
-		MandatoryUpdates: mandatoryUpdates,
+		UserAgent:        UserAgent,
+		MandatoryUpdates: MandatoryUpdates,
 		Beta:             releaseChannel() == releaseChannelBeta,
 		DevMode:          devMode(),
 		Online:           true,
+	}
+	if userAgentFromFlag != "" {
+		// override with flag value
+		registry.UserAgent = userAgentFromFlag
 	}
 	// initialize
 	err := registry.Initialize(dataroot.Root().ChildDir("updates", 0755))
@@ -150,7 +169,7 @@ func start() error {
 		Beta:   false,
 	})
 
-	err = registry.LoadIndexes()
+	err = registry.LoadIndexes(module.Ctx)
 	if err != nil {
 		log.Warningf("updates: failed to load indexes: %s", err)
 	}
@@ -185,7 +204,13 @@ func start() error {
 	}
 
 	// react to upgrades
-	return initUpgrader()
+	if err := initUpgrader(); err != nil {
+		return err
+	}
+
+	warnOnIncorrectParentPath()
+
+	return nil
 }
 
 // TriggerUpdate queues the update task to execute ASAP.
@@ -234,7 +259,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 		}
 	}()
 
-	if err = registry.UpdateIndexes(); err != nil {
+	if err = registry.UpdateIndexes(ctx); err != nil {
 		log.Warningf("updates: failed to update indexes: %s", err)
 	}
 

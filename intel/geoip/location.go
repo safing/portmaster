@@ -105,6 +105,7 @@ func PrimitiveNetworkProximity(from net.IP, to net.IP, ipVersion uint8) int {
 
 	switch ipVersion {
 	case 4:
+		// TODO: use ip.To4() and :4
 		a := binary.BigEndian.Uint32(from[12:])
 		b := binary.BigEndian.Uint32(to[12:])
 		if a > b {

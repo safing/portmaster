@@ -1,13 +1,18 @@
 package interception
 
 import (
+	"flag"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/coreos/go-iptables/iptables"
+	"github.com/hashicorp/go-multierror"
 
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/firewall/interception/nfqexp"
 	"github.com/safing/portmaster/firewall/interception/nfqueue"
+	"github.com/safing/portmaster/network/packet"
 )
 
 // iptables -A OUTPUT -p icmp -j", "NFQUEUE", "--queue-num", "1", "--queue-bypass
@@ -21,13 +26,28 @@ var (
 	v6rules  []string
 	v6once   []string
 
-	out4Queue *nfqueue.NFQueue
-	in4Queue  *nfqueue.NFQueue
-	out6Queue *nfqueue.NFQueue
-	in6Queue  *nfqueue.NFQueue
+	out4Queue nfQueue
+	in4Queue  nfQueue
+	out6Queue nfQueue
+	in6Queue  nfQueue
 
 	shutdownSignal = make(chan struct{})
+
+	experimentalNfqueueBackend bool
 )
+
+func init() {
+	flag.BoolVar(&experimentalNfqueueBackend, "experimental-nfqueue", false, "use experimental nfqueue packet")
+}
+
+// nfQueueFactoryFunc creates a new nfQueue with qid as the queue number.
+type nfQueueFactoryFunc func(qid uint16, v6 bool) (nfQueue, error)
+
+// nfQueue encapsulates nfQueue providers
+type nfQueue interface {
+	PacketChannel() <-chan packet.Packet
+	Destroy()
+}
 
 func init() {
 
@@ -61,8 +81,8 @@ func init() {
 		"filter OUTPUT -j C17",
 		"filter INPUT -j C17",
 		"nat OUTPUT -m mark --mark 1799 -p udp -j DNAT --to 127.0.0.1:53",
-		"nat OUTPUT -m mark --mark 1717 -p tcp -j DNAT --to 127.0.0.17:1117",
-		"nat OUTPUT -m mark --mark 1717 -p udp -j DNAT --to 127.0.0.17:1117",
+		"nat OUTPUT -m mark --mark 1717 -p tcp -j DNAT --to 127.0.0.17:717",
+		"nat OUTPUT -m mark --mark 1717 -p udp -j DNAT --to 127.0.0.17:717",
 		// "nat OUTPUT -m mark --mark 1717 ! -p tcp ! -p udp -j DNAT --to 127.0.0.17",
 	}
 
@@ -96,8 +116,8 @@ func init() {
 		"filter OUTPUT -j C17",
 		"filter INPUT -j C17",
 		"nat OUTPUT -m mark --mark 1799 -p udp -j DNAT --to [::1]:53",
-		"nat OUTPUT -m mark --mark 1717 -p tcp -j DNAT --to [fd17::17]:1117",
-		"nat OUTPUT -m mark --mark 1717 -p udp -j DNAT --to [fd17::17]:1117",
+		"nat OUTPUT -m mark --mark 1717 -p tcp -j DNAT --to [fd17::17]:717",
+		"nat OUTPUT -m mark --mark 1717 -p udp -j DNAT --to [fd17::17]:717",
 		// "nat OUTPUT -m mark --mark 1717 ! -p tcp ! -p udp -j DNAT --to [fd17::17]",
 	}
 
@@ -108,69 +128,62 @@ func init() {
 }
 
 func activateNfqueueFirewall() error {
-
-	// IPv4
-	ip4tables, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
-	if err != nil {
+	if err := activateIPTables(iptables.ProtocolIPv4, v4rules, v4once, v4chains); err != nil {
 		return err
 	}
 
-	for _, chain := range v4chains {
-		splittedRule := strings.Split(chain, " ")
-		if err = ip4tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
-			return err
-		}
+	if err := activateIPTables(iptables.ProtocolIPv6, v6rules, v6once, v6chains); err != nil {
+		return err
 	}
 
-	for _, rule := range v4rules {
-		splittedRule := strings.Split(rule, " ")
-		if err = ip4tables.Append(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
-			return err
-		}
-	}
+	return nil
+}
 
-	var ok bool
-	for _, rule := range v4once {
-		splittedRule := strings.Split(rule, " ")
-		ok, err = ip4tables.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			if err = ip4tables.Insert(splittedRule[0], splittedRule[1], 1, splittedRule[2:]...); err != nil {
-				return err
-			}
-		}
+// DeactivateNfqueueFirewall drops portmaster related IP tables rules.
+// Any errors encountered accumulated into a *multierror.Error.
+func DeactivateNfqueueFirewall() error {
+	// IPv4
+	var result *multierror.Error
+	if err := deactivateIPTables(iptables.ProtocolIPv4, v4once, v4chains); err != nil {
+		result = multierror.Append(result, err)
 	}
 
 	// IPv6
-	ip6tables, err := iptables.NewWithProtocol(iptables.ProtocolIPv6)
+	if err := deactivateIPTables(iptables.ProtocolIPv6, v6once, v6chains); err != nil {
+		result = multierror.Append(result, err)
+	}
+
+	return result
+}
+
+func activateIPTables(protocol iptables.Protocol, rules, once, chains []string) error {
+	tbls, err := iptables.NewWithProtocol(protocol)
 	if err != nil {
 		return err
 	}
 
-	for _, chain := range v6chains {
+	for _, chain := range chains {
 		splittedRule := strings.Split(chain, " ")
-		if err = ip6tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
+		if err = tbls.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
 			return err
 		}
 	}
 
-	for _, rule := range v6rules {
+	for _, rule := range rules {
 		splittedRule := strings.Split(rule, " ")
-		if err = ip6tables.Append(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
+		if err = tbls.Append(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
 			return err
 		}
 	}
 
-	for _, rule := range v6once {
+	for _, rule := range once {
 		splittedRule := strings.Split(rule, " ")
-		ok, err := ip6tables.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
+		ok, err := tbls.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
 		if err != nil {
 			return err
 		}
 		if !ok {
-			if err = ip6tables.Insert(splittedRule[0], splittedRule[1], 1, splittedRule[2:]...); err != nil {
+			if err = tbls.Insert(splittedRule[0], splittedRule[1], 1, splittedRule[2:]...); err != nil {
 				return err
 			}
 		}
@@ -179,71 +192,52 @@ func activateNfqueueFirewall() error {
 	return nil
 }
 
-func deactivateNfqueueFirewall() error {
-	// IPv4
-	ip4tables, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
+func deactivateIPTables(protocol iptables.Protocol, rules, chains []string) error {
+	tbls, err := iptables.NewWithProtocol(protocol)
 	if err != nil {
 		return err
 	}
 
-	var ok bool
-	for _, rule := range v4once {
+	var multierr *multierror.Error
+
+	for _, rule := range rules {
 		splittedRule := strings.Split(rule, " ")
-		ok, err = ip4tables.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
+		ok, err := tbls.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
 		if err != nil {
-			return err
+			multierr = multierror.Append(multierr, err)
 		}
 		if ok {
-			if err = ip4tables.Delete(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
-				return err
+			if err = tbls.Delete(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
+				multierr = multierror.Append(multierr, err)
 			}
 		}
 	}
 
-	for _, chain := range v4chains {
+	for _, chain := range chains {
 		splittedRule := strings.Split(chain, " ")
-		if err = ip4tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
-			return err
+		if err = tbls.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
+			multierr = multierror.Append(multierr, err)
 		}
-		if err = ip4tables.DeleteChain(splittedRule[0], splittedRule[1]); err != nil {
-			return err
-		}
-	}
-
-	// IPv6
-	ip6tables, err := iptables.NewWithProtocol(iptables.ProtocolIPv6)
-	if err != nil {
-		return err
-	}
-
-	for _, rule := range v6once {
-		splittedRule := strings.Split(rule, " ")
-		ok, err := ip6tables.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
-		if err != nil {
-			return err
-		}
-		if ok {
-			if err = ip6tables.Delete(splittedRule[0], splittedRule[1], splittedRule[2:]...); err != nil {
-				return err
-			}
+		if err = tbls.DeleteChain(splittedRule[0], splittedRule[1]); err != nil {
+			multierr = multierror.Append(multierr, err)
 		}
 	}
 
-	for _, chain := range v6chains {
-		splittedRule := strings.Split(chain, " ")
-		if err := ip6tables.ClearChain(splittedRule[0], splittedRule[1]); err != nil {
-			return err
-		}
-		if err := ip6tables.DeleteChain(splittedRule[0], splittedRule[1]); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return multierr
 }
 
 // StartNfqueueInterception starts the nfqueue interception.
 func StartNfqueueInterception() (err error) {
+	var nfQueueFactory nfQueueFactoryFunc = func(qid uint16, v6 bool) (nfQueue, error) {
+		return nfqueue.NewNFQueue(qid)
+	}
+
+	if experimentalNfqueueBackend {
+		log.Infof("nfqueue: using experimental nfqueue backend")
+		nfQueueFactory = func(qid uint16, v6 bool) (nfQueue, error) {
+			return nfqexp.New(qid, v6)
+		}
+	}
 
 	err = activateNfqueueFirewall()
 	if err != nil {
@@ -251,25 +245,25 @@ func StartNfqueueInterception() (err error) {
 		return fmt.Errorf("could not initialize nfqueue: %s", err)
 	}
 
-	out4Queue, err = nfqueue.NewNFQueue(17040)
+	out4Queue, err = nfQueueFactory(17040, false)
 	if err != nil {
 		_ = Stop()
-		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
+		return fmt.Errorf("nfqueue(IPv4, out): %w", err)
 	}
-	in4Queue, err = nfqueue.NewNFQueue(17140)
+	in4Queue, err = nfQueueFactory(17140, false)
 	if err != nil {
 		_ = Stop()
-		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
+		return fmt.Errorf("nfqueue(IPv4, in): %w", err)
 	}
-	out6Queue, err = nfqueue.NewNFQueue(17060)
+	out6Queue, err = nfQueueFactory(17060, true)
 	if err != nil {
 		_ = Stop()
-		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
+		return fmt.Errorf("nfqueue(IPv6, out): %w", err)
 	}
-	in6Queue, err = nfqueue.NewNFQueue(17160)
+	in6Queue, err = nfQueueFactory(17160, true)
 	if err != nil {
 		_ = Stop()
-		return fmt.Errorf("interception: failed to create nfqueue(IPv4, in): %s", err)
+		return fmt.Errorf("nfqueue(IPv6, in): %w", err)
 	}
 
 	go handleInterception()
@@ -293,7 +287,7 @@ func StopNfqueueInterception() error {
 		in6Queue.Destroy()
 	}
 
-	err := deactivateNfqueueFirewall()
+	err := DeactivateNfqueueFirewall()
 	if err != nil {
 		return fmt.Errorf("interception: error while deactivating nfqueue: %s", err)
 	}
@@ -306,16 +300,16 @@ func handleInterception() {
 		select {
 		case <-shutdownSignal:
 			return
-		case pkt := <-out4Queue.Packets:
+		case pkt := <-out4Queue.PacketChannel():
 			pkt.SetOutbound()
 			Packets <- pkt
-		case pkt := <-in4Queue.Packets:
+		case pkt := <-in4Queue.PacketChannel():
 			pkt.SetInbound()
 			Packets <- pkt
-		case pkt := <-out6Queue.Packets:
+		case pkt := <-out6Queue.PacketChannel():
 			pkt.SetOutbound()
 			Packets <- pkt
-		case pkt := <-in6Queue.Packets:
+		case pkt := <-in6Queue.PacketChannel():
 			pkt.SetInbound()
 			Packets <- pkt
 		}

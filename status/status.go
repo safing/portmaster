@@ -1,8 +1,11 @@
 package status
 
 import (
+	"context"
 	"fmt"
 	"sync"
+
+	"github.com/safing/portmaster/netenv"
 
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
@@ -28,11 +31,22 @@ type SystemStatus struct {
 	ActiveSecurityLevel   uint8
 	SelectedSecurityLevel uint8
 
+	OnlineStatus  netenv.OnlineStatus
+	CaptivePortal *netenv.CaptivePortal
+
 	ThreatMitigationLevel uint8
 	Threats               map[string]*Threat
 }
 
-// Save saves the SystemStatus to the database
+// SaveAsync saves the SystemStatus to the database asynchronously.
+func (s *SystemStatus) SaveAsync() {
+	module.StartWorker("save system status", func(_ context.Context) error {
+		s.Save()
+		return nil
+	})
+}
+
+// Save saves the SystemStatus to the database.
 func (s *SystemStatus) Save() {
 	err := statusDB.Put(s)
 	if err != nil {

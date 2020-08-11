@@ -1,6 +1,7 @@
 package firewall
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -69,11 +70,11 @@ func GetPermittedPort() uint16 {
 	return 0
 }
 
-func portsInUseCleaner() {
+func portsInUseCleaner(ctx context.Context) error {
 	for {
 		select {
-		case <-interceptionModule.Stopping():
-			return
+		case <-ctx.Done():
+			return nil
 		case <-time.After(cleanerTickDuration):
 			cleanPortsInUse()
 		}

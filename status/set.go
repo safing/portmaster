@@ -6,7 +6,7 @@ import (
 	"github.com/safing/portbase/log"
 )
 
-// autopilot automatically adjusts the security level as needed
+// autopilot automatically adjusts the security level as needed.
 func (s *SystemStatus) autopilot() {
 	// check if users is overruling
 	if s.SelectedSecurityLevel > SecurityLevelOff {
@@ -33,19 +33,18 @@ func setSelectedSecurityLevel(level uint8) {
 	switch level {
 	case SecurityLevelOff, SecurityLevelNormal, SecurityLevelHigh, SecurityLevelExtreme:
 		status.Lock()
-		defer status.Unlock()
 
 		status.SelectedSecurityLevel = level
 		atomicUpdateSelectedSecurityLevel(level)
 		status.autopilot()
 
-		go status.Save()
+		status.Unlock()
+		status.Save()
 	default:
 		log.Errorf("status: tried to set selected security level to invalid value: %d", level)
 	}
 }
 
-// update functions for atomic stuff
 func atomicUpdateActiveSecurityLevel(level uint8) {
 	atomic.StoreUint32(activeSecurityLevel, uint32(level))
 }

@@ -24,6 +24,7 @@ type Scope struct {
 var (
 	globalResolvers []*Resolver          // all (global) resolvers
 	localResolvers  []*Resolver          // all resolvers that are in site-local or link-local IP ranges
+	systemResolvers []*Resolver          // all resolvers that were assigned by the system
 	localScopes     []*Scope             // list of scopes with a list of local resolvers that can resolve the scope
 	activeResolvers map[string]*Resolver // lookup map of all resolvers
 	resolversLock   sync.RWMutex
@@ -68,22 +69,8 @@ func resolverConnFactory(resolver *Resolver) ResolverConn {
 		return NewTCPResolver(resolver)
 	case ServerTypeDoT:
 		return NewTCPResolver(resolver).UseTLS()
-	default:
-		return &BasicResolverConn{
-			clientManager: clientManagerFactory(resolver.ServerType)(resolver),
-			resolver:      resolver,
-		}
-	}
-}
-
-func clientManagerFactory(serverType string) func(*Resolver) *dnsClientManager {
-	switch serverType {
 	case ServerTypeDNS:
-		return newDNSClientManager
-	case ServerTypeDoT:
-		return newTLSClientManager
-	case ServerTypeTCP:
-		return newTCPClientManager
+		return NewPlainResolver(resolver)
 	default:
 		return nil
 	}
@@ -136,6 +123,7 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		Server:                 resolverURL,
 		ServerType:             u.Scheme,
 		ServerAddress:          u.Host,
+		ServerIP:               ip,
 		ServerIPScope:          scope,
 		Source:                 source,
 		VerifyDomain:           verifyDomain,
@@ -163,7 +151,7 @@ func configureSearchDomains(resolver *Resolver, searches []string) {
 
 func getConfiguredResolvers(list []string) (resolvers []*Resolver) {
 	for _, server := range list {
-		resolver, skip, err := createResolver(server, "config")
+		resolver, skip, err := createResolver(server, ServerSourceConfigured)
 		if err != nil {
 			// TODO(ppacher): module error
 			log.Errorf("cannot use resolver %s: %s", server, err)
@@ -182,7 +170,7 @@ func getConfiguredResolvers(list []string) (resolvers []*Resolver) {
 func getSystemResolvers() (resolvers []*Resolver) {
 	for _, nameserver := range netenv.Nameservers() {
 		serverURL := fmt.Sprintf("dns://%s", formatIPAndPort(nameserver.IP, 53))
-		resolver, skip, err := createResolver(serverURL, "dhcp") // TODO(ppacher): DHCP can actually be wrong
+		resolver, skip, err := createResolver(serverURL, ServerSourceOperatingSystem)
 		if err != nil {
 			// that shouldn't happen but handle it anyway ...
 			log.Errorf("cannot use system resolver %s: %s", serverURL, err)
@@ -231,7 +219,7 @@ func loadResolvers() {
 	globalResolvers = newResolvers
 
 	// assing resolvers to scopes
-	setLocalAndScopeResolvers(globalResolvers)
+	setScopedResolvers(globalResolvers)
 
 	// set active resolvers (for cache validation)
 	// reset
@@ -241,6 +229,7 @@ func loadResolvers() {
 		activeResolvers[resolver.Server] = resolver
 	}
 	activeResolvers[mDNSResolver.Server] = mDNSResolver
+	activeResolvers[envResolver.Server] = envResolver
 
 	// log global resolvers
 	if len(globalResolvers) > 0 {
@@ -260,6 +249,16 @@ func loadResolvers() {
 		}
 	} else {
 		log.Info("resolver: no local resolvers loaded")
+	}
+
+	// log system resolvers
+	if len(systemResolvers) > 0 {
+		log.Trace("resolver: loaded system/network-assigned resolvers:")
+		for _, resolver := range systemResolvers {
+			log.Tracef("resolver: %s", resolver.Server)
+		}
+	} else {
+		log.Info("resolver: no system/network-assigned resolvers loaded")
 	}
 
 	// log scopes
@@ -282,14 +281,19 @@ func loadResolvers() {
 	}
 }
 
-func setLocalAndScopeResolvers(resolvers []*Resolver) {
+func setScopedResolvers(resolvers []*Resolver) {
 	// make list with local resolvers
 	localResolvers = make([]*Resolver, 0)
+	systemResolvers = make([]*Resolver, 0)
 	localScopes = make([]*Scope, 0)
 
 	for _, resolver := range resolvers {
 		if resolver.ServerIP != nil && netutils.IPIsLAN(resolver.ServerIP) {
 			localResolvers = append(localResolvers, resolver)
+		}
+
+		if resolver.Source == ServerSourceOperatingSystem {
+			systemResolvers = append(systemResolvers, resolver)
 		}
 
 		if resolver.Search != nil {

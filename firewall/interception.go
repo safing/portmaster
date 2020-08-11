@@ -12,7 +12,10 @@ import (
 	"github.com/safing/portmaster/firewall/inspection"
 	"github.com/safing/portmaster/firewall/interception"
 	"github.com/safing/portmaster/network"
+	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/spn/captain"
+	"github.com/safing/spn/sluice"
 
 	// module dependencies
 	_ "github.com/safing/portmaster/core/base"
@@ -79,20 +82,9 @@ func interceptionPrep() (err error) {
 func interceptionStart() error {
 	startAPIAuth()
 
-	interceptionModule.StartWorker("stat logger", func(ctx context.Context) error {
-		statLogger()
-		return nil
-	})
-
-	interceptionModule.StartWorker("packet handler", func(ctx context.Context) error {
-		run()
-		return nil
-	})
-
-	interceptionModule.StartWorker("ports state cleaner", func(ctx context.Context) error {
-		portsInUseCleaner()
-		return nil
-	})
+	interceptionModule.StartWorker("stat logger", statLogger)
+	interceptionModule.StartWorker("packet handler", packetHandler)
+	interceptionModule.StartWorker("ports state cleaner", portsInUseCleaner)
 
 	return interception.Start()
 }
@@ -232,6 +224,22 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	log.Tracer(pkt.Ctx()).Trace("filter: starting decision process")
 	DecideOnConnection(pkt.Ctx(), conn, pkt)
 
+	// tunneling
+	// TODO: add implementation for forced tunneling
+	if pkt.IsOutbound() &&
+		captain.ClientReady() &&
+		netutils.IPIsGlobal(conn.Entity.IP) &&
+		conn.Verdict == network.VerdictAccept {
+		// try to tunnel
+		err := sluice.AwaitRequest(pkt.Info(), conn.Entity.Domain)
+		if err != nil {
+			log.Tracer(pkt.Ctx()).Tracef("filter: not tunneling: %s", err)
+		} else {
+			log.Tracer(pkt.Ctx()).Trace("filter: tunneling request")
+			conn.Verdict = network.VerdictRerouteToTunnel
+		}
+	}
+
 	switch {
 	case conn.Inspecting:
 		log.Tracer(pkt.Ctx()).Trace("filter: starting inspection")
@@ -332,22 +340,22 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 // 	return
 // }
 
-func run() {
+func packetHandler(ctx context.Context) error {
 	for {
 		select {
-		case <-interceptionModule.Stopping():
-			return
+		case <-ctx.Done():
+			return nil
 		case pkt := <-interception.Packets:
 			handlePacket(pkt)
 		}
 	}
 }
 
-func statLogger() {
+func statLogger(ctx context.Context) error {
 	for {
 		select {
-		case <-interceptionModule.Stopping():
-			return
+		case <-ctx.Done():
+			return nil
 		case <-time.After(10 * time.Second):
 			log.Tracef(
 				"filter: packets accepted %d, blocked %d, dropped %d, failed %d",

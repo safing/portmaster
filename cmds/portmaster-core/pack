@@ -7,16 +7,16 @@ COL_OFF="\033[00m"
 COL_BOLD="\033[01;01m"
 COL_RED="\033[31m"
 
-destDirPart1="../dist"
-destDirPart2="control"
+destDirPart1="../../dist"
+destDirPart2="core"
 
 function check {
   # output
-  output="pmctl"
+  output="main"
   # get version
   version=$(grep "info.Set" main.go | cut -d'"' -f4)
   # build versioned file name
-  filename="portmaster-control_v${version//./-}"
+  filename="portmaster-core_v${version//./-}"
   # platform
   platform="${GOOS}_${GOARCH}"
   if [[ $GOOS == "windows" ]]; then
@@ -28,19 +28,19 @@ function check {
 
   # check if file exists
   if [[ -f $destPath ]]; then
-    echo "[control] $platform $version already built"
+    echo "[core] $platform $version already built"
   else
-    echo -e "${COL_BOLD}[control] $platform $version${COL_OFF}"
+    echo -e "${COL_BOLD}[core] $platform $version${COL_OFF}"
   fi
 }
 
 function build {
   # output
-  output="pmctl"
+  output="main"
   # get version
   version=$(grep "info.Set" main.go | cut -d'"' -f4)
   # build versioned file name
-  filename="portmaster-control_v${version//./-}"
+  filename="portmaster-core_v${version//./-}"
   # platform
   platform="${GOOS}_${GOARCH}"
   if [[ $GOOS == "windows" ]]; then
@@ -52,29 +52,31 @@ function build {
 
   # check if file exists
   if [[ -f $destPath ]]; then
-    echo "[control] $platform already built in version $version, skipping..."
+    echo "[core] $platform already built in version $version, skipping..."
     return
   fi
 
   # build
-  ./build
+  ./build main.go
   if [[ $? -ne 0 ]]; then
-    echo -e "\n${COL_BOLD}[control] $platform: ${COL_RED}BUILD FAILED.${COL_OFF}"
+    echo -e "\n${COL_BOLD}[core] $platform: ${COL_RED}BUILD FAILED.${COL_OFF}"
     exit 1
   fi
   mkdir -p $(dirname $destPath)
   cp $output $destPath
-  echo -e "\n${COL_BOLD}[control] $platform: successfully built.${COL_OFF}"
+  echo -e "\n${COL_BOLD}[core] $platform: successfully built.${COL_OFF}"
 }
 
 function check_all {
   GOOS=linux GOARCH=amd64 check
   GOOS=windows GOARCH=amd64 check
+  GOOS=darwin GOARCH=amd64 check
 }
 
 function build_all {
   GOOS=linux GOARCH=amd64 build
   GOOS=windows GOARCH=amd64 build
+  GOOS=darwin GOARCH=amd64 build
 }
 
 case $1 in

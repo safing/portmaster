@@ -19,7 +19,7 @@ var (
 	// basic errors
 
 	// ErrNotFound is a basic error that will match all "not found" errors
-	ErrNotFound = errors.New("record does not exist")
+	ErrNotFound = errors.New("record could not be found")
 	// ErrBlocked is basic error that will match all "blocked" errors
 	ErrBlocked = errors.New("query was blocked")
 	// ErrLocalhost is returned to *.localhost queries
@@ -30,6 +30,8 @@ var (
 	ErrOffline = errors.New("device is offine")
 	// ErrFailure is returned when the type of failure is unclear
 	ErrFailure = errors.New("query failed")
+	// ErrContinue is returned when the resolver has no answer, and the next resolver should be asked
+	ErrContinue = errors.New("resolver has no answer")
 
 	// detailed errors
 
@@ -41,6 +43,12 @@ var (
 	ErrInvalid = fmt.Errorf("%w: invalid request", ErrNotFound)
 	// ErrNoCompliance wraps ErrBlocked and is returned when no resolvers were able to comply with the current settings
 	ErrNoCompliance = fmt.Errorf("%w: no compliant resolvers for this query", ErrBlocked)
+)
+
+const (
+	minTTL     = 60           // 1 Minute
+	minMDnsTTL = 60           // 1 Minute
+	maxTTL     = 24 * 60 * 60 // 24 hours
 )
 
 // BlockedUpstreamError is returned when a DNS request
@@ -69,6 +77,11 @@ type Query struct {
 
 	// internal
 	dotPrefixedFQDN string
+}
+
+// ID returns the ID of the query consisting of the domain and question type.
+func (q *Query) ID() string {
+	return q.FQDN + q.QType.String()
 }
 
 // check runs sanity checks and does some initialization. Returns whether the query passed the basic checks.
@@ -157,8 +170,27 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		return nil
 	}
 
+	// check if we want to reset the cache
+	if shouldResetCache(q) {
+		err := DeleteNameRecord(q.FQDN, q.QType.String())
+		switch {
+		case err == nil:
+			log.Tracer(ctx).Tracef("resolver: cache for %s%s was reset", q.FQDN, q.QType)
+		case errors.Is(err, database.ErrNotFound):
+			log.Tracer(ctx).Tracef("resolver: cache for %s%s was already reset (is empty)", q.FQDN, q.QType)
+		default:
+			log.Tracer(ctx).Warningf("resolver: failed to reset cache for %s%s: %s", q.FQDN, q.QType, err)
+		}
+		return nil
+	}
+
 	// check if expired
 	if rrCache.Expired() {
+		if netenv.IsConnectivityDomain(rrCache.Domain) {
+			// do not use cache, resolve immediately
+			return nil
+		}
+
 		rrCache.Lock()
 		rrCache.requestingNew = true
 		rrCache.Unlock()
@@ -167,7 +199,10 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 
 		// resolve async
 		module.StartWorker("resolve async", func(ctx context.Context) error {
-			_, _ = resolveAndCache(ctx, q)
+			_, err := resolveAndCache(ctx, q)
+			if err != nil {
+				log.Warningf("resolver: async query for %s%s failed: %s", q.FQDN, q.QType, err)
+			}
 			return nil
 		})
 	}
@@ -178,7 +213,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 
 func deduplicateRequest(ctx context.Context, q *Query) (finishRequest func()) {
 	// create identifier key
-	dupKey := fmt.Sprintf("%s%s", q.FQDN, q.QType.String())
+	dupKey := q.ID()
 
 	dupReqLock.Lock()
 
@@ -228,13 +263,12 @@ func resolveAndCache(ctx context.Context, q *Query) (rrCache *RRCache, err error
 
 	// check if we are online
 	if netenv.GetOnlineStatus() == netenv.StatusOffline {
-		if netenv.IsOnlineStatusTestDomain(q.FQDN) {
-			log.Tracer(ctx).Debugf("resolver: permitting online status test domain %s to resolve even though offline", q.FQDN)
-		} else {
+		if !netenv.IsConnectivityDomain(q.FQDN) {
 			log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
 			// we are offline and this is not an online check query
 			return nil, ErrOffline
 		}
+		log.Tracer(ctx).Debugf("resolver: permitting online status test domain %s to resolve even though offline", q.FQDN)
 	}
 
 	// start resolving
@@ -244,6 +278,10 @@ func resolveAndCache(ctx context.Context, q *Query) (rrCache *RRCache, err error
 resolveLoop:
 	for i = 0; i < 2; i++ {
 		for _, resolver := range resolvers {
+			if module.IsStopping() {
+				return nil, errors.New("shutting down")
+			}
+
 			// check if resolver failed recently (on first run)
 			if i == 0 && resolver.Conn.IsFailing() {
 				log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it failed recently", resolver)
@@ -253,9 +291,6 @@ resolveLoop:
 			// resolve
 			rrCache, err = resolver.Conn.Query(ctx, q)
 			if err != nil {
-
-				// TODO: check if we are online?
-
 				switch {
 				case errors.Is(err, ErrNotFound):
 					// NXDomain, or similar
@@ -264,29 +299,36 @@ resolveLoop:
 					// some resolvers might also block
 					return nil, err
 				case netenv.GetOnlineStatus() == netenv.StatusOffline &&
-					!netenv.IsOnlineStatusTestDomain(q.FQDN):
+					!netenv.IsConnectivityDomain(q.FQDN):
 					log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
 					// we are offline and this is not an online check query
 					return nil, ErrOffline
+				case errors.Is(err, ErrContinue):
+					continue
+				case errors.Is(err, ErrTimeout):
+					resolver.Conn.ReportFailure()
+					log.Tracer(ctx).Debugf("resolver: query to %s timed out", resolver.GetName())
+					continue
+				default:
+					resolver.Conn.ReportFailure()
+					log.Tracer(ctx).Debugf("resolver: query to %s failed: %s", resolver.GetName(), err)
+					continue
 				}
-			} else {
-				// no error
-				if rrCache == nil {
-					// defensive: assume NXDomain
-					return nil, ErrNotFound
-				}
-				break resolveLoop
 			}
+			if rrCache == nil {
+				// Defensive: This should normally not happen.
+				continue
+			}
+			break resolveLoop
 		}
-	}
-
-	// tried all resolvers, possibly twice
-	if i > 1 {
-		return nil, fmt.Errorf("all %d query-compliant resolvers failed, last error: %s", len(resolvers), err)
 	}
 
 	// check for error
 	if err != nil {
+		// tried all resolvers, possibly twice
+		if i > 1 {
+			return nil, fmt.Errorf("all %d query-compliant resolvers failed, last error: %s", len(resolvers), err)
+		}
 		return nil, err
 	}
 
@@ -298,7 +340,7 @@ resolveLoop:
 	// cache if enabled
 	if !q.NoCaching {
 		// persist to database
-		rrCache.Clean(600)
+		rrCache.Clean(minTTL)
 		err = rrCache.Save()
 		if err != nil {
 			log.Warningf("resolver: failed to cache RR for %s%s: %s", q.FQDN, q.QType.String(), err)
@@ -306,4 +348,32 @@ resolveLoop:
 	}
 
 	return rrCache, nil
+}
+
+var (
+	cacheResetLock    sync.Mutex
+	cacheResetID      string
+	cacheResetSeenCnt int
+)
+
+func shouldResetCache(q *Query) (reset bool) {
+	cacheResetLock.Lock()
+	defer cacheResetLock.Unlock()
+
+	// reset to new domain
+	qID := q.ID()
+	if qID != cacheResetID {
+		cacheResetID = qID
+		cacheResetSeenCnt = 1
+		return false
+	}
+
+	// increase and check if threshold is reached
+	cacheResetSeenCnt++
+	if cacheResetSeenCnt >= 3 { // 3 to trigger reset
+		cacheResetSeenCnt = -7 // 10 for follow-up resets
+		return true
+	}
+
+	return false
 }

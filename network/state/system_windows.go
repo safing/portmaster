@@ -12,10 +12,6 @@ var (
 	getUDP6Table = iphelper.GetUDP6Table
 )
 
-func checkConnectionPID(socketInfo *socket.ConnectionInfo, connInbound bool) (pid int, inbound bool, err error) {
-	return socketInfo.PID, connInbound, nil
-}
-
-func checkBindPID(socketInfo *socket.BindInfo, connInbound bool) (pid int, inbound bool, err error) {
-	return socketInfo.PID, connInbound, nil
+func checkPID(socketInfo socket.Info, connInbound bool) (pid int, inbound bool, err error) {
+	return socketInfo.GetPID(), connInbound, nil
 }

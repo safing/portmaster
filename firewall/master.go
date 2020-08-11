@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/safing/portmaster/netenv"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
@@ -50,6 +52,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 		checkSelfCommunication,
 		checkProfileExists,
 		checkConnectionType,
+		checkConnectivityDomain,
 		checkConnectionScope,
 		checkEndpointLists,
 		checkBypassPrevention,
@@ -176,6 +179,33 @@ func checkConnectionType(ctx context.Context, conn *network.Connection, _ packet
 	}
 
 	return false
+}
+
+func checkConnectivityDomain(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
+	p := conn.Process().Profile()
+
+	switch {
+	case netenv.GetOnlineStatus() > netenv.StatusPortal:
+		// Special grant only applies if network status is Portal (or even more limited).
+		return false
+
+	case conn.Inbound:
+		// Special grant only applies to outgoing connections.
+		return false
+
+	case p.BlockScopeInternet():
+		// Special grant only applies if application is allowed to connect to the Internet.
+		return false
+
+	case netenv.IsConnectivityDomain(conn.Entity.Domain):
+		// Special grant!
+		conn.Accept("special grant for connectivity domain during network bootstrap")
+		return true
+
+	default:
+		// Not a special grant domain
+		return false
+	}
 }
 
 func checkConnectionScope(_ context.Context, conn *network.Connection, _ packet.Packet) bool {

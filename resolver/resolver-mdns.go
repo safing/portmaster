@@ -241,12 +241,12 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 					}
 					switch entry.(type) {
 					case *dns.A:
-						scavengedRecords[fmt.Sprintf("%s_A", entry.Header().Name)] = entry
+						scavengedRecords[fmt.Sprintf("%sA", entry.Header().Name)] = entry
 					case *dns.AAAA:
-						scavengedRecords[fmt.Sprintf("%s_AAAA", entry.Header().Name)] = entry
+						scavengedRecords[fmt.Sprintf("%sAAAA", entry.Header().Name)] = entry
 					case *dns.PTR:
 						if !strings.HasPrefix(entry.Header().Name, "_") {
-							scavengedRecords[fmt.Sprintf("%s_PTR", entry.Header().Name)] = entry
+							scavengedRecords[fmt.Sprintf("%sPTR", entry.Header().Name)] = entry
 						}
 					}
 				}
@@ -276,7 +276,7 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 
 			var questionID string
 			if saveFullRequest {
-				rrCache.Clean(60)
+				rrCache.Clean(minMDnsTTL)
 				err := rrCache.Save()
 				if err != nil {
 					log.Warningf("resolver: failed to cache RR %s: %s", rrCache.Domain, err)
@@ -304,7 +304,7 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 					Server:      mDNSResolver.Server,
 					ServerScope: mDNSResolver.ServerIPScope,
 				}
-				rrCache.Clean(60)
+				rrCache.Clean(minMDnsTTL)
 				err := rrCache.Save()
 				if err != nil {
 					log.Warningf("resolver: failed to cache RR %s: %s", rrCache.Domain, err)

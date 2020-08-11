@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"runtime/pprof"
 	"time"
 
 	"github.com/safing/portbase/container"
@@ -35,7 +34,7 @@ func initializeLogFile(logFilePath string, identifier string, version string) *o
 	metaSection, err := dsd.Dump(meta, dsd.JSON)
 	if err != nil {
 		log.Printf("failed to serialize header for log file %s: %s\n", logFilePath, err)
-		finalizeLogFile(logFile, logFilePath)
+		finalizeLogFile(logFile)
 		return nil
 	}
 	c.AppendAsBlock(metaSection)
@@ -46,14 +45,16 @@ func initializeLogFile(logFilePath string, identifier string, version string) *o
 	_, err = logFile.Write(c.CompileData())
 	if err != nil {
 		log.Printf("failed to write header for log file %s: %s\n", logFilePath, err)
-		finalizeLogFile(logFile, logFilePath)
+		finalizeLogFile(logFile)
 		return nil
 	}
 
 	return logFile
 }
 
-func finalizeLogFile(logFile *os.File, logFilePath string) {
+func finalizeLogFile(logFile *os.File) {
+	logFilePath := logFile.Name()
+
 	err := logFile.Close()
 	if err != nil {
 		log.Printf("failed to close log file %s: %s\n", logFilePath, err)
@@ -61,28 +62,38 @@ func finalizeLogFile(logFile *os.File, logFilePath string) {
 
 	// check file size
 	stat, err := os.Stat(logFilePath)
-	if err == nil {
-		// delete if file is smaller than
-		if stat.Size() < 200 { // header + info is about 150 bytes
-			err := os.Remove(logFilePath)
-			if err != nil {
-				log.Printf("failed to delete empty log file %s: %s\n", logFilePath, err)
-			}
-		}
+	if err != nil {
+		return
+	}
+
+	// delete if file is smaller than
+	if stat.Size() >= 200 { // header + info is about 150 bytes
+		return
+	}
+
+	if err := os.Remove(logFilePath); err != nil {
+		log.Printf("failed to delete empty log file %s: %s\n", logFilePath, err)
 	}
 }
 
-func initControlLogFile() *os.File {
+func getLogFile(options *Options, version, ext string) *os.File {
 	// check logging dir
-	logFileBasePath := filepath.Join(logsRoot.Path, "control")
+	logFileBasePath := filepath.Join(logsRoot.Path, options.ShortIdentifier)
 	err := logsRoot.EnsureAbsPath(logFileBasePath)
 	if err != nil {
 		log.Printf("failed to check/create log file folder %s: %s\n", logFileBasePath, err)
 	}
 
 	// open log file
-	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.log", time.Now().UTC().Format("2006-01-02-15-04-05")))
-	return initializeLogFile(logFilePath, "control/portmaster-control", info.Version())
+	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s%s", time.Now().UTC().Format("2006-01-02-15-04-05"), ext))
+	return initializeLogFile(logFilePath, options.Identifier, version)
+}
+
+func getPmStartLogFile(ext string) *os.File {
+	return getLogFile(&Options{
+		ShortIdentifier: "start",
+		Identifier:      "start/portmaster-start",
+	}, info.Version(), ext)
 }
 
 //nolint:deadcode,unused // false positive on linux, currently used by windows only
@@ -92,44 +103,13 @@ func logControlError(cErr error) {
 		return
 	}
 
-	// check logging dir
-	logFileBasePath := filepath.Join(logsRoot.Path, "control")
-	err := logsRoot.EnsureAbsPath(logFileBasePath)
-	if err != nil {
-		log.Printf("failed to check/create log file folder %s: %s\n", logFileBasePath, err)
-	}
-
-	// open log file
-	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.error.log", time.Now().UTC().Format("2006-01-02-15-04-05")))
-	errorFile := initializeLogFile(logFilePath, "control/portmaster-control", info.Version())
+	errorFile := getPmStartLogFile(".error.log")
 	if errorFile == nil {
 		return
 	}
+	defer errorFile.Close()
 
-	// write error and close
 	fmt.Fprintln(errorFile, cErr.Error())
-	errorFile.Close()
-}
-
-//nolint:deadcode,unused // TODO
-func logControlStack() {
-	// check logging dir
-	logFileBasePath := filepath.Join(logsRoot.Path, "control")
-	err := logsRoot.EnsureAbsPath(logFileBasePath)
-	if err != nil {
-		log.Printf("failed to check/create log file folder %s: %s\n", logFileBasePath, err)
-	}
-
-	// open log file
-	logFilePath := filepath.Join(logFileBasePath, fmt.Sprintf("%s.stack.log", time.Now().UTC().Format("2006-01-02-15-04-05")))
-	errorFile := initializeLogFile(logFilePath, "control/portmaster-control", info.Version())
-	if errorFile == nil {
-		return
-	}
-
-	// write error and close
-	_ = pprof.Lookup("goroutine").WriteTo(errorFile, 2)
-	errorFile.Close()
 }
 
 //nolint:deadcode,unused // false positive on linux, currently used by windows only

@@ -8,8 +8,6 @@ func TestGet(t *testing.T) {
 	// TODO: write real tests
 	ActiveSecurityLevel()
 	SelectedSecurityLevel()
-	PortmasterStatus()
-	Gate17Status()
 	option := ConfigIsActive("invalid")
 	option(0)
 	option = ConfigIsActiveConcurrent("invalid")

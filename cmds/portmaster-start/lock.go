@@ -35,13 +35,7 @@ func checkAndCreateInstanceLock(name string) (pid int32, err error) {
 	// check if process exists
 	p, err := processInfo.NewProcess(int32(parsedPid))
 	if err == nil {
-		// TODO: remove this workaround as soon as NewProcess really returns an error on windows when the process does not exist
-		// Issue: https://github.com/shirou/gopsutil/issues/729
-		_, err = p.Name()
-		if err == nil {
-			// process exists
-			return p.Pid, nil
-		}
+		return p.Pid, nil
 	}
 
 	// else create new lock

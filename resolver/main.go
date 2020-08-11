@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"context"
+	"net"
 	"strings"
 	"time"
 
@@ -14,15 +15,23 @@ import (
 )
 
 var (
+	// ClearNameCacheEvent is a triggerable event that clears the name record cache.
+	ClearNameCacheEvent = "clear name cache"
+
 	module *modules.Module
 )
 
 func init() {
 	module = modules.Register("resolver", prep, start, nil, "base", "netenv")
+	module.RegisterEvent(ClearNameCacheEvent)
 }
 
 func prep() error {
 	intel.SetReverseResolver(ResolveIPAndValidate)
+
+	if err := prepEnvResolver(); err != nil {
+		return err
+	}
 
 	return prepConfig()
 }
@@ -67,11 +76,40 @@ func start() error {
 		return err
 	}
 
+	// cache clearing
+	err = module.RegisterEventHook(
+		"resolver",
+		ClearNameCacheEvent,
+		ClearNameCacheEvent,
+		clearNameCache,
+	)
+	if err != nil {
+		return err
+	}
+
 	module.StartServiceWorker(
 		"mdns handler",
 		5*time.Second,
 		listenToMDNS,
 	)
 
+	return nil
+}
+
+var (
+	localAddrFactory func(network string) net.Addr
+)
+
+// SetLocalAddrFactory supplies the intel package with a function to get permitted local addresses for connections.
+func SetLocalAddrFactory(laf func(network string) net.Addr) {
+	if localAddrFactory == nil {
+		localAddrFactory = laf
+	}
+}
+
+func getLocalAddr(network string) net.Addr {
+	if localAddrFactory != nil {
+		return localAddrFactory(network)
+	}
 	return nil
 }

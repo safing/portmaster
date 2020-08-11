@@ -21,7 +21,7 @@ func init() {
 	flag.StringVar(
 		&testResolver,
 		"resolver",
-		"dot://9.9.9.9:853?verify=dns.quad9.net&name=Quad9&blockedif=empty",
+		"dot://1.1.1.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip",
 		"set custom resolver for testing",
 	)
 }

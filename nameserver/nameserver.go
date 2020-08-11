@@ -115,7 +115,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 
 	// return with server failure if offline
 	if netenv.GetOnlineStatus() == netenv.StatusOffline &&
-		!netenv.IsOnlineStatusTestDomain(q.FQDN) {
+		!netenv.IsConnectivityDomain(q.FQDN) {
 		log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
 		returnServerFailure(w, query)
 		return nil
@@ -261,7 +261,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	rrCache, err := resolver.Resolve(ctx, q)
 	if err != nil {
 		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
-		tracer.Warningf("nameserver: %s requested %s%s: %s", conn.Process(), q.FQDN, q.QType, err)
+		tracer.Debugf("nameserver: %s requested %s%s: %s", conn.Process(), q.FQDN, q.QType, err)
 
 		if errors.Is(err, resolver.ErrBlocked) {
 			conn.Block(err.Error())
@@ -274,7 +274,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	}
 
 	tracer.Trace("nameserver: deciding on resolved dns")
-	rrCache = firewall.DecideOnResolvedDNS(conn, q, rrCache)
+	rrCache = firewall.DecideOnResolvedDNS(ctx, conn, q, rrCache)
 	if rrCache == nil {
 		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
 		return nil

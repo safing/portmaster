@@ -13,46 +13,43 @@ var (
 	defaultNameServers = []string{
 		// Collection of default DNS Servers
 
-		// Default servers should be:
-		// Anycast:
-		// - Servers should be reachable from anywhere with reasonable latency.
-		// - Servers should be near to the user for geo-content to work correctly.
-		// Private:
-		// - Servers should not do any or only minimal logging.
-		// - Available logging data may not be used against the user, ie. unethically.
+		// For a detailed explanation how we choose our default resolvers, check out
+		// https://safing.io/blog/2020/07/07/how-safing-selects-its-default-dns-providers/
 
-		// Sadly, only a few services come close to fulfilling these requirements.
-		// For now, we have settled for two bigger and well known services: Quad9 and Cloudflare.
-		// TODO: monitor situation and re-evaluate when new services become available
-		// TODO: explore other methods of making queries more private
+		// These resolvers define a working set. Which provider we selected as the
+		// primary depends on the current situation.
 
 		// We encourage everyone who has the technical abilities to set their own preferred servers.
+		// For a list of configuration options, see
+		// https://github.com/safing/portmaster/wiki/DNS-Server-Settings
 
-		// Default 1: Quad9
-		"dot://9.9.9.9:853?verify=dns.quad9.net&name=Quad9&blockedif=empty",         // Quad9
-		"dot://149.112.112.112:853?verify=dns.quad9.net&name=Quad9&blockedif=empty", // Quad9
+		// Quad9 (encrypted DNS)
+		// `dot://9.9.9.9:853?verify=dns.quad9.net&name=Quad9&blockedif=empty`,
+		// `dot://149.112.112.112:853?verify=dns.quad9.net&name=Quad9&blockedif=empty`,
 
-		// Default 2: Cloudflare
-		"dot://1.1.1.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip", // Cloudflare
-		"dot://1.0.0.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip", // Cloudflare
+		// Cloudflare (encrypted DNS, with malware protection)
+		`dot://1.1.1.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip`,
+		// `dot://1.0.0.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip`,
 
-		// Fallback 1: Quad9
-		"dns://9.9.9.9:53?name=Quad9&blockedif=empty",         // Quad9
-		"dns://149.112.112.112:53?name=Quad9&blockedif=empty", // Quad9
+		// AdGuard (encrypted DNS, default flavor)
+		// `dot://176.103.130.130:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
+		// `dot://176.103.130.131:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
 
-		// Fallback 2: Cloudflare
-		"dns://1.1.1.2:53?name=Cloudflare&blockedif=zeroip", // Cloudflare
-		"dns://1.0.0.2:53?name=Cloudflare&blockedif=zeroip", // Cloudflare
+		// Foundation for Applied Privacy (encrypted DNS)
+		// `dot://94.130.106.88:853?verify=dot1.applied-privacy.net&name=AppliedPrivacy`,
+		// `dot://94.130.106.88:443?verify=dot1.applied-privacy.net&name=AppliedPrivacy`,
 
-		// supported parameters
-		// - `verify=domain`: verify domain (dot only)
-		// future parameters:
-		//
-		// - `name=name`: human readable name for resolver
-		// - `blockedif=empty`: how to detect if the dns service blocked something
-		//	- `empty`: NXDomain result, but without any other record in any section
-		//  - `refused`: Request was refused
-		//	- `zeroip`: Answer only contains zeroip
+		// Quad9 (plain DNS)
+		// `dns://9.9.9.9:53?name=Quad9&blockedif=empty`,
+		// `dns://149.112.112.112:53?name=Quad9&blockedif=empty`,
+
+		// Cloudflare (plain DNS, with malware protection)
+		// `dns://1.1.1.2:53?name=Cloudflare&blockedif=zeroip`,
+		// `dns://1.0.0.2:53?name=Cloudflare&blockedif=zeroip`,
+
+		// AdGuard (plain DNS, default flavor)
+		// `dns://176.103.130.130&name=AdGuard&blockedif=zeroip`,
+		// `dns://176.103.130.131&name=AdGuard&blockedif=zeroip`,
 	}
 
 	CfgOptionNameServersKey   = "dns/nameservers"
