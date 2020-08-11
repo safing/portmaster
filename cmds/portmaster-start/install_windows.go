@@ -19,8 +19,6 @@ import (
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
-const exeSuffix = ".exe"
-
 func init() {
 	rootCmd.AddCommand(installCmd)
 	installCmd.AddCommand(installService)
