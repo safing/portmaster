@@ -23,15 +23,22 @@ var (
 	unidentifiedProcessScopePrefix = strconv.Itoa(process.UnidentifiedProcessID) + "/"
 )
 
+func getDNSRequestCacheKey(pid int, fqdn string) string {
+	return strconv.Itoa(pid) + "/" + fqdn
+}
+
 func removeOpenDNSRequest(pid int, fqdn string) {
 	openDNSRequestsLock.Lock()
 	defer openDNSRequestsLock.Unlock()
 
-	key := strconv.Itoa(pid) + "/" + fqdn
+	key := getDNSRequestCacheKey(pid, fqdn)
 	_, ok := openDNSRequests[key]
 	if ok {
 		delete(openDNSRequests, key)
-	} else if pid != process.UnidentifiedProcessID {
+		return
+	}
+
+	if pid != process.UnidentifiedProcessID {
 		// check if there is an open dns request from an unidentified process
 		delete(openDNSRequests, unidentifiedProcessScopePrefix+fqdn)
 	}
@@ -42,26 +49,24 @@ func SaveOpenDNSRequest(conn *Connection) {
 	openDNSRequestsLock.Lock()
 	defer openDNSRequestsLock.Unlock()
 
-	key := strconv.Itoa(conn.process.Pid) + "/" + conn.Scope
-
-	existingConn, ok := openDNSRequests[key]
-	if ok {
+	key := getDNSRequestCacheKey(conn.process.Pid, conn.Scope)
+	if existingConn, ok := openDNSRequests[key]; ok {
 		existingConn.Lock()
 		defer existingConn.Unlock()
-
 		existingConn.Ended = conn.Started
-	} else {
-		openDNSRequests[key] = conn
+		return
 	}
+
+	openDNSRequests[key] = conn
 }
 
 func openDNSRequestWriter(ctx context.Context) error {
 	ticker := time.NewTicker(writeOpenDNSRequestsTickDuration)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			ticker.Stop()
 			return nil
 		case <-ticker.C:
 			writeOpenDNSRequestsToDB()

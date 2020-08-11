@@ -35,8 +35,8 @@ Think of a pi-hole for your computer. Or an ad-blocker that blocks ads on your w
 **Features/Settings:**
 
 - Select and activate block-lists
-- Manually black/whitelist domains
-  - You can whitelist domains in case something breaks
+- Manually block/allow domains
+  - You can allow domains in case something breaks
 - CNAME Blocking (block these new nasty "unblockable" ads/trackers)
 - Block all subdomains of a domain in the block-lists
 

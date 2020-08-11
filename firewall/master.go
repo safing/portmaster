@@ -7,7 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/safing/portmaster/detection/dga"
 	"github.com/safing/portmaster/netenv"
+	"golang.org/x/net/publicsuffix"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network"
@@ -58,6 +60,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 		checkBypassPrevention,
 		checkFilterLists,
 		checkInbound,
+		checkDomainHeuristics,
 		checkDefaultPermit,
 		checkAutoPermitRelated,
 		checkDefaultAction,
@@ -70,7 +73,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 	}
 
 	// DefaultAction == DefaultActionBlock
-	conn.Deny("endpoint is not whitelisted (default=block)")
+	conn.Deny("endpoint is not allowed (default=block)")
 }
 
 // checkPortmasterConnection allows all connection that originate from
@@ -281,10 +284,70 @@ func checkFilterLists(ctx context.Context, conn *network.Connection, pkt packet.
 	return false
 }
 
+func checkDomainHeuristics(ctx context.Context, conn *network.Connection, _ packet.Packet) bool {
+	p := conn.Process().Profile()
+
+	if !p.DomainHeuristics() {
+		return false
+	}
+
+	if conn.Entity.Domain == "" {
+		return false
+	}
+
+	trimmedDomain := strings.TrimRight(conn.Entity.Domain, ".")
+	etld1, err := publicsuffix.EffectiveTLDPlusOne(trimmedDomain)
+	if err != nil {
+		// we don't apply any checks here and let the request through
+		// because a malformed domain-name will likely be dropped by
+		// checks better suited for that.
+		log.Tracer(ctx).Warningf("nameserver: failed to get eTLD+1: %s", err)
+		return false
+	}
+
+	domainToCheck := strings.Split(etld1, ".")[0]
+	score := dga.LmsScore(domainToCheck)
+	if score < 5 {
+		log.Tracer(ctx).Warningf(
+			"nameserver: possible data tunnel by %s in eTLD+1 %s: %s has an lms score of %.2f, returning nxdomain",
+			conn.Process(),
+			etld1,
+			domainToCheck,
+			score,
+		)
+		conn.Block("possible DGA domain commonly used by malware")
+		return true
+	}
+	log.Tracer(ctx).Infof("LMS score of eTLD+1 %s is %.2f", etld1, score)
+
+	// 100 is a somewhat arbitrary threshold to ensure we don't mess
+	// around with CDN domain names to early. They use short second-level
+	// domains that would trigger LMS checks but are to small to actually
+	// exfiltrate data.
+	if len(conn.Entity.Domain) > len(etld1)+100 {
+		domainToCheck = trimmedDomain[0:len(etld1)]
+		score := dga.LmsScoreOfDomain(domainToCheck)
+		if score < 10 {
+			log.Tracer(ctx).Warningf(
+				"nameserver: possible data tunnel by %s in subdomain %s: %s has an lms score of %.2f, returning nxdomain",
+				conn.Process(),
+				conn.Entity.Domain,
+				domainToCheck,
+				score,
+			)
+			conn.Block("possible data tunnel for covert communication and protection bypassing")
+			return true
+		}
+		log.Tracer(ctx).Infof("LMS score of entire domain is %.2f", score)
+	}
+
+	return false
+}
+
 func checkInbound(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
 	// implicit default=block for inbound
 	if conn.Inbound {
-		conn.Drop("endpoint is not whitelisted (incoming is always default=block)")
+		conn.Drop("endpoint is not allowed (incoming is always default=block)")
 		return true
 	}
 	return false
@@ -294,7 +357,7 @@ func checkDefaultPermit(_ context.Context, conn *network.Connection, _ packet.Pa
 	// check default action
 	p := conn.Process().Profile()
 	if p.DefaultAction() == profile.DefaultActionPermit {
-		conn.Accept("endpoint is not blacklisted (default=permit)")
+		conn.Accept("endpoint is not blocked (default=permit)")
 		return true
 	}
 	return false
