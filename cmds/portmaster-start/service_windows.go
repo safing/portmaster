@@ -88,7 +88,7 @@ service:
 	return ssec, errno
 }
 
-func runService(cmd *cobra.Command, opts *Options, cmdArgs []string) error {
+func runService(_ *cobra.Command, opts *Options, cmdArgs []string) error {
 	// check if we are running interactively
 	isDebug, err := svc.IsAnInteractiveSession()
 	if err != nil {

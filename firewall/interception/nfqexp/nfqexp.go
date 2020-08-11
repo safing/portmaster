@@ -1,3 +1,5 @@
+// +build linux
+
 // Package nfqexp contains a nfqueue library experiment.
 package nfqexp
 
