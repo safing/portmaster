@@ -70,7 +70,7 @@ func InitializeInspectors(conn *network.Connection, pkt packet.Packet) {
 		inspector, err := r.Factory(conn, pkt)
 		switch {
 		case err != nil:
-			log.Tracer(pkt.Ctx()).Warningf("failed to initialize inspector %s: %w", r.Name, err)
+			log.Tracer(pkt.Ctx()).Warningf("failed to initialize inspector %s: %v", r.Name, err)
 		case inspector != nil:
 			connInspectors = append(connInspectors, inspector)
 		}
