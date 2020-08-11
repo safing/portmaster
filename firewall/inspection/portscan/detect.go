@@ -34,11 +34,11 @@ type ipData struct {
 }
 
 const (
-	//fixme
-	cleanUpInterval = 1 * time.Minute
+	//fixme: Which production-values do we want to have?
+	cleanUpInterval = 1 * time.Minute //fixme: Debug-Value
 	cleanUpMaxDelay = 5 * time.Minute
 
-	startAfter            = 1 * time.Second //When should the Portscan Detection start to prevent blocking Apps that just try to reconnect?
+	startAfter            = 1 * time.Second //fixme: Debug Value; When should the Portscan Detection start to prevent blocking Apps that just try to reconnect?
 	decreaseInterval      = 11 * time.Second
 	unblockIdleTime       = 1 * time.Hour
 	undoSuspicionIdleTime = 24 * time.Hour
@@ -80,10 +80,10 @@ func (d *Detector) Inspect(conn *network.Connection, pkt packet.Packet) (pktVerd
 
 	ctx := pkt.Ctx()
 
-	//fixme: DEL
-	if conn.LocalIP.Equal(net.IP([]byte{255, 255, 255, 255})) {
-		return network.VerdictUndecided, false, nil
-	}
+	//Delete for production. This just reduces the amount of Debug Messages significantly
+	//	if conn.LocalIP.Equal(net.IP([]byte{255, 255, 255, 255})) {
+	//		return network.VerdictUndecided, false, nil
+	//	}
 	log.Tracer(ctx).Debugf("new connection for Portscan detection")
 
 	rIP, ok := conn.Entity.GetIP() //remote IP
@@ -152,7 +152,10 @@ func handleMaliciousPacket(ctx context.Context, inMap bool, conn *network.Connec
 		ips[ipString] = &ipData{
 			score: addScore,
 			blockedPorts: []tcpUDPport{
-				tcpUDPport{protocol: conn.IPProtocol, port: conn.LocalPort},
+				tcpUDPport{
+					protocol: conn.IPProtocol,
+					port:     conn.LocalPort,
+				},
 			},
 			lastSeen:    time.Now(),
 			lastUpdated: time.Now(),
@@ -177,7 +180,7 @@ func handleMaliciousPacket(ctx context.Context, inMap bool, conn *network.Connec
 				entry.blocked = true
 				entry.previousOffender = true
 
-				//fixme: actually I just want to know if THIS threat exists - I don't need prefixing. Maybe we can do it simpler ...
+				//TODO: actually I just want to know if THIS threat exists - I don't need prefixing. Maybe we can do it simpler ... (less CPU-intensive)
 				if t, _ := status.GetThreats(threadPrefix + ipString); len(t) == 0 {
 					log.Tracer(ctx).Debugf("new Threat")
 					status.AddOrUpdateThreat(&status.Threat{
