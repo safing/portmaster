@@ -61,11 +61,8 @@ func upgrader(_ context.Context, _ interface{}) error {
 		log.Warningf("updates: failed to upgrade portmaster-start: %s", err)
 	}
 
-	binName := strings.TrimSuffix(
-		filepath.Base(os.Args[0]),
-		".exe",
-	)
-	switch binName {
+	binBaseName := strings.Split(filepath.Base(os.Args[0]), "_")[0]
+	switch binBaseName {
 	case "portmaster-core":
 		err = upgradeCoreNotify()
 		if err != nil {
@@ -83,23 +80,24 @@ func upgrader(_ context.Context, _ interface{}) error {
 }
 
 func upgradeCoreNotify() error {
-	// check if we can upgrade
-	if pmCoreUpdate == nil || pmCoreUpdate.UpgradeAvailable() {
-		identifier := "core/portmaster-core" // identifier, use forward slash!
-		if onWindows {
-			identifier += exeExt
-		}
-
-		// get newest portmaster-core
-		new, err := GetPlatformFile(identifier)
-		if err != nil {
-			return err
-		}
-		pmCoreUpdate = new
-	} else {
+	if pmCoreUpdate != nil && !pmCoreUpdate.UpgradeAvailable() {
 		return nil
 	}
 
+	// make identifier
+	identifier := "core/portmaster-core" // identifier, use forward slash!
+	if onWindows {
+		identifier += exeExt
+	}
+
+	// get newest portmaster-core
+	new, err := GetPlatformFile(identifier)
+	if err != nil {
+		return err
+	}
+	pmCoreUpdate = new
+
+	// check for new version
 	if info.GetInfo().Version != pmCoreUpdate.Version() {
 		n := notifications.NotifyInfo(
 			"updates:core-update-available",
@@ -143,24 +141,24 @@ func upgradeHub() error {
 	if hubUpgradeStarted {
 		return nil
 	}
-
-	// check if we can upgrade
-	if spnHubUpdate == nil || spnHubUpdate.UpgradeAvailable() {
-		identifier := "hub/spn-hub" // identifier, use forward slash!
-		if onWindows {
-			identifier += exeExt
-		}
-
-		// get newest spn-hub
-		new, err := GetPlatformFile(identifier)
-		if err != nil {
-			return err
-		}
-		spnHubUpdate = new
-	} else {
+	if spnHubUpdate != nil && !spnHubUpdate.UpgradeAvailable() {
 		return nil
 	}
 
+	// make identifier
+	identifier := "hub/spn-hub" // identifier, use forward slash!
+	if onWindows {
+		identifier += exeExt
+	}
+
+	// get newest spn-hub
+	new, err := GetPlatformFile(identifier)
+	if err != nil {
+		return err
+	}
+	spnHubUpdate = new
+
+	// check for new version
 	if info.GetInfo().Version != spnHubUpdate.Version() {
 		// get random delay with up to three hours
 		delayMinutes, err := rng.Number(3 * 60)
@@ -168,7 +166,7 @@ func upgradeHub() error {
 			return err
 		}
 
-		triggerRestart(time.Duration(delayMinutes) * time.Minute)
+		DelayedRestart(time.Duration(delayMinutes) * time.Minute)
 		hubUpgradeStarted = true
 	}
 

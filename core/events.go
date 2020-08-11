@@ -43,8 +43,6 @@ func shutdown(ctx context.Context, _ interface{}) error {
 // restart restarts the Portmaster.
 func restart(ctx context.Context, data interface{}) error {
 	log.Info("core: user requested restart")
-	modules.SetExitStatusCode(updates.RestartExitCode)
-	// Do not use a worker, as this would block itself here.
-	go modules.Shutdown() //nolint:errcheck
+	updates.RestartNow()
 	return nil
 }
