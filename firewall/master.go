@@ -315,7 +315,7 @@ func checkDomainHeuristics(ctx context.Context, conn *network.Connection, _ pack
 			domainToCheck,
 			score,
 		)
-		conn.Block("Possible data tunnel")
+		conn.Block("possible DGA domain commonly used by malware")
 		return true
 	}
 	log.Tracer(ctx).Infof("LMS score of eTLD+1 %s is %.2f", etld1, score)
@@ -335,7 +335,7 @@ func checkDomainHeuristics(ctx context.Context, conn *network.Connection, _ pack
 				domainToCheck,
 				score,
 			)
-			conn.Block("Possible data tunnel")
+			conn.Block("possible data tunnel for covert communication and protection bypassing")
 			return true
 		}
 		log.Tracer(ctx).Infof("LMS score of entire domain is %.2f", score)
