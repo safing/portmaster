@@ -9,6 +9,7 @@ import (
 
 	"github.com/safing/portmaster/detection/dga"
 	"github.com/safing/portmaster/netenv"
+	"golang.org/x/net/publicsuffix"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network"
@@ -59,7 +60,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 		checkBypassPrevention,
 		checkFilterLists,
 		checkInbound,
-		checkLMSScore,
+		checkDomainHeuristics,
 		checkDefaultPermit,
 		checkAutoPermitRelated,
 		checkDefaultAction,
@@ -283,19 +284,63 @@ func checkFilterLists(ctx context.Context, conn *network.Connection, pkt packet.
 	return false
 }
 
-func checkLMSScore(ctx context.Context, conn *network.Connection, _ packet.Packet) bool {
+func checkDomainHeuristics(ctx context.Context, conn *network.Connection, _ packet.Packet) bool {
+	p := conn.Process().Profile()
+
+	if !p.DomainHeuristics() {
+		return false
+	}
+
 	if conn.Entity.Domain == "" {
 		return false
 	}
 
-	// check for possible DNS tunneling / data transmission
-	lms := dga.LmsScoreOfDomain(conn.Entity.Domain)
-	if lms < 10 {
-		log.Tracer(ctx).Warningf("nameserver: possible data tunnel by %s: %s has lms score of %f, returning nxdomain", conn.Process(), conn.Entity.Domain, lms)
-		conn.BlockWithContext("Possible data tunnel", conn.ReasonContext)
+	trimmedDomain := strings.TrimRight(conn.Entity.Domain, ".")
+	etld1, err := publicsuffix.EffectiveTLDPlusOne(trimmedDomain)
+	if err != nil {
+		// we don't apply any checks here and let the request through
+		// because a malformed domain-name will likely be dropped by
+		// checks better suited for that.
+		log.Tracer(ctx).Warningf("nameserver: failed to get eTLD+1: %s", err)
+		return false
+	}
 
+	domainToCheck := strings.Split(etld1, ".")[0]
+	score := dga.LmsScore(domainToCheck)
+	if score < 5 {
+		log.Tracer(ctx).Warningf(
+			"nameserver: possible data tunnel by %s in eTLD+1 %s: %s has an lms score of %.2f, returning nxdomain",
+			conn.Process(),
+			etld1,
+			domainToCheck,
+			score,
+		)
+		conn.Block("Possible data tunnel")
 		return true
 	}
+	log.Tracer(ctx).Infof("LMS score of eTLD+1 %s is %.2f", etld1, score)
+
+	// 100 is a somewhat arbitrary threshold to ensure we don't mess
+	// around with CDN domain names to early. They use short second-level
+	// domains that would trigger LMS checks but are to small to actually
+	// exfiltrate data.
+	if len(conn.Entity.Domain) > len(etld1)+100 {
+		domainToCheck = trimmedDomain[0:len(etld1)]
+		score := dga.LmsScoreOfDomain(domainToCheck)
+		if score < 10 {
+			log.Tracer(ctx).Warningf(
+				"nameserver: possible data tunnel by %s in subdomain %s: %s has an lms score of %.2f, returning nxdomain",
+				conn.Process(),
+				conn.Entity.Domain,
+				domainToCheck,
+				score,
+			)
+			conn.Block("Possible data tunnel")
+			return true
+		}
+		log.Tracer(ctx).Infof("LMS score of entire domain is %.2f", score)
+	}
+
 	return false
 }
 
