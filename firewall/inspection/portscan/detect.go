@@ -65,7 +65,7 @@ var (
 	runOnlyOne sync.Mutex
 )
 
-// Detector detects if a connection is encrypted.
+// Detector detects if a connection is part of a portscan which already sent some packets.
 type Detector struct{}
 
 // Name implements the inspection interface.
@@ -97,7 +97,10 @@ func (d *Detector) Inspect(conn *network.Connection, pkt packet.Packet) (pktVerd
 	log.Tracer(ctx).Debugf("Conn: %v, Entity: %#v, Protocol: %v, LocalIP: %s, LocalPort: %d, inMap: %v, entry: %+v", conn, conn.Entity, conn.IPProtocol, conn.LocalIP.String(), conn.LocalPort, inMap, entry)
 
 	if inMap {
-		entry.updateScoreIgnoreBlockPrevOffender(ipString)
+		inMap = entry.updateScoreIgnoreBlockPrevOffender(ipString)
+	}
+
+	if inMap {
 		entry.lastSeen = time.Now()
 
 		if entry.ignore {
@@ -200,7 +203,9 @@ func handleMaliciousPacket(ctx context.Context, inMap bool, conn *network.Connec
 
 //updateScoreIgnoreBlockPrevOffender updates this 4 Values of the Struct
 //ipString needs to correspond to the key of the entry in the map ips
-func (d *ipData) updateScoreIgnoreBlockPrevOffender(ipString string) {
+//WARNING: This function maybe deletes the entry ipString from the Map ips. (look at the returncode)
+//return: still in map? (bool)
+func (d *ipData) updateScoreIgnoreBlockPrevOffender(ipString string) bool {
 	d.score -= intMin(int(time.Since(d.lastUpdated)/decreaseInterval), d.score)
 
 	if d.ignore {
@@ -220,7 +225,13 @@ func (d *ipData) updateScoreIgnoreBlockPrevOffender(ipString string) {
 		status.DeleteThreat(threadPrefix + ipString)
 	}
 
+	if !d.blocked && !d.ignore && !d.previousOffender && d.score == 0 {
+		delete(ips, ipString)
+		return false
+	}
+
 	d.lastUpdated = time.Now()
+	return true
 }
 
 // Destroy implements the destroy interface.
@@ -254,8 +265,11 @@ func updateWholeList() {
 		runOnlyOne.Lock()
 		defer runOnlyOne.Unlock()
 
-		entry.updateScoreIgnoreBlockPrevOffender(ip)
-		log.Debugf("%s: %v", ip, entry)
+		if entry.updateScoreIgnoreBlockPrevOffender(ip) {
+			log.Debugf("%s: %v", ip, entry)
+		} else {
+			log.Debugf("Removed %s from the list", ip)
+		}
 	}
 	log.Debugf("Portscan detection: finished update list&cleanup")
 
