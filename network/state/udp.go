@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 
@@ -155,5 +156,5 @@ func (table *udpTable) cleanStates(now time.Time) {
 
 func makeUDPStateKey(address socket.Address) string {
 	// This could potentially go wrong, but as all IPs are created by the same source, everything should be fine.
-	return string(address.IP) + string(address.Port)
+	return string(address.IP) + strconv.Itoa(int(address.Port))
 }
