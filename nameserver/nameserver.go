@@ -138,26 +138,22 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		return nil
 	}
 
-	// get addresses
+	// get remote address
 	remoteAddr, ok := w.RemoteAddr().(*net.UDPAddr)
 	if !ok {
-		log.Warningf("nameserver: could not get remote address of request for %s%s, ignoring", q.FQDN, q.QType)
+		log.Warningf("nameserver: failed to get remote address of request for %s%s, ignoring", q.FQDN, q.QType)
 		return nil
 	}
-	if !netutils.IPIsLocalhost(remoteAddr.IP) {
-		// If request is not from a localhost address, check it it's really local.
 
-		localAddr, ok := w.RemoteAddr().(*net.UDPAddr)
-		if !ok {
-			log.Warningf("nameserver: could not get local address of request for %s%s, ignoring", q.FQDN, q.QType)
-			return nil
-		}
-
-		// ignore external request
-		if !remoteAddr.IP.Equal(localAddr.IP) {
-			log.Warningf("nameserver: external request for %s%s, ignoring", q.FQDN, q.QType)
-			return nil
-		}
+	// check if the request is local
+	local, err := netenv.IsMyIP(remoteAddr.IP)
+	if err != nil {
+		log.Warningf("nameserver: failed to check if request for %s%s is local: %s", q.FQDN, q.QType, err)
+		return nil
+	}
+	if !local {
+		log.Warningf("nameserver: external request for %s%s, ignoring", q.FQDN, q.QType)
+		return nil
 	}
 
 	// check if valid domain name

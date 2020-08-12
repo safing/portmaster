@@ -1,9 +1,11 @@
 package netenv
 
 import (
+	"fmt"
 	"net"
-	"strings"
+	"sync"
 
+	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network/netutils"
 )
 
@@ -14,13 +16,16 @@ func GetAssignedAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
 		return nil, nil, err
 	}
 	for _, addr := range addrs {
-		ip := net.ParseIP(strings.Split(addr.String(), "/")[0])
-		if ip != nil {
-			if ip4 := ip.To4(); ip4 != nil {
-				ipv4 = append(ipv4, ip4)
-			} else {
-				ipv6 = append(ipv6, ip)
-			}
+		netAddr, ok := addr.(*net.IPNet)
+		if !ok {
+			log.Warningf("netenv: interface address of unexpected type %T", addr)
+			continue
+		}
+
+		if ip4 := netAddr.IP.To4(); ip4 != nil {
+			ipv4 = append(ipv4, ip4)
+		} else {
+			ipv6 = append(ipv6, netAddr.IP)
 		}
 	}
 	return
@@ -43,4 +48,51 @@ func GetAssignedGlobalAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
 		}
 	}
 	return
+}
+
+var (
+	myIPs     []net.IP
+	myIPsLock sync.Mutex
+)
+
+// IsMyIP returns whether the given IP is currently configured on the local host.
+func IsMyIP(ip net.IP) (yes bool, err error) {
+	if netutils.IPIsLocalhost(ip) {
+		return true, nil
+	}
+
+	myIPsLock.Lock()
+	defer myIPsLock.Unlock()
+
+	// check
+	for _, myIP := range myIPs {
+		if ip.Equal(myIP) {
+			return true, nil
+		}
+	}
+
+	// refresh IPs
+	myAddrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return false, fmt.Errorf("failed to refresh interface addresses: %s", err)
+	}
+	myIPs = make([]net.IP, 0, len(myAddrs))
+	for _, addr := range myAddrs {
+		netAddr, ok := addr.(*net.IPNet)
+		if !ok {
+			log.Warningf("netenv: interface address of unexpected type %T", addr)
+			continue
+		}
+
+		myIPs = append(myIPs, netAddr.IP)
+	}
+
+	// check again
+	for _, myIP := range myIPs {
+		if ip.Equal(myIP) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

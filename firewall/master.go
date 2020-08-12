@@ -301,15 +301,15 @@ func checkDomainHeuristics(ctx context.Context, conn *network.Connection, _ pack
 		// we don't apply any checks here and let the request through
 		// because a malformed domain-name will likely be dropped by
 		// checks better suited for that.
-		log.Tracer(ctx).Warningf("nameserver: failed to get eTLD+1: %s", err)
+		log.Tracer(ctx).Warningf("filter: failed to get eTLD+1: %s", err)
 		return false
 	}
 
 	domainToCheck := strings.Split(etld1, ".")[0]
 	score := dga.LmsScore(domainToCheck)
 	if score < 5 {
-		log.Tracer(ctx).Warningf(
-			"nameserver: possible data tunnel by %s in eTLD+1 %s: %s has an lms score of %.2f, returning nxdomain",
+		log.Tracer(ctx).Debugf(
+			"filter: possible data tunnel by %s in eTLD+1 %s: %s has an lms score of %.2f",
 			conn.Process(),
 			etld1,
 			domainToCheck,
@@ -318,7 +318,7 @@ func checkDomainHeuristics(ctx context.Context, conn *network.Connection, _ pack
 		conn.Block("possible DGA domain commonly used by malware")
 		return true
 	}
-	log.Tracer(ctx).Infof("LMS score of eTLD+1 %s is %.2f", etld1, score)
+	log.Tracer(ctx).Tracef("filter: LMS score of eTLD+1 %s is %.2f", etld1, score)
 
 	// 100 is a somewhat arbitrary threshold to ensure we don't mess
 	// around with CDN domain names to early. They use short second-level
@@ -328,8 +328,8 @@ func checkDomainHeuristics(ctx context.Context, conn *network.Connection, _ pack
 		domainToCheck = trimmedDomain[0:len(etld1)]
 		score := dga.LmsScoreOfDomain(domainToCheck)
 		if score < 10 {
-			log.Tracer(ctx).Warningf(
-				"nameserver: possible data tunnel by %s in subdomain %s: %s has an lms score of %.2f, returning nxdomain",
+			log.Tracer(ctx).Debugf(
+				"filter: possible data tunnel by %s in subdomain of %s: %s has an lms score of %.2f",
 				conn.Process(),
 				conn.Entity.Domain,
 				domainToCheck,
@@ -338,7 +338,7 @@ func checkDomainHeuristics(ctx context.Context, conn *network.Connection, _ pack
 			conn.Block("possible data tunnel for covert communication and protection bypassing")
 			return true
 		}
-		log.Tracer(ctx).Infof("LMS score of entire domain is %.2f", score)
+		log.Tracer(ctx).Tracef("filter: LMS score of entire domain is %.2f", score)
 	}
 
 	return false
