@@ -23,7 +23,7 @@ type reason struct {
 func (r *reason) String() string {
 	prefix := "endpoint in blocklist: "
 	if r.Permitted {
-		prefix = "endpoint in whitelist: "
+		prefix = "endpoint in allowlist: "
 	}
 
 	return prefix + r.description + " " + r.Value

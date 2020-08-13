@@ -45,6 +45,7 @@ type LayeredProfile struct {
 	FilterSubDomains    config.BoolOption
 	FilterCNAMEs        config.BoolOption
 	PreventBypassing    config.BoolOption
+	DomainHeuristics    config.BoolOption
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -107,6 +108,10 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	new.PreventBypassing = new.wrapSecurityLevelOption(
 		CfgOptionPreventBypassingKey,
 		cfgOptionPreventBypassing,
+	)
+	new.DomainHeuristics = new.wrapSecurityLevelOption(
+		CfgOptionDomainHeuristicsKey,
+		cfgOptionDomainHeuristics,
 	)
 
 	// TODO: load linked profiles.

@@ -86,10 +86,10 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	timestamp := time.Now().Unix()
 	dnsConn := &Connection{
 		Scope: fqdn,
-		Entity: (&intel.Entity{
+		Entity: &intel.Entity{
 			Domain: fqdn,
 			CNAME:  cnames,
-		}),
+		},
 		process: proc,
 		Started: timestamp,
 		Ended:   timestamp,
@@ -122,20 +122,20 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		default: // netutils.Invalid
 			scope = IncomingInvalid
 		}
-		entity = (&intel.Entity{
+		entity = &intel.Entity{
 			IP:       pkt.Info().Src,
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().SrcPort,
-		})
+		}
 
 	} else {
 
 		// outbound connection
-		entity = (&intel.Entity{
+		entity = &intel.Entity{
 			IP:       pkt.Info().Dst,
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().DstPort,
-		})
+		}
 
 		// check if we can find a domain for that IP
 		ipinfo, err := resolver.GetIPInfo(pkt.Info().Dst.String())

@@ -47,14 +47,14 @@ func lookupBlockLists(entity, value string) ([]string, error) {
 }
 
 // LookupCountry returns a list of sources that mark the country
-// as blacklisted. If country is not stored in the cache database
+// as blocked. If country is not stored in the cache database
 // a nil slice is returned.
 func LookupCountry(country string) ([]string, error) {
 	return lookupBlockLists("country", country)
 }
 
 // LookupDomain returns a list of sources that mark the domain
-// as blacklisted. If domain is not stored in the cache database
+// as blocked. If domain is not stored in the cache database
 // a nil slice is returned.
 func LookupDomain(domain string) ([]string, error) {
 	// make sure we only fully qualified domains
@@ -67,13 +67,13 @@ func LookupDomain(domain string) ([]string, error) {
 }
 
 // LookupASNString returns a list of sources that mark the ASN
-// as blacklisted. If ASN is not stored in the cache database
+// as blocked. If ASN is not stored in the cache database
 // a nil slice is returned.
 func LookupASNString(asn string) ([]string, error) {
 	return lookupBlockLists("asn", asn)
 }
 
-// LookupIP returns a list of blacklist sources that contain
+// LookupIP returns a list of block sources that contain
 // a reference to ip. LookupIP automatically checks the IPv4 or
 // IPv6 lists respectively.
 func LookupIP(ip net.IP) ([]string, error) {
@@ -95,7 +95,7 @@ func LookupIPString(ipStr string) ([]string, error) {
 	return LookupIP(ip)
 }
 
-// LookupIPv4String returns a list of blacklist sources that
+// LookupIPv4String returns a list of block sources that
 // contain a reference to ip. If the IP is not stored in the
 // cache database a nil slice is returned.
 func LookupIPv4String(ipv4 string) ([]string, error) {
@@ -113,7 +113,7 @@ func LookupIPv4(ipv4 net.IP) ([]string, error) {
 	return LookupIPv4String(ip.String())
 }
 
-// LookupIPv6String returns a list of blacklist sources that
+// LookupIPv6String returns a list of block sources that
 // contain a reference to ip. If the IP is not stored in the
 // cache database a nil slice is returned.
 func LookupIPv6String(ipv6 string) ([]string, error) {

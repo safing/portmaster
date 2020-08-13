@@ -12,7 +12,6 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
-	"github.com/safing/portmaster/detection/dga"
 	"github.com/safing/portmaster/firewall"
 	"github.com/safing/portmaster/nameserver/nsutil"
 	"github.com/safing/portmaster/netenv"
@@ -28,7 +27,6 @@ var (
 	dnsServer *dns.Server
 
 	listenAddress = "0.0.0.0:53"
-	ipv4Localhost = net.IPv4(127, 0, 0, 1)
 	localhostRRs  []dns.RR
 )
 
@@ -140,26 +138,22 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		return nil
 	}
 
-	// get addresses
+	// get remote address
 	remoteAddr, ok := w.RemoteAddr().(*net.UDPAddr)
 	if !ok {
-		log.Warningf("nameserver: could not get remote address of request for %s%s, ignoring", q.FQDN, q.QType)
+		log.Warningf("nameserver: failed to get remote address of request for %s%s, ignoring", q.FQDN, q.QType)
 		return nil
 	}
-	if !remoteAddr.IP.Equal(ipv4Localhost) {
-		// if request is not coming from 127.0.0.1, check if it's really local
 
-		localAddr, ok := w.RemoteAddr().(*net.UDPAddr)
-		if !ok {
-			log.Warningf("nameserver: could not get local address of request for %s%s, ignoring", q.FQDN, q.QType)
-			return nil
-		}
-
-		// ignore external request
-		if !remoteAddr.IP.Equal(localAddr.IP) {
-			log.Warningf("nameserver: external request for %s%s, ignoring", q.FQDN, q.QType)
-			return nil
-		}
+	// check if the request is local
+	local, err := netenv.IsMyIP(remoteAddr.IP)
+	if err != nil {
+		log.Warningf("nameserver: failed to check if request for %s%s is local: %s", q.FQDN, q.QType, err)
+		return nil
+	}
+	if !local {
+		log.Warningf("nameserver: external request for %s%s, ignoring", q.FQDN, q.QType)
+		return nil
 	}
 
 	// check if valid domain name
@@ -211,17 +205,6 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 
 	// save security level to query
 	q.SecurityLevel = conn.Process().Profile().SecurityLevel()
-
-	// check for possible DNS tunneling / data transmission
-	// TODO: improve this
-	lms := dga.LmsScoreOfDomain(q.FQDN)
-	// log.Tracef("nameserver: domain %s has lms score of %f", fqdn, lms)
-	if lms < 10 {
-		tracer.Warningf("nameserver: possible data tunnel by %s: %s has lms score of %f, returning nxdomain", conn.Process(), q.FQDN, lms)
-		conn.Block("Possible data tunnel")
-		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
-		return nil
-	}
 
 	// check profile before we even get intel and rr
 	firewall.DecideOnConnection(ctx, conn, nil)

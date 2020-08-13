@@ -4,16 +4,13 @@ import (
 	"strings"
 )
 
-// LmsScoreOfDomain calculates the mean longest meaningful substring of a domain. It follows some special rules to increase accuracy. It returns a value between 0 and 100, representing the length-based percentage of the meaningful substring.
+// LmsScoreOfDomain calculates the mean longest meaningful substring of a domain.
+// It follows some special rules to increase accuracy. It returns a value between
+// 0 and 100, representing the length-based percentage of the meaningful substring.
 func LmsScoreOfDomain(domain string) float64 {
 	var totalScore float64
 	domain = strings.ToLower(domain)
 	subjects := strings.Split(domain, ".")
-	// ignore the last two parts
-	if len(subjects) <= 3 {
-		return 100
-	}
-	subjects = subjects[:len(subjects)-3]
 	var totalLength int
 	for _, subject := range subjects {
 		totalLength += len(subject)
@@ -27,7 +24,9 @@ func LmsScoreOfDomain(domain string) float64 {
 	return totalScore
 }
 
-// LmsScore calculates the longest meaningful substring of a domain. It returns a value between 0 and 100, representing the length-based percentage of the meaningful substring.
+// LmsScore calculates the longest meaningful substring of a domain. It returns a
+// value between 0 and 100, representing the length-based percentage of the
+// meaningful substring.
 func LmsScore(subject string) float64 {
 	lmsStart := -1
 	lmsStop := -1

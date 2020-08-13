@@ -80,7 +80,7 @@ func init() {
 		"mangle INPUT -j C171",
 		"filter OUTPUT -j C17",
 		"filter INPUT -j C17",
-		"nat OUTPUT -m mark --mark 1799 -p udp -j DNAT --to 127.0.0.1:53",
+		"nat OUTPUT -m mark --mark 1799 -p udp -j DNAT --to 127.0.0.17:53",
 		"nat OUTPUT -m mark --mark 1717 -p tcp -j DNAT --to 127.0.0.17:717",
 		"nat OUTPUT -m mark --mark 1717 -p udp -j DNAT --to 127.0.0.17:717",
 		// "nat OUTPUT -m mark --mark 1717 ! -p tcp ! -p udp -j DNAT --to 127.0.0.17",
@@ -115,7 +115,7 @@ func init() {
 		"mangle INPUT -j C171",
 		"filter OUTPUT -j C17",
 		"filter INPUT -j C17",
-		"nat OUTPUT -m mark --mark 1799 -p udp -j DNAT --to [::1]:53",
+		"nat OUTPUT -m mark --mark 1799 -p udp -j DNAT --to [fd17::17]:53",
 		"nat OUTPUT -m mark --mark 1717 -p tcp -j DNAT --to [fd17::17]:717",
 		"nat OUTPUT -m mark --mark 1717 -p udp -j DNAT --to [fd17::17]:717",
 		// "nat OUTPUT -m mark --mark 1717 ! -p tcp ! -p udp -j DNAT --to [fd17::17]",
@@ -153,7 +153,7 @@ func DeactivateNfqueueFirewall() error {
 		result = multierror.Append(result, err)
 	}
 
-	return result
+	return result.ErrorOrNil()
 }
 
 func activateIPTables(protocol iptables.Protocol, rules, once, chains []string) error {
@@ -223,7 +223,7 @@ func deactivateIPTables(protocol iptables.Protocol, rules, chains []string) erro
 		}
 	}
 
-	return multierr
+	return multierr.ErrorOrNil()
 }
 
 // StartNfqueueInterception starts the nfqueue interception.
