@@ -16,8 +16,8 @@ const (
 
 var (
 	restartTask      *modules.Task
-	restartPending   *abool.AtomicBool
-	restartTriggered *abool.AtomicBool
+	restartPending   = abool.New()
+	restartTriggered = abool.New()
 )
 
 func init() {
