@@ -153,7 +153,7 @@ if [[ "$1" == "" ]]; then
   packages=$(go list ./...)
 else
   # single package testing
-  packages=$(go list)/$1
+  packages=$(go list -e)/$1
   if [[ ! -d "$GOPATH/src/$packages" ]]; then
     echo "go package $packages does not exist"
     help
