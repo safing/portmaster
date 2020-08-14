@@ -344,7 +344,7 @@ func checkSearchScope(searchDomain string) (ok bool) {
 	}
 
 	// check if suffix is a special service domain (may be handled fully by local nameserver)
-	if domainInScope("."+suffix+".", specialServiceScopes) {
+	if domainInScope("."+suffix+".", specialServiceDomains) {
 		return true
 	}
 

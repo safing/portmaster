@@ -11,87 +11,74 @@ import (
 	"github.com/safing/portbase/log"
 )
 
-// special scopes:
-
-// localhost. [RFC6761] - respond with 127.0.0.1 and ::1 to A and AAAA queries, else nxdomain
-
-// local. [RFC6762] - resolve if search, else resolve with mdns
-// 10.in-addr.arpa. [RFC6761]
-// 16.172.in-addr.arpa. [RFC6761]
-// 17.172.in-addr.arpa. [RFC6761]
-// 18.172.in-addr.arpa. [RFC6761]
-// 19.172.in-addr.arpa. [RFC6761]
-// 20.172.in-addr.arpa. [RFC6761]
-// 21.172.in-addr.arpa. [RFC6761]
-// 22.172.in-addr.arpa. [RFC6761]
-// 23.172.in-addr.arpa. [RFC6761]
-// 24.172.in-addr.arpa. [RFC6761]
-// 25.172.in-addr.arpa. [RFC6761]
-// 26.172.in-addr.arpa. [RFC6761]
-// 27.172.in-addr.arpa. [RFC6761]
-// 28.172.in-addr.arpa. [RFC6761]
-// 29.172.in-addr.arpa. [RFC6761]
-// 30.172.in-addr.arpa. [RFC6761]
-// 31.172.in-addr.arpa. [RFC6761]
-// 168.192.in-addr.arpa. [RFC6761]
-// 254.169.in-addr.arpa. [RFC6762]
-// 8.e.f.ip6.arpa. [RFC6762]
-// 9.e.f.ip6.arpa. [RFC6762]
-// a.e.f.ip6.arpa. [RFC6762]
-// b.e.f.ip6.arpa. [RFC6762]
-
-// example. [RFC6761] - resolve if search, else return nxdomain
-// example.com. [RFC6761] - resolve if search, else return nxdomain
-// example.net. [RFC6761] - resolve if search, else return nxdomain
-// example.org. [RFC6761] - resolve if search, else return nxdomain
-// invalid. [RFC6761] - resolve if search, else return nxdomain
-// test. [RFC6761] - resolve if search, else return nxdomain
-// onion. [RFC7686] - resolve if search, else return nxdomain
-
-// resolvers:
-// local
-// global
-// mdns
-
+// Domain Scopes
 var (
-	// RFC6761 - respond with 127.0.0.1 and ::1 to A and AAAA queries respectively, else nxdomain
-	localhost = ".localhost."
+	// Localhost Domain
+	// Handling: Respond with 127.0.0.1 and ::1 to A and AAAA queries, respectively.
+	// RFC6761
+	localhostDomain = ".localhost."
 
-	// RFC6761 - always respond with nxdomain
-	invalid = ".invalid."
+	// Invalid Domain
+	// Handling: Always respond with NXDOMAIN.
+	// RFC6761
+	invalidDomain = ".invalid."
 
-	// RFC6762 - resolve locally
-	local = ".local."
+	// Internal Special-Use Domain
+	// Used by Portmaster for special addressing.
+	internalSpecialUseDomainScope = "." + internalSpecialUseDomain
 
-	// local reverse dns
-	localReverseScopes = []string{
-		".10.in-addr.arpa.",      // RFC6761
-		".16.172.in-addr.arpa.",  // RFC6761
-		".17.172.in-addr.arpa.",  // RFC6761
-		".18.172.in-addr.arpa.",  // RFC6761
-		".19.172.in-addr.arpa.",  // RFC6761
-		".20.172.in-addr.arpa.",  // RFC6761
-		".21.172.in-addr.arpa.",  // RFC6761
-		".22.172.in-addr.arpa.",  // RFC6761
-		".23.172.in-addr.arpa.",  // RFC6761
-		".24.172.in-addr.arpa.",  // RFC6761
-		".25.172.in-addr.arpa.",  // RFC6761
-		".26.172.in-addr.arpa.",  // RFC6761
-		".27.172.in-addr.arpa.",  // RFC6761
-		".28.172.in-addr.arpa.",  // RFC6761
-		".29.172.in-addr.arpa.",  // RFC6761
-		".30.172.in-addr.arpa.",  // RFC6761
-		".31.172.in-addr.arpa.",  // RFC6761
-		".168.192.in-addr.arpa.", // RFC6761
-		".254.169.in-addr.arpa.", // RFC6762
-		".8.e.f.ip6.arpa.",       // RFC6762
-		".9.e.f.ip6.arpa.",       // RFC6762
-		".a.e.f.ip6.arpa.",       // RFC6762
-		".b.e.f.ip6.arpa.",       // RFC6762
+	// Multicast DNS
+	// Handling: Send to nameservers with matching search scope, then MDNS
+	// RFC6762
+	multicastDomains = []string{
+		".local.",
+		".254.169.in-addr.arpa.",
+		".8.e.f.ip6.arpa.",
+		".9.e.f.ip6.arpa.",
+		".a.e.f.ip6.arpa.",
+		".b.e.f.ip6.arpa.",
 	}
 
-	// RFC6761 - only resolve locally
-	localTestScopes = []string{
+	// Special-Use Domain Names
+	// Handling: Send to nameservers with matching search scope, then local and system assigned nameservers
+	// IANA Ref: https://www.iana.org/assignments/special-use-domain-names
+	specialUseDomains = []string{
+		// RFC8375: Designated for non-unique use in residential home networks.
+		".home.arpa.",
+
+		// RFC6762 (Appendix G): Non-official, but officially listed, private use domains.
+		".intranet.",
+		".internal.",
+		".private.",
+		".corp.",
+		".home.",
+		".lan.",
+
+		// RFC6761: IPv4 private-address reverse-mapping domains.
+		".10.in-addr.arpa.",
+		".16.172.in-addr.arpa.",
+		".17.172.in-addr.arpa.",
+		".18.172.in-addr.arpa.",
+		".19.172.in-addr.arpa.",
+		".20.172.in-addr.arpa.",
+		".21.172.in-addr.arpa.",
+		".22.172.in-addr.arpa.",
+		".23.172.in-addr.arpa.",
+		".24.172.in-addr.arpa.",
+		".25.172.in-addr.arpa.",
+		".26.172.in-addr.arpa.",
+		".27.172.in-addr.arpa.",
+		".28.172.in-addr.arpa.",
+		".29.172.in-addr.arpa.",
+		".30.172.in-addr.arpa.",
+		".31.172.in-addr.arpa.",
+		".168.192.in-addr.arpa.",
+
+		// RFC4193: IPv6 private-address reverse-mapping domains.
+		".d.f.ip6.arpa",
+		".c.f.ip6.arpa",
+
+		// RFC6761: Special use domains for documentation and testing.
 		".example.",
 		".example.com.",
 		".example.net.",
@@ -99,10 +86,14 @@ var (
 		".test.",
 	}
 
-	// resolve globally - resolving these should be disabled by default
-	specialServiceScopes = []string{
-		".onion.", // Tor Hidden Services, RFC7686
-		".bit.",   // Namecoin, https://www.namecoin.org/
+	// Special-Service Domain Names
+	// Handling: Send to nameservers with matching search scope, then local and system assigned nameservers
+	specialServiceDomains = []string{
+		// RFC7686: Tor Hidden Services
+		".onion.",
+
+		// Namecoin: Blockchain based nameservice, https://www.namecoin.org/
+		".bit.",
 	}
 )
 
@@ -116,99 +107,70 @@ func domainInScope(dotPrefixedFQDN string, scopeList []string) bool {
 }
 
 // GetResolversInScope returns all resolvers that are in scope the resolve the given query and options.
-func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver) { //nolint:gocognit // TODO
+func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver, tryAll bool) { //nolint:gocognit // TODO
 	resolversLock.RLock()
 	defer resolversLock.RUnlock()
 
-	// resolver selection:
-	// local -> local scopes, mdns
-	// local-inaddr -> local, mdns
-	// global -> local scopes, global
-	// special -> local scopes, local
-
-	// special connectivity domains
-	if netenv.IsConnectivityDomain(q.FQDN) && len(systemResolvers) > 0 {
-		selected = append(selected, envResolver)
-		selected = append(selected, systemResolvers...) // dhcp assigned resolvers
-		return selected
+	// Internal use domains
+	if strings.HasSuffix(q.dotPrefixedFQDN, internalSpecialUseDomainScope) {
+		return envResolvers, false
 	}
 
-	// check local scopes
+	// Special connectivity domains
+	if netenv.IsConnectivityDomain(q.FQDN) && len(systemResolvers) > 0 {
+		// Do not do compliance checks for connectivity domains.
+		selected = append(selected, systemResolvers...) // dhcp assigned resolvers
+		return selected, false
+	}
+
+	// Prioritize search scopes
 	for _, scope := range localScopes {
 		if strings.HasSuffix(q.dotPrefixedFQDN, scope.Domain) {
-			// scoped resolvers
-			for _, resolver := range scope.Resolvers {
-				if err := resolver.checkCompliance(ctx, q); err == nil {
-					selected = append(selected, resolver)
-				} else {
-					log.Tracef("skipping non-compliant resolver: %s", resolver.Server)
-				}
+			selected = addResolvers(ctx, q, selected, scope.Resolvers)
+		}
+	}
+
+	// Handle multicast domains
+	if domainInScope(q.dotPrefixedFQDN, multicastDomains) {
+		selected = addResolvers(ctx, q, selected, mDNSResolvers)
+		// Add local resolvers if no resolvers were selected.
+		if len(selected) == 0 {
+			selected = addResolvers(ctx, q, selected, localResolvers)
+		}
+		return selected, true
+	}
+
+	// Special use domains
+	if domainInScope(q.dotPrefixedFQDN, specialUseDomains) ||
+		domainInScope(q.dotPrefixedFQDN, specialServiceDomains) {
+		selected = addResolvers(ctx, q, selected, localResolvers)
+		selected = addResolvers(ctx, q, selected, systemResolvers)
+		return selected, true
+	}
+
+	// Global domains
+	selected = addResolvers(ctx, q, selected, globalResolvers)
+	return selected, false
+}
+
+func addResolvers(ctx context.Context, q *Query, selected []*Resolver, addResolvers []*Resolver) []*Resolver {
+addNextResolver:
+	for _, resolver := range addResolvers {
+		// check for compliance
+		if err := resolver.checkCompliance(ctx, q); err != nil {
+			log.Tracef("skipping non-compliant resolver %s: %s", resolver.GetName(), err)
+			continue
+		}
+
+		// deduplicate
+		for _, selectedResolver := range selected {
+			if selectedResolver.Server == resolver.Server {
+				continue addNextResolver
 			}
 		}
-	}
-	// if there was a match with a local scope, stop here
-	if len(selected) > 0 {
-		// add mdns
-		if err := mDNSResolver.checkCompliance(ctx, q); err == nil {
-			selected = append(selected, mDNSResolver)
-		} else {
-			log.Tracef("skipping non-compliant resolver: %s", mDNSResolver.Server)
-		}
-		return selected
-	}
 
-	// check local reverse scope
-	if domainInScope(q.dotPrefixedFQDN, localReverseScopes) {
-		// local resolvers
-		for _, resolver := range localResolvers {
-			if err := resolver.checkCompliance(ctx, q); err == nil {
-				selected = append(selected, resolver)
-			} else {
-				log.Tracef("skipping non-compliant resolver: %s", resolver.Server)
-			}
-		}
-		// mdns resolver
-		if err := mDNSResolver.checkCompliance(ctx, q); err == nil {
-			selected = append(selected, mDNSResolver)
-		} else {
-			log.Tracef("skipping non-compliant resolver: %s", mDNSResolver.Server)
-		}
-		return selected
-	}
-
-	// check for .local mdns
-	if strings.HasSuffix(q.dotPrefixedFQDN, local) {
-		// add env resolver
-		selected = append(selected, envResolver)
-		// add mdns
-		if err := mDNSResolver.checkCompliance(ctx, q); err == nil {
-			selected = append(selected, mDNSResolver)
-		} else {
-			log.Tracef("skipping non-compliant resolver: %s", mDNSResolver.Server)
-		}
-		return selected
-	}
-
-	// check for test scopes
-	if domainInScope(q.dotPrefixedFQDN, localTestScopes) {
-		// local resolvers
-		for _, resolver := range localResolvers {
-			if err := resolver.checkCompliance(ctx, q); err == nil {
-				selected = append(selected, resolver)
-			} else {
-				log.Tracef("skipping non-compliant resolver: %s", resolver.Server)
-			}
-		}
-		return selected
-	}
-
-	// finally, query globally
-	for _, resolver := range globalResolvers {
-		if err := resolver.checkCompliance(ctx, q); err == nil {
-			selected = append(selected, resolver)
-		} else {
-			log.Tracef("skipping non-compliant resolver: %s", resolver.Server)
-		}
+		// add compliant and unique resolvers to selected resolvers
+		selected = append(selected, resolver)
 	}
 	return selected
 }
@@ -222,12 +184,12 @@ var (
 
 func (q *Query) checkCompliance() error {
 	// RFC6761 - always respond with nxdomain
-	if strings.HasSuffix(q.dotPrefixedFQDN, invalid) {
+	if strings.HasSuffix(q.dotPrefixedFQDN, invalidDomain) {
 		return ErrNotFound
 	}
 
 	// RFC6761 - respond with 127.0.0.1 and ::1 to A and AAAA queries respectively, else nxdomain
-	if strings.HasSuffix(q.dotPrefixedFQDN, localhost) {
+	if strings.HasSuffix(q.dotPrefixedFQDN, localhostDomain) {
 		switch uint16(q.QType) {
 		case dns.TypeA, dns.TypeAAAA:
 			return ErrLocalhost
@@ -238,14 +200,8 @@ func (q *Query) checkCompliance() error {
 
 	// special TLDs
 	if dontResolveSpecialDomains(q.SecurityLevel) &&
-		domainInScope(q.dotPrefixedFQDN, specialServiceScopes) {
+		domainInScope(q.dotPrefixedFQDN, specialServiceDomains) {
 		return ErrSpecialDomainsDisabled
-	}
-
-	// testing TLDs
-	if dontResolveTestDomains(q.SecurityLevel) &&
-		domainInScope(q.dotPrefixedFQDN, localTestScopes) {
-		return ErrTestDomainsDisabled
 	}
 
 	return nil

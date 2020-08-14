@@ -24,6 +24,7 @@ func TestCheckResolverSearchScope(t *testing.T) {
 	test(t, "a.com", true)
 	test(t, "b.a.com", true)
 	test(t, "c.b.a.com", true)
+
 	test(t, "onion", true)
 	test(t, "a.onion", true)
 	test(t, "b.a.onion", true)

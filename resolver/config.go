@@ -72,10 +72,6 @@ var (
 	dontResolveSpecialDomains               status.SecurityLevelOption
 	cfgOptionDontResolveSpecialDomainsOrder = 16
 
-	CfgOptionDontResolveTestDomainsKey   = "dns/dontResolveTestDomains"
-	dontResolveTestDomains               status.SecurityLevelOption
-	cfgOptionDontResolveTestDomainsOrder = 17
-
 	CfgOptionNameserverRetryRateKey   = "dns/nameserverRetryRate"
 	nameserverRetryRate               config.IntOption
 	cfgOptionNameserverRetryRateOrder = 32
@@ -191,7 +187,7 @@ Parameters:
 	err = config.Register(&config.Option{
 		Name:            "Do not resolve special domains",
 		Key:             CfgOptionDontResolveSpecialDomainsKey,
-		Description:     fmt.Sprintf("Do not resolve the special top level domains %s", formatScopeList(specialServiceScopes)),
+		Description:     fmt.Sprintf("Do not resolve the special top level domains %s", formatScopeList(specialServiceDomains)),
 		Order:           cfgOptionDontResolveSpecialDomainsOrder,
 		OptType:         config.OptTypeInt,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
@@ -204,23 +200,6 @@ Parameters:
 		return err
 	}
 	dontResolveSpecialDomains = status.ConfigIsActiveConcurrent(CfgOptionDontResolveSpecialDomainsKey)
-
-	err = config.Register(&config.Option{
-		Name:            "Do not resolve test domains",
-		Key:             CfgOptionDontResolveTestDomainsKey,
-		Description:     fmt.Sprintf("Do not resolve the special testing top level domains %s", formatScopeList(localTestScopes)),
-		Order:           cfgOptionDontResolveTestDomainsOrder,
-		OptType:         config.OptTypeInt,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
-		ReleaseLevel:    config.ReleaseLevelStable,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsHighAndExtreme,
-		ValidationRegex: "^(4|6|7)$",
-	})
-	if err != nil {
-		return err
-	}
-	dontResolveTestDomains = status.ConfigIsActiveConcurrent(CfgOptionDontResolveTestDomainsKey)
 
 	return nil
 }

@@ -292,7 +292,7 @@ retry:
 
 func resolveAndCache(ctx context.Context, q *Query) (rrCache *RRCache, err error) { //nolint:gocognit
 	// get resolvers
-	resolvers := GetResolversInScope(ctx, q)
+	resolvers, tryAll := GetResolversInScope(ctx, q)
 	if len(resolvers) == 0 {
 		return nil, ErrNoCompliance
 	}
@@ -330,6 +330,9 @@ resolveLoop:
 				switch {
 				case errors.Is(err, ErrNotFound):
 					// NXDomain, or similar
+					if tryAll {
+						continue
+					}
 					return nil, err
 				case errors.Is(err, ErrBlocked):
 					// some resolvers might also block
