@@ -110,7 +110,11 @@ func (tr *TCPResolver) submitQuery(_ context.Context, q *Query) *InFlightQuery {
 	tr.Unlock()
 
 	// submit msg for writing
-	tr.queries <- msg
+	select {
+	case tr.queries <- msg:
+	case <-time.After(defaultRequestTimeout):
+		return nil
+	}
 
 	return inFlight
 }
@@ -140,8 +144,11 @@ func (tr *TCPResolver) ensureUniqueID(msg *dns.Msg) {
 func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	// submit to client
 	inFlight := tr.submitQuery(ctx, q)
-	var reply *dns.Msg
+	if inFlight == nil {
+		return nil, ErrTimeout
+	}
 
+	var reply *dns.Msg
 	select {
 	case reply = <-inFlight.Response:
 	case <-time.After(defaultRequestTimeout):
@@ -177,26 +184,26 @@ func (tr *TCPResolver) startClient() {
 }
 
 func (mgr *tcpResolverConnMgr) run(workerCtx context.Context) error {
+	mgr.tr.clientStarted.Set()
+	defer mgr.shutdown()
+
 	// connection lifecycle loop
 	for {
 		// check if we are shutting down
 		select {
 		case <-workerCtx.Done():
-			mgr.shutdown()
 			return nil
 		default:
 		}
 
 		// check if we are failing
 		if mgr.failCnt >= FailThreshold || mgr.tr.IsFailing() {
-			mgr.shutdown()
 			return nil
 		}
 
 		// wait for work before creating connection
 		proceed := mgr.waitForWork(workerCtx)
 		if !proceed {
-			mgr.shutdown()
 			return nil
 		}
 
@@ -213,7 +220,6 @@ func (mgr *tcpResolverConnMgr) run(workerCtx context.Context) error {
 		// handle queries
 		proceed = mgr.queryHandler(workerCtx, conn, connClosing, connCtx, cancelConnCtx)
 		if !proceed {
-			mgr.shutdown()
 			return nil
 		}
 	}
@@ -222,13 +228,15 @@ func (mgr *tcpResolverConnMgr) run(workerCtx context.Context) error {
 func (mgr *tcpResolverConnMgr) shutdown() {
 	// reply to all waiting queries
 	mgr.tr.Lock()
+	defer mgr.tr.Unlock()
+
+	mgr.tr.clientStarted.UnSet()               // in lock to guarantee to set before submitQuery proceeds
+	atomic.AddUint32(mgr.tr.connInstanceID, 1) // increase instance counter
+
 	for id, inFlight := range mgr.tr.inFlightQueries {
 		close(inFlight.Response)
 		delete(mgr.tr.inFlightQueries, id)
 	}
-	mgr.tr.clientStarted.UnSet()               // in lock to guarantee to set before submitQuery proceeds
-	atomic.AddUint32(mgr.tr.connInstanceID, 1) // increase instance counter
-	mgr.tr.Unlock()
 
 	// hint network environment at failed connection
 	if mgr.failCnt >= FailThreshold {
