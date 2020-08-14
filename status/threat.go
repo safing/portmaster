@@ -14,7 +14,19 @@ type Threat struct {
 	MitigationLevel uint8       // Recommended Security Level to switch to for mitigation
 	Started         int64
 	Ended           int64
-	// TODO: add locking
+	// TODO: improve locking
+}
+
+//Lock locking
+func (t *Threat) Lock() {
+	// This is a preliminiary workaround for locking Threats until the system is revamped.
+	status.Lock()
+}
+
+//Unlock unlocking
+func (t *Threat) Unlock() {
+	// This is a preliminiary workaround for locking Threats until the system is revamped.
+	status.Unlock()
 }
 
 // AddOrUpdateThreat adds or updates a new threat in the system status.
