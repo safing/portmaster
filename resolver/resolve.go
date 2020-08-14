@@ -51,6 +51,17 @@ const (
 	maxTTL     = 24 * 60 * 60 // 24 hours
 )
 
+var (
+	dupReqMap  = make(map[string]*dedupeStatus)
+	dupReqLock sync.Mutex
+)
+
+type dedupeStatus struct {
+	completed  chan struct{}
+	waitUntil  time.Time
+	superseded bool
+}
+
 // BlockedUpstreamError is returned when a DNS request
 // has been blocked by the upstream server.
 type BlockedUpstreamError struct {
@@ -195,7 +206,10 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		rrCache.requestingNew = true
 		rrCache.Unlock()
 
-		log.Tracer(ctx).Trace("resolver: serving from cache, requesting new")
+		log.Tracer(ctx).Tracef(
+			"resolver: using expired RR from cache (since %s), refreshing async now",
+			time.Since(time.Unix(rrCache.TTL, 0)),
+		)
 
 		// resolve async
 		module.StartWorker("resolve async", func(ctx context.Context) error {
@@ -205,9 +219,14 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 			}
 			return nil
 		})
+
+		return rrCache
 	}
 
-	log.Tracer(ctx).Tracef("resolver: using cached RR (expires in %s)", time.Until(time.Unix(rrCache.TTL, 0)))
+	log.Tracer(ctx).Tracef(
+		"resolver: using cached RR (expires in %s)",
+		time.Until(time.Unix(rrCache.TTL, 0)),
+	)
 	return rrCache
 }
 
@@ -215,31 +234,46 @@ func deduplicateRequest(ctx context.Context, q *Query) (finishRequest func()) {
 	// create identifier key
 	dupKey := q.ID()
 
+	// restart here if waiting timed out
+retry:
+
 	dupReqLock.Lock()
 
-	// get  duplicate request waitgroup
-	wg, requestActive := dupReqMap[dupKey]
+	// get duplicate request waitgroup
+	status, requestActive := dupReqMap[dupKey]
 
-	// someone else is already on it!
+	// check if the request ist active
 	if requestActive {
-		dupReqLock.Unlock()
+		// someone else is already on it!
+		if time.Now().Before(status.waitUntil) {
+			dupReqLock.Unlock()
 
-		// log that we are waiting
-		log.Tracer(ctx).Tracef("resolver: waiting for duplicate query for %s to complete", dupKey)
-		// wait
-		wg.Wait()
-		// done!
-		return nil
+			// log that we are waiting
+			log.Tracer(ctx).Tracef("resolver: waiting for duplicate query for %s to complete", dupKey)
+			// wait
+			select {
+			case <-status.completed:
+				// done!
+				return nil
+			case <-time.After(maxRequestTimeout):
+				// something went wrong with the query, retry
+				goto retry
+			}
+		} else {
+			// but that someone is taking too long
+			status.superseded = true
+		}
 	}
 
 	// we are currently the only one doing a request for this
 
-	// create new waitgroup
-	wg = new(sync.WaitGroup)
-	// add worker (us!)
-	wg.Add(1)
+	// create new status
+	status = &dedupeStatus{
+		completed: make(chan struct{}),
+		waitUntil: time.Now().Add(maxRequestTimeout),
+	}
 	// add to registry
-	dupReqMap[dupKey] = wg
+	dupReqMap[dupKey] = status
 
 	dupReqLock.Unlock()
 
@@ -248,9 +282,11 @@ func deduplicateRequest(ctx context.Context, q *Query) (finishRequest func()) {
 		dupReqLock.Lock()
 		defer dupReqLock.Unlock()
 		// mark request as done
-		wg.Done()
+		close(status.completed)
 		// delete from registry
-		delete(dupReqMap, dupKey)
+		if !status.superseded {
+			delete(dupReqMap, dupKey)
+		}
 	}
 }
 

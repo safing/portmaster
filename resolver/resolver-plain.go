@@ -14,6 +14,7 @@ var (
 	defaultClientTTL      = 5 * time.Minute
 	defaultRequestTimeout = 3 * time.Second // dns query
 	defaultConnectTimeout = 5 * time.Second // tcp/tls
+	maxRequestTimeout     = 5 * time.Second
 )
 
 // PlainResolver is a resolver using plain DNS.

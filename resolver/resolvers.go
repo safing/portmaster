@@ -28,9 +28,6 @@ var (
 	localScopes     []*Scope             // list of scopes with a list of local resolvers that can resolve the scope
 	activeResolvers map[string]*Resolver // lookup map of all resolvers
 	resolversLock   sync.RWMutex
-
-	dupReqMap  = make(map[string]*sync.WaitGroup)
-	dupReqLock sync.Mutex
 )
 
 func indexOfScope(domain string, list []*Scope) int {
