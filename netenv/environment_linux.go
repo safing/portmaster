@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -45,7 +46,7 @@ func Gateways() []net.IP {
 	}()
 	// logic
 
-	gateways = make([]net.IP, 0)
+	gateways := make([]net.IP, 0)
 	var decoded []byte
 
 	// open file
@@ -62,19 +63,22 @@ func Gateways() []net.IP {
 
 	// parse
 	for scanner.Scan() {
-		line := strings.SplitN(scanner.Text(), "\t", 4)
+		line := strings.Split(scanner.Text(), "\t")
 		if len(line) < 4 {
 			continue
 		}
 		if line[1] == "00000000" {
-			decoded, err = hex.DecodeString(line[2])
-			if err != nil {
+			if decoded, err = hex.DecodeString(line[2]); err != nil {
 				log.Warningf("environment: could not parse gateway %s from /proc/net/route: %s", line[2], err)
 				continue
 			}
 			if len(decoded) != 4 {
 				log.Warningf("environment: decoded gateway %s from /proc/net/route has wrong length", decoded)
 				continue
+			}
+			var metric int
+			if metric, err = strconv.Atoi(line[6]); err != nil {
+				log.Warningf("environment: could not parse Metric %s from /proc/net/route: %s", line[6], err)
 			}
 			gate := net.IPv4(decoded[3], decoded[2], decoded[1], decoded[0])
 			gateways = append(gateways, gate)
@@ -108,6 +112,10 @@ func Gateways() []net.IP {
 			if len(decoded) != 16 {
 				log.Warningf("environment: decoded gateway %s from /proc/net/ipv6_route has wrong length", decoded)
 				continue
+			}
+			var metric int64
+			if metric, err = strconv.ParseInt(line[5], 16, 32); err != nil {
+				log.Warningf("environment: could not parse Metric %s from /proc/net/ipv6_route: %s", line[6], err)
 			}
 			gate := net.IP(decoded)
 			gateways = append(gateways, gate)
