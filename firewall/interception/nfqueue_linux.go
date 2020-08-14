@@ -115,10 +115,10 @@ func init() {
 		"mangle INPUT -j C171",
 		"filter OUTPUT -j C17",
 		"filter INPUT -j C17",
-		"nat OUTPUT -m mark --mark 1799 -p udp -j DNAT --to [fd17::17]:53",
-		"nat OUTPUT -m mark --mark 1717 -p tcp -j DNAT --to [fd17::17]:717",
-		"nat OUTPUT -m mark --mark 1717 -p udp -j DNAT --to [fd17::17]:717",
-		// "nat OUTPUT -m mark --mark 1717 ! -p tcp ! -p udp -j DNAT --to [fd17::17]",
+		"nat OUTPUT -m mark --mark 1799 -p udp -j DNAT --to [::1]:53",
+		"nat OUTPUT -m mark --mark 1717 -p tcp -j DNAT --to [::1]:717",
+		"nat OUTPUT -m mark --mark 1717 -p udp -j DNAT --to [::1]:717",
+		// "nat OUTPUT -m mark --mark 1717 ! -p tcp ! -p udp -j DNAT --to [::1]",
 	}
 
 	// Reverse because we'd like to insert in a loop

@@ -2,10 +2,11 @@ package firewall
 
 import (
 	"context"
-	"net"
 	"os"
 	"sync/atomic"
 	"time"
+
+	"github.com/safing/portmaster/netenv"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
@@ -24,23 +25,10 @@ import (
 var (
 	interceptionModule *modules.Module
 
-	// localNet        net.IPNet
-	// localhost net.IP
-	// dnsServer       net.IPNet
-	packetsAccepted *uint64
-	packetsBlocked  *uint64
-	packetsDropped  *uint64
-	packetsFailed   *uint64
-
-	// localNet4 *net.IPNet
-
-	localhost4 = net.IPv4(127, 0, 0, 1)
-	// localhost6 = net.IPv6loopback
-
-	// tunnelNet4 *net.IPNet
-	// tunnelNet6 *net.IPNet
-	// tunnelEntry4 = net.IPv4(127, 0, 0, 17)
-	// tunnelEntry6 = net.ParseIP("fd17::17")
+	packetsAccepted = new(uint64)
+	packetsBlocked  = new(uint64)
+	packetsDropped  = new(uint64)
+	packetsFailed   = new(uint64)
 )
 
 func init() {
@@ -50,33 +38,7 @@ func init() {
 }
 
 func interceptionPrep() (err error) {
-	err = prepAPIAuth()
-	if err != nil {
-		return err
-	}
-
-	// _, localNet4, err = net.ParseCIDR("127.0.0.0/24")
-	// // Yes, this would normally be 127.0.0.0/8
-	// // TODO: figure out any side effects
-	// if err != nil {
-	// 	return fmt.Errorf("filter: failed to parse cidr 127.0.0.0/24: %s", err)
-	// }
-
-	// _, tunnelNet4, err = net.ParseCIDR("127.17.0.0/16")
-	// if err != nil {
-	// 	return fmt.Errorf("filter: failed to parse cidr 127.17.0.0/16: %s", err)
-	// }
-	// _, tunnelNet6, err = net.ParseCIDR("fd17::/64")
-	// if err != nil {
-	// 	return fmt.Errorf("filter: failed to parse cidr fd17::/64: %s", err)
-	// }
-
-	packetsAccepted = new(uint64)
-	packetsBlocked = new(uint64)
-	packetsDropped = new(uint64)
-	packetsFailed = new(uint64)
-
-	return nil
+	return prepAPIAuth()
 }
 
 func interceptionStart() error {
@@ -94,79 +56,9 @@ func interceptionStop() error {
 }
 
 func handlePacket(pkt packet.Packet) {
-
-	// allow localhost, for now
-	// if pkt.Info().Src.Equal(pkt.Info().Dst) {
-	// 	log.Debugf("accepting localhost communication: %s", pkt)
-	// 	pkt.PermanentAccept()
-	// 	return
-	// }
-
-	// for UX and performance
-	meta := pkt.Info()
-
-	// allow local dns
-	if (meta.DstPort == 53 || meta.SrcPort == 53) &&
-		(meta.Src.Equal(meta.Dst) || // Windows redirects back to same interface
-			meta.Src.Equal(localhost4) || // Linux sometimes does 127.0.0.1->127.0.0.53
-			meta.Dst.Equal(localhost4)) {
-		log.Debugf("accepting local dns: %s", pkt)
-		_ = pkt.PermanentAccept()
+	if fastTrackedPermit(pkt) {
 		return
 	}
-
-	// allow api access, if address was parsed successfully
-	if apiPortSet {
-		if (meta.DstPort == apiPort || meta.SrcPort == apiPort) && meta.Src.Equal(meta.Dst) {
-			log.Debugf("accepting api connection: %s", pkt)
-			_ = pkt.PermanentAccept()
-			return
-		}
-	}
-
-	// // redirect dns (if we know that it's not our own request)
-	// if pkt.IsOutbound() && intel.RemoteIsActiveNameserver(pkt) {
-	// 	log.Debugf("redirecting dns: %s", pkt)
-	// 	pkt.RedirToNameserver()
-	// }
-
-	// allow ICMP and DHCP
-	// TODO: actually handle these
-	switch meta.Protocol {
-	case packet.ICMP:
-		log.Debugf("accepting ICMP: %s", pkt)
-		_ = pkt.PermanentAccept()
-		return
-	case packet.ICMPv6:
-		log.Debugf("accepting ICMPv6: %s", pkt)
-		_ = pkt.PermanentAccept()
-		return
-	case packet.UDP:
-		if meta.DstPort == 67 || meta.DstPort == 68 {
-			log.Debugf("accepting DHCP: %s", pkt)
-			_ = pkt.PermanentAccept()
-			return
-		}
-		// TODO: Howto handle NetBios?
-	}
-
-	// log.Debugf("filter: pkt %s has ID %s", pkt, pkt.GetLinkID())
-
-	// use this to time how long it takes process packet
-	// timed := time.Now()
-	// defer log.Tracef("filter: took %s to process packet %s", time.Now().Sub(timed).String(), pkt)
-
-	// check if packet is destined for tunnel
-	// switch pkt.IPVersion() {
-	// case packet.IPv4:
-	// 	if TunnelNet4 != nil && TunnelNet4.Contains(meta.Dst) {
-	// 		tunnelHandler(pkt)
-	// 	}
-	// case packet.IPv6:
-	// 	if TunnelNet6 != nil && TunnelNet6.Contains(meta.Dst) {
-	// 		tunnelHandler(pkt)
-	// 	}
-	// }
 
 	traceCtx, tracer := log.AddTracer(context.Background())
 	if tracer != nil {
@@ -186,6 +78,90 @@ func handlePacket(pkt packet.Packet) {
 
 	// handle packet
 	conn.HandlePacket(pkt)
+}
+
+// fastTrackedPermit quickly permits certain network criticial or internal connections.
+func fastTrackedPermit(pkt packet.Packet) (handled bool) {
+	meta := pkt.Info()
+
+	switch meta.Protocol {
+	case packet.ICMP:
+		// Always permit ICMP.
+		log.Debugf("accepting ICMP: %s", pkt)
+		_ = pkt.PermanentAccept()
+		return true
+
+	case packet.ICMPv6:
+		// Always permit ICMPv6.
+		log.Debugf("accepting ICMPv6: %s", pkt)
+		_ = pkt.PermanentAccept()
+		return true
+
+	case packet.UDP, packet.TCP:
+		switch meta.DstPort {
+
+		case 67, 68, 546, 547:
+			// Always allow DHCP, DHCPv6.
+
+			// DHCP and DHCPv6 must be UDP.
+			if meta.Protocol != packet.UDP {
+				return false
+			}
+
+			// DHCP is only valid in local network scopes.
+			switch netutils.ClassifyIP(meta.Dst) {
+			case netutils.HostLocal, netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
+			default:
+				return false
+			}
+
+			// Log and permit.
+			log.Debugf("accepting DHCP: %s", pkt)
+			_ = pkt.PermanentAccept()
+			return true
+
+		case apiPort:
+			// Always allow direct access to the Portmaster API.
+
+			// Check if the api port is even set.
+			if !apiPortSet {
+				return false
+			}
+
+			// Portmaster API must be TCP
+			if meta.Protocol != packet.TCP {
+				return false
+			}
+
+			fallthrough
+		case 53:
+			// Always allow direct local access to own services.
+			// DNS is both UDP and TCP.
+
+			// Only allow to own IPs.
+			dstIsMe, err := netenv.IsMyIP(meta.Dst)
+			if err != nil {
+				log.Warningf("filter: failed to check if IP is local: %s", err)
+			}
+			if !dstIsMe {
+				return false
+			}
+
+			// Log and permit.
+			switch meta.DstPort {
+			case 53:
+				log.Debugf("accepting local dns: %s", pkt)
+			case apiPort:
+				log.Debugf("accepting api connection: %s", pkt)
+			default:
+				return false
+			}
+			_ = pkt.PermanentAccept()
+			return true
+		}
+	}
+
+	return false
 }
 
 func initialHandler(conn *network.Connection, pkt packet.Packet) {

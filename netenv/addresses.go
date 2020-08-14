@@ -51,48 +51,68 @@ func GetAssignedGlobalAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
 }
 
 var (
-	myIPs     []net.IP
-	myIPsLock sync.Mutex
+	myNetworks     []*net.IPNet
+	myNetworksLock sync.Mutex
 )
 
-// IsMyIP returns whether the given IP is currently configured on the local host.
+// IsMyIP returns whether the given unicast IP is currently configured on the local host.
+// Broadcast or multicast addresses will never match, even if valid in in use.
 func IsMyIP(ip net.IP) (yes bool, err error) {
-	if netutils.IPIsLocalhost(ip) {
+	// Check for IPs that don't need extra checks.
+	switch netutils.ClassifyIP(ip) {
+	case netutils.HostLocal:
 		return true, nil
+	case netutils.LocalMulticast, netutils.GlobalMulticast:
+		return false, nil
 	}
 
-	myIPsLock.Lock()
-	defer myIPsLock.Unlock()
+	myNetworksLock.Lock()
+	defer myNetworksLock.Unlock()
 
-	// check
-	for _, myIP := range myIPs {
-		if ip.Equal(myIP) {
-			return true, nil
-		}
+	// Check for match.
+	if mine, matched := checkIfMyIP(ip); matched {
+		return mine, nil
 	}
 
-	// refresh IPs
-	myAddrs, err := net.InterfaceAddrs()
+	// Refresh assigned networks.
+	interfaceNetworks, err := net.InterfaceAddrs()
 	if err != nil {
 		return false, fmt.Errorf("failed to refresh interface addresses: %s", err)
 	}
-	myIPs = make([]net.IP, 0, len(myAddrs))
-	for _, addr := range myAddrs {
-		netAddr, ok := addr.(*net.IPNet)
+	myNetworks = make([]*net.IPNet, 0, len(interfaceNetworks))
+	for _, ifNet := range interfaceNetworks {
+		net, ok := ifNet.(*net.IPNet)
 		if !ok {
-			log.Warningf("netenv: interface address of unexpected type %T", addr)
+			log.Warningf("netenv: interface network of unexpected type %T", ifNet)
 			continue
 		}
 
-		myIPs = append(myIPs, netAddr.IP)
+		myNetworks = append(myNetworks, net)
 	}
 
-	// check again
-	for _, myIP := range myIPs {
-		if ip.Equal(myIP) {
-			return true, nil
+	// Check for match again.
+	if mine, matched := checkIfMyIP(ip); matched {
+		return mine, nil
+	}
+	return false, nil
+}
+
+func checkIfMyIP(ip net.IP) (mine bool, matched bool) {
+	// Check against assigned IPs.
+	for _, myNet := range myNetworks {
+		if ip.Equal(myNet.IP) {
+			return true, true
 		}
 	}
 
-	return false, nil
+	// Check for other IPs in range and broadcast addresses.
+	// Do this in a second loop, as an IP will match in
+	// most cases and network matching is more expensive.
+	for _, myNet := range myNetworks {
+		if myNet.Contains(ip) {
+			return false, true
+		}
+	}
+
+	return false, false
 }
