@@ -5,10 +5,12 @@ package nfqexp
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"github.com/safing/portbase/log"
 	pmpacket "github.com/safing/portmaster/network/packet"
+	"github.com/tevino/abool"
 	"golang.org/x/sys/unix"
 
 	"github.com/florianl/go-nfqueue"
@@ -20,6 +22,9 @@ type Queue struct {
 	nf                   *nfqueue.Nfqueue
 	packets              chan pmpacket.Packet
 	cancelSocketCallback context.CancelFunc
+
+	pendingVerdicts  uint64
+	verdictCompleted chan struct{}
 }
 
 // New opens a new nfQueue.
@@ -30,12 +35,12 @@ func New(qid uint16, v6 bool) (*Queue, error) {
 	}
 	cfg := &nfqueue.Config{
 		NfQueue:      qid,
-		MaxPacketLen: 0xffff,
-		MaxQueueLen:  0xff,
+		MaxPacketLen: 0xff,
+		MaxQueueLen:  0xffff,
 		AfFamily:     uint8(afFamily),
 		Copymode:     nfqueue.NfQnlCopyPacket,
-		ReadTimeout:  50 * time.Millisecond,
-		WriteTimeout: 50 * time.Millisecond,
+		ReadTimeout:  5 * time.Millisecond,
+		WriteTimeout: 100 * time.Millisecond,
 	}
 
 	nf, err := nfqueue.Open(cfg)
@@ -49,6 +54,7 @@ func New(qid uint16, v6 bool) (*Queue, error) {
 		nf:                   nf,
 		packets:              make(chan pmpacket.Packet, 1000),
 		cancelSocketCallback: cancel,
+		verdictCompleted:     make(chan struct{}, 1),
 	}
 
 	fn := func(attrs nfqueue.Attribute) int {
@@ -61,10 +67,11 @@ func New(qid uint16, v6 bool) (*Queue, error) {
 		}
 
 		pkt := &packet{
-			ID:         *attrs.PacketID,
-			queue:      q,
-			received:   time.Now(),
-			verdictSet: make(chan struct{}),
+			pktID:          *attrs.PacketID,
+			queue:          q,
+			received:       time.Now(),
+			verdictSet:     make(chan struct{}),
+			verdictPending: abool.New(),
 		}
 
 		if attrs.Payload != nil {
@@ -79,7 +86,7 @@ func New(qid uint16, v6 bool) (*Queue, error) {
 
 		select {
 		case q.packets <- pkt:
-			log.Tracef("nfqexp: queued packet %d (%s -> %s) after %s", pkt.ID, pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.received))
+			log.Tracef("nfqexp: queued packet %s (%s -> %s) after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.received))
 		case <-ctx.Done():
 			return 0
 		case <-time.After(time.Second):
@@ -90,10 +97,10 @@ func New(qid uint16, v6 bool) (*Queue, error) {
 			select {
 			case <-pkt.verdictSet:
 
-			case <-time.After(5 * time.Second):
-				log.Warningf("nfqexp: no verdict set for packet %d (%s -> %s) after %s, dropping", pkt.ID, pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.received))
+			case <-time.After(20 * time.Second):
+				log.Warningf("nfqexp: no verdict set for packet %s (%s -> %s) after %s, dropping", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.received))
 				if err := pkt.Drop(); err != nil {
-					log.Warningf("nfqexp: failed to apply default-drop to unveridcted packet %d (%s -> %s)", pkt.ID, pkt.Info().Src, pkt.Info().Dst)
+					log.Warningf("nfqexp: failed to apply default-drop to unveridcted packet %s (%s -> %s)", pkt.ID(), pkt.Info().Src, pkt.Info().Dst)
 				}
 			}
 		}()
@@ -101,7 +108,32 @@ func New(qid uint16, v6 bool) (*Queue, error) {
 		return 0 // continue calling this fn
 	}
 
-	if err := q.nf.Register(ctx, fn); err != nil {
+	errorFunc := func(e error) int {
+		// embedded interface is required to work-around some
+		// dep-vendoring weirdness
+		if opError, ok := e.(interface {
+			Timeout() bool
+			Temporary() bool
+		}); ok {
+			if opError.Timeout() || opError.Temporary() {
+				c := atomic.LoadUint64(&q.pendingVerdicts)
+				if c > 0 {
+					log.Tracef("nfqexp: waiting for %d pending verdicts", c)
+
+					for atomic.LoadUint64(&q.pendingVerdicts) > 0 { // must NOT use c here
+						<-q.verdictCompleted
+					}
+				}
+
+				return 0
+			}
+		}
+		log.Errorf("nfqexp: encountered error while receiving packets: %s\n", e.Error())
+
+		return 1
+	}
+
+	if err := q.nf.RegisterWithErrorFunc(ctx, fn, errorFunc); err != nil {
 		defer q.nf.Close()
 		return nil, err
 	}
