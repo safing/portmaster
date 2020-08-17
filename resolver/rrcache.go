@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netenv"
 
 	"github.com/miekg/dns"
@@ -163,28 +164,32 @@ func GetRRCache(domain string, question dns.Type) (*RRCache, error) {
 
 	rrCache.TTL = nameRecord.TTL
 	for _, entry := range nameRecord.Answer {
-		rr, err := dns.NewRR(entry)
-		if err == nil {
-			rrCache.Answer = append(rrCache.Answer, rr)
-		}
+		rrCache.Answer = parseRR(rrCache.Answer, entry)
 	}
 	for _, entry := range nameRecord.Ns {
-		rr, err := dns.NewRR(entry)
-		if err == nil {
-			rrCache.Ns = append(rrCache.Ns, rr)
-		}
+		rrCache.Ns = parseRR(rrCache.Ns, entry)
 	}
 	for _, entry := range nameRecord.Extra {
-		rr, err := dns.NewRR(entry)
-		if err == nil {
-			rrCache.Extra = append(rrCache.Extra, rr)
-		}
+		rrCache.Extra = parseRR(rrCache.Extra, entry)
 	}
 
 	rrCache.Server = nameRecord.Server
 	rrCache.ServerScope = nameRecord.ServerScope
 	rrCache.servedFromCache = true
 	return rrCache, nil
+}
+
+func parseRR(section []dns.RR, entry string) []dns.RR {
+	rr, err := dns.NewRR(entry)
+	switch {
+	case err != nil:
+		log.Warningf("resolver: failed to parse cached record %q: %s", entry, err)
+	case rr == nil:
+		log.Warningf("resolver: failed to parse cached record %q: resulted in nil record", entry)
+	default:
+		return append(section, rr)
+	}
+	return section
 }
 
 // ServedFromCache marks the RRCache as served from cache.
