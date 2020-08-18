@@ -41,7 +41,10 @@ var (
 	DNSTestDomain     = "one.one.one.one."
 	DNSTestExpectedIP = net.IPv4(1, 1, 1, 1)
 
-	SpecialCaptivePortalDomain = "captiveportal.local."
+	// SpecialCaptivePortalDomain is the domain name used to point to the detected captive portal IP
+	// or the captive portal test IP. The default value should be overridden by the resolver package,
+	// which defines the custom internal domain name to use.
+	SpecialCaptivePortalDomain = "captiveportal.invalid."
 )
 
 var (

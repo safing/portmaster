@@ -37,6 +37,7 @@ var (
 		Source:        ServerSourceMDNS,
 		Conn:          &mDNSResolverConn{},
 	}
+	mDNSResolvers = []*Resolver{mDNSResolver}
 )
 
 type mDNSResolverConn struct{}
@@ -208,7 +209,7 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 
 			// add all entries to RRCache
 			for _, entry := range message.Answer {
-				if strings.HasSuffix(entry.Header().Name, ".local.") || domainInScope(entry.Header().Name, localReverseScopes) {
+				if domainInScope(entry.Header().Name, multicastDomains) {
 					if saveFullRequest {
 						k := indexOfRR(entry.Header(), &rrCache.Answer)
 						if k == -1 {
@@ -230,7 +231,7 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 				}
 			}
 			for _, entry := range message.Ns {
-				if strings.HasSuffix(entry.Header().Name, ".local.") || domainInScope(entry.Header().Name, localReverseScopes) {
+				if domainInScope(entry.Header().Name, multicastDomains) {
 					if saveFullRequest {
 						k := indexOfRR(entry.Header(), &rrCache.Ns)
 						if k == -1 {
@@ -252,7 +253,7 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 				}
 			}
 			for _, entry := range message.Extra {
-				if strings.HasSuffix(entry.Header().Name, ".local.") || domainInScope(entry.Header().Name, localReverseScopes) {
+				if domainInScope(entry.Header().Name, multicastDomains) {
 					if saveFullRequest {
 						k := indexOfRR(entry.Header(), &rrCache.Extra)
 						if k == -1 {
