@@ -4,10 +4,13 @@ package nfqexp
 
 import (
 	"errors"
+	"fmt"
+	"sync/atomic"
 	"time"
 
+	"github.com/tevino/abool"
+
 	"github.com/florianl/go-nfqueue"
-	"github.com/mdlayher/netlink"
 	"github.com/safing/portbase/log"
 	pmpacket "github.com/safing/portmaster/network/packet"
 )
@@ -51,10 +54,15 @@ func markToString(mark int) string {
 // packet implements the packet.Packet interface.
 type packet struct {
 	pmpacket.Base
-	ID         uint32
-	received   time.Time
-	queue      *Queue
-	verdictSet chan struct{}
+	pktID          uint32
+	received       time.Time
+	queue          *Queue
+	verdictSet     chan struct{}
+	verdictPending *abool.AtomicBool
+}
+
+func (pkt *packet) ID() string {
+	return fmt.Sprintf("pkt:%d qid:%d", pkt.pktID, pkt.queue.id)
 }
 
 // TODO(ppacher): revisit the following behavior:
@@ -68,26 +76,44 @@ type packet struct {
 // 		raw-socket.
 //
 func (pkt *packet) mark(mark int) (err error) {
+	if pkt.verdictPending.SetToIf(false, true) {
+		defer close(pkt.verdictSet)
+		return pkt.setMark(mark)
+	}
+
+	return errors.New("verdict set")
+}
+
+func (pkt *packet) setMark(mark int) error {
+	atomic.AddUint64(&pkt.queue.pendingVerdicts, 1)
+
 	defer func() {
-		if x := recover(); x != nil {
-			err = errors.New("verdict set")
+		atomic.AddUint64(&pkt.queue.pendingVerdicts, ^uint64(0))
+		select {
+		case pkt.queue.verdictCompleted <- struct{}{}:
+		default:
 		}
 	}()
+
 	for {
-		if err := pkt.queue.nf.SetVerdictWithMark(pkt.ID, nfqueue.NfAccept, mark); err != nil {
-			log.Warningf("nfqexp: failed to set verdict %s for %d (%s -> %s): %s", markToString(mark), pkt.ID, pkt.Info().Src, pkt.Info().Dst, err)
-			if opErr, ok := err.(*netlink.OpError); ok {
+		if err := pkt.queue.nf.SetVerdictWithMark(pkt.pktID, nfqueue.NfAccept, mark); err != nil {
+			// embedded interface is required to work-around some
+			// dep-vendoring weirdness
+			if opErr, ok := err.(interface {
+				Timeout() bool
+				Temporary() bool
+			}); ok {
 				if opErr.Timeout() || opErr.Temporary() {
 					continue
 				}
 			}
 
+			log.Errorf("nfqexp: failed to set verdict %s for %s (%s -> %s): %s", markToString(mark), pkt.ID(), pkt.Info().Src, pkt.Info().Dst, err)
 			return err
 		}
 		break
 	}
-	log.Tracef("nfqexp: marking packet %d (%s -> %s) on queue %d with %s after %s", pkt.ID, pkt.Info().Src, pkt.Info().Dst, pkt.queue.id, markToString(mark), time.Since(pkt.received))
-	close(pkt.verdictSet)
+	log.Tracef("nfqexp: marking packet %s (%s -> %s) on queue %d with %s after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, pkt.queue.id, markToString(mark), time.Since(pkt.received))
 	return nil
 }
 
