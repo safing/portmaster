@@ -35,7 +35,7 @@ func New(qid uint16, v6 bool) (*Queue, error) {
 	}
 	cfg := &nfqueue.Config{
 		NfQueue:      qid,
-		MaxPacketLen: 0xff,
+		MaxPacketLen: 1600, // mtu is normally around 1500, make sure to capture it.
 		MaxQueueLen:  0xffff,
 		AfFamily:     uint8(afFamily),
 		Copymode:     nfqueue.NfQnlCopyPacket,
