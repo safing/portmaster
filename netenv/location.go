@@ -1,113 +1,162 @@
 package netenv
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"net"
-	"os"
+	"syscall"
 	"time"
 
-	"github.com/safing/portmaster/network/netutils"
+	"golang.org/x/net/ipv4"
 
 	"golang.org/x/net/icmp"
-	"golang.org/x/net/ipv4"
+
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/network/netutils"
 )
 
-// TODO: Create IPv6 version of GetApproximateInternetLocation
+var (
+	locationTestingIPv4     = "1.1.1.1"
+	locationTestingIPv4Addr *net.IPAddr
+)
 
-// GetApproximateInternetLocation returns the IP-address of the nearest ping-answering internet node
-//nolint:gocognit // TODO
-func GetApproximateInternetLocation() (net.IP, error) {
-	// TODO: first check if we have a public IP
-	// net.InterfaceAddrs()
+func prepLocation() (err error) {
+	locationTestingIPv4Addr, err = net.ResolveIPAddr("ip", locationTestingIPv4)
+	return err
+}
 
-	// Traceroute example
+// GetApproximateInternetLocation returns the nearest detectable IP address. If one or more global IP addresses are configured, one of them is returned. Currently only support IPv4. Else, the IP address of the nearest ping-answering internet node is returned.
+func GetApproximateInternetLocation() (net.IP, error) { //nolint:gocognit
+	// TODO: Create IPv6 version of GetApproximateInternetLocation
 
-	dst := net.IPAddr{
-		IP: net.IPv4(1, 1, 1, 1),
-	}
-
-	c, err := net.ListenPacket("ip4:icmp", "0.0.0.0") // ICMP for IPv4
+	// First check if we have an assigned IPv6 address. Return that if available.
+	globalIPv4, _, err := GetAssignedGlobalAddresses()
 	if err != nil {
-		return nil, err
+		log.Warningf("netenv: location approximation: failed to get assigned global addresses: %s", err)
+	} else if len(globalIPv4) > 0 {
+		return globalIPv4[0], nil
 	}
-	defer c.Close()
 
-	p := ipv4.NewPacketConn(c)
-	err = p.SetControlMessage(ipv4.FlagTTL|ipv4.FlagSrc|ipv4.FlagDst|ipv4.FlagInterface, true)
+	// Create OS specific ICMP Listener.
+	conn, err := newICMPListener(locationTestingIPv4)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to listen: %s", err)
+	}
+	defer conn.Close()
+	v4Conn := ipv4.NewPacketConn(conn)
+
+	// Generate a random ID for the ICMP packets.
+	msgID, err := rng.Number(0xFFFF) // uint16
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate ID: %s", err)
 	}
 
-	wm := icmp.Message{
-		Type: ipv4.ICMPTypeEcho, Code: 0,
+	// Create ICMP message body
+	pingMessage := icmp.Message{
+		Type: ipv4.ICMPTypeEcho,
+		Code: 0,
 		Body: &icmp.Echo{
-			ID:   os.Getpid() & 0xffff,
-			Data: []byte{0},
+			ID:   int(msgID),
+			Seq:  0, // increased before marshal
+			Data: []byte{},
 		},
 	}
-	rb := make([]byte, 1500)
+	recvBuffer := make([]byte, 1500)
+	maxHops := 4 // add one for every reply that is not global
 
 next:
-	for i := 1; i <= 64; i++ { // up to 64 hops
+	for i := 1; i <= maxHops; i++ {
 	repeat:
-		for j := 1; j <= 5; j++ {
-			wm.Body.(*icmp.Echo).Seq = i
+		for j := 1; j <= 2; j++ { // Try every hop twice.
+			// Increase sequence number.
+			pingMessage.Body.(*icmp.Echo).Seq++
 
-			wb, err := wm.Marshal(nil)
+			// Make packet data.
+			pingPacket, err := pingMessage.Marshal(nil)
 			if err != nil {
 				return nil, err
 			}
 
-			err = p.SetTTL(i)
+			// Set TTL on IP packet.
+			err = v4Conn.SetTTL(i)
 			if err != nil {
 				return nil, err
 			}
 
-			_, err = p.WriteTo(wb, nil, &dst)
-			if err != nil {
+			// Send ICMP packet.
+			if _, err := conn.WriteTo(pingPacket, locationTestingIPv4Addr); err != nil {
+				if neterr, ok := err.(*net.OpError); ok {
+					if neterr.Err == syscall.ENOBUFS {
+						continue
+					}
+				}
 				return nil, err
 			}
 
-			err = p.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
-			if err != nil {
-				return nil, err
-			}
-
-			// n, cm, peer, err := p.ReadFrom(rb)
-			// readping:
+			// Listen for replies to the ICMP packet.
+		listen:
 			for {
+				// Set read timeout.
+				err = conn.SetReadDeadline(
+					time.Now().Add(
+						time.Duration(i*2+30) * time.Millisecond,
+					),
+				)
+				if err != nil {
+					return nil, err
+				}
 
-				n, _, peer, err := p.ReadFrom(rb)
+				// Read next packet.
+				n, src, err := conn.ReadFrom(recvBuffer)
 				if err != nil {
 					if err, ok := err.(net.Error); ok && err.Timeout() {
+						// Continue with next packet if we timeout
 						continue repeat
 					}
 					return nil, err
 				}
 
-				rm, err := icmp.ParseMessage(1, rb[:n])
-				if err != nil {
-					log.Fatal(err)
+				// Parse remote IP address.
+				addr, ok := src.(*net.IPAddr)
+				if !ok {
+					return nil, fmt.Errorf("failed to parse IP: %s", src.String())
 				}
 
-				switch rm.Type {
-				case ipv4.ICMPTypeTimeExceeded:
-					ip := net.ParseIP(peer.String())
-					if ip == nil {
-						return nil, fmt.Errorf("failed to parse IP: %s", peer.String())
-					}
-					if !netutils.IPIsLAN(ip) {
-						return ip, nil
-					}
+				// Continue if we receive a packet from ourself. This is specific to Windows.
+				if me, err := IsMyIP(addr.IP); err == nil && me {
+					log.Tracef("netenv: location approximation: ignoring own message from %s", src)
+					continue listen
+				}
+
+				// If we received something from a global IP address, we have succeeded and can return immediately.
+				if netutils.IPIsGlobal(addr.IP) {
+					return addr.IP, nil
+				}
+
+				// For everey non-global reply received, increase the maximum hops to try.
+				maxHops++
+
+				// Parse the ICMP message.
+				icmpReply, err := icmp.ParseMessage(1, recvBuffer[:n])
+				if err != nil {
+					log.Warningf("netenv: location approximation: failed to parse ICMP message: %s", err)
+					continue listen
+				}
+
+				// React based on message type.
+				switch icmpReply.Type {
+				case ipv4.ICMPTypeTimeExceeded, ipv4.ICMPTypeEchoReply:
+					log.Tracef("netenv: location approximation: receveived %q from %s", icmpReply.Type, addr.IP)
 					continue next
-				case ipv4.ICMPTypeEchoReply:
-					continue next
+				case ipv4.ICMPTypeDestinationUnreachable:
+					return nil, fmt.Errorf("destination unreachable")
 				default:
-					// log.Tracef("unknown ICMP message: %+v\n", rm)
+					log.Tracef("netenv: location approximation: unexpected ICMP reply: received %q from %s", icmpReply.Type, addr.IP)
 				}
 			}
 		}
 	}
-	return nil, nil
+
+	return nil, errors.New("no usable response to any icmp message")
 }

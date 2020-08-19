@@ -35,7 +35,7 @@ const (
 
 // Online Status and Resolver
 var (
-	PortalTestIP  = net.IPv4(255, 255, 255, 254)
+	PortalTestIP  = net.IPv4(192, 0, 2, 1)
 	PortalTestURL = fmt.Sprintf("http://%s/", PortalTestIP)
 
 	DNSTestDomain     = "one.one.one.one."

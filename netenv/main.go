@@ -21,7 +21,11 @@ func init() {
 }
 
 func prep() error {
-	return prepOnlineStatus()
+	if err := prepOnlineStatus(); err != nil {
+		return err
+	}
+
+	return prepLocation()
 }
 
 func start() error {
