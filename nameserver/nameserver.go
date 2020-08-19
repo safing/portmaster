@@ -3,6 +3,7 @@ package nameserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"strings"
 
@@ -91,7 +92,7 @@ func stop() error {
 func returnServerFailure(w dns.ResponseWriter, query *dns.Msg) {
 	m := new(dns.Msg)
 	m.SetRcode(query, dns.RcodeServerFailure)
-	_ = w.WriteMsg(m)
+	_ = writeDNSResponse(w, m)
 }
 
 func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
@@ -132,7 +133,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		m := new(dns.Msg)
 		m.SetReply(query)
 		m.Answer = localhostRRs
-		if err := w.WriteMsg(m); err != nil {
+		if err := writeDNSResponse(w, m); err != nil {
 			log.Warningf("nameserver: failed to handle request to %s: %s", q.FQDN, err)
 		}
 		return nil
@@ -270,7 +271,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	m.Ns = rrCache.Ns
 	m.Extra = rrCache.Extra
 
-	if err := w.WriteMsg(m); err != nil {
+	if err := writeDNSResponse(w, m); err != nil {
 		tracer.Warningf("nameserver: failed to return response %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
 	} else {
 		tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
@@ -280,4 +281,17 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 	network.SaveOpenDNSRequest(conn)
 
 	return nil
+}
+
+func writeDNSResponse(w dns.ResponseWriter, m *dns.Msg) (err error) {
+	defer func() {
+		// recover from panic
+		if panicErr := recover(); panicErr != nil {
+			err = fmt.Errorf("panic: %s", panicErr)
+			log.Warningf("nameserver: panic caused by this msg: %#v", m)
+		}
+	}()
+
+	err = w.WriteMsg(m)
+	return
 }

@@ -30,7 +30,7 @@ func sendResponse(w dns.ResponseWriter, query *dns.Msg, verdict network.Verdict,
 		reply.Extra = append(reply.Extra, rrs...)
 	}
 
-	if err := w.WriteMsg(reply); err != nil {
+	if err := writeDNSResponse(w, reply); err != nil {
 		log.Errorf("nameserver: failed to send response: %s", err)
 	}
 }
