@@ -20,10 +20,6 @@ var (
 	restartTriggered = abool.New()
 )
 
-func init() {
-	restartTask = module.NewTask("automatic restart", automaticRestart).MaxDelay(10 * time.Minute)
-}
-
 // DelayedRestart triggers a restart of the application by shutting down the
 // module system gracefully and returning with RestartExitCode. The restart
 // may be further delayed by up to 10 minutes by the internal task scheduling
