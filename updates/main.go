@@ -109,6 +109,8 @@ func prep() error {
 func start() error {
 	initConfig()
 
+	restartTask = module.NewTask("automatic restart", automaticRestart).MaxDelay(10 * time.Minute)
+
 	if err := module.RegisterEventHook(
 		"config",
 		"config change",
