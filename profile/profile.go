@@ -20,12 +20,15 @@ var (
 	lastUsedUpdateThreshold = 24 * time.Hour
 )
 
+// profileSource is the source of the profile.
+type profileSource string
+
 // Profile Sources
 const (
-	SourceLocal      string = "local"   // local, editable
-	SourceSpecial    string = "special" // specials (read-only)
-	SourceCommunity  string = "community"
-	SourceEnterprise string = "enterprise"
+	SourceLocal      profileSource = "local"   // local, editable
+	SourceSpecial    profileSource = "special" // specials (read-only)
+	SourceCommunity  profileSource = "community"
+	SourceEnterprise profileSource = "enterprise"
 )
 
 // Default Action IDs
@@ -36,35 +39,65 @@ const (
 	DefaultActionPermit uint8 = 3
 )
 
+// iconType describes the type of the Icon property
+// of a profile.
+type iconType string
+
+// Supported icon types.
+const (
+	IconTypeFile     iconType = "path"
+	IconTypeDatabase iconType = "database"
+	IconTypeBlob     iconType = "blob"
+)
+
 // Profile is used to predefine a security profile for applications.
 type Profile struct { //nolint:maligned // not worth the effort
 	record.Base
 	sync.Mutex
-
-	// Identity
-	ID     string
-	Source string
-
-	// App Information
-	Name        string
+	// ID is a unique identifier for the profile.
+	ID string
+	// Source describes the source of the profile.
+	Source profileSource
+	// Name is a human readable name of the profile. It
+	// defaults to the basename of the application.
+	Name string
+	// Description may holds an optional description of the
+	// profile or the purpose of the application.
 	Description string
-	Homepage    string
-	// Icon is a path to the icon and is either prefixed "f:" for filepath, "d:" for a database path or "e:" for the encoded data.
+	// Homepage may refer the the website of the application
+	// vendor.
+	Homepage string
+	// Icon holds the icon of the application. The value
+	// may either be a filepath, a database key or a blob URL.
+	// See IconType for more information.
 	Icon string
-
+	// IconType describes the type of the Icon property.
+	IconType iconType
 	// References - local profiles only
-	// LinkedPath is a filesystem path to the executable this profile was created for.
+	// LinkedPath is a filesystem path to the executable this
+	// profile was created for.
 	LinkedPath string
 	// LinkedProfiles is a list of other profiles
 	LinkedProfiles []string
-
-	// Fingerprints
-	// TODO: Fingerprints []*Fingerprint
-
-	// Configuration
-	// The mininum security level to apply to connections made with this profile
+	// SecurityLevel is the mininum security level to apply to
+	// connections made with this profile.
+	// Note(ppacher): we may deprecate this one as it can easily
+	//			      be "simulated" by adjusting the settings
+	//				  directly.
 	SecurityLevel uint8
-	Config        map[string]interface{}
+	// Config holds profile specific setttings. It's a nested
+	// object with keys defining the settings database path. All keys
+	// until the actual settings value (which is everything that is not
+	// an object) need to be concatinated for the settings database
+	// path.
+	Config map[string]interface{}
+	// ApproxLastUsed holds a UTC timestamp in seconds of
+	// when this Profile was approximately last used.
+	// For performance reasons not every single usage is saved.
+	ApproxLastUsed int64
+	// Created holds the UTC timestamp in seconds when the
+	// profile has been created.
+	Created int64
 
 	// Interpreted Data
 	configPerspective *config.Perspective
@@ -77,15 +110,6 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// Lifecycle Management
 	outdated *abool.AtomicBool
 	lastUsed time.Time
-
-	// Framework
-	// If a Profile is declared as a Framework (i.e. an Interpreter and the likes), then the real process/actor must be found
-	// TODO: Framework *Framework
-
-	// When this Profile was approximately last used.
-	// For performance reasons not every single usage is saved.
-	ApproxLastUsed int64
-	Created        int64
 
 	internalSave bool
 }
@@ -254,7 +278,7 @@ func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
 }
 
 // GetProfile loads a profile from the database.
-func GetProfile(source, id string) (*Profile, error) {
+func GetProfile(source profileSource, id string) (*Profile, error) {
 	return GetProfileByScopedID(makeScopedID(source, id))
 }
 

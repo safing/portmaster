@@ -5,19 +5,9 @@ import (
 )
 
 var (
-	activeSecurityLevel   *uint32
-	selectedSecurityLevel *uint32
+	activeSecurityLevel   = new(uint32)
+	selectedSecurityLevel = new(uint32)
 )
-
-func init() {
-	var (
-		activeSecurityLevelValue   uint32
-		selectedSecurityLevelValue uint32
-	)
-
-	activeSecurityLevel = &activeSecurityLevelValue
-	selectedSecurityLevel = &selectedSecurityLevelValue
-}
 
 // ActiveSecurityLevel returns the current security level.
 func ActiveSecurityLevel() uint8 {
