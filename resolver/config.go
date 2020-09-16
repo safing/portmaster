@@ -106,12 +106,14 @@ Parameters:
 		refused: server replies with Refused status
 		zeroip: server replies with an IP address, but it is zero
 `,
-		Order:           cfgOptionNameServersOrder,
 		OptType:         config.OptTypeStringArray,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		DefaultValue:    defaultNameServers,
 		ValidationRegex: fmt.Sprintf("^(%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDNS, ServerTypeTCP),
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionNameServersOrder,
+		},
 	})
 	if err != nil {
 		return err
@@ -120,13 +122,15 @@ Parameters:
 
 	err = config.Register(&config.Option{
 		Name:           "DNS Server Retry Rate",
-		Key:            CfgOptionNameserverRetryRateKey,
 		Description:    "Rate at which to retry failed DNS Servers, in seconds.",
-		Order:          cfgOptionNameserverRetryRateOrder,
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   600,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionNameserverRetryRateOrder,
+			config.UnitAnnotation:         "seconds",
+		},
 	})
 	if err != nil {
 		return err
@@ -134,16 +138,18 @@ Parameters:
 	nameserverRetryRate = config.Concurrent.GetAsInt(CfgOptionNameserverRetryRateKey, 600)
 
 	err = config.Register(&config.Option{
-		Name:            "Do not use Multicast DNS",
-		Key:             CfgOptionNoMulticastDNSKey,
-		Description:     "Multicast DNS queries other devices in the local network",
-		Order:           cfgOptionNoMulticastDNSOrder,
-		OptType:         config.OptTypeInt,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
-		ReleaseLevel:    config.ReleaseLevelStable,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsHighAndExtreme,
-		ValidationRegex: "^(4|6|7)$",
+		Name:           "Do not use Multicast DNS",
+		Key:            CfgOptionNoMulticastDNSKey,
+		Description:    "Multicast DNS queries other devices in the local network",
+		OptType:        config.OptTypeInt,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   status.SecurityLevelsHighAndExtreme,
+		PossibleValues: status.SecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionNoMulticastDNSOrder,
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+		},
 	})
 	if err != nil {
 		return err
@@ -151,16 +157,18 @@ Parameters:
 	noMulticastDNS = status.ConfigIsActiveConcurrent(CfgOptionNoMulticastDNSKey)
 
 	err = config.Register(&config.Option{
-		Name:            "Do not use assigned Nameservers",
-		Key:             CfgOptionNoAssignedNameserversKey,
-		Description:     "that were acquired by the network (dhcp) or system",
-		Order:           cfgOptionNoAssignedNameserversOrder,
-		OptType:         config.OptTypeInt,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
-		ReleaseLevel:    config.ReleaseLevelStable,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsHighAndExtreme,
-		ValidationRegex: "^(4|6|7)$",
+		Name:           "Do not use assigned Nameservers",
+		Key:            CfgOptionNoAssignedNameserversKey,
+		Description:    "that were acquired by the network (dhcp) or system",
+		OptType:        config.OptTypeInt,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   status.SecurityLevelsHighAndExtreme,
+		PossibleValues: status.SecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionNoAssignedNameserversOrder,
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+		},
 	})
 	if err != nil {
 		return err
@@ -168,16 +176,18 @@ Parameters:
 	noAssignedNameservers = status.ConfigIsActiveConcurrent(CfgOptionNoAssignedNameserversKey)
 
 	err = config.Register(&config.Option{
-		Name:            "Do not resolve insecurely",
-		Key:             CfgOptionNoInsecureProtocolsKey,
-		Description:     "Do not resolve domains with insecure protocols, ie. plain DNS",
-		Order:           cfgOptionNoInsecureProtocolsOrder,
-		OptType:         config.OptTypeInt,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
-		ReleaseLevel:    config.ReleaseLevelStable,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsHighAndExtreme,
-		ValidationRegex: "^(4|6|7)$",
+		Name:           "Do not resolve insecurely",
+		Key:            CfgOptionNoInsecureProtocolsKey,
+		Description:    "Do not resolve domains with insecure protocols, ie. plain DNS",
+		OptType:        config.OptTypeInt,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   status.SecurityLevelsHighAndExtreme,
+		PossibleValues: status.SecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionNoInsecureProtocolsOrder,
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+		},
 	})
 	if err != nil {
 		return err
@@ -185,16 +195,18 @@ Parameters:
 	noInsecureProtocols = status.ConfigIsActiveConcurrent(CfgOptionNoInsecureProtocolsKey)
 
 	err = config.Register(&config.Option{
-		Name:            "Do not resolve special domains",
-		Key:             CfgOptionDontResolveSpecialDomainsKey,
-		Description:     fmt.Sprintf("Do not resolve the special top level domains %s", formatScopeList(specialServiceDomains)),
-		Order:           cfgOptionDontResolveSpecialDomainsOrder,
-		OptType:         config.OptTypeInt,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
-		ReleaseLevel:    config.ReleaseLevelStable,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(4|6|7)$",
+		Name:           "Do not resolve special domains",
+		Key:            CfgOptionDontResolveSpecialDomainsKey,
+		Description:    fmt.Sprintf("Do not resolve the special top level domains %s", formatScopeList(specialServiceDomains)),
+		OptType:        config.OptTypeInt,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   status.SecurityLevelsAll,
+		PossibleValues: status.SecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionDontResolveSpecialDomainsOrder,
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+		},
 	})
 	if err != nil {
 		return err

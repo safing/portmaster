@@ -2,7 +2,6 @@ package updates
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
@@ -27,14 +26,25 @@ func registerConfig() error {
 		Name:            "Release Channel",
 		Key:             releaseChannelKey,
 		Description:     "The Release Channel changes which updates are applied. When using beta, you will receive new features earlier and Portmaster will update more frequently. Some beta or experimental features are also available in the stable release channel.",
-		Order:           1,
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelBeta,
 		RequiresRestart: false,
 		DefaultValue:    releaseChannelStable,
-		ExternalOptType: "string list",
-		ValidationRegex: fmt.Sprintf("^(%s|%s)$", releaseChannelStable, releaseChannelBeta),
+		PossibleValues: []config.PossibleValue{
+			{
+				Name:  "Stable",
+				Value: releaseChannelStable,
+			},
+			{
+				Name:  "Beta",
+				Value: releaseChannelBeta,
+			},
+		},
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: 1,
+			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
+		},
 	})
 	if err != nil {
 		return err
@@ -44,13 +54,14 @@ func registerConfig() error {
 		Name:            "Disable Updates",
 		Key:             disableUpdatesKey,
 		Description:     "Disable automatic updates.",
-		Order:           64,
 		OptType:         config.OptTypeBool,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		RequiresRestart: false,
 		DefaultValue:    false,
-		ExternalOptType: "disable updates",
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: 64,
+		},
 	})
 	if err != nil {
 		return err

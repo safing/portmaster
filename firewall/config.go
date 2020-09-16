@@ -11,14 +11,14 @@ var (
 	CfgOptionEnableFilterKey = "filter/enable"
 
 	CfgOptionAskWithSystemNotificationsKey   = "filter/askWithSystemNotifications"
-	CfgOptionAskWithSystemNotificationsOrder = 2
+	cfgOptionAskWithSystemNotificationsOrder = 2
 
 	CfgOptionAskTimeoutKey   = "filter/askTimeout"
-	CfgOptionAskTimeoutOrder = 3
+	cfgOptionAskTimeoutOrder = 3
 	askTimeout               config.IntOption
 
 	CfgOptionPermanentVerdictsKey   = "filter/permanentVerdicts"
-	CfgOptionPermanentVerdictsOrder = 128
+	cfgOptionPermanentVerdictsOrder = 128
 	permanentVerdicts               config.BoolOption
 
 	devMode          config.BoolOption
@@ -30,11 +30,13 @@ func registerConfig() error {
 		Name:           "Permanent Verdicts",
 		Key:            CfgOptionPermanentVerdictsKey,
 		Description:    "With permanent verdicts, control of a connection is fully handed back to the OS after the initial decision. This brings a great performance increase, but makes it impossible to change the decision of a link later on.",
-		Order:          CfgOptionPermanentVerdictsOrder,
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   true,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionPermanentVerdictsOrder,
+		},
 	})
 	if err != nil {
 		return err
@@ -45,11 +47,13 @@ func registerConfig() error {
 		Name:           "Ask with System Notifications",
 		Key:            CfgOptionAskWithSystemNotificationsKey,
 		Description:    `Ask about connections using your operating system's notification system. For this to be enabled, the setting "Use System Notifications" must enabled too. This only affects questions from the Privacy Filter, and does not affect alerts from the Portmaster.`,
-		Order:          CfgOptionAskWithSystemNotificationsOrder,
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   true,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionAskWithSystemNotificationsOrder,
+		},
 	})
 	if err != nil {
 		return err
@@ -59,11 +63,14 @@ func registerConfig() error {
 		Name:           "Timeout for Ask Notifications",
 		Key:            CfgOptionAskTimeoutKey,
 		Description:    "Amount of time (in seconds) how long the Portmaster will wait for a response when prompting about a connection via a notification. Please note that system notifications might not respect this or have it's own limits.",
-		Order:          CfgOptionAskTimeoutOrder,
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   60,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionAskTimeoutOrder,
+			config.UnitAnnotation:         "seconds",
+		},
 	})
 	if err != nil {
 		return err
