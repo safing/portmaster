@@ -46,18 +46,16 @@ func prompt(conn *network.Connection, pkt packet.Packet) { //nolint:gocognit // 
 		// do not save response to profile
 		saveResponse = false
 	} else {
-		// create new notification
-		n = (&notifications.Notification{
-			ID:      nID,
-			Type:    notifications.Prompt,
-			Expires: time.Now().Add(nTTL).Unix(),
-		})
+		var (
+			msg     string
+			actions []notifications.Action
+		)
 
 		// add message and actions
 		switch {
 		case conn.Inbound:
-			n.Message = fmt.Sprintf("Application %s wants to accept connections from %s (%d/%d)", conn.Process(), conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
-			n.AvailableActions = []*notifications.Action{
+			msg = fmt.Sprintf("Application %s wants to accept connections from %s (%d/%d)", conn.Process(), conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
+			actions = []notifications.Action{
 				{
 					ID:   permitServingIP,
 					Text: "Permit",
@@ -68,8 +66,8 @@ func prompt(conn *network.Connection, pkt packet.Packet) { //nolint:gocognit // 
 				},
 			}
 		case conn.Entity.Domain == "": // direct connection
-			n.Message = fmt.Sprintf("Application %s wants to connect to %s (%d/%d)", conn.Process(), conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
-			n.AvailableActions = []*notifications.Action{
+			msg = fmt.Sprintf("Application %s wants to connect to %s (%d/%d)", conn.Process(), conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
+			actions = []notifications.Action{
 				{
 					ID:   permitIP,
 					Text: "Permit",
@@ -81,11 +79,11 @@ func prompt(conn *network.Connection, pkt packet.Packet) { //nolint:gocognit // 
 			}
 		default: // connection to domain
 			if pkt != nil {
-				n.Message = fmt.Sprintf("Application %s wants to connect to %s (%s %d/%d)", conn.Process(), conn.Entity.Domain, conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
+				msg = fmt.Sprintf("Application %s wants to connect to %s (%s %d/%d)", conn.Process(), conn.Entity.Domain, conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
 			} else {
-				n.Message = fmt.Sprintf("Application %s wants to connect to %s", conn.Process(), conn.Entity.Domain)
+				msg = fmt.Sprintf("Application %s wants to connect to %s", conn.Process(), conn.Entity.Domain)
 			}
-			n.AvailableActions = []*notifications.Action{
+			actions = []notifications.Action{
 				{
 					ID:   permitDomainAll,
 					Text: "Permit all",
@@ -100,8 +98,8 @@ func prompt(conn *network.Connection, pkt packet.Packet) { //nolint:gocognit // 
 				},
 			}
 		}
-		// save new notification
-		n.Save()
+
+		n = notifications.NotifyPrompt(nID, msg, actions...)
 	}
 
 	// wait for response/timeout
