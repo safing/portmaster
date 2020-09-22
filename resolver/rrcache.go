@@ -28,6 +28,7 @@ type RRCache struct {
 
 	Server      string // constant
 	ServerScope int8   // constant
+	ServerInfo  string // constant
 
 	servedFromCache bool     // mutable
 	requestingNew   bool     // mutable
@@ -245,4 +246,62 @@ func (rrCache *RRCache) ShallowCopy() *RRCache {
 		Filtered:        rrCache.Filtered,
 		FilteredEntries: rrCache.FilteredEntries,
 	}
+}
+
+// ReplyWithDNS creates a new reply to the given query with the data from the RRCache, and additional informational records.
+func (rrCache *RRCache) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns.Msg {
+	// reply to query
+	reply := new(dns.Msg)
+	reply.SetRcode(request, dns.RcodeSuccess)
+	reply.Answer = rrCache.Answer
+	reply.Ns = rrCache.Ns
+	reply.Extra = rrCache.Extra
+
+	// Set NXDomain return code.
+	if rrCache.IsNXDomain() {
+		reply.Rcode = dns.RcodeNameError
+	}
+
+	return reply
+}
+
+// GetExtraRRs returns a slice of RRs with additional informational records.
+func (rrCache *RRCache) GetExtraRRs(ctx context.Context, query *dns.Msg) (extra []dns.RR) {
+	// Add cache status and source of data.
+	if rrCache.servedFromCache {
+		extra = addExtra(ctx, extra, log.InfoLevel, "served from cache, resolved by "+rrCache.ServerInfo)
+	} else {
+		extra = addExtra(ctx, extra, log.InfoLevel, "freshly resolved by "+rrCache.ServerInfo)
+	}
+
+	// Add expiry and cache information.
+	if rrCache.Expired() {
+		extra = addExtra(ctx, extra, log.InfoLevel, fmt.Sprintf("record expired since %s, requesting new", time.Since(time.Unix(rrCache.TTL, 0))))
+	} else {
+		extra = addExtra(ctx, extra, log.InfoLevel, fmt.Sprintf("record valid for %s", time.Until(time.Unix(rrCache.TTL, 0))))
+	}
+	if rrCache.requestingNew {
+		extra = addExtra(ctx, extra, log.InfoLevel, "async request to refresh the cache has been started")
+	}
+
+	// Add information about filtered entries.
+	if rrCache.Filtered {
+		if len(rrCache.FilteredEntries) > 1 {
+			extra = addExtra(ctx, extra, log.InfoLevel, fmt.Sprintf("%d records have been filtered", len(rrCache.FilteredEntries)))
+		} else {
+			extra = addExtra(ctx, extra, log.InfoLevel, fmt.Sprintf("%d record has been filtered", len(rrCache.FilteredEntries)))
+		}
+	}
+
+	return extra
+}
+
+func addExtra(ctx context.Context, extra []dns.RR, level log.Severity, msg string) []dns.RR {
+	rr, err := nsutil.MakeMessageRecord(level, msg)
+	if err != nil {
+		log.Tracer(ctx).Warningf("resolver: failed to add informational record to reply: %s", err)
+		return extra
+	}
+	extra = append(extra, rr)
+	return extra
 }

@@ -2,10 +2,14 @@ package network
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/miekg/dns"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/nameserver/nsutil"
 	"github.com/safing/portmaster/process"
 )
 
@@ -87,4 +91,49 @@ func writeOpenDNSRequestsToDB() {
 		}
 		conn.Unlock()
 	}
+}
+
+// ReplyWithDNS creates a new reply to the given request with the data from the RRCache, and additional informational records.
+func (conn *Connection) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns.Msg {
+	// Select request responder.
+	switch conn.Verdict {
+	case VerdictBlock:
+		return nsutil.ZeroIP("").ReplyWithDNS(ctx, request)
+	case VerdictDrop:
+		return nil // Do not respond to request.
+	case VerdictFailed:
+		return nsutil.ZeroIP("").ReplyWithDNS(ctx, request)
+	default:
+		reply := nsutil.ServerFailure("").ReplyWithDNS(ctx, request)
+		nsutil.AddMessageToReply(ctx, reply, log.ErrorLevel, "INTERNAL ERROR: incorrect use of network.Connection's DNS Responder")
+		return reply
+	}
+}
+
+// GetExtraRRs returns a slice of RRs with additional informational records.
+func (conn *Connection) GetExtraRRs(ctx context.Context, request *dns.Msg) []dns.RR {
+	// Select level to add the verdict record with.
+	var level log.Severity
+	switch conn.Verdict {
+	case VerdictFailed:
+		level = log.ErrorLevel
+	default:
+		level = log.InfoLevel
+	}
+
+	// Create resource record with verdict and reason.
+	rr, err := nsutil.MakeMessageRecord(level, fmt.Sprintf("%s: %s", conn.Verdict.Verb(), conn.Reason))
+	if err != nil {
+		log.Tracer(ctx).Warningf("filter: failed to add informational record to reply: %s", err)
+		return nil
+	}
+	extra := []dns.RR{rr}
+
+	// Add additional records from ReasonContext.
+	if rrProvider, ok := conn.ReasonContext.(nsutil.RRProvider); ok {
+		rrs := rrProvider.GetExtraRRs(ctx, request)
+		extra = append(extra, rrs...)
+	}
+
+	return extra
 }

@@ -13,7 +13,9 @@ import (
 func PreventBypassing(conn *network.Connection) (endpoints.EPResult, string, nsutil.Responder) {
 	// Block firefox canary domain to disable DoH
 	if strings.ToLower(conn.Entity.Domain) == "use-application-dns.net." {
-		return endpoints.Denied, "blocked canary domain to prevent enabling DNS-over-HTTPs", nsutil.NxDomain()
+		return endpoints.Denied,
+			"blocked canary domain to prevent enabling of DNS-over-HTTPs",
+			nsutil.NxDomain("blocked canary domain to prevent enabling of DNS-over-HTTPs")
 	}
 
 	return endpoints.NoMatch, "", nil
