@@ -358,6 +358,10 @@ resolveLoop:
 				// Defensive: This should normally not happen.
 				continue
 			}
+			// Check if we got NXDomain and whether we should try another resolver.
+			if rrCache.IsNXDomain() && tryAll {
+				continue
+			}
 			break resolveLoop
 		}
 	}
