@@ -22,6 +22,7 @@ func registerConfiguration() error {
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 144,
+			config.CategoryAnnotation:     "Development",
 		},
 	})
 	if err != nil {

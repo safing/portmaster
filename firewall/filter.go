@@ -31,6 +31,9 @@ func init() {
 			ExpertiseLevel: config.ExpertiseLevelUser,
 			ReleaseLevel:   config.ReleaseLevelBeta,
 			DefaultValue:   true,
+			Annotations: config.Annotations{
+				config.CategoryAnnotation: "General",
+			},
 		},
 	)
 }

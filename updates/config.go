@@ -44,6 +44,7 @@ func registerConfig() error {
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 1,
 			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
+			config.CategoryAnnotation:     "Expertise & Release",
 		},
 	})
 	if err != nil {
@@ -61,6 +62,7 @@ func registerConfig() error {
 		DefaultValue:    false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 64,
+			config.CategoryAnnotation:     "General",
 		},
 	})
 	if err != nil {

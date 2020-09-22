@@ -36,6 +36,7 @@ func registerConfig() error {
 		DefaultValue:   defaultDevMode,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 127,
+			config.CategoryAnnotation:     "Development",
 		},
 	})
 	if err != nil {
@@ -52,6 +53,7 @@ func registerConfig() error {
 		DefaultValue:   true, // TODO: turn off by default on unsupported systems
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 32,
+			config.CategoryAnnotation:     "General",
 		},
 	})
 	if err != nil {

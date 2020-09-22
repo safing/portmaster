@@ -113,6 +113,7 @@ Parameters:
 		ValidationRegex: fmt.Sprintf("^(%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDNS, ServerTypeTCP),
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionNameServersOrder,
+			config.CategoryAnnotation:     "Servers",
 		},
 	})
 	if err != nil {
@@ -131,31 +132,13 @@ Parameters:
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionNameserverRetryRateOrder,
 			config.UnitAnnotation:         "seconds",
+			config.CategoryAnnotation:     "Servers",
 		},
 	})
 	if err != nil {
 		return err
 	}
 	nameserverRetryRate = config.Concurrent.GetAsInt(CfgOptionNameserverRetryRateKey, 600)
-
-	err = config.Register(&config.Option{
-		Name:           "Do not use Multicast DNS",
-		Key:            CfgOptionNoMulticastDNSKey,
-		Description:    "Multicast DNS queries other devices in the local network",
-		OptType:        config.OptTypeInt,
-		ExpertiseLevel: config.ExpertiseLevelExpert,
-		ReleaseLevel:   config.ReleaseLevelStable,
-		DefaultValue:   status.SecurityLevelsHighAndExtreme,
-		PossibleValues: status.SecurityLevelValues,
-		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: cfgOptionNoMulticastDNSOrder,
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-		},
-	})
-	if err != nil {
-		return err
-	}
-	noMulticastDNS = status.SecurityLevelOption(CfgOptionNoMulticastDNSKey)
 
 	err = config.Register(&config.Option{
 		Name:           "Do not use assigned Nameservers",
@@ -169,12 +152,33 @@ Parameters:
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionNoAssignedNameserversOrder,
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.CategoryAnnotation:     "Servers",
 		},
 	})
 	if err != nil {
 		return err
 	}
 	noAssignedNameservers = status.SecurityLevelOption(CfgOptionNoAssignedNameserversKey)
+
+	err = config.Register(&config.Option{
+		Name:           "Do not use Multicast DNS",
+		Key:            CfgOptionNoMulticastDNSKey,
+		Description:    "Multicast DNS queries other devices in the local network",
+		OptType:        config.OptTypeInt,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   status.SecurityLevelsHighAndExtreme,
+		PossibleValues: status.SecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionNoMulticastDNSOrder,
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.CategoryAnnotation:     "Resolving",
+		},
+	})
+	if err != nil {
+		return err
+	}
+	noMulticastDNS = status.SecurityLevelOption(CfgOptionNoMulticastDNSKey)
 
 	err = config.Register(&config.Option{
 		Name:           "Do not resolve insecurely",
@@ -188,6 +192,7 @@ Parameters:
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionNoInsecureProtocolsOrder,
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.CategoryAnnotation:     "Resolving",
 		},
 	})
 	if err != nil {
@@ -207,6 +212,7 @@ Parameters:
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionDontResolveSpecialDomainsOrder,
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.CategoryAnnotation:     "Resolving",
 		},
 	})
 	if err != nil {
