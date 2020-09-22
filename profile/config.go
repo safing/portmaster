@@ -103,6 +103,7 @@ func registerConfiguration() error {
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
 			config.DisplayOrderAnnotation: cfgOptionDefaultActionOrder,
+			config.CategoryAnnotation:     "General",
 		},
 		PossibleValues: []config.PossibleValue{
 			{
@@ -138,6 +139,7 @@ func registerConfiguration() error {
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionDisableAutoPermitOrder,
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.CategoryAnnotation: "Advanced",
 		},
 		PossibleValues: status.SecurityLevelValues,
 	})
@@ -175,15 +177,16 @@ Examples:
 
 	// Endpoint Filter List
 	err = config.Register(&config.Option{
-		Name:         "Endpoint Filter List",
+		Name:         "Outgoing Rules",
 		Key:          CfgOptionEndpointsKey,
-		Description:  "Filter outgoing connections by matching the destination endpoint. Network Scope restrictions still apply.",
+		Description:  "Rules that apply to outgoing network connections. Network Scope restrictions still apply.",
 		Help:         filterListHelp,
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{},
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  endpoints.DisplayHintEndpointList,
 			config.DisplayOrderAnnotation: cfgOptionEndpointsOrder,
+			config.CategoryAnnotation:     "Rules",
 		},
 		ValidationRegex: `^(\+|\-) [A-z0-9\.:\-*/]+( [A-z0-9/]+)?$`,
 	})
@@ -195,15 +198,16 @@ Examples:
 
 	// Service Endpoint Filter List
 	err = config.Register(&config.Option{
-		Name:         "Service Endpoint Filter List",
+		Name:         "Incoming Rules",
 		Key:          CfgOptionServiceEndpointsKey,
-		Description:  "Filter incoming connections by matching the source endpoint. Network Scope restrictions and the inbound permission still apply. Also not that the implicit default action of this list is to always block.",
+		Description:  "Rules that apply to incoming network connections. Network Scope restrictions and the inbound permission still apply. Also not that the implicit default action of this list is to always block.",
 		Help:         filterListHelp,
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{"+ Localhost"},
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  endpoints.DisplayHintEndpointList,
 			config.DisplayOrderAnnotation: cfgOptionServiceEndpointsOrder,
+			config.CategoryAnnotation:     "Rules",
 		},
 		ValidationRegex: `^(\+|\-) [A-z0-9\.:\-*/]+( [A-z0-9/]+)?$`,
 	})
@@ -223,6 +227,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  "filter list",
 			config.DisplayOrderAnnotation: cfgOptionFilterListsOrder,
+			config.CategoryAnnotation:     "Rules",
 		},
 		ValidationRegex: `^[a-zA-Z0-9\-]+$`,
 	})
@@ -243,6 +248,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionFilterCNAMEOrder,
+			config.CategoryAnnotation: "DNS",
 		},
 		PossibleValues: status.SecurityLevelValues,
 	})
@@ -263,6 +269,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionFilterSubDomainsOrder,
+			config.CategoryAnnotation: "DNS",
 		},
 	})
 	if err != nil {
@@ -283,6 +290,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionBlockScopeLocalOrder,
+			config.CategoryAnnotation:     "Scopes & Types",
 		},
 	})
 	if err != nil {
@@ -302,6 +310,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionBlockScopeLANOrder,
+			config.CategoryAnnotation:     "Scopes & Types",
 		},
 	})
 	if err != nil {
@@ -321,6 +330,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionBlockScopeInternetOrder,
+			config.CategoryAnnotation:     "Scopes & Types",
 		},
 	})
 	if err != nil {
@@ -340,6 +350,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionBlockP2POrder,
+			config.CategoryAnnotation:     "Scopes & Types",
 		},
 	})
 	if err != nil {
@@ -359,6 +370,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionBlockInboundOrder,
+			config.CategoryAnnotation:     "Scopes & Types",
 		},
 	})
 	if err != nil {
@@ -379,6 +391,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionEnforceSPNOrder,
+			config.CategoryAnnotation: "Advanced",
 		},
 	})
 	if err != nil {
@@ -400,6 +413,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionRemoveOutOfScopeDNSOrder,
+			config.CategoryAnnotation: "DNS",
 		},
 	})
 	if err != nil {
@@ -421,6 +435,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionRemoveBlockedDNSOrder,
+			config.CategoryAnnotation: "DNS",
 		},
 	})
 	if err != nil {
@@ -441,6 +456,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionDomainHeuristicsOrder,
+			config.CategoryAnnotation: "DNS",
 		},
 	})
 	if err != nil {
@@ -461,6 +477,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionPreventBypassingOrder,
+			config.CategoryAnnotation: "Advanced",
 		},
 	})
 	if err != nil {
