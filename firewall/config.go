@@ -36,6 +36,7 @@ func registerConfig() error {
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionPermanentVerdictsOrder,
+			config.CategoryAnnotation:     "Advanced",
 		},
 	})
 	if err != nil {
@@ -53,6 +54,7 @@ func registerConfig() error {
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionAskWithSystemNotificationsOrder,
+			config.CategoryAnnotation:     "General",
 		},
 	})
 	if err != nil {
@@ -70,6 +72,7 @@ func registerConfig() error {
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionAskTimeoutOrder,
 			config.UnitAnnotation:         "seconds",
+			config.CategoryAnnotation:     "General",
 		},
 	})
 	if err != nil {
