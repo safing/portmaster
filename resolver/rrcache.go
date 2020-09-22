@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/nameserver/nsutil"
 	"github.com/safing/portmaster/netenv"
 
 	"github.com/miekg/dns"
@@ -130,6 +132,7 @@ func (rrCache *RRCache) ToNameRecord() *NameRecord {
 		TTL:         rrCache.TTL,
 		Server:      rrCache.Server,
 		ServerScope: rrCache.ServerScope,
+		ServerInfo:  rrCache.ServerInfo,
 	}
 
 	// stringify RR entries
@@ -176,6 +179,7 @@ func GetRRCache(domain string, question dns.Type) (*RRCache, error) {
 
 	rrCache.Server = nameRecord.Server
 	rrCache.ServerScope = nameRecord.ServerScope
+	rrCache.ServerInfo = nameRecord.ServerInfo
 	rrCache.servedFromCache = true
 	return rrCache, nil
 }
@@ -239,6 +243,7 @@ func (rrCache *RRCache) ShallowCopy() *RRCache {
 
 		Server:      rrCache.Server,
 		ServerScope: rrCache.ServerScope,
+		ServerInfo:  rrCache.ServerInfo,
 
 		updated:         rrCache.updated,
 		servedFromCache: rrCache.servedFromCache,

@@ -23,6 +23,7 @@ var (
 		Server:        ServerSourceEnv,
 		ServerType:    ServerTypeEnv,
 		ServerIPScope: netutils.SiteLocal,
+		ServerInfo:    "Portmaster environment",
 		Source:        ServerSourceEnv,
 		Conn:          &envResolverConn{},
 	}
@@ -114,6 +115,7 @@ func (er *envResolverConn) makeRRCache(q *Query, answers []dns.RR) *RRCache {
 		Extra:       []dns.RR{internalSpecialUseComment}, // Always add comment about this TLD.
 		Server:      envResolver.Server,
 		ServerScope: envResolver.ServerIPScope,
+		ServerInfo:  envResolver.ServerInfo,
 	}
 }
 

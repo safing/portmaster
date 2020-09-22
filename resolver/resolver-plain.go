@@ -86,6 +86,7 @@ func (pr *PlainResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 		Extra:       reply.Extra,
 		Server:      pr.resolver.Server,
 		ServerScope: pr.resolver.ServerIPScope,
+		ServerInfo:  pr.resolver.ServerInfo,
 	}
 
 	// TODO: check if reply.Answer is valid

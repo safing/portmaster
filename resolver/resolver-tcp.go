@@ -51,6 +51,7 @@ func (ifq *InFlightQuery) MakeCacheRecord(reply *dns.Msg) *RRCache {
 		Extra:       reply.Extra,
 		Server:      ifq.Resolver.Server,
 		ServerScope: ifq.Resolver.ServerIPScope,
+		ServerInfo:  ifq.Resolver.ServerInfo,
 	}
 }
 

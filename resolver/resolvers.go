@@ -128,6 +128,13 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		UpstreamBlockDetection: blockType,
 	}
 
+	u.RawQuery = "" // Remove options from parsed URL
+	if new.Name != "" {
+		new.ServerInfo = fmt.Sprintf("%s (%s, from %s)", new.Name, u, source)
+	} else {
+		new.ServerInfo = fmt.Sprintf("%s (from %s)", u, source)
+	}
+
 	new.Conn = resolverConnFactory(new)
 	return new, false, nil
 }
