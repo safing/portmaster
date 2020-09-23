@@ -167,13 +167,6 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	// Check request with the privacy filter before resolving.
 	firewall.DecideOnConnection(ctx, conn, nil)
 
-	// Check if there is Verdict to act upon.
-	switch conn.Verdict {
-	case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
-		tracer.Infof("nameserver: request for %s from %s %s", q.ID(), conn.Process(), conn.Verdict.Verb())
-		return reply(conn, conn)
-	}
-
 	// Check if there is a responder from the firewall.
 	// In special cases, the firewall might want to respond the query itself.
 	// A reason for this might be that the request is sink-holed to a forced
@@ -183,8 +176,15 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		// Save the request as open, as we don't know if there will be a connection or not.
 		network.SaveOpenDNSRequest(conn)
 
-		tracer.Infof("nameserver: handing over request for %s to filter responder: %s", q.ID(), conn.Reason)
+		tracer.Infof("nameserver: handing over request for %s to special filter responder: %s", q.ID(), conn.Reason)
 		return reply(responder)
+	}
+
+	// Check if there is Verdict to act upon.
+	switch conn.Verdict {
+	case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
+		tracer.Infof("nameserver: request for %s from %s %s", q.ID(), conn.Process(), conn.Verdict.Verb())
+		return reply(conn, conn)
 	}
 
 	// Save security level to query, so that the resolver can react to configuration.
