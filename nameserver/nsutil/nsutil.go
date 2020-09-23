@@ -79,6 +79,7 @@ func ZeroIP(msg string) ResponderFunc {
 	}
 }
 
+// Localhost is a ResponderFunc than replies with localhost IP addresses.
 func Localhost(msg string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg)
@@ -145,7 +146,9 @@ func ServerFailure(msg string) ResponderFunc {
 	}
 }
 
-func MakeMessageRecord(level log.Severity, msg string) (dns.RR, error) {
+// MakeMessageRecord creates an informational resource record that can be added
+// to the extra section of a reply.
+func MakeMessageRecord(level log.Severity, msg string) (dns.RR, error) { //nolint:interfacer
 	return dns.NewRR(fmt.Sprintf(
 		`%s.portmaster. 0 IN TXT "%s"`,
 		strings.ToLower(level.String()),
@@ -153,6 +156,10 @@ func MakeMessageRecord(level log.Severity, msg string) (dns.RR, error) {
 	))
 }
 
+// AddMessageToReply creates an information resource records using
+// MakeMessageRecord and immediately adds it the the extra section of the given
+// reply. If an error occurs, the resource record will not be added, and the
+// error will be logged.
 func AddMessageToReply(ctx context.Context, reply *dns.Msg, level log.Severity, msg string) {
 	if msg != "" {
 		rr, err := MakeMessageRecord(level, msg)

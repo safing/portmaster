@@ -239,7 +239,7 @@ func (mgr *tcpResolverConnMgr) run(workerCtx context.Context) error {
 		}
 
 		// create connection
-		conn, connClosing, connCtx, cancelConnCtx := mgr.establishConnection(workerCtx)
+		conn, connClosing, connCtx, cancelConnCtx := mgr.establishConnection()
 		if conn == nil {
 			mgr.failCnt++
 			continue
@@ -324,7 +324,7 @@ func (mgr *tcpResolverConnMgr) waitForWork(workerCtx context.Context) (proceed b
 	return true
 }
 
-func (mgr *tcpResolverConnMgr) establishConnection(workerCtx context.Context) (
+func (mgr *tcpResolverConnMgr) establishConnection() (
 	conn *dns.Conn,
 	connClosing *abool.AtomicBool,
 	connCtx context.Context,

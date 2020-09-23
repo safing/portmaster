@@ -64,7 +64,7 @@ func (br ListBlockReason) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// GetExtraRR implements the nsutil.RRProvider interface
+// GetExtraRRs implements the nsutil.RRProvider interface
 // and adds additional TXT records justifying the reason
 // the request was blocked.
 func (br ListBlockReason) GetExtraRRs(ctx context.Context, _ *dns.Msg) []dns.RR {
