@@ -76,7 +76,7 @@ func NewTCPResolver(resolver *Resolver) *TCPResolver {
 		clientHeartbeat: make(chan struct{}),
 		clientCancel:    func() {},
 		connInstanceID:  &instanceID,
-		queries:         make(chan *dns.Msg, 1000),
+		queries:         make(chan *dns.Msg, 100),
 		inFlightQueries: make(map[uint16]*InFlightQuery),
 	}
 }
@@ -187,6 +187,7 @@ func (tr *TCPResolver) checkClientStatus() {
 	select {
 	case tr.clientHeartbeat <- struct{}{}:
 	case <-time.After(defaultRequestTimeout):
+		log.Warningf("resolver: heartbeat failed for %s dns client, stopping", tr.resolver.GetName())
 		cancelClient()
 	}
 }
