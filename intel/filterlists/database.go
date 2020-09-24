@@ -197,6 +197,7 @@ func normalizeEntry(entry *listEntry) {
 func processEntry(ctx context.Context, filter *scopedBloom, entry *listEntry, records chan<- record.Record) error {
 	normalizeEntry(entry)
 
+	// Only add the entry to the bloom filter if it has any sources.
 	if len(entry.Sources) > 0 {
 		filter.add(entry.Type, entry.Entity)
 	}
@@ -206,6 +207,12 @@ func processEntry(ctx context.Context, filter *scopedBloom, entry *listEntry, re
 		Type:      entry.Type,
 		Sources:   entry.Sources,
 		UpdatedAt: time.Now().Unix(),
+	}
+
+	// If the entry is a "delete" update, actually delete it to save space.
+	if len(entry.Sources) == 0 {
+		r.CreateMeta()
+		r.Meta().Delete()
 	}
 
 	key := makeListCacheKey(strings.ToLower(r.Type), r.Value)
