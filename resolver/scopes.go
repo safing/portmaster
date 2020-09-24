@@ -158,7 +158,7 @@ addNextResolver:
 	for _, resolver := range addResolvers {
 		// check for compliance
 		if err := resolver.checkCompliance(ctx, q); err != nil {
-			log.Tracef("skipping non-compliant resolver %s: %s", resolver.GetName(), err)
+			log.Tracer(ctx).Tracef("skipping non-compliant resolver %s: %s", resolver.GetName(), err)
 			continue
 		}
 

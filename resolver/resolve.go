@@ -121,6 +121,9 @@ func Resolve(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
 	}
 
 	// log
+	// try adding a context tracer
+	ctx, tracer := log.AddTracer(ctx)
+	defer tracer.Submit()
 	log.Tracer(ctx).Tracef("resolver: resolving %s%s", q.FQDN, q.QType)
 
 	// check query compliance
@@ -225,6 +228,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		// resolve async
 		module.StartWorker("resolve async", func(ctx context.Context) error {
 			ctx, tracer := log.AddTracer(ctx)
+			defer tracer.Submit()
 			tracer.Debugf("resolver: resolving %s async", q.ID())
 			_, err := resolveAndCache(ctx, q, nil)
 			if err != nil {

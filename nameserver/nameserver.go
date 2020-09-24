@@ -108,7 +108,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	// Return with server failure if offline.
 	if netenv.GetOnlineStatus() == netenv.StatusOffline &&
 		!netenv.IsConnectivityDomain(q.FQDN) {
-		tracer.Debugf("namserver: not resolving %s, device is offline", q.FQDN)
+		tracer.Debugf("nameserver: not resolving %s, device is offline", q.FQDN)
 		return reply(nsutil.ServerFailure("resolving disabled, device is offline"))
 	}
 
@@ -121,8 +121,8 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 
 	// Handle request for localhost.
 	if strings.HasSuffix(q.FQDN, "localhost.") {
-		tracer.Tracef("namserver: returning localhost records")
-		return reply(nsutil.Localhost(""))
+		tracer.Tracef("nameserver: returning localhost records")
+		return reply(nsutil.Localhost())
 	}
 
 	// Authenticate request - only requests from the local host, but with any of its IPs, are allowed.
@@ -197,14 +197,14 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		// React to special errors.
 		switch {
 		case errors.Is(err, resolver.ErrNotFound):
-			tracer.Tracef("namserver: NXDomain via error")
-			return reply(nsutil.NxDomain(""))
+			tracer.Tracef("nameserver: NXDomain via error: %s", err)
+			return reply(nsutil.NxDomain("nxdomain: " + err.Error()))
 		case errors.Is(err, resolver.ErrBlocked):
-			tracer.Tracef("namserver: block via error")
-			return reply(nsutil.ZeroIP(""))
+			tracer.Tracef("nameserver: block via error: %s", err)
+			return reply(nsutil.ZeroIP("blocked: " + err.Error()))
 		case errors.Is(err, resolver.ErrLocalhost):
-			tracer.Tracef("namserver: returning localhost records")
-			return reply(nsutil.Localhost(""))
+			tracer.Tracef("nameserver: returning localhost records")
+			return reply(nsutil.Localhost())
 		default:
 			tracer.Warningf("nameserver: failed to resolve %s: %s", q.ID(), err)
 			return reply(nsutil.ServerFailure("internal error: " + err.Error()))
@@ -230,7 +230,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		// Request was blocked by the firewall.
 		switch conn.Verdict {
 		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
-			tracer.Infof("nameserver: request for %s from %s %s", q.ID(), conn.Process(), conn.Verdict.Verb())
+			tracer.Infof("nameserver: %s request for %s from %s", conn.Verdict.Verb(), q.ID(), conn.Process())
 			return reply(conn, conn)
 		}
 	}
@@ -239,6 +239,6 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	defer network.SaveOpenDNSRequest(conn)
 
 	// Reply with successful response.
-	tracer.Infof("nameserver: returning %s response %s to %s", conn.Verdict.Verb(), q.ID(), conn.Process())
+	tracer.Infof("nameserver: returning %s response for %s to %s", conn.Verdict.Verb(), q.ID(), conn.Process())
 	return reply(rrCache, conn, rrCache)
 }
