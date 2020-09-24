@@ -105,7 +105,7 @@ func (conn *Connection) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 		return nsutil.ZeroIP().ReplyWithDNS(ctx, request)
 	default:
 		reply := nsutil.ServerFailure().ReplyWithDNS(ctx, request)
-		nsutil.AddMessageToReply(ctx, reply, log.ErrorLevel, "INTERNAL ERROR: incorrect use of network.Connection's DNS Responder")
+		nsutil.AddMessagesToReply(ctx, reply, log.ErrorLevel, "INTERNAL ERROR: incorrect use of Connection DNS Responder")
 		return reply
 	}
 }

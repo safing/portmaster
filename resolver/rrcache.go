@@ -23,7 +23,7 @@ type RRCache struct {
 	Domain   string   // constant
 	Question dns.Type // constant
 
-	Answer []dns.RR // might be mixed
+	Answer []dns.RR // constant
 	Ns     []dns.RR // constant
 	Extra  []dns.RR // constant
 	TTL    int64    // constant
@@ -34,6 +34,7 @@ type RRCache struct {
 
 	servedFromCache bool     // mutable
 	requestingNew   bool     // mutable
+	isBackup        bool     // mutable
 	Filtered        bool     // mutable
 	FilteredEntries []string // mutable
 
@@ -55,19 +56,11 @@ func (rrCache *RRCache) ExpiresSoon() bool {
 	return rrCache.TTL <= time.Now().Unix()+refreshTTL
 }
 
-// MixAnswers randomizes the answer records to allow dumb clients (who only look at the first record) to reliably connect.
-func (rrCache *RRCache) MixAnswers() {
+// Clean sets all TTLs to 17 and sets cache expiry with specified minimum.
+func (rrCache *RRCache) Clean(minExpires uint32) {
 	rrCache.Lock()
 	defer rrCache.Unlock()
 
-	for i := range rrCache.Answer {
-		j := rand.Intn(i + 1)
-		rrCache.Answer[i], rrCache.Answer[j] = rrCache.Answer[j], rrCache.Answer[i]
-	}
-}
-
-// Clean sets all TTLs to 17 and sets cache expiry with specified minimum.
-func (rrCache *RRCache) Clean(minExpires uint32) {
 	var lowestTTL uint32 = 0xFFFFFFFF
 	var header *dns.RR_Header
 
@@ -221,6 +214,9 @@ func (rrCache *RRCache) Flags() string {
 	if rrCache.requestingNew {
 		s += "R"
 	}
+	if rrCache.isBackup {
+		s += "B"
+	}
 	if rrCache.Filtered {
 		s += "F"
 	}
@@ -253,6 +249,7 @@ func (rrCache *RRCache) ShallowCopy() *RRCache {
 		updated:         rrCache.updated,
 		servedFromCache: rrCache.servedFromCache,
 		requestingNew:   rrCache.requestingNew,
+		isBackup:        rrCache.isBackup,
 		Filtered:        rrCache.Filtered,
 		FilteredEntries: rrCache.FilteredEntries,
 	}
@@ -263,13 +260,23 @@ func (rrCache *RRCache) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 	// reply to query
 	reply := new(dns.Msg)
 	reply.SetRcode(request, dns.RcodeSuccess)
-	reply.Answer = rrCache.Answer
 	reply.Ns = rrCache.Ns
 	reply.Extra = rrCache.Extra
 
-	// Set NXDomain return code.
 	if rrCache.IsNXDomain() {
+		// Set NXDomain return code if not the reply has no answers.
 		reply.Rcode = dns.RcodeNameError
+	} else {
+		// Copy answers, as we randomize their order a little.
+		reply.Answer = make([]dns.RR, len(rrCache.Answer))
+		copy(reply.Answer, rrCache.Answer)
+
+		// Randomize the order of the answer records a little to allow dumb clients
+		// (who only look at the first record) to reliably connect.
+		for i := range reply.Answer {
+			j := rand.Intn(i + 1)
+			reply.Answer[i], reply.Answer[j] = reply.Answer[j], reply.Answer[i]
+		}
 	}
 
 	return reply
@@ -286,12 +293,15 @@ func (rrCache *RRCache) GetExtraRRs(ctx context.Context, query *dns.Msg) (extra 
 
 	// Add expiry and cache information.
 	if rrCache.Expired() {
-		extra = addExtra(ctx, extra, fmt.Sprintf("record expired since %s, requesting new", time.Since(time.Unix(rrCache.TTL, 0))))
+		extra = addExtra(ctx, extra, fmt.Sprintf("record expired since %s", time.Since(time.Unix(rrCache.TTL, 0)).Round(time.Second)))
 	} else {
-		extra = addExtra(ctx, extra, fmt.Sprintf("record valid for %s", time.Until(time.Unix(rrCache.TTL, 0))))
+		extra = addExtra(ctx, extra, fmt.Sprintf("record valid for %s", time.Until(time.Unix(rrCache.TTL, 0)).Round(time.Second)))
 	}
 	if rrCache.requestingNew {
 		extra = addExtra(ctx, extra, "async request to refresh the cache has been started")
+	}
+	if rrCache.isBackup {
+		extra = addExtra(ctx, extra, "this record is served because a fresh request failed")
 	}
 
 	// Add information about filtered entries.

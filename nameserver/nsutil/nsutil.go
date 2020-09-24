@@ -74,9 +74,7 @@ func ZeroIP(msgs ...string) ResponderFunc {
 			reply.SetRcode(request, dns.RcodeSuccess)
 		}
 
-		for _, msg := range msgs {
-			AddMessageToReply(ctx, reply, log.InfoLevel, msg)
-		}
+		AddMessagesToReply(ctx, reply, log.InfoLevel, msgs...)
 
 		return reply
 	}
@@ -116,9 +114,7 @@ func Localhost(msgs ...string) ResponderFunc {
 			reply.SetRcode(request, dns.RcodeSuccess)
 		}
 
-		for _, msg := range msgs {
-			AddMessageToReply(ctx, reply, log.InfoLevel, msg)
-		}
+		AddMessagesToReply(ctx, reply, log.InfoLevel, msgs...)
 
 		return reply
 	}
@@ -128,9 +124,7 @@ func Localhost(msgs ...string) ResponderFunc {
 func NxDomain(msgs ...string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg).SetRcode(request, dns.RcodeNameError)
-		for _, msg := range msgs {
-			AddMessageToReply(ctx, reply, log.InfoLevel, msg)
-		}
+		AddMessagesToReply(ctx, reply, log.InfoLevel, msgs...)
 		return reply
 	}
 }
@@ -139,9 +133,7 @@ func NxDomain(msgs ...string) ResponderFunc {
 func Refused(msgs ...string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg).SetRcode(request, dns.RcodeRefused)
-		for _, msg := range msgs {
-			AddMessageToReply(ctx, reply, log.InfoLevel, msg)
-		}
+		AddMessagesToReply(ctx, reply, log.InfoLevel, msgs...)
 		return reply
 	}
 }
@@ -150,9 +142,7 @@ func Refused(msgs ...string) ResponderFunc {
 func ServerFailure(msgs ...string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg).SetRcode(request, dns.RcodeServerFailure)
-		for _, msg := range msgs {
-			AddMessageToReply(ctx, reply, log.InfoLevel, msg)
-		}
+		AddMessagesToReply(ctx, reply, log.InfoLevel, msgs...)
 		return reply
 	}
 }
@@ -174,18 +164,25 @@ func MakeMessageRecord(level log.Severity, msg string) (dns.RR, error) { //nolin
 	return rr, nil
 }
 
-// AddMessageToReply creates an information resource records using
-// MakeMessageRecord and immediately adds it the the extra section of the given
+// AddMessagesToReply creates information resource records using
+// MakeMessageRecord and immediately adds them to the extra section of the given
 // reply. If an error occurs, the resource record will not be added, and the
 // error will be logged.
-func AddMessageToReply(ctx context.Context, reply *dns.Msg, level log.Severity, msg string) {
-	if msg != "" {
+func AddMessagesToReply(ctx context.Context, reply *dns.Msg, level log.Severity, msgs ...string) {
+	for _, msg := range msgs {
+		// Ignore empty messages.
+		if msg == "" {
+			continue
+		}
+
+		// Create resources record.
 		rr, err := MakeMessageRecord(level, msg)
 		if err != nil {
 			log.Tracer(ctx).Warningf("nameserver: failed to add message to reply: %s", err)
-			return
+			continue
 		}
 
+		// Add to extra section of the reply.
 		reply.Extra = append(reply.Extra, rr)
 	}
 }

@@ -29,8 +29,10 @@ func sendResponse(
 
 	// Add extra RRs through a custom RRProvider.
 	for _, rrProvider := range rrProviders {
-		rrs := rrProvider.GetExtraRRs(ctx, request)
-		reply.Extra = append(reply.Extra, rrs...)
+		if rrProvider != nil {
+			rrs := rrProvider.GetExtraRRs(ctx, request)
+			reply.Extra = append(reply.Extra, rrs...)
+		}
 	}
 
 	// Write reply.

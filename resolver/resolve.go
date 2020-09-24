@@ -132,7 +132,6 @@ func Resolve(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
 	if !q.NoCaching {
 		rrCache = checkCache(ctx, q)
 		if rrCache != nil && !rrCache.Expired() {
-			rrCache.MixAnswers()
 			return rrCache, nil
 		}
 
@@ -142,7 +141,6 @@ func Resolve(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
 			// we waited for another request, recheck the cache!
 			rrCache = checkCache(ctx, q)
 			if rrCache != nil && !rrCache.Expired() {
-				rrCache.MixAnswers()
 				return rrCache, nil
 			}
 			log.Tracer(ctx).Debugf("resolver: waited for another %s%s query, but cache missed!", q.FQDN, q.QType)
@@ -221,7 +219,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		log.Tracer(ctx).Tracef(
 			"resolver: cache for %s will expire in %s, refreshing async now",
 			q.ID(),
-			time.Until(time.Unix(rrCache.TTL, 0)),
+			time.Until(time.Unix(rrCache.TTL, 0)).Round(time.Second),
 		)
 
 		// resolve async
@@ -231,6 +229,8 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 			_, err := resolveAndCache(ctx, q, nil)
 			if err != nil {
 				tracer.Warningf("resolver: async query for %s failed: %s", q.ID(), err)
+			} else {
+				tracer.Debugf("resolver: async query for %s succeeded", q.ID())
 			}
 			return nil
 		})
@@ -240,7 +240,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 
 	log.Tracer(ctx).Tracef(
 		"resolver: using cached RR (expires in %s)",
-		time.Until(time.Unix(rrCache.TTL, 0)),
+		time.Until(time.Unix(rrCache.TTL, 0)).Round(time.Second),
 	)
 	return rrCache
 }
@@ -392,13 +392,24 @@ resolveLoop:
 	}
 
 	// Check if we want to use an older cache instead.
-	switch {
-	case err != nil:
-		// There was an error during resolving, return the old cache entry instead.
-		return oldCache, nil
-	case rrCache.IsNXDomain():
-		// The new result is NXDomain, return the old cache entry instead.
-		return oldCache, nil
+	if oldCache != nil {
+		oldCache.isBackup = true
+
+		switch {
+		case err != nil:
+			// There was an error during resolving, return the old cache entry instead.
+			log.Tracer(ctx).Debugf("resolver: serving backup cache of %s because query failed: %s", q.ID(), err)
+			return oldCache, nil
+		case rrCache.IsNXDomain():
+			// The new result is NXDomain, return the old cache entry instead.
+			log.Tracer(ctx).Debugf("resolver: serving backup cache of %s because fresh response is NXDomain", q.ID())
+			return oldCache, nil
+		}
+	}
+
+	// Return error, if there is one.
+	if err != nil {
+		return nil, err
 	}
 
 	// Save the new entry if cache is enabled.
@@ -406,7 +417,7 @@ resolveLoop:
 		rrCache.Clean(minTTL)
 		err = rrCache.Save()
 		if err != nil {
-			log.Warningf("resolver: failed to cache RR for %s%s: %s", q.FQDN, q.QType.String(), err)
+			log.Tracer(ctx).Warningf("resolver: failed to cache RR for %s: %s", q.ID(), err)
 		}
 	}
 

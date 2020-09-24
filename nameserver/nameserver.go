@@ -108,7 +108,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	// Return with server failure if offline.
 	if netenv.GetOnlineStatus() == netenv.StatusOffline &&
 		!netenv.IsConnectivityDomain(q.FQDN) {
-		tracer.Debugf("resolver: not resolving %s, device is offline", q.FQDN)
+		tracer.Debugf("namserver: not resolving %s, device is offline", q.FQDN)
 		return reply(nsutil.ServerFailure("resolving disabled, device is offline"))
 	}
 
@@ -121,6 +121,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 
 	// Handle request for localhost.
 	if strings.HasSuffix(q.FQDN, "localhost.") {
+		tracer.Tracef("namserver: returning localhost records")
 		return reply(nsutil.Localhost(""))
 	}
 
@@ -196,14 +197,22 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		// React to special errors.
 		switch {
 		case errors.Is(err, resolver.ErrNotFound):
-			return reply(nsutil.NxDomain(""), nil)
+			tracer.Tracef("namserver: NXDomain via error")
+			return reply(nsutil.NxDomain(""))
 		case errors.Is(err, resolver.ErrBlocked):
-			return reply(nsutil.ZeroIP(""), nil)
+			tracer.Tracef("namserver: block via error")
+			return reply(nsutil.ZeroIP(""))
 		case errors.Is(err, resolver.ErrLocalhost):
-			return reply(nsutil.Localhost(""), nil)
+			tracer.Tracef("namserver: returning localhost records")
+			return reply(nsutil.Localhost(""))
 		default:
-			return reply(nsutil.ServerFailure("internal error: "+err.Error()), nil)
+			tracer.Warningf("nameserver: failed to resolve %s: %s", q.ID(), err)
+			return reply(nsutil.ServerFailure("internal error: " + err.Error()))
 		}
+	}
+	if rrCache == nil {
+		tracer.Warning("nameserver: received successful, but empty reply from resolver")
+		return reply(nsutil.ServerFailure("internal error: empty reply"))
 	}
 
 	tracer.Trace("nameserver: deciding on resolved dns")
