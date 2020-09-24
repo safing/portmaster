@@ -129,7 +129,6 @@ func registerAsDatabase() error {
 		Name:        "network",
 		Description: "Network and Firewall Data",
 		StorageType: "injected",
-		PrimaryAPI:  "",
 	})
 	if err != nil {
 		return err
