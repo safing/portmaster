@@ -69,7 +69,6 @@ func registerControlDatabase() error {
 		Name:        "control",
 		Description: "Control Interface for the Portmaster",
 		StorageType: "injected",
-		PrimaryAPI:  "",
 	})
 	if err != nil {
 		return err
