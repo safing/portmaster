@@ -98,13 +98,13 @@ func (conn *Connection) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 	// Select request responder.
 	switch conn.Verdict {
 	case VerdictBlock:
-		return nsutil.ZeroIP("").ReplyWithDNS(ctx, request)
+		return nsutil.ZeroIP().ReplyWithDNS(ctx, request)
 	case VerdictDrop:
 		return nil // Do not respond to request.
 	case VerdictFailed:
-		return nsutil.ZeroIP("").ReplyWithDNS(ctx, request)
+		return nsutil.ZeroIP().ReplyWithDNS(ctx, request)
 	default:
-		reply := nsutil.ServerFailure("").ReplyWithDNS(ctx, request)
+		reply := nsutil.ServerFailure().ReplyWithDNS(ctx, request)
 		nsutil.AddMessageToReply(ctx, reply, log.ErrorLevel, "INTERNAL ERROR: incorrect use of network.Connection's DNS Responder")
 		return reply
 	}

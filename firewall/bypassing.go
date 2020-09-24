@@ -15,7 +15,7 @@ func PreventBypassing(conn *network.Connection) (endpoints.EPResult, string, nsu
 	if strings.ToLower(conn.Entity.Domain) == "use-application-dns.net." {
 		return endpoints.Denied,
 			"blocked canary domain to prevent enabling of DNS-over-HTTPs",
-			nsutil.NxDomain("")
+			nsutil.NxDomain()
 	}
 
 	return endpoints.NoMatch, "", nil

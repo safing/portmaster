@@ -2,6 +2,7 @@ package nsutil
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -40,7 +41,7 @@ func (rf ResponderFunc) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 
 // ZeroIP is a ResponderFunc than replies with either 0.0.0.0 or :: for
 // each A or AAAA question respectively.
-func ZeroIP(msg string) ResponderFunc {
+func ZeroIP(msgs ...string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg)
 		hasErr := false
@@ -73,14 +74,16 @@ func ZeroIP(msg string) ResponderFunc {
 			reply.SetRcode(request, dns.RcodeSuccess)
 		}
 
-		AddMessageToReply(ctx, reply, log.InfoLevel, msg)
+		for _, msg := range msgs {
+			AddMessageToReply(ctx, reply, log.InfoLevel, msg)
+		}
 
 		return reply
 	}
 }
 
 // Localhost is a ResponderFunc than replies with localhost IP addresses.
-func Localhost(msg string) ResponderFunc {
+func Localhost(msgs ...string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg)
 		hasErr := false
@@ -113,35 +116,43 @@ func Localhost(msg string) ResponderFunc {
 			reply.SetRcode(request, dns.RcodeSuccess)
 		}
 
-		AddMessageToReply(ctx, reply, log.InfoLevel, msg)
+		for _, msg := range msgs {
+			AddMessageToReply(ctx, reply, log.InfoLevel, msg)
+		}
 
 		return reply
 	}
 }
 
 // NxDomain returns a ResponderFunc that replies with NXDOMAIN.
-func NxDomain(msg string) ResponderFunc {
+func NxDomain(msgs ...string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg).SetRcode(request, dns.RcodeNameError)
-		AddMessageToReply(ctx, reply, log.InfoLevel, msg)
+		for _, msg := range msgs {
+			AddMessageToReply(ctx, reply, log.InfoLevel, msg)
+		}
 		return reply
 	}
 }
 
 // Refused returns a ResponderFunc that replies with REFUSED.
-func Refused(msg string) ResponderFunc {
+func Refused(msgs ...string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg).SetRcode(request, dns.RcodeRefused)
-		AddMessageToReply(ctx, reply, log.InfoLevel, msg)
+		for _, msg := range msgs {
+			AddMessageToReply(ctx, reply, log.InfoLevel, msg)
+		}
 		return reply
 	}
 }
 
 // ServerFailure returns a ResponderFunc that replies with SERVFAIL.
-func ServerFailure(msg string) ResponderFunc {
+func ServerFailure(msgs ...string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg).SetRcode(request, dns.RcodeServerFailure)
-		AddMessageToReply(ctx, reply, log.InfoLevel, msg)
+		for _, msg := range msgs {
+			AddMessageToReply(ctx, reply, log.InfoLevel, msg)
+		}
 		return reply
 	}
 }
@@ -149,11 +160,18 @@ func ServerFailure(msg string) ResponderFunc {
 // MakeMessageRecord creates an informational resource record that can be added
 // to the extra section of a reply.
 func MakeMessageRecord(level log.Severity, msg string) (dns.RR, error) { //nolint:interfacer
-	return dns.NewRR(fmt.Sprintf(
+	rr, err := dns.NewRR(fmt.Sprintf(
 		`%s.portmaster. 0 IN TXT "%s"`,
 		strings.ToLower(level.String()),
 		msg,
 	))
+	if err != nil {
+		return nil, err
+	}
+	if rr == nil {
+		return nil, errors.New("record is nil")
+	}
+	return rr, nil
 }
 
 // AddMessageToReply creates an information resource records using
