@@ -96,7 +96,7 @@ IP:
 	always use the IP address and _not_ the domain name!
 
 Port:
-	always add the port!
+	optionally define a custom port
 
 Parameters:
 	name: give your DNS Server a name that is used for messages and logs

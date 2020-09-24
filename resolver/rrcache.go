@@ -50,6 +50,11 @@ func (rrCache *RRCache) Expired() bool {
 	return rrCache.TTL <= time.Now().Unix()
 }
 
+// Expired returns whether the record will expire soon and should already be refreshed.
+func (rrCache *RRCache) ExpiresSoon() bool {
+	return rrCache.TTL <= time.Now().Unix()+refreshTTL
+}
+
 // MixAnswers randomizes the answer records to allow dumb clients (who only look at the first record) to reliably connect.
 func (rrCache *RRCache) MixAnswers() {
 	rrCache.Lock()

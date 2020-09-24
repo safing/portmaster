@@ -46,7 +46,8 @@ var (
 )
 
 const (
-	minTTL     = 60           // 1 Minute
+	minTTL     = 60 // 1 Minute
+	refreshTTL = minTTL / 2
 	minMDnsTTL = 60           // 1 Minute
 	maxTTL     = 24 * 60 * 60 // 24 hours
 )
@@ -130,7 +131,7 @@ func Resolve(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
 	// check the cache
 	if !q.NoCaching {
 		rrCache = checkCache(ctx, q)
-		if rrCache != nil {
+		if rrCache != nil && !rrCache.Expired() {
 			rrCache.MixAnswers()
 			return rrCache, nil
 		}
@@ -140,7 +141,7 @@ func Resolve(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
 		if markRequestFinished == nil {
 			// we waited for another request, recheck the cache!
 			rrCache = checkCache(ctx, q)
-			if rrCache != nil {
+			if rrCache != nil && !rrCache.Expired() {
 				rrCache.MixAnswers()
 				return rrCache, nil
 			}
@@ -149,17 +150,22 @@ func Resolve(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
 		} else {
 			// we are the first!
 			defer markRequestFinished()
-
 		}
 	}
 
-	return resolveAndCache(ctx, q)
+	return resolveAndCache(ctx, q, rrCache)
 }
 
 func checkCache(ctx context.Context, q *Query) *RRCache {
+	// Never ask cache for connectivity domains.
+	if netenv.IsConnectivityDomain(q.FQDN) {
+		return nil
+	}
+
+	// Get data from cache.
 	rrCache, err := GetRRCache(q.FQDN, q.QType)
 
-	// failed to get from cache
+	// Return if entry is not in cache.
 	if err != nil {
 		if err != database.ErrNotFound {
 			log.Tracer(ctx).Warningf("resolver: getting RRCache %s%s from database failed: %s", q.FQDN, q.QType.String(), err)
@@ -167,21 +173,21 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		return nil
 	}
 
-	// get resolver that rrCache was resolved with
+	// Get the resolver that the rrCache was resolved with.
 	resolver := getActiveResolverByIDWithLocking(rrCache.Server)
 	if resolver == nil {
 		log.Tracer(ctx).Debugf("resolver: ignoring RRCache %s%s because source server %s has been removed", q.FQDN, q.QType.String(), rrCache.Server)
 		return nil
 	}
 
-	// check compliance of resolver
+	// Check compliance of the resolver, return if non-compliant.
 	err = resolver.checkCompliance(ctx, q)
 	if err != nil {
 		log.Tracer(ctx).Debugf("resolver: cached entry for %s%s does not comply to query parameters: %s", q.FQDN, q.QType.String(), err)
 		return nil
 	}
 
-	// check if we want to reset the cache
+	// Check if we want to reset the cache for this entry.
 	if shouldResetCache(q) {
 		err := DeleteNameRecord(q.FQDN, q.QType.String())
 		switch {
@@ -195,27 +201,36 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		return nil
 	}
 
-	// check if expired
+	// Check if the cache has already expired.
+	// We still return the cache, if it isn't NXDomain, as it will be used if the
+	// new query fails.
 	if rrCache.Expired() {
-		if netenv.IsConnectivityDomain(rrCache.Domain) {
-			// do not use cache, resolve immediately
+		if rrCache.IsNXDomain() {
 			return nil
 		}
+		return rrCache
+	}
 
+	// Check if the cache will expire soon and start an async request.
+	if rrCache.ExpiresSoon() {
+		// Set flag that we are refreshing this entry.
 		rrCache.Lock()
 		rrCache.requestingNew = true
 		rrCache.Unlock()
 
 		log.Tracer(ctx).Tracef(
-			"resolver: using expired RR from cache (since %s), refreshing async now",
-			time.Since(time.Unix(rrCache.TTL, 0)),
+			"resolver: cache for %s will expire in %s, refreshing async now",
+			q.ID(),
+			time.Until(time.Unix(rrCache.TTL, 0)),
 		)
 
 		// resolve async
 		module.StartWorker("resolve async", func(ctx context.Context) error {
-			_, err := resolveAndCache(ctx, q)
+			ctx, tracer := log.AddTracer(ctx)
+			tracer.Debugf("resolver: resolving %s async", q.ID())
+			_, err := resolveAndCache(ctx, q, nil)
 			if err != nil {
-				log.Warningf("resolver: async query for %s%s failed: %s", q.FQDN, q.QType, err)
+				tracer.Warningf("resolver: async query for %s failed: %s", q.ID(), err)
 			}
 			return nil
 		})
@@ -290,7 +305,7 @@ retry:
 	}
 }
 
-func resolveAndCache(ctx context.Context, q *Query) (rrCache *RRCache, err error) { //nolint:gocognit
+func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache *RRCache, err error) { //nolint:gocognit
 	// get resolvers
 	resolvers, tryAll := GetResolversInScope(ctx, q)
 	if len(resolvers) == 0 {
@@ -366,23 +381,28 @@ resolveLoop:
 		}
 	}
 
-	// check for error
+	// Post-process errors
 	if err != nil {
 		// tried all resolvers, possibly twice
 		if i > 1 {
-			return nil, fmt.Errorf("all %d query-compliant resolvers failed, last error: %s", len(resolvers), err)
+			err = fmt.Errorf("all %d query-compliant resolvers failed, last error: %s", len(resolvers), err)
 		}
-		return nil, err
+	} else if rrCache == nil /* defensive */ {
+		err = ErrNotFound
 	}
 
-	// check for result
-	if rrCache == nil /* defensive */ {
-		return nil, ErrNotFound
+	// Check if we want to use an older cache instead.
+	switch {
+	case err != nil:
+		// There was an error during resolving, return the old cache entry instead.
+		return oldCache, nil
+	case rrCache.IsNXDomain():
+		// The new result is NXDomain, return the old cache entry instead.
+		return oldCache, nil
 	}
 
-	// cache if enabled
+	// Save the new entry if cache is enabled.
 	if !q.NoCaching {
-		// persist to database
 		rrCache.Clean(minTTL)
 		err = rrCache.Save()
 		if err != nil {
