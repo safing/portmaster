@@ -309,7 +309,7 @@ retry:
 	}
 }
 
-func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache *RRCache, err error) { //nolint:gocognit
+func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache *RRCache, err error) { //nolint:gocognit,gocyclo
 	// get resolvers
 	resolvers, tryAll := GetResolversInScope(ctx, q)
 	if len(resolvers) == 0 {
@@ -377,7 +377,7 @@ resolveLoop:
 				// Defensive: This should normally not happen.
 				continue
 			}
-			// Check if request suceeded and whether we should try another resolver.
+			// Check if request succeeded and whether we should try another resolver.
 			if rrCache.RCode != dns.RcodeSuccess && tryAll {
 				continue
 			}
