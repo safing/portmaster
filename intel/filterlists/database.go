@@ -210,7 +210,7 @@ func processEntry(ctx context.Context, filter *scopedBloom, entry *listEntry, re
 	}
 
 	// If the entry is a "delete" update, actually delete it to save space.
-	if len(entry.Sources) == 0 {
+	if entry.Whitelist {
 		r.CreateMeta()
 		r.Meta().Delete()
 	}
