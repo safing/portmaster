@@ -1,6 +1,7 @@
 package intel
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -63,34 +64,34 @@ func (br ListBlockReason) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// GetExtraRR implements the nsutil.RRProvider interface
+// GetExtraRRs implements the nsutil.RRProvider interface
 // and adds additional TXT records justifying the reason
 // the request was blocked.
-func (br ListBlockReason) GetExtraRR(_ *dns.Msg, _ string, _ interface{}) []dns.RR {
+func (br ListBlockReason) GetExtraRRs(ctx context.Context, _ *dns.Msg) []dns.RR {
 	rrs := make([]dns.RR, 0, len(br))
 
 	for _, lm := range br {
-		blockedBy, err := dns.NewRR(fmt.Sprintf(
-			`%s 0 IN TXT "blocked by filter lists %s"`,
+		blockedBy, err := nsutil.MakeMessageRecord(log.InfoLevel, fmt.Sprintf(
+			"%s is blocked by filter lists %s",
 			lm.Entity,
 			strings.Join(lm.ActiveLists, ", "),
 		))
 		if err == nil {
 			rrs = append(rrs, blockedBy)
 		} else {
-			log.Errorf("intel: failed to create TXT RR for block reason: %s", err)
+			log.Tracer(ctx).Errorf("intel: failed to create TXT RR for block reason: %s", err)
 		}
 
 		if len(lm.InactiveLists) > 0 {
-			wouldBeBlockedBy, err := dns.NewRR(fmt.Sprintf(
-				`%s 0 IN TXT "would be blocked by filter lists %s"`,
+			wouldBeBlockedBy, err := nsutil.MakeMessageRecord(log.InfoLevel, fmt.Sprintf(
+				"%s would be blocked by filter lists %s",
 				lm.Entity,
 				strings.Join(lm.InactiveLists, ", "),
 			))
 			if err == nil {
 				rrs = append(rrs, wouldBeBlockedBy)
 			} else {
-				log.Errorf("intel: failed to create TXT RR for block reason: %s", err)
+				log.Tracer(ctx).Errorf("intel: failed to create TXT RR for block reason: %s", err)
 			}
 		}
 	}

@@ -90,6 +90,16 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		return nil, false, fmt.Errorf("invalid resolver IP")
 	}
 
+	// Add default port for scheme if it is missing.
+	if u.Port() == "" {
+		switch u.Scheme {
+		case ServerTypeDNS, ServerTypeTCP:
+			u.Host += ":53"
+		case ServerTypeDoT:
+			u.Host += ":853"
+		}
+	}
+
 	scope := netutils.ClassifyIP(ip)
 	if scope == netutils.HostLocal {
 		return nil, true, nil // skip
@@ -126,6 +136,13 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		VerifyDomain:           verifyDomain,
 		Name:                   query.Get("name"),
 		UpstreamBlockDetection: blockType,
+	}
+
+	u.RawQuery = "" // Remove options from parsed URL
+	if new.Name != "" {
+		new.ServerInfo = fmt.Sprintf("%s (%s, from %s)", new.Name, u, source)
+	} else {
+		new.ServerInfo = fmt.Sprintf("%s (from %s)", u, source)
 	}
 
 	new.Conn = resolverConnFactory(new)

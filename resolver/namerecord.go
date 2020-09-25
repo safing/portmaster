@@ -28,6 +28,7 @@ type NameRecord struct {
 
 	Domain   string
 	Question string
+	RCode    int
 	Answer   []string
 	Ns       []string
 	Extra    []string
@@ -35,6 +36,7 @@ type NameRecord struct {
 
 	Server      string
 	ServerScope int8
+	ServerInfo  string
 }
 
 func makeNameRecordKey(domain string, question string) string {

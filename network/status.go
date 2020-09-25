@@ -39,6 +39,30 @@ func (v Verdict) String() string {
 	}
 }
 
+// Verb returns the verdict as a past tense verb.
+func (v Verdict) Verb() string {
+	switch v {
+	case VerdictUndecided:
+		return "undecided"
+	case VerdictUndeterminable:
+		return "undeterminable"
+	case VerdictAccept:
+		return "accepted"
+	case VerdictBlock:
+		return "blocked"
+	case VerdictDrop:
+		return "dropped"
+	case VerdictRerouteToNameserver:
+		return "rerouted to nameserver"
+	case VerdictRerouteToTunnel:
+		return "rerouted to tunnel"
+	case VerdictFailed:
+		return "failed"
+	default:
+		return "invalid"
+	}
+}
+
 // Packer Directions
 const (
 	Inbound  = true

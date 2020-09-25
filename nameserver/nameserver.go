@@ -3,7 +3,6 @@ package nameserver
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"strings"
 
@@ -28,11 +27,10 @@ var (
 	dnsServer *dns.Server
 
 	listenAddress = "0.0.0.0:53"
-	localhostRRs  []dns.RR
 )
 
 func init() {
-	module = modules.Register("nameserver", prep, start, stop, "core", "resolver")
+	module = modules.Register("nameserver", nil, start, stop, "core", "resolver")
 	subsystems.Register(
 		"dns",
 		"Secure DNS",
@@ -41,22 +39,6 @@ func init() {
 		"config:dns/",
 		nil,
 	)
-}
-
-func prep() error {
-	localhostIPv4, err := dns.NewRR("localhost. 17 IN A 127.0.0.1")
-	if err != nil {
-		return err
-	}
-
-	localhostIPv6, err := dns.NewRR("localhost. 17 IN AAAA ::1")
-	if err != nil {
-		return err
-	}
-
-	localhostRRs = []dns.RR{localhostIPv4, localhostIPv6}
-
-	return nil
 }
 
 func start() error {
@@ -89,12 +71,6 @@ func stop() error {
 	return nil
 }
 
-func returnServerFailure(w dns.ResponseWriter, query *dns.Msg) {
-	m := new(dns.Msg)
-	m.SetRcode(query, dns.RcodeServerFailure)
-	_ = writeDNSResponse(w, m)
-}
-
 func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
 	err := module.RunWorker("dns request", func(ctx context.Context) error {
 		return handleRequest(ctx, w, query)
@@ -104,86 +80,86 @@ func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
 	}
 }
 
-func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) error { //nolint:gocognit // TODO
-	// only process first question, that's how everyone does it.
-	question := query.Question[0]
+func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) error { //nolint:gocognit // TODO
+	// Only process first question, that's how everyone does it.
+	question := request.Question[0]
 	q := &resolver.Query{
 		FQDN:  question.Name,
 		QType: dns.Type(question.Qtype),
 	}
 
-	// return with server failure if offline
-	if netenv.GetOnlineStatus() == netenv.StatusOffline &&
-		!netenv.IsConnectivityDomain(q.FQDN) {
-		log.Tracer(ctx).Debugf("resolver: not resolving %s, device is offline", q.FQDN)
-		returnServerFailure(w, query)
-		return nil
-	}
-
-	// check class
-	if question.Qclass != dns.ClassINET {
-		// we only serve IN records, return nxdomain
-		log.Warningf("nameserver: only IN record requests are supported but received Qclass %d, returning NXDOMAIN", question.Qclass)
-		sendResponse(w, query, 0, "qclass not served", nsutil.Refused())
-		return nil
-	}
-
-	// handle request for localhost
-	if strings.HasSuffix(q.FQDN, "localhost.") {
-		m := new(dns.Msg)
-		m.SetReply(query)
-		m.Answer = localhostRRs
-		if err := writeDNSResponse(w, m); err != nil {
-			log.Warningf("nameserver: failed to handle request to %s: %s", q.FQDN, err)
-		}
-		return nil
-	}
-
-	// get remote address
+	// Get remote address of request.
 	remoteAddr, ok := w.RemoteAddr().(*net.UDPAddr)
 	if !ok {
 		log.Warningf("nameserver: failed to get remote address of request for %s%s, ignoring", q.FQDN, q.QType)
 		return nil
 	}
 
-	// check if the request is local
-	local, err := netenv.IsMyIP(remoteAddr.IP)
-	if err != nil {
-		log.Warningf("nameserver: failed to check if request for %s%s is local: %s", q.FQDN, q.QType, err)
-		return nil
-	}
-	if !local {
-		log.Warningf("nameserver: external request for %s%s, ignoring", q.FQDN, q.QType)
-		return nil
-	}
-
-	// check if valid domain name
-	if !netutils.IsValidFqdn(q.FQDN) {
-		log.Debugf("nameserver: domain name %s is invalid, returning nxdomain", q.FQDN)
-		sendResponse(w, query, 0, "invalid FQDN", nsutil.Refused())
-		return nil
-	}
-
-	// start tracer
+	// Start context tracer for context-aware logging.
 	ctx, tracer := log.AddTracer(ctx)
 	defer tracer.Submit()
-	tracer.Tracef("nameserver: handling new request for %s%s from %s:%d, getting connection", q.FQDN, q.QType, remoteAddr.IP, remoteAddr.Port)
+	tracer.Tracef("nameserver: handling new request for %s from %s:%d", q.ID(), remoteAddr.IP, remoteAddr.Port)
 
-	// TODO: if there are 3 request for the same domain/type in a row, delete all caches of that domain
+	// Check if there are more than one question.
+	if len(request.Question) > 1 {
+		tracer.Warningf("nameserver: received more than one question from (%s:%d), first question is %s", remoteAddr.IP, remoteAddr.Port, q.ID())
+	}
 
-	// get connection
+	// Setup quick reply function.
+	reply := func(responder nsutil.Responder, rrProviders ...nsutil.RRProvider) error {
+		return sendResponse(ctx, w, request, responder, rrProviders...)
+	}
+
+	// Return with server failure if offline.
+	if netenv.GetOnlineStatus() == netenv.StatusOffline &&
+		!netenv.IsConnectivityDomain(q.FQDN) {
+		tracer.Debugf("nameserver: not resolving %s, device is offline", q.FQDN)
+		return reply(nsutil.ServerFailure("resolving disabled, device is offline"))
+	}
+
+	// Check the Query Class.
+	if question.Qclass != dns.ClassINET {
+		// we only serve IN records, return nxdomain
+		tracer.Warningf("nameserver: only IN record requests are supported but received Qclass %d, returning NXDOMAIN", question.Qclass)
+		return reply(nsutil.Refused("unsupported qclass"))
+	}
+
+	// Handle request for localhost.
+	if strings.HasSuffix(q.FQDN, "localhost.") {
+		tracer.Tracef("nameserver: returning localhost records")
+		return reply(nsutil.Localhost())
+	}
+
+	// Authenticate request - only requests from the local host, but with any of its IPs, are allowed.
+	local, err := netenv.IsMyIP(remoteAddr.IP)
+	if err != nil {
+		tracer.Warningf("nameserver: failed to check if request for %s%s is local: %s", q.FQDN, q.QType, err)
+		return nil // Do no reply, drop request immediately.
+	}
+	if !local {
+		tracer.Warningf("nameserver: external request for %s%s, ignoring", q.FQDN, q.QType)
+		return nil // Do no reply, drop request immediately.
+	}
+
+	// Validate domain name.
+	if !netutils.IsValidFqdn(q.FQDN) {
+		tracer.Debugf("nameserver: domain name %s is invalid, refusing", q.FQDN)
+		return reply(nsutil.Refused("invalid domain"))
+	}
+
+	// Get connection for this request. This identifies the process behind the request.
 	conn := network.NewConnectionFromDNSRequest(ctx, q.FQDN, nil, packet.IPv4, remoteAddr.IP, uint16(remoteAddr.Port))
 
-	// once we decided on the connection we might need to save it to the database
-	// so we defer that check right now.
+	// Once we decided on the connection we might need to save it to the database,
+	// so we defer that check for now.
 	defer func() {
 		switch conn.Verdict {
-		// we immediately save blocked, dropped or failed verdicts so
-		// the pop up in the UI.
+		// We immediately save blocked, dropped or failed verdicts so
+		// they pop up in the UI.
 		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
 			conn.Save()
 
-		// for undecided or accepted connections we don't save them yet because
+		// For undecided or accepted connections we don't save them yet, because
 		// that will happen later anyway.
 		case network.VerdictUndecided, network.VerdictAccept,
 			network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel:
@@ -194,104 +170,80 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, query *dns.Msg) er
 		}
 	}()
 
-	// TODO: this has been obsoleted due to special profiles
-	if conn.Process().Profile() == nil {
-		tracer.Infof("nameserver: failed to find process for request %s, returning NXDOMAIN", conn)
-		// NOTE(ppacher): saving unknown process connection might end up in a lot of
-		// processes. Consider disabling that via config.
-		conn.Failed("Unknown process")
-		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
-		return nil
-	}
-
-	// save security level to query
-	q.SecurityLevel = conn.Process().Profile().SecurityLevel()
-
-	// check profile before we even get intel and rr
+	// Check request with the privacy filter before resolving.
 	firewall.DecideOnConnection(ctx, conn, nil)
 
-	switch conn.Verdict {
-	case network.VerdictBlock:
-		tracer.Infof("nameserver: %s blocked, returning nxdomain", conn)
-		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
-		return nil
-	case network.VerdictDrop, network.VerdictFailed:
-		tracer.Infof("nameserver: %s dropped, not replying", conn)
-		return nil
-	}
-
-	// the firewall now decided on the connection and set it to accept
-	// If we have a reason context and that context implements nsutil.Responder
-	// we may need to responde with something else.
+	// Check if there is a responder from the firewall.
+	// In special cases, the firewall might want to respond the query itself.
 	// A reason for this might be that the request is sink-holed to a forced
-	// ip address in which case we "Accept" it but handle the resolving
-	// differently.
+	// IP address in which case we "accept" it, but let the firewall handle
+	// the resolving as it wishes.
 	if responder, ok := conn.ReasonContext.(nsutil.Responder); ok {
-		tracer.Infof("nameserver: %s handing over to reason-responder: %s", q.FQDN, conn.Reason)
-		reply := responder.ReplyWithDNS(query, conn.Reason, conn.ReasonContext)
-		if err := w.WriteMsg(reply); err != nil {
-			tracer.Warningf("nameserver: failed to return response %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
-		} else {
-			tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
-		}
-
-		// save dns request as open
+		// Save the request as open, as we don't know if there will be a connection or not.
 		network.SaveOpenDNSRequest(conn)
 
-		return nil
+		tracer.Infof("nameserver: handing over request for %s to special filter responder: %s", q.ID(), conn.Reason)
+		return reply(responder)
 	}
 
-	// resolve
+	// Check if there is Verdict to act upon.
+	switch conn.Verdict {
+	case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
+		tracer.Infof("nameserver: request for %s from %s %s", q.ID(), conn.Process(), conn.Verdict.Verb())
+		return reply(conn, conn)
+	}
+
+	// Save security level to query, so that the resolver can react to configuration.
+	q.SecurityLevel = conn.Process().Profile().SecurityLevel()
+
+	// Resolve request.
 	rrCache, err := resolver.Resolve(ctx, q)
 	if err != nil {
-		// TODO: analyze nxdomain requests, malware could be trying DGA-domains
-		tracer.Debugf("nameserver: %s requested %s%s: %s", conn.Process(), q.FQDN, q.QType, err)
-
-		if errors.Is(err, resolver.ErrBlocked) {
-			conn.Block(err.Error())
-		} else {
-			conn.Failed("failed to resolve: " + err.Error())
+		// React to special errors.
+		switch {
+		case errors.Is(err, resolver.ErrNotFound):
+			tracer.Tracef("nameserver: %s", err)
+			return reply(nsutil.NxDomain("nxdomain: " + err.Error()))
+		case errors.Is(err, resolver.ErrBlocked):
+			tracer.Tracef("nameserver: %s", err)
+			return reply(nsutil.ZeroIP("blocked: " + err.Error()))
+		case errors.Is(err, resolver.ErrLocalhost):
+			tracer.Tracef("nameserver: returning localhost records")
+			return reply(nsutil.Localhost())
+		default:
+			tracer.Warningf("nameserver: failed to resolve %s: %s", q.ID(), err)
+			return reply(nsutil.ServerFailure("internal error: " + err.Error()))
 		}
-
-		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
-		return nil
+	}
+	if rrCache == nil {
+		tracer.Warning("nameserver: received successful, but empty reply from resolver")
+		return reply(nsutil.ServerFailure("internal error: empty reply"))
 	}
 
 	tracer.Trace("nameserver: deciding on resolved dns")
 	rrCache = firewall.DecideOnResolvedDNS(ctx, conn, q, rrCache)
 	if rrCache == nil {
-		sendResponse(w, query, conn.Verdict, conn.Reason, conn.ReasonContext)
-		return nil
-	}
+		// Check again if there is a responder from the firewall.
+		if responder, ok := conn.ReasonContext.(nsutil.Responder); ok {
+			// Save the request as open, as we don't know if there will be a connection or not.
+			network.SaveOpenDNSRequest(conn)
 
-	// reply to query
-	m := new(dns.Msg)
-	m.SetReply(query)
-	m.Answer = rrCache.Answer
-	m.Ns = rrCache.Ns
-	m.Extra = rrCache.Extra
-
-	if err := writeDNSResponse(w, m); err != nil {
-		tracer.Warningf("nameserver: failed to return response %s%s to %s: %s", q.FQDN, q.QType, conn.Process(), err)
-	} else {
-		tracer.Debugf("nameserver: returning response %s%s to %s", q.FQDN, q.QType, conn.Process())
-	}
-
-	// save dns request as open
-	network.SaveOpenDNSRequest(conn)
-
-	return nil
-}
-
-func writeDNSResponse(w dns.ResponseWriter, m *dns.Msg) (err error) {
-	defer func() {
-		// recover from panic
-		if panicErr := recover(); panicErr != nil {
-			err = fmt.Errorf("panic: %s", panicErr)
-			log.Warningf("nameserver: panic caused by this msg: %#v", m)
+			tracer.Infof("nameserver: handing over request for %s to filter responder: %s", q.ID(), conn.Reason)
+			return reply(responder)
 		}
-	}()
 
-	err = w.WriteMsg(m)
-	return
+		// Request was blocked by the firewall.
+		switch conn.Verdict {
+		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
+			tracer.Infof("nameserver: %s request for %s from %s", conn.Verdict.Verb(), q.ID(), conn.Process())
+			return reply(conn, conn)
+		}
+	}
+
+	// Save dns request as open.
+	defer network.SaveOpenDNSRequest(conn)
+
+	// Reply with successful response.
+	tracer.Infof("nameserver: returning %s response for %s to %s", conn.Verdict.Verb(), q.ID(), conn.Process())
+	return reply(rrCache, conn, rrCache)
 }

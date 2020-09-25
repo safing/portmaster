@@ -3,6 +3,8 @@ package resolver
 import (
 	"context"
 	"crypto/tls"
+	"errors"
+	"io"
 	"net"
 	"sync/atomic"
 	"time"
@@ -26,6 +28,8 @@ type TCPResolver struct {
 	dnsClient *dns.Client
 
 	clientStarted   *abool.AtomicBool
+	clientHeartbeat chan struct{}
+	clientCancel    func()
 	connInstanceID  *uint32
 	queries         chan *dns.Msg
 	inFlightQueries map[uint16]*InFlightQuery
@@ -46,11 +50,13 @@ func (ifq *InFlightQuery) MakeCacheRecord(reply *dns.Msg) *RRCache {
 	return &RRCache{
 		Domain:      ifq.Query.FQDN,
 		Question:    ifq.Query.QType,
+		RCode:       reply.Rcode,
 		Answer:      reply.Answer,
 		Ns:          reply.Ns,
 		Extra:       reply.Extra,
 		Server:      ifq.Resolver.Server,
 		ServerScope: ifq.Resolver.ServerIPScope,
+		ServerInfo:  ifq.Resolver.ServerInfo,
 	}
 }
 
@@ -67,10 +73,12 @@ func NewTCPResolver(resolver *Resolver) *TCPResolver {
 			Timeout:      defaultConnectTimeout,
 			WriteTimeout: tcpWriteTimeout,
 		},
+		clientStarted:   abool.New(),
+		clientHeartbeat: make(chan struct{}),
+		clientCancel:    func() {},
 		connInstanceID:  &instanceID,
 		queries:         make(chan *dns.Msg, 100),
 		inFlightQueries: make(map[uint16]*InFlightQuery),
-		clientStarted:   abool.New(),
 	}
 }
 
@@ -145,6 +153,7 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	// submit to client
 	inFlight := tr.submitQuery(ctx, q)
 	if inFlight == nil {
+		tr.checkClientStatus()
 		return nil, ErrTimeout
 	}
 
@@ -152,6 +161,7 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	select {
 	case reply = <-inFlight.Response:
 	case <-time.After(defaultRequestTimeout):
+		tr.checkClientStatus()
 		return nil, ErrTimeout
 	}
 
@@ -165,6 +175,22 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	}
 
 	return inFlight.MakeCacheRecord(reply), nil
+}
+
+func (tr *TCPResolver) checkClientStatus() {
+	// Get client cancel function before waiting in order to not immediately
+	// cancel a new client.
+	tr.Lock()
+	cancelClient := tr.clientCancel
+	tr.Unlock()
+
+	// Check if the client is alive with the heartbeat, if not shut it down.
+	select {
+	case tr.clientHeartbeat <- struct{}{}:
+	case <-time.After(defaultRequestTimeout):
+		log.Warningf("resolver: heartbeat failed for %s dns client, stopping", tr.resolver.GetName())
+		cancelClient()
+	}
 }
 
 type tcpResolverConnMgr struct {
@@ -184,8 +210,14 @@ func (tr *TCPResolver) startClient() {
 }
 
 func (mgr *tcpResolverConnMgr) run(workerCtx context.Context) error {
-	mgr.tr.clientStarted.Set()
 	defer mgr.shutdown()
+	mgr.tr.clientStarted.Set()
+
+	// Create additional cancel function for this worker.
+	workerCtx, cancelWorker := context.WithCancel(workerCtx)
+	mgr.tr.Lock()
+	mgr.tr.clientCancel = cancelWorker
+	mgr.tr.Unlock()
 
 	// connection lifecycle loop
 	for {
@@ -208,7 +240,7 @@ func (mgr *tcpResolverConnMgr) run(workerCtx context.Context) error {
 		}
 
 		// create connection
-		conn, connClosing, connCtx, cancelConnCtx := mgr.establishConnection(workerCtx)
+		conn, connClosing, connCtx, cancelConnCtx := mgr.establishConnection()
 		if conn == nil {
 			mgr.failCnt++
 			continue
@@ -293,7 +325,7 @@ func (mgr *tcpResolverConnMgr) waitForWork(workerCtx context.Context) (proceed b
 	return true
 }
 
-func (mgr *tcpResolverConnMgr) establishConnection(workerCtx context.Context) (
+func (mgr *tcpResolverConnMgr) establishConnection() (
 	conn *dns.Conn,
 	connClosing *abool.AtomicBool,
 	connCtx context.Context,
@@ -313,10 +345,21 @@ func (mgr *tcpResolverConnMgr) establishConnection(workerCtx context.Context) (
 		log.Debugf("resolver: failed to connect to %s (%s)", mgr.tr.resolver.GetName(), mgr.tr.resolver.ServerAddress)
 		return nil, nil, nil, nil
 	}
-	connCtx, cancelConnCtx = context.WithCancel(workerCtx)
+	connCtx, cancelConnCtx = context.WithCancel(context.Background())
 	connClosing = abool.New()
 
-	log.Debugf("resolver: connected to %s (%s)", mgr.tr.resolver.GetName(), conn.RemoteAddr())
+	// Get amount of in waiting queries.
+	mgr.tr.Lock()
+	waitingQueries := len(mgr.tr.inFlightQueries)
+	mgr.tr.Unlock()
+
+	// Log that a connection to the resolver was established.
+	log.Debugf(
+		"resolver: connected to %s (%s) with %d queries waiting",
+		mgr.tr.resolver.GetName(),
+		conn.RemoteAddr(),
+		waitingQueries,
+	)
 
 	// start reader
 	module.StartServiceWorker("dns client reader", 10*time.Millisecond, func(workerCtx context.Context) error {
@@ -348,6 +391,9 @@ func (mgr *tcpResolverConnMgr) queryHandler( //nolint:golint // context.Context 
 
 	for {
 		select {
+		case <-mgr.tr.clientHeartbeat:
+			// respond to alive checks
+
 		case <-workerCtx.Done():
 			// module shutdown
 			return false
@@ -372,9 +418,7 @@ func (mgr *tcpResolverConnMgr) queryHandler( //nolint:golint // context.Context 
 			_ = conn.SetWriteDeadline(time.Now().Add(mgr.tr.dnsClient.WriteTimeout))
 			err := conn.WriteMsg(msg)
 			if err != nil {
-				if connClosing.SetToIf(false, true) {
-					log.Warningf("resolver: write error to %s (%s): %s", mgr.tr.resolver.GetName(), conn.RemoteAddr(), err)
-				}
+				mgr.logConnectionError(err, conn, connClosing)
 				return true
 			}
 
@@ -434,6 +478,10 @@ func (mgr *tcpResolverConnMgr) handleQueryResponse(conn *dns.Conn, msg *dns.Msg)
 
 	// persist to database
 	rrCache := inFlight.MakeCacheRecord(msg)
+	if !rrCache.Cacheable() {
+		return
+	}
+
 	rrCache.Clean(minTTL)
 	err := rrCache.Save()
 	if err != nil {
@@ -455,11 +503,37 @@ func (mgr *tcpResolverConnMgr) msgReader(
 	for {
 		msg, err := conn.ReadMsg()
 		if err != nil {
-			if connClosing.SetToIf(false, true) {
-				log.Warningf("resolver: read error from %s (%s): %s", mgr.tr.resolver.GetName(), conn.RemoteAddr(), err)
-			}
+			mgr.logConnectionError(err, conn, connClosing)
 			return nil
 		}
 		mgr.responses <- msg
+	}
+}
+
+func (mgr *tcpResolverConnMgr) logConnectionError(err error, conn *dns.Conn, connClosing *abool.AtomicBool) {
+	// Check if we are the first to see an error.
+	if connClosing.SetToIf(false, true) {
+		// Get amount of in flight queries.
+		mgr.tr.Lock()
+		inFlightQueries := len(mgr.tr.inFlightQueries)
+		mgr.tr.Unlock()
+
+		// Log error.
+		if errors.Is(err, io.EOF) {
+			log.Debugf(
+				"resolver: connection to %s (%s) was closed with %d in-flight queries",
+				mgr.tr.resolver.GetName(),
+				conn.RemoteAddr(),
+				inFlightQueries,
+			)
+		} else {
+			log.Warningf(
+				"resolver: write error to %s (%s) with %d in-flight queries: %s",
+				mgr.tr.resolver.GetName(),
+				conn.RemoteAddr(),
+				inFlightQueries,
+				err,
+			)
+		}
 	}
 }
