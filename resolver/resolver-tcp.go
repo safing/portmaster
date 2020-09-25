@@ -50,6 +50,7 @@ func (ifq *InFlightQuery) MakeCacheRecord(reply *dns.Msg) *RRCache {
 	return &RRCache{
 		Domain:      ifq.Query.FQDN,
 		Question:    ifq.Query.QType,
+		RCode:       reply.Rcode,
 		Answer:      reply.Answer,
 		Ns:          reply.Ns,
 		Extra:       reply.Extra,
@@ -477,6 +478,10 @@ func (mgr *tcpResolverConnMgr) handleQueryResponse(conn *dns.Conn, msg *dns.Msg)
 
 	// persist to database
 	rrCache := inFlight.MakeCacheRecord(msg)
+	if !rrCache.Cacheable() {
+		return
+	}
+
 	rrCache.Clean(minTTL)
 	err := rrCache.Save()
 	if err != nil {

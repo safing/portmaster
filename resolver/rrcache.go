@@ -22,6 +22,7 @@ type RRCache struct {
 
 	Domain   string   // constant
 	Question dns.Type // constant
+	RCode    int      // constant
 
 	Answer []dns.RR // constant
 	Ns     []dns.RR // constant
@@ -84,8 +85,8 @@ func (rrCache *RRCache) Clean(minExpires uint32) {
 
 	// shorten caching
 	switch {
-	case rrCache.IsNXDomain():
-		// NXDomain
+	case rrCache.RCode != dns.RcodeSuccess:
+		// Any sort of error.
 		lowestTTL = 10
 	case netenv.IsConnectivityDomain(rrCache.Domain):
 		// Responses from these domains might change very quickly depending on the environment.
@@ -127,6 +128,7 @@ func (rrCache *RRCache) ToNameRecord() *NameRecord {
 	new := &NameRecord{
 		Domain:      rrCache.Domain,
 		Question:    rrCache.Question.String(),
+		RCode:       rrCache.RCode,
 		TTL:         rrCache.TTL,
 		Server:      rrCache.Server,
 		ServerScope: rrCache.ServerScope,
@@ -147,8 +149,27 @@ func (rrCache *RRCache) ToNameRecord() *NameRecord {
 	return new
 }
 
+// rcodeIsCacheable returns whether a record with the given RCode should be cached.
+func rcodeIsCacheable(rCode int) bool {
+	switch rCode {
+	case dns.RcodeSuccess, dns.RcodeNameError, dns.RcodeRefused:
+		return true
+	default:
+		return false
+	}
+}
+
+// Cacheable returns whether the record should be cached.
+func (rrCache *RRCache) Cacheable() bool {
+	return rcodeIsCacheable(rrCache.RCode)
+}
+
 // Save saves the RRCache to the database as a NameRecord.
 func (rrCache *RRCache) Save() error {
+	if !rrCache.Cacheable() {
+		return nil
+	}
+
 	return rrCache.ToNameRecord().Save()
 }
 
@@ -164,6 +185,7 @@ func GetRRCache(domain string, question dns.Type) (*RRCache, error) {
 		return nil, err
 	}
 
+	rrCache.RCode = nameRecord.RCode
 	rrCache.TTL = nameRecord.TTL
 	for _, entry := range nameRecord.Answer {
 		rrCache.Answer = parseRR(rrCache.Answer, entry)
@@ -227,16 +249,12 @@ func (rrCache *RRCache) Flags() string {
 	return ""
 }
 
-// IsNXDomain returnes whether the result is nxdomain.
-func (rrCache *RRCache) IsNXDomain() bool {
-	return len(rrCache.Answer) == 0
-}
-
 // ShallowCopy returns a shallow copy of the cache. slices are not copied, but referenced.
 func (rrCache *RRCache) ShallowCopy() *RRCache {
 	return &RRCache{
 		Domain:   rrCache.Domain,
 		Question: rrCache.Question,
+		RCode:    rrCache.RCode,
 		Answer:   rrCache.Answer,
 		Ns:       rrCache.Ns,
 		Extra:    rrCache.Extra,
@@ -259,14 +277,11 @@ func (rrCache *RRCache) ShallowCopy() *RRCache {
 func (rrCache *RRCache) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns.Msg {
 	// reply to query
 	reply := new(dns.Msg)
-	reply.SetRcode(request, dns.RcodeSuccess)
+	reply.SetRcode(request, rrCache.RCode)
 	reply.Ns = rrCache.Ns
 	reply.Extra = rrCache.Extra
 
-	if rrCache.IsNXDomain() {
-		// Set NXDomain return code if not the reply has no answers.
-		reply.Rcode = dns.RcodeNameError
-	} else {
+	if len(rrCache.Answer) > 0 {
 		// Copy answers, as we randomize their order a little.
 		reply.Answer = make([]dns.RR, len(rrCache.Answer))
 		copy(reply.Answer, rrCache.Answer)

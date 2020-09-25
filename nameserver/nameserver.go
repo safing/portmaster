@@ -98,7 +98,12 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	// Start context tracer for context-aware logging.
 	ctx, tracer := log.AddTracer(ctx)
 	defer tracer.Submit()
-	tracer.Tracef("nameserver: handling new request for %s%s from %s:%d", q.FQDN, q.QType, remoteAddr.IP, remoteAddr.Port)
+	tracer.Tracef("nameserver: handling new request for %s from %s:%d", q.ID(), remoteAddr.IP, remoteAddr.Port)
+
+	// Check if there are more than one question.
+	if len(request.Question) > 1 {
+		tracer.Warningf("nameserver: received more than one question from (%s:%d), first question is %s", remoteAddr.IP, remoteAddr.Port, q.ID())
+	}
 
 	// Setup quick reply function.
 	reply := func(responder nsutil.Responder, rrProviders ...nsutil.RRProvider) error {
@@ -197,10 +202,10 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		// React to special errors.
 		switch {
 		case errors.Is(err, resolver.ErrNotFound):
-			tracer.Tracef("nameserver: NXDomain via error: %s", err)
+			tracer.Tracef("nameserver: %s", err)
 			return reply(nsutil.NxDomain("nxdomain: " + err.Error()))
 		case errors.Is(err, resolver.ErrBlocked):
-			tracer.Tracef("nameserver: block via error: %s", err)
+			tracer.Tracef("nameserver: %s", err)
 			return reply(nsutil.ZeroIP("blocked: " + err.Error()))
 		case errors.Is(err, resolver.ErrLocalhost):
 			tracer.Tracef("nameserver: returning localhost records")

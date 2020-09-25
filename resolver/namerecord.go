@@ -28,6 +28,7 @@ type NameRecord struct {
 
 	Domain   string
 	Question string
+	RCode    int
 	Answer   []string
 	Ns       []string
 	Extra    []string

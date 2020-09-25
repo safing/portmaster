@@ -202,6 +202,7 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 					rrCache = &RRCache{
 						Domain:      question.Name,
 						Question:    dns.Type(question.Qtype),
+						RCode:       dns.RcodeSuccess,
 						Server:      mDNSResolver.Server,
 						ServerScope: mDNSResolver.ServerIPScope,
 						ServerInfo:  mDNSResolver.ServerInfo,
@@ -303,6 +304,7 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 				rrCache = &RRCache{
 					Domain:      v.Header().Name,
 					Question:    dns.Type(v.Header().Class),
+					RCode:       dns.RcodeSuccess,
 					Answer:      []dns.RR{v},
 					Server:      mDNSResolver.Server,
 					ServerScope: mDNSResolver.ServerIPScope,
@@ -423,6 +425,7 @@ func queryMulticastDNS(ctx context.Context, q *Query) (*RRCache, error) {
 	return &RRCache{
 		Domain:      q.FQDN,
 		Question:    q.QType,
+		RCode:       dns.RcodeNameError,
 		Server:      mDNSResolver.Server,
 		ServerScope: mDNSResolver.ServerIPScope,
 		ServerInfo:  mDNSResolver.ServerInfo,

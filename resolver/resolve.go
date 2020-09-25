@@ -206,10 +206,10 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 	// We still return the cache, if it isn't NXDomain, as it will be used if the
 	// new query fails.
 	if rrCache.Expired() {
-		if rrCache.IsNXDomain() {
-			return nil
+		if rrCache.RCode == dns.RcodeSuccess {
+			return rrCache
 		}
-		return rrCache
+		return nil
 	}
 
 	// Check if the cache will expire soon and start an async request.
@@ -377,8 +377,8 @@ resolveLoop:
 				// Defensive: This should normally not happen.
 				continue
 			}
-			// Check if we got NXDomain and whether we should try another resolver.
-			if rrCache.IsNXDomain() && tryAll {
+			// Check if request suceeded and whether we should try another resolver.
+			if rrCache.RCode != dns.RcodeSuccess && tryAll {
 				continue
 			}
 			break resolveLoop
@@ -404,7 +404,7 @@ resolveLoop:
 			// There was an error during resolving, return the old cache entry instead.
 			log.Tracer(ctx).Debugf("resolver: serving backup cache of %s because query failed: %s", q.ID(), err)
 			return oldCache, nil
-		case rrCache.IsNXDomain():
+		case !rrCache.Cacheable():
 			// The new result is NXDomain, return the old cache entry instead.
 			log.Tracer(ctx).Debugf("resolver: serving backup cache of %s because fresh response is NXDomain", q.ID())
 			return oldCache, nil
@@ -417,7 +417,7 @@ resolveLoop:
 	}
 
 	// Save the new entry if cache is enabled.
-	if !q.NoCaching {
+	if !q.NoCaching && rrCache.Cacheable() {
 		rrCache.Clean(minTTL)
 		err = rrCache.Save()
 		if err != nil {
