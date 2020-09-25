@@ -53,7 +53,7 @@ func writeDNSResponse(w dns.ResponseWriter, m *dns.Msg) (err error) {
 	}()
 
 	err = w.WriteMsg(m)
-	if err == nil {
+	if err != nil {
 		// If we receive an error we might have exceeded the message size with all
 		// our extra information records. Retry again without the extra section.
 		m.Extra = nil
