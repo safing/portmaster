@@ -18,7 +18,7 @@ import (
 
 func main() {
 	// set information
-	info.Set("Portmaster", "0.5.5", "AGPLv3", true)
+	info.Set("Portmaster", "0.5.6", "AGPLv3", true)
 
 	// enable SPN client mode
 	conf.EnableClient(true)
