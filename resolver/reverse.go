@@ -14,7 +14,7 @@ func ResolveIPAndValidate(ctx context.Context, ip string, securityLevel uint8) (
 	// get reversed DNS address
 	reverseIP, err := dns.ReverseAddr(ip)
 	if err != nil {
-		log.Tracef("resolver: failed to get reverse address of %s: %s", ip, err)
+		log.Tracer(ctx).Tracef("resolver: failed to get reverse address of %s: %s", ip, err)
 		return "", ErrInvalid
 	}
 

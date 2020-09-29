@@ -81,11 +81,13 @@ func (pr *PlainResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	newRecord := &RRCache{
 		Domain:      q.FQDN,
 		Question:    q.QType,
+		RCode:       reply.Rcode,
 		Answer:      reply.Answer,
 		Ns:          reply.Ns,
 		Extra:       reply.Extra,
 		Server:      pr.resolver.Server,
 		ServerScope: pr.resolver.ServerIPScope,
+		ServerInfo:  pr.resolver.ServerInfo,
 	}
 
 	// TODO: check if reply.Answer is valid

@@ -60,6 +60,7 @@ type Resolver struct {
 	ServerIP      net.IP
 	ServerIPScope int8
 	ServerPort    uint16
+	ServerInfo    string
 
 	// Special Options
 	VerifyDomain string

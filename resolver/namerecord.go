@@ -28,6 +28,7 @@ type NameRecord struct {
 
 	Domain   string
 	Question string
+	RCode    int
 	Answer   []string
 	Ns       []string
 	Extra    []string
@@ -35,6 +36,7 @@ type NameRecord struct {
 
 	Server      string
 	ServerScope int8
+	ServerInfo  string
 }
 
 func makeNameRecordKey(domain string, question string) string {
@@ -85,48 +87,13 @@ func (rec *NameRecord) Save() error {
 	return recordDatabase.PutNew(rec)
 }
 
-func clearNameCache(_ context.Context, _ interface{}) error {
-	log.Debugf("resolver: name cache clearing started...")
-	for {
-		done, err := removeNameEntries(10000)
-		if err != nil {
-			return err
-		}
-
-		if done {
-			return nil
-		}
-	}
-}
-
-func removeNameEntries(batchSize int) (bool, error) {
-	iter, err := recordDatabase.Query(query.New(nameRecordsKeyPrefix))
+func clearNameCache(ctx context.Context, _ interface{}) error {
+	log.Debugf("resolver: dns cache clearing started...")
+	n, err := recordDatabase.Purge(ctx, query.New(nameRecordsKeyPrefix))
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	keys := make([]string, 0, batchSize)
-
-	var cnt int
-	for r := range iter.Next {
-		cnt++
-		keys = append(keys, r.Key())
-
-		if cnt == batchSize {
-			break
-		}
-	}
-	iter.Cancel()
-
-	for _, key := range keys {
-		if err := recordDatabase.Delete(key); err != nil {
-			log.Warningf("resolver: failed to remove name cache entry %q: %s", key, err)
-		}
-	}
-
-	log.Debugf("resolver: successfully removed %d name cache entries", cnt)
-
-	// if we removed less entries that the batch size we
-	// are done and no more entries exist
-	return cnt < batchSize, nil
+	log.Debugf("resolver: cleared %d entries in dns cache", n)
+	return nil
 }

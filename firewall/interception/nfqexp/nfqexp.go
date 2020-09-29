@@ -28,7 +28,7 @@ type Queue struct {
 }
 
 // New opens a new nfQueue.
-func New(qid uint16, v6 bool) (*Queue, error) {
+func New(qid uint16, v6 bool) (*Queue, error) { //nolint:gocognit
 	afFamily := unix.AF_INET
 	if v6 {
 		afFamily = unix.AF_INET6

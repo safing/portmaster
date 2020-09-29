@@ -20,7 +20,6 @@ func registerDatabases() error {
 		Name:        "core",
 		Description: "Holds core data, such as settings and profiles",
 		StorageType: DefaultDatabaseStorageType,
-		PrimaryAPI:  "",
 	})
 	if err != nil {
 		return err
@@ -30,7 +29,6 @@ func registerDatabases() error {
 		Name:        "cache",
 		Description: "Cached data, such as Intelligence and DNS Records",
 		StorageType: DefaultDatabaseStorageType,
-		PrimaryAPI:  "",
 	})
 	if err != nil {
 		return err
@@ -40,7 +38,6 @@ func registerDatabases() error {
 	//   Name:        "history",
 	//   Description: "Historic event data",
 	//   StorageType: DefaultDatabaseStorageType,
-	//   PrimaryAPI:  "",
 	// })
 	// if err != nil {
 	//   return err

@@ -76,7 +76,7 @@ func isLoaded() bool {
 	}
 }
 
-// processListFile opens the latest version of f	ile and decodes it's DSDL
+// processListFile opens the latest version of file and decodes it's DSDL
 // content. It calls processEntry for each decoded filterlists entry.
 func processListFile(ctx context.Context, filter *scopedBloom, file *updater.File) error {
 	f, err := os.Open(file.Path())
@@ -135,10 +135,20 @@ func processListFile(ctx context.Context, filter *scopedBloom, file *updater.Fil
 func persistRecords(startJob func(func() error), records <-chan record.Record) {
 	var cnt int
 	start := time.Now()
+	logProgress := func() {
+		if cnt == 0 {
+			// protection against panic
+			return
+		}
+
+		timePerEntity := time.Since(start) / time.Duration(cnt)
+		speed := float64(time.Second) / float64(timePerEntity)
+		log.Debugf("processed %d entities in %s with %s / entity (%.2f entities/second)", cnt, time.Since(start), timePerEntity, speed)
+	}
 
 	batch := database.NewInterface(&database.Options{Local: true, Internal: true})
-	var processBatch func() error
 
+	var processBatch func() error
 	processBatch = func() error {
 		batchPut := batch.PutMany("cache")
 		for r := range records {
@@ -148,9 +158,7 @@ func persistRecords(startJob func(func() error), records <-chan record.Record) {
 			cnt++
 
 			if cnt%10000 == 0 {
-				timePerEntity := time.Since(start) / time.Duration(cnt)
-				speed := float64(time.Second) / float64(timePerEntity)
-				log.Debugf("processed %d entities %s with %s / entity (%.2f entits/second)", cnt, time.Since(start), timePerEntity, speed)
+				logProgress()
 			}
 
 			if cnt%1000 == 0 {
@@ -164,6 +172,10 @@ func persistRecords(startJob func(func() error), records <-chan record.Record) {
 			}
 		}
 
+		// log final batch
+		if cnt%10000 != 0 { // avoid duplicate logging
+			logProgress()
+		}
 		return batchPut(nil)
 	}
 
@@ -185,6 +197,7 @@ func normalizeEntry(entry *listEntry) {
 func processEntry(ctx context.Context, filter *scopedBloom, entry *listEntry, records chan<- record.Record) error {
 	normalizeEntry(entry)
 
+	// Only add the entry to the bloom filter if it has any sources.
 	if len(entry.Sources) > 0 {
 		filter.add(entry.Type, entry.Entity)
 	}
@@ -194,6 +207,12 @@ func processEntry(ctx context.Context, filter *scopedBloom, entry *listEntry, re
 		Type:      entry.Type,
 		Sources:   entry.Sources,
 		UpdatedAt: time.Now().Unix(),
+	}
+
+	// If the entry is a "delete" update, actually delete it to save space.
+	if entry.Whitelist {
+		r.CreateMeta()
+		r.Meta().Delete()
 	}
 
 	key := makeListCacheKey(strings.ToLower(r.Type), r.Value)

@@ -32,8 +32,8 @@ var (
 		// `dot://1.0.0.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip`,
 
 		// AdGuard (encrypted DNS, default flavor)
-		// `dot://176.103.130.130:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
-		// `dot://176.103.130.131:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
+		// `dot://94.140.14.14:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
+		// `dot://94.140.15.15:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
 
 		// Foundation for Applied Privacy (encrypted DNS)
 		// `dot://94.130.106.88:853?verify=dot1.applied-privacy.net&name=AppliedPrivacy`,
@@ -48,8 +48,8 @@ var (
 		// `dns://1.0.0.2:53?name=Cloudflare&blockedif=zeroip`,
 
 		// AdGuard (plain DNS, default flavor)
-		// `dns://176.103.130.130&name=AdGuard&blockedif=zeroip`,
-		// `dns://176.103.130.131&name=AdGuard&blockedif=zeroip`,
+		// `dns://94.140.14.14&name=AdGuard&blockedif=zeroip`,
+		// `dns://94.140.15.15&name=AdGuard&blockedif=zeroip`,
 	}
 
 	CfgOptionNameServersKey   = "dns/nameservers"
@@ -96,7 +96,7 @@ IP:
 	always use the IP address and _not_ the domain name!
 
 Port:
-	always add the port!
+	optionally define a custom port
 
 Parameters:
 	name: give your DNS Server a name that is used for messages and logs
