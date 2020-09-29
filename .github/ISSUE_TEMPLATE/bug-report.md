@@ -50,4 +50,4 @@ Operating System:
 
 If applicable you can provide related sections from the log files and ensure to **remove sensitive or otherwise private information**.
  - Linux: `/var/lib/portmaster/logs`
- - Windows: `%PROGRAMDATA%\Portmaster\ļogs`
+ - Windows: `%PROGRAMDATA%\Safing\Portmaster\logs`
