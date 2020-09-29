@@ -24,7 +24,7 @@ type RRCache struct {
 	Question dns.Type // constant
 	RCode    int      // constant
 
-	Answer []dns.RR // constant
+	Answer []dns.RR // mutable (mixing, non-standard formats)
 	Ns     []dns.RR // constant
 	Extra  []dns.RR // constant
 	TTL    int64    // constant
@@ -273,25 +273,33 @@ func (rrCache *RRCache) ShallowCopy() *RRCache {
 	}
 }
 
+// ReplaceAnswerNames is a helper function that replaces all answer names, that
+// match the query domain, with another value. This is used to support handling
+// non-standard query names, which are resolved normalized, but have to be
+// reverted back for the origin non-standard query name in order for the
+// clients to recognize the response.
+func (rrCache *RRCache) ReplaceAnswerNames(fqdn string) {
+	for _, answer := range rrCache.Answer {
+		if answer.Header().Name == rrCache.Domain {
+			answer.Header().Name = fqdn
+		}
+	}
+}
+
 // ReplyWithDNS creates a new reply to the given query with the data from the RRCache, and additional informational records.
 func (rrCache *RRCache) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns.Msg {
 	// reply to query
 	reply := new(dns.Msg)
 	reply.SetRcode(request, rrCache.RCode)
+	reply.Answer = rrCache.Answer
 	reply.Ns = rrCache.Ns
 	reply.Extra = rrCache.Extra
 
-	if len(rrCache.Answer) > 0 {
-		// Copy answers, as we randomize their order a little.
-		reply.Answer = make([]dns.RR, len(rrCache.Answer))
-		copy(reply.Answer, rrCache.Answer)
-
-		// Randomize the order of the answer records a little to allow dumb clients
-		// (who only look at the first record) to reliably connect.
-		for i := range reply.Answer {
-			j := rand.Intn(i + 1)
-			reply.Answer[i], reply.Answer[j] = reply.Answer[j], reply.Answer[i]
-		}
+	// Randomize the order of the answer records a little to allow dumb clients
+	// (who only look at the first record) to reliably connect.
+	for i := range reply.Answer {
+		j := rand.Intn(i + 1)
+		reply.Answer[i], reply.Answer[j] = reply.Answer[j], reply.Answer[i]
 	}
 
 	return reply
