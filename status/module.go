@@ -16,7 +16,12 @@ func init() {
 }
 
 func start() error {
+	if err := setupRuntimeProvider(); err != nil {
+		return err
+	}
+
 	module.StartWorker("auto-pilot", autoPilot)
+
 	triggerAutopilot()
 
 	err := module.RegisterEventHook(
