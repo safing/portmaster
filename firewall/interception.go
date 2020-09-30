@@ -288,7 +288,7 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 		err = pkt.RerouteToTunnel()
 	case network.VerdictFailed:
 		atomic.AddUint64(packetsFailed, 1)
-		fallthrough
+		err = pkt.Drop()
 	default:
 		atomic.AddUint64(packetsDropped, 1)
 		err = pkt.Drop()
