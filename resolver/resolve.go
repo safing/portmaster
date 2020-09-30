@@ -215,9 +215,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 	// Check if the cache will expire soon and start an async request.
 	if rrCache.ExpiresSoon() {
 		// Set flag that we are refreshing this entry.
-		rrCache.Lock()
-		rrCache.requestingNew = true
-		rrCache.Unlock()
+		rrCache.RequestingNew = true
 
 		log.Tracer(ctx).Tracef(
 			"resolver: cache for %s will expire in %s, refreshing async now",
@@ -397,7 +395,7 @@ resolveLoop:
 
 	// Check if we want to use an older cache instead.
 	if oldCache != nil {
-		oldCache.isBackup = true
+		oldCache.IsBackup = true
 
 		switch {
 		case err != nil:

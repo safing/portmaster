@@ -196,9 +196,9 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 			if saveFullRequest {
 				// get from database
 				rrCache, err = GetRRCache(question.Name, dns.Type(question.Qtype))
-				// if we have no cached entry, or it has been updated less more than two seconds ago, or if it expired:
+				// if we have no cached entry, or it has been updated more than two seconds ago, or if it expired:
 				// create new and do not append
-				if err != nil || rrCache.updated < time.Now().Add(-2*time.Second).Unix() || rrCache.TTL < time.Now().Unix() {
+				if err != nil || rrCache.Modified < time.Now().Add(-2*time.Second).Unix() || rrCache.Expired() {
 					rrCache = &RRCache{
 						Domain:      question.Name,
 						Question:    dns.Type(question.Qtype),
