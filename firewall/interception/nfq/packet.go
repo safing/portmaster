@@ -1,6 +1,6 @@
 // +build linux
 
-package nfqexp
+package nfq
 
 import (
 	"errors"
