@@ -10,8 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/firewall/interception/nfqexp"
-	"github.com/safing/portmaster/firewall/interception/nfqueue"
+	"github.com/safing/portmaster/firewall/interception/nfq"
 	"github.com/safing/portmaster/network/packet"
 )
 
@@ -37,11 +36,8 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&experimentalNfqueueBackend, "experimental-nfqueue", false, "use experimental nfqueue packet")
+	flag.BoolVar(&experimentalNfqueueBackend, "experimental-nfqueue", true, "(deprecated flag; always used)")
 }
-
-// nfQueueFactoryFunc creates a new nfQueue with qid as the queue number.
-type nfQueueFactoryFunc func(qid uint16, v6 bool) (nfQueue, error)
 
 // nfQueue encapsulates nfQueue providers
 type nfQueue interface {
@@ -228,15 +224,10 @@ func deactivateIPTables(protocol iptables.Protocol, rules, chains []string) erro
 
 // StartNfqueueInterception starts the nfqueue interception.
 func StartNfqueueInterception() (err error) {
-	var nfQueueFactory nfQueueFactoryFunc = func(qid uint16, v6 bool) (nfQueue, error) {
-		return nfqueue.NewNFQueue(qid)
-	}
-
+	// @deprecated, remove in v1
 	if experimentalNfqueueBackend {
-		log.Infof("nfqueue: using experimental nfqueue backend")
-		nfQueueFactory = func(qid uint16, v6 bool) (nfQueue, error) {
-			return nfqexp.New(qid, v6)
-		}
+		log.Warningf("[DEPRECATED] --experimental-nfqueue has been deprecated as the backend is now used by default")
+		log.Warningf("[DEPRECATED] please remove the flag from your configuration!")
 	}
 
 	err = activateNfqueueFirewall()
@@ -245,22 +236,22 @@ func StartNfqueueInterception() (err error) {
 		return fmt.Errorf("could not initialize nfqueue: %s", err)
 	}
 
-	out4Queue, err = nfQueueFactory(17040, false)
+	out4Queue, err = nfq.New(17040, false)
 	if err != nil {
 		_ = Stop()
 		return fmt.Errorf("nfqueue(IPv4, out): %w", err)
 	}
-	in4Queue, err = nfQueueFactory(17140, false)
+	in4Queue, err = nfq.New(17140, false)
 	if err != nil {
 		_ = Stop()
 		return fmt.Errorf("nfqueue(IPv4, in): %w", err)
 	}
-	out6Queue, err = nfQueueFactory(17060, true)
+	out6Queue, err = nfq.New(17060, true)
 	if err != nil {
 		_ = Stop()
 		return fmt.Errorf("nfqueue(IPv6, out): %w", err)
 	}
-	in6Queue, err = nfQueueFactory(17160, true)
+	in6Queue, err = nfq.New(17160, true)
 	if err != nil {
 		_ = Stop()
 		return fmt.Errorf("nfqueue(IPv6, in): %w", err)
