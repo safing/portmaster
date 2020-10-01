@@ -82,10 +82,19 @@ func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
 
 func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) error { //nolint:gocognit // TODO
 	// Only process first question, that's how everyone does it.
-	question := request.Question[0]
+	originalQuestion := request.Question[0]
+
+	// Check if we are handling a non-standard query name.
+	var nonStandardQuestionFormat bool
+	lowerCaseQuestion := strings.ToLower(originalQuestion.Name)
+	if lowerCaseQuestion != originalQuestion.Name {
+		nonStandardQuestionFormat = true
+	}
+
+	// Create query for the resolver.
 	q := &resolver.Query{
-		FQDN:  question.Name,
-		QType: dns.Type(question.Qtype),
+		FQDN:  lowerCaseQuestion,
+		QType: dns.Type(originalQuestion.Qtype),
 	}
 
 	// Get remote address of request.
@@ -118,9 +127,9 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	}
 
 	// Check the Query Class.
-	if question.Qclass != dns.ClassINET {
+	if originalQuestion.Qclass != dns.ClassINET {
 		// we only serve IN records, return nxdomain
-		tracer.Warningf("nameserver: only IN record requests are supported but received Qclass %d, returning NXDOMAIN", question.Qclass)
+		tracer.Warningf("nameserver: only IN record requests are supported but received QClass %d, returning NXDOMAIN", originalQuestion.Qclass)
 		return reply(nsutil.Refused("unsupported qclass"))
 	}
 
@@ -242,6 +251,11 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 
 	// Save dns request as open.
 	defer network.SaveOpenDNSRequest(conn)
+
+	// Revert back to non-standard question format, if we had to convert.
+	if nonStandardQuestionFormat {
+		rrCache.ReplaceAnswerNames(originalQuestion.Name)
+	}
 
 	// Reply with successful response.
 	tracer.Infof("nameserver: returning %s response for %s to %s", conn.Verdict.Verb(), q.ID(), conn.Process())

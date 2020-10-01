@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/safing/portbase/log"
@@ -15,31 +14,37 @@ import (
 	"github.com/miekg/dns"
 )
 
-// RRCache is used to cache DNS data
+// RRCache is a single-use structure to hold a DNS response.
+// Persistence is handled through NameRecords because of a limitation of the
+// underlying dns library.
 //nolint:maligned // TODO
 type RRCache struct {
-	sync.Mutex
+	// Respnse Header
+	Domain   string
+	Question dns.Type
+	RCode    int
 
-	Domain   string   // constant
-	Question dns.Type // constant
-	RCode    int      // constant
+	// Response Content
+	Answer []dns.RR
+	Ns     []dns.RR
+	Extra  []dns.RR
+	TTL    int64
 
-	Answer []dns.RR // constant
-	Ns     []dns.RR // constant
-	Extra  []dns.RR // constant
-	TTL    int64    // constant
+	// Source Information
+	Server      string
+	ServerScope int8
+	ServerInfo  string
 
-	Server      string // constant
-	ServerScope int8   // constant
-	ServerInfo  string // constant
+	// Metadata about the request and handling
+	ServedFromCache bool
+	RequestingNew   bool
+	IsBackup        bool
+	Filtered        bool
+	FilteredEntries []string
 
-	servedFromCache bool     // mutable
-	requestingNew   bool     // mutable
-	isBackup        bool     // mutable
-	Filtered        bool     // mutable
-	FilteredEntries []string // mutable
-
-	updated int64 // mutable
+	// Modified holds when this entry was last changed, ie. saved to database.
+	// This field is only populated when the entry comes from the cache.
+	Modified int64
 }
 
 // ID returns the ID of the RRCache consisting of the domain and question type.
@@ -59,9 +64,6 @@ func (rrCache *RRCache) ExpiresSoon() bool {
 
 // Clean sets all TTLs to 17 and sets cache expiry with specified minimum.
 func (rrCache *RRCache) Clean(minExpires uint32) {
-	rrCache.Lock()
-	defer rrCache.Unlock()
-
 	var lowestTTL uint32 = 0xFFFFFFFF
 	var header *dns.RR_Header
 
@@ -200,7 +202,8 @@ func GetRRCache(domain string, question dns.Type) (*RRCache, error) {
 	rrCache.Server = nameRecord.Server
 	rrCache.ServerScope = nameRecord.ServerScope
 	rrCache.ServerInfo = nameRecord.ServerInfo
-	rrCache.servedFromCache = true
+	rrCache.ServedFromCache = true
+	rrCache.Modified = nameRecord.Meta().Modified
 	return rrCache, nil
 }
 
@@ -217,26 +220,16 @@ func parseRR(section []dns.RR, entry string) []dns.RR {
 	return section
 }
 
-// ServedFromCache marks the RRCache as served from cache.
-func (rrCache *RRCache) ServedFromCache() bool {
-	return rrCache.servedFromCache
-}
-
-// RequestingNew informs that it has expired and new RRs are being fetched.
-func (rrCache *RRCache) RequestingNew() bool {
-	return rrCache.requestingNew
-}
-
 // Flags formats ServedFromCache and RequestingNew to a condensed, flag-like format.
 func (rrCache *RRCache) Flags() string {
 	var s string
-	if rrCache.servedFromCache {
+	if rrCache.ServedFromCache {
 		s += "C"
 	}
-	if rrCache.requestingNew {
+	if rrCache.RequestingNew {
 		s += "R"
 	}
-	if rrCache.isBackup {
+	if rrCache.IsBackup {
 		s += "B"
 	}
 	if rrCache.Filtered {
@@ -255,21 +248,35 @@ func (rrCache *RRCache) ShallowCopy() *RRCache {
 		Domain:   rrCache.Domain,
 		Question: rrCache.Question,
 		RCode:    rrCache.RCode,
-		Answer:   rrCache.Answer,
-		Ns:       rrCache.Ns,
-		Extra:    rrCache.Extra,
-		TTL:      rrCache.TTL,
+
+		Answer: rrCache.Answer,
+		Ns:     rrCache.Ns,
+		Extra:  rrCache.Extra,
+		TTL:    rrCache.TTL,
 
 		Server:      rrCache.Server,
 		ServerScope: rrCache.ServerScope,
 		ServerInfo:  rrCache.ServerInfo,
 
-		updated:         rrCache.updated,
-		servedFromCache: rrCache.servedFromCache,
-		requestingNew:   rrCache.requestingNew,
-		isBackup:        rrCache.isBackup,
+		ServedFromCache: rrCache.ServedFromCache,
+		RequestingNew:   rrCache.RequestingNew,
+		IsBackup:        rrCache.IsBackup,
 		Filtered:        rrCache.Filtered,
 		FilteredEntries: rrCache.FilteredEntries,
+		Modified:        rrCache.Modified,
+	}
+}
+
+// ReplaceAnswerNames is a helper function that replaces all answer names, that
+// match the query domain, with another value. This is used to support handling
+// non-standard query names, which are resolved normalized, but have to be
+// reverted back for the origin non-standard query name in order for the
+// clients to recognize the response.
+func (rrCache *RRCache) ReplaceAnswerNames(fqdn string) {
+	for _, answer := range rrCache.Answer {
+		if answer.Header().Name == rrCache.Domain {
+			answer.Header().Name = fqdn
+		}
 	}
 }
 
@@ -278,20 +285,15 @@ func (rrCache *RRCache) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 	// reply to query
 	reply := new(dns.Msg)
 	reply.SetRcode(request, rrCache.RCode)
+	reply.Answer = rrCache.Answer
 	reply.Ns = rrCache.Ns
 	reply.Extra = rrCache.Extra
 
-	if len(rrCache.Answer) > 0 {
-		// Copy answers, as we randomize their order a little.
-		reply.Answer = make([]dns.RR, len(rrCache.Answer))
-		copy(reply.Answer, rrCache.Answer)
-
-		// Randomize the order of the answer records a little to allow dumb clients
-		// (who only look at the first record) to reliably connect.
-		for i := range reply.Answer {
-			j := rand.Intn(i + 1)
-			reply.Answer[i], reply.Answer[j] = reply.Answer[j], reply.Answer[i]
-		}
+	// Randomize the order of the answer records a little to allow dumb clients
+	// (who only look at the first record) to reliably connect.
+	for i := range reply.Answer {
+		j := rand.Intn(i + 1)
+		reply.Answer[i], reply.Answer[j] = reply.Answer[j], reply.Answer[i]
 	}
 
 	return reply
@@ -300,7 +302,7 @@ func (rrCache *RRCache) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 // GetExtraRRs returns a slice of RRs with additional informational records.
 func (rrCache *RRCache) GetExtraRRs(ctx context.Context, query *dns.Msg) (extra []dns.RR) {
 	// Add cache status and source of data.
-	if rrCache.servedFromCache {
+	if rrCache.ServedFromCache {
 		extra = addExtra(ctx, extra, "served from cache, resolved by "+rrCache.ServerInfo)
 	} else {
 		extra = addExtra(ctx, extra, "freshly resolved by "+rrCache.ServerInfo)
@@ -312,10 +314,10 @@ func (rrCache *RRCache) GetExtraRRs(ctx context.Context, query *dns.Msg) (extra 
 	} else {
 		extra = addExtra(ctx, extra, fmt.Sprintf("record valid for %s", time.Until(time.Unix(rrCache.TTL, 0)).Round(time.Second)))
 	}
-	if rrCache.requestingNew {
+	if rrCache.RequestingNew {
 		extra = addExtra(ctx, extra, "async request to refresh the cache has been started")
 	}
-	if rrCache.isBackup {
+	if rrCache.IsBackup {
 		extra = addExtra(ctx, extra, "this record is served because a fresh request failed")
 	}
 
