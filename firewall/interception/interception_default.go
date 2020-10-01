@@ -4,10 +4,11 @@ package interception
 
 import (
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network/packet"
 )
 
 // start starts the interception.
-func start(ch chan packet.Packet) error {
+func start(_ chan packet.Packet) error {
 	log.Info("interception: this platform has no support for packet interception - a lot of functionality will be broken")
 	return nil
 }
