@@ -7,7 +7,7 @@ import (
 )
 
 // start starts the interception.
-func start() error {
+func start(ch chan packet.Packet) error {
 	log.Info("interception: this platform has no support for packet interception - a lot of functionality will be broken")
 	return nil
 }

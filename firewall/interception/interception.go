@@ -25,7 +25,18 @@ func Start() error {
 		return nil
 	}
 
-	return start()
+	var ch = Packets
+	if packetMetricsDestination != "" {
+		go metrics.writeMetrics()
+		ch = make(chan packet.Packet)
+		go func() {
+			for p := range ch {
+				Packets <- tracePacket(p)
+			}
+		}()
+	}
+
+	return start(ch)
 }
 
 // Stop starts the interception.
@@ -33,6 +44,8 @@ func Stop() error {
 	if disableInterception {
 		return nil
 	}
+
+	close(metrics.done)
 
 	return stop()
 }

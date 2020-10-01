@@ -7,11 +7,12 @@ import (
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/firewall/interception/windowskext"
+	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/updates"
 )
 
 // start starts the interception.
-func start() error {
+func start(ch chan packet.Packet) error {
 	dllFile, err := updates.GetPlatformFile("kext/portmaster-kext.dll")
 	if err != nil {
 		return fmt.Errorf("interception: could not get kext dll: %s", err)
@@ -31,7 +32,7 @@ func start() error {
 		return fmt.Errorf("interception: could not start windows kext: %s", err)
 	}
 
-	go windowskext.Handler(Packets)
+	go windowskext.Handler(ch)
 	go handleWindowsDNSCache()
 
 	return nil

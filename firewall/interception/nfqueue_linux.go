@@ -223,7 +223,7 @@ func deactivateIPTables(protocol iptables.Protocol, rules, chains []string) erro
 }
 
 // StartNfqueueInterception starts the nfqueue interception.
-func StartNfqueueInterception() (err error) {
+func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 	// @deprecated, remove in v1
 	if experimentalNfqueueBackend {
 		log.Warningf("[DEPRECATED] --experimental-nfqueue has been deprecated as the backend is now used by default")
@@ -257,7 +257,7 @@ func StartNfqueueInterception() (err error) {
 		return fmt.Errorf("nfqueue(IPv6, in): %w", err)
 	}
 
-	go handleInterception()
+	go handleInterception(packets)
 	return nil
 }
 
@@ -286,23 +286,26 @@ func StopNfqueueInterception() error {
 	return nil
 }
 
-func handleInterception() {
+func handleInterception(packets chan<- packet.Packet) {
 	for {
+		var pkt packet.Packet
 		select {
 		case <-shutdownSignal:
 			return
-		case pkt := <-out4Queue.PacketChannel():
+		case pkt = <-out4Queue.PacketChannel():
 			pkt.SetOutbound()
-			Packets <- pkt
-		case pkt := <-in4Queue.PacketChannel():
+		case pkt = <-in4Queue.PacketChannel():
 			pkt.SetInbound()
-			Packets <- pkt
-		case pkt := <-out6Queue.PacketChannel():
+		case pkt = <-out6Queue.PacketChannel():
 			pkt.SetOutbound()
-			Packets <- pkt
-		case pkt := <-in6Queue.PacketChannel():
+		case pkt = <-in6Queue.PacketChannel():
 			pkt.SetInbound()
-			Packets <- pkt
+		}
+
+		select {
+		case packets <- pkt:
+		case <-shutdownSignal:
+			return
 		}
 	}
 }
