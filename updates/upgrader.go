@@ -101,14 +101,14 @@ func upgradeCoreNotify() error {
 	if info.GetInfo().Version != pmCoreUpdate.Version() {
 		n := notifications.NotifyInfo(
 			"updates:core-update-available",
-			fmt.Sprintf("There is an update available for the Portmaster core (v%s), please restart the Portmaster to apply the update.", pmCoreUpdate.Version()),
-			notifications.Action{
-				ID:   "later",
-				Text: "Later",
-			},
+			fmt.Sprintf(":tada: Update to **Portmaster v%s** is available! Please restart the Portmaster to apply the update.", pmCoreUpdate.Version()),
 			notifications.Action{
 				ID:   "restart",
-				Text: "Restart Portmaster Now",
+				Text: "Restart",
+			},
+			notifications.Action{
+				ID:   "later",
+				Text: "Not now",
 			},
 		)
 		n.SetActionFunction(upgradeCoreNotifyActionHandler)
