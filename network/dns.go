@@ -17,14 +17,16 @@ var (
 	openDNSRequests     = make(map[string]*Connection) // key: <pid>/fqdn
 	openDNSRequestsLock sync.Mutex
 
+	// scope prefix
+	unidentifiedProcessScopePrefix = strconv.Itoa(process.UnidentifiedProcessID) + "/"
+)
+
+const (
 	// write open dns requests every
 	writeOpenDNSRequestsTickDuration = 5 * time.Second
 
 	// duration after which DNS requests without a following connection are logged
 	openDNSRequestLimit = 3 * time.Second
-
-	// scope prefix
-	unidentifiedProcessScopePrefix = strconv.Itoa(process.UnidentifiedProcessID) + "/"
 )
 
 func getDNSRequestCacheKey(pid int, fqdn string) string {

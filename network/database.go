@@ -3,7 +3,6 @@ package network
 import (
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/safing/portmaster/network/state"
 
@@ -16,15 +15,14 @@ import (
 )
 
 var (
-	dnsConns     = make(map[string]*Connection) // key: <PID>/Scope
-	dnsConnsLock sync.RWMutex
-	conns        = make(map[string]*Connection) // key: Connection ID
-	connsLock    sync.RWMutex
-
 	dbController *database.Controller
+
+	dnsConns = newConnectionStore()
+	conns    = newConnectionStore()
 )
 
-// StorageInterface provices a storage.Interface to the configuration manager.
+// StorageInterface provices a storage.Interface to the
+// configuration manager.
 type StorageInterface struct {
 	storage.InjectBase
 }
@@ -45,18 +43,12 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 				}
 			}
 		case 3:
-			dnsConnsLock.RLock()
-			defer dnsConnsLock.RUnlock()
-			conn, ok := dnsConns[splitted[1]+"/"+splitted[2]]
-			if ok {
-				return conn, nil
+			if r, ok := dnsConns.get(splitted[1] + "/" + splitted[2]); ok {
+				return r, nil
 			}
 		case 4:
-			connsLock.RLock()
-			defer connsLock.RUnlock()
-			conn, ok := conns[splitted[3]]
-			if ok {
-				return conn, nil
+			if r, ok := conns.get(splitted[3]); ok {
+				return r, nil
 			}
 		}
 	case "system":
@@ -97,28 +89,24 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 
 	if slashes <= 2 {
 		// dns scopes only
-		dnsConnsLock.RLock()
-		for _, dnsConn := range dnsConns {
+		for _, dnsConn := range dnsConns.clone() {
 			dnsConn.Lock()
 			if q.Matches(dnsConn) {
 				it.Next <- dnsConn
 			}
 			dnsConn.Unlock()
 		}
-		dnsConnsLock.RUnlock()
 	}
 
 	if slashes <= 3 {
 		// connections
-		connsLock.RLock()
-		for _, conn := range conns {
+		for _, conn := range conns.clone() {
 			conn.Lock()
 			if q.Matches(conn) {
 				it.Next <- conn
 			}
 			conn.Unlock()
 		}
-		connsLock.RUnlock()
 	}
 
 	it.Finish(nil)

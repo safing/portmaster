@@ -3,9 +3,10 @@ package network
 // Verdict describes the decision made about a connection or link.
 type Verdict int8
 
-// List of values a Status can have
+// All possible verdicts that can be applied to a network
+// connection.
 const (
-	// UNDECIDED is the default status of new connections
+	// VerdictUndecided is the default status of new connections.
 	VerdictUndecided           Verdict = 0
 	VerdictUndeterminable      Verdict = 1
 	VerdictAccept              Verdict = 2
@@ -63,7 +64,7 @@ func (v Verdict) Verb() string {
 	}
 }
 
-// Packer Directions
+// Packet Directions
 const (
 	Inbound  = true
 	Outbound = false

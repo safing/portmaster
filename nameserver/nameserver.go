@@ -149,6 +149,8 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 
 	// Get connection for this request. This identifies the process behind the request.
 	conn := network.NewConnectionFromDNSRequest(ctx, q.FQDN, nil, packet.IPv4, remoteAddr.IP, uint16(remoteAddr.Port))
+	conn.Lock()
+	defer conn.Unlock()
 
 	// Once we decided on the connection we might need to save it to the database,
 	// so we defer that check for now.
