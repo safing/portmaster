@@ -66,7 +66,7 @@ func (p *Process) Save() {
 	}
 
 	if dbControllerFlag.IsSet() {
-		go dbController.PushUpdate(p)
+		dbController.PushUpdate(p)
 	}
 }
 
@@ -83,7 +83,7 @@ func (p *Process) Delete() {
 	// propagate delete
 	p.Meta().Delete()
 	if dbControllerFlag.IsSet() {
-		go dbController.PushUpdate(p)
+		dbController.PushUpdate(p)
 	}
 
 	// TODO: maybe mark the assigned profiles as no longer needed?
