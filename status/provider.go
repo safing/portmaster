@@ -89,5 +89,9 @@ func pushSystemStatus() {
 		return
 	}
 
-	pushUpdate(buildSystemStatus())
+	record := buildSystemStatus()
+	record.Lock()
+	defer record.Unlock()
+
+	pushUpdate(record)
 }
