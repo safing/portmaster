@@ -24,6 +24,20 @@ import (
 // locked before the firewall handler is called.
 type FirewallHandler func(conn *Connection, pkt packet.Packet)
 
+// ProcessContext holds additional information about the process
+// that iniated a connection.
+type ProcessContext struct {
+	// Name is the name of the process.
+	Name string
+	// BinaryPath is the path to the process binary.
+	BinaryPath string
+	// PID i the process identifier.
+	PID int
+	// ProfileID is the ID of the main profile that
+	// is applied to the process.
+	ProfileID string
+}
+
 // Connection describes a distinct physical network connection
 // identified by the IP/Port pair.
 type Connection struct { //nolint:maligned // TODO: fix alignment
@@ -98,6 +112,10 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	Tunneled bool
 	// Encrypted is currently unused and MUST be ignored.
 	Encrypted bool
+	// ProcessContext holds additional information about the process
+	// that iniated the connection. It is set once when the connection
+	// object is created and is considered immutable afterwards.
+	ProcessContext ProcessContext
 	// Internal is set to true if the connection is attributed as an
 	// Portmaster internal connection. Internal may be set at different
 	// points and access to it must be guarded by the connection lock.
@@ -129,6 +147,15 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	profileRevisionCounter uint64
 }
 
+func getProcessContext(proc *process.Process) ProcessContext {
+	return ProcessContext{
+		BinaryPath: proc.Path,
+		Name:       proc.Name,
+		PID:        proc.Pid,
+		ProfileID:  proc.LocalProfileKey,
+	}
+}
+
 // NewConnectionFromDNSRequest returns a new connection based on the given dns request.
 func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, ipVersion packet.IPVersion, localIP net.IP, localPort uint16) *Connection {
 	// get Process
@@ -156,9 +183,10 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 			Domain: fqdn,
 			CNAME:  cnames,
 		},
-		process: proc,
-		Started: timestamp,
-		Ended:   timestamp,
+		process:        proc,
+		ProcessContext: getProcessContext(proc),
+		Started:        timestamp,
+		Ended:          timestamp,
 	}
 	return dnsConn
 }
@@ -251,10 +279,11 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		IPVersion: pkt.Info().Version,
 		Inbound:   inbound,
 		// local endpoint
-		IPProtocol: pkt.Info().Protocol,
-		LocalIP:    pkt.Info().LocalIP(),
-		LocalPort:  pkt.Info().LocalPort(),
-		process:    proc,
+		IPProtocol:     pkt.Info().Protocol,
+		LocalIP:        pkt.Info().LocalIP(),
+		LocalPort:      pkt.Info().LocalPort(),
+		ProcessContext: getProcessContext(proc),
+		process:        proc,
 		// remote endpoint
 		Entity: entity,
 		// meta
