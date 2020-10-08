@@ -12,7 +12,7 @@ import (
 	"github.com/safing/portmaster/process"
 )
 
-var (
+const (
 	cleanerTickDuration            = 5 * time.Second
 	deleteConnsAfterEndedThreshold = 5 * time.Minute
 )
@@ -46,15 +46,8 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 		nowUnix := now.Unix()
 		deleteOlderThan := now.Add(-deleteConnsAfterEndedThreshold).Unix()
 
-		// lock both together because we cannot fully guarantee in which map a connection lands
-		// of course every connection should land in the correct map, but this increases resilience
-		connsLock.Lock()
-		defer connsLock.Unlock()
-		dnsConnsLock.Lock()
-		defer dnsConnsLock.Unlock()
-
 		// network connections
-		for _, conn := range conns {
+		for _, conn := range conns.clone() {
 			conn.Lock()
 
 			// delete inactive connections
@@ -70,15 +63,13 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 					Dst:      conn.Entity.IP,
 					DstPort:  conn.Entity.Port,
 				}, now)
+
 				activePIDs[conn.process.Pid] = struct{}{}
 
 				if !exists {
 					// Step 2: mark end
 					conn.Ended = nowUnix
-					if conn.KeyIsSet() {
-						// Be absolutely sure that we have a key set here, else conn.Save() will deadlock.
-						conn.Save()
-					}
+					conn.Save()
 				}
 			case conn.Ended < deleteOlderThan:
 				// Step 3: delete
@@ -90,7 +81,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 		}
 
 		// dns requests
-		for _, conn := range dnsConns {
+		for _, conn := range dnsConns.clone() {
 			conn.Lock()
 
 			// delete old dns connections

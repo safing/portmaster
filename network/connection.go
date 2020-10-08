@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strconv"
 	"sync"
 	"time"
 
@@ -19,48 +18,114 @@ import (
 	"github.com/safing/portmaster/resolver"
 )
 
-// FirewallHandler defines the function signature for a firewall handle function
+// FirewallHandler defines the function signature for a firewall
+// handle function. A firewall handler is responsible for finding
+// a reasonable verdict for the connection conn. The connection is
+// locked before the firewall handler is called.
 type FirewallHandler func(conn *Connection, pkt packet.Packet)
 
-// Connection describes a distinct physical network connection identified by the IP/Port pair.
+// Connection describes a distinct physical network connection
+// identified by the IP/Port pair.
 type Connection struct { //nolint:maligned // TODO: fix alignment
 	record.Base
 	sync.Mutex
 
-	ID        string
-	Scope     string
+	// ID may hold unique connection id. It is only set for non-DNS
+	// request connections and is considered immutable after a
+	// connection object has been created.
+	ID string
+	// Scope defines the scope of a connection. For DNS requests, the
+	// scope is always set to the domain name. For direct packet
+	// connections the scope consists of the involved network environment
+	// and the packet direction. Once a connection object is created,
+	// Scope is considered immutable.
+	Scope string
+	// IPVersion is set to the packet IP version. It is not set (0) for
+	// connections created from a DNS request.
 	IPVersion packet.IPVersion
-	Inbound   bool
-
-	// local endpoint
+	// Inbound is set to true if the connection is incoming. Inbound is
+	// only set when a connection object is created and is considered
+	// immutable afterwards.
+	Inbound bool
+	// IPProtocol is set to the transport protocol used by the connection.
+	// Is is considered immutable once a connection object has been
+	// created. IPProtocol is not set for connections that have been
+	// created from a DNS request.
 	IPProtocol packet.IPProtocol
-	LocalIP    net.IP
-	LocalPort  uint16
-	process    *process.Process
-
-	// remote endpoint
+	// LocalIP holds the local IP address of the connection. It is not
+	// set for connections created from DNS requests. LocalIP is
+	// considered immutable once a connection object has been created.
+	LocalIP net.IP
+	// LocalPort holds the local port of the connection. It is not
+	// set for connections created from DNS requests. LocalPort is
+	// considered immutable once a connection object has been created.
+	LocalPort uint16
+	// Entity describes the remote entity that the connection has been
+	// established to. The entity might be changed or information might
+	// be added to it during the livetime of a connection. Access to
+	// entity must be guarded by the connection lock.
 	Entity *intel.Entity
-
-	Verdict       Verdict
-	Reason        string
+	// Verdict is the final decision that has been made for a connection.
+	// The verdict may change so any access to it must be guarded by the
+	// connection lock.
+	Verdict Verdict
+	// Reason is a human readable description justifying the set verdict.
+	// Access to Reason must be guarded by the connection lock.
+	Reason string
+	// ReasonContext may holds additional reason-specific information and
+	// any access must be guarded by the connection lock.
 	ReasonContext interface{}
-	ReasonID      string // format source[:id[:id]] // TODO
-
-	Started          int64
-	Ended            int64
-	Tunneled         bool
+	// Started holds the number of seconds in UNIX epoch time at which
+	// the connection has been initated and first seen by the portmaster.
+	// Staretd is only every set when creating a new connection object
+	// and is considered immutable afterwards.
+	Started int64
+	// Ended is set to the number of seconds in UNIX epoch time at which
+	// the connection is considered terminated. Ended may be set at any
+	// time so access must be guarded by the conneciton lock.
+	Ended int64
+	// VerdictPermanent is set to true if the final verdict is permanent
+	// and the connection has been (or will be) handed back to the kernel.
+	// VerdictPermanent may be changed together with the Verdict and Reason
+	// properties and must be guarded using the connection lock.
 	VerdictPermanent bool
-	Inspecting       bool
-	Encrypted        bool // TODO
-	Internal         bool // Portmaster internal connections are marked in order to easily filter these out in the UI
-
-	pktQueue        chan packet.Packet
+	// Inspecting is set to true if the connection is being inspected
+	// by one or more of the registered inspectors. This property may
+	// be changed during the lifetime of a connection and must be guarded
+	// using the connection lock.
+	Inspecting bool
+	// Tunneled is currently unused and MUST be ignored.
+	Tunneled bool
+	// Encrypted is currently unused and MUST be ignored.
+	Encrypted bool
+	// Internal is set to true if the connection is attributed as an
+	// Portmaster internal connection. Internal may be set at different
+	// points and access to it must be guarded by the connection lock.
+	Internal bool
+	// process holds a reference to the actor process. That is, the
+	// process instance that initated the conneciton.
+	process *process.Process
+	// pkgQueue is used to serialize packet handling for a single
+	// connection and is served by the connections packetHandler.
+	pktQueue chan packet.Packet
+	// firewallHandler is the firewall handler that is called for
+	// each packet sent to pktQueue.
 	firewallHandler FirewallHandler
-
+	// saveWhenFinished can be set to drue during the life-time of
+	// a connection and signals the firewallHandler that a Save()
+	// should be issued after processing the connection.
+	saveWhenFinished bool
+	// activeInspectors is a slice of booleans where each entry
+	// maps to the index of an available inspector. If the value
+	// is true the inspector is currently active. False indicates
+	// that the inspector has finished and should be skipped.
 	activeInspectors []bool
-	inspectorData    map[uint8]interface{}
-
-	saveWhenFinished       bool
+	// inspectorData holds additional meta data for the inspectors.
+	// using the inspectors index as a map key.
+	inspectorData map[uint8]interface{}
+	// profileRevisionCounter is used to track changes to the process
+	// profile and required for correct re-evaluation of a connections
+	// verdict.
 	profileRevisionCounter uint64
 }
 
@@ -120,7 +185,10 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 			scope = IncomingLAN
 		case netutils.Global, netutils.GlobalMulticast:
 			scope = IncomingInternet
-		default: // netutils.Invalid
+
+		case netutils.Invalid:
+			fallthrough
+		default:
 			scope = IncomingInvalid
 		}
 		entity = &intel.Entity{
@@ -167,7 +235,10 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 				scope = PeerLAN
 			case netutils.Global, netutils.GlobalMulticast:
 				scope = PeerInternet
-			default: // netutils.Invalid
+
+			case netutils.Invalid:
+				fallthrough
+			default:
 				scope = PeerInvalid
 			}
 
@@ -194,11 +265,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 
 // GetConnection fetches a Connection from the database.
 func GetConnection(id string) (*Connection, bool) {
-	connsLock.RLock()
-	defer connsLock.RUnlock()
-
-	conn, ok := conns[id]
-	return conn, ok
+	return conns.get(id)
 }
 
 // AcceptWithContext accepts the connection.
@@ -292,32 +359,24 @@ func (conn *Connection) SaveWhenFinished() {
 	conn.saveWhenFinished = true
 }
 
-// Save saves the connection in the storage and propagates the change through the database system.
+// Save saves the connection in the storage and propagates the change
+// through the database system. Save may lock dnsConnsLock or connsLock
+// in if Save() is called the first time.
+// Callers must make sure to lock the connection itself before calling
+// Save().
 func (conn *Connection) Save() {
 	conn.UpdateMeta()
 
 	if !conn.KeyIsSet() {
+		// A connection without an ID has been created from
+		// a DNS request rather than a packet. Choose the correct
+		// connection store here.
 		if conn.ID == "" {
-			// dns request
-
-			// set key
 			conn.SetKey(fmt.Sprintf("network:tree/%d/%s", conn.process.Pid, conn.Scope))
-			mapKey := strconv.Itoa(conn.process.Pid) + "/" + conn.Scope
-
-			// save
-			dnsConnsLock.Lock()
-			dnsConns[mapKey] = conn
-			dnsConnsLock.Unlock()
+			dnsConns.add(conn)
 		} else {
-			// network connection
-
-			// set key
 			conn.SetKey(fmt.Sprintf("network:tree/%d/%s/%s", conn.process.Pid, conn.Scope, conn.ID))
-
-			// save
-			connsLock.Lock()
-			conns[conn.ID] = conn
-			connsLock.Unlock()
+			conns.add(conn)
 		}
 	}
 
@@ -325,12 +384,17 @@ func (conn *Connection) Save() {
 	dbController.PushUpdate(conn)
 }
 
-// delete deletes a link from the storage and propagates the change. Nothing is locked - both the conns map and the connection itself require locking
+// delete deletes a link from the storage and propagates the change.
+// delete may lock either the dnsConnsLock or connsLock. Callers
+// must still make sure to lock the connection itself.
 func (conn *Connection) delete() {
+	// A connection without an ID has been created from
+	// a DNS request rather than a packet. Choose the correct
+	// connection store here.
 	if conn.ID == "" {
-		delete(dnsConns, strconv.Itoa(conn.process.Pid)+"/"+conn.Scope)
+		dnsConns.delete(conn)
 	} else {
-		delete(conns, conn.ID)
+		conns.delete(conn)
 	}
 
 	conn.Meta().Delete()
@@ -352,7 +416,8 @@ func (conn *Connection) UpdateAndCheck() (needsReevaluation bool) {
 	return
 }
 
-// SetFirewallHandler sets the firewall handler for this link, and starts a worker to handle the packets.
+// SetFirewallHandler sets the firewall handler for this link, and starts a
+// worker to handle the packets.
 func (conn *Connection) SetFirewallHandler(handler FirewallHandler) {
 	if conn.firewallHandler == nil {
 		conn.pktQueue = make(chan packet.Packet, 1000)
@@ -388,26 +453,27 @@ func (conn *Connection) HandlePacket(pkt packet.Packet) {
 
 // packetHandler sequentially handles queued packets
 func (conn *Connection) packetHandler() {
-	for {
-		pkt := <-conn.pktQueue
+	for pkt := range conn.pktQueue {
 		if pkt == nil {
 			return
 		}
 		// get handler
 		conn.Lock()
+
 		// execute handler or verdict
 		if conn.firewallHandler != nil {
 			conn.firewallHandler(conn, pkt)
 		} else {
 			defaultFirewallHandler(conn, pkt)
 		}
-		conn.Unlock()
 		// save does not touch any changing data
 		// must not be locked, will deadlock with cleaner functions
 		if conn.saveWhenFinished {
 			conn.saveWhenFinished = false
 			conn.Save()
 		}
+
+		conn.Unlock()
 		// submit trace logs
 		log.Tracer(pkt.Ctx()).Submit()
 	}

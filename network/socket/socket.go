@@ -61,3 +61,7 @@ func (i *BindInfo) GetUID() int { return i.UID }
 
 // GetInode returns the Inode.
 func (i *BindInfo) GetInode() int { return i.Inode }
+
+// compile time checks
+var _ Info = new(ConnectionInfo)
+var _ Info = new(BindInfo)
