@@ -28,7 +28,8 @@ type RRCache struct {
 	Answer []dns.RR
 	Ns     []dns.RR
 	Extra  []dns.RR
-	TTL    int64
+	// TODO: Name change in progress. Rename "TTL" field to "Expires" in Q1 2021.
+	TTL int64 `json:"Expires"`
 
 	// Source Information
 	Server      string

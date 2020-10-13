@@ -12,10 +12,24 @@ import (
 	"github.com/safing/portbase/log"
 )
 
+const (
+	// databaseOvertime defines how much longer than the TTL name records are
+	// cached in the database.
+	databaseOvertime = 86400 * 14 // two weeks
+)
+
 var (
 	recordDatabase = database.NewInterface(&database.Options{
-		AlwaysSetRelativateExpiry: 2592000, // 30 days
-		CacheSize:                 256,
+		Local:    true,
+		Internal: true,
+
+		// Cache entries because application often resolve domains multiple times.
+		CacheSize: 256,
+
+		// We only use the cache database here, so we can delay and batch all our
+		// writes. Also, no one else accesses these records, so we are fine using
+		// this.
+		DelayCachedWrites: "cache",
 	})
 
 	nameRecordsKeyPrefix = "cache:intel/nameRecord/"
@@ -32,7 +46,8 @@ type NameRecord struct {
 	Answer   []string
 	Ns       []string
 	Extra    []string
-	TTL      int64
+	// TODO: Name change in progress. Rename "TTL" field to "Expires" in Q1 2021.
+	TTL int64 `json:"Expires"`
 
 	Server      string
 	ServerScope int8
@@ -84,6 +99,9 @@ func (rec *NameRecord) Save() error {
 	}
 
 	rec.SetKey(makeNameRecordKey(rec.Domain, rec.Question))
+	rec.UpdateMeta()
+	rec.Meta().SetAbsoluteExpiry(rec.TTL + databaseOvertime)
+
 	return recordDatabase.PutNew(rec)
 }
 

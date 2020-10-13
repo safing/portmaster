@@ -139,9 +139,9 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		}
 
 		// check if we can find a domain for that IP
-		ipinfo, err := resolver.GetIPInfo(pkt.Info().Dst.String())
+		ipinfo, err := resolver.GetIPInfo(proc.LocalProfileKey, pkt.Info().Dst.String())
 		if err == nil {
-			lastResolvedDomain := ipinfo.ResolvedDomains.MostRecentDomain()
+			lastResolvedDomain := ipinfo.MostRecentDomain()
 			if lastResolvedDomain != nil {
 				scope = lastResolvedDomain.Domain
 				entity.Domain = lastResolvedDomain.Domain
