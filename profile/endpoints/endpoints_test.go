@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/safing/portmaster/core/pmtesting"
 	"github.com/safing/portmaster/intel"
 )
@@ -25,6 +27,20 @@ func testEndpointMatch(t *testing.T, ep Endpoint, entity *intel.Entity, expected
 			expectedResult,
 		)
 	}
+}
+
+func testFormat(t *testing.T, endpoint string) {
+	_, err := parseEndpoint(endpoint)
+	assert.NoError(t, err)
+}
+
+func TestEndpointFormat(t *testing.T) {
+	testFormat(t, "+ .")
+	testFormat(t, "+ .at")
+	testFormat(t, "+ .at.")
+	testFormat(t, "+ 1.at")
+	testFormat(t, "+ 1.at.")
+	testFormat(t, "+ 1.f.ix.de.")
 }
 
 func TestEndpointMatching(t *testing.T) {

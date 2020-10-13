@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/safing/portmaster/intel"
+	"github.com/safing/portmaster/network/netutils"
 )
 
 const (
@@ -16,8 +17,7 @@ const (
 )
 
 var (
-	domainRegex    = regexp.MustCompile(`^\*?(([a-z0-9][a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z]{2,}\.?$`)
-	altDomainRegex = regexp.MustCompile(`^\*?[a-z0-9\.-]+\*$`)
+	containsRegex = regexp.MustCompile(`^\*?[a-z0-9\.-]+\*$`)
 )
 
 // EndpointDomain matches domains.
@@ -88,53 +88,72 @@ func (ep *EndpointDomain) String() string {
 	return ep.renderPPP(ep.OriginalValue)
 }
 
+func isValidEndpointDomain(value string) bool {
+	// Check for root domain
+	if value == "." {
+		return true
+	}
+
+	// Check for a "contains" value.
+	if containsRegex.MatchString(value) {
+		return true
+	}
+
+	// Remove special leading characters.
+	value = strings.TrimLeft(value, ".*")
+
+	// Check if value is now a valid domain.
+	return netutils.IsValidFqdn(value)
+}
+
 func parseTypeDomain(fields []string) (Endpoint, error) {
 	domain := fields[1]
 
-	if domainRegex.MatchString(domain) || altDomainRegex.MatchString(domain) {
-		ep := &EndpointDomain{
-			OriginalValue: domain,
-		}
-
-		// fix domain ending
-		switch domain[len(domain)-1] {
-		case '.':
-		case '*':
-		default:
-			domain += "."
-		}
-
-		// fix domain case
-		domain = strings.ToLower(domain)
-
-		switch {
-		case strings.HasPrefix(domain, "*") && strings.HasSuffix(domain, "*"):
-			ep.MatchType = domainMatchTypeContains
-			ep.Domain = strings.Trim(domain, "*")
-			return ep.parsePPP(ep, fields)
-
-		case strings.HasSuffix(domain, "*"):
-			ep.MatchType = domainMatchTypePrefix
-			ep.Domain = strings.Trim(domain, "*")
-			return ep.parsePPP(ep, fields)
-
-		case strings.HasPrefix(domain, "*"):
-			ep.MatchType = domainMatchTypeSuffix
-			ep.Domain = strings.Trim(domain, "*")
-			return ep.parsePPP(ep, fields)
-
-		case strings.HasPrefix(domain, "."):
-			ep.MatchType = domainMatchTypeZone
-			ep.Domain = strings.TrimLeft(domain, ".")
-			ep.DomainZone = "." + ep.Domain
-			return ep.parsePPP(ep, fields)
-
-		default:
-			ep.MatchType = domainMatchTypeExact
-			ep.Domain = domain
-			return ep.parsePPP(ep, fields)
-		}
+	ep := &EndpointDomain{
+		OriginalValue: domain,
 	}
 
-	return nil, nil
+	// fix domain ending
+	switch domain[len(domain)-1] {
+	case '.':
+	case '*':
+	default:
+		domain += "."
+	}
+
+	// Check if domain is valid.
+	if !isValidEndpointDomain(domain) {
+		return nil, nil
+	}
+
+	// fix domain case
+	domain = strings.ToLower(domain)
+
+	switch {
+	case strings.HasPrefix(domain, "*") && strings.HasSuffix(domain, "*"):
+		ep.MatchType = domainMatchTypeContains
+		ep.Domain = strings.Trim(domain, "*")
+		return ep.parsePPP(ep, fields)
+
+	case strings.HasSuffix(domain, "*"):
+		ep.MatchType = domainMatchTypePrefix
+		ep.Domain = strings.Trim(domain, "*")
+		return ep.parsePPP(ep, fields)
+
+	case strings.HasPrefix(domain, "*"):
+		ep.MatchType = domainMatchTypeSuffix
+		ep.Domain = strings.Trim(domain, "*")
+		return ep.parsePPP(ep, fields)
+
+	case strings.HasPrefix(domain, "."):
+		ep.MatchType = domainMatchTypeZone
+		ep.Domain = strings.TrimLeft(domain, ".")
+		ep.DomainZone = "." + ep.Domain
+		return ep.parsePPP(ep, fields)
+
+	default:
+		ep.MatchType = domainMatchTypeExact
+		ep.Domain = domain
+		return ep.parsePPP(ep, fields)
+	}
 }
