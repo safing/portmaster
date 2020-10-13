@@ -13,8 +13,11 @@ const (
 )
 
 var (
-	statusDB = database.NewInterface(nil)
-	hook     *database.RegisteredHook
+	statusDB = database.NewInterface(&database.Options{
+		Local:    true,
+		Internal: true,
+	})
+	hook *database.RegisteredHook
 )
 
 type statusHook struct {

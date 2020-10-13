@@ -20,8 +20,11 @@ const (
 
 // working vars
 var (
-	versionExport     *versions
-	versionExportDB   = database.NewInterface(nil)
+	versionExport   *versions
+	versionExportDB = database.NewInterface(&database.Options{
+		Local:    true,
+		Internal: true,
+	})
 	versionExportHook *database.RegisteredHook
 )
 
