@@ -79,18 +79,18 @@ func New(qid uint16, v6 bool) (*Queue, error) { //nolint:gocognit
 		}
 
 		if err := pmpacket.Parse(pkt.Payload, pkt.Info()); err != nil {
-			log.Warningf("nfqexp: failed to parse payload: %s", err)
+			log.Warningf("nfqueue: failed to parse payload: %s", err)
 			_ = pkt.Drop()
 			return 0
 		}
 
 		select {
 		case q.packets <- pkt:
-			log.Tracef("nfqexp: queued packet %s (%s -> %s) after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.received))
+			log.Tracef("nfqueue: queued packet %s (%s -> %s) after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.received))
 		case <-ctx.Done():
 			return 0
 		case <-time.After(time.Second):
-			log.Warningf("nfqexp: failed to queue packet (%s since it was handed over by the kernel)", time.Since(pkt.received))
+			log.Warningf("nfqueue: failed to queue packet (%s since it was handed over by the kernel)", time.Since(pkt.received))
 		}
 
 		go func() {
@@ -98,9 +98,9 @@ func New(qid uint16, v6 bool) (*Queue, error) { //nolint:gocognit
 			case <-pkt.verdictSet:
 
 			case <-time.After(20 * time.Second):
-				log.Warningf("nfqexp: no verdict set for packet %s (%s -> %s) after %s, dropping", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.received))
+				log.Warningf("nfqueue: no verdict set for packet %s (%s -> %s) after %s, dropping", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.received))
 				if err := pkt.Drop(); err != nil {
-					log.Warningf("nfqexp: failed to apply default-drop to unveridcted packet %s (%s -> %s)", pkt.ID(), pkt.Info().Src, pkt.Info().Dst)
+					log.Warningf("nfqueue: failed to apply default-drop to unveridcted packet %s (%s -> %s)", pkt.ID(), pkt.Info().Src, pkt.Info().Dst)
 				}
 			}
 		}()
@@ -118,7 +118,7 @@ func New(qid uint16, v6 bool) (*Queue, error) { //nolint:gocognit
 			if opError.Timeout() || opError.Temporary() {
 				c := atomic.LoadUint64(&q.pendingVerdicts)
 				if c > 0 {
-					log.Tracef("nfqexp: waiting for %d pending verdicts", c)
+					log.Tracef("nfqueue: waiting for %d pending verdicts", c)
 
 					for atomic.LoadUint64(&q.pendingVerdicts) > 0 { // must NOT use c here
 						<-q.verdictCompleted
@@ -128,7 +128,7 @@ func New(qid uint16, v6 bool) (*Queue, error) { //nolint:gocognit
 				return 0
 			}
 		}
-		log.Errorf("nfqexp: encountered error while receiving packets: %s\n", e.Error())
+		log.Errorf("nfqueue: encountered error while receiving packets: %s\n", e.Error())
 
 		return 1
 	}
@@ -146,7 +146,7 @@ func (q *Queue) Destroy() {
 	q.cancelSocketCallback()
 
 	if err := q.nf.Close(); err != nil {
-		log.Errorf("nfqexp: failed to close queue %d: %s", q.id, err)
+		log.Errorf("nfqueue: failed to close queue %d: %s", q.id, err)
 	}
 }
 

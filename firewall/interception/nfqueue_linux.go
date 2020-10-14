@@ -14,8 +14,6 @@ import (
 	"github.com/safing/portmaster/network/packet"
 )
 
-// iptables -A OUTPUT -p icmp -j", "NFQUEUE", "--queue-num", "1", "--queue-bypass
-
 var (
 	v4chains []string
 	v4rules  []string
@@ -36,10 +34,10 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&experimentalNfqueueBackend, "experimental-nfqueue", true, "(deprecated flag; always used)")
+	flag.BoolVar(&experimentalNfqueueBackend, "experimental-nfqueue", false, "(deprecated flag; always used)")
 }
 
-// nfQueue encapsulates nfQueue providers
+// nfQueue encapsulates nfQueue providers.
 type nfQueue interface {
 	PacketChannel() <-chan packet.Packet
 	Destroy()
