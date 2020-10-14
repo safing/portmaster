@@ -29,18 +29,29 @@ func testEndpointMatch(t *testing.T, ep Endpoint, entity *intel.Entity, expected
 	}
 }
 
-func testFormat(t *testing.T, endpoint string) {
+func testFormat(t *testing.T, endpoint string, shouldSucceed bool) {
 	_, err := parseEndpoint(endpoint)
-	assert.NoError(t, err)
+	if shouldSucceed {
+		assert.NoError(t, err)
+	} else {
+		assert.Error(t, err)
+	}
 }
 
 func TestEndpointFormat(t *testing.T) {
-	testFormat(t, "+ .")
-	testFormat(t, "+ .at")
-	testFormat(t, "+ .at.")
-	testFormat(t, "+ 1.at")
-	testFormat(t, "+ 1.at.")
-	testFormat(t, "+ 1.f.ix.de.")
+	testFormat(t, "+ .", false)
+	testFormat(t, "+ .at", true)
+	testFormat(t, "+ .at.", true)
+	testFormat(t, "+ 1.at", true)
+	testFormat(t, "+ 1.at.", true)
+	testFormat(t, "+ 1.f.ix.de.", true)
+	testFormat(t, "+ *contains*", true)
+	testFormat(t, "+ *has.suffix", true)
+	testFormat(t, "+ *.has.suffix", true)
+	testFormat(t, "+ *has.prefix*", true)
+	testFormat(t, "+ *has.prefix.*", true)
+	testFormat(t, "+ .sub.and.prefix.*", false)
+	testFormat(t, "+ *.sub..and.prefix.*", false)
 }
 
 func TestEndpointMatching(t *testing.T) {
