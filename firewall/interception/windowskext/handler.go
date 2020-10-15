@@ -47,7 +47,7 @@ func Handler(packets chan packet.Packet) {
 		packetInfo, err := RecvVerdictRequest()
 		if err != nil {
 			// Check if we are done with processing.
-			if errors.Is(ErrKextNotReady) {
+			if errors.Is(err, ErrKextNotReady) {
 				return
 			}
 
