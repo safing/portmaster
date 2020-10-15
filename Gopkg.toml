@@ -27,9 +27,5 @@
 ignored = ["github.com/safing/portbase/*", "github.com/safing/spn/*"]
 
 [[constraint]]
-  name = "github.com/miekg/dns"
-  branch = "master" # switch back to semver releases when https://github.com/miekg/dns/pull/1110 is released
-
-[[constraint]]
   name = "github.com/florianl/go-nfqueue"
   branch = "master" # switch back once we migrate to go.mod
