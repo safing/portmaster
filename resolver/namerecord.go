@@ -46,8 +46,7 @@ type NameRecord struct {
 	Answer   []string
 	Ns       []string
 	Extra    []string
-	// TODO: Name change in progress. Rename "TTL" field to "Expires" in Q1 2021.
-	TTL int64 `json:"Expires"`
+	Expires  int64
 
 	Server      string
 	ServerScope int8
@@ -100,7 +99,7 @@ func (rec *NameRecord) Save() error {
 
 	rec.SetKey(makeNameRecordKey(rec.Domain, rec.Question))
 	rec.UpdateMeta()
-	rec.Meta().SetAbsoluteExpiry(rec.TTL + databaseOvertime)
+	rec.Meta().SetAbsoluteExpiry(rec.Expires + databaseOvertime)
 
 	return recordDatabase.PutNew(rec)
 }

@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	IPInfoScopeGlobal = "global"
+	// IPInfoProfileScopeGlobal is the profile scope used for unscoped IPInfo entries.
+	IPInfoProfileScopeGlobal = "global"
 )
 
 var (
@@ -80,9 +81,8 @@ type IPInfo struct {
 	// IP holds the actual IP address.
 	IP string
 
-	// Scope holds a scope for this IPInfo.
-	// Usually this would be the Profile ID of the associated process.
-	Scope string
+	// ProfileID is used to scope this entry to a process group.
+	ProfileID string
 
 	// ResolvedDomain is a slice of domains that
 	// have been requested by various applications
@@ -120,13 +120,13 @@ func (info *IPInfo) MostRecentDomain() *ResolvedDomain {
 	return &mostRecent
 }
 
-func makeIPInfoKey(scope, ip string) string {
-	return fmt.Sprintf("cache:intel/ipInfo/%s/%s", scope, ip)
+func makeIPInfoKey(profileID, ip string) string {
+	return fmt.Sprintf("cache:intel/ipInfo/%s/%s", profileID, ip)
 }
 
 // GetIPInfo gets an IPInfo record from the database.
-func GetIPInfo(scope, ip string) (*IPInfo, error) {
-	r, err := ipInfoDatabase.Get(makeIPInfoKey(scope, ip))
+func GetIPInfo(profileID, ip string) (*IPInfo, error) {
+	r, err := ipInfoDatabase.Get(makeIPInfoKey(profileID, ip))
 	if err != nil {
 		return nil, err
 	}
@@ -158,10 +158,10 @@ func (info *IPInfo) Save() error {
 	// Set database key if not yet set already.
 	if !info.KeyIsSet() {
 		// Default to global scope if scope is unset.
-		if info.Scope == "" {
-			info.Scope = IPInfoScopeGlobal
+		if info.ProfileID == "" {
+			info.ProfileID = IPInfoProfileScopeGlobal
 		}
-		info.SetKey(makeIPInfoKey(info.Scope, info.IP))
+		info.SetKey(makeIPInfoKey(info.ProfileID, info.IP))
 	}
 
 	// Calculate and set cache expiry.

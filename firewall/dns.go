@@ -121,9 +121,9 @@ func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache) *res
 						err,
 					)
 				}
-			} else if rrCache.TTL > time.Now().Add(10*time.Second).Unix() {
+			} else if rrCache.Expires > time.Now().Add(10*time.Second).Unix() {
 				// Set a low TTL of 10 seconds if TTL is higher than that.
-				rrCache.TTL = time.Now().Add(10 * time.Second).Unix()
+				rrCache.Expires = time.Now().Add(10 * time.Second).Unix()
 				err := rrCache.Save()
 				if err != nil {
 					log.Debugf(
@@ -208,13 +208,11 @@ func mayBlockCNAMEs(conn *network.Connection) bool {
 // updateIPsAndCNAMEs saves all the IP->Name mappings to the cache database and
 // updates the CNAMEs in the Connection's Entity.
 func updateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *network.Connection) {
-	// FIXME: ignore localhost
-
-	// Get IPInfo scope.
-	var scope string
+	// Get profileID for scoping IPInfo.
+	var profileID string
 	proc := conn.Process()
 	if proc != nil {
-		scope = proc.LocalProfileKey
+		profileID = proc.LocalProfileKey
 	}
 
 	// Collect IPs and CNAMEs.
@@ -244,7 +242,7 @@ func updateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 		// Create new record for this IP.
 		record := resolver.ResolvedDomain{
 			Domain:  q.FQDN,
-			Expires: rrCache.TTL,
+			Expires: rrCache.Expires,
 		}
 
 		// Resolve all CNAMEs in the correct order and add the to the record.
@@ -265,15 +263,15 @@ func updateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 		// Check if there is an existing record for this DNS response.
 		// Else create a new one.
 		ipString := ip.String()
-		info, err := resolver.GetIPInfo(scope, ipString)
+		info, err := resolver.GetIPInfo(profileID, ipString)
 		if err != nil {
 			if err != database.ErrNotFound {
 				log.Errorf("nameserver: failed to search for IP info record: %s", err)
 			}
 
 			info = &resolver.IPInfo{
-				IP:    ipString,
-				Scope: scope,
+				IP:        ipString,
+				ProfileID: profileID,
 			}
 		}
 

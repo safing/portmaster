@@ -220,19 +220,19 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		log.Tracer(ctx).Tracef(
 			"resolver: cache for %s will expire in %s, refreshing async now",
 			q.ID(),
-			time.Until(time.Unix(rrCache.TTL, 0)).Round(time.Second),
+			time.Until(time.Unix(rrCache.Expires, 0)).Round(time.Second),
 		)
 
 		// resolve async
-		module.StartWorker("resolve async", func(ctx context.Context) error {
-			ctx, tracer := log.AddTracer(ctx)
+		module.StartWorker("resolve async", func(asyncCtx context.Context) error {
+			tracingCtx, tracer := log.AddTracer(asyncCtx)
 			defer tracer.Submit()
-			tracer.Debugf("resolver: resolving %s async", q.ID())
-			_, err := resolveAndCache(ctx, q, nil)
+			tracer.Tracef("resolver: resolving %s async", q.ID())
+			_, err := resolveAndCache(tracingCtx, q, nil)
 			if err != nil {
 				tracer.Warningf("resolver: async query for %s failed: %s", q.ID(), err)
 			} else {
-				tracer.Debugf("resolver: async query for %s succeeded", q.ID())
+				tracer.Infof("resolver: async query for %s succeeded", q.ID())
 			}
 			return nil
 		})
@@ -242,7 +242,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 
 	log.Tracer(ctx).Tracef(
 		"resolver: using cached RR (expires in %s)",
-		time.Until(time.Unix(rrCache.TTL, 0)).Round(time.Second),
+		time.Until(time.Unix(rrCache.Expires, 0)).Round(time.Second),
 	)
 	return rrCache
 }
