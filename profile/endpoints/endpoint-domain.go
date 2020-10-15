@@ -63,19 +63,20 @@ func (ep *EndpointDomain) check(entity *intel.Entity, domain string) (EPResult, 
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointDomain) Matches(entity *intel.Entity) (EPResult, Reason) {
-	if entity.Domain == "" {
+func (ep *EndpointDomain) Matches(ctx context.Context, entity *intel.Entity) (EPResult, Reason) {
+	domain, ok := entity.GetDomain(ctx, true /* mayUseReverseDomain */)
+	if !ok {
 		return NoMatch, nil
 	}
 
-	result, reason := ep.check(entity, entity.Domain)
+	result, reason := ep.check(entity, domain)
 	if result != NoMatch {
 		return result, reason
 	}
 
 	if entity.CNAMECheckEnabled() {
-		for _, domain := range entity.CNAME {
-			result, reason = ep.check(entity, domain)
+		for _, cname := range entity.CNAME {
+			result, reason = ep.check(entity, cname)
 			if result == Denied {
 				return result, reason
 			}
