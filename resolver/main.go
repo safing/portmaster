@@ -93,6 +93,9 @@ func start() error {
 		listenToMDNS,
 	)
 
+	module.StartServiceWorker("name record delayed cache writer", 0, recordDatabase.DelayedCacheWriter)
+	module.StartServiceWorker("ip info delayed cache writer", 0, ipInfoDatabase.DelayedCacheWriter)
+
 	return nil
 }
 

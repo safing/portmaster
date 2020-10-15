@@ -15,7 +15,7 @@ func TestIPInfo(t *testing.T) {
 		CNAMEs: []string{"example.com"},
 	}
 
-	ipi := &IPInfo{
+	info := &IPInfo{
 		IP: "1.2.3.4",
 		ResolvedDomains: ResolvedDomains{
 			example,
@@ -27,22 +27,18 @@ func TestIPInfo(t *testing.T) {
 		Domain: "sub2.example.com",
 		CNAMEs: []string{"sub1.example.com", "example.com"},
 	}
-	added := ipi.AddDomain(sub2Example)
-
-	assert.True(t, added)
-	assert.Equal(t, ResolvedDomains{example, subExample, sub2Example}, ipi.ResolvedDomains)
+	info.AddDomain(sub2Example)
+	assert.Equal(t, ResolvedDomains{example, subExample, sub2Example}, info.ResolvedDomains)
 
 	// try again, should do nothing now
-	added = ipi.AddDomain(sub2Example)
-	assert.False(t, added)
-	assert.Equal(t, ResolvedDomains{example, subExample, sub2Example}, ipi.ResolvedDomains)
+	info.AddDomain(sub2Example)
+	assert.Equal(t, ResolvedDomains{example, subExample, sub2Example}, info.ResolvedDomains)
 
 	subOverWrite := ResolvedDomain{
 		Domain: "sub1.example.com",
 		CNAMEs: []string{}, // now without CNAMEs
 	}
 
-	added = ipi.AddDomain(subOverWrite)
-	assert.True(t, added)
-	assert.Equal(t, ResolvedDomains{example, sub2Example, subOverWrite}, ipi.ResolvedDomains)
+	info.AddDomain(subOverWrite)
+	assert.Equal(t, ResolvedDomains{example, sub2Example, subOverWrite}, info.ResolvedDomains)
 }

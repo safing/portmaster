@@ -25,10 +25,10 @@ type RRCache struct {
 	RCode    int
 
 	// Response Content
-	Answer []dns.RR
-	Ns     []dns.RR
-	Extra  []dns.RR
-	TTL    int64
+	Answer  []dns.RR
+	Ns      []dns.RR
+	Extra   []dns.RR
+	Expires int64
 
 	// Source Information
 	Server      string
@@ -54,12 +54,12 @@ func (rrCache *RRCache) ID() string {
 
 // Expired returns whether the record has expired.
 func (rrCache *RRCache) Expired() bool {
-	return rrCache.TTL <= time.Now().Unix()
+	return rrCache.Expires <= time.Now().Unix()
 }
 
 // ExpiresSoon returns whether the record will expire soon and should already be refreshed.
 func (rrCache *RRCache) ExpiresSoon() bool {
-	return rrCache.TTL <= time.Now().Unix()+refreshTTL
+	return rrCache.Expires <= time.Now().Unix()+refreshTTL
 }
 
 // Clean sets all TTLs to 17 and sets cache expiry with specified minimum.
@@ -99,7 +99,7 @@ func (rrCache *RRCache) Clean(minExpires uint32) {
 	}
 
 	// log.Tracef("lowest TTL is %d", lowestTTL)
-	rrCache.TTL = time.Now().Unix() + int64(lowestTTL)
+	rrCache.Expires = time.Now().Unix() + int64(lowestTTL)
 }
 
 // ExportAllARecords return of a list of all A and AAAA IP addresses.
@@ -131,7 +131,7 @@ func (rrCache *RRCache) ToNameRecord() *NameRecord {
 		Domain:      rrCache.Domain,
 		Question:    rrCache.Question.String(),
 		RCode:       rrCache.RCode,
-		TTL:         rrCache.TTL,
+		Expires:     rrCache.Expires,
 		Server:      rrCache.Server,
 		ServerScope: rrCache.ServerScope,
 		ServerInfo:  rrCache.ServerInfo,
@@ -188,7 +188,7 @@ func GetRRCache(domain string, question dns.Type) (*RRCache, error) {
 	}
 
 	rrCache.RCode = nameRecord.RCode
-	rrCache.TTL = nameRecord.TTL
+	rrCache.Expires = nameRecord.Expires
 	for _, entry := range nameRecord.Answer {
 		rrCache.Answer = parseRR(rrCache.Answer, entry)
 	}
@@ -249,10 +249,10 @@ func (rrCache *RRCache) ShallowCopy() *RRCache {
 		Question: rrCache.Question,
 		RCode:    rrCache.RCode,
 
-		Answer: rrCache.Answer,
-		Ns:     rrCache.Ns,
-		Extra:  rrCache.Extra,
-		TTL:    rrCache.TTL,
+		Answer:  rrCache.Answer,
+		Ns:      rrCache.Ns,
+		Extra:   rrCache.Extra,
+		Expires: rrCache.Expires,
 
 		Server:      rrCache.Server,
 		ServerScope: rrCache.ServerScope,
@@ -310,9 +310,9 @@ func (rrCache *RRCache) GetExtraRRs(ctx context.Context, query *dns.Msg) (extra 
 
 	// Add expiry and cache information.
 	if rrCache.Expired() {
-		extra = addExtra(ctx, extra, fmt.Sprintf("record expired since %s", time.Since(time.Unix(rrCache.TTL, 0)).Round(time.Second)))
+		extra = addExtra(ctx, extra, fmt.Sprintf("record expired since %s", time.Since(time.Unix(rrCache.Expires, 0)).Round(time.Second)))
 	} else {
-		extra = addExtra(ctx, extra, fmt.Sprintf("record valid for %s", time.Until(time.Unix(rrCache.TTL, 0)).Round(time.Second)))
+		extra = addExtra(ctx, extra, fmt.Sprintf("record valid for %s", time.Until(time.Unix(rrCache.Expires, 0)).Round(time.Second)))
 	}
 	if rrCache.RequestingNew {
 		extra = addExtra(ctx, extra, "async request to refresh the cache has been started")
