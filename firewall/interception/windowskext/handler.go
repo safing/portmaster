@@ -4,6 +4,7 @@ package windowskext
 
 import (
 	"encoding/binary"
+	"errors"
 	"net"
 
 	"github.com/tevino/abool"
@@ -45,6 +46,11 @@ func Handler(packets chan packet.Packet) {
 
 		packetInfo, err := RecvVerdictRequest()
 		if err != nil {
+			// Check if we are done with processing.
+			if errors.Is(ErrKextNotReady) {
+				return
+			}
+
 			log.Warningf("failed to get packet from windows kext: %s", err)
 			continue
 		}
