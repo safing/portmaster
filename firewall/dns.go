@@ -170,31 +170,28 @@ func DecideOnResolvedDNS(
 
 	updateIPsAndCNAMEs(q, rrCache, conn)
 
-	if mayBlockCNAMEs(conn) {
+	if mayBlockCNAMEs(ctx, conn) {
 		return nil
 	}
-
-	// TODO: Gate17 integration
-	// tunnelInfo, err := AssignTunnelIP(fqdn)
 
 	return updatedRR
 }
 
-func mayBlockCNAMEs(conn *network.Connection) bool {
+func mayBlockCNAMEs(ctx context.Context, conn *network.Connection) bool {
 	// if we have CNAMEs and the profile is configured to filter them
 	// we need to re-check the lists and endpoints here
 	if conn.Process().Profile().FilterCNAMEs() {
 		conn.Entity.ResetLists()
-		conn.Entity.EnableCNAMECheck(true)
+		conn.Entity.EnableCNAMECheck(ctx, true)
 
-		result, reason := conn.Process().Profile().MatchEndpoint(conn.Entity)
+		result, reason := conn.Process().Profile().MatchEndpoint(ctx, conn.Entity)
 		if result == endpoints.Denied {
 			conn.BlockWithContext(reason.String(), reason.Context())
 			return true
 		}
 
 		if result == endpoints.NoMatch {
-			result, reason = conn.Process().Profile().MatchFilterLists(conn.Entity)
+			result, reason = conn.Process().Profile().MatchFilterLists(ctx, conn.Entity)
 			if result == endpoints.Denied {
 				conn.BlockWithContext(reason.String(), reason.Context())
 				return true

@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -63,10 +64,10 @@ func (e Endpoints) IsSet() bool {
 }
 
 // Match checks whether the given entity matches any of the endpoint definitions in the list.
-func (e Endpoints) Match(entity *intel.Entity) (result EPResult, reason Reason) {
+func (e Endpoints) Match(ctx context.Context, entity *intel.Entity) (result EPResult, reason Reason) {
 	for _, entry := range e {
 		if entry != nil {
-			if result, reason = entry.Matches(entity); result != NoMatch {
+			if result, reason = entry.Matches(ctx, entity); result != NoMatch {
 				return
 			}
 		}

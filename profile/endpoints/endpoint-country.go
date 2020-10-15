@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"regexp"
 	"strings"
 
@@ -19,8 +20,8 @@ type EndpointCountry struct {
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointCountry) Matches(entity *intel.Entity) (EPResult, Reason) {
-	country, ok := entity.GetCountry()
+func (ep *EndpointCountry) Matches(ctx context.Context, entity *intel.Entity) (EPResult, Reason) {
+	country, ok := entity.GetCountry(ctx)
 	if !ok {
 		return Undeterminable, nil
 	}

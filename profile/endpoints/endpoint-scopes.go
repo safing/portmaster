@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"strings"
 
 	"github.com/safing/portmaster/network/netutils"
@@ -30,7 +31,7 @@ type EndpointScope struct {
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointScope) Matches(entity *intel.Entity) (EPResult, Reason) {
+func (ep *EndpointScope) Matches(_ context.Context, entity *intel.Entity) (EPResult, Reason) {
 	if entity.IP == nil {
 		return Undeterminable, nil
 	}

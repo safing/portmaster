@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -11,7 +12,7 @@ import (
 
 // Endpoint describes an Endpoint Matcher
 type Endpoint interface {
-	Matches(entity *intel.Entity) (EPResult, Reason)
+	Matches(ctx context.Context, entity *intel.Entity) (EPResult, Reason)
 	String() string
 }
 

@@ -89,9 +89,9 @@ func (e *Entity) Init() *Entity {
 }
 
 // FetchData fetches additional information, meant to be called before persisting an entity record.
-func (e *Entity) FetchData() {
-	e.getLocation()
-	e.getLists()
+func (e *Entity) FetchData(ctx context.Context) {
+	e.getLocation(ctx)
+	e.getLists(ctx)
 }
 
 // ResetLists resets the current list data and forces
@@ -119,18 +119,18 @@ func (e *Entity) ResetLists() {
 
 // ResolveSubDomainLists enables or disables list lookups for
 // sub-domains.
-func (e *Entity) ResolveSubDomainLists(enabled bool) {
+func (e *Entity) ResolveSubDomainLists(ctx context.Context, enabled bool) {
 	if e.domainListLoaded {
-		log.Warningf("intel/filterlists: tried to change sub-domain resolving for %s but lists are already fetched", e.Domain)
+		log.Tracer(ctx).Warningf("intel/filterlists: tried to change sub-domain resolving for %s but lists are already fetched", e.Domain)
 	}
 	e.resolveSubDomainLists = enabled
 }
 
 // EnableCNAMECheck enalbes or disables list lookups for
 // entity CNAMEs.
-func (e *Entity) EnableCNAMECheck(enabled bool) {
+func (e *Entity) EnableCNAMECheck(ctx context.Context, enabled bool) {
 	if e.domainListLoaded {
-		log.Warningf("intel/filterlists: tried to change CNAME resolving for %s but lists are already fetched", e.Domain)
+		log.Tracer(ctx).Warningf("intel/filterlists: tried to change CNAME resolving for %s but lists are already fetched", e.Domain)
 	}
 	e.checkCNAMEs = enabled
 }
@@ -148,7 +148,7 @@ func (e *Entity) EnableReverseResolving() {
 	e.reverseResolveEnabled = true
 }
 
-func (e *Entity) reverseResolve() {
+func (e *Entity) reverseResolve(ctx context.Context) {
 	e.reverseResolveOnce.Do(func() {
 		// check if we should resolve
 		if !e.reverseResolveEnabled {
@@ -165,9 +165,9 @@ func (e *Entity) reverseResolve() {
 			return
 		}
 		// TODO: security level
-		domain, err := reverseResolver(context.TODO(), e.IP.String(), status.SecurityLevelNormal)
+		domain, err := reverseResolver(ctx, e.IP.String(), status.SecurityLevelNormal)
 		if err != nil {
-			log.Warningf("intel: failed to resolve IP %s: %s", e.IP, err)
+			log.Tracer(ctx).Warningf("intel: failed to resolve IP %s: %s", e.IP, err)
 			return
 		}
 		e.Domain = domain
@@ -194,7 +194,7 @@ func (e *Entity) GetIP() (net.IP, bool) {
 
 // Location
 
-func (e *Entity) getLocation() {
+func (e *Entity) getLocation(ctx context.Context) {
 	e.fetchLocationOnce.Do(func() {
 		// need IP!
 		if e.IP == nil {
@@ -204,7 +204,7 @@ func (e *Entity) getLocation() {
 		// get location data
 		loc, err := geoip.GetLocation(e.IP)
 		if err != nil {
-			log.Warningf("intel: failed to get location data for %s: %s", e.IP, err)
+			log.Tracer(ctx).Warningf("intel: failed to get location data for %s: %s", e.IP, err)
 			return
 		}
 		e.location = loc
@@ -214,8 +214,8 @@ func (e *Entity) getLocation() {
 }
 
 // GetLocation returns the raw location data and whether it is set.
-func (e *Entity) GetLocation() (*geoip.Location, bool) {
-	e.getLocation()
+func (e *Entity) GetLocation(ctx context.Context) (*geoip.Location, bool) {
+	e.getLocation(ctx)
 
 	if e.location == nil {
 		return nil, false
@@ -224,8 +224,8 @@ func (e *Entity) GetLocation() (*geoip.Location, bool) {
 }
 
 // GetCountry returns the two letter ISO country code and whether it is set.
-func (e *Entity) GetCountry() (string, bool) {
-	e.getLocation()
+func (e *Entity) GetCountry(ctx context.Context) (string, bool) {
+	e.getLocation(ctx)
 
 	if e.Country == "" {
 		return "", false
@@ -234,8 +234,8 @@ func (e *Entity) GetCountry() (string, bool) {
 }
 
 // GetASN returns the AS number and whether it is set.
-func (e *Entity) GetASN() (uint, bool) {
-	e.getLocation()
+func (e *Entity) GetASN(ctx context.Context) (uint, bool) {
+	e.getLocation(ctx)
 
 	if e.ASN == 0 {
 		return 0, false
@@ -244,11 +244,11 @@ func (e *Entity) GetASN() (uint, bool) {
 }
 
 // Lists
-func (e *Entity) getLists() {
-	e.getDomainLists()
-	e.getASNLists()
-	e.getIPLists()
-	e.getCountryLists()
+func (e *Entity) getLists(ctx context.Context) {
+	e.getDomainLists(ctx)
+	e.getASNLists(ctx)
+	e.getIPLists(ctx)
+	e.getCountryLists(ctx)
 }
 
 func (e *Entity) mergeList(key string, list []string) {
@@ -263,7 +263,7 @@ func (e *Entity) mergeList(key string, list []string) {
 	e.ListOccurences[key] = mergeStringList(e.ListOccurences[key], list)
 }
 
-func (e *Entity) getDomainLists() {
+func (e *Entity) getDomainLists(ctx context.Context) {
 	if e.domainListLoaded {
 		return
 	}
@@ -277,7 +277,7 @@ func (e *Entity) getDomainLists() {
 		var domainsToInspect = []string{domain}
 
 		if e.checkCNAMEs {
-			log.Tracef("intel: CNAME filtering enabled, checking %v too", e.CNAME)
+			log.Tracer(ctx).Tracef("intel: CNAME filtering enabled, checking %v too", e.CNAME)
 			domainsToInspect = append(domainsToInspect, e.CNAME...)
 		}
 
@@ -294,10 +294,10 @@ func (e *Entity) getDomainLists() {
 		domains = makeDistinct(domains)
 
 		for _, d := range domains {
-			log.Tracef("intel: loading domain list for %s", d)
+			log.Tracer(ctx).Tracef("intel: loading domain list for %s", d)
 			list, err := filterlists.LookupDomain(d)
 			if err != nil {
-				log.Errorf("intel: failed to get domain blocklists for %s: %s", d, err)
+				log.Tracer(ctx).Errorf("intel: failed to get domain blocklists for %s: %s", d, err)
 				e.loadDomainListOnce = sync.Once{}
 				return
 			}
@@ -334,22 +334,22 @@ func splitDomain(domain string) []string {
 	return domains
 }
 
-func (e *Entity) getASNLists() {
+func (e *Entity) getASNLists(ctx context.Context) {
 	if e.asnListLoaded {
 		return
 	}
 
-	asn, ok := e.GetASN()
+	asn, ok := e.GetASN(ctx)
 	if !ok {
 		return
 	}
 
-	log.Tracef("intel: loading ASN list for %d", asn)
+	log.Tracer(ctx).Tracef("intel: loading ASN list for %d", asn)
 	e.loadAsnListOnce.Do(func() {
 		asnStr := fmt.Sprintf("%d", asn)
 		list, err := filterlists.LookupASNString(asnStr)
 		if err != nil {
-			log.Errorf("intel: failed to get ASN blocklist for %d: %s", asn, err)
+			log.Tracer(ctx).Errorf("intel: failed to get ASN blocklist for %d: %s", asn, err)
 			e.loadAsnListOnce = sync.Once{}
 			return
 		}
@@ -359,21 +359,21 @@ func (e *Entity) getASNLists() {
 	})
 }
 
-func (e *Entity) getCountryLists() {
+func (e *Entity) getCountryLists(ctx context.Context) {
 	if e.countryListLoaded {
 		return
 	}
 
-	country, ok := e.GetCountry()
+	country, ok := e.GetCountry(ctx)
 	if !ok {
 		return
 	}
 
-	log.Tracef("intel: loading country list for %s", country)
+	log.Tracer(ctx).Tracef("intel: loading country list for %s", country)
 	e.loadCoutryListOnce.Do(func() {
 		list, err := filterlists.LookupCountry(country)
 		if err != nil {
-			log.Errorf("intel: failed to load country blocklist for %s: %s", country, err)
+			log.Tracer(ctx).Errorf("intel: failed to load country blocklist for %s: %s", country, err)
 			e.loadCoutryListOnce = sync.Once{}
 			return
 		}
@@ -383,7 +383,7 @@ func (e *Entity) getCountryLists() {
 	})
 }
 
-func (e *Entity) getIPLists() {
+func (e *Entity) getIPLists(ctx context.Context) {
 	if e.ipListLoaded {
 		return
 	}
@@ -402,12 +402,12 @@ func (e *Entity) getIPLists() {
 		return
 	}
 
-	log.Tracef("intel: loading IP list for %s", ip)
+	log.Tracer(ctx).Tracef("intel: loading IP list for %s", ip)
 	e.loadIPListOnce.Do(func() {
 		list, err := filterlists.LookupIP(ip)
 
 		if err != nil {
-			log.Errorf("intel: failed to get IP blocklist for %s: %s", ip.String(), err)
+			log.Tracer(ctx).Errorf("intel: failed to get IP blocklist for %s: %s", ip.String(), err)
 			e.loadIPListOnce = sync.Once{}
 			return
 		}
@@ -418,8 +418,8 @@ func (e *Entity) getIPLists() {
 
 // LoadLists searches all filterlists for all occurrences of
 // this entity.
-func (e *Entity) LoadLists() bool {
-	e.getLists()
+func (e *Entity) LoadLists(ctx context.Context) bool {
+	e.getLists(ctx)
 
 	return e.ListOccurences != nil
 }

@@ -76,12 +76,15 @@ func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
 		return handleRequest(ctx, w, query)
 	})
 	if err != nil {
-		log.Warningf("intel: failed to handle dns request: %s", err)
+		log.Warningf("nameserver: failed to handle dns request: %s", err)
 	}
 }
 
 func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) error { //nolint:gocognit // TODO
 	// Only process first question, that's how everyone does it.
+	if len(request.Question) == 0 {
+		return errors.New("missing question")
+	}
 	originalQuestion := request.Question[0]
 
 	// Check if we are handling a non-standard query name.
@@ -116,7 +119,12 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 
 	// Setup quick reply function.
 	reply := func(responder nsutil.Responder, rrProviders ...nsutil.RRProvider) error {
-		return sendResponse(ctx, w, request, responder, rrProviders...)
+		err := sendResponse(ctx, w, request, responder, rrProviders...)
+		// Log error here instead of returning it in order to keep the context.
+		if err != nil {
+			tracer.Errorf("nameserver: %s", err)
+		}
+		return nil
 	}
 
 	// Return with server failure if offline.

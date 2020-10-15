@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 
@@ -221,10 +222,10 @@ func (lp *LayeredProfile) DefaultAction() uint8 {
 }
 
 // MatchEndpoint checks if the given endpoint matches an entry in any of the profiles.
-func (lp *LayeredProfile) MatchEndpoint(entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
+func (lp *LayeredProfile) MatchEndpoint(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
 	for _, layer := range lp.layers {
 		if layer.endpoints.IsSet() {
-			result, reason := layer.endpoints.Match(entity)
+			result, reason := layer.endpoints.Match(ctx, entity)
 			if endpoints.IsDecision(result) {
 				return result, reason
 			}
@@ -233,16 +234,16 @@ func (lp *LayeredProfile) MatchEndpoint(entity *intel.Entity) (endpoints.EPResul
 
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
-	return cfgEndpoints.Match(entity)
+	return cfgEndpoints.Match(ctx, entity)
 }
 
 // MatchServiceEndpoint checks if the given endpoint of an inbound connection matches an entry in any of the profiles.
-func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
+func (lp *LayeredProfile) MatchServiceEndpoint(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
 	entity.EnableReverseResolving()
 
 	for _, layer := range lp.layers {
 		if layer.serviceEndpoints.IsSet() {
-			result, reason := layer.serviceEndpoints.Match(entity)
+			result, reason := layer.serviceEndpoints.Match(ctx, entity)
 			if endpoints.IsDecision(result) {
 				return result, reason
 			}
@@ -251,19 +252,19 @@ func (lp *LayeredProfile) MatchServiceEndpoint(entity *intel.Entity) (endpoints.
 
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
-	return cfgServiceEndpoints.Match(entity)
+	return cfgServiceEndpoints.Match(ctx, entity)
 }
 
 // MatchFilterLists matches the entity against the set of filter
 // lists.
-func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
-	entity.ResolveSubDomainLists(lp.FilterSubDomains())
-	entity.EnableCNAMECheck(lp.FilterCNAMEs())
+func (lp *LayeredProfile) MatchFilterLists(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
+	entity.ResolveSubDomainLists(ctx, lp.FilterSubDomains())
+	entity.EnableCNAMECheck(ctx, lp.FilterCNAMEs())
 
 	for _, layer := range lp.layers {
 		// search for the first layer that has filterListIDs set
 		if len(layer.filterListIDs) > 0 {
-			entity.LoadLists()
+			entity.LoadLists(ctx)
 
 			if entity.MatchLists(layer.filterListIDs) {
 				return endpoints.Denied, entity.ListBlockReason()
@@ -276,7 +277,7 @@ func (lp *LayeredProfile) MatchFilterLists(entity *intel.Entity) (endpoints.EPRe
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
 	if len(cfgFilterLists) > 0 {
-		entity.LoadLists()
+		entity.LoadLists(ctx)
 
 		if entity.MatchLists(cfgFilterLists) {
 			return endpoints.Denied, entity.ListBlockReason()

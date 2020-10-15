@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"net"
 	"runtime"
 	"testing"
@@ -16,7 +17,7 @@ func TestMain(m *testing.M) {
 }
 
 func testEndpointMatch(t *testing.T, ep Endpoint, entity *intel.Entity, expectedResult EPResult) {
-	result, _ := ep.Matches(entity)
+	result, _ := ep.Matches(context.TODO(), entity)
 	if result != expectedResult {
 		t.Errorf(
 			"line %d: unexpected result for endpoint %s and entity %+v: result=%s, expected=%s",

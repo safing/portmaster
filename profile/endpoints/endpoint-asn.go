@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -20,8 +21,8 @@ type EndpointASN struct {
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointASN) Matches(entity *intel.Entity) (EPResult, Reason) {
-	asn, ok := entity.GetASN()
+func (ep *EndpointASN) Matches(ctx context.Context, entity *intel.Entity) (EPResult, Reason) {
+	asn, ok := entity.GetASN(ctx)
 	if !ok {
 		return Undeterminable, nil
 	}
