@@ -48,6 +48,8 @@ var (
 
 var (
 	cache = database.NewInterface(&database.Options{
+		Local:     true,
+		Internal:  true,
 		CacheSize: 2 ^ 8,
 	})
 )

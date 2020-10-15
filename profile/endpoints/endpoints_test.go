@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/safing/portmaster/core/pmtesting"
 	"github.com/safing/portmaster/intel"
 )
@@ -25,6 +27,31 @@ func testEndpointMatch(t *testing.T, ep Endpoint, entity *intel.Entity, expected
 			expectedResult,
 		)
 	}
+}
+
+func testFormat(t *testing.T, endpoint string, shouldSucceed bool) {
+	_, err := parseEndpoint(endpoint)
+	if shouldSucceed {
+		assert.NoError(t, err)
+	} else {
+		assert.Error(t, err)
+	}
+}
+
+func TestEndpointFormat(t *testing.T) {
+	testFormat(t, "+ .", false)
+	testFormat(t, "+ .at", true)
+	testFormat(t, "+ .at.", true)
+	testFormat(t, "+ 1.at", true)
+	testFormat(t, "+ 1.at.", true)
+	testFormat(t, "+ 1.f.ix.de.", true)
+	testFormat(t, "+ *contains*", true)
+	testFormat(t, "+ *has.suffix", true)
+	testFormat(t, "+ *.has.suffix", true)
+	testFormat(t, "+ *has.prefix*", true)
+	testFormat(t, "+ *has.prefix.*", true)
+	testFormat(t, "+ .sub.and.prefix.*", false)
+	testFormat(t, "+ *.sub..and.prefix.*", false)
 }
 
 func TestEndpointMatching(t *testing.T) {

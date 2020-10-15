@@ -21,7 +21,10 @@ const (
 )
 
 var (
-	profileDB = database.NewInterface(nil)
+	profileDB = database.NewInterface(&database.Options{
+		Local:     true,
+		Internal:  true,
+	})
 )
 
 func makeScopedID(source profileSource, id string) string {

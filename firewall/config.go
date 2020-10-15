@@ -31,7 +31,7 @@ func registerConfig() error {
 		Key:            CfgOptionPermanentVerdictsKey,
 		Description:    "With permanent verdicts, control of a connection is fully handed back to the OS after the initial decision. This brings a great performance increase, but makes it impossible to change the decision of a link later on.",
 		OptType:        config.OptTypeBool,
-		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   true,
 		Annotations: config.Annotations{
