@@ -70,11 +70,11 @@ func (ep *EndpointBase) matchesPPP(entity *intel.Entity) (result EPResult) {
 	// only check if port is defined
 	if ep.StartPort > 0 {
 		// if port is unknown, return Undeterminable
-		if entity.Port == 0 {
+		if entity.DstPort() == 0 {
 			return Undeterminable
 		}
 		// if port does not match, return NoMatch
-		if entity.Port < ep.StartPort || entity.Port > ep.EndPort {
+		if entity.DstPort() < ep.StartPort || entity.DstPort() > ep.EndPort {
 			return NoMatch
 		}
 	}

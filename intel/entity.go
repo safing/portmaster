@@ -37,8 +37,11 @@ type Entity struct {
 	// Protocol is the protcol number used by the connection.
 	Protocol uint8
 
-	// Port is the destination port of the connection
+	// Port is the remote port of the connection
 	Port uint16
+
+	// dstPort is the destination port of the connection
+	dstPort uint16
 
 	// Domain is the target domain of the connection.
 	Domain string
@@ -90,6 +93,16 @@ type Entity struct {
 func (e *Entity) Init() *Entity {
 	// for backwards compatibility, remove that one
 	return e
+}
+
+// AddDstPort adds the destination port.
+func (e *Entity) AddDstPort(dstPort uint16) {
+	e.dstPort = dstPort
+}
+
+// AddDstPort adds the destination port.
+func (e *Entity) DstPort() uint16 {
+	return e.dstPort
 }
 
 // FetchData fetches additional information, meant to be called before persisting an entity record.
