@@ -17,6 +17,8 @@ func TestMain(m *testing.M) {
 }
 
 func testEndpointMatch(t *testing.T, ep Endpoint, entity *intel.Entity, expectedResult EPResult) {
+	entity.SetDstPort(entity.Port)
+
 	result, _ := ep.Matches(context.TODO(), entity)
 	if result != expectedResult {
 		t.Errorf(

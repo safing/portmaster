@@ -128,7 +128,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().SrcPort,
 		}
-		entity.AddDstPort(pkt.Info().DstPort)
+		entity.SetDstPort(pkt.Info().DstPort)
 
 	} else {
 
@@ -138,7 +138,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().DstPort,
 		}
-		entity.AddDstPort(entity.Port)
+		entity.SetDstPort(entity.Port)
 
 		// check if we can find a domain for that IP
 		ipinfo, err := resolver.GetIPInfo(proc.LocalProfileKey, pkt.Info().Dst.String())

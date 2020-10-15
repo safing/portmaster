@@ -95,12 +95,12 @@ func (e *Entity) Init() *Entity {
 	return e
 }
 
-// AddDstPort adds the destination port.
-func (e *Entity) AddDstPort(dstPort uint16) {
+// SetDstPort sets the destination port.
+func (e *Entity) SetDstPort(dstPort uint16) {
 	e.dstPort = dstPort
 }
 
-// AddDstPort adds the destination port.
+// DstPort returns the destination port.
 func (e *Entity) DstPort() uint16 {
 	return e.dstPort
 }
