@@ -9,7 +9,8 @@ import (
 	"unsafe"
 )
 
-const (
+// Windows specific constants for the WSAIoctl interface.
+const ( //nolint:golint
 	SIO_RCVALL = syscall.IOC_IN | syscall.IOC_VENDOR | 1
 
 	RCVALL_OFF             = 0

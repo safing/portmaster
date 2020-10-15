@@ -22,8 +22,8 @@ const (
 
 var (
 	profileDB = database.NewInterface(&database.Options{
-		Local:     true,
-		Internal:  true,
+		Local:    true,
+		Internal: true,
 	})
 )
 

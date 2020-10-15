@@ -220,10 +220,6 @@ func parseEndpoint(value string) (endpoint Endpoint, err error) { //nolint:gocog
 	if endpoint, err = parseTypeIPRange(fields); endpoint != nil || err != nil {
 		return
 	}
-	// domain
-	if endpoint, err = parseTypeDomain(fields); endpoint != nil || err != nil {
-		return
-	}
 	// country
 	if endpoint, err = parseTypeCountry(fields); endpoint != nil || err != nil {
 		return
@@ -238,6 +234,10 @@ func parseEndpoint(value string) (endpoint Endpoint, err error) { //nolint:gocog
 	}
 	// lists
 	if endpoint, err = parseTypeList(fields); endpoint != nil || err != nil {
+		return
+	}
+	// domain
+	if endpoint, err = parseTypeDomain(fields); endpoint != nil || err != nil {
 		return
 	}
 
