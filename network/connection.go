@@ -172,7 +172,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		},
 	)
 	if err != nil {
-		log.Debugf("network: failed to find process of dns request for %s: %s", fqdn, err)
+		log.Tracer(ctx).Debugf("network: failed to find process of dns request for %s: %s", fqdn, err)
 		proc = process.GetUnidentifiedProcess(ctx)
 	}
 
@@ -196,7 +196,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	// get Process
 	proc, inbound, err := process.GetProcessByConnection(pkt.Ctx(), pkt.Info())
 	if err != nil {
-		log.Debugf("network: failed to find process of packet %s: %s", pkt, err)
+		log.Tracer(pkt.Ctx()).Debugf("network: failed to find process of packet %s: %s", pkt, err)
 		proc = process.GetUnidentifiedProcess(pkt.Ctx())
 	}
 
@@ -224,6 +224,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().SrcPort,
 		}
+		entity.SetDstPort(pkt.Info().DstPort)
 
 	} else {
 
@@ -233,11 +234,12 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().DstPort,
 		}
+		entity.SetDstPort(entity.Port)
 
 		// check if we can find a domain for that IP
-		ipinfo, err := resolver.GetIPInfo(pkt.Info().Dst.String())
+		ipinfo, err := resolver.GetIPInfo(proc.LocalProfileKey, pkt.Info().Dst.String())
 		if err == nil {
-			lastResolvedDomain := ipinfo.ResolvedDomains.MostRecentDomain()
+			lastResolvedDomain := ipinfo.MostRecentDomain()
 			if lastResolvedDomain != nil {
 				scope = lastResolvedDomain.Domain
 				entity.Domain = lastResolvedDomain.Domain
@@ -299,9 +301,7 @@ func GetConnection(id string) (*Connection, bool) {
 
 // AcceptWithContext accepts the connection.
 func (conn *Connection) AcceptWithContext(reason string, ctx interface{}) {
-	if conn.SetVerdict(VerdictAccept, reason, ctx) {
-		log.Infof("filter: granting connection %s, %s", conn, conn.Reason)
-	} else {
+	if !conn.SetVerdict(VerdictAccept, reason, ctx) {
 		log.Warningf("filter: tried to accept %s, but current verdict is %s", conn, conn.Verdict)
 	}
 }
@@ -313,9 +313,7 @@ func (conn *Connection) Accept(reason string) {
 
 // BlockWithContext blocks the connection.
 func (conn *Connection) BlockWithContext(reason string, ctx interface{}) {
-	if conn.SetVerdict(VerdictBlock, reason, ctx) {
-		log.Infof("filter: blocking connection %s, %s", conn, conn.Reason)
-	} else {
+	if !conn.SetVerdict(VerdictBlock, reason, ctx) {
 		log.Warningf("filter: tried to block %s, but current verdict is %s", conn, conn.Verdict)
 	}
 }
@@ -327,9 +325,7 @@ func (conn *Connection) Block(reason string) {
 
 // DropWithContext drops the connection.
 func (conn *Connection) DropWithContext(reason string, ctx interface{}) {
-	if conn.SetVerdict(VerdictDrop, reason, ctx) {
-		log.Infof("filter: dropping connection %s, %s", conn, conn.Reason)
-	} else {
+	if !conn.SetVerdict(VerdictDrop, reason, ctx) {
 		log.Warningf("filter: tried to drop %s, but current verdict is %s", conn, conn.Verdict)
 	}
 }
@@ -355,9 +351,7 @@ func (conn *Connection) Deny(reason string) {
 
 // FailedWithContext marks the connection with VerdictFailed and stores the reason.
 func (conn *Connection) FailedWithContext(reason string, ctx interface{}) {
-	if conn.SetVerdict(VerdictFailed, reason, ctx) {
-		log.Infof("filter: dropping connection %s because of an internal error: %s", conn, reason)
-	} else {
+	if !conn.SetVerdict(VerdictFailed, reason, ctx) {
 		log.Warningf("filter: tried to drop %s due to error but current verdict is %s", conn, conn.Verdict)
 	}
 }
@@ -495,6 +489,9 @@ func (conn *Connection) packetHandler() {
 		} else {
 			defaultFirewallHandler(conn, pkt)
 		}
+		// log verdict
+		log.Tracer(pkt.Ctx()).Infof("filter: connection %s %s: %s", conn, conn.Verdict.Verb(), conn.Reason)
+
 		// save does not touch any changing data
 		// must not be locked, will deadlock with cleaner functions
 		if conn.saveWhenFinished {

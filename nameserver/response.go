@@ -36,19 +36,19 @@ func sendResponse(
 	}
 
 	// Write reply.
-	if err := writeDNSResponse(w, reply); err != nil {
-		return fmt.Errorf("nameserver: failed to send response: %w", err)
+	if err := writeDNSResponse(ctx, w, reply); err != nil {
+		return fmt.Errorf("failed to send response: %w", err)
 	}
 
 	return nil
 }
 
-func writeDNSResponse(w dns.ResponseWriter, m *dns.Msg) (err error) {
+func writeDNSResponse(ctx context.Context, w dns.ResponseWriter, m *dns.Msg) (err error) {
 	defer func() {
 		// recover from panic
 		if panicErr := recover(); panicErr != nil {
 			err = fmt.Errorf("panic: %s", panicErr)
-			log.Warningf("nameserver: panic caused by this msg: %#v", m)
+			log.Tracer(ctx).Debugf("nameserver: panic caused by this msg: %#v", m)
 		}
 	}()
 
@@ -56,10 +56,11 @@ func writeDNSResponse(w dns.ResponseWriter, m *dns.Msg) (err error) {
 	if err != nil {
 		// If we receive an error we might have exceeded the message size with all
 		// our extra information records. Retry again without the extra section.
+		log.Tracer(ctx).Tracef("nameserver: retrying to write dns message without extra section, error was: %s", err)
 		m.Extra = nil
 		noExtraErr := w.WriteMsg(m)
 		if noExtraErr == nil {
-			log.Warningf("nameserver: failed to write dns message with extra section: %s", err)
+			return fmt.Errorf("failed to write dns message without extra section: %w", err)
 		}
 	}
 	return

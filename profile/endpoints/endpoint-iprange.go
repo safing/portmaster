@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"net"
 
 	"github.com/safing/portmaster/intel"
@@ -14,7 +15,7 @@ type EndpointIPRange struct {
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointIPRange) Matches(entity *intel.Entity) (EPResult, Reason) {
+func (ep *EndpointIPRange) Matches(_ context.Context, entity *intel.Entity) (EPResult, Reason) {
 	if entity.IP == nil {
 		return Undeterminable, nil
 	}

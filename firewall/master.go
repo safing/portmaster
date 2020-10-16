@@ -134,7 +134,7 @@ func checkProfileExists(_ context.Context, conn *network.Connection, _ packet.Pa
 	return false
 }
 
-func checkEndpointLists(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
+func checkEndpointLists(ctx context.Context, conn *network.Connection, _ packet.Packet) bool {
 	var result endpoints.EPResult
 	var reason endpoints.Reason
 
@@ -143,9 +143,9 @@ func checkEndpointLists(_ context.Context, conn *network.Connection, _ packet.Pa
 
 	// check endpoints list
 	if conn.Inbound {
-		result, reason = p.MatchServiceEndpoint(conn.Entity)
+		result, reason = p.MatchServiceEndpoint(ctx, conn.Entity)
 	} else {
-		result, reason = p.MatchEndpoint(conn.Entity)
+		result, reason = p.MatchEndpoint(ctx, conn.Entity)
 	}
 	switch result {
 	case endpoints.Denied:
@@ -271,7 +271,7 @@ func checkFilterLists(ctx context.Context, conn *network.Connection, pkt packet.
 	// apply privacy filter lists
 	p := conn.Process().Profile()
 
-	result, reason := p.MatchFilterLists(conn.Entity)
+	result, reason := p.MatchFilterLists(ctx, conn.Entity)
 	switch result {
 	case endpoints.Denied:
 		conn.DenyWithContext(reason.String(), reason.Context())

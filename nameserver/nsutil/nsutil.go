@@ -10,6 +10,11 @@ import (
 	"github.com/safing/portbase/log"
 )
 
+var (
+	// ErrNilRR is returned when a parsed RR is nil.
+	ErrNilRR = errors.New("is nil")
+)
+
 // Responder defines the interface that any block/deny reason interface
 // may implement to support sending custom DNS responses for a given reason.
 // That is, if a reason context implements the Responder interface the
@@ -39,8 +44,9 @@ func (rf ResponderFunc) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 	return rf(ctx, request)
 }
 
-// ZeroIP is a ResponderFunc than replies with either 0.0.0.0 or :: for
-// each A or AAAA question respectively.
+// ZeroIP is a ResponderFunc than replies with either 0.0.0.0 or :: for each A
+// or AAAA question respectively. If there is no A or AAAA question, it
+// defaults to replying with NXDomain.
 func ZeroIP(msgs ...string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg)
@@ -52,15 +58,16 @@ func ZeroIP(msgs ...string) ResponderFunc {
 
 			switch question.Qtype {
 			case dns.TypeA:
-				rr, err = dns.NewRR(question.Name + "  0	IN	A		0.0.0.0")
+				rr, err = dns.NewRR(question.Name + " 0 IN A 0.0.0.0")
 			case dns.TypeAAAA:
-				rr, err = dns.NewRR(question.Name + "  0	IN	AAAA	::")
+				rr, err = dns.NewRR(question.Name + " 0 IN AAAA ::")
 			}
 
-			if err != nil {
+			switch {
+			case err != nil:
 				log.Tracer(ctx).Errorf("nameserver: failed to create zero-ip response for %s: %s", question.Name, err)
 				hasErr = true
-			} else {
+			case rr != nil:
 				reply.Answer = append(reply.Answer, rr)
 			}
 		}
@@ -81,6 +88,7 @@ func ZeroIP(msgs ...string) ResponderFunc {
 }
 
 // Localhost is a ResponderFunc than replies with localhost IP addresses.
+// If there is no A or AAAA question, it defaults to replying with NXDomain.
 func Localhost(msgs ...string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg)
@@ -97,10 +105,11 @@ func Localhost(msgs ...string) ResponderFunc {
 				rr, err = dns.NewRR("localhost. 0 IN AAAA ::1")
 			}
 
-			if err != nil {
+			switch {
+			case err != nil:
 				log.Tracer(ctx).Errorf("nameserver: failed to create localhost response for %s: %s", question.Name, err)
 				hasErr = true
-			} else {
+			case rr != nil:
 				reply.Answer = append(reply.Answer, rr)
 			}
 		}
@@ -159,7 +168,7 @@ func MakeMessageRecord(level log.Severity, msg string) (dns.RR, error) { //nolin
 		return nil, err
 	}
 	if rr == nil {
-		return nil, errors.New("record is nil")
+		return nil, ErrNilRR
 	}
 	return rr, nil
 }

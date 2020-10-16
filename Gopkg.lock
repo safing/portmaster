@@ -50,6 +50,17 @@
   version = "v1.1.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:c8098f53cd182561cfb128c9a5ba70e41ad2364b763f33f05c6bd54003ae6495"
+  name = "github.com/florianl/go-nfqueue"
+  packages = [
+    ".",
+    "internal/unix",
+  ]
+  pruneopts = ""
+  revision = "a2f196e98ab0ffdcb8b5252e7cbba98e45dea204"
+
+[[projects]]
   digest = "1:b6581f9180e0f2d5549280d71819ab951db9d511478c87daca95669589d505c0"
   name = "github.com/go-ole/go-ole"
   packages = [
@@ -140,12 +151,12 @@
   version = "v1.1.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:9d781ead5ca35ef02cdf0dc516b239cb387fe73207b0dd01760f7d4a825f4cd3"
+  digest = "1:508f444b8e00a569a40899aaf5740348b44c305d36f36d4f002b277677deef95"
   name = "github.com/miekg/dns"
   packages = ["."]
   pruneopts = ""
-  revision = "da812eed45cba1ce4c978e746039483064b8f92d"
+  revision = "10e0aeedbee54849adab780611454192a9980443"
+  version = "v1.1.33"
 
 [[projects]]
   digest = "1:3282ac9a9ddf5c2c0eda96693364d34fe0f8d10a0748259082a5c9fbd3e1f7e4"
@@ -368,7 +379,6 @@
     "github.com/google/renameio",
     "github.com/hashicorp/go-multierror",
     "github.com/hashicorp/go-version",
-    "github.com/mdlayher/netlink",
     "github.com/miekg/dns",
     "github.com/oschwald/maxminddb-golang",
     "github.com/shirou/gopsutil/process",

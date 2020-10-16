@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -11,7 +12,7 @@ import (
 
 // Endpoint describes an Endpoint Matcher
 type Endpoint interface {
-	Matches(entity *intel.Entity) (EPResult, Reason)
+	Matches(ctx context.Context, entity *intel.Entity) (EPResult, Reason)
 	String() string
 }
 
@@ -69,11 +70,11 @@ func (ep *EndpointBase) matchesPPP(entity *intel.Entity) (result EPResult) {
 	// only check if port is defined
 	if ep.StartPort > 0 {
 		// if port is unknown, return Undeterminable
-		if entity.Port == 0 {
+		if entity.DstPort() == 0 {
 			return Undeterminable
 		}
 		// if port does not match, return NoMatch
-		if entity.Port < ep.StartPort || entity.Port > ep.EndPort {
+		if entity.DstPort() < ep.StartPort || entity.DstPort() > ep.EndPort {
 			return NoMatch
 		}
 	}
@@ -219,10 +220,6 @@ func parseEndpoint(value string) (endpoint Endpoint, err error) { //nolint:gocog
 	if endpoint, err = parseTypeIPRange(fields); endpoint != nil || err != nil {
 		return
 	}
-	// domain
-	if endpoint, err = parseTypeDomain(fields); endpoint != nil || err != nil {
-		return
-	}
 	// country
 	if endpoint, err = parseTypeCountry(fields); endpoint != nil || err != nil {
 		return
@@ -237,6 +234,10 @@ func parseEndpoint(value string) (endpoint Endpoint, err error) { //nolint:gocog
 	}
 	// lists
 	if endpoint, err = parseTypeList(fields); endpoint != nil || err != nil {
+		return
+	}
+	// domain
+	if endpoint, err = parseTypeDomain(fields); endpoint != nil || err != nil {
 		return
 	}
 

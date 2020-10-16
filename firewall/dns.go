@@ -121,9 +121,9 @@ func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache) *res
 						err,
 					)
 				}
-			} else if rrCache.TTL > time.Now().Add(10*time.Second).Unix() {
+			} else if rrCache.Expires > time.Now().Add(10*time.Second).Unix() {
 				// Set a low TTL of 10 seconds if TTL is higher than that.
-				rrCache.TTL = time.Now().Add(10 * time.Second).Unix()
+				rrCache.Expires = time.Now().Add(10 * time.Second).Unix()
 				err := rrCache.Save()
 				if err != nil {
 					log.Debugf(
@@ -170,31 +170,28 @@ func DecideOnResolvedDNS(
 
 	updateIPsAndCNAMEs(q, rrCache, conn)
 
-	if mayBlockCNAMEs(conn) {
+	if mayBlockCNAMEs(ctx, conn) {
 		return nil
 	}
-
-	// TODO: Gate17 integration
-	// tunnelInfo, err := AssignTunnelIP(fqdn)
 
 	return updatedRR
 }
 
-func mayBlockCNAMEs(conn *network.Connection) bool {
+func mayBlockCNAMEs(ctx context.Context, conn *network.Connection) bool {
 	// if we have CNAMEs and the profile is configured to filter them
 	// we need to re-check the lists and endpoints here
 	if conn.Process().Profile().FilterCNAMEs() {
 		conn.Entity.ResetLists()
-		conn.Entity.EnableCNAMECheck(true)
+		conn.Entity.EnableCNAMECheck(ctx, true)
 
-		result, reason := conn.Process().Profile().MatchEndpoint(conn.Entity)
+		result, reason := conn.Process().Profile().MatchEndpoint(ctx, conn.Entity)
 		if result == endpoints.Denied {
 			conn.BlockWithContext(reason.String(), reason.Context())
 			return true
 		}
 
 		if result == endpoints.NoMatch {
-			result, reason = conn.Process().Profile().MatchFilterLists(conn.Entity)
+			result, reason = conn.Process().Profile().MatchFilterLists(ctx, conn.Entity)
 			if result == endpoints.Denied {
 				conn.BlockWithContext(reason.String(), reason.Context())
 				return true
@@ -205,10 +202,19 @@ func mayBlockCNAMEs(conn *network.Connection) bool {
 	return false
 }
 
+// updateIPsAndCNAMEs saves all the IP->Name mappings to the cache database and
+// updates the CNAMEs in the Connection's Entity.
 func updateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *network.Connection) {
-	// save IP addresses to IPInfo
+	// Get profileID for scoping IPInfo.
+	var profileID string
+	proc := conn.Process()
+	if proc != nil {
+		profileID = proc.LocalProfileKey
+	}
+
+	// Collect IPs and CNAMEs.
 	cnames := make(map[string]string)
-	ips := make(map[string]struct{})
+	ips := make([]net.IP, 0, len(rrCache.Answer))
 
 	for _, rr := range append(rrCache.Answer, rrCache.Extra...) {
 		switch v := rr.(type) {
@@ -216,19 +222,27 @@ func updateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 			cnames[v.Hdr.Name] = v.Target
 
 		case *dns.A:
-			ips[v.A.String()] = struct{}{}
+			ips = append(ips, v.A)
 
 		case *dns.AAAA:
-			ips[v.AAAA.String()] = struct{}{}
+			ips = append(ips, v.AAAA)
 		}
 	}
 
-	for ip := range ips {
-		record := resolver.ResolvedDomain{
-			Domain: q.FQDN,
+	// Package IPs and CNAMEs into IPInfo structs.
+	for _, ip := range ips {
+		// Never save domain attributions for localhost IPs.
+		if netutils.ClassifyIP(ip) == netutils.HostLocal {
+			continue
 		}
 
-		// resolve all CNAMEs in the correct order.
+		// Create new record for this IP.
+		record := resolver.ResolvedDomain{
+			Domain:  q.FQDN,
+			Expires: rrCache.Expires,
+		}
+
+		// Resolve all CNAMEs in the correct order and add the to the record.
 		var domain = q.FQDN
 		for {
 			nextDomain, isCNAME := cnames[domain]
@@ -240,31 +254,30 @@ func updateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 			domain = nextDomain
 		}
 
-		// update the entity to include the cnames
+		// Update the entity to include the CNAMEs of the query response.
 		conn.Entity.CNAME = record.CNAMEs
 
-		// get the existing IP info or create a new  one
-		var save bool
-		info, err := resolver.GetIPInfo(ip)
+		// Check if there is an existing record for this DNS response.
+		// Else create a new one.
+		ipString := ip.String()
+		info, err := resolver.GetIPInfo(profileID, ipString)
 		if err != nil {
 			if err != database.ErrNotFound {
 				log.Errorf("nameserver: failed to search for IP info record: %s", err)
 			}
 
 			info = &resolver.IPInfo{
-				IP: ip,
+				IP:        ipString,
+				ProfileID: profileID,
 			}
-			save = true
 		}
 
-		// and the new resolved domain record and save
-		if new := info.AddDomain(record); new {
-			save = true
-		}
-		if save {
-			if err := info.Save(); err != nil {
-				log.Errorf("nameserver: failed to save IP info record: %s", err)
-			}
+		// Add the new record to the resolved domains for this IP and scope.
+		info.AddDomain(record)
+
+		// Save if the record is new or has been updated.
+		if err := info.Save(); err != nil {
+			log.Errorf("nameserver: failed to save IP info record: %s", err)
 		}
 	}
 }
