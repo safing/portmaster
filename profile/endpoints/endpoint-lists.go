@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"strings"
 
 	"github.com/safing/portmaster/intel"
@@ -15,8 +16,8 @@ type EndpointLists struct {
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointLists) Matches(entity *intel.Entity) (EPResult, Reason) {
-	if !entity.LoadLists() {
+func (ep *EndpointLists) Matches(ctx context.Context, entity *intel.Entity) (EPResult, Reason) {
+	if !entity.LoadLists(ctx) {
 		return Undeterminable, nil
 	}
 

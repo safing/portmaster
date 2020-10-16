@@ -87,13 +87,13 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 	switch meta.Protocol {
 	case packet.ICMP:
 		// Always permit ICMP.
-		log.Debugf("accepting ICMP: %s", pkt)
+		log.Debugf("filter: fast-track accepting ICMP: %s", pkt)
 		_ = pkt.PermanentAccept()
 		return true
 
 	case packet.ICMPv6:
 		// Always permit ICMPv6.
-		log.Debugf("accepting ICMPv6: %s", pkt)
+		log.Debugf("filter: fast-track accepting ICMPv6: %s", pkt)
 		_ = pkt.PermanentAccept()
 		return true
 
@@ -116,7 +116,7 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 			}
 
 			// Log and permit.
-			log.Debugf("accepting DHCP: %s", pkt)
+			log.Debugf("filter: fast-track accepting DHCP: %s", pkt)
 			_ = pkt.PermanentAccept()
 			return true
 
@@ -141,7 +141,7 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 			// Only allow to own IPs.
 			dstIsMe, err := netenv.IsMyIP(meta.Dst)
 			if err != nil {
-				log.Warningf("filter: failed to check if IP is local: %s", err)
+				log.Warningf("filter: failed to check if IP %s is local: %s", meta.Dst, err)
 			}
 			if !dstIsMe {
 				return false
@@ -150,9 +150,9 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 			// Log and permit.
 			switch meta.DstPort {
 			case 53:
-				log.Debugf("accepting local dns: %s", pkt)
+				log.Debugf("filter: fast-track accepting local dns: %s", pkt)
 			case apiPort:
-				log.Debugf("accepting api connection: %s", pkt)
+				log.Debugf("filter: fast-track accepting api connection: %s", pkt)
 			default:
 				return false
 			}
@@ -165,7 +165,7 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 }
 
 func initialHandler(conn *network.Connection, pkt packet.Packet) {
-	log.Tracer(pkt.Ctx()).Trace("filter: [initial handler]")
+	log.Tracer(pkt.Ctx()).Trace("filter: handing over to connection-based handler")
 
 	// check for internal firewall bypass
 	ps := getPortStatusAndMarkUsed(pkt.Info().LocalPort())

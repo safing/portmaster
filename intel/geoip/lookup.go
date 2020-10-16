@@ -4,7 +4,6 @@ import (
 	"net"
 
 	"github.com/oschwald/maxminddb-golang"
-	"github.com/safing/portbase/log"
 )
 
 func getReader(ip net.IP) *maxminddb.Reader {
@@ -48,8 +47,6 @@ func GetLocation(ip net.IP) (record *Location, err error) {
 	if err != nil {
 		return nil, err
 	}
-
-	log.Tracef("geoip: record: %+v", record)
 
 	return record, nil
 }

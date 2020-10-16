@@ -1,6 +1,10 @@
 package endpoints
 
-import "github.com/safing/portmaster/intel"
+import (
+	"context"
+
+	"github.com/safing/portmaster/intel"
+)
 
 // EndpointAny matches anything.
 type EndpointAny struct {
@@ -8,7 +12,7 @@ type EndpointAny struct {
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
-func (ep *EndpointAny) Matches(entity *intel.Entity) (EPResult, Reason) {
+func (ep *EndpointAny) Matches(_ context.Context, entity *intel.Entity) (EPResult, Reason) {
 	return ep.match(ep, entity, "*", "matches")
 }
 
