@@ -5,7 +5,6 @@ package proc
 import (
 	"fmt"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/safing/portmaster/network/socket"
@@ -14,8 +13,6 @@ import (
 )
 
 var (
-	socketInfoLock sync.RWMutex
-
 	baseWaitTime  = 3 * time.Millisecond
 	lookupRetries = 3
 )
@@ -24,9 +21,7 @@ var (
 // This also acts as a getter for socket.*Info.PID, as locking for that occurs here.
 func GetPID(socketInfo socket.Info) (pid int) {
 	// Get currently assigned PID to the socket info.
-	socketInfoLock.RLock()
 	currentPid := socketInfo.GetPID()
-	socketInfoLock.RUnlock()
 
 	// If the current PID already is valid (ie. not unidentified), return it immediately.
 	if currentPid != socket.UnidentifiedProcessID {
@@ -34,12 +29,11 @@ func GetPID(socketInfo socket.Info) (pid int) {
 	}
 
 	// Find PID for the given UID and inode.
-	pid = findPID(socketInfo.GetUID(), socketInfo.GetInode())
+	// uid, inode := socketInfo.GetUIDandInode()
+	pid = findPID(socketInfo.GetUIDandInode())
 
 	// Set the newly found PID on the socket info.
-	socketInfoLock.Lock()
 	socketInfo.SetPID(pid)
-	socketInfoLock.Unlock()
 
 	// Return found PID.
 	return pid
@@ -63,9 +57,11 @@ func findPID(uid, inode int) (pid int) {
 
 		// If we have found PIDs, search them.
 		if ok {
-			for _, pid = range pids {
-				if findSocketFromPid(pid, socketName) {
-					return pid
+			// Look through the PIDs in reverse order, because higher/newer PIDs will be more likely to
+			// be searched for.
+			for i := len(pids) - 1; i > 0; i-- {
+				if findSocketFromPid(pids[i], socketName) {
+					return pids[i]
 				}
 			}
 		}
@@ -76,9 +72,11 @@ func findPID(uid, inode int) (pid int) {
 			updatePids()
 			pids, ok = getPidsByUser(uid)
 			if ok {
-				for _, pid = range pids {
-					if findSocketFromPid(pid, socketName) {
-						return pid
+				// Look through the PIDs in reverse order, because higher/newer PIDs will be more likely to
+				// be searched for.
+				for i := len(pids) - 1; i > 0; i-- {
+					if findSocketFromPid(pids[i], socketName) {
+						return pids[i]
 					}
 				}
 			}

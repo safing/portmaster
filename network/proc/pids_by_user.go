@@ -66,14 +66,7 @@ func updatePids() {
 			pidCnt++
 		}
 
-		// Reverse slice orders, because higher PIDs will be more likely to be searched for.
-		for _, slice := range newPidsByUser {
-			for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
-				slice[i], slice[j] = slice[j], slice[i]
-			}
-		}
-
-		log.Tracef("proc: updated PID table with %d entries", pidCnt)
+		// log.Tracef("proc: updated PID table with %d entries", pidCnt)
 
 		pidsByUserLock.Lock()
 		defer pidsByUserLock.Unlock()
