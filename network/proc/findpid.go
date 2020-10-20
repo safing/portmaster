@@ -29,7 +29,6 @@ func GetPID(socketInfo socket.Info) (pid int) {
 	}
 
 	// Find PID for the given UID and inode.
-	// uid, inode := socketInfo.GetUIDandInode()
 	pid = findPID(socketInfo.GetUIDandInode())
 
 	// Set the newly found PID on the socket info.
@@ -59,7 +58,7 @@ func findPID(uid, inode int) (pid int) {
 		if ok {
 			// Look through the PIDs in reverse order, because higher/newer PIDs will be more likely to
 			// be searched for.
-			for i := len(pids) - 1; i > 0; i-- {
+			for i := len(pids) - 1; i >= 0; i-- {
 				if findSocketFromPid(pids[i], socketName) {
 					return pids[i]
 				}
@@ -74,7 +73,7 @@ func findPID(uid, inode int) (pid int) {
 			if ok {
 				// Look through the PIDs in reverse order, because higher/newer PIDs will be more likely to
 				// be searched for.
-				for i := len(pids) - 1; i > 0; i-- {
+				for i := len(pids) - 1; i >= 0; i-- {
 					if findSocketFromPid(pids[i], socketName) {
 						return pids[i]
 					}
