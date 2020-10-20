@@ -49,50 +49,57 @@ func (l *Location) EstimateNetworkProximity(to *Location) (proximity int) {
 	// 100: same network/datacenter
 
 	// Weighting:
-	// coordinate distance: 0-50
-	// continent match: 15
-	// country match: 10
-	// AS owner match: 15
-	// AS network match: 10
+	// continent match: 25
+	// country match: 20
+	// AS owner match: 25
+	// AS network match: 20
+	// coordinate distance: 0-10
 
-	// coordinate distance: 0-50
+	// continent match: 25
+	if l.Continent.Code == to.Continent.Code {
+		proximity += 25
+		// country match: 20
+		if l.Country.ISOCode == to.Country.ISOCode {
+			proximity += 20
+		}
+	}
+
+	// AS owner match: 25
+	if l.AutonomousSystemOrganization == to.AutonomousSystemOrganization {
+		proximity += 25
+		// AS network match: 20
+		if l.AutonomousSystemNumber == to.AutonomousSystemNumber {
+			proximity += 20
+		}
+	}
+
+	// coordinate distance: 0-10
 	fromCoords := haversine.Coord{Lat: l.Coordinates.Latitude, Lon: l.Coordinates.Longitude}
 	toCoords := haversine.Coord{Lat: to.Coordinates.Latitude, Lon: to.Coordinates.Longitude}
 	_, km := haversine.Distance(fromCoords, toCoords)
 
-	// proximity distance by accuracy
-	// get worst accuracy rating
+	// adjust accuracy value
 	accuracy := l.Coordinates.AccuracyRadius
-	if to.Coordinates.AccuracyRadius > accuracy {
+	switch {
+	case l.Coordinates.Latitude == 0 && l.Coordinates.Longitude == 0:
+		fallthrough
+	case to.Coordinates.Latitude == 0 && to.Coordinates.Longitude == 0:
+		// If we don't have any on any side coordinates, set accuracy to worst
+		// effective value.
+		accuracy = 1000
+	case to.Coordinates.AccuracyRadius > accuracy:
+		// If the destination accuracy is worse, use that one.
 		accuracy = to.Coordinates.AccuracyRadius
 	}
 
 	if km <= 10 && accuracy <= 100 {
-		proximity += 50
+		proximity += 10
 	} else {
-		distanceIn50Percent := ((earthCircumferenceInKm - km) / earthCircumferenceInKm) * 50
+		distanceInPercent := (earthCircumferenceInKm - km) * 100 / earthCircumferenceInKm
 
 		// apply penalty for locations with low accuracy (targeting accuracy radius >100)
 		accuracyModifier := 1 - float64(accuracy)/1000
-		proximity += int(distanceIn50Percent * accuracyModifier)
-	}
-
-	// continent match: 15
-	if l.Continent.Code == to.Continent.Code {
-		proximity += 15
-		// country match: 10
-		if l.Country.ISOCode == to.Country.ISOCode {
-			proximity += 10
-		}
-	}
-
-	// AS owner match: 15
-	if l.AutonomousSystemOrganization == to.AutonomousSystemOrganization {
-		proximity += 15
-		// AS network match: 10
-		if l.AutonomousSystemNumber == to.AutonomousSystemNumber {
-			proximity += 10
-		}
+		proximity += int(distanceInPercent * 0.10 * accuracyModifier)
 	}
 
 	return //nolint:nakedret

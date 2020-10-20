@@ -1,6 +1,9 @@
 package socket
 
-import "net"
+import (
+	"net"
+	"sync"
+)
 
 const (
 	// UnidentifiedProcessID is originally defined in the process pkg, but duplicated here because of import loops.
@@ -9,6 +12,8 @@ const (
 
 // ConnectionInfo holds socket information returned by the system.
 type ConnectionInfo struct {
+	sync.Mutex
+
 	Local  Address
 	Remote Address
 	PID    int
@@ -18,6 +23,8 @@ type ConnectionInfo struct {
 
 // BindInfo holds socket information returned by the system.
 type BindInfo struct {
+	sync.Mutex
+
 	Local Address
 	PID   int
 	UID   int
@@ -35,32 +42,72 @@ type Info interface {
 	GetPID() int
 	SetPID(int)
 	GetUID() int
-	GetInode() int
+	GetUIDandInode() (int, int)
 }
 
 // GetPID returns the PID.
-func (i *ConnectionInfo) GetPID() int { return i.PID }
+func (i *ConnectionInfo) GetPID() int {
+	i.Lock()
+	defer i.Unlock()
+
+	return i.PID
+}
 
 // SetPID sets the PID to the given value.
-func (i *ConnectionInfo) SetPID(pid int) { i.PID = pid }
+func (i *ConnectionInfo) SetPID(pid int) {
+	i.Lock()
+	defer i.Unlock()
+
+	i.PID = pid
+}
 
 // GetUID returns the UID.
-func (i *ConnectionInfo) GetUID() int { return i.UID }
+func (i *ConnectionInfo) GetUID() int {
+	i.Lock()
+	defer i.Unlock()
 
-// GetInode returns the Inode.
-func (i *ConnectionInfo) GetInode() int { return i.Inode }
+	return i.UID
+}
+
+// GetUIDandInode returns the UID and Inode.
+func (i *ConnectionInfo) GetUIDandInode() (int, int) {
+	i.Lock()
+	defer i.Unlock()
+
+	return i.UID, i.Inode
+}
 
 // GetPID returns the PID.
-func (i *BindInfo) GetPID() int { return i.PID }
+func (i *BindInfo) GetPID() int {
+	i.Lock()
+	defer i.Unlock()
+
+	return i.PID
+}
 
 // SetPID sets the PID to the given value.
-func (i *BindInfo) SetPID(pid int) { i.PID = pid }
+func (i *BindInfo) SetPID(pid int) {
+	i.Lock()
+	defer i.Unlock()
+
+	i.PID = pid
+}
 
 // GetUID returns the UID.
-func (i *BindInfo) GetUID() int { return i.UID }
+func (i *BindInfo) GetUID() int {
+	i.Lock()
+	defer i.Unlock()
 
-// GetInode returns the Inode.
-func (i *BindInfo) GetInode() int { return i.Inode }
+	return i.UID
+}
+
+// GetUIDandInode returns the UID and Inode.
+func (i *BindInfo) GetUIDandInode() (int, int) {
+	i.Lock()
+	defer i.Unlock()
+
+	return i.UID, i.Inode
+}
 
 // compile time checks
 var _ Info = new(ConnectionInfo)

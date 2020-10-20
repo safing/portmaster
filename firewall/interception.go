@@ -55,12 +55,12 @@ func interceptionStop() error {
 	return interception.Stop()
 }
 
-func handlePacket(pkt packet.Packet) {
+func handlePacket(ctx context.Context, pkt packet.Packet) {
 	if fastTrackedPermit(pkt) {
 		return
 	}
 
-	traceCtx, tracer := log.AddTracer(context.Background())
+	traceCtx, tracer := log.AddTracer(ctx)
 	if tracer != nil {
 		pkt.SetCtx(traceCtx)
 		tracer.Tracef("filter: handling packet: %s", pkt)
@@ -318,7 +318,10 @@ func packetHandler(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case pkt := <-interception.Packets:
-			handlePacket(pkt)
+			interceptionModule.StartWorker("initial packet handler", func(ctx context.Context) error {
+				handlePacket(ctx, pkt)
+				return nil
+			})
 		}
 	}
 }
