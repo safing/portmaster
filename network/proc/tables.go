@@ -35,7 +35,7 @@ Cache every step!
 
 */
 
-// Network Related Constants
+// Network Related Constants.
 const (
 	TCP4 uint8 = iota
 	UDP4
