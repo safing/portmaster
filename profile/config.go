@@ -139,7 +139,7 @@ func registerConfiguration() error {
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionDisableAutoPermitOrder,
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.CategoryAnnotation: "Advanced",
+			config.CategoryAnnotation:     "Advanced",
 		},
 		PossibleValues: status.SecurityLevelValues,
 	})
@@ -208,6 +208,23 @@ Examples:
 			config.DisplayHintAnnotation:  endpoints.DisplayHintEndpointList,
 			config.DisplayOrderAnnotation: cfgOptionServiceEndpointsOrder,
 			config.CategoryAnnotation:     "Rules",
+			config.QuickSettingsAnnotation: []config.QuickSetting{
+				{
+					Name:   "SSH",
+					Action: config.QuickMergeTop,
+					Value:  []string{"+ * tcp/22"},
+				},
+				{
+					Name:   "HTTP/s",
+					Action: config.QuickMergeTop,
+					Value:  []string{"+ * tcp/80", "+ * tcp/443"},
+				},
+				{
+					Name:   "RDP",
+					Action: config.QuickMergeTop,
+					Value:  []string{"+ * */3389"},
+				},
+			},
 		},
 		ValidationRegex: `^(\+|\-) [A-z0-9\.:\-*/]+( [A-z0-9/]+)?$`,
 	})
@@ -248,7 +265,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionFilterCNAMEOrder,
-			config.CategoryAnnotation: "DNS",
+			config.CategoryAnnotation:     "DNS",
 		},
 		PossibleValues: status.SecurityLevelValues,
 	})
@@ -269,7 +286,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionFilterSubDomainsOrder,
-			config.CategoryAnnotation: "DNS",
+			config.CategoryAnnotation:     "DNS",
 		},
 	})
 	if err != nil {
@@ -391,7 +408,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionEnforceSPNOrder,
-			config.CategoryAnnotation: "Advanced",
+			config.CategoryAnnotation:     "Advanced",
 		},
 	})
 	if err != nil {
@@ -413,7 +430,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionRemoveOutOfScopeDNSOrder,
-			config.CategoryAnnotation: "DNS",
+			config.CategoryAnnotation:     "DNS",
 		},
 	})
 	if err != nil {
@@ -435,7 +452,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionRemoveBlockedDNSOrder,
-			config.CategoryAnnotation: "DNS",
+			config.CategoryAnnotation:     "DNS",
 		},
 	})
 	if err != nil {
@@ -456,7 +473,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionDomainHeuristicsOrder,
-			config.CategoryAnnotation: "DNS",
+			config.CategoryAnnotation:     "DNS",
 		},
 	})
 	if err != nil {
@@ -477,7 +494,7 @@ Examples:
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionPreventBypassingOrder,
-			config.CategoryAnnotation: "Advanced",
+			config.CategoryAnnotation:     "Advanced",
 		},
 	})
 	if err != nil {
