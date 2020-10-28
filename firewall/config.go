@@ -55,6 +55,10 @@ func registerConfig() error {
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionAskWithSystemNotificationsOrder,
 			config.CategoryAnnotation:     "General",
+			config.RequiresAnnotation: config.ValueRequirement{
+				Key:   core.CfgUseSystemNotificationsKey,
+				Value: true,
+			},
 		},
 	})
 	if err != nil {
