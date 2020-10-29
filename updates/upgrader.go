@@ -119,7 +119,7 @@ func upgradeCoreNotify() error {
 	return nil
 }
 
-func upgradeCoreNotifyActionHandler(n *notifications.Notification) {
+func upgradeCoreNotifyActionHandler(_ context.Context, n *notifications.Notification) error {
 	switch n.SelectedActionID {
 	case "restart":
 		// Cannot directly trigger due to import loop.
@@ -133,8 +133,10 @@ func upgradeCoreNotifyActionHandler(n *notifications.Notification) {
 			log.Warningf("updates: failed to trigger restart via notification: %s", err)
 		}
 	case "later":
-		n.Expires = time.Now().Unix() // expire immediately
+		n.Delete()
 	}
+
+	return nil
 }
 
 func upgradeHub() error {
