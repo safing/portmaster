@@ -112,7 +112,7 @@ func registerConfiguration() error {
 				Description: "Permit all connections",
 			},
 			{
-				Name:        "Ask",
+				Name:        "Prompt",
 				Value:       "ask",
 				Description: "Always ask for a decision",
 			},
