@@ -45,15 +45,17 @@ type ThreatPayload struct {
 //      // Once you're done, delete the threat
 //      threat.Delete().Publish()
 //
-func NewThreat(id, msg string) *Threat {
+func NewThreat(id, title, msg string) *Threat {
 	t := &Threat{
 		Notification: &notifications.Notification{
-			EventID: id,
-			Message: msg,
-			Type:    notifications.Warning,
-			State:   notifications.Active,
+			EventID:  id,
+			Type:     notifications.Warning,
+			Title:    title,
+			Category: "Threat",
+			Message:  msg,
 		},
 	}
+
 	t.threatData().Started = time.Now().Unix()
 
 	return t

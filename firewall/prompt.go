@@ -93,16 +93,28 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 		return
 	}
 
+	// Reference relevant data for save function
+	localProfile := conn.Process().Profile().LocalProfile()
+	entity := conn.Entity
+
+	// Create new notification.
 	n = &notifications.Notification{
-		EventID:   nID,
-		Type:      notifications.Prompt,
-		EventData: conn.Entity,
-		Expires:   expires,
+		EventID:  nID,
+		Type:     notifications.Prompt,
+		Title:    "Connection Prompt",
+		Category: "Privacy Filter",
+		EventData: &promptData{
+			Entity: entity,
+			Profile: promptProfile{
+				Source:     string(localProfile.Source),
+				ID:         localProfile.ID,
+				LinkedPath: localProfile.LinkedPath,
+			},
+		},
+		Expires: expires,
 	}
 
 	// Set action function.
-	localProfile := conn.Process().Profile().LocalProfile()
-	entity := conn.Entity
 	n.SetActionFunction(func(_ context.Context, n *notifications.Notification) error {
 		return saveResponse(
 			localProfile,

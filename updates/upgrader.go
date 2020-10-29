@@ -99,18 +99,30 @@ func upgradeCoreNotify() error {
 
 	// check for new version
 	if info.GetInfo().Version != pmCoreUpdate.Version() {
-		n := notifications.NotifyInfo(
-			"updates:core-update-available",
-			fmt.Sprintf(":tada: Update to **Portmaster v%s** is available! Please restart the Portmaster to apply the update.", pmCoreUpdate.Version()),
-			notifications.Action{
-				ID:   "restart",
-				Text: "Restart",
+		n := notifications.Notify(&notifications.Notification{
+			EventID: "updates:core-update-available",
+			Type:    notifications.Info,
+			Title: fmt.Sprintf(
+				"Portmaster Update v%s",
+				pmCoreUpdate.Version(),
+			),
+			Category: "Core",
+			Message: fmt.Sprintf(
+				`:tada: Update to **Portmaster v%s** is available!  
+Please restart the Portmaster to apply the update.`,
+				pmCoreUpdate.Version(),
+			),
+			AvailableActions: []*notifications.Action{
+				{
+					ID:   "restart",
+					Text: "Restart",
+				},
+				{
+					ID:   "later",
+					Text: "Not now",
+				},
 			},
-			notifications.Action{
-				ID:   "later",
-				Text: "Not now",
-			},
-		)
+		})
 		n.SetActionFunction(upgradeCoreNotifyActionHandler)
 
 		log.Debugf("updates: new portmaster version available, sending notification to user")
@@ -246,10 +258,18 @@ func warnOnIncorrectParentPath() {
 	if !strings.HasPrefix(absPath, root) {
 		log.Warningf("detected unexpected path %s for portmaster-start", absPath)
 
-		notifications.NotifyWarn(
-			"updates:unsupported-parent",
-			fmt.Sprintf("The portmaster has been launched by an unexpected %s binary at %s. Please configure your system to use the binary at %s as this version will be kept up to date automatically.", expectedFileName, absPath, filepath.Join(root, expectedFileName)),
-		)
+		notifications.Notify(&notifications.Notification{
+			EventID:  "updates:unsupported-parent",
+			Type:     notifications.Warning,
+			Title:    "Unsupported Launcher",
+			Category: "Core",
+			Message: fmt.Sprintf(
+				"The portmaster has been launched by an unexpected %s binary at %s. Please configure your system to use the binary at %s as this version will be kept up to date automatically.",
+				expectedFileName,
+				absPath,
+				filepath.Join(root, expectedFileName),
+			),
+		})
 	}
 }
 
