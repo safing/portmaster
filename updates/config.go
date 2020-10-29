@@ -25,10 +25,10 @@ func registerConfig() error {
 	err := config.Register(&config.Option{
 		Name:            "Release Channel",
 		Key:             releaseChannelKey,
-		Description:     "The Release Channel changes which updates are applied. When using beta, you will receive new features earlier and Portmaster will update more frequently. Some beta or experimental features are also available in the stable release channel.",
+		Description:     "Switch release channel.",
 		OptType:         config.OptTypeString,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
-		ReleaseLevel:    config.ReleaseLevelBeta,
+		ExpertiseLevel:  config.ExpertiseLevelDeveloper,
+		ReleaseLevel:    config.ReleaseLevelExperimental,
 		RequiresRestart: false,
 		DefaultValue:    releaseChannelStable,
 		PossibleValues: []config.PossibleValue{
@@ -54,7 +54,7 @@ func registerConfig() error {
 	err = config.Register(&config.Option{
 		Name:            "Disable Updates",
 		Key:             disableUpdatesKey,
-		Description:     "Disable automatic updates.",
+		Description:     "Disable automatic updates. This affects all kinds of updates, including intelligence feeds and broadcast notifications.",
 		OptType:         config.OptTypeBool,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,

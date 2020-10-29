@@ -82,30 +82,23 @@ func prepConfig() error {
 		Name:        "DNS Servers",
 		Key:         CfgOptionNameServersKey,
 		Description: "DNS Servers to use for resolving DNS requests.",
-		Help: `Format:
+		Help: strings.ReplaceAll(`DNS Servers are configured in a URL format. This allows you to specify special settings for a resolver. If you just want to use a resolver at IP 10.2.3.4, please enter: "dns://10.2.3.4"  
+The format is: "protocol://ip:port?parameter=value&parameter=value"
 
-DNS Servers are configured in a URL format. This allows you to specify special settings for a resolver. If you just want to use a resolver at IP 10.2.3.4, please enter: dns://10.2.3.4:53
-The format is: protocol://ip:port?parameter=value&parameter=value
-
-Protocols:
-	dot: DNS-over-TLS (recommended)
-	dns: plain old DNS
-	tcp: plain old DNS over TCP
-
-IP:
-	always use the IP address and _not_ the domain name!
-
-Port:
-	optionally define a custom port
-
-Parameters:
-	name: give your DNS Server a name that is used for messages and logs
-	verify: domain name to verify for "dot", required and only valid for "dot"
-	blockedif: detect if the name server blocks a query, options:
-		empty: server replies with NXDomain status, but without any other record in any section
-		refused: server replies with Refused status
-		zeroip: server replies with an IP address, but it is zero
-`,
+- Protocol
+	- "dot": DNS-over-TLS (recommended)  
+	- "dns": plain old DNS  
+	- "tcp": plain old DNS over TCP
+- IP: always use the IP address and _not_ the domain name!
+- Port: optionally define a custom port
+- Parameters:
+	- "name": give your DNS Server a name that is used for messages and logs
+	- "verify": domain name to verify for "dot", required and only valid for protocol "dot"
+	- "blockedif": detect if the name server blocks a query, options:
+		- "empty": server replies with NXDomain status, but without any other record in any section
+		- "refused": server replies with Refused status
+		- "zeroip": server replies with an IP address, but it is zero
+`, `"`, "`"),
 		OptType:         config.OptTypeStringArray,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
@@ -157,13 +150,13 @@ Parameters:
 	configuredNameServers = config.Concurrent.GetAsStringArray(CfgOptionNameServersKey, defaultNameServers)
 
 	err = config.Register(&config.Option{
-		Name:           "DNS Server Retry Rate",
+		Name:           "Retry Timeout",
 		Key:            CfgOptionNameserverRetryRateKey,
-		Description:    "Rate at which to retry failed DNS Servers, in seconds.",
+		Description:    "Timeout between retries when a resolver fails.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
-		DefaultValue:   600,
+		DefaultValue:   300,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionNameserverRetryRateOrder,
 			config.UnitAnnotation:         "seconds",
@@ -176,9 +169,9 @@ Parameters:
 	nameserverRetryRate = config.Concurrent.GetAsInt(CfgOptionNameserverRetryRateKey, 600)
 
 	err = config.Register(&config.Option{
-		Name:           "Do not use assigned Nameservers",
+		Name:           "Ignore system resolvers",
 		Key:            CfgOptionNoAssignedNameserversKey,
-		Description:    "that were acquired by the network (dhcp) or system",
+		Description:    "Ignore resolvers that were acquired from the operating system.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
@@ -196,9 +189,9 @@ Parameters:
 	noAssignedNameservers = status.SecurityLevelOption(CfgOptionNoAssignedNameserversKey)
 
 	err = config.Register(&config.Option{
-		Name:           "Do not use Multicast DNS",
+		Name:           "Ignore Multicast DNS",
 		Key:            CfgOptionNoMulticastDNSKey,
-		Description:    "Multicast DNS queries other devices in the local network",
+		Description:    "Do not resolve using Multicast DNS. This may break certain Plug and Play devices or services.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
@@ -216,9 +209,9 @@ Parameters:
 	noMulticastDNS = status.SecurityLevelOption(CfgOptionNoMulticastDNSKey)
 
 	err = config.Register(&config.Option{
-		Name:           "Do not resolve insecurely",
+		Name:           "Enforce secure DNS",
 		Key:            CfgOptionNoInsecureProtocolsKey,
-		Description:    "Do not resolve domains with insecure protocols, ie. plain DNS",
+		Description:    "Never resolve using insecure protocols, ie. plain DNS.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
@@ -236,9 +229,9 @@ Parameters:
 	noInsecureProtocols = status.SecurityLevelOption(CfgOptionNoInsecureProtocolsKey)
 
 	err = config.Register(&config.Option{
-		Name:           "Do not resolve special domains",
+		Name:           "Block unofficial TLDs",
 		Key:            CfgOptionDontResolveSpecialDomainsKey,
-		Description:    fmt.Sprintf("Do not resolve the special top level domains %s", formatScopeList(specialServiceDomains)),
+		Description:    fmt.Sprintf("Block %s.", formatScopeList(specialServiceDomains)),
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
