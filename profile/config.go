@@ -481,7 +481,8 @@ Examples:
 		Key:  CfgOptionPreventBypassingKey,
 		Description: `Prevent apps from bypassing the privacy filter.  
 Current Features:  
-- Disable Firefox' internal DNS-over-HTTPs resolver`,
+- Disable Firefox' internal DNS-over-HTTPs resolver
+- Block direct access to public DNS resolvers`,
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelBeta,
