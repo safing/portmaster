@@ -197,11 +197,11 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	// A reason for this might be that the request is sink-holed to a forced
 	// IP address in which case we "accept" it, but let the firewall handle
 	// the resolving as it wishes.
-	if responder, ok := conn.ReasonContext.(nsutil.Responder); ok {
+	if responder, ok := conn.Reason.Context.(nsutil.Responder); ok {
 		// Save the request as open, as we don't know if there will be a connection or not.
 		network.SaveOpenDNSRequest(conn)
 
-		tracer.Infof("nameserver: handing over request for %s to special filter responder: %s", q.ID(), conn.Reason)
+		tracer.Infof("nameserver: handing over request for %s to special filter responder: %s", q.ID(), conn.Reason.Msg)
 		return reply(responder)
 	}
 
@@ -243,11 +243,11 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	rrCache = firewall.DecideOnResolvedDNS(ctx, conn, q, rrCache)
 	if rrCache == nil {
 		// Check again if there is a responder from the firewall.
-		if responder, ok := conn.ReasonContext.(nsutil.Responder); ok {
+		if responder, ok := conn.Reason.Context.(nsutil.Responder); ok {
 			// Save the request as open, as we don't know if there will be a connection or not.
 			network.SaveOpenDNSRequest(conn)
 
-			tracer.Infof("nameserver: handing over request for %s to filter responder: %s", q.ID(), conn.Reason)
+			tracer.Infof("nameserver: handing over request for %s to filter responder: %s", q.ID(), conn.Reason.Msg)
 			return reply(responder)
 		}
 

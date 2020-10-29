@@ -26,7 +26,7 @@ type LayeredProfile struct {
 
 	localProfile    *Profile
 	layers          []*Profile
-	revisionCounter uint64
+	RevisionCounter uint64
 
 	validityFlag       *abool.AtomicBool
 	validityFlagLock   sync.Mutex
