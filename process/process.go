@@ -30,39 +30,35 @@ type Process struct {
 	record.Base
 	sync.Mutex
 
+	// Constant attributes.
+
+	Name      string
 	UserID    int
 	UserName  string
 	UserHome  string
 	Pid       int
 	ParentPid int
 	Path      string
+	ExecName  string
 	Cwd       string
 	CmdLine   string
 	FirstArg  string
 
-	ExecName   string
-	ExecHashes map[string]string
-	// ExecOwner ...
-	// ExecSignature ...
-
 	LocalProfileKey string
 	profile         *profile.LayeredProfile
-	Name            string
-	Icon            string
-	// Icon is a path to the icon and is either prefixed "f:" for filepath, "d:" for database cache path or "c:"/"a:" for a the icon key to fetch it from a company / authoritative node and cache it in its own cache.
+
+	// Mutable attributes.
 
 	FirstSeen int64
 	LastSeen  int64
+	Virtual   bool   // This process is either merged into another process or is not needed.
+	Error     string // Cache errors
 
-	Virtual bool   // This process is either merged into another process or is not needed.
-	Error   string // Cache errors
+	ExecHashes map[string]string
 }
 
 // Profile returns the assigned layered profile.
 func (p *Process) Profile() *profile.LayeredProfile {
-	p.Lock()
-	defer p.Unlock()
-
 	return p.profile
 }
 
@@ -72,8 +68,6 @@ func (p *Process) String() string {
 		return "?"
 	}
 
-	p.Lock()
-	defer p.Unlock()
 	return fmt.Sprintf("%s:%s:%d", p.UserName, p.Path, p.Pid)
 }
 

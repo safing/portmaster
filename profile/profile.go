@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tevino/abool"
@@ -53,7 +54,8 @@ const (
 // Profile is used to predefine a security profile for applications.
 type Profile struct { //nolint:maligned // not worth the effort
 	record.Base
-	sync.Mutex
+	sync.RWMutex
+
 	// ID is a unique identifier for the profile.
 	ID string
 	// Source describes the source of the profile.
@@ -73,7 +75,6 @@ type Profile struct { //nolint:maligned // not worth the effort
 	Icon string
 	// IconType describes the type of the Icon property.
 	IconType iconType
-	// References - local profiles only
 	// LinkedPath is a filesystem path to the executable this
 	// profile was created for.
 	LinkedPath string
@@ -99,6 +100,17 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// profile has been created.
 	Created int64
 
+	// Internal is set to true if the profile is attributed to a
+	// Portmaster internal process. Internal is set during profile
+	// creation and may be accessed without lock.
+	Internal bool
+
+	// layeredProfile is a link to the layered profile with this profile as the
+	// main profile.
+	// All processes with the same binary should share the same instance of the
+	// local profile and the associated layered profile.
+	layeredProfile *LayeredProfile
+
 	// Interpreted Data
 	configPerspective *config.Perspective
 	dataParsed        bool
@@ -108,8 +120,9 @@ type Profile struct { //nolint:maligned // not worth the effort
 	filterListIDs     []string
 
 	// Lifecycle Management
-	outdated *abool.AtomicBool
-	lastUsed time.Time
+	usedBy     *LayeredProfile
+	outdated   *abool.AtomicBool
+	lastActive *int64
 
 	internalSave bool
 }
@@ -118,6 +131,7 @@ func (profile *Profile) prepConfig() (err error) {
 	// prepare configuration
 	profile.configPerspective, err = config.NewPerspective(profile.Config)
 	profile.outdated = abool.New()
+	profile.lastActive = new(int64)
 	return
 }
 
@@ -177,16 +191,24 @@ func (profile *Profile) parseConfig() error {
 }
 
 // New returns a new Profile.
-func New() *Profile {
+func New(source profileSource, id string) *Profile {
 	profile := &Profile{
-		ID:           utils.RandomUUID("").String(),
-		Source:       SourceLocal,
+		ID:           id,
+		Source:       source,
 		Created:      time.Now().Unix(),
 		Config:       make(map[string]interface{}),
 		internalSave: true,
 	}
 
-	// create placeholders
+	// Generate random ID if none is given.
+	if id == "" {
+		profile.ID = utils.RandomUUID("").String()
+	}
+
+	// Make key from ID and source.
+	profile.makeKey()
+
+	// Prepare profile to create placeholders.
 	_ = profile.prepConfig()
 	_ = profile.parseConfig()
 
@@ -198,6 +220,11 @@ func (profile *Profile) ScopedID() string {
 	return makeScopedID(profile.Source, profile.ID)
 }
 
+// makeKey derives and sets the record Key from the profile attributes.
+func (profile *Profile) makeKey() {
+	profile.SetKey(makeProfileKey(profile.Source, profile.ID))
+}
+
 // Save saves the profile to the database
 func (profile *Profile) Save() error {
 	if profile.ID == "" {
@@ -207,38 +234,41 @@ func (profile *Profile) Save() error {
 		return fmt.Errorf("profile: profile %s does not specify a source", profile.ID)
 	}
 
-	if !profile.KeyIsSet() {
-		profile.SetKey(makeProfileKey(profile.Source, profile.ID))
-	}
-
 	return profileDB.Put(profile)
 }
 
-// MarkUsed marks the profile as used and saves it when it has changed.
-func (profile *Profile) MarkUsed() {
-	profile.Lock()
-	// lastUsed
-	profile.lastUsed = time.Now()
+// MarkStillActive marks the profile as still active.
+func (profile *Profile) MarkStillActive() {
+	atomic.StoreInt64(profile.lastActive, time.Now().Unix())
+}
 
-	// ApproxLastUsed
-	save := false
+// LastActive returns the unix timestamp when the profile was last marked as
+// still active.
+func (profile *Profile) LastActive() int64 {
+	return atomic.LoadInt64(profile.lastActive)
+}
+
+// MarkUsed updates ApproxLastUsed when it's been a while and saves the profile if it was changed.
+func (profile *Profile) MarkUsed() (changed bool) {
+	profile.Lock()
+	defer profile.Unlock()
+
 	if time.Now().Add(-lastUsedUpdateThreshold).Unix() > profile.ApproxLastUsed {
 		profile.ApproxLastUsed = time.Now().Unix()
-		save = true
+		return true
 	}
-	profile.Unlock()
 
-	if save {
-		err := profile.Save()
-		if err != nil {
-			log.Warningf("profiles: failed to save profile %s after marking as used: %s", profile.ScopedID(), err)
-		}
-	}
+	return false
 }
 
 // String returns a string representation of the Profile.
 func (profile *Profile) String() string {
-	return profile.Name
+	return fmt.Sprintf("<%s %s/%s>", profile.Name, profile.Source, profile.ID)
+}
+
+// IsOutdated returns whether the this instance of the profile is marked as outdated.
+func (profile *Profile) IsOutdated() bool {
+	return profile.outdated.IsSet()
 }
 
 // AddEndpoint adds an endpoint to the endpoint list, saves the profile and reloads the configuration.
@@ -252,82 +282,50 @@ func (profile *Profile) AddServiceEndpoint(newEntry string) {
 }
 
 func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
+	// When finished, save the profile.
+	defer func() {
+		err := profile.Save()
+		if err != nil {
+			log.Warningf("profile: failed to save profile %s after add an endpoint rule: %s", profile.ScopedID(), err)
+		}
+	}()
+
+	// When finished increase the revision counter of the layered profile.
+	defer func() {
+		if profile.layeredProfile != nil {
+			profile.layeredProfile.Lock()
+			defer profile.layeredProfile.Unlock()
+
+			profile.layeredProfile.RevisionCounter++
+		}
+	}()
+
+	// Lock the profile for editing.
 	profile.Lock()
-	// get, update, save endpoints list
+	defer profile.Unlock()
+
+	// Get the endpoint list configuration value and add the new entry.
 	endpointList, ok := profile.configPerspective.GetAsStringArray(cfgKey)
 	if !ok {
 		endpointList = make([]string, 0, 1)
 	}
-	endpointList = append(endpointList, newEntry)
+	endpointList = append([]string{newEntry}, endpointList...)
 	config.PutValueIntoHierarchicalConfig(profile.Config, cfgKey, endpointList)
 
-	profile.Unlock()
-	err := profile.Save()
-	if err != nil {
-		log.Warningf("profile: failed to save profile after adding endpoint: %s", err)
-	}
-
-	// reload manually
-	profile.Lock()
+	// Reload the profile manually in order to parse the newly added entry.
 	profile.dataParsed = false
-	err = profile.parseConfig()
+	err := profile.parseConfig()
 	if err != nil {
-		log.Warningf("profile: failed to parse profile config after adding endpoint: %s", err)
+		log.Warningf("profile: failed to parse %s config after adding endpoint: %s", profile, err)
 	}
-	profile.Unlock()
 }
 
-// GetProfile loads a profile from the database.
-func GetProfile(source profileSource, id string) (*Profile, error) {
-	return GetProfileByScopedID(makeScopedID(source, id))
-}
-
-// GetProfileByScopedID loads a profile from the database using a scoped ID like "local/id" or "community/id".
-func GetProfileByScopedID(scopedID string) (*Profile, error) {
-	// check cache
-	profile := getActiveProfile(scopedID)
-	if profile != nil {
-		profile.MarkUsed()
-		return profile, nil
-	}
-
-	// get from database
-	r, err := profileDB.Get(profilesDBPath + scopedID)
-	if err != nil {
-		return nil, err
-	}
-
-	// convert
-	profile, err = EnsureProfile(r)
-	if err != nil {
-		return nil, err
-	}
-
-	// lock for prepping
+// LayeredProfile returns the layered profile associated with this profile.
+func (profile *Profile) LayeredProfile() *LayeredProfile {
 	profile.Lock()
+	defer profile.Unlock()
 
-	// prepare config
-	err = profile.prepConfig()
-	if err != nil {
-		log.Warningf("profiles: profile %s has (partly) invalid configuration: %s", profile.ID, err)
-	}
-
-	// parse config
-	err = profile.parseConfig()
-	if err != nil {
-		log.Warningf("profiles: profile %s has (partly) invalid configuration: %s", profile.ID, err)
-	}
-
-	// mark as internal
-	profile.internalSave = true
-
-	profile.Unlock()
-
-	// mark active
-	profile.MarkUsed()
-	markProfileActive(profile)
-
-	return profile, nil
+	return profile.layeredProfile
 }
 
 // EnsureProfile ensures that the given record is a *Profile, and returns it.

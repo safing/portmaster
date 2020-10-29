@@ -8,35 +8,58 @@ import (
 )
 
 // GetProfile finds and assigns a profile set to the process.
-func (p *Process) GetProfile(ctx context.Context) error {
+func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	p.Lock()
 	defer p.Unlock()
 
 	// only find profiles if not already done.
 	if p.profile != nil {
 		log.Tracer(ctx).Trace("process: profile already loaded")
-		// mark profile as used
+		// Mark profile as used.
 		p.profile.MarkUsed()
-		return nil
+		return false, nil
 	}
 	log.Tracer(ctx).Trace("process: loading profile")
 
-	// get profile
-	localProfile, new, err := profile.FindOrCreateLocalProfileByPath(p.Path)
-	if err != nil {
-		return err
+	// Check if we need a special profile.
+	profileID := ""
+	switch p.Pid {
+	case UnidentifiedProcessID:
+		profileID = profile.UnidentifiedProfileID
+	case SystemProcessID:
+		profileID = profile.SystemProfileID
 	}
-	// add more information if new
+
+	// Get the (linked) local profile.
+	localProfile, new, err := profile.GetProfile(profile.SourceLocal, profileID, p.Path)
+	if err != nil {
+		return false, err
+	}
+
+	// If the local profile is new, add some information from the process.
 	if new {
 		localProfile.Name = p.ExecName
+
+		// Special profiles will only have a name, but not an ExecName.
+		if localProfile.Name == "" {
+			localProfile.Name = p.Name
+		}
 	}
 
-	// mark profile as used
-	localProfile.MarkUsed()
+	// Mark profile as used.
+	profileChanged := localProfile.MarkUsed()
 
+	// Save the profile if we changed something.
+	if new || profileChanged {
+		err := localProfile.Save()
+		if err != nil {
+			log.Warningf("process: failed to save profile %s: %s", localProfile.ScopedID(), err)
+		}
+	}
+
+	// Assign profile to process.
 	p.LocalProfileKey = localProfile.Key()
-	p.profile = profile.NewLayeredProfile(localProfile)
+	p.profile = localProfile.LayeredProfile()
 
-	go p.Save()
-	return nil
+	return true, nil
 }

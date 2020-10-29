@@ -442,21 +442,6 @@ func (conn *Connection) delete() {
 	dbController.PushUpdate(conn)
 }
 
-// UpdateAndCheck updates profiles and checks whether a reevaluation is needed.
-func (conn *Connection) UpdateAndCheck() (needsReevaluation bool) {
-	p := conn.process.Profile()
-	if p == nil {
-		return false
-	}
-	revCnt := p.Update()
-
-	if conn.profileRevisionCounter != revCnt {
-		conn.profileRevisionCounter = revCnt
-		needsReevaluation = true
-	}
-	return
-}
-
 // SetFirewallHandler sets the firewall handler for this link, and starts a
 // worker to handle the packets.
 func (conn *Connection) SetFirewallHandler(handler FirewallHandler) {

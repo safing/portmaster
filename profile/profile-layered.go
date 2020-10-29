@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 
 	"github.com/safing/portmaster/status"
@@ -22,10 +23,13 @@ var (
 
 // LayeredProfile combines multiple Profiles.
 type LayeredProfile struct {
-	lock sync.Mutex
+	record.Base
+	sync.RWMutex
 
-	localProfile    *Profile
-	layers          []*Profile
+	localProfile *Profile
+	layers       []*Profile
+
+	LayerIDs        []string
 	RevisionCounter uint64
 
 	validityFlag       *abool.AtomicBool
@@ -34,19 +38,21 @@ type LayeredProfile struct {
 
 	securityLevel *uint32
 
+	// These functions give layered access to configuration options and require
+	// the layered profile to be read locked.
 	DisableAutoPermit   config.BoolOption
 	BlockScopeLocal     config.BoolOption
 	BlockScopeLAN       config.BoolOption
 	BlockScopeInternet  config.BoolOption
 	BlockP2P            config.BoolOption
 	BlockInbound        config.BoolOption
-	EnforceSPN          config.BoolOption
 	RemoveOutOfScopeDNS config.BoolOption
 	RemoveBlockedDNS    config.BoolOption
 	FilterSubDomains    config.BoolOption
 	FilterCNAMEs        config.BoolOption
 	PreventBypassing    config.BoolOption
 	DomainHeuristics    config.BoolOption
+	UseSPN              config.BoolOption
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -56,7 +62,8 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	new := &LayeredProfile{
 		localProfile:       localProfile,
 		layers:             make([]*Profile, 0, len(localProfile.LinkedProfiles)+1),
-		revisionCounter:    0,
+		LayerIDs:           make([]string, 0, len(localProfile.LinkedProfiles)+1),
+		RevisionCounter:    0,
 		validityFlag:       abool.NewBool(true),
 		globalValidityFlag: config.NewValidityFlag(),
 		securityLevel:      &securityLevelVal,
@@ -86,10 +93,6 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 		CfgOptionBlockInboundKey,
 		cfgOptionBlockInbound,
 	)
-	new.EnforceSPN = new.wrapSecurityLevelOption(
-		CfgOptionEnforceSPNKey,
-		cfgOptionEnforceSPN,
-	)
 	new.RemoveOutOfScopeDNS = new.wrapSecurityLevelOption(
 		CfgOptionRemoveOutOfScopeDNSKey,
 		cfgOptionRemoveOutOfScopeDNS,
@@ -114,16 +117,44 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 		CfgOptionDomainHeuristicsKey,
 		cfgOptionDomainHeuristics,
 	)
+	new.UseSPN = new.wrapBoolOption(
+		CfgOptionUseSPNKey,
+		cfgOptionUseSPN,
+	)
 
-	// TODO: load linked profiles.
-
-	// FUTURE: load forced company profile
+	new.LayerIDs = append(new.LayerIDs, localProfile.ScopedID())
 	new.layers = append(new.layers, localProfile)
-	// FUTURE: load company profile
-	// FUTURE: load community profile
+
+	// TODO: Load additional profiles.
 
 	new.updateCaches()
+
+	new.SetKey(revisionProviderPrefix + localProfile.ID)
 	return new
+}
+
+// LockForUsage locks the layered profile, including all layers individually.
+func (lp *LayeredProfile) LockForUsage() {
+	lp.RLock()
+	for _, layer := range lp.layers {
+		layer.RLock()
+	}
+}
+
+// LockForUsage unlocks the layered profile, including all layers individually.
+func (lp *LayeredProfile) UnlockForUsage() {
+	lp.RUnlock()
+	for _, layer := range lp.layers {
+		layer.RUnlock()
+	}
+}
+
+// LocalProfile returns the local profile associated with this layered profile.
+func (lp *LayeredProfile) LocalProfile() *Profile {
+	lp.RLock()
+	defer lp.RUnlock()
+
+	return lp.localProfile
 }
 
 func (lp *LayeredProfile) getValidityFlag() *abool.AtomicBool {
@@ -138,23 +169,56 @@ func (lp *LayeredProfile) RevisionCnt() (revisionCounter uint64) {
 		return 0
 	}
 
-	lp.lock.Lock()
-	defer lp.lock.Unlock()
+	lp.RLock()
+	defer lp.RUnlock()
 
-	return lp.revisionCounter
+	return lp.RevisionCounter
+}
+
+// MarkStillActive marks all the layers as still active.
+func (lp *LayeredProfile) MarkStillActive() {
+	if lp == nil {
+		return
+	}
+
+	lp.RLock()
+	defer lp.RUnlock()
+
+	for _, layer := range lp.layers {
+		layer.MarkStillActive()
+	}
+}
+
+func (lp *LayeredProfile) NeedsUpdate() (outdated bool) {
+	lp.RLock()
+	defer lp.RUnlock()
+
+	// Check global config state.
+	if !lp.globalValidityFlag.IsValid() {
+		return true
+	}
+
+	// Check config in layers.
+	for _, layer := range lp.layers {
+		if layer.outdated.IsSet() {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Update checks for updated profiles and replaces any outdated profiles.
 func (lp *LayeredProfile) Update() (revisionCounter uint64) {
-	lp.lock.Lock()
-	defer lp.lock.Unlock()
+	lp.Lock()
+	defer lp.Unlock()
 
 	var changed bool
 	for i, layer := range lp.layers {
 		if layer.outdated.IsSet() {
 			changed = true
 			// update layer
-			newLayer, err := GetProfile(layer.Source, layer.ID)
+			newLayer, _, err := GetProfile(layer.Source, layer.ID, layer.LinkedPath)
 			if err != nil {
 				log.Errorf("profiles: failed to update profile %s", layer.ScopedID())
 			} else {
@@ -179,10 +243,10 @@ func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 		lp.updateCaches()
 
 		// bump revision counter
-		lp.revisionCounter++
+		lp.RevisionCounter++
 	}
 
-	return lp.revisionCounter
+	return lp.RevisionCounter
 }
 
 func (lp *LayeredProfile) updateCaches() {
@@ -194,8 +258,6 @@ func (lp *LayeredProfile) updateCaches() {
 		}
 	}
 	atomic.StoreUint32(lp.securityLevel, uint32(newLevel))
-
-	// TODO: ignore community profiles
 }
 
 // MarkUsed marks the localProfile as used.
@@ -203,12 +265,12 @@ func (lp *LayeredProfile) MarkUsed() {
 	lp.localProfile.MarkUsed()
 }
 
-// SecurityLevel returns the highest security level of all layered profiles.
+// SecurityLevel returns the highest security level of all layered profiles. This function is atomic and does not require any locking.
 func (lp *LayeredProfile) SecurityLevel() uint8 {
 	return uint8(atomic.LoadUint32(lp.securityLevel))
 }
 
-// DefaultAction returns the active default action ID.
+// DefaultAction returns the active default action ID. This functions requires the layered profile to be read locked.
 func (lp *LayeredProfile) DefaultAction() uint8 {
 	for _, layer := range lp.layers {
 		if layer.defaultAction > 0 {
@@ -221,7 +283,7 @@ func (lp *LayeredProfile) DefaultAction() uint8 {
 	return cfgDefaultAction
 }
 
-// MatchEndpoint checks if the given endpoint matches an entry in any of the profiles.
+// MatchEndpoint checks if the given endpoint matches an entry in any of the profiles. This functions requires the layered profile to be read locked.
 func (lp *LayeredProfile) MatchEndpoint(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
 	for _, layer := range lp.layers {
 		if layer.endpoints.IsSet() {
@@ -237,7 +299,7 @@ func (lp *LayeredProfile) MatchEndpoint(ctx context.Context, entity *intel.Entit
 	return cfgEndpoints.Match(ctx, entity)
 }
 
-// MatchServiceEndpoint checks if the given endpoint of an inbound connection matches an entry in any of the profiles.
+// MatchServiceEndpoint checks if the given endpoint of an inbound connection matches an entry in any of the profiles. This functions requires the layered profile to be read locked.
 func (lp *LayeredProfile) MatchServiceEndpoint(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
 	entity.EnableReverseResolving()
 
@@ -256,7 +318,7 @@ func (lp *LayeredProfile) MatchServiceEndpoint(ctx context.Context, entity *inte
 }
 
 // MatchFilterLists matches the entity against the set of filter
-// lists.
+// lists. This functions requires the layered profile to be read locked.
 func (lp *LayeredProfile) MatchFilterLists(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
 	entity.ResolveSubDomainLists(ctx, lp.FilterSubDomains())
 	entity.EnableCNAMECheck(ctx, lp.FilterCNAMEs())
@@ -287,16 +349,6 @@ func (lp *LayeredProfile) MatchFilterLists(ctx context.Context, entity *intel.En
 	return endpoints.NoMatch, nil
 }
 
-// AddEndpoint adds an endpoint to the local endpoint list, saves the local profile and reloads the configuration.
-func (lp *LayeredProfile) AddEndpoint(newEntry string) {
-	lp.localProfile.AddEndpoint(newEntry)
-}
-
-// AddServiceEndpoint adds a service endpoint to the local endpoint list, saves the local profile and reloads the configuration.
-func (lp *LayeredProfile) AddServiceEndpoint(newEntry string) {
-	lp.localProfile.AddServiceEndpoint(newEntry)
-}
-
 func (lp *LayeredProfile) wrapSecurityLevelOption(configKey string, globalConfig config.IntOption) config.BoolOption {
 	activeAtLevels := lp.wrapIntOption(configKey, globalConfig)
 
@@ -305,6 +357,33 @@ func (lp *LayeredProfile) wrapSecurityLevelOption(configKey string, globalConfig
 			lp.SecurityLevel(),           // layered profile security level
 			status.ActiveSecurityLevel(), // global security level
 		) > 0
+	}
+}
+
+func (lp *LayeredProfile) wrapBoolOption(configKey string, globalConfig config.BoolOption) config.BoolOption {
+	valid := no
+	var value bool
+
+	return func() bool {
+		if !valid.IsSet() {
+			valid = lp.getValidityFlag()
+
+			found := false
+		layerLoop:
+			for _, layer := range lp.layers {
+				layerValue, ok := layer.configPerspective.GetAsBool(configKey)
+				if ok {
+					found = true
+					value = layerValue
+					break layerLoop
+				}
+			}
+			if !found {
+				value = globalConfig()
+			}
+		}
+
+		return value
 	}
 }
 
@@ -333,6 +412,20 @@ func (lp *LayeredProfile) wrapIntOption(configKey string, globalConfig config.In
 
 		return value
 	}
+}
+
+// GetProfileSource returns the database key of the first profile in the
+// layers that has the given configuration key set. If it returns an empty
+// string, the global profile can be assumed to have been effective.
+func (lp *LayeredProfile) GetProfileSource(configKey string) string {
+	for _, layer := range lp.layers {
+		if layer.configPerspective.Has(configKey) {
+			return layer.Key()
+		}
+	}
+
+	// Global Profile
+	return ""
 }
 
 /*
