@@ -63,7 +63,6 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 		localProfile:       localProfile,
 		layers:             make([]*Profile, 0, len(localProfile.LinkedProfiles)+1),
 		LayerIDs:           make([]string, 0, len(localProfile.LinkedProfiles)+1),
-		RevisionCounter:    0,
 		validityFlag:       abool.NewBool(true),
 		globalValidityFlag: config.NewValidityFlag(),
 		securityLevel:      &securityLevelVal,
@@ -361,21 +360,26 @@ func (lp *LayeredProfile) wrapSecurityLevelOption(configKey string, globalConfig
 }
 
 func (lp *LayeredProfile) wrapBoolOption(configKey string, globalConfig config.BoolOption) config.BoolOption {
-	valid := no
+	revCnt := lp.RevisionCounter
 	var value bool
+	var refreshLock sync.Mutex
 
 	return func() bool {
-		if !valid.IsSet() {
-			valid = lp.getValidityFlag()
+		refreshLock.Lock()
+		defer refreshLock.Unlock()
 
+		// Check if we need to refresh the value.
+		if revCnt != lp.RevisionCounter {
+			revCnt = lp.RevisionCounter
+
+			// Go through all layers to find an active value.
 			found := false
-		layerLoop:
 			for _, layer := range lp.layers {
 				layerValue, ok := layer.configPerspective.GetAsBool(configKey)
 				if ok {
 					found = true
 					value = layerValue
-					break layerLoop
+					break
 				}
 			}
 			if !found {
@@ -388,21 +392,26 @@ func (lp *LayeredProfile) wrapBoolOption(configKey string, globalConfig config.B
 }
 
 func (lp *LayeredProfile) wrapIntOption(configKey string, globalConfig config.IntOption) config.IntOption {
-	valid := no
+	revCnt := lp.RevisionCounter
 	var value int64
+	var refreshLock sync.Mutex
 
 	return func() int64 {
-		if !valid.IsSet() {
-			valid = lp.getValidityFlag()
+		refreshLock.Lock()
+		defer refreshLock.Unlock()
 
+		// Check if we need to refresh the value.
+		if revCnt != lp.RevisionCounter {
+			revCnt = lp.RevisionCounter
+
+			// Go through all layers to find an active value.
 			found := false
-		layerLoop:
 			for _, layer := range lp.layers {
 				layerValue, ok := layer.configPerspective.GetAsInt(configKey)
 				if ok {
 					found = true
 					value = layerValue
-					break layerLoop
+					break
 				}
 			}
 			if !found {
@@ -432,21 +441,26 @@ func (lp *LayeredProfile) GetProfileSource(configKey string) string {
 For later:
 
 func (lp *LayeredProfile) wrapStringOption(configKey string, globalConfig config.StringOption) config.StringOption {
-	valid := no
+	revCnt := lp.RevisionCounter
 	var value string
+	var refreshLock sync.Mutex
 
 	return func() string {
-		if !valid.IsSet() {
-			valid = lp.getValidityFlag()
+		refreshLock.Lock()
+		defer refreshLock.Unlock()
 
+		// Check if we need to refresh the value.
+		if revCnt != lp.RevisionCounter {
+			revCnt = lp.RevisionCounter
+
+			// Go through all layers to find an active value.
 			found := false
-		layerLoop:
 			for _, layer := range lp.layers {
 				layerValue, ok := layer.configPerspective.GetAsString(configKey)
 				if ok {
 					found = true
 					value = layerValue
-					break layerLoop
+					break
 				}
 			}
 			if !found {

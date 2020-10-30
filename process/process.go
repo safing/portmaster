@@ -59,7 +59,27 @@ type Process struct {
 
 // Profile returns the assigned layered profile.
 func (p *Process) Profile() *profile.LayeredProfile {
+	if p == nil {
+		return nil
+	}
+
 	return p.profile
+}
+
+// GetLastSeen returns the unix timestamp when the process was last seen.
+func (p *Process) GetLastSeen() int64 {
+	p.Lock()
+	defer p.Unlock()
+
+	return p.LastSeen
+}
+
+// SetLastSeen sets the unix timestamp when the process was last seen.
+func (p *Process) SetLastSeen(lastSeen int64) {
+	p.Lock()
+	defer p.Unlock()
+
+	p.LastSeen = lastSeen
 }
 
 // Strings returns a string representation of process.

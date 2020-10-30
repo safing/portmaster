@@ -38,7 +38,9 @@ import (
 
 const noReasonOptionKey = ""
 
-var deciders = []func(context.Context, *network.Connection, packet.Packet) bool{
+type deciderFn func(context.Context, *network.Connection, packet.Packet) bool
+
+var deciders = []deciderFn{
 	checkPortmasterConnection,
 	checkSelfCommunication,
 	checkConnectionType,
@@ -152,7 +154,7 @@ func checkSelfCommunication(ctx context.Context, conn *network.Connection, pkt p
 				if err != nil {
 					log.Tracer(ctx).Warningf("filter: failed to find load local peer process with PID %d: %s", otherPid, err)
 				} else if otherProcess.Pid == conn.Process().Pid {
-					conn.Accept("connection to self", noReasonOptionKey)
+					conn.Accept("process internal connection", noReasonOptionKey)
 					conn.Internal = true
 					return true
 				}

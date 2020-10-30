@@ -97,7 +97,8 @@ func GetProfile(source profileSource, id, linkedPath string) (
 		// Process profiles coming directly from the database.
 		// As we don't use any caching, these will be new objects.
 
-		// Mark the profile as being saved internally in order to bypass checks.
+		// Mark the profile as being saved internally in order to not trigger an
+		// update after saving it to the database.
 		profile.internalSave = true
 
 		// Add a layeredProfile to local profiles.

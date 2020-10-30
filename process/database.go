@@ -122,11 +122,12 @@ func CleanProcessStorage(activePIDs map[int]struct{}) {
 		}
 
 		// Process is inactive, start deletion process
+		lastSeen := p.GetLastSeen()
 		switch {
-		case p.LastSeen == 0:
-			// add last
-			p.LastSeen = time.Now().Unix()
-		case p.LastSeen > threshold:
+		case lastSeen == 0:
+			// add last seen timestamp
+			p.SetLastSeen(time.Now().Unix())
+		case lastSeen > threshold:
 			// within keep period
 		default:
 			// delete now
