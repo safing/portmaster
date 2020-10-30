@@ -186,6 +186,7 @@ Examples:
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{},
 		Annotations: config.Annotations{
+			config.StackableAnnotation:    true,
 			config.DisplayHintAnnotation:  endpoints.DisplayHintEndpointList,
 			config.DisplayOrderAnnotation: cfgOptionEndpointsOrder,
 			config.CategoryAnnotation:     "Rules",
@@ -207,6 +208,7 @@ Examples:
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{"+ Localhost"},
 		Annotations: config.Annotations{
+			config.StackableAnnotation:    true,
 			config.DisplayHintAnnotation:  endpoints.DisplayHintEndpointList,
 			config.DisplayOrderAnnotation: cfgOptionServiceEndpointsOrder,
 			config.CategoryAnnotation:     "Rules",
