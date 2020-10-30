@@ -27,8 +27,6 @@ func registerRevisionProvider() error {
 }
 
 func getRevisions(key string) ([]record.Record, error) {
-	log.Warningf("loading for key " + key)
-
 	key = strings.TrimPrefix(key, revisionProviderPrefix)
 
 	var profiles []*Profile
