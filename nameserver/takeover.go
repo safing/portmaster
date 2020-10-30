@@ -47,10 +47,16 @@ func checkForConflictingService() error {
 	// wait for a short duration for the other service to shut down
 	time.Sleep(10 * time.Millisecond)
 
-	notifications.NotifyInfo(
-		"namserver-stopped-conflicting-service",
-		fmt.Sprintf("Portmaster stopped a conflicting name service (pid %d) to gain required system integration.", pid),
-	)
+	notifications.Notify(&notifications.Notification{
+		EventID:  "namserver:stopped-conflicting-service",
+		Type:     notifications.Info,
+		Title:    "Conflicting DNS Service",
+		Category: "Secure DNS",
+		Message: fmt.Sprintf(
+			"The Portmaster stopped a conflicting name service (pid %d) to gain required system integration.",
+			pid,
+		),
+	})
 
 	// restart via service-worker logic
 	return fmt.Errorf("%w: stopped conflicting name service with pid %d", modules.ErrRestartNow, pid)

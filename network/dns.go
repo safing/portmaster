@@ -124,15 +124,15 @@ func (conn *Connection) GetExtraRRs(ctx context.Context, request *dns.Msg) []dns
 	}
 
 	// Create resource record with verdict and reason.
-	rr, err := nsutil.MakeMessageRecord(level, fmt.Sprintf("%s: %s", conn.Verdict.Verb(), conn.Reason))
+	rr, err := nsutil.MakeMessageRecord(level, fmt.Sprintf("%s: %s", conn.Verdict.Verb(), conn.Reason.Msg))
 	if err != nil {
 		log.Tracer(ctx).Warningf("filter: failed to add informational record to reply: %s", err)
 		return nil
 	}
 	extra := []dns.RR{rr}
 
-	// Add additional records from ReasonContext.
-	if rrProvider, ok := conn.ReasonContext.(nsutil.RRProvider); ok {
+	// Add additional records from Reason.Context.
+	if rrProvider, ok := conn.Reason.Context.(nsutil.RRProvider); ok {
 		rrs := rrProvider.GetExtraRRs(ctx, request)
 		extra = append(extra, rrs...)
 	}

@@ -24,9 +24,9 @@ func init() {
 		filterModule,
 		"config:filter/",
 		&config.Option{
-			Name:           "Enable Privacy Filter",
+			Name:           "Privacy Filter",
 			Key:            CfgOptionEnableFilterKey,
-			Description:    "Enable the Privacy Filter Subsystem to filter DNS queries and network requests.",
+			Description:    "Enable the DNS and Network Filter.",
 			OptType:        config.OptTypeBool,
 			ExpertiseLevel: config.ExpertiseLevelUser,
 			ReleaseLevel:   config.ReleaseLevelBeta,

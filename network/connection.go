@@ -83,12 +83,10 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// The verdict may change so any access to it must be guarded by the
 	// connection lock.
 	Verdict Verdict
-	// Reason is a human readable description justifying the set verdict.
+	// Reason holds information justifying the verdict, as well as additional
+	// information about the reason.
 	// Access to Reason must be guarded by the connection lock.
-	Reason string
-	// ReasonContext may holds additional reason-specific information and
-	// any access must be guarded by the connection lock.
-	ReasonContext interface{}
+	Reason Reason
 	// Started holds the number of seconds in UNIX epoch time at which
 	// the connection has been initated and first seen by the portmaster.
 	// Staretd is only every set when creating a new connection object
@@ -96,7 +94,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	Started int64
 	// Ended is set to the number of seconds in UNIX epoch time at which
 	// the connection is considered terminated. Ended may be set at any
-	// time so access must be guarded by the conneciton lock.
+	// time so access must be guarded by the connection lock.
 	Ended int64
 	// VerdictPermanent is set to true if the final verdict is permanent
 	// and the connection has been (or will be) handed back to the kernel.
@@ -121,7 +119,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// points and access to it must be guarded by the connection lock.
 	Internal bool
 	// process holds a reference to the actor process. That is, the
-	// process instance that initated the conneciton.
+	// process instance that initated the connection.
 	process *process.Process
 	// pkgQueue is used to serialize packet handling for a single
 	// connection and is served by the connections packetHandler.
@@ -141,10 +139,26 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// inspectorData holds additional meta data for the inspectors.
 	// using the inspectors index as a map key.
 	inspectorData map[uint8]interface{}
-	// profileRevisionCounter is used to track changes to the process
+	// ProfileRevisionCounter is used to track changes to the process
 	// profile and required for correct re-evaluation of a connections
 	// verdict.
-	profileRevisionCounter uint64
+	ProfileRevisionCounter uint64
+}
+
+// Reason holds information justifying a verdict, as well as additional
+// information about the reason.
+type Reason struct {
+	// Msg is a human readable description of the reason.
+	Msg string
+	// OptionKey is the configuration option key of the setting that
+	// was responsible for the verdict.
+	OptionKey string
+	// Profile is the database key of the profile that held the setting
+	// that was responsible for the verdict.
+	Profile string
+	// ReasonContext may hold additional reason-specific information and
+	// any access must be guarded by the connection lock.
+	Context interface{}
 }
 
 func getProcessContext(proc *process.Process) ProcessContext {
@@ -290,7 +304,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		Entity: entity,
 		// meta
 		Started:                time.Now().Unix(),
-		profileRevisionCounter: proc.Profile().RevisionCnt(),
+		ProfileRevisionCounter: proc.Profile().RevisionCnt(),
 	}
 }
 
@@ -300,73 +314,77 @@ func GetConnection(id string) (*Connection, bool) {
 }
 
 // AcceptWithContext accepts the connection.
-func (conn *Connection) AcceptWithContext(reason string, ctx interface{}) {
-	if !conn.SetVerdict(VerdictAccept, reason, ctx) {
+func (conn *Connection) AcceptWithContext(reason, reasonOptionKey string, ctx interface{}) {
+	if !conn.SetVerdict(VerdictAccept, reason, reasonOptionKey, ctx) {
 		log.Warningf("filter: tried to accept %s, but current verdict is %s", conn, conn.Verdict)
 	}
 }
 
 // Accept is like AcceptWithContext but only accepts a reason.
-func (conn *Connection) Accept(reason string) {
-	conn.AcceptWithContext(reason, nil)
+func (conn *Connection) Accept(reason, reasonOptionKey string) {
+	conn.AcceptWithContext(reason, reasonOptionKey, nil)
 }
 
 // BlockWithContext blocks the connection.
-func (conn *Connection) BlockWithContext(reason string, ctx interface{}) {
-	if !conn.SetVerdict(VerdictBlock, reason, ctx) {
+func (conn *Connection) BlockWithContext(reason, reasonOptionKey string, ctx interface{}) {
+	if !conn.SetVerdict(VerdictBlock, reason, reasonOptionKey, ctx) {
 		log.Warningf("filter: tried to block %s, but current verdict is %s", conn, conn.Verdict)
 	}
 }
 
 // Block is like BlockWithContext but does only accepts a reason.
-func (conn *Connection) Block(reason string) {
-	conn.BlockWithContext(reason, nil)
+func (conn *Connection) Block(reason, reasonOptionKey string) {
+	conn.BlockWithContext(reason, reasonOptionKey, nil)
 }
 
 // DropWithContext drops the connection.
-func (conn *Connection) DropWithContext(reason string, ctx interface{}) {
-	if !conn.SetVerdict(VerdictDrop, reason, ctx) {
+func (conn *Connection) DropWithContext(reason, reasonOptionKey string, ctx interface{}) {
+	if !conn.SetVerdict(VerdictDrop, reason, reasonOptionKey, ctx) {
 		log.Warningf("filter: tried to drop %s, but current verdict is %s", conn, conn.Verdict)
 	}
 }
 
 // Drop is like DropWithContext but does only accepts a reason.
-func (conn *Connection) Drop(reason string) {
-	conn.DropWithContext(reason, nil)
+func (conn *Connection) Drop(reason, reasonOptionKey string) {
+	conn.DropWithContext(reason, reasonOptionKey, nil)
 }
 
 // DenyWithContext blocks or drops the link depending on the connection direction.
-func (conn *Connection) DenyWithContext(reason string, ctx interface{}) {
+func (conn *Connection) DenyWithContext(reason, reasonOptionKey string, ctx interface{}) {
 	if conn.Inbound {
-		conn.DropWithContext(reason, ctx)
+		conn.DropWithContext(reason, reasonOptionKey, ctx)
 	} else {
-		conn.BlockWithContext(reason, ctx)
+		conn.BlockWithContext(reason, reasonOptionKey, ctx)
 	}
 }
 
 // Deny is like DenyWithContext but only accepts a reason.
-func (conn *Connection) Deny(reason string) {
-	conn.DenyWithContext(reason, nil)
+func (conn *Connection) Deny(reason, reasonOptionKey string) {
+	conn.DenyWithContext(reason, reasonOptionKey, nil)
 }
 
 // FailedWithContext marks the connection with VerdictFailed and stores the reason.
-func (conn *Connection) FailedWithContext(reason string, ctx interface{}) {
-	if !conn.SetVerdict(VerdictFailed, reason, ctx) {
+func (conn *Connection) FailedWithContext(reason, reasonOptionKey string, ctx interface{}) {
+	if !conn.SetVerdict(VerdictFailed, reason, reasonOptionKey, ctx) {
 		log.Warningf("filter: tried to drop %s due to error but current verdict is %s", conn, conn.Verdict)
 	}
 }
 
 // Failed is like FailedWithContext but only accepts a string.
-func (conn *Connection) Failed(reason string) {
-	conn.FailedWithContext(reason, nil)
+func (conn *Connection) Failed(reason, reasonOptionKey string) {
+	conn.FailedWithContext(reason, reasonOptionKey, nil)
 }
 
 // SetVerdict sets a new verdict for the connection, making sure it does not interfere with previous verdicts.
-func (conn *Connection) SetVerdict(newVerdict Verdict, reason string, reasonCtx interface{}) (ok bool) {
+func (conn *Connection) SetVerdict(newVerdict Verdict, reason, reasonOptionKey string, reasonCtx interface{}) (ok bool) {
 	if newVerdict >= conn.Verdict {
 		conn.Verdict = newVerdict
-		conn.Reason = reason
-		conn.ReasonContext = reasonCtx
+		conn.Reason.Msg = reason
+		conn.Reason.Context = reasonCtx
+		if reasonOptionKey != "" && conn.Process() != nil {
+			conn.Reason.OptionKey = reasonOptionKey
+			conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
+		}
 		return true
 	}
 	return false
@@ -424,21 +442,6 @@ func (conn *Connection) delete() {
 	dbController.PushUpdate(conn)
 }
 
-// UpdateAndCheck updates profiles and checks whether a reevaluation is needed.
-func (conn *Connection) UpdateAndCheck() (needsReevaluation bool) {
-	p := conn.process.Profile()
-	if p == nil {
-		return false
-	}
-	revCnt := p.Update()
-
-	if conn.profileRevisionCounter != revCnt {
-		conn.profileRevisionCounter = revCnt
-		needsReevaluation = true
-	}
-	return
-}
-
 // SetFirewallHandler sets the firewall handler for this link, and starts a
 // worker to handle the packets.
 func (conn *Connection) SetFirewallHandler(handler FirewallHandler) {
@@ -490,7 +493,7 @@ func (conn *Connection) packetHandler() {
 			defaultFirewallHandler(conn, pkt)
 		}
 		// log verdict
-		log.Tracer(pkt.Ctx()).Infof("filter: connection %s %s: %s", conn, conn.Verdict.Verb(), conn.Reason)
+		log.Tracer(pkt.Ctx()).Infof("filter: connection %s %s: %s", conn, conn.Verdict.Verb(), conn.Reason.Msg)
 
 		// save does not touch any changing data
 		// must not be locked, will deadlock with cleaner functions

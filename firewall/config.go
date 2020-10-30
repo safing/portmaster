@@ -45,9 +45,9 @@ func registerConfig() error {
 	permanentVerdicts = config.Concurrent.GetAsBool(CfgOptionPermanentVerdictsKey, true)
 
 	err = config.Register(&config.Option{
-		Name:           "Ask with System Notifications",
+		Name:           "Prompt Desktop Notifications",
 		Key:            CfgOptionAskWithSystemNotificationsKey,
-		Description:    `Ask about connections using your operating system's notification system. For this to be enabled, the setting "Use System Notifications" must enabled too. This only affects questions from the Privacy Filter, and does not affect alerts from the Portmaster.`,
+		Description:    `In addition to showing prompt notifications in the Portmaster App, also send them to the Desktop. This requires the Portmaster Notifier to be running. Requires Desktop Notifications to be enabled.`,
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
@@ -66,9 +66,9 @@ func registerConfig() error {
 	}
 
 	err = config.Register(&config.Option{
-		Name:           "Timeout for Ask Notifications",
+		Name:           "Prompt Timeout",
 		Key:            CfgOptionAskTimeoutKey,
-		Description:    "Amount of time (in seconds) how long the Portmaster will wait for a response when prompting about a connection via a notification. Please note that system notifications might not respect this or have it's own limits.",
+		Description:    "How long the Portmaster will wait for a reply to a prompt notification. Please note that Desktop Notifications might not respect this or have it's own limits.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
@@ -82,7 +82,7 @@ func registerConfig() error {
 	if err != nil {
 		return err
 	}
-	askTimeout = config.Concurrent.GetAsInt(CfgOptionAskTimeoutKey, 60)
+	askTimeout = config.Concurrent.GetAsInt(CfgOptionAskTimeoutKey, 15)
 
 	devMode = config.Concurrent.GetAsBool(core.CfgDevModeKey, false)
 	apiListenAddress = config.GetAsString(api.CfgDefaultListenAddressKey, "")

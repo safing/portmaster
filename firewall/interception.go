@@ -171,7 +171,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	ps := getPortStatusAndMarkUsed(pkt.Info().LocalPort())
 	if ps.isMe {
 		// approve
-		conn.Accept("internally approved")
+		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true
 		// finish
 		conn.StopFirewallHandler()
@@ -191,7 +191,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	// check if filtering is enabled
 	if !filterEnabled() {
 		conn.Inspecting = false
-		conn.SetVerdict(network.VerdictAccept, "privacy filter disabled", nil)
+		conn.Accept("privacy filter disabled", noReasonOptionKey)
 		conn.StopFirewallHandler()
 		issueVerdict(conn, pkt, 0, true)
 		return

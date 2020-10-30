@@ -70,7 +70,7 @@ func handleWindowsDNSCache() {
 
 func notifyDisableDNSCache() {
 	(&notifications.Notification{
-		ID:      "windows-disable-dns-cache",
+		EventID: "interception:windows-disable-dns-cache",
 		Message: "The Portmaster needs the Windows Service \"DNS Client\" (dnscache) to be disabled for best effectiveness.",
 		Type:    notifications.Warning,
 	}).Save()
@@ -78,7 +78,7 @@ func notifyDisableDNSCache() {
 
 func notifyRebootRequired() {
 	(&notifications.Notification{
-		ID:      "windows-dnscache-reboot-required",
+		EventID: "interception:windows-dnscache-reboot-required",
 		Message: "Please restart your system to complete Portmaster integration.",
 		Type:    notifications.Warning,
 	}).Save()

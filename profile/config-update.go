@@ -71,13 +71,9 @@ func updateGlobalConfigProfile(ctx context.Context, data interface{}) error {
 	}
 
 	// build global profile for reference
-	profile := &Profile{
-		ID:           "global-config",
-		Source:       SourceSpecial,
-		Name:         "Global Configuration",
-		Config:       make(map[string]interface{}),
-		internalSave: true,
-	}
+	profile := New(SourceSpecial, "global-config")
+	profile.Name = "Global Configuration"
+	profile.Internal = true
 
 	newConfig := make(map[string]interface{})
 	// fill profile config options
