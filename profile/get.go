@@ -16,8 +16,11 @@ import (
 )
 
 const (
+	// UnidentifiedProfileID is the profile ID used for unidentified processes.
 	UnidentifiedProfileID = "_unidentified"
-	SystemProfileID       = "_system"
+
+	// SystemProfileID is the profile ID used for the system/kernel.
+	SystemProfileID = "_system"
 )
 
 var getProfileSingleInflight singleflight.Group
@@ -25,7 +28,7 @@ var getProfileSingleInflight singleflight.Group
 // GetProfile fetches a profile. This function ensure that the profile loaded
 // is shared among all callers. You must always supply both the scopedID and
 // linkedPath parameters whenever available.
-func GetProfile(source profileSource, id, linkedPath string) (
+func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 	profile *Profile,
 	newProfile bool,
 	err error,

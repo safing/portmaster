@@ -142,10 +142,10 @@ func upgradeCoreNotifyActionHandler(_ context.Context, n *notifications.Notifica
 			nil,
 		)
 		if err != nil {
-			log.Warningf("updates: failed to trigger restart via notification: %s", err)
+			return fmt.Errorf("failed to trigger restart via notification: %s", err)
 		}
 	case "later":
-		n.Delete()
+		return n.Delete()
 	}
 
 	return nil

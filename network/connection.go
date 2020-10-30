@@ -94,7 +94,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	Started int64
 	// Ended is set to the number of seconds in UNIX epoch time at which
 	// the connection is considered terminated. Ended may be set at any
-	// time so access must be guarded by the conneciton lock.
+	// time so access must be guarded by the connection lock.
 	Ended int64
 	// VerdictPermanent is set to true if the final verdict is permanent
 	// and the connection has been (or will be) handed back to the kernel.
@@ -119,7 +119,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// points and access to it must be guarded by the connection lock.
 	Internal bool
 	// process holds a reference to the actor process. That is, the
-	// process instance that initated the conneciton.
+	// process instance that initated the connection.
 	process *process.Process
 	// pkgQueue is used to serialize packet handling for a single
 	// connection and is served by the connections packetHandler.

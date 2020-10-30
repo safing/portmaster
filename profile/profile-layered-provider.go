@@ -4,8 +4,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/safing/portbase/database"
-
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/runtime"
 )
@@ -16,6 +14,7 @@ const (
 
 var (
 	errProfileNotActive = errors.New("profile not active")
+	errNoLayeredProfile = errors.New("profile has no layered profile")
 )
 
 func registerRevisionProvider() error {
@@ -38,7 +37,7 @@ func getRevision(key string) ([]record.Record, error) {
 	// Get layered profile.
 	layeredProfile := profile.LayeredProfile()
 	if layeredProfile == nil {
-		return nil, database.ErrNotFound
+		return nil, errNoLayeredProfile
 	}
 
 	// Update profiles if necessary.

@@ -89,7 +89,7 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// Config holds profile specific setttings. It's a nested
 	// object with keys defining the settings database path. All keys
 	// until the actual settings value (which is everything that is not
-	// an object) need to be concatinated for the settings database
+	// an object) need to be concatenated for the settings database
 	// path.
 	Config map[string]interface{}
 	// ApproxLastUsed holds a UTC timestamp in seconds of
@@ -120,7 +120,6 @@ type Profile struct { //nolint:maligned // not worth the effort
 	filterListIDs     []string
 
 	// Lifecycle Management
-	usedBy     *LayeredProfile
 	outdated   *abool.AtomicBool
 	lastActive *int64
 

@@ -10,15 +10,9 @@ import (
 
 	"github.com/safing/portmaster/status"
 
-	"github.com/tevino/abool"
-
 	"github.com/safing/portbase/config"
 	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/profile/endpoints"
-)
-
-var (
-	no = abool.NewBool(false)
 )
 
 // LayeredProfile combines multiple Profiles.
@@ -29,11 +23,8 @@ type LayeredProfile struct {
 	localProfile *Profile
 	layers       []*Profile
 
-	LayerIDs        []string
-	RevisionCounter uint64
-
-	validityFlag       *abool.AtomicBool
-	validityFlagLock   sync.Mutex
+	LayerIDs           []string
+	RevisionCounter    uint64
 	globalValidityFlag *config.ValidityFlag
 
 	securityLevel *uint32
@@ -63,7 +54,6 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 		localProfile:       localProfile,
 		layers:             make([]*Profile, 0, len(localProfile.LinkedProfiles)+1),
 		LayerIDs:           make([]string, 0, len(localProfile.LinkedProfiles)+1),
-		validityFlag:       abool.NewBool(true),
 		globalValidityFlag: config.NewValidityFlag(),
 		securityLevel:      &securityLevelVal,
 	}
@@ -140,7 +130,7 @@ func (lp *LayeredProfile) LockForUsage() {
 	}
 }
 
-// LockForUsage unlocks the layered profile, including all layers individually.
+// UnlockForUsage unlocks the layered profile, including all layers individually.
 func (lp *LayeredProfile) UnlockForUsage() {
 	lp.RUnlock()
 	for _, layer := range lp.layers {
@@ -154,12 +144,6 @@ func (lp *LayeredProfile) LocalProfile() *Profile {
 	defer lp.RUnlock()
 
 	return lp.localProfile
-}
-
-func (lp *LayeredProfile) getValidityFlag() *abool.AtomicBool {
-	lp.validityFlagLock.Lock()
-	defer lp.validityFlagLock.Unlock()
-	return lp.validityFlag
 }
 
 // RevisionCnt returns the current profile revision counter.
@@ -188,6 +172,7 @@ func (lp *LayeredProfile) MarkStillActive() {
 	}
 }
 
+// NeedsUpdate checks for outdated profiles.
 func (lp *LayeredProfile) NeedsUpdate() (outdated bool) {
 	lp.RLock()
 	defer lp.RUnlock()
@@ -207,7 +192,7 @@ func (lp *LayeredProfile) NeedsUpdate() (outdated bool) {
 	return false
 }
 
-// Update checks for updated profiles and replaces any outdated profiles.
+// Update checks for and replaces any outdated profiles.
 func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 	lp.Lock()
 	defer lp.Unlock()
@@ -230,11 +215,6 @@ func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 	}
 
 	if changed {
-		// reset validity flag
-		lp.validityFlagLock.Lock()
-		lp.validityFlag.SetTo(false)
-		lp.validityFlag = abool.NewBool(true)
-		lp.validityFlagLock.Unlock()
 		// get global config validity flag
 		lp.globalValidityFlag.Refresh()
 

@@ -58,7 +58,7 @@ func prompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) { 
 		}
 
 	case <-time.After(1 * time.Second):
-		log.Tracer(ctx).Debugf("filter: continueing prompting async")
+		log.Tracer(ctx).Debugf("filter: continuing prompting async")
 		conn.Deny("prompting in progress", profile.CfgOptionDefaultActionKey)
 
 	case <-ctx.Done():
