@@ -127,6 +127,12 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	new.CreateMeta()
 	new.SetKey(runtime.DefaultRegistry.DatabaseName() + ":" + revisionProviderPrefix + localProfile.ID)
 
+	// Inform database subscribers about the new layered profile.
+	new.Lock()
+	defer new.Unlock()
+
+	pushLayeredProfile(new)
+
 	return new
 }
 
@@ -231,6 +237,8 @@ func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 
 		// bump revision counter
 		lp.RevisionCounter++
+
+		pushLayeredProfile(lp)
 	}
 
 	return lp.RevisionCounter

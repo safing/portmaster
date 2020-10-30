@@ -14,16 +14,24 @@ const (
 )
 
 var (
-	errProfileNotActive = errors.New("profile not active")
-	errNoLayeredProfile = errors.New("profile has no layered profile")
+	errProfileNotActive                  = errors.New("profile not active")
+	errNoLayeredProfile                  = errors.New("profile has no layered profile")
+	pushLayeredProfile  runtime.PushFunc = func(...record.Record) {}
 )
 
 func registerRevisionProvider() error {
-	_, err := runtime.Register(
+	push, err := runtime.Register(
 		revisionProviderPrefix,
 		runtime.SimpleValueGetterFunc(getRevisions),
 	)
-	return err
+
+	if err != nil {
+		return err
+	}
+
+	pushLayeredProfile = push
+
+	return nil
 }
 
 func getRevisions(key string) ([]record.Record, error) {
