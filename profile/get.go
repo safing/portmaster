@@ -51,6 +51,8 @@ func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 			// Check if there already is an active and not outdated profile.
 			profile = getActiveProfile(scopedID)
 			if profile != nil {
+				profile.MarkStillActive()
+
 				if profile.outdated.IsSet() {
 					previousVersion = profile
 				} else {

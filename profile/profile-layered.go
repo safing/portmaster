@@ -7,6 +7,7 @@ import (
 
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/runtime"
 
 	"github.com/safing/portmaster/status"
 
@@ -31,19 +32,24 @@ type LayeredProfile struct {
 
 	// These functions give layered access to configuration options and require
 	// the layered profile to be read locked.
-	DisableAutoPermit   config.BoolOption
-	BlockScopeLocal     config.BoolOption
-	BlockScopeLAN       config.BoolOption
-	BlockScopeInternet  config.BoolOption
-	BlockP2P            config.BoolOption
-	BlockInbound        config.BoolOption
-	RemoveOutOfScopeDNS config.BoolOption
-	RemoveBlockedDNS    config.BoolOption
-	FilterSubDomains    config.BoolOption
-	FilterCNAMEs        config.BoolOption
-	PreventBypassing    config.BoolOption
-	DomainHeuristics    config.BoolOption
-	UseSPN              config.BoolOption
+
+	// TODO(ppacher): we need JSON tags here so the layeredProfile can be exposed
+	// via the API. If we ever switch away from JSON to something else supported
+	// by DSD this WILL BREAK!
+
+	DisableAutoPermit   config.BoolOption `json:"-"`
+	BlockScopeLocal     config.BoolOption `json:"-"`
+	BlockScopeLAN       config.BoolOption `json:"-"`
+	BlockScopeInternet  config.BoolOption `json:"-"`
+	BlockP2P            config.BoolOption `json:"-"`
+	BlockInbound        config.BoolOption `json:"-"`
+	RemoveOutOfScopeDNS config.BoolOption `json:"-"`
+	RemoveBlockedDNS    config.BoolOption `json:"-"`
+	FilterSubDomains    config.BoolOption `json:"-"`
+	FilterCNAMEs        config.BoolOption `json:"-"`
+	PreventBypassing    config.BoolOption `json:"-"`
+	DomainHeuristics    config.BoolOption `json:"-"`
+	UseSPN              config.BoolOption `json:"-"`
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -118,7 +124,15 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 
 	new.updateCaches()
 
-	new.SetKey(revisionProviderPrefix + localProfile.ID)
+	new.CreateMeta()
+	new.SetKey(runtime.DefaultRegistry.DatabaseName() + ":" + revisionProviderPrefix + localProfile.ID)
+
+	// Inform database subscribers about the new layered profile.
+	new.Lock()
+	defer new.Unlock()
+
+	pushLayeredProfile(new)
+
 	return new
 }
 
@@ -223,6 +237,8 @@ func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 
 		// bump revision counter
 		lp.RevisionCounter++
+
+		pushLayeredProfile(lp)
 	}
 
 	return lp.RevisionCounter

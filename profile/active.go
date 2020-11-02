@@ -16,18 +16,26 @@ var (
 	activeProfilesLock sync.RWMutex
 )
 
-// getActiveProfile returns a cached copy of an active profile and nil if it isn't found.
+// getActiveProfile returns a cached copy of an active profile and
+// nil if it isn't found.
 func getActiveProfile(scopedID string) *Profile {
 	activeProfilesLock.RLock()
 	defer activeProfilesLock.RUnlock()
 
-	activeProfile, ok := activeProfiles[scopedID]
-	if ok {
-		activeProfile.MarkStillActive()
-		return activeProfile
+	return activeProfiles[scopedID]
+}
+
+// getAllActiveProfiles returns a slice of active profiles.
+func getAllActiveProfiles() []*Profile {
+	activeProfilesLock.RLock()
+	defer activeProfilesLock.RUnlock()
+
+	result := make([]*Profile, 0, len(activeProfiles))
+	for _, p := range activeProfiles {
+		result = append(result, p)
 	}
 
-	return nil
+	return result
 }
 
 // findActiveProfile searched for an active local profile using the linked path.

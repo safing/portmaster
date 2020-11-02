@@ -5,37 +5,70 @@ import (
 	"strings"
 
 	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/runtime"
 )
 
 const (
-	revisionProviderPrefix = "runtime:layeredProfile/"
+	revisionProviderPrefix = "layeredProfile/"
 )
 
 var (
-	errProfileNotActive = errors.New("profile not active")
-	errNoLayeredProfile = errors.New("profile has no layered profile")
+	errProfileNotActive                  = errors.New("profile not active")
+	errNoLayeredProfile                  = errors.New("profile has no layered profile")
+	pushLayeredProfile  runtime.PushFunc = func(...record.Record) {}
 )
 
 func registerRevisionProvider() error {
-	_, err := runtime.DefaultRegistry.Register(
+	push, err := runtime.Register(
 		revisionProviderPrefix,
-		runtime.SimpleValueGetterFunc(getRevision),
+		runtime.SimpleValueGetterFunc(getRevisions),
 	)
-	return err
-}
 
-func getRevision(key string) ([]record.Record, error) {
-	key = strings.TrimPrefix(key, revisionProviderPrefix)
-
-	// Get active profile.
-	profile := getActiveProfile(key)
-	if profile == nil {
-		return nil, errProfileNotActive
+	if err != nil {
+		return err
 	}
 
+	pushLayeredProfile = push
+
+	return nil
+}
+
+func getRevisions(key string) ([]record.Record, error) {
+	key = strings.TrimPrefix(key, revisionProviderPrefix)
+
+	var profiles []*Profile
+
+	if key == "" {
+		profiles = getAllActiveProfiles()
+	} else {
+		// Get active profile.
+		profile := getActiveProfile(key)
+		if profile == nil {
+			return nil, errProfileNotActive
+		}
+	}
+
+	records := make([]record.Record, 0, len(profiles))
+
+	for _, p := range profiles {
+		layered, err := getProfileRevision(p)
+		if err != nil {
+			log.Warningf("failed to get layered profile for %s: %s", p.ID, err)
+			continue
+		}
+
+		records = append(records, layered)
+	}
+
+	return records, nil
+}
+
+// getProfileRevision returns the layered profile for p.
+// It also updates the layered profile if required.
+func getProfileRevision(p *Profile) (*LayeredProfile, error) {
 	// Get layered profile.
-	layeredProfile := profile.LayeredProfile()
+	layeredProfile := p.LayeredProfile()
 	if layeredProfile == nil {
 		return nil, errNoLayeredProfile
 	}
@@ -45,5 +78,5 @@ func getRevision(key string) ([]record.Record, error) {
 		layeredProfile.Update()
 	}
 
-	return []record.Record{layeredProfile}, nil
+	return layeredProfile, nil
 }
