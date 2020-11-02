@@ -125,7 +125,7 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	new.updateCaches()
 
 	new.CreateMeta()
-	new.SetKey(runtime.DefaultRegistry.DatabaseName() + ":" + revisionProviderPrefix + localProfile.ID)
+	new.SetKey(runtime.DefaultRegistry.DatabaseName() + ":" + revisionProviderPrefix + localProfile.ScopedID())
 
 	// Inform database subscribers about the new layered profile.
 	new.Lock()

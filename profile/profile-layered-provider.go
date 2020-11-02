@@ -47,6 +47,7 @@ func getRevisions(key string) ([]record.Record, error) {
 		if profile == nil {
 			return nil, errProfileNotActive
 		}
+		profiles = append(profiles, profile)
 	}
 
 	records := make([]record.Record, 0, len(profiles))
