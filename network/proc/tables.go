@@ -207,6 +207,7 @@ func procDelimiter(c rune) bool {
 }
 
 func convertIPv4(data string) net.IP {
+	// Decode and bullshit check the data length.
 	decoded, err := hex.DecodeString(data)
 	if err != nil {
 		log.Warningf("proc: could not parse IPv4 %s: %s", data, err)
@@ -216,11 +217,14 @@ func convertIPv4(data string) net.IP {
 		log.Warningf("proc: decoded IPv4 %s has wrong length", decoded)
 		return nil
 	}
+
+	// Build the IPv4 address with the reversed byte order.
 	ip := net.IPv4(decoded[3], decoded[2], decoded[1], decoded[0])
 	return ip
 }
 
 func convertIPv6(data string) net.IP {
+	// Decode and bullshit check the data length.
 	decoded, err := hex.DecodeString(data)
 	if err != nil {
 		log.Warningf("proc: could not parse IPv6 %s: %s", data, err)
@@ -229,6 +233,11 @@ func convertIPv6(data string) net.IP {
 	if len(decoded) != 16 {
 		log.Warningf("proc: decoded IPv6 %s has wrong length", decoded)
 		return nil
+	}
+
+	// Build the IPv6 address with the translated byte order.
+	for i := 0; i < 16; i += 4 {
+		decoded[i], decoded[i+1], decoded[i+2], decoded[i+3] = decoded[i+3], decoded[i+2], decoded[i+1], decoded[i]
 	}
 	ip := net.IP(decoded)
 	return ip
