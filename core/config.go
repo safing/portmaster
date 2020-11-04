@@ -35,7 +35,7 @@ func registerConfig() error {
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   defaultDevMode,
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: 127,
+			config.DisplayOrderAnnotation: 512,
 			config.CategoryAnnotation:     "Development",
 		},
 	})
@@ -52,8 +52,8 @@ func registerConfig() error {
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   true, // TODO: turn off by default on unsupported systems
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: 32,
-			config.CategoryAnnotation:     "General",
+			config.DisplayOrderAnnotation: -15,
+			config.CategoryAnnotation:     "User Interface",
 		},
 	})
 	if err != nil {

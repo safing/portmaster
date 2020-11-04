@@ -82,8 +82,12 @@ func prepConfig() error {
 		Name:        "DNS Servers",
 		Key:         CfgOptionNameServersKey,
 		Description: "DNS Servers to use for resolving DNS requests.",
-		Help: strings.ReplaceAll(`DNS Servers are configured in a URL format. This allows you to specify special settings for a resolver. If you just want to use a resolver at IP 10.2.3.4, please enter: "dns://10.2.3.4"  
-The format is: "protocol://ip:port?parameter=value&parameter=value"
+		Help: strings.ReplaceAll(`DNS Servers are used in the order as entered. The first one will be used as the primary DNS Server. Only if it fails, will the other servers be used as a fallback - in their respective order. If all fail, or if no DNS Server is configured here, the Portmaster will use the one configured in your system or network.
+
+Additionally, if it is more likely that the DNS Server of your system or network has a (better) answer to a request, they will be asked first. This will be the case for special local domains and domain spaces announced on the current network.
+
+DNS Servers are configured in a URL format. This allows you to specify special settings for a resolver. If you just want to use a resolver at IP 10.2.3.4, please enter: "dns://10.2.3.4"  
+The format is: "protocol://ip:port?parameter=value&parameter=value"  
 
 - Protocol
 	- "dot": DNS-over-TLS (recommended)  
@@ -152,7 +156,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	err = config.Register(&config.Option{
 		Name:           "Retry Timeout",
 		Key:            CfgOptionNameserverRetryRateKey,
-		Description:    "Timeout between retries when a resolver fails.",
+		Description:    "Timeout between retries when a DNS server fails.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
@@ -169,9 +173,9 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	nameserverRetryRate = config.Concurrent.GetAsInt(CfgOptionNameserverRetryRateKey, 600)
 
 	err = config.Register(&config.Option{
-		Name:           "Ignore system resolvers",
+		Name:           "Ignore System/Network Servers",
 		Key:            CfgOptionNoAssignedNameserversKey,
-		Description:    "Ignore resolvers that were acquired from the operating system.",
+		Description:    "Ignore DNS servers configured in your system or network.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
@@ -209,7 +213,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	noMulticastDNS = status.SecurityLevelOption(CfgOptionNoMulticastDNSKey)
 
 	err = config.Register(&config.Option{
-		Name:           "Enforce secure DNS",
+		Name:           "Enforce Secure DNS",
 		Key:            CfgOptionNoInsecureProtocolsKey,
 		Description:    "Never resolve using insecure protocols, ie. plain DNS.",
 		OptType:        config.OptTypeInt,
@@ -229,14 +233,17 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	noInsecureProtocols = status.SecurityLevelOption(CfgOptionNoInsecureProtocolsKey)
 
 	err = config.Register(&config.Option{
-		Name:           "Block unofficial TLDs",
-		Key:            CfgOptionDontResolveSpecialDomainsKey,
-		Description:    fmt.Sprintf("Block %s.", formatScopeList(specialServiceDomains)),
+		Name: "Block Unofficial TLDs",
+		Key:  CfgOptionDontResolveSpecialDomainsKey,
+		Description: fmt.Sprintf(
+			"Block %s. Unofficial domains may pose a security risk. This does not affect .onion domains in the Tor Browser.",
+			formatScopeList(specialServiceDomains),
+		),
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   status.SecurityLevelsAll,
-		PossibleValues: status.SecurityLevelValues,
+		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionDontResolveSpecialDomainsOrder,
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
@@ -254,7 +261,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 func formatScopeList(list []string) string {
 	formatted := make([]string, 0, len(list))
 	for _, domain := range list {
-		formatted = append(formatted, strings.Trim(domain, "."))
+		formatted = append(formatted, strings.TrimRight(domain, "."))
 	}
 	return strings.Join(formatted, ", ")
 }
