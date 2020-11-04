@@ -204,10 +204,15 @@ func getSystemResolvers() (resolvers []*Resolver) {
 	return resolvers
 }
 
+const missingResolversErrorID = "missing-resolvers"
+
 func loadResolvers() {
 	// TODO: what happens when a lot of processes want to reload at once? we do not need to run this multiple times in a short time frame.
 	resolversLock.Lock()
 	defer resolversLock.Unlock()
+
+	// Resolve module error about missing resolvers.
+	module.Resolve(missingResolversErrorID)
 
 	newResolvers := append(
 		getConfiguredResolvers(configuredNameServers()),
@@ -215,17 +220,16 @@ func loadResolvers() {
 	)
 
 	if len(newResolvers) == 0 {
-		msg := "no (valid) dns servers found in (user) configuration or system, falling back to defaults"
+		msg := "no (valid) dns servers found in configuration or system, falling back to defaults"
 		log.Warningf("resolver: %s", msg)
-		module.Warning("no-valid-user-resolvers", msg)
+		module.Warning(missingResolversErrorID, msg)
 
 		// load defaults directly, overriding config system
 		newResolvers = getConfiguredResolvers(defaultNameServers)
 		if len(newResolvers) == 0 {
 			msg = "no (valid) dns servers found in configuration or system"
 			log.Criticalf("resolver: %s", msg)
-			module.Error("no-valid-default-resolvers", msg)
-			return
+			module.Error(missingResolversErrorID, msg)
 		}
 	}
 
