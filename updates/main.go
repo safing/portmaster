@@ -20,7 +20,7 @@ const (
 	releaseChannelStable = "stable"
 	releaseChannelBeta   = "beta"
 
-	disableUpdatesKey = "core/disableUpdates"
+	enableUpdatesKey = "core/automaticUpdates"
 
 	// ModuleName is the name of the update module
 	// and can be used when declaring module dependencies.
@@ -245,7 +245,7 @@ func DisableUpdateSchedule() error {
 }
 
 func checkForUpdates(ctx context.Context) (err error) {
-	if updatesCurrentlyDisabled {
+	if !updatesCurrentlyEnabled {
 		log.Debugf("updates: automatic updates are disabled")
 		return nil
 	}
