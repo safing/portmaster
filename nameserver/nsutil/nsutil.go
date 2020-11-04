@@ -58,9 +58,9 @@ func ZeroIP(msgs ...string) ResponderFunc {
 
 			switch question.Qtype {
 			case dns.TypeA:
-				rr, err = dns.NewRR(question.Name + " 0 IN A 0.0.0.0")
+				rr, err = dns.NewRR(question.Name + " 1 IN A 0.0.0.17")
 			case dns.TypeAAAA:
-				rr, err = dns.NewRR(question.Name + " 0 IN AAAA ::")
+				rr, err = dns.NewRR(question.Name + " 1 IN AAAA ::17")
 			}
 
 			switch {
@@ -100,9 +100,9 @@ func Localhost(msgs ...string) ResponderFunc {
 
 			switch question.Qtype {
 			case dns.TypeA:
-				rr, err = dns.NewRR("localhost. 0 IN A 127.0.0.1")
+				rr, err = dns.NewRR("localhost. 1 IN A 127.0.0.1")
 			case dns.TypeAAAA:
-				rr, err = dns.NewRR("localhost. 0 IN AAAA ::1")
+				rr, err = dns.NewRR("localhost. 1 IN AAAA ::1")
 			}
 
 			switch {
