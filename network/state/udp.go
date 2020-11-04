@@ -22,6 +22,8 @@ type udpTable struct {
 
 	states     map[string]map[string]*udpState
 	statesLock sync.Mutex
+
+	dualStack *udpTable
 }
 
 type udpState struct {
@@ -41,16 +43,17 @@ const (
 )
 
 var (
-	udp4Table = &udpTable{
-		version:    4,
-		fetchTable: getUDP4Table,
-		states:     make(map[string]map[string]*udpState),
-	}
-
 	udp6Table = &udpTable{
 		version:    6,
 		fetchTable: getUDP6Table,
 		states:     make(map[string]map[string]*udpState),
+	}
+
+	udp4Table = &udpTable{
+		version:    4,
+		fetchTable: getUDP4Table,
+		states:     make(map[string]map[string]*udpState),
+		dualStack:  udp6Table,
 	}
 )
 

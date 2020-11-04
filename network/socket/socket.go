@@ -29,6 +29,8 @@ type BindInfo struct {
 	PID   int
 	UID   int
 	Inode int
+
+	ListensAny bool
 }
 
 // Address is an IP + Port pair.

@@ -16,16 +16,19 @@ type tcpTable struct {
 
 	fetchOnceAgain utils.OnceAgain
 	fetchTable     func() (connections []*socket.ConnectionInfo, listeners []*socket.BindInfo, err error)
+
+	dualStack *tcpTable
 }
 
 var (
-	tcp4Table = &tcpTable{
-		version:    4,
-		fetchTable: getTCP4Table,
-	}
-
 	tcp6Table = &tcpTable{
 		version:    6,
 		fetchTable: getTCP6Table,
+	}
+
+	tcp4Table = &tcpTable{
+		version:    4,
+		fetchTable: getTCP4Table,
+		dualStack:  tcp6Table,
 	}
 )
