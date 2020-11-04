@@ -115,7 +115,18 @@ func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache) *res
 	if len(rrCache.FilteredEntries) > 0 {
 		rrCache.Filtered = true
 		if validIPs == 0 {
-			conn.Block("no addresses returned for this domain are permitted", interveningOptionKey)
+			switch interveningOptionKey {
+			case profile.CfgOptionBlockScopeInternetKey:
+				conn.Block("Internet access blocked", interveningOptionKey)
+			case profile.CfgOptionBlockScopeLANKey:
+				conn.Block("LAN access blocked", interveningOptionKey)
+			case profile.CfgOptionBlockScopeLocalKey:
+				conn.Block("Localhost access blocked", interveningOptionKey)
+			case profile.CfgOptionRemoveOutOfScopeDNSKey:
+				conn.Block("DNS global/private split-view violation", interveningOptionKey)
+			default:
+				conn.Block("DNS response only contained to-be-blocked IPs", interveningOptionKey)
+			}
 
 			// If all entries are filtered, this could mean that these are broken/bogus resource records.
 			if rrCache.Expired() {

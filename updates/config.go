@@ -14,11 +14,11 @@ const (
 var (
 	releaseChannel config.StringOption
 	devMode        config.BoolOption
-	disableUpdates config.BoolOption
+	enableUpdates  config.BoolOption
 
-	previousReleaseChannel   string
-	updatesCurrentlyDisabled bool
-	previousDevMode          bool
+	previousReleaseChannel  string
+	updatesCurrentlyEnabled bool
+	previousDevMode         bool
 )
 
 func registerConfig() error {
@@ -42,9 +42,9 @@ func registerConfig() error {
 			},
 		},
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: 1,
+			config.DisplayOrderAnnotation: -4,
 			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
-			config.CategoryAnnotation:     "Expertise & Release",
+			config.CategoryAnnotation:     "Updates",
 		},
 	})
 	if err != nil {
@@ -52,17 +52,17 @@ func registerConfig() error {
 	}
 
 	err = config.Register(&config.Option{
-		Name:            "Disable Updates",
-		Key:             disableUpdatesKey,
-		Description:     "Disable automatic updates. This affects all kinds of updates, including intelligence feeds and broadcast notifications.",
+		Name:            "Automatic Updates",
+		Key:             enableUpdatesKey,
+		Description:     "Enable automatic checking, downloading and applying of updates. This affects all kinds of updates, including intelligence feeds and broadcast notifications.",
 		OptType:         config.OptTypeBool,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		RequiresRestart: false,
-		DefaultValue:    false,
+		DefaultValue:    true,
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: 64,
-			config.CategoryAnnotation:     "General",
+			config.DisplayOrderAnnotation: -12,
+			config.CategoryAnnotation:     "Updates",
 		},
 	})
 	if err != nil {
@@ -76,8 +76,8 @@ func initConfig() {
 	releaseChannel = config.GetAsString(releaseChannelKey, releaseChannelStable)
 	previousReleaseChannel = releaseChannel()
 
-	disableUpdates = config.GetAsBool(disableUpdatesKey, false)
-	updatesCurrentlyDisabled = disableUpdates()
+	enableUpdates = config.GetAsBool(enableUpdatesKey, true)
+	updatesCurrentlyEnabled = enableUpdates()
 
 	devMode = config.GetAsBool(cfgDevModeKey, false)
 	previousDevMode = devMode()
@@ -99,10 +99,10 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 		changed = true
 	}
 
-	if disableUpdates() != updatesCurrentlyDisabled {
-		updatesCurrentlyDisabled = disableUpdates()
+	if enableUpdates() != updatesCurrentlyEnabled {
+		updatesCurrentlyEnabled = enableUpdates()
 		changed = true
-		forceUpdate = !updatesCurrentlyDisabled
+		forceUpdate = updatesCurrentlyEnabled
 	}
 
 	if changed {
@@ -113,7 +113,7 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 			module.Resolve(updateFailed)
 			_ = TriggerUpdate()
 			log.Infof("updates: automatic updates enabled again.")
-		} else if updatesCurrentlyDisabled {
+		} else if !updatesCurrentlyEnabled {
 			module.Warning(updateFailed, "Automatic updates are disabled! This also affects security updates and threat intelligence.")
 			log.Warningf("updates: automatic updates are now disabled.")
 		}
