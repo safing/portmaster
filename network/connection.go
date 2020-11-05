@@ -27,15 +27,19 @@ type FirewallHandler func(conn *Connection, pkt packet.Packet)
 // ProcessContext holds additional information about the process
 // that iniated a connection.
 type ProcessContext struct {
-	// Name is the name of the process.
-	Name string
+	// ProcessName is the name of the process.
+	ProcessName string
+	//ProfileName is the name of the profile.
+	ProfileName string
 	// BinaryPath is the path to the process binary.
 	BinaryPath string
 	// PID i the process identifier.
 	PID int
-	// ProfileID is the ID of the main profile that
+	// Profile is the ID of the main profile that
 	// is applied to the process.
-	ProfileID string
+	Profile string
+	// Source is the source of the profile.
+	Source string
 }
 
 // Connection describes a distinct physical network connection
@@ -163,10 +167,12 @@ type Reason struct {
 
 func getProcessContext(proc *process.Process) ProcessContext {
 	return ProcessContext{
-		BinaryPath: proc.Path,
-		Name:       proc.Name,
-		PID:        proc.Pid,
-		ProfileID:  proc.LocalProfileKey,
+		BinaryPath:  proc.Path,
+		ProcessName: proc.Name,
+		ProfileName: proc.Profile().LocalProfile().Name,
+		PID:         proc.Pid,
+		Profile:     proc.Profile().LocalProfile().ID,
+		Source:      string(proc.Profile().LocalProfile().Source),
 	}
 }
 
