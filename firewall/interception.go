@@ -2,6 +2,7 @@ package firewall
 
 import (
 	"context"
+	"net"
 	"os"
 	"sync/atomic"
 	"time"
@@ -29,6 +30,9 @@ var (
 	packetsBlocked  = new(uint64)
 	packetsDropped  = new(uint64)
 	packetsFailed   = new(uint64)
+
+	blockedIPv4 = net.IPv4(0, 0, 0, 17)
+	blockedIPv6 = net.ParseIP("::17")
 )
 
 func init() {
@@ -83,6 +87,11 @@ func handlePacket(ctx context.Context, pkt packet.Packet) {
 // fastTrackedPermit quickly permits certain network criticial or internal connections.
 func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 	meta := pkt.Info()
+
+	// Check for blocked IP
+	if meta.Dst.Equal(blockedIPv4) || meta.Dst.Equal(blockedIPv6) {
+		_ = pkt.PermanentBlock()
+	}
 
 	switch meta.Protocol {
 	case packet.ICMP:
