@@ -17,15 +17,17 @@ import (
 
 const (
 	// notification action IDs
-	permitDomainAll      = "permit-domain-all"
-	permitDomainDistinct = "permit-domain-distinct"
-	denyDomainAll        = "deny-domain-all"
-	denyDomainDistinct   = "deny-domain-distinct"
+	allowDomainAll      = "allow-domain-all"
+	allowDomainDistinct = "allow-domain-distinct"
+	blockDomainAll      = "block-domain-all"
+	blockDomainDistinct = "block-domain-distinct"
 
-	permitIP        = "permit-ip"
-	denyIP          = "deny-ip"
-	permitServingIP = "permit-serving-ip"
-	denyServingIP   = "deny-serving-ip"
+	allowIP        = "allow-ip"
+	blockIP        = "block-ip"
+	allowServingIP = "allow-serving-ip"
+	blockServingIP = "block-serving-ip"
+
+	cancelPrompt = "cancel"
 )
 
 var (
@@ -51,7 +53,7 @@ func prompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) { 
 	select {
 	case promptResponse := <-n.Response():
 		switch promptResponse {
-		case permitDomainAll, permitDomainDistinct, permitIP, permitServingIP:
+		case allowDomainAll, allowDomainDistinct, allowIP, allowServingIP:
 			conn.Accept("permitted via prompt", profile.CfgOptionEndpointsKey)
 		default: // deny
 			conn.Deny("blocked via prompt", profile.CfgOptionEndpointsKey)
@@ -59,7 +61,7 @@ func prompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) { 
 
 	case <-time.After(1 * time.Second):
 		log.Tracer(ctx).Debugf("filter: continuing prompting async")
-		conn.Deny("prompting in progress", profile.CfgOptionDefaultActionKey)
+		conn.Deny("prompting in progress, please respond to prompt", profile.CfgOptionDefaultActionKey)
 
 	case <-ctx.Done():
 		log.Tracer(ctx).Debugf("filter: aborting prompting because of shutdown")
@@ -67,17 +69,44 @@ func prompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) { 
 	}
 }
 
+// promptIDPrefix is an identifier for privacy filter prompts. This is also use
+// in the UI, so don't change!
+const promptIDPrefix = "filter:prompt"
+
 func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) (n *notifications.Notification) {
 	expires := time.Now().Add(time.Duration(askTimeout()) * time.Second).Unix()
+
+	// Get local profile.
+	profile := conn.Process().Profile()
+	if profile == nil {
+		log.Tracer(ctx).Warningf("filter: tried creating prompt for connection without profile")
+		return
+	}
+	localProfile := profile.LocalProfile()
+	if localProfile == nil {
+		log.Tracer(ctx).Warningf("filter: tried creating prompt for connection without local profile")
+		return
+	}
 
 	// first check if there is an existing notification for this.
 	// build notification ID
 	var nID string
 	switch {
 	case conn.Inbound, conn.Entity.Domain == "": // connection to/from IP
-		nID = fmt.Sprintf("filter:prompt-%d-%s-%s", conn.Process().Pid, conn.Scope, pkt.Info().RemoteIP())
+		nID = fmt.Sprintf(
+			"%s-%s-%s-%s",
+			promptIDPrefix,
+			localProfile.ID,
+			conn.Scope,
+			pkt.Info().RemoteIP(),
+		)
 	default: // connection to domain
-		nID = fmt.Sprintf("filter:prompt-%d-%s", conn.Process().Pid, conn.Scope)
+		nID = fmt.Sprintf(
+			"%s-%s-%s",
+			promptIDPrefix,
+			localProfile.ID,
+			conn.Scope,
+		)
 	}
 
 	// Only handle one notification at a time.
@@ -94,8 +123,8 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 	}
 
 	// Reference relevant data for save function
-	localProfile := conn.Process().Profile().LocalProfile()
 	entity := conn.Entity
+	// Also needed: localProfile
 
 	// Create new notification.
 	n = &notifications.Notification{
@@ -129,40 +158,36 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 		n.Message = fmt.Sprintf("Application %s wants to accept connections from %s (%d/%d)", conn.Process(), conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
 		n.AvailableActions = []*notifications.Action{
 			{
-				ID:   permitServingIP,
-				Text: "Permit",
+				ID:   allowServingIP,
+				Text: "Allow",
 			},
 			{
-				ID:   denyServingIP,
-				Text: "Deny",
+				ID:   blockServingIP,
+				Text: "Block",
 			},
 		}
 	case conn.Entity.Domain == "": // direct connection
 		n.Message = fmt.Sprintf("Application %s wants to connect to %s (%d/%d)", conn.Process(), conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
 		n.AvailableActions = []*notifications.Action{
 			{
-				ID:   permitIP,
-				Text: "Permit",
+				ID:   allowIP,
+				Text: "Allow",
 			},
 			{
-				ID:   denyIP,
-				Text: "Deny",
+				ID:   blockIP,
+				Text: "Block",
 			},
 		}
 	default: // connection to domain
 		n.Message = fmt.Sprintf("Application %s wants to connect to %s", conn.Process(), conn.Entity.Domain)
 		n.AvailableActions = []*notifications.Action{
 			{
-				ID:   permitDomainAll,
-				Text: "Permit all",
+				ID:   allowDomainAll,
+				Text: "Allow",
 			},
 			{
-				ID:   permitDomainDistinct,
-				Text: "Permit",
-			},
-			{
-				ID:   denyDomainDistinct,
-				Text: "Deny",
+				ID:   blockDomainAll,
+				Text: "Block",
 			},
 		}
 	}
@@ -174,6 +199,10 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 }
 
 func saveResponse(p *profile.Profile, entity *intel.Entity, promptResponse string) error {
+	if promptResponse == cancelPrompt {
+		return nil
+	}
+
 	// Update the profile if necessary.
 	if p.IsOutdated() {
 		var err error
@@ -185,42 +214,44 @@ func saveResponse(p *profile.Profile, entity *intel.Entity, promptResponse strin
 
 	var ep endpoints.Endpoint
 	switch promptResponse {
-	case permitDomainAll:
+	case allowDomainAll:
 		ep = &endpoints.EndpointDomain{
 			EndpointBase:  endpoints.EndpointBase{Permitted: true},
 			OriginalValue: "." + entity.Domain,
 		}
-	case permitDomainDistinct:
+	case allowDomainDistinct:
 		ep = &endpoints.EndpointDomain{
 			EndpointBase:  endpoints.EndpointBase{Permitted: true},
 			OriginalValue: entity.Domain,
 		}
-	case denyDomainAll:
+	case blockDomainAll:
 		ep = &endpoints.EndpointDomain{
 			EndpointBase:  endpoints.EndpointBase{Permitted: false},
 			OriginalValue: "." + entity.Domain,
 		}
-	case denyDomainDistinct:
+	case blockDomainDistinct:
 		ep = &endpoints.EndpointDomain{
 			EndpointBase:  endpoints.EndpointBase{Permitted: false},
 			OriginalValue: entity.Domain,
 		}
-	case permitIP, permitServingIP:
+	case allowIP, allowServingIP:
 		ep = &endpoints.EndpointIP{
 			EndpointBase: endpoints.EndpointBase{Permitted: true},
 			IP:           entity.IP,
 		}
-	case denyIP, denyServingIP:
+	case blockIP, blockServingIP:
 		ep = &endpoints.EndpointIP{
 			EndpointBase: endpoints.EndpointBase{Permitted: false},
 			IP:           entity.IP,
 		}
+	case cancelPrompt:
+		return nil
 	default:
 		return fmt.Errorf("unknown prompt response: %s", promptResponse)
 	}
 
 	switch promptResponse {
-	case permitServingIP, denyServingIP:
+	case allowServingIP, blockServingIP:
 		p.AddServiceEndpoint(ep.String())
 		log.Infof("filter: added incoming rule to profile %s: %q", p, ep.String())
 	default:
