@@ -3,6 +3,7 @@ package profile
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -281,8 +282,14 @@ func (profile *Profile) AddServiceEndpoint(newEntry string) {
 }
 
 func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
+	changed := false
+
 	// When finished, save the profile.
 	defer func() {
+		if !changed {
+			return
+		}
+
 		err := profile.Save()
 		if err != nil {
 			log.Warningf("profile: failed to save profile %s after add an endpoint rule: %s", profile.ScopedID(), err)
@@ -291,12 +298,14 @@ func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
 
 	// When finished increase the revision counter of the layered profile.
 	defer func() {
-		if profile.layeredProfile != nil {
-			profile.layeredProfile.Lock()
-			defer profile.layeredProfile.Unlock()
-
-			profile.layeredProfile.RevisionCounter++
+		if !changed || profile.layeredProfile == nil {
+			return
 		}
+
+		profile.layeredProfile.Lock()
+		defer profile.layeredProfile.Unlock()
+
+		profile.layeredProfile.RevisionCounter++
 	}()
 
 	// Lock the profile for editing.
@@ -305,11 +314,32 @@ func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
 
 	// Get the endpoint list configuration value and add the new entry.
 	endpointList, ok := profile.configPerspective.GetAsStringArray(cfgKey)
-	if !ok {
-		endpointList = make([]string, 0, 1)
+	if ok {
+		// A list already exists, check for duplicates within the same prefix.
+		newEntryPrefix := strings.Split(newEntry, " ")[0] + " "
+		for _, entry := range endpointList {
+			if !strings.HasPrefix(entry, newEntryPrefix) {
+				// We found an entry with a different prefix than the new entry.
+				// Beyond this entry we cannot possibly know if identical entries will
+				// match, so we will have to add the new entry no matter what the rest
+				// of the list has.
+				break
+			}
+
+			if entry == newEntry {
+				// An identical entry is already in the list, abort.
+				log.Debugf("profile: ingoring new endpoint rule for %s, as identical is already present: %s", profile, newEntry)
+				return
+			}
+		}
+		endpointList = append([]string{newEntry}, endpointList...)
+	} else {
+		endpointList = []string{newEntry}
 	}
-	endpointList = append([]string{newEntry}, endpointList...)
+
+	// Save new value back to profile.
 	config.PutValueIntoHierarchicalConfig(profile.Config, cfgKey, endpointList)
+	changed = true
 
 	// Reload the profile manually in order to parse the newly added entry.
 	profile.dataParsed = false
