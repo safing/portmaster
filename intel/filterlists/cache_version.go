@@ -4,15 +4,20 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/safing/portbase/database"
+
 	"github.com/hashicorp/go-version"
 	"github.com/safing/portbase/database/record"
 )
+
+const resetVersion = "v0.6.0"
 
 type cacheVersionRecord struct {
 	record.Base
 	sync.Mutex
 
 	Version string
+	Reset   string
 }
 
 // getCacheDatabaseVersion reads and returns the cache
@@ -37,6 +42,10 @@ func getCacheDatabaseVersion() (*version.Version, error) {
 		}
 	}
 
+	if verRecord.Reset != resetVersion {
+		return nil, database.ErrNotFound
+	}
+
 	ver, err := version.NewSemver(verRecord.Version)
 	if err != nil {
 		return nil, err
@@ -50,6 +59,7 @@ func getCacheDatabaseVersion() (*version.Version, error) {
 func setCacheDatabaseVersion(ver string) error {
 	verRecord := &cacheVersionRecord{
 		Version: ver,
+		Reset:   resetVersion,
 	}
 
 	verRecord.SetKey(filterListCacheVersionKey)
