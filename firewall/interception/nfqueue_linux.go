@@ -60,10 +60,18 @@ func init() {
 
 		"filter C17 -m mark --mark 0 -j DROP",
 		"filter C17 -m mark --mark 1700 -j RETURN",
+		// Accepting ICMP packets with mark 1701 is required for rejecting to work,
+		// as the rejection ICMP packet will have the same mark. Blocked ICMP
+		// packets will always result in a drop within the Portmaster.
+		"filter C17 -m mark --mark 1701 -p icmp -j RETURN",
 		"filter C17 -m mark --mark 1701 -j REJECT --reject-with icmp-host-prohibited",
 		"filter C17 -m mark --mark 1702 -j DROP",
 		"filter C17 -j CONNMARK --save-mark",
 		"filter C17 -m mark --mark 1710 -j RETURN",
+		// Accepting ICMP packets with mark 1711 is required for rejecting to work,
+		// as the rejection ICMP packet will have the same mark. Blocked ICMP
+		// packets will always result in a drop within the Portmaster.
+		"filter C17 -m mark --mark 1711 -p icmp -j RETURN",
 		"filter C17 -m mark --mark 1711 -j REJECT --reject-with icmp-host-prohibited",
 		"filter C17 -m mark --mark 1712 -j DROP",
 		"filter C17 -m mark --mark 1717 -j RETURN",
