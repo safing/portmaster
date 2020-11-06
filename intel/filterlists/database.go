@@ -200,14 +200,14 @@ func processEntry(ctx context.Context, filter *scopedBloom, entry *listEntry, re
 	normalizeEntry(entry)
 
 	// Only add the entry to the bloom filter if it has any sources.
-	if len(entry.Sources) > 0 {
+	if len(entry.Resources) > 0 {
 		filter.add(entry.Type, entry.Entity)
 	}
 
 	r := &entityRecord{
 		Value:     entry.Entity,
 		Type:      entry.Type,
-		Sources:   entry.Sources,
+		Sources:   entry.getSources(),
 		UpdatedAt: time.Now().Unix(),
 	}
 
