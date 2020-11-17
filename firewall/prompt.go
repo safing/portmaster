@@ -152,10 +152,13 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 		)
 	})
 
+	// Get name of profile for notification. The profile is read-locked by the firewall handler.
+	profileName := localProfile.Name
+
 	// add message and actions
 	switch {
 	case conn.Inbound:
-		n.Message = fmt.Sprintf("Application %s wants to accept connections from %s (%d/%d)", conn.Process(), conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
+		n.Message = fmt.Sprintf("%s wants to accept connections from %s (%d/%d)", profileName, conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
 		n.AvailableActions = []*notifications.Action{
 			{
 				ID:   allowServingIP,
@@ -167,7 +170,7 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 			},
 		}
 	case conn.Entity.Domain == "": // direct connection
-		n.Message = fmt.Sprintf("Application %s wants to connect to %s (%d/%d)", conn.Process(), conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
+		n.Message = fmt.Sprintf("%s wants to connect to %s (%d/%d)", profileName, conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
 		n.AvailableActions = []*notifications.Action{
 			{
 				ID:   allowIP,
@@ -179,7 +182,7 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 			},
 		}
 	default: // connection to domain
-		n.Message = fmt.Sprintf("Application %s wants to connect to %s", conn.Process(), conn.Entity.Domain)
+		n.Message = fmt.Sprintf("%s wants to connect to %s", profileName, conn.Entity.Domain)
 		n.AvailableActions = []*notifications.Action{
 			{
 				ID:   allowDomainAll,
@@ -206,7 +209,7 @@ func saveResponse(p *profile.Profile, entity *intel.Entity, promptResponse strin
 	// Update the profile if necessary.
 	if p.IsOutdated() {
 		var err error
-		p, _, err = profile.GetProfile(p.Source, p.ID, p.LinkedPath)
+		p, err = profile.GetProfile(p.Source, p.ID, p.LinkedPath)
 		if err != nil {
 			return err
 		}

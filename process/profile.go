@@ -31,26 +31,19 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	}
 
 	// Get the (linked) local profile.
-	localProfile, new, err := profile.GetProfile(profile.SourceLocal, profileID, p.Path)
+	localProfile, err := profile.GetProfile(profile.SourceLocal, profileID, p.Path)
 	if err != nil {
 		return false, err
 	}
 
-	// If the local profile is new, add some information from the process.
-	if new {
-		localProfile.Name = p.ExecName
-
-		// Special profiles will only have a name, but not an ExecName.
-		if localProfile.Name == "" {
-			localProfile.Name = p.Name
-		}
-	}
+	// Update metadata of profile.
+	metadataUpdated := localProfile.UpdateMetadata(p.Name)
 
 	// Mark profile as used.
 	profileChanged := localProfile.MarkUsed()
 
 	// Save the profile if we changed something.
-	if new || profileChanged {
+	if metadataUpdated || profileChanged {
 		err := localProfile.Save()
 		if err != nil {
 			log.Warningf("process: failed to save profile %s: %s", localProfile.ScopedID(), err)

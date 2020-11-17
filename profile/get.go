@@ -30,7 +30,6 @@ var getProfileSingleInflight singleflight.Group
 // linkedPath parameters whenever available.
 func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 	profile *Profile,
-	newProfile bool,
 	err error,
 ) {
 	// Select correct key for single in flight.
@@ -67,12 +66,10 @@ func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 			if errors.Is(err, database.ErrNotFound) {
 				switch id {
 				case UnidentifiedProfileID:
-					profile = New(SourceLocal, UnidentifiedProfileID)
-					newProfile = true
+					profile = New(SourceLocal, UnidentifiedProfileID, linkedPath)
 					err = nil
 				case SystemProfileID:
-					profile = New(SourceLocal, SystemProfileID)
-					newProfile = true
+					profile = New(SourceLocal, SystemProfileID, linkedPath)
 					err = nil
 				}
 			}
@@ -90,7 +87,7 @@ func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 				}
 			}
 			// Get from database.
-			profile, newProfile, err = findProfile(linkedPath)
+			profile, err = findProfile(linkedPath)
 
 		default:
 			return nil, errors.New("cannot fetch profile without ID or path")
@@ -126,13 +123,13 @@ func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 		return profile, nil
 	})
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	if p == nil {
-		return nil, false, errors.New("profile getter returned nil")
+		return nil, errors.New("profile getter returned nil")
 	}
 
-	return p.(*Profile), newProfile, nil
+	return p.(*Profile), nil
 }
 
 // getProfile fetches the profile for the given scoped ID.
@@ -149,7 +146,7 @@ func getProfile(scopedID string) (profile *Profile, err error) {
 
 // findProfile searches for a profile with the given linked path. If it cannot
 // find one, it will create a new profile for the given linked path.
-func findProfile(linkedPath string) (profile *Profile, new bool, err error) {
+func findProfile(linkedPath string) (profile *Profile, err error) {
 	// Search the database for a matching profile.
 	it, err := profileDB.Query(
 		query.New(makeProfileKey(SourceLocal, "")).Where(
@@ -157,7 +154,7 @@ func findProfile(linkedPath string) (profile *Profile, new bool, err error) {
 		),
 	)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	// Only wait for the first result, or until the query ends.
@@ -168,12 +165,11 @@ func findProfile(linkedPath string) (profile *Profile, new bool, err error) {
 	// Prep and return an existing profile.
 	if r != nil {
 		profile, err = prepProfile(r)
-		return profile, false, err
+		return profile, err
 	}
 
 	// If there was no profile in the database, create a new one, and return it.
-	profile = New(SourceLocal, "")
-	profile.LinkedPath = linkedPath
+	profile = New(SourceLocal, "", linkedPath)
 
 	// Check if the profile should be marked as internal.
 	// This is the case whenever the binary resides within the data root dir.
@@ -181,7 +177,7 @@ func findProfile(linkedPath string) (profile *Profile, new bool, err error) {
 		profile.Internal = true
 	}
 
-	return profile, true, nil
+	return profile, nil
 }
 
 func prepProfile(r record.Record) (*Profile, error) {

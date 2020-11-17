@@ -76,7 +76,7 @@ func updateGlobalConfigProfile(ctx context.Context, task *modules.Task) error {
 	}
 
 	// build global profile for reference
-	profile := New(SourceSpecial, "global-config")
+	profile := New(SourceSpecial, "global-config", "")
 	profile.Name = "Global Configuration"
 	profile.Internal = true
 
