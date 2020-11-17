@@ -1,8 +1,10 @@
 package profile
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -14,6 +16,7 @@ import (
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/utils"
+	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/profile/endpoints"
 )
@@ -58,9 +61,9 @@ type Profile struct { //nolint:maligned // not worth the effort
 	sync.RWMutex
 
 	// ID is a unique identifier for the profile.
-	ID string
+	ID string // constant
 	// Source describes the source of the profile.
-	Source profileSource
+	Source profileSource // constant
 	// Name is a human readable name of the profile. It
 	// defaults to the basename of the application.
 	Name string
@@ -78,7 +81,7 @@ type Profile struct { //nolint:maligned // not worth the effort
 	IconType iconType
 	// LinkedPath is a filesystem path to the executable this
 	// profile was created for.
-	LinkedPath string
+	LinkedPath string // constant
 	// LinkedProfiles is a list of other profiles
 	LinkedProfiles []string
 	// SecurityLevel is the mininum security level to apply to
@@ -191,10 +194,11 @@ func (profile *Profile) parseConfig() error {
 }
 
 // New returns a new Profile.
-func New(source profileSource, id string) *Profile {
+func New(source profileSource, id string, linkedPath string) *Profile {
 	profile := &Profile{
 		ID:           id,
 		Source:       source,
+		LinkedPath:   linkedPath,
 		Created:      time.Now().Unix(),
 		Config:       make(map[string]interface{}),
 		internalSave: true,
@@ -376,4 +380,107 @@ func EnsureProfile(r record.Record) (*Profile, error) {
 		return nil, fmt.Errorf("record not of type *Profile, but %T", r)
 	}
 	return new, nil
+}
+
+// UpdateMetadata updates meta data fields on the profile and returns whether
+// the profile was changed. If there is data that needs to be fetched from the
+// operating system, it will start an async worker to fetch that data and save
+// the profile afterwards.
+func (p *Profile) UpdateMetadata(processName string) (changed bool) {
+	// Check if this is a local profile, else warn and return.
+	if p.Source != SourceLocal {
+		log.Warningf("tried to update metadata for non-local profile %s", p.ScopedID())
+		return false
+	}
+
+	p.Lock()
+	defer p.Unlock()
+
+	// Check if this is a special profile.
+	if p.LinkedPath == "" {
+		// This is a special profile, just assign the processName, if needed, and
+		// return.
+		if p.Name != processName {
+			p.Name = processName
+			return true
+		}
+		return false
+	}
+
+	var needsUpdateFromSystem bool
+
+	// Check profile name.
+	_, filename := filepath.Split(p.LinkedPath)
+
+	// Update profile name if it is empty or equals the filename, which is the
+	// case for older profiles.
+	if p.Name == "" || p.Name == filename {
+		// Generate a default profile name if does not exist.
+		p.Name = osdetail.GenerateBinaryNameFromPath(p.LinkedPath)
+		if p.Name == filename {
+			// TODO: Theoretically, the generated name could be identical to the
+			// filename.
+			// As a quick fix, append a space to the name.
+			p.Name += " "
+		}
+		changed = true
+		needsUpdateFromSystem = true
+	}
+
+	// If needed, get more/better data from the operating system.
+	if needsUpdateFromSystem {
+		module.StartWorker("get profile metadata", p.updateMetadataFromSystem)
+	}
+
+	return changed
+}
+
+// updateMetadataFromSystem updates the profile metadata with data from the
+// operating system and saves it afterwards.
+func (p *Profile) updateMetadataFromSystem(ctx context.Context) error {
+	// This function is only valid for local profiles.
+	if p.Source != SourceLocal || p.LinkedPath == "" {
+		return fmt.Errorf("tried to update metadata for non-local / non-linked profile %s", p.ScopedID())
+	}
+
+	// Save the profile when finished, if needed.
+	save := false
+	defer func() {
+		if save {
+			err := p.Save()
+			if err != nil {
+				log.Warningf("profile: failed to save %s after metadata update: %s", p.ScopedID(), err)
+			}
+		}
+	}()
+
+	// Get binary name from linked path.
+	newName, err := osdetail.GetBinaryNameFromSystem(p.LinkedPath)
+	if err != nil {
+		log.Warningf("profile: error while getting binary name for %s: %s", p.LinkedPath, err)
+		return nil
+	}
+
+	// Get filename of linked path for comparison.
+	_, filename := filepath.Split(p.LinkedPath)
+
+	// TODO: Theoretically, the generated name from the system could be identical
+	// to the filename. This would mean that the worker is triggered every time
+	// the profile is freshly loaded.
+	if newName == filename {
+		// As a quick fix, append a space to the name.
+		newName += " "
+	}
+
+	// Lock profile for applying metadata.
+	p.Lock()
+	defer p.Unlock()
+
+	// Apply new name if it changed.
+	if p.Name != newName {
+		p.Name = newName
+		save = true
+	}
+
+	return nil
 }

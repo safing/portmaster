@@ -216,7 +216,7 @@ func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 		if layer.outdated.IsSet() {
 			changed = true
 			// update layer
-			newLayer, _, err := GetProfile(layer.Source, layer.ID, layer.LinkedPath)
+			newLayer, err := GetProfile(layer.Source, layer.ID, layer.LinkedPath)
 			if err != nil {
 				log.Errorf("profiles: failed to update profile %s", layer.ScopedID())
 			} else {
