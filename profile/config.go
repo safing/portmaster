@@ -165,17 +165,7 @@ func registerConfiguration() error {
 	cfgOptionDisableAutoPermit = config.Concurrent.GetAsInt(CfgOptionDisableAutoPermitKey, int64(status.SecurityLevelsAll))
 	cfgIntOptions[CfgOptionDisableAutoPermitKey] = cfgOptionDisableAutoPermit
 
-	rulesHelp := strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. Rules are entered in this format:
-
-- Every rule starts with a "+" or "-" to determine whether to allow or block matching connections.
-- Then, a matching option for an IP, which are explained in detail below.
-- The optional third segment can be used to filter by network protocol and port: "TCP/80"
-- Examples:
-	- "+ example.com TCP/80"
-	- "+ US"
-	- "- *"
-
-IP address matching options:
+	rulesHelp := strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match:
 
 - By address: "192.168.0.1"
 - By network: "192.168.0.1/24"
@@ -188,6 +178,10 @@ IP address matching options:
 - By country (based on IP): "US"
 - By filter list - use the filterlist ID prefixed with "L:": "L:MAL"
 - Match anything: "*"
+
+Additionally, you may supply a protocol and port just behind that using numbers ("6/80") or names ("TCP/HTTP").  
+In this case the rule is only matched if the protocol and port also match.  
+Example: "192.168.0.1 TCP/HTTP"
 `, `"`, "`")
 
 	// Endpoint Filter List
