@@ -1,6 +1,8 @@
 package profile
 
 import (
+	"strings"
+
 	"github.com/safing/portbase/config"
 	"github.com/safing/portmaster/profile/endpoints"
 	"github.com/safing/portmaster/status"
@@ -163,38 +165,31 @@ func registerConfiguration() error {
 	cfgOptionDisableAutoPermit = config.Concurrent.GetAsInt(CfgOptionDisableAutoPermitKey, int64(status.SecurityLevelsAll))
 	cfgIntOptions[CfgOptionDisableAutoPermitKey] = cfgOptionDisableAutoPermit
 
-	filterListHelp := `Format:
-	Permission:
-		"+": permit
-		"-": block
-	Host Matching:
-		IP, CIDR, Country Code, ASN, Filterlist, Network Scope, "*" for any
-		Domains:
-			"example.com": exact match
-			".example.com": exact match + subdomains
-			"*xample.com": prefix wildcard
-			"example.*": suffix wildcard
-			"*example*": prefix and suffix wildcard  
-	Protocol and Port Matching (optional):
-		<protocol>/<port>
+	rulesHelp := strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match:
 
-Examples:
-	+ .example.com */HTTP
-	- .example.com
-	+ 192.168.0.1
-	+ 192.168.1.1/24
-	+ Localhost,LAN
-	- AS123456789
-	- L:MAL
-	+ AT
-	- *`
+- By address: "192.168.0.1"
+- By network: "192.168.0.1/24"
+- By domain:
+	- Matching a distinct domain: "example.com"
+	- Matching a domain with subdomains: ".example.com"
+	- Matching with a wildcard prefix: "*xample.com"
+	- Matching with a wildcard suffix: "example.*"
+	- Matching domains containing text: "*example*"
+- By country (based on IP): "US"
+- By filter list - use the filterlist ID prefixed with "L:": "L:MAL"
+- Match anything: "*"
+
+Additionally, you may supply a protocol and port just behind that using numbers ("6/80") or names ("TCP/HTTP").  
+In this case the rule is only matched if the protocol and port also match.  
+Example: "192.168.0.1 TCP/HTTP"
+`, `"`, "`")
 
 	// Endpoint Filter List
 	err = config.Register(&config.Option{
 		Name:         "Outgoing Rules",
 		Key:          CfgOptionEndpointsKey,
 		Description:  "Rules that apply to outgoing network connections. Cannot overrule Network Scopes and Connection Types (see above).",
-		Help:         filterListHelp,
+		Help:         rulesHelp,
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{},
 		Annotations: config.Annotations{
@@ -216,7 +211,7 @@ Examples:
 		Name:           "Incoming Rules",
 		Key:            CfgOptionServiceEndpointsKey,
 		Description:    "Rules that apply to incoming network connections. Cannot overrule Network Scopes and Connection Types (see above). Also note that the default action for incoming connections is to always block.",
-		Help:           filterListHelp,
+		Help:           rulesHelp,
 		OptType:        config.OptTypeStringArray,
 		DefaultValue:   []string{"+ Localhost"},
 		ExpertiseLevel: config.ExpertiseLevelExpert,
@@ -251,11 +246,33 @@ Examples:
 	cfgOptionServiceEndpoints = config.Concurrent.GetAsStringArray(CfgOptionServiceEndpointsKey, []string{})
 	cfgStringArrayOptions[CfgOptionServiceEndpointsKey] = cfgOptionServiceEndpoints
 
+	filterListsHelp := strings.ReplaceAll(`Filter lists contain domains and IP addresses that are known to be used adversarial. The data is collected from many public sources and put into the following categories. In order to active a category, add it's "ID" to the list.
+
+**Ads & Trackers** - ID: "TRAC"  
+Services that track and profile people online, including as ads, analytics and telemetry.
+
+**Malware** - ID: "MAL"  
+Services that are (ab)used for attacking devices through technical means.
+
+**Deception** - ID: "DECEP"  
+Services that trick humans into thinking the service is genuine, while it is not, including phishing, fake news and fraud.
+
+**Bad Stuff (Mixed)** - ID: "BAD"  
+Miscellaneous services that are believed to be harmful to security or privacy, but their exact use is unknown, not categorized, or lists have mixed categories.
+
+**NSFW** - ID: "NSFW"  
+Services that are generally not accepted in work environments, including pornography, violence and gambling.
+
+The lists are automatically updated every hour using incremental updates.  
+[See here](https://github.com/safing/intel-data) for more detail about these lists, their sources and how to help to improve them.
+`, `"`, "`")
+
 	// Filter list IDs
 	err = config.Register(&config.Option{
 		Name:         "Filter Lists",
 		Key:          CfgOptionFilterListsKey,
 		Description:  "Block connections that match enabled filter lists.",
+		Help:         filterListsHelp,
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{"TRAC", "MAL"},
 		Annotations: config.Annotations{
