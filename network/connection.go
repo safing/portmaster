@@ -165,15 +165,26 @@ type Reason struct {
 	Context interface{}
 }
 
-func getProcessContext(proc *process.Process) ProcessContext {
-	return ProcessContext{
+func getProcessContext(ctx context.Context, proc *process.Process) ProcessContext {
+	// Gather process information.
+	pCtx := ProcessContext{
 		BinaryPath:  proc.Path,
 		ProcessName: proc.Name,
-		ProfileName: proc.Profile().LocalProfile().Name,
 		PID:         proc.Pid,
-		Profile:     proc.Profile().LocalProfile().ID,
-		Source:      string(proc.Profile().LocalProfile().Source),
 	}
+
+	// Get local profile.
+	localProfile := proc.Profile().LocalProfile()
+	if localProfile == nil {
+		log.Tracer(ctx).Warningf("network: process %s has no profile", proc)
+		return pCtx
+	}
+
+	// Add profile information and return.
+	pCtx.ProfileName = localProfile.Name
+	pCtx.Profile = localProfile.ID
+	pCtx.Source = string(localProfile.Source)
+	return pCtx
 }
 
 // NewConnectionFromDNSRequest returns a new connection based on the given dns request.
@@ -204,7 +215,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 			CNAME:  cnames,
 		},
 		process:        proc,
-		ProcessContext: getProcessContext(proc),
+		ProcessContext: getProcessContext(ctx, proc),
 		Started:        timestamp,
 		Ended:          timestamp,
 	}
@@ -304,7 +315,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		IPProtocol:     pkt.Info().Protocol,
 		LocalIP:        pkt.Info().LocalIP(),
 		LocalPort:      pkt.Info().LocalPort(),
-		ProcessContext: getProcessContext(proc),
+		ProcessContext: getProcessContext(pkt.Ctx(), proc),
 		process:        proc,
 		// remote endpoint
 		Entity: entity,

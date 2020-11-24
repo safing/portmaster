@@ -9,11 +9,9 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-// Special Process IDs
-const (
-	UnidentifiedProcessID = -1
-	SystemProcessID       = 0
-)
+// UnidentifiedProcessID is the PID used for anything that could not be
+// attributed to a PID for any reason.
+const UnidentifiedProcessID = -1
 
 var (
 	// unidentifiedProcess is used when a process cannot be found.
@@ -39,18 +37,18 @@ var (
 
 // GetUnidentifiedProcess returns the special process assigned to unidentified processes.
 func GetUnidentifiedProcess(ctx context.Context) *Process {
-	return getSpecialProcess(ctx, UnidentifiedProcessID, unidentifiedProcess)
+	return getSpecialProcess(ctx, unidentifiedProcess)
 }
 
 // GetSystemProcess returns the special process used for the Kernel.
 func GetSystemProcess(ctx context.Context) *Process {
-	return getSpecialProcess(ctx, SystemProcessID, systemProcess)
+	return getSpecialProcess(ctx, systemProcess)
 }
 
-func getSpecialProcess(ctx context.Context, pid int, template *Process) *Process {
-	p, _, _ := getSpecialProcessSingleInflight.Do(strconv.Itoa(pid), func() (interface{}, error) {
+func getSpecialProcess(ctx context.Context, template *Process) *Process {
+	p, _, _ := getSpecialProcessSingleInflight.Do(strconv.Itoa(template.Pid), func() (interface{}, error) {
 		// Check if we have already loaded the special process.
-		process, ok := GetProcessFromStorage(pid)
+		process, ok := GetProcessFromStorage(template.Pid)
 		if ok {
 			return process, nil
 		}
