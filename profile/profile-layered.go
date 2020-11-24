@@ -154,6 +154,10 @@ func (lp *LayeredProfile) UnlockForUsage() {
 
 // LocalProfile returns the local profile associated with this layered profile.
 func (lp *LayeredProfile) LocalProfile() *Profile {
+	if lp == nil {
+		return nil
+	}
+
 	lp.RLock()
 	defer lp.RUnlock()
 

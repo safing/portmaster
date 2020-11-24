@@ -232,88 +232,82 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 		defer markRequestFinished()
 	}
 
-	// create new process
+	// Create new a process object.
 	new := &Process{
 		Pid:       pid,
 		Virtual:   true, // caller must decide to actually use the process - we need to save now.
 		FirstSeen: time.Now().Unix(),
 	}
 
-	switch {
-	case new.IsKernel():
-		new.UserName = "Kernel"
-		new.Name = "Operating System"
-	default:
-
-		pInfo, err := processInfo.NewProcess(int32(pid))
-		if err != nil {
-			return nil, err
-		}
-
-		// UID
-		// net yet implemented for windows
-		if runtime.GOOS == "linux" {
-			var uids []int32
-			uids, err = pInfo.Uids()
-			if err != nil {
-				return nil, fmt.Errorf("failed to get UID for p%d: %s", pid, err)
-			}
-			new.UserID = int(uids[0])
-		}
-
-		// Username
-		new.UserName, err = pInfo.Username()
-		if err != nil {
-			return nil, fmt.Errorf("process: failed to get Username for p%d: %s", pid, err)
-		}
-
-		// TODO: User Home
-		// new.UserHome, err =
-
-		// PPID
-		ppid, err := pInfo.Ppid()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get PPID for p%d: %s", pid, err)
-		}
-		new.ParentPid = int(ppid)
-
-		// Path
-		new.Path, err = pInfo.Exe()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get Path for p%d: %s", pid, err)
-		}
-		// remove linux " (deleted)" suffix for deleted files
-		if onLinux {
-			new.Path = strings.TrimSuffix(new.Path, " (deleted)")
-		}
-		// Executable Name
-		_, new.ExecName = filepath.Split(new.Path)
-
-		// Current working directory
-		// net yet implemented for windows
-		// new.Cwd, err = pInfo.Cwd()
-		// if err != nil {
-		// 	log.Warningf("process: failed to get Cwd: %s", err)
-		// }
-
-		// Command line arguments
-		new.CmdLine, err = pInfo.Cmdline()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get Cmdline for p%d: %s", pid, err)
-		}
-
-		// Name
-		new.Name, err = pInfo.Name()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get Name for p%d: %s", pid, err)
-		}
-		if new.Name == "" {
-			new.Name = new.ExecName
-		}
-
-		// OS specifics
-		new.specialOSInit()
+	// Get process information from the system.
+	pInfo, err := processInfo.NewProcess(int32(pid))
+	if err != nil {
+		return nil, err
 	}
+
+	// UID
+	// net yet implemented for windows
+	if runtime.GOOS == "linux" {
+		var uids []int32
+		uids, err = pInfo.Uids()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get UID for p%d: %s", pid, err)
+		}
+		new.UserID = int(uids[0])
+	}
+
+	// Username
+	new.UserName, err = pInfo.Username()
+	if err != nil {
+		return nil, fmt.Errorf("process: failed to get Username for p%d: %s", pid, err)
+	}
+
+	// TODO: User Home
+	// new.UserHome, err =
+
+	// PPID
+	ppid, err := pInfo.Ppid()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get PPID for p%d: %s", pid, err)
+	}
+	new.ParentPid = int(ppid)
+
+	// Path
+	new.Path, err = pInfo.Exe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Path for p%d: %s", pid, err)
+	}
+	// remove linux " (deleted)" suffix for deleted files
+	if onLinux {
+		new.Path = strings.TrimSuffix(new.Path, " (deleted)")
+	}
+	// Executable Name
+	_, new.ExecName = filepath.Split(new.Path)
+
+	// Current working directory
+	// net yet implemented for windows
+	// new.Cwd, err = pInfo.Cwd()
+	// if err != nil {
+	// 	log.Warningf("process: failed to get Cwd: %s", err)
+	// }
+
+	// Command line arguments
+	new.CmdLine, err = pInfo.Cmdline()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Cmdline for p%d: %s", pid, err)
+	}
+
+	// Name
+	new.Name, err = pInfo.Name()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Name for p%d: %s", pid, err)
+	}
+	if new.Name == "" {
+		new.Name = new.ExecName
+	}
+
+	// OS specifics
+	new.specialOSInit()
 
 	new.Save()
 	return new, nil
