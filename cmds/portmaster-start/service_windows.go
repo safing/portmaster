@@ -24,6 +24,7 @@ var (
 		RunE: runAndLogControlError(func(cmd *cobra.Command, args []string) error {
 			return runService(cmd, &Options{
 				Identifier:        "core/portmaster-core",
+				ShortIdentifier:   "core",
 				AllowDownload:     true,
 				AllowHidingWindow: false,
 				NoOutput:          true,

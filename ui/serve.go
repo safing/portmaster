@@ -28,7 +28,7 @@ func registerRoutes() error {
 	api.RegisterHandleFunc("/ui/modules/{moduleName:[a-z]+}", redirAddSlash).Methods("GET", "HEAD")
 	api.RegisterHandleFunc("/ui/modules/{moduleName:[a-z]+}/", ServeBundle("")).Methods("GET", "HEAD")
 	api.RegisterHandleFunc("/ui/modules/{moduleName:[a-z]+}/{resPath:[a-zA-Z0-9/\\._-]+}", ServeBundle("")).Methods("GET", "HEAD")
-	api.RegisterHandleFunc("/", RedirectToBase)
+	api.RegisterHandleFunc("/", redirectToDefault)
 
 	return nil
 }
@@ -97,13 +97,21 @@ func ServeFileFromBundle(w http.ResponseWriter, r *http.Request, bundleName stri
 	readCloser, err := bundle.Open(path)
 	if err != nil {
 		if err == resources.ErrNotFound {
-			log.Tracef("ui: requested resource \"%s\" not found in bundle %s: %s", path, bundleName, err)
-			http.Error(w, err.Error(), http.StatusNotFound)
+			// Check if there is a base index.html file we can serve instead.
+			var indexErr error
+			path = "index.html"
+			readCloser, indexErr = bundle.Open(path)
+			if indexErr != nil {
+				// If we cannot get an index, continue with handling the original error.
+				log.Tracef("ui: requested resource \"%s\" not found in bundle %s: %s", path, bundleName, err)
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
 		} else {
 			log.Tracef("ui: error opening module %s: %s", bundleName, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-		return
 	}
 
 	// set content type
@@ -131,9 +139,9 @@ func ServeFileFromBundle(w http.ResponseWriter, r *http.Request, bundleName stri
 	readCloser.Close()
 }
 
-// RedirectToBase redirects the requests to the control app
-func RedirectToBase(w http.ResponseWriter, r *http.Request) {
-	u, err := url.Parse("/ui/modules/base/")
+// redirectToDefault redirects the request to the default UI module.
+func redirectToDefault(w http.ResponseWriter, r *http.Request) {
+	u, err := url.Parse("/ui/modules/portmaster/")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -141,6 +149,7 @@ func RedirectToBase(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, r.URL.ResolveReference(u).String(), http.StatusTemporaryRedirect)
 }
 
+// redirAddSlash redirects the request to the same, but with a trailing slash.
 func redirAddSlash(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, r.RequestURI+"/", http.StatusPermanentRedirect)
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -19,6 +20,9 @@ const (
 	// RestartExitCode is the exit code that any service started by portmaster-start
 	// can return in order to trigger a restart after a clean shutdown.
 	RestartExitCode = 23
+
+	exeSuffix = ".exe"
+	zipSuffix = ".zip"
 )
 
 var (
@@ -49,7 +53,7 @@ func init() {
 		},
 		{
 			Name:              "Portmaster App",
-			Identifier:        "app/portmaster-app",
+			Identifier:        "app/portmaster-app.zip",
 			AllowDownload:     false,
 			AllowHidingWindow: false,
 		},
@@ -62,7 +66,6 @@ func init() {
 		{
 			Name:              "Safing Privacy Network",
 			Identifier:        "hub/spn-hub",
-			ShortIdentifier:   "hub",
 			AllowDownload:     true,
 			AllowHidingWindow: true,
 		},
@@ -147,8 +150,8 @@ func run(opts *Options, cmdArgs []string) (err error) {
 	}()
 
 	// adapt identifier
-	if onWindows {
-		opts.Identifier += ".exe"
+	if onWindows && !strings.HasSuffix(opts.Identifier, zipSuffix) {
+		opts.Identifier += exeSuffix
 	}
 
 	// setup logging
@@ -275,16 +278,30 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 	if err != nil {
 		return true, fmt.Errorf("could not get component: %w", err)
 	}
+	binPath := file.Path()
+
+	// Adapt path for packaged software.
+	if strings.HasSuffix(binPath, zipSuffix) {
+		// Remove suffix from binary path.
+		binPath = strings.TrimSuffix(binPath, zipSuffix)
+		// Add binary with the same name to access the unpacked binary.
+		binPath = filepath.Join(binPath, filepath.Base(binPath))
+
+		// Adapt binary path on Windows.
+		if onWindows {
+			binPath += exeSuffix
+		}
+	}
 
 	// check permission
-	if err := fixExecPerm(file.Path()); err != nil {
+	if err := fixExecPerm(binPath); err != nil {
 		return true, err
 	}
 
-	log.Printf("starting %s %s\n", file.Path(), strings.Join(args, " "))
+	log.Printf("starting %s %s\n", binPath, strings.Join(args, " "))
 
 	// create command
-	exc := exec.Command(file.Path(), args...) //nolint:gosec // everything is okay
+	exc := exec.Command(binPath, args...) //nolint:gosec // everything is okay
 
 	if !runningInConsole && opts.AllowHidingWindow {
 		// Windows only:

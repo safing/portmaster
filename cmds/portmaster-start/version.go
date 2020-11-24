@@ -20,9 +20,9 @@ var versionCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	PersistentPreRunE: func(*cobra.Command, []string) error {
 		if showAllVersions {
-			// if we are going to show all component versions
-			// we need the dataroot to be configured.
-			if err := configureDataRoot(false); err != nil {
+			// If we are going to show all component versions,
+			// we need the registry to be configured.
+			if err := configureRegistry(false); err != nil {
 				return err
 			}
 		}
