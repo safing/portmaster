@@ -15,6 +15,7 @@ import (
 	processInfo "github.com/shirou/gopsutil/process"
 	"github.com/tevino/abool"
 
+	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/notifications"
@@ -206,12 +207,11 @@ func upgradePortmasterStart() error {
 	}
 
 	// update portmaster-start in data root
-	rootPmStartPath := filepath.Join(filepath.Dir(registry.StorageDir().Path), filename)
+	rootPmStartPath := filepath.Join(dataroot.Root().Path, filename)
 	err := upgradeFile(rootPmStartPath, pmCtrlUpdate)
 	if err != nil {
 		return err
 	}
-	log.Infof("updates: upgraded %s", rootPmStartPath)
 
 	return nil
 }
@@ -290,6 +290,7 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 			// abort if version matches
 			currentVersion = strings.Trim(strings.TrimSpace(string(out)), "*")
 			if currentVersion == file.Version() {
+				log.Tracef("updates: %s is already v%s", fileToUpgrade, file.Version())
 				// already up to date!
 				return nil
 			}
@@ -352,6 +353,8 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 			}
 		}
 	}
+
+	log.Infof("updates: upgraded %s to v%s", fileToUpgrade, file.Version())
 	return nil
 }
 

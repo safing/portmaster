@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"time"
 
@@ -82,7 +84,6 @@ func init() {
 		MandatoryUpdates = []string{
 			platform("core/portmaster-core.exe"),
 			platform("start/portmaster-start.exe"),
-			platform("app/portmaster-app.exe"),
 			platform("notifier/portmaster-notifier.exe"),
 			platform("notifier/portmaster-snoretoast.exe"),
 		}
@@ -90,10 +91,15 @@ func init() {
 		MandatoryUpdates = []string{
 			platform("core/portmaster-core"),
 			platform("start/portmaster-start"),
-			platform("app/portmaster-app"),
 			platform("notifier/portmaster-notifier"),
 		}
 	}
+
+	MandatoryUpdates = append(
+		MandatoryUpdates,
+		platform("app/portmaster-app.zip"),
+		"all/ui/modules/portmaster.zip",
+	)
 }
 
 func prep() error {
@@ -139,9 +145,12 @@ func start() error {
 		},
 		UserAgent:        UserAgent,
 		MandatoryUpdates: MandatoryUpdates,
-		Beta:             releaseChannel() == releaseChannelBeta,
-		DevMode:          devMode(),
-		Online:           true,
+		AutoUnpack: []string{
+			platform("app/portmaster-app.zip"),
+		},
+		Beta:    releaseChannel() == releaseChannelBeta,
+		DevMode: devMode(),
+		Online:  true,
 	}
 	if userAgentFromFlag != "" {
 		// override with flag value
@@ -159,17 +168,20 @@ func start() error {
 		Beta:   false,
 	})
 
-	registry.AddIndex(updater.Index{
-		Path:   "beta.json",
-		Stable: false,
-		Beta:   true,
-	})
+	if registry.Beta {
+		registry.AddIndex(updater.Index{
+			Path:   "beta.json",
+			Stable: false,
+			Beta:   true,
+		})
+	}
 
 	registry.AddIndex(updater.Index{
 		Path:   "all/intel/intel.json",
 		Stable: true,
-		Beta:   false,
+		Beta:   true,
 	})
+
 
 	err = registry.LoadIndexes(module.Ctx)
 	if err != nil {
@@ -184,6 +196,7 @@ func start() error {
 	registry.SelectVersions()
 	module.TriggerEvent(VersionUpdateEvent, nil)
 
+	// Initialize the version export - this requires the registry to be set up.
 	err = initVersionExport()
 	if err != nil {
 		return err
@@ -257,7 +270,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 		if err == nil {
 			module.Resolve(updateInProgress)
 		} else {
-			module.Warning(updateFailed, "Failed to check for updates: "+err.Error())
+			module.Warning(updateFailed, "Failed to update: "+err.Error())
 		}
 	}()
 
@@ -272,6 +285,13 @@ func checkForUpdates(ctx context.Context) (err error) {
 	}
 
 	registry.SelectVersions()
+
+	// Unpack selected resources.
+	err = registry.UnpackResources()
+	if err != nil {
+		err = fmt.Errorf("failed to update: %w", err)
+		return
+	}
 
 	module.TriggerEvent(ResourceUpdateEvent, nil)
 	return nil

@@ -15,8 +15,8 @@ func init() {
 var showCmd = &cobra.Command{
 	Use: "show",
 	PersistentPreRunE: func(*cobra.Command, []string) error {
-		// all show sub-commands need the data-root but no logging.
-		return configureDataRoot(false)
+		// All show sub-commands need the registry but no logging.
+		return configureRegistry(false)
 	},
 	Short: "Show the command to run a Portmaster component yourself",
 }
@@ -27,7 +27,7 @@ func show(opts *Options, cmdArgs []string) error {
 
 	// adapt identifier
 	if onWindows {
-		opts.Identifier += ".exe"
+		opts.Identifier += exeSuffix
 	}
 
 	file, err := registry.GetFile(platform(opts.Identifier))
