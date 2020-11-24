@@ -213,16 +213,6 @@ func setCaptivePortal(portalURL *url.URL) {
 		return
 	}
 
-	// notify
-	cleanUpPortalNotification()
-	defer func() {
-		// TODO: add "open" button
-		captivePortalNotification = notifications.NotifyInfo(
-			"netenv:captive-portal:"+captivePortal.Domain,
-			"Portmaster detected a captive portal at "+captivePortal.Domain,
-		)
-	}()
-
 	// set
 	captivePortal = &CaptivePortal{
 		URL: portalURL.String(),
@@ -234,6 +224,20 @@ func setCaptivePortal(portalURL *url.URL) {
 	} else {
 		captivePortal.Domain = portalURL.Hostname()
 	}
+
+	// notify
+	cleanUpPortalNotification()
+	captivePortalNotification = notifications.Notify(&notifications.Notification{
+		EventID:  "netenv:captive-portal",
+		Type:     notifications.Info,
+		Title:    "Captive Portal",
+		Category: "Core",
+		Message: fmt.Sprintf(
+			"Portmaster detected a captive portal at %s",
+			captivePortal.Domain,
+		),
+		EventData: captivePortal,
+	})
 }
 
 func cleanUpPortalNotification() {

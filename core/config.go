@@ -29,26 +29,32 @@ func registerConfig() error {
 	err := config.Register(&config.Option{
 		Name:           "Development Mode",
 		Key:            CfgDevModeKey,
-		Description:    "In Development Mode security restrictions are lifted/softened to enable easier access to Portmaster for debugging and testing purposes.",
-		Order:          127,
+		Description:    "In Development Mode, security restrictions are lifted/softened to enable easier access to Portmaster for debugging and testing purposes.",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   defaultDevMode,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: 512,
+			config.CategoryAnnotation:     "Development",
+		},
 	})
 	if err != nil {
 		return err
 	}
 
 	err = config.Register(&config.Option{
-		Name:           "Use System Notifications",
+		Name:           "Desktop Notifications",
 		Key:            CfgUseSystemNotificationsKey,
-		Description:    "Send notifications to your operating system's notification system. When this setting is turned off, notifications will only be visible in the Portmaster App. This affects both alerts from the Portmaster and questions from the Privacy Filter.",
-		Order:          32,
+		Description:    "In addition to showing notifications in the Portmaster App, also send them to the Desktop. This requires the Portmaster Notifier to be running.",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   true, // TODO: turn off by default on unsupported systems
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: -15,
+			config.CategoryAnnotation:     "User Interface",
+		},
 	})
 	if err != nil {
 		return err

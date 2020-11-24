@@ -22,6 +22,7 @@ import (
 
 var (
 	dataDir    string
+	staging    bool
 	maxRetries int
 	dataRoot   *utils.DirStructure
 	logsRoot   *utils.DirStructure
@@ -41,8 +42,8 @@ var (
 		Use:   "portmaster-start",
 		Short: "Start Portmaster components",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
-			mustLoadIndex := cmd == updatesCmd
-			if err := configureDataRoot(mustLoadIndex); err != nil {
+			mustLoadIndex := indexRequired(cmd)
+			if err := configureRegistry(mustLoadIndex); err != nil {
 				return err
 			}
 
@@ -64,8 +65,9 @@ func init() {
 	{
 		flags.StringVar(&dataDir, "data", "", "Configures the data directory. Alternatively, this can also be set via the environment variable PORTMASTER_DATA.")
 		flags.StringVar(&registry.UserAgent, "update-agent", "Start", "Sets the user agent for requests to the update server")
+		flags.BoolVar(&staging, "staging", false, "Use staging update channel (for testing only)")
 		flags.IntVar(&maxRetries, "max-retries", 5, "Maximum number of retries when starting a Portmaster component")
-		flags.BoolVar(&stdinSignals, "input-signals", false, "Emulate signals using stdid.")
+		flags.BoolVar(&stdinSignals, "input-signals", false, "Emulate signals using stdin.")
 		_ = rootCmd.MarkPersistentFlagDirname("data")
 		_ = flags.MarkHidden("input-signals")
 	}
@@ -131,34 +133,32 @@ func initCobra() {
 	portlog.SetLogLevel(portlog.CriticalLevel)
 }
 
-func configureDataRoot(mustLoadIndex bool) error {
-	// The data directory is not
-	// check for environment variable
-	// PORTMASTER_DATA
+func configureRegistry(mustLoadIndex bool) error {
+	// If dataDir is not set, check the environment variable.
 	if dataDir == "" {
 		dataDir = os.Getenv("PORTMASTER_DATA")
 	}
 
-	// if it's still empty try to auto-detect it
+	// If it's still empty, try to auto-detect it.
 	if dataDir == "" {
 		dataDir = detectInstallationDir()
 	}
 
-	// finally, if it's still empty the user must provide it
+	// Finally, if it's still empty, the user must provide it.
 	if dataDir == "" {
 		return errors.New("please set the data directory using --data=/path/to/data/dir")
 	}
 
-	// remove redundant escape characters and quotes
+	// Remove left over quotes.
 	dataDir = strings.Trim(dataDir, `\"`)
-	// initialize dataroot
+	// Initialize data root.
 	err := dataroot.Initialize(dataDir, 0755)
 	if err != nil {
 		return fmt.Errorf("failed to initialize data root: %s", err)
 	}
 	dataRoot = dataroot.Root()
 
-	// initialize registry
+	// Initialize registry.
 	err = registry.Initialize(dataRoot.ChildDir("updates", 0755))
 	if err != nil {
 		return err
@@ -176,6 +176,19 @@ func configureDataRoot(mustLoadIndex bool) error {
 	// Stable: false,
 	// Beta:   true,
 	// })
+
+	if stagingActive() {
+		// Set flag no matter how staging was activated.
+		staging = true
+
+		log.Println("WARNING: staging environment is active.")
+
+		registry.AddIndex(updater.Index{
+			Path:   "staging.json",
+			Stable: true,
+			Beta:   true,
+		})
+	}
 
 	return updateRegistryIndex(mustLoadIndex)
 }
@@ -232,4 +245,15 @@ func detectInstallationDir() string {
 	}
 
 	return parent
+}
+
+func stagingActive() bool {
+	// Check flag and env variable.
+	if staging || os.Getenv("PORTMASTER_STAGING") == "enabled" {
+		return true
+	}
+
+	// Check if staging index is present and acessible.
+	_, err := os.Stat(filepath.Join(registry.StorageDir().Path, "staging.json"))
+	return err == nil
 }

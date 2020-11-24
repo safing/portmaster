@@ -2,7 +2,6 @@ package updates
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
@@ -15,42 +14,56 @@ const (
 var (
 	releaseChannel config.StringOption
 	devMode        config.BoolOption
-	disableUpdates config.BoolOption
+	enableUpdates  config.BoolOption
 
-	previousReleaseChannel   string
-	updatesCurrentlyDisabled bool
-	previousDevMode          bool
+	previousReleaseChannel  string
+	updatesCurrentlyEnabled bool
+	previousDevMode         bool
 )
 
 func registerConfig() error {
 	err := config.Register(&config.Option{
 		Name:            "Release Channel",
 		Key:             releaseChannelKey,
-		Description:     "The Release Channel changes which updates are applied. When using beta, you will receive new features earlier and Portmaster will update more frequently. Some beta or experimental features are also available in the stable release channel.",
-		Order:           1,
+		Description:     "Switch release channel.",
 		OptType:         config.OptTypeString,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
-		ReleaseLevel:    config.ReleaseLevelBeta,
+		ExpertiseLevel:  config.ExpertiseLevelDeveloper,
+		ReleaseLevel:    config.ReleaseLevelExperimental,
 		RequiresRestart: false,
 		DefaultValue:    releaseChannelStable,
-		ExternalOptType: "string list",
-		ValidationRegex: fmt.Sprintf("^(%s|%s)$", releaseChannelStable, releaseChannelBeta),
+		PossibleValues: []config.PossibleValue{
+			{
+				Name:  "Stable",
+				Value: releaseChannelStable,
+			},
+			{
+				Name:  "Beta",
+				Value: releaseChannelBeta,
+			},
+		},
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: -4,
+			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
+			config.CategoryAnnotation:     "Updates",
+		},
 	})
 	if err != nil {
 		return err
 	}
 
 	err = config.Register(&config.Option{
-		Name:            "Disable Updates",
-		Key:             disableUpdatesKey,
-		Description:     "Disable automatic updates.",
-		Order:           64,
+		Name:            "Automatic Updates",
+		Key:             enableUpdatesKey,
+		Description:     "Enable automatic checking, downloading and applying of updates. This affects all kinds of updates, including intelligence feeds and broadcast notifications.",
 		OptType:         config.OptTypeBool,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		RequiresRestart: false,
-		DefaultValue:    false,
-		ExternalOptType: "disable updates",
+		DefaultValue:    true,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: -12,
+			config.CategoryAnnotation:     "Updates",
+		},
 	})
 	if err != nil {
 		return err
@@ -63,8 +76,8 @@ func initConfig() {
 	releaseChannel = config.GetAsString(releaseChannelKey, releaseChannelStable)
 	previousReleaseChannel = releaseChannel()
 
-	disableUpdates = config.GetAsBool(disableUpdatesKey, false)
-	updatesCurrentlyDisabled = disableUpdates()
+	enableUpdates = config.GetAsBool(enableUpdatesKey, true)
+	updatesCurrentlyEnabled = enableUpdates()
 
 	devMode = config.GetAsBool(cfgDevModeKey, false)
 	previousDevMode = devMode()
@@ -86,10 +99,10 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 		changed = true
 	}
 
-	if disableUpdates() != updatesCurrentlyDisabled {
-		updatesCurrentlyDisabled = disableUpdates()
+	if enableUpdates() != updatesCurrentlyEnabled {
+		updatesCurrentlyEnabled = enableUpdates()
 		changed = true
-		forceUpdate = !updatesCurrentlyDisabled
+		forceUpdate = updatesCurrentlyEnabled
 	}
 
 	if changed {
@@ -100,7 +113,7 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 			module.Resolve(updateFailed)
 			_ = TriggerUpdate()
 			log.Infof("updates: automatic updates enabled again.")
-		} else if updatesCurrentlyDisabled {
+		} else if !updatesCurrentlyEnabled {
 			module.Warning(updateFailed, "Automatic updates are disabled! This also affects security updates and threat intelligence.")
 			log.Warningf("updates: automatic updates are now disabled.")
 		}

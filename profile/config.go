@@ -1,7 +1,10 @@
 package profile
 
 import (
+	"strings"
+
 	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/profile/endpoints"
 	"github.com/safing/portmaster/status"
 )
 
@@ -12,13 +15,18 @@ var (
 	cfgIntOptions         = make(map[string]config.IntOption)
 	cfgBoolOptions        = make(map[string]config.BoolOption)
 
+	// General
+
 	// Enable Filter Order = 0
 
 	CfgOptionDefaultActionKey   = "filter/defaultAction"
 	cfgOptionDefaultAction      config.StringOption
 	cfgOptionDefaultActionOrder = 1
 
-	// Prompt Timeout Order = 2
+	// Prompt Desktop Notifications Order = 2
+	// Prompt Timeout Order = 3
+
+	// Network Scopes
 
 	CfgOptionBlockScopeInternetKey   = "filter/blockInternet"
 	cfgOptionBlockScopeInternet      config.IntOption // security level option
@@ -32,6 +40,8 @@ var (
 	cfgOptionBlockScopeLocal      config.IntOption // security level option
 	cfgOptionBlockScopeLocalOrder = 18
 
+	// Connection Types
+
 	CfgOptionBlockP2PKey   = "filter/blockP2P"
 	cfgOptionBlockP2P      config.IntOption // security level option
 	cfgOptionBlockP2POrder = 19
@@ -39,6 +49,8 @@ var (
 	CfgOptionBlockInboundKey   = "filter/blockInbound"
 	cfgOptionBlockInbound      config.IntOption // security level option
 	cfgOptionBlockInboundOrder = 20
+
+	// Rules
 
 	CfgOptionEndpointsKey   = "filter/endpoints"
 	cfgOptionEndpoints      config.StringArrayOption
@@ -48,43 +60,47 @@ var (
 	cfgOptionServiceEndpoints      config.StringArrayOption
 	cfgOptionServiceEndpointsOrder = 33
 
-	CfgOptionPreventBypassingKey   = "filter/preventBypassing"
-	cfgOptionPreventBypassing      config.IntOption // security level option
-	cfgOptionPreventBypassingOrder = 48
-
 	CfgOptionFilterListsKey   = "filter/lists"
 	cfgOptionFilterLists      config.StringArrayOption
-	cfgOptionFilterListsOrder = 64
+	cfgOptionFilterListsOrder = 34
 
 	CfgOptionFilterSubDomainsKey   = "filter/includeSubdomains"
 	cfgOptionFilterSubDomains      config.IntOption // security level option
-	cfgOptionFilterSubDomainsOrder = 65
+	cfgOptionFilterSubDomainsOrder = 35
+
+	// DNS Filtering
 
 	CfgOptionFilterCNAMEKey   = "filter/includeCNAMEs"
 	cfgOptionFilterCNAME      config.IntOption // security level option
-	cfgOptionFilterCNAMEOrder = 66
-
-	CfgOptionDisableAutoPermitKey   = "filter/disableAutoPermit"
-	cfgOptionDisableAutoPermit      config.IntOption // security level option
-	cfgOptionDisableAutoPermitOrder = 80
-
-	CfgOptionEnforceSPNKey   = "filter/enforceSPN"
-	cfgOptionEnforceSPN      config.IntOption // security level option
-	cfgOptionEnforceSPNOrder = 96
+	cfgOptionFilterCNAMEOrder = 48
 
 	CfgOptionRemoveOutOfScopeDNSKey   = "filter/removeOutOfScopeDNS"
 	cfgOptionRemoveOutOfScopeDNS      config.IntOption // security level option
-	cfgOptionRemoveOutOfScopeDNSOrder = 112
+	cfgOptionRemoveOutOfScopeDNSOrder = 49
 
 	CfgOptionRemoveBlockedDNSKey   = "filter/removeBlockedDNS"
 	cfgOptionRemoveBlockedDNS      config.IntOption // security level option
-	cfgOptionRemoveBlockedDNSOrder = 113
+	cfgOptionRemoveBlockedDNSOrder = 50
 
 	CfgOptionDomainHeuristicsKey   = "filter/domainHeuristics"
 	cfgOptionDomainHeuristics      config.IntOption // security level option
-	cfgOptionDomainHeuristicsOrder = 114
+	cfgOptionDomainHeuristicsOrder = 51
 
-	// Permanent Verdicts Order = 128
+	// Advanced
+
+	CfgOptionPreventBypassingKey   = "filter/preventBypassing"
+	cfgOptionPreventBypassing      config.IntOption // security level option
+	cfgOptionPreventBypassingOrder = 64
+
+	CfgOptionDisableAutoPermitKey   = "filter/disableAutoPermit"
+	cfgOptionDisableAutoPermit      config.IntOption // security level option
+	cfgOptionDisableAutoPermitOrder = 65
+
+	// Permanent Verdicts Order = 96
+
+	CfgOptionUseSPNKey   = "spn/useSPN"
+	cfgOptionUseSPN      config.BoolOption
+	cfgOptionUseSPNOrder = 129
 )
 
 func registerConfiguration() error {
@@ -93,15 +109,33 @@ func registerConfiguration() error {
 	// ask - ask mode: if not verdict is found, the user is consulted
 	// block - allowlist mode: everything is blocked unless permitted
 	err := config.Register(&config.Option{
-		Name:            "Default Filter Action",
-		Key:             CfgOptionDefaultActionKey,
-		Description:     `The default filter action when nothing else permits or blocks a connection.`,
-		Order:           cfgOptionDefaultActionOrder,
-		OptType:         config.OptTypeString,
-		ReleaseLevel:    config.ReleaseLevelExperimental,
-		DefaultValue:    "permit",
-		ExternalOptType: "string list",
-		ValidationRegex: "^(permit|ask|block)$",
+		Name:         "Default Action",
+		Key:          CfgOptionDefaultActionKey,
+		Description:  `The default action when nothing else permits or blocks an outgoing connection. Incoming connections are always blocked by default.`,
+		OptType:      config.OptTypeString,
+		DefaultValue: "permit",
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
+			config.DisplayOrderAnnotation: cfgOptionDefaultActionOrder,
+			config.CategoryAnnotation:     "General",
+		},
+		PossibleValues: []config.PossibleValue{
+			{
+				Name:        "Permit",
+				Value:       "permit",
+				Description: "Permit all connections",
+			},
+			{
+				Name:        "Block",
+				Value:       "block",
+				Description: "Block all connections",
+			},
+			{
+				Name:        "Prompt",
+				Value:       "ask",
+				Description: "Prompt for decisions",
+			},
+		},
 	})
 	if err != nil {
 		return err
@@ -111,14 +145,19 @@ func registerConfiguration() error {
 
 	// Disable Auto Permit
 	err = config.Register(&config.Option{
-		Name:            "Disable Auto Permit",
-		Key:             CfgOptionDisableAutoPermitKey,
-		Description:     "Auto Permit searches for a relation between an app and the destionation of a connection - if there is a correlation, the connection will be permitted. This setting is negated in order to provide a streamlined user experience, where higher settings are better.",
-		Order:           cfgOptionDisableAutoPermitOrder,
-		OptType:         config.OptTypeInt,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(4|6|7)$",
+		// TODO: Check how to best handle negation here.
+		Name:         "Disable Auto Permit",
+		Key:          CfgOptionDisableAutoPermitKey,
+		Description:  `Auto Permit searches for a relation between an app and the destination of a connection - if there is a correlation, the connection will be permitted.`,
+		OptType:      config.OptTypeInt,
+		ReleaseLevel: config.ReleaseLevelBeta,
+		DefaultValue: status.SecurityLevelsAll,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionDisableAutoPermitOrder,
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.CategoryAnnotation:     "Advanced",
+		},
+		PossibleValues: status.SecurityLevelValues,
 	})
 	if err != nil {
 		return err
@@ -126,42 +165,39 @@ func registerConfiguration() error {
 	cfgOptionDisableAutoPermit = config.Concurrent.GetAsInt(CfgOptionDisableAutoPermitKey, int64(status.SecurityLevelsAll))
 	cfgIntOptions[CfgOptionDisableAutoPermitKey] = cfgOptionDisableAutoPermit
 
-	filterListHelp := `Format:
-	Permission:
-		"+": permit
-		"-": block
-	Host Matching:
-		IP, CIDR, Country Code, ASN, Filterlist, Network Scope, "*" for any
-		Domains:
-			"example.com": exact match
-			".example.com": exact match + subdomains
-			"*xample.com": prefix wildcard
-			"example.*": suffix wildcard
-			"*example*": prefix and suffix wildcard  
-	Protocol and Port Matching (optional):
-		<protocol>/<port>
+	rulesHelp := strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match:
 
-Examples:
-	+ .example.com */HTTP
-	- .example.com
-	+ 192.168.0.1
-	+ 192.168.1.1/24
-	+ Localhost,LAN
-	- AS123456789
-	- L:MAL
-	+ AT
-	- *`
+- By address: "192.168.0.1"
+- By network: "192.168.0.1/24"
+- By domain:
+	- Matching a distinct domain: "example.com"
+	- Matching a domain with subdomains: ".example.com"
+	- Matching with a wildcard prefix: "*xample.com"
+	- Matching with a wildcard suffix: "example.*"
+	- Matching domains containing text: "*example*"
+- By country (based on IP): "US"
+- By filter list - use the filterlist ID prefixed with "L:": "L:MAL"
+- Match anything: "*"
+
+Additionally, you may supply a protocol and port just behind that using numbers ("6/80") or names ("TCP/HTTP").  
+In this case the rule is only matched if the protocol and port also match.  
+Example: "192.168.0.1 TCP/HTTP"
+`, `"`, "`")
 
 	// Endpoint Filter List
 	err = config.Register(&config.Option{
-		Name:            "Endpoint Filter List",
-		Key:             CfgOptionEndpointsKey,
-		Description:     "Filter outgoing connections by matching the destination endpoint. Network Scope restrictions still apply.",
-		Help:            filterListHelp,
-		Order:           cfgOptionEndpointsOrder,
-		OptType:         config.OptTypeStringArray,
-		DefaultValue:    []string{},
-		ExternalOptType: "endpoint list",
+		Name:         "Outgoing Rules",
+		Key:          CfgOptionEndpointsKey,
+		Description:  "Rules that apply to outgoing network connections. Cannot overrule Network Scopes and Connection Types (see above).",
+		Help:         rulesHelp,
+		OptType:      config.OptTypeStringArray,
+		DefaultValue: []string{},
+		Annotations: config.Annotations{
+			config.StackableAnnotation:    true,
+			config.DisplayHintAnnotation:  endpoints.DisplayHintEndpointList,
+			config.DisplayOrderAnnotation: cfgOptionEndpointsOrder,
+			config.CategoryAnnotation:     "Rules",
+		},
 		ValidationRegex: `^(\+|\-) [A-z0-9\.:\-*/]+( [A-z0-9/]+)?$`,
 	})
 	if err != nil {
@@ -172,14 +208,36 @@ Examples:
 
 	// Service Endpoint Filter List
 	err = config.Register(&config.Option{
-		Name:            "Service Endpoint Filter List",
-		Key:             CfgOptionServiceEndpointsKey,
-		Description:     "Filter incoming connections by matching the source endpoint. Network Scope restrictions and the inbound permission still apply. Also not that the implicit default action of this list is to always block.",
-		Help:            filterListHelp,
-		Order:           cfgOptionServiceEndpointsOrder,
-		OptType:         config.OptTypeStringArray,
-		DefaultValue:    []string{"+ Localhost"},
-		ExternalOptType: "endpoint list",
+		Name:           "Incoming Rules",
+		Key:            CfgOptionServiceEndpointsKey,
+		Description:    "Rules that apply to incoming network connections. Cannot overrule Network Scopes and Connection Types (see above). Also note that the default action for incoming connections is to always block.",
+		Help:           rulesHelp,
+		OptType:        config.OptTypeStringArray,
+		DefaultValue:   []string{"+ Localhost"},
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		Annotations: config.Annotations{
+			config.StackableAnnotation:    true,
+			config.DisplayHintAnnotation:  endpoints.DisplayHintEndpointList,
+			config.DisplayOrderAnnotation: cfgOptionServiceEndpointsOrder,
+			config.CategoryAnnotation:     "Rules",
+			config.QuickSettingsAnnotation: []config.QuickSetting{
+				{
+					Name:   "SSH",
+					Action: config.QuickMergeTop,
+					Value:  []string{"+ * tcp/22"},
+				},
+				{
+					Name:   "HTTP/s",
+					Action: config.QuickMergeTop,
+					Value:  []string{"+ * tcp/80", "+ * tcp/443"},
+				},
+				{
+					Name:   "RDP",
+					Action: config.QuickMergeTop,
+					Value:  []string{"+ * */3389"},
+				},
+			},
+		},
 		ValidationRegex: `^(\+|\-) [A-z0-9\.:\-*/]+( [A-z0-9/]+)?$`,
 	})
 	if err != nil {
@@ -188,15 +246,40 @@ Examples:
 	cfgOptionServiceEndpoints = config.Concurrent.GetAsStringArray(CfgOptionServiceEndpointsKey, []string{})
 	cfgStringArrayOptions[CfgOptionServiceEndpointsKey] = cfgOptionServiceEndpoints
 
+	filterListsHelp := strings.ReplaceAll(`Filter lists contain domains and IP addresses that are known to be used adversarial. The data is collected from many public sources and put into the following categories. In order to active a category, add it's "ID" to the list.
+
+**Ads & Trackers** - ID: "TRAC"  
+Services that track and profile people online, including as ads, analytics and telemetry.
+
+**Malware** - ID: "MAL"  
+Services that are (ab)used for attacking devices through technical means.
+
+**Deception** - ID: "DECEP"  
+Services that trick humans into thinking the service is genuine, while it is not, including phishing, fake news and fraud.
+
+**Bad Stuff (Mixed)** - ID: "BAD"  
+Miscellaneous services that are believed to be harmful to security or privacy, but their exact use is unknown, not categorized, or lists have mixed categories.
+
+**NSFW** - ID: "NSFW"  
+Services that are generally not accepted in work environments, including pornography, violence and gambling.
+
+The lists are automatically updated every hour using incremental updates.  
+[See here](https://github.com/safing/intel-data) for more detail about these lists, their sources and how to help to improve them.
+`, `"`, "`")
+
 	// Filter list IDs
 	err = config.Register(&config.Option{
-		Name:            "Filter List",
-		Key:             CfgOptionFilterListsKey,
-		Description:     "Filter connections by matching the endpoint against configured filterlists",
-		Order:           cfgOptionFilterListsOrder,
-		OptType:         config.OptTypeStringArray,
-		DefaultValue:    []string{"TRAC", "MAL"},
-		ExternalOptType: "filter list",
+		Name:         "Filter Lists",
+		Key:          CfgOptionFilterListsKey,
+		Description:  "Block connections that match enabled filter lists.",
+		Help:         filterListsHelp,
+		OptType:      config.OptTypeStringArray,
+		DefaultValue: []string{"TRAC", "MAL"},
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  "filter list",
+			config.DisplayOrderAnnotation: cfgOptionFilterListsOrder,
+			config.CategoryAnnotation:     "Rules",
+		},
 		ValidationRegex: `^[a-zA-Z0-9\-]+$`,
 	})
 	if err != nil {
@@ -207,15 +290,18 @@ Examples:
 
 	// Include CNAMEs
 	err = config.Register(&config.Option{
-		Name:            "Filter CNAMEs",
-		Key:             CfgOptionFilterCNAMEKey,
-		Description:     "Also filter requests where a CNAME would be blocked",
-		Order:           cfgOptionFilterCNAMEOrder,
-		OptType:         config.OptTypeInt,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(4|6|7)$",
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
+		Name:           "Block Domain Aliases",
+		Key:            CfgOptionFilterCNAMEKey,
+		Description:    "Block a domain if a resolved CNAME (alias) is blocked by a rule or filter list.",
+		OptType:        config.OptTypeInt,
+		DefaultValue:   status.SecurityLevelsAll,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation: cfgOptionFilterCNAMEOrder,
+			config.CategoryAnnotation:     "DNS Filtering",
+		},
+		PossibleValues: status.SecurityLevelValues,
 	})
 	if err != nil {
 		return err
@@ -225,14 +311,17 @@ Examples:
 
 	// Include subdomains
 	err = config.Register(&config.Option{
-		Name:            "Filter Subdomains",
-		Key:             CfgOptionFilterSubDomainsKey,
-		Description:     "Also filter a domain if any parent domain is blocked by a filter list",
-		Order:           cfgOptionFilterSubDomainsOrder,
-		OptType:         config.OptTypeInt,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(4|6|7)$",
+		Name:           "Block Subdomains of Filter List Entries",
+		Key:            CfgOptionFilterSubDomainsKey,
+		Description:    "Additionally block all subdomains of entries in selected filter lists.",
+		OptType:        config.OptTypeInt,
+		DefaultValue:   status.SecurityLevelsAll,
+		PossibleValues: status.SecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation: cfgOptionFilterSubDomainsOrder,
+			config.CategoryAnnotation:     "Rules",
+		},
 	})
 	if err != nil {
 		return err
@@ -242,15 +331,18 @@ Examples:
 
 	// Block Scope Local
 	err = config.Register(&config.Option{
-		Name:            "Block Scope Local",
-		Key:             CfgOptionBlockScopeLocalKey,
-		Description:     "Block internal connections on your own device, ie. localhost.",
-		Order:           cfgOptionBlockScopeLocalOrder,
-		OptType:         config.OptTypeInt,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelOff,
-		ValidationRegex: "^(0|4|6|7)$",
+		Name:           "Block Device-Local Connections",
+		Key:            CfgOptionBlockScopeLocalKey,
+		Description:    "Block all internal connections on your own device, ie. localhost. Is stronger than Rules (see below).",
+		OptType:        config.OptTypeInt,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		DefaultValue:   status.SecurityLevelOff,
+		PossibleValues: status.AllSecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation: cfgOptionBlockScopeLocalOrder,
+			config.CategoryAnnotation:     "Network Scope",
+		},
 	})
 	if err != nil {
 		return err
@@ -260,14 +352,17 @@ Examples:
 
 	// Block Scope LAN
 	err = config.Register(&config.Option{
-		Name:            "Block Scope LAN",
-		Key:             CfgOptionBlockScopeLANKey,
-		Description:     "Block connections to the Local Area Network.",
-		Order:           cfgOptionBlockScopeLANOrder,
-		OptType:         config.OptTypeInt,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsHighAndExtreme,
-		ValidationRegex: "^(0|4|6|7)$",
+		Name:           "Block LAN",
+		Key:            CfgOptionBlockScopeLANKey,
+		Description:    "Block all connections from and to the Local Area Network. Is stronger than Rules (see below).",
+		OptType:        config.OptTypeInt,
+		DefaultValue:   status.SecurityLevelsHighAndExtreme,
+		PossibleValues: status.AllSecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation: cfgOptionBlockScopeLANOrder,
+			config.CategoryAnnotation:     "Network Scope",
+		},
 	})
 	if err != nil {
 		return err
@@ -277,14 +372,17 @@ Examples:
 
 	// Block Scope Internet
 	err = config.Register(&config.Option{
-		Name:            "Block Scope Internet",
-		Key:             CfgOptionBlockScopeInternetKey,
-		Description:     "Block connections to the Internet.",
-		Order:           cfgOptionBlockScopeInternetOrder,
-		OptType:         config.OptTypeInt,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelOff,
-		ValidationRegex: "^(0|4|6|7)$",
+		Name:           "Block Internet Access",
+		Key:            CfgOptionBlockScopeInternetKey,
+		Description:    "Block connections from and to the Internet. Is stronger than Rules (see below).",
+		OptType:        config.OptTypeInt,
+		DefaultValue:   status.SecurityLevelOff,
+		PossibleValues: status.AllSecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation: cfgOptionBlockScopeInternetOrder,
+			config.CategoryAnnotation:     "Network Scope",
+		},
 	})
 	if err != nil {
 		return err
@@ -294,14 +392,17 @@ Examples:
 
 	// Block Peer to Peer Connections
 	err = config.Register(&config.Option{
-		Name:            "Block Peer to Peer Connections",
-		Key:             CfgOptionBlockP2PKey,
-		Description:     "These are connections that are established directly to an IP address on the Internet without resolving a domain name via DNS first.",
-		Order:           cfgOptionBlockP2POrder,
-		OptType:         config.OptTypeInt,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelExtreme,
-		ValidationRegex: "^(4|6|7)$",
+		Name:           "Block P2P/Direct Connections",
+		Key:            CfgOptionBlockP2PKey,
+		Description:    "These are connections that are established directly to an IP address or peer on the Internet without resolving a domain name via DNS first. Is stronger than Rules (see below).",
+		OptType:        config.OptTypeInt,
+		DefaultValue:   status.SecurityLevelExtreme,
+		PossibleValues: status.SecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation: cfgOptionBlockP2POrder,
+			config.CategoryAnnotation:     "Connection Types",
+		},
 	})
 	if err != nil {
 		return err
@@ -311,14 +412,17 @@ Examples:
 
 	// Block Inbound Connections
 	err = config.Register(&config.Option{
-		Name:            "Block Inbound Connections",
-		Key:             CfgOptionBlockInboundKey,
-		Description:     "Connections initiated towards your device from the LAN or Internet. This will usually only be the case if you are running a network service or are using peer to peer software.",
-		Order:           cfgOptionBlockInboundOrder,
-		OptType:         config.OptTypeInt,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsHighAndExtreme,
-		ValidationRegex: "^(4|6|7)$",
+		Name:           "Block Incoming Connections",
+		Key:            CfgOptionBlockInboundKey,
+		Description:    "Connections initiated towards your device from the LAN or Internet. This will usually only be the case if you are running a network service or are using peer to peer software. Is stronger than Rules (see below).",
+		OptType:        config.OptTypeInt,
+		DefaultValue:   status.SecurityLevelsHighAndExtreme,
+		PossibleValues: status.SecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation: cfgOptionBlockInboundOrder,
+			config.CategoryAnnotation:     "Connection Types",
+		},
 	})
 	if err != nil {
 		return err
@@ -326,36 +430,20 @@ Examples:
 	cfgOptionBlockInbound = config.Concurrent.GetAsInt(CfgOptionBlockInboundKey, int64(status.SecurityLevelsHighAndExtreme))
 	cfgIntOptions[CfgOptionBlockInboundKey] = cfgOptionBlockInbound
 
-	// Enforce SPN
-	err = config.Register(&config.Option{
-		Name:            "Enforce SPN",
-		Key:             CfgOptionEnforceSPNKey,
-		Description:     "This setting enforces connections to be routed over the SPN. If this is not possible for any reason, connections will be blocked.",
-		Order:           cfgOptionEnforceSPNOrder,
-		OptType:         config.OptTypeInt,
-		ReleaseLevel:    config.ReleaseLevelExperimental,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelOff,
-		ValidationRegex: "^(0|4|6|7)$",
-	})
-	if err != nil {
-		return err
-	}
-	cfgOptionEnforceSPN = config.Concurrent.GetAsInt(CfgOptionEnforceSPNKey, int64(status.SecurityLevelOff))
-	cfgIntOptions[CfgOptionEnforceSPNKey] = cfgOptionEnforceSPN
-
 	// Filter Out-of-Scope DNS Records
 	err = config.Register(&config.Option{
-		Name:            "Filter Out-of-Scope DNS Records",
-		Key:             CfgOptionRemoveOutOfScopeDNSKey,
-		Description:     "Filter DNS answers that are outside of the scope of the server. A server on the public Internet may not respond with a private LAN address.",
-		Order:           cfgOptionRemoveOutOfScopeDNSOrder,
-		OptType:         config.OptTypeInt,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
-		ReleaseLevel:    config.ReleaseLevelBeta,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(4|6|7)$",
+		Name:           "Enforce Global/Private Split-View",
+		Key:            CfgOptionRemoveOutOfScopeDNSKey,
+		Description:    "Reject private IP addresses (RFC1918 et al.) from public DNS responses.",
+		OptType:        config.OptTypeInt,
+		ExpertiseLevel: config.ExpertiseLevelDeveloper,
+		DefaultValue:   status.SecurityLevelsAll,
+		PossibleValues: status.SecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation: cfgOptionRemoveOutOfScopeDNSOrder,
+			config.CategoryAnnotation:     "DNS Filtering",
+		},
 	})
 	if err != nil {
 		return err
@@ -365,16 +453,18 @@ Examples:
 
 	// Filter DNS Records that would be blocked
 	err = config.Register(&config.Option{
-		Name:            "Filter DNS Records that would be blocked",
-		Key:             CfgOptionRemoveBlockedDNSKey,
-		Description:     "Pre-filter DNS answers that an application would not be allowed to connect to.",
-		Order:           cfgOptionRemoveBlockedDNSOrder,
-		OptType:         config.OptTypeInt,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
-		ReleaseLevel:    config.ReleaseLevelBeta,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(4|6|7)$",
+		Name:           "Reject Blocked IPs",
+		Key:            CfgOptionRemoveBlockedDNSKey,
+		Description:    "Reject blocked IP addresses directly from the DNS response instead of handing them over to the app and blocking a resulting connection.",
+		OptType:        config.OptTypeInt,
+		ExpertiseLevel: config.ExpertiseLevelDeveloper,
+		DefaultValue:   status.SecurityLevelsAll,
+		PossibleValues: status.SecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation: cfgOptionRemoveBlockedDNSOrder,
+			config.CategoryAnnotation:     "DNS Filtering",
+		},
 	})
 	if err != nil {
 		return err
@@ -384,15 +474,18 @@ Examples:
 
 	// Domain heuristics
 	err = config.Register(&config.Option{
-		Name:            "Enable Domain Heuristics",
-		Key:             CfgOptionDomainHeuristicsKey,
-		Description:     "Domain Heuristics checks for suspicious looking domain names and blocks them. Ths option currently targets domains generated by malware and DNS data tunnels.",
-		Order:           cfgOptionDomainHeuristicsOrder,
-		OptType:         config.OptTypeInt,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(0|4|6|7)$",
+		Name:           "Enable Domain Heuristics",
+		Key:            CfgOptionDomainHeuristicsKey,
+		Description:    "Checks for suspicious domain names and blocks them. This option currently targets domain names generated by malware and DNS data exfiltration channels.",
+		OptType:        config.OptTypeInt,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		DefaultValue:   status.SecurityLevelsAll,
+		PossibleValues: status.AllSecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation: cfgOptionDomainHeuristicsOrder,
+			config.CategoryAnnotation:     "DNS Filtering",
+		},
 	})
 	if err != nil {
 		return err
@@ -401,22 +494,46 @@ Examples:
 
 	// Bypass prevention
 	err = config.Register(&config.Option{
-		Name:            "Prevent Bypassing",
-		Key:             CfgOptionPreventBypassingKey,
-		Description:     "Prevent apps from bypassing the privacy filter: Firefox by disabling DNS-over-HTTPs",
-		Order:           cfgOptionPreventBypassingOrder,
-		OptType:         config.OptTypeInt,
-		ExpertiseLevel:  config.ExpertiseLevelUser,
-		ReleaseLevel:    config.ReleaseLevelBeta,
-		ExternalOptType: "security level",
-		DefaultValue:    status.SecurityLevelsAll,
-		ValidationRegex: "^(4|6|7)",
+		Name: "Block Bypassing",
+		Key:  CfgOptionPreventBypassingKey,
+		Description: `Prevent apps from bypassing the privacy filter.  
+Current Features:  
+- Disable Firefox' internal DNS-over-HTTPs resolver
+- Block direct access to public DNS resolvers`,
+		OptType:        config.OptTypeInt,
+		ExpertiseLevel: config.ExpertiseLevelUser,
+		ReleaseLevel:   config.ReleaseLevelBeta,
+		DefaultValue:   status.SecurityLevelsAll,
+		PossibleValues: status.SecurityLevelValues,
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation: cfgOptionPreventBypassingOrder,
+			config.CategoryAnnotation:     "Advanced",
+		},
 	})
 	if err != nil {
 		return err
 	}
 	cfgOptionPreventBypassing = config.Concurrent.GetAsInt((CfgOptionPreventBypassingKey), int64(status.SecurityLevelsAll))
 	cfgIntOptions[CfgOptionPreventBypassingKey] = cfgOptionPreventBypassing
+
+	// Use SPN
+	err = config.Register(&config.Option{
+		Name:         "Use SPN",
+		Key:          CfgOptionUseSPNKey,
+		Description:  "Route connections through the Safing Privacy Network. If it is disabled or unavailable for any reason, connections will be blocked.",
+		OptType:      config.OptTypeBool,
+		DefaultValue: true,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionUseSPNOrder,
+			config.CategoryAnnotation:     "General",
+		},
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionUseSPN = config.Concurrent.GetAsBool(CfgOptionUseSPNKey, true)
+	cfgBoolOptions[CfgOptionUseSPNKey] = cfgOptionUseSPN
 
 	return nil
 }

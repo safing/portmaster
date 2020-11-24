@@ -9,8 +9,6 @@ import (
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/modules/subsystems"
-	"github.com/safing/portbase/notifications"
 )
 
 // Default Values (changeable for testing)
@@ -66,12 +64,6 @@ func globalPrep() error {
 
 	// set api listen address
 	api.SetDefaultAPIListenAddress(DefaultAPIListenAddress)
-
-	// set notification persistence
-	notifications.SetPersistenceBasePath("core:notifications")
-
-	// set subsystem status dir
-	subsystems.SetDatabaseKeySpace("core:status/subsystems")
 
 	return nil
 }

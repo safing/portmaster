@@ -17,14 +17,16 @@ var (
 	openDNSRequests     = make(map[string]*Connection) // key: <pid>/fqdn
 	openDNSRequestsLock sync.Mutex
 
+	// scope prefix
+	unidentifiedProcessScopePrefix = strconv.Itoa(process.UnidentifiedProcessID) + "/"
+)
+
+const (
 	// write open dns requests every
 	writeOpenDNSRequestsTickDuration = 5 * time.Second
 
 	// duration after which DNS requests without a following connection are logged
 	openDNSRequestLimit = 3 * time.Second
-
-	// scope prefix
-	unidentifiedProcessScopePrefix = strconv.Itoa(process.UnidentifiedProcessID) + "/"
 )
 
 func getDNSRequestCacheKey(pid int, fqdn string) string {
@@ -122,15 +124,15 @@ func (conn *Connection) GetExtraRRs(ctx context.Context, request *dns.Msg) []dns
 	}
 
 	// Create resource record with verdict and reason.
-	rr, err := nsutil.MakeMessageRecord(level, fmt.Sprintf("%s: %s", conn.Verdict.Verb(), conn.Reason))
+	rr, err := nsutil.MakeMessageRecord(level, fmt.Sprintf("%s: %s", conn.Verdict.Verb(), conn.Reason.Msg))
 	if err != nil {
 		log.Tracer(ctx).Warningf("filter: failed to add informational record to reply: %s", err)
 		return nil
 	}
 	extra := []dns.RR{rr}
 
-	// Add additional records from ReasonContext.
-	if rrProvider, ok := conn.ReasonContext.(nsutil.RRProvider); ok {
+	// Add additional records from Reason.Context.
+	if rrProvider, ok := conn.Reason.Context.(nsutil.RRProvider); ok {
 		rrs := rrProvider.GetExtraRRs(ctx, request)
 		extra = append(extra, rrs...)
 	}

@@ -30,9 +30,13 @@ func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process 
 		return nil, connInbound, err
 	}
 
-	err = process.GetProfile(ctx)
+	changed, err := process.GetProfile(ctx)
 	if err != nil {
 		log.Tracer(ctx).Errorf("process: failed to get profile for process %s: %s", process, err)
+	}
+
+	if changed {
+		process.Save()
 	}
 
 	return process, connInbound, nil

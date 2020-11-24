@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"time"
 
@@ -20,7 +22,7 @@ const (
 	releaseChannelStable = "stable"
 	releaseChannelBeta   = "beta"
 
-	disableUpdatesKey = "core/disableUpdates"
+	enableUpdatesKey = "core/automaticUpdates"
 
 	// ModuleName is the name of the update module
 	// and can be used when declaring module dependencies.
@@ -49,6 +51,7 @@ var (
 	module            *modules.Module
 	registry          *updater.ResourceRegistry
 	userAgentFromFlag string
+	staging           bool
 
 	updateTask          *modules.Task
 	updateASAP          bool
@@ -76,13 +79,13 @@ func init() {
 	module.RegisterEvent(ResourceUpdateEvent)
 
 	flag.StringVar(&userAgentFromFlag, "update-agent", "", "Sets the user agent for requests to the update server")
+	flag.BoolVar(&staging, "staging", false, "Use staging update channel (for testing only)")
 
 	// initialize mandatory updates
 	if onWindows {
 		MandatoryUpdates = []string{
 			platform("core/portmaster-core.exe"),
 			platform("start/portmaster-start.exe"),
-			platform("app/portmaster-app.exe"),
 			platform("notifier/portmaster-notifier.exe"),
 			platform("notifier/portmaster-snoretoast.exe"),
 		}
@@ -90,10 +93,15 @@ func init() {
 		MandatoryUpdates = []string{
 			platform("core/portmaster-core"),
 			platform("start/portmaster-start"),
-			platform("app/portmaster-app"),
 			platform("notifier/portmaster-notifier"),
 		}
 	}
+
+	MandatoryUpdates = append(
+		MandatoryUpdates,
+		platform("app/portmaster-app.zip"),
+		"all/ui/modules/portmaster.zip",
+	)
 }
 
 func prep() error {
@@ -139,9 +147,12 @@ func start() error {
 		},
 		UserAgent:        UserAgent,
 		MandatoryUpdates: MandatoryUpdates,
-		Beta:             releaseChannel() == releaseChannelBeta,
-		DevMode:          devMode(),
-		Online:           true,
+		AutoUnpack: []string{
+			platform("app/portmaster-app.zip"),
+		},
+		Beta:    releaseChannel() == releaseChannelBeta,
+		DevMode: devMode(),
+		Online:  true,
 	}
 	if userAgentFromFlag != "" {
 		// override with flag value
@@ -159,17 +170,32 @@ func start() error {
 		Beta:   false,
 	})
 
-	registry.AddIndex(updater.Index{
-		Path:   "beta.json",
-		Stable: false,
-		Beta:   true,
-	})
+	if registry.Beta {
+		registry.AddIndex(updater.Index{
+			Path:   "beta.json",
+			Stable: false,
+			Beta:   true,
+		})
+	}
 
 	registry.AddIndex(updater.Index{
 		Path:   "all/intel/intel.json",
 		Stable: true,
-		Beta:   false,
+		Beta:   true,
 	})
+
+	if stagingActive() {
+		// Set flag no matter how staging was activated.
+		staging = true
+
+		log.Warning("updates: staging environment is active")
+
+		registry.AddIndex(updater.Index{
+			Path:   "staging.json",
+			Stable: true,
+			Beta:   true,
+		})
+	}
 
 	err = registry.LoadIndexes(module.Ctx)
 	if err != nil {
@@ -184,6 +210,7 @@ func start() error {
 	registry.SelectVersions()
 	module.TriggerEvent(VersionUpdateEvent, nil)
 
+	// Initialize the version export - this requires the registry to be set up.
 	err = initVersionExport()
 	if err != nil {
 		return err
@@ -245,7 +272,7 @@ func DisableUpdateSchedule() error {
 }
 
 func checkForUpdates(ctx context.Context) (err error) {
-	if updatesCurrentlyDisabled {
+	if !updatesCurrentlyEnabled {
 		log.Debugf("updates: automatic updates are disabled")
 		return nil
 	}
@@ -257,7 +284,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 		if err == nil {
 			module.Resolve(updateInProgress)
 		} else {
-			module.Warning(updateFailed, "Failed to check for updates: "+err.Error())
+			module.Warning(updateFailed, "Failed to update: "+err.Error())
 		}
 	}()
 
@@ -273,6 +300,13 @@ func checkForUpdates(ctx context.Context) (err error) {
 
 	registry.SelectVersions()
 
+	// Unpack selected resources.
+	err = registry.UnpackResources()
+	if err != nil {
+		err = fmt.Errorf("failed to update: %w", err)
+		return
+	}
+
 	module.TriggerEvent(ResourceUpdateEvent, nil)
 	return nil
 }
@@ -287,4 +321,15 @@ func stop() error {
 
 func platform(identifier string) string {
 	return fmt.Sprintf("%s_%s/%s", runtime.GOOS, runtime.GOARCH, identifier)
+}
+
+func stagingActive() bool {
+	// Check flag and env variable.
+	if staging || os.Getenv("PORTMASTER_STAGING") == "enabled" {
+		return true
+	}
+
+	// Check if staging index is present and acessible.
+	_, err := os.Stat(filepath.Join(registry.StorageDir().Path, "staging.json"))
+	return err == nil
 }

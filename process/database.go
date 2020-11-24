@@ -66,7 +66,7 @@ func (p *Process) Save() {
 	}
 
 	if dbControllerFlag.IsSet() {
-		go dbController.PushUpdate(p)
+		dbController.PushUpdate(p)
 	}
 }
 
@@ -83,7 +83,7 @@ func (p *Process) Delete() {
 	// propagate delete
 	p.Meta().Delete()
 	if dbControllerFlag.IsSet() {
-		go dbController.PushUpdate(p)
+		dbController.PushUpdate(p)
 	}
 
 	// TODO: maybe mark the assigned profiles as no longer needed?
@@ -106,32 +106,34 @@ func CleanProcessStorage(activePIDs map[int]struct{}) {
 
 	// clean primary processes
 	for _, p := range processesCopy {
-		p.Lock()
+		// The PID of a process does not change.
 
-		_, active := activePIDs[p.Pid]
-		switch {
-		case p.Pid == UnidentifiedProcessID:
-			// internal
-		case p.Pid == SystemProcessID:
-			// internal
-		case active:
-			// process in system process table or recently seen on the network
-		default:
-			// delete now or soon
-			switch {
-			case p.LastSeen == 0:
-				// add last
-				p.LastSeen = time.Now().Unix()
-			case p.LastSeen > threshold:
-				// within keep period
-			default:
-				// delete now
-				log.Tracef("process.clean: deleted %s", p.DatabaseKey())
-				go p.Delete()
-			}
+		// Check if this is a special process.
+		if p.Pid == UnidentifiedProcessID || p.Pid == SystemProcessID {
+			p.profile.MarkStillActive()
+			continue
 		}
 
-		p.Unlock()
+		// Check if process is active.
+		_, active := activePIDs[p.Pid]
+		if active {
+			p.profile.MarkStillActive()
+			continue
+		}
+
+		// Process is inactive, start deletion process
+		lastSeen := p.GetLastSeen()
+		switch {
+		case lastSeen == 0:
+			// add last seen timestamp
+			p.SetLastSeen(time.Now().Unix())
+		case lastSeen > threshold:
+			// within keep period
+		default:
+			// delete now
+			p.Delete()
+			log.Tracef("process: cleaned %s", p.DatabaseKey())
+		}
 	}
 }
 

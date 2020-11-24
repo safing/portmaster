@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/safing/portbase/config"
-
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/profile/endpoints"
 )
@@ -25,11 +26,15 @@ func registerConfigUpdater() error {
 		"config",
 		"config change",
 		"update global config profile",
-		updateGlobalConfigProfile,
+		func(ctx context.Context, _ interface{}) error {
+			return updateGlobalConfigProfile(ctx, nil)
+		},
 	)
 }
 
-func updateGlobalConfigProfile(ctx context.Context, data interface{}) error {
+const globalConfigProfileErrorID = "profile:global-profile-error"
+
+func updateGlobalConfigProfile(ctx context.Context, task *modules.Task) error {
 	cfgLock.Lock()
 	defer cfgLock.Unlock()
 
@@ -71,13 +76,9 @@ func updateGlobalConfigProfile(ctx context.Context, data interface{}) error {
 	}
 
 	// build global profile for reference
-	profile := &Profile{
-		ID:           "global-config",
-		Source:       SourceSpecial,
-		Name:         "Global Configuration",
-		Config:       make(map[string]interface{}),
-		internalSave: true,
-	}
+	profile := New(SourceSpecial, "global-config", "")
+	profile.Name = "Global Configuration"
+	profile.Internal = true
 
 	newConfig := make(map[string]interface{})
 	// fill profile config options
@@ -102,6 +103,28 @@ func updateGlobalConfigProfile(ctx context.Context, data interface{}) error {
 	if err != nil && lastErr == nil {
 		// other errors are more important
 		lastErr = err
+	}
+
+	// If there was any error, try again later until it succeeds.
+	if lastErr == nil {
+		module.Resolve(globalConfigProfileErrorID)
+	} else {
+		// Create task after first failure.
+		if task == nil {
+			task = module.NewTask(
+				"retry updating global config profile",
+				updateGlobalConfigProfile,
+			)
+		}
+
+		// Schedule task.
+		task.Schedule(time.Now().Add(15 * time.Second))
+
+		// Add module warning to inform user.
+		module.Warning(
+			globalConfigProfileErrorID,
+			fmt.Sprintf("Failed to process global settings: %s", err),
+		)
 	}
 
 	return lastErr

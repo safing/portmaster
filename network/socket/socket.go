@@ -29,6 +29,8 @@ type BindInfo struct {
 	PID   int
 	UID   int
 	Inode int
+
+	ListensAny bool
 }
 
 // Address is an IP + Port pair.
@@ -108,3 +110,7 @@ func (i *BindInfo) GetUIDandInode() (int, int) {
 
 	return i.UID, i.Inode
 }
+
+// compile time checks
+var _ Info = new(ConnectionInfo)
+var _ Info = new(BindInfo)

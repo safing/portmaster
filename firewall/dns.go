@@ -17,13 +17,14 @@ import (
 	"github.com/safing/portmaster/resolver"
 )
 
-func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, scope int8) ([]dns.RR, []string, int) {
+func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, scope int8) ([]dns.RR, []string, int, string) {
 	goodEntries := make([]dns.RR, 0, len(entries))
 	filteredRecords := make([]string, 0, len(entries))
 
 	// keeps track of the number of valid and allowed
 	// A and AAAA records.
 	var allowedAddressRecords int
+	var interveningOptionKey string
 
 	for _, rr := range entries {
 		// get IP and classification
@@ -45,10 +46,12 @@ func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, scope int8) (
 			case classification == netutils.HostLocal:
 				// No DNS should return localhost addresses
 				filteredRecords = append(filteredRecords, rr.String())
+				interveningOptionKey = profile.CfgOptionRemoveOutOfScopeDNSKey
 				continue
 			case scope == netutils.Global && (classification == netutils.SiteLocal || classification == netutils.LinkLocal):
 				// No global DNS should return LAN addresses
 				filteredRecords = append(filteredRecords, rr.String())
+				interveningOptionKey = profile.CfgOptionRemoveOutOfScopeDNSKey
 				continue
 			}
 		}
@@ -58,12 +61,15 @@ func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, scope int8) (
 			switch {
 			case p.BlockScopeInternet() && classification == netutils.Global:
 				filteredRecords = append(filteredRecords, rr.String())
+				interveningOptionKey = profile.CfgOptionBlockScopeInternetKey
 				continue
 			case p.BlockScopeLAN() && (classification == netutils.SiteLocal || classification == netutils.LinkLocal):
 				filteredRecords = append(filteredRecords, rr.String())
+				interveningOptionKey = profile.CfgOptionBlockScopeLANKey
 				continue
 			case p.BlockScopeLocal() && classification == netutils.HostLocal:
 				filteredRecords = append(filteredRecords, rr.String())
+				interveningOptionKey = profile.CfgOptionBlockScopeLocalKey
 				continue
 			}
 
@@ -75,7 +81,7 @@ func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, scope int8) (
 		goodEntries = append(goodEntries, rr)
 	}
 
-	return goodEntries, filteredRecords, allowedAddressRecords
+	return goodEntries, filteredRecords, allowedAddressRecords, interveningOptionKey
 }
 
 func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache) *resolver.RRCache {
@@ -97,18 +103,30 @@ func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache) *res
 
 	var filteredRecords []string
 	var validIPs int
+	var interveningOptionKey string
 
-	rrCache.Answer, filteredRecords, validIPs = filterDNSSection(rrCache.Answer, p, rrCache.ServerScope)
+	rrCache.Answer, filteredRecords, validIPs, interveningOptionKey = filterDNSSection(rrCache.Answer, p, rrCache.ServerScope)
 	rrCache.FilteredEntries = append(rrCache.FilteredEntries, filteredRecords...)
 
 	// we don't count the valid IPs in the extra section
-	rrCache.Extra, filteredRecords, _ = filterDNSSection(rrCache.Extra, p, rrCache.ServerScope)
+	rrCache.Extra, filteredRecords, _, _ = filterDNSSection(rrCache.Extra, p, rrCache.ServerScope)
 	rrCache.FilteredEntries = append(rrCache.FilteredEntries, filteredRecords...)
 
 	if len(rrCache.FilteredEntries) > 0 {
 		rrCache.Filtered = true
 		if validIPs == 0 {
-			conn.Block("no addresses returned for this domain are permitted")
+			switch interveningOptionKey {
+			case profile.CfgOptionBlockScopeInternetKey:
+				conn.Block("Internet access blocked", interveningOptionKey)
+			case profile.CfgOptionBlockScopeLANKey:
+				conn.Block("LAN access blocked", interveningOptionKey)
+			case profile.CfgOptionBlockScopeLocalKey:
+				conn.Block("Localhost access blocked", interveningOptionKey)
+			case profile.CfgOptionRemoveOutOfScopeDNSKey:
+				conn.Block("DNS global/private split-view violation", interveningOptionKey)
+			default:
+				conn.Block("DNS response only contained to-be-blocked IPs", interveningOptionKey)
+			}
 
 			// If all entries are filtered, this could mean that these are broken/bogus resource records.
 			if rrCache.Expired() {
@@ -151,12 +169,6 @@ func DecideOnResolvedDNS(
 	rrCache *resolver.RRCache,
 ) *resolver.RRCache {
 
-	// check profile
-	if checkProfileExists(ctx, conn, nil) {
-		// returns true if check triggered
-		return nil
-	}
-
 	// special grant for connectivity domains
 	if checkConnectivityDomain(ctx, conn, nil) {
 		// returns true if check triggered
@@ -186,14 +198,14 @@ func mayBlockCNAMEs(ctx context.Context, conn *network.Connection) bool {
 
 		result, reason := conn.Process().Profile().MatchEndpoint(ctx, conn.Entity)
 		if result == endpoints.Denied {
-			conn.BlockWithContext(reason.String(), reason.Context())
+			conn.BlockWithContext(reason.String(), profile.CfgOptionFilterCNAMEKey, reason.Context())
 			return true
 		}
 
 		if result == endpoints.NoMatch {
 			result, reason = conn.Process().Profile().MatchFilterLists(ctx, conn.Entity)
 			if result == endpoints.Denied {
-				conn.BlockWithContext(reason.String(), reason.Context())
+				conn.BlockWithContext(reason.String(), profile.CfgOptionFilterCNAMEKey, reason.Context())
 				return true
 			}
 		}

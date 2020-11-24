@@ -15,6 +15,7 @@ import (
 	processInfo "github.com/shirou/gopsutil/process"
 	"github.com/tevino/abool"
 
+	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/notifications"
@@ -99,18 +100,30 @@ func upgradeCoreNotify() error {
 
 	// check for new version
 	if info.GetInfo().Version != pmCoreUpdate.Version() {
-		n := notifications.NotifyInfo(
-			"updates:core-update-available",
-			fmt.Sprintf("There is an update available for the Portmaster core (v%s), please restart the Portmaster to apply the update.", pmCoreUpdate.Version()),
-			notifications.Action{
-				ID:   "later",
-				Text: "Later",
+		n := notifications.Notify(&notifications.Notification{
+			EventID: "updates:core-update-available",
+			Type:    notifications.Info,
+			Title: fmt.Sprintf(
+				"Portmaster Update v%s",
+				pmCoreUpdate.Version(),
+			),
+			Category: "Core",
+			Message: fmt.Sprintf(
+				`:tada: Update to **Portmaster v%s** is available!  
+Please restart the Portmaster to apply the update.`,
+				pmCoreUpdate.Version(),
+			),
+			AvailableActions: []*notifications.Action{
+				{
+					ID:   "restart",
+					Text: "Restart",
+				},
+				{
+					ID:   "later",
+					Text: "Not now",
+				},
 			},
-			notifications.Action{
-				ID:   "restart",
-				Text: "Restart Portmaster Now",
-			},
-		)
+		})
 		n.SetActionFunction(upgradeCoreNotifyActionHandler)
 
 		log.Debugf("updates: new portmaster version available, sending notification to user")
@@ -119,7 +132,7 @@ func upgradeCoreNotify() error {
 	return nil
 }
 
-func upgradeCoreNotifyActionHandler(n *notifications.Notification) {
+func upgradeCoreNotifyActionHandler(_ context.Context, n *notifications.Notification) error {
 	switch n.SelectedActionID {
 	case "restart":
 		// Cannot directly trigger due to import loop.
@@ -130,11 +143,13 @@ func upgradeCoreNotifyActionHandler(n *notifications.Notification) {
 			nil,
 		)
 		if err != nil {
-			log.Warningf("updates: failed to trigger restart via notification: %s", err)
+			return fmt.Errorf("failed to trigger restart via notification: %s", err)
 		}
 	case "later":
-		n.Expires = time.Now().Unix() // expire immediately
+		return n.Delete()
 	}
+
+	return nil
 }
 
 func upgradeHub() error {
@@ -192,12 +207,11 @@ func upgradePortmasterStart() error {
 	}
 
 	// update portmaster-start in data root
-	rootPmStartPath := filepath.Join(filepath.Dir(registry.StorageDir().Path), filename)
+	rootPmStartPath := filepath.Join(dataroot.Root().Path, filename)
 	err := upgradeFile(rootPmStartPath, pmCtrlUpdate)
 	if err != nil {
 		return err
 	}
-	log.Infof("updates: upgraded %s", rootPmStartPath)
 
 	return nil
 }
@@ -244,10 +258,18 @@ func warnOnIncorrectParentPath() {
 	if !strings.HasPrefix(absPath, root) {
 		log.Warningf("detected unexpected path %s for portmaster-start", absPath)
 
-		notifications.NotifyWarn(
-			"updates:unsupported-parent",
-			fmt.Sprintf("The portmaster has been launched by an unexpected %s binary at %s. Please configure your system to use the binary at %s as this version will be kept up to date automatically.", expectedFileName, absPath, filepath.Join(root, expectedFileName)),
-		)
+		notifications.Notify(&notifications.Notification{
+			EventID:  "updates:unsupported-parent",
+			Type:     notifications.Warning,
+			Title:    "Unsupported Launcher",
+			Category: "Core",
+			Message: fmt.Sprintf(
+				"The portmaster has been launched by an unexpected %s binary at %s. Please configure your system to use the binary at %s as this version will be kept up to date automatically.",
+				expectedFileName,
+				absPath,
+				filepath.Join(root, expectedFileName),
+			),
+		})
 	}
 }
 
@@ -268,6 +290,7 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 			// abort if version matches
 			currentVersion = strings.Trim(strings.TrimSpace(string(out)), "*")
 			if currentVersion == file.Version() {
+				log.Tracef("updates: %s is already v%s", fileToUpgrade, file.Version())
 				// already up to date!
 				return nil
 			}
@@ -330,6 +353,8 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 			}
 		}
 	}
+
+	log.Infof("updates: upgraded %s to v%s", fileToUpgrade, file.Version())
 	return nil
 }
 

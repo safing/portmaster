@@ -2,17 +2,16 @@ package process
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/profile"
+	"golang.org/x/sync/singleflight"
 )
 
-// Special Process IDs
-const (
-	UnidentifiedProcessID = -1
-	SystemProcessID       = 0
-)
+// UnidentifiedProcessID is the PID used for anything that could not be
+// attributed to a PID for any reason.
+const UnidentifiedProcessID = -1
 
 var (
 	// unidentifiedProcess is used when a process cannot be found.
@@ -32,53 +31,41 @@ var (
 		ParentPid: SystemProcessID,
 		Name:      "Operating System",
 	}
+
+	getSpecialProcessSingleInflight singleflight.Group
 )
 
 // GetUnidentifiedProcess returns the special process assigned to unidentified processes.
 func GetUnidentifiedProcess(ctx context.Context) *Process {
-	return getSpecialProcess(ctx, UnidentifiedProcessID, unidentifiedProcess, profile.GetUnidentifiedProfile)
+	return getSpecialProcess(ctx, unidentifiedProcess)
 }
 
 // GetSystemProcess returns the special process used for the Kernel.
 func GetSystemProcess(ctx context.Context) *Process {
-	return getSpecialProcess(ctx, SystemProcessID, systemProcess, profile.GetSystemProfile)
+	return getSpecialProcess(ctx, systemProcess)
 }
 
-func getSpecialProcess(ctx context.Context, pid int, template *Process, getProfile func() *profile.Profile) *Process {
-	// check storage
-	p, ok := GetProcessFromStorage(pid)
-	if ok {
-		return p
-	}
+func getSpecialProcess(ctx context.Context, template *Process) *Process {
+	p, _, _ := getSpecialProcessSingleInflight.Do(strconv.Itoa(template.Pid), func() (interface{}, error) {
+		// Check if we have already loaded the special process.
+		process, ok := GetProcessFromStorage(template.Pid)
+		if ok {
+			return process, nil
+		}
 
-	// assign template
-	p = template
+		// Create new process from template
+		process = template
+		process.FirstSeen = time.Now().Unix()
 
-	p.Lock()
-	defer p.Unlock()
+		// Get profile.
+		_, err := process.GetProfile(ctx)
+		if err != nil {
+			log.Tracer(ctx).Errorf("process: failed to get profile for process %s: %s", process, err)
+		}
 
-	if p.FirstSeen == 0 {
-		p.FirstSeen = time.Now().Unix()
-	}
-
-	// only find profiles if not already done.
-	if p.profile != nil {
-		log.Tracer(ctx).Trace("process: special profile already loaded")
-		// mark profile as used
-		p.profile.MarkUsed()
-		return p
-	}
-	log.Tracer(ctx).Trace("process: loading special profile")
-
-	// get profile
-	localProfile := getProfile()
-
-	// mark profile as used
-	localProfile.MarkUsed()
-
-	p.LocalProfileKey = localProfile.Key()
-	p.profile = profile.NewLayeredProfile(localProfile)
-
-	go p.Save()
-	return p
+		// Save process to storage.
+		process.Save()
+		return process, nil
+	})
+	return p.(*Process)
 }

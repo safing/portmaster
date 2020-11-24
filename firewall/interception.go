@@ -2,6 +2,7 @@ package firewall
 
 import (
 	"context"
+	"net"
 	"os"
 	"sync/atomic"
 	"time"
@@ -29,6 +30,9 @@ var (
 	packetsBlocked  = new(uint64)
 	packetsDropped  = new(uint64)
 	packetsFailed   = new(uint64)
+
+	blockedIPv4 = net.IPv4(0, 0, 0, 17)
+	blockedIPv6 = net.ParseIP("::17")
 )
 
 func init() {
@@ -83,6 +87,11 @@ func handlePacket(ctx context.Context, pkt packet.Packet) {
 // fastTrackedPermit quickly permits certain network criticial or internal connections.
 func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 	meta := pkt.Info()
+
+	// Check for blocked IP
+	if meta.Dst.Equal(blockedIPv4) || meta.Dst.Equal(blockedIPv6) {
+		_ = pkt.PermanentBlock()
+	}
 
 	switch meta.Protocol {
 	case packet.ICMP:
@@ -171,7 +180,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	ps := getPortStatusAndMarkUsed(pkt.Info().LocalPort())
 	if ps.isMe {
 		// approve
-		conn.Accept("internally approved")
+		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true
 		// finish
 		conn.StopFirewallHandler()
@@ -191,7 +200,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	// check if filtering is enabled
 	if !filterEnabled() {
 		conn.Inspecting = false
-		conn.SetVerdict(network.VerdictAccept, "privacy filter disabled", nil)
+		conn.Accept("privacy filter disabled", noReasonOptionKey)
 		conn.StopFirewallHandler()
 		issueVerdict(conn, pkt, 0, true)
 		return

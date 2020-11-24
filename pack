@@ -3,33 +3,60 @@
 baseDir="$( cd "$(dirname "$0")" && pwd )"
 cd "$baseDir"
 
-# first check what will be built
+COL_OFF="\033[0m"
+COL_BOLD="\033[01;01m"
+COL_RED="\033[31m"
+COL_GREEN="\033[32m"
+COL_YELLOW="\033[33m"
 
-function packAll() {
-  for i in ./cmds/* ; do
-    if [ -e $i/pack ]; then
-      $i/pack $1
-    fi
-  done
+function safe_execute {
+  echo -e "\n[....] $*"
+  $*
+  if [[ $? -eq 0 ]]; then
+    echo -e "[${COL_GREEN} OK ${COL_OFF}] $*"
+  else
+    echo -e "[${COL_RED}FAIL${COL_OFF}] $*" >/dev/stderr
+    echo -e "[${COL_RED}CRIT${COL_OFF}] ABORTING..." >/dev/stderr
+    exit 1
+  fi
 }
 
-echo ""
-echo "pack list:"
-echo ""
+function check {
+  ./cmds/portmaster-core/pack check
+  ./cmds/portmaster-start/pack check
+}
 
-packAll check
+function build {
+  safe_execute ./cmds/portmaster-core/pack build
+  safe_execute ./cmds/portmaster-start/pack build
+}
 
-# confirm
+function reset {
+  ./cmds/portmaster-core/pack reset
+  ./cmds/portmaster-start/pack reset
+}
 
-echo ""
-read -p "press [Enter] to start packing" x
-echo ""
-
-# build
-
-set -e
-packAll build
-
-echo ""
-echo "finished packing."
-echo ""
+case $1 in
+  "check" )
+    check
+    ;;
+  "build" )
+    build
+    ;;
+  "reset" )
+    reset
+    ;;
+  * )
+    echo ""
+    echo "build list:"
+    echo ""
+    check
+    echo ""
+    read -p "press [Enter] to start building" x
+    echo ""
+    build
+    echo ""
+    echo "finished building."
+    echo ""
+    ;;
+esac

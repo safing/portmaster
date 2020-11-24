@@ -1,9 +1,10 @@
 package status
 
 import (
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/log"
+	"context"
+
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/netenv"
 )
 
 var (
@@ -11,56 +12,30 @@ var (
 )
 
 func init() {
-	module = modules.Register("status", nil, start, stop, "base")
+	module = modules.Register("status", nil, start, nil, "base")
 }
 
 func start() error {
-	err := initSystemStatus()
-	if err != nil {
+	if err := setupRuntimeProvider(); err != nil {
 		return err
 	}
 
-	err = startNetEnvHooking()
+	module.StartWorker("auto-pilot", autoPilot)
+
+	triggerAutopilot()
+
+	err := module.RegisterEventHook(
+		"netenv",
+		netenv.OnlineStatusChangedEvent,
+		"update online status in system status",
+		func(_ context.Context, _ interface{}) error {
+			triggerAutopilot()
+			return nil
+		},
+	)
 	if err != nil {
 		return err
 	}
-
-	status.Save()
-
-	return initStatusHook()
-}
-
-func initSystemStatus() error {
-	// load status from database
-	r, err := statusDB.Get(statusDBKey)
-	switch err {
-	case nil:
-		loadedStatus, err := EnsureSystemStatus(r)
-		if err != nil {
-			log.Criticalf("status: failed to unwrap system status: %s", err)
-		} else {
-			status = loadedStatus
-		}
-	case database.ErrNotFound:
-		// create new status
-	default:
-		log.Criticalf("status: failed to load system status: %s", err)
-	}
-
-	status.Lock()
-	defer status.Unlock()
-
-	// load status into atomic getters
-	atomicUpdateSelectedSecurityLevel(status.SelectedSecurityLevel)
-
-	// update status
-	status.updateThreatMitigationLevel()
-	status.autopilot()
-	status.updateOnlineStatus()
 
 	return nil
-}
-
-func stop() error {
-	return stopStatusHook()
 }

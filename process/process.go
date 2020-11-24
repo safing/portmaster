@@ -30,40 +30,56 @@ type Process struct {
 	record.Base
 	sync.Mutex
 
+	// Constant attributes.
+
+	Name      string
 	UserID    int
 	UserName  string
 	UserHome  string
 	Pid       int
 	ParentPid int
 	Path      string
+	ExecName  string
 	Cwd       string
 	CmdLine   string
 	FirstArg  string
 
-	ExecName   string
-	ExecHashes map[string]string
-	// ExecOwner ...
-	// ExecSignature ...
-
 	LocalProfileKey string
 	profile         *profile.LayeredProfile
-	Name            string
-	Icon            string
-	// Icon is a path to the icon and is either prefixed "f:" for filepath, "d:" for database cache path or "c:"/"a:" for a the icon key to fetch it from a company / authoritative node and cache it in its own cache.
+
+	// Mutable attributes.
 
 	FirstSeen int64
 	LastSeen  int64
+	Virtual   bool   // This process is either merged into another process or is not needed.
+	Error     string // Cache errors
 
-	Virtual bool   // This process is either merged into another process or is not needed.
-	Error   string // Cache errors
+	ExecHashes map[string]string
 }
 
 // Profile returns the assigned layered profile.
 func (p *Process) Profile() *profile.LayeredProfile {
+	if p == nil {
+		return nil
+	}
+
+	return p.profile
+}
+
+// GetLastSeen returns the unix timestamp when the process was last seen.
+func (p *Process) GetLastSeen() int64 {
 	p.Lock()
 	defer p.Unlock()
 
-	return p.profile
+	return p.LastSeen
+}
+
+// SetLastSeen sets the unix timestamp when the process was last seen.
+func (p *Process) SetLastSeen(lastSeen int64) {
+	p.Lock()
+	defer p.Unlock()
+
+	p.LastSeen = lastSeen
 }
 
 // Strings returns a string representation of process.
@@ -72,8 +88,6 @@ func (p *Process) String() string {
 		return "?"
 	}
 
-	p.Lock()
-	defer p.Unlock()
 	return fmt.Sprintf("%s:%s:%d", p.UserName, p.Path, p.Pid)
 }
 
@@ -218,164 +232,82 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 		defer markRequestFinished()
 	}
 
-	// create new process
+	// Create new a process object.
 	new := &Process{
 		Pid:       pid,
 		Virtual:   true, // caller must decide to actually use the process - we need to save now.
 		FirstSeen: time.Now().Unix(),
 	}
 
-	switch {
-	case new.IsKernel():
-		new.UserName = "Kernel"
-		new.Name = "Operating System"
-	default:
-
-		pInfo, err := processInfo.NewProcess(int32(pid))
-		if err != nil {
-			return nil, err
-		}
-
-		// UID
-		// net yet implemented for windows
-		if runtime.GOOS == "linux" {
-			var uids []int32
-			uids, err = pInfo.Uids()
-			if err != nil {
-				return nil, fmt.Errorf("failed to get UID for p%d: %s", pid, err)
-			}
-			new.UserID = int(uids[0])
-		}
-
-		// Username
-		new.UserName, err = pInfo.Username()
-		if err != nil {
-			return nil, fmt.Errorf("process: failed to get Username for p%d: %s", pid, err)
-		}
-
-		// TODO: User Home
-		// new.UserHome, err =
-
-		// PPID
-		ppid, err := pInfo.Ppid()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get PPID for p%d: %s", pid, err)
-		}
-		new.ParentPid = int(ppid)
-
-		// Path
-		new.Path, err = pInfo.Exe()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get Path for p%d: %s", pid, err)
-		}
-		// remove linux " (deleted)" suffix for deleted files
-		if onLinux {
-			new.Path = strings.TrimSuffix(new.Path, " (deleted)")
-		}
-		// Executable Name
-		_, new.ExecName = filepath.Split(new.Path)
-
-		// Current working directory
-		// net yet implemented for windows
-		// new.Cwd, err = pInfo.Cwd()
-		// if err != nil {
-		// 	log.Warningf("process: failed to get Cwd: %s", err)
-		// }
-
-		// Command line arguments
-		new.CmdLine, err = pInfo.Cmdline()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get Cmdline for p%d: %s", pid, err)
-		}
-
-		// Name
-		new.Name, err = pInfo.Name()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get Name for p%d: %s", pid, err)
-		}
-		if new.Name == "" {
-			new.Name = new.ExecName
-		}
-
-		// OS specifics
-		new.specialOSInit()
-
-		// TODO: App Icon
-		// new.Icon, err =
-
-		// get Profile
-		// processPath := new.Path
-		// var applyProfile *profiles.Profile
-		// iterations := 0
-		// for applyProfile == nil {
-		//
-		// 	iterations++
-		// 	if iterations > 10 {
-		// 		log.Warningf("process: got into loop while getting profile for %s", new)
-		// 		break
-		// 	}
-		//
-		// 	applyProfile, err = profiles.GetActiveProfileByPath(processPath)
-		// 	if err == database.ErrNotFound {
-		// 		applyProfile, err = profiles.FindProfileByPath(processPath, new.UserHome)
-		// 	}
-		// 	if err != nil {
-		// 		log.Warningf("process: could not get profile for %s: %s", new, err)
-		// 	} else if applyProfile == nil {
-		// 		log.Warningf("process: no default profile found for %s", new)
-		// 	} else {
-		//
-		// 		// TODO: there is a lot of undefined behaviour if chaining framework profiles
-		//
-		// 		// process framework
-		// 		if applyProfile.Framework != nil {
-		// 			if applyProfile.Framework.FindParent > 0 {
-		// 				var ppid int32
-		// 				for i := uint8(1); i < applyProfile.Framework.FindParent; i++ {
-		// 					parent, err := pInfo.Parent()
-		// 					if err != nil {
-		// 						return nil, err
-		// 					}
-		// 					ppid = parent.Pid
-		// 				}
-		// 				if applyProfile.Framework.MergeWithParent {
-		// 					return GetOrFindProcess(int(ppid))
-		// 				}
-		// 				// processPath, err = os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
-		// 				// if err != nil {
-		// 				// 	return nil, fmt.Errorf("could not read /proc/%d/exe: %s", pid, err)
-		// 				// }
-		// 				continue
-		// 			}
-		//
-		// 			newCommand, err := applyProfile.Framework.GetNewPath(new.CmdLine, new.Cwd)
-		// 			if err != nil {
-		// 				return nil, err
-		// 			}
-		//
-		// 			// assign
-		// 			new.CmdLine = newCommand
-		// 			new.Path = strings.SplitN(newCommand, " ", 2)[0]
-		// 			processPath = new.Path
-		//
-		// 			// make sure we loop
-		// 			applyProfile = nil
-		// 			continue
-		// 		}
-		//
-		// 		// apply profile to process
-		// 		log.Debugf("process: applied profile to %s: %s", new, applyProfile)
-		// 		new.Profile = applyProfile
-		// 		new.ProfileKey = applyProfile.GetKey().String()
-		//
-		// 		// update Profile with Process icon if Profile does not have one
-		// 		if !new.Profile.Default && new.Icon != "" && new.Profile.Icon == "" {
-		// 			new.Profile.Icon = new.Icon
-		// 			new.Profile.Save()
-		// 		}
-		// 	}
-		// }
+	// Get process information from the system.
+	pInfo, err := processInfo.NewProcess(int32(pid))
+	if err != nil {
+		return nil, err
 	}
+
+	// UID
+	// net yet implemented for windows
+	if runtime.GOOS == "linux" {
+		var uids []int32
+		uids, err = pInfo.Uids()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get UID for p%d: %s", pid, err)
+		}
+		new.UserID = int(uids[0])
+	}
+
+	// Username
+	new.UserName, err = pInfo.Username()
+	if err != nil {
+		return nil, fmt.Errorf("process: failed to get Username for p%d: %s", pid, err)
+	}
+
+	// TODO: User Home
+	// new.UserHome, err =
+
+	// PPID
+	ppid, err := pInfo.Ppid()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get PPID for p%d: %s", pid, err)
+	}
+	new.ParentPid = int(ppid)
+
+	// Path
+	new.Path, err = pInfo.Exe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Path for p%d: %s", pid, err)
+	}
+	// remove linux " (deleted)" suffix for deleted files
+	if onLinux {
+		new.Path = strings.TrimSuffix(new.Path, " (deleted)")
+	}
+	// Executable Name
+	_, new.ExecName = filepath.Split(new.Path)
+
+	// Current working directory
+	// net yet implemented for windows
+	// new.Cwd, err = pInfo.Cwd()
+	// if err != nil {
+	// 	log.Warningf("process: failed to get Cwd: %s", err)
+	// }
+
+	// Command line arguments
+	new.CmdLine, err = pInfo.Cmdline()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Cmdline for p%d: %s", pid, err)
+	}
+
+	// Name
+	new.Name, err = pInfo.Name()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Name for p%d: %s", pid, err)
+	}
+	if new.Name == "" {
+		new.Name = new.ExecName
+	}
+
+	// OS specifics
+	new.specialOSInit()
 
 	new.Save()
 	return new, nil

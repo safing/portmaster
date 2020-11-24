@@ -8,6 +8,10 @@ import (
 	"github.com/safing/portmaster/profile/endpoints"
 )
 
+var (
+	resolverFilterLists = []string{"17-DNS"}
+)
+
 // PreventBypassing checks if the connection should be denied or permitted
 // based on some bypass protection checks.
 func PreventBypassing(conn *network.Connection) (endpoints.EPResult, string, nsutil.Responder) {
@@ -16,6 +20,12 @@ func PreventBypassing(conn *network.Connection) (endpoints.EPResult, string, nsu
 		return endpoints.Denied,
 			"blocked canary domain to prevent enabling of DNS-over-HTTPs",
 			nsutil.NxDomain()
+	}
+
+	if conn.Entity.MatchLists(resolverFilterLists) {
+		return endpoints.Denied,
+			"blocked rogue connection to DNS resolver",
+			nsutil.ZeroIP()
 	}
 
 	return endpoints.NoMatch, "", nil

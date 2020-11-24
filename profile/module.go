@@ -38,6 +38,11 @@ func start() error {
 		return err
 	}
 
+	err = registerRevisionProvider()
+	if err != nil {
+		return err
+	}
+
 	err = startProfileUpdateChecker()
 	if err != nil {
 		return err

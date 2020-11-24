@@ -8,13 +8,31 @@ import (
 	"io"
 
 	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portbase/utils"
 )
 
 type listEntry struct {
-	Entity    string   `json:"entity"`
-	Sources   []string `json:"sources"`
-	Whitelist bool     `json:"whitelist"`
-	Type      string   `json:"type"`
+	Type      string          `json:"type"`
+	Entity    string          `json:"entity"`
+	Whitelist bool            `json:"whitelist"`
+	Resources []entryResource `json:"resources"`
+}
+
+type entryResource struct {
+	SourceID   string `json:"sourceID"`
+	ResourceID string `json:"resourceID"`
+}
+
+func (entry *listEntry) getSources() (sourceIDs []string) {
+	sourceIDs = make([]string, 0, len(entry.Resources))
+
+	for _, resource := range entry.Resources {
+		if !utils.StringInSlice(sourceIDs, resource.SourceID) {
+			sourceIDs = append(sourceIDs, resource.SourceID)
+		}
+	}
+
+	return
 }
 
 // decodeFile decodes a DSDL filterlists file and sends decoded entities to

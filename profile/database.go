@@ -27,12 +27,12 @@ var (
 	})
 )
 
-func makeScopedID(source, id string) string {
-	return source + "/" + id
+func makeScopedID(source profileSource, id string) string {
+	return string(source) + "/" + id
 }
 
-func makeProfileKey(source, id string) string {
-	return profilesDBPath + source + "/" + id
+func makeProfileKey(source profileSource, id string) string {
+	return profilesDBPath + string(source) + "/" + id
 }
 
 func registerValidationDBHook() (err error) {
