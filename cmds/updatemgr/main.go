@@ -12,7 +12,7 @@ import (
 var registry *updater.ResourceRegistry
 
 var rootCmd = &cobra.Command{
-	Use:   "uptool",
+	Use:   "updatemgr",
 	Short: "A simple tool to assist in the update and release process",
 	Args:  cobra.ExactArgs(1),
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

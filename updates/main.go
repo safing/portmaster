@@ -51,6 +51,7 @@ var (
 	module            *modules.Module
 	registry          *updater.ResourceRegistry
 	userAgentFromFlag string
+	staging           bool
 
 	updateTask          *modules.Task
 	updateASAP          bool
@@ -78,6 +79,7 @@ func init() {
 	module.RegisterEvent(ResourceUpdateEvent)
 
 	flag.StringVar(&userAgentFromFlag, "update-agent", "", "Sets the user agent for requests to the update server")
+	flag.BoolVar(&staging, "staging", false, "Use staging update channel (for testing only)")
 
 	// initialize mandatory updates
 	if onWindows {
@@ -182,6 +184,18 @@ func start() error {
 		Beta:   true,
 	})
 
+	if stagingActive() {
+		// Set flag no matter how staging was activated.
+		staging = true
+
+		log.Warning("updates: staging environment is active")
+
+		registry.AddIndex(updater.Index{
+			Path:   "staging.json",
+			Stable: true,
+			Beta:   true,
+		})
+	}
 
 	err = registry.LoadIndexes(module.Ctx)
 	if err != nil {
@@ -307,4 +321,15 @@ func stop() error {
 
 func platform(identifier string) string {
 	return fmt.Sprintf("%s_%s/%s", runtime.GOOS, runtime.GOARCH, identifier)
+}
+
+func stagingActive() bool {
+	// Check flag and env variable.
+	if staging || os.Getenv("PORTMASTER_STAGING") == "enabled" {
+		return true
+	}
+
+	// Check if staging index is present and acessible.
+	_, err := os.Stat(filepath.Join(registry.StorageDir().Path, "staging.json"))
+	return err == nil
 }

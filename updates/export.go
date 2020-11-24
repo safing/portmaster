@@ -35,6 +35,8 @@ type versions struct {
 
 	Core      *info.Info
 	Resources map[string]*updater.Resource
+	Beta      bool
+	Staging   bool
 
 	internalSave bool
 }
@@ -43,6 +45,8 @@ func initVersionExport() (err error) {
 	// init export struct
 	versionExport = &versions{
 		internalSave: true,
+		Beta:         registry.Beta,
+		Staging:      staging,
 	}
 	versionExport.SetKey(versionsDBKey)
 
