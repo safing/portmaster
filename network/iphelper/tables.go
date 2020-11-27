@@ -97,13 +97,20 @@ const (
 
 const (
 	startBufSize = 4096
-	bufSizeUses  = 100
+
+	// bufSizeUsageTTL defines how often a buffer size is used before it is
+	// shrunk again.
+	bufSizeUsageTTL = 100
+
+	// maxBufSize is the maximum size we will allocate for responses. This was
+	// previously set at 65k, which was too little for some production cases.
+	maxBufSize = 1048576 // 2^20B, 1MB
 )
 
 var (
-	bufSize          = startBufSize
-	bufSizeUsageLeft = bufSizeUses
-	bufSizeLock      sync.Mutex
+	bufSize         = startBufSize
+	bufSizeUsesLeft = bufSizeUsageTTL
+	bufSizeLock     sync.Mutex
 )
 
 func getBufSize() int {
@@ -111,12 +118,17 @@ func getBufSize() int {
 	defer bufSizeLock.Unlock()
 
 	// using bufSize
-	bufSizeUsageLeft--
+	bufSizeUsesLeft--
 	// check if we want to reset
-	if bufSizeUsageLeft <= 0 {
-		// reset
-		bufSize = startBufSize
-		bufSizeUsageLeft = bufSizeUses
+	if bufSizeUsesLeft <= 0 {
+		// decrease
+		bufSize /= 2
+		// not too little
+		if bufSize < startBufSize {
+			bufSize = startBufSize
+		}
+		// reset counter
+		bufSizeUsesLeft = bufSizeUsageTTL
 	}
 
 	return bufSize
@@ -129,11 +141,11 @@ func increaseBufSize() int {
 	// increase
 	bufSize *= 2
 	// not too much
-	if bufSize > 65536 {
-		bufSize = 65536
+	if bufSize > maxBufSize {
+		bufSize = maxBufSize
 	}
 	// reset
-	bufSizeUsageLeft = bufSizeUses
+	bufSizeUsesLeft = bufSizeUsageTTL
 	// return new bufSize
 	return bufSize
 }
