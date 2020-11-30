@@ -39,8 +39,8 @@ func New(qid uint16, v6 bool) (*Queue, error) { //nolint:gocognit
 		MaxQueueLen:  0xffff,
 		AfFamily:     uint8(afFamily),
 		Copymode:     nfqueue.NfQnlCopyPacket,
-		ReadTimeout:  5 * time.Millisecond,
-		WriteTimeout: 100 * time.Millisecond,
+		ReadTimeout:  1000 * time.Millisecond,
+		WriteTimeout: 1000 * time.Millisecond,
 	}
 
 	nf, err := nfqueue.Open(cfg)

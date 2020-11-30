@@ -29,3 +29,7 @@ ignored = ["github.com/safing/portbase/*", "github.com/safing/spn/*"]
 [[constraint]]
   name = "github.com/florianl/go-nfqueue"
   branch = "master" # switch back once we migrate to go.mod
+
+[[override]]
+  name = "github.com/mdlayher/netlink"
+  branch = "master" # remove when https://github.com/mdlayher/netlink/pull/171 is released and in github.com/florianl/go-nfqueue

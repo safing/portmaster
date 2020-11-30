@@ -92,12 +92,12 @@ func (p *Process) Delete() {
 // CleanProcessStorage cleans the storage from old processes.
 func CleanProcessStorage(activePIDs map[int]struct{}) {
 	// add system table of processes
-	procs, err := processInfo.Processes()
+	pids, err := processInfo.Pids()
 	if err != nil {
 		log.Warningf("process: failed to get list of active PIDs: %s", err)
 	} else {
-		for _, p := range procs {
-			activePIDs[int(p.Pid)] = struct{}{}
+		for _, pid := range pids {
+			activePIDs[int(pid)] = struct{}{}
 		}
 	}
 
