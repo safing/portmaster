@@ -85,6 +85,12 @@ func (rrCache *RRCache) Clean(minExpires uint32) {
 		lowestTTL = maxTTL
 	}
 
+	// Adjust return code if there are no answers
+	if rrCache.RCode == dns.RcodeSuccess &&
+		len(rrCache.Answer) == 0 {
+		rrCache.RCode = dns.RcodeNameError
+	}
+
 	// shorten caching
 	switch {
 	case rrCache.RCode != dns.RcodeSuccess:
