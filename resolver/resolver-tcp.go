@@ -479,10 +479,6 @@ func (mgr *tcpResolverConnMgr) handleQueryResponse(conn *dns.Conn, msg *dns.Msg)
 
 	// persist to database
 	rrCache := inFlight.MakeCacheRecord(msg)
-	if !rrCache.Cacheable() {
-		return
-	}
-
 	rrCache.Clean(minTTL)
 	err := rrCache.Save()
 	if err != nil {
