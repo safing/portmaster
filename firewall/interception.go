@@ -64,11 +64,13 @@ func handlePacket(ctx context.Context, pkt packet.Packet) {
 		return
 	}
 
+	// Add context tracer and set context on packet.
 	traceCtx, tracer := log.AddTracer(ctx)
 	if tracer != nil {
-		pkt.SetCtx(traceCtx)
+		defer tracer.Submit()
 		tracer.Tracef("filter: handling packet: %s", pkt)
 	}
+	pkt.SetCtx(traceCtx)
 
 	// associate packet to link and handle
 	conn, ok := network.GetConnection(pkt.GetConnectionID())
@@ -327,8 +329,8 @@ func packetHandler(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case pkt := <-interception.Packets:
-			interceptionModule.StartWorker("initial packet handler", func(ctx context.Context) error {
-				handlePacket(ctx, pkt)
+			interceptionModule.StartWorker("initial packet handler", func(workerCtx context.Context) error {
+				handlePacket(workerCtx, pkt)
 				return nil
 			})
 		}
