@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	tcpWriteTimeout    = 1 * time.Second
+	tcpWriteTimeout    = 2 * time.Second
 	ignoreQueriesAfter = 10 * time.Minute
 	heartbeatTimeout   = 15 * time.Second
 )
