@@ -254,7 +254,13 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		// Request was blocked by the firewall.
 		switch conn.Verdict {
 		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
-			tracer.Infof("nameserver: %s request for %s from %s", conn.Verdict.Verb(), q.ID(), conn.Process())
+			tracer.Infof(
+				"nameserver: returning %s response (%s) for %s to %s",
+				conn.Verdict.Verb(),
+				dns.RcodeToString[rrCache.RCode],
+				q.ID(),
+				conn.Process(),
+			)
 			return reply(conn, conn)
 		}
 	}
@@ -268,6 +274,12 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	}
 
 	// Reply with successful response.
-	tracer.Infof("nameserver: returning %s response for %s to %s", conn.Verdict.Verb(), q.ID(), conn.Process())
+	tracer.Infof(
+		"nameserver: returning %s response (%s) for %s to %s",
+		conn.Verdict.Verb(),
+		dns.RcodeToString[rrCache.RCode],
+		q.ID(),
+		conn.Process(),
+	)
 	return reply(rrCache, conn, rrCache)
 }

@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	tcpWriteTimeout    = 1 * time.Second
+	tcpWriteTimeout    = 2 * time.Second
 	ignoreQueriesAfter = 10 * time.Minute
 	heartbeatTimeout   = 15 * time.Second
 )
@@ -419,7 +419,7 @@ func (mgr *tcpResolverConnMgr) queryHandler( //nolint:golint // context.Context 
 			_ = conn.SetWriteDeadline(time.Now().Add(mgr.tr.dnsClient.WriteTimeout))
 			err := conn.WriteMsg(msg)
 			if err != nil {
-				mgr.logConnectionError(err, conn, connClosing)
+				mgr.logConnectionError(err, conn, connClosing, false)
 				return true
 			}
 
@@ -500,14 +500,14 @@ func (mgr *tcpResolverConnMgr) msgReader(
 	for {
 		msg, err := conn.ReadMsg()
 		if err != nil {
-			mgr.logConnectionError(err, conn, connClosing)
+			mgr.logConnectionError(err, conn, connClosing, true)
 			return nil
 		}
 		mgr.responses <- msg
 	}
 }
 
-func (mgr *tcpResolverConnMgr) logConnectionError(err error, conn *dns.Conn, connClosing *abool.AtomicBool) {
+func (mgr *tcpResolverConnMgr) logConnectionError(err error, conn *dns.Conn, connClosing *abool.AtomicBool, reading bool) {
 	// Check if we are the first to see an error.
 	if connClosing.SetToIf(false, true) {
 		// Get amount of in flight queries.
@@ -516,14 +516,23 @@ func (mgr *tcpResolverConnMgr) logConnectionError(err error, conn *dns.Conn, con
 		mgr.tr.Unlock()
 
 		// Log error.
-		if errors.Is(err, io.EOF) {
+		switch {
+		case errors.Is(err, io.EOF):
 			log.Debugf(
 				"resolver: connection to %s (%s) was closed with %d in-flight queries",
 				mgr.tr.resolver.GetName(),
 				conn.RemoteAddr(),
 				inFlightQueries,
 			)
-		} else {
+		case reading:
+			log.Warningf(
+				"resolver: read error from %s (%s) with %d in-flight queries: %s",
+				mgr.tr.resolver.GetName(),
+				conn.RemoteAddr(),
+				inFlightQueries,
+				err,
+			)
+		default:
 			log.Warningf(
 				"resolver: write error to %s (%s) with %d in-flight queries: %s",
 				mgr.tr.resolver.GetName(),

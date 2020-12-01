@@ -67,7 +67,7 @@ func handlePacket(ctx context.Context, pkt packet.Packet) {
 	// Add context tracer and set context on packet.
 	traceCtx, tracer := log.AddTracer(ctx)
 	if tracer != nil {
-		defer tracer.Submit()
+		// The trace is submitted in `network.Connection.packetHandler()`.
 		tracer.Tracef("filter: handling packet: %s", pkt)
 	}
 	pkt.SetCtx(traceCtx)
@@ -193,6 +193,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	// reroute dns requests to nameserver
 	if conn.Process().Pid != os.Getpid() && pkt.IsOutbound() && pkt.Info().DstPort == 53 && !pkt.Info().Src.Equal(pkt.Info().Dst) {
 		conn.Verdict = network.VerdictRerouteToNameserver
+		conn.Reason.Msg = "redirecting rogue dns query"
 		conn.Internal = true
 		conn.StopFirewallHandler()
 		issueVerdict(conn, pkt, 0, true)
@@ -241,6 +242,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 }
 
 func defaultHandler(conn *network.Connection, pkt packet.Packet) {
+	// TODO: `pkt` has an active trace log, which we currently don't submit.
 	issueVerdict(conn, pkt, 0, true)
 }
 
