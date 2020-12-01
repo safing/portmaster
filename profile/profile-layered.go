@@ -61,6 +61,7 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 		layers:             make([]*Profile, 0, len(localProfile.LinkedProfiles)+1),
 		LayerIDs:           make([]string, 0, len(localProfile.LinkedProfiles)+1),
 		globalValidityFlag: config.NewValidityFlag(),
+		RevisionCounter:    1,
 		securityLevel:      &securityLevelVal,
 	}
 
@@ -360,7 +361,7 @@ func (lp *LayeredProfile) wrapSecurityLevelOption(configKey string, globalConfig
 }
 
 func (lp *LayeredProfile) wrapBoolOption(configKey string, globalConfig config.BoolOption) config.BoolOption {
-	revCnt := lp.RevisionCounter
+	var revCnt uint64 = 0
 	var value bool
 	var refreshLock sync.Mutex
 
@@ -392,7 +393,7 @@ func (lp *LayeredProfile) wrapBoolOption(configKey string, globalConfig config.B
 }
 
 func (lp *LayeredProfile) wrapIntOption(configKey string, globalConfig config.IntOption) config.IntOption {
-	revCnt := lp.RevisionCounter
+	var revCnt uint64 = 0
 	var value int64
 	var refreshLock sync.Mutex
 
@@ -441,7 +442,7 @@ func (lp *LayeredProfile) GetProfileSource(configKey string) string {
 For later:
 
 func (lp *LayeredProfile) wrapStringOption(configKey string, globalConfig config.StringOption) config.StringOption {
-	revCnt := lp.RevisionCounter
+	var revCnt uint64 = 0
 	var value string
 	var refreshLock sync.Mutex
 
