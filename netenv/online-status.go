@@ -56,8 +56,14 @@ func prepOnlineStatus() (err error) {
 	return err
 }
 
-// IsConnectivityDomain checks whether the given domain (fqdn) is used for any connectivity related network connections and should always be resolved using the network assigned DNS server.
+// IsConnectivityDomain checks whether the given domain (fqdn) is used for any
+// connectivity related network connections and should always be resolved using
+// the network assigned DNS server.
 func IsConnectivityDomain(domain string) bool {
+	if domain == "" {
+		return false
+	}
+
 	switch domain {
 	case SpecialCaptivePortalDomain,
 		"one.one.one.one.", // Internal DNS Check
@@ -92,10 +98,15 @@ func IsConnectivityDomain(domain string) bool {
 
 		// Other
 		"neverssl.com.",             // Common Community Service
-		"detectportal.firefox.com.", // Firefox
+		"detectportal.firefox.com.": // Firefox
 
-		// Redirected Domain
-		GetCaptivePortal().Domain:
+		return true
+	}
+
+	// Check for captive portal domain.
+	captivePortal := GetCaptivePortal()
+	if captivePortal.Domain != "" &&
+		domain == captivePortal.Domain {
 		return true
 	}
 
