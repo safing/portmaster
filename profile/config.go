@@ -274,7 +274,7 @@ The lists are automatically updated every hour using incremental updates.
 		Description:  "Block connections that match enabled filter lists.",
 		Help:         filterListsHelp,
 		OptType:      config.OptTypeStringArray,
-		DefaultValue: []string{"TRAC", "MAL"},
+		DefaultValue: []string{"TRAC", "MAL", "BAD"},
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  "filter list",
 			config.DisplayOrderAnnotation: cfgOptionFilterListsOrder,
@@ -326,7 +326,7 @@ The lists are automatically updated every hour using incremental updates.
 	if err != nil {
 		return err
 	}
-	cfgOptionFilterSubDomains = config.Concurrent.GetAsInt(CfgOptionFilterSubDomainsKey, int64(status.SecurityLevelOff))
+	cfgOptionFilterSubDomains = config.Concurrent.GetAsInt(CfgOptionFilterSubDomainsKey, int64(status.SecurityLevelsAll))
 	cfgIntOptions[CfgOptionFilterSubDomainsKey] = cfgOptionFilterSubDomains
 
 	// Block Scope Local
@@ -367,7 +367,7 @@ The lists are automatically updated every hour using incremental updates.
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockScopeLAN = config.Concurrent.GetAsInt(CfgOptionBlockScopeLANKey, int64(status.SecurityLevelOff))
+	cfgOptionBlockScopeLAN = config.Concurrent.GetAsInt(CfgOptionBlockScopeLANKey, int64(status.SecurityLevelsHighAndExtreme))
 	cfgIntOptions[CfgOptionBlockScopeLANKey] = cfgOptionBlockScopeLAN
 
 	// Block Scope Internet
@@ -407,7 +407,7 @@ The lists are automatically updated every hour using incremental updates.
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockP2P = config.Concurrent.GetAsInt(CfgOptionBlockP2PKey, int64(status.SecurityLevelsAll))
+	cfgOptionBlockP2P = config.Concurrent.GetAsInt(CfgOptionBlockP2PKey, int64(status.SecurityLevelExtreme))
 	cfgIntOptions[CfgOptionBlockP2PKey] = cfgOptionBlockP2P
 
 	// Block Inbound Connections
