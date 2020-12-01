@@ -520,6 +520,7 @@ func (conn *Connection) packetHandler() {
 		}
 
 		conn.Unlock()
+
 		// submit trace logs
 		log.Tracer(pkt.Ctx()).Submit()
 	}
