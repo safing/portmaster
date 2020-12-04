@@ -24,7 +24,7 @@ func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process 
 		return nil, pktInfo.Inbound, err
 	}
 
-	process, err = GetOrFindPrimaryProcess(ctx, pid)
+	process, err = GetOrFindProcess(ctx, pid)
 	if err != nil {
 		log.Tracer(ctx).Debugf("process: failed to find (primary) process with PID: %s", err)
 		return nil, connInbound, err

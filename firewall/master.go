@@ -150,10 +150,10 @@ func checkSelfCommunication(ctx context.Context, conn *network.Connection, pkt p
 				log.Tracer(ctx).Warningf("filter: failed to find local peer process PID: %s", err)
 			} else {
 				// get primary process
-				otherProcess, err := process.GetOrFindPrimaryProcess(ctx, otherPid)
+				otherProcess, err := process.GetOrFindProcess(ctx, otherPid)
 				if err != nil {
 					log.Tracer(ctx).Warningf("filter: failed to find load local peer process with PID %d: %s", otherPid, err)
-				} else if otherProcess.Pid == conn.Process().Pid {
+				} else if otherProcess.Path == conn.Process().Path {
 					conn.Accept("process internal connection", noReasonOptionKey)
 					conn.Internal = true
 					return true

@@ -410,7 +410,7 @@ func (profile *Profile) UpdateMetadata(processName string) (changed bool) {
 	var needsUpdateFromSystem bool
 
 	// Check profile name.
-	_, filename := filepath.Split(profile.LinkedPath)
+	filename := filepath.Base(profile.LinkedPath)
 
 	// Update profile name if it is empty or equals the filename, which is the
 	// case for older profiles.
@@ -464,7 +464,7 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context) error {
 	}
 
 	// Get filename of linked path for comparison.
-	_, filename := filepath.Split(profile.LinkedPath)
+	filename := filepath.Base(profile.LinkedPath)
 
 	// TODO: Theoretically, the generated name from the system could be identical
 	// to the filename. This would mean that the worker is triggered every time
