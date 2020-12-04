@@ -1,14 +1,12 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"github.com/safing/portbase/updater"
 	"github.com/spf13/cobra"
 )
 
@@ -29,37 +27,14 @@ var stageCmd = &cobra.Command{
 }
 
 func stage(cmd *cobra.Command, args []string) error {
-	registry.AddIndex(updater.Index{
-		Path:   "stable.json",
-		Stable: true,
-		Beta:   false,
-	})
-
-	registry.AddIndex(updater.Index{
-		Path:   "beta.json",
-		Stable: false,
-		Beta:   true,
-	})
-
-	err := registry.LoadIndexes(context.TODO())
-	if err != nil {
-		return err
-	}
-
-	err = scanStorage()
-	if err != nil {
-		return err
-	}
-
 	// Check if we want to reset staging instead.
 	if stageReset {
 		for _, stagedPath := range exportStaging(true) {
-			err = os.Remove(stagedPath)
+			err := os.Remove(stagedPath)
 			if err != nil {
 				return err
 			}
 		}
-
 		return nil
 	}
 

@@ -3,9 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -22,47 +19,20 @@ var scanCmd = &cobra.Command{
 }
 
 func scan(cmd *cobra.Command, args []string) error {
-	err := scanStorage()
+	// Reset and rescan.
+	registry.Reset()
+	err := registry.ScanStorage("")
 	if err != nil {
 		return err
 	}
 
-	// export beta
-	data, err := json.MarshalIndent(exportSelected(true), "", " ")
+	// Export latest versions.
+	data, err := json.MarshalIndent(exportSelected(false), "", " ")
 	if err != nil {
 		return err
 	}
-	// print
-	fmt.Println("beta:")
+	// Print them.
 	fmt.Println(string(data))
-
-	// export stable
-	data, err = json.MarshalIndent(exportSelected(false), "", " ")
-	if err != nil {
-		return err
-	}
-	// print
-	fmt.Println("\nstable:")
-	fmt.Println(string(data))
-
-	return nil
-}
-
-func scanStorage() error {
-	files, err := ioutil.ReadDir(registry.StorageDir().Path)
-	if err != nil {
-		return err
-	}
-
-	// scan "all" and all "os_platform" dirs
-	for _, file := range files {
-		if file.IsDir() && (file.Name() == "all" || strings.Contains(file.Name(), "_")) {
-			err := registry.ScanStorage(filepath.Join(registry.StorageDir().Path, file.Name()))
-			if err != nil {
-				return err
-			}
-		}
-	}
 
 	return nil
 }
