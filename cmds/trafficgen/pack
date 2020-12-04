@@ -1,0 +1,18 @@
+#!/bin/bash
+
+baseDir="$( cd "$(dirname "$0")" && pwd )"
+cd "$baseDir"
+
+echo "building..."
+GOOS=windows go build
+
+dstFile="../../../portmaster-windows-kext/install/MINGW/amd64/trafficgen.exe"
+if [[ -d $(dirname "$dstFile") ]]; then
+  # make path absolute
+  dstFile="$(cd "$(dirname "$dstFile")" && pwd)/$(basename "$dstFile")"
+  # copy
+  echo "copying to $dstFile"
+  cp trafficgen.exe "$dstFile"
+else
+  echo "not copying to $dstFile (dir does not exist)"
+fi

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"sort"
 
 	"github.com/spf13/cobra"
 )
@@ -21,10 +22,8 @@ var updateCmd = &cobra.Command{
 }
 
 func update(cmd *cobra.Command, args []string) error {
-	err := scanStorage()
-	if err != nil {
-		return err
-	}
+	// Set stable and beta to latest version.
+	updateToLatestVersion(true, true)
 
 	// Export versions.
 	betaData, err := json.MarshalIndent(exportSelected(true), "", " ")
@@ -73,5 +72,16 @@ func update(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("updated stable symlinks in %s\n", symlinksDir.Path)
 
+	return nil
+}
+
+func updateToLatestVersion(stable, beta bool) error {
+	for _, resource := range registry.Export() {
+		sort.Sort(resource)
+		err := resource.AddVersion(resource.Versions[0].VersionNumber, false, stable, beta)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
