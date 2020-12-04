@@ -255,9 +255,8 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		switch conn.Verdict {
 		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
 			tracer.Infof(
-				"nameserver: returning %s response (%s) for %s to %s",
+				"nameserver: returning %s response for %s to %s",
 				conn.Verdict.Verb(),
-				dns.RcodeToString[rrCache.RCode],
 				q.ID(),
 				conn.Process(),
 			)
