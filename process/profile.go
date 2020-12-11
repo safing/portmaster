@@ -10,8 +10,7 @@ import (
 // GetProfile finds and assigns a profile set to the process.
 func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	// Update profile metadata outside of *Process lock.
-	var localProfile *profile.Profile
-	defer p.updateProfileMetadata(localProfile)
+	defer p.UpdateProfileMetadata()
 
 	p.Lock()
 	defer p.Unlock()
@@ -35,7 +34,7 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	}
 
 	// Get the (linked) local profile.
-	localProfile, err = profile.GetProfile(profile.SourceLocal, profileID, p.Path)
+	localProfile, err := profile.GetProfile(profile.SourceLocal, profileID, p.Path)
 	if err != nil {
 		return false, err
 	}
@@ -47,8 +46,9 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	return true, nil
 }
 
-func (p *Process) updateProfileMetadata(localProfile *profile.Profile) {
+func (p *Process) UpdateProfileMetadata() {
 	// Check if there is a profile to work with.
+	localProfile := p.Profile().LocalProfile()
 	if localProfile == nil {
 		return
 	}
