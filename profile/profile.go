@@ -414,7 +414,7 @@ func (profile *Profile) UpdateMetadata(processName string) (changed bool) {
 
 	// Update profile name if it is empty or equals the filename, which is the
 	// case for older profiles.
-	if profile.Name == "" || profile.Name == filename {
+	if strings.TrimSpace(profile.Name) == "" || profile.Name == filename {
 		// Generate a default profile name if does not exist.
 		profile.Name = osdetail.GenerateBinaryNameFromPath(profile.LinkedPath)
 		if profile.Name == filename {
@@ -457,9 +457,18 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context) error {
 	// Get binary name from linked path.
 	newName, err := osdetail.GetBinaryNameFromSystem(profile.LinkedPath)
 	if err != nil {
-		if !errors.Is(err, osdetail.ErrNotSupported) {
+		switch {
+		case errors.Is(err, osdetail.ErrNotSupported):
+		case errors.Is(err, osdetail.ErrNotFound):
+		case errors.Is(err, osdetail.ErrEmptyOutput):
+		default:
 			log.Warningf("profile: error while getting binary name for %s: %s", profile.LinkedPath, err)
 		}
+		return nil
+	}
+
+	// Check if the new name is valid.
+	if strings.TrimSpace(newName) == "" {
 		return nil
 	}
 
