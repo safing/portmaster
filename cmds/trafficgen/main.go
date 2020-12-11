@@ -26,7 +26,7 @@ var (
 func init() {
 	flag.StringVar(&url, "url", "", "send HTTP HEAD requests to this url")
 	flag.StringVar(&lookup, "lookup", "", fmt.Sprintf("query %s for this domains", dnsResolver))
-	flag.IntVar(&n, "n", 1000, "how many requests to make")
+	flag.IntVar(&n, "n", 10, "how many requests to make")
 	flag.IntVar(&waitMsec, "w", 100, "how many ms to wait between requests")
 }
 
@@ -50,14 +50,14 @@ func main() {
 
 	// Execute requests
 	waitDuration := time.Duration(waitMsec) * time.Millisecond
-	for i := 0; i < n; i++ {
-		makeHTTPRequest()
-		lookupDomain()
+	for i := 1; i <= n; i++ {
+		makeHTTPRequest(i)
+		lookupDomain(i)
 		time.Sleep(waitDuration)
 	}
 }
 
-func makeHTTPRequest() {
+func makeHTTPRequest(i int) {
 	if url == "" {
 		return
 	}
@@ -69,15 +69,15 @@ func makeHTTPRequest() {
 	start := time.Now()
 	resp, err := client.Head(url)
 	if err != nil {
-		log.Errorf("http request failed after %s: %s", time.Since(start).Round(time.Millisecond), err)
+		log.Errorf("http request #%d failed after %s: %s", i, time.Since(start).Round(time.Millisecond), err)
 		return
 	}
 	defer resp.Body.Close()
 
-	log.Infof("http response after %s: %d", time.Since(start).Round(time.Millisecond), resp.StatusCode)
+	log.Infof("http response #%d after %s: %d", i, time.Since(start).Round(time.Millisecond), resp.StatusCode)
 }
 
-func lookupDomain() {
+func lookupDomain(i int) {
 	if lookup == "" {
 		return
 	}
@@ -90,9 +90,9 @@ func lookupDomain() {
 	start := time.Now()
 	reply, err := dns.Exchange(dnsQuery, dnsResolver)
 	if err != nil {
-		log.Errorf("dns request failed after %s: %s", time.Since(start).Round(time.Millisecond), err)
+		log.Errorf("dns request #%d failed after %s: %s", i, time.Since(start).Round(time.Millisecond), err)
 		return
 	}
 
-	log.Infof("dns response after %s: %s", time.Since(start).Round(time.Millisecond), dns.RcodeToString[reply.Rcode])
+	log.Infof("dns response #%d after %s: %s", i, time.Since(start).Round(time.Millisecond), dns.RcodeToString[reply.Rcode])
 }
