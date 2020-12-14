@@ -96,7 +96,7 @@ func (pkt *packet) setMark(mark int) error {
 	}()
 
 	for {
-		if err := pkt.queue.nf.SetVerdictWithMark(pkt.pktID, nfqueue.NfAccept, mark); err != nil {
+		if err := pkt.queue.getNfq().SetVerdictWithMark(pkt.pktID, nfqueue.NfAccept, mark); err != nil {
 			// embedded interface is required to work-around some
 			// dep-vendoring weirdness
 			if opErr, ok := err.(interface {
