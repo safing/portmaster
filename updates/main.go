@@ -307,6 +307,9 @@ func checkForUpdates(ctx context.Context) (err error) {
 		return
 	}
 
+	// Purge old resources
+	registry.Purge(3)
+
 	module.TriggerEvent(ResourceUpdateEvent, nil)
 	return nil
 }
