@@ -55,5 +55,7 @@ func start() error {
 		return err
 	}
 
+	registerLogCleaner()
+
 	return nil
 }
