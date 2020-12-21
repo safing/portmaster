@@ -93,6 +93,7 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 	// Check for blocked IP
 	if meta.Dst.Equal(blockedIPv4) || meta.Dst.Equal(blockedIPv6) {
 		_ = pkt.PermanentBlock()
+		return true
 	}
 
 	switch meta.Protocol {
