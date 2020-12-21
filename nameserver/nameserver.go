@@ -26,11 +26,11 @@ var (
 	module    *modules.Module
 	dnsServer *dns.Server
 
-	listenAddress = "0.0.0.0:53"
+	defaultNameserverAddress = "0.0.0.0:53"
 )
 
 func init() {
-	module = modules.Register("nameserver", nil, start, stop, "core", "resolver")
+	module = modules.Register("nameserver", prep, start, stop, "core", "resolver")
 	subsystems.Register(
 		"dns",
 		"Secure DNS",
@@ -41,8 +41,13 @@ func init() {
 	)
 }
 
+func prep() error {
+	return registerConfig()
+}
+
 func start() error {
-	dnsServer = &dns.Server{Addr: listenAddress, Net: "udp"}
+	logFlagOverrides()
+	dnsServer = &dns.Server{Addr: nameserverAddressConfig(), Net: "udp"}
 	dns.HandleFunc(".", handleRequestAsWorker)
 
 	module.StartServiceWorker("dns resolver", 0, func(ctx context.Context) error {
