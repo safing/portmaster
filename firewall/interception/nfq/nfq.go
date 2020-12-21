@@ -6,6 +6,7 @@ package nfq
 import (
 	"context"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -140,7 +141,15 @@ func (q *Queue) handleError(e error) int {
 			return 0
 		}
 	}
-	log.Errorf("nfqueue: encountered error while receiving packets: %s\n", e.Error())
+
+	// Check if the queue was already closed. Unfortunately, the exposed error
+	// variable is in an internal stdlib package. Therefore, check for the error
+	// string instead. :(
+	// Offical error variable is defined here:
+	// https://github.com/golang/go/blob/0e85fd7561de869add933801c531bf25dee9561c/src/internal/poll/fd.go#L24
+	if !strings.HasSuffix(e.Error(), "use of closed file") {
+		log.Errorf("nfqueue: encountered error while receiving packets: %s\n", e.Error())
+	}
 
 	// Close the existing socket
 	if nf := q.getNfq(); nf != nil {
