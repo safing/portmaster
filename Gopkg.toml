@@ -32,4 +32,4 @@ ignored = ["github.com/safing/portbase/*", "github.com/safing/spn/*"]
 
 [[override]]
   name = "github.com/mdlayher/netlink"
-  branch = "master" # remove when https://github.com/mdlayher/netlink/pull/171 is released and in github.com/florianl/go-nfqueue
+  version = "1.2.0" # remove when github.com/florianl/go-nfqueue has updated to v1.2.0

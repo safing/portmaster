@@ -140,15 +140,15 @@
   revision = "2bc1f35cddc0cc527b4bc3dce8578fc2a6c11384"
 
 [[projects]]
-  branch = "master"
-  digest = "1:1f6a000c4fe2eaf76f506ecc23e859e1a5b81c0ec3039c5fca21bfbb80c43979"
+  digest = "1:711ec17a2d8edd94cff8e2e4339d847e46acc1bb6b49ec29dcc1db78b666378b"
   name = "github.com/mdlayher/netlink"
   packages = [
     ".",
     "nlenc",
   ]
   pruneopts = ""
-  revision = "ded538f7f4be5ec9a64b7a16c7fdb0bc66bfb85b"
+  revision = "2a4e26491f1ba4eae173a7733ac11744cfed82b5"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:508f444b8e00a569a40899aaf5740348b44c305d36f36d4f002b277677deef95"
