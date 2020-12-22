@@ -14,7 +14,6 @@ func init() {
 var scanCmd = &cobra.Command{
 	Use:   "scan",
 	Short: "Scan the specified directory and print the result",
-	Args:  cobra.ExactArgs(1),
 	RunE:  scan,
 }
 

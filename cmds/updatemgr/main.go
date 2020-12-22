@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -10,20 +11,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var registry *updater.ResourceRegistry
+var (
+	registry *updater.ResourceRegistry
+	distDir  string
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "updatemgr",
 	Short: "A simple tool to assist in the update and release process",
-	Args:  cobra.ExactArgs(1),
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		absPath, err := filepath.Abs(args[0])
+		// Check if the distribution directory exists.
+		absDistPath, err := filepath.Abs(distDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get absolute path of distribution directory: %w", err)
+		}
+		_, err = os.Stat(absDistPath)
+		if err != nil {
+			return fmt.Errorf("failed to access distribution directory: %w", err)
 		}
 
 		registry = &updater.ResourceRegistry{}
-		err = registry.Initialize(utils.NewDirStructure(absPath, 0o755))
+		err = registry.Initialize(utils.NewDirStructure(absDistPath, 0o755))
 		if err != nil {
 			return err
 		}
@@ -53,6 +61,11 @@ var rootCmd = &cobra.Command{
 		return nil
 	},
 	SilenceUsage: true,
+}
+
+func init() {
+	flags := rootCmd.PersistentFlags()
+	flags.StringVar(&distDir, "dist-dir", "dist", "Set the distribution directory. Falls back to ./dist if available.")
 }
 
 func main() {
