@@ -1,3 +1,5 @@
+// DEPRECATED: remove in v0.7
+
 package core
 
 import (
@@ -19,12 +21,12 @@ func registerEvents() {
 }
 
 func registerEventHooks() error {
-	err := module.RegisterEventHook("core", eventShutdown, "execute shutdown", shutdown)
+	err := module.RegisterEventHook("core", eventShutdown, "execute shutdown", shutdownHook)
 	if err != nil {
 		return err
 	}
 
-	err = module.RegisterEventHook("core", eventRestart, "execute shutdown", restart)
+	err = module.RegisterEventHook("core", eventRestart, "execute shutdown", restartHook)
 	if err != nil {
 		return err
 	}
@@ -32,16 +34,16 @@ func registerEventHooks() error {
 	return nil
 }
 
-// shutdown shuts the Portmaster down.
-func shutdown(ctx context.Context, _ interface{}) error {
+// shutdownHook shuts the Portmaster down.
+func shutdownHook(ctx context.Context, _ interface{}) error {
 	log.Warning("core: user requested shutdown")
 	// Do not use a worker, as this would block itself here.
 	go modules.Shutdown() //nolint:errcheck
 	return nil
 }
 
-// restart restarts the Portmaster.
-func restart(ctx context.Context, data interface{}) error {
+// restartHook restarts the Portmaster.
+func restartHook(ctx context.Context, data interface{}) error {
 	log.Info("core: user requested restart")
 	updates.RestartNow()
 	return nil

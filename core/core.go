@@ -55,6 +55,10 @@ func start() error {
 		return err
 	}
 
+	if err := registerActions(); err != nil {
+		return err
+	}
+
 	registerLogCleaner()
 
 	return nil

@@ -24,72 +24,98 @@ var (
 )
 
 func registerRoutes() error {
-	api.RegisterHandleFunc("/assets/{resPath:[a-zA-Z0-9/\\._-]+}", ServeBundle("assets")).Methods("GET", "HEAD")
-	api.RegisterHandleFunc("/ui/modules/{moduleName:[a-z]+}", redirAddSlash).Methods("GET", "HEAD")
-	api.RegisterHandleFunc("/ui/modules/{moduleName:[a-z]+}/", ServeBundle("")).Methods("GET", "HEAD")
-	api.RegisterHandleFunc("/ui/modules/{moduleName:[a-z]+}/{resPath:[a-zA-Z0-9/\\._-]+}", ServeBundle("")).Methods("GET", "HEAD")
-	api.RegisterHandleFunc("/", redirectToDefault)
+	// Server assets.
+	api.RegisterHandler(
+		"/assets/{resPath:[a-zA-Z0-9/\\._-]+}",
+		&bundleServer{defaultModuleName: "assets"},
+	)
+
+	// Add slash to plain module namespaces.
+	api.RegisterHandler(
+		"/ui/modules/{moduleName:[a-z]+}",
+		api.WrapInAuthHandler(redirAddSlash, api.PermitAnyone, api.NotSupported),
+	)
+
+	// Serve modules.
+	srv := &bundleServer{}
+	api.RegisterHandler("/ui/modules/{moduleName:[a-z]+}/", srv)
+	api.RegisterHandler("/ui/modules/{moduleName:[a-z]+}/{resPath:[a-zA-Z0-9/\\._-]+}", srv)
+
+	// Redirect "/" to default module.
+	api.RegisterHandler(
+		"/",
+		api.WrapInAuthHandler(redirectToDefault, api.PermitAnyone, api.NotSupported),
+	)
 
 	return nil
 }
 
-// ServeBundle serves bundles.
-func ServeBundle(defaultModuleName string) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
+type bundleServer struct {
+	defaultModuleName string
+}
 
-		// log.Tracef("ui: request for %s", r.RequestURI)
+func (bs *bundleServer) ReadPermission(*http.Request) api.Permission { return api.PermitAnyone }
 
-		vars := api.GetMuxVars(r)
-		moduleName, ok := vars["moduleName"]
-		if !ok {
-			moduleName = defaultModuleName
-			if moduleName == "" {
-				http.Error(w, "missing module name", http.StatusBadRequest)
-				return
-			}
-		}
+func (bs *bundleServer) WritePermission(*http.Request) api.Permission { return api.NotSupported }
 
-		resPath, ok := vars["resPath"]
-		if !ok || strings.HasSuffix(resPath, "/") {
-			resPath = "index.html"
-		}
-
-		appsLock.RLock()
-		bundle, ok := apps[moduleName]
-		appsLock.RUnlock()
-		if ok {
-			ServeFileFromBundle(w, r, moduleName, bundle, resPath)
-			return
-		}
-
-		// get file from update system
-		zipFile, err := updates.GetFile(fmt.Sprintf("ui/modules/%s.zip", moduleName))
-		if err != nil {
-			if err == updater.ErrNotFound {
-				log.Tracef("ui: requested module %s does not exist", moduleName)
-				http.Error(w, err.Error(), http.StatusNotFound)
-			} else {
-				log.Tracef("ui: error loading module %s: %s", moduleName, err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-			return
-		}
-
-		// open bundle
-		newBundle, err := resources.OpenZip(zipFile.Path())
-		if err != nil {
-			log.Tracef("ui: error prepping module %s: %s", moduleName, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		bundle = &resources.BundleSequence{newBundle}
-		appsLock.Lock()
-		apps[moduleName] = bundle
-		appsLock.Unlock()
-
-		ServeFileFromBundle(w, r, moduleName, bundle, resPath)
+func (bs *bundleServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Get request context.
+	ar := api.GetAPIRequest(r)
+	if ar == nil {
+		log.Errorf("ui: missing api request context")
+		http.Error(w, "Internal server error.", http.StatusInternalServerError)
+		return
 	}
+
+	moduleName, ok := ar.URLVars["moduleName"]
+	if !ok {
+		moduleName = bs.defaultModuleName
+		if moduleName == "" {
+			http.Error(w, "missing module name", http.StatusBadRequest)
+			return
+		}
+	}
+
+	resPath, ok := ar.URLVars["resPath"]
+	if !ok || strings.HasSuffix(resPath, "/") {
+		resPath = "index.html"
+	}
+
+	appsLock.RLock()
+	bundle, ok := apps[moduleName]
+	appsLock.RUnlock()
+	if ok {
+		ServeFileFromBundle(w, r, moduleName, bundle, resPath)
+		return
+	}
+
+	// get file from update system
+	zipFile, err := updates.GetFile(fmt.Sprintf("ui/modules/%s.zip", moduleName))
+	if err != nil {
+		if err == updater.ErrNotFound {
+			log.Tracef("ui: requested module %s does not exist", moduleName)
+			http.Error(w, err.Error(), http.StatusNotFound)
+		} else {
+			log.Tracef("ui: error loading module %s: %s", moduleName, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// open bundle
+	newBundle, err := resources.OpenZip(zipFile.Path())
+	if err != nil {
+		log.Tracef("ui: error prepping module %s: %s", moduleName, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	bundle = &resources.BundleSequence{newBundle}
+	appsLock.Lock()
+	apps[moduleName] = bundle
+	appsLock.Unlock()
+
+	ServeFileFromBundle(w, r, moduleName, bundle, resPath)
 }
 
 // ServeFileFromBundle serves a file from the given bundle.
