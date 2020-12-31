@@ -15,7 +15,6 @@ func init() {
 var purgeCmd = &cobra.Command{
 	Use:   "purge",
 	Short: "Remove old resource versions that are superseded by at least three versions",
-	Args:  cobra.ExactArgs(1),
 	RunE:  purge,
 }
 

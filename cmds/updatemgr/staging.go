@@ -22,7 +22,6 @@ func init() {
 var stageCmd = &cobra.Command{
 	Use:   "stage",
 	Short: "Stage scans the specified directory and loads the indexes - it then creates a staging index with all files newer than the stable and beta indexes",
-	Args:  cobra.ExactArgs(1),
 	RunE:  stage,
 }
 

@@ -11,17 +11,16 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(updateCmd)
+	rootCmd.AddCommand(releaseCmd)
 }
 
-var updateCmd = &cobra.Command{
-	Use:   "update",
-	Short: "Update scans the specified directory and registry the index and symlink structure",
-	Args:  cobra.ExactArgs(1),
-	RunE:  update,
+var releaseCmd = &cobra.Command{
+	Use:   "release",
+	Short: "Release scans the distribution directory and creates registry indexes and the symlink structure",
+	RunE:  release,
 }
 
-func update(cmd *cobra.Command, args []string) error {
+func release(cmd *cobra.Command, args []string) error {
 	// Set stable and beta to latest version.
 	updateToLatestVersion(true, true)
 
