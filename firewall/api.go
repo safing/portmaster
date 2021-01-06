@@ -59,21 +59,24 @@ func startAPIAuth() {
 	log.Tracef("filter: api port set to %d", apiPort)
 }
 
-func apiAuthenticator(ctx context.Context, s *http.Server, r *http.Request) (err error) {
+func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, err error) {
 	if devMode() {
-		return nil
+		return &api.AuthToken{
+			Read:  api.PermitSelf,
+			Write: api.PermitSelf,
+		}, nil
 	}
 
 	// get local IP/Port
 	localIP, localPort, err := parseHostPort(s.Addr)
 	if err != nil {
-		return fmt.Errorf("failed to get local IP/Port: %s", err)
+		return nil, fmt.Errorf("failed to get local IP/Port: %s", err)
 	}
 
 	// get remote IP/Port
 	remoteIP, remotePort, err := parseHostPort(r.RemoteAddr)
 	if err != nil {
-		return fmt.Errorf("failed to get remote IP/Port: %s", err)
+		return nil, fmt.Errorf("failed to get remote IP/Port: %s", err)
 	}
 
 	log.Tracer(r.Context()).Tracef("filter: authenticating API request from %s", r.RemoteAddr)
@@ -82,7 +85,7 @@ func apiAuthenticator(ctx context.Context, s *http.Server, r *http.Request) (err
 	var retry bool
 	for tries := 0; tries < 20; tries++ {
 		retry, err = authenticateAPIRequest(
-			ctx,
+			r.Context(),
 			&packet.Info{
 				Inbound:  false, // outbound as we are looking for the process of the source address
 				Version:  packet.IPv4,
@@ -94,14 +97,20 @@ func apiAuthenticator(ctx context.Context, s *http.Server, r *http.Request) (err
 			},
 		)
 		if !retry {
-			return err
+			break
 		}
 
 		// wait a little
 		time.Sleep(250 * time.Millisecond)
 	}
+	if err != nil {
+		return nil, err
+	}
 
-	return err
+	return &api.AuthToken{
+		Read:  api.PermitSelf,
+		Write: api.PermitSelf,
+	}, nil
 }
 
 func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bool, err error) {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/database/record"
@@ -104,7 +105,20 @@ func (rec *NameRecord) Save() error {
 	return recordDatabase.PutNew(rec)
 }
 
-func clearNameCache(ctx context.Context, _ interface{}) error {
+// clearNameCache clears all dns caches from the database.
+func clearNameCache(ar *api.Request) (msg string, err error) {
+	log.Warning("resolver: user requested dns cache clearing via action")
+
+	n, err := recordDatabase.Purge(ar.Context(), query.New(nameRecordsKeyPrefix))
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("cleared %d dns cache entries", n), nil
+}
+
+// DEPRECATED: remove in v0.7
+func clearNameCacheEventHandler(ctx context.Context, _ interface{}) error {
 	log.Debugf("resolver: dns cache clearing started...")
 	n, err := recordDatabase.Purge(ctx, query.New(nameRecordsKeyPrefix))
 	if err != nil {

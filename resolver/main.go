@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/safing/portbase/api"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/intel"
@@ -76,12 +78,22 @@ func start() error {
 		return err
 	}
 
+	// Register api endpoint to clear DNS cache.
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path:       "dns/clear/namecache",
+		Read:       api.PermitUser,
+		ActionFunc: clearNameCache,
+	}); err != nil {
+		return err
+	}
+
+	// DEPRECATED: remove in v0.7
 	// cache clearing
 	err = module.RegisterEventHook(
 		"resolver",
 		ClearNameCacheEvent,
 		ClearNameCacheEvent,
-		clearNameCache,
+		clearNameCacheEventHandler,
 	)
 	if err != nil {
 		return err
