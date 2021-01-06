@@ -80,9 +80,9 @@ func start() error {
 
 	// Register api endpoint to clear DNS cache.
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:     "dns/clear/namecache",
-		Read:     api.PermitUser,
-		ActionFn: clearNameCache,
+		Path:       "dns/clear/namecache",
+		Read:       api.PermitUser,
+		ActionFunc: clearNameCache,
 	}); err != nil {
 		return err
 	}

@@ -59,7 +59,7 @@ func startAPIAuth() {
 	log.Tracef("filter: api port set to %d", apiPort)
 }
 
-func apiAuthenticator(ctx context.Context, s *http.Server, r *http.Request) (token *api.AuthToken, err error) {
+func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, err error) {
 	if devMode() {
 		return &api.AuthToken{
 			Read:  api.PermitSelf,
@@ -85,7 +85,7 @@ func apiAuthenticator(ctx context.Context, s *http.Server, r *http.Request) (tok
 	var retry bool
 	for tries := 0; tries < 20; tries++ {
 		retry, err = authenticateAPIRequest(
-			ctx,
+			r.Context(),
 			&packet.Info{
 				Inbound:  false, // outbound as we are looking for the process of the source address
 				Version:  packet.IPv4,

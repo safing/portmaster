@@ -9,17 +9,17 @@ import (
 
 func registerActions() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:     "core/shutdown",
-		Read:     api.PermitSelf,
-		ActionFn: shutdown,
+		Path:       "core/shutdown",
+		Read:       api.PermitSelf,
+		ActionFunc: shutdown,
 	}); err != nil {
 		return err
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:     "core/restart",
-		Read:     api.PermitSelf,
-		ActionFn: restart,
+		Path:       "core/restart",
+		Read:       api.PermitSelf,
+		ActionFunc: restart,
 	}); err != nil {
 		return err
 	}

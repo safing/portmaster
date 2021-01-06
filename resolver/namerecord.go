@@ -109,7 +109,7 @@ func (rec *NameRecord) Save() error {
 func clearNameCache(ar *api.Request) (msg string, err error) {
 	log.Warning("resolver: user requested dns cache clearing via action")
 
-	n, err := recordDatabase.Purge(ar.Ctx(), query.New(nameRecordsKeyPrefix))
+	n, err := recordDatabase.Purge(ar.Context(), query.New(nameRecordsKeyPrefix))
 	if err != nil {
 		return "", err
 	}
