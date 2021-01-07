@@ -278,7 +278,7 @@ The lists are automatically updated every hour using incremental updates.
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  "filter list",
 			config.DisplayOrderAnnotation: cfgOptionFilterListsOrder,
-			config.CategoryAnnotation:     "Rules",
+			config.CategoryAnnotation:     "Filter Lists",
 		},
 		ValidationRegex: `^[a-zA-Z0-9\-]+$`,
 	})
@@ -320,7 +320,7 @@ The lists are automatically updated every hour using incremental updates.
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionFilterSubDomainsOrder,
-			config.CategoryAnnotation:     "Rules",
+			config.CategoryAnnotation:     "Filter Lists",
 		},
 	})
 	if err != nil {
