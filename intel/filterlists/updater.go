@@ -46,6 +46,12 @@ func performUpdate(ctx context.Context) error {
 
 	module.Hint(filterlistsUpdateInProgress, filterlistsUpdateInProgressDescr)
 
+	// First, update the list index.
+	err := updateListIndex()
+	if err != nil {
+		log.Errorf("intel/filterlists: failed update list index: %s", err)
+	}
+
 	upgradables, err := getUpgradableFiles()
 	if err != nil {
 		return err
