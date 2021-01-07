@@ -70,7 +70,7 @@ func registerConfig() error {
 		Description:    "How long the Portmaster will wait for a reply to a prompt notification. Please note that Desktop Notifications might not respect this or have their own limits.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
-		DefaultValue:   20,
+		DefaultValue:   60,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionAskTimeoutOrder,
 			config.UnitAnnotation:         "seconds",
@@ -80,7 +80,7 @@ func registerConfig() error {
 	if err != nil {
 		return err
 	}
-	askTimeout = config.Concurrent.GetAsInt(CfgOptionAskTimeoutKey, 15)
+	askTimeout = config.Concurrent.GetAsInt(CfgOptionAskTimeoutKey, 60)
 
 	devMode = config.Concurrent.GetAsBool(core.CfgDevModeKey, false)
 	apiListenAddress = config.GetAsString(api.CfgDefaultListenAddressKey, "")
