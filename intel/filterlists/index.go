@@ -1,14 +1,17 @@
 package filterlists
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"sync"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/formats/dsd"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/updater"
 	"github.com/safing/portmaster/updates"
 )
 
@@ -159,34 +162,68 @@ func getListIndexFromCache() (*ListIndexFile, error) {
 	return index, nil
 }
 
+var (
+	// listIndexUpdate must only be used by updateListIndex
+	listIndexUpdate     *updater.File
+	listIndexUpdateLock sync.Mutex
+)
+
 func updateListIndex() error {
-	index, err := updates.GetFile(listIndexFilePath)
+	listIndexUpdateLock.Lock()
+	defer listIndexUpdateLock.Unlock()
+
+	// Check if an update is needed.
+	switch {
+	case listIndexUpdate == nil:
+		// This is the first time this function is run, get updater file for index.
+		var err error
+		listIndexUpdate, err = updates.GetFile(listIndexFilePath)
+		if err != nil {
+			return err
+		}
+
+		// Check if the version in the cache is current.
+		index, err := getListIndexFromCache()
+		switch {
+		case errors.Is(err, database.ErrNotFound):
+			log.Info("filterlists: index not in cache, starting update")
+		case err != nil:
+			log.Warningf("filterlists: failed to load index from cache, starting update: %s", err)
+		case strings.TrimPrefix(index.Version, "v") != listIndexUpdate.Version():
+			log.Infof(
+				"filterlists: index from cache is outdated, starting update (%s != %s)",
+				strings.TrimPrefix(index.Version, "v"),
+				listIndexUpdate.Version(),
+			)
+		default:
+			log.Debug("filterlists: index is up to date")
+			// List is in cache and current, there is nothing to do.
+			return nil
+		}
+	case listIndexUpdate.UpgradeAvailable():
+		log.Info("filterlists: index update available, starting update")
+	default:
+		// Index is loaded and no update is available, there is nothing to do.
+		return nil
+	}
+
+	// Update list index from updates.
+	blob, err := ioutil.ReadFile(listIndexUpdate.Path())
 	if err != nil {
 		return err
 	}
 
-	blob, err := ioutil.ReadFile(index.Path())
+	index := &ListIndexFile{}
+	_, err = dsd.Load(blob, index)
 	if err != nil {
 		return err
 	}
+	index.SetKey(filterListIndexKey)
 
-	res, err := dsd.Load(blob, &ListIndexFile{})
-	if err != nil {
+	if err := cache.Put(index); err != nil {
 		return err
 	}
-
-	content, ok := res.(*ListIndexFile)
-	if !ok {
-		return fmt.Errorf("unexpected format in list index")
-	}
-
-	content.SetKey(filterListIndexKey)
-
-	if err := cache.Put(content); err != nil {
-		return err
-	}
-
-	log.Debugf("intel/filterlists: updated cache record for list index with version %s", content.Version)
+	log.Debugf("intel/filterlists: updated list index in cache to %s", index.Version)
 
 	return nil
 }
