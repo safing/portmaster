@@ -2,6 +2,7 @@ package nameserver
 
 import (
 	"flag"
+	"runtime"
 
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
@@ -15,9 +16,16 @@ const (
 var (
 	nameserverAddressFlag   string
 	nameserverAddressConfig config.StringOption
+
+	defaultNameserverAddress = "localhost:53"
 )
 
 func init() {
+	// On Windows, packets are redirected to the same interface.
+	if runtime.GOOS == "windows" {
+		defaultNameserverAddress = "0.0.0.0:53"
+	}
+
 	flag.StringVar(&nameserverAddressFlag, "nameserver-address", "", "override nameserver listen address")
 }
 
@@ -45,7 +53,7 @@ func registerConfig() error {
 		ExpertiseLevel:  config.ExpertiseLevelDeveloper,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		DefaultValue:    getDefaultNameserverAddress(),
-		ValidationRegex: "^([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}:[0-9]{1,5}|\\[[:0-9A-Fa-f]+\\]:[0-9]{1,5})$",
+		ValidationRegex: "^(localhost|[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}|\\[[:0-9A-Fa-f]+\\]):[0-9]{1,5}$",
 		RequiresRestart: true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 514,

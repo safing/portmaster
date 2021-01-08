@@ -6,75 +6,17 @@ import (
 	"net"
 	"strings"
 
-	"github.com/safing/portmaster/network/packet"
-
-	"github.com/safing/portbase/modules/subsystems"
-
 	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/firewall"
 	"github.com/safing/portmaster/nameserver/nsutil"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/resolver"
 
 	"github.com/miekg/dns"
 )
-
-var (
-	module    *modules.Module
-	dnsServer *dns.Server
-
-	defaultNameserverAddress = "0.0.0.0:53"
-)
-
-func init() {
-	module = modules.Register("nameserver", prep, start, stop, "core", "resolver")
-	subsystems.Register(
-		"dns",
-		"Secure DNS",
-		"DNS resolver with scoping and DNS-over-TLS",
-		module,
-		"config:dns/",
-		nil,
-	)
-}
-
-func prep() error {
-	return registerConfig()
-}
-
-func start() error {
-	logFlagOverrides()
-	dnsServer = &dns.Server{Addr: nameserverAddressConfig(), Net: "udp"}
-	dns.HandleFunc(".", handleRequestAsWorker)
-
-	module.StartServiceWorker("dns resolver", 0, func(ctx context.Context) error {
-		err := dnsServer.ListenAndServe()
-		if err != nil {
-			// check if we are shutting down
-			if module.IsStopping() {
-				return nil
-			}
-			// is something blocking our port?
-			checkErr := checkForConflictingService()
-			if checkErr != nil {
-				return checkErr
-			}
-		}
-		return err
-	})
-
-	return nil
-}
-
-func stop() error {
-	if dnsServer != nil {
-		return dnsServer.Shutdown()
-	}
-	return nil
-}
 
 func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
 	err := module.RunWorker("dns request", func(ctx context.Context) error {

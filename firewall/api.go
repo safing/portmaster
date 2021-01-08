@@ -40,6 +40,7 @@ var (
 	dataRoot *utils.DirStructure
 
 	apiPortSet bool
+	apiIP      net.IP
 	apiPort    uint16
 )
 
@@ -50,7 +51,7 @@ func prepAPIAuth() error {
 
 func startAPIAuth() {
 	var err error
-	_, apiPort, err = parseHostPort(apiListenAddress())
+	apiIP, apiPort, err = parseHostPort(apiListenAddress())
 	if err != nil {
 		log.Warningf("filter: failed to parse API address for improved api auth mechanism: %s", err)
 		return

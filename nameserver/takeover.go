@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"time"
+	"strconv"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
@@ -14,39 +14,46 @@ import (
 )
 
 var (
-	otherResolverIPs = []net.IP{
+	commonResolverIPs = []net.IP{
+		net.IPv4zero,
 		net.IPv4(127, 0, 0, 1),  // default
 		net.IPv4(127, 0, 0, 53), // some resolvers on Linux
+		net.IPv6zero,
+		net.IPv6loopback,
 	}
 )
 
-func checkForConflictingService() error {
-	var pid int
-	var err error
+func checkForConflictingService(ip net.IP, port uint16) error {
+	// Evaluate which IPs to check.
+	var ipsToCheck []net.IP
+	if ip.Equal(net.IPv4zero) || ip.Equal(net.IPv6zero) {
+		ipsToCheck = commonResolverIPs
+	} else {
+		ipsToCheck = []net.IP{ip}
+	}
 
-	// check multiple IPs for other resolvers
-	for _, resolverIP := range otherResolverIPs {
-		pid, err = takeover(resolverIP)
-		if err == nil && pid != 0 {
+	// Check if there is another resolver when need to take over.
+	var killed int
+	for _, resolverIP := range ipsToCheck {
+		pid, err := takeover(resolverIP, port)
+		switch {
+		case err != nil:
+			// Log the error and let the worker try again.
+			log.Infof("nameserver: could not stop conflicting service: %s", err)
+			return nil
+		case pid != 0:
+			// Conflicting service identified and killed!
+			killed = pid
 			break
 		}
 	}
-	// handle returns
-	if err != nil {
-		log.Infof("nameserver: could not stop conflicting service: %s", err)
-		// leave original service-worker error intact
-		return nil
-	}
-	if pid == 0 {
-		// no conflicting service identified
+
+	// Check if something was killed.
+	if killed == 0 {
 		return nil
 	}
 
-	// we killed something!
-
-	// wait for a short duration for the other service to shut down
-	time.Sleep(10 * time.Millisecond)
-
+	// Notify the user that we killed something.
 	notifications.Notify(&notifications.Notification{
 		EventID:  "namserver:stopped-conflicting-service",
 		Type:     notifications.Info,
@@ -54,15 +61,15 @@ func checkForConflictingService() error {
 		Category: "Secure DNS",
 		Message: fmt.Sprintf(
 			"The Portmaster stopped a conflicting name service (pid %d) to gain required system integration.",
-			pid,
+			killed,
 		),
 	})
 
-	// restart via service-worker logic
-	return fmt.Errorf("%w: stopped conflicting name service with pid %d", modules.ErrRestartNow, pid)
+	// Restart nameserver via service-worker logic.
+	return fmt.Errorf("%w: stopped conflicting name service with pid %d", modules.ErrRestartNow, killed)
 }
 
-func takeover(resolverIP net.IP) (int, error) {
+func takeover(resolverIP net.IP, resolverPort uint16) (int, error) {
 	pid, _, err := state.Lookup(&packet.Info{
 		Inbound:  true,
 		Version:  0, // auto-detect
@@ -70,10 +77,15 @@ func takeover(resolverIP net.IP) (int, error) {
 		Src:      nil, // do not record direction
 		SrcPort:  0,   // do not record direction
 		Dst:      resolverIP,
-		DstPort:  53,
+		DstPort:  resolverPort,
 	})
 	if err != nil {
 		// there may be nothing listening on :53
+		return 0, nil
+	}
+
+	// Just don't, uh, kill ourselves...
+	if pid == os.Getpid() {
 		return 0, nil
 	}
 
@@ -91,6 +103,15 @@ func takeover(resolverIP net.IP) (int, error) {
 			return 0, err
 		}
 	}
+
+	log.Warningf(
+		"nameserver: killed conflicting service with PID %d over %s",
+		pid,
+		net.JoinHostPort(
+			resolverIP.String(),
+			strconv.Itoa(int(resolverPort)),
+		),
+	)
 
 	return pid, nil
 }
