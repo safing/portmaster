@@ -8,6 +8,8 @@ linters:
     - whitespace
     - wsl
     - gomnd
+    - gomodguard
+    - goerr113
 
 linters-settings:
   godox:
@@ -15,7 +17,3 @@ linters-settings:
     # might be left in the code accidentally and should be resolved before merging
     keywords:
       - FIXME
-  # gocognit:
-  #   min-complexity: 50
-  # gocyclo:
-  #   min-complexity: 50

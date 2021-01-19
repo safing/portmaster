@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/TheTannerRyan/ring"
+	"github.com/tannerryan/ring"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 )
