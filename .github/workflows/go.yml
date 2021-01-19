@@ -34,6 +34,8 @@ jobs:
       run: |
         if [[ $BRANCHES != *"master"* ]]; then
           echo "::debug::updating development dependencies"
+          export GOPROXY=direct
+          export GOSUMDB=off
           go get -u -v github.com/safing/portbase@develop
           go get -u -v github.com/safing/spn@develop
         else
@@ -92,8 +94,13 @@ jobs:
       shell: bash
       run: |
         if [[ $BRANCHES != *"master"* ]]; then
+          echo "::debug::updating development dependencies"
+          export GOPROXY=direct
+          export GOSUMDB=off
           go get -u -v github.com/safing/portbase@develop
           go get -u -v github.com/safing/spn@develop
+        else
+          echo "::debug::not updating development dependencies; master branch"
         fi
       env:
         BRANCHES: "${{ steps.getref.outputs.branch }} ${{ steps.getref.outputs.branch_head }}"
