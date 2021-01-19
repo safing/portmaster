@@ -46,6 +46,8 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	return true, nil
 }
 
+// UpdateProfileMetadata updates the metadata of the local profile
+// as required.
 func (p *Process) UpdateProfileMetadata() {
 	// Check if there is a profile to work with.
 	localProfile := p.Profile().LocalProfile()

@@ -6,6 +6,7 @@ scripted=0
 goUp="\\e[1A"
 fullTestFlags="-short"
 install=0
+testonly=0
 
 function help {
   echo "usage: $0 [command] [options]"
@@ -17,6 +18,7 @@ function help {
   echo ""
   echo "options:"
   echo "  --scripted    dont jump console lines (still use colors)"
+  echo "  --test-only   don run linters only tests"
   echo "  [package]     run tests only on this package"
 }
 
@@ -92,6 +94,10 @@ while true; do
     goUp=""
     shift 1
     ;;
+  "--test-only")
+    testonly=1
+    shift 1
+    ;;
   "install")
     install=1
     shift 1
@@ -127,24 +133,26 @@ if [[ $(which go) == "" ]]; then
   echo "go command not found"
   exit 1
 fi
-if [[ $(which gofmt) == "" ]]; then
-  echo "gofmt command not found"
-  exit 1
-fi
-if [[ $(which golint) == "" ]]; then
-  echo "golint command not found"
-  echo "install with: go get -u golang.org/x/lint/golint"
-  echo "or run: ./test install"
-  exit 1
-fi
-if [[ $(which golangci-lint) == "" ]]; then
-  echo "golangci-lint command not found"
-  echo "install with: curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin vX.Y.Z"
-  echo "don't forget to specify the version you want"
-  echo "or run: ./test install"
-  echo ""
-  echo "alternatively, install the current dev version with: go get -u github.com/golangci/golangci-lint/cmd/golangci-lint"
-  exit 1
+if [[ $testonly -eq 0 ]]; then
+  if [[ $(which gofmt) == "" ]]; then
+    echo "gofmt command not found"
+    exit 1
+  fi
+  if [[ $(which golint) == "" ]]; then
+    echo "golint command not found"
+    echo "install with: go get -u golang.org/x/lint/golint"
+    echo "or run: ./test install"
+    exit 1
+  fi
+  if [[ $(which golangci-lint) == "" ]]; then
+    echo "golangci-lint command not found"
+    echo "install with: curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin vX.Y.Z"
+    echo "don't forget to specify the version you want"
+    echo "or run: ./test install"
+    echo ""
+    echo "alternatively, install the current dev version with: go get -u github.com/golangci/golangci-lint/cmd/golangci-lint"
+    exit 1
+  fi
 fi
 
 # target selection
@@ -170,10 +178,12 @@ echo "running tests for ${platformInfo//$'\n'/ }:"
 for package in $packages; do
   echo ""
   echo $package
-  checkformat $package
-  run golint -set_exit_status -min_confidence 1.0 $package
-  run go vet $package
-  run golangci-lint run $GOPATH/src/$package
+  if [[ $testonly -eq 0 ]]; then
+    checkformat $package
+    run golint -set_exit_status -min_confidence 1.0 $package
+    run go vet $package
+    run golangci-lint run $GOPATH/src/$package
+  fi
   run go test -cover $fullTestFlags $package
 done
 
