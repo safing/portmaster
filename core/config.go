@@ -12,16 +12,23 @@ var (
 	CfgDevModeKey  = "core/devMode"
 	defaultDevMode bool
 
+	CfgNetworkServiceKey      = "core/networkService"
+	defaultNetworkServiceMode bool
+
 	CfgUseSystemNotificationsKey = "core/useSystemNotifications"
 )
 
 func init() {
 	flag.BoolVar(&defaultDevMode, "devmode", false, "force development mode")
+	flag.BoolVar(&defaultNetworkServiceMode, "network-service", false, "force network service mode")
 }
 
 func logFlagOverrides() {
 	if defaultDevMode {
-		log.Warning("core: core/devMode default config is being forced by -devmode flag")
+		log.Warningf("core: %s config is being forced by the -devmode flag", CfgDevModeKey)
+	}
+	if defaultNetworkServiceMode {
+		log.Warningf("core: %s config is being forced by the -network-service flag", CfgNetworkServiceKey)
 	}
 }
 
@@ -37,6 +44,23 @@ func registerConfig() error {
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 512,
 			config.CategoryAnnotation:     "Development",
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	err = config.Register(&config.Option{
+		Name:           "Network Service",
+		Key:            CfgNetworkServiceKey,
+		Description:    "Use the Portmaster as a network service, where applicable. You will have to take care of lots of network setup yourself in order to run this properly and securely.",
+		OptType:        config.OptTypeBool,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ReleaseLevel:   config.ReleaseLevelExperimental,
+		DefaultValue:   defaultNetworkServiceMode,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: 513,
+			config.CategoryAnnotation:     "Network Service",
 		},
 	})
 	if err != nil {

@@ -336,3 +336,12 @@ func stagingActive() bool {
 	_, err := os.Stat(filepath.Join(registry.StorageDir().Path, "staging.json"))
 	return err == nil
 }
+
+// RootPath returns the root path used for storing updates.
+func RootPath() string {
+	if !module.Online() {
+		return ""
+	}
+
+	return registry.StorageDir().Path
+}

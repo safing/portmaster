@@ -6,6 +6,7 @@ import (
 
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/core"
 )
 
 // Config Keys
@@ -18,6 +19,8 @@ var (
 	nameserverAddressConfig config.StringOption
 
 	defaultNameserverAddress = "localhost:53"
+
+	networkServiceMode config.BoolOption
 )
 
 func init() {
@@ -64,6 +67,8 @@ func registerConfig() error {
 		return err
 	}
 	nameserverAddressConfig = config.GetAsString(CfgDefaultNameserverAddressKey, getDefaultNameserverAddress())
+
+	networkServiceMode = config.Concurrent.GetAsBool(core.CfgNetworkServiceKey, false)
 
 	return nil
 }

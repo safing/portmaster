@@ -32,6 +32,7 @@ type profileSource string
 const (
 	SourceLocal      profileSource = "local"   // local, editable
 	SourceSpecial    profileSource = "special" // specials (read-only)
+	SourceNetwork    profileSource = "network"
 	SourceCommunity  profileSource = "community"
 	SourceEnterprise profileSource = "enterprise"
 )
@@ -386,7 +387,7 @@ func EnsureProfile(r record.Record) (*Profile, error) {
 // the profile was changed. If there is data that needs to be fetched from the
 // operating system, it will start an async worker to fetch that data and save
 // the profile afterwards.
-func (profile *Profile) UpdateMetadata(processName string) (changed bool) {
+func (profile *Profile) UpdateMetadata(processName, binaryPath string) (changed bool) {
 	// Check if this is a local profile, else warn and return.
 	if profile.Source != SourceLocal {
 		log.Warningf("tried to update metadata for non-local profile %s", profile.ScopedID())
@@ -397,7 +398,7 @@ func (profile *Profile) UpdateMetadata(processName string) (changed bool) {
 	defer profile.Unlock()
 
 	// Check if this is a special profile.
-	if profile.LinkedPath == "" {
+	if binaryPath == "" {
 		// This is a special profile, just assign the processName, if needed, and
 		// return.
 		if profile.Name != processName {
@@ -405,6 +406,13 @@ func (profile *Profile) UpdateMetadata(processName string) (changed bool) {
 			return true
 		}
 		return false
+	}
+
+	// Update LinkedPath if if differs from the process path.
+	// This will (at the moment) only be the case for the Portmaster profile.
+	if profile.LinkedPath != binaryPath {
+		profile.LinkedPath = binaryPath
+		changed = true
 	}
 
 	var needsUpdateFromSystem bool

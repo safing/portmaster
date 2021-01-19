@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/safing/portmaster/netenv"
+
 	"github.com/tevino/abool"
 
 	"github.com/safing/portbase/log"
@@ -38,6 +40,8 @@ var (
 
 	blockedIPv4 = net.IPv4(0, 0, 0, 17)
 	blockedIPv6 = net.ParseIP("::17")
+
+	ownPID = os.Getpid()
 )
 
 func init() {
@@ -177,6 +181,16 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 				return false
 			}
 
+			// Only fast-track local requests.
+			isMe, err := netenv.IsMyIP(meta.Src)
+			switch {
+			case err != nil:
+				log.Debugf("filter: failed to check if %s is own IP for fast-track: %s", meta.Src, err)
+				return false
+			case !isMe:
+				return false
+			}
+
 			// Log and permit.
 			log.Debugf("filter: fast-track accepting api connection: %s", pkt)
 			_ = pkt.PermanentAccept()
@@ -193,6 +207,16 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 
 			// Check if packet is destined for a nameserver IP.
 			if !nameserverIPMatcher(meta.Dst) {
+				return false
+			}
+
+			// Only fast-track local requests.
+			isMe, err := netenv.IsMyIP(meta.Src)
+			switch {
+			case err != nil:
+				log.Debugf("filter: failed to check if %s is own IP for fast-track: %s", meta.Src, err)
+				return false
+			case !isMe:
 				return false
 			}
 
@@ -224,7 +248,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	// Redirect rogue dns requests to the Portmaster.
 	if pkt.IsOutbound() &&
 		pkt.Info().DstPort == 53 &&
-		conn.Process().Pid != os.Getpid() &&
+		conn.Process().Pid != ownPID &&
 		nameserverIPMatcherReady.IsSet() &&
 		!nameserverIPMatcher(pkt.Info().Dst) {
 		conn.Verdict = network.VerdictRerouteToNameserver

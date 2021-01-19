@@ -188,7 +188,13 @@ func getProcessContext(ctx context.Context, proc *process.Process) ProcessContex
 }
 
 // NewConnectionFromDNSRequest returns a new connection based on the given dns request.
-func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, ipVersion packet.IPVersion, localIP net.IP, localPort uint16) *Connection {
+func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, localIP net.IP, localPort uint16) *Connection {
+	// Determine IP version.
+	ipVersion := packet.IPv6
+	if localIP.To4() != nil {
+		ipVersion = packet.IPv4
+	}
+
 	// get Process
 	proc, _, err := process.GetProcessByConnection(
 		ctx,
@@ -220,6 +226,26 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		Ended:          timestamp,
 	}
 	return dnsConn
+}
+
+func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cnames []string, remoteIP net.IP) (*Connection, error) {
+	remoteHost, err := process.GetNetworkHost(ctx, remoteIP)
+	if err != nil {
+		return nil, err
+	}
+
+	timestamp := time.Now().Unix()
+	return &Connection{
+		Scope: fqdn,
+		Entity: &intel.Entity{
+			Domain: fqdn,
+			CNAME:  cnames,
+		},
+		process:        remoteHost,
+		ProcessContext: getProcessContext(ctx, remoteHost),
+		Started:        timestamp,
+		Ended:          timestamp,
+	}, nil
 }
 
 // NewConnectionFromFirstPacket returns a new connection based on the given packet.

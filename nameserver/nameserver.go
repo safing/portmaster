@@ -12,7 +12,6 @@ import (
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
-	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/resolver"
 
 	"github.com/miekg/dns"
@@ -94,25 +93,36 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		return reply(nsutil.Localhost())
 	}
 
-	// Authenticate request - only requests from the local host, but with any of its IPs, are allowed.
-	local, err := netenv.IsMyIP(remoteAddr.IP)
-	if err != nil {
-		tracer.Warningf("nameserver: failed to check if request for %s%s is local: %s", q.FQDN, q.QType, err)
-		return nil // Do no reply, drop request immediately.
-	}
-	if !local {
-		tracer.Warningf("nameserver: external request for %s%s, ignoring", q.FQDN, q.QType)
-		return nil // Do no reply, drop request immediately.
-	}
-
 	// Validate domain name.
 	if !netutils.IsValidFqdn(q.FQDN) {
 		tracer.Debugf("nameserver: domain name %s is invalid, refusing", q.FQDN)
 		return reply(nsutil.Refused("invalid domain"))
 	}
 
+	// Authenticate request - only requests from the local host, but with any of its IPs, are allowed.
+	local, err := netenv.IsMyIP(remoteAddr.IP)
+	if err != nil {
+		tracer.Warningf("nameserver: failed to check if request for %s%s is local: %s", q.FQDN, q.QType, err)
+		return nil // Do no reply, drop request immediately.
+	}
+
 	// Get connection for this request. This identifies the process behind the request.
-	conn := network.NewConnectionFromDNSRequest(ctx, q.FQDN, nil, packet.IPv4, remoteAddr.IP, uint16(remoteAddr.Port))
+	var conn *network.Connection
+	switch {
+	case local:
+		conn = network.NewConnectionFromDNSRequest(ctx, q.FQDN, nil, remoteAddr.IP, uint16(remoteAddr.Port))
+
+	case networkServiceMode():
+		conn, err = network.NewConnectionFromExternalDNSRequest(ctx, q.FQDN, nil, remoteAddr.IP)
+		if err != nil {
+			tracer.Warningf("nameserver: failed to get host/profile for request for %s%s: %s", q.FQDN, q.QType, err)
+			return nil // Do no reply, drop request immediately.
+		}
+
+	default:
+		tracer.Warningf("nameserver: external request for %s%s, ignoring", q.FQDN, q.QType)
+		return nil // Do no reply, drop request immediately.
+	}
 	conn.Lock()
 	defer conn.Unlock()
 
