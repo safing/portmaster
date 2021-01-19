@@ -2,9 +2,7 @@ package filterlists
 
 import (
 	"errors"
-	"fmt"
 	"net"
-	"strings"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
@@ -55,15 +53,16 @@ func LookupCountry(country string) ([]string, error) {
 
 // LookupDomain returns a list of sources that mark the domain
 // as blocked. If domain is not stored in the cache database
-// a nil slice is returned.
+// a nil slice is returned. The caller is responsible for making
+// sure that the given domain is valid and canonical.
 func LookupDomain(domain string) ([]string, error) {
-	// make sure we only fully qualified domains
-	// ending in a dot.
-	domain = strings.ToLower(domain)
-	if domain[len(domain)-1] != '.' {
-		domain += "."
+	switch domain {
+	case "", ".":
+		// Return no lists for empty domains and the root zone.
+		return nil, nil
+	default:
+		return lookupBlockLists("domain", domain)
 	}
-	return lookupBlockLists("domain", domain)
 }
 
 // LookupASNString returns a list of sources that mark the ASN
@@ -89,7 +88,7 @@ func LookupIP(ip net.IP) ([]string, error) {
 func LookupIPString(ipStr string) ([]string, error) {
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
-		return nil, fmt.Errorf("invalid IP")
+		return nil, errors.New("invalid IP")
 	}
 
 	return LookupIP(ip)

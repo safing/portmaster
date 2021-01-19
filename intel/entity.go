@@ -292,6 +292,7 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 		return
 	}
 
+	var err error
 	e.loadDomainListOnce.Do(func() {
 		var domainsToInspect = []string{domain}
 
@@ -314,10 +315,10 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 
 		for _, d := range domains {
 			log.Tracer(ctx).Tracef("intel: loading domain list for %s", d)
-			list, err := filterlists.LookupDomain(d)
+			var list []string
+			list, err = filterlists.LookupDomain(d)
 			if err != nil {
 				log.Tracer(ctx).Errorf("intel: failed to get domain blocklists for %s: %s", d, err)
-				e.loadDomainListOnce = sync.Once{}
 				return
 			}
 
@@ -325,6 +326,10 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 		}
 		e.domainListLoaded = true
 	})
+
+	if err != nil {
+		e.loadDomainListOnce = sync.Once{}
+	}
 }
 
 func splitDomain(domain string) []string {

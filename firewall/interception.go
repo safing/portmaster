@@ -2,12 +2,13 @@ package firewall
 
 import (
 	"context"
+	"errors"
 	"net"
 	"os"
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portmaster/netenv"
+	"github.com/tevino/abool"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
@@ -25,6 +26,10 @@ import (
 
 var (
 	interceptionModule *modules.Module
+
+	nameserverIPMatcher      func(ip net.IP) bool
+	nameserverIPMatcherSet   = abool.New()
+	nameserverIPMatcherReady = abool.New()
 
 	packetsAccepted = new(uint64)
 	packetsBlocked  = new(uint64)
@@ -59,6 +64,18 @@ func interceptionStop() error {
 	return interception.Stop()
 }
 
+// SetNameserverIPMatcher sets a function that is used to match the internal
+// nameserver IP(s). Can only bet set once.
+func SetNameserverIPMatcher(fn func(ip net.IP) bool) error {
+	if !nameserverIPMatcherSet.SetToIf(false, true) {
+		return errors.New("nameserver IP matcher already set")
+	}
+
+	nameserverIPMatcher = fn
+	nameserverIPMatcherReady.Set()
+	return nil
+}
+
 func handlePacket(ctx context.Context, pkt packet.Packet) {
 	if fastTrackedPermit(pkt) {
 		return
@@ -90,9 +107,19 @@ func handlePacket(ctx context.Context, pkt packet.Packet) {
 func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 	meta := pkt.Info()
 
-	// Check for blocked IP
+	// Check if connection was already blocked.
 	if meta.Dst.Equal(blockedIPv4) || meta.Dst.Equal(blockedIPv6) {
 		_ = pkt.PermanentBlock()
+		return true
+	}
+
+	// Some programs do a network self-check where they connects to the same
+	// IP/Port to test network capabilities.
+	// Eg. dig: https://gitlab.isc.org/isc-projects/bind9/-/issues/1140
+	if meta.SrcPort == meta.DstPort &&
+		meta.Src.Equal(meta.Dst) {
+		log.Debugf("filter: fast-track network self-check: %s", pkt)
+		_ = pkt.PermanentAccept()
 		return true
 	}
 
@@ -135,39 +162,42 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 		case apiPort:
 			// Always allow direct access to the Portmaster API.
 
+			// Portmaster API is TCP only.
+			if meta.Protocol != packet.TCP {
+				return false
+			}
+
 			// Check if the api port is even set.
 			if !apiPortSet {
 				return false
 			}
 
-			// Portmaster API must be TCP
-			if meta.Protocol != packet.TCP {
-				return false
-			}
-
-			fallthrough
-		case 53:
-			// Always allow direct local access to own services.
-			// DNS is both UDP and TCP.
-
-			// Only allow to own IPs.
-			dstIsMe, err := netenv.IsMyIP(meta.Dst)
-			if err != nil {
-				log.Warningf("filter: failed to check if IP %s is local: %s", meta.Dst, err)
-			}
-			if !dstIsMe {
+			// Must be destined for the API IP.
+			if !meta.Dst.Equal(apiIP) {
 				return false
 			}
 
 			// Log and permit.
-			switch meta.DstPort {
-			case 53:
-				log.Debugf("filter: fast-track accepting local dns: %s", pkt)
-			case apiPort:
-				log.Debugf("filter: fast-track accepting api connection: %s", pkt)
-			default:
+			log.Debugf("filter: fast-track accepting api connection: %s", pkt)
+			_ = pkt.PermanentAccept()
+			return true
+
+		case 53:
+			// Always allow direct access to the Portmaster Nameserver.
+			// DNS is both UDP and TCP.
+
+			// Check if a nameserver IP matcher is set.
+			if !nameserverIPMatcherReady.IsSet() {
 				return false
 			}
+
+			// Check if packet is destined for a nameserver IP.
+			if !nameserverIPMatcher(meta.Dst) {
+				return false
+			}
+
+			// Log and permit.
+			log.Debugf("filter: fast-track accepting local dns: %s", pkt)
 			_ = pkt.PermanentAccept()
 			return true
 		}
@@ -191,8 +221,12 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		return
 	}
 
-	// reroute dns requests to nameserver
-	if conn.Process().Pid != os.Getpid() && pkt.IsOutbound() && pkt.Info().DstPort == 53 && !pkt.Info().Src.Equal(pkt.Info().Dst) {
+	// Redirect rogue dns requests to the Portmaster.
+	if pkt.IsOutbound() &&
+		pkt.Info().DstPort == 53 &&
+		conn.Process().Pid != os.Getpid() &&
+		nameserverIPMatcherReady.IsSet() &&
+		!nameserverIPMatcher(pkt.Info().Dst) {
 		conn.Verdict = network.VerdictRerouteToNameserver
 		conn.Reason.Msg = "redirecting rogue dns query"
 		conn.Internal = true
