@@ -121,4 +121,4 @@ jobs:
       run: go mod download
 
     - name: Test
-      run: ./test full --test-only
+      run: ./test --test-only
