@@ -2,9 +2,14 @@ package process
 
 import (
 	"context"
+	"os"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/profile"
+)
+
+var (
+	ownPID = os.Getpid()
 )
 
 // GetProfile finds and assigns a profile set to the process.
@@ -31,6 +36,8 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 		profileID = profile.UnidentifiedProfileID
 	case SystemProcessID:
 		profileID = profile.SystemProfileID
+	case ownPID:
+		profileID = profile.PortmasterProfileID
 	}
 
 	// Get the (linked) local profile.
@@ -56,7 +63,7 @@ func (p *Process) UpdateProfileMetadata() {
 	}
 
 	// Update metadata of profile.
-	metadataUpdated := localProfile.UpdateMetadata(p.Name)
+	metadataUpdated := localProfile.UpdateMetadata(p.Name, p.Path)
 
 	// Mark profile as used.
 	profileChanged := localProfile.MarkUsed()

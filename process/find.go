@@ -2,11 +2,14 @@ package process
 
 import (
 	"context"
-
-	"github.com/safing/portmaster/network/state"
+	"fmt"
+	"net"
+	"time"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/network/state"
+	"github.com/safing/portmaster/profile"
 )
 
 // GetProcessByConnection returns the process that owns the described connection.
@@ -40,4 +43,40 @@ func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process 
 	}
 
 	return process, connInbound, nil
+}
+
+func GetNetworkHost(ctx context.Context, remoteIP net.IP) (process *Process, err error) {
+	now := time.Now().Unix()
+	networkHost := &Process{
+		Name:      fmt.Sprintf("Network Host %s", remoteIP),
+		UserName:  "Unknown",
+		UserID:    -255,
+		Pid:       -255,
+		ParentPid: -255,
+		Path:      fmt.Sprintf("net:%s", remoteIP),
+		FirstSeen: now,
+		LastSeen:  now,
+	}
+
+	// Get the (linked) local profile.
+	networkHostProfile, err := profile.GetNetworkHostProfile(remoteIP.String())
+	if err != nil {
+		return nil, err
+	}
+
+	// Assign profile to process.
+	networkHost.LocalProfileKey = networkHostProfile.Key()
+	networkHost.profile = networkHostProfile.LayeredProfile()
+
+	if networkHostProfile.Name == "" {
+		// Assign name and save.
+		networkHostProfile.Name = networkHost.Name
+
+		err := networkHostProfile.Save()
+		if err != nil {
+			log.Warningf("process: failed to save profile %s: %s", networkHostProfile.ScopedID(), err)
+		}
+	}
+
+	return networkHost, nil
 }

@@ -18,7 +18,7 @@ func registerActions() error {
 
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:       "core/restart",
-		Read:       api.PermitSelf,
+		Read:       api.PermitAdmin,
 		ActionFunc: restart,
 	}); err != nil {
 		return err

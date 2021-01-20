@@ -3,7 +3,6 @@ package firewall
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -118,8 +117,9 @@ func runDeciders(ctx context.Context, conn *network.Connection, pkt packet.Packe
 // checkPortmasterConnection allows all connection that originate from
 // portmaster itself.
 func checkPortmasterConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet) bool {
-	// grant self
-	if conn.Process().Pid == os.Getpid() {
+	// Grant own outgoing connections.
+	if conn.Process().Pid == ownPID &&
+		(pkt == nil || pkt.IsOutbound()) {
 		log.Tracer(ctx).Infof("filter: granting own connection %s", conn)
 		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true

@@ -21,6 +21,9 @@ const (
 
 	// SystemProfileID is the profile ID used for the system/kernel.
 	SystemProfileID = "_system"
+
+	// SystemProfileID is the profile ID used for the Portmaster itself.
+	PortmasterProfileID = "_portmaster"
 )
 
 var getProfileSingleInflight singleflight.Group
@@ -71,6 +74,9 @@ func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 				case SystemProfileID:
 					profile = New(SourceLocal, SystemProfileID, linkedPath)
 					err = nil
+				case PortmasterProfileID:
+					profile = New(SourceLocal, PortmasterProfileID, linkedPath)
+					err = nil
 				}
 			}
 
@@ -115,6 +121,76 @@ func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 			if profile.layeredProfile == nil {
 				profile.layeredProfile = NewLayeredProfile(profile)
 			}
+		}
+
+		// Add the profile to the currently active profiles.
+		addActiveProfile(profile)
+
+		return profile, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, errors.New("profile getter returned nil")
+	}
+
+	return p.(*Profile), nil
+}
+
+func GetNetworkHostProfile(remoteIP string) ( //nolint:gocognit
+	profile *Profile,
+	err error,
+) {
+	scopedID := makeScopedID(SourceNetwork, remoteIP)
+
+	p, err, _ := getProfileSingleInflight.Do(scopedID, func() (interface{}, error) {
+		var previousVersion *Profile
+
+		// Get profile via the scoped ID.
+		// Check if there already is an active and not outdated profile.
+		profile = getActiveProfile(scopedID)
+		if profile != nil {
+			profile.MarkStillActive()
+
+			if profile.outdated.IsSet() {
+				previousVersion = profile
+			} else {
+				return profile, nil
+			}
+		}
+
+		// Get from database.
+		profile, err = getProfile(scopedID)
+		switch {
+		case err == nil:
+			// Continue.
+		case errors.Is(err, database.ErrNotFound):
+			// Create new profile.
+			// If there was no profile in the database, create a new one, and return it.
+			profile = New(SourceNetwork, remoteIP, "")
+		default:
+			return nil, err
+		}
+
+		// Process profiles coming directly from the database.
+		// As we don't use any caching, these will be new objects.
+
+		// Mark the profile as being saved internally in order to not trigger an
+		// update after saving it to the database.
+		profile.internalSave = true
+
+		// Add a layeredProfile to network profiles.
+
+		// If we are refetching, assign the layered profile from the previous version.
+		if previousVersion != nil {
+			profile.layeredProfile = previousVersion.layeredProfile
+		}
+
+		// Network profiles must have a layered profile, create a new one if it
+		// does not yet exist.
+		if profile.layeredProfile == nil {
+			profile.layeredProfile = NewLayeredProfile(profile)
 		}
 
 		// Add the profile to the currently active profiles.

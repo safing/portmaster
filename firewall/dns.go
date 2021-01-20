@@ -3,7 +3,6 @@ package firewall
 import (
 	"context"
 	"net"
-	"os"
 	"strings"
 	"time"
 
@@ -88,7 +87,7 @@ func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache) *res
 	p := conn.Process().Profile()
 
 	// do not modify own queries
-	if conn.Process().Pid == os.Getpid() {
+	if conn.Process().Pid == ownPID {
 		return rrCache
 	}
 

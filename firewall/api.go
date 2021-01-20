@@ -6,9 +6,14 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/safing/portmaster/netenv"
+
+	"github.com/safing/portmaster/updates"
 
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/dataroot"
@@ -33,7 +38,10 @@ Checked process paths:
 %s
 
 The authorized root path is %s.
-You can enable the Development Mode to disable API authentication for development purposes.`
+You can enable the Development Mode to disable API authentication for development purposes.
+For production use please create an API key in the settings.`
+
+	deniedMsgMisconfigured = `%wThe authentication system is misconfigured.`
 )
 
 var (
@@ -80,11 +88,18 @@ func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, er
 		return nil, fmt.Errorf("failed to get remote IP/Port: %s", err)
 	}
 
+	// Check if the request is even local.
+	myIP, err := netenv.IsMyIP(remoteIP)
+	if err == nil && !myIP {
+		// Return to caller that the request was not handled.
+		return nil, nil
+	}
+
 	log.Tracer(r.Context()).Tracef("filter: authenticating API request from %s", r.RemoteAddr)
 
 	// It is very important that this works, retry extensively (every 250ms for 5s)
 	var retry bool
-	for tries := 0; tries < 20; tries++ {
+	for tries := 0; tries < 5; tries++ {
 		retry, err = authenticateAPIRequest(
 			r.Context(),
 			&packet.Info{
@@ -102,7 +117,7 @@ func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, er
 		}
 
 		// wait a little
-		time.Sleep(250 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
 	if err != nil {
 		return nil, err
@@ -116,45 +131,58 @@ func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, er
 
 func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bool, err error) {
 	var procsChecked []string
+	var originalPid int
 
-	// get process
+	// Get authenticated path.
+	authenticatedPath := updates.RootPath()
+	if authenticatedPath == "" {
+		return false, fmt.Errorf(deniedMsgMisconfigured, api.ErrAPIAccessDeniedMessage) //nolint:stylecheck // message for user
+	}
+	authenticatedPath += string(filepath.Separator)
+
+	// Get process of request.
 	proc, _, err := process.GetProcessByConnection(ctx, pktInfo)
 	if err != nil {
-		return true, fmt.Errorf("failed to get process: %s", err)
-	}
-	originalPid := proc.Pid
-	var previousPid int
+		log.Tracer(ctx).Debugf("filter: failed to get process of api request: %s", err)
+		originalPid = process.UnidentifiedProcessID
+	} else {
+		originalPid = proc.Pid
+		var previousPid int
 
-	// go up up to two levels, if we don't match
-	for i := 0; i < 5; i++ {
-		// check for eligible PID
-		switch proc.Pid {
-		case process.UnidentifiedProcessID, process.SystemProcessID:
-			break
-		default: // normal process
-			// check if the requesting process is in database root / updates dir
-			if strings.HasPrefix(proc.Path, dataRoot.Path) {
-				return false, nil
-			}
-		}
-
-		// add checked process to list
-		procsChecked = append(procsChecked, proc.Path)
-
-		if i < 4 {
-			// save previous PID
-			previousPid = proc.Pid
-
-			// get parent process
-			proc, err = process.GetOrFindProcess(ctx, proc.ParentPid)
-			if err != nil {
-				return true, fmt.Errorf("failed to get process: %s", err)
-			}
-
-			// abort if we are looping
-			if proc.Pid == previousPid {
-				// this also catches -1 pid loops
+		// Go up up to two levels, if we don't match the path.
+		checkLevels := 2
+		for i := 0; i < checkLevels+1; i++ {
+			// Check for eligible path.
+			switch proc.Pid {
+			case process.UnidentifiedProcessID, process.SystemProcessID:
 				break
+			default: // normal process
+				// Check if the requesting process is in database root / updates dir.
+				if strings.HasPrefix(proc.Path, authenticatedPath) {
+					return false, nil
+				}
+			}
+
+			// Add checked path to list.
+			procsChecked = append(procsChecked, proc.Path)
+
+			// Get the parent process.
+			if i < checkLevels {
+				// save previous PID
+				previousPid = proc.Pid
+
+				// get parent process
+				proc, err = process.GetOrFindProcess(ctx, proc.ParentPid)
+				if err != nil {
+					log.Tracer(ctx).Debugf("filter: failed to get parent process of api request: %s", err)
+					break
+				}
+
+				// abort if we are looping
+				if proc.Pid == previousPid {
+					// this also catches -1 pid loops
+					break
+				}
 			}
 		}
 	}
@@ -174,7 +202,7 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 			deniedMsgUnauthorized,
 			api.ErrAPIAccessDeniedMessage,
 			strings.Join(procsChecked, "\n"),
-			dataRoot.Path,
+			authenticatedPath,
 		)
 	}
 }
