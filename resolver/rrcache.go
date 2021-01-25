@@ -324,7 +324,7 @@ func (rrCache *RRCache) GetExtraRRs(ctx context.Context, query *dns.Msg) (extra 
 		extra = addExtra(ctx, extra, "async request to refresh the cache has been started")
 	}
 	if rrCache.IsBackup {
-		extra = addExtra(ctx, extra, "this record is served because a fresh request failed")
+		extra = addExtra(ctx, extra, "this record is served because a fresh request was unsuccessful")
 	}
 
 	// Add information about filtered entries.
