@@ -88,6 +88,10 @@ func GetNameRecord(domain, question string) (*NameRecord, error) {
 
 // DeleteNameRecord deletes a NameRecord from the database.
 func DeleteNameRecord(domain, question string) error {
+	// In order to properly delete an entry, we must also clear the caches.
+	recordDatabase.FlushCache()
+	recordDatabase.ClearCache()
+
 	key := makeNameRecordKey(domain, question)
 	return recordDatabase.Delete(key)
 }
@@ -107,24 +111,30 @@ func (rec *NameRecord) Save() error {
 
 // clearNameCache clears all dns caches from the database.
 func clearNameCache(ar *api.Request) (msg string, err error) {
-	log.Warning("resolver: user requested dns cache clearing via action")
+	log.Info("resolver: user requested dns cache clearing via action")
 
+	recordDatabase.FlushCache()
+	recordDatabase.ClearCache()
 	n, err := recordDatabase.Purge(ar.Context(), query.New(nameRecordsKeyPrefix))
 	if err != nil {
 		return "", err
 	}
 
+	log.Debugf("resolver: cleared %d entries from dns cache", n)
 	return fmt.Sprintf("cleared %d dns cache entries", n), nil
 }
 
 // DEPRECATED: remove in v0.7
 func clearNameCacheEventHandler(ctx context.Context, _ interface{}) error {
 	log.Debugf("resolver: dns cache clearing started...")
+
+	recordDatabase.FlushCache()
+	recordDatabase.ClearCache()
 	n, err := recordDatabase.Purge(ctx, query.New(nameRecordsKeyPrefix))
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("resolver: cleared %d entries in dns cache", n)
+	log.Debugf("resolver: cleared %d entries from dns cache", n)
 	return nil
 }
