@@ -321,11 +321,11 @@ func monitorOnlineStatus(ctx context.Context) error {
 func getDynamicStatusTrigger() <-chan time.Time {
 	switch GetOnlineStatus() {
 	case StatusOffline:
-		return time.After(5 * time.Second)
+		return time.After(1 * time.Second)
 	case StatusLimited, StatusPortal:
-		return time.After(10 * time.Second)
+		return time.After(5 * time.Second)
 	case StatusSemiOnline:
-		return time.After(1 * time.Minute)
+		return time.After(20 * time.Second)
 	case StatusOnline:
 		return nil
 	case StatusUnknown:
