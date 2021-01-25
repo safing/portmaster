@@ -216,6 +216,10 @@ func (q *Queue) packetHandler(ctx context.Context) func(nfqueue.Attribute) int {
 
 // Destroy destroys the queue. Any error encountered is logged.
 func (q *Queue) Destroy() {
+	if q == nil {
+		return
+	}
+
 	q.cancelSocketCallback()
 
 	if nf := q.getNfq(); nf != nil {
