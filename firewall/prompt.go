@@ -32,6 +32,8 @@ const (
 
 var (
 	promptNotificationCreation sync.Mutex
+
+	decisionTimeout int64 = 10 // in seconds
 )
 
 type promptData struct {
@@ -45,9 +47,15 @@ type promptProfile struct {
 	LinkedPath string
 }
 
-func prompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) { //nolint:gocognit // TODO
+func prompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
 	// Create notification.
 	n := createPrompt(ctx, conn, pkt)
+
+	// Get decision timeout and make sure it does not exceed the ask timeout.
+	timeout := decisionTimeout
+	if timeout > askTimeout() {
+		timeout = askTimeout()
+	}
 
 	// wait for response/timeout
 	select {
@@ -59,7 +67,7 @@ func prompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) { 
 			conn.Deny("blocked via prompt", profile.CfgOptionEndpointsKey)
 		}
 
-	case <-time.After(1 * time.Second):
+	case <-time.After(time.Duration(timeout) * time.Second):
 		log.Tracer(ctx).Debugf("filter: continuing prompting async")
 		conn.Deny("prompting in progress, please respond to prompt", profile.CfgOptionDefaultActionKey)
 

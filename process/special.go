@@ -9,9 +9,14 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-// UnidentifiedProcessID is the PID used for anything that could not be
-// attributed to a PID for any reason.
-const UnidentifiedProcessID = -1
+const (
+	// UnidentifiedProcessID is the PID used for anything that could not be
+	// attributed to a PID for any reason.
+	UnidentifiedProcessID = -1
+
+	// NetworkHostProcessID is the PID used for requests served to the network.
+	NetworkHostProcessID = -255
+)
 
 var (
 	// unidentifiedProcess is used when a process cannot be found.

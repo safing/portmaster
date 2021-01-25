@@ -6,7 +6,7 @@ import (
 	"github.com/safing/portmaster/core"
 )
 
-// Configuration Keys
+// Configuration Keys.
 var (
 	CfgOptionEnableFilterKey = "filter/enable"
 

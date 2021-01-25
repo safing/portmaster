@@ -45,21 +45,21 @@ func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process 
 	return process, connInbound, nil
 }
 
-func GetNetworkHost(ctx context.Context, remoteIP net.IP) (process *Process, err error) {
+func GetNetworkHost(ctx context.Context, remoteIP net.IP) (process *Process, err error) { //nolint:interfacer
 	now := time.Now().Unix()
 	networkHost := &Process{
 		Name:      fmt.Sprintf("Network Host %s", remoteIP),
 		UserName:  "Unknown",
-		UserID:    -255,
-		Pid:       -255,
-		ParentPid: -255,
+		UserID:    NetworkHostProcessID,
+		Pid:       NetworkHostProcessID,
+		ParentPid: NetworkHostProcessID,
 		Path:      fmt.Sprintf("net:%s", remoteIP),
 		FirstSeen: now,
 		LastSeen:  now,
 	}
 
 	// Get the (linked) local profile.
-	networkHostProfile, err := profile.GetNetworkHostProfile(remoteIP.String())
+	networkHostProfile, err := profile.GetProfile(profile.SourceNetwork, remoteIP.String(), "")
 	if err != nil {
 		return nil, err
 	}

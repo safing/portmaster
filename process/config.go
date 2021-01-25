@@ -4,10 +4,11 @@ import (
 	"github.com/safing/portbase/config"
 )
 
-// Configuration Keys
+// Configuration Keys.
 var (
 	CfgOptionEnableProcessDetectionKey = "core/enableProcessDetection"
-	enableProcessDetection             config.BoolOption
+
+	enableProcessDetection config.BoolOption
 )
 
 func registerConfiguration() error {

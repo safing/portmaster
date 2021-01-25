@@ -58,6 +58,13 @@ func addActiveProfile(profile *Profile) {
 	activeProfilesLock.Lock()
 	defer activeProfilesLock.Unlock()
 
+	// Mark any previous profile as outdated.
+	previous, ok := activeProfiles[profile.ScopedID()]
+	if ok {
+		previous.outdated.Set()
+	}
+
+	// Mark new profile active and add to active profiles.
 	profile.MarkStillActive()
 	activeProfiles[profile.ScopedID()] = profile
 }
