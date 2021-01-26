@@ -387,7 +387,7 @@ func queryMulticastDNS(ctx context.Context, q *Query) (*RRCache, error) {
 	if unicast4Conn != nil && uint16(q.QType) != dns.TypeAAAA {
 		err = unicast4Conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
 		if err != nil {
-			return nil, fmt.Errorf("failed to configure query (set timout): %s", err)
+			return nil, fmt.Errorf("failed to configure query (set timeout): %s", err)
 		}
 
 		_, err = unicast4Conn.WriteToUDP(buf, &net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5353})
@@ -398,7 +398,7 @@ func queryMulticastDNS(ctx context.Context, q *Query) (*RRCache, error) {
 	if unicast6Conn != nil && uint16(q.QType) != dns.TypeA {
 		err = unicast6Conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
 		if err != nil {
-			return nil, fmt.Errorf("failed to configure query (set timout): %s", err)
+			return nil, fmt.Errorf("failed to configure query (set timeout): %s", err)
 		}
 
 		_, err = unicast6Conn.WriteToUDP(buf, &net.UDPAddr{IP: net.IP([]byte{0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfb}), Port: 5353})

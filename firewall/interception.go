@@ -107,7 +107,7 @@ func handlePacket(ctx context.Context, pkt packet.Packet) {
 	conn.HandlePacket(pkt)
 }
 
-// fastTrackedPermit quickly permits certain network criticial or internal connections.
+// fastTrackedPermit quickly permits certain network critical or internal connections.
 func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 	meta := pkt.Info()
 

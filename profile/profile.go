@@ -85,13 +85,13 @@ type Profile struct { //nolint:maligned // not worth the effort
 	LinkedPath string // constant
 	// LinkedProfiles is a list of other profiles
 	LinkedProfiles []string
-	// SecurityLevel is the mininum security level to apply to
+	// SecurityLevel is the minimum security level to apply to
 	// connections made with this profile.
 	// Note(ppacher): we may deprecate this one as it can easily
 	//			      be "simulated" by adjusting the settings
 	//				  directly.
 	SecurityLevel uint8
-	// Config holds profile specific setttings. It's a nested
+	// Config holds profile specific settings. It's a nested
 	// object with keys defining the settings database path. All keys
 	// until the actual settings value (which is everything that is not
 	// an object) need to be concatenated for the settings database
@@ -318,7 +318,7 @@ func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
 
 			if entry == newEntry {
 				// An identical entry is already in the list, abort.
-				log.Debugf("profile: ingoring new endpoint rule for %s, as identical is already present: %s", profile, newEntry)
+				log.Debugf("profile: ignoring new endpoint rule for %s, as identical is already present: %s", profile, newEntry)
 				return
 			}
 		}

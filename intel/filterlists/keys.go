@@ -6,7 +6,7 @@ const (
 	// filterListCacheVersionKey is used to store the highest version
 	// of a filterlists file (base, intermediate or urgent) in the
 	// cache database. It's used to decide if the cache database and
-	// bloomfilters need to be resetted and rebuilt.
+	// bloomfilters need to be reset and rebuilt.
 	filterListCacheVersionKey = cacheDBPrefix + "/version"
 
 	// filterListIndexKey is used to store the filterlists index.

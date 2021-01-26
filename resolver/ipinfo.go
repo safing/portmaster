@@ -42,7 +42,7 @@ type ResolvedDomain struct {
 
 	// Expires holds the timestamp when this entry expires.
 	// This does not mean that the entry may not be used anymore afterwards,
-	// but that this is used to calcuate the TTL of the database record.
+	// but that this is used to calculate the TTL of the database record.
 	Expires int64
 }
 

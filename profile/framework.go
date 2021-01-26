@@ -13,13 +13,13 @@ package profile
 // )
 //
 // type Framework struct {
-// 	// go hirarchy up
+// 	// go hierarchy up
 // 	FindParent uint8 `json:",omitempty bson:",omitempty"`
 // 	// get path from parent, amount of levels to go up the tree (1 means parent, 2 means parent of parents, and so on)
 // 	MergeWithParent bool `json:",omitempty bson:",omitempty"`
 // 	// instead of getting the path of the parent, merge with it by presenting connections as if they were from that parent
 //
-// 	// go hirarchy down
+// 	// go hierarchy down
 // 	Find string `json:",omitempty bson:",omitempty"`
 // 	// Regular expression for finding path elements
 // 	Build string `json:",omitempty bson:",omitempty"`

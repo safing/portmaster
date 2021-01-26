@@ -34,7 +34,7 @@ type Entity struct {
 	resolveSubDomainLists bool
 	checkCNAMEs           bool
 
-	// Protocol is the protcol number used by the connection.
+	// Protocol is the protocol number used by the connection.
 	Protocol uint8
 
 	// Port is the remote port of the connection
@@ -143,7 +143,7 @@ func (e *Entity) ResolveSubDomainLists(ctx context.Context, enabled bool) {
 	e.resolveSubDomainLists = enabled
 }
 
-// EnableCNAMECheck enalbes or disables list lookups for
+// EnableCNAMECheck enables or disables list lookups for
 // entity CNAMEs.
 func (e *Entity) EnableCNAMECheck(ctx context.Context, enabled bool) {
 	if e.domainListLoaded {

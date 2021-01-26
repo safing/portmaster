@@ -253,7 +253,7 @@ func stagingActive() bool {
 		return true
 	}
 
-	// Check if staging index is present and acessible.
+	// Check if staging index is present and accessible.
 	_, err := os.Stat(filepath.Join(registry.StorageDir().Path, "staging.json"))
 	return err == nil
 }

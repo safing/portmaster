@@ -80,7 +80,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	LocalPort uint16
 	// Entity describes the remote entity that the connection has been
 	// established to. The entity might be changed or information might
-	// be added to it during the livetime of a connection. Access to
+	// be added to it during the lifetime of a connection. Access to
 	// entity must be guarded by the connection lock.
 	Entity *intel.Entity
 	// Verdict is the final decision that has been made for a connection.
@@ -92,7 +92,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// Access to Reason must be guarded by the connection lock.
 	Reason Reason
 	// Started holds the number of seconds in UNIX epoch time at which
-	// the connection has been initated and first seen by the portmaster.
+	// the connection has been initiated and first seen by the portmaster.
 	// Staretd is only every set when creating a new connection object
 	// and is considered immutable afterwards.
 	Started int64
@@ -123,7 +123,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// points and access to it must be guarded by the connection lock.
 	Internal bool
 	// process holds a reference to the actor process. That is, the
-	// process instance that initated the connection.
+	// process instance that initiated the connection.
 	process *process.Process
 	// pkgQueue is used to serialize packet handling for a single
 	// connection and is served by the connections packetHandler.

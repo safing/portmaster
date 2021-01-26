@@ -19,7 +19,7 @@ import (
 // underlying dns library.
 //nolint:maligned // TODO
 type RRCache struct {
-	// Respnse Header
+	// Response Header
 	Domain   string
 	Question dns.Type
 	RCode    int
