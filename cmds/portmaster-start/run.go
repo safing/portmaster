@@ -130,7 +130,10 @@ func run(opts *Options, cmdArgs []string) (err error) {
 
 	// check for duplicate instances
 	if opts.ShortIdentifier == "core" || opts.ShortIdentifier == "hub" {
-		pid, _ := checkAndCreateInstanceLock(opts.ShortIdentifier)
+		pid, err := checkAndCreateInstanceLock(opts.ShortIdentifier)
+		if err != nil {
+			return fmt.Errorf("failed to exec lock: %w", err)
+		}
 		if pid != 0 {
 			return fmt.Errorf("another instance of %s is already running: PID %d", opts.Name, pid)
 		}
