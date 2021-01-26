@@ -8,7 +8,7 @@ import (
 	"github.com/safing/portmaster/status"
 )
 
-// Configuration Keys
+// Configuration Keys.
 var (
 	cfgStringOptions      = make(map[string]config.StringOption)
 	cfgStringArrayOptions = make(map[string]config.StringArrayOption)

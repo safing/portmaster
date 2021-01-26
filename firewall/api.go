@@ -97,7 +97,7 @@ func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, er
 
 	log.Tracer(r.Context()).Tracef("filter: authenticating API request from %s", r.RemoteAddr)
 
-	// It is very important that this works, retry extensively (every 250ms for 5s)
+	// It is important that this works, retry 5 times: every 500ms for 2.5s.
 	var retry bool
 	for tries := 0; tries < 5; tries++ {
 		retry, err = authenticateAPIRequest(

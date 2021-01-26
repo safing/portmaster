@@ -25,7 +25,7 @@ const (
 
 var getProcessSingleInflight singleflight.Group
 
-// A Process represents a process running on the operating system
+// A Process represents a process running on the operating system.
 type Process struct {
 	record.Base
 	sync.Mutex

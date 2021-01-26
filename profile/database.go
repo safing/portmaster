@@ -47,21 +47,12 @@ func startProfileUpdateChecker() error {
 	}
 
 	module.StartServiceWorker("update active profiles", 0, func(ctx context.Context) (err error) {
-	feedSelect:
 		for {
 			select {
 			case r := <-profilesSub.Feed:
 				// check if nil
 				if r == nil {
 					return errors.New("subscription canceled")
-				}
-
-				// check if internal save
-				if !r.IsWrapped() {
-					profile, ok := r.(*Profile)
-					if ok && profile.internalSave {
-						continue feedSelect
-					}
 				}
 
 				// mark as outdated

@@ -127,8 +127,6 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// Lifecycle Management
 	outdated   *abool.AtomicBool
 	lastActive *int64
-
-	internalSave bool
 }
 
 func (profile *Profile) prepConfig() (err error) {
@@ -197,12 +195,11 @@ func (profile *Profile) parseConfig() error {
 // New returns a new Profile.
 func New(source profileSource, id string, linkedPath string) *Profile {
 	profile := &Profile{
-		ID:           id,
-		Source:       source,
-		LinkedPath:   linkedPath,
-		Created:      time.Now().Unix(),
-		Config:       make(map[string]interface{}),
-		internalSave: true,
+		ID:         id,
+		Source:     source,
+		LinkedPath: linkedPath,
+		Created:    time.Now().Unix(),
+		Config:     make(map[string]interface{}),
 	}
 
 	// Generate random ID if none is given.
@@ -301,18 +298,6 @@ func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
 		}
 	}()
 
-	// When finished increase the revision counter of the layered profile.
-	defer func() {
-		if !changed || profile.layeredProfile == nil {
-			return
-		}
-
-		profile.layeredProfile.Lock()
-		defer profile.layeredProfile.Unlock()
-
-		profile.layeredProfile.RevisionCounter++
-	}()
-
 	// Lock the profile for editing.
 	profile.Lock()
 	defer profile.Unlock()
@@ -350,7 +335,7 @@ func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
 	profile.dataParsed = false
 	err := profile.parseConfig()
 	if err != nil {
-		log.Warningf("profile: failed to parse %s config after adding endpoint: %s", profile, err)
+		log.Errorf("profile: failed to parse %s config after adding endpoint: %s", profile, err)
 	}
 }
 
