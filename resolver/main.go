@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/safing/portbase/api"
-
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/intel"
@@ -30,6 +28,10 @@ func init() {
 
 func prep() error {
 	intel.SetReverseResolver(ResolveIPAndValidate)
+
+	if err := registerAPI(); err != nil {
+		return err
+	}
 
 	if err := prepEnvResolver(); err != nil {
 		return err
@@ -75,15 +77,6 @@ func start() error {
 		},
 	)
 	if err != nil {
-		return err
-	}
-
-	// Register api endpoint to clear DNS cache.
-	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:       "dns/clear/namecache",
-		Read:       api.PermitUser,
-		ActionFunc: clearNameCache,
-	}); err != nil {
 		return err
 	}
 

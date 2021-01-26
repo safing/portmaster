@@ -41,6 +41,9 @@ type Resolver struct {
 	//	- `zeroip`: Answer only contains zeroip
 	Server string
 
+	// Source describes from where the resolver configuration originated.
+	Source string
+
 	// Name is the name of the resolver as passed via
 	// ?name=.
 	Name string
@@ -65,12 +68,9 @@ type Resolver struct {
 	// Special Options
 	VerifyDomain string
 	Search       []string
-	SkipFQDN     string
-
-	Source string
 
 	// logic interface
-	Conn ResolverConn
+	Conn ResolverConn `json:"-"`
 }
 
 // IsBlockedUpstream returns true if the request has been blocked

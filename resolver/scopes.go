@@ -208,10 +208,6 @@ func (q *Query) checkCompliance() error {
 }
 
 func (resolver *Resolver) checkCompliance(_ context.Context, q *Query) error {
-	if q.FQDN == resolver.SkipFQDN {
-		return errSkip
-	}
-
 	if noInsecureProtocols(q.SecurityLevel) {
 		switch resolver.ServerType {
 		case ServerTypeDNS:

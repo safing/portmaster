@@ -73,13 +73,6 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		return nil
 	}
 
-	// Return with server failure if offline.
-	if netenv.GetOnlineStatus() == netenv.StatusOffline &&
-		!netenv.IsConnectivityDomain(q.FQDN) {
-		tracer.Debugf("nameserver: not resolving %s, device is offline", q.FQDN)
-		return reply(nsutil.ServerFailure("resolving disabled, device is offline"))
-	}
-
 	// Check the Query Class.
 	if originalQuestion.Qclass != dns.ClassINET {
 		// we only serve IN records, return nxdomain
@@ -186,6 +179,14 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		case errors.Is(err, resolver.ErrLocalhost):
 			tracer.Tracef("nameserver: returning localhost records")
 			return reply(nsutil.Localhost())
+		case errors.Is(err, resolver.ErrOffline):
+			if rrCache == nil {
+				log.Tracer(ctx).Debugf("nameserver: not resolving %s, device is offline", q.ID())
+				return reply(nsutil.ServerFailure(err.Error()))
+			}
+			// If an rrCache was returned, it's usable a backup.
+			rrCache.IsBackup = true
+			log.Tracer(ctx).Debugf("nameserver: device is offline, using backup cache for %s", q.ID())
 		default:
 			tracer.Warningf("nameserver: failed to resolve %s: %s", q.ID(), err)
 			return reply(nsutil.ServerFailure("internal error: " + err.Error()))
