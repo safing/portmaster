@@ -30,7 +30,9 @@ var getProfileSingleInflight singleflight.Group
 
 // GetProfile fetches a profile. This function ensures that the loaded profile
 // is shared among all callers. You must always supply both the scopedID and
-// linkedPath parameters whenever available.
+// linkedPath parameters whenever available. The linkedPath is used as the key
+// for locking concurrent requests, so it must be supplied if available.
+// If linkedPath is not supplied, source and id make up the key instead.
 func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 	profile *Profile,
 	err error,

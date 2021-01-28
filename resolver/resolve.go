@@ -190,7 +190,7 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 
 	// Check if we want to reset the cache for this entry.
 	if shouldResetCache(q) {
-		err := DeleteNameRecord(q.FQDN, q.QType.String())
+		err := ResetCachedRecord(q.FQDN, q.QType.String())
 		switch {
 		case err == nil:
 			log.Tracer(ctx).Tracef("resolver: cache for %s%s was reset", q.FQDN, q.QType)

@@ -37,9 +37,9 @@ func exportDNSResolvers(*api.Request) (interface{}, error) {
 	resolversLock.RLock()
 	defer resolversLock.RUnlock()
 
-	export := make([]*resolverExport, 0, len(globalResolvers))
+	export := make([]resolverExport, 0, len(globalResolvers))
 	for _, r := range globalResolvers {
-		export = append(export, &resolverExport{
+		export = append(export, resolverExport{
 			Resolver: r,
 			Failing:  r.Conn.IsFailing(),
 		})

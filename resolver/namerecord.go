@@ -86,8 +86,8 @@ func GetNameRecord(domain, question string) (*NameRecord, error) {
 	return new, nil
 }
 
-// DeleteNameRecord deletes a NameRecord from the database.
-func DeleteNameRecord(domain, question string) error {
+// ResetCachedRecord deletes a NameRecord from the cache database.
+func ResetCachedRecord(domain, question string) error {
 	// In order to properly delete an entry, we must also clear the caches.
 	recordDatabase.FlushCache()
 	recordDatabase.ClearCache()
