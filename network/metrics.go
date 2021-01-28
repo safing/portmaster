@@ -4,6 +4,7 @@ import (
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/metrics"
+	"github.com/safing/portmaster/process"
 )
 
 var (
@@ -102,6 +103,13 @@ func registerMetrics() error {
 
 func (conn *Connection) addToMetrics() {
 	if conn.addedToMetrics {
+		return
+	}
+
+	// Don't count requests serviced to the network,
+	// as we have an incomplete view here.
+	if conn.Process() != nil &&
+		conn.Process().Pid == process.NetworkHostProcessID {
 		return
 	}
 
