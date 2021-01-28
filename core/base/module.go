@@ -1,10 +1,13 @@
 package base
 
 import (
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/metrics"
 	"github.com/safing/portbase/modules"
 
 	// module dependencies
 	_ "github.com/safing/portbase/config"
+	_ "github.com/safing/portbase/metrics"
 	_ "github.com/safing/portbase/rng"
 )
 
@@ -13,7 +16,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("base", nil, start, nil, "database", "config", "rng")
+	module = modules.Register("base", nil, start, nil, "database", "config", "rng", "metrics")
 
 	// For prettier subsystem graph, printed with --print-subsystem-graph
 	/*
@@ -31,5 +34,14 @@ func init() {
 func start() error {
 	startProfiling()
 
-	return registerDatabases()
+	if err := registerDatabases(); err != nil {
+		return err
+	}
+
+	// Set metrics storage key and load them from db.
+	if err := metrics.EnableMetricPersistence("core:metrics/storage"); err != nil {
+		log.Warningf("core: failed to load persisted metrics from db: %s", err)
+	}
+
+	return nil
 }

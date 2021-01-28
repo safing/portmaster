@@ -50,7 +50,12 @@ func init() {
 	network.SetDefaultFirewallHandler(defaultHandler)
 }
 
-func interceptionPrep() (err error) {
+func interceptionPrep() error {
+	err := registerMetrics()
+	if err != nil {
+		return err
+	}
+
 	return prepAPIAuth()
 }
 
@@ -81,6 +86,10 @@ func SetNameserverIPMatcher(fn func(ip net.IP) bool) error {
 }
 
 func handlePacket(ctx context.Context, pkt packet.Packet) {
+	// Record metrics.
+	startTime := time.Now()
+	defer packetHandlingHistogram.UpdateDuration(startTime)
+
 	if fastTrackedPermit(pkt) {
 		return
 	}

@@ -55,3 +55,24 @@ func (cs *connectionStore) clone() map[string]*Connection {
 	}
 	return m
 }
+
+func (cs *connectionStore) len() int {
+	cs.rw.RLock()
+	defer cs.rw.RUnlock()
+
+	return len(cs.items)
+}
+
+func (cs *connectionStore) active() int {
+	// Clone and count all active connections.
+	var cnt int
+	for _, conn := range cs.clone() {
+		conn.Lock()
+		if conn.Ended != 0 {
+			cnt++
+		}
+		conn.Unlock()
+	}
+
+	return cnt
+}

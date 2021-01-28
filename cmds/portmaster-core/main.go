@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/safing/portbase/info"
+	"github.com/safing/portbase/metrics"
 	"github.com/safing/portbase/run"
 	"github.com/safing/spn/conf"
 
@@ -19,6 +20,9 @@ import (
 func main() {
 	// set information
 	info.Set("Portmaster", "0.6.4", "AGPLv3", true)
+
+	// Configure metrics.
+	metrics.SetNamespace("portmaster")
 
 	// enable SPN client mode
 	conf.EnableClient(true)

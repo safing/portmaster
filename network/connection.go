@@ -147,6 +147,9 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// profile and required for correct re-evaluation of a connections
 	// verdict.
 	ProfileRevisionCounter uint64
+	// addedToMetrics signifies if the connection has already been counted in
+	// the metrics.
+	addedToMetrics bool
 }
 
 // Reason holds information justifying a verdict, as well as additional
@@ -449,6 +452,7 @@ func (conn *Connection) SaveWhenFinished() {
 // Callers must make sure to lock the connection itself before calling
 // Save().
 func (conn *Connection) Save() {
+	conn.addToMetrics()
 	conn.UpdateMeta()
 
 	if !conn.KeyIsSet() {

@@ -13,7 +13,6 @@ require (
 	github.com/godbus/dbus/v5 v5.0.3
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/google/gopacket v1.1.18
-	github.com/google/renameio v1.0.0
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-version v1.2.1
@@ -43,4 +42,11 @@ require (
 	golang.org/x/sys v0.0.0-20210113181707-4bcb84eeeb78
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
+)
+
+require (
+	// The follow-up commit removes Windows support.
+	// TOOD: Check how we want to handle this in the future, possibly ingest
+	// needed functionality into here.
+	github.com/google/renameio v0.1.1-0.20200217212219-353f81969824
 )
