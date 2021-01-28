@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -34,10 +35,16 @@ func checkAndCreateInstanceLock(name string) (pid int32, err error) {
 
 	// Check if process exists.
 	p, err := processInfo.NewProcess(int32(parsedPid))
-	if err != nil {
+	switch {
+	case err == nil:
+		// Process exists, continue.
+	case errors.Is(err, processInfo.ErrorProcessNotRunning):
 		// A process with the locked PID does not exist.
 		// This is expected, so we can continue normally.
 		return 0, createInstanceLock(lockFilePath)
+	default:
+		// There was an internal error getting the process.
+		return 0, err
 	}
 
 	// Get the process paths and evaluate and clean them.
