@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/firewall"
@@ -27,6 +28,10 @@ func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
 }
 
 func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) error { //nolint:gocognit // TODO
+	// Record metrics.
+	startTime := time.Now()
+	defer requestsHistogram.UpdateDuration(startTime)
+
 	// Only process first question, that's how everyone does it.
 	if len(request.Question) == 0 {
 		return errors.New("missing question")

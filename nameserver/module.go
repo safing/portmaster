@@ -33,7 +33,12 @@ func init() {
 }
 
 func prep() error {
-	return registerConfig()
+	err := registerConfig()
+	if err != nil {
+		return err
+	}
+
+	return registerMetrics()
 }
 
 func start() error {
