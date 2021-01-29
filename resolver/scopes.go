@@ -179,7 +179,6 @@ var (
 	errInsecureProtocol = errors.New("insecure protocols disabled")
 	errAssignedServer   = errors.New("assigned (dhcp) nameservers disabled")
 	errMulticastDNS     = errors.New("multicast DNS disabled")
-	errSkip             = errors.New("this fqdn cannot resolved by this resolver")
 )
 
 func (q *Query) checkCompliance() error {
