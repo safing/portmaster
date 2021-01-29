@@ -7,10 +7,10 @@ import (
 	"github.com/safing/portbase/log"
 )
 
-// Configuration Keys
+// Configuration Keys.
 var (
-	CfgDevModeKey  = "core/devMode"
-	defaultDevMode bool
+	// CfgDevModeKey is originally defined in portbase/config.
+	CfgDevModeKey = config.CfgDevModeKey
 
 	CfgNetworkServiceKey      = "core/networkService"
 	defaultNetworkServiceMode bool
@@ -19,14 +19,10 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&defaultDevMode, "devmode", false, "force development mode")
 	flag.BoolVar(&defaultNetworkServiceMode, "network-service", false, "force network service mode")
 }
 
 func logFlagOverrides() {
-	if defaultDevMode {
-		log.Warningf("core: %s config is being forced by the -devmode flag", CfgDevModeKey)
-	}
 	if defaultNetworkServiceMode {
 		log.Warningf("core: %s config is being forced by the -network-service flag", CfgNetworkServiceKey)
 	}
@@ -34,23 +30,6 @@ func logFlagOverrides() {
 
 func registerConfig() error {
 	err := config.Register(&config.Option{
-		Name:           "Development Mode",
-		Key:            CfgDevModeKey,
-		Description:    "In Development Mode, security restrictions are lifted/softened to enable easier access to Portmaster for debugging and testing purposes.",
-		OptType:        config.OptTypeBool,
-		ExpertiseLevel: config.ExpertiseLevelDeveloper,
-		ReleaseLevel:   config.ReleaseLevelStable,
-		DefaultValue:   defaultDevMode,
-		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: 512,
-			config.CategoryAnnotation:     "Development",
-		},
-	})
-	if err != nil {
-		return err
-	}
-
-	err = config.Register(&config.Option{
 		Name:           "Network Service",
 		Key:            CfgNetworkServiceKey,
 		Description:    "Use the Portmaster as a network service, where applicable. You will have to take care of lots of network setup yourself in order to run this properly and securely.",
