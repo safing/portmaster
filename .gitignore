@@ -9,6 +9,9 @@ main.exe
 # Dist dir
 dist
 
+# Custom dev deops
+go.mod.*
+
 # vendor dir
 vendor
 

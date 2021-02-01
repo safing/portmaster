@@ -10,6 +10,7 @@ linters:
     - gomnd
     - gomodguard
     - goerr113
+    - testpackage
 
 linters-settings:
   godox:
