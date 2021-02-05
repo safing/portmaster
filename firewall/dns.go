@@ -130,7 +130,7 @@ func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache) *res
 			// If all entries are filtered, this could mean that these are broken/bogus resource records.
 			if rrCache.Expired() {
 				// If the entry is expired, force delete it.
-				err := resolver.DeleteNameRecord(rrCache.Domain, rrCache.Question.String())
+				err := resolver.ResetCachedRecord(rrCache.Domain, rrCache.Question.String())
 				if err != nil && err != database.ErrNotFound {
 					log.Warningf(
 						"filter: failed to delete fully filtered name cache for %s: %s",
