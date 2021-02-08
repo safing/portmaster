@@ -1,66 +1,52 @@
-# Portmaster
+# Take Back Control of Your Computer
 
-The Portmaster is a privacy app that at its core simply intercepts _all_ your network connections. Different modules with different privacy features are built on top of it, which can all be enabled or disabled as desired:
+Portmaster is a free and open-source application that puts you back in charge over all your computer's network connections.
+Developed in the EU 🇪🇺, Austria.
 
-![portmaster modules](https://safing.io/assets/img/portmaster/modules.png)
+![Portmaster User Interface](https://assets.safing.io/portmaster/full-interface.png)
 
-#### ⚠️ Disclaimer
+**⚠️ Disclaimer**
 
-> The Portmaster is still in its early "alpha" development stage. While some features might still have bugs, it runs quite stable and can easily be uninstalled again. We'll push updates and fixes as we go. A list of known problems can be found at the bottom of this page.
+> Portmaster is Alpha Software, treat as such; expect bugs here and there. Early Adopters welcome.
 
-#### 🔄 Automatic Updates
+## Features
+1. [Monitor All Network Activity](https://safing.io/portmaster#network-all-network-activity)
+2. [Manually Allow or Block Connections](https://safing.io/portmaster#manually-allow-or-block-connections)
+3. [Auto-Block via Selected Filter Lists](https://safing.io/portmaster#auto-block-via-selected-filter-lists)
+4. [Enforce DNS-over-TLS](https://safing.io/portmaster#enforce-dns-over-tls)
+5. [Configure Settings for Different Networks](https://safing.io/portmaster#configure-settings-for-different-networks)
+6. [Set Global & per‑App Settings](https://safing.io/portmaster#set-global-and-app-settings)
+7. [**Download For Free**](https://safing.io/portmaster#downloads)
+8. [FAQ](https://safing.io/portmaster#faq)
 
-We have set up update servers so we can push fixes and improvements as we go.
+## Documentation
 
-# Modules
+All technical details and guides live on the dedicated docs website:
 
-## DNS-over-TLS Resolver
+- [Guides](https://docs.safing.io/portmaster/guides/contribute)
+  - [Contribute](https://docs.safing.io/portmaster/guides/contribute)
+- [Install](https://docs.safing.io/portmaster/install/windows)
+  - [on Windows](https://docs.safing.io/portmaster/install/windows)
+  - [on Linux](https://docs.safing.io/portmaster/install/linux)
+  - [Status](https://docs.safing.io/portmaster/install/status/vpn-compatibility)
+    - [VPN Compatibility](https://docs.safing.io/portmaster/install/status/vpn-compatibility)
+    - [Mobile](https://docs.safing.io/portmaster/install/status/mobile)
+- [Architecture](https://docs.safing.io/portmaster/architecture/overview)
+  - [Technical Overview](https://docs.safing.io/portmaster/architecture/overview)
+  - [Core Service](https://docs.safing.io/portmaster/architecture/core-service)
+    - [Fundamentals](https://docs.safing.io/portmaster/architecture/core-service/fundamentals)
+    - [Core](https://docs.safing.io/portmaster/architecture/core-service/core)
+    - [Privacy Filter](https://docs.safing.io/portmaster/architecture/core-service/privacy-filter)
+    - [Secure DNS](https://docs.safing.io/portmaster/architecture/core-service/secure-dns)
+    - [SPN](https://docs.safing.io/portmaster/architecture/core-service/spn)
+  - [OS Integration](https://docs.safing.io/portmaster/architecture/os-integration)
+  - [User Interface](https://docs.safing.io/portmaster/architecture/user-interface)
+  - [Notifier](https://docs.safing.io/portmaster/architecture/notifier)
 
-**Status:** _alpha_
+## About Safing
 
-A DNS resolver that does not only encrypt your queries, but figures out where it makes the most sense to send your queries. Queries for local domains will not be sent to the upstream servers. This means it won't break your or your company's network setup.
+Find out more about Safing, the company behind the Portmaster:
 
-**Features/Settings:**
-
-- Configure upstream DNS resolvers
-- Don't use assigned Nameserver (by DHCP / local network - public WiFi!)
-- Don't use Multicast DNS (public WiFi!)
-
-## Privacy Filter
-
-**Status:** _alpha_
-
-Think of a pi-hole for your computer. Or an ad-blocker that blocks ads on your whole computer, not only on your browser. With you everywhere you go and every network you visit.
-
-**Features/Settings:**
-
-- Select and activate block-lists
-- Manually block/allow domains
-  - You can allow domains in case something breaks
-- CNAME Blocking (block these new nasty "unblockable" ads/trackers)
-- Block all subdomains of a domain in the block-lists
-
-## Safing Privacy Network (SPN)
-
-**Status:** _currently in closed pre-alpha_
-
-[Visit our homepage](https://safing.io/spn/) or [its Kickstarter campaign](https://www.kickstarter.com/projects/safingio/spn) to read all about this module.
-
-# Installation
-
-Installation instructions for your platform as well as known issues can be found at the respective wiki pages:
-
-- [Linux](https://github.com/safing/portmaster/wiki/Linux)
-- [Windows](https://github.com/safing/portmaster/wiki/Windows)
-
-# Sceenshot Tour
-
-![Screenshot Tour #1](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-1.png)
-![Screenshot Tour #2](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-2.png)
-![Screenshot Tour #3](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-3.png)
-![Screenshot Tour #4](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-4.png)
-![Screenshot Tour #5](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-5.png)
-![Screenshot Tour #6](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-6.png)
-![Screenshot Tour #7](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-7.png)
-![Screenshot Tour #8](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-8.png)
-![Screenshot Tour #9](https://assets.safing.io/portmaster/tours/portmaster-screenshot-tour-9.png)
+- [About](https://safing.io/about/)
+- [Ownership](https://safing.io/ownership/)
+- [Team](https://safing.io/team/)
