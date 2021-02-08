@@ -21,7 +21,7 @@ Developed in the EU 🇪🇺, Austria.
 
 ## Documentation
 
-All technical details and guides live on [the dedicated docs website](https://docs.safing.io)
+All technical details and guides live on the dedicated docs website:
 
 - [Guides](https://docs.safing.io/portmaster/guides/contribute)
   - [Contribute](https://docs.safing.io/portmaster/guides/contribute)
@@ -43,7 +43,7 @@ All technical details and guides live on [the dedicated docs website](https://do
   - [User Interface](https://docs.safing.io/portmaster/architecture/user-interface)
   - [Notifier](https://docs.safing.io/portmaster/architecture/notifier)
 
-## Safing Company
+## About Safing
 
 Find out more about Safing, the company behind the Portmaster:
 
