@@ -1,6 +1,7 @@
 # Take Back Control of Your Computer
 
-Portmaster is a free and open-source application that puts you back in charge over all your computer's network connections. Developed in the EU 🇪🇺, Austria.
+Portmaster is a free and open-source application that puts you back in charge over all your computer's network connections.
+Developed in the EU 🇪🇺, Austria.
 
 ![Portmaster User Interface](https://assets.safing.io/portmaster/full-interface.png)
 
@@ -18,14 +19,20 @@ Portmaster is a free and open-source application that puts you back in charge ov
 7. [**Download For Free**](https://safing.io/portmaster#downloads)
 8. [FAQ](https://safing.io/portmaster#faq)
 
-## Safing Company
-- [About](https://safing.io/about/)
-- [Ownership](https://safing.io/ownership/)
-- [Team](https://safing.io/team/)
-
 ## Documentation
+
+All technical details and guides live on [the dedicated docs website](https://docs.safing.io)
+
+- [Guides](https://docs.safing.io/portmaster/guides/contribute)
+  - [Contribute](https://docs.safing.io/portmaster/guides/contribute)
+- [Install](https://docs.safing.io/portmaster/install/windows)
+  - [on Windows](https://docs.safing.io/portmaster/install/windows)
+  - [on Linux](https://docs.safing.io/portmaster/install/linux)
+  - [Status](https://docs.safing.io/portmaster/install/status/vpn-compatibility)
+    - [VPN Compatibility](https://docs.safing.io/portmaster/install/status/vpn-compatibility)
+    - [Mobile](https://docs.safing.io/portmaster/install/status/mobile)
 - [Architecture](https://docs.safing.io/portmaster/architecture/overview)
-  - [Overview](https://docs.safing.io/portmaster/architecture/overview)
+  - [Technical Overview](https://docs.safing.io/portmaster/architecture/overview)
   - [Core Service](https://docs.safing.io/portmaster/architecture/core-service)
     - [Fundamentals](https://docs.safing.io/portmaster/architecture/core-service/fundamentals)
     - [Core](https://docs.safing.io/portmaster/architecture/core-service/core)
@@ -36,3 +43,10 @@ Portmaster is a free and open-source application that puts you back in charge ov
   - [User Interface](https://docs.safing.io/portmaster/architecture/user-interface)
   - [Notifier](https://docs.safing.io/portmaster/architecture/notifier)
 
+## Safing Company
+
+Find out more about Safing, the company behind the Portmaster:
+
+- [About](https://safing.io/about/)
+- [Ownership](https://safing.io/ownership/)
+- [Team](https://safing.io/team/)
