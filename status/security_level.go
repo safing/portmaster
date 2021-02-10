@@ -31,24 +31,28 @@ const (
 // SecurityLevelValues defines all possible security levels.
 var SecurityLevelValues = []config.PossibleValue{
 	{
-		Name:  "Normal",
-		Value: SecurityLevelsAll,
+		Name:        "Trusted / Home Network",
+		Value:       SecurityLevelsAll,
+		Description: "Setting is always enabled.",
 	},
 	{
-		Name:  "High",
-		Value: SecurityLevelsHighAndExtreme,
+		Name:        "Untrusted / Public Network",
+		Value:       SecurityLevelsHighAndExtreme,
+		Description: "Setting is enabled in untrusted and dangerous networks.",
 	},
 	{
-		Name:  "Extreme",
-		Value: SecurityLevelExtreme,
+		Name:        "Danger / Hacked Network",
+		Value:       SecurityLevelExtreme,
+		Description: "Setting is enabled only in dangerous networks.",
 	},
 }
 
 // AllSecurityLevelValues is like SecurityLevelValues but also includes Off.
 var AllSecurityLevelValues = append([]config.PossibleValue{
 	{
-		Name:  "Off",
-		Value: SecurityLevelOff,
+		Name:        "Off",
+		Value:       SecurityLevelOff,
+		Description: "Setting is always disabled.",
 	},
 },
 	SecurityLevelValues...,
