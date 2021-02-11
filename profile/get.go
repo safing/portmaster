@@ -2,7 +2,6 @@ package profile
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/safing/portbase/database"
 
@@ -153,12 +152,6 @@ func findProfile(linkedPath string) (profile *Profile, err error) {
 
 	// If there was no profile in the database, create a new one, and return it.
 	profile = New(SourceLocal, "", linkedPath, nil)
-
-	// Check if the profile should be marked as internal.
-	// This is the case whenever the binary resides within the data root dir.
-	if updatesPath != "" && strings.HasPrefix(linkedPath, updatesPath) {
-		profile.Internal = true
-	}
 
 	return profile, nil
 }

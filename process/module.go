@@ -3,7 +3,6 @@ package process
 import (
 	"os"
 
-	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/updates"
 )
@@ -26,7 +25,6 @@ func start() error {
 	if updatesPath != "" {
 		updatesPath += string(os.PathSeparator)
 	}
-	log.Warningf("process: using updates path %s", updatesPath)
 
 	return nil
 }

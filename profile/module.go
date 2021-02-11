@@ -39,7 +39,6 @@ func start() error {
 	if updatesPath != "" {
 		updatesPath += string(os.PathSeparator)
 	}
-	log.Warningf("profile: using updates path %s", updatesPath)
 
 	err := registerValidationDBHook()
 	if err != nil {
