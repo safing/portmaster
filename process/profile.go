@@ -3,6 +3,7 @@ package process
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/profile"
@@ -38,6 +39,16 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 		profileID = profile.SystemProfileID
 	case ownPID:
 		profileID = profile.PortmasterProfileID
+	default:
+		// Check if this is another Portmaster component.
+		if updatesPath != "" && strings.HasPrefix(p.Path, updatesPath) {
+			switch {
+			case strings.Contains(p.Path, "portmaster-app"):
+				profileID = profile.PortmasterAppProfileID
+			case strings.Contains(p.Path, "portmaster-notifier"):
+				profileID = profile.PortmasterNotifierProfileID
+			}
+		}
 	}
 
 	// Get the (linked) local profile.

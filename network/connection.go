@@ -228,6 +228,12 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		Started:        timestamp,
 		Ended:          timestamp,
 	}
+
+	// Inherit internal status of profile.
+	if localProfile := proc.Profile().LocalProfile(); localProfile != nil {
+		dnsConn.Internal = localProfile.Internal
+	}
+
 	return dnsConn
 }
 
@@ -238,7 +244,7 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 	}
 
 	timestamp := time.Now().Unix()
-	return &Connection{
+	dnsConn := &Connection{
 		Scope: fqdn,
 		Entity: &intel.Entity{
 			Domain: fqdn,
@@ -248,7 +254,14 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 		ProcessContext: getProcessContext(ctx, remoteHost),
 		Started:        timestamp,
 		Ended:          timestamp,
-	}, nil
+	}
+
+	// Inherit internal status of profile.
+	if localProfile := remoteHost.Profile().LocalProfile(); localProfile != nil {
+		dnsConn.Internal = localProfile.Internal
+	}
+
+	return dnsConn, nil
 }
 
 // NewConnectionFromFirstPacket returns a new connection based on the given packet.
@@ -335,7 +348,8 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		}
 	}
 
-	return &Connection{
+	// Create new connection object.
+	newConn := &Connection{
 		ID:        pkt.GetConnectionID(),
 		Scope:     scope,
 		IPVersion: pkt.Info().Version,
@@ -352,6 +366,13 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		Started:                time.Now().Unix(),
 		ProfileRevisionCounter: proc.Profile().RevisionCnt(),
 	}
+
+	// Inherit internal status of profile.
+	if localProfile := proc.Profile().LocalProfile(); localProfile != nil {
+		newConn.Internal = localProfile.Internal
+	}
+
+	return newConn
 }
 
 // GetConnection fetches a Connection from the database.

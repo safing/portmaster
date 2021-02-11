@@ -394,7 +394,7 @@ func (profile *Profile) UpdateMetadata(processName, binaryPath string) (changed 
 	}
 
 	// Update LinkedPath if if differs from the process path.
-	// This will (at the moment) only be the case for the Portmaster profile.
+	// This will be the case for profiles that are assigned in a special way.
 	if profile.LinkedPath != binaryPath {
 		profile.LinkedPath = binaryPath
 		changed = true
