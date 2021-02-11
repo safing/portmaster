@@ -3,7 +3,6 @@ package resolver
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net"
 	"time"
 
@@ -286,7 +285,8 @@ func (rrCache *RRCache) ReplaceAnswerNames(fqdn string) {
 	}
 }
 
-// ReplyWithDNS creates a new reply to the given query with the data from the RRCache, and additional informational records.
+// ReplyWithDNS creates a new reply to the given query with the data from the
+// RRCache, and additional informational records.
 func (rrCache *RRCache) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns.Msg {
 	// reply to query
 	reply := new(dns.Msg)
@@ -294,13 +294,6 @@ func (rrCache *RRCache) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 	reply.Answer = rrCache.Answer
 	reply.Ns = rrCache.Ns
 	reply.Extra = rrCache.Extra
-
-	// Randomize the order of the answer records a little to allow dumb clients
-	// (who only look at the first record) to reliably connect.
-	for i := range reply.Answer {
-		j := rand.Intn(i + 1)
-		reply.Answer[i], reply.Answer[j] = reply.Answer[j], reply.Answer[i]
-	}
 
 	return reply
 }
