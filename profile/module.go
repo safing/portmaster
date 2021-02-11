@@ -4,13 +4,11 @@ import (
 	"os"
 
 	"github.com/safing/portbase/log"
-
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/updates"
 
 	// module dependencies
 	_ "github.com/safing/portmaster/core/base"
-	"github.com/safing/portmaster/updates"
-	_ "github.com/safing/portmaster/updates" // dependency of semi-dependency filterlists
 )
 
 var (
@@ -37,10 +35,11 @@ func prep() error {
 }
 
 func start() error {
-	updatesPath = updates.RootPath() + string(os.PathSeparator)
+	updatesPath = updates.RootPath()
 	if updatesPath != "" {
 		updatesPath += string(os.PathSeparator)
 	}
+	log.Warningf("profile: using updates path %s", updatesPath)
 
 	err := registerValidationDBHook()
 	if err != nil {

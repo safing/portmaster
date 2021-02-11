@@ -47,6 +47,11 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 				profileID = profile.PortmasterAppProfileID
 			case strings.Contains(p.Path, "portmaster-notifier"):
 				profileID = profile.PortmasterNotifierProfileID
+			default:
+				// Unexpected binary from within the Portmaster updates directpry.
+				log.Warningf("process: unexpected binary in the updates directory: %s", p.Path)
+				// TODO: Assign a fully restricted profile in the future when we are
+				// sure that we won't kill any of our own things.
 			}
 		}
 	}
@@ -74,7 +79,7 @@ func (p *Process) UpdateProfileMetadata() {
 	}
 
 	// Update metadata of profile.
-	metadataUpdated := localProfile.UpdateMetadata(p.Name, p.Path)
+	metadataUpdated := localProfile.UpdateMetadata(p.Path)
 
 	// Mark profile as used.
 	profileChanged := localProfile.MarkUsed()

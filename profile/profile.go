@@ -193,13 +193,25 @@ func (profile *Profile) parseConfig() error {
 }
 
 // New returns a new Profile.
-func New(source profileSource, id string, linkedPath string) *Profile {
+// Optionally, you may supply custom configuration in the flat (key=value) form.
+func New(
+	source profileSource,
+	id string,
+	linkedPath string,
+	customConfig map[string]interface{},
+) *Profile {
+	if customConfig != nil {
+		customConfig = config.Expand(customConfig)
+	} else {
+		customConfig = make(map[string]interface{})
+	}
+
 	profile := &Profile{
 		ID:         id,
 		Source:     source,
 		LinkedPath: linkedPath,
 		Created:    time.Now().Unix(),
-		Config:     make(map[string]interface{}),
+		Config:     customConfig,
 	}
 
 	// Generate random ID if none is given.
@@ -210,9 +222,13 @@ func New(source profileSource, id string, linkedPath string) *Profile {
 	// Make key from ID and source.
 	profile.makeKey()
 
-	// Prepare profile to create placeholders.
-	_ = profile.prepConfig()
-	_ = profile.parseConfig()
+	// Prepare and parse initial profile config.
+	if err := profile.prepConfig(); err != nil {
+		log.Errorf("profile: failed to prep new profile: %s", err)
+	}
+	if err := profile.parseConfig(); err != nil {
+		log.Errorf("profile: failed to parse new profile: %s", err)
+	}
 
 	return profile
 }
@@ -372,7 +388,7 @@ func EnsureProfile(r record.Record) (*Profile, error) {
 // the profile was changed. If there is data that needs to be fetched from the
 // operating system, it will start an async worker to fetch that data and save
 // the profile afterwards.
-func (profile *Profile) UpdateMetadata(processName, binaryPath string) (changed bool) {
+func (profile *Profile) UpdateMetadata(binaryPath string) (changed bool) {
 	// Check if this is a local profile, else warn and return.
 	if profile.Source != SourceLocal {
 		log.Warningf("tried to update metadata for non-local profile %s", profile.ScopedID())
@@ -382,22 +398,9 @@ func (profile *Profile) UpdateMetadata(processName, binaryPath string) (changed 
 	profile.Lock()
 	defer profile.Unlock()
 
-	// Check if this is a special profile.
-	if binaryPath == "" {
-		// This is a special profile, just assign the processName, if needed, and
-		// return.
-		if profile.Name != processName {
-			profile.Name = processName
-			return true
-		}
-		return false
-	}
-
-	// Update LinkedPath if if differs from the process path.
-	// This will be the case for profiles that are assigned in a special way.
-	if profile.LinkedPath != binaryPath {
-		profile.LinkedPath = binaryPath
-		changed = true
+	// Update special profile and return if it was one.
+	if ok, changed := updateSpecialProfileMetadata(profile, binaryPath); ok {
+		return changed
 	}
 
 	var needsUpdateFromSystem bool
