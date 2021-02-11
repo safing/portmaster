@@ -2,28 +2,14 @@ package profile
 
 import (
 	"errors"
-	"os"
 	"strings"
 
 	"github.com/safing/portbase/database"
-
-	"github.com/safing/portbase/dataroot"
 
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 	"golang.org/x/sync/singleflight"
-)
-
-const (
-	// UnidentifiedProfileID is the profile ID used for unidentified processes.
-	UnidentifiedProfileID = "_unidentified"
-
-	// SystemProfileID is the profile ID used for the system/kernel.
-	SystemProfileID = "_system"
-
-	// SystemProfileID is the profile ID used for the Portmaster itself.
-	PortmasterProfileID = "_portmaster"
 )
 
 var getProfileSingleInflight singleflight.Group
@@ -69,15 +55,8 @@ func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 			// If we cannot find a profile, check if the request is for a special
 			// profile we can create.
 			if errors.Is(err, database.ErrNotFound) {
-				switch id {
-				case UnidentifiedProfileID:
-					profile = New(SourceLocal, UnidentifiedProfileID, linkedPath)
-					err = nil
-				case SystemProfileID:
-					profile = New(SourceLocal, SystemProfileID, linkedPath)
-					err = nil
-				case PortmasterProfileID:
-					profile = New(SourceLocal, PortmasterProfileID, linkedPath)
+				profile = getSpecialProfile(id, linkedPath)
+				if profile != nil {
 					err = nil
 				}
 			}
@@ -173,11 +152,11 @@ func findProfile(linkedPath string) (profile *Profile, err error) {
 	}
 
 	// If there was no profile in the database, create a new one, and return it.
-	profile = New(SourceLocal, "", linkedPath)
+	profile = New(SourceLocal, "", linkedPath, nil)
 
 	// Check if the profile should be marked as internal.
 	// This is the case whenever the binary resides within the data root dir.
-	if strings.HasPrefix(linkedPath, dataroot.Root().Dir+string(os.PathSeparator)) {
+	if updatesPath != "" && strings.HasPrefix(linkedPath, updatesPath) {
 		profile.Internal = true
 	}
 

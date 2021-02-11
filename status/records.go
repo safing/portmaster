@@ -33,7 +33,7 @@ type SystemStatusRecord struct {
 
 // SelectedSecurityLevelRecord is used as a dummy record.Record
 // to provide a simply runtime-configuration for the user.
-// It is write-only and exposed at runtime:system/security-level
+// It is write-only and exposed at "runtime:system/security-level".
 type SelectedSecurityLevelRecord struct {
 	record.Base
 	sync.Mutex

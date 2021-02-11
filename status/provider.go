@@ -34,7 +34,7 @@ func setupRuntimeProvider() (err error) {
 	return nil
 }
 
-// setSelectedSecurityLevel updates the selected security level
+// setSelectedSecurityLevel updates the selected security level.
 func setSelectedSecurityLevel(r record.Record) (record.Record, error) {
 	var upd *SelectedSecurityLevelRecord
 	if r.IsWrapped() {
