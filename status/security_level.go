@@ -15,7 +15,7 @@ type (
 // It's meant to be used as a value for config.DisplayHintAnnotation.
 const DisplayHintSecurityLevel string = "security level"
 
-// Security levels
+// Security levels.
 const (
 	SecurityLevelOff     uint8 = 0
 	SecurityLevelNormal  uint8 = 1
