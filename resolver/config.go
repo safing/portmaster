@@ -166,6 +166,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 			config.UnitAnnotation:         "seconds",
 			config.CategoryAnnotation:     "Servers",
 		},
+		ValidationRegex: `^[1-9][0-9]{1,5}?$`,
 	})
 	if err != nil {
 		return err
