@@ -23,19 +23,20 @@ import (
 //       - switch direction to outbound if outbound packet is seen?
 // - IP: Unidentified Process
 
-// Errors
+// Errors.
 var (
 	ErrConnectionNotFound = errors.New("could not find connection in system state tables")
 	ErrPIDNotFound        = errors.New("could not find pid for socket inode")
 )
 
 var (
-	baseWaitTime  = 3 * time.Millisecond
-	lookupRetries = 7 * 2 // Every retry takes two full passes.
+	baseWaitTime      = 3 * time.Millisecond
+	lookupRetries     = 7 * 2 // Every retry takes two full passes.
+	fastLookupRetries = 2 * 2
 )
 
 // Lookup looks for the given connection in the system state tables and returns the PID of the associated process and whether the connection is inbound.
-func Lookup(pktInfo *packet.Info) (pid int, inbound bool, err error) {
+func Lookup(pktInfo *packet.Info, fast bool) (pid int, inbound bool, err error) {
 	// auto-detect version
 	if pktInfo.Version == 0 {
 		if ip := pktInfo.LocalIP().To4(); ip != nil {
@@ -47,31 +48,31 @@ func Lookup(pktInfo *packet.Info) (pid int, inbound bool, err error) {
 
 	switch {
 	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.TCP:
-		return tcp4Table.lookup(pktInfo)
+		return tcp4Table.lookup(pktInfo, fast)
 
 	case pktInfo.Version == packet.IPv6 && pktInfo.Protocol == packet.TCP:
-		return tcp6Table.lookup(pktInfo)
+		return tcp6Table.lookup(pktInfo, fast)
 
 	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.UDP:
-		return udp4Table.lookup(pktInfo)
+		return udp4Table.lookup(pktInfo, fast)
 
 	case pktInfo.Version == packet.IPv6 && pktInfo.Protocol == packet.UDP:
-		return udp6Table.lookup(pktInfo)
+		return udp6Table.lookup(pktInfo, fast)
 
 	default:
 		return socket.UnidentifiedProcessID, false, errors.New("unsupported protocol for finding process")
 	}
 }
 
-func (table *tcpTable) lookup(pktInfo *packet.Info) (
+func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 	pid int,
 	inbound bool,
 	err error,
 ) {
-	// Search pattern: search, wait, search, refresh, search, wait, search, refresh, ...
+	// Search pattern: search, refresh, search, wait, search, refresh, search, wait, ...
 
 	// Search for the socket until found.
-	for i := 0; i <= lookupRetries; i++ {
+	for i := 1; i <= lookupRetries; i++ {
 		// Check main table for socket.
 		socketInfo, inbound := table.findSocket(pktInfo)
 		if socketInfo == nil && table.dualStack != nil {
@@ -83,6 +84,11 @@ func (table *tcpTable) lookup(pktInfo *packet.Info) (
 		// If there's a match, check we have the PID and return.
 		if socketInfo != nil {
 			return checkPID(socketInfo, inbound)
+		}
+
+		// Search less if we want to be fast.
+		if fast && i < fastLookupRetries {
+			break
 		}
 
 		// every time, except for the last iteration
@@ -134,12 +140,12 @@ func (table *tcpTable) findSocket(pktInfo *packet.Info) (
 	return nil, false
 }
 
-func (table *udpTable) lookup(pktInfo *packet.Info) (
+func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 	pid int,
 	inbound bool,
 	err error,
 ) {
-	// Search pattern: search, wait, search, refresh, search, wait, search, refresh, ...
+	// Search pattern: search, refresh, search, wait, search, refresh, search, wait, ...
 
 	// TODO: Currently broadcast/multicast scopes are not checked, so we might
 	// attribute an incoming broadcast/multicast packet to the wrong process if
@@ -148,7 +154,7 @@ func (table *udpTable) lookup(pktInfo *packet.Info) (
 	isInboundMulticast := pktInfo.Inbound && netutils.ClassifyIP(pktInfo.LocalIP()) == netutils.LocalMulticast
 
 	// Search for the socket until found.
-	for i := 0; i <= lookupRetries; i++ {
+	for i := 1; i <= lookupRetries; i++ {
 		// Check main table for socket.
 		socketInfo := table.findSocket(pktInfo, isInboundMulticast)
 		if socketInfo == nil && table.dualStack != nil {
@@ -171,6 +177,11 @@ func (table *udpTable) lookup(pktInfo *packet.Info) (
 
 			// Check we have the PID and return.
 			return checkPID(socketInfo, connInbound)
+		}
+
+		// Search less if we want to be fast.
+		if fast && i < fastLookupRetries {
+			break
 		}
 
 		// every time, except for the last iteration

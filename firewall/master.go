@@ -145,7 +145,7 @@ func checkSelfCommunication(ctx context.Context, conn *network.Connection, pkt p
 				SrcPort:  pktInfo.SrcPort,
 				Dst:      pktInfo.Dst,
 				DstPort:  pktInfo.DstPort,
-			})
+			}, true)
 			if err != nil {
 				log.Tracer(ctx).Warningf("filter: failed to find local peer process PID: %s", err)
 			} else {

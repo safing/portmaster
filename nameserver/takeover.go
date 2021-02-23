@@ -78,7 +78,7 @@ func takeover(resolverIP net.IP, resolverPort uint16) (int, error) {
 		SrcPort:  0,   // do not record direction
 		Dst:      resolverIP,
 		DstPort:  resolverPort,
-	})
+	}, true)
 	if err != nil {
 		// there may be nothing listening on :53
 		return 0, nil
