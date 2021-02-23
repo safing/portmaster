@@ -55,7 +55,7 @@ func start() error {
 		return err
 	}
 
-	if err := registerActions(); err != nil {
+	if err := registerAPIEndpoints(); err != nil {
 		return err
 	}
 
