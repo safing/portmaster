@@ -50,6 +50,9 @@ type promptProfile struct {
 func prompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
 	// Create notification.
 	n := createPrompt(ctx, conn, pkt)
+	if n == nil {
+		return
+	}
 
 	// Get decision timeout and make sure it does not exceed the ask timeout.
 	timeout := decisionTimeout
@@ -85,12 +88,12 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 	expires := time.Now().Add(time.Duration(askTimeout()) * time.Second).Unix()
 
 	// Get local profile.
-	profile := conn.Process().Profile()
-	if profile == nil {
+	layeredProfile := conn.Process().Profile()
+	if layeredProfile == nil {
 		log.Tracer(ctx).Warningf("filter: tried creating prompt for connection without profile")
 		return
 	}
-	localProfile := profile.LocalProfile()
+	localProfile := layeredProfile.LocalProfile()
 	if localProfile == nil {
 		log.Tracer(ctx).Warningf("filter: tried creating prompt for connection without local profile")
 		return
@@ -125,9 +128,35 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 
 	// If there already is a notification, just update the expiry.
 	if n != nil {
-		n.Update(expires)
-		log.Tracer(ctx).Debugf("filter: updated existing prompt notification")
-		return
+		// Get notification state
+		n.Lock()
+		state := n.State
+		n.Unlock()
+
+		// If the notification is still active, extend and return.
+		if state == notifications.Active {
+			n.Update(expires)
+			log.Tracer(ctx).Debugf("filter: updated existing prompt notification")
+			return
+		}
+
+		// The notification is not active anymore, let's check if there is an
+		// action we can perform.
+		n.Lock()
+		action := n.SelectedActionID
+		n.Unlock()
+		if action != "" {
+			switch action {
+			case allowDomainAll, allowDomainDistinct, allowIP, allowServingIP:
+				conn.Accept("permitted via prompt", profile.CfgOptionEndpointsKey)
+			default: // deny
+				conn.Deny("blocked via prompt", profile.CfgOptionEndpointsKey)
+			}
+			return nil // Do not take further action.
+		}
+
+		// Continue to create a new notification because the previous one is not
+		// active and not actionable.
 	}
 
 	// Reference relevant data for save function
@@ -209,10 +238,18 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 	return n
 }
 
+// promptSavingLock makes sure that only one prompt is saved at a time.
+// Should prompts be persisted in bulk, the next save process might load an
+// outdated profile and save it, losing config data.
+var promptSavingLock sync.Mutex
+
 func saveResponse(p *profile.Profile, entity *intel.Entity, promptResponse string) error {
 	if promptResponse == cancelPrompt {
 		return nil
 	}
+
+	promptSavingLock.Lock()
+	defer promptSavingLock.Unlock()
 
 	// Update the profile if necessary.
 	if p.IsOutdated() {
@@ -264,10 +301,12 @@ func saveResponse(p *profile.Profile, entity *intel.Entity, promptResponse strin
 	switch promptResponse {
 	case allowServingIP, blockServingIP:
 		p.AddServiceEndpoint(ep.String())
-		log.Infof("filter: added incoming rule to profile %s: %q", p, ep.String())
+		log.Infof("filter: added incoming rule to profile %s (LP Rev. %d): %q",
+			p, p.LayeredProfile().RevisionCnt(), ep.String())
 	default:
 		p.AddEndpoint(ep.String())
-		log.Infof("filter: added outgoing rule to profile %s: %q", p, ep.String())
+		log.Infof("filter: added outgoing rule to profile %s (LP Rev. %d): %q",
+			p, p.LayeredProfile().RevisionCnt(), ep.String())
 	}
 
 	return nil
