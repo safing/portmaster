@@ -19,9 +19,13 @@ func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process 
 		return GetUnidentifiedProcess(ctx), pktInfo.Inbound, nil
 	}
 
+	// Use fast search for inbound packets, as the listening socket should
+	// already be there for a while now.
+	fastSearch := pktInfo.Inbound
+
 	log.Tracer(ctx).Tracef("process: getting pid from system network state")
 	var pid int
-	pid, connInbound, err = state.Lookup(pktInfo)
+	pid, connInbound, err = state.Lookup(pktInfo, fastSearch)
 	if err != nil {
 		log.Tracer(ctx).Debugf("process: failed to find PID of connection: %s", err)
 		return nil, pktInfo.Inbound, err
