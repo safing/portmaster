@@ -33,7 +33,7 @@ type ProcessContext struct {
 	ProfileName string
 	// BinaryPath is the path to the process binary.
 	BinaryPath string
-	// PID i the process identifier.
+	// PID is the process identifier.
 	PID int
 	// Profile is the ID of the main profile that
 	// is applied to the process.
@@ -93,7 +93,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	Reason Reason
 	// Started holds the number of seconds in UNIX epoch time at which
 	// the connection has been initated and first seen by the portmaster.
-	// Staretd is only every set when creating a new connection object
+	// Started is only ever set when creating a new connection object
 	// and is considered immutable afterwards.
 	Started int64
 	// Ended is set to the number of seconds in UNIX epoch time at which

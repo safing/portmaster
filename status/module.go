@@ -2,8 +2,10 @@ package status
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portbase/utils/debug"
 	"github.com/safing/portmaster/netenv"
 )
 
@@ -38,4 +40,17 @@ func start() error {
 	}
 
 	return nil
+}
+
+// AddToDebugInfo adds the system status to the given debug.Info.
+func AddToDebugInfo(di *debug.Info) {
+	di.AddSection(
+		fmt.Sprintf("Status: %s", SecurityLevelString(ActiveSecurityLevel())),
+		debug.UseCodeSection|debug.AddContentLineBreaks,
+		fmt.Sprintf("ActiveSecurityLevel:   %s", SecurityLevelString(ActiveSecurityLevel())),
+		fmt.Sprintf("SelectedSecurityLevel: %s", SecurityLevelString(SelectedSecurityLevel())),
+		fmt.Sprintf("ThreatMitigationLevel: %s", SecurityLevelString(getHighestMitigationLevel())),
+		fmt.Sprintf("CaptivePortal:         %s", netenv.GetCaptivePortal().URL),
+		fmt.Sprintf("OnlineStatus:          %s", netenv.GetOnlineStatus()),
+	)
 }

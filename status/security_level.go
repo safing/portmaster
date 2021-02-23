@@ -99,19 +99,19 @@ func SecurityLevelString(level uint8) string {
 	case SecurityLevelOff:
 		return "Off"
 	case SecurityLevelNormal:
-		return "Normal"
+		return "Trusted"
 	case SecurityLevelHigh:
-		return "High"
+		return "Untrusted"
 	case SecurityLevelExtreme:
-		return "Extreme"
+		return "Danger"
 	case SecurityLevelsNormalAndHigh:
-		return "Normal and High"
+		return "Trusted and Untrusted"
 	case SecurityLevelsNormalAndExtreme:
-		return "Normal and Extreme"
+		return "Trusted and Danger"
 	case SecurityLevelsHighAndExtreme:
-		return "High and Extreme"
+		return "Untrusted and Danger"
 	case SecurityLevelsAll:
-		return "Normal, High and Extreme"
+		return "Trusted, Untrusted and Danger"
 	default:
 		return "INVALID"
 	}

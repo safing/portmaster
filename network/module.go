@@ -31,6 +31,10 @@ func start() error {
 		return err
 	}
 
+	if err := registerAPIEndpoints(); err != nil {
+		return err
+	}
+
 	module.StartServiceWorker("clean connections", 0, connectionCleaner)
 	module.StartServiceWorker("write open dns requests", 0, openDNSRequestWriter)
 
