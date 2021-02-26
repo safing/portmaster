@@ -48,5 +48,6 @@ All technical details and guides live on the dedicated docs website:
 Find out more about Safing, the company behind the Portmaster:
 
 - [About](https://safing.io/about/)
+- [Business Model](https://safing.io/business-model/)
 - [Ownership](https://safing.io/ownership/)
 - [Team](https://safing.io/team/)
