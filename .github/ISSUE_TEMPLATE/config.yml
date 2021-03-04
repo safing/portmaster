@@ -2,12 +2,31 @@
 # Ref: https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository#configuring-the-template-chooser
 blank_issues_enabled: true  # default: true
 contact_links:
-- name: User Interface Issues 💻
+
+- name: ":bug: Known Windows Issues"
+  url: https://docs.safing.io/portmaster/install/windows#known-issues
+
+- name: ":bug:/:penguin: Known Linux/Distro/DE Issues"
+  url: https://docs.safing.io/portmaster/install/linux#compatibility
+
+- name: ":computer: Software Compatibility"
+  url: https://docs.safing.io/portmaster/install/status/software-compatibility
+
+- name: ":satellite: VPN Compatibility"
+  url: https://docs.safing.io/portmaster/install/status/vpn-compatibility
+
+- name: User Interface Issues
   url: https://github.com/safing/portmaster-ui/issues/new/choose
   about: Report any issues or feature requests for the Portmaster UI here
-- name: Support Requests & Community 🤷
+
+- name: ":beginner::point_up: How to Contribute"
+  url: https://docs.safing.io/portmaster/guides/contribute  
+  about: Your contributions will have the highest impact when aligned with Safing’s current goals and focus.
+
+- name: "🤷 Support Requests & Community"
   url: https://www.reddit.com/r/safing
   about: Ask for support and any questions you might have on reddit.
-- name: Code of Conduct 📝
+
+- name: "📝 Code of Conduct"
   url: https://github.com/safing/portmaster/blob/develop/CODE_OF_CONDUCT.md
   about: Be nice to other community members ❤
