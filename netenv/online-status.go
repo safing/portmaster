@@ -45,27 +45,10 @@ var (
 	// or the captive portal test IP. The default value should be overridden by the resolver package,
 	// which defines the custom internal domain name to use.
 	SpecialCaptivePortalDomain = "captiveportal.invalid."
-)
 
-var (
-	parsedPortalTestURL *url.URL
-)
-
-func prepOnlineStatus() (err error) {
-	parsedPortalTestURL, err = url.Parse(PortalTestURL)
-	return err
-}
-
-// IsConnectivityDomain checks whether the given domain (fqdn) is used for any
-// connectivity related network connections and should always be resolved using
-// the network assigned DNS server.
-func IsConnectivityDomain(domain string) bool {
-	if domain == "" {
-		return false
-	}
-
-	switch domain {
-	case SpecialCaptivePortalDomain,
+	// ConnectivityDomains holds all connectivity domains. This slice must not be modified.
+	ConnectivityDomains = []string{
+		SpecialCaptivePortalDomain,
 		"one.one.one.one.", // Internal DNS Check
 
 		// Windows
@@ -87,6 +70,7 @@ func IsConnectivityDomain(domain string) bool {
 		"connectivity-check.ubuntu.com.", // Ubuntu
 		"nmcheck.gnome.org.",             // Gnome DE
 		"network-test.debian.org.",       // Debian
+		"204.pop-os.org",                 // Pop OS
 		// There are probably a lot more domains for all the Linux Distro/DE Variants. Please raise issues and/or submit PRs!
 		// https://github.com/solus-project/budgie-desktop/issues/807
 		// https://www.lguruprasad.in/blog/2015/07/21/enabling-captive-portal-detection-in-gnome-3-14-on-debian-jessie/
@@ -98,9 +82,29 @@ func IsConnectivityDomain(domain string) bool {
 
 		// Other
 		"neverssl.com.",             // Common Community Service
-		"detectportal.firefox.com.": // Firefox
+		"detectportal.firefox.com.", // Firefox
+	}
 
-		return true
+	parsedPortalTestURL *url.URL
+)
+
+func prepOnlineStatus() (err error) {
+	parsedPortalTestURL, err = url.Parse(PortalTestURL)
+	return err
+}
+
+// IsConnectivityDomain checks whether the given domain (fqdn) is used for any
+// connectivity related network connections and should always be resolved using
+// the network assigned DNS server.
+func IsConnectivityDomain(domain string) bool {
+	if domain == "" {
+		return false
+	}
+
+	for _, connectivityDomain := range ConnectivityDomains {
+		if domain == connectivityDomain {
+			return true
+		}
 	}
 
 	// Check for captive portal domain.

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/status"
 )
 
@@ -138,7 +139,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 					},
 				},
 				{
-					Name:   "Cloudflare",
+					Name:   "Cloudflare (with Malware Filter)",
 					Action: config.QuickReplace,
 					Value: []string{
 						"dot://1.1.1.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip",
@@ -146,6 +147,8 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 					},
 				},
 			},
+			"self:detail:internalSpecialUseDomains": internalSpecialUseDomains,
+			"self:detail:connectivityDomains":       netenv.ConnectivityDomains,
 		},
 	})
 	if err != nil {
@@ -175,16 +178,17 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	err = config.Register(&config.Option{
 		Name:           "Ignore System/Network Servers",
 		Key:            CfgOptionNoAssignedNameserversKey,
-		Description:    "Ignore DNS servers configured in your system or network.",
+		Description:    "Ignore DNS servers configured in your system or network. This may break domains from your local network.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   status.SecurityLevelsHighAndExtreme,
 		PossibleValues: status.SecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: cfgOptionNoAssignedNameserversOrder,
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.CategoryAnnotation:     "Servers",
+			config.DisplayOrderAnnotation:   cfgOptionNoAssignedNameserversOrder,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.CategoryAnnotation:       "Servers",
+			"self:detail:specialUseDomains": specialUseDomains,
 		},
 	})
 	if err != nil {
@@ -195,16 +199,17 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	err = config.Register(&config.Option{
 		Name:           "Ignore Multicast DNS",
 		Key:            CfgOptionNoMulticastDNSKey,
-		Description:    "Do not resolve using Multicast DNS. This may break certain Plug and Play devices or services.",
+		Description:    "Do not resolve using Multicast DNS. This may break certain Plug and Play devices and services.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   status.SecurityLevelsHighAndExtreme,
 		PossibleValues: status.SecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: cfgOptionNoMulticastDNSOrder,
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.CategoryAnnotation:     "Resolving",
+			config.DisplayOrderAnnotation:  cfgOptionNoMulticastDNSOrder,
+			config.DisplayHintAnnotation:   status.DisplayHintSecurityLevel,
+			config.CategoryAnnotation:      "Resolving",
+			"self:detail:multicastDomains": multicastDomains,
 		},
 	})
 	if err != nil {
@@ -236,7 +241,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 		Name: "Block Unofficial TLDs",
 		Key:  CfgOptionDontResolveSpecialDomainsKey,
 		Description: fmt.Sprintf(
-			"Block %s. Unofficial domains may pose a security risk. This does not affect .onion domains in the Tor Browser.",
+			"Block %s. Unofficial domains may pose a security risk. This setting does not affect .onion domains in the Tor Browser.",
 			formatScopeList(specialServiceDomains),
 		),
 		OptType:        config.OptTypeInt,
@@ -245,9 +250,10 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 		DefaultValue:   status.SecurityLevelsAll,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: cfgOptionDontResolveSpecialDomainsOrder,
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.CategoryAnnotation:     "Resolving",
+			config.DisplayOrderAnnotation:       cfgOptionDontResolveSpecialDomainsOrder,
+			config.DisplayHintAnnotation:        status.DisplayHintSecurityLevel,
+			config.CategoryAnnotation:           "Resolving",
+			"self:detail:specialServiceDomains": specialServiceDomains,
 		},
 	})
 	if err != nil {
