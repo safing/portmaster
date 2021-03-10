@@ -51,6 +51,7 @@ func prompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
 	// Create notification.
 	n := createPrompt(ctx, conn, pkt)
 	if n == nil {
+		// createPrompt returns nil when no further action should be taken.
 		return
 	}
 
@@ -128,23 +129,26 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 
 	// If there already is a notification, just update the expiry.
 	if n != nil {
-		// Get notification state
+		// Get notification state and action.
 		n.Lock()
 		state := n.State
+		action := n.SelectedActionID
 		n.Unlock()
 
 		// If the notification is still active, extend and return.
+		// This can can happen because user input (prompts changing the endpoint
+		// lists) can happen any time - also between checking the endpoint lists
+		// and now.
 		if state == notifications.Active {
 			n.Update(expires)
 			log.Tracer(ctx).Debugf("filter: updated existing prompt notification")
-			return
+			return n
 		}
 
 		// The notification is not active anymore, let's check if there is an
 		// action we can perform.
-		n.Lock()
-		action := n.SelectedActionID
-		n.Unlock()
+		// If there already is an action defined, we won't be fast enough to
+		// receive the action with n.Response(), so we take direct action here.
 		if action != "" {
 			switch action {
 			case allowDomainAll, allowDomainDistinct, allowIP, allowServingIP:
