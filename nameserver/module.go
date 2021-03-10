@@ -126,7 +126,9 @@ func startListener(ip net.IP, port uint16) *dns.Server {
 
 func stop() error {
 	if stopListener != nil {
-		return stopListener()
+		if err := stopListener(); err != nil {
+			log.Warningf("nameserver: failed to stop: %s", err)
+		}
 	}
 	return nil
 }
