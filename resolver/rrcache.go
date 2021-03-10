@@ -308,9 +308,12 @@ func (rrCache *RRCache) GetExtraRRs(ctx context.Context, query *dns.Msg) (extra 
 	}
 
 	// Add expiry and cache information.
-	if rrCache.Expired() {
+	switch {
+	case rrCache.Expires == 0:
+		extra = addExtra(ctx, extra, "record does not expire")
+	case rrCache.Expired():
 		extra = addExtra(ctx, extra, fmt.Sprintf("record expired since %s", time.Since(time.Unix(rrCache.Expires, 0)).Round(time.Second)))
-	} else {
+	default:
 		extra = addExtra(ctx, extra, fmt.Sprintf("record valid for %s", time.Until(time.Unix(rrCache.Expires, 0)).Round(time.Second)))
 	}
 	if rrCache.RequestingNew {
