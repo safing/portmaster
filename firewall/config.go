@@ -76,7 +76,7 @@ func registerConfig() error {
 			config.UnitAnnotation:         "seconds",
 			config.CategoryAnnotation:     "General",
 		},
-		ValidationRegex: `^[1-9][0-9]{1,5}?$`,
+		ValidationRegex: `^[1-9][0-9]{1,5}$`,
 	})
 	if err != nil {
 		return err
