@@ -33,16 +33,15 @@ func init() {
 }
 
 func prep() error {
-	err := registerConfig()
-	if err != nil {
-		return err
-	}
-
-	return registerMetrics()
+	return registerConfig()
 }
 
 func start() error {
 	logFlagOverrides()
+
+	if err := registerMetrics(); err != nil {
+		return err
+	}
 
 	ip1, ip2, port, err := getListenAddresses(nameserverAddressConfig())
 	if err != nil {
