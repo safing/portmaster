@@ -25,7 +25,9 @@ var (
 
 	// Internal Special-Use Domain
 	// Used by Portmaster for special addressing.
-	internalSpecialUseDomainScope = "." + internalSpecialUseDomain
+	internalSpecialUseDomains = []string{
+		"." + internalSpecialUseDomain,
+	}
 
 	// Multicast DNS
 	// Handling: Send to nameservers with matching search scope, then MDNS
@@ -112,7 +114,7 @@ func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver, t
 	defer resolversLock.RUnlock()
 
 	// Internal use domains
-	if strings.HasSuffix(q.dotPrefixedFQDN, internalSpecialUseDomainScope) {
+	if domainInScope(q.dotPrefixedFQDN, internalSpecialUseDomains) {
 		return envResolvers, false
 	}
 
@@ -133,10 +135,8 @@ func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver, t
 	// Handle multicast domains
 	if domainInScope(q.dotPrefixedFQDN, multicastDomains) {
 		selected = addResolvers(ctx, q, selected, mDNSResolvers)
-		// Add local resolvers if no resolvers were selected.
-		if len(selected) == 0 {
-			selected = addResolvers(ctx, q, selected, localResolvers)
-		}
+		selected = addResolvers(ctx, q, selected, localResolvers)
+		selected = addResolvers(ctx, q, selected, systemResolvers)
 		return selected, true
 	}
 

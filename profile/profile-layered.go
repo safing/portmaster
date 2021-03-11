@@ -324,8 +324,8 @@ func (lp *LayeredProfile) MatchFilterLists(ctx context.Context, entity *intel.En
 	entity.EnableCNAMECheck(ctx, lp.FilterCNAMEs())
 
 	for _, layer := range lp.layers {
-		// search for the first layer that has filterListIDs set
-		if len(layer.filterListIDs) > 0 {
+		// Search for the first layer that has filter lists set.
+		if layer.filterListsSet {
 			entity.LoadLists(ctx)
 
 			if entity.MatchLists(layer.filterListIDs) {

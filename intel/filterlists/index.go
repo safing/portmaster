@@ -189,7 +189,7 @@ func updateListIndex() error {
 			log.Info("filterlists: index not in cache, starting update")
 		case err != nil:
 			log.Warningf("filterlists: failed to load index from cache, starting update: %s", err)
-		case strings.TrimPrefix(index.Version, "v") != listIndexUpdate.Version():
+		case !listIndexUpdate.EqualsVersion(strings.TrimPrefix(index.Version, "v")):
 			log.Infof(
 				"filterlists: index from cache is outdated, starting update (%s != %s)",
 				strings.TrimPrefix(index.Version, "v"),

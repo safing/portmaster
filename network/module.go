@@ -11,7 +11,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("network", prep, start, nil, "base", "processes")
+	module = modules.Register("network", nil, start, nil, "base", "processes")
 }
 
 // SetDefaultFirewallHandler sets the default firewall handler.
@@ -21,10 +21,6 @@ func SetDefaultFirewallHandler(handler FirewallHandler) {
 	}
 }
 
-func prep() error {
-	return registerMetrics()
-}
-
 func start() error {
 	err := registerAsDatabase()
 	if err != nil {
@@ -32,6 +28,10 @@ func start() error {
 	}
 
 	if err := registerAPIEndpoints(); err != nil {
+		return err
+	}
+
+	if err := registerMetrics(); err != nil {
 		return err
 	}
 

@@ -122,6 +122,7 @@ type Profile struct { //nolint:maligned // not worth the effort
 	defaultAction     uint8
 	endpoints         endpoints.Endpoints
 	serviceEndpoints  endpoints.Endpoints
+	filterListsSet    bool
 	filterListIDs     []string
 
 	// Lifecycle Management
@@ -152,6 +153,7 @@ func (profile *Profile) parseConfig() error {
 	var lastErr error
 
 	action, ok := profile.configPerspective.GetAsString(CfgOptionDefaultActionKey)
+	profile.defaultAction = DefaultActionNotSet
 	if ok {
 		switch action {
 		case "permit":
@@ -166,6 +168,7 @@ func (profile *Profile) parseConfig() error {
 	}
 
 	list, ok := profile.configPerspective.GetAsStringArray(CfgOptionEndpointsKey)
+	profile.endpoints = nil
 	if ok {
 		profile.endpoints, err = endpoints.ParseEndpoints(list)
 		if err != nil {
@@ -174,6 +177,7 @@ func (profile *Profile) parseConfig() error {
 	}
 
 	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionServiceEndpointsKey)
+	profile.serviceEndpoints = nil
 	if ok {
 		profile.serviceEndpoints, err = endpoints.ParseEndpoints(list)
 		if err != nil {
@@ -182,10 +186,13 @@ func (profile *Profile) parseConfig() error {
 	}
 
 	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionFilterListsKey)
+	profile.filterListsSet = false
 	if ok {
 		profile.filterListIDs, err = filterlists.ResolveListIDs(list)
 		if err != nil {
 			lastErr = err
+		} else {
+			profile.filterListsSet = true
 		}
 	}
 

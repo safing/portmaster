@@ -51,15 +51,14 @@ func init() {
 }
 
 func interceptionPrep() error {
-	err := registerMetrics()
-	if err != nil {
-		return err
-	}
-
 	return prepAPIAuth()
 }
 
 func interceptionStart() error {
+	if err := registerMetrics(); err != nil {
+		return err
+	}
+
 	startAPIAuth()
 
 	interceptionModule.StartWorker("stat logger", statLogger)
@@ -86,6 +85,8 @@ func SetNameserverIPMatcher(fn func(ip net.IP) bool) error {
 }
 
 func handlePacket(ctx context.Context, pkt packet.Packet) {
+	// log.Errorf("DEBUG: firewall: handling packet %s", pkt)
+
 	// Record metrics.
 	startTime := time.Now()
 	defer packetHandlingHistogram.UpdateDuration(startTime)
