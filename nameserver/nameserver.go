@@ -100,18 +100,27 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	// Authenticate request - only requests from the local host, but with any of its IPs, are allowed.
 	local, err := netenv.IsMyIP(remoteAddr.IP)
 	if err != nil {
-		tracer.Warningf("nameserver: failed to check if request for %s%s is local: %s", q.FQDN, q.QType, err)
+		tracer.Warningf("nameserver: failed to check if request for %s is local: %s", q.ID(), err)
 		return nil // Do no reply, drop request immediately.
 	}
+
+	// Create connection ID for dns request.
+	connID := fmt.Sprintf(
+		"%s-%d-#%d-%s",
+		remoteAddr.IP,
+		remoteAddr.Port,
+		request.Id,
+		q.ID(),
+	)
 
 	// Get connection for this request. This identifies the process behind the request.
 	var conn *network.Connection
 	switch {
 	case local:
-		conn = network.NewConnectionFromDNSRequest(ctx, q.FQDN, nil, remoteAddr.IP, uint16(remoteAddr.Port))
+		conn = network.NewConnectionFromDNSRequest(ctx, q.FQDN, nil, connID, remoteAddr.IP, uint16(remoteAddr.Port))
 
 	case networkServiceMode():
-		conn, err = network.NewConnectionFromExternalDNSRequest(ctx, q.FQDN, nil, remoteAddr.IP)
+		conn, err = network.NewConnectionFromExternalDNSRequest(ctx, q.FQDN, nil, connID, remoteAddr.IP)
 		if err != nil {
 			tracer.Warningf("nameserver: failed to get host/profile for request for %s%s: %s", q.FQDN, q.QType, err)
 			return nil // Do no reply, drop request immediately.

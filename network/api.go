@@ -11,6 +11,8 @@ import (
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/utils/debug"
+	"github.com/safing/portmaster/network/state"
+	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/status"
 )
 
@@ -41,6 +43,18 @@ func registerAPIEndpoints() error {
 				Description: "Specify a query to limit the connections included in the report. The default is to include all connections.",
 			},
 		},
+	}); err != nil {
+		return err
+	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path: "debug/network/state",
+		Read: api.PermitUser,
+		StructFunc: func(ar *api.Request) (i interface{}, err error) {
+			return state.GetInfo(), nil
+		},
+		Name:        "Get Network State Table Data",
+		Description: "Returns the current network state tables from the OS.",
 	}); err != nil {
 		return err
 	}
@@ -156,28 +170,30 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 
 func buildNetworkDebugInfoData(debugConns []*Connection) string {
 	// Sort
-	sort.Sort(connectionsByStarted(debugConns))
+	sort.Sort(connectionsByGroup(debugConns))
 
 	// Format lines
 	var buf strings.Builder
-	currentBinaryPath := "__"
+	currentPID := process.UndefinedProcessID
 	for _, conn := range debugConns {
 		conn.Lock()
 
 		// Add process infomration if it differs from previous connection.
-		if currentBinaryPath != conn.ProcessContext.BinaryPath {
-			if currentBinaryPath != "__" {
+		if currentPID != conn.ProcessContext.PID {
+			if currentPID != process.UndefinedProcessID {
 				buf.WriteString("\n\n\n")
 			}
-			buf.WriteString("ProcessName: " + conn.ProcessContext.ProcessName)
-			buf.WriteString("\nProfileName: " + conn.ProcessContext.ProfileName)
-			buf.WriteString("\nBinaryPath:  " + conn.ProcessContext.BinaryPath)
+			buf.WriteString("ProfileName: " + conn.ProcessContext.ProfileName)
 			buf.WriteString("\nProfile:     " + conn.ProcessContext.Profile)
 			buf.WriteString("\nSource:      " + conn.ProcessContext.Source)
+			buf.WriteString("\nProcessName: " + conn.ProcessContext.ProcessName)
+			buf.WriteString("\nBinaryPath:  " + conn.ProcessContext.BinaryPath)
+			buf.WriteString("\nCmdLine:     " + conn.ProcessContext.CmdLine)
+			buf.WriteString("\nPID:         " + strconv.Itoa(conn.ProcessContext.PID))
 			buf.WriteString("\n")
 
-			// Set current path in order to not print the process information again.
-			currentBinaryPath = conn.ProcessContext.BinaryPath
+			// Set current PID in order to not print the process information again.
+			currentPID = conn.ProcessContext.PID
 		}
 
 		// Add connection.
@@ -192,7 +208,7 @@ func buildNetworkDebugInfoData(debugConns []*Connection) string {
 
 func (conn *Connection) debugInfoLine() string {
 	var connectionData string
-	if conn.ID != "" {
+	if conn.Type == DNSRequest { // conn.ID !=
 		// Format IP/Port pair for connections.
 		connectionData = fmt.Sprintf(
 			"% 15s:%- 5s %s % 15s:%- 5s",
@@ -272,13 +288,28 @@ func (conn *Connection) fmtReasonProfileComponent() string {
 	return conn.Reason.Profile
 }
 
-type connectionsByStarted []*Connection
+type connectionsByGroup []*Connection
 
-func (a connectionsByStarted) Len() int      { return len(a) }
-func (a connectionsByStarted) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a connectionsByStarted) Less(i, j int) bool {
+func (a connectionsByGroup) Len() int      { return len(a) }
+func (a connectionsByGroup) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a connectionsByGroup) Less(i, j int) bool {
+	// Sort by:
+
+	// 1. Profile ID
+	if a[i].ProcessContext.Profile != a[j].ProcessContext.Profile {
+		return a[i].ProcessContext.Profile < a[j].ProcessContext.Profile
+	}
+
+	// 2. Process Binary
 	if a[i].ProcessContext.BinaryPath != a[j].ProcessContext.BinaryPath {
 		return a[i].ProcessContext.BinaryPath < a[j].ProcessContext.BinaryPath
 	}
+
+	// 3. Process ID
+	if a[i].ProcessContext.PID != a[j].ProcessContext.PID {
+		return a[i].ProcessContext.PID < a[j].ProcessContext.PID
+	}
+
+	// 4. Started
 	return a[i].Started < a[j].Started
 }

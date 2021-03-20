@@ -1,10 +1,9 @@
 package network
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/safing/portmaster/network/state"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/iterator"
@@ -27,37 +26,86 @@ type StorageInterface struct {
 	storage.InjectBase
 }
 
-// Get returns a database record.
-func (s *StorageInterface) Get(key string) (record.Record, error) {
+// Database prefixes:
+// Processes:       network:tree/<PID>
+// DNS Requests:    network:tree/<PID>/dns/<ID>
+// IP Connections:  network:tree/<PID>/ip/<ID>
 
-	splitted := strings.Split(key, "/")
-	switch splitted[0] { //nolint:gocritic // TODO: implement full key space
-	case "tree":
-		switch len(splitted) {
-		case 2:
-			pid, err := strconv.Atoi(splitted[1])
-			if err == nil {
-				proc, ok := process.GetProcessFromStorage(pid)
-				if ok {
-					return proc, nil
-				}
-			}
-		case 3:
-			if r, ok := dnsConns.get(splitted[1] + "/" + splitted[2]); ok {
-				return r, nil
-			}
-		case 4:
-			if r, ok := conns.get(splitted[3]); ok {
-				return r, nil
+func makeKey(pid int, scope, id string) string {
+	if scope == "" {
+		return "network:tree/" + strconv.Itoa(pid)
+	}
+	return fmt.Sprintf("network:tree/%d/%s/%s", pid, scope, id)
+}
+
+func parseDBKey(key string) (pid int, scope, id string, ok bool) {
+	// Split into segments.
+	segments := strings.Split(key, "/")
+	// Check for valid prefix.
+	if !strings.HasPrefix("tree", segments[0]) {
+		return 0, "", "", false
+	}
+
+	// Keys have 2 or 4 segments.
+	switch len(segments) {
+	case 4:
+		id = segments[3]
+
+		fallthrough
+	case 3:
+		scope = segments[2]
+		// Sanity check.
+		switch scope {
+		case "dns", "ip", "":
+			// Parsed id matches possible values.
+			// The empty string is for matching a trailing slash for in query prefix.
+			// TODO: For queries, also prefixes of these values are valid.
+		default:
+			// Unknown scope.
+			return 0, "", "", false
+		}
+
+		fallthrough
+	case 2:
+		var err error
+		if segments[1] == "" {
+			pid = process.UndefinedProcessID
+		} else {
+			pid, err = strconv.Atoi(segments[1])
+			if err != nil {
+				return 0, "", "", false
 			}
 		}
-	case "system":
-		if len(splitted) >= 2 {
-			switch splitted[1] {
-			case "state":
-				return state.GetInfo(), nil
-			default:
-			}
+
+		return pid, scope, id, true
+	case 1:
+		// This is a valid query prefix, but not process ID was given.
+		return process.UndefinedProcessID, "", "", true
+	default:
+		return 0, "", "", false
+	}
+}
+
+// Get returns a database record.
+func (s *StorageInterface) Get(key string) (record.Record, error) {
+	// Parse key and check if valid.
+	pid, scope, id, ok := parseDBKey(strings.TrimPrefix(key, "network:"))
+	if !ok || pid == process.UndefinedProcessID {
+		return nil, storage.ErrNotFound
+	}
+
+	switch scope {
+	case "dns":
+		if r, ok := dnsConns.get(id); ok {
+			return r, nil
+		}
+	case "ip":
+		if r, ok := conns.get(id); ok {
+			return r, nil
+		}
+	case "":
+		if proc, ok := process.GetProcessFromStorage(pid); ok {
+			return proc, nil
 		}
 	}
 
@@ -74,9 +122,13 @@ func (s *StorageInterface) Query(q *query.Query, local, internal bool) (*iterato
 }
 
 func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
-	slashes := strings.Count(q.DatabaseKeyPrefix(), "/")
+	pid, scope, _, ok := parseDBKey(q.DatabaseKeyPrefix())
+	if !ok {
+		it.Finish(nil)
+		return
+	}
 
-	if slashes <= 1 {
+	if pid == process.UndefinedProcessID {
 		// processes
 		for _, proc := range process.All() {
 			proc.Lock()
@@ -87,7 +139,7 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 		}
 	}
 
-	if slashes <= 2 {
+	if scope == "" || scope == "dns" {
 		// dns scopes only
 		for _, dnsConn := range dnsConns.clone() {
 			dnsConn.Lock()
@@ -98,7 +150,7 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 		}
 	}
 
-	if slashes <= 3 {
+	if scope == "" || scope == "ip" {
 		// connections
 		for _, conn := range conns.clone() {
 			conn.Lock()

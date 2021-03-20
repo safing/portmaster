@@ -29,10 +29,12 @@ type FirewallHandler func(conn *Connection, pkt packet.Packet)
 type ProcessContext struct {
 	// ProcessName is the name of the process.
 	ProcessName string
-	//ProfileName is the name of the profile.
+	// ProfileName is the name of the profile.
 	ProfileName string
 	// BinaryPath is the path to the process binary.
 	BinaryPath string
+	// CmdLine holds the execution parameters.
+	CmdLine string
 	// PID is the process identifier.
 	PID int
 	// Profile is the ID of the main profile that
@@ -42,21 +44,37 @@ type ProcessContext struct {
 	Source string
 }
 
+type ConnectionType int8
+
+const (
+	Undefined ConnectionType = iota
+	IPConnection
+	DNSRequest
+	// ProxyRequest
+)
+
 // Connection describes a distinct physical network connection
 // identified by the IP/Port pair.
 type Connection struct { //nolint:maligned // TODO: fix alignment
 	record.Base
 	sync.Mutex
 
-	// ID may hold unique connection id. It is only set for non-DNS
-	// request connections and is considered immutable after a
-	// connection object has been created.
+	// ID holds a unique request/connection id and is considered immutable after
+	// creation.
 	ID string
+	// Type defines the connection type.
+	Type ConnectionType
+	// External defines if the connection represents an external request or
+	// connection.
+	External bool
 	// Scope defines the scope of a connection. For DNS requests, the
 	// scope is always set to the domain name. For direct packet
 	// connections the scope consists of the involved network environment
 	// and the packet direction. Once a connection object is created,
 	// Scope is considered immutable.
+	// Deprecated: This field holds duplicate information, which is accessible
+	// clearer through other attributes. Please use conn.Type, conn.Inbound
+	// and conn.Entity.Domain instead.
 	Scope string
 	// IPVersion is set to the packet IP version. It is not set (0) for
 	// connections created from a DNS request.
@@ -176,8 +194,9 @@ type Reason struct {
 func getProcessContext(ctx context.Context, proc *process.Process) ProcessContext {
 	// Gather process information.
 	pCtx := ProcessContext{
-		BinaryPath:  proc.Path,
 		ProcessName: proc.Name,
+		BinaryPath:  proc.Path,
+		CmdLine:     proc.CmdLine,
 		PID:         proc.Pid,
 	}
 
@@ -196,7 +215,7 @@ func getProcessContext(ctx context.Context, proc *process.Process) ProcessContex
 }
 
 // NewConnectionFromDNSRequest returns a new connection based on the given dns request.
-func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, localIP net.IP, localPort uint16) *Connection {
+func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, connID string, localIP net.IP, localPort uint16) *Connection {
 	// Determine IP version.
 	ipVersion := packet.IPv6
 	if localIP.To4() != nil {
@@ -223,6 +242,8 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 
 	timestamp := time.Now().Unix()
 	dnsConn := &Connection{
+		ID:    connID,
+		Type:  DNSRequest,
 		Scope: fqdn,
 		Entity: &intel.Entity{
 			Domain: fqdn,
@@ -239,10 +260,15 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		dnsConn.Internal = localProfile.Internal
 	}
 
+	// Always mark dns queries from the system resolver as internal.
+	if proc.IsSystemResolver() {
+		dnsConn.Internal = true
+	}
+
 	return dnsConn
 }
 
-func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cnames []string, remoteIP net.IP) (*Connection, error) {
+func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cnames []string, connID string, remoteIP net.IP) (*Connection, error) {
 	remoteHost, err := process.GetNetworkHost(ctx, remoteIP)
 	if err != nil {
 		return nil, err
@@ -250,7 +276,10 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 
 	timestamp := time.Now().Unix()
 	dnsConn := &Connection{
-		Scope: fqdn,
+		ID:       connID,
+		Type:     DNSRequest,
+		External: true,
+		Scope:    fqdn,
 		Entity: &intel.Entity{
 			Domain: fqdn,
 			CNAME:  cnames,
@@ -280,6 +309,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 
 	var scope string
 	var entity *intel.Entity
+	var resolverInfo *resolver.ResolverInfo
 
 	if inbound {
 
@@ -316,7 +346,11 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		entity.SetDstPort(entity.Port)
 
 		// check if we can find a domain for that IP
-		ipinfo, err := resolver.GetIPInfo(proc.LocalProfileKey, pkt.Info().Dst.String())
+		ipinfo, err := resolver.GetIPInfo(proc.Profile().LocalProfile().ID, pkt.Info().Dst.String())
+		if err != nil {
+			// Try again with the global scope, in case DNS went through the system resolver.
+			ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().Dst.String())
+		}
 		if err == nil {
 			lastResolvedDomain := ipinfo.MostRecentDomain()
 			if lastResolvedDomain != nil {
@@ -358,6 +392,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	// Create new connection object.
 	newConn := &Connection{
 		ID:        pkt.GetConnectionID(),
+		Type:      IPConnection,
 		Scope:     scope,
 		IPVersion: pkt.Info().Version,
 		Inbound:   inbound,
@@ -493,14 +528,11 @@ func (conn *Connection) Save() {
 	conn.UpdateMeta()
 
 	if !conn.KeyIsSet() {
-		// A connection without an ID has been created from
-		// a DNS request rather than a packet. Choose the correct
-		// connection store here.
-		if conn.ID == "" {
-			conn.SetKey(fmt.Sprintf("network:tree/%d/%s", conn.process.Pid, conn.Scope))
+		if conn.Type == DNSRequest {
+			conn.SetKey(makeKey(conn.process.Pid, "dns", conn.ID))
 			dnsConns.add(conn)
 		} else {
-			conn.SetKey(fmt.Sprintf("network:tree/%d/%s/%s", conn.process.Pid, conn.Scope, conn.ID))
+			conn.SetKey(makeKey(conn.process.Pid, "ip", conn.ID))
 			conns.add(conn)
 		}
 	}
