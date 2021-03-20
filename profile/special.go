@@ -11,6 +11,11 @@ const (
 	// SystemProfileName is the name used for the system/kernel.
 	SystemProfileName = "Operating System"
 
+	// SystemResolverProfileID is the profile ID used for the system's DNS resolver.
+	SystemResolverProfileID = "_system-resolver"
+	// SystemResolverProfileName is the name used for the system's DNS resolver.
+	SystemResolverProfileName = "System DNS Client"
+
 	// PortmasterProfileID is the profile ID used for the Portmaster Core itself.
 	PortmasterProfileID = "_portmaster"
 	// PortmasterProfileName is the name used for the Portmaster Core itself.
@@ -35,6 +40,8 @@ func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (ok, chan
 		newProfileName = UnidentifiedProfileName
 	case SystemProfileID:
 		newProfileName = SystemProfileName
+	case SystemResolverProfileID:
+		newProfileName = SystemResolverProfileName
 	case PortmasterProfileID:
 		newProfileName = PortmasterProfileName
 	case PortmasterAppProfileID:
@@ -67,6 +74,9 @@ func getSpecialProfile(profileID, linkedPath string) *Profile {
 
 	case SystemProfileID:
 		return New(SourceLocal, SystemProfileID, linkedPath, nil)
+
+	case SystemResolverProfileID:
+		return New(SourceLocal, SystemResolverProfileID, linkedPath, nil)
 
 	case PortmasterProfileID:
 		profile := New(SourceLocal, PortmasterProfileID, linkedPath, nil)
