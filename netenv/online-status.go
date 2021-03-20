@@ -356,7 +356,7 @@ func checkOnlineStatus(ctx context.Context) {
 	} else {
 		var lan bool
 		for _, ip := range ipv4 {
-			switch netutils.ClassifyIP(ip) {
+			switch netutils.GetIPScope(ip) {
 			case netutils.SiteLocal:
 				lan = true
 			case netutils.Global:
@@ -366,7 +366,7 @@ func checkOnlineStatus(ctx context.Context) {
 			}
 		}
 		for _, ip := range ipv6 {
-			switch netutils.ClassifyIP(ip) {
+			switch netutils.GetIPScope(ip) {
 			case netutils.SiteLocal, netutils.Global:
 				// IPv6 global addresses are also used in local networks
 				lan = true

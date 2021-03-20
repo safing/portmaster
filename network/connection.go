@@ -74,6 +74,8 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// set for connections created from DNS requests. LocalIP is
 	// considered immutable once a connection object has been created.
 	LocalIP net.IP
+	// LocalIPScope holds the network scope of the local IP.
+	LocalIPScope netutils.IPScope
 	// LocalPort holds the local port of the connection. It is not
 	// set for connections created from DNS requests. LocalPort is
 	// considered immutable once a connection object has been created.
@@ -279,7 +281,14 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	if inbound {
 
 		// inbound connection
-		switch netutils.ClassifyIP(pkt.Info().Src) {
+		entity = &intel.Entity{
+			Protocol: uint8(pkt.Info().Protocol),
+			Port:     pkt.Info().SrcPort,
+		}
+		entity.SetIP(pkt.Info().Src)
+		entity.SetDstPort(pkt.Info().DstPort)
+
+		switch entity.IPScope {
 		case netutils.HostLocal:
 			scope = IncomingHost
 		case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
@@ -292,21 +301,15 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		default:
 			scope = IncomingInvalid
 		}
-		entity = &intel.Entity{
-			IP:       pkt.Info().Src,
-			Protocol: uint8(pkt.Info().Protocol),
-			Port:     pkt.Info().SrcPort,
-		}
-		entity.SetDstPort(pkt.Info().DstPort)
 
 	} else {
 
 		// outbound connection
 		entity = &intel.Entity{
-			IP:       pkt.Info().Dst,
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().DstPort,
 		}
+		entity.SetIP(pkt.Info().Dst)
 		entity.SetDstPort(entity.Port)
 
 		// check if we can find a domain for that IP
@@ -331,7 +334,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		if scope == "" {
 
 			// outbound direct (possibly P2P) connection
-			switch netutils.ClassifyIP(pkt.Info().Dst) {
+			switch entity.IPScope {
 			case netutils.HostLocal:
 				scope = PeerHost
 			case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
@@ -356,7 +359,6 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		Inbound:   inbound,
 		// local endpoint
 		IPProtocol:     pkt.Info().Protocol,
-		LocalIP:        pkt.Info().LocalIP(),
 		LocalPort:      pkt.Info().LocalPort(),
 		ProcessContext: getProcessContext(pkt.Ctx(), proc),
 		process:        proc,
@@ -366,6 +368,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		Started:                time.Now().Unix(),
 		ProfileRevisionCounter: proc.Profile().RevisionCnt(),
 	}
+	newConn.SetLocalIP(pkt.Info().LocalIP())
 
 	// Inherit internal status of profile.
 	if localProfile := proc.Profile().LocalProfile(); localProfile != nil {
@@ -378,6 +381,13 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 // GetConnection fetches a Connection from the database.
 func GetConnection(id string) (*Connection, bool) {
 	return conns.get(id)
+}
+
+// SetLocalIP sets the local IP address together with its network scope. The
+// connection is not locked for this.
+func (conn *Connection) SetLocalIP(ip net.IP) {
+	conn.LocalIP = ip
+	conn.LocalIPScope = netutils.GetIPScope(ip)
 }
 
 // AcceptWithContext accepts the connection.

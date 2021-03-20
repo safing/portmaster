@@ -130,7 +130,7 @@ next:
 				}
 
 				// If we received something from a global IP address, we have succeeded and can return immediately.
-				if netutils.IPIsGlobal(addr.IP) {
+				if netutils.GetIPScope(addr.IP).IsGlobal() {
 					return addr.IP, nil
 				}
 

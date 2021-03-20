@@ -5,26 +5,30 @@ import (
 	"testing"
 )
 
-func TestIPClassification(t *testing.T) {
-	testClassification(t, net.IPv4(71, 87, 113, 211), Global)
-	testClassification(t, net.IPv4(127, 0, 0, 1), HostLocal)
-	testClassification(t, net.IPv4(127, 255, 255, 1), HostLocal)
-	testClassification(t, net.IPv4(192, 168, 172, 24), SiteLocal)
-	testClassification(t, net.IPv4(172, 15, 1, 1), Global)
-	testClassification(t, net.IPv4(172, 16, 1, 1), SiteLocal)
-	testClassification(t, net.IPv4(172, 31, 1, 1), SiteLocal)
-	testClassification(t, net.IPv4(172, 32, 1, 1), Global)
+func TestIPScope(t *testing.T) {
+	testScope(t, net.IPv4(71, 87, 113, 211), Global)
+	testScope(t, net.IPv4(127, 0, 0, 1), HostLocal)
+	testScope(t, net.IPv4(127, 255, 255, 1), HostLocal)
+	testScope(t, net.IPv4(192, 168, 172, 24), SiteLocal)
+	testScope(t, net.IPv4(172, 15, 1, 1), Global)
+	testScope(t, net.IPv4(172, 16, 1, 1), SiteLocal)
+	testScope(t, net.IPv4(172, 31, 1, 1), SiteLocal)
+	testScope(t, net.IPv4(172, 32, 1, 1), Global)
 }
 
-func testClassification(t *testing.T, ip net.IP, expectedClassification int8) {
-	c := ClassifyIP(ip)
-	if c != expectedClassification {
-		t.Errorf("%s is %s, expected %s", ip, classificationString(c), classificationString(expectedClassification))
+func testScope(t *testing.T, ip net.IP, expectedScope IPScope) {
+	c := GetIPScope(ip)
+	if c != expectedScope {
+		t.Errorf("%s is %s, expected %s", ip, scopeName(c), scopeName(expectedScope))
 	}
 }
 
-func classificationString(c int8) string {
+func scopeName(c IPScope) string {
 	switch c {
+	case Invalid:
+		return "invalid"
+	case Undefined:
+		return "undefined"
 	case HostLocal:
 		return "hostLocal"
 	case LinkLocal:
@@ -37,9 +41,7 @@ func classificationString(c int8) string {
 		return "localMulticast"
 	case GlobalMulticast:
 		return "globalMulticast"
-	case Invalid:
-		return "invalid"
 	default:
-		return "unknown"
+		return "undefined"
 	}
 }

@@ -36,9 +36,8 @@ func (ep *EndpointScope) Matches(_ context.Context, entity *intel.Entity) (EPRes
 		return Undeterminable, nil
 	}
 
-	classification := netutils.ClassifyIP(entity.IP)
 	var scope uint8
-	switch classification {
+	switch entity.IPScope {
 	case netutils.HostLocal:
 		scope = scopeLocalhost
 	case netutils.LinkLocal:

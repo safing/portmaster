@@ -286,7 +286,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	// TODO: add implementation for forced tunneling
 	if pkt.IsOutbound() &&
 		captain.ClientReady() &&
-		netutils.IPIsGlobal(conn.Entity.IP) &&
+		conn.Entity.IPScope.IsGlobal() &&
 		conn.Verdict == network.VerdictAccept {
 		// try to tunnel
 		err := sluice.AwaitRequest(pkt.Info(), conn.Entity.Domain)

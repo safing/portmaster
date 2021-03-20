@@ -151,7 +151,7 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 	// attribute an incoming broadcast/multicast packet to the wrong process if
 	// there are multiple processes listening on the same local port, but
 	// binding to different addresses. This highly unusual for clients.
-	isInboundMulticast := pktInfo.Inbound && netutils.ClassifyIP(pktInfo.LocalIP()) == netutils.LocalMulticast
+	isInboundMulticast := pktInfo.Inbound && netutils.GetIPScope(pktInfo.LocalIP()) == netutils.LocalMulticast
 
 	// Search for the socket until found.
 	for i := 1; i <= lookupRetries; i++ {
