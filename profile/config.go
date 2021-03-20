@@ -434,7 +434,7 @@ The lists are automatically updated every hour using incremental updates.
 	err = config.Register(&config.Option{
 		Name:           "Enforce Global/Private Split-View",
 		Key:            CfgOptionRemoveOutOfScopeDNSKey,
-		Description:    "Reject private IP addresses (RFC1918 et al.) from public DNS responses.",
+		Description:    "Reject private IP addresses (RFC1918 et al.) from public DNS responses. If the system resolver is in use, the resulting connection will be blocked instead of the DNS request.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		DefaultValue:   status.SecurityLevelsAll,
@@ -455,7 +455,7 @@ The lists are automatically updated every hour using incremental updates.
 	err = config.Register(&config.Option{
 		Name:           "Reject Blocked IPs",
 		Key:            CfgOptionRemoveBlockedDNSKey,
-		Description:    "Reject blocked IP addresses directly from the DNS response instead of handing them over to the app and blocking a resulting connection.",
+		Description:    "Reject blocked IP addresses directly from the DNS response instead of handing them over to the app and blocking a resulting connection. This settings does not affect privacy and only takes effect when the system resolver is not in use.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		DefaultValue:   status.SecurityLevelsAll,
@@ -491,6 +491,7 @@ The lists are automatically updated every hour using incremental updates.
 		return err
 	}
 	cfgOptionDomainHeuristics = config.Concurrent.GetAsInt(CfgOptionDomainHeuristicsKey, int64(status.SecurityLevelsAll))
+	cfgIntOptions[CfgOptionDomainHeuristicsKey] = cfgOptionDomainHeuristics
 
 	// Bypass prevention
 	err = config.Register(&config.Option{
@@ -499,7 +500,9 @@ The lists are automatically updated every hour using incremental updates.
 		Description: `Prevent apps from bypassing the privacy filter.  
 Current Features:  
 - Disable Firefox' internal DNS-over-HTTPs resolver
-- Block direct access to public DNS resolvers`,
+- Block direct access to public DNS resolvers
+
+Please note that if you are using the system resolver, bypass attempts might be additionally blocked there too.`,
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelBeta,

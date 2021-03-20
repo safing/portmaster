@@ -3,6 +3,7 @@ package nameserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -57,6 +58,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		log.Warningf("nameserver: failed to get remote address of request for %s%s, ignoring", q.FQDN, q.QType)
 		return nil
 	}
+	// log.Errorf("DEBUG: nameserver: handling new request for %s from %s:%d", q.ID(), remoteAddr.IP, remoteAddr.Port)
 
 	// Start context tracer for context-aware logging.
 	ctx, tracer := log.AddTracer(ctx)
@@ -133,20 +135,24 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	conn.Lock()
 	defer conn.Unlock()
 
+	// Create reference for the rrCache.
+	var rrCache *resolver.RRCache
+
 	// Once we decided on the connection we might need to save it to the database,
 	// so we defer that check for now.
 	defer func() {
 		switch conn.Verdict {
 		// We immediately save blocked, dropped or failed verdicts so
 		// they pop up in the UI.
-		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
+		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed, network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel:
 			conn.Save()
 
 		// For undecided or accepted connections we don't save them yet, because
 		// that will happen later anyway.
-		case network.VerdictUndecided, network.VerdictAccept,
-			network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel:
-			return
+		case network.VerdictUndecided, network.VerdictAccept:
+			// Save the request as open, as we don't know if there will be a connection or not.
+			network.SaveOpenDNSRequest(conn)
+			firewall.UpdateIPsAndCNAMEs(q, rrCache, conn)
 
 		default:
 			tracer.Warningf("nameserver: unexpected verdict %s for connection %s, not saving", conn.Verdict, conn)
@@ -162,17 +168,19 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	// IP address in which case we "accept" it, but let the firewall handle
 	// the resolving as it wishes.
 	if responder, ok := conn.Reason.Context.(nsutil.Responder); ok {
-		// Save the request as open, as we don't know if there will be a connection or not.
-		network.SaveOpenDNSRequest(conn)
-
 		tracer.Infof("nameserver: handing over request for %s to special filter responder: %s", q.ID(), conn.Reason.Msg)
 		return reply(responder)
 	}
 
-	// Check if there is Verdict to act upon.
+	// Check if there is a Verdict to act upon.
 	switch conn.Verdict {
 	case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
-		tracer.Infof("nameserver: request for %s from %s %s", q.ID(), conn.Process(), conn.Verdict.Verb())
+		tracer.Infof(
+			"nameserver: returning %s response for %s to %s",
+			conn.Verdict.Verb(),
+			q.ID(),
+			conn.Process(),
+		)
 		return reply(conn, conn)
 	}
 
@@ -180,7 +188,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	q.SecurityLevel = conn.Process().Profile().SecurityLevel()
 
 	// Resolve request.
-	rrCache, err := resolver.Resolve(ctx, q)
+	rrCache, err = resolver.Resolve(ctx, q)
 	if err != nil {
 		// React to special errors.
 		switch {
@@ -212,13 +220,10 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	}
 
 	tracer.Trace("nameserver: deciding on resolved dns")
-	rrCache = firewall.DecideOnResolvedDNS(ctx, conn, q, rrCache)
+	rrCache = firewall.FilterResolvedDNS(ctx, conn, q, rrCache)
 	if rrCache == nil {
 		// Check again if there is a responder from the firewall.
 		if responder, ok := conn.Reason.Context.(nsutil.Responder); ok {
-			// Save the request as open, as we don't know if there will be a connection or not.
-			network.SaveOpenDNSRequest(conn)
-
 			tracer.Infof("nameserver: handing over request for %s to filter responder: %s", q.ID(), conn.Reason.Msg)
 			return reply(responder)
 		}
@@ -235,9 +240,6 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 			return reply(conn, conn)
 		}
 	}
-
-	// Save dns request as open.
-	defer network.SaveOpenDNSRequest(conn)
 
 	// Revert back to non-standard question format, if we had to convert.
 	if nonStandardQuestionFormat {

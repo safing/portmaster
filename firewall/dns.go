@@ -16,7 +16,7 @@ import (
 	"github.com/safing/portmaster/resolver"
 )
 
-func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, scope int8) ([]dns.RR, []string, int, string) {
+func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, resolverScope netutils.IPScope, sysResolver bool) ([]dns.RR, []string, int, string) {
 	goodEntries := make([]dns.RR, 0, len(entries))
 	filteredRecords := make([]string, 0, len(entries))
 
@@ -38,16 +38,16 @@ func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, scope int8) (
 			goodEntries = append(goodEntries, rr)
 			continue
 		}
-		classification := netutils.ClassifyIP(ip)
+		ipScope := netutils.GetIPScope(ip)
 
 		if p.RemoveOutOfScopeDNS() {
 			switch {
-			case classification == netutils.HostLocal:
+			case ipScope.IsLocalhost():
 				// No DNS should return localhost addresses
 				filteredRecords = append(filteredRecords, rr.String())
 				interveningOptionKey = profile.CfgOptionRemoveOutOfScopeDNSKey
 				continue
-			case scope == netutils.Global && (classification == netutils.SiteLocal || classification == netutils.LinkLocal):
+			case resolverScope.IsGlobal() && ipScope.IsLAN() && !sysResolver:
 				// No global DNS should return LAN addresses
 				filteredRecords = append(filteredRecords, rr.String())
 				interveningOptionKey = profile.CfgOptionRemoveOutOfScopeDNSKey
@@ -55,18 +55,18 @@ func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, scope int8) (
 			}
 		}
 
-		if p.RemoveBlockedDNS() {
+		if p.RemoveBlockedDNS() && !sysResolver {
 			// filter by flags
 			switch {
-			case p.BlockScopeInternet() && classification == netutils.Global:
+			case p.BlockScopeInternet() && ipScope.IsGlobal():
 				filteredRecords = append(filteredRecords, rr.String())
 				interveningOptionKey = profile.CfgOptionBlockScopeInternetKey
 				continue
-			case p.BlockScopeLAN() && (classification == netutils.SiteLocal || classification == netutils.LinkLocal):
+			case p.BlockScopeLAN() && ipScope.IsLAN():
 				filteredRecords = append(filteredRecords, rr.String())
 				interveningOptionKey = profile.CfgOptionBlockScopeLANKey
 				continue
-			case p.BlockScopeLocal() && classification == netutils.HostLocal:
+			case p.BlockScopeLocal() && ipScope.IsLocalhost():
 				filteredRecords = append(filteredRecords, rr.String())
 				interveningOptionKey = profile.CfgOptionBlockScopeLocalKey
 				continue
@@ -83,7 +83,7 @@ func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, scope int8) (
 	return goodEntries, filteredRecords, allowedAddressRecords, interveningOptionKey
 }
 
-func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache) *resolver.RRCache {
+func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache, sysResolver bool) *resolver.RRCache {
 	p := conn.Process().Profile()
 
 	// do not modify own queries
@@ -104,11 +104,11 @@ func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache) *res
 	var validIPs int
 	var interveningOptionKey string
 
-	rrCache.Answer, filteredRecords, validIPs, interveningOptionKey = filterDNSSection(rrCache.Answer, p, rrCache.ServerScope)
+	rrCache.Answer, filteredRecords, validIPs, interveningOptionKey = filterDNSSection(rrCache.Answer, p, rrCache.Resolver.IPScope, sysResolver)
 	rrCache.FilteredEntries = append(rrCache.FilteredEntries, filteredRecords...)
 
 	// we don't count the valid IPs in the extra section
-	rrCache.Extra, filteredRecords, _, _ = filterDNSSection(rrCache.Extra, p, rrCache.ServerScope)
+	rrCache.Extra, filteredRecords, _, _ = filterDNSSection(rrCache.Extra, p, rrCache.Resolver.IPScope, sysResolver)
 	rrCache.FilteredEntries = append(rrCache.FilteredEntries, filteredRecords...)
 
 	if len(rrCache.FilteredEntries) > 0 {
@@ -160,8 +160,9 @@ func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache) *res
 	return rrCache
 }
 
-// DecideOnResolvedDNS filters a dns response according to the application profile and settings.
-func DecideOnResolvedDNS(
+// FilterResolvedDNS filters a dns response according to the application
+// profile and settings.
+func FilterResolvedDNS(
 	ctx context.Context,
 	conn *network.Connection,
 	q *resolver.Query,
@@ -174,14 +175,15 @@ func DecideOnResolvedDNS(
 		return rrCache
 	}
 
-	updatedRR := filterDNSResponse(conn, rrCache)
+	// Only filter criticial things if request comes from the system resolver.
+	sysResolver := conn.Process().IsSystemResolver()
+
+	updatedRR := filterDNSResponse(conn, rrCache, sysResolver)
 	if updatedRR == nil {
 		return nil
 	}
 
-	updateIPsAndCNAMEs(q, rrCache, conn)
-
-	if mayBlockCNAMEs(ctx, conn) {
+	if !sysResolver && mayBlockCNAMEs(ctx, conn) {
 		return nil
 	}
 
@@ -213,14 +215,23 @@ func mayBlockCNAMEs(ctx context.Context, conn *network.Connection) bool {
 	return false
 }
 
-// updateIPsAndCNAMEs saves all the IP->Name mappings to the cache database and
+// UpdateIPsAndCNAMEs saves all the IP->Name mappings to the cache database and
 // updates the CNAMEs in the Connection's Entity.
-func updateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *network.Connection) {
+func UpdateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *network.Connection) {
+	// Sanity check input, as this is called from defer.
+	if q == nil || rrCache == nil {
+		return
+	}
+
 	// Get profileID for scoping IPInfo.
 	var profileID string
-	proc := conn.Process()
-	if proc != nil {
-		profileID = proc.LocalProfileKey
+	localProfile := conn.Process().Profile().LocalProfile()
+	switch localProfile.ID {
+	case profile.UnidentifiedProfileID,
+		profile.SystemResolverProfileID:
+		profileID = resolver.IPInfoProfileScopeGlobal
+	default:
+		profileID = localProfile.ID
 	}
 
 	// Collect IPs and CNAMEs.
@@ -249,8 +260,9 @@ func updateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 
 		// Create new record for this IP.
 		record := resolver.ResolvedDomain{
-			Domain:  q.FQDN,
-			Expires: rrCache.Expires,
+			Domain:   q.FQDN,
+			Expires:  rrCache.Expires,
+			Resolver: rrCache.Resolver,
 		}
 
 		// Resolve all CNAMEs in the correct order and add the to the record.
