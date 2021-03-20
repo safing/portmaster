@@ -33,7 +33,7 @@ func start(ch chan packet.Packet) error {
 	}
 
 	go windowskext.Handler(ch)
-	go handleWindowsDNSCache()
+	go checkWindowsDNSCache()
 
 	return nil
 }
@@ -43,37 +43,21 @@ func stop() error {
 	return windowskext.Stop()
 }
 
-func handleWindowsDNSCache() {
-
-	err := osdetail.StopService("dnscache")
+func checkWindowsDNSCache() {
+	status, err := osdetail.GetServiceStatus("dnscache")
 	if err != nil {
-		// cannot stop dnscache, try disabling
-		if err == osdetail.ErrServiceNotStoppable {
-			err := osdetail.DisableDNSCache()
-			if err != nil {
-				log.Warningf("firewall/interception: failed to disable Windows Service \"DNS Client\" (dnscache) for better interception: %s", err)
-				notifyDisableDNSCache()
-			}
-			notifyRebootRequired()
-			return
-		}
-
-		// error while stopping service
-		log.Warningf("firewall/interception: failed to stop Windows Service \"DNS Client\" (dnscache) for better interception: %s", err)
-		notifyDisableDNSCache()
+		log.Warningf("firewall/interception: failed to check status of Windows DNS-Client: %s", err)
 	}
 
-	// log that service is stopped
-	log.Info("firewall/interception: Windows Service \"DNS Client\" (dnscache) is stopped for better interception")
-
-}
-
-func notifyDisableDNSCache() {
-	(&notifications.Notification{
-		EventID: "interception:windows-disable-dns-cache",
-		Message: "The Portmaster needs the Windows Service \"DNS Client\" (dnscache) to be disabled for best effectiveness.",
-		Type:    notifications.Warning,
-	}).Save()
+	if status == osdetail.StatusStopped {
+		err := osdetail.EnableDNSCache()
+		if err != nil {
+			log.Warningf("firewall/interception: failed to enable Windows Service \"DNS Client\" (dnscache): %s", err)
+		} else {
+			log.Warningf("firewall/interception: successfully enabled the dnscache")
+			notifyRebootRequired()
+		}
+	}
 }
 
 func notifyRebootRequired() {
