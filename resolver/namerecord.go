@@ -49,9 +49,20 @@ type NameRecord struct {
 	Extra    []string
 	Expires  int64
 
-	Server      string
-	ServerScope int8
-	ServerInfo  string
+	Resolver *ResolverInfo
+}
+
+// IsValid returns whether the NameRecord is valid and may be used. Otherwise,
+// it should be disregarded.
+func (nameRecord *NameRecord) IsValid() bool {
+	switch {
+	case nameRecord.Resolver == nil || nameRecord.Resolver.Type == "":
+		// Changed in v0.6.7: Introduced Resolver *ResolverInfo
+		return false
+	default:
+		// Up to date!
+		return true
+	}
 }
 
 func makeNameRecordKey(domain string, question string) string {
@@ -67,7 +78,7 @@ func GetNameRecord(domain, question string) (*NameRecord, error) {
 		return nil, err
 	}
 
-	// unwrap
+	// Unwrap record if it's wrapped.
 	if r.IsWrapped() {
 		// only allocate a new struct, if we need it
 		new := &NameRecord{}
@@ -75,14 +86,24 @@ func GetNameRecord(domain, question string) (*NameRecord, error) {
 		if err != nil {
 			return nil, err
 		}
+		// Check if the record is valid.
+		if !new.IsValid() {
+			return nil, errors.New("record is invalid (outdated format)")
+		}
+
 		return new, nil
 	}
 
-	// or adjust type
+	// Or just adjust the type.
 	new, ok := r.(*NameRecord)
 	if !ok {
 		return nil, fmt.Errorf("record not of type *NameRecord, but %T", r)
 	}
+	// Check if the record is valid.
+	if !new.IsValid() {
+		return nil, errors.New("record is invalid (outdated format)")
+	}
+
 	return new, nil
 }
 

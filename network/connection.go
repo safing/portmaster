@@ -85,6 +85,9 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// be added to it during the livetime of a connection. Access to
 	// entity must be guarded by the connection lock.
 	Entity *intel.Entity
+	// Resolver holds information about the resolver used to resolve
+	// Entity.Domain.
+	Resolver *resolver.ResolverInfo
 	// Verdict is the final decision that has been made for a connection.
 	// The verdict may change so any access to it must be guarded by the
 	// connection lock.
@@ -320,6 +323,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 				scope = lastResolvedDomain.Domain
 				entity.Domain = lastResolvedDomain.Domain
 				entity.CNAME = lastResolvedDomain.CNAMEs
+				resolverInfo = lastResolvedDomain.Resolver
 				removeOpenDNSRequest(proc.Pid, lastResolvedDomain.Domain)
 			}
 		}
@@ -364,6 +368,8 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		process:        proc,
 		// remote endpoint
 		Entity: entity,
+		// resolver used to resolve dns request
+		Resolver: resolverInfo,
 		// meta
 		Started:                time.Now().Unix(),
 		ProfileRevisionCounter: proc.Profile().RevisionCnt(),

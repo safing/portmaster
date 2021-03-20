@@ -40,6 +40,10 @@ type ResolvedDomain struct {
 	// Domain.
 	CNAMEs []string
 
+	// Resolver holds basic information about the resolver that provided this
+	// information.
+	Resolver *ResolverInfo
+
 	// Expires holds the timestamp when this entry expires.
 	// This does not mean that the entry may not be used anymore afterwards,
 	// but that this is used to calcuate the TTL of the database record.
