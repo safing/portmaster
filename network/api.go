@@ -208,7 +208,7 @@ func buildNetworkDebugInfoData(debugConns []*Connection) string {
 
 func (conn *Connection) debugInfoLine() string {
 	var connectionData string
-	if conn.Type == DNSRequest { // conn.ID !=
+	if conn.Type == IPConnection {
 		// Format IP/Port pair for connections.
 		connectionData = fmt.Sprintf(
 			"% 15s:%- 5s %s % 15s:%- 5s",
