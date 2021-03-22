@@ -548,10 +548,10 @@ func (conn *Connection) delete() {
 	// A connection without an ID has been created from
 	// a DNS request rather than a packet. Choose the correct
 	// connection store here.
-	if conn.ID == "" {
-		dnsConns.delete(conn)
-	} else {
+	if conn.Type == IPConnection {
 		conns.delete(conn)
+	} else {
+		dnsConns.delete(conn)
 	}
 
 	conn.Meta().Delete()
