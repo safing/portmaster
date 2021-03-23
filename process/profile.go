@@ -65,7 +65,9 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 		case "linux":
 			switch p.Path {
 			case "/lib/systemd/systemd-resolved",
-				"/usr/lib/systemd/systemd-resolved":
+				"/usr/lib/systemd/systemd-resolved",
+				"/lib64/systemd/systemd-resolved",
+				"/usr/lib64/systemd/systemd-resolved":
 				profileID = profile.SystemResolverProfileID
 			}
 		}
