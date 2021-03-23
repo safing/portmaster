@@ -14,6 +14,10 @@ const (
 	// attributed to a PID for any reason.
 	UnidentifiedProcessID = -1
 
+	// UndefinedProcessID is not used by any (virtual) process and signifies that
+	// the PID is unset.
+	UndefinedProcessID = -2
+
 	// NetworkHostProcessID is the PID used for requests served to the network.
 	NetworkHostProcessID = -255
 )

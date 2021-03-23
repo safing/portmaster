@@ -132,7 +132,7 @@ func (conn *Connection) addToMetrics() {
 	}
 
 	// Only count successful connections, not DNS requests.
-	if conn.ID == "" {
+	if conn.Type == DNSRequest {
 		return
 	}
 

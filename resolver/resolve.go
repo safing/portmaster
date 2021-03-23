@@ -175,9 +175,9 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 	}
 
 	// Get the resolver that the rrCache was resolved with.
-	resolver := getActiveResolverByIDWithLocking(rrCache.Server)
+	resolver := getActiveResolverByIDWithLocking(rrCache.Resolver.ID())
 	if resolver == nil {
-		log.Tracer(ctx).Debugf("resolver: ignoring RRCache %s%s because source server %s has been removed", q.FQDN, q.QType.String(), rrCache.Server)
+		log.Tracer(ctx).Debugf("resolver: ignoring RRCache %s%s because source server %q has been removed", q.FQDN, q.QType.String(), rrCache.Resolver.ID())
 		return nil
 	}
 
@@ -361,11 +361,11 @@ resolveLoop:
 					continue
 				case errors.Is(err, ErrTimeout):
 					resolver.Conn.ReportFailure()
-					log.Tracer(ctx).Debugf("resolver: query to %s timed out", resolver.GetName())
+					log.Tracer(ctx).Debugf("resolver: query to %s timed out", resolver.Info.ID())
 					continue
 				default:
 					resolver.Conn.ReportFailure()
-					log.Tracer(ctx).Debugf("resolver: query to %s failed: %s", resolver.GetName(), err)
+					log.Tracer(ctx).Debugf("resolver: query to %s failed: %s", resolver.Info.ID(), err)
 					continue
 				}
 			}

@@ -2,21 +2,24 @@ package resolver
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/miekg/dns"
 	"github.com/safing/portmaster/netenv"
+	"github.com/safing/portmaster/network/netutils"
 )
 
 // DNS Resolver Attributes
 const (
-	ServerTypeDNS = "dns"
-	ServerTypeTCP = "tcp"
-	ServerTypeDoT = "dot"
-	ServerTypeDoH = "doh"
-	ServerTypeEnv = "env"
+	ServerTypeDNS  = "dns"
+	ServerTypeTCP  = "tcp"
+	ServerTypeDoT  = "dot"
+	ServerTypeDoH  = "doh"
+	ServerTypeMDNS = "mdns"
+	ServerTypeEnv  = "env"
 
 	ServerSourceConfigured      = "config"
 	ServerSourceOperatingSystem = "system"
@@ -39,14 +42,13 @@ type Resolver struct {
 	//	- `empty`: NXDomain result, but without any other record in any section
 	//  - `refused`: Request was refused
 	//	- `zeroip`: Answer only contains zeroip
-	Server string
+	ConfigURL string
 
-	// Source describes from where the resolver configuration originated.
-	Source string
+	// Info holds the parsed configuration.
+	Info *ResolverInfo
 
-	// Name is the name of the resolver as passed via
-	// ?name=.
-	Name string
+	// ServerAddress holds the resolver address for easier use.
+	ServerAddress string
 
 	// UpstreamBlockDetection defines the detection type
 	// to identifier upstream DNS query blocking.
@@ -57,14 +59,6 @@ type Resolver struct {
 	//	 - disabled
 	UpstreamBlockDetection string
 
-	// Parsed config
-	ServerType    string
-	ServerAddress string
-	ServerIP      net.IP
-	ServerIPScope int8
-	ServerPort    uint16
-	ServerInfo    string
-
 	// Special Options
 	VerifyDomain string
 	Search       []string
@@ -73,25 +67,111 @@ type Resolver struct {
 	Conn ResolverConn `json:"-"`
 }
 
+// ResolverInfo is a subset of resolver attributes that is attached to answers
+// from that server in order to use it later for decision making. It must not
+// be changed by anyone after creation and initialization is complete.
+type ResolverInfo struct {
+	// Name describes the name given to the resolver. The name is configured in the config URL using the name parameter.
+	Name string
+
+	// Type describes the type of the resolver.
+	// Possible values include dns, tcp, dot, doh, mdns, env.
+	Type string
+
+	// Source describes where the resolver configuration came from.
+	// Possible values include config, system, mdns, env.
+	Source string
+
+	// IP is the IP address of the resolver
+	IP net.IP
+
+	// IPScope is the network scope of the IP address.
+	IPScope netutils.IPScope
+
+	// Port is the udp/tcp port of the resolver.
+	Port uint16
+
+	// id holds a unique ID for this resolver.
+	id    string
+	idGen sync.Once
+}
+
+// ID returns the unique ID of the resolver.
+func (info *ResolverInfo) ID() string {
+	// Generate the ID the first time.
+	info.idGen.Do(func() {
+		switch info.Type {
+		case ServerTypeMDNS:
+			info.id = ServerTypeMDNS
+		case ServerTypeEnv:
+			info.id = ServerTypeEnv
+		default:
+			info.id = fmt.Sprintf(
+				"%s://%s:%d#%s",
+				info.Type,
+				info.IP,
+				info.Port,
+				info.Source,
+			)
+		}
+	})
+
+	return info.id
+}
+
+// DescriptiveName returns a human readable, but also detailed representation
+// of the resolver.
+func (info *ResolverInfo) DescriptiveName() string {
+	switch {
+	case info.Type == ServerTypeMDNS:
+		return "MDNS"
+	case info.Type == ServerTypeEnv:
+		return "Portmaster Environment"
+	case info.Name != "":
+		return fmt.Sprintf(
+			"%s (%s)",
+			info.Name,
+			info.ID(),
+		)
+	default:
+		return fmt.Sprintf(
+			"%s (%s)",
+			info.IP.String(),
+			info.ID(),
+		)
+	}
+}
+
+// Copy returns a full copy of the ResolverInfo.
+func (info *ResolverInfo) Copy() *ResolverInfo {
+	// Force idGen to run before we copy.
+	_ = info.ID()
+
+	// Copy manually in order to not copy the mutex.
+	cp := &ResolverInfo{
+		Name:    info.Name,
+		Type:    info.Type,
+		Source:  info.Source,
+		IP:      info.IP,
+		IPScope: info.IPScope,
+		Port:    info.Port,
+		id:      info.id,
+	}
+	// Trigger idGen.Do(), as the ID is already generated.
+	cp.idGen.Do(func() {})
+
+	return cp
+}
+
 // IsBlockedUpstream returns true if the request has been blocked
 // upstream.
 func (resolver *Resolver) IsBlockedUpstream(answer *dns.Msg) bool {
 	return isBlockedUpstream(resolver, answer)
 }
 
-// GetName returns the name of the server. If no name
-// is configured the server address is returned.
-func (resolver *Resolver) GetName() string {
-	if resolver.Name != "" {
-		return resolver.Name
-	}
-
-	return resolver.Server
-}
-
 // String returns the URL representation of the resolver.
 func (resolver *Resolver) String() string {
-	return resolver.GetName()
+	return resolver.Info.DescriptiveName()
 }
 
 // ResolverConn is an interface to implement different types of query backends.

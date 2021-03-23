@@ -20,12 +20,13 @@ const (
 
 var (
 	envResolver = &Resolver{
-		Server:        ServerSourceEnv,
-		ServerType:    ServerTypeEnv,
-		ServerIPScope: netutils.SiteLocal,
-		ServerInfo:    "Portmaster environment",
-		Source:        ServerSourceEnv,
-		Conn:          &envResolverConn{},
+		ConfigURL: ServerSourceEnv,
+		Info: &ResolverInfo{
+			Type:    ServerTypeEnv,
+			Source:  ServerSourceEnv,
+			IPScope: netutils.SiteLocal,
+		},
+		Conn: &envResolverConn{},
 	}
 	envResolvers = []*Resolver{envResolver}
 
@@ -109,14 +110,12 @@ func (er *envResolverConn) makeRRCache(q *Query, answers []dns.RR) *RRCache {
 	q.NoCaching = true
 
 	return &RRCache{
-		Domain:      q.FQDN,
-		Question:    q.QType,
-		RCode:       dns.RcodeSuccess,
-		Answer:      answers,
-		Extra:       []dns.RR{internalSpecialUseComment}, // Always add comment about this TLD.
-		Server:      envResolver.Server,
-		ServerScope: envResolver.ServerIPScope,
-		ServerInfo:  envResolver.ServerInfo,
+		Domain:   q.FQDN,
+		Question: q.QType,
+		RCode:    dns.RcodeSuccess,
+		Answer:   answers,
+		Extra:    []dns.RR{internalSpecialUseComment}, // Always add comment about this TLD.
+		Resolver: envResolver.Info.Copy(),
 	}
 }
 

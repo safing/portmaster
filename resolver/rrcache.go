@@ -29,10 +29,8 @@ type RRCache struct {
 	Extra   []dns.RR
 	Expires int64
 
-	// Source Information
-	Server      string
-	ServerScope int8
-	ServerInfo  string
+	// Resolver Information
+	Resolver *ResolverInfo
 
 	// Metadata about the request and handling
 	ServedFromCache bool
@@ -133,13 +131,11 @@ func (rrCache *RRCache) ExportAllARecords() (ips []net.IP) {
 // ToNameRecord converts the RRCache to a NameRecord for cleaner persistence.
 func (rrCache *RRCache) ToNameRecord() *NameRecord {
 	new := &NameRecord{
-		Domain:      rrCache.Domain,
-		Question:    rrCache.Question.String(),
-		RCode:       rrCache.RCode,
-		Expires:     rrCache.Expires,
-		Server:      rrCache.Server,
-		ServerScope: rrCache.ServerScope,
-		ServerInfo:  rrCache.ServerInfo,
+		Domain:   rrCache.Domain,
+		Question: rrCache.Question.String(),
+		RCode:    rrCache.RCode,
+		Expires:  rrCache.Expires,
+		Resolver: rrCache.Resolver,
 	}
 
 	// stringify RR entries
@@ -204,9 +200,7 @@ func GetRRCache(domain string, question dns.Type) (*RRCache, error) {
 		rrCache.Extra = parseRR(rrCache.Extra, entry)
 	}
 
-	rrCache.Server = nameRecord.Server
-	rrCache.ServerScope = nameRecord.ServerScope
-	rrCache.ServerInfo = nameRecord.ServerInfo
+	rrCache.Resolver = nameRecord.Resolver
 	rrCache.ServedFromCache = true
 	rrCache.Modified = nameRecord.Meta().Modified
 	return rrCache, nil
@@ -259,9 +253,7 @@ func (rrCache *RRCache) ShallowCopy() *RRCache {
 		Extra:   rrCache.Extra,
 		Expires: rrCache.Expires,
 
-		Server:      rrCache.Server,
-		ServerScope: rrCache.ServerScope,
-		ServerInfo:  rrCache.ServerInfo,
+		Resolver: rrCache.Resolver,
 
 		ServedFromCache: rrCache.ServedFromCache,
 		RequestingNew:   rrCache.RequestingNew,
@@ -302,9 +294,9 @@ func (rrCache *RRCache) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 func (rrCache *RRCache) GetExtraRRs(ctx context.Context, query *dns.Msg) (extra []dns.RR) {
 	// Add cache status and source of data.
 	if rrCache.ServedFromCache {
-		extra = addExtra(ctx, extra, "served from cache, resolved by "+rrCache.ServerInfo)
+		extra = addExtra(ctx, extra, "served from cache, resolved by "+rrCache.Resolver.DescriptiveName())
 	} else {
-		extra = addExtra(ctx, extra, "freshly resolved by "+rrCache.ServerInfo)
+		extra = addExtra(ctx, extra, "freshly resolved by "+rrCache.Resolver.DescriptiveName())
 	}
 
 	// Add expiry and cache information.

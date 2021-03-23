@@ -3,6 +3,7 @@ package process
 import (
 	"context"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/safing/portbase/log"
@@ -52,6 +53,22 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 				log.Warningf("process: unexpected binary in the updates directory: %s", p.Path)
 				// TODO: Assign a fully restricted profile in the future when we are
 				// sure that we won't kill any of our own things.
+			}
+		}
+		// Check if this is the system resolver.
+		switch runtime.GOOS {
+		case "windows":
+			if (p.Path == `C:\Windows\System32\svchost.exe` || p.Path == `C:\Windows\system32\svchost.exe`) &&
+				(strings.Contains(p.SpecialDetail, "Dnscache") || strings.Contains(p.CmdLine, "-k NetworkService")) {
+				profileID = profile.SystemResolverProfileID
+			}
+		case "linux":
+			switch p.Path {
+			case "/lib/systemd/systemd-resolved",
+				"/usr/lib/systemd/systemd-resolved",
+				"/lib64/systemd/systemd-resolved",
+				"/usr/lib64/systemd/systemd-resolved":
+				profileID = profile.SystemResolverProfileID
 			}
 		}
 	}

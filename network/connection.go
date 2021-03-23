@@ -29,10 +29,12 @@ type FirewallHandler func(conn *Connection, pkt packet.Packet)
 type ProcessContext struct {
 	// ProcessName is the name of the process.
 	ProcessName string
-	//ProfileName is the name of the profile.
+	// ProfileName is the name of the profile.
 	ProfileName string
 	// BinaryPath is the path to the process binary.
 	BinaryPath string
+	// CmdLine holds the execution parameters.
+	CmdLine string
 	// PID is the process identifier.
 	PID int
 	// Profile is the ID of the main profile that
@@ -42,21 +44,37 @@ type ProcessContext struct {
 	Source string
 }
 
+type ConnectionType int8
+
+const (
+	Undefined ConnectionType = iota
+	IPConnection
+	DNSRequest
+	// ProxyRequest
+)
+
 // Connection describes a distinct physical network connection
 // identified by the IP/Port pair.
 type Connection struct { //nolint:maligned // TODO: fix alignment
 	record.Base
 	sync.Mutex
 
-	// ID may hold unique connection id. It is only set for non-DNS
-	// request connections and is considered immutable after a
-	// connection object has been created.
+	// ID holds a unique request/connection id and is considered immutable after
+	// creation.
 	ID string
+	// Type defines the connection type.
+	Type ConnectionType
+	// External defines if the connection represents an external request or
+	// connection.
+	External bool
 	// Scope defines the scope of a connection. For DNS requests, the
 	// scope is always set to the domain name. For direct packet
 	// connections the scope consists of the involved network environment
 	// and the packet direction. Once a connection object is created,
 	// Scope is considered immutable.
+	// Deprecated: This field holds duplicate information, which is accessible
+	// clearer through other attributes. Please use conn.Type, conn.Inbound
+	// and conn.Entity.Domain instead.
 	Scope string
 	// IPVersion is set to the packet IP version. It is not set (0) for
 	// connections created from a DNS request.
@@ -74,6 +92,8 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// set for connections created from DNS requests. LocalIP is
 	// considered immutable once a connection object has been created.
 	LocalIP net.IP
+	// LocalIPScope holds the network scope of the local IP.
+	LocalIPScope netutils.IPScope
 	// LocalPort holds the local port of the connection. It is not
 	// set for connections created from DNS requests. LocalPort is
 	// considered immutable once a connection object has been created.
@@ -83,6 +103,9 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// be added to it during the livetime of a connection. Access to
 	// entity must be guarded by the connection lock.
 	Entity *intel.Entity
+	// Resolver holds information about the resolver used to resolve
+	// Entity.Domain.
+	Resolver *resolver.ResolverInfo
 	// Verdict is the final decision that has been made for a connection.
 	// The verdict may change so any access to it must be guarded by the
 	// connection lock.
@@ -171,8 +194,9 @@ type Reason struct {
 func getProcessContext(ctx context.Context, proc *process.Process) ProcessContext {
 	// Gather process information.
 	pCtx := ProcessContext{
-		BinaryPath:  proc.Path,
 		ProcessName: proc.Name,
+		BinaryPath:  proc.Path,
+		CmdLine:     proc.CmdLine,
 		PID:         proc.Pid,
 	}
 
@@ -191,7 +215,7 @@ func getProcessContext(ctx context.Context, proc *process.Process) ProcessContex
 }
 
 // NewConnectionFromDNSRequest returns a new connection based on the given dns request.
-func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, localIP net.IP, localPort uint16) *Connection {
+func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []string, connID string, localIP net.IP, localPort uint16) *Connection {
 	// Determine IP version.
 	ipVersion := packet.IPv6
 	if localIP.To4() != nil {
@@ -218,6 +242,8 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 
 	timestamp := time.Now().Unix()
 	dnsConn := &Connection{
+		ID:    connID,
+		Type:  DNSRequest,
 		Scope: fqdn,
 		Entity: &intel.Entity{
 			Domain: fqdn,
@@ -234,10 +260,15 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		dnsConn.Internal = localProfile.Internal
 	}
 
+	// Always mark dns queries from the system resolver as internal.
+	if proc.IsSystemResolver() {
+		dnsConn.Internal = true
+	}
+
 	return dnsConn
 }
 
-func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cnames []string, remoteIP net.IP) (*Connection, error) {
+func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cnames []string, connID string, remoteIP net.IP) (*Connection, error) {
 	remoteHost, err := process.GetNetworkHost(ctx, remoteIP)
 	if err != nil {
 		return nil, err
@@ -245,7 +276,10 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 
 	timestamp := time.Now().Unix()
 	dnsConn := &Connection{
-		Scope: fqdn,
+		ID:       connID,
+		Type:     DNSRequest,
+		External: true,
+		Scope:    fqdn,
 		Entity: &intel.Entity{
 			Domain: fqdn,
 			CNAME:  cnames,
@@ -275,11 +309,19 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 
 	var scope string
 	var entity *intel.Entity
+	var resolverInfo *resolver.ResolverInfo
 
 	if inbound {
 
 		// inbound connection
-		switch netutils.ClassifyIP(pkt.Info().Src) {
+		entity = &intel.Entity{
+			Protocol: uint8(pkt.Info().Protocol),
+			Port:     pkt.Info().SrcPort,
+		}
+		entity.SetIP(pkt.Info().Src)
+		entity.SetDstPort(pkt.Info().DstPort)
+
+		switch entity.IPScope {
 		case netutils.HostLocal:
 			scope = IncomingHost
 		case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
@@ -292,31 +334,30 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		default:
 			scope = IncomingInvalid
 		}
-		entity = &intel.Entity{
-			IP:       pkt.Info().Src,
-			Protocol: uint8(pkt.Info().Protocol),
-			Port:     pkt.Info().SrcPort,
-		}
-		entity.SetDstPort(pkt.Info().DstPort)
 
 	} else {
 
 		// outbound connection
 		entity = &intel.Entity{
-			IP:       pkt.Info().Dst,
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().DstPort,
 		}
+		entity.SetIP(pkt.Info().Dst)
 		entity.SetDstPort(entity.Port)
 
 		// check if we can find a domain for that IP
-		ipinfo, err := resolver.GetIPInfo(proc.LocalProfileKey, pkt.Info().Dst.String())
+		ipinfo, err := resolver.GetIPInfo(proc.Profile().LocalProfile().ID, pkt.Info().Dst.String())
+		if err != nil {
+			// Try again with the global scope, in case DNS went through the system resolver.
+			ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().Dst.String())
+		}
 		if err == nil {
 			lastResolvedDomain := ipinfo.MostRecentDomain()
 			if lastResolvedDomain != nil {
 				scope = lastResolvedDomain.Domain
 				entity.Domain = lastResolvedDomain.Domain
 				entity.CNAME = lastResolvedDomain.CNAMEs
+				resolverInfo = lastResolvedDomain.Resolver
 				removeOpenDNSRequest(proc.Pid, lastResolvedDomain.Domain)
 			}
 		}
@@ -331,7 +372,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		if scope == "" {
 
 			// outbound direct (possibly P2P) connection
-			switch netutils.ClassifyIP(pkt.Info().Dst) {
+			switch entity.IPScope {
 			case netutils.HostLocal:
 				scope = PeerHost
 			case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
@@ -351,21 +392,24 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	// Create new connection object.
 	newConn := &Connection{
 		ID:        pkt.GetConnectionID(),
+		Type:      IPConnection,
 		Scope:     scope,
 		IPVersion: pkt.Info().Version,
 		Inbound:   inbound,
 		// local endpoint
 		IPProtocol:     pkt.Info().Protocol,
-		LocalIP:        pkt.Info().LocalIP(),
 		LocalPort:      pkt.Info().LocalPort(),
 		ProcessContext: getProcessContext(pkt.Ctx(), proc),
 		process:        proc,
 		// remote endpoint
 		Entity: entity,
+		// resolver used to resolve dns request
+		Resolver: resolverInfo,
 		// meta
 		Started:                time.Now().Unix(),
 		ProfileRevisionCounter: proc.Profile().RevisionCnt(),
 	}
+	newConn.SetLocalIP(pkt.Info().LocalIP())
 
 	// Inherit internal status of profile.
 	if localProfile := proc.Profile().LocalProfile(); localProfile != nil {
@@ -378,6 +422,13 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 // GetConnection fetches a Connection from the database.
 func GetConnection(id string) (*Connection, bool) {
 	return conns.get(id)
+}
+
+// SetLocalIP sets the local IP address together with its network scope. The
+// connection is not locked for this.
+func (conn *Connection) SetLocalIP(ip net.IP) {
+	conn.LocalIP = ip
+	conn.LocalIPScope = netutils.GetIPScope(ip)
 }
 
 // AcceptWithContext accepts the connection.
@@ -477,14 +528,11 @@ func (conn *Connection) Save() {
 	conn.UpdateMeta()
 
 	if !conn.KeyIsSet() {
-		// A connection without an ID has been created from
-		// a DNS request rather than a packet. Choose the correct
-		// connection store here.
-		if conn.ID == "" {
-			conn.SetKey(fmt.Sprintf("network:tree/%d/%s", conn.process.Pid, conn.Scope))
+		if conn.Type == DNSRequest {
+			conn.SetKey(makeKey(conn.process.Pid, "dns", conn.ID))
 			dnsConns.add(conn)
 		} else {
-			conn.SetKey(fmt.Sprintf("network:tree/%d/%s/%s", conn.process.Pid, conn.Scope, conn.ID))
+			conn.SetKey(makeKey(conn.process.Pid, "ip", conn.ID))
 			conns.add(conn)
 		}
 	}
@@ -500,10 +548,10 @@ func (conn *Connection) delete() {
 	// A connection without an ID has been created from
 	// a DNS request rather than a packet. Choose the correct
 	// connection store here.
-	if conn.ID == "" {
-		dnsConns.delete(conn)
-	} else {
+	if conn.Type == IPConnection {
 		conns.delete(conn)
+	} else {
+		dnsConns.delete(conn)
 	}
 
 	conn.Meta().Delete()

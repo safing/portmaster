@@ -49,15 +49,13 @@ type InFlightQuery struct {
 // MakeCacheRecord creates an RCache record from a reply.
 func (ifq *InFlightQuery) MakeCacheRecord(reply *dns.Msg) *RRCache {
 	return &RRCache{
-		Domain:      ifq.Query.FQDN,
-		Question:    ifq.Query.QType,
-		RCode:       reply.Rcode,
-		Answer:      reply.Answer,
-		Ns:          reply.Ns,
-		Extra:       reply.Extra,
-		Server:      ifq.Resolver.Server,
-		ServerScope: ifq.Resolver.ServerIPScope,
-		ServerInfo:  ifq.Resolver.ServerInfo,
+		Domain:   ifq.Query.FQDN,
+		Question: ifq.Query.QType,
+		RCode:    reply.Rcode,
+		Answer:   reply.Answer,
+		Ns:       reply.Ns,
+		Extra:    reply.Extra,
+		Resolver: ifq.Resolver.Info.Copy(),
 	}
 }
 
@@ -172,7 +170,7 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	}
 
 	if tr.resolver.IsBlockedUpstream(reply) {
-		return nil, &BlockedUpstreamError{tr.resolver.GetName()}
+		return nil, &BlockedUpstreamError{tr.resolver.Info.DescriptiveName()}
 	}
 
 	return inFlight.MakeCacheRecord(reply), nil
@@ -189,7 +187,7 @@ func (tr *TCPResolver) checkClientStatus() {
 	select {
 	case tr.clientHeartbeat <- struct{}{}:
 	case <-time.After(heartbeatTimeout):
-		log.Warningf("resolver: heartbeat failed for %s dns client, stopping", tr.resolver.GetName())
+		log.Warningf("resolver: heartbeat failed for %s dns client, stopping", tr.resolver.Info.DescriptiveName())
 		stopClient()
 	}
 }
@@ -299,7 +297,7 @@ func (mgr *tcpResolverConnMgr) waitForWork(clientCtx context.Context) (proceed b
 				select {
 				case mgr.tr.queries <- inFlight.Msg:
 				default:
-					log.Warningf("resolver: failed to re-inject abandoned query to %s", mgr.tr.resolver.GetName())
+					log.Warningf("resolver: failed to re-inject abandoned query to %s", mgr.tr.resolver.Info.DescriptiveName())
 				}
 			}
 			// in-flight queries that match the connection instance ID are not changed. They are already in the queue.
@@ -317,7 +315,7 @@ func (mgr *tcpResolverConnMgr) waitForWork(clientCtx context.Context) (proceed b
 			select {
 			case mgr.tr.queries <- msg:
 			case <-time.After(2 * time.Second):
-				log.Warningf("resolver: failed to re-inject waking query to %s", mgr.tr.resolver.GetName())
+				log.Warningf("resolver: failed to re-inject waking query to %s", mgr.tr.resolver.Info.DescriptiveName())
 			}
 			return nil
 		})
@@ -343,7 +341,7 @@ func (mgr *tcpResolverConnMgr) establishConnection() (
 	var err error
 	conn, err = mgr.tr.dnsClient.Dial(mgr.tr.resolver.ServerAddress)
 	if err != nil {
-		log.Debugf("resolver: failed to connect to %s (%s)", mgr.tr.resolver.GetName(), mgr.tr.resolver.ServerAddress)
+		log.Debugf("resolver: failed to connect to %s", mgr.tr.resolver.Info.DescriptiveName())
 		return nil, nil, nil, nil
 	}
 	connCtx, cancelConnCtx = context.WithCancel(context.Background())
@@ -356,9 +354,8 @@ func (mgr *tcpResolverConnMgr) establishConnection() (
 
 	// Log that a connection to the resolver was established.
 	log.Debugf(
-		"resolver: connected to %s (%s) with %d queries waiting",
-		mgr.tr.resolver.GetName(),
-		conn.RemoteAddr(),
+		"resolver: connected to %s with %d queries waiting",
+		mgr.tr.resolver.Info.DescriptiveName(),
 		waitingQueries,
 	)
 
@@ -434,7 +431,7 @@ func (mgr *tcpResolverConnMgr) queryHandler( //nolint:golint // context.Context 
 				activeQueries := len(mgr.tr.inFlightQueries)
 				mgr.tr.Unlock()
 				if activeQueries == 0 {
-					log.Debugf("resolver: recycling conn to %s (%s)", mgr.tr.resolver.GetName(), conn.RemoteAddr())
+					log.Debugf("resolver: recycling conn to %s", mgr.tr.resolver.Info.DescriptiveName())
 					return true
 				}
 			}
@@ -454,9 +451,8 @@ func (mgr *tcpResolverConnMgr) handleQueryResponse(conn *dns.Conn, msg *dns.Msg)
 
 	if !ok {
 		log.Debugf(
-			"resolver: received possibly unsolicited reply from %s (%s): txid=%d q=%+v",
-			mgr.tr.resolver.GetName(),
-			conn.RemoteAddr(),
+			"resolver: received possibly unsolicited reply from %s: txid=%d q=%+v",
+			mgr.tr.resolver.Info.DescriptiveName(),
 			msg.Id,
 			msg.Question,
 		)
@@ -519,24 +515,21 @@ func (mgr *tcpResolverConnMgr) logConnectionError(err error, conn *dns.Conn, con
 		switch {
 		case errors.Is(err, io.EOF):
 			log.Debugf(
-				"resolver: connection to %s (%s) was closed with %d in-flight queries",
-				mgr.tr.resolver.GetName(),
-				conn.RemoteAddr(),
+				"resolver: connection to %s was closed with %d in-flight queries",
+				mgr.tr.resolver.Info.DescriptiveName(),
 				inFlightQueries,
 			)
 		case reading:
 			log.Warningf(
-				"resolver: read error from %s (%s) with %d in-flight queries: %s",
-				mgr.tr.resolver.GetName(),
-				conn.RemoteAddr(),
+				"resolver: read error from %s with %d in-flight queries: %s",
+				mgr.tr.resolver.Info.DescriptiveName(),
 				inFlightQueries,
 				err,
 			)
 		default:
 			log.Warningf(
-				"resolver: write error to %s (%s) with %d in-flight queries: %s",
-				mgr.tr.resolver.GetName(),
-				conn.RemoteAddr(),
+				"resolver: write error to %s with %d in-flight queries: %s",
+				mgr.tr.resolver.Info.DescriptiveName(),
 				inFlightQueries,
 				err,
 			)

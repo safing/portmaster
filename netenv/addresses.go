@@ -38,12 +38,12 @@ func GetAssignedGlobalAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
 		return nil, nil, err
 	}
 	for _, ip4 := range allv4 {
-		if netutils.IPIsGlobal(ip4) {
+		if netutils.GetIPScope(ip4).IsGlobal() {
 			ipv4 = append(ipv4, ip4)
 		}
 	}
 	for _, ip6 := range allv6 {
-		if netutils.IPIsGlobal(ip6) {
+		if netutils.GetIPScope(ip6).IsGlobal() {
 			ipv6 = append(ipv6, ip6)
 		}
 	}
@@ -59,7 +59,7 @@ var (
 // Broadcast or multicast addresses will never match, even if valid in in use.
 func IsMyIP(ip net.IP) (yes bool, err error) {
 	// Check for IPs that don't need extra checks.
-	switch netutils.ClassifyIP(ip) {
+	switch netutils.GetIPScope(ip) {
 	case netutils.HostLocal:
 		return true, nil
 	case netutils.LocalMulticast, netutils.GlobalMulticast:

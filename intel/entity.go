@@ -58,12 +58,18 @@ type Entity struct {
 	// set, IP has been resolved by following all CNAMEs.
 	IP net.IP
 
+	// IPScope holds the network scope of the IP.
+	IPScope netutils.IPScope
+
 	// Country holds the country the IP address (ASN) is
 	// located in.
 	Country string
 
 	// ASN holds the autonomous system number of the IP.
 	ASN uint
+
+	// ASOrg holds the owner's name of the autonomous system.
+	ASOrg string
 
 	location *geoip.Location
 
@@ -93,6 +99,12 @@ type Entity struct {
 func (e *Entity) Init() *Entity {
 	// for backwards compatibility, remove that one
 	return e
+}
+
+// SetIP sets the IP address together with its network scope.
+func (e *Entity) SetIP(ip net.IP) {
+	e.IP = ip
+	e.IPScope = netutils.GetIPScope(ip)
 }
 
 // SetDstPort sets the destination port.
@@ -229,6 +241,7 @@ func (e *Entity) getLocation(ctx context.Context) {
 		e.location = loc
 		e.Country = loc.Country.ISOCode
 		e.ASN = loc.AutonomousSystemNumber
+		e.ASOrg = loc.AutonomousSystemOrganization
 	})
 }
 
@@ -422,7 +435,7 @@ func (e *Entity) getIPLists(ctx context.Context) {
 	}
 
 	// only load lists for IP addresses that are classified as global.
-	if netutils.ClassifyIP(ip) != netutils.Global {
+	if !e.IPScope.IsGlobal() {
 		return
 	}
 

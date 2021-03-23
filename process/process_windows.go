@@ -18,6 +18,7 @@ func (p *Process) specialOSInit() {
 		switch err {
 		case nil:
 			p.Name += fmt.Sprintf(" (%s)", svcNames)
+			p.SpecialDetail = svcNames
 		case osdetail.ErrServiceNotFound:
 			log.Tracef("process: failed to get service name for svchost.exe (pid %d): %s", p.Pid, err)
 		default:

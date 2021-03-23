@@ -39,7 +39,7 @@ const noReasonOptionKey = ""
 
 type deciderFn func(context.Context, *network.Connection, packet.Packet) bool
 
-var deciders = []deciderFn{
+var defaultDeciders = []deciderFn{
 	checkPortmasterConnection,
 	checkSelfCommunication,
 	checkConnectionType,
@@ -51,6 +51,11 @@ var deciders = []deciderFn{
 	dropInbound,
 	checkDomainHeuristics,
 	checkAutoPermitRelated,
+}
+
+var dnsFromSystemResolverDeciders = []deciderFn{
+	checkConnectivityDomain,
+	checkBypassPrevention,
 }
 
 // DecideOnConnection makes a decision about a connection.
@@ -79,8 +84,21 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 		}
 	}
 
+	// DNS request from the system resolver require a special decision process,
+	// because the original requesting process is not known. Here, we only check
+	// global-only and the most important per-app aspects. The resulting
+	// connection is then blocked when the original requesting process is known.
+	if conn.Type == network.DNSRequest && conn.Process().IsSystemResolver() {
+		// Run all deciders and return if they came to a conclusion.
+		done, _ := runDeciders(ctx, dnsFromSystemResolverDeciders, conn, pkt)
+		if !done {
+			conn.Accept("permitting system resolver dns request", noReasonOptionKey)
+		}
+		return
+	}
+
 	// Run all deciders and return if they came to a conclusion.
-	done, defaultAction := runDeciders(ctx, conn, pkt)
+	done, defaultAction := runDeciders(ctx, defaultDeciders, conn, pkt)
 	if done {
 		return
 	}
@@ -96,7 +114,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 	}
 }
 
-func runDeciders(ctx context.Context, conn *network.Connection, pkt packet.Packet) (done bool, defaultAction uint8) {
+func runDeciders(ctx context.Context, selectedDeciders []deciderFn, conn *network.Connection, pkt packet.Packet) (done bool, defaultAction uint8) {
 	layeredProfile := conn.Process().Profile()
 
 	// Read-lock the all the profiles.
@@ -104,7 +122,7 @@ func runDeciders(ctx context.Context, conn *network.Connection, pkt packet.Packe
 	defer layeredProfile.UnlockForUsage()
 
 	// Go though all deciders, return if one sets an action.
-	for _, decider := range deciders {
+	for _, decider := range selectedDeciders {
 		if decider(ctx, conn, pkt) {
 			return true, profile.DefaultActionNotSet
 		}
@@ -248,39 +266,58 @@ func checkConnectivityDomain(_ context.Context, conn *network.Connection, _ pack
 func checkConnectionScope(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
 	p := conn.Process().Profile()
 
-	// check scopes
-	if conn.Entity.IP != nil {
-		classification := netutils.ClassifyIP(conn.Entity.IP)
-
-		switch classification {
-		case netutils.Global, netutils.GlobalMulticast:
-			if p.BlockScopeInternet() {
-				conn.Deny("Internet access blocked", profile.CfgOptionBlockScopeInternetKey) // Block Outbound / Drop Inbound
-				return true
-			}
-		case netutils.SiteLocal, netutils.LinkLocal, netutils.LocalMulticast:
-			if p.BlockScopeLAN() {
-				conn.Block("LAN access blocked", profile.CfgOptionBlockScopeLANKey) // Block Outbound / Drop Inbound
-				return true
-			}
-		case netutils.HostLocal:
-			if p.BlockScopeLocal() {
-				conn.Block("Localhost access blocked", profile.CfgOptionBlockScopeLocalKey) // Block Outbound / Drop Inbound
-				return true
-			}
-		default: // netutils.Invalid
-			conn.Deny("invalid IP", noReasonOptionKey) // Block Outbound / Drop Inbound
-			return true
-		}
-	} else if conn.Entity.Domain != "" {
-		// This is a DNS Request.
+	// If we are handling a DNS request, check if we can immediately block it.
+	if conn.Type == network.DNSRequest {
 		// DNS is expected to resolve to LAN or Internet addresses.
 		// Localhost queries are immediately responded to by the nameserver.
 		if p.BlockScopeInternet() && p.BlockScopeLAN() {
 			conn.Block("Internet and LAN access blocked", profile.CfgOptionBlockScopeInternetKey)
 			return true
 		}
+
+		return false
 	}
+
+	// Check if the network scope is permitted.
+	switch conn.Entity.IPScope {
+	case netutils.Global, netutils.GlobalMulticast:
+		if p.BlockScopeInternet() {
+			conn.Deny("Internet access blocked", profile.CfgOptionBlockScopeInternetKey) // Block Outbound / Drop Inbound
+			return true
+		}
+	case netutils.SiteLocal, netutils.LinkLocal, netutils.LocalMulticast:
+		if p.BlockScopeLAN() {
+			conn.Block("LAN access blocked", profile.CfgOptionBlockScopeLANKey) // Block Outbound / Drop Inbound
+			return true
+		}
+	case netutils.HostLocal:
+		if p.BlockScopeLocal() {
+			conn.Block("Localhost access blocked", profile.CfgOptionBlockScopeLocalKey) // Block Outbound / Drop Inbound
+			return true
+		}
+	default: // netutils.Unknown and netutils.Invalid
+		conn.Deny("invalid IP", noReasonOptionKey) // Block Outbound / Drop Inbound
+		return true
+	}
+
+	// If the IP address was resolved, check the scope of the resolver.
+	switch {
+	case p.RemoveOutOfScopeDNS():
+		// Out of scope checking is not active.
+	case conn.Resolver == nil:
+		// IP address of connection was not resolved.
+	case conn.Resolver.IPScope.IsGlobal() &&
+		(conn.Entity.IPScope.IsLAN() || conn.Entity.IPScope.IsLocalhost()):
+		// Block global resolvers from returning LAN/Localhost IPs.
+		conn.Block("DNS server horizon violation: global DNS server returned local IP address", profile.CfgOptionRemoveOutOfScopeDNSKey)
+		return true
+	case conn.Resolver.IPScope.IsLAN() &&
+		conn.Entity.IPScope.IsLocalhost():
+		// Block LAN resolvers from returning Localhost IPs.
+		conn.Block("DNS server horizon violation: LAN DNS server returned localhost IP address", profile.CfgOptionRemoveOutOfScopeDNSKey)
+		return true
+	}
+
 	return false
 }
 

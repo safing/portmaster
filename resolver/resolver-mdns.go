@@ -31,12 +31,13 @@ var (
 	questionsLock sync.Mutex
 
 	mDNSResolver = &Resolver{
-		Server:        ServerSourceMDNS,
-		ServerType:    ServerTypeDNS,
-		ServerIPScope: netutils.SiteLocal,
-		ServerInfo:    "mDNS resolver",
-		Source:        ServerSourceMDNS,
-		Conn:          &mDNSResolverConn{},
+		ConfigURL: ServerSourceMDNS,
+		Info: &ResolverInfo{
+			Type:    ServerTypeMDNS,
+			Source:  ServerSourceMDNS,
+			IPScope: netutils.SiteLocal,
+		},
+		Conn: &mDNSResolverConn{},
 	}
 	mDNSResolvers = []*Resolver{mDNSResolver}
 )
@@ -200,12 +201,10 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 				// create new and do not append
 				if err != nil || rrCache.Modified < time.Now().Add(-2*time.Second).Unix() || rrCache.Expired() {
 					rrCache = &RRCache{
-						Domain:      question.Name,
-						Question:    dns.Type(question.Qtype),
-						RCode:       dns.RcodeSuccess,
-						Server:      mDNSResolver.Server,
-						ServerScope: mDNSResolver.ServerIPScope,
-						ServerInfo:  mDNSResolver.ServerInfo,
+						Domain:   question.Name,
+						Question: dns.Type(question.Qtype),
+						RCode:    dns.RcodeSuccess,
+						Resolver: mDNSResolver.Info.Copy(),
 					}
 				}
 			}
@@ -302,13 +301,11 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 					continue
 				}
 				rrCache = &RRCache{
-					Domain:      v.Header().Name,
-					Question:    dns.Type(v.Header().Class),
-					RCode:       dns.RcodeSuccess,
-					Answer:      []dns.RR{v},
-					Server:      mDNSResolver.Server,
-					ServerScope: mDNSResolver.ServerIPScope,
-					ServerInfo:  mDNSResolver.ServerInfo,
+					Domain:   v.Header().Name,
+					Question: dns.Type(v.Header().Class),
+					RCode:    dns.RcodeSuccess,
+					Answer:   []dns.RR{v},
+					Resolver: mDNSResolver.Info.Copy(),
 				}
 				rrCache.Clean(minMDnsTTL)
 				err := rrCache.Save()
@@ -423,12 +420,10 @@ func queryMulticastDNS(ctx context.Context, q *Query) (*RRCache, error) {
 
 	// Respond with NXDomain.
 	return &RRCache{
-		Domain:      q.FQDN,
-		Question:    q.QType,
-		RCode:       dns.RcodeNameError,
-		Server:      mDNSResolver.Server,
-		ServerScope: mDNSResolver.ServerIPScope,
-		ServerInfo:  mDNSResolver.ServerInfo,
+		Domain:   q.FQDN,
+		Question: q.QType,
+		RCode:    dns.RcodeNameError,
+		Resolver: mDNSResolver.Info.Copy(),
 	}, nil
 }
 

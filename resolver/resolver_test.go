@@ -52,7 +52,7 @@ func TestSingleResolving(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("running bulk query test with resolver %s", resolver.Server)
+	t.Logf("running bulk query test with resolver %s", resolver.Info.DescriptiveName())
 
 	started := time.Now()
 
@@ -83,7 +83,7 @@ func TestBulkResolving(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("running bulk query test with resolver %s", resolver.Server)
+	t.Logf("running bulk query test with resolver %s", resolver.Info.DescriptiveName())
 
 	started := time.Now()
 

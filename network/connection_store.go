@@ -1,7 +1,6 @@
 package network
 
 import (
-	"strconv"
 	"sync"
 )
 
@@ -16,25 +15,18 @@ func newConnectionStore() *connectionStore {
 	}
 }
 
-func (cs *connectionStore) getID(conn *Connection) string {
-	if conn.ID != "" {
-		return conn.ID
-	}
-	return strconv.Itoa(conn.process.Pid) + "/" + conn.Scope
-}
-
 func (cs *connectionStore) add(conn *Connection) {
 	cs.rw.Lock()
 	defer cs.rw.Unlock()
 
-	cs.items[cs.getID(conn)] = conn
+	cs.items[conn.ID] = conn
 }
 
 func (cs *connectionStore) delete(conn *Connection) {
 	cs.rw.Lock()
 	defer cs.rw.Unlock()
 
-	delete(cs.items, cs.getID(conn))
+	delete(cs.items, conn.ID)
 }
 
 func (cs *connectionStore) get(id string) (*Connection, bool) {

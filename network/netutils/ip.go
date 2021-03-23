@@ -2,19 +2,29 @@ package netutils
 
 import "net"
 
-// IP classifications
+// IPScope is the scope of the IP address.
+type IPScope int8
+
+// Defined IP Scopes.
 const (
-	HostLocal int8 = iota
+	Invalid IPScope = iota - 1
+	Undefined
+	HostLocal
 	LinkLocal
 	SiteLocal
 	Global
 	LocalMulticast
 	GlobalMulticast
-	Invalid int8 = -1
 )
 
-// ClassifyIP returns the classification for the given IP address.
-func ClassifyIP(ip net.IP) int8 { //nolint:gocognit
+// ClassifyIP returns the network scope of the given IP address.
+// Deprecated: Please use the new GetIPScope instead.
+func ClassifyIP(ip net.IP) IPScope {
+	return GetIPScope(ip)
+}
+
+// GetIPScope returns the network scope of the given IP address.
+func GetIPScope(ip net.IP) IPScope { //nolint:gocognit
 	if ip4 := ip.To4(); ip4 != nil {
 		// IPv4
 		switch {
@@ -76,32 +86,27 @@ func ClassifyIP(ip net.IP) int8 { //nolint:gocognit
 	return Invalid
 }
 
-// IPIsLocalhost returns whether the IP refers to the host itself.
-func IPIsLocalhost(ip net.IP) bool {
-	return ClassifyIP(ip) == HostLocal
+// IsLocalhost returns whether the IP refers to the host itself.
+func (scope IPScope) IsLocalhost() bool {
+	return scope == HostLocal
 }
 
-// IPIsLAN returns true if the given IP is a site-local or link-local address.
-func IPIsLAN(ip net.IP) bool {
-	switch ClassifyIP(ip) {
-	case SiteLocal, LinkLocal:
+// IsLAN returns true if the scope is site-local or link-local.
+func (scope IPScope) IsLAN() bool {
+	switch scope {
+	case SiteLocal, LinkLocal, LocalMulticast:
 		return true
 	default:
 		return false
 	}
 }
 
-// IPIsGlobal returns true if the given IP is a global address.
-func IPIsGlobal(ip net.IP) bool {
-	return ClassifyIP(ip) == Global
-}
-
-// IPIsLinkLocal returns true if the given IP is a link-local address.
-func IPIsLinkLocal(ip net.IP) bool {
-	return ClassifyIP(ip) == LinkLocal
-}
-
-// IPIsSiteLocal returns true if the given IP is a site-local address.
-func IPIsSiteLocal(ip net.IP) bool {
-	return ClassifyIP(ip) == SiteLocal
+// IsGlobal returns true if the scope is global.
+func (scope IPScope) IsGlobal() bool {
+	switch scope {
+	case Global, GlobalMulticast:
+		return true
+	default:
+		return false
+	}
 }

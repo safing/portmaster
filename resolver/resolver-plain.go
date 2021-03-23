@@ -72,22 +72,20 @@ func (pr *PlainResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 
 	// check if blocked
 	if pr.resolver.IsBlockedUpstream(reply) {
-		return nil, &BlockedUpstreamError{pr.resolver.GetName()}
+		return nil, &BlockedUpstreamError{pr.resolver.Info.DescriptiveName()}
 	}
 
 	// hint network environment at successful connection
 	netenv.ReportSuccessfulConnection()
 
 	newRecord := &RRCache{
-		Domain:      q.FQDN,
-		Question:    q.QType,
-		RCode:       reply.Rcode,
-		Answer:      reply.Answer,
-		Ns:          reply.Ns,
-		Extra:       reply.Extra,
-		Server:      pr.resolver.Server,
-		ServerScope: pr.resolver.ServerIPScope,
-		ServerInfo:  pr.resolver.ServerInfo,
+		Domain:   q.FQDN,
+		Question: q.QType,
+		RCode:    reply.Rcode,
+		Answer:   reply.Answer,
+		Ns:       reply.Ns,
+		Extra:    reply.Extra,
+		Resolver: pr.resolver.Info.Copy(),
 	}
 
 	// TODO: check if reply.Answer is valid

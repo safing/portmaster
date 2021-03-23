@@ -44,6 +44,10 @@ type Process struct {
 	CmdLine   string
 	FirstArg  string
 
+	// SpecialDetail holds special information, the meaning of which can change
+	// based on any of the previous attributes.
+	SpecialDetail string
+
 	LocalProfileKey string
 	profile         *profile.LayeredProfile
 
@@ -63,6 +67,24 @@ func (p *Process) Profile() *profile.LayeredProfile {
 	}
 
 	return p.profile
+}
+
+// IsSystemResolver is a shortcut to check if the process is or belongs to the
+// system resolver and needs special handling.
+func (p *Process) IsSystemResolver() bool {
+	// Check if process exists.
+	if p == nil {
+		return false
+	}
+
+	// Check if local profile exists.
+	localProfile := p.profile.LocalProfile()
+	if localProfile == nil {
+		return false
+	}
+
+	// Check ID.
+	return localProfile.ID == profile.SystemResolverProfileID
 }
 
 // GetLastSeen returns the unix timestamp when the process was last seen.

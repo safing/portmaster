@@ -158,13 +158,13 @@ addNextResolver:
 	for _, resolver := range addResolvers {
 		// check for compliance
 		if err := resolver.checkCompliance(ctx, q); err != nil {
-			log.Tracer(ctx).Tracef("skipping non-compliant resolver %s: %s", resolver.GetName(), err)
+			log.Tracer(ctx).Tracef("skipping non-compliant resolver %s: %s", resolver.Info.DescriptiveName(), err)
 			continue
 		}
 
 		// deduplicate
 		for _, selectedResolver := range selected {
-			if selectedResolver.Server == resolver.Server {
+			if selectedResolver.Info.ID() == resolver.Info.ID() {
 				continue addNextResolver
 			}
 		}
@@ -208,7 +208,7 @@ func (q *Query) checkCompliance() error {
 
 func (resolver *Resolver) checkCompliance(_ context.Context, q *Query) error {
 	if noInsecureProtocols(q.SecurityLevel) {
-		switch resolver.ServerType {
+		switch resolver.Info.Type {
 		case ServerTypeDNS:
 			return errInsecureProtocol
 		case ServerTypeTCP:
@@ -218,20 +218,20 @@ func (resolver *Resolver) checkCompliance(_ context.Context, q *Query) error {
 		case ServerTypeDoH:
 			// compliant
 		case ServerTypeEnv:
-			// compliant (data is sources from local network only and is highly limited)
+			// compliant (data is sourced from local network only and is highly limited)
 		default:
 			return errInsecureProtocol
 		}
 	}
 
 	if noAssignedNameservers(q.SecurityLevel) {
-		if resolver.Source == ServerSourceOperatingSystem {
+		if resolver.Info.Source == ServerSourceOperatingSystem {
 			return errAssignedServer
 		}
 	}
 
 	if noMulticastDNS(q.SecurityLevel) {
-		if resolver.Source == ServerSourceMDNS {
+		if resolver.Info.Source == ServerSourceMDNS {
 			return errMulticastDNS
 		}
 	}
