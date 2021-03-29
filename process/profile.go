@@ -59,7 +59,7 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 		switch runtime.GOOS {
 		case "windows":
 			if (p.Path == `C:\Windows\System32\svchost.exe` || p.Path == `C:\Windows\system32\svchost.exe`) &&
-				(strings.Contains(p.SpecialDetail, "Dnscache") || strings.Contains(p.CmdLine, "-k NetworkService")) {
+				(strings.Contains(p.SpecialDetail, "Dnscache") || strings.Contains(p.CmdLine, "-s Dnscache")) {
 				profileID = profile.SystemResolverProfileID
 			}
 		case "linux":
