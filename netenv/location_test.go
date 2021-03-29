@@ -21,9 +21,9 @@ func TestGetApproximateInternetLocation(t *testing.T) {
 		t.Skip("skipping privileged test, active with -privileged argument")
 	}
 
-	ip, err := GetApproximateInternetLocation()
+	loc, err := GetInternetLocation()
 	if err != nil {
 		t.Fatalf("GetApproximateInternetLocation failed: %s", err)
 	}
-	t.Logf("GetApproximateInternetLocation: %s", ip.String())
+	t.Logf("GetApproximateInternetLocation: %+v", loc)
 }
