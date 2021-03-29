@@ -1,14 +1,13 @@
 package netenv
 
 import (
-	"fmt"
 	"testing"
 )
 
 func TestGetAssignedAddresses(t *testing.T) {
 	ipv4, ipv6, err := GetAssignedAddresses()
-	fmt.Printf("all v4: %v", ipv4)
-	fmt.Printf("all v6: %v", ipv6)
+	t.Logf("all v4: %v", ipv4)
+	t.Logf("all v6: %v", ipv6)
 	if err != nil {
 		t.Fatalf("failed to get addresses: %s", err)
 	}
@@ -19,8 +18,8 @@ func TestGetAssignedAddresses(t *testing.T) {
 
 func TestGetAssignedGlobalAddresses(t *testing.T) {
 	ipv4, ipv6, err := GetAssignedGlobalAddresses()
-	fmt.Printf("all global v4: %v", ipv4)
-	fmt.Printf("all global v6: %v", ipv6)
+	t.Logf("all global v4: %v", ipv4)
+	t.Logf("all global v6: %v", ipv6)
 	if err != nil {
 		t.Fatalf("failed to get addresses: %s", err)
 	}
