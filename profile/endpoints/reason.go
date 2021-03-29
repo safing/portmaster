@@ -23,7 +23,7 @@ type reason struct {
 func (r *reason) String() string {
 	prefix := "denied by rule: "
 	if r.Permitted {
-		prefix = "permitted by rule: "
+		prefix = "allowed by rule: "
 	}
 
 	return prefix + r.description + " " + r.Value

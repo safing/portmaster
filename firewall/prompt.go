@@ -66,7 +66,7 @@ func prompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
 	case promptResponse := <-n.Response():
 		switch promptResponse {
 		case allowDomainAll, allowDomainDistinct, allowIP, allowServingIP:
-			conn.Accept("permitted via prompt", profile.CfgOptionEndpointsKey)
+			conn.Accept("allowed via prompt", profile.CfgOptionEndpointsKey)
 		default: // deny
 			conn.Deny("blocked via prompt", profile.CfgOptionEndpointsKey)
 		}
@@ -152,7 +152,7 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 		if action != "" {
 			switch action {
 			case allowDomainAll, allowDomainDistinct, allowIP, allowServingIP:
-				conn.Accept("permitted via prompt", profile.CfgOptionEndpointsKey)
+				conn.Accept("allowed via prompt", profile.CfgOptionEndpointsKey)
 			default: // deny
 				conn.Deny("blocked via prompt", profile.CfgOptionEndpointsKey)
 			}
