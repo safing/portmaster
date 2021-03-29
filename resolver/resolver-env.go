@@ -124,3 +124,5 @@ func (er *envResolverConn) ReportFailure() {}
 func (er *envResolverConn) IsFailing() bool {
 	return false
 }
+
+func (er *envResolverConn) ResetFailure() {}

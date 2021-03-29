@@ -8,6 +8,9 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/tevino/abool"
+
+	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/netutils"
 )
@@ -179,6 +182,7 @@ type ResolverConn interface { //nolint:go-lint // TODO
 	Query(ctx context.Context, q *Query) (*RRCache, error)
 	ReportFailure()
 	IsFailing() bool
+	ResetFailure()
 }
 
 // BasicResolverConn implements ResolverConn for standard dns clients.
@@ -187,8 +191,18 @@ type BasicResolverConn struct {
 
 	resolver *Resolver
 
+	failing      *abool.AtomicBool
 	failingUntil time.Time
 	fails        int
+	failLock     sync.Mutex
+
+	networkChangedFlag *utils.Flag
+}
+
+// init initializes the basic resolver connection.
+func (brc *BasicResolverConn) init() {
+	brc.failing = abool.New()
+	brc.networkChangedFlag = netenv.GetNetworkChangedFlag()
 }
 
 // ReportFailure reports that an error occurred with this resolver.
@@ -203,6 +217,7 @@ func (brc *BasicResolverConn) ReportFailure() {
 
 	brc.fails++
 	if brc.fails > FailThreshold {
+		brc.failing.Set()
 		brc.failingUntil = time.Now().Add(time.Duration(nameserverRetryRate()) * time.Second)
 		brc.fails = 0
 	}
@@ -210,8 +225,30 @@ func (brc *BasicResolverConn) ReportFailure() {
 
 // IsFailing returns if this resolver is currently failing.
 func (brc *BasicResolverConn) IsFailing() bool {
+	// Check if not failing.
+	if !brc.failing.IsSet() {
+		return false
+	}
+
 	brc.Lock()
 	defer brc.Unlock()
 
+	// Reset failure status if the network changed since the last query.
+	if brc.networkChangedFlag.IsSet() {
+		brc.networkChangedFlag.Refresh()
+		brc.ResetFailure()
+		return false
+	}
+
+	// Check if we are still
 	return time.Now().Before(brc.failingUntil)
+}
+
+// ResetFailure resets the failure status.
+func (brc *BasicResolverConn) ResetFailure() {
+	if brc.failing.SetToIf(true, false) {
+		brc.Lock()
+		defer brc.Unlock()
+		brc.fails = 0
+	}
 }

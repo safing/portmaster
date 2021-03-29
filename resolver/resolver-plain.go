@@ -24,11 +24,13 @@ type PlainResolver struct {
 
 // NewPlainResolver returns a new TPCResolver.
 func NewPlainResolver(resolver *Resolver) *PlainResolver {
-	return &PlainResolver{
+	newResolver := &PlainResolver{
 		BasicResolverConn: BasicResolverConn{
 			resolver: resolver,
 		},
 	}
+	newResolver.BasicResolverConn.init()
+	return newResolver
 }
 
 // Query executes the given query against the resolver.

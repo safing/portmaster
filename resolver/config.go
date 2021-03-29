@@ -174,7 +174,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	if err != nil {
 		return err
 	}
-	nameserverRetryRate = config.Concurrent.GetAsInt(CfgOptionNameserverRetryRateKey, 600)
+	nameserverRetryRate = config.Concurrent.GetAsInt(CfgOptionNameserverRetryRateKey, 300)
 
 	err = config.Register(&config.Option{
 		Name:           "Ignore System/Network Servers",

@@ -377,6 +377,10 @@ resolveLoop:
 			if rrCache.RCode != dns.RcodeSuccess && tryAll {
 				continue
 			}
+
+			// Report a successful connection.
+			resolver.Conn.ResetFailure()
+
 			break resolveLoop
 		}
 	}
