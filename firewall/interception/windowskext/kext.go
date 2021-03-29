@@ -230,6 +230,7 @@ func GetPayload(packetID uint32, packetSize uint32) ([]byte, error) {
 	if packetSize < uint32(len(buf)) {
 		return buf[:packetSize], nil
 	}
+
 	return buf, nil
 }
 

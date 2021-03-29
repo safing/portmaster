@@ -179,11 +179,13 @@ func (q *Queue) packetHandler(ctx context.Context) func(nfqueue.Attribute) int {
 			verdictPending: abool.New(),
 		}
 
-		if attrs.Payload != nil {
-			pkt.Payload = *attrs.Payload
+		if attrs.Payload == nil {
+			// There is not payload.
+			log.Warningf("nfqueue: packet #%s has no payload", pkt.pktID)
+			return 0
 		}
 
-		if err := pmpacket.Parse(pkt.Payload, pkt.Info()); err != nil {
+		if err := pmpacket.Parse(*attrs.Payload, &pkt.Base); err != nil {
 			log.Warningf("nfqueue: failed to parse payload: %s", err)
 			_ = pkt.Drop()
 			return 0

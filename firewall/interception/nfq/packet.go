@@ -65,6 +65,11 @@ func (pkt *packet) ID() string {
 	return fmt.Sprintf("pkt:%d qid:%d", pkt.pktID, pkt.queue.id)
 }
 
+// LoadPacketData does nothing on Linux, as data is always fully parsed.
+func (pkt *packet) LoadPacketData() error {
+	return nil
+}
+
 // TODO(ppacher): revisit the following behavior:
 // 		The legacy implementation of nfqueue (and the interception) module
 // 		always accept a packet but may mark it so that a subsequent rule in

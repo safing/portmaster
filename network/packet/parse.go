@@ -102,10 +102,11 @@ func checkError(packet gopacket.Packet, _ *Info) error {
 }
 
 // Parse parses an IP packet and saves the information in the given packet object.
-func Parse(packetData []byte, pktInfo *Info) error {
+func Parse(packetData []byte, pktBase *Base) (err error) {
 	if len(packetData) == 0 {
 		return errors.New("empty packet")
 	}
+	pktBase.layer3Data = packetData
 
 	ipVersion := packetData[0] >> 4
 	var networkLayerType gopacket.LayerType
@@ -137,11 +138,15 @@ func Parse(packetData []byte, pktInfo *Info) error {
 	}
 
 	for _, dec := range availableDecoders {
-		if err := dec(packet, pktInfo); err != nil {
+		if err := dec(packet, pktBase.Info()); err != nil {
 			return err
 		}
 	}
 
+	pktBase.layers = packet
+	if packet.TransportLayer() != nil {
+		pktBase.layer5Data = packet.TransportLayer().LayerPayload()
+	}
 	return nil
 }
 

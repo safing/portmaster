@@ -24,7 +24,7 @@ type Packet struct {
 }
 
 // GetPayload returns the full raw packet.
-func (pkt *Packet) GetPayload() ([]byte, error) {
+func (pkt *Packet) LoadPacketData() error {
 	pkt.lock.Lock()
 	defer pkt.lock.Unlock()
 
@@ -33,17 +33,21 @@ func (pkt *Packet) GetPayload() ([]byte, error) {
 
 		payload, err := GetPayload(pkt.verdictRequest.id, pkt.verdictRequest.packetSize)
 		if err != nil {
-			log.Tracer(pkt.Ctx()).Warningf("windowskext: failed to load payload %s", err)
-			log.Errorf("windowskext: failed to load payload %s", err)
-			return nil, packet.ErrFailedToLoadPayload
+			log.Tracer(pkt.Ctx()).Warningf("windowskext: failed to load payload: %s", err)
+			return packet.ErrFailedToLoadPayload
 		}
-		pkt.Payload = payload
+
+		err = packet.Parse(payload, &pkt.Base)
+		if err != nil {
+			log.Tracer(pkt.Ctx()).Warningf("windowskext: failed to parse payload: %s", err)
+			return packet.ErrFailedToLoadPayload
+		}
 	}
 
-	if len(pkt.Payload) == 0 {
-		return nil, packet.ErrFailedToLoadPayload
+	if len(pkt.Raw()) == 0 {
+		return packet.ErrFailedToLoadPayload
 	}
-	return pkt.Payload, nil
+	return nil
 }
 
 // Accept accepts the packet.
