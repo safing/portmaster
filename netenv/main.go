@@ -29,6 +29,10 @@ func prep() error {
 }
 
 func start() error {
+	if err := registerAPIEndpoints(); err != nil {
+		return err
+	}
+
 	module.StartServiceWorker(
 		"monitor network changes",
 		0,
