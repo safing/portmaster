@@ -9,11 +9,22 @@ import (
 	"time"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/utils"
 )
 
 var (
-	networkChangeCheckTrigger = make(chan struct{}, 1)
+	networkChangeCheckTrigger    = make(chan struct{}, 1)
+	networkChangedFlagController = utils.NewFlagController()
 )
+
+func GetNetworkChangedFlag() *utils.Flag {
+	return networkChangedFlagController.NewFlag()
+}
+
+func notifyOfNetworkChange() {
+	networkChangedFlagController.NotifyAndReset()
+	module.TriggerEvent(NetworkChangedEvent, nil)
+}
 
 func triggerNetworkChangeCheck() {
 	select {
@@ -82,7 +93,7 @@ serviceLoop:
 			if trigger {
 				triggerOnlineStatusInvestigation()
 			}
-			module.TriggerEvent(NetworkChangedEvent, nil)
+			notifyOfNetworkChange()
 		}
 
 	}

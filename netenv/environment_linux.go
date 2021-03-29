@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/miekg/dns"
 
@@ -15,35 +14,25 @@ import (
 	"github.com/safing/portmaster/network/netutils"
 )
 
-const (
-	gatewaysRecheck    = 2 * time.Second
-	nameserversRecheck = 2 * time.Second
-)
-
 var (
-	gateways        = make([]net.IP, 0)
-	gatewaysLock    sync.Mutex
-	gatewaysExpires = time.Now()
+	gateways                   = make([]net.IP, 0)
+	gatewaysLock               sync.Mutex
+	gatewaysNetworkChangedFlag = GetNetworkChangedFlag()
 
-	nameservers        = make([]Nameserver, 0)
-	nameserversLock    sync.Mutex
-	nameserversExpires = time.Now()
+	nameservers                   = make([]Nameserver, 0)
+	nameserversLock               sync.Mutex
+	nameserversNetworkChangedFlag = GetNetworkChangedFlag()
 )
 
 // Gateways returns the currently active gateways.
 func Gateways() []net.IP {
-	// locking
 	gatewaysLock.Lock()
 	defer gatewaysLock.Unlock()
-	// cache
-	if gatewaysExpires.After(time.Now()) {
+	// Check if the network changed, if not, return cache.
+	if !gatewaysNetworkChangedFlag.IsSet() {
 		return gateways
 	}
-	// update cache expiry when finished
-	defer func() {
-		gatewaysExpires = time.Now().Add(gatewaysRecheck)
-	}()
-	// logic
+	gatewaysNetworkChangedFlag.Refresh()
 
 	gateways = make([]net.IP, 0)
 	var decoded []byte
@@ -119,17 +108,13 @@ func Gateways() []net.IP {
 
 // Nameservers returns the currently active nameservers.
 func Nameservers() []Nameserver {
-	// locking
 	nameserversLock.Lock()
 	defer nameserversLock.Unlock()
-	// cache
-	if nameserversExpires.After(time.Now()) {
+	// Check if the network changed, if not, return cache.
+	if !nameserversNetworkChangedFlag.IsSet() {
 		return nameservers
 	}
-	// update cache expiry when finished
-	defer func() {
-		nameserversExpires = time.Now().Add(nameserversRecheck)
-	}()
+	nameserversNetworkChangedFlag.Refresh()
 
 	// logic
 	// TODO: try:
