@@ -105,13 +105,13 @@ var (
 
 func registerConfiguration() error {
 	// Default Filter Action
-	// permit - blocklist mode: everything is permitted unless blocked
+	// permit - blocklist mode: everything is allowed unless blocked
 	// ask - ask mode: if not verdict is found, the user is consulted
-	// block - allowlist mode: everything is blocked unless permitted
+	// block - allowlist mode: everything is blocked unless explicitly allowed
 	err := config.Register(&config.Option{
 		Name:         "Default Action",
 		Key:          CfgOptionDefaultActionKey,
-		Description:  `The default action when nothing else permits or blocks an outgoing connection. Incoming connections are always blocked by default.`,
+		Description:  `The default action when nothing else allows or blocks an outgoing connection. Incoming connections are always blocked by default.`,
 		OptType:      config.OptTypeString,
 		DefaultValue: "permit",
 		Annotations: config.Annotations{
@@ -121,9 +121,9 @@ func registerConfiguration() error {
 		},
 		PossibleValues: []config.PossibleValue{
 			{
-				Name:        "Permit",
+				Name:        "Allow",
 				Value:       "permit",
-				Description: "Permit all connections",
+				Description: "Allow all connections",
 			},
 			{
 				Name:        "Block",
@@ -146,9 +146,9 @@ func registerConfiguration() error {
 	// Disable Auto Permit
 	err = config.Register(&config.Option{
 		// TODO: Check how to best handle negation here.
-		Name:         "Disable Auto Permit",
+		Name:         "Disable Auto Allow",
 		Key:          CfgOptionDisableAutoPermitKey,
-		Description:  `Auto Permit searches for a relation between an app and the destination of a connection - if there is a correlation, the connection will be permitted.`,
+		Description:  `Auto Allow searches for a relation between an app and the destination of a connection - if there is a correlation, the connection will be allowed.`,
 		OptType:      config.OptTypeInt,
 		ReleaseLevel: config.ReleaseLevelBeta,
 		DefaultValue: status.SecurityLevelsAll,

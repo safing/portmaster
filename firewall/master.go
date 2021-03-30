@@ -92,7 +92,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 		// Run all deciders and return if they came to a conclusion.
 		done, _ := runDeciders(ctx, dnsFromSystemResolverDeciders, conn, pkt)
 		if !done {
-			conn.Accept("permitting system resolver dns request", noReasonOptionKey)
+			conn.Accept("allowing system resolver dns request", noReasonOptionKey)
 		}
 		return
 	}
@@ -106,11 +106,11 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 	// Deciders did not conclude, use default action.
 	switch defaultAction {
 	case profile.DefaultActionPermit:
-		conn.Accept("default permit", profile.CfgOptionDefaultActionKey)
+		conn.Accept("allowed by default action", profile.CfgOptionDefaultActionKey)
 	case profile.DefaultActionAsk:
 		prompt(ctx, conn, pkt)
 	default:
-		conn.Deny("default block", profile.CfgOptionDefaultActionKey)
+		conn.Deny("blocked by default action", profile.CfgOptionDefaultActionKey)
 	}
 }
 
@@ -489,7 +489,7 @@ matchLoop:
 	}
 
 	if related {
-		reason = fmt.Sprintf("auto permitted: domain is related to process: %s is related to %s", domainElement, processElement)
+		reason = fmt.Sprintf("auto allowed: domain is related to process: %s is related to %s", domainElement, processElement)
 	}
 	return related, reason
 }

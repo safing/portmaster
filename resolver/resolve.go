@@ -320,7 +320,7 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 			// we are offline and this is not an online check query
 			return oldCache, ErrOffline
 		}
-		log.Tracer(ctx).Debugf("resolver: permitting online status test domain %s to resolve even though offline", q.FQDN)
+		log.Tracer(ctx).Debugf("resolver: allowing online status test domain %s to resolve even though offline", q.FQDN)
 	}
 
 	// start resolving
