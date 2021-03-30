@@ -302,7 +302,7 @@ func checkConnectionScope(_ context.Context, conn *network.Connection, _ packet.
 
 	// If the IP address was resolved, check the scope of the resolver.
 	switch {
-	case p.RemoveOutOfScopeDNS():
+	case !p.RemoveOutOfScopeDNS():
 		// Out of scope checking is not active.
 	case conn.Resolver == nil:
 		// IP address of connection was not resolved.
