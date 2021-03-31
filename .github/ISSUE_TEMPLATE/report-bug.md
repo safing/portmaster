@@ -1,5 +1,5 @@
 ---
-name: ":bug: Report Bug"
+name: "🐞 Report a Bug"
 about: Report a bug encountered while using the Portmaster
 labels: bug
 ---
