@@ -187,7 +187,7 @@ type ResolverConn interface { //nolint:go-lint // TODO
 
 // BasicResolverConn implements ResolverConn for standard dns clients.
 type BasicResolverConn struct {
-	sync.Mutex // for lastFail
+	sync.Mutex // Also used by inheriting structs.
 
 	resolver *Resolver
 
@@ -212,14 +212,18 @@ func (brc *BasicResolverConn) ReportFailure() {
 		return
 	}
 
-	brc.Lock()
-	defer brc.Unlock()
+	brc.failLock.Lock()
+	defer brc.failLock.Unlock()
 
 	brc.fails++
 	if brc.fails > FailThreshold {
 		brc.failing.Set()
 		brc.failingUntil = time.Now().Add(time.Duration(nameserverRetryRate()) * time.Second)
 		brc.fails = 0
+
+		// Refresh the network changed flag in order to only regard changes after
+		// the fail.
+		brc.networkChangedFlag.Refresh()
 	}
 }
 
@@ -230,8 +234,8 @@ func (brc *BasicResolverConn) IsFailing() bool {
 		return false
 	}
 
-	brc.Lock()
-	defer brc.Unlock()
+	brc.failLock.Lock()
+	defer brc.failLock.Unlock()
 
 	// Reset failure status if the network changed since the last query.
 	if brc.networkChangedFlag.IsSet() {
@@ -247,8 +251,8 @@ func (brc *BasicResolverConn) IsFailing() bool {
 // ResetFailure resets the failure status.
 func (brc *BasicResolverConn) ResetFailure() {
 	if brc.failing.SetToIf(true, false) {
-		brc.Lock()
-		defer brc.Unlock()
+		brc.failLock.Lock()
+		defer brc.failLock.Unlock()
 		brc.fails = 0
 	}
 }
