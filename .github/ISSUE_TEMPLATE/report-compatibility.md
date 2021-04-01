@@ -1,7 +1,7 @@
 ---
 name: "📝 Make a Compatibility Report"
 about: Report Portmaster in/compatibility with Linux Distros, VPN Clients or general Software
-labels: compatibility
+labels: "in/compatibility"
 ---
 
 **Pre-Submit Checklist**:
