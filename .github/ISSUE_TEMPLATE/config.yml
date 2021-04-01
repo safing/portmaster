@@ -2,12 +2,27 @@
 # Ref: https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository#configuring-the-template-chooser
 blank_issues_enabled: true  # default: true
 contact_links:
-- name: User Interface Issues 💻
+
+# - name: "🛠 Create Issue for Portmaster"
+#   url: https://github.com/safing/portmaster/issues/new/choose
+#   about: "Create issue related to the main application"
+
+- name: "🎨 Create Issue for User Interface"
   url: https://github.com/safing/portmaster-ui/issues/new/choose
-  about: Report any issues or feature requests for the Portmaster UI here
-- name: Support Requests & Community 🤷
+  about: "Create issue for everything connected to the Portmaster's User Interface"
+
+- name: "📦 Create Issue for Packaging & Installers"
+  url: https://github.com/safing/portmaster-packaging/issues/new/choose
+  about: "Create issue for things related to Portmaster's installers, packaging and distribution"
+
+- name: "Contribution Guideline"
+  url: https://docs.safing.io/portmaster/guides/contribute
+  about: Learn how to best contribute and make sure your work is aligned with Safing’s current goals and focus
+
+- name: "Support Requests & Community"
   url: https://www.reddit.com/r/safing
-  about: Ask for support and any questions you might have on reddit.
-- name: Code of Conduct 📝
-  url: https://github.com/safing/portmaster/blob/develop/CODE_OF_CONDUCT.md
-  about: Be nice to other community members ❤
+  about: Ask for support and any questions you might have on reddit
+
+- name: "Code of Conduct"
+  url: https://docs.safing.io/community/code-of-conduct
+  about: Be nice to other community members
