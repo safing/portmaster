@@ -13,7 +13,7 @@ Please disclose security related issues privately to support@safing.io.
 - Check applicable sources for existing issues:
   - [Windows Known Issues](https://docs.safing.io/portmaster/install/windows#known-issues)
   - [Linux Known Issues](https://docs.safing.io/portmaster/install/linux#compatibility)
-  - [Github Issues](../issues?q=is%3Aissue+label%3Abug)
+  - [Github Issues](https://github.com/safing/portmaster/issues?q=is%3Aissue+label%3Abug)
 
 **What happened**:
 

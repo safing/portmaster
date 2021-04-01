@@ -9,7 +9,7 @@ labels: compatibility
 - Check applicable sources for existing issues:
   - [Linux Compatibility](https://docs.safing.io/portmaster/install/linux#compatibility)
   - [VPN Compatibility](https://docs.safing.io/portmaster/install/status/vpn-compatibility)
-  - [Github Issues](../issues?q=is%3Aissue+label%3Ain%2Fcompatibility)
+  - [Github Issues](https://github.com/safing/portmaster/issues?q=is%3Aissue+label%3Ain%2Fcompatibility)
 
 **What worked?**
 
