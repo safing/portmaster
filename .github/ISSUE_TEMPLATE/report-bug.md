@@ -10,10 +10,10 @@ Please disclose security related issues privately to support@safing.io.
 
 **Pre-Submit Checklist**:
 
-- Check known issues:
-  - [Windows](https://docs.safing.io/portmaster/install/windows#known-issues)
-  - [Linux](https://docs.safing.io/portmaster/install/linux#compatibility)
-- Search for similar/existing issues on Github.
+- Check applicable sources for existing issues:
+  - [Windows Known Issues](https://docs.safing.io/portmaster/install/windows#known-issues)
+  - [Linux Known Issues](https://docs.safing.io/portmaster/install/linux#compatibility)
+  - [Github Issues](../issues?q=is%3Aissue+label%3Abug)
 
 **What happened**:
 
@@ -34,7 +34,8 @@ Paste debug information below:
 - General issue: Click on "Copy Debug Information" on the Settings page.
 - App related issue: Click on "Copy Debug Information" in the dropdown menu of an app in the Monitor view.
 
-⚠ Please check the "Unexpected Logs" and "Network Connections" sections in the preview mode for sensitive or otherwise private information and remove them!
+⚠ Please remove sensitive/private information from the "Unexpected Logs" and "Network Connections" sections.
+This is easiest to do in the preview mode.
 
 Additional logs can be found here:
 - Linux: `/var/lib/portmaster/logs`

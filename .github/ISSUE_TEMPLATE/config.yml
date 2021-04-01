@@ -24,5 +24,5 @@ contact_links:
   about: Ask for support and any questions you might have on reddit
 
 - name: "Code of Conduct"
-  url: https://github.com/safing/portmaster/blob/develop/CODE_OF_CONDUCT.md
+  url: https://docs.safing.io/community/code-of-conduct
   about: Be nice to other community members
