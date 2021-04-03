@@ -13,16 +13,16 @@ import (
 )
 
 var (
-	networkChangeCheckTrigger    = make(chan struct{}, 1)
-	networkChangedFlagController = utils.NewFlagController()
+	networkChangeCheckTrigger   = make(chan struct{}, 1)
+	networkChangedBroadcastFlag = utils.NewBroadcastFlag()
 )
 
 func GetNetworkChangedFlag() *utils.Flag {
-	return networkChangedFlagController.NewFlag()
+	return networkChangedBroadcastFlag.NewFlag()
 }
 
 func notifyOfNetworkChange() {
-	networkChangedFlagController.NotifyAndReset()
+	networkChangedBroadcastFlag.NotifyAndReset()
 	module.TriggerEvent(NetworkChangedEvent, nil)
 }
 

@@ -66,6 +66,24 @@ type DeviceLocation struct {
 	SourceAccuracy int
 }
 
+// IsMoreAccurateThan checks if the device location is more accurate than the
+// given one.
+func (dl *DeviceLocation) IsMoreAccurateThan(other *DeviceLocation) bool {
+	switch {
+	case dl.SourceAccuracy > other.SourceAccuracy:
+		// Higher accuracy is better.
+		return true
+	case dl.ASN != 0 && other.ASN == 0:
+		// Having an ASN is better than having none.
+		return true
+	case dl.Country == "" && other.Country != "":
+		// Having a Country is better than having none.
+		return true
+	}
+
+	return false
+}
+
 type DeviceLocationSource string
 
 const (
@@ -106,28 +124,6 @@ func SetInternetLocation(ip net.IP, source DeviceLocationSource) (ok bool) {
 		SourceAccuracy: source.Accuracy(),
 	}
 
-	locationsLock.Lock()
-	defer locationsLock.Unlock()
-
-	// Add to locations, if better.
-	key := loc.IP.String()
-	existing, ok := locations.All[key]
-	if ok && existing.SourceAccuracy > loc.SourceAccuracy {
-		// Existing entry is better.
-		// Return true, because the IP address is part of the locations.
-		return true
-	}
-	locations.All[key] = loc
-
-	// Find best location.
-	var best *DeviceLocation
-	for _, dl := range locations.All {
-		if best == nil || dl.SourceAccuracy > best.SourceAccuracy {
-			best = dl
-		}
-	}
-	locations.Best = best
-
 	// Get geoip information, but continue if it fails.
 	geoLoc, err := geoip.GetLocation(ip)
 	if err != nil {
@@ -138,6 +134,28 @@ func SetInternetLocation(ip net.IP, source DeviceLocationSource) (ok bool) {
 		loc.ASN = geoLoc.AutonomousSystemNumber
 		loc.ASOrg = geoLoc.AutonomousSystemOrganization
 	}
+
+	locationsLock.Lock()
+	defer locationsLock.Unlock()
+
+	// Add to locations, if better.
+	key := loc.IP.String()
+	existing, ok := locations.All[key]
+	if ok && existing.IsMoreAccurateThan(loc) {
+		// Existing entry is more accurate, abort adding.
+		// Return true, because the IP address is already part of the locations.
+		return true
+	}
+	locations.All[key] = loc
+
+	// Find best location.
+	best := loc
+	for _, dl := range locations.All {
+		if dl.IsMoreAccurateThan(best) {
+			best = dl
+		}
+	}
+	locations.Best = best
 
 	return true
 }

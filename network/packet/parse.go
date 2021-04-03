@@ -144,8 +144,8 @@ func Parse(packetData []byte, pktBase *Base) (err error) {
 	}
 
 	pktBase.layers = packet
-	if packet.TransportLayer() != nil {
-		pktBase.layer5Data = packet.TransportLayer().LayerPayload()
+	if transport := packet.TransportLayer(); transport != nil {
+		pktBase.layer5Data = transport.LayerPayload()
 	}
 	return nil
 }

@@ -144,6 +144,10 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 
 		// Always permit ICMP.
 		log.Debugf("filter: fast-track accepting ICMP: %s", pkt)
+
+		// If the packet was submitted to the listener, we must not do a
+		// permanent accept, because then we won't see any future packets of that
+		// connection and thus cannot continue to submit them.
 		if submitted {
 			_ = pkt.Accept()
 		} else {
@@ -157,6 +161,10 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 
 		// Always permit ICMPv6.
 		log.Debugf("filter: fast-track accepting ICMPv6: %s", pkt)
+
+		// If the packet was submitted to the listener, we must not do a
+		// permanent accept, because then we won't see any future packets of that
+		// connection and thus cannot continue to submit them.
 		if submitted {
 			_ = pkt.Accept()
 		} else {

@@ -9,12 +9,25 @@ import (
 	"github.com/safing/portmaster/network/packet"
 )
 
+/*
+This ICMP listening system is a simple system for components to listen to ICMP
+packets via the firewall.
+
+The main use case for this is to receive ICMP packets that are not always
+delivered correctly, or need special permissions and or sockets to receive
+them. This is the case when doing a traceroute.
+
+In order to keep it simple, the system is only designed to be used by one
+"user" at at time. Further calls to ListenToICMP will wait for the previous
+operation to complete.
+*/
+
 var (
 	// listenICMPLock locks the ICMP listening system for one user at a time.
 	listenICMPLock sync.Mutex
 
-	// listenICMPEnabled defines whether or not the firewall should send ICMP
-	// packets through this interface.
+	// listenICMPEnabled defines whether or not the firewall should submit ICMP
+	// packets to this interface.
 	listenICMPEnabled = abool.New()
 
 	// listenICMPInput is created for every use of the ICMP listenting system.
@@ -22,28 +35,35 @@ var (
 	listenICMPInputLock sync.Mutex
 )
 
+// ListenToICMP returns a new channel for listenting to icmp packets. Please
+// note that any icmp packet will be passed and filtering must be done on
+// the side of the caller. The caller must call the returned done function when
+// done with the listener.
 func ListenToICMP() (packets chan packet.Packet, done func()) {
 	// Lock for single use.
 	listenICMPLock.Lock()
 
 	// Create new input channel.
 	listenICMPInputLock.Lock()
-	listenICMPInput = make(chan packet.Packet, 10)
+	listenICMPInput = make(chan packet.Packet, 100)
 	listenICMPEnabled.Set()
 	listenICMPInputLock.Unlock()
 
 	return listenICMPInput, func() {
+		// Release for someone else to use.
+		defer listenICMPLock.Unlock()
+
 		// Close input channel.
 		listenICMPInputLock.Lock()
 		listenICMPEnabled.UnSet()
 		close(listenICMPInput)
 		listenICMPInputLock.Unlock()
-
-		// Release for someone else to use.
-		listenICMPLock.Unlock()
 	}
 }
 
+// SubmitPacketToICMPListener checks if an ICMP packet should be submitted to
+// the listener. If so, it is submitted right away. The function returns
+// whether or not the packet should be submitted, not if it was successful.
 func SubmitPacketToICMPListener(pkt packet.Packet) (submitted bool) {
 	// Hot path.
 	if !listenICMPEnabled.IsSet() {
@@ -70,8 +90,6 @@ func submitPacketToICMPListenerSlow(pkt packet.Packet) {
 	if !listenICMPEnabled.IsSet() {
 		return
 	}
-
-	log.Criticalf("netenv: recvd ICMP packet: %s", pkt)
 
 	// Send to channel, if possible.
 	select {
