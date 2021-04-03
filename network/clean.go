@@ -14,7 +14,7 @@ import (
 
 const (
 	cleanerTickDuration            = 5 * time.Second
-	deleteConnsAfterEndedThreshold = 5 * time.Minute
+	deleteConnsAfterEndedThreshold = 10 * time.Minute
 )
 
 func connectionCleaner(ctx context.Context) error {
