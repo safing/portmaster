@@ -62,7 +62,7 @@ func (ifq *InFlightQuery) MakeCacheRecord(reply *dns.Msg) *RRCache {
 // NewTCPResolver returns a new TPCResolver.
 func NewTCPResolver(resolver *Resolver) *TCPResolver {
 	var instanceID uint32
-	return &TCPResolver{
+	newResolver := &TCPResolver{
 		BasicResolverConn: BasicResolverConn{
 			resolver: resolver,
 		},
@@ -79,6 +79,8 @@ func NewTCPResolver(resolver *Resolver) *TCPResolver {
 		queries:         make(chan *dns.Msg, 1000),
 		inFlightQueries: make(map[uint16]*InFlightQuery),
 	}
+	newResolver.BasicResolverConn.init()
+	return newResolver
 }
 
 // UseTLS enabled TLS for the TCPResolver. TLS settings must be correctly configured in the Resolver.
