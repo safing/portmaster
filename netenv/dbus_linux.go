@@ -8,6 +8,8 @@ import (
 	"net"
 	"sync"
 
+	"github.com/safing/portbase/log"
+
 	"github.com/godbus/dbus/v5"
 )
 
@@ -19,7 +21,7 @@ var (
 func getNameserversFromDbus() ([]Nameserver, error) { //nolint:gocognit // TODO
 	// cmdline tool for exploring: gdbus introspect --system --dest org.freedesktop.NetworkManager --object-path /org/freedesktop/NetworkManager
 
-	var nameservers []Nameserver
+	var ns []Nameserver
 	var err error
 
 	dbusConnLock.Lock()
@@ -34,7 +36,7 @@ func getNameserversFromDbus() ([]Nameserver, error) { //nolint:gocognit // TODO
 
 	primaryConnectionVariant, err := getNetworkManagerProperty(dbusConn, dbus.ObjectPath("/org/freedesktop/NetworkManager"), "org.freedesktop.NetworkManager.PrimaryConnection")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("dbus: failed to access NetworkManager.PrimaryConnection: %s", err)
 	}
 	primaryConnection, ok := primaryConnectionVariant.Value().(dbus.ObjectPath)
 	if !ok {
@@ -43,7 +45,7 @@ func getNameserversFromDbus() ([]Nameserver, error) { //nolint:gocognit // TODO
 
 	activeConnectionsVariant, err := getNetworkManagerProperty(dbusConn, dbus.ObjectPath("/org/freedesktop/NetworkManager"), "org.freedesktop.NetworkManager.ActiveConnections")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("dbus: failed to access NetworkManager.ActiveConnections: %s", err)
 	}
 	activeConnections, ok := activeConnectionsVariant.Value().([]dbus.ObjectPath)
 	if !ok {
@@ -58,102 +60,107 @@ func getNameserversFromDbus() ([]Nameserver, error) { //nolint:gocognit // TODO
 	}
 
 	for _, activeConnection := range sortedConnections {
-
-		ip4ConfigVariant, err := getNetworkManagerProperty(dbusConn, activeConnection, "org.freedesktop.NetworkManager.Connection.Active.Ip4Config")
+		new, err := dbusGetInterfaceNameservers(dbusConn, activeConnection, 4)
 		if err != nil {
-			return nil, err
-		}
-		ip4Config, ok := ip4ConfigVariant.Value().(dbus.ObjectPath)
-		if !ok {
-			return nil, fmt.Errorf("dbus: could not assert type of %s:org.freedesktop.NetworkManager.Connection.Active.Ip4Config", activeConnection)
+			log.Warningf("failed to get nameserver: %s", err)
+		} else {
+			ns = append(ns, new...)
 		}
 
-		nameserverIP4sVariant, err := getNetworkManagerProperty(dbusConn, ip4Config, "org.freedesktop.NetworkManager.IP4Config.Nameservers")
+		new, err = dbusGetInterfaceNameservers(dbusConn, activeConnection, 6)
 		if err != nil {
-			return nil, err
+			log.Warningf("failed to get nameserver: %s", err)
+		} else {
+			ns = append(ns, new...)
 		}
-		nameserverIP4s, ok := nameserverIP4sVariant.Value().([]uint32)
-		if !ok {
-			return nil, fmt.Errorf("dbus: could not assert type of %s:org.freedesktop.NetworkManager.IP4Config.Nameservers", ip4Config)
-		}
+	}
 
-		nameserverDomainsVariant, err := getNetworkManagerProperty(dbusConn, ip4Config, "org.freedesktop.NetworkManager.IP4Config.Domains")
-		if err != nil {
-			return nil, err
-		}
-		nameserverDomains, ok := nameserverDomainsVariant.Value().([]string)
-		if !ok {
-			return nil, fmt.Errorf("dbus: could not assert type of %s:org.freedesktop.NetworkManager.IP4Config.Domains", ip4Config)
-		}
+	return ns, nil
+}
 
-		nameserverSearchesVariant, err := getNetworkManagerProperty(dbusConn, ip4Config, "org.freedesktop.NetworkManager.IP4Config.Searches")
-		if err != nil {
-			return nil, err
-		}
-		nameserverSearches, ok := nameserverSearchesVariant.Value().([]string)
-		if !ok {
-			return nil, fmt.Errorf("dbus: could not assert type of %s:org.freedesktop.NetworkManager.IP4Config.Searches", ip4Config)
-		}
+func dbusGetInterfaceNameservers(dbusConn *dbus.Conn, interfaceObject dbus.ObjectPath, ipVersion uint8) ([]Nameserver, error) {
+	ipConfigPropertyKey := fmt.Sprintf("org.freedesktop.NetworkManager.Connection.Active.Ip%dConfig", ipVersion)
+	nameserversIPsPropertyKey := fmt.Sprintf("org.freedesktop.NetworkManager.IP%dConfig.Nameservers", ipVersion)
+	nameserversDomainsPropertyKey := fmt.Sprintf("org.freedesktop.NetworkManager.IP%dConfig.Domains", ipVersion)
+	nameserversSearchesPropertyKey := fmt.Sprintf("org.freedesktop.NetworkManager.IP%dConfig.Searches", ipVersion)
 
+	// Get Interface Configuration.
+	ipConfigVariant, err := getNetworkManagerProperty(dbusConn, interfaceObject, ipConfigPropertyKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access %s:%s: %s", interfaceObject, ipConfigPropertyKey, err)
+	}
+	ipConfig, ok := ipConfigVariant.Value().(dbus.ObjectPath)
+	if !ok {
+		return nil, fmt.Errorf("could not assert type of %s:%s", interfaceObject, ipConfigPropertyKey)
+	}
+
+	// Check if interface is active in the selected IP version
+	if !ipConfig.IsValid() || ipConfig == "/" {
+		return nil, nil
+	}
+
+	// Get Nameserver IPs
+	nameserverIPsVariant, err := getNetworkManagerProperty(dbusConn, ipConfig, nameserversIPsPropertyKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access %s:%s: %s", ipConfig, nameserversIPsPropertyKey, err)
+	}
+	var nameserverIPs []net.IP
+	switch ipVersion {
+	case 4:
+		nameserverIP4s, ok := nameserverIPsVariant.Value().([]uint32)
+		if !ok {
+			return nil, fmt.Errorf("could not assert type of %s:%s", ipConfig, nameserversIPsPropertyKey)
+		}
 		for _, ip := range nameserverIP4s {
 			a := uint8(ip / 16777216)
 			b := uint8((ip % 16777216) / 65536)
 			c := uint8((ip % 65536) / 256)
 			d := uint8(ip % 256)
-			nameservers = append(nameservers, Nameserver{
-				IP:     net.IPv4(d, c, b, a),
-				Search: append(nameserverDomains, nameserverSearches...),
-			})
+			nameserverIPs = append(nameserverIPs, net.IPv4(d, c, b, a))
 		}
-
-		ip6ConfigVariant, err := getNetworkManagerProperty(dbusConn, activeConnection, "org.freedesktop.NetworkManager.Connection.Active.Ip6Config")
-		if err != nil {
-			return nil, err
-		}
-		ip6Config, ok := ip6ConfigVariant.Value().(dbus.ObjectPath)
+	case 6:
+		nameserverIP6s, ok := nameserverIPsVariant.Value().([][]byte)
 		if !ok {
-			return nil, fmt.Errorf("dbus: could not assert type of %s:org.freedesktop.NetworkManager.Connection.Active.Ip6Config", activeConnection)
+			return nil, fmt.Errorf("could not assert type of %s:%s", ipConfig, nameserversIPsPropertyKey)
 		}
-
-		nameserverIP6sVariant, err := getNetworkManagerProperty(dbusConn, ip6Config, "org.freedesktop.NetworkManager.IP6Config.Nameservers")
-		if err != nil {
-			return nil, err
-		}
-		nameserverIP6s, ok := nameserverIP6sVariant.Value().([][]byte)
-		if !ok {
-			return nil, fmt.Errorf("dbus: could not assert type of %s:org.freedesktop.NetworkManager.IP6Config.Nameservers", ip6Config)
-		}
-
-		nameserverDomainsVariant, err = getNetworkManagerProperty(dbusConn, ip6Config, "org.freedesktop.NetworkManager.IP6Config.Domains")
-		if err != nil {
-			return nil, err
-		}
-		nameserverDomains, ok = nameserverDomainsVariant.Value().([]string)
-		if !ok {
-			return nil, fmt.Errorf("dbus: could not assert type of %s:org.freedesktop.NetworkManager.IP6Config.Domains", ip6Config)
-		}
-
-		nameserverSearchesVariant, err = getNetworkManagerProperty(dbusConn, ip6Config, "org.freedesktop.NetworkManager.IP6Config.Searches")
-		if err != nil {
-			return nil, err
-		}
-		nameserverSearches, ok = nameserverSearchesVariant.Value().([]string)
-		if !ok {
-			return nil, fmt.Errorf("dbus: could not assert type of %s:org.freedesktop.NetworkManager.IP6Config.Searches", ip6Config)
-		}
-
 		for _, ip := range nameserverIP6s {
 			if len(ip) != 16 {
-				return nil, fmt.Errorf("dbus: query returned IPv6 address (%s) with invalid length", ip)
+				return nil, fmt.Errorf("query returned IPv6 address with invalid length: %q", ip)
 			}
-			nameservers = append(nameservers, Nameserver{
-				IP:     net.IP(ip),
-				Search: append(nameserverDomains, nameserverSearches...),
-			})
+			nameserverIPs = append(nameserverIPs, net.IP(ip))
 		}
 	}
 
-	return nameservers, nil
+	// Get Nameserver Domains
+	nameserverDomainsVariant, err := getNetworkManagerProperty(dbusConn, ipConfig, nameserversDomainsPropertyKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access %s:%s: %s", ipConfig, nameserversDomainsPropertyKey, err)
+	}
+	nameserverDomains, ok := nameserverDomainsVariant.Value().([]string)
+	if !ok {
+		return nil, fmt.Errorf("could not assert type of %s:%s", ipConfig, nameserversDomainsPropertyKey)
+	}
+
+	// Get Nameserver Searches
+	nameserverSearchesVariant, err := getNetworkManagerProperty(dbusConn, ipConfig, nameserversSearchesPropertyKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access %s:%s: %s", ipConfig, nameserversSearchesPropertyKey, err)
+	}
+	nameserverSearches, ok := nameserverSearchesVariant.Value().([]string)
+	if !ok {
+		return nil, fmt.Errorf("could not assert type of %s:%s", ipConfig, nameserversSearchesPropertyKey)
+	}
+
+	ns := make([]Nameserver, 0, len(nameserverIPs))
+	searchDomains := append(nameserverDomains, nameserverSearches...)
+	for _, nameserverIP := range nameserverIPs {
+		ns = append(ns, Nameserver{
+			IP:     nameserverIP,
+			Search: searchDomains,
+		})
+	}
+
+	return ns, nil
 }
 
 func getConnectivityStateFromDbus() (OnlineStatus, error) {

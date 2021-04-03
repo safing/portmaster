@@ -58,8 +58,13 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 		// Check if this is the system resolver.
 		switch runtime.GOOS {
 		case "windows":
-			if (p.Path == `C:\Windows\System32\svchost.exe` || p.Path == `C:\Windows\system32\svchost.exe`) &&
-				(strings.Contains(p.SpecialDetail, "Dnscache") || strings.Contains(p.CmdLine, "-k NetworkService")) {
+			// Depending on the OS version System32 may be capitalized or not.
+			if (p.Path == `C:\Windows\System32\svchost.exe` ||
+				p.Path == `C:\Windows\system32\svchost.exe`) &&
+				// This comes from the windows tasklist command and should be pretty consistent.
+				(strings.Contains(p.SpecialDetail, "Dnscache") ||
+					// As an alternative in case of failure, we try to match the svchost.exe service parameter.
+					strings.Contains(p.CmdLine, "-s Dnscache")) {
 				profileID = profile.SystemResolverProfileID
 			}
 		case "linux":

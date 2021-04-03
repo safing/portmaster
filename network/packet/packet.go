@@ -4,14 +4,18 @@ import (
 	"context"
 	"fmt"
 	"net"
+
+	"github.com/google/gopacket"
 )
 
 // Base is a base structure for satisfying the Packet interface.
 type Base struct {
-	ctx     context.Context
-	info    Info
-	connID  string
-	Payload []byte
+	ctx        context.Context
+	info       Info
+	connID     string
+	layers     gopacket.Packet
+	layer3Data []byte
+	layer5Data []byte
 }
 
 // SetCtx sets the packet context.
@@ -65,9 +69,24 @@ func (pkt *Base) HasPorts() bool {
 	return false
 }
 
-// GetPayload returns the packet payload. In some cases, this will fetch the payload from the os integration system.
-func (pkt *Base) GetPayload() ([]byte, error) {
-	return pkt.Payload, ErrFailedToLoadPayload
+// LoadPacketData loads packet data from the integration, if not yet done.
+func (pkt *Base) LoadPacketData() error {
+	return ErrFailedToLoadPayload
+}
+
+// Layers returns the parsed layer data.
+func (pkt *Base) Layers() gopacket.Packet {
+	return pkt.layers
+}
+
+// Raw returns the raw Layer 3 Network Data.
+func (pkt *Base) Raw() []byte {
+	return pkt.layer3Data
+}
+
+// Payload returns the raw Layer 5 Network Data.
+func (pkt *Base) Payload() []byte {
+	return pkt.layer5Data
 }
 
 // GetConnectionID returns the link ID for this packet.
@@ -214,8 +233,13 @@ type Packet interface {
 	SetInbound()
 	SetOutbound()
 	HasPorts() bool
-	GetPayload() ([]byte, error)
 	GetConnectionID() string
+
+	// PAYLOAD
+	LoadPacketData() error
+	Layers() gopacket.Packet
+	Raw() []byte
+	Payload() []byte
 
 	// MATCHING
 	MatchesAddress(bool, IPProtocol, *net.IPNet, uint16) bool

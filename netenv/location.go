@@ -2,23 +2,32 @@ package netenv
 
 import (
 	"errors"
-	"fmt"
 	"net"
+	"sync"
 	"syscall"
 	"time"
 
+	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 
-	"golang.org/x/net/icmp"
-
+	"github.com/google/gopacket/layers"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/intel/geoip"
 	"github.com/safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/network/packet"
 )
 
 var (
 	locationTestingIPv4     = "1.1.1.1"
 	locationTestingIPv4Addr *net.IPAddr
+
+	locations = &DeviceLocations{
+		All: make(map[string]*DeviceLocation),
+	}
+	locationsLock              sync.Mutex
+	gettingLocationsLock       sync.Mutex
+	locationNetworkChangedFlag = GetNetworkChangedFlag()
 )
 
 func prepLocation() (err error) {
@@ -26,62 +35,250 @@ func prepLocation() (err error) {
 	return err
 }
 
-// GetApproximateInternetLocation returns the nearest detectable IP address. If one or more global IP addresses are configured, one of them is returned. Currently only support IPv4. Else, the IP address of the nearest ping-answering internet node is returned.
-func GetApproximateInternetLocation() (net.IP, error) { //nolint:gocognit
-	// TODO: Create IPv6 version of GetApproximateInternetLocation
+type DeviceLocations struct {
+	Best *DeviceLocation
+	All  map[string]*DeviceLocation
+}
 
-	// First check if we have an assigned IPv6 address. Return that if available.
-	globalIPv4, _, err := GetAssignedGlobalAddresses()
-	if err != nil {
-		log.Warningf("netenv: location approximation: failed to get assigned global addresses: %s", err)
-	} else if len(globalIPv4) > 0 {
-		return globalIPv4[0], nil
+func copyDeviceLocations() *DeviceLocations {
+	locationsLock.Lock()
+	defer locationsLock.Unlock()
+
+	// Create a copy of the locations, but not the entries.
+	cp := *locations
+	cp.All = make(map[string]*DeviceLocation, len(locations.All))
+	for k, v := range locations.All {
+		cp.All[k] = v
 	}
 
-	// Create OS specific ICMP Listener.
-	conn, err := newICMPListener(locationTestingIPv4)
-	if err != nil {
-		return nil, fmt.Errorf("failed to listen: %s", err)
+	return &cp
+}
+
+// DeviceLocation represents a single IP and metadata. It must not be changed
+// once created.
+type DeviceLocation struct {
+	IP             net.IP
+	Continent      string
+	Country        string
+	ASN            uint
+	ASOrg          string
+	Source         DeviceLocationSource
+	SourceAccuracy int
+}
+
+// IsMoreAccurateThan checks if the device location is more accurate than the
+// given one.
+func (dl *DeviceLocation) IsMoreAccurateThan(other *DeviceLocation) bool {
+	switch {
+	case dl.SourceAccuracy > other.SourceAccuracy:
+		// Higher accuracy is better.
+		return true
+	case dl.ASN != 0 && other.ASN == 0:
+		// Having an ASN is better than having none.
+		return true
+	case dl.Country == "" && other.Country != "":
+		// Having a Country is better than having none.
+		return true
 	}
-	defer conn.Close()
+
+	return false
+}
+
+type DeviceLocationSource string
+
+const (
+	SourceInterface  DeviceLocationSource = "interface"
+	SourcePeer       DeviceLocationSource = "peer"
+	SourceUPNP       DeviceLocationSource = "upnp"
+	SourceTraceroute DeviceLocationSource = "traceroute"
+	SourceOther      DeviceLocationSource = "other"
+)
+
+func (dls DeviceLocationSource) Accuracy() int {
+	switch dls {
+	case SourceInterface:
+		return 5
+	case SourcePeer:
+		return 4
+	case SourceUPNP:
+		return 3
+	case SourceTraceroute:
+		return 2
+	case SourceOther:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func SetInternetLocation(ip net.IP, source DeviceLocationSource) (ok bool) {
+	// Check if IP is global.
+	if netutils.GetIPScope(ip) != netutils.Global {
+		return false
+	}
+
+	// Create new location.
+	loc := &DeviceLocation{
+		IP:             ip,
+		Source:         source,
+		SourceAccuracy: source.Accuracy(),
+	}
+
+	// Get geoip information, but continue if it fails.
+	geoLoc, err := geoip.GetLocation(ip)
+	if err != nil {
+		log.Warningf("netenv: failed to get geolocation data of %s (from %s): %s", ip, source, err)
+	} else {
+		loc.Continent = geoLoc.Continent.Code
+		loc.Country = geoLoc.Country.ISOCode
+		loc.ASN = geoLoc.AutonomousSystemNumber
+		loc.ASOrg = geoLoc.AutonomousSystemOrganization
+	}
+
+	locationsLock.Lock()
+	defer locationsLock.Unlock()
+
+	// Add to locations, if better.
+	key := loc.IP.String()
+	existing, ok := locations.All[key]
+	if ok && existing.IsMoreAccurateThan(loc) {
+		// Existing entry is more accurate, abort adding.
+		// Return true, because the IP address is already part of the locations.
+		return true
+	}
+	locations.All[key] = loc
+
+	// Find best location.
+	best := loc
+	for _, dl := range locations.All {
+		if dl.IsMoreAccurateThan(best) {
+			best = dl
+		}
+	}
+	locations.Best = best
+
+	return true
+}
+
+// DEPRECATED: Please use GetInternetLocation instead.
+func GetApproximateInternetLocation() (net.IP, error) {
+	loc, ok := GetInternetLocation()
+	if !ok {
+		return nil, errors.New("no location data available")
+	}
+	return loc.Best.IP, nil
+}
+
+func GetInternetLocation() (deviceLocations *DeviceLocations, ok bool) {
+	gettingLocationsLock.Lock()
+	defer gettingLocationsLock.Unlock()
+
+	// Check if the network changed, if not, return cache.
+	if !locationNetworkChangedFlag.IsSet() {
+		return copyDeviceLocations(), true
+	}
+	locationNetworkChangedFlag.Refresh()
+
+	// Check different sources, return on first success.
+	switch {
+	case getLocationFromInterfaces():
+	case getLocationFromTraceroute():
+	default:
+		return nil, false
+	}
+
+	// Return gathered locations.
+	cp := copyDeviceLocations()
+	return cp, cp.Best != nil
+}
+
+func getLocationFromInterfaces() (ok bool) {
+	globalIPv4, globalIPv6, err := GetAssignedGlobalAddresses()
+	if err != nil {
+		log.Warningf("netenv: location: failed to get assigned global addresses: %s", err)
+		return false
+	}
+
+	for _, ip := range globalIPv4 {
+		if SetInternetLocation(ip, SourceInterface) {
+			ok = true
+		}
+	}
+	for _, ip := range globalIPv6 {
+		if SetInternetLocation(ip, SourceInterface) {
+			ok = true
+		}
+	}
+
+	return ok
+}
+
+// TODO: Check feasibility of getting the external IP via UPnP.
+/*
+func getLocationFromUPnP() (ok bool) {
+	// Endoint: urn:schemas-upnp-org:service:WANIPConnection:1#GetExternalIPAddress
+	// A first test showed that a router did offer that endpoint, but did not
+	// return an IP addres.
+	return false
+}
+*/
+
+func getLocationFromTraceroute() (ok bool) {
+	// Create connection.
+	conn, err := net.ListenPacket("ip4:icmp", "")
+	if err != nil {
+		log.Warningf("netenv: location: failed to open icmp conn: %s", err)
+		return false
+	}
 	v4Conn := ipv4.NewPacketConn(conn)
 
 	// Generate a random ID for the ICMP packets.
-	msgID, err := rng.Number(0xFFFF) // uint16
+	generatedID, err := rng.Number(0xFFFF) // uint16
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate ID: %s", err)
+		log.Warningf("netenv: location: failed to generate icmp msg ID: %s", err)
+		return false
 	}
+	msgID := int(generatedID)
+	var msgSeq int
 
-	// Create ICMP message body
+	// Create ICMP message body.
 	pingMessage := icmp.Message{
 		Type: ipv4.ICMPTypeEcho,
 		Code: 0,
 		Body: &icmp.Echo{
-			ID:   int(msgID),
-			Seq:  0, // increased before marshal
+			ID:   msgID,
+			Seq:  msgSeq, // Is increased before marshalling.
 			Data: []byte{},
 		},
 	}
-	recvBuffer := make([]byte, 1500)
 	maxHops := 4 // add one for every reply that is not global
 
-next:
+	// Get additional listener for ICMP messages via the firewall.
+	icmpPacketsViaFirewall, doneWithListeningToICMP := ListenToICMP()
+	defer doneWithListeningToICMP()
+
+nextHop:
 	for i := 1; i <= maxHops; i++ {
+		minSeq := msgSeq + 1
+
 	repeat:
 		for j := 1; j <= 2; j++ { // Try every hop twice.
 			// Increase sequence number.
-			pingMessage.Body.(*icmp.Echo).Seq++
+			msgSeq++
+			pingMessage.Body.(*icmp.Echo).Seq = msgSeq
 
 			// Make packet data.
 			pingPacket, err := pingMessage.Marshal(nil)
 			if err != nil {
-				return nil, err
+				log.Warningf("netenv: location: failed to build icmp packet: %s", err)
+				return false
 			}
 
 			// Set TTL on IP packet.
 			err = v4Conn.SetTTL(i)
 			if err != nil {
-				return nil, err
+				log.Warningf("netenv: location: failed to set icmp packet TTL: %s", err)
+				return false
 			}
 
 			// Send ICMP packet.
@@ -91,72 +288,106 @@ next:
 						continue
 					}
 				}
-				return nil, err
+				log.Warningf("netenv: location: failed to send icmp packet: %s", err)
+				return false
 			}
 
-			// Listen for replies to the ICMP packet.
+			// Listen for replies of the ICMP packet.
 		listen:
 			for {
-				// Set read timeout.
-				err = conn.SetReadDeadline(
-					time.Now().Add(
-						time.Duration(i*2+30) * time.Millisecond,
-					),
-				)
-				if err != nil {
-					return nil, err
-				}
-
-				// Read next packet.
-				n, src, err := conn.ReadFrom(recvBuffer)
-				if err != nil {
-					if err, ok := err.(net.Error); ok && err.Timeout() {
-						// Continue with next packet if we timeout
-						continue repeat
-					}
-					return nil, err
-				}
-
-				// Parse remote IP address.
-				addr, ok := src.(*net.IPAddr)
+				remoteIP, icmpPacket, ok := recvICMP(i, icmpPacketsViaFirewall)
 				if !ok {
-					return nil, fmt.Errorf("failed to parse IP: %s", src.String())
+					continue repeat
 				}
 
-				// Continue if we receive a packet from ourself. This is specific to Windows.
-				if me, err := IsMyIP(addr.IP); err == nil && me {
-					log.Tracef("netenv: location approximation: ignoring own message from %s", src)
+				// Pre-filter by message type.
+				switch icmpPacket.TypeCode.Type() {
+				case layers.ICMPv4TypeEchoReply:
+					// Check if the ID and sequence match.
+					if icmpPacket.Id != uint16(msgID) {
+						continue listen
+					}
+					if icmpPacket.Seq < uint16(minSeq) {
+						continue listen
+					}
+					// We received a reply, so we did not trigger a time exceeded response on the way.
+					// This means we were not able to find the nearest router to us.
+					return false
+				case layers.ICMPv4TypeDestinationUnreachable,
+					layers.ICMPv4TypeTimeExceeded:
+					// Continue processing.
+				default:
 					continue listen
 				}
 
-				// If we received something from a global IP address, we have succeeded and can return immediately.
-				if netutils.GetIPScope(addr.IP).IsGlobal() {
-					return addr.IP, nil
+				// Parse copy of origin icmp packet that triggered the error.
+				if len(icmpPacket.Payload) != ipv4.HeaderLen+8 {
+					continue listen
 				}
-
-				// For everey non-global reply received, increase the maximum hops to try.
-				maxHops++
-
-				// Parse the ICMP message.
-				icmpReply, err := icmp.ParseMessage(1, recvBuffer[:n])
+				originalMessage, err := icmp.ParseMessage(1, icmpPacket.Payload[ipv4.HeaderLen:])
 				if err != nil {
-					log.Warningf("netenv: location approximation: failed to parse ICMP message: %s", err)
+					continue listen
+				}
+				originalEcho, ok := originalMessage.Body.(*icmp.Echo)
+				if !ok {
+					continue listen
+				}
+				// Check if the ID and sequence match.
+				if originalEcho.ID != int(msgID) {
+					continue listen
+				}
+				if originalEcho.Seq < minSeq {
 					continue listen
 				}
 
 				// React based on message type.
-				switch icmpReply.Type {
-				case ipv4.ICMPTypeTimeExceeded, ipv4.ICMPTypeEchoReply:
-					log.Tracef("netenv: location approximation: receveived %q from %s", icmpReply.Type, addr.IP)
-					continue next
-				case ipv4.ICMPTypeDestinationUnreachable:
-					return nil, fmt.Errorf("destination unreachable")
-				default:
-					log.Tracef("netenv: location approximation: unexpected ICMP reply: received %q from %s", icmpReply.Type, addr.IP)
+				switch icmpPacket.TypeCode.Type() {
+				case layers.ICMPv4TypeDestinationUnreachable:
+					// We have received a valid destination unreachable response, abort.
+					return false
+
+				case layers.ICMPv4TypeTimeExceeded:
+					// We have received a valid time exceeded error.
+					// If message came from a global unicast, us it!
+					if netutils.GetIPScope(remoteIP) == netutils.Global {
+						return SetInternetLocation(remoteIP, SourceTraceroute)
+					}
+
+					// Otherwise, continue.
+					continue nextHop
 				}
 			}
 		}
 	}
 
-	return nil, errors.New("no usable response to any icmp message")
+	// We did not receive anything actionable.
+	return false
+}
+
+func recvICMP(currentHop int, icmpPacketsViaFirewall chan packet.Packet) (
+	remoteIP net.IP, imcpPacket *layers.ICMPv4, ok bool) {
+
+	for {
+		select {
+		case pkt := <-icmpPacketsViaFirewall:
+			if pkt.IsOutbound() {
+				continue
+			}
+			if pkt.Layers() == nil {
+				continue
+			}
+			icmpLayer := pkt.Layers().Layer(layers.LayerTypeICMPv4)
+			if icmpLayer == nil {
+				continue
+			}
+			icmp4, ok := icmpLayer.(*layers.ICMPv4)
+			if !ok {
+				continue
+			}
+			return pkt.Info().RemoteIP(), icmp4, true
+
+		case <-time.After(time.Duration(currentHop*10+50) * time.Millisecond):
+			return nil, nil, false
+		}
+	}
 }
