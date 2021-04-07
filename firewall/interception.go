@@ -63,7 +63,6 @@ func interceptionStart() error {
 
 	interceptionModule.StartWorker("stat logger", statLogger)
 	interceptionModule.StartWorker("packet handler", packetHandler)
-	interceptionModule.StartWorker("ports state cleaner", portsInUseCleaner)
 
 	return interception.Start()
 }
@@ -265,13 +264,12 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	log.Tracer(pkt.Ctx()).Trace("filter: handing over to connection-based handler")
 
-	// check for internal firewall bypass
-	ps := getPortStatusAndMarkUsed(pkt.Info().LocalPort())
-	if ps.isMe {
-		// approve
+	// Check for pre-authenticated port.
+	if localPortIsPreAuthenticated(conn.Entity.Protocol, conn.LocalPort) {
+		// Approve connection.
 		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true
-		// finish
+		// Finalize connection.
 		conn.StopFirewallHandler()
 		issueVerdict(conn, pkt, 0, true)
 		return
