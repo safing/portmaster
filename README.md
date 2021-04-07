@@ -25,6 +25,8 @@ All technical details and guides live on the dedicated docs website:
 
 - [Guides](https://docs.safing.io/portmaster/guides/contribute)
   - [Contribute](https://docs.safing.io/portmaster/guides/contribute)
+  - [Settings Handbook](https://docs.safing.io/portmaster/settings)
+  - [DNS Configuration](https://docs.safing.io/portmaster/guides/dns-configuration)
 - [Install](https://docs.safing.io/portmaster/install/windows)
   - [on Windows](https://docs.safing.io/portmaster/install/windows)
   - [on Linux](https://docs.safing.io/portmaster/install/linux)
