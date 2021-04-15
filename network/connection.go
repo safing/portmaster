@@ -265,6 +265,10 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		dnsConn.Internal = true
 	}
 
+	// DNS Requests are saved by the nameserver depending on the result of the
+	// query. Blocked requests are saved immediately, accepted ones are only
+	// saved if they are not "used" by a connection.
+
 	return dnsConn
 }
 
@@ -294,6 +298,10 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 	if localProfile := remoteHost.Profile().LocalProfile(); localProfile != nil {
 		dnsConn.Internal = localProfile.Internal
 	}
+
+	// DNS Requests are saved by the nameserver depending on the result of the
+	// query. Blocked requests are saved immediately, accepted ones are only
+	// saved if they are not "used" by a connection.
 
 	return dnsConn, nil
 }
@@ -340,7 +348,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		ipinfo, err := resolver.GetIPInfo(proc.Profile().LocalProfile().ID, pkt.Info().RemoteIP().String())
 		if err != nil {
 			// Try again with the global scope, in case DNS went through the system resolver.
-			ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().Dst.String())
+			ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().RemoteIP().String())
 		}
 		if err == nil {
 			lastResolvedDomain := ipinfo.MostRecentDomain()
@@ -406,6 +414,10 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	if localProfile := proc.Profile().LocalProfile(); localProfile != nil {
 		newConn.Internal = localProfile.Internal
 	}
+
+	// Save connection to internal state in order to mitigate creation of
+	// duplicates. Do not propagate yet, as there is no verdict yet.
+	conns.add(newConn)
 
 	return newConn
 }
