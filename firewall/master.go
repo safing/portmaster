@@ -82,6 +82,13 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 		if conn.Entity != nil {
 			conn.Entity.ResetLists()
 		}
+	} else {
+		// Check if the revision counter of the connection needs updating.
+		revCnt := layeredProfile.RevisionCnt()
+		if conn.ProfileRevisionCounter != revCnt {
+			conn.ProfileRevisionCounter = revCnt
+			conn.SaveWhenFinished()
+		}
 	}
 
 	// DNS request from the system resolver require a special decision process,
