@@ -307,7 +307,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	log.Tracer(pkt.Ctx()).Trace("filter: handing over to connection-based handler")
 
 	// Check for pre-authenticated port.
-	if localPortIsPreAuthenticated(conn.Entity.Protocol, conn.LocalPort) {
+	if !conn.Inbound && localPortIsPreAuthenticated(conn.Entity.Protocol, conn.LocalPort) {
 		// Approve connection.
 		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true
