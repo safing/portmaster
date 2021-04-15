@@ -307,19 +307,18 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		proc = process.GetUnidentifiedProcess(pkt.Ctx())
 	}
 
+	// Create the (remote) entity.
+	entity := &intel.Entity{
+		Protocol: uint8(pkt.Info().Protocol),
+		Port:     pkt.Info().RemotePort(),
+	}
+	entity.SetIP(pkt.Info().RemoteIP())
+	entity.SetDstPort(pkt.Info().DstPort)
+
 	var scope string
-	var entity *intel.Entity
 	var resolverInfo *resolver.ResolverInfo
 
 	if inbound {
-
-		// inbound connection
-		entity = &intel.Entity{
-			Protocol: uint8(pkt.Info().Protocol),
-			Port:     pkt.Info().SrcPort,
-		}
-		entity.SetIP(pkt.Info().Src)
-		entity.SetDstPort(pkt.Info().DstPort)
 
 		switch entity.IPScope {
 		case netutils.HostLocal:
@@ -337,16 +336,8 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 
 	} else {
 
-		// outbound connection
-		entity = &intel.Entity{
-			Protocol: uint8(pkt.Info().Protocol),
-			Port:     pkt.Info().DstPort,
-		}
-		entity.SetIP(pkt.Info().Dst)
-		entity.SetDstPort(entity.Port)
-
 		// check if we can find a domain for that IP
-		ipinfo, err := resolver.GetIPInfo(proc.Profile().LocalProfile().ID, pkt.Info().Dst.String())
+		ipinfo, err := resolver.GetIPInfo(proc.Profile().LocalProfile().ID, pkt.Info().RemoteIP().String())
 		if err != nil {
 			// Try again with the global scope, in case DNS went through the system resolver.
 			ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().Dst.String())
@@ -364,7 +355,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 
 		// check if destination IP is the captive portal's IP
 		portal := netenv.GetCaptivePortal()
-		if pkt.Info().Dst.Equal(portal.IP) {
+		if pkt.Info().RemoteIP().Equal(portal.IP) {
 			scope = portal.Domain
 			entity.Domain = portal.Domain
 		}
