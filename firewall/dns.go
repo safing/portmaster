@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 	"strings"
-	"time"
 
 	"github.com/miekg/dns"
 	"github.com/safing/portbase/database"
@@ -16,9 +15,19 @@ import (
 	"github.com/safing/portmaster/resolver"
 )
 
-func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, resolverScope netutils.IPScope, sysResolver bool) ([]dns.RR, []string, int, string) {
+func filterDNSSection(
+	ctx context.Context,
+	entries []dns.RR,
+	p *profile.LayeredProfile,
+	resolverScope netutils.IPScope,
+	sysResolver bool,
+) ([]dns.RR, []string, int, string) {
+
+	// Will be filled 1:1 most of the time.
 	goodEntries := make([]dns.RR, 0, len(entries))
-	filteredRecords := make([]string, 0, len(entries))
+
+	// Will stay empty most of the time.
+	var filteredRecords []string
 
 	// keeps track of the number of valid and allowed
 	// A and AAAA records.
@@ -44,13 +53,16 @@ func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, resolverScope
 			switch {
 			case ipScope.IsLocalhost():
 				// No DNS should return localhost addresses
-				filteredRecords = append(filteredRecords, rr.String())
+				filteredRecords = append(filteredRecords, formatRR(rr))
 				interveningOptionKey = profile.CfgOptionRemoveOutOfScopeDNSKey
+				log.Tracer(ctx).Tracef("filter: RR violates resolver scope: %s", formatRR(rr))
 				continue
+
 			case resolverScope.IsGlobal() && ipScope.IsLAN() && !sysResolver:
 				// No global DNS should return LAN addresses
-				filteredRecords = append(filteredRecords, rr.String())
+				filteredRecords = append(filteredRecords, formatRR(rr))
 				interveningOptionKey = profile.CfgOptionRemoveOutOfScopeDNSKey
+				log.Tracer(ctx).Tracef("filter: RR violates resolver scope: %s", formatRR(rr))
 				continue
 			}
 		}
@@ -59,16 +71,21 @@ func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, resolverScope
 			// filter by flags
 			switch {
 			case p.BlockScopeInternet() && ipScope.IsGlobal():
-				filteredRecords = append(filteredRecords, rr.String())
+				filteredRecords = append(filteredRecords, formatRR(rr))
 				interveningOptionKey = profile.CfgOptionBlockScopeInternetKey
+				log.Tracer(ctx).Tracef("filter: RR is in blocked scope Internet: %s", formatRR(rr))
 				continue
+
 			case p.BlockScopeLAN() && ipScope.IsLAN():
-				filteredRecords = append(filteredRecords, rr.String())
+				filteredRecords = append(filteredRecords, formatRR(rr))
 				interveningOptionKey = profile.CfgOptionBlockScopeLANKey
+				log.Tracer(ctx).Tracef("filter: RR is in blocked scope LAN: %s", formatRR(rr))
 				continue
+
 			case p.BlockScopeLocal() && ipScope.IsLocalhost():
-				filteredRecords = append(filteredRecords, rr.String())
+				filteredRecords = append(filteredRecords, formatRR(rr))
 				interveningOptionKey = profile.CfgOptionBlockScopeLocalKey
+				log.Tracer(ctx).Tracef("filter: RR is in blocked scope Localhost: %s", formatRR(rr))
 				continue
 			}
 
@@ -83,9 +100,13 @@ func filterDNSSection(entries []dns.RR, p *profile.LayeredProfile, resolverScope
 	return goodEntries, filteredRecords, allowedAddressRecords, interveningOptionKey
 }
 
-func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache, sysResolver bool) *resolver.RRCache {
-	p := conn.Process().Profile()
-
+func filterDNSResponse(
+	ctx context.Context,
+	conn *network.Connection,
+	p *profile.LayeredProfile,
+	rrCache *resolver.RRCache,
+	sysResolver bool,
+) *resolver.RRCache {
 	// do not modify own queries
 	if conn.Process().Pid == ownPID {
 		return rrCache
@@ -96,20 +117,20 @@ func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache, sysR
 		return rrCache
 	}
 
-	// duplicate entry
-	rrCache = rrCache.ShallowCopy()
-	rrCache.FilteredEntries = make([]string, 0)
-
 	var filteredRecords []string
 	var validIPs int
 	var interveningOptionKey string
 
-	rrCache.Answer, filteredRecords, validIPs, interveningOptionKey = filterDNSSection(rrCache.Answer, p, rrCache.Resolver.IPScope, sysResolver)
-	rrCache.FilteredEntries = append(rrCache.FilteredEntries, filteredRecords...)
+	rrCache.Answer, filteredRecords, validIPs, interveningOptionKey = filterDNSSection(ctx, rrCache.Answer, p, rrCache.Resolver.IPScope, sysResolver)
+	if len(filteredRecords) > 0 {
+		rrCache.FilteredEntries = append(rrCache.FilteredEntries, filteredRecords...)
+	}
 
-	// we don't count the valid IPs in the extra section
-	rrCache.Extra, filteredRecords, _, _ = filterDNSSection(rrCache.Extra, p, rrCache.Resolver.IPScope, sysResolver)
-	rrCache.FilteredEntries = append(rrCache.FilteredEntries, filteredRecords...)
+	// Don't count the valid IPs in the extra section.
+	rrCache.Extra, filteredRecords, _, _ = filterDNSSection(ctx, rrCache.Extra, p, rrCache.Resolver.IPScope, sysResolver)
+	if len(filteredRecords) > 0 {
+		rrCache.FilteredEntries = append(rrCache.FilteredEntries, filteredRecords...)
+	}
 
 	if len(rrCache.FilteredEntries) > 0 {
 		rrCache.Filtered = true
@@ -142,9 +163,15 @@ func FilterResolvedDNS(
 	q *resolver.Query,
 	rrCache *resolver.RRCache,
 ) *resolver.RRCache {
+	// Check if we have a process and profile.
+	layeredProfile := conn.Process().Profile()
+	if layeredProfile == nil {
+		log.Tracer(ctx).Warning("unknown process or profile")
+		return nil
+	}
 
 	// special grant for connectivity domains
-	if checkConnectivityDomain(ctx, conn, nil) {
+	if checkConnectivityDomain(ctx, conn, layeredProfile, nil) {
 		// returns true if check triggered
 		return rrCache
 	}
@@ -152,33 +179,35 @@ func FilterResolvedDNS(
 	// Only filter criticial things if request comes from the system resolver.
 	sysResolver := conn.Process().IsSystemResolver()
 
-	updatedRR := filterDNSResponse(conn, rrCache, sysResolver)
-	if updatedRR == nil {
-		return nil
+	// Filter dns records and return if the query is blocked.
+	rrCache = filterDNSResponse(ctx, conn, layeredProfile, rrCache, sysResolver)
+	if conn.Verdict == network.VerdictBlock {
+		return rrCache
 	}
 
-	if !sysResolver && mayBlockCNAMEs(ctx, conn) {
-		return nil
+	// Block by CNAMEs.
+	if !sysResolver {
+		mayBlockCNAMEs(ctx, conn, layeredProfile)
 	}
 
-	return updatedRR
+	return rrCache
 }
 
-func mayBlockCNAMEs(ctx context.Context, conn *network.Connection) bool {
+func mayBlockCNAMEs(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile) bool {
 	// if we have CNAMEs and the profile is configured to filter them
 	// we need to re-check the lists and endpoints here
-	if conn.Process().Profile().FilterCNAMEs() {
+	if p.FilterCNAMEs() {
 		conn.Entity.ResetLists()
 		conn.Entity.EnableCNAMECheck(ctx, true)
 
-		result, reason := conn.Process().Profile().MatchEndpoint(ctx, conn.Entity)
+		result, reason := p.MatchEndpoint(ctx, conn.Entity)
 		if result == endpoints.Denied {
 			conn.BlockWithContext(reason.String(), profile.CfgOptionFilterCNAMEKey, reason.Context())
 			return true
 		}
 
 		if result == endpoints.NoMatch {
-			result, reason = conn.Process().Profile().MatchFilterLists(ctx, conn.Entity)
+			result, reason = p.MatchFilterLists(ctx, conn.Entity)
 			if result == endpoints.Denied {
 				conn.BlockWithContext(reason.String(), profile.CfgOptionFilterCNAMEKey, reason.Context())
 				return true
@@ -277,4 +306,9 @@ func UpdateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 			log.Errorf("nameserver: failed to save IP info record: %s", err)
 		}
 	}
+}
+
+// formatRR is a friendlier alternative to miekg/dns.RR.String().
+func formatRR(rr dns.RR) string {
+	return strings.ReplaceAll(rr.String(), "\t", " ")
 }

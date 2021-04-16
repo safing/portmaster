@@ -315,9 +315,12 @@ func (rrCache *RRCache) GetExtraRRs(ctx context.Context, query *dns.Msg) (extra 
 	// Add information about filtered entries.
 	if rrCache.Filtered {
 		if len(rrCache.FilteredEntries) > 1 {
-			extra = addExtra(ctx, extra, fmt.Sprintf("%d records have been filtered", len(rrCache.FilteredEntries)))
+			extra = addExtra(ctx, extra, fmt.Sprintf("%d RRs have been filtered:", len(rrCache.FilteredEntries)))
 		} else {
-			extra = addExtra(ctx, extra, fmt.Sprintf("%d record has been filtered", len(rrCache.FilteredEntries)))
+			extra = addExtra(ctx, extra, fmt.Sprintf("%d RR has been filtered:", len(rrCache.FilteredEntries)))
+		}
+		for _, filteredRecord := range rrCache.FilteredEntries {
+			extra = addExtra(ctx, extra, filteredRecord)
 		}
 	}
 
