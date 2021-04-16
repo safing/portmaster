@@ -106,10 +106,10 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 	switch {
 	case conn.Inbound, conn.Entity.Domain == "": // connection to/from IP
 		nID = fmt.Sprintf(
-			"%s-%s-%s-%s",
+			"%s-%s-%v-%s",
 			promptIDPrefix,
 			localProfile.ID,
-			conn.Scope,
+			conn.Inbound,
 			pkt.Info().RemoteIP(),
 		)
 	default: // connection to domain
@@ -117,7 +117,7 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 			"%s-%s-%s",
 			promptIDPrefix,
 			localProfile.ID,
-			conn.Scope,
+			conn.Entity.Domain,
 		)
 	}
 

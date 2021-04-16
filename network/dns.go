@@ -55,7 +55,7 @@ func SaveOpenDNSRequest(conn *Connection) {
 	openDNSRequestsLock.Lock()
 	defer openDNSRequestsLock.Unlock()
 
-	key := getDNSRequestCacheKey(conn.process.Pid, conn.Scope)
+	key := getDNSRequestCacheKey(conn.process.Pid, conn.Entity.Domain)
 	if existingConn, ok := openDNSRequests[key]; ok {
 		existingConn.Lock()
 		defer existingConn.Unlock()

@@ -650,12 +650,12 @@ func (conn *Connection) SetInspectorData(new map[uint8]interface{}) {
 
 // String returns a string representation of conn.
 func (conn *Connection) String() string {
-	switch conn.Scope {
-	case IncomingHost, IncomingLAN, IncomingInternet, IncomingInvalid:
+	switch {
+	case conn.Inbound:
 		return fmt.Sprintf("%s <- %s", conn.process, conn.Entity.IP)
-	case PeerHost, PeerLAN, PeerInternet, PeerInvalid:
-		return fmt.Sprintf("%s -> %s", conn.process, conn.Entity.IP)
-	default:
+	case conn.Entity.Domain != "":
 		return fmt.Sprintf("%s to %s (%s)", conn.process, conn.Entity.Domain, conn.Entity.IP)
+	default:
+		return fmt.Sprintf("%s -> %s", conn.process, conn.Entity.IP)
 	}
 }
