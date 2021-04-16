@@ -127,34 +127,8 @@ func filterDNSResponse(conn *network.Connection, rrCache *resolver.RRCache, sysR
 				conn.Block("DNS response only contained to-be-blocked IPs", interveningOptionKey)
 			}
 
-			// If all entries are filtered, this could mean that these are broken/bogus resource records.
-			if rrCache.Expired() {
-				// If the entry is expired, force delete it.
-				err := resolver.ResetCachedRecord(rrCache.Domain, rrCache.Question.String())
-				if err != nil && err != database.ErrNotFound {
-					log.Warningf(
-						"filter: failed to delete fully filtered name cache for %s: %s",
-						rrCache.ID(),
-						err,
-					)
-				}
-			} else if rrCache.Expires > time.Now().Add(10*time.Second).Unix() {
-				// Set a low TTL of 10 seconds if TTL is higher than that.
-				rrCache.Expires = time.Now().Add(10 * time.Second).Unix()
-				err := rrCache.Save()
-				if err != nil {
-					log.Debugf(
-						"filter: failed to set shorter TTL on fully filtered name cache for %s: %s",
-						rrCache.ID(),
-						err,
-					)
-				}
-			}
-
-			return nil
+			return rrCache
 		}
-
-		log.Infof("filter: filtered DNS replies for %s: %s", conn, strings.Join(rrCache.FilteredEntries, ", "))
 	}
 
 	return rrCache
