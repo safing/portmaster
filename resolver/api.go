@@ -1,7 +1,10 @@
 package resolver
 
 import (
+	"net/http"
+
 	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/database/record"
 )
 
 func registerAPI() error {
@@ -21,6 +24,24 @@ func registerAPI() error {
 		StructFunc:  exportDNSResolvers,
 		Name:        "List DNS Resolvers",
 		Description: "List currently configured DNS resolvers and their status.",
+	}); err != nil {
+		return err
+	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path: `dns/cache`,
+		Read: api.PermitUser,
+		RecordFunc: func(r *api.Request) (record.Record, error) {
+			return recordDatabase.Get(nameRecordsKeyPrefix + r.URL.Query().Get("q"))
+		},
+		Name:        "Get DNS Record from Cache",
+		Description: "Returns cached dns records from the internal cache.",
+		Parameters: []api.Parameter{{
+			Method:      http.MethodGet,
+			Field:       "q",
+			Value:       "fqdn and query type",
+			Description: "Specify the query like this: `example.com.A`.",
+		}},
 	}); err != nil {
 		return err
 	}
