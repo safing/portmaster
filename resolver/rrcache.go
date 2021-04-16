@@ -82,12 +82,6 @@ func (rrCache *RRCache) Clean(minExpires uint32) {
 		lowestTTL = maxTTL
 	}
 
-	// Adjust return code if there are no answers
-	if rrCache.RCode == dns.RcodeSuccess &&
-		len(rrCache.Answer) == 0 {
-		rrCache.RCode = dns.RcodeNameError
-	}
-
 	// shorten caching
 	switch {
 	case rrCache.RCode != dns.RcodeSuccess:
@@ -96,6 +90,9 @@ func (rrCache *RRCache) Clean(minExpires uint32) {
 	case netenv.IsConnectivityDomain(rrCache.Domain):
 		// Responses from these domains might change very quickly depending on the environment.
 		lowestTTL = 3
+	case len(rrCache.Answer) == 0:
+		// Empty answer section: Domain exists, but not the queried RR.
+		lowestTTL = 60
 	case !netenv.Online():
 		// Not being fully online could mean that we get funny responses.
 		lowestTTL = 60
