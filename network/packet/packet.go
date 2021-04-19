@@ -18,6 +18,12 @@ type Base struct {
 	layer5Data []byte
 }
 
+// FastTrackedByIntegration returns whether the packet has been fast-track
+// accepted by the OS integration.
+func (pkt *Base) FastTrackedByIntegration() bool {
+	return false
+}
+
 // SetCtx sets the packet context.
 func (pkt *Base) SetCtx(ctx context.Context) {
 	pkt.ctx = ctx
@@ -222,6 +228,7 @@ type Packet interface {
 	PermanentDrop() error
 	RerouteToNameserver() error
 	RerouteToTunnel() error
+	FastTrackedByIntegration() bool
 
 	// INFO
 	SetCtx(context.Context)

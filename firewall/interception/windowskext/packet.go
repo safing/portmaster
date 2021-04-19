@@ -23,10 +23,20 @@ type Packet struct {
 	lock          sync.Mutex
 }
 
+// FastTrackedByIntegration returns whether the packet has been fast-track
+// accepted by the OS integration.
+func (pkt *Packet) FastTrackedByIntegration() bool {
+	return pkt.verdictRequest.flags&VerdictRequestFlagFastTrackPermitted > 0
+}
+
 // GetPayload returns the full raw packet.
 func (pkt *Packet) LoadPacketData() error {
 	pkt.lock.Lock()
 	defer pkt.lock.Unlock()
+
+	if pkt.verdictRequest.id == 0 {
+		return packet.ErrNoPacketID
+	}
 
 	if !pkt.payloadLoaded {
 		pkt.payloadLoaded = true
@@ -53,7 +63,7 @@ func (pkt *Packet) LoadPacketData() error {
 // Accept accepts the packet.
 func (pkt *Packet) Accept() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt.verdictRequest.id, -network.VerdictAccept)
+		return SetVerdict(pkt, -network.VerdictAccept)
 	}
 	return nil
 }
@@ -61,7 +71,7 @@ func (pkt *Packet) Accept() error {
 // Block blocks the packet.
 func (pkt *Packet) Block() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt.verdictRequest.id, -network.VerdictBlock)
+		return SetVerdict(pkt, -network.VerdictBlock)
 	}
 	return nil
 }
@@ -69,7 +79,7 @@ func (pkt *Packet) Block() error {
 // Drop drops the packet.
 func (pkt *Packet) Drop() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt.verdictRequest.id, -network.VerdictDrop)
+		return SetVerdict(pkt, -network.VerdictDrop)
 	}
 	return nil
 }
@@ -77,7 +87,7 @@ func (pkt *Packet) Drop() error {
 // PermanentAccept permanently accepts connection (and the current packet).
 func (pkt *Packet) PermanentAccept() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt.verdictRequest.id, network.VerdictAccept)
+		return SetVerdict(pkt, network.VerdictAccept)
 	}
 	return nil
 }
@@ -85,7 +95,7 @@ func (pkt *Packet) PermanentAccept() error {
 // PermanentBlock permanently blocks connection (and the current packet).
 func (pkt *Packet) PermanentBlock() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt.verdictRequest.id, network.VerdictBlock)
+		return SetVerdict(pkt, network.VerdictBlock)
 	}
 	return nil
 }
@@ -93,7 +103,7 @@ func (pkt *Packet) PermanentBlock() error {
 // PermanentDrop permanently drops connection (and the current packet).
 func (pkt *Packet) PermanentDrop() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt.verdictRequest.id, network.VerdictDrop)
+		return SetVerdict(pkt, network.VerdictDrop)
 	}
 	return nil
 }
@@ -101,7 +111,7 @@ func (pkt *Packet) PermanentDrop() error {
 // RerouteToNameserver permanently reroutes the connection to the local nameserver (and the current packet).
 func (pkt *Packet) RerouteToNameserver() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt.verdictRequest.id, network.VerdictRerouteToNameserver)
+		return SetVerdict(pkt, network.VerdictRerouteToNameserver)
 	}
 	return nil
 }
@@ -109,7 +119,7 @@ func (pkt *Packet) RerouteToNameserver() error {
 // RerouteToTunnel permanently reroutes the connection to the local tunnel entrypoint (and the current packet).
 func (pkt *Packet) RerouteToTunnel() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt.verdictRequest.id, network.VerdictRerouteToTunnel)
+		return SetVerdict(pkt, network.VerdictRerouteToTunnel)
 	}
 	return nil
 }
