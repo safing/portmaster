@@ -13,14 +13,26 @@ import (
 	"github.com/safing/portmaster/network/packet"
 )
 
+const (
+	// VerdictRequestFlagFastTrackPermitted is set on packets that have been
+	// already permitted by the kernel extension and the verdict request is only
+	// informational.
+	VerdictRequestFlagFastTrackPermitted = 1
+
+	// VerdictRequestFlagSocketAuth indicates that the verdict request is for a
+	// connection that was intercepted on an ALE layer instead of in the network
+	// stack itself. Thus, no packet data is available.
+	VerdictRequestFlagSocketAuth = 2
+)
+
 // VerdictRequest is the request structure from the Kext.
 type VerdictRequest struct {
 	id         uint32 // ID from RegisterPacket
 	_          uint64 // Process ID - does not yet work
 	direction  uint8
-	ipV6       uint8 // True: IPv6, False: IPv4
-	protocol   uint8 // Protocol
-	_          uint8
+	ipV6       uint8     // True: IPv6, False: IPv4
+	protocol   uint8     // Protocol
+	flags      uint8     // Flags
 	localIP    [4]uint32 // Source Address
 	remoteIP   [4]uint32 // Destination Address
 	localPort  uint16    // Source Port

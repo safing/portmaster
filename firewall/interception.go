@@ -161,6 +161,12 @@ func getConnection(pkt packet.Packet) (*network.Connection, error) {
 func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 	meta := pkt.Info()
 
+	// Check if packed was already fast-tracked by the OS integration.
+	if pkt.FastTrackedByIntegration() {
+		log.Debugf("filter: fast-tracked by OS integration: %s", pkt)
+		return true
+	}
+
 	// Check if connection was already blocked.
 	if meta.Dst.Equal(blockedIPv4) || meta.Dst.Equal(blockedIPv6) {
 		_ = pkt.PermanentBlock()

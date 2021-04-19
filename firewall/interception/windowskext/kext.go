@@ -20,6 +20,7 @@ import (
 // Package errors
 var (
 	ErrKextNotReady = errors.New("the windows kernel extension (driver) is not ready to accept commands")
+	ErrNoPacketID   = errors.New("the packet has no ID, possibly because it was fast-tracked by the kernel extension")
 
 	winErrInvalidData = uintptr(windows.ERROR_INVALID_DATA)
 
@@ -178,22 +179,29 @@ func RecvVerdictRequest() (*VerdictRequest, error) {
 }
 
 // SetVerdict sets the verdict for a packet and/or connection.
-func SetVerdict(packetID uint32, verdict network.Verdict) error {
+func SetVerdict(pkt *Packet, verdict network.Verdict) error {
+	if pkt.verdictRequest.id == 0 {
+		log.Tracer(pkt.Ctx()).Errorf("kext: failed to set verdict %s: no packet ID", verdict)
+		return ErrNoPacketID
+	}
+
 	kextLock.RLock()
 	defer kextLock.RUnlock()
 	if !ready.IsSet() {
+		log.Tracer(pkt.Ctx()).Errorf("kext: failed to set verdict %s: kext not ready", verdict)
 		return ErrKextNotReady
 	}
 
 	atomic.AddInt32(urgentRequests, 1)
 	// timestamp := time.Now()
 	rc, _, lastErr := kext.setVerdict.Call(
-		uintptr(packetID),
+		uintptr(pkt.verdictRequest.id),
 		uintptr(verdict),
 	)
 	// log.Tracef("winkext: settings verdict for packetID %d took %s", packetID, time.Now().Sub(timestamp))
 	atomic.AddInt32(urgentRequests, -1)
 	if rc != windows.NO_ERROR {
+		log.Tracer(pkt.Ctx()).Errorf("kext: failed to set verdict %s on packet %d", verdict, pkt.verdictRequest.id)
 		return formatErr(lastErr, rc)
 	}
 	return nil
@@ -201,6 +209,10 @@ func SetVerdict(packetID uint32, verdict network.Verdict) error {
 
 // GetPayload returns the payload of a packet.
 func GetPayload(packetID uint32, packetSize uint32) ([]byte, error) {
+	if packetID == 0 {
+		return nil, ErrNoPacketID
+	}
+
 	kextLock.RLock()
 	defer kextLock.RUnlock()
 	if !ready.IsSet() {
