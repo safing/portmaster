@@ -82,12 +82,6 @@ func (rrCache *RRCache) Clean(minExpires uint32) {
 		lowestTTL = maxTTL
 	}
 
-	// Adjust return code if there are no answers
-	if rrCache.RCode == dns.RcodeSuccess &&
-		len(rrCache.Answer) == 0 {
-		rrCache.RCode = dns.RcodeNameError
-	}
-
 	// shorten caching
 	switch {
 	case rrCache.RCode != dns.RcodeSuccess:
@@ -96,6 +90,9 @@ func (rrCache *RRCache) Clean(minExpires uint32) {
 	case netenv.IsConnectivityDomain(rrCache.Domain):
 		// Responses from these domains might change very quickly depending on the environment.
 		lowestTTL = 3
+	case len(rrCache.Answer) == 0:
+		// Empty answer section: Domain exists, but not the queried RR.
+		lowestTTL = 60
 	case !netenv.Online():
 		// Not being fully online could mean that we get funny responses.
 		lowestTTL = 60
@@ -318,9 +315,12 @@ func (rrCache *RRCache) GetExtraRRs(ctx context.Context, query *dns.Msg) (extra 
 	// Add information about filtered entries.
 	if rrCache.Filtered {
 		if len(rrCache.FilteredEntries) > 1 {
-			extra = addExtra(ctx, extra, fmt.Sprintf("%d records have been filtered", len(rrCache.FilteredEntries)))
+			extra = addExtra(ctx, extra, fmt.Sprintf("%d RRs have been filtered:", len(rrCache.FilteredEntries)))
 		} else {
-			extra = addExtra(ctx, extra, fmt.Sprintf("%d record has been filtered", len(rrCache.FilteredEntries)))
+			extra = addExtra(ctx, extra, fmt.Sprintf("%d RR has been filtered:", len(rrCache.FilteredEntries)))
+		}
+		for _, filteredRecord := range rrCache.FilteredEntries {
+			extra = addExtra(ctx, extra, filteredRecord)
 		}
 	}
 

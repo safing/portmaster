@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
@@ -73,10 +74,8 @@ func ZeroIP(msgs ...string) ResponderFunc {
 		}
 
 		switch {
-		case hasErr && len(reply.Answer) == 0:
+		case hasErr || len(reply.Answer) == 0:
 			reply.SetRcode(request, dns.RcodeServerFailure)
-		case len(reply.Answer) == 0:
-			reply.SetRcode(request, dns.RcodeNameError)
 		default:
 			reply.SetRcode(request, dns.RcodeSuccess)
 		}
@@ -115,10 +114,8 @@ func Localhost(msgs ...string) ResponderFunc {
 		}
 
 		switch {
-		case hasErr && len(reply.Answer) == 0:
+		case hasErr || len(reply.Answer) == 0:
 			reply.SetRcode(request, dns.RcodeServerFailure)
-		case len(reply.Answer) == 0:
-			reply.SetRcode(request, dns.RcodeNameError)
 		default:
 			reply.SetRcode(request, dns.RcodeSuccess)
 		}
@@ -134,6 +131,15 @@ func NxDomain(msgs ...string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg).SetRcode(request, dns.RcodeNameError)
 		AddMessagesToReply(ctx, reply, log.InfoLevel, msgs...)
+
+		// According to RFC4074 (https://tools.ietf.org/html/rfc4074), there are
+		// nameservers that incorrectly respond with NXDomain instead of an empty
+		// SUCCESS response when there are other RRs for the queried domain name.
+		// This can lead to the software thinking that no RRs exist for that
+		// domain. In order to mitigate this a bit, we slightly delay NXDomain
+		// responses.
+		time.Sleep(500 * time.Millisecond)
+
 		return reply
 	}
 }

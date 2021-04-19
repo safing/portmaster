@@ -341,6 +341,7 @@ resolveLoop:
 			}
 
 			// resolve
+			log.Tracer(ctx).Tracef("resolver: sending query for %s to %s", q.ID(), resolver.Info.ID())
 			rrCache, err = resolver.Conn.Query(ctx, q)
 			if err != nil {
 				switch {
@@ -416,9 +417,11 @@ resolveLoop:
 		return nil, err
 	}
 
-	// Save the new entry if cache is enabled.
+	// Adjust TTLs.
+	rrCache.Clean(minTTL)
+
+	// Save the new entry if cache is enabled and the record may be cached.
 	if !q.NoCaching && rrCache.Cacheable() {
-		rrCache.Clean(minTTL)
 		err = rrCache.Save()
 		if err != nil {
 			log.Tracer(ctx).Warningf("resolver: failed to cache RR for %s: %s", q.ID(), err)

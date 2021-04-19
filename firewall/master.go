@@ -37,7 +37,7 @@ import (
 
 const noReasonOptionKey = ""
 
-type deciderFn func(context.Context, *network.Connection, packet.Packet) bool
+type deciderFn func(context.Context, *network.Connection, *profile.LayeredProfile, packet.Packet) bool
 
 var defaultDeciders = []deciderFn{
 	checkPortmasterConnection,
@@ -45,6 +45,7 @@ var defaultDeciders = []deciderFn{
 	checkConnectionType,
 	checkConnectionScope,
 	checkEndpointLists,
+	checkResolverScope,
 	checkConnectivityDomain,
 	checkBypassPrevention,
 	checkFilterLists,
@@ -82,6 +83,13 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 		if conn.Entity != nil {
 			conn.Entity.ResetLists()
 		}
+	} else {
+		// Check if the revision counter of the connection needs updating.
+		revCnt := layeredProfile.RevisionCnt()
+		if conn.ProfileRevisionCounter != revCnt {
+			conn.ProfileRevisionCounter = revCnt
+			conn.SaveWhenFinished()
+		}
 	}
 
 	// DNS request from the system resolver require a special decision process,
@@ -90,7 +98,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 	// connection is then blocked when the original requesting process is known.
 	if conn.Type == network.DNSRequest && conn.Process().IsSystemResolver() {
 		// Run all deciders and return if they came to a conclusion.
-		done, _ := runDeciders(ctx, dnsFromSystemResolverDeciders, conn, pkt)
+		done, _ := runDeciders(ctx, dnsFromSystemResolverDeciders, conn, layeredProfile, pkt)
 		if !done {
 			conn.Accept("allowing system resolver dns request", noReasonOptionKey)
 		}
@@ -98,7 +106,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 	}
 
 	// Run all deciders and return if they came to a conclusion.
-	done, defaultAction := runDeciders(ctx, defaultDeciders, conn, pkt)
+	done, defaultAction := runDeciders(ctx, defaultDeciders, conn, layeredProfile, pkt)
 	if done {
 		return
 	}
@@ -114,16 +122,14 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 	}
 }
 
-func runDeciders(ctx context.Context, selectedDeciders []deciderFn, conn *network.Connection, pkt packet.Packet) (done bool, defaultAction uint8) {
-	layeredProfile := conn.Process().Profile()
-
-	// Read-lock the all the profiles.
+func runDeciders(ctx context.Context, selectedDeciders []deciderFn, conn *network.Connection, layeredProfile *profile.LayeredProfile, pkt packet.Packet) (done bool, defaultAction uint8) {
+	// Read-lock all the profiles.
 	layeredProfile.LockForUsage()
 	defer layeredProfile.UnlockForUsage()
 
 	// Go though all deciders, return if one sets an action.
 	for _, decider := range selectedDeciders {
-		if decider(ctx, conn, pkt) {
+		if decider(ctx, conn, layeredProfile, pkt) {
 			return true, profile.DefaultActionNotSet
 		}
 	}
@@ -134,7 +140,7 @@ func runDeciders(ctx context.Context, selectedDeciders []deciderFn, conn *networ
 
 // checkPortmasterConnection allows all connection that originate from
 // portmaster itself.
-func checkPortmasterConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet) bool {
+func checkPortmasterConnection(ctx context.Context, conn *network.Connection, _ *profile.LayeredProfile, pkt packet.Packet) bool {
 	// Grant own outgoing connections.
 	if conn.Process().Pid == ownPID &&
 		(pkt == nil || pkt.IsOutbound()) {
@@ -148,7 +154,7 @@ func checkPortmasterConnection(ctx context.Context, conn *network.Connection, pk
 }
 
 // checkSelfCommunication checks if the process is communicating with itself.
-func checkSelfCommunication(ctx context.Context, conn *network.Connection, pkt packet.Packet) bool {
+func checkSelfCommunication(ctx context.Context, conn *network.Connection, _ *profile.LayeredProfile, pkt packet.Packet) bool {
 	// check if process is communicating with itself
 	if pkt != nil {
 		// TODO: evaluate the case where different IPs in the 127/8 net are used.
@@ -183,12 +189,9 @@ func checkSelfCommunication(ctx context.Context, conn *network.Connection, pkt p
 	return false
 }
 
-func checkEndpointLists(ctx context.Context, conn *network.Connection, _ packet.Packet) bool {
+func checkEndpointLists(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
 	var result endpoints.EPResult
 	var reason endpoints.Reason
-
-	// there must always be a profile.
-	p := conn.Process().Profile()
 
 	// check endpoints list
 	var optionKey string
@@ -211,35 +214,41 @@ func checkEndpointLists(ctx context.Context, conn *network.Connection, _ packet.
 	return false
 }
 
-func checkConnectionType(ctx context.Context, conn *network.Connection, _ packet.Packet) bool {
-	p := conn.Process().Profile()
+func checkConnectionType(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
+	switch {
+	case conn.Type != network.IPConnection:
 
-	// check conn type
-	switch conn.Scope {
-	case network.IncomingLAN, network.IncomingInternet, network.IncomingInvalid:
-		if p.BlockInbound() {
-			if conn.Scope == network.IncomingHost {
-				conn.Block("inbound connections blocked", profile.CfgOptionBlockInboundKey)
-			} else {
-				conn.Drop("inbound connections blocked", profile.CfgOptionBlockInboundKey)
-			}
-			return true
-		}
-	case network.PeerInternet:
-		// BlockP2P only applies to connections to the Internet
-		if p.BlockP2P() {
-			conn.Block("direct connections (P2P) blocked", profile.CfgOptionBlockP2PKey)
-			return true
-		}
+		// Decider only applies to IP connections.
+		return false
+
+	case conn.Inbound &&
+		!conn.Entity.IPScope.IsLocalhost() &&
+		p.BlockInbound():
+
+		// BlockInbound does not apply to the Localhost scope.
+		conn.Drop("inbound connections blocked", profile.CfgOptionBlockInboundKey)
+		return true
+
+	case conn.Entity.IPScope.IsGlobal() &&
+		conn.Entity.Domain == "" &&
+		p.BlockP2P():
+
+		// BlockP2P only applies to the Global scope.
+		conn.Block("direct connections (P2P) blocked", profile.CfgOptionBlockP2PKey)
+		return true
+
+	default:
+
+		return false
 	}
-
-	return false
 }
 
-func checkConnectivityDomain(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
-	p := conn.Process().Profile()
-
+func checkConnectivityDomain(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
 	switch {
+	case conn.Entity.Domain == "":
+		// Only applies if a domain is available.
+		return false
+
 	case netenv.GetOnlineStatus() > netenv.StatusPortal:
 		// Special grant only applies if network status is Portal (or even more limited).
 		return false
@@ -263,9 +272,7 @@ func checkConnectivityDomain(_ context.Context, conn *network.Connection, _ pack
 	}
 }
 
-func checkConnectionScope(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
-	p := conn.Process().Profile()
-
+func checkConnectionScope(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
 	// If we are handling a DNS request, check if we can immediately block it.
 	if conn.Type == network.DNSRequest {
 		// DNS is expected to resolve to LAN or Internet addresses.
@@ -300,8 +307,46 @@ func checkConnectionScope(_ context.Context, conn *network.Connection, _ packet.
 		return true
 	}
 
+	return false
+}
+
+func checkBypassPrevention(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
+	if p.PreventBypassing() {
+		// check for bypass protection
+		result, reason, reasonCtx := PreventBypassing(conn)
+		switch result {
+		case endpoints.Denied:
+			conn.BlockWithContext("bypass prevention: "+reason, profile.CfgOptionPreventBypassingKey, reasonCtx)
+			return true
+		case endpoints.Permitted:
+			conn.AcceptWithContext("bypass prevention: "+reason, profile.CfgOptionPreventBypassingKey, reasonCtx)
+			return true
+		case endpoints.NoMatch:
+		}
+	}
+	return false
+}
+
+func checkFilterLists(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, pkt packet.Packet) bool {
+	// apply privacy filter lists
+	result, reason := p.MatchFilterLists(ctx, conn.Entity)
+	switch result {
+	case endpoints.Denied:
+		conn.DenyWithContext(reason.String(), profile.CfgOptionFilterListsKey, reason.Context())
+		return true
+	case endpoints.NoMatch:
+		// nothing to do
+	default:
+		log.Tracer(ctx).Debugf("filter: filter lists returned unsupported verdict: %s", result)
+	}
+	return false
+}
+
+func checkResolverScope(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
 	// If the IP address was resolved, check the scope of the resolver.
 	switch {
+	case conn.Type != network.IPConnection:
+		// Only applies to IP connections.
 	case !p.RemoveOutOfScopeDNS():
 		// Out of scope checking is not active.
 	case conn.Resolver == nil:
@@ -321,43 +366,7 @@ func checkConnectionScope(_ context.Context, conn *network.Connection, _ packet.
 	return false
 }
 
-func checkBypassPrevention(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
-	if conn.Process().Profile().PreventBypassing() {
-		// check for bypass protection
-		result, reason, reasonCtx := PreventBypassing(conn)
-		switch result {
-		case endpoints.Denied:
-			conn.BlockWithContext("bypass prevention: "+reason, profile.CfgOptionPreventBypassingKey, reasonCtx)
-			return true
-		case endpoints.Permitted:
-			conn.AcceptWithContext("bypass prevention: "+reason, profile.CfgOptionPreventBypassingKey, reasonCtx)
-			return true
-		case endpoints.NoMatch:
-		}
-	}
-	return false
-}
-
-func checkFilterLists(ctx context.Context, conn *network.Connection, pkt packet.Packet) bool {
-	// apply privacy filter lists
-	p := conn.Process().Profile()
-
-	result, reason := p.MatchFilterLists(ctx, conn.Entity)
-	switch result {
-	case endpoints.Denied:
-		conn.DenyWithContext(reason.String(), profile.CfgOptionFilterListsKey, reason.Context())
-		return true
-	case endpoints.NoMatch:
-		// nothing to do
-	default:
-		log.Tracer(ctx).Debugf("filter: filter lists returned unsupported verdict: %s", result)
-	}
-	return false
-}
-
-func checkDomainHeuristics(ctx context.Context, conn *network.Connection, _ packet.Packet) bool {
-	p := conn.Process().Profile()
-
+func checkDomainHeuristics(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
 	if !p.DomainHeuristics() {
 		return false
 	}
@@ -415,7 +424,7 @@ func checkDomainHeuristics(ctx context.Context, conn *network.Connection, _ pack
 	return false
 }
 
-func dropInbound(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
+func dropInbound(_ context.Context, conn *network.Connection, _ *profile.LayeredProfile, _ packet.Packet) bool {
 	// implicit default=block for inbound
 	if conn.Inbound {
 		conn.Drop("incoming connection blocked by default", profile.CfgOptionServiceEndpointsKey)
@@ -424,9 +433,7 @@ func dropInbound(_ context.Context, conn *network.Connection, _ packet.Packet) b
 	return false
 }
 
-func checkAutoPermitRelated(_ context.Context, conn *network.Connection, _ packet.Packet) bool {
-	p := conn.Process().Profile()
-
+func checkAutoPermitRelated(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
 	// Auto permit is disabled for default action permit.
 	if p.DefaultAction() == profile.DefaultActionPermit {
 		return false

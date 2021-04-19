@@ -144,15 +144,14 @@ func getConnection(pkt packet.Packet) (*network.Connection, error) {
 
 	// Transform and log result.
 	conn := newConn.(*network.Connection)
-	switch {
-	case created && shared:
-		log.Tracer(pkt.Ctx()).Tracef("filter: created new connection %s (shared)", conn.ID)
-	case created:
-		log.Tracer(pkt.Ctx()).Tracef("filter: created new connection %s", conn.ID)
-	case shared:
-		log.Tracer(pkt.Ctx()).Tracef("filter: assigned connection %s (shared)", conn.ID)
-	default:
-		log.Tracer(pkt.Ctx()).Tracef("filter: assigned connection %s", conn.ID)
+	sharedIndicator := ""
+	if shared {
+		sharedIndicator = " (shared)"
+	}
+	if created {
+		log.Tracer(pkt.Ctx()).Tracef("filter: created new connection %s%s", conn.ID, sharedIndicator)
+	} else {
+		log.Tracer(pkt.Ctx()).Tracef("filter: assigned connection %s%s", conn.ID, sharedIndicator)
 	}
 
 	return conn, nil
@@ -307,7 +306,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	log.Tracer(pkt.Ctx()).Trace("filter: handing over to connection-based handler")
 
 	// Check for pre-authenticated port.
-	if localPortIsPreAuthenticated(conn.Entity.Protocol, conn.LocalPort) {
+	if !conn.Inbound && localPortIsPreAuthenticated(conn.Entity.Protocol, conn.LocalPort) {
 		// Approve connection.
 		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true

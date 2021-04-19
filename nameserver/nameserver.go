@@ -189,8 +189,8 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 
 	// Resolve request.
 	rrCache, err = resolver.Resolve(ctx, q)
+	// Handle error.
 	if err != nil {
-		// React to special errors.
 		switch {
 		case errors.Is(err, resolver.ErrNotFound):
 			tracer.Tracef("nameserver: %s", err)
@@ -214,31 +214,34 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 			return reply(nsutil.ServerFailure("internal error: " + err.Error()))
 		}
 	}
-	if rrCache == nil {
+	// Handle special cases.
+	switch {
+	case rrCache == nil:
 		tracer.Warning("nameserver: received successful, but empty reply from resolver")
 		return reply(nsutil.ServerFailure("internal error: empty reply"))
+	case rrCache.RCode == dns.RcodeNameError:
+		return reply(nsutil.NxDomain("no answer found (NXDomain)"))
 	}
 
 	tracer.Trace("nameserver: deciding on resolved dns")
 	rrCache = firewall.FilterResolvedDNS(ctx, conn, q, rrCache)
-	if rrCache == nil {
-		// Check again if there is a responder from the firewall.
-		if responder, ok := conn.Reason.Context.(nsutil.Responder); ok {
-			tracer.Infof("nameserver: handing over request for %s to filter responder: %s", q.ID(), conn.Reason.Msg)
-			return reply(responder)
-		}
 
-		// Request was blocked by the firewall.
-		switch conn.Verdict {
-		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
-			tracer.Infof(
-				"nameserver: returning %s response for %s to %s",
-				conn.Verdict.Verb(),
-				q.ID(),
-				conn.Process(),
-			)
-			return reply(conn, conn)
-		}
+	// Check again if there is a responder from the firewall.
+	if responder, ok := conn.Reason.Context.(nsutil.Responder); ok {
+		tracer.Infof("nameserver: handing over request for %s to special filter responder: %s", q.ID(), conn.Reason.Msg)
+		return reply(responder)
+	}
+
+	// Check if there is a Verdict to act upon.
+	switch conn.Verdict {
+	case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
+		tracer.Infof(
+			"nameserver: returning %s response for %s to %s",
+			conn.Verdict.Verb(),
+			q.ID(),
+			conn.Process(),
+		)
+		return reply(conn, conn, rrCache)
 	}
 
 	// Revert back to non-standard question format, if we had to convert.
@@ -247,10 +250,15 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	}
 
 	// Reply with successful response.
+	noAnswerIndicator := ""
+	if len(rrCache.Answer) == 0 {
+		noAnswerIndicator = "/no answer"
+	}
 	tracer.Infof(
-		"nameserver: returning %s response (%s) for %s to %s",
+		"nameserver: returning %s response (%s%s) for %s to %s",
 		conn.Verdict.Verb(),
 		dns.RcodeToString[rrCache.RCode],
+		noAnswerIndicator,
 		q.ID(),
 		conn.Process(),
 	)

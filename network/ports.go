@@ -41,6 +41,11 @@ nextPort:
 			}
 		}
 
+		// Log if it took more than 10 attempts.
+		if i >= 10 {
+			log.Warningf("network: took %d attempts to find a suitable unused port for pre-auth", i+1)
+		}
+
 		// The checks have passed. We have found a good unused port.
 		return port, true
 	}
