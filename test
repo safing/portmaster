@@ -176,13 +176,16 @@ echo "running tests for ${platformInfo//$'\n'/ }:"
 
 # run vet/test on packages
 for package in $packages; do
+  package=${package#github.com/safing/portmaster}
+  package=${package#/}
+  package=$PWD/$package
   echo ""
   echo $package
   if [[ $testonly -eq 0 ]]; then
     checkformat $package
     run golint -set_exit_status -min_confidence 1.0 $package
     run go vet $package
-    run golangci-lint run $GOPATH/src/$package
+    run golangci-lint run $package
   fi
   run go test -cover $fullTestFlags $package
 done

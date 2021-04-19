@@ -181,7 +181,7 @@ func (q *Queue) packetHandler(ctx context.Context) func(nfqueue.Attribute) int {
 
 		if attrs.Payload == nil {
 			// There is not payload.
-			log.Warningf("nfqueue: packet #%s has no payload", pkt.pktID)
+			log.Warningf("nfqueue: packet #%d has no payload", pkt.pktID)
 			return 0
 		}
 
