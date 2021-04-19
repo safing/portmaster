@@ -35,7 +35,7 @@ func (pkt *Packet) LoadPacketData() error {
 	defer pkt.lock.Unlock()
 
 	if pkt.verdictRequest.id == 0 {
-		return packet.ErrNoPacketID
+		return ErrNoPacketID
 	}
 
 	if !pkt.payloadLoaded {
