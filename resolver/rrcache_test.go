@@ -13,6 +13,9 @@ func TestCaching(t *testing.T) {
 	testNameRecord := &NameRecord{
 		Domain:   testDomain,
 		Question: testQuestion,
+		Resolver: &ResolverInfo{
+			Type: "dns",
+		},
 	}
 
 	err := testNameRecord.Save()

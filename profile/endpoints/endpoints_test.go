@@ -379,12 +379,11 @@ func TestEndpointMatching(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	testEndpointMatch(t, ep, (&intel.Entity{
-		IP: net.ParseIP("192.168.0.1"),
-	}).Init(), Permitted)
-	testEndpointMatch(t, ep, (&intel.Entity{
-		IP: net.ParseIP("151.101.1.164"), // nytimes.com
-	}).Init(), NoMatch)
+	entity = &intel.Entity{}
+	entity.SetIP(net.ParseIP("192.168.0.1"))
+	testEndpointMatch(t, ep, entity, Permitted)
+	entity.SetIP(net.ParseIP("151.101.1.164")) // nytimes.com
+	testEndpointMatch(t, ep, entity, NoMatch)
 
 	// Lists
 
