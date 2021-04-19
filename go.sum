@@ -610,6 +610,8 @@ github.com/safing/portbase v0.9.5 h1:JZd+BOSdKLILYjCdQd8/vD9qQUgRgR9AGaCGIgvBayI
 github.com/safing/portbase v0.9.5/go.mod h1:02OrHUf5bDkpYG3noX8TRtKNTwaJeg4RVyZ6SFOmhcA=
 github.com/safing/portbase v0.9.6 h1:SATa0CJk/giijsS0PimWeCarWwxRfuy753W19QdN1V4=
 github.com/safing/portbase v0.9.6/go.mod h1:02OrHUf5bDkpYG3noX8TRtKNTwaJeg4RVyZ6SFOmhcA=
+github.com/safing/portbase v0.9.7 h1:bBlQi1ElTr/iX4/nQtVOU63M/rVRizyUuTdpdSlhr+U=
+github.com/safing/portbase v0.9.7/go.mod h1:02OrHUf5bDkpYG3noX8TRtKNTwaJeg4RVyZ6SFOmhcA=
 github.com/safing/spn v0.2.4 h1:V2XPMTQkHo7xwH89Kfx+65cFWgXAz/jCeCXcweEJuLQ=
 github.com/safing/spn v0.2.4/go.mod h1:ZA6za4rEP46GiVKJGZsQyqoqMvPhtF913mg5JtJl3Sc=
 github.com/satori/go.uuid v1.2.0 h1:0uYX9dsZ2yD7q2RtLRtPSdGDWzjeM3TbMJP9utgA0ww=
