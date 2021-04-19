@@ -51,8 +51,9 @@ func GetAssignedGlobalAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
 }
 
 var (
-	myNetworks     []*net.IPNet
-	myNetworksLock sync.Mutex
+	myNetworks                   []*net.IPNet
+	myNetworksLock               sync.Mutex
+	myNetworksNetworkChangedFlag = GetNetworkChangedFlag()
 )
 
 // IsMyIP returns whether the given unicast IP is currently configured on the local host.
@@ -69,8 +70,12 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 	myNetworksLock.Lock()
 	defer myNetworksLock.Unlock()
 
-	// Check for match.
-	if mine, matched := checkIfMyIP(ip); matched {
+	// Check if the network changed.
+	if myNetworksNetworkChangedFlag.IsSet() {
+		// Reset changed flag.
+		myNetworksNetworkChangedFlag.Refresh()
+	} else if mine, matched := checkIfMyIP(ip); matched {
+		// If the network did not change, check for match immediately.
 		return mine, nil
 	}
 
