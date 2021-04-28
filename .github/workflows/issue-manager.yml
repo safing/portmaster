@@ -1,0 +1,36 @@
+name: Issue Manager
+
+on:
+  schedule:
+    - cron: "30 10 * * 1" # run at 10:30 every Monday
+  # We only use the issue manager for auto-closing, so we only need the cron trigger.
+  # issue_comment:
+  #   types:
+  #     - created
+  #     - edited
+  # issues:
+  #   types:
+  #     - labeled
+
+jobs:
+  issue-manager:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: tiangolo/issue-manager@0.3.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config: >
+            {
+                "waiting for input": {
+                    "delay": "P1M",
+                    "message": "Auto-closing this issue after waiting for input for a month. If anyone finds the time to provide the requested information, please re-open the issue and we will continue handling it.",
+                    "remove_label_on_comment": true,
+                    "remove_label_on_close": false
+                },
+                "waiting for fix confirmation": {
+                    "delay": "P1M",
+                    "message": "Auto-closing this issue after waiting for a fix confirmation for a month. If anyone still experiences this issue, please re-open the issue with updated information so we can continue working on a fix.",
+                    "remove_label_on_comment": true,
+                    "remove_label_on_close": false
+                }
+            }
