@@ -23,13 +23,13 @@ jobs:
           config: >
             {
                 "waiting for input": {
-                    "delay": "P1M",
+                    "delay": 2592000,
                     "message": "Auto-closing this issue after waiting for input for a month. If anyone finds the time to provide the requested information, please re-open the issue and we will continue handling it.",
                     "remove_label_on_comment": true,
                     "remove_label_on_close": false
                 },
                 "waiting for fix confirmation": {
-                    "delay": "P1M",
+                    "delay": 2592000,
                     "message": "Auto-closing this issue after waiting for a fix confirmation for a month. If anyone still experiences this issue, please re-open the issue with updated information so we can continue working on a fix.",
                     "remove_label_on_comment": true,
                     "remove_label_on_close": false
