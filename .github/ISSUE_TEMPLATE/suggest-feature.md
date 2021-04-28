@@ -1,7 +1,7 @@
 ---
 name: "💡 Suggest an Improvement or Feature"
 about: Suggest an enhancement or a new feature for the Portmaster
-labels: feature
+labels: suggestion
 ---
 
 **What would you like to add or change?**:
