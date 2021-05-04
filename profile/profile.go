@@ -97,10 +97,15 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// an object) need to be concatenated for the settings database
 	// path.
 	Config map[string]interface{}
+
 	// ApproxLastUsed holds a UTC timestamp in seconds of
 	// when this Profile was approximately last used.
 	// For performance reasons not every single usage is saved.
 	ApproxLastUsed int64
+	// LastEdited hols the UTC timestamp in seconds when the profile was last
+	// edited by the user. This is not set automatically, but has to be manually
+	// set by the user interface.
+	LastEdited int64
 	// Created holds the UTC timestamp in seconds when the
 	// profile has been created.
 	Created int64
