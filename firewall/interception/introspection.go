@@ -18,7 +18,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&packetMetricsDestination, "write-packet-metrics", "", "Write packet metrics to the specified file")
+	flag.StringVar(&packetMetricsDestination, "write-packet-metrics", "", "write packet metrics to the specified file")
 }
 
 type (

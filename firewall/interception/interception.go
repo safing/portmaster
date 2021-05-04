@@ -15,7 +15,7 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&disableInterception, "disable-interception", false, "disable packet interception - this breaks a lot of functionality")
+	flag.BoolVar(&disableInterception, "disable-interception", false, "disable packet interception; this breaks a lot of functionality")
 }
 
 // Start starts the interception.

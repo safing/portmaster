@@ -37,8 +37,6 @@ func prep() error {
 }
 
 func start() error {
-	logFlagOverrides()
-
 	if err := registerMetrics(); err != nil {
 		return err
 	}
