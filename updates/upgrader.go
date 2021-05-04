@@ -135,18 +135,10 @@ func upgradeCoreNotify() error {
 func upgradeCoreNotifyActionHandler(_ context.Context, n *notifications.Notification) error {
 	switch n.SelectedActionID {
 	case "restart":
-		// Cannot directly trigger due to import loop.
-		err := module.InjectEvent(
-			"user triggered restart via notification",
-			"core",
-			"restart",
-			nil,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to trigger restart via notification: %s", err)
-		}
+		log.Infof("updates: user triggered restart via core update notification")
+		RestartNow()
 	case "later":
-		return n.Delete()
+		n.Delete()
 	}
 
 	return nil
@@ -266,7 +258,7 @@ func warnOnIncorrectParentPath() {
 				absPath,
 				filepath.Join(root, expectedFileName),
 			),
-		})
+		)
 	}
 }
 

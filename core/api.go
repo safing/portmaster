@@ -1,7 +1,9 @@
 package core
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/log"
@@ -10,6 +12,16 @@ import (
 	"github.com/safing/portmaster/status"
 	"github.com/safing/portmaster/updates"
 )
+
+const (
+	eventShutdown = "shutdown"
+	eventRestart  = "restart"
+)
+
+func registerEvents() {
+	module.RegisterEvent(eventShutdown, true)
+	module.RegisterEvent(eventRestart, true)
+}
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
@@ -50,15 +62,35 @@ func registerAPIEndpoints() error {
 // shutdown shuts the Portmaster down.
 func shutdown(_ *api.Request) (msg string, err error) {
 	log.Warning("core: user requested shutdown via action")
-	// Do not use a worker, as this would block itself here.
-	go modules.Shutdown() //nolint:errcheck
+
+	module.StartWorker("shutdown", func(context.Context) error {
+		// Notify everyone of the shutdown.
+		module.TriggerEvent(eventShutdown, nil)
+		// Wait a bit for the event to propagate.
+		time.Sleep(1 * time.Second)
+
+		// Do not run in worker, as this would block itself here.
+		go modules.Shutdown() //nolint:errcheck
+		return nil
+	})
+
 	return "shutdown initiated", nil
 }
 
 // restart restarts the Portmaster.
 func restart(_ *api.Request) (msg string, err error) {
 	log.Info("core: user requested restart via action")
-	updates.RestartNow()
+
+	module.StartWorker("restart", func(context.Context) error {
+		// Notify everyone of the shutdown.
+		module.TriggerEvent(eventRestart, nil)
+		// Wait a bit for the event to propagate.
+		time.Sleep(1 * time.Second)
+
+		updates.RestartNow()
+		return nil
+	})
+
 	return "restart initiated", nil
 }
 

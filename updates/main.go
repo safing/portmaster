@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portbase/notifications"
 	"github.com/safing/portbase/updater"
 )
 
@@ -41,10 +42,6 @@ const (
 	// to check if new versions of their resources are
 	// available by checking File.UpgradeAvailable().
 	ResourceUpdateEvent = "resource update"
-
-	// TriggerUpdateEvent is the event that can be emitted
-	// by the updates module to trigger an update.
-	TriggerUpdateEvent = "trigger update"
 )
 
 var (
@@ -68,18 +65,17 @@ var (
 )
 
 const (
-	updateInProgress     = "update-in-progress"
-	updateInProcessDescr = "Portmaster is currently checking and downloading updates."
-	updateFailed         = "update-failed"
+	updateInProgress = "updates:in-progress"
+	updateFailed     = "updates:failed"
 )
 
 func init() {
 	module = modules.Register(ModuleName, prep, start, stop, "base")
-	module.RegisterEvent(VersionUpdateEvent)
-	module.RegisterEvent(ResourceUpdateEvent)
+	module.RegisterEvent(VersionUpdateEvent, true)
+	module.RegisterEvent(ResourceUpdateEvent, true)
 
-	flag.StringVar(&userAgentFromFlag, "update-agent", "", "Sets the user agent for requests to the update server")
-	flag.BoolVar(&staging, "staging", false, "Use staging update channel (for testing only)")
+	flag.StringVar(&userAgentFromFlag, "update-agent", "", "set the user agent for requests to the update server")
+	flag.BoolVar(&staging, "staging", false, "use staging update channel; for testing only")
 
 	// initialize mandatory updates
 	if onWindows {
@@ -109,7 +105,7 @@ func prep() error {
 		return err
 	}
 
-	module.RegisterEvent(TriggerUpdateEvent)
+	return registerAPIEndpoints()
 
 	return nil
 }
@@ -124,18 +120,6 @@ func start() error {
 		"config change",
 		"update registry config",
 		updateRegistryConfig); err != nil {
-		return err
-	}
-
-	if err := module.RegisterEventHook(
-		module.Name,
-		TriggerUpdateEvent,
-		"Check for and download available updates",
-		func(context.Context, interface{}) error {
-			_ = TriggerUpdate()
-			return nil
-		},
-	); err != nil {
 		return err
 	}
 
@@ -244,17 +228,21 @@ func start() error {
 
 // TriggerUpdate queues the update task to execute ASAP.
 func TriggerUpdate() error {
-	if !module.Online() {
-		if !module.OnlineSoon() {
-			return fmt.Errorf("module not enabled")
-		}
+	switch {
+	case !module.OnlineSoon():
+		return fmt.Errorf("updates module is disabled")
 
+	case !module.Online():
 		updateASAP = true
-	} else {
+
+	case !enableUpdates():
+		return fmt.Errorf("automatic updating is disabled")
+
+	default:
 		updateTask.StartASAP()
-		log.Debugf("updates: triggering update to run as soon as possible")
 	}
 
+	log.Debugf("updates: triggering update to run as soon as possible")
 	return nil
 }
 

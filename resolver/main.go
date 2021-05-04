@@ -15,15 +15,11 @@ import (
 )
 
 var (
-	// ClearNameCacheEvent is a triggerable event that clears the name record cache.
-	ClearNameCacheEvent = "clear name cache"
-
 	module *modules.Module
 )
 
 func init() {
 	module = modules.Register("resolver", prep, start, nil, "base", "netenv")
-	module.RegisterEvent(ClearNameCacheEvent)
 }
 
 func prep() error {
@@ -75,18 +71,6 @@ func start() error {
 			}
 			return nil
 		},
-	)
-	if err != nil {
-		return err
-	}
-
-	// DEPRECATED: remove in v0.7
-	// cache clearing
-	err = module.RegisterEventHook(
-		"resolver",
-		ClearNameCacheEvent,
-		ClearNameCacheEvent,
-		clearNameCacheEventHandler,
 	)
 	if err != nil {
 		return err
