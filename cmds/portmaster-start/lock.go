@@ -13,8 +13,9 @@ import (
 	processInfo "github.com/shirou/gopsutil/process"
 )
 
-func checkAndCreateInstanceLock(name string) (pid int32, err error) {
-	lockFilePath := filepath.Join(dataRoot.Path, fmt.Sprintf("%s-lock.pid", name))
+func checkAndCreateInstanceLock(path, name string) (pid int32, err error) {
+
+	lockFilePath := filepath.Join(dataRoot.Path, path, fmt.Sprintf("%s-lock.pid", name))
 
 	// read current pid file
 	data, err := ioutil.ReadFile(lockFilePath)
@@ -93,7 +94,7 @@ func createInstanceLock(lockFilePath string) error {
 	return nil
 }
 
-func deleteInstanceLock(name string) error {
-	lockFilePath := filepath.Join(dataRoot.Path, fmt.Sprintf("%s-lock.pid", name))
+func deleteInstanceLock(path, name string) error {
+	lockFilePath := filepath.Join(dataRoot.Path, path, fmt.Sprintf("%s-lock.pid", name))
 	return os.Remove(lockFilePath)
 }
