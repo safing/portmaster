@@ -109,10 +109,10 @@ func upgradeCoreNotify() error {
 			),
 			Category: "Core",
 			Message: fmt.Sprintf(
-				`:tada: Update to **Portmaster v%s** is available!  
-Please restart the Portmaster to apply the update.`,
+				`A new Portmaster version is available! Restart the Portmaster to upgrade to %s.`,
 				pmCoreUpdate.Version(),
 			),
+			ShowOnSystem: true,
 			AvailableActions: []*notifications.Action{
 				{
 					ID:   "restart",
@@ -257,13 +257,10 @@ func warnOnIncorrectParentPath() {
 	root := filepath.Dir(registry.StorageDir().Path)
 	if !strings.HasPrefix(absPath, root) {
 		log.Warningf("detected unexpected path %s for portmaster-start", absPath)
-
-		notifications.Notify(&notifications.Notification{
-			EventID:  "updates:unsupported-parent",
-			Type:     notifications.Warning,
-			Title:    "Unsupported Launcher",
-			Category: "Core",
-			Message: fmt.Sprintf(
+		notifications.NotifyWarn(
+			"updates:unsupported-parent",
+			"Unsupported Launcher",
+			fmt.Sprintf(
 				"The portmaster has been launched by an unexpected %s binary at %s. Please configure your system to use the binary at %s as this version will be kept up to date automatically.",
 				expectedFileName,
 				absPath,

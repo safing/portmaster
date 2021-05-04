@@ -278,13 +278,30 @@ func checkForUpdates(ctx context.Context) (err error) {
 	}
 	defer log.Debugf("updates: finished checking for updates")
 
-	module.Hint(updateInProgress, updateInProcessDescr)
+	module.Hint(
+		updateInProgress,
+		"Checking for Updates",
+		"The Portmaster is currently checking for and downloading any available updates.",
+	)
 
 	defer func() {
 		if err == nil {
 			module.Resolve(updateInProgress)
 		} else {
-			module.Warning(updateFailed, "Failed to update: "+err.Error())
+			notifications.NotifyWarn(
+				updateFailed,
+				"Update Check Failed",
+				"The Portmaster failed to check for updates. This might be a temporary issue of your device, your network or the update servers. The Portmaster will automatically try again later.",
+				notifications.Action{
+					ID:   "retry",
+					Text: "Try Again",
+					Type: notifications.ActionTypeWebhook,
+					Payload: &notifications.ActionTypeWebhookPayload{
+						URL:          apiPathCheckForUpdates,
+						ResultAction: "display",
+					},
+				},
+			).AttachToModule(module)
 		}
 	}()
 

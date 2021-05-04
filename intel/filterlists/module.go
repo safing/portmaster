@@ -16,12 +16,10 @@ var (
 )
 
 const (
-	filterlistsDisabled              = "filterlists:disabled"
-	filterlistsUpdateFailed          = "filterlists:update-failed"
-	filterlistsStaleDataSurvived     = "filterlists:staledata"
-	filterlistsStaleDataDescr        = "Removing stale filter list records failed. Some connections may be overblocked."
-	filterlistsUpdateInProgress      = "filterlists:update-in-progress"
-	filterlistsUpdateInProgressDescr = "Performance slightly degraded during list update."
+	filterlistsDisabled          = "filterlists:disabled"
+	filterlistsUpdateFailed      = "filterlists:update-failed"
+	filterlistsStaleDataSurvived = "filterlists:staledata"
+	filterlistsUpdateInProgress  = "filterlists:update-in-progress"
 )
 
 // booleans mainly used to decouple the module
@@ -91,7 +89,7 @@ func start() error {
 
 	if err != nil {
 		log.Debugf("intel/filterlists: blocklists disabled, waiting for update (%s)", err)
-		module.Warning(filterlistsDisabled, "Blocklist features disabled, waiting for update")
+		warnAboutDisabledFilterLists()
 	} else {
 		log.Debugf("intel/filterlists: using cache database")
 		close(filterListsLoaded)
@@ -103,4 +101,12 @@ func start() error {
 func stop() error {
 	filterListsLoaded = make(chan struct{})
 	return nil
+}
+
+func warnAboutDisabledFilterLists() {
+	module.Warning(
+		filterlistsDisabled,
+		"Filter Lists Are Initializing",
+		"The Filter Lists are waiting for update system to check for updates in order to retrieve the filter list data. Until the filter lists are fully initialized, the filter lists feature is disabled.",
+	)
 }

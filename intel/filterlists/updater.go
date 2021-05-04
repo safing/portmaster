@@ -23,17 +23,19 @@ func tryListUpdate(ctx context.Context) error {
 
 	if err != nil {
 		if !isLoaded() {
-			module.Error(filterlistsDisabled, err.Error())
+			warnAboutDisabledFilterLists()
 		} else {
-			module.Warning(filterlistsUpdateFailed, err.Error())
+			module.Warning(
+				filterlistsUpdateFailed,
+				"Filter Lists Update Failed",
+				fmt.Sprintf("The filter lists system failed to process an update. Depending on the previous state, the filtering capabilities are now either impaired or not given. Refer to the error for more details: %s", err.Error()),
+			)
 		}
 		return err
 	}
 
-	// if the module is in an error, warning or hint state resolve that right now.
-	module.Resolve(filterlistsDisabled)
-	module.Resolve(filterlistsStaleDataSurvived)
-	module.Resolve(filterlistsUpdateInProgress)
+	// The list update suceeded, resolve any states.
+	module.Resolve("")
 	return nil
 }
 
@@ -44,7 +46,11 @@ func performUpdate(ctx context.Context) error {
 	}
 	defer updateInProgress.UnSet()
 
-	module.Hint(filterlistsUpdateInProgress, filterlistsUpdateInProgressDescr)
+	module.Hint(
+		filterlistsUpdateInProgress,
+		"Filter Lists Update In Progress",
+		"The filter list system is processing updates. While this might slightly degrade performance, the filter list system stays functional during this process.",
+	)
 
 	// First, update the list index.
 	err := updateListIndex()
@@ -119,7 +125,11 @@ func performUpdate(ctx context.Context) error {
 			// if we failed to remove all stale cache entries
 			// we abort now WITHOUT updating the database version. This means
 			// we'll try again during the next update.
-			module.Warning(filterlistsStaleDataSurvived, filterlistsStaleDataDescr)
+			module.Warning(
+				filterlistsStaleDataSurvived,
+				"Filter Lists May Overblock",
+				fmt.Sprintf("The filter lists system successfully applied an update, but failed to delete old data. This means that the filtering system performs as usual, but may block more entries than it should. Refer to the error for more details: %s", err.Error()),
+			)
 			return fmt.Errorf("failed to cleanup stale cache records: %w", err)
 		}
 	}

@@ -10,8 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/database"
-
 	"github.com/safing/portbase/notifications"
 
 	"github.com/safing/portbase/log"
@@ -257,10 +255,7 @@ func setCaptivePortal(portalURL *url.URL) {
 
 func cleanUpPortalNotification() {
 	if captivePortalNotification != nil {
-		err := captivePortalNotification.Delete()
-		if err != nil && err != database.ErrNotFound {
-			log.Warningf("netenv: failed to delete old captive portal notification: %s", err)
-		}
+		captivePortalNotification.Delete()
 		captivePortalNotification = nil
 	}
 }

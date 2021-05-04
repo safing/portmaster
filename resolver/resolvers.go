@@ -227,16 +227,22 @@ func loadResolvers() {
 	)
 
 	if len(newResolvers) == 0 {
-		msg := "no (valid) dns servers found in configuration or system, falling back to defaults"
-		log.Warningf("resolver: %s", msg)
-		module.Warning(missingResolversErrorID, msg)
+		log.Warning("resolver: no (valid) dns server found in config or system, falling back to global defaults")
+		module.Warning(
+			missingResolversErrorID,
+			"Using Factory Default DNS Servers",
+			"The Portmaster could not find any (valid) DNS servers in the settings or system. In order to prevent being disconnected, the factory defaults are being used instead.",
+		)
 
 		// load defaults directly, overriding config system
 		newResolvers = getConfiguredResolvers(defaultNameServers)
 		if len(newResolvers) == 0 {
-			msg = "no (valid) dns servers found in configuration or system"
-			log.Criticalf("resolver: %s", msg)
-			module.Error(missingResolversErrorID, msg)
+			log.Critical("resolver: no (valid) dns server found in config, system or global defaults")
+			module.Error(
+				missingResolversErrorID,
+				"No DNS Server Configured",
+				"The Portmaster could not find any (valid) DNS servers in the settings or system. You will experience severe connectivity problems until resolved.",
+			)
 		}
 	}
 

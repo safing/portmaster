@@ -3,12 +3,15 @@ package updates
 import (
 	"context"
 
+	"github.com/safing/portbase/notifications"
+
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 )
 
 const (
-	cfgDevModeKey = "core/devMode"
+	cfgDevModeKey                 = "core/devMode"
+	updatesDisabledNotificationID = "updates:disabled"
 )
 
 var (
@@ -85,7 +88,6 @@ func initConfig() {
 
 func updateRegistryConfig(_ context.Context, _ interface{}) error {
 	changed := false
-	forceUpdate := false
 
 	if releaseChannel() != previousReleaseChannel {
 		registry.SetBeta(releaseChannel() == releaseChannelBeta)
@@ -102,20 +104,33 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 	if enableUpdates() != updatesCurrentlyEnabled {
 		updatesCurrentlyEnabled = enableUpdates()
 		changed = true
-		forceUpdate = updatesCurrentlyEnabled
 	}
 
 	if changed {
 		registry.SelectVersions()
 		module.TriggerEvent(VersionUpdateEvent, nil)
 
-		if forceUpdate {
-			module.Resolve(updateFailed)
-			_ = TriggerUpdate()
-			log.Infof("updates: automatic updates enabled again.")
-		} else if !updatesCurrentlyEnabled {
-			module.Warning(updateFailed, "Automatic updates are disabled! This also affects security updates and threat intelligence.")
-			log.Warningf("updates: automatic updates are now disabled.")
+		if updatesCurrentlyEnabled {
+			module.Resolve("")
+			if err := TriggerUpdate(); err != nil {
+				log.Warningf("updates: failed to trigger update: %s", err)
+			}
+			log.Infof("updates: automatic updates are now enabled")
+		} else {
+			notifications.NotifyWarn(
+				updatesDisabledNotificationID,
+				"Automatic Updates Disabled",
+				"The automatic update system is disabled through configuration. Please note that this is potentially dangerous, as this also affects security updates as well as the filter lists and threat intelligence feeds.",
+				notifications.Action{
+					ID:   "change",
+					Text: "Change",
+					Type: notifications.ActionTypeOpenSetting,
+					Payload: &notifications.ActionTypeOpenSettingPayload{
+						Key: enableUpdatesKey,
+					},
+				},
+			).AttachToModule(module)
+			log.Warningf("updates: automatic updates are now disabled")
 		}
 	}
 
