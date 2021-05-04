@@ -5,4 +5,5 @@ const (
 	PlatformLinux   = "linux"
 	PlatformWindows = "windows"
 	PlatformMac     = "macos"
+	PlatformOpenBSD = "openbsd"
 )
