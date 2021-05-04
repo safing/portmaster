@@ -36,6 +36,8 @@ var (
 type Options struct {
 	Name              string
 	Identifier        string // component identifier
+	LockPathPrefix    string
+	PIDFile           bool
 	ShortIdentifier   string // populated automatically
 	SuppressArgs      bool   // do not use any args
 	AllowDownload     bool   // allow download of component if it is not yet available
@@ -50,6 +52,7 @@ func init() {
 			Identifier:        "core/portmaster-core",
 			AllowDownload:     true,
 			AllowHidingWindow: true,
+			PIDFile:           true,
 		},
 		{
 			Name:              "Portmaster App",
@@ -62,12 +65,15 @@ func init() {
 			Identifier:        "notifier/portmaster-notifier",
 			AllowDownload:     false,
 			AllowHidingWindow: true,
+			PIDFile:           true,
+			LockPathPrefix:    "exec",
 		},
 		{
 			Name:              "Safing Privacy Network",
 			Identifier:        "hub/spn-hub",
 			AllowDownload:     true,
 			AllowHidingWindow: true,
+			PIDFile:           true,
 		},
 	})
 }
@@ -129,8 +135,8 @@ func run(opts *Options, cmdArgs []string) (err error) {
 	args := getExecArgs(opts, cmdArgs)
 
 	// check for duplicate instances
-	if opts.ShortIdentifier == "core" || opts.ShortIdentifier == "hub" {
-		pid, err := checkAndCreateInstanceLock(opts.ShortIdentifier)
+	if opts.PIDFile {
+		pid, err := checkAndCreateInstanceLock(opts.LockPathPrefix, opts.ShortIdentifier)
 		if err != nil {
 			return fmt.Errorf("failed to exec lock: %w", err)
 		}
@@ -138,7 +144,7 @@ func run(opts *Options, cmdArgs []string) (err error) {
 			return fmt.Errorf("another instance of %s is already running: PID %d", opts.Name, pid)
 		}
 		defer func() {
-			err := deleteInstanceLock(opts.ShortIdentifier)
+			err := deleteInstanceLock(opts.LockPathPrefix, opts.ShortIdentifier)
 			if err != nil {
 				log.Printf("failed to delete instance lock: %s\n", err)
 			}
