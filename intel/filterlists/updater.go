@@ -10,6 +10,7 @@ import (
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/updater"
 	"github.com/tevino/abool"
 )
@@ -22,20 +23,20 @@ func tryListUpdate(ctx context.Context) error {
 	err := performUpdate(ctx)
 
 	if err != nil {
-		if !isLoaded() {
-			warnAboutDisabledFilterLists()
-		} else {
+		// Check if the module already has a failure status set. If not, set a
+		// generic one with the returned error.
+		failureStatus, _, _ := module.FailureStatus()
+		if failureStatus < modules.FailureWarning {
 			module.Warning(
 				filterlistsUpdateFailed,
 				"Filter Lists Update Failed",
 				fmt.Sprintf("The filter lists system failed to process an update. Depending on the previous state, the filtering capabilities are now either impaired or not given. Refer to the error for more details: %s", err.Error()),
 			)
 		}
+
 		return err
 	}
 
-	// The list update suceeded, resolve any states.
-	module.Resolve("")
 	return nil
 }
 
@@ -45,12 +46,6 @@ func performUpdate(ctx context.Context) error {
 		return nil
 	}
 	defer updateInProgress.UnSet()
-
-	module.Hint(
-		filterlistsUpdateInProgress,
-		"Filter Lists Update In Progress",
-		"The filter list system is processing updates. While this might slightly degrade performance, the filter list system stays functional during this process.",
-	)
 
 	// First, update the list index.
 	err := updateListIndex()
@@ -142,6 +137,8 @@ func performUpdate(ctx context.Context) error {
 		log.Infof("intel/filterlists: successfully migrated cache database to %s", highestVersion.Version())
 	}
 
+	// The list update suceeded, resolve any states.
+	module.Resolve("")
 	return nil
 }
 

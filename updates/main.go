@@ -67,6 +67,7 @@ var (
 const (
 	updateInProgress = "updates:in-progress"
 	updateFailed     = "updates:failed"
+	updateSuccess    = "updates:success"
 )
 
 func init() {
@@ -266,15 +267,22 @@ func checkForUpdates(ctx context.Context) (err error) {
 	}
 	defer log.Debugf("updates: finished checking for updates")
 
-	module.Hint(
-		updateInProgress,
-		"Checking for Updates",
-		"The Portmaster is currently checking for and downloading any available updates.",
-	)
-
 	defer func() {
 		if err == nil {
-			module.Resolve(updateInProgress)
+			module.Resolve(updateFailed)
+			notifications.Notify(&notifications.Notification{
+				EventID: updateSuccess,
+				Type:    notifications.Info,
+				Title:   "Update Check Successful",
+				Message: "The Portmaster successfully checked for updates and downloaded any available updates. Most updates are applied automatically. You will be notified of important updates that need restarting.",
+				Expires: time.Now().Add(20 * time.Second).Unix(),
+				AvailableActions: []*notifications.Action{
+					{
+						ID:   "ack",
+						Text: "OK",
+					},
+				},
+			})
 		} else {
 			notifications.NotifyWarn(
 				updateFailed,
