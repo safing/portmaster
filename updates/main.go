@@ -275,7 +275,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 				Type:    notifications.Info,
 				Title:   "Update Check Successful",
 				Message: "The Portmaster successfully checked for updates and downloaded any available updates. Most updates are applied automatically. You will be notified of important updates that need restarting.",
-				Expires: time.Now().Add(20 * time.Second).Unix(),
+				Expires: time.Now().Add(1 * time.Minute).Unix(),
 				AvailableActions: []*notifications.Action{
 					{
 						ID:   "ack",
