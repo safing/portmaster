@@ -55,14 +55,25 @@ func checkForConflictingService(ip net.IP, port uint16) error {
 
 	// Notify the user that we killed something.
 	notifications.Notify(&notifications.Notification{
-		EventID:  "namserver:stopped-conflicting-service",
-		Type:     notifications.Info,
-		Title:    "Conflicting DNS Service",
-		Category: "Secure DNS",
+		EventID: "namserver:stopped-conflicting-service",
+		Type:    notifications.Info,
+		Title:   "Stopped Conflicting DNS Client",
 		Message: fmt.Sprintf(
-			"The Portmaster stopped a conflicting name service (pid %d) to gain required system integration.",
+			"The Portmaster stopped a conflicting DNS client (pid %d) to gain required system integration. If you are running another DNS client on this device on purpose, you can the check the documentation if it is compatible with the Portmaster.",
 			killed,
 		),
+		ShowOnSystem: true,
+		AvailableActions: []*notifications.Action{
+			{
+				ID:   "ack",
+				Text: "OK",
+			},
+			{
+				Text:    "Open Docs",
+				Type:    notifications.ActionTypeOpenURL,
+				Payload: "https://docs.safing.io/portmaster/install/status/software-compatibility",
+			},
+		},
 	})
 
 	// Restart nameserver via service-worker logic.

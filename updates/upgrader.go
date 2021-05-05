@@ -253,7 +253,7 @@ func warnOnIncorrectParentPath() {
 			"updates:unsupported-parent",
 			"Unsupported Launcher",
 			fmt.Sprintf(
-				"The portmaster has been launched by an unexpected %s binary at %s. Please configure your system to use the binary at %s as this version will be kept up to date automatically.",
+				"The Portmaster has been launched by an unexpected %s binary at %s. Please configure your system to use the binary at %s as this version will be kept up to date automatically.",
 				expectedFileName,
 				absPath,
 				filepath.Join(root, expectedFileName),

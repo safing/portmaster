@@ -282,7 +282,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 				"The Portmaster failed to check for updates. This might be a temporary issue of your device, your network or the update servers. The Portmaster will automatically try again later.",
 				notifications.Action{
 					ID:   "retry",
-					Text: "Try Again",
+					Text: "Try Again Now",
 					Type: notifications.ActionTypeWebhook,
 					Payload: &notifications.ActionTypeWebhookPayload{
 						URL:          apiPathCheckForUpdates,
