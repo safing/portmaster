@@ -10,7 +10,7 @@ import (
 func registerAPI() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "dns/clear",
-		Read:        api.PermitUser,
+		Write:       api.PermitUser,
 		ActionFunc:  clearNameCache,
 		Name:        "Clear cached DNS records",
 		Description: "Deletes all saved DNS records from the database.",

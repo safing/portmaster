@@ -26,7 +26,7 @@ func registerEvents() {
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:       "core/shutdown",
-		Read:       api.PermitSelf,
+		Write:      api.PermitSelf,
 		ActionFunc: shutdown,
 	}); err != nil {
 		return err
@@ -34,7 +34,7 @@ func registerAPIEndpoints() error {
 
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:       "core/restart",
-		Read:       api.PermitAdmin,
+		Write:      api.PermitAdmin,
 		ActionFunc: restart,
 	}); err != nil {
 		return err

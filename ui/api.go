@@ -9,7 +9,7 @@ import (
 func registerAPIEndpoints() error {
 	return api.RegisterEndpoint(api.Endpoint{
 		Path:       "ui/reload",
-		Read:       api.PermitUser,
+		Write:      api.PermitUser,
 		ActionFunc: reloadUI,
 	})
 }
