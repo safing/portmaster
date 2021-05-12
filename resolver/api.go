@@ -29,16 +29,16 @@ func registerAPI() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path: `dns/cache`,
+		Path: `dns/cache/{query:[a-z0-9\.-]{0,512}\.[A-Z]{1,32}}`,
 		Read: api.PermitUser,
 		RecordFunc: func(r *api.Request) (record.Record, error) {
-			return recordDatabase.Get(nameRecordsKeyPrefix + r.URL.Query().Get("q"))
+			return recordDatabase.Get(nameRecordsKeyPrefix + r.URLVars["query"])
 		},
 		Name:        "Get DNS Record from Cache",
 		Description: "Returns cached dns records from the internal cache.",
 		Parameters: []api.Parameter{{
 			Method:      http.MethodGet,
-			Field:       "q",
+			Field:       "query (in path)",
 			Value:       "fqdn and query type",
 			Description: "Specify the query like this: `example.com.A`.",
 		}},

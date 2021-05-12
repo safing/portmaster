@@ -25,17 +25,21 @@ func registerEvents() {
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:       "core/shutdown",
-		Write:      api.PermitSelf,
-		ActionFunc: shutdown,
+		Path:        "core/shutdown",
+		Write:       api.PermitSelf,
+		ActionFunc:  shutdown,
+		Name:        "Shut Down Portmaster",
+		Description: "Shut down the Portmaster Core Service and all UI components.",
 	}); err != nil {
 		return err
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:       "core/restart",
-		Write:      api.PermitAdmin,
-		ActionFunc: restart,
+		Path:        "core/restart",
+		Write:       api.PermitAdmin,
+		ActionFunc:  restart,
+		Name:        "Restart Portmaster",
+		Description: "Restart the Portmaster Core Service.",
 	}); err != nil {
 		return err
 	}
