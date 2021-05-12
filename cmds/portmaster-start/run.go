@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/safing/portmaster/updates/helper"
 	"github.com/spf13/cobra"
 	"github.com/tevino/abool"
 )
@@ -283,7 +284,9 @@ func persistOutputStreams(opts *Options, version string, cmd *exec.Cmd) (chan st
 }
 
 func execute(opts *Options, args []string) (cont bool, err error) {
-	file, err := registry.GetFile(platform(opts.Identifier))
+	file, err := registry.GetFile(
+		helper.PlatformIdentifier(opts.Identifier),
+	)
 	if err != nil {
 		return true, fmt.Errorf("could not get component: %w", err)
 	}

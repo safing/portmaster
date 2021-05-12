@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"runtime"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/updates/helper"
 	"github.com/spf13/cobra"
 )
 
@@ -52,31 +52,31 @@ func downloadUpdates() error {
 	// mark required updates
 	if onWindows {
 		registry.MandatoryUpdates = []string{
-			platform("core/portmaster-core.exe"),
-			platform("kext/portmaster-kext.dll"),
-			platform("kext/portmaster-kext.sys"),
-			platform("start/portmaster-start.exe"),
-			platform("notifier/portmaster-notifier.exe"),
-			platform("notifier/portmaster-snoretoast.exe"),
+			helper.PlatformIdentifier("core/portmaster-core.exe"),
+			helper.PlatformIdentifier("kext/portmaster-kext.dll"),
+			helper.PlatformIdentifier("kext/portmaster-kext.sys"),
+			helper.PlatformIdentifier("start/portmaster-start.exe"),
+			helper.PlatformIdentifier("notifier/portmaster-notifier.exe"),
+			helper.PlatformIdentifier("notifier/portmaster-snoretoast.exe"),
 		}
 	} else {
 		registry.MandatoryUpdates = []string{
-			platform("core/portmaster-core"),
-			platform("start/portmaster-start"),
-			platform("notifier/portmaster-notifier"),
+			helper.PlatformIdentifier("core/portmaster-core"),
+			helper.PlatformIdentifier("start/portmaster-start"),
+			helper.PlatformIdentifier("notifier/portmaster-notifier"),
 		}
 	}
 
-	// add updates that we require on all platforms.
+	// add updates that we require on all helper.PlatformIdentifiers.
 	registry.MandatoryUpdates = append(
 		registry.MandatoryUpdates,
-		platform("app/portmaster-app.zip"),
+		helper.PlatformIdentifier("app/portmaster-app.zip"),
 		"all/ui/modules/portmaster.zip",
 	)
 
 	// Add assets that need unpacking.
 	registry.AutoUnpack = []string{
-		platform("app/portmaster-app.zip"),
+		helper.PlatformIdentifier("app/portmaster-app.zip"),
 	}
 
 	// logging is configured as a persistent pre-run method inherited from
@@ -93,11 +93,11 @@ func downloadUpdates() error {
 		// Delete storage.
 		err = os.RemoveAll(registry.StorageDir().Path)
 		if err != nil {
-			return fmt.Errorf("failed to reset update dir: %s", err)
+			return fmt.Errorf("failed to reset update dir: %w", err)
 		}
 		err = registry.StorageDir().Ensure()
 		if err != nil {
-			return fmt.Errorf("failed to create update dir: %s", err)
+			return fmt.Errorf("failed to create update dir: %w", err)
 		}
 
 		// Reset registry state.
@@ -120,7 +120,12 @@ func downloadUpdates() error {
 	registry.SelectVersions()
 	err = registry.UnpackResources()
 	if err != nil {
-		return fmt.Errorf("failed to unpack resources: %s", err)
+		return fmt.Errorf("failed to unpack resources: %w", err)
+	}
+
+	// Fix chrome-sandbox permissions
+	if err := helper.EnsureChromeSandboxPermissions(registry); err != nil {
+		return fmt.Errorf("failed to fix electron permissions: %w", err)
 	}
 
 	return nil
@@ -140,8 +145,4 @@ func purge() error {
 
 	registry.Purge(3)
 	return nil
-}
-
-func platform(identifier string) string {
-	return fmt.Sprintf("%s_%s/%s", runtime.GOOS, runtime.GOARCH, identifier)
 }
