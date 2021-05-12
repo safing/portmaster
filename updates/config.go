@@ -120,7 +120,7 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 			notifications.NotifyWarn(
 				updatesDisabledNotificationID,
 				"Automatic Updates Disabled",
-				"The automatic update system is disabled through configuration. Please note that this is potentially dangerous, as this also affects security updates as well as the filter lists and threat intelligence feeds.",
+				"Automatic updates are disabled through configuration. Please note that this is potentially dangerous, as this also affects security updates as well as the filter lists and threat intelligence feeds.",
 				notifications.Action{
 					ID:   "change",
 					Text: "Change",

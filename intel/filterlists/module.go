@@ -107,6 +107,6 @@ func warnAboutDisabledFilterLists() {
 	module.Warning(
 		filterlistsDisabled,
 		"Filter Lists Are Initializing",
-		"The Filter Lists are waiting for update system to check for updates in order to retrieve the filter list data. Until the filter lists are fully initialized, the filter lists feature is disabled.",
+		"Filter lists are being downloaded and set up in the background. Until this initialization is finished, the filter lists are disabled and will not block anything.",
 	)
 }

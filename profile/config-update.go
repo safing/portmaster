@@ -124,7 +124,7 @@ func updateGlobalConfigProfile(ctx context.Context, task *modules.Task) error {
 		module.Warning(
 			globalConfigProfileErrorID,
 			"Internal Settings Failure",
-			fmt.Sprintf("The app settings layering system failed to process the global settings. This means that some global settings might not be applied correctly. You can try restarting the Portmaster to resolve this problem. Refer to the error for more details: %s", err),
+			fmt.Sprintf("Some global settings might not be applied correctly. You can try restarting the Portmaster to resolve this problem. Error: %s", err),
 		)
 	}
 

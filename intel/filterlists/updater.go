@@ -30,7 +30,7 @@ func tryListUpdate(ctx context.Context) error {
 			module.Warning(
 				filterlistsUpdateFailed,
 				"Filter Lists Update Failed",
-				fmt.Sprintf("The filter lists system failed to process an update. Depending on the previous state, the filtering capabilities are now either impaired or not given. Refer to the error for more details: %s", err.Error()),
+				fmt.Sprintf("The Portmaster failed to process a filter lists update. Filtering capabilities are currently either impaired or not available at all. Error: %s", err.Error()),
 			)
 		}
 
@@ -123,7 +123,7 @@ func performUpdate(ctx context.Context) error {
 			module.Warning(
 				filterlistsStaleDataSurvived,
 				"Filter Lists May Overblock",
-				fmt.Sprintf("The filter lists system successfully applied an update, but failed to delete old data. This means that the filtering system performs as usual, but may block more entries than it should. Refer to the error for more details: %s", err.Error()),
+				fmt.Sprintf("The Portmaster failed to delete outdated filter list data. Filtering capabilities are fully available, but overblocking may occur. Error: %s", err.Error()),
 			)
 			return fmt.Errorf("failed to cleanup stale cache records: %w", err)
 		}
