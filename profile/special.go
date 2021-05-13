@@ -155,7 +155,7 @@ func specialProfileNeedsReset(profile *Profile) bool {
 
 	switch profile.ID {
 	case SystemResolverProfileID:
-		return canBeUpgraded(profile, "10.5.2021")
+		return canBeUpgraded(profile, "17.5.2021")
 	default:
 		// Not a special profile or no upgrade available yet.
 		return false
