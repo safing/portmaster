@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/renameio"
 	processInfo "github.com/shirou/gopsutil/process"
 	"github.com/tevino/abool"
 
@@ -21,6 +20,7 @@ import (
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portbase/rng"
 	"github.com/safing/portbase/updater"
+	"github.com/safing/portbase/utils/renameio"
 	"github.com/safing/portmaster/updates/helper"
 )
 
