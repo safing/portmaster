@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/safing/portmaster/updates/helper"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +31,9 @@ func show(opts *Options, cmdArgs []string) error {
 		opts.Identifier += exeSuffix
 	}
 
-	file, err := registry.GetFile(platform(opts.Identifier))
+	file, err := registry.GetFile(
+		helper.PlatformIdentifier(opts.Identifier),
+	)
 	if err != nil {
 		return fmt.Errorf("could not get component: %s", err)
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portbase/rng"
 	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/updates/helper"
 )
 
 const (
@@ -65,14 +66,16 @@ func upgrader(_ context.Context, _ interface{}) error {
 	binBaseName := strings.Split(filepath.Base(os.Args[0]), "_")[0]
 	switch binBaseName {
 	case "portmaster-core":
-		err = upgradeCoreNotify()
-		if err != nil {
+		if err := upgradeCoreNotify(); err != nil {
 			log.Warningf("updates: failed to notify about core upgrade: %s", err)
 		}
 
+		if err := helper.EnsureChromeSandboxPermissions(registry); err != nil {
+			log.Warningf("updates: failed to handle electron upgrade: %s", err)
+		}
+
 	case "spn-hub":
-		err = upgradeHub()
-		if err != nil {
+		if err := upgradeHub(); err != nil {
 			log.Warningf("updates: failed to initiate hub upgrade: %s", err)
 		}
 	}
