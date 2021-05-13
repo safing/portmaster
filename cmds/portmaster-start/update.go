@@ -67,7 +67,7 @@ func downloadUpdates() error {
 		}
 	}
 
-	// add updates that we require on all helper.PlatformIdentifiers.
+	// add updates that we require on all platforms.
 	registry.MandatoryUpdates = append(
 		registry.MandatoryUpdates,
 		helper.PlatformIdentifier("app/portmaster-app.zip"),

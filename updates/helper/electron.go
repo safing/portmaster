@@ -18,14 +18,14 @@ var pmElectronUpdate *updater.File
 // by our app-electron package has the SUID bit set on systems that do not
 // allow unprivileged CLONE_NEWUSER (clone(3)).
 // On non-linux systems or systems that have kernel.unprivileged_userns_clone
-// set to 1 EnsureChromeSandboPermissions is a NO-OP
+// set to 1 EnsureChromeSandboPermissions is a NO-OP.
 func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 	if runtime.GOOS != "linux" {
 		return nil
 	}
 
 	if checkSysctl("kernel.unprivileged_userns_clone", '1') {
-		log.Infof("Kernel support for unprivileged USERNS_CLONE enabled.")
+		log.Debug("updates: kernel support for unprivileged USERNS_CLONE is enabled")
 		return nil
 	}
 
@@ -34,7 +34,7 @@ func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 	}
 	identifier := PlatformIdentifier("app/portmaster-app.zip")
 
-	log.Infof("Kernel support for unprivileged USERNS_CLONE disabled.")
+	log.Debug("updates: kernel support for unprivileged USERNS_CLONE disabled")
 
 	var err error
 	pmElectronUpdate, err = reg.GetFile(identifier)
@@ -49,7 +49,7 @@ func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 	if err := os.Chmod(sandboxFile, 0755|os.ModeSetuid); err != nil {
 		return err
 	}
-	log.Infof("Fixed SUID permissions for chrome-sandbox")
+	log.Infof("updates: fixed SUID permission for chrome-sandbox")
 
 	return nil
 }
