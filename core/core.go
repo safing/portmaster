@@ -33,9 +33,12 @@ func prep() error {
 	registerEvents()
 
 	// init config
-	logFlagOverrides()
 	err := registerConfig()
 	if err != nil {
+		return err
+	}
+
+	if err := registerAPIEndpoints(); err != nil {
 		return err
 	}
 
@@ -45,18 +48,6 @@ func prep() error {
 func start() error {
 	if err := startPlatformSpecific(); err != nil {
 		return fmt.Errorf("failed to start plattform-specific components: %s", err)
-	}
-
-	if err := registerEventHooks(); err != nil {
-		return err
-	}
-
-	if err := registerControlDatabase(); err != nil {
-		return err
-	}
-
-	if err := registerAPIEndpoints(); err != nil {
-		return err
 	}
 
 	registerLogCleaner()

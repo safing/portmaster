@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portbase/notifications"
 	"github.com/safing/portbase/updater"
 )
 
@@ -41,10 +42,6 @@ const (
 	// to check if new versions of their resources are
 	// available by checking File.UpgradeAvailable().
 	ResourceUpdateEvent = "resource update"
-
-	// TriggerUpdateEvent is the event that can be emitted
-	// by the updates module to trigger an update.
-	TriggerUpdateEvent = "trigger update"
 )
 
 var (
@@ -68,18 +65,18 @@ var (
 )
 
 const (
-	updateInProgress     = "update-in-progress"
-	updateInProcessDescr = "Portmaster is currently checking and downloading updates."
-	updateFailed         = "update-failed"
+	updateInProgress = "updates:in-progress"
+	updateFailed     = "updates:failed"
+	updateSuccess    = "updates:success"
 )
 
 func init() {
 	module = modules.Register(ModuleName, prep, start, stop, "base")
-	module.RegisterEvent(VersionUpdateEvent)
-	module.RegisterEvent(ResourceUpdateEvent)
+	module.RegisterEvent(VersionUpdateEvent, true)
+	module.RegisterEvent(ResourceUpdateEvent, true)
 
-	flag.StringVar(&userAgentFromFlag, "update-agent", "", "Sets the user agent for requests to the update server")
-	flag.BoolVar(&staging, "staging", false, "Use staging update channel (for testing only)")
+	flag.StringVar(&userAgentFromFlag, "update-agent", "", "set the user agent for requests to the update server")
+	flag.BoolVar(&staging, "staging", false, "use staging update channel; for testing only")
 
 	// initialize mandatory updates
 	if onWindows {
@@ -109,7 +106,7 @@ func prep() error {
 		return err
 	}
 
-	module.RegisterEvent(TriggerUpdateEvent)
+	return registerAPIEndpoints()
 
 	return nil
 }
@@ -124,18 +121,6 @@ func start() error {
 		"config change",
 		"update registry config",
 		updateRegistryConfig); err != nil {
-		return err
-	}
-
-	if err := module.RegisterEventHook(
-		module.Name,
-		TriggerUpdateEvent,
-		"Check for and download available updates",
-		func(context.Context, interface{}) error {
-			_ = TriggerUpdate()
-			return nil
-		},
-	); err != nil {
 		return err
 	}
 
@@ -244,17 +229,21 @@ func start() error {
 
 // TriggerUpdate queues the update task to execute ASAP.
 func TriggerUpdate() error {
-	if !module.Online() {
-		if !module.OnlineSoon() {
-			return fmt.Errorf("module not enabled")
-		}
+	switch {
+	case !module.OnlineSoon():
+		return fmt.Errorf("updates module is disabled")
 
+	case !module.Online():
 		updateASAP = true
-	} else {
+
+	case !enableUpdates():
+		return fmt.Errorf("automatic updating is disabled")
+
+	default:
 		updateTask.StartASAP()
-		log.Debugf("updates: triggering update to run as soon as possible")
 	}
 
+	log.Debugf("updates: triggering update to run as soon as possible")
 	return nil
 }
 
@@ -278,13 +267,37 @@ func checkForUpdates(ctx context.Context) (err error) {
 	}
 	defer log.Debugf("updates: finished checking for updates")
 
-	module.Hint(updateInProgress, updateInProcessDescr)
-
 	defer func() {
 		if err == nil {
-			module.Resolve(updateInProgress)
+			module.Resolve(updateFailed)
+			notifications.Notify(&notifications.Notification{
+				EventID: updateSuccess,
+				Type:    notifications.Info,
+				Title:   "Update Check Successful",
+				Message: "The Portmaster successfully checked for updates and downloaded any available updates. Most updates are applied automatically. You will be notified of important updates that need restarting.",
+				Expires: time.Now().Add(1 * time.Minute).Unix(),
+				AvailableActions: []*notifications.Action{
+					{
+						ID:   "ack",
+						Text: "OK",
+					},
+				},
+			})
 		} else {
-			module.Warning(updateFailed, "Failed to update: "+err.Error())
+			notifications.NotifyWarn(
+				updateFailed,
+				"Update Check Failed",
+				"The Portmaster failed to check for updates. This might be a temporary issue of your device, your network or the update servers. The Portmaster will automatically try again later.",
+				notifications.Action{
+					ID:   "retry",
+					Text: "Try Again Now",
+					Type: notifications.ActionTypeWebhook,
+					Payload: &notifications.ActionTypeWebhookPayload{
+						URL:          apiPathCheckForUpdates,
+						ResultAction: "display",
+					},
+				},
+			).AttachToModule(module)
 		}
 	}()
 

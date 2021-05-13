@@ -10,8 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/database"
-
 	"github.com/safing/portbase/notifications"
 
 	"github.com/safing/portbase/log"
@@ -243,24 +241,29 @@ func setCaptivePortal(portalURL *url.URL) {
 	// notify
 	cleanUpPortalNotification()
 	captivePortalNotification = notifications.Notify(&notifications.Notification{
-		EventID:  "netenv:captive-portal",
-		Type:     notifications.Info,
-		Title:    "Captive Portal",
-		Category: "Core",
-		Message: fmt.Sprintf(
-			"Portmaster detected a captive portal at %s",
-			captivePortal.Domain,
-		),
-		EventData: captivePortal,
+		EventID:      "netenv:captive-portal",
+		Type:         notifications.Info,
+		Title:        "Captive Portal Detected",
+		Message:      "The Portmaster detected a captive portal. You might experience limited network connectivity until the portal is handled.",
+		ShowOnSystem: true,
+		EventData:    captivePortal,
+		AvailableActions: []*notifications.Action{
+			{
+				Text:    "Open Portal",
+				Type:    notifications.ActionTypeOpenURL,
+				Payload: captivePortal.URL,
+			},
+			{
+				ID:   "ack",
+				Text: "Ignore",
+			},
+		},
 	})
 }
 
 func cleanUpPortalNotification() {
 	if captivePortalNotification != nil {
-		err := captivePortalNotification.Delete()
-		if err != nil && err != database.ErrNotFound {
-			log.Warningf("netenv: failed to delete old captive portal notification: %s", err)
-		}
+		captivePortalNotification.Delete()
 		captivePortalNotification = nil
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/updater"
 	"github.com/tevino/abool"
 )
@@ -22,18 +23,20 @@ func tryListUpdate(ctx context.Context) error {
 	err := performUpdate(ctx)
 
 	if err != nil {
-		if !isLoaded() {
-			module.Error(filterlistsDisabled, err.Error())
-		} else {
-			module.Warning(filterlistsUpdateFailed, err.Error())
+		// Check if the module already has a failure status set. If not, set a
+		// generic one with the returned error.
+		failureStatus, _, _ := module.FailureStatus()
+		if failureStatus < modules.FailureWarning {
+			module.Warning(
+				filterlistsUpdateFailed,
+				"Filter Lists Update Failed",
+				fmt.Sprintf("The Portmaster failed to process a filter lists update. Filtering capabilities are currently either impaired or not available at all. Error: %s", err.Error()),
+			)
 		}
+
 		return err
 	}
 
-	// if the module is in an error, warning or hint state resolve that right now.
-	module.Resolve(filterlistsDisabled)
-	module.Resolve(filterlistsStaleDataSurvived)
-	module.Resolve(filterlistsUpdateInProgress)
 	return nil
 }
 
@@ -43,8 +46,6 @@ func performUpdate(ctx context.Context) error {
 		return nil
 	}
 	defer updateInProgress.UnSet()
-
-	module.Hint(filterlistsUpdateInProgress, filterlistsUpdateInProgressDescr)
 
 	// First, update the list index.
 	err := updateListIndex()
@@ -119,7 +120,11 @@ func performUpdate(ctx context.Context) error {
 			// if we failed to remove all stale cache entries
 			// we abort now WITHOUT updating the database version. This means
 			// we'll try again during the next update.
-			module.Warning(filterlistsStaleDataSurvived, filterlistsStaleDataDescr)
+			module.Warning(
+				filterlistsStaleDataSurvived,
+				"Filter Lists May Overblock",
+				fmt.Sprintf("The Portmaster failed to delete outdated filter list data. Filtering capabilities are fully available, but overblocking may occur. Error: %s", err.Error()),
+			)
 			return fmt.Errorf("failed to cleanup stale cache records: %w", err)
 		}
 	}
@@ -132,6 +137,8 @@ func performUpdate(ctx context.Context) error {
 		log.Infof("intel/filterlists: successfully migrated cache database to %s", highestVersion.Version())
 	}
 
+	// The list update suceeded, resolve any states.
+	module.Resolve("")
 	return nil
 }
 

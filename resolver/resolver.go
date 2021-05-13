@@ -240,7 +240,8 @@ func (brc *BasicResolverConn) IsFailing() bool {
 	// Reset failure status if the network changed since the last query.
 	if brc.networkChangedFlag.IsSet() {
 		brc.networkChangedFlag.Refresh()
-		brc.ResetFailure()
+		brc.fails = 0
+		brc.failing.UnSet()
 		return false
 	}
 

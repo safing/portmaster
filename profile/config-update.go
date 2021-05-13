@@ -123,7 +123,8 @@ func updateGlobalConfigProfile(ctx context.Context, task *modules.Task) error {
 		// Add module warning to inform user.
 		module.Warning(
 			globalConfigProfileErrorID,
-			fmt.Sprintf("Failed to process global settings: %s", err),
+			"Internal Settings Failure",
+			fmt.Sprintf("Some global settings might not be applied correctly. You can try restarting the Portmaster to resolve this problem. Error: %s", err),
 		)
 	}
 

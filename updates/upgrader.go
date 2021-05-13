@@ -109,10 +109,10 @@ func upgradeCoreNotify() error {
 			),
 			Category: "Core",
 			Message: fmt.Sprintf(
-				`:tada: Update to **Portmaster v%s** is available!  
-Please restart the Portmaster to apply the update.`,
+				`A new Portmaster version is available! Restart the Portmaster to upgrade to %s.`,
 				pmCoreUpdate.Version(),
 			),
+			ShowOnSystem: true,
 			AvailableActions: []*notifications.Action{
 				{
 					ID:   "restart",
@@ -135,18 +135,10 @@ Please restart the Portmaster to apply the update.`,
 func upgradeCoreNotifyActionHandler(_ context.Context, n *notifications.Notification) error {
 	switch n.SelectedActionID {
 	case "restart":
-		// Cannot directly trigger due to import loop.
-		err := module.InjectEvent(
-			"user triggered restart via notification",
-			"core",
-			"restart",
-			nil,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to trigger restart via notification: %s", err)
-		}
+		log.Infof("updates: user triggered restart via core update notification")
+		RestartNow()
 	case "later":
-		return n.Delete()
+		n.Delete()
 	}
 
 	return nil
@@ -257,19 +249,16 @@ func warnOnIncorrectParentPath() {
 	root := filepath.Dir(registry.StorageDir().Path)
 	if !strings.HasPrefix(absPath, root) {
 		log.Warningf("detected unexpected path %s for portmaster-start", absPath)
-
-		notifications.Notify(&notifications.Notification{
-			EventID:  "updates:unsupported-parent",
-			Type:     notifications.Warning,
-			Title:    "Unsupported Launcher",
-			Category: "Core",
-			Message: fmt.Sprintf(
-				"The portmaster has been launched by an unexpected %s binary at %s. Please configure your system to use the binary at %s as this version will be kept up to date automatically.",
+		notifications.NotifyWarn(
+			"updates:unsupported-parent",
+			"Unsupported Launcher",
+			fmt.Sprintf(
+				"The Portmaster has been launched by an unexpected %s binary at %s. Please configure your system to use the binary at %s as this version will be kept up to date automatically.",
 				expectedFileName,
 				absPath,
 				filepath.Join(root, expectedFileName),
 			),
-		})
+		)
 	}
 }
 

@@ -4,7 +4,6 @@ import (
 	"flag"
 
 	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
 )
 
 // Configuration Keys.
@@ -19,13 +18,12 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&defaultNetworkServiceMode, "network-service", false, "force network service mode")
-}
-
-func logFlagOverrides() {
-	if defaultNetworkServiceMode {
-		log.Warningf("core: %s config is being forced by the -network-service flag", CfgNetworkServiceKey)
-	}
+	flag.BoolVar(
+		&defaultNetworkServiceMode,
+		"network-service",
+		false,
+		"set default network service mode; configuration is stronger",
+	)
 }
 
 func registerConfig() error {

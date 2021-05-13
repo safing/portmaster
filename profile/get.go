@@ -51,6 +51,12 @@ func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 			// Get from database.
 			profile, err = getProfile(scopedID)
 
+			// Check if the request is for a special profile that may need a reset.
+			if err == nil && specialProfileNeedsReset(profile) {
+				// Trigger creation of special profile.
+				err = database.ErrNotFound
+			}
+
 			// If we cannot find a profile, check if the request is for a special
 			// profile we can create.
 			if errors.Is(err, database.ErrNotFound) {

@@ -5,7 +5,6 @@ import (
 	"runtime"
 
 	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/core"
 )
 
@@ -15,10 +14,9 @@ const (
 )
 
 var (
-	nameserverAddressFlag   string
-	nameserverAddressConfig config.StringOption
-
 	defaultNameserverAddress = "localhost:53"
+	nameserverAddress        string
+	nameserverAddressConfig  config.StringOption
 
 	networkServiceMode config.BoolOption
 )
@@ -29,22 +27,12 @@ func init() {
 		defaultNameserverAddress = "0.0.0.0:53"
 	}
 
-	flag.StringVar(&nameserverAddressFlag, "nameserver-address", "", "override nameserver listen address")
-}
-
-func logFlagOverrides() {
-	if nameserverAddressFlag != "" {
-		log.Warning("nameserver: dns/listenAddress default config is being overridden by the -nameserver-address flag")
-	}
-}
-
-func getDefaultNameserverAddress() string {
-	// check if overridden
-	if nameserverAddressFlag != "" {
-		return nameserverAddressFlag
-	}
-	// return internal default
-	return defaultNameserverAddress
+	flag.StringVar(
+		&nameserverAddress,
+		"nameserver-address",
+		defaultNameserverAddress,
+		"set default nameserver address; configuration is stronger",
+	)
 }
 
 func registerConfig() error {
@@ -55,7 +43,7 @@ func registerConfig() error {
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelDeveloper,
 		ReleaseLevel:    config.ReleaseLevelStable,
-		DefaultValue:    getDefaultNameserverAddress(),
+		DefaultValue:    nameserverAddress,
 		ValidationRegex: "^(localhost|[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}|\\[[:0-9A-Fa-f]+\\]):[0-9]{1,5}$",
 		RequiresRestart: true,
 		Annotations: config.Annotations{
@@ -66,7 +54,7 @@ func registerConfig() error {
 	if err != nil {
 		return err
 	}
-	nameserverAddressConfig = config.GetAsString(CfgDefaultNameserverAddressKey, getDefaultNameserverAddress())
+	nameserverAddressConfig = config.GetAsString(CfgDefaultNameserverAddressKey, nameserverAddress)
 
 	networkServiceMode = config.Concurrent.GetAsBool(core.CfgNetworkServiceKey, false)
 
