@@ -42,3 +42,5 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744
 )
+
+replace github.com/google/renameio => github.com/google/renameio v0.1.1-0.20200217212219-353f81969824
