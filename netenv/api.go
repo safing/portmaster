@@ -8,8 +8,9 @@ import (
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path: "network/gateways",
-		Read: api.PermitUser,
+		Path:      "network/gateways",
+		Read:      api.PermitUser,
+		BelongsTo: module,
 		StructFunc: func(ar *api.Request) (i interface{}, err error) {
 			return Gateways(), nil
 		},
@@ -20,8 +21,9 @@ func registerAPIEndpoints() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path: "network/nameservers",
-		Read: api.PermitUser,
+		Path:      "network/nameservers",
+		Read:      api.PermitUser,
+		BelongsTo: module,
 		StructFunc: func(ar *api.Request) (i interface{}, err error) {
 			return Nameservers(), nil
 		},
@@ -32,8 +34,9 @@ func registerAPIEndpoints() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path: "network/location",
-		Read: api.PermitUser,
+		Path:      "network/location",
+		Read:      api.PermitUser,
+		BelongsTo: module,
 		StructFunc: func(ar *api.Request) (i interface{}, err error) {
 			locs, ok := GetInternetLocation()
 			if ok {

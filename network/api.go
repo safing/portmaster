@@ -20,6 +20,7 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "debug/network",
 		Read:        api.PermitUser,
+		BelongsTo:   module,
 		DataFunc:    debugInfo,
 		Name:        "Get Network Debug Information",
 		Description: "Returns network debugging information, similar to debug/core, but with connection data.",
@@ -48,8 +49,9 @@ func registerAPIEndpoints() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path: "debug/network/state",
-		Read: api.PermitUser,
+		Path:      "debug/network/state",
+		Read:      api.PermitUser,
+		BelongsTo: module,
 		StructFunc: func(ar *api.Request) (i interface{}, err error) {
 			return state.GetInfo(), nil
 		},
