@@ -232,7 +232,7 @@ func start() error {
 }
 
 // TriggerUpdate queues the update task to execute ASAP.
-func TriggerUpdate(force bool) error {
+func TriggerUpdate() error {
 	switch {
 	case !module.OnlineSoon():
 		return fmt.Errorf("updates module is disabled")
@@ -240,7 +240,7 @@ func TriggerUpdate(force bool) error {
 	case !module.Online():
 		updateASAP = true
 
-	case !force && !enableUpdates():
+	case forceUpdate.IsNotSet() && !enableUpdates():
 		return fmt.Errorf("automatic updating is disabled")
 
 	default:
@@ -265,10 +265,12 @@ func DisableUpdateSchedule() error {
 }
 
 func checkForUpdates(ctx context.Context) (err error) {
-	if !updatesCurrentlyEnabled {
+	if !updatesCurrentlyEnabled && !forceUpdate.IsSet() {
 		log.Debugf("updates: automatic updates are disabled")
 		return nil
 	}
+	forceUpdate.UnSet()
+
 	defer log.Debugf("updates: finished checking for updates")
 
 	defer func() {

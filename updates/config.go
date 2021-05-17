@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/safing/portbase/notifications"
+	"github.com/tevino/abool"
 
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
@@ -22,6 +23,7 @@ var (
 	previousReleaseChannel  string
 	updatesCurrentlyEnabled bool
 	previousDevMode         bool
+	forceUpdate             = abool.New()
 )
 
 func registerConfig() error {
@@ -127,7 +129,7 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 
 		if updatesCurrentlyEnabled {
 			module.Resolve("")
-			if err := TriggerUpdate(false); err != nil {
+			if err := TriggerUpdate(); err != nil {
 				log.Warningf("updates: failed to trigger update: %s", err)
 			}
 			log.Infof("updates: automatic updates are now enabled")
