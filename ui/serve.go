@@ -13,6 +13,7 @@ import (
 
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/updater"
 	"github.com/safing/portmaster/updates"
 )
@@ -52,6 +53,8 @@ func registerRoutes() error {
 type bundleServer struct {
 	defaultModuleName string
 }
+
+func (bs *bundleServer) BelongsTo() *modules.Module { return module }
 
 func (bs *bundleServer) ReadPermission(*http.Request) api.Permission { return api.PermitAnyone }
 

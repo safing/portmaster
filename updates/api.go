@@ -10,8 +10,9 @@ const (
 
 func registerAPIEndpoints() error {
 	return api.RegisterEndpoint(api.Endpoint{
-		Path:  apiPathCheckForUpdates,
-		Write: api.PermitUser,
+		Path:      apiPathCheckForUpdates,
+		Write:     api.PermitUser,
+		BelongsTo: module,
 		ActionFunc: func(_ *api.Request) (msg string, err error) {
 			if err := TriggerUpdate(); err != nil {
 				return "", err

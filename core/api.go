@@ -27,6 +27,7 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "core/shutdown",
 		Write:       api.PermitSelf,
+		BelongsTo:   module,
 		ActionFunc:  shutdown,
 		Name:        "Shut Down Portmaster",
 		Description: "Shut down the Portmaster Core Service and all UI components.",
@@ -37,6 +38,7 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "core/restart",
 		Write:       api.PermitAdmin,
+		BelongsTo:   module,
 		ActionFunc:  restart,
 		Name:        "Restart Portmaster",
 		Description: "Restart the Portmaster Core Service.",
@@ -47,6 +49,7 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "debug/core",
 		Read:        api.PermitAnyone,
+		BelongsTo:   module,
 		DataFunc:    debugInfo,
 		Name:        "Get Debug Information",
 		Description: "Returns network debugging information, similar to debug/info, but with system status data.",
