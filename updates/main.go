@@ -195,6 +195,10 @@ func start() error {
 	registry.SelectVersions()
 	module.TriggerEvent(VersionUpdateEvent, nil)
 
+	if !updatesCurrentlyEnabled {
+		createWarningNotification()
+	}
+
 	// Initialize the version export - this requires the registry to be set up.
 	err = initVersionExport()
 	if err != nil {
@@ -228,7 +232,7 @@ func start() error {
 }
 
 // TriggerUpdate queues the update task to execute ASAP.
-func TriggerUpdate() error {
+func TriggerUpdate(force bool) error {
 	switch {
 	case !module.OnlineSoon():
 		return fmt.Errorf("updates module is disabled")
@@ -236,7 +240,7 @@ func TriggerUpdate() error {
 	case !module.Online():
 		updateASAP = true
 
-	case !enableUpdates():
+	case !force && !enableUpdates():
 		return fmt.Errorf("automatic updating is disabled")
 
 	default:

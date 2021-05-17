@@ -86,6 +86,21 @@ func initConfig() {
 	previousDevMode = devMode()
 }
 
+func createWarningNotification() {
+	notifications.NotifyWarn(
+		updatesDisabledNotificationID,
+		"Automatic Updates Disabled",
+		"Automatic updates are disabled through configuration. Please note that this is potentially dangerous, as this also affects security updates as well as the filter lists and threat intelligence feeds.",
+		notifications.Action{
+			Text: "Change",
+			Type: notifications.ActionTypeOpenSetting,
+			Payload: &notifications.ActionTypeOpenSettingPayload{
+				Key: enableUpdatesKey,
+			},
+		},
+	).AttachToModule(module)
+}
+
 func updateRegistryConfig(_ context.Context, _ interface{}) error {
 	changed := false
 
@@ -112,24 +127,12 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 
 		if updatesCurrentlyEnabled {
 			module.Resolve("")
-			if err := TriggerUpdate(); err != nil {
+			if err := TriggerUpdate(false); err != nil {
 				log.Warningf("updates: failed to trigger update: %s", err)
 			}
 			log.Infof("updates: automatic updates are now enabled")
 		} else {
-			notifications.NotifyWarn(
-				updatesDisabledNotificationID,
-				"Automatic Updates Disabled",
-				"Automatic updates are disabled through configuration. Please note that this is potentially dangerous, as this also affects security updates as well as the filter lists and threat intelligence feeds.",
-				notifications.Action{
-					ID:   "change",
-					Text: "Change",
-					Type: notifications.ActionTypeOpenSetting,
-					Payload: &notifications.ActionTypeOpenSettingPayload{
-						Key: enableUpdatesKey,
-					},
-				},
-			).AttachToModule(module)
+			createWarningNotification()
 			log.Warningf("updates: automatic updates are now disabled")
 		}
 	}

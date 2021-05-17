@@ -14,7 +14,7 @@ func registerAPIEndpoints() error {
 		Write:     api.PermitUser,
 		BelongsTo: module,
 		ActionFunc: func(_ *api.Request) (msg string, err error) {
-			if err := TriggerUpdate(); err != nil {
+			if err := TriggerUpdate(true); err != nil {
 				return "", err
 			}
 			return "triggered update check", nil
