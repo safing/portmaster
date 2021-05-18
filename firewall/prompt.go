@@ -169,10 +169,11 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 
 	// Create new notification.
 	n = &notifications.Notification{
-		EventID:  nID,
-		Type:     notifications.Prompt,
-		Title:    "Connection Prompt",
-		Category: "Privacy Filter",
+		EventID:      nID,
+		Type:         notifications.Prompt,
+		Title:        "Connection Prompt",
+		Category:     "Privacy Filter",
+		ShowOnSystem: askWithSystemNotifications(),
 		EventData: &promptData{
 			Entity: entity,
 			Profile: promptProfile{
