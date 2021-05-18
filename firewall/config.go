@@ -3,6 +3,7 @@ package firewall
 import (
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
+	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/core"
 )
 
@@ -12,6 +13,7 @@ var (
 
 	CfgOptionAskWithSystemNotificationsKey   = "filter/askWithSystemNotifications"
 	cfgOptionAskWithSystemNotificationsOrder = 2
+	askWithSystemNotifications               config.BoolOption
 
 	CfgOptionAskTimeoutKey   = "filter/askTimeout"
 	cfgOptionAskTimeoutOrder = 3
@@ -55,7 +57,7 @@ func registerConfig() error {
 			config.DisplayOrderAnnotation: cfgOptionAskWithSystemNotificationsOrder,
 			config.CategoryAnnotation:     "General",
 			config.RequiresAnnotation: config.ValueRequirement{
-				Key:   core.CfgUseSystemNotificationsKey,
+				Key:   notifications.CfgUseSystemNotificationsKey,
 				Value: true,
 			},
 		},
@@ -63,6 +65,7 @@ func registerConfig() error {
 	if err != nil {
 		return err
 	}
+	askWithSystemNotifications = config.Concurrent.GetAsBool(CfgOptionAskWithSystemNotificationsKey, true)
 
 	err = config.Register(&config.Option{
 		Name:           "Prompt Timeout",
