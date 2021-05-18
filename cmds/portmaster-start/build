@@ -43,7 +43,10 @@ if [[ "$BUILD_SOURCE" == "" ]]; then
   exit 1
 fi
 
-# build tools
+# set build options
+export CGO_ENABLED=0
+
+# special handling for Windows
 EXTRA_LD_FLAGS=""
 if [[ $GOOS == "windows" ]]; then
   # checks

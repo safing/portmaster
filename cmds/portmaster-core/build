@@ -51,6 +51,8 @@ if [[ $1 == "dev" ]]; then
   shift
   export CGO_ENABLED=1
   DEV="-race"
+else
+  export CGO_ENABLED=0
 fi
 
 # build
