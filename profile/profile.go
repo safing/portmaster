@@ -301,6 +301,22 @@ func (profile *Profile) IsOutdated() bool {
 	return profile.outdated.IsSet()
 }
 
+// GetEndpoints returns the endpoint list of the profile.
+func (profile *Profile) GetEndpoints() endpoints.Endpoints {
+	profile.RLock()
+	defer profile.RUnlock()
+
+	return profile.endpoints
+}
+
+// GetServiceEndpoints returns the service endpoint list of the profile.
+func (profile *Profile) GetServiceEndpoints() endpoints.Endpoints {
+	profile.RLock()
+	defer profile.RUnlock()
+
+	return profile.serviceEndpoints
+}
+
 // AddEndpoint adds an endpoint to the endpoint list, saves the profile and reloads the configuration.
 func (profile *Profile) AddEndpoint(newEntry string) {
 	profile.addEndpointyEntry(CfgOptionEndpointsKey, newEntry)
