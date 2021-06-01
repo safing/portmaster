@@ -37,7 +37,7 @@ func (ep *EndpointBase) match(s fmt.Stringer, entity *intel.Entity, value, desc 
 func (ep *EndpointBase) makeReason(s fmt.Stringer, value, desc string, keyval ...interface{}) Reason {
 	r := &reason{
 		description: desc,
-		Filter:      ep.renderPPP(s.String()),
+		Filter:      s.String(),
 		Permitted:   ep.Permitted,
 		Value:       value,
 	}
