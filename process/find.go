@@ -27,7 +27,7 @@ func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process 
 	var pid int
 	pid, connInbound, err = state.Lookup(pktInfo, fastSearch)
 	if err != nil {
-		log.Tracer(ctx).Debugf("process: failed to find PID of connection: %s", err)
+		log.Tracer(ctx).Tracef("process: failed to find PID of connection: %s", err)
 		return nil, pktInfo.Inbound, err
 	}
 

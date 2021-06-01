@@ -85,19 +85,45 @@ func getSpecialProfile(profileID, linkedPath string) *Profile {
 		return New(SourceLocal, SystemProfileID, linkedPath, nil)
 
 	case SystemResolverProfileID:
-		return New(
+		systemResolverProfile := New(
 			SourceLocal,
 			SystemResolverProfileID,
 			linkedPath,
 			map[string]interface{}{
+				// Explicitly setting the default action to "permit" will improve the
+				// user experience for people who set the global default to "prompt".
+				// Resolved domain from the system resolver are checked again when
+				// attributed to a connection of a regular process. Otherwise, users
+				// would see two connection prompts for the same domain.
+				CfgOptionDefaultActionKey: "permit",
+				// Explicitly allow localhost and answers to multicast protocols that
+				// are commonly used by system resolvers.
+				// TODO: When the Portmaster gains the ability to attribute multicast
+				// responses to their requests, these rules can probably be removed
+				// again.
 				CfgOptionServiceEndpointsKey: []string{
 					"+ Localhost",    // Allow everything from localhost.
 					"+ LAN UDP/5353", // Allow inbound mDNS requests and multicast replies.
 					"+ LAN UDP/5355", // Allow inbound LLMNR requests and multicast replies.
 					"+ LAN UDP/1900", // Allow inbound SSDP requests and multicast replies.
 				},
+				// Explicitly disable all filter lists, as these will be checked later
+				// with the attributed connection. As this is the system resolver, this
+				// list can instead be used as a global enforcement of filter lists, if
+				// the system resolver is used. Users who want to
+				CfgOptionFilterListsKey: []string{},
 			},
 		)
+		// Add description to tell users about the quirks of this profile.
+		systemResolverProfile.Description = `The System DNS Client is a system service that requires special handling. For regular network connections, the configured settings will apply as usual, but DNS requests coming from the System DNS Client are handled in a special way, as they could actually be coming from any other application on the system.
+		
+In order to respect the app settings of the actual application, DNS requests from the System DNS Client are only subject to the following settings:
+
+- Outgoing Rules (without global rules)
+- Block Bypassing
+- Filter Lists
+`
+		return systemResolverProfile
 
 	case PortmasterProfileID:
 		profile := New(SourceLocal, PortmasterProfileID, linkedPath, nil)
@@ -155,7 +181,7 @@ func specialProfileNeedsReset(profile *Profile) bool {
 
 	switch profile.ID {
 	case SystemResolverProfileID:
-		return canBeUpgraded(profile, "18.5.2021")
+		return canBeUpgraded(profile, "1.6.2021")
 	default:
 		// Not a special profile or no upgrade available yet.
 		return false
@@ -175,7 +201,7 @@ func canBeUpgraded(profile *Profile, upgradeDate string) bool {
 		log.Infof("profile: upgrading special profile %s", profile.ScopedID())
 
 		notifications.NotifyInfo(
-			"profiles:upgraded-special-profile-"+profile.ID,
+			"profiles:upgraded-special-profile:"+profile.ID,
 			profile.Name+" Settings Upgraded",
 			// TODO: Remove disclaimer.
 			fmt.Sprintf(

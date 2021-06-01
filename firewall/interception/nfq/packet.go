@@ -145,7 +145,7 @@ func (pkt *packet) PermanentAccept() error {
 }
 
 func (pkt *packet) PermanentBlock() error {
-	if pkt.Info().Protocol == pmpacket.ICMP {
+	if pkt.Info().Protocol == pmpacket.ICMP || pkt.Info().Protocol == pmpacket.ICMPv6 {
 		// ICMP packets attributed to a blocked connection are always allowed, as
 		// rejection ICMP packets will have the same mark as the blocked
 		// connection. This is why we need to drop blocked ICMP packets instead.

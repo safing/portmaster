@@ -55,8 +55,10 @@ var defaultDeciders = []deciderFn{
 }
 
 var dnsFromSystemResolverDeciders = []deciderFn{
+	checkEndpointListsForSystemResolverDNSRequests,
 	checkConnectivityDomain,
 	checkBypassPrevention,
+	checkFilterLists,
 }
 
 // DecideOnConnection makes a decision about a connection.
@@ -209,6 +211,29 @@ func checkEndpointLists(ctx context.Context, conn *network.Connection, p *profil
 	case endpoints.Permitted:
 		conn.AcceptWithContext(reason.String(), optionKey, reason.Context())
 		return true
+	}
+
+	return false
+}
+
+// checkEndpointListsForSystemResolverDNSRequests is a special version of
+// checkEndpointLists that is only meant for DNS queries by the system
+// resolver. It only checks the endpoint filter list of the local profile and
+// does not include the global profile.
+func checkEndpointListsForSystemResolverDNSRequests(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
+	profileEndpoints := p.LocalProfile().GetEndpoints()
+	if profileEndpoints.IsSet() {
+		result, reason := profileEndpoints.Match(ctx, conn.Entity)
+		if endpoints.IsDecision(result) {
+			switch result {
+			case endpoints.Denied:
+				conn.DenyWithContext(reason.String(), profile.CfgOptionEndpointsKey, reason.Context())
+				return true
+			case endpoints.Permitted:
+				conn.AcceptWithContext(reason.String(), profile.CfgOptionEndpointsKey, reason.Context())
+				return true
+			}
+		}
 	}
 
 	return false
