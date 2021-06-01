@@ -128,7 +128,7 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 
 	blockType := query.Get("blockedif")
 	if blockType == "" {
-		blockType = BlockDetectionRefused
+		blockType = BlockDetectionZeroIP
 	}
 
 	switch blockType {
