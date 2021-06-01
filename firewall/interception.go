@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/gopacket/layers"
 	"github.com/safing/portmaster/netenv"
 	"golang.org/x/sync/singleflight"
 
@@ -184,29 +185,38 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 	}
 
 	switch meta.Protocol {
-	case packet.ICMP:
-		// Submit to ICMP listener.
-		submitted := netenv.SubmitPacketToICMPListener(pkt)
-
-		// Always permit ICMP.
-		log.Debugf("filter: fast-track accepting ICMP: %s", pkt)
-
-		// If the packet was submitted to the listener, we must not do a
-		// permanent accept, because then we won't see any future packets of that
-		// connection and thus cannot continue to submit them.
-		if submitted {
-			_ = pkt.Accept()
-		} else {
+	case packet.ICMP, packet.ICMPv6:
+		// Load packet data.
+		err := pkt.LoadPacketData()
+		if err != nil {
+			log.Debugf("filter: failed to load ICMP packet data: %s", err)
 			_ = pkt.PermanentAccept()
+			return true
 		}
-		return true
 
-	case packet.ICMPv6:
+		// Handle echo request and replies regularly.
+		// Other ICMP packets are considered system business.
+		icmpLayers := pkt.Layers().LayerClass(layers.LayerClassIPControl)
+		switch icmpLayer := icmpLayers.(type) {
+		case *layers.ICMPv4:
+			switch icmpLayer.TypeCode.Type() {
+			case layers.ICMPv4TypeEchoRequest,
+				layers.ICMPv4TypeEchoReply:
+				return false
+			}
+		case *layers.ICMPv6:
+			switch icmpLayer.TypeCode.Type() {
+			case layers.ICMPv6TypeEchoRequest,
+				layers.ICMPv6TypeEchoReply:
+				return false
+			}
+		}
+
+		// Premit all ICMP/v6 packets that are not echo requests or replies.
+		log.Debugf("filter: fast-track accepting ICMP/v6: %s", pkt)
+
 		// Submit to ICMP listener.
 		submitted := netenv.SubmitPacketToICMPListener(pkt)
-
-		// Always permit ICMPv6.
-		log.Debugf("filter: fast-track accepting ICMPv6: %s", pkt)
 
 		// If the packet was submitted to the listener, we must not do a
 		// permanent accept, because then we won't see any future packets of that
