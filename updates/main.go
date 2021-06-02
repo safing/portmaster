@@ -293,7 +293,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 			notifications.NotifyWarn(
 				updateFailed,
 				"Update Check Failed",
-				"The Portmaster failed to check for updates. This might be a temporary issue of your device, your network or the update servers. The Portmaster will automatically try again later.",
+				"The Portmaster failed to check for updates. This might be a temporary issue of your device, your network or the update servers. The Portmaster will automatically try again later. If you just installed the Portmaster, please try disabling potentially conflicting software, such as other firewalls or VPNs.",
 				notifications.Action{
 					ID:   "retry",
 					Text: "Try Again Now",
@@ -308,12 +308,13 @@ func checkForUpdates(ctx context.Context) (err error) {
 	}()
 
 	if err = registry.UpdateIndexes(ctx); err != nil {
-		log.Warningf("updates: failed to update indexes: %s", err)
+		err = fmt.Errorf("failed to update indexes: %s", err)
+		return
 	}
 
 	err = registry.DownloadUpdates(ctx)
 	if err != nil {
-		err = fmt.Errorf("failed to update: %w", err)
+		err = fmt.Errorf("failed to download updates: %w", err)
 		return
 	}
 
@@ -322,7 +323,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 	// Unpack selected resources.
 	err = registry.UnpackResources()
 	if err != nil {
-		err = fmt.Errorf("failed to update: %w", err)
+		err = fmt.Errorf("failed to unpack updates: %w", err)
 		return
 	}
 
