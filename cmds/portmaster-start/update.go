@@ -40,8 +40,7 @@ var (
 
 func indexRequired(cmd *cobra.Command) bool {
 	switch cmd {
-	case updateCmd,
-		purgeCmd:
+	case updateCmd, purgeCmd:
 		return true
 	default:
 		return false
@@ -49,35 +48,9 @@ func indexRequired(cmd *cobra.Command) bool {
 }
 
 func downloadUpdates() error {
-	// mark required updates
-	if onWindows {
-		registry.MandatoryUpdates = []string{
-			helper.PlatformIdentifier("core/portmaster-core.exe"),
-			helper.PlatformIdentifier("kext/portmaster-kext.dll"),
-			helper.PlatformIdentifier("kext/portmaster-kext.sys"),
-			helper.PlatformIdentifier("start/portmaster-start.exe"),
-			helper.PlatformIdentifier("notifier/portmaster-notifier.exe"),
-			helper.PlatformIdentifier("notifier/portmaster-snoretoast.exe"),
-		}
-	} else {
-		registry.MandatoryUpdates = []string{
-			helper.PlatformIdentifier("core/portmaster-core"),
-			helper.PlatformIdentifier("start/portmaster-start"),
-			helper.PlatformIdentifier("notifier/portmaster-notifier"),
-		}
-	}
-
-	// add updates that we require on all platforms.
-	registry.MandatoryUpdates = append(
-		registry.MandatoryUpdates,
-		helper.PlatformIdentifier("app/portmaster-app.zip"),
-		"all/ui/modules/portmaster.zip",
-	)
-
-	// Add assets that need unpacking.
-	registry.AutoUnpack = []string{
-		helper.PlatformIdentifier("app/portmaster-app.zip"),
-	}
+	// Set required updates.
+	registry.MandatoryUpdates = helper.MandatoryUpdates()
+	registry.AutoUnpack = helper.AutoUnpackUpdates()
 
 	// logging is configured as a persistent pre-run method inherited from
 	// the root command but since we don't use run.Run() we need to start
@@ -100,8 +73,8 @@ func downloadUpdates() error {
 			return fmt.Errorf("failed to create update dir: %w", err)
 		}
 
-		// Reset registry state.
-		registry.Reset()
+		// Reset registry resources.
+		registry.ResetResources()
 	}
 
 	// Update all indexes.
