@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,24 +30,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		registry = &updater.ResourceRegistry{}
-		err = registry.Initialize(utils.NewDirStructure(absDistPath, 0o755))
-		if err != nil {
-			return err
-		}
-
-		registry.AddIndex(updater.Index{
-			Path:   "stable.json",
-			Stable: true,
-			Beta:   false,
-		})
-
-		registry.AddIndex(updater.Index{
-			Path:   "beta.json",
-			Stable: false,
-			Beta:   true,
-		})
-
-		err = registry.LoadIndexes(context.TODO())
+		err = registry.Initialize(utils.NewDirStructure(absDistPath, 0755))
 		if err != nil {
 			return err
 		}
