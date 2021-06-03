@@ -4,10 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
-	"path/filepath"
 	"runtime"
 	"time"
+
+	"github.com/safing/portmaster/updates/helper"
 
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
@@ -18,10 +18,6 @@ import (
 
 const (
 	onWindows = runtime.GOOS == "windows"
-
-	releaseChannelKey    = "core/releaseChannel"
-	releaseChannelStable = "stable"
-	releaseChannelBeta   = "beta"
 
 	enableUpdatesKey = "core/automaticUpdates"
 
@@ -48,15 +44,10 @@ var (
 	module            *modules.Module
 	registry          *updater.ResourceRegistry
 	userAgentFromFlag string
-	staging           bool
 
 	updateTask          *modules.Task
 	updateASAP          bool
 	disableTaskSchedule bool
-
-	// MandatoryUpdates is a list of full identifiers that
-	// should always be kept up to date.
-	MandatoryUpdates []string
 
 	// UserAgent is an HTTP User-Agent that is used to add
 	// more context to requests made by the registry when
@@ -65,9 +56,8 @@ var (
 )
 
 const (
-	updateInProgress = "updates:in-progress"
-	updateFailed     = "updates:failed"
-	updateSuccess    = "updates:success"
+	updateFailed  = "updates:failed"
+	updateSuccess = "updates:success"
 )
 
 func init() {
@@ -76,29 +66,9 @@ func init() {
 	module.RegisterEvent(ResourceUpdateEvent, true)
 
 	flag.StringVar(&userAgentFromFlag, "update-agent", "", "set the user agent for requests to the update server")
-	flag.BoolVar(&staging, "staging", false, "use staging update channel; for testing only")
 
-	// initialize mandatory updates
-	if onWindows {
-		MandatoryUpdates = []string{
-			platform("core/portmaster-core.exe"),
-			platform("start/portmaster-start.exe"),
-			platform("notifier/portmaster-notifier.exe"),
-			platform("notifier/portmaster-snoretoast.exe"),
-		}
-	} else {
-		MandatoryUpdates = []string{
-			platform("core/portmaster-core"),
-			platform("start/portmaster-start"),
-			platform("notifier/portmaster-notifier"),
-		}
-	}
-
-	MandatoryUpdates = append(
-		MandatoryUpdates,
-		platform("app/portmaster-app.zip"),
-		"all/ui/modules/portmaster.zip",
-	)
+	var dummy bool
+	flag.BoolVar(&dummy, "staging", false, "deprecated, configure in settings instead")
 }
 
 func prep() error {
@@ -107,8 +77,6 @@ func prep() error {
 	}
 
 	return registerAPIEndpoints()
-
-	return nil
 }
 
 func start() error {
@@ -131,13 +99,11 @@ func start() error {
 			"https://updates.safing.io",
 		},
 		UserAgent:        UserAgent,
-		MandatoryUpdates: MandatoryUpdates,
-		AutoUnpack: []string{
-			platform("app/portmaster-app.zip"),
-		},
-		Beta:    releaseChannel() == releaseChannelBeta,
-		DevMode: devMode(),
-		Online:  true,
+		MandatoryUpdates: helper.MandatoryUpdates(),
+		AutoUnpack:       helper.AutoUnpackUpdates(),
+		UsePreReleases:   initialReleaseChannel != helper.ReleaseChannelStable,
+		DevMode:          devMode(),
+		Online:           true,
 	}
 	if userAgentFromFlag != "" {
 		// override with flag value
@@ -149,38 +115,8 @@ func start() error {
 		return err
 	}
 
-	registry.AddIndex(updater.Index{
-		Path:   "stable.json",
-		Stable: true,
-		Beta:   false,
-	})
-
-	if registry.Beta {
-		registry.AddIndex(updater.Index{
-			Path:   "beta.json",
-			Stable: false,
-			Beta:   true,
-		})
-	}
-
-	registry.AddIndex(updater.Index{
-		Path:   "all/intel/intel.json",
-		Stable: true,
-		Beta:   true,
-	})
-
-	if stagingActive() {
-		// Set flag no matter how staging was activated.
-		staging = true
-
-		log.Warning("updates: staging environment is active")
-
-		registry.AddIndex(updater.Index{
-			Path:   "staging.json",
-			Stable: true,
-			Beta:   true,
-		})
-	}
+	// Set indexes based on the release channel.
+	helper.SetIndexes(registry, initialReleaseChannel)
 
 	err = registry.LoadIndexes(module.Ctx)
 	if err != nil {
@@ -340,21 +276,6 @@ func stop() error {
 	}
 
 	return stopVersionExport()
-}
-
-func platform(identifier string) string {
-	return fmt.Sprintf("%s_%s/%s", runtime.GOOS, runtime.GOARCH, identifier)
-}
-
-func stagingActive() bool {
-	// Check flag and env variable.
-	if staging || os.Getenv("PORTMASTER_STAGING") == "enabled" {
-		return true
-	}
-
-	// Check if staging index is present and acessible.
-	_, err := os.Stat(filepath.Join(registry.StorageDir().Path, "staging.json"))
-	return err == nil
 }
 
 // RootPath returns the root path used for storing updates.

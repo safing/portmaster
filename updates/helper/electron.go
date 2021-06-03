@@ -1,7 +1,6 @@
 package helper
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -52,14 +51,6 @@ func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 	log.Infof("updates: fixed SUID permission for chrome-sandbox")
 
 	return nil
-}
-
-// PlatformIdentifier converts identifier for the current platform.
-func PlatformIdentifier(identifier string) string {
-	// From https://golang.org/pkg/runtime/#GOARCH
-	// GOOS is the running program's operating system target: one of darwin, freebsd, linux, and so on.
-	// GOARCH is the running program's architecture target: one of 386, amd64, arm, s390x, and so on.
-	return fmt.Sprintf("%s_%s/%s", runtime.GOOS, runtime.GOARCH, identifier)
 }
 
 func checkSysctl(setting string, value byte) bool {

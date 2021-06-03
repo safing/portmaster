@@ -11,14 +11,14 @@ import (
 	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/updates/helper"
 )
 
-// database key for update information
+// Database key for update information.
 const (
 	versionsDBKey = "core:status/versions"
 )
 
-// working vars
 var (
 	versionExport   *versions
 	versionExportDB = database.NewInterface(&database.Options{
@@ -35,6 +35,7 @@ type versions struct {
 
 	Core      *info.Info
 	Resources map[string]*updater.Resource
+	Channel   string
 	Beta      bool
 	Staging   bool
 
@@ -45,8 +46,9 @@ func initVersionExport() (err error) {
 	// init export struct
 	versionExport = &versions{
 		internalSave: true,
-		Beta:         registry.Beta,
-		Staging:      staging,
+		Channel:      initialReleaseChannel,
+		Beta:         initialReleaseChannel == helper.ReleaseChannelBeta,
+		Staging:      initialReleaseChannel == helper.ReleaseChannelStaging,
 	}
 	versionExport.SetKey(versionsDBKey)
 
@@ -68,7 +70,7 @@ func stopVersionExport() error {
 	return versionExportHook.Cancel()
 }
 
-// export is an event hook
+// export is an event hook.
 func export(_ context.Context, _ interface{}) error {
 	// populate
 	versionExport.lock.Lock()
