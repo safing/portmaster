@@ -96,7 +96,7 @@ func getPmStartLogFile(ext string) *os.File {
 	}, info.Version(), ext)
 }
 
-//nolint:deadcode,unused // false positive on linux, currently used by windows only
+//nolint:unused // false positive on linux, currently used by windows only
 func logControlError(cErr error) {
 	// check if error present
 	if cErr == nil {

@@ -14,7 +14,6 @@ import (
 )
 
 func checkAndCreateInstanceLock(path, name string) (pid int32, err error) {
-
 	lockFilePath := filepath.Join(dataRoot.Path, path, fmt.Sprintf("%s-lock.pid", name))
 
 	// read current pid file
@@ -86,7 +85,7 @@ func createInstanceLock(lockFilePath string) error {
 	}
 
 	// create lock file
-	err = ioutil.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d", os.Getpid())), 0666)
+	err = ioutil.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d", os.Getpid())), 0666) //nolint:gosec
 	if err != nil {
 		return err
 	}

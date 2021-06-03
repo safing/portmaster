@@ -7,7 +7,7 @@ import (
 var (
 	startupComplete = make(chan struct{}) // signal that the start procedure completed (is never closed, just signaled once)
 	shuttingDown    = make(chan struct{}) // signal that we are shutting down (will be closed, may not be closed directly, use initiateShutdown)
-	//nolint:deadcode,unused // false positive on linux, currently used by windows only
+	//nolint:unused // false positive on linux, currently used by windows only
 	shutdownError error // protected by shutdownLock
 	shutdownLock  sync.Mutex
 )

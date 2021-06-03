@@ -19,8 +19,8 @@ var recoverIPTablesCmd = &cobra.Command{
 		// we don't get the errno of the actual error and need to parse the
 		// output instead. Make sure it's always english by setting LC_ALL=C
 		currentLocale := os.Getenv("LC_ALL")
-		os.Setenv("LC_ALL", "C")                 // nolint:errcheck - we tried at least ...
-		defer os.Setenv("LC_ALL", currentLocale) // nolint:errcheck
+		os.Setenv("LC_ALL", "C")
+		defer os.Setenv("LC_ALL", currentLocale)
 
 		err := interception.DeactivateNfqueueFirewall()
 		if err == nil {

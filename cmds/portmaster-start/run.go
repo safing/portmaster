@@ -33,17 +33,17 @@ var (
 	childIsRunning   = abool.NewBool(false)
 )
 
-// Options for starting component
+// Options for starting component.
 type Options struct {
 	Name              string
 	Identifier        string // component identifier
+	ShortIdentifier   string // populated automatically
 	LockPathPrefix    string
 	PIDFile           bool
-	ShortIdentifier   string // populated automatically
-	SuppressArgs      bool   // do not use any args
-	AllowDownload     bool   // allow download of component if it is not yet available
-	AllowHidingWindow bool   // allow hiding the window of the subprocess
-	NoOutput          bool   // do not use stdout/err if logging to file is available (did not fail to open log file)
+	SuppressArgs      bool // do not use any args
+	AllowDownload     bool // allow download of component if it is not yet available
+	AllowHidingWindow bool // allow hiding the window of the subprocess
+	NoOutput          bool // do not use stdout/err if logging to file is available (did not fail to open log file)
 }
 
 func init() {
@@ -313,7 +313,7 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 	log.Printf("starting %s %s\n", binPath, strings.Join(args, " "))
 
 	// create command
-	exc := exec.Command(binPath, args...) //nolint:gosec // everything is okay
+	exc := exec.Command(binPath, args...)
 
 	if !runningInConsole && opts.AllowHidingWindow {
 		// Windows only:
