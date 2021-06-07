@@ -10,6 +10,7 @@ const (
 	ReleaseChannelStable  = "stable"
 	ReleaseChannelBeta    = "beta"
 	ReleaseChannelStaging = "staging"
+	ReleaseChannelSpecial = "special"
 )
 
 func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string) {
@@ -21,14 +22,14 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string) {
 
 	// Always add the stable index as a base.
 	registry.AddIndex(updater.Index{
-		Path: "stable.json",
+		Path: ReleaseChannelStable + ".json",
 	})
 
 	// Add beta index if in beta or staging channel.
 	if releaseChannel == ReleaseChannelBeta ||
 		releaseChannel == ReleaseChannelStaging {
 		registry.AddIndex(updater.Index{
-			Path:       "beta.json",
+			Path:       ReleaseChannelBeta + ".json",
 			PreRelease: true,
 		})
 	}
@@ -36,8 +37,15 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string) {
 	// Add staging index if in staging channel.
 	if releaseChannel == ReleaseChannelStaging {
 		registry.AddIndex(updater.Index{
-			Path:       "staging.json",
+			Path:       ReleaseChannelStaging + ".json",
 			PreRelease: true,
+		})
+	}
+
+	// Add special index if in special channel.
+	if releaseChannel == ReleaseChannelSpecial {
+		registry.AddIndex(updater.Index{
+			Path: ReleaseChannelSpecial + ".json",
 		})
 	}
 

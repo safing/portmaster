@@ -50,8 +50,13 @@ func registerConfig() error {
 				Value:       helper.ReleaseChannelBeta,
 			},
 			{
+				Name: "Special",
+				Description: "Special releases or version changes for troubleshooting. Only use temporarily and when 	instructed.",
+				Value: helper.ReleaseChannelSpecial,
+			},
+			{
 				Name:        "Staging",
-				Description: "Development releases for testing random things and experimenting. Dangerous - only use when told so.",
+				Description: "Dangerous development releases for testing random things and experimenting. Only use temporarily and when instructed.",
 				Value:       helper.ReleaseChannelStaging,
 			},
 		},
