@@ -101,7 +101,6 @@ func start() error {
 		UserAgent:        UserAgent,
 		MandatoryUpdates: helper.MandatoryUpdates(),
 		AutoUnpack:       helper.AutoUnpackUpdates(),
-		UsePreReleases:   initialReleaseChannel != helper.ReleaseChannelStable,
 		DevMode:          devMode(),
 		Online:           true,
 	}

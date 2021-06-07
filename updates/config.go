@@ -122,8 +122,8 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 	changed := false
 
 	if releaseChannel() != previousReleaseChannel {
-		registry.SetUsePreReleases(releaseChannel() != helper.ReleaseChannelStable)
 		previousReleaseChannel = releaseChannel()
+		helper.SetIndexes(registry, releaseChannel())
 		changed = true
 	}
 
