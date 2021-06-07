@@ -32,10 +32,10 @@ func registerConfig() error {
 	err := config.Register(&config.Option{
 		Name:            "Release Channel",
 		Key:             helper.ReleaseChannelKey,
-		Description:     "Switch release channel.",
+		Description:     `Use "Stable" for the best experience. The "Beta" channel will have the newest features and fixes, but may also break and cause interruption. Use others only temporarily and when instructed.`,
 		OptType:         config.OptTypeString,
-		ExpertiseLevel:  config.ExpertiseLevelDeveloper,
-		ReleaseLevel:    config.ReleaseLevelExperimental,
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
+		ReleaseLevel:    config.ReleaseLevelStable,
 		RequiresRestart: true,
 		DefaultValue:    helper.ReleaseChannelStable,
 		PossibleValues: []config.PossibleValue{
@@ -50,9 +50,9 @@ func registerConfig() error {
 				Value:       helper.ReleaseChannelBeta,
 			},
 			{
-				Name: "Special",
-				Description: "Special releases or version changes for troubleshooting. Only use temporarily and when 	instructed.",
-				Value: helper.ReleaseChannelSpecial,
+				Name:        "Special",
+				Description: "Special releases or version changes for troubleshooting. Only use temporarily and when instructed.",
+				Value:       helper.ReleaseChannelSpecial,
 			},
 			{
 				Name:        "Staging",
