@@ -301,19 +301,15 @@ func (profile *Profile) IsOutdated() bool {
 	return profile.outdated.IsSet()
 }
 
-// GetEndpoints returns the endpoint list of the profile.
+// GetEndpoints returns the endpoint list of the profile. This functions
+// requires the profile to be read locked.
 func (profile *Profile) GetEndpoints() endpoints.Endpoints {
-	profile.RLock()
-	defer profile.RUnlock()
-
 	return profile.endpoints
 }
 
-// GetServiceEndpoints returns the service endpoint list of the profile.
+// GetServiceEndpoints returns the service endpoint list of the profile. This
+// functions requires the profile to be read locked.
 func (profile *Profile) GetServiceEndpoints() endpoints.Endpoints {
-	profile.RLock()
-	defer profile.RUnlock()
-
 	return profile.serviceEndpoints
 }
 
