@@ -38,8 +38,8 @@ type TCPResolver struct {
 type tcpResolverConn struct {
 	// ctx is the context of the tcpResolverConn.
 	ctx context.Context
-	// cancelCtx cancels cancelCtx
-	cancelCtx func()
+	// cancelCtx cancels ctx
+	cancelCtx context.CancelFunc
 	// id is the ID assigned to the resolver conn.
 	id int
 	// conn is the connection to the DNS server.
