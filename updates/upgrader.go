@@ -351,10 +351,9 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 }
 
 // CopyFile atomically copies a file using the update registry's tmp dir.
-func CopyFile(srcPath, dstPath string) (err error) {
-
+func CopyFile(srcPath, dstPath string) error {
 	// check tmp dir
-	err = registry.TmpDir().Ensure()
+	err := registry.TmpDir().Ensure()
 	if err != nil {
 		return fmt.Errorf("could not prepare tmp directory for copying file: %w", err)
 	}
@@ -369,14 +368,14 @@ func CopyFile(srcPath, dstPath string) (err error) {
 	// open source
 	srcFile, err := os.Open(srcPath)
 	if err != nil {
-		return
+		return err
 	}
 	defer srcFile.Close()
 
 	// copy data
 	_, err = io.Copy(atomicDstFile, srcFile)
 	if err != nil {
-		return
+		return err
 	}
 
 	// finalize file

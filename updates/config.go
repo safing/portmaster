@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/updates/helper"
 	"github.com/tevino/abool"
 
 	"github.com/safing/portbase/config"
@@ -20,6 +21,7 @@ var (
 	devMode        config.BoolOption
 	enableUpdates  config.BoolOption
 
+	initialReleaseChannel   string
 	previousReleaseChannel  string
 	updatesCurrentlyEnabled bool
 	previousDevMode         bool
@@ -29,21 +31,33 @@ var (
 func registerConfig() error {
 	err := config.Register(&config.Option{
 		Name:            "Release Channel",
-		Key:             releaseChannelKey,
+		Key:             helper.ReleaseChannelKey,
 		Description:     "Switch release channel.",
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelDeveloper,
 		ReleaseLevel:    config.ReleaseLevelExperimental,
-		RequiresRestart: false,
-		DefaultValue:    releaseChannelStable,
+		RequiresRestart: true,
+		DefaultValue:    helper.ReleaseChannelStable,
 		PossibleValues: []config.PossibleValue{
 			{
-				Name:  "Stable",
-				Value: releaseChannelStable,
+				Name:        "Stable",
+				Description: "Production releases.",
+				Value:       helper.ReleaseChannelStable,
 			},
 			{
-				Name:  "Beta",
-				Value: releaseChannelBeta,
+				Name:        "Beta",
+				Description: "Production releases for testing new features that may break and cause interruption.",
+				Value:       helper.ReleaseChannelBeta,
+			},
+			{
+				Name: "Special",
+				Description: "Special releases or version changes for troubleshooting. Only use temporarily and when 	instructed.",
+				Value: helper.ReleaseChannelSpecial,
+			},
+			{
+				Name:        "Staging",
+				Description: "Dangerous development releases for testing random things and experimenting. Only use temporarily and when instructed.",
+				Value:       helper.ReleaseChannelStaging,
 			},
 		},
 		Annotations: config.Annotations{
@@ -78,7 +92,8 @@ func registerConfig() error {
 }
 
 func initConfig() {
-	releaseChannel = config.GetAsString(releaseChannelKey, releaseChannelStable)
+	releaseChannel = config.GetAsString(helper.ReleaseChannelKey, helper.ReleaseChannelStable)
+	initialReleaseChannel = releaseChannel()
 	previousReleaseChannel = releaseChannel()
 
 	enableUpdates = config.GetAsBool(enableUpdatesKey, true)
@@ -107,7 +122,7 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 	changed := false
 
 	if releaseChannel() != previousReleaseChannel {
-		registry.SetBeta(releaseChannel() == releaseChannelBeta)
+		registry.SetUsePreReleases(releaseChannel() != helper.ReleaseChannelStable)
 		previousReleaseChannel = releaseChannel()
 		changed = true
 	}

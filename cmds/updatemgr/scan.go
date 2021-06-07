@@ -19,7 +19,7 @@ var scanCmd = &cobra.Command{
 
 func scan(cmd *cobra.Command, args []string) error {
 	// Reset and rescan.
-	registry.Reset()
+	registry.ResetResources()
 	err := registry.ScanStorage("")
 	if err != nil {
 		return err
@@ -36,8 +36,8 @@ func scan(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func exportSelected(beta bool) map[string]string {
-	registry.SetBeta(beta)
+func exportSelected(preReleases bool) map[string]string {
+	registry.SetUsePreReleases(preReleases)
 	registry.SelectVersions()
 	export := registry.Export()
 

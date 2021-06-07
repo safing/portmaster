@@ -4,12 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/safing/portmaster/updates/helper"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/info"
@@ -33,7 +38,6 @@ var (
 		UpdateURLs: []string{
 			"https://updates.safing.io",
 		},
-		Beta:    false,
 		DevMode: false,
 		Online:  true, // is disabled later based on command
 	}
@@ -65,7 +69,7 @@ func init() {
 	{
 		flags.StringVar(&dataDir, "data", "", "Configures the data directory. Alternatively, this can also be set via the environment variable PORTMASTER_DATA.")
 		flags.StringVar(&registry.UserAgent, "update-agent", "Start", "Sets the user agent for requests to the update server")
-		flags.BoolVar(&staging, "staging", false, "Use staging update channel (for testing only)")
+		flags.BoolVar(&staging, "staging", false, "Deprecated, configure in settings instead.")
 		flags.IntVar(&maxRetries, "max-retries", 5, "Maximum number of retries when starting a Portmaster component")
 		flags.BoolVar(&stdinSignals, "input-signals", false, "Emulate signals using stdin.")
 		_ = rootCmd.MarkPersistentFlagDirname("data")
@@ -164,32 +168,6 @@ func configureRegistry(mustLoadIndex bool) error {
 		return err
 	}
 
-	registry.AddIndex(updater.Index{
-		Path:   "stable.json",
-		Stable: true,
-		Beta:   false,
-	})
-
-	// TODO: enable loading beta versions
-	// registry.AddIndex(updater.Index{
-	// Path:   "beta.json",
-	// Stable: false,
-	// Beta:   true,
-	// })
-
-	if stagingActive() {
-		// Set flag no matter how staging was activated.
-		staging = true
-
-		log.Println("WARNING: staging environment is active.")
-
-		registry.AddIndex(updater.Index{
-			Path:   "staging.json",
-			Stable: true,
-			Beta:   true,
-		})
-	}
-
 	return updateRegistryIndex(mustLoadIndex)
 }
 
@@ -210,6 +188,16 @@ func configureLogging() error {
 }
 
 func updateRegistryIndex(mustLoadIndex bool) error {
+	// Get release channel from config.
+	releaseChannel := getReleaseChannel(dataRoot)
+
+	// Set indexes based on the release channel.
+	helper.SetIndexes(registry, releaseChannel)
+
+	// Update registry to use pre-releases or not.
+	registry.SetUsePreReleases(releaseChannel != helper.ReleaseChannelStable)
+
+	// Load indexes from disk or network, if needed and desired.
 	err := registry.LoadIndexes(context.Background())
 	if err != nil {
 		log.Printf("WARNING: error loading indexes: %s\n", err)
@@ -218,6 +206,7 @@ func updateRegistryIndex(mustLoadIndex bool) error {
 		}
 	}
 
+	// Load versions from disk to know which others we have and which are available.
 	err = registry.ScanStorage("")
 	if err != nil {
 		log.Printf("WARNING: error during storage scan: %s\n", err)
@@ -247,13 +236,23 @@ func detectInstallationDir() string {
 	return parent
 }
 
-func stagingActive() bool {
-	// Check flag and env variable.
-	if staging || os.Getenv("PORTMASTER_STAGING") == "enabled" {
-		return true
+func getReleaseChannel(dataRoot *utils.DirStructure) string {
+	configData, err := ioutil.ReadFile(filepath.Join(dataRoot.Path, "config.json"))
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Printf("WARNING: failed to read config.json to get release channel: %s", err)
+		}
+		return helper.ReleaseChannelStable
 	}
 
-	// Check if staging index is present and acessible.
-	_, err := os.Stat(filepath.Join(registry.StorageDir().Path, "staging.json"))
-	return err == nil
+	// Get release channel from config, validate and return it.
+	channel := gjson.GetBytes(configData, helper.ReleaseChannelJSONKey).String()
+	switch channel {
+	case helper.ReleaseChannelStable,
+		helper.ReleaseChannelBeta,
+		helper.ReleaseChannelStaging:
+		return channel
+	default:
+		return helper.ReleaseChannelStable
+	}
 }
