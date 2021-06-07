@@ -194,9 +194,6 @@ func updateRegistryIndex(mustLoadIndex bool) error {
 	// Set indexes based on the release channel.
 	helper.SetIndexes(registry, releaseChannel)
 
-	// Update registry to use pre-releases or not.
-	registry.SetUsePreReleases(releaseChannel != helper.ReleaseChannelStable)
-
 	// Load indexes from disk or network, if needed and desired.
 	err := registry.LoadIndexes(context.Background())
 	if err != nil {
@@ -240,7 +237,7 @@ func getReleaseChannel(dataRoot *utils.DirStructure) string {
 	configData, err := ioutil.ReadFile(filepath.Join(dataRoot.Path, "config.json"))
 	if err != nil {
 		if !os.IsNotExist(err) {
-			log.Printf("WARNING: failed to read config.json to get release channel: %s", err)
+			log.Printf("WARNING: failed to read config.json to get release channel: %s\n", err)
 		}
 		return helper.ReleaseChannelStable
 	}
@@ -250,9 +247,11 @@ func getReleaseChannel(dataRoot *utils.DirStructure) string {
 	switch channel {
 	case helper.ReleaseChannelStable,
 		helper.ReleaseChannelBeta,
-		helper.ReleaseChannelStaging:
+		helper.ReleaseChannelStaging,
+		helper.ReleaseChannelSpecial:
 		return channel
 	default:
+		log.Printf("WARNING: config.json has unknown release channel %q, falling back to stable channel\n", channel)
 		return helper.ReleaseChannelStable
 	}
 }

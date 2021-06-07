@@ -13,7 +13,11 @@ const (
 	ReleaseChannelSpecial = "special"
 )
 
+// SetIndexes sets the update registry indexes and also configures the registry
+// to use pre-releases based on the channel.
 func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string) {
+	usePreReleases := false
+
 	// Be reminded that the order is important, as indexes added later will
 	// override the current release from earlier indexes.
 
@@ -32,6 +36,7 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string) {
 			Path:       ReleaseChannelBeta + ".json",
 			PreRelease: true,
 		})
+		usePreReleases = true
 	}
 
 	// Add staging index if in staging channel.
@@ -40,6 +45,7 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string) {
 			Path:       ReleaseChannelStaging + ".json",
 			PreRelease: true,
 		})
+		usePreReleases = true
 	}
 
 	// Add special index if in special channel.
@@ -55,4 +61,7 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string) {
 	registry.AddIndex(updater.Index{
 		Path: "all/intel/intel.json",
 	})
+
+	// Set pre-release usage.
+	registry.SetUsePreReleases(usePreReleases)
 }
