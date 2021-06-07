@@ -85,6 +85,7 @@ func createInstanceLock(lockFilePath string) error {
 	}
 
 	// create lock file
+	// TODO: Investigate required permissions.
 	err = ioutil.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d", os.Getpid())), 0666) //nolint:gosec
 	if err != nil {
 		return err
