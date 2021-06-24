@@ -50,14 +50,20 @@ func registerConfig() error {
 				Value:       helper.ReleaseChannelBeta,
 			},
 			{
-				Name:        "Special",
-				Description: "Special releases or version changes for troubleshooting. Only use temporarily and when instructed.",
-				Value:       helper.ReleaseChannelSpecial,
+				Name:        "Support",
+				Description: "Support releases or version changes for troubleshooting. Only use temporarily and when instructed.",
+				Value:       helper.ReleaseChannelSupport,
 			},
 			{
 				Name:        "Staging",
 				Description: "Dangerous development releases for testing random things and experimenting. Only use temporarily and when instructed.",
 				Value:       helper.ReleaseChannelStaging,
+			},
+			// TODO: Remove as soon as everyone has switched away.
+			{
+				Name:        "Special (Deprecated!)",
+				Description: "This channel has been deprecated. If selected, the Stable channel will be used instead.",
+				Value:       "special",
 			},
 		},
 		Annotations: config.Annotations{
