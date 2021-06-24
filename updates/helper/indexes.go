@@ -10,7 +10,7 @@ const (
 	ReleaseChannelStable  = "stable"
 	ReleaseChannelBeta    = "beta"
 	ReleaseChannelStaging = "staging"
-	ReleaseChannelSpecial = "special"
+	ReleaseChannelSupport = "support"
 )
 
 // SetIndexes sets the update registry indexes and also configures the registry
@@ -48,10 +48,10 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string) {
 		usePreReleases = true
 	}
 
-	// Add special index if in special channel.
-	if releaseChannel == ReleaseChannelSpecial {
+	// Add support index if in support channel.
+	if releaseChannel == ReleaseChannelSupport {
 		registry.AddIndex(updater.Index{
-			Path: ReleaseChannelSpecial + ".json",
+			Path: ReleaseChannelSupport + ".json",
 		})
 	}
 
