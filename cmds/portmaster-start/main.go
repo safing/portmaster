@@ -248,7 +248,7 @@ func getReleaseChannel(dataRoot *utils.DirStructure) string {
 	case helper.ReleaseChannelStable,
 		helper.ReleaseChannelBeta,
 		helper.ReleaseChannelStaging,
-		helper.ReleaseChannelSpecial:
+		helper.ReleaseChannelSupport:
 		return channel
 	default:
 		log.Printf("WARNING: config.json has unknown release channel %q, falling back to stable channel\n", channel)
