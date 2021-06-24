@@ -134,12 +134,16 @@ func getBufSize() int {
 	return bufSize
 }
 
-func increaseBufSize() int {
+func increaseBufSize(minSize int) int {
 	bufSizeLock.Lock()
 	defer bufSizeLock.Unlock()
 
 	// increase
 	bufSize *= 2
+	// increase until we reach the minimum size
+	for bufSize < minSize {
+		bufSize *= 2
+	}
 	// not too much
 	if bufSize > maxBufSize {
 		bufSize = maxBufSize
@@ -168,8 +172,8 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 		return nil, nil, errors.New("invalid protocol")
 	}
 
-	// try max 3 times
-	maxTries := 3
+	// try max 5 times
+	maxTries := 5
 	bufSize := getBufSize()
 	var buf []byte
 
@@ -201,9 +205,14 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 		switch r1 {
 		case winErrInsufficientBuffer:
 			if i >= maxTries {
-				return nil, nil, fmt.Errorf("insufficient buffer error (tried %d times): [NT 0x%X] %s", i, r1, err)
+				return nil, nil, fmt.Errorf(
+					"insufficient buffer error (tried %d times): %s bytes required - [NT 0x%X] %s",
+					i, bufSize, r1, err,
+				)
 			}
-			bufSize = increaseBufSize()
+			// bufSize was modified by ipHelper.getExtended*Table to hold the
+			// required buffer size.
+			bufSize = increaseBufSize(bufSize)
 		case winErrInvalidParameter:
 			return nil, nil, fmt.Errorf("invalid parameter: [NT 0x%X] %s", r1, err)
 		case windows.NO_ERROR:
