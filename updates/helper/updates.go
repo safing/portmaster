@@ -48,6 +48,7 @@ func MandatoryUpdates() (identifiers []string) {
 		"all/ui/modules/assets.zip",
 
 		// Filter lists data
+		"all/intel/lists/index.dsd",
 		"all/intel/lists/base.dsdl",
 		"all/intel/lists/intermediate.dsdl",
 		"all/intel/lists/urgent.dsdl",
