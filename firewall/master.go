@@ -335,10 +335,10 @@ func checkConnectionScope(_ context.Context, conn *network.Connection, p *profil
 	return false
 }
 
-func checkBypassPrevention(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
+func checkBypassPrevention(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
 	if p.PreventBypassing() {
 		// check for bypass protection
-		result, reason, reasonCtx := PreventBypassing(conn)
+		result, reason, reasonCtx := PreventBypassing(ctx, conn)
 		switch result {
 		case endpoints.Denied:
 			conn.BlockWithContext("bypass prevention: "+reason, profile.CfgOptionPreventBypassingKey, reasonCtx)
