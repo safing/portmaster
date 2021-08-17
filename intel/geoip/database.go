@@ -20,7 +20,7 @@ var (
 
 	geoDBv4Reader *maxminddb.Reader
 	geoDBv6Reader *maxminddb.Reader
-	dbLock        sync.Mutex
+	dbLock        sync.RWMutex
 
 	dbInUse    = abool.NewBool(false) // only activate if used for first time
 	dbDoReload = abool.NewBool(true)  // if database should be reloaded
@@ -35,6 +35,7 @@ func ReloadDatabases() error {
 
 	dbFileLock.Lock()
 	defer dbFileLock.Unlock()
+
 	dbLock.Lock()
 	defer dbLock.Unlock()
 
