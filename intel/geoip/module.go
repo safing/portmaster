@@ -20,23 +20,9 @@ func prep() error {
 		updates.ModuleName,
 		updates.ResourceUpdateEvent,
 		"Check for GeoIP database updates",
-		upgradeDatabases,
+		func(c context.Context, i interface{}) error {
+			worker.triggerUpdate()
+			return nil
+		},
 	)
-}
-
-func upgradeDatabases(_ context.Context, _ interface{}) error {
-	dbFileLock.Lock()
-	reload := false
-	if geoDBv4File != nil && geoDBv4File.UpgradeAvailable() {
-		reload = true
-	}
-	if geoDBv6File != nil && geoDBv6File.UpgradeAvailable() {
-		reload = true
-	}
-	dbFileLock.Unlock()
-
-	if reload {
-		return ReloadDatabases()
-	}
-	return nil
 }
