@@ -98,7 +98,7 @@ var (
 
 	// Permanent Verdicts Order = 96
 
-	CfgOptionUseSPNKey   = "spn/useSPN"
+	CfgOptionUseSPNKey   = "spn/use"
 	cfgOptionUseSPN      config.BoolOption
 	cfgOptionUseSPNOrder = 129
 )
@@ -524,7 +524,7 @@ Please note that if you are using the system resolver, bypass attempts might be 
 	err = config.Register(&config.Option{
 		Name:         "Use SPN",
 		Key:          CfgOptionUseSPNKey,
-		Description:  "Route connections through the Safing Privacy Network. If it is disabled or unavailable for any reason, connections will be blocked.",
+		Description:  "Protect network traffic with the Safing Privacy Network. If the SPN is not available or the connection is interrupted, network traffic will be blocked.",
 		OptType:      config.OptTypeBool,
 		DefaultValue: true,
 		Annotations: config.Annotations{
