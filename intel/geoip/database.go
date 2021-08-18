@@ -67,6 +67,9 @@ func (ub *updateBroadcaster) ReplaceDatabase(db *geoIPDB) {
 // notifyWaiters notifies and removes all waiters. Must be called
 // with ub.rw locked.
 func (ub *updateBroadcaster) notifyWaiters() {
+	if ub.waiter == nil {
+		return
+	}
 	waiter := ub.waiter
 	ub.waiter = nil
 	close(waiter)
