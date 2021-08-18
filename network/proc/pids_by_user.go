@@ -50,7 +50,9 @@ func updatePids() {
 
 			statData, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
 			if err != nil {
-				log.Warningf("proc: could not stat /proc/%d: %s", pid, err)
+				if !os.IsNotExist(err) {
+					log.Warningf("proc: could not stat /proc/%d: %s", pid, err)
+				}
 				continue entryLoop
 			}
 			sys, ok := statData.Sys().(*syscall.Stat_t)

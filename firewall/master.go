@@ -173,12 +173,12 @@ func checkSelfCommunication(ctx context.Context, conn *network.Connection, _ *pr
 				DstPort:  pktInfo.DstPort,
 			}, true)
 			if err != nil {
-				log.Tracer(ctx).Warningf("filter: failed to find local peer process PID: %s", err)
+				log.Tracer(ctx).Debugf("filter: failed to find local peer process PID: %s", err)
 			} else {
 				// get primary process
 				otherProcess, err := process.GetOrFindProcess(ctx, otherPid)
 				if err != nil {
-					log.Tracer(ctx).Warningf("filter: failed to find load local peer process with PID %d: %s", otherPid, err)
+					log.Tracer(ctx).Debugf("filter: failed to find load local peer process with PID %d: %s", otherPid, err)
 				} else if otherProcess.Path == conn.Process().Path {
 					conn.Accept("process internal connection", noReasonOptionKey)
 					conn.Internal = true
@@ -346,7 +346,6 @@ func checkBypassPrevention(ctx context.Context, conn *network.Connection, p *pro
 		case endpoints.Permitted:
 			conn.AcceptWithContext("bypass prevention: "+reason, profile.CfgOptionPreventBypassingKey, reasonCtx)
 			return true
-		case endpoints.NoMatch:
 		}
 	}
 	return false
