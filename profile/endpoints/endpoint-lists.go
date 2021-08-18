@@ -17,10 +17,6 @@ type EndpointLists struct {
 
 // Matches checks whether the given entity matches this endpoint definition.
 func (ep *EndpointLists) Matches(ctx context.Context, entity *intel.Entity) (EPResult, Reason) {
-	if !entity.LoadLists(ctx) {
-		return Undeterminable, nil
-	}
-
 	if entity.MatchLists(ep.ListSet) {
 		return ep.match(ep, entity, ep.Lists, "filterlist contains", "filterlist", entity.ListBlockReason())
 	}

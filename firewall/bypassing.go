@@ -23,10 +23,6 @@ func PreventBypassing(ctx context.Context, conn *network.Connection) (endpoints.
 			nsutil.NxDomain()
 	}
 
-	if !conn.Entity.LoadLists(ctx) {
-		return endpoints.Undeterminable, "", nil
-	}
-
 	if conn.Entity.MatchLists(resolverFilterLists) {
 		return endpoints.Denied,
 			"blocked rogue connection to DNS resolver",

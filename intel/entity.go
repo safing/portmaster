@@ -149,7 +149,7 @@ func (e *Entity) ResetLists() {
 // ResolveSubDomainLists enables or disables list lookups for
 // sub-domains.
 func (e *Entity) ResolveSubDomainLists(ctx context.Context, enabled bool) {
-	if e.domainListLoaded {
+	if e.domainListLoaded && enabled != e.resolveSubDomainLists {
 		log.Tracer(ctx).Warningf("intel/filterlists: tried to change sub-domain resolving for %s but lists are already fetched", e.Domain)
 	}
 	e.resolveSubDomainLists = enabled
@@ -158,7 +158,7 @@ func (e *Entity) ResolveSubDomainLists(ctx context.Context, enabled bool) {
 // EnableCNAMECheck enalbes or disables list lookups for
 // entity CNAMEs.
 func (e *Entity) EnableCNAMECheck(ctx context.Context, enabled bool) {
-	if e.domainListLoaded {
+	if e.domainListLoaded && enabled != e.checkCNAMEs {
 		log.Tracer(ctx).Warningf("intel/filterlists: tried to change CNAME resolving for %s but lists are already fetched", e.Domain)
 	}
 	e.checkCNAMEs = enabled
@@ -455,10 +455,8 @@ func (e *Entity) getIPLists(ctx context.Context) {
 
 // LoadLists searches all filterlists for all occurrences of
 // this entity.
-func (e *Entity) LoadLists(ctx context.Context) bool {
+func (e *Entity) LoadLists(ctx context.Context) {
 	e.getLists(ctx)
-
-	return e.ListOccurences != nil
 }
 
 // MatchLists matches the entities lists against a slice

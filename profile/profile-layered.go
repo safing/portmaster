@@ -326,8 +326,6 @@ func (lp *LayeredProfile) MatchFilterLists(ctx context.Context, entity *intel.En
 	for _, layer := range lp.layers {
 		// Search for the first layer that has filter lists set.
 		if layer.filterListsSet {
-			entity.LoadLists(ctx)
-
 			if entity.MatchLists(layer.filterListIDs) {
 				return endpoints.Denied, entity.ListBlockReason()
 			}
@@ -339,8 +337,6 @@ func (lp *LayeredProfile) MatchFilterLists(ctx context.Context, entity *intel.En
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
 	if len(cfgFilterLists) > 0 {
-		entity.LoadLists(ctx)
-
 		if entity.MatchLists(cfgFilterLists) {
 			return endpoints.Denied, entity.ListBlockReason()
 		}

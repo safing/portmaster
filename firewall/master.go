@@ -94,6 +94,11 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 		}
 	}
 
+	// prepare the entity and resolve all filterlist matches
+	conn.Entity.ResolveSubDomainLists(ctx, layeredProfile.FilterSubDomains())
+	conn.Entity.EnableCNAMECheck(ctx, layeredProfile.FilterCNAMEs())
+	conn.Entity.LoadLists(ctx)
+
 	// DNS request from the system resolver require a special decision process,
 	// because the original requesting process is not known. Here, we only check
 	// global-only and the most important per-app aspects. The resulting
