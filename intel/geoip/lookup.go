@@ -15,8 +15,8 @@ func getReader(ip net.IP) *maxminddb.Reader {
 
 // GetLocation returns Location data of an IP address
 func GetLocation(ip net.IP) (record *Location, err error) {
-	dbLock.Lock()
-	defer dbLock.Unlock()
+	dbLock.RLock()
+	defer dbLock.RUnlock()
 
 	err = prepDatabaseForUse()
 	if err != nil {

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tannerryan/ring"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
+	"github.com/tannerryan/ring"
 )
 
 var defaultFilter = newScopedBloom()
@@ -66,8 +66,8 @@ func (bf *scopedBloom) getBloomForType(entityType string) (*ring.Ring, error) {
 }
 
 func (bf *scopedBloom) add(scope, value string) {
-	bf.rw.RLock()
-	defer bf.rw.RUnlock()
+	bf.rw.Lock()
+	defer bf.rw.Unlock()
 
 	r, err := bf.getBloomForType(scope)
 	if err != nil {
