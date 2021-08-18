@@ -38,7 +38,7 @@ type updateBroadcaster struct {
 	rw sync.RWMutex
 	db *geoIPDB
 
-	waiters []chan struct{}
+	waiter chan struct{}
 }
 
 // NeedsUpdate returns true if the current broadcaster needs a
@@ -67,20 +67,21 @@ func (ub *updateBroadcaster) ReplaceDatabase(db *geoIPDB) {
 // notifyWaiters notifies and removes all waiters. Must be called
 // with ub.rw locked.
 func (ub *updateBroadcaster) notifyWaiters() {
-	waiters := ub.waiters
-	ub.waiters = nil
-	for _, c := range waiters {
-		close(c)
-	}
+	waiter := ub.waiter
+	ub.waiter = nil
+	close(waiter)
 }
 
 // getWaiter appends and returns a new waiter channel that gets closed
 // when a new database version is available. Must be called with
 // ub.rw locked.
 func (ub *updateBroadcaster) getWaiter() chan struct{} {
-	ch := make(chan struct{})
-	ub.waiters = append(ub.waiters, ch)
-	return ch
+	if ub.waiter != nil {
+		return ub.waiter
+	}
+
+	ub.waiter = make(chan struct{})
+	return ub.waiter
 }
 
 type updateWorker struct {
@@ -149,21 +150,7 @@ func (upd *updateWorker) start() {
 }
 
 func (upd *updateWorker) run(ctx context.Context) error {
-	firstTime := true
 	for {
-		// update immediately if we're just got started (that happens in
-		// triggerUpdate() and we might get started a bit late for the
-		// channel notification to be sent). If not, wait for the next
-		// trigger our our ctx to be cancelled during shutdown.
-		if !firstTime {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-upd.trigger:
-			}
-		}
-		firstTime = false
-
 		if upd.v4.NeedsUpdate() {
 			if v4, err := getGeoIPDB(v4MMDBResource); err == nil {
 				upd.v4.ReplaceDatabase(v4)
@@ -178,6 +165,12 @@ func (upd *updateWorker) run(ctx context.Context) error {
 			} else {
 				log.Warningf("geoip: failed to get v6 database: %s", err)
 			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-upd.trigger:
 		}
 	}
 }
