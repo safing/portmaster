@@ -102,7 +102,7 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// when this Profile was approximately last used.
 	// For performance reasons not every single usage is saved.
 	ApproxLastUsed int64
-	// LastEdited hols the UTC timestamp in seconds when the profile was last
+	// LastEdited holds the UTC timestamp in seconds when the profile was last
 	// edited by the user. This is not set automatically, but has to be manually
 	// set by the user interface.
 	LastEdited int64
