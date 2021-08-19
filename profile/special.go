@@ -1,10 +1,7 @@
 package profile
 
 import (
-	"fmt"
 	"time"
-
-	"github.com/safing/portbase/notifications"
 
 	"github.com/safing/portbase/log"
 )
@@ -139,6 +136,7 @@ In order to respect the app settings of the actual application, DNS requests fro
 				CfgOptionDefaultActionKey: "block",
 				CfgOptionEndpointsKey: []string{
 					"+ Localhost",
+					"+ .safing.io",
 				},
 			},
 		)
@@ -182,6 +180,8 @@ func specialProfileNeedsReset(profile *Profile) bool {
 	switch profile.ID {
 	case SystemResolverProfileID:
 		return canBeUpgraded(profile, "1.6.2021")
+	case PortmasterAppProfileID:
+		return canBeUpgraded(profile, "1.9.2021")
 	default:
 		// Not a special profile or no upgrade available yet.
 		return false
@@ -197,28 +197,8 @@ func canBeUpgraded(profile *Profile, upgradeDate string) bool {
 	}
 
 	// Check if the upgrade is applicable.
-	if profile.Meta().Created < upgradeTime.Unix() {
+	if profile.Created < upgradeTime.Unix() {
 		log.Infof("profile: upgrading special profile %s", profile.ScopedID())
-
-		notifications.NotifyInfo(
-			"profiles:upgraded-special-profile:"+profile.ID,
-			profile.Name+" Settings Upgraded",
-			// TODO: Remove disclaimer.
-			fmt.Sprintf(
-				"The %s settings were automatically upgraded. The current app settings have been replaced, as the Portmaster did not detect any changes made by you. Please note that settings upgrades before June 2021 might not detect previous changes correctly and you might want to review the new settings.",
-				profile.Name,
-			),
-			notifications.Action{
-				ID:   "ack",
-				Text: "OK",
-			},
-			notifications.Action{
-				Text:    "Open Settings",
-				Type:    notifications.ActionTypeOpenProfile,
-				Payload: profile.ScopedID(),
-			},
-		)
-
 		return true
 	}
 
