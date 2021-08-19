@@ -17,7 +17,7 @@ type EPResult uint8
 // Endpoint matching return values
 const (
 	NoMatch EPResult = iota
-	Undeterminable
+	MatchError
 	Denied
 	Permitted
 )
@@ -25,7 +25,7 @@ const (
 // IsDecision returns true if result represents a decision
 // and false if result is NoMatch or Undeterminable.
 func IsDecision(result EPResult) bool {
-	return result == Denied || result == Permitted || result == Undeterminable
+	return result == Denied || result == Permitted || result == MatchError
 }
 
 // ParseEndpoints parses a list of endpoints and returns a list of Endpoints for matching.
@@ -88,8 +88,8 @@ func (epr EPResult) String() string {
 	switch epr {
 	case NoMatch:
 		return "No Match"
-	case Undeterminable:
-		return "Undeterminable"
+	case MatchError:
+		return "Match Error"
 	case Denied:
 		return "Denied"
 	case Permitted:

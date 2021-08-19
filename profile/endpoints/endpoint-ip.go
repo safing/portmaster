@@ -17,7 +17,7 @@ type EndpointIP struct {
 // Matches checks whether the given entity matches this endpoint definition.
 func (ep *EndpointIP) Matches(_ context.Context, entity *intel.Entity) (EPResult, Reason) {
 	if entity.IP == nil {
-		return Undeterminable, nil
+		return NoMatch, nil
 	}
 
 	if ep.IP.Equal(entity.IP) {

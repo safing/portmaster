@@ -27,7 +27,7 @@ type EndpointBase struct { //nolint:maligned // TODO
 
 func (ep *EndpointBase) match(s fmt.Stringer, entity *intel.Entity, value, desc string, keyval ...interface{}) (EPResult, Reason) {
 	result := ep.matchesPPP(entity)
-	if result == Undeterminable || result == NoMatch {
+	if result == NoMatch {
 		return result, nil
 	}
 
@@ -57,10 +57,6 @@ func (ep *EndpointBase) makeReason(s fmt.Stringer, value, desc string, keyval ..
 func (ep *EndpointBase) matchesPPP(entity *intel.Entity) (result EPResult) {
 	// only check if protocol is defined
 	if ep.Protocol > 0 {
-		// if protocol is unknown, return Undeterminable
-		if entity.Protocol == 0 {
-			return Undeterminable
-		}
 		// if protocol does not match, return NoMatch
 		if entity.Protocol != ep.Protocol {
 			return NoMatch
@@ -69,10 +65,6 @@ func (ep *EndpointBase) matchesPPP(entity *intel.Entity) (result EPResult) {
 
 	// only check if port is defined
 	if ep.StartPort > 0 {
-		// if port is unknown, return Undeterminable
-		if entity.DstPort() == 0 {
-			return Undeterminable
-		}
 		// if port does not match, return NoMatch
 		if entity.DstPort() < ep.StartPort || entity.DstPort() > ep.EndPort {
 			return NoMatch

@@ -54,13 +54,6 @@ var defaultDeciders = []deciderFn{
 	checkAutoPermitRelated,
 }
 
-var dnsFromSystemResolverDeciders = []deciderFn{
-	checkEndpointListsForSystemResolverDNSRequests,
-	checkConnectivityDomain,
-	checkBypassPrevention,
-	checkFilterLists,
-}
-
 // DecideOnConnection makes a decision about a connection.
 // When called, the connection and profile is already locked.
 func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
@@ -99,23 +92,16 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 	conn.Entity.EnableCNAMECheck(ctx, layeredProfile.FilterCNAMEs())
 	conn.Entity.LoadLists(ctx)
 
-	// DNS request from the system resolver require a special decision process,
-	// because the original requesting process is not known. Here, we only check
-	// global-only and the most important per-app aspects. The resulting
-	// connection is then blocked when the original requesting process is known.
-	if conn.Type == network.DNSRequest && conn.Process().IsSystemResolver() {
-		// Run all deciders and return if they came to a conclusion.
-		done, _ := runDeciders(ctx, dnsFromSystemResolverDeciders, conn, layeredProfile, pkt)
-		if !done {
-			conn.Accept("allowing system resolver dns request", noReasonOptionKey)
-		}
-		return
-	}
-
 	// Run all deciders and return if they came to a conclusion.
 	done, defaultAction := runDeciders(ctx, defaultDeciders, conn, layeredProfile, pkt)
 	if done {
 		return
+	}
+
+	// DNS Request are always default allowed, as the endpoint lists could not
+	// be checked fully.
+	if conn.Type == network.DNSRequest {
+		conn.Accept("allowing dns request", noReasonOptionKey)
 	}
 
 	// Deciders did not conclude, use default action.
@@ -197,6 +183,14 @@ func checkSelfCommunication(ctx context.Context, conn *network.Connection, _ *pr
 }
 
 func checkEndpointLists(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
+	// DNS request from the system resolver require a special decision process,
+	// because the original requesting process is not known. Here, we only check
+	// global-only and the most important per-app aspects. The resulting
+	// connection is then blocked when the original requesting process is known.
+	if conn.Type == network.DNSRequest && conn.Process().IsSystemResolver() {
+		return checkEndpointListsForSystemResolverDNSRequests(ctx, conn, p)
+	}
+
 	var result endpoints.EPResult
 	var reason endpoints.Reason
 
@@ -210,7 +204,7 @@ func checkEndpointLists(ctx context.Context, conn *network.Connection, p *profil
 		optionKey = profile.CfgOptionEndpointsKey
 	}
 	switch result {
-	case endpoints.Denied:
+	case endpoints.Denied, endpoints.MatchError:
 		conn.DenyWithContext(reason.String(), optionKey, reason.Context())
 		return true
 	case endpoints.Permitted:
@@ -225,13 +219,13 @@ func checkEndpointLists(ctx context.Context, conn *network.Connection, p *profil
 // checkEndpointLists that is only meant for DNS queries by the system
 // resolver. It only checks the endpoint filter list of the local profile and
 // does not include the global profile.
-func checkEndpointListsForSystemResolverDNSRequests(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
+func checkEndpointListsForSystemResolverDNSRequests(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile) bool {
 	profileEndpoints := p.LocalProfile().GetEndpoints()
 	if profileEndpoints.IsSet() {
 		result, reason := profileEndpoints.Match(ctx, conn.Entity)
 		if endpoints.IsDecision(result) {
 			switch result {
-			case endpoints.Denied:
+			case endpoints.Denied, endpoints.MatchError:
 				conn.DenyWithContext(reason.String(), profile.CfgOptionEndpointsKey, reason.Context())
 				return true
 			case endpoints.Permitted:
@@ -396,11 +390,13 @@ func checkResolverScope(_ context.Context, conn *network.Connection, p *profile.
 }
 
 func checkDomainHeuristics(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
-	if !p.DomainHeuristics() {
+	// Don't check if no domain is available.
+	if conn.Entity.Domain == "" {
 		return false
 	}
 
-	if conn.Entity.Domain == "" {
+	// Check if domain heuristics are enabled.
+	if !p.DomainHeuristics() {
 		return false
 	}
 
@@ -485,10 +481,11 @@ func checkAutoPermitRelated(_ context.Context, conn *network.Connection, p *prof
 
 // checkRelation tries to find a relation between a process and a communication. This is for better out of the box experience and is _not_ meant to thwart intentional malware.
 func checkRelation(conn *network.Connection) (related bool, reason string) {
-	if conn.Entity.Domain != "" {
+	// Don't check if no domain is available.
+	if conn.Entity.Domain == "" {
 		return false, ""
 	}
-	// don't check for unknown processes
+	// Don't check for unknown processes.
 	if conn.Process().Pid < 0 {
 		return false, ""
 	}

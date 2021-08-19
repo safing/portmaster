@@ -21,9 +21,17 @@ type EndpointCountry struct {
 
 // Matches checks whether the given entity matches this endpoint definition.
 func (ep *EndpointCountry) Matches(ctx context.Context, entity *intel.Entity) (EPResult, Reason) {
+	if entity.IP == nil {
+		return NoMatch, nil
+	}
+
+	if !entity.IPScope.IsGlobal() {
+		return NoMatch, nil
+	}
+
 	country, ok := entity.GetCountry(ctx)
 	if !ok {
-		return Undeterminable, nil
+		return MatchError, ep.makeReason(ep, country, "country data not available to match")
 	}
 
 	if country == ep.Country {
