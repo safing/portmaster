@@ -182,6 +182,8 @@ func registerConfiguration() error {
 Additionally, you may supply a protocol and port just behind that using numbers ("6/80") or names ("TCP/HTTP").  
 In this case the rule is only matched if the protocol and port also match.  
 Example: "192.168.0.1 TCP/HTTP"
+
+Important: DNS Requests are only matched against domain and filter list rules, all others require an IP address and are checked only with the ensuing IP connection.
 `, `"`, "`")
 
 	// Endpoint Filter List
