@@ -391,7 +391,7 @@ func checkResolverScope(_ context.Context, conn *network.Connection, p *profile.
 }
 
 func checkDomainHeuristics(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
-	// Don't check if no domain is available.
+	// Don't check domain heuristics if no domain is available.
 	if conn.Entity.Domain == "" {
 		return false
 	}
@@ -482,7 +482,7 @@ func checkAutoPermitRelated(_ context.Context, conn *network.Connection, p *prof
 
 // checkRelation tries to find a relation between a process and a communication. This is for better out of the box experience and is _not_ meant to thwart intentional malware.
 func checkRelation(conn *network.Connection) (related bool, reason string) {
-	// Don't check if no domain is available.
+	// Don't check relation if no domain is available.
 	if conn.Entity.Domain == "" {
 		return false, ""
 	}
