@@ -197,7 +197,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 			return reply(nsutil.NxDomain("nxdomain: " + err.Error()))
 		case errors.Is(err, resolver.ErrBlocked):
 			tracer.Tracef("nameserver: %s", err)
-			return reply(nsutil.ZeroIP("blocked: " + err.Error()))
+			return reply(nsutil.BlockIP("blocked: " + err.Error()))
 		case errors.Is(err, resolver.ErrLocalhost):
 			tracer.Tracef("nameserver: returning localhost records")
 			return reply(nsutil.Localhost())
