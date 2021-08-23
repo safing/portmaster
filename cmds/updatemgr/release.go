@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/safing/portbase/updater"
 
 	"github.com/spf13/cobra"
 )
@@ -14,42 +17,39 @@ var (
 	releaseCmd = &cobra.Command{
 		Use:   "release",
 		Short: "Release scans the distribution directory and creates registry indexes and the symlink structure",
+		Args:  cobra.ExactArgs(1),
 		RunE:  release,
 	}
 	preReleaseCmd = &cobra.Command{
 		Use:   "prerelease",
 		Short: "Stage scans the specified directory and loads the indexes - it then creates a staging index with all files newer than the stable and beta indexes",
 		Args:  cobra.ExactArgs(1),
-		RunE:  prerelease,
+		RunE:  release,
 	}
-	resetPreReleases  bool
-	includeUnreleased bool
+	preReleaseFrom   string
+	resetPreReleases bool
 )
 
 func init() {
 	rootCmd.AddCommand(releaseCmd)
 	rootCmd.AddCommand(preReleaseCmd)
+
+	preReleaseCmd.Flags().StringVar(&preReleaseFrom, "from", "", "Make a pre-release based on the given channel")
+	_ = preReleaseCmd.MarkFlagRequired("from")
 	preReleaseCmd.Flags().BoolVar(&resetPreReleases, "reset", false, "Reset pre-release assets")
 }
 
 func release(cmd *cobra.Command, args []string) error {
-	return writeIndex(
-		"stable",
-		getChannelVersions("", false),
-	)
-}
-
-func prerelease(cmd *cobra.Command, args []string) error {
 	channel := args[0]
 
 	// Check if we want to reset instead.
 	if resetPreReleases {
-		return removeFilesFromIndex(getChannelVersions(channel, true))
+		return removeFilesFromIndex(getChannelVersions(channel, preReleaseFrom, true))
 	}
 
 	return writeIndex(
 		channel,
-		getChannelVersions(channel, false),
+		getChannelVersions(channel, preReleaseFrom, false),
 	)
 }
 
@@ -108,7 +108,18 @@ func removeFilesFromIndex(versions map[string]string) error {
 	return nil
 }
 
-func getChannelVersions(channel string, storagePath bool) map[string]string {
+func getChannelVersions(channel string, prereleaseFrom string, storagePath bool) map[string]string {
+	if prereleaseFrom != "" {
+		registry.AddIndex(updater.Index{
+			Path:       prereleaseFrom + ".json",
+			PreRelease: false,
+		})
+		err := registry.LoadIndexes(context.Background())
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	// Sort all versions.
 	registry.SelectVersions()
 	export := registry.Export()
@@ -117,15 +128,9 @@ func getChannelVersions(channel string, storagePath bool) map[string]string {
 	versions := make(map[string]string)
 	for _, rv := range export {
 		for _, v := range rv.Versions {
-			// Ignore versions that don't match the release channel.
-			if v.SemVer().Prerelease() != channel {
-				// Stop at the first stable version, nothing should ever be selected
-				// beyond that.
-				if v.SemVer().Prerelease() == "" {
-					break
-				}
-
-				continue
+			// Ignore versions that are in the reference release channel.
+			if v.CurrentRelease {
+				break
 			}
 
 			// Add highest version of matching release channel.
