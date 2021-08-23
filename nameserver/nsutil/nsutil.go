@@ -45,50 +45,42 @@ func (rf ResponderFunc) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 	return rf(ctx, request)
 }
 
+// BlockIP is a ResponderFunc than replies with either 0.0.0.17 or ::17 for
+// each A or AAAA question respectively. If there is no A or AAAA question, it
+// defaults to replying with NXDomain.
+func BlockIP(msgs ...string) ResponderFunc {
+	return createResponderFunc(
+		"blocking",
+		"0.0.0.17",
+		"::17",
+		msgs...,
+	)
+}
+
 // ZeroIP is a ResponderFunc than replies with either 0.0.0.0 or :: for each A
 // or AAAA question respectively. If there is no A or AAAA question, it
 // defaults to replying with NXDomain.
 func ZeroIP(msgs ...string) ResponderFunc {
-	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
-		reply := new(dns.Msg)
-		hasErr := false
-
-		for _, question := range request.Question {
-			var rr dns.RR
-			var err error
-
-			switch question.Qtype {
-			case dns.TypeA:
-				rr, err = dns.NewRR(question.Name + " 1 IN A 0.0.0.17")
-			case dns.TypeAAAA:
-				rr, err = dns.NewRR(question.Name + " 1 IN AAAA ::17")
-			}
-
-			switch {
-			case err != nil:
-				log.Tracer(ctx).Errorf("nameserver: failed to create zero-ip response for %s: %s", question.Name, err)
-				hasErr = true
-			case rr != nil:
-				reply.Answer = append(reply.Answer, rr)
-			}
-		}
-
-		switch {
-		case hasErr || len(reply.Answer) == 0:
-			reply.SetRcode(request, dns.RcodeServerFailure)
-		default:
-			reply.SetRcode(request, dns.RcodeSuccess)
-		}
-
-		AddMessagesToReply(ctx, reply, log.InfoLevel, msgs...)
-
-		return reply
-	}
+	return createResponderFunc(
+		"zero ip",
+		"0.0.0.0",
+		"::",
+		msgs...,
+	)
 }
 
 // Localhost is a ResponderFunc than replies with localhost IP addresses.
 // If there is no A or AAAA question, it defaults to replying with NXDomain.
 func Localhost(msgs ...string) ResponderFunc {
+	return createResponderFunc(
+		"localhost",
+		"127.0.0.1",
+		"::1",
+		msgs...,
+	)
+}
+
+func createResponderFunc(responderName, aAnswer, aaaaAnswer string, msgs ...string) ResponderFunc {
 	return func(ctx context.Context, request *dns.Msg) *dns.Msg {
 		reply := new(dns.Msg)
 		hasErr := false
@@ -99,14 +91,14 @@ func Localhost(msgs ...string) ResponderFunc {
 
 			switch question.Qtype {
 			case dns.TypeA:
-				rr, err = dns.NewRR("localhost. 1 IN A 127.0.0.1")
+				rr, err = dns.NewRR(question.Name + " 1 IN A " + aAnswer)
 			case dns.TypeAAAA:
-				rr, err = dns.NewRR("localhost. 1 IN AAAA ::1")
+				rr, err = dns.NewRR(question.Name + " 1 IN AAAA " + aaaaAnswer)
 			}
 
 			switch {
 			case err != nil:
-				log.Tracer(ctx).Errorf("nameserver: failed to create localhost response for %s: %s", question.Name, err)
+				log.Tracer(ctx).Errorf("nameserver: failed to create %s response for %s: %s", responderName, question.Name, err)
 				hasErr = true
 			case rr != nil:
 				reply.Answer = append(reply.Answer, rr)
@@ -114,8 +106,10 @@ func Localhost(msgs ...string) ResponderFunc {
 		}
 
 		switch {
-		case hasErr || len(reply.Answer) == 0:
+		case hasErr && len(reply.Answer) == 0:
 			reply.SetRcode(request, dns.RcodeServerFailure)
+		case len(reply.Answer) == 0:
+			reply.SetRcode(request, dns.RcodeNameError)
 		default:
 			reply.SetRcode(request, dns.RcodeSuccess)
 		}

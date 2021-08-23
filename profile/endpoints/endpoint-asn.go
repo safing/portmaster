@@ -22,9 +22,18 @@ type EndpointASN struct {
 
 // Matches checks whether the given entity matches this endpoint definition.
 func (ep *EndpointASN) Matches(ctx context.Context, entity *intel.Entity) (EPResult, Reason) {
+	if entity.IP == nil {
+		return NoMatch, nil
+	}
+
+	if !entity.IPScope.IsGlobal() {
+		return NoMatch, nil
+	}
+
 	asn, ok := entity.GetASN(ctx)
 	if !ok {
-		return Undeterminable, nil
+		asnStr := strconv.Itoa(int(ep.ASN))
+		return MatchError, ep.makeReason(ep, asnStr, "ASN data not available to match")
 	}
 
 	if asn == ep.ASN {

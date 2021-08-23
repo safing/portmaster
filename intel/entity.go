@@ -71,6 +71,9 @@ type Entity struct {
 	// ASOrg holds the owner's name of the autonomous system.
 	ASOrg string
 
+	// LocationError holds an error message if fetching the location failed.
+	LocationError string
+
 	location *geoip.Location
 
 	// BlockedByLists holds list source IDs that
@@ -86,13 +89,16 @@ type Entity struct {
 	// to a list of sources where the entity has been observed in.
 	ListOccurences map[string][]string
 
+	// ListsError holds an error message if fetching the lists failed.
+	ListsError string
+
 	// we only load each data above at most once
-	fetchLocationOnce  sync.Once
-	reverseResolveOnce sync.Once
-	loadDomainListOnce sync.Once
-	loadIPListOnce     sync.Once
-	loadCoutryListOnce sync.Once
-	loadAsnListOnce    sync.Once
+	fetchLocationOnce   sync.Once
+	reverseResolveOnce  sync.Once
+	loadDomainListOnce  sync.Once
+	loadIPListOnce      sync.Once
+	loadCountryListOnce sync.Once
+	loadAsnListOnce     sync.Once
 }
 
 // Init initializes the internal state and returns the entity.
@@ -142,7 +148,7 @@ func (e *Entity) ResetLists() {
 	e.checkCNAMEs = false
 	e.loadDomainListOnce = sync.Once{}
 	e.loadIPListOnce = sync.Once{}
-	e.loadCoutryListOnce = sync.Once{}
+	e.loadCountryListOnce = sync.Once{}
 	e.loadAsnListOnce = sync.Once{}
 }
 
@@ -236,6 +242,7 @@ func (e *Entity) getLocation(ctx context.Context) {
 		loc, err := geoip.GetLocation(e.IP)
 		if err != nil {
 			log.Tracer(ctx).Warningf("intel: failed to get location data for %s: %s", e.IP, err)
+			e.LocationError = err.Error()
 			return
 		}
 		e.location = loc
@@ -259,7 +266,7 @@ func (e *Entity) GetLocation(ctx context.Context) (*geoip.Location, bool) {
 func (e *Entity) GetCountry(ctx context.Context) (string, bool) {
 	e.getLocation(ctx)
 
-	if e.Country == "" {
+	if e.LocationError != "" {
 		return "", false
 	}
 	return e.Country, true
@@ -269,13 +276,14 @@ func (e *Entity) GetCountry(ctx context.Context) (string, bool) {
 func (e *Entity) GetASN(ctx context.Context) (uint, bool) {
 	e.getLocation(ctx)
 
-	if e.ASN == 0 {
+	if e.LocationError != "" {
 		return 0, false
 	}
 	return e.ASN, true
 }
 
 // Lists
+
 func (e *Entity) getLists(ctx context.Context) {
 	e.getDomainLists(ctx)
 	e.getASNLists(ctx)
@@ -305,11 +313,11 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 		return
 	}
 
-	var err error
+	log.Tracer(ctx).Tracef("intel: loading domain list for %s", domain)
 	e.loadDomainListOnce.Do(func() {
 		var domainsToInspect = []string{domain}
 
-		if e.checkCNAMEs {
+		if e.checkCNAMEs && len(e.CNAME) > 0 {
 			log.Tracer(ctx).Tracef("intel: CNAME filtering enabled, checking %v too", e.CNAME)
 			domainsToInspect = append(domainsToInspect, e.CNAME...)
 		}
@@ -327,11 +335,10 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 		domains = makeDistinct(domains)
 
 		for _, d := range domains {
-			log.Tracer(ctx).Tracef("intel: loading domain list for %s", d)
-			var list []string
-			list, err = filterlists.LookupDomain(d)
+			list, err := filterlists.LookupDomain(d)
 			if err != nil {
 				log.Tracer(ctx).Errorf("intel: failed to get domain blocklists for %s: %s", d, err)
+				e.ListsError = err.Error()
 				return
 			}
 
@@ -339,10 +346,6 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 		}
 		e.domainListLoaded = true
 	})
-
-	if err != nil {
-		e.loadDomainListOnce = sync.Once{}
-	}
 }
 
 func splitDomain(domain string) []string {
@@ -377,7 +380,7 @@ func (e *Entity) getASNLists(ctx context.Context) {
 	}
 
 	asn, ok := e.GetASN(ctx)
-	if !ok {
+	if !ok || asn == 0 {
 		return
 	}
 
@@ -387,7 +390,7 @@ func (e *Entity) getASNLists(ctx context.Context) {
 		list, err := filterlists.LookupASNString(asnStr)
 		if err != nil {
 			log.Tracer(ctx).Errorf("intel: failed to get ASN blocklist for %d: %s", asn, err)
-			e.loadAsnListOnce = sync.Once{}
+			e.ListsError = err.Error()
 			return
 		}
 
@@ -402,16 +405,16 @@ func (e *Entity) getCountryLists(ctx context.Context) {
 	}
 
 	country, ok := e.GetCountry(ctx)
-	if !ok {
+	if !ok || country == "" {
 		return
 	}
 
 	log.Tracer(ctx).Tracef("intel: loading country list for %s", country)
-	e.loadCoutryListOnce.Do(func() {
+	e.loadCountryListOnce.Do(func() {
 		list, err := filterlists.LookupCountry(country)
 		if err != nil {
 			log.Tracer(ctx).Errorf("intel: failed to load country blocklist for %s: %s", country, err)
-			e.loadCoutryListOnce = sync.Once{}
+			e.ListsError = err.Error()
 			return
 		}
 
@@ -426,11 +429,7 @@ func (e *Entity) getIPLists(ctx context.Context) {
 	}
 
 	ip, ok := e.GetIP()
-	if !ok {
-		return
-	}
-
-	if ip == nil {
+	if !ok || ip == nil {
 		return
 	}
 
@@ -442,12 +441,12 @@ func (e *Entity) getIPLists(ctx context.Context) {
 	log.Tracer(ctx).Tracef("intel: loading IP list for %s", ip)
 	e.loadIPListOnce.Do(func() {
 		list, err := filterlists.LookupIP(ip)
-
 		if err != nil {
 			log.Tracer(ctx).Errorf("intel: failed to get IP blocklist for %s: %s", ip.String(), err)
-			e.loadIPListOnce = sync.Once{}
+			e.ListsError = err.Error()
 			return
 		}
+
 		e.ipListLoaded = true
 		e.mergeList(ip.String(), list)
 	})
