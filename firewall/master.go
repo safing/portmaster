@@ -102,6 +102,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 	// be checked fully.
 	if conn.Type == network.DNSRequest {
 		conn.Accept("allowing dns request", noReasonOptionKey)
+		return
 	}
 
 	// Deciders did not conclude, use default action.
