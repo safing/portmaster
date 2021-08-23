@@ -317,14 +317,13 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 	e.loadDomainListOnce.Do(func() {
 		var domainsToInspect = []string{domain}
 
-		if e.checkCNAMEs {
+		if e.checkCNAMEs && len(e.CNAME) > 0 {
 			log.Tracer(ctx).Tracef("intel: CNAME filtering enabled, checking %v too", e.CNAME)
 			domainsToInspect = append(domainsToInspect, e.CNAME...)
 		}
 
 		var domains []string
 		if e.resolveSubDomainLists {
-			log.Tracer(ctx).Trace("intel: subdomain filtering enabled, checking all subdomains too")
 			for _, domain := range domainsToInspect {
 				subdomains := splitDomain(domain)
 				domains = append(domains, subdomains...)
@@ -381,7 +380,7 @@ func (e *Entity) getASNLists(ctx context.Context) {
 	}
 
 	asn, ok := e.GetASN(ctx)
-	if !ok {
+	if !ok || asn == 0 {
 		return
 	}
 
@@ -406,7 +405,7 @@ func (e *Entity) getCountryLists(ctx context.Context) {
 	}
 
 	country, ok := e.GetCountry(ctx)
-	if !ok {
+	if !ok || country == "" {
 		return
 	}
 
@@ -430,11 +429,7 @@ func (e *Entity) getIPLists(ctx context.Context) {
 	}
 
 	ip, ok := e.GetIP()
-	if !ok {
-		return
-	}
-
-	if ip == nil {
+	if !ok || ip == nil {
 		return
 	}
 
