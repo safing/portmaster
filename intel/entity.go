@@ -93,12 +93,12 @@ type Entity struct {
 	ListsError string
 
 	// we only load each data above at most once
-	fetchLocationOnce  sync.Once
-	reverseResolveOnce sync.Once
-	loadDomainListOnce sync.Once
-	loadIPListOnce     sync.Once
-	loadCoutryListOnce sync.Once
-	loadAsnListOnce    sync.Once
+	fetchLocationOnce   sync.Once
+	reverseResolveOnce  sync.Once
+	loadDomainListOnce  sync.Once
+	loadIPListOnce      sync.Once
+	loadCountryListOnce sync.Once
+	loadAsnListOnce     sync.Once
 }
 
 // Init initializes the internal state and returns the entity.
@@ -148,7 +148,7 @@ func (e *Entity) ResetLists() {
 	e.checkCNAMEs = false
 	e.loadDomainListOnce = sync.Once{}
 	e.loadIPListOnce = sync.Once{}
-	e.loadCoutryListOnce = sync.Once{}
+	e.loadCountryListOnce = sync.Once{}
 	e.loadAsnListOnce = sync.Once{}
 }
 
@@ -313,7 +313,7 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 		return
 	}
 
-	var err error
+	log.Tracer(ctx).Tracef("intel: loading domain list for %s", domain)
 	e.loadDomainListOnce.Do(func() {
 		var domainsToInspect = []string{domain}
 
@@ -324,6 +324,7 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 
 		var domains []string
 		if e.resolveSubDomainLists {
+			log.Tracer(ctx).Trace("intel: subdomain filtering enabled, checking all subdomains too")
 			for _, domain := range domainsToInspect {
 				subdomains := splitDomain(domain)
 				domains = append(domains, subdomains...)
@@ -335,9 +336,7 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 		domains = makeDistinct(domains)
 
 		for _, d := range domains {
-			log.Tracer(ctx).Tracef("intel: loading domain list for %s", d)
-			var list []string
-			list, err = filterlists.LookupDomain(d)
+			list, err := filterlists.LookupDomain(d)
 			if err != nil {
 				log.Tracer(ctx).Errorf("intel: failed to get domain blocklists for %s: %s", d, err)
 				e.ListsError = err.Error()
@@ -348,10 +347,6 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 		}
 		e.domainListLoaded = true
 	})
-
-	if err != nil {
-		e.loadDomainListOnce = sync.Once{}
-	}
 }
 
 func splitDomain(domain string) []string {
@@ -397,7 +392,6 @@ func (e *Entity) getASNLists(ctx context.Context) {
 		if err != nil {
 			log.Tracer(ctx).Errorf("intel: failed to get ASN blocklist for %d: %s", asn, err)
 			e.ListsError = err.Error()
-			e.loadAsnListOnce = sync.Once{}
 			return
 		}
 
@@ -417,12 +411,11 @@ func (e *Entity) getCountryLists(ctx context.Context) {
 	}
 
 	log.Tracer(ctx).Tracef("intel: loading country list for %s", country)
-	e.loadCoutryListOnce.Do(func() {
+	e.loadCountryListOnce.Do(func() {
 		list, err := filterlists.LookupCountry(country)
 		if err != nil {
 			log.Tracer(ctx).Errorf("intel: failed to load country blocklist for %s: %s", country, err)
 			e.ListsError = err.Error()
-			e.loadCoutryListOnce = sync.Once{}
 			return
 		}
 
@@ -453,13 +446,12 @@ func (e *Entity) getIPLists(ctx context.Context) {
 	log.Tracer(ctx).Tracef("intel: loading IP list for %s", ip)
 	e.loadIPListOnce.Do(func() {
 		list, err := filterlists.LookupIP(ip)
-
 		if err != nil {
 			log.Tracer(ctx).Errorf("intel: failed to get IP blocklist for %s: %s", ip.String(), err)
 			e.ListsError = err.Error()
-			e.loadIPListOnce = sync.Once{}
 			return
 		}
+
 		e.ipListLoaded = true
 		e.mergeList(ip.String(), list)
 	})
