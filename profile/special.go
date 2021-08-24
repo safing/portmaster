@@ -181,7 +181,7 @@ func specialProfileNeedsReset(profile *Profile) bool {
 	case SystemResolverProfileID:
 		return canBeUpgraded(profile, "1.6.2021")
 	case PortmasterAppProfileID:
-		return canBeUpgraded(profile, "1.9.2021")
+		return canBeUpgraded(profile, "8.9.2021")
 	default:
 		// Not a special profile or no upgrade available yet.
 		return false
