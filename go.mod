@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/go-version v1.3.0
 	github.com/miekg/dns v1.1.40
 	github.com/oschwald/maxminddb-golang v1.8.0
-	github.com/safing/portbase v0.11.1
+	github.com/safing/portbase v0.11.2
 	github.com/safing/spn v0.2.5
 	github.com/shirou/gopsutil v3.21.4+incompatible
 	github.com/spf13/cobra v1.1.3
