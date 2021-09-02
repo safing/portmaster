@@ -11,8 +11,10 @@ require (
 	github.com/google/gopacket v1.1.19
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-version v1.3.0
+	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/miekg/dns v1.1.40
 	github.com/oschwald/maxminddb-golang v1.8.0
+	github.com/refraction-networking/utls v0.0.0-20210713165636-0b2885c8c0d4
 	github.com/safing/portbase v0.11.2
 	github.com/safing/spn v0.2.5
 	github.com/shirou/gopsutil v3.21.4+incompatible
@@ -22,7 +24,11 @@ require (
 	github.com/tevino/abool v1.2.0
 	github.com/tidwall/gjson v1.7.5
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
+	golang.org/x/net v0.0.0-20210825183410-e898025ed96a
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744
+	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
 )
+
+replace github.com/safing/portbase => ../portbase
+
+replace github.com/refraction-networking/utls => ../utls

@@ -266,7 +266,7 @@ func (conn *Connection) fmtFlagsComponent() string {
 	if conn.Tunneled {
 		f += "T"
 	}
-	if len(conn.activeInspectors) > 0 {
+	if conn.Inspecting {
 		f += "A"
 	}
 	if conn.addedToMetrics {

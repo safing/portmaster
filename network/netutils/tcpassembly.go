@@ -1,5 +1,6 @@
 package netutils
 
+/*
 import (
 	"sync"
 
@@ -49,3 +50,4 @@ func (a *SimpleStreamAssembler) Reassembled(reassembly []tcpassembly.Reassembly)
 func (a *SimpleStreamAssembler) ReassemblyComplete() {
 	a.Complete = true
 }
+*/
