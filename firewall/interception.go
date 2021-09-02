@@ -17,7 +17,9 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/firewall/dpi"
 	"github.com/safing/portmaster/firewall/inspection"
+	"github.com/safing/portmaster/firewall/inspection/inspectutils"
 	"github.com/safing/portmaster/firewall/interception"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
@@ -45,6 +47,8 @@ var (
 	blockedIPv6 = net.ParseIP("::17")
 
 	ownPID = os.Getpid()
+
+	streamManager = dpi.NewManager()
 )
 
 func init() {
@@ -395,17 +399,41 @@ func defaultHandler(conn *network.Connection, pkt packet.Packet) {
 }
 
 func inspectThenVerdict(conn *network.Connection, pkt packet.Packet) {
-	pktVerdict, continueInspection := inspection.RunInspectors(conn, pkt)
-	if continueInspection {
-		issueVerdict(conn, pkt, pktVerdict, false)
-		return
+	log.Infof("%s: inspecting ...", conn.ID)
+	verdict, reason, err := streamManager.HandlePacket(conn, pkt)
+	if err != nil {
+		log.Tracer(pkt.Ctx()).Tracef("tcp-stream: failed to handle packet: %s", err)
+		// temporarly accept the packet and retry the next time
+		verdict = network.VerdictAccept
 	}
 
-	// we are done with inspecting
-	conn.Inspecting = false
-	conn.SaveWhenFinished()
-	conn.StopFirewallHandler()
-	issueVerdict(conn, pkt, 0, true)
+	if verdict > network.VerdictUndecided {
+		if reason == nil {
+			reason = &inspectutils.Reason{}
+		}
+		conn.SetVerdict(verdict, reason.String(), "", reason.Context())
+	}
+
+	if !conn.Inspecting {
+		log.Infof("stopping inspection of %s", conn.ID)
+		conn.StopFirewallHandler()
+		conn.SaveWhenFinished()
+	}
+	issueVerdict(conn, pkt, 0, !conn.Inspecting)
+
+	/*
+		pktVerdict, continueInspection := inspection.RunInspectors(conn, pkt)
+		if continueInspection {
+			issueVerdict(conn, pkt, pktVerdict, false)
+			return
+		}
+
+		// we are done with inspecting
+		conn.Inspecting = false
+		conn.SaveWhenFinished()
+		conn.StopFirewallHandler()
+		issueVerdict(conn, pkt, 0, true)
+	*/
 }
 
 func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.Verdict, allowPermanent bool) {

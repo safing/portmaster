@@ -1,6 +1,7 @@
 package encryption
 
 import (
+	"github.com/google/gopacket"
 	"github.com/safing/portmaster/firewall/inspection"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
@@ -15,7 +16,7 @@ func (d *Detector) Name() string {
 }
 
 // Inspect implements the inspection interface.
-func (d *Detector) Inspect(conn *network.Connection, pkt packet.Packet) (pktVerdict network.Verdict, proceed bool, err error) {
+func (d *Detector) HandlePacket(conn *network.Connection, pkt gopacket.Packet) (network.Verdict, network.VerdictReason, error) {
 	if !conn.Inbound {
 		switch conn.Entity.Port {
 		case 443, 465, 993, 995:
@@ -24,7 +25,7 @@ func (d *Detector) Inspect(conn *network.Connection, pkt packet.Packet) (pktVerd
 		}
 	}
 
-	return network.VerdictUndecided, false, nil
+	return network.VerdictUndeterminable, nil, nil
 }
 
 // Destroy implements the destroy interface.
@@ -39,12 +40,11 @@ func DetectorFactory(conn *network.Connection, pkt packet.Packet) (network.Inspe
 
 // Register registers the encryption detection inspector with the inspection framework.
 func init() {
-	err := inspection.RegisterInspector(&inspection.Registration{
+	inspection.MustRegister(&inspection.Registration{
 		Name:    "Encryption Detection",
 		Order:   0,
 		Factory: DetectorFactory,
 	})
-	if err != nil {
-		panic(err)
-	}
 }
+
+var _ network.PacketHandler = new(Detector)

@@ -320,9 +320,6 @@ func (lp *LayeredProfile) MatchServiceEndpoint(ctx context.Context, entity *inte
 // MatchFilterLists matches the entity against the set of filter
 // lists. This functions requires the layered profile to be read locked.
 func (lp *LayeredProfile) MatchFilterLists(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
-	entity.ResolveSubDomainLists(ctx, lp.FilterSubDomains())
-	entity.EnableCNAMECheck(ctx, lp.FilterCNAMEs())
-
 	for _, layer := range lp.layers {
 		// Search for the first layer that has filter lists set.
 		if layer.filterListsSet {

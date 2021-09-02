@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"sync"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/safing/portmaster/netenv"
 
+	"github.com/safing/portbase/container"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/intel"
@@ -52,6 +54,57 @@ const (
 	DNSRequest
 	// ProxyRequest
 )
+
+type CertInfo struct {
+	Subject        string
+	Issuer         string
+	AlternateNames []string
+	NotBefore      time.Time
+	NotAfter       time.Time
+}
+
+func NewCertInfo(cert *x509.Certificate) *CertInfo {
+	return &CertInfo{
+		Subject:        cert.Subject.String(),
+		Issuer:         cert.Issuer.String(),
+		NotBefore:      cert.NotBefore,
+		NotAfter:       cert.NotAfter,
+		AlternateNames: cert.DNSNames,
+	}
+}
+
+type TLSContext struct {
+	// Version holds the TLS version used.
+	Version string
+
+	// VersionRaw holds the raw TLS version.
+	VersionRaw uint16
+
+	// SNI may hold the server name used during
+	// the TLS handshake.
+	SNI string
+
+	// Chain holds the certificate chain used to
+	// verify the connection. This can only be set
+	// if Version is lower than TLS1.3
+	chain [][]*x509.Certificate
+
+	Chain [][]CertInfo
+}
+
+// SetChains configures the certificate chains used to verify
+// the TLS connectionv.
+func (tls *TLSContext) SetChains(chains [][]*x509.Certificate) {
+	tls.chain = chains
+	tls.Chain = nil
+	for _, chain := range chains {
+		var infoChain []CertInfo
+		for _, cert := range chain {
+			infoChain = append(infoChain, *NewCertInfo(cert))
+		}
+		tls.Chain = append(tls.Chain, infoChain)
+	}
+}
 
 // Connection describes a distinct physical network connection
 // identified by the IP/Port pair.
@@ -162,11 +215,26 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// profile and required for correct re-evaluation of a connections
 	// verdict.
 	ProfileRevisionCounter uint64
+
+	// TLS may holds metadata about the TLS version of a connection.
+	TLS *TLSContext
+
 	// addedToMetrics signifies if the connection has already been counted in
 	// the metrics.
 	addedToMetrics bool
 
-	inspectors []Inspector
+	dpiStateLock sync.Mutex
+	// dpiState allows each DPI to store internal per-connection
+	// state.
+	dpiState map[string]interface{}
+
+	handlerLock    sync.RWMutex
+	packetHandlers []PacketHandler
+	streamHandlers []StreamHandler
+	dgramHandlers  []DgramHandler
+
+	IncomingStream container.Container
+	OutgoingStream container.Container
 }
 
 // Reason holds information justifying a verdict, as well as additional
@@ -604,13 +672,13 @@ func (conn *Connection) packetHandler() {
 		if conn.firewallHandler != nil {
 			conn.firewallHandler(conn, pkt)
 		} else {
+			log.Errorf("%s: using default firewall handler in packetHandler()", conn.ID)
 			defaultFirewallHandler(conn, pkt)
 		}
 		// log verdict
 		log.Tracer(pkt.Ctx()).Infof("filter: connection %s %s: %s", conn, conn.Verdict.Verb(), conn.Reason.Msg)
 
 		// save does not touch any changing data
-		// must not be locked, will deadlock with cleaner functions
 		if conn.saveWhenFinished {
 			conn.saveWhenFinished = false
 			conn.Save()
@@ -621,16 +689,6 @@ func (conn *Connection) packetHandler() {
 		// submit trace logs
 		log.Tracer(pkt.Ctx()).Submit()
 	}
-}
-
-// GetInspectors returns the list of inspectors.
-func (conn *Connection) GetInspectors() []Inspector {
-	return conn.inspectors
-}
-
-// SetInspectors sets the list of inspectors.
-func (conn *Connection) SetInspectors(new []Inspector) {
-	conn.inspectors = new
 }
 
 // String returns a string representation of conn.

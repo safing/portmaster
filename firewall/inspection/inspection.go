@@ -60,56 +60,27 @@ func RegisterInspector(new *Registration) error {
 	return nil
 }
 
+// MustRegister is like RegisterInspector but panics in case of an error.
+func MustRegister(new *Registration) {
+	if err := RegisterInspector(new); err != nil {
+		panic(err.Error())
+	}
+}
+
 // InitializeInspectors initializes all applicable inspectors for the connection.
 func InitializeInspectors(conn *network.Connection, pkt packet.Packet) {
 	inspectorRegistryLock.Lock()
 	defer inspectorRegistryLock.Unlock()
 
-	connInspectors := make([]network.Inspector, 0, len(inspectorRegistry))
 	for _, r := range inspectorRegistry {
 		inspector, err := r.Factory(conn, pkt)
 		switch {
 		case err != nil:
 			log.Tracer(pkt.Ctx()).Warningf("failed to initialize inspector %s: %v", r.Name, err)
 		case inspector != nil:
-			connInspectors = append(connInspectors, inspector)
-		}
-	}
-
-	conn.SetInspectors(connInspectors)
-}
-
-// RunInspectors runs all the applicable inspectors on the given packet of the connection. It returns the first error received by an inspector.
-func RunInspectors(conn *network.Connection, pkt packet.Packet) (pktVerdict network.Verdict, continueInspection bool) {
-	connInspectors := conn.GetInspectors()
-	for i, inspector := range connInspectors {
-		// check if slot is active
-		if inspector == nil {
-			continue
-		}
-
-		// run inspector
-		inspectorPktVerdict, proceed, err := inspector.Inspect(conn, pkt)
-		if err != nil {
-			log.Tracer(pkt.Ctx()).Warningf("inspector %s failed: %s", inspector.Name(), err)
-		}
-		// merge
-		if inspectorPktVerdict > pktVerdict {
-			pktVerdict = inspectorPktVerdict
-		}
-		if proceed {
-			continueInspection = true
-		}
-
-		// destroy if finished or failed
-		if !proceed || err != nil {
-			err = inspector.Destroy()
-			if err != nil {
-				log.Tracer(pkt.Ctx()).Debugf("inspector %s failed to destroy: %s", inspector.Name(), err)
+			if err := conn.AddHandler(inspector); err != nil {
+				log.Tracer(pkt.Ctx()).Warningf("failed to initalize inspector %s: %s", r.Name, err)
 			}
-			connInspectors[i] = nil
 		}
 	}
-
-	return pktVerdict, continueInspection
 }
