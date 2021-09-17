@@ -32,6 +32,10 @@ var (
 	ErrFailure = errors.New("query failed")
 	// ErrContinue is returned when the resolver has no answer, and the next resolver should be asked
 	ErrContinue = errors.New("resolver has no answer")
+	// ErrCancelled is returned when the request was cancelled.
+	ErrCancelled = errors.New("request cancelled")
+	// ErrShuttingDown is returned when the resolver is shutting down.
+	ErrShuttingDown = errors.New("resolver is shutting down")
 
 	// detailed errors
 
@@ -275,6 +279,8 @@ retry:
 			case <-time.After(maxRequestTimeout):
 				// something went wrong with the query, retry
 				goto retry
+			case <-ctx.Done():
+				return nil
 			}
 		} else {
 			// but that someone is taking too long
@@ -331,7 +337,7 @@ resolveLoop:
 	for i = 0; i < 2; i++ {
 		for _, resolver := range resolvers {
 			if module.IsStopping() {
-				return nil, errors.New("shutting down")
+				return nil, ErrShuttingDown
 			}
 
 			// check if resolver failed recently (on first run)
@@ -364,6 +370,10 @@ resolveLoop:
 					resolver.Conn.ReportFailure()
 					log.Tracer(ctx).Debugf("resolver: query to %s timed out", resolver.Info.ID())
 					continue
+				case errors.Is(err, ErrCancelled):
+					return nil, err
+				case errors.Is(err, ErrShuttingDown):
+					return nil, err
 				default:
 					resolver.Conn.ReportFailure()
 					log.Tracer(ctx).Debugf("resolver: query to %s failed: %s", resolver.Info.ID(), err)
