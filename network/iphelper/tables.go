@@ -206,7 +206,7 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 		case winErrInsufficientBuffer:
 			if i >= maxTries {
 				return nil, nil, fmt.Errorf(
-					"insufficient buffer error (tried %d times): %s bytes required - [NT 0x%X] %s",
+					"insufficient buffer error (tried %d times): %d bytes required - [NT 0x%X] %s",
 					i, bufSize, r1, err,
 				)
 			}
