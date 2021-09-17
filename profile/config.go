@@ -169,6 +169,7 @@ func registerConfiguration() error {
 
 - By address: "192.168.0.1"
 - By network: "192.168.0.1/24"
+- By network scope: "Localhost", "LAN" or "Internet"
 - By domain:
 	- Matching a distinct domain: "example.com"
 	- Matching a domain with subdomains: ".example.com"
@@ -176,6 +177,7 @@ func registerConfiguration() error {
 	- Matching with a wildcard suffix: "example.*"
 	- Matching domains containing text: "*example*"
 - By country (based on IP): "US"
+- By AS number: "AS123456"
 - By filter list - use the filterlist ID prefixed with "L:": "L:MAL"
 - Match anything: "*"
 
