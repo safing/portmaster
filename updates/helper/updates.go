@@ -3,11 +3,18 @@ package helper
 import (
 	"fmt"
 	"runtime"
+
+	"github.com/tevino/abool"
 )
 
-const (
-	onWindows = runtime.GOOS == "windows"
-)
+const onWindows = runtime.GOOS == "windows"
+
+var intelOnly = abool.New()
+
+// IntelOnly specifies that only intel data is mandatory.
+func IntelOnly() {
+	intelOnly.Set()
+}
 
 // PlatformIdentifier converts identifier for the current platform.
 func PlatformIdentifier(identifier string) string {
@@ -20,6 +27,26 @@ func PlatformIdentifier(identifier string) string {
 // MandatoryUpdates returns mandatory updates that should be loaded on install
 // or reset.
 func MandatoryUpdates() (identifiers []string) {
+	// Intel
+	identifiers = append(
+		identifiers,
+
+		// Filter lists data
+		"all/intel/lists/index.dsd",
+		"all/intel/lists/base.dsdl",
+		"all/intel/lists/intermediate.dsdl",
+		"all/intel/lists/urgent.dsdl",
+
+		// Geo IP data
+		"all/intel/geoip/geoipv4.mmdb.gz",
+		"all/intel/geoip/geoipv6.mmdb.gz",
+	)
+
+	// Stop here if we only want intel data.
+	if intelOnly.IsSet() {
+		return
+	}
+
 	// Binaries
 	if onWindows {
 		identifiers = []string{
@@ -46,16 +73,6 @@ func MandatoryUpdates() (identifiers []string) {
 		PlatformIdentifier("app/portmaster-app.zip"),
 		"all/ui/modules/portmaster.zip",
 		"all/ui/modules/assets.zip",
-
-		// Filter lists data
-		"all/intel/lists/index.dsd",
-		"all/intel/lists/base.dsdl",
-		"all/intel/lists/intermediate.dsdl",
-		"all/intel/lists/urgent.dsdl",
-
-		// Geo IP data
-		"all/intel/geoip/geoipv4.mmdb.gz",
-		"all/intel/geoip/geoipv6.mmdb.gz",
 	)
 
 	return identifiers
@@ -63,6 +80,10 @@ func MandatoryUpdates() (identifiers []string) {
 
 // AutoUnpackUpdates returns assets that need unpacking.
 func AutoUnpackUpdates() []string {
+	if intelOnly.IsSet() {
+		return []string{}
+	}
+
 	return []string{
 		PlatformIdentifier("app/portmaster-app.zip"),
 	}
