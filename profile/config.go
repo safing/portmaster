@@ -109,9 +109,9 @@ func registerConfiguration() error {
 	// ask - ask mode: if not verdict is found, the user is consulted
 	// block - allowlist mode: everything is blocked unless explicitly allowed
 	err := config.Register(&config.Option{
-		Name:         "Default Action",
+		Name:         "Default Network Action",
 		Key:          CfgOptionDefaultActionKey,
-		Description:  `The default action when nothing else allows or blocks an outgoing connection. Incoming connections are always blocked by default.`,
+		Description:  `The default network action is applied when nothing else allows or blocks an outgoing connection. Incoming connections are always blocked by default.`,
 		OptType:      config.OptTypeString,
 		DefaultValue: "permit",
 		Annotations: config.Annotations{
@@ -335,9 +335,9 @@ The lists are automatically updated every hour using incremental updates.
 
 	// Block Scope Local
 	err = config.Register(&config.Option{
-		Name:           "Block Device-Local Connections",
+		Name:           "Force Block Device-Local Connections",
 		Key:            CfgOptionBlockScopeLocalKey,
-		Description:    "Block all internal connections on your own device, ie. localhost. Is stronger than Rules (see below).",
+		Description:    "Force Block all internal connections on your own device, ie. localhost. Is stronger than Rules (see below).",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		DefaultValue:   status.SecurityLevelOff,
@@ -356,9 +356,9 @@ The lists are automatically updated every hour using incremental updates.
 
 	// Block Scope LAN
 	err = config.Register(&config.Option{
-		Name:           "Block LAN",
+		Name:           "Force Block LAN",
 		Key:            CfgOptionBlockScopeLANKey,
-		Description:    "Block all connections from and to the Local Area Network. Is stronger than Rules (see below).",
+		Description:    "Force Block all connections from and to the Local Area Network. Is stronger than Rules (see below).",
 		OptType:        config.OptTypeInt,
 		DefaultValue:   status.SecurityLevelsHighAndExtreme,
 		PossibleValues: status.AllSecurityLevelValues,
@@ -376,9 +376,9 @@ The lists are automatically updated every hour using incremental updates.
 
 	// Block Scope Internet
 	err = config.Register(&config.Option{
-		Name:           "Block Internet Access",
+		Name:           "Force Block Internet Access",
 		Key:            CfgOptionBlockScopeInternetKey,
-		Description:    "Block connections from and to the Internet. Is stronger than Rules (see below).",
+		Description:    "Force Block connections from and to the Internet. Is stronger than Rules (see below).",
 		OptType:        config.OptTypeInt,
 		DefaultValue:   status.SecurityLevelOff,
 		PossibleValues: status.AllSecurityLevelValues,
@@ -396,7 +396,7 @@ The lists are automatically updated every hour using incremental updates.
 
 	// Block Peer to Peer Connections
 	err = config.Register(&config.Option{
-		Name:           "Block P2P/Direct Connections",
+		Name:           "Force Block P2P/Direct Connections",
 		Key:            CfgOptionBlockP2PKey,
 		Description:    "These are connections that are established directly to an IP address or peer on the Internet without resolving a domain name via DNS first. Is stronger than Rules (see below).",
 		OptType:        config.OptTypeInt,
@@ -416,7 +416,7 @@ The lists are automatically updated every hour using incremental updates.
 
 	// Block Inbound Connections
 	err = config.Register(&config.Option{
-		Name:           "Block Incoming Connections",
+		Name:           "Force Block Incoming Connections",
 		Key:            CfgOptionBlockInboundKey,
 		Description:    "Connections initiated towards your device from the LAN or Internet. This will usually only be the case if you are running a network service or are using peer to peer software. Is stronger than Rules (see below).",
 		OptType:        config.OptTypeInt,
