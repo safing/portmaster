@@ -505,6 +505,9 @@ func (conn *Connection) SetVerdict(newVerdict Verdict, reason, reasonOptionKey s
 		if reasonOptionKey != "" && conn.Process() != nil {
 			conn.Reason.OptionKey = reasonOptionKey
 			conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
+		} else {
+			conn.Reason.OptionKey = ""
+			conn.Reason.Profile = ""
 		}
 		return true
 	}
