@@ -105,7 +105,7 @@ func (tr *TCPResolver) UseTLS() *TCPResolver {
 	return tr
 }
 
-func (tr *TCPResolver) getOrCreateResolverConn() (*tcpResolverConn, error) {
+func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolverConn, error) {
 	tr.Lock()
 	defer tr.Unlock()
 
@@ -117,6 +117,10 @@ func (tr *TCPResolver) getOrCreateResolverConn() (*tcpResolverConn, error) {
 			return tr.resolverConn, nil
 		case <-time.After(heartbeatTimeout):
 			log.Warningf("resolver: heartbeat for dns client %s failed", tr.resolver.Info.DescriptiveName())
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-module.Stopping():
+			return nil, ErrShuttingDown
 		}
 	}
 
@@ -130,7 +134,6 @@ func (tr *TCPResolver) getOrCreateResolverConn() (*tcpResolverConn, error) {
 	}
 
 	// Connect to server.
-	var err error
 	conn, err := tr.dnsClient.Dial(tr.resolver.ServerAddress)
 	if err != nil {
 		log.Debugf("resolver: failed to connect to %s", tr.resolver.Info.DescriptiveName())
@@ -171,7 +174,7 @@ func (tr *TCPResolver) getOrCreateResolverConn() (*tcpResolverConn, error) {
 // Query executes the given query against the resolver.
 func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	// Get resolver connection.
-	resolverConn, err := tr.getOrCreateResolverConn()
+	resolverConn, err := tr.getOrCreateResolverConn(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +188,10 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	// Submit query request to live connection.
 	select {
 	case resolverConn.queries <- tq:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-module.Stopping():
+		return nil, ErrShuttingDown
 	case <-time.After(defaultRequestTimeout):
 		return nil, ErrTimeout
 	}
@@ -193,6 +200,10 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	var reply *dns.Msg
 	select {
 	case reply = <-tq.Response:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-module.Stopping():
+		return nil, ErrShuttingDown
 	case <-time.After(defaultRequestTimeout):
 		return nil, ErrTimeout
 	}

@@ -3,6 +3,7 @@ package firewall
 import (
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/modules/subsystems"
+	"github.com/safing/spn/captain"
 
 	"github.com/safing/portbase/modules"
 
@@ -13,6 +14,7 @@ import (
 var (
 	filterModule  *modules.Module
 	filterEnabled config.BoolOption
+	tunnelEnabled config.BoolOption
 )
 
 func init() {
@@ -28,8 +30,8 @@ func init() {
 			Key:            CfgOptionEnableFilterKey,
 			Description:    "Start the Privacy Filter module. If turned off, all privacy filter protections are fully disabled on this device.",
 			OptType:        config.OptTypeBool,
-			ExpertiseLevel: config.ExpertiseLevelUser,
-			ReleaseLevel:   config.ReleaseLevelBeta,
+			ExpertiseLevel: config.ExpertiseLevelDeveloper,
+			ReleaseLevel:   config.ReleaseLevelStable,
 			DefaultValue:   true,
 			Annotations: config.Annotations{
 				config.CategoryAnnotation: "General",
@@ -44,6 +46,7 @@ func filterPrep() (err error) {
 		return err
 	}
 
-	filterEnabled = config.GetAsBool(CfgOptionEnableFilterKey, true)
+	filterEnabled = config.Concurrent.GetAsBool(CfgOptionEnableFilterKey, true)
+	tunnelEnabled = config.Concurrent.GetAsBool(captain.CfgOptionEnableSPNKey, false)
 	return nil
 }

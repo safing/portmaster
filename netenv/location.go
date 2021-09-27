@@ -2,7 +2,9 @@ package netenv
 
 import (
 	"errors"
+	"fmt"
 	"net"
+	"sort"
 	"sync"
 	"syscall"
 	"time"
@@ -22,9 +24,7 @@ var (
 	locationTestingIPv4     = "1.1.1.1"
 	locationTestingIPv4Addr *net.IPAddr
 
-	locations = &DeviceLocations{
-		All: make(map[string]*DeviceLocation),
-	}
+	locations                  = &DeviceLocations{}
 	locationsLock              sync.Mutex
 	gettingLocationsLock       sync.Mutex
 	locationNetworkChangedFlag = GetNetworkChangedFlag()
@@ -36,8 +36,32 @@ func prepLocation() (err error) {
 }
 
 type DeviceLocations struct {
-	Best *DeviceLocation
-	All  map[string]*DeviceLocation
+	All []*DeviceLocation
+}
+
+func (dl *DeviceLocations) Best() *DeviceLocation {
+	if len(dl.All) > 0 {
+		return dl.All[0]
+	}
+	return nil
+}
+
+func (dl *DeviceLocations) BestV4() *DeviceLocation {
+	for _, loc := range dl.All {
+		if loc.IPVersion == packet.IPv4 {
+			return loc
+		}
+	}
+	return nil
+}
+
+func (dl *DeviceLocations) BestV6() *DeviceLocation {
+	for _, loc := range dl.All {
+		if loc.IPVersion == packet.IPv6 {
+			return loc
+		}
+	}
+	return nil
 }
 
 func copyDeviceLocations() *DeviceLocations {
@@ -45,23 +69,20 @@ func copyDeviceLocations() *DeviceLocations {
 	defer locationsLock.Unlock()
 
 	// Create a copy of the locations, but not the entries.
-	cp := *locations
-	cp.All = make(map[string]*DeviceLocation, len(locations.All))
-	for k, v := range locations.All {
-		cp.All[k] = v
+	cp := &DeviceLocations{
+		All: make([]*DeviceLocation, len(locations.All)),
 	}
+	copy(cp.All, locations.All)
 
-	return &cp
+	return cp
 }
 
 // DeviceLocation represents a single IP and metadata. It must not be changed
 // once created.
 type DeviceLocation struct {
 	IP             net.IP
-	Continent      string
-	Country        string
-	ASN            uint
-	ASOrg          string
+	IPVersion      packet.IPVersion
+	Location       *geoip.Location
 	Source         DeviceLocationSource
 	SourceAccuracy int
 }
@@ -71,17 +92,41 @@ type DeviceLocation struct {
 func (dl *DeviceLocation) IsMoreAccurateThan(other *DeviceLocation) bool {
 	switch {
 	case dl.SourceAccuracy > other.SourceAccuracy:
-		// Higher accuracy is better.
+		// Higher source accuracy is better.
 		return true
-	case dl.ASN != 0 && other.ASN == 0:
+	case dl.Location.AutonomousSystemNumber != 0 && other.Location.AutonomousSystemNumber == 0:
 		// Having an ASN is better than having none.
 		return true
-	case dl.Country == "" && other.Country != "":
+	case dl.Location.Continent.Code != "" && other.Location.Continent.Code == "":
+		// Having a Continent is better than having none.
+		return true
+	case dl.Location.Country.ISOCode != "" && other.Location.Country.ISOCode == "":
 		// Having a Country is better than having none.
+		return true
+	case dl.Location.Coordinates.AccuracyRadius < other.Location.Coordinates.AccuracyRadius:
+		// Higher geo accuracy is better.
 		return true
 	}
 
 	return false
+}
+
+func (dl *DeviceLocation) LocationOrNil() *geoip.Location {
+	if dl == nil {
+		return nil
+	}
+	return dl.Location
+}
+
+func (dl *DeviceLocation) String() string {
+	switch {
+	case dl == nil:
+		return "<none>"
+	case dl.Location == nil:
+		return dl.IP.String()
+	default:
+		return fmt.Sprintf("%s (AS%d in %s)", dl.IP, dl.Location.AutonomousSystemNumber, dl.Location.Country.ISOCode)
+	}
 }
 
 type DeviceLocationSource string
@@ -111,6 +156,12 @@ func (dls DeviceLocationSource) Accuracy() int {
 	}
 }
 
+type sortLocationsByAccuracy []*DeviceLocation
+
+func (a sortLocationsByAccuracy) Len() int           { return len(a) }
+func (a sortLocationsByAccuracy) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a sortLocationsByAccuracy) Less(i, j int) bool { return a[j].IsMoreAccurateThan(a[i]) }
+
 func SetInternetLocation(ip net.IP, source DeviceLocationSource) (ok bool) {
 	// Check if IP is global.
 	if netutils.GetIPScope(ip) != netutils.Global {
@@ -123,39 +174,41 @@ func SetInternetLocation(ip net.IP, source DeviceLocationSource) (ok bool) {
 		Source:         source,
 		SourceAccuracy: source.Accuracy(),
 	}
+	if v4 := ip.To4(); v4 != nil {
+		loc.IPVersion = packet.IPv4
+	} else {
+		loc.IPVersion = packet.IPv6
+	}
 
 	// Get geoip information, but continue if it fails.
 	geoLoc, err := geoip.GetLocation(ip)
 	if err != nil {
 		log.Warningf("netenv: failed to get geolocation data of %s (from %s): %s", ip, source, err)
 	} else {
-		loc.Continent = geoLoc.Continent.Code
-		loc.Country = geoLoc.Country.ISOCode
-		loc.ASN = geoLoc.AutonomousSystemNumber
-		loc.ASOrg = geoLoc.AutonomousSystemOrganization
+		loc.Location = geoLoc
 	}
 
 	locationsLock.Lock()
 	defer locationsLock.Unlock()
 
 	// Add to locations, if better.
-	key := loc.IP.String()
-	existing, ok := locations.All[key]
-	if ok && existing.IsMoreAccurateThan(loc) {
-		// Existing entry is more accurate, abort adding.
-		// Return true, because the IP address is already part of the locations.
-		return true
-	}
-	locations.All[key] = loc
-
-	// Find best location.
-	best := loc
-	for _, dl := range locations.All {
-		if dl.IsMoreAccurateThan(best) {
-			best = dl
+	var exists bool
+	for i, existing := range locations.All {
+		if ip.Equal(existing.IP) {
+			exists = true
+			if loc.IsMoreAccurateThan(existing) {
+				// Replace
+				locations.All[i] = loc
+				break
+			}
 		}
 	}
-	locations.Best = best
+	if !exists {
+		locations.All = append(locations.All, loc)
+	}
+
+	// Sort locations.
+	sort.Sort(sortLocationsByAccuracy(locations.All))
 
 	return true
 }
@@ -163,10 +216,10 @@ func SetInternetLocation(ip net.IP, source DeviceLocationSource) (ok bool) {
 // DEPRECATED: Please use GetInternetLocation instead.
 func GetApproximateInternetLocation() (net.IP, error) {
 	loc, ok := GetInternetLocation()
-	if !ok {
+	if !ok || loc.Best() == nil {
 		return nil, errors.New("no location data available")
 	}
-	return loc.Best.IP, nil
+	return loc.Best().IP, nil
 }
 
 func GetInternetLocation() (deviceLocations *DeviceLocations, ok bool) {
@@ -179,38 +232,54 @@ func GetInternetLocation() (deviceLocations *DeviceLocations, ok bool) {
 	}
 	locationNetworkChangedFlag.Refresh()
 
-	// Check different sources, return on first success.
-	switch {
-	case getLocationFromInterfaces():
-	case getLocationFromTraceroute():
-	default:
+	// Get all assigned addresses.
+	v4s, v6s, err := GetAssignedAddresses()
+	if err != nil {
+		log.Warningf("netenv: failed to get assigned addresses: %s", err)
+		return nil, false
+	}
+
+	// Check interfaces for global addresses.
+	v4ok, v6ok := getLocationFromInterfaces()
+
+	// Try other methods for missing locations.
+	if len(v4s) > 0 && !v4ok {
+		v4ok = getLocationFromTraceroute()
+	}
+	if len(v6s) > 0 && !v6ok {
+		// TODO
+		log.Warningf("netenv: could not get IPv6 location")
+	}
+
+	// Check if we have any locations.
+	if !v4ok && !v6ok {
 		return nil, false
 	}
 
 	// Return gathered locations.
 	cp := copyDeviceLocations()
-	return cp, cp.Best != nil
+	return cp, true
 }
 
-func getLocationFromInterfaces() (ok bool) {
+func getLocationFromInterfaces() (v4ok, v6ok bool) {
 	globalIPv4, globalIPv6, err := GetAssignedGlobalAddresses()
 	if err != nil {
 		log.Warningf("netenv: location: failed to get assigned global addresses: %s", err)
-		return false
+		return false, false
 	}
 
 	for _, ip := range globalIPv4 {
 		if SetInternetLocation(ip, SourceInterface) {
-			ok = true
+			v4ok = true
 		}
 	}
 	for _, ip := range globalIPv6 {
 		if SetInternetLocation(ip, SourceInterface) {
-			ok = true
+			v6ok = true
 		}
 	}
 
-	return ok
+	return
 }
 
 // TODO: Check feasibility of getting the external IP via UPnP.
@@ -223,7 +292,7 @@ func getLocationFromUPnP() (ok bool) {
 }
 */
 
-func getLocationFromTraceroute() (ok bool) {
+func getLocationFromTraceroute() (v4ok bool) {
 	// Create connection.
 	conn, err := net.ListenPacket("ip4:icmp", "")
 	if err != nil {

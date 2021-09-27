@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/safing/spn/captain"
+
 	"github.com/google/gopacket/layers"
 	"github.com/safing/portmaster/netenv"
 	"golang.org/x/sync/singleflight"
@@ -22,7 +24,7 @@ import (
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
-	"github.com/safing/spn/captain"
+	"github.com/safing/spn/crew"
 	"github.com/safing/spn/sluice"
 
 	// module dependencies
@@ -346,32 +348,41 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		return
 	}
 
-	// check if filtering is enabled
-	if !filterEnabled() {
-		conn.Inspecting = false
+	// TODO: enable inspecting again
+	conn.Inspecting = false
+
+	// Filter, if enabled.
+	if filterEnabled() {
+		log.Tracer(pkt.Ctx()).Trace("filter: starting decision process")
+		DecideOnConnection(pkt.Ctx(), conn, pkt)
+	} else {
 		conn.Accept("privacy filter disabled", noReasonOptionKey)
-		conn.StopFirewallHandler()
-		issueVerdict(conn, pkt, 0, true)
-		return
 	}
 
-	log.Tracer(pkt.Ctx()).Trace("filter: starting decision process")
-	DecideOnConnection(pkt.Ctx(), conn, pkt)
-	conn.Inspecting = false // TODO: enable inspecting again
+	// Tunnel, if enabled.
+	if pkt.IsOutbound() && conn.Entity.IPScope.IsGlobal() &&
+		tunnelEnabled() && conn.Verdict == network.VerdictAccept &&
+		conn.Process().Profile() != nil &&
+		conn.Process().Profile().UseSPN() {
 
-	// tunneling
-	// TODO: add implementation for forced tunneling
-	if pkt.IsOutbound() &&
-		captain.ClientReady() &&
-		conn.Entity.IPScope.IsGlobal() &&
-		conn.Verdict == network.VerdictAccept {
-		// try to tunnel
-		err := sluice.AwaitRequest(pkt.Info(), conn.Entity.Domain)
-		if err != nil {
-			log.Tracer(pkt.Ctx()).Tracef("filter: not tunneling: %s", err)
-		} else {
-			log.Tracer(pkt.Ctx()).Trace("filter: tunneling request")
-			conn.Verdict = network.VerdictRerouteToTunnel
+		// Exclude requests of the SPN itself.
+		if !captain.IsExcepted(conn.Entity.IP) {
+			// Check if client is ready.
+			if captain.ClientReady() {
+				// Queue request in sluice.
+				err := sluice.AwaitRequest(conn, crew.HandleSluiceRequest)
+				if err != nil {
+					log.Tracer(pkt.Ctx()).Warningf("failed to rqeuest tunneling: %s", err)
+					conn.Failed("failed to request tunneling", "")
+				} else {
+					log.Tracer(pkt.Ctx()).Trace("filter: tunneling requested")
+					conn.Verdict = network.VerdictRerouteToTunnel
+				}
+			} else {
+				// Block connection as SPN is not ready yet.
+				log.Tracer(pkt.Ctx()).Trace("SPN not ready for tunneling")
+				conn.Failed("SPN not ready for tunneling", "")
+			}
 		}
 	}
 

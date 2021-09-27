@@ -3,11 +3,18 @@ package helper
 import (
 	"fmt"
 	"runtime"
+
+	"github.com/tevino/abool"
 )
 
-const (
-	onWindows = runtime.GOOS == "windows"
-)
+const onWindows = runtime.GOOS == "windows"
+
+var intelOnly = abool.New()
+
+// IntelOnly specifies that only intel data is mandatory.
+func IntelOnly() {
+	intelOnly.Set()
+}
 
 // PlatformIdentifier converts identifier for the current platform.
 func PlatformIdentifier(identifier string) string {
@@ -20,32 +27,9 @@ func PlatformIdentifier(identifier string) string {
 // MandatoryUpdates returns mandatory updates that should be loaded on install
 // or reset.
 func MandatoryUpdates() (identifiers []string) {
-	// Binaries
-	if onWindows {
-		identifiers = []string{
-			PlatformIdentifier("core/portmaster-core.exe"),
-			PlatformIdentifier("kext/portmaster-kext.dll"),
-			PlatformIdentifier("kext/portmaster-kext.sys"),
-			PlatformIdentifier("start/portmaster-start.exe"),
-			PlatformIdentifier("notifier/portmaster-notifier.exe"),
-			PlatformIdentifier("notifier/portmaster-snoretoast.exe"),
-		}
-	} else {
-		identifiers = []string{
-			PlatformIdentifier("core/portmaster-core"),
-			PlatformIdentifier("start/portmaster-start"),
-			PlatformIdentifier("notifier/portmaster-notifier"),
-		}
-	}
-
-	// Components, Assets and Data
+	// Intel
 	identifiers = append(
 		identifiers,
-
-		// User interface components
-		PlatformIdentifier("app/portmaster-app.zip"),
-		"all/ui/modules/portmaster.zip",
-		"all/ui/modules/assets.zip",
 
 		// Filter lists data
 		"all/intel/lists/index.dsd",
@@ -58,11 +42,50 @@ func MandatoryUpdates() (identifiers []string) {
 		"all/intel/geoip/geoipv6.mmdb.gz",
 	)
 
+	// Stop here if we only want intel data.
+	if intelOnly.IsSet() {
+		return
+	}
+
+	// Binaries
+	if onWindows {
+		identifiers = append(
+			identifiers,
+			PlatformIdentifier("core/portmaster-core.exe"),
+			PlatformIdentifier("kext/portmaster-kext.dll"),
+			PlatformIdentifier("kext/portmaster-kext.sys"),
+			PlatformIdentifier("start/portmaster-start.exe"),
+			PlatformIdentifier("notifier/portmaster-notifier.exe"),
+			PlatformIdentifier("notifier/portmaster-snoretoast.exe"),
+		)
+	} else {
+		identifiers = append(
+			identifiers,
+			PlatformIdentifier("core/portmaster-core"),
+			PlatformIdentifier("start/portmaster-start"),
+			PlatformIdentifier("notifier/portmaster-notifier"),
+		)
+	}
+
+	// Components, Assets and Data
+	identifiers = append(
+		identifiers,
+
+		// User interface components
+		PlatformIdentifier("app/portmaster-app.zip"),
+		"all/ui/modules/portmaster.zip",
+		"all/ui/modules/assets.zip",
+	)
+
 	return identifiers
 }
 
 // AutoUnpackUpdates returns assets that need unpacking.
 func AutoUnpackUpdates() []string {
+	if intelOnly.IsSet() {
+		return []string{}
+	}
+
 	return []string{
 		PlatformIdentifier("app/portmaster-app.zip"),
 	}

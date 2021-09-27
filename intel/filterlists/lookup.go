@@ -30,7 +30,7 @@ func lookupBlockLists(entity, value string) ([]string, error) {
 		return nil, nil
 	}
 
-	log.Debugf("intel/filterlists: searching for entries with %s", key)
+	// log.Debugf("intel/filterlists: searching for entries with %s", key)
 	entry, err := getEntityRecordByKey(key)
 	if err != nil {
 		if err == database.ErrNotFound {
