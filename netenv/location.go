@@ -112,14 +112,10 @@ func (dl *DeviceLocation) IsMoreAccurateThan(other *DeviceLocation) bool {
 }
 
 func (dl *DeviceLocation) LocationOrNil() *geoip.Location {
-	switch {
-	case dl == nil:
+	if dl == nil {
 		return nil
-	case dl.Location == nil:
-		return nil
-	default:
-		return dl.Location
 	}
+	return dl.Location
 }
 
 func (dl *DeviceLocation) String() string {

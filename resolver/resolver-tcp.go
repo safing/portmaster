@@ -118,7 +118,7 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		case <-time.After(heartbeatTimeout):
 			log.Warningf("resolver: heartbeat for dns client %s failed", tr.resolver.Info.DescriptiveName())
 		case <-ctx.Done():
-			return nil, ErrCancelled
+			return nil, ctx.Err()
 		case <-module.Stopping():
 			return nil, ErrShuttingDown
 		}
@@ -189,7 +189,7 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	select {
 	case resolverConn.queries <- tq:
 	case <-ctx.Done():
-		return nil, ErrCancelled
+		return nil, ctx.Err()
 	case <-module.Stopping():
 		return nil, ErrShuttingDown
 	case <-time.After(defaultRequestTimeout):
@@ -201,7 +201,7 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	select {
 	case reply = <-tq.Response:
 	case <-ctx.Done():
-		return nil, ErrCancelled
+		return nil, ctx.Err()
 	case <-module.Stopping():
 		return nil, ErrShuttingDown
 	case <-time.After(defaultRequestTimeout):

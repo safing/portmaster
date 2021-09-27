@@ -419,7 +419,7 @@ func queryMulticastDNS(ctx context.Context, q *Query) (*RRCache, error) {
 			return rrCache, nil
 		}
 	case <-ctx.Done():
-		return nil, ErrCancelled
+		return nil, ctx.Err()
 	}
 
 	// Respond with NXDomain.

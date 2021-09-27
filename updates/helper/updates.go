@@ -49,20 +49,22 @@ func MandatoryUpdates() (identifiers []string) {
 
 	// Binaries
 	if onWindows {
-		identifiers = []string{
+		identifiers = append(
+			identifiers,
 			PlatformIdentifier("core/portmaster-core.exe"),
 			PlatformIdentifier("kext/portmaster-kext.dll"),
 			PlatformIdentifier("kext/portmaster-kext.sys"),
 			PlatformIdentifier("start/portmaster-start.exe"),
 			PlatformIdentifier("notifier/portmaster-notifier.exe"),
 			PlatformIdentifier("notifier/portmaster-snoretoast.exe"),
-		}
+		)
 	} else {
-		identifiers = []string{
+		identifiers = append(
+			identifiers,
 			PlatformIdentifier("core/portmaster-core"),
 			PlatformIdentifier("start/portmaster-start"),
 			PlatformIdentifier("notifier/portmaster-notifier"),
-		}
+		)
 	}
 
 	// Components, Assets and Data

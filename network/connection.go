@@ -502,13 +502,14 @@ func (conn *Connection) SetVerdict(newVerdict Verdict, reason, reasonOptionKey s
 		conn.Verdict = newVerdict
 		conn.Reason.Msg = reason
 		conn.Reason.Context = reasonCtx
+
+		conn.Reason.Profile = ""
+		conn.Reason.OptionKey = ""
 		if reasonOptionKey != "" && conn.Process() != nil {
-			conn.Reason.OptionKey = reasonOptionKey
 			conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
-		} else {
-			conn.Reason.OptionKey = ""
-			conn.Reason.Profile = ""
+			conn.Reason.OptionKey = reasonOptionKey
 		}
+
 		return true
 	}
 	return false

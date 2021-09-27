@@ -32,8 +32,6 @@ var (
 	ErrFailure = errors.New("query failed")
 	// ErrContinue is returned when the resolver has no answer, and the next resolver should be asked
 	ErrContinue = errors.New("resolver has no answer")
-	// ErrCancelled is returned when the request was cancelled.
-	ErrCancelled = errors.New("request cancelled")
 	// ErrShuttingDown is returned when the resolver is shutting down.
 	ErrShuttingDown = errors.New("resolver is shutting down")
 
@@ -370,7 +368,9 @@ resolveLoop:
 					resolver.Conn.ReportFailure()
 					log.Tracer(ctx).Debugf("resolver: query to %s timed out", resolver.Info.ID())
 					continue
-				case errors.Is(err, ErrCancelled):
+				case errors.Is(err, context.Canceled):
+					return nil, err
+				case errors.Is(err, context.DeadlineExceeded):
 					return nil, err
 				case errors.Is(err, ErrShuttingDown):
 					return nil, err
