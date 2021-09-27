@@ -503,11 +503,11 @@ func (conn *Connection) SetVerdict(newVerdict Verdict, reason, reasonOptionKey s
 		conn.Reason.Msg = reason
 		conn.Reason.Context = reasonCtx
 
-		conn.Reason.Profile = ""
 		conn.Reason.OptionKey = ""
+		conn.Reason.Profile = ""
 		if reasonOptionKey != "" && conn.Process() != nil {
-			conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
 			conn.Reason.OptionKey = reasonOptionKey
+			conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
 		}
 
 		return true
