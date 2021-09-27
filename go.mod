@@ -13,8 +13,9 @@ require (
 	github.com/hashicorp/go-version v1.3.0
 	github.com/miekg/dns v1.1.40
 	github.com/oschwald/maxminddb-golang v1.8.0
-	github.com/safing/portbase v0.11.2
-	github.com/safing/spn v0.2.5
+	github.com/safing/jess v0.2.3 // indirect
+	github.com/safing/portbase v0.12.0
+	github.com/safing/spn v0.3.0
 	github.com/shirou/gopsutil v3.21.4+incompatible
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.6.1
@@ -24,5 +25,5 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744
+	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 )
