@@ -7,9 +7,7 @@ import (
 	"github.com/safing/portmaster/updates"
 )
 
-var (
-	module *modules.Module
-)
+var module *modules.Module
 
 func init() {
 	module = modules.Register("geoip", prep, nil, nil, "base", "updates")
