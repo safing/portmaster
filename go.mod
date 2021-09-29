@@ -16,7 +16,7 @@ require (
 	github.com/oschwald/maxminddb-golang v1.8.0
 	github.com/safing/jess v0.2.3 // indirect
 	github.com/safing/portbase v0.12.0
-	github.com/safing/spn v0.3.0
+	github.com/safing/spn v0.3.2
 	github.com/shirou/gopsutil v3.21.4+incompatible
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.6.1
