@@ -21,6 +21,12 @@ import (
 )
 
 var (
+	// locationTestingIPv4 holds the IP address of the server that should be
+	// tracerouted to find the location of the device. The ping will never reach
+	// the destination in most cases.
+	// The selection of this IP requires sensitivity, as the IP address must be
+	// far enough away to produce good results.
+	// At the same time, the IP address should be common and not raise attention.
 	locationTestingIPv4     = "1.1.1.1"
 	locationTestingIPv4Addr *net.IPAddr
 
@@ -136,20 +142,23 @@ const (
 	SourcePeer       DeviceLocationSource = "peer"
 	SourceUPNP       DeviceLocationSource = "upnp"
 	SourceTraceroute DeviceLocationSource = "traceroute"
+	SourceTimezone   DeviceLocationSource = "timezone"
 	SourceOther      DeviceLocationSource = "other"
 )
 
 func (dls DeviceLocationSource) Accuracy() int {
 	switch dls {
 	case SourceInterface:
-		return 5
+		return 6
 	case SourcePeer:
-		return 4
+		return 5
 	case SourceUPNP:
-		return 3
+		return 4
 	case SourceTraceroute:
-		return 2
+		return 3
 	case SourceOther:
+		return 2
+	case SourceTimezone:
 		return 1
 	default:
 		return 0
@@ -162,10 +171,10 @@ func (a sortLocationsByAccuracy) Len() int           { return len(a) }
 func (a sortLocationsByAccuracy) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a sortLocationsByAccuracy) Less(i, j int) bool { return a[j].IsMoreAccurateThan(a[i]) }
 
-func SetInternetLocation(ip net.IP, source DeviceLocationSource) (ok bool) {
+func SetInternetLocation(ip net.IP, source DeviceLocationSource) (dl *DeviceLocation, ok bool) {
 	// Check if IP is global.
 	if netutils.GetIPScope(ip) != netutils.Global {
-		return false
+		return nil, false
 	}
 
 	// Create new location.
@@ -188,29 +197,32 @@ func SetInternetLocation(ip net.IP, source DeviceLocationSource) (ok bool) {
 		loc.Location = geoLoc
 	}
 
+	addLocation(loc)
+	return loc, true
+}
+
+func addLocation(dl *DeviceLocation) {
 	locationsLock.Lock()
 	defer locationsLock.Unlock()
 
 	// Add to locations, if better.
 	var exists bool
 	for i, existing := range locations.All {
-		if ip.Equal(existing.IP) {
+		if (dl.IP == nil && existing.IP == nil) || dl.IP.Equal(existing.IP) {
 			exists = true
-			if loc.IsMoreAccurateThan(existing) {
+			if dl.IsMoreAccurateThan(existing) {
 				// Replace
-				locations.All[i] = loc
+				locations.All[i] = dl
 				break
 			}
 		}
 	}
 	if !exists {
-		locations.All = append(locations.All, loc)
+		locations.All = append(locations.All, dl)
 	}
 
 	// Sort locations.
 	sort.Sort(sortLocationsByAccuracy(locations.All))
-
-	return true
 }
 
 // DEPRECATED: Please use GetInternetLocation instead.
@@ -243,8 +255,18 @@ func GetInternetLocation() (deviceLocations *DeviceLocations, ok bool) {
 	v4ok, v6ok := getLocationFromInterfaces()
 
 	// Try other methods for missing locations.
-	if len(v4s) > 0 && !v4ok {
-		v4ok = getLocationFromTraceroute()
+	if len(v4s) > 0 {
+		if !v4ok {
+			_, err = getLocationFromTraceroute()
+			if err != nil {
+				log.Warningf("netenv: failed to get IPv4 from traceroute: %s", err)
+			} else {
+				v4ok = true
+			}
+		}
+		if !v4ok {
+			v4ok = getLocationFromTimezone(packet.IPv4)
+		}
 	}
 	if len(v6s) > 0 && !v6ok {
 		// TODO
@@ -269,12 +291,12 @@ func getLocationFromInterfaces() (v4ok, v6ok bool) {
 	}
 
 	for _, ip := range globalIPv4 {
-		if SetInternetLocation(ip, SourceInterface) {
+		if _, ok := SetInternetLocation(ip, SourceInterface); ok {
 			v4ok = true
 		}
 	}
 	for _, ip := range globalIPv6 {
-		if SetInternetLocation(ip, SourceInterface) {
+		if _, ok := SetInternetLocation(ip, SourceInterface); ok {
 			v6ok = true
 		}
 	}
@@ -292,20 +314,18 @@ func getLocationFromUPnP() (ok bool) {
 }
 */
 
-func getLocationFromTraceroute() (v4ok bool) {
+func getLocationFromTraceroute() (dl *DeviceLocation, err error) {
 	// Create connection.
 	conn, err := net.ListenPacket("ip4:icmp", "")
 	if err != nil {
-		log.Warningf("netenv: location: failed to open icmp conn: %s", err)
-		return false
+		return nil, fmt.Errorf("failed to open icmp conn: %s", err)
 	}
 	v4Conn := ipv4.NewPacketConn(conn)
 
 	// Generate a random ID for the ICMP packets.
 	generatedID, err := rng.Number(0xFFFF) // uint16
 	if err != nil {
-		log.Warningf("netenv: location: failed to generate icmp msg ID: %s", err)
-		return false
+		return nil, fmt.Errorf("failed to generate icmp msg ID: %s", err)
 	}
 	msgID := int(generatedID)
 	var msgSeq int
@@ -323,7 +343,7 @@ func getLocationFromTraceroute() (v4ok bool) {
 	maxHops := 4 // add one for every reply that is not global
 
 	// Get additional listener for ICMP messages via the firewall.
-	icmpPacketsViaFirewall, doneWithListeningToICMP := ListenToICMP()
+	icmpPacketsViaFirewall, doneWithListeningToICMP := ListenToICMP(locationTestingIPv4Addr.IP)
 	defer doneWithListeningToICMP()
 
 nextHop:
@@ -339,15 +359,13 @@ nextHop:
 			// Make packet data.
 			pingPacket, err := pingMessage.Marshal(nil)
 			if err != nil {
-				log.Warningf("netenv: location: failed to build icmp packet: %s", err)
-				return false
+				return nil, fmt.Errorf("failed to build icmp packet: %s", err)
 			}
 
 			// Set TTL on IP packet.
 			err = v4Conn.SetTTL(i)
 			if err != nil {
-				log.Warningf("netenv: location: failed to set icmp packet TTL: %s", err)
-				return false
+				return nil, fmt.Errorf("failed to set icmp packet TTL: %s", err)
 			}
 
 			// Send ICMP packet.
@@ -357,8 +375,7 @@ nextHop:
 						continue
 					}
 				}
-				log.Warningf("netenv: location: failed to send icmp packet: %s", err)
-				return false
+				return nil, fmt.Errorf("failed to send icmp packet: %s", err)
 			}
 
 			// Listen for replies of the ICMP packet.
@@ -381,7 +398,7 @@ nextHop:
 					}
 					// We received a reply, so we did not trigger a time exceeded response on the way.
 					// This means we were not able to find the nearest router to us.
-					return false
+					return nil, errors.New("received final echo reply without time exceeded messages")
 				case layers.ICMPv4TypeDestinationUnreachable,
 					layers.ICMPv4TypeTimeExceeded:
 					// Continue processing.
@@ -413,13 +430,17 @@ nextHop:
 				switch icmpPacket.TypeCode.Type() {
 				case layers.ICMPv4TypeDestinationUnreachable:
 					// We have received a valid destination unreachable response, abort.
-					return false
+					return nil, errors.New("destination unreachable")
 
 				case layers.ICMPv4TypeTimeExceeded:
 					// We have received a valid time exceeded error.
 					// If message came from a global unicast, us it!
 					if netutils.GetIPScope(remoteIP) == netutils.Global {
-						return SetInternetLocation(remoteIP, SourceTraceroute)
+						dl, ok := SetInternetLocation(remoteIP, SourceTraceroute)
+						if !ok {
+							return nil, errors.New("invalid IP address")
+						}
+						return dl, nil
 					}
 
 					// Otherwise, continue.
@@ -430,7 +451,7 @@ nextHop:
 	}
 
 	// We did not receive anything actionable.
-	return false
+	return nil, errors.New("did not receive any actionable ICMP reply")
 }
 
 func recvICMP(currentHop int, icmpPacketsViaFirewall chan packet.Packet) (
@@ -455,8 +476,27 @@ func recvICMP(currentHop int, icmpPacketsViaFirewall chan packet.Packet) (
 			}
 			return pkt.Info().RemoteIP(), icmp4, true
 
-		case <-time.After(time.Duration(currentHop*10+50) * time.Millisecond):
+		case <-time.After(time.Duration(currentHop*20+100) * time.Millisecond):
 			return nil, nil, false
 		}
 	}
+}
+
+func getLocationFromTimezone(ipVersion packet.IPVersion) (ok bool) {
+	// Create base struct.
+	tzLoc := &DeviceLocation{
+		IPVersion:      ipVersion,
+		Location:       &geoip.Location{},
+		Source:         SourceTimezone,
+		SourceAccuracy: SourceTimezone.Accuracy(),
+	}
+
+	// Calculate longitude based on current timezone.
+	_, offsetSeconds := time.Now().Zone()
+	tzLoc.Location.Coordinates.AccuracyRadius = 1000
+	tzLoc.Location.Coordinates.Latitude = 48
+	tzLoc.Location.Coordinates.Longitude = float64(offsetSeconds) / 43200 * 180
+
+	addLocation(tzLoc)
+	return true
 }

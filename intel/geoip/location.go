@@ -84,9 +84,8 @@ func (l *Location) EstimateNetworkProximity(to *Location) (proximity int) {
 	case l.Coordinates.Latitude == 0 && l.Coordinates.Longitude == 0:
 		fallthrough
 	case to.Coordinates.Latitude == 0 && to.Coordinates.Longitude == 0:
-		// If we don't have any on any side coordinates, set accuracy to worst
-		// effective value.
-		accuracy = 1000
+		// If we don't have any coordinates, return.
+		return proximity
 	case to.Coordinates.AccuracyRadius > accuracy:
 		// If the destination accuracy is worse, use that one.
 		accuracy = to.Coordinates.AccuracyRadius
@@ -98,11 +97,11 @@ func (l *Location) EstimateNetworkProximity(to *Location) (proximity int) {
 		distanceInPercent := (earthCircumferenceInKm - km) * 100 / earthCircumferenceInKm
 
 		// apply penalty for locations with low accuracy (targeting accuracy radius >100)
-		accuracyModifier := 1 - float64(accuracy)/1000
+		accuracyModifier := 1 - float64(accuracy)/2000
 		proximity += int(distanceInPercent * 0.10 * accuracyModifier)
 	}
 
-	return //nolint:nakedret
+	return proximity
 }
 
 // PrimitiveNetworkProximity calculates the numerical distance between two IP addresses. Returns a proximity value between 0 (far away) and 100 (nearby).

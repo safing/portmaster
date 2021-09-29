@@ -1,6 +1,7 @@
 package netenv
 
 import (
+	"net"
 	"sync"
 
 	"github.com/tevino/abool"
@@ -31,21 +32,23 @@ var (
 	listenICMPEnabled = abool.New()
 
 	// listenICMPInput is created for every use of the ICMP listenting system.
-	listenICMPInput     chan packet.Packet
-	listenICMPInputLock sync.Mutex
+	listenICMPInput         chan packet.Packet
+	listenICMPInputTargetIP net.IP
+	listenICMPInputLock     sync.Mutex
 )
 
 // ListenToICMP returns a new channel for listenting to icmp packets. Please
 // note that any icmp packet will be passed and filtering must be done on
 // the side of the caller. The caller must call the returned done function when
 // done with the listener.
-func ListenToICMP() (packets chan packet.Packet, done func()) {
+func ListenToICMP(targetIP net.IP) (packets chan packet.Packet, done func()) {
 	// Lock for single use.
 	listenICMPLock.Lock()
 
 	// Create new input channel.
 	listenICMPInputLock.Lock()
 	listenICMPInput = make(chan packet.Packet, 100)
+	listenICMPInputTargetIP = targetIP
 	listenICMPEnabled.Set()
 	listenICMPInputLock.Unlock()
 
@@ -56,6 +59,7 @@ func ListenToICMP() (packets chan packet.Packet, done func()) {
 		// Close input channel.
 		listenICMPInputLock.Lock()
 		listenICMPEnabled.UnSet()
+		listenICMPInputTargetIP = nil
 		close(listenICMPInput)
 		listenICMPInputLock.Unlock()
 	}
@@ -71,15 +75,14 @@ func SubmitPacketToICMPListener(pkt packet.Packet) (submitted bool) {
 	}
 
 	// Slow path.
-	submitPacketToICMPListenerSlow(pkt)
-	return true
+	return submitPacketToICMPListenerSlow(pkt)
 }
 
-func submitPacketToICMPListenerSlow(pkt packet.Packet) {
+func submitPacketToICMPListenerSlow(pkt packet.Packet) (submitted bool) {
 	// Make sure the payload is available.
 	if err := pkt.LoadPacketData(); err != nil {
 		log.Warningf("netenv: failed to get payload for ICMP listener: %s", err)
-		return
+		return false
 	}
 
 	// Send to input channel.
@@ -88,7 +91,14 @@ func submitPacketToICMPListenerSlow(pkt packet.Packet) {
 
 	// Check if still enabled.
 	if !listenICMPEnabled.IsSet() {
-		return
+		return false
+	}
+
+	// Only listen for outbound packets to the target IP.
+	if pkt.IsOutbound() &&
+		listenICMPInputTargetIP != nil &&
+		!pkt.Info().Dst.Equal(listenICMPInputTargetIP) {
+		return false
 	}
 
 	// Send to channel, if possible.
@@ -97,4 +107,5 @@ func submitPacketToICMPListenerSlow(pkt packet.Packet) {
 	default:
 		log.Warning("netenv: failed to send packet payload to ICMP listener: channel full")
 	}
+	return true
 }
