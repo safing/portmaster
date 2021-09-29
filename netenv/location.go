@@ -142,20 +142,23 @@ const (
 	SourcePeer       DeviceLocationSource = "peer"
 	SourceUPNP       DeviceLocationSource = "upnp"
 	SourceTraceroute DeviceLocationSource = "traceroute"
+	SourceTimezone   DeviceLocationSource = "timezone"
 	SourceOther      DeviceLocationSource = "other"
 )
 
 func (dls DeviceLocationSource) Accuracy() int {
 	switch dls {
 	case SourceInterface:
-		return 5
+		return 6
 	case SourcePeer:
-		return 4
+		return 5
 	case SourceUPNP:
-		return 3
+		return 4
 	case SourceTraceroute:
-		return 2
+		return 3
 	case SourceOther:
+		return 2
+	case SourceTimezone:
 		return 1
 	default:
 		return 0
@@ -252,8 +255,18 @@ func GetInternetLocation() (deviceLocations *DeviceLocations, ok bool) {
 	v4ok, v6ok := getLocationFromInterfaces()
 
 	// Try other methods for missing locations.
-	if len(v4s) > 0 && !v4ok {
-		v4ok = getLocationFromTraceroute()
+	if len(v4s) > 0 {
+		if !v4ok {
+			_, err = getLocationFromTraceroute()
+			if err != nil {
+				log.Warningf("netenv: failed to get IPv4 from traceroute: %s", err)
+			} else {
+				v4ok = true
+			}
+		}
+		if !v4ok {
+			v4ok = getLocationFromTimezone(packet.IPv4)
+		}
 	}
 	if len(v6s) > 0 && !v6ok {
 		// TODO
@@ -278,12 +291,12 @@ func getLocationFromInterfaces() (v4ok, v6ok bool) {
 	}
 
 	for _, ip := range globalIPv4 {
-		if SetInternetLocation(ip, SourceInterface) {
+		if _, ok := SetInternetLocation(ip, SourceInterface); ok {
 			v4ok = true
 		}
 	}
 	for _, ip := range globalIPv6 {
-		if SetInternetLocation(ip, SourceInterface) {
+		if _, ok := SetInternetLocation(ip, SourceInterface); ok {
 			v6ok = true
 		}
 	}
@@ -467,4 +480,23 @@ func recvICMP(currentHop int, icmpPacketsViaFirewall chan packet.Packet) (
 			return nil, nil, false
 		}
 	}
+}
+
+func getLocationFromTimezone(ipVersion packet.IPVersion) (ok bool) {
+	// Create base struct.
+	tzLoc := &DeviceLocation{
+		IPVersion:      ipVersion,
+		Location:       &geoip.Location{},
+		Source:         SourceTimezone,
+		SourceAccuracy: SourceTimezone.Accuracy(),
+	}
+
+	// Calculate longitude based on current timezone.
+	_, offsetSeconds := time.Now().Zone()
+	tzLoc.Location.Coordinates.AccuracyRadius = 1000
+	tzLoc.Location.Coordinates.Latitude = 48
+	tzLoc.Location.Coordinates.Longitude = float64(offsetSeconds) / 43200 * 180
+
+	addLocation(tzLoc)
+	return true
 }
