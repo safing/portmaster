@@ -196,6 +196,17 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 			return true
 		}
 
+		// Submit to ICMP listener.
+		submitted := netenv.SubmitPacketToICMPListener(pkt)
+		if submitted {
+			// If the packet was submitted to the listener, we must not do a
+			// permanent accept, because then we won't see any future packets of that
+			// connection and thus cannot continue to submit them.
+			log.Debugf("filter: fast-track tracing ICMP/v6: %s", pkt)
+			_ = pkt.Accept()
+			return true
+		}
+
 		// Handle echo request and replies regularly.
 		// Other ICMP packets are considered system business.
 		icmpLayers := pkt.Layers().LayerClass(layers.LayerClassIPControl)
@@ -214,20 +225,8 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 			}
 		}
 
-		// Premit all ICMP/v6 packets that are not echo requests or replies.
+		// Permit all ICMP/v6 packets that are not echo requests or replies.
 		log.Debugf("filter: fast-track accepting ICMP/v6: %s", pkt)
-
-		// Submit to ICMP listener.
-		submitted := netenv.SubmitPacketToICMPListener(pkt)
-
-		// If the packet was submitted to the listener, we must not do a
-		// permanent accept, because then we won't see any future packets of that
-		// connection and thus cannot continue to submit them.
-		if submitted {
-			_ = pkt.Accept()
-		} else {
-			_ = pkt.PermanentAccept()
-		}
 		return true
 
 	case packet.UDP, packet.TCP:

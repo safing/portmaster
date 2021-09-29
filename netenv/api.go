@@ -50,5 +50,18 @@ func registerAPIEndpoints() error {
 		return err
 	}
 
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path:      "network/location/traceroute",
+		Read:      api.PermitUser,
+		BelongsTo: module,
+		StructFunc: func(ar *api.Request) (i interface{}, err error) {
+			return getLocationFromTraceroute()
+		},
+		Name:        "Get Approximate Internet Location via Traceroute",
+		Description: "Returns an approximation of where the device is on the Internet using a the traceroute technique.",
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
