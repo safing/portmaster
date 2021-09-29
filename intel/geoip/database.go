@@ -50,7 +50,7 @@ func (ub *updateBroadcaster) NeedsUpdate() bool {
 	return ub.db == nil || ub.db.file.UpgradeAvailable()
 }
 
-// ReplaceDatabase replaces (or initialy sets) the mmdb database.
+// ReplaceDatabase replaces (or initially sets) the mmdb database.
 // It also notifies all waiters about the availability of the new
 // database.
 func (ub *updateBroadcaster) ReplaceDatabase(db *geoIPDB) {

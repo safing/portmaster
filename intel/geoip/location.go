@@ -11,7 +11,7 @@ const (
 	earthCircumferenceInKm float64 = 40100 // earth circumference in km
 )
 
-// Location holds information regarding the geographical and network location of an IP address
+// Location holds information regarding the geographical and network location of an IP address.
 type Location struct {
 	Continent struct {
 		Code string `maxminddb:"code"`
@@ -19,13 +19,15 @@ type Location struct {
 	Country struct {
 		ISOCode string `maxminddb:"iso_code"`
 	} `maxminddb:"country"`
-	Coordinates struct {
-		AccuracyRadius uint16  `maxminddb:"accuracy_radius"`
-		Latitude       float64 `maxminddb:"latitude"`
-		Longitude      float64 `maxminddb:"longitude"`
-	} `maxminddb:"location"`
-	AutonomousSystemNumber       uint   `maxminddb:"autonomous_system_number"`
-	AutonomousSystemOrganization string `maxminddb:"autonomous_system_organization"`
+	Coordinates                  Coordinates `maxminddb:"location"`
+	AutonomousSystemNumber       uint        `maxminddb:"autonomous_system_number"`
+	AutonomousSystemOrganization string      `maxminddb:"autonomous_system_organization"`
+}
+
+type Coordinates struct {
+	AccuracyRadius uint16  `maxminddb:"accuracy_radius"`
+	Latitude       float64 `maxminddb:"latitude"`
+	Longitude      float64 `maxminddb:"longitude"`
 }
 
 // About GeoLite2 City accuracy_radius:
@@ -106,7 +108,6 @@ func (l *Location) EstimateNetworkProximity(to *Location) (proximity int) {
 
 // PrimitiveNetworkProximity calculates the numerical distance between two IP addresses. Returns a proximity value between 0 (far away) and 100 (nearby).
 func PrimitiveNetworkProximity(from net.IP, to net.IP, ipVersion uint8) int {
-
 	var diff float64
 
 	switch ipVersion {
