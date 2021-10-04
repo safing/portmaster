@@ -100,15 +100,26 @@ func (dl *DeviceLocation) IsMoreAccurateThan(other *DeviceLocation) bool {
 	case dl.SourceAccuracy > other.SourceAccuracy:
 		// Higher source accuracy is better.
 		return true
-	case dl.Location.AutonomousSystemNumber != 0 && other.Location.AutonomousSystemNumber == 0:
+	case dl.IP != nil && other.IP == nil:
+		// Location based on IP is better than without.
+		return true
+	case dl.Location.AutonomousSystemNumber != 0 &&
+		other.Location.AutonomousSystemNumber == 0:
 		// Having an ASN is better than having none.
 		return true
-	case dl.Location.Continent.Code != "" && other.Location.Continent.Code == "":
+	case dl.Location.Continent.Code != "" &&
+		other.Location.Continent.Code == "":
 		// Having a Continent is better than having none.
 		return true
-	case dl.Location.Country.ISOCode != "" && other.Location.Country.ISOCode == "":
+	case dl.Location.Country.ISOCode != "" &&
+		other.Location.Country.ISOCode == "":
 		// Having a Country is better than having none.
 		return true
+	case (dl.Location.Coordinates.Latitude != 0 ||
+		dl.Location.Coordinates.Longitude != 0) &&
+		other.Location.Coordinates.Latitude == 0 &&
+		other.Location.Coordinates.Longitude == 0:
+		// Having Coordinates is better than having none.
 	case dl.Location.Coordinates.AccuracyRadius < other.Location.Coordinates.AccuracyRadius:
 		// Higher geo accuracy is better.
 		return true
@@ -169,7 +180,7 @@ type sortLocationsByAccuracy []*DeviceLocation
 
 func (a sortLocationsByAccuracy) Len() int           { return len(a) }
 func (a sortLocationsByAccuracy) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a sortLocationsByAccuracy) Less(i, j int) bool { return a[j].IsMoreAccurateThan(a[i]) }
+func (a sortLocationsByAccuracy) Less(i, j int) bool { return !a[j].IsMoreAccurateThan(a[i]) }
 
 func SetInternetLocation(ip net.IP, source DeviceLocationSource) (dl *DeviceLocation, ok bool) {
 	// Check if IP is global.
