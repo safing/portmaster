@@ -7,13 +7,12 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/safing/portmaster/updates/helper"
-
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/updates/helper"
 )
 
 const (
@@ -148,8 +147,7 @@ func start() error {
 	if !disableTaskSchedule {
 		updateTask.
 			Repeat(1 * time.Hour).
-			MaxDelay(30 * time.Minute).
-			Schedule(time.Now().Add(10 * time.Second))
+			MaxDelay(30 * time.Minute)
 	}
 
 	if updateASAP {
@@ -167,18 +165,19 @@ func start() error {
 }
 
 // TriggerUpdate queues the update task to execute ASAP.
-func TriggerUpdate() error {
+func TriggerUpdate(force bool) error {
 	switch {
 	case !module.OnlineSoon():
 		return fmt.Errorf("updates module is disabled")
 
+	case !force && !enableUpdates():
+		return fmt.Errorf("automatic updating is disabled")
+
 	case !module.Online():
 		updateASAP = true
 
-	case forceUpdate.IsNotSet() && !enableUpdates():
-		return fmt.Errorf("automatic updating is disabled")
-
 	default:
+		forceUpdate.Set()
 		updateTask.StartASAP()
 	}
 
@@ -200,16 +199,14 @@ func DisableUpdateSchedule() error {
 }
 
 func checkForUpdates(ctx context.Context) (err error) {
-	if !updatesCurrentlyEnabled && !forceUpdate.IsSet() {
-		log.Debugf("updates: automatic updates are disabled")
+	if !forceUpdate.SetToIf(true, false) && !enableUpdates() {
+		log.Warningf("updates: automatic updates are disabled")
 		return nil
 	}
-	forceUpdate.UnSet()
-
-	defer log.Debugf("updates: finished checking for updates")
 
 	defer func() {
 		if err == nil {
+			log.Infof("updates: successfully checked for updates")
 			module.Resolve(updateFailed)
 			notifications.Notify(&notifications.Notification{
 				EventID: updateSuccess,

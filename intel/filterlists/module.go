@@ -52,7 +52,7 @@ func prep() error {
 	}
 
 	if err := module.RegisterEventHook(
-		"netenv",
+		netenv.ModuleName,
 		netenv.OnlineStatusChangedEvent,
 		"Check for blocklist updates",
 		func(ctx context.Context, _ interface{}) error {

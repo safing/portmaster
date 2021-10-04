@@ -6,6 +6,7 @@ import (
 
 // Event Names
 const (
+	ModuleName               = "netenv"
 	NetworkChangedEvent      = "network changed"
 	OnlineStatusChangedEvent = "online status changed"
 )
@@ -15,7 +16,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("netenv", prep, start, nil)
+	module = modules.Register(ModuleName, prep, start, nil)
 	module.RegisterEvent(NetworkChangedEvent, true)
 	module.RegisterEvent(OnlineStatusChangedEvent, true)
 }

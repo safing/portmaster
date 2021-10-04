@@ -98,14 +98,14 @@ func registerConfig() error {
 }
 
 func initConfig() {
-	releaseChannel = config.GetAsString(helper.ReleaseChannelKey, helper.ReleaseChannelStable)
+	releaseChannel = config.Concurrent.GetAsString(helper.ReleaseChannelKey, helper.ReleaseChannelStable)
 	initialReleaseChannel = releaseChannel()
 	previousReleaseChannel = releaseChannel()
 
-	enableUpdates = config.GetAsBool(enableUpdatesKey, true)
+	enableUpdates = config.Concurrent.GetAsBool(enableUpdatesKey, true)
 	updatesCurrentlyEnabled = enableUpdates()
 
-	devMode = config.GetAsBool(cfgDevModeKey, false)
+	devMode = config.Concurrent.GetAsBool(cfgDevModeKey, false)
 	previousDevMode = devMode()
 }
 
@@ -150,7 +150,7 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 
 		if updatesCurrentlyEnabled {
 			module.Resolve("")
-			if err := TriggerUpdate(); err != nil {
+			if err := TriggerUpdate(false); err != nil {
 				log.Warningf("updates: failed to trigger update: %s", err)
 			}
 			log.Infof("updates: automatic updates are now enabled")
