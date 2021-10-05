@@ -10,12 +10,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/notifications"
+	"github.com/tevino/abool"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/network/netutils"
-
-	"github.com/tevino/abool"
+	"github.com/safing/portmaster/updates"
 )
 
 // OnlineStatus represent a state of connectivity to the Internet.
@@ -200,13 +200,18 @@ func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string)
 
 	// trigger event
 	if changed {
-		module.TriggerEvent(OnlineStatusChangedEvent, nil)
+		module.TriggerEvent(OnlineStatusChangedEvent, status)
 		if status == StatusPortal {
 			log.Infof(`netenv: setting online status to %s at "%s" (%s)`, status, portalURL, comment)
 		} else {
 			log.Infof("netenv: setting online status to %s (%s)", status, comment)
 		}
 		triggerNetworkChangeCheck()
+
+		// Trigger update check when coming (semi) online.
+		if Online() {
+			_ = updates.TriggerUpdate(false)
+		}
 	}
 }
 

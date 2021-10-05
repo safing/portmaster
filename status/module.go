@@ -27,7 +27,7 @@ func start() error {
 	triggerAutopilot()
 
 	err := module.RegisterEventHook(
-		"netenv",
+		netenv.ModuleName,
 		netenv.OnlineStatusChangedEvent,
 		"update online status in system status",
 		func(_ context.Context, _ interface{}) error {

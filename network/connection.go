@@ -615,8 +615,11 @@ func (conn *Connection) packetHandler() {
 		} else {
 			defaultFirewallHandler(conn, pkt)
 		}
+
 		// log verdict
 		log.Tracer(pkt.Ctx()).Infof("filter: connection %s %s: %s", conn, conn.Verdict.Verb(), conn.Reason.Msg)
+		// submit trace logs
+		log.Tracer(pkt.Ctx()).Submit()
 
 		// save does not touch any changing data
 		// must not be locked, will deadlock with cleaner functions
@@ -626,9 +629,6 @@ func (conn *Connection) packetHandler() {
 		}
 
 		conn.Unlock()
-
-		// submit trace logs
-		log.Tracer(pkt.Ctx()).Submit()
 	}
 }
 
