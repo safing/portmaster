@@ -120,6 +120,7 @@ func (dl *DeviceLocation) IsMoreAccurateThan(other *DeviceLocation) bool {
 		other.Location.Coordinates.Latitude == 0 &&
 		other.Location.Coordinates.Longitude == 0:
 		// Having Coordinates is better than having none.
+		return true
 	case dl.Location.Coordinates.AccuracyRadius < other.Location.Coordinates.AccuracyRadius:
 		// Higher geo accuracy is better.
 		return true
