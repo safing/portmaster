@@ -51,7 +51,7 @@ var (
 				return err
 			}
 
-			if err := configureLogging(); err != nil {
+			if err := ensureLoggingDir(); err != nil {
 				return err
 			}
 
@@ -171,12 +171,12 @@ func configureRegistry(mustLoadIndex bool) error {
 	return updateRegistryIndex(mustLoadIndex)
 }
 
-func configureLogging() error {
+func ensureLoggingDir() error {
 	// set up logs root
 	logsRoot = dataRoot.ChildDir("logs", 0777)
 	err := logsRoot.Ensure()
 	if err != nil {
-		return fmt.Errorf("failed to initialize logs root: %s", err)
+		return fmt.Errorf("failed to initialize logs root (%q): %s", logsRoot.Path, err)
 	}
 
 	// warn about CTRL-C on windows
