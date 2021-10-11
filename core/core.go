@@ -1,6 +1,7 @@
 package core
 
 import (
+	"flag"
 	"fmt"
 	"time"
 
@@ -27,6 +28,8 @@ var (
 
 	restarting = abool.New()
 	devMode    = config.Concurrent.GetAsBool(config.CfgDevModeKey, false)
+
+	disableShutdownEvent bool
 )
 
 func init() {
@@ -38,6 +41,13 @@ func init() {
 		module,
 		"config:core/",
 		nil,
+	)
+
+	flag.BoolVar(
+		&disableShutdownEvent,
+		"disable-shutdown-event",
+		false,
+		"disable shutdown event to keep app and notifier open when core shuts down",
 	)
 
 	modules.SetGlobalShutdownFn(shutdownHook)
@@ -75,18 +85,16 @@ func registerEvents() {
 }
 
 func shutdownHook() {
-	// Don't trigger event in Dev Mode.
-	if devMode() {
-		return
-	}
-
 	// Notify everyone of the restart/shutdown.
 	if restarting.IsNotSet() {
-		module.TriggerEvent(eventShutdown, nil)
+		// Only trigger shutdown event if not disabled.
+		if !disableShutdownEvent {
+			module.TriggerEvent(eventShutdown, nil)
+		}
 	} else {
 		module.TriggerEvent(eventRestart, nil)
 	}
 
 	// Wait a bit for the event to propagate.
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 }
