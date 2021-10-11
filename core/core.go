@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/safing/portbase/config"
+
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
 	"github.com/tevino/abool"
@@ -24,6 +26,7 @@ var (
 	module *modules.Module
 
 	restarting = abool.New()
+	devMode    = config.Concurrent.GetAsBool(config.CfgDevModeKey, false)
 )
 
 func init() {
@@ -72,6 +75,11 @@ func registerEvents() {
 }
 
 func shutdownHook() {
+	// Don't trigger event in Dev Mode.
+	if devMode() {
+		return
+	}
+
 	// Notify everyone of the restart/shutdown.
 	if restarting.IsNotSet() {
 		module.TriggerEvent(eventShutdown, nil)
