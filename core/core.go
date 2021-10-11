@@ -2,9 +2,13 @@ package core
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/safing/portbase/config"
 
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
+	"github.com/tevino/abool"
 
 	// module dependencies
 	_ "github.com/safing/portmaster/netenv"
@@ -13,8 +17,16 @@ import (
 	_ "github.com/safing/portmaster/updates"
 )
 
+const (
+	eventShutdown = "shutdown"
+	eventRestart  = "restart"
+)
+
 var (
 	module *modules.Module
+
+	restarting = abool.New()
+	devMode    = config.Concurrent.GetAsBool(config.CfgDevModeKey, false)
 )
 
 func init() {
@@ -27,6 +39,8 @@ func init() {
 		"config:core/",
 		nil,
 	)
+
+	modules.SetGlobalShutdownFn(shutdownHook)
 }
 
 func prep() error {
@@ -53,4 +67,26 @@ func start() error {
 	registerLogCleaner()
 
 	return nil
+}
+
+func registerEvents() {
+	module.RegisterEvent(eventShutdown, true)
+	module.RegisterEvent(eventRestart, true)
+}
+
+func shutdownHook() {
+	// Don't trigger event in Dev Mode.
+	if devMode() {
+		return
+	}
+
+	// Notify everyone of the restart/shutdown.
+	if restarting.IsNotSet() {
+		module.TriggerEvent(eventShutdown, nil)
+	} else {
+		module.TriggerEvent(eventRestart, nil)
+	}
+
+	// Wait a bit for the event to propagate.
+	time.Sleep(1 * time.Second)
 }

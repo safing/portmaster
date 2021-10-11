@@ -1,9 +1,7 @@
 package core
 
 import (
-	"context"
 	"net/http"
-	"time"
 
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/log"
@@ -12,16 +10,6 @@ import (
 	"github.com/safing/portmaster/status"
 	"github.com/safing/portmaster/updates"
 )
-
-const (
-	eventShutdown = "shutdown"
-	eventRestart  = "restart"
-)
-
-func registerEvents() {
-	module.RegisterEvent(eventShutdown, true)
-	module.RegisterEvent(eventRestart, true)
-}
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
@@ -70,16 +58,8 @@ func registerAPIEndpoints() error {
 func shutdown(_ *api.Request) (msg string, err error) {
 	log.Warning("core: user requested shutdown via action")
 
-	module.StartWorker("shutdown", func(context.Context) error {
-		// Notify everyone of the shutdown.
-		module.TriggerEvent(eventShutdown, nil)
-		// Wait a bit for the event to propagate.
-		time.Sleep(1 * time.Second)
-
-		// Do not run in worker, as this would block itself here.
-		go modules.Shutdown() //nolint:errcheck
-		return nil
-	})
+	// Do not run in worker, as this would block itself here.
+	go modules.Shutdown() //nolint:errcheck
 
 	return "shutdown initiated", nil
 }
@@ -88,15 +68,10 @@ func shutdown(_ *api.Request) (msg string, err error) {
 func restart(_ *api.Request) (msg string, err error) {
 	log.Info("core: user requested restart via action")
 
-	module.StartWorker("restart", func(context.Context) error {
-		// Notify everyone of the shutdown.
-		module.TriggerEvent(eventRestart, nil)
-		// Wait a bit for the event to propagate.
-		time.Sleep(1 * time.Second)
-
-		updates.RestartNow()
-		return nil
-	})
+	// Trigger restart event instead of shutdown event.
+	restarting.Set()
+	// Let the updates module handle restarting.
+	updates.RestartNow()
 
 	return "restart initiated", nil
 }
