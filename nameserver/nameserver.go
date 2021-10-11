@@ -151,7 +151,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		// that will happen later anyway.
 		case network.VerdictUndecided, network.VerdictAccept:
 			// Save the request as open, as we don't know if there will be a connection or not.
-			network.SaveOpenDNSRequest(conn, uint16(q.QType))
+			network.SaveOpenDNSRequest(q, rrCache, conn)
 			firewall.UpdateIPsAndCNAMEs(q, rrCache, conn)
 
 		default:

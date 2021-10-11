@@ -11,6 +11,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/nameserver/nsutil"
 	"github.com/safing/portmaster/process"
+	"github.com/safing/portmaster/resolver"
 )
 
 var (
@@ -49,28 +50,36 @@ func removeOpenDNSRequest(pid int, fqdn string) {
 }
 
 // SaveOpenDNSRequest saves a dns request connection that was allowed to proceed.
-func SaveOpenDNSRequest(conn *Connection, qType uint16) {
-	openDNSRequestsLock.Lock()
-	defer openDNSRequestsLock.Unlock()
-
-	// Only save open A and AAAA requests.
-	switch qType {
-	case dns.TypeA, dns.TypeAAAA:
-	default:
+func SaveOpenDNSRequest(q *resolver.Query, rrCache *resolver.RRCache, conn *Connection) {
+	// Only save requests that actually went out to reduce clutter.
+	if rrCache.ServedFromCache {
 		return
 	}
 
-	key := getDNSRequestCacheKey(conn.process.Pid, conn.Entity.Domain, qType)
+	// Try to "merge" A and AAAA requests into the resulting connection.
+	// Save others immediately.
+	switch uint16(q.QType) {
+	case dns.TypeA, dns.TypeAAAA:
+	default:
+		conn.Save()
+		return
+	}
+
+	openDNSRequestsLock.Lock()
+	defer openDNSRequestsLock.Unlock()
+
+	// Check if there is an existing open DNS requests for the same domain/type.
+	// If so, save it now and replace it with the new request.
+	key := getDNSRequestCacheKey(conn.process.Pid, conn.Entity.Domain, uint16(q.QType))
 	if existingConn, ok := openDNSRequests[key]; ok {
 		// End previous request and save it.
 		existingConn.Lock()
 		existingConn.Ended = conn.Started
 		existingConn.Unlock()
 		existingConn.Save()
-
-		return
 	}
 
+	// Save to open dns requests.
 	openDNSRequests[key] = conn
 }
 
