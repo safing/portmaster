@@ -54,6 +54,7 @@ func MandatoryUpdates() (identifiers []string) {
 			PlatformIdentifier("core/portmaster-core.exe"),
 			PlatformIdentifier("kext/portmaster-kext.dll"),
 			PlatformIdentifier("kext/portmaster-kext.sys"),
+			PlatformIdentifier("kext/portmaster-kext.pdb"),
 			PlatformIdentifier("start/portmaster-start.exe"),
 			PlatformIdentifier("notifier/portmaster-notifier.exe"),
 			PlatformIdentifier("notifier/portmaster-snoretoast.exe"),
