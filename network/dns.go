@@ -11,6 +11,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/nameserver/nsutil"
 	"github.com/safing/portmaster/process"
+	"github.com/safing/portmaster/resolver"
 )
 
 var (
@@ -29,43 +30,56 @@ const (
 	openDNSRequestLimit = 3 * time.Second
 )
 
-func getDNSRequestCacheKey(pid int, fqdn string) string {
-	return strconv.Itoa(pid) + "/" + fqdn
+func getDNSRequestCacheKey(pid int, fqdn string, qType uint16) string {
+	return strconv.Itoa(pid) + "/" + fqdn + dns.Type(qType).String()
 }
 
 func removeOpenDNSRequest(pid int, fqdn string) {
 	openDNSRequestsLock.Lock()
 	defer openDNSRequestsLock.Unlock()
 
-	key := getDNSRequestCacheKey(pid, fqdn)
-	_, ok := openDNSRequests[key]
-	if ok {
-		delete(openDNSRequests, key)
-		return
-	}
+	// Delete PID-specific requests.
+	delete(openDNSRequests, getDNSRequestCacheKey(pid, fqdn, dns.TypeA))
+	delete(openDNSRequests, getDNSRequestCacheKey(pid, fqdn, dns.TypeAAAA))
 
+	// If process is known, also check for non-attributed requests.
 	if pid != process.UnidentifiedProcessID {
-		// check if there is an open dns request from an unidentified process
-		delete(openDNSRequests, unidentifiedProcessScopePrefix+fqdn)
+		delete(openDNSRequests, getDNSRequestCacheKey(process.UnidentifiedProcessID, fqdn, dns.TypeA))
+		delete(openDNSRequests, getDNSRequestCacheKey(process.UnidentifiedProcessID, fqdn, dns.TypeAAAA))
 	}
 }
 
 // SaveOpenDNSRequest saves a dns request connection that was allowed to proceed.
-func SaveOpenDNSRequest(conn *Connection) {
+func SaveOpenDNSRequest(q *resolver.Query, rrCache *resolver.RRCache, conn *Connection) {
+	// Only save requests that actually went out to reduce clutter.
+	if rrCache.ServedFromCache {
+		return
+	}
+
+	// Try to "merge" A and AAAA requests into the resulting connection.
+	// Save others immediately.
+	switch uint16(q.QType) {
+	case dns.TypeA, dns.TypeAAAA:
+	default:
+		conn.Save()
+		return
+	}
+
 	openDNSRequestsLock.Lock()
 	defer openDNSRequestsLock.Unlock()
 
-	key := getDNSRequestCacheKey(conn.process.Pid, conn.Entity.Domain)
+	// Check if there is an existing open DNS requests for the same domain/type.
+	// If so, save it now and replace it with the new request.
+	key := getDNSRequestCacheKey(conn.process.Pid, conn.Entity.Domain, uint16(q.QType))
 	if existingConn, ok := openDNSRequests[key]; ok {
 		// End previous request and save it.
 		existingConn.Lock()
 		existingConn.Ended = conn.Started
 		existingConn.Unlock()
 		existingConn.Save()
-
-		return
 	}
 
+	// Save to open dns requests.
 	openDNSRequests[key] = conn
 }
 
