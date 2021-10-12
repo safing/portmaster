@@ -19,8 +19,8 @@ require (
 	github.com/mdlayher/socket v0.0.0-20210624160740-9dbe287ded84 // indirect
 	github.com/miekg/dns v1.1.43
 	github.com/oschwald/maxminddb-golang v1.8.0
-	github.com/safing/portbase v0.12.1
-	github.com/safing/spn v0.3.3
+	github.com/safing/portbase v0.12.2
+	github.com/safing/spn v0.3.4
 	github.com/shirou/gopsutil v3.21.9+incompatible
 	github.com/spf13/cobra v1.2.1
 	github.com/stretchr/testify v1.7.0
