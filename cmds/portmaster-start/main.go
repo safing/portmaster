@@ -81,7 +81,7 @@ func main() {
 	cobra.OnInitialize(initCobra)
 
 	// set meta info
-	info.Set("Portmaster Start", "0.5.7", "AGPLv3", false)
+	info.Set("Portmaster Start", "0.7.0", "AGPLv3", false)
 
 	// catch interrupt for clean shutdown
 	signalCh := make(chan os.Signal, 2)
