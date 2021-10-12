@@ -395,3 +395,18 @@ func checkSearchScope(searchDomain string) (ok bool) {
 
 	return true
 }
+
+// IsResolverAddress returns whether the given ip and port match a configured resolver.
+func IsResolverAddress(ip net.IP, port uint16) bool {
+	resolversLock.RLock()
+	defer resolversLock.RUnlock()
+
+	// Check if the given IP and port matches a resolver.
+	for _, r := range globalResolvers {
+		if port == r.Info.Port && r.Info.IP.Equal(ip) {
+			return true
+		}
+	}
+
+	return false
+}

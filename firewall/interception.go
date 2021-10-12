@@ -328,6 +328,8 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true
 
+		// Set tunnel options.
+		setCustomTunnelOptionsForPortmaster(conn)
 
 	case pkt.IsOutbound() &&
 		pkt.Info().DstPort == 53 &&
