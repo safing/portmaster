@@ -322,39 +322,34 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	log.Tracer(pkt.Ctx()).Trace("filter: handing over to connection-based handler")
 
-	// Check for pre-authenticated port.
-	if !conn.Inbound && localPortIsPreAuthenticated(conn.Entity.Protocol, conn.LocalPort) {
+	switch {
+	case !conn.Inbound && localPortIsPreAuthenticated(conn.Entity.Protocol, conn.LocalPort):
 		// Approve connection.
 		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true
-		// Finalize connection.
-		conn.StopFirewallHandler()
-		issueVerdict(conn, pkt, 0, true)
-		return
-	}
 
-	// Redirect rogue dns requests to the Portmaster.
-	if pkt.IsOutbound() &&
+		// Set tunnel options.
+		setCustomTunnelOptionsForPortmaster(conn)
+
+	case pkt.IsOutbound() &&
 		pkt.Info().DstPort == 53 &&
 		conn.Process().Pid != ownPID &&
 		nameserverIPMatcherReady.IsSet() &&
-		!nameserverIPMatcher(pkt.Info().Dst) {
+		!nameserverIPMatcher(pkt.Info().Dst):
+		// Reroute rogue dns queries back to Portmaster.
 		conn.Verdict = network.VerdictRerouteToNameserver
 		conn.Reason.Msg = "redirecting rogue dns query"
 		conn.Internal = true
+		// End directly, as no other processing is necessary.
 		conn.StopFirewallHandler()
 		issueVerdict(conn, pkt, 0, true)
 		return
-	}
 
-	// TODO: enable inspecting again
-	conn.Inspecting = false
-
-	// Filter, if enabled.
-	if filterEnabled() {
+	case filterEnabled():
 		log.Tracer(pkt.Ctx()).Trace("filter: starting decision process")
 		DecideOnConnection(pkt.Ctx(), conn, pkt)
-	} else {
+
+	default:
 		conn.Accept("privacy filter disabled", noReasonOptionKey)
 	}
 
@@ -366,6 +361,8 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 
 		// Exclude requests of the SPN itself.
 		if !captain.IsExcepted(conn.Entity.IP) {
+			conn.Tunneled = true
+
 			// Check if client is ready.
 			if captain.ClientReady() {
 				// Queue request in sluice.
@@ -384,6 +381,9 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 			}
 		}
 	}
+
+	// TODO: enable inspecting again
+	conn.Inspecting = false
 
 	switch {
 	case conn.Inspecting:

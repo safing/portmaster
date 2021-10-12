@@ -7,15 +7,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portmaster/netenv"
-
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/intel"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/resolver"
+	"github.com/safing/spn/navigator"
 )
 
 // FirewallHandler defines the function signature for a firewall
@@ -137,6 +137,8 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	Tunneled bool
 	// Encrypted is currently unused and MUST be ignored.
 	Encrypted bool
+	// TunnelOpts holds options for tunneling the connection.
+	TunnelOpts *navigator.Options
 	// ProcessContext holds additional information about the process
 	// that iniated the connection. It is set once when the connection
 	// object is created and is considered immutable afterwards.
