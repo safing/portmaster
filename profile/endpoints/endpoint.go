@@ -154,6 +154,9 @@ func (ep *EndpointBase) parsePPP(typedEp Endpoint, fields []string) (Endpoint, e
 						return nil, invalidDefinitionError(fields, "port number parsing error")
 					}
 				}
+				if n16 == 0 {
+					return nil, invalidDefinitionError(fields, "port number cannot be 0")
+				}
 				ep.StartPort = n16
 				// parse end port
 				if len(portSplitted) > 1 {
@@ -166,6 +169,9 @@ func (ep *EndpointBase) parsePPP(typedEp Endpoint, fields []string) (Endpoint, e
 							return nil, invalidDefinitionError(fields, "port number parsing error")
 						}
 					}
+				}
+				if n16 == 0 {
+					return nil, invalidDefinitionError(fields, "port number cannot be 0")
 				}
 				ep.EndPort = n16
 			}
