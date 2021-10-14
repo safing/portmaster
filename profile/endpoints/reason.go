@@ -26,7 +26,7 @@ func (r *reason) String() string {
 		prefix = "allowed by rule: "
 	}
 
-	return prefix + r.description + " " + r.Value
+	return prefix + r.description + " " + r.Filter[2:]
 }
 
 func (r *reason) Context() interface{} {

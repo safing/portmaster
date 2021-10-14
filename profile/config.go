@@ -182,11 +182,23 @@ func registerConfiguration() error {
 - Match anything: "*"
 
 Additionally, you may supply a protocol and port just behind that using numbers ("6/80") or names ("TCP/HTTP").  
-In this case the rule is only matched if the protocol and port also match.  
-Example: "192.168.0.1 TCP/HTTP"
+Port ranges are defined by using a hyphen ("TCP/1-1024"). Omit the port to match any.  
+Use a "*" for matching any protocol. If matching ports with any protocol, protocols without ports will not match.  
+Rules with protocol and port definitions only match if the protocol and port also match.  
+Ports are always compared to the destination port, thus, the local listening port for incoming connections.  
+Examples: "192.168.0.1 TCP/HTTP", "LAN UDP/50000-55000", "example.com */HTTPS", "1.1.1.1 ICMP"
 
 Important: DNS Requests are only matched against domain and filter list rules, all others require an IP address and are checked only with the following IP connection.
 `, `"`, "`")
+
+	rulesValidationRegex := strings.Join([]string{
+		`^(\+|\-) `,                   // Rule verdict.
+		`[A-z0-9\.:\-*/]+`,            // Entity matching.
+		`( `,                          // Start of optional matching.
+		`[A-z0-9*]+`,                  // Protocol matching.
+		`(/[A-z0-9]+(\-[A-z0-9]+)?)?`, // Port and port range matching.
+		`)?$`,                         // End of optional matching.
+	}, "")
 
 	// Endpoint Filter List
 	err = config.Register(&config.Option{
@@ -202,7 +214,7 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 			config.DisplayOrderAnnotation: cfgOptionEndpointsOrder,
 			config.CategoryAnnotation:     "Rules",
 		},
-		ValidationRegex: `^(\+|\-) [A-z0-9\.:\-*/]+( [A-z0-9/]+)?$`,
+		ValidationRegex: rulesValidationRegex,
 	})
 	if err != nil {
 		return err
@@ -242,7 +254,7 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 				},
 			},
 		},
-		ValidationRegex: `^(\+|\-) [A-z0-9\.:\-*/]+( [A-z0-9/]+)?$`,
+		ValidationRegex: rulesValidationRegex,
 	})
 	if err != nil {
 		return err
