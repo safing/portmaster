@@ -264,8 +264,9 @@ func UpdateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 		// Create new record for this IP.
 		record := resolver.ResolvedDomain{
 			Domain:   q.FQDN,
-			Expires:  rrCache.Expires,
+			RRCache:  rrCache,
 			Resolver: rrCache.Resolver,
+			Expires:  rrCache.Expires,
 		}
 
 		// Resolve all CNAMEs in the correct order and add the to the record.

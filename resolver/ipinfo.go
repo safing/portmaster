@@ -44,6 +44,9 @@ type ResolvedDomain struct {
 	// information.
 	Resolver *ResolverInfo
 
+	// RRCache holds the DNS response that was received for this domain.
+	RRCache *RRCache
+
 	// Expires holds the timestamp when this entry expires.
 	// This does not mean that the entry may not be used anymore afterwards,
 	// but that this is used to calcuate the TTL of the database record.
