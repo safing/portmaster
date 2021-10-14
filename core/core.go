@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portbase/config"
-
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
 	"github.com/tevino/abool"
@@ -26,9 +24,7 @@ const (
 var (
 	module *modules.Module
 
-	restarting = abool.New()
-	devMode    = config.Concurrent.GetAsBool(config.CfgDevModeKey, false)
-
+	restarting           = abool.New()
 	disableShutdownEvent bool
 )
 

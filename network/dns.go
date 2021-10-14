@@ -52,7 +52,7 @@ func removeOpenDNSRequest(pid int, fqdn string) {
 // SaveOpenDNSRequest saves a dns request connection that was allowed to proceed.
 func SaveOpenDNSRequest(q *resolver.Query, rrCache *resolver.RRCache, conn *Connection) {
 	// Only save requests that actually went out to reduce clutter.
-	if rrCache.ServedFromCache {
+	if rrCache == nil || rrCache.ServedFromCache {
 		return
 	}
 

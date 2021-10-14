@@ -191,12 +191,7 @@ func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string)
 	}
 
 	// captive portal
-	// delete if offline, update only if there is a new value
-	if status == StatusOffline || portalURL != nil {
-		setCaptivePortal(portalURL)
-	} else if status == StatusOnline {
-		cleanUpPortalNotification()
-	}
+	setCaptivePortal(portalURL)
 
 	// trigger event
 	if changed {
@@ -222,7 +217,10 @@ func setCaptivePortal(portalURL *url.URL) {
 	// delete
 	if portalURL == nil {
 		captivePortal = &CaptivePortal{}
-		cleanUpPortalNotification()
+		if captivePortalNotification != nil {
+			captivePortalNotification.Delete()
+			captivePortalNotification = nil
+		}
 		return
 	}
 
@@ -244,7 +242,6 @@ func setCaptivePortal(portalURL *url.URL) {
 	}
 
 	// notify
-	cleanUpPortalNotification()
 	captivePortalNotification = notifications.Notify(&notifications.Notification{
 		EventID:      "netenv:captive-portal",
 		Type:         notifications.Info,
@@ -264,13 +261,6 @@ func setCaptivePortal(portalURL *url.URL) {
 			},
 		},
 	})
-}
-
-func cleanUpPortalNotification() {
-	if captivePortalNotification != nil {
-		captivePortalNotification.Delete()
-		captivePortalNotification = nil
-	}
 }
 
 // GetCaptivePortal returns the current captive portal. The returned struct must not be edited.
