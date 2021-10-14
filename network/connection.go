@@ -143,6 +143,12 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// that iniated the connection. It is set once when the connection
 	// object is created and is considered immutable afterwards.
 	ProcessContext ProcessContext
+	// DNSContext holds additional information about the DNS request that was
+	// probably used to resolve the IP of this connection.
+	DNSContext *resolver.RRCache
+	// TunnelContext holds additional information about the tunnel that this
+	// connection is using.
+	TunnelContext interface{}
 	// Internal is set to true if the connection is attributed as an
 	// Portmaster internal connection. Internal may be set at different
 	// points and access to it must be guarded by the connection lock.
@@ -327,6 +333,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 
 	var scope string
 	var resolverInfo *resolver.ResolverInfo
+	var dnsContext *resolver.RRCache
 
 	if inbound {
 
@@ -358,6 +365,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 				scope = lastResolvedDomain.Domain
 				entity.Domain = lastResolvedDomain.Domain
 				entity.CNAME = lastResolvedDomain.CNAMEs
+				dnsContext = lastResolvedDomain.RRCache
 				resolverInfo = lastResolvedDomain.Resolver
 				removeOpenDNSRequest(proc.Pid, lastResolvedDomain.Domain)
 			}
@@ -401,6 +409,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		IPProtocol:     pkt.Info().Protocol,
 		LocalPort:      pkt.Info().LocalPort(),
 		ProcessContext: getProcessContext(pkt.Ctx(), proc),
+		DNSContext:     dnsContext,
 		process:        proc,
 		// remote endpoint
 		Entity: entity,

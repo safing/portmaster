@@ -24,13 +24,13 @@ type RRCache struct {
 	RCode    int
 
 	// Response Content
-	Answer  []dns.RR
-	Ns      []dns.RR
-	Extra   []dns.RR
+	Answer  []dns.RR `json:"-"`
+	Ns      []dns.RR `json:"-"`
+	Extra   []dns.RR `json:"-"`
 	Expires int64
 
 	// Resolver Information
-	Resolver *ResolverInfo
+	Resolver *ResolverInfo `json:"-"`
 
 	// Metadata about the request and handling
 	ServedFromCache bool
