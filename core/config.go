@@ -8,7 +8,7 @@ import (
 
 // Configuration Keys.
 var (
-	// CfgDevModeKey is originally defined in portbase/config.
+	// CfgDevModeKey was previously defined here.
 	CfgDevModeKey = config.CfgDevModeKey
 
 	CfgNetworkServiceKey      = "core/networkService"
