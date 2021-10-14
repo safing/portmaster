@@ -150,6 +150,12 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		// For undecided or accepted connections we don't save them yet, because
 		// that will happen later anyway.
 		case network.VerdictUndecided, network.VerdictAccept:
+			// Check if we have a response.
+			if rrCache == nil {
+				conn.Failed("internal error: no reply", "")
+				return
+			}
+
 			// Save the request as open, as we don't know if there will be a connection or not.
 			network.SaveOpenDNSRequest(q, rrCache, conn)
 			firewall.UpdateIPsAndCNAMEs(q, rrCache, conn)
@@ -191,6 +197,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	rrCache, err = resolver.Resolve(ctx, q)
 	// Handle error.
 	if err != nil {
+		conn.Failed(fmt.Sprintf("query failed: %s", err), "")
 		switch {
 		case errors.Is(err, resolver.ErrNotFound):
 			tracer.Tracef("nameserver: %s", err)
