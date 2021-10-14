@@ -122,6 +122,15 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		case <-module.Stopping():
 			return nil, ErrShuttingDown
 		}
+	} else {
+		// If there is no resolver, check if we are shutting down before dialing!
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-module.Stopping():
+			return nil, ErrShuttingDown
+		default:
+		}
 	}
 
 	// Create a new if no active one is available.
