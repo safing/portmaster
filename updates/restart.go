@@ -51,7 +51,7 @@ func RestartNow() {
 
 func automaticRestart(_ context.Context, _ *modules.Task) error {
 	if restartTriggered.SetToIf(false, true) {
-		log.Info("updates: initiating automatic restart")
+		log.Info("updates: initiating (automatic) restart")
 		modules.SetExitStatusCode(RestartExitCode)
 		// Do not use a worker, as this would block itself here.
 		go modules.Shutdown() //nolint:errcheck
