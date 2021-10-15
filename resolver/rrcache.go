@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"time"
@@ -42,6 +43,25 @@ type RRCache struct {
 	// Modified holds when this entry was last changed, ie. saved to database.
 	// This field is only populated when the entry comes from the cache.
 	Modified int64
+}
+
+func (rrCache *RRCache) MarshalJSON() ([]byte, error) {
+	var record = struct {
+		RRCache
+
+		Question string
+		RCode    string
+		Modified time.Time
+		Expires  time.Time
+	}{
+		RRCache:  *rrCache,
+		Question: rrCache.Question.String(),
+		RCode:    dns.RcodeToString[rrCache.RCode],
+		Modified: time.Unix(rrCache.Modified, 0),
+		Expires:  time.Unix(rrCache.Expires, 0),
+	}
+
+	return json.Marshal(record)
 }
 
 // ID returns the ID of the RRCache consisting of the domain and question type.
