@@ -39,6 +39,9 @@ var (
 	DNSTestDomain     = "one.one.one.one."
 	DNSTestExpectedIP = net.IPv4(1, 1, 1, 1)
 
+	DNSFallbackTestDomain     = "dns-check.safing.io."
+	DNSFallbackTestExpectedIP = net.IPv4(0, 65, 67, 75) // Ascii: \0ACK
+
 	// SpecialCaptivePortalDomain is the domain name used to point to the detected captive portal IP
 	// or the captive portal test IP. The default value should be overridden by the resolver package,
 	// which defines the custom internal domain name to use.
@@ -47,7 +50,8 @@ var (
 	// ConnectivityDomains holds all connectivity domains. This slice must not be modified.
 	ConnectivityDomains = []string{
 		SpecialCaptivePortalDomain,
-		"one.one.one.one.", // Internal DNS Check
+		DNSTestDomain,         // Internal DNS Check
+		DNSFallbackTestDomain, // Internal DNS Check
 
 		// Windows
 		"dns.msftncsi.com.", // DNS Check
@@ -438,15 +442,27 @@ func checkOnlineStatus(ctx context.Context) {
 
 	// 3) resolve a query
 
-	// make DNS request
+	// Check with primary dns check domain.
 	ips, err := net.LookupIP(DNSTestDomain)
+	if err == nil {
+		// check for expected response
+		for _, ip := range ips {
+			if ip.Equal(DNSTestExpectedIP) {
+				updateOnlineStatus(StatusOnline, nil, "all checks passed")
+				return
+			}
+		}
+	}
+
+	// If that did not work, check with fallback dns check domain.
+	ips, err = net.LookupIP(DNSFallbackTestDomain)
 	if err != nil {
-		updateOnlineStatus(StatusSemiOnline, nil, "dns check query failed")
+		updateOnlineStatus(StatusLimited, nil, "dns fallback check query failed")
 		return
 	}
 	// check for expected response
 	for _, ip := range ips {
-		if ip.Equal(DNSTestExpectedIP) {
+		if ip.Equal(DNSFallbackTestExpectedIP) {
 			updateOnlineStatus(StatusOnline, nil, "all checks passed")
 			return
 		}
