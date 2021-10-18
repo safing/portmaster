@@ -19,8 +19,8 @@ require (
 	github.com/mdlayher/socket v0.0.0-20211007213009-516dcbdf0267 // indirect
 	github.com/miekg/dns v1.1.43
 	github.com/oschwald/maxminddb-golang v1.8.0
-	github.com/safing/portbase v0.12.2
-	github.com/safing/spn v0.3.4
+	github.com/safing/portbase v0.12.3
+	github.com/safing/spn v0.3.5
 	github.com/shirou/gopsutil v3.21.9+incompatible
 	github.com/spf13/cobra v1.2.1
 	github.com/stretchr/testify v1.7.0
@@ -33,7 +33,7 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	go.etcd.io/bbolt v1.3.6 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
-	golang.org/x/net v0.0.0-20211013171255-e13a2654a71e
+	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20211013075003-97ac67df715c
+	golang.org/x/sys v0.0.0-20211015200801-69063c4bb744
 )
