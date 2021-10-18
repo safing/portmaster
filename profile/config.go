@@ -521,7 +521,7 @@ Current Features:
 Please note that if you are using the system resolver, bypass attempts might be additionally blocked there too.`,
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
-		ReleaseLevel:   config.ReleaseLevelBeta,
+		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   status.SecurityLevelsAll,
 		PossibleValues: status.SecurityLevelValues,
 		Annotations: config.Annotations{
