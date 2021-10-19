@@ -44,8 +44,8 @@ type ResolvedDomain struct {
 	// information.
 	Resolver *ResolverInfo
 
-	// RRCache holds the DNS response that was received for this domain.
-	RRCache *RRCache
+	// DNSRequestContext holds the DNS request context.
+	DNSRequestContext *DNSRequestContext
 
 	// Expires holds the timestamp when this entry expires.
 	// This does not mean that the entry may not be used anymore afterwards,

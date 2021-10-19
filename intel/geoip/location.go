@@ -30,57 +30,55 @@ type Coordinates struct {
 	Longitude      float64 `maxminddb:"longitude"`
 }
 
-// About GeoLite2 City accuracy_radius:
-//
-// range: 1-1000
-// seen values (from memory): 1,5,10,20,50,100,200,500,1000
-// default seems to be 100
-//
-// examples:
-// 1.1.1/24 has 1000: Anycast
-// 8.8.0/19 has 1000: Anycast
-// 8.8.52/22 has 1: City of Westfield
-//
-// Conclusion:
-// - Ignore location data completely if accuracy_radius > 500
-
 // EstimateNetworkProximity aims to calculate the distance between two network locations. Returns a proximity value between 0 (far away) and 100 (nearby).
 func (l *Location) EstimateNetworkProximity(to *Location) (proximity int) {
-	// Distance Value:
-	// 0: other side of the Internet
-	// 100: same network/datacenter
+	/*
+		Distance Value
 
-	// Weighting:
-	// continent match: 25
-	// country match: 20
-	// AS owner match: 25
-	// AS network match: 20
-	// coordinate distance: 0-10
+		- 0: Other side of the Internet.
+		- 100: Very near, up to same network / datacenter.
 
-	// continent match: 25
-	if l.Continent.Code == to.Continent.Code {
-		proximity += 25
-		// country match: 20
-		if l.Country.ISOCode == to.Country.ISOCode {
-			proximity += 20
+		Weighting Goal
+
+		- Exposure to different networks shall be limited as much as possible.
+		- A single network should not see a connection over a large distance.
+		- Latency should be low.
+
+		Weighting Intentions
+
+		- Being on the same continent is better than being in the same AS.
+		- Being in the same country is better than having low coordinate distance.
+		- Coordinate distance is only a tie breaker, as accuracy varies heavily.
+		- Same AS with lower coordinate distance beats being on the same continent.
+
+		Weighting Configuration
+
+		- Continent match: 30
+		- Country match: 25
+		- ASOrg match: 20
+		- ASN match: 15
+		- Coordinate distance: 0-10
+	*/
+
+	if l.Continent.Code != "" &&
+		l.Continent.Code == to.Continent.Code {
+		proximity += 30
+		if l.Country.ISOCode != "" &&
+			l.Country.ISOCode == to.Country.ISOCode {
+			proximity += 25
 		}
 	}
 
-	// AS owner match: 25
-	if l.AutonomousSystemOrganization == to.AutonomousSystemOrganization {
-		proximity += 25
-		// AS network match: 20
-		if l.AutonomousSystemNumber == to.AutonomousSystemNumber {
-			proximity += 20
+	if l.AutonomousSystemOrganization != "" &&
+		l.AutonomousSystemOrganization == to.AutonomousSystemOrganization {
+		proximity += 20
+		if l.AutonomousSystemNumber != 0 &&
+			l.AutonomousSystemNumber == to.AutonomousSystemNumber {
+			proximity += 15
 		}
 	}
 
-	// coordinate distance: 0-10
-	fromCoords := haversine.Coord{Lat: l.Coordinates.Latitude, Lon: l.Coordinates.Longitude}
-	toCoords := haversine.Coord{Lat: to.Coordinates.Latitude, Lon: to.Coordinates.Longitude}
-	_, km := haversine.Distance(fromCoords, toCoords)
-
-	// adjust accuracy value
+	// Check coordinates and adjust accuracy value.
 	accuracy := l.Coordinates.AccuracyRadius
 	switch {
 	case l.Coordinates.Latitude == 0 && l.Coordinates.Longitude == 0:
@@ -93,12 +91,37 @@ func (l *Location) EstimateNetworkProximity(to *Location) (proximity int) {
 		accuracy = to.Coordinates.AccuracyRadius
 	}
 
-	if km <= 10 && accuracy <= 100 {
+	/*
+		About the Accuracy Radius
+
+		- Range: 1-1000
+		- Seen values (estimation): 1,5,10,20,50,100,200,500,1000
+		- The default seems to be 100.
+
+		Cxamples
+
+		- 1.1.1/24 has 1000: Anycast
+		- 8.8.0/19 has 1000: Anycast
+		- 8.8.52/22 has 1: City of Westfield
+
+		Conclusion
+
+		- Ignore or penalize high accuracy radius.
+	*/
+
+	// Calculate coordinate distance in kilometers.
+	fromCoords := haversine.Coord{Lat: l.Coordinates.Latitude, Lon: l.Coordinates.Longitude}
+	toCoords := haversine.Coord{Lat: to.Coordinates.Latitude, Lon: to.Coordinates.Longitude}
+	_, km := haversine.Distance(fromCoords, toCoords)
+
+	if km <= 50 && accuracy <= 100 {
+		// Give a flat out ten for highly accurate coordinates within 50km.
 		proximity += 10
 	} else {
+		// Else, take a percentage.
 		distanceInPercent := (earthCircumferenceInKm - km) * 100 / earthCircumferenceInKm
 
-		// apply penalty for locations with low accuracy (targeting accuracy radius >100)
+		// Apply penalty for locations with low accuracy (targeting accuracy radius >100).
 		accuracyModifier := 1 - float64(accuracy)/2000
 		proximity += int(distanceInPercent * 0.10 * accuracyModifier)
 	}
