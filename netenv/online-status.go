@@ -42,6 +42,8 @@ var (
 	DNSFallbackTestDomain     = "dns-check.safing.io."
 	DNSFallbackTestExpectedIP = net.IPv4(0, 65, 67, 75) // Ascii: \0ACK
 
+	ConnectedToSPN = abool.New()
+
 	// SpecialCaptivePortalDomain is the domain name used to point to the detected captive portal IP
 	// or the captive portal test IP. The default value should be overridden by the resolver package,
 	// which defines the custom internal domain name to use.
@@ -349,6 +351,12 @@ func checkOnlineStatus(ctx context.Context) {
 		setConnectivity(StatusUnknown)
 		return StatusUnknown
 	}*/
+
+	// 0) check if connected to SPN
+
+	if ConnectedToSPN.IsSet() {
+		updateOnlineStatus(StatusOnline, nil, "connected to SPN")
+	}
 
 	// 1) check for addresses
 
