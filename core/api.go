@@ -68,8 +68,6 @@ func shutdown(_ *api.Request) (msg string, err error) {
 func restart(_ *api.Request) (msg string, err error) {
 	log.Info("core: user requested restart via action")
 
-	// Trigger restart event instead of shutdown event.
-	restarting.Set()
 	// Let the updates module handle restarting.
 	updates.RestartNow()
 
