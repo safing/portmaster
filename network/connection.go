@@ -145,7 +145,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	ProcessContext ProcessContext
 	// DNSContext holds additional information about the DNS request that was
 	// probably used to resolve the IP of this connection.
-	DNSContext *resolver.RRCache
+	DNSContext *resolver.DNSRequestContext
 	// TunnelContext holds additional information about the tunnel that this
 	// connection is using.
 	TunnelContext interface{}
@@ -333,7 +333,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 
 	var scope string
 	var resolverInfo *resolver.ResolverInfo
-	var dnsContext *resolver.RRCache
+	var dnsContext *resolver.DNSRequestContext
 
 	if inbound {
 
@@ -365,7 +365,7 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 				scope = lastResolvedDomain.Domain
 				entity.Domain = lastResolvedDomain.Domain
 				entity.CNAME = lastResolvedDomain.CNAMEs
-				dnsContext = lastResolvedDomain.RRCache
+				dnsContext = lastResolvedDomain.DNSRequestContext
 				resolverInfo = lastResolvedDomain.Resolver
 				removeOpenDNSRequest(proc.Pid, lastResolvedDomain.Domain)
 			}

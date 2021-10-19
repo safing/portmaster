@@ -141,6 +141,12 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	// Once we decided on the connection we might need to save it to the database,
 	// so we defer that check for now.
 	defer func() {
+		// Add metadata to connection.
+		if rrCache != nil {
+			conn.DNSContext = rrCache.ToDNSRequestContext()
+			conn.Resolver = rrCache.Resolver
+		}
+
 		switch conn.Verdict {
 		// We immediately save blocked, dropped or failed verdicts so
 		// they pop up in the UI.
@@ -222,26 +228,18 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		}
 	}
 	// Handle special cases.
-	if rrCache == nil {
+	switch {
+	case rrCache == nil:
 		tracer.Warning("nameserver: received successful, but empty reply from resolver")
 		return reply(nsutil.ServerFailure("internal error: empty reply"))
-	}
-
-	// Add dns context and resolver to connection.
-	conn.DNSContext = rrCache
-	conn.Resolver = rrCache.Resolver
-
-	// Return now if NXDomain.
-	if rrCache.RCode == dns.RcodeNameError {
+	case rrCache.RCode == dns.RcodeNameError:
+		// Return now if NXDomain.
 		return reply(nsutil.NxDomain("no answer found (NXDomain)"))
 	}
 
+	// Check with firewall again after resolving.
 	tracer.Trace("nameserver: deciding on resolved dns")
 	rrCache = firewall.FilterResolvedDNS(ctx, conn, q, rrCache)
-
-	// Add dns context and resolver to connection.
-	conn.DNSContext = rrCache
-	conn.Resolver = rrCache.Resolver
 
 	// Check again if there is a responder from the firewall.
 	if responder, ok := conn.Reason.Context.(nsutil.Responder); ok {
