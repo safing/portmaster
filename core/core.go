@@ -7,13 +7,12 @@ import (
 
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
-	"github.com/tevino/abool"
+	"github.com/safing/portmaster/updates"
 
 	// module dependencies
 	_ "github.com/safing/portmaster/netenv"
 	_ "github.com/safing/portmaster/status"
 	_ "github.com/safing/portmaster/ui"
-	_ "github.com/safing/portmaster/updates"
 )
 
 const (
@@ -24,7 +23,6 @@ const (
 var (
 	module *modules.Module
 
-	restarting           = abool.New()
 	disableShutdownEvent bool
 )
 
@@ -82,7 +80,7 @@ func registerEvents() {
 
 func shutdownHook() {
 	// Notify everyone of the restart/shutdown.
-	if restarting.IsNotSet() {
+	if !updates.IsRestarting() {
 		// Only trigger shutdown event if not disabled.
 		if !disableShutdownEvent {
 			module.TriggerEvent(eventShutdown, nil)

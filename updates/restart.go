@@ -20,6 +20,11 @@ var (
 	restartTriggered = abool.New()
 )
 
+// IsRestarting returns whether a restart is pending or currently in progress.
+func IsRestarting() bool {
+	return restartPending.IsSet()
+}
+
 // DelayedRestart triggers a restart of the application by shutting down the
 // module system gracefully and returning with RestartExitCode. The restart
 // may be further delayed by up to 10 minutes by the internal task scheduling
@@ -52,6 +57,10 @@ func RestartNow() {
 func automaticRestart(_ context.Context, _ *modules.Task) error {
 	if restartTriggered.SetToIf(false, true) {
 		log.Info("updates: initiating (automatic) restart")
+
+		// Set restart pending to ensure IsRestarting() returns true.
+		restartPending.Set()
+		// Set restart exit code.
 		modules.SetExitStatusCode(RestartExitCode)
 		// Do not use a worker, as this would block itself here.
 		go modules.Shutdown() //nolint:errcheck
