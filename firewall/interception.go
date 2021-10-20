@@ -382,8 +382,21 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		}
 	}
 
-	// TODO: enable inspecting again
+	// TODO: Enable inspection framework again.
 	conn.Inspecting = false
+
+	// TODO: Quick fix for the SPN.
+	// Use inspection framework for proper encryption detection.
+	switch conn.Entity.DstPort() {
+	case
+		22,  // SSH
+		443, // HTTPS
+		465, // SMTP-SSL
+		853, // DoT
+		993, // IMAP-SSL
+		995: // POP3-SSL
+		conn.Encrypted = true
+	}
 
 	switch {
 	case conn.Inspecting:
