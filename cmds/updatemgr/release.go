@@ -47,10 +47,31 @@ func release(cmd *cobra.Command, args []string) error {
 		return removeFilesFromIndex(getChannelVersions(channel, preReleaseFrom, true))
 	}
 
-	return writeIndex(
+	// Write new index.
+	err := writeIndex(
 		channel,
 		getChannelVersions(channel, preReleaseFrom, false),
 	)
+	if err != nil {
+		return err
+	}
+
+	// Only when doing a release:
+	if preReleaseFrom == "" {
+		// Create symlinks to latest stable versions.
+		if !confirm("\nDo you want to write latest symlinks?") {
+			fmt.Println("aborted...")
+			return nil
+		}
+		symlinksDir := registry.StorageDir().ChildDir("latest", 0o755)
+		err = registry.CreateSymlinks(symlinksDir)
+		if err != nil {
+			return err
+		}
+		fmt.Println("written latest symlinks")
+	}
+
+	return nil
 }
 
 func writeIndex(channel string, versions map[string]string) error {
@@ -103,8 +124,8 @@ func removeFilesFromIndex(versions map[string]string) error {
 			return err
 		}
 	}
-
 	fmt.Println("deleted")
+
 	return nil
 }
 
@@ -127,20 +148,18 @@ func getChannelVersions(channel string, prereleaseFrom string, storagePath bool)
 	// Go through all versions and save the highest version, if not stable or beta.
 	versions := make(map[string]string)
 	for _, rv := range export {
-		for _, v := range rv.Versions {
-			// Ignore versions that are in the reference release channel.
-			if v.CurrentRelease {
-				break
-			}
+		highestVersion := rv.Versions[0]
 
-			// Add highest version of matching release channel.
-			if storagePath {
-				versions[rv.Identifier] = rv.GetFile().Path()
-			} else {
-				versions[rv.Identifier] = v.VersionNumber
-			}
+		// Ignore versions that are in the reference release channel.
+		if highestVersion.CurrentRelease {
+			continue
+		}
 
-			break
+		// Add highest version of matching release channel.
+		if storagePath {
+			versions[rv.Identifier] = rv.GetFile().Path()
+		} else {
+			versions[rv.Identifier] = highestVersion.VersionNumber
 		}
 	}
 
