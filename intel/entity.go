@@ -65,6 +65,9 @@ type Entity struct {
 	// located in.
 	Country string
 
+	// Coordinates holds the approximate coordinates of the IP address.
+	Coordinates *geoip.Coordinates
+
 	// ASN holds the autonomous system number of the IP.
 	ASN uint
 
@@ -247,6 +250,7 @@ func (e *Entity) getLocation(ctx context.Context) {
 		}
 		e.location = loc
 		e.Country = loc.Country.ISOCode
+		e.Coordinates = &loc.Coordinates
 		e.ASN = loc.AutonomousSystemNumber
 		e.ASOrg = loc.AutonomousSystemOrganization
 	})
