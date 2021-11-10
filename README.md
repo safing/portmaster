@@ -3,7 +3,7 @@
 Portmaster is a free and open-source application that puts you back in charge over all your computer's network connections.
 Developed in the EU 🇪🇺, Austria.
 
-![Portmaster User Interface](https://assets.safing.io/portmaster/full-interface.png)
+![Portmaster User Interface](https://assets.safing.io/portmaster/full-interface.png?)
 
 **⚠️ Disclaimer**
 
