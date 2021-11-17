@@ -112,7 +112,8 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 	}
 
 	scope := netutils.GetIPScope(ip)
-	if scope.IsLocalhost() {
+	// Skip localhost resolvers from the OS, but not if configured.
+	if scope.IsLocalhost() && source == ServerSourceOperatingSystem {
 		return nil, true, nil // skip
 	}
 
