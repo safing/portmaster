@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/safing/portmaster/profile"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/process"
@@ -97,10 +99,15 @@ func resetSystemIssue() {
 	systemIssueNotification = nil
 }
 
-func (issue *appIssue) notify(p *process.Process) {
+func (issue *appIssue) notify(proc *process.Process) {
 	// Get profile from process.
-	profile := p.Profile().LocalProfile()
-	if profile == nil {
+	p := proc.Profile().LocalProfile()
+	if p == nil {
+		return
+	}
+
+	// Ignore notifications for unidentified processes.
+	if p.ID == profile.UnidentifiedProfileID {
 		return
 	}
 
@@ -114,11 +121,11 @@ func (issue *appIssue) notify(p *process.Process) {
 			),
 			"-", " ",
 		),
-		p.Path,
+		proc.Path,
 	)
 
 	// Check if we already have this notification.
-	eventID := fmt.Sprintf(issue.id, profile.ID)
+	eventID := fmt.Sprintf(issue.id, p.ID)
 	n := notifications.Get(eventID)
 	if n != nil {
 		return
@@ -128,8 +135,8 @@ func (issue *appIssue) notify(p *process.Process) {
 	n = &notifications.Notification{
 		EventID:      eventID,
 		Type:         issue.level,
-		Title:        fmt.Sprintf(issue.title, profile.Name),
-		Message:      fmt.Sprintf(issue.message, profile.Name),
+		Title:        fmt.Sprintf(issue.title, p.Name),
+		Message:      fmt.Sprintf(issue.message, p.Name),
 		ShowOnSystem: true,
 		AvailableActions: []*notifications.Action{
 			{
@@ -143,17 +150,17 @@ func (issue *appIssue) notify(p *process.Process) {
 	// Set warning on profile.
 	module.StartWorker("set app compat warning", func(ctx context.Context) error {
 		func() {
-			profile.Lock()
-			defer profile.Unlock()
+			p.Lock()
+			defer p.Unlock()
 
-			profile.Warning = fmt.Sprintf(
+			p.Warning = fmt.Sprintf(
 				"%s  \nThis was last detected at %s.",
 				fmt.Sprintf(issue.message, p.Name),
 				time.Now().Format("15:04 on 2.1.2006"),
 			)
-			profile.WarningLastUpdated = time.Now()
+			p.WarningLastUpdated = time.Now()
 		}()
 
-		return profile.Save()
+		return p.Save()
 	})
 }
