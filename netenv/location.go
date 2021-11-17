@@ -241,7 +241,7 @@ func addLocation(dl *DeviceLocation) {
 func GetApproximateInternetLocation() (net.IP, error) {
 	loc, ok := GetInternetLocation()
 	if !ok || loc.Best() == nil {
-		return nil, errors.New("no location data available")
+		return nil, errors.New("no device location data available")
 	}
 	return loc.Best().IP, nil
 }
@@ -259,7 +259,7 @@ func GetInternetLocation() (deviceLocations *DeviceLocations, ok bool) {
 	// Get all assigned addresses.
 	v4s, v6s, err := GetAssignedAddresses()
 	if err != nil {
-		log.Warningf("netenv: failed to get assigned addresses: %s", err)
+		log.Warningf("netenv: failed to get assigned addresses for device location: %s", err)
 		return nil, false
 	}
 
@@ -267,27 +267,24 @@ func GetInternetLocation() (deviceLocations *DeviceLocations, ok bool) {
 	v4ok, v6ok := getLocationFromInterfaces()
 
 	// Try other methods for missing locations.
-	if len(v4s) > 0 {
-		if !v4ok {
-			_, err = getLocationFromTraceroute()
-			if err != nil {
-				log.Warningf("netenv: failed to get IPv4 from traceroute: %s", err)
-			} else {
-				v4ok = true
-			}
+	if len(v4s) > 0 && !v4ok {
+		_, err = getLocationFromTraceroute()
+		if err != nil {
+			log.Warningf("netenv: failed to get IPv4 device location from traceroute: %s", err)
+		} else {
+			v4ok = true
 		}
+
+		// Get location from timezone as final fallback.
 		if !v4ok {
-			v4ok = getLocationFromTimezone(packet.IPv4)
+			getLocationFromTimezone(packet.IPv4)
 		}
 	}
 	if len(v6s) > 0 && !v6ok {
-		// TODO
-		log.Warningf("netenv: could not get IPv6 location")
-	}
+		// TODO: Find more ways to get IPv6 device location
 
-	// Check if we have any locations.
-	if !v4ok && !v6ok {
-		return nil, false
+		// Get location from timezone as final fallback.
+		getLocationFromTimezone(packet.IPv6)
 	}
 
 	// Return gathered locations.

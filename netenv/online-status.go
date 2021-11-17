@@ -145,6 +145,7 @@ var (
 	onlineStatusInvestigationTrigger    = make(chan struct{}, 1)
 	onlineStatusInvestigationInProgress = abool.NewBool(false)
 	onlineStatusInvestigationWg         sync.WaitGroup
+	onlineStatusNotification            *notifications.Notification
 
 	captivePortal             = &CaptivePortal{}
 	captivePortalLock         sync.Mutex
@@ -186,7 +187,7 @@ func CheckAndGetOnlineStatus() OnlineStatus {
 func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string) {
 	changed := false
 
-	// status
+	// Update online status.
 	currentStatus := atomic.LoadInt32(onlineStatus)
 	if status != OnlineStatus(currentStatus) && atomic.CompareAndSwapInt32(onlineStatus, currentStatus, int32(status)) {
 		// status changed!
@@ -196,10 +197,10 @@ func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string)
 		changed = true
 	}
 
-	// captive portal
+	// Update captive portal.
 	setCaptivePortal(portalURL)
 
-	// trigger event
+	// Trigger events.
 	if changed {
 		module.TriggerEvent(OnlineStatusChangedEvent, status)
 		if status == StatusPortal {
@@ -209,6 +210,9 @@ func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string)
 		}
 		triggerNetworkChangeCheck()
 
+		// Notify user.
+		notifyOnlineStatus(status)
+
 		// Trigger update check when coming (semi) online.
 		if Online() {
 			_ = updates.TriggerUpdate(false)
@@ -216,11 +220,54 @@ func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string)
 	}
 }
 
+func notifyOnlineStatus(status OnlineStatus) {
+	var eventID, title, message string
+
+	// Check if status is worth notifying.
+	switch status {
+	case StatusOffline:
+		eventID = "netenv:online-status:offline"
+		title = "Device is Offline"
+		message = "Portmaster did not detect any network connectivity."
+	case StatusLimited:
+		eventID = "netenv:online-status:limited"
+		title = "Limited network connectivity."
+		message = "Portmaster did detect local network connectivity, but could not detect connectivity to the Internet."
+	default:
+		// Delete notification, if present.
+		if onlineStatusNotification != nil {
+			onlineStatusNotification.Delete()
+			onlineStatusNotification = nil
+		}
+		return
+	}
+
+	// Update notification if not present or online status changed.
+	switch {
+	case onlineStatusNotification == nil:
+		// Continue creating new notification.
+	case onlineStatusNotification.EventID == eventID:
+		// Notification stays the same, stick with the old one.
+		return
+	default:
+		// Delete old notification before triggering updated one.
+		onlineStatusNotification.Delete()
+	}
+
+	// Create update status notification.
+	onlineStatusNotification = notifications.Notify(&notifications.Notification{
+		EventID: eventID,
+		Type:    notifications.Info,
+		Title:   title,
+		Message: message,
+	})
+}
+
 func setCaptivePortal(portalURL *url.URL) {
 	captivePortalLock.Lock()
 	defer captivePortalLock.Unlock()
 
-	// delete
+	// Delete captive portal if no url is supplied.
 	if portalURL == nil {
 		captivePortal = &CaptivePortal{}
 		if captivePortalNotification != nil {
@@ -230,12 +277,12 @@ func setCaptivePortal(portalURL *url.URL) {
 		return
 	}
 
-	// return if unchanged
-	if portalURL.String() == captivePortal.URL {
+	// Only set captive portal once per detection.
+	if captivePortal.URL != "" {
 		return
 	}
 
-	// set
+	// Compile captive portal data.
 	captivePortal = &CaptivePortal{
 		URL: portalURL.String(),
 	}
@@ -247,7 +294,7 @@ func setCaptivePortal(portalURL *url.URL) {
 		captivePortal.Domain = portalURL.Hostname()
 	}
 
-	// notify
+	// Notify user about portal.
 	captivePortalNotification = notifications.Notify(&notifications.Notification{
 		EventID:      "netenv:captive-portal",
 		Type:         notifications.Info,
