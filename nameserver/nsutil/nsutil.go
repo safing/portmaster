@@ -2,6 +2,7 @@ package nsutil
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -43,6 +44,11 @@ type ResponderFunc func(ctx context.Context, request *dns.Msg) *dns.Msg
 // ReplyWithDNS implements the Responder interface and calls rf.
 func (rf ResponderFunc) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns.Msg {
 	return rf(ctx, request)
+}
+
+// MarshalJSON disables JSON marshaling for ResponderFunc.
+func (rf ResponderFunc) MarshalJSON() ([]byte, error) {
+	return json.Marshal(nil)
 }
 
 // BlockIP is a ResponderFunc than replies with either 0.0.0.17 or ::17 for
