@@ -94,7 +94,12 @@ func parseIGMP(packet gopacket.Packet, info *Info) error {
 	return nil
 }
 
-func checkError(packet gopacket.Packet, _ *Info) error {
+func checkError(packet gopacket.Packet, info *Info) error {
+	// Check for known unparseable before checking the error layer.
+	if info.Protocol == AnyHostInternalProtocol61 {
+		return nil
+	}
+
 	if err := packet.ErrorLayer(); err != nil {
 		return err.Error()
 	}

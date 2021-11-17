@@ -27,7 +27,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("core", prep, start, nil, "base", "subsystems", "status", "updates", "api", "notifications", "ui", "netenv", "network", "interception")
+	module = modules.Register("core", prep, start, nil, "base", "subsystems", "status", "updates", "api", "notifications", "ui", "netenv", "network", "interception", "compat")
 	subsystems.Register(
 		"core",
 		"Core",

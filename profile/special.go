@@ -112,7 +112,7 @@ func getSpecialProfile(profileID, linkedPath string) *Profile {
 			},
 		)
 		// Add description to tell users about the quirks of this profile.
-		systemResolverProfile.Description = `The System DNS Client is a system service that requires special handling. For regular network connections, the configured settings will apply as usual, but DNS requests coming from the System DNS Client are handled in a special way, as they could actually be coming from any other application on the system.
+		systemResolverProfile.Warning = `The System DNS Client is a system service that requires special handling. For regular network connections, the configured settings will apply as usual, but DNS requests coming from the System DNS Client are handled in a special way, as they could actually be coming from any other application on the system.
 		
 In order to respect the app settings of the actual application, DNS requests from the System DNS Client are only subject to the following settings:
 
@@ -179,7 +179,7 @@ func specialProfileNeedsReset(profile *Profile) bool {
 
 	switch profile.ID {
 	case SystemResolverProfileID:
-		return canBeUpgraded(profile, "1.6.2021")
+		return canBeUpgraded(profile, "18.11.2021")
 	case PortmasterAppProfileID:
 		return canBeUpgraded(profile, "8.9.2021")
 	default:

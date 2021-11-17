@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/safing/portmaster/compat"
+
 	"github.com/safing/spn/captain"
 
 	"github.com/google/gopacket/layers"
@@ -314,6 +316,13 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 			_ = pkt.PermanentAccept()
 			return true
 		}
+
+	case compat.SystemIntegrationCheckProtocol:
+		if pkt.Info().Dst.Equal(compat.SystemIntegrationCheckDstIP) {
+			compat.SubmitSystemIntegrationCheckPacket(pkt)
+			_ = pkt.Drop()
+		}
+		return true
 	}
 
 	return false

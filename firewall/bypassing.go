@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/safing/portmaster/compat"
+
 	"github.com/safing/portmaster/nameserver/nsutil"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
@@ -30,6 +32,7 @@ func PreventBypassing(ctx context.Context, conn *network.Connection) (endpoints.
 		// Make an exception for ICMP, as these IPs are also often used for debugging.
 	default:
 		if conn.Entity.MatchLists(resolverFilterLists) {
+			compat.ReportSecureDNSBypassIssue(conn.Process())
 			return endpoints.Denied,
 				"blocked rogue connection to DNS resolver",
 				nsutil.BlockIP()
