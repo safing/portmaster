@@ -9,11 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portmaster/network/netutils"
-
 	"github.com/miekg/dns"
-
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network/netutils"
 )
 
 // DNS Classes

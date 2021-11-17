@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portmaster/netenv"
-
 	"github.com/miekg/dns"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/compat"
+	"github.com/safing/portmaster/netenv"
 )
 
 var (
@@ -313,13 +313,13 @@ retry:
 
 func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache *RRCache, err error) { //nolint:gocognit,gocyclo
 	// get resolvers
-	resolvers, tryAll := GetResolversInScope(ctx, q)
+	resolvers, primarySource, tryAll := GetResolversInScope(ctx, q)
 	if len(resolvers) == 0 {
 		return nil, ErrNoCompliance
 	}
 
 	// check if we are online
-	if netenv.GetOnlineStatus() == netenv.StatusOffline {
+	if primarySource != ServerSourceEnv && netenv.GetOnlineStatus() == netenv.StatusOffline {
 		if !netenv.IsConnectivityDomain(q.FQDN) {
 			// we are offline and this is not an online check query
 			return oldCache, ErrOffline
@@ -391,6 +391,10 @@ resolveLoop:
 
 			// Report a successful connection.
 			resolver.Conn.ResetFailure()
+			// Reset failing resolvers notification, if querying in global scope.
+			if primarySource == ServerSourceConfigured {
+				resetFailingResolversNotification()
+			}
 
 			break resolveLoop
 		}
@@ -401,6 +405,13 @@ resolveLoop:
 		// tried all resolvers, possibly twice
 		if i > 1 {
 			err = fmt.Errorf("all %d query-compliant resolvers failed, last error: %s", len(resolvers), err)
+
+			if primarySource == ServerSourceConfigured &&
+				netenv.Online() && compat.SelfCheckIsFailing() {
+				notifyAboutFailingResolvers(err)
+			} else {
+				resetFailingResolversNotification()
+			}
 		}
 	} else if rrCache == nil /* defensive */ {
 		err = ErrNotFound

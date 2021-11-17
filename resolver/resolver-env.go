@@ -4,15 +4,17 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/compat"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/netutils"
 )
 
 const (
-	internalSpecialUseDomain = "17.home.arpa."
+	internalSpecialUseDomain = "portmaster.home.arpa."
 
 	routerDomain        = "router.local." + internalSpecialUseDomain
 	captivePortalDomain = "captiveportal.local." + internalSpecialUseDomain
@@ -36,6 +38,7 @@ var (
 
 func prepEnvResolver() (err error) {
 	netenv.SpecialCaptivePortalDomain = captivePortalDomain
+	compat.DNSCheckInternalDomainScope = ".self-check." + internalSpecialUseDomain
 
 	internalSpecialUseSOA, err = dns.NewRR(fmt.Sprintf(
 		"%s 17 IN SOA localhost. none.localhost. 0 0 0 0 0",
@@ -57,6 +60,7 @@ type envResolverConn struct{}
 func (er *envResolverConn) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	switch uint16(q.QType) {
 	case dns.TypeA, dns.TypeAAAA: // We respond with all IPv4/6 addresses we can find.
+		// Check for exact matches.
 		switch q.FQDN {
 		case captivePortalDomain:
 			// Get IP address of the captive portal.
@@ -86,7 +90,23 @@ func (er *envResolverConn) Query(ctx context.Context, q *Query) (*RRCache, error
 				return er.nxDomain(q), nil
 			}
 			return er.makeRRCache(q, records), nil
+		}
 
+		// Check for suffix matches.
+		switch {
+		case strings.HasSuffix(q.FQDN, compat.DNSCheckInternalDomainScope):
+			subdomain := strings.TrimSuffix(q.FQDN, compat.DNSCheckInternalDomainScope)
+			respondWith := compat.SubmitDNSCheckDomain(subdomain)
+
+			// We'll get an A record. Only respond if it's an A question.
+			if respondWith != nil && uint16(q.QType) == dns.TypeA {
+				records, err := netutils.IPsToRRs(q.FQDN, []net.IP{respondWith})
+				if err != nil {
+					log.Warningf("nameserver: failed to create dns check response to %s: %s", q.FQDN, err)
+					return er.nxDomain(q), nil
+				}
+				return er.makeRRCache(q, records), nil
+			}
 		}
 	case dns.TypeSOA:
 		// Direct query for the SOA record.

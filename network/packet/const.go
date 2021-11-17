@@ -30,6 +30,8 @@ const (
 	ICMPv6  = IPProtocol(58)
 	UDPLite = IPProtocol(136)
 	RAW     = IPProtocol(255)
+
+	AnyHostInternalProtocol61 = IPProtocol(61)
 )
 
 // Verdicts

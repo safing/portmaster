@@ -109,20 +109,20 @@ func domainInScope(dotPrefixedFQDN string, scopeList []string) bool {
 }
 
 // GetResolversInScope returns all resolvers that are in scope the resolve the given query and options.
-func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver, tryAll bool) { //nolint:gocognit // TODO
+func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver, primarySource string, tryAll bool) { //nolint:gocognit // TODO
 	resolversLock.RLock()
 	defer resolversLock.RUnlock()
 
 	// Internal use domains
 	if domainInScope(q.dotPrefixedFQDN, internalSpecialUseDomains) {
-		return envResolvers, false
+		return envResolvers, ServerSourceEnv, false
 	}
 
 	// Special connectivity domains
 	if netenv.IsConnectivityDomain(q.FQDN) && len(systemResolvers) > 0 {
 		// Do not do compliance checks for connectivity domains.
 		selected = append(selected, systemResolvers...) // dhcp assigned resolvers
-		return selected, false
+		return selected, ServerSourceOperatingSystem, false
 	}
 
 	// Prioritize search scopes
@@ -137,7 +137,7 @@ func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver, t
 		selected = addResolvers(ctx, q, selected, mDNSResolvers)
 		selected = addResolvers(ctx, q, selected, localResolvers)
 		selected = addResolvers(ctx, q, selected, systemResolvers)
-		return selected, true
+		return selected, ServerSourceMDNS, true
 	}
 
 	// Special use domains
@@ -145,12 +145,12 @@ func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver, t
 		domainInScope(q.dotPrefixedFQDN, specialServiceDomains) {
 		selected = addResolvers(ctx, q, selected, localResolvers)
 		selected = addResolvers(ctx, q, selected, systemResolvers)
-		return selected, true
+		return selected, "special", true
 	}
 
 	// Global domains
 	selected = addResolvers(ctx, q, selected, globalResolvers)
-	return selected, false
+	return selected, ServerSourceConfigured, false
 }
 
 func addResolvers(ctx context.Context, q *Query, selected []*Resolver, addResolvers []*Resolver) []*Resolver {

@@ -18,6 +18,7 @@ require (
 	github.com/klauspost/reedsolomon v1.9.13 // indirect
 	github.com/mdlayher/socket v0.0.0-20211007213009-516dcbdf0267 // indirect
 	github.com/miekg/dns v1.1.43
+	github.com/mr-tron/base58 v1.2.0
 	github.com/oschwald/maxminddb-golang v1.8.0
 	github.com/safing/portbase v0.12.3
 	github.com/safing/spn v0.3.6

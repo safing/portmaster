@@ -68,9 +68,16 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// Name is a human readable name of the profile. It
 	// defaults to the basename of the application.
 	Name string
-	// Description may holds an optional description of the
+	// Description may hold an optional description of the
 	// profile or the purpose of the application.
 	Description string
+	// Warning may hold an optional warning about this application.
+	// It may be static or be added later on when the Portmaster detected an
+	// issue with the application.
+	Warning string
+	// WarningLastUpdated holds the timestamp when the Warning field was last
+	// updated.
+	WarningLastUpdated time.Time
 	// Homepage may refer the the website of the application
 	// vendor.
 	Homepage string

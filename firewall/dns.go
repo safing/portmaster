@@ -170,6 +170,11 @@ func FilterResolvedDNS(
 		return nil
 	}
 
+	// Don't filter env responses.
+	if rrCache.Resolver.Type == resolver.ServerTypeEnv {
+		return rrCache
+	}
+
 	// special grant for connectivity domains
 	if checkConnectivityDomain(ctx, conn, layeredProfile, nil) {
 		// returns true if check triggered

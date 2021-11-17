@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/safing/portmaster/compat"
+
 	"github.com/safing/spn/captain"
 
 	"github.com/google/gopacket/layers"
@@ -314,6 +316,13 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 			_ = pkt.PermanentAccept()
 			return true
 		}
+
+	case compat.SystemIntegrationCheckProtocol:
+		if pkt.Info().Dst.Equal(compat.SystemIntegrationCheckDstIP) {
+			compat.SubmitSystemIntegrationCheckPacket(pkt)
+			_ = pkt.Drop()
+		}
+		return true
 	}
 
 	return false
@@ -331,11 +340,19 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		// Set tunnel options.
 		setCustomTunnelOptionsForPortmaster(conn)
 
+		// Redirect outbound DNS packests,
 	case pkt.IsOutbound() &&
 		pkt.Info().DstPort == 53 &&
-		conn.Process().Pid != ownPID &&
+		// that don't match the address of our nameserver,
 		nameserverIPMatcherReady.IsSet() &&
-		!nameserverIPMatcher(pkt.Info().Dst):
+		!nameserverIPMatcher(pkt.Info().Dst) &&
+		// and are not broadcast queries by us.
+		// Context:
+		// - Unicast queries by the resolver are pre-authenticated.
+		// - Unicast qeries by the compat self-check should be redirected.
+		!(conn.Process().Pid == ownPID &&
+			conn.Entity.IPScope == netutils.LocalMulticast):
+
 		// Reroute rogue dns queries back to Portmaster.
 		conn.Verdict = network.VerdictRerouteToNameserver
 		conn.Reason.Msg = "redirecting rogue dns query"
