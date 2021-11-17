@@ -179,7 +179,7 @@ func specialProfileNeedsReset(profile *Profile) bool {
 
 	switch profile.ID {
 	case SystemResolverProfileID:
-		return canBeUpgraded(profile, "18.11.2021")
+		return canBeUpgraded(profile, "20.11.2021")
 	case PortmasterAppProfileID:
 		return canBeUpgraded(profile, "8.9.2021")
 	default:
