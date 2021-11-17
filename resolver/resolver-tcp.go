@@ -145,9 +145,15 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 	// Connect to server.
 	conn, err := tr.dnsClient.Dial(tr.resolver.ServerAddress)
 	if err != nil {
-		log.Debugf("resolver: failed to connect to %s", tr.resolver.Info.DescriptiveName())
+		// Hint network environment at failed connection.
+		netenv.ReportFailedConnection()
+
+		log.Debugf("resolver: failed to connect to %s: %s", tr.resolver.Info.DescriptiveName(), err)
 		return nil, fmt.Errorf("%w: failed to connect to %s: %s", ErrFailure, tr.resolver.Info.DescriptiveName(), err)
 	}
+
+	// Hint network environment at successful connection.
+	netenv.ReportSuccessfulConnection()
 
 	// Log that a connection to the resolver was established.
 	log.Debugf(
@@ -173,9 +179,6 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 
 	// Set resolver conn for reuse.
 	tr.resolverConn = resolverConn
-
-	// Hint network environment at successful connection.
-	netenv.ReportSuccessfulConnection()
 
 	return resolverConn, nil
 }
