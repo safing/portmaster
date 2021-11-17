@@ -4,11 +4,14 @@ import (
 	"context"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/intel"
+	"github.com/tevino/abool"
 
 	// module dependencies
 	_ "github.com/safing/portmaster/core/base"
@@ -104,4 +107,51 @@ func getLocalAddr(network string) net.Addr {
 		return localAddrFactory(network)
 	}
 	return nil
+}
+
+var (
+	failingResolverNotification     *notifications.Notification
+	failingResolverNotificationSet  = abool.New()
+	failingResolverNotificationLock sync.Mutex
+)
+
+func notifyAboutFailingResolvers(err error) {
+	failingResolverNotificationLock.Lock()
+	defer failingResolverNotificationLock.Unlock()
+	failingResolverNotificationSet.Set()
+
+	// Check if already set.
+	if failingResolverNotification != nil {
+		return
+	}
+
+	// Create new notification.
+	n := &notifications.Notification{
+		EventID:      "resolver:all-configured-resolvers-failed",
+		Type:         notifications.Error,
+		Title:        "Detected DNS Compatibility Issue",
+		Message:      "Portmaster detected that something is interfering with its Secure DNS resolver. This could be a firewall or another secure DNS resolver software. Please check if you are running incompatible [software](https://docs.safing.io/portmaster/install/status/software-compatibility). Otherwise, please report the issue via [GitHub](https://github.com/safing/portmaster/issues) or send a mail to [support@safing.io](mailto:support@safing.io) so we can help you out.",
+		ShowOnSystem: true,
+	}
+	notifications.Notify(n)
+
+	failingResolverNotification = n
+	n.AttachToModule(module)
+
+	// Report the raw error as module error.
+	module.NewErrorMessage("resolving", err).Report()
+}
+
+func resetFailingResolversNotification() {
+	if failingResolverNotificationSet.IsNotSet() {
+		return
+	}
+
+	failingResolverNotificationLock.Lock()
+	defer failingResolverNotificationLock.Unlock()
+
+	if failingResolverNotification != nil {
+		failingResolverNotification.Delete()
+		failingResolverNotification = nil
+	}
 }
