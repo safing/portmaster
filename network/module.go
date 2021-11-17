@@ -21,13 +21,13 @@ func SetDefaultFirewallHandler(handler FirewallHandler) {
 	}
 }
 
+func prep() error {
+	return registerAPIEndpoints()
+}
+
 func start() error {
 	err := registerAsDatabase()
 	if err != nil {
-		return err
-	}
-
-	if err := registerAPIEndpoints(); err != nil {
 		return err
 	}
 
