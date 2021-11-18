@@ -29,14 +29,15 @@ func prep() error {
 func start() error {
 	selfcheckTask = module.NewTask("compatibility self-check", selfcheckTaskFunc).
 		Repeat(1 * time.Minute).
-		StartASAP()
+		MaxDelay(selfcheckTaskRetryAfter).
+		Schedule(time.Now().Add(selfcheckTaskRetryAfter))
 
 	return module.RegisterEventHook(
 		netenv.ModuleName,
 		netenv.NetworkChangedEvent,
 		"trigger compat self-check",
 		func(_ context.Context, _ interface{}) error {
-			selfcheckTask.StartASAP()
+			selfcheckTask.Schedule(time.Now().Add(selfcheckTaskRetryAfter))
 			return nil
 		},
 	)
