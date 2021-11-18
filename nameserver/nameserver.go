@@ -19,6 +19,8 @@ import (
 	"github.com/miekg/dns"
 )
 
+var hostname string
+
 func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
 	err := module.RunWorker("dns request", func(ctx context.Context) error {
 		return handleRequest(ctx, w, query)
@@ -87,8 +89,8 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		return reply(nsutil.Refused("unsupported qclass"))
 	}
 
-	// Handle request for localhost.
-	if strings.HasSuffix(q.FQDN, "localhost.") {
+	// Handle request for localhost and the hostname.
+	if strings.HasSuffix(q.FQDN, "localhost.") || q.FQDN == hostname {
 		tracer.Tracef("nameserver: returning localhost records")
 		return reply(nsutil.Localhost())
 	}
