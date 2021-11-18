@@ -2,7 +2,7 @@ package status
 
 import "context"
 
-var runAutoPilot = make(chan struct{})
+var runAutoPilot = make(chan struct{}, 1)
 
 func triggerAutopilot() {
 	select {
