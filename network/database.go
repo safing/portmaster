@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -115,13 +116,17 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 // Query returns a an iterator for the supplied query.
 func (s *StorageInterface) Query(q *query.Query, local, internal bool) (*iterator.Iterator, error) {
 	it := iterator.New()
-	go s.processQuery(q, it)
-	// TODO: check local and internal
+
+	module.StartWorker("connection query", func(_ context.Context) error {
+		s.processQuery(q, it)
+		return nil
+	})
 
 	return it, nil
 }
 
 func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
+	var matches bool
 	pid, scope, _, ok := parseDBKey(q.DatabaseKeyPrefix())
 	if !ok {
 		it.Finish(nil)
@@ -131,33 +136,42 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 	if pid == process.UndefinedProcessID {
 		// processes
 		for _, proc := range process.All() {
-			proc.Lock()
-			if q.Matches(proc) {
+			func() {
+				proc.Lock()
+				defer proc.Unlock()
+				matches = q.Matches(proc)
+			}()
+			if matches {
 				it.Next <- proc
 			}
-			proc.Unlock()
 		}
 	}
 
 	if scope == "" || scope == "dns" {
 		// dns scopes only
 		for _, dnsConn := range dnsConns.clone() {
-			dnsConn.Lock()
-			if q.Matches(dnsConn) {
+			func() {
+				dnsConn.Lock()
+				defer dnsConn.Unlock()
+				matches = q.Matches(dnsConn)
+			}()
+			if matches {
 				it.Next <- dnsConn
 			}
-			dnsConn.Unlock()
 		}
 	}
 
 	if scope == "" || scope == "ip" {
 		// connections
 		for _, conn := range conns.clone() {
-			conn.Lock()
-			if q.Matches(conn) {
+			func() {
+				conn.Lock()
+				defer conn.Unlock()
+				matches = q.Matches(conn)
+			}()
+			if matches {
 				it.Next <- conn
 			}
-			conn.Unlock()
 		}
 	}
 
