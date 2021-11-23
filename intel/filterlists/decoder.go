@@ -83,13 +83,10 @@ func decodeFile(ctx context.Context, r io.Reader, ch chan<- *listEntry) error {
 		// JSON, BSON or GenCode. So LoadAsFormat MUST return the value
 		// passed as the third parameter. String or RAW encoding IS AN
 		// error here.
-		val, err := dsd.LoadAsFormat(blob, format, &listEntry{})
+		entry := &listEntry{}
+		err := dsd.LoadAsFormat(blob, format, entry)
 		if err != nil {
 			return fmt.Errorf("failed to decoded DSD encoded entity: %w", err)
-		}
-		entry, ok := val.(*listEntry)
-		if !ok {
-			return fmt.Errorf("unsupported encoding format: %d (%c)", format, format)
 		}
 
 		select {
