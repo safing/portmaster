@@ -205,7 +205,7 @@ var (
 		".jpeg":  "image/jpeg",
 		".jpg":   "image/jpeg",
 		".js":    "text/javascript; charset=utf-8",
-		".json":  "application/json",
+		".json":  "application/json; charset=utf-8",
 		".m3u":   "audio/mpegurl",
 		".m4a":   "audio/mpeg",
 		".md":    "text/markdown; charset=utf-8",
