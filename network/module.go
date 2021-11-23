@@ -11,7 +11,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("network", nil, start, nil, "base", "processes")
+	module = modules.Register("network", prep, start, nil, "base", "processes")
 }
 
 // SetDefaultFirewallHandler sets the default firewall handler.
