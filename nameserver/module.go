@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 
 	"github.com/safing/portbase/log"
@@ -45,6 +46,12 @@ func start() error {
 	if err != nil {
 		return fmt.Errorf("failed to parse nameserver listen address: %w", err)
 	}
+
+	hostname, err = os.Hostname()
+	if err != nil {
+		log.Warningf("nameserver: failed to get hostname: %s", err)
+	}
+	hostname += "."
 
 	// Start listener(s).
 	if ip2 == nil {

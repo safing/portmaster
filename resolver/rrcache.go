@@ -135,18 +135,28 @@ func (rrCache *RRCache) ToNameRecord() *NameRecord {
 		Resolver: rrCache.Resolver,
 	}
 
-	// stringify RR entries
-	for _, entry := range rrCache.Answer {
-		new.Answer = append(new.Answer, entry.String())
-	}
-	for _, entry := range rrCache.Ns {
-		new.Ns = append(new.Ns, entry.String())
-	}
-	for _, entry := range rrCache.Extra {
-		new.Extra = append(new.Extra, entry.String())
-	}
+	// Serialize RR entries to strings.
+	new.Answer = toNameRecordSection(rrCache.Answer)
+	new.Ns = toNameRecordSection(rrCache.Ns)
+	new.Extra = toNameRecordSection(rrCache.Extra)
 
 	return new
+}
+
+func toNameRecordSection(rrSection []dns.RR) []string {
+	serialized := make([]string, 0, len(rrSection))
+	for _, entry := range rrSection {
+		// Ignore some RR types.
+		switch entry.Header().Rrtype {
+		case dns.TypeOPT:
+			// This record type cannot be unserialized again and only consists of
+			// additional metadata.
+		case dns.TypeNULL:
+		default:
+			serialized = append(serialized, entry.String())
+		}
+	}
+	return serialized
 }
 
 // rcodeIsCacheable returns whether a record with the given RCode should be cached.
