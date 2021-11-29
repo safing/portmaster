@@ -8,16 +8,15 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/compat"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/netutils"
 )
 
 const (
-	internalSpecialUseDomain = "portmaster.home.arpa."
+	InternalSpecialUseDomain = "portmaster.home.arpa."
 
-	routerDomain        = "router.local." + internalSpecialUseDomain
-	captivePortalDomain = "captiveportal.local." + internalSpecialUseDomain
+	routerDomain        = "router.local." + InternalSpecialUseDomain
+	captivePortalDomain = "captiveportal.local." + InternalSpecialUseDomain
 )
 
 var (
@@ -38,11 +37,10 @@ var (
 
 func prepEnvResolver() (err error) {
 	netenv.SpecialCaptivePortalDomain = captivePortalDomain
-	compat.DNSCheckInternalDomainScope = ".self-check." + internalSpecialUseDomain
 
 	internalSpecialUseSOA, err = dns.NewRR(fmt.Sprintf(
 		"%s 17 IN SOA localhost. none.localhost. 0 0 0 0 0",
-		internalSpecialUseDomain,
+		InternalSpecialUseDomain,
 	))
 	if err != nil {
 		return err
@@ -50,7 +48,7 @@ func prepEnvResolver() (err error) {
 
 	internalSpecialUseComment, err = dns.NewRR(fmt.Sprintf(
 		`%s 17 IN TXT "This is a special use TLD of the Portmaster."`,
-		internalSpecialUseDomain,
+		InternalSpecialUseDomain,
 	))
 	return err
 }
@@ -94,9 +92,9 @@ func (er *envResolverConn) Query(ctx context.Context, q *Query) (*RRCache, error
 
 		// Check for suffix matches.
 		switch {
-		case strings.HasSuffix(q.FQDN, compat.DNSCheckInternalDomainScope):
-			subdomain := strings.TrimSuffix(q.FQDN, compat.DNSCheckInternalDomainScope)
-			respondWith := compat.SubmitDNSCheckDomain(subdomain)
+		case strings.HasSuffix(q.FQDN, CompatDNSCheckInternalDomainScope):
+			subdomain := strings.TrimSuffix(q.FQDN, CompatDNSCheckInternalDomainScope)
+			respondWith := CompatSubmitDNSCheckDomain(subdomain)
 
 			// We'll get an A record. Only respond if it's an A question.
 			if respondWith != nil && uint16(q.QType) == dns.TypeA {
@@ -110,7 +108,7 @@ func (er *envResolverConn) Query(ctx context.Context, q *Query) (*RRCache, error
 		}
 	case dns.TypeSOA:
 		// Direct query for the SOA record.
-		if q.FQDN == internalSpecialUseDomain {
+		if q.FQDN == InternalSpecialUseDomain {
 			return er.makeRRCache(q, []dns.RR{internalSpecialUseSOA}), nil
 		}
 	}

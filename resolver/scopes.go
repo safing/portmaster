@@ -26,7 +26,7 @@ var (
 	// Internal Special-Use Domain
 	// Used by Portmaster for special addressing.
 	internalSpecialUseDomains = []string{
-		"." + internalSpecialUseDomain,
+		"." + InternalSpecialUseDomain,
 	}
 
 	// Multicast DNS

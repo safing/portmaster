@@ -11,7 +11,6 @@ import (
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/compat"
 	"github.com/safing/portmaster/netenv"
 )
 
@@ -407,7 +406,7 @@ resolveLoop:
 			err = fmt.Errorf("all %d query-compliant resolvers failed, last error: %s", len(resolvers), err)
 
 			if primarySource == ServerSourceConfigured &&
-				netenv.Online() && compat.SelfCheckIsFailing() {
+				netenv.Online() && CompatSelfCheckIsFailing() {
 				notifyAboutFailingResolvers(err)
 			} else {
 				resetFailingResolversNotification()

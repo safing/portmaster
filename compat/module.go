@@ -7,6 +7,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/netenv"
+	"github.com/safing/portmaster/resolver"
 	"github.com/tevino/abool"
 )
 
@@ -28,6 +29,12 @@ var (
 
 func init() {
 	module = modules.Register("compat", prep, start, stop, "base", "network", "interception", "netenv", "notifications")
+
+	// Workaround resolver integration.
+	// See resolver/compat.go for details.
+	resolver.CompatDNSCheckInternalDomainScope = DNSCheckInternalDomainScope
+	resolver.CompatSelfCheckIsFailing = SelfCheckIsFailing
+	resolver.CompatSubmitDNSCheckDomain = SubmitDNSCheckDomain
 }
 
 func prep() error {
