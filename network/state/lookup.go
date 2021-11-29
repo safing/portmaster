@@ -125,7 +125,7 @@ func (table *tcpTable) findSocket(pktInfo *packet.Info) (
 	for _, socketInfo := range table.listeners {
 		if localPort == socketInfo.Local.Port &&
 			(socketInfo.ListensAny || localIP.Equal(socketInfo.Local.IP)) {
-			return socketInfo, false
+			return socketInfo, true
 		}
 	}
 
