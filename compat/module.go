@@ -15,7 +15,15 @@ var (
 
 	selfcheckTask           *modules.Task
 	selfcheckTaskRetryAfter = 10 * time.Second
-	selfCheckIsFailing      = abool.New()
+
+	// selfCheckIsFailing holds whether or not the self-check is currently
+	// failing. This helps other failure systems to not make noise when there is
+	// an underlying failure.
+	selfCheckIsFailing = abool.New()
+
+	// selfcheckFails counts how often the self check failed successively.
+	// selfcheckFails is not locked as it is only accessed by the self-check task.
+	selfcheckFails int
 )
 
 func init() {
@@ -55,6 +63,7 @@ func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
 	issue, err := selfcheck(ctx)
 	if err == nil {
 		selfCheckIsFailing.UnSet()
+		selfcheckFails = 0
 		resetSystemIssue()
 		return nil
 	}
@@ -62,14 +71,18 @@ func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
 	// Log result.
 	if issue != nil {
 		selfCheckIsFailing.Set()
+		selfcheckFails++
 
 		log.Errorf("compat: %s", err)
-		issue.notify(err)
+		if selfcheckFails >= 3 {
+			issue.notify(err)
+		}
 
 		// Retry quicker when failed.
 		task.Schedule(time.Now().Add(selfcheckTaskRetryAfter))
 	} else {
 		selfCheckIsFailing.UnSet()
+		selfcheckFails = 0
 
 		// Only log internal errors, but don't notify.
 		log.Warningf("compat: %s", err)
