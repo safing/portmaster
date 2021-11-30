@@ -19,7 +19,7 @@ import (
 
 func main() {
 	// set information
-	info.Set("Portmaster", "0.7.8", "AGPLv3", true)
+	info.Set("Portmaster", "0.7.9", "AGPLv3", true)
 
 	// Configure metrics.
 	metrics.SetNamespace("portmaster")
