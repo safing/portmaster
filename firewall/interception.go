@@ -376,26 +376,32 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		conn.Process().Profile() != nil &&
 		conn.Process().Profile().UseSPN() {
 
-		// Exclude requests of the SPN itself.
-		if !captain.IsExcepted(conn.Entity.IP) {
-			conn.Tunneled = true
+		switch {
+		case captain.ClientBootstrapping() &&
+			conn.Process().Pid == ownPID:
+			// Exclude the Portmaster during SPN bootstrapping.
 
-			// Check if client is ready.
-			if captain.ClientReady() {
-				// Queue request in sluice.
-				err := sluice.AwaitRequest(conn, crew.HandleSluiceRequest)
-				if err != nil {
-					log.Tracer(pkt.Ctx()).Warningf("failed to rqeuest tunneling: %s", err)
-					conn.Failed("failed to request tunneling", "")
-				} else {
-					log.Tracer(pkt.Ctx()).Trace("filter: tunneling requested")
-					conn.Verdict = network.VerdictRerouteToTunnel
-				}
+		case captain.IsExcepted(conn.Entity.IP) &&
+			conn.Process().Pid == ownPID:
+			// Exclude requests of the SPN itself.
+
+		case captain.ClientReady():
+			// Queue request in sluice.
+			err := sluice.AwaitRequest(conn, crew.HandleSluiceRequest)
+			if err != nil {
+				log.Tracer(pkt.Ctx()).Warningf("failed to rqeuest tunneling: %s", err)
+				conn.Failed("failed to request tunneling", "")
 			} else {
-				// Block connection as SPN is not ready yet.
-				log.Tracer(pkt.Ctx()).Trace("SPN not ready for tunneling")
-				conn.Failed("SPN not ready for tunneling", "")
+				log.Tracer(pkt.Ctx()).Trace("filter: tunneling requested")
+				conn.Verdict = network.VerdictRerouteToTunnel
+				conn.Tunneled = true
 			}
+
+		default:
+			// Block connection as SPN is not ready yet.
+			log.Tracer(pkt.Ctx()).Trace("SPN not ready for tunneling")
+			conn.Failed("SPN not ready for tunneling", "")
+
 		}
 	}
 

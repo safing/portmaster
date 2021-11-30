@@ -404,6 +404,7 @@ func checkOnlineStatus(ctx context.Context) {
 
 	if ConnectedToSPN.IsSet() {
 		updateOnlineStatus(StatusOnline, nil, "connected to SPN")
+		return
 	}
 
 	// 1) check for addresses

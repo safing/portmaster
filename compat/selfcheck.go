@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/rng"
 	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/resolver"
 )
 
 var (
@@ -25,7 +26,7 @@ var (
 	systemIntegrationCheckPackets      = make(chan packet.Packet, 1)
 	systemIntegrationCheckWaitDuration = 3 * time.Second
 
-	DNSCheckInternalDomainScope string
+	DNSCheckInternalDomainScope = ".self-check." + resolver.InternalSpecialUseDomain
 	dnsCheckReceivedDomain      = make(chan string, 1)
 	dnsCheckWaitDuration        = 3 * time.Second
 	dnsCheckAnswerLock          sync.Mutex
