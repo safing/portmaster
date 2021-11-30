@@ -20,22 +20,21 @@ require (
 	github.com/miekg/dns v1.1.43
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oschwald/maxminddb-golang v1.8.0
-	github.com/safing/portbase v0.12.4
-	github.com/safing/spn v0.3.7
+	github.com/safing/portbase v0.13.1
+	github.com/safing/spn v0.3.9
 	github.com/shirou/gopsutil v3.21.10+incompatible
 	github.com/spf13/cobra v1.2.1
 	github.com/stretchr/testify v1.7.0
 	github.com/tannerryan/ring v1.1.2
 	github.com/templexxx/cpu v0.0.9 // indirect
 	github.com/tevino/abool v1.2.0
-	github.com/tidwall/gjson v1.11.0
+	github.com/tidwall/gjson v1.12.0
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	go.etcd.io/bbolt v1.3.6 // indirect
-	golang.org/x/crypto v0.0.0-20211115234514-b4de73f9ece8 // indirect
-	golang.org/x/net v0.0.0-20211116231205-47ca1ff31462
+	golang.org/x/net v0.0.0-20211123203042-d83791d6bcd9
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20211116061358-0a5406a5449c
+	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881
 	google.golang.org/appengine v1.6.7
 )
