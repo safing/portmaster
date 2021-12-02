@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strings"
 	"sync"
@@ -10,6 +11,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/notifications"
+	"github.com/safing/portbase/utils/debug"
 	"github.com/safing/portmaster/intel"
 	"github.com/tevino/abool"
 
@@ -154,4 +156,41 @@ func resetFailingResolversNotification() {
 		failingResolverNotification.Delete()
 		failingResolverNotification = nil
 	}
+}
+
+// AddToDebugInfo adds the system status to the given debug.Info.
+func AddToDebugInfo(di *debug.Info) {
+	resolversLock.Lock()
+	defer resolversLock.Unlock()
+
+	content := make([]string, 0, (len(globalResolvers)*4)-1)
+	var working, total int
+	for i, resolver := range globalResolvers {
+		// Count for summary.
+		total++
+		failing := resolver.Conn.IsFailing()
+		if !failing {
+			working++
+		}
+
+		// Add section.
+		if resolver.Info.Name != "" {
+			content = append(content, resolver.Info.Name)
+		} else {
+			content = append(content, resolver.Info.IP.String())
+		}
+		content = append(content, fmt.Sprintf("  %s", resolver.Info.ID()))
+		content = append(content, fmt.Sprintf("  Failing: %v", resolver.Conn.IsFailing()))
+
+		// Add a empty line for all but the last entry.
+		if i+1 < len(globalResolvers) {
+			content = append(content, "")
+		}
+	}
+
+	di.AddSection(
+		fmt.Sprintf("Resolvers: %d/%d", working, total),
+		debug.UseCodeSection|debug.AddContentLineBreaks,
+		content...,
+	)
 }
