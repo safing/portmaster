@@ -140,6 +140,9 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// Lifecycle Management
 	outdated   *abool.AtomicBool
 	lastActive *int64
+
+	// savedInternally is set to true for profiles that are saved internally.
+	savedInternally bool
 }
 
 func (profile *Profile) prepConfig() (err error) {
@@ -226,11 +229,12 @@ func New(
 	}
 
 	profile := &Profile{
-		ID:         id,
-		Source:     source,
-		LinkedPath: linkedPath,
-		Created:    time.Now().Unix(),
-		Config:     customConfig,
+		ID:              id,
+		Source:          source,
+		LinkedPath:      linkedPath,
+		Created:         time.Now().Unix(),
+		Config:          customConfig,
+		savedInternally: true,
 	}
 
 	// Generate random ID if none is given.
