@@ -9,9 +9,7 @@ import (
 // currently unused and is unlikely to be used within the next seconds.
 func GetUnusedLocalPort(protocol uint8) (port uint16, ok bool) {
 	allConns := conns.clone()
-
 	tries := 1000
-	hundredth := tries / 100
 
 	// Try up to 1000 times to find an unused port.
 nextPort:
@@ -25,7 +23,7 @@ nextPort:
 		port := uint16(rN + 10000)
 
 		// Shrink range when we chew through the tries.
-		portRangeStart := port - uint16(100-(i/hundredth))
+		portRangeStart := port - 10
 
 		// Check if the generated port is unused.
 	nextConnection:
