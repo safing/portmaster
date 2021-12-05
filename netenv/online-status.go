@@ -377,17 +377,21 @@ func monitorOnlineStatus(ctx context.Context) error {
 func getDynamicStatusTrigger() <-chan time.Time {
 	switch GetOnlineStatus() {
 	case StatusOffline:
-		return time.After(1 * time.Second)
+		// Will be triggered by network change anyway.
+		return time.After(20 * time.Second)
 	case StatusLimited, StatusPortal:
+		// Change will not be detected otherwise, but impact is minor.
 		return time.After(5 * time.Second)
 	case StatusSemiOnline:
+		// Very small impact.
 		return time.After(20 * time.Second)
 	case StatusOnline:
+		// Don't check until resolver reports problems.
 		return nil
 	case StatusUnknown:
-		return time.After(2 * time.Second)
+		return time.After(5 * time.Second)
 	default: // other unknown status
-		return time.After(1 * time.Minute)
+		return time.After(5 * time.Minute)
 	}
 }
 
@@ -501,7 +505,9 @@ func checkOnlineStatus(ctx context.Context) {
 
 	// Check with primary dns check domain.
 	ips, err := net.LookupIP(DNSTestDomain)
-	if err == nil {
+	if err != nil {
+		log.Warningf("netenv: dns check query failed: %s", err)
+	} else {
 		// check for expected response
 		for _, ip := range ips {
 			if ip.Equal(DNSTestExpectedIP) {
@@ -514,6 +520,7 @@ func checkOnlineStatus(ctx context.Context) {
 	// If that did not work, check with fallback dns check domain.
 	ips, err = net.LookupIP(DNSFallbackTestDomain)
 	if err != nil {
+		log.Warningf("netenv: dns fallback check query failed: %s", err)
 		updateOnlineStatus(StatusLimited, nil, "dns fallback check query failed")
 		return
 	}
