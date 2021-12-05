@@ -167,14 +167,11 @@ func start() error {
 // TriggerUpdate queues the update task to execute ASAP.
 func TriggerUpdate(force bool) error {
 	switch {
-	case !module.OnlineSoon():
-		return fmt.Errorf("updates module is disabled")
+	case !module.Online():
+		updateASAP = true
 
 	case !force && !enableUpdates():
 		return fmt.Errorf("automatic updating is disabled")
-
-	case !module.Online():
-		updateASAP = true
 
 	default:
 		forceUpdate.Set()
@@ -189,7 +186,8 @@ func TriggerUpdate(force bool) error {
 // If called, updates are only checked when TriggerUpdate()
 // is called.
 func DisableUpdateSchedule() error {
-	if module.OnlineSoon() {
+	switch module.Status() {
+	case modules.StatusStarting, modules.StatusOnline, modules.StatusStopping:
 		return fmt.Errorf("module already online")
 	}
 
