@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	activeProfileCleanerTickDuration = 1 * time.Minute
-	activeProfileCleanerThreshold    = 5 * time.Minute
+	activeProfileCleanerTickDuration = 5 * time.Minute
+	activeProfileCleanerThreshold    = 1 * time.Hour
 )
 
 var (

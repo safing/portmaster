@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/safing/portbase/config"
+	"github.com/safing/portbase/log"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/query"
@@ -41,24 +42,37 @@ func registerValidationDBHook() (err error) {
 }
 
 func startProfileUpdateChecker() error {
-	profilesSub, err := profileDB.Subscribe(query.New(profilesDBPath))
-	if err != nil {
-		return err
-	}
-
 	module.StartServiceWorker("update active profiles", 0, func(ctx context.Context) (err error) {
+		profilesSub, err := profileDB.Subscribe(query.New(profilesDBPath))
+		if err != nil {
+			return err
+		}
+		defer func() {
+			err := profilesSub.Cancel()
+			if err != nil {
+				log.Warningf("profile: failed to cancel subscription for updating active profiles: %s", err)
+			}
+		}()
+
 		for {
 			select {
 			case r := <-profilesSub.Feed:
-				// check if nil
+				// Check if subscription was canceled.
 				if r == nil {
 					return errors.New("subscription canceled")
 				}
 
-				// mark as outdated
+				// Don't mark profiles as outdated that are saved internally, as
+				// profiles only exist once in memory.
+				p, ok := r.(*Profile)
+				if ok && p.savedInternally {
+					return
+				}
+
+				// Mark profile as outdated.
 				markActiveProfileAsOutdated(strings.TrimPrefix(r.Key(), profilesDBPath))
 			case <-ctx.Done():
-				return profilesSub.Cancel()
+				return nil
 			}
 		}
 	})

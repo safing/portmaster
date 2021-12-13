@@ -2,16 +2,16 @@ package profile
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/safing/portbase/database"
 
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
-	"golang.org/x/sync/singleflight"
 )
 
-var getProfileSingleInflight singleflight.Group
+var getProfileLock sync.Mutex
 
 // GetProfile fetches a profile. This function ensures that the loaded profile
 // is shared among all callers. You must always supply both the scopedID and
@@ -22,102 +22,92 @@ func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 	profile *Profile,
 	err error,
 ) {
-	// Select correct key for single in flight.
-	singleInflightKey := linkedPath
-	if singleInflightKey == "" {
-		singleInflightKey = makeScopedID(source, id)
+	// Globally lock getting a profile.
+	// This does not happen too often, and it ensures we really have integrity
+	// and no race conditions.
+	getProfileLock.Lock()
+	defer getProfileLock.Unlock()
+
+	var previousVersion *Profile
+
+	// Fetch profile depending on the available information.
+	switch {
+	case id != "":
+		scopedID := makeScopedID(source, id)
+
+		// Get profile via the scoped ID.
+		// Check if there already is an active and not outdated profile.
+		profile = getActiveProfile(scopedID)
+		if profile != nil {
+			profile.MarkStillActive()
+
+			if profile.outdated.IsSet() {
+				previousVersion = profile
+			} else {
+				return profile, nil
+			}
+		}
+		// Get from database.
+		profile, err = getProfile(scopedID)
+
+		// Check if the request is for a special profile that may need a reset.
+		if err == nil && specialProfileNeedsReset(profile) {
+			// Trigger creation of special profile.
+			err = database.ErrNotFound
+		}
+
+		// If we cannot find a profile, check if the request is for a special
+		// profile we can create.
+		if errors.Is(err, database.ErrNotFound) {
+			profile = getSpecialProfile(id, linkedPath)
+			if profile != nil {
+				err = nil
+			}
+		}
+
+	case linkedPath != "":
+		// Search for profile via a linked path.
+		// Check if there already is an active and not outdated profile for
+		// the linked path.
+		profile = findActiveProfile(linkedPath)
+		if profile != nil {
+			if profile.outdated.IsSet() {
+				previousVersion = profile
+			} else {
+				return profile, nil
+			}
+		}
+		// Get from database.
+		profile, err = findProfile(linkedPath)
+
+	default:
+		return nil, errors.New("cannot fetch profile without ID or path")
 	}
-
-	p, err, _ := getProfileSingleInflight.Do(singleInflightKey, func() (interface{}, error) {
-		var previousVersion *Profile
-
-		// Fetch profile depending on the available information.
-		switch {
-		case id != "":
-			scopedID := makeScopedID(source, id)
-
-			// Get profile via the scoped ID.
-			// Check if there already is an active and not outdated profile.
-			profile = getActiveProfile(scopedID)
-			if profile != nil {
-				profile.MarkStillActive()
-
-				if profile.outdated.IsSet() {
-					previousVersion = profile
-				} else {
-					return profile, nil
-				}
-			}
-			// Get from database.
-			profile, err = getProfile(scopedID)
-
-			// Check if the request is for a special profile that may need a reset.
-			if err == nil && specialProfileNeedsReset(profile) {
-				// Trigger creation of special profile.
-				err = database.ErrNotFound
-			}
-
-			// If we cannot find a profile, check if the request is for a special
-			// profile we can create.
-			if errors.Is(err, database.ErrNotFound) {
-				profile = getSpecialProfile(id, linkedPath)
-				if profile != nil {
-					err = nil
-				}
-			}
-
-		case linkedPath != "":
-			// Search for profile via a linked path.
-			// Check if there already is an active and not outdated profile for
-			// the linked path.
-			profile = findActiveProfile(linkedPath)
-			if profile != nil {
-				if profile.outdated.IsSet() {
-					previousVersion = profile
-				} else {
-					return profile, nil
-				}
-			}
-			// Get from database.
-			profile, err = findProfile(linkedPath)
-
-		default:
-			return nil, errors.New("cannot fetch profile without ID or path")
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		// Process profiles coming directly from the database.
-		// As we don't use any caching, these will be new objects.
-
-		// Add a layeredProfile to local and network profiles.
-		if profile.Source == SourceLocal || profile.Source == SourceNetwork {
-			// If we are refetching, assign the layered profile from the previous version.
-			if previousVersion != nil {
-				profile.layeredProfile = previousVersion.layeredProfile
-			}
-
-			// Local profiles must have a layered profile, create a new one if it
-			// does not yet exist.
-			if profile.layeredProfile == nil {
-				profile.layeredProfile = NewLayeredProfile(profile)
-			}
-		}
-
-		// Add the profile to the currently active profiles.
-		addActiveProfile(profile)
-
-		return profile, nil
-	})
 	if err != nil {
 		return nil, err
 	}
-	if p == nil {
-		return nil, errors.New("profile getter returned nil")
+
+	// Process profiles coming directly from the database.
+	// As we don't use any caching, these will be new objects.
+
+	// Add a layeredProfile to local and network profiles.
+	if profile.Source == SourceLocal || profile.Source == SourceNetwork {
+		// If we are refetching, assign the layered profile from the previous version.
+		if previousVersion != nil {
+			profile.layeredProfile = previousVersion.layeredProfile
+		}
+
+		// Local profiles must have a layered profile, create a new one if it
+		// does not yet exist.
+		if profile.layeredProfile == nil {
+			profile.layeredProfile = NewLayeredProfile(profile)
+		}
 	}
 
-	return p.(*Profile), nil
+	// Add the profile to the currently active profiles.
+	addActiveProfile(profile)
+
+	return profile, nil
 }
 
 // getProfile fetches the profile for the given scoped ID.
@@ -180,6 +170,9 @@ func prepProfile(r record.Record) (*Profile, error) {
 	if err != nil {
 		log.Errorf("profiles: profile %s has (partly) invalid configuration: %s", profile.ID, err)
 	}
+
+	// Set saved internally to suppress outdating profiles if saving internally.
+	profile.savedInternally = true
 
 	// return parsed profile
 	return profile, nil
