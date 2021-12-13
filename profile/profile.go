@@ -291,13 +291,24 @@ func (profile *Profile) LastActive() int64 {
 
 // MarkUsed updates ApproxLastUsed when it's been a while and saves the profile if it was changed.
 func (profile *Profile) MarkUsed() (changed bool) {
-	profile.Lock()
-	defer profile.Unlock()
+	/*
+		TODO:
+		This might be one of the things causing problems with disappearing settings.
+		Possibly this is called with an outdated profile and then kills settings
+		already in the database.
+		Generally, it probably causes more harm than good if we periodically touch
+		the most important database entries just to update a timestamp.
+		We should save this data elsewhere and make configuration data as stable as
+		possible.
 
-	if time.Now().Add(-lastUsedUpdateThreshold).Unix() > profile.ApproxLastUsed {
-		profile.ApproxLastUsed = time.Now().Unix()
-		return true
-	}
+		profile.Lock()
+		defer profile.Unlock()
+
+		if time.Now().Add(-lastUsedUpdateThreshold).Unix() > profile.ApproxLastUsed {
+			profile.ApproxLastUsed = time.Now().Unix()
+			return true
+		}
+	*/
 
 	return false
 }
