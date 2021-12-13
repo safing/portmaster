@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network/netutils"
@@ -51,9 +52,11 @@ func GetAssignedGlobalAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
 }
 
 var (
-	myNetworks                   []*net.IPNet
-	myNetworksLock               sync.Mutex
-	myNetworksNetworkChangedFlag = GetNetworkChangedFlag()
+	myNetworks                    []*net.IPNet
+	myNetworksLock                sync.Mutex
+	myNetworksNetworkChangedFlag  = GetNetworkChangedFlag()
+	myNetworksRefreshError        error
+	myNetworksRefreshFailingUntil time.Time
 )
 
 // IsMyIP returns whether the given unicast IP is currently configured on the local host.
@@ -70,18 +73,33 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 	myNetworksLock.Lock()
 	defer myNetworksLock.Unlock()
 
-	// Check if the network changed.
-	if myNetworksNetworkChangedFlag.IsSet() {
-		// Reset changed flag.
-		myNetworksNetworkChangedFlag.Refresh()
-	} else if mine, matched := checkIfMyIP(ip); matched {
-		// If the network did not change, check for match immediately.
+	// Check if current data matches IP.
+	// Matching on somewhat older data is not a problem, as these IPs would not
+	// just randomly pop up somewhere else that fast.
+	mine, matched := checkIfMyIP(ip)
+	if matched {
 		return mine, nil
+	}
+
+	// Check if the network changed.
+	if !myNetworksNetworkChangedFlag.IsSet() {
+		// Network did not change, return "no match".
+		return false, nil
+	}
+
+	// Check if there was a recent error on the previous refresh.
+	if myNetworksRefreshError != nil && time.Now().Before(myNetworksRefreshFailingUntil) {
+		return false, fmt.Errorf("failed to previously refresh interface addresses: %s", myNetworksRefreshError)
 	}
 
 	// Refresh assigned networks.
 	interfaceNetworks, err := net.InterfaceAddrs()
 	if err != nil {
+		// Save error for one second.
+		// In some cases the system blocks on this call, which piles up to
+		// literally over thousand goroutines wanting to try this again.
+		myNetworksRefreshError = err
+		myNetworksRefreshFailingUntil = time.Now().Add(1 * time.Second)
 		return false, fmt.Errorf("failed to refresh interface addresses: %s", err)
 	}
 	myNetworks = make([]*net.IPNet, 0, len(interfaceNetworks))
@@ -94,6 +112,12 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 
 		myNetworks = append(myNetworks, net)
 	}
+
+	// Reset error.
+	myNetworksRefreshError = nil
+
+	// Reset changed flag.
+	myNetworksNetworkChangedFlag.Refresh()
 
 	// Check for match again.
 	if mine, matched := checkIfMyIP(ip); matched {
