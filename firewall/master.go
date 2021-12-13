@@ -243,31 +243,45 @@ func checkEndpointListsForSystemResolverDNSRequests(ctx context.Context, conn *n
 	return false
 }
 
+var p2pFilterLists = []string{"17-P2P"}
+
 func checkConnectionType(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
 	switch {
-	case conn.Type != network.IPConnection:
-
-		// Decider only applies to IP connections.
-		return false
-
-	case conn.Inbound &&
-		!conn.Entity.IPScope.IsLocalhost() &&
-		p.BlockInbound():
-
-		// BlockInbound does not apply to the Localhost scope.
+	// Block incoming connection, if not from localhost.
+	case p.BlockInbound() && conn.Inbound &&
+		!conn.Entity.IPScope.IsLocalhost():
 		conn.Drop("inbound connections blocked", profile.CfgOptionBlockInboundKey)
 		return true
 
-	case conn.Entity.IPScope.IsGlobal() &&
-		conn.Entity.Domain == "" &&
-		p.BlockP2P():
+		// Check for P2P and related connections.
+	case p.BlockP2P() && !conn.Inbound:
+		switch {
+		// Block anything that is in the P2P filter list.
+		case conn.Entity.MatchLists(p2pFilterLists):
+			conn.Block("P2P assistive infrastructure blocked based on filter list", profile.CfgOptionBlockP2PKey)
+			return true
 
-		// BlockP2P only applies to the Global scope.
-		conn.Block("direct connections (P2P) blocked", profile.CfgOptionBlockP2PKey)
-		return true
+			// Remaining P2P deciders only apply to IP connections.
+		case conn.Type != network.IPConnection:
+			return false
+
+			// Block well known ports of P2P assistive infrastructure.
+		case conn.Entity.DstPort() == 3478 || // STUN/TURN
+			conn.Entity.DstPort() == 5349: // STUN/TURN over TLS/DTLS
+			conn.Block("P2P assistive infrastructure blocked based on port", profile.CfgOptionBlockP2PKey)
+			return true
+
+			// Block direct connections with not previous DNS request.
+		case conn.Entity.IPScope.IsGlobal() &&
+			conn.Entity.Domain == "":
+			conn.Block("direct connections (P2P) blocked", profile.CfgOptionBlockP2PKey)
+			return true
+
+		default:
+			return false
+		}
 
 	default:
-
 		return false
 	}
 }
