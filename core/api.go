@@ -7,6 +7,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/utils/debug"
+	"github.com/safing/portmaster/resolver"
 	"github.com/safing/portmaster/status"
 	"github.com/safing/portmaster/updates"
 )
@@ -84,6 +85,7 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	di.AddVersionInfo()
 	di.AddPlatformInfo(ar.Context())
 	status.AddToDebugInfo(di)
+	resolver.AddToDebugInfo(di)
 	di.AddLastReportedModuleError()
 	di.AddLastUnexpectedLogs()
 	di.AddGoroutineStack()

@@ -13,6 +13,7 @@ import (
 	"github.com/safing/portbase/utils/debug"
 	"github.com/safing/portmaster/network/state"
 	"github.com/safing/portmaster/process"
+	"github.com/safing/portmaster/resolver"
 	"github.com/safing/portmaster/status"
 )
 
@@ -74,6 +75,7 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	di.AddVersionInfo()
 	di.AddPlatformInfo(ar.Context())
 	status.AddToDebugInfo(di)
+	resolver.AddToDebugInfo(di)
 	AddNetworkDebugData(
 		di,
 		ar.Request.URL.Query().Get("profile"),
