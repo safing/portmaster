@@ -116,7 +116,7 @@ func (issue *appIssue) notify(proc *process.Process) {
 		"compat: detected %s issue with %s",
 		strings.ReplaceAll(
 			strings.TrimPrefix(
-				strings.TrimSuffix(issue.id, "-%d"),
+				strings.TrimSuffix(issue.id, "-%s"),
 				"compat:",
 			),
 			"-", " ",

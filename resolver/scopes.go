@@ -77,8 +77,8 @@ var (
 		".168.192.in-addr.arpa.",
 
 		// RFC4193: IPv6 private-address reverse-mapping domains.
-		".d.f.ip6.arpa",
-		".c.f.ip6.arpa",
+		".d.f.ip6.arpa.",
+		".c.f.ip6.arpa.",
 
 		// RFC6761: Special use domains for documentation and testing.
 		".example.",
