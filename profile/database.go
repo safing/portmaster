@@ -54,6 +54,7 @@ func startProfileUpdateChecker() error {
 			}
 		}()
 
+	profileFeed:
 		for {
 			select {
 			case r := <-profilesSub.Feed:
@@ -62,15 +63,44 @@ func startProfileUpdateChecker() error {
 					return errors.New("subscription canceled")
 				}
 
-				// Don't mark profiles as outdated that are saved internally, as
-				// profiles only exist once in memory.
-				p, ok := r.(*Profile)
-				if ok && p.savedInternally {
-					return
+				// Get active profile.
+				activeProfile := getActiveProfile(strings.TrimPrefix(r.Key(), profilesDBPath))
+				if activeProfile == nil {
+					continue profileFeed
 				}
 
-				// Mark profile as outdated.
-				markActiveProfileAsOutdated(strings.TrimPrefix(r.Key(), profilesDBPath))
+				// If the record is being deleted, but there is an active profile,
+				// create an empty profile instead.
+				if r.Meta().IsDeleted() {
+					newProfile := New(
+						activeProfile.Source,
+						activeProfile.ID,
+						activeProfile.LinkedPath,
+						nil,
+					)
+					// Copy some metadata from the old profile.
+					newProfile.Name = activeProfile.Name
+					// Save the new profile.
+					err := newProfile.Save()
+					if err != nil {
+						log.Errorf("profile: failed to save new profile for profile reset: %s", err)
+					}
+					// Set to outdated, so it is loaded in the layered profiles.
+					activeProfile.outdated.Set()
+				}
+
+				// Always increase the revision counter of the layer profile.
+				// This marks previous connections in the UI as decided with outdated settings.
+				if activeProfile.layeredProfile != nil {
+					activeProfile.layeredProfile.increaseRevisionCounter(true)
+				}
+
+				// If the profile is saved externally (eg. via the API), have the
+				// next one to use it reload the profile from the database.
+				receivedProfile, err := EnsureProfile(r)
+				if err != nil || !receivedProfile.savedInternally {
+					activeProfile.outdated.Set()
+				}
 			case <-ctx.Done():
 				return nil
 			}
