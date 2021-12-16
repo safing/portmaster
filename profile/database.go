@@ -92,7 +92,7 @@ func startProfileUpdateChecker() error {
 				// Always increase the revision counter of the layer profile.
 				// This marks previous connections in the UI as decided with outdated settings.
 				if activeProfile.layeredProfile != nil {
-					activeProfile.layeredProfile.IncreaseRevisionCounter(true)
+					activeProfile.layeredProfile.increaseRevisionCounter(true)
 				}
 
 				// If the profile is saved externally (eg. via the API), have the
