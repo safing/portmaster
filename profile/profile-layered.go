@@ -166,6 +166,25 @@ func (lp *LayeredProfile) LocalProfile() *Profile {
 }
 
 // RevisionCnt returns the current profile revision counter.
+func (lp *LayeredProfile) IncreaseRevisionCounter(lock bool) (revisionCounter uint64) {
+	if lp == nil {
+		return 0
+	}
+
+	if lock {
+		lp.Lock()
+		defer lp.Unlock()
+	}
+
+	// Increase the revision counter.
+	lp.RevisionCounter++
+	// Push the increased counter to the UI.
+	pushLayeredProfile(lp)
+
+	return lp.RevisionCounter
+}
+
+// RevisionCnt returns the current profile revision counter.
 func (lp *LayeredProfile) RevisionCnt() (revisionCounter uint64) {
 	if lp == nil {
 		return 0
@@ -241,9 +260,7 @@ func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 		lp.updateCaches()
 
 		// bump revision counter
-		lp.RevisionCounter++
-
-		pushLayeredProfile(lp)
+		lp.IncreaseRevisionCounter(false)
 	}
 
 	return lp.RevisionCounter
