@@ -53,7 +53,10 @@ func TestMain(m *testing.M, module *modules.Module) {
 // afterStartFn after modules have started and beforeStopFn before modules
 // are shutdown.
 func TestMainWithHooks(m *testing.M, module *modules.Module, afterStartFn, beforeStopFn TestHookFunc) {
-	// enable module for testing
+	// Only enable needed modules.
+	modules.EnableModuleManagement(nil)
+
+	// Enable this module for testing.
 	if module != nil {
 		module.Enable()
 	}
