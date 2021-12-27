@@ -40,6 +40,10 @@ func start() error {
 		updatesPath += string(os.PathSeparator)
 	}
 
+	if err := migrateConfiguration(); err != nil {
+		return err
+	}
+
 	err := registerValidationDBHook()
 	if err != nil {
 		return err

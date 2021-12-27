@@ -54,6 +54,12 @@ func setSelectedSecurityLevel(r record.Record) (record.Record, error) {
 		}
 	}
 
+	// if the network rating system is not used at all we always force the security
+	// level to trusted.
+	if !NetworkRatingEnabled() {
+		upd.SelectedSecurityLevel = SecurityLevelNormal
+	}
+
 	if !IsValidSecurityLevel(upd.SelectedSecurityLevel) {
 		return nil, fmt.Errorf("invalid security level: %d", upd.SelectedSecurityLevel)
 	}

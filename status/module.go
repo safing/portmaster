@@ -14,7 +14,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("status", nil, start, nil, "base")
+	module = modules.Register("status", prepare, start, nil, "base", "config")
 }
 
 func start() error {
@@ -26,7 +26,7 @@ func start() error {
 
 	triggerAutopilot()
 
-	err := module.RegisterEventHook(
+	if err := module.RegisterEventHook(
 		netenv.ModuleName,
 		netenv.OnlineStatusChangedEvent,
 		"update online status in system status",
@@ -34,8 +34,30 @@ func start() error {
 			triggerAutopilot()
 			return nil
 		},
-	)
-	if err != nil {
+	); err != nil {
+		return err
+	}
+
+	if err := module.RegisterEventHook(
+		"config",
+		"config change",
+		"Update network rating system",
+		func(_ context.Context, _ interface{}) error {
+			if !NetworkRatingEnabled() && ActiveSecurityLevel() != SecurityLevelNormal {
+				setSelectedLevel(SecurityLevelNormal)
+				triggerAutopilot()
+			}
+			return nil
+		},
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func prepare() error {
+	if err := registerConfig(); err != nil {
 		return err
 	}
 
