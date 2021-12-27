@@ -14,7 +14,7 @@ func registerConfig() error {
 		Description:    "Enables the Network Rating System, which allows you to quickly increase security and privacy throughout the settings by changing your the network rating level in the top left. Please note that this feature is now in the sunset phase and will be replaced by a superior and easier to understand system in the future.",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
-		ReleaseLevel:   config.ReleaseLevelExperimental,
+		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 514,
