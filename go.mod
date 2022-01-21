@@ -24,7 +24,7 @@ require (
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oschwald/maxminddb-golang v1.8.0
 	github.com/safing/portbase v0.13.4
-	github.com/safing/spn v0.3.15
+	github.com/safing/spn v0.3.16
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.3.0
 	github.com/stretchr/testify v1.7.0
