@@ -205,6 +205,7 @@ func SetInternetLocation(ip net.IP, source DeviceLocationSource) (dl *DeviceLoca
 	geoLoc, err := geoip.GetLocation(ip)
 	if err != nil {
 		log.Warningf("netenv: failed to get geolocation data of %s (from %s): %s", ip, source, err)
+		return nil, false
 	} else {
 		loc.Location = geoLoc
 	}
@@ -214,6 +215,10 @@ func SetInternetLocation(ip net.IP, source DeviceLocationSource) (dl *DeviceLoca
 }
 
 func addLocation(dl *DeviceLocation) {
+	if dl == nil {
+		return
+	}
+
 	locationsLock.Lock()
 	defer locationsLock.Unlock()
 
