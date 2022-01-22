@@ -40,8 +40,8 @@ serviceLoop:
 	for {
 		trigger := false
 
-		timeout := time.Minute
-		if GetOnlineStatus() != StatusOnline {
+		timeout := 15 * time.Second
+		if !Online() {
 			timeout = time.Second
 		}
 		// wait for trigger
@@ -62,7 +62,7 @@ serviceLoop:
 		hasher := sha1.New() //nolint:gosec // not used for security
 		interfaces, err := net.Interfaces()
 		if err != nil {
-			log.Warningf("environment: failed to get interfaces: %s", err)
+			log.Warningf("netenv: failed to get interfaces: %s", err)
 			continue
 		}
 		for _, iface := range interfaces {
@@ -72,7 +72,7 @@ serviceLoop:
 			// log.Tracef("adding: %s", iface.Flags.String())
 			addrs, err := iface.Addrs()
 			if err != nil {
-				log.Warningf("environment: failed to get addrs from interface %s: %s", iface.Name, err)
+				log.Warningf("netenv: failed to get addrs from interface %s: %s", iface.Name, err)
 				continue
 			}
 			for _, addr := range addrs {
