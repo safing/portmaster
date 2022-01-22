@@ -58,11 +58,11 @@ type Coordinates struct {
 */
 
 const (
-	weightContinentMatch     = 25
-	weightCountryMatch       = 20
-	weightASOrgMatch         = 15
-	weightASNMatch           = 10
-	weightCoordinateDistance = 30
+	weightContinentMatch     = 20
+	weightCountryMatch       = 15
+	weightASOrgMatch         = 10
+	weightASNMatch           = 5
+	weightCoordinateDistance = 50
 )
 
 /*
