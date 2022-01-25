@@ -24,7 +24,7 @@ require (
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oschwald/maxminddb-golang v1.8.0
 	github.com/safing/portbase v0.13.4
-	github.com/safing/spn v0.3.16
+	github.com/safing/spn v0.3.17
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.3.0
 	github.com/stretchr/testify v1.7.0
@@ -38,7 +38,7 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
-	golang.org/x/net v0.0.0-20220114011407-0dd24b26b47d
+	golang.org/x/net v0.0.0-20220121210141-e204ce36a2ba
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 	golang.org/x/tools v0.1.8 // indirect
