@@ -2,12 +2,8 @@ package profile
 
 import (
 	"strings"
-	"sync"
 
 	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/profile/endpoints"
 	"github.com/safing/portmaster/status"
 )
@@ -573,58 +569,6 @@ Please note that if you are using the system resolver, bypass attempts might be 
 	}
 	cfgOptionUseSPN = config.Concurrent.GetAsBool(CfgOptionUseSPNKey, true)
 	cfgBoolOptions[CfgOptionUseSPNKey] = cfgOptionUseSPN
-
-	return nil
-}
-
-func migrateConfiguration() error {
-	// we use a temporary interface for the migration because there's no need
-	// to keep this one around
-	db := database.NewInterface(&database.Options{
-		Local:    true,
-		Internal: true,
-	})
-
-	if migrated, err := db.Exists("core:migration/networkRatingSystem"); err != nil {
-		return err
-	} else if !migrated {
-		// determine the default value for the network rating system by searching for
-		// a global security level setting that is not set to the default.
-		networkRatingEnabled := false
-		for _, cfgkey := range securityLevelSettings {
-			def, err := config.GetOption(cfgkey)
-			if err != nil {
-				return err
-			}
-
-			intValue := config.Concurrent.GetAsInt(cfgkey, 0)()
-			if def.DefaultValue.(uint8) != uint8(intValue) {
-				log.Debugf("found global security level setting with changed value. 0x%2x (default) != 0x%2x (current)", def.DefaultValue, intValue)
-				networkRatingEnabled = true
-				break
-			}
-		}
-
-		if networkRatingEnabled {
-			status.SetNetworkRating(networkRatingEnabled)
-		}
-
-		// create a dummy record for the network rating system migration
-		var r struct {
-			record.Base `json:"-"`
-			sync.Mutex  `json:"-"`
-		}
-		r.CreateMeta()
-		r.SetKey("core:migration/networkRatingSystem")
-
-		if err := db.Put(&r); err != nil {
-			return err
-		}
-
-		log.Infof("migration to configurable network rating system completed successfully: value=%v", networkRatingEnabled)
-	} else {
-		log.Debugf("migration to configurable network rating system already done")
-	}
 
 	return nil
 }
