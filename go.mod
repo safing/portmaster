@@ -21,7 +21,7 @@ require (
 	github.com/mdlayher/netlink v1.5.0 // indirect
 	github.com/mdlayher/socket v0.1.1 // indirect
 	github.com/miekg/dns v1.1.45
-	github.com/mr-tron/base58 v1.2.0
+	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.8.0
 	github.com/safing/portbase v0.13.4
 	github.com/safing/spn v0.3.17
@@ -42,5 +42,5 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 	golang.org/x/tools v0.1.8 // indirect
-	google.golang.org/appengine v1.6.7
+	google.golang.org/appengine v1.6.7 // indirect
 )
