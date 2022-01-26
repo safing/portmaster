@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -13,8 +12,6 @@ import (
 	"syscall"
 
 	"github.com/safing/portmaster/updates/helper"
-
-	"github.com/tidwall/gjson"
 
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/info"
@@ -188,11 +185,11 @@ func ensureLoggingDir() error {
 }
 
 func updateRegistryIndex(mustLoadIndex bool) error {
-	// Get release channel from config.
-	releaseChannel := getReleaseChannel(dataRoot)
-
 	// Set indexes based on the release channel.
-	helper.SetIndexes(registry, releaseChannel)
+	warning := helper.SetIndexes(registry, "", false)
+	if warning != nil {
+		log.Printf("WARNING: %s\n", warning)
+	}
 
 	// Load indexes from disk or network, if needed and desired.
 	err := registry.LoadIndexes(context.Background())
@@ -231,27 +228,4 @@ func detectInstallationDir() string {
 	}
 
 	return parent
-}
-
-func getReleaseChannel(dataRoot *utils.DirStructure) string {
-	configData, err := ioutil.ReadFile(filepath.Join(dataRoot.Path, "config.json"))
-	if err != nil {
-		if !os.IsNotExist(err) {
-			log.Printf("WARNING: failed to read config.json to get release channel: %s\n", err)
-		}
-		return helper.ReleaseChannelStable
-	}
-
-	// Get release channel from config, validate and return it.
-	channel := gjson.GetBytes(configData, helper.ReleaseChannelJSONKey).String()
-	switch channel {
-	case helper.ReleaseChannelStable,
-		helper.ReleaseChannelBeta,
-		helper.ReleaseChannelStaging,
-		helper.ReleaseChannelSupport:
-		return channel
-	default:
-		log.Printf("WARNING: config.json has unknown release channel %q, falling back to stable channel\n", channel)
-		return helper.ReleaseChannelStable
-	}
 }
