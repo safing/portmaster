@@ -15,7 +15,7 @@ func registerMigrations() error {
 	return migrations.Add(
 		migration.Migration{
 			Description: "Migrate to configurable network rating system",
-			Version:     "v1.0.0",
+			Version:     "v0.7.19",
 			MigrateFunc: migrateNetworkRatingSystem,
 		},
 	)
