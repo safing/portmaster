@@ -3,7 +3,9 @@ package geoip
 import (
 	"encoding/binary"
 	"net"
+	"strings"
 
+	"github.com/safing/portbase/utils"
 	"github.com/umahmood/haversine"
 )
 
@@ -56,11 +58,11 @@ type Coordinates struct {
 */
 
 const (
-	weightContinentMatch     = 25
-	weightCountryMatch       = 20
-	weightASOrgMatch         = 15
-	weightASNMatch           = 10
-	weightCoordinateDistance = 30
+	weightContinentMatch     = 20
+	weightCountryMatch       = 15
+	weightASOrgMatch         = 10
+	weightASNMatch           = 5
+	weightCoordinateDistance = 50
 )
 
 /*
@@ -94,11 +96,14 @@ func (l *Location) EstimateNetworkProximity(to *Location) (proximity float32) {
 	}
 
 	switch {
-	case l.AutonomousSystemNumber != 0 && l.AutonomousSystemNumber == to.AutonomousSystemNumber:
+	case l.AutonomousSystemNumber == to.AutonomousSystemNumber &&
+		l.AutonomousSystemNumber != 0:
 		// Rely more on the ASN data, as it is more accurate than the ASOrg data,
 		// especially when combining location data from multiple sources.
 		proximity += weightASOrgMatch + weightASNMatch
-	case l.AutonomousSystemOrganization != "" && l.AutonomousSystemOrganization == to.AutonomousSystemOrganization:
+	case l.AutonomousSystemOrganization == to.AutonomousSystemOrganization &&
+		l.AutonomousSystemNumber != 0 && // Check if an ASN is set. If the ASOrg is known, the ASN must be too.
+		!ASOrgUnknown(l.AutonomousSystemOrganization): // Check if the ASOrg name is valid.
 		proximity += weightASOrgMatch
 	}
 
@@ -182,4 +187,21 @@ func PrimitiveNetworkProximity(from net.IP, to net.IP, ipVersion uint8) int {
 	default:
 		return 0
 	}
+}
+
+var unknownASOrgNames = []string{
+	"",           // Expected default for unknown.
+	"not routed", // Observed as "Not routed" in data set.
+	"unknown",    // Observed as "UNKNOWN" in online data set.
+	"nil",        // Programmatic unknown value.
+	"null",       // Programmatic unknown value.
+	"undef",      // Programmatic unknown value.
+	"undefined",  // Programmatic unknown value.
+}
+
+func ASOrgUnknown(asOrg string) bool {
+	return utils.StringInSlice(
+		unknownASOrgNames,
+		strings.ToLower(asOrg),
+	)
 }

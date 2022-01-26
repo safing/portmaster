@@ -76,14 +76,15 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 	// Check if current data matches IP.
 	// Matching on somewhat older data is not a problem, as these IPs would not
 	// just randomly pop up somewhere else that fast.
-	mine, matched := checkIfMyIP(ip)
-	if matched {
-		return mine, nil
-	}
-
-	// Check if the network changed.
-	if !myNetworksNetworkChangedFlag.IsSet() {
-		// Network did not change, return "no match".
+	mine, myNet := checkIfMyIP(ip)
+	switch {
+	case mine:
+		// IP matched.
+		return true, nil
+	case myNetworksNetworkChangedFlag.IsSet():
+		// The network changed, so we need to refresh the data.
+	case myNet:
+		// IP is one of the networks and nothing changed, so this is not our IP.
 		return false, nil
 	}
 
@@ -104,13 +105,13 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 	}
 	myNetworks = make([]*net.IPNet, 0, len(interfaceNetworks))
 	for _, ifNet := range interfaceNetworks {
-		net, ok := ifNet.(*net.IPNet)
+		ipNet, ok := ifNet.(*net.IPNet)
 		if !ok {
 			log.Warningf("netenv: interface network of unexpected type %T", ifNet)
 			continue
 		}
 
-		myNetworks = append(myNetworks, net)
+		myNetworks = append(myNetworks, ipNet)
 	}
 
 	// Reset error.
@@ -126,7 +127,7 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 	return false, nil
 }
 
-func checkIfMyIP(ip net.IP) (mine bool, matched bool) {
+func checkIfMyIP(ip net.IP) (mine bool, myNet bool) {
 	// Check against assigned IPs.
 	for _, myNet := range myNetworks {
 		if ip.Equal(myNet.IP) {
