@@ -103,6 +103,22 @@ var (
 	cfgOptionUseSPNOrder = 129
 )
 
+// A list of all security level settings.
+var securityLevelSettings = []string{
+	CfgOptionBlockScopeInternetKey,
+	CfgOptionBlockScopeLANKey,
+	CfgOptionBlockScopeLocalKey,
+	CfgOptionBlockP2PKey,
+	CfgOptionBlockInboundKey,
+	CfgOptionFilterSubDomainsKey,
+	CfgOptionFilterCNAMEKey,
+	CfgOptionRemoveOutOfScopeDNSKey,
+	CfgOptionRemoveBlockedDNSKey,
+	CfgOptionDomainHeuristicsKey,
+	CfgOptionPreventBypassingKey,
+	CfgOptionDisableAutoPermitKey,
+}
+
 func registerConfiguration() error {
 	// Default Filter Action
 	// permit - blocklist mode: everything is allowed unless blocked

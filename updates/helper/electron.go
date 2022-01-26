@@ -23,10 +23,14 @@ func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 		return nil
 	}
 
-	if checkSysctl("kernel.unprivileged_userns_clone", '1') {
-		log.Debug("updates: kernel support for unprivileged USERNS_CLONE is enabled")
+	_, err := os.Stat("/proc/self/ns/user")
+	if err == nil {
 		return nil
 	}
+	if !os.IsNotExist(err) {
+		return err
+	}
+	// err == ENOENT
 
 	if pmElectronUpdate != nil && !pmElectronUpdate.UpgradeAvailable() {
 		return nil
@@ -35,7 +39,6 @@ func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 
 	log.Debug("updates: kernel support for unprivileged USERNS_CLONE disabled")
 
-	var err error
 	pmElectronUpdate, err = reg.GetFile(identifier)
 	if err != nil {
 		return err

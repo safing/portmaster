@@ -3,6 +3,7 @@ package profile
 import (
 	"os"
 
+	"github.com/safing/portbase/database/migration"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/updates"
@@ -12,6 +13,7 @@ import (
 )
 
 var (
+	migrations  = migration.New("core:migrations/profile")
 	module      *modules.Module
 	updatesPath string
 )
@@ -21,13 +23,15 @@ func init() {
 }
 
 func prep() error {
-	err := registerConfiguration()
-	if err != nil {
+	if err := registerConfiguration(); err != nil {
 		return err
 	}
 
-	err = registerConfigUpdater()
-	if err != nil {
+	if err := registerConfigUpdater(); err != nil {
+		return err
+	}
+
+	if err := registerMigrations(); err != nil {
 		return err
 	}
 
@@ -38,6 +42,10 @@ func start() error {
 	updatesPath = updates.RootPath()
 	if updatesPath != "" {
 		updatesPath += string(os.PathSeparator)
+	}
+
+	if err := migrations.Migrate(module.Ctx); err != nil {
+		return err
 	}
 
 	err := registerValidationDBHook()
