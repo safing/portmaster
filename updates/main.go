@@ -114,7 +114,10 @@ func start() error {
 	}
 
 	// Set indexes based on the release channel.
-	helper.SetIndexes(registry, initialReleaseChannel)
+	warning := helper.SetIndexes(registry, initialReleaseChannel, true)
+	if warning != nil {
+		log.Warningf("updates: %s", warning)
+	}
 
 	err = registry.LoadIndexes(module.Ctx)
 	if err != nil {

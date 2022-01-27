@@ -123,7 +123,10 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 
 	if releaseChannel() != previousReleaseChannel {
 		previousReleaseChannel = releaseChannel()
-		helper.SetIndexes(registry, releaseChannel())
+		warning := helper.SetIndexes(registry, releaseChannel(), true)
+		if warning != nil {
+			log.Warningf("updates: %s", warning)
+		}
 		changed = true
 	}
 
