@@ -6,6 +6,10 @@ import (
 )
 
 func TestLocationLookup(t *testing.T) {
+	// Skip in CI.
+	if testing.Short() {
+		t.Skip()
+	}
 	t.Parallel()
 
 	ip1 := net.ParseIP("81.2.69.142")

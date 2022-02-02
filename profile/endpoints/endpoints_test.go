@@ -352,35 +352,40 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 		IP: net.ParseIP("10.2.4.4"),
 	}).Init(), NoMatch)
 
-	// ASN
+	// Skip test that need the geoip database in CI.
+	if !testing.Short() {
 
-	ep, err = parseEndpoint("+ 	AS15169")
-	if err != nil {
-		t.Fatal(err)
+		// ASN
+
+		ep, err = parseEndpoint("+ 	AS15169")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		entity = &intel.Entity{}
+		entity.SetIP(net.ParseIP("8.8.8.8"))
+		testEndpointMatch(t, ep, entity, Permitted)
+
+		entity = &intel.Entity{}
+		entity.SetIP(net.ParseIP("1.1.1.1"))
+		testEndpointMatch(t, ep, entity, NoMatch)
+
+		// Country
+
+		ep, err = parseEndpoint("+ AT")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		entity = &intel.Entity{}
+		entity.SetIP(net.ParseIP("194.232.104.1")) // orf.at
+		testEndpointMatch(t, ep, entity, Permitted)
+
+		entity = &intel.Entity{}
+		entity.SetIP(net.ParseIP("151.101.1.164")) // nytimes.com
+		testEndpointMatch(t, ep, entity, NoMatch)
+
 	}
-
-	entity = &intel.Entity{}
-	entity.SetIP(net.ParseIP("8.8.8.8"))
-	testEndpointMatch(t, ep, entity, Permitted)
-
-	entity = &intel.Entity{}
-	entity.SetIP(net.ParseIP("1.1.1.1"))
-	testEndpointMatch(t, ep, entity, NoMatch)
-
-	// Country
-
-	ep, err = parseEndpoint("+ AT")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	entity = &intel.Entity{}
-	entity.SetIP(net.ParseIP("194.232.104.1")) // orf.at
-	testEndpointMatch(t, ep, entity, Permitted)
-
-	entity = &intel.Entity{}
-	entity.SetIP(net.ParseIP("151.101.1.164")) // nytimes.com
-	testEndpointMatch(t, ep, entity, NoMatch)
 
 	// Scope
 
@@ -397,9 +402,12 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 
 	// Lists
 
-	_, err = parseEndpoint("+ L:A,B,C")
-	if err != nil {
-		t.Fatal(err)
+	// Skip test that need the filter lists in CI.
+	if !testing.Short() {
+		_, err = parseEndpoint("+ L:A,B,C")
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// TODO: write test for lists matcher
