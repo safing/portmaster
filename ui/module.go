@@ -2,18 +2,11 @@ package ui
 
 import (
 	"github.com/safing/portbase/dataroot"
-
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 )
 
-const (
-	eventReload = "reload"
-)
-
-var (
-	module *modules.Module
-)
+var module *modules.Module
 
 func init() {
 	module = modules.Register("ui", prep, start, nil, "api", "updates")
@@ -36,7 +29,7 @@ func start() error {
 	// may seem dangerous, but proper permission on the parent directory provide
 	// (some) protection.
 	// Processes must _never_ read from this directory.
-	err := dataroot.Root().ChildDir("exec", 0777).Ensure()
+	err := dataroot.Root().ChildDir("exec", 0o0777).Ensure()
 	if err != nil {
 		log.Warningf("ui: failed to create safe exec dir: %s", err)
 	}

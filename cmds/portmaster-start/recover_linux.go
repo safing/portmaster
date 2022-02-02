@@ -1,13 +1,15 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/safing/portmaster/firewall/interception"
 	"github.com/spf13/cobra"
+
+	"github.com/safing/portmaster/firewall/interception"
 )
 
 var recoverIPTablesCmd = &cobra.Command{
@@ -19,8 +21,10 @@ var recoverIPTablesCmd = &cobra.Command{
 		// we don't get the errno of the actual error and need to parse the
 		// output instead. Make sure it's always english by setting LC_ALL=C
 		currentLocale := os.Getenv("LC_ALL")
-		os.Setenv("LC_ALL", "C")
-		defer os.Setenv("LC_ALL", currentLocale)
+		_ = os.Setenv("LC_ALL", "C")
+		defer func() {
+			_ = os.Setenv("LC_ALL", currentLocale)
+		}()
 
 		err := interception.DeactivateNfqueueFirewall()
 		if err == nil {
@@ -29,8 +33,8 @@ var recoverIPTablesCmd = &cobra.Command{
 
 		// we don't want to show ErrNotExists to the user
 		// as that only means portmaster did the cleanup itself.
-		mr, ok := err.(*multierror.Error)
-		if !ok {
+		var mr *multierror.Error
+		if !errors.As(err, &mr) {
 			return err
 		}
 

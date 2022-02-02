@@ -11,15 +11,14 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/safing/portmaster/updates/helper"
+	"github.com/spf13/cobra"
 
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/info"
 	portlog "github.com/safing/portbase/log"
 	"github.com/safing/portbase/updater"
 	"github.com/safing/portbase/utils"
-
-	"github.com/spf13/cobra"
+	"github.com/safing/portmaster/updates/helper"
 )
 
 var (
@@ -29,7 +28,7 @@ var (
 	dataRoot   *utils.DirStructure
 	logsRoot   *utils.DirStructure
 
-	// create registry
+	// Create registry.
 	registry = &updater.ResourceRegistry{
 		Name: "updates",
 		UpdateURLs: []string{
@@ -153,14 +152,14 @@ func configureRegistry(mustLoadIndex bool) error {
 	// Remove left over quotes.
 	dataDir = strings.Trim(dataDir, `\"`)
 	// Initialize data root.
-	err := dataroot.Initialize(dataDir, 0755)
+	err := dataroot.Initialize(dataDir, 0o0755)
 	if err != nil {
-		return fmt.Errorf("failed to initialize data root: %s", err)
+		return fmt.Errorf("failed to initialize data root: %w", err)
 	}
 	dataRoot = dataroot.Root()
 
 	// Initialize registry.
-	err = registry.Initialize(dataRoot.ChildDir("updates", 0755))
+	err = registry.Initialize(dataRoot.ChildDir("updates", 0o0755))
 	if err != nil {
 		return err
 	}
@@ -170,10 +169,10 @@ func configureRegistry(mustLoadIndex bool) error {
 
 func ensureLoggingDir() error {
 	// set up logs root
-	logsRoot = dataRoot.ChildDir("logs", 0777)
+	logsRoot = dataRoot.ChildDir("logs", 0o0777)
 	err := logsRoot.Ensure()
 	if err != nil {
-		return fmt.Errorf("failed to initialize logs root (%q): %s", logsRoot.Path, err)
+		return fmt.Errorf("failed to initialize logs root (%q): %w", logsRoot.Path, err)
 	}
 
 	// warn about CTRL-C on windows

@@ -8,20 +8,19 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tevino/abool"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portbase/utils/debug"
-	"github.com/safing/portmaster/intel"
-	"github.com/tevino/abool"
 
-	// module dependencies
+	// Dependency.
 	_ "github.com/safing/portmaster/core/base"
+	"github.com/safing/portmaster/intel"
 )
 
-var (
-	module *modules.Module
-)
+var module *modules.Module
 
 func init() {
 	module = modules.Register("resolver", prep, start, nil, "base", "netenv")
@@ -93,9 +92,7 @@ func start() error {
 	return nil
 }
 
-var (
-	localAddrFactory func(network string) net.Addr
-)
+var localAddrFactory func(network string) net.Addr
 
 // SetLocalAddrFactory supplies the intel package with a function to get permitted local addresses for connections.
 func SetLocalAddrFactory(laf func(network string) net.Addr) {

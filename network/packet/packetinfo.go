@@ -4,7 +4,7 @@ import (
 	"net"
 )
 
-// Info holds IP and TCP/UDP header information
+// Info holds IP and TCP/UDP header information.
 type Info struct {
 	Inbound  bool
 	InTunnel bool

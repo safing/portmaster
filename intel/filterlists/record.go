@@ -24,17 +24,17 @@ func getEntityRecordByKey(key string) (*entityRecord, error) {
 	}
 
 	if r.IsWrapped() {
-		new := &entityRecord{}
-		if err := record.Unwrap(r, new); err != nil {
+		newER := &entityRecord{}
+		if err := record.Unwrap(r, newER); err != nil {
 			return nil, err
 		}
 
-		return new, nil
+		return newER, nil
 	}
 
-	e, ok := r.(*entityRecord)
+	newER, ok := r.(*entityRecord)
 	if !ok {
 		return nil, fmt.Errorf("record not of type *entityRecord, but %T", r)
 	}
-	return e, nil
+	return newER, nil
 }

@@ -19,9 +19,7 @@ import (
 	"github.com/safing/portmaster/profile"
 )
 
-const (
-	onLinux = runtime.GOOS == "linux"
-)
+const onLinux = runtime.GOOS == "linux"
 
 var getProcessSingleInflight singleflight.Group
 
@@ -103,7 +101,7 @@ func (p *Process) SetLastSeen(lastSeen int64) {
 	p.LastSeen = lastSeen
 }
 
-// Strings returns a string representation of process.
+// String returns a string representation of process.
 func (p *Process) String() string {
 	if p == nil {
 		return "?"
@@ -126,11 +124,10 @@ func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 		return nil, errors.New("process getter returned nil")
 	}
 
-	return p.(*Process), nil
+	return p.(*Process), nil // nolint:forcetypeassert // Can only be a *Process.
 }
 
 func loadProcess(ctx context.Context, pid int) (*Process, error) {
-
 	switch pid {
 	case UnidentifiedProcessID:
 		return GetUnidentifiedProcess(ctx), nil
@@ -144,7 +141,7 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	}
 
 	// Create new a process object.
-	new := &Process{
+	process = &Process{
 		Pid:       pid,
 		FirstSeen: time.Now().Unix(),
 	}
@@ -157,19 +154,19 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 
 	// UID
 	// net yet implemented for windows
-	if runtime.GOOS == "linux" {
+	if onLinux {
 		var uids []int32
 		uids, err = pInfo.Uids()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get UID for p%d: %s", pid, err)
+			return nil, fmt.Errorf("failed to get UID for p%d: %w", pid, err)
 		}
-		new.UserID = int(uids[0])
+		process.UserID = int(uids[0])
 	}
 
 	// Username
-	new.UserName, err = pInfo.Username()
+	process.UserName, err = pInfo.Username()
 	if err != nil {
-		return nil, fmt.Errorf("process: failed to get Username for p%d: %s", pid, err)
+		return nil, fmt.Errorf("process: failed to get Username for p%d: %w", pid, err)
 	}
 
 	// TODO: User Home
@@ -178,47 +175,47 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	// PPID
 	ppid, err := pInfo.Ppid()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get PPID for p%d: %s", pid, err)
+		return nil, fmt.Errorf("failed to get PPID for p%d: %w", pid, err)
 	}
-	new.ParentPid = int(ppid)
+	process.ParentPid = int(ppid)
 
 	// Path
-	new.Path, err = pInfo.Exe()
+	process.Path, err = pInfo.Exe()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Path for p%d: %s", pid, err)
+		return nil, fmt.Errorf("failed to get Path for p%d: %w", pid, err)
 	}
 	// remove linux " (deleted)" suffix for deleted files
 	if onLinux {
-		new.Path = strings.TrimSuffix(new.Path, " (deleted)")
+		process.Path = strings.TrimSuffix(process.Path, " (deleted)")
 	}
 	// Executable Name
-	_, new.ExecName = filepath.Split(new.Path)
+	_, process.ExecName = filepath.Split(process.Path)
 
 	// Current working directory
 	// net yet implemented for windows
 	// new.Cwd, err = pInfo.Cwd()
 	// if err != nil {
-	// 	log.Warningf("process: failed to get Cwd: %s", err)
+	// 	log.Warningf("process: failed to get Cwd: %w", err)
 	// }
 
 	// Command line arguments
-	new.CmdLine, err = pInfo.Cmdline()
+	process.CmdLine, err = pInfo.Cmdline()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Cmdline for p%d: %s", pid, err)
+		return nil, fmt.Errorf("failed to get Cmdline for p%d: %w", pid, err)
 	}
 
 	// Name
-	new.Name, err = pInfo.Name()
+	process.Name, err = pInfo.Name()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Name for p%d: %s", pid, err)
+		return nil, fmt.Errorf("failed to get Name for p%d: %w", pid, err)
 	}
-	if new.Name == "" {
-		new.Name = new.ExecName
+	if process.Name == "" {
+		process.Name = process.ExecName
 	}
 
 	// OS specifics
-	new.specialOSInit()
+	process.specialOSInit()
 
-	new.Save()
-	return new, nil
+	process.Save()
+	return process, nil
 }

@@ -6,11 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/safing/portmaster/detection/dga"
-	"github.com/safing/portmaster/netenv"
+	"github.com/agext/levenshtein"
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/detection/dga"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
@@ -18,8 +19,6 @@ import (
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
 	"github.com/safing/portmaster/profile/endpoints"
-
-	"github.com/agext/levenshtein"
 )
 
 // Call order:
@@ -215,6 +214,8 @@ func checkEndpointLists(ctx context.Context, conn *network.Connection, p *profil
 	case endpoints.Permitted:
 		conn.AcceptWithContext(reason.String(), optionKey, reason.Context())
 		return true
+	case endpoints.NoMatch:
+		return false
 	}
 
 	return false
@@ -236,6 +237,8 @@ func checkEndpointListsForSystemResolverDNSRequests(ctx context.Context, conn *n
 			case endpoints.Permitted:
 				conn.AcceptWithContext(reason.String(), profile.CfgOptionEndpointsKey, reason.Context())
 				return true
+			case endpoints.NoMatch:
+				return false
 			}
 		}
 	}
@@ -345,7 +348,9 @@ func checkConnectionScope(_ context.Context, conn *network.Connection, p *profil
 			conn.Block("Localhost access blocked", profile.CfgOptionBlockScopeLocalKey) // Block Outbound / Drop Inbound
 			return true
 		}
-	default: // netutils.Unknown and netutils.Invalid
+	case netutils.Undefined, netutils.Invalid:
+		fallthrough
+	default:
 		conn.Deny("invalid IP", noReasonOptionKey) // Block Outbound / Drop Inbound
 		return true
 	}
@@ -358,14 +363,19 @@ func checkBypassPrevention(ctx context.Context, conn *network.Connection, p *pro
 		// check for bypass protection
 		result, reason, reasonCtx := PreventBypassing(ctx, conn)
 		switch result {
-		case endpoints.Denied:
+		case endpoints.Denied, endpoints.MatchError:
+			// Also block on MatchError to be on the safe side.
+			// PreventBypassing does not use any data that needs to be loaded, so it should not fail anyway.
 			conn.BlockWithContext("bypass prevention: "+reason, profile.CfgOptionPreventBypassingKey, reasonCtx)
 			return true
 		case endpoints.Permitted:
 			conn.AcceptWithContext("bypass prevention: "+reason, profile.CfgOptionPreventBypassingKey, reasonCtx)
 			return true
+		case endpoints.NoMatch:
+			return false
 		}
 	}
+
 	return false
 }
 
@@ -378,6 +388,8 @@ func checkFilterLists(ctx context.Context, conn *network.Connection, p *profile.
 		return true
 	case endpoints.NoMatch:
 		// nothing to do
+	case endpoints.Permitted, endpoints.MatchError:
+		fallthrough
 	default:
 		log.Tracer(ctx).Debugf("filter: filter lists returned unsupported verdict: %s", result)
 	}

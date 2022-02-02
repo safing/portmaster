@@ -18,22 +18,24 @@ import (
 var (
 	selfcheckLock sync.Mutex
 
-	SystemIntegrationCheckDstIP    = net.IPv4(127, 65, 67, 75)
+	// SystemIntegrationCheckDstIP is the IP address to send a packet to for the
+	// system integration test.
+	SystemIntegrationCheckDstIP = net.IPv4(127, 65, 67, 75)
+	// SystemIntegrationCheckProtocol is the IP protocol to use for the system
+	// integration test.
 	SystemIntegrationCheckProtocol = packet.AnyHostInternalProtocol61
 
 	systemIntegrationCheckDialNet      = fmt.Sprintf("ip4:%d", uint8(SystemIntegrationCheckProtocol))
 	systemIntegrationCheckDialIP       = SystemIntegrationCheckDstIP.String()
 	systemIntegrationCheckPackets      = make(chan packet.Packet, 1)
-	systemIntegrationCheckWaitDuration = 3 * time.Second
+	systemIntegrationCheckWaitDuration = 10 * time.Second
 
+	// DNSCheckInternalDomainScope is the domain scope to use for dns checks.
 	DNSCheckInternalDomainScope = ".self-check." + resolver.InternalSpecialUseDomain
 	dnsCheckReceivedDomain      = make(chan string, 1)
-	dnsCheckWaitDuration        = 3 * time.Second
+	dnsCheckWaitDuration        = 10 * time.Second
 	dnsCheckAnswerLock          sync.Mutex
 	dnsCheckAnswer              net.IP
-
-	DNSTestDomain     = "one.one.one.one."
-	DNSTestExpectedIP = net.IPv4(1, 1, 1, 1)
 )
 
 func selfcheck(ctx context.Context) (issue *systemIssue, err error) {

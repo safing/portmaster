@@ -9,7 +9,7 @@ import (
 	"github.com/safing/portmaster/status"
 )
 
-// Configuration Keys
+// Configuration Keys.
 var (
 	defaultNameServers = []string{
 		// Collection of default DNS Servers

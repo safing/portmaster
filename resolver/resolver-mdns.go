@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network/netutils"
 )
 
-// DNS Classes
+// DNS Classes.
 const (
 	DNSClassMulticast = dns.ClassINET | 1<<15
 )
@@ -85,7 +86,9 @@ func listenToMDNS(ctx context.Context) error {
 		module.StartServiceWorker("mdns udp4 multicast listener", 0, func(ctx context.Context) error {
 			return listenForDNSPackets(ctx, multicast4Conn, messages)
 		})
-		defer multicast4Conn.Close()
+		defer func() {
+			_ = multicast4Conn.Close()
+		}()
 	}
 
 	multicast6Conn, err = net.ListenMulticastUDP("udp6", nil, &net.UDPAddr{IP: net.IP([]byte{0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfb}), Port: 5353})
@@ -96,7 +99,9 @@ func listenToMDNS(ctx context.Context) error {
 		module.StartServiceWorker("mdns udp6 multicast listener", 0, func(ctx context.Context) error {
 			return listenForDNSPackets(ctx, multicast6Conn, messages)
 		})
-		defer multicast6Conn.Close()
+		defer func() {
+			_ = multicast6Conn.Close()
+		}()
 	}
 
 	unicast4Conn, err = net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
@@ -107,7 +112,9 @@ func listenToMDNS(ctx context.Context) error {
 		module.StartServiceWorker("mdns udp4 unicast listener", 0, func(ctx context.Context) error {
 			return listenForDNSPackets(ctx, unicast4Conn, messages)
 		})
-		defer unicast4Conn.Close()
+		defer func() {
+			_ = unicast4Conn.Close()
+		}()
 	}
 
 	unicast6Conn, err = net.ListenUDP("udp6", &net.UDPAddr{IP: net.IPv6zero, Port: 0})
@@ -118,7 +125,9 @@ func listenToMDNS(ctx context.Context) error {
 		module.StartServiceWorker("mdns udp6 unicast listener", 0, func(ctx context.Context) error {
 			return listenForDNSPackets(ctx, unicast6Conn, messages)
 		})
-		defer unicast6Conn.Close()
+		defer func() {
+			_ = unicast6Conn.Close()
+		}()
 	}
 
 	// start message handler
@@ -131,8 +140,7 @@ func listenToMDNS(ctx context.Context) error {
 	return nil
 }
 
-//nolint:gocyclo,gocognit // TODO
-func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
+func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error { //nolint:maintidx // TODO: Improve.
 	for {
 		select {
 		case <-ctx.Done():
@@ -319,7 +327,6 @@ func handleMDNSMessages(ctx context.Context, messages chan *dns.Msg) error {
 
 		cleanSavedQuestions()
 	}
-
 }
 
 func listenForDNSPackets(ctx context.Context, conn *net.UDPConn, messages chan *dns.Msg) error {
@@ -377,30 +384,30 @@ func queryMulticastDNS(ctx context.Context, q *Query) (*RRCache, error) {
 	// pack qeury
 	buf, err := dnsQuery.Pack()
 	if err != nil {
-		return nil, fmt.Errorf("failed to pack query: %s", err)
+		return nil, fmt.Errorf("failed to pack query: %w", err)
 	}
 
 	// send queries
 	if unicast4Conn != nil && uint16(q.QType) != dns.TypeAAAA {
 		err = unicast4Conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
 		if err != nil {
-			return nil, fmt.Errorf("failed to configure query (set timout): %s", err)
+			return nil, fmt.Errorf("failed to configure query (set timout): %w", err)
 		}
 
 		_, err = unicast4Conn.WriteToUDP(buf, &net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5353})
 		if err != nil {
-			return nil, fmt.Errorf("failed to send query: %s", err)
+			return nil, fmt.Errorf("failed to send query: %w", err)
 		}
 	}
 	if unicast6Conn != nil && uint16(q.QType) != dns.TypeA {
 		err = unicast6Conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
 		if err != nil {
-			return nil, fmt.Errorf("failed to configure query (set timout): %s", err)
+			return nil, fmt.Errorf("failed to configure query (set timout): %w", err)
 		}
 
 		_, err = unicast6Conn.WriteToUDP(buf, &net.UDPAddr{IP: net.IP([]byte{0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfb}), Port: 5353})
 		if err != nil {
-			return nil, fmt.Errorf("failed to send query: %s", err)
+			return nil, fmt.Errorf("failed to send query: %w", err)
 		}
 	}
 
@@ -413,7 +420,7 @@ func queryMulticastDNS(ctx context.Context, q *Query) (*RRCache, error) {
 	case <-time.After(1 * time.Second):
 		// check cache again
 		rrCache, err := GetRRCache(q.FQDN, q.QType)
-		if err != nil {
+		if err == nil {
 			return rrCache, nil
 		}
 	case <-ctx.Done():

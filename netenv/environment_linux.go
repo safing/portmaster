@@ -43,7 +43,9 @@ func Gateways() []net.IP {
 		log.Warningf("environment: could not read /proc/net/route: %s", err)
 		return gateways
 	}
-	defer route.Close()
+	defer func() {
+		_ = route.Close()
+	}()
 
 	// file scanner
 	scanner := bufio.NewScanner(route)
@@ -76,7 +78,9 @@ func Gateways() []net.IP {
 		log.Warningf("environment: could not read /proc/net/ipv6_route: %s", err)
 		return gateways
 	}
-	defer v6route.Close()
+	defer func() {
+		_ = v6route.Close()
+	}()
 
 	// file scanner
 	scanner = bufio.NewScanner(v6route)
@@ -149,7 +153,9 @@ func getNameserversFromResolvconf() ([]Nameserver, error) {
 		log.Warningf("environment: could not read /etc/resolv.conf: %s", err)
 		return nil, err
 	}
-	defer resolvconf.Close()
+	defer func() {
+		_ = resolvconf.Close()
+	}()
 
 	// file scanner
 	scanner := bufio.NewScanner(resolvconf)
@@ -186,7 +192,6 @@ func getNameserversFromResolvconf() ([]Nameserver, error) {
 		})
 	}
 	return nameservers, nil
-
 }
 
 func addNameservers(nameservers, newNameservers []Nameserver) []Nameserver {

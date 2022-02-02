@@ -5,15 +5,15 @@ import (
 	"testing"
 )
 
-var (
-	privileged bool
-)
+var privileged bool
 
 func init() {
 	flag.BoolVar(&privileged, "privileged", false, "run tests that require root/admin privileges")
 }
 
 func TestGetInternetLocation(t *testing.T) {
+	t.Parallel()
+
 	if testing.Short() {
 		t.Skip()
 	}

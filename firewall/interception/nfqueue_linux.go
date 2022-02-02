@@ -44,7 +44,6 @@ type nfQueue interface {
 }
 
 func init() {
-
 	v4chains = []string{
 		"mangle C170",
 		"mangle C171",
@@ -128,7 +127,6 @@ func init() {
 	// Reverse because we'd like to insert in a loop
 	_ = sort.Reverse(sort.StringSlice(v4once)) // silence vet (sort is used just like in the docs)
 	_ = sort.Reverse(sort.StringSlice(v6once)) // silence vet (sort is used just like in the docs)
-
 }
 
 func activateNfqueueFirewall() error {
@@ -241,7 +239,7 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 	err = activateNfqueueFirewall()
 	if err != nil {
 		_ = Stop()
-		return fmt.Errorf("could not initialize nfqueue: %s", err)
+		return fmt.Errorf("could not initialize nfqueue: %w", err)
 	}
 
 	out4Queue, err = nfq.New(17040, false)
@@ -288,7 +286,7 @@ func StopNfqueueInterception() error {
 
 	err := DeactivateNfqueueFirewall()
 	if err != nil {
-		return fmt.Errorf("interception: error while deactivating nfqueue: %s", err)
+		return fmt.Errorf("interception: error while deactivating nfqueue: %w", err)
 	}
 
 	return nil

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -94,7 +95,7 @@ func (bs *bundleServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// get file from update system
 	zipFile, err := updates.GetFile(fmt.Sprintf("ui/modules/%s.zip", moduleName))
 	if err != nil {
-		if err == updater.ErrNotFound {
+		if errors.Is(err, updater.ErrNotFound) {
 			log.Tracef("ui: requested module %s does not exist", moduleName)
 			http.Error(w, err.Error(), http.StatusNotFound)
 		} else {
@@ -124,7 +125,7 @@ func (bs *bundleServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func ServeFileFromBundle(w http.ResponseWriter, r *http.Request, bundleName string, bundle *resources.BundleSequence, path string) {
 	readCloser, err := bundle.Open(path)
 	if err != nil {
-		if err == resources.ErrNotFound {
+		if errors.Is(err, resources.ErrNotFound) {
 			// Check if there is a base index.html file we can serve instead.
 			var indexErr error
 			path = "index.html"
@@ -164,7 +165,7 @@ func ServeFileFromBundle(w http.ResponseWriter, r *http.Request, bundleName stri
 		}
 	}
 
-	readCloser.Close()
+	_ = readCloser.Close()
 }
 
 // redirectToDefault redirects the request to the default UI module.

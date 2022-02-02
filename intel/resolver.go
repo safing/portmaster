@@ -4,9 +4,7 @@ import (
 	"context"
 )
 
-var (
-	reverseResolver func(ctx context.Context, ip string, securityLevel uint8) (domain string, err error)
-)
+var reverseResolver func(ctx context.Context, ip string, securityLevel uint8) (domain string, err error)
 
 // SetReverseResolver allows the resolver module to register a function to allow reverse resolving IPs to domains.
 func SetReverseResolver(fn func(ctx context.Context, ip string, securityLevel uint8) (domain string, err error)) {

@@ -24,7 +24,6 @@ func registerRevisionProvider() error {
 		revisionProviderPrefix,
 		runtime.SimpleValueGetterFunc(getRevisions),
 	)
-
 	if err != nil {
 		return err
 	}

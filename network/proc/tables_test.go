@@ -1,4 +1,4 @@
-// +build linux
+// go:build linux
 
 package proc
 
@@ -8,6 +8,8 @@ import (
 )
 
 func TestSockets(t *testing.T) {
+	t.Parallel()
+
 	connections, listeners, err := GetTCP4Table()
 	if err != nil {
 		t.Fatal(err)

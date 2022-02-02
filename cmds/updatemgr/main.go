@@ -5,9 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
+
 	"github.com/safing/portbase/updater"
 	"github.com/safing/portbase/utils"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -30,7 +31,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		registry = &updater.ResourceRegistry{}
-		err = registry.Initialize(utils.NewDirStructure(absDistPath, 0755))
+		err = registry.Initialize(utils.NewDirStructure(absDistPath, 0o0755))
 		if err != nil {
 			return err
 		}

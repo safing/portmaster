@@ -117,7 +117,6 @@ func (table *udpTable) getDirection(
 }
 
 func (table *udpTable) cleanStates(now time.Time) {
-
 	// compute thresholds
 	threshold := now.Add(-UDPConnStateTTL)
 	shortThreshhold := now.Add(-UDPConnStateShortenedTTL)

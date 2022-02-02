@@ -9,28 +9,25 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portmaster/compat"
-
-	"github.com/safing/spn/captain"
-
 	"github.com/google/gopacket/layers"
-	"github.com/safing/portmaster/netenv"
-	"golang.org/x/sync/singleflight"
-
 	"github.com/tevino/abool"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/compat"
+
+	// Dependency.
+	_ "github.com/safing/portmaster/core/base"
 	"github.com/safing/portmaster/firewall/inspection"
 	"github.com/safing/portmaster/firewall/interception"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/spn/captain"
 	"github.com/safing/spn/crew"
 	"github.com/safing/spn/sluice"
-
-	// module dependencies
-	_ "github.com/safing/portmaster/core/base"
 )
 
 var (
@@ -141,14 +138,14 @@ func getConnection(pkt packet.Packet) (*network.Connection, error) {
 		return conn, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get connection: %s", err)
+		return nil, fmt.Errorf("failed to get connection: %w", err)
 	}
 	if newConn == nil {
 		return nil, errors.New("connection getter returned nil")
 	}
 
 	// Transform and log result.
-	conn := newConn.(*network.Connection)
+	conn := newConn.(*network.Connection) //nolint:forcetypeassert // Can only be a *network.Connection.
 	sharedIndicator := ""
 	if shared {
 		sharedIndicator = " (shared)"
@@ -188,7 +185,7 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 		return true
 	}
 
-	switch meta.Protocol {
+	switch meta.Protocol { //nolint:exhaustive // Checking for specific values only.
 	case packet.ICMP, packet.ICMPv6:
 		// Load packet data.
 		err := pkt.LoadPacketData()
@@ -243,7 +240,7 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 			}
 
 			// DHCP is only valid in local network scopes.
-			switch netutils.ClassifyIP(meta.Dst) {
+			switch netutils.ClassifyIP(meta.Dst) { //nolint:exhaustive // Checking for specific values only.
 			case netutils.HostLocal, netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
 			default:
 				return false
@@ -430,7 +427,6 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		conn.StopFirewallHandler()
 		issueVerdict(conn, pkt, 0, true)
 	}
-
 }
 
 func defaultHandler(conn *network.Connection, pkt packet.Packet) {
@@ -494,6 +490,9 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	case network.VerdictFailed:
 		atomic.AddUint64(packetsFailed, 1)
 		err = pkt.Drop()
+	case network.VerdictUndecided, network.VerdictUndeterminable:
+		log.Warningf("filter: tried to apply verdict %s to pkt %s: dropping instead", verdict, pkt)
+		fallthrough
 	default:
 		atomic.AddUint64(packetsDropped, 1)
 		err = pkt.Drop()

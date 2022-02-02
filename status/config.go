@@ -2,6 +2,7 @@ package status
 
 import "github.com/safing/portbase/config"
 
+// Configuration Keys.
 var (
 	CfgEnableNetworkRatingSystemKey = "core/enableNetworkRating"
 	cfgEnableNetworkRatingSystem    config.BoolOption
@@ -33,6 +34,6 @@ func NetworkRatingEnabled() bool {
 }
 
 // SetNetworkRating enables or disables the network rating system.
-func SetNetworkRating(enabled bool) {
-	config.SetConfigOption(CfgEnableNetworkRatingSystemKey, enabled)
+func SetNetworkRating(enabled bool) error {
+	return config.SetConfigOption(CfgEnableNetworkRatingSystemKey, enabled)
 }

@@ -14,6 +14,12 @@ import (
 	"github.com/safing/portmaster/process"
 )
 
+const (
+	dbScopeNone = ""
+	dbScopeDNS  = "dns"
+	dbScopeIP   = "ip"
+)
+
 var (
 	dbController *database.Controller
 
@@ -43,7 +49,7 @@ func parseDBKey(key string) (pid int, scope, id string, ok bool) {
 	// Split into segments.
 	segments := strings.Split(key, "/")
 	// Check for valid prefix.
-	if !strings.HasPrefix("tree", segments[0]) {
+	if segments[0] != "tree" {
 		return 0, "", "", false
 	}
 
@@ -57,7 +63,7 @@ func parseDBKey(key string) (pid int, scope, id string, ok bool) {
 		scope = segments[2]
 		// Sanity check.
 		switch scope {
-		case "dns", "ip", "":
+		case dbScopeNone, dbScopeDNS, dbScopeIP:
 			// Parsed id matches possible values.
 			// The empty string is for matching a trailing slash for in query prefix.
 			// TODO: For queries, also prefixes of these values are valid.
@@ -96,15 +102,15 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 	}
 
 	switch scope {
-	case "dns":
+	case dbScopeDNS:
 		if r, ok := dnsConns.get(id); ok {
 			return r, nil
 		}
-	case "ip":
+	case dbScopeIP:
 		if r, ok := conns.get(id); ok {
 			return r, nil
 		}
-	case "":
+	case dbScopeNone:
 		if proc, ok := process.GetProcessFromStorage(pid); ok {
 			return proc, nil
 		}
@@ -147,7 +153,7 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 		}
 	}
 
-	if scope == "" || scope == "dns" {
+	if scope == dbScopeNone || scope == dbScopeDNS {
 		// dns scopes only
 		for _, dnsConn := range dnsConns.clone() {
 			func() {
@@ -161,7 +167,7 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 		}
 	}
 
-	if scope == "" || scope == "ip" {
+	if scope == dbScopeNone || scope == dbScopeIP {
 		// connections
 		for _, conn := range conns.clone() {
 			func() {

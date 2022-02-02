@@ -7,7 +7,7 @@ import (
 	"github.com/google/gopacket/tcpassembly"
 )
 
-// SimpleStreamAssemblerManager is a simple manager for github.com/google/gopacket/tcpassembly
+// SimpleStreamAssemblerManager is a simple manager for github.com/google/gopacket/tcpassembly.
 type SimpleStreamAssemblerManager struct {
 	InitLock      sync.Mutex
 	lastAssembler *SimpleStreamAssembler
@@ -25,7 +25,7 @@ func (m *SimpleStreamAssemblerManager) GetLastAssembler() *SimpleStreamAssembler
 	return m.lastAssembler
 }
 
-// SimpleStreamAssembler is a simple assembler for github.com/google/gopacket/tcpassembly
+// SimpleStreamAssembler is a simple assembler for github.com/google/gopacket/tcpassembly.
 type SimpleStreamAssembler struct {
 	Cumulated    []byte
 	CumulatedLen int

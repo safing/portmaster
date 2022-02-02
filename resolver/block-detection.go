@@ -6,7 +6,7 @@ import (
 	"github.com/miekg/dns"
 )
 
-// Supported upstream block detections
+// Supported upstream block detections.
 const (
 	BlockDetectionRefused     = "refused"
 	BlockDetectionZeroIP      = "zeroip"

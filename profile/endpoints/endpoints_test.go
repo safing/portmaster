@@ -17,6 +17,8 @@ func TestMain(m *testing.M) {
 }
 
 func testEndpointMatch(t *testing.T, ep Endpoint, entity *intel.Entity, expectedResult EPResult) {
+	t.Helper()
+
 	entity.SetDstPort(entity.Port)
 
 	result, _ := ep.Matches(context.TODO(), entity)
@@ -33,6 +35,8 @@ func testEndpointMatch(t *testing.T, ep Endpoint, entity *intel.Entity, expected
 }
 
 func testFormat(t *testing.T, endpoint string, shouldSucceed bool) {
+	t.Helper()
+
 	_, err := parseEndpoint(endpoint)
 	if shouldSucceed {
 		assert.NoError(t, err)
@@ -42,6 +46,8 @@ func testFormat(t *testing.T, endpoint string, shouldSucceed bool) {
 }
 
 func TestEndpointFormat(t *testing.T) {
+	t.Parallel()
+
 	testFormat(t, "+ .", false)
 	testFormat(t, "+ .at", true)
 	testFormat(t, "+ .at.", true)
@@ -57,7 +63,9 @@ func TestEndpointFormat(t *testing.T) {
 	testFormat(t, "+ *.sub..and.prefix.*", false)
 }
 
-func TestEndpointMatching(t *testing.T) {
+func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
+	t.Parallel()
+
 	// ANY
 
 	ep, err := parseEndpoint("+ *")
@@ -258,7 +266,7 @@ func TestEndpointMatching(t *testing.T) {
 	}).Init(), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), Undeterminable)
+	}).Init(), NoMatch)
 
 	// ports
 
@@ -289,7 +297,7 @@ func TestEndpointMatching(t *testing.T) {
 
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), Undeterminable)
+	}).Init(), NoMatch)
 
 	// IP
 
@@ -326,7 +334,7 @@ func TestEndpointMatching(t *testing.T) {
 
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), Undeterminable)
+	}).Init(), NoMatch)
 
 	// IP Range
 
@@ -346,17 +354,18 @@ func TestEndpointMatching(t *testing.T) {
 
 	// ASN
 
-	ep, err = parseEndpoint("+ AS13335")
+	ep, err = parseEndpoint("+ 	AS15169")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	testEndpointMatch(t, ep, (&intel.Entity{
-		IP: net.ParseIP("1.1.1.2"),
-	}).Init(), Permitted)
-	testEndpointMatch(t, ep, (&intel.Entity{
-		IP: net.ParseIP("8.8.8.8"),
-	}).Init(), NoMatch)
+	entity = &intel.Entity{}
+	entity.SetIP(net.ParseIP("8.8.8.8"))
+	testEndpointMatch(t, ep, entity, Permitted)
+
+	entity = &intel.Entity{}
+	entity.SetIP(net.ParseIP("1.1.1.1"))
+	testEndpointMatch(t, ep, entity, NoMatch)
 
 	// Country
 
@@ -365,12 +374,13 @@ func TestEndpointMatching(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	testEndpointMatch(t, ep, (&intel.Entity{
-		IP: net.ParseIP("194.232.104.1"), // orf.at
-	}).Init(), Permitted)
-	testEndpointMatch(t, ep, (&intel.Entity{
-		IP: net.ParseIP("151.101.1.164"), // nytimes.com
-	}).Init(), NoMatch)
+	entity = &intel.Entity{}
+	entity.SetIP(net.ParseIP("194.232.104.1")) // orf.at
+	testEndpointMatch(t, ep, entity, Permitted)
+
+	entity = &intel.Entity{}
+	entity.SetIP(net.ParseIP("151.101.1.164")) // nytimes.com
+	testEndpointMatch(t, ep, entity, NoMatch)
 
 	// Scope
 
@@ -391,8 +401,8 @@ func TestEndpointMatching(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// TODO: write test for lists matcher
 
+	// TODO: write test for lists matcher
 }
 
 func getLineNumberOfCaller(levels int) int {

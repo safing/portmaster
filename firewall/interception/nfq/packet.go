@@ -1,4 +1,4 @@
-// +build linux
+// go:build linux
 
 package nfq
 
@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/florianl/go-nfqueue"
 	"github.com/tevino/abool"
 
-	"github.com/florianl/go-nfqueue"
 	"github.com/safing/portbase/log"
 	pmpacket "github.com/safing/portmaster/network/packet"
 )
@@ -104,7 +104,7 @@ func (pkt *packet) setMark(mark int) error {
 		if err := pkt.queue.getNfq().SetVerdictWithMark(pkt.pktID, nfqueue.NfAccept, mark); err != nil {
 			// embedded interface is required to work-around some
 			// dep-vendoring weirdness
-			if opErr, ok := err.(interface {
+			if opErr, ok := err.(interface { //nolint:errorlint // TODO: Check if we can remove workaround.
 				Timeout() bool
 				Temporary() bool
 			}); ok {

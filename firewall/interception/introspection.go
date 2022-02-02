@@ -58,7 +58,9 @@ func (pm *packetMetrics) writeMetrics() {
 		log.Errorf("Failed to create packet metrics file: %s", err)
 		return
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	for {
 		select {

@@ -7,6 +7,8 @@ import (
 )
 
 func TestIPInfo(t *testing.T) {
+	t.Parallel()
+
 	example := ResolvedDomain{
 		Domain: "example.com.",
 	}

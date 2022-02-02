@@ -48,7 +48,7 @@ func (cs *connectionStore) clone() map[string]*Connection {
 	return m
 }
 
-func (cs *connectionStore) len() int {
+func (cs *connectionStore) len() int { //nolint:unused // TODO: Clean up if still unused.
 	cs.rw.RLock()
 	defer cs.rw.RUnlock()
 

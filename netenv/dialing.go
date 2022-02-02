@@ -2,9 +2,7 @@ package netenv
 
 import "net"
 
-var (
-	localAddrFactory func(network string) net.Addr
-)
+var localAddrFactory func(network string) net.Addr
 
 // SetLocalAddrFactory supplies the environment package with a function to get permitted local addresses for connections.
 func SetLocalAddrFactory(laf func(network string) net.Addr) {

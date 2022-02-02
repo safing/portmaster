@@ -15,7 +15,7 @@ import (
 	"github.com/safing/portmaster/network/netutils"
 )
 
-// DNS Resolver Attributes
+// DNS Resolver Attributes.
 const (
 	ServerTypeDNS  = "dns"
 	ServerTypeTCP  = "tcp"
@@ -30,10 +30,8 @@ const (
 	ServerSourceEnv             = "env"
 )
 
-var (
-	// FailThreshold is amount of errors a resolvers must experience in order to be regarded as failed.
-	FailThreshold = 20
-)
+// FailThreshold is amount of errors a resolvers must experience in order to be regarded as failed.
+var FailThreshold = 20
 
 // Resolver holds information about an active resolver.
 type Resolver struct {
@@ -73,7 +71,7 @@ type Resolver struct {
 // ResolverInfo is a subset of resolver attributes that is attached to answers
 // from that server in order to use it later for decision making. It must not
 // be changed by anyone after creation and initialization is complete.
-type ResolverInfo struct {
+type ResolverInfo struct { //nolint:golint,maligned // TODO
 	// Name describes the name given to the resolver. The name is configured in the config URL using the name parameter.
 	Name string
 
@@ -178,7 +176,7 @@ func (resolver *Resolver) String() string {
 }
 
 // ResolverConn is an interface to implement different types of query backends.
-type ResolverConn interface { //nolint:go-lint // TODO
+type ResolverConn interface { //nolint:golint // TODO
 	Query(ctx context.Context, q *Query) (*RRCache, error)
 	ReportFailure()
 	IsFailing() bool

@@ -1,6 +1,6 @@
 package main
 
-import (
+import ( //nolint:gci,nolintlint
 	"os"
 
 	"github.com/safing/portbase/info"
@@ -8,7 +8,7 @@ import (
 	"github.com/safing/portbase/run"
 	"github.com/safing/spn/conf"
 
-	// include packages here
+	// Include packages here.
 	_ "github.com/safing/portbase/modules/subsystems"
 	_ "github.com/safing/portmaster/core"
 	_ "github.com/safing/portmaster/firewall"
@@ -22,7 +22,7 @@ func main() {
 	info.Set("Portmaster", "0.7.21", "AGPLv3", true)
 
 	// Configure metrics.
-	metrics.SetNamespace("portmaster")
+	_ = metrics.SetNamespace("portmaster")
 
 	// enable SPN client mode
 	conf.EnableClient(true)

@@ -6,27 +6,22 @@ import (
 	"strings"
 
 	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
-
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/log"
 )
 
 // Database paths:
 // core:profiles/<scope>/<id>
 // cache:profiles/index/<identifier>/<value>
 
-const (
-	profilesDBPath = "core:profiles/"
-)
+const profilesDBPath = "core:profiles/"
 
-var (
-	profileDB = database.NewInterface(&database.Options{
-		Local:    true,
-		Internal: true,
-	})
-)
+var profileDB = database.NewInterface(&database.Options{
+	Local:    true,
+	Internal: true,
+})
 
 func makeScopedID(source profileSource, id string) string {
 	return string(source) + "/" + id

@@ -8,9 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/safing/portbase/updater"
-
 	"github.com/spf13/cobra"
+
+	"github.com/safing/portbase/updater"
 )
 
 var (
@@ -44,13 +44,13 @@ func release(cmd *cobra.Command, args []string) error {
 
 	// Check if we want to reset instead.
 	if resetPreReleases {
-		return removeFilesFromIndex(getChannelVersions(channel, preReleaseFrom, true))
+		return removeFilesFromIndex(getChannelVersions(preReleaseFrom, true))
 	}
 
 	// Write new index.
 	err := writeIndex(
 		channel,
-		getChannelVersions(channel, preReleaseFrom, false),
+		getChannelVersions(preReleaseFrom, false),
 	)
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func writeIndex(channel string, versions map[string]string) error {
 	}
 
 	// Write new index to disk.
-	err = ioutil.WriteFile(indexFilePath, versionData, 0644) //nolint:gosec // 0644 is intended
+	err = ioutil.WriteFile(indexFilePath, versionData, 0o0644) //nolint:gosec // 0644 is intended
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func removeFilesFromIndex(versions map[string]string) error {
 	return nil
 }
 
-func getChannelVersions(channel string, prereleaseFrom string, storagePath bool) map[string]string {
+func getChannelVersions(prereleaseFrom string, storagePath bool) map[string]string {
 	if prereleaseFrom != "" {
 		registry.AddIndex(updater.Index{
 			Path:       prereleaseFrom + ".json",

@@ -8,6 +8,8 @@ import (
 )
 
 func testReverse(t *testing.T, ip, result, expectedErr string) {
+	t.Helper()
+
 	ctx, tracer := log.AddTracer(context.Background())
 	defer tracer.Submit()
 
@@ -26,6 +28,8 @@ func testReverse(t *testing.T, ip, result, expectedErr string) {
 }
 
 func TestResolveIPAndValidate(t *testing.T) {
+	t.Parallel()
+
 	testReverse(t, "198.41.0.4", "a.root-servers.net.", "")
 	// testReverse(t, "9.9.9.9", "dns.quad9.net.", "") // started resolving to dns9.quad9.net.
 	// testReverse(t, "2620:fe::fe", "dns.quad9.net.", "") // fails sometimes for some (external) reason

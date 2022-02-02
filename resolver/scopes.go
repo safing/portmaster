@@ -5,22 +5,22 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/safing/portmaster/netenv"
-
 	"github.com/miekg/dns"
+
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/netenv"
 )
 
-// Domain Scopes
+// Domain Scopes.
 var (
 	// Localhost Domain
 	// Handling: Respond with 127.0.0.1 and ::1 to A and AAAA queries, respectively.
-	// RFC6761
+	// See RFC6761.
 	localhostDomain = ".localhost."
 
 	// Invalid Domain
 	// Handling: Always respond with NXDOMAIN.
-	// RFC6761
+	// See RFC6761.
 	invalidDomain = ".invalid."
 
 	// Internal Special-Use Domain
@@ -31,7 +31,7 @@ var (
 
 	// Multicast DNS
 	// Handling: Send to nameservers with matching search scope, then MDNS
-	// RFC6762
+	// See RFC6762.
 	multicastDomains = []string{
 		".local.",
 		".254.169.in-addr.arpa.",
@@ -89,7 +89,7 @@ var (
 	}
 
 	// Special-Service Domain Names
-	// Handling: Send to nameservers with matching search scope, then local and system assigned nameservers
+	// Handling: Send to nameservers with matching search scope, then local and system assigned nameservers.
 	specialServiceDomains = []string{
 		// RFC7686: Tor Hidden Services
 		".onion.",

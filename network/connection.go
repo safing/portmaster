@@ -44,13 +44,14 @@ type ProcessContext struct {
 	Source string
 }
 
+// ConnectionType is a type of connection.
 type ConnectionType int8
 
+// Connection Types.
 const (
 	Undefined ConnectionType = iota
 	IPConnection
 	DNSRequest
-	// ProxyRequest
 )
 
 // Connection describes a distinct physical network connection
@@ -280,6 +281,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	return dnsConn
 }
 
+// NewConnectionFromExternalDNSRequest returns a connection for an external DNS request.
 func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cnames []string, connID string, remoteIP net.IP) (*Connection, error) {
 	remoteHost, err := process.GetNetworkHost(ctx, remoteIP)
 	if err != nil {
@@ -336,7 +338,6 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	var dnsContext *resolver.DNSRequestContext
 
 	if inbound {
-
 		switch entity.IPScope {
 		case netutils.HostLocal:
 			scope = IncomingHost
@@ -345,12 +346,11 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		case netutils.Global, netutils.GlobalMulticast:
 			scope = IncomingInternet
 
-		case netutils.Invalid:
+		case netutils.Undefined, netutils.Invalid:
 			fallthrough
 		default:
 			scope = IncomingInvalid
 		}
-
 	} else {
 
 		// check if we can find a domain for that IP
@@ -379,7 +379,6 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 		}
 
 		if scope == "" {
-
 			// outbound direct (possibly P2P) connection
 			switch entity.IPScope {
 			case netutils.HostLocal:
@@ -389,12 +388,11 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 			case netutils.Global, netutils.GlobalMulticast:
 				scope = PeerInternet
 
-			case netutils.Invalid:
+			case netutils.Undefined, netutils.Invalid:
 				fallthrough
 			default:
 				scope = PeerInvalid
 			}
-
 		}
 	}
 
@@ -547,10 +545,10 @@ func (conn *Connection) Save() {
 
 	if !conn.KeyIsSet() {
 		if conn.Type == DNSRequest {
-			conn.SetKey(makeKey(conn.process.Pid, "dns", conn.ID))
+			conn.SetKey(makeKey(conn.process.Pid, dbScopeDNS, conn.ID))
 			dnsConns.add(conn)
 		} else {
-			conn.SetKey(makeKey(conn.process.Pid, "ip", conn.ID))
+			conn.SetKey(makeKey(conn.process.Pid, dbScopeIP, conn.ID))
 			conns.add(conn)
 		}
 	}
@@ -597,7 +595,7 @@ func (conn *Connection) StopFirewallHandler() {
 	conn.pktQueue <- nil
 }
 
-// HandlePacket queues packet of Link for handling
+// HandlePacket queues packet of Link for handling.
 func (conn *Connection) HandlePacket(pkt packet.Packet) {
 	conn.Lock()
 	defer conn.Unlock()
@@ -611,7 +609,7 @@ func (conn *Connection) HandlePacket(pkt packet.Packet) {
 	}
 }
 
-// packetHandler sequentially handles queued packets
+// packetHandler sequentially handles queued packets.
 func (conn *Connection) packetHandler() {
 	for pkt := range conn.pktQueue {
 		if pkt == nil {
@@ -649,8 +647,8 @@ func (conn *Connection) GetActiveInspectors() []bool {
 }
 
 // SetActiveInspectors sets the list of active inspectors.
-func (conn *Connection) SetActiveInspectors(new []bool) {
-	conn.activeInspectors = new
+func (conn *Connection) SetActiveInspectors(newInspectors []bool) {
+	conn.activeInspectors = newInspectors
 }
 
 // GetInspectorData returns the list of inspector data.
@@ -659,8 +657,8 @@ func (conn *Connection) GetInspectorData() map[uint8]interface{} {
 }
 
 // SetInspectorData set the list of inspector data.
-func (conn *Connection) SetInspectorData(new map[uint8]interface{}) {
-	conn.inspectorData = new
+func (conn *Connection) SetInspectorData(newInspectorData map[uint8]interface{}) {
+	conn.inspectorData = newInspectorData
 }
 
 // String returns a string representation of conn.

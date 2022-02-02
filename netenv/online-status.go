@@ -2,6 +2,7 @@ package netenv
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -21,7 +22,7 @@ import (
 // OnlineStatus represent a state of connectivity to the Internet.
 type OnlineStatus uint8
 
-// Online Status Values
+// Online Status Values.
 const (
 	StatusUnknown    OnlineStatus = 0
 	StatusOffline    OnlineStatus = 1
@@ -31,7 +32,7 @@ const (
 	StatusOnline     OnlineStatus = 5
 )
 
-// Online Status and Resolver
+// Online Status and Resolver.
 var (
 	PortalTestIP  = net.IPv4(192, 0, 2, 1)
 	PortalTestURL = fmt.Sprintf("http://%s/", PortalTestIP)
@@ -124,8 +125,6 @@ func IsConnectivityDomain(domain string) bool {
 
 func (os OnlineStatus) String() string {
 	switch os {
-	default:
-		return "Unknown"
 	case StatusOffline:
 		return "Offline"
 	case StatusLimited:
@@ -136,6 +135,10 @@ func (os OnlineStatus) String() string {
 		return "SemiOnline"
 	case StatusOnline:
 		return "Online"
+	case StatusUnknown:
+		fallthrough
+	default:
+		return "Unknown"
 	}
 }
 
@@ -175,7 +178,7 @@ func GetOnlineStatus() OnlineStatus {
 	return OnlineStatus(atomic.LoadInt32(onlineStatus))
 }
 
-// CheckAndGetOnlineStatus triggers a new online status check and returns the result
+// CheckAndGetOnlineStatus triggers a new online status check and returns the result.
 func CheckAndGetOnlineStatus() OnlineStatus {
 	// trigger new investigation
 	triggerOnlineStatusInvestigation()
@@ -225,7 +228,7 @@ func notifyOnlineStatus(status OnlineStatus) {
 	var eventID, title, message string
 
 	// Check if status is worth notifying.
-	switch status {
+	switch status { //nolint:exhaustive // Checking for selection only.
 	case StatusOffline:
 		eventID = "netenv:online-status:offline"
 		title = "Device is Offline"
@@ -419,7 +422,7 @@ func checkOnlineStatus(ctx context.Context) {
 	} else {
 		var lan bool
 		for _, ip := range ipv4 {
-			switch netutils.GetIPScope(ip) {
+			switch netutils.GetIPScope(ip) { //nolint:exhaustive // Checking to specific values only.
 			case netutils.SiteLocal:
 				lan = true
 			case netutils.Global:
@@ -429,7 +432,7 @@ func checkOnlineStatus(ctx context.Context) {
 			}
 		}
 		for _, ip := range ipv6 {
-			switch netutils.GetIPScope(ip) {
+			switch netutils.GetIPScope(ip) { //nolint:exhaustive // Checking to specific values only.
 			case netutils.SiteLocal, netutils.Global:
 				// IPv6 global addresses are also used in local networks
 				lan = true
@@ -470,14 +473,16 @@ func checkOnlineStatus(ctx context.Context) {
 
 	response, err := client.Do(request)
 	if err != nil {
-		nErr, ok := err.(net.Error)
-		if !ok || !nErr.Timeout() {
+		var netErr net.Error
+		if !errors.As(err, &netErr) || !netErr.Timeout() {
 			// Timeout is the expected error when there is no portal
 			log.Debugf("netenv: http portal test failed: %s", err)
 			// TODO: discern between errors to detect StatusLimited
 		}
 	} else {
-		defer response.Body.Close()
+		defer func() {
+			_ = response.Body.Close()
+		}()
 		// Got a response, something is messing with the request
 
 		// check location

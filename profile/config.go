@@ -15,18 +15,18 @@ var (
 	cfgIntOptions         = make(map[string]config.IntOption)
 	cfgBoolOptions        = make(map[string]config.BoolOption)
 
-	// General
+	// General.
 
-	// Enable Filter Order = 0
+	// Setting "Enable Filter" at order 0.
 
 	CfgOptionDefaultActionKey   = "filter/defaultAction"
 	cfgOptionDefaultAction      config.StringOption
 	cfgOptionDefaultActionOrder = 1
 
-	// Prompt Desktop Notifications Order = 2
-	// Prompt Timeout Order = 3
+	// Setting "Prompt Desktop Notifications" at order 2.
+	// Setting "Prompt Timeout" at order 3.
 
-	// Network Scopes
+	// Network Scopes.
 
 	CfgOptionBlockScopeInternetKey   = "filter/blockInternet"
 	cfgOptionBlockScopeInternet      config.IntOption // security level option
@@ -40,7 +40,7 @@ var (
 	cfgOptionBlockScopeLocal      config.IntOption // security level option
 	cfgOptionBlockScopeLocalOrder = 18
 
-	// Connection Types
+	// Connection Types.
 
 	CfgOptionBlockP2PKey   = "filter/blockP2P"
 	cfgOptionBlockP2P      config.IntOption // security level option
@@ -50,7 +50,7 @@ var (
 	cfgOptionBlockInbound      config.IntOption // security level option
 	cfgOptionBlockInboundOrder = 20
 
-	// Rules
+	// Rules.
 
 	CfgOptionEndpointsKey   = "filter/endpoints"
 	cfgOptionEndpoints      config.StringArrayOption
@@ -68,7 +68,7 @@ var (
 	cfgOptionFilterSubDomains      config.IntOption // security level option
 	cfgOptionFilterSubDomainsOrder = 35
 
-	// DNS Filtering
+	// DNS Filtering.
 
 	CfgOptionFilterCNAMEKey   = "filter/includeCNAMEs"
 	cfgOptionFilterCNAME      config.IntOption // security level option
@@ -86,7 +86,7 @@ var (
 	cfgOptionDomainHeuristics      config.IntOption // security level option
 	cfgOptionDomainHeuristicsOrder = 51
 
-	// Advanced
+	// Advanced.
 
 	CfgOptionPreventBypassingKey   = "filter/preventBypassing"
 	cfgOptionPreventBypassing      config.IntOption // security level option
@@ -96,7 +96,7 @@ var (
 	cfgOptionDisableAutoPermit      config.IntOption // security level option
 	cfgOptionDisableAutoPermitOrder = 65
 
-	// Permanent Verdicts Order = 96
+	// Setting "Permanent Verdicts" at order 96.
 
 	CfgOptionUseSPNKey   = "spn/use"
 	cfgOptionUseSPN      config.BoolOption
@@ -119,7 +119,7 @@ var securityLevelSettings = []string{
 	CfgOptionDisableAutoPermitKey,
 }
 
-func registerConfiguration() error {
+func registerConfiguration() error { //nolint:maintidx
 	// Default Filter Action
 	// permit - blocklist mode: everything is allowed unless blocked
 	// ask - ask mode: if not verdict is found, the user is consulted

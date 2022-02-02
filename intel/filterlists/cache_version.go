@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/safing/portbase/database"
-
 	"github.com/hashicorp/go-version"
+
+	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/record"
 )
 

@@ -5,8 +5,9 @@ import (
 	"net"
 	"strings"
 
-	"github.com/safing/portbase/utils"
 	"github.com/umahmood/haversine"
+
+	"github.com/safing/portbase/utils"
 )
 
 const (
@@ -27,6 +28,7 @@ type Location struct {
 	AutonomousSystemOrganization string      `maxminddb:"autonomous_system_organization"`
 }
 
+// Coordinates holds geographic coordinates and their estimated accuracy.
 type Coordinates struct {
 	AccuracyRadius uint16  `maxminddb:"accuracy_radius"`
 	Latitude       float64 `maxminddb:"latitude"`
@@ -199,6 +201,8 @@ var unknownASOrgNames = []string{
 	"undefined",  // Programmatic unknown value.
 }
 
+// ASOrgUnknown return whether the given AS Org string actually is meant to
+// mean that the AS Org is unknown.
 func ASOrgUnknown(asOrg string) bool {
 	return utils.StringInSlice(
 		unknownASOrgNames,

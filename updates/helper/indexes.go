@@ -8,9 +8,14 @@ import (
 	"github.com/safing/portbase/updater"
 )
 
+// Release Channel Configuration Keys.
 const (
 	ReleaseChannelKey     = "core/releaseChannel"
 	ReleaseChannelJSONKey = "core.releaseChannel"
+)
+
+// Release Channels.
+const (
 	ReleaseChannelStable  = "stable"
 	ReleaseChannelBeta    = "beta"
 	ReleaseChannelStaging = "staging"
@@ -90,7 +95,7 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string, delet
 	// Set pre-release usage.
 	registry.SetUsePreReleases(usePreReleases)
 
-	return
+	return warning
 }
 
 func indexExists(registry *updater.ResourceRegistry, indexPath string) bool {

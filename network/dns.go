@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/nameserver/nsutil"
 	"github.com/safing/portmaster/process"
@@ -17,16 +18,15 @@ import (
 var (
 	openDNSRequests     = make(map[string]*Connection) // key: <pid>/fqdn
 	openDNSRequestsLock sync.Mutex
-
-	// scope prefix
-	unidentifiedProcessScopePrefix = strconv.Itoa(process.UnidentifiedProcessID) + "/"
 )
 
 const (
-	// write open dns requests every
+	// writeOpenDNSRequestsTickDuration defines the interval in which open dns
+	// requests are written.
 	writeOpenDNSRequestsTickDuration = 5 * time.Second
 
-	// duration after which DNS requests without a following connection are logged
+	// openDNSRequestLimit defines the duration after which DNS requests without
+	// a following connection are logged.
 	openDNSRequestLimit = 3 * time.Second
 )
 
@@ -122,6 +122,9 @@ func (conn *Connection) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 		return nil // Do not respond to request.
 	case VerdictFailed:
 		return nsutil.BlockIP().ReplyWithDNS(ctx, request)
+	case VerdictUndecided, VerdictUndeterminable,
+		VerdictAccept, VerdictRerouteToNameserver, VerdictRerouteToTunnel:
+		fallthrough
 	default:
 		reply := nsutil.ServerFailure().ReplyWithDNS(ctx, request)
 		nsutil.AddMessagesToReply(ctx, reply, log.ErrorLevel, "INTERNAL ERROR: incorrect use of Connection DNS Responder")
@@ -136,6 +139,10 @@ func (conn *Connection) GetExtraRRs(ctx context.Context, request *dns.Msg) []dns
 	switch conn.Verdict {
 	case VerdictFailed:
 		level = log.ErrorLevel
+	case VerdictUndecided, VerdictUndeterminable,
+		VerdictAccept, VerdictBlock, VerdictDrop,
+		VerdictRerouteToNameserver, VerdictRerouteToTunnel:
+		fallthrough
 	default:
 		level = log.InfoLevel
 	}

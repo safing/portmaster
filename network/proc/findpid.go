@@ -1,4 +1,4 @@
-// +build linux
+// go:build linux
 
 package proc
 
@@ -7,9 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/safing/portmaster/network/socket"
-
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network/socket"
 )
 
 var (
@@ -128,7 +127,10 @@ func readDirNames(dir string) (names []string) {
 		}
 		return
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
+
 	names, err = file.Readdirnames(0)
 	if err != nil {
 		log.Warningf("proc: could not get entries from directory %s: %s", dir, err)

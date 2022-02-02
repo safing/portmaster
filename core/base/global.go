@@ -11,7 +11,7 @@ import (
 	"github.com/safing/portbase/modules"
 )
 
-// Default Values (changeable for testing)
+// Default Values (changeable for testing).
 var (
 	DefaultAPIListenAddress = "127.0.0.1:817"
 
@@ -56,7 +56,7 @@ func globalPrep() error {
 		}
 
 		// initialize structure
-		err := dataroot.Initialize(dataDir, 0755)
+		err := dataroot.Initialize(dataDir, 0o0755)
 		if err != nil {
 			return err
 		}

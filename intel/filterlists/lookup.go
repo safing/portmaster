@@ -33,7 +33,7 @@ func lookupBlockLists(entity, value string) ([]string, error) {
 	// log.Debugf("intel/filterlists: searching for entries with %s", key)
 	entry, err := getEntityRecordByKey(key)
 	if err != nil {
-		if err == database.ErrNotFound {
+		if errors.Is(err, database.ErrNotFound) {
 			return nil, nil
 		}
 		log.Errorf("intel/filterlists: failed to get entries for key %s: %s", key, err)
@@ -103,7 +103,6 @@ func LookupIPv4String(ipv4 string) ([]string, error) {
 
 // LookupIPv4 is like LookupIPv4String but accepts a net.IP.
 func LookupIPv4(ipv4 net.IP) ([]string, error) {
-
 	ip := ipv4.To4()
 	if ip == nil {
 		return nil, errors.New("invalid IPv4")

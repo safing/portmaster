@@ -8,8 +8,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/safing/portbase/info"
 	"github.com/spf13/cobra"
+
+	"github.com/safing/portbase/info"
 )
 
 var (
@@ -64,9 +65,7 @@ var (
 
 				fmt.Fprintf(tw, "   %s\t%s\n", identifier, res.SelectedVersion.VersionNumber)
 			}
-			tw.Flush()
-
-			return nil
+			return tw.Flush()
 		},
 	}
 )

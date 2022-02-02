@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	// notification action IDs
+	// notification action IDs.
 	allowDomainAll      = "allow-domain-all"
 	allowDomainDistinct = "allow-domain-distinct"
 	blockDomainAll      = "block-domain-all"

@@ -111,6 +111,6 @@ func (i *BindInfo) GetUIDandInode() (int, int) {
 	return i.UID, i.Inode
 }
 
-// compile time checks
+// Compile time checks.
 var _ Info = new(ConnectionInfo)
 var _ Info = new(BindInfo)

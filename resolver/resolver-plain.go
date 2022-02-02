@@ -2,10 +2,12 @@ package resolver
 
 import (
 	"context"
+	"errors"
 	"net"
 	"time"
 
 	"github.com/miekg/dns"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netenv"
 )
@@ -65,7 +67,8 @@ func (pr *PlainResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	// error handling
 	if err != nil {
 		// Hint network environment at failed connection if err is not a timeout.
-		if nErr, ok := err.(net.Error); ok && !nErr.Timeout() {
+		var nErr net.Error
+		if errors.As(err, &nErr) && !nErr.Timeout() {
 			netenv.ReportFailedConnection()
 		}
 

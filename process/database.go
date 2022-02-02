@@ -6,15 +6,13 @@ import (
 	"time"
 
 	processInfo "github.com/shirou/gopsutil/process"
+	"github.com/tevino/abool"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
-	"github.com/tevino/abool"
 )
 
-const (
-	processDatabaseNamespace = "network:tree"
-)
+const processDatabaseNamespace = "network:tree"
 
 var (
 	processes     = make(map[int]*Process)

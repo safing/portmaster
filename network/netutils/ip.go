@@ -93,7 +93,7 @@ func (scope IPScope) IsLocalhost() bool {
 
 // IsLAN returns true if the scope is site-local or link-local.
 func (scope IPScope) IsLAN() bool {
-	switch scope {
+	switch scope { //nolint:exhaustive // Looking for something specific.
 	case SiteLocal, LinkLocal, LocalMulticast:
 		return true
 	default:
@@ -103,7 +103,7 @@ func (scope IPScope) IsLAN() bool {
 
 // IsGlobal returns true if the scope is global.
 func (scope IPScope) IsGlobal() bool {
-	switch scope {
+	switch scope { //nolint:exhaustive // Looking for something specific.
 	case Global, GlobalMulticast:
 		return true
 	default:

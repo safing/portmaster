@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/safing/portbase/log"
-
 	"github.com/miekg/dns"
+
+	"github.com/safing/portbase/log"
 )
 
 var (
@@ -27,10 +27,12 @@ func init() {
 }
 
 func startQuery(t *testing.T, wg *sync.WaitGroup, rc ResolverConn, q *Query) {
+	t.Helper()
+
 	start := time.Now()
 	_, err := rc.Query(silencingTraceCtx, q)
 	if err != nil {
-		t.Logf("client failed: %s", err) //nolint:staticcheck
+		t.Logf("client failed: %s", err)
 		wg.Done()
 		return
 	}
@@ -39,6 +41,8 @@ func startQuery(t *testing.T, wg *sync.WaitGroup, rc ResolverConn, q *Query) {
 }
 
 func TestSingleResolving(t *testing.T) {
+	t.Parallel()
+
 	// skip if short - this test depends on the Internet and might fail randomly
 	if testing.Short() {
 		t.Skip()
@@ -48,7 +52,6 @@ func TestSingleResolving(t *testing.T) {
 
 	// create separate resolver for this test
 	resolver, _, err := createResolver(testResolver, "config")
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +62,7 @@ func TestSingleResolving(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(100)
 	for i := 0; i < 100; i++ {
-		startQuery(t, wg, resolver.Conn, &Query{ //nolint:staticcheck
+		startQuery(t, wg, resolver.Conn, &Query{
 			FQDN:  <-domainFeed,
 			QType: dns.Type(dns.TypeA),
 		})
@@ -70,6 +73,8 @@ func TestSingleResolving(t *testing.T) {
 }
 
 func TestBulkResolving(t *testing.T) {
+	t.Parallel()
+
 	// skip if short - this test depends on the Internet and might fail randomly
 	if testing.Short() {
 		t.Skip()
@@ -79,7 +84,6 @@ func TestBulkResolving(t *testing.T) {
 
 	// create separate resolver for this test
 	resolver, _, err := createResolver(testResolver, "config")
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +94,7 @@ func TestBulkResolving(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(100)
 	for i := 0; i < 100; i++ {
-		go startQuery(t, wg, resolver.Conn, &Query{ //nolint:staticcheck
+		go startQuery(t, wg, resolver.Conn, &Query{
 			FQDN:  <-domainFeed,
 			QType: dns.Type(dns.TypeA),
 		})

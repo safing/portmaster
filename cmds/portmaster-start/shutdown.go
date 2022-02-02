@@ -5,10 +5,16 @@ import (
 )
 
 var (
-	startupComplete = make(chan struct{}) // signal that the start procedure completed (is never closed, just signaled once)
-	shuttingDown    = make(chan struct{}) // signal that we are shutting down (will be closed, may not be closed directly, use initiateShutdown)
-	//nolint:unused // false positive on linux, currently used by windows only
-	shutdownError error // protected by shutdownLock
+	// startupComplete signals that the start procedure completed.
+	// The channel is not closed, just signaled once.
+	startupComplete = make(chan struct{})
+
+	// shuttingDown signals that we are shutting down.
+	// The channel will be closed, but may not be closed directly - only via initiateShutdown.
+	shuttingDown = make(chan struct{})
+
+	// shutdownError is protected by shutdownLock.
+	shutdownError error //nolint:unused,errname // Not what the linter thinks it is. Currently used on windows only.
 	shutdownLock  sync.Mutex
 )
 

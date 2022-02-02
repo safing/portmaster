@@ -3,7 +3,7 @@ package netenv
 import (
 	"bytes"
 	"context"
-	"crypto/sha1" //nolint:gosec // not used for security
+	"crypto/sha1"
 	"io"
 	"net"
 	"time"
@@ -17,6 +17,7 @@ var (
 	networkChangedBroadcastFlag = utils.NewBroadcastFlag()
 )
 
+// GetNetworkChangedFlag returns a flag to be notified about a network change.
 func GetNetworkChangedFlag() *utils.Flag {
 	return networkChangedBroadcastFlag.NewFlag()
 }

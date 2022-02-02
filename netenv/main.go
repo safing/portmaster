@@ -4,16 +4,14 @@ import (
 	"github.com/safing/portbase/modules"
 )
 
-// Event Names
+// Event Names.
 const (
 	ModuleName               = "netenv"
 	NetworkChangedEvent      = "network changed"
 	OnlineStatusChangedEvent = "online status changed"
 )
 
-var (
-	module *modules.Module
-)
+var module *modules.Module
 
 func init() {
 	module = modules.Register(ModuleName, prep, start, nil)

@@ -4,9 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/safing/portmaster/network/netutils"
-
 	"github.com/safing/portmaster/intel"
+	"github.com/safing/portmaster/network/netutils"
 )
 
 const (
@@ -50,6 +49,8 @@ func (ep *EndpointScope) Matches(_ context.Context, entity *intel.Entity) (EPRes
 		scope = scopeLAN
 	case netutils.GlobalMulticast:
 		scope = scopeInternet
+	case netutils.Undefined, netutils.Invalid:
+		return NoMatch, nil
 	}
 
 	if ep.scopes&scope > 0 {

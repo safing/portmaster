@@ -2,17 +2,19 @@ package filterlists
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
 
 	"github.com/hashicorp/go-version"
+	"github.com/tevino/abool"
+
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/updater"
-	"github.com/tevino/abool"
 )
 
 var updateInProgress = abool.New()
@@ -21,7 +23,6 @@ var updateInProgress = abool.New()
 // error state is correctly set or resolved.
 func tryListUpdate(ctx context.Context) error {
 	err := performUpdate(ctx)
-
 	if err != nil {
 		// Check if the module already has a failure status set. If not, set a
 		// generic one with the returned error.
@@ -123,7 +124,7 @@ func performUpdate(ctx context.Context) error {
 			module.Warning(
 				filterlistsStaleDataSurvived,
 				"Filter Lists May Overblock",
-				fmt.Sprintf("The Portmaster failed to delete outdated filter list data. Filtering capabilities are fully available, but overblocking may occur. Error: %s", err.Error()),
+				fmt.Sprintf("The Portmaster failed to delete outdated filter list data. Filtering capabilities are fully available, but overblocking may occur. Error: %s", err.Error()), //nolint:misspell // overblocking != overclocking
 			)
 			return fmt.Errorf("failed to cleanup stale cache records: %w", err)
 		}
@@ -137,7 +138,7 @@ func performUpdate(ctx context.Context) error {
 		log.Infof("intel/filterlists: successfully migrated cache database to %s", highestVersion.Version())
 	}
 
-	// The list update suceeded, resolve any states.
+	// The list update succeeded, resolve any states.
 	module.Resolve("")
 	return nil
 }
@@ -178,7 +179,7 @@ func getUpgradableFiles() ([]*updater.File, error) {
 	if intermediateFile == nil || intermediateFile.UpgradeAvailable() || !cacheDBInUse {
 		var err error
 		intermediateFile, err = getFile(intermediateListFilePath)
-		if err != nil && err != updater.ErrNotFound {
+		if err != nil && !errors.Is(err, updater.ErrNotFound) {
 			return nil, err
 		}
 
@@ -191,7 +192,7 @@ func getUpgradableFiles() ([]*updater.File, error) {
 	if urgentFile == nil || urgentFile.UpgradeAvailable() || !cacheDBInUse {
 		var err error
 		urgentFile, err = getFile(urgentListFilePath)
-		if err != nil && err != updater.ErrNotFound {
+		if err != nil && !errors.Is(err, updater.ErrNotFound) {
 			return nil, err
 		}
 
@@ -216,7 +217,7 @@ func resolveUpdateOrder(updateOrder []*updater.File) ([]*updater.File, error) {
 		var err error
 		cacheDBVersion, err = getCacheDatabaseVersion()
 		if err != nil {
-			if err != database.ErrNotFound {
+			if !errors.Is(err, database.ErrNotFound) {
 				log.Errorf("intel/filterlists: failed to get cache database version: %s", err)
 			}
 			cacheDBVersion, _ = version.NewSemver("v0.0.0")
@@ -247,12 +248,14 @@ func resolveUpdateOrder(updateOrder []*updater.File) ([]*updater.File, error) {
 type byAscVersion []*updater.File
 
 func (fs byAscVersion) Len() int { return len(fs) }
+
 func (fs byAscVersion) Less(i, j int) bool {
 	vi, _ := version.NewSemver(fs[i].Version())
 	vj, _ := version.NewSemver(fs[j].Version())
 
 	return vi.LessThan(vj)
 }
+
 func (fs byAscVersion) Swap(i, j int) {
 	fi := fs[i]
 	fj := fs[j]

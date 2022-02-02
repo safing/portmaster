@@ -12,9 +12,7 @@ import (
 	"github.com/safing/portbase/log"
 )
 
-const (
-	dnsResolver = "1.1.1.1:53"
-)
+const dnsResolver = "1.1.1.1:53"
 
 var (
 	url      string
@@ -72,7 +70,9 @@ func makeHTTPRequest(i int) {
 		log.Errorf("http request #%d failed after %s: %s", i, time.Since(start).Round(time.Millisecond), err)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	log.Infof("http response #%d after %s: %d", i, time.Since(start).Round(time.Millisecond), resp.StatusCode)
 }

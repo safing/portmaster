@@ -1,4 +1,4 @@
-// +build !server
+// go:build !server
 
 package netenv
 
@@ -8,9 +8,9 @@ import (
 	"net"
 	"sync"
 
-	"github.com/safing/portbase/log"
-
 	"github.com/godbus/dbus/v5"
+
+	"github.com/safing/portbase/log"
 )
 
 var (
@@ -36,7 +36,7 @@ func getNameserversFromDbus() ([]Nameserver, error) { //nolint:gocognit // TODO
 
 	primaryConnectionVariant, err := getNetworkManagerProperty(dbusConn, dbus.ObjectPath("/org/freedesktop/NetworkManager"), "org.freedesktop.NetworkManager.PrimaryConnection")
 	if err != nil {
-		return nil, fmt.Errorf("dbus: failed to access NetworkManager.PrimaryConnection: %s", err)
+		return nil, fmt.Errorf("dbus: failed to access NetworkManager.PrimaryConnection: %w", err)
 	}
 	primaryConnection, ok := primaryConnectionVariant.Value().(dbus.ObjectPath)
 	if !ok {
@@ -45,7 +45,7 @@ func getNameserversFromDbus() ([]Nameserver, error) { //nolint:gocognit // TODO
 
 	activeConnectionsVariant, err := getNetworkManagerProperty(dbusConn, dbus.ObjectPath("/org/freedesktop/NetworkManager"), "org.freedesktop.NetworkManager.ActiveConnections")
 	if err != nil {
-		return nil, fmt.Errorf("dbus: failed to access NetworkManager.ActiveConnections: %s", err)
+		return nil, fmt.Errorf("dbus: failed to access NetworkManager.ActiveConnections: %w", err)
 	}
 	activeConnections, ok := activeConnectionsVariant.Value().([]dbus.ObjectPath)
 	if !ok {
@@ -60,18 +60,18 @@ func getNameserversFromDbus() ([]Nameserver, error) { //nolint:gocognit // TODO
 	}
 
 	for _, activeConnection := range sortedConnections {
-		new, err := dbusGetInterfaceNameservers(dbusConn, activeConnection, 4)
+		newNameservers, err := dbusGetInterfaceNameservers(dbusConn, activeConnection, 4)
 		if err != nil {
 			log.Warningf("failed to get nameserver: %s", err)
 		} else {
-			ns = append(ns, new...)
+			ns = append(ns, newNameservers...)
 		}
 
-		new, err = dbusGetInterfaceNameservers(dbusConn, activeConnection, 6)
+		newNameservers, err = dbusGetInterfaceNameservers(dbusConn, activeConnection, 6)
 		if err != nil {
 			log.Warningf("failed to get nameserver: %s", err)
 		} else {
-			ns = append(ns, new...)
+			ns = append(ns, newNameservers...)
 		}
 	}
 
@@ -87,7 +87,7 @@ func dbusGetInterfaceNameservers(dbusConn *dbus.Conn, interfaceObject dbus.Objec
 	// Get Interface Configuration.
 	ipConfigVariant, err := getNetworkManagerProperty(dbusConn, interfaceObject, ipConfigPropertyKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to access %s:%s: %s", interfaceObject, ipConfigPropertyKey, err)
+		return nil, fmt.Errorf("failed to access %s:%s: %w", interfaceObject, ipConfigPropertyKey, err)
 	}
 	ipConfig, ok := ipConfigVariant.Value().(dbus.ObjectPath)
 	if !ok {
@@ -102,7 +102,7 @@ func dbusGetInterfaceNameservers(dbusConn *dbus.Conn, interfaceObject dbus.Objec
 	// Get Nameserver IPs
 	nameserverIPsVariant, err := getNetworkManagerProperty(dbusConn, ipConfig, nameserversIPsPropertyKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to access %s:%s: %s", ipConfig, nameserversIPsPropertyKey, err)
+		return nil, fmt.Errorf("failed to access %s:%s: %w", ipConfig, nameserversIPsPropertyKey, err)
 	}
 	var nameserverIPs []net.IP
 	switch ipVersion {
@@ -134,7 +134,7 @@ func dbusGetInterfaceNameservers(dbusConn *dbus.Conn, interfaceObject dbus.Objec
 	// Get Nameserver Domains
 	nameserverDomainsVariant, err := getNetworkManagerProperty(dbusConn, ipConfig, nameserversDomainsPropertyKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to access %s:%s: %s", ipConfig, nameserversDomainsPropertyKey, err)
+		return nil, fmt.Errorf("failed to access %s:%s: %w", ipConfig, nameserversDomainsPropertyKey, err)
 	}
 	nameserverDomains, ok := nameserverDomainsVariant.Value().([]string)
 	if !ok {
@@ -144,7 +144,7 @@ func dbusGetInterfaceNameservers(dbusConn *dbus.Conn, interfaceObject dbus.Objec
 	// Get Nameserver Searches
 	nameserverSearchesVariant, err := getNetworkManagerProperty(dbusConn, ipConfig, nameserversSearchesPropertyKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to access %s:%s: %s", ipConfig, nameserversSearchesPropertyKey, err)
+		return nil, fmt.Errorf("failed to access %s:%s: %w", ipConfig, nameserversSearchesPropertyKey, err)
 	}
 	nameserverSearches, ok := nameserverSearchesVariant.Value().([]string)
 	if !ok {
@@ -152,7 +152,7 @@ func dbusGetInterfaceNameservers(dbusConn *dbus.Conn, interfaceObject dbus.Objec
 	}
 
 	ns := make([]Nameserver, 0, len(nameserverIPs))
-	searchDomains := append(nameserverDomains, nameserverSearches...)
+	searchDomains := append(nameserverDomains, nameserverSearches...) //nolint:gocritic
 	for _, nameserverIP := range nameserverIPs {
 		ns = append(ns, Nameserver{
 			IP:     nameserverIP,

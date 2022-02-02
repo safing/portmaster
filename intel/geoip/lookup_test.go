@@ -6,6 +6,8 @@ import (
 )
 
 func TestLocationLookup(t *testing.T) {
+	t.Parallel()
+
 	ip1 := net.ParseIP("81.2.69.142")
 	loc1, err := GetLocation(ip1)
 	if err != nil {
@@ -53,8 +55,8 @@ func TestLocationLookup(t *testing.T) {
 	dist3 := loc1.EstimateNetworkProximity(loc3)
 	dist4 := loc1.EstimateNetworkProximity(loc4)
 
-	t.Logf("proximity %s <> %s: %d", ip1, ip2, dist1)
-	t.Logf("proximity %s <> %s: %d", ip2, ip3, dist2)
-	t.Logf("proximity %s <> %s: %d", ip1, ip3, dist3)
-	t.Logf("proximity %s <> %s: %d", ip1, ip4, dist4)
+	t.Logf("proximity %s <> %s: %.2f", ip1, ip2, dist1)
+	t.Logf("proximity %s <> %s: %.2f", ip2, ip3, dist2)
+	t.Logf("proximity %s <> %s: %.2f", ip1, ip3, dist3)
+	t.Logf("proximity %s <> %s: %.2f", ip1, ip4, dist4)
 }

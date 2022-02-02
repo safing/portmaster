@@ -6,11 +6,11 @@ import (
 	"net"
 	"time"
 
+	"github.com/miekg/dns"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/nameserver/nsutil"
 	"github.com/safing/portmaster/netenv"
-
-	"github.com/miekg/dns"
 )
 
 // RRCache is a single-use structure to hold a DNS response.
@@ -127,7 +127,7 @@ func (rrCache *RRCache) ExportAllARecords() (ips []net.IP) {
 
 // ToNameRecord converts the RRCache to a NameRecord for cleaner persistence.
 func (rrCache *RRCache) ToNameRecord() *NameRecord {
-	new := &NameRecord{
+	newRecord := &NameRecord{
 		Domain:   rrCache.Domain,
 		Question: rrCache.Question.String(),
 		RCode:    rrCache.RCode,
@@ -136,11 +136,11 @@ func (rrCache *RRCache) ToNameRecord() *NameRecord {
 	}
 
 	// Serialize RR entries to strings.
-	new.Answer = toNameRecordSection(rrCache.Answer)
-	new.Ns = toNameRecordSection(rrCache.Ns)
-	new.Extra = toNameRecordSection(rrCache.Extra)
+	newRecord.Answer = toNameRecordSection(rrCache.Answer)
+	newRecord.Ns = toNameRecordSection(rrCache.Ns)
+	newRecord.Extra = toNameRecordSection(rrCache.Extra)
 
-	return new
+	return newRecord
 }
 
 func toNameRecordSection(rrSection []dns.RR) []string {

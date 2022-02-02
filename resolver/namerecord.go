@@ -1,7 +1,6 @@
 package resolver
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -81,30 +80,30 @@ func GetNameRecord(domain, question string) (*NameRecord, error) {
 	// Unwrap record if it's wrapped.
 	if r.IsWrapped() {
 		// only allocate a new struct, if we need it
-		new := &NameRecord{}
-		err = record.Unwrap(r, new)
+		newNR := &NameRecord{}
+		err = record.Unwrap(r, newNR)
 		if err != nil {
 			return nil, err
 		}
 		// Check if the record is valid.
-		if !new.IsValid() {
+		if !newNR.IsValid() {
 			return nil, errors.New("record is invalid (outdated format)")
 		}
 
-		return new, nil
+		return newNR, nil
 	}
 
 	// Or just adjust the type.
-	new, ok := r.(*NameRecord)
+	newNR, ok := r.(*NameRecord)
 	if !ok {
 		return nil, fmt.Errorf("record not of type *NameRecord, but %T", r)
 	}
 	// Check if the record is valid.
-	if !new.IsValid() {
+	if !newNR.IsValid() {
 		return nil, errors.New("record is invalid (outdated format)")
 	}
 
-	return new, nil
+	return newNR, nil
 }
 
 // ResetCachedRecord deletes a NameRecord from the cache database.
@@ -118,16 +117,16 @@ func ResetCachedRecord(domain, question string) error {
 }
 
 // Save saves the NameRecord to the database.
-func (rec *NameRecord) Save() error {
-	if rec.Domain == "" || rec.Question == "" {
+func (nameRecord *NameRecord) Save() error {
+	if nameRecord.Domain == "" || nameRecord.Question == "" {
 		return errors.New("could not save NameRecord, missing Domain and/or Question")
 	}
 
-	rec.SetKey(makeNameRecordKey(rec.Domain, rec.Question))
-	rec.UpdateMeta()
-	rec.Meta().SetAbsoluteExpiry(rec.Expires + databaseOvertime)
+	nameRecord.SetKey(makeNameRecordKey(nameRecord.Domain, nameRecord.Question))
+	nameRecord.UpdateMeta()
+	nameRecord.Meta().SetAbsoluteExpiry(nameRecord.Expires + databaseOvertime)
 
-	return recordDatabase.PutNew(rec)
+	return recordDatabase.PutNew(nameRecord)
 }
 
 // clearNameCache clears all dns caches from the database.
@@ -143,19 +142,4 @@ func clearNameCache(ar *api.Request) (msg string, err error) {
 
 	log.Debugf("resolver: cleared %d entries from dns cache", n)
 	return fmt.Sprintf("cleared %d dns cache entries", n), nil
-}
-
-// DEPRECATED: remove in v0.7
-func clearNameCacheEventHandler(ctx context.Context, _ interface{}) error {
-	log.Debugf("resolver: dns cache clearing started...")
-
-	recordDatabase.FlushCache()
-	recordDatabase.ClearCache()
-	n, err := recordDatabase.Purge(ctx, query.New(nameRecordsKeyPrefix))
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("resolver: cleared %d entries from dns cache", n)
-	return nil
 }

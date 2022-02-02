@@ -14,35 +14,36 @@ import (
 	"github.com/safing/portmaster/netenv"
 )
 
+// Errors.
 var (
-	// basic errors
+	// Basic Errors.
 
-	// ErrNotFound is a basic error that will match all "not found" errors
+	// ErrNotFound is a basic error that will match all "not found" errors.
 	ErrNotFound = errors.New("record could not be found")
-	// ErrBlocked is basic error that will match all "blocked" errors
+	// ErrBlocked is basic error that will match all "blocked" errors.
 	ErrBlocked = errors.New("query was blocked")
-	// ErrLocalhost is returned to *.localhost queries
+	// ErrLocalhost is returned to *.localhost queries.
 	ErrLocalhost = errors.New("query for localhost")
-	// ErrTimeout is returned when a query times out
+	// ErrTimeout is returned when a query times out.
 	ErrTimeout = errors.New("query timed out")
-	// ErrOffline is returned when no network connection is detected
+	// ErrOffline is returned when no network connection is detected.
 	ErrOffline = errors.New("device is offine")
-	// ErrFailure is returned when the type of failure is unclear
+	// ErrFailure is returned when the type of failure is unclear.
 	ErrFailure = errors.New("query failed")
-	// ErrContinue is returned when the resolver has no answer, and the next resolver should be asked
+	// ErrContinue is returned when the resolver has no answer, and the next resolver should be asked.
 	ErrContinue = errors.New("resolver has no answer")
 	// ErrShuttingDown is returned when the resolver is shutting down.
 	ErrShuttingDown = errors.New("resolver is shutting down")
 
-	// detailed errors
+	// Detailed Errors.
 
-	// ErrTestDomainsDisabled wraps ErrBlocked
+	// ErrTestDomainsDisabled wraps ErrBlocked.
 	ErrTestDomainsDisabled = fmt.Errorf("%w: test domains disabled", ErrBlocked)
-	// ErrSpecialDomainsDisabled wraps ErrBlocked
+	// ErrSpecialDomainsDisabled wraps ErrBlocked.
 	ErrSpecialDomainsDisabled = fmt.Errorf("%w: special domains disabled", ErrBlocked)
-	// ErrInvalid wraps ErrNotFound
+	// ErrInvalid wraps ErrNotFound.
 	ErrInvalid = fmt.Errorf("%w: invalid request", ErrNotFound)
-	// ErrNoCompliance wraps ErrBlocked and is returned when no resolvers were able to comply with the current settings
+	// ErrNoCompliance wraps ErrBlocked and is returned when no resolvers were able to comply with the current settings.
 	ErrNoCompliance = fmt.Errorf("%w: no compliant resolvers for this query", ErrBlocked)
 )
 
@@ -74,7 +75,7 @@ func (blocked *BlockedUpstreamError) Error() string {
 	return fmt.Sprintf("%s by upstream DNS resolver %s", ErrBlocked, blocked.ResolverName)
 }
 
-// Unwrap implements errors.Unwrapper
+// Unwrap implements errors.Unwrapper.
 func (blocked *BlockedUpstreamError) Unwrap() error {
 	return ErrBlocked
 }
@@ -166,10 +167,9 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 
 	// Get data from cache.
 	rrCache, err := GetRRCache(q.FQDN, q.QType)
-
 	// Return if entry is not in cache.
 	if err != nil {
-		if err != database.ErrNotFound {
+		if !errors.Is(err, database.ErrNotFound) {
 			log.Tracer(ctx).Warningf("resolver: getting RRCache %s%s from database failed: %s", q.FQDN, q.QType.String(), err)
 		}
 		return nil
@@ -403,7 +403,7 @@ resolveLoop:
 	if err != nil {
 		// tried all resolvers, possibly twice
 		if i > 1 {
-			err = fmt.Errorf("all %d query-compliant resolvers failed, last error: %s", len(resolvers), err)
+			err = fmt.Errorf("all %d query-compliant resolvers failed, last error: %w", len(resolvers), err)
 
 			if primarySource == ServerSourceConfigured &&
 				netenv.Online() && CompatSelfCheckIsFailing() {

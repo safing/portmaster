@@ -9,12 +9,13 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/updater"
 	"github.com/safing/portmaster/updates"
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -46,13 +47,11 @@ var (
 	filterListsLoaded chan struct{}
 )
 
-var (
-	cache = database.NewInterface(&database.Options{
-		Local:     true,
-		Internal:  true,
-		CacheSize: 2 ^ 8,
-	})
-)
+var cache = database.NewInterface(&database.Options{
+	Local:     true,
+	Internal:  true,
+	CacheSize: 2 ^ 8,
+})
 
 // getFileFunc is the function used to get a file from
 // the updater. It's basically updates.GetFile and used
@@ -85,7 +84,9 @@ func processListFile(ctx context.Context, filter *scopedBloom, file *updater.Fil
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	values := make(chan *listEntry, 100)
 	records := make(chan record.Record, 100)

@@ -71,8 +71,11 @@ func (pkt *Base) HasPorts() bool {
 		return true
 	case UDP, UDPLite:
 		return true
+	case ICMP, ICMPv6, IGMP, RAW, AnyHostInternalProtocol61:
+		fallthrough
+	default:
+		return false
 	}
-	return false
 }
 
 // LoadPacketData loads packet data from the integration, if not yet done.
@@ -125,7 +128,7 @@ func (pkt *Base) createConnectionID() {
 //         IN   OUT
 // Local   Dst  Src
 // Remote  Src  Dst
-//
+//.
 func (pkt *Base) MatchesAddress(remote bool, protocol IPProtocol, network *net.IPNet, port uint16) bool {
 	if pkt.info.Protocol != protocol {
 		return false
@@ -154,7 +157,7 @@ func (pkt *Base) MatchesAddress(remote bool, protocol IPProtocol, network *net.I
 //         IN   OUT
 // Local   Dst  Src
 // Remote  Src  Dst
-//
+//.
 func (pkt *Base) MatchesIP(endpoint bool, network *net.IPNet) bool {
 	if pkt.info.Inbound != endpoint {
 		if network.Contains(pkt.info.Src) {
@@ -174,7 +177,7 @@ func (pkt *Base) String() string {
 	return pkt.FmtPacket()
 }
 
-// FmtPacket returns the most important information about the packet as a string
+// FmtPacket returns the most important information about the packet as a string.
 func (pkt *Base) FmtPacket() string {
 	if pkt.info.Protocol == TCP || pkt.info.Protocol == UDP {
 		if pkt.info.Inbound {
@@ -188,12 +191,12 @@ func (pkt *Base) FmtPacket() string {
 	return fmt.Sprintf("OUT %s %s <-> %s", pkt.info.Protocol, pkt.info.Src, pkt.info.Dst)
 }
 
-// FmtProtocol returns the protocol as a string
+// FmtProtocol returns the protocol as a string.
 func (pkt *Base) FmtProtocol() string {
 	return pkt.info.Protocol.String()
 }
 
-// FmtRemoteIP returns the remote IP address as a string
+// FmtRemoteIP returns the remote IP address as a string.
 func (pkt *Base) FmtRemoteIP() string {
 	if pkt.info.Inbound {
 		return pkt.info.Src.String()
@@ -201,7 +204,7 @@ func (pkt *Base) FmtRemoteIP() string {
 	return pkt.info.Dst.String()
 }
 
-// FmtRemotePort returns the remote port as a string
+// FmtRemotePort returns the remote port as a string.
 func (pkt *Base) FmtRemotePort() string {
 	if pkt.info.SrcPort != 0 {
 		if pkt.info.Inbound {
@@ -212,14 +215,14 @@ func (pkt *Base) FmtRemotePort() string {
 	return "-"
 }
 
-// FmtRemoteAddress returns the full remote address (protocol, IP, port) as a string
+// FmtRemoteAddress returns the full remote address (protocol, IP, port) as a string.
 func (pkt *Base) FmtRemoteAddress() string {
 	return fmt.Sprintf("%s:%s:%s", pkt.info.Protocol.String(), pkt.FmtRemoteIP(), pkt.FmtRemotePort())
 }
 
-// Packet is an interface to a network packet to provide object behaviour the same across all systems
+// Packet is an interface to a network packet to provide object behaviour the same across all systems.
 type Packet interface {
-	// VERDICTS
+	// Verdicts.
 	Accept() error
 	Block() error
 	Drop() error
@@ -230,7 +233,7 @@ type Packet interface {
 	RerouteToTunnel() error
 	FastTrackedByIntegration() bool
 
-	// INFO
+	// Info.
 	SetCtx(context.Context)
 	Ctx() context.Context
 	Info() *Info
@@ -242,17 +245,17 @@ type Packet interface {
 	HasPorts() bool
 	GetConnectionID() string
 
-	// PAYLOAD
+	// Payload.
 	LoadPacketData() error
 	Layers() gopacket.Packet
 	Raw() []byte
 	Payload() []byte
 
-	// MATCHING
+	// Matching.
 	MatchesAddress(bool, IPProtocol, *net.IPNet, uint16) bool
 	MatchesIP(bool, *net.IPNet) bool
 
-	// FORMATTING
+	// Formatting.
 	String() string
 	FmtPacket() string
 	FmtProtocol() string

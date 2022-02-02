@@ -1,4 +1,4 @@
-// +build linux
+// go:build linux
 
 package proc
 
@@ -12,9 +12,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/safing/portmaster/network/socket"
-
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network/socket"
 )
 
 /*
@@ -85,7 +84,6 @@ const (
 )
 
 func getTableFromSource(stack uint8, procFile string) (connections []*socket.ConnectionInfo, binds []*socket.BindInfo, err error) {
-
 	var ipConverter func(string) net.IP
 	switch stack {
 	case TCP4, UDP4:
@@ -101,7 +99,9 @@ func getTableFromSource(stack uint8, procFile string) (connections []*socket.Con
 	if err != nil {
 		return nil, nil, err
 	}
-	defer socketData.Close()
+	defer func() {
+		_ = socketData.Close()
+	}()
 
 	// file scanner
 	scanner := bufio.NewScanner(socketData)

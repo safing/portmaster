@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/updates/helper"
-	"github.com/spf13/cobra"
 )
 
 var reset bool

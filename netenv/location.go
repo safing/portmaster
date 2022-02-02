@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/gopacket/layers"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 
-	"github.com/google/gopacket/layers"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/rng"
 	"github.com/safing/portmaster/intel/geoip"
@@ -41,10 +41,12 @@ func prepLocation() (err error) {
 	return err
 }
 
+// DeviceLocations holds multiple device locations.
 type DeviceLocations struct {
 	All []*DeviceLocation
 }
 
+// Best returns the best (most accurate) device location.
 func (dl *DeviceLocations) Best() *DeviceLocation {
 	if len(dl.All) > 0 {
 		return dl.All[0]
@@ -52,6 +54,7 @@ func (dl *DeviceLocations) Best() *DeviceLocation {
 	return nil
 }
 
+// BestV4 returns the best (most accurate) IPv4 device location.
 func (dl *DeviceLocations) BestV4() *DeviceLocation {
 	for _, loc := range dl.All {
 		if loc.IPVersion == packet.IPv4 {
@@ -61,6 +64,7 @@ func (dl *DeviceLocations) BestV4() *DeviceLocation {
 	return nil
 }
 
+// BestV6 returns the best (most accurate) IPv6 device location.
 func (dl *DeviceLocations) BestV6() *DeviceLocation {
 	for _, loc := range dl.All {
 		if loc.IPVersion == packet.IPv6 {
@@ -129,6 +133,7 @@ func (dl *DeviceLocation) IsMoreAccurateThan(other *DeviceLocation) bool {
 	return false
 }
 
+// LocationOrNil or returns the geoip location, or nil if not present.
 func (dl *DeviceLocation) LocationOrNil() *geoip.Location {
 	if dl == nil {
 		return nil
@@ -147,8 +152,10 @@ func (dl *DeviceLocation) String() string {
 	}
 }
 
+// DeviceLocationSource is a location source.
 type DeviceLocationSource string
 
+// Location Sources.
 const (
 	SourceInterface  DeviceLocationSource = "interface"
 	SourcePeer       DeviceLocationSource = "peer"
@@ -158,6 +165,7 @@ const (
 	SourceOther      DeviceLocationSource = "other"
 )
 
+// Accuracy returns the location accuracy of the source.
 func (dls DeviceLocationSource) Accuracy() int {
 	switch dls {
 	case SourceInterface:
@@ -183,6 +191,7 @@ func (a sortLocationsByAccuracy) Len() int           { return len(a) }
 func (a sortLocationsByAccuracy) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a sortLocationsByAccuracy) Less(i, j int) bool { return !a[j].IsMoreAccurateThan(a[i]) }
 
+// SetInternetLocation provides the location management system with a possible Internet location.
 func SetInternetLocation(ip net.IP, source DeviceLocationSource) (dl *DeviceLocation, ok bool) {
 	// Check if IP is global.
 	if netutils.GetIPScope(ip) != netutils.Global {
@@ -206,9 +215,8 @@ func SetInternetLocation(ip net.IP, source DeviceLocationSource) (dl *DeviceLoca
 	if err != nil {
 		log.Warningf("netenv: failed to get geolocation data of %s (from %s): %s", ip, source, err)
 		return nil, false
-	} else {
-		loc.Location = geoLoc
 	}
+	loc.Location = geoLoc
 
 	addLocation(loc)
 	return loc, true
@@ -242,7 +250,8 @@ func addLocation(dl *DeviceLocation) {
 	sort.Sort(sortLocationsByAccuracy(locations.All))
 }
 
-// DEPRECATED: Please use GetInternetLocation instead.
+// GetApproximateInternetLocation returns the approximate Internet location.
+// Deprecated: Please use GetInternetLocation instead.
 func GetApproximateInternetLocation() (net.IP, error) {
 	loc, ok := GetInternetLocation()
 	if !ok || loc.Best() == nil {
@@ -251,6 +260,7 @@ func GetApproximateInternetLocation() (net.IP, error) {
 	return loc.Best().IP, nil
 }
 
+// GetInternetLocation returns the possible device locations.
 func GetInternetLocation() (deviceLocations *DeviceLocations, ok bool) {
 	gettingLocationsLock.Lock()
 	defer gettingLocationsLock.Unlock()
@@ -323,7 +333,7 @@ func getLocationFromInterfaces() (v4ok, v6ok bool) {
 func getLocationFromUPnP() (ok bool) {
 	// Endoint: urn:schemas-upnp-org:service:WANIPConnection:1#GetExternalIPAddress
 	// A first test showed that a router did offer that endpoint, but did not
-	// return an IP addres.
+	// return an IP address.
 	return false
 }
 */
@@ -332,14 +342,14 @@ func getLocationFromTraceroute() (dl *DeviceLocation, err error) {
 	// Create connection.
 	conn, err := net.ListenPacket("ip4:icmp", "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to open icmp conn: %s", err)
+		return nil, fmt.Errorf("failed to open icmp conn: %w", err)
 	}
 	v4Conn := ipv4.NewPacketConn(conn)
 
 	// Generate a random ID for the ICMP packets.
 	generatedID, err := rng.Number(0xFFFF) // uint16
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate icmp msg ID: %s", err)
+		return nil, fmt.Errorf("failed to generate icmp msg ID: %w", err)
 	}
 	msgID := int(generatedID)
 	var msgSeq int
@@ -368,28 +378,27 @@ nextHop:
 		for j := 1; j <= 2; j++ { // Try every hop twice.
 			// Increase sequence number.
 			msgSeq++
-			pingMessage.Body.(*icmp.Echo).Seq = msgSeq
+			pingMessage.Body.(*icmp.Echo).Seq = msgSeq //nolint:forcetypeassert // Can only be *icmp.Echo.
 
 			// Make packet data.
 			pingPacket, err := pingMessage.Marshal(nil)
 			if err != nil {
-				return nil, fmt.Errorf("failed to build icmp packet: %s", err)
+				return nil, fmt.Errorf("failed to build icmp packet: %w", err)
 			}
 
 			// Set TTL on IP packet.
 			err = v4Conn.SetTTL(i)
 			if err != nil {
-				return nil, fmt.Errorf("failed to set icmp packet TTL: %s", err)
+				return nil, fmt.Errorf("failed to set icmp packet TTL: %w", err)
 			}
 
 			// Send ICMP packet.
 			if _, err := conn.WriteTo(pingPacket, locationTestingIPv4Addr); err != nil {
-				if neterr, ok := err.(*net.OpError); ok {
-					if neterr.Err == syscall.ENOBUFS {
-						continue
-					}
+				var opErr *net.OpError
+				if errors.As(err, &opErr) && errors.Is(opErr.Err, syscall.ENOBUFS) {
+					continue
 				}
-				return nil, fmt.Errorf("failed to send icmp packet: %s", err)
+				return nil, fmt.Errorf("failed to send icmp packet: %w", err)
 			}
 
 			// Listen for replies of the ICMP packet.
@@ -433,7 +442,7 @@ nextHop:
 					continue listen
 				}
 				// Check if the ID and sequence match.
-				if originalEcho.ID != int(msgID) {
+				if originalEcho.ID != msgID {
 					continue listen
 				}
 				if originalEcho.Seq < minSeq {
@@ -469,8 +478,8 @@ nextHop:
 }
 
 func recvICMP(currentHop int, icmpPacketsViaFirewall chan packet.Packet) (
-	remoteIP net.IP, imcpPacket *layers.ICMPv4, ok bool) {
-
+	remoteIP net.IP, imcpPacket *layers.ICMPv4, ok bool,
+) {
 	for {
 		select {
 		case pkt := <-icmpPacketsViaFirewall:
@@ -496,7 +505,7 @@ func recvICMP(currentHop int, icmpPacketsViaFirewall chan packet.Packet) (
 	}
 }
 
-func getLocationFromTimezone(ipVersion packet.IPVersion) (ok bool) {
+func getLocationFromTimezone(ipVersion packet.IPVersion) (ok bool) { //nolint:unparam // This is documentation.
 	// Create base struct.
 	tzLoc := &DeviceLocation{
 		IPVersion:      ipVersion,

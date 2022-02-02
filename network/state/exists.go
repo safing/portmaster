@@ -14,7 +14,6 @@ const (
 
 // Exists checks if the given connection is present in the system state tables.
 func Exists(pktInfo *packet.Info, now time.Time) (exists bool) {
-
 	// TODO: create lookup maps before running a flurry of Exists() checks.
 
 	switch {

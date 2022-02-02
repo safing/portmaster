@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/safing/portbase/database"
-
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"

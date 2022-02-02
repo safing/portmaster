@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/tevino/abool"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/resolver"
-	"github.com/tevino/abool"
 )
 
 var (
@@ -43,7 +44,7 @@ func prep() error {
 
 func start() error {
 	selfcheckTask = module.NewTask("compatibility self-check", selfcheckTaskFunc).
-		Repeat(1 * time.Minute).
+		Repeat(5 * time.Minute).
 		MaxDelay(selfcheckTaskRetryAfter).
 		Schedule(time.Now().Add(selfcheckTaskRetryAfter))
 
@@ -98,6 +99,9 @@ func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
 	return nil
 }
 
+// SelfCheckIsFailing returns whether the self check is currently failing.
+// This returns true after the first check fails, and does not wait for the
+// failing threshold to be met.
 func SelfCheckIsFailing() bool {
 	return selfCheckIsFailing.IsSet()
 }

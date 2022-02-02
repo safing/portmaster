@@ -7,18 +7,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portmaster/profile"
-
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/process"
+	"github.com/safing/portmaster/profile"
 )
 
 type baseIssue struct {
-	id      string
-	title   string
-	message string
-	level   notifications.Type
+	id      string             //nolint:structcheck // Inherited.
+	title   string             //nolint:structcheck // Inherited.
+	message string             //nolint:structcheck // Inherited.
+	level   notifications.Type //nolint:structcheck // Inherited.
 }
 
 type systemIssue baseIssue

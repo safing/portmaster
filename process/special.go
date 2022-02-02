@@ -5,8 +5,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/safing/portbase/log"
 	"golang.org/x/sync/singleflight"
+
+	"github.com/safing/portbase/log"
 )
 
 const (
@@ -76,5 +77,5 @@ func getSpecialProcess(ctx context.Context, template *Process) *Process {
 		process.Save()
 		return process, nil
 	})
-	return p.(*Process)
+	return p.(*Process) // nolint:forcetypeassert // Can only be a *Process.
 }

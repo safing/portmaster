@@ -119,7 +119,7 @@ func (conn *Connection) addToMetrics() {
 	}
 
 	// Check the verdict.
-	switch conn.Verdict {
+	switch conn.Verdict { //nolint:exhaustive // Not critical.
 	case VerdictBlock, VerdictDrop:
 		blockedOutConnCounter.Inc()
 		conn.addedToMetrics = true
