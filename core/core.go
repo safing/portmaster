@@ -7,12 +7,10 @@ import (
 
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
-	"github.com/safing/portmaster/updates"
-
-	// module dependencies
 	_ "github.com/safing/portmaster/netenv"
 	_ "github.com/safing/portmaster/status"
 	_ "github.com/safing/portmaster/ui"
+	"github.com/safing/portmaster/updates"
 )
 
 const (
@@ -65,7 +63,7 @@ func prep() error {
 
 func start() error {
 	if err := startPlatformSpecific(); err != nil {
-		return fmt.Errorf("failed to start plattform-specific components: %s", err)
+		return fmt.Errorf("failed to start plattform-specific components: %w", err)
 	}
 
 	registerLogCleaner()

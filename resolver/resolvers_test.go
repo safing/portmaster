@@ -3,8 +3,11 @@ package resolver
 import "testing"
 
 func TestCheckResolverSearchScope(t *testing.T) {
+	t.Parallel()
 
 	test := func(t *testing.T, domain string, expectedResult bool) {
+		t.Helper()
+
 		if checkSearchScope(domain) != expectedResult {
 			if expectedResult {
 				t.Errorf("domain %s failed scope test", domain)

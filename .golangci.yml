@@ -1,20 +1,65 @@
+# Docs:
+# https://golangci-lint.run/usage/linters/
+
 linters:
   enable-all: true
   disable:
-    - lll
-    - gochecknoinits
-    - gochecknoglobals
+    - containedctx
+    - contextcheck
+    - cyclop
+    - exhaustivestruct
+    - forbidigo
     - funlen
-    - whitespace
-    - wsl
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - gocyclo
+    - goerr113 
     - gomnd
-    - gomodguard
-    - goerr113
+    - ifshort
+    - interfacer
+    - ireturn
+    - lll
+    - nestif
+    - nilnil
+    - nlreturn
+    - noctx
+    - revive
+    - tagliatelle
     - testpackage
+    - varnamelen
+    - whitespace
+    - wrapcheck
+    - wsl
 
 linters-settings:
+  revive:
+    # See https://github.com/mgechev/revive#available-rules for details.
+    enable-all-rules: true
+  gci:
+    # put imports beginning with prefix after 3rd-party packages;
+    # only support one prefix
+    # if not set, use goimports.local-prefixes
+    local-prefixes: github.com/safing
   godox:
     # report any comments starting with keywords, this is useful for TODO or FIXME comments that
     # might be left in the code accidentally and should be resolved before merging
     keywords:
       - FIXME
+  gosec:
+    # To specify a set of rules to explicitly exclude.
+    # Available rules: https://github.com/securego/gosec#available-rules
+    excludes:
+      - G204 # Variables in commands.
+      - G304 # Variables in file paths.
+      - G505 # We need crypto/sha1 for non-security stuff. Using `nolint:` triggers another linter.
+
+issues:
+  exclude-use-default: false
+  exclude-rules:
+    - text: "a blank import .*"
+      linters:
+        - golint
+    - text: "ST1000: at least one file in a package should have a package comment.*"
+      linters:
+        - stylecheck

@@ -7,6 +7,8 @@ import (
 )
 
 func TestCaching(t *testing.T) {
+	t.Parallel()
+
 	testDomain := "Mk35mMqOWEHXSMk11MYcbjLOjTE8PQvDiAVUxf4BvwtgR.example.com."
 	testQuestion := "A"
 

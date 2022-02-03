@@ -4,22 +4,20 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tevino/abool"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/updates"
-	"github.com/tevino/abool"
 )
 
-var (
-	module *modules.Module
-)
+var module *modules.Module
 
 const (
 	filterlistsDisabled          = "filterlists:disabled"
 	filterlistsUpdateFailed      = "filterlists:update-failed"
 	filterlistsStaleDataSurvived = "filterlists:staledata"
-	filterlistsUpdateInProgress  = "filterlists:update-in-progress"
 )
 
 // booleans mainly used to decouple the module

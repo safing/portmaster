@@ -1,14 +1,12 @@
 package profile
 
-var (
-	fingerprintWeights = map[string]int{
-		"full_path":    2,
-		"partial_path": 1,
-		"md5_sum":      4,
-		"sha1_sum":     5,
-		"sha256_sum":   6,
-	}
-)
+var fingerprintWeights = map[string]int{
+	"full_path":    2,
+	"partial_path": 1,
+	"md5_sum":      4,
+	"sha1_sum":     5,
+	"sha256_sum":   6,
+}
 
 // Fingerprint links processes to profiles.
 type Fingerprint struct {

@@ -11,16 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/safing/portmaster/netenv"
-
-	"github.com/safing/portmaster/updates"
-
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/process"
+	"github.com/safing/portmaster/updates"
 )
 
 const (
@@ -79,13 +77,13 @@ func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, er
 	// get local IP/Port
 	localIP, localPort, err := parseHostPort(s.Addr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get local IP/Port: %s", err)
+		return nil, fmt.Errorf("failed to get local IP/Port: %w", err)
 	}
 
 	// get remote IP/Port
 	remoteIP, remotePort, err := parseHostPort(r.RemoteAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get remote IP/Port: %s", err)
+		return nil, fmt.Errorf("failed to get remote IP/Port: %w", err)
 	}
 
 	// Check if the request is even local.
@@ -151,11 +149,12 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 
 		// Go up up to two levels, if we don't match the path.
 		checkLevels := 2
+	checkLevelsLoop:
 		for i := 0; i < checkLevels+1; i++ {
 			// Check for eligible path.
 			switch proc.Pid {
 			case process.UnidentifiedProcessID, process.SystemProcessID:
-				break
+				break checkLevelsLoop
 			default: // normal process
 				// Check if the requesting process is in database root / updates dir.
 				if strings.HasPrefix(proc.Path, authenticatedPath) {

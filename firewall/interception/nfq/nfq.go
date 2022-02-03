@@ -1,4 +1,4 @@
-// +build linux
+// go:build linux
 
 // Package nfq contains a nfqueue library experiment.
 package nfq
@@ -10,15 +10,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/log"
-	pmpacket "github.com/safing/portmaster/network/packet"
+	"github.com/florianl/go-nfqueue"
 	"github.com/tevino/abool"
 	"golang.org/x/sys/unix"
 
-	"github.com/florianl/go-nfqueue"
+	"github.com/safing/portbase/log"
+	pmpacket "github.com/safing/portmaster/network/packet"
 )
 
-// Queue wraps a nfqueue
+// Queue wraps a nfqueue.
 type Queue struct {
 	id                   uint16
 	afFamily             uint8
@@ -32,7 +32,7 @@ type Queue struct {
 }
 
 func (q *Queue) getNfq() *nfqueue.Nfqueue {
-	return q.nf.Load().(*nfqueue.Nfqueue)
+	return q.nf.Load().(*nfqueue.Nfqueue) //nolint:forcetypeassert // TODO: Check.
 }
 
 // New opens a new nfQueue.
@@ -112,7 +112,7 @@ func (q *Queue) open(ctx context.Context) error {
 	}
 
 	if err := nf.RegisterWithErrorFunc(ctx, q.packetHandler(ctx), q.handleError); err != nil {
-		defer nf.Close()
+		_ = nf.Close()
 		return err
 	}
 
@@ -124,7 +124,7 @@ func (q *Queue) open(ctx context.Context) error {
 func (q *Queue) handleError(e error) int {
 	// embedded interface is required to work-around some
 	// dep-vendoring weirdness
-	if opError, ok := e.(interface {
+	if opError, ok := e.(interface { //nolint:errorlint // TODO: Check if we can remove workaround.
 		Timeout() bool
 		Temporary() bool
 	}); ok {
@@ -153,7 +153,7 @@ func (q *Queue) handleError(e error) int {
 
 	// Close the existing socket
 	if nf := q.getNfq(); nf != nil {
-		nf.Close()
+		_ = nf.Close()
 	}
 
 	// Trigger a restart of the queue

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/go-version"
+
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/migration"
@@ -21,7 +22,7 @@ func registerMigrations() error {
 	)
 }
 
-func migrateNetworkRatingSystem(ctx context.Context, _, _ *version.Version, db *database.Interface) error {
+func migrateNetworkRatingSystem(ctx context.Context, _, to *version.Version, db *database.Interface) error {
 	// determine the default value for the network rating system by searching for
 	// a global security level setting that is not set to the default.
 	networkRatingEnabled := false
@@ -32,7 +33,8 @@ func migrateNetworkRatingSystem(ctx context.Context, _, _ *version.Version, db *
 		}
 
 		intValue := config.Concurrent.GetAsInt(cfgkey, 0)()
-		if def.DefaultValue.(uint8) != uint8(intValue) {
+		defaultValue, ok := def.DefaultValue.(uint8)
+		if ok && defaultValue != uint8(intValue) {
 			log.Tracer(ctx).Infof("found global security level setting with changed value. 0x%2x (default) != 0x%2x (current)", def.DefaultValue, intValue)
 			networkRatingEnabled = true
 			break
@@ -40,7 +42,10 @@ func migrateNetworkRatingSystem(ctx context.Context, _, _ *version.Version, db *
 	}
 
 	if networkRatingEnabled {
-		status.SetNetworkRating(networkRatingEnabled)
+		err := status.SetNetworkRating(networkRatingEnabled)
+		if err != nil {
+			log.Warningf("profile: migration to %s failed to set network rating level to %v", to, networkRatingEnabled)
+		}
 	}
 
 	return nil

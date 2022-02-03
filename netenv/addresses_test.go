@@ -5,6 +5,8 @@ import (
 )
 
 func TestGetAssignedAddresses(t *testing.T) {
+	t.Parallel()
+
 	ipv4, ipv6, err := GetAssignedAddresses()
 	t.Logf("all v4: %v", ipv4)
 	t.Logf("all v6: %v", ipv6)
@@ -17,6 +19,8 @@ func TestGetAssignedAddresses(t *testing.T) {
 }
 
 func TestGetAssignedGlobalAddresses(t *testing.T) {
+	t.Parallel()
+
 	ipv4, ipv6, err := GetAssignedGlobalAddresses()
 	t.Logf("all global v4: %v", ipv4)
 	t.Logf("all global v6: %v", ipv6)

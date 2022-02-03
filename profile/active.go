@@ -68,17 +68,6 @@ func addActiveProfile(profile *Profile) {
 	activeProfiles[profile.ScopedID()] = profile
 }
 
-// markActiveProfileAsOutdated marks an active profile as outdated.
-func markActiveProfileAsOutdated(scopedID string) {
-	activeProfilesLock.RLock()
-	defer activeProfilesLock.RUnlock()
-
-	profile, ok := activeProfiles[scopedID]
-	if ok {
-		profile.outdated.Set()
-	}
-}
-
 func cleanActiveProfiles(ctx context.Context) error {
 	for {
 		select {

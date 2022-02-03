@@ -95,11 +95,11 @@ func upgradeCoreNotify() error {
 	}
 
 	// get newest portmaster-core
-	new, err := GetPlatformFile(identifier)
+	newFile, err := GetPlatformFile(identifier)
 	if err != nil {
 		return err
 	}
-	pmCoreUpdate = new
+	pmCoreUpdate = newFile
 
 	// check for new version
 	if info.GetInfo().Version != pmCoreUpdate.Version() {
@@ -162,11 +162,11 @@ func upgradeHub() error {
 	}
 
 	// get newest spn-hub
-	new, err := GetPlatformFile(identifier)
+	newFile, err := GetPlatformFile(identifier)
 	if err != nil {
 		return err
 	}
-	spnHubUpdate = new
+	spnHubUpdate = newFile
 
 	// check for new version
 	if info.GetInfo().Version != spnHubUpdate.Version() {
@@ -192,11 +192,11 @@ func upgradePortmasterStart() error {
 	// check if we can upgrade
 	if pmCtrlUpdate == nil || pmCtrlUpdate.UpgradeAvailable() {
 		// get newest portmaster-start
-		new, err := GetPlatformFile("start/" + filename) // identifier, use forward slash!
+		newFile, err := GetPlatformFile("start/" + filename) // identifier, use forward slash!
 		if err != nil {
 			return err
 		}
-		pmCtrlUpdate = new
+		pmCtrlUpdate = newFile
 	} else {
 		return nil
 	}
@@ -338,8 +338,8 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 		if err != nil {
 			return fmt.Errorf("failed to get file info on %s: %w", fileToUpgrade, err)
 		}
-		if info.Mode() != 0755 {
-			err := os.Chmod(fileToUpgrade, 0755)
+		if info.Mode() != 0o0755 {
+			err := os.Chmod(fileToUpgrade, 0o0755) //nolint:gosec // Set execute permissions.
 			if err != nil {
 				return fmt.Errorf("failed to set permissions on %s: %w", fileToUpgrade, err)
 			}
@@ -370,7 +370,9 @@ func CopyFile(srcPath, dstPath string) error {
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() {
+		_ = srcFile.Close()
+	}()
 
 	// copy data
 	_, err = io.Copy(atomicDstFile, srcFile)

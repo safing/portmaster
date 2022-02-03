@@ -7,12 +7,14 @@ import (
 	"strings"
 
 	"github.com/miekg/dns"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/netutils"
 )
 
 const (
+	// InternalSpecialUseDomain is the domain scope used for internal services.
 	InternalSpecialUseDomain = "portmaster.home.arpa."
 
 	routerDomain        = "router.local." + InternalSpecialUseDomain
@@ -91,8 +93,7 @@ func (er *envResolverConn) Query(ctx context.Context, q *Query) (*RRCache, error
 		}
 
 		// Check for suffix matches.
-		switch {
-		case strings.HasSuffix(q.FQDN, CompatDNSCheckInternalDomainScope):
+		if strings.HasSuffix(q.FQDN, CompatDNSCheckInternalDomainScope) {
 			subdomain := strings.TrimSuffix(q.FQDN, CompatDNSCheckInternalDomainScope)
 			respondWith := CompatSubmitDNSCheckDomain(subdomain)
 

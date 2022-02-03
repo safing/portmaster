@@ -138,7 +138,7 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		return nil, false, fmt.Errorf("invalid value for upstream block detection (blockedif=)")
 	}
 
-	new := &Resolver{
+	newResolver := &Resolver{
 		ConfigURL: resolverURL,
 		Info: &ResolverInfo{
 			Name:    query.Get("name"),
@@ -153,8 +153,8 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		UpstreamBlockDetection: blockType,
 	}
 
-	new.Conn = resolverConnFactory(new)
-	return new, false, nil
+	newResolver.Conn = resolverConnFactory(newResolver)
+	return newResolver, false, nil
 }
 
 func configureSearchDomains(resolver *Resolver, searches []string) {

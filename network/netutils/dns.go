@@ -8,19 +8,17 @@ import (
 	"github.com/miekg/dns"
 )
 
-var (
-	cleanDomainRegex = regexp.MustCompile(
-		`^` + // match beginning
-			`(` + // start subdomain group
-			`(xn--)?` + // idn prefix
-			`[a-z0-9_-]{1,63}` + // main chunk
-			`\.` + // ending with a dot
-			`)*` + // end subdomain group, allow any number of subdomains
-			`(xn--)?` + // TLD idn prefix
-			`[a-z0-9_-]{2,63}` + // TLD main chunk with at least two characters
-			`\.` + // ending with a dot
-			`$`, // match end
-	)
+var cleanDomainRegex = regexp.MustCompile(
+	`^` + // match beginning
+		`(` + // start subdomain group
+		`(xn--)?` + // idn prefix
+		`[a-z0-9_-]{1,63}` + // main chunk
+		`\.` + // ending with a dot
+		`)*` + // end subdomain group, allow any number of subdomains
+		`(xn--)?` + // TLD idn prefix
+		`[a-z0-9_-]{2,63}` + // TLD main chunk with at least two characters
+		`\.` + // ending with a dot
+		`$`, // match end
 )
 
 // IsValidFqdn returns whether the given string is a valid fqdn.

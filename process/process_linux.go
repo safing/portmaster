@@ -4,6 +4,4 @@ package process
 const SystemProcessID = 0
 
 // specialOSInit does special OS specific Process initialization.
-func (p *Process) specialOSInit() {
-
-}
+func (p *Process) specialOSInit() {}

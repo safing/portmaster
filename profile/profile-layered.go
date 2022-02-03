@@ -5,15 +5,13 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/runtime"
-
-	"github.com/safing/portmaster/status"
-
-	"github.com/safing/portbase/config"
 	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/profile/endpoints"
+	"github.com/safing/portmaster/status"
 )
 
 // LayeredProfile combines multiple Profiles.
@@ -56,7 +54,7 @@ type LayeredProfile struct {
 func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	var securityLevelVal uint32
 
-	new := &LayeredProfile{
+	lp := &LayeredProfile{
 		localProfile:       localProfile,
 		layers:             make([]*Profile, 0, len(localProfile.LinkedProfiles)+1),
 		LayerIDs:           make([]string, 0, len(localProfile.LinkedProfiles)+1),
@@ -65,76 +63,76 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 		securityLevel:      &securityLevelVal,
 	}
 
-	new.DisableAutoPermit = new.wrapSecurityLevelOption(
+	lp.DisableAutoPermit = lp.wrapSecurityLevelOption(
 		CfgOptionDisableAutoPermitKey,
 		cfgOptionDisableAutoPermit,
 	)
-	new.BlockScopeLocal = new.wrapSecurityLevelOption(
+	lp.BlockScopeLocal = lp.wrapSecurityLevelOption(
 		CfgOptionBlockScopeLocalKey,
 		cfgOptionBlockScopeLocal,
 	)
-	new.BlockScopeLAN = new.wrapSecurityLevelOption(
+	lp.BlockScopeLAN = lp.wrapSecurityLevelOption(
 		CfgOptionBlockScopeLANKey,
 		cfgOptionBlockScopeLAN,
 	)
-	new.BlockScopeInternet = new.wrapSecurityLevelOption(
+	lp.BlockScopeInternet = lp.wrapSecurityLevelOption(
 		CfgOptionBlockScopeInternetKey,
 		cfgOptionBlockScopeInternet,
 	)
-	new.BlockP2P = new.wrapSecurityLevelOption(
+	lp.BlockP2P = lp.wrapSecurityLevelOption(
 		CfgOptionBlockP2PKey,
 		cfgOptionBlockP2P,
 	)
-	new.BlockInbound = new.wrapSecurityLevelOption(
+	lp.BlockInbound = lp.wrapSecurityLevelOption(
 		CfgOptionBlockInboundKey,
 		cfgOptionBlockInbound,
 	)
-	new.RemoveOutOfScopeDNS = new.wrapSecurityLevelOption(
+	lp.RemoveOutOfScopeDNS = lp.wrapSecurityLevelOption(
 		CfgOptionRemoveOutOfScopeDNSKey,
 		cfgOptionRemoveOutOfScopeDNS,
 	)
-	new.RemoveBlockedDNS = new.wrapSecurityLevelOption(
+	lp.RemoveBlockedDNS = lp.wrapSecurityLevelOption(
 		CfgOptionRemoveBlockedDNSKey,
 		cfgOptionRemoveBlockedDNS,
 	)
-	new.FilterSubDomains = new.wrapSecurityLevelOption(
+	lp.FilterSubDomains = lp.wrapSecurityLevelOption(
 		CfgOptionFilterSubDomainsKey,
 		cfgOptionFilterSubDomains,
 	)
-	new.FilterCNAMEs = new.wrapSecurityLevelOption(
+	lp.FilterCNAMEs = lp.wrapSecurityLevelOption(
 		CfgOptionFilterCNAMEKey,
 		cfgOptionFilterCNAME,
 	)
-	new.PreventBypassing = new.wrapSecurityLevelOption(
+	lp.PreventBypassing = lp.wrapSecurityLevelOption(
 		CfgOptionPreventBypassingKey,
 		cfgOptionPreventBypassing,
 	)
-	new.DomainHeuristics = new.wrapSecurityLevelOption(
+	lp.DomainHeuristics = lp.wrapSecurityLevelOption(
 		CfgOptionDomainHeuristicsKey,
 		cfgOptionDomainHeuristics,
 	)
-	new.UseSPN = new.wrapBoolOption(
+	lp.UseSPN = lp.wrapBoolOption(
 		CfgOptionUseSPNKey,
 		cfgOptionUseSPN,
 	)
 
-	new.LayerIDs = append(new.LayerIDs, localProfile.ScopedID())
-	new.layers = append(new.layers, localProfile)
+	lp.LayerIDs = append(lp.LayerIDs, localProfile.ScopedID())
+	lp.layers = append(lp.layers, localProfile)
 
 	// TODO: Load additional profiles.
 
-	new.updateCaches()
+	lp.updateCaches()
 
-	new.CreateMeta()
-	new.SetKey(runtime.DefaultRegistry.DatabaseName() + ":" + revisionProviderPrefix + localProfile.ScopedID())
+	lp.CreateMeta()
+	lp.SetKey(runtime.DefaultRegistry.DatabaseName() + ":" + revisionProviderPrefix + localProfile.ScopedID())
 
 	// Inform database subscribers about the new layered profile.
-	new.Lock()
-	defer new.Unlock()
+	lp.Lock()
+	defer lp.Unlock()
 
-	pushLayeredProfile(new)
+	pushLayeredProfile(lp)
 
-	return new
+	return lp
 }
 
 // LockForUsage locks the layered profile, including all layers individually.
@@ -167,7 +165,7 @@ func (lp *LayeredProfile) LocalProfile() *Profile {
 
 // increaseRevisionCounter increases the revision counter and pushes the
 // layered profile to listeners.
-func (lp *LayeredProfile) increaseRevisionCounter(lock bool) (revisionCounter uint64) {
+func (lp *LayeredProfile) increaseRevisionCounter(lock bool) (revisionCounter uint64) { //nolint:unparam // This is documentation.
 	if lp == nil {
 		return 0
 	}

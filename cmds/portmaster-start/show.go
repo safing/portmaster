@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/safing/portmaster/updates/helper"
 	"github.com/spf13/cobra"
+
+	"github.com/safing/portmaster/updates/helper"
 )
 
 func init() {
@@ -35,7 +36,7 @@ func show(opts *Options, cmdArgs []string) error {
 		helper.PlatformIdentifier(opts.Identifier),
 	)
 	if err != nil {
-		return fmt.Errorf("could not get component: %s", err)
+		return fmt.Errorf("could not get component: %w", err)
 	}
 
 	fmt.Printf("%s %s\n", file.Path(), strings.Join(args, " "))

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/miekg/dns"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/nameserver/nsutil"
 )

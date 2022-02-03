@@ -6,9 +6,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/tannerryan/ring"
+
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
-	"github.com/tannerryan/ring"
 )
 
 var defaultFilter = newScopedBloom()

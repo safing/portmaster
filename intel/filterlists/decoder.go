@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 
@@ -57,7 +58,7 @@ func decodeFile(ctx context.Context, r io.Reader, ch chan<- *listEntry) error {
 		entryCount++
 		length, readErr := binary.ReadUvarint(reader)
 		if readErr != nil {
-			if readErr == io.EOF {
+			if errors.Is(readErr, io.EOF) {
 				return nil
 			}
 			return fmt.Errorf("failed to load varint entity length: %w", readErr)
@@ -66,7 +67,7 @@ func decodeFile(ctx context.Context, r io.Reader, ch chan<- *listEntry) error {
 		blob := make([]byte, length)
 		_, readErr = io.ReadFull(reader, blob)
 		if readErr != nil {
-			if readErr == io.EOF {
+			if errors.Is(readErr, io.EOF) {
 				// there shouldn't be an EOF here because
 				// we actually got a length above. Return
 				// ErrUnexpectedEOF instead of just EOF.

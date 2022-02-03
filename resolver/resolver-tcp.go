@@ -10,16 +10,16 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/tevino/abool"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netenv"
-	"github.com/tevino/abool"
 )
 
 const (
 	tcpConnectionEstablishmentTimeout = 3 * time.Second
 	tcpWriteTimeout                   = 2 * time.Second
 	heartbeatTimeout                  = 5 * time.Second
-	ignoreQueriesAfter                = 5 * time.Minute
 )
 
 // TCPResolver is a resolver using just a single tcp connection with pipelining.

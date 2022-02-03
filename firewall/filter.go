@@ -2,13 +2,12 @@ package firewall
 
 import (
 	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/modules/subsystems"
-	"github.com/safing/spn/captain"
-
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portbase/modules/subsystems"
 
-	// module dependencies
+	// Dependency.
 	_ "github.com/safing/portmaster/core"
+	"github.com/safing/spn/captain"
 )
 
 var (

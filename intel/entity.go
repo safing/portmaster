@@ -8,12 +8,13 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/net/publicsuffix"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/intel/geoip"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/status"
-	"golang.org/x/net/publicsuffix"
 )
 
 // Entity describes a remote endpoint in many different ways.
@@ -21,7 +22,7 @@ import (
 // functions performs locking. The caller MUST ENSURE
 // proper locking and synchronization when accessing
 // any properties of Entity.
-type Entity struct {
+type Entity struct { //nolint:maligned
 	sync.Mutex
 
 	// lists exist for most entity information and
@@ -319,7 +320,7 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 
 	log.Tracer(ctx).Tracef("intel: loading domain list for %s", domain)
 	e.loadDomainListOnce.Do(func() {
-		var domainsToInspect = []string{domain}
+		domainsToInspect := []string{domain}
 
 		if e.checkCNAMEs && len(e.CNAME) > 0 {
 			log.Tracer(ctx).Tracef("intel: CNAME filtering enabled, checking %v too", e.CNAME)

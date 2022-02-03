@@ -1,6 +1,6 @@
 package profile
 
-// OS Identifier
+// OS Identifier.
 const (
 	osIdentifier = PlatformOpenBSD
 )

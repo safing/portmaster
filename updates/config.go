@@ -3,12 +3,12 @@ package updates
 import (
 	"context"
 
-	"github.com/safing/portbase/notifications"
-	"github.com/safing/portmaster/updates/helper"
 	"github.com/tevino/abool"
 
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/updates/helper"
 )
 
 const (

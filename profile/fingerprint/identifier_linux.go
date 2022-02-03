@@ -7,7 +7,7 @@ import (
 	"github.com/safing/portbase/utils"
 )
 
-// GetPathIdentifier returns the identifier from the given path
+// GetPathIdentifier returns the identifier from the given path.
 func GetPathIdentifier(path string) string {
 	// clean path
 	// TODO: is this necessary?

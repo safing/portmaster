@@ -64,13 +64,13 @@ func (v Verdict) Verb() string {
 	}
 }
 
-// Packet Directions
+// Packet Directions.
 const (
 	Inbound  = true
 	Outbound = false
 )
 
-// Non-Domain Scopes
+// Non-Domain Scopes.
 const (
 	IncomingHost     = "IH"
 	IncomingLAN      = "IL"

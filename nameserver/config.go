@@ -8,10 +8,8 @@ import (
 	"github.com/safing/portmaster/core"
 )
 
-// Config Keys
-const (
-	CfgDefaultNameserverAddressKey = "dns/listenAddress"
-)
+// CfgDefaultNameserverAddressKey is the config key for the listen address..
+const CfgDefaultNameserverAddressKey = "dns/listenAddress"
 
 var (
 	defaultNameserverAddress = "localhost:53"

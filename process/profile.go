@@ -10,9 +10,7 @@ import (
 	"github.com/safing/portmaster/profile"
 )
 
-var (
-	ownPID = os.Getpid()
-)
+var ownPID = os.Getpid()
 
 // GetProfile finds and assigns a profile set to the process.
 func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {

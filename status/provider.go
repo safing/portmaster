@@ -8,9 +8,7 @@ import (
 	"github.com/safing/portmaster/netenv"
 )
 
-var (
-	pushUpdate runtime.PushFunc
-)
+var pushUpdate runtime.PushFunc
 
 func setupRuntimeProvider() (err error) {
 	// register the system status getter

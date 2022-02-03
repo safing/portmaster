@@ -6,10 +6,10 @@ import (
 	"github.com/safing/portbase/database/migration"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
-	"github.com/safing/portmaster/updates"
 
-	// module dependencies
+	// Dependency.
 	_ "github.com/safing/portmaster/core/base"
+	"github.com/safing/portmaster/updates"
 )
 
 var (

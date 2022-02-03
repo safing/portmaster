@@ -5,16 +5,13 @@ import (
 	"strings"
 
 	"github.com/safing/portmaster/compat"
-
 	"github.com/safing/portmaster/nameserver/nsutil"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/profile/endpoints"
 )
 
-var (
-	resolverFilterLists = []string{"17-DNS"}
-)
+var resolverFilterLists = []string{"17-DNS"}
 
 // PreventBypassing checks if the connection should be denied or permitted
 // based on some bypass protection checks.
@@ -27,7 +24,7 @@ func PreventBypassing(ctx context.Context, conn *network.Connection) (endpoints.
 	}
 
 	// Block direct connections to known DNS resolvers.
-	switch packet.IPProtocol(conn.Entity.Protocol) {
+	switch packet.IPProtocol(conn.Entity.Protocol) { //nolint:exhaustive // Checking for specific values only.
 	case packet.ICMP, packet.ICMPv6:
 		// Make an exception for ICMP, as these IPs are also often used for debugging.
 	default:

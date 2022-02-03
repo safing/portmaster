@@ -36,7 +36,7 @@ var (
 	failingQueriesNetworkChangedFlag = netenv.GetNetworkChangedFlag()
 )
 
-func checkIfQueryIsFailing(q *resolver.Query) (failingErr error, failingUntil *time.Time) {
+func checkIfQueryIsFailing(q *resolver.Query) (failingUntil *time.Time, failingErr error) {
 	// If the network changed, reset the failed queries.
 	if failingQueriesNetworkChangedFlag.IsSet() {
 		failingQueriesNetworkChangedFlag.Refresh()
@@ -45,7 +45,7 @@ func checkIfQueryIsFailing(q *resolver.Query) (failingErr error, failingUntil *t
 		defer failingQueriesLock.Unlock()
 
 		// Compiler optimized map reset.
-		for key, _ := range failingQueries {
+		for key := range failingQueries {
 			delete(failingQueries, key)
 		}
 
@@ -72,7 +72,7 @@ func checkIfQueryIsFailing(q *resolver.Query) (failingErr error, failingUntil *t
 	}
 
 	// Return failing error and until when it's valid.
-	return failing.Err, &failing.Until
+	return &failing.Until, failing.Err
 }
 
 func addFailingQuery(q *resolver.Query, err error) {

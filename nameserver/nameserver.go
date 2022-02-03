@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/miekg/dns"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/firewall"
 	"github.com/safing/portmaster/nameserver/nsutil"
@@ -15,8 +17,6 @@ import (
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/resolver"
-
-	"github.com/miekg/dns"
 )
 
 var hostname string
@@ -30,7 +30,7 @@ func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
 	}
 }
 
-func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) error { //nolint:gocognit // TODO
+func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) error { //nolint:maintidx // TODO
 	// Record metrics.
 	startTime := time.Now()
 	defer requestsHistogram.UpdateDuration(startTime)
@@ -113,7 +113,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	// will fail with a very high probability, it is beneficial to just kill the
 	// query for some time before doing any expensive work.
 	defer cleanFailingQueries(10, 3)
-	failingErr, failingUntil := checkIfQueryIsFailing(q)
+	failingUntil, failingErr := checkIfQueryIsFailing(q)
 	if failingErr != nil {
 		remainingFailingDuration := time.Until(*failingUntil)
 		tracer.Debugf("nameserver: returning previous error for %s: %s", q.ID(), failingErr)
@@ -205,6 +205,8 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 			network.SaveOpenDNSRequest(q, rrCache, conn)
 			firewall.UpdateIPsAndCNAMEs(q, rrCache, conn)
 
+		case network.VerdictUndeterminable:
+			fallthrough
 		default:
 			tracer.Warningf("nameserver: unexpected verdict %s for connection %s, not saving", conn.Verdict, conn)
 		}
@@ -224,7 +226,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	}
 
 	// Check if there is a Verdict to act upon.
-	switch conn.Verdict {
+	switch conn.Verdict { //nolint:exhaustive // Only checking for specific values.
 	case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
 		tracer.Infof(
 			"nameserver: returning %s response for %s to %s",
@@ -289,7 +291,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	}
 
 	// Check if there is a Verdict to act upon.
-	switch conn.Verdict {
+	switch conn.Verdict { //nolint:exhaustive // Only checking for specific values.
 	case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
 		tracer.Infof(
 			"nameserver: returning %s response for %s to %s",

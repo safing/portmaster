@@ -89,6 +89,7 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	return di.Bytes(), nil
 }
 
+// AddNetworkDebugData adds the network debug data of the given profile to the debug data.
 func AddNetworkDebugData(di *debug.Info, profile, where string) {
 	// Prepend where prefix to query if necessary.
 	if where != "" && !strings.HasPrefix(where, "where ") {
@@ -99,7 +100,7 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 	q, err := query.ParseQuery("query network: " + where)
 	if err != nil {
 		di.AddSection(
-			fmt.Sprintf("Network: Debug Failed"),
+			"Network: Debug Failed",
 			debug.NoFlags,
 			fmt.Sprintf("Failed to build query: %s", err),
 		)
@@ -110,7 +111,7 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 	it, err := dbController.Query(q, true, true)
 	if err != nil {
 		di.AddSection(
-			fmt.Sprintf("Network: Debug Failed"),
+			"Network: Debug Failed",
 			debug.NoFlags,
 			fmt.Sprintf("Failed to run query: %s", err),
 		)
@@ -118,9 +119,11 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 	}
 
 	// Collect matching connections.
-	var debugConns []*Connection
-	var accepted int
-	var total int
+	var ( //nolint:prealloc // We don't know the size.
+		debugConns []*Connection
+		accepted   int
+		total      int
+	)
 	for maybeConn := range it.Next {
 		// Switch to correct type.
 		conn, ok := maybeConn.(*Connection)
@@ -149,7 +152,7 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 
 		// Count.
 		total++
-		switch conn.Verdict {
+		switch conn.Verdict { //nolint:exhaustive
 		case VerdictAccept,
 			VerdictRerouteToNameserver,
 			VerdictRerouteToTunnel:

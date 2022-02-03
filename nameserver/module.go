@@ -7,13 +7,13 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/miekg/dns"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
 	"github.com/safing/portmaster/firewall"
 	"github.com/safing/portmaster/netenv"
-
-	"github.com/miekg/dns"
 )
 
 var (
@@ -69,32 +69,31 @@ func start() error {
 				}
 				return dstIsMe
 			})
-		} else {
-			return firewall.SetNameserverIPMatcher(func(ip net.IP) bool {
-				return ip.Equal(ip1)
-			})
 		}
-
-	} else {
-		// Dual listener.
-		dnsServer1 := startListener(ip1, port)
-		dnsServer2 := startListener(ip2, port)
-		stopListener = func() error {
-			// Shutdown both listeners.
-			err1 := dnsServer1.Shutdown()
-			err2 := dnsServer2.Shutdown()
-			// Return first error.
-			if err1 != nil {
-				return err1
-			}
-			return err2
-		}
-
-		// Fast track dns queries destined for one of the listener IPs.
 		return firewall.SetNameserverIPMatcher(func(ip net.IP) bool {
-			return ip.Equal(ip1) || ip.Equal(ip2)
+			return ip.Equal(ip1)
 		})
+
 	}
+
+	// Dual listener.
+	dnsServer1 := startListener(ip1, port)
+	dnsServer2 := startListener(ip2, port)
+	stopListener = func() error {
+		// Shutdown both listeners.
+		err1 := dnsServer1.Shutdown()
+		err2 := dnsServer2.Shutdown()
+		// Return first error.
+		if err1 != nil {
+			return err1
+		}
+		return err2
+	}
+
+	// Fast track dns queries destined for one of the listener IPs.
+	return firewall.SetNameserverIPMatcher(func(ip net.IP) bool {
+		return ip.Equal(ip1) || ip.Equal(ip2)
+	})
 }
 
 func startListener(ip net.IP, port uint16) *dns.Server {

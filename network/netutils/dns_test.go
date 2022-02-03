@@ -3,12 +3,16 @@ package netutils
 import "testing"
 
 func testDomainValidity(t *testing.T, domain string, isValid bool) {
+	t.Helper()
+
 	if IsValidFqdn(domain) != isValid {
 		t.Errorf("domain %s failed check: was valid=%v, expected valid=%v", domain, IsValidFqdn(domain), isValid)
 	}
 }
 
 func TestDNSValidation(t *testing.T) {
+	t.Parallel()
+
 	// valid
 	testDomainValidity(t, ".", true)
 	testDomainValidity(t, "at.", true)

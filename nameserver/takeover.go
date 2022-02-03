@@ -13,15 +13,13 @@ import (
 	"github.com/safing/portmaster/network/state"
 )
 
-var (
-	commonResolverIPs = []net.IP{
-		net.IPv4zero,
-		net.IPv4(127, 0, 0, 1),  // default
-		net.IPv4(127, 0, 0, 53), // some resolvers on Linux
-		net.IPv6zero,
-		net.IPv6loopback,
-	}
-)
+var commonResolverIPs = []net.IP{
+	net.IPv4zero,
+	net.IPv4(127, 0, 0, 1),  // default
+	net.IPv4(127, 0, 0, 53), // some resolvers on Linux
+	net.IPv6zero,
+	net.IPv6loopback,
+}
 
 func checkForConflictingService(ip net.IP, port uint16) error {
 	// Evaluate which IPs to check.
@@ -34,6 +32,7 @@ func checkForConflictingService(ip net.IP, port uint16) error {
 
 	// Check if there is another resolver when need to take over.
 	var killed int
+ipsToCheckLoop:
 	for _, resolverIP := range ipsToCheck {
 		pid, err := takeover(resolverIP, port)
 		switch {
@@ -44,7 +43,7 @@ func checkForConflictingService(ip net.IP, port uint16) error {
 		case pid != 0:
 			// Conflicting service identified and killed!
 			killed = pid
-			break
+			break ipsToCheckLoop
 		}
 	}
 
@@ -92,7 +91,7 @@ func takeover(resolverIP net.IP, resolverPort uint16) (int, error) {
 	}, true)
 	if err != nil {
 		// there may be nothing listening on :53
-		return 0, nil
+		return 0, nil //nolint:nilerr // Treat lookup error as "not found".
 	}
 
 	// Just don't, uh, kill ourselves...

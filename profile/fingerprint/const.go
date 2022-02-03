@@ -1,6 +1,6 @@
 package profile
 
-// Platform identifiers
+// Platform identifiers.
 const (
 	PlatformLinux   = "linux"
 	PlatformWindows = "windows"

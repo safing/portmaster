@@ -8,9 +8,7 @@ import (
 	"runtime/pprof"
 )
 
-var (
-	cpuProfile string
-)
+var cpuProfile string
 
 func init() {
 	flag.StringVar(&cpuProfile, "cpuprofile", "", "write cpu profile to `file`")
@@ -25,10 +23,10 @@ func startProfiling() {
 func cpuProfiler(ctx context.Context) error {
 	f, err := os.Create(cpuProfile)
 	if err != nil {
-		return fmt.Errorf("could not create CPU profile: %s", err)
+		return fmt.Errorf("could not create CPU profile: %w", err)
 	}
 	if err := pprof.StartCPUProfile(f); err != nil {
-		return fmt.Errorf("could not start CPU profile: %s", err)
+		return fmt.Errorf("could not start CPU profile: %w", err)
 	}
 
 	// wait for shutdown
@@ -37,7 +35,7 @@ func cpuProfiler(ctx context.Context) error {
 	pprof.StopCPUProfile()
 	err = f.Close()
 	if err != nil {
-		return fmt.Errorf("failed to close CPU profile file: %s", err)
+		return fmt.Errorf("failed to close CPU profile file: %w", err)
 	}
 	return nil
 }

@@ -11,10 +11,10 @@ import (
 // Endpoints is a list of permitted or denied endpoints.
 type Endpoints []Endpoint
 
-// EPResult represents the result of a check against an EndpointPermission
+// EPResult represents the result of a check against an EndpointPermission.
 type EPResult uint8
 
-// Endpoint matching return values
+// Endpoint matching return values.
 const (
 	NoMatch EPResult = iota
 	MatchError
@@ -50,7 +50,7 @@ entriesLoop:
 
 	if firstErr != nil {
 		if errCnt > 0 {
-			return endpoints, fmt.Errorf("encountered %d errors, first was: %s", errCnt, firstErr)
+			return endpoints, fmt.Errorf("encountered %d errors, first was: %w", errCnt, firstErr)
 		}
 		return endpoints, firstErr
 	}

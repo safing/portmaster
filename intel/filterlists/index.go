@@ -163,7 +163,7 @@ func getListIndexFromCache() (*ListIndexFile, error) {
 }
 
 var (
-	// listIndexUpdate must only be used by updateListIndex
+	// listIndexUpdate must only be used by updateListIndex.
 	listIndexUpdate     *updater.File
 	listIndexUpdateLock sync.Mutex
 )
@@ -232,9 +232,8 @@ func updateListIndex() error {
 // a slice of distinct source IDs.
 func ResolveListIDs(ids []string) ([]string, error) {
 	index, err := getListIndexFromCache()
-
 	if err != nil {
-		if err == database.ErrNotFound {
+		if errors.Is(err, database.ErrNotFound) {
 			if err := updateListIndex(); err != nil {
 				return nil, err
 			}

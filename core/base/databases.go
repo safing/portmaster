@@ -3,14 +3,12 @@ package base
 import (
 	"github.com/safing/portbase/database"
 
-	// database module
+	// Dependencies.
 	_ "github.com/safing/portbase/database/dbmodule"
-
-	// module dependencies
 	_ "github.com/safing/portbase/database/storage/bbolt"
 )
 
-// Default Values (changeable for testing)
+// Default Values (changeable for testing).
 var (
 	DefaultDatabaseStorageType = "bbolt"
 )

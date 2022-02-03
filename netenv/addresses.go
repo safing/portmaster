@@ -55,7 +55,7 @@ var (
 	myNetworks                    []*net.IPNet
 	myNetworksLock                sync.Mutex
 	myNetworksNetworkChangedFlag  = GetNetworkChangedFlag()
-	myNetworksRefreshError        error
+	myNetworksRefreshError        error //nolint:errname // Not what the linter thinks this is for.
 	myNetworksRefreshFailingUntil time.Time
 )
 
@@ -63,7 +63,7 @@ var (
 // Broadcast or multicast addresses will never match, even if valid in in use.
 func IsMyIP(ip net.IP) (yes bool, err error) {
 	// Check for IPs that don't need extra checks.
-	switch netutils.GetIPScope(ip) {
+	switch netutils.GetIPScope(ip) { //nolint:exhaustive // Only looking for specific values.
 	case netutils.HostLocal:
 		return true, nil
 	case netutils.LocalMulticast, netutils.GlobalMulticast:
@@ -90,7 +90,7 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 
 	// Check if there was a recent error on the previous refresh.
 	if myNetworksRefreshError != nil && time.Now().Before(myNetworksRefreshFailingUntil) {
-		return false, fmt.Errorf("failed to previously refresh interface addresses: %s", myNetworksRefreshError)
+		return false, fmt.Errorf("failed to previously refresh interface addresses: %w", myNetworksRefreshError)
 	}
 
 	// Refresh assigned networks.
@@ -101,7 +101,7 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 		// literally over thousand goroutines wanting to try this again.
 		myNetworksRefreshError = err
 		myNetworksRefreshFailingUntil = time.Now().Add(1 * time.Second)
-		return false, fmt.Errorf("failed to refresh interface addresses: %s", err)
+		return false, fmt.Errorf("failed to refresh interface addresses: %w", err)
 	}
 	myNetworks = make([]*net.IPNet, 0, len(interfaceNetworks))
 	for _, ifNet := range interfaceNetworks {

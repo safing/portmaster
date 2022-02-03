@@ -9,12 +9,16 @@ import (
 )
 
 func TestDebugInfoLineFormatting(t *testing.T) {
+	t.Parallel()
+
 	for _, conn := range connectionTestData {
 		fmt.Println(conn.debugInfoLine())
 	}
 }
 
 func TestDebugInfoFormatting(t *testing.T) {
+	t.Parallel()
+
 	fmt.Println(buildNetworkDebugInfoData(connectionTestData))
 }
 

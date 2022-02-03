@@ -135,7 +135,7 @@ func Parse(packetData []byte, pktBase *Base) (err error) {
 		parseIPv6,
 		parseTCP,
 		parseUDP,
-		//parseUDPLite, // we don't yet support udplite
+		// parseUDPLite, // We don't yet support udplite.
 		parseICMPv4,
 		parseICMPv6,
 		parseIGMP,

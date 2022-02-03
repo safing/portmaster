@@ -48,7 +48,7 @@ func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 		filepath.Ext(pmElectronUpdate.Path()),
 	)
 	sandboxFile := filepath.Join(unpackedPath, "chrome-sandbox")
-	if err := os.Chmod(sandboxFile, 0755|os.ModeSetuid); err != nil {
+	if err := os.Chmod(sandboxFile, 0o0755|os.ModeSetuid); err != nil {
 		return err
 	}
 	log.Infof("updates: fixed SUID permission for chrome-sandbox")
@@ -56,7 +56,7 @@ func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 	return nil
 }
 
-func checkSysctl(setting string, value byte) bool {
+func checkSysctl(setting string, value byte) bool { //nolint:deadcode,unused // TODO: Do we still need this?
 	c, err := sysctl(setting)
 	if err != nil {
 		return false
@@ -67,7 +67,7 @@ func checkSysctl(setting string, value byte) bool {
 	return c[0] == value
 }
 
-func sysctl(setting string) ([]byte, error) {
+func sysctl(setting string) ([]byte, error) { //nolint:unused // TODO: Do we still need this?
 	parts := append([]string{"/proc", "sys"}, strings.Split(setting, ".")...)
 	path := filepath.Join(parts...)
 	content, err := ioutil.ReadFile(path)

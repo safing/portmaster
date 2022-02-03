@@ -49,7 +49,7 @@ func getHighestMitigationLevel() uint8 {
 	threats.RLock()
 	defer threats.RUnlock()
 
-	var level uint8 = SecurityLevelNormal
+	level := SecurityLevelNormal
 	for _, lvl := range threats.list {
 		if lvl > level {
 			level = lvl

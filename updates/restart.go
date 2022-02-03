@@ -4,9 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/tevino/abool"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
-	"github.com/tevino/abool"
 )
 
 const (

@@ -49,6 +49,7 @@ func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process 
 	return process, connInbound, nil
 }
 
+// GetNetworkHost returns a *Process that represents a host on the network.
 func GetNetworkHost(ctx context.Context, remoteIP net.IP) (process *Process, err error) { //nolint:interfacer
 	now := time.Now().Unix()
 	networkHost := &Process{

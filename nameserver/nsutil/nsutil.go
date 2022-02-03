@@ -9,13 +9,12 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+
 	"github.com/safing/portbase/log"
 )
 
-var (
-	// ErrNilRR is returned when a parsed RR is nil.
-	ErrNilRR = errors.New("is nil")
-)
+// ErrNilRR is returned when a parsed RR is nil.
+var ErrNilRR = errors.New("is nil")
 
 // Responder defines the interface that any block/deny reason interface
 // may implement to support sending custom DNS responses for a given reason.

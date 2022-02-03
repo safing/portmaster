@@ -8,15 +8,16 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/safing/portbase/container"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/formats/dsd"
 	"github.com/safing/portbase/info"
-	"github.com/spf13/cobra"
 )
 
 func initializeLogFile(logFilePath string, identifier string, version string) *os.File {
-	logFile, err := os.OpenFile(logFilePath, os.O_RDWR|os.O_CREATE, 0444)
+	logFile, err := os.OpenFile(logFilePath, os.O_RDWR|os.O_CREATE, 0o0444)
 	if err != nil {
 		log.Printf("failed to create log file %s: %s\n", logFilePath, err)
 		return nil
@@ -107,7 +108,9 @@ func logControlError(cErr error) {
 	if errorFile == nil {
 		return
 	}
-	defer errorFile.Close()
+	defer func() {
+		_ = errorFile.Close()
+	}()
 
 	fmt.Fprintln(errorFile, cErr.Error())
 }

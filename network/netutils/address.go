@@ -19,7 +19,7 @@ func IPFromAddr(addr net.Addr) (net.IP, error) {
 		// Parse via string.
 		host, _, err := net.SplitHostPort(addr.String())
 		if err != nil {
-			return nil, fmt.Errorf("failed to split host and port of %q: %s", addr, err)
+			return nil, fmt.Errorf("failed to split host and port of %q: %w", addr, err)
 		}
 		ip := net.ParseIP(host)
 		if ip == nil {

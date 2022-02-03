@@ -8,9 +8,7 @@ import (
 	"github.com/safing/portmaster/intel"
 )
 
-var (
-	countryRegex = regexp.MustCompile(`^[A-Z]{2}$`)
-)
+var countryRegex = regexp.MustCompile(`^[A-Z]{2}$`)
 
 // EndpointCountry matches countries.
 type EndpointCountry struct {

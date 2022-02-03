@@ -6,6 +6,8 @@ import (
 )
 
 func TestEndpointParsing(t *testing.T) {
+	t.Parallel()
+
 	// any (basics)
 	testParsing(t, "- *")
 	testParsing(t, "+ *")
@@ -60,6 +62,8 @@ func TestEndpointParsing(t *testing.T) {
 }
 
 func testParsing(t *testing.T, value string) {
+	t.Helper()
+
 	ep, err := parseEndpoint(value)
 	if err != nil {
 		t.Error(err)
@@ -71,6 +75,8 @@ func testParsing(t *testing.T, value string) {
 }
 
 func testDomainParsing(t *testing.T, value string, matchType uint8, matchValue string) {
+	t.Helper()
+
 	testParsing(t, value)
 
 	epGeneric, err := parseTypeDomain(strings.Fields(value))
@@ -78,7 +84,7 @@ func testDomainParsing(t *testing.T, value string, matchType uint8, matchValue s
 		t.Error(err)
 		return
 	}
-	ep := epGeneric.(*EndpointDomain)
+	ep := epGeneric.(*EndpointDomain) //nolint:forcetypeassert
 
 	if ep.MatchType != matchType {
 		t.Errorf(`error parsing domain endpoint "%s": match type should be %d, was %d`, value, matchType, ep.MatchType)

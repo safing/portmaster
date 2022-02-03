@@ -24,18 +24,14 @@ import (
 	"runtime/pprof"
 	"testing"
 
+	_ "github.com/safing/portbase/database/storage/hashmap"
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/core/base"
-
-	// module dependencies
-	_ "github.com/safing/portbase/database/storage/hashmap"
 )
 
-var (
-	printStackOnExit bool
-)
+var printStackOnExit bool
 
 func init() {
 	flag.BoolVar(&printStackOnExit, "print-stack-on-exit", false, "prints the stack before of shutting down")
@@ -73,7 +69,7 @@ func TestMainWithHooks(m *testing.M, module *modules.Module, afterStartFn, befor
 	// tmp dir for data root (db & config)
 	tmpDir := filepath.Join(os.TempDir(), "portmaster-testing")
 	// initialize data dir
-	err := dataroot.Initialize(tmpDir, 0755)
+	err := dataroot.Initialize(tmpDir, 0o0755)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to initialize data root: %s\n", err)
 		os.Exit(1)

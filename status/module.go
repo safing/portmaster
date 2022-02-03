@@ -9,9 +9,7 @@ import (
 	"github.com/safing/portmaster/netenv"
 )
 
-var (
-	module *modules.Module
-)
+var module *modules.Module
 
 func init() {
 	module = modules.Register("status", prepare, start, nil, "base", "config")

@@ -21,14 +21,10 @@ import (
 	"github.com/safing/portmaster/profile/endpoints"
 )
 
-var (
-	lastUsedUpdateThreshold = 24 * time.Hour
-)
-
 // profileSource is the source of the profile.
 type profileSource string
 
-// Profile Sources
+// Profile Sources.
 const (
 	SourceLocal      profileSource = "local"   // local, editable
 	SourceSpecial    profileSource = "special" // specials (read-only)
@@ -37,7 +33,7 @@ const (
 	SourceEnterprise profileSource = "enterprise"
 )
 
-// Default Action IDs
+// Default Action IDs.
 const (
 	DefaultActionNotSet uint8 = 0
 	DefaultActionBlock  uint8 = 1
@@ -266,7 +262,7 @@ func (profile *Profile) makeKey() {
 	profile.SetKey(makeProfileKey(profile.Source, profile.ID))
 }
 
-// Save saves the profile to the database
+// Save saves the profile to the database.
 func (profile *Profile) Save() error {
 	if profile.ID == "" {
 		return errors.New("profile: tried to save profile without ID")
@@ -414,20 +410,20 @@ func EnsureProfile(r record.Record) (*Profile, error) {
 	// unwrap
 	if r.IsWrapped() {
 		// only allocate a new struct, if we need it
-		new := &Profile{}
-		err := record.Unwrap(r, new)
+		newProfile := &Profile{}
+		err := record.Unwrap(r, newProfile)
 		if err != nil {
 			return nil, err
 		}
-		return new, nil
+		return newProfile, nil
 	}
 
 	// or adjust type
-	new, ok := r.(*Profile)
+	newProfile, ok := r.(*Profile)
 	if !ok {
 		return nil, fmt.Errorf("record not of type *Profile, but %T", r)
 	}
-	return new, nil
+	return newProfile, nil
 }
 
 // UpdateMetadata updates meta data fields on the profile and returns whether

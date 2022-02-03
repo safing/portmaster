@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// Basic Types
+// Basic Types.
 type (
 	// IPVersion represents an IP version.
 	IPVersion uint8
@@ -15,7 +15,7 @@ type (
 	Verdict uint8
 )
 
-// Basic Constants
+// Basic Constants.
 const (
 	IPv4 = IPVersion(4)
 	IPv6 = IPVersion(6)
@@ -34,7 +34,7 @@ const (
 	AnyHostInternalProtocol61 = IPProtocol(61)
 )
 
-// Verdicts
+// Verdicts.
 const (
 	DROP Verdict = iota
 	BLOCK
@@ -45,12 +45,10 @@ const (
 	STOP
 )
 
-var (
-	// ErrFailedToLoadPayload is returned by GetPayload if it failed for an unspecified reason, or is not implemented on the current system.
-	ErrFailedToLoadPayload = errors.New("could not load packet payload")
-)
+// ErrFailedToLoadPayload is returned by GetPayload if it failed for an unspecified reason, or is not implemented on the current system.
+var ErrFailedToLoadPayload = errors.New("could not load packet payload")
 
-// ByteSize returns the byte size of the ip, IPv4 = 4 bytes, IPv6 = 16
+// ByteSize returns the byte size of the ip (IPv4 = 4 bytes, IPv6 = 16).
 func (v IPVersion) ByteSize() int {
 	switch v {
 	case IPv4:
@@ -89,8 +87,11 @@ func (p IPProtocol) String() string {
 		return "ICMPv6"
 	case IGMP:
 		return "IGMP"
+	case AnyHostInternalProtocol61:
+		fallthrough
+	default:
+		return fmt.Sprintf("<unknown protocol, %d>", uint8(p))
 	}
-	return fmt.Sprintf("<unknown protocol, %d>", uint8(p))
 }
 
 // String returns the string representation of the verdict.

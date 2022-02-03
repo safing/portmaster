@@ -6,6 +6,8 @@ import (
 )
 
 func TestPrimitiveNetworkProximity(t *testing.T) {
+	t.Parallel()
+
 	ip4_1 := net.ParseIP("1.1.1.1")
 	ip4_2 := net.ParseIP("1.1.1.2")
 	ip4_3 := net.ParseIP("255.255.255.0")

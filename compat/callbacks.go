@@ -7,6 +7,7 @@ import (
 	"github.com/safing/portmaster/process"
 )
 
+// SubmitSystemIntegrationCheckPacket submit a packet for the system integrity check.
 func SubmitSystemIntegrationCheckPacket(p packet.Packet) {
 	select {
 	case systemIntegrationCheckPackets <- p:
@@ -14,6 +15,7 @@ func SubmitSystemIntegrationCheckPacket(p packet.Packet) {
 	}
 }
 
+// SubmitDNSCheckDomain submits a subdomain for the dns check.
 func SubmitDNSCheckDomain(subdomain string) (respondWith net.IP) {
 	// Submit queried domain.
 	select {
@@ -27,10 +29,12 @@ func SubmitDNSCheckDomain(subdomain string) (respondWith net.IP) {
 	return dnsCheckAnswer
 }
 
+// ReportSecureDNSBypassIssue reports a DNS bypassing issue for the given process.
 func ReportSecureDNSBypassIssue(p *process.Process) {
 	secureDNSBypassIssue.notify(p)
 }
 
+// ReportMultiPeerUDPTunnelIssue reports a multi-peer UDP tunnel for the given process.
 func ReportMultiPeerUDPTunnelIssue(p *process.Process) {
 	multiPeerUDPTunnelIssue.notify(p)
 }

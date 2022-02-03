@@ -2,6 +2,7 @@ package ui
 
 import (
 	resources "github.com/cookieo9/resources-go"
+
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/log"
 )

@@ -108,7 +108,7 @@ func start() error {
 		registry.UserAgent = userAgentFromFlag
 	}
 	// initialize
-	err := registry.Initialize(dataroot.Root().ChildDir("updates", 0755))
+	err := registry.Initialize(dataroot.Root().ChildDir("updates", 0o0755))
 	if err != nil {
 		return err
 	}
@@ -241,7 +241,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 	}()
 
 	if err = registry.UpdateIndexes(ctx); err != nil {
-		err = fmt.Errorf("failed to update indexes: %s", err)
+		err = fmt.Errorf("failed to update indexes: %w", err)
 		return
 	}
 

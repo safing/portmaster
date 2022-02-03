@@ -17,9 +17,7 @@ const (
 	domainMatchTypeContains
 )
 
-var (
-	allowedDomainChars = regexp.MustCompile(`^[a-z0-9\.-]+$`)
-)
+var allowedDomainChars = regexp.MustCompile(`^[a-z0-9\.-]+$`)
 
 // EndpointDomain matches domains.
 type EndpointDomain struct {

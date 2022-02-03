@@ -10,7 +10,7 @@ import (
 	"github.com/safing/portmaster/network/reference"
 )
 
-// Endpoint describes an Endpoint Matcher
+// Endpoint describes an Endpoint Matcher.
 type Endpoint interface {
 	Matches(ctx context.Context, entity *intel.Entity) (EPResult, Reason)
 	String() string
@@ -48,7 +48,9 @@ func (ep *EndpointBase) makeReason(s fmt.Stringer, value, desc string, keyval ..
 		key := keyval[idx]
 		val := keyval[idx+1]
 
-		r.Extra[key.(string)] = val
+		if keyName, ok := key.(string); ok {
+			r.Extra[keyName] = val
+		}
 	}
 
 	return r

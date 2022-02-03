@@ -2,10 +2,12 @@ package firewall
 
 import (
 	"context"
+	"errors"
 	"net"
 	"strings"
 
 	"github.com/miekg/dns"
+
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network"
@@ -22,7 +24,6 @@ func filterDNSSection(
 	resolverScope netutils.IPScope,
 	sysResolver bool,
 ) ([]dns.RR, []string, int, string) {
-
 	// Will be filled 1:1 most of the time.
 	goodEntries := make([]dns.RR, 0, len(entries))
 
@@ -275,7 +276,7 @@ func UpdateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 		}
 
 		// Resolve all CNAMEs in the correct order and add the to the record.
-		var domain = q.FQDN
+		domain := q.FQDN
 		for {
 			nextDomain, isCNAME := cnames[domain]
 			if !isCNAME {
@@ -294,7 +295,7 @@ func UpdateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 		ipString := ip.String()
 		info, err := resolver.GetIPInfo(profileID, ipString)
 		if err != nil {
-			if err != database.ErrNotFound {
+			if !errors.Is(err, database.ErrNotFound) {
 				log.Errorf("nameserver: failed to search for IP info record: %s", err)
 			}
 

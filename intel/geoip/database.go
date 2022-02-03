@@ -58,7 +58,7 @@ func (ub *updateBroadcaster) ReplaceDatabase(db *geoIPDB) {
 	defer ub.rw.Unlock()
 
 	if ub.db != nil {
-		ub.db.Close()
+		_ = ub.db.Close()
 	}
 	ub.db = db
 	ub.notifyWaiters()
@@ -101,7 +101,7 @@ type updateWorker struct {
 // waiting nil is returned.
 func (upd *updateWorker) GetReader(v6 bool, wait bool) *maxminddb.Reader {
 	// check which updateBroadcaster we need to use
-	var ub *updateBroadcaster = &upd.v4
+	ub := &upd.v4
 	if v6 {
 		ub = &upd.v6
 	}

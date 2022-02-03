@@ -25,7 +25,7 @@ func Start() error {
 		return nil
 	}
 
-	var inputPackets = Packets
+	inputPackets := Packets
 	if packetMetricsDestination != "" {
 		go metrics.writeMetrics()
 		inputPackets = make(chan packet.Packet)

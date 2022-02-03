@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -12,9 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/safing/portmaster/updates/helper"
 	"github.com/spf13/cobra"
 	"github.com/tevino/abool"
+
+	"github.com/safing/portmaster/updates/helper"
 )
 
 const (
@@ -223,11 +225,11 @@ func fixExecPerm(path string) error {
 		return fmt.Errorf("failed to stat %s: %w", path, err)
 	}
 
-	if info.Mode() == 0755 {
+	if info.Mode() == 0o0755 {
 		return nil
 	}
 
-	if err := os.Chmod(path, 0755); err != nil {
+	if err := os.Chmod(path, 0o0755); err != nil { //nolint:gosec // Set execution rights.
 		return fmt.Errorf("failed to chmod %s: %w", path, err)
 	}
 
@@ -367,7 +369,7 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 		case <-time.After(3 * time.Minute): // portmaster core prints stack if not able to shutdown in 3 minutes, give it one more ...
 			err = exc.Process.Kill()
 			if err != nil {
-				return false, fmt.Errorf("failed to kill %s: %s", opts.Identifier, err)
+				return false, fmt.Errorf("failed to kill %s: %w", opts.Identifier, err)
 			}
 			return false, fmt.Errorf("killed %s", opts.Identifier)
 		}
@@ -402,7 +404,8 @@ func parseExitError(err error) (restart bool, errWithCtx error) {
 		return false, nil
 	}
 
-	if exErr, ok := err.(*exec.ExitError); ok {
+	var exErr *exec.ExitError
+	if errors.As(err, &exErr) {
 		switch exErr.ProcessState.ExitCode() {
 		case 0:
 			return false, fmt.Errorf("clean exit with error: %w", err)

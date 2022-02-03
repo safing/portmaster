@@ -1,19 +1,14 @@
 package base
 
 import (
+	_ "github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/metrics"
 	"github.com/safing/portbase/modules"
-
-	// module dependencies
-	_ "github.com/safing/portbase/config"
-	_ "github.com/safing/portbase/metrics"
 	_ "github.com/safing/portbase/rng"
 )
 
-var (
-	module *modules.Module
-)
+var module *modules.Module
 
 func init() {
 	module = modules.Register("base", nil, start, nil, "database", "config", "rng", "metrics")

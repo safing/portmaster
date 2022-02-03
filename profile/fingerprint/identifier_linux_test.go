@@ -3,6 +3,8 @@ package profile
 import "testing"
 
 func testPathID(t *testing.T, execPath, identifierPath string) {
+	t.Helper()
+
 	result := GetPathIdentifier(execPath)
 	if result != identifierPath {
 		t.Errorf("unexpected identifier path for %s: got %s, expected %s", execPath, result, identifierPath)
@@ -10,6 +12,8 @@ func testPathID(t *testing.T, execPath, identifierPath string) {
 }
 
 func TestGetPathIdentifier(t *testing.T) {
+	t.Parallel()
+
 	testPathID(t, "/bin/bash", "bin/bash")
 	testPathID(t, "/home/user/bin/bash", "bin/bash")
 	testPathID(t, "/home/user/project/main", "project/main")

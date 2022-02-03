@@ -1,4 +1,4 @@
-// +build !windows
+// go:build !windows
 
 package main
 
@@ -8,5 +8,4 @@ func attachToParentConsole() (attached bool, err error) {
 	return true, nil
 }
 
-func hideWindow(cmd *exec.Cmd) {
-}
+func hideWindow(cmd *exec.Cmd) {}

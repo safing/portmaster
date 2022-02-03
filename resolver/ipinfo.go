@@ -14,21 +14,19 @@ const (
 	IPInfoProfileScopeGlobal = "global"
 )
 
-var (
-	ipInfoDatabase = database.NewInterface(&database.Options{
-		Local:    true,
-		Internal: true,
+var ipInfoDatabase = database.NewInterface(&database.Options{
+	Local:    true,
+	Internal: true,
 
-		// Cache entries because new/updated entries will often be queries soon
-		// after inserted.
-		CacheSize: 256,
+	// Cache entries because new/updated entries will often be queries soon
+	// after inserted.
+	CacheSize: 256,
 
-		// We only use the cache database here, so we can delay and batch all our
-		// writes. Also, no one else accesses these records, so we are fine using
-		// this.
-		DelayCachedWrites: "cache",
-	})
-)
+	// We only use the cache database here, so we can delay and batch all our
+	// writes. Also, no one else accesses these records, so we are fine using
+	// this.
+	DelayCachedWrites: "cache",
+})
 
 // ResolvedDomain holds a Domain name and a list of
 // CNAMES that have been resolved.
@@ -54,7 +52,7 @@ type ResolvedDomain struct {
 }
 
 // String returns a string representation of ResolvedDomain including
-// the CNAME chain. It implements fmt.Stringer
+// the CNAME chain. It implements fmt.Stringer.
 func (resolved *ResolvedDomain) String() string {
 	ret := resolved.Domain
 	cnames := ""
@@ -67,7 +65,7 @@ func (resolved *ResolvedDomain) String() string {
 }
 
 // ResolvedDomains is a helper type for operating on a slice
-// of ResolvedDomain
+// of ResolvedDomain.
 type ResolvedDomains []ResolvedDomain
 
 // String returns a string representation of all domains joined
@@ -141,21 +139,21 @@ func GetIPInfo(profileID, ip string) (*IPInfo, error) {
 	// unwrap
 	if r.IsWrapped() {
 		// only allocate a new struct, if we need it
-		new := &IPInfo{}
-		err = record.Unwrap(r, new)
+		newInfo := &IPInfo{}
+		err = record.Unwrap(r, newInfo)
 		if err != nil {
 			return nil, err
 		}
 
-		return new, nil
+		return newInfo, nil
 	}
 
 	// or adjust type
-	new, ok := r.(*IPInfo)
+	newInfo, ok := r.(*IPInfo)
 	if !ok {
 		return nil, fmt.Errorf("record not of type *IPInfo, but %T", r)
 	}
-	return new, nil
+	return newInfo, nil
 }
 
 // Save saves the IPInfo record to the database.
@@ -187,7 +185,7 @@ func (info *IPInfo) Save() error {
 	return ipInfoDatabase.Put(info)
 }
 
-// FmtDomains returns a string consisting of the domains that have seen to use this IP, joined by " or "
+// String returns a string consisting of the domains that have seen to use this IP.
 func (info *IPInfo) String() string {
 	info.Lock()
 	defer info.Unlock()

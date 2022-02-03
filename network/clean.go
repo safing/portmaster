@@ -4,11 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/safing/portmaster/network/packet"
-
-	"github.com/safing/portmaster/network/state"
-
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/network/state"
 	"github.com/safing/portmaster/process"
 )
 
@@ -41,7 +39,6 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 
 	name := "clean connections" // TODO: change to new fn
 	_ = module.RunMediumPriorityMicroTask(&name, func(ctx context.Context) error {
-
 		now := time.Now().UTC()
 		nowUnix := now.Unix()
 		deleteOlderThan := now.Add(-deleteConnsAfterEndedThreshold).Unix()

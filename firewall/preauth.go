@@ -1,16 +1,14 @@
 package firewall
 
 import (
+	"fmt"
+	"net"
 	"strconv"
 	"sync"
 
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
-
-	"fmt"
-	"net"
-
-	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/resolver"
 )
 
