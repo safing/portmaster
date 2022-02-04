@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"context"
+	"errors"
 	"regexp"
 	"strings"
 
@@ -17,7 +18,12 @@ const (
 	domainMatchTypeContains
 )
 
-var allowedDomainChars = regexp.MustCompile(`^[a-z0-9\.-]+$`)
+var (
+	allowedDomainChars = regexp.MustCompile(`^[a-z0-9\.-]+$`)
+
+	// looksLikeAnIP matches domains that look like an IP address.
+	looksLikeAnIP = regexp.MustCompile(`^[0-9\.:]+$`)
+)
 
 // EndpointDomain matches domains.
 type EndpointDomain struct {
@@ -120,6 +126,12 @@ func parseTypeDomain(fields []string) (Endpoint, error) {
 		// Prefix matching cannot be combined with zone matching
 		if strings.HasPrefix(ep.Domain, ".") {
 			return nil, nil
+		}
+
+		// Do not accept domains that look like an IP address and have a suffix wildcard.
+		// This is confusing, because it looks like an IP Netmask matching rule.
+		if looksLikeAnIP.MatchString(ep.Domain) {
+			return nil, errors.New("use CIDR notation (eg. 10.0.0.0/24) for matching ip address ranges")
 		}
 
 	case strings.HasPrefix(domain, "*"):
