@@ -226,6 +226,7 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 
 		// Permit all ICMP/v6 packets that are not echo requests or replies.
 		log.Debugf("filter: fast-track accepting ICMP/v6: %s", pkt)
+		_ = pkt.PermanentAccept()
 		return true
 
 	case packet.UDP, packet.TCP:
@@ -318,8 +319,8 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 		if pkt.Info().Dst.Equal(compat.SystemIntegrationCheckDstIP) {
 			compat.SubmitSystemIntegrationCheckPacket(pkt)
 			_ = pkt.Drop()
+			return true
 		}
-		return true
 	}
 
 	return false
