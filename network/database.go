@@ -48,10 +48,6 @@ func makeKey(pid int, scope, id string) string {
 func parseDBKey(key string) (pid int, scope, id string, ok bool) {
 	// Split into segments.
 	segments := strings.Split(key, "/")
-	// Check for valid prefix.
-	if segments[0] != "tree" {
-		return 0, "", "", false
-	}
 
 	// Keys have 2 or 4 segments.
 	switch len(segments) {
