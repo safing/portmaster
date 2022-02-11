@@ -3,7 +3,7 @@ name: Issue Manager
 on:
   workflow_dispatch:
   schedule:
-    - cron: "30 10 * * 1" # run at 10:30 every Monday
+    - cron: "17 5 * * 1-5" # run at 5:17 on Monday to Friday
   # We only use the issue manager for auto-closing, so we only need the cron trigger.
   # issue_comment:
   #   types:
@@ -17,7 +17,7 @@ jobs:
   issue-manager:
     runs-on: ubuntu-latest
     steps:
-      - uses: tiangolo/issue-manager@0.3.0
+      - uses: tiangolo/issue-manager@0.4.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           config: >
@@ -33,5 +33,11 @@ jobs:
                     "message": "Auto-closing this issue after waiting for a fix confirmation for a month. If anyone still experiences this issue, please re-open the issue with updated information so we can continue working on a fix.",
                     "remove_label_on_comment": true,
                     "remove_label_on_close": false
+                },
+                "waiting for release": {
+                    "remove_label_on_comment": true
+                },
+                "waiting for resources": {
+                    "remove_label_on_comment": true
                 }
             }
