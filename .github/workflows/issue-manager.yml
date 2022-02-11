@@ -22,6 +22,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           config: >
             {
+                "$schema": "https://raw.githubusercontent.com/tiangolo/issue-manager/master/schema.json",
                 "waiting for input": {
                     "delay": 2592000,
                     "message": "Auto-closing this issue after waiting for input for a month. If anyone finds the time to provide the requested information, please re-open the issue and we will continue handling it.",
@@ -35,9 +36,15 @@ jobs:
                     "remove_label_on_close": false
                 },
                 "waiting for release": {
-                    "remove_label_on_comment": true
+                    "delay": 315360000,
+                    "message": "That was 10 years ago, I think we can close this now.",
+                    "remove_label_on_comment": true,
+                    "remove_label_on_close": false
                 },
                 "waiting for resources": {
-                    "remove_label_on_comment": true
+                    "delay": 315360000,
+                    "message": "That was 10 years ago, I think we can close this now.",
+                    "remove_label_on_comment": true,
+                    "remove_label_on_close": false
                 }
             }
