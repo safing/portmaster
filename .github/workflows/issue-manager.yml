@@ -36,13 +36,13 @@ jobs:
                     "remove_label_on_close": false
                 },
                 "waiting for release": {
-                    "delay": 315360000,
+                    "delay": "P3650DT0H0M0S",
                     "message": "That was 10 years ago, I think we can close this now.",
                     "remove_label_on_comment": true,
                     "remove_label_on_close": false
                 },
                 "waiting for resources": {
-                    "delay": 315360000,
+                    "delay": "P3650DT0H0M0S",
                     "message": "That was 10 years ago, I think we can close this now.",
                     "remove_label_on_comment": true,
                     "remove_label_on_close": false
