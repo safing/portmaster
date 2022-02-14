@@ -226,16 +226,25 @@ func checkEndpointLists(ctx context.Context, conn *network.Connection, p *profil
 // resolver. It only checks the endpoint filter list of the local profile and
 // does not include the global profile.
 func checkEndpointListsForSystemResolverDNSRequests(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile) bool {
-	profileEndpoints := p.LocalProfile().GetEndpoints()
+	var profileEndpoints endpoints.Endpoints
+	var optionKey string
+	if conn.Inbound {
+		profileEndpoints = p.LocalProfile().GetServiceEndpoints()
+		optionKey = profile.CfgOptionServiceEndpointsKey
+	} else {
+		profileEndpoints = p.LocalProfile().GetEndpoints()
+		optionKey = profile.CfgOptionEndpointsKey
+	}
+
 	if profileEndpoints.IsSet() {
 		result, reason := profileEndpoints.Match(ctx, conn.Entity)
 		if endpoints.IsDecision(result) {
 			switch result {
 			case endpoints.Denied, endpoints.MatchError:
-				conn.DenyWithContext(reason.String(), profile.CfgOptionEndpointsKey, reason.Context())
+				conn.DenyWithContext(reason.String(), optionKey, reason.Context())
 				return true
 			case endpoints.Permitted:
-				conn.AcceptWithContext(reason.String(), profile.CfgOptionEndpointsKey, reason.Context())
+				conn.AcceptWithContext(reason.String(), optionKey, reason.Context())
 				return true
 			case endpoints.NoMatch:
 				return false
