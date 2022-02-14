@@ -49,7 +49,7 @@ var (
 )
 
 func init() {
-	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network")
+	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network", "notifications")
 
 	network.SetDefaultFirewallHandler(defaultHandler)
 }
