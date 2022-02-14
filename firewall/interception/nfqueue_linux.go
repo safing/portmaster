@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/firewall/interception/nfq"
 	"github.com/safing/portmaster/network/packet"
 )
@@ -135,6 +136,11 @@ func activateNfqueueFirewall() error {
 	}
 
 	if err := activateIPTables(iptables.ProtocolIPv6, v6rules, v6once, v6chains); err != nil {
+		notifications.NotifyError(
+			"interception:ipv6-possibly-disabled",
+			"Is IPv6 enabled?",
+			"The Portmaster succeeded with IPv4 network integration, but failed with IPv6 integration. Please make sure IPv6 is enabled on your device.",
+		)
 		return err
 	}
 
