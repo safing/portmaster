@@ -1,4 +1,4 @@
-// go:build linux
+//go:build linux
 
 // Package nfq contains a nfqueue library experiment.
 package nfq
