@@ -11,49 +11,77 @@ const (
 	UnidentifiedProfileID = "_unidentified"
 	// UnidentifiedProfileName is the name used for unidentified processes.
 	UnidentifiedProfileName = "Unidentified Processes"
+	// UnidentifiedProfileDescription is the description used for unidentified processes.
+	UnidentifiedProfileDescription = `This is not a real application, but a collection of connections that could not be attributed to a process. This could be because the Portmaster failed to identify the process, or simply because there is no process waiting for an incoming connection.
+
+Seeing a lot of incoming connections here is normal, as this resembles the network chatter of other devices.
+`
 
 	// SystemProfileID is the profile ID used for the system/kernel.
 	SystemProfileID = "_system"
 	// SystemProfileName is the name used for the system/kernel.
 	SystemProfileName = "Operating System"
+	// SystemProfileDescription is the description used for the system/kernel.
+	SystemProfileDescription = "This is the operation system itself."
 
 	// SystemResolverProfileID is the profile ID used for the system's DNS resolver.
 	SystemResolverProfileID = "_system-resolver"
 	// SystemResolverProfileName is the name used for the system's DNS resolver.
 	SystemResolverProfileName = "System DNS Client"
+	// SystemResolverProfileDescription is the description used for the system's DNS resolver.
+	SystemResolverProfileDescription = `The System DNS Client is a system service that requires special handling. For regular network connections, the configured settings will apply as usual, but DNS requests coming from the System DNS Client are handled in a special way, as they could actually be coming from any other application on the system.
+
+In order to respect the app settings of the actual application, DNS requests from the System DNS Client are only subject to the following settings:
+
+- Outgoing Rules (without global rules)
+- Block Bypassing
+- Filter Lists
+`
 
 	// PortmasterProfileID is the profile ID used for the Portmaster Core itself.
 	PortmasterProfileID = "_portmaster"
 	// PortmasterProfileName is the name used for the Portmaster Core itself.
 	PortmasterProfileName = "Portmaster Core Service"
+	// PortmasterProfileDescription is the description used for the Portmaster Core itself.
+	PortmasterProfileDescription = `This is the Portmaster itself, which runs in the background as a system service. App specific settings have no effect.`
 
 	// PortmasterAppProfileID is the profile ID used for the Portmaster App.
 	PortmasterAppProfileID = "_portmaster-app"
 	// PortmasterAppProfileName is the name used for the Portmaster App.
 	PortmasterAppProfileName = "Portmaster User Interface"
+	// PortmasterAppProfileDescription is the description used for the Portmaster App.
+	PortmasterAppProfileDescription = `This is the Portmaster UI Windows.`
 
 	// PortmasterNotifierProfileID is the profile ID used for the Portmaster Notifier.
 	PortmasterNotifierProfileID = "_portmaster-notifier"
 	// PortmasterNotifierProfileName is the name used for the Portmaster Notifier.
 	PortmasterNotifierProfileName = "Portmaster Notifier"
+	// PortmasterNotifierProfileDescription is the description used for the Portmaster Notifier.
+	PortmasterNotifierProfileDescription = `This is the Portmaster UI Tray Notifier.`
 )
 
 func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (ok, changed bool) {
 	// Get new profile name and check if profile is applicable to special handling.
-	var newProfileName string
+	var newProfileName, newDescription string
 	switch profile.ID {
 	case UnidentifiedProfileID:
 		newProfileName = UnidentifiedProfileName
+		newDescription = UnidentifiedProfileDescription
 	case SystemProfileID:
 		newProfileName = SystemProfileName
+		newDescription = SystemProfileDescription
 	case SystemResolverProfileID:
 		newProfileName = SystemResolverProfileName
+		newDescription = SystemResolverProfileDescription
 	case PortmasterProfileID:
 		newProfileName = PortmasterProfileName
+		newDescription = PortmasterProfileDescription
 	case PortmasterAppProfileID:
 		newProfileName = PortmasterAppProfileName
+		newDescription = PortmasterAppProfileDescription
 	case PortmasterNotifierProfileID:
 		newProfileName = PortmasterNotifierProfileName
+		newDescription = PortmasterNotifierProfileDescription
 	default:
 		return false, false
 	}
@@ -61,6 +89,12 @@ func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (ok, chan
 	// Update profile name if needed.
 	if profile.Name != newProfileName {
 		profile.Name = newProfileName
+		changed = true
+	}
+
+	// Update description if needed.
+	if profile.Description != newDescription {
+		profile.Description = newDescription
 		changed = true
 	}
 
@@ -111,15 +145,6 @@ func getSpecialProfile(profileID, linkedPath string) *Profile {
 				CfgOptionFilterListsKey: []string{},
 			},
 		)
-		// Add description to tell users about the quirks of this profile.
-		systemResolverProfile.Warning = `The System DNS Client is a system service that requires special handling. For regular network connections, the configured settings will apply as usual, but DNS requests coming from the System DNS Client are handled in a special way, as they could actually be coming from any other application on the system.
-		
-In order to respect the app settings of the actual application, DNS requests from the System DNS Client are only subject to the following settings:
-
-- Outgoing Rules (without global rules)
-- Block Bypassing
-- Filter Lists
-`
 		return systemResolverProfile
 
 	case PortmasterProfileID:
