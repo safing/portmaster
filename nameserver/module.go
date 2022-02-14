@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync"
 
 	"github.com/miekg/dns"
 
@@ -17,8 +18,12 @@ import (
 )
 
 var (
-	module       *modules.Module
-	stopListener func() error
+	module *modules.Module
+
+	stopListeners     bool
+	stopListener1     func() error
+	stopListener2     func() error
+	stopListenersLock sync.Mutex
 )
 
 func init() {
@@ -42,11 +47,13 @@ func start() error {
 		return err
 	}
 
+	// Get listen addresses.
 	ip1, ip2, port, err := getListenAddresses(nameserverAddressConfig())
 	if err != nil {
 		return fmt.Errorf("failed to parse nameserver listen address: %w", err)
 	}
 
+	// Get own hostname.
 	hostname, err = os.Hostname()
 	if err != nil {
 		log.Warningf("nameserver: failed to get hostname: %s", err)
@@ -56,8 +63,7 @@ func start() error {
 	// Start listener(s).
 	if ip2 == nil {
 		// Start a single listener.
-		dnsServer := startListener(ip1, port)
-		stopListener = dnsServer.Shutdown
+		startListener(ip1, port, true)
 
 		// Set nameserver matcher in firewall to fast-track dns queries.
 		if ip1.Equal(net.IPv4zero) || ip1.Equal(net.IPv6zero) {
@@ -73,22 +79,11 @@ func start() error {
 		return firewall.SetNameserverIPMatcher(func(ip net.IP) bool {
 			return ip.Equal(ip1)
 		})
-
 	}
 
 	// Dual listener.
-	dnsServer1 := startListener(ip1, port)
-	dnsServer2 := startListener(ip2, port)
-	stopListener = func() error {
-		// Shutdown both listeners.
-		err1 := dnsServer1.Shutdown()
-		err2 := dnsServer2.Shutdown()
-		// Return first error.
-		if err1 != nil {
-			return err1
-		}
-		return err2
-	}
+	startListener(ip1, port, true)
+	startListener(ip2, port, false)
 
 	// Fast track dns queries destined for one of the listener IPs.
 	return firewall.SetNameserverIPMatcher(func(ip net.IP) bool {
@@ -96,20 +91,46 @@ func start() error {
 	})
 }
 
-func startListener(ip net.IP, port uint16) *dns.Server {
-	// Create DNS server.
-	dnsServer := &dns.Server{
-		Addr: net.JoinHostPort(
-			ip.String(),
-			strconv.Itoa(int(port)),
-		),
-		Net: "udp",
-	}
-	dns.HandleFunc(".", handleRequestAsWorker)
-
+func startListener(ip net.IP, port uint16, first bool) {
 	// Start DNS server as service worker.
-	log.Infof("nameserver: starting to listen on %s", dnsServer.Addr)
 	module.StartServiceWorker("dns resolver", 0, func(ctx context.Context) error {
+		// Create DNS server.
+		dnsServer := &dns.Server{
+			Addr: net.JoinHostPort(
+				ip.String(),
+				strconv.Itoa(int(port)),
+			),
+			Net:     "udp",
+			Handler: dns.HandlerFunc(handleRequestAsWorker),
+		}
+
+		// Register stop function.
+		func() {
+			stopListenersLock.Lock()
+			defer stopListenersLock.Unlock()
+
+			// Check if we should stop
+			if stopListeners {
+				_ = dnsServer.Shutdown()
+				dnsServer = nil
+				return
+			}
+
+			// Register stop function.
+			if first {
+				stopListener1 = dnsServer.Shutdown
+			} else {
+				stopListener2 = dnsServer.Shutdown
+			}
+		}()
+
+		// Check if we should stop.
+		if dnsServer == nil {
+			return nil
+		}
+
+		// Start listening.
+		log.Infof("nameserver: starting to listen on %s", dnsServer.Addr)
 		err := dnsServer.ListenAndServe()
 		if err != nil {
 			// check if we are shutting down
@@ -124,16 +145,25 @@ func startListener(ip net.IP, port uint16) *dns.Server {
 		}
 		return err
 	})
-
-	return dnsServer
 }
 
 func stop() error {
-	if stopListener != nil {
-		if err := stopListener(); err != nil {
-			log.Warningf("nameserver: failed to stop: %s", err)
+	stopListenersLock.Lock()
+	defer stopListenersLock.Unlock()
+
+	// Stop listeners.
+	stopListeners = true
+	if stopListener1 != nil {
+		if err := stopListener1(); err != nil {
+			log.Warningf("nameserver: failed to stop listener1: %s", err)
 		}
 	}
+	if stopListener2 != nil {
+		if err := stopListener2(); err != nil {
+			log.Warningf("nameserver: failed to stop listener2: %s", err)
+		}
+	}
+
 	return nil
 }
 
