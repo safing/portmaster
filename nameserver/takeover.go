@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
@@ -13,13 +14,20 @@ import (
 	"github.com/safing/portmaster/network/state"
 )
 
-var commonResolverIPs = []net.IP{
-	net.IPv4zero,
-	net.IPv4(127, 0, 0, 1),  // default
-	net.IPv4(127, 0, 0, 53), // some resolvers on Linux
-	net.IPv6zero,
-	net.IPv6loopback,
-}
+var (
+	commonResolverIPs = []net.IP{
+		net.IPv4zero,
+		net.IPv4(127, 0, 0, 1),  // default
+		net.IPv4(127, 0, 0, 53), // some resolvers on Linux
+		net.IPv6zero,
+		net.IPv6loopback,
+	}
+
+	// lastKilledPID holds the PID of the last killed conflicting service.
+	// It is only accessed by checkForConflictingService, which is only called by
+	// the nameserver worker.
+	lastKilledPID int
+)
 
 func checkForConflictingService(ip net.IP, port uint16) error {
 	// Evaluate which IPs to check.
@@ -32,14 +40,16 @@ func checkForConflictingService(ip net.IP, port uint16) error {
 
 	// Check if there is another resolver when need to take over.
 	var killed int
+	var killingFailed bool
 ipsToCheckLoop:
 	for _, resolverIP := range ipsToCheck {
 		pid, err := takeover(resolverIP, port)
 		switch {
 		case err != nil:
 			// Log the error and let the worker try again.
-			log.Infof("nameserver: could not stop conflicting service: %s", err)
-			return nil
+			log.Infof("nameserver: failed to stop conflicting service: %s", err)
+			killingFailed = true
+			break ipsToCheckLoop
 		case pid != 0:
 			// Conflicting service identified and killed!
 			killed = pid
@@ -47,10 +57,35 @@ ipsToCheckLoop:
 		}
 	}
 
+	// Notify user of failed killing or repeated kill.
+	if killingFailed || (killed != 0 && killed == lastKilledPID) {
+		// Notify the user that we failed to kill something.
+		notifications.Notify(&notifications.Notification{
+			EventID:      "namserver:failed-to-kill-conflicting-service",
+			Type:         notifications.Error,
+			Title:        "Failed to Stop Conflicting DNS Client",
+			Message:      "The Portmaster failed to stop a conflicting DNS client to gain required system integration. If there is another DNS Client (Nameserver; Resolver) on this device, please disable it.",
+			ShowOnSystem: true,
+			AvailableActions: []*notifications.Action{
+				{
+					ID:   "ack",
+					Text: "OK",
+				},
+				{
+					Text:    "Open Docs",
+					Type:    notifications.ActionTypeOpenURL,
+					Payload: "https://docs.safing.io/portmaster/install/status/software-compatibility",
+				},
+			},
+		})
+		return nil
+	}
+
 	// Check if something was killed.
 	if killed == 0 {
 		return nil
 	}
+	lastKilledPID = killed
 
 	// Notify the user that we killed something.
 	notifications.Notify(&notifications.Notification{
@@ -76,6 +111,8 @@ ipsToCheckLoop:
 	})
 
 	// Restart nameserver via service-worker logic.
+	// Wait shortly so that the other process can shut down.
+	time.Sleep(10 * time.Millisecond)
 	return fmt.Errorf("%w: stopped conflicting name service with pid %d", modules.ErrRestartNow, killed)
 }
 
