@@ -467,6 +467,10 @@ func (e *Entity) LoadLists(ctx context.Context) {
 // of source IDs and  updates various entity properties
 // like BlockedByLists, ListOccurences and BlockedEntitites.
 func (e *Entity) MatchLists(lists []string) bool {
+	if len(lists) == 0 {
+		return false
+	}
+
 	e.BlockedByLists = nil
 	e.BlockedEntities = nil
 
