@@ -276,11 +276,6 @@ func (lp *LayeredProfile) updateCaches() {
 	atomic.StoreUint32(lp.securityLevel, uint32(newLevel))
 }
 
-// MarkUsed marks the localProfile as used.
-func (lp *LayeredProfile) MarkUsed() {
-	lp.localProfile.MarkUsed()
-}
-
 // SecurityLevel returns the highest security level of all layered profiles. This function is atomic and does not require any locking.
 func (lp *LayeredProfile) SecurityLevel() uint8 {
 	return uint8(atomic.LoadUint32(lp.securityLevel))

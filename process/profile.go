@@ -105,11 +105,8 @@ func (p *Process) UpdateProfileMetadata() {
 	// Update metadata of profile.
 	metadataUpdated := localProfile.UpdateMetadata(p.Path)
 
-	// Mark profile as used.
-	profileChanged := localProfile.MarkUsed()
-
 	// Save the profile if we changed something.
-	if metadataUpdated || profileChanged {
+	if metadataUpdated {
 		err := localProfile.Save()
 		if err != nil {
 			log.Warningf("process: failed to save profile %s: %s", localProfile.ScopedID(), err)
