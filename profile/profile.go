@@ -137,28 +137,27 @@ type Profile struct { //nolint:maligned // not worth the effort
 	savedInternally bool
 }
 
-func (profile *Profile) prepConfig() (err error) {
+func (profile *Profile) prepProfile() {
 	// prepare configuration
-	profile.configPerspective, err = config.NewPerspective(profile.Config)
 	profile.outdated = abool.New()
 	profile.lastActive = new(int64)
-	return
 }
 
 func (profile *Profile) parseConfig() error {
-	if profile.configPerspective == nil {
-		return errors.New("config not prepared")
-	}
-
-	// check if already parsed
+	// Check if already parsed.
 	if profile.dataParsed {
 		return nil
 	}
+
+	// Create new perspective and marked as parsed.
+	var err error
+	profile.configPerspective, err = config.NewPerspective(profile.Config)
+	if err != nil {
+		return fmt.Errorf("failed to create config perspective: %w", err)
+	}
 	profile.dataParsed = true
 
-	var err error
 	var lastErr error
-
 	action, ok := profile.configPerspective.GetAsString(CfgOptionDefaultActionKey)
 	profile.defaultAction = DefaultActionNotSet
 	if ok {
@@ -238,9 +237,7 @@ func New(
 	profile.makeKey()
 
 	// Prepare and parse initial profile config.
-	if err := profile.prepConfig(); err != nil {
-		log.Errorf("profile: failed to prep new profile: %s", err)
-	}
+	profile.prepProfile()
 	if err := profile.parseConfig(); err != nil {
 		log.Errorf("profile: failed to parse new profile: %s", err)
 	}

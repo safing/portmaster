@@ -131,12 +131,8 @@ func (h *databaseHook) PrePut(r record.Record) (record.Record, error) {
 	// clean config
 	config.CleanHierarchicalConfig(profile.Config)
 
-	// prepare config
-	err = profile.prepConfig()
-	if err != nil {
-		// error here, warning when loading
-		return nil, err
-	}
+	// prepare profile
+	profile.prepProfile()
 
 	// parse config
 	err = profile.parseConfig()

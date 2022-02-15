@@ -178,11 +178,8 @@ func prepProfile(r record.Record) (*Profile, error) {
 		return nil, err
 	}
 
-	// prepare config
-	err = profile.prepConfig()
-	if err != nil {
-		log.Errorf("profiles: profile %s has (partly) invalid configuration: %s", profile.ID, err)
-	}
+	// prepare profile
+	profile.prepProfile()
 
 	// parse config
 	err = profile.parseConfig()
