@@ -17,7 +17,7 @@ var getProfileLock sync.Mutex
 // linkedPath parameters whenever available. The linkedPath is used as the key
 // for locking concurrent requests, so it must be supplied if available.
 // If linkedPath is not supplied, source and id make up the key instead.
-func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
+func GetProfile(source profileSource, id, linkedPath string, reset bool) ( //nolint:gocognit
 	profile *Profile,
 	err error,
 ) {
@@ -40,28 +40,23 @@ func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 		if profile != nil {
 			profile.MarkStillActive()
 
-			if profile.outdated.IsSet() {
+			if profile.outdated.IsSet() || reset {
 				previousVersion = profile
 			} else {
 				return profile, nil
 			}
 		}
+
 		// Get from database.
-		profile, err = getProfile(scopedID)
-
-		// Check if the request is for a special profile that may need a reset.
-		if err == nil && specialProfileNeedsReset(profile) {
-			// Trigger creation of special profile.
-			err = database.ErrNotFound
-		}
-
-		// If we cannot find a profile, check if the request is for a special
-		// profile we can create.
-		if errors.Is(err, database.ErrNotFound) {
-			profile = getSpecialProfile(id, linkedPath)
-			if profile != nil {
-				err = nil
+		if !reset {
+			profile, err = getProfile(scopedID)
+			// Check if the profile is special and needs a reset.
+			if err == nil && specialProfileNeedsReset(profile) {
+				profile = getSpecialProfile(id, linkedPath)
 			}
+		} else {
+			// Simulate missing profile to create new one.
+			err = database.ErrNotFound
 		}
 
 	case linkedPath != "":
@@ -70,23 +65,48 @@ func GetProfile(source profileSource, id, linkedPath string) ( //nolint:gocognit
 		// the linked path.
 		profile = findActiveProfile(linkedPath)
 		if profile != nil {
-			if profile.outdated.IsSet() {
+			if profile.outdated.IsSet() || reset {
 				previousVersion = profile
 			} else {
 				return profile, nil
 			}
 		}
+
 		// Get from database.
-		profile, err = findProfile(linkedPath)
+		if !reset {
+			profile, err = findProfile(linkedPath)
+			// Check if the profile is special and needs a reset.
+			if err == nil && specialProfileNeedsReset(profile) {
+				profile = getSpecialProfile(id, linkedPath)
+			}
+		} else {
+			// Simulate missing profile to create new one.
+			err = database.ErrNotFound
+		}
 
 	default:
 		return nil, errors.New("cannot fetch profile without ID or path")
 	}
+
+	// Create new profile if none was found.
+	if errors.Is(err, database.ErrNotFound) {
+		err = nil
+
+		// Check if there is a special profile for this ID.
+		profile = getSpecialProfile(id, linkedPath)
+
+		// If not, create a standard profile.
+		if profile == nil {
+			profile = New(SourceLocal, id, linkedPath, nil)
+		}
+	}
+
+	// If there was a non-recoverable error, return here.
 	if err != nil {
 		return nil, err
 	}
 
-	// Process profiles coming directly from the database.
+	// Process profiles are coming directly from the database or are new.
 	// As we don't use any caching, these will be new objects.
 
 	// Add a layeredProfile to local and network profiles.

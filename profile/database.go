@@ -61,25 +61,31 @@ func startProfileUpdateChecker() error {
 				// Get active profile.
 				activeProfile := getActiveProfile(strings.TrimPrefix(r.Key(), profilesDBPath))
 				if activeProfile == nil {
+					// Don't do any additional actions if the profile is not active.
 					continue profileFeed
 				}
 
-				// If the record is being deleted, but there is an active profile,
+				// If the record is being deleted, reset the profile.
 				// create an empty profile instead.
 				if r.Meta().IsDeleted() {
-					newProfile := New(
+					newProfile, err := GetProfile(
 						activeProfile.Source,
 						activeProfile.ID,
 						activeProfile.LinkedPath,
-						nil,
+						true,
 					)
-					// Copy some metadata from the old profile.
-					newProfile.Name = activeProfile.Name
-					// Save the new profile.
-					err := newProfile.Save()
 					if err != nil {
-						log.Errorf("profile: failed to save new profile for profile reset: %s", err)
+						log.Errorf("profile: failed to create new profile after reset: %s", err)
+					} else {
+						// Copy metadata from the old profile.
+						newProfile.copyMetadataFrom(activeProfile)
+						// Save the new profile.
+						err := newProfile.Save()
+						if err != nil {
+							log.Errorf("profile: failed to save new profile after reset: %s", err)
+						}
 					}
+
 					// Set to outdated, so it is loaded in the layered profiles.
 					activeProfile.outdated.Set()
 				}

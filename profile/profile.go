@@ -445,6 +445,31 @@ func (profile *Profile) UpdateMetadata(binaryPath string) (changed bool) {
 	return changed
 }
 
+func (profile *Profile) copyMetadataFrom(otherProfile *Profile) (changed bool) {
+	if profile.Name != otherProfile.Name {
+		profile.Name = otherProfile.Name
+		changed = true
+	}
+	if profile.Description != otherProfile.Description {
+		profile.Description = otherProfile.Description
+		changed = true
+	}
+	if profile.Homepage != otherProfile.Homepage {
+		profile.Homepage = otherProfile.Homepage
+		changed = true
+	}
+	if profile.Icon != otherProfile.Icon {
+		profile.Icon = otherProfile.Icon
+		changed = true
+	}
+	if profile.IconType != otherProfile.IconType {
+		profile.IconType = otherProfile.IconType
+		changed = true
+	}
+
+	return
+}
+
 // updateMetadataFromSystem updates the profile metadata with data from the
 // operating system and saves it afterwards.
 func (profile *Profile) updateMetadataFromSystem(ctx context.Context) error {

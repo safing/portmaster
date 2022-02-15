@@ -64,7 +64,7 @@ func GetNetworkHost(ctx context.Context, remoteIP net.IP) (process *Process, err
 	}
 
 	// Get the (linked) local profile.
-	networkHostProfile, err := profile.GetProfile(profile.SourceNetwork, remoteIP.String(), "")
+	networkHostProfile, err := profile.GetProfile(profile.SourceNetwork, remoteIP.String(), "", false)
 	if err != nil {
 		return nil, err
 	}

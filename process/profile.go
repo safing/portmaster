@@ -81,7 +81,7 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	}
 
 	// Get the (linked) local profile.
-	localProfile, err := profile.GetProfile(profile.SourceLocal, profileID, p.Path)
+	localProfile, err := profile.GetProfile(profile.SourceLocal, profileID, p.Path, false)
 	if err != nil {
 		return false, err
 	}

@@ -36,6 +36,8 @@ In order to respect the app settings of the actual application, DNS requests fro
 - Outgoing Rules (without global rules)
 - Block Bypassing
 - Filter Lists
+
+If you think you might have messed up the settings of the System DNS Client, just delete the profile below to reset it to the defaults.
 `
 
 	// PortmasterProfileID is the profile ID used for the Portmaster Core itself.
@@ -193,6 +195,10 @@ func getSpecialProfile(profileID, linkedPath string) *Profile {
 // check if the special profile has not been changed by the user and if not,
 // check if the profile is outdated and can be upgraded.
 func specialProfileNeedsReset(profile *Profile) bool {
+	if profile == nil {
+		return false
+	}
+
 	switch {
 	case profile.Source != SourceLocal:
 		// Special profiles live in the local scope only.
