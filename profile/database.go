@@ -80,14 +80,17 @@ func startProfileUpdateChecker() error {
 						// Copy metadata from the old profile.
 						newProfile.copyMetadataFrom(activeProfile)
 						// Save the new profile.
-						err := newProfile.Save()
+						err = newProfile.Save()
 						if err != nil {
 							log.Errorf("profile: failed to save new profile after reset: %s", err)
 						}
 					}
 
-					// Set to outdated, so it is loaded in the layered profiles.
+					// If the new profile was successfully created, update layered profile.
 					activeProfile.outdated.Set()
+					if err == nil {
+						newProfile.layeredProfile.Update()
+					}
 				}
 
 				// Always increase the revision counter of the layer profile.

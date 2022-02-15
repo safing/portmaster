@@ -238,12 +238,18 @@ func (lp *LayeredProfile) Update() (revisionCounter uint64) {
 	for i, layer := range lp.layers {
 		if layer.outdated.IsSet() {
 			changed = true
-			// update layer
+
+			// Update layer.
 			newLayer, err := GetProfile(layer.Source, layer.ID, layer.LinkedPath, false)
 			if err != nil {
 				log.Errorf("profiles: failed to update profile %s: %s", layer.ScopedID(), err)
 			} else {
 				lp.layers[i] = newLayer
+			}
+
+			// Update local profile reference.
+			if i == 0 {
+				lp.localProfile = newLayer
 			}
 		}
 	}
