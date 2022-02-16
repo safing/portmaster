@@ -137,28 +137,27 @@ type Profile struct { //nolint:maligned // not worth the effort
 	savedInternally bool
 }
 
-func (profile *Profile) prepConfig() (err error) {
+func (profile *Profile) prepProfile() {
 	// prepare configuration
-	profile.configPerspective, err = config.NewPerspective(profile.Config)
 	profile.outdated = abool.New()
 	profile.lastActive = new(int64)
-	return
 }
 
 func (profile *Profile) parseConfig() error {
-	if profile.configPerspective == nil {
-		return errors.New("config not prepared")
-	}
-
-	// check if already parsed
+	// Check if already parsed.
 	if profile.dataParsed {
 		return nil
 	}
+
+	// Create new perspective and marked as parsed.
+	var err error
+	profile.configPerspective, err = config.NewPerspective(profile.Config)
+	if err != nil {
+		return fmt.Errorf("failed to create config perspective: %w", err)
+	}
 	profile.dataParsed = true
 
-	var err error
 	var lastErr error
-
 	action, ok := profile.configPerspective.GetAsString(CfgOptionDefaultActionKey)
 	profile.defaultAction = DefaultActionNotSet
 	if ok {
@@ -238,9 +237,7 @@ func New(
 	profile.makeKey()
 
 	// Prepare and parse initial profile config.
-	if err := profile.prepConfig(); err != nil {
-		log.Errorf("profile: failed to prep new profile: %s", err)
-	}
+	profile.prepProfile()
 	if err := profile.parseConfig(); err != nil {
 		log.Errorf("profile: failed to parse new profile: %s", err)
 	}
@@ -279,30 +276,6 @@ func (profile *Profile) MarkStillActive() {
 // still active.
 func (profile *Profile) LastActive() int64 {
 	return atomic.LoadInt64(profile.lastActive)
-}
-
-// MarkUsed updates ApproxLastUsed when it's been a while and saves the profile if it was changed.
-func (profile *Profile) MarkUsed() (changed bool) {
-	/*
-		TODO:
-		This might be one of the things causing problems with disappearing settings.
-		Possibly this is called with an outdated profile and then kills settings
-		already in the database.
-		Generally, it probably causes more harm than good if we periodically touch
-		the most important database entries just to update a timestamp.
-		We should save this data elsewhere and make configuration data as stable as
-		possible.
-
-		profile.Lock()
-		defer profile.Unlock()
-
-		if time.Now().Add(-lastUsedUpdateThreshold).Unix() > profile.ApproxLastUsed {
-			profile.ApproxLastUsed = time.Now().Unix()
-			return true
-		}
-	*/
-
-	return false
 }
 
 // String returns a string representation of the Profile.
@@ -467,6 +440,31 @@ func (profile *Profile) UpdateMetadata(binaryPath string) (changed bool) {
 	}
 
 	return changed
+}
+
+func (profile *Profile) copyMetadataFrom(otherProfile *Profile) (changed bool) {
+	if profile.Name != otherProfile.Name {
+		profile.Name = otherProfile.Name
+		changed = true
+	}
+	if profile.Description != otherProfile.Description {
+		profile.Description = otherProfile.Description
+		changed = true
+	}
+	if profile.Homepage != otherProfile.Homepage {
+		profile.Homepage = otherProfile.Homepage
+		changed = true
+	}
+	if profile.Icon != otherProfile.Icon {
+		profile.Icon = otherProfile.Icon
+		changed = true
+	}
+	if profile.IconType != otherProfile.IconType {
+		profile.IconType = otherProfile.IconType
+		changed = true
+	}
+
+	return
 }
 
 // updateMetadataFromSystem updates the profile metadata with data from the

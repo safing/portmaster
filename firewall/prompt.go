@@ -259,7 +259,7 @@ func saveResponse(p *profile.Profile, entity *intel.Entity, promptResponse strin
 	// Update the profile if necessary.
 	if p.IsOutdated() {
 		var err error
-		p, err = profile.GetProfile(p.Source, p.ID, p.LinkedPath)
+		p, err = profile.GetProfile(p.Source, p.ID, p.LinkedPath, false)
 		if err != nil {
 			return err
 		}

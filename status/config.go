@@ -19,6 +19,7 @@ func registerConfig() error {
 		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 514,
+			config.CategoryAnnotation:     "User Interface",
 		},
 	}); err != nil {
 		return err
