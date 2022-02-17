@@ -22,13 +22,6 @@ jobs:
       with:
         go-version: '^1.15'
 
-    - name: Get the current branch name
-      shell: bash
-      run: |
-        echo "::set-output name=branch::${GITHUB_REF#refs/heads/}"
-        echo "::set-output name=branch_head::${GITHUB_HEAD_REF#refs/heads/}"
-      id: getref
-
     # nektos/act does not have sudo install but we need it on GH actions so
     # try to install it.
     - name: Install sudo
@@ -48,21 +41,6 @@ jobs:
         only-new-issues: true
         args: -c ./.golangci.yml
         skip-go-installation: true
-
-    - name: Maybe update development dependencies
-      shell: bash
-      run: |
-        if [[ $BRANCHES != *"master"* ]]; then
-          echo "::debug::updating development dependencies"
-          export GOPROXY=direct
-          export GOSUMDB=off
-          go get -u -v github.com/safing/portbase@develop
-          go get -u -v github.com/safing/spn@develop
-        else
-          echo "::debug::not updating development dependencies; master branch"
-        fi
-      env:
-        BRANCHES: "${{ steps.getref.outputs.branch }} ${{ steps.getref.outputs.branch_head }}"
 
     - name: Get dependencies
       run: go mod download
@@ -91,21 +69,6 @@ jobs:
     - uses: actions/setup-go@v2
       with:
         go-version: '^1.15'
-
-    - name: Update development dependencies
-      shell: bash
-      run: |
-        if [[ $BRANCHES != *"master"* ]]; then
-          echo "::debug::updating development dependencies"
-          export GOPROXY=direct
-          export GOSUMDB=off
-          go get -u -v github.com/safing/portbase@develop
-          go get -u -v github.com/safing/spn@develop
-        else
-          echo "::debug::not updating development dependencies; master branch"
-        fi
-      env:
-        BRANCHES: "${{ steps.getref.outputs.branch }} ${{ steps.getref.outputs.branch_head }}"
 
     # nektos/act does not have sudo install but we need it on GH actions so
     # try to install it.
