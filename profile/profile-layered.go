@@ -35,19 +35,20 @@ type LayeredProfile struct {
 	// via the API. If we ever switch away from JSON to something else supported
 	// by DSD this WILL BREAK!
 
-	DisableAutoPermit   config.BoolOption `json:"-"`
-	BlockScopeLocal     config.BoolOption `json:"-"`
-	BlockScopeLAN       config.BoolOption `json:"-"`
-	BlockScopeInternet  config.BoolOption `json:"-"`
-	BlockP2P            config.BoolOption `json:"-"`
-	BlockInbound        config.BoolOption `json:"-"`
-	RemoveOutOfScopeDNS config.BoolOption `json:"-"`
-	RemoveBlockedDNS    config.BoolOption `json:"-"`
-	FilterSubDomains    config.BoolOption `json:"-"`
-	FilterCNAMEs        config.BoolOption `json:"-"`
-	PreventBypassing    config.BoolOption `json:"-"`
-	DomainHeuristics    config.BoolOption `json:"-"`
-	UseSPN              config.BoolOption `json:"-"`
+	DisableAutoPermit   config.BoolOption   `json:"-"`
+	BlockScopeLocal     config.BoolOption   `json:"-"`
+	BlockScopeLAN       config.BoolOption   `json:"-"`
+	BlockScopeInternet  config.BoolOption   `json:"-"`
+	BlockP2P            config.BoolOption   `json:"-"`
+	BlockInbound        config.BoolOption   `json:"-"`
+	RemoveOutOfScopeDNS config.BoolOption   `json:"-"`
+	RemoveBlockedDNS    config.BoolOption   `json:"-"`
+	FilterSubDomains    config.BoolOption   `json:"-"`
+	FilterCNAMEs        config.BoolOption   `json:"-"`
+	PreventBypassing    config.BoolOption   `json:"-"`
+	DomainHeuristics    config.BoolOption   `json:"-"`
+	UseSPN              config.BoolOption   `json:"-"`
+	SPNRoutingAlgorithm config.StringOption `json:"-"`
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -114,6 +115,10 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	lp.UseSPN = lp.wrapBoolOption(
 		CfgOptionUseSPNKey,
 		cfgOptionUseSPN,
+	)
+	lp.SPNRoutingAlgorithm = lp.wrapStringOption(
+		CfgOptionRoutingAlgorithmKey,
+		cfgOptionRoutingAlgorithm,
 	)
 
 	lp.LayerIDs = append(lp.LayerIDs, localProfile.ScopedID())
@@ -334,6 +339,39 @@ func (lp *LayeredProfile) MatchServiceEndpoint(ctx context.Context, entity *inte
 	return cfgServiceEndpoints.Match(ctx, entity)
 }
 
+// MatchSPNUsagePolicy checks if the given endpoint matches an entry in any of the profiles. This functions requires the layered profile to be read locked.
+func (lp *LayeredProfile) MatchSPNUsagePolicy(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
+	for _, layer := range lp.layers {
+		if layer.spnUsagePolicy.IsSet() {
+			result, reason := layer.spnUsagePolicy.Match(ctx, entity)
+			if endpoints.IsDecision(result) {
+				return result, reason
+			}
+		}
+	}
+
+	cfgLock.RLock()
+	defer cfgLock.RUnlock()
+	return cfgSPNUsagePolicy.Match(ctx, entity)
+}
+
+// StackedExitHubPolicies returns all exit hub policies of the layered profile, including the global one.
+func (lp *LayeredProfile) StackedExitHubPolicies() []endpoints.Endpoints {
+	policies := make([]endpoints.Endpoints, 0, len(lp.layers)+3) // +1 for global policy, +2 for intel policies
+
+	for _, layer := range lp.layers {
+		if layer.spnExitHubPolicy.IsSet() {
+			policies = append(policies, layer.spnExitHubPolicy)
+		}
+	}
+
+	cfgLock.RLock()
+	defer cfgLock.RUnlock()
+	policies = append(policies, cfgSPNExitHubPolicy)
+
+	return policies
+}
+
 // MatchFilterLists matches the entity against the set of filter
 // lists. This functions requires the layered profile to be read locked.
 func (lp *LayeredProfile) MatchFilterLists(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
@@ -451,9 +489,6 @@ func (lp *LayeredProfile) GetProfileSource(configKey string) string {
 	return ""
 }
 
-/*
-For later:
-
 func (lp *LayeredProfile) wrapStringOption(configKey string, globalConfig config.StringOption) config.StringOption {
 	var revCnt uint64 = 0
 	var value string
@@ -485,7 +520,6 @@ func (lp *LayeredProfile) wrapStringOption(configKey string, globalConfig config
 		return value
 	}
 }
-*/
 
 func max(a, b uint8) uint8 {
 	if a > b {
