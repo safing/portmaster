@@ -173,7 +173,7 @@ func registerConfiguration() error { //nolint:maintidx
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.CategoryAnnotation:     "Advanced",
 		},
-		PossibleValues: status.SecurityLevelValues,
+		PossibleValues: status.AllSecurityLevelValues,
 	})
 	if err != nil {
 		return err
@@ -333,7 +333,7 @@ The lists are automatically updated every hour using incremental updates.
 			config.DisplayOrderAnnotation: cfgOptionFilterCNAMEOrder,
 			config.CategoryAnnotation:     "DNS Filtering",
 		},
-		PossibleValues: status.SecurityLevelValues,
+		PossibleValues: status.AllSecurityLevelValues,
 	})
 	if err != nil {
 		return err
@@ -348,7 +348,7 @@ The lists are automatically updated every hour using incremental updates.
 		Description:    "Additionally block all subdomains of entries in selected filter lists.",
 		OptType:        config.OptTypeInt,
 		DefaultValue:   status.SecurityLevelsAll,
-		PossibleValues: status.SecurityLevelValues,
+		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionFilterSubDomainsOrder,
@@ -388,7 +388,7 @@ The lists are automatically updated every hour using incremental updates.
 		Key:            CfgOptionBlockScopeLANKey,
 		Description:    "Force Block all connections from and to the Local Area Network. Is stronger than Rules (see below).",
 		OptType:        config.OptTypeInt,
-		DefaultValue:   status.SecurityLevelsHighAndExtreme,
+		DefaultValue:   status.SecurityLevelOff,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
@@ -399,7 +399,7 @@ The lists are automatically updated every hour using incremental updates.
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockScopeLAN = config.Concurrent.GetAsInt(CfgOptionBlockScopeLANKey, int64(status.SecurityLevelsHighAndExtreme))
+	cfgOptionBlockScopeLAN = config.Concurrent.GetAsInt(CfgOptionBlockScopeLANKey, int64(status.SecurityLevelOff))
 	cfgIntOptions[CfgOptionBlockScopeLANKey] = cfgOptionBlockScopeLAN
 
 	// Block Scope Internet
@@ -428,8 +428,8 @@ The lists are automatically updated every hour using incremental updates.
 		Key:            CfgOptionBlockP2PKey,
 		Description:    "These are connections that are established directly to an IP address or peer on the Internet without resolving a domain name via DNS first. Is stronger than Rules (see below).",
 		OptType:        config.OptTypeInt,
-		DefaultValue:   status.SecurityLevelExtreme,
-		PossibleValues: status.SecurityLevelValues,
+		DefaultValue:   status.SecurityLevelOff,
+		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionBlockP2POrder,
@@ -439,7 +439,7 @@ The lists are automatically updated every hour using incremental updates.
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockP2P = config.Concurrent.GetAsInt(CfgOptionBlockP2PKey, int64(status.SecurityLevelExtreme))
+	cfgOptionBlockP2P = config.Concurrent.GetAsInt(CfgOptionBlockP2PKey, int64(status.SecurityLevelOff))
 	cfgIntOptions[CfgOptionBlockP2PKey] = cfgOptionBlockP2P
 
 	// Block Inbound Connections
@@ -448,8 +448,8 @@ The lists are automatically updated every hour using incremental updates.
 		Key:            CfgOptionBlockInboundKey,
 		Description:    "Connections initiated towards your device from the LAN or Internet. This will usually only be the case if you are running a network service or are using peer to peer software. Is stronger than Rules (see below).",
 		OptType:        config.OptTypeInt,
-		DefaultValue:   status.SecurityLevelsHighAndExtreme,
-		PossibleValues: status.SecurityLevelValues,
+		DefaultValue:   status.SecurityLevelOff,
+		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionBlockInboundOrder,
@@ -459,7 +459,7 @@ The lists are automatically updated every hour using incremental updates.
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockInbound = config.Concurrent.GetAsInt(CfgOptionBlockInboundKey, int64(status.SecurityLevelsHighAndExtreme))
+	cfgOptionBlockInbound = config.Concurrent.GetAsInt(CfgOptionBlockInboundKey, int64(status.SecurityLevelOff))
 	cfgIntOptions[CfgOptionBlockInboundKey] = cfgOptionBlockInbound
 
 	// Filter Out-of-Scope DNS Records
@@ -470,7 +470,7 @@ The lists are automatically updated every hour using incremental updates.
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		DefaultValue:   status.SecurityLevelsAll,
-		PossibleValues: status.SecurityLevelValues,
+		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionRemoveOutOfScopeDNSOrder,
@@ -491,7 +491,7 @@ The lists are automatically updated every hour using incremental updates.
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		DefaultValue:   status.SecurityLevelsAll,
-		PossibleValues: status.SecurityLevelValues,
+		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionRemoveBlockedDNSOrder,
@@ -539,7 +539,7 @@ Please note that if you are using the system resolver, bypass attempts might be 
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   status.SecurityLevelsAll,
-		PossibleValues: status.SecurityLevelValues,
+		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation: cfgOptionPreventBypassingOrder,
