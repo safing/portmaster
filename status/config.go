@@ -10,9 +10,11 @@ var (
 
 func registerConfig() error {
 	if err := config.Register(&config.Option{
-		Name:           "Enable Network Rating System",
-		Key:            CfgEnableNetworkRatingSystemKey,
-		Description:    "Enables the Network Rating System, which allows you to quickly increase security and privacy throughout the settings by changing your the network rating level in the top left. Please note that this feature is now in the sunset phase and will be replaced by a superior and easier to understand system in the future.",
+		Name: "Enable Network Rating System",
+		Key:  CfgEnableNetworkRatingSystemKey,
+		Description: `Enable the Network Rating System, which allows you to configure settings to be active in one environment but not in the other, like allowing sensitive connections at home but not at the public library.
+
+Please note that this feature will be replaced by a superior and easier to understand system in the future.`,
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
