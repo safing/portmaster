@@ -152,11 +152,7 @@ func (issue *appIssue) notify(proc *process.Process) {
 			p.Lock()
 			defer p.Unlock()
 
-			p.Warning = fmt.Sprintf(
-				"%s  \nThis was last detected at %s.",
-				fmt.Sprintf(issue.message, p.Name),
-				time.Now().Format("15:04 on 2.1.2006"),
-			)
+			p.Warning = fmt.Sprintf(issue.message, p.Name)
 			p.WarningLastUpdated = time.Now()
 		}()
 
