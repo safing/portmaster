@@ -250,27 +250,35 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	rrCache, err = resolver.Resolve(ctx, q)
 	// Handle error.
 	if err != nil {
-		conn.Failed(fmt.Sprintf("query failed: %s", err), "")
 		switch {
 		case errors.Is(err, resolver.ErrNotFound):
 			tracer.Tracef("nameserver: %s", err)
+			conn.Failed("domain does not exist", "")
 			return reply(nsutil.NxDomain("nxdomain: " + err.Error()))
+
 		case errors.Is(err, resolver.ErrBlocked):
 			tracer.Tracef("nameserver: %s", err)
+			conn.Block(err.Error(), "")
 			return reply(nsutil.BlockIP("blocked: " + err.Error()))
+
 		case errors.Is(err, resolver.ErrLocalhost):
 			tracer.Tracef("nameserver: returning localhost records")
+			conn.Accept("allowing query for localhost", "")
 			return reply(nsutil.Localhost())
+
 		case errors.Is(err, resolver.ErrOffline):
 			if rrCache == nil {
 				log.Tracer(ctx).Debugf("nameserver: not resolving %s, device is offline", q.ID())
+				conn.Failed("not resolving, device is offline", "")
 				return reply(nsutil.ServerFailure(err.Error()))
 			}
-			// If an rrCache was returned, it's usable a backup.
+			// If an rrCache was returned, it's usable as a backup.
 			rrCache.IsBackup = true
 			log.Tracer(ctx).Debugf("nameserver: device is offline, using backup cache for %s", q.ID())
+
 		default:
 			tracer.Warningf("nameserver: failed to resolve %s: %s", q.ID(), err)
+			conn.Failed(fmt.Sprintf("query failed: %s", err), "")
 			addFailingQuery(q, err)
 			return reply(nsutil.ServerFailure("internal error: " + err.Error()))
 		}
