@@ -62,7 +62,7 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 		}
 	}
 
-	// Check if tunneling is enabeld for app at all.
+	// Check if tunneling is enabeld for this app at all.
 	if !layeredProfile.UseSPN() {
 		return
 	}
@@ -76,6 +76,8 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 		return
 	case endpoints.Denied:
 		return
+	case endpoints.Permitted, endpoints.NoMatch:
+		// Continue
 	}
 
 	// Tunnel all the things!
@@ -92,19 +94,44 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 	conn.TunnelOpts = &navigator.Options{
 		HubPolicies:                   layeredProfile.StackedExitHubPolicies(),
 		CheckHubExitPolicyWith:        conn.Entity,
-		RequireTrustedDestinationHubs: conn.Encrypted,
+		RequireTrustedDestinationHubs: !conn.Encrypted,
 		RoutingProfile:                layeredProfile.SPNRoutingAlgorithm(),
+	}
+
+	// If we have any exit hub policies, we need to raise the routing algorithm at least to single-hop.
+	if conn.TunnelOpts.RoutingProfile == navigator.RoutingProfileHomeID &&
+		conn.TunnelOpts.HubPoliciesAreSet() {
+		conn.TunnelOpts.RoutingProfile = navigator.RoutingProfileSingleHopID
 	}
 
 	// Special handling for the internal DNS resolver.
 	if conn.Process().Pid == ownPID && resolver.IsResolverAddress(conn.Entity.IP, conn.Entity.Port) {
-		conn.TunnelOpts.RoutingProfile = navigator.RoutingProfileHomeID
+		dnsExitHubPolicy, err := captain.GetDNSExitHubPolicy()
+		if err != nil {
+			log.Errorf("firewall: failed to get dns exit hub policy: %w", err)
+		}
+
+		if err == nil && dnsExitHubPolicy.IsSet() {
+			// Apply the dns exit hub policy, if set.
+			conn.TunnelOpts.HubPolicies = []endpoints.Endpoints{dnsExitHubPolicy}
+			// Use the routing algorithm from the profile, as the home profile won't work with the policy.
+			conn.TunnelOpts.RoutingProfile = layeredProfile.SPNRoutingAlgorithm()
+			// Raise the routing algorithm at least to single-hop.
+			if conn.TunnelOpts.RoutingProfile == navigator.RoutingProfileHomeID {
+				conn.TunnelOpts.RoutingProfile = navigator.RoutingProfileSingleHopID
+			}
+		} else {
+			// Disable any policies for the internal DNS resolver.
+			conn.TunnelOpts.HubPolicies = nil
+			// Always use the home routing profile for the internal DNS resolver.
+			conn.TunnelOpts.RoutingProfile = navigator.RoutingProfileHomeID
+		}
 	}
 
 	// Queue request in sluice.
 	err := sluice.AwaitRequest(conn, crew.HandleSluiceRequest)
 	if err != nil {
-		log.Tracer(pkt.Ctx()).Warningf("failed to rqeuest tunneling: %s", err)
+		log.Tracer(pkt.Ctx()).Warningf("failed to request tunneling: %s", err)
 		conn.Failed("failed to request tunneling", "")
 	} else {
 		log.Tracer(pkt.Ctx()).Trace("filter: tunneling requested")
