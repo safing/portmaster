@@ -148,14 +148,23 @@ func (issue *appIssue) notify(proc *process.Process) {
 
 	// Set warning on profile.
 	module.StartWorker("set app compat warning", func(ctx context.Context) error {
+		var changed bool
+
 		func() {
 			p.Lock()
 			defer p.Unlock()
 
-			p.Warning = fmt.Sprintf(issue.message, p.Name)
-			p.WarningLastUpdated = time.Now()
+			warningMsg := fmt.Sprintf(issue.message, p.Name)
+			if p.Warning != warningMsg || time.Now().Add(-1*time.Hour).After(p.WarningLastUpdated) {
+				p.Warning = warningMsg
+				p.WarningLastUpdated = time.Now()
+				changed = true
+			}
 		}()
 
-		return p.Save()
+		if changed {
+			return p.Save()
+		}
+		return nil
 	})
 }
