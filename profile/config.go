@@ -108,17 +108,17 @@ var (
 	cfgOptionSPNUsagePolicy      config.StringArrayOption
 	cfgOptionSPNUsagePolicyOrder = 130
 
-	// Setting "Home Node Rules" at order 131.
+	CfgOptionRoutingAlgorithmKey   = "spn/routingAlgorithm"
+	cfgOptionRoutingAlgorithm      config.StringOption
+	cfgOptionRoutingAlgorithmOrder = 144
+
+	// Setting "Home Node Rules" at order 145.
 
 	CfgOptionExitHubPolicyKey   = "spn/exitHubPolicy"
 	cfgOptionExitHubPolicy      config.StringArrayOption
-	cfgOptionExitHubPolicyOrder = 132
+	cfgOptionExitHubPolicyOrder = 146
 
-	// Setting "DNS Exit Node Rules" at order 133.
-
-	CfgOptionRoutingAlgorithmKey   = "spn/routingAlgorithm"
-	cfgOptionRoutingAlgorithm      config.StringOption
-	cfgOptionRoutingAlgorithmOrder = 134
+	// Setting "DNS Exit Node Rules" at order 147.
 )
 
 // A list of all security level settings.
