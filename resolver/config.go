@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -109,6 +110,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 		ReleaseLevel:    config.ReleaseLevelStable,
 		DefaultValue:    defaultNameServers,
 		ValidationRegex: fmt.Sprintf("^(%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDNS, ServerTypeTCP),
+		ValidationFunc:  validateNameservers,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  config.DisplayHintOrdered,
 			config.DisplayOrderAnnotation: cfgOptionNameServersOrder,
@@ -261,6 +263,22 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 		return err
 	}
 	dontResolveSpecialDomains = status.SecurityLevelOption(CfgOptionDontResolveSpecialDomainsKey)
+
+	return nil
+}
+
+func validateNameservers(value interface{}) error {
+	list, ok := value.([]string)
+	if !ok {
+		return errors.New("invalid type")
+	}
+
+	for i, entry := range list {
+		_, _, err := createResolver(entry, ServerSourceConfigured)
+		if err != nil {
+			return fmt.Errorf("failed to parse DNS server \"%s\" (#%d): %w", entry, i+1, err)
+		}
+	}
 
 	return nil
 }
