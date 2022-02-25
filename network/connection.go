@@ -269,11 +269,6 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		dnsConn.Internal = localProfile.Internal
 	}
 
-	// Always mark dns queries from the system resolver as internal.
-	if proc.IsSystemResolver() {
-		dnsConn.Internal = true
-	}
-
 	// DNS Requests are saved by the nameserver depending on the result of the
 	// query. Blocked requests are saved immediately, accepted ones are only
 	// saved if they are not "used" by a connection.

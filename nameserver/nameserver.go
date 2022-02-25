@@ -201,6 +201,12 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 				return
 			}
 
+			// Mark successfull queries as internal in order to hide them in the simple interface.
+			// These requests were most probably made for another process and only add confusion if listed.
+			if conn.Process().IsSystemResolver() {
+				conn.Internal = true
+			}
+
 			// Save the request as open, as we don't know if there will be a connection or not.
 			network.SaveOpenDNSRequest(q, rrCache, conn)
 			firewall.UpdateIPsAndCNAMEs(q, rrCache, conn)
