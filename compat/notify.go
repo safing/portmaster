@@ -44,7 +44,7 @@ var (
 	secureDNSBypassIssue = &appIssue{
 		id:    "compat:secure-dns-bypass-%s",
 		title: "Detected %s Bypass Attempt",
-		message: `%s is bypassing Portmaster's firewall functions through its Secure DNS resolver. Portmaster can no longer protect or filter connections coming from %s. Disable Secure DNS within %s to restore functionality.  
+		message: `[APPNAME] is bypassing Portmaster's firewall functions through its Secure DNS resolver. Portmaster can no longer protect or filter connections coming from [APPNAME]. Disable Secure DNS within [APPNAME] to restore functionality.  
 Rest assured that Portmaster already handles Secure DNS for your whole device.`,
 		// TODO: Add this when the new docs page is finished:
 		// , or [find out about other options](link to new docs page)
@@ -53,7 +53,7 @@ Rest assured that Portmaster already handles Secure DNS for your whole device.`,
 	multiPeerUDPTunnelIssue = &appIssue{
 		id:      "compat:multi-peer-udp-tunnel-%s",
 		title:   "Detected SPN Incompatibility in %s",
-		message: "Portmaster detected that %s is trying to connect to multiple servers via the SPN using a single UDP connection. This is common for technologies such as torrents. Unfortunately, the SPN does not support this feature currently. You can try to change this behavior within the affected app or you could exempt it from using the SPN.",
+		message: "Portmaster detected that [APPNAME] is trying to connect to multiple servers via the SPN using a single UDP connection. This is common for technologies such as torrents. Unfortunately, the SPN does not support this feature currently. You can try to change this behavior within the affected app or you could exempt it from using the SPN.",
 		level:   notifications.Warning,
 	}
 )
@@ -125,11 +125,7 @@ func (issue *appIssue) notify(proc *process.Process) {
 	)
 
 	// Build message.
-	messageAppNameReplaces := make([]interface{}, strings.Count(issue.message, "%s"))
-	for i := range messageAppNameReplaces {
-		messageAppNameReplaces[i] = p.Name
-	}
-	message := fmt.Sprintf(issue.message, messageAppNameReplaces...)
+	message := strings.ReplaceAll(issue.message, "[APPNAME]", p.Name)
 
 	// Check if we already have this notification.
 	eventID := fmt.Sprintf(issue.id, p.ID)
