@@ -42,9 +42,10 @@ var (
 	}
 
 	secureDNSBypassIssue = &appIssue{
-		id:      "compat:secure-dns-bypass-%s",
-		title:   "Detected %s Bypass Attempt",
-		message: "Portmaster detected that %s is trying to use a secure DNS resolver. While this is a good thing, the Portmaster already handles secure DNS for your whole device. Please disable the secure DNS resolver within the app.",
+		id:    "compat:secure-dns-bypass-%s",
+		title: "Detected %s Bypass Attempt",
+		message: `%s is bypassing Portmaster's firewall functions through its Secure DNS resolver. Portmaster can no longer protect or filter connections coming from %s. Disable Secure DNS within %s to restore functionality.  
+Rest assured that Portmaster already handles Secure DNS for your whole device.`,
 		// TODO: Add this when the new docs page is finished:
 		// , or [find out about other options](link to new docs page)
 		level: notifications.Warning,
@@ -123,6 +124,13 @@ func (issue *appIssue) notify(proc *process.Process) {
 		proc.Path,
 	)
 
+	// Build message.
+	messageAppNameReplaces := make([]interface{}, strings.Count(issue.message, "%s"))
+	for i := range messageAppNameReplaces {
+		messageAppNameReplaces[i] = p.Name
+	}
+	message := fmt.Sprintf(issue.message, messageAppNameReplaces...)
+
 	// Check if we already have this notification.
 	eventID := fmt.Sprintf(issue.id, p.ID)
 	n := notifications.Get(eventID)
@@ -135,7 +143,7 @@ func (issue *appIssue) notify(proc *process.Process) {
 		EventID:      eventID,
 		Type:         issue.level,
 		Title:        fmt.Sprintf(issue.title, p.Name),
-		Message:      fmt.Sprintf(issue.message, p.Name),
+		Message:      message,
 		ShowOnSystem: true,
 		AvailableActions: []*notifications.Action{
 			{
@@ -154,9 +162,8 @@ func (issue *appIssue) notify(proc *process.Process) {
 			p.Lock()
 			defer p.Unlock()
 
-			warningMsg := fmt.Sprintf(issue.message, p.Name)
-			if p.Warning != warningMsg || time.Now().Add(-1*time.Hour).After(p.WarningLastUpdated) {
-				p.Warning = warningMsg
+			if p.Warning != message || time.Now().Add(-1*time.Hour).After(p.WarningLastUpdated) {
+				p.Warning = message
 				p.WarningLastUpdated = time.Now()
 				changed = true
 			}
