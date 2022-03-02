@@ -56,17 +56,9 @@ func checkAndCreateInstanceLock(path, name string) (pid int32, err error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to evaluate path of existing process: %w", err)
 	}
-	ownBinaryPath, err := os.Executable()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get path of own process: %w", err)
-	}
-	cleanedOwnBinaryPath, err := filepath.EvalSymlinks(ownBinaryPath)
-	if err != nil {
-		return 0, fmt.Errorf("failed to evaluate path of own process: %w", err)
-	}
 
-	// Check if the binary path matches.
-	if cleanedExecutingBinaryPath != cleanedOwnBinaryPath {
+	// Check if the binary is portmaster-start with high probability.
+	if !strings.Contains(filepath.Base(cleanedExecutingBinaryPath), "portmaster-start") {
 		// The process with the locked PID belongs to another binary.
 		// As the Portmaster usually starts very early, it will have a low PID,
 		// which could be assigned to another process on next boot.
