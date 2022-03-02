@@ -42,9 +42,10 @@ var (
 	}
 
 	secureDNSBypassIssue = &appIssue{
-		id:      "compat:secure-dns-bypass-%s",
-		title:   "Detected %s Bypass Attempt",
-		message: "Portmaster detected that %s is trying to use a secure DNS resolver. While this is a good thing, the Portmaster already handles secure DNS for your whole device. Please disable the secure DNS resolver within the app.",
+		id:    "compat:secure-dns-bypass-%s",
+		title: "Detected %s Bypass Attempt",
+		message: `[APPNAME] is bypassing Portmaster's firewall functions through its Secure DNS resolver. Portmaster can no longer protect or filter connections coming from [APPNAME]. Disable Secure DNS within [APPNAME] to restore functionality.  
+Rest assured that Portmaster already handles Secure DNS for your whole device.`,
 		// TODO: Add this when the new docs page is finished:
 		// , or [find out about other options](link to new docs page)
 		level: notifications.Warning,
@@ -52,7 +53,7 @@ var (
 	multiPeerUDPTunnelIssue = &appIssue{
 		id:      "compat:multi-peer-udp-tunnel-%s",
 		title:   "Detected SPN Incompatibility in %s",
-		message: "Portmaster detected that %s is trying to connect to multiple servers via the SPN using a single UDP connection. This is common for technologies such as torrents. Unfortunately, the SPN does not support this feature currently. You can try to change this behavior within the affected app or you could exempt it from using the SPN.",
+		message: "Portmaster detected that [APPNAME] is trying to connect to multiple servers via the SPN using a single UDP connection. This is common for technologies such as torrents. Unfortunately, the SPN does not support this feature currently. You can try to change this behavior within the affected app or you could exempt it from using the SPN.",
 		level:   notifications.Warning,
 	}
 )
@@ -123,6 +124,9 @@ func (issue *appIssue) notify(proc *process.Process) {
 		proc.Path,
 	)
 
+	// Build message.
+	message := strings.ReplaceAll(issue.message, "[APPNAME]", p.Name)
+
 	// Check if we already have this notification.
 	eventID := fmt.Sprintf(issue.id, p.ID)
 	n := notifications.Get(eventID)
@@ -135,7 +139,7 @@ func (issue *appIssue) notify(proc *process.Process) {
 		EventID:      eventID,
 		Type:         issue.level,
 		Title:        fmt.Sprintf(issue.title, p.Name),
-		Message:      fmt.Sprintf(issue.message, p.Name),
+		Message:      message,
 		ShowOnSystem: true,
 		AvailableActions: []*notifications.Action{
 			{
@@ -148,14 +152,22 @@ func (issue *appIssue) notify(proc *process.Process) {
 
 	// Set warning on profile.
 	module.StartWorker("set app compat warning", func(ctx context.Context) error {
+		var changed bool
+
 		func() {
 			p.Lock()
 			defer p.Unlock()
 
-			p.Warning = fmt.Sprintf(issue.message, p.Name)
-			p.WarningLastUpdated = time.Now()
+			if p.Warning != message || time.Now().Add(-1*time.Hour).After(p.WarningLastUpdated) {
+				p.Warning = message
+				p.WarningLastUpdated = time.Now()
+				changed = true
+			}
 		}()
 
-		return p.Save()
+		if changed {
+			return p.Save()
+		}
+		return nil
 	})
 }

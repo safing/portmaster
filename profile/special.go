@@ -34,7 +34,6 @@ Seeing a lot of incoming connections here is normal, as this resembles the netwo
 In order to respect the app settings of the actual application, DNS requests from the System DNS Client are only subject to the following settings:
 
 - Outgoing Rules (without global rules)
-- Block Bypassing
 - Filter Lists
 
 If you think you might have messed up the settings of the System DNS Client, just delete the profile below to reset it to the defaults.
