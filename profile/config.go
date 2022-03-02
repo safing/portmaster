@@ -98,9 +98,27 @@ var (
 
 	// Setting "Permanent Verdicts" at order 96.
 
+	// Setting "Enable SPN" at order 128.
+
 	CfgOptionUseSPNKey   = "spn/use"
 	cfgOptionUseSPN      config.BoolOption
 	cfgOptionUseSPNOrder = 129
+
+	CfgOptionSPNUsagePolicyKey   = "spn/usagePolicy"
+	cfgOptionSPNUsagePolicy      config.StringArrayOption
+	cfgOptionSPNUsagePolicyOrder = 130
+
+	CfgOptionRoutingAlgorithmKey   = "spn/routingAlgorithm"
+	cfgOptionRoutingAlgorithm      config.StringOption
+	cfgOptionRoutingAlgorithmOrder = 144
+
+	// Setting "Home Node Rules" at order 145.
+
+	CfgOptionExitHubPolicyKey   = "spn/exitHubPolicy"
+	cfgOptionExitHubPolicy      config.StringArrayOption
+	cfgOptionExitHubPolicyOrder = 146
+
+	// Setting "DNS Exit Node Rules" at order 147.
 )
 
 // A list of all security level settings.
@@ -118,6 +136,39 @@ var securityLevelSettings = []string{
 	CfgOptionPreventBypassingKey,
 	CfgOptionDisableAutoPermitKey,
 }
+
+var (
+	// SPNRulesQuickSettings is a list of countries the SPN currently is present in
+	// as quick settings in order to help users with SPN related policy settings.
+	// This is a quick win to make the MVP easier to use, but will be replaced by
+	// a better solution in the future.
+	SPNRulesQuickSettings = []config.QuickSetting{
+		{Name: "Exclude Canada (CA)", Action: config.QuickMergeTop, Value: []string{"- CA"}},
+		{Name: "Exclude Finland (FI)", Action: config.QuickMergeTop, Value: []string{"- FI"}},
+		{Name: "Exclude France (FR)", Action: config.QuickMergeTop, Value: []string{"- FR"}},
+		{Name: "Exclude Germany (DE)", Action: config.QuickMergeTop, Value: []string{"- DE"}},
+		{Name: "Exclude Israel (IL)", Action: config.QuickMergeTop, Value: []string{"- IL"}},
+		{Name: "Exclude Poland (PL)", Action: config.QuickMergeTop, Value: []string{"- PL"}},
+		{Name: "Exclude United Kingdom (GB)", Action: config.QuickMergeTop, Value: []string{"- GB"}},
+		{Name: "Exclude United States of America (US)", Action: config.QuickMergeTop, Value: []string{"- US"}},
+	}
+
+	// SPNRulesVerdictNames defines the verdicts names to be used for SPN Rules.
+	SPNRulesVerdictNames = map[string]string{
+		"-": "Exclude", // Default.
+		"+": "Allow",
+	}
+
+	// SPNRulesHelp defines the help text for SPN related Hub selection rules.
+	SPNRulesHelp = strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match the following attributes of SPN Nodes:
+
+- Country (based on IPs): "US"
+- AS number: "AS123456"
+- Address: "192.168.0.1"
+- Network: "192.168.0.1/24"
+- Anything: "*"
+`, `"`, "`")
+)
 
 func registerConfiguration() error { //nolint:maintidx
 	// Default Filter Action
@@ -207,15 +258,6 @@ Examples: "192.168.0.1 TCP/HTTP", "LAN UDP/50000-55000", "example.com */HTTPS", 
 Important: DNS Requests are only matched against domain and filter list rules, all others require an IP address and are checked only with the following IP connection.
 `, `"`, "`")
 
-	rulesValidationRegex := strings.Join([]string{
-		`^(\+|\-) `,                   // Rule verdict.
-		`[A-z0-9\.:\-*/]+`,            // Entity matching.
-		`( `,                          // Start of optional matching.
-		`[A-z0-9*]+`,                  // Protocol matching.
-		`(/[A-z0-9]+(\-[A-z0-9]+)?)?`, // Port and port range matching.
-		`)?$`,                         // End of optional matching.
-	}, "")
-
 	// Endpoint Filter List
 	err = config.Register(&config.Option{
 		Name:         "Outgoing Rules",
@@ -230,7 +272,8 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 			config.DisplayOrderAnnotation: cfgOptionEndpointsOrder,
 			config.CategoryAnnotation:     "Rules",
 		},
-		ValidationRegex: rulesValidationRegex,
+		ValidationRegex: endpoints.ListEntryValidationRegex,
+		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
 	})
 	if err != nil {
 		return err
@@ -270,7 +313,8 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 				},
 			},
 		},
-		ValidationRegex: rulesValidationRegex,
+		ValidationRegex: endpoints.ListEntryValidationRegex,
+		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
 	})
 	if err != nil {
 		return err
@@ -569,6 +613,99 @@ Please note that if you are using the system resolver, bypass attempts might be 
 	}
 	cfgOptionUseSPN = config.Concurrent.GetAsBool(CfgOptionUseSPNKey, true)
 	cfgBoolOptions[CfgOptionUseSPNKey] = cfgOptionUseSPN
+
+	// SPN Rules
+	err = config.Register(&config.Option{
+		Name:         "SPN Rules",
+		Key:          CfgOptionSPNUsagePolicyKey,
+		Description:  `Customize which websites should or should not be routed through the SPN. Only active if "Use SPN" is enabled.`,
+		Help:         rulesHelp,
+		OptType:      config.OptTypeStringArray,
+		DefaultValue: []string{},
+		Annotations: config.Annotations{
+			config.StackableAnnotation:                   true,
+			config.CategoryAnnotation:                    "General",
+			config.DisplayOrderAnnotation:                cfgOptionSPNUsagePolicyOrder,
+			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
+			endpoints.EndpointListVerdictNamesAnnotation: SPNRulesVerdictNames,
+		},
+		ValidationRegex: endpoints.ListEntryValidationRegex,
+		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionSPNUsagePolicy = config.Concurrent.GetAsStringArray(CfgOptionSPNUsagePolicyKey, []string{})
+	cfgStringArrayOptions[CfgOptionSPNUsagePolicyKey] = cfgOptionSPNUsagePolicy
+
+	// Exit Node Rules
+	err = config.Register(&config.Option{
+		Name: "Exit Node Rules",
+		Key:  CfgOptionExitHubPolicyKey,
+		Description: `Customize which countries should or should not be used for your Exit Nodes. Exit Nodes are used to exit the SPN and establish a connection to your destination.
+
+By default, the Portmaster tries to choose the node closest to the destination as the Exit Node. This reduces your exposure to the open Internet. Exit Nodes are chosen for every destination separately.`,
+		Help:         SPNRulesHelp,
+		OptType:      config.OptTypeStringArray,
+		DefaultValue: []string{},
+		Annotations: config.Annotations{
+			config.StackableAnnotation:                   true,
+			config.CategoryAnnotation:                    "Routing",
+			config.DisplayOrderAnnotation:                cfgOptionExitHubPolicyOrder,
+			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
+			config.QuickSettingsAnnotation:               SPNRulesQuickSettings,
+			endpoints.EndpointListVerdictNamesAnnotation: SPNRulesVerdictNames,
+		},
+		ValidationRegex: endpoints.ListEntryValidationRegex,
+		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionExitHubPolicy = config.Concurrent.GetAsStringArray(CfgOptionExitHubPolicyKey, []string{})
+	cfgStringArrayOptions[CfgOptionExitHubPolicyKey] = cfgOptionExitHubPolicy
+
+	// Select SPN Routing Algorithm
+	defaultRoutingAlg := "double-hop"
+	err = config.Register(&config.Option{
+		Name:         "Select SPN Routing Algorithm",
+		Key:          CfgOptionRoutingAlgorithmKey,
+		Description:  "Select the routing algorithm for your connections through the SPN. Configure your preferred balance between speed and privacy.",
+		OptType:      config.OptTypeString,
+		DefaultValue: defaultRoutingAlg,
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
+			config.DisplayOrderAnnotation: cfgOptionRoutingAlgorithmOrder,
+			config.CategoryAnnotation:     "Routing",
+		},
+		PossibleValues: []config.PossibleValue{
+			{
+				Name:        "Plain VPN Mode",
+				Value:       "home",
+				Description: "Always connect to the destination directly from the Home Hub. Only provides very basic privacy, as the Home Hub both knows where you are coming from and where you are connecting to.",
+			},
+			{
+				Name:        "Speed Focused",
+				Value:       "single-hop",
+				Description: "Optimize routes with a minimum of one hop. Provides good speeds. This will often use the Home Hub to connect to destinations near you, but will use more hops to far away destinations for better privacy over long distances.",
+			},
+			{
+				Name:        "Balanced",
+				Value:       "double-hop",
+				Description: "Optimize routes with a minimum of two hops. Provides good privacy as well as good speeds. No single node knows where you are coming from *and* where you are connecting to.",
+			},
+			{
+				Name:        "Privacy Focused",
+				Value:       "triple-hop",
+				Description: "Optimize routes with a minimum of three hops. Provides very good privacy. No single node knows where you are coming from *and* where you are connecting to - with an additional hop just to be sure.",
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(CfgOptionRoutingAlgorithmKey, defaultRoutingAlg)
+	cfgStringOptions[CfgOptionRoutingAlgorithmKey] = cfgOptionRoutingAlgorithm
 
 	return nil
 }

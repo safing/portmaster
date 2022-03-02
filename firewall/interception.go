@@ -25,9 +25,6 @@ import (
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
-	"github.com/safing/spn/captain"
-	"github.com/safing/spn/crew"
-	"github.com/safing/spn/sluice"
 )
 
 var (
@@ -335,9 +332,6 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true
 
-		// Set tunnel options.
-		setCustomTunnelOptionsForPortmaster(conn)
-
 		// Redirect outbound DNS packests,
 	case pkt.IsOutbound() &&
 		pkt.Info().DstPort == 53 &&
@@ -368,41 +362,6 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		conn.Accept("privacy filter disabled", noReasonOptionKey)
 	}
 
-	// Tunnel, if enabled.
-	if pkt.IsOutbound() && conn.Entity.IPScope.IsGlobal() &&
-		tunnelEnabled() && conn.Verdict == network.VerdictAccept &&
-		conn.Process().Profile() != nil &&
-		conn.Process().Profile().UseSPN() {
-
-		switch {
-		case captain.ClientBootstrapping() &&
-			conn.Process().Pid == ownPID:
-			// Exclude the Portmaster during SPN bootstrapping.
-
-		case captain.IsExcepted(conn.Entity.IP) &&
-			conn.Process().Pid == ownPID:
-			// Exclude requests of the SPN itself.
-
-		case captain.ClientReady():
-			// Queue request in sluice.
-			err := sluice.AwaitRequest(conn, crew.HandleSluiceRequest)
-			if err != nil {
-				log.Tracer(pkt.Ctx()).Warningf("failed to rqeuest tunneling: %s", err)
-				conn.Failed("failed to request tunneling", "")
-			} else {
-				log.Tracer(pkt.Ctx()).Trace("filter: tunneling requested")
-				conn.Verdict = network.VerdictRerouteToTunnel
-				conn.Tunneled = true
-			}
-
-		default:
-			// Block connection as SPN is not ready yet.
-			log.Tracer(pkt.Ctx()).Trace("SPN not ready for tunneling")
-			conn.Failed("SPN not ready for tunneling", "")
-
-		}
-	}
-
 	// TODO: Enable inspection framework again.
 	conn.Inspecting = false
 
@@ -418,6 +377,9 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		995: // POP3-SSL
 		conn.Encrypted = true
 	}
+
+	// Check if connection should be tunneled.
+	checkTunneling(pkt.Ctx(), conn, pkt)
 
 	switch {
 	case conn.Inspecting:

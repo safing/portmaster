@@ -140,10 +140,6 @@ func checkPortmasterConnection(ctx context.Context, conn *network.Connection, _ 
 		log.Tracer(ctx).Infof("filter: granting own connection %s", conn)
 		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true
-
-		// Set tunnel options.
-		setCustomTunnelOptionsForPortmaster(conn)
-
 		return true
 	}
 

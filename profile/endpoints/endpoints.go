@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -56,6 +57,27 @@ entriesLoop:
 	}
 
 	return endpoints, nil
+}
+
+// ListEntryValidationRegex is a regex to bullshit check endpoint list entries.
+var ListEntryValidationRegex = strings.Join([]string{
+	`^(\+|\-) `,                   // Rule verdict.
+	`[A-z0-9\.:\-*/]+`,            // Entity matching.
+	`( `,                          // Start of optional matching.
+	`[A-z0-9*]+`,                  // Protocol matching.
+	`(/[A-z0-9]+(\-[A-z0-9]+)?)?`, // Port and port range matching.
+	`)?$`,                         // End of optional matching.
+}, "")
+
+// ValidateEndpointListConfigOption validates the given value.
+func ValidateEndpointListConfigOption(value interface{}) error {
+	list, ok := value.([]string)
+	if !ok {
+		return errors.New("invalid type")
+	}
+
+	_, err := ParseEndpoints(list)
+	return err
 }
 
 // IsSet returns whether the Endpoints object is "set".

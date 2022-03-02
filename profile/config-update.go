@@ -18,6 +18,8 @@ var (
 	cfgDefaultAction    uint8
 	cfgEndpoints        endpoints.Endpoints
 	cfgServiceEndpoints endpoints.Endpoints
+	cfgSPNUsagePolicy   endpoints.Endpoints
+	cfgSPNExitHubPolicy endpoints.Endpoints
 	cfgFilterLists      []string
 )
 
@@ -72,6 +74,20 @@ func updateGlobalConfigProfile(ctx context.Context, task *modules.Task) error {
 	list = cfgOptionFilterLists()
 	cfgFilterLists, err = filterlists.ResolveListIDs(list)
 	if err != nil {
+		lastErr = err
+	}
+
+	list = cfgOptionSPNUsagePolicy()
+	cfgSPNUsagePolicy, err = endpoints.ParseEndpoints(list)
+	if err != nil {
+		// TODO: module error?
+		lastErr = err
+	}
+
+	list = cfgOptionExitHubPolicy()
+	cfgSPNExitHubPolicy, err = endpoints.ParseEndpoints(list)
+	if err != nil {
+		// TODO: module error?
 		lastErr = err
 	}
 

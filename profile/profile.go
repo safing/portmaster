@@ -128,6 +128,8 @@ type Profile struct { //nolint:maligned // not worth the effort
 	serviceEndpoints  endpoints.Endpoints
 	filterListsSet    bool
 	filterListIDs     []string
+	spnUsagePolicy    endpoints.Endpoints
+	spnExitHubPolicy  endpoints.Endpoints
 
 	// Lifecycle Management
 	outdated   *abool.AtomicBool
@@ -199,6 +201,24 @@ func (profile *Profile) parseConfig() error {
 			lastErr = err
 		} else {
 			profile.filterListsSet = true
+		}
+	}
+
+	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionSPNUsagePolicyKey)
+	profile.spnUsagePolicy = nil
+	if ok {
+		profile.spnUsagePolicy, err = endpoints.ParseEndpoints(list)
+		if err != nil {
+			lastErr = err
+		}
+	}
+
+	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionExitHubPolicyKey)
+	profile.spnExitHubPolicy = nil
+	if ok {
+		profile.spnExitHubPolicy, err = endpoints.ParseEndpoints(list)
+		if err != nil {
+			lastErr = err
 		}
 	}
 
