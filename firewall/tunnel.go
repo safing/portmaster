@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/profile"
@@ -38,6 +39,21 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 		case captain.IsExcepted(conn.Entity.IP):
 			return
 		}
+	}
+
+	// Check more extensively for Local/LAN connections.
+	myNet, err := netenv.IsMyNet(conn.Entity.IP)
+	if err != nil {
+		log.Warningf("firewall: failed to check if %s is in my net: %s", conn.Entity.IP, err)
+	} else if myNet {
+		// With IPv6, just checking the IP scope is not enough, as the host very
+		// likely has a public IPv6 address.
+		// Don't tunnel LAN connections.
+
+		// TODO: We currently don't check the full LAN scope, but only the
+		// broadcast domain of the host - ie. the networks that the host is
+		// directly attached to.
+		return
 	}
 
 	// Get profile.
@@ -128,7 +144,7 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 	}
 
 	// Queue request in sluice.
-	err := sluice.AwaitRequest(conn, crew.HandleSluiceRequest)
+	err = sluice.AwaitRequest(conn, crew.HandleSluiceRequest)
 	if err != nil {
 		log.Tracer(pkt.Ctx()).Warningf("failed to request tunneling: %s", err)
 		conn.Failed("failed to request tunneling", "")
