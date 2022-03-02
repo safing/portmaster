@@ -4,11 +4,10 @@ import (
 	"context"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/profile"
 	"github.com/safing/portmaster/profile/endpoints"
-
-	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/resolver"
 	"github.com/safing/spn/captain"
 	"github.com/safing/spn/crew"
@@ -108,7 +107,7 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 	if conn.Process().Pid == ownPID && resolver.IsResolverAddress(conn.Entity.IP, conn.Entity.Port) {
 		dnsExitHubPolicy, err := captain.GetDNSExitHubPolicy()
 		if err != nil {
-			log.Errorf("firewall: failed to get dns exit hub policy: %w", err)
+			log.Errorf("firewall: failed to get dns exit hub policy: %s", err)
 		}
 
 		if err == nil && dnsExitHubPolicy.IsSet() {
