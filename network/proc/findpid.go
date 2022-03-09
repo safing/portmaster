@@ -23,7 +23,7 @@ func GetPID(socketInfo socket.Info) (pid int) {
 	currentPid := socketInfo.GetPID()
 
 	// If the current PID already is valid (ie. not unidentified), return it immediately.
-	if currentPid != socket.UnidentifiedProcessID {
+	if currentPid != socket.UndefinedProcessID {
 		return currentPid
 	}
 
@@ -91,7 +91,7 @@ func findPID(uid, inode int) (pid int) {
 		}
 	}
 
-	return socket.UnidentifiedProcessID
+	return socket.UndefinedProcessID
 }
 
 func findSocketFromPid(pid int, socketName string) bool {

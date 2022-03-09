@@ -18,7 +18,7 @@ func checkPID(socketInfo socket.Info, connInbound bool) (pid int, inbound bool, 
 	for i := 0; i <= lookupRetries; i++ {
 		// look for PID
 		pid = proc.GetPID(socketInfo)
-		if pid != socket.UnidentifiedProcessID {
+		if pid != socket.UndefinedProcessID {
 			// if we found a PID, return
 			break
 		}

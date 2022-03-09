@@ -317,7 +317,11 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	proc, inbound, err := process.GetProcessByConnection(pkt.Ctx(), pkt.Info())
 	if err != nil {
 		log.Tracer(pkt.Ctx()).Debugf("network: failed to find process of packet %s: %s", pkt, err)
-		proc = process.GetUnidentifiedProcess(pkt.Ctx())
+		if inbound {
+			proc = process.GetUnsolicitedProcess(pkt.Ctx())
+		} else {
+			proc = process.GetUnidentifiedProcess(pkt.Ctx())
+		}
 	}
 
 	// Create the (remote) entity.

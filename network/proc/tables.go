@@ -149,7 +149,7 @@ func getTableFromSource(stack uint8, procFile string) (connections []*socket.Con
 					IP:   localIP,
 					Port: uint16(localPort),
 				},
-				PID:   socket.UnidentifiedProcessID,
+				PID:   socket.UndefinedProcessID,
 				UID:   int(uid),
 				Inode: int(inode),
 			})
@@ -164,7 +164,7 @@ func getTableFromSource(stack uint8, procFile string) (connections []*socket.Con
 						IP:   localIP,
 						Port: uint16(localPort),
 					},
-					PID:   socket.UnidentifiedProcessID,
+					PID:   socket.UndefinedProcessID,
 					UID:   int(uid),
 					Inode: int(inode),
 				})
@@ -191,7 +191,7 @@ func getTableFromSource(stack uint8, procFile string) (connections []*socket.Con
 						IP:   remoteIP,
 						Port: uint16(remotePort),
 					},
-					PID:   socket.UnidentifiedProcessID,
+					PID:   socket.UndefinedProcessID,
 					UID:   int(uid),
 					Inode: int(inode),
 				})

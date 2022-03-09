@@ -8,29 +8,43 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/profile"
 )
 
 const (
-	// UnidentifiedProcessID is the PID used for anything that could not be
-	// attributed to a PID for any reason.
-	UnidentifiedProcessID = -1
-
 	// UndefinedProcessID is not used by any (virtual) process and signifies that
 	// the PID is unset.
-	UndefinedProcessID = -2
+	UndefinedProcessID = -1
+
+	// UnidentifiedProcessID is the PID used for outgoing connections that could
+	// not be attributed to a PID for any reason.
+	UnidentifiedProcessID = -2
+
+	// UnsolicitedProcessID is the PID used for incoming connections that could
+	// not be attributed to a PID for any reason.
+	UnsolicitedProcessID = -3
 
 	// NetworkHostProcessID is the PID used for requests served to the network.
 	NetworkHostProcessID = -255
 )
 
 var (
-	// unidentifiedProcess is used when a process cannot be found.
+	// unidentifiedProcess is used for non-attributed outgoing connections.
 	unidentifiedProcess = &Process{
 		UserID:    UnidentifiedProcessID,
 		UserName:  "Unknown",
 		Pid:       UnidentifiedProcessID,
 		ParentPid: UnidentifiedProcessID,
-		Name:      "Unidentified Processes",
+		Name:      profile.UnidentifiedProfileName,
+	}
+
+	// unsolicitedProcess is used for non-attributed incoming connections.
+	unsolicitedProcess = &Process{
+		UserID:    UnsolicitedProcessID,
+		UserName:  "Unknown",
+		Pid:       UnsolicitedProcessID,
+		ParentPid: UnsolicitedProcessID,
+		Name:      profile.UnsolicitedProfileName,
 	}
 
 	// systemProcess is used to represent the Kernel.
@@ -39,15 +53,20 @@ var (
 		UserName:  "Kernel",
 		Pid:       SystemProcessID,
 		ParentPid: SystemProcessID,
-		Name:      "Operating System",
+		Name:      profile.SystemProfileName,
 	}
 
 	getSpecialProcessSingleInflight singleflight.Group
 )
 
-// GetUnidentifiedProcess returns the special process assigned to unidentified processes.
+// GetUnidentifiedProcess returns the special process assigned to non-attributed outgoing connections.
 func GetUnidentifiedProcess(ctx context.Context) *Process {
 	return getSpecialProcess(ctx, unidentifiedProcess)
+}
+
+// GetUnsolicitedProcess returns the special process assigned to non-attributed incoming connections.
+func GetUnsolicitedProcess(ctx context.Context) *Process {
+	return getSpecialProcess(ctx, unsolicitedProcess)
 }
 
 // GetSystemProcess returns the special process used for the Kernel.

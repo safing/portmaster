@@ -131,6 +131,8 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	switch pid {
 	case UnidentifiedProcessID:
 		return GetUnidentifiedProcess(ctx), nil
+	case UnsolicitedProcessID:
+		return GetUnsolicitedProcess(ctx), nil
 	case SystemProcessID:
 		return GetSystemProcess(ctx), nil
 	}
