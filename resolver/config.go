@@ -104,6 +104,8 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 		- "empty": server replies with NXDomain status, but without any other record in any section
 		- "refused": server replies with Refused status
 		- "zeroip": server replies with an IP address, but it is zero
+	- "search": specify prioritized domains/TLDs for this resolver (delimited by ",")
+	- "search-only": use this resolver for domains in the "search" parameter only (no value)
 `, `"`, "`"),
 		OptType:         config.OptTypeStringArray,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
