@@ -179,6 +179,7 @@ var (
 	errInsecureProtocol = errors.New("insecure protocols disabled")
 	errAssignedServer   = errors.New("assigned (dhcp) nameservers disabled")
 	errMulticastDNS     = errors.New("multicast DNS disabled")
+	errOutOfScope       = errors.New("query out of scope for resolver")
 )
 
 func (q *Query) checkCompliance() error {
@@ -234,6 +235,11 @@ func (resolver *Resolver) checkCompliance(_ context.Context, q *Query) error {
 		if resolver.Info.Source == ServerSourceMDNS {
 			return errMulticastDNS
 		}
+	}
+
+	// Check if the resolver should only be used for the search scopes.
+	if resolver.SearchOnly && !domainInScope(q.dotPrefixedFQDN, resolver.Search) {
+		return errOutOfScope
 	}
 
 	return nil

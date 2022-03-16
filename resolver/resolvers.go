@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -157,11 +158,24 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		UpstreamBlockDetection: blockType,
 	}
 
+	// Parse search domains.
 	searchDomains := query.Get("search")
 	if searchDomains != "" {
 		err = configureSearchDomains(newResolver, strings.Split(searchDomains, ","), true)
 		if err != nil {
 			return nil, false, err
+		}
+	}
+
+	// Check if searchOnly is set and valid.
+	if query.Has("searchOnly") {
+		newResolver.SearchOnly = true
+
+		if query.Get("searchOnly") != "" {
+			return nil, false, errors.New("searchOnly may only be used as an empty parameter")
+		}
+		if len(newResolver.Search) == 0 {
+			return nil, false, errors.New("cannot use searchOnly without search scopes")
 		}
 	}
 
