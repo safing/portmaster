@@ -117,7 +117,7 @@ var (
 		".x.",
 		".zil.",
 
-		// EmerDNS: Domain name registraion on EmerCoin, https://emercoin.com/en/emerdns/
+		// EmerDNS: Domain name registration on EmerCoin, https://emercoin.com/en/emerdns/
 		".bazar.",
 		".coin.",
 		".emc.",

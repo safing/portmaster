@@ -1,7 +1,6 @@
 package resolver
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -10,11 +9,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/safing/portbase/utils"
-
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/netutils"
 )
@@ -266,7 +264,7 @@ func getSystemResolvers() (resolvers []*Resolver) {
 		}
 
 		if resolver.Info.IPScope.IsLAN() {
-			configureSearchDomains(resolver, nameserver.Search, false)
+			_ = configureSearchDomains(resolver, nameserver.Search, false)
 		}
 
 		resolvers = append(resolvers, resolver)
