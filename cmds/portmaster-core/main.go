@@ -13,7 +13,6 @@ import ( //nolint:gci,nolintlint
 	_ "github.com/safing/portmaster/core"
 	_ "github.com/safing/portmaster/firewall"
 	_ "github.com/safing/portmaster/nameserver"
-	_ "github.com/safing/portmaster/netquery"
 	_ "github.com/safing/portmaster/ui"
 	_ "github.com/safing/spn/captain"
 )

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"zombiezen.com/go/sqlite"
 )
 
 func Test_EncodeAsMap(t *testing.T) {
@@ -118,9 +119,106 @@ func Test_EncodeAsMap(t *testing.T) {
 		t.Run(c.Desc, func(t *testing.T) {
 			// t.Parallel()
 
-			res, err := EncodeAsMap(ctx, c.Input, "", DefaultEncodeConfig)
+			res, err := ToParamMap(ctx, c.Input, "", DefaultEncodeConfig)
 			assert.NoError(t, err)
 			assert.Equal(t, c.Expected, res)
+		})
+	}
+}
+
+func Test_EncodeValue(t *testing.T) {
+	ctx := context.TODO()
+	refTime := time.Date(2022, time.February, 15, 9, 51, 00, 00, time.UTC)
+
+	cases := []struct {
+		Desc   string
+		Column ColumnDef
+		Input  interface{}
+		Output interface{}
+	}{
+		{
+			"Special value time.Time as text",
+			ColumnDef{
+				IsTime: true,
+				Type:   sqlite.TypeText,
+			},
+			refTime,
+			refTime.Format(sqliteTimeFormat),
+		},
+		{
+			"Special value time.Time as unix-epoch",
+			ColumnDef{
+				IsTime: true,
+				Type:   sqlite.TypeInteger,
+			},
+			refTime,
+			refTime.Unix(),
+		},
+		{
+			"Special value time.Time as unixnano-epoch",
+			ColumnDef{
+				IsTime:   true,
+				Type:     sqlite.TypeInteger,
+				UnixNano: true,
+			},
+			refTime,
+			refTime.UnixNano(),
+		},
+		{
+			"Special value zero time",
+			ColumnDef{
+				IsTime: true,
+				Type:   sqlite.TypeText,
+			},
+			time.Time{},
+			nil,
+		},
+		{
+			"Special value zero time pointer",
+			ColumnDef{
+				IsTime: true,
+				Type:   sqlite.TypeText,
+			},
+			new(time.Time),
+			nil,
+		},
+		{
+			"Special value *time.Time as text",
+			ColumnDef{
+				IsTime: true,
+				Type:   sqlite.TypeText,
+			},
+			&refTime,
+			refTime.Format(sqliteTimeFormat),
+		},
+		{
+			"Special value untyped nil",
+			ColumnDef{
+				IsTime: true,
+				Type:   sqlite.TypeText,
+			},
+			nil,
+			nil,
+		},
+		{
+			"Special value typed nil",
+			ColumnDef{
+				IsTime: true,
+				Type:   sqlite.TypeText,
+			},
+			(*time.Time)(nil),
+			nil,
+		},
+	}
+
+	for idx := range cases {
+		c := cases[idx]
+		t.Run(c.Desc, func(t *testing.T) {
+			// t.Parallel()
+
+			res, err := EncodeValue(ctx, &c.Column, c.Input, DefaultEncodeConfig)
+			assert.NoError(t, err)
+			assert.Equal(t, c.Output, res)
 		})
 	}
 }

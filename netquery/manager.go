@@ -109,8 +109,13 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 				continue
 			}
 
+			// we clone the record metadata from the connection
+			// into the new model so the portbase/database layer
+			// can handle NEW/UPDATE correctly.
+			cloned := conn.Meta().Duplicate()
+
 			// push an update for the connection
-			if err := mng.pushConnUpdate(ctx, *model); err != nil {
+			if err := mng.pushConnUpdate(ctx, *cloned, *model); err != nil {
 				log.Errorf("netquery: failed to push update for conn %s via database system: %w", conn.ID, err)
 			}
 
@@ -123,7 +128,7 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 	}
 }
 
-func (mng *Manager) pushConnUpdate(ctx context.Context, conn Conn) error {
+func (mng *Manager) pushConnUpdate(ctx context.Context, meta record.Meta, conn Conn) error {
 	blob, err := json.Marshal(conn)
 	if err != nil {
 		return fmt.Errorf("failed to marshal connection: %w", err)
@@ -132,27 +137,13 @@ func (mng *Manager) pushConnUpdate(ctx context.Context, conn Conn) error {
 	key := fmt.Sprintf("%s:%s%s", mng.runtimeReg.DatabaseName(), mng.pushPrefix, conn.ID)
 	wrapper, err := record.NewWrapper(
 		key,
-		new(record.Meta),
+		&meta,
 		dsd.JSON,
 		blob,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create record wrapper: %w", err)
 	}
-
-	// FIXME(ppacher): it may happen that started != now for NEW connections.
-	// In that case we would push and UPD rather than NEW even if
-	// the connection is new ...
-	// Though, that's still better than always pushing NEW for existing
-	// connections.
-	// If we would use UnixNano() here chances would be even worse.
-	//
-	// Verify if the check in portbase/api/database.go is vulnerable
-	// to such timing issues in general.
-	wrapper.SetMeta(&record.Meta{
-		Created:  conn.Started.Unix(),
-		Modified: time.Now().Unix(),
-	})
 
 	mng.push(wrapper)
 	return nil
@@ -195,7 +186,7 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		extraData["reason"] = conn.Reason
 
 		c.RemoteIP = conn.Entity.IP.String()
-		c.RemotePort = conn.Entity.Port // FIXME(ppacher): or do we want DstPort() here?
+		c.RemotePort = conn.Entity.Port
 		c.Domain = conn.Entity.Domain
 		c.Country = conn.Entity.Country
 		c.ASN = conn.Entity.ASN

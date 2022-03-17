@@ -18,6 +18,7 @@ var (
 	TagUnixNano          = "unixnano"
 	TagPrimaryKey        = "primary"
 	TagAutoIncrement     = "autoincrement"
+	TagTime              = "time"
 	TagNotNull           = "not-null"
 	TagNullable          = "nullable"
 	TagTypeInt           = "integer"
@@ -48,6 +49,7 @@ type (
 		PrimaryKey    bool
 		AutoIncrement bool
 		UnixNano      bool
+		IsTime        bool
 	}
 )
 
@@ -188,6 +190,8 @@ func applyStructFieldTag(fieldType reflect.StructField, def *ColumnDef) error {
 				def.Nullable = true
 			case TagUnixNano:
 				def.UnixNano = true
+			case TagTime:
+				def.IsTime = true
 
 			// basic column types
 			case TagTypeInt:

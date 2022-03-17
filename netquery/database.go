@@ -244,7 +244,7 @@ func (db *Database) dumpTo(ctx context.Context, w io.Writer) error {
 // Save inserts the connection conn into the SQLite database. If conn
 // already exists the table row is updated instead.
 func (db *Database) Save(ctx context.Context, conn Conn) error {
-	connMap, err := orm.EncodeAsMap(ctx, conn, "", orm.DefaultEncodeConfig)
+	connMap, err := orm.ToParamMap(ctx, conn, "", orm.DefaultEncodeConfig)
 	if err != nil {
 		return fmt.Errorf("failed to encode connection for SQL: %w", err)
 	}
