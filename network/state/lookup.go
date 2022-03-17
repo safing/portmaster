@@ -60,7 +60,7 @@ func Lookup(pktInfo *packet.Info, fast bool) (pid int, inbound bool, err error) 
 		return udp6Table.lookup(pktInfo, fast)
 
 	default:
-		return socket.UnidentifiedProcessID, false, errors.New("unsupported protocol for finding process")
+		return socket.UndefinedProcessID, false, errors.New("unsupported protocol for finding process")
 	}
 }
 
@@ -108,7 +108,7 @@ func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 		}
 	}
 
-	return socket.UnidentifiedProcessID, pktInfo.Inbound, ErrConnectionNotFound
+	return socket.UndefinedProcessID, pktInfo.Inbound, ErrConnectionNotFound
 }
 
 func (table *tcpTable) findSocket(pktInfo *packet.Info) (
@@ -201,7 +201,7 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 		}
 	}
 
-	return socket.UnidentifiedProcessID, pktInfo.Inbound, ErrConnectionNotFound
+	return socket.UndefinedProcessID, pktInfo.Inbound, ErrConnectionNotFound
 }
 
 func (table *udpTable) findSocket(pktInfo *packet.Info, isInboundMulticast bool) (socketInfo *socket.BindInfo) {

@@ -31,6 +31,15 @@ func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process 
 		return nil, pktInfo.Inbound, err
 	}
 
+	// Fallback to special profiles if PID could not be found.
+	if pid == UndefinedProcessID {
+		if connInbound {
+			pid = UnsolicitedProcessID
+		} else {
+			pid = UnidentifiedProcessID
+		}
+	}
+
 	process, err = GetOrFindProcess(ctx, pid)
 	if err != nil {
 		log.Tracer(ctx).Debugf("process: failed to find (primary) process with PID: %s", err)

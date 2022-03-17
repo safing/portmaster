@@ -10,12 +10,25 @@ const (
 	// UnidentifiedProfileID is the profile ID used for unidentified processes.
 	UnidentifiedProfileID = "_unidentified"
 	// UnidentifiedProfileName is the name used for unidentified processes.
-	UnidentifiedProfileName = "Unidentified Processes"
+	UnidentifiedProfileName = "Unidentified App"
 	// UnidentifiedProfileDescription is the description used for unidentified processes.
-	UnidentifiedProfileDescription = `This is not a real application, but a collection of connections that could not be attributed to a process. This could be because the Portmaster failed to identify the process, or simply because there is no process waiting for an incoming connection.
+	UnidentifiedProfileDescription = `Connections that could not be attributed to a specific app.
 
-Seeing a lot of incoming connections here is normal, as this resembles the network chatter of other devices.
+The Portmaster attributes connections (only TCP/UDP) to specific apps. When attribution for a connection fails, it ends up here.
+
+Connections from unsupported protocols (like ICMP/"ping") are always collected here.
 `
+
+	// UnsolicitedProfileID is the profile ID used for unsolicited connections.
+	UnsolicitedProfileID = "_unsolicited"
+	// UnsolicitedProfileName is the name used for unsolicited connections.
+	UnsolicitedProfileName = "Network Noise"
+	// UnsolicitedProfileDescription is the description used for unsolicited connections.
+	UnsolicitedProfileDescription = `Common connections coming from your Local Area Network.
+
+Local Area Networks usually have quite a lot of traffic from applications that are trying to find things on the network. This might be a computer trying to find a printer, or a file sharing application searching for local peers. These network packets will automatically arrive at your device.
+
+These connections - the "network noise" - can be found in this app.`
 
 	// SystemProfileID is the profile ID used for the system/kernel.
 	SystemProfileID = "_system"
@@ -68,6 +81,9 @@ func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (ok, chan
 	case UnidentifiedProfileID:
 		newProfileName = UnidentifiedProfileName
 		newDescription = UnidentifiedProfileDescription
+	case UnsolicitedProfileID:
+		newProfileName = UnsolicitedProfileName
+		newDescription = UnsolicitedProfileDescription
 	case SystemProfileID:
 		newProfileName = SystemProfileName
 		newDescription = SystemProfileDescription

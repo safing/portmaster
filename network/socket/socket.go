@@ -6,8 +6,10 @@ import (
 )
 
 const (
-	// UnidentifiedProcessID is originally defined in the process pkg, but duplicated here because of import loops.
-	UnidentifiedProcessID = -1
+	// UndefinedProcessID signifies that the process ID is unknown.
+	// It must match portmaster/process.UndefinedProcessID
+	// It is duplicated here because of import loops.
+	UndefinedProcessID = -1
 )
 
 // ConnectionInfo holds socket information returned by the system.

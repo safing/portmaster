@@ -34,6 +34,8 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	switch p.Pid {
 	case UnidentifiedProcessID:
 		profileID = profile.UnidentifiedProfileID
+	case UnsolicitedProcessID:
+		profileID = profile.UnsolicitedProfileID
 	case SystemProcessID:
 		profileID = profile.SystemProfileID
 	case ownPID:
