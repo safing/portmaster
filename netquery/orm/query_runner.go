@@ -10,6 +10,8 @@ import (
 )
 
 type (
+	// QueryOption can be specified at RunQuery to alter the behavior
+	// of the executed query.
 	QueryOption func(opts *queryOpts)
 
 	queryOpts struct {
@@ -21,36 +23,75 @@ type (
 	}
 )
 
+// WithTransient marks the query as transient.
+//
+// Transient queries will not be cached for later
+// re-use after they have been prepared.
 func WithTransient() QueryOption {
 	return func(opts *queryOpts) {
 		opts.Transient = true
 	}
 }
 
+// WithArgs adds a list of arguments for the query. Arguments
+// are applied in order.
+//
+// See SQL Language Expression documentation of SQLite for
+// details: https://sqlite.org/lang_expr.html
 func WithArgs(args ...interface{}) QueryOption {
 	return func(opts *queryOpts) {
 		opts.Args = args
 	}
 }
 
+// WithNamedArgs adds args to the query. The query must used
+// named argument placeholders. According to the SQLite spec,
+// arguments must either start with ':', '@' or '$'.
+//
+// See SQL Language Expression documentation of SQLite for
+// details: https://sqlite.org/lang_expr.html
 func WithNamedArgs(args map[string]interface{}) QueryOption {
 	return func(opts *queryOpts) {
 		opts.NamedArgs = args
 	}
 }
 
+// WithResult sets the result receiver. result is expected to
+// be a pointer to a slice of struct or map types.
+//
+// For decoding DecodeStmt is used to decode each
+// row into a new slice element. It thus supports special values
+// like time.Time. See DecodeStmt() and WithDecodeConfig() for
+// more information.
 func WithResult(result interface{}) QueryOption {
 	return func(opts *queryOpts) {
 		opts.Result = result
 	}
 }
 
+// WithDecodeConfig configures the DecodeConfig to use when
+// calling DecodeStmt to decode each row into the result slice.
+//
+// If not specified, DefaultDecodeConfig will be used.
 func WithDecodeConfig(cfg DecodeConfig) QueryOption {
 	return func(opts *queryOpts) {
 		opts.DecodeConfig = cfg
 	}
 }
 
+// RunQuery executes the query stored in sql against the databased opened in
+// conn. Please refer to the documentation of QueryOption, especially WithResult()
+// for more information on how to retrieve the resulting rows.
+//
+// Example:
+//
+//		var result []struct{
+//			Count int `sqlite:"rowCount"`
+//		}
+//
+//		err := RunQuery(ctx, conn, "SELECT COUNT(*) AS rowCount FROM table", WithResult(&result))
+//		fmt.Println(result[0].Count)
+//
 func RunQuery(ctx context.Context, conn *sqlite.Conn, sql string, modifiers ...QueryOption) error {
 	args := queryOpts{
 		DecodeConfig: DefaultDecodeConfig,
