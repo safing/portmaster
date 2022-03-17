@@ -52,56 +52,34 @@ func GetAssignedGlobalAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
 }
 
 var (
-	myNetworks                    []*net.IPNet
-	myNetworksLock                sync.Mutex
-	myNetworksNetworkChangedFlag  = GetNetworkChangedFlag()
-	myNetworksRefreshError        error //nolint:errname // Not what the linter thinks this is for.
-	myNetworksRefreshFailingUntil time.Time
+	myNetworks                   []*net.IPNet
+	myNetworksLock               sync.Mutex
+	myNetworksNetworkChangedFlag = GetNetworkChangedFlag()
+	myNetworksRefreshError       error //nolint:errname // Not what the linter thinks this is for.
+	myNetworksDontRefreshUntil   time.Time
 )
 
-// IsMyIP returns whether the given unicast IP is currently configured on the local host.
-// Broadcast or multicast addresses will never match, even if valid in in use.
-func IsMyIP(ip net.IP) (yes bool, err error) {
-	// Check for IPs that don't need extra checks.
-	switch netutils.GetIPScope(ip) { //nolint:exhaustive // Only looking for specific values.
-	case netutils.HostLocal:
-		return true, nil
-	case netutils.LocalMulticast, netutils.GlobalMulticast:
-		return false, nil
+// refreshMyNetworks refreshes the networks held in refreshMyNetworks.
+// The caller must hold myNetworksLock.
+func refreshMyNetworks() error {
+	// Check if we already refreshed recently.
+	if time.Now().Before(myNetworksDontRefreshUntil) {
+		// Return previous error, if available.
+		if myNetworksRefreshError != nil {
+			return fmt.Errorf("failed to previously refresh interface addresses: %w", myNetworksRefreshError)
+		}
+		return nil
 	}
-
-	myNetworksLock.Lock()
-	defer myNetworksLock.Unlock()
-
-	// Check if current data matches IP.
-	// Matching on somewhat older data is not a problem, as these IPs would not
-	// just randomly pop up somewhere else that fast.
-	mine, myNet := checkIfMyIP(ip)
-	switch {
-	case mine:
-		// IP matched.
-		return true, nil
-	case myNetworksNetworkChangedFlag.IsSet():
-		// The network changed, so we need to refresh the data.
-	case myNet:
-		// IP is one of the networks and nothing changed, so this is not our IP.
-		return false, nil
-	}
-
-	// Check if there was a recent error on the previous refresh.
-	if myNetworksRefreshError != nil && time.Now().Before(myNetworksRefreshFailingUntil) {
-		return false, fmt.Errorf("failed to previously refresh interface addresses: %w", myNetworksRefreshError)
-	}
+	myNetworksRefreshError = nil
+	myNetworksDontRefreshUntil = time.Now().Add(1 * time.Second)
 
 	// Refresh assigned networks.
 	interfaceNetworks, err := net.InterfaceAddrs()
 	if err != nil {
-		// Save error for one second.
 		// In some cases the system blocks on this call, which piles up to
 		// literally over thousand goroutines wanting to try this again.
 		myNetworksRefreshError = err
-		myNetworksRefreshFailingUntil = time.Now().Add(1 * time.Second)
-		return false, fmt.Errorf("failed to refresh interface addresses: %w", err)
+		return fmt.Errorf("failed to refresh interface addresses: %w", err)
 	}
 	myNetworks = make([]*net.IPNet, 0, len(interfaceNetworks))
 	for _, ifNet := range interfaceNetworks {
@@ -114,24 +92,39 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 		myNetworks = append(myNetworks, ipNet)
 	}
 
-	// Reset error.
-	myNetworksRefreshError = nil
-
 	// Reset changed flag.
 	myNetworksNetworkChangedFlag.Refresh()
 
-	// Check for match again.
-	if mine, matched := checkIfMyIP(ip); matched {
-		return mine, nil
-	}
-	return false, nil
+	return nil
 }
 
-func checkIfMyIP(ip net.IP) (mine bool, myNet bool) {
+// IsMyIP returns whether the given unicast IP is currently configured on the local host.
+// Broadcast or multicast addresses will never match, even if valid and in use.
+// Function is optimized with the assumption that is likely that the IP is mine.
+func IsMyIP(ip net.IP) (yes bool, err error) {
+	// Check for IPs that don't need extra checks.
+	switch netutils.GetIPScope(ip) { //nolint:exhaustive // Only looking for specific values.
+	case netutils.HostLocal:
+		return true, nil
+	case netutils.LocalMulticast, netutils.GlobalMulticast:
+		return false, nil
+	}
+
+	myNetworksLock.Lock()
+	defer myNetworksLock.Unlock()
+
+	// Check if the network changed.
+	if myNetworksNetworkChangedFlag.IsSet() {
+		err := refreshMyNetworks()
+		if err != nil {
+			return false, err
+		}
+	}
+
 	// Check against assigned IPs.
 	for _, myNet := range myNetworks {
 		if ip.Equal(myNet.IP) {
-			return true, true
+			return true, nil
 		}
 	}
 
@@ -140,9 +133,47 @@ func checkIfMyIP(ip net.IP) (mine bool, myNet bool) {
 	// most cases and network matching is more expensive.
 	for _, myNet := range myNetworks {
 		if myNet.Contains(ip) {
-			return false, true
+			return false, nil
 		}
 	}
 
-	return false, false
+	// Could not find IP anywhere. Refresh network to be sure.
+	err = refreshMyNetworks()
+	if err != nil {
+		return false, err
+	}
+
+	// Check against assigned IPs again.
+	for _, myNet := range myNetworks {
+		if ip.Equal(myNet.IP) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// IsMyNet returns whether the given IP is currently in the host's broadcast
+// domain - ie. the networks that the host is directly attached to.
+// Function is optimized with the assumption that is unlikely that the IP is
+// in the broadcast domain.
+func IsMyNet(ip net.IP) (yes bool, err error) {
+	myNetworksLock.Lock()
+	defer myNetworksLock.Unlock()
+
+	// Check if the network changed.
+	if myNetworksNetworkChangedFlag.IsSet() {
+		err := refreshMyNetworks()
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// Check if the IP address is in my networks.
+	for _, myNet := range myNetworks {
+		if myNet.Contains(ip) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
