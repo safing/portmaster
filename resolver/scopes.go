@@ -91,11 +91,62 @@ var (
 	// Special-Service Domain Names
 	// Handling: Send to nameservers with matching search scope, then local and system assigned nameservers.
 	specialServiceDomains = []string{
-		// RFC7686: Tor Hidden Services
+		// RFC7686: Tor Hidden Services, https://www.torproject.org/
 		".onion.",
+
+		// I2P: Fully encrypted private network layer, https://geti2p.net/
+		".i2p.",
+
+		// Lokinet: Internal services on the decentralised network, https://lokinet.org/
+		".loki.",
 
 		// Namecoin: Blockchain based nameservice, https://www.namecoin.org/
 		".bit.",
+
+		// Ethereum Name Service (ENS): naming system based on the Ethereum blockchain, https://ens.domains/
+		".eth.",
+
+		// Unstoppable Domains: NFT based domain names, https://unstoppabledomains.com/
+		".888.",
+		".bitcoin.",
+		".coin.",
+		".crypto.",
+		".dao.",
+		".nft.",
+		".wallet.",
+		".x.",
+		".zil.",
+
+		// EmerDNS: Domain name registration on EmerCoin, https://emercoin.com/en/emerdns/
+		".bazar.",
+		".coin.",
+		".emc.",
+		".lib.",
+
+		// OpenNIC TLDs: Democratic alternative to ICANN, https://www.opennic.org/
+		".bbs.",
+		".chan.",
+		".dyn.",
+		".free.",
+		".fur.",
+		".geek.",
+		".glue.",
+		".gopher.",
+		".indy.",
+		".libre.",
+		".neo.",
+		".null.",
+		".o.",
+		".oss.",
+		".oz.",
+		".parody.",
+		".pirate.",
+
+		// NewNations: TLDs for countries/regions without a ccTLD, http://new-nations.net/
+		".ku.",
+		".te.",
+		".ti.",
+		".uu.",
 	}
 )
 
@@ -179,6 +230,7 @@ var (
 	errInsecureProtocol = errors.New("insecure protocols disabled")
 	errAssignedServer   = errors.New("assigned (dhcp) nameservers disabled")
 	errMulticastDNS     = errors.New("multicast DNS disabled")
+	errOutOfScope       = errors.New("query out of scope for resolver")
 )
 
 func (q *Query) checkCompliance() error {
@@ -234,6 +286,11 @@ func (resolver *Resolver) checkCompliance(_ context.Context, q *Query) error {
 		if resolver.Info.Source == ServerSourceMDNS {
 			return errMulticastDNS
 		}
+	}
+
+	// Check if the resolver should only be used for the search scopes.
+	if resolver.SearchOnly && !domainInScope(q.dotPrefixedFQDN, resolver.Search) {
+		return errOutOfScope
 	}
 
 	return nil
