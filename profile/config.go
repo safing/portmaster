@@ -264,6 +264,7 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 		Key:          CfgOptionEndpointsKey,
 		Description:  "Rules that apply to outgoing network connections. Cannot overrule Network Scopes and Connection Types (see above).",
 		Help:         rulesHelp,
+		Sensitive:    true,
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{},
 		Annotations: config.Annotations{
@@ -287,6 +288,7 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 		Key:            CfgOptionServiceEndpointsKey,
 		Description:    "Rules that apply to incoming network connections. Cannot overrule Network Scopes and Connection Types (see above). Also note that the default action for incoming connections is to always block.",
 		Help:           rulesHelp,
+		Sensitive:      true,
 		OptType:        config.OptTypeStringArray,
 		DefaultValue:   []string{"+ Localhost"},
 		ExpertiseLevel: config.ExpertiseLevelExpert,
@@ -620,6 +622,7 @@ Please note that if you are using the system resolver, bypass attempts might be 
 		Key:          CfgOptionSPNUsagePolicyKey,
 		Description:  `Customize which websites should or should not be routed through the SPN. Only active if "Use SPN" is enabled.`,
 		Help:         rulesHelp,
+		Sensitive:    true,
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{},
 		Annotations: config.Annotations{
@@ -646,6 +649,7 @@ Please note that if you are using the system resolver, bypass attempts might be 
 
 By default, the Portmaster tries to choose the node closest to the destination as the Exit Node. This reduces your exposure to the open Internet. Exit Nodes are chosen for every destination separately.`,
 		Help:         SPNRulesHelp,
+		Sensitive:    true,
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{},
 		Annotations: config.Annotations{
