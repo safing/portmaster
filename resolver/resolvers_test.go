@@ -1,44 +1,40 @@
 package resolver
 
-import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-)
+import "testing"
 
 func TestCheckResolverSearchScope(t *testing.T) {
 	t.Parallel()
 
-	// should fail (invalid)
-	assert.Error(t, checkSearchScope("."))
-	assert.Error(t, checkSearchScope(".com."))
-	assert.Error(t, checkSearchScope("com."))
-	assert.Error(t, checkSearchScope(".com"))
+	test := func(t *testing.T, domain string, expectedResult bool) {
+		t.Helper()
 
-	// should fail (too high scope)
-	assert.Error(t, checkSearchScope("com"))
-	assert.Error(t, checkSearchScope("net"))
-	assert.Error(t, checkSearchScope("org"))
-	assert.Error(t, checkSearchScope("pvt.k12.ma.us"))
+		if checkSearchScope(domain) != expectedResult {
+			if expectedResult {
+				t.Errorf("domain %s failed scope test", domain)
+			} else {
+				t.Errorf("domain %s should fail scope test", domain)
+			}
+		}
+	}
+
+	// should fail (invalid)
+	test(t, ".", false)
+	test(t, ".com.", false)
+	test(t, "com.", false)
+	test(t, ".com", false)
 
 	// should succeed
-	assert.NoError(t, checkSearchScope("a.com"))
-	assert.NoError(t, checkSearchScope("b.a.com"))
-	assert.NoError(t, checkSearchScope("c.b.a.com"))
-	assert.NoError(t, checkSearchScope("test.pvt.k12.ma.us"))
+	test(t, "a.com", true)
+	test(t, "b.a.com", true)
+	test(t, "c.b.a.com", true)
 
-	assert.NoError(t, checkSearchScope("onion"))
-	assert.NoError(t, checkSearchScope("a.onion"))
-	assert.NoError(t, checkSearchScope("b.a.onion"))
-	assert.NoError(t, checkSearchScope("c.b.a.onion"))
+	test(t, "onion", true)
+	test(t, "a.onion", true)
+	test(t, "b.a.onion", true)
+	test(t, "c.b.a.onion", true)
 
-	assert.NoError(t, checkSearchScope("bit"))
-	assert.NoError(t, checkSearchScope("a.bit"))
-	assert.NoError(t, checkSearchScope("b.a.bit"))
-	assert.NoError(t, checkSearchScope("c.b.a.bit"))
-
-	assert.NoError(t, checkSearchScope("doesnotexist"))
-	assert.NoError(t, checkSearchScope("a.doesnotexist"))
-	assert.NoError(t, checkSearchScope("b.a.doesnotexist"))
-	assert.NoError(t, checkSearchScope("c.b.a.doesnotexist"))
+	test(t, "bit", true)
+	test(t, "a.bit", true)
+	test(t, "b.a.bit", true)
+	test(t, "c.b.a.bit", true)
 }

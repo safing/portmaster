@@ -27,8 +27,6 @@ func sendResponse(
 		// Dropping query.
 		return nil
 	}
-	// Signify that we are a recursive resolver.
-	reply.RecursionAvailable = true
 
 	// Add extra RRs through a custom RRProvider.
 	for _, rrProvider := range rrProviders {

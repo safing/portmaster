@@ -14,6 +14,8 @@ import (
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portbase/utils/debug"
+
+	// Dependency.
 	_ "github.com/safing/portmaster/core/base"
 	"github.com/safing/portmaster/intel"
 )

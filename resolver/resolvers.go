@@ -12,26 +12,15 @@ import (
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/netutils"
 )
-
-const maxSearchDomains = 100
 
 // Scope defines a domain scope and which resolvers can resolve it.
 type Scope struct {
 	Domain    string
 	Resolvers []*Resolver
 }
-
-const (
-	parameterName       = "name"
-	parameterVerify     = "verify"
-	parameterBlockedIf  = "blockedif"
-	parameterSearch     = "search"
-	parameterSearchOnly = "search-only"
-)
 
 var (
 	globalResolvers []*Resolver          // all (global) resolvers
@@ -128,47 +117,31 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		return nil, true, nil // skip
 	}
 
-	// Get parameters and check if keys exist.
 	query := u.Query()
-	for key := range query {
-		switch key {
-		case parameterName,
-			parameterVerify,
-			parameterBlockedIf,
-			parameterSearch,
-			parameterSearchOnly:
-			// Known key, continue.
-		default:
-			// Unknown key, abort.
-			return nil, false, fmt.Errorf(`unknown parameter "%s"`, key)
-		}
-	}
-
-	// Check domain verification config.
-	verifyDomain := query.Get(parameterVerify)
+	verifyDomain := query.Get("verify")
 	if verifyDomain != "" && u.Scheme != ServerTypeDoT {
 		return nil, false, fmt.Errorf("domain verification only supported in DOT")
 	}
+
 	if verifyDomain == "" && u.Scheme == ServerTypeDoT {
 		return nil, false, fmt.Errorf("DOT must have a verify query parameter set")
 	}
 
-	// Check block detection type.
-	blockType := query.Get(parameterBlockedIf)
+	blockType := query.Get("blockedif")
 	if blockType == "" {
 		blockType = BlockDetectionZeroIP
 	}
+
 	switch blockType {
 	case BlockDetectionDisabled, BlockDetectionEmptyAnswer, BlockDetectionRefused, BlockDetectionZeroIP:
 	default:
 		return nil, false, fmt.Errorf("invalid value for upstream block detection (blockedif=)")
 	}
 
-	// Build resolver.
 	newResolver := &Resolver{
 		ConfigURL: resolverURL,
 		Info: &ResolverInfo{
-			Name:    query.Get(parameterName),
+			Name:    query.Get("name"),
 			Type:    u.Scheme,
 			Source:  source,
 			IP:      ip,
@@ -180,55 +153,22 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		UpstreamBlockDetection: blockType,
 	}
 
-	// Parse search domains.
-	searchDomains := query.Get(parameterSearch)
-	if searchDomains != "" {
-		err = configureSearchDomains(newResolver, strings.Split(searchDomains, ","), true)
-		if err != nil {
-			return nil, false, err
-		}
-	}
-
-	// Check if searchOnly is set and valid.
-	if query.Has(parameterSearchOnly) {
-		newResolver.SearchOnly = true
-		if query.Get(parameterSearchOnly) != "" {
-			return nil, false, fmt.Errorf("%s may only be used as an empty parameter", parameterSearchOnly)
-		}
-		if len(newResolver.Search) == 0 {
-			return nil, false, fmt.Errorf("cannot use %s without search scopes", parameterSearchOnly)
-		}
-	}
-
 	newResolver.Conn = resolverConnFactory(newResolver)
 	return newResolver, false, nil
 }
 
-func configureSearchDomains(resolver *Resolver, searches []string, hardfail bool) error {
-	// Check all search domains.
-	for i, value := range searches {
-		trimmedDomain := strings.ToLower(strings.Trim(value, "."))
-		err := checkSearchScope(trimmedDomain)
-		if err != nil {
-			if hardfail {
-				return fmt.Errorf("failed to validate search domain #%d: %w", i+1, err)
-			}
-			log.Warningf("resolver: skipping invalid search domain for resolver %s: %s", resolver, utils.SafeFirst16Chars(value))
-		} else {
-			resolver.Search = append(resolver.Search, fmt.Sprintf(".%s.", trimmedDomain))
+func configureSearchDomains(resolver *Resolver, searches []string) {
+	// only allow searches for local resolvers
+	for _, value := range searches {
+		trimmedDomain := strings.Trim(value, ".")
+		if checkSearchScope(trimmedDomain) {
+			resolver.Search = append(resolver.Search, fmt.Sprintf(".%s.", strings.Trim(value, ".")))
 		}
 	}
-
-	// Limit search domains to mitigate exploitation via malicious local resolver.
-	if len(resolver.Search) > maxSearchDomains {
-		if hardfail {
-			return fmt.Errorf("too many search domains, for security reasons only %d search domains are supported", maxSearchDomains)
-		}
-		log.Warningf("resolver: limiting search domains for resolver %s to %d for security reasons", resolver, maxSearchDomains)
-		resolver.Search = resolver.Search[:maxSearchDomains]
+	// cap to mitigate exploitation via malicious local resolver
+	if len(resolver.Search) > 100 {
+		resolver.Search = resolver.Search[:100]
 	}
-
-	return nil
 }
 
 func getConfiguredResolvers(list []string) (resolvers []*Resolver) {
@@ -264,7 +204,7 @@ func getSystemResolvers() (resolvers []*Resolver) {
 		}
 
 		if resolver.Info.IPScope.IsLAN() {
-			_ = configureSearchDomains(resolver, nameserver.Search, false)
+			configureSearchDomains(resolver, nameserver.Search)
 		}
 
 		resolvers = append(resolvers, resolver)
@@ -415,48 +355,46 @@ func setScopedResolvers(resolvers []*Resolver) {
 	)
 }
 
-func checkSearchScope(searchDomain string) error {
-	// Sanity check the input.
+func checkSearchScope(searchDomain string) (ok bool) {
+	// sanity check
 	if len(searchDomain) == 0 ||
 		searchDomain[0] == '.' ||
 		searchDomain[len(searchDomain)-1] == '.' {
-		return fmt.Errorf("invalid (1) search domain: %s", searchDomain)
+		return false
 	}
 
-	// Domains that are specifically listed in the special service domains may be
-	// diverted completely.
-	if domainInScope("."+searchDomain+".", specialServiceDomains) {
-		return nil
-	}
+	// add more subdomains to use official publicsuffix package for our cause
+	searchDomain = "*.*.*.*.*." + searchDomain
 
-	// In order to check if the search domain is too high up in the hierarchy, we
-	// need to add some more subdomains.
-	augmentedSearchDomain := "*.*.*.*.*." + searchDomain
-
-	// Get the public suffix of the search domain and if the TLD is managed by ICANN.
-	suffix, icann := publicsuffix.PublicSuffix(augmentedSearchDomain)
-	// Sanity check the result.
+	// get suffix
+	suffix, icann := publicsuffix.PublicSuffix(searchDomain)
+	// sanity check
 	if len(suffix) == 0 {
-		return fmt.Errorf("invalid (2) search domain: %s", searchDomain)
+		return false
 	}
-
-	// TLDs that are not managed by ICANN (ie. are unofficial) may be
-	// diverted completely.
-	// This might include special service domains like ".onion" and ".bit".
+	// inexistent (custom) tlds are okay
+	// this will include special service domains! (.onion, .bit, ...)
 	if !icann && !strings.Contains(suffix, ".") {
-		return nil
+		return true
 	}
 
-	// Build the eTLD+1 domain, which is the highest that may be diverted.
-	split := len(augmentedSearchDomain) - len(suffix) - 1
-	eTLDplus1 := augmentedSearchDomain[1+strings.LastIndex(augmentedSearchDomain[:split], "."):]
+	// check if suffix is a special service domain (may be handled fully by local nameserver)
+	if domainInScope("."+suffix+".", specialServiceDomains) {
+		return true
+	}
 
-	// Check if the scope is being violated by checking if the eTLD+1 contains a wildcard.
+	// build eTLD+1
+	split := len(searchDomain) - len(suffix) - 1
+	eTLDplus1 := searchDomain[1+strings.LastIndex(searchDomain[:split], "."):]
+
+	// scope check
+	//nolint:gosimple // want comment
 	if strings.Contains(eTLDplus1, "*") {
-		return fmt.Errorf(`search domain "%s" is dangerously high up the hierarchy, stay at or below "%s"`, searchDomain, eTLDplus1)
+		// oops, search domain is too high up the hierarchy
+		return false
 	}
 
-	return nil
+	return true
 }
 
 // IsResolverAddress returns whether the given ip and port match a configured resolver.
