@@ -66,12 +66,12 @@ func (runner *RuntimeQueryRunner) get(keyOrPrefix string) ([]record.Record, erro
 		return nil, fmt.Errorf("failed to marshal result: %w", err)
 	}
 
+	// construct a new record wrapper that uses the already prepared JSON blob.
 	key := fmt.Sprintf("%s:%s", runner.reg.DatabaseName(), keyOrPrefix)
-	wrapper, err := record.NewWrapper(key, nil, dsd.JSON, blob)
+	wrapper, err := record.NewWrapper(key, new(record.Meta), dsd.JSON, blob)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create record wrapper: %w", err)
 	}
-	wrapper.SetMeta(new(record.Meta))
 
 	return []record.Record{wrapper}, nil
 }
