@@ -96,6 +96,7 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 	}
 
 	// Tunnel all the things!
+	conn.SaveWhenFinished()
 
 	// Check if ready.
 	if !captain.ClientReady() {
