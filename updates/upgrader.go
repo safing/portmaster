@@ -117,6 +117,7 @@ func upgradeCoreNotify() error {
 			),
 			ShowOnSystem: true,
 			AvailableActions: []*notifications.Action{
+				// TODO: Use special UI action in order to reload UI on restart.
 				{
 					ID:   "restart",
 					Text: "Restart",

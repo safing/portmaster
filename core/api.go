@@ -4,12 +4,15 @@ import (
 	"net/http"
 
 	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/utils/debug"
+	"github.com/safing/portmaster/compat"
 	"github.com/safing/portmaster/resolver"
 	"github.com/safing/portmaster/status"
 	"github.com/safing/portmaster/updates"
+	"github.com/safing/spn/captain"
 )
 
 func registerAPIEndpoints() error {
@@ -85,7 +88,10 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	di.AddVersionInfo()
 	di.AddPlatformInfo(ar.Context())
 	status.AddToDebugInfo(di)
+	config.AddToDebugInfo(di)
 	resolver.AddToDebugInfo(di)
+	captain.AddToDebugInfo(di)
+	compat.AddToDebugInfo(di)
 	di.AddLastReportedModuleError()
 	di.AddLastUnexpectedLogs()
 	di.AddGoroutineStack()

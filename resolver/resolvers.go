@@ -205,12 +205,15 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 }
 
 func configureSearchDomains(resolver *Resolver, searches []string, hardfail bool) error {
+	resolver.Search = make([]string, 0, len(searches))
+
 	// Check all search domains.
 	for i, value := range searches {
 		trimmedDomain := strings.ToLower(strings.Trim(value, "."))
 		err := checkSearchScope(trimmedDomain)
 		if err != nil {
 			if hardfail {
+				resolver.Search = nil
 				return fmt.Errorf("failed to validate search domain #%d: %w", i+1, err)
 			}
 			log.Warningf("resolver: skipping invalid search domain for resolver %s: %s", resolver, utils.SafeFirst16Chars(value))

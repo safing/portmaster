@@ -110,7 +110,7 @@ func getDefaultInterface() *defaultNetInterface {
 	newIf := &defaultNetInterface{}
 
 	// Scan data for needed fields.
-	scanner := bufio.NewScanner(bytes.NewBufferString(interfaceData))
+	scanner := bufio.NewScanner(bytes.NewBuffer(interfaceData))
 	scanner.Split(bufio.ScanLines)
 	var segmentKey, segmentValue, previousKey string
 	for scanner.Scan() {
