@@ -28,6 +28,8 @@ func sendResponse(
 		return nil
 	}
 	// Signify that we are a recursive resolver.
+	// While we do not handle recursion directly, we can safely assume, that we
+	// always forward to a recursive resolver.
 	reply.RecursionAvailable = true
 
 	// Add extra RRs through a custom RRProvider.
