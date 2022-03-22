@@ -1,7 +1,7 @@
 package helper
 
 import (
-	"io/ioutil"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -13,6 +13,8 @@ import (
 
 var pmElectronUpdate *updater.File
 
+const suidBitWarning = `Failed to set SUID permissions for chrome-sandbox. This is required for Linux kernel versions that do not have unprivileged user namespaces (CONFIG_USER_NS_UNPRIVILEGED) enabled. If you're running and up-to-date distribution kernel you can likely ignore this warning. If you encounter issue starting the user interface please either update your kernel or set the SUID bit (mode 0%0o) on %s`
+
 // EnsureChromeSandboxPermissions makes sure the chrome-sandbox distributed
 // by our app-electron package has the SUID bit set on systems that do not
 // allow unprivileged CLONE_NEWUSER (clone(3)).
@@ -23,56 +25,29 @@ func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 		return nil
 	}
 
-	_, err := os.Stat("/proc/self/ns/user")
-	if err == nil {
-		return nil
-	}
-	if !os.IsNotExist(err) {
-		return err
-	}
-	// err == ENOENT
-
 	if pmElectronUpdate != nil && !pmElectronUpdate.UpgradeAvailable() {
 		return nil
 	}
+
 	identifier := PlatformIdentifier("app/portmaster-app.zip")
 
-	log.Debug("updates: kernel support for unprivileged USERNS_CLONE disabled")
-
+	var err error
 	pmElectronUpdate, err = reg.GetFile(identifier)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get file: %w", err)
 	}
+
 	unpackedPath := strings.TrimSuffix(
 		pmElectronUpdate.Path(),
 		filepath.Ext(pmElectronUpdate.Path()),
 	)
 	sandboxFile := filepath.Join(unpackedPath, "chrome-sandbox")
 	if err := os.Chmod(sandboxFile, 0o0755|os.ModeSetuid); err != nil {
-		return err
+		log.Errorf(suidBitWarning, 0o0755|os.ModeSetuid, sandboxFile)
+
+		return fmt.Errorf("failed to chmod: %w", err)
 	}
 	log.Infof("updates: fixed SUID permission for chrome-sandbox")
 
 	return nil
-}
-
-func checkSysctl(setting string, value byte) bool { //nolint:deadcode,unused // TODO: Do we still need this?
-	c, err := sysctl(setting)
-	if err != nil {
-		return false
-	}
-	if len(c) < 1 {
-		return false
-	}
-	return c[0] == value
-}
-
-func sysctl(setting string) ([]byte, error) { //nolint:unused // TODO: Do we still need this?
-	parts := append([]string{"/proc", "sys"}, strings.Split(setting, ".")...)
-	path := filepath.Join(parts...)
-	content, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return content, nil
 }
