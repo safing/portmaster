@@ -52,6 +52,9 @@ func start() error {
 		MaxDelay(selfcheckTaskRetryAfter).
 		Schedule(time.Now().Add(selfcheckTaskRetryAfter))
 
+	module.NewTask("clean notify thresholds", cleanNotifyThreshold).
+		Repeat(10 * time.Minute)
+
 	return module.RegisterEventHook(
 		netenv.ModuleName,
 		netenv.NetworkChangedEvent,
