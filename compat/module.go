@@ -28,6 +28,10 @@ var (
 	selfcheckFails int
 )
 
+// selfcheckFailThreshold holds the threshold of how many times the selfcheck
+// must fail before it is reported.
+const selfcheckFailThreshold = 5
+
 func init() {
 	module = modules.Register("compat", prep, start, stop, "base", "network", "interception", "netenv", "notifications")
 
@@ -82,7 +86,7 @@ func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
 		selfcheckFails++
 
 		log.Errorf("compat: %s", err)
-		if selfcheckFails >= 3 {
+		if selfcheckFails >= selfcheckFailThreshold {
 			issue.notify(err)
 		}
 
