@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -34,12 +35,13 @@ const (
 )
 
 var (
-	globalResolvers []*Resolver          // all (global) resolvers
-	localResolvers  []*Resolver          // all resolvers that are in site-local or link-local IP ranges
-	systemResolvers []*Resolver          // all resolvers that were assigned by the system
-	localScopes     []*Scope             // list of scopes with a list of local resolvers that can resolve the scope
-	activeResolvers map[string]*Resolver // lookup map of all resolvers
-	resolversLock   sync.RWMutex
+	globalResolvers       []*Resolver          // all (global) resolvers
+	localResolvers        []*Resolver          // all resolvers that are in site-local or link-local IP ranges
+	systemResolvers       []*Resolver          // all resolvers that were assigned by the system
+	localScopes           []*Scope             // list of scopes with a list of local resolvers that can resolve the scope
+	activeResolvers       map[string]*Resolver // lookup map of all resolvers
+	currentResolverConfig []string             // current active resolver config, to detect changes
+	resolversLock         sync.RWMutex
 )
 
 func indexOfScope(domain string, list []*Scope) int {
@@ -285,8 +287,20 @@ func loadResolvers() {
 	// Resolve module error about missing resolvers.
 	module.Resolve(missingResolversErrorID)
 
+	// Check if settings were changed and clear name cache when they did.
+	newResolverConfig := configuredNameServers()
+	if len(currentResolverConfig) > 0 &&
+		!utils.StringSliceEqual(currentResolverConfig, newResolverConfig) {
+		module.StartWorker("clear dns cache", func(ctx context.Context) error {
+			log.Info("resolver: clearing dns cache due to changed resolver config")
+			_, err := clearNameCache(ctx)
+			return err
+		})
+	}
+	currentResolverConfig = newResolverConfig
+
 	newResolvers := append(
-		getConfiguredResolvers(configuredNameServers()),
+		getConfiguredResolvers(newResolverConfig),
 		getSystemResolvers()...,
 	)
 
