@@ -109,7 +109,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 `, `"`, "`"),
 		Sensitive:       true,
 		OptType:         config.OptTypeStringArray,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
+		ExpertiseLevel:  config.ExpertiseLevelUser,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		DefaultValue:    defaultNameServers,
 		ValidationRegex: fmt.Sprintf("^(%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDNS, ServerTypeTCP),
