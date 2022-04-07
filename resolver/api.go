@@ -12,7 +12,7 @@ func registerAPI() error {
 		Path:        "dns/clear",
 		Write:       api.PermitUser,
 		BelongsTo:   module,
-		ActionFunc:  clearNameCache,
+		ActionFunc:  clearNameCacheHandler,
 		Name:        "Clear cached DNS records",
 		Description: "Deletes all saved DNS records from the database.",
 	}); err != nil {

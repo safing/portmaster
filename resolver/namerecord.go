@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -129,13 +130,18 @@ func (nameRecord *NameRecord) Save() error {
 	return recordDatabase.PutNew(nameRecord)
 }
 
-// clearNameCache clears all dns caches from the database.
-func clearNameCache(ar *api.Request) (msg string, err error) {
+// clearNameCacheHandler is an API handler that clears all dns caches from the database.
+func clearNameCacheHandler(ar *api.Request) (msg string, err error) {
 	log.Info("resolver: user requested dns cache clearing via action")
 
+	return clearNameCache(ar.Context())
+}
+
+// clearNameCache clears all dns caches from the database.
+func clearNameCache(ctx context.Context) (msg string, err error) {
 	recordDatabase.FlushCache()
 	recordDatabase.ClearCache()
-	n, err := recordDatabase.Purge(ar.Context(), query.New(nameRecordsKeyPrefix))
+	n, err := recordDatabase.Purge(ctx, query.New(nameRecordsKeyPrefix))
 	if err != nil {
 		return "", err
 	}
