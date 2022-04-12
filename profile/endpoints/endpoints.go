@@ -62,11 +62,13 @@ entriesLoop:
 // ListEntryValidationRegex is a regex to bullshit check endpoint list entries.
 var ListEntryValidationRegex = strings.Join([]string{
 	`^(\+|\-) `,                   // Rule verdict.
+	`(! +)?`,                      // Invert matching.
 	`[A-z0-9\.:\-*/]+`,            // Entity matching.
 	`( `,                          // Start of optional matching.
 	`[A-z0-9*]+`,                  // Protocol matching.
 	`(/[A-z0-9]+(\-[A-z0-9]+)?)?`, // Port and port range matching.
-	`)?$`,                         // End of optional matching.
+	`)?`,                          // End of optional matching.
+	`( +#.*)?`,                    // Optional comment.
 }, "")
 
 // ValidateEndpointListConfigOption validates the given value.
