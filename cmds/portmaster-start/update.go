@@ -106,9 +106,11 @@ func downloadUpdates() error {
 		return fmt.Errorf("failed to unpack resources: %w", err)
 	}
 
-	// Fix chrome-sandbox permissions
-	if err := helper.EnsureChromeSandboxPermissions(registry); err != nil {
-		return fmt.Errorf("failed to fix electron permissions: %w", err)
+	if !intelOnly {
+		// Fix chrome-sandbox permissions
+		if err := helper.EnsureChromeSandboxPermissions(registry); err != nil {
+			return fmt.Errorf("failed to fix electron permissions: %w", err)
+		}
 	}
 
 	return nil
