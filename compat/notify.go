@@ -43,10 +43,9 @@ var (
 	}
 
 	secureDNSBypassIssue = &appIssue{
-		id:    "compat:secure-dns-bypass-%s",
-		title: "Prevented Bypass Attempt by %s",
-		message: `[APPNAME] attempted to bypass Portmaster's firewall functions by directly using a Secure DNS resolver. If [APPNAME] experiences problems, disable Secure DNS within [APPNAME] to restore functionality. Rest assured that Portmaster already handles Secure DNS for your whole device, including [APPNAME].  
-If bypass prevention for [APPNAME] is disabled in Portmaster, it can no longer protect or filter connections coming from [APPNAME].`,
+		id:      "compat:secure-dns-bypass-%s",
+		title:   "Blocked Bypass Attempt by %s",
+		message: `[APPNAME] is using its own Secure DNS resolver, which would bypass Portmaster's firewall protections. If [APPNAME] experiences problems, disable Secure DNS within [APPNAME] to restore functionality. Rest assured that Portmaster handles Secure DNS for your whole device, including [APPNAME].`,
 		// TODO: Add this when the new docs page is finished:
 		// , or [find out about other options](link to new docs page)
 		level: notifications.Warning,
