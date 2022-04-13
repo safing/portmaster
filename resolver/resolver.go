@@ -64,6 +64,7 @@ type Resolver struct {
 	VerifyDomain string
 	Search       []string
 	SearchOnly   bool
+	Path         string
 
 	// logic interface
 	Conn ResolverConn `json:"-"`
