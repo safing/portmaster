@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
@@ -42,10 +43,9 @@ var (
 	}
 
 	secureDNSBypassIssue = &appIssue{
-		id:    "compat:secure-dns-bypass-%s",
-		title: "Detected %s Bypass Attempt",
-		message: `[APPNAME] is bypassing Portmaster's firewall functions through its Secure DNS resolver. Portmaster can no longer protect or filter connections coming from [APPNAME]. Disable Secure DNS within [APPNAME] to restore functionality.  
-Rest assured that Portmaster already handles Secure DNS for your whole device.`,
+		id:      "compat:secure-dns-bypass-%s",
+		title:   "Blocked Bypass Attempt by %s",
+		message: `[APPNAME] is using its own Secure DNS resolver, which would bypass Portmaster's firewall protections. If [APPNAME] experiences problems, disable Secure DNS within [APPNAME] to restore functionality. Rest assured that Portmaster handles Secure DNS for your whole device, including [APPNAME].`,
 		// TODO: Add this when the new docs page is finished:
 		// , or [find out about other options](link to new docs page)
 		level: notifications.Warning,
@@ -124,9 +124,6 @@ func (issue *appIssue) notify(proc *process.Process) {
 		proc.Path,
 	)
 
-	// Build message.
-	message := strings.ReplaceAll(issue.message, "[APPNAME]", p.Name)
-
 	// Check if we already have this notification.
 	eventID := fmt.Sprintf(issue.id, p.ID)
 	n := notifications.Get(eventID)
@@ -134,7 +131,15 @@ func (issue *appIssue) notify(proc *process.Process) {
 		return
 	}
 
-	// Otherwise, create a new one.
+	// Check if we reach the threshold to actually send a notification.
+	if !isOverThreshold(eventID) {
+		return
+	}
+
+	// Build message.
+	message := strings.ReplaceAll(issue.message, "[APPNAME]", p.Name)
+
+	// Create a new notification.
 	n = &notifications.Notification{
 		EventID:      eventID,
 		Type:         issue.level,
@@ -170,4 +175,55 @@ func (issue *appIssue) notify(proc *process.Process) {
 		}
 		return nil
 	})
+}
+
+const (
+	notifyThresholdMinIncidents = 11
+	notifyThresholdResetAfter   = 2 * time.Minute
+)
+
+var (
+	notifyThresholds     = make(map[string]*notifyThreshold)
+	notifyThresholdsLock sync.Mutex
+)
+
+type notifyThreshold struct {
+	FirstSeen time.Time
+	Incidents uint
+}
+
+func (nt *notifyThreshold) expired() bool {
+	return time.Now().Add(-notifyThresholdResetAfter).After(nt.FirstSeen)
+}
+
+func isOverThreshold(id string) bool {
+	notifyThresholdsLock.Lock()
+	defer notifyThresholdsLock.Unlock()
+
+	// Get notify threshold and check if we reach the minimum incidents.
+	nt, ok := notifyThresholds[id]
+	if ok && !nt.expired() {
+		nt.Incidents++
+		return nt.Incidents >= notifyThresholdMinIncidents
+	}
+
+	// Add new entry.
+	notifyThresholds[id] = &notifyThreshold{
+		FirstSeen: time.Now(),
+		Incidents: 1,
+	}
+	return false
+}
+
+func cleanNotifyThreshold(ctx context.Context, task *modules.Task) error {
+	notifyThresholdsLock.Lock()
+	defer notifyThresholdsLock.Unlock()
+
+	for id, nt := range notifyThresholds {
+		if nt.expired() {
+			delete(notifyThresholds, id)
+		}
+	}
+
+	return nil
 }

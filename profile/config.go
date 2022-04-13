@@ -575,7 +575,9 @@ The lists are automatically updated every hour using incremental updates.
 	err = config.Register(&config.Option{
 		Name: "Block Bypassing",
 		Key:  CfgOptionPreventBypassingKey,
-		Description: `Prevent apps from bypassing the privacy filter.  
+		Description: `Prevent apps from bypassing Portmaster's privacy protections.  
+If Block Bypassing is disabled, Portmaster can no longer protect you or filter connections from the affected applications.
+
 Current Features:  
 - Disable Firefox' internal DNS-over-HTTPs resolver
 - Block direct access to public DNS resolvers

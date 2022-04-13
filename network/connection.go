@@ -580,10 +580,7 @@ func (conn *Connection) SetFirewallHandler(handler FirewallHandler) {
 		conn.pktQueue = make(chan packet.Packet, 1000)
 
 		// start handling
-		module.StartWorker("packet handler", func(ctx context.Context) error {
-			conn.packetHandler()
-			return nil
-		})
+		module.StartWorker("packet handler", conn.packetHandlerWorker)
 	}
 	conn.firewallHandler = handler
 }
@@ -608,35 +605,46 @@ func (conn *Connection) HandlePacket(pkt packet.Packet) {
 	}
 }
 
-// packetHandler sequentially handles queued packets.
-func (conn *Connection) packetHandler() {
-	for pkt := range conn.pktQueue {
-		if pkt == nil {
-			return
+// packetHandlerWorker sequentially handles queued packets.
+func (conn *Connection) packetHandlerWorker(ctx context.Context) error {
+	for {
+		select {
+		case pkt := <-conn.pktQueue:
+			if pkt == nil {
+				return nil
+			}
+			packetHandlerHandleConn(conn, pkt)
+
+		case <-ctx.Done():
+			conn.Lock()
+			defer conn.Unlock()
+			conn.firewallHandler = nil
+			return nil
 		}
-		// get handler
-		conn.Lock()
+	}
+}
 
-		// execute handler or verdict
-		if conn.firewallHandler != nil {
-			conn.firewallHandler(conn, pkt)
-		} else {
-			defaultFirewallHandler(conn, pkt)
-		}
+func packetHandlerHandleConn(conn *Connection, pkt packet.Packet) {
+	conn.Lock()
+	defer conn.Unlock()
 
-		// log verdict
-		log.Tracer(pkt.Ctx()).Infof("filter: connection %s %s: %s", conn, conn.Verdict.Verb(), conn.Reason.Msg)
-		// submit trace logs
-		log.Tracer(pkt.Ctx()).Submit()
+	// Handle packet with appropriate handler.
+	if conn.firewallHandler != nil {
+		conn.firewallHandler(conn, pkt)
+	} else {
+		defaultFirewallHandler(conn, pkt)
+	}
 
-		// save does not touch any changing data
-		// must not be locked, will deadlock with cleaner functions
-		if conn.saveWhenFinished {
-			conn.saveWhenFinished = false
-			conn.Save()
-		}
+	// Log verdict.
+	log.Tracer(pkt.Ctx()).Infof("filter: connection %s %s: %s", conn, conn.Verdict.Verb(), conn.Reason.Msg)
+	// Submit trace logs.
+	log.Tracer(pkt.Ctx()).Submit()
 
-		conn.Unlock()
+	// Save() itself does not touch any changing data.
+	// Must not be locked - would deadlock with cleaner functions.
+	if conn.saveWhenFinished {
+		conn.saveWhenFinished = false
+		conn.Save()
 	}
 }
 

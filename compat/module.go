@@ -28,6 +28,10 @@ var (
 	selfcheckFails int
 )
 
+// selfcheckFailThreshold holds the threshold of how many times the selfcheck
+// must fail before it is reported.
+const selfcheckFailThreshold = 5
+
 func init() {
 	module = modules.Register("compat", prep, start, stop, "base", "network", "interception", "netenv", "notifications")
 
@@ -47,6 +51,9 @@ func start() error {
 		Repeat(5 * time.Minute).
 		MaxDelay(selfcheckTaskRetryAfter).
 		Schedule(time.Now().Add(selfcheckTaskRetryAfter))
+
+	module.NewTask("clean notify thresholds", cleanNotifyThreshold).
+		Repeat(10 * time.Minute)
 
 	return module.RegisterEventHook(
 		netenv.ModuleName,
@@ -82,7 +89,7 @@ func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
 		selfcheckFails++
 
 		log.Errorf("compat: %s", err)
-		if selfcheckFails >= 3 {
+		if selfcheckFails >= selfcheckFailThreshold {
 			issue.notify(err)
 		}
 
