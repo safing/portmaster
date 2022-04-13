@@ -111,7 +111,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		DefaultValue:    defaultNameServers,
-		ValidationRegex: fmt.Sprintf("^(%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDNS, ServerTypeTCP),
+		ValidationRegex: fmt.Sprintf("^(%s|%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDoH, ServerTypeDNS, ServerTypeTCP),
 		ValidationFunc:  validateNameservers,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  config.DisplayHintOrdered,
@@ -127,11 +127,27 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 					},
 				},
 				{
+					Name:   "Quad9 DoH",
+					Action: config.QuickReplace,
+					Value: []string{
+						"doh://149.112.112.112:443?verify=dns.quad9.net&name=Quad9&blockedif=empty",
+						"doh://9.9.9.9:443?verify=dns.quad9.net&name=Quad9&blockedif=empty",
+					},
+				},
+				{
 					Name:   "AdGuard",
 					Action: config.QuickReplace,
 					Value: []string{
 						"dot://94.140.14.14:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip",
 						"dot://94.140.15.15:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip",
+					},
+				},
+				{
+					Name:   "AdGuard DoH",
+					Action: config.QuickReplace,
+					Value: []string{
+						"doh://94.140.14.14:443?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip",
+						"doh://94.140.15.15:443?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip",
 					},
 				},
 				{
@@ -148,6 +164,14 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 					Value: []string{
 						"dot://1.1.1.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip",
 						"dot://1.0.0.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip",
+					},
+				},
+				{
+					Name:   "Cloudflare (with Malware Filter) DoH",
+					Action: config.QuickReplace,
+					Value: []string{
+						"doh://1.1.1.2:443?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip",
+						"doh://1.0.0.2:443?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip",
 					},
 				},
 			},

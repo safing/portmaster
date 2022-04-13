@@ -31,6 +31,7 @@ const (
 	parameterBlockedIf  = "blockedif"
 	parameterSearch     = "search"
 	parameterSearchOnly = "search-only"
+	parameterPath       = "path"
 )
 
 var (
@@ -78,6 +79,8 @@ func resolverConnFactory(resolver *Resolver) ResolverConn {
 		return NewTCPResolver(resolver)
 	case ServerTypeDoT:
 		return NewTCPResolver(resolver).UseTLS()
+	case ServerTypeDoH:
+		return NewHttpsResolver(resolver)
 	case ServerTypeDNS:
 		return NewPlainResolver(resolver)
 	default:
@@ -92,7 +95,7 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 	}
 
 	switch u.Scheme {
-	case ServerTypeDNS, ServerTypeDoT, ServerTypeTCP:
+	case ServerTypeDNS, ServerTypeDoT, ServerTypeDoH, ServerTypeTCP:
 	default:
 		return nil, false, fmt.Errorf("DNS resolver scheme %q invalid", u.Scheme)
 	}
@@ -136,7 +139,8 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 			parameterVerify,
 			parameterBlockedIf,
 			parameterSearch,
-			parameterSearchOnly:
+			parameterSearchOnly,
+			parameterPath:
 			// Known key, continue.
 		default:
 			// Unknown key, abort.
@@ -146,11 +150,21 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 
 	// Check domain verification config.
 	verifyDomain := query.Get(parameterVerify)
-	if verifyDomain != "" && u.Scheme != ServerTypeDoT {
-		return nil, false, fmt.Errorf("domain verification only supported in DOT")
+	if verifyDomain != "" && !(u.Scheme == ServerTypeDoT || u.Scheme == ServerTypeDoH) {
+		return nil, false, fmt.Errorf("domain verification only supported in DoT and DoH")
 	}
-	if verifyDomain == "" && u.Scheme == ServerTypeDoT {
+	if verifyDomain == "" && (u.Scheme == ServerTypeDoT || u.Scheme == ServerTypeDoH) {
 		return nil, false, fmt.Errorf("DOT must have a verify query parameter set")
+	}
+
+	// Check path for https (doh) request
+	path := query.Get(parameterPath)
+	if path != "" && u.Scheme != "doh" {
+		return nil, false, fmt.Errorf("path parameter is only supported in DoH")
+	}
+
+	if path != "" && !strings.HasPrefix(path, "/") {
+		path = "/" + path
 	}
 
 	// Check block detection type.
@@ -177,6 +191,7 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		},
 		ServerAddress:          net.JoinHostPort(ip.String(), strconv.Itoa(int(port))),
 		VerifyDomain:           verifyDomain,
+		Path:                   path,
 		UpstreamBlockDetection: blockType,
 	}
 
