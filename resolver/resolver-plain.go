@@ -2,13 +2,8 @@ package resolver
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
-	"fmt"
-	"io/ioutil"
 	"net"
-	"net/http"
-	"strings"
 	"time"
 
 	"github.com/miekg/dns"
@@ -45,7 +40,7 @@ func (pr *PlainResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	// create query
 	dnsQuery := new(dns.Msg)
 	dnsQuery.SetQuestion(q.FQDN, uint16(q.QType))
-	var reply *dns.Msg
+
 	// get timeout from context and config
 	var timeout time.Duration
 	if deadline, ok := ctx.Deadline(); !ok {
@@ -57,51 +52,32 @@ func (pr *PlainResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 		timeout = defaultRequestTimeout
 	}
 
-	if strings.HasPrefix(pr.resolver.ServerAddress, "https:") {
-		buf, err := dnsQuery.Pack()
+	// create client
+	dnsClient := &dns.Client{
+		Timeout: timeout,
+		Dialer: &net.Dialer{
+			Timeout:   timeout,
+			LocalAddr: getLocalAddr("udp"),
+		},
+	}
 
-		if err != nil {
-			return nil, err
+	// query server
+	reply, ttl, err := dnsClient.Exchange(dnsQuery, pr.resolver.ServerAddress)
+	log.Tracer(ctx).Tracef("resolver: query took %s", ttl)
+	// error handling
+	if err != nil {
+		// Hint network environment at failed connection if err is not a timeout.
+		var nErr net.Error
+		if errors.As(err, &nErr) && !nErr.Timeout() {
+			netenv.ReportFailedConnection()
 		}
 
-		b64dns := base64.RawStdEncoding.EncodeToString(buf)
-		url := fmt.Sprintf("%s/dns-query?dns=%s", pr.resolver.ServerAddress, b64dns)
-		resp, err := http.Get(url)
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		reply := new(dns.Msg)
-		reply.Unpack(body)
-	} else {
-		// create client
-		dnsClient := &dns.Client{
-			Timeout: timeout,
-			Dialer: &net.Dialer{
-				Timeout:   timeout,
-				LocalAddr: getLocalAddr("udp"),
-			},
-		}
+		return nil, err
+	}
 
-		// query server
-		reply, ttl, err := dnsClient.Exchange(dnsQuery, pr.resolver.ServerAddress)
-		log.Tracer(ctx).Tracef("resolver: query took %s", ttl)
-		// error handling
-		if err != nil {
-			// Hint network environment at failed connection if err is not a timeout.
-			var nErr net.Error
-			if errors.As(err, &nErr) && !nErr.Timeout() {
-				netenv.ReportFailedConnection()
-			}
-
-			return nil, err
-		}
-
-		// check if blocked
-		if pr.resolver.IsBlockedUpstream(reply) {
-			return nil, &BlockedUpstreamError{pr.resolver.Info.DescriptiveName()}
-		}
+	// check if blocked
+	if pr.resolver.IsBlockedUpstream(reply) {
+		return nil, &BlockedUpstreamError{pr.resolver.Info.DescriptiveName()}
 	}
 
 	// hint network environment at successful connection
