@@ -29,29 +29,43 @@ func GetIPScope(ip net.IP) IPScope { //nolint:gocognit
 		// IPv4
 		switch {
 		case ip4[0] == 127:
-			// 127.0.0.0/8
+			// 127.0.0.0/8 (RFC1918)
 			return HostLocal
 		case ip4[0] == 169 && ip4[1] == 254:
-			// 169.254.0.0/16
+			// 169.254.0.0/16 (RFC3927)
 			return LinkLocal
 		case ip4[0] == 10:
-			// 10.0.0.0/8
+			// 10.0.0.0/8 (RFC1918)
 			return SiteLocal
-		case ip4[0] == 172 && ip4[1]&0xf0 == 16:
-			// 172.16.0.0/12
+		case ip4[0] == 100 && ip4[1]&0b11000000 == 64:
+			// 100.64.0.0/10 (RFC6598)
 			return SiteLocal
+		case ip4[0] == 172 && ip4[1]&0b11110000 == 16:
+			// 172.16.0.0/12 (RFC1918)
+			return SiteLocal
+		case ip4[0] == 192 && ip4[1] == 0 && ip4[2] == 2:
+			// 192.0.2.0/24 (TEST-NET-1, RFC5737)
+			return Invalid
 		case ip4[0] == 192 && ip4[1] == 168:
-			// 192.168.0.0/16
+			// 192.168.0.0/16 (RFC1918)
 			return SiteLocal
+		case ip4[0] == 198 && ip4[1] == 51 && ip4[2] == 100:
+			// 198.51.100.0/24 (TEST-NET-2, RFC5737)
+			return Invalid
+		case ip4[0] == 203 && ip4[1] == 0 && ip4[2] == 113:
+			// 203.0.113.0/24 (TEST-NET-3, RFC5737)
+			return Invalid
 		case ip4[0] == 224:
-			// 224.0.0.0/8
+			// 224.0.0.0/8 (RFC5771)
 			return LocalMulticast
+		case ip4[0] == 233 && ip4[1] == 252 && ip4[2] == 0:
+			// 233.252.0.0/24 (MCAST-TEST-NET; RFC5771, RFC6676)
+			return Invalid
 		case ip4[0] >= 225 && ip4[0] <= 238:
-			// 225.0.0.0/8 - 238.0.0.0/8
+			// 225.0.0.0/8 - 238.0.0.0/8 (RFC5771)
 			return GlobalMulticast
 		case ip4[0] == 239:
-			// 239.0.0.0/8
-			// RFC2365 - https://tools.ietf.org/html/rfc2365
+			// 239.0.0.0/8 (RFC2365)
 			return LocalMulticast
 		case ip4[0] == 255 && ip4[1] == 255 && ip4[2] == 255 && ip4[3] == 255:
 			// 255.255.255.255/32
