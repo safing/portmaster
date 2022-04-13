@@ -208,6 +208,14 @@ func parseEndpoint(value string) (endpoint Endpoint, err error) { //nolint:gocog
 		return nil, fmt.Errorf(`invalid endpoint definition: "%s"`, value)
 	}
 
+	// Remove comment.
+	for i, field := range fields {
+		if strings.HasPrefix(field, "#") {
+			fields = fields[:i]
+			break
+		}
+	}
+
 	// any
 	if endpoint, err = parseTypeAny(fields); endpoint != nil || err != nil {
 		return

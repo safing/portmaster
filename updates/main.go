@@ -269,7 +269,10 @@ func checkForUpdates(ctx context.Context) (err error) {
 
 func stop() error {
 	if registry != nil {
-		return registry.Cleanup()
+		err := registry.Cleanup()
+		if err != nil {
+			log.Warningf("updates: failed to clean up registry: %s", err)
+		}
 	}
 
 	return stopVersionExport()

@@ -216,6 +216,10 @@ func SetInternetLocation(ip net.IP, source DeviceLocationSource) (dl *DeviceLoca
 		log.Warningf("netenv: failed to get geolocation data of %s (from %s): %s", ip, source, err)
 		return nil, false
 	}
+	// Only use location if there is data for it.
+	if geoLoc.Country.ISOCode == "" {
+		return nil, false
+	}
 	loc.Location = geoLoc
 
 	addLocation(loc)
@@ -270,6 +274,13 @@ func GetInternetLocation() (deviceLocations *DeviceLocations, ok bool) {
 		return copyDeviceLocations(), true
 	}
 	locationNetworkChangedFlag.Refresh()
+
+	// Reset locations.
+	func() {
+		locationsLock.Lock()
+		defer locationsLock.Unlock()
+		locations = &DeviceLocations{}
+	}()
 
 	// Get all assigned addresses.
 	v4s, v6s, err := GetAssignedAddresses()
