@@ -1,6 +1,6 @@
 module github.com/safing/portmaster
 
-go 1.15
+go 1.18
 
 require (
 	github.com/agext/levenshtein v1.2.3
