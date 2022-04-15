@@ -13,6 +13,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
+	"github.com/safing/portmaster/compat"
 	"github.com/safing/portmaster/firewall"
 	"github.com/safing/portmaster/netenv"
 )
@@ -52,6 +53,9 @@ func start() error {
 	if err != nil {
 		return fmt.Errorf("failed to parse nameserver listen address: %w", err)
 	}
+
+	// Tell the compat module where we are listening.
+	compat.SetNameserverListenIP(ip1)
 
 	// Get own hostname.
 	hostname, err = os.Hostname()

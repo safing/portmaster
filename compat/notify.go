@@ -3,10 +3,12 @@ package compat
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/notifications"
@@ -15,10 +17,11 @@ import (
 )
 
 type baseIssue struct {
-	id      string             //nolint:structcheck // Inherited.
-	title   string             //nolint:structcheck // Inherited.
-	message string             //nolint:structcheck // Inherited.
-	level   notifications.Type //nolint:structcheck // Inherited.
+	id      string                  //nolint:structcheck // Inherited.
+	title   string                  //nolint:structcheck // Inherited.
+	message string                  //nolint:structcheck // Inherited.
+	level   notifications.Type      //nolint:structcheck // Inherited.
+	actions []*notifications.Action //nolint:structcheck // Inherited.
 }
 
 type systemIssue baseIssue
@@ -26,6 +29,10 @@ type systemIssue baseIssue
 type appIssue baseIssue
 
 var (
+	// Copy of firewall.CfgOptionDNSQueryInterceptionKey.
+	cfgOptionDNSQueryInterceptionKey = "filter/dnsQueryInterception"
+	dnsQueryInterception             config.BoolOption
+
 	systemIssueNotification     *notifications.Notification
 	systemIssueNotificationLock sync.Mutex
 
@@ -41,6 +48,22 @@ var (
 		message: "Portmaster detected that something is interfering with its operation. This could be a VPN, an Anti-Virus or another network protection software. Please check if you are running an incompatible [VPN client](https://docs.safing.io/portmaster/install/status/vpn-compatibility) or [software](https://docs.safing.io/portmaster/install/status/software-compatibility). Otherwise, please report the issue via [GitHub](https://github.com/safing/portmaster/issues) or send a mail to [support@safing.io](mailto:support@safing.io) so we can help you out.",
 		level:   notifications.Error,
 	}
+	// manualDNSSetupRequired is additionally initialized in startNotify().
+	manualDNSSetupRequired = &systemIssue{
+		id:    "compat:manual-dns-setup-required",
+		title: "Manual DNS Setup Required",
+		level: notifications.Error,
+		actions: []*notifications.Action{
+			{
+				Text: "Revert",
+				Type: notifications.ActionTypeOpenSetting,
+				Payload: &notifications.ActionTypeOpenSettingPayload{
+					Key: cfgOptionDNSQueryInterceptionKey,
+				},
+			},
+		},
+	}
+	manualDNSSetupRequiredMessage = "You have disabled Seamless DNS Integration. As a result, Portmaster can no longer protect you or filter connections reliably. To fix this, you have to manually configure %s as the DNS Server in your system and in any conflicting application. This message will disappear 10 seconds after correct configuration."
 
 	secureDNSBypassIssue = &appIssue{
 		id:      "compat:secure-dns-bypass-%s",
@@ -58,6 +81,37 @@ var (
 	}
 )
 
+func startNotify() {
+	dnsQueryInterception = config.Concurrent.GetAsBool(cfgOptionDNSQueryInterceptionKey, true)
+
+	systemIssueNotificationLock.Lock()
+	defer systemIssueNotificationLock.Unlock()
+
+	manualDNSSetupRequired.message = fmt.Sprintf(
+		manualDNSSetupRequiredMessage,
+		`"127.0.0.1"`,
+	)
+}
+
+// SetNameserverListenIP sets the IP address the nameserver is listening on.
+// The IP address is used in compatibility notifications.
+func SetNameserverListenIP(ip net.IP) {
+	systemIssueNotificationLock.Lock()
+	defer systemIssueNotificationLock.Unlock()
+
+	manualDNSSetupRequired.message = fmt.Sprintf(
+		manualDNSSetupRequiredMessage,
+		`"`+ip.String()+`"`,
+	)
+}
+
+func systemCompatOrManualDNSIssue() *systemIssue {
+	if dnsQueryInterception() {
+		return systemCompatibilityIssue
+	}
+	return manualDNSSetupRequired
+}
+
 func (issue *systemIssue) notify(err error) {
 	systemIssueNotificationLock.Lock()
 	defer systemIssueNotificationLock.Unlock()
@@ -74,11 +128,12 @@ func (issue *systemIssue) notify(err error) {
 
 	// Create new notification.
 	n := &notifications.Notification{
-		EventID:      issue.id,
-		Type:         issue.level,
-		Title:        issue.title,
-		Message:      issue.message,
-		ShowOnSystem: true,
+		EventID:          issue.id,
+		Type:             issue.level,
+		Title:            issue.title,
+		Message:          issue.message,
+		ShowOnSystem:     true,
+		AvailableActions: issue.actions,
 	}
 	notifications.Notify(n)
 
@@ -141,17 +196,20 @@ func (issue *appIssue) notify(proc *process.Process) {
 
 	// Create a new notification.
 	n = &notifications.Notification{
-		EventID:      eventID,
-		Type:         issue.level,
-		Title:        fmt.Sprintf(issue.title, p.Name),
-		Message:      message,
-		ShowOnSystem: true,
-		AvailableActions: []*notifications.Action{
+		EventID:          eventID,
+		Type:             issue.level,
+		Title:            fmt.Sprintf(issue.title, p.Name),
+		Message:          message,
+		ShowOnSystem:     true,
+		AvailableActions: issue.actions,
+	}
+	if len(n.AvailableActions) == 0 {
+		n.AvailableActions = []*notifications.Action{
 			{
 				ID:   "ack",
 				Text: "OK",
 			},
-		},
+		}
 	}
 	notifications.Notify(n)
 

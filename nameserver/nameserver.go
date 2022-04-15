@@ -168,7 +168,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		}
 
 	default:
-		tracer.Warningf("nameserver: external request for %s%s, ignoring", q.FQDN, q.QType)
+		tracer.Warningf("nameserver: external request from %s for %s%s, ignoring", remoteAddr, q.FQDN, q.QType)
 		return reply(nsutil.Refused("external queries are not permitted"))
 	}
 	conn.Lock()
