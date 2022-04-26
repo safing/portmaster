@@ -22,11 +22,7 @@ import (
 )
 
 const (
-	deniedMsgUnidentified = `%wFailed to identify the requesting process.
-You can enable the Development Mode to disable API authentication for development purposes.
-
-If you are seeing this message in the Portmaster App, please restart the app or right-click and select "Reload".
-In the future, this issue will be remediated automatically.`
+	deniedMsgUnidentified = `%wFailed to identify the requesting process. Reload to try again.`
 
 	deniedMsgSystem = `%wSystem access to the Portmaster API is not permitted.
 You can enable the Development Mode to disable API authentication for development purposes.`
@@ -136,6 +132,12 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 	if authenticatedPath == "" {
 		return false, fmt.Errorf(deniedMsgMisconfigured, api.ErrAPIAccessDeniedMessage) //nolint:stylecheck // message for user
 	}
+	// Get real path.
+	authenticatedPath, err = filepath.EvalSymlinks(authenticatedPath)
+	if err != nil {
+		return false, fmt.Errorf(deniedMsgUnidentified, api.ErrAPIAccessDeniedMessage) //nolint:stylecheck // message for user
+	}
+	// Add filepath separator to confine to directory.
 	authenticatedPath += string(filepath.Separator)
 
 	// Get process of request.
@@ -157,8 +159,10 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 				break checkLevelsLoop
 			default: // normal process
 				// Check if the requesting process is in database root / updates dir.
-				if strings.HasPrefix(proc.Path, authenticatedPath) {
-					return false, nil
+				if realPath, err := filepath.EvalSymlinks(proc.Path); err == nil {
+					if strings.HasPrefix(realPath, authenticatedPath) {
+						return false, nil
+					}
 				}
 			}
 

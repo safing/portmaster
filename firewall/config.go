@@ -23,6 +23,10 @@ var (
 	cfgOptionPermanentVerdictsOrder = 96
 	permanentVerdicts               config.BoolOption
 
+	CfgOptionDNSQueryInterceptionKey   = "filter/dnsQueryInterception"
+	cfgOptionDNSQueryInterceptionOrder = 97
+	dnsQueryInterception               config.BoolOption
+
 	devMode          config.BoolOption
 	apiListenAddress config.StringOption
 )
@@ -45,6 +49,24 @@ func registerConfig() error {
 		return err
 	}
 	permanentVerdicts = config.Concurrent.GetAsBool(CfgOptionPermanentVerdictsKey, true)
+
+	err = config.Register(&config.Option{
+		Name:           "Seamless DNS Integration",
+		Key:            CfgOptionDNSQueryInterceptionKey,
+		Description:    "Intercept and redirect astray DNS queries to the Portmaster's internal DNS server. This enables seamless DNS integration without having to configure the system or other software. However, this may lead to compatibility issues with other software that attempts the same.",
+		OptType:        config.OptTypeBool,
+		ExpertiseLevel: config.ExpertiseLevelDeveloper,
+		ReleaseLevel:   config.ReleaseLevelExperimental,
+		DefaultValue:   true,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionDNSQueryInterceptionOrder,
+			config.CategoryAnnotation:     "Advanced",
+		},
+	})
+	if err != nil {
+		return err
+	}
+	dnsQueryInterception = config.Concurrent.GetAsBool(CfgOptionDNSQueryInterceptionKey, true)
 
 	err = config.Register(&config.Option{
 		Name:           "Prompt Desktop Notifications",

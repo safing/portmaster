@@ -4,8 +4,6 @@ import (
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
-
-	// Dependency.
 	_ "github.com/safing/portmaster/core"
 	"github.com/safing/spn/captain"
 )

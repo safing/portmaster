@@ -16,7 +16,7 @@ var (
 	module *modules.Module
 
 	selfcheckTask           *modules.Task
-	selfcheckTaskRetryAfter = 10 * time.Second
+	selfcheckTaskRetryAfter = 5 * time.Second
 
 	// selfCheckIsFailing holds whether or not the self-check is currently
 	// failing. This helps other failure systems to not make noise when there is
@@ -47,6 +47,8 @@ func prep() error {
 }
 
 func start() error {
+	startNotify()
+
 	selfcheckTask = module.NewTask("compatibility self-check", selfcheckTaskFunc).
 		Repeat(5 * time.Minute).
 		MaxDelay(selfcheckTaskRetryAfter).
@@ -74,12 +76,18 @@ func stop() error {
 }
 
 func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
+	// Create tracing logger.
+	ctx, tracer := log.AddTracer(ctx)
+	defer tracer.Submit()
+	tracer.Tracef("compat: running self-check")
+
 	// Run selfcheck and return if successful.
 	issue, err := selfcheck(ctx)
 	if err == nil {
 		selfCheckIsFailing.UnSet()
 		selfcheckFails = 0
 		resetSystemIssue()
+		tracer.Debugf("compat: self-check successful")
 		return nil
 	}
 
@@ -88,7 +96,7 @@ func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
 		selfCheckIsFailing.Set()
 		selfcheckFails++
 
-		log.Errorf("compat: %s", err)
+		tracer.Errorf("compat: %s", err)
 		if selfcheckFails >= selfcheckFailThreshold {
 			issue.notify(err)
 		}
@@ -100,7 +108,7 @@ func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
 		selfcheckFails = 0
 
 		// Only log internal errors, but don't notify.
-		log.Warningf("compat: %s", err)
+		tracer.Warningf("compat: %s", err)
 	}
 
 	return nil

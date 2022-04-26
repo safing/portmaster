@@ -46,83 +46,89 @@ type nfQueue interface {
 
 func init() {
 	v4chains = []string{
-		"mangle C170",
-		"mangle C171",
-		"filter C17",
+		"mangle PORTMASTER-INGEST-OUTPUT",
+		"mangle PORTMASTER-INGEST-INPUT",
+		"filter PORTMASTER-FILTER",
+		"nat PORTMASTER-REDIRECT",
 	}
 
 	v4rules = []string{
-		"mangle C170 -j CONNMARK --restore-mark",
-		"mangle C170 -m mark --mark 0 -j NFQUEUE --queue-num 17040 --queue-bypass",
+		"mangle PORTMASTER-INGEST-OUTPUT -j CONNMARK --restore-mark",
+		"mangle PORTMASTER-INGEST-OUTPUT -m mark --mark 0 -j NFQUEUE --queue-num 17040 --queue-bypass",
 
-		"mangle C171 -j CONNMARK --restore-mark",
-		"mangle C171 -m mark --mark 0 -j NFQUEUE --queue-num 17140 --queue-bypass",
+		"mangle PORTMASTER-INGEST-INPUT -j CONNMARK --restore-mark",
+		"mangle PORTMASTER-INGEST-INPUT -m mark --mark 0 -j NFQUEUE --queue-num 17140 --queue-bypass",
 
-		"filter C17 -m mark --mark 0 -j DROP",
-		"filter C17 -m mark --mark 1700 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 0 -j DROP",
+		"filter PORTMASTER-FILTER -m mark --mark 1700 -j RETURN",
 		// Accepting ICMP packets with mark 1701 is required for rejecting to work,
 		// as the rejection ICMP packet will have the same mark. Blocked ICMP
 		// packets will always result in a drop within the Portmaster.
-		"filter C17 -m mark --mark 1701 -p icmp -j RETURN",
-		"filter C17 -m mark --mark 1701 -j REJECT --reject-with icmp-host-prohibited",
-		"filter C17 -m mark --mark 1702 -j DROP",
-		"filter C17 -j CONNMARK --save-mark",
-		"filter C17 -m mark --mark 1710 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1701 -p icmp -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1701 -j REJECT --reject-with icmp-host-prohibited",
+		"filter PORTMASTER-FILTER -m mark --mark 1702 -j DROP",
+		"filter PORTMASTER-FILTER -j CONNMARK --save-mark",
+		"filter PORTMASTER-FILTER -m mark --mark 1710 -j RETURN",
 		// Accepting ICMP packets with mark 1711 is required for rejecting to work,
 		// as the rejection ICMP packet will have the same mark. Blocked ICMP
 		// packets will always result in a drop within the Portmaster.
-		"filter C17 -m mark --mark 1711 -p icmp -j RETURN",
-		"filter C17 -m mark --mark 1711 -j REJECT --reject-with icmp-host-prohibited",
-		"filter C17 -m mark --mark 1712 -j DROP",
-		"filter C17 -m mark --mark 1717 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1711 -p icmp -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1711 -j REJECT --reject-with icmp-host-prohibited",
+		"filter PORTMASTER-FILTER -m mark --mark 1712 -j DROP",
+		"filter PORTMASTER-FILTER -m mark --mark 1717 -j RETURN",
+
+		"nat PORTMASTER-REDIRECT -m mark --mark 1799 -p udp -j DNAT --to 127.0.0.17:53",
+		"nat PORTMASTER-REDIRECT -m mark --mark 1717 -p tcp -j DNAT --to 127.0.0.17:717",
+		"nat PORTMASTER-REDIRECT -m mark --mark 1717 -p udp -j DNAT --to 127.0.0.17:717",
+		// "nat PORTMASTER-REDIRECT -m mark --mark 1717 ! -p tcp ! -p udp -j DNAT --to 127.0.0.17",
 	}
 
 	v4once = []string{
-		"mangle OUTPUT -j C170",
-		"mangle INPUT -j C171",
-		"filter OUTPUT -j C17",
-		"filter INPUT -j C17",
-		"nat OUTPUT -m mark --mark 1799 -p udp -j DNAT --to 127.0.0.17:53",
-		"nat OUTPUT -m mark --mark 1717 -p tcp -j DNAT --to 127.0.0.17:717",
-		"nat OUTPUT -m mark --mark 1717 -p udp -j DNAT --to 127.0.0.17:717",
-		// "nat OUTPUT -m mark --mark 1717 ! -p tcp ! -p udp -j DNAT --to 127.0.0.17",
+		"mangle OUTPUT -j PORTMASTER-INGEST-OUTPUT",
+		"mangle INPUT -j PORTMASTER-INGEST-INPUT",
+		"filter OUTPUT -j PORTMASTER-FILTER",
+		"filter INPUT -j PORTMASTER-FILTER",
+		"nat OUTPUT -j PORTMASTER-REDIRECT",
 	}
 
 	v6chains = []string{
-		"mangle C170",
-		"mangle C171",
-		"filter C17",
+		"mangle PORTMASTER-INGEST-OUTPUT",
+		"mangle PORTMASTER-INGEST-INPUT",
+		"filter PORTMASTER-FILTER",
+		"nat PORTMASTER-REDIRECT",
 	}
 
 	v6rules = []string{
-		"mangle C170 -j CONNMARK --restore-mark",
-		"mangle C170 -m mark --mark 0 -j NFQUEUE --queue-num 17060 --queue-bypass",
+		"mangle PORTMASTER-INGEST-OUTPUT -j CONNMARK --restore-mark",
+		"mangle PORTMASTER-INGEST-OUTPUT -m mark --mark 0 -j NFQUEUE --queue-num 17060 --queue-bypass",
 
-		"mangle C171 -j CONNMARK --restore-mark",
-		"mangle C171 -m mark --mark 0 -j NFQUEUE --queue-num 17160 --queue-bypass",
+		"mangle PORTMASTER-INGEST-INPUT -j CONNMARK --restore-mark",
+		"mangle PORTMASTER-INGEST-INPUT -m mark --mark 0 -j NFQUEUE --queue-num 17160 --queue-bypass",
 
-		"filter C17 -m mark --mark 0 -j DROP",
-		"filter C17 -m mark --mark 1700 -j RETURN",
-		"filter C17 -m mark --mark 1701 -p icmpv6 -j RETURN",
-		"filter C17 -m mark --mark 1701 -j REJECT --reject-with icmp6-adm-prohibited",
-		"filter C17 -m mark --mark 1702 -j DROP",
-		"filter C17 -j CONNMARK --save-mark",
-		"filter C17 -m mark --mark 1710 -j RETURN",
-		"filter C17 -m mark --mark 1711 -p icmpv6 -j RETURN",
-		"filter C17 -m mark --mark 1711 -j REJECT --reject-with icmp6-adm-prohibited",
-		"filter C17 -m mark --mark 1712 -j DROP",
-		"filter C17 -m mark --mark 1717 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 0 -j DROP",
+		"filter PORTMASTER-FILTER -m mark --mark 1700 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1701 -p icmpv6 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1701 -j REJECT --reject-with icmp6-adm-prohibited",
+		"filter PORTMASTER-FILTER -m mark --mark 1702 -j DROP",
+		"filter PORTMASTER-FILTER -j CONNMARK --save-mark",
+		"filter PORTMASTER-FILTER -m mark --mark 1710 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1711 -p icmpv6 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1711 -j REJECT --reject-with icmp6-adm-prohibited",
+		"filter PORTMASTER-FILTER -m mark --mark 1712 -j DROP",
+		"filter PORTMASTER-FILTER -m mark --mark 1717 -j RETURN",
+
+		"nat PORTMASTER-REDIRECT -m mark --mark 1799 -p udp -j DNAT --to [::1]:53",
+		"nat PORTMASTER-REDIRECT -m mark --mark 1717 -p tcp -j DNAT --to [::1]:717",
+		"nat PORTMASTER-REDIRECT -m mark --mark 1717 -p udp -j DNAT --to [::1]:717",
+		// "nat PORTMASTER-REDIRECT -m mark --mark 1717 ! -p tcp ! -p udp -j DNAT --to [::1]",
 	}
 
 	v6once = []string{
-		"mangle OUTPUT -j C170",
-		"mangle INPUT -j C171",
-		"filter OUTPUT -j C17",
-		"filter INPUT -j C17",
-		"nat OUTPUT -m mark --mark 1799 -p udp -j DNAT --to [::1]:53",
-		"nat OUTPUT -m mark --mark 1717 -p tcp -j DNAT --to [::1]:717",
-		"nat OUTPUT -m mark --mark 1717 -p udp -j DNAT --to [::1]:717",
-		// "nat OUTPUT -m mark --mark 1717 ! -p tcp ! -p udp -j DNAT --to [::1]",
+		"mangle OUTPUT -j PORTMASTER-INGEST-OUTPUT",
+		"mangle INPUT -j PORTMASTER-INGEST-INPUT",
+		"filter OUTPUT -j PORTMASTER-FILTER",
+		"filter INPUT -j PORTMASTER-FILTER",
+		"nat OUTPUT -j PORTMASTER-REDIRECT",
 	}
 
 	// Reverse because we'd like to insert in a loop
