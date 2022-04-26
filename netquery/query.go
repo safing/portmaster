@@ -38,10 +38,10 @@ type (
 	Selects []Select
 
 	QueryRequestPayload struct {
-		Select  Selects   `json:"select"`
-		Query   Query     `json:"query"`
-		OrderBy []OrderBy `json:"orderBy"`
-		GroupBy []string  `json:"groupBy"`
+		Select  Selects  `json:"select"`
+		Query   Query    `json:"query"`
+		OrderBy OrderBys `json:"orderBy"`
+		GroupBy []string `json:"groupBy"`
 
 		selectedFields    []string
 		whitelistedFields []string

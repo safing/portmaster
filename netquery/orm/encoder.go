@@ -106,8 +106,7 @@ func encodeBasic() EncodeFunc {
 				if !col.Nullable {
 					// we need to set the zero value here since the column
 					// is not marked as nullable
-					//return reflect.New(valType).Elem().Interface(), true, nil
-					panic("nil pointer for not-null field")
+					return reflect.New(valType).Elem().Interface(), true, nil
 				}
 
 				return nil, true, nil
