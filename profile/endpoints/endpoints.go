@@ -90,7 +90,32 @@ func (e Endpoints) IsSet() bool {
 // Match checks whether the given entity matches any of the endpoint definitions in the list.
 func (e Endpoints) Match(ctx context.Context, entity *intel.Entity) (result EPResult, reason Reason) {
 	for _, entry := range e {
-		if entry != nil {
+		if entry == nil {
+			continue
+		}
+
+		if result, reason = entry.Matches(ctx, entity); result != NoMatch {
+			return
+		}
+	}
+
+	return NoMatch, nil
+}
+
+// MatchMulti checks whether the given entities match any of the endpoint
+// definitions in the list. Every rule is evaluated against all given entities
+// and only if not match was registered, the next rule is evaluated.
+func (e Endpoints) MatchMulti(ctx context.Context, entities ...*intel.Entity) (result EPResult, reason Reason) {
+	for _, entry := range e {
+		if entry == nil {
+			continue
+		}
+
+		for _, entity := range entities {
+			if entity == nil {
+				continue
+			}
+
 			if result, reason = entry.Matches(ctx, entity); result != NoMatch {
 				return
 			}
