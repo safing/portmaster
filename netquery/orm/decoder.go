@@ -31,7 +31,7 @@ var (
 	// preconfigured timezone; UTC by default) or as INTEGER (the user can choose between
 	// unixepoch and unixnano-epoch where the nano variant is not offically supported by
 	// SQLITE).
-	sqliteTimeFormat = "2006-01-02 15:04:05"
+	SqliteTimeFormat = "2006-01-02 15:04:05"
 )
 
 type (
@@ -209,7 +209,7 @@ func DatetimeDecoder(loc *time.Location) DecodeFunc {
 		case sqlite.TypeText:
 			// stored ISO8601 but does not have any timezone information
 			// assigned so we always treat it as loc here.
-			t, err := time.ParseInLocation(sqliteTimeFormat, stmt.ColumnText(colIdx), loc)
+			t, err := time.ParseInLocation(SqliteTimeFormat, stmt.ColumnText(colIdx), loc)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse %q in %s: %w", stmt.ColumnText(colIdx), fieldDef.Name, err)
 			}

@@ -103,6 +103,13 @@ func encodeBasic() EncodeFunc {
 			kind = valType.Kind()
 
 			if val.IsNil() {
+				if !col.Nullable {
+					// we need to set the zero value here since the column
+					// is not marked as nullable
+					//return reflect.New(valType).Elem().Interface(), true, nil
+					panic("nil pointer for not-null field")
+				}
+
 				return nil, true, nil
 			}
 
@@ -133,7 +140,7 @@ func encodeBasic() EncodeFunc {
 }
 
 func DatetimeEncoder(loc *time.Location) EncodeFunc {
-	return func(colDev *ColumnDef, valType reflect.Type, val reflect.Value) (interface{}, bool, error) {
+	return func(colDef *ColumnDef, valType reflect.Type, val reflect.Value) (interface{}, bool, error) {
 		// if fieldType holds a pointer we need to dereference the value
 		ft := valType.String()
 		if valType.Kind() == reflect.Ptr {
@@ -142,44 +149,71 @@ func DatetimeEncoder(loc *time.Location) EncodeFunc {
 		}
 
 		// we only care about "time.Time" here
-		if ft != "time.Time" {
+		var t time.Time
+		if ft == "time.Time" {
+			// handle the zero time as a NULL.
+			if !val.IsValid() || val.IsZero() {
+				return nil, true, nil
+			}
+
+			var ok bool
+			valInterface := val.Interface()
+			t, ok = valInterface.(time.Time)
+			if !ok {
+				return nil, false, fmt.Errorf("cannot convert reflect value to time.Time")
+			}
+
+		} else if valType.Kind() == reflect.String && colDef.IsTime {
+			var err error
+			t, err = time.Parse(time.RFC3339, val.String())
+			if err != nil {
+				return nil, false, fmt.Errorf("failed to parse time as RFC3339: %w", err)
+			}
+
+		} else {
+			// we don't care ...
 			return nil, false, nil
 		}
 
-		// handle the zero time as a NULL.
-		if !val.IsValid() || val.IsZero() {
-			return nil, true, nil
-		}
-
-		valInterface := val.Interface()
-		t, ok := valInterface.(time.Time)
-		if !ok {
-			return nil, false, fmt.Errorf("cannot convert reflect value to time.Time")
-		}
-
-		switch colDev.Type {
+		switch colDef.Type {
 		case sqlite.TypeInteger:
-			if colDev.UnixNano {
+			if colDef.UnixNano {
 				return t.UnixNano(), true, nil
 			}
 			return t.Unix(), true, nil
+
 		case sqlite.TypeText:
-			str := t.In(loc).Format(sqliteTimeFormat)
+			str := t.In(loc).Format(SqliteTimeFormat)
 
 			return str, true, nil
 		}
 
-		return nil, false, fmt.Errorf("cannot store time.Time in %s", colDev.Type)
+		return nil, false, fmt.Errorf("cannot store time.Time in %s", colDef.Type)
 	}
 }
 
-func runEncodeHooks(colDev *ColumnDef, valType reflect.Type, val reflect.Value, hooks []EncodeFunc) (interface{}, bool, error) {
+func runEncodeHooks(colDef *ColumnDef, valType reflect.Type, val reflect.Value, hooks []EncodeFunc) (interface{}, bool, error) {
 	if valType == nil {
+		if !colDef.Nullable {
+			switch colDef.Type {
+			case sqlite.TypeBlob:
+				return []byte{}, true, nil
+			case sqlite.TypeFloat:
+				return 0.0, true, nil
+			case sqlite.TypeText:
+				return "", true, nil
+			case sqlite.TypeInteger:
+				return 0, true, nil
+			default:
+				return nil, false, fmt.Errorf("unsupported sqlite data type: %s", colDef.Type)
+			}
+		}
+
 		return nil, true, nil
 	}
 
 	for _, fn := range hooks {
-		res, end, err := fn(colDev, valType, val)
+		res, end, err := fn(colDef, valType, val)
 		if err != nil {
 			return res, false, err
 		}

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/log"
@@ -29,6 +31,7 @@ func init() {
 		mod.Prepare,
 		mod.Start,
 		mod.Stop,
+		"api",
 		"network",
 		"database",
 	)
@@ -54,6 +57,25 @@ func (m *Module) Prepare() error {
 	}
 
 	m.feed = make(chan *network.Connection, 1000)
+
+	queryHander := &QueryHandler{
+		Database:  m.sqlStore,
+		IsDevMode: config.Concurrent.GetAsBool(config.CfgDevModeKey, false),
+	}
+
+	// FIXME(ppacher): use appropriate permissions for this
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path:        "netquery/query",
+		MimeType:    "application/json",
+		Read:        api.PermitAnyone,
+		Write:       api.PermitAnyone,
+		BelongsTo:   m.Module,
+		HandlerFunc: queryHander.ServeHTTP,
+		Name:        "Query In-Memory Database",
+		Description: "Query the in-memory sqlite database",
+	}); err != nil {
+		return fmt.Errorf("failed to register API endpoint: %w", err)
+	}
 
 	return nil
 }
@@ -100,7 +122,7 @@ func (mod *Module) Start() error {
 			case <-time.After(10 * time.Second):
 				count, err := mod.sqlStore.Cleanup(ctx, time.Now().Add(-network.DeleteConnsAfterEndedThreshold))
 				if err != nil {
-					log.Errorf("netquery: failed to count number of rows in memory: %w", err)
+					log.Errorf("netquery: failed to count number of rows in memory: %s", err)
 				} else {
 					log.Infof("netquery: successfully removed %d old rows", count)
 				}
@@ -116,7 +138,7 @@ func (mod *Module) Start() error {
 			case <-time.After(5 * time.Second):
 				count, err := mod.sqlStore.CountRows(ctx)
 				if err != nil {
-					log.Errorf("netquery: failed to count number of rows in memory: %w", err)
+					log.Errorf("netquery: failed to count number of rows in memory: %s", err)
 				} else {
 					log.Infof("netquery: currently holding %d rows in memory", count)
 				}

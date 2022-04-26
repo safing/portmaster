@@ -44,6 +44,8 @@ type (
 	// are actually supposed to do.
 	//
 	Database struct {
+		Schema *orm.TableSchema
+
 		l    sync.Mutex
 		conn *sqlite.Conn
 	}
@@ -62,6 +64,8 @@ type (
 		// as long as the connection is still active and might be, although unlikely,
 		// reused afterwards.
 		ID         string            `sqlite:"id,primary"`
+		ProfileID  string            `sqlite:"profile"`
+		Path       string            `sqlite:"path"`
 		Type       string            `sqlite:"type,varchar(8)"`
 		External   bool              `sqlite:"external"`
 		IPVersion  packet.IPVersion  `sqlite:"ip_version"`
@@ -78,8 +82,8 @@ type (
 		Longitude  float64           `sqlite:"longitude"`
 		Scope      netutils.IPScope  `sqlite:"scope"`
 		Verdict    network.Verdict   `sqlite:"verdict"`
-		Started    time.Time         `sqlite:"started,text"`
-		Ended      *time.Time        `sqlite:"ended,text"`
+		Started    time.Time         `sqlite:"started,text,time"`
+		Ended      *time.Time        `sqlite:"ended,text,time"`
 		Tunneled   bool              `sqlite:"tunneled"`
 		Encrypted  bool              `sqlite:"encrypted"`
 		Internal   bool              `sqlite:"internal"`
@@ -107,7 +111,15 @@ func New(path string) (*Database, error) {
 		return nil, fmt.Errorf("failed to open sqlite at %s: %w", path, err)
 	}
 
-	return &Database{conn: c}, nil
+	schema, err := orm.GenerateTableSchema("connections", Conn{})
+	if err != nil {
+		return nil, err
+	}
+
+	return &Database{
+		Schema: schema,
+		conn:   c,
+	}, nil
 }
 
 // NewInMemory is like New but creates a new in-memory database and
@@ -133,13 +145,8 @@ func NewInMemory() (*Database, error) {
 // any data-migrations. Once the history module is implemented this should
 // become/use a full migration system -- use zombiezen.com/go/sqlite/sqlitemigration
 func (db *Database) ApplyMigrations() error {
-	schema, err := orm.GenerateTableSchema("connections", Conn{})
-	if err != nil {
-		return fmt.Errorf("failed to generate table schema for conncetions: %w", err)
-	}
-
 	// get the create-table SQL statement from the infered schema
-	sql := schema.CreateStatement(false)
+	sql := db.Schema.CreateStatement(false)
 
 	// execute the SQL
 	if err := sqlitex.ExecuteTransient(db.conn, sql, nil); err != nil {
@@ -284,7 +291,7 @@ func (db *Database) Save(ctx context.Context, conn Conn) error {
 			return nil
 		},
 	}); err != nil {
-		log.Errorf("netquery: failed to execute: %s", err)
+		log.Errorf("netquery: failed to execute:\n\t%q\n\treturned error was: %s\n\tparameters: %+v", sql, err, values)
 		return err
 	}
 

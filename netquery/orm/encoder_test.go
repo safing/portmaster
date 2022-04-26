@@ -89,7 +89,7 @@ func Test_EncodeAsMap(t *testing.T) {
 			},
 			map[string]interface{}{
 				"TinInt":    refTime.UnixNano(),
-				"TinString": refTime.Format(sqliteTimeFormat),
+				"TinString": refTime.Format(SqliteTimeFormat),
 			},
 		},
 		{
@@ -107,7 +107,7 @@ func Test_EncodeAsMap(t *testing.T) {
 			},
 			map[string]interface{}{
 				"TinInt":    refTime.UnixNano(),
-				"TinString": refTime.Format(sqliteTimeFormat),
+				"TinString": refTime.Format(SqliteTimeFormat),
 				"Tnil1":     nil,
 				"Tnil2":     nil,
 			},
@@ -143,7 +143,7 @@ func Test_EncodeValue(t *testing.T) {
 				Type:   sqlite.TypeText,
 			},
 			refTime,
-			refTime.Format(sqliteTimeFormat),
+			refTime.Format(SqliteTimeFormat),
 		},
 		{
 			"Special value time.Time as unix-epoch",
@@ -189,13 +189,14 @@ func Test_EncodeValue(t *testing.T) {
 				Type:   sqlite.TypeText,
 			},
 			&refTime,
-			refTime.Format(sqliteTimeFormat),
+			refTime.Format(SqliteTimeFormat),
 		},
 		{
 			"Special value untyped nil",
 			ColumnDef{
-				IsTime: true,
-				Type:   sqlite.TypeText,
+				Nullable: true,
+				IsTime:   true,
+				Type:     sqlite.TypeText,
 			},
 			nil,
 			nil,
@@ -209,12 +210,47 @@ func Test_EncodeValue(t *testing.T) {
 			(*time.Time)(nil),
 			nil,
 		},
+		{
+			"Time formated as string",
+			ColumnDef{
+				IsTime: true,
+				Type:   sqlite.TypeText,
+			},
+			refTime.In(time.Local).Format(time.RFC3339),
+			refTime.Format(SqliteTimeFormat),
+		},
+		{
+			"Nullable integer",
+			ColumnDef{
+				Type:     sqlite.TypeInteger,
+				Nullable: true,
+			},
+			nil,
+			nil,
+		},
+		{
+			"Not-Null integer",
+			ColumnDef{
+				Name: "test",
+				Type: sqlite.TypeInteger,
+			},
+			nil,
+			0,
+		},
+		{
+			"Not-Null string",
+			ColumnDef{
+				Type: sqlite.TypeText,
+			},
+			nil,
+			"",
+		},
 	}
 
 	for idx := range cases {
 		c := cases[idx]
 		t.Run(c.Desc, func(t *testing.T) {
-			// t.Parallel()
+			//t.Parallel()
 
 			res, err := EncodeValue(ctx, &c.Column, c.Input, DefaultEncodeConfig)
 			assert.NoError(t, err)

@@ -53,6 +53,15 @@ type (
 	}
 )
 
+func (ts TableSchema) GetColumnDef(name string) *ColumnDef {
+	for _, def := range ts.Columns {
+		if def.Name == name {
+			return &def
+		}
+	}
+	return nil
+}
+
 func (ts TableSchema) CreateStatement(ifNotExists bool) string {
 	sql := "CREATE TABLE"
 	if ifNotExists {

@@ -96,7 +96,7 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 
 			model, err := convertConnection(conn)
 			if err != nil {
-				log.Errorf("netquery: failed to convert connection %s to sqlite model: %w", conn.ID, err)
+				log.Errorf("netquery: failed to convert connection %s to sqlite model: %s", conn.ID, err)
 
 				continue
 			}
@@ -104,7 +104,7 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 			log.Infof("netquery: persisting create/update to connection %s", conn.ID)
 
 			if err := mng.store.Save(ctx, *model); err != nil {
-				log.Errorf("netquery: failed to save connection %s in sqlite database: %w", conn.ID, err)
+				log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
 
 				continue
 			}
@@ -116,7 +116,7 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 
 			// push an update for the connection
 			if err := mng.pushConnUpdate(ctx, *cloned, *model); err != nil {
-				log.Errorf("netquery: failed to push update for conn %s via database system: %w", conn.ID, err)
+				log.Errorf("netquery: failed to push update for conn %s via database system: %s", conn.ID, err)
 			}
 
 			count++
@@ -170,6 +170,8 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		Internal:   conn.Internal,
 		Inbound:    conn.Inbound,
 		Type:       ConnectionTypeToString[conn.Type],
+		ProfileID:  conn.ProcessContext.ProfileName,
+		Path:       conn.ProcessContext.BinaryPath,
 	}
 
 	if conn.Ended > 0 {
