@@ -63,32 +63,35 @@ type (
 		// time. We cannot just use the network.Connection.ID because it is only unique
 		// as long as the connection is still active and might be, although unlikely,
 		// reused afterwards.
-		ID         string            `sqlite:"id,primary"`
-		ProfileID  string            `sqlite:"profile"`
-		Path       string            `sqlite:"path"`
-		Type       string            `sqlite:"type,varchar(8)"`
-		External   bool              `sqlite:"external"`
-		IPVersion  packet.IPVersion  `sqlite:"ip_version"`
-		IPProtocol packet.IPProtocol `sqlite:"ip_protocol"`
-		LocalIP    string            `sqlite:"local_ip"`
-		LocalPort  uint16            `sqlite:"local_port"`
-		RemoteIP   string            `sqlite:"remote_ip"`
-		RemotePort uint16            `sqlite:"remote_port"`
-		Domain     string            `sqlite:"domain"`
-		Country    string            `sqlite:"country,varchar(2)"`
-		ASN        uint              `sqlite:"asn"`
-		ASOwner    string            `sqlite:"as_owner"`
-		Latitude   float64           `sqlite:"latitude"`
-		Longitude  float64           `sqlite:"longitude"`
-		Scope      netutils.IPScope  `sqlite:"scope"`
-		Verdict    network.Verdict   `sqlite:"verdict"`
-		Started    time.Time         `sqlite:"started,text,time"`
-		Ended      *time.Time        `sqlite:"ended,text,time"`
-		Tunneled   bool              `sqlite:"tunneled"`
-		Encrypted  bool              `sqlite:"encrypted"`
-		Internal   bool              `sqlite:"internal"`
-		Inbound    bool              `sqlite:"inbound"`
-		ExtraData  json.RawMessage   `sqlite:"extra_data"`
+		ID              string            `sqlite:"id,primary"`
+		ProfileID       string            `sqlite:"profile"`
+		ProfileSource   string            `sqlite:"profileSource"`
+		Path            string            `sqlite:"path"`
+		Type            string            `sqlite:"type,varchar(8)"`
+		External        bool              `sqlite:"external"`
+		IPVersion       packet.IPVersion  `sqlite:"ip_version"`
+		IPProtocol      packet.IPProtocol `sqlite:"ip_protocol"`
+		LocalIP         string            `sqlite:"local_ip"`
+		LocalPort       uint16            `sqlite:"local_port"`
+		RemoteIP        string            `sqlite:"remote_ip"`
+		RemotePort      uint16            `sqlite:"remote_port"`
+		Domain          string            `sqlite:"domain"`
+		Country         string            `sqlite:"country,varchar(2)"`
+		ASN             uint              `sqlite:"asn"`
+		ASOwner         string            `sqlite:"as_owner"`
+		Latitude        float64           `sqlite:"latitude"`
+		Longitude       float64           `sqlite:"longitude"`
+		Scope           netutils.IPScope  `sqlite:"scope"`
+		Verdict         network.Verdict   `sqlite:"verdict"`
+		Started         time.Time         `sqlite:"started,text,time"`
+		Ended           *time.Time        `sqlite:"ended,text,time"`
+		Tunneled        bool              `sqlite:"tunneled"`
+		Encrypted       bool              `sqlite:"encrypted"`
+		Internal        bool              `sqlite:"internal"`
+		Direction       string            `sqlite:"direction"`
+		ExtraData       json.RawMessage   `sqlite:"extra_data"`
+		Allowed         *bool             `sqlite:"allowed"`
+		ProfileRevision int               `sqlite:"profile_revision"`
 	}
 )
 
@@ -190,11 +193,11 @@ func (db *Database) CountRows(ctx context.Context) (int, error) {
 // probably not worth the cylces...
 func (db *Database) Cleanup(ctx context.Context, threshold time.Time) (int, error) {
 	where := `WHERE ended IS NOT NULL
-			AND datetime(ended) < :threshold`
+			AND datetime(ended) < datetime(:threshold)`
 	sql := "DELETE FROM connections " + where + ";"
 
 	args := orm.WithNamedArgs(map[string]interface{}{
-		":threshold": threshold,
+		":threshold": threshold.UTC().Format(orm.SqliteTimeFormat),
 	})
 
 	var result []struct {
@@ -232,7 +235,7 @@ func (db *Database) dumpTo(ctx context.Context, w io.Writer) error {
 	if err := sqlitex.ExecuteTransient(db.conn, "SELECT * FROM connections", &sqlitex.ExecOptions{
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			var c Conn
-			if err := orm.DecodeStmt(ctx, stmt, &c, orm.DefaultDecodeConfig); err != nil {
+			if err := orm.DecodeStmt(ctx, db.Schema, stmt, &c, orm.DefaultDecodeConfig); err != nil {
 				return err
 			}
 

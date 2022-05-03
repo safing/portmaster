@@ -45,6 +45,7 @@ type (
 		Name          string
 		Nullable      bool
 		Type          sqlite.ColumnType
+		GoType        reflect.Type
 		Length        int
 		PrimaryKey    bool
 		AutoIncrement bool
@@ -145,6 +146,7 @@ func getColumnDef(fieldType reflect.StructField) (*ColumnDef, error) {
 		ft = fieldType.Type.Elem()
 	}
 
+	def.GoType = ft
 	kind := normalizeKind(ft.Kind())
 
 	switch kind {

@@ -58,6 +58,7 @@ func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		query,
 		orm.WithNamedArgs(paramMap),
 		orm.WithResult(&result),
+		orm.WithSchema(*qh.Database.Schema),
 	); err != nil {
 		http.Error(resp, "Failed to execute query: "+err.Error(), http.StatusInternalServerError)
 
@@ -139,18 +140,27 @@ func (qh *QueryHandler) parseRequest(req *http.Request) (*QueryRequestPayload, e
 }
 
 func (req *QueryRequestPayload) generateSQL(ctx context.Context, schema *orm.TableSchema) (string, map[string]interface{}, error) {
-	if err := req.prepareSelectedFields(schema); err != nil {
+	if err := req.prepareSelectedFields(ctx, schema); err != nil {
 		return "", nil, fmt.Errorf("perparing selected fields: %w", err)
 	}
 
 	// build the SQL where clause from the payload query
 	whereClause, paramMap, err := req.Query.toSQLWhereClause(
 		ctx,
+		"",
 		schema,
 		orm.DefaultEncodeConfig,
 	)
 	if err != nil {
 		return "", nil, fmt.Errorf("ganerating where clause: %w", err)
+	}
+
+	if req.paramMap == nil {
+		req.paramMap = make(map[string]interface{})
+	}
+
+	for key, val := range paramMap {
+		req.paramMap[key] = val
 	}
 
 	// build the actual SQL query statement
@@ -173,20 +183,26 @@ func (req *QueryRequestPayload) generateSQL(ctx context.Context, schema *orm.Tab
 	}
 	query += " " + groupByClause + " " + orderByClause
 
-	return query, paramMap, nil
+	return query, req.paramMap, nil
 }
 
-func (req *QueryRequestPayload) prepareSelectedFields(schema *orm.TableSchema) error {
-	for _, s := range req.Select {
+func (req *QueryRequestPayload) prepareSelectedFields(ctx context.Context, schema *orm.TableSchema) error {
+	for idx, s := range req.Select {
 		var field string
-		if s.Count != nil {
+		switch {
+		case s.Count != nil:
 			field = s.Count.Field
-		} else {
+		case s.Distinct != nil:
+			field = *s.Distinct
+		case s.Sum != nil:
+			// field is not used in case of $sum
+			field = "*"
+		default:
 			field = s.Field
 		}
 
 		colName := "*"
-		if field != "*" || s.Count == nil {
+		if field != "*" || (s.Count == nil && s.Sum == nil) {
 			var err error
 
 			colName, err = req.validateColumnName(schema, field)
@@ -195,7 +211,8 @@ func (req *QueryRequestPayload) prepareSelectedFields(schema *orm.TableSchema) e
 			}
 		}
 
-		if s.Count != nil {
+		switch {
+		case s.Count != nil:
 			var as = s.Count.As
 			if as == "" {
 				as = fmt.Sprintf("%s_count", colName)
@@ -204,9 +221,34 @@ func (req *QueryRequestPayload) prepareSelectedFields(schema *orm.TableSchema) e
 			if s.Count.Distinct {
 				distinct = "DISTINCT "
 			}
-			req.selectedFields = append(req.selectedFields, fmt.Sprintf("COUNT(%s%s) as %s", distinct, colName, as))
+			req.selectedFields = append(
+				req.selectedFields,
+				fmt.Sprintf("COUNT(%s%s) AS %s", distinct, colName, as),
+			)
 			req.whitelistedFields = append(req.whitelistedFields, as)
-		} else {
+
+		case s.Sum != nil:
+			if s.Sum.As == "" {
+				return fmt.Errorf("missing 'as' for $sum")
+			}
+
+			clause, params, err := s.Sum.Condition.toSQLWhereClause(ctx, fmt.Sprintf("sel%d", idx), schema, orm.DefaultEncodeConfig)
+			if err != nil {
+				return fmt.Errorf("in $sum: %w", err)
+			}
+
+			req.paramMap = params
+			req.selectedFields = append(
+				req.selectedFields,
+				fmt.Sprintf("SUM(%s) AS %s", clause, s.Sum.As),
+			)
+			req.whitelistedFields = append(req.whitelistedFields, s.Sum.As)
+
+		case s.Distinct != nil:
+			req.selectedFields = append(req.selectedFields, fmt.Sprintf("DISTINCT %s", colName))
+			req.whitelistedFields = append(req.whitelistedFields, colName)
+
+		default:
 			req.selectedFields = append(req.selectedFields, colName)
 		}
 	}
@@ -251,6 +293,10 @@ func (req *QueryRequestPayload) generateSelectClause() string {
 }
 
 func (req *QueryRequestPayload) generateOrderByClause(schema *orm.TableSchema) (string, error) {
+	if len(req.OrderBy) == 0 {
+		return "", nil
+	}
+
 	var orderBys = make([]string, len(req.OrderBy))
 	for idx, sort := range req.OrderBy {
 		colName, err := req.validateColumnName(schema, sort.Field)
@@ -286,7 +332,7 @@ func (req *QueryRequestPayload) validateColumnName(schema *orm.TableSchema, fiel
 		}
 	}
 
-	return "", fmt.Errorf("column name %s not allowed", field)
+	return "", fmt.Errorf("column name %q not allowed", field)
 }
 
 // compile time check

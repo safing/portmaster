@@ -16,6 +16,12 @@ import (
 type (
 	Query map[string][]Matcher
 
+	MatchType interface {
+		Operator() string
+	}
+
+	Equal interface{}
+
 	Matcher struct {
 		Equal    interface{}   `json:"$eq,omitempty"`
 		NotEqual interface{}   `json:"$ne,omitempty"`
@@ -27,12 +33,22 @@ type (
 	Count struct {
 		As       string `json:"as"`
 		Field    string `json:"field"`
-		Distinct bool   `json:"distict"`
+		Distinct bool   `json:"distinct"`
 	}
 
+	Sum struct {
+		Condition Query  `json:"condition"`
+		As        string `json:"as"`
+		Distinct  bool   `json:"distinct"`
+	}
+
+	// NOTE: whenever adding support for new operators make sure
+	// to update UnmarshalJSON as well.
 	Select struct {
-		Field string `json:"field"`
-		Count *Count `json:"$count"`
+		Field    string  `json:"field"`
+		Count    *Count  `json:"$count,omitempty"`
+		Sum      *Sum    `json:"$sum,omitempty"`
+		Distinct *string `json:"$distinct"`
 	}
 
 	Selects []Select
@@ -45,6 +61,11 @@ type (
 
 		selectedFields    []string
 		whitelistedFields []string
+		paramMap          map[string]interface{}
+	}
+
+	QueryActiveConnectionChartPayload struct {
+		Query Query `json:"query"`
 	}
 
 	OrderBy struct {
@@ -179,15 +200,15 @@ func (match Matcher) Validate() error {
 	return nil
 }
 
-func (match Matcher) toSQLConditionClause(ctx context.Context, idx int, conjunction string, colDef orm.ColumnDef, encoderConfig orm.EncodeConfig) (string, map[string]interface{}, error) {
+func (match Matcher) toSQLConditionClause(ctx context.Context, suffix string, conjunction string, colDef orm.ColumnDef, encoderConfig orm.EncodeConfig) (string, map[string]interface{}, error) {
 	var (
 		queryParts []string
 		params     = make(map[string]interface{})
 		errs       = new(multierror.Error)
-		key        = fmt.Sprintf("%s%d", colDef.Name, idx)
+		key        = fmt.Sprintf("%s%s", colDef.Name, suffix)
 	)
 
-	add := func(operator, suffix string, values ...interface{}) {
+	add := func(operator, suffix string, list bool, values ...interface{}) {
 		var placeholder []string
 
 		for idx, value := range values {
@@ -204,7 +225,7 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, idx int, conjunct
 			params[uniqKey] = encodedValue
 		}
 
-		if len(placeholder) == 1 {
+		if len(placeholder) == 1 && !list {
 			queryParts = append(queryParts, fmt.Sprintf("%s %s %s", colDef.Name, operator, placeholder[0]))
 		} else {
 			queryParts = append(queryParts, fmt.Sprintf("%s %s ( %s )", colDef.Name, operator, strings.Join(placeholder, ", ")))
@@ -212,23 +233,23 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, idx int, conjunct
 	}
 
 	if match.Equal != nil {
-		add("=", "eq", match.Equal)
+		add("=", "eq", false, match.Equal)
 	}
 
 	if match.NotEqual != nil {
-		add("!=", "ne", match.NotEqual)
+		add("!=", "ne", false, match.NotEqual)
 	}
 
 	if match.In != nil {
-		add("IN", "in", match.In...)
+		add("IN", "in", true, match.In...)
 	}
 
 	if match.NotIn != nil {
-		add("NOT IN", "notin", match.NotIn...)
+		add("NOT IN", "notin", true, match.NotIn...)
 	}
 
 	if match.Like != "" {
-		add("LIKE", "like", match.Like)
+		add("LIKE", "like", false, match.Like)
 	}
 
 	if len(queryParts) == 0 {
@@ -244,7 +265,7 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, idx int, conjunct
 	return "( " + strings.Join(queryParts, " "+conjunction+" ") + " )", params, errs.ErrorOrNil()
 }
 
-func (query Query) toSQLWhereClause(ctx context.Context, m *orm.TableSchema, encoderConfig orm.EncodeConfig) (string, map[string]interface{}, error) {
+func (query Query) toSQLWhereClause(ctx context.Context, suffix string, m *orm.TableSchema, encoderConfig orm.EncodeConfig) (string, map[string]interface{}, error) {
 	if len(query) == 0 {
 		return "", nil, nil
 	}
@@ -279,7 +300,7 @@ func (query Query) toSQLWhereClause(ctx context.Context, m *orm.TableSchema, enc
 
 		queryParts := make([]string, len(values))
 		for idx, val := range values {
-			matcherQuery, params, err := val.toSQLConditionClause(ctx, idx, "AND", colDef, encoderConfig)
+			matcherQuery, params, err := val.toSQLConditionClause(ctx, fmt.Sprintf("%s%d", suffix, idx), "AND", colDef, encoderConfig)
 			if err != nil {
 				errs.Errors = append(errs.Errors,
 					fmt.Errorf("invalid matcher at index %d for column %s: %w", idx, colDef.Name, err),
@@ -359,8 +380,10 @@ func (sel *Select) UnmarshalJSON(blob []byte) error {
 	// directly
 	if blob[0] == '{' {
 		var res struct {
-			Field string `json:"field"`
-			Count *Count `json:"$count"`
+			Field    string  `json:"field"`
+			Count    *Count  `json:"$count"`
+			Sum      *Sum    `json:"$sum"`
+			Distinct *string `json:"$distinct"`
 		}
 
 		if err := json.Unmarshal(blob, &res); err != nil {
@@ -369,6 +392,8 @@ func (sel *Select) UnmarshalJSON(blob []byte) error {
 
 		sel.Count = res.Count
 		sel.Field = res.Field
+		sel.Distinct = res.Distinct
+		sel.Sum = res.Sum
 
 		if sel.Count != nil && sel.Count.As != "" {
 			if !charOnlyRegexp.MatchString(sel.Count.As) {

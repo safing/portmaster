@@ -155,23 +155,42 @@ func (mng *Manager) pushConnUpdate(ctx context.Context, meta record.Meta, conn C
 func convertConnection(conn *network.Connection) (*Conn, error) {
 	conn.Lock()
 	defer conn.Unlock()
+	direction := "outbound"
+	if conn.Inbound {
+		direction = "inbound"
+	}
 
 	c := Conn{
-		ID:         genConnID(conn),
-		External:   conn.External,
-		IPVersion:  conn.IPVersion,
-		IPProtocol: conn.IPProtocol,
-		LocalIP:    conn.LocalIP.String(),
-		LocalPort:  conn.LocalPort,
-		Verdict:    conn.Verdict,
-		Started:    time.Unix(conn.Started, 0),
-		Tunneled:   conn.Tunneled,
-		Encrypted:  conn.Encrypted,
-		Internal:   conn.Internal,
-		Inbound:    conn.Inbound,
-		Type:       ConnectionTypeToString[conn.Type],
-		ProfileID:  conn.ProcessContext.ProfileName,
-		Path:       conn.ProcessContext.BinaryPath,
+		ID:              genConnID(conn),
+		External:        conn.External,
+		IPVersion:       conn.IPVersion,
+		IPProtocol:      conn.IPProtocol,
+		LocalIP:         conn.LocalIP.String(),
+		LocalPort:       conn.LocalPort,
+		Verdict:         conn.Verdict,
+		Started:         time.Unix(conn.Started, 0),
+		Tunneled:        conn.Tunneled,
+		Encrypted:       conn.Encrypted,
+		Internal:        conn.Internal,
+		Direction:       direction,
+		Type:            ConnectionTypeToString[conn.Type],
+		ProfileID:       conn.ProcessContext.Profile,
+		ProfileSource:   conn.ProcessContext.Source,
+		Path:            conn.ProcessContext.BinaryPath,
+		ProfileRevision: int(conn.ProfileRevisionCounter),
+	}
+
+	switch conn.Type {
+	case network.DNSRequest:
+		c.Type = "dns"
+	case network.IPConnection:
+		c.Type = "ip"
+	}
+
+	switch conn.Verdict {
+	case network.VerdictAccept, network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel:
+		accepted := true
+		c.Allowed = &accepted
 	}
 
 	if conn.Ended > 0 {
@@ -180,6 +199,10 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 	}
 
 	extraData := map[string]interface{}{}
+
+	if conn.TunnelContext != nil {
+		extraData["tunnel"] = conn.TunnelContext
+	}
 
 	if conn.Entity != nil {
 		extraData["cname"] = conn.Entity.CNAME

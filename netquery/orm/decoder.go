@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"reflect"
 	"strings"
 	"time"
@@ -51,7 +52,7 @@ type (
 	}
 
 	// DecodeFunc is called for each non-basic type during decoding.
-	DecodeFunc func(colIdx int, stmt Stmt, fieldDef reflect.StructField, outval reflect.Value) (interface{}, error)
+	DecodeFunc func(colIdx int, colDef *ColumnDef, stmt Stmt, fieldDef reflect.StructField, outval reflect.Value) (interface{}, bool, error)
 
 	DecodeConfig struct {
 		DecodeHooks []DecodeFunc
@@ -63,7 +64,7 @@ type (
 // be specified to provide support for special types.
 // See DatetimeDecoder() for an example of a DecodeHook that handles graceful time.Time conversion.
 //
-func DecodeStmt(ctx context.Context, stmt Stmt, result interface{}, cfg DecodeConfig) error {
+func DecodeStmt(ctx context.Context, schema *TableSchema, stmt Stmt, result interface{}, cfg DecodeConfig) error {
 	// make sure we got something to decode into ...
 	if result == nil {
 		return fmt.Errorf("%w, got %T", errStructPointerExpected, result)
@@ -71,7 +72,7 @@ func DecodeStmt(ctx context.Context, stmt Stmt, result interface{}, cfg DecodeCo
 
 	// fast path for decoding into a map
 	if mp, ok := result.(*map[string]interface{}); ok {
-		return decodeIntoMap(ctx, stmt, mp)
+		return decodeIntoMap(ctx, schema, stmt, mp, cfg)
 	}
 
 	// make sure we got a pointer in result
@@ -147,10 +148,13 @@ func DecodeStmt(ctx context.Context, stmt Stmt, result interface{}, cfg DecodeCo
 			value = storage.Elem()
 		}
 
+		colDef := schema.GetColumnDef(colName)
+
 		// execute all decode hooks but make sure we use decodeBasic() as the
 		// last one.
 		columnValue, err := runDecodeHooks(
 			i,
+			colDef,
 			stmt,
 			fieldType,
 			value,
@@ -188,10 +192,19 @@ func DecodeStmt(ctx context.Context, stmt Stmt, result interface{}, cfg DecodeCo
 // FIXME(ppacher): update comment about loc parameter and TEXT storage class parsing
 //
 func DatetimeDecoder(loc *time.Location) DecodeFunc {
-	return func(colIdx int, stmt Stmt, fieldDef reflect.StructField, outval reflect.Value) (interface{}, error) {
+	return func(colIdx int, colDef *ColumnDef, stmt Stmt, fieldDef reflect.StructField, outval reflect.Value) (interface{}, bool, error) {
+		// if we have the column definition available we
+		// use the target go type from there.
+		outType := outval.Type()
+
+		if colDef != nil {
+			outType = colDef.GoType
+		}
+
 		// we only care about "time.Time" here
-		if outval.Type().String() != "time.Time" {
-			return nil, nil
+		if outType.String() != "time.Time" || (colDef != nil && !colDef.IsTime) {
+			log.Printf("not decoding %s %v", outType, colDef)
+			return nil, false, nil
 		}
 
 		switch stmt.ColumnType(colIdx) {
@@ -201,39 +214,61 @@ func DatetimeDecoder(loc *time.Location) DecodeFunc {
 			// TODO(ppacher): actually split the tag value at "," and search
 			// the slice for "unixnano"
 			if strings.Contains(fieldDef.Tag.Get("sqlite"), ",unixnano") {
-				return time.Unix(0, int64(stmt.ColumnInt(colIdx))), nil
+				return time.Unix(0, int64(stmt.ColumnInt(colIdx))), true, nil
 			}
 
-			return time.Unix(int64(stmt.ColumnInt(colIdx)), 0), nil
+			return time.Unix(int64(stmt.ColumnInt(colIdx)), 0), true, nil
 
 		case sqlite.TypeText:
 			// stored ISO8601 but does not have any timezone information
 			// assigned so we always treat it as loc here.
 			t, err := time.ParseInLocation(SqliteTimeFormat, stmt.ColumnText(colIdx), loc)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse %q in %s: %w", stmt.ColumnText(colIdx), fieldDef.Name, err)
+				return nil, false, fmt.Errorf("failed to parse %q in %s: %w", stmt.ColumnText(colIdx), fieldDef.Name, err)
 			}
 
-			return t, nil
+			return t, true, nil
 
 		case sqlite.TypeFloat:
 			// stored as Julian day numbers
-			return nil, fmt.Errorf("REAL storage type not support for time.Time")
+			return nil, false, fmt.Errorf("REAL storage type not support for time.Time")
+
+		case sqlite.TypeNull:
+			return nil, true, nil
 
 		default:
-			return nil, fmt.Errorf("unsupported storage type for time.Time: %s", outval.Type())
+			return nil, false, fmt.Errorf("unsupported storage type for time.Time: %s", stmt.ColumnType(colIdx))
 		}
 	}
 }
 
-func decodeIntoMap(ctx context.Context, stmt Stmt, mp *map[string]interface{}) error {
+func decodeIntoMap(ctx context.Context, schema *TableSchema, stmt Stmt, mp *map[string]interface{}, cfg DecodeConfig) error {
 	if *mp == nil {
 		*mp = make(map[string]interface{})
 	}
 
 	for i := 0; i < stmt.ColumnCount(); i++ {
 		var x interface{}
-		val, err := decodeBasic()(i, stmt, reflect.StructField{}, reflect.ValueOf(&x).Elem())
+
+		colDef := schema.GetColumnDef(stmt.ColumnName(i))
+
+		outVal := reflect.ValueOf(&x).Elem()
+		fieldType := reflect.StructField{}
+		if colDef != nil {
+			outVal = reflect.New(colDef.GoType).Elem()
+			fieldType = reflect.StructField{
+				Type: colDef.GoType,
+			}
+		}
+
+		val, err := runDecodeHooks(
+			i,
+			colDef,
+			stmt,
+			fieldType,
+			outVal,
+			append(cfg.DecodeHooks, decodeBasic()),
+		)
 		if err != nil {
 			return fmt.Errorf("failed to decode column %s: %w", stmt.ColumnName(i), err)
 		}
@@ -245,56 +280,99 @@ func decodeIntoMap(ctx context.Context, stmt Stmt, mp *map[string]interface{}) e
 }
 
 func decodeBasic() DecodeFunc {
-	return func(colIdx int, stmt Stmt, fieldDef reflect.StructField, outval reflect.Value) (interface{}, error) {
+	return func(colIdx int, colDef *ColumnDef, stmt Stmt, fieldDef reflect.StructField, outval reflect.Value) (result interface{}, handled bool, err error) {
 		valueKind := getKind(outval)
 		colType := stmt.ColumnType(colIdx)
 		colName := stmt.ColumnName(colIdx)
 
 		errInvalidType := fmt.Errorf("%w %s for column %s with field type %s", errUnexpectedColumnType, colType.String(), colName, outval.Type())
 
+		// if we have the column definition available we
+		// use the target go type from there.
+		if colDef != nil {
+			valueKind = normalizeKind(colDef.GoType.Kind())
+
+			// if we have a column defintion we try to convert the value to
+			// the actual Go-type that was used in the model.
+			// this is useful, for example, to ensure a []byte{} is always decoded into json.RawMessage
+			// or that type aliases like (type myInt int) are decoded into myInt instead of int
+			defer func() {
+				if handled {
+					t := reflect.New(colDef.GoType).Elem()
+
+					if result == nil || reflect.ValueOf(result).IsZero() {
+						return
+					}
+
+					if reflect.ValueOf(result).Type().ConvertibleTo(colDef.GoType) {
+						result = reflect.ValueOf(result).Convert(colDef.GoType).Interface()
+					}
+					t.Set(reflect.ValueOf(result))
+
+					result = t.Interface()
+				}
+			}()
+		}
+
+		log.Printf("decoding %s into kind %s", colName, valueKind)
+
+		if colType == sqlite.TypeNull {
+			if colDef != nil && colDef.Nullable {
+				return nil, true, nil
+			}
+
+			if colDef != nil && !colDef.Nullable {
+				return reflect.New(colDef.GoType).Elem().Interface(), true, nil
+			}
+
+			if outval.Kind() == reflect.Ptr {
+				return nil, true, nil
+			}
+		}
+
 		switch valueKind {
 		case reflect.String:
 			if colType != sqlite.TypeText {
-				return nil, errInvalidType
+				return nil, false, errInvalidType
 			}
-			return stmt.ColumnText(colIdx), nil
+			return stmt.ColumnText(colIdx), true, nil
 
 		case reflect.Bool:
 			// sqlite does not have a BOOL type, it rather stores a 1/0 in a column
 			// with INTEGER affinity.
 			if colType != sqlite.TypeInteger {
-				return nil, errInvalidType
+				return nil, false, errInvalidType
 			}
-			return stmt.ColumnBool(colIdx), nil
+			return stmt.ColumnBool(colIdx), true, nil
 
 		case reflect.Float64:
 			if colType != sqlite.TypeFloat {
-				return nil, errInvalidType
+				return nil, false, errInvalidType
 			}
-			return stmt.ColumnFloat(colIdx), nil
+			return stmt.ColumnFloat(colIdx), true, nil
 
 		case reflect.Int, reflect.Uint: // getKind() normalizes all ints to reflect.Int/Uint because sqlite doesn't really care ...
 			if colType != sqlite.TypeInteger {
-				return nil, errInvalidType
+				return nil, false, errInvalidType
 			}
 
-			return stmt.ColumnInt(colIdx), nil
+			return stmt.ColumnInt(colIdx), true, nil
 
 		case reflect.Slice:
 			if outval.Type().Elem().Kind() != reflect.Uint8 {
-				return nil, fmt.Errorf("slices other than []byte for BLOB are not supported")
+				return nil, false, fmt.Errorf("slices other than []byte for BLOB are not supported")
 			}
 
 			if colType != sqlite.TypeBlob {
-				return nil, errInvalidType
+				return nil, false, errInvalidType
 			}
 
 			columnValue, err := io.ReadAll(stmt.ColumnReader(colIdx))
 			if err != nil {
-				return nil, fmt.Errorf("failed to read blob for column %s: %w", fieldDef.Name, err)
+				return nil, false, fmt.Errorf("failed to read blob for column %s: %w", fieldDef.Name, err)
 			}
 
-			return columnValue, nil
+			return columnValue, true, nil
 
 		case reflect.Interface:
 			var (
@@ -306,7 +384,7 @@ func decodeBasic() DecodeFunc {
 				t = reflect.TypeOf([]byte{})
 				columnValue, err := io.ReadAll(stmt.ColumnReader(colIdx))
 				if err != nil {
-					return nil, fmt.Errorf("failed to read blob for column %s: %w", fieldDef.Name, err)
+					return nil, false, fmt.Errorf("failed to read blob for column %s: %w", fieldDef.Name, err)
 				}
 				x = columnValue
 
@@ -327,20 +405,20 @@ func decodeBasic() DecodeFunc {
 				x = nil
 
 			default:
-				return nil, fmt.Errorf("unsupported column type %s", colType)
+				return nil, false, fmt.Errorf("unsupported column type %s", colType)
 			}
 
 			if t == nil {
-				return nil, nil
+				return nil, true, nil
 			}
 
 			target := reflect.New(t).Elem()
 			target.Set(reflect.ValueOf(x))
 
-			return target.Interface(), nil
+			return target.Interface(), true, nil
 
 		default:
-			return nil, fmt.Errorf("cannot decode into %s", valueKind)
+			return nil, false, fmt.Errorf("cannot decode into %s", valueKind)
 		}
 	}
 }
@@ -362,14 +440,14 @@ func sqlColumnName(fieldType reflect.StructField) string {
 // runDecodeHooks tries to decode the column value of stmt at index colIdx into outval by running all decode hooks.
 // The first hook that returns a non-nil interface wins, other hooks will not be executed. If an error is
 // returned by a decode hook runDecodeHooks stops the error is returned to the caller.
-func runDecodeHooks(colIdx int, stmt Stmt, fieldDef reflect.StructField, outval reflect.Value, hooks []DecodeFunc) (interface{}, error) {
+func runDecodeHooks(colIdx int, colDef *ColumnDef, stmt Stmt, fieldDef reflect.StructField, outval reflect.Value, hooks []DecodeFunc) (interface{}, error) {
 	for _, fn := range hooks {
-		res, err := fn(colIdx, stmt, fieldDef, outval)
+		res, end, err := fn(colIdx, colDef, stmt, fieldDef, outval)
 		if err != nil {
 			return res, err
 		}
 
-		if res != nil {
+		if end {
 			return res, nil
 		}
 	}

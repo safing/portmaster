@@ -20,6 +20,7 @@ type (
 		NamedArgs    map[string]interface{}
 		Result       interface{}
 		DecodeConfig DecodeConfig
+		Schema       TableSchema
 	}
 )
 
@@ -53,6 +54,12 @@ func WithArgs(args ...interface{}) QueryOption {
 func WithNamedArgs(args map[string]interface{}) QueryOption {
 	return func(opts *queryOpts) {
 		opts.NamedArgs = args
+	}
+}
+
+func WithSchema(tbl TableSchema) QueryOption {
+	return func(opts *queryOpts) {
+		opts.Schema = tbl
 	}
 }
 
@@ -136,7 +143,7 @@ func RunQuery(ctx context.Context, conn *sqlite.Conn, sql string, modifiers ...Q
 
 			currentField = reflect.New(valElemType)
 
-			if err := DecodeStmt(ctx, stmt, currentField.Interface(), args.DecodeConfig); err != nil {
+			if err := DecodeStmt(ctx, &args.Schema, stmt, currentField.Interface(), args.DecodeConfig); err != nil {
 				return err
 			}
 

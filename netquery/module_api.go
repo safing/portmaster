@@ -63,6 +63,10 @@ func (m *Module) Prepare() error {
 		IsDevMode: config.Concurrent.GetAsBool(config.CfgDevModeKey, false),
 	}
 
+	chartHandler := &ChartHandler{
+		Database: m.sqlStore,
+	}
+
 	// FIXME(ppacher): use appropriate permissions for this
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "netquery/query",
@@ -71,6 +75,19 @@ func (m *Module) Prepare() error {
 		Write:       api.PermitAnyone,
 		BelongsTo:   m.Module,
 		HandlerFunc: queryHander.ServeHTTP,
+		Name:        "Query In-Memory Database",
+		Description: "Query the in-memory sqlite database",
+	}); err != nil {
+		return fmt.Errorf("failed to register API endpoint: %w", err)
+	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path:        "netquery/charts/connection-active",
+		MimeType:    "application/json",
+		Read:        api.PermitAnyone,
+		Write:       api.PermitAnyone,
+		BelongsTo:   m.Module,
+		HandlerFunc: chartHandler.ServeHTTP,
 		Name:        "Query In-Memory Database",
 		Description: "Query the in-memory sqlite database",
 	}); err != nil {
@@ -120,11 +137,12 @@ func (mod *Module) Start() error {
 			case <-ctx.Done():
 				return nil
 			case <-time.After(10 * time.Second):
-				count, err := mod.sqlStore.Cleanup(ctx, time.Now().Add(-network.DeleteConnsAfterEndedThreshold))
+				threshold := time.Now().Add(-network.DeleteConnsAfterEndedThreshold)
+				count, err := mod.sqlStore.Cleanup(ctx, threshold)
 				if err != nil {
 					log.Errorf("netquery: failed to count number of rows in memory: %s", err)
 				} else {
-					log.Infof("netquery: successfully removed %d old rows", count)
+					log.Infof("netquery: successfully removed %d old rows that ended before %s", count, threshold)
 				}
 			}
 		}
@@ -135,7 +153,7 @@ func (mod *Module) Start() error {
 			select {
 			case <-ctx.Done():
 				return nil
-			case <-time.After(5 * time.Second):
+			case <-time.After(1 * time.Second):
 				count, err := mod.sqlStore.CountRows(ctx)
 				if err != nil {
 					log.Errorf("netquery: failed to count number of rows in memory: %s", err)

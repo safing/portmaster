@@ -228,7 +228,7 @@ func Test_QueryBuilder(t *testing.T) {
 	for idx, c := range cases {
 		t.Run(c.N, func(t *testing.T) {
 			//t.Parallel()
-			str, params, err := c.Q.toSQLWhereClause(context.TODO(), tbl, orm.DefaultEncodeConfig)
+			str, params, err := c.Q.toSQLWhereClause(context.TODO(), "", tbl, orm.DefaultEncodeConfig)
 
 			if c.E != nil {
 				if assert.Error(t, err) {

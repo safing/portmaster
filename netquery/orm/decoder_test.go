@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
+	"reflect"
 	"testing"
 	"time"
 
@@ -82,6 +84,8 @@ func (ett *exampleTimeTypes) Equal(other interface{}) bool {
 	return ett.T.Equal(oett.T) && (ett.TP != nil && oett.TP != nil && ett.TP.Equal(*oett.TP)) || (ett.TP == nil && oett.TP == nil)
 }
 
+type myInt int
+
 type exampleTimeNano struct {
 	T time.Time `sqlite:",unixnano"`
 }
@@ -100,10 +104,11 @@ func Test_Decoder(t *testing.T) {
 	refTime := time.Date(2022, time.February, 15, 9, 51, 00, 00, time.UTC)
 
 	cases := []struct {
-		Desc     string
-		Stmt     testStmt
-		Result   interface{}
-		Expected interface{}
+		Desc      string
+		Stmt      testStmt
+		ColumnDef []ColumnDef
+		Result    interface{}
+		Expected  interface{}
 	}{
 		{
 			"Decoding into nil is not allowed",
@@ -112,6 +117,7 @@ func Test_Decoder(t *testing.T) {
 				values:  nil,
 				types:   nil,
 			},
+			nil,
 			nil,
 			nil,
 		},
@@ -132,6 +138,7 @@ func Test_Decoder(t *testing.T) {
 					true,
 				},
 			},
+			nil,
 			&exampleFieldTypes{},
 			&exampleFieldTypes{
 				S: "string value",
@@ -157,6 +164,7 @@ func Test_Decoder(t *testing.T) {
 					1.2,
 				},
 			},
+			nil,
 			&exampleFieldTypes{},
 			&exampleFieldTypes{
 				S: "string value",
@@ -178,6 +186,7 @@ func Test_Decoder(t *testing.T) {
 					true,
 				},
 			},
+			nil,
 			&exampleFieldTypes{},
 			&exampleFieldTypes{
 				F: 1.2,
@@ -201,6 +210,7 @@ func Test_Decoder(t *testing.T) {
 					true,
 				},
 			},
+			nil,
 			&examplePointerTypes{},
 			func() interface{} {
 				s := "string value"
@@ -231,6 +241,7 @@ func Test_Decoder(t *testing.T) {
 					true,
 				},
 			},
+			nil,
 			&examplePointerTypes{},
 			func() interface{} {
 				s := "string value"
@@ -255,6 +266,7 @@ func Test_Decoder(t *testing.T) {
 					1,
 				},
 			},
+			nil,
 			&exampleStructTags{},
 			&exampleStructTags{
 				S: "string value",
@@ -280,6 +292,7 @@ func Test_Decoder(t *testing.T) {
 					1,
 				},
 			},
+			nil,
 			&exampleIntConv{},
 			&exampleIntConv{
 				1, 1, 1, 1, 1,
@@ -301,6 +314,7 @@ func Test_Decoder(t *testing.T) {
 					1.0,
 				},
 			},
+			nil,
 			&exampleFieldTypes{},
 			&exampleFieldTypes{
 				F: 1.0,
@@ -322,6 +336,7 @@ func Test_Decoder(t *testing.T) {
 					1.0,
 				},
 			},
+			nil,
 			&examplePointerTypes{},
 			func() interface{} {
 				f := 1.0
@@ -340,6 +355,7 @@ func Test_Decoder(t *testing.T) {
 					([]byte)("hello world"),
 				},
 			},
+			nil,
 			&exampleBlobTypes{},
 			&exampleBlobTypes{
 				B: ([]byte)("hello world"),
@@ -356,6 +372,7 @@ func Test_Decoder(t *testing.T) {
 					([]byte)("hello world"),
 				},
 			},
+			nil,
 			&exampleJSONRawTypes{},
 			&exampleJSONRawTypes{
 				B: (json.RawMessage)("hello world"),
@@ -374,6 +391,7 @@ func Test_Decoder(t *testing.T) {
 					int(refTime.Unix()),
 				},
 			},
+			nil,
 			&exampleTimeTypes{},
 			&exampleTimeTypes{
 				T:  refTime,
@@ -393,6 +411,7 @@ func Test_Decoder(t *testing.T) {
 					int(refTime.UnixNano()),
 				},
 			},
+			nil,
 			&exampleTimeNano{},
 			&exampleTimeNano{
 				T: refTime,
@@ -411,6 +430,7 @@ func Test_Decoder(t *testing.T) {
 					"value2",
 				},
 			},
+			nil,
 			&exampleInterface{},
 			func() interface{} {
 				var x interface{}
@@ -439,6 +459,7 @@ func Test_Decoder(t *testing.T) {
 					[]byte("blob value"),
 				},
 			},
+			nil,
 			new(map[string]interface{}),
 			&map[string]interface{}{
 				"I": 1,
@@ -447,14 +468,91 @@ func Test_Decoder(t *testing.T) {
 				"B": []byte("blob value"),
 			},
 		},
+		{
+			"Decoding using type-hints",
+			testStmt{
+				columns: []string{"B", "T"},
+				types: []sqlite.ColumnType{
+					sqlite.TypeInteger,
+					sqlite.TypeText,
+				},
+				values: []interface{}{
+					true,
+					refTime.Format(SqliteTimeFormat),
+				},
+			},
+			[]ColumnDef{
+				{
+					Name:   "B",
+					Type:   sqlite.TypeInteger,
+					GoType: reflect.TypeOf(true),
+				},
+				{
+					Name:   "T",
+					Type:   sqlite.TypeText,
+					GoType: reflect.TypeOf(time.Time{}),
+					IsTime: true,
+				},
+			},
+			new(map[string]interface{}),
+			&map[string]interface{}{
+				"B": true,
+				"T": refTime,
+			},
+		},
+		{
+			"Decoding into type aliases",
+			testStmt{
+				columns: []string{"B"},
+				types: []sqlite.ColumnType{
+					sqlite.TypeBlob,
+				},
+				values: []interface{}{
+					[]byte(`{"foo": "bar}`),
+				},
+			},
+			[]ColumnDef{
+				{
+					Name:   "B",
+					Type:   sqlite.TypeBlob,
+					GoType: reflect.TypeOf(json.RawMessage(`{"foo": "bar}`)),
+				},
+			},
+			new(map[string]interface{}),
+			&map[string]interface{}{
+				"B": json.RawMessage(`{"foo": "bar}`),
+			},
+		},
+		{
+			"Decoding into type aliases #2",
+			testStmt{
+				columns: []string{"I"},
+				types:   []sqlite.ColumnType{sqlite.TypeInteger},
+				values: []interface{}{
+					10,
+				},
+			},
+			[]ColumnDef{
+				{
+					Name:   "I",
+					Type:   sqlite.TypeInteger,
+					GoType: reflect.TypeOf(myInt(0)),
+				},
+			},
+			new(map[string]interface{}),
+			&map[string]interface{}{
+				"I": myInt(10),
+			},
+		},
 	}
 
 	for idx := range cases {
 		c := cases[idx]
 		t.Run(c.Desc, func(t *testing.T) {
-			t.Parallel()
+			//t.Parallel()
 
-			err := DecodeStmt(ctx, c.Stmt, c.Result, DefaultDecodeConfig)
+			log.Println(c.Desc)
+			err := DecodeStmt(ctx, &TableSchema{Columns: c.ColumnDef}, c.Stmt, c.Result, DefaultDecodeConfig)
 			if fn, ok := c.Expected.(func() interface{}); ok {
 				c.Expected = fn()
 			}
