@@ -14,7 +14,7 @@ require (
 	github.com/miekg/dns v1.1.48
 	github.com/oschwald/maxminddb-golang v1.9.0
 	github.com/safing/portbase v0.14.3
-	github.com/safing/spn v0.4.6
+	github.com/safing/spn v0.4.7
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.1
