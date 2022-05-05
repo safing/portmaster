@@ -19,7 +19,7 @@ import ( //nolint:gci,nolintlint
 
 func main() {
 	// set information
-	info.Set("Portmaster", "0.8.8", "AGPLv3", true)
+	info.Set("Portmaster", "0.8.9", "AGPLv3", true)
 
 	// Configure metrics.
 	_ = metrics.SetNamespace("portmaster")
