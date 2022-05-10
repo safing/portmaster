@@ -16,31 +16,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v3
       with:
-        go-version: '^1.15'
-
-    # nektos/act does not have sudo install but we need it on GH actions so
-    # try to install it.
-    - name: Install sudo
-      run: bash -c "apt-get update || true ; apt-get install sudo || true"
-      env:
-        DEBIAN_FRONTEND: noninteractive 
-
-    - name: Install git and gcc
-      run: sudo bash -c "apt-get update && apt-get install -y git gcc libc6-dev"
-      env:
-        DEBIAN_FRONTEND: noninteractive 
+        go-version: '^1.18'
 
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v2
+      uses: golangci/golangci-lint-action@v3
       with:
-        version: v1.44
+        version: v1.45.1
         only-new-issues: true
         args: -c ./.golangci.yml
-        skip-go-installation: true
 
     - name: Get dependencies
       run: go mod download
@@ -48,42 +35,20 @@ jobs:
     - name: Run go vet
       run: go vet ./...
 
-    # golint is run (sufficiently; with excludes) as a part of golangci-lint.
-    # - name: Install golint
-    #   run: bash -c "GOBIN=$(pwd) go get -u golang.org/x/lint/golint"
-    #
-    # - name: Run golint
-    #   run: ./golint -set_exit_status -min_confidence 1.0 ./...
-   
-    # gofmt is run (sufficiently; with excludes) as a part of golangci-lint.
-    # - name: Run gofmt
-    #   run: bash -c 'test -z "$(gofmt -s -l .)"'
-
   test:
     name: Test
     runs-on: ubuntu-latest
     steps:
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+    - name: Check out code
+      uses: actions/checkout@v3
 
-    - uses: actions/setup-go@v2
+    - name: Setup Go
+      uses: actions/setup-go@v3
       with:
-        go-version: '^1.15'
-
-    # nektos/act does not have sudo install but we need it on GH actions so
-    # try to install it.
-    - name: Install sudo
-      run: bash -c "apt-get update || true ; apt-get install sudo || true"
-      env:
-        DEBIAN_FRONTEND: noninteractive 
-
-    - name: Install git and gcc
-      run: sudo bash -c "apt-get update && apt-get install -y git gcc libc6-dev"
-      env:
-        DEBIAN_FRONTEND: noninteractive 
+        go-version: '^1.18'
 
     - name: Get dependencies
       run: go mod download
 
-    - name: Test
+    - name: Run tests
       run: ./test --test-only
