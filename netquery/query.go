@@ -59,6 +59,8 @@ type (
 		OrderBy OrderBys `json:"orderBy"`
 		GroupBy []string `json:"groupBy"`
 
+		Pagination
+
 		selectedFields    []string
 		whitelistedFields []string
 		paramMap          map[string]interface{}
@@ -74,6 +76,11 @@ type (
 	}
 
 	OrderBys []OrderBy
+
+	Pagination struct {
+		PageSize int `json:"pageSize"`
+		Page     int `json:"page"`
+	}
 )
 
 func (query *Query) UnmarshalJSON(blob []byte) error {
@@ -154,6 +161,30 @@ func (query *Query) UnmarshalJSON(blob []byte) error {
 	}
 
 	return nil
+}
+
+// TODO(ppacher): right now we only support LIMIT and OFFSET for pagination but that
+// has an issue that loading the same page twice might yield different results due to
+// new records shifting the result slice. To overcome this, return a "PageToken" to the
+// user that includes the time the initial query was created so paginated queries can
+// ensure new records don't end up in the result set.
+func (page *Pagination) toSQLLimitOffsetClause() string {
+	limit := page.PageSize
+
+	// default and cap the limit to at most 100 items
+	// per page to avoid out-of-memory conditions when loading
+	// thousands of results at once.
+	if limit <= 0 || limit > 100 {
+		limit = 100
+	}
+
+	sql := fmt.Sprintf("LIMIT %d", limit)
+
+	if page.Page > 0 {
+		sql += fmt.Sprintf(" OFFSET %d", page.Page*limit)
+	}
+
+	return sql
 }
 
 func parseMatcher(raw json.RawMessage) (*Matcher, error) {

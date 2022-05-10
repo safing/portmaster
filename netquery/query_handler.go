@@ -181,9 +181,10 @@ func (req *QueryRequestPayload) generateSQL(ctx context.Context, schema *orm.Tab
 	if whereClause != "" {
 		query += " WHERE " + whereClause
 	}
-	query += " " + groupByClause + " " + orderByClause
 
-	return query, req.paramMap, nil
+	query += " " + groupByClause + " " + orderByClause + " " + req.Pagination.toSQLLimitOffsetClause()
+
+	return strings.TrimSpace(query), req.paramMap, nil
 }
 
 func (req *QueryRequestPayload) prepareSelectedFields(ctx context.Context, schema *orm.TableSchema) error {
