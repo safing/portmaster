@@ -25,6 +25,7 @@ type Queue struct {
 	nf                   atomic.Value
 	packets              chan pmpacket.Packet
 	cancelSocketCallback context.CancelFunc
+	canceled             *abool.AtomicBool
 	restart              chan struct{}
 
 	pendingVerdicts  uint64
@@ -50,6 +51,7 @@ func New(qid uint16, v6 bool) (*Queue, error) { //nolint:gocognit
 		restart:              make(chan struct{}, 1),
 		packets:              make(chan pmpacket.Packet, 1000),
 		cancelSocketCallback: cancel,
+		canceled:             abool.New(),
 		verdictCompleted:     make(chan struct{}, 1),
 	}
 
@@ -142,6 +144,11 @@ func (q *Queue) handleError(e error) int {
 		}
 	}
 
+	// Check if we have closed the queue already.
+	if q.canceled.IsSet() {
+		return 1
+	}
+
 	// Check if the queue was already closed. Unfortunately, the exposed error
 	// variable is in an internal stdlib package. Therefore, check for the error
 	// string instead. :(
@@ -222,6 +229,7 @@ func (q *Queue) Destroy() {
 		return
 	}
 
+	q.canceled.Set()
 	q.cancelSocketCallback()
 
 	if nf := q.getNfq(); nf != nil {
