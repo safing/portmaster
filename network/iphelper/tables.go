@@ -1,4 +1,4 @@
-// +build windows
+//go:build windows
 
 package iphelper
 
@@ -10,6 +10,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network/socket"
 
 	"golang.org/x/sys/windows"
@@ -28,7 +29,7 @@ const (
 type iphelperTCPTable struct {
 	// docs: https://msdn.microsoft.com/en-us/library/windows/desktop/aa366921(v=vs.85).aspx
 	numEntries uint32
-	table      [4096]iphelperTCPRow
+	table      [maxStateTableEntries]iphelperTCPRow
 }
 
 type iphelperTCPRow struct {
@@ -44,7 +45,7 @@ type iphelperTCPRow struct {
 type iphelperTCP6Table struct {
 	// docs: https://msdn.microsoft.com/en-us/library/windows/desktop/aa366905(v=vs.85).aspx
 	numEntries uint32
-	table      [4096]iphelperTCP6Row
+	table      [maxStateTableEntries]iphelperTCP6Row
 }
 
 type iphelperTCP6Row struct {
@@ -62,7 +63,7 @@ type iphelperTCP6Row struct {
 type iphelperUDPTable struct {
 	// docs: https://msdn.microsoft.com/en-us/library/windows/desktop/aa366932(v=vs.85).aspx
 	numEntries uint32
-	table      [4096]iphelperUDPRow
+	table      [maxStateTableEntries]iphelperUDPRow
 }
 
 type iphelperUDPRow struct {
@@ -75,7 +76,7 @@ type iphelperUDPRow struct {
 type iphelperUDP6Table struct {
 	// docs: https://msdn.microsoft.com/en-us/library/windows/desktop/aa366925(v=vs.85).aspx
 	numEntries uint32
-	table      [4096]iphelperUDP6Row
+	table      [maxStateTableEntries]iphelperUDP6Row
 }
 
 type iphelperUDP6Row struct {
@@ -125,6 +126,11 @@ const (
 	// maxBufSize is the maximum size we will allocate for responses. This was
 	// previously set at 65k, which was too little for some production cases.
 	maxBufSize = 1048576 // 2^20B, 1MB
+
+	// maxStateTableEntries is the maximum supported amount of entries of the
+	// state tables.
+	// This is never allocated, but just casted to from an unsafe pointer.
+	maxStateTableEntries = 65535
 )
 
 var (
@@ -261,7 +267,14 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 	case protocol == TCP && ipVersion == IPv4:
 
 		tcpTable := (*iphelperTCPTable)(unsafe.Pointer(&buf[0]))
-		table := tcpTable.table[:tcpTable.numEntries]
+		// Check if we got more entries than supported.
+		tableEntries := tcpTable.numEntries
+		if tableEntries > maxStateTableEntries {
+			tableEntries = maxStateTableEntries
+			log.Warningf("network/iphelper: received TCPv4 table with more entries than supported: %d/%d", tcpTable.numEntries, maxStateTableEntries)
+		}
+		// Cap table to actual entries.
+		table := tcpTable.table[:tableEntries]
 
 		for _, row := range table {
 			if row.state == iphelperTCPStateListen {
@@ -290,7 +303,14 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 	case protocol == TCP && ipVersion == IPv6:
 
 		tcpTable := (*iphelperTCP6Table)(unsafe.Pointer(&buf[0]))
-		table := tcpTable.table[:tcpTable.numEntries]
+		// Check if we got more entries than supported.
+		tableEntries := tcpTable.numEntries
+		if tableEntries > maxStateTableEntries {
+			tableEntries = maxStateTableEntries
+			log.Warningf("network/iphelper: received TCPv6 table with more entries than supported: %d/%d", tcpTable.numEntries, maxStateTableEntries)
+		}
+		// Cap table to actual entries.
+		table := tcpTable.table[:tableEntries]
 
 		for _, row := range table {
 			if row.state == iphelperTCPStateListen {
@@ -319,7 +339,14 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 	case protocol == UDP && ipVersion == IPv4:
 
 		udpTable := (*iphelperUDPTable)(unsafe.Pointer(&buf[0]))
-		table := udpTable.table[:udpTable.numEntries]
+		// Check if we got more entries than supported.
+		tableEntries := udpTable.numEntries
+		if tableEntries > maxStateTableEntries {
+			tableEntries = maxStateTableEntries
+			log.Warningf("network/iphelper: received UDPv4 table with more entries than supported: %d/%d", udpTable.numEntries, maxStateTableEntries)
+		}
+		// Cap table to actual entries.
+		table := udpTable.table[:tableEntries]
 
 		for _, row := range table {
 			binds = append(binds, &socket.BindInfo{
@@ -334,7 +361,14 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 	case protocol == UDP && ipVersion == IPv6:
 
 		udpTable := (*iphelperUDP6Table)(unsafe.Pointer(&buf[0]))
-		table := udpTable.table[:udpTable.numEntries]
+		// Check if we got more entries than supported.
+		tableEntries := udpTable.numEntries
+		if tableEntries > maxStateTableEntries {
+			tableEntries = maxStateTableEntries
+			log.Warningf("network/iphelper: received UDPv6 table with more entries than supported: %d/%d", udpTable.numEntries, maxStateTableEntries)
+		}
+		// Cap table to actual entries.
+		table := udpTable.table[:tableEntries]
 
 		for _, row := range table {
 			binds = append(binds, &socket.BindInfo{
