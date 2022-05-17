@@ -99,15 +99,37 @@ WITH RECURSIVE epoch(x) AS (
 	UNION ALL
 		SELECT x+1 FROM epoch WHERE x+1 < strftime('%%s')+0
 )
-SELECT x as timestamp, COUNT(*) AS value FROM epoch
+SELECT x as timestamp, SUM(verdict IN (2, 5, 6)) AS value, SUM(verdict NOT IN (2, 5, 6)) as countBlocked FROM epoch
 	JOIN connections
-	ON strftime('%%s', connections.started)+0 <= timestamp+0 AND (connections.ended IS NULL OR strftime('%%s', connections.ended)+0 > timestamp+0)
+	ON strftime('%%s', connections.started)+0 <= timestamp+0 AND (connections.ended IS NULL OR strftime('%%s', connections.ended)+0 >= timestamp+0)
 		%s
 	GROUP BY round(timestamp/10, 0)*10;`
 
 	clause, params, err := req.Query.toSQLWhereClause(ctx, "", schema, orm.DefaultEncodeConfig)
 	if err != nil {
 		return "", nil, err
+	}
+
+	if params == nil {
+		params = make(map[string]interface{})
+	}
+
+	if req.TextSearch != nil {
+		textSearch, textParams, err := req.TextSearch.toSQLConditionClause(ctx, schema, "", orm.DefaultEncodeConfig)
+		if err != nil {
+			return "", nil, err
+		}
+
+		if textSearch != "" {
+			if clause != "" {
+				clause += " AND "
+			}
+			clause += textSearch
+
+			for key, val := range textParams {
+				params[key] = val
+			}
+		}
 	}
 
 	if clause == "" {

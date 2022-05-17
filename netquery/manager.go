@@ -174,8 +174,7 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		Internal:        conn.Internal,
 		Direction:       direction,
 		Type:            ConnectionTypeToString[conn.Type],
-		ProfileID:       conn.ProcessContext.Profile,
-		ProfileSource:   conn.ProcessContext.Source,
+		ProfileID:       conn.ProcessContext.Source + "/" + conn.ProcessContext.Profile,
 		Path:            conn.ProcessContext.BinaryPath,
 		ProfileRevision: int(conn.ProfileRevisionCounter),
 	}
@@ -191,6 +190,11 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 	case network.VerdictAccept, network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel:
 		accepted := true
 		c.Allowed = &accepted
+	case network.VerdictUndecided, network.VerdictUndeterminable:
+		c.Allowed = nil
+	default:
+		allowed := false
+		c.Allowed = &allowed
 	}
 
 	if conn.Ended > 0 {
@@ -198,11 +202,24 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		c.Ended = &ended
 	}
 
-	extraData := map[string]interface{}{}
+	extraData := map[string]interface{}{
+		"pid": conn.ProcessContext.PID,
+	}
 
 	if conn.TunnelContext != nil {
 		extraData["tunnel"] = conn.TunnelContext
+		exitNode := conn.TunnelContext.GetExitNodeID()
+		c.ExitNode = &exitNode
 	}
+
+	if conn.DNSContext != nil {
+		extraData["dns"] = conn.DNSContext
+	}
+
+	// TODO(ppacher): enable when TLS inspection is merged
+	// if conn.TLSContext != nil {
+	// 	extraData["tls"] = conn.TLSContext
+	// }
 
 	if conn.Entity != nil {
 		extraData["cname"] = conn.Entity.CNAME

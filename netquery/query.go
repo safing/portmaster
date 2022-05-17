@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/safing/portmaster/netquery/orm"
+	"zombiezen.com/go/sqlite"
 )
 
 type (
@@ -53,11 +54,17 @@ type (
 
 	Selects []Select
 
+	TextSearch struct {
+		Fields []string `json:"fields"`
+		Value  string   `json:"value"`
+	}
+
 	QueryRequestPayload struct {
-		Select  Selects  `json:"select"`
-		Query   Query    `json:"query"`
-		OrderBy OrderBys `json:"orderBy"`
-		GroupBy []string `json:"groupBy"`
+		Select     Selects     `json:"select"`
+		Query      Query       `json:"query"`
+		OrderBy    OrderBys    `json:"orderBy"`
+		GroupBy    []string    `json:"groupBy"`
+		TextSearch *TextSearch `json:"textSearch"`
 
 		Pagination
 
@@ -67,7 +74,8 @@ type (
 	}
 
 	QueryActiveConnectionChartPayload struct {
-		Query Query `json:"query"`
+		Query      Query       `json:"query"`
+		TextSearch *TextSearch `json:"textSearch"`
 	}
 
 	OrderBy struct {
@@ -229,6 +237,34 @@ func (match Matcher) Validate() error {
 	}
 
 	return nil
+}
+
+func (text TextSearch) toSQLConditionClause(ctx context.Context, schema *orm.TableSchema, suffix string, encoderConfig orm.EncodeConfig) (string, map[string]interface{}, error) {
+	var (
+		queryParts []string
+		params     = make(map[string]interface{})
+	)
+
+	key := fmt.Sprintf(":t%s", suffix)
+	params[key] = fmt.Sprintf("%%%s%%", text.Value)
+
+	for _, field := range text.Fields {
+		colDef := schema.GetColumnDef(field)
+		if colDef == nil {
+			return "", nil, fmt.Errorf("column %s is not allowed in text-search", colDef.Name)
+		}
+		if colDef.Type != sqlite.TypeText {
+			return "", nil, fmt.Errorf("type of column %s cannot be used in text-search", colDef.Name)
+		}
+
+		queryParts = append(queryParts, fmt.Sprintf("%s LIKE %s", colDef.Name, key))
+	}
+
+	if len(queryParts) == 0 {
+		return "", nil, nil
+	}
+
+	return "( " + strings.Join(queryParts, " OR ") + " )", params, nil
 }
 
 func (match Matcher) toSQLConditionClause(ctx context.Context, suffix string, conjunction string, colDef orm.ColumnDef, encoderConfig orm.EncodeConfig) (string, map[string]interface{}, error) {

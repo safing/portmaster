@@ -65,7 +65,6 @@ type (
 		// reused afterwards.
 		ID              string            `sqlite:"id,primary"`
 		ProfileID       string            `sqlite:"profile"`
-		ProfileSource   string            `sqlite:"profileSource"`
 		Path            string            `sqlite:"path"`
 		Type            string            `sqlite:"type,varchar(8)"`
 		External        bool              `sqlite:"external"`
@@ -92,6 +91,7 @@ type (
 		ExtraData       json.RawMessage   `sqlite:"extra_data"`
 		Allowed         *bool             `sqlite:"allowed"`
 		ProfileRevision int               `sqlite:"profile_revision"`
+		ExitNode        *string           `sqlite:"exit_node"`
 	}
 )
 

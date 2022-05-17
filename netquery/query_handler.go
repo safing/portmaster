@@ -152,7 +152,7 @@ func (req *QueryRequestPayload) generateSQL(ctx context.Context, schema *orm.Tab
 		orm.DefaultEncodeConfig,
 	)
 	if err != nil {
-		return "", nil, fmt.Errorf("ganerating where clause: %w", err)
+		return "", nil, fmt.Errorf("generating where clause: %w", err)
 	}
 
 	if req.paramMap == nil {
@@ -163,8 +163,24 @@ func (req *QueryRequestPayload) generateSQL(ctx context.Context, schema *orm.Tab
 		req.paramMap[key] = val
 	}
 
-	// build the actual SQL query statement
-	// FIXME(ppacher): add support for group-by and sort-by
+	if req.TextSearch != nil {
+		textClause, textParams, err := req.TextSearch.toSQLConditionClause(ctx, schema, "", orm.DefaultEncodeConfig)
+		if err != nil {
+			return "", nil, fmt.Errorf("generating text-search clause: %w", err)
+		}
+
+		if textClause != "" {
+			if whereClause != "" {
+				whereClause += " AND "
+			}
+
+			whereClause += textClause
+
+			for key, val := range textParams {
+				req.paramMap[key] = val
+			}
+		}
+	}
 
 	groupByClause, err := req.generateGroupByClause(schema)
 	if err != nil {

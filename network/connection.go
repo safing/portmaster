@@ -149,7 +149,10 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	DNSContext *resolver.DNSRequestContext
 	// TunnelContext holds additional information about the tunnel that this
 	// connection is using.
-	TunnelContext interface{}
+	TunnelContext interface {
+		GetExitNodeID() string
+	}
+
 	// Internal is set to true if the connection is attributed as an
 	// Portmaster internal connection. Internal may be set at different
 	// points and access to it must be guarded by the connection lock.
