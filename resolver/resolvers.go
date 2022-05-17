@@ -83,7 +83,7 @@ func resolverConnFactory(resolver *Resolver) ResolverConn {
 	case ServerTypeDoT:
 		return NewTCPResolver(resolver).UseTLS()
 	case ServerTypeDoH:
-		return NewHttpsResolver(resolver)
+		return NewHTTPSResolver(resolver)
 	case ServerTypeDNS:
 		return NewPlainResolver(resolver)
 	default:
