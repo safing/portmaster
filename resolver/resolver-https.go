@@ -12,12 +12,13 @@ import (
 	"github.com/miekg/dns"
 )
 
-// TCPResolver is a resolver using just a single tcp connection with pipelining.
+// HttpsResolver is a resolver using just a single tcp connection with pipelining.
 type HttpsResolver struct {
 	BasicResolverConn
+	Client *http.Client
 }
 
-// tcpQuery holds the query information for a tcpResolverConn.
+// HttpsQuery holds the query information for a httpsResolverConn.
 type HttpsQuery struct {
 	Query    *Query
 	Response chan *dns.Msg
@@ -36,12 +37,23 @@ func (tq *HttpsQuery) MakeCacheRecord(reply *dns.Msg, resolverInfo *ResolverInfo
 	}
 }
 
-// NewTCPResolver returns a new TPCResolver.
-func NewHttpsResolver(resolver *Resolver) *HttpsResolver {
+// NewHTTPSResolver returns a new HttpsResolver.
+func NewHTTPSResolver(resolver *Resolver) *HttpsResolver {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			ServerName: resolver.VerifyDomain,
+			// TODO: use portbase rng
+		},
+	}
+
+	client := &http.Client{Transport: tr}
+
 	newResolver := &HttpsResolver{
 		BasicResolverConn: BasicResolverConn{
 			resolver: resolver,
 		},
+		Client: client,
 	}
 	newResolver.BasicResolverConn.init()
 	return newResolver
@@ -58,39 +70,23 @@ func (hr *HttpsResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	if err != nil {
 		return nil, err
 	}
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			ServerName: hr.resolver.VerifyDomain,
-			// TODO: use portbase rng
-		},
-	}
-
 	b64dns := base64.RawStdEncoding.EncodeToString(buf)
 
 	url := &url.URL{
 		Scheme:     "https",
 		Host:       hr.resolver.ServerAddress,
-		Path:       fmt.Sprintf("%s/dns-query", hr.resolver.Path), // "dns-query" path is specified in rfc-8484 (https://www.rfc-editor.org/rfc/rfc8484.html)
+		Path:       hr.resolver.Path,
 		ForceQuery: true,
 		RawQuery:   fmt.Sprintf("dns=%s", b64dns),
 	}
 
-	request := &http.Request{
-		Method:     "GET",
-		URL:        url,
-		Proto:      "HTTP/1.1",
-		ProtoMajor: 1,
-		ProtoMinor: 1,
-		Header:     make(http.Header),
-		Body:       nil,
-		Host:       hr.resolver.ServerAddress,
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
+
+	if err != nil {
+		return nil, err
 	}
 
-	client := &http.Client{Transport: tr}
-
-	resp, err := client.Do(request)
+	resp, err := hr.Client.Do(request)
 
 	if err != nil {
 		return nil, err
@@ -98,8 +94,16 @@ func (hr *HttpsResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
 	reply := new(dns.Msg)
-	reply.Unpack(body)
+	err = reply.Unpack(body)
+
+	if err != nil {
+		return nil, err
+	}
 
 	newRecord := &RRCache{
 		Domain:   q.FQDN,

@@ -30,6 +30,10 @@ const (
 	ServerSourceEnv             = "env"
 )
 
+const (
+	HttpsProtocol = "https"
+)
+
 // FailThreshold is amount of errors a resolvers must experience in order to be regarded as failed.
 var FailThreshold = 20
 

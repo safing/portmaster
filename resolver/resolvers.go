@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 
 	"golang.org/x/net/publicsuffix"
 
+	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/netenv"
@@ -28,6 +30,7 @@ type Scope struct {
 const (
 	parameterName       = "name"
 	parameterVerify     = "verify"
+	parameterIP         = "ip"
 	parameterBlockedIf  = "blockedif"
 	parameterSearch     = "search"
 	parameterSearchOnly = "search-only"
@@ -96,71 +99,55 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 
 	switch u.Scheme {
 	case ServerTypeDNS, ServerTypeDoT, ServerTypeDoH, ServerTypeTCP:
+	case HttpsProtocol:
+		u.Scheme = ServerTypeDoH
 	default:
 		return nil, false, fmt.Errorf("DNS resolver scheme %q invalid", u.Scheme)
 	}
 
 	ip := net.ParseIP(u.Hostname())
-	if ip == nil {
+	isHostnameDomain := (ip == nil)
+	if ip == nil && u.Scheme != ServerTypeDoH {
 		return nil, false, fmt.Errorf("resolver IP %q invalid", u.Hostname())
 	}
 
 	// Add default port for scheme if it is missing.
-	var port uint16
-	hostPort := u.Port()
-	switch {
-	case hostPort != "":
-		parsedPort, err := strconv.ParseUint(hostPort, 10, 16)
-		if err != nil {
-			return nil, false, fmt.Errorf("resolver port %q invalid", u.Port())
-		}
-		port = uint16(parsedPort)
-	case u.Scheme == ServerTypeDNS, u.Scheme == ServerTypeTCP:
-		port = 53
-	case u.Scheme == ServerTypeDoH:
-		port = 443
-	case u.Scheme == ServerTypeDoT:
-		port = 853
-	default:
-		return nil, false, fmt.Errorf("missing port in %q", u.Host)
-	}
-
-	scope := netutils.GetIPScope(ip)
-	// Skip localhost resolvers from the OS, but not if configured.
-	if scope.IsLocalhost() && source == ServerSourceOperatingSystem {
-		return nil, true, nil // skip
+	port, err := parsePortFromURL(u)
+	if err != nil {
+		return nil, false, err
 	}
 
 	// Get parameters and check if keys exist.
 	query := u.Query()
-	for key := range query {
-		switch key {
-		case parameterName,
-			parameterVerify,
-			parameterBlockedIf,
-			parameterSearch,
-			parameterSearchOnly,
-			parameterPath:
-			// Known key, continue.
-		default:
-			// Unknown key, abort.
-			return nil, false, fmt.Errorf(`unknown parameter "%s"`, key)
-		}
+	err = checkURLParameterValidity(u.Scheme, isHostnameDomain, query)
+	if err != nil {
+		return nil, false, err
 	}
 
 	// Check domain verification config.
+	serverAddress := ""
+	paramterServerIP := query.Get(parameterIP)
 	verifyDomain := query.Get(parameterVerify)
-	if verifyDomain != "" && !(u.Scheme == ServerTypeDoT || u.Scheme == ServerTypeDoH) {
-		return nil, false, fmt.Errorf("domain verification only supported in DoT and DoH")
-	}
-	if verifyDomain == "" && (u.Scheme == ServerTypeDoT || u.Scheme == ServerTypeDoH) {
-		return nil, false, fmt.Errorf("DOT must have a verify query parameter set")
+
+	if u.Scheme == ServerTypeDoT || u.Scheme == ServerTypeDoH {
+		switch {
+		case isHostnameDomain && paramterServerIP != "": // domain and ip as parameter
+			ip = net.ParseIP(paramterServerIP)
+			serverAddress = net.JoinHostPort(paramterServerIP, strconv.Itoa(int(port)))
+			verifyDomain = u.Hostname()
+		case !isHostnameDomain && verifyDomain != "": // ip and domain as parameter
+			serverAddress = net.JoinHostPort(ip.String(), strconv.Itoa(int(port)))
+		case isHostnameDomain && verifyDomain == "" && paramterServerIP == "": // only domain
+			verifyDomain = u.Hostname()
+		}
+	} else {
+		serverAddress = net.JoinHostPort(ip.String(), strconv.Itoa(int(port)))
 	}
 
 	// Check path for https (doh) request
 	path := query.Get(parameterPath)
-	if path != "" && u.Scheme != "doh" {
-		return nil, false, fmt.Errorf("path parameter is only supported in DoH")
+	if u.Path != "" {
+		path = u.Path
 	}
 
 	if path != "" && !strings.HasPrefix(path, "/") {
@@ -178,6 +165,16 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		return nil, false, fmt.Errorf("invalid value for upstream block detection (blockedif=)")
 	}
 
+	// Get ip scope if we have ip
+	scope := netutils.Global
+	if ip != nil {
+		scope = netutils.GetIPScope(ip)
+		// Skip localhost resolvers from the OS, but not if configured.
+		if scope.IsLocalhost() && source == ServerSourceOperatingSystem {
+			return nil, true, nil // skip
+		}
+	}
+
 	// Build resolver.
 	newResolver := &Resolver{
 		ConfigURL: resolverURL,
@@ -189,7 +186,7 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 			IPScope: scope,
 			Port:    port,
 		},
-		ServerAddress:          net.JoinHostPort(ip.String(), strconv.Itoa(int(port))),
+		ServerAddress:          serverAddress,
 		VerifyDomain:           verifyDomain,
 		Path:                   path,
 		UpstreamBlockDetection: blockType,
@@ -215,8 +212,160 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		}
 	}
 
+	// Resolve ip if was not specfied by the user
+	err = checkAndResolveServerAddressAndPort(newResolver)
+	if err != nil {
+		return nil, false, err
+	}
+
 	newResolver.Conn = resolverConnFactory(newResolver)
 	return newResolver, false, nil
+}
+
+func checkURLParameterValidity(scheme string, isHostnameDomain bool, query url.Values) error {
+	for key := range query {
+		switch key {
+		case parameterName,
+			parameterVerify,
+			parameterIP,
+			parameterBlockedIf,
+			parameterSearch,
+			parameterSearchOnly,
+			parameterPath:
+			// Known key, continue.
+		default:
+			// Unknown key, abort.
+			return fmt.Errorf(`unknown parameter "%s"`, key)
+		}
+	}
+
+	verifyDomain := query.Get(parameterVerify)
+	paramterServerIP := query.Get(parameterIP)
+
+	if scheme == ServerTypeDoT || scheme == ServerTypeDoH {
+
+		switch {
+		case isHostnameDomain && verifyDomain != "":
+			return fmt.Errorf("cannot have verify parameter with a domain as a hostname")
+		case !isHostnameDomain && verifyDomain == "":
+			return fmt.Errorf("verify paremeter must be set when using ip as domain")
+		case !isHostnameDomain && paramterServerIP != "":
+			return fmt.Errorf("cannot have ip parameter while domain is an ip")
+		}
+	} else {
+		if verifyDomain != "" {
+			return fmt.Errorf("domain verification only supported in DoT and DoH")
+		}
+		if verifyDomain == "" && !isHostnameDomain {
+			return fmt.Errorf("DoT must have a verify query parameter set")
+		}
+	}
+
+	if scheme != ServerTypeDoH {
+		path := query.Get(parameterPath)
+		if path != "" {
+			return fmt.Errorf("path parameter is only supported in DoH")
+		}
+	}
+
+	return nil
+}
+
+func checkAndResolveServerAddressAndPort(resolver *Resolver) error {
+	if resolver.ServerAddress == "" {
+		resolverIps, err := resolveDomainIP(context.Background(), resolver.VerifyDomain)
+		if err != nil {
+			return err
+		}
+
+		if len(resolverIps) == 0 {
+			return fmt.Errorf("no valid IPs resolved for %s", resolver.VerifyDomain)
+		}
+		ip := resolverIps[0]
+		port := int(resolver.Info.Port)
+		resolver.ServerAddress = net.JoinHostPort(ip.String(), strconv.Itoa(port))
+		resolver.Info.IP = ip
+		resolver.Info.IPScope = netutils.GetIPScope(ip)
+	}
+
+	return nil
+}
+
+func resolveDomainIP(ctx context.Context, domain string) ([]net.IP, error) {
+	fqdn := domain
+	if !strings.HasSuffix(fqdn, ".") {
+		fqdn += "."
+	}
+	query := &Query{
+		FQDN:  fqdn,
+		QType: dns.Type(dns.TypeA),
+	}
+
+	for _, resolver := range activeResolvers {
+		rr, err := resolver.Conn.Query(ctx, query)
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+
+		return rr.ExportAllARecords(), nil
+	}
+
+	nameserves := netenv.Nameservers()
+	if len(nameserves) == 0 {
+		return nil, fmt.Errorf("unable to resolve domain %s", domain)
+	}
+
+	client := new(dns.Client)
+
+	message := new(dns.Msg)
+	message.SetQuestion(fqdn, dns.TypeA)
+	message.RecursionDesired = true
+	ip := net.JoinHostPort(nameserves[0].IP.String(), "53")
+
+	reply, _, err := client.Exchange(message, ip)
+
+	if err != nil {
+		return nil, err
+	}
+
+	newRecord := &RRCache{
+		Domain:   query.FQDN,
+		Question: query.QType,
+		RCode:    reply.Rcode,
+		Answer:   reply.Answer,
+		Ns:       reply.Ns,
+		Extra:    reply.Extra,
+	}
+
+	return newRecord.ExportAllARecords(), nil
+}
+
+func parsePortFromURL(url *url.URL) (uint16, error) {
+	var port uint16
+	hostPort := url.Port()
+	if hostPort != "" {
+		// There is a port in the url
+		parsedPort, err := strconv.ParseUint(hostPort, 10, 16)
+		if err != nil {
+			return 0, fmt.Errorf("resolver port %q invalid", url.Port())
+		}
+		port = uint16(parsedPort)
+	} else {
+		// set the default port for the protocol
+		switch {
+		case url.Scheme == ServerTypeDNS, url.Scheme == ServerTypeTCP:
+			port = 53
+		case url.Scheme == ServerTypeDoH:
+			port = 443
+		case url.Scheme == ServerTypeDoT:
+			port = 853
+		default:
+			return 0, fmt.Errorf("cannot determine port for %q", url.Scheme)
+		}
+	}
+
+	return port, nil
 }
 
 func configureSearchDomains(resolver *Resolver, searches []string, hardfail bool) error {

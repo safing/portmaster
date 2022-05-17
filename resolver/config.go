@@ -111,7 +111,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		DefaultValue:    defaultNameServers,
-		ValidationRegex: fmt.Sprintf("^(%s|%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDoH, ServerTypeDNS, ServerTypeTCP),
+		ValidationRegex: fmt.Sprintf("^(%s|%s|%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDoH, ServerTypeDNS, ServerTypeTCP, HttpsProtocol),
 		ValidationFunc:  validateNameservers,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  config.DisplayHintOrdered,
@@ -122,56 +122,62 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 					Name:   "Quad9",
 					Action: config.QuickReplace,
 					Value: []string{
-						"dot://9.9.9.9:853?verify=dns.quad9.net&name=Quad9&blockedif=empty",
-						"dot://149.112.112.112:853?verify=dns.quad9.net&name=Quad9&blockedif=empty",
+						"dot://dns.quad9.net?ip=9.9.9.9&verify=&name=Quad9&blockedif=empty",
+						"dot://dns.quad9.net?ip=149.112.112.112&verify=&name=Quad9&blockedif=empty",
 					},
 				},
 				{
 					Name:   "Quad9 DoH",
 					Action: config.QuickReplace,
 					Value: []string{
-						"doh://149.112.112.112:443?verify=dns.quad9.net&name=Quad9&blockedif=empty",
-						"doh://9.9.9.9:443?verify=dns.quad9.net&name=Quad9&blockedif=empty",
+						"https://dns.quad9.net/dns-query?ip=9.9.9.9&name=Quad9",
+						"https://dns.quad9.net/dns-query?ip=149.112.112.112&name=Quad9",
 					},
 				},
 				{
 					Name:   "AdGuard",
 					Action: config.QuickReplace,
 					Value: []string{
-						"dot://94.140.14.14:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip",
-						"dot://94.140.15.15:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip",
+						"dot://dns.adguard.com?ip=94.140.14.14&name=AdGuard&blockedif=zeroip",
+						"dot://dns.adguard.com?ip=94.140.15.15&name=AdGuard&blockedif=zeroip",
 					},
 				},
 				{
 					Name:   "AdGuard DoH",
 					Action: config.QuickReplace,
 					Value: []string{
-						"doh://94.140.14.14:443?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip",
-						"doh://94.140.15.15:443?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip",
+						"https://dns.adguard.com/dns-query?ip=94.140.14.14&name=AdGuard",
+						"https://dns.adguard.com/dns-query?ip=94.140.15.15&name=AdGuard",
 					},
 				},
 				{
 					Name:   "Foundation for Applied Privacy",
 					Action: config.QuickReplace,
 					Value: []string{
-						"dot://94.130.106.88:853?verify=dot1.applied-privacy.net&name=AppliedPrivacy",
-						"dot://94.130.106.88:443?verify=dot1.applied-privacy.net&name=AppliedPrivacy",
+						"dot://dot1.applied-privacy.net?ip=94.130.106.88&name=AppliedPrivacy",
+					},
+				},
+				{
+					Name:   "Foundation for Applied Privacy DoH",
+					Action: config.QuickReplace,
+					Value: []string{
+						"https://dot1.applied-privacy.net/query?ip=94.130.106.88&name=AppliedPrivacy",
 					},
 				},
 				{
 					Name:   "Cloudflare (with Malware Filter)",
 					Action: config.QuickReplace,
 					Value: []string{
-						"dot://1.1.1.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip",
-						"dot://1.0.0.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip",
+						"dot://cloudflare-dns.com?ip=1.1.1.2&name=Cloudflare&blockedif=zeroip",
+						"dot://cloudflare-dns.com?ip=1.0.0.2&name=Cloudflare&blockedif=zeroip",
 					},
 				},
 				{
 					Name:   "Cloudflare (with Malware Filter) DoH",
 					Action: config.QuickReplace,
 					Value: []string{
-						"doh://1.1.1.2:443?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip",
-						"doh://1.0.0.2:443?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip",
+						"https://cloudflare-dns.com/dns-query?ip=1.1.1.2&name=Cloudflare",
+						"https://cloudflare-dns.com/dns-query?ip=1.0.0.2&name=Cloudflare",
 					},
 				},
 			},
