@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
@@ -318,8 +319,8 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 	}
 
 	// check if we are online
-	if primarySource != ServerSourceEnv && netenv.GetOnlineStatus() == netenv.StatusOffline {
-		if !netenv.IsConnectivityDomain(q.FQDN) {
+	if netenv.GetOnlineStatus() == netenv.StatusOffline && primarySource != ServerSourceEnv {
+		if q.FQDN != netenv.DNSTestDomain && !netenv.IsConnectivityDomain(q.FQDN) {
 			// we are offline and this is not an online check query
 			return oldCache, ErrOffline
 		}
@@ -358,6 +359,7 @@ resolveLoop:
 					// some resolvers might also block
 					return nil, err
 				case netenv.GetOnlineStatus() == netenv.StatusOffline &&
+					q.FQDN != netenv.DNSTestDomain &&
 					!netenv.IsConnectivityDomain(q.FQDN):
 					// we are offline and this is not an online check query
 					return oldCache, ErrOffline
@@ -477,4 +479,46 @@ func shouldResetCache(q *Query) (reset bool) {
 	}
 
 	return false
+}
+
+func init() {
+	netenv.DNSTestQueryFunc = testConnectivity
+}
+
+// testConnectivity test if resolving a query succeeds and returns whether the
+// query itself succeeded, separate from interpreting the result.
+func testConnectivity(ctx context.Context, fdqn string) (ips []net.IP, ok bool, err error) {
+	q := &Query{
+		FQDN:      fdqn,
+		QType:     dns.Type(dns.TypeA),
+		NoCaching: true,
+	}
+	if !q.check() {
+		return nil, false, ErrInvalid
+	}
+
+	rrCache, err := resolveAndCache(ctx, q, nil)
+	switch {
+	case err == nil:
+		switch rrCache.RCode {
+		case dns.RcodeNameError:
+			return nil, true, ErrNotFound
+		case dns.RcodeRefused:
+			return nil, true, errors.New("refused")
+		default:
+			ips := rrCache.ExportAllARecords()
+			if len(ips) > 0 {
+				return ips, true, nil
+			}
+			return nil, true, ErrNotFound
+		}
+	case errors.Is(err, ErrNotFound):
+		return nil, true, err
+	case errors.Is(err, ErrBlocked):
+		return nil, true, err
+	case errors.Is(err, ErrNoCompliance):
+		return nil, true, err
+	default:
+		return nil, false, err
+	}
 }

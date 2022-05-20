@@ -206,8 +206,8 @@ func (brc *BasicResolverConn) init() {
 
 // ReportFailure reports that an error occurred with this resolver.
 func (brc *BasicResolverConn) ReportFailure() {
+	// Don't mark resolver as failed if we are offline.
 	if !netenv.Online() {
-		// don't mark failed if we are offline
 		return
 	}
 
@@ -223,6 +223,11 @@ func (brc *BasicResolverConn) ReportFailure() {
 		// Refresh the network changed flag in order to only regard changes after
 		// the fail.
 		brc.networkChangedFlag.Refresh()
+	}
+
+	// Report to netenv that a configured server failed.
+	if brc.resolver.Info.Source == ServerSourceConfigured {
+		netenv.ConnectedToDNS.UnSet()
 	}
 }
 
@@ -254,5 +259,10 @@ func (brc *BasicResolverConn) ResetFailure() {
 		brc.failLock.Lock()
 		defer brc.failLock.Unlock()
 		brc.fails = 0
+	}
+
+	// Report to netenv that a configured server succeeded.
+	if brc.resolver.Info.Source == ServerSourceConfigured {
+		netenv.ConnectedToDNS.Set()
 	}
 }

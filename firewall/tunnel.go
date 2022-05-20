@@ -34,7 +34,7 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 	case conn.Process().Pid == ownPID:
 		// Bypass tunneling for certain own connections.
 		switch {
-		case captain.ClientBootstrapping():
+		case !captain.ClientReady():
 			return
 		case captain.IsExcepted(conn.Entity.IP):
 			return
