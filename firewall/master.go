@@ -482,10 +482,7 @@ func checkDomainHeuristics(ctx context.Context, conn *network.Connection, p *pro
 	trimmedDomain := strings.TrimRight(conn.Entity.Domain, ".")
 	etld1, err := publicsuffix.EffectiveTLDPlusOne(trimmedDomain)
 	if err != nil {
-		// we don't apply any checks here and let the request through
-		// because a malformed domain-name will likely be dropped by
-		// checks better suited for that.
-		log.Tracer(ctx).Warningf("filter: failed to get eTLD+1: %s", err)
+		// Don't run the check if the domain is a TLD.
 		return false
 	}
 

@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/miekg/dns"
+	"golang.org/x/net/publicsuffix"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
@@ -90,6 +92,11 @@ type Query struct {
 	IgnoreFailing      bool
 	LocalResolversOnly bool
 
+	// ICANNSpace signifies if the domain is within ICANN managed domain space.
+	ICANNSpace bool
+	// Domain root is the effective TLD +1.
+	DomainRoot string
+
 	// internal
 	dotPrefixedFQDN string
 }
@@ -97,6 +104,41 @@ type Query struct {
 // ID returns the ID of the query consisting of the domain and question type.
 func (q *Query) ID() string {
 	return q.FQDN + q.QType.String()
+}
+
+// InitPublicSuffixData initializes the public suffix data.
+func (q *Query) InitPublicSuffixData() {
+	// Get public suffix and derive if domain is in ICANN space.
+	suffix, icann := publicsuffix.PublicSuffix(strings.TrimSuffix(q.FQDN, "."))
+	if icann || strings.Contains(suffix, ".") {
+		q.ICANNSpace = true
+	}
+	// Override some cases.
+	switch suffix {
+	case "example":
+		q.ICANNSpace = true // Defined by ICANN.
+	case "invalid":
+		q.ICANNSpace = true // Defined by ICANN.
+	case "local":
+		q.ICANNSpace = true // Defined by ICANN.
+	case "localhost":
+		q.ICANNSpace = true // Defined by ICANN.
+	case "onion":
+		q.ICANNSpace = false // Defined by ICANN, but special.
+	case "test":
+		q.ICANNSpace = true // Defined by ICANN.
+	}
+	// Add suffix to adhere to FQDN format.
+	suffix += "."
+
+	switch {
+	case len(q.FQDN) == len(suffix):
+		// We are at or below the domain root, reset.
+		q.DomainRoot = ""
+	case len(q.FQDN) > len(suffix):
+		domainRootStart := strings.LastIndex(q.FQDN[:len(q.FQDN)-len(suffix)-1], ".") + 1
+		q.DomainRoot = q.FQDN[domainRootStart:]
+	}
 }
 
 // check runs sanity checks and does some initialization. Returns whether the query passed the basic checks.

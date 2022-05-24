@@ -128,7 +128,7 @@ func (er *envResolverConn) makeRRCache(q *Query, answers []dns.RR) *RRCache {
 	// Disable caching, as the env always has the raw data available.
 	q.NoCaching = true
 
-	return &RRCache{
+	rrCache := &RRCache{
 		Domain:   q.FQDN,
 		Question: q.QType,
 		RCode:    dns.RcodeSuccess,
@@ -136,6 +136,10 @@ func (er *envResolverConn) makeRRCache(q *Query, answers []dns.RR) *RRCache {
 		Extra:    []dns.RR{internalSpecialUseComment}, // Always add comment about this TLD.
 		Resolver: envResolver.Info.Copy(),
 	}
+	if len(rrCache.Answer) == 0 {
+		rrCache.RCode = dns.RcodeNameError
+	}
+	return rrCache
 }
 
 func (er *envResolverConn) ReportFailure() {}
@@ -145,3 +149,8 @@ func (er *envResolverConn) IsFailing() bool {
 }
 
 func (er *envResolverConn) ResetFailure() {}
+
+// QueryPortmasterEnv queries the environment resolver directly.
+func QueryPortmasterEnv(ctx context.Context, q *Query) (*RRCache, error) {
+	return envResolver.Conn.Query(ctx, q)
+}
