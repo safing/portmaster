@@ -224,9 +224,9 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	noMulticastDNS = status.SecurityLevelOption(CfgOptionNoMulticastDNSKey)
 
 	err = config.Register(&config.Option{
-		Name:           "Enforce Secure DNS",
+		Name:           "Use Secure Protocols Only",
 		Key:            CfgOptionNoInsecureProtocolsKey,
-		Description:    "Never resolve using insecure protocols, ie. plain DNS.",
+		Description:    "Never resolve using insecure protocols, ie. plain DNS. This may break certain local DNS services, which always use plain DNS.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
