@@ -67,6 +67,32 @@ func (p *Process) Profile() *profile.LayeredProfile {
 	return p.profile
 }
 
+// IsIdentified returns whether the process has been identified or if it
+// represents some kind of unidentified process.
+func (p *Process) IsIdentified() bool {
+	// Check if process exists.
+	if p == nil {
+		return false
+	}
+
+	// Check for special PIDs.
+	switch p.Pid {
+	case UndefinedProcessID:
+		return false
+	case UnidentifiedProcessID:
+		return false
+	case UnsolicitedProcessID:
+		return false
+	default:
+		return true
+	}
+}
+
+// Equal returns if the two processes are both identified and have the same PID.
+func (p *Process) Equal(other *Process) bool {
+	return p.IsIdentified() && other.IsIdentified() && p.Pid == other.Pid
+}
+
 // IsSystemResolver is a shortcut to check if the process is or belongs to the
 // system resolver and needs special handling.
 func (p *Process) IsSystemResolver() bool {

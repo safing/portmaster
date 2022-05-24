@@ -42,10 +42,10 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 	}
 
 	// Check more extensively for Local/LAN connections.
-	myNet, err := netenv.IsMyNet(conn.Entity.IP)
+	localNet, err := netenv.GetLocalNetwork(conn.Entity.IP)
 	if err != nil {
 		log.Warningf("firewall: failed to check if %s is in my net: %s", conn.Entity.IP, err)
-	} else if myNet {
+	} else if localNet != nil {
 		// With IPv6, just checking the IP scope is not enough, as the host very
 		// likely has a public IPv6 address.
 		// Don't tunnel LAN connections.
