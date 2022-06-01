@@ -6,8 +6,6 @@ import (
 	"github.com/safing/portbase/database/migration"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
-
-	// Dependency.
 	_ "github.com/safing/portmaster/core/base"
 	"github.com/safing/portmaster/updates"
 )

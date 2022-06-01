@@ -7,9 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/miekg/dns"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/safing/portbase/log"
 )

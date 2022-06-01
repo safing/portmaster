@@ -17,8 +17,8 @@ func GetMulticastRequestConn(responseConn *Connection, responseFromNet *net.IPNe
 		switch {
 		case conn.Inbound:
 			// Ignore incoming connections.
-		//case conn.Ended != 0:
-		// Ignore ended connections.
+		case conn.Ended != 0:
+			// Ignore ended connections.
 		case conn.Entity.Protocol != responseConn.Entity.Protocol:
 			// Ignore on protocol mismatch.
 		case conn.LocalPort != responseConn.LocalPort:
