@@ -26,6 +26,10 @@ var (
 	// selfcheckFails counts how often the self check failed successively.
 	// selfcheckFails is not locked as it is only accessed by the self-check task.
 	selfcheckFails int
+
+	// selfcheckNetworkChangedFlag is used to track changed to the network for
+	// the self-check.
+	selfcheckNetworkChangedFlag = netenv.GetNetworkChangedFlag()
 )
 
 // selfcheckFailThreshold holds the threshold of how many times the selfcheck
@@ -49,6 +53,7 @@ func prep() error {
 func start() error {
 	startNotify()
 
+	selfcheckNetworkChangedFlag.Refresh()
 	selfcheckTask = module.NewTask("compatibility self-check", selfcheckTaskFunc).
 		Repeat(5 * time.Minute).
 		MaxDelay(selfcheckTaskRetryAfter).
@@ -83,19 +88,23 @@ func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
 
 	// Run selfcheck and return if successful.
 	issue, err := selfcheck(ctx)
-	if err == nil {
-		selfCheckIsFailing.UnSet()
-		selfcheckFails = 0
-		resetSystemIssue()
+	switch {
+	case err == nil:
+		// Successful.
 		tracer.Debugf("compat: self-check successful")
-		return nil
-	}
+	case issue == nil:
+		// Internal error.
+		tracer.Warningf("compat: %s", err)
+	case selfcheckNetworkChangedFlag.IsSet():
+		// The network changed, ignore the issue.
+	default:
+		// The self-check failed.
 
-	// Log result.
-	if issue != nil {
+		// Set state and increase counter.
 		selfCheckIsFailing.Set()
 		selfcheckFails++
 
+		// Log and notify.
 		tracer.Errorf("compat: %s", err)
 		if selfcheckFails >= selfcheckFailThreshold {
 			issue.notify(err)
@@ -103,13 +112,15 @@ func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
 
 		// Retry quicker when failed.
 		task.Schedule(time.Now().Add(selfcheckTaskRetryAfter))
-	} else {
-		selfCheckIsFailing.UnSet()
-		selfcheckFails = 0
 
-		// Only log internal errors, but don't notify.
-		tracer.Warningf("compat: %s", err)
+		return nil
 	}
+
+	// Reset self-check state.
+	selfcheckNetworkChangedFlag.Refresh()
+	selfCheckIsFailing.UnSet()
+	selfcheckFails = 0
+	resetSystemIssue()
 
 	return nil
 }

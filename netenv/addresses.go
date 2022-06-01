@@ -152,11 +152,9 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 	return false, nil
 }
 
-// IsMyNet returns whether the given IP is currently in the host's broadcast
-// domain - ie. the networks that the host is directly attached to.
-// Function is optimized with the assumption that is unlikely that the IP is
-// in the broadcast domain.
-func IsMyNet(ip net.IP) (yes bool, err error) {
+// GetLocalNetwork uses the given IP to search for a network configured on the
+// device and returns it.
+func GetLocalNetwork(ip net.IP) (myNet *net.IPNet, err error) {
 	myNetworksLock.Lock()
 	defer myNetworksLock.Unlock()
 
@@ -164,16 +162,16 @@ func IsMyNet(ip net.IP) (yes bool, err error) {
 	if myNetworksNetworkChangedFlag.IsSet() {
 		err := refreshMyNetworks()
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 	}
 
 	// Check if the IP address is in my networks.
 	for _, myNet := range myNetworks {
 		if myNet.Contains(ip) {
-			return true, nil
+			return myNet, nil
 		}
 	}
 
-	return false, nil
+	return nil, nil
 }

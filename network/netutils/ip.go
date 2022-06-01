@@ -28,6 +28,9 @@ func GetIPScope(ip net.IP) IPScope { //nolint:gocognit
 	if ip4 := ip.To4(); ip4 != nil {
 		// IPv4
 		switch {
+		case ip4[0] == 0:
+			// 0.0.0.0/8
+			return Invalid
 		case ip4[0] == 127:
 			// 127.0.0.0/8 (RFC1918)
 			return HostLocal
@@ -79,6 +82,8 @@ func GetIPScope(ip net.IP) IPScope { //nolint:gocognit
 	} else if len(ip) == net.IPv6len {
 		// IPv6
 		switch {
+		case ip.Equal(net.IPv6zero):
+			return Invalid
 		case ip.Equal(net.IPv6loopback):
 			return HostLocal
 		case ip[0]&0xfe == 0xfc:
@@ -123,4 +128,30 @@ func (scope IPScope) IsGlobal() bool {
 	default:
 		return false
 	}
+}
+
+// GetBroadcastAddress returns the broadcast address of the given IP and network mask.
+// If a mixed IPv4/IPv6 input is given, it returns nil.
+func GetBroadcastAddress(ip net.IP, netMask net.IPMask) net.IP {
+	// Convert to standard v4.
+	if ip4 := ip.To4(); ip4 != nil {
+		ip = ip4
+	}
+	mask := net.IP(netMask)
+	if ip4Mask := mask.To4(); ip4Mask != nil {
+		mask = ip4Mask
+	}
+
+	// Check for mixed v4/v6 input.
+	if len(ip) != len(mask) {
+		return nil
+	}
+
+	// Merge to broadcast address
+	n := len(ip)
+	broadcastAddress := make(net.IP, n)
+	for i := 0; i < n; i++ {
+		broadcastAddress[i] = ip[i] | ^mask[i]
+	}
+	return broadcastAddress
 }
