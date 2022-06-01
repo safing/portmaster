@@ -432,6 +432,16 @@ func checkFilterLists(ctx context.Context, conn *network.Connection, p *profile.
 	result, reason := p.MatchFilterLists(ctx, conn.Entity)
 	switch result {
 	case endpoints.Denied:
+		// If the connection matches a filter list, check if the "unbreak" list matches too and abort blocking.
+		for _, blockedListID := range conn.Entity.BlockedByLists {
+			for _, unbreakListID := range resolvedUnbreakFilterListIDs {
+				if blockedListID == unbreakListID {
+					log.Tracer(ctx).Debugf("filter: unbreak filter %s matched, ignoring other filter list matches", unbreakListID)
+					return false
+				}
+			}
+		}
+		// Otherwise, continue with blocking.
 		conn.DenyWithContext(reason.String(), profile.CfgOptionFilterListsKey, reason.Context())
 		return true
 	case endpoints.NoMatch:
