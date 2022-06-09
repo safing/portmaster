@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/firewall/interception/nfq"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/packet"
 )
 
@@ -141,13 +141,10 @@ func activateNfqueueFirewall() error {
 		return err
 	}
 
-	if err := activateIPTables(iptables.ProtocolIPv6, v6rules, v6once, v6chains); err != nil {
-		notifications.NotifyError(
-			"interception:ipv6-possibly-disabled",
-			"Is IPv6 enabled?",
-			"The Portmaster succeeded with IPv4 network integration, but failed with IPv6 integration. Please make sure IPv6 is enabled on your device.",
-		)
-		return err
+	if netenv.IPv6Enabled() {
+		if err := activateIPTables(iptables.ProtocolIPv6, v6rules, v6once, v6chains); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -163,8 +160,10 @@ func DeactivateNfqueueFirewall() error {
 	}
 
 	// IPv6
-	if err := deactivateIPTables(iptables.ProtocolIPv6, v6once, v6chains); err != nil {
-		result = multierror.Append(result, err)
+	if netenv.IPv6Enabled() {
+		if err := deactivateIPTables(iptables.ProtocolIPv6, v6once, v6chains); err != nil {
+			result = multierror.Append(result, err)
+		}
 	}
 
 	return result.ErrorOrNil()
@@ -264,15 +263,22 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 		_ = Stop()
 		return fmt.Errorf("nfqueue(IPv4, in): %w", err)
 	}
-	out6Queue, err = nfq.New(17060, true)
-	if err != nil {
-		_ = Stop()
-		return fmt.Errorf("nfqueue(IPv6, out): %w", err)
-	}
-	in6Queue, err = nfq.New(17160, true)
-	if err != nil {
-		_ = Stop()
-		return fmt.Errorf("nfqueue(IPv6, in): %w", err)
+
+	if netenv.IPv6Enabled() {
+		out6Queue, err = nfq.New(17060, true)
+		if err != nil {
+			_ = Stop()
+			return fmt.Errorf("nfqueue(IPv6, out): %w", err)
+		}
+		in6Queue, err = nfq.New(17160, true)
+		if err != nil {
+			_ = Stop()
+			return fmt.Errorf("nfqueue(IPv6, in): %w", err)
+		}
+	} else {
+		log.Warningf("interception: no IPv6 stack detected, disabling IPv6 network integration")
+		out6Queue = &disabledNfQueue{}
+		in6Queue = &disabledNfQueue{}
 	}
 
 	go handleInterception(packets)
@@ -327,3 +333,11 @@ func handleInterception(packets chan<- packet.Packet) {
 		}
 	}
 }
+
+type disabledNfQueue struct{}
+
+func (dnfq *disabledNfQueue) PacketChannel() <-chan packet.Packet {
+	return nil
+}
+
+func (dnfq *disabledNfQueue) Destroy() {}

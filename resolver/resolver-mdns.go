@@ -12,6 +12,7 @@ import (
 	"github.com/miekg/dns"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/netutils"
 )
 
@@ -91,19 +92,6 @@ func listenToMDNS(ctx context.Context) error {
 		}()
 	}
 
-	multicast6Conn, err = net.ListenMulticastUDP("udp6", nil, &net.UDPAddr{IP: net.IP([]byte{0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfb}), Port: 5353})
-	if err != nil {
-		// TODO: retry after some time
-		log.Warningf("intel(mdns): failed to create udp6 listen multicast socket: %s", err)
-	} else {
-		module.StartServiceWorker("mdns udp6 multicast listener", 0, func(ctx context.Context) error {
-			return listenForDNSPackets(ctx, multicast6Conn, messages)
-		})
-		defer func() {
-			_ = multicast6Conn.Close()
-		}()
-	}
-
 	unicast4Conn, err = net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
 		// TODO: retry after some time
@@ -117,17 +105,34 @@ func listenToMDNS(ctx context.Context) error {
 		}()
 	}
 
-	unicast6Conn, err = net.ListenUDP("udp6", &net.UDPAddr{IP: net.IPv6zero, Port: 0})
-	if err != nil {
-		// TODO: retry after some time
-		log.Warningf("intel(mdns): failed to create udp6 listen socket: %s", err)
+	if netenv.IPv6Enabled() {
+		multicast6Conn, err = net.ListenMulticastUDP("udp6", nil, &net.UDPAddr{IP: net.IP([]byte{0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfb}), Port: 5353})
+		if err != nil {
+			// TODO: retry after some time
+			log.Warningf("intel(mdns): failed to create udp6 listen multicast socket: %s", err)
+		} else {
+			module.StartServiceWorker("mdns udp6 multicast listener", 0, func(ctx context.Context) error {
+				return listenForDNSPackets(ctx, multicast6Conn, messages)
+			})
+			defer func() {
+				_ = multicast6Conn.Close()
+			}()
+		}
+
+		unicast6Conn, err = net.ListenUDP("udp6", &net.UDPAddr{IP: net.IPv6zero, Port: 0})
+		if err != nil {
+			// TODO: retry after some time
+			log.Warningf("intel(mdns): failed to create udp6 listen socket: %s", err)
+		} else {
+			module.StartServiceWorker("mdns udp6 unicast listener", 0, func(ctx context.Context) error {
+				return listenForDNSPackets(ctx, unicast6Conn, messages)
+			})
+			defer func() {
+				_ = unicast6Conn.Close()
+			}()
+		}
 	} else {
-		module.StartServiceWorker("mdns udp6 unicast listener", 0, func(ctx context.Context) error {
-			return listenForDNSPackets(ctx, unicast6Conn, messages)
-		})
-		defer func() {
-			_ = unicast6Conn.Close()
-		}()
+		log.Warningf("resolver: no IPv6 stack detected, disabling IPv6 mDNS resolver")
 	}
 
 	// start message handler
