@@ -33,6 +33,12 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string, delet
 	// Reset indexes before adding them (again).
 	registry.ResetIndexes()
 
+	// Add the intel index first, in order to be able to override it with the
+	// other indexes when needed.
+	registry.AddIndex(updater.Index{
+		Path: "all/intel/intel.json",
+	})
+
 	// Always add the stable index as a base.
 	registry.AddIndex(updater.Index{
 		Path: ReleaseChannelStable + ".json",
@@ -84,13 +90,6 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string, delet
 			warning = fmt.Errorf("failed to delete unused index %s: %w", indexPath, err)
 		}
 	}
-
-	// Add the intel index last, as it updates the fastest and should not be
-	// crippled by other faulty indexes. It can only specify versions for its
-	// scope anyway.
-	registry.AddIndex(updater.Index{
-		Path: "all/intel/intel.json",
-	})
 
 	// Set pre-release usage.
 	registry.SetUsePreReleases(usePreReleases)
