@@ -343,27 +343,6 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 	cfgOptionServiceEndpoints = config.Concurrent.GetAsStringArray(CfgOptionServiceEndpointsKey, defaultIncomingRulesValue)
 	cfgStringArrayOptions[CfgOptionServiceEndpointsKey] = cfgOptionServiceEndpoints
 
-	filterListsHelp := strings.ReplaceAll(`Filter lists contain domains and IP addresses that are known to be used adversarial. The data is collected from many public sources and put into the following categories. In order to active a category, add it's "ID" to the list.
-
-**Ads & Trackers** - ID: "TRAC"  
-Services that track and profile people online, including as ads, analytics and telemetry.
-
-**Malware** - ID: "MAL"  
-Services that are (ab)used for attacking devices through technical means.
-
-**Deception** - ID: "DECEP"  
-Services that trick humans into thinking the service is genuine, while it is not, including phishing, fake news and fraud.
-
-**Bad Stuff (Mixed)** - ID: "BAD"  
-Miscellaneous services that are believed to be harmful to security or privacy, but their exact use is unknown, not categorized, or lists have mixed categories.
-
-**NSFW** - ID: "NSFW"  
-Services that are generally not accepted in work environments, including pornography, violence and gambling.
-
-The lists are automatically updated every hour using incremental updates.  
-[See here](https://github.com/safing/intel-data) for more detail about these lists, their sources and how to help to improve them.
-`, `"`, "`")
-
 	// Filter list IDs
 	defaultFilterListsValue := []string{"TRAC", "MAL", "BAD"}
 	err = config.Register(&config.Option{
