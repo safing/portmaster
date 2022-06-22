@@ -60,7 +60,7 @@ func Lookup(pktInfo *packet.Info, fast bool) (pid int, inbound bool, err error) 
 		return udp6Table.lookup(pktInfo, fast)
 
 	default:
-		return socket.UndefinedProcessID, false, errors.New("unsupported protocol for finding process")
+		return socket.UndefinedProcessID, pktInfo.Inbound, errors.New("unsupported protocol for finding process")
 	}
 }
 

@@ -26,3 +26,8 @@ func GetLocation(ip net.IP) (*Location, error) {
 	record.FillMissingInfo()
 	return record, nil
 }
+
+// IsInitialized returns whether the geoip database has been initialized.
+func IsInitialized(v6, wait bool) bool {
+	return worker.GetReader(v6, wait) != nil
+}

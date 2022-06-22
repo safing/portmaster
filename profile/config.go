@@ -258,6 +258,12 @@ Examples: "192.168.0.1 TCP/HTTP", "LAN UDP/50000-55000", "example.com */HTTPS", 
 Important: DNS Requests are only matched against domain and filter list rules, all others require an IP address and are checked only with the following IP connection.
 `, `"`, "`")
 
+	// rulesVerdictNames defines the verdicts names to be used for filter rules.
+	rulesVerdictNames := map[string]string{
+		"-": "Block", // Default.
+		"+": "Allow",
+	}
+
 	// Endpoint Filter List
 	err = config.Register(&config.Option{
 		Name:         "Outgoing Rules",
@@ -268,10 +274,11 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{},
 		Annotations: config.Annotations{
-			config.StackableAnnotation:    true,
-			config.DisplayHintAnnotation:  endpoints.DisplayHintEndpointList,
-			config.DisplayOrderAnnotation: cfgOptionEndpointsOrder,
-			config.CategoryAnnotation:     "Rules",
+			config.StackableAnnotation:                   true,
+			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
+			config.DisplayOrderAnnotation:                cfgOptionEndpointsOrder,
+			config.CategoryAnnotation:                    "Rules",
+			endpoints.EndpointListVerdictNamesAnnotation: rulesVerdictNames,
 		},
 		ValidationRegex: endpoints.ListEntryValidationRegex,
 		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
@@ -283,6 +290,7 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 	cfgStringArrayOptions[CfgOptionEndpointsKey] = cfgOptionEndpoints
 
 	// Service Endpoint Filter List
+	defaultIncomingRulesValue := []string{"+ Localhost"}
 	err = config.Register(&config.Option{
 		Name:           "Incoming Rules",
 		Key:            CfgOptionServiceEndpointsKey,
@@ -290,13 +298,14 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 		Help:           rulesHelp,
 		Sensitive:      true,
 		OptType:        config.OptTypeStringArray,
-		DefaultValue:   []string{"+ Localhost"},
+		DefaultValue:   defaultIncomingRulesValue,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		Annotations: config.Annotations{
-			config.StackableAnnotation:    true,
-			config.DisplayHintAnnotation:  endpoints.DisplayHintEndpointList,
-			config.DisplayOrderAnnotation: cfgOptionServiceEndpointsOrder,
-			config.CategoryAnnotation:     "Rules",
+			config.StackableAnnotation:                   true,
+			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
+			config.DisplayOrderAnnotation:                cfgOptionServiceEndpointsOrder,
+			config.CategoryAnnotation:                    "Rules",
+			endpoints.EndpointListVerdictNamesAnnotation: rulesVerdictNames,
 			config.QuickSettingsAnnotation: []config.QuickSetting{
 				{
 					Name:   "SSH",
@@ -313,6 +322,16 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ * */3389"},
 				},
+				{
+					Name:   "Allow all from LAN",
+					Action: config.QuickMergeTop,
+					Value:  []string{"+ LAN"},
+				},
+				{
+					Name:   "Allow all from Internet",
+					Action: config.QuickMergeTop,
+					Value:  []string{"+ Internet"},
+				},
 			},
 		},
 		ValidationRegex: endpoints.ListEntryValidationRegex,
@@ -321,38 +340,17 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 	if err != nil {
 		return err
 	}
-	cfgOptionServiceEndpoints = config.Concurrent.GetAsStringArray(CfgOptionServiceEndpointsKey, []string{})
+	cfgOptionServiceEndpoints = config.Concurrent.GetAsStringArray(CfgOptionServiceEndpointsKey, defaultIncomingRulesValue)
 	cfgStringArrayOptions[CfgOptionServiceEndpointsKey] = cfgOptionServiceEndpoints
 
-	filterListsHelp := strings.ReplaceAll(`Filter lists contain domains and IP addresses that are known to be used adversarial. The data is collected from many public sources and put into the following categories. In order to active a category, add it's "ID" to the list.
-
-**Ads & Trackers** - ID: "TRAC"  
-Services that track and profile people online, including as ads, analytics and telemetry.
-
-**Malware** - ID: "MAL"  
-Services that are (ab)used for attacking devices through technical means.
-
-**Deception** - ID: "DECEP"  
-Services that trick humans into thinking the service is genuine, while it is not, including phishing, fake news and fraud.
-
-**Bad Stuff (Mixed)** - ID: "BAD"  
-Miscellaneous services that are believed to be harmful to security or privacy, but their exact use is unknown, not categorized, or lists have mixed categories.
-
-**NSFW** - ID: "NSFW"  
-Services that are generally not accepted in work environments, including pornography, violence and gambling.
-
-The lists are automatically updated every hour using incremental updates.  
-[See here](https://github.com/safing/intel-data) for more detail about these lists, their sources and how to help to improve them.
-`, `"`, "`")
-
 	// Filter list IDs
+	defaultFilterListsValue := []string{"TRAC", "MAL", "BAD"}
 	err = config.Register(&config.Option{
 		Name:         "Filter Lists",
 		Key:          CfgOptionFilterListsKey,
 		Description:  "Block connections that match enabled filter lists.",
-		Help:         filterListsHelp,
 		OptType:      config.OptTypeStringArray,
-		DefaultValue: []string{"TRAC", "MAL", "BAD"},
+		DefaultValue: defaultFilterListsValue,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  "filter list",
 			config.DisplayOrderAnnotation: cfgOptionFilterListsOrder,
@@ -363,7 +361,7 @@ The lists are automatically updated every hour using incremental updates.
 	if err != nil {
 		return err
 	}
-	cfgOptionFilterLists = config.Concurrent.GetAsStringArray(CfgOptionFilterListsKey, []string{})
+	cfgOptionFilterLists = config.Concurrent.GetAsStringArray(CfgOptionFilterListsKey, defaultFilterListsValue)
 	cfgStringArrayOptions[CfgOptionFilterListsKey] = cfgOptionFilterLists
 
 	// Include CNAMEs

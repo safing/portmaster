@@ -55,7 +55,7 @@ func registerAPIEndpoints() error {
 		Read:      api.PermitUser,
 		BelongsTo: module,
 		StructFunc: func(ar *api.Request) (i interface{}, err error) {
-			return getLocationFromTraceroute()
+			return getLocationFromTraceroute(&DeviceLocations{})
 		},
 		Name:        "Get Approximate Internet Location via Traceroute",
 		Description: "Returns an approximation of where the device is on the Internet using a the traceroute technique.",

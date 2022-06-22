@@ -141,6 +141,13 @@ func (pkt *packet) Drop() error {
 }
 
 func (pkt *packet) PermanentAccept() error {
+	// If the packet is localhost only, do not permanently accept the outgoing
+	// packet, as the packet mark will be copied to the connection mark, which
+	// will stick and it will bypass the incoming queue.
+	if !pkt.Info().Inbound && pkt.Info().Dst.IsLoopback() {
+		return pkt.Accept()
+	}
+
 	return pkt.mark(MarkAcceptAlways)
 }
 
