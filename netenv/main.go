@@ -1,9 +1,10 @@
 package netenv
 
 import (
+	"github.com/tevino/abool"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
-	"github.com/tevino/abool"
 )
 
 // Event Names.
