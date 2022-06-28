@@ -1,4 +1,4 @@
-# Take Back Control of Your Computer
+# Control Your Computer,<br>[Get Peace of Mind](https://safing.io/portmaster/)
 
 Portmaster is a free and open-source application that puts you back in charge over all your computer's network connections.
 Developed in the EU 🇪🇺, Austria.
