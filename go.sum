@@ -532,8 +532,9 @@ github.com/hashicorp/go-version v1.2.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09
 github.com/hashicorp/go-version v1.2.1/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
 github.com/hashicorp/go-version v1.3.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
 github.com/hashicorp/go-version v1.4.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
-github.com/hashicorp/go-version v1.5.0 h1:O293SZ2Eg+AAYijkVK3jR786Am1bhDEh2GHT0tIVE5E=
 github.com/hashicorp/go-version v1.5.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
+github.com/hashicorp/go-version v1.6.0 h1:feTTfFNnjP967rlCxM/I9g701jU+RN74YKx2mOkIeek=
+github.com/hashicorp/go-version v1.6.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
 github.com/hashicorp/go.net v0.0.1/go.mod h1:hjKkEWcCURg++eb33jQU7oqQcI9XDCnUzHA0oac0k90=
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
@@ -859,7 +860,6 @@ github.com/safing/spn v0.4.3/go.mod h1:YHtg3FkZviN8T7db4BdRffbYO1pO7w9SydQatLmvW
 github.com/safing/spn v0.4.5/go.mod h1:mkQA5pYM1SUd4JkTyuwXFycFMGQXLTd9RUJuY2vqccM=
 github.com/safing/spn v0.4.6/go.mod h1:AmZ+rore+6DQp0GSchIAXPn8ij0Knyw7uy4PbMLljXg=
 github.com/safing/spn v0.4.7/go.mod h1:NoSG9K0OK9hrPC76yqWFS6RtvbqZdIc/KGOsC4T3hV8=
-github.com/safing/spn v0.4.11 h1:Er3ZtBCqKaf0G6lmRKpm1LenlrWeaWUp8612bpeG+aM=
 github.com/safing/spn v0.4.11/go.mod h1:nro/I6b2JnafeeqoMsQRqf6TaQeL9uLLZkUREtxLVDE=
 github.com/safing/spn v0.4.12 h1:Tw7TUZEZR4yZy7L+ICRCketDk5L5x0s0pvrSUHFaKs4=
 github.com/safing/spn v0.4.12/go.mod h1:AUNgBrRwCcspC98ljptDnrPuHLn/BHSG+rSprV/5Wlc=

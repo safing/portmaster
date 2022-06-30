@@ -11,7 +11,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/google/gopacket v1.1.19
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/go-version v1.5.0
+	github.com/hashicorp/go-version v1.6.0
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/maxminddb-golang v1.9.0
 	github.com/safing/portbase v0.14.5
