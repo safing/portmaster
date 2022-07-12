@@ -177,6 +177,7 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		ProfileID:       conn.ProcessContext.Source + "/" + conn.ProcessContext.Profile,
 		Path:            conn.ProcessContext.BinaryPath,
 		ProfileRevision: int(conn.ProfileRevisionCounter),
+		ProfileName:     conn.ProcessContext.ProfileName,
 	}
 
 	switch conn.Type {
@@ -200,6 +201,9 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 	if conn.Ended > 0 {
 		ended := time.Unix(conn.Ended, 0)
 		c.Ended = &ended
+		c.Active = false
+	} else {
+		c.Active = true
 	}
 
 	extraData := map[string]interface{}{
@@ -210,6 +214,7 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		extraData["tunnel"] = conn.TunnelContext
 		exitNode := conn.TunnelContext.GetExitNodeID()
 		c.ExitNode = &exitNode
+		c.SPNUsed = true
 	}
 
 	if conn.DNSContext != nil {

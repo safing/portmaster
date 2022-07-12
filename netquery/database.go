@@ -92,6 +92,13 @@ type (
 		Allowed         *bool             `sqlite:"allowed"`
 		ProfileRevision int               `sqlite:"profile_revision"`
 		ExitNode        *string           `sqlite:"exit_node"`
+
+		// FIXME(ppacher): support "NOT" in search query to get rid of the following helper fields
+		SPNUsed bool `sqlite:"spn_used"` // could use "exit_node IS NOT NULL" or "exit IS NULL"
+		Active  bool `sqlite:"active"`   // could use "ended IS NOT NULL" or "ended IS NULL"
+
+		// FIXME(ppacher): we need to profile here for "suggestion" support. It would be better to keep a table of profiles in sqlite and use joins here
+		ProfileName string `sqlite:"profile_name"`
 	}
 )
 
