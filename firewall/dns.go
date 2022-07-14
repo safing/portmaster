@@ -263,7 +263,7 @@ func UpdateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 	// Package IPs and CNAMEs into IPInfo structs.
 	for _, ip := range ips {
 		// Never save domain attributions for localhost IPs.
-		if netutils.ClassifyIP(ip) == netutils.HostLocal {
+		if netutils.GetIPScope(ip) == netutils.HostLocal {
 			continue
 		}
 

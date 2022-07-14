@@ -8,7 +8,7 @@ import (
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
 	"github.com/safing/portmaster/updates"
-
+	_ "github.com/safing/portmaster/broadcasts"
 	_ "github.com/safing/portmaster/netenv"
 	_ "github.com/safing/portmaster/netquery"
 	_ "github.com/safing/portmaster/status"
@@ -27,7 +27,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("core", prep, start, nil, "base", "subsystems", "status", "updates", "api", "notifications", "ui", "netenv", "network", "interception", "compat", "netquery")
+	module = modules.Register("core", prep, start, nil, "base", "subsystems", "status", "updates", "api", "notifications", "ui", "netenv", "network", "netquery", "interception", "compat", "broadcasts")
 	subsystems.Register(
 		"core",
 		"Core",

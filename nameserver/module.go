@@ -259,7 +259,11 @@ func getListenAddresses(listenAddress string) (ip1, ip2 net.IP, port uint16, err
 	// listen separately for IPv4 and IPv6.
 	if ipString == "localhost" {
 		ip1 = net.IPv4(127, 0, 0, 17)
-		ip2 = net.IPv6loopback
+		if netenv.IPv6Enabled() {
+			ip2 = net.IPv6loopback
+		} else {
+			log.Warningf("nameserver: no IPv6 stack detected, disabling IPv6 nameserver listener")
+		}
 	} else {
 		ip1 = net.ParseIP(ipString)
 		if ip1 == nil {

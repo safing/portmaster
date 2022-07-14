@@ -1,6 +1,9 @@
 package netenv
 
 import (
+	"github.com/tevino/abool"
+
+	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 )
 
@@ -20,6 +23,8 @@ func init() {
 }
 
 func prep() error {
+	checkForIPv6Stack()
+
 	if err := registerAPIEndpoints(); err != nil {
 		return err
 	}
@@ -45,4 +50,23 @@ func start() error {
 	)
 
 	return nil
+}
+
+var ipv6Enabled = abool.NewBool(true)
+
+// IPv6Enabled returns whether the device has an active IPv6 stack.
+// This is only checked once on startup in order to maintain consistency.
+func IPv6Enabled() bool {
+	return ipv6Enabled.IsSet()
+}
+
+func checkForIPv6Stack() {
+	_, v6IPs, err := GetAssignedAddresses()
+	if err != nil {
+		log.Warningf("netenv: failed to get assigned addresses to check for ipv6 stack: %s", err)
+		return
+	}
+
+	// Set IPv6 as enabled if any IPv6 addresses are found.
+	ipv6Enabled.SetTo(len(v6IPs) > 0)
 }

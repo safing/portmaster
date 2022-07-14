@@ -7,6 +7,7 @@ require (
 	github.com/cookieo9/resources-go v0.0.0-20150225115733-d27c04069d0d
 	github.com/coreos/go-iptables v0.6.0
 	github.com/florianl/go-nfqueue v1.3.1
+	github.com/ghodss/yaml v1.0.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/google/gopacket v1.1.19
 	github.com/hashicorp/go-multierror v1.1.1
@@ -25,6 +26,13 @@ require (
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
 	golang.org/x/sys v0.0.0-20220712014510-0a85c31ab51e
 	zombiezen.com/go/sqlite v0.10.0
+	github.com/stretchr/testify v1.8.0
+	github.com/tannerryan/ring v1.1.2
+	github.com/tevino/abool v1.2.0
+	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
+	golang.org/x/net v0.0.0-20220622184535-263ec571b305
+	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
+	golang.org/x/sys v0.0.0-20220622161953-175b2fd9d664
 )
 
 require (
@@ -36,7 +44,6 @@ require (
 	github.com/bluele/gcache v0.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
-	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
