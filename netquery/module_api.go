@@ -41,9 +41,8 @@ func (m *Module) Prepare() error {
 	var err error
 
 	m.db = database.NewInterface(&database.Options{
-		Local:     true,
-		Internal:  true,
-		CacheSize: 0,
+		Local:    true,
+		Internal: true,
 	})
 
 	m.sqlStore, err = NewInMemory()
@@ -71,12 +70,12 @@ func (m *Module) Prepare() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "netquery/query",
 		MimeType:    "application/json",
-		Read:        api.PermitAnyone,
-		Write:       api.PermitAnyone,
+		Read:        api.PermitUser,
+		Write:       api.PermitUser,
 		BelongsTo:   m.Module,
 		HandlerFunc: queryHander.ServeHTTP,
-		Name:        "Query In-Memory Database",
-		Description: "Query the in-memory sqlite database",
+		Name:        "Query Connections",
+		Description: "Query the in-memory sqlite connection database.",
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
 	}
@@ -84,12 +83,12 @@ func (m *Module) Prepare() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "netquery/charts/connection-active",
 		MimeType:    "application/json",
-		Read:        api.PermitAnyone,
-		Write:       api.PermitAnyone,
+		Read:        api.PermitUser,
+		Write:       api.PermitUser,
 		BelongsTo:   m.Module,
 		HandlerFunc: chartHandler.ServeHTTP,
-		Name:        "Query In-Memory Database",
-		Description: "Query the in-memory sqlite database",
+		Name:        "Active Connections Chart",
+		Description: "Query the in-memory sqlite connection database and return a chart of active connections.",
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
 	}
@@ -142,36 +141,15 @@ func (mod *Module) Start() error {
 				if err != nil {
 					log.Errorf("netquery: failed to count number of rows in memory: %s", err)
 				} else {
-					log.Infof("netquery: successfully removed %d old rows that ended before %s", count, threshold)
+					log.Tracef("netquery: successfully removed %d old rows that ended before %s", count, threshold)
 				}
-			}
-		}
-	})
-
-	mod.StartWorker("netquery-row-counter", func(ctx context.Context) error {
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-time.After(1 * time.Second):
-				count, err := mod.sqlStore.CountRows(ctx)
-				if err != nil {
-					log.Errorf("netquery: failed to count number of rows in memory: %s", err)
-				} else {
-					log.Infof("netquery: currently holding %d rows in memory", count)
-				}
-
-				/*
-					if err := sqlStore.dumpTo(ctx, os.Stderr); err != nil {
-						log.Errorf("netquery: failed to dump sqlite memory content: %w", err)
-					}
-				*/
 			}
 		}
 	})
 
 	// for debugging, we provide a simple direct SQL query interface using
 	// the runtime database
+	// FIXME: Expose only in dev mode.
 	_, err := NewRuntimeQueryRunner(mod.sqlStore, "netquery/query/", runtime.DefaultRegistry)
 	if err != nil {
 		return fmt.Errorf("failed to set up runtime SQL query runner: %w", err)

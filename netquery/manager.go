@@ -78,12 +78,6 @@ func (mng *Manager) runtimeGet(keyOrPrefix string) ([]record.Record, error) {
 // HandleFeed handles and persists updates one after each other! Depending on the system
 // load the user might want to use a buffered channel for feed.
 func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connection) {
-	// count the number of inserted rows for logging purposes.
-	//
-	// TODO(ppacher): how to handle the, though unlikely case, of a
-	// overflow to 0 here?
-	var count uint64
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -101,7 +95,7 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 				continue
 			}
 
-			log.Infof("netquery: persisting create/update to connection %s", conn.ID)
+			log.Tracef("netquery: updating connection %s", conn.ID)
 
 			if err := mng.store.Save(ctx, *model); err != nil {
 				log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
@@ -117,12 +111,6 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 			// push an update for the connection
 			if err := mng.pushConnUpdate(ctx, *cloned, *model); err != nil {
 				log.Errorf("netquery: failed to push update for conn %s via database system: %s", conn.ID, err)
-			}
-
-			count++
-
-			if count%20 == 0 {
-				log.Debugf("netquery: persisted %d connections so far", count)
 			}
 		}
 	}
