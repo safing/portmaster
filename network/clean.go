@@ -12,7 +12,7 @@ import (
 
 const (
 	cleanerTickDuration            = 5 * time.Second
-	deleteConnsAfterEndedThreshold = 10 * time.Minute
+	DeleteConnsAfterEndedThreshold = 10 * time.Minute
 )
 
 func connectionCleaner(ctx context.Context) error {
@@ -41,7 +41,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 	_ = module.RunMediumPriorityMicroTask(&name, func(ctx context.Context) error {
 		now := time.Now().UTC()
 		nowUnix := now.Unix()
-		deleteOlderThan := now.Add(-deleteConnsAfterEndedThreshold).Unix()
+		deleteOlderThan := now.Add(-DeleteConnsAfterEndedThreshold).Unix()
 
 		// network connections
 		for _, conn := range conns.clone() {
