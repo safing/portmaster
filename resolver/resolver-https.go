@@ -39,12 +39,16 @@ func (tq *HttpsQuery) MakeCacheRecord(reply *dns.Msg, resolverInfo *ResolverInfo
 
 // NewHTTPSResolver returns a new HttpsResolver.
 func NewHTTPSResolver(resolver *Resolver) *HttpsResolver {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			ServerName: resolver.VerifyDomain,
-			// TODO: use portbase rng
-		},
+	tr := &http.Transport{}
+
+	if resolver.ServerAddress != "" {
+		tr = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+				ServerName: resolver.VerifyDomain,
+				// TODO: use portbase rng
+			},
+		}
 	}
 
 	client := &http.Client{Transport: tr}
@@ -61,20 +65,26 @@ func NewHTTPSResolver(resolver *Resolver) *HttpsResolver {
 
 // Query executes the given query against the resolver.
 func (hr *HttpsResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
-	// Get resolver connection.
 	dnsQuery := new(dns.Msg)
 	dnsQuery.SetQuestion(q.FQDN, uint16(q.QType))
 
+	// Pack query and convert to base64 string
 	buf, err := dnsQuery.Pack()
-
 	if err != nil {
 		return nil, err
 	}
 	b64dns := base64.RawStdEncoding.EncodeToString(buf)
 
+	host := hr.resolver.VerifyDomain
+
+	if hr.resolver.ServerAddress != "" {
+		host = hr.resolver.ServerAddress
+	}
+
+	// Build and execute http reuqest
 	url := &url.URL{
 		Scheme:     "https",
-		Host:       hr.resolver.ServerAddress,
+		Host:       host,
 		Path:       hr.resolver.Path,
 		ForceQuery: true,
 		RawQuery:   fmt.Sprintf("dns=%s", b64dns),
@@ -87,20 +97,20 @@ func (hr *HttpsResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	}
 
 	resp, err := hr.Client.Do(request)
-
 	if err != nil {
 		return nil, err
 	}
-
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
 
+	// Try to read the result
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	reply := new(dns.Msg)
-	err = reply.Unpack(body)
 
+	reply := new(dns.Msg)
+
+	err = reply.Unpack(body)
 	if err != nil {
 		return nil, err
 	}
