@@ -186,6 +186,8 @@ func checkAndSetResolverParamters(u *url.URL, resolver *Resolver) error {
 	hostnameIsDomaion := (ip == nil)
 	if ip == nil && u.Scheme != ServerTypeDoH && u.Scheme != ServerTypeDoT {
 		return fmt.Errorf("resolver IP %q invalid", u.Hostname())
+	} else {
+		resolver.Info.IP = ip
 	}
 
 	// Add default port for scheme if it is missing.
