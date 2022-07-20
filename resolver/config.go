@@ -122,8 +122,8 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 					Name:   "Quad9",
 					Action: config.QuickReplace,
 					Value: []string{
-						"dot://dns.quad9.net?ip=9.9.9.9&verify=&name=Quad9&blockedif=empty",
-						"dot://dns.quad9.net?ip=149.112.112.112&verify=&name=Quad9&blockedif=empty",
+						"dot://dns.quad9.net?ip=9.9.9.9&name=Quad9&blockedif=empty",
+						"dot://dns.quad9.net?ip=149.112.112.112&name=Quad9&blockedif=empty",
 					},
 				},
 				{
