@@ -92,6 +92,9 @@ type ResolverInfo struct { //nolint:golint,maligned // TODO
 	// IP is the IP address of the resolver
 	IP net.IP
 
+	// Domain of the dns server if it has one
+	Domain string
+
 	// IPScope is the network scope of the IP address.
 	IPScope netutils.IPScope
 
@@ -112,6 +115,20 @@ func (info *ResolverInfo) ID() string {
 			info.id = ServerTypeMDNS
 		case ServerTypeEnv:
 			info.id = ServerTypeEnv
+		case ServerTypeDoH:
+			info.id = fmt.Sprintf(
+				"https://%s:%d#%s",
+				info.Domain,
+				info.Port,
+				info.Source,
+			)
+		case ServerTypeDoT:
+			info.id = fmt.Sprintf(
+				"dot://%s:%d#%s",
+				info.Domain,
+				info.Port,
+				info.Source,
+			)
 		default:
 			info.id = fmt.Sprintf(
 				"%s://%s:%d#%s",

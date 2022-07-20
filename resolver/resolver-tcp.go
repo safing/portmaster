@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/miekg/dns"
@@ -142,8 +143,14 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		KeepAlive: defaultClientTTL,
 	}
 
+	// Set the host, if we dont have IP address just use the domain
+	host := tr.resolver.ServerAddress
+	if host == "" {
+		host = net.JoinHostPort(tr.resolver.VerifyDomain, strconv.Itoa(int(tr.resolver.Info.Port)))
+	}
+
 	// Connect to server.
-	conn, err := tr.dnsClient.Dial(tr.resolver.ServerAddress)
+	conn, err := tr.dnsClient.Dial(host)
 	if err != nil {
 		// Hint network environment at failed connection.
 		netenv.ReportFailedConnection()
@@ -185,6 +192,13 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 
 // Query executes the given query against the resolver.
 func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
+	// Do not resolve domain names that are needed to initialize a resolver
+	if tr.resolver.Info.IP == nil && tr.dnsClient.TLSConfig != nil {
+		if _, ok := resolverInitDomains[q.FQDN[:len(q.FQDN)-1]]; ok {
+			return nil, ErrContinue
+		}
+	}
+
 	// Get resolver connection.
 	resolverConn, err := tr.getOrCreateResolverConn(ctx)
 	if err != nil {

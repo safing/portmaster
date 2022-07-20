@@ -6,8 +6,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/miekg/dns"
 )
@@ -65,6 +67,14 @@ func NewHTTPSResolver(resolver *Resolver) *HttpsResolver {
 
 // Query executes the given query against the resolver.
 func (hr *HttpsResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
+
+	// Do not resolve domain names that are needed to initialize a resolver
+	if hr.resolver.Info.IP == nil {
+		if _, ok := resolverInitDomains[q.FQDN[:len(q.FQDN)-1]]; ok {
+			return nil, ErrContinue
+		}
+	}
+
 	dnsQuery := new(dns.Msg)
 	dnsQuery.SetQuestion(q.FQDN, uint16(q.QType))
 
@@ -75,10 +85,10 @@ func (hr *HttpsResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	}
 	b64dns := base64.RawStdEncoding.EncodeToString(buf)
 
-	host := hr.resolver.VerifyDomain
-
-	if hr.resolver.ServerAddress != "" {
-		host = hr.resolver.ServerAddress
+	// Set the host, if we dont have IP address just use the domain
+	host := hr.resolver.ServerAddress
+	if host == "" {
+		host = net.JoinHostPort(hr.resolver.VerifyDomain, strconv.Itoa(int(hr.resolver.Info.Port)))
 	}
 
 	// Build and execute http reuqest
