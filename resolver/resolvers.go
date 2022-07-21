@@ -43,9 +43,10 @@ var (
 	systemResolvers       []*Resolver          // all resolvers that were assigned by the system
 	localScopes           []*Scope             // list of scopes with a list of local resolvers that can resolve the scope
 	activeResolvers       map[string]*Resolver // lookup map of all resolvers
-  resolverInitDomains   map[string]struct{}  // a set with all domains of the dns resolvers
+	currentResolverConfig []string             // current active resolver config, to detect changes
+	resolverInitDomains   map[string]struct{}  // a set with all domains of the dns resolvers
 
-	resolversLock         sync.RWMutex
+	resolversLock sync.RWMutex
 )
 
 func indexOfScope(domain string, list []*Scope) int {
