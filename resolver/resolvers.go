@@ -182,7 +182,6 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 }
 
 func checkAndSetResolverParamters(u *url.URL, resolver *Resolver) error {
-
 	// Check if we are using domain name and if it's in a valid scheme
 	ip := net.ParseIP(u.Hostname())
 	hostnameIsDomaion := (ip == nil)
@@ -220,7 +219,6 @@ func checkAndSetResolverParamters(u *url.URL, resolver *Resolver) error {
 	paramterServerIP := query.Get(parameterIP)
 
 	if u.Scheme == ServerTypeDoT || u.Scheme == ServerTypeDoH {
-
 		// Check if IP and Domain are set correctly
 		switch {
 		case hostnameIsDomaion && resolver.Info.Domain != "":
@@ -244,7 +242,10 @@ func checkAndSetResolverParamters(u *url.URL, resolver *Resolver) error {
 			resolver.ServerAddress = net.JoinHostPort(resolver.Info.Domain, strconv.Itoa(int(port)))
 		}
 
-		resolverInitDomains[dns.Fqdn(resolver.Info.Domain)] = struct{}{}
+		if ip == nil {
+			resolverInitDomains[dns.Fqdn(resolver.Info.Domain)] = struct{}{}
+		}
+
 	} else {
 		if resolver.Info.Domain != "" {
 			return fmt.Errorf("domain verification is only supported by DoT and DoH servers")

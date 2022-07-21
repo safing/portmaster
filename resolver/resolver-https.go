@@ -39,20 +39,15 @@ func (tq *HTTPSQuery) MakeCacheRecord(reply *dns.Msg, resolverInfo *ResolverInfo
 
 // NewHTTPSResolver returns a new HTTPSResolver.
 func NewHTTPSResolver(resolver *Resolver) *HTTPSResolver {
-	tr := &http.Transport{}
-
-	if resolver.Info.IP != nil {
-		tr = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				MinVersion: tls.VersionTLS12,
-				ServerName: resolver.Info.Domain,
-				// TODO: use portbase rng
-			},
-		}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			ServerName: resolver.Info.Domain,
+			// TODO: use portbase rng
+		},
 	}
 
 	client := &http.Client{Transport: tr}
-
 	newResolver := &HTTPSResolver{
 		BasicResolverConn: BasicResolverConn{
 			resolver: resolver,
@@ -85,7 +80,6 @@ func (hr *HTTPSResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
-
 	if err != nil {
 		return nil, err
 	}
