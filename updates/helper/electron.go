@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -34,6 +35,9 @@ func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 	var err error
 	pmElectronUpdate, err = reg.GetFile(identifier)
 	if err != nil {
+		if errors.Is(err, updater.ErrNotAvailableLocally) {
+			return nil
+		}
 		return fmt.Errorf("failed to get file: %w", err)
 	}
 

@@ -11,7 +11,10 @@ import (
 	"github.com/safing/portmaster/updates/helper"
 )
 
-var reset bool
+var (
+	reset     bool
+	intelOnly bool
+)
 
 func init() {
 	rootCmd.AddCommand(updateCmd)
@@ -19,6 +22,7 @@ func init() {
 
 	flags := updateCmd.Flags()
 	flags.BoolVar(&reset, "reset", false, "Delete all resources and re-download the basic set")
+	flags.BoolVar(&intelOnly, "intel-only", false, "Only make downloading intel updates mandatory")
 }
 
 var (
@@ -49,6 +53,11 @@ func indexRequired(cmd *cobra.Command) bool {
 }
 
 func downloadUpdates() error {
+	// Check if only intel data is mandatory.
+	if intelOnly {
+		helper.IntelOnly()
+	}
+
 	// Set required updates.
 	registry.MandatoryUpdates = helper.MandatoryUpdates()
 	registry.AutoUnpack = helper.AutoUnpackUpdates()
@@ -97,9 +106,11 @@ func downloadUpdates() error {
 		return fmt.Errorf("failed to unpack resources: %w", err)
 	}
 
-	// Fix chrome-sandbox permissions
-	if err := helper.EnsureChromeSandboxPermissions(registry); err != nil {
-		return fmt.Errorf("failed to fix electron permissions: %w", err)
+	if !intelOnly {
+		// Fix chrome-sandbox permissions
+		if err := helper.EnsureChromeSandboxPermissions(registry); err != nil {
+			return fmt.Errorf("failed to fix electron permissions: %w", err)
+		}
 	}
 
 	return nil

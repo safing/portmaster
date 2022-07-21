@@ -2,8 +2,6 @@ package base
 
 import (
 	"github.com/safing/portbase/database"
-
-	// Dependencies.
 	_ "github.com/safing/portbase/database/dbmodule"
 	_ "github.com/safing/portbase/database/storage/bbolt"
 )

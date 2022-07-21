@@ -13,6 +13,8 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
+	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/compat"
 	"github.com/safing/portmaster/firewall"
 	"github.com/safing/portmaster/netenv"
 )
@@ -24,6 +26,9 @@ var (
 	stopListener1     func() error
 	stopListener2     func() error
 	stopListenersLock sync.Mutex
+
+	eventIDConflictingService = "nameserver:conflicting-service"
+	eventIDListenerFailed     = "nameserver:listener-failed"
 )
 
 func init() {
@@ -52,6 +57,9 @@ func start() error {
 	if err != nil {
 		return fmt.Errorf("failed to parse nameserver listen address: %w", err)
 	}
+
+	// Tell the compat module where we are listening.
+	compat.SetNameserverListenIP(ip1)
 
 	// Get own hostname.
 	hostname, err = os.Hostname()
@@ -129,22 +137,91 @@ func startListener(ip net.IP, port uint16, first bool) {
 			return nil
 		}
 
+		// Resolve generic listener error, if primary listener.
+		if first {
+			module.Resolve(eventIDListenerFailed)
+		}
+
 		// Start listening.
 		log.Infof("nameserver: starting to listen on %s", dnsServer.Addr)
 		err := dnsServer.ListenAndServe()
 		if err != nil {
-			// check if we are shutting down
+			// Stop worker without error if we are shutting down.
 			if module.IsStopping() {
 				return nil
 			}
-			// is something blocking our port?
-			checkErr := checkForConflictingService(ip, port)
-			if checkErr != nil {
-				return checkErr
-			}
+			log.Warningf("nameserver: failed to listen on %s: %s", dnsServer.Addr, err)
+			handleListenError(err, ip, port, first)
 		}
 		return err
 	})
+}
+
+func handleListenError(err error, ip net.IP, port uint16, primaryListener bool) {
+	var n *notifications.Notification
+
+	// Create suffix for secondary listener
+	var secondaryEventIDSuffix string
+	if !primaryListener {
+		secondaryEventIDSuffix = "-secondary"
+	}
+
+	// Find a conflicting service.
+	cfProcess := findConflictingProcess(ip, port)
+	if cfProcess != nil {
+		// Report the conflicting process.
+
+		// Build conflicting process description.
+		var cfDescription string
+		cfName, err := cfProcess.Name()
+		if err == nil && cfName != "" {
+			cfDescription = cfName
+		}
+		cfExe, err := cfProcess.Exe()
+		if err == nil && cfDescription != "" {
+			if cfDescription != "" {
+				cfDescription += " (" + cfExe + ")"
+			} else {
+				cfDescription = cfName
+			}
+		}
+
+		// Notify user about conflicting service.
+		n = notifications.Notify(&notifications.Notification{
+			EventID: eventIDConflictingService + secondaryEventIDSuffix,
+			Type:    notifications.Error,
+			Title:   "Conflicting DNS Software",
+			Message: fmt.Sprintf(
+				"Restart Portmaster after you have deactivated or properly configured the conflicting software: %s",
+				cfDescription,
+			),
+			ShowOnSystem: true,
+			AvailableActions: []*notifications.Action{
+				{
+					Text:    "Open Docs",
+					Type:    notifications.ActionTypeOpenURL,
+					Payload: "https://docs.safing.io/portmaster/install/status/software-compatibility",
+				},
+			},
+		})
+	} else {
+		// If no conflict is found, report the error directly.
+		n = notifications.Notify(&notifications.Notification{
+			EventID: eventIDListenerFailed + secondaryEventIDSuffix,
+			Type:    notifications.Error,
+			Title:   "Secure DNS Error",
+			Message: fmt.Sprintf(
+				"The internal DNS server failed. Restart Portmaster to try again. Error: %s",
+				err,
+			),
+			ShowOnSystem: true,
+		})
+	}
+
+	// Attach error to module, if primary listener.
+	if primaryListener {
+		n.AttachToModule(module)
+	}
 }
 
 func stop() error {
@@ -182,7 +259,11 @@ func getListenAddresses(listenAddress string) (ip1, ip2 net.IP, port uint16, err
 	// listen separately for IPv4 and IPv6.
 	if ipString == "localhost" {
 		ip1 = net.IPv4(127, 0, 0, 17)
-		ip2 = net.IPv6loopback
+		if netenv.IPv6Enabled() {
+			ip2 = net.IPv6loopback
+		} else {
+			log.Warningf("nameserver: no IPv6 stack detected, disabling IPv6 nameserver listener")
+		}
 	} else {
 		ip1 = net.ParseIP(ipString)
 		if ip1 == nil {

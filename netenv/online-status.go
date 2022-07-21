@@ -37,13 +37,12 @@ var (
 	PortalTestIP  = net.IPv4(192, 0, 2, 1)
 	PortalTestURL = fmt.Sprintf("http://%s/", PortalTestIP)
 
-	DNSTestDomain     = "one.one.one.one."
-	DNSTestExpectedIP = net.IPv4(1, 1, 1, 1)
-
-	DNSFallbackTestDomain     = "dns-check.safing.io."
-	DNSFallbackTestExpectedIP = net.IPv4(0, 65, 67, 75) // Ascii: \0ACK
+	DNSTestDomain     = "online-check.safing.io."
+	DNSTestExpectedIP = net.IPv4(0, 65, 67, 75) // Ascii: \0ACK
+	DNSTestQueryFunc  func(ctx context.Context, fdqn string) (ips []net.IP, ok bool, err error)
 
 	ConnectedToSPN = abool.New()
+	ConnectedToDNS = abool.New()
 
 	// SpecialCaptivePortalDomain is the domain name used to point to the detected captive portal IP
 	// or the captive portal test IP. The default value should be overridden by the resolver package,
@@ -53,8 +52,6 @@ var (
 	// ConnectivityDomains holds all connectivity domains. This slice must not be modified.
 	ConnectivityDomains = []string{
 		SpecialCaptivePortalDomain,
-		DNSTestDomain,         // Internal DNS Check
-		DNSFallbackTestDomain, // Internal DNS Check
 
 		// Windows
 		"dns.msftncsi.com.", // DNS Check
@@ -380,20 +377,20 @@ func monitorOnlineStatus(ctx context.Context) error {
 func getDynamicStatusTrigger() <-chan time.Time {
 	switch GetOnlineStatus() {
 	case StatusOffline:
-		// Will be triggered by network change anyway.
-		return time.After(20 * time.Second)
+		// Will also be triggered by network change.
+		return time.After(10 * time.Second)
 	case StatusLimited, StatusPortal:
 		// Change will not be detected otherwise, but impact is minor.
 		return time.After(5 * time.Second)
 	case StatusSemiOnline:
 		// Very small impact.
-		return time.After(20 * time.Second)
+		return time.After(60 * time.Second)
 	case StatusOnline:
 		// Don't check until resolver reports problems.
 		return nil
 	case StatusUnknown:
-		return time.After(5 * time.Second)
-	default: // other unknown status
+		fallthrough
+	default:
 		return time.After(5 * time.Minute)
 	}
 }
@@ -407,10 +404,15 @@ func checkOnlineStatus(ctx context.Context) {
 		return StatusUnknown
 	}*/
 
-	// 0) check if connected to SPN
+	// 0) check if connected to SPN and/or DNS.
 
 	if ConnectedToSPN.IsSet() {
 		updateOnlineStatus(StatusOnline, nil, "connected to SPN")
+		return
+	}
+
+	if ConnectedToDNS.IsSet() {
+		updateOnlineStatus(StatusOnline, nil, "connected to DNS")
 		return
 	}
 
@@ -508,34 +510,28 @@ func checkOnlineStatus(ctx context.Context) {
 
 	// 3) resolve a query
 
-	// Check with primary dns check domain.
-	ips, err := net.LookupIP(DNSTestDomain)
-	if err != nil {
-		log.Warningf("netenv: dns check query failed: %s", err)
-	} else {
-		// check for expected response
-		for _, ip := range ips {
-			if ip.Equal(DNSTestExpectedIP) {
-				updateOnlineStatus(StatusOnline, nil, "all checks passed")
-				return
-			}
-		}
-	}
-
-	// If that did not work, check with fallback dns check domain.
-	ips, err = net.LookupIP(DNSFallbackTestDomain)
-	if err != nil {
-		log.Warningf("netenv: dns fallback check query failed: %s", err)
-		updateOnlineStatus(StatusLimited, nil, "dns fallback check query failed")
+	// Check if we can resolve the dns check domain.
+	if DNSTestQueryFunc == nil {
+		updateOnlineStatus(StatusOnline, nil, "all checks passed, dns query check disabled")
 		return
 	}
-	// check for expected response
-	for _, ip := range ips {
-		if ip.Equal(DNSFallbackTestExpectedIP) {
-			updateOnlineStatus(StatusOnline, nil, "all checks passed")
-			return
-		}
+	ips, ok, err := DNSTestQueryFunc(ctx, DNSTestDomain)
+	switch {
+	case ok && err != nil:
+		updateOnlineStatus(StatusOnline, nil, fmt.Sprintf(
+			"all checks passed, acceptable result for dns query check: %s",
+			err,
+		))
+	case ok && len(ips) >= 1 && ips[0].Equal(DNSTestExpectedIP):
+		updateOnlineStatus(StatusOnline, nil, "all checks passed")
+	case ok && len(ips) >= 1:
+		log.Warningf("netenv: dns query check response mismatched: got %s", ips[0])
+		updateOnlineStatus(StatusOnline, nil, "all checks passed, dns query check response mismatched")
+	case ok:
+		log.Warningf("netenv: dns query check response mismatched: empty response")
+		updateOnlineStatus(StatusOnline, nil, "all checks passed, dns query check response was empty")
+	default:
+		log.Warningf("netenv: dns query check failed: %s", err)
+		updateOnlineStatus(StatusOffline, nil, "dns query check failed")
 	}
-	// unexpected response
-	updateOnlineStatus(StatusSemiOnline, nil, "dns check query response mismatched")
 }

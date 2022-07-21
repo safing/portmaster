@@ -3,7 +3,9 @@ package firewall
 import (
 	"context"
 	"fmt"
+	"net"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/agext/levenshtein"
@@ -41,6 +43,7 @@ type deciderFn func(context.Context, *network.Connection, *profile.LayeredProfil
 var defaultDeciders = []deciderFn{
 	checkPortmasterConnection,
 	checkSelfCommunication,
+	checkIfBroadcastReply,
 	checkConnectionType,
 	checkConnectionScope,
 	checkEndpointLists,
@@ -180,6 +183,46 @@ func checkSelfCommunication(ctx context.Context, conn *network.Connection, _ *pr
 	}
 
 	return false
+}
+
+func checkIfBroadcastReply(ctx context.Context, conn *network.Connection, _ *profile.LayeredProfile, _ packet.Packet) bool {
+	// Only check inbound connections.
+	if !conn.Inbound {
+		return false
+	}
+	// Only check if the process has been identified.
+	if !conn.Process().IsIdentified() {
+		return false
+	}
+
+	// Check if the remote IP is part of a local network.
+	localNet, err := netenv.GetLocalNetwork(conn.Entity.IP)
+	if err != nil {
+		log.Tracer(ctx).Warningf("filter: failed to get local network: %s", err)
+		return false
+	}
+	if localNet == nil {
+		return false
+	}
+
+	// Search for a matching requesting connection.
+	requestingConn := network.GetMulticastRequestConn(conn, localNet)
+	if requestingConn == nil {
+		return false
+	}
+
+	conn.Accept(
+		fmt.Sprintf(
+			"response to multi/broadcast query to %s/%s",
+			packet.IPProtocol(requestingConn.Entity.Protocol),
+			net.JoinHostPort(
+				requestingConn.Entity.IP.String(),
+				strconv.Itoa(int(requestingConn.Entity.Port)),
+			),
+		),
+		"",
+	)
+	return true
 }
 
 func checkEndpointLists(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
@@ -389,6 +432,16 @@ func checkFilterLists(ctx context.Context, conn *network.Connection, p *profile.
 	result, reason := p.MatchFilterLists(ctx, conn.Entity)
 	switch result {
 	case endpoints.Denied:
+		// If the connection matches a filter list, check if the "unbreak" list matches too and abort blocking.
+		for _, blockedListID := range conn.Entity.BlockedByLists {
+			for _, unbreakListID := range resolvedUnbreakFilterListIDs {
+				if blockedListID == unbreakListID {
+					log.Tracer(ctx).Debugf("filter: unbreak filter %s matched, ignoring other filter list matches", unbreakListID)
+					return false
+				}
+			}
+		}
+		// Otherwise, continue with blocking.
 		conn.DenyWithContext(reason.String(), profile.CfgOptionFilterListsKey, reason.Context())
 		return true
 	case endpoints.NoMatch:
@@ -439,10 +492,7 @@ func checkDomainHeuristics(ctx context.Context, conn *network.Connection, p *pro
 	trimmedDomain := strings.TrimRight(conn.Entity.Domain, ".")
 	etld1, err := publicsuffix.EffectiveTLDPlusOne(trimmedDomain)
 	if err != nil {
-		// we don't apply any checks here and let the request through
-		// because a malformed domain-name will likely be dropped by
-		// checks better suited for that.
-		log.Tracer(ctx).Warningf("filter: failed to get eTLD+1: %s", err)
+		// Don't run the check if the domain is a TLD.
 		return false
 	}
 

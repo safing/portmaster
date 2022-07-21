@@ -16,7 +16,7 @@ var (
 	module *modules.Module
 
 	selfcheckTask           *modules.Task
-	selfcheckTaskRetryAfter = 10 * time.Second
+	selfcheckTaskRetryAfter = 5 * time.Second
 
 	// selfCheckIsFailing holds whether or not the self-check is currently
 	// failing. This helps other failure systems to not make noise when there is
@@ -26,7 +26,15 @@ var (
 	// selfcheckFails counts how often the self check failed successively.
 	// selfcheckFails is not locked as it is only accessed by the self-check task.
 	selfcheckFails int
+
+	// selfcheckNetworkChangedFlag is used to track changed to the network for
+	// the self-check.
+	selfcheckNetworkChangedFlag = netenv.GetNetworkChangedFlag()
 )
+
+// selfcheckFailThreshold holds the threshold of how many times the selfcheck
+// must fail before it is reported.
+const selfcheckFailThreshold = 5
 
 func init() {
 	module = modules.Register("compat", prep, start, stop, "base", "network", "interception", "netenv", "notifications")
@@ -43,10 +51,16 @@ func prep() error {
 }
 
 func start() error {
+	startNotify()
+
+	selfcheckNetworkChangedFlag.Refresh()
 	selfcheckTask = module.NewTask("compatibility self-check", selfcheckTaskFunc).
 		Repeat(5 * time.Minute).
 		MaxDelay(selfcheckTaskRetryAfter).
 		Schedule(time.Now().Add(selfcheckTaskRetryAfter))
+
+	module.NewTask("clean notify thresholds", cleanNotifyThreshold).
+		Repeat(10 * time.Minute)
 
 	return module.RegisterEventHook(
 		netenv.ModuleName,
@@ -67,34 +81,46 @@ func stop() error {
 }
 
 func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
+	// Create tracing logger.
+	ctx, tracer := log.AddTracer(ctx)
+	defer tracer.Submit()
+	tracer.Tracef("compat: running self-check")
+
 	// Run selfcheck and return if successful.
 	issue, err := selfcheck(ctx)
-	if err == nil {
-		selfCheckIsFailing.UnSet()
-		selfcheckFails = 0
-		resetSystemIssue()
-		return nil
-	}
+	switch {
+	case err == nil:
+		// Successful.
+		tracer.Debugf("compat: self-check successful")
+	case issue == nil:
+		// Internal error.
+		tracer.Warningf("compat: %s", err)
+	case selfcheckNetworkChangedFlag.IsSet():
+		// The network changed, ignore the issue.
+	default:
+		// The self-check failed.
 
-	// Log result.
-	if issue != nil {
+		// Set state and increase counter.
 		selfCheckIsFailing.Set()
 		selfcheckFails++
 
-		log.Errorf("compat: %s", err)
-		if selfcheckFails >= 3 {
+		// Log and notify.
+		tracer.Errorf("compat: %s", err)
+		if selfcheckFails >= selfcheckFailThreshold {
 			issue.notify(err)
 		}
 
 		// Retry quicker when failed.
 		task.Schedule(time.Now().Add(selfcheckTaskRetryAfter))
-	} else {
-		selfCheckIsFailing.UnSet()
-		selfcheckFails = 0
 
-		// Only log internal errors, but don't notify.
-		log.Warningf("compat: %s", err)
+		return nil
 	}
+
+	// Reset self-check state.
+	selfcheckNetworkChangedFlag.Refresh()
+	selfCheckIsFailing.UnSet()
+	selfcheckFails = 0
+	resetSystemIssue()
 
 	return nil
 }

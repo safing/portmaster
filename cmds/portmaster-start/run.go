@@ -121,6 +121,21 @@ func getExecArgs(opts *Options, cmdArgs []string) []string {
 	if stdinSignals {
 		args = append(args, "--input-signals")
 	}
+
+	if opts.Identifier == "app/portmaster-app.zip" {
+		// see https://www.freedesktop.org/software/systemd/man/pam_systemd.html#type=
+		if xdgSessionType := os.Getenv("XDG_SESSION_TYPE"); xdgSessionType == "wayland" {
+			// we're running the Portmaster UI App under Wayland so make sure we add some arguments
+			// required by Electron
+			args = append(args,
+				[]string{
+					"--enable-features=UseOzonePlatform",
+					"--ozone-platform=wayland",
+				}...,
+			)
+		}
+	}
+
 	args = append(args, cmdArgs...)
 	return args
 }

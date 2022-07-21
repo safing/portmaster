@@ -43,8 +43,12 @@ func PreventBypassing(ctx context.Context, conn *network.Connection) (endpoints.
 		return endpoints.NoMatch, "", nil
 	}
 
-	// Block bypass attempts using an encrypted DNS server.
+	// Block bypass attempts using an (encrypted) DNS server.
 	switch {
+	case conn.Entity.Port == 53:
+		return endpoints.Denied,
+			"blocked DNS query, manual dns setup required",
+			nsutil.BlockIP()
 	case conn.Entity.Port == 853:
 		// Block connections to port 853 - DNS over TLS.
 		fallthrough

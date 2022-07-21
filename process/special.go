@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network/socket"
 	"github.com/safing/portmaster/profile"
 )
 
@@ -27,6 +28,13 @@ const (
 	// NetworkHostProcessID is the PID used for requests served to the network.
 	NetworkHostProcessID = -255
 )
+
+func init() {
+	// Check required matching values.
+	if UndefinedProcessID != socket.UndefinedProcessID {
+		panic("UndefinedProcessID does not match socket.UndefinedProcessID")
+	}
+}
 
 var (
 	// unidentifiedProcess is used for non-attributed outgoing connections.

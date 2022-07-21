@@ -2,11 +2,8 @@ package updates
 
 import (
 	"context"
-	"errors"
 	"sync"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/info"
 	"github.com/safing/portbase/log"
@@ -14,48 +11,95 @@ import (
 	"github.com/safing/portmaster/updates/helper"
 )
 
-// Database key for update information.
 const (
+	// versionsDBKey is the database key for update version information.
 	versionsDBKey = "core:status/versions"
+
+	// versionsDBKey is the database key for simple update version information.
+	simpleVersionsDBKey = "core:status/simple-versions"
 )
 
-var (
-	versionExport   *versions
-	versionExportDB = database.NewInterface(&database.Options{
-		Local:    true,
-		Internal: true,
-	})
-	versionExportHook *database.RegisteredHook
-)
-
-// versions holds updates status information.
-type versions struct {
+// Versions holds update versions and status information.
+type Versions struct {
 	record.Base
-	lock sync.Mutex
+	sync.Mutex
 
 	Core      *info.Info
 	Resources map[string]*updater.Resource
 	Channel   string
 	Beta      bool
 	Staging   bool
+}
 
-	internalSave bool
+// SimpleVersions holds simplified update versions and status information.
+type SimpleVersions struct {
+	record.Base
+	sync.Mutex
+
+	Build     *info.Info
+	Resources map[string]*SimplifiedResourceVersion
+	Channel   string
+}
+
+// SimplifiedResourceVersion holds version information about one resource.
+type SimplifiedResourceVersion struct {
+	Version string
+}
+
+// GetVersions returns the update versions and status information.
+// Resources must be locked when accessed.
+func GetVersions() *Versions {
+	return &Versions{
+		Core:      info.GetInfo(),
+		Resources: registry.Export(),
+		Channel:   initialReleaseChannel,
+		Beta:      initialReleaseChannel == helper.ReleaseChannelBeta,
+		Staging:   initialReleaseChannel == helper.ReleaseChannelStaging,
+	}
+}
+
+// GetSimpleVersions returns the simplified update versions and status information.
+func GetSimpleVersions() *SimpleVersions {
+	// Fill base info.
+	v := &SimpleVersions{
+		Build:     info.GetInfo(),
+		Resources: make(map[string]*SimplifiedResourceVersion),
+		Channel:   initialReleaseChannel,
+	}
+
+	// Iterate through all versions and add version info.
+	for id, resource := range registry.Export() {
+		func() {
+			resource.Lock()
+			defer resource.Unlock()
+
+			// Get current in-used or selected version.
+			var rv *updater.ResourceVersion
+			switch {
+			case resource.ActiveVersion != nil:
+				rv = resource.ActiveVersion
+			case resource.SelectedVersion != nil:
+				rv = resource.SelectedVersion
+			}
+
+			// Get information from resource.
+			if rv != nil {
+				v.Resources[id] = &SimplifiedResourceVersion{
+					Version: rv.VersionNumber,
+				}
+			}
+		}()
+	}
+
+	return v
 }
 
 func initVersionExport() (err error) {
-	// init export struct
-	versionExport = &versions{
-		internalSave: true,
-		Channel:      initialReleaseChannel,
-		Beta:         initialReleaseChannel == helper.ReleaseChannelBeta,
-		Staging:      initialReleaseChannel == helper.ReleaseChannelStaging,
+	if err := GetVersions().save(); err != nil {
+		log.Warningf("updates: failed to export version information: %s", err)
 	}
-	versionExport.SetKey(versionsDBKey)
-
-	// attach hook to database
-	versionExportHook, err = database.RegisterHook(query.New(versionsDBKey), &exportHook{})
-	if err != nil {
-		return err
+	if err := GetSimpleVersions().save(); err != nil {
+		log.Warningf("updates: failed to export version information: %s", err)
 	}
 
 	return module.RegisterEventHook(
@@ -66,71 +110,24 @@ func initVersionExport() (err error) {
 	)
 }
 
-func stopVersionExport() error {
-	return versionExportHook.Cancel()
+func (v *Versions) save() error {
+	if !v.KeyIsSet() {
+		v.SetKey(versionsDBKey)
+	}
+	return db.Put(v)
+}
+
+func (v *SimpleVersions) save() error {
+	if !v.KeyIsSet() {
+		v.SetKey(simpleVersionsDBKey)
+	}
+	return db.Put(v)
 }
 
 // export is an event hook.
 func export(_ context.Context, _ interface{}) error {
-	// populate
-	versionExport.lock.Lock()
-	versionExport.Core = info.GetInfo()
-	versionExport.Resources = registry.Export()
-	versionExport.lock.Unlock()
-
-	// save
-	err := versionExportDB.Put(versionExport)
-	if err != nil {
-		log.Warningf("updates: failed to export versions: %s", err)
+	if err := GetVersions().save(); err != nil {
+		return err
 	}
-
-	return nil
-}
-
-// Lock locks the versionExport and all associated resources.
-func (v *versions) Lock() {
-	// lock self
-	v.lock.Lock()
-
-	// lock all resources
-	for _, res := range v.Resources {
-		res.Lock()
-	}
-}
-
-// Lock unlocks the versionExport and all associated resources.
-func (v *versions) Unlock() {
-	// unlock all resources
-	for _, res := range v.Resources {
-		res.Unlock()
-	}
-
-	// unlock self
-	v.lock.Unlock()
-}
-
-type exportHook struct {
-	database.HookBase
-}
-
-// UsesPrePut implements the Hook interface.
-func (eh *exportHook) UsesPrePut() bool {
-	return true
-}
-
-var errInternalRecord = errors.New("may not modify internal record")
-
-// PrePut implements the Hook interface.
-func (eh *exportHook) PrePut(r record.Record) (record.Record, error) {
-	if r.IsWrapped() {
-		return nil, errInternalRecord
-	}
-	ve, ok := r.(*versions)
-	if !ok {
-		return nil, errInternalRecord
-	}
-	if !ve.internalSave {
-		return nil, errInternalRecord
-	}
-	return r, nil
+	return GetSimpleVersions().save()
 }

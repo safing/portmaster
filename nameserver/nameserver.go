@@ -106,6 +106,9 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		return reply(nsutil.Refused("invalid domain"))
 	}
 
+	// Get public suffix after validation.
+	q.InitPublicSuffixData()
+
 	// Check if query is failing.
 	// Some software retries failing queries excessively. This might not be a
 	// problem normally, but handling a request is pretty expensive for the
@@ -168,7 +171,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		}
 
 	default:
-		tracer.Warningf("nameserver: external request for %s%s, ignoring", q.FQDN, q.QType)
+		tracer.Warningf("nameserver: external request from %s for %s%s, ignoring", remoteAddr, q.FQDN, q.QType)
 		return reply(nsutil.Refused("external queries are not permitted"))
 	}
 	conn.Lock()
@@ -252,10 +255,13 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	if err != nil {
 		switch {
 		case errors.Is(err, resolver.ErrNotFound):
-			tracer.Tracef("nameserver: %s", err)
-			conn.Failed("domain does not exist", "")
-			return reply(nsutil.NxDomain("nxdomain: " + err.Error()))
-
+			// Try alternatives domain names for unofficial domain spaces.
+			rrCache = checkAlternativeCaches(ctx, q)
+			if rrCache == nil {
+				tracer.Tracef("nameserver: %s", err)
+				conn.Failed("domain does not exist", "")
+				return reply(nsutil.NxDomain("nxdomain: " + err.Error()))
+			}
 		case errors.Is(err, resolver.ErrBlocked):
 			tracer.Tracef("nameserver: %s", err)
 			conn.Block(err.Error(), "")
@@ -268,7 +274,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 
 		case errors.Is(err, resolver.ErrOffline):
 			if rrCache == nil {
-				log.Tracer(ctx).Debugf("nameserver: not resolving %s, device is offline", q.ID())
+				tracer.Debugf("nameserver: not resolving %s, device is offline", q.ID())
 				conn.Failed("not resolving, device is offline", "")
 				return reply(nsutil.ServerFailure(err.Error()))
 			}
@@ -290,8 +296,12 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		addFailingQuery(q, errors.New("emptry reply from resolver"))
 		return reply(nsutil.ServerFailure("internal error: empty reply"))
 	case rrCache.RCode == dns.RcodeNameError:
-		// Return now if NXDomain.
-		return reply(nsutil.NxDomain("no answer found (NXDomain)"))
+		// Try alternatives domain names for unofficial domain spaces.
+		rrCache = checkAlternativeCaches(ctx, q)
+		if rrCache == nil {
+			// Return now if NXDomain.
+			return reply(nsutil.NxDomain("no answer found (NXDomain)"))
+		}
 	}
 
 	// Check with firewall again after resolving.
@@ -335,4 +345,53 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		conn.Process(),
 	)
 	return reply(rrCache, conn, rrCache)
+}
+
+func checkAlternativeCaches(ctx context.Context, q *resolver.Query) *resolver.RRCache {
+	// Do not try alternatives when the query is in a public suffix.
+	// This also includes arpa. and local.
+	if q.ICANNSpace {
+		return nil
+	}
+
+	// Check if the env resolver has something.
+	pmEnvQ := &resolver.Query{
+		FQDN:  q.FQDN + "local." + resolver.InternalSpecialUseDomain,
+		QType: q.QType,
+	}
+	rrCache, err := resolver.QueryPortmasterEnv(ctx, pmEnvQ)
+	if err == nil && rrCache != nil && rrCache.RCode == dns.RcodeSuccess {
+		makeAlternativeRecord(ctx, q, rrCache, pmEnvQ.FQDN)
+		return rrCache
+	}
+
+	// Check if we have anything in cache
+	localFQDN := q.FQDN + "local."
+	rrCache, err = resolver.GetRRCache(localFQDN, q.QType)
+	if err == nil && rrCache != nil && rrCache.RCode == dns.RcodeSuccess {
+		makeAlternativeRecord(ctx, q, rrCache, localFQDN)
+		return rrCache
+	}
+
+	return nil
+}
+
+func makeAlternativeRecord(ctx context.Context, q *resolver.Query, rrCache *resolver.RRCache, altName string) {
+	log.Tracer(ctx).Debugf("using %s to answer query", altName)
+
+	// Duplicate answers so they match the query.
+	copied := make([]dns.RR, 0, len(rrCache.Answer))
+	for _, answer := range rrCache.Answer {
+		if strings.ToLower(answer.Header().Name) == altName {
+			copiedAnswer := dns.Copy(answer)
+			copiedAnswer.Header().Name = q.FQDN
+			copied = append(copied, copiedAnswer)
+		}
+	}
+	if len(copied) > 0 {
+		rrCache.Answer = append(rrCache.Answer, copied...)
+	}
+
+	// Update the question.
+	rrCache.Domain = q.FQDN
 }

@@ -2,11 +2,11 @@ package firewall
 
 import (
 	"github.com/safing/portbase/config"
+	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
-
-	// Dependency.
 	_ "github.com/safing/portmaster/core"
+	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/spn/captain"
 )
 
@@ -14,10 +14,13 @@ var (
 	filterModule  *modules.Module
 	filterEnabled config.BoolOption
 	tunnelEnabled config.BoolOption
+
+	unbreakFilterListIDs         = []string{"UNBREAK"}
+	resolvedUnbreakFilterListIDs []string
 )
 
 func init() {
-	filterModule = modules.Register("filter", filterPrep, nil, nil, "core", "intel")
+	filterModule = modules.Register("filter", filterPrep, filterStart, nil, "core", "intel")
 	subsystems.Register(
 		"filter",
 		"Privacy Filter",
@@ -47,5 +50,16 @@ func filterPrep() (err error) {
 
 	filterEnabled = config.Concurrent.GetAsBool(CfgOptionEnableFilterKey, true)
 	tunnelEnabled = config.Concurrent.GetAsBool(captain.CfgOptionEnableSPNKey, false)
+	return nil
+}
+
+func filterStart() error {
+	// TODO: Re-resolve IDs when filterlist index changes.
+	resolvedIDs, err := filterlists.ResolveListIDs(unbreakFilterListIDs)
+	if err != nil {
+		log.Warningf("filter: failed to resolve unbreak filter list IDs: %s", err)
+	} else {
+		resolvedUnbreakFilterListIDs = resolvedIDs
+	}
 	return nil
 }

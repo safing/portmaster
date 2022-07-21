@@ -28,12 +28,12 @@ var (
 	systemIntegrationCheckDialNet      = fmt.Sprintf("ip4:%d", uint8(SystemIntegrationCheckProtocol))
 	systemIntegrationCheckDialIP       = SystemIntegrationCheckDstIP.String()
 	systemIntegrationCheckPackets      = make(chan packet.Packet, 1)
-	systemIntegrationCheckWaitDuration = 10 * time.Second
+	systemIntegrationCheckWaitDuration = 20 * time.Second
 
 	// DNSCheckInternalDomainScope is the domain scope to use for dns checks.
 	DNSCheckInternalDomainScope = ".self-check." + resolver.InternalSpecialUseDomain
 	dnsCheckReceivedDomain      = make(chan string, 1)
-	dnsCheckWaitDuration        = 10 * time.Second
+	dnsCheckWaitDuration        = 20 * time.Second
 	dnsCheckAnswerLock          sync.Mutex
 	dnsCheckAnswer              net.IP
 )
@@ -61,7 +61,7 @@ func selfcheck(ctx context.Context) (issue *systemIssue, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create system integration conn: %w", err)
 	}
-	_, err = conn.Write([]byte("SELF-CHECK"))
+	_, err = conn.Write([]byte("PORTMASTER SELF CHECK"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to send system integration packet: %w", err)
 	}
@@ -70,7 +70,7 @@ func selfcheck(ctx context.Context) (issue *systemIssue, err error) {
 	select {
 	case <-systemIntegrationCheckPackets:
 		// Check passed!
-		log.Tracef("compat: self-check #1: system integration check passed")
+		log.Tracer(ctx).Tracef("compat: self-check #1: system integration check passed")
 	case <-time.After(systemIntegrationCheckWaitDuration):
 		return systemIntegrationIssue, fmt.Errorf("self-check #1: system integration check failed: did not receive test packet after %s", systemIntegrationCheckWaitDuration)
 	case <-ctx.Done():
@@ -139,12 +139,12 @@ func selfcheck(ctx context.Context) (issue *systemIssue, err error) {
 	select {
 	case receivedTestDomain := <-dnsCheckReceivedDomain:
 		if receivedTestDomain != randomSubdomain {
-			return systemCompatibilityIssue, fmt.Errorf("self-check #2: dns integration check failed: received unmatching subdomain %q", receivedTestDomain)
+			return systemCompatOrManualDNSIssue(), fmt.Errorf("self-check #2: dns integration check failed: received unmatching subdomain %q", receivedTestDomain)
 		}
 	case <-time.After(dnsCheckWaitDuration):
-		return systemCompatibilityIssue, fmt.Errorf("self-check #2: dns integration check failed: did not receive test query after %s", dnsCheckWaitDuration)
+		return systemCompatOrManualDNSIssue(), fmt.Errorf("self-check #2: dns integration check failed: did not receive test query after %s", dnsCheckWaitDuration)
 	}
-	log.Tracef("compat: self-check #2: dns integration query check passed")
+	log.Tracer(ctx).Tracef("compat: self-check #2: dns integration query check passed")
 
 	// Step 3: Have the nameserver respond with random data in the answer section.
 
@@ -164,7 +164,7 @@ func selfcheck(ctx context.Context) (issue *systemIssue, err error) {
 	if !dnsCheckReturnedIP.Equal(randomAnswer) {
 		return systemCompatibilityIssue, fmt.Errorf("self-check #3: dns integration check failed: received unmatching response %q", dnsCheckReturnedIP)
 	}
-	log.Tracef("compat: self-check #3: dns integration response check passed")
+	log.Tracer(ctx).Tracef("compat: self-check #3: dns integration response check passed")
 
 	return nil, nil
 }

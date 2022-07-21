@@ -31,7 +31,7 @@ var (
 
 		// Cloudflare (encrypted DNS, with malware protection)
 		`dot://1.1.1.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip`,
-		// `dot://1.0.0.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip`,
+		`dot://1.0.0.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip`,
 
 		// AdGuard (encrypted DNS, default flavor)
 		// `dot://94.140.14.14:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
@@ -107,8 +107,9 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	- "search": specify prioritized domains/TLDs for this resolver (delimited by ",")
 	- "search-only": use this resolver for domains in the "search" parameter only (no value)
 `, `"`, "`"),
+		Sensitive:       true,
 		OptType:         config.OptTypeStringArray,
-		ExpertiseLevel:  config.ExpertiseLevelExpert,
+		ExpertiseLevel:  config.ExpertiseLevelUser,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		DefaultValue:    defaultNameServers,
 		ValidationRegex: fmt.Sprintf("^(%s|%s|%s|%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDoH, ServerTypeDNS, ServerTypeTCP, HTTPSProtocol, TLSProtocol),
@@ -118,6 +119,14 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 			config.DisplayOrderAnnotation: cfgOptionNameServersOrder,
 			config.CategoryAnnotation:     "Servers",
 			config.QuickSettingsAnnotation: []config.QuickSetting{
+			{
+					Name:   "Cloudflare (with Malware Filter)",
+					Action: config.QuickReplace,
+					Value: []string{
+						"dot://cloudflare-dns.com?ip=1.1.1.2&name=Cloudflare&blockedif=zeroip",
+						"dot://cloudflare-dns.com?ip=1.0.0.2&name=Cloudflare&blockedif=zeroip",
+					},
+				},
 				{
 					Name:   "Quad9",
 					Action: config.QuickReplace,
@@ -139,14 +148,6 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 					Action: config.QuickReplace,
 					Value: []string{
 						"dot://dot1.applied-privacy.net?ip=94.130.106.88&name=AppliedPrivacy",
-					},
-				},
-				{
-					Name:   "Cloudflare (with Malware Filter)",
-					Action: config.QuickReplace,
-					Value: []string{
-						"dot://cloudflare-dns.com?ip=1.1.1.2&name=Cloudflare&blockedif=zeroip",
-						"dot://cloudflare-dns.com?ip=1.0.0.2&name=Cloudflare&blockedif=zeroip",
 					},
 				},
 			},
@@ -222,9 +223,9 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	noMulticastDNS = status.SecurityLevelOption(CfgOptionNoMulticastDNSKey)
 
 	err = config.Register(&config.Option{
-		Name:           "Enforce Secure DNS",
+		Name:           "Use Secure Protocols Only",
 		Key:            CfgOptionNoInsecureProtocolsKey,
-		Description:    "Never resolve using insecure protocols, ie. plain DNS.",
+		Description:    "Never resolve using insecure protocols, ie. plain DNS. This may break certain local DNS services, which always use plain DNS.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,

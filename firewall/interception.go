@@ -16,8 +16,6 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/compat"
-
-	// Dependency.
 	_ "github.com/safing/portmaster/core/base"
 	"github.com/safing/portmaster/firewall/inspection"
 	"github.com/safing/portmaster/firewall/interception"
@@ -332,8 +330,9 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true
 
-		// Redirect outbound DNS packests,
-	case pkt.IsOutbound() &&
+		// Redirect outbound DNS packets if enabled,
+	case dnsQueryInterception() &&
+		pkt.IsOutbound() &&
 		pkt.Info().DstPort == 53 &&
 		// that don't match the address of our nameserver,
 		nameserverIPMatcherReady.IsSet() &&
@@ -341,7 +340,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		// and are not broadcast queries by us.
 		// Context:
 		// - Unicast queries by the resolver are pre-authenticated.
-		// - Unicast qeries by the compat self-check should be redirected.
+		// - Unicast queries by the compat self-check should be redirected.
 		!(conn.Process().Pid == ownPID &&
 			conn.Entity.IPScope == netutils.LocalMulticast):
 

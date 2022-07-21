@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/miekg/dns"
+	"golang.org/x/net/publicsuffix"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
@@ -89,6 +92,11 @@ type Query struct {
 	IgnoreFailing      bool
 	LocalResolversOnly bool
 
+	// ICANNSpace signifies if the domain is within ICANN managed domain space.
+	ICANNSpace bool
+	// Domain root is the effective TLD +1.
+	DomainRoot string
+
 	// internal
 	dotPrefixedFQDN string
 }
@@ -96,6 +104,41 @@ type Query struct {
 // ID returns the ID of the query consisting of the domain and question type.
 func (q *Query) ID() string {
 	return q.FQDN + q.QType.String()
+}
+
+// InitPublicSuffixData initializes the public suffix data.
+func (q *Query) InitPublicSuffixData() {
+	// Get public suffix and derive if domain is in ICANN space.
+	suffix, icann := publicsuffix.PublicSuffix(strings.TrimSuffix(q.FQDN, "."))
+	if icann || strings.Contains(suffix, ".") {
+		q.ICANNSpace = true
+	}
+	// Override some cases.
+	switch suffix {
+	case "example":
+		q.ICANNSpace = true // Defined by ICANN.
+	case "invalid":
+		q.ICANNSpace = true // Defined by ICANN.
+	case "local":
+		q.ICANNSpace = true // Defined by ICANN.
+	case "localhost":
+		q.ICANNSpace = true // Defined by ICANN.
+	case "onion":
+		q.ICANNSpace = false // Defined by ICANN, but special.
+	case "test":
+		q.ICANNSpace = true // Defined by ICANN.
+	}
+	// Add suffix to adhere to FQDN format.
+	suffix += "."
+
+	switch {
+	case len(q.FQDN) == len(suffix):
+		// We are at or below the domain root, reset.
+		q.DomainRoot = ""
+	case len(q.FQDN) > len(suffix):
+		domainRootStart := strings.LastIndex(q.FQDN[:len(q.FQDN)-len(suffix)-1], ".") + 1
+		q.DomainRoot = q.FQDN[domainRootStart:]
+	}
 }
 
 // check runs sanity checks and does some initialization. Returns whether the query passed the basic checks.
@@ -318,8 +361,8 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 	}
 
 	// check if we are online
-	if primarySource != ServerSourceEnv && netenv.GetOnlineStatus() == netenv.StatusOffline {
-		if !netenv.IsConnectivityDomain(q.FQDN) {
+	if netenv.GetOnlineStatus() == netenv.StatusOffline && primarySource != ServerSourceEnv {
+		if q.FQDN != netenv.DNSTestDomain && !netenv.IsConnectivityDomain(q.FQDN) {
 			// we are offline and this is not an online check query
 			return oldCache, ErrOffline
 		}
@@ -358,6 +401,7 @@ resolveLoop:
 					// some resolvers might also block
 					return nil, err
 				case netenv.GetOnlineStatus() == netenv.StatusOffline &&
+					q.FQDN != netenv.DNSTestDomain &&
 					!netenv.IsConnectivityDomain(q.FQDN):
 					// we are offline and this is not an online check query
 					return oldCache, ErrOffline
@@ -477,4 +521,46 @@ func shouldResetCache(q *Query) (reset bool) {
 	}
 
 	return false
+}
+
+func init() {
+	netenv.DNSTestQueryFunc = testConnectivity
+}
+
+// testConnectivity test if resolving a query succeeds and returns whether the
+// query itself succeeded, separate from interpreting the result.
+func testConnectivity(ctx context.Context, fdqn string) (ips []net.IP, ok bool, err error) {
+	q := &Query{
+		FQDN:      fdqn,
+		QType:     dns.Type(dns.TypeA),
+		NoCaching: true,
+	}
+	if !q.check() {
+		return nil, false, ErrInvalid
+	}
+
+	rrCache, err := resolveAndCache(ctx, q, nil)
+	switch {
+	case err == nil:
+		switch rrCache.RCode {
+		case dns.RcodeNameError:
+			return nil, true, ErrNotFound
+		case dns.RcodeRefused:
+			return nil, true, errors.New("refused")
+		default:
+			ips := rrCache.ExportAllARecords()
+			if len(ips) > 0 {
+				return ips, true, nil
+			}
+			return nil, true, ErrNotFound
+		}
+	case errors.Is(err, ErrNotFound):
+		return nil, true, err
+	case errors.Is(err, ErrBlocked):
+		return nil, true, err
+	case errors.Is(err, ErrNoCompliance):
+		return nil, true, err
+	default:
+		return nil, false, err
+	}
 }

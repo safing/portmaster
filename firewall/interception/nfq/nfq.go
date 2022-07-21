@@ -153,7 +153,8 @@ func (q *Queue) handleError(e error) int {
 
 	// Close the existing socket
 	if nf := q.getNfq(); nf != nil {
-		_ = nf.Close()
+		// Call Close() on the Con directly, as nf.Close() calls waitgroup.Wait(), which then may deadlock.
+		_ = nf.Con.Close()
 	}
 
 	// Trigger a restart of the queue

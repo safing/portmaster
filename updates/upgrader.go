@@ -230,7 +230,10 @@ func warnOnIncorrectParentPath() {
 		return
 	}
 	if parentName != expectedFileName {
-		log.Warningf("updates: parent process does not seem to be portmaster-start, name is %s", parentName)
+		// Only warn about this if not in dev mode.
+		if !devMode() {
+			log.Warningf("updates: parent process does not seem to be portmaster-start, name is %s", parentName)
+		}
 
 		// TODO(ppacher): once we released a new installer and folks had time
 		//                to update we should send a module warning/hint to the

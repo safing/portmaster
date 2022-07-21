@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
@@ -48,6 +49,11 @@ var (
 	updateASAP          bool
 	disableTaskSchedule bool
 
+	db = database.NewInterface(&database.Options{
+		Local:    true,
+		Internal: true,
+	})
+
 	// UserAgent is an HTTP User-Agent that is used to add
 	// more context to requests made by the registry when
 	// fetching resources from the update server.
@@ -55,6 +61,8 @@ var (
 )
 
 const (
+	updatesDirName = "updates"
+
 	updateFailed  = "updates:failed"
 	updateSuccess = "updates:success"
 )
@@ -108,7 +116,7 @@ func start() error {
 		registry.UserAgent = userAgentFromFlag
 	}
 	// initialize
-	err := registry.Initialize(dataroot.Root().ChildDir("updates", 0o0755))
+	err := registry.Initialize(dataroot.Root().ChildDir(updatesDirName, 0o0755))
 	if err != nil {
 		return err
 	}
@@ -269,10 +277,13 @@ func checkForUpdates(ctx context.Context) (err error) {
 
 func stop() error {
 	if registry != nil {
-		return registry.Cleanup()
+		err := registry.Cleanup()
+		if err != nil {
+			log.Warningf("updates: failed to clean up registry: %s", err)
+		}
 	}
 
-	return stopVersionExport()
+	return nil
 }
 
 // RootPath returns the root path used for storing updates.
