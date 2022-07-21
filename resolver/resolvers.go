@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/net/publicsuffix"
 
+	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/netenv"
@@ -41,7 +42,7 @@ var (
 	systemResolvers     []*Resolver          // all resolvers that were assigned by the system
 	localScopes         []*Scope             // list of scopes with a list of local resolvers that can resolve the scope
 	activeResolvers     map[string]*Resolver // lookup map of all resolvers
-	resolverInitDomains map[string]bool      // a set with all domains of the dns resolvers
+	resolverInitDomains map[string]struct{}  // a set with all domains of the dns resolvers
 	resolversLock       sync.RWMutex
 )
 
@@ -97,13 +98,15 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 	}
 
 	if resolverInitDomains == nil {
-		resolverInitDomains = make(map[string]bool)
+		resolverInitDomains = make(map[string]struct{})
 	}
 
 	switch u.Scheme {
 	case ServerTypeDNS, ServerTypeDoT, ServerTypeDoH, ServerTypeTCP:
 	case HttpsProtocol:
 		u.Scheme = ServerTypeDoH
+	case TlsProtocol:
+		u.Scheme = ServerTypeDoT
 	default:
 		return nil, false, fmt.Errorf("DNS resolver scheme %q invalid", u.Scheme)
 	}
@@ -123,7 +126,6 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 			Port:    0,
 		},
 		ServerAddress:          "",
-		VerifyDomain:           "",
 		Path:                   u.Path, // Used for DoH
 		UpstreamBlockDetection: "",
 	}
@@ -185,7 +187,7 @@ func checkAndSetResolverParamters(u *url.URL, resolver *Resolver) error {
 	ip := net.ParseIP(u.Hostname())
 	hostnameIsDomaion := (ip == nil)
 	if ip == nil && u.Scheme != ServerTypeDoH && u.Scheme != ServerTypeDoT {
-		return fmt.Errorf("resolver IP %q invalid", u.Hostname())
+		return fmt.Errorf("resolver IP %q is invalid", u.Hostname())
 	} else {
 		resolver.Info.IP = ip
 	}
@@ -211,20 +213,20 @@ func checkAndSetResolverParamters(u *url.URL, resolver *Resolver) error {
 			// Known key, continue.
 		default:
 			// Unknown key, abort.
-			return fmt.Errorf(`unknown parameter "%s"`, key)
+			return fmt.Errorf(`unknown parameter "%q"`, key)
 		}
 	}
 
-	resolver.VerifyDomain = query.Get(parameterVerify)
+	resolver.Info.Domain = query.Get(parameterVerify)
 	paramterServerIP := query.Get(parameterIP)
 
 	if u.Scheme == ServerTypeDoT || u.Scheme == ServerTypeDoH {
 
 		// Check if IP and Domain are set correctly
 		switch {
-		case hostnameIsDomaion && resolver.VerifyDomain != "":
+		case hostnameIsDomaion && resolver.Info.Domain != "":
 			return fmt.Errorf("cannot set the domain name via both the hostname in the URL and the verify parameter")
-		case !hostnameIsDomaion && resolver.VerifyDomain == "":
+		case !hostnameIsDomaion && resolver.Info.Domain == "":
 			return fmt.Errorf("verify parameter must be set when using ip as domain")
 		case !hostnameIsDomaion && paramterServerIP != "":
 			return fmt.Errorf("cannot set the IP address via both the hostname in the URL and the ip parameter")
@@ -235,17 +237,17 @@ func checkAndSetResolverParamters(u *url.URL, resolver *Resolver) error {
 		case hostnameIsDomaion && paramterServerIP != "": // domain and ip as parameter
 			resolver.Info.IP = net.ParseIP(paramterServerIP)
 			resolver.ServerAddress = net.JoinHostPort(paramterServerIP, strconv.Itoa(int(resolver.Info.Port)))
-			resolver.VerifyDomain = u.Hostname()
-		case !hostnameIsDomaion && resolver.VerifyDomain != "": // ip and domain as parameter
+			resolver.Info.Domain = u.Hostname()
+		case !hostnameIsDomaion && resolver.Info.Domain != "": // ip and domain as parameter
 			resolver.ServerAddress = net.JoinHostPort(ip.String(), strconv.Itoa(int(resolver.Info.Port)))
-		case hostnameIsDomaion && resolver.VerifyDomain == "" && paramterServerIP == "": // only domain
-			resolver.VerifyDomain = u.Hostname()
+		case hostnameIsDomaion && resolver.Info.Domain == "" && paramterServerIP == "": // only domain
+			resolver.Info.Domain = u.Hostname()
+			resolver.ServerAddress = net.JoinHostPort(resolver.Info.Domain, strconv.Itoa(int(port)))
 		}
 
-		resolver.Info.Domain = resolver.VerifyDomain
-		resolverInitDomains[resolver.Info.Domain] = true
+		resolverInitDomains[dns.Fqdn(resolver.Info.Domain)] = struct{}{}
 	} else {
-		if resolver.VerifyDomain != "" {
+		if resolver.Info.Domain != "" {
 			return fmt.Errorf("domain verification is only supported by DoT and DoH servers")
 		}
 		resolver.ServerAddress = net.JoinHostPort(ip.String(), strconv.Itoa(int(resolver.Info.Port)))

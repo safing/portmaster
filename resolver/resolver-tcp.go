@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strconv"
 	"time"
 
 	"github.com/miekg/dns"
@@ -100,7 +99,7 @@ func (tr *TCPResolver) UseTLS() *TCPResolver {
 	tr.dnsClient.Net = "tcp-tls"
 	tr.dnsClient.TLSConfig = &tls.Config{
 		MinVersion: tls.VersionTLS12,
-		ServerName: tr.resolver.VerifyDomain,
+		ServerName: tr.resolver.Info.Domain,
 		// TODO: use portbase rng
 	}
 	return tr
@@ -143,14 +142,8 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		KeepAlive: defaultClientTTL,
 	}
 
-	// Set the host, if we dont have IP address just use the domain
-	host := tr.resolver.ServerAddress
-	if host == "" {
-		host = net.JoinHostPort(tr.resolver.VerifyDomain, strconv.Itoa(int(tr.resolver.Info.Port)))
-	}
-
 	// Connect to server.
-	conn, err := tr.dnsClient.Dial(host)
+	conn, err := tr.dnsClient.Dial(tr.resolver.ServerAddress)
 	if err != nil {
 		// Hint network environment at failed connection.
 		netenv.ReportFailedConnection()
@@ -194,7 +187,7 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	// Do not resolve domain names that are needed to initialize a resolver
 	if tr.resolver.Info.IP == nil && tr.dnsClient.TLSConfig != nil {
-		if _, ok := resolverInitDomains[q.FQDN[:len(q.FQDN)-1]]; ok {
+		if _, ok := resolverInitDomains[q.FQDN]; ok {
 			return nil, ErrContinue
 		}
 	}

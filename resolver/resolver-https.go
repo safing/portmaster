@@ -6,10 +6,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 
 	"github.com/miekg/dns"
 )
@@ -43,11 +41,11 @@ func (tq *HttpsQuery) MakeCacheRecord(reply *dns.Msg, resolverInfo *ResolverInfo
 func NewHTTPSResolver(resolver *Resolver) *HttpsResolver {
 	tr := &http.Transport{}
 
-	if resolver.ServerAddress != "" {
+	if resolver.Info.IP != nil {
 		tr = &http.Transport{
 			TLSClientConfig: &tls.Config{
 				MinVersion: tls.VersionTLS12,
-				ServerName: resolver.VerifyDomain,
+				ServerName: resolver.Info.Domain,
 				// TODO: use portbase rng
 			},
 		}
@@ -70,7 +68,7 @@ func (hr *HttpsResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 
 	// Do not resolve domain names that are needed to initialize a resolver
 	if hr.resolver.Info.IP == nil {
-		if _, ok := resolverInitDomains[q.FQDN[:len(q.FQDN)-1]]; ok {
+		if _, ok := resolverInitDomains[q.FQDN]; ok {
 			return nil, ErrContinue
 		}
 	}
@@ -85,16 +83,10 @@ func (hr *HttpsResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	}
 	b64dns := base64.RawStdEncoding.EncodeToString(buf)
 
-	// Set the host, if we dont have IP address just use the domain
-	host := hr.resolver.ServerAddress
-	if host == "" {
-		host = net.JoinHostPort(hr.resolver.VerifyDomain, strconv.Itoa(int(hr.resolver.Info.Port)))
-	}
-
 	// Build and execute http reuqest
 	url := &url.URL{
 		Scheme:     "https",
-		Host:       host,
+		Host:       hr.resolver.ServerAddress,
 		Path:       hr.resolver.Path,
 		ForceQuery: true,
 		RawQuery:   fmt.Sprintf("dns=%s", b64dns),

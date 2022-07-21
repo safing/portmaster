@@ -32,6 +32,7 @@ const (
 
 const (
 	HttpsProtocol = "https"
+	TlsProtocol   = "tls"
 )
 
 // FailThreshold is amount of errors a resolvers must experience in order to be regarded as failed.
@@ -65,10 +66,9 @@ type Resolver struct {
 	UpstreamBlockDetection string
 
 	// Special Options
-	VerifyDomain string
-	Search       []string
-	SearchOnly   bool
-	Path         string
+	Search     []string
+	SearchOnly bool
+	Path       string
 
 	// logic interface
 	Conn ResolverConn `json:"-"`
@@ -155,6 +155,12 @@ func (info *ResolverInfo) DescriptiveName() string {
 		return fmt.Sprintf(
 			"%s (%s)",
 			info.Name,
+			info.ID(),
+		)
+	case info.IP == nil:
+		return fmt.Sprintf(
+			"%s (%s)",
+			info.Domain,
 			info.ID(),
 		)
 	default:
