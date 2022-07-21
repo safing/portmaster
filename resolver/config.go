@@ -119,7 +119,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 			config.DisplayOrderAnnotation: cfgOptionNameServersOrder,
 			config.CategoryAnnotation:     "Servers",
 			config.QuickSettingsAnnotation: []config.QuickSetting{
-			{
+				{
 					Name:   "Cloudflare (with Malware Filter)",
 					Action: config.QuickReplace,
 					Value: []string{
