@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/miekg/dns"
 )
@@ -45,6 +46,7 @@ func NewHTTPSResolver(resolver *Resolver) *HTTPSResolver {
 			ServerName: resolver.Info.Domain,
 			// TODO: use portbase rng
 		},
+		IdleConnTimeout: 3 * time.Minute,
 	}
 
 	client := &http.Client{Transport: tr}
