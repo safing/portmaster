@@ -99,7 +99,7 @@ func (tr *TCPResolver) UseTLS() *TCPResolver {
 	tr.dnsClient.Net = "tcp-tls"
 	tr.dnsClient.TLSConfig = &tls.Config{
 		MinVersion: tls.VersionTLS12,
-		ServerName: tr.resolver.VerifyDomain,
+		ServerName: tr.resolver.Info.Domain,
 		// TODO: use portbase rng
 	}
 	return tr
