@@ -111,7 +111,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		DefaultValue:    defaultNameServers,
-		ValidationRegex: fmt.Sprintf("^(%s|%s|%s|%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDoH, ServerTypeDNS, ServerTypeTCP, HttpsProtocol, TlsProtocol),
+		ValidationRegex: fmt.Sprintf("^(%s|%s|%s|%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDoH, ServerTypeDNS, ServerTypeTCP, HTTPSProtocol, TLSProtocol),
 		ValidationFunc:  validateNameservers,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  config.DisplayHintOrdered,

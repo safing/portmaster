@@ -103,9 +103,9 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 
 	switch u.Scheme {
 	case ServerTypeDNS, ServerTypeDoT, ServerTypeDoH, ServerTypeTCP:
-	case HttpsProtocol:
+	case HTTPSProtocol:
 		u.Scheme = ServerTypeDoH
-	case TlsProtocol:
+	case TLSProtocol:
 		u.Scheme = ServerTypeDoT
 	default:
 		return nil, false, fmt.Errorf("DNS resolver scheme %q invalid", u.Scheme)
@@ -188,8 +188,6 @@ func checkAndSetResolverParamters(u *url.URL, resolver *Resolver) error {
 	hostnameIsDomaion := (ip == nil)
 	if ip == nil && u.Scheme != ServerTypeDoH && u.Scheme != ServerTypeDoT {
 		return fmt.Errorf("resolver IP %q is invalid", u.Hostname())
-	} else {
-		resolver.Info.IP = ip
 	}
 
 	// Add default port for scheme if it is missing.
@@ -198,6 +196,7 @@ func checkAndSetResolverParamters(u *url.URL, resolver *Resolver) error {
 		return err
 	}
 	resolver.Info.Port = port
+	resolver.Info.IP = ip
 
 	query := u.Query()
 

@@ -12,20 +12,20 @@ import (
 	"github.com/miekg/dns"
 )
 
-// HttpsResolver is a resolver using just a single tcp connection with pipelining.
-type HttpsResolver struct {
+// HTTPSResolver is a resolver using just a single tcp connection with pipelining.
+type HTTPSResolver struct {
 	BasicResolverConn
 	Client *http.Client
 }
 
-// HttpsQuery holds the query information for a httpsResolverConn.
-type HttpsQuery struct {
+// HTTPSQuery holds the query information for a hTTPSResolverConn.
+type HTTPSQuery struct {
 	Query    *Query
 	Response chan *dns.Msg
 }
 
 // MakeCacheRecord creates an RRCache record from a reply.
-func (tq *HttpsQuery) MakeCacheRecord(reply *dns.Msg, resolverInfo *ResolverInfo) *RRCache {
+func (tq *HTTPSQuery) MakeCacheRecord(reply *dns.Msg, resolverInfo *ResolverInfo) *RRCache {
 	return &RRCache{
 		Domain:   tq.Query.FQDN,
 		Question: tq.Query.QType,
@@ -37,8 +37,8 @@ func (tq *HttpsQuery) MakeCacheRecord(reply *dns.Msg, resolverInfo *ResolverInfo
 	}
 }
 
-// NewHTTPSResolver returns a new HttpsResolver.
-func NewHTTPSResolver(resolver *Resolver) *HttpsResolver {
+// NewHTTPSResolver returns a new HTTPSResolver.
+func NewHTTPSResolver(resolver *Resolver) *HTTPSResolver {
 	tr := &http.Transport{}
 
 	if resolver.Info.IP != nil {
@@ -53,7 +53,7 @@ func NewHTTPSResolver(resolver *Resolver) *HttpsResolver {
 
 	client := &http.Client{Transport: tr}
 
-	newResolver := &HttpsResolver{
+	newResolver := &HTTPSResolver{
 		BasicResolverConn: BasicResolverConn{
 			resolver: resolver,
 		},
@@ -64,15 +64,7 @@ func NewHTTPSResolver(resolver *Resolver) *HttpsResolver {
 }
 
 // Query executes the given query against the resolver.
-func (hr *HttpsResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
-
-	// Do not resolve domain names that are needed to initialize a resolver
-	if hr.resolver.Info.IP == nil {
-		if _, ok := resolverInitDomains[q.FQDN]; ok {
-			return nil, ErrContinue
-		}
-	}
-
+func (hr *HTTPSResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	dnsQuery := new(dns.Msg)
 	dnsQuery.SetQuestion(q.FQDN, uint16(q.QType))
 

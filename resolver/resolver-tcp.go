@@ -185,13 +185,6 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 
 // Query executes the given query against the resolver.
 func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
-	// Do not resolve domain names that are needed to initialize a resolver
-	if tr.resolver.Info.IP == nil && tr.dnsClient.TLSConfig != nil {
-		if _, ok := resolverInitDomains[q.FQDN]; ok {
-			return nil, ErrContinue
-		}
-	}
-
 	// Get resolver connection.
 	resolverConn, err := tr.getOrCreateResolverConn(ctx)
 	if err != nil {

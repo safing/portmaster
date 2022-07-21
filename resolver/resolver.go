@@ -30,9 +30,10 @@ const (
 	ServerSourceEnv             = "env"
 )
 
+// DNS Resolver alias
 const (
-	HttpsProtocol = "https"
-	TlsProtocol   = "tls"
+	HTTPSProtocol = "https"
+	TLSProtocol   = "tls"
 )
 
 // FailThreshold is amount of errors a resolvers must experience in order to be regarded as failed.
@@ -157,7 +158,7 @@ func (info *ResolverInfo) DescriptiveName() string {
 			info.Name,
 			info.ID(),
 		)
-	case info.IP == nil:
+	case info.Domain != "":
 		return fmt.Sprintf(
 			"%s (%s)",
 			info.Domain,
@@ -183,6 +184,7 @@ func (info *ResolverInfo) Copy() *ResolverInfo {
 		Type:    info.Type,
 		Source:  info.Source,
 		IP:      info.IP,
+		Domain:  info.Domain,
 		IPScope: info.IPScope,
 		Port:    info.Port,
 		id:      info.id,
