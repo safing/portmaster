@@ -14,6 +14,7 @@ import (
 	"github.com/safing/portmaster/netquery/orm"
 )
 
+// ChartHandler handles requests for connection charts.
 type ChartHandler struct {
 	Database *Database
 }
@@ -55,14 +56,14 @@ func (ch *ChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 
-	enc.Encode(map[string]interface{}{
+	_ = enc.Encode(map[string]interface{}{ //nolint:errchkjson
 		"results": result,
 		"query":   query,
 		"params":  paramMap,
 	})
 }
 
-func (ch *ChartHandler) parseRequest(req *http.Request) (*QueryActiveConnectionChartPayload, error) {
+func (ch *ChartHandler) parseRequest(req *http.Request) (*QueryActiveConnectionChartPayload, error) { //nolint:dupl
 	var body io.Reader
 
 	switch req.Method {

@@ -57,6 +57,8 @@ func WithNamedArgs(args map[string]interface{}) QueryOption {
 	}
 }
 
+// WithSchema returns a query option that adds the given table
+// schema to the query.
 func WithSchema(tbl TableSchema) QueryOption {
 	return func(opts *queryOpts) {
 		opts.Schema = tbl
@@ -139,9 +141,7 @@ func RunQuery(ctx context.Context, conn *sqlite.Conn, sql string, modifiers ...Q
 		valElemType = valType.Elem()
 
 		opts.ResultFunc = func(stmt *sqlite.Stmt) error {
-			var currentField reflect.Value
-
-			currentField = reflect.New(valElemType)
+			currentField := reflect.New(valElemType)
 
 			if err := DecodeStmt(ctx, &args.Schema, stmt, currentField.Interface(), args.DecodeConfig); err != nil {
 				return err

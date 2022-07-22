@@ -10,8 +10,10 @@ import (
 )
 
 type (
+	// EncodeFunc is called for each non-basic type during encoding.
 	EncodeFunc func(col *ColumnDef, valType reflect.Type, val reflect.Value) (interface{}, bool, error)
 
+	// EncodeConfig holds encoding functions.
 	EncodeConfig struct {
 		EncodeHooks []EncodeFunc
 	}
@@ -69,6 +71,7 @@ func ToParamMap(ctx context.Context, r interface{}, keyPrefix string, cfg Encode
 	return res, nil
 }
 
+// EncodeValue encodes the given value.
 func EncodeValue(ctx context.Context, colDef *ColumnDef, val interface{}, cfg EncodeConfig) (interface{}, error) {
 	fieldValue := reflect.ValueOf(val)
 	fieldType := reflect.TypeOf(val)
@@ -115,7 +118,7 @@ func encodeBasic() EncodeFunc {
 			val = val.Elem()
 		}
 
-		switch normalizeKind(kind) {
+		switch normalizeKind(kind) { //nolint:exhaustive
 		case reflect.String,
 			reflect.Float64,
 			reflect.Bool,
@@ -138,6 +141,7 @@ func encodeBasic() EncodeFunc {
 	}
 }
 
+// DatetimeEncoder returns a new datetime encoder for the given time zone.
 func DatetimeEncoder(loc *time.Location) EncodeFunc {
 	return func(colDef *ColumnDef, valType reflect.Type, val reflect.Value) (interface{}, bool, error) {
 		// if fieldType holds a pointer we need to dereference the value
@@ -149,7 +153,8 @@ func DatetimeEncoder(loc *time.Location) EncodeFunc {
 
 		// we only care about "time.Time" here
 		var t time.Time
-		if ft == "time.Time" {
+		switch {
+		case ft == "time.Time":
 			// handle the zero time as a NULL.
 			if !val.IsValid() || val.IsZero() {
 				return nil, true, nil
@@ -162,19 +167,19 @@ func DatetimeEncoder(loc *time.Location) EncodeFunc {
 				return nil, false, fmt.Errorf("cannot convert reflect value to time.Time")
 			}
 
-		} else if valType.Kind() == reflect.String && colDef.IsTime {
+		case valType.Kind() == reflect.String && colDef.IsTime:
 			var err error
 			t, err = time.Parse(time.RFC3339, val.String())
 			if err != nil {
 				return nil, false, fmt.Errorf("failed to parse time as RFC3339: %w", err)
 			}
 
-		} else {
+		default:
 			// we don't care ...
 			return nil, false, nil
 		}
 
-		switch colDef.Type {
+		switch colDef.Type { //nolint:exhaustive
 		case sqlite.TypeInteger:
 			if colDef.UnixNano {
 				return t.UnixNano(), true, nil
@@ -194,7 +199,7 @@ func DatetimeEncoder(loc *time.Location) EncodeFunc {
 func runEncodeHooks(colDef *ColumnDef, valType reflect.Type, val reflect.Value, hooks []EncodeFunc) (interface{}, bool, error) {
 	if valType == nil {
 		if !colDef.Nullable {
-			switch colDef.Type {
+			switch colDef.Type { //nolint:exhaustive
 			case sqlite.TypeBlob:
 				return []byte{}, true, nil
 			case sqlite.TypeFloat:
@@ -225,6 +230,7 @@ func runEncodeHooks(colDef *ColumnDef, valType reflect.Type, val reflect.Value, 
 	return nil, false, nil
 }
 
+// DefaultEncodeConfig holds the default encoding configuration.
 var DefaultEncodeConfig = EncodeConfig{
 	EncodeHooks: []EncodeFunc{
 		DatetimeEncoder(time.UTC),

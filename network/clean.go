@@ -11,8 +11,11 @@ import (
 )
 
 const (
-	cleanerTickDuration            = 5 * time.Second
+	// DeleteConnsAfterEndedThreshold defines the amount of time after which
+	// ended connections should be removed from the internal connection state.
 	DeleteConnsAfterEndedThreshold = 10 * time.Minute
+
+	cleanerTickDuration = 5 * time.Second
 )
 
 func connectionCleaner(ctx context.Context) error {

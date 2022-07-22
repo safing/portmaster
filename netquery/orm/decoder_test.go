@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log"
 	"reflect"
 	"testing"
 	"time"
@@ -21,14 +20,14 @@ type testStmt struct {
 
 func (ts testStmt) ColumnCount() int                   { return len(ts.columns) }
 func (ts testStmt) ColumnName(i int) string            { return ts.columns[i] }
-func (ts testStmt) ColumnBool(i int) bool              { return ts.values[i].(bool) }
-func (ts testStmt) ColumnText(i int) string            { return ts.values[i].(string) }
-func (ts testStmt) ColumnFloat(i int) float64          { return ts.values[i].(float64) }
-func (ts testStmt) ColumnInt(i int) int                { return ts.values[i].(int) }
-func (ts testStmt) ColumnReader(i int) *bytes.Reader   { return bytes.NewReader(ts.values[i].([]byte)) }
+func (ts testStmt) ColumnBool(i int) bool              { return ts.values[i].(bool) }                    //nolint:forcetypeassert
+func (ts testStmt) ColumnText(i int) string            { return ts.values[i].(string) }                  //nolint:forcetypeassert
+func (ts testStmt) ColumnFloat(i int) float64          { return ts.values[i].(float64) }                 //nolint:forcetypeassert
+func (ts testStmt) ColumnInt(i int) int                { return ts.values[i].(int) }                     //nolint:forcetypeassert
+func (ts testStmt) ColumnReader(i int) *bytes.Reader   { return bytes.NewReader(ts.values[i].([]byte)) } //nolint:forcetypeassert
 func (ts testStmt) ColumnType(i int) sqlite.ColumnType { return ts.types[i] }
 
-// compile time check
+// Compile time check.
 var _ Stmt = new(testStmt)
 
 type exampleFieldTypes struct {
@@ -98,10 +97,11 @@ func (etn *exampleTimeNano) Equal(other interface{}) bool {
 	return etn.T.Equal(oetn.T)
 }
 
-func Test_Decoder(t *testing.T) {
-	ctx := context.TODO()
+func TestDecoder(t *testing.T) { //nolint:maintidx,tparallel
+	t.Parallel()
 
-	refTime := time.Date(2022, time.February, 15, 9, 51, 00, 00, time.UTC)
+	ctx := context.TODO()
+	refTime := time.Date(2022, time.February, 15, 9, 51, 0, 0, time.UTC)
 
 	cases := []struct {
 		Desc      string
@@ -433,8 +433,7 @@ func Test_Decoder(t *testing.T) {
 			nil,
 			&exampleInterface{},
 			func() interface{} {
-				var x interface{}
-				x = "value2"
+				var x interface{} = "value2"
 
 				return &exampleInterface{
 					I:  "value1",
@@ -546,12 +545,10 @@ func Test_Decoder(t *testing.T) {
 		},
 	}
 
-	for idx := range cases {
+	for idx := range cases { //nolint:paralleltest
 		c := cases[idx]
 		t.Run(c.Desc, func(t *testing.T) {
-			//t.Parallel()
-
-			log.Println(c.Desc)
+			// log.Println(c.Desc)
 			err := DecodeStmt(ctx, &TableSchema{Columns: c.ColumnDef}, c.Stmt, c.Result, DefaultDecodeConfig)
 			if fn, ok := c.Expected.(func() interface{}); ok {
 				c.Expected = fn()

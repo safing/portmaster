@@ -17,9 +17,7 @@ import (
 	"github.com/safing/portmaster/netquery/orm"
 )
 
-var (
-	charOnlyRegexp = regexp.MustCompile("[a-zA-Z]+")
-)
+var charOnlyRegexp = regexp.MustCompile("[a-zA-Z]+")
 
 type (
 
@@ -109,7 +107,7 @@ func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (qh *QueryHandler) parseRequest(req *http.Request) (*QueryRequestPayload, error) {
+func (qh *QueryHandler) parseRequest(req *http.Request) (*QueryRequestPayload, error) { //nolint:dupl
 	var body io.Reader
 
 	switch req.Method {
@@ -230,11 +228,11 @@ func (req *QueryRequestPayload) prepareSelectedFields(ctx context.Context, schem
 
 		switch {
 		case s.Count != nil:
-			var as = s.Count.As
+			as := s.Count.As
 			if as == "" {
 				as = fmt.Sprintf("%s_count", colName)
 			}
-			var distinct = ""
+			distinct := ""
 			if s.Count.Distinct {
 				distinct = "DISTINCT "
 			}
@@ -278,8 +276,7 @@ func (req *QueryRequestPayload) generateGroupByClause(schema *orm.TableSchema) (
 		return "", nil
 	}
 
-	var groupBys = make([]string, len(req.GroupBy))
-
+	groupBys := make([]string, len(req.GroupBy))
 	for idx, name := range req.GroupBy {
 		colName, err := req.validateColumnName(schema, name)
 		if err != nil {
@@ -288,7 +285,6 @@ func (req *QueryRequestPayload) generateGroupByClause(schema *orm.TableSchema) (
 
 		groupBys[idx] = colName
 	}
-
 	groupByClause := "GROUP BY " + strings.Join(groupBys, ", ")
 
 	// if there are no explicitly selected fields we default to the
@@ -301,7 +297,7 @@ func (req *QueryRequestPayload) generateGroupByClause(schema *orm.TableSchema) (
 }
 
 func (req *QueryRequestPayload) generateSelectClause() string {
-	var selectClause = "*"
+	selectClause := "*"
 	if len(req.selectedFields) > 0 {
 		selectClause = strings.Join(req.selectedFields, ", ")
 	}
@@ -314,7 +310,7 @@ func (req *QueryRequestPayload) generateOrderByClause(schema *orm.TableSchema) (
 		return "", nil
 	}
 
-	var orderBys = make([]string, len(req.OrderBy))
+	orderBys := make([]string, len(req.OrderBy))
 	for idx, sort := range req.OrderBy {
 		colName, err := req.validateColumnName(schema, sort.Field)
 		if err != nil {
@@ -352,5 +348,5 @@ func (req *QueryRequestPayload) validateColumnName(schema *orm.TableSchema, fiel
 	return "", fmt.Errorf("column name %q not allowed", field)
 }
 
-// compile time check
+// Compile time check.
 var _ http.Handler = new(QueryHandler)
