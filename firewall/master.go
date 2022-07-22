@@ -13,6 +13,7 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/detection/dga"
+	"github.com/safing/portmaster/intel/customlists"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
@@ -54,6 +55,7 @@ var defaultDeciders = []deciderFn{
 	dropInbound,
 	checkDomainHeuristics,
 	checkAutoPermitRelated,
+	checkCustomFilterList,
 }
 
 // DecideOnConnection makes a decision about a connection.
@@ -611,4 +613,27 @@ matchLoop:
 		reason = fmt.Sprintf("auto allowed: domain is related to process: %s is related to %s", domainElement, processElement)
 	}
 	return related, reason
+}
+
+func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
+	// block domains that are in the custom list
+	if conn.Entity.Domain != "" {
+		if customlists.LookupDomain(conn.Entity.Domain) {
+			// FIXME: add proper messages
+			log.Debugf("Blocked %s", conn.Entity.Domain)
+			conn.Block("Domains appiers in the custom user list", profile.CfgOptionRemoveBlockedDNSKey)
+			return true
+		}
+	}
+
+	if conn.Entity.IP != nil {
+		if customlists.LookupIPv4(&conn.Entity.IP) {
+			// FIXME: add proper messages
+			log.Debugf("Blocked %s", conn.Entity.IP)
+			conn.Block("IP appiers in the custom user list", profile.CfgOptionBlockScopeInternetKey)
+			return true
+		}
+	}
+
+	return false
 }
