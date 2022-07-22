@@ -31,6 +31,7 @@ linters:
     - whitespace
     - wrapcheck
     - wsl
+    - nolintlint
 
 linters-settings:
   revive:
