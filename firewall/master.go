@@ -616,21 +616,34 @@ matchLoop:
 }
 
 func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
-	// block domains that are in the custom list
+	// block if the domain name appears in the custom filter list
 	if conn.Entity.Domain != "" {
 		if customlists.LookupDomain(conn.Entity.Domain) {
-			// FIXME: add proper messages
-			log.Debugf("Blocked %s", conn.Entity.Domain)
-			conn.Block("Domains appiers in the custom user list", profile.CfgOptionRemoveBlockedDNSKey)
+			conn.Block("Domains appears in the custom user list", customlists.CfgOptionCustomListBlockingKey)
 			return true
 		}
 	}
 
+	// block if ip addresses appears in the custom filter list
 	if conn.Entity.IP != nil {
-		if customlists.LookupIPv4(&conn.Entity.IP) {
-			// FIXME: add proper messages
-			log.Debugf("Blocked %s", conn.Entity.IP)
-			conn.Block("IP appiers in the custom user list", profile.CfgOptionBlockScopeInternetKey)
+		if customlists.LookupIP(&conn.Entity.IP) {
+			conn.Block("IP appears in the custom filter list", customlists.CfgOptionCustomListBlockingKey)
+			return true
+		}
+	}
+
+	// block autonomous system by its number if it appears in the custom filter list
+	if conn.Entity.ASN != 0 {
+		if customlists.LookupASN(conn.Entity.ASN) {
+			conn.Block("ASN appears in the custom filter list", customlists.CfgOptionCustomListBlockingKey)
+			return true
+		}
+	}
+
+	// block if the country appears in the custom filter list
+	if conn.Entity.Country != "" {
+		if customlists.LookupCountry(conn.Entity.Country) {
+			conn.Block("Country appears in the custom filter list", customlists.CfgOptionCustomListBlockingKey)
 			return true
 		}
 	}
