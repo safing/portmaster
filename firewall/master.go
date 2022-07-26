@@ -616,11 +616,21 @@ matchLoop:
 }
 
 func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
-	// block if the domain name appears in the custom filter list
+	// block if the domain name appears in the custom filter list (check for subdomains if enabled)
 	if conn.Entity.Domain != "" {
-		if customlists.LookupDomain(conn.Entity.Domain) {
+		if customlists.LookupDomain(conn.Entity.Domain, p.FilterSubDomains()) {
 			conn.Block("Domains appears in the custom user list", customlists.CfgOptionCustomListBlockingKey)
 			return true
+		}
+	}
+
+	// block if any of the CNAME appears in the custom filter list (check for subdomains if enabled)
+	if len(conn.Entity.CNAME) > 0 && p.FilterCNAMEs() {
+		for _, cname := range conn.Entity.CNAME {
+			if customlists.LookupDomain(cname, p.FilterSubDomains()) {
+				conn.Block("CNAME appears in the custom user list", customlists.CfgOptionCustomListBlockingKey)
+				return true
+			}
 		}
 	}
 

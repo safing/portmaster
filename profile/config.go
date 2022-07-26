@@ -64,9 +64,11 @@ var (
 	cfgOptionFilterLists      config.StringArrayOption
 	cfgOptionFilterListsOrder = 34
 
+	// Setting "Custom Filter List" at order 35
+
 	CfgOptionFilterSubDomainsKey   = "filter/includeSubdomains"
 	cfgOptionFilterSubDomains      config.IntOption // security level option
-	cfgOptionFilterSubDomainsOrder = 35
+	cfgOptionFilterSubDomainsOrder = 36
 
 	// DNS Filtering.
 

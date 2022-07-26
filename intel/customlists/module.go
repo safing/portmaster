@@ -5,14 +5,20 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/safing/portbase/modules"
+	"golang.org/x/net/publicsuffix"
 )
 
 var module *modules.Module
 
-const configChangeEvent = "config change"
+const (
+	configModuleName  = "config"
+	configChangeEvent = "config change"
+)
 
 // Helper variables for parsing the input file
 var (
@@ -23,6 +29,8 @@ var (
 var (
 	filterListFilePath         string
 	filterListFileModifiedTime time.Time
+
+	parseLock sync.RWMutex
 )
 
 func init() {
@@ -38,7 +46,7 @@ func prep() error {
 
 	// register to hook to update after config change.
 	if err := module.RegisterEventHook(
-		module.Name,
+		configModuleName,
 		configChangeEvent,
 		"update custom filter list",
 		func(ctx context.Context, obj interface{}) error {
@@ -54,17 +62,20 @@ func prep() error {
 
 func start() error {
 	// register timer to run every periodically and check for file updates
-	module.NewTask("Custom filter list file update check", func(context.Context, *modules.Task) error {
+	module.NewTask("intel/customlists list file update check", func(context.Context, *modules.Task) error {
 		_ = checkAndUpdateFilterList()
 		return nil
 	}).Repeat(10 * time.Minute)
 
-	// parse the file for the first time at start
+	// parse the file at startup
 	_ = parseFile(getFilePath())
 	return nil
 }
 
 func checkAndUpdateFilterList() error {
+	parseLock.Lock()
+	defer parseLock.Unlock()
+
 	// get path and try to get its info
 	filePath := getFilePath()
 	fileInfo, err := os.Stat(filePath)
@@ -92,9 +103,20 @@ func LookupIP(ip *net.IP) bool {
 }
 
 // LookupDomain checks if the Domain is in a custom filter list
-func LookupDomain(domain string) bool {
-	_, ok := domainsFilterList[domain]
-	return ok
+func LookupDomain(fullDomain string, filterSubdomains bool) bool {
+	if filterSubdomains {
+		listOfDomains := splitDomain(fullDomain)
+		for _, domain := range listOfDomains {
+			_, ok := domainsFilterList[domain]
+			if ok {
+				return true
+			}
+		}
+	} else {
+		_, ok := domainsFilterList[fullDomain]
+		return ok
+	}
+	return false
 }
 
 // LookupASN checks if the Autonomous system number is in a custom filter list
@@ -107,4 +129,30 @@ func LookupASN(number uint) bool {
 func LookupCountry(countryCode string) bool {
 	_, ok := countryCodesFilterList[countryCode]
 	return ok
+}
+
+func splitDomain(domain string) []string {
+	domain = strings.Trim(domain, ".")
+	suffix, _ := publicsuffix.PublicSuffix(domain)
+	if suffix == domain {
+		return []string{domain}
+	}
+
+	domainWithoutSuffix := domain[:len(domain)-len(suffix)]
+	domainWithoutSuffix = strings.Trim(domainWithoutSuffix, ".")
+
+	splitted := strings.FieldsFunc(domainWithoutSuffix, func(r rune) bool {
+		return r == '.'
+	})
+
+	domains := make([]string, 0, len(splitted))
+	for idx := range splitted {
+
+		d := strings.Join(splitted[idx:], ".") + "." + suffix
+		if d[len(d)-1] != '.' {
+			d += "."
+		}
+		domains = append(domains, d)
+	}
+	return domains
 }
