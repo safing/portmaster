@@ -44,6 +44,10 @@ func prep() error {
 		return err
 	}
 
+	return nil
+}
+
+func start() error {
 	// register to hook to update after config change.
 	if err := module.RegisterEventHook(
 		configModuleName,
@@ -57,10 +61,6 @@ func prep() error {
 		return err
 	}
 
-	return nil
-}
-
-func start() error {
 	// register timer to run every periodically and check for file updates
 	module.NewTask("intel/customlists file update check", func(context.Context, *modules.Task) error {
 		_ = checkAndUpdateFilterList()
