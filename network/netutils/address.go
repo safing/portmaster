@@ -1,9 +1,13 @@
 package netutils
 
 import (
+	"errors"
 	"fmt"
 	"net"
+	"strconv"
 )
+
+var errInvalidIP = errors.New("invalid IP address")
 
 // IPFromAddr extracts or parses the IP address contained in the given address.
 func IPFromAddr(addr net.Addr) (net.IP, error) {
@@ -27,4 +31,24 @@ func IPFromAddr(addr net.Addr) (net.IP, error) {
 		}
 		return ip, nil
 	}
+}
+
+// ParseHostPort parses a <ip>:port formatted address.
+func ParseHostPort(address string) (net.IP, uint16, error) {
+	ipString, portString, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	ip := net.ParseIP(ipString)
+	if ip == nil {
+		return nil, 0, errInvalidIP
+	}
+
+	port, err := strconv.ParseUint(portString, 10, 16)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return ip, uint16(port), nil
 }

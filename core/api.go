@@ -3,12 +3,9 @@ package core
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/safing/portbase/api"
@@ -19,7 +16,6 @@ import (
 	"github.com/safing/portbase/rng"
 	"github.com/safing/portbase/utils/debug"
 	"github.com/safing/portmaster/compat"
-	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/resolver"
 	"github.com/safing/portmaster/status"
@@ -72,7 +68,7 @@ func registerAPIEndpoints() error {
 		Read:       api.PermitAnyone,
 		BelongsTo:  module,
 		StructFunc: authorizeApp,
-		Name:       "Call to request an authentication token",
+		Name:       "Request an authentication token with a given set of permissions. The user will be prompted to either authorize or deny the request. Used for external or third-party tool integrations.",
 		Parameters: []api.Parameter{
 			{
 				Method:      http.MethodGet,
@@ -154,7 +150,10 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	return di.Bytes(), nil
 }
 
-func getPermission(p string) api.Permission {
+// getSavePermission returns the requested api.Permission from p.
+// It only allows "user" and "admin" as external processes should
+// never be able to request "self".
+func getSavePermission(p string) api.Permission {
 	switch p {
 	case "user":
 		return api.PermitUser
@@ -166,50 +165,18 @@ func getPermission(p string) api.Permission {
 }
 
 func getMyProfile(ar *api.Request) (interface{}, error) {
-	// get remote IP/Port
-	remoteIP, remotePort, err := parseHostPort(ar.RemoteAddr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get remote IP/Port: %w", err)
-	}
-
-	pkt := &packet.Info{
-		Inbound:  false, // outbound as we are looking for the process of the source address
-		Version:  packet.IPv4,
-		Protocol: packet.TCP,
-		Src:      remoteIP,   // source as in the process we are looking for
-		SrcPort:  remotePort, // source as in the process we are looking for
-	}
-
-	proc, _, err := process.GetProcessByConnection(ar.Context(), pkt)
+	proc, err := process.GetProcessByRequestOrigin(ar)
 	if err != nil {
 		return nil, err
 	}
 
 	localProfile := proc.Profile().LocalProfile()
+
 	return map[string]interface{}{
 		"profile": localProfile.ID,
 		"source":  localProfile.Source,
 		"name":    localProfile.Name,
 	}, nil
-}
-
-func parseHostPort(address string) (net.IP, uint16, error) {
-	ipString, portString, err := net.SplitHostPort(address)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	ip := net.ParseIP(ipString)
-	if ip == nil {
-		return nil, 0, errors.New("invalid IP address")
-	}
-
-	port, err := strconv.ParseUint(portString, 10, 16)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return ip, uint16(port), nil
 }
 
 func authorizeApp(ar *api.Request) (interface{}, error) {
@@ -226,21 +193,25 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 		}
 	}
 
-	if getPermission(readPermStr) <= api.NotSupported {
+	// convert the requested read and write permissions to their api.Permission
+	// value. This ensures only "user" or "admin" permissions can be requested.
+	if getSavePermission(readPermStr) <= api.NotSupported {
 		return nil, fmt.Errorf("invalid read permission")
 	}
-	if getPermission(writePermStr) <= api.NotSupported {
+	if getSavePermission(writePermStr) <= api.NotSupported {
 		return nil, fmt.Errorf("invalid read permission")
 	}
 
-	// appIcon := ar.Request.URL.Query().Get("app-icon")
-	// TODO(ppacher): get the guessed mime-type from appIcon and make sure it's an image
+	proc, err := process.GetProcessByRequestOrigin(ar)
+	if err != nil {
+		return nil, fmt.Errorf("failed to identify requesting process: %w", err)
+	}
 
 	n := notifications.Notification{
 		Type:         notifications.Prompt,
 		EventID:      "core:authorize-app-" + time.Now().String(),
 		Title:        "An app requests access to the Portmaster",
-		Message:      "Allow " + appName + " to query and modify the Portmaster?",
+		Message:      "Allow " + appName + " (" + proc.Profile().LocalProfile().Name + ") to query and modify the Portmaster?\n\nBinary: " + proc.Path,
 		ShowOnSystem: true,
 		Expires:      time.Now().Add(time.Minute).UnixNano(),
 		AvailableActions: []*notifications.Action{

@@ -6,7 +6,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/network/state"
 	"github.com/safing/portmaster/profile"
@@ -93,4 +95,28 @@ func GetNetworkHost(ctx context.Context, remoteIP net.IP) (process *Process, err
 	}
 
 	return networkHost, nil
+}
+
+// GetProcessByRequestOrigin returns the process that initiated the API request ar.
+func GetProcessByRequestOrigin(ar *api.Request) (*Process, error) {
+	// get remote IP/Port
+	remoteIP, remotePort, err := netutils.ParseHostPort(ar.RemoteAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get remote IP/Port: %w", err)
+	}
+
+	pkt := &packet.Info{
+		Inbound:  false, // outbound as we are looking for the process of the source address
+		Version:  packet.IPv4,
+		Protocol: packet.TCP,
+		Src:      remoteIP,   // source as in the process we are looking for
+		SrcPort:  remotePort, // source as in the process we are looking for
+	}
+
+	proc, _, err := GetProcessByConnection(ar.Context(), pkt)
+	if err != nil {
+		return nil, err
+	}
+
+	return proc, nil
 }
