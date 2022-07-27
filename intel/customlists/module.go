@@ -20,7 +20,7 @@ const (
 	configChangeEvent = "config change"
 )
 
-// Helper variables for parsing the input file
+// Helper variables for parsing the input file.
 var (
 	isCountryCode      = regexp.MustCompile("^[A-Z]{2}$").MatchString
 	isAutonomousSystem = regexp.MustCompile(`^AS[0-9]+$`).MatchString
@@ -95,13 +95,13 @@ func checkAndUpdateFilterList() error {
 	return nil
 }
 
-// LookupIP checks if the IP address is in a custom filter list
+// LookupIP checks if the IP address is in a custom filter list.
 func LookupIP(ip *net.IP) bool {
 	_, ok := ipAddressesFilterList[ip.String()]
 	return ok
 }
 
-// LookupDomain checks if the Domain is in a custom filter list
+// LookupDomain checks if the Domain is in a custom filter list.
 func LookupDomain(fullDomain string, filterSubdomains bool) bool {
 	if filterSubdomains {
 		// check if domain is in the list and all its subdomains
@@ -113,20 +113,20 @@ func LookupDomain(fullDomain string, filterSubdomains bool) bool {
 			}
 		}
 	} else {
-		//check only if the domain is in the list
+		// check only if the domain is in the list
 		_, ok := domainsFilterList[fullDomain]
 		return ok
 	}
 	return false
 }
 
-// LookupASN checks if the Autonomous system number is in a custom filter list
+// LookupASN checks if the Autonomous system number is in a custom filter list.
 func LookupASN(number uint) bool {
 	_, ok := autonomousSystemsFilterList[number]
 	return ok
 }
 
-// LookupCountry checks if the country code is in a custom filter list
+// LookupCountry checks if the country code is in a custom filter list.
 func LookupCountry(countryCode string) bool {
 	_, ok := countryCodesFilterList[countryCode]
 	return ok
