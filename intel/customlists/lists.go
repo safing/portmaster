@@ -23,6 +23,12 @@ var (
 const numberOfZeroIPsUntilWarning = 100
 
 func parseFile(filePath string) error {
+	// reset all maps, previous (if any) settings will be lost
+	countryCodesFilterList = make(map[string]struct{})
+	ipAddressesFilterList = make(map[string]struct{})
+	autonomousSystemsFilterList = make(map[uint]struct{})
+	domainsFilterList = make(map[string]struct{})
+
 	// ignore empty file path
 	if filePath == "" {
 		return nil
@@ -35,12 +41,6 @@ func parseFile(filePath string) error {
 		return err
 	}
 	defer file.Close()
-
-	// initialize maps to hold data from the file
-	countryCodesFilterList = make(map[string]struct{})
-	ipAddressesFilterList = make(map[string]struct{})
-	autonomousSystemsFilterList = make(map[uint]struct{})
-	domainsFilterList = make(map[string]struct{})
 
 	var numberOfZeroIPs uint64
 

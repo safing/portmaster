@@ -62,7 +62,7 @@ func prep() error {
 
 func start() error {
 	// register timer to run every periodically and check for file updates
-	module.NewTask("intel/customlists list file update check", func(context.Context, *modules.Task) error {
+	module.NewTask("intel/customlists file update check", func(context.Context, *modules.Task) error {
 		_ = checkAndUpdateFilterList()
 		return nil
 	}).Repeat(10 * time.Minute)
@@ -78,11 +78,10 @@ func checkAndUpdateFilterList() error {
 
 	// get path and try to get its info
 	filePath := getFilePath()
-	fileInfo, err := os.Stat(filePath)
-	if err != nil {
-		return nil
+	modifiedTime := time.Now()
+	if fileInfo, err := os.Stat(filePath); err == nil {
+		modifiedTime = fileInfo.ModTime()
 	}
-	modifiedTime := fileInfo.ModTime()
 
 	// check if file path has changed or if modified time has changed
 	if filterListFilePath != filePath || !filterListFileModifiedTime.Equal(modifiedTime) {
@@ -105,6 +104,7 @@ func LookupIP(ip *net.IP) bool {
 // LookupDomain checks if the Domain is in a custom filter list
 func LookupDomain(fullDomain string, filterSubdomains bool) bool {
 	if filterSubdomains {
+		// check if domain is in the list and all its subdomains
 		listOfDomains := splitDomain(fullDomain)
 		for _, domain := range listOfDomains {
 			_, ok := domainsFilterList[domain]
@@ -113,6 +113,7 @@ func LookupDomain(fullDomain string, filterSubdomains bool) bool {
 			}
 		}
 	} else {
+		//check only if the domain is in the list
 		_, ok := domainsFilterList[fullDomain]
 		return ok
 	}

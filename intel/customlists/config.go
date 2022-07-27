@@ -1,8 +1,6 @@
 package customlists
 
 import (
-	"strings"
-
 	"github.com/safing/portbase/config"
 )
 
@@ -18,28 +16,28 @@ var (
 )
 
 func registerConfig() error {
-	help := strings.ReplaceAll(`Put all domains, Ip addresses, country codes and autonomous system that you want to block in a file in which each entry is on a new line.  
-	Lines that start with a '#' symbol are ignored.  
-	Everything after the first space/tab is ignored.  
-	Example:  
-"""
-# Domains:  
+	help := `Put all domains, Ip addresses, country codes and autonomous system that you want to block in a file in where each entry is on a new line.  
+Lines that start with a '#' symbol are ignored.  
+Everything after the first space/tab is ignored.  
+Example:  
+#############  
+\# Domains:  
 example.com  
 google.com  
   
-# IP addresses  
+\# IP addresses  
 1.2.3.4  
 4.3.2.1  
   
-# Countries  
+\# Countries  
 AU  
 BG  
   
-# Autonomous Systems  
+\# Autonomous Systems  
 AS123  
-"""
+#############
 > * All the records are stored in RAM, careful with large block lists.  
-> * Hosts files are not supported.`, "\"", "`")
+> * Hosts files are not supported.`
 
 	// register a setting for the file path in the ui
 	err := config.Register(&config.Option{
