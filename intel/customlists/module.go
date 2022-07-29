@@ -30,7 +30,8 @@ var (
 	filterListFilePath         string
 	filterListFileModifiedTime time.Time
 
-	parseLock sync.RWMutex
+	filterListLock sync.RWMutex
+	parserTask     *modules.Task
 )
 
 func init() {
@@ -38,6 +39,8 @@ func init() {
 }
 
 func prep() error {
+	initFilterLists()
+
 	// register the config in the ui
 	err := registerConfig()
 	if err != nil {
@@ -61,23 +64,29 @@ func start() error {
 		return err
 	}
 
-	// register timer to run every periodically and check for file updates
-	module.NewTask("intel/customlists file update check", func(context.Context, *modules.Task) error {
+	// create parser task and enqueue for execution. "checkAndUpdateFilterList" will schedule the next execution
+	parserTask = module.NewTask("intel/customlists file update check", func(context.Context, *modules.Task) error {
 		_ = checkAndUpdateFilterList()
 		return nil
-	}).Repeat(10 * time.Minute)
+	}).Schedule(time.Now().Add(20 * time.Second))
 
-	// parse the file at startup
-	_ = parseFile(getFilePath())
 	return nil
 }
 
 func checkAndUpdateFilterList() error {
-	parseLock.Lock()
-	defer parseLock.Unlock()
+	filterListLock.Lock()
+	defer filterListLock.Unlock()
 
-	// get path and try to get its info
+	// get path and ignore if empty
 	filePath := getFilePath()
+	if filePath == "" {
+		return nil
+	}
+
+	// schedule next update check
+	parserTask.Schedule(time.Now().Add(1 * time.Minute))
+
+	// try to get file info
 	modifiedTime := time.Now()
 	if fileInfo, err := os.Stat(filePath); err == nil {
 		modifiedTime = fileInfo.ModTime()
@@ -96,38 +105,50 @@ func checkAndUpdateFilterList() error {
 }
 
 // LookupIP checks if the IP address is in a custom filter list.
-func LookupIP(ip *net.IP) bool {
+func LookupIP(ip net.IP) bool {
+	filterListLock.RLock()
+	defer filterListLock.RUnlock()
+
 	_, ok := ipAddressesFilterList[ip.String()]
 	return ok
 }
 
 // LookupDomain checks if the Domain is in a custom filter list.
-func LookupDomain(fullDomain string, filterSubdomains bool) bool {
+func LookupDomain(fullDomain string, filterSubdomains bool) (bool, string) {
+	filterListLock.RLock()
+	defer filterListLock.RUnlock()
+
 	if filterSubdomains {
 		// check if domain is in the list and all its subdomains
 		listOfDomains := splitDomain(fullDomain)
 		for _, domain := range listOfDomains {
 			_, ok := domainsFilterList[domain]
 			if ok {
-				return true
+				return true, domain
 			}
 		}
 	} else {
 		// check only if the domain is in the list
 		_, ok := domainsFilterList[fullDomain]
-		return ok
+		return ok, fullDomain
 	}
-	return false
+	return false, ""
 }
 
 // LookupASN checks if the Autonomous system number is in a custom filter list.
 func LookupASN(number uint) bool {
+	filterListLock.RLock()
+	defer filterListLock.RUnlock()
+
 	_, ok := autonomousSystemsFilterList[number]
 	return ok
 }
 
 // LookupCountry checks if the country code is in a custom filter list.
 func LookupCountry(countryCode string) bool {
+	filterListLock.RLock()
+	defer filterListLock.RUnlock()
+
 	_, ok := countryCodesFilterList[countryCode]
 	return ok
 }

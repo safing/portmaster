@@ -2,6 +2,7 @@ package customlists
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -20,14 +21,33 @@ var (
 	domainsFilterList           map[string]struct{}
 )
 
-const numberOfZeroIPsUntilWarning = 100
+const (
+	numberOfZeroIPsUntilWarning          = 100
+	customFilterListStatusNotificationID = "intel/customlists_status"
+	customFilterListZeroIPNotificationID = "intel/customlists_zeroip"
+)
 
-func parseFile(filePath string) error {
-	// reset all maps, previous (if any) settings will be lost
+func initFilterLists() {
 	countryCodesFilterList = make(map[string]struct{})
 	ipAddressesFilterList = make(map[string]struct{})
 	autonomousSystemsFilterList = make(map[uint]struct{})
 	domainsFilterList = make(map[string]struct{})
+}
+
+func parseFile(filePath string) error {
+	// reset all maps, previous (if any) settings will be lost
+	for key := range countryCodesFilterList {
+		delete(countryCodesFilterList, key)
+	}
+	for key := range ipAddressesFilterList {
+		delete(ipAddressesFilterList, key)
+	}
+	for key := range autonomousSystemsFilterList {
+		delete(autonomousSystemsFilterList, key)
+	}
+	for key := range domainsFilterList {
+		delete(domainsFilterList, key)
+	}
 
 	// ignore empty file path
 	if filePath == "" {
@@ -37,7 +57,21 @@ func parseFile(filePath string) error {
 	// open the file if possible
 	file, err := os.Open(filePath)
 	if err != nil {
-		log.Warningf("intel/customlists: failed to parse file: \"%s\"", filePath)
+		log.Warningf("intel/customlists: failed to parse file %q ", err)
+		// notifications.NotifyWarn("intel/customlists parse failed", "Failed to open custom filter list")
+		notifications.Notify(&notifications.Notification{
+			EventID:      customFilterListStatusNotificationID,
+			Type:         notifications.Warning,
+			Title:        "Failed to open custom filter list",
+			Message:      err.Error(),
+			ShowOnSystem: false,
+			AvailableActions: []*notifications.Action{
+				{
+					ID:   "ack",
+					Text: "OK",
+				},
+			},
+		})
 		return err
 	}
 	defer file.Close()
@@ -58,10 +92,23 @@ func parseFile(filePath string) error {
 
 	if numberOfZeroIPs >= numberOfZeroIPsUntilWarning {
 		log.Warning("intel/customlists: Too many zero IP addresses.")
-		notifications.NotifyWarn("too_many_zero_ips", "Too many zero IP addresses. Check your custom filter list.", "Hosts file format is not spported.")
+		notifications.NotifyWarn(customFilterListZeroIPNotificationID, "Too many zero IP addresses. Check your custom filter list.", "Hosts file format is not spported.")
 	}
 
 	log.Infof("intel/customlists: list loaded successful: %s", filePath)
+
+	notifications.NotifyInfo(customFilterListStatusNotificationID,
+		"Custom filter list loaded successfully.",
+		fmt.Sprintf(`Custom filter list loaded successfully from file %s  
+%d domains  
+%d IPs  
+%d autonomous systems  
+%d countries`,
+			filePath,
+			len(domainsFilterList),
+			len(ipAddressesFilterList),
+			len(autonomousSystemsFilterList),
+			len(domainsFilterList)))
 
 	return nil
 }

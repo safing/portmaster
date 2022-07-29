@@ -16,7 +16,7 @@ var (
 )
 
 func registerConfig() error {
-	help := `Put all domains, Ip addresses, country codes and autonomous system that you want to block in a file in where each entry is on a new line.  
+	help := `File that contains list of all domains, Ip addresses, country codes and autonomous system that you want to block, where each entry is on a new line.  
 Lines that start with a '#' symbol are ignored.  
 Everything after the first space/tab is ignored.  
 Example:  
@@ -53,6 +53,7 @@ AS123
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionCustomListBlockingOrder,
 			config.CategoryAnnotation:     cfgOptionCustomListCategoryAnnotation,
+			config.DisplayHintAnnotation:  config.DisplayHintFilePicker,
 		},
 	})
 	if err != nil {

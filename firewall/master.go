@@ -51,11 +51,11 @@ var defaultDeciders = []deciderFn{
 	checkResolverScope,
 	checkConnectivityDomain,
 	checkBypassPrevention,
+	checkCustomFilterList,
 	checkFilterLists,
 	dropInbound,
 	checkDomainHeuristics,
 	checkAutoPermitRelated,
-	checkCustomFilterList,
 }
 
 // DecideOnConnection makes a decision about a connection.
@@ -618,17 +618,17 @@ matchLoop:
 func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
 	// block if the domain name appears in the custom filter list (check for subdomains if enabled)
 	if conn.Entity.Domain != "" {
-		if customlists.LookupDomain(conn.Entity.Domain, p.FilterSubDomains()) {
-			conn.Block("Domains appears in the custom user list", customlists.CfgOptionCustomListBlockingKey)
+		if ok, match := customlists.LookupDomain(conn.Entity.Domain, p.FilterSubDomains()); ok {
+			conn.Deny(fmt.Sprintf("domain %s matched %s in custom filter list", conn.Entity.Domain, match), customlists.CfgOptionCustomListBlockingKey)
 			return true
 		}
 	}
 
 	// block if any of the CNAME appears in the custom filter list (check for subdomains if enabled)
-	if len(conn.Entity.CNAME) > 0 && p.FilterCNAMEs() {
+	if p.FilterCNAMEs() {
 		for _, cname := range conn.Entity.CNAME {
-			if customlists.LookupDomain(cname, p.FilterSubDomains()) {
-				conn.Block("CNAME appears in the custom user list", customlists.CfgOptionCustomListBlockingKey)
+			if ok, match := customlists.LookupDomain(cname, p.FilterSubDomains()); ok {
+				conn.Deny(fmt.Sprintf("domain alias (CNAME) %s matched %s in custom filter list", cname, match), customlists.CfgOptionCustomListBlockingKey)
 				return true
 			}
 		}
@@ -636,8 +636,8 @@ func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profi
 
 	// block if ip addresses appears in the custom filter list
 	if conn.Entity.IP != nil {
-		if customlists.LookupIP(&conn.Entity.IP) {
-			conn.Block("IP appears in the custom filter list", customlists.CfgOptionCustomListBlockingKey)
+		if customlists.LookupIP(conn.Entity.IP) {
+			conn.Deny(fmt.Sprintf("IP address %s appears in the custom filter list", conn.Entity.IP), customlists.CfgOptionCustomListBlockingKey)
 			return true
 		}
 	}
@@ -645,7 +645,7 @@ func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profi
 	// block autonomous system by its number if it appears in the custom filter list
 	if conn.Entity.ASN != 0 {
 		if customlists.LookupASN(conn.Entity.ASN) {
-			conn.Block("ASN appears in the custom filter list", customlists.CfgOptionCustomListBlockingKey)
+			conn.Deny(fmt.Sprintf("autonomous system with number %d appears in the custom filter list", conn.Entity.ASN), customlists.CfgOptionCustomListBlockingKey)
 			return true
 		}
 	}
@@ -653,7 +653,7 @@ func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profi
 	// block if the country appears in the custom filter list
 	if conn.Entity.Country != "" {
 		if customlists.LookupCountry(conn.Entity.Country) {
-			conn.Block("Country appears in the custom filter list", customlists.CfgOptionCustomListBlockingKey)
+			conn.Deny(fmt.Sprintf("country code %s appears in the custom filter list", conn.Entity.Country), customlists.CfgOptionCustomListBlockingKey)
 			return true
 		}
 	}
