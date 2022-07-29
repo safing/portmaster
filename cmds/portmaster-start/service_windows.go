@@ -105,9 +105,13 @@ func runService(_ *cobra.Command, opts *Options, cmdArgs []string) error {
 	// open eventlog
 	elog, err := eventlog.Open(serviceName)
 	if err != nil {
-		return fmt.Errorf("failed to open eventlog: %s", err)
+		logControlError(fmt.Errorf("failed to open eventlog: %s", err))
 	}
-	defer elog.Close()
+	defer func() {
+		if elog != nil {
+			elog.Close()
+		}
+	}()
 
 	runWg.Add(2)
 	finishWg.Add(1)
@@ -134,7 +138,9 @@ func runService(_ *cobra.Command, opts *Options, cmdArgs []string) error {
 	err = getShutdownError()
 	if err != nil {
 		log.Printf("%s service experienced an error: %s\n", serviceName, err)
-		_ = elog.Error(1, fmt.Sprintf("%s experienced an error: %s", serviceName, err))
+		if elog != nil {
+			_ = elog.Error(1, fmt.Sprintf("%s experienced an error: %s", serviceName, err))
+		}
 	}
 
 	return err
