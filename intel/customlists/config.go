@@ -14,7 +14,7 @@ var (
 var getFilePath config.StringOption
 
 func registerConfig() error {
-	help := `File that contains list of all domains, Ip addresses, country codes and autonomous system that you want to block, where each entry is on a new line.  
+	help := `The file should contain list of all domains, Ip addresses, country codes and autonomous system that you want to block, where each entry is on a new line.  
 Lines that start with a '#' symbol are ignored.  
 Everything after the first space/tab is ignored.  
 Example:  

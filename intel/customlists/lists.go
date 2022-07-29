@@ -23,9 +23,9 @@ var (
 )
 
 const (
-	numberOfZeroIPsUntilWarning = 100
-	parseStatusNotificationID   = "customlists:parse-status"
-	zeroIPNotificationID        = "customlists:too-many-zero-ips"
+	rationForInvalidLinesUntilWarning = 0.1
+	parseStatusNotificationID         = "customlists:parse-status"
+	zeroIPNotificationID              = "customlists:too-many-zero-ips"
 )
 
 func initFilterLists() {
@@ -62,15 +62,20 @@ func parseFile(filePath string) error {
 		module.Warning(parseStatusNotificationID, "Failed to open custom filter list", err.Error())
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
-	var numberOfZeroIPs uint64
+	var allLinesCount uint64
+	var invalidLinesCount uint64
 
 	// read filter file line by line.
 	scanner := bufio.NewScanner(file)
 	// the scanner will error out if the line is greater than 64K, in this case it is enough.
 	for scanner.Scan() {
-		parseLine(scanner.Text(), &numberOfZeroIPs)
+		allLinesCount++
+		// parse and count invalid lines (comment, empty lines, zero IPs...)
+		if !parseLine(scanner.Text()) {
+			invalidLinesCount++
+		}
 	}
 
 	// check for scanner error.
@@ -78,9 +83,13 @@ func parseFile(filePath string) error {
 		return err
 	}
 
-	if numberOfZeroIPs >= numberOfZeroIPsUntilWarning {
-		log.Warning("intel/customlists: Too many zero IP addresses.")
-		module.Warning(zeroIPNotificationID, "Too many zero IP addresses. Check your custom filter list.", "Hosts file format is not spported.")
+	var invalidLinesRation float32 = float32(invalidLinesCount) / float32(allLinesCount)
+
+	if invalidLinesRation > rationForInvalidLinesUntilWarning {
+		log.Warning("intel/customlists: Too many invalid lines")
+		module.Warning(zeroIPNotificationID, "Check your custom filter list, there is too many invalid lines",
+			fmt.Sprintf(`There are %d from total %d lines that we flagged as invalid.
+			 Check if you are using the correct file format or if the path to the custom filter list is correct.`, invalidLinesCount, allLinesCount))
 	} else {
 		module.Resolve(zeroIPNotificationID)
 	}
@@ -105,59 +114,56 @@ func parseFile(filePath string) error {
 	return nil
 }
 
-func parseLine(line string, numberOfZeroIPs *uint64) {
+func parseLine(line string) bool {
 	// everything after the first field will be ignored.
 	fields := strings.Fields(line)
 
 	// ignore empty lines.
 	if len(fields) == 0 {
-		return
+		return false
 	}
 
 	field := fields[0]
 
 	// ignore comments
 	if field[0] == '#' {
-		return
+		return false
 	}
 
 	// check if it'a a country code.
 	if isCountryCode(field) {
 		countryCodesFilterList[field] = struct{}{}
-		return
+		return true
 	}
 
 	// try to parse IP address.
 	ip := net.ParseIP(field)
 	if ip != nil {
-		ipAddressesFilterList[ip.String()] = struct{}{}
-
 		// check for zero ip.
-		if bytes.Compare(ip.To4(), net.IPv4zero) == 0 || bytes.Compare(ip.To16(), net.IPv6zero) == 0 {
-			// check if its zero ip.
-			for i := 0; i < len(ip); i++ {
-				if ip[i] != 0 {
-					*numberOfZeroIPs++
-				}
-			}
+		if bytes.Compare(ip, net.IPv4zero) == 0 || bytes.Compare(ip, net.IPv6zero) == 0 {
+			return false
 		}
-		return
+
+		ipAddressesFilterList[ip.String()] = struct{}{}
+		return true
 	}
 
 	// check if it's a Autonomous system (example AS123).
 	if isAutonomousSystem(field) {
 		asNumber, err := strconv.ParseUint(field[2:], 10, 32)
 		if err != nil {
-			return
+			return false
 		}
 		autonomousSystemsFilterList[uint(asNumber)] = struct{}{}
-		return
+		return true
 	}
 
 	// check if it's a domain.
 	domain := dns.Fqdn(field)
 	if netutils.IsValidFqdn(domain) {
 		domainsFilterList[domain] = struct{}{}
-		return
+		return true
 	}
+
+	return false
 }

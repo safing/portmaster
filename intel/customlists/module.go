@@ -41,7 +41,7 @@ func init() {
 func prep() error {
 	initFilterLists()
 
-	// register the config in the ui
+	// register the config in the ui.
 	err := registerConfig()
 	if err != nil {
 		return err
@@ -64,8 +64,8 @@ func start() error {
 		return err
 	}
 
-	// create parser task and enqueue for execution. "checkAndUpdateFilterList" will schedule the next execution
-	parserTask = module.NewTask("intel/customlists file update check", func(context.Context, *modules.Task) error {
+	// create parser task and enqueue for execution. "checkAndUpdateFilterList" will schedule the next execution.
+	parserTask = module.NewTask("intel/customlists:file-update-check", func(context.Context, *modules.Task) error {
 		_ = checkAndUpdateFilterList()
 		return nil
 	}).Schedule(time.Now().Add(20 * time.Second))
@@ -119,7 +119,7 @@ func LookupDomain(fullDomain string, filterSubdomains bool) (bool, string) {
 	defer filterListLock.RUnlock()
 
 	if filterSubdomains {
-		// check if domain is in the list and all its subdomains
+		// check if domain is in the list and all its subdomains.
 		listOfDomains := splitDomain(fullDomain)
 		for _, domain := range listOfDomains {
 			_, ok := domainsFilterList[domain]
