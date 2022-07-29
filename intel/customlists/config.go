@@ -11,9 +11,7 @@ var (
 	cfgOptionCustomListCategoryAnnotation = "Filter Lists"
 )
 
-var (
-	getFilePath func() string
-)
+var getFilePath config.StringOption
 
 func registerConfig() error {
 	help := `File that contains list of all domains, Ip addresses, country codes and autonomous system that you want to block, where each entry is on a new line.  
