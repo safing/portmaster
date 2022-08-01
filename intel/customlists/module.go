@@ -9,9 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/api" //nolint  // completing about import order!?
-	"github.com/safing/portbase/modules"
 	"golang.org/x/net/publicsuffix"
+
+	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/modules"
 )
 
 var module *modules.Module

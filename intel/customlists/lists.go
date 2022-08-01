@@ -9,7 +9,8 @@ import (
 	"strings"
 
 	"github.com/miekg/dns"
-	"github.com/safing/portbase/log" //nolint  // weird error "Expected '\n', Found '\t'"
+
+	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/network/netutils"
 )
