@@ -1,22 +1,26 @@
 notifications:
-  test1:
-    title: "[TEST] Normal Broadcast"
-    message: "This is a normal broadcast without matching. (#1)"
-  test2:
-    title: "[TEST] Permanent Broadcast"
-    message: "This is a permanent broadcast without matching. (#2)"
-    type: 1 # Warning
-    permanent: true
-  test3:
-    title: "[TEST] Repeating Broadcast"
-    message: "This is a repeating broadcast without matching. (#3)"
-    repeat: "1m"
-  test4:
-    title: "[TEST] Matching Broadcast: PM version"
-    message: "This is a normal broadcast that matches the PM version. (#4)"
-    match: "NumericVersion > 8000"
-  test5:
-    title: "[TEST] Important Update"
-    message: "A criticial update has been released, please update immediately. (#5)"
-    type: 3 # Error
-    attachToModule: true
+  # test1:
+  #   title: "[TEST] Normal Broadcast"
+  #   message: "This is a normal broadcast without matching. (#1)"
+  # test2:
+  #   title: "[TEST] Permanent Broadcast"
+  #   message: "This is a permanent broadcast without matching. (#2)"
+  #   type: 1 # Warning
+  #   permanent: true
+  # test3:
+  #   title: "[TEST] Repeating Broadcast"
+  #   message: "This is a repeating broadcast without matching. (#3)"
+  #   repeat: "1m"
+  # test4:
+  #   title: "[TEST] Matching Broadcast: PM version"
+  #   message: "This is a normal broadcast that matches the PM version. (#4)"
+  #   match: "NumericVersion > 8000"
+  # test5:
+  #   title: "[TEST] Important Update"
+  #   message: "A criticial update has been released, please update immediately. (#5)"
+  #   type: 3 # Error
+  #   attachToModule: true
+  new-network-monitor-feedback:
+    title: "New: Full-Device Network Activity"
+    message: "We re-imagined the network monitor to bring you better search and graphs. Thanks for being a Beta Tester! We would love to hear your feedback on [Twitter](https://twitter.com/SafingIO), [Reddit](https://www.reddit.com/r/safing), [GitHub](https://github.com/safing/portmaster-ui/issues/new/choose) or [via Email](mailto:support@safing.io)."
+    match: "Version sameas 0.9.0 and Updates.Channel sameas beta"
