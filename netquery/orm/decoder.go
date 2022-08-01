@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"reflect"
 	"strings"
 	"time"
@@ -30,7 +29,7 @@ var (
 	// TEXT or REAL.
 	// This package provides support for time.Time being stored as TEXT (using a
 	// preconfigured timezone; UTC by default) or as INTEGER (the user can choose between
-	// unixepoch and unixnano-epoch where the nano variant is not offically supported by
+	// unixepoch and unixnano-epoch where the nano variant is not officially supported by
 	// SQLITE).
 	SqliteTimeFormat = "2006-01-02 15:04:05"
 )
@@ -54,6 +53,7 @@ type (
 	// DecodeFunc is called for each non-basic type during decoding.
 	DecodeFunc func(colIdx int, colDef *ColumnDef, stmt Stmt, fieldDef reflect.StructField, outval reflect.Value) (interface{}, bool, error)
 
+	// DecodeConfig holds decoding functions.
 	DecodeConfig struct {
 		DecodeHooks []DecodeFunc
 	}
@@ -170,7 +170,8 @@ func DecodeStmt(ctx context.Context, schema *TableSchema, stmt Stmt, result inte
 			return fmt.Errorf("cannot decode column %d (type=%s)", i, colType)
 		}
 
-		//log.Printf("valueTypeName: %s fieldName = %s value-orig = %s value = %s (%v) newValue = %s", value.Type().String(), fieldName, target.FieldByName(fieldName).Type(), value.Type(), value, columnValue)
+		// Debugging:
+		// log.Printf("valueTypeName: %s fieldName = %s value-orig = %s value = %s (%v) newValue = %s", value.Type().String(), fieldName, target.FieldByName(fieldName).Type(), value.Type(), value, columnValue)
 
 		// convert it to the target type if conversion is possible
 		newValue := reflect.ValueOf(columnValue)
@@ -189,8 +190,7 @@ func DecodeStmt(ctx context.Context, schema *TableSchema, stmt Stmt, result inte
 // time.Time. For INTEGER storage classes, it supports 'unixnano' struct tag value to
 // decide between Unix or UnixNano epoch timestamps.
 //
-// FIXME(ppacher): update comment about loc parameter and TEXT storage class parsing
-//
+// TODO(ppacher): update comment about loc parameter and TEXT storage class parsing.
 func DatetimeDecoder(loc *time.Location) DecodeFunc {
 	return func(colIdx int, colDef *ColumnDef, stmt Stmt, fieldDef reflect.StructField, outval reflect.Value) (interface{}, bool, error) {
 		// if we have the column definition available we
@@ -203,11 +203,11 @@ func DatetimeDecoder(loc *time.Location) DecodeFunc {
 
 		// we only care about "time.Time" here
 		if outType.String() != "time.Time" || (colDef != nil && !colDef.IsTime) {
-			log.Printf("not decoding %s %v", outType, colDef)
+			// log.Printf("not decoding %s %v", outType, colDef)
 			return nil, false, nil
 		}
 
-		switch stmt.ColumnType(colIdx) {
+		switch stmt.ColumnType(colIdx) { //nolint:exhaustive // Only selecting specific types.
 		case sqlite.TypeInteger:
 			// stored as unix-epoch, if unixnano is set in the struct field tag
 			// we parse it with nano-second resolution
@@ -242,7 +242,7 @@ func DatetimeDecoder(loc *time.Location) DecodeFunc {
 	}
 }
 
-func decodeIntoMap(ctx context.Context, schema *TableSchema, stmt Stmt, mp *map[string]interface{}, cfg DecodeConfig) error {
+func decodeIntoMap(_ context.Context, schema *TableSchema, stmt Stmt, mp *map[string]interface{}, cfg DecodeConfig) error {
 	if *mp == nil {
 		*mp = make(map[string]interface{})
 	}
@@ -292,7 +292,7 @@ func decodeBasic() DecodeFunc {
 		if colDef != nil {
 			valueKind = normalizeKind(colDef.GoType.Kind())
 
-			// if we have a column defintion we try to convert the value to
+			// if we have a column definition we try to convert the value to
 			// the actual Go-type that was used in the model.
 			// this is useful, for example, to ensure a []byte{} is always decoded into json.RawMessage
 			// or that type aliases like (type myInt int) are decoded into myInt instead of int
@@ -314,7 +314,7 @@ func decodeBasic() DecodeFunc {
 			}()
 		}
 
-		log.Printf("decoding %s into kind %s", colName, valueKind)
+		// log.Printf("decoding %s into kind %s", colName, valueKind)
 
 		if colType == sqlite.TypeNull {
 			if colDef != nil && colDef.Nullable {
@@ -330,7 +330,7 @@ func decodeBasic() DecodeFunc {
 			}
 		}
 
-		switch valueKind {
+		switch valueKind { //nolint:exhaustive
 		case reflect.String:
 			if colType != sqlite.TypeText {
 				return nil, false, errInvalidType
@@ -455,7 +455,7 @@ func runDecodeHooks(colIdx int, colDef *ColumnDef, stmt Stmt, fieldDef reflect.S
 	return nil, nil
 }
 
-// getKind returns the kind of value but normalized Int, Uint and Float varaints
+// getKind returns the kind of value but normalized Int, Uint and Float variants.
 // to their base type.
 func getKind(val reflect.Value) reflect.Kind {
 	kind := val.Kind()
@@ -475,6 +475,7 @@ func normalizeKind(kind reflect.Kind) reflect.Kind {
 	}
 }
 
+// DefaultDecodeConfig holds the default decoding configuration.
 var DefaultDecodeConfig = DecodeConfig{
 	DecodeHooks: []DecodeFunc{
 		DatetimeDecoder(time.UTC),

@@ -9,13 +9,14 @@ import (
 	"sync"
 	"time"
 
+	"zombiezen.com/go/sqlite"
+	"zombiezen.com/go/sqlite/sqlitex"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netquery/orm"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
-	"zombiezen.com/go/sqlite"
-	"zombiezen.com/go/sqlite/sqlitex"
 )
 
 // InMemory is the "file path" to open a new in-memory database.
@@ -36,7 +37,7 @@ var ConnectionTypeToString = map[network.ConnectionType]string{
 
 type (
 	// Database represents a SQLite3 backed connection database.
-	// It's use is tailored for persistance and querying of network.Connection.
+	// It's use is tailored for persistence and querying of network.Connection.
 	// Access to the underlying SQLite database is synchronized.
 	//
 	// TODO(ppacher): somehow I'm receiving SIGBUS or SIGSEGV when no doing
@@ -57,7 +58,7 @@ type (
 	//
 	// Use ConvertConnection from this package to convert a network.Connection to this
 	// representation.
-	Conn struct {
+	Conn struct { //nolint:maligned
 		// ID is a device-unique identifier for the connection. It is built
 		// from network.Connection by hashing the connection ID and the start
 		// time. We cannot just use the network.Connection.ID because it is only unique
@@ -93,11 +94,11 @@ type (
 		ProfileRevision int               `sqlite:"profile_revision"`
 		ExitNode        *string           `sqlite:"exit_node"`
 
-		// FIXME(ppacher): support "NOT" in search query to get rid of the following helper fields
+		// TODO(ppacher): support "NOT" in search query to get rid of the following helper fields
 		SPNUsed bool `sqlite:"spn_used"` // could use "exit_node IS NOT NULL" or "exit IS NULL"
 		Active  bool `sqlite:"active"`   // could use "ended IS NOT NULL" or "ended IS NULL"
 
-		// FIXME(ppacher): we need to profile here for "suggestion" support. It would be better to keep a table of profiles in sqlite and use joins here
+		// TODO(ppacher): we need to profile here for "suggestion" support. It would be better to keep a table of profiles in sqlite and use joins here
 		ProfileName string `sqlite:"profile_name"`
 	}
 )
@@ -153,9 +154,9 @@ func NewInMemory() (*Database, error) {
 // to bring db up-to-date with the built-in schema.
 // TODO(ppacher): right now this only applies the current schema and ignores
 // any data-migrations. Once the history module is implemented this should
-// become/use a full migration system -- use zombiezen.com/go/sqlite/sqlitemigration
+// become/use a full migration system -- use zombiezen.com/go/sqlite/sqlitemigration.
 func (db *Database) ApplyMigrations() error {
-	// get the create-table SQL statement from the infered schema
+	// get the create-table SQL statement from the inferred schema
 	sql := db.Schema.CreateStatement(false)
 
 	// execute the SQL
@@ -234,7 +235,7 @@ func (db *Database) Cleanup(ctx context.Context, threshold time.Time) (int, erro
 // dumpTo is a simple helper method that dumps all rows stored in the SQLite database
 // as JSON to w.
 // Any error aborts dumping rows and is returned.
-func (db *Database) dumpTo(ctx context.Context, w io.Writer) error {
+func (db *Database) dumpTo(ctx context.Context, w io.Writer) error { //nolint:unused
 	db.l.Lock()
 	defer db.l.Unlock()
 

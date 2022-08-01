@@ -30,6 +30,12 @@ const (
 	ServerSourceEnv             = "env"
 )
 
+// DNS Resolver alias
+const (
+	HTTPSProtocol = "https"
+	TLSProtocol   = "tls"
+)
+
 // FailThreshold is amount of errors a resolvers must experience in order to be regarded as failed.
 var FailThreshold = 20
 
@@ -61,9 +67,9 @@ type Resolver struct {
 	UpstreamBlockDetection string
 
 	// Special Options
-	VerifyDomain string
-	Search       []string
-	SearchOnly   bool
+	Search     []string
+	SearchOnly bool
+	Path       string
 
 	// logic interface
 	Conn ResolverConn `json:"-"`
@@ -87,6 +93,9 @@ type ResolverInfo struct { //nolint:golint,maligned // TODO
 	// IP is the IP address of the resolver
 	IP net.IP
 
+	// Domain of the dns server if it has one
+	Domain string
+
 	// IPScope is the network scope of the IP address.
 	IPScope netutils.IPScope
 
@@ -107,6 +116,20 @@ func (info *ResolverInfo) ID() string {
 			info.id = ServerTypeMDNS
 		case ServerTypeEnv:
 			info.id = ServerTypeEnv
+		case ServerTypeDoH:
+			info.id = fmt.Sprintf(
+				"https://%s:%d#%s",
+				info.Domain,
+				info.Port,
+				info.Source,
+			)
+		case ServerTypeDoT:
+			info.id = fmt.Sprintf(
+				"dot://%s:%d#%s",
+				info.Domain,
+				info.Port,
+				info.Source,
+			)
 		default:
 			info.id = fmt.Sprintf(
 				"%s://%s:%d#%s",
@@ -135,6 +158,12 @@ func (info *ResolverInfo) DescriptiveName() string {
 			info.Name,
 			info.ID(),
 		)
+	case info.Domain != "":
+		return fmt.Sprintf(
+			"%s (%s)",
+			info.Domain,
+			info.ID(),
+		)
 	default:
 		return fmt.Sprintf(
 			"%s (%s)",
@@ -155,6 +184,7 @@ func (info *ResolverInfo) Copy() *ResolverInfo {
 		Type:    info.Type,
 		Source:  info.Source,
 		IP:      info.IP,
+		Domain:  info.Domain,
 		IPScope: info.IPScope,
 		Port:    info.Port,
 		id:      info.id,

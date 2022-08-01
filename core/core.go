@@ -7,12 +7,12 @@ import (
 
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
-	"github.com/safing/portmaster/updates"
 	_ "github.com/safing/portmaster/broadcasts"
 	_ "github.com/safing/portmaster/netenv"
 	_ "github.com/safing/portmaster/netquery"
 	_ "github.com/safing/portmaster/status"
 	_ "github.com/safing/portmaster/ui"
+	"github.com/safing/portmaster/updates"
 )
 
 const (

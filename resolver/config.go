@@ -112,7 +112,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 		ExpertiseLevel:  config.ExpertiseLevelUser,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		DefaultValue:    defaultNameServers,
-		ValidationRegex: fmt.Sprintf("^(%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDNS, ServerTypeTCP),
+		ValidationRegex: fmt.Sprintf("^(%s|%s|%s|%s|%s|%s)://.*", ServerTypeDoT, ServerTypeDoH, ServerTypeDNS, ServerTypeTCP, HTTPSProtocol, TLSProtocol),
 		ValidationFunc:  validateNameservers,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  config.DisplayHintOrdered,
@@ -123,32 +123,31 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 					Name:   "Cloudflare (with Malware Filter)",
 					Action: config.QuickReplace,
 					Value: []string{
-						"dot://1.1.1.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip",
-						"dot://1.0.0.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip",
+						"dot://cloudflare-dns.com?ip=1.1.1.2&name=Cloudflare&blockedif=zeroip",
+						"dot://cloudflare-dns.com?ip=1.0.0.2&name=Cloudflare&blockedif=zeroip",
 					},
 				},
 				{
 					Name:   "Quad9",
 					Action: config.QuickReplace,
 					Value: []string{
-						"dot://9.9.9.9:853?verify=dns.quad9.net&name=Quad9&blockedif=empty",
-						"dot://149.112.112.112:853?verify=dns.quad9.net&name=Quad9&blockedif=empty",
+						"dot://dns.quad9.net?ip=9.9.9.9&name=Quad9&blockedif=empty",
+						"dot://dns.quad9.net?ip=149.112.112.112&name=Quad9&blockedif=empty",
 					},
 				},
 				{
 					Name:   "AdGuard",
 					Action: config.QuickReplace,
 					Value: []string{
-						"dot://94.140.14.14:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip",
-						"dot://94.140.15.15:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip",
+						"dot://dns.adguard.com?ip=94.140.14.14&name=AdGuard&blockedif=zeroip",
+						"dot://dns.adguard.com?ip=94.140.15.15&name=AdGuard&blockedif=zeroip",
 					},
 				},
 				{
 					Name:   "Foundation for Applied Privacy",
 					Action: config.QuickReplace,
 					Value: []string{
-						"dot://94.130.106.88:853?verify=dot1.applied-privacy.net&name=AppliedPrivacy",
-						"dot://94.130.106.88:443?verify=dot1.applied-privacy.net&name=AppliedPrivacy",
+						"dot://dot1.applied-privacy.net?ip=94.130.106.88&name=AppliedPrivacy",
 					},
 				},
 			},

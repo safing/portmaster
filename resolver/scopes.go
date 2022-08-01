@@ -220,6 +220,13 @@ addNextResolver:
 			}
 		}
 
+		// the domains from the configured resolvers should not be resolved with the same resolvers
+		if resolver.Info.Source == ServerSourceConfigured && resolver.Info.IP == nil {
+			if _, ok := resolverInitDomains[q.FQDN]; ok {
+				continue addNextResolver
+			}
+		}
+
 		// add compliant and unique resolvers to selected resolvers
 		selected = append(selected, resolver)
 	}
