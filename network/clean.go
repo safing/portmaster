@@ -40,8 +40,7 @@ func connectionCleaner(ctx context.Context) error {
 func cleanConnections() (activePIDs map[int]struct{}) {
 	activePIDs = make(map[int]struct{})
 
-	name := "clean connections" // TODO: change to new fn
-	_ = module.RunMediumPriorityMicroTask(&name, func(ctx context.Context) error {
+	_ = module.RunMicroTask("clean connections", 0, func(ctx context.Context) error {
 		now := time.Now().UTC()
 		nowUnix := now.Unix()
 		deleteOlderThan := now.Add(-DeleteConnsAfterEndedThreshold).Unix()
