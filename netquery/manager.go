@@ -116,7 +116,7 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 	}
 }
 
-func (mng *Manager) pushConnUpdate(ctx context.Context, meta record.Meta, conn Conn) error {
+func (mng *Manager) pushConnUpdate(_ context.Context, meta record.Meta, conn Conn) error {
 	blob, err := json.Marshal(conn)
 	if err != nil {
 		return fmt.Errorf("failed to marshal connection: %w", err)
@@ -173,17 +173,19 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		c.Type = "dns"
 	case network.IPConnection:
 		c.Type = "ip"
+	case network.Undefined:
+		c.Type = ""
 	}
 
 	switch conn.Verdict {
 	case network.VerdictAccept, network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel:
 		accepted := true
 		c.Allowed = &accepted
-	case network.VerdictUndecided, network.VerdictUndeterminable:
-		c.Allowed = nil
-	default:
+	case network.VerdictBlock, network.VerdictDrop:
 		allowed := false
 		c.Allowed = &allowed
+	case network.VerdictUndecided, network.VerdictUndeterminable, network.VerdictFailed:
+		c.Allowed = nil
 	}
 
 	if conn.Ended > 0 {

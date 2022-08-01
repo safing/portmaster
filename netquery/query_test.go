@@ -7,13 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/safing/portmaster/netquery/orm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/safing/portmaster/netquery/orm"
 )
 
-func Test_UnmarshalQuery(t *testing.T) {
-	var cases = []struct {
+func TestUnmarshalQuery(t *testing.T) { //nolint:tparallel
+	t.Parallel()
+
+	cases := []struct {
 		Name     string
 		Input    string
 		Expected Query
@@ -88,7 +91,8 @@ func Test_UnmarshalQuery(t *testing.T) {
 		},
 	}
 
-	for _, c := range cases {
+	for _, testCase := range cases { //nolint:paralleltest
+		c := testCase
 		t.Run(c.Name, func(t *testing.T) {
 			var q Query
 			err := json.Unmarshal([]byte(c.Input), &q)
@@ -105,10 +109,11 @@ func Test_UnmarshalQuery(t *testing.T) {
 	}
 }
 
-func Test_QueryBuilder(t *testing.T) {
-	now := time.Now()
+func TestQueryBuilder(t *testing.T) { //nolint:tparallel
+	t.Parallel()
 
-	var cases = []struct {
+	now := time.Now()
+	cases := []struct {
 		N string
 		Q Query
 		R string
@@ -186,7 +191,7 @@ func Test_QueryBuilder(t *testing.T) {
 			},
 			"",
 			nil,
-			fmt.Errorf("1 error occurred:\n\t* column forbiddenField is not allowed\n\n"),
+			fmt.Errorf("1 error occurred:\n\t* column forbiddenField is not allowed\n\n"), //nolint:golint
 		},
 		{
 			"Complex example",
@@ -225,19 +230,20 @@ func Test_QueryBuilder(t *testing.T) {
 	tbl, err := orm.GenerateTableSchema("connections", Conn{})
 	require.NoError(t, err)
 
-	for idx, c := range cases {
+	for idx, testCase := range cases { //nolint:paralleltest
+		cID := idx
+		c := testCase
 		t.Run(c.N, func(t *testing.T) {
-			//t.Parallel()
 			str, params, err := c.Q.toSQLWhereClause(context.TODO(), "", tbl, orm.DefaultEncodeConfig)
 
 			if c.E != nil {
 				if assert.Error(t, err) {
-					assert.Equal(t, c.E.Error(), err.Error(), "test case %d", idx)
+					assert.Equal(t, c.E.Error(), err.Error(), "test case %d", cID)
 				}
 			} else {
-				assert.NoError(t, err, "test case %d", idx)
-				assert.Equal(t, c.P, params, "test case %d", idx)
-				assert.Equal(t, c.R, str, "test case %d", idx)
+				assert.NoError(t, err, "test case %d", cID)
+				assert.Equal(t, c.P, params, "test case %d", cID)
+				assert.Equal(t, c.R, str, "test case %d", cID)
 			}
 		})
 	}

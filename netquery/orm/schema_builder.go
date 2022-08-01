@@ -10,10 +10,9 @@ import (
 	"zombiezen.com/go/sqlite"
 )
 
-var (
-	errSkipStructField = errors.New("struct field should be skipped")
-)
+var errSkipStructField = errors.New("struct field should be skipped")
 
+// Struct Tags.
 var (
 	TagUnixNano          = "unixnano"
 	TagPrimaryKey        = "primary"
@@ -36,12 +35,14 @@ var sqlTypeMap = map[sqlite.ColumnType]string{
 }
 
 type (
+	// TableSchema defines a SQL table schema.
 	TableSchema struct {
 		Name    string
 		Columns []ColumnDef
 	}
 
-	ColumnDef struct {
+	// ColumnDef defines a SQL column.
+	ColumnDef struct { //nolint:maligned
 		Name          string
 		Nullable      bool
 		Type          sqlite.ColumnType
@@ -54,6 +55,7 @@ type (
 	}
 )
 
+// GetColumnDef returns the column definition with the given name.
 func (ts TableSchema) GetColumnDef(name string) *ColumnDef {
 	for _, def := range ts.Columns {
 		if def.Name == name {
@@ -63,6 +65,7 @@ func (ts TableSchema) GetColumnDef(name string) *ColumnDef {
 	return nil
 }
 
+// CreateStatement build the CREATE SQL statement for the table.
 func (ts TableSchema) CreateStatement(ifNotExists bool) string {
 	sql := "CREATE TABLE"
 	if ifNotExists {
@@ -81,6 +84,7 @@ func (ts TableSchema) CreateStatement(ifNotExists bool) string {
 	return sql
 }
 
+// AsSQL builds the SQL column definition.
 func (def ColumnDef) AsSQL() string {
 	sql := def.Name + " "
 
@@ -103,6 +107,7 @@ func (def ColumnDef) AsSQL() string {
 	return sql
 }
 
+// GenerateTableSchema generates a table schema from the given struct.
 func GenerateTableSchema(name string, d interface{}) (*TableSchema, error) {
 	ts := &TableSchema{
 		Name: name,
@@ -149,7 +154,7 @@ func getColumnDef(fieldType reflect.StructField) (*ColumnDef, error) {
 	def.GoType = ft
 	kind := normalizeKind(ft.Kind())
 
-	switch kind {
+	switch kind { //nolint:exhaustive
 	case reflect.Int:
 		def.Type = sqlite.TypeInteger
 
@@ -190,7 +195,7 @@ func applyStructFieldTag(fieldType reflect.StructField, def *ColumnDef) error {
 	if len(parts) > 1 {
 		for _, k := range parts[1:] {
 			switch k {
-			// column modifieres
+			// column modifiers
 			case TagPrimaryKey:
 				def.PrimaryKey = true
 			case TagAutoIncrement:

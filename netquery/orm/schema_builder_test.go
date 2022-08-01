@@ -6,7 +6,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_SchemaBuilder(t *testing.T) {
+func TestSchemaBuilder(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		Name        string
 		Model       interface{}

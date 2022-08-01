@@ -5,15 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"sort"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/safing/portmaster/netquery/orm"
 	"zombiezen.com/go/sqlite"
+
+	"github.com/safing/portmaster/netquery/orm"
 )
 
+// Collection of Query and Matcher types.
+// NOTE: whenever adding support for new operators make sure
+// to update UnmarshalJSON as well.
+//nolint:golint
 type (
 	Query map[string][]Matcher
 
@@ -43,8 +47,6 @@ type (
 		Distinct  bool   `json:"distinct"`
 	}
 
-	// NOTE: whenever adding support for new operators make sure
-	// to update UnmarshalJSON as well.
 	Select struct {
 		Field    string  `json:"field"`
 		Count    *Count  `json:"$count,omitempty"`
@@ -91,6 +93,7 @@ type (
 	}
 )
 
+// UnmarshalJSON unmarshals a Query from json.
 func (query *Query) UnmarshalJSON(blob []byte) error {
 	if *query == nil {
 		*query = make(Query)
@@ -202,13 +205,14 @@ func parseMatcher(raw json.RawMessage) (*Matcher, error) {
 	}
 
 	if err := m.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid query matcher: %s", err)
+		return nil, fmt.Errorf("invalid query matcher: %w", err)
 	}
-	log.Printf("parsed matcher %s: %+v", string(raw), m)
-	return &m, nil
 
+	// log.Printf("parsed matcher %s: %+v", string(raw), m)
+	return &m, nil
 }
 
+// Validate validates the matcher.
 func (match Matcher) Validate() error {
 	found := 0
 
@@ -239,9 +243,9 @@ func (match Matcher) Validate() error {
 	return nil
 }
 
-func (text TextSearch) toSQLConditionClause(ctx context.Context, schema *orm.TableSchema, suffix string, encoderConfig orm.EncodeConfig) (string, map[string]interface{}, error) {
+func (text TextSearch) toSQLConditionClause(_ context.Context, schema *orm.TableSchema, suffix string, _ orm.EncodeConfig) (string, map[string]interface{}, error) {
 	var (
-		queryParts []string
+		queryParts = make([]string, 0, len(text.Fields))
 		params     = make(map[string]interface{})
 	)
 
@@ -379,7 +383,7 @@ func (query Query) toSQLWhereClause(ctx context.Context, suffix string, m *orm.T
 			// merge parameters up into the superior parameter map
 			for key, val := range params {
 				if _, ok := paramMap[key]; ok {
-					// is is soley a developer mistake when implementing a matcher so no forgiving ...
+					// This is solely a developer mistake when implementing a matcher so no forgiving ...
 					panic("sqlite parameter collision")
 				}
 
@@ -399,6 +403,7 @@ func (query Query) toSQLWhereClause(ctx context.Context, suffix string, m *orm.T
 	return whereClause, paramMap, errs.ErrorOrNil()
 }
 
+// UnmarshalJSON unmarshals a Selects from json.
 func (sel *Selects) UnmarshalJSON(blob []byte) error {
 	if len(blob) == 0 {
 		return io.ErrUnexpectedEOF
@@ -438,6 +443,7 @@ func (sel *Selects) UnmarshalJSON(blob []byte) error {
 	return nil
 }
 
+// UnmarshalJSON unmarshals a Select from json.
 func (sel *Select) UnmarshalJSON(blob []byte) error {
 	if len(blob) == 0 {
 		return io.ErrUnexpectedEOF
@@ -481,6 +487,7 @@ func (sel *Select) UnmarshalJSON(blob []byte) error {
 	return nil
 }
 
+// UnmarshalJSON unmarshals a OrderBys from json.
 func (orderBys *OrderBys) UnmarshalJSON(blob []byte) error {
 	if len(blob) == 0 {
 		return io.ErrUnexpectedEOF
@@ -523,6 +530,7 @@ func (orderBys *OrderBys) UnmarshalJSON(blob []byte) error {
 	return nil
 }
 
+// UnmarshalJSON unmarshals a OrderBy from json.
 func (orderBy *OrderBy) UnmarshalJSON(blob []byte) error {
 	if len(blob) == 0 {
 		return io.ErrUnexpectedEOF

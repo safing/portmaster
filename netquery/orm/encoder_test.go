@@ -9,9 +9,11 @@ import (
 	"zombiezen.com/go/sqlite"
 )
 
-func Test_EncodeAsMap(t *testing.T) {
+func TestEncodeAsMap(t *testing.T) { //nolint:tparallel
+	t.Parallel()
+
 	ctx := context.TODO()
-	refTime := time.Date(2022, time.February, 15, 9, 51, 00, 00, time.UTC)
+	refTime := time.Date(2022, time.February, 15, 9, 51, 0, 0, time.UTC)
 
 	cases := []struct {
 		Desc     string
@@ -114,11 +116,9 @@ func Test_EncodeAsMap(t *testing.T) {
 		},
 	}
 
-	for idx := range cases {
+	for idx := range cases { //nolint:paralleltest
 		c := cases[idx]
 		t.Run(c.Desc, func(t *testing.T) {
-			// t.Parallel()
-
 			res, err := ToParamMap(ctx, c.Input, "", DefaultEncodeConfig)
 			assert.NoError(t, err)
 			assert.Equal(t, c.Expected, res)
@@ -126,9 +126,11 @@ func Test_EncodeAsMap(t *testing.T) {
 	}
 }
 
-func Test_EncodeValue(t *testing.T) {
+func TestEncodeValue(t *testing.T) { //nolint:tparallel
+	t.Parallel()
+
 	ctx := context.TODO()
-	refTime := time.Date(2022, time.February, 15, 9, 51, 00, 00, time.UTC)
+	refTime := time.Date(2022, time.February, 15, 9, 51, 0, 0, time.UTC)
 
 	cases := []struct {
 		Desc   string
@@ -247,11 +249,9 @@ func Test_EncodeValue(t *testing.T) {
 		},
 	}
 
-	for idx := range cases {
+	for idx := range cases { //nolint:paralleltest
 		c := cases[idx]
 		t.Run(c.Desc, func(t *testing.T) {
-			//t.Parallel()
-
 			res, err := EncodeValue(ctx, &c.Column, c.Input, DefaultEncodeConfig)
 			assert.NoError(t, err)
 			assert.Equal(t, c.Output, res)
