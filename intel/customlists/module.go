@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/api" //nolint  // completing about import order!?
 	"github.com/safing/portbase/modules"
 	"golang.org/x/net/publicsuffix"
 )
@@ -58,7 +58,7 @@ func start() error {
 		configChangeEvent,
 		"update custom filter list",
 		func(ctx context.Context, obj interface{}) error {
-			_ = checkAndUpdateFilterList()
+			checkAndUpdateFilterList()
 			return nil
 		},
 	); err != nil {
@@ -67,24 +67,21 @@ func start() error {
 
 	// create parser task and enqueue for execution. "checkAndUpdateFilterList" will schedule the next execution.
 	parserTask = module.NewTask("intel/customlists:file-update-check", func(context.Context, *modules.Task) error {
-		_ = checkAndUpdateFilterList()
+		checkAndUpdateFilterList()
 		return nil
 	}).Schedule(time.Now().Add(20 * time.Second))
 
 	// register api endpoint for updating the filter list
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:      "customlists/update",
-		Read:      api.PermitUser,
+		Write:     api.PermitUser,
 		BelongsTo: module,
 		ActionFunc: func(ar *api.Request) (msg string, err error) {
-			err = checkAndUpdateFilterList()
-			if err != nil {
-				return "failed to load custom filter list.", err
-			}
-			return "custom filter list loaded successfully.", nil
+			checkAndUpdateFilterList()
+			return "Custom filter list loaded successfully.", nil
 		},
 		Name:        "Update custom filter list",
-		Description: "Load a filter list form a file defined by the user.",
+		Description: "Reload the filter list from the configured file.",
 	}); err != nil {
 		return err
 	}
@@ -92,14 +89,14 @@ func start() error {
 	return nil
 }
 
-func checkAndUpdateFilterList() error {
+func checkAndUpdateFilterList() {
 	filterListLock.Lock()
 	defer filterListLock.Unlock()
 
 	// get path and ignore if empty
 	filePath := getFilePath()
 	if filePath == "" {
-		return nil
+		return
 	}
 
 	// schedule next update check
@@ -115,12 +112,11 @@ func checkAndUpdateFilterList() error {
 	if filterListFilePath != filePath || !filterListFileModifiedTime.Equal(modifiedTime) {
 		err := parseFile(filePath)
 		if err != nil {
-			return nil
+			return
 		}
 		filterListFileModifiedTime = modifiedTime
 		filterListFilePath = filePath
 	}
-	return nil
 }
 
 // LookupIP checks if the IP address is in a custom filter list.

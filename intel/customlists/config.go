@@ -14,34 +14,25 @@ var (
 var getFilePath config.StringOption
 
 func registerConfig() error {
-	help := `The file should contain list of all domains, Ip addresses, country codes and autonomous system that you want to block, where each entry is on a new line.  
-Lines that start with a '#' symbol are ignored.  
-Everything after the first space/tab is ignored.  
-Example:  
-#############  
-\# Domains:  
-example.com  
-google.com  
-  
-\# IP addresses  
-1.2.3.4  
-4.3.2.1  
-  
-\# Countries  
-AU  
-BG  
-  
-\# Autonomous Systems  
-AS123  
-#############
-> * All the records are stored in RAM, careful with large block lists.  
-> * Hosts files are not supported.`
+	help := `The file is checked every couple minutes and will be automatically reloaded when it has changed.  
+
+Entries may be one of:
+- Domain: "example.com"
+- IP Address: "10.0.0.1"
+- Country Code (based on IP): "US"
+- AS (Autonomous System): "AS1234"  
+
+Everything after the first element of a line, comments starting with a '#', and empty lines are ignored.  
+The settings "Block Subdomains of Filter List Entries" and "Block Domain Aliases" also apply to the custom filter list.  
+Lists in the "Hosts" format are not supported.  
+
+Please note that the custom filter list is fully loaded into memory. This can have a negative impact on your device if big lists are loaded.`
 
 	// register a setting for the file path in the ui
 	err := config.Register(&config.Option{
 		Name:            "Custom Filter List",
 		Key:             CfgOptionCustomListBlockingKey,
-		Description:     "Path to the file that contains a list of Domain, IP addresses, country codes and autonomous systems that you want to block",
+		Description:     "Specify the file path to a custom filter list, which will be automatically refreshed. Any connections matching a domain, IP address, Country or ASN in the file will be blocked.",
 		Help:            help,
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,

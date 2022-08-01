@@ -2,7 +2,6 @@ package customlists
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"net"
 	"os"
@@ -10,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/miekg/dns"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/log" //nolint  // weird error "Expected '\n', Found '\t'"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/network/netutils"
 )
@@ -25,6 +24,7 @@ var (
 const (
 	rationForInvalidLinesUntilWarning = 0.1
 	parseStatusNotificationID         = "customlists:parse-status"
+	parseWarningNotificationID        = "customlists:parse-warning"
 	zeroIPNotificationID              = "customlists:too-many-zero-ips"
 )
 
@@ -58,8 +58,8 @@ func parseFile(filePath string) error {
 	// open the file if possible
 	file, err := os.Open(filePath)
 	if err != nil {
-		log.Warningf("intel/customlists: failed to parse file %q ", err)
-		module.Warning(parseStatusNotificationID, "Failed to open custom filter list", err.Error())
+		log.Warningf("intel/customlists: failed to parse file %s", err)
+		module.Warning(parseWarningNotificationID, "Failed to open custom filter list", err.Error())
 		return err
 	}
 	defer func() { _ = file.Close() }()
@@ -83,33 +83,34 @@ func parseFile(filePath string) error {
 		return err
 	}
 
-	var invalidLinesRation float32 = float32(invalidLinesCount) / float32(allLinesCount)
+	invalidLinesRation := float32(invalidLinesCount) / float32(allLinesCount)
 
 	if invalidLinesRation > rationForInvalidLinesUntilWarning {
 		log.Warning("intel/customlists: Too many invalid lines")
-		module.Warning(zeroIPNotificationID, "Check your custom filter list, there is too many invalid lines",
-			fmt.Sprintf(`There are %d from total %d lines that we flagged as invalid.
-			 Check if you are using the correct file format or if the path to the custom filter list is correct.`, invalidLinesCount, allLinesCount))
+		module.Warning(zeroIPNotificationID, "Custom filter list has many invalid entries",
+			fmt.Sprintf(`%d out of %d entires are invalid.
+			 Check if you are using the correct file format and if the path to the custom filter list is correct.`, invalidLinesCount, allLinesCount))
 	} else {
 		module.Resolve(zeroIPNotificationID)
 	}
 
-	log.Infof("intel/customlists: list loaded successful: %s", filePath)
+	allEntriesCount := len(domainsFilterList) + len(ipAddressesFilterList) + len(autonomousSystemsFilterList) + len(countryCodesFilterList)
+	log.Infof("intel/customlists: loaded %d entries from %s", allEntriesCount, filePath)
 
 	notifications.NotifyInfo(parseStatusNotificationID,
 		"Custom filter list loaded successfully.",
-		fmt.Sprintf(`Custom filter list loaded successfully from file %s  
-%d domains  
+		fmt.Sprintf(`Custom filter list loaded successfully from file %s - loaded:  
+%d Domains  
 %d IPs  
-%d autonomous systems  
-%d countries`,
+%d Autonomous Systems  
+%d Countries`,
 			filePath,
 			len(domainsFilterList),
 			len(ipAddressesFilterList),
 			len(autonomousSystemsFilterList),
-			len(domainsFilterList)))
+			len(countryCodesFilterList)))
 
-	module.Resolve(parseStatusNotificationID)
+	module.Resolve(parseWarningNotificationID)
 
 	return nil
 }
@@ -140,7 +141,7 @@ func parseLine(line string) bool {
 	ip := net.ParseIP(field)
 	if ip != nil {
 		// check for zero ip.
-		if bytes.Compare(ip, net.IPv4zero) == 0 || bytes.Compare(ip, net.IPv6zero) == 0 {
+		if net.IP.Equal(ip, net.IPv4zero) || net.IP.Equal(ip, net.IPv6zero) {
 			return false
 		}
 
