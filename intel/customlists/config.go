@@ -28,7 +28,7 @@ Lists in the "Hosts" format are not supported.
 
 Please note that the custom filter list is fully loaded into memory. This can have a negative impact on your device if big lists are loaded.`
 
-	// register a setting for the file path in the ui
+	// Register a setting for the file path in the ui
 	err := config.Register(&config.Option{
 		Name:            "Custom Filter List",
 		Key:             CfgOptionCustomListBlockingKey,

@@ -43,7 +43,7 @@ func init() {
 func prep() error {
 	initFilterLists()
 
-	// register the config in the ui.
+	// Register the config in the ui.
 	err := registerConfig()
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func prep() error {
 }
 
 func start() error {
-	// register to hook to update after config change.
+	// Register to hook to update after config change.
 	if err := module.RegisterEventHook(
 		configModuleName,
 		configChangeEvent,
@@ -66,13 +66,13 @@ func start() error {
 		return err
 	}
 
-	// create parser task and enqueue for execution. "checkAndUpdateFilterList" will schedule the next execution.
+	// Create parser task and enqueue for execution. "checkAndUpdateFilterList" will schedule the next execution.
 	parserTask = module.NewTask("intel/customlists:file-update-check", func(context.Context, *modules.Task) error {
 		checkAndUpdateFilterList()
 		return nil
 	}).Schedule(time.Now().Add(20 * time.Second))
 
-	// register api endpoint for updating the filter list
+	// Register api endpoint for updating the filter list.
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:      "customlists/update",
 		Write:     api.PermitUser,
@@ -94,22 +94,22 @@ func checkAndUpdateFilterList() {
 	filterListLock.Lock()
 	defer filterListLock.Unlock()
 
-	// get path and ignore if empty
+	// Get path and ignore if empty
 	filePath := getFilePath()
 	if filePath == "" {
 		return
 	}
 
-	// schedule next update check
+	// Schedule next update check
 	parserTask.Schedule(time.Now().Add(1 * time.Minute))
 
-	// try to get file info
+	// Try to get file info
 	modifiedTime := time.Now()
 	if fileInfo, err := os.Stat(filePath); err == nil {
 		modifiedTime = fileInfo.ModTime()
 	}
 
-	// check if file path has changed or if modified time has changed
+	// Check if file path has changed or if modified time has changed
 	if filterListFilePath != filePath || !filterListFileModifiedTime.Equal(modifiedTime) {
 		err := parseFile(filePath)
 		if err != nil {
@@ -135,7 +135,7 @@ func LookupDomain(fullDomain string, filterSubdomains bool) (bool, string) {
 	defer filterListLock.RUnlock()
 
 	if filterSubdomains {
-		// check if domain is in the list and all its subdomains.
+		// Check if domain is in the list and all its subdomains.
 		listOfDomains := splitDomain(fullDomain)
 		for _, domain := range listOfDomains {
 			_, ok := domainsFilterList[domain]
@@ -144,7 +144,7 @@ func LookupDomain(fullDomain string, filterSubdomains bool) (bool, string) {
 			}
 		}
 	} else {
-		// check only if the domain is in the list
+		// Check only if the domain is in the list
 		_, ok := domainsFilterList[fullDomain]
 		return ok, fullDomain
 	}

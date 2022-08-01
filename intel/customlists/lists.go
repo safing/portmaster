@@ -37,7 +37,7 @@ func initFilterLists() {
 }
 
 func parseFile(filePath string) error {
-	// reset all maps, previous (if any) settings will be lost.
+	// Reset all maps, previous (if any) settings will be lost.
 	for key := range countryCodesFilterList {
 		delete(countryCodesFilterList, key)
 	}
@@ -51,12 +51,12 @@ func parseFile(filePath string) error {
 		delete(domainsFilterList, key)
 	}
 
-	// ignore empty file path.
+	// Ignore empty file path.
 	if filePath == "" {
 		return nil
 	}
 
-	// open the file if possible
+	// Open the file if possible
 	file, err := os.Open(filePath)
 	if err != nil {
 		log.Warningf("intel/customlists: failed to parse file %s", err)
@@ -68,18 +68,18 @@ func parseFile(filePath string) error {
 	var allLinesCount uint64
 	var invalidLinesCount uint64
 
-	// read filter file line by line.
+	// Read filter file line by line.
 	scanner := bufio.NewScanner(file)
-	// the scanner will error out if the line is greater than 64K, in this case it is enough.
+	// The scanner will error out if the line is greater than 64K, in this case it is enough.
 	for scanner.Scan() {
 		allLinesCount++
-		// parse and count invalid lines (comment, empty lines, zero IPs...)
+		// Parse and count invalid lines (comment, empty lines, zero IPs...)
 		if !parseLine(scanner.Text()) {
 			invalidLinesCount++
 		}
 	}
 
-	// check for scanner error.
+	// Check for scanner error.
 	if err := scanner.Err(); err != nil {
 		return err
 	}
@@ -88,8 +88,8 @@ func parseFile(filePath string) error {
 
 	if invalidLinesRation > rationForInvalidLinesUntilWarning {
 		log.Warning("intel/customlists: Too many invalid lines")
-		module.Warning(zeroIPNotificationID, "Custom filter list has many invalid entries",
-			fmt.Sprintf(`%d out of %d entires are invalid.
+		module.Warning(zeroIPNotificationID, "Custom filter list has many invalid lines",
+			fmt.Sprintf(`%d out of %d lines are invalid.
 			 Check if you are using the correct file format and if the path to the custom filter list is correct.`, invalidLinesCount, allLinesCount))
 	} else {
 		module.Resolve(zeroIPNotificationID)
@@ -116,41 +116,34 @@ func parseFile(filePath string) error {
 	return nil
 }
 
-func parseLine(line string) bool {
-	// everything after the first field will be ignored.
+func parseLine(line string) (valid bool) {
+	// Everything after the first field will be ignored.
 	fields := strings.Fields(line)
 
-	// ignore empty lines.
+	// Ignore empty lines.
 	if len(fields) == 0 {
-		return false
+		return true // Not an entry, but a valid line.
 	}
 
 	field := fields[0]
 
-	// ignore comments
-	if field[0] == '#' {
-		return false
+	// Ignore comments
+	if strings.HasPrefix(field, "#") {
+		return true // Not an entry, but a valid line.
 	}
 
-	// check if it'a a country code.
+	// Go through all possible field types.
+	// Parsing is ordered by
+	// 1. Parsing options (ie. the domain has most variation and goes last.)
+	// 2. Speed
+
+	// Check if it'a a country code.
 	if isCountryCode(field) {
 		countryCodesFilterList[field] = struct{}{}
 		return true
 	}
 
-	// try to parse IP address.
-	ip := net.ParseIP(field)
-	if ip != nil {
-		// check for zero ip.
-		if net.IP.Equal(ip, net.IPv4zero) || net.IP.Equal(ip, net.IPv6zero) {
-			return false
-		}
-
-		ipAddressesFilterList[ip.String()] = struct{}{}
-		return true
-	}
-
-	// check if it's a Autonomous system (example AS123).
+	// Check if it's a Autonomous system (example AS123).
 	if isAutonomousSystem(field) {
 		asNumber, err := strconv.ParseUint(field[2:], 10, 32)
 		if err != nil {
@@ -160,7 +153,19 @@ func parseLine(line string) bool {
 		return true
 	}
 
-	// check if it's a domain.
+	// Try to parse IP address.
+	ip := net.ParseIP(field)
+	if ip != nil {
+		// Check for zero ip.
+		if net.IP.Equal(ip, net.IPv4zero) || net.IP.Equal(ip, net.IPv6zero) {
+			return false
+		}
+
+		ipAddressesFilterList[ip.String()] = struct{}{}
+		return true
+	}
+
+	// Check if it's a domain.
 	domain := dns.Fqdn(field)
 	if netutils.IsValidFqdn(domain) {
 		domainsFilterList[domain] = struct{}{}
