@@ -81,7 +81,7 @@ func GetNetworkHost(ctx context.Context, remoteIP net.IP) (process *Process, err
 	}
 
 	// Assign profile to process.
-	networkHost.LocalProfileKey = networkHostProfile.Key()
+	networkHost.PrimaryProfileID = networkHostProfile.ScopedID()
 	networkHost.profile = networkHostProfile.LayeredProfile()
 
 	if networkHostProfile.Name == "" {

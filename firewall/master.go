@@ -270,10 +270,10 @@ func checkEndpointListsForSystemResolverDNSRequests(ctx context.Context, conn *n
 	var profileEndpoints endpoints.Endpoints
 	var optionKey string
 	if conn.Inbound {
-		profileEndpoints = p.LocalProfile().GetServiceEndpoints()
+		profileEndpoints = p.LocalProfileWithoutLocking().GetServiceEndpoints()
 		optionKey = profile.CfgOptionServiceEndpointsKey
 	} else {
-		profileEndpoints = p.LocalProfile().GetEndpoints()
+		profileEndpoints = p.LocalProfileWithoutLocking().GetEndpoints()
 		optionKey = profile.CfgOptionEndpointsKey
 	}
 

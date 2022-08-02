@@ -89,7 +89,7 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	}
 
 	// Assign profile to process.
-	p.LocalProfileKey = localProfile.Key()
+	p.PrimaryProfileID = localProfile.ScopedID()
 	p.profile = localProfile.LayeredProfile()
 
 	return true, nil

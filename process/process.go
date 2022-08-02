@@ -28,7 +28,8 @@ type Process struct {
 	record.Base
 	sync.Mutex
 
-	// Constant attributes.
+	// Process attributes.
+	// Don't change; safe for concurrent access.
 
 	Name      string
 	UserID    int
@@ -46,8 +47,13 @@ type Process struct {
 	// based on any of the previous attributes.
 	SpecialDetail string
 
-	LocalProfileKey string
-	profile         *profile.LayeredProfile
+	// Profile attributes.
+	// Once set, these don't change; safe for concurrent access.
+
+	// PrimaryProfileID holds the scoped ID of the primary profile.
+	PrimaryProfileID string
+	// profile holds the layered profile based on the primary profile.
+	profile *profile.LayeredProfile
 
 	// Mutable attributes.
 
@@ -93,6 +99,8 @@ func (p *Process) Equal(other *Process) bool {
 	return p.IsIdentified() && other.IsIdentified() && p.Pid == other.Pid
 }
 
+const systemResolverScopedID = string(profile.SourceLocal) + "/" + profile.SystemResolverProfileID
+
 // IsSystemResolver is a shortcut to check if the process is or belongs to the
 // system resolver and needs special handling.
 func (p *Process) IsSystemResolver() bool {
@@ -101,14 +109,8 @@ func (p *Process) IsSystemResolver() bool {
 		return false
 	}
 
-	// Check if local profile exists.
-	localProfile := p.profile.LocalProfile()
-	if localProfile == nil {
-		return false
-	}
-
 	// Check ID.
-	return localProfile.ID == profile.SystemResolverProfileID
+	return p.PrimaryProfileID == systemResolverScopedID
 }
 
 // GetLastSeen returns the unix timestamp when the process was last seen.

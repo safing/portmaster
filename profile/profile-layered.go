@@ -168,6 +168,17 @@ func (lp *LayeredProfile) LocalProfile() *Profile {
 	return lp.localProfile
 }
 
+// LocalProfileWithoutLocking returns the local profile associated with this
+// layered profile, but without locking the layered profile.
+// This method my only be used when the caller already has a lock on the layered profile.
+func (lp *LayeredProfile) LocalProfileWithoutLocking() *Profile {
+	if lp == nil {
+		return nil
+	}
+
+	return lp.localProfile
+}
+
 // increaseRevisionCounter increases the revision counter and pushes the
 // layered profile to listeners.
 func (lp *LayeredProfile) increaseRevisionCounter(lock bool) (revisionCounter uint64) { //nolint:unparam // This is documentation.
