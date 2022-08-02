@@ -134,7 +134,8 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// be changed during the lifetime of a connection and must be guarded
 	// using the connection lock.
 	Inspecting bool
-	// Tunneled is currently unused and MUST be ignored.
+	// Tunneled is set to true when the connection has been routed through the
+	// SPN.
 	Tunneled bool
 	// Encrypted is currently unused and MUST be ignored.
 	Encrypted bool
