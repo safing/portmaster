@@ -130,6 +130,8 @@ github.com/VictoriaMetrics/metrics v1.15.2/go.mod h1:Z1tSfPfngDn12bTfZSCqArT3OPY
 github.com/VictoriaMetrics/metrics v1.18.0/go.mod h1:ArjwVz7WpgpegX/JpB0zpNF2h2232kErkEnzH1sxMmA=
 github.com/VictoriaMetrics/metrics v1.18.1 h1:OZ0+kTTto8oPfHnVAnTOoyl0XlRhRkoQrD2n2cOuRw0=
 github.com/VictoriaMetrics/metrics v1.18.1/go.mod h1:ArjwVz7WpgpegX/JpB0zpNF2h2232kErkEnzH1sxMmA=
+github.com/VictoriaMetrics/metrics v1.20.1 h1:XqQbRKYzwkmo0DKKDbvp6V7upUqErlqd0vXPoeBsEbU=
+github.com/VictoriaMetrics/metrics v1.20.1/go.mod h1:ArjwVz7WpgpegX/JpB0zpNF2h2232kErkEnzH1sxMmA=
 github.com/acomagu/bufpipe v1.0.3/go.mod h1:mxdxdup/WdsKVreO5GpW4+M/1CE2sMG4jeGJ2sYmHc4=
 github.com/aead/ecdh v0.2.0 h1:pYop54xVaq/CEREFEcukHRZfTdjiWvYIsZDXXrBapQQ=
 github.com/aead/ecdh v0.2.0/go.mod h1:a9HHtXuSo8J1Js1MwLQx2mBhkXMT6YwUmVVEY4tTB8U=
@@ -833,6 +835,8 @@ github.com/safing/portbase v0.14.5 h1:+8H+mQ7AFjA04M7UPq0490pj3/+nvJj3pEUP1PYTMY
 github.com/safing/portbase v0.14.5/go.mod h1:z9sRR/vqohAGdYSSx2B+o8tND4WVvcxPL6XBBtN3bDI=
 github.com/safing/portbase v0.14.6 h1:AKj1TVJmqOrjXXWcPetchQhHVBwfD3/QDvgmkUj2FxY=
 github.com/safing/portbase v0.14.6/go.mod h1:hC6KV9oZsD7yuAom42L5wgOEZ0yAjr2i1r2F5duBSA8=
+github.com/safing/portbase v0.15.0 h1:WwJpnERbNfzqDkEHt39l1TbBhnvf/oB2ZKj6fkaMSTM=
+github.com/safing/portbase v0.15.0/go.mod h1:BinbSUlbOdsHTBSE8+WkKbR1bXNMlsbhhAW12EBxsUo=
 github.com/safing/portmaster v0.7.3/go.mod h1:o//kZ8eE+5vT1V22mgnxHIAdlEz42sArsK5OF2Lf/+s=
 github.com/safing/portmaster v0.7.4/go.mod h1:Q93BWdF1oAL0oUMukshl8W1aPZhmrlTGi6tFTFc3pTw=
 github.com/safing/portmaster v0.7.6/go.mod h1:qOs9hQtvAzTVICRbwLg3vddqOaqJHeWBjWQ0C+TJ/Bw=
