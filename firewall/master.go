@@ -13,6 +13,7 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/detection/dga"
+	"github.com/safing/portmaster/intel/customlists"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
@@ -51,6 +52,7 @@ var defaultDeciders = []deciderFn{
 	checkConnectivityDomain,
 	checkBypassPrevention,
 	checkFilterLists,
+	checkCustomFilterList,
 	dropInbound,
 	checkDomainHeuristics,
 	checkAutoPermitRelated,
@@ -611,4 +613,50 @@ matchLoop:
 		reason = fmt.Sprintf("auto allowed: domain is related to process: %s is related to %s", domainElement, processElement)
 	}
 	return related, reason
+}
+
+func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
+	// block if the domain name appears in the custom filter list (check for subdomains if enabled)
+	if conn.Entity.Domain != "" {
+		if ok, match := customlists.LookupDomain(conn.Entity.Domain, p.FilterSubDomains()); ok {
+			conn.Deny(fmt.Sprintf("domain %s matches %s in custom filter list", conn.Entity.Domain, match), customlists.CfgOptionCustomListBlockingKey)
+			return true
+		}
+	}
+
+	// block if any of the CNAME appears in the custom filter list (check for subdomains if enabled)
+	if p.FilterCNAMEs() {
+		for _, cname := range conn.Entity.CNAME {
+			if ok, match := customlists.LookupDomain(cname, p.FilterSubDomains()); ok {
+				conn.Deny(fmt.Sprintf("domain alias (CNAME) %s matches %s in custom filter list", cname, match), customlists.CfgOptionCustomListBlockingKey)
+				return true
+			}
+		}
+	}
+
+	// block if ip addresses appears in the custom filter list
+	if conn.Entity.IP != nil {
+		if customlists.LookupIP(conn.Entity.IP) {
+			conn.Deny("IP address is in the custom filter list", customlists.CfgOptionCustomListBlockingKey)
+			return true
+		}
+	}
+
+	// block autonomous system by its number if it appears in the custom filter list
+	if conn.Entity.ASN != 0 {
+		if customlists.LookupASN(conn.Entity.ASN) {
+			conn.Deny("AS is in the custom filter list", customlists.CfgOptionCustomListBlockingKey)
+			return true
+		}
+	}
+
+	// block if the country appears in the custom filter list
+	if conn.Entity.Country != "" {
+		if customlists.LookupCountry(conn.Entity.Country) {
+			conn.Deny("country is in the custom filter list", customlists.CfgOptionCustomListBlockingKey)
+			return true
+		}
+	}
+
+	return false
 }
