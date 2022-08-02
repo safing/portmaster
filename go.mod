@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/maxminddb-golang v1.9.0
-	github.com/safing/portbase v0.14.6
+	github.com/safing/portbase v0.15.0
 	github.com/safing/spn v0.4.13
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.5.0
@@ -29,7 +29,7 @@ require (
 )
 
 require (
-	github.com/VictoriaMetrics/metrics v1.18.1 // indirect
+	github.com/VictoriaMetrics/metrics v1.20.1 // indirect
 	github.com/aead/ecdh v0.2.0 // indirect
 	github.com/aead/serpent v0.0.0-20160714141033-fba169763ea6 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
