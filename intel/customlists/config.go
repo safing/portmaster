@@ -5,9 +5,9 @@ import (
 )
 
 var (
-	// CfgOptionCustomListBlockingKey is the config key for the listen address..
-	CfgOptionCustomListBlockingKey        = "filter/customListBlocking"
-	cfgOptionCustomListBlockingOrder      = 35
+	// CfgOptionCustomListFileKey is the config key for custom filter list file.
+	CfgOptionCustomListFileKey            = "filter/customListFile"
+	cfgOptionCustomListFileOrder          = 35
 	cfgOptionCustomListCategoryAnnotation = "Filter Lists"
 )
 
@@ -31,7 +31,7 @@ Please note that the custom filter list is fully loaded into memory. This can ha
 	// Register a setting for the file path in the ui
 	err := config.Register(&config.Option{
 		Name:            "Custom Filter List",
-		Key:             CfgOptionCustomListBlockingKey,
+		Key:             CfgOptionCustomListFileKey,
 		Description:     "Specify the file path to a custom filter list, which will be automatically refreshed. Any connections matching a domain, IP address, Country or ASN in the file will be blocked.",
 		Help:            help,
 		OptType:         config.OptTypeString,
@@ -40,7 +40,7 @@ Please note that the custom filter list is fully loaded into memory. This can ha
 		DefaultValue:    "",
 		RequiresRestart: false,
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: cfgOptionCustomListBlockingOrder,
+			config.DisplayOrderAnnotation: cfgOptionCustomListFileOrder,
 			config.CategoryAnnotation:     cfgOptionCustomListCategoryAnnotation,
 			config.DisplayHintAnnotation:  config.DisplayHintFilePicker,
 		},
@@ -49,7 +49,7 @@ Please note that the custom filter list is fully loaded into memory. This can ha
 		return err
 	}
 
-	getFilePath = config.GetAsString(CfgOptionCustomListBlockingKey, "")
+	getFilePath = config.GetAsString(CfgOptionCustomListFileKey, "")
 
 	return nil
 }
