@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"sync"
 	"time"
 
 	"zombiezen.com/go/sqlite"
@@ -21,7 +20,7 @@ import (
 )
 
 // InMemory is the "file path" to open a new in-memory database.
-const InMemory = "file:inmemdb"
+const InMemory = "file:inmem.db"
 
 // Available connection types as their string representation.
 const (
@@ -49,9 +48,6 @@ type (
 		Schema *orm.TableSchema
 
 		pool *puddle.Pool[*sqlite.Conn]
-
-		l sync.Mutex
-		// conn *sqlite.Conn
 	}
 
 	// Conn is a network connection that is stored in a SQLite database and accepted
@@ -121,6 +117,7 @@ func New(path string) (*Database, error) {
 			sqlite.OpenWAL,
 			sqlite.OpenSharedCache,
 			sqlite.OpenMemory,
+			sqlite.OpenURI,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open sqlite at %s: %w", path, err)
@@ -197,9 +194,6 @@ func (db *Database) withConn(ctx context.Context, fn func(conn *sqlite.Conn) err
 // It uses orm.RunQuery() under the hood so please refer to the orm package for
 // more information about available options.
 func (db *Database) Execute(ctx context.Context, sql string, args ...orm.QueryOption) error {
-	db.l.Lock()
-	defer db.l.Unlock()
-
 	return db.withConn(ctx, func(conn *sqlite.Conn) error {
 		return orm.RunQuery(ctx, conn, sql, args...)
 	})
@@ -264,9 +258,6 @@ func (db *Database) Cleanup(ctx context.Context, threshold time.Time) (int, erro
 // as JSON to w.
 // Any error aborts dumping rows and is returned.
 func (db *Database) dumpTo(ctx context.Context, w io.Writer) error { //nolint:unused
-	db.l.Lock()
-	defer db.l.Unlock()
-
 	var conns []Conn
 	err := db.withConn(ctx, func(conn *sqlite.Conn) error {
 		return sqlitex.ExecuteTransient(conn, "SELECT * FROM connections", &sqlitex.ExecOptions{
@@ -309,9 +300,6 @@ func (db *Database) Save(ctx context.Context, conn Conn) error {
 		values[":"+key] = value
 		updateSets = append(updateSets, fmt.Sprintf("%s = :%s", key, key))
 	}
-
-	db.l.Lock()
-	defer db.l.Unlock()
 
 	// TODO(ppacher): make sure this one can be cached to speed up inserting
 	// and save some CPU cycles for the user
