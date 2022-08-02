@@ -619,7 +619,7 @@ func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profi
 	// block if the domain name appears in the custom filter list (check for subdomains if enabled)
 	if conn.Entity.Domain != "" {
 		if ok, match := customlists.LookupDomain(conn.Entity.Domain, p.FilterSubDomains()); ok {
-			conn.Deny(fmt.Sprintf("domain %s matches %s in custom filter list", conn.Entity.Domain, match), customlists.CfgOptionCustomListBlockingKey)
+			conn.Deny(fmt.Sprintf("domain %s matches %s in custom filter list", conn.Entity.Domain, match), customlists.CfgOptionCustomListFileKey)
 			return true
 		}
 	}
@@ -628,7 +628,7 @@ func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profi
 	if p.FilterCNAMEs() {
 		for _, cname := range conn.Entity.CNAME {
 			if ok, match := customlists.LookupDomain(cname, p.FilterSubDomains()); ok {
-				conn.Deny(fmt.Sprintf("domain alias (CNAME) %s matches %s in custom filter list", cname, match), customlists.CfgOptionCustomListBlockingKey)
+				conn.Deny(fmt.Sprintf("domain alias (CNAME) %s matches %s in custom filter list", cname, match), customlists.CfgOptionCustomListFileKey)
 				return true
 			}
 		}
@@ -637,7 +637,7 @@ func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profi
 	// block if ip addresses appears in the custom filter list
 	if conn.Entity.IP != nil {
 		if customlists.LookupIP(conn.Entity.IP) {
-			conn.Deny("IP address is in the custom filter list", customlists.CfgOptionCustomListBlockingKey)
+			conn.Deny("IP address is in the custom filter list", customlists.CfgOptionCustomListFileKey)
 			return true
 		}
 	}
@@ -645,7 +645,7 @@ func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profi
 	// block autonomous system by its number if it appears in the custom filter list
 	if conn.Entity.ASN != 0 {
 		if customlists.LookupASN(conn.Entity.ASN) {
-			conn.Deny("AS is in the custom filter list", customlists.CfgOptionCustomListBlockingKey)
+			conn.Deny("AS is in the custom filter list", customlists.CfgOptionCustomListFileKey)
 			return true
 		}
 	}
@@ -653,7 +653,7 @@ func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profi
 	// block if the country appears in the custom filter list
 	if conn.Entity.Country != "" {
 		if customlists.LookupCountry(conn.Entity.Country) {
-			conn.Deny("country is in the custom filter list", customlists.CfgOptionCustomListBlockingKey)
+			conn.Deny("country is in the custom filter list", customlists.CfgOptionCustomListFileKey)
 			return true
 		}
 	}

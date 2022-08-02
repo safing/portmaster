@@ -100,7 +100,7 @@ func parseFile(filePath string) error {
 
 	notifications.NotifyInfo(parseStatusNotificationID,
 		"Custom filter list loaded successfully.",
-		fmt.Sprintf(`Custom filter list loaded successfully from file %s - loaded:  
+		fmt.Sprintf(`Custom filter list loaded from file %s:  
 %d Domains  
 %d IPs  
 %d Autonomous Systems  
