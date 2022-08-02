@@ -204,7 +204,6 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		extraData["tunnel"] = conn.TunnelContext
 		exitNode := conn.TunnelContext.GetExitNodeID()
 		c.ExitNode = &exitNode
-		c.SPNUsed = true
 	}
 
 	if conn.DNSContext != nil {
