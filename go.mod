@@ -45,6 +45,7 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/jackc/puddle/v2 v2.0.0-beta.1 // indirect
 	github.com/josharian/native v1.0.0 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
