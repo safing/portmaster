@@ -41,14 +41,10 @@ type (
 	// It's use is tailored for persistence and querying of network.Connection.
 	// Access to the underlying SQLite database is synchronized.
 	//
-	// TODO(ppacher): somehow I'm receiving SIGBUS or SIGSEGV when no doing
-	// synchronization in *Database. Check what exactly sqlite.OpenFullMutex, etc..
-	// are actually supposed to do.
-	//
 	Database struct {
 		Schema *orm.TableSchema
 
-		pool *puddle.Pool[*sqlite.Conn]
+		readConnPool *puddle.Pool[*sqlite.Conn]
 
 		l         sync.Mutex
 		writeConn *sqlite.Conn
@@ -105,11 +101,12 @@ type (
 	}
 )
 
-// New opens a new database at path. The database is opened with Full-Mutex, Write-Ahead-Log (WAL)
-// and Shared-Cache enabled.
+// New opens a new in-memory database named path.
 //
-// TODO(ppacher): check which sqlite "open flags" provide the best performance and don't cause
-// SIGBUS/SIGSEGV when used with out a dedicated mutex in *Database.
+// The returned Database used connection pooling for read-only connections
+// (see Execute). To perform database writes use either Save() or ExecuteWrite().
+// Note that write connections are serialized by the Database object before being
+// handed over to SQLite.
 //
 func New(path string) (*Database, error) {
 	constructor := func(ctx context.Context) (*sqlite.Conn, error) {
@@ -129,7 +126,9 @@ func New(path string) (*Database, error) {
 	}
 
 	destructor := func(resource *sqlite.Conn) {
-		resource.Close()
+		if err := resource.Close(); err != nil {
+			log.Errorf("failed to close pooled SQlite database connection: %s", err)
+		}
 	}
 
 	pool := puddle.NewPool(constructor, destructor, 10)
@@ -154,9 +153,9 @@ func New(path string) (*Database, error) {
 	}
 
 	return &Database{
-		pool:      pool,
-		Schema:    schema,
-		writeConn: writeConn,
+		readConnPool: pool,
+		Schema:       schema,
+		writeConn:    writeConn,
 	}, nil
 }
 
@@ -186,18 +185,19 @@ func (db *Database) ApplyMigrations() error {
 	// get the create-table SQL statement from the inferred schema
 	sql := db.Schema.CreateStatement(true)
 
-	return db.withConn(context.Background(), func(conn *sqlite.Conn) error {
-		// execute the SQL
-		if err := sqlitex.ExecuteTransient(conn, sql, nil); err != nil {
-			return fmt.Errorf("failed to create schema: %w", err)
-		}
+	db.l.Lock()
+	defer db.l.Unlock()
 
-		return nil
-	})
+	// execute the SQL
+	if err := sqlitex.ExecuteTransient(db.writeConn, sql, nil); err != nil {
+		return fmt.Errorf("failed to create schema: %w", err)
+	}
+
+	return nil
 }
 
 func (db *Database) withConn(ctx context.Context, fn func(conn *sqlite.Conn) error) error {
-	res, err := db.pool.Acquire(ctx)
+	res, err := db.readConnPool.Acquire(ctx)
 	if err != nil {
 		return err
 	}
@@ -206,7 +206,19 @@ func (db *Database) withConn(ctx context.Context, fn func(conn *sqlite.Conn) err
 	return fn(res.Value())
 }
 
-// Execute executes a custom SQL query against the SQLite database used by db.
+// ExecuteWrite executes a custom SQL query using a writable connection against the SQLite
+// database used by db.
+// It uses orm.RunQuery() under the hood so please refer to the orm package for
+// more information about available options.
+func (db *Database) ExecuteWrite(ctx context.Context, sql string, args ...orm.QueryOption) error {
+	db.l.Lock()
+	defer db.l.Unlock()
+
+	return orm.RunQuery(ctx, db.writeConn, sql, args...)
+}
+
+// Execute executes a custom SQL query using a read-only connection against the SQLite
+// database used by db.
 // It uses orm.RunQuery() under the hood so please refer to the orm package for
 // more information about available options.
 func (db *Database) Execute(ctx context.Context, sql string, args ...orm.QueryOption) error {
@@ -262,7 +274,7 @@ func (db *Database) Cleanup(ctx context.Context, threshold time.Time) (int, erro
 		return 0, fmt.Errorf("unexpected number of rows, expected 1 got %d", len(result))
 	}
 
-	err := db.Execute(ctx, sql, args)
+	err := db.ExecuteWrite(ctx, sql, args)
 	if err != nil {
 		return 0, err
 	}
