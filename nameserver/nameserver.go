@@ -231,7 +231,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	// the resolving as it wishes.
 	if responder, ok := conn.Reason.Context.(nsutil.Responder); ok {
 		tracer.Infof("nameserver: handing over request for %s to special filter responder: %s", q.ID(), conn.Reason.Msg)
-		return reply(responder)
+		return reply(responder, conn)
 	}
 
 	// Check if there is a Verdict to act upon.
