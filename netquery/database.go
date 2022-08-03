@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -325,7 +326,16 @@ func (db *Database) Save(ctx context.Context, conn Conn) error {
 	values := make(map[string]interface{}, len(connMap))
 	updateSets := make([]string, 0, len(connMap))
 
-	for key, value := range connMap {
+	// sort keys so we get a stable SQLite query that can be better cached.
+	keys := make([]string, 0, len(connMap))
+	for key := range connMap {
+		keys = append(keys, key)
+	}
+	sort.Sort(sort.StringSlice(keys))
+
+	for _, key := range keys {
+		value := connMap[key]
+
 		columns = append(columns, key)
 		placeholders = append(placeholders, ":"+key)
 		values[":"+key] = value
