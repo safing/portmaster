@@ -51,18 +51,19 @@ func initUpgrader() error {
 }
 
 func upgrader(_ context.Context, _ interface{}) error {
-	// like a lock, but discard additional runs
+	// Lock runs, but discard additional runs.
 	if !upgraderActive.SetToIf(false, true) {
 		return nil
 	}
 	defer upgraderActive.SetTo(false)
 
-	// upgrade portmaster-start
+	// Upgrade portmaster-start.
 	err := upgradePortmasterStart()
 	if err != nil {
 		log.Warningf("updates: failed to upgrade portmaster-start: %s", err)
 	}
 
+	// Upgrade based on binary.
 	binBaseName := strings.Split(filepath.Base(os.Args[0]), "_")[0]
 	switch binBaseName {
 	case "portmaster-core":
@@ -149,36 +150,45 @@ func upgradeCoreNotifyActionHandler(_ context.Context, n *notifications.Notifica
 }
 
 func upgradeHub() error {
-	if hubUpgradeStarted {
-		return nil
-	}
 	if spnHubUpdate != nil && !spnHubUpdate.UpgradeAvailable() {
 		return nil
 	}
 
-	// make identifier
+	// Make identifier for getting file from updater.
 	identifier := "hub/spn-hub" // identifier, use forward slash!
 	if onWindows {
 		identifier += exeExt
 	}
 
-	// get newest spn-hub
+	// Get newest spn-hub file.
 	newFile, err := GetPlatformFile(identifier)
 	if err != nil {
 		return err
 	}
 	spnHubUpdate = newFile
 
-	// check for new version
+	// Check if the new version is different.
 	if info.GetInfo().Version != spnHubUpdate.Version() {
-		// get random delay with up to three hours
+		// Get random delay with up to three hours.
 		delayMinutes, err := rng.Number(3 * 60)
 		if err != nil {
 			return err
 		}
 
-		DelayedRestart(time.Duration(delayMinutes) * time.Minute)
-		hubUpgradeStarted = true
+		// Delay restart for at least one hour for preparations.
+		DelayedRestart(time.Duration(delayMinutes+60) * time.Minute)
+
+		// Increase update checks in order to detect aborts better.
+		if !disableTaskSchedule {
+			updateTask.Repeat(10 * time.Minute)
+		}
+	} else {
+		AbortRestart()
+
+		// Set update task schedule back to normal.
+		if !disableTaskSchedule {
+			updateTask.Repeat(updateTaskRepeatDuration)
+		}
 	}
 
 	return nil

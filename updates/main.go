@@ -65,6 +65,8 @@ const (
 
 	updateFailed  = "updates:failed"
 	updateSuccess = "updates:success"
+
+	updateTaskRepeatDuration = 1 * time.Hour
 )
 
 func init() {
@@ -157,7 +159,7 @@ func start() error {
 
 	if !disableTaskSchedule {
 		updateTask.
-			Repeat(1 * time.Hour).
+			Repeat(updateTaskRepeatDuration).
 			MaxDelay(30 * time.Minute)
 	}
 
