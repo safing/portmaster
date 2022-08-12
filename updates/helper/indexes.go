@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/safing/jess/filesig"
 	"github.com/safing/portbase/updater"
 )
 
@@ -103,9 +104,17 @@ func indexExists(registry *updater.ResourceRegistry, indexPath string) bool {
 }
 
 func deleteIndex(registry *updater.ResourceRegistry, indexPath string) error {
+	// Remove index itself.
 	err := os.Remove(filepath.Join(registry.StorageDir().Path, indexPath))
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
+
+	// Remove any accompanying signature.
+	err = os.Remove(filepath.Join(registry.StorageDir().Path, indexPath+filesig.Extension))
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
 	return nil
 }

@@ -34,6 +34,10 @@ var (
 		UpdateURLs: []string{
 			"https://updates.safing.io",
 		},
+		Verification: helper.VerificationConfig,
+		// FIXME: Add:
+		// integrity check: pretty much the same as "jess verify"
+		// integrity fix: same as check, but delete broken stuff and download again
 		DevMode: false,
 		Online:  true, // is disabled later based on command
 	}
