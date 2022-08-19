@@ -2,6 +2,9 @@ package interception
 
 import (
 	"flag"
+	"fmt"
+
+	ct "github.com/florianl/go-conntrack"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network/packet"
@@ -48,4 +51,25 @@ func Stop() error {
 	close(metrics.done)
 
 	return stop()
+}
+
+func CloseAllConnections() error {
+	nfct, err := ct.Open(&ct.Config{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = nfct.Close() }()
+
+	connections, err := nfct.Dump(ct.Conntrack, ct.IPv4)
+	if err != nil {
+		return err
+	}
+	log.Criticalf("Number of connections: %d", len(connections))
+	for _, connection := range connections {
+		fmt.Printf("[%2d] %s - %s\n", connection.Origin.Proto.Number, connection.Origin.Src, connection.Origin.Dst)
+		err := nfct.Delete(ct.Conntrack, ct.IPv4, connection)
+		log.Errorf("Error deleting connection %q", err)
+	}
+
+	return nil
 }

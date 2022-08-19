@@ -77,7 +77,7 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 		}
 	}
 
-	// Check if tunneling is enabeld for this app at all.
+	// Check if tunneling is enabled for this app at all.
 	if !layeredProfile.UseSPN() {
 		return
 	}
@@ -101,7 +101,7 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 	// Check if ready.
 	if !captain.ClientReady() {
 		// Block connection as SPN is not ready yet.
-		log.Tracer(pkt.Ctx()).Trace("SPN not ready for tunneling")
+		//log.Tracer(pkt.Ctx()).Trace("SPN not ready for tunneling")
 		conn.Failed("SPN not ready for tunneling", "")
 		return
 	}
@@ -152,10 +152,10 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 	// Queue request in sluice.
 	err = sluice.AwaitRequest(conn, crew.HandleSluiceRequest)
 	if err != nil {
-		log.Tracer(pkt.Ctx()).Warningf("failed to request tunneling: %s", err)
+		//log.Tracer(pkt.Ctx()).Warningf("failed to request tunneling: %s", err)
 		conn.Failed("failed to request tunneling", "")
 	} else {
-		log.Tracer(pkt.Ctx()).Trace("filter: tunneling requested")
+		//log.Tracer(pkt.Ctx()).Trace("filter: tunneling requested")
 		conn.Verdict = network.VerdictRerouteToTunnel
 		conn.Tunneled = true
 	}

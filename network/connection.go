@@ -439,6 +439,17 @@ func GetConnection(id string) (*Connection, bool) {
 	return conns.get(id)
 }
 
+// GetAllIDs Get all connection IDs.
+func GetAllIDs() []string {
+	return append(conns.keys(), dnsConns.keys()...)
+}
+
+// ClearConnections Clear all connections.
+func ClearConnections() {
+	dnsConns = newConnectionStore()
+	conns = newConnectionStore()
+}
+
 // SetLocalIP sets the local IP address together with its network scope. The
 // connection is not locked for this.
 func (conn *Connection) SetLocalIP(ip net.IP) {
@@ -506,6 +517,19 @@ func (conn *Connection) FailedWithContext(reason, reasonOptionKey string, ctx in
 // Failed is like FailedWithContext but only accepts a string.
 func (conn *Connection) Failed(reason, reasonOptionKey string) {
 	conn.FailedWithContext(reason, reasonOptionKey, nil)
+}
+
+func (conn *Connection) Reset(reason, reasonOptionKey string) {
+	conn.Verdict = VerdictUndecided
+	conn.Reason.Msg = reason
+	conn.Reason.Context = nil
+
+	conn.Reason.OptionKey = ""
+	conn.Reason.Profile = ""
+	if reasonOptionKey != "" && conn.Process() != nil {
+		conn.Reason.OptionKey = reasonOptionKey
+		conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
+	}
 }
 
 // SetVerdict sets a new verdict for the connection, making sure it does not interfere with previous verdicts.

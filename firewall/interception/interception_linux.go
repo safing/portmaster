@@ -1,6 +1,8 @@
 package interception
 
-import "github.com/safing/portmaster/network/packet"
+import (
+	"github.com/safing/portmaster/network/packet"
+)
 
 // start starts the interception.
 func start(ch chan packet.Packet) error {

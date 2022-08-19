@@ -23,6 +23,7 @@ import (
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/spn/captain"
 )
 
 var (
@@ -48,6 +49,10 @@ func init() {
 	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network", "notifications")
 
 	network.SetDefaultFirewallHandler(defaultHandler)
+	captain.PreConnect = func(ctx context.Context) {
+		interception.CloseAllConnections()
+	}
+	captain.ResetConnections = resetAllConnectionsVerdict
 }
 
 func interceptionPrep() error {
@@ -116,6 +121,8 @@ func handlePacket(ctx context.Context, pkt packet.Packet) {
 		return
 	}
 
+	//log.Errorf("%s -> %s", pkt, conn.Verdict)
+
 	// handle packet
 	conn.HandlePacket(pkt)
 }
@@ -161,7 +168,37 @@ func getConnection(pkt packet.Packet) (*network.Connection, error) {
 	return conn, nil
 }
 
-// fastTrackedPermit quickly permits certain network criticial or internal connections.
+func resetAllConnectionsVerdict(ctx context.Context) {
+	// interception.CloseAllConnections()
+	network.ClearConnections()
+	log.Critical("Clearing connections")
+	// interception.CloseAllConnections()
+	// ids := network.GetAllIDs()
+	// for _, id := range ids {
+	// 	connI, err, _ := getConnectionSingleInflight.Do(id, func() (interface{}, error) {
+	// 		// First, check for an existing connection.
+	// 		conn, ok := network.GetConnection(id)
+	// 		if ok {
+	// 			return conn, nil
+	// 		}
+
+	// 		return nil, nil
+	// 	})
+
+	// 	if err != nil || connI == nil {
+	// 		log.Errorf("Null connection with id %s", id)
+	// 		continue
+	// 	}
+
+	// 	conn := connI.(*network.Connection) //nolint:forcetypeassert // Can only be a *network.Connection.
+	// 	log.Errorf("Resetting connection for %s:%d", conn.LocalIP, conn.Entity.Port)
+	// 	// conn.Reset("Initialling SPN", "")
+	// 	checkTunneling(ctx, conn, nil)
+	// 	DecideOnConnection(ctx, conn, nil)
+	// }
+}
+
+// fastTrackedPermit quickly permits certain network critical or internal connections.
 func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 	meta := pkt.Info()
 
