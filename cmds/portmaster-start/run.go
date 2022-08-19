@@ -129,7 +129,7 @@ func getExecArgs(opts *Options, cmdArgs []string) []string {
 			// required by Electron
 			args = append(args,
 				[]string{
-					"--enable-features=UseOzonePlatform",
+					"--enable-features=UseOzonePlatform,WaylandWindowDecorations",
 					"--ozone-platform=wayland",
 				}...,
 			)
