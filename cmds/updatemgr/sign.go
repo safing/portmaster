@@ -1,25 +1,18 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/safing/jess"
 	"github.com/safing/jess/filesig"
 	"github.com/safing/jess/truststores"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/updater"
 )
-
-const letterFileExtension = ".letter"
 
 func init() {
 	rootCmd.AddCommand(signCmd)
@@ -33,6 +26,7 @@ func init() {
 	signCmd.PersistentFlags().StringVarP(&trustStoreKeyring, "tskeyring", "", "",
 		"specify a truststore keyring namespace (default loaded from JESS_TS_KEYRING env variable) - lower priority than tsdir",
 	)
+	// FIXME: Add silent flag to suppress verification checks.
 	signCmd.AddCommand(signIndexCmd)
 }
 
@@ -68,7 +62,7 @@ func sign(cmd *cobra.Command, args []string) error {
 
 	// Get all resources and iterate over all versions.
 	export := registry.Export()
-	var fails int
+	var verified, signed, fails int
 	for _, rv := range export {
 		for _, version := range rv.Versions {
 			file := version.GetFile()
@@ -89,6 +83,7 @@ func sign(cmd *cobra.Command, args []string) error {
 					fails++
 				} else {
 					fmt.Printf("[ OK ] valid signature for %s: signed by %s\n", file.Path(), getSignedByMany(fileData, trustStore))
+					verified++
 				}
 
 			case os.IsNotExist(err):
@@ -105,6 +100,7 @@ func sign(cmd *cobra.Command, args []string) error {
 					fails++
 				} else {
 					fmt.Printf("[SIGN] signed %s with %s\n", file.Path(), getSignedBySingle(fileData, trustStore))
+					signed++
 				}
 
 			default:
@@ -122,12 +118,6 @@ func sign(cmd *cobra.Command, args []string) error {
 }
 
 func signIndex(cmd *cobra.Command, args []string) error {
-	// FIXME:
-	// Do not sign embedded, but also as a separate file.
-	// Slightly more complex, but it makes all the other handling easier.
-
-	indexFilePath := args[0]
-
 	// Setup trust store.
 	trustStore, err := setupTrustStore()
 	if err != nil {
@@ -140,54 +130,69 @@ func signIndex(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Read index file.
-	indexData, err := ioutil.ReadFile(indexFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to read index file %s: %w", indexFilePath, err)
+	// Resolve globs.
+	files := make([]string, 0, len(args))
+	for _, arg := range args {
+		matches, err := filepath.Glob(arg)
+		if err != nil {
+			return err
+		}
+		files = append(files, matches...)
 	}
 
-	// Load index.
-	resourceVersions := make(map[string]string)
-	err = json.Unmarshal(indexData, &resourceVersions)
-	if err != nil {
-		return fmt.Errorf("failed to parse index file: %w", err)
+	// Go through all files.
+	var fails int
+	for _, file := range files {
+		sigFile := file + filesig.Extension
+
+		// Ignore matches for the signatures.
+		if strings.HasSuffix(file, filesig.Extension) {
+			continue
+		}
+
+		// Check if there is an existing signature.
+		_, err := os.Stat(sigFile)
+		switch {
+		case err == nil || os.IsExist(err):
+			// If the file exists, just verify.
+			fileData, err := filesig.VerifyFile(
+				file,
+				sigFile,
+				nil,
+				trustStore,
+			)
+			if err == nil {
+				fmt.Printf("[ OK ] valid signature for %s: signed by %s\n", file, getSignedByMany(fileData, trustStore))
+				continue
+			}
+
+			fallthrough
+		case os.IsNotExist(err):
+			// Attempt to sign file.
+			fileData, err := filesig.SignFile(
+				file,
+				sigFile,
+				nil,
+				signingEnvelope,
+				trustStore,
+			)
+			if err != nil {
+				fmt.Printf("[FAIL] failed to sign %s: %s\n", file, err)
+				fails++
+			} else {
+				fmt.Printf("[SIGN] signed %s with %s\n", file, getSignedBySingle(fileData, trustStore))
+			}
+
+		default:
+			// File access error.
+			fmt.Printf("[FAIL] failed to access %s: %s\n", sigFile, err)
+			fails++
+		}
 	}
 
-	// Create signed index file structure.
-	index := updater.IndexFile{
-		Channel:   strings.TrimSuffix(filepath.Base(indexFilePath), filepath.Ext(indexFilePath)),
-		Published: time.Now(),
-		Expires:   time.Now().Add(3 * 31 * 24 * time.Hour), // Expires in 3 Months.
-		Versions:  resourceVersions,
+	if fails > 0 {
+		return fmt.Errorf("signing or checking failed on %d files", fails)
 	}
-
-	// Serialize index.
-	indexData, err = dsd.Dump(index, dsd.CBOR)
-	if err != nil {
-		return fmt.Errorf("failed to serialize index structure: %w", err)
-	}
-
-	// Sign index.
-	session, err := signingEnvelope.Correspondence(trustStore)
-	if err != nil {
-		return fmt.Errorf("failed to prepare signing: %w", err)
-	}
-	signedIndex, err := session.Close(indexData)
-	if err != nil {
-		return fmt.Errorf("failed to sign: %w", err)
-	}
-
-	// Write new file.
-	signedIndexData, err := signedIndex.ToDSD(dsd.CBOR)
-	if err != nil {
-		return fmt.Errorf("failed to serialize signed index: %w", err)
-	}
-	signedIndexFilePath := strings.TrimSuffix(indexFilePath, filepath.Ext(indexFilePath)) + letterFileExtension
-	err = ioutil.WriteFile(signedIndexFilePath, signedIndexData, 0o644) //nolint:gosec // Permission is ok.
-	if err != nil {
-		return fmt.Errorf("failed to write signed index to %s: %w", signedIndexFilePath, err)
-	}
-
 	return nil
 }
 
