@@ -4,81 +4,10 @@ package safing.portmaster.plugin.proto;
 
 option go_package = "./proto";
 
-enum Verdict {
-    VERDICT_UNDECIDED = 0;
-    VERDICT_UNDETERMINABLE = 1;
-    VERDICT_ACCEPT = 2;
-    VERDICT_BLOCK = 3;
-    VERDICT_DROP = 4;
-    VERDICT_REROUTE_TO_NS = 5;
-    VERDICT_REROUTE_TO_TUNNEL = 6;
-    VERDICT_FAILED = 7;
-}
+import "network.proto";
 
-enum ConnectionType {
-    CONNECTION_TYPE_UNKNOWN = 0;
-    CONNECTION_TYPE_IP = 1;
-    CONNECTION_TYPE_DNS = 2;
-}
-
-enum IPVersion {
-    IP_VERSION_UNKNOWN = 0;
-    IP_VERSION_4 = 4;
-    IP_VERSION_6 = 6;
-}
-
-enum IPScope {
-    IP_SCOPE_UNKNOWN = 0;
-    IP_SCOPE_HOST_LOCAL = 1;
-    IP_SCOPE_LINK_LOCAL = 2;
-    IP_SCOPE_SITE_LOCAL = 3;
-    IP_SCOPE_GLOBAL = 4;
-    IP_SCOPE_LOCAL_MULTICAST = 5;
-    IP_SCOPE_GLOBAL_MULTICAST = 6;
-}
-
-message Coordinates {
-    int32 accuracy_radius = 1;
-    float latitude = 2;
-    float longitude = 3;
-}
-
-message IntelEntity {
-    int32 protocol = 1;
-    int32 port = 2;
-    string domain = 3;
-    string reverse_domain = 4;
-    repeated string cnames = 5;
-    string ip = 6;
-    IPScope scope = 7;
-    string country = 8;
-    Coordinates coordinates = 9;
-    int32 asn = 10;
-    string as_owner = 11;
-}
-
-message ProcessContext {
-    string name = 1;
-    string profile = 2;
-    string binary_path = 3;
-    string command_line = 4;
-    int64 process_id = 5;
-    string source = 6;
-}
-
-message Connection {
-    string id = 1;
-    ConnectionType type = 2;
-    bool external = 3;
-    IPVersion ip_version = 4;
-    bool inbound = 5;
-    int32 ip_protocol = 6;
-    string local_ip = 7;
-    int32 local_port = 8;
-    IntelEntity entity = 9;
-    uint64 started = 10;
-    bool tunneled = 11;
-    ProcessContext process = 12;
+service DeciderService {
+    rpc DecideOnConnection(DecideOnConnectionRequest) returns (DecideOnConnectionResponse) {};
 }
 
 message DecideOnConnectionRequest {
@@ -88,8 +17,4 @@ message DecideOnConnectionRequest {
 message DecideOnConnectionResponse {
     Verdict verdict = 1;
     string reason = 2;
-}
-
-service DeciderService {
-    rpc DecideOnConnection(DecideOnConnectionRequest) returns (DecideOnConnectionResponse) {};
 }

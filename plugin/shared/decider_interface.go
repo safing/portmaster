@@ -8,20 +8,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Handshake is a common handshake that is shared by plugin and host.
-var Handshake = plugin.HandshakeConfig{
-	ProtocolVersion:  1,
-	MagicCookieKey:   "PORMASTER_PLUGIN",
-	MagicCookieValue: "hello",
-}
-
-// PluginMap is the map of plugins we can dispense.
-var PluginMap = map[string]plugin.Plugin{
-	"decider": &DeciderPlugin{},
-}
-
 type Decider interface {
-	DecideOnConnection() error
+	DecideOnConnection(ctx context.Context, conn *proto.Connection) (proto.Verdict, string, error)
 }
 
 type DeciderPlugin struct {
@@ -32,15 +20,16 @@ type DeciderPlugin struct {
 }
 
 func (p *DeciderPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
-	proto.RegisterDeciderServiceServer(s, &GRPCServer{
+	proto.RegisterDeciderServiceServer(s, &GRPCDeciderServer{
 		Impl:   p.Impl,
 		broker: broker,
 	})
+
 	return nil
 }
 
 func (p *DeciderPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
-	return &GRPCClient{
+	return &GRPCDeciderClient{
 		client: proto.NewDeciderServiceClient(c),
 		broker: broker,
 	}, nil

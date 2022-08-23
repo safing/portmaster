@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package safing.portmaster.plugin.proto;
+
+option go_package = "./proto";
+
+service BaseService {
+    rpc Configure(ConfigureRequest) returns (ConfigureResponse) {};
+}
+
+message ConfigureRequest {
+    // The directory of the portmaster installation.
+    string base_directory = 1;
+
+    // The name of the plugin as specified by the user.
+    string plugin_name = 2;
+
+    uint32 config_service = 3;
+}
+
+message ConfigureResponse {
+
+}

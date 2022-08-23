@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package safing.portmaster.plugin.proto;
+
+option go_package = "./proto";
+
+message Value {
+    int64 int = 1;
+    bool bool = 2;
+    float float = 3;
+    string string = 4;
+    repeated string string_array = 5;
+}
+
+enum OptionType {
+    OPTION_TYPE_ANY = 0;
+    OPTION_TYPE_STRING = 1;
+    OPTION_TYPE_STRING_ARRAY = 2;
+    OPTION_TYPE_INT = 3;
+    OPTION_TYPE_BOOL = 4;
+}
+
+message Option {
+    string name = 1;
+    string help = 2;
+    string description = 3;
+    string key = 4;
+    Value default = 5;
+    OptionType option_type = 6;
+    map<string, Value> annotations = 7;
+}
+
+service ConfigService {
+    rpc RegisterOption(RegisterRequest) returns (RegisterResponse) {}
+    rpc GetValue(GetValueRequest) returns (GetValueResponse) {}
+    rpc WatchValues(WatchChangesRequest) returns (stream WatchChangesResponse) {}
+}
+
+message RegisterRequest {
+    Option option = 1;
+}
+
+message RegisterResponse {}
+
+message GetValueRequest {
+    string key = 1;
+}
+
+message GetValueResponse {
+    Value value = 1;
+}
+
+message WatchChangesRequest {
+    repeated string keys = 1;
+}
+
+message WatchChangesResponse {
+    string key = 1;
+    Value value = 2;
+}
