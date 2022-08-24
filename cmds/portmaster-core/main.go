@@ -4,6 +4,7 @@ import ( //nolint:gci,nolintlint
 	"os"
 
 	"github.com/safing/portbase/info"
+	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/metrics"
 	"github.com/safing/portbase/run"
 	"github.com/safing/spn/conf"
@@ -20,6 +21,9 @@ import ( //nolint:gci,nolintlint
 func main() {
 	// set information
 	info.Set("Portmaster", "0.9.3", "AGPLv3", true)
+
+	// Set default log level.
+	log.SetLogLevel(log.WarningLevel)
 
 	// Configure metrics.
 	_ = metrics.SetNamespace("portmaster")

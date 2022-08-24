@@ -346,7 +346,7 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 	cfgStringArrayOptions[CfgOptionServiceEndpointsKey] = cfgOptionServiceEndpoints
 
 	// Filter list IDs
-	defaultFilterListsValue := []string{"TRAC", "MAL", "BAD"}
+	defaultFilterListsValue := []string{"TRAC", "MAL", "BAD", "UNBREAK"}
 	err = config.Register(&config.Option{
 		Name:         "Filter Lists",
 		Key:          CfgOptionFilterListsKey,
