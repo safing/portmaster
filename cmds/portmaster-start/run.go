@@ -46,6 +46,7 @@ type Options struct {
 	AllowDownload     bool // allow download of component if it is not yet available
 	AllowHidingWindow bool // allow hiding the window of the subprocess
 	NoOutput          bool // do not use stdout/err if logging to file is available (did not fail to open log file)
+	RestartOnFail     bool // Try restarting automatically, if the started component fails.
 }
 
 func init() {
@@ -56,6 +57,7 @@ func init() {
 			AllowDownload:     true,
 			AllowHidingWindow: true,
 			PIDFile:           true,
+			RestartOnFail:     true,
 		},
 		{
 			Name:              "Portmaster App",
@@ -77,6 +79,7 @@ func init() {
 			AllowDownload:     true,
 			AllowHidingWindow: true,
 			PIDFile:           true,
+			RestartOnFail:     true,
 		},
 	})
 }
@@ -129,7 +132,7 @@ func getExecArgs(opts *Options, cmdArgs []string) []string {
 			// required by Electron
 			args = append(args,
 				[]string{
-					"--enable-features=UseOzonePlatform",
+					"--enable-features=UseOzonePlatform,WaylandWindowDecorations",
 					"--ozone-platform=wayland",
 				}...,
 			)
@@ -213,7 +216,7 @@ func runAndRestart(opts *Options, args []string) error {
 			log.Printf("%s exited without error", opts.Identifier)
 		}
 
-		if !tryAgain {
+		if !opts.RestartOnFail || !tryAgain {
 			return err
 		}
 
