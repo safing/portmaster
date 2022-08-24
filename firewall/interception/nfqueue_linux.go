@@ -65,7 +65,7 @@ func init() {
 		// as the rejection ICMP packet will have the same mark. Blocked ICMP
 		// packets will always result in a drop within the Portmaster.
 		"filter PORTMASTER-FILTER -m mark --mark 1701 -p icmp -j RETURN",
-		"filter PORTMASTER-FILTER -m mark --mark 1701 -j REJECT --reject-with icmp-host-prohibited",
+		"filter PORTMASTER-FILTER -m mark --mark 1701 -j REJECT --reject-with icmp-admin-prohibited",
 		"filter PORTMASTER-FILTER -m mark --mark 1702 -j DROP",
 		"filter PORTMASTER-FILTER -j CONNMARK --save-mark",
 		"filter PORTMASTER-FILTER -m mark --mark 1710 -j RETURN",
@@ -73,7 +73,7 @@ func init() {
 		// as the rejection ICMP packet will have the same mark. Blocked ICMP
 		// packets will always result in a drop within the Portmaster.
 		"filter PORTMASTER-FILTER -m mark --mark 1711 -p icmp -j RETURN",
-		"filter PORTMASTER-FILTER -m mark --mark 1711 -j REJECT --reject-with icmp-host-prohibited",
+		"filter PORTMASTER-FILTER -m mark --mark 1711 -j REJECT --reject-with icmp-admin-prohibited",
 		"filter PORTMASTER-FILTER -m mark --mark 1712 -j DROP",
 		"filter PORTMASTER-FILTER -m mark --mark 1717 -j RETURN",
 
