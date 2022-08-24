@@ -15,7 +15,7 @@ require (
 	github.com/jackc/puddle/v2 v2.0.0-beta.1
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/maxminddb-golang v1.10.0
-	github.com/safing/portbase v0.15.0
+	github.com/safing/portbase v0.15.1
 	github.com/safing/spn v0.4.15
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.5.0
@@ -23,14 +23,14 @@ require (
 	github.com/tannerryan/ring v1.1.2
 	github.com/tevino/abool v1.2.0
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
-	golang.org/x/net v0.0.0-20220728211354-c7608f3a8462
-	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
-	golang.org/x/sys v0.0.0-20220804214406-8e32c043e418
+	golang.org/x/net v0.0.0-20220822230855-b0a4917ee28c
+	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
+	golang.org/x/sys v0.0.0-20220823224334-20c2bfdbfe24
 	zombiezen.com/go/sqlite v0.10.1
 )
 
 require (
-	github.com/VictoriaMetrics/metrics v1.20.1 // indirect
+	github.com/VictoriaMetrics/metrics v1.22.2 // indirect
 	github.com/aead/ecdh v0.2.0 // indirect
 	github.com/aead/serpent v0.0.0-20160714141033-fba169763ea6 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
@@ -45,10 +45,10 @@ require (
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/josharian/native v1.0.0 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mdlayher/netlink v1.6.0 // indirect
 	github.com/mdlayher/socket v0.2.3 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
@@ -63,10 +63,10 @@ require (
 	github.com/seehuhn/fortuna v1.0.1 // indirect
 	github.com/seehuhn/sha256d v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tidwall/gjson v1.14.1 // indirect
+	github.com/tidwall/gjson v1.14.3 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
-	github.com/tidwall/sjson v1.2.4 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.5.0 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
@@ -76,13 +76,13 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
-	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
+	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/tools v0.1.12 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/libc v1.16.19 // indirect
-	modernc.org/mathutil v1.4.1 // indirect
-	modernc.org/memory v1.1.1 // indirect
-	modernc.org/sqlite v1.18.0 // indirect
+	modernc.org/libc v1.17.0 // indirect
+	modernc.org/mathutil v1.5.0 // indirect
+	modernc.org/memory v1.2.0 // indirect
+	modernc.org/sqlite v1.18.1 // indirect
 )
