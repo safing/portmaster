@@ -853,6 +853,7 @@ github.com/safing/portmaster v0.8.9-interdep/go.mod h1:1hK7QpvFVlb/sglkc3SKj+RXM
 github.com/safing/portmaster v0.8.9/go.mod h1:tv0rxO76hrpBLdArN7YTypOaseH6zgQ2gLI2zCknk9Q=
 github.com/safing/portmaster v0.8.14-interdep/go.mod h1:HIkaE8wCXr8ULyZSWFkQNNY9obpMufxizXZugnjHLK0=
 github.com/safing/portmaster v0.9.1-interdep/go.mod h1:qcTLo92L3EDd98watsPPCuGsazSQDCQoNPTHtO49Zhg=
+github.com/safing/portmaster v0.9.3/go.mod h1:md9H5RPhcMFtET738t5bDdyjHBlIFkoKu1qFfrCEq5I=
 github.com/safing/spn v0.3.4/go.mod h1:TfzNsZCbnlWv0UFDILFOUSudVKJZlnBVoR1fDXrjOK0=
 github.com/safing/spn v0.3.5/go.mod h1:jHkFF2Yu1fnjFu4KXjVA+iagMr/z4eB4p3jiwikvKj8=
 github.com/safing/spn v0.3.6/go.mod h1:RSeFb/h5Wt3yDVezXj3lhXJ/Iwd7FbtsGf5E+p5J2YQ=
@@ -872,8 +873,9 @@ github.com/safing/spn v0.4.6/go.mod h1:AmZ+rore+6DQp0GSchIAXPn8ij0Knyw7uy4PbMLlj
 github.com/safing/spn v0.4.7/go.mod h1:NoSG9K0OK9hrPC76yqWFS6RtvbqZdIc/KGOsC4T3hV8=
 github.com/safing/spn v0.4.11/go.mod h1:nro/I6b2JnafeeqoMsQRqf6TaQeL9uLLZkUREtxLVDE=
 github.com/safing/spn v0.4.13/go.mod h1:rBeimIc1FHQOhX7lTh/LaFGRotmnwZIDWUSsPyeIDog=
-github.com/safing/spn v0.4.14 h1:owjeBt8ifdSK92okEPTSyYmShljB/JSQKAqpEJqsIQU=
 github.com/safing/spn v0.4.14/go.mod h1:GwGVU+GSmPQQXorKVDXIgieJZ16e70aBV5CcG0nAVRg=
+github.com/safing/spn v0.4.15 h1:hiGAQgkfxm3yfakkt7mVmkUfYxtE0pgODH9LyloEr/o=
+github.com/safing/spn v0.4.15/go.mod h1:mgVGd4sUdem78irl/pSx/JqOM/Ow85pJqKKqPpj1Ikk=
 github.com/sagikazarmark/crypt v0.3.0/go.mod h1:uD/D+6UF4SrIR1uGEv7bBNkNqLGqUr43MRiaGWX1Nig=
 github.com/satori/go.uuid v1.2.0 h1:0uYX9dsZ2yD7q2RtLRtPSdGDWzjeM3TbMJP9utgA0ww=
 github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
