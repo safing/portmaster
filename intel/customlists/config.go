@@ -14,9 +14,9 @@ var (
 var getFilePath config.StringOption
 
 func registerConfig() error {
-	help := `The file is checked every couple minutes and will be automatically reloaded when it has changed.  
+	help := `The file (.txt) is checked every couple minutes and will be automatically reloaded when it has changed.  
 
-Entries may be one of:
+Entries (one per line) may be one of:
 - Domain: "example.com"
 - IP Address: "10.0.0.1"
 - Country Code (based on IP): "US"
@@ -32,7 +32,7 @@ Please note that the custom filter list is fully loaded into memory. This can ha
 	err := config.Register(&config.Option{
 		Name:            "Custom Filter List",
 		Key:             CfgOptionCustomListFileKey,
-		Description:     "Specify the file path to a custom filter list, which will be automatically refreshed. Any connections matching a domain, IP address, Country or ASN in the file will be blocked.",
+		Description:     "Specify the file path to a custom filter list (.txt), which will be automatically refreshed. Any connections matching a domain, IP address, Country or ASN in the file will be blocked.",
 		Help:            help,
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
