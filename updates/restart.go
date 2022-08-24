@@ -2,6 +2,7 @@ package updates
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/tevino/abool"
@@ -19,11 +20,26 @@ var (
 	restartTask      *modules.Task
 	restartPending   = abool.New()
 	restartTriggered = abool.New()
+
+	restartTime     time.Time
+	restartTimeLock sync.Mutex
 )
 
-// IsRestarting returns whether a restart is pending or currently in progress.
+// IsRestarting returns whether a restart has been triggered.
 func IsRestarting() bool {
-	return restartPending.IsSet()
+	return restartTriggered.IsSet()
+}
+
+// RestartIsPending returns whether a restart is pending.
+func RestartIsPending() (pending bool, restartAt time.Time) {
+	if restartPending.IsNotSet() {
+		return false, time.Time{}
+	}
+
+	restartTimeLock.Lock()
+	defer restartTimeLock.Unlock()
+
+	return true, restartTime
 }
 
 // DelayedRestart triggers a restart of the application by shutting down the
@@ -31,36 +47,57 @@ func IsRestarting() bool {
 // may be further delayed by up to 10 minutes by the internal task scheduling
 // system. This only works if the process is managed by portmaster-start.
 func DelayedRestart(delay time.Duration) {
-	log.Warningf("updates: restart triggered, will execute in %s", delay)
-
-	// This enables TriggerRestartIfPending.
-	// Subsequent calls to TriggerRestart should be able to set a new delay.
-	restartPending.Set()
+	// Check if restart is already pending.
+	if !restartPending.SetToIf(false, true) {
+		return
+	}
 
 	// Schedule the restart task.
-	restartTask.Schedule(time.Now().Add(delay))
+	log.Warningf("updates: restart triggered, will execute in %s", delay)
+	restartAt := time.Now().Add(delay)
+	restartTask.Schedule(restartAt)
+
+	// Set restartTime.
+	restartTimeLock.Lock()
+	defer restartTimeLock.Unlock()
+	restartTime = restartAt
+}
+
+// AbortRestart aborts a (delayed) restart.
+func AbortRestart() {
+	if restartPending.SetToIf(true, false) {
+		log.Warningf("updates: restart aborted")
+
+		// Cancel schedule.
+		restartTask.Schedule(time.Time{})
+	}
 }
 
 // TriggerRestartIfPending triggers an automatic restart, if one is pending.
 // This can be used to prepone a scheduled restart if the conditions are preferable.
 func TriggerRestartIfPending() {
 	if restartPending.IsSet() {
-		_ = automaticRestart(module.Ctx, nil)
+		restartTask.StartASAP()
 	}
 }
 
 // RestartNow immediately executes a restart.
 // This only works if the process is managed by portmaster-start.
 func RestartNow() {
-	_ = automaticRestart(module.Ctx, nil)
+	restartPending.Set()
+	restartTask.StartASAP()
 }
 
 func automaticRestart(_ context.Context, _ *modules.Task) error {
-	if restartTriggered.SetToIf(false, true) {
-		log.Info("updates: initiating (automatic) restart")
+	// Check if the restart is still scheduled.
+	if restartPending.IsNotSet() {
+		return nil
+	}
 
-		// Set restart pending to ensure IsRestarting() returns true.
-		restartPending.Set()
+	// Trigger restart.
+	if restartTriggered.SetToIf(false, true) {
+		log.Warning("updates: initiating (automatic) restart")
+
 		// Set restart exit code.
 		modules.SetExitStatusCode(RestartExitCode)
 		// Do not use a worker, as this would block itself here.
