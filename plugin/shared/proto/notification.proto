@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package safing.portmaster.plugin.proto;
+
+option go_package = "./proto";
+
+enum NotificationType {
+    NOTIFICATION_TYPE_INFO = 0;
+    NOTIFICATION_TYPE_WARNING = 1;
+    NOTIFICATION_TYPE_PROMPT = 2;
+    NOTIFICATION_TYPE_ERROR = 3;
+}
+
+enum NotificationState {
+    NOTIFICATION_STATE_UNKNOWN = 0;
+    NOTIFICATION_STATE_ACTIVE = 1;
+    NOTIFICATION_STATE_RESPONDED = 2;
+    NOTIFICATION_STATE_EXECUTED = 3;
+}
+
+message NotificationAction {
+    string id = 1;
+    string text = 2;
+    oneof action_type {
+        string open_url = 3;
+        string open_page = 4;
+        OpenSettingPayload open_setting = 5;
+        string open_profile = 6;
+        string inject_event_id = 7;
+        CallWebhookPayload webhook = 8;
+    };
+}
+
+enum WebhookResultAction {
+    WEBHOOK_RESULT_ACTION_IGNORE = 0;
+    WEBHOOK_RESULT_ACTION_DISPLAY = 1;
+}
+
+message CallWebhookPayload {
+    string method = 1;
+    string url = 2;
+    string payload = 3;
+    WebhookResultAction result_action = 4;
+}
+
+message OpenSettingPayload {
+    string key = 1;
+    string profile = 2;
+}
+
+message Notification {
+    string event_id = 1;
+    string guid = 2;
+    NotificationType type = 3;
+    string title = 4;
+    string category = 5;
+    string message = 6;
+    bool show_on_system = 7;
+    int64 expires = 8;
+    NotificationState state = 9;
+    repeated NotificationAction actions = 10;
+}
+
+service NotificationService {
+    rpc CreateNotification(CreateNotificationRequest) returns (stream CreateNotificationResponse) {}
+    //rpc ResolveNotification(ResolveNotificationRequest) returns (ResolveNotificationResponse) {}
+    //rpc WatchNotifications(WatchNotificationsRequest) returns (stream WatchNotificationsResponse) {}
+}
+
+message CreateNotificationRequest {
+    Notification notification = 1;
+}
+
+message CreateNotificationResponse {
+   string selected_action_id = 1;
+}
+
+message ResolveNotificationRequest {
+    string event_id = 1;
+    string selected_action_id = 2; 
+}
+
+message ResolveNotificationResponse {}
+
+message WatchNotificationsRequest {}
+message WatchNotificationsResponse {}

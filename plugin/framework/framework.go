@@ -7,33 +7,41 @@ import (
 
 	"github.com/hashicorp/go-plugin"
 	"github.com/safing/portmaster/plugin/shared"
-	"github.com/safing/portmaster/plugin/shared/proto"
+	"github.com/safing/portmaster/plugin/shared/base"
+	"github.com/safing/portmaster/plugin/shared/config"
+	"github.com/safing/portmaster/plugin/shared/decider"
+	"github.com/safing/portmaster/plugin/shared/notification"
+	"github.com/safing/portmaster/plugin/shared/reporter"
 )
 
 var (
+	// ErrPluginTypeRegistered is returned when trying to register a
+	// plugin type multiple times like when calling AddReporter more than
+	// once.
 	ErrPluginTypeRegistered = errors.New("plugin type already registered")
+
+	// ErrNoStaticConfig is returned by ParseStaticConfig when no static
+	// configuration has been provided in plugins.json.
+	ErrNoStaticConfig = errors.New("no static configuration available")
 )
 
-type (
-	Plugin struct {
-		base      basePlugin
-		pluginMap plugin.PluginSet
-	}
-
-	DeciderFunc func(context.Context, *proto.Connection) (proto.Verdict, string, error)
-
-	ReporterFunc func(context.Context, *proto.Connection) error
-)
-
-func (fn DeciderFunc) DecideOnConnection(ctx context.Context, conn *proto.Connection) (proto.Verdict, string, error) {
-	return fn(ctx, conn)
+// Plugin is implements utility methods for registering plugin types
+// and actually serving the plugin when launched by the plugin host (Portmaster).
+// It also implements the base.Base plugin types so user do not need to
+// care about that plugin type and can use provided utility methods
+// to access the Portmaster configuration and notification system as
+// well as additional plugin environment.
+type Plugin struct {
+	BasePlugin
+	pluginMap plugin.PluginSet
 }
 
-func (fn ReporterFunc) ReportConnection(ctx context.Context, conn *proto.Connection) error {
-	return fn(ctx, conn)
-}
-
-func (plg *Plugin) RegisterReporter(r shared.Reporter) error {
+// RegisterReporter registers a reporter plugin type.
+// The provided reporter will only be used if the Plugin Host (Portmaster)
+// is instructed to use the "reporter" plugin type when the plugin is dispensed.
+//
+// This may only be called once and is not save to be called concurrently.
+func (plg *Plugin) RegisterReporter(r reporter.Reporter) error {
 	if _, ok := plg.pluginMap["reporter"]; ok {
 		return fmt.Errorf("reporter: %w", ErrPluginTypeRegistered)
 	}
@@ -42,14 +50,21 @@ func (plg *Plugin) RegisterReporter(r shared.Reporter) error {
 		plg.pluginMap = plugin.PluginSet{}
 	}
 
-	plg.pluginMap["reporter"] = &shared.ReporterPlugin{
+	plg.pluginMap["reporter"] = &reporter.Plugin{
 		Impl: r,
 	}
 
 	return nil
 }
 
-func (plg *Plugin) RegisterDecider(r shared.Decider) error {
+// RegisterDecider registers a decider plugin type.
+// The provded decider will only be used if the Plugin Host (Portmaster)
+// is instructed to use the "decider" plugin type when the plugin is dispensed.
+//
+// This may only be called once and is not safe to be called concurrently.
+// If you want to register multiple deciders use ChainDecider or ChainDeciderFunc
+// to create a combinded decider implementation.
+func (plg *Plugin) RegisterDecider(r decider.Decider) error {
 	if _, ok := plg.pluginMap["decider"]; ok {
 		return fmt.Errorf("decider: %w", ErrPluginTypeRegistered)
 	}
@@ -58,13 +73,20 @@ func (plg *Plugin) RegisterDecider(r shared.Decider) error {
 		plg.pluginMap = plugin.PluginSet{}
 	}
 
-	plg.pluginMap["decider"] = &shared.DeciderPlugin{
+	plg.pluginMap["decider"] = &decider.Plugin{
 		Impl: r,
 	}
 
 	return nil
 }
 
+// Serve starts serving the plugin. It should be called last in the
+// plugin main() and will block until the plugin is killed by the
+// plugin host (Portmaster).
+//
+// Users should make sure to register their implemented plugin types
+// using RegisterDecider, RegisterReporter or similar before calling
+// Serve.
 func (plg *Plugin) Serve() {
 	pluginSet := plg.pluginMap
 
@@ -72,8 +94,8 @@ func (plg *Plugin) Serve() {
 		pluginSet = plugin.PluginSet{}
 	}
 
-	pluginSet["base"] = &shared.BasePlugin{
-		Impl: &plg.base,
+	pluginSet["base"] = &base.Plugin{
+		Impl: &plg.BasePlugin,
 	}
 
 	plugin.Serve(&plugin.ServeConfig{
@@ -83,37 +105,68 @@ func (plg *Plugin) Serve() {
 	})
 }
 
+// Default is the default instance of Plugin so users can
+// use package-level functions for ease-of-use.
 var Default = new(Plugin)
 
-func RegisterDecider(d shared.Decider) error {
+// RegisterDecider calls through to Plugin.RegisterDecider using
+// the Default plugin instance.
+func RegisterDecider(d decider.Decider) error {
 	return Default.RegisterDecider(d)
 }
 
-func RegisterReporter(r shared.Reporter) error {
+// RegisterReporter calls through to Plugin.RegisterReporter using
+// the Default plugin instance.
+func RegisterReporter(r reporter.Reporter) error {
 	return Default.RegisterReporter(r)
 }
 
+// BaseDirectory returns the base directory of the portmaster installation.
+// It basically calls through to BasePlugin.BaseDirectory of the Default
+// plugin instance.
 func BaseDirectory() string {
-	return Default.base.BaseDirectory()
+	return Default.BaseDirectory()
 }
 
+// PluginName returns the name of the plugin as specified by the user.
+// It basically calls through to BasePlugin.PluginName of the Default
+// plugin instance.
 func PluginName() string {
-	return Default.base.PluginName()
+	return Default.PluginName()
 }
 
+// ParseStaticConfig parses the static plugin configuration into reciver.
+// It basically calls through to BasePlugin.ParseStaticConfig of the Default
+// plugin instance.
+func ParseStaticConfig(receiver interface{}) error {
+	return Default.ParseStaticConfig(receiver)
+}
+
+// Serve serves the plugin.
+// It basically calls through to Plugin.Serve of the Default
+// plugin instance.
 func Serve() {
 	Default.Serve()
 }
 
-func OnInit(fn func() error) {
-	Default.base.OnInit(fn)
+// OnInit registers a new on-init function to be called when the plugin is
+// dispensed and configured.
+// It basically calls through to BasePlugin.OnInit of the Default
+// plugin instance.
+func OnInit(fn func(context.Context) error) {
+	Default.OnInit(fn)
 }
 
-func Config() shared.Config {
-	return Default.base.Config
+// Config returns access to the Portmaster configuration system.
+// It's basically the same as accessing the config.Config of the Default
+// plugin instance.
+func Config() config.Service {
+	return Default.Config
 }
 
-var (
-	_ shared.Decider  = new(DeciderFunc)
-	_ shared.Reporter = new(ReporterFunc)
-)
+// Notifications returns access to the Portmaster notification system.
+// It's basically the same as accessing the config.Notification of the Default
+// plugin instance.
+func Notifications() notification.Service {
+	return Default.Notification
+}

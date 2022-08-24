@@ -13,10 +13,10 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
-	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/plugin/loader"
 	"github.com/safing/portmaster/plugin/shared"
-	"github.com/safing/portmaster/plugin/shared/proto"
+	"github.com/safing/portmaster/plugin/shared/decider"
+	"github.com/safing/portmaster/plugin/shared/reporter"
 )
 
 var Module *ModuleImpl
@@ -41,12 +41,12 @@ type (
 	}
 
 	deciderPlugin struct {
-		shared.Decider
+		decider.Decider
 		Name string
 	}
 
 	reporterPlugin struct {
-		shared.Reporter
+		reporter.Reporter
 		Name string
 	}
 )
@@ -106,42 +106,7 @@ func (m *ModuleImpl) start() error {
 			return fmt.Errorf("failed to parse plugin configuration: %w", err)
 		}
 
-		var multierr = new(multierror.Error)
-
-		for _, pluginConfig := range pluginConfigs {
-			for _, pluginType := range pluginConfig.Types {
-				if pluginType == "base" {
-					// "base" is implicit so we ignore it here
-					continue
-				}
-
-				pluginImpl, err := m.Loader.Dispense(m.Ctx, pluginConfig.Name, pluginType)
-				if err != nil {
-					multierr.Errors = append(multierr.Errors, fmt.Errorf("failed to get plugin type %s from %s: %w", pluginType, pluginConfig.Name, err))
-
-					continue
-				}
-
-				switch pluginType {
-				case "decider":
-					m.deciders = append(m.deciders, deciderPlugin{
-						Decider: pluginImpl.(shared.Decider),
-						Name:    pluginConfig.Name,
-					})
-				case "reporter":
-					m.reporters = append(m.reporters, reporterPlugin{
-						Reporter: pluginImpl.(shared.Reporter),
-						Name:     pluginConfig.Name,
-					})
-				case "resolver":
-					fallthrough
-				default:
-					multierr.Errors = append(multierr.Errors, fmt.Errorf("plugin type %s is not supported", pluginType))
-				}
-			}
-		}
-
-		if err := multierr.ErrorOrNil(); err != nil {
+		if err := m.loadPlugins(pluginConfigs); err != nil {
 			log.Errorf("failed to dispense some plugins: %s", err)
 
 			m.Module.Error("plugin-dispense-error", "Failed to dispense one or more plugins", err.Error())
@@ -153,73 +118,50 @@ func (m *ModuleImpl) start() error {
 	return nil
 }
 
-// DecideOnConnection is called by the firewall to request a verdict decision from plugins.
-// If the plugin system is disabled DecideOnConnection is a NO-OP.
-func (m *ModuleImpl) DecideOnConnection(conn *network.Connection) (network.Verdict, string, error) {
-	if !m.PluginSystemEnabled() {
-		return network.VerdictUndecided, "", nil
-	}
-
-	protoConn := proto.ConnectionFromNetwork(conn)
-
+func (m *ModuleImpl) loadPlugins(cfgs []PluginConfig) error {
 	var multierr = new(multierror.Error)
-	defer func() {
-		if err := multierr.ErrorOrNil(); err != nil {
-			m.Module.Error("plugin-decider-error", "One or more decider plugins reported an error", err.Error())
-		} else {
-			m.Module.Resolve("plugin-decider-error")
-		}
-	}()
 
-	for _, d := range m.deciders {
-		log.Debugf("plugin: asking decider plugin %s for a verdict on %s", d.Name, conn.ID)
-		verdict, reason, err := d.DecideOnConnection(m.Ctx, protoConn)
-		if err != nil {
-			// TODO(ppacher): capture the name of the plugin for this
-			multierr.Errors = append(multierr.Errors, fmt.Errorf("plugin %s: %w", d.Name, err))
+	for _, pluginConfig := range cfgs {
+		for _, pluginType := range pluginConfig.Types {
+			// make sure we have a valid plugin type
+			if !shared.IsValidPluginType(pluginType) {
+				multierr.Errors = append(multierr.Errors, fmt.Errorf("unsupported plugin type %s", pluginType))
 
-			continue
-		}
+				continue
+			}
 
-		networkVerdict := proto.VerdictToNetwork(verdict)
+			// "base" is implicit so we ignore it here
+			if pluginType == "base" {
+				continue
+			}
 
-		switch networkVerdict {
-		case network.VerdictUndecided,
-			network.VerdictUndeterminable,
-			network.VerdictFailed:
-			continue
+			pluginImpl, err := m.Loader.Dispense(m.Ctx, pluginConfig.Name, pluginType, pluginConfig.Config)
+			if err != nil {
+				multierr.Errors = append(multierr.Errors, fmt.Errorf("failed to get plugin type %s from %s: %w", pluginType, pluginConfig.Name, err))
 
-		default:
-			return networkVerdict, fmt.Sprintf("plugin %s: %s", d.Name, reason), nil
-		}
-	}
+				continue
+			}
 
-	return network.VerdictUndecided, "", nil
-}
-
-func (m *ModuleImpl) ReportConnection(conn *network.Connection) {
-	if !m.PluginSystemEnabled() {
-		return
-	}
-
-	protoConn := proto.ConnectionFromNetwork(conn)
-
-	var multierr = new(multierror.Error)
-	for _, r := range m.reporters {
-		log.Debugf("plugin: reporting connection %s to %s", conn.ID, r.Name)
-
-		if err := r.ReportConnection(m.Ctx, protoConn); err != nil {
-			multierr.Errors = append(multierr.Errors, fmt.Errorf("plugin %s: %w", r.Name, err))
+			switch pluginType {
+			case "decider":
+				m.deciders = append(m.deciders, deciderPlugin{
+					Decider: pluginImpl.(decider.Decider),
+					Name:    pluginConfig.Name,
+				})
+			case "reporter":
+				m.reporters = append(m.reporters, reporterPlugin{
+					Reporter: pluginImpl.(reporter.Reporter),
+					Name:     pluginConfig.Name,
+				})
+			case "resolver":
+				fallthrough
+			default:
+				multierr.Errors = append(multierr.Errors, fmt.Errorf("plugin type %s is not supported", pluginType))
+			}
 		}
 	}
 
-	if err := multierr.ErrorOrNil(); err != nil {
-		log.Errorf("plugin: one or more reporter plugins returned an error: %s", err)
-
-		m.Module.Error("plugin-reporter-error", "One or more reporter plugins reported an error", err.Error())
-	} else {
-		m.Module.Resolve("plugin-reporter-error")
-	}
+	return multierr.ErrorOrNil()
 }
 
 func (m *ModuleImpl) stop() error {

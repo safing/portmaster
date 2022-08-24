@@ -2,25 +2,38 @@ package framework
 
 import (
 	"context"
+	"encoding/json"
 
-	"github.com/safing/portmaster/plugin/shared"
+	"github.com/safing/portmaster/plugin/shared/base"
+	"github.com/safing/portmaster/plugin/shared/config"
+	"github.com/safing/portmaster/plugin/shared/notification"
 	"github.com/safing/portmaster/plugin/shared/proto"
 )
 
-type basePlugin struct {
-	shared.Config
+// BasePlugin implements base.Base and is used to
+// provide plugins with easy access to the configuration
+// provided when the plugin is first dispensed. It also provides
+// access to the the Portmaster configuration and notification
+// sytems.
+type BasePlugin struct {
+	Config       config.Service
+	Notification notification.Service
 
 	*proto.ConfigureRequest
 
-	onInitFunc []func() error
+	onInitFunc []func(ctx context.Context) error
 }
 
-func (base *basePlugin) Configure(ctx context.Context, env *proto.ConfigureRequest, configService shared.Config) error {
+// Configure is called by the plugin host (the Portmaster) and configures
+// the plugin with static configuration and also provides access to the
+// configuration and notification systems.
+func (base *BasePlugin) Configure(ctx context.Context, env *proto.ConfigureRequest, configService config.Service, notifService notification.Service) error {
 	base.ConfigureRequest = env
 	base.Config = configService
+	base.Notification = notifService
 
 	for _, fn := range base.onInitFunc {
-		if err := fn(); err != nil {
+		if err := fn(ctx); err != nil {
 			return err
 		}
 	}
@@ -28,16 +41,38 @@ func (base *basePlugin) Configure(ctx context.Context, env *proto.ConfigureReque
 	return nil
 }
 
-func (base *basePlugin) BaseDirectory() string {
+// BaseDirectory returns the installation directory of the Portmaster.
+func (base *BasePlugin) BaseDirectory() string {
 	return base.ConfigureRequest.BaseDirectory
 }
 
-func (base *basePlugin) PluginName() string {
+// PluginName returns the name of the plugin as specified by the user.
+func (base *BasePlugin) PluginName() string {
 	return base.ConfigureRequest.PluginName
 }
 
-func (base *basePlugin) OnInit(fn func() error) {
+// ParseStaticConfig parses any static plugin configuration, specified in
+// plugins.json into receiver.
+//
+// It returns ErrNoStaticConfig if the "config" field of the plugin configration
+// was empty or unset.
+// Otherwise it will return any error encountered during JSON unmarshaling.
+func (base *BasePlugin) ParseStaticConfig(receiver interface{}) error {
+	if len(base.StaticConfig) == 0 {
+		return ErrNoStaticConfig
+	}
+
+	return json.Unmarshal(base.StaticConfig, receiver)
+}
+
+// OnInit registers a new on-init method that is executed when
+// the plugin is dispensed and the Base.Configure() has been
+// called by the Portmaster.
+//
+// Functions executed in this context are already save to access
+// the configuration request, static configuration and BaseDirectory/PluginName.
+func (base *BasePlugin) OnInit(fn func(context.Context) error) {
 	base.onInitFunc = append(base.onInitFunc, fn)
 }
 
-var _ shared.Base = new(basePlugin)
+var _ base.Base = new(BasePlugin)

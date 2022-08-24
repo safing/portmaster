@@ -2,6 +2,7 @@ package loader
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -14,7 +15,12 @@ import (
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/plugin/shared"
+	"github.com/safing/portmaster/plugin/shared/base"
+	"github.com/safing/portmaster/plugin/shared/config"
+	"github.com/safing/portmaster/plugin/shared/decider"
+	"github.com/safing/portmaster/plugin/shared/notification"
 	"github.com/safing/portmaster/plugin/shared/proto"
+	"github.com/safing/portmaster/plugin/shared/reporter"
 )
 
 // PluginLoader is capable of loading Portmaster plugins for a specified set
@@ -23,6 +29,7 @@ type PluginLoader struct {
 	SearchDirectories []string
 
 	module *modules.Module
+	fanout *shared.EventFanout
 
 	l             sync.Mutex
 	loadedPlugins map[string]*plugin.Client
@@ -34,15 +41,19 @@ func NewPluginLoader(m *modules.Module, baseDir ...string) *PluginLoader {
 	return &PluginLoader{
 		module:            m,
 		SearchDirectories: baseDir,
+		fanout:            shared.NewEventFanout(m),
 		loadedPlugins:     make(map[string]*plugin.Client),
 	}
 }
 
+// Common errors returned by the PluginLoader.
 var (
-	ErrPluginNotFound = errors.New("plugin not found in search paths")
+	ErrPluginNotFound           = errors.New("plugin not found in search paths")
+	ErrPluginTypeNotImplemented = errors.New("plugin does not implement the requested type")
+	ErrPluginConfigFailed       = errors.New("plugin failed to be configured")
 )
 
-func (ldr *PluginLoader) Dispense(ctx context.Context, pluginName string, pluginType shared.PluginType) (interface{}, error) {
+func (ldr *PluginLoader) Dispense(ctx context.Context, pluginName string, pluginType shared.PluginType, staticConfig json.RawMessage) (any, error) {
 	ldr.l.Lock()
 	defer ldr.l.Unlock()
 
@@ -57,10 +68,16 @@ func (ldr *PluginLoader) Dispense(ctx context.Context, pluginName string, plugin
 			return nil, err
 		}
 
+		cmd := exec.Command(path)
+
 		client = plugin.NewClient(&plugin.ClientConfig{
 			HandshakeConfig: shared.Handshake,
-			Plugins:         shared.PluginMap,
-			Cmd:             exec.Command(path),
+			Plugins: plugin.PluginSet{
+				"base":     &base.Plugin{},
+				"decider":  &decider.Plugin{},
+				"reporter": &reporter.Plugin{},
+			},
+			Cmd: cmd,
 			AllowedProtocols: []plugin.Protocol{
 				plugin.ProtocolGRPC,
 			},
@@ -83,29 +100,32 @@ func (ldr *PluginLoader) Dispense(ctx context.Context, pluginName string, plugin
 
 		pluginImpl, err := rpcClient.Dispense(string(shared.PluginTypeBase))
 		if err != nil {
-			return nil, fmt.Errorf("plugin %s does not implement base plugin: %w", pluginName, err)
+			return nil, fmt.Errorf("%s: type %s: %w (%s)", pluginName, pluginType, ErrPluginTypeNotImplemented, err)
 		}
 
 		// configure the plugin now, if that fails kill it and return the error.
 		env := &proto.ConfigureRequest{
 			BaseDirectory: dataroot.Root().Path,
 			PluginName:    pluginName,
+			StaticConfig:  staticConfig,
 		}
 
 		// create a configuration server that just accepts configuration
 		// requests from this plugin.
 		// The server will ensure plugins have limited permission to create
 		// and read keys under the "config:plugins/<plugin-name>" scope.
-		cfg := shared.NewHostConfigServer(ldr.module, pluginName)
+		cfg := config.NewHostConfigServer(ldr.fanout, pluginName)
 
-		base := pluginImpl.(shared.Base)
-		// TODO(ppacher): make sure we don't need to pass in nil here for
-		// shared.Config.
-		// It's actually already handled by the GRPCBaseClient
-		if err := base.Configure(ctx, env, cfg); err != nil {
+		// create a notification server that just accepts notification requests
+		// from this plugin.
+		notifService := notification.NewHostNotificationServer(pluginName)
+
+		base := pluginImpl.(base.Base)
+
+		if err := base.Configure(ctx, env, cfg, notifService); err != nil {
 			client.Kill()
 
-			return nil, fmt.Errorf("failed to configure plugin: %w", err)
+			return nil, ErrPluginConfigFailed
 		}
 
 		ldr.loadedPlugins[pluginName] = client
@@ -128,6 +148,9 @@ func (ldr *PluginLoader) Dispense(ctx context.Context, pluginName string, plugin
 	return pluginImpl, err
 }
 
+// Kill kills all plugin sub-processes and resets the internal loader
+// state.
+// It's still possible to Dispense new plugins.
 func (ldr *PluginLoader) Kill() {
 	ldr.l.Lock()
 	defer ldr.l.Unlock()
@@ -139,6 +162,8 @@ func (ldr *PluginLoader) Kill() {
 
 		client.Kill()
 	}
+
+	ldr.loadedPlugins = make(map[string]*plugin.Client)
 }
 
 func (ldr *PluginLoader) findPluginBinary(name string) (string, error) {

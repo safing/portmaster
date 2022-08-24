@@ -1,4 +1,4 @@
-package shared
+package decider
 
 import (
 	"context"
@@ -7,12 +7,21 @@ import (
 	"github.com/safing/portmaster/plugin/shared/proto"
 )
 
-type GRPCDeciderClient struct {
-	broker *plugin.GRPCBroker
-	client proto.DeciderServiceClient
-}
+type (
+	gRPCClient struct {
+		broker *plugin.GRPCBroker
+		client proto.DeciderServiceClient
+	}
 
-func (m *GRPCDeciderClient) DecideOnConnection(ctx context.Context, conn *proto.Connection) (proto.Verdict, string, error) {
+	gRPCServer struct {
+		proto.UnimplementedDeciderServiceServer
+
+		Impl   Decider
+		broker *plugin.GRPCBroker
+	}
+)
+
+func (m *gRPCClient) DecideOnConnection(ctx context.Context, conn *proto.Connection) (proto.Verdict, string, error) {
 	res, err := m.client.DecideOnConnection(ctx, &proto.DecideOnConnectionRequest{
 		Connection: conn,
 	})
@@ -23,14 +32,7 @@ func (m *GRPCDeciderClient) DecideOnConnection(ctx context.Context, conn *proto.
 	return res.Verdict, res.Reason, nil
 }
 
-type GRPCDeciderServer struct {
-	proto.UnimplementedDeciderServiceServer
-
-	Impl   Decider
-	broker *plugin.GRPCBroker
-}
-
-func (m *GRPCDeciderServer) DecideOnConnection(ctx context.Context, req *proto.DecideOnConnectionRequest) (*proto.DecideOnConnectionResponse, error) {
+func (m *gRPCServer) DecideOnConnection(ctx context.Context, req *proto.DecideOnConnectionRequest) (*proto.DecideOnConnectionResponse, error) {
 	res, reason, err := m.Impl.DecideOnConnection(ctx, req.Connection)
 	if err != nil {
 		return nil, err

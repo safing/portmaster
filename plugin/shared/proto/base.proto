@@ -15,7 +15,9 @@ message ConfigureRequest {
     // The name of the plugin as specified by the user.
     string plugin_name = 2;
 
-    uint32 config_service = 3;
+    uint32 backchannel_id = 3;
+
+    bytes static_config = 4;
 }
 
 message ConfigureResponse {

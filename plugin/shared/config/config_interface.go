@@ -1,23 +1,23 @@
-package shared
+package config
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/plugin/shared"
 	"github.com/safing/portmaster/plugin/shared/proto"
 )
 
 type (
-	// Config is the interface that allows scoped interaction with the
+	// Service is the interface that allows scoped interaction with the
 	// Portmaster configuration system.
 	// It is passed to plugins using Base.Configure() and provided by the
 	// loader.PluginLoader when a plugin is first dispensed and initialized.
 	//
-	// Plugins may use the Config to register new configuration options that
+	// Plugins may use the Service to register new configuration options that
 	// the user can specify and configure using the Portmaster User Interface.
-	Config interface {
+	Service interface {
 		// RegisterOption registers a new configuration option in the Portmaster
 		// configuration system. Once registered, a user may alter the configuration
 		// using the Portmaster User Interface.
@@ -35,11 +35,11 @@ type (
 		WatchValue(ctx context.Context, key ...string) (<-chan *proto.WatchChangesResponse, error)
 	}
 
-	// HostConfigServer is used by GRPCConfigServer to provide plugins with access to the
+	// HostConfigServer is used by GRPCServer to provide plugins with access to the
 	// Portmaster configuration system. It's created on a per-plugin basis by the loader.PluginLoader
 	// when Dispense'ing a new plugin instance.
 	HostConfigServer struct {
-		module     *modules.Module
+		fanout     *shared.EventFanout
 		pluginName string
 	}
 )
@@ -48,15 +48,14 @@ type (
 // the Portmaster configuration system for a plugin named pluginName.
 // Access and creation of configuration options is limited to the "config:plugins/<pluginName>" scope
 // while keys are transparently proxied for the plugin.
-func NewHostConfigServer(module *modules.Module, pluginName string) *HostConfigServer {
+func NewHostConfigServer(fanout *shared.EventFanout, pluginName string) *HostConfigServer {
 	return &HostConfigServer{
-		module:     module,
 		pluginName: pluginName,
 	}
 }
 
 func (cfg *HostConfigServer) RegisterOption(ctx context.Context, req *proto.Option) error {
-	defaultValue, err := proto.UnwrapValue(req.Default, proto.OptionTypeToConfig(req.OptionType))
+	defaultValue, err := proto.UnwrapConfigValue(req.Default, proto.OptionTypeToConfig(req.OptionType))
 	if err != nil {
 		return err
 	}
@@ -83,41 +82,12 @@ func (cfg *HostConfigServer) RegisterOption(ctx context.Context, req *proto.Opti
 }
 
 func (cfg *HostConfigServer) GetValue(ctx context.Context, key string) (*proto.Value, error) {
-	opt, err := config.GetOption(fmt.Sprintf("plugins/%s/%s", cfg.pluginName, key))
-	if err != nil {
-		return nil, err
-	}
+	key = fmt.Sprintf("plugins/%s/%s", cfg.pluginName, key)
 
-	var value *proto.Value
-
-	switch opt.OptType {
-	case config.OptTypeBool:
-		value = &proto.Value{
-			Bool: config.Concurrent.GetAsBool(opt.Key, false)(),
-		}
-
-	case config.OptTypeInt:
-		value = &proto.Value{
-			Int: config.Concurrent.GetAsInt(opt.Key, 0)(),
-		}
-
-	case config.OptTypeString:
-		value = &proto.Value{
-			String_: config.Concurrent.GetAsString(opt.Key, "")(),
-		}
-
-	case config.OptTypeStringArray:
-		value = &proto.Value{
-			StringArray: config.Concurrent.GetAsStringArray(opt.Key, []string{})(),
-		}
-
-	default:
-		return nil, fmt.Errorf("unsupported option type %d", opt.OptType)
-	}
-
-	return value, nil
+	return shared.GetConfigValueProto(key)
 }
 
-func (cfg *HostConfigServer) WatchValue(ctx context.Context, key ...string) (<-chan *proto.WatchChangesResponse, error) {
-	return nil, nil
+func (cfg *HostConfigServer) WatchValue(ctx context.Context, keys ...string) (<-chan *proto.WatchChangesResponse, error) {
+	ch := cfg.fanout.SubscribeConfigChanges(ctx, cfg.pluginName, keys)
+	return ch, nil
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/safing/portbase/config"
+	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/intel/geoip"
 	"github.com/safing/portmaster/network"
@@ -188,7 +189,7 @@ func OptionTypeToConfig(optType OptionType) config.OptionType {
 	}
 }
 
-func UnwrapValue(value *Value, valueType config.OptionType) (any, error) {
+func UnwrapConfigValue(value *Value, valueType config.OptionType) (any, error) {
 	if value == nil {
 		return nil, fmt.Errorf("nil value")
 	}
@@ -207,7 +208,7 @@ func UnwrapValue(value *Value, valueType config.OptionType) (any, error) {
 	return nil, fmt.Errorf("unsupported option type %d", valueType)
 }
 
-func WrapValue(x interface{}, valueType config.OptionType) (*Value, error) {
+func WrapConfigValue(x interface{}, valueType config.OptionType) (*Value, error) {
 	if x == nil {
 		return &Value{}, nil
 	}
@@ -232,4 +233,112 @@ func WrapValue(x interface{}, valueType config.OptionType) (*Value, error) {
 	}
 
 	return nil, fmt.Errorf("unsupported option type")
+}
+
+func NotificationFromProto(notif *Notification) *notifications.Notification {
+	if notif == nil {
+		return nil
+	}
+
+	actions := make([]*notifications.Action, len(notif.GetActions()))
+	for idx, protoAction := range notif.GetActions() {
+		actions[idx] = NotificationActionTypeFromProto(protoAction)
+	}
+
+	return &notifications.Notification{
+		EventID:          notif.GetEventId(),
+		GUID:             notif.GetGuid(),
+		Type:             NotificationTypeFromProto(notif.GetType()),
+		State:            NotificationStateFromProto(notif.GetState()),
+		AvailableActions: actions,
+		Title:            notif.GetTitle(),
+		Category:         notif.GetCategory(),
+		Message:          notif.GetMessage(),
+		ShowOnSystem:     notif.GetShowOnSystem(),
+		Expires:          notif.GetExpires(),
+		SelectedActionID: "",
+	}
+}
+
+func NotificationActionTypeFromProto(action *NotificationAction) *notifications.Action {
+	res := &notifications.Action{
+		ID:   action.GetId(),
+		Text: action.GetText(),
+	}
+
+	switch payload := action.GetActionType().(type) {
+	case *NotificationAction_InjectEventId:
+		res.Payload = payload.InjectEventId
+
+	case *NotificationAction_OpenPage:
+		res.Payload = payload.OpenPage
+
+	case *NotificationAction_OpenProfile:
+		res.Payload = payload.OpenProfile
+
+	case *NotificationAction_OpenSetting:
+		res.Payload = notifications.ActionTypeOpenSettingPayload{
+			Key:     payload.OpenSetting.Key,
+			Profile: payload.OpenSetting.Profile,
+		}
+
+	case *NotificationAction_OpenUrl:
+		res.Payload = payload.OpenUrl
+
+	case *NotificationAction_Webhook:
+		res.Type = notifications.ActionTypeWebhook
+		webhook := notifications.ActionTypeWebhookPayload{
+			Method:  payload.Webhook.Method,
+			URL:     payload.Webhook.Url,
+			Payload: payload.Webhook.Payload,
+		}
+
+		switch payload.Webhook.ResultAction {
+		case WebhookResultAction_WEBHOOK_RESULT_ACTION_DISPLAY:
+			webhook.ResultAction = "display"
+		case WebhookResultAction_WEBHOOK_RESULT_ACTION_IGNORE:
+			webhook.ResultAction = "ignore"
+		default:
+			webhook.ResultAction = "ignore"
+		}
+
+		res.Payload = webhook
+
+	default:
+		res.Type = notifications.ActionTypeNone
+		res.Payload = nil
+
+	}
+
+	return res
+}
+
+func NotificationStateFromProto(state NotificationState) notifications.State {
+	switch state {
+	case NotificationState_NOTIFICATION_STATE_ACTIVE:
+		return notifications.Active
+	case NotificationState_NOTIFICATION_STATE_EXECUTED:
+		return notifications.Executed
+	case NotificationState_NOTIFICATION_STATE_RESPONDED:
+		return notifications.Responded
+	case NotificationState_NOTIFICATION_STATE_UNKNOWN:
+		fallthrough
+	default:
+		return ""
+	}
+}
+
+func NotificationTypeFromProto(nType NotificationType) notifications.Type {
+	switch nType {
+	case NotificationType_NOTIFICATION_TYPE_ERROR:
+		return notifications.Error
+	case NotificationType_NOTIFICATION_TYPE_WARNING:
+		return notifications.Warning
+	case NotificationType_NOTIFICATION_TYPE_PROMPT:
+		return notifications.Prompt
+	case NotificationType_NOTIFICATION_TYPE_INFO:
+		fallthrough
+	default:
+		return notifications.Info
+	}
 }
