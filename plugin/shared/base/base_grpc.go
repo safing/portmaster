@@ -61,7 +61,6 @@ func (m *gRPCServer) Configure(ctx context.Context, req *proto.ConfigureRequest)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
 	configClient := &config.GRPCClient{
 		Client: proto.NewConfigServiceClient(conn),
