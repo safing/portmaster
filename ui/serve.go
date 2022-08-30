@@ -6,11 +6,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
-	resources "github.com/cookieo9/resources-go"
+	"github.com/spkg/zipfs"
 
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/log"
@@ -20,7 +21,7 @@ import (
 )
 
 var (
-	apps     = make(map[string]*resources.BundleSequence)
+	apps     = make(map[string]*zipfs.FileSystem)
 	appsLock sync.RWMutex
 )
 
@@ -28,7 +29,7 @@ func registerRoutes() error {
 	// Server assets.
 	api.RegisterHandler(
 		"/assets/{resPath:[a-zA-Z0-9/\\._-]+}",
-		&bundleServer{defaultModuleName: "assets"},
+		&archiveServer{defaultModuleName: "assets"},
 	)
 
 	// Add slash to plain module namespaces.
@@ -38,7 +39,7 @@ func registerRoutes() error {
 	)
 
 	// Serve modules.
-	srv := &bundleServer{}
+	srv := &archiveServer{}
 	api.RegisterHandler("/ui/modules/{moduleName:[a-z]+}/", srv)
 	api.RegisterHandler("/ui/modules/{moduleName:[a-z]+}/{resPath:[a-zA-Z0-9/\\._-]+}", srv)
 
@@ -51,17 +52,17 @@ func registerRoutes() error {
 	return nil
 }
 
-type bundleServer struct {
+type archiveServer struct {
 	defaultModuleName string
 }
 
-func (bs *bundleServer) BelongsTo() *modules.Module { return module }
+func (bs *archiveServer) BelongsTo() *modules.Module { return module }
 
-func (bs *bundleServer) ReadPermission(*http.Request) api.Permission { return api.PermitAnyone }
+func (bs *archiveServer) ReadPermission(*http.Request) api.Permission { return api.PermitAnyone }
 
-func (bs *bundleServer) WritePermission(*http.Request) api.Permission { return api.NotSupported }
+func (bs *archiveServer) WritePermission(*http.Request) api.Permission { return api.NotSupported }
 
-func (bs *bundleServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (bs *archiveServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Get request context.
 	ar := api.GetAPIRequest(r)
 	if ar == nil {
@@ -85,10 +86,10 @@ func (bs *bundleServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	appsLock.RLock()
-	bundle, ok := apps[moduleName]
+	archiveFS, ok := apps[moduleName]
 	appsLock.RUnlock()
 	if ok {
-		ServeFileFromBundle(w, r, moduleName, bundle, resPath)
+		ServeFileFromArchive(w, r, moduleName, archiveFS, resPath)
 		return
 	}
 
@@ -105,39 +106,38 @@ func (bs *bundleServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// open bundle
-	newBundle, err := resources.OpenZip(zipFile.Path())
+	// Open archive from disk.
+	archiveFS, err = zipfs.New(zipFile.Path())
 	if err != nil {
 		log.Tracef("ui: error prepping module %s: %s", moduleName, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	bundle = &resources.BundleSequence{newBundle}
 	appsLock.Lock()
-	apps[moduleName] = bundle
+	apps[moduleName] = archiveFS
 	appsLock.Unlock()
 
-	ServeFileFromBundle(w, r, moduleName, bundle, resPath)
+	ServeFileFromArchive(w, r, moduleName, archiveFS, resPath)
 }
 
-// ServeFileFromBundle serves a file from the given bundle.
-func ServeFileFromBundle(w http.ResponseWriter, r *http.Request, bundleName string, bundle *resources.BundleSequence, path string) {
-	readCloser, err := bundle.Open(path)
+// ServeFileFromArchive serves a file from the given archive.
+func ServeFileFromArchive(w http.ResponseWriter, r *http.Request, archiveName string, archiveFS *zipfs.FileSystem, path string) {
+	readCloser, err := archiveFS.Open(path)
 	if err != nil {
-		if errors.Is(err, resources.ErrNotFound) {
+		if os.IsNotExist(err) {
 			// Check if there is a base index.html file we can serve instead.
 			var indexErr error
 			path = "index.html"
-			readCloser, indexErr = bundle.Open(path)
+			readCloser, indexErr = archiveFS.Open(path)
 			if indexErr != nil {
 				// If we cannot get an index, continue with handling the original error.
-				log.Tracef("ui: requested resource \"%s\" not found in bundle %s: %s", path, bundleName, err)
+				log.Tracef("ui: requested resource \"%s\" not found in archive %s: %s", path, archiveName, err)
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}
 		} else {
-			log.Tracef("ui: error opening module %s: %s", bundleName, err)
+			log.Tracef("ui: error opening module %s: %s", archiveName, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -152,12 +152,8 @@ func ServeFileFromBundle(w http.ResponseWriter, r *http.Request, bundleName stri
 		}
 	}
 
-	// TODO: Set content security policy
-	// For some reason, this breaks the ui client
-	// w.Header().Set("Content-Security-Policy", "default-src 'self'")
-
 	w.WriteHeader(http.StatusOK)
-	if r.Method != "HEAD" {
+	if r.Method != http.MethodHead {
 		_, err = io.Copy(w, readCloser)
 		if err != nil {
 			log.Errorf("ui: failed to serve file: %s", err)
