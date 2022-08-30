@@ -26,6 +26,9 @@ type Location struct {
 	Coordinates                  Coordinates `maxminddb:"location"`
 	AutonomousSystemNumber       uint        `maxminddb:"autonomous_system_number"`
 	AutonomousSystemOrganization string      `maxminddb:"autonomous_system_organization"`
+	IsAnycast                    bool        `maxminddb:"is_anycast"`
+	IsSatelliteProvider          bool        `maxminddb:"is_satellite_provider"`
+	IsAnonymousProxy             bool        `maxminddb:"is_anonymous_proxy"`
 }
 
 // Coordinates holds geographic coordinates and their estimated accuracy.
