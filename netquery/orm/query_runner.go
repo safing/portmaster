@@ -94,13 +94,12 @@ func WithDecodeConfig(cfg DecodeConfig) QueryOption {
 //
 // Example:
 //
-//		var result []struct{
-//			Count int `sqlite:"rowCount"`
-//		}
+//	var result []struct{
+//		Count int `sqlite:"rowCount"`
+//	}
 //
-//		err := RunQuery(ctx, conn, "SELECT COUNT(*) AS rowCount FROM table", WithResult(&result))
-//		fmt.Println(result[0].Count)
-//
+//	err := RunQuery(ctx, conn, "SELECT COUNT(*) AS rowCount FROM table", WithResult(&result))
+//	fmt.Println(result[0].Count)
 func RunQuery(ctx context.Context, conn *sqlite.Conn, sql string, modifiers ...QueryOption) error {
 	args := queryOpts{
 		DecodeConfig: DefaultDecodeConfig,

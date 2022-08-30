@@ -8,14 +8,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/safing/portmaster/intel/filterlists"
-
 	"github.com/agext/levenshtein"
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/detection/dga"
 	"github.com/safing/portmaster/intel/customlists"
+	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"

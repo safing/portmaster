@@ -71,15 +71,15 @@ func (pkt *packet) LoadPacketData() error {
 }
 
 // TODO(ppacher): revisit the following behavior:
-// 		The legacy implementation of nfqueue (and the interception) module
-// 		always accept a packet but may mark it so that a subsequent rule in
-// 		the C17 chain drops, rejects or modifies it.
 //
-//		For drop/return we could use the actual nfQueue verdicts Drop and Stop.
-//		Re-routing to local NS or SPN can be done by modifying the packet here
-//		and using SetVerdictModPacket and reject can be implemented using a simple
-// 		raw-socket.
+//	The legacy implementation of nfqueue (and the interception) module
+//	always accept a packet but may mark it so that a subsequent rule in
+//	the C17 chain drops, rejects or modifies it.
 //
+//	For drop/return we could use the actual nfQueue verdicts Drop and Stop.
+//	Re-routing to local NS or SPN can be done by modifying the packet here
+//	and using SetVerdictModPacket and reject can be implemented using a simple
+//	raw-socket.
 func (pkt *packet) mark(mark int) (err error) {
 	if pkt.verdictPending.SetToIf(false, true) {
 		defer close(pkt.verdictSet)

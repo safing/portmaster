@@ -1,6 +1,7 @@
+//nolint:gci,nolintlint
 package main
 
-import ( //nolint:gci,nolintlint
+import (
 	"os"
 
 	"github.com/safing/portbase/info"

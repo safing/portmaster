@@ -63,7 +63,6 @@ type (
 // Decoding hooks configured in cfg are executed before trying to decode basic types and may
 // be specified to provide support for special types.
 // See DatetimeDecoder() for an example of a DecodeHook that handles graceful time.Time conversion.
-//
 func DecodeStmt(ctx context.Context, schema *TableSchema, stmt Stmt, result interface{}, cfg DecodeConfig) error {
 	// make sure we got something to decode into ...
 	if result == nil {
