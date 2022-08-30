@@ -2,19 +2,12 @@ package firewall
 
 import (
 	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
 	_ "github.com/safing/portmaster/core"
-	"github.com/safing/portmaster/intel/filterlists"
 )
 
-var (
-	filterModule *modules.Module
-
-	unbreakFilterListIDs         = []string{"UNBREAK"}
-	resolvedUnbreakFilterListIDs []string
-)
+var filterModule *modules.Module
 
 func init() {
 	filterModule = modules.Register("filter", filterPrep, filterStart, nil, "core", "intel")
@@ -51,12 +44,5 @@ func filterPrep() (err error) {
 func filterStart() error {
 	getConfig()
 
-	// TODO: Re-resolve IDs when filterlist index changes.
-	resolvedIDs, err := filterlists.ResolveListIDs(unbreakFilterListIDs)
-	if err != nil {
-		log.Warningf("filter: failed to resolve unbreak filter list IDs: %s", err)
-	} else {
-		resolvedUnbreakFilterListIDs = resolvedIDs
-	}
 	return nil
 }

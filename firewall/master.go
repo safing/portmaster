@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/safing/portmaster/intel/filterlists"
+
 	"github.com/agext/levenshtein"
 	"golang.org/x/net/publicsuffix"
 
@@ -435,6 +437,7 @@ func checkFilterLists(ctx context.Context, conn *network.Connection, p *profile.
 	switch result {
 	case endpoints.Denied:
 		// If the connection matches a filter list, check if the "unbreak" list matches too and abort blocking.
+		resolvedUnbreakFilterListIDs := filterlists.GetUnbreakFilterListIDs()
 		for _, blockedListID := range conn.Entity.BlockedByLists {
 			for _, unbreakListID := range resolvedUnbreakFilterListIDs {
 				if blockedListID == unbreakListID {

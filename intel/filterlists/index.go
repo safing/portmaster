@@ -196,8 +196,12 @@ func updateListIndex() error {
 				listIndexUpdate.Version(),
 			)
 		default:
-			log.Debug("filterlists: index is up to date")
 			// List is in cache and current, there is nothing to do.
+			log.Debug("filterlists: index is up to date")
+
+			// Update the unbreak filter list IDs on initial load.
+			updateUnbreakFilterListIDs()
+
 			return nil
 		}
 	case listIndexUpdate.UpgradeAvailable():
@@ -225,6 +229,9 @@ func updateListIndex() error {
 	}
 	log.Debugf("intel/filterlists: updated list index in cache to %s", index.Version)
 
+	// Update the unbreak filter list IDs after an update.
+	updateUnbreakFilterListIDs()
+
 	return nil
 }
 
@@ -251,4 +258,31 @@ func ResolveListIDs(ids []string) ([]string, error) {
 	log.Debugf("intel/filterlists: resolved ids %v to %v", ids, resolved)
 
 	return resolved, nil
+}
+
+var (
+	unbreakCategoryIDs = []string{"UNBREAK"}
+
+	unbreakIDs     []string
+	unbreakIDsLock sync.Mutex
+)
+
+// GetUnbreakFilterListIDs returns the resolved list of all unbreak filter lists.
+func GetUnbreakFilterListIDs() []string {
+	unbreakIDsLock.Lock()
+	defer unbreakIDsLock.Unlock()
+
+	return unbreakIDs
+}
+
+func updateUnbreakFilterListIDs() {
+	unbreakIDsLock.Lock()
+	defer unbreakIDsLock.Unlock()
+
+	resolvedIDs, err := ResolveListIDs(unbreakCategoryIDs)
+	if err != nil {
+		log.Warningf("filter: failed to resolve unbreak filter list IDs: %s", err)
+	} else {
+		unbreakIDs = resolvedIDs
+	}
 }
