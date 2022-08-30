@@ -27,7 +27,7 @@ jobs:
       with:
         version: v1.49.0
         only-new-issues: true
-        args: -c ./.golangci.yml
+        args: -c ./.golangci.yml --timeout 15m
 
     - name: Get dependencies
       run: go mod download
