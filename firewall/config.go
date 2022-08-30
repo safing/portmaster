@@ -1,10 +1,9 @@
 package firewall
 
 import (
-	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/notifications"
-	"github.com/safing/portmaster/core"
+	"github.com/safing/spn/captain"
 )
 
 // Configuration Keys.
@@ -26,9 +25,6 @@ var (
 	CfgOptionDNSQueryInterceptionKey   = "filter/dnsQueryInterception"
 	cfgOptionDNSQueryInterceptionOrder = 97
 	dnsQueryInterception               config.BoolOption
-
-	devMode          config.BoolOption
-	apiListenAddress config.StringOption
 )
 
 func registerConfig() error {
@@ -108,8 +104,17 @@ func registerConfig() error {
 	}
 	askTimeout = config.Concurrent.GetAsInt(CfgOptionAskTimeoutKey, 60)
 
-	devMode = config.Concurrent.GetAsBool(core.CfgDevModeKey, false)
-	apiListenAddress = config.GetAsString(api.CfgDefaultListenAddressKey, "")
-
 	return nil
+}
+
+var (
+	filterEnabled     config.BoolOption
+	tunnelEnabled     config.BoolOption
+	useCommunityNodes config.BoolOption
+)
+
+func getConfig() {
+	filterEnabled = config.Concurrent.GetAsBool(CfgOptionEnableFilterKey, true)
+	tunnelEnabled = config.Concurrent.GetAsBool(captain.CfgOptionEnableSPNKey, false)
+	useCommunityNodes = config.Concurrent.GetAsBool(captain.CfgOptionUseCommunityNodesKey, true)
 }

@@ -7,13 +7,10 @@ import (
 	"github.com/safing/portbase/modules/subsystems"
 	_ "github.com/safing/portmaster/core"
 	"github.com/safing/portmaster/intel/filterlists"
-	"github.com/safing/spn/captain"
 )
 
 var (
-	filterModule  *modules.Module
-	filterEnabled config.BoolOption
-	tunnelEnabled config.BoolOption
+	filterModule *modules.Module
 
 	unbreakFilterListIDs         = []string{"UNBREAK"}
 	resolvedUnbreakFilterListIDs []string
@@ -48,12 +45,12 @@ func filterPrep() (err error) {
 		return err
 	}
 
-	filterEnabled = config.Concurrent.GetAsBool(CfgOptionEnableFilterKey, true)
-	tunnelEnabled = config.Concurrent.GetAsBool(captain.CfgOptionEnableSPNKey, false)
 	return nil
 }
 
 func filterStart() error {
+	getConfig()
+
 	// TODO: Re-resolve IDs when filterlist index changes.
 	resolvedIDs, err := filterlists.ResolveListIDs(unbreakFilterListIDs)
 	if err != nil {
