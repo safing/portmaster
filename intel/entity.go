@@ -237,8 +237,8 @@ func (e *Entity) GetIP() (net.IP, bool) {
 
 func (e *Entity) getLocation(ctx context.Context) {
 	e.fetchLocationOnce.Do(func() {
-		// need IP!
-		if e.IP == nil {
+		// Only check if we have a global IP address.
+		if e.IP == nil || !e.IPScope.IsGlobal() {
 			return
 		}
 
@@ -254,6 +254,31 @@ func (e *Entity) getLocation(ctx context.Context) {
 		e.Coordinates = &loc.Coordinates
 		e.ASN = loc.AutonomousSystemNumber
 		e.ASOrg = loc.AutonomousSystemOrganization
+
+		// Log result.
+		if log.GetLogLevel() == log.TraceLevel {
+			// Build flags
+			var flags string
+			if loc.IsAnycast {
+				flags += " anycast"
+			}
+			if loc.IsSatelliteProvider {
+				flags += " satellite"
+			}
+			if loc.IsAnonymousProxy {
+				flags += " anonymous"
+			}
+
+			// Log location
+			log.Tracer(ctx).Tracef(
+				"intel: located %s in %s (AS%d by %s)%s",
+				e.IP,
+				loc.Country.ISOCode,
+				loc.AutonomousSystemNumber,
+				loc.AutonomousSystemOrganization,
+				flags,
+			)
+		}
 	})
 }
 
@@ -318,7 +343,6 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 		return
 	}
 
-	log.Tracer(ctx).Tracef("intel: loading domain list for %s", domain)
 	e.loadDomainListOnce.Do(func() {
 		domainsToInspect := []string{domain}
 
@@ -347,7 +371,10 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 				return
 			}
 
-			e.mergeList(d, list)
+			if len(list) > 0 {
+				log.Tracer(ctx).Tracef("intel: loaded domain lists for %s: %s", d, strings.Join(list, ", "))
+				e.mergeList(d, list)
+			}
 		}
 		e.domainListLoaded = true
 	})
@@ -389,7 +416,6 @@ func (e *Entity) getASNLists(ctx context.Context) {
 		return
 	}
 
-	log.Tracer(ctx).Tracef("intel: loading ASN list for %d", asn)
 	e.loadAsnListOnce.Do(func() {
 		asnStr := fmt.Sprintf("%d", asn)
 		list, err := filterlists.LookupASNString(asnStr)
@@ -399,8 +425,12 @@ func (e *Entity) getASNLists(ctx context.Context) {
 			return
 		}
 
+		if len(list) > 0 {
+			log.Tracer(ctx).Tracef("intel: loaded ASN lists for %s: %s", asnStr, strings.Join(list, ", "))
+			e.mergeList(asnStr, list)
+		}
+
 		e.asnListLoaded = true
-		e.mergeList(asnStr, list)
 	})
 }
 
@@ -414,7 +444,6 @@ func (e *Entity) getCountryLists(ctx context.Context) {
 		return
 	}
 
-	log.Tracer(ctx).Tracef("intel: loading country list for %s", country)
 	e.loadCountryListOnce.Do(func() {
 		list, err := filterlists.LookupCountry(country)
 		if err != nil {
@@ -423,8 +452,12 @@ func (e *Entity) getCountryLists(ctx context.Context) {
 			return
 		}
 
+		if len(list) > 0 {
+			log.Tracer(ctx).Tracef("intel: loaded country lists for %s: %s", country, strings.Join(list, ", "))
+			e.mergeList(country, list)
+		}
+
 		e.countryListLoaded = true
-		e.mergeList(country, list)
 	})
 }
 
@@ -443,7 +476,6 @@ func (e *Entity) getIPLists(ctx context.Context) {
 		return
 	}
 
-	log.Tracer(ctx).Tracef("intel: loading IP list for %s", ip)
 	e.loadIPListOnce.Do(func() {
 		list, err := filterlists.LookupIP(ip)
 		if err != nil {
@@ -452,8 +484,12 @@ func (e *Entity) getIPLists(ctx context.Context) {
 			return
 		}
 
+		if len(list) > 0 {
+			log.Tracer(ctx).Tracef("intel: loaded IP lists for %s: %s", ip.String(), strings.Join(list, ", "))
+			e.mergeList(ip.String(), list)
+		}
+
 		e.ipListLoaded = true
-		e.mergeList(ip.String(), list)
 	})
 }
 
