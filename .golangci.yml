@@ -8,6 +8,7 @@ linters:
     - contextcheck
     - cyclop
     - exhaustivestruct
+    - exhaustruct
     - forbidigo
     - funlen
     - gochecknoglobals
@@ -17,6 +18,7 @@ linters:
     - goerr113 
     - gomnd
     - ifshort
+    - interfacebloat
     - interfacer
     - ireturn
     - lll
@@ -24,6 +26,9 @@ linters:
     - nilnil
     - nlreturn
     - noctx
+    - nolintlint
+    - nonamedreturns
+    - nosnakecase
     - revive
     - tagliatelle
     - testpackage
@@ -31,7 +36,6 @@ linters:
     - whitespace
     - wrapcheck
     - wsl
-    - nolintlint
 
 linters-settings:
   revive:

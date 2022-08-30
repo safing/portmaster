@@ -1,10 +1,9 @@
 module github.com/safing/portmaster
 
-go 1.18
+go 1.19
 
 require (
 	github.com/agext/levenshtein v1.2.3
-	github.com/cookieo9/resources-go v0.0.0-20150225115733-d27c04069d0d
 	github.com/coreos/go-iptables v0.6.0
 	github.com/florianl/go-nfqueue v1.3.1
 	github.com/ghodss/yaml v1.0.0
@@ -16,16 +15,17 @@ require (
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/maxminddb-golang v1.10.0
 	github.com/safing/portbase v0.15.1
-	github.com/safing/spn v0.4.15
+	github.com/safing/spn v0.5.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.5.0
+	github.com/spkg/zipfs v0.7.1
 	github.com/stretchr/testify v1.8.0
 	github.com/tannerryan/ring v1.1.2
 	github.com/tevino/abool v1.2.0
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
-	golang.org/x/net v0.0.0-20220822230855-b0a4917ee28c
+	golang.org/x/net v0.0.0-20220826154423-83b083e8dc8b
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
-	golang.org/x/sys v0.0.0-20220823224334-20c2bfdbfe24
+	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261
 	zombiezen.com/go/sqlite v0.10.1
 )
 
@@ -47,7 +47,6 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/josharian/native v1.0.0 // indirect
-	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mdlayher/netlink v1.6.0 // indirect
 	github.com/mdlayher/socket v0.2.3 // indirect
@@ -76,13 +75,13 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
-	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
+	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/tools v0.1.12 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/libc v1.17.0 // indirect
+	modernc.org/libc v1.17.1 // indirect
 	modernc.org/mathutil v1.5.0 // indirect
-	modernc.org/memory v1.2.0 // indirect
+	modernc.org/memory v1.2.1 // indirect
 	modernc.org/sqlite v1.18.1 // indirect
 )

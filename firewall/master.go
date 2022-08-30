@@ -14,6 +14,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/detection/dga"
 	"github.com/safing/portmaster/intel/customlists"
+	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
@@ -435,6 +436,7 @@ func checkFilterLists(ctx context.Context, conn *network.Connection, p *profile.
 	switch result {
 	case endpoints.Denied:
 		// If the connection matches a filter list, check if the "unbreak" list matches too and abort blocking.
+		resolvedUnbreakFilterListIDs := filterlists.GetUnbreakFilterListIDs()
 		for _, blockedListID := range conn.Entity.BlockedByLists {
 			for _, unbreakListID := range resolvedUnbreakFilterListIDs {
 				if blockedListID == unbreakListID {

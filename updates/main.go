@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"runtime"
+	"sync/atomic"
 	"time"
 
 	"github.com/safing/portbase/database"
@@ -209,6 +210,8 @@ func DisableUpdateSchedule() error {
 	return nil
 }
 
+var updateFailedCnt = new(atomic.Int32)
+
 func checkForUpdates(ctx context.Context) (err error) {
 	if !forceUpdate.SetToIf(true, false) && !enableUpdates() {
 		log.Warningf("updates: automatic updates are disabled")
@@ -216,7 +219,9 @@ func checkForUpdates(ctx context.Context) (err error) {
 	}
 
 	defer func() {
+		// Resolve any error and and send succes notification.
 		if err == nil {
+			updateFailedCnt.Store(0)
 			log.Infof("updates: successfully checked for updates")
 			module.Resolve(updateFailed)
 			notifications.Notify(&notifications.Notification{
@@ -232,7 +237,14 @@ func checkForUpdates(ctx context.Context) (err error) {
 					},
 				},
 			})
-		} else {
+			return
+		}
+
+		// Log error in any case.
+		log.Errorf("updates: check failed: %s", err)
+
+		// Do not alert user if update failed for only a few times.
+		if updateFailedCnt.Add(1) > 3 {
 			notifications.NotifyWarn(
 				updateFailed,
 				"Update Check Failed",

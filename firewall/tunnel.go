@@ -114,6 +114,11 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 		RoutingProfile:                layeredProfile.SPNRoutingAlgorithm(),
 	}
 
+	// Add required verified owners if community nodes should not be used.
+	if !useCommunityNodes() {
+		conn.TunnelOpts.RequireVerifiedOwners = captain.NonCommunityVerifiedOwners
+	}
+
 	// If we have any exit hub policies, we need to raise the routing algorithm at least to single-hop.
 	if conn.TunnelOpts.RoutingProfile == navigator.RoutingProfileHomeID &&
 		conn.TunnelOpts.HubPoliciesAreSet() {

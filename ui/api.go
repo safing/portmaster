@@ -1,8 +1,6 @@
 package ui
 
 import (
-	resources "github.com/cookieo9/resources-go"
-
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/log"
 )
@@ -22,16 +20,18 @@ func reloadUI(_ *api.Request) (msg string, err error) {
 	appsLock.Lock()
 	defer appsLock.Unlock()
 
-	// close all bundles.
-	for id, bundle := range apps {
-		err := bundle.Close()
+	// Close all archives.
+	for id, archiveFS := range apps {
+		err := archiveFS.Close()
 		if err != nil {
-			log.Warningf("ui: failed to close bundle %s: %s", id, err)
+			log.Warningf("ui: failed to close archive %s: %s", id, err)
 		}
 	}
 
 	// Reset index.
-	apps = make(map[string]*resources.BundleSequence)
+	for key := range apps {
+		delete(apps, key)
+	}
 
-	return "all ui bundles successfully reloaded", nil
+	return "all ui archives successfully reloaded", nil
 }

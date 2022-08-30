@@ -35,8 +35,7 @@ var (
 	pmCtrlUpdate *updater.File
 	pmCoreUpdate *updater.File
 
-	spnHubUpdate      *updater.File
-	hubUpgradeStarted bool
+	spnHubUpdate *updater.File
 
 	rawVersionRegex = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+b?\*?$`)
 )

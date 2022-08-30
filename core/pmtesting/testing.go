@@ -2,18 +2,17 @@
 //
 // Usage:
 //
-// 		package name
+//	package name
 //
-// 		import (
-// 			"testing"
+//	import (
+//		"testing"
 //
-// 			"github.com/safing/portmaster/core/pmtesting"
-// 		)
+//		"github.com/safing/portmaster/core/pmtesting"
+//	)
 //
-// 		func TestMain(m *testing.M) {
-// 			pmtesting.TestMain(m, module)
-// 		}
-//
+//	func TestMain(m *testing.M) {
+//		pmtesting.TestMain(m, module)
+//	}
 package pmtesting
 
 import (

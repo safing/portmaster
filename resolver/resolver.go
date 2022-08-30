@@ -30,7 +30,7 @@ const (
 	ServerSourceEnv             = "env"
 )
 
-// DNS Resolver alias
+// DNS resolver scheme aliases.
 const (
 	HTTPSProtocol = "https"
 	TLSProtocol   = "tls"
@@ -117,14 +117,14 @@ func (info *ResolverInfo) ID() string {
 		case ServerTypeEnv:
 			info.id = ServerTypeEnv
 		case ServerTypeDoH:
-			info.id = fmt.Sprintf(
+			info.id = fmt.Sprintf( //nolint:nosprintfhostport // Not used as URL.
 				"https://%s:%d#%s",
 				info.Domain,
 				info.Port,
 				info.Source,
 			)
 		case ServerTypeDoT:
-			info.id = fmt.Sprintf(
+			info.id = fmt.Sprintf( //nolint:nosprintfhostport // Not used as URL.
 				"dot://%s:%d#%s",
 				info.Domain,
 				info.Port,

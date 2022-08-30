@@ -10,9 +10,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/miekg/dns"
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/netenv"

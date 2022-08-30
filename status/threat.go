@@ -37,14 +37,13 @@ type ThreatPayload struct {
 //
 // Example:
 //
-//      threat := NewThreat("portscan", "Someone is scanning you").
-//      	SetData(portscanResult).
-//      	SetMitigationLevel(SecurityLevelExtreme).
-//      	Publish()
+//	threat := NewThreat("portscan", "Someone is scanning you").
+//		SetData(portscanResult).
+//		SetMitigationLevel(SecurityLevelExtreme).
+//		Publish()
 //
-//      // Once you're done, delete the threat
-//      threat.Delete().Publish()
-//
+//	Once you're done, delete the threat
+//	threat.Delete().Publish()
 func NewThreat(id, title, msg string) *Threat {
 	t := &Threat{
 		Notification: &notifications.Notification{

@@ -468,7 +468,7 @@ func checkOnlineStatus(ctx context.Context) {
 	}
 
 	request := (&http.Request{
-		Method: "GET",
+		Method: http.MethodGet,
 		URL:    parsedPortalTestURL,
 		Close:  true,
 	}).WithContext(ctx)
@@ -495,7 +495,7 @@ func checkOnlineStatus(ctx context.Context) {
 		}
 
 		// direct response
-		if response.StatusCode == 200 {
+		if response.StatusCode == http.StatusOK {
 			updateOnlineStatus(StatusPortal, &url.URL{
 				Scheme: "http",
 				Host:   SpecialCaptivePortalDomain,

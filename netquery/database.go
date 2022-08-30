@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jackc/puddle/v2"
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 
-	"github.com/jackc/puddle/v2"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netquery/orm"
 	"github.com/safing/portmaster/network"
@@ -108,7 +108,6 @@ type (
 // (see Execute). To perform database writes use either Save() or ExecuteWrite().
 // Note that write connections are serialized by the Database object before being
 // handed over to SQLite.
-//
 func New(path string) (*Database, error) {
 	constructor := func(ctx context.Context) (*sqlite.Conn, error) {
 		c, err := sqlite.OpenConn(
@@ -331,7 +330,7 @@ func (db *Database) Save(ctx context.Context, conn Conn) error {
 	for key := range connMap {
 		keys = append(keys, key)
 	}
-	sort.Sort(sort.StringSlice(keys))
+	sort.Strings(keys)
 
 	for _, key := range keys {
 		value := connMap[key]

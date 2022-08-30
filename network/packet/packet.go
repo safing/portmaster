@@ -125,10 +125,12 @@ func (pkt *Base) createConnectionID() {
 // MatchesAddress checks if a the packet matches a given endpoint (remote or local) in protocol, network and port.
 //
 // Comparison matrix:
-//         IN   OUT
+//
+// ======  IN   OUT
+//
 // Local   Dst  Src
 // Remote  Src  Dst
-//.
+// .
 func (pkt *Base) MatchesAddress(remote bool, protocol IPProtocol, network *net.IPNet, port uint16) bool {
 	if pkt.info.Protocol != protocol {
 		return false
@@ -154,10 +156,12 @@ func (pkt *Base) MatchesAddress(remote bool, protocol IPProtocol, network *net.I
 // MatchesIP checks if a the packet matches a given endpoint (remote or local) IP.
 //
 // Comparison matrix:
-//         IN   OUT
+//
+// ======  IN   OUT
+//
 // Local   Dst  Src
 // Remote  Src  Dst
-//.
+// .
 func (pkt *Base) MatchesIP(endpoint bool, network *net.IPNet) bool {
 	if pkt.info.Inbound != endpoint {
 		if network.Contains(pkt.info.Src) {
