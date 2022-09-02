@@ -94,6 +94,8 @@ func (plg *Plugin) Serve() {
 		pluginSet = plugin.PluginSet{}
 	}
 
+	plg.baseCtx, plg.cancel = context.WithCancel(context.Background())
+
 	pluginSet["base"] = &base.Plugin{
 		Impl: &plg.BasePlugin,
 	}
@@ -157,6 +159,14 @@ func OnInit(fn func(context.Context) error) {
 	Default.OnInit(fn)
 }
 
+// OnShutdown registers a new on-shutdown function to be called when the
+// plugin is requested to shut-down
+// It basically calls through to BasePlugin.OnShutdown of the Default
+// plugin instance.
+func OnShutdown(fn func(context.Context) error) {
+	Default.OnShutdown(fn)
+}
+
 // Config returns access to the Portmaster configuration system.
 // It's basically the same as accessing the config.Config of the Default
 // plugin instance.
@@ -169,4 +179,10 @@ func Config() config.Service {
 // plugin instance.
 func Notifications() notification.Service {
 	return Default.Notification
+}
+
+// Context returns the default context of the plugin and is cancelled as
+// sonn as a plugin shutdown request is received.
+func Context() context.Context {
+	return Default.Context()
 }

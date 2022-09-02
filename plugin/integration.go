@@ -1,7 +1,9 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/safing/portbase/log"
@@ -29,8 +31,14 @@ func (m *ModuleImpl) DecideOnConnection(conn *network.Connection) (network.Verdi
 	}()
 
 	for _, d := range m.deciders {
+		// do not give plugins more than 2 seconds for deciding on a connection.
+		ctx, cancel := context.WithTimeout(m.Ctx, 2*time.Second)
+
 		log.Debugf("plugin: asking decider plugin %s for a verdict on %s", d.Name, conn.ID)
-		verdict, reason, err := d.DecideOnConnection(m.Ctx, protoConn)
+		verdict, reason, err := d.DecideOnConnection(ctx, protoConn)
+
+		cancel()
+
 		if err != nil {
 			// TODO(ppacher): capture the name of the plugin for this
 			multierr.Errors = append(multierr.Errors, fmt.Errorf("plugin %s: %w", d.Name, err))

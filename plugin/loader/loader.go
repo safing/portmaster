@@ -13,6 +13,7 @@ import (
 
 	plugin "github.com/hashicorp/go-plugin"
 	"github.com/safing/portbase/dataroot"
+	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/plugin/shared"
 	"github.com/safing/portmaster/plugin/shared/base"
@@ -155,11 +156,26 @@ func (ldr *PluginLoader) Kill() {
 	ldr.l.Lock()
 	defer ldr.l.Unlock()
 
-	for _, client := range ldr.loadedPlugins {
+	for name, client := range ldr.loadedPlugins {
 		if client.Exited() {
 			continue
 		}
 
+		rpcClient, err := client.Client()
+		if err != nil {
+			log.Errorf("plugin.%s: failed to get rpc client for plugin: %s", name, err)
+		} else {
+			baseRaw, err := rpcClient.Dispense("base")
+			if err != nil {
+				log.Errorf("plugin.%s: failed to get base client: %s", name, err)
+			} else {
+				if err := baseRaw.(base.Base).Shutdown(ldr.module.Ctx); err != nil {
+					log.Errorf("plugin.%s: failed to request plugin shutdown: %s", name, err)
+				}
+			}
+		}
+
+		// in any case, try to kill the plugin
 		client.Kill()
 	}
 

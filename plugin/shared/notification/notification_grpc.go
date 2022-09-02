@@ -47,18 +47,28 @@ func (cli *GRPCClient) CreateNotification(ctx context.Context, notif *proto.Noti
 }
 
 func (srv *GRPCServer) CreateNotification(req *proto.CreateNotificationRequest, stream proto.NotificationService_CreateNotificationServer) error {
-	ch, err := srv.Impl.CreateNotification(stream.Context(), req.Notification)
+	ctx := stream.Context()
+
+	ch, err := srv.Impl.CreateNotification(ctx, req.Notification)
 	if err != nil {
 		return err
 	}
 
-	for msg := range ch {
-		if err := stream.Send(&proto.CreateNotificationResponse{
-			SelectedActionId: msg,
-		}); err != nil {
-			return err
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+
+		case msg, ok := <-ch:
+			if !ok {
+				return nil
+			}
+
+			if err := stream.Send(&proto.CreateNotificationResponse{
+				SelectedActionId: msg,
+			}); err != nil {
+				return err
+			}
 		}
 	}
-
-	return nil
 }

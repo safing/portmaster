@@ -56,6 +56,12 @@ func (m *gRPCClient) Configure(ctx context.Context, env *proto.ConfigureRequest,
 	return nil
 }
 
+func (m *gRPCClient) Shutdown(ctx context.Context) error {
+	_, err := m.client.Shutdown(ctx, &proto.ShutdownRequest{})
+
+	return err
+}
+
 func (m *gRPCServer) Configure(ctx context.Context, req *proto.ConfigureRequest) (*proto.ConfigureResponse, error) {
 	conn, err := m.broker.Dial(req.BackchannelId)
 	if err != nil {
@@ -75,6 +81,15 @@ func (m *gRPCServer) Configure(ctx context.Context, req *proto.ConfigureRequest)
 	}
 
 	return new(proto.ConfigureResponse), nil
+}
+
+func (m *gRPCServer) Shutdown(ctx context.Context, _ *proto.ShutdownRequest) (*proto.ShutdownResponse, error) {
+	err := m.Impl.Shutdown(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.ShutdownResponse{}, nil
 }
 
 var _ plugin.GRPCPlugin = new(Plugin)

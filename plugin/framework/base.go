@@ -3,6 +3,9 @@ package framework
 import (
 	"context"
 	"encoding/json"
+	"log"
+	"os"
+	"time"
 
 	"github.com/safing/portmaster/plugin/shared/base"
 	"github.com/safing/portmaster/plugin/shared/config"
@@ -21,13 +24,19 @@ type BasePlugin struct {
 
 	*proto.ConfigureRequest
 
-	onInitFunc []func(ctx context.Context) error
+	baseCtx context.Context
+	cancel  context.CancelFunc
+
+	onInitFunc     []func(ctx context.Context) error
+	onShutdownFunc []func(ctx context.Context) error
 }
 
 // Configure is called by the plugin host (the Portmaster) and configures
 // the plugin with static configuration and also provides access to the
 // configuration and notification systems.
 func (base *BasePlugin) Configure(ctx context.Context, env *proto.ConfigureRequest, configService config.Service, notifService notification.Service) error {
+	log.Println("received configuration request")
+
 	base.ConfigureRequest = env
 	base.Config = configService
 	base.Notification = notifService
@@ -41,6 +50,25 @@ func (base *BasePlugin) Configure(ctx context.Context, env *proto.ConfigureReque
 	return nil
 }
 
+func (base *BasePlugin) Shutdown(ctx context.Context) error {
+	log.Println("received shutdown request")
+
+	for _, fn := range base.onShutdownFunc {
+		if err := fn(ctx); err != nil {
+			return err
+		}
+	}
+
+	base.cancel()
+
+	go func() {
+		time.Sleep(time.Second)
+		os.Exit(0)
+	}()
+
+	return nil
+}
+
 // BaseDirectory returns the installation directory of the Portmaster.
 func (base *BasePlugin) BaseDirectory() string {
 	return base.ConfigureRequest.BaseDirectory
@@ -49,6 +77,12 @@ func (base *BasePlugin) BaseDirectory() string {
 // PluginName returns the name of the plugin as specified by the user.
 func (base *BasePlugin) PluginName() string {
 	return base.ConfigureRequest.PluginName
+}
+
+// Context returns the context.Context of the plugin. The returned context
+// is cancelled as soon as the plugin is requested to stop.
+func (base *BasePlugin) Context() context.Context {
+	return base.baseCtx
 }
 
 // ParseStaticConfig parses any static plugin configuration, specified in
@@ -73,6 +107,12 @@ func (base *BasePlugin) ParseStaticConfig(receiver interface{}) error {
 // the configuration request, static configuration and BaseDirectory/PluginName.
 func (base *BasePlugin) OnInit(fn func(context.Context) error) {
 	base.onInitFunc = append(base.onInitFunc, fn)
+}
+
+// OnShutdown registers a new on-shutdown method that is executed
+// when the plugin shutdown is requested by the plugin host (Portmaster).
+func (base *BasePlugin) OnShutdown(fn func(context.Context) error) {
+	base.onShutdownFunc = append(base.onShutdownFunc, fn)
 }
 
 var _ base.Base = new(BasePlugin)

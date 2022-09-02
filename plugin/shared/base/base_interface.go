@@ -13,6 +13,7 @@ import (
 type (
 	Base interface {
 		Configure(context.Context, *proto.ConfigureRequest, config.Service, notification.Service) error
+		Shutdown(ctx context.Context) error
 	}
 
 	Plugin struct {

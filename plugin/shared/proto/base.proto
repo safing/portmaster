@@ -5,7 +5,8 @@ package safing.portmaster.plugin.proto;
 option go_package = "./proto";
 
 service BaseService {
-    rpc Configure(ConfigureRequest) returns (ConfigureResponse) {};
+    rpc Configure(ConfigureRequest) returns (ConfigureResponse) {}
+    rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {}
 }
 
 message ConfigureRequest {
@@ -23,3 +24,6 @@ message ConfigureRequest {
 message ConfigureResponse {
 
 }
+
+message ShutdownRequest {}
+message ShutdownResponse {}
