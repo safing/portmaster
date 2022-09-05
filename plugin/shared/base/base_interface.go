@@ -6,13 +6,21 @@ import (
 	"github.com/hashicorp/go-plugin"
 	"github.com/safing/portmaster/plugin/shared/config"
 	"github.com/safing/portmaster/plugin/shared/notification"
+	"github.com/safing/portmaster/plugin/shared/pluginmanager"
 	"github.com/safing/portmaster/plugin/shared/proto"
 	"google.golang.org/grpc"
 )
 
 type (
+	Environment struct {
+		Config        config.Service
+		Notify        notification.Service
+		PluginManager pluginmanager.Service
+	}
+
 	Base interface {
-		Configure(context.Context, *proto.ConfigureRequest, config.Service, notification.Service) error
+		Configure(context.Context, *proto.ConfigureRequest, Environment) error
+
 		Shutdown(ctx context.Context) error
 	}
 

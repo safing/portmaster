@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network"
-	"github.com/safing/portmaster/plugin/shared/proto"
+	"github.com/safing/portmaster/plugin/internal"
 )
 
 // DecideOnConnection is called by the firewall to request a verdict decision from plugins.
@@ -19,7 +19,7 @@ func (m *ModuleImpl) DecideOnConnection(conn *network.Connection) (network.Verdi
 		return network.VerdictUndecided, "", nil
 	}
 
-	protoConn := proto.ConnectionFromNetwork(conn)
+	protoConn := internal.ConnectionFromNetwork(conn)
 
 	var multierr = new(multierror.Error)
 	defer func() {
@@ -30,7 +30,10 @@ func (m *ModuleImpl) DecideOnConnection(conn *network.Connection) (network.Verdi
 		}
 	}()
 
-	for _, d := range m.deciders {
+	m.l.RLock()
+	defer m.l.RUnlock()
+
+	for _, d := range m.plugins {
 		// do not give plugins more than 2 seconds for deciding on a connection.
 		ctx, cancel := context.WithTimeout(m.Ctx, 2*time.Second)
 
@@ -46,7 +49,7 @@ func (m *ModuleImpl) DecideOnConnection(conn *network.Connection) (network.Verdi
 			continue
 		}
 
-		networkVerdict := proto.VerdictToNetwork(verdict)
+		networkVerdict := internal.VerdictToNetwork(verdict)
 
 		switch networkVerdict {
 		case network.VerdictUndecided,
@@ -71,22 +74,28 @@ func (m *ModuleImpl) ReportConnection(conn *network.Connection) {
 		return
 	}
 
-	protoConn := proto.ConnectionFromNetwork(conn)
+	protoConn := internal.ConnectionFromNetwork(conn)
 
 	var multierr = new(multierror.Error)
-	for _, r := range m.reporters {
+
+	defer func() {
+		if err := multierr.ErrorOrNil(); err != nil {
+			log.Errorf("plugin: one or more reporter plugins returned an error: %s", err)
+
+			m.Module.Error("plugin-reporter-error", "One or more reporter plugins reported an error", err.Error())
+		} else {
+			m.Module.Resolve("plugin-reporter-error")
+		}
+	}()
+
+	m.l.RLock()
+	defer m.l.RUnlock()
+
+	for _, r := range m.plugins {
 		log.Debugf("plugin: reporting connection %s to %s", conn.ID, r.Name)
 
 		if err := r.ReportConnection(m.Ctx, protoConn); err != nil {
 			multierr.Errors = append(multierr.Errors, fmt.Errorf("plugin %s: %w", r.Name, err))
 		}
-	}
-
-	if err := multierr.ErrorOrNil(); err != nil {
-		log.Errorf("plugin: one or more reporter plugins returned an error: %s", err)
-
-		m.Module.Error("plugin-reporter-error", "One or more reporter plugins reported an error", err.Error())
-	} else {
-		m.Module.Resolve("plugin-reporter-error")
 	}
 }

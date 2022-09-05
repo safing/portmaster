@@ -2,10 +2,7 @@ package config
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portmaster/plugin/shared"
 	"github.com/safing/portmaster/plugin/shared/proto"
 )
 
@@ -34,60 +31,4 @@ type (
 		GetValue(ctx context.Context, key string) (*proto.Value, error)
 		WatchValue(ctx context.Context, key ...string) (<-chan *proto.WatchChangesResponse, error)
 	}
-
-	// HostConfigServer is used by GRPCServer to provide plugins with access to the
-	// Portmaster configuration system. It's created on a per-plugin basis by the loader.PluginLoader
-	// when Dispense'ing a new plugin instance.
-	HostConfigServer struct {
-		fanout     *shared.EventFanout
-		pluginName string
-	}
 )
-
-// NewHostConfigServer creates a new HostConfigServer that provides scoped access to
-// the Portmaster configuration system for a plugin named pluginName.
-// Access and creation of configuration options is limited to the "config:plugins/<pluginName>" scope
-// while keys are transparently proxied for the plugin.
-func NewHostConfigServer(fanout *shared.EventFanout, pluginName string) *HostConfigServer {
-	return &HostConfigServer{
-		pluginName: pluginName,
-	}
-}
-
-func (cfg *HostConfigServer) RegisterOption(ctx context.Context, req *proto.Option) error {
-	defaultValue, err := proto.UnwrapConfigValue(req.Default, proto.OptionTypeToConfig(req.OptionType))
-	if err != nil {
-		return err
-	}
-
-	err = config.Register(&config.Option{
-		Name:           req.Name,
-		Help:           req.Help,
-		Description:    req.Description,
-		ReleaseLevel:   config.ReleaseLevelExperimental,
-		ExpertiseLevel: config.ExpertiseLevelDeveloper,
-		OptType:        proto.OptionTypeToConfig(req.OptionType),
-		Key:            fmt.Sprintf("plugins/%s/%s", cfg.pluginName, req.Key),
-		DefaultValue:   defaultValue,
-		Annotations: config.Annotations{
-			config.CategoryAnnotation:  cfg.pluginName,
-			config.SubsystemAnnotation: "plugins",
-		},
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (cfg *HostConfigServer) GetValue(ctx context.Context, key string) (*proto.Value, error) {
-	key = fmt.Sprintf("plugins/%s/%s", cfg.pluginName, key)
-
-	return shared.GetConfigValueProto(key)
-}
-
-func (cfg *HostConfigServer) WatchValue(ctx context.Context, keys ...string) (<-chan *proto.WatchChangesResponse, error) {
-	ch := cfg.fanout.SubscribeConfigChanges(ctx, cfg.pluginName, keys)
-	return ch, nil
-}

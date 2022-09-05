@@ -1,4 +1,4 @@
-package shared
+package internal
 
 import (
 	"context"
@@ -75,7 +75,7 @@ func (fanout *EventFanout) setupConfigSubscription() {
 			"Broadcast config changes to plugins",
 			func(ctx context.Context, i interface{}) error {
 				// TODO(ppacher): right now we just always send the value of
-				// the keys regardless of the changed or not.
+				// the keys regardless if they changed or not.
 
 				fanout.m.RLock()
 				defer fanout.m.RUnlock()
@@ -84,7 +84,7 @@ func (fanout *EventFanout) setupConfigSubscription() {
 					for _, key := range listener.keys {
 						value, err := GetConfigValueProto(key)
 						if err != nil {
-							log.Errorf("failed to get configuration option %s for plugin %s", listener.pluginName, key)
+							log.Errorf("failed to get configuration option %s for plugin %s: %s", key, listener.pluginName, err)
 
 							continue
 						}
@@ -95,7 +95,7 @@ func (fanout *EventFanout) setupConfigSubscription() {
 							Value: value,
 						}:
 						default:
-							log.Errorf("failed to send configuration value for %s to plugin %s", listener.pluginName, key)
+							log.Errorf("failed to send configuration value for %s to plugin %s", key, listener.pluginName)
 						}
 					}
 				}

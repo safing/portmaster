@@ -1,4 +1,4 @@
-package proto
+package internal
 
 import (
 	"fmt"
@@ -10,25 +10,26 @@ import (
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/plugin/shared/proto"
 )
 
-func VerdictToNetwork(verdict Verdict) network.Verdict {
+func VerdictToNetwork(verdict proto.Verdict) network.Verdict {
 	switch verdict {
-	case Verdict_VERDICT_ACCEPT:
+	case proto.Verdict_VERDICT_ACCEPT:
 		return network.VerdictAccept
-	case Verdict_VERDICT_BLOCK:
+	case proto.Verdict_VERDICT_BLOCK:
 		return network.VerdictBlock
-	case Verdict_VERDICT_DROP:
+	case proto.Verdict_VERDICT_DROP:
 		return network.VerdictDrop
-	case Verdict_VERDICT_FAILED:
+	case proto.Verdict_VERDICT_FAILED:
 		return network.VerdictFailed
-	case Verdict_VERDICT_REROUTE_TO_NS:
+	case proto.Verdict_VERDICT_REROUTE_TO_NS:
 		return network.VerdictRerouteToNameserver
-	case Verdict_VERDICT_REROUTE_TO_TUNNEL:
+	case proto.Verdict_VERDICT_REROUTE_TO_TUNNEL:
 		return network.VerdictRerouteToTunnel
-	case Verdict_VERDICT_UNDECIDED:
+	case proto.Verdict_VERDICT_UNDECIDED:
 		return network.VerdictUndecided
-	case Verdict_VERDICT_UNDETERMINABLE:
+	case proto.Verdict_VERDICT_UNDETERMINABLE:
 		return network.VerdictUndeterminable
 
 	default:
@@ -36,12 +37,12 @@ func VerdictToNetwork(verdict Verdict) network.Verdict {
 	}
 }
 
-func ConnectionFromNetwork(conn *network.Connection) *Connection {
+func ConnectionFromNetwork(conn *network.Connection) *proto.Connection {
 	if conn == nil {
 		return nil
 	}
 
-	protoConn := &Connection{
+	protoConn := &proto.Connection{
 		Id:         conn.ID,
 		Type:       ConnTypeFromNetwork(conn.Type),
 		External:   conn.External,
@@ -60,59 +61,59 @@ func ConnectionFromNetwork(conn *network.Connection) *Connection {
 	return protoConn
 }
 
-func VerdictFromNetwork(verdict network.Verdict) Verdict {
+func VerdictFromNetwork(verdict network.Verdict) proto.Verdict {
 	switch verdict {
 	case network.VerdictAccept:
-		return Verdict_VERDICT_ACCEPT
+		return proto.Verdict_VERDICT_ACCEPT
 	case network.VerdictBlock:
-		return Verdict_VERDICT_BLOCK
+		return proto.Verdict_VERDICT_BLOCK
 	case network.VerdictDrop:
-		return Verdict_VERDICT_DROP
+		return proto.Verdict_VERDICT_DROP
 	case network.VerdictFailed:
-		return Verdict_VERDICT_FAILED
+		return proto.Verdict_VERDICT_FAILED
 	case network.VerdictRerouteToNameserver:
-		return Verdict_VERDICT_REROUTE_TO_NS
+		return proto.Verdict_VERDICT_REROUTE_TO_NS
 	case network.VerdictRerouteToTunnel:
-		return Verdict_VERDICT_REROUTE_TO_TUNNEL
+		return proto.Verdict_VERDICT_REROUTE_TO_TUNNEL
 	case network.VerdictUndeterminable:
-		return Verdict_VERDICT_UNDETERMINABLE
+		return proto.Verdict_VERDICT_UNDETERMINABLE
 	case network.VerdictUndecided:
 		fallthrough
 	default:
-		return Verdict_VERDICT_UNDECIDED
+		return proto.Verdict_VERDICT_UNDECIDED
 	}
 }
 
-func ConnTypeFromNetwork(connType network.ConnectionType) ConnectionType {
+func ConnTypeFromNetwork(connType network.ConnectionType) proto.ConnectionType {
 	switch connType {
 	case network.IPConnection:
-		return ConnectionType_CONNECTION_TYPE_IP
+		return proto.ConnectionType_CONNECTION_TYPE_IP
 
 	case network.DNSRequest:
-		return ConnectionType_CONNECTION_TYPE_DNS
+		return proto.ConnectionType_CONNECTION_TYPE_DNS
 
 	default:
-		return ConnectionType_CONNECTION_TYPE_UNKNOWN
+		return proto.ConnectionType_CONNECTION_TYPE_UNKNOWN
 	}
 }
 
-func IPVersionFromNetwork(ipVersion packet.IPVersion) IPVersion {
+func IPVersionFromNetwork(ipVersion packet.IPVersion) proto.IPVersion {
 	switch ipVersion {
 	case packet.IPv4:
-		return IPVersion_IP_VERSION_4
+		return proto.IPVersion_IP_VERSION_4
 	case packet.IPv6:
-		return IPVersion_IP_VERSION_6
+		return proto.IPVersion_IP_VERSION_6
 	default:
-		return IPVersion_IP_VERSION_UNKNOWN
+		return proto.IPVersion_IP_VERSION_UNKNOWN
 	}
 }
 
-func IntelEntityFromNetwork(entity *intel.Entity) *IntelEntity {
+func IntelEntityFromNetwork(entity *intel.Entity) *proto.IntelEntity {
 	if entity == nil {
 		return nil
 	}
 
-	return &IntelEntity{
+	return &proto.IntelEntity{
 		Protocol:      int32(entity.Protocol),
 		Port:          int32(entity.Port),
 		Domain:        entity.Domain,
@@ -127,30 +128,30 @@ func IntelEntityFromNetwork(entity *intel.Entity) *IntelEntity {
 	}
 }
 
-func IPScopeFromNetwork(scope netutils.IPScope) IPScope {
+func IPScopeFromNetwork(scope netutils.IPScope) proto.IPScope {
 	switch scope {
 	case netutils.Undefined:
-		return IPScope_IP_SCOPE_UNKNOWN
+		return proto.IPScope_IP_SCOPE_UNKNOWN
 	case netutils.HostLocal:
-		return IPScope_IP_SCOPE_HOST_LOCAL
+		return proto.IPScope_IP_SCOPE_HOST_LOCAL
 	case netutils.LinkLocal:
-		return IPScope_IP_SCOPE_LINK_LOCAL
+		return proto.IPScope_IP_SCOPE_LINK_LOCAL
 	case netutils.SiteLocal:
-		return IPScope_IP_SCOPE_SITE_LOCAL
+		return proto.IPScope_IP_SCOPE_SITE_LOCAL
 	case netutils.Global:
-		return IPScope_IP_SCOPE_GLOBAL
+		return proto.IPScope_IP_SCOPE_GLOBAL
 	case netutils.GlobalMulticast:
-		return IPScope_IP_SCOPE_GLOBAL_MULTICAST
+		return proto.IPScope_IP_SCOPE_GLOBAL_MULTICAST
 	case netutils.LocalMulticast:
-		return IPScope_IP_SCOPE_LOCAL_MULTICAST
+		return proto.IPScope_IP_SCOPE_LOCAL_MULTICAST
 
 	default:
-		return IPScope_IP_SCOPE_UNKNOWN
+		return proto.IPScope_IP_SCOPE_UNKNOWN
 	}
 }
 
-func ProcessFromNetwork(process network.ProcessContext) *ProcessContext {
-	return &ProcessContext{
+func ProcessFromNetwork(process network.ProcessContext) *proto.ProcessContext {
+	return &proto.ProcessContext{
 		Name:        process.ProfileName,
 		Profile:     process.Profile,
 		BinaryPath:  process.BinaryPath,
@@ -160,36 +161,36 @@ func ProcessFromNetwork(process network.ProcessContext) *ProcessContext {
 	}
 }
 
-func CoordinatesFromNetwork(coord *geoip.Coordinates) *Coordinates {
+func CoordinatesFromNetwork(coord *geoip.Coordinates) *proto.Coordinates {
 	if coord == nil {
 		return nil
 	}
 
-	return &Coordinates{
+	return &proto.Coordinates{
 		AccuracyRadius: int32(coord.AccuracyRadius),
 		Latitude:       float32(coord.Latitude),
 		Longitude:      float32(coord.Longitude),
 	}
 }
 
-func OptionTypeToConfig(optType OptionType) config.OptionType {
+func OptionTypeToConfig(optType proto.OptionType) config.OptionType {
 	switch optType {
-	case OptionType_OPTION_TYPE_BOOL:
+	case proto.OptionType_OPTION_TYPE_BOOL:
 		return config.OptTypeBool
-	case OptionType_OPTION_TYPE_INT:
+	case proto.OptionType_OPTION_TYPE_INT:
 		return config.OptTypeInt
-	case OptionType_OPTION_TYPE_STRING:
+	case proto.OptionType_OPTION_TYPE_STRING:
 		return config.OptTypeString
-	case OptionType_OPTION_TYPE_STRING_ARRAY:
+	case proto.OptionType_OPTION_TYPE_STRING_ARRAY:
 		return config.OptTypeStringArray
-	case OptionType_OPTION_TYPE_ANY:
+	case proto.OptionType_OPTION_TYPE_ANY:
 		fallthrough
 	default:
 		return config.OptionType(0)
 	}
 }
 
-func UnwrapConfigValue(value *Value, valueType config.OptionType) (any, error) {
+func UnwrapConfigValue(value *proto.Value, valueType config.OptionType) (any, error) {
 	if value == nil {
 		return nil, fmt.Errorf("nil value")
 	}
@@ -208,26 +209,26 @@ func UnwrapConfigValue(value *Value, valueType config.OptionType) (any, error) {
 	return nil, fmt.Errorf("unsupported option type %d", valueType)
 }
 
-func WrapConfigValue(x interface{}, valueType config.OptionType) (*Value, error) {
+func WrapConfigValue(x interface{}, valueType config.OptionType) (*proto.Value, error) {
 	if x == nil {
-		return &Value{}, nil
+		return &proto.Value{}, nil
 	}
 
 	switch valueType {
 	case config.OptTypeBool:
-		return &Value{
+		return &proto.Value{
 			Bool: x.(bool),
 		}, nil
 	case config.OptTypeInt:
-		return &Value{
+		return &proto.Value{
 			Int: int64(x.(int)),
 		}, nil
 	case config.OptTypeString:
-		return &Value{
+		return &proto.Value{
 			String_: x.(string),
 		}, nil
 	case config.OptTypeStringArray:
-		return &Value{
+		return &proto.Value{
 			StringArray: x.([]string),
 		}, nil
 	}
@@ -235,7 +236,7 @@ func WrapConfigValue(x interface{}, valueType config.OptionType) (*Value, error)
 	return nil, fmt.Errorf("unsupported option type")
 }
 
-func NotificationFromProto(notif *Notification) *notifications.Notification {
+func NotificationFromProto(notif *proto.Notification) *notifications.Notification {
 	if notif == nil {
 		return nil
 	}
@@ -260,32 +261,32 @@ func NotificationFromProto(notif *Notification) *notifications.Notification {
 	}
 }
 
-func NotificationActionTypeFromProto(action *NotificationAction) *notifications.Action {
+func NotificationActionTypeFromProto(action *proto.NotificationAction) *notifications.Action {
 	res := &notifications.Action{
 		ID:   action.GetId(),
 		Text: action.GetText(),
 	}
 
 	switch payload := action.GetActionType().(type) {
-	case *NotificationAction_InjectEventId:
+	case *proto.NotificationAction_InjectEventId:
 		res.Payload = payload.InjectEventId
 
-	case *NotificationAction_OpenPage:
+	case *proto.NotificationAction_OpenPage:
 		res.Payload = payload.OpenPage
 
-	case *NotificationAction_OpenProfile:
+	case *proto.NotificationAction_OpenProfile:
 		res.Payload = payload.OpenProfile
 
-	case *NotificationAction_OpenSetting:
+	case *proto.NotificationAction_OpenSetting:
 		res.Payload = notifications.ActionTypeOpenSettingPayload{
 			Key:     payload.OpenSetting.Key,
 			Profile: payload.OpenSetting.Profile,
 		}
 
-	case *NotificationAction_OpenUrl:
+	case *proto.NotificationAction_OpenUrl:
 		res.Payload = payload.OpenUrl
 
-	case *NotificationAction_Webhook:
+	case *proto.NotificationAction_Webhook:
 		res.Type = notifications.ActionTypeWebhook
 		webhook := notifications.ActionTypeWebhookPayload{
 			Method:  payload.Webhook.Method,
@@ -294,9 +295,9 @@ func NotificationActionTypeFromProto(action *NotificationAction) *notifications.
 		}
 
 		switch payload.Webhook.ResultAction {
-		case WebhookResultAction_WEBHOOK_RESULT_ACTION_DISPLAY:
+		case proto.WebhookResultAction_WEBHOOK_RESULT_ACTION_DISPLAY:
 			webhook.ResultAction = "display"
-		case WebhookResultAction_WEBHOOK_RESULT_ACTION_IGNORE:
+		case proto.WebhookResultAction_WEBHOOK_RESULT_ACTION_IGNORE:
 			webhook.ResultAction = "ignore"
 		default:
 			webhook.ResultAction = "ignore"
@@ -313,30 +314,30 @@ func NotificationActionTypeFromProto(action *NotificationAction) *notifications.
 	return res
 }
 
-func NotificationStateFromProto(state NotificationState) notifications.State {
+func NotificationStateFromProto(state proto.NotificationState) notifications.State {
 	switch state {
-	case NotificationState_NOTIFICATION_STATE_ACTIVE:
+	case proto.NotificationState_NOTIFICATION_STATE_ACTIVE:
 		return notifications.Active
-	case NotificationState_NOTIFICATION_STATE_EXECUTED:
+	case proto.NotificationState_NOTIFICATION_STATE_EXECUTED:
 		return notifications.Executed
-	case NotificationState_NOTIFICATION_STATE_RESPONDED:
+	case proto.NotificationState_NOTIFICATION_STATE_RESPONDED:
 		return notifications.Responded
-	case NotificationState_NOTIFICATION_STATE_UNKNOWN:
+	case proto.NotificationState_NOTIFICATION_STATE_UNKNOWN:
 		fallthrough
 	default:
 		return ""
 	}
 }
 
-func NotificationTypeFromProto(nType NotificationType) notifications.Type {
+func NotificationTypeFromProto(nType proto.NotificationType) notifications.Type {
 	switch nType {
-	case NotificationType_NOTIFICATION_TYPE_ERROR:
+	case proto.NotificationType_NOTIFICATION_TYPE_ERROR:
 		return notifications.Error
-	case NotificationType_NOTIFICATION_TYPE_WARNING:
+	case proto.NotificationType_NOTIFICATION_TYPE_WARNING:
 		return notifications.Warning
-	case NotificationType_NOTIFICATION_TYPE_PROMPT:
+	case proto.NotificationType_NOTIFICATION_TYPE_PROMPT:
 		return notifications.Prompt
-	case NotificationType_NOTIFICATION_TYPE_INFO:
+	case proto.NotificationType_NOTIFICATION_TYPE_INFO:
 		fallthrough
 	default:
 		return notifications.Info

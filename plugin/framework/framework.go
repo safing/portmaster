@@ -11,6 +11,7 @@ import (
 	"github.com/safing/portmaster/plugin/shared/config"
 	"github.com/safing/portmaster/plugin/shared/decider"
 	"github.com/safing/portmaster/plugin/shared/notification"
+	"github.com/safing/portmaster/plugin/shared/pluginmanager"
 	"github.com/safing/portmaster/plugin/shared/reporter"
 )
 
@@ -131,13 +132,15 @@ func BaseDirectory() string {
 }
 
 // PluginName returns the name of the plugin as specified by the user.
+//
 // It basically calls through to BasePlugin.PluginName of the Default
 // plugin instance.
 func PluginName() string {
 	return Default.PluginName()
 }
 
-// ParseStaticConfig parses the static plugin configuration into reciver.
+// ParseStaticConfig parses the static plugin configuration into receiver.
+//
 // It basically calls through to BasePlugin.ParseStaticConfig of the Default
 // plugin instance.
 func ParseStaticConfig(receiver interface{}) error {
@@ -145,6 +148,7 @@ func ParseStaticConfig(receiver interface{}) error {
 }
 
 // Serve serves the plugin.
+//
 // It basically calls through to Plugin.Serve of the Default
 // plugin instance.
 func Serve() {
@@ -153,6 +157,7 @@ func Serve() {
 
 // OnInit registers a new on-init function to be called when the plugin is
 // dispensed and configured.
+//
 // It basically calls through to BasePlugin.OnInit of the Default
 // plugin instance.
 func OnInit(fn func(context.Context) error) {
@@ -161,6 +166,7 @@ func OnInit(fn func(context.Context) error) {
 
 // OnShutdown registers a new on-shutdown function to be called when the
 // plugin is requested to shut-down
+//
 // It basically calls through to BasePlugin.OnShutdown of the Default
 // plugin instance.
 func OnShutdown(fn func(context.Context) error) {
@@ -168,21 +174,42 @@ func OnShutdown(fn func(context.Context) error) {
 }
 
 // Config returns access to the Portmaster configuration system.
-// It's basically the same as accessing the config.Config of the Default
+//
+// It's basically the same as accessing the Config of the Default
 // plugin instance.
 func Config() config.Service {
-	return Default.Config
+	return Default.Environment.Config
 }
 
-// Notifications returns access to the Portmaster notification system.
-// It's basically the same as accessing the config.Notification of the Default
+// Notify returns access to the Portmaster notification system.
+//
+// It's basically the same as accessing the Notification of the Default
 // plugin instance.
-func Notifications() notification.Service {
-	return Default.Notification
+func Notify() notification.Service {
+	return Default.Environment.Notify
+}
+
+// PluginManager returns access to the Portmaster plugin-management system.
+// Note that the PluginManager is only available when the plugin has been configured
+// as privileged.
+//
+// It's basically the same as accessing the PluginManager of the Default
+// plugin instance.
+func PluginManager() pluginmanager.Service {
+	return Default.Environment.PluginManager
+}
+
+// PortmasterVersion returns the current version of the Portmaster that launched
+// the plugin instance.
+//
+// It's basically the same as accessing the PortmasterVersion of the Default
+// plugin instance.
+func PortmasterVersion() string {
+	return Default.PortmasterVersion
 }
 
 // Context returns the default context of the plugin and is cancelled as
-// sonn as a plugin shutdown request is received.
+// soon as a plugin shutdown request is received.
 func Context() context.Context {
 	return Default.Context()
 }

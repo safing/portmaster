@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/plugin/shared/base"
-	"github.com/safing/portmaster/plugin/shared/config"
-	"github.com/safing/portmaster/plugin/shared/notification"
 	"github.com/safing/portmaster/plugin/shared/proto"
 )
 
@@ -19,8 +17,7 @@ import (
 // access to the the Portmaster configuration and notification
 // sytems.
 type BasePlugin struct {
-	Config       config.Service
-	Notification notification.Service
+	base.Environment
 
 	*proto.ConfigureRequest
 
@@ -34,15 +31,16 @@ type BasePlugin struct {
 // Configure is called by the plugin host (the Portmaster) and configures
 // the plugin with static configuration and also provides access to the
 // configuration and notification systems.
-func (base *BasePlugin) Configure(ctx context.Context, env *proto.ConfigureRequest, configService config.Service, notifService notification.Service) error {
-	log.Println("received configuration request")
+func (base *BasePlugin) Configure(ctx context.Context, req *proto.ConfigureRequest, env base.Environment) error {
+	log.Println("[DEBUG] configuration request received")
 
-	base.ConfigureRequest = env
-	base.Config = configService
-	base.Notification = notifService
+	base.ConfigureRequest = req
+	base.Environment = env
 
 	for _, fn := range base.onInitFunc {
 		if err := fn(ctx); err != nil {
+			log.Printf("[ERROR] on-init error occurred: %s", err)
+
 			return err
 		}
 	}
@@ -51,7 +49,7 @@ func (base *BasePlugin) Configure(ctx context.Context, env *proto.ConfigureReque
 }
 
 func (base *BasePlugin) Shutdown(ctx context.Context) error {
-	log.Println("received shutdown request")
+	log.Println("[DEBUG] shutdown request received")
 
 	for _, fn := range base.onShutdownFunc {
 		if err := fn(ctx); err != nil {
@@ -76,7 +74,7 @@ func (base *BasePlugin) BaseDirectory() string {
 
 // PluginName returns the name of the plugin as specified by the user.
 func (base *BasePlugin) PluginName() string {
-	return base.ConfigureRequest.PluginName
+	return base.ConfigureRequest.GetConfig().GetName()
 }
 
 // Context returns the context.Context of the plugin. The returned context
@@ -88,15 +86,15 @@ func (base *BasePlugin) Context() context.Context {
 // ParseStaticConfig parses any static plugin configuration, specified in
 // plugins.json into receiver.
 //
-// It returns ErrNoStaticConfig if the "config" field of the plugin configration
+// It returns ErrNoStaticConfig if the "config" field of the plugin configuration
 // was empty or unset.
 // Otherwise it will return any error encountered during JSON unmarshaling.
 func (base *BasePlugin) ParseStaticConfig(receiver interface{}) error {
-	if len(base.StaticConfig) == 0 {
+	if len(base.GetConfig().StaticConfig) == 0 {
 		return ErrNoStaticConfig
 	}
 
-	return json.Unmarshal(base.StaticConfig, receiver)
+	return json.Unmarshal(base.GetConfig().StaticConfig, receiver)
 }
 
 // OnInit registers a new on-init method that is executed when

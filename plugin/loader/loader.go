@@ -2,9 +2,7 @@ package loader
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,141 +10,265 @@ import (
 	"sync"
 
 	plugin "github.com/hashicorp/go-plugin"
-	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/plugin/internal"
 	"github.com/safing/portmaster/plugin/shared"
 	"github.com/safing/portmaster/plugin/shared/base"
-	"github.com/safing/portmaster/plugin/shared/config"
 	"github.com/safing/portmaster/plugin/shared/decider"
-	"github.com/safing/portmaster/plugin/shared/notification"
-	"github.com/safing/portmaster/plugin/shared/proto"
 	"github.com/safing/portmaster/plugin/shared/reporter"
 )
 
-// PluginLoader is capable of loading Portmaster plugins for a specified set
-// of search directories.
-type PluginLoader struct {
-	SearchDirectories []string
+type (
+	PluginNotifyFunc func(instance *PluginInstance)
 
-	module *modules.Module
-	fanout *shared.EventFanout
+	// PluginLoader is capable of loading Portmaster plugins for a specified set
+	// of search directories.
+	PluginLoader struct {
+		SearchDirectories []string
+		pluginConfigs     []shared.PluginConfig
 
-	l             sync.Mutex
-	loadedPlugins map[string]*plugin.Client
-}
+		module *modules.Module
+		fanout *internal.EventFanout
 
-// NewPluginLoader returns a new PluginLoader instance that looks for plugins
-// in path.
-func NewPluginLoader(m *modules.Module, baseDir ...string) *PluginLoader {
-	return &PluginLoader{
-		module:            m,
-		SearchDirectories: baseDir,
-		fanout:            shared.NewEventFanout(m),
-		loadedPlugins:     make(map[string]*plugin.Client),
+		l               sync.Mutex
+		loadedPlugins   map[string]*PluginInstance
+		onPluginStarted []PluginNotifyFunc
+		onPluginStopped []PluginNotifyFunc
 	}
-}
+)
 
 // Common errors returned by the PluginLoader.
 var (
 	ErrPluginNotFound           = errors.New("plugin not found in search paths")
 	ErrPluginTypeNotImplemented = errors.New("plugin does not implement the requested type")
 	ErrPluginConfigFailed       = errors.New("plugin failed to be configured")
+	ErrPluginNotRegistered      = errors.New("plugin not registered")
+	ErrPluginNotStarted         = errors.New("plugin has not been started")
 )
 
-func (ldr *PluginLoader) Dispense(ctx context.Context, pluginName string, pluginType shared.PluginType, staticConfig json.RawMessage) (any, error) {
+// NewPluginLoader returns a new PluginLoader instance that looks for plugins
+// in path.
+func NewPluginLoader(m *modules.Module, baseDirs []string, pluginConfigs []shared.PluginConfig) *PluginLoader {
+	return &PluginLoader{
+		module:            m,
+		SearchDirectories: baseDirs,
+		pluginConfigs:     pluginConfigs,
+		fanout:            internal.NewEventFanout(m),
+		loadedPlugins:     make(map[string]*PluginInstance),
+	}
+}
+
+// OnPluginStarted registers a new callback function that is invoked whenever a plugin
+// has been started successfully.
+func (ldr *PluginLoader) OnPluginStarted(fn PluginNotifyFunc) {
 	ldr.l.Lock()
 	defer ldr.l.Unlock()
 
-	// check if we already loaded the plugin. If yes, we can safely request the plugin
-	// type from the already running sub-process.
-	client, ok := ldr.loadedPlugins[pluginName]
+	ldr.onPluginStarted = append(ldr.onPluginStarted, fn)
+}
 
-	// search for the plugin binary, launch it and create a new client
+// OnPluginShutdown registers a new callback function that is invoked whenever a plugin
+// instance has been stopped.
+func (ldr *PluginLoader) OnPluginShutdown(fn PluginNotifyFunc) {
+	ldr.l.Lock()
+	defer ldr.l.Unlock()
+
+	ldr.onPluginStopped = append(ldr.onPluginStopped, fn)
+}
+
+func (ldr *PluginLoader) Dispense(ctx context.Context, name string) (*PluginInstance, error) {
+	ldr.l.Lock()
+	defer ldr.l.Unlock()
+
+	cfg, ok := ldr.getPluginConfig(name)
 	if !ok {
-		path, err := ldr.findPluginBinary(pluginName)
-		if err != nil {
-			return nil, err
-		}
-
-		cmd := exec.Command(path)
-
-		client = plugin.NewClient(&plugin.ClientConfig{
-			HandshakeConfig: shared.Handshake,
-			Plugins: plugin.PluginSet{
-				"base":     &base.Plugin{},
-				"decider":  &decider.Plugin{},
-				"reporter": &reporter.Plugin{},
-			},
-			Cmd: cmd,
-			AllowedProtocols: []plugin.Protocol{
-				plugin.ProtocolGRPC,
-			},
-		})
-
-		// FIXME(ppacher): make sure we detect a failing plugin and either mark it as
-		// failed or try to relaunch it.
-
-		// TODO(ppacher): store the client.ReattachConfig somewhere on the disk so we can
-		// reattach to the plugin instance after the Portmaster restarted.
-		// for now, we just kill the pluign and re-launch it afterwards but this might not
-		// be the desired behaviour for all plugin types.
-
-		// request the base plugin type which must be implemented by all plugins.
-		// This is required so the plugin can be initialized correctly
-		rpcClient, err := client.Client()
-		if err != nil {
-			return nil, err
-		}
-
-		pluginImpl, err := rpcClient.Dispense(string(shared.PluginTypeBase))
-		if err != nil {
-			return nil, fmt.Errorf("%s: type %s: %w (%s)", pluginName, pluginType, ErrPluginTypeNotImplemented, err)
-		}
-
-		// configure the plugin now, if that fails kill it and return the error.
-		env := &proto.ConfigureRequest{
-			BaseDirectory: dataroot.Root().Path,
-			PluginName:    pluginName,
-			StaticConfig:  staticConfig,
-		}
-
-		// create a configuration server that just accepts configuration
-		// requests from this plugin.
-		// The server will ensure plugins have limited permission to create
-		// and read keys under the "config:plugins/<plugin-name>" scope.
-		cfg := config.NewHostConfigServer(ldr.fanout, pluginName)
-
-		// create a notification server that just accepts notification requests
-		// from this plugin.
-		notifService := notification.NewHostNotificationServer(pluginName)
-
-		base := pluginImpl.(base.Base)
-
-		if err := base.Configure(ctx, env, cfg, notifService); err != nil {
-			client.Kill()
-
-			return nil, ErrPluginConfigFailed
-		}
-
-		ldr.loadedPlugins[pluginName] = client
+		return nil, ErrPluginNotRegistered
 	}
 
-	// get a RPC client for the plugin. Subsequent calls will return the same client here.
-	rpcClient, err := client.Client()
+	client, err := ldr.dispenseClient(ctx, cfg.Name)
 	if err != nil {
-		client.Kill()
 		return nil, err
 	}
 
-	// request an instance of the plugin type
-	pluginImpl, err := rpcClient.Dispense(string(pluginType))
-	if err != nil {
-		client.Kill()
-		return nil, fmt.Errorf("failed to get requested plugin type: %w", err)
+	// TODO(ppacher): store the client.ReattachConfig somewhere on the disk so we can
+	// reattach to the plugin instance after the Portmaster restarted.
+	// for now, we just kill the pluign and re-launch it afterwards but this might not
+	// be the desired behavior for all plugin types.
+
+	// create a configuration server that just accepts configuration
+	// requests from this plugin.
+	// The server will ensure plugins have limited permission to create
+	// and read keys under the "config:plugins/<plugin-name>" scope if they are not
+	// marked as privileged by the user.
+	configService := internal.NewHostConfigServer(ldr.fanout, cfg.Name, cfg.Privileged)
+
+	// create a notification server that just accepts notification requests
+	// from this plugin.
+	notifyService := internal.NewHostNotificationServer(cfg.Name)
+
+	var pluginManager *HostPluginServer
+
+	if cfg.Privileged {
+		pluginManager = NewHostPluginServer(ldr)
 	}
 
-	return pluginImpl, err
+	instance, err := NewPluginInstance(ctx, cfg, ldr, client, base.Environment{
+		Config:        configService,
+		Notify:        notifyService,
+		PluginManager: pluginManager,
+	})
+	if err != nil {
+		client.Kill()
+
+		return nil, err
+	}
+
+	ldr.loadedPlugins[instance.Name] = instance
+
+	// call out to all registered callback functions
+	for _, fn := range ldr.onPluginStarted {
+		fn(instance)
+	}
+
+	return instance, nil
+}
+
+func (ldr *PluginLoader) getPluginConfig(name string) (shared.PluginConfig, bool) {
+	for _, cfg := range ldr.pluginConfigs {
+		if cfg.Name == name {
+			return cfg, true
+		}
+	}
+
+	return shared.PluginConfig{}, false
+}
+
+// PluginInstances returns a slice of all currently dispensed plugin instances.
+func (ldr *PluginLoader) PluginInstances() []*PluginInstance {
+	ldr.l.Lock()
+	defer ldr.l.Unlock()
+
+	res := make([]*PluginInstance, 0, len(ldr.loadedPlugins))
+
+	for _, plg := range ldr.loadedPlugins {
+		res = append(res, plg)
+	}
+
+	return res
+}
+
+// PluginConfigs returns all plugin configurations currently registered at
+// the loader.
+func (ldr *PluginLoader) PluginConfigs() []shared.PluginConfig {
+	ldr.l.Lock()
+	defer ldr.l.Unlock()
+
+	configs := make([]shared.PluginConfig, len(ldr.pluginConfigs))
+	copy(configs, ldr.pluginConfigs)
+
+	return configs
+}
+
+// RegisterPlugin registers a new plugin configuration at the loader but does not
+// yet start it.
+// Use Dispense() after a successful call to RegisterPlugin to actually dispense
+// and launch the new plugin.
+func (ldr *PluginLoader) RegisterPlugin(cfg shared.PluginConfig) {
+	ldr.l.Lock()
+	defer ldr.l.Unlock()
+
+	for idx, existing := range ldr.pluginConfigs {
+		if existing.Name == cfg.Name {
+			// replace the configuration inline
+			ldr.pluginConfigs[idx] = cfg
+
+			return
+		}
+	}
+
+	ldr.pluginConfigs = append(ldr.pluginConfigs, cfg)
+}
+
+// UnregisterPlugin un-registers a plugin configuration from the loader. If the plugin
+// has been started and is running it will be shutdown before the configuration is
+// removed from the loader.
+func (ldr *PluginLoader) UnregisterPlugin(ctx context.Context, name string) error {
+	ldr.l.Lock()
+	defer ldr.l.Unlock()
+
+	var stopError error
+	plugin, ok := ldr.loadedPlugins[name]
+	if ok {
+		stopError = plugin.Shutdown(ctx)
+	}
+
+	for idx, existing := range ldr.pluginConfigs {
+		if existing.Name == name {
+			ldr.pluginConfigs = append(ldr.pluginConfigs[:idx], ldr.pluginConfigs[idx+1:]...)
+			return stopError
+		}
+	}
+
+	return ErrPluginNotRegistered
+}
+
+// StopInstance stops a plugin that has previously been started using Dispense.
+func (ldr *PluginLoader) StopInstance(ctx context.Context, name string) error {
+	ldr.l.Lock()
+	defer ldr.l.Unlock()
+
+	plugin, ok := ldr.loadedPlugins[name]
+	if !ok {
+		return ErrPluginNotStarted
+	}
+
+	// when we're done here, call all registered on-stop callback
+	// functions.
+	// We even do that in case plugin.Shutdown() returns an error because
+	// the plugin instance will be killed anyway.
+	defer func() {
+		for _, fn := range ldr.onPluginStopped {
+			fn(plugin)
+		}
+	}()
+
+	if err := plugin.Shutdown(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ldr *PluginLoader) dispenseClient(ctx context.Context, name string) (*plugin.Client, error) {
+	path, err := ldr.findPluginBinary(name)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := exec.Command(path)
+
+	client := plugin.NewClient(&plugin.ClientConfig{
+		HandshakeConfig: shared.Handshake,
+		Plugins: plugin.PluginSet{
+			"base":     &base.Plugin{},
+			"decider":  &decider.Plugin{},
+			"reporter": &reporter.Plugin{},
+		},
+		Cmd: cmd,
+		AllowedProtocols: []plugin.Protocol{
+			plugin.ProtocolGRPC,
+		},
+	})
+
+	// try to start the plugin now. this is also called when we try to get a RPC client
+	// but we want to find a start-up error early and calling start multiple times is safe
+	// and won't do anything if the plugin is already started.
+	if _, err := client.Start(); err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }
 
 // Kill kills all plugin sub-processes and resets the internal loader
@@ -156,30 +278,13 @@ func (ldr *PluginLoader) Kill() {
 	ldr.l.Lock()
 	defer ldr.l.Unlock()
 
-	for name, client := range ldr.loadedPlugins {
-		if client.Exited() {
-			continue
+	for _, client := range ldr.loadedPlugins {
+		if err := client.Shutdown(context.Background()); err != nil {
+			log.Errorf("plugin %s: failed to shutdown %s", client.Name, err)
 		}
-
-		rpcClient, err := client.Client()
-		if err != nil {
-			log.Errorf("plugin.%s: failed to get rpc client for plugin: %s", name, err)
-		} else {
-			baseRaw, err := rpcClient.Dispense("base")
-			if err != nil {
-				log.Errorf("plugin.%s: failed to get base client: %s", name, err)
-			} else {
-				if err := baseRaw.(base.Base).Shutdown(ldr.module.Ctx); err != nil {
-					log.Errorf("plugin.%s: failed to request plugin shutdown: %s", name, err)
-				}
-			}
-		}
-
-		// in any case, try to kill the plugin
-		client.Kill()
 	}
 
-	ldr.loadedPlugins = make(map[string]*plugin.Client)
+	ldr.loadedPlugins = make(map[string]*PluginInstance)
 }
 
 func (ldr *PluginLoader) findPluginBinary(name string) (string, error) {

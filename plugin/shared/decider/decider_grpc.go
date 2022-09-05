@@ -43,3 +43,8 @@ func (m *gRPCServer) DecideOnConnection(ctx context.Context, req *proto.DecideOn
 		Reason:  reason,
 	}, nil
 }
+
+var (
+	_ Decider                    = new(gRPCClient)
+	_ proto.DeciderServiceServer = new(gRPCServer)
+)

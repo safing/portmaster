@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/safing/portbase/config"
@@ -15,11 +16,13 @@ import (
 	"github.com/safing/portbase/modules/subsystems"
 	"github.com/safing/portmaster/plugin/loader"
 	"github.com/safing/portmaster/plugin/shared"
-	"github.com/safing/portmaster/plugin/shared/decider"
-	"github.com/safing/portmaster/plugin/shared/reporter"
 )
 
-var Module *ModuleImpl
+var (
+	Module *ModuleImpl
+
+	CfgKeyEnablePlugins = "plugins/enablePlugins"
+)
 
 type (
 	ModuleImpl struct {
@@ -33,21 +36,8 @@ type (
 		// system is enabled.
 		PluginSystemEnabled config.BoolOption
 
-		// deciders holds a list of loaded Decider plugins
-		deciders []deciderPlugin
-
-		// reporters holds a list of loaded Reporter plugins
-		reporters []reporterPlugin
-	}
-
-	deciderPlugin struct {
-		decider.Decider
-		Name string
-	}
-
-	reporterPlugin struct {
-		reporter.Reporter
-		Name string
+		l       sync.RWMutex
+		plugins []*loader.PluginInstance
 	}
 )
 
@@ -81,8 +71,30 @@ func (m *ModuleImpl) prepare() error {
 		return fmt.Errorf("failed to prepare plugin directory: %w", err)
 	}
 
-	m.Loader = loader.NewPluginLoader(m.Module, pluginDirectory.Path)
+	m.Loader = loader.NewPluginLoader(m.Module, []string{pluginDirectory.Path}, nil)
 	m.PluginSystemEnabled = config.Concurrent.GetAsBool(CfgKeyEnablePlugins, false)
+
+	// setup callback for started and stopped plugins
+
+	m.Loader.OnPluginStarted(func(instance *loader.PluginInstance) {
+		m.l.Lock()
+		defer m.l.Unlock()
+
+		m.plugins = append(m.plugins, instance)
+	})
+
+	m.Loader.OnPluginShutdown(func(instance *loader.PluginInstance) {
+		m.l.Lock()
+		defer m.l.Unlock()
+
+		for idx, plg := range m.plugins {
+			if plg == instance {
+				m.plugins = append(m.plugins[:idx], m.plugins[idx+1:]...)
+
+				return
+			}
+		}
+	})
 
 	return nil
 }
@@ -101,7 +113,7 @@ func (m *ModuleImpl) start() error {
 	}
 
 	if err == nil {
-		var pluginConfigs []PluginConfig
+		var pluginConfigs []shared.PluginConfig
 		if err := json.Unmarshal(blob, &pluginConfigs); err != nil {
 			return fmt.Errorf("failed to parse plugin configuration: %w", err)
 		}
@@ -118,7 +130,7 @@ func (m *ModuleImpl) start() error {
 	return nil
 }
 
-func (m *ModuleImpl) loadPlugins(cfgs []PluginConfig) error {
+func (m *ModuleImpl) loadPlugins(cfgs []shared.PluginConfig) error {
 	var multierr = new(multierror.Error)
 
 	for _, pluginConfig := range cfgs {
@@ -130,33 +142,18 @@ func (m *ModuleImpl) loadPlugins(cfgs []PluginConfig) error {
 				continue
 			}
 
-			// "base" is implicit so we ignore it here
-			if pluginType == "base" {
-				continue
-			}
+			// Register the plugin configuration
+			m.Loader.RegisterPlugin(pluginConfig)
 
-			pluginImpl, err := m.Loader.Dispense(m.Ctx, pluginConfig.Name, pluginType, pluginConfig.Config)
-			if err != nil {
-				multierr.Errors = append(multierr.Errors, fmt.Errorf("failed to get plugin type %s from %s: %w", pluginType, pluginConfig.Name, err))
+			if !pluginConfig.DisableAutostart {
+				// An finally dispense it. The plugin will be added to m.plugins
+				// using the OnPluginStarted callback registered during prepare()
+				_, err := m.Loader.Dispense(m.Ctx, pluginConfig.Name)
+				if err != nil {
+					multierr.Errors = append(multierr.Errors, fmt.Errorf("failed to load plugin: %w", err))
 
-				continue
-			}
-
-			switch pluginType {
-			case "decider":
-				m.deciders = append(m.deciders, deciderPlugin{
-					Decider: pluginImpl.(decider.Decider),
-					Name:    pluginConfig.Name,
-				})
-			case "reporter":
-				m.reporters = append(m.reporters, reporterPlugin{
-					Reporter: pluginImpl.(reporter.Reporter),
-					Name:     pluginConfig.Name,
-				})
-			case "resolver":
-				fallthrough
-			default:
-				multierr.Errors = append(multierr.Errors, fmt.Errorf("plugin type %s is not supported", pluginType))
+					continue
+				}
 			}
 		}
 	}

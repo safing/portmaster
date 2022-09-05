@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package safing.portmaster.plugin.proto;
+
+option go_package = "./proto";
+
+enum PluginType {
+    PLUGIN_TYPE_UNKNOWN = 0;
+    PLUGIN_TYPE_BASE = 1;
+    PLUGIN_TYPE_DECIDER = 2;
+    PLUGIN_TYPE_REPORTER = 3;
+}
+
+message PluginError {
+    uint64 time = 1;
+    string error = 2;
+}
+
+message PluginConfig {
+   string name = 1; 
+   repeated PluginType plugin_types = 2;
+   bool privileged = 3;
+   bytes static_config = 4;
+   bool disable_autostart = 5;
+}
+
+message PluginErrorList {
+    repeated PluginError base_errors = 1;
+    repeated PluginError decider_errors = 2;
+    repeated PluginError reporter_errors = 3;
+}
+
+message PluginInstance {
+    PluginErrorList errors = 1;
+}
+
+message Plugin {
+    PluginConfig config = 1;
+    PluginInstance instance = 2;
+}
+
+service PluginManagerService  {
+    rpc ListPlugins(ListPluginsRequest) returns (ListPluginsResponse) {}
+    rpc RegisterPlugin(RegisterPluginRequest) returns (RegisterPluginResponse) {}
+    rpc UnregisterPlugin(UnregisterPluginRequest) returns (UnregisterPluginResponse) {}
+    rpc StopPlugin(StopPluginRequest) returns (StopPluginResponse) {}
+    rpc StartPlugin(StartPluginRequest) returns (StartPluginResponse) {}
+}
+
+message ListPluginsRequest {}
+
+message ListPluginsResponse {
+    repeated Plugin plugins = 1;
+}
+
+message RegisterPluginRequest {
+    PluginConfig config = 1;
+}
+message RegisterPluginResponse {}
+
+message UnregisterPluginRequest {
+    string name = 1;
+}
+message UnregisterPluginResponse {}
+
+message StopPluginRequest {
+    string name = 1;
+}
+message StopPluginResponse {}
+
+message StartPluginRequest {
+    string name = 1;
+}
+message StartPluginResponse {}
+

@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/go-plugin"
 	"github.com/safing/portmaster/plugin/shared/config"
 	"github.com/safing/portmaster/plugin/shared/notification"
+	"github.com/safing/portmaster/plugin/shared/pluginmanager"
 	"github.com/safing/portmaster/plugin/shared/proto"
 	"google.golang.org/grpc"
 )
@@ -24,19 +25,30 @@ type (
 	}
 )
 
-func (m *gRPCClient) Configure(ctx context.Context, env *proto.ConfigureRequest, cfg config.Service, notif notification.Service) error {
+func (m *gRPCClient) Configure(ctx context.Context, req *proto.ConfigureRequest, env Environment) error {
 	var s *grpc.Server
 	serverFunc := func(opts []grpc.ServerOption) *grpc.Server {
 		s = grpc.NewServer(opts...)
-		proto.RegisterConfigServiceServer(s, &config.GRPCServer{
-			PluginName: env.PluginName,
-			Impl:       cfg,
-		})
 
-		proto.RegisterNotificationServiceServer(s, &notification.GRPCServer{
-			PluginName: env.PluginName,
-			Impl:       notif,
-		})
+		if env.Config != nil {
+			proto.RegisterConfigServiceServer(s, &config.GRPCServer{
+				PluginName: req.GetConfig().GetName(),
+				Impl:       env.Config,
+			})
+		}
+
+		if env.Notify != nil {
+			proto.RegisterNotificationServiceServer(s, &notification.GRPCServer{
+				PluginName: req.GetConfig().GetName(),
+				Impl:       env.Notify,
+			})
+		}
+
+		if env.PluginManager != nil {
+			proto.RegisterPluginManagerServiceServer(s, &pluginmanager.GRPCServer{
+				Impl: env.PluginManager,
+			})
+		}
 
 		return s
 	}
@@ -44,9 +56,9 @@ func (m *gRPCClient) Configure(ctx context.Context, env *proto.ConfigureRequest,
 	brokerID := m.broker.NextId()
 	go m.broker.AcceptAndServe(brokerID, serverFunc)
 
-	env.BackchannelId = brokerID
+	req.BackchannelId = brokerID
 
-	res, err := m.client.Configure(ctx, env)
+	res, err := m.client.Configure(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -72,11 +84,28 @@ func (m *gRPCServer) Configure(ctx context.Context, req *proto.ConfigureRequest)
 		Client: proto.NewConfigServiceClient(conn),
 	}
 
-	notifClient := &notification.GRPCClient{
+	notifyClient := &notification.GRPCClient{
 		Client: proto.NewNotificationServiceClient(conn),
 	}
 
-	if err := m.Impl.Configure(ctx, req, configClient, notifClient); err != nil {
+	var pluginManagerClient pluginmanager.Service
+
+	// access to the pluginmanager is only allowed for privileged plugins.
+	// since the pluginmanager GRPC server will not be started for unprivileged plugins
+	// there's now reason to try to create a client for that.
+	// Furthermore, users may just check if framework.PluginManager() returns
+	// nil to know if the plugin has been configured as privileged or not.
+	if req.GetConfig().GetPrivileged() {
+		pluginManagerClient = &pluginmanager.GRPCClient{
+			Client: proto.NewPluginManagerServiceClient(conn),
+		}
+	}
+
+	if err := m.Impl.Configure(ctx, req, Environment{
+		Config:        configClient,
+		Notify:        notifyClient,
+		PluginManager: pluginManagerClient,
+	}); err != nil {
 		return nil, err
 	}
 
