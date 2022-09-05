@@ -4,25 +4,31 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
+	"sync"
 
 	"github.com/safing/portmaster/plugin/framework"
+	"github.com/safing/portmaster/plugin/framework/cmds"
+	"github.com/safing/portmaster/plugin/shared"
 	"github.com/safing/portmaster/plugin/shared/proto"
 	"github.com/spf13/cobra"
 )
 
+type checkResult struct {
+	name   string
+	passed bool
+	err    error
+}
+
 var (
 	decider  = new(TestDeciderPlugin)
 	reporter = new(TestReporterPlugin)
+
+	resultsLock sync.Mutex
+	results     []*checkResult
 )
 
-type checkResult struct {
-	name string
-	err  error
-}
-
 func getRootCmd() *cobra.Command {
-	cmd := &cobra.Command{
+	rootCmd := &cobra.Command{
 		Use: "test-plugin",
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create a new decider plugin implementation and register it
@@ -36,7 +42,7 @@ func getRootCmd() *cobra.Command {
 			// Once the framework is initialized we can start doing our
 			// tests.
 			framework.OnInit(func(ctx context.Context) error {
-				decision, err := framework.Notifications().CreateNotification(
+				decision, err := framework.Notify().CreateNotification(
 					ctx,
 					&proto.Notification{
 						EventId: "test-plugin:launch-test",
@@ -75,26 +81,39 @@ func getRootCmd() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(
-		getInstallCmd(),
+	rootCmd.AddCommand(
+		cmds.InstallCommand(&cmds.InstallCommandConfig{
+			PluginName: "test-plugin",
+			Types: []shared.PluginType{
+				shared.PluginTypeDecider,
+				shared.PluginTypeReporter,
+			},
+		}),
 	)
 
-	return cmd
+	return rootCmd
 }
 
-func createTestRunNotification(results []checkResult) {
+func createTestRunNotification() {
 	msg := ""
+
+	resultsLock.Lock()
+	defer resultsLock.Unlock()
 
 	for _, result := range results {
 		if result.err == nil {
-			msg += "**[PASSED]** " + result.name
+			if result.passed {
+				msg += ":heavy_check_mark: " + result.name
+			} else {
+				msg += ":running: " + result.name
+			}
 		} else {
-			msg += "**[ FAIL ]** " + result.name + ": " + result.err.Error()
+			msg += ":x: " + result.name + ": " + result.err.Error()
 		}
 
-		msg += "\n"
+		msg += "  \n"
 	}
-	_, err := framework.Notifications().CreateNotification(context.Background(), &proto.Notification{
+	_, err := framework.Notify().CreateNotification(framework.Context(), &proto.Notification{
 		EventId: "test-plugin:tests-launched",
 		Title:   "Plugin Tests in Progess",
 		Message: msg,
@@ -105,7 +124,7 @@ func createTestRunNotification(results []checkResult) {
 }
 
 func createTestFinishedNotification() {
-	_, err := framework.Notifications().CreateNotification(context.Background(), &proto.Notification{
+	_, err := framework.Notify().CreateNotification(framework.Context(), &proto.Notification{
 		EventId: "test-plugin:tests-launched",
 		Title:   "Plugin Tests in Progess",
 		Message: "Plugin tests are being executed. Please be patient",
@@ -116,11 +135,9 @@ func createTestFinishedNotification() {
 }
 
 func launchTests() {
-	createTestRunNotification(nil)
-
-	time.Sleep(10 * time.Second)
-
-	createTestFinishedNotification()
+	RunTest("Reporter is called for connections", TestReporterIsCalled)
+	RunTest("Decider is called for connections", TestDeciderIsCalled)
+	RunTest("Blocking deciders should be ignored", TestBlockingDecider)
 }
 
 func main() {
