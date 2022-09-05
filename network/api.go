@@ -152,7 +152,7 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 
 		// Count.
 		total++
-		switch conn.Verdict { //nolint:exhaustive
+		switch conn.Verdict.Current { //nolint:exhaustive
 		case VerdictAccept,
 			VerdictRerouteToNameserver,
 			VerdictRerouteToTunnel:
@@ -232,7 +232,7 @@ func (conn *Connection) debugInfoLine() string {
 
 	return fmt.Sprintf(
 		"% 14s %s%- 25s %s-%s P#%d [%s] %s - by %s @ %s",
-		conn.Verdict.Verb(),
+		conn.Verdict.Current.Verb(),
 		connectionData,
 		conn.fmtDomainComponent(),
 		time.Unix(conn.Started, 0).Format("15:04:05"),

@@ -44,23 +44,74 @@ var (
 	ownPID = os.Getpid()
 )
 
+const configChangeEvent = "config change"
+const profileConfigChangeEvent = "profile config change"
+
 func init() {
 	// TODO: Move interception module to own package (dir).
-	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network", "notifications")
+	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network", "notifications", "profiles")
 
 	network.SetDefaultFirewallHandler(defaultHandler)
-	captain.PreConnect = func(ctx context.Context) {
-		interception.CloseAllConnections()
-	}
+
+	// setup event callback when spn has connected
 	captain.ResetConnections = resetAllConnectionsVerdict
 }
 
 func interceptionPrep() error {
+	err := interceptionModule.RegisterEventHook(
+		"config",
+		configChangeEvent,
+		"firewall config change event",
+		func(ctx context.Context, _ interface{}) error {
+			resetAllConnections()
+			return nil
+		},
+	)
+	if err != nil {
+		_ = fmt.Errorf("failed registering event hook: %w", err)
+	}
+
+	err = interceptionModule.RegisterEventHook(
+		"profiles",
+		profileConfigChangeEvent,
+		"firewall config change event",
+		func(ctx context.Context, _ interface{}) error {
+			resetAllConnections()
+			return nil
+		},
+	)
+	if err != nil {
+		_ = fmt.Errorf("failed registering event hook: %w", err)
+	}
+
 	if err := registerConfig(); err != nil {
 		return err
 	}
 
 	return prepAPIAuth()
+}
+
+func resetAllConnections() {
+	log.Critical("Reseting all connections")
+	log.Info("interception: resetting all connections")
+	err := interception.DeleteAllConnections()
+	if err != nil {
+		log.Criticalf("failed to run ResetAllExternalConnections: %q", err)
+	}
+	for _, id := range network.GetAllIDs() {
+		conn, err := getConnectionByID(id)
+		if err != nil {
+			continue
+		}
+
+		if !captain.IsExcepted(conn.Entity.IP) {
+			conn.SetFirewallHandler(initialHandler)
+			// Reset entity if it exists.
+			if conn.Entity != nil {
+				conn.Entity.ResetLists()
+			}
+		}
+	}
 }
 
 func interceptionStart() error {
@@ -168,10 +219,32 @@ func getConnection(pkt packet.Packet) (*network.Connection, error) {
 	return conn, nil
 }
 
+func getConnectionByID(id string) (*network.Connection, error) {
+	// Create or get connection in single inflight lock in order to prevent duplicates.
+	connPtr, _, _ := getConnectionSingleInflight.Do(id, func() (interface{}, error) {
+		// First, check for an existing connection.
+		conn, ok := network.GetConnection(id)
+		if ok {
+			return conn, nil
+		}
+
+		// Else return nil
+		return nil, nil
+	})
+
+	if connPtr == nil {
+		return nil, errors.New("connection does not exist")
+	}
+
+	connection := connPtr.(*network.Connection)
+	return connection, nil
+}
+
 func resetAllConnectionsVerdict(ctx context.Context) {
+	resetAllConnections()
 	// interception.CloseAllConnections()
-	network.ClearConnections()
-	log.Critical("Clearing connections")
+	// network.ClearConnections()
+	// log.Critical("Clearing connections")
 	// interception.CloseAllConnections()
 	// ids := network.GetAllIDs()
 	// for _, id := range ids {
@@ -389,7 +462,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 			conn.Entity.IPScope == netutils.LocalMulticast):
 
 		// Reroute rogue dns queries back to Portmaster.
-		conn.Verdict = network.VerdictRerouteToNameserver
+		conn.SetVerdictDirectly(network.VerdictRerouteToNameserver)
 		conn.Reason.Msg = "redirecting rogue dns query"
 		conn.Internal = true
 		// End directly, as no other processing is necessary.
@@ -423,6 +496,8 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 
 	// Check if connection should be tunneled.
 	checkTunneling(pkt.Ctx(), conn, pkt)
+
+	updateVerdictBasedOnPreviousState(conn, pkt)
 
 	switch {
 	case conn.Inspecting:
@@ -462,8 +537,8 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	}
 
 	// do not allow to circumvent decision: e.g. to ACCEPT packets from a DROP-ed connection
-	if verdict < conn.Verdict {
-		verdict = conn.Verdict
+	if verdict < conn.Verdict.Current {
+		verdict = conn.Verdict.Current
 	}
 
 	var err error
@@ -506,6 +581,18 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 
 	if err != nil {
 		log.Warningf("filter: failed to apply verdict to pkt %s: %s", pkt, err)
+	}
+}
+
+func updateVerdictBasedOnPreviousState(conn *network.Connection, pkt packet.Packet) {
+	if conn.Verdict.Current == network.VerdictAccept {
+		if conn.Verdict.Previous == network.VerdictRerouteToTunnel && !conn.Tunneled {
+			conn.SetVerdictDirectly(network.VerdictBlock)
+		} else if conn.Verdict.Previous == network.VerdictAccept && conn.Tunneled {
+			conn.SetVerdictDirectly(network.VerdictBlock)
+		} else if conn.Tunneled {
+			conn.SetVerdictDirectly(network.VerdictRerouteToTunnel)
+		}
 	}
 }
 

@@ -322,15 +322,15 @@ func (profile *Profile) GetServiceEndpoints() endpoints.Endpoints {
 
 // AddEndpoint adds an endpoint to the endpoint list, saves the profile and reloads the configuration.
 func (profile *Profile) AddEndpoint(newEntry string) {
-	profile.addEndpointyEntry(CfgOptionEndpointsKey, newEntry)
+	profile.addEndpointEntry(CfgOptionEndpointsKey, newEntry)
 }
 
 // AddServiceEndpoint adds a service endpoint to the endpoint list, saves the profile and reloads the configuration.
 func (profile *Profile) AddServiceEndpoint(newEntry string) {
-	profile.addEndpointyEntry(CfgOptionServiceEndpointsKey, newEntry)
+	profile.addEndpointEntry(CfgOptionServiceEndpointsKey, newEntry)
 }
 
-func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
+func (profile *Profile) addEndpointEntry(cfgKey, newEntry string) {
 	changed := false
 
 	// When finished, save the profile.
@@ -365,7 +365,7 @@ func (profile *Profile) addEndpointyEntry(cfgKey, newEntry string) {
 
 			if entry == newEntry {
 				// An identical entry is already in the list, abort.
-				log.Debugf("profile: ingoring new endpoint rule for %s, as identical is already present: %s", profile, newEntry)
+				log.Debugf("profile: ignoring new endpoint rule for %s, as identical is already present: %s", profile, newEntry)
 				return
 			}
 		}

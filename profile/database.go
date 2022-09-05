@@ -91,6 +91,7 @@ func startProfileUpdateChecker() error {
 					if err == nil {
 						newProfile.layeredProfile.Update()
 					}
+					module.TriggerEvent(profileConfigChange, nil)
 				}
 
 				// Always increase the revision counter of the layer profile.
@@ -104,6 +105,7 @@ func startProfileUpdateChecker() error {
 				receivedProfile, err := EnsureProfile(r)
 				if err != nil || !receivedProfile.savedInternally {
 					activeProfile.outdated.Set()
+					module.TriggerEvent(profileConfigChange, nil)
 				}
 			case <-ctx.Done():
 				return nil

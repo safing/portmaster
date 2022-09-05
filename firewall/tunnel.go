@@ -28,7 +28,7 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 	case conn.Inbound:
 		// Can't tunnel incoming connections.
 		return
-	case conn.Verdict != network.VerdictAccept:
+	case conn.Verdict.Current != network.VerdictAccept:
 		// Connection will be blocked.
 		return
 	case conn.Process().Pid == ownPID:
@@ -156,7 +156,7 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 		conn.Failed("failed to request tunneling", "")
 	} else {
 		//log.Tracer(pkt.Ctx()).Trace("filter: tunneling requested")
-		conn.Verdict = network.VerdictRerouteToTunnel
+		//conn.SetVerdictDirectly(network.VerdictRerouteToTunnel)
 		conn.Tunneled = true
 	}
 }
