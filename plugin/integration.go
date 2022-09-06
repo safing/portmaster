@@ -6,10 +6,78 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/miekg/dns"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/plugin/internal"
+	"github.com/safing/portmaster/resolver"
 )
+
+func (m *ModuleImpl) Resolve(msg *dns.Msg, conn *network.Connection) (*dns.Msg, *resolver.ResolverInfo, error) {
+	if !m.PluginSystemEnabled() {
+		return nil, nil, nil
+	}
+
+	if len(msg.Question) == 0 {
+		return nil, nil, nil
+	}
+
+	protoConn := internal.ConnectionFromNetwork(conn)
+	protoQuestion := internal.DNSQuestionToProto(msg.Question[0])
+
+	var multierr = new(multierror.Error)
+	defer func() {
+		if err := multierr.ErrorOrNil(); err != nil {
+			m.Module.Error("plugin-resolver-error", "One or more resolver plugins reported an error", err.Error())
+		} else {
+			m.Module.Resolve("plugin-resolver-error")
+		}
+	}()
+
+	m.l.RLock()
+	defer m.l.RUnlock()
+
+L:
+	for _, inst := range m.plugins {
+		// do not give plugins more than 2 seconds for deciding on a connection.
+		ctx, cancel := context.WithTimeout(m.Ctx, 2*time.Second)
+
+		log.Debugf("plugin: trying to resolve %s using plugin %s", protoQuestion.GetName(), inst.Name)
+		res, err := inst.Resolve(ctx, protoQuestion, protoConn)
+		cancel()
+
+		if err != nil {
+			multierr.Errors = append(multierr.Errors, fmt.Errorf("plugin %s: %w", inst.Name, err))
+
+			continue
+		}
+
+		if res != nil {
+			answers := make([]dns.RR, len(res.GetRrs()))
+			for idx, rr := range res.GetRrs() {
+				var err error
+				answers[idx], err = internal.DNSRRFromProto(rr)
+				if err != nil {
+					multierr.Errors = append(multierr.Errors, fmt.Errorf("plugin %s: %w", inst.Name, err))
+
+					continue L
+				}
+			}
+
+			reply := new(dns.Msg)
+
+			reply.Answer = answers
+			reply.SetRcode(msg, int(res.GetRcode()))
+
+			return reply, &resolver.ResolverInfo{
+				Name: inst.Name,
+				Type: "plugin",
+			}, nil
+		}
+	}
+
+	return nil, nil, nil
+}
 
 // DecideOnConnection is called by the firewall to request a verdict decision from plugins.
 //
@@ -43,7 +111,6 @@ func (m *ModuleImpl) DecideOnConnection(conn *network.Connection) (network.Verdi
 		cancel()
 
 		if err != nil {
-			// TODO(ppacher): capture the name of the plugin for this
 			multierr.Errors = append(multierr.Errors, fmt.Errorf("plugin %s: %w", d.Name, err))
 
 			continue

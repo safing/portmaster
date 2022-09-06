@@ -9,6 +9,7 @@ enum PluginType {
     PLUGIN_TYPE_BASE = 1;
     PLUGIN_TYPE_DECIDER = 2;
     PLUGIN_TYPE_REPORTER = 3;
+    PLUGIN_TYPE_RESOLVER = 4;
 }
 
 message PluginError {
@@ -28,6 +29,7 @@ message PluginErrorList {
     repeated PluginError base_errors = 1;
     repeated PluginError decider_errors = 2;
     repeated PluginError reporter_errors = 3;
+    repeated PluginError resolver_errors = 4;
 }
 
 message PluginInstance {

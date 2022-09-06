@@ -24,6 +24,12 @@ type (
 	//
 	// It implements reporter.Reporter.
 	ReporterFunc func(context.Context, *proto.Connection) error
+
+	// ResolverFunc is a utility type to implement a resolver.Resolver using
+	// a function only
+	//
+	// It implements resolver.Resolver
+	ResolverFunc func(context.Context, *proto.DNSQuestion, *proto.Connection) (*proto.DNSResponse, error)
 )
 
 var (
@@ -41,6 +47,11 @@ func (fn DeciderFunc) DecideOnConnection(ctx context.Context, conn *proto.Connec
 // ReportConnection passes through to fn and implements reporter.Reporter.
 func (fn ReporterFunc) ReportConnection(ctx context.Context, conn *proto.Connection) error {
 	return fn(ctx, conn)
+}
+
+// Resolve passes through to fn and implements resolver.Resolver.
+func (fn ResolverFunc) Resolve(ctx context.Context, question *proto.DNSQuestion, conn *proto.Connection) (*proto.DNSResponse, error) {
+	return fn(ctx, question, conn)
 }
 
 // ChainDeciders is a utility method to register more than on decider in a plugin.
@@ -105,7 +116,6 @@ func getExecPath() {
 //		AllowPluginConnections(),
 //		yourDeciderFunc,
 //	))
-//
 func AllowPluginConnections() DeciderFunc {
 	return func(ctx context.Context, c *proto.Connection) (proto.Verdict, string, error) {
 		self, err := IsSelf(c)

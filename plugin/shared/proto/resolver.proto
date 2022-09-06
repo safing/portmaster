@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package safing.portmaster.plugin.proto;
+
+option go_package = "./proto";
+
+import "network.proto";
+
+message DNSQuestion {
+    string name = 1;
+    uint32 type = 2; 
+    uint32 class = 3;
+}
+
+message DNSRR {
+    string name = 1;
+    uint32 type = 2;
+    uint32 class = 3;
+    uint32 ttl = 4;
+    bytes data = 5;
+}
+
+message DNSResponse {
+    uint32 rcode = 1;
+    repeated DNSRR rrs = 2;
+}
+
+message ResolveRequest {
+    DNSQuestion question = 1;
+    Connection connection = 2;
+}
+
+message ResolveResponse {
+    DNSResponse response = 1;
+}
+
+service ResolverService {
+    rpc Resolve(ResolveRequest) returns (ResolveResponse) {}
+}
+
+

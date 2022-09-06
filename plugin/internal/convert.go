@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 
+	"github.com/miekg/dns"
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/intel"
@@ -342,4 +343,50 @@ func NotificationTypeFromProto(nType proto.NotificationType) notifications.Type 
 	default:
 		return notifications.Info
 	}
+}
+
+func DNSQuestionToProto(msg dns.Question) *proto.DNSQuestion {
+	return &proto.DNSQuestion{
+		Name:  msg.Name,
+		Type:  uint32(msg.Qtype),
+		Class: uint32(msg.Qclass),
+	}
+}
+
+func DNSRRFromProto(rr *proto.DNSRR) (dns.RR, error) {
+	hdr := dns.RR_Header{
+		Name:   rr.GetName(),
+		Rrtype: uint16(rr.GetType()),
+		Class:  uint16(rr.GetClass()),
+		Ttl:    rr.GetTtl(),
+	}
+
+	switch uint16(rr.Type) {
+	case dns.TypeA:
+		return &dns.A{
+			Hdr: hdr,
+			A:   rr.Data,
+		}, nil
+	case dns.TypeAAAA:
+		return &dns.AAAA{
+			Hdr:  hdr,
+			AAAA: rr.Data,
+		}, nil
+	case dns.TypeANY:
+		return &dns.ANY{
+			Hdr: hdr,
+		}, nil
+	case dns.TypeTXT:
+		return &dns.TXT{
+			Hdr: hdr,
+			Txt: []string{string(rr.Data)},
+		}, nil
+	case dns.TypeCNAME:
+		return &dns.CNAME{
+			Hdr:    hdr,
+			Target: string(rr.Data),
+		}, nil
+	}
+
+	return nil, fmt.Errorf("unsupported DNS resource record %d", rr.Type)
 }

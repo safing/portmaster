@@ -17,6 +17,7 @@ import (
 	"github.com/safing/portmaster/plugin/shared/base"
 	"github.com/safing/portmaster/plugin/shared/decider"
 	"github.com/safing/portmaster/plugin/shared/reporter"
+	"github.com/safing/portmaster/plugin/shared/resolver"
 )
 
 type (
@@ -254,6 +255,7 @@ func (ldr *PluginLoader) dispenseClient(ctx context.Context, name string) (*plug
 			"base":     &base.Plugin{},
 			"decider":  &decider.Plugin{},
 			"reporter": &reporter.Plugin{},
+			"resolver": &resolver.Plugin{},
 		},
 		Cmd: cmd,
 		AllowedProtocols: []plugin.Protocol{

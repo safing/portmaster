@@ -16,6 +16,7 @@ import (
 	"github.com/safing/portmaster/plugin/shared/decider"
 	"github.com/safing/portmaster/plugin/shared/proto"
 	"github.com/safing/portmaster/plugin/shared/reporter"
+	"github.com/safing/portmaster/plugin/shared/resolver"
 )
 
 var (
@@ -47,6 +48,7 @@ type (
 		client   *plugin.Client
 		reporter reporter.Reporter
 		decider  decider.Decider
+		resolver resolver.Resolver
 		base     base.Base
 	}
 
@@ -102,6 +104,8 @@ func (plg *PluginInstance) ReportedErrors() *proto.PluginErrorList {
 			errs.DeciderErrors = protoErrors
 		case shared.PluginTypeReporter:
 			errs.ReporterErrors = protoErrors
+		case shared.PluginTypeResolver:
+			errs.ResolverErrors = append(errs.ResolverErrors, protoErrors...)
 		}
 	}
 
@@ -144,6 +148,7 @@ func (plg *PluginInstance) dispenseRequestedTypes() error {
 		case shared.PluginTypeDecider:
 			plg.decider, ok = raw.(decider.Decider)
 		case shared.PluginTypeResolver:
+			plg.resolver, ok = raw.(resolver.Resolver)
 		}
 
 		if !ok {
@@ -284,7 +289,7 @@ func (plg *PluginInstance) DecideOnConnection(ctx context.Context, conn *proto.C
 	}
 
 	if err := plg.relaunchIfExited(ctx); err != nil {
-		return proto.Verdict_VERDICT_FAILED, "", nil
+		return proto.Verdict_VERDICT_FAILED, "", err
 	}
 
 	verdict, reason, err := plg.decider.DecideOnConnection(ctx, conn)
@@ -295,7 +300,28 @@ func (plg *PluginInstance) DecideOnConnection(ctx context.Context, conn *proto.C
 	return verdict, reason, err
 }
 
+func (plg *PluginInstance) Resolve(ctx context.Context, req *proto.DNSQuestion, conn *proto.Connection) (*proto.DNSResponse, error) {
+	plg.l.RLock()
+	defer plg.l.RUnlock()
+
+	if plg.resolver == nil {
+		return nil, nil
+	}
+
+	if err := plg.relaunchIfExited(ctx); err != nil {
+		return nil, err
+	}
+
+	res, err := plg.resolver.Resolve(ctx, req, conn)
+	if err != nil {
+		plg.reportError(shared.PluginTypeResolver, err)
+	}
+
+	return res, err
+}
+
 var (
 	_ reporter.Reporter = new(PluginInstance)
 	_ decider.Decider   = new(PluginInstance)
+	_ resolver.Resolver = new(PluginInstance)
 )

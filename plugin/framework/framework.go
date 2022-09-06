@@ -13,6 +13,7 @@ import (
 	"github.com/safing/portmaster/plugin/shared/notification"
 	"github.com/safing/portmaster/plugin/shared/pluginmanager"
 	"github.com/safing/portmaster/plugin/shared/reporter"
+	"github.com/safing/portmaster/plugin/shared/resolver"
 )
 
 var (
@@ -59,7 +60,7 @@ func (plg *Plugin) RegisterReporter(r reporter.Reporter) error {
 }
 
 // RegisterDecider registers a decider plugin type.
-// The provded decider will only be used if the Plugin Host (Portmaster)
+// The provided decider will only be used if the Plugin Host (Portmaster)
 // is instructed to use the "decider" plugin type when the plugin is dispensed.
 //
 // This may only be called once and is not safe to be called concurrently.
@@ -75,6 +76,29 @@ func (plg *Plugin) RegisterDecider(r decider.Decider) error {
 	}
 
 	plg.pluginMap["decider"] = &decider.Plugin{
+		Impl: r,
+	}
+
+	return nil
+}
+
+// RegisterResolver registers a resolver plugin type.
+// The provided resolver will only be used if the Plugin Host (Portmaster)
+// is instructed to use the "resolver" plugin type when the plugin is dispensed.
+//
+// This may only be called once and is not safe to be called concurrently.
+// If you want to register multiple deciders use ChainDecider or ChainDeciderFunc
+// to create a combinded decider implementation.
+func (plg *Plugin) RegisterResolver(r resolver.Resolver) error {
+	if _, ok := plg.pluginMap["resolver"]; ok {
+		return fmt.Errorf("resolver: %w", ErrPluginTypeRegistered)
+	}
+
+	if plg.pluginMap == nil {
+		plg.pluginMap = plugin.PluginSet{}
+	}
+
+	plg.pluginMap["resolver"] = &resolver.Plugin{
 		Impl: r,
 	}
 
@@ -124,6 +148,12 @@ func RegisterReporter(r reporter.Reporter) error {
 	return Default.RegisterReporter(r)
 }
 
+// RegisterResolver calls through to Plugin.RegisterResolver using
+// the Default plugin instance.
+func RegisterResolver(r resolver.Resolver) error {
+	return Default.RegisterResolver(r)
+}
+
 // BaseDirectory returns the base directory of the portmaster installation.
 // It basically calls through to BasePlugin.BaseDirectory of the Default
 // plugin instance.
@@ -145,6 +175,12 @@ func PluginName() string {
 // plugin instance.
 func ParseStaticConfig(receiver interface{}) error {
 	return Default.ParseStaticConfig(receiver)
+}
+
+// HasStaticConfig returns true if the user provided static configuration
+// in the plugins.json file.
+func HasStaticConfig() bool {
+	return Default.GetConfig().StaticConfig != nil
 }
 
 // Serve serves the plugin.

@@ -79,6 +79,8 @@ func (srv *HostPluginServer) RegisterPlugin(ctx context.Context, req *proto.Plug
 			pType = shared.PluginTypeDecider
 		case proto.PluginType_PLUGIN_TYPE_REPORTER:
 			pType = shared.PluginTypeReporter
+		case proto.PluginType_PLUGIN_TYPE_RESOLVER:
+			pType = shared.PluginTypeResolver
 		default:
 			return fmt.Errorf("unsupported proto plugin type %s", protoType.String())
 		}
@@ -121,6 +123,8 @@ func pluginTypesToProto(v []shared.PluginType) ([]proto.PluginType, error) {
 			protoType = proto.PluginType_PLUGIN_TYPE_DECIDER
 		case "reporter":
 			protoType = proto.PluginType_PLUGIN_TYPE_REPORTER
+		case "resolver":
+			protoType = proto.PluginType_PLUGIN_TYPE_RESOLVER
 		default:
 			return nil, fmt.Errorf("unsupported plugin type: %s", pType)
 		}
