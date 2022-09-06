@@ -86,6 +86,17 @@ func ChainDeciderFunc(fns ...DeciderFunc) DeciderFunc {
 	return ChainDeciders(deciders...)
 }
 
+func getExecPath() {
+	getExecPathOnce.Do(func() {
+		executablePath, getExecError = os.Executable()
+		if getExecError != nil {
+			return
+		}
+
+		resolvedExecutablePath, getExecError = filepath.EvalSymlinks(executablePath)
+	})
+}
+
 // AllowPluginConnections returns a decider function that will allow outgoing and
 // incoming connections to the plugin itself.
 // This is mainly used in combination with ChainDecider or ChainDeciderFunc.
@@ -96,28 +107,36 @@ func ChainDeciderFunc(fns ...DeciderFunc) DeciderFunc {
 //	))
 //
 func AllowPluginConnections() DeciderFunc {
-	getExecPathOnce.Do(func() {
-		executablePath, getExecError = os.Executable()
-		if getExecError != nil {
-			return
-		}
-
-		resolvedExecutablePath, getExecError = filepath.EvalSymlinks(executablePath)
-	})
-
 	return func(ctx context.Context, c *proto.Connection) (proto.Verdict, string, error) {
-		binary := c.GetProcess().GetBinaryPath()
-
-		if getExecError != nil {
+		self, err := IsSelf(c)
+		if err != nil {
 			return proto.Verdict_VERDICT_UNDECIDED, "", fmt.Errorf("failed to get executable path: %s", getExecError)
 		}
-
-		if binary == resolvedExecutablePath || binary == executablePath {
+		if self {
 			return proto.Verdict_VERDICT_ACCEPT, "own plugin connections are allowed", nil
 		}
 
 		return proto.Verdict_VERDICT_UNDECIDED, "", nil
 	}
+}
+
+// IsSelf returns true if the connection is initiated by the plugin itself.
+// This is useful to, for example, filter connection that are initiated by the plugin
+// and would otherwise cause endless loops.
+func IsSelf(conn *proto.Connection) (bool, error) {
+	getExecPath()
+
+	binary := conn.GetProcess().GetBinaryPath()
+
+	if getExecError != nil {
+		return false, getExecError
+	}
+
+	if binary == resolvedExecutablePath || binary == executablePath {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 var (
