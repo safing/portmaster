@@ -44,20 +44,22 @@ var (
 	ownPID = os.Getpid()
 )
 
-const configChangeEvent = "config change"
-const profileConfigChangeEvent = "profile config change"
+const (
+	configChangeEvent        = "config change"
+	profileConfigChangeEvent = "profile config change"
+	onSPNConnectEvent        = "spn connect"
+)
 
 func init() {
 	// TODO: Move interception module to own package (dir).
 	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network", "notifications", "profiles")
 
 	network.SetDefaultFirewallHandler(defaultHandler)
-
-	// setup event callback when spn has connected
-	captain.ResetConnections = resetAllConnectionsVerdict
 }
 
 func interceptionPrep() error {
+	// Reset connections every time configuration changes
+	// this will be triggered on spn enable/disable
 	err := interceptionModule.RegisterEventHook(
 		"config",
 		configChangeEvent,
@@ -71,10 +73,26 @@ func interceptionPrep() error {
 		_ = fmt.Errorf("failed registering event hook: %w", err)
 	}
 
+	// Reset connections every time profile changes
 	err = interceptionModule.RegisterEventHook(
 		"profiles",
 		profileConfigChangeEvent,
-		"firewall config change event",
+		"firewall profile change event",
+		func(ctx context.Context, _ interface{}) error {
+			resetAllConnections()
+			return nil
+		},
+	)
+	if err != nil {
+		_ = fmt.Errorf("failed registering event hook: %w", err)
+	}
+
+	// Reset connections when spn is connected
+	// disconnecting is triggered on config change event because disconnection happens instantly
+	err = interceptionModule.RegisterEventHook(
+		"captain",
+		onSPNConnectEvent,
+		"firewall spn connect event",
 		func(ctx context.Context, _ interface{}) error {
 			resetAllConnections()
 			return nil
@@ -92,11 +110,12 @@ func interceptionPrep() error {
 }
 
 func resetAllConnections() {
-	log.Critical("Reseting all connections")
+	// Resetting will force all the connection to be evaluated by the firewall again
+	// this will set new verdicts if configuration was update or spn has been disabled or enabled
 	log.Info("interception: resetting all connections")
-	err := interception.DeleteAllConnections()
+	err := interception.ResetAllConnections()
 	if err != nil {
-		log.Criticalf("failed to run ResetAllExternalConnections: %q", err)
+		log.Errorf("failed to reset all connections: %q", err)
 	}
 	for _, id := range network.GetAllIDs() {
 		conn, err := getConnectionByID(id)
@@ -106,6 +125,8 @@ func resetAllConnections() {
 
 		if !captain.IsExcepted(conn.Entity.IP) {
 			conn.SetFirewallHandler(initialHandler)
+			// Don't keep the previous tunneled value
+			conn.Tunneled = false
 			// Reset entity if it exists.
 			if conn.Entity != nil {
 				conn.Entity.ResetLists()
@@ -172,8 +193,6 @@ func handlePacket(ctx context.Context, pkt packet.Packet) {
 		return
 	}
 
-	//log.Errorf("%s -> %s", pkt, conn.Verdict)
-
 	// handle packet
 	conn.HandlePacket(pkt)
 }
@@ -238,37 +257,6 @@ func getConnectionByID(id string) (*network.Connection, error) {
 
 	connection := connPtr.(*network.Connection)
 	return connection, nil
-}
-
-func resetAllConnectionsVerdict(ctx context.Context) {
-	resetAllConnections()
-	// interception.CloseAllConnections()
-	// network.ClearConnections()
-	// log.Critical("Clearing connections")
-	// interception.CloseAllConnections()
-	// ids := network.GetAllIDs()
-	// for _, id := range ids {
-	// 	connI, err, _ := getConnectionSingleInflight.Do(id, func() (interface{}, error) {
-	// 		// First, check for an existing connection.
-	// 		conn, ok := network.GetConnection(id)
-	// 		if ok {
-	// 			return conn, nil
-	// 		}
-
-	// 		return nil, nil
-	// 	})
-
-	// 	if err != nil || connI == nil {
-	// 		log.Errorf("Null connection with id %s", id)
-	// 		continue
-	// 	}
-
-	// 	conn := connI.(*network.Connection) //nolint:forcetypeassert // Can only be a *network.Connection.
-	// 	log.Errorf("Resetting connection for %s:%d", conn.LocalIP, conn.Entity.Port)
-	// 	// conn.Reset("Initialling SPN", "")
-	// 	checkTunneling(ctx, conn, nil)
-	// 	DecideOnConnection(ctx, conn, nil)
-	// }
 }
 
 // fastTrackedPermit quickly permits certain network critical or internal connections.

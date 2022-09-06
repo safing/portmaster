@@ -341,3 +341,8 @@ func (dnfq *disabledNfQueue) PacketChannel() <-chan packet.Packet {
 }
 
 func (dnfq *disabledNfQueue) Destroy() {}
+
+// ResetAllConnections resets all connections so they are forced to go thought the firewall again
+func ResetAllConnections() error {
+	return nfq.DeleteAllMarkedConnection()
+}
