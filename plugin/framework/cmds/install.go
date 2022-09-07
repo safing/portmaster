@@ -15,6 +15,7 @@ type InstallCommandConfig struct {
 	PluginName   string
 	StaticConfig json.RawMessage
 	Types        []shared.PluginType
+	Privileged   bool
 }
 
 func InstallCommand(cfg *InstallCommandConfig) *cobra.Command {
@@ -104,9 +105,10 @@ func InstallCommand(cfg *InstallCommandConfig) *cobra.Command {
 			// add the test plugin at the first position
 			cfgs = append([]shared.PluginConfig{
 				{
-					Name:   pluginName,
-					Types:  types,
-					Config: config,
+					Name:       pluginName,
+					Types:      types,
+					Config:     config,
+					Privileged: cfg.Privileged,
 				},
 			}, cfgs...)
 

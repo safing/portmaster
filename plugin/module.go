@@ -134,26 +134,17 @@ func (m *ModuleImpl) loadPlugins(cfgs []shared.PluginConfig) error {
 	var multierr = new(multierror.Error)
 
 	for _, pluginConfig := range cfgs {
-		for _, pluginType := range pluginConfig.Types {
-			// make sure we have a valid plugin type
-			if !shared.IsValidPluginType(pluginType) {
-				multierr.Errors = append(multierr.Errors, fmt.Errorf("unsupported plugin type %s", pluginType))
+		// Register the plugin configuration
+		m.Loader.RegisterPlugin(pluginConfig)
+
+		if !pluginConfig.DisableAutostart {
+			// An finally dispense it. The plugin will be added to m.plugins
+			// using the OnPluginStarted callback registered during prepare()
+			_, err := m.Loader.Dispense(m.Ctx, pluginConfig.Name)
+			if err != nil {
+				multierr.Errors = append(multierr.Errors, fmt.Errorf("failed to load plugin: %w", err))
 
 				continue
-			}
-
-			// Register the plugin configuration
-			m.Loader.RegisterPlugin(pluginConfig)
-
-			if !pluginConfig.DisableAutostart {
-				// An finally dispense it. The plugin will be added to m.plugins
-				// using the OnPluginStarted callback registered during prepare()
-				_, err := m.Loader.Dispense(m.Ctx, pluginConfig.Name)
-				if err != nil {
-					multierr.Errors = append(multierr.Errors, fmt.Errorf("failed to load plugin: %w", err))
-
-					continue
-				}
 			}
 		}
 	}
