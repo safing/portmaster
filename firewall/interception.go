@@ -264,7 +264,7 @@ func getConnectionByID(id string) (*network.Connection, error) {
 		return nil, errors.New("connection does not exist")
 	}
 
-	connection := connPtr.(*network.Connection)
+	connection := connPtr.(*network.Connection) //nolint:forcetypeassert // Can only be a *network.Connection.
 	return connection, nil
 }
 
@@ -494,7 +494,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	// Check if connection should be tunneled.
 	checkTunneling(pkt.Ctx(), conn, pkt)
 
-	updateVerdictBasedOnPreviousState(conn, pkt)
+	updateVerdictBasedOnPreviousState(conn)
 
 	switch {
 	case conn.Inspecting:
@@ -581,14 +581,15 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	}
 }
 
-func updateVerdictBasedOnPreviousState(conn *network.Connection, pkt packet.Packet) {
+func updateVerdictBasedOnPreviousState(conn *network.Connection) {
 	// previously accepted or tunneled connections may need to be blocked
 	if conn.Verdict.Current == network.VerdictAccept {
-		if conn.Verdict.Previous == network.VerdictRerouteToTunnel && !conn.Tunneled {
+		switch {
+		case conn.Verdict.Previous == network.VerdictRerouteToTunnel && !conn.Tunneled:
 			conn.SetVerdictDirectly(network.VerdictBlock)
-		} else if conn.Verdict.Previous == network.VerdictAccept && conn.Tunneled {
+		case conn.Verdict.Previous == network.VerdictAccept && conn.Tunneled:
 			conn.SetVerdictDirectly(network.VerdictBlock)
-		} else if conn.Tunneled {
+		case conn.Tunneled:
 			conn.SetVerdictDirectly(network.VerdictRerouteToTunnel)
 		}
 	}
