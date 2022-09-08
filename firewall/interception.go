@@ -52,7 +52,7 @@ const (
 
 func init() {
 	// TODO: Move interception module to own package (dir).
-	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network", "notifications", "profiles")
+	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network", "notifications", "profiles", "captain")
 
 	network.SetDefaultFirewallHandler(defaultHandler)
 }
@@ -88,7 +88,7 @@ func interceptionPrep() error {
 	}
 
 	// Reset connections when spn is connected
-	// disconnecting is triggered on config change event because disconnection happens instantly
+	// connect and disconnecting is triggered on config change event but connecting takеs more time
 	err = interceptionModule.RegisterEventHook(
 		"captain",
 		onSPNConnectEvent,
@@ -117,6 +117,8 @@ func resetAllConnections() {
 	if err != nil {
 		log.Errorf("failed to reset all connections: %q", err)
 	}
+
+	// reset all connection firewall handlers. This will tell the master to rerun the firewall checks
 	for _, id := range network.GetAllIDs() {
 		conn, err := getConnectionByID(id)
 		if err != nil {
@@ -573,6 +575,7 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 }
 
 func updateVerdictBasedOnPreviousState(conn *network.Connection, pkt packet.Packet) {
+	// previously accepted or tunneled connections may need to be blocked
 	if conn.Verdict.Current == network.VerdictAccept {
 		if conn.Verdict.Previous == network.VerdictRerouteToTunnel && !conn.Tunneled {
 			conn.SetVerdictDirectly(network.VerdictBlock)

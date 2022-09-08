@@ -107,15 +107,15 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// Resolver holds information about the resolver used to resolve
 	// Entity.Domain.
 	Resolver *resolver.ResolverInfo
-	// Verdict holds decisions that are made for a connection
+	// Verdict holds the decisions that are made for a connection
 	// The verdict may change so any access to it must be guarded by the
 	// connection lock.
 	Verdict struct {
 		// Current is the current decision that has been made for a connection.
 		Current Verdict
-		// PreviousVerdict holds the previous verdict value, if there wasn't previous it will hold VerdictUndecided
+		// Previous holds the previous verdict value, if there wasn't previous it will VerdictUndecided
 		Previous Verdict
-		// UserVerdict holds the verdict that should be displayed in the user interface
+		// User holds the verdict that should be displayed in the user interface
 		User Verdict
 	}
 	// Reason holds information justifying the verdict, as well as additional

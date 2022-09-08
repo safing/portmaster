@@ -76,7 +76,6 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 
 		// Reset verdict for connection.
 		log.Tracer(ctx).Infof("filter: re-evaluating verdict on %s", conn)
-		// conn.SetVerdictDirectly(network.VerdictUndecided)
 
 		// Reset entity if it exists.
 		if conn.Entity != nil {
