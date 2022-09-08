@@ -13,6 +13,7 @@ import (
 	"github.com/tevino/abool"
 	"golang.org/x/sync/singleflight"
 
+	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/compat"
@@ -42,6 +43,12 @@ var (
 	blockedIPv6 = net.ParseIP("::17")
 
 	ownPID = os.Getpid()
+)
+
+// Config variables for interception module.
+var (
+	devMode          config.BoolOption
+	apiListenAddress config.StringOption
 )
 
 const (
