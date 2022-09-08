@@ -38,3 +38,8 @@ func start(ch chan packet.Packet) error {
 func stop() error {
 	return windowskext.Stop()
 }
+
+// ResetAllConnections resets all connections so they are forced to go thought the firewall again
+func ResetAllConnections() error {
+	return windowskext.ClearCache()
+}

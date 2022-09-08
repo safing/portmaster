@@ -1,6 +1,7 @@
 package interception
 
 import (
+	"github.com/safing/portmaster/firewall/interception/nfq"
 	"github.com/safing/portmaster/network/packet"
 )
 
@@ -12,4 +13,9 @@ func start(ch chan packet.Packet) error {
 // stop starts the interception.
 func stop() error {
 	return StopNfqueueInterception()
+}
+
+// ResetAllConnections resets all connections so they are forced to go thought the firewall again
+func ResetAllConnections() error {
+	return nfq.DeleteAllMarkedConnection()
 }
