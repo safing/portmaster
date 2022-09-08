@@ -520,9 +520,8 @@ func (conn *Connection) Failed(reason, reasonOptionKey string) {
 	conn.FailedWithContext(reason, reasonOptionKey, nil)
 }
 
-// SetVerdict sets a new verdict for the connection, making sure it does not interfere with previous verdicts.
+// SetVerdict sets a new verdict for the connection.
 func (conn *Connection) SetVerdict(newVerdict Verdict, reason, reasonOptionKey string, reasonCtx interface{}) (ok bool) {
-	// if newVerdict >= conn.Verdict.Current {
 	conn.SetVerdictDirectly(newVerdict)
 
 	conn.Reason.Msg = reason
@@ -536,8 +535,6 @@ func (conn *Connection) SetVerdict(newVerdict Verdict, reason, reasonOptionKey s
 	}
 
 	return true
-	// }
-	// return false
 }
 
 // SetVerdictDirectly sets the new verdict and stores the previous value.
