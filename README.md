@@ -10,14 +10,14 @@ Developed in the EU 🇪🇺, Austria.
 > Portmaster is Alpha Software, treat as such; expect bugs here and there. Early Adopters welcome.
 
 ## Features
-1. [Monitor All Network Activity](https://safing.io/portmaster#network-all-network-activity)
-2. [Manually Allow or Block Connections](https://safing.io/portmaster#manually-allow-or-block-connections)
-3. [Auto-Block via Selected Filter Lists](https://safing.io/portmaster#auto-block-via-selected-filter-lists)
-4. [Enforce DNS-over-TLS](https://safing.io/portmaster#enforce-dns-over-tls)
-5. [Configure Settings for Different Networks](https://safing.io/portmaster#configure-settings-for-different-networks)
-6. [Set Global & per‑App Settings](https://safing.io/portmaster#set-global-and-app-settings)
-7. [**Download For Free**](https://safing.io/portmaster#downloads)
-8. [FAQ](https://safing.io/portmaster#faq)
+
+1. [Monitor All Network Activity](https://safing.io/portmaster#monitor-all-network-activity)
+2. [Auto-Block Trackers & Malware](https://safing.io/portmaster#auto-block-trackers-and-malware)
+3. [Secure Your DNS Requests by Default](https://safing.io/portmaster#secure-dns-by-default)
+4. [Create Your Own Rules](https://safing.io/portmaster#create-your-own-rules)
+5. [Set Global & per‑App Settings](https://safing.io/portmaster#set-global-and-app-settings)
+6. [**Download For Free**](https://safing.io/portmaster#downloads)
+7. [FAQ](https://safing.io/portmaster#faq)
 
 ## Documentation
 
