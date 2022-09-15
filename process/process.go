@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -19,7 +20,12 @@ import (
 	"github.com/safing/portmaster/profile"
 )
 
-const onLinux = runtime.GOOS == "linux"
+const (
+	onLinux                    = runtime.GOOS == "linux"
+	profileEnvironmentVariable = "PORTMASTER_PROFILE"
+)
+
+var hasNoSpecialCharacters = regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`).MatchString
 
 var getProcessSingleInflight singleflight.Group
 
@@ -212,19 +218,31 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	}
 	process.ParentPid = int(ppid)
 
+	// Get all environment variables
 	envVariables, err := pInfo.EnvironWithContext(ctx)
 
-	for _, envVar := range envVariables {
-		if strings.HasPrefix(envVar, "PORTMASTER_PROFILE") {
-			log.Criticalf("Found variable %s", envVar)
-			splitted := strings.SplitN(envVar, "=", 2)
-			if len(splitted) != 2 {
+	// Not important enough to stop execution of the function
+	if err == nil {
+		// Try to find PORTMASTER_PROFILE variable
+		for _, envVar := range envVariables {
+			if strings.HasPrefix(envVar, profileEnvironmentVariable) {
+				// Found. Check validity and set to process
+				splitted := strings.SplitN(envVar, "=", 2)
+				if len(splitted) == 2 {
+					if hasNoSpecialCharacters(splitted[1]) {
+						process.EnvironmentProfileID = splitted[1]
+						log.Infof(`using "%s" profile id for process: %d`, process.EnvironmentProfileID, process.Pid)
+					} else {
+						log.Warningf(`invalid %s value: %q`, profileEnvironmentVariable, splitted[1])
+					}
+				} else {
+					log.Warningf(`empty value of %s`, profileEnvironmentVariable)
+				}
 				break
 			}
-			process.EnvironmentProfileID = splitted[1]
-			log.Criticalf("Found profile Id from PORTMASTER_PROFILE=%s", process.EnvironmentProfileID)
-			break
 		}
+	} else {
+		log.Errorf("failed to read environment variables: %q", err)
 	}
 
 	// Path

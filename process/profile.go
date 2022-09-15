@@ -82,16 +82,19 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 		}
 	}
 
-	linkedPath := p.Path
+	var localProfile *profile.Profile
 	if p.EnvironmentProfileID != "" && profileID == "" {
-		profileID = p.EnvironmentProfileID
-		linkedPath = p.EnvironmentProfileID
-	}
-
-	// Get the (linked) local profile.
-	localProfile, err := profile.GetProfile(profile.SourceLocal, profileID, linkedPath, false)
-	if err != nil {
-		return false, err
+		// Get the user specified profile.
+		localProfile, err = profile.GetProfile(profile.SourceEnvironmentDefined, p.EnvironmentProfileID, p.EnvironmentProfileID, false) // not setting process path since the profile an be used by multiple apps
+		if err != nil {
+			return false, err
+		}
+	} else {
+		// Get the (linked) local profile.
+		localProfile, err = profile.GetProfile(profile.SourceLocal, profileID, p.Path, false)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	// Assign profile to process.

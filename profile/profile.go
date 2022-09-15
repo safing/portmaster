@@ -26,11 +26,12 @@ type profileSource string
 
 // Profile Sources.
 const (
-	SourceLocal      profileSource = "local"   // local, editable
-	SourceSpecial    profileSource = "special" // specials (read-only)
-	SourceNetwork    profileSource = "network"
-	SourceCommunity  profileSource = "community"
-	SourceEnterprise profileSource = "enterprise"
+	SourceLocal              profileSource = "local"   // local, editable
+	SourceSpecial            profileSource = "special" // specials (read-only)
+	SourceNetwork            profileSource = "network"
+	SourceCommunity          profileSource = "community"
+	SourceEnterprise         profileSource = "enterprise"
+	SourceEnvironmentDefined profileSource = "environment-defined" // defined from environment variable
 )
 
 // Default Action IDs.
