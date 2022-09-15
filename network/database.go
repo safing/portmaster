@@ -27,7 +27,7 @@ var (
 	conns    = newConnectionStore()
 )
 
-// StorageInterface provices a storage.Interface to the
+// StorageInterface provides a storage.Interface to the
 // configuration manager.
 type StorageInterface struct {
 	storage.InjectBase

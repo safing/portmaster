@@ -55,6 +55,9 @@ type Process struct {
 	// profile holds the layered profile based on the primary profile.
 	profile *profile.LayeredProfile
 
+	// Holds the ID of a profile set from the PORTMASTER_PROFILE enlivenment variable or empty if not available
+	EnvironmentProfileID string
+
 	// Mutable attributes.
 
 	FirstSeen int64
@@ -208,6 +211,21 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 		return nil, fmt.Errorf("failed to get PPID for p%d: %w", pid, err)
 	}
 	process.ParentPid = int(ppid)
+
+	envVariables, err := pInfo.EnvironWithContext(ctx)
+
+	for _, envVar := range envVariables {
+		if strings.HasPrefix(envVar, "PORTMASTER_PROFILE") {
+			log.Criticalf("Found variable %s", envVar)
+			splitted := strings.SplitN(envVar, "=", 2)
+			if len(splitted) != 2 {
+				break
+			}
+			process.EnvironmentProfileID = splitted[1]
+			log.Criticalf("Found profile Id from PORTMASTER_PROFILE=%s", process.EnvironmentProfileID)
+			break
+		}
+	}
 
 	// Path
 	process.Path, err = pInfo.Exe()

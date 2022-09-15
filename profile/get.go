@@ -72,7 +72,7 @@ func GetProfile(source profileSource, id, linkedPath string, reset bool) ( //nol
 
 		// Get from database.
 		if !reset {
-			profile, err = findProfile(linkedPath)
+			profile, err = findProfile(id, linkedPath)
 			// Check if the profile is special and needs a reset.
 			if err == nil && specialProfileNeedsReset(profile) {
 				profile = getSpecialProfile(id, linkedPath)
@@ -142,7 +142,7 @@ func getProfile(scopedID string) (profile *Profile, err error) {
 
 // findProfile searches for a profile with the given linked path. If it cannot
 // find one, it will create a new profile for the given linked path.
-func findProfile(linkedPath string) (profile *Profile, err error) {
+func findProfile(id string, linkedPath string) (profile *Profile, err error) {
 	// Search the database for a matching profile.
 	it, err := profileDB.Query(
 		query.New(makeProfileKey(SourceLocal, "")).Where(
@@ -165,7 +165,7 @@ func findProfile(linkedPath string) (profile *Profile, err error) {
 	}
 
 	// If there was no profile in the database, create a new one, and return it.
-	profile = New(SourceLocal, "", linkedPath, nil)
+	profile = New(SourceLocal, id, linkedPath, nil)
 
 	return profile, nil
 }
