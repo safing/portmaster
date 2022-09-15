@@ -24,6 +24,11 @@ const (
 	// can return in order to trigger a restart after a clean shutdown.
 	RestartExitCode = 23
 
+	// ControlledFailureExitCode is the exit code that any service started by
+	// portmaster-start can return in order to signify a controlled failure.
+	// This disables retrying and exits with an error code.
+	ControlledFailureExitCode = 24
+
 	exeSuffix = ".exe"
 	zipSuffix = ".zip"
 )
@@ -431,6 +436,8 @@ func parseExitError(err error) (restart bool, errWithCtx error) {
 			return true, fmt.Errorf("error during execution: %w", err)
 		case RestartExitCode:
 			return true, nil
+		case ControlledFailureExitCode:
+			return false, errors.New("controlled failure, check logs")
 		default:
 			return true, fmt.Errorf("unknown exit code %w", exErr)
 		}
