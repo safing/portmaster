@@ -119,7 +119,7 @@ func interceptionPrep() error {
 func resetAllConnectionVerdicts() {
 	// Resetting will force all the connection to be evaluated by the firewall again
 	// this will set new verdicts if configuration was update or spn has been disabled or enabled.
-	log.Info("interception: reevaluating all connection trough the firewall")
+	log.Info("interception: marking all connections for re-evaluation")
 
 	// reset all connection firewall handlers. This will tell the master to rerun the firewall checks.
 	for _, conn := range network.GetAllConnections() {
