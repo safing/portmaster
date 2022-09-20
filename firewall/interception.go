@@ -59,7 +59,7 @@ const (
 
 func init() {
 	// TODO: Move interception module to own package (dir).
-	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network", "notifications", "profiles", "captain")
+	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network", "notifications", "profiles")
 
 	network.SetDefaultFirewallHandler(defaultHandler)
 }
@@ -72,12 +72,12 @@ func interceptionPrep() error {
 		configChangeEvent,
 		"firewall config change event",
 		func(ctx context.Context, _ interface{}) error {
-			resetAllConnections()
+			resetPersistentVerdicts()
 			return nil
 		},
 	)
 	if err != nil {
-		_ = fmt.Errorf("failed registering event hook: %w", err)
+		log.Errorf("interception: failed registering event hook: %s", err)
 	}
 
 	// Reset connections every time profile changes
@@ -86,12 +86,12 @@ func interceptionPrep() error {
 		profileConfigChangeEvent,
 		"firewall profile change event",
 		func(ctx context.Context, _ interface{}) error {
-			resetAllConnections()
+			resetPersistentVerdicts()
 			return nil
 		},
 	)
 	if err != nil {
-		_ = fmt.Errorf("failed registering event hook: %w", err)
+		log.Errorf("failed registering event hook: %s", err)
 	}
 
 	// Reset connections when spn is connected
@@ -101,12 +101,12 @@ func interceptionPrep() error {
 		onSPNConnectEvent,
 		"firewall spn connect event",
 		func(ctx context.Context, _ interface{}) error {
-			resetAllConnections()
+			resetPersistentVerdicts()
 			return nil
 		},
 	)
 	if err != nil {
-		_ = fmt.Errorf("failed registering event hook: %w", err)
+		log.Errorf("failed registering event hook: %s", err)
 	}
 
 	if err := registerConfig(); err != nil {
@@ -116,23 +116,18 @@ func interceptionPrep() error {
 	return prepAPIAuth()
 }
 
-func resetAllConnections() {
+func resetPersistentVerdicts() {
 	// Resetting will force all the connection to be evaluated by the firewall again
 	// this will set new verdicts if configuration was update or spn has been disabled or enabled
 	log.Info("interception: resetting all connections")
-	err := interception.ResetAllConnections()
-	if err != nil {
-		log.Errorf("failed to reset all connections: %q", err)
-	}
 
 	// reset all connection firewall handlers. This will tell the master to rerun the firewall checks
-	for _, id := range network.GetAllIDs() {
-		conn, err := getConnectionByID(id)
-		if err != nil {
-			continue
-		}
+	for _, conn := range network.GetAllConnections() {
+		conn.Lock()
+		isSPNConnection := captain.IsExcepted(conn.Entity.IP) && conn.Process().Pid == ownPID
 
-		if !captain.IsExcepted(conn.Entity.IP) {
+		// mark all non SPN connections to be processed by the firewall
+		if !isSPNConnection {
 			conn.SetFirewallHandler(initialHandler)
 			// Don't keep the previous tunneled value
 			conn.Tunneled = false
@@ -141,6 +136,12 @@ func resetAllConnections() {
 				conn.Entity.ResetLists()
 			}
 		}
+		conn.Unlock()
+	}
+
+	err := interception.ResetVerdictOfAllConnections()
+	if err != nil {
+		log.Errorf("interception: failed to reset connections verdict: %s", err)
 	}
 }
 
@@ -494,7 +495,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	// Check if connection should be tunneled.
 	checkTunneling(pkt.Ctx(), conn, pkt)
 
-	updateVerdictBasedOnPreviousState(conn)
+	finalizeVerdict(conn)
 
 	switch {
 	case conn.Inspecting:
@@ -581,7 +582,7 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	}
 }
 
-func updateVerdictBasedOnPreviousState(conn *network.Connection) {
+func finalizeVerdict(conn *network.Connection) {
 	// previously accepted or tunneled connections may need to be blocked
 	if conn.Verdict.Current == network.VerdictAccept {
 		switch {

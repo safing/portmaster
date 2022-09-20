@@ -15,7 +15,7 @@ func stop() error {
 	return StopNfqueueInterception()
 }
 
-// ResetAllConnections resets all connections so they are forced to go thought the firewall again.
-func ResetAllConnections() error {
+// ResetVerdictOfAllConnections resets all connections so they are forced to go thought the firewall again.
+func ResetVerdictOfAllConnections() error {
 	return nfq.DeleteAllMarkedConnection()
 }

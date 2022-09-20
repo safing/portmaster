@@ -446,9 +446,9 @@ func GetConnection(id string) (*Connection, bool) {
 	return conns.get(id)
 }
 
-// GetAllIDs Get all connection IDs.
-func GetAllIDs() []string {
-	return append(conns.keys(), dnsConns.keys()...)
+// GetAllConnections Gets all connection.
+func GetAllConnections() []*Connection {
+	return append(conns.list(), dnsConns.list()...)
 }
 
 // SetLocalIP sets the local IP address together with its network scope. The
@@ -524,14 +524,17 @@ func (conn *Connection) Failed(reason, reasonOptionKey string) {
 func (conn *Connection) SetVerdict(newVerdict Verdict, reason, reasonOptionKey string, reasonCtx interface{}) (ok bool) {
 	conn.SetVerdictDirectly(newVerdict)
 
-	conn.Reason.Msg = reason
-	conn.Reason.Context = reasonCtx
+	// Only set if it matches the user verdict. For a consistent reason
+	if newVerdict == conn.Verdict.User {
+		conn.Reason.Msg = reason
+		conn.Reason.Context = reasonCtx
 
-	conn.Reason.OptionKey = ""
-	conn.Reason.Profile = ""
-	if reasonOptionKey != "" && conn.Process() != nil {
-		conn.Reason.OptionKey = reasonOptionKey
-		conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
+		conn.Reason.OptionKey = ""
+		conn.Reason.Profile = ""
+		if reasonOptionKey != "" && conn.Process() != nil {
+			conn.Reason.OptionKey = reasonOptionKey
+			conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
+		}
 	}
 
 	return true
