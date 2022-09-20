@@ -52,9 +52,11 @@ func (cs *connectionStore) list() []*Connection {
 	cs.rw.RLock()
 	defer cs.rw.RUnlock()
 
-	l := []*Connection{}
+	l := make([]*Connection, len(cs.items))
+	index := 0
 	for _, conn := range cs.items {
-		l = append(l, conn)
+		l[index] = conn
+		index++
 	}
 	return l
 }
