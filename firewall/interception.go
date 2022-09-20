@@ -221,8 +221,8 @@ func getConnection(pkt packet.Packet) (*network.Connection, error) {
 		// Else create new one from the packet.
 		conn = network.NewConnectionFromFirstPacket(pkt)
 		conn.Lock()
+		defer conn.Unlock()
 		conn.SetFirewallHandler(initialHandler)
-		conn.Unlock()
 		created = true
 		return conn, nil
 	})
