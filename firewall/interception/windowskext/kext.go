@@ -95,7 +95,7 @@ func Init(dllPath, driverPath string) error {
 	new.clearCache, err = new.dll.FindProc("PortmasterClearCache")
 	if err != nil {
 		// the loaded dll is an old version
-		log.Errorf("could not find proc PortmasterClearCache (v0.x.x+) in dll: %s", err)
+		log.Errorf("could not find proc PortmasterClearCache (v1.0.12+) in dll: %s", err)
 	}
 
 	// initialize dll/kext

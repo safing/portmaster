@@ -448,7 +448,7 @@ func GetConnection(id string) (*Connection, bool) {
 
 // GetAllConnections Gets all connection.
 func GetAllConnections() []*Connection {
-	return append(conns.list(), dnsConns.list()...)
+	return conns.list()
 }
 
 // SetLocalIP sets the local IP address together with its network scope. The

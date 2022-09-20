@@ -72,7 +72,7 @@ func interceptionPrep() error {
 		configChangeEvent,
 		"reset connection verdicts",
 		func(ctx context.Context, _ interface{}) error {
-			resetPersistentVerdicts()
+			resetAllConnectionVerdicts()
 			return nil
 		},
 	)
@@ -86,7 +86,7 @@ func interceptionPrep() error {
 		profileConfigChangeEvent,
 		"reset connection verdicts",
 		func(ctx context.Context, _ interface{}) error {
-			resetPersistentVerdicts()
+			resetAllConnectionVerdicts()
 			return nil
 		},
 	)
@@ -101,7 +101,7 @@ func interceptionPrep() error {
 		onSPNConnectEvent,
 		"reset connection verdicts",
 		func(ctx context.Context, _ interface{}) error {
-			resetPersistentVerdicts()
+			resetAllConnectionVerdicts()
 			return nil
 		},
 	)
@@ -116,7 +116,7 @@ func interceptionPrep() error {
 	return prepAPIAuth()
 }
 
-func resetPersistentVerdicts() {
+func resetAllConnectionVerdicts() {
 	// Resetting will force all the connection to be evaluated by the firewall again
 	// this will set new verdicts if configuration was update or spn has been disabled or enabled.
 	log.Info("interception: reevaluating all connection trough the firewall")

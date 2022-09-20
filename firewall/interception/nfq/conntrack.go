@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 
 	ct "github.com/florianl/go-conntrack"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netenv"
 )
@@ -36,7 +37,9 @@ func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) {
 	filter.MarkMask = []byte{0xFF, 0xFF, 0xFF, 0xFF}
 	filter.Mark = []byte{0x00, 0x00, 0x00, 0x00} // 4 zeros starting value
 
-	// get all connections from the specified family (ipv4 or ipv6)
+	numberOfErrors := 0
+	var deleteError error = nil
+	// Get all connections from the specified family (ipv4 or ipv6)
 	for _, mark := range permanentFlags {
 		binary.BigEndian.PutUint32(filter.Mark, mark) // Little endian is in reverse not sure why. BigEndian makes it in correct order.
 		currentConnections, err := nfct.Query(ct.Conntrack, f, filter)
@@ -45,16 +48,15 @@ func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) {
 			continue
 		}
 
-		numberOfErrors := 0
 		for _, connection := range currentConnections {
-			err = nfct.Delete(ct.Conntrack, ct.IPv4, connection)
+			deleteError = nfct.Delete(ct.Conntrack, ct.IPv4, connection)
 			if err != nil {
 				numberOfErrors++
 			}
 		}
+	}
 
-		if numberOfErrors > 0 {
-			log.Warningf("nfq: failed to delete %d conntrack entries last error is: %s", numberOfErrors, err)
-		}
+	if numberOfErrors > 0 {
+		log.Warningf("nfq: failed to delete %d conntrack entries last error is: %s", numberOfErrors, deleteError)
 	}
 }
