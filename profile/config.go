@@ -292,11 +292,11 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 	cfgStringArrayOptions[CfgOptionEndpointsKey] = cfgOptionEndpoints
 
 	// Service Endpoint Filter List
-	defaultIncomingRulesValue := []string{"+ Localhost"}
+	defaultIncomingRulesValue := []string{"+ LAN"}
 	err = config.Register(&config.Option{
 		Name:           "Incoming Rules",
 		Key:            CfgOptionServiceEndpointsKey,
-		Description:    "Rules that apply to incoming network connections. Cannot overrule Network Scopes and Connection Types (see above). Also note that the default action for incoming connections is to always block.",
+		Description:    "Rules that apply to incoming network connections. Cannot overrule Network Scopes and Connection Types (see above).",
 		Help:           rulesHelp,
 		Sensitive:      true,
 		OptType:        config.OptTypeStringArray,
@@ -494,7 +494,7 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 		Key:            CfgOptionBlockInboundKey,
 		Description:    "Connections initiated towards your device from the LAN or Internet. This will usually only be the case if you are running a network service or are using peer to peer software. Is stronger than Rules (see below).",
 		OptType:        config.OptTypeInt,
-		DefaultValue:   status.SecurityLevelOff,
+		DefaultValue:   status.SecurityLevelsAll,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,

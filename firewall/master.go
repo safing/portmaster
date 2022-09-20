@@ -54,7 +54,6 @@ var defaultDeciders = []deciderFn{
 	checkBypassPrevention,
 	checkFilterLists,
 	checkCustomFilterList,
-	dropInbound,
 	checkDomainHeuristics,
 	checkAutoPermitRelated,
 }
@@ -536,15 +535,6 @@ func checkDomainHeuristics(ctx context.Context, conn *network.Connection, p *pro
 		log.Tracer(ctx).Tracef("filter: LMS score of entire domain is %.2f", score)
 	}
 
-	return false
-}
-
-func dropInbound(_ context.Context, conn *network.Connection, _ *profile.LayeredProfile, _ packet.Packet) bool {
-	// implicit default=block for inbound
-	if conn.Inbound {
-		conn.Drop("incoming connection blocked by default", profile.CfgOptionServiceEndpointsKey)
-		return true
-	}
 	return false
 }
 
