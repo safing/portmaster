@@ -270,21 +270,26 @@ func NotificationActionTypeFromProto(action *proto.NotificationAction) *notifica
 
 	switch payload := action.GetActionType().(type) {
 	case *proto.NotificationAction_InjectEventId:
+		res.Type = notifications.ActionTypeInjectEvent
 		res.Payload = payload.InjectEventId
 
 	case *proto.NotificationAction_OpenPage:
+		res.Type = notifications.ActionTypeOpenPage
 		res.Payload = payload.OpenPage
 
 	case *proto.NotificationAction_OpenProfile:
+		res.Type = notifications.ActionTypeOpenProfile
 		res.Payload = payload.OpenProfile
 
 	case *proto.NotificationAction_OpenSetting:
+		res.Type = notifications.ActionTypeOpenSetting
 		res.Payload = notifications.ActionTypeOpenSettingPayload{
 			Key:     payload.OpenSetting.Key,
 			Profile: payload.OpenSetting.Profile,
 		}
 
 	case *proto.NotificationAction_OpenUrl:
+		res.Type = notifications.ActionTypeOpenURL
 		res.Payload = payload.OpenUrl
 
 	case *proto.NotificationAction_Webhook:
