@@ -579,9 +579,10 @@ func (conn *Connection) delete() {
 
 // SetFirewallHandler sets the firewall handler for this link, and starts a
 // worker to handle the packets.
+// The caller needs to hold a lock on the connection.
 func (conn *Connection) SetFirewallHandler(handler FirewallHandler) {
 	if conn.firewallHandler == nil {
-		conn.pktQueue = make(chan packet.Packet, 1000)
+		conn.pktQueue = make(chan packet.Packet, 100)
 
 		// start handling
 		module.StartWorker("packet handler", conn.packetHandlerWorker)
@@ -590,9 +591,15 @@ func (conn *Connection) SetFirewallHandler(handler FirewallHandler) {
 }
 
 // StopFirewallHandler unsets the firewall handler and stops the handler worker.
+// The caller needs to hold a lock on the connection.
 func (conn *Connection) StopFirewallHandler() {
 	conn.firewallHandler = nil
-	conn.pktQueue <- nil
+
+	// Signal the packet handler worker that it can stop.
+	close(conn.pktQueue)
+
+	// Unset the packet queue so that it can be freed.
+	conn.pktQueue = nil
 }
 
 // HandlePacket queues packet of Link for handling.
@@ -611,9 +618,13 @@ func (conn *Connection) HandlePacket(pkt packet.Packet) {
 
 // packetHandlerWorker sequentially handles queued packets.
 func (conn *Connection) packetHandlerWorker(ctx context.Context) error {
+	// Copy packet queue, so we can remove the reference from the connection
+	// when we stop the firewall handler.
+	pktQueue := conn.pktQueue
+
 	for {
 		select {
-		case pkt := <-conn.pktQueue:
+		case pkt := <-pktQueue:
 			if pkt == nil {
 				return nil
 			}
