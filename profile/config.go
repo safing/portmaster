@@ -309,17 +309,17 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 			endpoints.EndpointListVerdictNamesAnnotation: rulesVerdictNames,
 			config.QuickSettingsAnnotation: []config.QuickSetting{
 				{
-					Name:   "SSH",
+					Name:   "Allow SSH",
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ * tcp/22"},
 				},
 				{
-					Name:   "HTTP/s",
+					Name:   "Allow HTTP/s",
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ * tcp/80", "+ * tcp/443"},
 				},
 				{
-					Name:   "RDP",
+					Name:   "Allow RDP",
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ * */3389"},
 				},
@@ -332,6 +332,11 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 					Name:   "Allow all from Internet",
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ Internet"},
+				},
+				{
+					Name:   "Block everything else",
+					Action: config.QuickMergeBottom,
+					Value:  []string{"- *"},
 				},
 			},
 		},
