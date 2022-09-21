@@ -292,7 +292,6 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 	cfgStringArrayOptions[CfgOptionEndpointsKey] = cfgOptionEndpoints
 
 	// Service Endpoint Filter List
-	defaultIncomingRulesValue := []string{"+ LAN"}
 	err = config.Register(&config.Option{
 		Name:           "Incoming Rules",
 		Key:            CfgOptionServiceEndpointsKey,
@@ -300,7 +299,7 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 		Help:           rulesHelp,
 		Sensitive:      true,
 		OptType:        config.OptTypeStringArray,
-		DefaultValue:   defaultIncomingRulesValue,
+		DefaultValue:   []string{},
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		Annotations: config.Annotations{
 			config.StackableAnnotation:                   true,
@@ -342,7 +341,7 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 	if err != nil {
 		return err
 	}
-	cfgOptionServiceEndpoints = config.Concurrent.GetAsStringArray(CfgOptionServiceEndpointsKey, defaultIncomingRulesValue)
+	cfgOptionServiceEndpoints = config.Concurrent.GetAsStringArray(CfgOptionServiceEndpointsKey, []string{})
 	cfgStringArrayOptions[CfgOptionServiceEndpointsKey] = cfgOptionServiceEndpoints
 
 	// Filter list IDs
