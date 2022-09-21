@@ -159,11 +159,12 @@ func handleBroadcast(bn *BroadcastNotification, matchingDataAccessor accessor.Ac
 		switch {
 		case !ok || state.Read.IsZero():
 			// Was never shown, continue.
-		case bn.repeatDuration == 0 && !state.Read.IsZero():
+		case bn.repeatDuration == 0:
 			// Was already shown and is not repeated, skip.
 			return ErrSkipAlreadyShown
-		case bn.repeatDuration > 0 && time.Now().Add(-bn.repeatDuration).After(state.Read):
-			// Was already shown, but should be repeated now, continue.
+		case time.Now().Before(state.Read.Add(bn.repeatDuration)):
+			// Was already shown and should be repeated - but not yet, skip.
+			return ErrSkipAlreadyShown
 		}
 	}
 
