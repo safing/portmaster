@@ -292,15 +292,14 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 	cfgStringArrayOptions[CfgOptionEndpointsKey] = cfgOptionEndpoints
 
 	// Service Endpoint Filter List
-	defaultIncomingRulesValue := []string{"+ Localhost"}
 	err = config.Register(&config.Option{
 		Name:           "Incoming Rules",
 		Key:            CfgOptionServiceEndpointsKey,
-		Description:    "Rules that apply to incoming network connections. Cannot overrule Network Scopes and Connection Types (see above). Also note that the default action for incoming connections is to always block.",
+		Description:    "Rules that apply to incoming network connections. Cannot overrule Network Scopes and Connection Types (see above).",
 		Help:           rulesHelp,
 		Sensitive:      true,
 		OptType:        config.OptTypeStringArray,
-		DefaultValue:   defaultIncomingRulesValue,
+		DefaultValue:   []string{},
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		Annotations: config.Annotations{
 			config.StackableAnnotation:                   true,
@@ -310,17 +309,17 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 			endpoints.EndpointListVerdictNamesAnnotation: rulesVerdictNames,
 			config.QuickSettingsAnnotation: []config.QuickSetting{
 				{
-					Name:   "SSH",
+					Name:   "Allow SSH",
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ * tcp/22"},
 				},
 				{
-					Name:   "HTTP/s",
+					Name:   "Allow HTTP/s",
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ * tcp/80", "+ * tcp/443"},
 				},
 				{
-					Name:   "RDP",
+					Name:   "Allow RDP",
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ * */3389"},
 				},
@@ -334,6 +333,11 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ Internet"},
 				},
+				{
+					Name:   "Block everything else",
+					Action: config.QuickMergeBottom,
+					Value:  []string{"- *"},
+				},
 			},
 		},
 		ValidationRegex: endpoints.ListEntryValidationRegex,
@@ -342,7 +346,7 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 	if err != nil {
 		return err
 	}
-	cfgOptionServiceEndpoints = config.Concurrent.GetAsStringArray(CfgOptionServiceEndpointsKey, defaultIncomingRulesValue)
+	cfgOptionServiceEndpoints = config.Concurrent.GetAsStringArray(CfgOptionServiceEndpointsKey, []string{})
 	cfgStringArrayOptions[CfgOptionServiceEndpointsKey] = cfgOptionServiceEndpoints
 
 	// Filter list IDs
@@ -494,7 +498,7 @@ Important: DNS Requests are only matched against domain and filter list rules, a
 		Key:            CfgOptionBlockInboundKey,
 		Description:    "Connections initiated towards your device from the LAN or Internet. This will usually only be the case if you are running a network service or are using peer to peer software. Is stronger than Rules (see below).",
 		OptType:        config.OptTypeInt,
-		DefaultValue:   status.SecurityLevelOff,
+		DefaultValue:   status.SecurityLevelsAll,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
