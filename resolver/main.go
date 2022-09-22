@@ -169,12 +169,14 @@ func AddToDebugInfo(di *debug.Info) {
 		}
 
 		// Add section.
-		if resolver.Info.Name != "" {
-			content = append(content, resolver.Info.Name)
-		} else {
-			content = append(content, resolver.Info.IP.String())
-		}
+		content = append(content, resolver.Info.DescriptiveName())
 		content = append(content, fmt.Sprintf("  %s", resolver.Info.ID()))
+		if resolver.SearchOnly {
+			content = append(content, "  Used for search domains only!")
+		}
+		if len(resolver.Search) > 0 {
+			content = append(content, fmt.Sprintf("  Search Domains: %v", strings.Join(resolver.Search, ", ")))
+		}
 		content = append(content, fmt.Sprintf("  Failing: %v", resolver.Conn.IsFailing()))
 
 		// Add a empty line for all but the last entry.
