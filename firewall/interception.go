@@ -13,12 +13,9 @@ import (
 	"github.com/tevino/abool"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/compat"
-	"github.com/safing/portmaster/core"
 	_ "github.com/safing/portmaster/core/base"
 	"github.com/safing/portmaster/firewall/inspection"
 	"github.com/safing/portmaster/firewall/interception"
@@ -46,12 +43,6 @@ var (
 	ownPID = os.Getpid()
 )
 
-// Config variables for interception module.
-var (
-	devMode          config.BoolOption
-	apiListenAddress config.StringOption
-)
-
 func init() {
 	// TODO: Move interception module to own package (dir).
 	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network", "notifications")
@@ -60,12 +51,15 @@ func init() {
 }
 
 func interceptionPrep() error {
+	if err := registerConfig(); err != nil {
+		return err
+	}
+
 	return prepAPIAuth()
 }
 
 func interceptionStart() error {
-	devMode = config.Concurrent.GetAsBool(core.CfgDevModeKey, false)
-	apiListenAddress = config.GetAsString(api.CfgDefaultListenAddressKey, "")
+	getConfig()
 
 	if err := registerMetrics(); err != nil {
 		return err

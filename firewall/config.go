@@ -1,8 +1,10 @@
 package firewall
 
 import (
+	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/core"
 	"github.com/safing/spn/captain"
 )
 
@@ -107,13 +109,22 @@ func registerConfig() error {
 	return nil
 }
 
+// Config variables for interception and filter module.
+// Everything is registered by the interception module, as the filter module
+// can be disabled.
 var (
+	devMode          config.BoolOption
+	apiListenAddress config.StringOption
+
 	filterEnabled     config.BoolOption
 	tunnelEnabled     config.BoolOption
 	useCommunityNodes config.BoolOption
 )
 
 func getConfig() {
+	devMode = config.Concurrent.GetAsBool(core.CfgDevModeKey, false)
+	apiListenAddress = config.GetAsString(api.CfgDefaultListenAddressKey, "")
+
 	filterEnabled = config.Concurrent.GetAsBool(CfgOptionEnableFilterKey, true)
 	tunnelEnabled = config.Concurrent.GetAsBool(captain.CfgOptionEnableSPNKey, false)
 	useCommunityNodes = config.Concurrent.GetAsBool(captain.CfgOptionUseCommunityNodesKey, true)

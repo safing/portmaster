@@ -10,7 +10,7 @@ import (
 var filterModule *modules.Module
 
 func init() {
-	filterModule = modules.Register("filter", filterPrep, filterStart, nil, "core", "intel")
+	filterModule = modules.Register("filter", nil, nil, nil, "core", "interception", "intel")
 	subsystems.Register(
 		"filter",
 		"Privacy Filter",
@@ -30,19 +30,4 @@ func init() {
 			},
 		},
 	)
-}
-
-func filterPrep() (err error) {
-	err = registerConfig()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func filterStart() error {
-	getConfig()
-
-	return nil
 }
