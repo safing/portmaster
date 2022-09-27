@@ -16,17 +16,25 @@ import (
 
 func init() {
 	rootCmd.AddCommand(signCmd)
+
+	// Required argument: envelope
 	signCmd.PersistentFlags().StringVarP(&envelopeName, "envelope", "", "",
 		"specify envelope name used for signing",
 	)
 	_ = signCmd.MarkFlagRequired("envelope")
+
+	// Optional arguments: verbose, tsdir, tskeyring
+	signCmd.PersistentFlags().BoolVarP(&signVerbose, "verbose", "v", false,
+		"enable verbose output",
+	)
 	signCmd.PersistentFlags().StringVarP(&trustStoreDir, "tsdir", "", "",
 		"specify a truststore directory (default loaded from JESS_TS_DIR env variable)",
 	)
 	signCmd.PersistentFlags().StringVarP(&trustStoreKeyring, "tskeyring", "", "",
 		"specify a truststore keyring namespace (default loaded from JESS_TS_KEYRING env variable) - lower priority than tsdir",
 	)
-	// FIXME: Add silent flag to suppress verification checks.
+
+	// Subcommand for signing indexes.
 	signCmd.AddCommand(signIndexCmd)
 }
 
@@ -45,6 +53,7 @@ var (
 	}
 
 	envelopeName string
+	signVerbose  bool
 )
 
 func sign(cmd *cobra.Command, args []string) error {
@@ -82,7 +91,9 @@ func sign(cmd *cobra.Command, args []string) error {
 					fmt.Printf("[FAIL] signature error for %s: %s\n", file.Path(), err)
 					fails++
 				} else {
-					fmt.Printf("[ OK ] valid signature for %s: signed by %s\n", file.Path(), getSignedByMany(fileData, trustStore))
+					if signVerbose {
+						fmt.Printf("[ OK ] valid signature for %s: signed by %s\n", file.Path(), getSignedByMany(fileData, trustStore))
+					}
 					verified++
 				}
 
@@ -111,8 +122,14 @@ func sign(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if verified > 0 {
+		fmt.Printf("[STAT] verified %d files", verified)
+	}
+	if signed > 0 {
+		fmt.Printf("[STAT] signed %d files", signed)
+	}
 	if fails > 0 {
-		return fmt.Errorf("signing or checking failed on %d files", fails)
+		return fmt.Errorf("signing or verification failed on %d files", fails)
 	}
 	return nil
 }
@@ -141,7 +158,7 @@ func signIndex(cmd *cobra.Command, args []string) error {
 	}
 
 	// Go through all files.
-	var fails int
+	var verified, signed, fails int
 	for _, file := range files {
 		sigFile := file + filesig.Extension
 
@@ -162,7 +179,12 @@ func signIndex(cmd *cobra.Command, args []string) error {
 				trustStore,
 			)
 			if err == nil {
-				fmt.Printf("[ OK ] valid signature for %s: signed by %s\n", file, getSignedByMany(fileData, trustStore))
+				if signVerbose {
+					fmt.Printf("[ OK ] valid signature for %s: signed by %s\n", file, getSignedByMany(fileData, trustStore))
+				}
+				verified++
+
+				// Indexes are expected to change, so just sign the index again if verification fails.
 				continue
 			}
 
@@ -181,6 +203,7 @@ func signIndex(cmd *cobra.Command, args []string) error {
 				fails++
 			} else {
 				fmt.Printf("[SIGN] signed %s with %s\n", file, getSignedBySingle(fileData, trustStore))
+				signed++
 			}
 
 		default:
@@ -190,8 +213,14 @@ func signIndex(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if verified > 0 {
+		fmt.Printf("[STAT] verified %d files", verified)
+	}
+	if signed > 0 {
+		fmt.Printf("[STAT] signed %d files", signed)
+	}
 	if fails > 0 {
-		return fmt.Errorf("signing or checking failed on %d files", fails)
+		return fmt.Errorf("signing failed on %d files", fails)
 	}
 	return nil
 }
