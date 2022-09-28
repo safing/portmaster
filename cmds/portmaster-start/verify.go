@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"strings"
@@ -11,7 +13,9 @@ import (
 
 	"github.com/safing/jess"
 	"github.com/safing/jess/filesig"
+	portlog "github.com/safing/portbase/log"
 	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/updates/helper"
 )
 
 var (
@@ -63,51 +67,74 @@ func verifyUpdates(ctx context.Context) error {
 
 	// Verify all resources.
 	export := registry.Export()
-	var verified, fails int
+	var verified, fails, skipped int
 	for _, rv := range export {
 		for _, version := range rv.Versions {
-			file := version.GetFile()
+			// Don't verify files we don't have.
+			if !version.Available {
+				continue
+			}
 
 			// Verify file signature.
+			file := version.GetFile()
 			fileData, err := file.Verify()
-			if err != nil {
-				log.Printf("[FAIL] failed to verify %s: %s\n", file.Path(), err)
-				fails++
-				if verifyFix {
-					// Delete file.
-					err = os.Remove(file.Path())
-					if err != nil {
-						log.Printf("[FAIL] failed to delete %s to prepare re-download: %s\n", file.Path(), err)
-					}
-					// Delete file sig.
-					err = os.Remove(file.Path() + filesig.Extension)
-					if err != nil {
-						log.Printf("[FAIL] failed to delete %s to prepare re-download: %s\n", file.Path()+filesig.Extension, err)
-					}
-				}
-			} else {
+			switch {
+			case err == nil:
+				verified++
 				if verifyVerbose {
 					verifOpts := registry.GetVerificationOptions(file.Identifier())
 					if verifOpts != nil {
 						log.Printf(
-							"[ OK ] valid signature for %s: signed by %s\n",
+							"[ OK ] valid signature for %s: signed by %s",
 							file.Path(), getSignedByMany(fileData, verifOpts.TrustStore),
 						)
 					} else {
-						log.Printf("[ OK ] valid signature for %s\n", file.Path())
+						log.Printf("[ OK ] valid signature for %s", file.Path())
 					}
 				}
-				verified++
+
+			case errors.Is(err, updater.ErrVerificationNotConfigured):
+				skipped++
+				if verifyVerbose {
+					log.Printf("[SKIP] no verification configured for %s", file.Path())
+				}
+
+			default:
+				log.Printf("[FAIL] failed to verify %s: %s", file.Path(), err)
+				fails++
+				if verifyFix {
+					// Delete file.
+					err = os.Remove(file.Path())
+					if err != nil && !errors.Is(err, fs.ErrNotExist) {
+						log.Printf("[FAIL] failed to delete %s to prepare re-download: %s", file.Path(), err)
+					} else {
+						// We should not be changing the version, but we are in a cmd-like
+						// scenario here without goroutines.
+						version.Available = false
+					}
+					// Delete file sig.
+					err = os.Remove(file.Path() + filesig.Extension)
+					if err != nil && !errors.Is(err, fs.ErrNotExist) {
+						log.Printf("[FAIL] failed to delete %s to prepare re-download: %s", file.Path()+filesig.Extension, err)
+					} else {
+						// We should not be changing the version, but we are in a cmd-like
+						// scenario here without goroutines.
+						version.SigAvailable = false
+					}
+				}
 			}
 		}
 	}
 
 	if verified > 0 {
-		log.Printf("[STAT] verified %d files\n", verified)
+		log.Printf("[STAT] verified %d files", verified)
+	}
+	if skipped > 0 && verifyVerbose {
+		log.Printf("[STAT] skipped %d files (no verification configured)", skipped)
 	}
 	if fails > 0 {
 		if verifyFix {
-			log.Printf("[WARN] verification failed %d files, re-downloading...\n", fails)
+			log.Printf("[WARN] verification failed on %d files, re-downloading...", fails)
 		} else {
 			return fmt.Errorf("failed to verify %d files", fails)
 		}
@@ -116,7 +143,17 @@ func verifyUpdates(ctx context.Context) error {
 		return nil
 	}
 
+	// Start logging system for update process.
+	portlog.SetLogLevel(portlog.InfoLevel)
+	err = portlog.Start()
+	if err != nil {
+		log.Printf("[WARN] failed to start logging for monitoring update process: %s\n", err)
+	}
+	defer portlog.Shutdown()
+
 	// Re-download broken files.
+	registry.MandatoryUpdates = helper.MandatoryUpdates()
+	registry.AutoUnpack = helper.AutoUnpackUpdates()
 	err = registry.DownloadUpdates(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to re-download files: %w", err)
