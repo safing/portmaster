@@ -34,7 +34,7 @@ var (
 		UpdateURLs: []string{
 			"https://updates.safing.io",
 		},
-		Verification: helper.VerificationConfig, // FIXME: disable for now
+		Verification: helper.VerificationConfig,
 		DevMode:      false,
 		Online:       true, // is disabled later based on command
 	}

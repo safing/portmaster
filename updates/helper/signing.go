@@ -28,16 +28,6 @@ var (
 	BinarySigningTrustStore = jess.NewMemTrustStore()
 )
 
-// GetVerificationConfig returns the verification options based on the release channel.
-func GetVerificationConfig(releaseChannel string) map[string]*updater.VerificationOptions {
-	switch releaseChannel {
-	case ReleaseChannelBeta, ReleaseChannelStaging:
-		return VerificationConfig
-	default:
-		return nil
-	}
-}
-
 func init() {
 	for _, signingKey := range BinarySigningKeys {
 		rcpt, err := jess.RecipientFromTextFormat(signingKey)
