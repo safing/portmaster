@@ -46,6 +46,7 @@ type Options struct {
 	Identifier        string // component identifier
 	ShortIdentifier   string // populated automatically
 	LockPathPrefix    string
+	LockPerUser       bool
 	PIDFile           bool
 	SuppressArgs      bool // do not use any args
 	AllowDownload     bool // allow download of component if it is not yet available
@@ -73,6 +74,7 @@ func init() {
 		{
 			Name:              "Portmaster Notifier",
 			Identifier:        "notifier/portmaster-notifier",
+			LockPerUser:       true,
 			AllowDownload:     false,
 			AllowHidingWindow: true,
 			PIDFile:           true,
@@ -162,7 +164,7 @@ func run(opts *Options, cmdArgs []string) (err error) {
 
 	// check for duplicate instances
 	if opts.PIDFile {
-		pid, err := checkAndCreateInstanceLock(opts.LockPathPrefix, opts.ShortIdentifier)
+		pid, err := checkAndCreateInstanceLock(opts.LockPathPrefix, opts.ShortIdentifier, opts.LockPerUser)
 		if err != nil {
 			return fmt.Errorf("failed to exec lock: %w", err)
 		}
