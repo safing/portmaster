@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -72,7 +72,7 @@ func broadcastNotify(ctx context.Context, t *modules.Task) error {
 	if err != nil {
 		return fmt.Errorf("failed to get broadcast notifications update: %w", err)
 	}
-	broadcastsData, err := ioutil.ReadFile(broadcastsResource.Path())
+	broadcastsData, err := os.ReadFile(broadcastsResource.Path())
 	if err != nil {
 		return fmt.Errorf("failed to load broadcast notifications update: %w", err)
 	}

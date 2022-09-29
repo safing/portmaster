@@ -3,7 +3,7 @@ package filterlists
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"sync"
 
@@ -212,7 +212,7 @@ func updateListIndex() error {
 	}
 
 	// Update list index from updates.
-	blob, err := ioutil.ReadFile(listIndexUpdate.Path())
+	blob, err := os.ReadFile(listIndexUpdate.Path())
 	if err != nil {
 		return err
 	}

@@ -5,7 +5,6 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -42,7 +41,7 @@ func GetWFPState() (*SimplifiedWFPState, error) {
 	}
 
 	// Get tmp file contents.
-	output, err := ioutil.ReadFile(tmpFile)
+	output, err := os.ReadFile(tmpFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read wfp state to tmp file: %w", err)
 	}

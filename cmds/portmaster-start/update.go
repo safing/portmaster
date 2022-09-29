@@ -65,7 +65,7 @@ func downloadUpdates() error {
 	// logging is configured as a persistent pre-run method inherited from
 	// the root command but since we don't use run.Run() we need to start
 	// logging ourself.
-	log.SetLogLevel(log.TraceLevel)
+	log.SetLogLevel(log.InfoLevel)
 	err := log.Start()
 	if err != nil {
 		fmt.Printf("failed to start logging: %s\n", err)

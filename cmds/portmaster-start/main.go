@@ -34,8 +34,9 @@ var (
 		UpdateURLs: []string{
 			"https://updates.safing.io",
 		},
-		DevMode: false,
-		Online:  true, // is disabled later based on command
+		Verification: helper.VerificationConfig,
+		DevMode:      false,
+		Online:       true, // is disabled later based on command
 	}
 
 	rootCmd = &cobra.Command{

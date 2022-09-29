@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/user"
@@ -32,7 +31,7 @@ func checkAndCreateInstanceLock(path, name string, perUser bool) (pid int32, err
 	}
 
 	// read current pid file
-	data, err := ioutil.ReadFile(lockFilePath)
+	data, err := os.ReadFile(lockFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// create new lock
@@ -93,7 +92,7 @@ func createInstanceLock(lockFilePath string) error {
 
 	// create lock file
 	// TODO: Investigate required permissions.
-	err = ioutil.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d", os.Getpid())), 0o0666) //nolint:gosec
+	err = os.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d", os.Getpid())), 0o0666) //nolint:gosec
 	if err != nil {
 		return err
 	}

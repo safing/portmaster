@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -75,18 +75,26 @@ func release(cmd *cobra.Command, args []string) error {
 }
 
 func writeIndex(channel string, versions map[string]string) error {
+	// Create new index file.
+	indexFile := &updater.IndexFile{
+		Channel:   channel,
+		Published: time.Now().UTC().Round(time.Second),
+		Releases:  versions,
+	}
+
 	// Export versions and format them.
-	versionData, err := json.MarshalIndent(versions, "", " ")
+	confirmData, err := json.MarshalIndent(indexFile, "", " ")
 	if err != nil {
 		return err
 	}
 
-	// Build destination path.
-	indexFilePath := filepath.Join(registry.StorageDir().Path, channel+".json")
+	// Build index paths.
+	oldIndexPath := filepath.Join(registry.StorageDir().Path, channel+".json")
+	newIndexPath := filepath.Join(registry.StorageDir().Path, channel+".v2.json")
 
 	// Print preview.
-	fmt.Printf("%s (%s):\n", channel, indexFilePath)
-	fmt.Println(string(versionData))
+	fmt.Printf("%s\n%s\n%s\n\n", channel, oldIndexPath, newIndexPath)
+	fmt.Println(string(confirmData))
 
 	// Ask for confirmation.
 	if !confirm("\nDo you want to write this index?") {
@@ -94,13 +102,33 @@ func writeIndex(channel string, versions map[string]string) error {
 		return nil
 	}
 
-	// Write new index to disk.
-	err = ioutil.WriteFile(indexFilePath, versionData, 0o0644) //nolint:gosec // 0644 is intended
+	// Write indexes.
+	err = writeAsJSON(oldIndexPath, versions)
+	if err != nil {
+		return fmt.Errorf("failed to write %s: %w", oldIndexPath, err)
+	}
+	err = writeAsJSON(newIndexPath, indexFile)
+	if err != nil {
+		return fmt.Errorf("failed to write %s: %w", newIndexPath, err)
+	}
+
+	return nil
+}
+
+func writeAsJSON(path string, data any) error {
+	// Marshal to JSON.
+	jsonData, err := json.MarshalIndent(data, "", " ")
 	if err != nil {
 		return err
 	}
-	fmt.Printf("written %s\n", indexFilePath)
 
+	// Write to disk.
+	err = os.WriteFile(path, jsonData, 0o0644) //nolint:gosec
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("written %s\n", path)
 	return nil
 }
 
