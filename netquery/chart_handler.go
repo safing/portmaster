@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -76,7 +75,7 @@ func (ch *ChartHandler) parseRequest(req *http.Request) (*QueryActiveConnectionC
 	}
 
 	var requestPayload QueryActiveConnectionChartPayload
-	blob, err := ioutil.ReadAll(body)
+	blob, err := io.ReadAll(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read body" + err.Error())
 	}

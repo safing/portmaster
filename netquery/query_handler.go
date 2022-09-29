@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
@@ -120,7 +119,7 @@ func (qh *QueryHandler) parseRequest(req *http.Request) (*QueryRequestPayload, e
 	}
 
 	var requestPayload QueryRequestPayload
-	blob, err := ioutil.ReadAll(body)
+	blob, err := io.ReadAll(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read body" + err.Error())
 	}

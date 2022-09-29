@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -124,7 +123,7 @@ func writeAsJSON(path string, data any) error {
 	}
 
 	// Write to disk.
-	err = ioutil.WriteFile(path, jsonData, 0o0644) //nolint:gosec
+	err = os.WriteFile(path, jsonData, 0o0644) //nolint:gosec
 	if err != nil {
 		return err
 	}

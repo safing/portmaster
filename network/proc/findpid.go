@@ -116,7 +116,7 @@ func findSocketFromPid(pid int, socketName string) bool {
 	return false
 }
 
-// readDirNames only reads the directory names. Using ioutil.ReadDir() would call `lstat` on every
+// readDirNames only reads the directory names. Using os.ReadDir() would call `lstat` on every
 // resulting directory name, which we don't need. This function will be called a lot, so we should
 // refrain from unnecessary work.
 func readDirNames(dir string) (names []string) {
