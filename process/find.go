@@ -69,13 +69,18 @@ func GetNetworkHost(ctx context.Context, remoteIP net.IP) (process *Process, err
 		UserID:    NetworkHostProcessID,
 		Pid:       NetworkHostProcessID,
 		ParentPid: NetworkHostProcessID,
-		Path:      fmt.Sprintf("net:%s", remoteIP),
+		Tags: []profile.Tag{
+			{
+				Key:   "net",
+				Value: remoteIP.String(),
+			},
+		},
 		FirstSeen: now,
 		LastSeen:  now,
 	}
 
 	// Get the (linked) local profile.
-	networkHostProfile, err := profile.GetProfile(profile.SourceNetwork, remoteIP.String(), "", false)
+	networkHostProfile, err := profile.GetLocalProfile("", networkHost.MatchingData(), networkHost.CreateProfileCallback)
 	if err != nil {
 		return nil, err
 	}
