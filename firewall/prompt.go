@@ -177,9 +177,11 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 		EventData: &promptData{
 			Entity: entity,
 			Profile: promptProfile{
-				Source:     string(localProfile.Source),
-				ID:         localProfile.ID,
-				LinkedPath: localProfile.LinkedPath,
+				Source: string(localProfile.Source),
+				ID:     localProfile.ID,
+				// LinkedPath is used to enhance the display of the prompt in the UI.
+				// TODO: Using the process path is a workaround. Find a cleaner solution.
+				LinkedPath: conn.Process().Path,
 			},
 		},
 		Expires: expires,
@@ -259,7 +261,7 @@ func saveResponse(p *profile.Profile, entity *intel.Entity, promptResponse strin
 	// Update the profile if necessary.
 	if p.IsOutdated() {
 		var err error
-		p, err = profile.GetProfile(p.Source, p.ID, p.LinkedPath, false)
+		p, err = profile.GetLocalProfile(p.ID, nil, nil)
 		if err != nil {
 			return err
 		}
