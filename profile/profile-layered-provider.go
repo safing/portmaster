@@ -74,9 +74,11 @@ func getProfileRevision(p *Profile) (*LayeredProfile, error) {
 	}
 
 	// Update profiles if necessary.
-	if layeredProfile.NeedsUpdate() {
-		layeredProfile.Update()
-	}
+	// TODO: Cannot update as we have too little information.
+	// Just return the current state. Previous code:
+	// if layeredProfile.NeedsUpdate() {
+	// 	layeredProfile.Update()
+	// }
 
 	return layeredProfile, nil
 }
