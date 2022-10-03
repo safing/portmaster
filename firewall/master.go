@@ -71,7 +71,10 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 	// Check if the layered profile needs updating.
 	if layeredProfile.NeedsUpdate() {
 		// Update revision counter in connection.
-		conn.ProfileRevisionCounter = layeredProfile.Update()
+		conn.ProfileRevisionCounter = layeredProfile.Update(
+			conn.Process().MatchingData(),
+			conn.Process().CreateProfileCallback,
+		)
 		conn.SaveWhenFinished()
 
 		// Reset verdict for connection.
