@@ -57,8 +57,8 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 
 	lp := &LayeredProfile{
 		localProfile:       localProfile,
-		layers:             make([]*Profile, 0, len(localProfile.LinkedProfiles)+1),
-		LayerIDs:           make([]string, 0, len(localProfile.LinkedProfiles)+1),
+		layers:             make([]*Profile, 0, 1),
+		LayerIDs:           make([]string, 0, 1),
 		globalValidityFlag: config.NewValidityFlag(),
 		RevisionCounter:    1,
 		securityLevel:      &securityLevelVal,
@@ -246,17 +246,23 @@ func (lp *LayeredProfile) NeedsUpdate() (outdated bool) {
 }
 
 // Update checks for and replaces any outdated profiles.
-func (lp *LayeredProfile) Update() (revisionCounter uint64) {
+func (lp *LayeredProfile) Update(md MatchingData, createProfileCallback func() *Profile) (revisionCounter uint64) {
 	lp.Lock()
 	defer lp.Unlock()
 
 	var changed bool
 	for i, layer := range lp.layers {
 		if layer.outdated.IsSet() {
-			changed = true
+			// Check for unsupported sources.
+			if layer.Source != SourceLocal {
+				log.Warningf("profile: updating profiles outside of local source is not supported: %s", layer.ScopedID())
+				layer.outdated.UnSet()
+				continue
+			}
 
 			// Update layer.
-			newLayer, err := GetProfile(layer.Source, layer.ID, layer.LinkedPath, false)
+			changed = true
+			newLayer, err := GetLocalProfile(layer.ID, md, createProfileCallback)
 			if err != nil {
 				log.Errorf("profiles: failed to update profile %s: %s", layer.ScopedID(), err)
 			} else {

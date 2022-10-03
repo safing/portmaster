@@ -38,21 +38,6 @@ func getAllActiveProfiles() []*Profile {
 	return result
 }
 
-// findActiveProfile searched for an active local profile using the linked path.
-func findActiveProfile(linkedPath string) *Profile {
-	activeProfilesLock.RLock()
-	defer activeProfilesLock.RUnlock()
-
-	for _, activeProfile := range activeProfiles {
-		if activeProfile.LinkedPath == linkedPath {
-			activeProfile.MarkStillActive()
-			return activeProfile
-		}
-	}
-
-	return nil
-}
-
 // addActiveProfile registers a active profile.
 func addActiveProfile(profile *Profile) {
 	activeProfilesLock.Lock()
