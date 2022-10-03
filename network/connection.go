@@ -14,6 +14,7 @@ import (
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/process"
+	_ "github.com/safing/portmaster/process/tags"
 	"github.com/safing/portmaster/resolver"
 	"github.com/safing/spn/navigator"
 )
