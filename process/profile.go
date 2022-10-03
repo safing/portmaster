@@ -2,6 +2,7 @@ package process
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -29,25 +30,48 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	// If not, continue with loading the profile.
 	log.Tracer(ctx).Trace("process: loading profile")
 
+	// Check if there is a special profile for this process.
+	localProfile, err := p.loadSpecialProfile(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to load special profile: %w", err)
+	}
+
+	// Otherwise, find a regular profile for the process.
+	if localProfile == nil {
+		localProfile, err = profile.GetLocalProfile("", p.MatchingData(), p.CreateProfileCallback)
+		if err != nil {
+			return false, fmt.Errorf("failed to find profile: %w", err)
+		}
+	}
+
+	// Assign profile to process.
+	p.PrimaryProfileID = localProfile.ScopedID()
+	p.profile = localProfile.LayeredProfile()
+
+	return true, nil
+}
+
+// loadSpecialProfile attempts to load a special profile.
+func (p *Process) loadSpecialProfile(_ context.Context) (*profile.Profile, error) {
 	// Check if we need a special profile.
-	profileID := ""
+	var specialProfileID string
 	switch p.Pid {
 	case UnidentifiedProcessID:
-		profileID = profile.UnidentifiedProfileID
+		specialProfileID = profile.UnidentifiedProfileID
 	case UnsolicitedProcessID:
-		profileID = profile.UnsolicitedProfileID
+		specialProfileID = profile.UnsolicitedProfileID
 	case SystemProcessID:
-		profileID = profile.SystemProfileID
+		specialProfileID = profile.SystemProfileID
 	case ownPID:
-		profileID = profile.PortmasterProfileID
+		specialProfileID = profile.PortmasterProfileID
 	default:
 		// Check if this is another Portmaster component.
 		if updatesPath != "" && strings.HasPrefix(p.Path, updatesPath) {
 			switch {
 			case strings.Contains(p.Path, "portmaster-app"):
-				profileID = profile.PortmasterAppProfileID
+				specialProfileID = profile.PortmasterAppProfileID
 			case strings.Contains(p.Path, "portmaster-notifier"):
-				profileID = profile.PortmasterNotifierProfileID
+				specialProfileID = profile.PortmasterNotifierProfileID
 			default:
 				// Unexpected binary from within the Portmaster updates directpry.
 				log.Warningf("process: unexpected binary in the updates directory: %s", p.Path)
@@ -62,10 +86,10 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 			if (p.Path == `C:\Windows\System32\svchost.exe` ||
 				p.Path == `C:\Windows\system32\svchost.exe`) &&
 				// This comes from the windows tasklist command and should be pretty consistent.
-				(strings.Contains(p.SpecialDetail, "Dnscache") ||
+				(profile.KeyAndValueInTags(p.Tags, "svchost", "Dnscache") ||
 					// As an alternative in case of failure, we try to match the svchost.exe service parameter.
 					strings.Contains(p.CmdLine, "-s Dnscache")) {
-				profileID = profile.SystemResolverProfileID
+				specialProfileID = profile.SystemResolverProfileID
 			}
 		case "linux":
 			switch p.Path {
@@ -77,22 +101,18 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 				"/usr/sbin/nscd",
 				"/usr/bin/dnsmasq",
 				"/usr/sbin/dnsmasq":
-				profileID = profile.SystemResolverProfileID
+				specialProfileID = profile.SystemResolverProfileID
 			}
 		}
 	}
 
-	// Get the (linked) local profile.
-	localProfile, err := profile.GetProfile(profile.SourceLocal, profileID, p.Path, false)
-	if err != nil {
-		return false, err
+	// Check if a special profile should be applied.
+	if specialProfileID == "" {
+		return nil, nil
 	}
 
-	// Assign profile to process.
-	p.PrimaryProfileID = localProfile.ScopedID()
-	p.profile = localProfile.LayeredProfile()
-
-	return true, nil
+	// Return special profile.
+	return profile.GetSpecialProfile(specialProfileID, p.Path)
 }
 
 // UpdateProfileMetadata updates the metadata of the local profile
