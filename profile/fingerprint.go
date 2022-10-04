@@ -22,7 +22,7 @@ import (
 // 3. How "strong" was the match?
 //   1. Equals:                Length of path (irrelevant)
 //   2. Prefix:                Length of prefix
-//   3. Regex:                 0 (we are not suicidal)
+//   3. Regex:                 Length of match
 
 // ms-store:Microsoft.One.Note
 
@@ -137,12 +137,20 @@ type fingerprintRegex struct {
 }
 
 func (fp fingerprintRegex) Match(value string) (score int) {
-	if fp.regex.MatchString(value) {
-		// Do not return any deviation from the base score.
-		// Trying to assign different scores to regex probably won't turn out to
-		// be a good idea.
-		return fingerprintRegexBaseScore
+	// Find best match.
+	for _, match := range fp.regex.FindAllString(value, -1) {
+		// Save match length if higher than score.
+		// This will also ignore empty matches.
+		if len(match) > score {
+			score = len(match)
+		}
 	}
+
+	// Add base score and return if anything was found.
+	if score > 0 {
+		return fingerprintRegexBaseScore + checkMatchStrength(score)
+	}
+
 	return 0
 }
 
