@@ -26,5 +26,9 @@ func start() error {
 		updatesPath += string(os.PathSeparator)
 	}
 
+	if err := registerAPIEndpoints(); err != nil {
+		return err
+	}
+
 	return nil
 }
