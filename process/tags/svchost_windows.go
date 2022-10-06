@@ -82,6 +82,8 @@ func (h *SVCHostTagHandler) CreateProfile(p *process.Process) *profile.Profile {
 			return profile.New(&profile.Profile{
 				Source:              profile.SourceLocal,
 				Name:                "Windows Service: " + osdetail.GenerateBinaryNameFromPath(tag.Value),
+				Icon:                `C:\Windows\System32\@WLOGO_48x48.png`,
+				IconType:            profile.IconTypeFile,
 				UsePresentationPath: false,
 				Fingerprints: []profile.Fingerprint{
 					profile.Fingerprint{
