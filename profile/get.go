@@ -70,7 +70,10 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 	}
 
 	// If we still don't have a profile, create a new one.
+	var created bool
 	if profile == nil {
+		created = true
+
 		// Try the profile creation callback, if we have one.
 		if createProfileCallback != nil {
 			profile = createProfileCallback()
@@ -84,9 +87,10 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 			}
 
 			profile = New(&Profile{
-				ID:               id,
-				Source:           SourceLocal,
-				PresentationPath: md.Path(),
+				ID:                  id,
+				Source:              SourceLocal,
+				PresentationPath:    md.Path(),
+				UsePresentationPath: true,
 				Fingerprints: []Fingerprint{
 					{
 						Type:      FingerprintTypePathID,
@@ -96,6 +100,25 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 				},
 			})
 		}
+	}
+
+	// Initialize and update profile.
+
+	// Update metadata.
+	changed := profile.updateMetadata(md.Path())
+
+	// Save if created or changed.
+	if created || changed {
+		// Save profile.
+		err := profile.Save()
+		if err != nil {
+			log.Warningf("profile: failed to save profile %s after creation: %s", profile.ScopedID(), err)
+		}
+	}
+
+	// Trigger further metadata fetching from system if profile was created.
+	if created && profile.UsePresentationPath {
+		module.StartWorker("get profile metadata", profile.updateMetadataFromSystem)
 	}
 
 	// Prepare profile for first use.
@@ -158,7 +181,10 @@ profileFeed:
 		prints, err := loadProfileFingerprints(r)
 		if err != nil {
 			log.Debugf("profile: failed to load fingerprints of %s: %s", r.Key(), err)
-			continue
+		}
+		// Continue with any returned fingerprints.
+		if prints == nil {
+			continue profileFeed
 		}
 
 		// Get matching score and compare.

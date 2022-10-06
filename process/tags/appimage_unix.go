@@ -3,6 +3,7 @@ package tags
 import (
 	"strings"
 
+	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
 )
@@ -71,8 +72,10 @@ func (h *AppImageHandler) CreateProfile(p *process.Process) *profile.Profile {
 	for _, tag := range p.Tags {
 		if tag.Key == appImagePathTagKey {
 			return profile.New(&profile.Profile{
-				Source:           profile.SourceLocal,
-				PresentationPath: p.Path,
+				Source:              profile.SourceLocal,
+				Name:                osdetail.GenerateBinaryNameFromPath(tag.Value),
+				PresentationPath:    p.Path,
+				UsePresentationPath: true,
 				Fingerprints: []profile.Fingerprint{
 					{
 						Type:      profile.FingerprintTypePathID,

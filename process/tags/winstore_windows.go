@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/safing/portbase/utils/osdetail"
+
 	"github.com/safing/portbase/log"
 
 	"github.com/safing/portbase/utils"
@@ -20,7 +22,7 @@ func init() {
 
 	// Add custom WindowsApps path.
 	customWinStorePath := os.ExpandEnv(`%ProgramFiles%\WindowsApps\`)
-	if !utils.StringSliceEqual(winStorePaths, customWinStorePath) {
+	if !utils.StringInSlice(winStorePaths, customWinStorePath) {
 		winStorePaths = append(winStorePaths, customWinStorePath)
 	}
 }
@@ -64,7 +66,7 @@ func (h *WinStoreHandler) AddTags(p *process.Process) {
 	var appDir string
 	for _, winStorePath := range winStorePaths {
 		if strings.HasPrefix(p.Path, winStorePath) {
-			appDir := strings.SplitN(strings.TrimPrefix(p.Path, winStorePath), `\`, 2)[0]
+			appDir = strings.SplitN(strings.TrimPrefix(p.Path, winStorePath), `\`, 2)[0]
 			break
 		}
 	}
@@ -75,7 +77,7 @@ func (h *WinStoreHandler) AddTags(p *process.Process) {
 	// Extract information from path.
 	// Example: Microsoft.Office.OneNote_17.6769.57631.0_x64__8wekyb3d8bbwe
 	splitted := strings.Split(appDir, "_")
-	if splitted != 5 { // Four fields, one "__".
+	if len(splitted) != 5 { // Four fields, one "__".
 		log.Debugf("profile/tags: windows store app has incompatible app dir format: %q", appDir)
 		return
 	}
@@ -102,9 +104,10 @@ func (h *WinStoreHandler) CreateProfile(p *process.Process) *profile.Profile {
 	for _, tag := range p.Tags {
 		if tag.Key == winStoreAppNameTagKey {
 			return profile.New(&profile.Profile{
-				Source:           profile.SourceLocal,
-				Name:             tag.Value,
-				PresentationPath: p.Path,
+				Source:              profile.SourceLocal,
+				Name:                osdetail.GenerateBinaryNameFromPath(tag.Value),
+				PresentationPath:    p.Path,
+				UsePresentationPath: true,
 				Fingerprints: []profile.Fingerprint{
 					{
 						Type:      profile.FingerprintTypeTagID,

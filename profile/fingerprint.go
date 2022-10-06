@@ -163,8 +163,9 @@ type parsedFingerprints struct {
 func parseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *parsedFingerprints, firstErr error) {
 	parsed = &parsedFingerprints{}
 
-	// Add deprecated linked path to fingerprints.
-	if deprecatedLinkedPath != "" {
+	// Add deprecated LinkedPath to fingerprints, if they are empty.
+	// TODO: Remove in v1.5
+	if len(raw) == 0 && deprecatedLinkedPath != "" {
 		parsed.pathPrints = append(parsed.pathPrints, &fingerprintEquals{
 			Fingerprint: Fingerprint{
 				Type:      FingerprintTypePathID,

@@ -110,18 +110,38 @@ func GetSpecialProfile(id string, path string) ( //nolint:gocognit
 	}
 
 	// Get special profile from DB and check if it needs a reset.
+	var created bool
 	profile, err = getProfile(scopedID)
-	if err != nil {
-		if !errors.Is(err, database.ErrNotFound) {
-			log.Warningf("profile: failed to get special profile %s: %s", id, err)
+	switch {
+	case err == nil:
+		// Reset profile if needed.
+		if specialProfileNeedsReset(profile) {
+			profile = createSpecialProfile(id, path)
+			created = true
 		}
+	case !errors.Is(err, database.ErrNotFound):
+		// Warn when fetching from DB fails, and create new profile as fallback.
+		log.Warningf("profile: failed to get special profile %s: %s", id, err)
+		fallthrough
+	default:
+		// Create new profile if it does not exist (or failed to load).
 		profile = createSpecialProfile(id, path)
-	} else if specialProfileNeedsReset(profile) {
-		log.Debugf("profile: resetting special profile %s", id)
-		profile = createSpecialProfile(id, path)
+		created = true
 	}
+	// Check if creating the special profile was successful.
 	if profile == nil {
 		return nil, errors.New("given ID is not a special profile ID")
+	}
+
+	// Update metadata
+	changed := updateSpecialProfileMetadata(profile, path)
+
+	// Save if created or changed.
+	if created || changed {
+		err := profile.Save()
+		if err != nil {
+			log.Warningf("profile: failed to save special profile %s: %s", scopedID, err)
+		}
 	}
 
 	// Prepare profile for first use.
@@ -144,7 +164,7 @@ func GetSpecialProfile(id string, path string) ( //nolint:gocognit
 	return profile, nil
 }
 
-func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (ok, changed bool) {
+func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (changed bool) {
 	// Get new profile name and check if profile is applicable to special handling.
 	var newProfileName, newDescription string
 	switch profile.ID {
@@ -170,7 +190,7 @@ func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (ok, chan
 		newProfileName = PortmasterNotifierProfileName
 		newDescription = PortmasterNotifierProfileDescription
 	default:
-		return false, false
+		return false
 	}
 
 	// Update profile name if needed.
@@ -191,7 +211,7 @@ func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (ok, chan
 		changed = true
 	}
 
-	return true, changed
+	return changed
 }
 
 func createSpecialProfile(profileID string, path string) *Profile {
@@ -199,6 +219,13 @@ func createSpecialProfile(profileID string, path string) *Profile {
 	case UnidentifiedProfileID:
 		return New(&Profile{
 			ID:               UnidentifiedProfileID,
+			Source:           SourceLocal,
+			PresentationPath: path,
+		})
+
+	case UnsolicitedProfileID:
+		return New(&Profile{
+			ID:               UnsolicitedProfileID,
 			Source:           SourceLocal,
 			PresentationPath: path,
 		})
@@ -306,7 +333,7 @@ func specialProfileNeedsReset(profile *Profile) bool {
 
 	switch profile.ID {
 	case SystemResolverProfileID:
-		return canBeUpgraded(profile, "20.11.2021")
+		return canBeUpgraded(profile, "21.10.2022")
 	case PortmasterAppProfileID:
 		return canBeUpgraded(profile, "8.9.2021")
 	default:
