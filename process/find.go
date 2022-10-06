@@ -64,14 +64,14 @@ func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process 
 func GetNetworkHost(ctx context.Context, remoteIP net.IP) (process *Process, err error) { //nolint:interfacer
 	now := time.Now().Unix()
 	networkHost := &Process{
-		Name:      fmt.Sprintf("Network Host %s", remoteIP),
-		UserName:  "Unknown",
+		Name:      fmt.Sprintf("Device at %s", remoteIP),
+		UserName:  "N/A",
 		UserID:    NetworkHostProcessID,
 		Pid:       NetworkHostProcessID,
 		ParentPid: NetworkHostProcessID,
 		Tags: []profile.Tag{
 			{
-				Key:   "net",
+				Key:   "ip",
 				Value: remoteIP.String(),
 			},
 		},
@@ -88,16 +88,6 @@ func GetNetworkHost(ctx context.Context, remoteIP net.IP) (process *Process, err
 	// Assign profile to process.
 	networkHost.PrimaryProfileID = networkHostProfile.ScopedID()
 	networkHost.profile = networkHostProfile.LayeredProfile()
-
-	if networkHostProfile.Name == "" {
-		// Assign name and save.
-		networkHostProfile.Name = networkHost.Name
-
-		err := networkHostProfile.Save()
-		if err != nil {
-			log.Warningf("process: failed to save profile %s: %s", networkHostProfile.ScopedID(), err)
-		}
-	}
 
 	return networkHost, nil
 }

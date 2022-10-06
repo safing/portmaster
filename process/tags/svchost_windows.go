@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
 )
@@ -17,7 +18,7 @@ func init() {
 }
 
 const (
-	svchostName   = "SvcHost"
+	svchostName   = "Service Host"
 	svchostTagKey = "svchost"
 )
 
@@ -26,7 +27,7 @@ type SVCHostTagHandler struct{}
 
 // Name returns the tag handler name.
 func (h *SVCHostTagHandler) Name() string {
-	return svcHostName
+	return svchostName
 }
 
 // TagDescriptions returns a list of all possible tags and their description
@@ -34,7 +35,7 @@ func (h *SVCHostTagHandler) Name() string {
 func (h *SVCHostTagHandler) TagDescriptions() []process.TagDescription {
 	return []process.TagDescription{
 		process.TagDescription{
-			ID:          svcHostTagKey,
+			ID:          svchostTagKey,
 			Name:        "SvcHost Service Name",
 			Description: "Name of a service running in svchost.exe as reported by Windows.",
 		},
@@ -43,7 +44,7 @@ func (h *SVCHostTagHandler) TagDescriptions() []process.TagDescription {
 
 // TagKeys returns a list of all possible tag keys of this handler.
 func (h *SVCHostTagHandler) TagKeys() []string {
-	return []string{svcHostTagKey}
+	return []string{svchostTagKey}
 }
 
 // AddTags adds tags to the given process.
@@ -61,7 +62,7 @@ func (h *SVCHostTagHandler) AddTags(p *process.Process) {
 		p.Name += fmt.Sprintf(" (%s)", strings.Join(svcNames, ", "))
 		// Add services as tags.
 		for _, svcName := range svcNames {
-			p.Tag = append(p.Tag, profile.Tag{
+			p.Tags = append(p.Tags, profile.Tag{
 				Key:   svchostTagKey,
 				Value: svcName,
 			})
@@ -78,19 +79,19 @@ func (h *SVCHostTagHandler) AddTags(p *process.Process) {
 func (h *SVCHostTagHandler) CreateProfile(p *process.Process) *profile.Profile {
 	for _, tag := range p.Tags {
 		if tag.Key == svchostTagKey {
-			return profile.New(
-				profile.SourceLocal,
-				"",
-				"Windows Service: "+tag.Value,
-				p.Path,
-				[]profile.Fingerprint{profile.Fingerprint{
-					Type:      profile.FingerprintTypeTagID,
-					Key:       tag.Key,
-					Operation: profile.FingerprintOperationEqualsID,
-					Value:     tag.Value,
-				}},
-				nil,
-			)
+			return profile.New(&profile.Profile{
+				Source:              profile.SourceLocal,
+				Name:                "Windows Service: " + osdetail.GenerateBinaryNameFromPath(tag.Value),
+				UsePresentationPath: false,
+				Fingerprints: []profile.Fingerprint{
+					profile.Fingerprint{
+						Type:      profile.FingerprintTypeTagID,
+						Key:       tag.Key,
+						Operation: profile.FingerprintOperationEqualsID,
+						Value:     tag.Value,
+					},
+				},
+			})
 		}
 	}
 	return nil

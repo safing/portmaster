@@ -15,9 +15,6 @@ var ownPID = os.Getpid()
 
 // GetProfile finds and assigns a profile set to the process.
 func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
-	// Update profile metadata outside of *Process lock.
-	defer p.UpdateProfileMetadata()
-
 	p.Lock()
 	defer p.Unlock()
 
@@ -113,25 +110,4 @@ func (p *Process) loadSpecialProfile(_ context.Context) (*profile.Profile, error
 
 	// Return special profile.
 	return profile.GetSpecialProfile(specialProfileID, p.Path)
-}
-
-// UpdateProfileMetadata updates the metadata of the local profile
-// as required.
-func (p *Process) UpdateProfileMetadata() {
-	// Check if there is a profile to work with.
-	localProfile := p.Profile().LocalProfile()
-	if localProfile == nil {
-		return
-	}
-
-	// Update metadata of profile.
-	metadataUpdated := localProfile.UpdateMetadata(p.Path)
-
-	// Save the profile if we changed something.
-	if metadataUpdated {
-		err := localProfile.Save()
-		if err != nil {
-			log.Warningf("process: failed to save profile %s: %s", localProfile.ScopedID(), err)
-		}
-	}
 }
