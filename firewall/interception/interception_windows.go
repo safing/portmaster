@@ -38,3 +38,8 @@ func start(ch chan packet.Packet) error {
 func stop() error {
 	return windowskext.Stop()
 }
+
+// ResetVerdictOfAllConnections resets all connections so they are forced to go thought the firewall again.
+func ResetVerdictOfAllConnections() error {
+	return windowskext.ClearCache()
+}

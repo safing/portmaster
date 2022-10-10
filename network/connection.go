@@ -107,16 +107,26 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// Resolver holds information about the resolver used to resolve
 	// Entity.Domain.
 	Resolver *resolver.ResolverInfo
-	// Verdict is the final decision that has been made for a connection.
+	// Verdict holds the decisions that are made for a connection
 	// The verdict may change so any access to it must be guarded by the
 	// connection lock.
-	Verdict Verdict
+	Verdict struct {
+		// Worst verdict holds the worst verdict that was assigned to this
+		// connection from a privacy/security perspective.
+		Worst Verdict
+		// Active verdict holds the verdict that Portmaster will respond with.
+		// This is different from the Firewall verdict in order to guarantee proper
+		// transition between verdicts that need the connection to be re-established.
+		Active Verdict
+		// Firewall holsd the last (most recent) decision by the firewall.
+		Firewall Verdict
+	}
 	// Reason holds information justifying the verdict, as well as additional
 	// information about the reason.
 	// Access to Reason must be guarded by the connection lock.
 	Reason Reason
 	// Started holds the number of seconds in UNIX epoch time at which
-	// the connection has been initated and first seen by the portmaster.
+	// the connection has been initiated and first seen by the portmaster.
 	// Started is only ever set when creating a new connection object
 	// and is considered immutable afterwards.
 	Started int64
@@ -142,7 +152,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// TunnelOpts holds options for tunneling the connection.
 	TunnelOpts *navigator.Options
 	// ProcessContext holds additional information about the process
-	// that iniated the connection. It is set once when the connection
+	// that initiated the connection. It is set once when the connection
 	// object is created and is considered immutable afterwards.
 	ProcessContext ProcessContext
 	// DNSContext holds additional information about the DNS request that was
@@ -152,6 +162,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// connection is using.
 	TunnelContext interface {
 		GetExitNodeID() string
+		StopTunnel() error
 	}
 
 	// Internal is set to true if the connection is attributed as an
@@ -159,7 +170,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// points and access to it must be guarded by the connection lock.
 	Internal bool
 	// process holds a reference to the actor process. That is, the
-	// process instance that initated the connection.
+	// process instance that initiated the connection.
 	process *process.Process
 	// pkgQueue is used to serialize packet handling for a single
 	// connection and is served by the connections packetHandler.
@@ -167,7 +178,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// firewallHandler is the firewall handler that is called for
 	// each packet sent to pktQueue.
 	firewallHandler FirewallHandler
-	// saveWhenFinished can be set to drue during the life-time of
+	// saveWhenFinished can be set to true during the life-time of
 	// a connection and signals the firewallHandler that a Save()
 	// should be issued after processing the connection.
 	saveWhenFinished bool
@@ -439,6 +450,11 @@ func GetConnection(id string) (*Connection, bool) {
 	return conns.get(id)
 }
 
+// GetAllConnections Gets all connection.
+func GetAllConnections() []*Connection {
+	return conns.list()
+}
+
 // SetLocalIP sets the local IP address together with its network scope. The
 // connection is not locked for this.
 func (conn *Connection) SetLocalIP(ip net.IP) {
@@ -508,23 +524,39 @@ func (conn *Connection) Failed(reason, reasonOptionKey string) {
 	conn.FailedWithContext(reason, reasonOptionKey, nil)
 }
 
-// SetVerdict sets a new verdict for the connection, making sure it does not interfere with previous verdicts.
+// SetVerdict sets a new verdict for the connection.
 func (conn *Connection) SetVerdict(newVerdict Verdict, reason, reasonOptionKey string, reasonCtx interface{}) (ok bool) {
-	if newVerdict >= conn.Verdict {
-		conn.Verdict = newVerdict
-		conn.Reason.Msg = reason
-		conn.Reason.Context = reasonCtx
+	conn.SetVerdictDirectly(newVerdict)
 
-		conn.Reason.OptionKey = ""
-		conn.Reason.Profile = ""
-		if reasonOptionKey != "" && conn.Process() != nil {
-			conn.Reason.OptionKey = reasonOptionKey
-			conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
-		}
+	conn.Reason.Msg = reason
+	conn.Reason.Context = reasonCtx
 
-		return true
+	conn.Reason.OptionKey = ""
+	conn.Reason.Profile = ""
+	if reasonOptionKey != "" && conn.Process() != nil {
+		conn.Reason.OptionKey = reasonOptionKey
+		conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
 	}
-	return false
+
+	return true // TODO: remove
+}
+
+// SetVerdictDirectly sets the firewall verdict.
+func (conn *Connection) SetVerdictDirectly(newVerdict Verdict) {
+	conn.Verdict.Firewall = newVerdict
+}
+
+// VerdictVerb returns the verdict as a verb, while taking any special states
+// into account.
+func (conn *Connection) VerdictVerb() string {
+	if conn.Verdict.Firewall == conn.Verdict.Active {
+		return conn.Verdict.Firewall.Verb()
+	}
+	return fmt.Sprintf(
+		"%s (transitioning to %s)",
+		conn.Verdict.Active.Verb(),
+		conn.Verdict.Firewall.Verb(),
+	)
 }
 
 // Process returns the connection's process.
@@ -651,7 +683,7 @@ func packetHandlerHandleConn(conn *Connection, pkt packet.Packet) {
 	}
 
 	// Log verdict.
-	log.Tracer(pkt.Ctx()).Infof("filter: connection %s %s: %s", conn, conn.Verdict.Verb(), conn.Reason.Msg)
+	log.Tracer(pkt.Ctx()).Infof("filter: connection %s %s: %s", conn, conn.VerdictVerb(), conn.Reason.Msg)
 	// Submit trace logs.
 	log.Tracer(pkt.Ctx()).Submit()
 

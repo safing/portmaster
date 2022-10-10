@@ -48,6 +48,17 @@ func (cs *connectionStore) clone() map[string]*Connection {
 	return m
 }
 
+func (cs *connectionStore) list() []*Connection {
+	cs.rw.RLock()
+	defer cs.rw.RUnlock()
+
+	l := make([]*Connection, 0, len(cs.items))
+	for _, conn := range cs.items {
+		l = append(l, conn)
+	}
+	return l
+}
+
 func (cs *connectionStore) len() int { //nolint:unused // TODO: Clean up if still unused.
 	cs.rw.RLock()
 	defer cs.rw.RUnlock()

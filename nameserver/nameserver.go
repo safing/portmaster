@@ -189,7 +189,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 			conn.Resolver = rrCache.Resolver
 		}
 
-		switch conn.Verdict {
+		switch conn.Verdict.Active {
 		// We immediately save blocked, dropped or failed verdicts so
 		// they pop up in the UI.
 		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed, network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel:
@@ -217,7 +217,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		case network.VerdictUndeterminable:
 			fallthrough
 		default:
-			tracer.Warningf("nameserver: unexpected verdict %s for connection %s, not saving", conn.Verdict, conn)
+			tracer.Warningf("nameserver: unexpected verdict %s for connection %s, not saving", conn.VerdictVerb(), conn)
 		}
 	}()
 
@@ -235,11 +235,11 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	}
 
 	// Check if there is a Verdict to act upon.
-	switch conn.Verdict { //nolint:exhaustive // Only checking for specific values.
+	switch conn.Verdict.Active { //nolint:exhaustive // Only checking for specific values.
 	case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
 		tracer.Infof(
 			"nameserver: returning %s response for %s to %s",
-			conn.Verdict.Verb(),
+			conn.VerdictVerb(),
 			q.ID(),
 			conn.Process(),
 		)
@@ -315,11 +315,11 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	}
 
 	// Check if there is a Verdict to act upon.
-	switch conn.Verdict { //nolint:exhaustive // Only checking for specific values.
+	switch conn.Verdict.Active { //nolint:exhaustive // Only checking for specific values.
 	case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
 		tracer.Infof(
 			"nameserver: returning %s response for %s to %s",
-			conn.Verdict.Verb(),
+			conn.VerdictVerb(),
 			q.ID(),
 			conn.Process(),
 		)
@@ -338,7 +338,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	}
 	tracer.Infof(
 		"nameserver: returning %s response (%s%s) for %s to %s",
-		conn.Verdict.Verb(),
+		conn.VerdictVerb(),
 		dns.RcodeToString[rrCache.RCode],
 		noAnswerIndicator,
 		q.ID(),

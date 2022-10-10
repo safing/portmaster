@@ -16,8 +16,13 @@ var (
 	updatesPath string
 )
 
+const (
+	profileConfigChange = "profile config change"
+)
+
 func init() {
 	module = modules.Register("profiles", prep, start, nil, "base", "updates")
+	module.RegisterEvent(profileConfigChange, true)
 }
 
 func prep() error {

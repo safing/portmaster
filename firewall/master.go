@@ -75,8 +75,7 @@ func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 		conn.SaveWhenFinished()
 
 		// Reset verdict for connection.
-		log.Tracer(ctx).Infof("filter: re-evaluating verdict on %s", conn)
-		conn.Verdict = network.VerdictUndecided
+		log.Tracer(ctx).Infof("filter: profile updated, re-evaluating verdict of %s", conn)
 
 		// Reset entity if it exists.
 		if conn.Entity != nil {
@@ -138,10 +137,9 @@ func runDeciders(ctx context.Context, selectedDeciders []deciderFn, conn *networ
 
 // checkPortmasterConnection allows all connection that originate from
 // portmaster itself.
-func checkPortmasterConnection(ctx context.Context, conn *network.Connection, _ *profile.LayeredProfile, pkt packet.Packet) bool {
+func checkPortmasterConnection(ctx context.Context, conn *network.Connection, _ *profile.LayeredProfile, _ packet.Packet) bool {
 	// Grant own outgoing connections.
-	if conn.Process().Pid == ownPID &&
-		(pkt == nil || pkt.IsOutbound()) {
+	if conn.Process().Pid == ownPID && !conn.Inbound {
 		log.Tracer(ctx).Infof("filter: granting own connection %s", conn)
 		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true
@@ -429,7 +427,7 @@ func checkBypassPrevention(ctx context.Context, conn *network.Connection, p *pro
 	return false
 }
 
-func checkFilterLists(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, pkt packet.Packet) bool {
+func checkFilterLists(ctx context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
 	// apply privacy filter lists
 	result, reason := p.MatchFilterLists(ctx, conn.Entity)
 	switch result {

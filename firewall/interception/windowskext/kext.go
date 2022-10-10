@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package windowskext
@@ -48,6 +49,7 @@ type WinKext struct {
 	recvVerdictRequest *windows.Proc
 	setVerdict         *windows.Proc
 	getPayload         *windows.Proc
+	clearCache         *windows.Proc
 }
 
 // Init initializes the DLL and the Kext (Kernel Driver).
@@ -89,6 +91,11 @@ func Init(dllPath, driverPath string) error {
 	new.getPayload, err = new.dll.FindProc("PortmasterGetPayload")
 	if err != nil {
 		return fmt.Errorf("could not find proc PortmasterGetPayload in dll: %s", err)
+	}
+	new.clearCache, err = new.dll.FindProc("PortmasterClearCache")
+	if err != nil {
+		// the loaded dll is an old version
+		log.Errorf("could not find proc PortmasterClearCache (v1.0.12+) in dll: %s", err)
 	}
 
 	// initialize dll/kext
@@ -244,6 +251,27 @@ func GetPayload(packetID uint32, packetSize uint32) ([]byte, error) {
 	}
 
 	return buf, nil
+}
+
+func ClearCache() error {
+	kextLock.RLock()
+	defer kextLock.RUnlock()
+	if !ready.IsSet() {
+		log.Error("kext: failed to clear the cache: kext not ready")
+		return ErrKextNotReady
+	}
+
+	if kext.clearCache == nil {
+		log.Error("kext: cannot clear cache: clearCache function  missing")
+	}
+
+	rc, _, lastErr := kext.clearCache.Call()
+
+	if rc != windows.NO_ERROR {
+		return formatErr(lastErr, rc)
+	}
+
+	return nil
 }
 
 func formatErr(err error, rc uintptr) error {

@@ -2,6 +2,7 @@ package firewall
 
 import (
 	"context"
+	"errors"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netenv"
@@ -16,7 +17,7 @@ import (
 	"github.com/safing/spn/sluice"
 )
 
-func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
+func checkTunneling(ctx context.Context, conn *network.Connection) {
 	// Check if the connection should be tunneled at all.
 	switch {
 	case !tunnelEnabled():
@@ -28,8 +29,11 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 	case conn.Inbound:
 		// Can't tunnel incoming connections.
 		return
-	case conn.Verdict != network.VerdictAccept:
+	case conn.Verdict.Firewall != network.VerdictAccept:
 		// Connection will be blocked.
+		return
+	case conn.IPProtocol != packet.TCP && conn.IPProtocol != packet.UDP:
+		// Unsupported protocol.
 		return
 	case conn.Process().Pid == ownPID:
 		// Bypass tunneling for certain own connections.
@@ -77,7 +81,7 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 		}
 	}
 
-	// Check if tunneling is enabeld for this app at all.
+	// Check if tunneling is enabled for this app at all.
 	if !layeredProfile.UseSPN() {
 		return
 	}
@@ -101,9 +105,20 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 	// Check if ready.
 	if !captain.ClientReady() {
 		// Block connection as SPN is not ready yet.
-		log.Tracer(pkt.Ctx()).Trace("SPN not ready for tunneling")
+		log.Tracer(ctx).Trace("SPN not ready for tunneling")
 		conn.Failed("SPN not ready for tunneling", "")
 		return
+	}
+
+	conn.SetVerdictDirectly(network.VerdictRerouteToTunnel)
+	conn.Tunneled = true
+}
+
+func requestTunneling(ctx context.Context, conn *network.Connection) error {
+	// Get profile.
+	layeredProfile := conn.Process().Profile()
+	if layeredProfile == nil {
+		return errors.New("no profile set")
 	}
 
 	// Set options.
@@ -150,13 +165,11 @@ func checkTunneling(ctx context.Context, conn *network.Connection, pkt packet.Pa
 	}
 
 	// Queue request in sluice.
-	err = sluice.AwaitRequest(conn, crew.HandleSluiceRequest)
+	err := sluice.AwaitRequest(conn, crew.HandleSluiceRequest)
 	if err != nil {
-		log.Tracer(pkt.Ctx()).Warningf("failed to request tunneling: %s", err)
-		conn.Failed("failed to request tunneling", "")
-	} else {
-		log.Tracer(pkt.Ctx()).Trace("filter: tunneling requested")
-		conn.Verdict = network.VerdictRerouteToTunnel
-		conn.Tunneled = true
+		return err
 	}
+
+	log.Tracer(ctx).Trace("filter: tunneling requested")
+	return nil
 }

@@ -224,7 +224,7 @@ func (pkt *Base) FmtRemoteAddress() string {
 	return fmt.Sprintf("%s:%s:%s", pkt.info.Protocol.String(), pkt.FmtRemoteIP(), pkt.FmtRemotePort())
 }
 
-// Packet is an interface to a network packet to provide object behaviour the same across all systems.
+// Packet is an interface to a network packet to provide object behavior the same across all systems.
 type Packet interface {
 	// Verdicts.
 	Accept() error

@@ -182,12 +182,12 @@ func FilterResolvedDNS(
 		return rrCache
 	}
 
-	// Only filter criticial things if request comes from the system resolver.
+	// Only filter critical things if request comes from the system resolver.
 	sysResolver := conn.Process().IsSystemResolver()
 
 	// Filter dns records and return if the query is blocked.
 	rrCache = filterDNSResponse(ctx, conn, layeredProfile, rrCache, sysResolver)
-	if conn.Verdict == network.VerdictBlock {
+	if conn.Verdict.Active == network.VerdictBlock {
 		return rrCache
 	}
 

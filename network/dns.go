@@ -115,7 +115,7 @@ func writeOpenDNSRequestsToDB() {
 // ReplyWithDNS creates a new reply to the given request with the data from the RRCache, and additional informational records.
 func (conn *Connection) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns.Msg {
 	// Select request responder.
-	switch conn.Verdict {
+	switch conn.Verdict.Active {
 	case VerdictBlock:
 		return nsutil.BlockIP().ReplyWithDNS(ctx, request)
 	case VerdictDrop:
@@ -136,7 +136,7 @@ func (conn *Connection) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 func (conn *Connection) GetExtraRRs(ctx context.Context, request *dns.Msg) []dns.RR {
 	// Select level to add the verdict record with.
 	var level log.Severity
-	switch conn.Verdict {
+	switch conn.Verdict.Active {
 	case VerdictFailed:
 		level = log.ErrorLevel
 	case VerdictUndecided, VerdictUndeterminable,
@@ -148,7 +148,7 @@ func (conn *Connection) GetExtraRRs(ctx context.Context, request *dns.Msg) []dns
 	}
 
 	// Create resource record with verdict and reason.
-	rr, err := nsutil.MakeMessageRecord(level, fmt.Sprintf("%s: %s", conn.Verdict.Verb(), conn.Reason.Msg))
+	rr, err := nsutil.MakeMessageRecord(level, fmt.Sprintf("%s: %s", conn.VerdictVerb(), conn.Reason.Msg))
 	if err != nil {
 		log.Tracer(ctx).Warningf("filter: failed to add informational record to reply: %s", err)
 		return nil

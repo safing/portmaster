@@ -46,3 +46,30 @@ func GetProtocolNumber(protocol string) (number uint8, ok bool) {
 	}
 	return 0, false
 }
+
+// IsPacketProtocol returns whether the given protocol number is a known packet based protocol.
+// Note: Not fully complete. Calling IsPacketProtocol() does not equal calling !IsStreamProtocol().
+func IsPacketProtocol(protocol uint8) bool {
+	switch protocol {
+	case 1, // ICMP
+		17,  // UDP
+		27,  // RDP
+		58,  // ICMP6
+		33,  // DCCP
+		136: // UDP-LITE
+		return true
+	default:
+		return false
+	}
+}
+
+// IsStreamProtocol returns whether the given protocol number is a known stream based protocol.
+// Note: Not fully complete. Calling IsPacketProtocol() does not equal calling !IsStreamProtocol().
+func IsStreamProtocol(protocol uint8) bool {
+	switch protocol {
+	case 6: // TCP
+		return true
+	default:
+		return false
+	}
+}

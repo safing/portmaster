@@ -54,9 +54,9 @@ func (v Verdict) Verb() string {
 	case VerdictDrop:
 		return "dropped"
 	case VerdictRerouteToNameserver:
-		return "to nameserver"
+		return "redirected to nameserver"
 	case VerdictRerouteToTunnel:
-		return "to tunnel"
+		return "tunneled"
 	case VerdictFailed:
 		return "failed"
 	default:

@@ -155,7 +155,7 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		IPProtocol:      conn.IPProtocol,
 		LocalIP:         conn.LocalIP.String(),
 		LocalPort:       conn.LocalPort,
-		Verdict:         conn.Verdict,
+		Verdict:         conn.Verdict.Firewall, // TODO: Expose both Worst and Firewall verdicts.
 		Started:         time.Unix(conn.Started, 0),
 		Tunneled:        conn.Tunneled,
 		Encrypted:       conn.Encrypted,
@@ -177,7 +177,7 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		c.Type = ""
 	}
 
-	switch conn.Verdict {
+	switch conn.Verdict.Firewall {
 	case network.VerdictAccept, network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel:
 		accepted := true
 		c.Allowed = &accepted
