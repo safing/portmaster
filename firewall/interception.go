@@ -163,6 +163,14 @@ func resetAllConnectionVerdicts() {
 			// Apply privacy filter and check tunneling.
 			filterConnection(ctx, conn, nil)
 
+			// Stop existing SPN tunnel if not needed anymore.
+			if conn.Verdict.Active != network.VerdictRerouteToTunnel && conn.TunnelContext != nil {
+				err := conn.TunnelContext.StopTunnel()
+				if err != nil {
+					log.Debugf("filter: failed to stopped unneeded tunnel: %s", err)
+				}
+			}
+
 			// Save if verdict changed.
 			if conn.Verdict.Firewall != previousVerdict {
 				conn.Save()

@@ -162,6 +162,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// connection is using.
 	TunnelContext interface {
 		GetExitNodeID() string
+		StopTunnel() error
 	}
 
 	// Internal is set to true if the connection is attributed as an
