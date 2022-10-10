@@ -120,9 +120,10 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 
 	// Collect matching connections.
 	var ( //nolint:prealloc // We don't know the size.
-		debugConns []*Connection
-		accepted   int
-		total      int
+		debugConns    []*Connection
+		accepted      int
+		total         int
+		transitioning int
 	)
 	for maybeConn := range it.Next {
 		// Switch to correct type.
@@ -158,6 +159,9 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 			VerdictRerouteToTunnel:
 			accepted++
 		}
+		if conn.Verdict.Active != conn.Verdict.Firewall {
+			transitioning++
+		}
 
 		// Add to list.
 		debugConns = append(debugConns, conn)
@@ -166,9 +170,10 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 	// Add it all.
 	di.AddSection(
 		fmt.Sprintf(
-			"Network: %d/%d Connections",
+			"Network: %d/%d [~%d] Connections",
 			accepted,
 			total,
+			transitioning,
 		),
 		debug.UseCodeSection|debug.AddContentLineBreaks,
 		buildNetworkDebugInfoData(debugConns),
@@ -232,7 +237,7 @@ func (conn *Connection) debugInfoLine() string {
 
 	return fmt.Sprintf(
 		"% 14s %s%- 25s %s-%s P#%d [%s] %s - by %s @ %s",
-		conn.Verdict.Current.Verb(),
+		conn.VerdictVerb(),
 		connectionData,
 		conn.fmtDomainComponent(),
 		time.Unix(conn.Started, 0).Format("15:04:05"),

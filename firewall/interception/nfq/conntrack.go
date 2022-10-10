@@ -20,19 +20,20 @@ func DeleteAllMarkedConnection() error {
 	defer func() { _ = nfct.Close() }()
 
 	// Delete all ipv4 marked connections
-	deleteMarkedConnections(nfct, ct.IPv4)
+	deleted := deleteMarkedConnections(nfct, ct.IPv4)
 
 	if netenv.IPv6Enabled() {
 		// Delete all ipv6 marked connections
-		deleteMarkedConnections(nfct, ct.IPv6)
+		deleted += deleteMarkedConnections(nfct, ct.IPv6)
 	}
 
+	log.Infof("nfq: deleted %d conntrack entries to reset permanent connection verdicts", deleted)
 	return nil
 }
 
-func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) {
+func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) (deleted int) {
 	// initialize variables
-	permanentFlags := [...]uint32{MarkAccept, MarkBlock, MarkDrop, MarkAcceptAlways, MarkBlockAlways, MarkDropAlways, MarkRerouteNS, MarkRerouteSPN}
+	permanentFlags := []uint32{MarkAcceptAlways, MarkBlockAlways, MarkDropAlways, MarkRerouteNS, MarkRerouteSPN}
 	filter := ct.FilterAttr{}
 	filter.MarkMask = []byte{0xFF, 0xFF, 0xFF, 0xFF}
 	filter.Mark = []byte{0x00, 0x00, 0x00, 0x00} // 4 zeros starting value
@@ -52,6 +53,8 @@ func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) {
 			deleteError = nfct.Delete(ct.Conntrack, ct.IPv4, connection)
 			if err != nil {
 				numberOfErrors++
+			} else {
+				deleted++
 			}
 		}
 	}
@@ -59,4 +62,5 @@ func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) {
 	if numberOfErrors > 0 {
 		log.Warningf("nfq: failed to delete %d conntrack entries last error is: %s", numberOfErrors, deleteError)
 	}
+	return deleted
 }
