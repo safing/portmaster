@@ -11,10 +11,11 @@ import (
 // There are three levels:
 //
 // 1. Type: What matched?
-//   1. Tag:            40.000 points
-//   2. Env:            30.000 points
-//   3. MatchingPath:   20.000 points
-//   4. Path:           10.000 points
+//   1. Tag:            50.000 points
+//   2. Cmdline:        40.000 points
+//   3. Env:            30.000 points
+//   4. MatchingPath:   20.000 points
+//   5. Path:           10.000 points
 // 2. Operation: How was it mached?
 //   1. Equals:          3.000 points
 //   2. Prefix:          2.000 points
@@ -32,15 +33,17 @@ import (
 
 // Fingerprint Type IDs.
 const (
-	FingerprintTypeTagID  = "tag"
-	FingerprintTypeEnvID  = "env"
-	FingerprintTypePathID = "path" // Matches both MatchingPath and Path.
+	FingerprintTypeTagID     = "tag"
+	FingerprintTypeCmdlineID = "cmdline"
+	FingerprintTypeEnvID     = "env"
+	FingerprintTypePathID    = "path" // Matches both MatchingPath and Path.
 
 	FingerprintOperationEqualsID = "equals"
 	FingerprintOperationPrefixID = "prefix"
 	FingerprintOperationRegexID  = "regex"
 
-	tagMatchBaseScore          = 40_000
+	tagMatchBaseScore          = 50_000
+	cmdlineMatchBaseScore      = 40_000
 	envMatchBaseScore          = 30_000
 	matchingPathMatchBaseScore = 20_000
 	pathMatchBaseScore         = 10_000
@@ -75,6 +78,7 @@ type (
 		Env() map[string]string
 		Path() string
 		MatchingPath() string
+		Cmdline() string
 	}
 
 	matchingFingerprint interface {
@@ -155,9 +159,10 @@ func (fp fingerprintRegex) Match(value string) (score int) {
 }
 
 type parsedFingerprints struct {
-	tagPrints  []matchingFingerprint
-	envPrints  []matchingFingerprint
-	pathPrints []matchingFingerprint
+	tagPrints     []matchingFingerprint
+	envPrints     []matchingFingerprint
+	pathPrints    []matchingFingerprint
+	cmdlinePrints []matchingFingerprint
 }
 
 func parseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *parsedFingerprints, firstErr error) {
@@ -187,7 +192,7 @@ func parseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *
 				}
 				continue
 			}
-		case FingerprintTypePathID:
+		case FingerprintTypePathID, FingerprintTypeCmdlineID:
 			// Don't need a key.
 		default:
 			// Unknown type.
@@ -236,6 +241,8 @@ func (parsed *parsedFingerprints) addMatchingFingerprint(fp Fingerprint, matchin
 		parsed.envPrints = append(parsed.envPrints, matchingPrint)
 	case FingerprintTypePathID:
 		parsed.pathPrints = append(parsed.pathPrints, matchingPrint)
+	case FingerprintTypeCmdlineID:
+		parsed.cmdlinePrints = append(parsed.cmdlinePrints, matchingPrint)
 	default:
 		// This should never happen, as the types are checked already.
 		panic(fmt.Sprintf("unknown fingerprint type: %q", fp.Type))
@@ -263,6 +270,17 @@ func MatchFingerprints(prints *parsedFingerprints, md MatchingData) (highestScor
 	// If something matched, add base score and return.
 	if highestScore > 0 {
 		return tagMatchBaseScore + highestScore
+	}
+
+	cmdline := md.Cmdline()
+	for _, cmdlinePrint := range prints.cmdlinePrints {
+		if score := cmdlinePrint.Match(cmdline); score > highestScore {
+			highestScore = score
+		}
+
+	}
+	if highestScore > 0 {
+		return cmdlineMatchBaseScore + highestScore
 	}
 
 	// Check env.

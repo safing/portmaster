@@ -193,6 +193,20 @@ func (db *Database) ApplyMigrations() error {
 		return fmt.Errorf("failed to create schema: %w", err)
 	}
 
+	// create a few indexes
+	indexes := []string{
+		`CREATE INDEX profile_id_index ON %s (profile)`,
+		`CREATE INDEX started_time_index ON %s (strftime('%%s', started)+0)`,
+		`CREATE INDEX started_ended_time_index ON %s (strftime('%%s', started)+0, strftime('%%s', ended)+0) WHERE ended IS NOT NULL`,
+	}
+	for _, idx := range indexes {
+		stmt := fmt.Sprintf(idx, db.Schema.Name)
+
+		if err := sqlitex.ExecuteTransient(db.writeConn, stmt, nil); err != nil {
+			return fmt.Errorf("failed to create index: %q: %w", idx, err)
+		}
+	}
+
 	return nil
 }
 
