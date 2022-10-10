@@ -187,7 +187,7 @@ func FilterResolvedDNS(
 
 	// Filter dns records and return if the query is blocked.
 	rrCache = filterDNSResponse(ctx, conn, layeredProfile, rrCache, sysResolver)
-	if conn.Verdict.Current == network.VerdictBlock {
+	if conn.Verdict.Active == network.VerdictBlock {
 		return rrCache
 	}
 

@@ -41,13 +41,13 @@ var connectionTestData = []*Connection{
 			ASN:           0,
 		},
 		Verdict: struct {
-			Current  Verdict
-			Previous Verdict
-			User     Verdict
+			Worst    Verdict
+			Active   Verdict
+			Firewall Verdict
 		}{
-			Current:  2,
-			Previous: 2,
-			User:     2,
+			Worst:    2,
+			Active:   2,
+			Firewall: 2,
 		},
 		Reason: Reason{
 			Msg:       "incoming connection blocked by default",
@@ -89,13 +89,13 @@ var connectionTestData = []*Connection{
 			ASN:           16509,
 		},
 		Verdict: struct {
-			Current  Verdict
-			Previous Verdict
-			User     Verdict
+			Worst    Verdict
+			Active   Verdict
+			Firewall Verdict
 		}{
-			Current:  2,
-			Previous: 2,
-			User:     2,
+			Worst:    2,
+			Active:   2,
+			Firewall: 2,
 		},
 		Reason: Reason{
 			Msg:       "default permit",
@@ -140,13 +140,13 @@ var connectionTestData = []*Connection{
 			ASN:     15169,
 		},
 		Verdict: struct {
-			Current  Verdict
-			Previous Verdict
-			User     Verdict
+			Worst    Verdict
+			Active   Verdict
+			Firewall Verdict
 		}{
-			Current:  2,
-			Previous: 2,
-			User:     2,
+			Worst:    2,
+			Active:   2,
+			Firewall: 2,
 		},
 		Reason: Reason{
 			Msg:       "default permit",

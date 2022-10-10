@@ -111,12 +111,15 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// The verdict may change so any access to it must be guarded by the
 	// connection lock.
 	Verdict struct {
-		// Current is the current decision that has been made for a connection.
-		Current Verdict
-		// Previous holds the previous verdict value, if there wasn't previous it will VerdictUndecided
-		Previous Verdict
-		// User holds the verdict that should be displayed in the user interface
-		User Verdict
+		// Worst verdict holds the worst verdict that was assigned to this
+		// connection from a privacy/security perspective.
+		Worst Verdict
+		// Active verdict holds the verdict that Portmaster will respond with.
+		// This is different from the Firewall verdict in order to guarantee proper
+		// transition between verdicts that need the connection to be re-established.
+		Active Verdict
+		// Firewall holsd the last (most recent) decision by the firewall.
+		Firewall Verdict
 	}
 	// Reason holds information justifying the verdict, as well as additional
 	// information about the reason.
@@ -524,35 +527,35 @@ func (conn *Connection) Failed(reason, reasonOptionKey string) {
 func (conn *Connection) SetVerdict(newVerdict Verdict, reason, reasonOptionKey string, reasonCtx interface{}) (ok bool) {
 	conn.SetVerdictDirectly(newVerdict)
 
-	// Only set if it matches the user verdict. For a consistent reason
-	if newVerdict == conn.Verdict.User {
-		conn.Reason.Msg = reason
-		conn.Reason.Context = reasonCtx
+	conn.Reason.Msg = reason
+	conn.Reason.Context = reasonCtx
 
-		conn.Reason.OptionKey = ""
-		conn.Reason.Profile = ""
-		if reasonOptionKey != "" && conn.Process() != nil {
-			conn.Reason.OptionKey = reasonOptionKey
-			conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
-		}
+	conn.Reason.OptionKey = ""
+	conn.Reason.Profile = ""
+	if reasonOptionKey != "" && conn.Process() != nil {
+		conn.Reason.OptionKey = reasonOptionKey
+		conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
 	}
 
-	return true
+	return true // TODO: remove
 }
 
-// SetVerdictDirectly sets the new verdict and stores the previous value.
+// SetVerdictDirectly sets the firewall verdict.
 func (conn *Connection) SetVerdictDirectly(newVerdict Verdict) {
-	if newVerdict == conn.Verdict.Current {
-		return
-	}
-	// Save previous verdict and set new one
-	conn.Verdict.Previous = conn.Verdict.Current
-	conn.Verdict.Current = newVerdict
+	conn.Verdict.Firewall = newVerdict
+}
 
-	// if a connection is accepted once it should always show as accepted
-	if conn.Verdict.User != VerdictAccept {
-		conn.Verdict.User = newVerdict
+// VerdictVerb returns the verdict as a verb, while taking any special states
+// into account.
+func (conn *Connection) VerdictVerb() string {
+	if conn.Verdict.Firewall == conn.Verdict.Active {
+		return conn.Verdict.Firewall.Verb()
 	}
+	return fmt.Sprintf(
+		"%s (transitioning to %s)",
+		conn.Verdict.Active.Verb(),
+		conn.Verdict.Firewall.Verb(),
+	)
 }
 
 // Process returns the connection's process.
@@ -679,7 +682,7 @@ func packetHandlerHandleConn(conn *Connection, pkt packet.Packet) {
 	}
 
 	// Log verdict.
-	log.Tracer(pkt.Ctx()).Infof("filter: connection %s %s: %s", conn, conn.Verdict.Current.Verb(), conn.Reason.Msg)
+	log.Tracer(pkt.Ctx()).Infof("filter: connection %s %s: %s", conn, conn.VerdictVerb(), conn.Reason.Msg)
 	// Submit trace logs.
 	log.Tracer(pkt.Ctx()).Submit()
 

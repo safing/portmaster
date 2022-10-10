@@ -152,7 +152,7 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 
 		// Count.
 		total++
-		switch conn.Verdict.Current { //nolint:exhaustive
+		switch conn.Verdict.Firewall { //nolint:exhaustive
 		case VerdictAccept,
 			VerdictRerouteToNameserver,
 			VerdictRerouteToTunnel:

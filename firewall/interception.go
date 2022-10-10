@@ -24,7 +24,7 @@ import (
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
-	"github.com/safing/spn/captain"
+	"github.com/safing/portmaster/network/reference"
 )
 
 var (
@@ -122,21 +122,55 @@ func resetAllConnectionVerdicts() {
 	log.Info("interception: marking all connections for re-evaluation")
 
 	// reset all connection firewall handlers. This will tell the master to rerun the firewall checks.
-	for _, conn := range network.GetAllConnections() {
-		isSPNConnection := captain.IsExcepted(conn.Entity.IP) && conn.Process().Pid == ownPID
+	// for _, conn := range network.GetAllConnections() {
+	// 	isSPNConnection := captain.IsExcepted(conn.Entity.IP) && conn.Process().Pid == ownPID
 
-		// mark all non SPN connections to be processed by the firewall.
-		if !isSPNConnection {
+	// 	// mark all non SPN connections to be processed by the firewall.
+	// 	if !isSPNConnection {
+	// 		conn.Lock()
+	// 		conn.SetFirewallHandler(initialHandler)
+	// 		// Don't keep the previous tunneled value.
+	// 		conn.Tunneled = false
+	// 		// Reset entity if it exists.
+	// 		if conn.Entity != nil {
+	// 			conn.Entity.ResetLists()
+	// 		}
+	// 		conn.Unlock()
+	// 	}
+	// }
+
+	// Create tracing context.
+	ctx, tracer := log.AddTracer(context.Background())
+	defer tracer.Submit()
+
+	for _, conn := range network.GetAllConnections() {
+		func() {
 			conn.Lock()
-			conn.SetFirewallHandler(initialHandler)
-			// Don't keep the previous tunneled value.
-			conn.Tunneled = false
-			// Reset entity if it exists.
-			if conn.Entity != nil {
-				conn.Entity.ResetLists()
+			defer conn.Unlock()
+
+			// Skip internal connections:
+			// - Pre-authenticated connections from Portmaster
+			// - Redirected DNS requests
+			// - SPN Uplink to Home Hub
+			if conn.Internal {
+				log.Tracef("skipping internal connection %s", conn)
+				return
 			}
-			conn.Unlock()
-		}
+
+			log.Tracer(ctx).Debugf("filter: re-evaluating verdict of %s", conn)
+			previousVerdict := conn.Verdict.Firewall
+
+			// Apply privacy filter and check tunneling.
+			filterConnection(ctx, conn, nil)
+
+			// Save if verdict changed.
+			if conn.Verdict.Firewall != previousVerdict {
+				conn.Save()
+				tracer.Infof("filter: verdict of connection %s changed from %s to %s", conn, previousVerdict.Verb(), conn.VerdictVerb())
+			} else {
+				tracer.Tracef("filter: verdict to connection %s unchanged at %s", conn, conn.VerdictVerb())
+			}
+		}()
 	}
 
 	err := interception.ResetVerdictOfAllConnections()
@@ -418,6 +452,7 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	log.Tracer(pkt.Ctx()).Trace("filter: handing over to connection-based handler")
 
+	// Check for special (internal) connection cases.
 	switch {
 	case !conn.Inbound && localPortIsPreAuthenticated(conn.Entity.Protocol, conn.LocalPort):
 		// Approve connection.
@@ -444,14 +479,31 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 		conn.Internal = true
 		// End directly, as no other processing is necessary.
 		conn.StopFirewallHandler()
+		finalizeVerdict(conn)
 		issueVerdict(conn, pkt, 0, true)
 		return
+	}
 
-	case filterEnabled():
-		log.Tracer(pkt.Ctx()).Trace("filter: starting decision process")
-		DecideOnConnection(pkt.Ctx(), conn, pkt)
+	// Apply privacy filter and check tunneling.
+	filterConnection(pkt.Ctx(), conn, pkt)
 
+	// Decide how to continue handling connection.
+	switch {
+	case conn.Inspecting:
+		log.Tracer(pkt.Ctx()).Trace("filter: start inspecting")
+		conn.SetFirewallHandler(inspectThenVerdict)
+		inspectThenVerdict(conn, pkt)
 	default:
+		conn.StopFirewallHandler()
+		issueVerdict(conn, pkt, 0, true)
+	}
+}
+
+func filterConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
+	if filterEnabled() {
+		log.Tracer(ctx).Trace("filter: starting decision process")
+		DecideOnConnection(ctx, conn, pkt)
+	} else {
 		conn.Accept("privacy filter disabled", noReasonOptionKey)
 	}
 
@@ -472,18 +524,19 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	// Check if connection should be tunneled.
-	checkTunneling(pkt.Ctx(), conn, pkt)
+	checkTunneling(ctx, conn)
 
+	// Handle verdict records and transitions.
 	finalizeVerdict(conn)
 
-	switch {
-	case conn.Inspecting:
-		log.Tracer(pkt.Ctx()).Trace("filter: start inspecting")
-		conn.SetFirewallHandler(inspectThenVerdict)
-		inspectThenVerdict(conn, pkt)
-	default:
-		conn.StopFirewallHandler()
-		issueVerdict(conn, pkt, 0, true)
+	// Request tunneling if no tunnel is set and connection should be tunneled.
+	if conn.Verdict.Active == network.VerdictRerouteToTunnel &&
+		conn.TunnelContext == nil {
+		err := requestTunneling(ctx, conn)
+		if err != nil {
+			conn.Failed(fmt.Sprintf("failed to request tunneling: %s", err), "")
+			finalizeVerdict(conn)
+		}
 	}
 }
 
@@ -514,8 +567,8 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	}
 
 	// do not allow to circumvent decision: e.g. to ACCEPT packets from a DROP-ed connection
-	if verdict < conn.Verdict.Current {
-		verdict = conn.Verdict.Current
+	if verdict < conn.Verdict.Active {
+		verdict = conn.Verdict.Active
 	}
 
 	var err error
@@ -561,17 +614,52 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	}
 }
 
+// verdictRating rates the privacy and security aspect of verdicts from worst to best.
+var verdictRating = []network.Verdict{
+	network.VerdictAccept,              // Connection allowed in the open.
+	network.VerdictRerouteToTunnel,     // Connection allowed, but protected.
+	network.VerdictRerouteToNameserver, // Connection allowed, but resolved via Portmaster.
+	network.VerdictBlock,               // Connection blocked, with feedback.
+	network.VerdictDrop,                // Connection blocked, without feedback.
+	network.VerdictFailed,
+	network.VerdictUndeterminable,
+	network.VerdictUndecided,
+}
+
 func finalizeVerdict(conn *network.Connection) {
-	// previously accepted or tunneled connections may need to be blocked
-	if conn.Verdict.Current == network.VerdictAccept {
-		switch {
-		case conn.Verdict.Previous == network.VerdictRerouteToTunnel && !conn.Tunneled:
-			conn.SetVerdictDirectly(network.VerdictBlock)
-		case conn.Verdict.Previous == network.VerdictAccept && conn.Tunneled:
-			conn.SetVerdictDirectly(network.VerdictBlock)
-		case conn.Tunneled:
-			conn.SetVerdictDirectly(network.VerdictRerouteToTunnel)
+	// Update worst verdict.
+	for _, worstVerdict := range verdictRating {
+		if conn.Verdict.Firewall == worstVerdict {
+			conn.Verdict.Worst = worstVerdict
 		}
+	}
+
+	// Check for non-applicable verdicts.
+	// The earlier and clearer we do this, the better.
+	switch conn.Verdict.Firewall { //nolint:exhaustive
+	case network.VerdictUndecided, network.VerdictUndeterminable, network.VerdictFailed:
+		if conn.Inbound {
+			conn.Verdict.Active = network.VerdictDrop
+		} else {
+			conn.Verdict.Active = network.VerdictBlock
+		}
+		return
+	}
+
+	// Apply firewall verdict to active verdict.
+	switch {
+	case conn.Verdict.Active == network.VerdictUndecided:
+		// Apply first verdict without change.
+		conn.Verdict.Active = conn.Verdict.Firewall
+
+	case reference.IsPacketProtocol(conn.Entity.Protocol):
+		// For known packet protocols, apply firewall verdict unchanged.
+		conn.Verdict.Active = conn.Verdict.Firewall
+
+	case conn.Verdict.Active != conn.Verdict.Firewall:
+		// For all other protocols (most notably, stream protocols), always block after the first change.
+		// Block in both directions, as there is a live connection, which we want to actively kill.
+		conn.Verdict.Active = network.VerdictBlock
 	}
 }
 
