@@ -197,27 +197,27 @@ func (h *InterpHandler) AddTags(p *process.Process) {
 			return
 		}
 
-		filePath := args[1]
-		if !filepath.IsAbs(filePath) {
-			filePath = filepath.Join(
+		scriptPath := args[1]
+		if !filepath.IsAbs(scriptPath) {
+			scriptPath = filepath.Join(
 				p.Cwd,
-				filePath,
+				scriptPath,
 			)
 		}
 
 		// TODO(ppacher): there could be some other arguments as well
 		// so it may be better to scan the whole command line for a path to a UTF8
 		// file and use that one.
-		if !fileMustBeUTF8(filePath) {
+		if !fileMustBeUTF8(scriptPath) {
 			return
 		}
 
 		p.Tags = append(p.Tags, profile.Tag{
 			Key:   matched.ID,
-			Value: filePath,
+			Value: scriptPath,
 		})
 
-		p.MatchingPath = filePath
+		p.MatchingPath = scriptPath
 
 		return
 	}
