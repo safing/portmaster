@@ -1,4 +1,4 @@
-//+build !windows,!linux
+//go:build !windows && !linux
 
 package interception
 
@@ -15,5 +15,10 @@ func start(_ chan packet.Packet) error {
 
 // stop starts the interception.
 func stop() error {
+	return nil
+}
+
+// ResetVerdictOfAllConnections resets all connections so they are forced to go thought the firewall again.
+func ResetVerdictOfAllConnections() error {
 	return nil
 }
