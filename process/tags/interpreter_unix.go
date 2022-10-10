@@ -86,7 +86,9 @@ func fileMustBeUTF8(path string) bool {
 		return false
 	}
 
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	// read the first chunk of bytes
 	buf := new(bytes.Buffer)
@@ -108,12 +110,15 @@ func fileMustBeUTF8(path string) bool {
 	return true
 }
 
+// InterpHandler supports adding process tags based on well-known interpreter binaries.
 type InterpHandler struct{}
 
+// Name returns "Interpreter"
 func (h *InterpHandler) Name() string {
 	return "Interpreter"
 }
 
+// TagDescriptions returns a set of tag descriptions that InterpHandler provides.
 func (h *InterpHandler) TagDescriptions() []process.TagDescription {
 	l := make([]process.TagDescription, len(knownInterperters))
 	for idx, it := range knownInterperters {
@@ -123,6 +128,8 @@ func (h *InterpHandler) TagDescriptions() []process.TagDescription {
 	return l
 }
 
+// CreateProfile creates a new profile for any process that has a tag created
+// by InterpHandler.
 func (h *InterpHandler) CreateProfile(p *process.Process) *profile.Profile {
 	for _, it := range knownInterperters {
 		if tag, ok := p.GetTag(it.ID); ok {
@@ -159,6 +166,8 @@ func (h *InterpHandler) CreateProfile(p *process.Process) *profile.Profile {
 	return nil
 }
 
+// AddTags inspects the process p and adds any interpreter tags that InterpHandler
+// detects.
 func (h *InterpHandler) AddTags(p *process.Process) {
 	// check if we have a matching interpreter
 	var matched interpType
@@ -208,6 +217,8 @@ func (h *InterpHandler) AddTags(p *process.Process) {
 			Value: filePath,
 		})
 
+		p.MatchingPath = filePath
+
 		return
 	}
 
@@ -217,4 +228,6 @@ func (h *InterpHandler) AddTags(p *process.Process) {
 		Key:   matched.ID,
 		Value: args[0],
 	})
+
+	p.MatchingPath = args[0]
 }

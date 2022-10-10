@@ -68,6 +68,7 @@ type Process struct {
 	ExecHashes map[string]string
 }
 
+// GetTag returns the process tag with the given ID.
 func (p *Process) GetTag(tagID string) (profile.Tag, bool) {
 	for _, t := range p.Tags {
 		if t.Key == tagID {
@@ -239,7 +240,7 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	if runtime.GOOS != "windows" {
 		process.Cwd, err = pInfo.Cwd()
 		if err != nil {
-			log.Warningf("process: failed to get Cwd: %w", err)
+			log.Warningf("process: failed to get Cwd: %s", err)
 		}
 	}
 
