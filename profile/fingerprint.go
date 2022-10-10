@@ -25,12 +25,6 @@ import (
 //   2. Prefix:                Length of prefix
 //   3. Regex:                 Length of match
 
-// ms-store:Microsoft.One.Note
-
-// Path Match /path/to/file
-// Tag MS-Store Match value
-// Env Regex Key Value
-
 // Fingerprint Type IDs.
 const (
 	FingerprintTypeTagID     = "tag"
@@ -253,34 +247,39 @@ func (parsed *parsedFingerprints) addMatchingFingerprint(fp Fingerprint, matchin
 // fingerprints and matching data.
 func MatchFingerprints(prints *parsedFingerprints, md MatchingData) (highestScore int) {
 	// Check tags.
-	for _, tagPrint := range prints.tagPrints {
-		for _, tag := range md.Tags() {
-			// Check if tag key matches.
-			if !tagPrint.MatchesKey(tag.Key) {
-				continue
-			}
+	tags := md.Tags()
+	if len(tags) > 0 {
+		for _, tagPrint := range prints.tagPrints {
+			for _, tag := range tags {
+				// Check if tag key matches.
+				if !tagPrint.MatchesKey(tag.Key) {
+					continue
+				}
 
-			// Try matching the tag value.
-			score := tagPrint.Match(tag.Value)
-			if score > highestScore {
+				// Try matching the tag value.
+				score := tagPrint.Match(tag.Value)
+				if score > highestScore {
+					highestScore = score
+				}
+			}
+		}
+		// If something matched, add base score and return.
+		if highestScore > 0 {
+			return tagMatchBaseScore + highestScore
+		}
+	}
+
+	// Check cmdline.
+	cmdline := md.Cmdline()
+	if cmdline != "" {
+		for _, cmdlinePrint := range prints.cmdlinePrints {
+			if score := cmdlinePrint.Match(cmdline); score > highestScore {
 				highestScore = score
 			}
 		}
-	}
-	// If something matched, add base score and return.
-	if highestScore > 0 {
-		return tagMatchBaseScore + highestScore
-	}
-
-	cmdline := md.Cmdline()
-	for _, cmdlinePrint := range prints.cmdlinePrints {
-		if score := cmdlinePrint.Match(cmdline); score > highestScore {
-			highestScore = score
+		if highestScore > 0 {
+			return cmdlineMatchBaseScore + highestScore
 		}
-
-	}
-	if highestScore > 0 {
-		return cmdlineMatchBaseScore + highestScore
 	}
 
 	// Check env.

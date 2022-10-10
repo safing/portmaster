@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/shlex"
+
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
 )
@@ -113,7 +114,7 @@ func fileMustBeUTF8(path string) bool {
 // InterpHandler supports adding process tags based on well-known interpreter binaries.
 type InterpHandler struct{}
 
-// Name returns "Interpreter"
+// Name returns "Interpreter".
 func (h *InterpHandler) Name() string {
 	return "Interpreter"
 }

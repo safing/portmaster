@@ -163,6 +163,5 @@ func (m *module) start() error {
 }
 
 func (m *module) stop() error {
-
 	return nil
 }
