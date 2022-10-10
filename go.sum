@@ -191,6 +191,8 @@ github.com/safing/portbase v0.16.0 h1:oGu5xVuMyzkG6Fht+kKbyHvA8CEJEexuCvsYQuyh6v
 github.com/safing/portbase v0.16.0/go.mod h1:mzNCWqPbO7vIYbbK5PElGbudwd2vx4YPNawymL8Aro8=
 github.com/safing/spn v0.5.1 h1:SPTG9S7BfUBpnrg8pmTFsaSlRowSljlZ0hT4NQFHnjE=
 github.com/safing/spn v0.5.1/go.mod h1:IuQNzXhR8sSi7sq4KXIH1rK9N3Z94A3nRgItjfDB6Dg=
+github.com/safing/spn v0.5.2 h1:Gl82Fhy8+tKAarLGakkug+xzuBUcjeA39Q495pfnDWk=
+github.com/safing/spn v0.5.2/go.mod h1:r2Ig1VN0jTXC0kjSrK0mk8q3StkFTlQL+k2oJi+3TMY=
 github.com/satori/go.uuid v1.2.0 h1:0uYX9dsZ2yD7q2RtLRtPSdGDWzjeM3TbMJP9utgA0ww=
 github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 github.com/seehuhn/fortuna v1.0.1 h1:lu9+CHsmR0bZnx5Ay646XvCSRJ8PJTi5UYJwDBX68H0=
