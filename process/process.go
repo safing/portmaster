@@ -306,3 +306,18 @@ func (md *MatchingData) MatchingPath() string { return md.p.MatchingPath }
 
 // Cmdline returns the command line of the process.
 func (md *MatchingData) Cmdline() string { return md.p.CmdLine }
+
+// Parent returns the matching data of the parent. Due to bad import cycles we cannot
+// use the correct interface type here ...
+func (md *MatchingData) Parent() interface{} {
+	if md.p.ParentPid == 0 {
+		return nil
+	}
+
+	parentProcess, err := loadProcess(module.Ctx, md.p.ParentPid)
+	if err != nil {
+		return nil
+	}
+
+	return parentProcess.MatchingData()
+}

@@ -62,11 +62,30 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 	}
 
 	// If we don't have a profile yet, find profile based on matching data.
-	if profile == nil {
-		profile, err = findProfile(SourceLocal, md)
+	iter := md
+	var highestScore int
+	for iter != nil {
+		iterProfile, score, err := findProfile(SourceLocal, iter)
 		if err != nil {
 			return nil, fmt.Errorf("failed to search for profile: %w", err)
 		}
+
+		if score > highestScore {
+			profile = iterProfile
+			highestScore = score
+		}
+
+		if !cfgOptionInhertiProfile() {
+			break
+		}
+
+		// try to get the matching data of the parent
+		parent := iter.Parent()
+		if parent == nil {
+			break
+		}
+
+		iter, _ = parent.(MatchingData)
 	}
 
 	// If we still don't have a profile, create a new one.
@@ -160,21 +179,19 @@ func getProfile(scopedID string) (profile *Profile, err error) {
 
 // findProfile searches for a profile with the given linked path. If it cannot
 // find one, it will create a new profile for the given linked path.
-func findProfile(source profileSource, md MatchingData) (profile *Profile, err error) {
+func findProfile(source profileSource, md MatchingData) (profile *Profile, highestScore int, err error) {
 	// TODO: Loading every profile from database and parsing it for every new
 	// process might be quite expensive. Measure impact and possibly improve.
 
 	// Get iterator over all profiles.
 	it, err := profileDB.Query(query.New(profilesDBPath + makeScopedID(source, "")))
 	if err != nil {
-		return nil, fmt.Errorf("failed to query for profiles: %w", err)
+		return nil, 0, fmt.Errorf("failed to query for profiles: %w", err)
 	}
 
 	// Find best matching profile.
-	var (
-		highestScore int
-		bestMatch    record.Record
-	)
+	var bestMatch record.Record
+
 profileFeed:
 	for r := range it.Next {
 		// Parse fingerprints.
@@ -206,27 +223,27 @@ profileFeed:
 
 	// Check if there was an error while iterating.
 	if it.Err() != nil {
-		return nil, fmt.Errorf("failed to iterate over profiles: %w", err)
+		return nil, 0, fmt.Errorf("failed to iterate over profiles: %w", err)
 	}
 
 	// Return nothing if no profile matched.
 	if bestMatch == nil {
-		return nil, nil
+		return nil, 0, nil
 	}
 
 	// If we have a match, parse and return the profile.
 	profile, err = loadProfile(bestMatch)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse selected profile %s: %w", bestMatch.Key(), err)
+		return nil, 0, fmt.Errorf("failed to parse selected profile %s: %w", bestMatch.Key(), err)
 	}
 
 	// Check if this profile is already active and return the active version instead.
 	if activeProfile := getActiveProfile(profile.ScopedID()); activeProfile != nil {
-		return activeProfile, nil
+		return activeProfile, highestScore, nil
 	}
 
-	// Return nothing if no profile matched.
-	return profile, nil
+	// Return the freshly loaded profile since there's no active version available.
+	return profile, highestScore, nil
 }
 
 func loadProfileFingerprints(r record.Record) (parsed *parsedFingerprints, err error) {

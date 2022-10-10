@@ -121,6 +121,9 @@ var (
 	cfgOptionExitHubPolicyOrder = 146
 
 	// Setting "DNS Exit Node Rules" at order 147.
+
+	CfgOptionInheritProfileKey = "core/inheritProfiles"
+	cfgOptionInhertiProfile    config.BoolOption
 )
 
 // A list of all security level settings.
@@ -716,6 +719,24 @@ By default, the Portmaster tries to choose the node closest to the destination a
 	}
 	cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(CfgOptionRoutingAlgorithmKey, defaultRoutingAlg)
 	cfgStringOptions[CfgOptionRoutingAlgorithmKey] = cfgOptionRoutingAlgorithm
+
+	err = config.Register(&config.Option{
+		Name:           "Inherit Process Profiles",
+		Key:            CfgOptionInheritProfileKey,
+		Description:    "Whether or not processes that do not have a dedicated profile should inherit the app profile from the parent process.",
+		OptType:        config.OptTypeBool,
+		DefaultValue:   false,
+		ExpertiseLevel: config.ExpertiseLevelDeveloper,
+		ReleaseLevel:   config.ReleaseLevelExperimental,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: 529,
+			config.CategoryAnnotation:     "Development",
+		},
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionInhertiProfile = config.Concurrent.GetAsBool(CfgOptionInheritProfileKey, false)
 
 	return nil
 }
