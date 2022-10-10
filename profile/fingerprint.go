@@ -73,6 +73,10 @@ type (
 		Path() string
 		MatchingPath() string
 		Cmdline() string
+		Parent() interface{} // implementations should return MatchingData but we do
+		// have import cycles here if we try to specify that.
+		// TODO(ppacher): fix that and move the matching data def into
+		// it's own package (where it belongs to because it's needed by process and profile)
 	}
 
 	matchingFingerprint interface {
