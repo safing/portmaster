@@ -13,7 +13,6 @@ import (
 	"github.com/tevino/abool"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/compat"
@@ -43,12 +42,6 @@ var (
 	blockedIPv6 = net.ParseIP("::17")
 
 	ownPID = os.Getpid()
-)
-
-// Config variables for interception module.
-var (
-	devMode          config.BoolOption
-	apiListenAddress config.StringOption
 )
 
 const (
@@ -121,28 +114,11 @@ func resetAllConnectionVerdicts() {
 	// this will set new verdicts if configuration was update or spn has been disabled or enabled.
 	log.Info("interception: marking all connections for re-evaluation")
 
-	// reset all connection firewall handlers. This will tell the master to rerun the firewall checks.
-	// for _, conn := range network.GetAllConnections() {
-	// 	isSPNConnection := captain.IsExcepted(conn.Entity.IP) && conn.Process().Pid == ownPID
-
-	// 	// mark all non SPN connections to be processed by the firewall.
-	// 	if !isSPNConnection {
-	// 		conn.Lock()
-	// 		conn.SetFirewallHandler(initialHandler)
-	// 		// Don't keep the previous tunneled value.
-	// 		conn.Tunneled = false
-	// 		// Reset entity if it exists.
-	// 		if conn.Entity != nil {
-	// 			conn.Entity.ResetLists()
-	// 		}
-	// 		conn.Unlock()
-	// 	}
-	// }
-
 	// Create tracing context.
 	ctx, tracer := log.AddTracer(context.Background())
 	defer tracer.Submit()
 
+	// Re-evaluate all connections.
 	for _, conn := range network.GetAllConnections() {
 		func() {
 			conn.Lock()
@@ -542,6 +518,9 @@ func filterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 		conn.TunnelContext == nil {
 		err := requestTunneling(ctx, conn)
 		if err != nil {
+			// Set connection to failed, but keep tunneling data.
+			// The tunneling data makes connection easy to recognize as a failed SPN
+			// connection and the data will help with debugging and displaying in the UI.
 			conn.Failed(fmt.Sprintf("failed to request tunneling: %s", err), "")
 			finalizeVerdict(conn)
 		}
