@@ -68,6 +68,15 @@ type Process struct {
 	ExecHashes map[string]string
 }
 
+func (p *Process) GetTag(tagID string) (profile.Tag, bool) {
+	for _, t := range p.Tags {
+		if t.Key == tagID {
+			return t, true
+		}
+	}
+	return profile.Tag{}, false
+}
+
 // Profile returns the assigned layered profile.
 func (p *Process) Profile() *profile.LayeredProfile {
 	if p == nil {
@@ -226,11 +235,13 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	_, process.ExecName = filepath.Split(process.Path)
 
 	// Current working directory
-	// net yet implemented for windows
-	// new.Cwd, err = pInfo.Cwd()
-	// if err != nil {
-	// 	log.Warningf("process: failed to get Cwd: %w", err)
-	// }
+	// not yet implemented for windows
+	if runtime.GOOS != "windows" {
+		process.Cwd, err = pInfo.Cwd()
+		if err != nil {
+			log.Warningf("process: failed to get Cwd: %w", err)
+		}
+	}
 
 	// Command line arguments
 	process.CmdLine, err = pInfo.CmdlineWithContext(ctx)
@@ -292,3 +303,6 @@ func (md *MatchingData) Path() string { return md.p.Path }
 
 // MatchingPath returns process.MatchingPath.
 func (md *MatchingData) MatchingPath() string { return md.p.MatchingPath }
+
+// Cmdline returns the command line of the process.
+func (md *MatchingData) Cmdline() string { return md.p.CmdLine }

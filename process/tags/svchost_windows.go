@@ -77,24 +77,23 @@ func (h *SVCHostTagHandler) AddTags(p *process.Process) {
 // CreateProfile creates a profile based on the tags of the process.
 // Returns nil to skip.
 func (h *SVCHostTagHandler) CreateProfile(p *process.Process) *profile.Profile {
-	for _, tag := range p.Tags {
-		if tag.Key == svchostTagKey {
-			return profile.New(&profile.Profile{
-				Source:              profile.SourceLocal,
-				Name:                "Windows Service: " + osdetail.GenerateBinaryNameFromPath(tag.Value),
-				Icon:                `C:\Windows\System32\@WLOGO_48x48.png`,
-				IconType:            profile.IconTypeFile,
-				UsePresentationPath: false,
-				Fingerprints: []profile.Fingerprint{
-					profile.Fingerprint{
-						Type:      profile.FingerprintTypeTagID,
-						Key:       tag.Key,
-						Operation: profile.FingerprintOperationEqualsID,
-						Value:     tag.Value,
-					},
+	if tag, ok := p.GetTag(svchostTagKey); ok {
+		return profile.New(&profile.Profile{
+			Source:              profile.SourceLocal,
+			Name:                "Windows Service: " + osdetail.GenerateBinaryNameFromPath(tag.Value),
+			Icon:                `C:\Windows\System32\@WLOGO_48x48.png`,
+			IconType:            profile.IconTypeFile,
+			UsePresentationPath: false,
+			Fingerprints: []profile.Fingerprint{
+				profile.Fingerprint{
+					Type:      profile.FingerprintTypeTagID,
+					Key:       tag.Key,
+					Operation: profile.FingerprintOperationEqualsID,
+					Value:     tag.Value,
 				},
-			})
-		}
+			},
+		})
 	}
+
 	return nil
 }

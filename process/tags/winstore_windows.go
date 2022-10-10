@@ -101,23 +101,22 @@ func (h *WinStoreHandler) AddTags(p *process.Process) {
 // CreateProfile creates a profile based on the tags of the process.
 // Returns nil to skip.
 func (h *WinStoreHandler) CreateProfile(p *process.Process) *profile.Profile {
-	for _, tag := range p.Tags {
-		if tag.Key == winStoreAppNameTagKey {
-			return profile.New(&profile.Profile{
-				Source:              profile.SourceLocal,
-				Name:                osdetail.GenerateBinaryNameFromPath(tag.Value),
-				PresentationPath:    p.Path,
-				UsePresentationPath: true,
-				Fingerprints: []profile.Fingerprint{
-					{
-						Type:      profile.FingerprintTypeTagID,
-						Key:       tag.Key,
-						Operation: profile.FingerprintOperationEqualsID,
-						Value:     tag.Value, // Value of appImagePathTagKey.
-					},
+	if tag, ok := p.GetTag(winStoreAppNameTagKey); ok {
+		return profile.New(&profile.Profile{
+			Source:              profile.SourceLocal,
+			Name:                osdetail.GenerateBinaryNameFromPath(tag.Value),
+			PresentationPath:    p.Path,
+			UsePresentationPath: true,
+			Fingerprints: []profile.Fingerprint{
+				{
+					Type:      profile.FingerprintTypeTagID,
+					Key:       tag.Key,
+					Operation: profile.FingerprintOperationEqualsID,
+					Value:     tag.Value, // Value of appImagePathTagKey.
 				},
-			})
-		}
+			},
+		})
 	}
+
 	return nil
 }
