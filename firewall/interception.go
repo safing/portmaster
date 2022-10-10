@@ -525,6 +525,9 @@ func filterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 			finalizeVerdict(conn)
 		}
 	}
+
+	// Make sure we update the worst verdict after the final verdict is set by the firewall
+	updateConnectionWorstVerdict(conn)
 }
 
 func defaultHandler(conn *network.Connection, pkt packet.Packet) {
@@ -601,28 +604,7 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	}
 }
 
-// verdictRating rates the privacy and security aspect of verdicts from worst to best.
-var verdictRating = []network.Verdict{
-	network.VerdictAccept,              // Connection allowed in the open.
-	network.VerdictRerouteToTunnel,     // Connection allowed, but protected.
-	network.VerdictRerouteToNameserver, // Connection allowed, but resolved via Portmaster.
-	network.VerdictBlock,               // Connection blocked, with feedback.
-	network.VerdictDrop,                // Connection blocked, without feedback.
-	network.VerdictFailed,
-	network.VerdictUndeterminable,
-	network.VerdictUndecided,
-}
-
 func finalizeVerdict(conn *network.Connection) {
-	// Update worst verdict at the end.
-	defer func() {
-		for _, worstVerdict := range verdictRating {
-			if conn.Verdict.Firewall == worstVerdict {
-				conn.Verdict.Worst = worstVerdict
-			}
-		}
-	}()
-
 	// Check for non-applicable verdicts.
 	// The earlier and clearer we do this, the better.
 	switch conn.Verdict.Firewall { //nolint:exhaustive
@@ -657,6 +639,26 @@ func finalizeVerdict(conn *network.Connection) {
 		// For all other protocols (most notably, stream protocols), always block after the first change.
 		// Block in both directions, as there is a live connection, which we want to actively kill.
 		conn.Verdict.Active = network.VerdictBlock
+	}
+}
+
+// verdictRating rates the privacy and security aspect of verdicts from worst to best.
+var verdictRating = []network.Verdict{
+	network.VerdictAccept,              // Connection allowed in the open.
+	network.VerdictRerouteToTunnel,     // Connection allowed, but protected.
+	network.VerdictRerouteToNameserver, // Connection allowed, but resolved via Portmaster.
+	network.VerdictBlock,               // Connection blocked, with feedback.
+	network.VerdictDrop,                // Connection blocked, without feedback.
+	network.VerdictFailed,
+	network.VerdictUndeterminable,
+	network.VerdictUndecided,
+}
+
+func updateConnectionWorstVerdict(conn *network.Connection) {
+	for _, worstVerdict := range verdictRating {
+		if conn.Verdict.Firewall == worstVerdict {
+			conn.Verdict.Worst = worstVerdict
+		}
 	}
 }
 
