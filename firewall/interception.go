@@ -635,12 +635,14 @@ var verdictRating = []network.Verdict{
 }
 
 func finalizeVerdict(conn *network.Connection) {
-	// Update worst verdict.
-	for _, worstVerdict := range verdictRating {
-		if conn.Verdict.Firewall == worstVerdict {
-			conn.Verdict.Worst = worstVerdict
+	// Update worst verdict at the end.
+	defer func() {
+		for _, worstVerdict := range verdictRating {
+			if conn.Verdict.Firewall == worstVerdict {
+				conn.Verdict.Worst = worstVerdict
+			}
 		}
-	}
+	}()
 
 	// Check for non-applicable verdicts.
 	// The earlier and clearer we do this, the better.
@@ -658,6 +660,14 @@ func finalizeVerdict(conn *network.Connection) {
 	switch {
 	case conn.Verdict.Active == network.VerdictUndecided:
 		// Apply first verdict without change.
+		conn.Verdict.Active = conn.Verdict.Firewall
+
+	case conn.Verdict.Worst == network.VerdictBlock ||
+		conn.Verdict.Worst == network.VerdictDrop ||
+		conn.Verdict.Worst == network.VerdictFailed ||
+		conn.Verdict.Worst == network.VerdictUndeterminable:
+		// Always allow to change verdict from any real initial/worst non-allowed state.
+		// Note: This check needs to happen before updating the Worst verdict.
 		conn.Verdict.Active = conn.Verdict.Firewall
 
 	case reference.IsPacketProtocol(conn.Entity.Protocol):
