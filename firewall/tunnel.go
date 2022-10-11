@@ -70,7 +70,10 @@ func checkTunneling(ctx context.Context, conn *network.Connection) {
 	// Update profile.
 	if layeredProfile.NeedsUpdate() {
 		// Update revision counter in connection.
-		conn.ProfileRevisionCounter = layeredProfile.Update()
+		conn.ProfileRevisionCounter = layeredProfile.Update(
+			conn.Process().MatchingData(),
+			conn.Process().CreateProfileCallback,
+		)
 		conn.SaveWhenFinished()
 	} else {
 		// Check if the revision counter of the connection needs updating.

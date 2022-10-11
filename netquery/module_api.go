@@ -101,6 +101,7 @@ func (m *module) start() error {
 		if err != nil {
 			return fmt.Errorf("failed to subscribe to network tree: %w", err)
 		}
+		defer close(m.feed)
 		defer func() {
 			_ = sub.Cancel()
 		}()
@@ -162,7 +163,5 @@ func (m *module) start() error {
 }
 
 func (m *module) stop() error {
-	close(m.feed)
-
 	return nil
 }

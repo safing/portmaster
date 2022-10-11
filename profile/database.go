@@ -65,39 +65,17 @@ func startProfileUpdateChecker() error {
 					continue profileFeed
 				}
 
-				// If the record is being deleted, reset the profile.
-				// create an empty profile instead.
-				if r.Meta().IsDeleted() {
-					newProfile, err := GetProfile(
-						activeProfile.Source,
-						activeProfile.ID,
-						activeProfile.LinkedPath,
-						true,
-					)
-					if err != nil {
-						log.Errorf("profile: failed to create new profile after reset: %s", err)
-					} else {
-						// Copy metadata from the old profile.
-						newProfile.copyMetadataFrom(activeProfile)
-						// Save the new profile.
-						err = newProfile.Save()
-						if err != nil {
-							log.Errorf("profile: failed to save new profile after reset: %s", err)
-						}
-					}
-
-					// If the new profile was successfully created, update layered profile.
-					activeProfile.outdated.Set()
-					if err == nil {
-						newProfile.layeredProfile.Update()
-					}
-					module.TriggerEvent(profileConfigChange, nil)
-				}
-
 				// Always increase the revision counter of the layer profile.
 				// This marks previous connections in the UI as decided with outdated settings.
 				if activeProfile.layeredProfile != nil {
 					activeProfile.layeredProfile.increaseRevisionCounter(true)
+				}
+
+				// Always mark as outdated if the record is being deleted.
+				if r.Meta().IsDeleted() {
+					activeProfile.outdated.Set()
+					module.TriggerEvent(profileConfigChange, nil)
+					continue
 				}
 
 				// If the profile is saved externally (eg. via the API), have the

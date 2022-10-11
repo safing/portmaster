@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -26,11 +25,8 @@ type profileSource string
 
 // Profile Sources.
 const (
-	SourceLocal      profileSource = "local"   // local, editable
-	SourceSpecial    profileSource = "special" // specials (read-only)
-	SourceNetwork    profileSource = "network"
-	SourceCommunity  profileSource = "community"
-	SourceEnterprise profileSource = "enterprise"
+	SourceLocal   profileSource = "local"   // local, editable
+	SourceSpecial profileSource = "special" // specials (read-only)
 )
 
 // Default Action IDs.
@@ -83,11 +79,21 @@ type Profile struct { //nolint:maligned // not worth the effort
 	Icon string
 	// IconType describes the type of the Icon property.
 	IconType iconType
-	// LinkedPath is a filesystem path to the executable this
+	// Deprecated: LinkedPath used to point to the executableis this
 	// profile was created for.
+	// Until removed, it will be added to the Fingerprints as an exact path match.
 	LinkedPath string // constant
-	// LinkedProfiles is a list of other profiles
-	LinkedProfiles []string
+	// PresentationPath holds the path of an executable that should be used for
+	// get representative information from, like the name of the program or the icon.
+	// Is automatically removed when the path does not exist.
+	// Is automatically populated with the next match when empty.
+	PresentationPath string
+	// UsePresentationPath can be used to enable/disable fetching information
+	// from the executable at PresentationPath. In some cases, this is not
+	// desirable.
+	UsePresentationPath bool
+	// Fingerprints holds process matching information.
+	Fingerprints []Fingerprint
 	// SecurityLevel is the mininum security level to apply to
 	// connections made with this profile.
 	// Note(ppacher): we may deprecate this one as it can easily
@@ -143,6 +149,11 @@ func (profile *Profile) prepProfile() {
 	// prepare configuration
 	profile.outdated = abool.New()
 	profile.lastActive = new(int64)
+
+	// Migration of LinkedPath to PresentationPath
+	if profile.PresentationPath == "" && profile.LinkedPath != "" {
+		profile.PresentationPath = profile.LinkedPath
+	}
 }
 
 func (profile *Profile) parseConfig() error {
@@ -227,29 +238,25 @@ func (profile *Profile) parseConfig() error {
 
 // New returns a new Profile.
 // Optionally, you may supply custom configuration in the flat (key=value) form.
-func New(
-	source profileSource,
-	id string,
-	linkedPath string,
-	customConfig map[string]interface{},
-) *Profile {
-	if customConfig != nil {
-		customConfig = config.Expand(customConfig)
-	} else {
-		customConfig = make(map[string]interface{})
+func New(profile *Profile) *Profile {
+	// Create profile if none is given.
+	if profile == nil {
+		profile = &Profile{}
 	}
 
-	profile := &Profile{
-		ID:              id,
-		Source:          source,
-		LinkedPath:      linkedPath,
-		Created:         time.Now().Unix(),
-		Config:          customConfig,
-		savedInternally: true,
+	// Set default and internal values.
+	profile.Created = time.Now().Unix()
+	profile.savedInternally = true
+
+	// Expand any given configuration.
+	if profile.Config != nil {
+		profile.Config = config.Expand(profile.Config)
+	} else {
+		profile.Config = make(map[string]interface{})
 	}
 
 	// Generate random ID if none is given.
-	if id == "" {
+	if profile.ID == "" {
 		profile.ID = utils.RandomUUID("").String()
 	}
 
@@ -415,106 +422,78 @@ func EnsureProfile(r record.Record) (*Profile, error) {
 	return newProfile, nil
 }
 
-// UpdateMetadata updates meta data fields on the profile and returns whether
-// the profile was changed. If there is data that needs to be fetched from the
-// operating system, it will start an async worker to fetch that data and save
-// the profile afterwards.
-func (profile *Profile) UpdateMetadata(binaryPath string) (changed bool) {
+// updateMetadata updates meta data fields on the profile and returns whether
+// the profile was changed.
+func (profile *Profile) updateMetadata(binaryPath string) (changed bool) {
 	// Check if this is a local profile, else warn and return.
 	if profile.Source != SourceLocal {
 		log.Warningf("tried to update metadata for non-local profile %s", profile.ScopedID())
 		return false
 	}
 
-	profile.Lock()
-	defer profile.Unlock()
-
-	// Update special profile and return if it was one.
-	if ok, changed := updateSpecialProfileMetadata(profile, binaryPath); ok {
-		return changed
+	// Set PresentationPath if unset.
+	if profile.PresentationPath == "" && binaryPath != "" {
+		profile.PresentationPath = binaryPath
+		changed = true
 	}
 
-	var needsUpdateFromSystem bool
+	// Migrate LinkedPath to PresentationPath.
+	// TODO: Remove in v1.5
+	if profile.PresentationPath == "" && profile.LinkedPath != "" {
+		profile.PresentationPath = profile.LinkedPath
+		changed = true
+	}
 
-	// Check profile name.
-	filename := filepath.Base(profile.LinkedPath)
+	// Set Name if unset.
+	if profile.Name == "" && profile.PresentationPath != "" {
+		// Generate a default profile name from path.
+		profile.Name = osdetail.GenerateBinaryNameFromPath(profile.PresentationPath)
+		changed = true
+	}
 
-	// Update profile name if it is empty or equals the filename, which is the
-	// case for older profiles.
-	if strings.TrimSpace(profile.Name) == "" || profile.Name == filename {
-		// Generate a default profile name if does not exist.
-		profile.Name = osdetail.GenerateBinaryNameFromPath(profile.LinkedPath)
-		if profile.Name == filename {
-			// TODO: Theoretically, the generated name could be identical to the
-			// filename.
-			// As a quick fix, append a space to the name.
-			profile.Name += " "
+	// Migrato to Fingerprints.
+	// TODO: Remove in v1.5
+	if len(profile.Fingerprints) == 0 && profile.LinkedPath != "" {
+		profile.Fingerprints = []Fingerprint{
+			{
+				Type:      FingerprintTypePathID,
+				Operation: FingerprintOperationEqualsID,
+				Value:     profile.LinkedPath,
+			},
 		}
 		changed = true
-		needsUpdateFromSystem = true
 	}
 
-	// If needed, get more/better data from the operating system.
-	if needsUpdateFromSystem {
-		module.StartWorker("get profile metadata", profile.updateMetadataFromSystem)
+	// UI Backward Compatibility:
+	// Fill LinkedPath with PresentationPath
+	// TODO: Remove in v1.1
+	if profile.LinkedPath == "" && profile.PresentationPath != "" {
+		profile.LinkedPath = profile.PresentationPath
+		changed = true
 	}
 
 	return changed
 }
 
-func (profile *Profile) copyMetadataFrom(otherProfile *Profile) (changed bool) {
-	if profile.Name != otherProfile.Name {
-		profile.Name = otherProfile.Name
-		changed = true
-	}
-	if profile.Description != otherProfile.Description {
-		profile.Description = otherProfile.Description
-		changed = true
-	}
-	if profile.Homepage != otherProfile.Homepage {
-		profile.Homepage = otherProfile.Homepage
-		changed = true
-	}
-	if profile.Icon != otherProfile.Icon {
-		profile.Icon = otherProfile.Icon
-		changed = true
-	}
-	if profile.IconType != otherProfile.IconType {
-		profile.IconType = otherProfile.IconType
-		changed = true
-	}
-
-	return
-}
-
 // updateMetadataFromSystem updates the profile metadata with data from the
 // operating system and saves it afterwards.
 func (profile *Profile) updateMetadataFromSystem(ctx context.Context) error {
+	var changed bool
+
 	// This function is only valid for local profiles.
-	if profile.Source != SourceLocal || profile.LinkedPath == "" {
-		return fmt.Errorf("tried to update metadata for non-local / non-linked profile %s", profile.ScopedID())
+	if profile.Source != SourceLocal || profile.PresentationPath == "" {
+		return fmt.Errorf("tried to update metadata for non-local or non-path profile %s", profile.ScopedID())
 	}
 
-	// Save the profile when finished, if needed.
-	save := false
-	defer func() {
-		if save {
-			err := profile.Save()
-			if err != nil {
-				log.Warningf("profile: failed to save %s after metadata update: %s", profile.ScopedID(), err)
-			}
-		}
-	}()
-
-	// Get binary name from linked path.
-	newName, err := osdetail.GetBinaryNameFromSystem(profile.LinkedPath)
+	// Get binary name from PresentationPath.
+	newName, err := osdetail.GetBinaryNameFromSystem(profile.PresentationPath)
 	if err != nil {
 		switch {
 		case errors.Is(err, osdetail.ErrNotSupported):
 		case errors.Is(err, osdetail.ErrNotFound):
 		case errors.Is(err, osdetail.ErrEmptyOutput):
 		default:
-			log.Warningf("profile: error while getting binary name for %s: %s", profile.LinkedPath, err)
+			log.Warningf("profile: error while getting binary name for %s: %s", profile.PresentationPath, err)
 		}
 		return nil
 	}
@@ -524,25 +503,26 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context) error {
 		return nil
 	}
 
-	// Get filename of linked path for comparison.
-	filename := filepath.Base(profile.LinkedPath)
+	// Apply new data to profile.
+	func() {
+		// Lock profile for applying metadata.
+		profile.Lock()
+		defer profile.Unlock()
 
-	// TODO: Theoretically, the generated name from the system could be identical
-	// to the filename. This would mean that the worker is triggered every time
-	// the profile is freshly loaded.
-	if newName == filename {
-		// As a quick fix, append a space to the name.
-		newName += " "
-	}
+		// Apply new name if it changed.
+		if profile.Name != newName {
+			profile.Name = newName
+			changed = true
+		}
+	}()
 
-	// Lock profile for applying metadata.
-	profile.Lock()
-	defer profile.Unlock()
-
-	// Apply new name if it changed.
-	if profile.Name != newName {
-		profile.Name = newName
-		save = true
+	// If anything changed, save the profile.
+	// profile.Lock must not be held!
+	if changed {
+		err := profile.Save()
+		if err != nil {
+			log.Warningf("profile: failed to save %s after metadata update: %s", profile.ScopedID(), err)
+		}
 	}
 
 	return nil

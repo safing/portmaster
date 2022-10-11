@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/profile/endpoints"
@@ -91,11 +90,7 @@ func updateGlobalConfigProfile(ctx context.Context, task *modules.Task) error {
 		lastErr = err
 	}
 
-	// build global profile for reference
-	profile := New(SourceSpecial, "global-config", "", nil)
-	profile.Name = "Global Configuration"
-	profile.Internal = true
-
+	// Build config.
 	newConfig := make(map[string]interface{})
 	// fill profile config options
 	for key, value := range cfgStringOptions {
@@ -111,8 +106,14 @@ func updateGlobalConfigProfile(ctx context.Context, task *modules.Task) error {
 		newConfig[key] = value()
 	}
 
-	// expand and assign
-	profile.Config = config.Expand(newConfig)
+	// Build global profile for reference.
+	profile := New(&Profile{
+		ID:       "global-config",
+		Source:   SourceSpecial,
+		Name:     "Global Configuration",
+		Config:   newConfig,
+		Internal: true,
+	})
 
 	// save profile
 	err = profile.Save()

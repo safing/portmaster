@@ -2,20 +2,24 @@ package profile
 
 import (
 	"errors"
+	"fmt"
+	"path"
+	"strings"
 	"sync"
 
-	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/notifications"
 )
 
 var getProfileLock sync.Mutex
 
-// GetProfile fetches a profile. This function ensures that the loaded profile
-// is shared among all callers. You must always supply both the scopedID and
-// linkedPath parameters whenever available.
-func GetProfile(source profileSource, id, linkedPath string, reset bool) ( //nolint:gocognit
+// GetLocalProfile fetches a profile. This function ensures that the loaded profile
+// is shared among all callers. Always provide all available data points.
+// Passing an ID without MatchingData is valid, but could lead to inconsistent
+// data - use with caution.
+func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *Profile) ( //nolint:gocognit
 	profile *Profile,
 	err error,
 ) {
@@ -27,99 +31,113 @@ func GetProfile(source profileSource, id, linkedPath string, reset bool) ( //nol
 
 	var previousVersion *Profile
 
-	// Fetch profile depending on the available information.
-	switch {
-	case id != "":
-		scopedID := makeScopedID(source, id)
-
-		// Get profile via the scoped ID.
-		// Check if there already is an active and not outdated profile.
-		profile = getActiveProfile(scopedID)
+	// Get active profile based on the ID, if available.
+	if id != "" {
+		// Check if there already is an active profile.
+		profile = getActiveProfile(makeScopedID(SourceLocal, id))
 		if profile != nil {
-			profile.MarkStillActive()
-
-			if profile.outdated.IsSet() || reset {
-				previousVersion = profile
-			} else {
+			// Mark active and return if not outdated.
+			if profile.outdated.IsNotSet() {
+				profile.MarkStillActive()
 				return profile, nil
 			}
-		}
 
-		// Get from database.
-		if !reset {
-			profile, err = getProfile(scopedID)
-			// Check if the profile is special and needs a reset.
-			if err == nil && specialProfileNeedsReset(profile) {
-				profile = getSpecialProfile(id, linkedPath)
-			}
-		} else {
-			// Simulate missing profile to create new one.
-			err = database.ErrNotFound
+			// If outdated, get from database.
+			previousVersion = profile
+			profile = nil
 		}
-
-	case linkedPath != "":
-		// Search for profile via a linked path.
-		// Check if there already is an active and not outdated profile for
-		// the linked path.
-		profile = findActiveProfile(linkedPath)
-		if profile != nil {
-			if profile.outdated.IsSet() || reset {
-				previousVersion = profile
-			} else {
-				return profile, nil
-			}
-		}
-
-		// Get from database.
-		if !reset {
-			profile, err = findProfile(linkedPath)
-			// Check if the profile is special and needs a reset.
-			if err == nil && specialProfileNeedsReset(profile) {
-				profile = getSpecialProfile(id, linkedPath)
-			}
-		} else {
-			// Simulate missing profile to create new one.
-			err = database.ErrNotFound
-		}
-
-	default:
-		return nil, errors.New("cannot fetch profile without ID or path")
 	}
 
-	// Create new profile if none was found.
-	if errors.Is(err, database.ErrNotFound) {
-		err = nil
+	// In some cases, we might need to get a profile directly, without matching data.
+	// This could lead to inconsistent data - use with caution.
+	if md == nil {
+		if id == "" {
+			return nil, errors.New("cannot get local profiles without ID and matching data")
+		}
 
-		// Check if there is a special profile for this ID.
-		profile = getSpecialProfile(id, linkedPath)
+		profile, err = getProfile(makeScopedID(SourceLocal, id))
+		if err != nil {
+			return nil, fmt.Errorf("failed to load profile %s by ID: %w", makeScopedID(SourceLocal, id), err)
+		}
+	}
 
-		// If not, create a standard profile.
+	// If we don't have a profile yet, find profile based on matching data.
+	if profile == nil {
+		profile, err = findProfile(SourceLocal, md)
+		if err != nil {
+			return nil, fmt.Errorf("failed to search for profile: %w", err)
+		}
+	}
+
+	// If we still don't have a profile, create a new one.
+	var created bool
+	if profile == nil {
+		created = true
+
+		// Try the profile creation callback, if we have one.
+		if createProfileCallback != nil {
+			profile = createProfileCallback()
+		}
+
+		// If that did not work, create a standard profile.
 		if profile == nil {
-			profile = New(SourceLocal, id, linkedPath, nil)
+			fpPath := md.MatchingPath()
+			if fpPath == "" {
+				fpPath = md.Path()
+			}
+
+			profile = New(&Profile{
+				ID:                  id,
+				Source:              SourceLocal,
+				PresentationPath:    md.Path(),
+				UsePresentationPath: true,
+				Fingerprints: []Fingerprint{
+					{
+						Type:      FingerprintTypePathID,
+						Operation: FingerprintOperationEqualsID,
+						Value:     fpPath,
+					},
+				},
+			})
 		}
 	}
 
-	// If there was a non-recoverable error, return here.
-	if err != nil {
-		return nil, err
+	// Initialize and update profile.
+
+	// Update metadata.
+	changed := profile.updateMetadata(md.Path())
+
+	// Save if created or changed.
+	if created || changed {
+		// Save profile.
+		err := profile.Save()
+		if err != nil {
+			log.Warningf("profile: failed to save profile %s after creation: %s", profile.ScopedID(), err)
+		}
 	}
+
+	// Trigger further metadata fetching from system if profile was created.
+	if created && profile.UsePresentationPath {
+		module.StartWorker("get profile metadata", profile.updateMetadataFromSystem)
+	}
+
+	// Prepare profile for first use.
 
 	// Process profiles are coming directly from the database or are new.
 	// As we don't use any caching, these will be new objects.
 
-	// Add a layeredProfile to local and network profiles.
-	if profile.Source == SourceLocal || profile.Source == SourceNetwork {
-		// If we are refetching, assign the layered profile from the previous version.
-		// The internal references will be updated when the layered profile checks for updates.
-		if previousVersion != nil {
-			profile.layeredProfile = previousVersion.layeredProfile
-		}
+	// Add a layeredProfile.
 
-		// Local profiles must have a layered profile, create a new one if it
-		// does not yet exist.
-		if profile.layeredProfile == nil {
-			profile.layeredProfile = NewLayeredProfile(profile)
-		}
+	// If we are refetching, assign the layered profile from the previous version.
+	// The internal references will be updated when the layered profile checks for updates.
+	if previousVersion != nil && previousVersion.layeredProfile != nil {
+		profile.layeredProfile = previousVersion.layeredProfile
+	}
+
+	// Profiles must have a layered profile, create a new one if it
+	// does not yet exist.
+	if profile.layeredProfile == nil {
+		profile.layeredProfile = NewLayeredProfile(profile)
 	}
 
 	// Add the profile to the currently active profiles.
@@ -137,40 +155,92 @@ func getProfile(scopedID string) (profile *Profile, err error) {
 	}
 
 	// Parse and prepare the profile, return the result.
-	return prepProfile(r)
+	return loadProfile(r)
 }
 
 // findProfile searches for a profile with the given linked path. If it cannot
 // find one, it will create a new profile for the given linked path.
-func findProfile(linkedPath string) (profile *Profile, err error) {
-	// Search the database for a matching profile.
-	it, err := profileDB.Query(
-		query.New(makeProfileKey(SourceLocal, "")).Where(
-			query.Where("LinkedPath", query.SameAs, linkedPath),
-		),
+func findProfile(source profileSource, md MatchingData) (profile *Profile, err error) {
+	// TODO: Loading every profile from database and parsing it for every new
+	// process might be quite expensive. Measure impact and possibly improve.
+
+	// Get iterator over all profiles.
+	it, err := profileDB.Query(query.New(profilesDBPath + makeScopedID(source, "")))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query for profiles: %w", err)
+	}
+
+	// Find best matching profile.
+	var (
+		highestScore int
+		bestMatch    record.Record
 	)
+profileFeed:
+	for r := range it.Next {
+		// Parse fingerprints.
+		prints, err := loadProfileFingerprints(r)
+		if err != nil {
+			log.Debugf("profile: failed to load fingerprints of %s: %s", r.Key(), err)
+		}
+		// Continue with any returned fingerprints.
+		if prints == nil {
+			continue profileFeed
+		}
+
+		// Get matching score and compare.
+		score := MatchFingerprints(prints, md)
+		switch {
+		case score == 0:
+			// Continue to next.
+		case score > highestScore:
+			highestScore = score
+			bestMatch = r
+		case score == highestScore:
+			// Notify user of conflict and abort.
+			// Use first match - this should be consistent.
+			notifyConflictingProfiles(bestMatch, r, md)
+			it.Cancel()
+			break profileFeed
+		}
+	}
+
+	// Check if there was an error while iterating.
+	if it.Err() != nil {
+		return nil, fmt.Errorf("failed to iterate over profiles: %w", err)
+	}
+
+	// Return nothing if no profile matched.
+	if bestMatch == nil {
+		return nil, nil
+	}
+
+	// If we have a match, parse and return the profile.
+	profile, err = loadProfile(bestMatch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse selected profile %s: %w", bestMatch.Key(), err)
+	}
+
+	// Check if this profile is already active and return the active version instead.
+	if activeProfile := getActiveProfile(profile.ScopedID()); activeProfile != nil {
+		return activeProfile, nil
+	}
+
+	// Return nothing if no profile matched.
+	return profile, nil
+}
+
+func loadProfileFingerprints(r record.Record) (parsed *parsedFingerprints, err error) {
+	// Ensure it's a profile.
+	profile, err := EnsureProfile(r)
 	if err != nil {
 		return nil, err
 	}
 
-	// Only wait for the first result, or until the query ends.
-	r := <-it.Next
-	// Then cancel the query, should it still be running.
-	it.Cancel()
-
-	// Prep and return an existing profile.
-	if r != nil {
-		profile, err = prepProfile(r)
-		return profile, err
-	}
-
-	// If there was no profile in the database, create a new one, and return it.
-	profile = New(SourceLocal, "", linkedPath, nil)
-
-	return profile, nil
+	// Parse and return fingerprints.
+	return parseFingerprints(profile.Fingerprints, profile.LinkedPath)
 }
 
-func prepProfile(r record.Record) (*Profile, error) {
+func loadProfile(r record.Record) (*Profile, error) {
 	// ensure its a profile
 	profile, err := EnsureProfile(r)
 	if err != nil {
@@ -191,4 +261,51 @@ func prepProfile(r record.Record) (*Profile, error) {
 
 	// return parsed profile
 	return profile, nil
+}
+
+func notifyConflictingProfiles(a, b record.Record, md MatchingData) {
+	// Get profile names.
+	var idA, nameA, idB, nameB string
+	profileA, err := EnsureProfile(a)
+	if err == nil {
+		idA = profileA.ScopedID()
+		nameA = profileA.Name
+	} else {
+		idA = strings.TrimPrefix(a.Key(), profilesDBPath)
+		nameA = path.Base(idA)
+	}
+	profileB, err := EnsureProfile(b)
+	if err == nil {
+		idB = profileB.ScopedID()
+		nameB = profileB.Name
+	} else {
+		idB = strings.TrimPrefix(b.Key(), profilesDBPath)
+		nameB = path.Base(idB)
+	}
+
+	// Notify user about conflict.
+	notifications.NotifyWarn(
+		fmt.Sprintf("profiles:match-conflict:%s:%s", idA, idB),
+		"App Settings Match Conflict",
+		fmt.Sprintf(
+			"Multiple app settings match the app at %q with the same priority, please change on of them: %q or %q",
+			md.Path(),
+			nameA,
+			nameB,
+		),
+		notifications.Action{
+			Text:    "Change (1)",
+			Type:    notifications.ActionTypeOpenProfile,
+			Payload: idA,
+		},
+		notifications.Action{
+			Text:    "Change (2)",
+			Type:    notifications.ActionTypeOpenProfile,
+			Payload: idB,
+		},
+		notifications.Action{
+			ID:   "ack",
+			Text: "OK",
+		},
+	)
 }

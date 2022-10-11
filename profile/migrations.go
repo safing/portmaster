@@ -2,12 +2,14 @@ package profile
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/go-version"
 
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/migration"
+	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/status"
 )
@@ -18,6 +20,11 @@ func registerMigrations() error {
 			Description: "Migrate to configurable network rating system",
 			Version:     "v0.7.19",
 			MigrateFunc: migrateNetworkRatingSystem,
+		},
+		migration.Migration{
+			Description: "Migrate from LinkedPath to Fingerprints and PresentationPath",
+			Version:     "v0.9.9",
+			MigrateFunc: migrateLinkedPath,
 		},
 	)
 }
@@ -46,6 +53,46 @@ func migrateNetworkRatingSystem(ctx context.Context, _, to *version.Version, db 
 		if err != nil {
 			log.Warningf("profile: migration to %s failed to set network rating level to %v", to, networkRatingEnabled)
 		}
+	}
+
+	return nil
+}
+
+func migrateLinkedPath(ctx context.Context, _, to *version.Version, db *database.Interface) error {
+	// Get iterator over all profiles.
+	it, err := db.Query(query.New(profilesDBPath))
+	if err != nil {
+		return fmt.Errorf("failed to query profiles: %w", err)
+	}
+
+	// Migrate all profiles.
+	for r := range it.Next {
+		// Parse profile.
+		profile, err := EnsureProfile(r)
+		if err != nil {
+			log.Tracer(ctx).Debugf("profiles: failed to parse profile %s for migration: %s", r.Key(), err)
+			continue
+		}
+
+		// Skip if there is no LinkedPath to migrate from.
+		if profile.LinkedPath == "" {
+			continue
+		}
+
+		// Update metadata and save if changed.
+		if profile.updateMetadata("") {
+			err = db.Put(profile)
+			if err != nil {
+				log.Tracer(ctx).Debugf("profiles: failed to save profile %s after migration: %s", r.Key(), err)
+			} else {
+				log.Tracer(ctx).Tracef("profiles: migrated profile %s to %s", r.Key(), to)
+			}
+		}
+	}
+
+	// Check if there was an error while iterating.
+	if it.Err() != nil {
+		return fmt.Errorf("profiles: failed to iterate over profiles for migration: %w", err)
 	}
 
 	return nil

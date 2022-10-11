@@ -1,9 +1,12 @@
 package profile
 
 import (
+	"errors"
 	"time"
 
+	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/status"
 )
 
 const (
@@ -74,7 +77,94 @@ If you think you might have messed up the settings of the System DNS Client, jus
 	PortmasterNotifierProfileDescription = `This is the Portmaster UI Tray Notifier.`
 )
 
-func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (ok, changed bool) {
+// GetSpecialProfile fetches a special profile. This function ensures that the loaded profile
+// is shared among all callers. Always provide all available data points.
+func GetSpecialProfile(id string, path string) ( //nolint:gocognit
+	profile *Profile,
+	err error,
+) {
+	// Check if we have an ID.
+	if id == "" {
+		return nil, errors.New("cannot get special profile without ID")
+	}
+	scopedID := makeScopedID(SourceLocal, id)
+
+	// Globally lock getting a profile.
+	// This does not happen too often, and it ensures we really have integrity
+	// and no race conditions.
+	getProfileLock.Lock()
+	defer getProfileLock.Unlock()
+
+	// Check if there already is an active profile.
+	var previousVersion *Profile
+	profile = getActiveProfile(scopedID)
+	if profile != nil {
+		// Mark active and return if not outdated.
+		if profile.outdated.IsNotSet() {
+			profile.MarkStillActive()
+			return profile, nil
+		}
+
+		// If outdated, get from database.
+		previousVersion = profile
+	}
+
+	// Get special profile from DB and check if it needs a reset.
+	var created bool
+	profile, err = getProfile(scopedID)
+	switch {
+	case err == nil:
+		// Reset profile if needed.
+		if specialProfileNeedsReset(profile) {
+			profile = createSpecialProfile(id, path)
+			created = true
+		}
+	case !errors.Is(err, database.ErrNotFound):
+		// Warn when fetching from DB fails, and create new profile as fallback.
+		log.Warningf("profile: failed to get special profile %s: %s", id, err)
+		fallthrough
+	default:
+		// Create new profile if it does not exist (or failed to load).
+		profile = createSpecialProfile(id, path)
+		created = true
+	}
+	// Check if creating the special profile was successful.
+	if profile == nil {
+		return nil, errors.New("given ID is not a special profile ID")
+	}
+
+	// Update metadata
+	changed := updateSpecialProfileMetadata(profile, path)
+
+	// Save if created or changed.
+	if created || changed {
+		err := profile.Save()
+		if err != nil {
+			log.Warningf("profile: failed to save special profile %s: %s", scopedID, err)
+		}
+	}
+
+	// Prepare profile for first use.
+
+	// If we are refetching, assign the layered profile from the previous version.
+	// The internal references will be updated when the layered profile checks for updates.
+	if previousVersion != nil && previousVersion.layeredProfile != nil {
+		profile.layeredProfile = previousVersion.layeredProfile
+	}
+
+	// Profiles must have a layered profile, create a new one if it
+	// does not yet exist.
+	if profile.layeredProfile == nil {
+		profile.layeredProfile = NewLayeredProfile(profile)
+	}
+
+	// Add the profile to the currently active profiles.
+	addActiveProfile(profile)
+
+	return profile, nil
+}
+
+func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (changed bool) {
 	// Get new profile name and check if profile is applicable to special handling.
 	var newProfileName, newDescription string
 	switch profile.ID {
@@ -100,7 +190,7 @@ func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (ok, chan
 		newProfileName = PortmasterNotifierProfileName
 		newDescription = PortmasterNotifierProfileDescription
 	default:
-		return false, false
+		return false
 	}
 
 	// Update profile name if needed.
@@ -115,35 +205,52 @@ func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (ok, chan
 		changed = true
 	}
 
-	// Update LinkedPath to new value.
-	if profile.LinkedPath != binaryPath {
-		profile.LinkedPath = binaryPath
+	// Update PresentationPath to new value.
+	if profile.PresentationPath != binaryPath {
+		profile.PresentationPath = binaryPath
 		changed = true
 	}
 
-	return true, changed
+	return changed
 }
 
-func getSpecialProfile(profileID, linkedPath string) *Profile {
+func createSpecialProfile(profileID string, path string) *Profile {
 	switch profileID {
 	case UnidentifiedProfileID:
-		return New(SourceLocal, UnidentifiedProfileID, linkedPath, nil)
+		return New(&Profile{
+			ID:               UnidentifiedProfileID,
+			Source:           SourceLocal,
+			PresentationPath: path,
+		})
+
+	case UnsolicitedProfileID:
+		return New(&Profile{
+			ID:               UnsolicitedProfileID,
+			Source:           SourceLocal,
+			PresentationPath: path,
+		})
 
 	case SystemProfileID:
-		return New(SourceLocal, SystemProfileID, linkedPath, nil)
+		return New(&Profile{
+			ID:               SystemProfileID,
+			Source:           SourceLocal,
+			PresentationPath: path,
+		})
 
 	case SystemResolverProfileID:
-		systemResolverProfile := New(
-			SourceLocal,
-			SystemResolverProfileID,
-			linkedPath,
-			map[string]interface{}{
+		return New(&Profile{
+			ID:               SystemResolverProfileID,
+			Source:           SourceLocal,
+			PresentationPath: path,
+			Config: map[string]interface{}{
 				// Explicitly setting the default action to "permit" will improve the
 				// user experience for people who set the global default to "prompt".
 				// Resolved domain from the system resolver are checked again when
 				// attributed to a connection of a regular process. Otherwise, users
 				// would see two connection prompts for the same domain.
 				CfgOptionDefaultActionKey: "permit",
+				// Explicitly allow incoming connections.
+				CfgOptionBlockInboundKey: status.SecurityLevelOff,
 				// Explicitly allow localhost and answers to multicast protocols that
 				// are commonly used by system resolvers.
 				// TODO: When the Portmaster gains the ability to attribute multicast
@@ -154,6 +261,7 @@ func getSpecialProfile(profileID, linkedPath string) *Profile {
 					"+ LAN UDP/5353", // Allow inbound mDNS requests and multicast replies.
 					"+ LAN UDP/5355", // Allow inbound LLMNR requests and multicast replies.
 					"+ LAN UDP/1900", // Allow inbound SSDP requests and multicast replies.
+					"- *",            // Deny everything else.
 				},
 				// Explicitly disable all filter lists, as these will be checked later
 				// with the attributed connection. As this is the system resolver, this
@@ -161,44 +269,44 @@ func getSpecialProfile(profileID, linkedPath string) *Profile {
 				// the system resolver is used. Users who want to
 				CfgOptionFilterListsKey: []string{},
 			},
-		)
-		return systemResolverProfile
+		})
 
 	case PortmasterProfileID:
-		profile := New(SourceLocal, PortmasterProfileID, linkedPath, nil)
-		profile.Internal = true
-		return profile
+		return New(&Profile{
+			ID:               PortmasterProfileID,
+			Source:           SourceLocal,
+			PresentationPath: path,
+			Internal:         true,
+		})
 
 	case PortmasterAppProfileID:
-		profile := New(
-			SourceLocal,
-			PortmasterAppProfileID,
-			linkedPath,
-			map[string]interface{}{
+		return New(&Profile{
+			ID:               PortmasterAppProfileID,
+			Source:           SourceLocal,
+			PresentationPath: path,
+			Config: map[string]interface{}{
 				CfgOptionDefaultActionKey: "block",
 				CfgOptionEndpointsKey: []string{
 					"+ Localhost",
 					"+ .safing.io",
 				},
 			},
-		)
-		profile.Internal = true
-		return profile
+			Internal: true,
+		})
 
 	case PortmasterNotifierProfileID:
-		profile := New(
-			SourceLocal,
-			PortmasterNotifierProfileID,
-			linkedPath,
-			map[string]interface{}{
+		return New(&Profile{
+			ID:               PortmasterNotifierProfileID,
+			Source:           SourceLocal,
+			PresentationPath: path,
+			Config: map[string]interface{}{
 				CfgOptionDefaultActionKey: "block",
 				CfgOptionEndpointsKey: []string{
 					"+ Localhost",
 				},
 			},
-		)
-		profile.Internal = true
-		return profile
+			Internal: true,
+		})
 
 	default:
 		return nil
@@ -225,7 +333,7 @@ func specialProfileNeedsReset(profile *Profile) bool {
 
 	switch profile.ID {
 	case SystemResolverProfileID:
-		return canBeUpgraded(profile, "20.11.2021")
+		return canBeUpgraded(profile, "21.10.2022")
 	case PortmasterAppProfileID:
 		return canBeUpgraded(profile, "8.9.2021")
 	default:

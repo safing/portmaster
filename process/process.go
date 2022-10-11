@@ -42,13 +42,17 @@ type Process struct {
 	Cwd       string
 	CmdLine   string
 	FirstArg  string
-
-	// SpecialDetail holds special information, the meaning of which can change
-	// based on any of the previous attributes.
-	SpecialDetail string
+	Env       map[string]string
 
 	// Profile attributes.
 	// Once set, these don't change; safe for concurrent access.
+
+	// Tags holds extended information about the (virtual) process, which is used
+	// to find a profile.
+	Tags []profile.Tag
+	// MatchingPath holds an alternative binary path that can be used to find a
+	// profile.
+	MatchingPath string
 
 	// PrimaryProfileID holds the scoped ID of the primary profile.
 	PrimaryProfileID string
@@ -62,6 +66,16 @@ type Process struct {
 	Error     string // Cache errors
 
 	ExecHashes map[string]string
+}
+
+// GetTag returns the process tag with the given ID.
+func (p *Process) GetTag(tagID string) (profile.Tag, bool) {
+	for _, t := range p.Tags {
+		if t.Key == tagID {
+			return t, true
+		}
+	}
+	return profile.Tag{}, false
 }
 
 // Profile returns the assigned layered profile.
@@ -177,7 +191,7 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	}
 
 	// Get process information from the system.
-	pInfo, err := processInfo.NewProcess(int32(pid))
+	pInfo, err := processInfo.NewProcessWithContext(ctx, int32(pid))
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +200,7 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	// net yet implemented for windows
 	if onLinux {
 		var uids []int32
-		uids, err = pInfo.Uids()
+		uids, err = pInfo.UidsWithContext(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get UID for p%d: %w", pid, err)
 		}
@@ -194,7 +208,7 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	}
 
 	// Username
-	process.UserName, err = pInfo.Username()
+	process.UserName, err = pInfo.UsernameWithContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("process: failed to get Username for p%d: %w", pid, err)
 	}
@@ -203,14 +217,14 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	// new.UserHome, err =
 
 	// PPID
-	ppid, err := pInfo.Ppid()
+	ppid, err := pInfo.PpidWithContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get PPID for p%d: %w", pid, err)
 	}
 	process.ParentPid = int(ppid)
 
 	// Path
-	process.Path, err = pInfo.Exe()
+	process.Path, err = pInfo.ExeWithContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Path for p%d: %w", pid, err)
 	}
@@ -222,20 +236,22 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	_, process.ExecName = filepath.Split(process.Path)
 
 	// Current working directory
-	// net yet implemented for windows
-	// new.Cwd, err = pInfo.Cwd()
-	// if err != nil {
-	// 	log.Warningf("process: failed to get Cwd: %w", err)
-	// }
+	// not yet implemented for windows
+	if runtime.GOOS != "windows" {
+		process.Cwd, err = pInfo.Cwd()
+		if err != nil {
+			log.Warningf("process: failed to get Cwd: %s", err)
+		}
+	}
 
 	// Command line arguments
-	process.CmdLine, err = pInfo.Cmdline()
+	process.CmdLine, err = pInfo.CmdlineWithContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Cmdline for p%d: %w", pid, err)
 	}
 
 	// Name
-	process.Name, err = pInfo.Name()
+	process.Name, err = pInfo.NameWithContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Name for p%d: %w", pid, err)
 	}
@@ -243,9 +259,51 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 		process.Name = process.ExecName
 	}
 
-	// OS specifics
-	process.specialOSInit()
+	// Get all environment variables
+	env, err := pInfo.EnvironWithContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the environment for p%d: %w", pid, err)
+	}
+	// Split env variables in key and value.
+	process.Env = make(map[string]string, len(env))
+	for _, entry := range env {
+		splitted := strings.SplitN(entry, "=", 2)
+		if len(splitted) == 2 {
+			process.Env[strings.Trim(splitted[0], `'"`)] = strings.Trim(splitted[1], `'"`)
+		}
+	}
+
+	// Add process tags.
+	process.addTags()
+	if len(process.Tags) > 0 {
+		log.Tracer(ctx).Debugf("profile: added tags: %+v", process.Tags)
+	}
 
 	process.Save()
 	return process, nil
 }
+
+// MatchingData returns the matching data for the process.
+func (p *Process) MatchingData() *MatchingData {
+	return &MatchingData{p}
+}
+
+// MatchingData provides a interface compatible view on the process for profile matching.
+type MatchingData struct {
+	p *Process
+}
+
+// Tags returns process.Tags.
+func (md *MatchingData) Tags() []profile.Tag { return md.p.Tags }
+
+// Env returns process.Env.
+func (md *MatchingData) Env() map[string]string { return md.p.Env }
+
+// Path returns process.Path.
+func (md *MatchingData) Path() string { return md.p.Path }
+
+// MatchingPath returns process.MatchingPath.
+func (md *MatchingData) MatchingPath() string { return md.p.MatchingPath }
+
+// Cmdline returns the command line of the process.
+func (md *MatchingData) Cmdline() string { return md.p.CmdLine }
