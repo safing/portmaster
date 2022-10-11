@@ -57,7 +57,7 @@ package profile
 // 				lastError = fmt.Errorf("constructed path \"%s\" from framework is not absolute", buildPath)
 // 				continue
 // 			}
-// 			if _, err := os.Stat(buildPath); os.IsNotExist(err) {
+// 			if _, err := os.Stat(buildPath); errors.Is(err, fs.ErrNotExist) {
 // 				lastError = fmt.Errorf("constructed path \"%s\" does not exist", buildPath)
 // 				continue
 // 			}

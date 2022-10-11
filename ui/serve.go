@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -125,7 +125,7 @@ func (bs *archiveServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func ServeFileFromArchive(w http.ResponseWriter, r *http.Request, archiveName string, archiveFS *zipfs.FileSystem, path string) {
 	readCloser, err := archiveFS.Open(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			// Check if there is a base index.html file we can serve instead.
 			var indexErr error
 			path = "index.html"

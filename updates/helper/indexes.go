@@ -1,7 +1,9 @@
 package helper
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -106,13 +108,13 @@ func indexExists(registry *updater.ResourceRegistry, indexPath string) bool {
 func deleteIndex(registry *updater.ResourceRegistry, indexPath string) error {
 	// Remove index itself.
 	err := os.Remove(filepath.Join(registry.StorageDir().Path, indexPath))
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 
 	// Remove any accompanying signature.
 	err = os.Remove(filepath.Join(registry.StorageDir().Path, indexPath+filesig.Extension))
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 

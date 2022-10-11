@@ -116,9 +116,9 @@ func resetAllConnectionVerdicts() {
 
 	// Create tracing context.
 	ctx, tracer := log.AddTracer(context.Background())
-	defer tracer.Submit()
 
 	// Re-evaluate all connections.
+	var changedVerdicts int
 	for _, conn := range network.GetAllConnections() {
 		func() {
 			conn.Lock()
@@ -129,11 +129,11 @@ func resetAllConnectionVerdicts() {
 			// - Redirected DNS requests
 			// - SPN Uplink to Home Hub
 			if conn.Internal {
-				log.Tracef("skipping internal connection %s", conn)
+				tracer.Tracef("filter: skipping internal connection %s", conn)
 				return
 			}
 
-			log.Tracer(ctx).Debugf("filter: re-evaluating verdict of %s", conn)
+			tracer.Debugf("filter: re-evaluating verdict of %s", conn)
 			previousVerdict := conn.Verdict.Firewall
 
 			// Apply privacy filter and check tunneling.
@@ -143,7 +143,7 @@ func resetAllConnectionVerdicts() {
 			if conn.Verdict.Active != network.VerdictRerouteToTunnel && conn.TunnelContext != nil {
 				err := conn.TunnelContext.StopTunnel()
 				if err != nil {
-					log.Debugf("filter: failed to stopped unneeded tunnel: %s", err)
+					tracer.Debugf("filter: failed to stopped unneeded tunnel: %s", err)
 				}
 			}
 
@@ -151,11 +151,14 @@ func resetAllConnectionVerdicts() {
 			if conn.Verdict.Firewall != previousVerdict {
 				conn.Save()
 				tracer.Infof("filter: verdict of connection %s changed from %s to %s", conn, previousVerdict.Verb(), conn.VerdictVerb())
+				changedVerdicts++
 			} else {
 				tracer.Tracef("filter: verdict to connection %s unchanged at %s", conn, conn.VerdictVerb())
 			}
 		}()
 	}
+	tracer.Infof("profile: changed verdict on %d connections", changedVerdicts)
+	tracer.Submit()
 
 	err := interception.ResetVerdictOfAllConnections()
 	if err != nil {

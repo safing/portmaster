@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"os/user"
@@ -14,26 +15,12 @@ import (
 )
 
 func checkAndCreateInstanceLock(path, name string, perUser bool) (pid int32, err error) {
-	var lockFilePath string
-	if perUser {
-		// Get user ID for per-user lock file.
-		var userID string
-		usr, err := user.Current()
-		if err != nil {
-			log.Printf("failed to get current user: %s\n", err)
-			userID = "no-user"
-		} else {
-			userID = usr.Uid
-		}
-		lockFilePath = filepath.Join(dataRoot.Path, path, fmt.Sprintf("%s-%s-lock.pid", name, userID))
-	} else {
-		lockFilePath = filepath.Join(dataRoot.Path, path, fmt.Sprintf("%s-lock.pid", name))
-	}
+	lockFilePath := getLockFilePath(path, name, perUser)
 
 	// read current pid file
 	data, err := os.ReadFile(lockFilePath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			// create new lock
 			return 0, createInstanceLock(lockFilePath)
 		}
@@ -100,7 +87,23 @@ func createInstanceLock(lockFilePath string) error {
 	return nil
 }
 
-func deleteInstanceLock(path, name string) error {
-	lockFilePath := filepath.Join(dataRoot.Path, path, fmt.Sprintf("%s-lock.pid", name))
-	return os.Remove(lockFilePath)
+func deleteInstanceLock(path, name string, perUser bool) error {
+	return os.Remove(getLockFilePath(path, name, perUser))
+}
+
+func getLockFilePath(path, name string, perUser bool) string {
+	if !perUser {
+		return filepath.Join(dataRoot.Path, path, fmt.Sprintf("%s-lock.pid", name))
+	}
+
+	// Get user ID for per-user lock file.
+	var userID string
+	usr, err := user.Current()
+	if err != nil {
+		log.Printf("failed to get current user: %s\n", err)
+		userID = "no-user"
+	} else {
+		userID = usr.Uid
+	}
+	return filepath.Join(dataRoot.Path, path, fmt.Sprintf("%s-%s-lock.pid", name, userID))
 }

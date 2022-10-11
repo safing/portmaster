@@ -221,7 +221,7 @@ profileFeed:
 	}
 
 	// Check if this profile is already active and return the active version instead.
-	if activeProfile := getActiveProfile(profile.ScopedID()); activeProfile != nil {
+	if activeProfile := getActiveProfile(profile.ScopedID()); activeProfile != nil && !activeProfile.IsOutdated() {
 		return activeProfile, nil
 	}
 
