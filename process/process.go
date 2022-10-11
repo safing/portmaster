@@ -238,7 +238,7 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	// Current working directory
 	// not yet implemented for windows
 	if runtime.GOOS != "windows" {
-		process.Cwd, err = pInfo.Cwd()
+		process.Cwd, err = pInfo.CwdWithContext(ctx)
 		if err != nil {
 			log.Warningf("process: failed to get Cwd: %s", err)
 		}
