@@ -63,7 +63,7 @@ func startAPIAuth() {
 }
 
 func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, err error) {
-	if devMode() {
+	if configReady.IsSet() && devMode() {
 		return &api.AuthToken{
 			Read:  api.PermitSelf,
 			Write: api.PermitSelf,

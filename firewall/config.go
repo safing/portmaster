@@ -1,6 +1,8 @@
 package firewall
 
 import (
+	"github.com/tevino/abool"
+
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/notifications"
@@ -119,6 +121,8 @@ var (
 	filterEnabled     config.BoolOption
 	tunnelEnabled     config.BoolOption
 	useCommunityNodes config.BoolOption
+
+	configReady = abool.New()
 )
 
 func getConfig() {
@@ -128,4 +132,6 @@ func getConfig() {
 	filterEnabled = config.Concurrent.GetAsBool(CfgOptionEnableFilterKey, true)
 	tunnelEnabled = config.Concurrent.GetAsBool(captain.CfgOptionEnableSPNKey, false)
 	useCommunityNodes = config.Concurrent.GetAsBool(captain.CfgOptionUseCommunityNodesKey, true)
+
+	configReady.Set()
 }
