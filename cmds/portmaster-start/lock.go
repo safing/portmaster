@@ -33,7 +33,7 @@ func checkAndCreateInstanceLock(path, name string, perUser bool) (pid int32, err
 	// read current pid file
 	data, err := os.ReadFile(lockFilePath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			// create new lock
 			return 0, createInstanceLock(lockFilePath)
 		}

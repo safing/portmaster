@@ -3,7 +3,9 @@
 package proc
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"time"
 
@@ -103,7 +105,7 @@ func findSocketFromPid(pid int, socketName string) bool {
 	for _, entry := range entries {
 		link, err := os.Readlink(fmt.Sprintf("/proc/%d/fd/%s", pid, entry))
 		if err != nil {
-			if !os.IsNotExist(err) {
+			if !errors.Is(err, fs.ErrNotExist) {
 				log.Warningf("proc: failed to read link /proc/%d/fd/%s: %s", pid, entry, err)
 			}
 			continue
@@ -122,7 +124,7 @@ func findSocketFromPid(pid int, socketName string) bool {
 func readDirNames(dir string) (names []string) {
 	file, err := os.Open(dir)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, fs.ErrNotExist) {
 			log.Warningf("proc: could not open directory %s: %s", dir, err)
 		}
 		return

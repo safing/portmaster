@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,7 +80,7 @@ func sign(cmd *cobra.Command, args []string) error {
 			// Check if there is an existing signature.
 			_, err := os.Stat(file.Path() + filesig.Extension)
 			switch {
-			case err == nil || os.IsExist(err):
+			case err == nil || errors.Is(err, fs.ErrExist):
 				// If the file exists, just verify.
 				fileData, err := filesig.VerifyFile(
 					file.Path(),
@@ -97,7 +98,7 @@ func sign(cmd *cobra.Command, args []string) error {
 					verified++
 				}
 
-			case os.IsNotExist(err):
+			case errors.Is(err, fs.ErrNotExist):
 				// Attempt to sign file.
 				fileData, err := filesig.SignFile(
 					file.Path(),
@@ -123,10 +124,10 @@ func sign(cmd *cobra.Command, args []string) error {
 	}
 
 	if verified > 0 {
-		fmt.Printf("[STAT] verified %d files", verified)
+		fmt.Printf("[STAT] verified %d files\n", verified)
 	}
 	if signed > 0 {
-		fmt.Printf("[STAT] signed %d files", signed)
+		fmt.Printf("[STAT] signed %d files\n", signed)
 	}
 	if fails > 0 {
 		return fmt.Errorf("signing or verification failed on %d files", fails)
@@ -170,7 +171,7 @@ func signIndex(cmd *cobra.Command, args []string) error {
 		// Check if there is an existing signature.
 		_, err := os.Stat(sigFile)
 		switch {
-		case err == nil || os.IsExist(err):
+		case err == nil || errors.Is(err, fs.ErrExist):
 			// If the file exists, just verify.
 			fileData, err := filesig.VerifyFile(
 				file,
@@ -189,7 +190,7 @@ func signIndex(cmd *cobra.Command, args []string) error {
 			}
 
 			fallthrough
-		case os.IsNotExist(err):
+		case errors.Is(err, fs.ErrNotExist):
 			// Attempt to sign file.
 			fileData, err := filesig.SignFile(
 				file,

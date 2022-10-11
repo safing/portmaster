@@ -3,7 +3,9 @@
 package proc
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strconv"
 	"sync"
@@ -50,7 +52,7 @@ func updatePids() {
 
 			statData, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
 			if err != nil {
-				if !os.IsNotExist(err) {
+				if !errors.Is(err, fs.ErrNotExist) {
 					log.Warningf("proc: could not stat /proc/%d: %s", pid, err)
 				}
 				continue entryLoop
