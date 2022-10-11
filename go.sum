@@ -110,10 +110,10 @@ github.com/hashicorp/go-version v1.6.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
 github.com/hinshun/vt10x v0.0.0-20220119200601-820417d04eec/go.mod h1:Q48J4R4DvxnHolD5P8pOtXigYlRuPLGl6moFx3ulM68=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
-github.com/jackc/puddle/v2 v2.0.0-beta.1 h1:Y4Ao+kFWANtDhWUkdw1JcbH+x84/aq6WUfhVQ1wdib8=
-github.com/jackc/puddle/v2 v2.0.0-beta.1/go.mod h1:itE7ZJY8xnoo0JqJEpSMprN0f+NQkMCuEV/N9j8h0oc=
 github.com/inconshreveable/mousetrap v1.0.1 h1:U3uMjPSQEBMNp1lFxmllqCPM6P5u/Xq7Pgzkat/bFNc=
 github.com/inconshreveable/mousetrap v1.0.1/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
+github.com/jackc/puddle/v2 v2.0.0-beta.1 h1:Y4Ao+kFWANtDhWUkdw1JcbH+x84/aq6WUfhVQ1wdib8=
+github.com/jackc/puddle/v2 v2.0.0-beta.1/go.mod h1:itE7ZJY8xnoo0JqJEpSMprN0f+NQkMCuEV/N9j8h0oc=
 github.com/josharian/native v0.0.0-20200817173448-b6b71def0850/go.mod h1:7X/raswPFr05uY3HiLlYeyQntB6OO7E/d2Cu7qoaN2w=
 github.com/josharian/native v1.0.0 h1:Ts/E8zCSEsG17dUqv7joXJFybuMLjQfWE04tsBODTxk=
 github.com/josharian/native v1.0.0/go.mod h1:7X/raswPFr05uY3HiLlYeyQntB6OO7E/d2Cu7qoaN2w=
@@ -191,6 +191,8 @@ github.com/safing/jess v0.3.0/go.mod h1:JbYsPk5iJZx0OXDZeMcjS9qEdkGVUg+DCA8Fw2Ld
 github.com/safing/portbase v0.15.2/go.mod h1:5bHi99fz7Hh/wOsZUOI631WF9ePSHk57c4fdlOMS91Y=
 github.com/safing/portbase v0.16.0 h1:oGu5xVuMyzkG6Fht+kKbyHvA8CEJEexuCvsYQuyh6vs=
 github.com/safing/portbase v0.16.0/go.mod h1:mzNCWqPbO7vIYbbK5PElGbudwd2vx4YPNawymL8Aro8=
+github.com/safing/portbase v0.16.1 h1:P3nSP76EEa1GnkruzZDau0deh64Va7J5bJQ66CB7RVk=
+github.com/safing/portbase v0.16.1/go.mod h1:mzNCWqPbO7vIYbbK5PElGbudwd2vx4YPNawymL8Aro8=
 github.com/safing/spn v0.5.1 h1:SPTG9S7BfUBpnrg8pmTFsaSlRowSljlZ0hT4NQFHnjE=
 github.com/safing/spn v0.5.1/go.mod h1:IuQNzXhR8sSi7sq4KXIH1rK9N3Z94A3nRgItjfDB6Dg=
 github.com/safing/spn v0.5.2 h1:Gl82Fhy8+tKAarLGakkug+xzuBUcjeA39Q495pfnDWk=
