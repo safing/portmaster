@@ -172,7 +172,7 @@ func run(opts *Options, cmdArgs []string) (err error) {
 			return fmt.Errorf("another instance of %s is already running: PID %d", opts.Name, pid)
 		}
 		defer func() {
-			err := deleteInstanceLock(opts.LockPathPrefix, opts.ShortIdentifier)
+			err := deleteInstanceLock(opts.LockPathPrefix, opts.ShortIdentifier, opts.LockPerUser)
 			if err != nil {
 				log.Printf("failed to delete instance lock: %s\n", err)
 			}
