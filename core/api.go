@@ -25,9 +25,10 @@ import (
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:        "core/shutdown",
-		Write:       api.PermitSelf,
-		BelongsTo:   module,
+		Path:  "core/shutdown",
+		Write: api.PermitSelf,
+		// Do NOT register as belonging to the module, so that the API is available
+		// when something fails during starting of this module or a dependency.
 		ActionFunc:  shutdown,
 		Name:        "Shut Down Portmaster",
 		Description: "Shut down the Portmaster Core Service and all UI components.",
@@ -36,9 +37,10 @@ func registerAPIEndpoints() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:        "core/restart",
-		Write:       api.PermitAdmin,
-		BelongsTo:   module,
+		Path:  "core/restart",
+		Write: api.PermitAdmin,
+		// Do NOT register as belonging to the module, so that the API is available
+		// when something fails during starting of this module or a dependency.
 		ActionFunc:  restart,
 		Name:        "Restart Portmaster",
 		Description: "Restart the Portmaster Core Service.",
