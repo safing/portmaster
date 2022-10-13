@@ -1,10 +1,8 @@
 package profile
 
 import (
-	"errors"
 	"time"
 
-	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/status"
 )
@@ -77,91 +75,19 @@ If you think you might have messed up the settings of the System DNS Client, jus
 	PortmasterNotifierProfileDescription = `This is the Portmaster UI Tray Notifier.`
 )
 
-// GetSpecialProfile fetches a special profile. This function ensures that the loaded profile
-// is shared among all callers. Always provide all available data points.
-func GetSpecialProfile(id string, path string) ( //nolint:gocognit
-	profile *Profile,
-	err error,
-) {
-	// Check if we have an ID.
-	if id == "" {
-		return nil, errors.New("cannot get special profile without ID")
-	}
-	scopedID := makeScopedID(SourceLocal, id)
-
-	// Globally lock getting a profile.
-	// This does not happen too often, and it ensures we really have integrity
-	// and no race conditions.
-	getProfileLock.Lock()
-	defer getProfileLock.Unlock()
-
-	// Check if there already is an active profile.
-	var previousVersion *Profile
-	profile = getActiveProfile(scopedID)
-	if profile != nil {
-		// Mark active and return if not outdated.
-		if profile.outdated.IsNotSet() {
-			profile.MarkStillActive()
-			return profile, nil
-		}
-
-		// If outdated, get from database.
-		previousVersion = profile
-	}
-
-	// Get special profile from DB and check if it needs a reset.
-	var created bool
-	profile, err = getProfile(scopedID)
-	switch {
-	case err == nil:
-		// Reset profile if needed.
-		if specialProfileNeedsReset(profile) {
-			profile = createSpecialProfile(id, path)
-			created = true
-		}
-	case !errors.Is(err, database.ErrNotFound):
-		// Warn when fetching from DB fails, and create new profile as fallback.
-		log.Warningf("profile: failed to get special profile %s: %s", id, err)
-		fallthrough
+func isSpecialProfileID(id string) bool {
+	switch id {
+	case UnidentifiedProfileID,
+		UnsolicitedProfileID,
+		SystemProfileID,
+		SystemResolverProfileID,
+		PortmasterProfileID,
+		PortmasterAppProfileID,
+		PortmasterNotifierProfileID:
+		return true
 	default:
-		// Create new profile if it does not exist (or failed to load).
-		profile = createSpecialProfile(id, path)
-		created = true
+		return false
 	}
-	// Check if creating the special profile was successful.
-	if profile == nil {
-		return nil, errors.New("given ID is not a special profile ID")
-	}
-
-	// Update metadata
-	changed := updateSpecialProfileMetadata(profile, path)
-
-	// Save if created or changed.
-	if created || changed {
-		err := profile.Save()
-		if err != nil {
-			log.Warningf("profile: failed to save special profile %s: %s", scopedID, err)
-		}
-	}
-
-	// Prepare profile for first use.
-
-	// If we are refetching, assign the layered profile from the previous version.
-	// The internal references will be updated when the layered profile checks for updates.
-	if previousVersion != nil && previousVersion.layeredProfile != nil {
-		profile.layeredProfile = previousVersion.layeredProfile
-	}
-
-	// Profiles must have a layered profile, create a new one if it
-	// does not yet exist.
-	if profile.layeredProfile == nil {
-		profile.layeredProfile = NewLayeredProfile(profile)
-	}
-
-	// Add the profile to the currently active profiles.
-	addActiveProfile(profile)
-
-	return profile, nil
 }
 
 func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (changed bool) {
