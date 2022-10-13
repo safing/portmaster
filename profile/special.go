@@ -174,7 +174,7 @@ func createSpecialProfile(profileID string, path string) *Profile {
 				// Resolved domain from the system resolver are checked again when
 				// attributed to a connection of a regular process. Otherwise, users
 				// would see two connection prompts for the same domain.
-				CfgOptionDefaultActionKey: "permit",
+				CfgOptionDefaultActionKey: DefaultActionPermitValue,
 				// Explicitly allow incoming connections.
 				CfgOptionBlockInboundKey: status.SecurityLevelOff,
 				// Explicitly allow localhost and answers to multicast protocols that
@@ -211,7 +211,7 @@ func createSpecialProfile(profileID string, path string) *Profile {
 			Source:           SourceLocal,
 			PresentationPath: path,
 			Config: map[string]interface{}{
-				CfgOptionDefaultActionKey: "block",
+				CfgOptionDefaultActionKey: DefaultActionBlockValue,
 				CfgOptionEndpointsKey: []string{
 					"+ Localhost",
 					"+ .safing.io",
@@ -226,7 +226,7 @@ func createSpecialProfile(profileID string, path string) *Profile {
 			Source:           SourceLocal,
 			PresentationPath: path,
 			Config: map[string]interface{}{
-				CfgOptionDefaultActionKey: "block",
+				CfgOptionDefaultActionKey: DefaultActionBlockValue,
 				CfgOptionEndpointsKey: []string{
 					"+ Localhost",
 				},
