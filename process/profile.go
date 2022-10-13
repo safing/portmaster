@@ -27,18 +27,10 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	// If not, continue with loading the profile.
 	log.Tracer(ctx).Trace("process: loading profile")
 
-	// Check if there is a special profile for this process.
-	localProfile, err := p.loadSpecialProfile(ctx)
+	// Get special or regular profile.
+	localProfile, err := profile.GetLocalProfile(p.getSpecialProfileID(), p.MatchingData(), p.CreateProfileCallback)
 	if err != nil {
-		return false, fmt.Errorf("failed to load special profile: %w", err)
-	}
-
-	// Otherwise, find a regular profile for the process.
-	if localProfile == nil {
-		localProfile, err = profile.GetLocalProfile("", p.MatchingData(), p.CreateProfileCallback)
-		if err != nil {
-			return false, fmt.Errorf("failed to find profile: %w", err)
-		}
+		return false, fmt.Errorf("failed to find profile: %w", err)
 	}
 
 	// Assign profile to process.
@@ -48,10 +40,9 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	return true, nil
 }
 
-// loadSpecialProfile attempts to load a special profile.
-func (p *Process) loadSpecialProfile(_ context.Context) (*profile.Profile, error) {
+// getSpecialProfileID returns the special profile ID for the process, if any.
+func (p *Process) getSpecialProfileID() (specialProfileID string) {
 	// Check if we need a special profile.
-	var specialProfileID string
 	switch p.Pid {
 	case UnidentifiedProcessID:
 		specialProfileID = profile.UnidentifiedProfileID
@@ -103,11 +94,5 @@ func (p *Process) loadSpecialProfile(_ context.Context) (*profile.Profile, error
 		}
 	}
 
-	// Check if a special profile should be applied.
-	if specialProfileID == "" {
-		return nil, nil
-	}
-
-	// Return special profile.
-	return profile.GetSpecialProfile(specialProfileID, p.Path)
+	return specialProfileID
 }

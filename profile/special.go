@@ -1,10 +1,8 @@
 package profile
 
 import (
-	"errors"
 	"time"
 
-	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/status"
 )
@@ -13,7 +11,7 @@ const (
 	// UnidentifiedProfileID is the profile ID used for unidentified processes.
 	UnidentifiedProfileID = "_unidentified"
 	// UnidentifiedProfileName is the name used for unidentified processes.
-	UnidentifiedProfileName = "Unidentified App"
+	UnidentifiedProfileName = "Other Connections"
 	// UnidentifiedProfileDescription is the description used for unidentified processes.
 	UnidentifiedProfileDescription = `Connections that could not be attributed to a specific app.
 
@@ -77,91 +75,19 @@ If you think you might have messed up the settings of the System DNS Client, jus
 	PortmasterNotifierProfileDescription = `This is the Portmaster UI Tray Notifier.`
 )
 
-// GetSpecialProfile fetches a special profile. This function ensures that the loaded profile
-// is shared among all callers. Always provide all available data points.
-func GetSpecialProfile(id string, path string) ( //nolint:gocognit
-	profile *Profile,
-	err error,
-) {
-	// Check if we have an ID.
-	if id == "" {
-		return nil, errors.New("cannot get special profile without ID")
-	}
-	scopedID := makeScopedID(SourceLocal, id)
-
-	// Globally lock getting a profile.
-	// This does not happen too often, and it ensures we really have integrity
-	// and no race conditions.
-	getProfileLock.Lock()
-	defer getProfileLock.Unlock()
-
-	// Check if there already is an active profile.
-	var previousVersion *Profile
-	profile = getActiveProfile(scopedID)
-	if profile != nil {
-		// Mark active and return if not outdated.
-		if profile.outdated.IsNotSet() {
-			profile.MarkStillActive()
-			return profile, nil
-		}
-
-		// If outdated, get from database.
-		previousVersion = profile
-	}
-
-	// Get special profile from DB and check if it needs a reset.
-	var created bool
-	profile, err = getProfile(scopedID)
-	switch {
-	case err == nil:
-		// Reset profile if needed.
-		if specialProfileNeedsReset(profile) {
-			profile = createSpecialProfile(id, path)
-			created = true
-		}
-	case !errors.Is(err, database.ErrNotFound):
-		// Warn when fetching from DB fails, and create new profile as fallback.
-		log.Warningf("profile: failed to get special profile %s: %s", id, err)
-		fallthrough
+func isSpecialProfileID(id string) bool {
+	switch id {
+	case UnidentifiedProfileID,
+		UnsolicitedProfileID,
+		SystemProfileID,
+		SystemResolverProfileID,
+		PortmasterProfileID,
+		PortmasterAppProfileID,
+		PortmasterNotifierProfileID:
+		return true
 	default:
-		// Create new profile if it does not exist (or failed to load).
-		profile = createSpecialProfile(id, path)
-		created = true
+		return false
 	}
-	// Check if creating the special profile was successful.
-	if profile == nil {
-		return nil, errors.New("given ID is not a special profile ID")
-	}
-
-	// Update metadata
-	changed := updateSpecialProfileMetadata(profile, path)
-
-	// Save if created or changed.
-	if created || changed {
-		err := profile.Save()
-		if err != nil {
-			log.Warningf("profile: failed to save special profile %s: %s", scopedID, err)
-		}
-	}
-
-	// Prepare profile for first use.
-
-	// If we are refetching, assign the layered profile from the previous version.
-	// The internal references will be updated when the layered profile checks for updates.
-	if previousVersion != nil && previousVersion.layeredProfile != nil {
-		profile.layeredProfile = previousVersion.layeredProfile
-	}
-
-	// Profiles must have a layered profile, create a new one if it
-	// does not yet exist.
-	if profile.layeredProfile == nil {
-		profile.layeredProfile = NewLayeredProfile(profile)
-	}
-
-	// Add the profile to the currently active profiles.
-	addActiveProfile(profile)
-
-	return profile, nil
 }
 
 func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (changed bool) {
@@ -248,7 +174,7 @@ func createSpecialProfile(profileID string, path string) *Profile {
 				// Resolved domain from the system resolver are checked again when
 				// attributed to a connection of a regular process. Otherwise, users
 				// would see two connection prompts for the same domain.
-				CfgOptionDefaultActionKey: "permit",
+				CfgOptionDefaultActionKey: DefaultActionPermitValue,
 				// Explicitly allow incoming connections.
 				CfgOptionBlockInboundKey: status.SecurityLevelOff,
 				// Explicitly allow localhost and answers to multicast protocols that
@@ -276,7 +202,29 @@ func createSpecialProfile(profileID string, path string) *Profile {
 			ID:               PortmasterProfileID,
 			Source:           SourceLocal,
 			PresentationPath: path,
-			Internal:         true,
+			Config: map[string]interface{}{
+				// In case anything slips through the internal self-allow, be sure to
+				// allow everything explicitly.
+				// Blocking connections here can lead to a very literal deadlock.
+				// This can currently happen, as fast-tracked connections are also
+				// reset in the OS integration and might show up in the connection
+				// handling if a packet in the other direction hits the firewall first.
+				CfgOptionDefaultActionKey:      DefaultActionPermitValue,
+				CfgOptionBlockScopeInternetKey: status.SecurityLevelOff,
+				CfgOptionBlockScopeLANKey:      status.SecurityLevelOff,
+				CfgOptionBlockScopeLocalKey:    status.SecurityLevelOff,
+				CfgOptionBlockP2PKey:           status.SecurityLevelOff,
+				CfgOptionBlockInboundKey:       status.SecurityLevelOff,
+				CfgOptionEndpointsKey: []string{
+					"+ *",
+				},
+				CfgOptionServiceEndpointsKey: []string{
+					"+ Localhost",
+					"+ LAN",
+					"- *",
+				},
+			},
+			Internal: true,
 		})
 
 	case PortmasterAppProfileID:
@@ -285,7 +233,7 @@ func createSpecialProfile(profileID string, path string) *Profile {
 			Source:           SourceLocal,
 			PresentationPath: path,
 			Config: map[string]interface{}{
-				CfgOptionDefaultActionKey: "block",
+				CfgOptionDefaultActionKey: DefaultActionBlockValue,
 				CfgOptionEndpointsKey: []string{
 					"+ Localhost",
 					"+ .safing.io",
@@ -300,7 +248,7 @@ func createSpecialProfile(profileID string, path string) *Profile {
 			Source:           SourceLocal,
 			PresentationPath: path,
 			Config: map[string]interface{}{
-				CfgOptionDefaultActionKey: "block",
+				CfgOptionDefaultActionKey: DefaultActionBlockValue,
 				CfgOptionEndpointsKey: []string{
 					"+ Localhost",
 				},
@@ -333,6 +281,8 @@ func specialProfileNeedsReset(profile *Profile) bool {
 
 	switch profile.ID {
 	case SystemResolverProfileID:
+		return canBeUpgraded(profile, "21.10.2022")
+	case PortmasterProfileID:
 		return canBeUpgraded(profile, "21.10.2022")
 	case PortmasterAppProfileID:
 		return canBeUpgraded(profile, "8.9.2021")

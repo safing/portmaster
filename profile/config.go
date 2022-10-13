@@ -23,6 +23,10 @@ var (
 	cfgOptionDefaultAction      config.StringOption
 	cfgOptionDefaultActionOrder = 1
 
+	DefaultActionPermitValue = "permit"
+	DefaultActionBlockValue  = "block"
+	DefaultActionAskValue    = "ask"
+
 	// Setting "Prompt Desktop Notifications" at order 2.
 	// Setting "Prompt Timeout" at order 3.
 
@@ -182,7 +186,7 @@ func registerConfiguration() error { //nolint:maintidx
 		Key:          CfgOptionDefaultActionKey,
 		Description:  `The default network action is applied when nothing else allows or blocks an outgoing connection. Incoming connections are always blocked by default.`,
 		OptType:      config.OptTypeString,
-		DefaultValue: "permit",
+		DefaultValue: DefaultActionPermitValue,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
 			config.DisplayOrderAnnotation: cfgOptionDefaultActionOrder,
@@ -191,17 +195,17 @@ func registerConfiguration() error { //nolint:maintidx
 		PossibleValues: []config.PossibleValue{
 			{
 				Name:        "Allow",
-				Value:       "permit",
+				Value:       DefaultActionPermitValue,
 				Description: "Allow all connections",
 			},
 			{
 				Name:        "Block",
-				Value:       "block",
+				Value:       DefaultActionBlockValue,
 				Description: "Block all connections",
 			},
 			{
 				Name:        "Prompt",
-				Value:       "ask",
+				Value:       DefaultActionAskValue,
 				Description: "Prompt for decisions",
 			},
 		},
@@ -209,7 +213,7 @@ func registerConfiguration() error { //nolint:maintidx
 	if err != nil {
 		return err
 	}
-	cfgOptionDefaultAction = config.Concurrent.GetAsString(CfgOptionDefaultActionKey, "permit")
+	cfgOptionDefaultAction = config.Concurrent.GetAsString(CfgOptionDefaultActionKey, DefaultActionPermitValue)
 	cfgStringOptions[CfgOptionDefaultActionKey] = cfgOptionDefaultAction
 
 	// Disable Auto Permit

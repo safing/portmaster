@@ -58,9 +58,9 @@ var defaultDeciders = []deciderFn{
 	checkAutoPermitRelated,
 }
 
-// DecideOnConnection makes a decision about a connection.
+// decideOnConnection makes a decision about a connection.
 // When called, the connection and profile is already locked.
-func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
+func decideOnConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
 	// Check if we have a process and profile.
 	layeredProfile := conn.Process().Profile()
 	if layeredProfile == nil {
@@ -141,15 +141,34 @@ func runDeciders(ctx context.Context, selectedDeciders []deciderFn, conn *networ
 // checkPortmasterConnection allows all connection that originate from
 // portmaster itself.
 func checkPortmasterConnection(ctx context.Context, conn *network.Connection, _ *profile.LayeredProfile, _ packet.Packet) bool {
-	// Grant own outgoing connections.
-	if conn.Process().Pid == ownPID && !conn.Inbound {
-		log.Tracer(ctx).Infof("filter: granting own connection %s", conn)
-		conn.Accept("connection by Portmaster", noReasonOptionKey)
-		conn.Internal = true
-		return true
+	// Grant own outgoing or local connections.
+
+	// Blocking our own connections can lead to a very literal deadlock.
+	// This can currently happen, as fast-tracked connections are also
+	// reset in the OS integration and might show up in the connection
+	// handling if a packet in the other direction hits the firewall first.
+
+	// Ignore other processes.
+	if conn.Process().Pid != ownPID {
+		return false
 	}
 
-	return false
+	// Ignore inbound connection if non-local.
+	if conn.Inbound {
+		myIP, err := netenv.IsMyIP(conn.Entity.IP)
+		if err != nil {
+			log.Tracer(ctx).Debugf("filter: failed to check if %s is own IP for granting own connection: %s", conn.Entity.IP, err)
+			return false
+		}
+		if !myIP {
+			return false
+		}
+	}
+
+	log.Tracer(ctx).Infof("filter: granting own connection %s", conn)
+	conn.Accept("connection by Portmaster", noReasonOptionKey)
+	conn.Internal = true
+	return true
 }
 
 // checkSelfCommunication checks if the process is communicating with itself.

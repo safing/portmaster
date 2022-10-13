@@ -112,7 +112,7 @@ func interceptionPrep() error {
 func resetAllConnectionVerdicts() {
 	// Resetting will force all the connection to be evaluated by the firewall again
 	// this will set new verdicts if configuration was update or spn has been disabled or enabled.
-	log.Info("interception: marking all connections for re-evaluation")
+	log.Info("interception: re-evaluating all connections")
 
 	// Create tracing context.
 	ctx, tracer := log.AddTracer(context.Background())
@@ -137,7 +137,7 @@ func resetAllConnectionVerdicts() {
 			previousVerdict := conn.Verdict.Firewall
 
 			// Apply privacy filter and check tunneling.
-			filterConnection(ctx, conn, nil)
+			FilterConnection(ctx, conn, nil, true, true)
 
 			// Stop existing SPN tunnel if not needed anymore.
 			if conn.Verdict.Active != network.VerdictRerouteToTunnel && conn.TunnelContext != nil {
@@ -157,7 +157,7 @@ func resetAllConnectionVerdicts() {
 			}
 		}()
 	}
-	tracer.Infof("profile: changed verdict on %d connections", changedVerdicts)
+	tracer.Infof("filter: changed verdict on %d connections", changedVerdicts)
 	tracer.Submit()
 
 	err := interception.ResetVerdictOfAllConnections()
@@ -437,14 +437,17 @@ func fastTrackedPermit(pkt packet.Packet) (handled bool) {
 }
 
 func initialHandler(conn *network.Connection, pkt packet.Packet) {
-	log.Tracer(pkt.Ctx()).Trace("filter: handing over to connection-based handler")
+	filterConnection := true
 
+	log.Tracer(pkt.Ctx()).Trace("filter: handing over to connection-based handler")
 	// Check for special (internal) connection cases.
 	switch {
 	case !conn.Inbound && localPortIsPreAuthenticated(conn.Entity.Protocol, conn.LocalPort):
 		// Approve connection.
 		conn.Accept("connection by Portmaster", noReasonOptionKey)
 		conn.Internal = true
+		filterConnection = false
+		log.Tracer(pkt.Ctx()).Infof("filter: granting own pre-authenticated connection %s", conn)
 
 		// Redirect outbound DNS packets if enabled,
 	case dnsQueryInterception() &&
@@ -461,9 +464,9 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 			conn.Entity.IPScope == netutils.LocalMulticast):
 
 		// Reroute rogue dns queries back to Portmaster.
-		conn.SetVerdictDirectly(network.VerdictRerouteToNameserver)
-		conn.Reason.Msg = "redirecting rogue dns query"
+		conn.SetVerdict(network.VerdictRerouteToNameserver, "redirecting rogue dns query", "", nil)
 		conn.Internal = true
+		log.Tracer(pkt.Ctx()).Infof("filter: redirecting dns query %s to Portmaster", conn)
 		// End directly, as no other processing is necessary.
 		conn.StopFirewallHandler()
 		finalizeVerdict(conn)
@@ -472,7 +475,7 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	// Apply privacy filter and check tunneling.
-	filterConnection(pkt.Ctx(), conn, pkt)
+	FilterConnection(pkt.Ctx(), conn, pkt, filterConnection, true)
 
 	// Decide how to continue handling connection.
 	switch {
@@ -486,12 +489,15 @@ func initialHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 }
 
-func filterConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
-	if filterEnabled() {
-		log.Tracer(ctx).Trace("filter: starting decision process")
-		DecideOnConnection(ctx, conn, pkt)
-	} else {
-		conn.Accept("privacy filter disabled", noReasonOptionKey)
+// FilterConnection runs all the filtering (and tunneling) procedures.
+func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet, checkFilter, checkTunnel bool) {
+	if checkFilter {
+		if filterEnabled() {
+			log.Tracer(ctx).Trace("filter: starting decision process")
+			decideOnConnection(ctx, conn, pkt)
+		} else {
+			conn.Accept("privacy filter disabled", noReasonOptionKey)
+		}
 	}
 
 	// TODO: Enable inspection framework again.
@@ -511,7 +517,9 @@ func filterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 	}
 
 	// Check if connection should be tunneled.
-	checkTunneling(ctx, conn)
+	if checkTunnel {
+		checkTunneling(ctx, conn)
+	}
 
 	// Handle verdict records and transitions.
 	finalizeVerdict(conn)

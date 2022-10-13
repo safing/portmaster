@@ -44,11 +44,11 @@ func updateGlobalConfigProfile(ctx context.Context, task *modules.Task) error {
 
 	action := cfgOptionDefaultAction()
 	switch action {
-	case "permit":
+	case DefaultActionPermitValue:
 		cfgDefaultAction = DefaultActionPermit
-	case "ask":
+	case DefaultActionAskValue:
 		cfgDefaultAction = DefaultActionAsk
-	case "block":
+	case DefaultActionBlockValue:
 		cfgDefaultAction = DefaultActionBlock
 	default:
 		// TODO: module error?

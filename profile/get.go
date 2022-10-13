@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
@@ -50,6 +51,7 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 
 	// In some cases, we might need to get a profile directly, without matching data.
 	// This could lead to inconsistent data - use with caution.
+	// Example: Saving prompt results to profile should always be to the same ID!
 	if md == nil {
 		if id == "" {
 			return nil, errors.New("cannot get local profiles without ID and matching data")
@@ -58,6 +60,26 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 		profile, err = getProfile(makeScopedID(SourceLocal, id))
 		if err != nil {
 			return nil, fmt.Errorf("failed to load profile %s by ID: %w", makeScopedID(SourceLocal, id), err)
+		}
+	}
+
+	// Check if we are requesting a special profile.
+	var created, special bool
+	if id != "" && isSpecialProfileID(id) {
+		special = true
+
+		// Get special profile from DB.
+		if profile == nil {
+			profile, err = getProfile(makeScopedID(SourceLocal, id))
+			if err != nil && !errors.Is(err, database.ErrNotFound) {
+				log.Warningf("profile: failed to get special profile %s: %s", id, err)
+			}
+		}
+
+		// Create profile if not found or if it needs a reset.
+		if profile == nil || specialProfileNeedsReset(profile) {
+			profile = createSpecialProfile(id, md.Path())
+			created = true
 		}
 	}
 
@@ -70,7 +92,6 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 	}
 
 	// If we still don't have a profile, create a new one.
-	var created bool
 	if profile == nil {
 		created = true
 
@@ -105,7 +126,12 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 	// Initialize and update profile.
 
 	// Update metadata.
-	changed := profile.updateMetadata(md.Path())
+	var changed bool
+	if special {
+		changed = updateSpecialProfileMetadata(profile, md.Path())
+	} else {
+		changed = profile.updateMetadata(md.Path())
+	}
 
 	// Save if created or changed.
 	if created || changed {
@@ -117,7 +143,7 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 	}
 
 	// Trigger further metadata fetching from system if profile was created.
-	if created && profile.UsePresentationPath {
+	if created && profile.UsePresentationPath && !special {
 		module.StartWorker("get profile metadata", profile.updateMetadataFromSystem)
 	}
 

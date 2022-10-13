@@ -175,11 +175,11 @@ func (profile *Profile) parseConfig() error {
 	profile.defaultAction = DefaultActionNotSet
 	if ok {
 		switch action {
-		case "permit":
+		case DefaultActionPermitValue:
 			profile.defaultAction = DefaultActionPermit
-		case "ask":
+		case DefaultActionAskValue:
 			profile.defaultAction = DefaultActionAsk
-		case "block":
+		case DefaultActionBlockValue:
 			profile.defaultAction = DefaultActionBlock
 		default:
 			lastErr = fmt.Errorf(`default action "%s" invalid`, action)
