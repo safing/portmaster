@@ -11,7 +11,7 @@ const (
 	// UnidentifiedProfileID is the profile ID used for unidentified processes.
 	UnidentifiedProfileID = "_unidentified"
 	// UnidentifiedProfileName is the name used for unidentified processes.
-	UnidentifiedProfileName = "Unidentified App"
+	UnidentifiedProfileName = "Other Connections"
 	// UnidentifiedProfileDescription is the description used for unidentified processes.
 	UnidentifiedProfileDescription = `Connections that could not be attributed to a specific app.
 
