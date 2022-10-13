@@ -112,7 +112,7 @@ func interceptionPrep() error {
 func resetAllConnectionVerdicts() {
 	// Resetting will force all the connection to be evaluated by the firewall again
 	// this will set new verdicts if configuration was update or spn has been disabled or enabled.
-	log.Info("interception: marking all connections for re-evaluation")
+	log.Info("interception: re-evaluating all connections")
 
 	// Create tracing context.
 	ctx, tracer := log.AddTracer(context.Background())
@@ -157,7 +157,7 @@ func resetAllConnectionVerdicts() {
 			}
 		}()
 	}
-	tracer.Infof("profile: changed verdict on %d connections", changedVerdicts)
+	tracer.Infof("filter: changed verdict on %d connections", changedVerdicts)
 	tracer.Submit()
 
 	err := interception.ResetVerdictOfAllConnections()
@@ -495,7 +495,6 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 		if filterEnabled() {
 			log.Tracer(ctx).Trace("filter: starting decision process")
 			decideOnConnection(ctx, conn, pkt)
-			// FIXME: nameserver calls this directly without finalizeVerdict.
 		} else {
 			conn.Accept("privacy filter disabled", noReasonOptionKey)
 		}
