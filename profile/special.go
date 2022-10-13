@@ -202,7 +202,29 @@ func createSpecialProfile(profileID string, path string) *Profile {
 			ID:               PortmasterProfileID,
 			Source:           SourceLocal,
 			PresentationPath: path,
-			Internal:         true,
+			Config: map[string]interface{}{
+				// In case anything slips through the internal self-allow, be sure to
+				// allow everything explicitly.
+				// Blocking connections here can lead to a very literal deadlock.
+				// This can currently happen, as fast-tracked connections are also
+				// reset in the OS integration and might show up in the connection
+				// handling if a packet in the other direction hits the firewall first.
+				CfgOptionDefaultActionKey:      DefaultActionPermitValue,
+				CfgOptionBlockScopeInternetKey: status.SecurityLevelOff,
+				CfgOptionBlockScopeLANKey:      status.SecurityLevelOff,
+				CfgOptionBlockScopeLocalKey:    status.SecurityLevelOff,
+				CfgOptionBlockP2PKey:           status.SecurityLevelOff,
+				CfgOptionBlockInboundKey:       status.SecurityLevelOff,
+				CfgOptionEndpointsKey: []string{
+					"+ *",
+				},
+				CfgOptionServiceEndpointsKey: []string{
+					"+ Localhost",
+					"+ LAN",
+					"- *",
+				},
+			},
+			Internal: true,
 		})
 
 	case PortmasterAppProfileID:
@@ -259,6 +281,8 @@ func specialProfileNeedsReset(profile *Profile) bool {
 
 	switch profile.ID {
 	case SystemResolverProfileID:
+		return canBeUpgraded(profile, "21.10.2022")
+	case PortmasterProfileID:
 		return canBeUpgraded(profile, "21.10.2022")
 	case PortmasterAppProfileID:
 		return canBeUpgraded(profile, "8.9.2021")
