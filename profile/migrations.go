@@ -2,7 +2,6 @@ package profile
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/go-version"
 
@@ -62,7 +61,8 @@ func migrateLinkedPath(ctx context.Context, _, to *version.Version, db *database
 	// Get iterator over all profiles.
 	it, err := db.Query(query.New(profilesDBPath))
 	if err != nil {
-		return fmt.Errorf("failed to query profiles: %w", err)
+		log.Tracer(ctx).Errorf("profile: failed to migrate from linked path: failed to start query: %s", err)
+		return nil
 	}
 
 	// Migrate all profiles.
@@ -91,8 +91,8 @@ func migrateLinkedPath(ctx context.Context, _, to *version.Version, db *database
 	}
 
 	// Check if there was an error while iterating.
-	if it.Err() != nil {
-		return fmt.Errorf("profiles: failed to iterate over profiles for migration: %w", err)
+	if err := it.Err(); err != nil {
+		log.Tracer(ctx).Errorf("profile: failed to migrate from linked path: failed to iterate over profiles for migration: %s", err)
 	}
 
 	return nil
