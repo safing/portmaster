@@ -222,7 +222,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	}()
 
 	// Check request with the privacy filter before resolving.
-	firewall.DecideOnConnection(ctx, conn, nil)
+	firewall.FilterConnection(ctx, conn, nil, true, false)
 
 	// Check if there is a responder from the firewall.
 	// In special cases, the firewall might want to respond the query itself.

@@ -58,9 +58,9 @@ var defaultDeciders = []deciderFn{
 	checkAutoPermitRelated,
 }
 
-// DecideOnConnection makes a decision about a connection.
+// decideOnConnection makes a decision about a connection.
 // When called, the connection and profile is already locked.
-func DecideOnConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
+func decideOnConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
 	// Check if we have a process and profile.
 	layeredProfile := conn.Process().Profile()
 	if layeredProfile == nil {
