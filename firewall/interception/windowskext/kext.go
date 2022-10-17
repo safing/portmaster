@@ -29,6 +29,8 @@ var (
 	kextLock       sync.RWMutex
 	ready          = abool.NewBool(false)
 	urgentRequests *int32
+
+	kextHandle windows.Handle
 )
 
 func init() {
@@ -50,6 +52,7 @@ type WinKext struct {
 	setVerdict         *windows.Proc
 	getPayload         *windows.Proc
 	clearCache         *windows.Proc
+	setHandle          *windows.Proc
 }
 
 // Init initializes the DLL and the Kext (Kernel Driver).
@@ -98,6 +101,11 @@ func Init(dllPath, driverPath string) error {
 		log.Errorf("could not find proc PortmasterClearCache (v1.0.12+) in dll: %s", err)
 	}
 
+	new.setHandle, err = new.dll.FindProc("PortmasterSetDeviceHandle")
+	if err != nil {
+		log.Errorf("could not find proc PortmasterSetDeviceHandle in dll: %s", err)
+	}
+
 	// initialize dll/kext
 	rc, _, lastErr := new.init.Call()
 	if rc != windows.NO_ERROR {
@@ -117,20 +125,122 @@ func Start() error {
 	kextLock.Lock()
 	defer kextLock.Unlock()
 
-	// convert to C string
-	charArray := make([]byte, len(kext.driverPath)+1)
-	copy(charArray, []byte(kext.driverPath))
-	charArray[len(charArray)-1] = 0 // force NULL byte at the end
+	filename := `\\.\PortmasterKext`
 
-	rc, _, lastErr := kext.start.Call(
-		uintptr(unsafe.Pointer(&charArray[0])),
-	)
-	if rc != windows.NO_ERROR {
-		return formatErr(lastErr, rc)
+	u16fname, err := syscall.UTF16FromString(filename)
+	if err != nil {
+		return fmt.Errorf("Bad filename: %s", err)
 	}
 
+	u16DriverPath, err := syscall.UTF16FromString(kext.driverPath)
+	if err != nil {
+		return fmt.Errorf("Bad driver path: %s", err)
+	}
+	kextHandle, err = windows.CreateFile(&u16fname[0], windows.GENERIC_READ|windows.GENERIC_WRITE, 0, nil, windows.OPEN_EXISTING, 0, 0)
+	if err == nil {
+		return nil // All good
+	}
+
+	service, err := portmasterDriverInstall(&u16DriverPath[0])
+	if err != nil {
+		return fmt.Errorf("Faield to start service: %s", err)
+	}
+
+	kextHandle, err = windows.CreateFile(&u16fname[0],
+		windows.GENERIC_READ|windows.GENERIC_WRITE, 0, nil,
+		windows.OPEN_EXISTING, 0, 0)
+
+	windows.DeleteService(service)
+	windows.CloseServiceHandle(service)
+
+	if err != nil {
+		return fmt.Errorf("Faield to kext service: %s %q", err, filename)
+	}
+
+	// rc, _, lastErr := kext.start.Call(
+	// 	uintptr(unsafe.Pointer(&charArray[0])),
+	// )
+	// if rc != windows.NO_ERROR {
+	// 	return formatErr(lastErr, rc)
+	// }
+
+	kext.setHandle.Call(uintptr(kextHandle))
+
 	ready.Set()
+	testRead()
 	return nil
+}
+
+func testRead() {
+
+	buf := [5]byte{1, 2, 3, 4, 5}
+	var read uint32 = 0
+	err := windows.ReadFile(kextHandle, buf[:], &read, nil)
+
+	if err != nil {
+		log.Criticalf("Erro reading test data: %s", err)
+	}
+
+	log.Criticalf("Read restul: %v", buf)
+}
+
+func createService(manager windows.Handle, portmasterKextPath *uint16) (windows.Handle, error) {
+	u16fname, err := syscall.UTF16FromString("PortmasterKext")
+	if err != nil {
+		return 0, fmt.Errorf("Bad service: %s", err)
+	}
+	service, err := windows.OpenService(manager, &u16fname[0], windows.SERVICE_ALL_ACCESS)
+	if err == nil {
+		return service, nil
+	}
+	service, err = windows.CreateService(manager, &u16fname[0], &u16fname[0], windows.SERVICE_ALL_ACCESS, windows.SERVICE_KERNEL_DRIVER, windows.SERVICE_DEMAND_START, windows.SERVICE_ERROR_NORMAL, portmasterKextPath, nil, nil, nil, nil, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	return service, nil
+}
+
+func portmasterDriverInstall(portmasterKextPath *uint16) (windows.Handle, error) {
+	// Open the service manager:
+	manager, err := windows.OpenSCManager(nil, nil, windows.SC_MANAGER_ALL_ACCESS)
+	if err != nil {
+		return 0, fmt.Errorf("Failed to open service manager: %d", err)
+	}
+	defer windows.CloseServiceHandle(manager)
+
+	var service windows.Handle
+retryLoop:
+	for i := 0; i < 3; i++ {
+		service, err = createService(manager, portmasterKextPath)
+		if err == nil {
+			break retryLoop
+		}
+	}
+
+	if err != nil {
+		return 0, fmt.Errorf("Failed to create service: %s", err)
+	}
+
+	err = windows.StartService(service, 0, nil)
+	// Start the service:
+	if err != nil {
+		err = windows.GetLastError()
+		if err == windows.ERROR_SERVICE_ALREADY_RUNNING {
+			// windows.SetLastError(0)
+			// windows.SetLast
+		} else {
+			// Failed to start service; clean-up:
+			var status windows.SERVICE_STATUS
+			_ = windows.ControlService(service, windows.SERVICE_CONTROL_STOP, &status)
+			_ = windows.DeleteService(service)
+			_ = windows.CloseServiceHandle(service)
+			service = 0
+			//windows.SetLastError(err)
+		}
+	}
+
+	return service, nil
 }
 
 // Stop intercepting.
