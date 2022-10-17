@@ -22,11 +22,13 @@ var (
 		Short: "Run the Portmaster Core as a Windows Service",
 		RunE: runAndLogControlError(func(cmd *cobra.Command, args []string) error {
 			return runService(cmd, &Options{
+				Name:              "Portmaster Core Service",
 				Identifier:        "core/portmaster-core",
 				ShortIdentifier:   "core",
 				AllowDownload:     true,
 				AllowHidingWindow: false,
 				NoOutput:          true,
+				RestartOnFail:     true,
 			}, args)
 		}),
 		FParseErrWhitelist: cobra.FParseErrWhitelist{
