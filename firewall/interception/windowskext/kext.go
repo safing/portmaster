@@ -6,6 +6,7 @@ package windowskext
 import (
 	"errors"
 	"fmt"
+	"os/exec"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -25,10 +26,10 @@ var (
 
 	winErrInvalidData = uintptr(windows.ERROR_INVALID_DATA)
 
-	kext           *WinKext
 	kextLock       sync.RWMutex
 	ready          = abool.NewBool(false)
 	urgentRequests *int32
+	driverPath     string
 
 	kextHandle windows.Handle
 )
@@ -38,85 +39,9 @@ func init() {
 	urgentRequests = &urgentRequestsValue
 }
 
-// WinKext holds the DLL handle.
-type WinKext struct {
-	sync.RWMutex
-
-	dll        *windows.DLL
-	driverPath string
-
-	init               *windows.Proc
-	start              *windows.Proc
-	stop               *windows.Proc
-	recvVerdictRequest *windows.Proc
-	setVerdict         *windows.Proc
-	getPayload         *windows.Proc
-	clearCache         *windows.Proc
-	setHandle          *windows.Proc
-}
-
 // Init initializes the DLL and the Kext (Kernel Driver).
-func Init(dllPath, driverPath string) error {
-
-	new := &WinKext{
-		driverPath: driverPath,
-	}
-
-	var err error
-
-	// load dll
-	new.dll, err = windows.LoadDLL(dllPath)
-	if err != nil {
-		return err
-	}
-
-	// load functions
-	new.init, err = new.dll.FindProc("PortmasterInit")
-	if err != nil {
-		return fmt.Errorf("could not find proc PortmasterStart in dll: %s", err)
-	}
-	new.start, err = new.dll.FindProc("PortmasterStart")
-	if err != nil {
-		return fmt.Errorf("could not find proc PortmasterStart in dll: %s", err)
-	}
-	new.stop, err = new.dll.FindProc("PortmasterStop")
-	if err != nil {
-		return fmt.Errorf("could not find proc PortmasterStop in dll: %s", err)
-	}
-	new.recvVerdictRequest, err = new.dll.FindProc("PortmasterRecvVerdictRequest")
-	if err != nil {
-		return fmt.Errorf("could not find proc PortmasterRecvVerdictRequest in dll: %s", err)
-	}
-	new.setVerdict, err = new.dll.FindProc("PortmasterSetVerdict")
-	if err != nil {
-		return fmt.Errorf("could not find proc PortmasterSetVerdict in dll: %s", err)
-	}
-	new.getPayload, err = new.dll.FindProc("PortmasterGetPayload")
-	if err != nil {
-		return fmt.Errorf("could not find proc PortmasterGetPayload in dll: %s", err)
-	}
-	new.clearCache, err = new.dll.FindProc("PortmasterClearCache")
-	if err != nil {
-		// the loaded dll is an old version
-		log.Errorf("could not find proc PortmasterClearCache (v1.0.12+) in dll: %s", err)
-	}
-
-	new.setHandle, err = new.dll.FindProc("PortmasterSetDeviceHandle")
-	if err != nil {
-		log.Errorf("could not find proc PortmasterSetDeviceHandle in dll: %s", err)
-	}
-
-	// initialize dll/kext
-	rc, _, lastErr := new.init.Call()
-	if rc != windows.NO_ERROR {
-		return formatErr(lastErr, rc)
-	}
-
-	// set kext
-	kextLock.Lock()
-	defer kextLock.Unlock()
-	kext = new
-
+func Init(dllPath, path string) error {
+	driverPath = path
 	return nil
 }
 
@@ -132,7 +57,7 @@ func Start() error {
 		return fmt.Errorf("Bad filename: %s", err)
 	}
 
-	u16DriverPath, err := syscall.UTF16FromString(kext.driverPath)
+	u16DriverPath, err := syscall.UTF16FromString(driverPath)
 	if err != nil {
 		return fmt.Errorf("Bad driver path: %s", err)
 	}
@@ -157,26 +82,14 @@ func Start() error {
 		return fmt.Errorf("Faield to kext service: %s %q", err, filename)
 	}
 
-	// rc, _, lastErr := kext.start.Call(
-	// 	uintptr(unsafe.Pointer(&charArray[0])),
-	// )
-	// if rc != windows.NO_ERROR {
-	// 	return formatErr(lastErr, rc)
-	// }
-
-	kext.setHandle.Call(uintptr(kextHandle))
-
 	ready.Set()
 	testRead()
 	return nil
 }
 
 func testRead() {
-
 	buf := [5]byte{1, 2, 3, 4, 5}
-	var read uint32 = 0
-	err := windows.ReadFile(kextHandle, buf[:], &read, nil)
-
+	_, err := deviceIoControl(IOCTL_TEST, &buf[0], uintptr(len(buf)))
 	if err != nil {
 		log.Criticalf("Erro reading test data: %s", err)
 	}
@@ -252,10 +165,11 @@ func Stop() error {
 	}
 	ready.UnSet()
 
-	rc, _, lastErr := kext.stop.Call()
-	if rc != windows.NO_ERROR {
-		return formatErr(lastErr, rc)
+	err := windows.CloseHandle(kextHandle)
+	if err != nil {
+		log.Errorf("kext: faield to close handle: %s", err)
 	}
+	_, _ = exec.Command("sc", "stop", "PortmasterKext").Output()
 	return nil
 }
 
@@ -266,9 +180,6 @@ func RecvVerdictRequest() (*VerdictRequest, error) {
 	if !ready.IsSet() {
 		return nil, ErrKextNotReady
 	}
-
-	new := &VerdictRequest{}
-
 	// wait for urgent requests to complete
 	for i := 1; i <= 100; i++ {
 		if atomic.LoadInt32(urgentRequests) <= 0 {
@@ -280,19 +191,18 @@ func RecvVerdictRequest() (*VerdictRequest, error) {
 		time.Sleep(100 * time.Microsecond)
 	}
 
-	// timestamp := time.Now()
-	rc, _, lastErr := kext.recvVerdictRequest.Call(
-		uintptr(unsafe.Pointer(new)),
-	)
-	// log.Tracef("winkext: getting verdict request took %s", time.Now().Sub(timestamp))
+	timestamp := time.Now()
+	var new VerdictRequest
 
-	if rc != windows.NO_ERROR {
-		if rc == winErrInvalidData {
-			return nil, nil
-		}
-		return nil, formatErr(lastErr, rc)
+	data := (*byte)(unsafe.Pointer(&new))
+	_, err := deviceIoControl(IOCTL_RECV_VERDICT_REQ, data, unsafe.Sizeof(new))
+	if err != nil {
+		return nil, err
 	}
-	return new, nil
+	log.Tracef("winkext: getting verdict request took %s", time.Now().Sub(timestamp))
+
+	log.Criticalf("%v", new)
+	return &new, nil
 }
 
 // SetVerdict sets the verdict for a packet and/or connection.
@@ -309,17 +219,18 @@ func SetVerdict(pkt *Packet, verdict network.Verdict) error {
 		return ErrKextNotReady
 	}
 
+	verdictInfo := struct {
+		id      uint32
+		verdict network.Verdict
+	}{pkt.verdictRequest.id, verdict}
+
 	atomic.AddInt32(urgentRequests, 1)
-	// timestamp := time.Now()
-	rc, _, lastErr := kext.setVerdict.Call(
-		uintptr(pkt.verdictRequest.id),
-		uintptr(verdict),
-	)
-	// log.Tracef("winkext: settings verdict for packetID %d took %s", packetID, time.Now().Sub(timestamp))
+	_, err := deviceIoControlBufferd(IOCTL_SET_VERDICT,
+		(*byte)(unsafe.Pointer(&verdictInfo)), unsafe.Sizeof(verdictInfo), nil, 0)
 	atomic.AddInt32(urgentRequests, -1)
-	if rc != windows.NO_ERROR {
+	if err != nil {
 		log.Tracer(pkt.Ctx()).Errorf("kext: failed to set verdict %s on packet %d", verdict, pkt.verdictRequest.id)
-		return formatErr(lastErr, rc)
+		return err
 	}
 	return nil
 }
@@ -338,26 +249,31 @@ func GetPayload(packetID uint32, packetSize uint32) ([]byte, error) {
 
 	buf := make([]byte, packetSize)
 
+	payload := struct {
+		id     uint32
+		length uint32
+	}{packetID, packetSize}
+
 	atomic.AddInt32(urgentRequests, 1)
+
+	writenSize, err := deviceIoControlBufferd(IOCTL_GET_PAYLOAD,
+		(*byte)(unsafe.Pointer(&payload)), unsafe.Sizeof(payload),
+		&buf[0], uintptr(packetSize))
+
 	// timestamp := time.Now()
-	rc, _, lastErr := kext.getPayload.Call(
-		uintptr(packetID),
-		uintptr(unsafe.Pointer(&buf[0])),
-		uintptr(unsafe.Pointer(&packetSize)),
-	)
 	// log.Tracef("winkext: getting payload for packetID %d took %s", packetID, time.Now().Sub(timestamp))
 	atomic.AddInt32(urgentRequests, -1)
 
-	if rc != windows.NO_ERROR {
-		return nil, formatErr(lastErr, rc)
+	if err != nil {
+		return nil, err
 	}
 
-	if packetSize == 0 {
+	if writenSize == 0 {
 		return nil, errors.New("windows kext did not return any data")
 	}
 
-	if packetSize < uint32(len(buf)) {
-		return buf[:packetSize], nil
+	if writenSize < uint32(len(buf)) {
+		return buf[:writenSize], nil
 	}
 
 	return buf, nil
@@ -371,23 +287,6 @@ func ClearCache() error {
 		return ErrKextNotReady
 	}
 
-	if kext.clearCache == nil {
-		log.Error("kext: cannot clear cache: clearCache function  missing")
-	}
-
-	rc, _, lastErr := kext.clearCache.Call()
-
-	if rc != windows.NO_ERROR {
-		return formatErr(lastErr, rc)
-	}
-
-	return nil
-}
-
-func formatErr(err error, rc uintptr) error {
-	sysErr, ok := err.(syscall.Errno)
-	if ok {
-		return fmt.Errorf("%s [LE 0x%X] [RC 0x%X]", err, uintptr(sysErr), rc)
-	}
+	_, err := deviceIoControl(IOCTL_CLEAR_CACHE, nil, 0)
 	return err
 }

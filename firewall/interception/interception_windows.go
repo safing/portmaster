@@ -10,16 +10,12 @@ import (
 
 // start starts the interception.
 func start(ch chan packet.Packet) error {
-	dllFile, err := updates.GetPlatformFile("kext/portmaster-kext.dll")
-	if err != nil {
-		return fmt.Errorf("interception: could not get kext dll: %s", err)
-	}
 	kextFile, err := updates.GetPlatformFile("kext/portmaster-kext.sys")
 	if err != nil {
 		return fmt.Errorf("interception: could not get kext sys: %s", err)
 	}
 
-	err = windowskext.Init(dllFile.Path(), kextFile.Path())
+	err = windowskext.Init("", kextFile.Path())
 	if err != nil {
 		return fmt.Errorf("interception: could not init windows kext: %s", err)
 	}
