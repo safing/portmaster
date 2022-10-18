@@ -192,8 +192,6 @@ github.com/safing/jess v0.3.1/go.mod h1:aj73Eot1zm2ETkJuw9hJlIO8bRom52uBbsCHemvl
 github.com/safing/portbase v0.15.2/go.mod h1:5bHi99fz7Hh/wOsZUOI631WF9ePSHk57c4fdlOMS91Y=
 github.com/safing/portbase v0.16.2 h1:ZlCZBZkKmgJDR+sHSRbFc9mM8m9qYtu8agE1xCirvQU=
 github.com/safing/portbase v0.16.2/go.mod h1:mzNCWqPbO7vIYbbK5PElGbudwd2vx4YPNawymL8Aro8=
-github.com/safing/spn v0.5.3 h1:aebwD3RI7OqtbBDK9HoqhKHcEH/i021Klrkl+dOq1Dc=
-github.com/safing/spn v0.5.3/go.mod h1:HYcGGze78wlwXZxF1UMqZ7GuA6ILqvNrO9v23EpFQvM=
 github.com/safing/spn v0.5.4 h1:9xM4a9kBSg0dV6eR7mEYLjVT5vvNX2PRO9cIP5l9F5A=
 github.com/safing/spn v0.5.4/go.mod h1:HYcGGze78wlwXZxF1UMqZ7GuA6ILqvNrO9v23EpFQvM=
 github.com/satori/go.uuid v1.2.0 h1:0uYX9dsZ2yD7q2RtLRtPSdGDWzjeM3TbMJP9utgA0ww=
@@ -209,8 +207,9 @@ github.com/spaolacci/murmur3 v1.1.0/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2
 github.com/spf13/afero v1.1.2/go.mod h1:j4pytiNVoe2o6bmDsKpLACNPDBIoEAkihy7loJ1B0CQ=
 github.com/spf13/cast v1.3.0/go.mod h1:Qx5cxh0v+4UWYiBimWS+eyWzqEqokIECu5etghLkUJE=
 github.com/spf13/cobra v0.0.5/go.mod h1:3K3wKZymM7VvHMDS9+Akkh4K60UwM26emMESw8tLCHU=
-github.com/spf13/cobra v1.5.0 h1:X+jTBEBqF0bHN+9cSMgmfuvv2VHJ9ezmFNf9Y/XstYU=
 github.com/spf13/cobra v1.5.0/go.mod h1:dWXEIy2H428czQCjInthrTRUg7yKbok+2Qi/yBIJoUM=
+github.com/spf13/cobra v1.6.0 h1:42a0n6jwCot1pUmomAp4T7DeMD+20LFv4Q54pxLf2LI=
+github.com/spf13/cobra v1.6.0/go.mod h1:IOw/AERYS7UzyrGinqmz6HLUo219MORXGxhbaJUqzrY=
 github.com/spf13/jwalterweatherman v1.0.0/go.mod h1:cQK4TGJAtQXfYWX+Ddv3mKDzgVb68N+wFjFa4jdeBTo=
 github.com/spf13/pflag v1.0.3/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnInEg4=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
