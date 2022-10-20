@@ -5,9 +5,6 @@ Developed in the EU 🇪🇺, Austria.
 
 ![Portmaster User Interface](https://assets.safing.io/portmaster/full-interface.png?)
 
-**⚠️ Disclaimer**
-
-> Portmaster is Alpha Software, treat as such; expect bugs here and there. Early Adopters welcome.
 
 ## Features
 
