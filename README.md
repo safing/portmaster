@@ -10,7 +10,7 @@ With great defaults your privacy improves without any effort. And if you want to
 ## Features
 
 1. [Monitor All Network Activity](https://safing.io/features#monitor-all-network-activity)
-2. [Automatically Block Trackers & Malware](https://safing.io/feature#auto-block-trackers-and-malware)
+2. [Automatically Block Trackers & Malware](https://safing.io/features#auto-block-trackers-and-malware)
 3. [Secure Your DNS Requests by Default](https://safing.io/features#secure-dns-by-default)
 4. [Create Your Own Rules](https://safing.io/features#create-your-own-rules)
 5. [Set Global & per‑App Settings](https://safing.io/features#set-global-and-app-settings)
