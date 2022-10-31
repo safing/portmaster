@@ -28,7 +28,7 @@ With great defaults your privacy improves without any effort. And if you want to
 
 ## As Seen on:
 
-[![It's FOSS](https://safing.io/assets/img//external/itsfoss.png)](https://itsfoss.com/portmaster/)
+[![It's FOSS](https://safing.io/assets/img//external/itsfoss.png)](https://news.itsfoss.com/portmaster-1-release/)
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 [![ghacks.net](https://safing.io/assets/img//external/ghacks.png)](https://www.ghacks.net/2022/05/16/first-look-at-portmaster-an-open-source-cross-platform-network-monitor/)
 &nbsp;&nbsp;&nbsp;
