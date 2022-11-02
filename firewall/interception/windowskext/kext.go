@@ -70,8 +70,8 @@ func Start() error {
 	kextHandle, err = openDriver(filename)
 
 	// close the service handles
-	windows.DeleteService(service)
-	windows.CloseServiceHandle(service)
+	_ = windows.DeleteService(service)
+	_ = windows.CloseServiceHandle(service)
 
 	// driver was not installed
 	if err != nil {
@@ -95,7 +95,11 @@ func Stop() error {
 	if err != nil {
 		log.Errorf("winkext: failed to close the handle: %s", err)
 	}
-	_, _ = exec.Command("sc", "stop", driverName).Output()
+
+	_, err = exec.Command("sc", "stop", driverName).Output() // This is a question of taste, but it is a robust and solid solution
+	if err != nil {
+		log.Errorf("winkext: failed to stop the service: %q", err)
+	}
 	return nil
 }
 
@@ -118,8 +122,10 @@ func RecvVerdictRequest() (*VerdictRequest, error) {
 	}
 
 	timestamp := time.Now()
+	// Initialize struct for the output data
 	var new VerdictRequest
 
+	// Make driver request
 	data := asByteArray(&new)
 	bytesRead, err := deviceIoControlRead(kextHandle, IOCTL_RECV_VERDICT_REQ, data)
 	if err != nil {
@@ -147,11 +153,9 @@ func SetVerdict(pkt *Packet, verdict network.Verdict) error {
 		return ErrKextNotReady
 	}
 
-	verdictInfo := struct {
-		id      uint32
-		verdict network.Verdict
-	}{pkt.verdictRequest.id, verdict}
+	verdictInfo := VerdictInfo{pkt.verdictRequest.id, verdict}
 
+	// Make driver request
 	atomic.AddInt32(urgentRequests, 1)
 	data := asByteArray(&verdictInfo)
 	_, err := deviceIoControlWrite(kextHandle, IOCTL_SET_VERDICT, data)
@@ -169,6 +173,7 @@ func GetPayload(packetID uint32, packetSize uint32) ([]byte, error) {
 		return nil, ErrNoPacketID
 	}
 
+	// Check if driver is initialized
 	kextLock.RLock()
 	defer kextLock.RUnlock()
 	if !ready.IsSet() {
@@ -177,11 +182,13 @@ func GetPayload(packetID uint32, packetSize uint32) ([]byte, error) {
 
 	buf := make([]byte, packetSize)
 
+	// Combine id and length
 	payload := struct {
 		id     uint32
 		length uint32
 	}{packetID, packetSize}
 
+	// Make driver request
 	atomic.AddInt32(urgentRequests, 1)
 	data := asByteArray(&payload)
 	bytesRead, err := deviceIoControlReadWrite(kextHandle, IOCTL_GET_PAYLOAD, data, unsafe.Slice(&buf[0], packetSize))
@@ -192,6 +199,7 @@ func GetPayload(packetID uint32, packetSize uint32) ([]byte, error) {
 		return nil, err
 	}
 
+	// check the result and return
 	if bytesRead == 0 {
 		return nil, errors.New("windows kext did not return any data")
 	}
@@ -206,11 +214,14 @@ func GetPayload(packetID uint32, packetSize uint32) ([]byte, error) {
 func ClearCache() error {
 	kextLock.RLock()
 	defer kextLock.RUnlock()
+
+	// Check if driver is initialized
 	if !ready.IsSet() {
 		log.Error("kext: failed to clear the cache: kext not ready")
 		return ErrKextNotReady
 	}
 
+	// Make driver request
 	_, err := deviceIoControlRead(kextHandle, IOCTL_CLEAR_CACHE, nil)
 	return err
 }

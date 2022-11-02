@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package windowskext
@@ -10,6 +11,7 @@ import (
 	"github.com/tevino/abool"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
 )
 
@@ -41,6 +43,11 @@ type VerdictRequest struct {
 	_          uint32    // interfaceIndex
 	_          uint32    // subInterfaceIndex
 	packetSize uint32
+}
+
+type VerdictInfo struct {
+	id      uint32          // ID from RegisterPacket
+	verdict network.Verdict // verdict for the connection
 }
 
 // Handler transforms received packets to the Packet interface.
