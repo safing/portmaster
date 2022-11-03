@@ -4,20 +4,37 @@ package nfq
 
 import (
 	"encoding/binary"
+	"fmt"
 
 	ct "github.com/florianl/go-conntrack"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netenv"
+	"github.com/safing/portmaster/network"
 )
 
-// DeleteAllMarkedConnection deletes all marked entries from the conntrack table.
-func DeleteAllMarkedConnection() error {
-	nfct, err := ct.Open(&ct.Config{})
+var (
+	nfct *ct.Nfct // Conntrack handler. NFCT: Network Filter Connection Tracking
+)
+
+func InitNFCT() error {
+	var err error
+	nfct, err = ct.Open(&ct.Config{})
 	if err != nil {
 		return err
 	}
-	defer func() { _ = nfct.Close() }()
+	return nil
+}
+
+func DeinitNFCT() {
+	_ = nfct.Close()
+}
+
+// DeleteAllMarkedConnection deletes all marked entries from the conntrack table.
+func DeleteAllMarkedConnection() error {
+	if nfct == nil {
+		return fmt.Errorf("nfq: nfct not initialized")
+	}
 
 	// Delete all ipv4 marked connections
 	deleted := deleteMarkedConnections(nfct, ct.IPv4)
@@ -63,4 +80,36 @@ func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) (deleted int) {
 		log.Warningf("nfq: failed to delete %d conntrack entries last error is: %s", numberOfErrors, deleteError)
 	}
 	return deleted
+}
+
+func DeleteMarkedConnection(conn *network.Connection) error {
+	if nfct == nil {
+		return fmt.Errorf("nfq: nfct not initialized")
+	}
+
+	con := ct.Con{
+		Origin: &ct.IPTuple{
+			Src: &conn.LocalIP,
+			Dst: &conn.Entity.IP,
+			Proto: &ct.ProtoTuple{
+				Number:  &conn.Entity.Protocol,
+				SrcPort: &conn.LocalPort,
+				DstPort: &conn.Entity.Port,
+			},
+		},
+	}
+	connections, err := nfct.Get(ct.Conntrack, ct.IPv4, con)
+	if err != nil {
+		return fmt.Errorf("nfq: failed to find entry for connection %s: %s", conn.String(), err)
+	}
+
+	if len(connections) > 1 {
+		log.Warningf("nfq: multiple entries found for single connection: %s -> %d", conn.String(), len(connections))
+	}
+
+	for _, connection := range connections {
+		nfct.Delete(ct.Conntrack, ct.IPv4, connection)
+	}
+
+	return nil
 }
