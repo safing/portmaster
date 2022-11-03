@@ -41,7 +41,7 @@ func init() {
 }
 
 // Init initializes the DLL and the Kext (Kernel Driver).
-func Init(dllPath, path string) error {
+func Init(path string) error {
 	driverPath = path
 	return nil
 }
