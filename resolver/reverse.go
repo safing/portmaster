@@ -11,7 +11,7 @@ import (
 )
 
 // ResolveIPAndValidate finds (reverse DNS), validates (forward DNS) and returns the domain name assigned to the given IP.
-func ResolveIPAndValidate(ctx context.Context, ip string, securityLevel uint8) (domain string, err error) {
+func ResolveIPAndValidate(ctx context.Context, ip string) (domain string, err error) {
 	// get reversed DNS address
 	reverseIP, err := dns.ReverseAddr(ip)
 	if err != nil {
@@ -21,9 +21,8 @@ func ResolveIPAndValidate(ctx context.Context, ip string, securityLevel uint8) (
 
 	// get PTR record
 	q := &Query{
-		FQDN:          reverseIP,
-		QType:         dns.Type(dns.TypePTR),
-		SecurityLevel: securityLevel,
+		FQDN:  reverseIP,
+		QType: dns.Type(dns.TypePTR),
 	}
 	rrCache, err := Resolve(ctx, q)
 	if err != nil || rrCache == nil {
@@ -47,8 +46,7 @@ func ResolveIPAndValidate(ctx context.Context, ip string, securityLevel uint8) (
 
 	// get forward record
 	q = &Query{
-		FQDN:          ptrName,
-		SecurityLevel: securityLevel,
+		FQDN: ptrName,
 	}
 	// IPv4/6 switch
 	if strings.Contains(ip, ":") {

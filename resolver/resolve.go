@@ -87,7 +87,6 @@ func (blocked *BlockedUpstreamError) Unwrap() error {
 type Query struct {
 	FQDN               string
 	QType              dns.Type
-	SecurityLevel      uint8
 	NoCaching          bool
 	IgnoreFailing      bool
 	LocalResolversOnly bool

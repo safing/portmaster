@@ -14,7 +14,6 @@ import (
 	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/intel/geoip"
 	"github.com/safing/portmaster/network/netutils"
-	"github.com/safing/portmaster/status"
 )
 
 // Entity describes a remote endpoint in many different ways.
@@ -205,7 +204,7 @@ func (e *Entity) reverseResolve(ctx context.Context) {
 			return
 		}
 		// TODO: security level
-		domain, err := reverseResolver(ctx, e.IP.String(), status.SecurityLevelNormal)
+		domain, err := reverseResolver(ctx, e.IP.String())
 		if err != nil {
 			log.Tracer(ctx).Warningf("intel: failed to resolve IP %s: %s", e.IP, err)
 			return

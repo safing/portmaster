@@ -13,7 +13,7 @@ func testReverse(t *testing.T, ip, result, expectedErr string) {
 	ctx, tracer := log.AddTracer(context.Background())
 	defer tracer.Submit()
 
-	domain, err := ResolveIPAndValidate(ctx, ip, 0)
+	domain, err := ResolveIPAndValidate(ctx, ip)
 	if err != nil {
 		tracer.Warning(err.Error())
 		if expectedErr == "" || err.Error() != expectedErr {

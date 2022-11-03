@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/status"
 )
 
 const (
@@ -43,14 +42,15 @@ These connections - the "network noise" - can be found in this app.`
 	// SystemResolverProfileName is the name used for the system's DNS resolver.
 	SystemResolverProfileName = "System DNS Client"
 	// SystemResolverProfileDescription is the description used for the system's DNS resolver.
-	SystemResolverProfileDescription = `The System DNS Client is a system service that requires special handling. For regular network connections, the configured settings will apply as usual, but DNS requests coming from the System DNS Client are handled in a special way, as they could actually be coming from any other application on the system.
+	SystemResolverProfileDescription = `The System DNS Client is a system service that requires special handling.
 
-In order to respect the app settings of the actual application, DNS requests from the System DNS Client are only subject to the following settings:
+For regular network connections, the configured settings will apply as usual.
 
-- Outgoing Rules (without global rules)
-- Filter Lists
+DNS Requests coming from the System DNS Client, however, could actually be coming from any other application on the system: The System DNS Client resolves domain names on behalf of other applications.
 
-If you think you might have messed up the settings of the System DNS Client, just delete the profile below to reset it to the defaults.
+In order to correctly handle these, DNS Requests (not regular connections), do not take the globally configured Outgoing Rules into account.
+
+Additionally, the settings for the System DNS Client are specially pre-configured. If you are having issues or want to revert to the default settings, please delete this profile below. It will be automatically recreated with the default settings.
 `
 
 	// PortmasterProfileID is the profile ID used for the Portmaster Core itself.
@@ -176,11 +176,11 @@ func createSpecialProfile(profileID string, path string) *Profile {
 				// would see two connection prompts for the same domain.
 				CfgOptionDefaultActionKey: DefaultActionPermitValue,
 				// Disable force blockers.
-				CfgOptionBlockScopeInternetKey: status.SecurityLevelOff,
-				CfgOptionBlockScopeLANKey:      status.SecurityLevelOff,
-				CfgOptionBlockScopeLocalKey:    status.SecurityLevelOff,
-				CfgOptionBlockP2PKey:           status.SecurityLevelOff,
-				CfgOptionBlockInboundKey:       status.SecurityLevelOff,
+				CfgOptionBlockScopeInternetKey: false,
+				CfgOptionBlockScopeLANKey:      false,
+				CfgOptionBlockScopeLocalKey:    false,
+				CfgOptionBlockP2PKey:           false,
+				CfgOptionBlockInboundKey:       false,
 				// Explicitly allow localhost and answers to multicast protocols that
 				// are commonly used by system resolvers.
 				// TODO: When the Portmaster gains the ability to attribute multicast
@@ -214,11 +214,11 @@ func createSpecialProfile(profileID string, path string) *Profile {
 				// reset in the OS integration and might show up in the connection
 				// handling if a packet in the other direction hits the firewall first.
 				CfgOptionDefaultActionKey:      DefaultActionPermitValue,
-				CfgOptionBlockScopeInternetKey: status.SecurityLevelOff,
-				CfgOptionBlockScopeLANKey:      status.SecurityLevelOff,
-				CfgOptionBlockScopeLocalKey:    status.SecurityLevelOff,
-				CfgOptionBlockP2PKey:           status.SecurityLevelOff,
-				CfgOptionBlockInboundKey:       status.SecurityLevelOff,
+				CfgOptionBlockScopeInternetKey: false,
+				CfgOptionBlockScopeLANKey:      false,
+				CfgOptionBlockScopeLocalKey:    false,
+				CfgOptionBlockP2PKey:           false,
+				CfgOptionBlockInboundKey:       false,
 				CfgOptionEndpointsKey: []string{
 					"+ *",
 				},
@@ -238,11 +238,11 @@ func createSpecialProfile(profileID string, path string) *Profile {
 			PresentationPath: path,
 			Config: map[string]interface{}{
 				CfgOptionDefaultActionKey:      DefaultActionBlockValue,
-				CfgOptionBlockScopeInternetKey: status.SecurityLevelOff,
-				CfgOptionBlockScopeLANKey:      status.SecurityLevelOff,
-				CfgOptionBlockScopeLocalKey:    status.SecurityLevelOff,
-				CfgOptionBlockP2PKey:           status.SecurityLevelOff,
-				CfgOptionBlockInboundKey:       status.SecurityLevelsAll,
+				CfgOptionBlockScopeInternetKey: false,
+				CfgOptionBlockScopeLANKey:      false,
+				CfgOptionBlockScopeLocalKey:    false,
+				CfgOptionBlockP2PKey:           false,
+				CfgOptionBlockInboundKey:       true,
 				CfgOptionEndpointsKey: []string{
 					"+ Localhost",
 					"+ .safing.io",
@@ -258,11 +258,11 @@ func createSpecialProfile(profileID string, path string) *Profile {
 			PresentationPath: path,
 			Config: map[string]interface{}{
 				CfgOptionDefaultActionKey:      DefaultActionBlockValue,
-				CfgOptionBlockScopeInternetKey: status.SecurityLevelOff,
-				CfgOptionBlockScopeLANKey:      status.SecurityLevelOff,
-				CfgOptionBlockScopeLocalKey:    status.SecurityLevelOff,
-				CfgOptionBlockP2PKey:           status.SecurityLevelOff,
-				CfgOptionBlockInboundKey:       status.SecurityLevelsAll,
+				CfgOptionBlockScopeInternetKey: false,
+				CfgOptionBlockScopeLANKey:      false,
+				CfgOptionBlockScopeLocalKey:    false,
+				CfgOptionBlockP2PKey:           false,
+				CfgOptionBlockInboundKey:       true,
 				CfgOptionEndpointsKey: []string{
 					"+ Localhost",
 				},

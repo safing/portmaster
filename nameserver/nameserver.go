@@ -256,9 +256,6 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		return reply(conn, conn)
 	}
 
-	// Save security level to query, so that the resolver can react to configuration.
-	q.SecurityLevel = conn.Process().Profile().SecurityLevel()
-
 	// Resolve request.
 	rrCache, err = resolver.Resolve(ctx, q)
 	// Handle error.

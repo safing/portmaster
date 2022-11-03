@@ -259,7 +259,7 @@ func (q *Query) checkCompliance() error {
 	}
 
 	// special TLDs
-	if dontResolveSpecialDomains(q.SecurityLevel) &&
+	if dontResolveSpecialDomains() &&
 		domainInScope(q.dotPrefixedFQDN, specialServiceDomains) {
 		return ErrSpecialDomainsDisabled
 	}
@@ -268,7 +268,7 @@ func (q *Query) checkCompliance() error {
 }
 
 func (resolver *Resolver) checkCompliance(_ context.Context, q *Query) error {
-	if noInsecureProtocols(q.SecurityLevel) {
+	if noInsecureProtocols() {
 		switch resolver.Info.Type {
 		case ServerTypeDNS:
 			return errInsecureProtocol
@@ -285,13 +285,13 @@ func (resolver *Resolver) checkCompliance(_ context.Context, q *Query) error {
 		}
 	}
 
-	if noAssignedNameservers(q.SecurityLevel) {
+	if noAssignedNameservers() {
 		if resolver.Info.Source == ServerSourceOperatingSystem {
 			return errAssignedServer
 		}
 	}
 
-	if noMulticastDNS(q.SecurityLevel) {
+	if noMulticastDNS() {
 		if resolver.Info.Source == ServerSourceMDNS {
 			return errMulticastDNS
 		}
