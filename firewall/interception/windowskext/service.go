@@ -74,7 +74,7 @@ retryLoop:
 func openDriver(filename string) (windows.Handle, error) {
 	u16filename, _ := syscall.UTF16FromString(filename)
 
-	handle, err := windows.CreateFile(&u16filename[0], windows.GENERIC_READ|windows.GENERIC_WRITE, 0, nil, windows.OPEN_EXISTING, 0, 0)
+	handle, err := windows.CreateFile(&u16filename[0], windows.GENERIC_READ|windows.GENERIC_WRITE, 0, nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL|windows.FILE_FLAG_OVERLAPPED, 0)
 	if err != nil {
 		return 0, err
 	}
