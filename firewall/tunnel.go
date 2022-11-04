@@ -137,10 +137,21 @@ func requestTunneling(ctx context.Context, conn *network.Connection) error {
 		conn.TunnelOpts.RequireVerifiedOwners = captain.NonCommunityVerifiedOwners
 	}
 
-	// If we have any exit hub policies, we need to raise the routing algorithm at least to single-hop.
-	if conn.TunnelOpts.RoutingProfile == navigator.RoutingProfileHomeID &&
-		conn.TunnelOpts.HubPoliciesAreSet() {
+	// Get routing profile for checking for upgrades.
+	routingProfile := navigator.GetRoutingProfile(conn.TunnelOpts.RoutingProfile)
+
+	// If we have any exit hub policies, we must be able to hop in order to follow the policy.
+	// Switch to single-hop routing to allow for routing with hub selection.
+	if routingProfile.MaxHops <= 1 && conn.TunnelOpts.HubPoliciesAreSet() {
 		conn.TunnelOpts.RoutingProfile = navigator.RoutingProfileSingleHopID
+	}
+
+	// If the current home node is not trusted, then upgrade at least to two hops.
+	if routingProfile.MinHops < 2 {
+		homeNode, _ := navigator.Main.GetHome()
+		if homeNode != nil && !homeNode.State.Has(navigator.StateTrusted) {
+			conn.TunnelOpts.RoutingProfile = navigator.RoutingProfileDoubleHopID
+		}
 	}
 
 	// Special handling for the internal DNS resolver.
