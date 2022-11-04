@@ -6,6 +6,7 @@ package windowskext
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/tevino/abool"
@@ -48,6 +49,23 @@ type VerdictRequest struct {
 type VerdictInfo struct {
 	id      uint32          // ID from RegisterPacket
 	verdict network.Verdict // verdict for the connection
+}
+
+type VerdictUpdateInfo struct {
+	ipV6       uint8     //True: IPv6, False: IPv4
+	protocol   uint8     //Protocol (UDP, TCP, ...)
+	localIP    [4]uint32 //Source Address, only srcIP[0] if IPv4
+	remoteIP   [4]uint32 //Destination Address
+	localPort  uint16    //Source Port
+	remotePort uint16    //Destination port
+	verdict    uint8     //New verdict
+}
+
+type VersionInfo struct {
+	major    uint8
+	minor    uint8
+	revision uint8
+	build    uint8
 }
 
 // Handler transforms received packets to the Packet interface.
@@ -151,4 +169,8 @@ func convertIPv6(input [4]uint32) net.IP {
 		binary.BigEndian.PutUint32(addressBuf[i*4:i*4+4], input[i])
 	}
 	return net.IP(addressBuf)
+}
+
+func (v *VersionInfo) String() string {
+	return fmt.Sprintf("%d.%d.%d.%d", v.major, v.minor, v.revision, v.build)
 }

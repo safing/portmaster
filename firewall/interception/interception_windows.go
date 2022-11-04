@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/safing/portmaster/firewall/interception/windowskext"
+	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/updates"
 )
@@ -38,4 +39,17 @@ func stop() error {
 // ResetVerdictOfAllConnections resets all connections so they are forced to go thought the firewall again.
 func ResetVerdictOfAllConnections() error {
 	return windowskext.ClearCache()
+}
+
+func UpdateVerdictOfConnection(conn *network.Connection) error {
+	return windowskext.UpdateVerdict(conn)
+}
+
+func GetVersion() (string, error) {
+	version, err := windowskext.GetVersion()
+	if err != nil {
+		return "", err
+	}
+
+	return version.String(), nil
 }

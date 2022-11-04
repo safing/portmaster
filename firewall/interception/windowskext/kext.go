@@ -226,6 +226,61 @@ func ClearCache() error {
 	return err
 }
 
+func UpdateVerdict(conn *network.Connection) error {
+	kextLock.RLock()
+	defer kextLock.RUnlock()
+
+	// Check if driver is initialized
+	if !ready.IsSet() {
+		log.Error("kext: failed to clear the cache: kext not ready")
+		return ErrKextNotReady
+	}
+
+	// initialize variables
+	info := &VerdictUpdateInfo{
+		ipV6:       uint8(conn.IPVersion),
+		protocol:   uint8(conn.IPProtocol),
+		localPort:  conn.LocalPort,
+		remotePort: conn.Entity.Port,
+		verdict:    uint8(conn.Verdict.Active),
+	}
+
+	// copy ip addresses
+	copy(asByteArray(&info.localIP[0]), conn.LocalIP)
+	copy(asByteArray(&info.remoteIP[0]), conn.Entity.IP)
+
+	// Make driver request
+	data := asByteArray(&info)
+	err := deviceIoControlDirect(kextHandle, IOCTL_UPDATE_VERDICT, data)
+	return err
+}
+
+func GetVersion() (*VersionInfo, error) {
+	kextLock.RLock()
+	defer kextLock.RUnlock()
+
+	// Check if driver is initialized
+	if !ready.IsSet() {
+		log.Error("kext: failed to clear the cache: kext not ready")
+		return nil, ErrKextNotReady
+	}
+
+	data := make([]uint8, 4)
+	err := deviceIoControlDirect(kextHandle, IOCTL_VERSION, data)
+
+	if err != nil {
+		return nil, err
+	}
+
+	version := &VersionInfo{
+		major:    data[0],
+		minor:    data[1],
+		revision: data[2],
+		build:    data[3],
+	}
+	return version, nil
+}
+
 func asByteArray[T any](obj *T) []byte {
 	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), unsafe.Sizeof(*obj))
 }
