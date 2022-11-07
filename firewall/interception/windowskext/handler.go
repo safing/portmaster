@@ -52,14 +52,10 @@ type VerdictInfo struct {
 
 // Handler transforms received packets to the Packet interface.
 func Handler(packets chan packet.Packet) {
-	if !ready.IsSet() {
-		return
-	}
-
 	defer close(packets)
 
 	for {
-		if !ready.IsSet() {
+		if kextHandle == winInvalidHandleValue {
 			return
 		}
 

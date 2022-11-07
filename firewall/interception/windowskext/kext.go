@@ -6,15 +6,13 @@ package windowskext
 import (
 	"errors"
 	"fmt"
-	"os/exec"
 	"sync"
-	"sync/atomic"
+	"syscall"
 	"time"
 	"unsafe"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network"
-	"github.com/tevino/abool"
 	"golang.org/x/sys/windows"
 )
 
@@ -23,25 +21,22 @@ var (
 	ErrKextNotReady = errors.New("the windows kernel extension (driver) is not ready to accept commands")
 	ErrNoPacketID   = errors.New("the packet has no ID, possibly because it was fast-tracked by the kernel extension")
 
-	winErrInvalidData = uintptr(windows.ERROR_INVALID_DATA)
-
-	kextLock       sync.RWMutex
-	ready          = abool.NewBool(false)
-	urgentRequests *int32
-	driverPath     string
+	kextLock   sync.RWMutex
+	driverPath string
 
 	kextHandle windows.Handle
+	service    *KextService
 )
 
-const driverName = "PortmasterKext"
-
-func init() {
-	var urgentRequestsValue int32
-	urgentRequests = &urgentRequestsValue
-}
+const (
+	winErrInvalidData     = uintptr(windows.ERROR_INVALID_DATA)
+	winInvalidHandleValue = windows.Handle(^uintptr(0)) // Max value
+	driverName            = "PortmasterKext"
+)
 
 // Init initializes the DLL and the Kext (Kernel Driver).
 func Init(path string) error {
+	kextHandle = winInvalidHandleValue
 	driverPath = path
 	return nil
 }
@@ -61,24 +56,25 @@ func Start() error {
 	}
 
 	// initialize and start driver service
-	service, err := driverInstall(driverPath)
+	service, err = createKextService(driverName, driverPath)
 	if err != nil {
-		return fmt.Errorf("Failed to start service: %s", err)
+		return fmt.Errorf("failed to create service: %w", err)
+	}
+
+	err = service.start()
+
+	if err != nil {
+		return fmt.Errorf("failed to start service: %w", err)
 	}
 
 	// open the driver
 	kextHandle, err = openDriver(filename)
 
-	// close the service handles
-	_ = windows.DeleteService(service)
-	_ = windows.CloseServiceHandle(service)
-
 	// driver was not installed
 	if err != nil {
-		return fmt.Errorf("Failed to start the kext service: %s %q", err, filename)
+		return fmt.Errorf("failed to open driver: %q %w", filename, err)
 	}
 
-	ready.Set()
 	return nil
 }
 
@@ -86,20 +82,27 @@ func Start() error {
 func Stop() error {
 	kextLock.Lock()
 	defer kextLock.Unlock()
-	if !ready.IsSet() {
-		return ErrKextNotReady
-	}
-	ready.UnSet()
 
 	err := closeDriver(kextHandle)
 	if err != nil {
-		log.Errorf("winkext: failed to close the handle: %s", err)
+		log.Warningf("winkext: failed to close the handle: %s", err)
 	}
 
-	_, err = exec.Command("sc", "stop", driverName).Output() // This is a question of taste, but it is a robust and solid solution
+	err = service.stop()
 	if err != nil {
-		log.Errorf("winkext: failed to stop the service: %q", err)
+		log.Warningf("winkext: failed to stop service: %s", err)
 	}
+	// Driver file may change on the next start so it's better to delete the service
+	err = service.delete()
+	if err != nil {
+		log.Warningf("winkext: failed to delete service: %s", err)
+	}
+	err = service.closeHandle()
+	if err != nil {
+		log.Warningf("winkext: failed to close the handle: %s", err)
+	}
+
+	kextHandle = winInvalidHandleValue
 	return nil
 }
 
@@ -107,18 +110,8 @@ func Stop() error {
 func RecvVerdictRequest() (*VerdictRequest, error) {
 	kextLock.RLock()
 	defer kextLock.RUnlock()
-	if !ready.IsSet() {
+	if kextHandle == winInvalidHandleValue {
 		return nil, ErrKextNotReady
-	}
-	// wait for urgent requests to complete
-	for i := 1; i <= 100; i++ {
-		if atomic.LoadInt32(urgentRequests) <= 0 {
-			break
-		}
-		if i == 100 {
-			log.Warningf("winkext: RecvVerdictRequest waited 100 times")
-		}
-		time.Sleep(100 * time.Microsecond)
 	}
 
 	timestamp := time.Now()
@@ -127,7 +120,7 @@ func RecvVerdictRequest() (*VerdictRequest, error) {
 
 	// Make driver request
 	data := asByteArray(&new)
-	bytesRead, err := deviceIoControlRead(kextHandle, IOCTL_RECV_VERDICT_REQ, data)
+	bytesRead, err := deviceIOControl(kextHandle, IOCTL_RECV_VERDICT_REQ, nil, data)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +141,7 @@ func SetVerdict(pkt *Packet, verdict network.Verdict) error {
 
 	kextLock.RLock()
 	defer kextLock.RUnlock()
-	if !ready.IsSet() {
+	if kextHandle == winInvalidHandleValue {
 		log.Tracer(pkt.Ctx()).Errorf("kext: failed to set verdict %s: kext not ready", verdict)
 		return ErrKextNotReady
 	}
@@ -156,10 +149,8 @@ func SetVerdict(pkt *Packet, verdict network.Verdict) error {
 	verdictInfo := VerdictInfo{pkt.verdictRequest.id, verdict}
 
 	// Make driver request
-	atomic.AddInt32(urgentRequests, 1)
 	data := asByteArray(&verdictInfo)
-	_, err := deviceIoControlWrite(kextHandle, IOCTL_SET_VERDICT, data)
-	atomic.AddInt32(urgentRequests, -1)
+	_, err := deviceIOControl(kextHandle, IOCTL_SET_VERDICT, data, nil)
 	if err != nil {
 		log.Tracer(pkt.Ctx()).Errorf("kext: failed to set verdict %s on packet %d", verdict, pkt.verdictRequest.id)
 		return err
@@ -176,7 +167,7 @@ func GetPayload(packetID uint32, packetSize uint32) ([]byte, error) {
 	// Check if driver is initialized
 	kextLock.RLock()
 	defer kextLock.RUnlock()
-	if !ready.IsSet() {
+	if kextHandle == winInvalidHandleValue {
 		return nil, ErrKextNotReady
 	}
 
@@ -189,11 +180,8 @@ func GetPayload(packetID uint32, packetSize uint32) ([]byte, error) {
 	}{packetID, packetSize}
 
 	// Make driver request
-	atomic.AddInt32(urgentRequests, 1)
 	data := asByteArray(&payload)
-	bytesRead, err := deviceIoControlReadWrite(kextHandle, IOCTL_GET_PAYLOAD, data, unsafe.Slice(&buf[0], packetSize))
-
-	atomic.AddInt32(urgentRequests, -1)
+	bytesRead, err := deviceIOControl(kextHandle, IOCTL_GET_PAYLOAD, data, unsafe.Slice(&buf[0], packetSize))
 
 	if err != nil {
 		return nil, err
@@ -216,16 +204,38 @@ func ClearCache() error {
 	defer kextLock.RUnlock()
 
 	// Check if driver is initialized
-	if !ready.IsSet() {
+	if kextHandle == winInvalidHandleValue {
 		log.Error("kext: failed to clear the cache: kext not ready")
 		return ErrKextNotReady
 	}
 
 	// Make driver request
-	_, err := deviceIoControlRead(kextHandle, IOCTL_CLEAR_CACHE, nil)
+	_, err := deviceIOControl(kextHandle, IOCTL_CLEAR_CACHE, nil, nil)
 	return err
 }
 
 func asByteArray[T any](obj *T) []byte {
 	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), unsafe.Sizeof(*obj))
+}
+
+func openDriver(filename string) (windows.Handle, error) {
+	u16filename, err := syscall.UTF16FromString(filename)
+	if err != nil {
+		return winInvalidHandleValue, fmt.Errorf("failed to convert driver filename to UTF16 string %w", err)
+	}
+
+	handle, err := windows.CreateFile(&u16filename[0], windows.GENERIC_READ|windows.GENERIC_WRITE, 0, nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL|windows.FILE_FLAG_OVERLAPPED, 0)
+	if err != nil {
+		return winInvalidHandleValue, err
+	}
+
+	return handle, nil
+}
+
+func closeDriver(handle windows.Handle) error {
+	if kextHandle == winInvalidHandleValue {
+		return ErrKextNotReady
+	}
+
+	return windows.CloseHandle(handle)
 }
