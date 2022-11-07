@@ -47,9 +47,9 @@ func Start() error {
 	defer kextLock.Unlock()
 
 	// initialize and start driver service
-	service, err := createKextService(driverName, driverPath)
+	var err error
+	service, err = createKextService(driverName, driverPath)
 	if err != nil {
-		log.Warningf("winkext: failed to create service: %s", err)
 		return fmt.Errorf("failed to create service: %w", err)
 	}
 
@@ -58,7 +58,6 @@ func Start() error {
 		err = service.start(true)
 
 		if err != nil {
-			log.Warningf("winkext: failed to start service: %s", err)
 			return fmt.Errorf("failed to start service: %w", err)
 		}
 	} else if err != nil {

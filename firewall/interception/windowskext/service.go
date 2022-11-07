@@ -115,7 +115,7 @@ func (s *KextService) start(wait bool) error {
 
 func (s *KextService) stop(wait bool) error {
 	if !s.isValid() {
-		return fmt.Errorf("kext service not initialized %v", s)
+		return fmt.Errorf("kext service not initialized")
 	}
 
 	// Stop the service
@@ -138,7 +138,7 @@ func (s *KextService) stop(wait bool) error {
 
 func (s *KextService) delete() error {
 	if !s.isValid() {
-		return fmt.Errorf("kext service not initialized %v", s)
+		return fmt.Errorf("kext service not initialized")
 	}
 
 	err := windows.DeleteService(s.handle)
@@ -150,7 +150,7 @@ func (s *KextService) delete() error {
 
 func (s *KextService) closeHandle() error {
 	if !s.isValid() {
-		return fmt.Errorf("kext service not initialized %v", s)
+		return fmt.Errorf("kext service not initialized")
 	}
 
 	err := windows.CloseServiceHandle(s.handle)
