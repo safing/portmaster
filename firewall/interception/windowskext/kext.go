@@ -46,28 +46,27 @@ func Start() error {
 	kextLock.Lock()
 	defer kextLock.Unlock()
 
-	filename := `\\.\` + driverName
-
-	// check if driver is already installed
-	var err error
-	kextHandle, err = openDriver(filename)
-	if err == nil {
-		return nil // device was already initialized
-	}
-
 	// initialize and start driver service
-	service, err = createKextService(driverName, driverPath)
+	service, err := createKextService(driverName, driverPath)
 	if err != nil {
+		log.Warningf("winkext: failed to create service: %s", err)
 		return fmt.Errorf("failed to create service: %w", err)
 	}
 
-	err = service.start()
+	running, err := service.isRunning()
+	if err == nil && !running {
+		err = service.start(true)
 
-	if err != nil {
-		return fmt.Errorf("failed to start service: %w", err)
+		if err != nil {
+			log.Warningf("winkext: failed to start service: %s", err)
+			return fmt.Errorf("failed to start service: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("service not initialized: %w", err)
 	}
 
-	// open the driver
+	// Open the driver
+	filename := `\\.\` + driverName
 	kextHandle, err = openDriver(filename)
 
 	// driver was not installed
@@ -88,7 +87,7 @@ func Stop() error {
 		log.Warningf("winkext: failed to close the handle: %s", err)
 	}
 
-	err = service.stop()
+	err = service.stop(true)
 	if err != nil {
 		log.Warningf("winkext: failed to stop service: %s", err)
 	}

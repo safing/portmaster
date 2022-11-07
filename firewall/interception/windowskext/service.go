@@ -6,6 +6,7 @@ package windowskext
 import (
 	"fmt"
 	"syscall"
+	"time"
 
 	"golang.org/x/sys/windows"
 )
@@ -47,7 +48,40 @@ func (s *KextService) isValid() bool {
 	return s != nil && s.handle != winInvalidHandleValue && s.handle != 0
 }
 
-func (s *KextService) start() error {
+func (s *KextService) isRunning() (bool, error) {
+	if !s.isValid() {
+		return false, fmt.Errorf("kext service not initialized")
+	}
+	var status windows.SERVICE_STATUS
+	err := windows.QueryServiceStatus(s.handle, &status)
+	if err != nil {
+		return false, err
+	}
+	return status.CurrentState == windows.SERVICE_RUNNING, nil
+}
+
+func waitForServiceStatus(handle windows.Handle, neededStatus uint32, timeLimit time.Duration) (bool, error) {
+	var status windows.SERVICE_STATUS
+	status.CurrentState = windows.SERVICE_NO_CHANGE
+	start := time.Now()
+	for status.CurrentState == neededStatus {
+		err := windows.QueryServiceStatus(handle, &status)
+		if err != nil {
+			return false, fmt.Errorf("failed while waiting for service to start: %w", err)
+		}
+
+		if time.Now().Sub(start) > timeLimit {
+			return false, fmt.Errorf("time limit reached")
+		}
+
+		// Sleep for 1/10 of the wait hint, recommended time from microsoft
+		time.Sleep(time.Duration((status.WaitHint / 10)) * time.Millisecond)
+	}
+
+	return true, nil
+}
+
+func (s *KextService) start(wait bool) error {
 	if !s.isValid() {
 		return fmt.Errorf("kext service not initialized")
 	}
@@ -68,22 +102,35 @@ func (s *KextService) start() error {
 		}
 	}
 
+	// Wait for service to start
+	if wait {
+		success, err := waitForServiceStatus(s.handle, windows.SERVICE_RUNNING, time.Duration(10*time.Second))
+		if err != nil || !success {
+			return fmt.Errorf("service did not start: %w", err)
+		}
+	}
+
 	return nil
 }
 
-func (s *KextService) stop() error {
+func (s *KextService) stop(wait bool) error {
 	if !s.isValid() {
-		return fmt.Errorf("kext service not initialized")
+		return fmt.Errorf("kext service not initialized %v", s)
 	}
 
+	// Stop the service
 	var status windows.SERVICE_STATUS
 	err := windows.ControlService(s.handle, windows.SERVICE_CONTROL_STOP, &status)
 	if err != nil {
 		return fmt.Errorf("service failed to stop: %w", err)
 	}
 
-	if status.CurrentState != windows.SERVICE_STOP_PENDING && status.CurrentState != windows.SERVICE_STOPPED {
-		return fmt.Errorf("service unexpected status after stop: %d", status.CurrentState)
+	// Wait for service to stop
+	if wait {
+		success, err := waitForServiceStatus(s.handle, windows.SERVICE_STOPPED, time.Duration(10*time.Second))
+		if err != nil || !success {
+			return fmt.Errorf("service did not stop: %w", err)
+		}
 	}
 
 	return nil
@@ -91,7 +138,7 @@ func (s *KextService) stop() error {
 
 func (s *KextService) delete() error {
 	if !s.isValid() {
-		return fmt.Errorf("kext service not initialized")
+		return fmt.Errorf("kext service not initialized %v", s)
 	}
 
 	err := windows.DeleteService(s.handle)
@@ -103,7 +150,7 @@ func (s *KextService) delete() error {
 
 func (s *KextService) closeHandle() error {
 	if !s.isValid() {
-		return fmt.Errorf("kext service not initialized")
+		return fmt.Errorf("kext service not initialized %v", s)
 	}
 
 	err := windows.CloseServiceHandle(s.handle)
