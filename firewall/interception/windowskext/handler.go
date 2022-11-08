@@ -29,6 +29,7 @@ const (
 	VerdictRequestFlagSocketAuth = 2
 )
 
+// Do not change the order of the members! The structure to communicate with the kernel extension.
 // VerdictRequest is the request structure from the Kext.
 type VerdictRequest struct {
 	id         uint32 // ID from RegisterPacket
@@ -47,18 +48,20 @@ type VerdictRequest struct {
 	packetSize uint32
 }
 
+// Do not change the order of the members! The structure to communicate with the kernel extension.
 type VerdictInfo struct {
 	id      uint32          // ID from RegisterPacket
 	verdict network.Verdict // verdict for the connection
 }
 
+// Do not change the order of the members! The structure to communicate with the kernel extension.
 type VerdictUpdateInfo struct {
-	ipV6       uint8     //True: IPv6, False: IPv4
-	protocol   uint8     //Protocol (UDP, TCP, ...)
 	localIP    [4]uint32 //Source Address, only srcIP[0] if IPv4
 	remoteIP   [4]uint32 //Destination Address
 	localPort  uint16    //Source Port
 	remotePort uint16    //Destination port
+	ipV6       uint8     //True: IPv6, False: IPv4
+	protocol   uint8     //Protocol (UDP, TCP, ...)
 	verdict    uint8     //New verdict
 }
 
