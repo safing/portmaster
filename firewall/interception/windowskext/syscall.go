@@ -28,47 +28,7 @@ func ctlCode(device_type, function, method, access uint32) uint32 {
 	return (device_type << 16) | (access << 14) | (function << 2) | method
 }
 
-func deviceIoControlRead(handle windows.Handle, code uint32, data []byte) (uint32, error) {
-	var bytesReturned uint32
-
-	var dataPtr *byte = nil
-	var dataSize uint32 = 0
-	if data != nil {
-		dataPtr = &data[0]
-		dataSize = uint32(len(data))
-	}
-
-	err := windows.DeviceIoControl(handle,
-		code,
-		nil, 0,
-		dataPtr, dataSize,
-		&bytesReturned, nil)
-
-	return bytesReturned, err
-}
-
-func deviceIoControlWrite(handle windows.Handle, code uint32, data []byte) (uint32, error) {
-	var bytesReturned uint32
-
-	var dataPtr *byte = nil
-	var dataSize uint32 = 0
-	if data != nil {
-		dataPtr = &data[0]
-		dataSize = uint32(len(data))
-	}
-
-	err := windows.DeviceIoControl(handle,
-		code,
-		dataPtr, dataSize,
-		nil, 0,
-		&bytesReturned, nil)
-
-	return bytesReturned, err
-}
-
-func deviceIoControlReadWrite(handle windows.Handle, code uint32, inData []byte, outData []byte) (uint32, error) {
-	var bytesReturned uint32
-
+func deviceIOControlAsync(handle windows.Handle, code uint32, inData []byte, outData []byte) (*windows.Overlapped, error) {
 	var inDataPtr *byte = nil
 	var inDataSize uint32 = 0
 	if inData != nil {
@@ -82,11 +42,30 @@ func deviceIoControlReadWrite(handle windows.Handle, code uint32, inData []byte,
 		outDataPtr = &outData[0]
 		outDataSize = uint32(len(outData))
 	}
+
+	overlapped := &windows.Overlapped{}
 	err := windows.DeviceIoControl(handle,
 		code,
 		inDataPtr, inDataSize,
 		outDataPtr, outDataSize,
-		&bytesReturned, nil)
+		nil, overlapped)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return overlapped, nil
+
+}
+
+func deviceIOControl(handle windows.Handle, code uint32, inData []byte, outData []byte) (uint32, error) {
+	overlapped, err := deviceIOControlAsync(handle, code, inData, outData)
+	if err != nil {
+		return 0, err
+	}
+
+	var bytesReturned uint32
+	err = windows.GetOverlappedResult(handle, overlapped, &bytesReturned, true)
 
 	return bytesReturned, err
 }
