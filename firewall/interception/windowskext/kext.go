@@ -13,6 +13,7 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network"
+	"github.com/safing/portmaster/network/packet"
 	"golang.org/x/sys/windows"
 )
 
@@ -217,23 +218,26 @@ func UpdateVerdict(conn *network.Connection) error {
 	defer kextLock.RUnlock()
 
 	// Check if driver is initialized
-	if !ready.IsSet() {
+	if kextHandle == winInvalidHandleValue {
 		log.Error("kext: failed to clear the cache: kext not ready")
 		return ErrKextNotReady
 	}
 
+	var isIpv6 uint8 = 0
+	if conn.IPVersion == packet.IPv6 {
+		isIpv6 = 1
+	}
+
 	// initialize variables
-	info := &VerdictUpdateInfo{
-		ipV6:       uint8(conn.IPVersion),
+	info := VerdictUpdateInfo{
+		ipV6:       isIpv6,
 		protocol:   uint8(conn.IPProtocol),
+		localIP:    ipAddressToArray(conn.LocalIP, isIpv6 == 1),
 		localPort:  conn.LocalPort,
+		remoteIP:   ipAddressToArray(conn.Entity.IP, isIpv6 == 1),
 		remotePort: conn.Entity.Port,
 		verdict:    uint8(conn.Verdict.Active),
 	}
-
-	// copy ip addresses
-	copy(asByteArray(&info.localIP[0]), conn.LocalIP)
-	copy(asByteArray(&info.remoteIP[0]), conn.Entity.IP)
 
 	// Make driver request
 	data := asByteArray(&info)
@@ -246,7 +250,7 @@ func GetVersion() (*VersionInfo, error) {
 	defer kextLock.RUnlock()
 
 	// Check if driver is initialized
-	if !ready.IsSet() {
+	if kextHandle == winInvalidHandleValue {
 		log.Error("kext: failed to clear the cache: kext not ready")
 		return nil, ErrKextNotReady
 	}
@@ -265,10 +269,6 @@ func GetVersion() (*VersionInfo, error) {
 		build:    data[3],
 	}
 	return version, nil
-}
-
-func asByteArray[T any](obj *T) []byte {
-	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), unsafe.Sizeof(*obj))
 }
 
 func openDriver(filename string) (windows.Handle, error) {

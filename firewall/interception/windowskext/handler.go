@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"unsafe"
 
 	"github.com/tevino/abool"
 
@@ -66,6 +67,10 @@ type VersionInfo struct {
 	minor    uint8
 	revision uint8
 	build    uint8
+}
+
+func (v *VersionInfo) String() string {
+	return fmt.Sprintf("%d.%d.%d.%d", v.major, v.minor, v.revision, v.build)
 }
 
 // Handler transforms received packets to the Packet interface.
@@ -167,6 +172,27 @@ func convertIPv6(input [4]uint32) net.IP {
 	return net.IP(addressBuf)
 }
 
-func (v *VersionInfo) String() string {
-	return fmt.Sprintf("%d.%d.%d.%d", v.major, v.minor, v.revision, v.build)
+func ipAddressToArray(ip net.IP, isIPv6 bool) [4]uint32 {
+	array := [4]uint32{0}
+	if isIPv6 {
+		for i := 0; i < 4; i++ {
+			binary.BigEndian.PutUint32(asByteArrayWithLength(&array[i], 4), getUInt32Value(&ip[i]))
+		}
+	} else {
+		binary.BigEndian.PutUint32(asByteArrayWithLength(&array[0], 4), getUInt32Value(&ip[0]))
+	}
+
+	return array
+}
+
+func asByteArray[T any](obj *T) []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), unsafe.Sizeof(*obj))
+}
+
+func asByteArrayWithLength[T any](obj *T, size uint32) []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), size)
+}
+
+func getUInt32Value[T any](obj *T) uint32 {
+	return *(*uint32)(unsafe.Pointer(obj))
 }
