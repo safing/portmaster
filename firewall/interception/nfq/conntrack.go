@@ -15,7 +15,7 @@ import (
 
 var nfct *ct.Nfct // Conntrack handler. NFCT: Network Filter Connection Tracking.
 
-// InitNFCT initializes the network filter conntrack library
+// InitNFCT initializes the network filter conntrack library.
 func InitNFCT() error {
 	var err error
 	nfct, err = ct.Open(&ct.Config{})
