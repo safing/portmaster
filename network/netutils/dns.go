@@ -18,7 +18,7 @@ var (
 			`\.` + // ending with a dot
 			`)*` + // end subdomain group, allow any number of subdomains
 			`(xn--)?` + // TLD idn prefix
-			`[a-z0-9_-]{2,63}` + // TLD main chunk with at least two characters
+			`[a-z0-9_-]{1,63}` + // TLD main chunk with at least one character
 			`\.` + // ending with a dot
 			`$`, // match end
 	)
