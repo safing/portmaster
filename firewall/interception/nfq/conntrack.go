@@ -13,7 +13,7 @@ import (
 	"github.com/safing/portmaster/network"
 )
 
-var nfct *ct.Nfct // Conntrack handler. NFCT: Network Filter Connection Tracking
+var nfct *ct.Nfct // Conntrack handler. NFCT: Network Filter Connection Tracking.
 
 // InitNFCT initializes the network filter conntrack library
 func InitNFCT() error {
@@ -25,7 +25,7 @@ func InitNFCT() error {
 	return nil
 }
 
-// DeinitNFCT deinitializes the network filter conntrack library
+// DeinitNFCT deinitializes the network filter conntrack library.
 func DeinitNFCT() {
 	_ = nfct.Close()
 }
@@ -82,7 +82,7 @@ func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) (deleted int) {
 	return deleted
 }
 
-// DeleteMarkedConnection removes a specific connection from the conntrack table
+// DeleteMarkedConnection removes a specific connection from the conntrack table.
 func DeleteMarkedConnection(conn *network.Connection) error {
 	if nfct == nil {
 		return fmt.Errorf("nfq: nfct not initialized")
