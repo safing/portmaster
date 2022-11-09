@@ -41,11 +41,13 @@ func ResetVerdictOfAllConnections() error {
 	return windowskext.ClearCache()
 }
 
+// UpdateVerdictOfConnection updates the verdict of specific connection in the kernel extension
 func UpdateVerdictOfConnection(conn *network.Connection) error {
 	return windowskext.UpdateVerdict(conn)
 }
 
-func GetVersion() (string, error) {
+// GetKextVersion returns the version of the kernel extension
+func GetKextVersion() (string, error) {
 	version, err := windowskext.GetVersion()
 	if err != nil {
 		return "", err

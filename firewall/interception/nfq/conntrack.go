@@ -13,10 +13,9 @@ import (
 	"github.com/safing/portmaster/network"
 )
 
-var (
-	nfct *ct.Nfct // Conntrack handler. NFCT: Network Filter Connection Tracking
-)
+var nfct *ct.Nfct // Conntrack handler. NFCT: Network Filter Connection Tracking
 
+// InitNFCT initializes the network filter conntrack library
 func InitNFCT() error {
 	var err error
 	nfct, err = ct.Open(&ct.Config{})
@@ -26,6 +25,7 @@ func InitNFCT() error {
 	return nil
 }
 
+// DeinitNFCT deinitializes the network filter conntrack library
 func DeinitNFCT() {
 	_ = nfct.Close()
 }
@@ -82,6 +82,7 @@ func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) (deleted int) {
 	return deleted
 }
 
+// DeleteMarkedConnection removes a specific connection from the conntrack table
 func DeleteMarkedConnection(conn *network.Connection) error {
 	if nfct == nil {
 		return fmt.Errorf("nfq: nfct not initialized")
@@ -100,7 +101,7 @@ func DeleteMarkedConnection(conn *network.Connection) error {
 	}
 	connections, err := nfct.Get(ct.Conntrack, ct.IPv4, con)
 	if err != nil {
-		return fmt.Errorf("nfq: failed to find entry for connection %s: %s", conn.String(), err)
+		return fmt.Errorf("nfq: failed to find entry for connection %s: %w", conn.String(), err)
 	}
 
 	if len(connections) > 1 {
@@ -108,7 +109,14 @@ func DeleteMarkedConnection(conn *network.Connection) error {
 	}
 
 	for _, connection := range connections {
-		nfct.Delete(ct.Conntrack, ct.IPv4, connection)
+		deleteErr := nfct.Delete(ct.Conntrack, ct.IPv4, connection)
+		if err == nil {
+			err = deleteErr
+		}
+	}
+
+	if err != nil {
+		log.Warningf("nfq: error while deleting conntrack entries for connection %s: %s", conn.String(), err)
 	}
 
 	return nil

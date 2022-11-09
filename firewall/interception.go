@@ -177,9 +177,7 @@ func interceptionStart() error {
 	interceptionModule.StartWorker("stat logger", statLogger)
 	interceptionModule.StartWorker("packet handler", packetHandler)
 
-	err := interception.Start()
-
-	return err
+	return interception.Start()
 }
 
 func interceptionStop() error {

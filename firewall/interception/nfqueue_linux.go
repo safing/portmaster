@@ -150,7 +150,7 @@ func activateNfqueueFirewall() error {
 	if err := nfq.InitNFCT(); err != nil {
 		return err
 	}
-	nfq.DeleteAllMarkedConnection()
+	_ = nfq.DeleteAllMarkedConnection()
 
 	return nil
 }
@@ -171,7 +171,7 @@ func DeactivateNfqueueFirewall() error {
 		}
 	}
 
-	nfq.DeleteAllMarkedConnection()
+	_ = nfq.DeleteAllMarkedConnection()
 	nfq.DeinitNFCT()
 
 	return result.ErrorOrNil()
