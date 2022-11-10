@@ -151,7 +151,7 @@ func resetAllConnectionVerdicts() {
 			if conn.Verdict.Firewall != previousVerdict {
 				err := interception.UpdateVerdictOfConnection(conn)
 				if err != nil {
-					log.Debugf("filter: failed to delete connection verdict: %s", err)
+					log.Debugf("filter: failed to update connection verdict: %s", err)
 				}
 				conn.Save()
 				tracer.Infof("filter: verdict of connection %s changed from %s to %s", conn, previousVerdict.Verb(), conn.VerdictVerb())

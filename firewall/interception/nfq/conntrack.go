@@ -25,8 +25,8 @@ func InitNFCT() error {
 	return nil
 }
 
-// DeinitNFCT deinitializes the network filter conntrack library.
-func DeinitNFCT() {
+// TeardownNFCT deinitializes the network filter conntrack library.
+func TeardownNFCT() {
 	_ = nfct.Close()
 }
 
