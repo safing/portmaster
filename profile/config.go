@@ -6,6 +6,7 @@ import (
 	"github.com/safing/portbase/config"
 	"github.com/safing/portmaster/profile/endpoints"
 	"github.com/safing/portmaster/status"
+	"github.com/safing/spn/navigator"
 )
 
 // Configuration Keys.
@@ -680,13 +681,12 @@ By default, the Portmaster tries to choose the node closest to the destination a
 	cfgStringArrayOptions[CfgOptionExitHubPolicyKey] = cfgOptionExitHubPolicy
 
 	// Select SPN Routing Algorithm
-	defaultRoutingAlg := "double-hop"
 	err = config.Register(&config.Option{
 		Name:         "Select SPN Routing Algorithm",
 		Key:          CfgOptionRoutingAlgorithmKey,
-		Description:  "Select the routing algorithm for your connections through the SPN. Configure your preferred balance between speed and privacy.",
+		Description:  "Select the routing algorithm for your connections through the SPN. Configure your preferred balance between speed and privacy. Portmaster may automatically upgrade the routing algorithm if necessary to protect your privacy.",
 		OptType:      config.OptTypeString,
-		DefaultValue: defaultRoutingAlg,
+		DefaultValue: navigator.DefaultRoutingProfileID,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
 			config.DisplayOrderAnnotation: cfgOptionRoutingAlgorithmOrder,
@@ -718,7 +718,7 @@ By default, the Portmaster tries to choose the node closest to the destination a
 	if err != nil {
 		return err
 	}
-	cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(CfgOptionRoutingAlgorithmKey, defaultRoutingAlg)
+	cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(CfgOptionRoutingAlgorithmKey, navigator.DefaultRoutingProfileID)
 	cfgStringOptions[CfgOptionRoutingAlgorithmKey] = cfgOptionRoutingAlgorithm
 
 	return nil
