@@ -149,6 +149,10 @@ func resetAllConnectionVerdicts() {
 
 			// Save if verdict changed.
 			if conn.Verdict.Firewall != previousVerdict {
+				err := interception.UpdateVerdictOfConnection(conn)
+				if err != nil {
+					log.Debugf("filter: failed to update connection verdict: %s", err)
+				}
 				conn.Save()
 				tracer.Infof("filter: verdict of connection %s changed from %s to %s", conn, previousVerdict.Verb(), conn.VerdictVerb())
 				changedVerdicts++
@@ -159,11 +163,6 @@ func resetAllConnectionVerdicts() {
 	}
 	tracer.Infof("filter: changed verdict on %d connections", changedVerdicts)
 	tracer.Submit()
-
-	err := interception.ResetVerdictOfAllConnections()
-	if err != nil {
-		log.Errorf("interception: failed to remove persistent verdicts: %s", err)
-	}
 }
 
 func interceptionStart() error {

@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package windowskext
@@ -5,11 +6,14 @@ package windowskext
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"net"
+	"unsafe"
 
 	"github.com/tevino/abool"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
 )
 
@@ -25,6 +29,7 @@ const (
 	VerdictRequestFlagSocketAuth = 2
 )
 
+// Do not change the order of the members! The structure is used to communicate with the kernel extension.
 // VerdictRequest is the request structure from the Kext.
 type VerdictRequest struct {
 	id         uint32 // ID from RegisterPacket
@@ -43,16 +48,40 @@ type VerdictRequest struct {
 	packetSize uint32
 }
 
+// Do not change the order of the members! The structure is used to communicate with the kernel extension.
+type VerdictInfo struct {
+	id      uint32          // ID from RegisterPacket
+	verdict network.Verdict // verdict for the connection
+}
+
+// Do not change the order of the members! The structure to communicate with the kernel extension.
+type VerdictUpdateInfo struct {
+	localIP    [4]uint32 // Source Address, only srcIP[0] if IPv4
+	remoteIP   [4]uint32 // Destination Address
+	localPort  uint16    // Source Port
+	remotePort uint16    // Destination port
+	ipV6       uint8     // True: IPv6, False: IPv4
+	protocol   uint8     // Protocol (UDP, TCP, ...)
+	verdict    uint8     // New verdict
+}
+
+type VersionInfo struct {
+	major    uint8
+	minor    uint8
+	revision uint8
+	build    uint8
+}
+
+func (v *VersionInfo) String() string {
+	return fmt.Sprintf("%d.%d.%d.%d", v.major, v.minor, v.revision, v.build)
+}
+
 // Handler transforms received packets to the Packet interface.
 func Handler(packets chan packet.Packet) {
-	if !ready.IsSet() {
-		return
-	}
-
 	defer close(packets)
 
 	for {
-		if !ready.IsSet() {
+		if kextHandle == winInvalidHandleValue {
 			return
 		}
 
@@ -144,4 +173,29 @@ func convertIPv6(input [4]uint32) net.IP {
 		binary.BigEndian.PutUint32(addressBuf[i*4:i*4+4], input[i])
 	}
 	return net.IP(addressBuf)
+}
+
+func ipAddressToArray(ip net.IP, isIPv6 bool) [4]uint32 {
+	array := [4]uint32{0}
+	if isIPv6 {
+		for i := 0; i < 4; i++ {
+			binary.BigEndian.PutUint32(asByteArrayWithLength(&array[i], 4), getUInt32Value(&ip[i]))
+		}
+	} else {
+		binary.BigEndian.PutUint32(asByteArrayWithLength(&array[0], 4), getUInt32Value(&ip[0]))
+	}
+
+	return array
+}
+
+func asByteArray[T any](obj *T) []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), unsafe.Sizeof(*obj))
+}
+
+func asByteArrayWithLength[T any](obj *T, size uint32) []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), size)
+}
+
+func getUInt32Value[T any](obj *T) uint32 {
+	return *(*uint32)(unsafe.Pointer(obj))
 }
