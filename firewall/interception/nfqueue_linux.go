@@ -172,7 +172,7 @@ func DeactivateNfqueueFirewall() error {
 	}
 
 	_ = nfq.DeleteAllMarkedConnection()
-	nfq.DeinitNFCT()
+	nfq.TeardownNFCT()
 
 	return result.ErrorOrNil()
 }
