@@ -684,7 +684,7 @@ By default, the Portmaster tries to choose the node closest to the destination a
 	err = config.Register(&config.Option{
 		Name:         "Select SPN Routing Algorithm",
 		Key:          CfgOptionRoutingAlgorithmKey,
-		Description:  "Select the routing algorithm for your connections through the SPN. Configure your preferred balance between speed and privacy.",
+		Description:  "Select the routing algorithm for your connections through the SPN. Configure your preferred balance between speed and privacy. Portmaster may automatically upgrade the routing algorithm if necessary to protect your privacy.",
 		OptType:      config.OptTypeString,
 		DefaultValue: navigator.DefaultRoutingProfileID,
 		Annotations: config.Annotations{
