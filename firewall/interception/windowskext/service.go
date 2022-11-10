@@ -70,7 +70,7 @@ func waitForServiceStatus(handle windows.Handle, neededStatus uint32, timeLimit 
 			return false, fmt.Errorf("failed while waiting for service to start: %w", err)
 		}
 
-		if time.Now().Sub(start) > timeLimit {
+		if time.Since(start) > timeLimit {
 			return false, fmt.Errorf("time limit reached")
 		}
 

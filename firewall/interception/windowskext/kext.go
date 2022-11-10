@@ -114,7 +114,7 @@ func RecvVerdictRequest() (*VerdictRequest, error) {
 	}
 
 	timestamp := time.Now()
-	defer log.Tracef("winkext: getting verdict request took %s", time.Now().Sub(timestamp))
+	defer log.Tracef("winkext: getting verdict request took %s", time.Since(timestamp))
 	// Initialize struct for the output data
 	var new VerdictRequest
 
