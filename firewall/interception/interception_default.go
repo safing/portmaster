@@ -4,6 +4,7 @@ package interception
 
 import (
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
 )
 
@@ -20,5 +21,10 @@ func stop() error {
 
 // ResetVerdictOfAllConnections resets all connections so they are forced to go thought the firewall again.
 func ResetVerdictOfAllConnections() error {
+	return nil
+}
+
+// UpdateVerdictOfConnection updates the verdict of the given connection in the OS integration.
+func UpdateVerdictOfConnection(conn *network.Connection) error {
 	return nil
 }

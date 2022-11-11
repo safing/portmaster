@@ -21,7 +21,7 @@ func ResetVerdictOfAllConnections() error {
 	return nfq.DeleteAllMarkedConnection()
 }
 
-// UpdateVerdictOfConnection deletes the verdict of specific connection so in can be initialized again with the next packet.
+// UpdateVerdictOfConnection deletes the verdict of the given connection so it can be initialized again with the next packet.
 func UpdateVerdictOfConnection(conn *network.Connection) error {
 	return nfq.DeleteMarkedConnection(conn)
 }

@@ -41,7 +41,7 @@ func ResetVerdictOfAllConnections() error {
 	return windowskext.ClearCache()
 }
 
-// UpdateVerdictOfConnection updates the verdict of specific connection in the kernel extension.
+// UpdateVerdictOfConnection updates the verdict of the given connection in the kernel extension.
 func UpdateVerdictOfConnection(conn *network.Connection) error {
 	return windowskext.UpdateVerdict(conn)
 }
