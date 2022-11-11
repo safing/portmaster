@@ -53,5 +53,5 @@ jobs:
     - name: Run tests
       run: ./test --test-only
 
-    - name: Build all
-      run: ./pack build
+    - name: Build Portmaster Core
+      run: ./cmds/portmaster-core/pack
