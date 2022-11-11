@@ -255,12 +255,19 @@ func registerConfiguration() error { //nolint:maintidx
 - By filter list - use the filterlist ID prefixed with "L:": "L:MAL"
 - Match anything: "*"
 
-Additionally, you may supply a protocol and port just behind that using numbers ("6/80") or names ("TCP/HTTP").  
+Additionally, you may supply a protocol and port using this format: "<host> <IP protocol>/<port>".
+
+Protocols and ports may be specified using numbers ("6/80") or names ("TCP/HTTP").  
 Port ranges are defined by using a hyphen ("TCP/1-1024"). Omit the port to match any.  
 Use a "*" for matching any protocol. If matching ports with any protocol, protocols without ports will not match.  
 Rules with protocol and port definitions only match if the protocol and port also match.  
 Ports are always compared to the destination port, thus, the local listening port for incoming connections.  
-Examples: "192.168.0.1 TCP/HTTP", "LAN UDP/50000-55000", "example.com */HTTPS", "1.1.1.1 ICMP"
+
+Examples:
+- "192.168.0.1 TCP/HTTP"
+- "LAN UDP/50000-55000"
+- "example.com */HTTPS"
+- "1.1.1.1 ICMP"
 
 Important: DNS Requests are only matched against domain and filter list rules, all others require an IP address and are checked only with the following IP connection.
 `, `"`, "`")
