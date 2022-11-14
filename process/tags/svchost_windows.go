@@ -89,7 +89,7 @@ func (h *SVCHostTagHandler) CreateProfile(p *process.Process) *profile.Profile {
 					Type:      profile.FingerprintTypeTagID,
 					Key:       tag.Key,
 					Operation: profile.FingerprintOperationEqualsID,
-					Value:     tag.Value,
+					Value:     tag.Value, // Value of svchostTagKey.
 				},
 			},
 		})

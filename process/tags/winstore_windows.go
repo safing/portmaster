@@ -4,12 +4,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/safing/portbase/utils/osdetail"
-
 	"github.com/safing/portbase/log"
-
 	"github.com/safing/portbase/utils"
-
+	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
 )
@@ -35,7 +32,7 @@ const (
 
 var winStorePaths = []string{`C:\Program Files\WindowsApps\`}
 
-// WinStoreHandler handles AppImage processes on Unix systems.
+// WinStoreHandler handles Windows Store Apps.
 type WinStoreHandler struct{}
 
 // Name returns the tag handler name.
@@ -112,7 +109,7 @@ func (h *WinStoreHandler) CreateProfile(p *process.Process) *profile.Profile {
 					Type:      profile.FingerprintTypeTagID,
 					Key:       tag.Key,
 					Operation: profile.FingerprintOperationEqualsID,
-					Value:     tag.Value, // Value of appImagePathTagKey.
+					Value:     tag.Value, // Value of winStoreAppNameTagKey.
 				},
 			},
 		})
