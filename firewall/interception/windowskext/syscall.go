@@ -15,13 +15,13 @@ const (
 )
 
 var (
-	IOCTL_VERSION               = ctlCode(SIOCTL_TYPE, 0x800, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
-	IOCTL_RECV_VERDICT_REQ_POLL = ctlCode(SIOCTL_TYPE, 0x801, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA) // Not used
-	IOCTL_RECV_VERDICT_REQ      = ctlCode(SIOCTL_TYPE, 0x802, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
-	IOCTL_SET_VERDICT           = ctlCode(SIOCTL_TYPE, 0x803, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
-	IOCTL_GET_PAYLOAD           = ctlCode(SIOCTL_TYPE, 0x804, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
-	IOCTL_CLEAR_CACHE           = ctlCode(SIOCTL_TYPE, 0x805, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
-	IOCTL_UPDATE_VERDICT        = ctlCode(SIOCTL_TYPE, 0x806, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
+	IOCTL_VERSION          = ctlCode(SIOCTL_TYPE, 0x800, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
+	IOCTL_SHUTDOWN_REQUEST = ctlCode(SIOCTL_TYPE, 0x801, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
+	IOCTL_RECV_VERDICT_REQ = ctlCode(SIOCTL_TYPE, 0x802, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
+	IOCTL_SET_VERDICT      = ctlCode(SIOCTL_TYPE, 0x803, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
+	IOCTL_GET_PAYLOAD      = ctlCode(SIOCTL_TYPE, 0x804, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
+	IOCTL_CLEAR_CACHE      = ctlCode(SIOCTL_TYPE, 0x805, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
+	IOCTL_UPDATE_VERDICT   = ctlCode(SIOCTL_TYPE, 0x806, METHOD_BUFFERED, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA)
 )
 
 func ctlCode(device_type, function, method, access uint32) uint32 {
@@ -68,22 +68,4 @@ func deviceIOControl(handle windows.Handle, code uint32, inData []byte, outData 
 	err = windows.GetOverlappedResult(handle, overlapped, &bytesReturned, true)
 
 	return bytesReturned, err
-}
-
-// Use for METHOD_NEITHER IOCTL, the data buffer is passed directly to the kernel
-func deviceIoControlDirect(handle windows.Handle, code uint32, data []byte) error {
-	var dataPtr *byte = nil
-	var dataSize uint32 = 0
-	if data != nil {
-		dataPtr = &data[0]
-		dataSize = uint32(len(data))
-	}
-
-	err := windows.DeviceIoControl(handle,
-		code,
-		dataPtr, dataSize,
-		nil, 0,
-		nil, nil)
-
-	return err
 }
