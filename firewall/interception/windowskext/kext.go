@@ -79,10 +79,16 @@ func Start() error {
 
 // Stop intercepting.
 func Stop() error {
+	// Prepare kernel for shutdown
+	err := shutdownRequest()
+	if err != nil {
+		log.Warningf("winkext: shutdown request failed: %s", err)
+	}
+
 	kextLock.Lock()
 	defer kextLock.Unlock()
 
-	err := closeDriver(kextHandle)
+	err = closeDriver(kextHandle)
 	if err != nil {
 		log.Warningf("winkext: failed to close the handle: %s", err)
 	}
@@ -103,6 +109,18 @@ func Stop() error {
 
 	kextHandle = winInvalidHandleValue
 	return nil
+}
+
+func shutdownRequest() error {
+	kextLock.RLock()
+	defer kextLock.RUnlock()
+	if kextHandle == winInvalidHandleValue {
+		return ErrKextNotReady
+	}
+	// Sent a shutdown request so the kernel extension can prepare.
+	_, err := deviceIOControl(kextHandle, IOCTL_SHUTDOWN_REQUEST, nil, nil)
+
+	return err
 }
 
 // RecvVerdictRequest waits for the next verdict request from the kext. If a timeout is reached, both *VerdictRequest and error will be nil.
@@ -241,7 +259,7 @@ func UpdateVerdict(conn *network.Connection) error {
 
 	// Make driver request
 	data := asByteArray(&info)
-	err := deviceIoControlDirect(kextHandle, IOCTL_UPDATE_VERDICT, data)
+	_, err := deviceIOControl(kextHandle, IOCTL_UPDATE_VERDICT, data, nil)
 	return err
 }
 
@@ -256,7 +274,7 @@ func GetVersion() (*VersionInfo, error) {
 	}
 
 	data := make([]uint8, 4)
-	err := deviceIoControlDirect(kextHandle, IOCTL_VERSION, data)
+	_, err := deviceIOControl(kextHandle, IOCTL_VERSION, data, nil)
 
 	if err != nil {
 		return nil, err

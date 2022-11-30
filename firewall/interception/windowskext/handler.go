@@ -81,10 +81,6 @@ func Handler(packets chan packet.Packet) {
 	defer close(packets)
 
 	for {
-		if kextHandle == winInvalidHandleValue {
-			return
-		}
-
 		packetInfo, err := RecvVerdictRequest()
 		if err != nil {
 			// Check if we are done with processing.
