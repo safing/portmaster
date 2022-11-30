@@ -95,7 +95,7 @@ func (hr *HTTPSResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("http response code %s", resp.Status)
+		return nil, fmt.Errorf("http request failed with %s", resp.Status)
 	}
 
 	// Try to read the result
