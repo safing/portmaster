@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/safing/portbase/log"
 	"golang.org/x/sys/windows"
 )
 
@@ -27,10 +28,19 @@ func createKextService(driverName string, driverPath string) (*KextService, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert driver name to UTF16 string: %w", err)
 	}
-	// Check if it's already created
+
+	// Check if there is an old service.
 	service, err := windows.OpenService(manager, &driverNameU16[0], windows.SERVICE_ALL_ACCESS)
 	if err == nil {
-		return &KextService{handle: service}, nil // service was already created
+		log.Warning("kext: old driver service was found")
+		oldService := &KextService{handle: service}
+		err := deleteService(manager, oldService, driverNameU16)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete old driver service: %s", err)
+		}
+
+		service = winInvalidHandleValue
+		log.Info("kext: old driver service was deleted successfully")
 	}
 
 	driverPathU16, err := syscall.UTF16FromString(driverPath)
@@ -42,6 +52,36 @@ func createKextService(driverName string, driverPath string) (*KextService, erro
 	}
 
 	return &KextService{handle: service}, nil
+}
+
+func deleteService(manager windows.Handle, service *KextService, driverName []uint16) error {
+	// Stop and wait before deleting
+	_ = service.stop(true)
+
+	// Try to delete even if stop failed
+	err := service.delete()
+	if err != nil {
+		return fmt.Errorf("failed to delete old service: %s", err)
+	}
+
+	// Wait until we can no longer open the old service.
+	// Not very efficient but NotifyServiceStatusChange cannot be used with driver service.
+	start := time.Now()
+	timeLimit := time.Duration(30 * time.Second)
+	for {
+		handle, err := windows.OpenService(manager, &driverName[0], windows.SERVICE_ALL_ACCESS)
+		if err != nil {
+			break
+		}
+		_ = windows.CloseServiceHandle(handle)
+
+		if time.Since(start) > timeLimit {
+			return fmt.Errorf("time limit reached")
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
+	return nil
 }
 
 func (s *KextService) isValid() bool {
@@ -145,17 +185,13 @@ func (s *KextService) delete() error {
 	if err != nil {
 		return fmt.Errorf("failed to delete service: %s", err)
 	}
-	return nil
-}
 
-func (s *KextService) closeHandle() error {
-	if !s.isValid() {
-		return fmt.Errorf("kext service not initialized")
-	}
-
-	err := windows.CloseServiceHandle(s.handle)
+	// Service wont be deleted until all handles are closed.
+	err = windows.CloseServiceHandle(s.handle)
 	if err != nil {
 		return fmt.Errorf("failed to close service handle: %s", err)
 	}
+
+	s.handle = winInvalidHandleValue
 	return nil
 }

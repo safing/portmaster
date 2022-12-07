@@ -102,10 +102,6 @@ func Stop() error {
 	if err != nil {
 		log.Warningf("winkext: failed to delete service: %s", err)
 	}
-	err = service.closeHandle()
-	if err != nil {
-		log.Warningf("winkext: failed to close the handle: %s", err)
-	}
 
 	kextHandle = winInvalidHandleValue
 	return nil
@@ -274,7 +270,7 @@ func GetVersion() (*VersionInfo, error) {
 	}
 
 	data := make([]uint8, 4)
-	_, err := deviceIOControl(kextHandle, IOCTL_VERSION, data, nil)
+	_, err := deviceIOControl(kextHandle, IOCTL_VERSION, nil, data)
 
 	if err != nil {
 		return nil, err
