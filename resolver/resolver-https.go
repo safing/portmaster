@@ -70,9 +70,9 @@ func (hr *HTTPSResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	if err != nil {
 		return nil, err
 	}
-	b64dns := base64.RawStdEncoding.EncodeToString(buf)
+	b64dns := base64.RawURLEncoding.EncodeToString(buf)
 
-	// Build and execute http reuqest
+	// Build and execute http request
 	url := &url.URL{
 		Scheme:     "https",
 		Host:       hr.resolver.ServerAddress,
@@ -93,6 +93,10 @@ func (hr *HTTPSResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	defer func() {
 		_ = resp.Body.Close()
 	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("http request failed with %s", resp.Status)
+	}
 
 	// Try to read the result
 	body, err := io.ReadAll(resp.Body)
