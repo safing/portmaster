@@ -36,11 +36,11 @@ func createKextService(driverName string, driverPath string) (*KextService, erro
 		oldService := &KextService{handle: service}
 		err := deleteService(manager, oldService, driverNameU16)
 		if err != nil {
-			return nil, fmt.Errorf("failed to delete old service: %s", err)
+			return nil, fmt.Errorf("failed to delete old driver service: %s", err)
 		}
 
 		service = winInvalidHandleValue
-		log.Info("kext: old driver service was deleted successful")
+		log.Info("kext: old driver service was deleted successfully")
 	}
 
 	driverPathU16, err := syscall.UTF16FromString(driverPath)
@@ -68,7 +68,7 @@ func deleteService(manager windows.Handle, service *KextService, driverName []ui
 	// Not very efficient but NotifyServiceStatusChange cannot be used with driver service.
 	start := time.Now()
 	timeLimit := time.Duration(30 * time.Second)
-	for true {
+	for {
 		handle, err := windows.OpenService(manager, &driverName[0], windows.SERVICE_ALL_ACCESS)
 		if err != nil {
 			break
