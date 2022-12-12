@@ -169,7 +169,7 @@ var (
 	// SPNRulesHelp defines the help text for SPN related Hub selection rules.
 	SPNRulesHelp = strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match the following attributes of SPN Nodes:
 
-- Country (based on IPs): "US"
+- Country (based on IPs): "US" (two-letter country codes according to ISO 3166-1 alpha-2)
 - AS number: "AS123456"
 - Address: "192.168.0.1"
 - Network: "192.168.0.1/24"
@@ -250,7 +250,7 @@ func registerConfiguration() error { //nolint:maintidx
 	- Matching with a wildcard prefix: "*xample.com"
 	- Matching with a wildcard suffix: "example.*"
 	- Matching domains containing text: "*example*"
-- By country (based on IP): "US"
+- By country (based on IP): "US" (two-letter country codes according to ISO 3166-1 alpha-2)
 - By AS number: "AS123456"
 - By filter list - use the filterlist ID prefixed with "L:": "L:MAL"
 - Match anything: "*"
