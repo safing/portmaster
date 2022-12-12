@@ -146,6 +146,7 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	compat.AddToDebugInfo(di)
 	di.AddLastReportedModuleError()
 	di.AddLastUnexpectedLogs()
+	updates.AddToDebugInfo(di)
 	di.AddGoroutineStack()
 
 	// Return data.
