@@ -194,6 +194,8 @@ github.com/safing/portbase v0.16.2 h1:ZlCZBZkKmgJDR+sHSRbFc9mM8m9qYtu8agE1xCirvQ
 github.com/safing/portbase v0.16.2/go.mod h1:mzNCWqPbO7vIYbbK5PElGbudwd2vx4YPNawymL8Aro8=
 github.com/safing/portbase v0.16.3 h1:9P8h5KWg7zaeW66pYaW1RN+5jUUwhFo1ruKa80aX/do=
 github.com/safing/portbase v0.16.3/go.mod h1:mzNCWqPbO7vIYbbK5PElGbudwd2vx4YPNawymL8Aro8=
+github.com/safing/portbase v0.16.4 h1:3w4Sc0TlSDvUS4Uk5TrsFXf98cwMbCf+BG5Bw6coxNk=
+github.com/safing/portbase v0.16.4/go.mod h1:mzNCWqPbO7vIYbbK5PElGbudwd2vx4YPNawymL8Aro8=
 github.com/safing/spn v0.5.3 h1:aebwD3RI7OqtbBDK9HoqhKHcEH/i021Klrkl+dOq1Dc=
 github.com/safing/spn v0.5.3/go.mod h1:HYcGGze78wlwXZxF1UMqZ7GuA6ILqvNrO9v23EpFQvM=
 github.com/safing/spn v0.5.4 h1:9xM4a9kBSg0dV6eR7mEYLjVT5vvNX2PRO9cIP5l9F5A=
@@ -202,6 +204,8 @@ github.com/safing/spn v0.5.5 h1:OpBOJCPLbx+1B5aMd0EQzP/0IgZGp/PFsso7ybUPuhs=
 github.com/safing/spn v0.5.5/go.mod h1:HYcGGze78wlwXZxF1UMqZ7GuA6ILqvNrO9v23EpFQvM=
 github.com/safing/spn v0.5.7 h1:M+0UOO3LqOxUI7mQ/lmb08FEeuQnEuu9ie8cYXkuEfA=
 github.com/safing/spn v0.5.7/go.mod h1:HYcGGze78wlwXZxF1UMqZ7GuA6ILqvNrO9v23EpFQvM=
+github.com/safing/spn v0.5.8 h1:RiEpyniYaLLl6JGvYvP0/3rS6HCXpFIYAaD4Dy3NtDI=
+github.com/safing/spn v0.5.8/go.mod h1:HYcGGze78wlwXZxF1UMqZ7GuA6ILqvNrO9v23EpFQvM=
 github.com/satori/go.uuid v1.2.0 h1:0uYX9dsZ2yD7q2RtLRtPSdGDWzjeM3TbMJP9utgA0ww=
 github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 github.com/seehuhn/fortuna v1.0.1 h1:lu9+CHsmR0bZnx5Ay646XvCSRJ8PJTi5UYJwDBX68H0=
