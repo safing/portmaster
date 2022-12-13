@@ -29,7 +29,7 @@ require (
 	golang.org/x/net v0.0.0-20221004154528-8021a29435af
 	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0
 	golang.org/x/sys v0.0.0-20221010170243-090e33056c14
-	zombiezen.com/go/sqlite v0.10.1
+	zombiezen.com/go/sqlite v0.11.0
 )
 
 require (
@@ -85,8 +85,8 @@ require (
 	golang.org/x/tools v0.1.12 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/libc v1.20.3 // indirect
+	modernc.org/libc v1.21.5 // indirect
 	modernc.org/mathutil v1.5.0 // indirect
 	modernc.org/memory v1.4.0 // indirect
-	modernc.org/sqlite v1.19.1 // indirect
+	modernc.org/sqlite v1.20.0 // indirect
 )
