@@ -131,7 +131,14 @@ func New(path string) (*Database, error) {
 		}
 	}
 
-	pool := puddle.NewPool(constructor, destructor, 10)
+	pool, err := puddle.NewPool(&puddle.Config[*sqlite.Conn]{
+		Constructor: constructor,
+		Destructor:  destructor,
+		MaxSize:     10,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	schema, err := orm.GenerateTableSchema("connections", Conn{})
 	if err != nil {
