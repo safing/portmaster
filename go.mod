@@ -28,7 +28,7 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	golang.org/x/net v0.4.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.3.0
+	golang.org/x/sys v0.4.0
 	zombiezen.com/go/sqlite v0.11.0
 )
 
