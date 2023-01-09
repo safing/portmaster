@@ -6,27 +6,24 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster-android/go/app_interface"
 	"github.com/safing/portmaster/network/netutils"
 )
 
 // GetAssignedAddresses returns the assigned IPv4 and IPv6 addresses of the host.
 func GetAssignedAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
-	addrs, err := net.InterfaceAddrs()
+	addrs, err := app_interface.GetNetworkAddresses()
 	if err != nil {
 		return nil, nil, err
 	}
 	for _, addr := range addrs {
-		netAddr, ok := addr.(*net.IPNet)
-		if !ok {
-			log.Warningf("netenv: interface address of unexpected type %T", addr)
-			continue
-		}
-
-		if ip4 := netAddr.IP.To4(); ip4 != nil {
-			ipv4 = append(ipv4, ip4)
-		} else {
-			ipv6 = append(ipv6, netAddr.IP)
+		netAddr := addr.ToIPNet()
+		if netAddr != nil {
+			if ip4 := netAddr.IP.To4(); ip4 != nil {
+				ipv4 = append(ipv4, ip4)
+			} else {
+				ipv6 = append(ipv6, netAddr.IP)
+			}
 		}
 	}
 	return
@@ -74,21 +71,16 @@ func refreshMyNetworks() error {
 	myNetworksDontRefreshUntil = time.Now().Add(1 * time.Second)
 
 	// Refresh assigned networks.
-	interfaceNetworks, err := net.InterfaceAddrs()
+	addresses, err := app_interface.GetNetworkAddresses()
 	if err != nil {
 		// In some cases the system blocks on this call, which piles up to
 		// literally over thousand goroutines wanting to try this again.
 		myNetworksRefreshError = err
 		return fmt.Errorf("failed to refresh interface addresses: %w", err)
 	}
-	myNetworks = make([]*net.IPNet, 0, len(interfaceNetworks))
-	for _, ifNet := range interfaceNetworks {
-		ipNet, ok := ifNet.(*net.IPNet)
-		if !ok {
-			log.Warningf("netenv: interface network of unexpected type %T", ifNet)
-			continue
-		}
-
+	myNetworks = make([]*net.IPNet, 0, len(addresses))
+	for _, ifNet := range addresses {
+		ipNet := ifNet.ToIPNet()
 		myNetworks = append(myNetworks, ipNet)
 	}
 

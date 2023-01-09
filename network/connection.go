@@ -446,6 +446,36 @@ func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
 	return newConn
 }
 
+// NewDefaultConnection creates a new connection with default values except local and remote IPs and protocols.
+func NewDefaultConnection(localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16, ipVersion packet.IPVersion, protocol packet.IPProtocol) *Connection {
+	connInfo := &Connection{
+		ID:           fmt.Sprintf("%s-%s-%d-%s-%d", protocol.String(), localIP, localPort, remoteIP, remotePort),
+		Type:         IPConnection,
+		External:     false,
+		IPVersion:    ipVersion,
+		Inbound:      false,
+		IPProtocol:   protocol,
+		LocalIP:      localIP,
+		LocalIPScope: netutils.Global,
+		LocalPort:    localPort,
+		Entity: &intel.Entity{
+			Protocol: uint8(protocol),
+			IP:       remoteIP,
+			Port:     remotePort,
+		},
+		Resolver:         nil,
+		Started:          time.Now().UnixMilli(),
+		VerdictPermanent: false,
+		Tunneled:         true,
+		Encrypted:        false,
+		Internal:         false,
+		process:          &process.Process{},
+		TunnelOpts:       &navigator.Options{},
+	}
+
+	return connInfo
+}
+
 // GetConnection fetches a Connection from the database.
 func GetConnection(id string) (*Connection, bool) {
 	return conns.get(id)
