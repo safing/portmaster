@@ -3,11 +3,9 @@ package netenv
 import (
 	"fmt"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/safing/portmaster-android/go/app_interface"
-	"github.com/safing/portmaster/network/netutils"
 )
 
 // GetAssignedAddresses returns the assigned IPv4 and IPv6 addresses of the host.
@@ -28,33 +26,6 @@ func GetAssignedAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
 	}
 	return
 }
-
-// GetAssignedGlobalAddresses returns the assigned global IPv4 and IPv6 addresses of the host.
-func GetAssignedGlobalAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
-	allv4, allv6, err := GetAssignedAddresses()
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, ip4 := range allv4 {
-		if netutils.GetIPScope(ip4).IsGlobal() {
-			ipv4 = append(ipv4, ip4)
-		}
-	}
-	for _, ip6 := range allv6 {
-		if netutils.GetIPScope(ip6).IsGlobal() {
-			ipv6 = append(ipv6, ip6)
-		}
-	}
-	return
-}
-
-var (
-	myNetworks                   []*net.IPNet
-	myNetworksLock               sync.Mutex
-	myNetworksNetworkChangedFlag = GetNetworkChangedFlag()
-	myNetworksRefreshError       error //nolint:errname // Not what the linter thinks this is for.
-	myNetworksDontRefreshUntil   time.Time
-)
 
 // refreshMyNetworks refreshes the networks held in refreshMyNetworks.
 // The caller must hold myNetworksLock.
@@ -88,82 +59,4 @@ func refreshMyNetworks() error {
 	myNetworksNetworkChangedFlag.Refresh()
 
 	return nil
-}
-
-// IsMyIP returns whether the given unicast IP is currently configured on the local host.
-// Broadcast or multicast addresses will never match, even if valid and in use.
-// Function is optimized with the assumption that is likely that the IP is mine.
-func IsMyIP(ip net.IP) (yes bool, err error) {
-	// Check for IPs that don't need extra checks.
-	switch netutils.GetIPScope(ip) { //nolint:exhaustive // Only looking for specific values.
-	case netutils.HostLocal:
-		return true, nil
-	case netutils.LocalMulticast, netutils.GlobalMulticast:
-		return false, nil
-	}
-
-	myNetworksLock.Lock()
-	defer myNetworksLock.Unlock()
-
-	// Check if the network changed.
-	if myNetworksNetworkChangedFlag.IsSet() {
-		err := refreshMyNetworks()
-		if err != nil {
-			return false, err
-		}
-	}
-
-	// Check against assigned IPs.
-	for _, myNet := range myNetworks {
-		if ip.Equal(myNet.IP) {
-			return true, nil
-		}
-	}
-
-	// Check for other IPs in range and broadcast addresses.
-	// Do this in a second loop, as an IP will match in
-	// most cases and network matching is more expensive.
-	for _, myNet := range myNetworks {
-		if myNet.Contains(ip) {
-			return false, nil
-		}
-	}
-
-	// Could not find IP anywhere. Refresh network to be sure.
-	err = refreshMyNetworks()
-	if err != nil {
-		return false, err
-	}
-
-	// Check against assigned IPs again.
-	for _, myNet := range myNetworks {
-		if ip.Equal(myNet.IP) {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// GetLocalNetwork uses the given IP to search for a network configured on the
-// device and returns it.
-func GetLocalNetwork(ip net.IP) (myNet *net.IPNet, err error) {
-	myNetworksLock.Lock()
-	defer myNetworksLock.Unlock()
-
-	// Check if the network changed.
-	if myNetworksNetworkChangedFlag.IsSet() {
-		err := refreshMyNetworks()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// Check if the IP address is in my networks.
-	for _, myNet := range myNetworks {
-		if myNet.Contains(ip) {
-			return myNet, nil
-		}
-	}
-
-	return nil, nil
 }
