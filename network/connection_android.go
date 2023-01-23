@@ -53,7 +53,7 @@ func NewDefaultConnection(localIP net.IP, localPort uint16, remoteIP net.IP, rem
 		connInfo.Encrypted = true
 	}
 
-	var layeredProfile = connInfo.process.Profile()<
+	var layeredProfile = connInfo.process.Profile()
 	connInfo.TunnelOpts = &navigator.Options{
 		HubPolicies:                   layeredProfile.StackedExitHubPolicies(),
 		CheckHubExitPolicyWith:        connInfo.Entity,
