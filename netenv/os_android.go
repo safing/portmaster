@@ -17,3 +17,7 @@ func osGetInterfaceAddrs() ([]net.Addr, error) {
 
 	return netList, nil
 }
+
+func osGetNetworkInterfaces() ([]app_interface.NetworkInterface, error) {
+	return app_interface.GetNetworkInterfaces()
+}
