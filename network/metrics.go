@@ -13,11 +13,9 @@ var (
 	encryptedOutConnCounter            *metrics.Counter
 	tunneledOutConnCounter             *metrics.Counter
 	outConnCounter                     *metrics.Counter
-	metricsAreRegistered               bool
 )
 
 func registerMetrics() error {
-	metricsAreRegistered = false
 	_, err := metrics.NewGauge(
 		"network/connections/active/total",
 		nil,
@@ -100,13 +98,11 @@ func registerMetrics() error {
 		return err
 	}
 
-	metricsAreRegistered = true
-
 	return nil
 }
 
 func (conn *Connection) addToMetrics() {
-	if !metricsAreRegistered || conn.addedToMetrics {
+	if conn.addedToMetrics {
 		return
 	}
 
