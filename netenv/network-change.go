@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/sha1"
 	"io"
-	"net"
 	"time"
 
 	"github.com/safing/portbase/log"
@@ -61,7 +60,7 @@ serviceLoop:
 		// check network for changes
 		// create hashsum of current network config
 		hasher := sha1.New() //nolint:gosec // not used for security
-		interfaces, err := net.Interfaces()
+		interfaces, err := osGetNetworkInterfaces()
 		if err != nil {
 			log.Warningf("netenv: failed to get interfaces: %s", err)
 			continue

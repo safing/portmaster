@@ -12,7 +12,7 @@ import (
 
 // GetAssignedAddresses returns the assigned IPv4 and IPv6 addresses of the host.
 func GetAssignedAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
-	addrs, err := net.InterfaceAddrs()
+	addrs, err := osGetInterfaceAddrs()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -74,7 +74,7 @@ func refreshMyNetworks() error {
 	myNetworksDontRefreshUntil = time.Now().Add(1 * time.Second)
 
 	// Refresh assigned networks.
-	interfaceNetworks, err := net.InterfaceAddrs()
+	interfaceNetworks, err := osGetInterfaceAddrs()
 	if err != nil {
 		// In some cases the system blocks on this call, which piles up to
 		// literally over thousand goroutines wanting to try this again.
