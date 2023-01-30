@@ -96,3 +96,7 @@ func (pr *PlainResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	// TODO: check if reply.Answer is valid
 	return newRecord, nil
 }
+
+// ForceReconnect forces the resolver to re-establish the connection to the server.
+// Does nothing for PlainResolver, as every request uses its own connection.
+func (pr *PlainResolver) ForceReconnect(_ context.Context) {}

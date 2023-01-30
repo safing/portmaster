@@ -56,6 +56,8 @@ func (mrc *mDNSResolverConn) IsFailing() bool {
 
 func (mrc *mDNSResolverConn) ResetFailure() {}
 
+func (mrc *mDNSResolverConn) ForceReconnect(_ context.Context) {}
+
 type savedQuestion struct {
 	question dns.Question
 	expires  time.Time

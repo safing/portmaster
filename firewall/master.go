@@ -116,7 +116,11 @@ func decideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 	case profile.DefaultActionPermit:
 		conn.Accept("allowed by default action", profile.CfgOptionDefaultActionKey)
 	case profile.DefaultActionAsk:
-		prompt(ctx, conn, pkt)
+		// Only prompt if there has not been a decision already.
+		// This prevents prompts from being created when re-evaluating connections.
+		if conn.Verdict.Firewall == network.VerdictUndecided {
+			prompt(ctx, conn)
+		}
 	default:
 		conn.Deny("blocked by default action", profile.CfgOptionDefaultActionKey)
 	}

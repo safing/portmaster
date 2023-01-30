@@ -195,7 +195,6 @@ func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver, p
 	if domainInScope(q.dotPrefixedFQDN, specialUseDomains) ||
 		domainInScope(q.dotPrefixedFQDN, specialServiceDomains) {
 		selected = addResolvers(ctx, q, selected, localResolvers)
-		selected = addResolvers(ctx, q, selected, systemResolvers)
 		return selected, "special", true
 	}
 

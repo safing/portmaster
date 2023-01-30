@@ -57,6 +57,20 @@ func start() error {
 		return err
 	}
 
+	// Force resolvers to reconnect when SPN has connected.
+	if err := module.RegisterEventHook(
+		"captain",
+		"spn connect", // Defined by captain.SPNConnectedEvent
+		"force resolver reconnect",
+		func(ctx context.Context, _ any) error {
+			ForceResolverReconnect(ctx)
+			return nil
+		},
+	); err != nil {
+		// This module does not depend on the SPN/Captain module, and probably should not.
+		log.Warningf("resolvers: failed to register event hook for captain/spn-connect: %s", err)
+	}
+
 	// reload after config change
 	prevNameservers := strings.Join(configuredNameServers(), " ")
 	err = module.RegisterEventHook(

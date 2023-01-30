@@ -10,7 +10,6 @@ import (
 	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/network"
-	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/profile"
 	"github.com/safing/portmaster/profile/endpoints"
 )
@@ -47,9 +46,9 @@ type promptProfile struct {
 	LinkedPath string
 }
 
-func prompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
+func prompt(ctx context.Context, conn *network.Connection) {
 	// Create notification.
-	n := createPrompt(ctx, conn, pkt)
+	n := createPrompt(ctx, conn)
 	if n == nil {
 		// createPrompt returns nil when no further action should be taken.
 		return
@@ -81,11 +80,11 @@ func prompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
 	}
 }
 
-// promptIDPrefix is an identifier for privacy filter prompts. This is also use
+// promptIDPrefix is an identifier for privacy filter prompts. This is also used
 // in the UI, so don't change!
 const promptIDPrefix = "filter:prompt"
 
-func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Packet) (n *notifications.Notification) {
+func createPrompt(ctx context.Context, conn *network.Connection) (n *notifications.Notification) {
 	expires := time.Now().Add(time.Duration(askTimeout()) * time.Second).Unix()
 
 	// Get local profile.
@@ -110,7 +109,7 @@ func createPrompt(ctx context.Context, conn *network.Connection, pkt packet.Pack
 			promptIDPrefix,
 			localProfile.ID,
 			conn.Inbound,
-			pkt.Info().RemoteIP(),
+			conn.Entity.IP,
 		)
 	default: // connection to domain
 		nID = fmt.Sprintf(

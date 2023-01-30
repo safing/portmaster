@@ -479,6 +479,8 @@ func setScopedResolvers(resolvers []*Resolver) {
 	for _, resolver := range resolvers {
 		if resolver.Info.IPScope.IsLAN() {
 			localResolvers = append(localResolvers, resolver)
+		} else if _, err := netenv.GetLocalNetwork(resolver.Info.IP); err != nil {
+			localResolvers = append(localResolvers, resolver)
 		}
 
 		if resolver.Info.Source == ServerSourceOperatingSystem {
@@ -569,4 +571,19 @@ func IsResolverAddress(ip net.IP, port uint16) bool {
 	}
 
 	return false
+}
+
+// ForceResolverReconnect forces all resolvers to reconnect.
+func ForceResolverReconnect(ctx context.Context) {
+	resolversLock.RLock()
+	defer resolversLock.RUnlock()
+
+	ctx, tracer := log.AddTracer(ctx)
+	defer tracer.Submit()
+
+	tracer.Trace("resolver: forcing all active resolvers to reconnect")
+	for _, r := range globalResolvers {
+		r.Conn.ForceReconnect(ctx)
+	}
+	tracer.Info("resolver: all active resolvers were forced to reconnect")
 }

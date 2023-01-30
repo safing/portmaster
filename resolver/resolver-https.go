@@ -8,15 +8,19 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/miekg/dns"
+
+	"github.com/safing/portbase/log"
 )
 
 // HTTPSResolver is a resolver using just a single tcp connection with pipelining.
 type HTTPSResolver struct {
 	BasicResolverConn
-	Client *http.Client
+	client     *http.Client
+	clientLock sync.RWMutex
 }
 
 // HTTPSQuery holds the query information for a hTTPSResolverConn.
@@ -40,23 +44,13 @@ func (tq *HTTPSQuery) MakeCacheRecord(reply *dns.Msg, resolverInfo *ResolverInfo
 
 // NewHTTPSResolver returns a new HTTPSResolver.
 func NewHTTPSResolver(resolver *Resolver) *HTTPSResolver {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			ServerName: resolver.Info.Domain,
-			// TODO: use portbase rng
-		},
-		IdleConnTimeout: 3 * time.Minute,
-	}
-
-	client := &http.Client{Transport: tr}
 	newResolver := &HTTPSResolver{
 		BasicResolverConn: BasicResolverConn{
 			resolver: resolver,
 		},
-		Client: client,
 	}
 	newResolver.BasicResolverConn.init()
+	newResolver.refreshClient()
 	return newResolver
 }
 
@@ -86,7 +80,13 @@ func (hr *HTTPSResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 		return nil, err
 	}
 
-	resp, err := hr.Client.Do(request)
+	// Lock client for usage.
+	hr.clientLock.RLock()
+	defer hr.clientLock.RUnlock()
+
+	// TODO: Check age of client and force a refresh similar to the TCP resolver.
+
+	resp, err := hr.client.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -123,4 +123,36 @@ func (hr *HTTPSResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 
 	// TODO: check if reply.Answer is valid
 	return newRecord, nil
+}
+
+// ForceReconnect forces the resolver to re-establish the connection to the server.
+func (hr *HTTPSResolver) ForceReconnect(ctx context.Context) {
+	hr.refreshClient()
+	log.Tracer(ctx).Tracef("resolver: created new HTTP client for %s", hr.resolver)
+}
+
+func (hr *HTTPSResolver) refreshClient() {
+	// Lock client for changing.
+	hr.clientLock.Lock()
+	defer hr.clientLock.Unlock()
+
+	// Attempt to close connection of previous client.
+	if hr.client != nil {
+		hr.client.CloseIdleConnections()
+	}
+
+	// Create new client.
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			ServerName: hr.resolver.Info.Domain,
+			// TODO: use portbase rng
+		},
+		IdleConnTimeout:     1 * time.Minute,
+		TLSHandshakeTimeout: defaultConnectTimeout,
+	}
+	hr.client = &http.Client{
+		Transport: tr,
+		Timeout:   maxRequestTimeout,
+	}
 }
