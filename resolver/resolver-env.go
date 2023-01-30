@@ -150,6 +150,8 @@ func (er *envResolverConn) IsFailing() bool {
 
 func (er *envResolverConn) ResetFailure() {}
 
+func (er *envResolverConn) ForceReconnect(_ context.Context) {}
+
 // QueryPortmasterEnv queries the environment resolver directly.
 func QueryPortmasterEnv(ctx context.Context, q *Query) (*RRCache, error) {
 	return envResolver.Conn.Query(ctx, q)

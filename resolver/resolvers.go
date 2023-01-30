@@ -570,3 +570,18 @@ func IsResolverAddress(ip net.IP, port uint16) bool {
 
 	return false
 }
+
+// ForceResolverReconnect forces all resolvers to reconnect.
+func ForceResolverReconnect(ctx context.Context) {
+	resolversLock.RLock()
+	defer resolversLock.RUnlock()
+
+	ctx, tracer := log.AddTracer(ctx)
+	defer tracer.Submit()
+
+	tracer.Trace("resolver: forcing all active resolvers to reconnect")
+	for _, r := range globalResolvers {
+		r.Conn.ForceReconnect(ctx)
+	}
+	tracer.Info("resolver: all active resolvers were forced to reconnect")
+}

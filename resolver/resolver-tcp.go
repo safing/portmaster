@@ -236,11 +236,29 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	return tq.MakeCacheRecord(reply, tr.resolver.Info), nil
 }
 
+// ForceReconnect forces the resolver to re-establish the connection to the server.
+func (tr *TCPResolver) ForceReconnect(ctx context.Context) {
+	tr.Lock()
+	defer tr.Unlock()
+
+	// Do nothing if no connection is available.
+	if tr.resolverConn == nil {
+		return
+	}
+
+	// Set the abandoned to force a new connection on next request.
+	// This will leave the previous connection and handler running until all requests are handled.
+	tr.resolverConn.abandoned.Set()
+
+	log.Tracer(ctx).Tracef("resolver: marked %s for reconnecting", tr.resolver)
+}
+
+// shutdown cleanly shuts down the resolver connection.
+// Must only be called once.
 func (trc *tcpResolverConn) shutdown() {
 	// Set abandoned status and close connection to the DNS server.
-	if trc.abandoned.SetToIf(false, true) {
-		_ = trc.conn.Close()
-	}
+	trc.abandoned.Set()
+	_ = trc.conn.Close()
 
 	// Close all response channels for in-flight queries.
 	for _, tq := range trc.inFlightQueries {
@@ -320,7 +338,7 @@ func (trc *tcpResolverConn) handler(workerCtx context.Context) error {
 
 			// If we are ready to recycle and we have no in-flight queries, we can
 			// shutdown the connection and create a new one for the next query.
-			if readyToRecycle {
+			if readyToRecycle || trc.abandoned.IsSet() {
 				if len(trc.inFlightQueries) == 0 {
 					log.Debugf("resolver: recycling connection to %s", trc.resolverInfo.DescriptiveName())
 					return nil

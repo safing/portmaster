@@ -212,6 +212,7 @@ type ResolverConn interface { //nolint:golint // TODO
 	ReportFailure()
 	IsFailing() bool
 	ResetFailure()
+	ForceReconnect(ctx context.Context)
 }
 
 // BasicResolverConn implements ResolverConn for standard dns clients.
