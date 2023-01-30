@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+
 	"github.com/safing/portbase/log"
 )
 

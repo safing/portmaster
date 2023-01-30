@@ -67,7 +67,8 @@ func start() error {
 			return nil
 		},
 	); err != nil {
-		return err
+		// This module does not depend on the SPN/Captain module, and probably should not.
+		log.Warningf("resolvers: failed to register event hook for captain/spn-connect: %s", err)
 	}
 
 	// reload after config change
