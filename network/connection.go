@@ -119,7 +119,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 		// This is different from the Firewall verdict in order to guarantee proper
 		// transition between verdicts that need the connection to be re-established.
 		Active Verdict
-		// Firewall holsd the last (most recent) decision by the firewall.
+		// Firewall holds the last (most recent) decision by the firewall.
 		Firewall Verdict
 	}
 	// Reason holds information justifying the verdict, as well as additional
