@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/agext/levenshtein v1.2.3
 	github.com/coreos/go-iptables v0.6.0
-	github.com/florianl/go-conntrack v0.3.0
+	github.com/florianl/go-conntrack v0.4.0
 	github.com/florianl/go-nfqueue v1.3.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/godbus/dbus/v5 v5.1.0
