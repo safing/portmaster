@@ -29,7 +29,7 @@ require (
 	golang.org/x/net v0.5.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/sys v0.4.0
-	zombiezen.com/go/sqlite v0.11.0
+	zombiezen.com/go/sqlite v0.12.0
 )
 
 require (
