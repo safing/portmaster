@@ -34,6 +34,52 @@ With great defaults your privacy improves without any effort. And if you want to
 &nbsp;&nbsp;&nbsp;
 [![Techlore](https://safing.io/assets/img//external/techlore.png)](https://www.youtube.com/watch?v=E8cTRhGtmcM)
 
+# Technical Introduction
+
+Portmaster is a privacy suite for your desktop OS.
+
+### Base Technology
+
+- Portmaster integrates into network stack using nfqueue on Linux and a kernel driver (WFP) on Windows.
+- Packets are intercepted at the raw packet level - every packet is seen and can be stopped.
+- Ownership of connections are (currently) found via `/proc` on Linux and the IP Helper API (`iphlpapi.dll`) on Windows.
+- Most settings can be defined per app, which can be matched in different ways.
+- Support for special processes with weird or concealed paths/actors:
+  - Snap, AppImage and Script support on Linux
+  - Windows Store apps and svchost.exe system services support on Windows
+- Everything is 100% local on your device. (except the SPN, naturally)
+  - Updates are fully signed and downloaded automatically.
+  - Intelligence data (block lists, geoip) is downloaded and applied automatically.
+- The Portmaster Core Service runs as a system service, the UI elements (App, Notifier) run in user context.
+- The main UI still uses electron as a wrapper :/ - but this will change in the future. You can also open the UI in the browser
+
+### Feature: Privacy Filter
+
+- Define allowed network scopes: Localhost, LAN, Internet, P2P, Inbound.
+- Easy rules based on Internet entities: Domain, IP, Country and more.
+- Filter Lists block common malware, ad, tracker domains etc.
+
+### Feature: Secure DNS
+
+- Portmaster intercepts "astray" DNS queries and reroutes them to itself for seamless integration.
+- DNS queries are resolved by the default or configured DoT/DoH resolvers.
+- Full support for split horizon and horizon validation to defend against rebinding attacks.
+
+### Feature: Safing Privacy Network (SPN)
+
+- A Privacy Network aimed at use cases "between" VPN and Tor.
+- Uses onion encryption over multiple hops just like Tor.
+- Routes are chosen to cover most distance within the network to increase privacy.
+- Exits are chosen near the destination server. This automatically geo-unblocks in many cases.
+- Exclude apps and domains/entities from using SPN.
+- Change routing algorithm and focus per app.
+- Nodes are hosted by Safing (company behind Portmaster) and the community.
+- Speeds are pretty decent (>100MBit/s).
+
+#### Further Readings:
+
+- [Portmaster Architecture Overview](https://docs.safing.io/portmaster/architecture/overview)
+- [SPN Whitepaper](https://safing.io/files/whitepaper/Gate17.pdf)
 
 ## Documentation
 
