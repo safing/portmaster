@@ -51,7 +51,7 @@ Portmaster is a privacy suite for your desktop OS.
   - Updates are fully signed and downloaded automatically.
   - Intelligence data (block lists, geoip) is downloaded and applied automatically.
 - The Portmaster Core Service runs as a system service, the UI elements (App, Notifier) run in user context.
-- The main UI still uses electron as a wrapper :/ - but this will change and you can open the UI in the browser
+- The main UI still uses electron as a wrapper :/ - but this will change in the future. You can also open the UI in the browser
 
 ### Feature: Privacy Filter
 
