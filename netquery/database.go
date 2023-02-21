@@ -113,7 +113,7 @@ func New(path string) (*Database, error) {
 		c, err := sqlite.OpenConn(
 			path,
 			sqlite.OpenReadOnly,
-			sqlite.OpenNoMutex,
+			sqlite.OpenNoMutex, //nolint:staticcheck // We like to be explicit.
 			sqlite.OpenSharedCache,
 			sqlite.OpenMemory,
 			sqlite.OpenURI,
@@ -149,7 +149,7 @@ func New(path string) (*Database, error) {
 		path,
 		sqlite.OpenCreate,
 		sqlite.OpenReadWrite,
-		sqlite.OpenNoMutex,
+		sqlite.OpenNoMutex, //nolint:staticcheck // We like to be explicit.
 		sqlite.OpenWAL,
 		sqlite.OpenSharedCache,
 		sqlite.OpenMemory,
