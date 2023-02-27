@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.6.0
 	github.com/jackc/puddle/v2 v2.2.0
-	github.com/miekg/dns v1.1.50
+	github.com/miekg/dns v1.1.51
 	github.com/oschwald/maxminddb-golang v1.10.0
 	github.com/safing/jess v0.3.1
 	github.com/safing/portbase v0.16.4
@@ -81,7 +81,6 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zalando/go-keyring v0.2.2 // indirect
 	go.etcd.io/bbolt v1.3.7 // indirect
-	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
