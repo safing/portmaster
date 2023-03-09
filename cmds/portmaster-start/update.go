@@ -94,7 +94,7 @@ func downloadUpdates() error {
 	}
 
 	// Download all required updates.
-	err = registry.DownloadUpdates(context.TODO())
+	err = registry.DownloadUpdates(context.TODO(), false)
 	if err != nil {
 		return err
 	}

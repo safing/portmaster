@@ -5,14 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"runtime"
-	"sync/atomic"
 	"time"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/notifications"
 	"github.com/safing/portbase/updater"
 	"github.com/safing/portmaster/updates/helper"
 )
@@ -20,7 +18,8 @@ import (
 const (
 	onWindows = runtime.GOOS == "windows"
 
-	enableUpdatesKey = "core/automaticUpdates"
+	enableSoftwareUpdatesKey = "core/automaticUpdates"
+	enableIntelUpdatesKey    = "core/automaticIntelUpdates"
 
 	// ModuleName is the name of the update module
 	// and can be used when declaring module dependencies.
@@ -63,9 +62,6 @@ var (
 
 const (
 	updatesDirName = "updates"
-
-	updateFailed  = "updates:failed"
-	updateSuccess = "updates:success"
 
 	updateTaskRepeatDuration = 1 * time.Hour
 )
@@ -119,14 +115,39 @@ func start() error {
 		// override with flag value
 		registry.UserAgent = userAgentFromFlag
 	}
+
+	// pre-init state
+	updateStateExport, err := LoadStateExport()
+	if err != nil {
+		log.Debugf("updates: failed to load exported update state: %s", err)
+	} else if updateStateExport.UpdateState != nil {
+		err := registry.PreInitUpdateState(*updateStateExport.UpdateState)
+		if err != nil {
+			return err
+		}
+	}
+
 	// initialize
-	err := registry.Initialize(dataroot.Root().ChildDir(updatesDirName, 0o0755))
+	err = registry.Initialize(dataroot.Root().ChildDir(updatesDirName, 0o0755))
 	if err != nil {
 		return err
 	}
 
+	// register state provider
+	err = registerRegistryStateProvider()
+	if err != nil {
+		return err
+	}
+	registry.StateNotifyFunc = pushRegistryState
+
 	// Set indexes based on the release channel.
-	warning := helper.SetIndexes(registry, initialReleaseChannel, true)
+	warning := helper.SetIndexes(
+		registry,
+		initialReleaseChannel,
+		true,
+		enableSoftwareUpdates(),
+		enableIntelUpdates(),
+	)
 	if warning != nil {
 		log.Warningf("updates: %s", warning)
 	}
@@ -143,10 +164,6 @@ func start() error {
 
 	registry.SelectVersions()
 	module.TriggerEvent(VersionUpdateEvent, nil)
-
-	if !updatesCurrentlyEnabled {
-		createWarningNotification()
-	}
 
 	// Initialize the version export - this requires the registry to be set up.
 	err = initVersionExport()
@@ -185,11 +202,13 @@ func TriggerUpdate(force bool) error {
 	case !module.Online():
 		updateASAP = true
 
-	case !force && !enableUpdates():
+	case !force && !enableSoftwareUpdates() && !enableIntelUpdates():
 		return fmt.Errorf("automatic updating is disabled")
 
 	default:
-		forceUpdate.Set()
+		if force {
+			forceUpdate.Set()
+		}
 		updateTask.StartASAP()
 	}
 
@@ -211,8 +230,6 @@ func DisableUpdateSchedule() error {
 	return nil
 }
 
-var updateFailedCnt = new(atomic.Int32)
-
 func checkForUpdates(ctx context.Context) (err error) {
 	// Set correct error if context was canceled.
 	defer func() {
@@ -223,7 +240,8 @@ func checkForUpdates(ctx context.Context) (err error) {
 		}
 	}()
 
-	if !forceUpdate.SetToIf(true, false) && !enableUpdates() {
+	forcedUpdate := forceUpdate.SetToIf(true, false)
+	if !forcedUpdate && !enableSoftwareUpdates() && !enableIntelUpdates() {
 		log.Warningf("updates: automatic updates are disabled")
 		return nil
 	}
@@ -231,45 +249,14 @@ func checkForUpdates(ctx context.Context) (err error) {
 	defer func() {
 		// Resolve any error and and send succes notification.
 		if err == nil {
-			updateFailedCnt.Store(0)
 			log.Infof("updates: successfully checked for updates")
-			module.Resolve(updateFailed)
-			notifications.Notify(&notifications.Notification{
-				EventID: updateSuccess,
-				Type:    notifications.Info,
-				Title:   "Update Check Successful",
-				Message: "The Portmaster successfully checked for updates and downloaded any available updates. Most updates are applied automatically. You will be notified of important updates that need restarting.",
-				Expires: time.Now().Add(1 * time.Minute).Unix(),
-				AvailableActions: []*notifications.Action{
-					{
-						ID:   "ack",
-						Text: "OK",
-					},
-				},
-			})
+			notifyUpdateSuccess(forcedUpdate)
 			return
 		}
 
-		// Log error in any case.
+		// Log and notify error.
 		log.Errorf("updates: check failed: %s", err)
-
-		// Do not alert user if update failed for only a few times.
-		if updateFailedCnt.Add(1) > 3 {
-			notifications.NotifyWarn(
-				updateFailed,
-				"Update Check Failed",
-				"The Portmaster failed to check for updates. This might be a temporary issue of your device, your network or the update servers. The Portmaster will automatically try again later. If you just installed the Portmaster, please try disabling potentially conflicting software, such as other firewalls or VPNs.",
-				notifications.Action{
-					ID:   "retry",
-					Text: "Try Again Now",
-					Type: notifications.ActionTypeWebhook,
-					Payload: &notifications.ActionTypeWebhookPayload{
-						URL:          apiPathCheckForUpdates,
-						ResultAction: "display",
-					},
-				},
-			).AttachToModule(module)
-		}
+		notifyUpdateCheckFailed(forcedUpdate, err)
 	}()
 
 	if err = registry.UpdateIndexes(ctx); err != nil {
@@ -277,7 +264,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 		return
 	}
 
-	err = registry.DownloadUpdates(ctx)
+	err = registry.DownloadUpdates(ctx, !forcedUpdate)
 	if err != nil {
 		err = fmt.Errorf("failed to download updates: %w", err)
 		return
@@ -293,7 +280,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 	}
 
 	// Purge old resources
-	registry.Purge(3)
+	registry.Purge(2)
 
 	module.TriggerEvent(ResourceUpdateEvent, nil)
 	return nil

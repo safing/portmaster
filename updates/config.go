@@ -7,25 +7,24 @@ import (
 
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/updates/helper"
 )
 
-const (
-	cfgDevModeKey                 = "core/devMode"
-	updatesDisabledNotificationID = "updates:disabled"
-)
+const cfgDevModeKey = "core/devMode"
 
 var (
-	releaseChannel config.StringOption
-	devMode        config.BoolOption
-	enableUpdates  config.BoolOption
+	releaseChannel        config.StringOption
+	devMode               config.BoolOption
+	enableSoftwareUpdates config.BoolOption
+	enableIntelUpdates    config.BoolOption
 
-	initialReleaseChannel   string
-	previousReleaseChannel  string
-	updatesCurrentlyEnabled bool
-	previousDevMode         bool
-	forceUpdate             = abool.New()
+	initialReleaseChannel  string
+	previousReleaseChannel string
+
+	softwareUpdatesCurrentlyEnabled bool
+	intelUpdatesCurrentlyEnabled    bool
+	previousDevMode                 bool
+	forceUpdate                     = abool.New()
 )
 
 func registerConfig() error {
@@ -71,9 +70,9 @@ func registerConfig() error {
 	}
 
 	err = config.Register(&config.Option{
-		Name:            "Automatic Updates",
-		Key:             enableUpdatesKey,
-		Description:     "Enable automatic checking, downloading and applying of updates. This affects all kinds of updates, including intelligence feeds and broadcast notifications.",
+		Name:            "Automatic Software Updates",
+		Key:             enableSoftwareUpdatesKey,
+		Description:     "Automatically check for and download software updates. This does not include intelligence data updates.",
 		OptType:         config.OptTypeBool,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
@@ -81,6 +80,24 @@ func registerConfig() error {
 		DefaultValue:    true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: -12,
+			config.CategoryAnnotation:     "Updates",
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	err = config.Register(&config.Option{
+		Name:            "Automatic Intelligence Data Updates",
+		Key:             enableIntelUpdatesKey,
+		Description:     "Automatically check for and download intelligence data updates. This includes filter lists, geo-ip data, and more. Does not include software updates.",
+		OptType:         config.OptTypeBool,
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
+		ReleaseLevel:    config.ReleaseLevelStable,
+		RequiresRestart: false,
+		DefaultValue:    true,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: -11,
 			config.CategoryAnnotation:     "Updates",
 		},
 	})
@@ -96,37 +113,25 @@ func initConfig() {
 	initialReleaseChannel = releaseChannel()
 	previousReleaseChannel = releaseChannel()
 
-	enableUpdates = config.Concurrent.GetAsBool(enableUpdatesKey, true)
-	updatesCurrentlyEnabled = enableUpdates()
+	enableSoftwareUpdates = config.Concurrent.GetAsBool(enableSoftwareUpdatesKey, true)
+	enableIntelUpdates = config.Concurrent.GetAsBool(enableIntelUpdatesKey, true)
+	softwareUpdatesCurrentlyEnabled = enableSoftwareUpdates()
+	intelUpdatesCurrentlyEnabled = enableIntelUpdates()
 
 	devMode = config.Concurrent.GetAsBool(cfgDevModeKey, false)
 	previousDevMode = devMode()
 }
 
-func createWarningNotification() {
-	notifications.NotifyWarn(
-		updatesDisabledNotificationID,
-		"Automatic Updates Disabled",
-		"Automatic updates are disabled through configuration. Please note that this is potentially dangerous, as this also affects security updates as well as the filter lists and threat intelligence feeds.",
-		notifications.Action{
-			Text: "Change",
-			Type: notifications.ActionTypeOpenSetting,
-			Payload: &notifications.ActionTypeOpenSettingPayload{
-				Key: enableUpdatesKey,
-			},
-		},
-	).AttachToModule(module)
-}
-
 func updateRegistryConfig(_ context.Context, _ interface{}) error {
 	changed := false
 
-	if releaseChannel() != previousReleaseChannel {
-		previousReleaseChannel = releaseChannel()
-		warning := helper.SetIndexes(registry, releaseChannel(), true)
-		if warning != nil {
-			log.Warningf("updates: %s", warning)
-		}
+	if enableSoftwareUpdates() != softwareUpdatesCurrentlyEnabled {
+		softwareUpdatesCurrentlyEnabled = enableSoftwareUpdates()
+		changed = true
+	}
+
+	if enableIntelUpdates() != intelUpdatesCurrentlyEnabled {
+		intelUpdatesCurrentlyEnabled = enableIntelUpdates()
 		changed = true
 	}
 
@@ -136,24 +141,36 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 		changed = true
 	}
 
-	if enableUpdates() != updatesCurrentlyEnabled {
-		updatesCurrentlyEnabled = enableUpdates()
+	if releaseChannel() != previousReleaseChannel {
+		previousReleaseChannel = releaseChannel()
 		changed = true
 	}
 
 	if changed {
+		// Update indexes based on new settings.
+		warning := helper.SetIndexes(
+			registry,
+			releaseChannel(),
+			true,
+			softwareUpdatesCurrentlyEnabled,
+			intelUpdatesCurrentlyEnabled,
+		)
+		if warning != nil {
+			log.Warningf("updates: %s", warning)
+		}
+
+		// Select versions depending on new indexes and modes.
 		registry.SelectVersions()
 		module.TriggerEvent(VersionUpdateEvent, nil)
 
-		if updatesCurrentlyEnabled {
+		if softwareUpdatesCurrentlyEnabled || intelUpdatesCurrentlyEnabled {
 			module.Resolve("")
 			if err := TriggerUpdate(false); err != nil {
 				log.Warningf("updates: failed to trigger update: %s", err)
 			}
 			log.Infof("updates: automatic updates are now enabled")
 		} else {
-			createWarningNotification()
-			log.Warningf("updates: automatic updates are now disabled")
+			log.Warningf("updates: automatic updates are now completely disabled")
 		}
 	}
 

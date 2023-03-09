@@ -32,3 +32,30 @@ func GetFile(identifier string) (*updater.File, error) {
 	module.TriggerEvent(VersionUpdateEvent, nil)
 	return file, nil
 }
+
+// GetPlatformVersion returns the selected platform specific version of the
+// given identifier.
+// The returned resource version may not be modified.
+func GetPlatformVersion(identifier string) (*updater.ResourceVersion, error) {
+	identifier = helper.PlatformIdentifier(identifier)
+
+	rv, err := registry.GetVersion(identifier)
+	if err != nil {
+		return nil, err
+	}
+
+	return rv, nil
+}
+
+// GetVersion returns the selected generic version of the given identifier.
+// The returned resource version may not be modified.
+func GetVersion(identifier string) (*updater.ResourceVersion, error) {
+	identifier = path.Join("all", identifier)
+
+	rv, err := registry.GetVersion(identifier)
+	if err != nil {
+		return nil, err
+	}
+
+	return rv, nil
+}
