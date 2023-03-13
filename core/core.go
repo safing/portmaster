@@ -68,8 +68,6 @@ func start() error {
 		return fmt.Errorf("failed to start plattform-specific components: %w", err)
 	}
 
-	registerLogCleaner()
-
 	return nil
 }
 

@@ -38,5 +38,7 @@ func start() error {
 		log.Warningf("core: failed to load persisted metrics from db: %s", err)
 	}
 
+	registerLogCleaner()
+
 	return nil
 }
