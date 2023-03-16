@@ -419,7 +419,7 @@ resolveLoop:
 					return nil, err
 				default:
 					resolver.Conn.ReportFailure()
-					log.Tracer(ctx).Debugf("resolver: query to %s failed: %s", resolver.Info.ID(), err)
+					log.Tracer(ctx).Warningf("resolver: query to %s failed: %s", resolver.Info.ID(), err)
 					continue
 				}
 			}
