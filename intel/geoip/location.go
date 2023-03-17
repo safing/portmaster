@@ -135,8 +135,8 @@ func (l *Location) EstimateNetworkProximity(to *Location) (proximity float32) {
 	toCoords := haversine.Coord{Lat: to.Coordinates.Latitude, Lon: to.Coordinates.Longitude}
 	_, km := haversine.Distance(fromCoords, toCoords)
 
-	if km <= 50 && accuracy <= 100 {
-		// Give a flat out ten for highly accurate coordinates within 50km.
+	if km <= 100 && accuracy <= 100 {
+		// Give the full value for highly accurate coordinates within 100km.
 		proximity += weightCoordinateDistance
 	} else {
 		// Else, take a percentage.

@@ -6,7 +6,6 @@ import (
 	"net"
 	"sort"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/google/gopacket/layers"
@@ -108,6 +107,8 @@ func (dls *DeviceLocations) AddLocation(dl *DeviceLocation) {
 
 	// Sort locations.
 	sort.Sort(sortLocationsByAccuracy(dls.All))
+
+	log.Debugf("netenv: added new device location to IPv%d scope: %s from %s", dl.IPVersion, dl, dl.Source)
 }
 
 // DeviceLocation represents a single IP and metadata. It must not be changed
@@ -288,6 +289,7 @@ func GetInternetLocation() (deviceLocations *DeviceLocations, ok bool) {
 
 	// Create new location list.
 	dls := &DeviceLocations{}
+	log.Debug("netenv: getting new device locations")
 
 	// Check interfaces for global addresses.
 	v4ok, v6ok := getLocationFromInterfaces(dls)
@@ -359,11 +361,11 @@ func getLocationFromUPnP() (ok bool) {
 
 func getLocationFromTraceroute(dls *DeviceLocations) (dl *DeviceLocation, err error) {
 	// Create connection.
-	conn, err := net.ListenPacket("ip4:icmp", "")
+	conn, err := icmp.ListenPacket("ip4:icmp", "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open icmp conn: %w", err)
 	}
-	v4Conn := ipv4.NewPacketConn(conn)
+	v4Conn := conn.IPv4PacketConn()
 
 	// Generate a random ID for the ICMP packets.
 	generatedID, err := rng.Number(0xFFFF) // uint16
@@ -393,7 +395,7 @@ nextHop:
 	for i := 1; i <= maxHops; i++ {
 		minSeq := msgSeq + 1
 
-	repeat:
+	repeatHop:
 		for j := 1; j <= 2; j++ { // Try every hop twice.
 			// Increase sequence number.
 			msgSeq++
@@ -412,11 +414,16 @@ nextHop:
 			}
 
 			// Send ICMP packet.
-			if _, err := conn.WriteTo(pingPacket, locationTestingIPv4Addr); err != nil {
-				var opErr *net.OpError
-				if errors.As(err, &opErr) && errors.Is(opErr.Err, syscall.ENOBUFS) {
-					continue
+			// Try to send three times, as this can be flaky.
+		sendICMP:
+			for i := 0; i < 3; i++ {
+				_, err = conn.WriteTo(pingPacket, locationTestingIPv4Addr)
+				if err == nil {
+					break sendICMP
 				}
+				time.Sleep(30 * time.Millisecond)
+			}
+			if err != nil {
 				return nil, fmt.Errorf("failed to send icmp packet: %w", err)
 			}
 
@@ -425,7 +432,8 @@ nextHop:
 			for {
 				remoteIP, icmpPacket, ok := recvICMP(i, icmpPacketsViaFirewall)
 				if !ok {
-					continue repeat
+					// Timed out.
+					continue repeatHop
 				}
 
 				// Pre-filter by message type.
@@ -484,6 +492,9 @@ nextHop:
 						}
 						return dl, nil
 					}
+
+					// Add one max hop for every reply that was not global.
+					maxHops++
 
 					// Otherwise, continue.
 					continue nextHop
