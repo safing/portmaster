@@ -16,6 +16,7 @@ const (
 )
 
 // Location holds information regarding the geographical and network location of an IP address.
+// TODO: We are currently re-using the Continent-Code for the region. Update this and and all dependencies.
 type Location struct {
 	Continent struct {
 		Code string `maxminddb:"code"`
@@ -63,10 +64,13 @@ type Coordinates struct {
 */
 
 const (
-	weightContinentMatch     = 20
-	weightCountryMatch       = 15
-	weightASOrgMatch         = 10
-	weightASNMatch           = 5
+	weightCountryMatch          = 10
+	weightRegionMatch           = 10
+	weightRegionalNeighborMatch = 10
+
+	weightASNMatch   = 10
+	weightASOrgMatch = 10
+
 	weightCoordinateDistance = 50
 )
 
@@ -92,12 +96,12 @@ const (
 func (l *Location) EstimateNetworkProximity(to *Location) (proximity float32) {
 	switch {
 	case l.Country.ISOCode != "" && l.Country.ISOCode == to.Country.ISOCode:
-		// Rely more on the Country Code data, as it is more accurate than the
-		// Continent Code, especially when combining location data from multiple
-		// sources.
-		proximity += weightContinentMatch + weightCountryMatch
+		proximity += weightCountryMatch + weightRegionMatch + weightRegionalNeighborMatch
 	case l.Continent.Code != "" && l.Continent.Code == to.Continent.Code:
-		proximity += weightContinentMatch
+		// FYI: This is the region code!
+		proximity += weightRegionMatch + weightRegionalNeighborMatch
+	case l.IsRegionalNeighbor(to):
+		proximity += weightRegionalNeighborMatch
 	}
 
 	switch {
@@ -105,7 +109,7 @@ func (l *Location) EstimateNetworkProximity(to *Location) (proximity float32) {
 		l.AutonomousSystemNumber != 0:
 		// Rely more on the ASN data, as it is more accurate than the ASOrg data,
 		// especially when combining location data from multiple sources.
-		proximity += weightASOrgMatch + weightASNMatch
+		proximity += weightASNMatch + weightASOrgMatch
 	case l.AutonomousSystemOrganization == to.AutonomousSystemOrganization &&
 		l.AutonomousSystemNumber != 0 && // Check if an ASN is set. If the ASOrg is known, the ASN must be too.
 		!ASOrgUnknown(l.AutonomousSystemOrganization): // Check if the ASOrg name is valid.

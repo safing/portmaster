@@ -24,6 +24,7 @@ func GetLocation(ip net.IP) (*Location, error) {
 	}
 
 	record.FillMissingInfo()
+	record.AddRegion()
 	return record, nil
 }
 
