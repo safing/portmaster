@@ -3,6 +3,8 @@ package state
 import (
 	"sync"
 
+	"github.com/safing/portmaster/netenv"
+
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portmaster/network/socket"
 )
@@ -30,21 +32,23 @@ func GetInfo() *Info {
 	info.TCP4Listeners = tcp4Table.listeners
 	tcp4Table.lock.RUnlock()
 
-	tcp6Table.updateTables()
-	tcp6Table.lock.RLock()
-	info.TCP6Connections = tcp6Table.connections
-	info.TCP6Listeners = tcp6Table.listeners
-	tcp6Table.lock.RUnlock()
-
 	udp4Table.updateTable()
 	udp4Table.lock.RLock()
 	info.UDP4Binds = udp4Table.binds
 	udp4Table.lock.RUnlock()
 
-	udp6Table.updateTable()
-	udp6Table.lock.RLock()
-	info.UDP6Binds = udp6Table.binds
-	udp6Table.lock.RUnlock()
+	if netenv.IPv6Enabled() {
+		tcp6Table.updateTables()
+		tcp6Table.lock.RLock()
+		info.TCP6Connections = tcp6Table.connections
+		info.TCP6Listeners = tcp6Table.listeners
+		tcp6Table.lock.RUnlock()
+
+		udp6Table.updateTable()
+		udp6Table.lock.RLock()
+		info.UDP6Binds = udp6Table.binds
+		udp6Table.lock.RUnlock()
+	}
 
 	info.UpdateMeta()
 	return info

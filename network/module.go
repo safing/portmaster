@@ -2,6 +2,8 @@ package network
 
 import (
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/netenv"
+	"github.com/safing/portmaster/network/state"
 )
 
 var (
@@ -11,7 +13,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("network", prep, start, nil, "base", "processes")
+	module = modules.Register("network", prep, start, nil, "base", "netenv", "processes")
 }
 
 // SetDefaultFirewallHandler sets the default firewall handler.
@@ -22,6 +24,11 @@ func SetDefaultFirewallHandler(handler FirewallHandler) {
 }
 
 func prep() error {
+	if netenv.IPv6Enabled() {
+		state.EnableTCPDualStack()
+		state.EnableUDPDualStack()
+	}
+
 	return registerAPIEndpoints()
 }
 

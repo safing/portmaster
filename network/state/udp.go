@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/safing/portmaster/netenv"
+
 	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/network/socket"
@@ -53,9 +55,14 @@ var (
 		version:    4,
 		fetchTable: getUDP4Table,
 		states:     make(map[string]map[string]*udpState),
-		dualStack:  udp6Table,
 	}
 )
+
+// EnableUDPDualStack adds the UDP6 table to the UDP4 table as a dual-stack.
+// Must be called before any lookup operation.
+func EnableUDPDualStack() {
+	udp4Table.dualStack = udp6Table
+}
 
 // CleanUDPStates cleans the udp connection states which save connection directions.
 func CleanUDPStates(_ context.Context) {
@@ -64,8 +71,10 @@ func CleanUDPStates(_ context.Context) {
 	udp4Table.updateTable()
 	udp4Table.cleanStates(now)
 
-	udp6Table.updateTable()
-	udp6Table.cleanStates(now)
+	if netenv.IPv6Enabled() {
+		udp6Table.updateTable()
+		udp6Table.cleanStates(now)
+	}
 }
 
 func (table *udpTable) getConnState(

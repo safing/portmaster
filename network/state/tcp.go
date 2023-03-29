@@ -29,6 +29,11 @@ var (
 	tcp4Table = &tcpTable{
 		version:    4,
 		fetchTable: getTCP4Table,
-		dualStack:  tcp6Table,
 	}
 )
+
+// EnableTCPDualStack adds the TCP6 table to the TCP4 table as a dual-stack.
+// Must be called before any lookup operation.
+func EnableTCPDualStack() {
+	tcp4Table.dualStack = tcp6Table
+}
