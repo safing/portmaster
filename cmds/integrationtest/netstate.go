@@ -9,6 +9,8 @@ import (
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/network/socket"
 	"github.com/safing/portmaster/network/state"
+
+	processInfo "github.com/shirou/gopsutil/process"
 )
 
 func init() {
@@ -105,7 +107,16 @@ func checkAndPrintSocketInfoIfNew(c string, s socket.Info) {
 
 	// Print result.
 	if err == nil {
-		fmt.Printf("%s %d\n", c, s.GetPID())
+
+		pInfo, err := processInfo.NewProcess(int32(s.GetPID()))
+
+		if err != nil {
+			fmt.Printf("%s %d no binary: %s\n", c, s.GetPID(), err)
+		} else {
+			exe, _ := pInfo.Exe()
+			fmt.Printf("%s %d %s\n", c, s.GetPID(), exe)
+		}
+
 	} else {
 		fmt.Printf("%s %d (err: %s)\n", c, s.GetPID(), err)
 	}
