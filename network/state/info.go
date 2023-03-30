@@ -25,12 +25,12 @@ type Info struct {
 func GetInfo() *Info {
 	info := &Info{}
 
-	info.TCP4Connections, info.TCP4Listeners, _ = tcp4Table.updateTables(0)
-	info.UDP4Binds, _ = udp4Table.updateTables(0)
+	info.TCP4Connections, info.TCP4Listeners, _ = tcp4Table.updateTables(tcp4Table.updateIter.Load())
+	info.UDP4Binds, _ = udp4Table.updateTables(udp4Table.updateIter.Load())
 
 	if netenv.IPv6Enabled() {
 		info.TCP6Connections, info.TCP6Listeners, _ = tcp6Table.updateTables(tcp6Table.updateIter.Load())
-		info.UDP6Binds, _ = udp6Table.updateTables(0)
+		info.UDP6Binds, _ = udp6Table.updateTables(udp6Table.updateIter.Load())
 	}
 
 	info.UpdateMeta()

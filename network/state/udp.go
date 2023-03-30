@@ -168,11 +168,11 @@ func (table *udpTable) updateTables(previousUpdateIter uint64) (
 func CleanUDPStates(_ context.Context) {
 	now := time.Now().UTC()
 
-	udp4Table.updateTables(0)
+	udp4Table.updateTables(udp4Table.updateIter.Load())
 	udp4Table.cleanStates(now)
 
 	if netenv.IPv6Enabled() {
-		udp6Table.updateTables(0)
+		udp6Table.updateTables(udp6Table.updateIter.Load())
 		udp6Table.cleanStates(now)
 	}
 }
