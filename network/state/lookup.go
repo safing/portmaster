@@ -2,7 +2,6 @@ package state
 
 import (
 	"errors"
-	"time"
 
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
@@ -30,9 +29,8 @@ var (
 )
 
 var (
-	baseWaitTime      = 3 * time.Millisecond
-	lookupRetries     = 7 * 2 // Every retry takes two full passes.
-	fastLookupRetries = 2 * 2
+	lookupTries     = 15 // With a max wait of 5ms, this amounts to up to 75ms.
+	fastLookupTries = 2
 )
 
 // Lookup looks for the given connection in the system state tables and returns the PID of the associated process and whether the connection is inbound.
@@ -69,69 +67,92 @@ func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 	inbound bool,
 	err error,
 ) {
-	// Search pattern: search, refresh, search, wait, search, refresh, search, wait, ...
+	// Prepare variables.
+	var (
+		connections []*socket.ConnectionInfo
+		listeners   []*socket.BindInfo
+		updateIter  uint64
+
+		dualStackConnections []*socket.ConnectionInfo
+		dualStackListeners   []*socket.BindInfo
+		dualStackUpdateIter  uint64
+	)
 
 	// Search for the socket until found.
-	for i := 1; i <= lookupRetries; i++ {
-		// Check main table for socket.
-		socketInfo, inbound := table.findSocket(pktInfo)
-		if socketInfo == nil && table.dualStack != nil {
-			// If there was no match in the main table and we are dual-stack, check
-			// the dual-stack table for the socket.
-			socketInfo, inbound = table.dualStack.findSocket(pktInfo)
+	for i := 1; i <= lookupTries; i++ {
+		// Get or update tables.
+		if i == 1 {
+			connections, listeners, updateIter = table.getCurrentTables()
+		} else {
+			connections, listeners, updateIter = table.updateTables(updateIter)
 		}
 
-		// If there's a match, check we have the PID and return.
+		// Check tables for socket.
+		socketInfo, inbound := findTCPSocket(pktInfo, connections, listeners)
+
+		// If there's a match, check if we have the PID and return.
+		if socketInfo != nil {
+			return checkPID(socketInfo, inbound)
+		}
+
+		// DUAL-STACK
+
+		// Skip if dualStack is not enabled.
+		if table.dualStack == nil {
+			continue
+		}
+
+		// Get or update tables.
+		if i == 0 {
+			dualStackConnections, dualStackListeners, dualStackUpdateIter = table.dualStack.getCurrentTables()
+		} else {
+			dualStackConnections, dualStackListeners, dualStackUpdateIter = table.dualStack.updateTables(dualStackUpdateIter)
+		}
+
+		// Check tables for socket.
+		socketInfo, inbound = findTCPSocket(pktInfo, dualStackConnections, dualStackListeners)
+
+		// If there's a match, check if we have the PID and return.
 		if socketInfo != nil {
 			return checkPID(socketInfo, inbound)
 		}
 
 		// Search less if we want to be fast.
-		if fast && i < fastLookupRetries {
+		if fast && i >= fastLookupTries {
 			break
-		}
-
-		// every time, except for the last iteration
-		if i < lookupRetries {
-			// Take turns in waiting and refreshing in order to satisfy the search pattern.
-			if i%2 == 0 {
-				// we found nothing, we could have been too fast, give the kernel some time to think
-				// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
-				time.Sleep(time.Duration(i+1) * baseWaitTime)
-			} else {
-				// refetch lists
-				table.updateTables()
-				if table.dualStack != nil {
-					table.dualStack.updateTables()
-				}
-			}
 		}
 	}
 
 	return socket.UndefinedProcessID, pktInfo.Inbound, ErrConnectionNotFound
 }
 
-func (table *tcpTable) findSocket(pktInfo *packet.Info) (
+func findTCPSocket(
+	pktInfo *packet.Info,
+	connections []*socket.ConnectionInfo,
+	listeners []*socket.BindInfo,
+) (
 	socketInfo socket.Info,
 	inbound bool,
 ) {
 	localIP := pktInfo.LocalIP()
 	localPort := pktInfo.LocalPort()
 
-	table.lock.RLock()
-	defer table.lock.RUnlock()
-
 	// always search listeners first
-	for _, socketInfo := range table.listeners {
+	for _, socketInfo := range listeners {
 		if localPort == socketInfo.Local.Port &&
 			(socketInfo.ListensAny || localIP.Equal(socketInfo.Local.IP)) {
 			return socketInfo, true
 		}
 	}
 
+	remoteIP := pktInfo.RemoteIP()
+	remotePort := pktInfo.RemotePort()
+
 	// search connections
-	for _, socketInfo := range table.connections {
+	for _, socketInfo := range connections {
 		if localPort == socketInfo.Local.Port &&
+			remotePort == socketInfo.Remote.Port &&
+			remoteIP.Equal(socketInfo.Remote.IP) &&
 			localIP.Equal(socketInfo.Local.IP) {
 			return socketInfo, false
 		}
@@ -145,25 +166,67 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 	inbound bool,
 	err error,
 ) {
-	// Search pattern: search, refresh, search, wait, search, refresh, search, wait, ...
-
 	// TODO: Currently broadcast/multicast scopes are not checked, so we might
 	// attribute an incoming broadcast/multicast packet to the wrong process if
 	// there are multiple processes listening on the same local port, but
 	// binding to different addresses. This highly unusual for clients.
 	isInboundMulticast := pktInfo.Inbound && netutils.GetIPScope(pktInfo.LocalIP()) == netutils.LocalMulticast
 
+	// Prepare variables.
+	var (
+		binds      []*socket.BindInfo
+		updateIter uint64
+
+		dualStackBinds      []*socket.BindInfo
+		dualStackUpdateIter uint64
+	)
+
 	// Search for the socket until found.
-	for i := 1; i <= lookupRetries; i++ {
-		// Check main table for socket.
-		socketInfo := table.findSocket(pktInfo, isInboundMulticast)
-		if socketInfo == nil && table.dualStack != nil {
-			// If there was no match in the main table and we are dual-stack, check
-			// the dual-stack table for the socket.
-			socketInfo = table.dualStack.findSocket(pktInfo, isInboundMulticast)
+	for i := 1; i <= lookupTries; i++ {
+		// Get or update tables.
+		if i == 1 {
+			binds, updateIter = table.getCurrentTables()
+		} else {
+			binds, updateIter = table.updateTables(updateIter)
 		}
 
-		// If there's a match, get the direction and check we have the PID, then return.
+		// Check tables for socket.
+		socketInfo := findUDPSocket(pktInfo, binds, isInboundMulticast)
+
+		// If there's a match, do some last checks and return.
+		if socketInfo != nil {
+			// If there is no remote port, do check for the direction of the
+			// connection. This will be the case for pure checking functions
+			// that do not want to change direction state.
+			if pktInfo.RemotePort() == 0 {
+				return checkPID(socketInfo, pktInfo.Inbound)
+			}
+
+			// Get (and save) the direction of the connection.
+			connInbound := table.getDirection(socketInfo, pktInfo)
+
+			// Check we have the PID and return.
+			return checkPID(socketInfo, connInbound)
+		}
+
+		// DUAL-STACK
+
+		// Skip if dualStack is not enabled.
+		if table.dualStack == nil {
+			continue
+		}
+
+		// Get or update tables.
+		if i == 0 {
+			dualStackBinds, dualStackUpdateIter = table.dualStack.getCurrentTables()
+		} else {
+			dualStackBinds, dualStackUpdateIter = table.dualStack.updateTables(dualStackUpdateIter)
+		}
+
+		// Check tables for socket.
+		socketInfo = findUDPSocket(pktInfo, dualStackBinds, isInboundMulticast)
+
+		// If there's a match, do some last checks and return.
 		if socketInfo != nil {
 			// If there is no remote port, do check for the direction of the
 			// connection. This will be the case for pure checking functions
@@ -180,39 +243,20 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 		}
 
 		// Search less if we want to be fast.
-		if fast && i < fastLookupRetries {
+		if fast && i >= fastLookupTries {
 			break
-		}
-
-		// every time, except for the last iteration
-		if i < lookupRetries {
-			// Take turns in waiting and refreshing in order to satisfy the search pattern.
-			if i%2 == 0 {
-				// we found nothing, we could have been too fast, give the kernel some time to think
-				// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
-				time.Sleep(time.Duration(i+1) * baseWaitTime)
-			} else {
-				// refetch lists
-				table.updateTable()
-				if table.dualStack != nil {
-					table.dualStack.updateTable()
-				}
-			}
 		}
 	}
 
 	return socket.UndefinedProcessID, pktInfo.Inbound, ErrConnectionNotFound
 }
 
-func (table *udpTable) findSocket(pktInfo *packet.Info, isInboundMulticast bool) (socketInfo *socket.BindInfo) {
+func findUDPSocket(pktInfo *packet.Info, binds []*socket.BindInfo, isInboundMulticast bool) (socketInfo *socket.BindInfo) {
 	localIP := pktInfo.LocalIP()
 	localPort := pktInfo.LocalPort()
 
-	table.lock.RLock()
-	defer table.lock.RUnlock()
-
 	// search binds
-	for _, socketInfo := range table.binds {
+	for _, socketInfo := range binds {
 		if localPort == socketInfo.Local.Port &&
 			(socketInfo.ListensAny || // zero IP (dual-stack)
 				isInboundMulticast || // inbound broadcast, multicast

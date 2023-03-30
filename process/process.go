@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -31,18 +30,23 @@ type Process struct {
 	// Process attributes.
 	// Don't change; safe for concurrent access.
 
-	Name      string
-	UserID    int
-	UserName  string
-	UserHome  string
-	Pid       int
-	ParentPid int
-	Path      string
-	ExecName  string
-	Cwd       string
-	CmdLine   string
-	FirstArg  string
-	Env       map[string]string
+	Name            string
+	UserID          int
+	UserName        string
+	UserHome        string
+	Pid             int
+	CreatedAt       int64
+	ParentPid       int
+	ParentCreatedAt int64
+	Path            string
+	ExecName        string
+	Cwd             string
+	CmdLine         string
+	FirstArg        string
+	Env             map[string]string
+
+	// unique process identifier ("Pid-CreatedAt")
+	processKey string
 
 	// Profile attributes.
 	// Once set, these don't change; safe for concurrent access.
@@ -156,8 +160,31 @@ func (p *Process) String() string {
 func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 	log.Tracer(ctx).Tracef("process: getting process for PID %d", pid)
 
-	p, err, _ := getProcessSingleInflight.Do(strconv.Itoa(pid), func() (interface{}, error) {
-		return loadProcess(ctx, pid)
+	// Check for special processes
+	switch pid {
+	case UnidentifiedProcessID:
+		return GetUnidentifiedProcess(ctx), nil
+	case UnsolicitedProcessID:
+		return GetUnsolicitedProcess(ctx), nil
+	case SystemProcessID:
+		return GetSystemProcess(ctx), nil
+	}
+
+	// Get pid and created time for identification.
+	pInfo, err := processInfo.NewProcessWithContext(ctx, int32(pid))
+	if err != nil {
+		return nil, err
+	}
+
+	createdTime, err := pInfo.CreateTimeWithContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	key := getProcessKey(int32(pid), createdTime)
+
+	p, err, _ := getProcessSingleInflight.Do(key, func() (interface{}, error) {
+		return loadProcess(ctx, key, pInfo)
 	})
 	if err != nil {
 		return nil, err
@@ -169,29 +196,25 @@ func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 	return p.(*Process), nil // nolint:forcetypeassert // Can only be a *Process.
 }
 
-func loadProcess(ctx context.Context, pid int) (*Process, error) {
-	switch pid {
-	case UnidentifiedProcessID:
-		return GetUnidentifiedProcess(ctx), nil
-	case UnsolicitedProcessID:
-		return GetUnsolicitedProcess(ctx), nil
-	case SystemProcessID:
-		return GetSystemProcess(ctx), nil
-	}
+func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*Process, error) {
+	// Get created time of process. The value should be cached.
+	createdAt, _ := pInfo.CreateTimeWithContext(ctx)
 
-	process, ok := GetProcessFromStorage(pid)
+	process, ok := GetProcessFromStorage(key)
 	if ok {
 		return process, nil
 	}
 
 	// Create new a process object.
 	process = &Process{
-		Pid:       pid,
-		FirstSeen: time.Now().Unix(),
+		Pid:        int(pInfo.Pid),
+		CreatedAt:  createdAt,
+		FirstSeen:  time.Now().Unix(),
+		processKey: key,
 	}
 
 	// Get process information from the system.
-	pInfo, err := processInfo.NewProcessWithContext(ctx, int32(pid))
+	pInfo, err := processInfo.NewProcessWithContext(ctx, pInfo.Pid)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +225,7 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 		var uids []int32
 		uids, err = pInfo.UidsWithContext(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get UID for p%d: %w", pid, err)
+			return nil, fmt.Errorf("failed to get UID for p%d: %w", pInfo.Pid, err)
 		}
 		process.UserID = int(uids[0])
 	}
@@ -210,23 +233,33 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	// Username
 	process.UserName, err = pInfo.UsernameWithContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("process: failed to get Username for p%d: %w", pid, err)
+		return nil, fmt.Errorf("process: failed to get Username for p%d: %w", pInfo.Pid, err)
 	}
 
 	// TODO: User Home
 	// new.UserHome, err =
 
-	// PPID
+	// Parent process id
 	ppid, err := pInfo.PpidWithContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get PPID for p%d: %w", pid, err)
+		return nil, fmt.Errorf("failed to get PPID for p%d: %w", pInfo.Pid, err)
 	}
 	process.ParentPid = int(ppid)
+
+	// Parent created time
+	parentPInfo, err := processInfo.NewProcessWithContext(ctx, ppid)
+	if err == nil {
+		parentCreatedAt, err := parentPInfo.CreateTimeWithContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		process.ParentCreatedAt = parentCreatedAt
+	}
 
 	// Path
 	process.Path, err = pInfo.ExeWithContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Path for p%d: %w", pid, err)
+		return nil, fmt.Errorf("failed to get Path for p%d: %w", pInfo.Pid, err)
 	}
 	// remove linux " (deleted)" suffix for deleted files
 	if onLinux {
@@ -247,13 +280,13 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	// Command line arguments
 	process.CmdLine, err = pInfo.CmdlineWithContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Cmdline for p%d: %w", pid, err)
+		return nil, fmt.Errorf("failed to get Cmdline for p%d: %w", pInfo.Pid, err)
 	}
 
 	// Name
 	process.Name, err = pInfo.NameWithContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Name for p%d: %w", pid, err)
+		return nil, fmt.Errorf("failed to get Name for p%d: %w", pInfo.Pid, err)
 	}
 	if process.Name == "" {
 		process.Name = process.ExecName
@@ -262,7 +295,7 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 	// Get all environment variables
 	env, err := pInfo.EnvironWithContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get the environment for p%d: %w", pid, err)
+		return nil, fmt.Errorf("failed to get the environment for p%d: %w", pInfo.Pid, err)
 	}
 	// Split env variables in key and value.
 	process.Env = make(map[string]string, len(env))
@@ -281,6 +314,11 @@ func loadProcess(ctx context.Context, pid int) (*Process, error) {
 
 	process.Save()
 	return process, nil
+}
+
+// Builds a unique identifier for a processes.
+func getProcessKey(pid int32, createdTime int64) string {
+	return fmt.Sprintf("%d-%d", pid, createdTime)
 }
 
 // MatchingData returns the matching data for the process.

@@ -197,7 +197,8 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 	}
 
 	extraData := map[string]interface{}{
-		"pid": conn.ProcessContext.PID,
+		"pid":              conn.ProcessContext.PID,
+		"processCreatedAt": conn.ProcessContext.CreatedAt,
 	}
 
 	if conn.TunnelContext != nil {

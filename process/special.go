@@ -2,7 +2,6 @@ package process
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"golang.org/x/sync/singleflight"
@@ -39,29 +38,35 @@ func init() {
 var (
 	// unidentifiedProcess is used for non-attributed outgoing connections.
 	unidentifiedProcess = &Process{
-		UserID:    UnidentifiedProcessID,
-		UserName:  "Unknown",
-		Pid:       UnidentifiedProcessID,
-		ParentPid: UnidentifiedProcessID,
-		Name:      profile.UnidentifiedProfileName,
+		UserID:          UnidentifiedProcessID,
+		UserName:        "Unknown",
+		Pid:             UnidentifiedProcessID,
+		CreatedAt:       1,
+		ParentPid:       UnidentifiedProcessID,
+		ParentCreatedAt: 1,
+		Name:            profile.UnidentifiedProfileName,
 	}
 
 	// unsolicitedProcess is used for non-attributed incoming connections.
 	unsolicitedProcess = &Process{
-		UserID:    UnsolicitedProcessID,
-		UserName:  "Unknown",
-		Pid:       UnsolicitedProcessID,
-		ParentPid: UnsolicitedProcessID,
-		Name:      profile.UnsolicitedProfileName,
+		UserID:          UnsolicitedProcessID,
+		UserName:        "Unknown",
+		Pid:             UnsolicitedProcessID,
+		CreatedAt:       1,
+		ParentPid:       UnsolicitedProcessID,
+		ParentCreatedAt: 1,
+		Name:            profile.UnsolicitedProfileName,
 	}
 
 	// systemProcess is used to represent the Kernel.
 	systemProcess = &Process{
-		UserID:    SystemProcessID,
-		UserName:  "Kernel",
-		Pid:       SystemProcessID,
-		ParentPid: SystemProcessID,
-		Name:      profile.SystemProfileName,
+		UserID:          SystemProcessID,
+		UserName:        "Kernel",
+		Pid:             SystemProcessID,
+		CreatedAt:       1,
+		ParentPid:       SystemProcessID,
+		ParentCreatedAt: 1,
+		Name:            profile.SystemProfileName,
 	}
 
 	getSpecialProcessSingleInflight singleflight.Group
@@ -83,9 +88,9 @@ func GetSystemProcess(ctx context.Context) *Process {
 }
 
 func getSpecialProcess(ctx context.Context, template *Process) *Process {
-	p, _, _ := getSpecialProcessSingleInflight.Do(strconv.Itoa(template.Pid), func() (interface{}, error) {
+	p, _, _ := getSpecialProcessSingleInflight.Do(template.processKey, func() (interface{}, error) {
 		// Check if we have already loaded the special process.
-		process, ok := GetProcessFromStorage(template.Pid)
+		process, ok := GetProcessFromStorage(template.processKey)
 		if ok {
 			return process, nil
 		}

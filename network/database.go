@@ -45,7 +45,7 @@ func makeKey(pid int, scope, id string) string {
 	return fmt.Sprintf("network:tree/%d/%s/%s", pid, scope, id)
 }
 
-func parseDBKey(key string) (pid int, scope, id string, ok bool) {
+func parseDBKey(key string) (processKey string, scope, id string, ok bool) {
 	// Split into segments.
 	segments := strings.Split(key, "/")
 
@@ -65,27 +65,18 @@ func parseDBKey(key string) (pid int, scope, id string, ok bool) {
 			// TODO: For queries, also prefixes of these values are valid.
 		default:
 			// Unknown scope.
-			return 0, "", "", false
+			return "", "", "", false
 		}
 
 		fallthrough
 	case 2:
-		var err error
-		if segments[1] == "" {
-			pid = process.UndefinedProcessID
-		} else {
-			pid, err = strconv.Atoi(segments[1])
-			if err != nil {
-				return 0, "", "", false
-			}
-		}
-
-		return pid, scope, id, true
+		processKey = segments[1]
+		return processKey, scope, id, true
 	case 1:
 		// This is a valid query prefix, but not process ID was given.
-		return process.UndefinedProcessID, "", "", true
+		return "", "", "", true
 	default:
-		return 0, "", "", false
+		return "", "", "", false
 	}
 }
 
@@ -93,7 +84,7 @@ func parseDBKey(key string) (pid int, scope, id string, ok bool) {
 func (s *StorageInterface) Get(key string) (record.Record, error) {
 	// Parse key and check if valid.
 	pid, scope, id, ok := parseDBKey(strings.TrimPrefix(key, "network:"))
-	if !ok || pid == process.UndefinedProcessID {
+	if !ok || pid == "" {
 		return nil, storage.ErrNotFound
 	}
 
@@ -135,7 +126,7 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 		return
 	}
 
-	if pid == process.UndefinedProcessID {
+	if pid == "" {
 		// processes
 		for _, proc := range process.All() {
 			func() {
