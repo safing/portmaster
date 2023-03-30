@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	errInvalid = errors.New("IPHelper not initialzed or broken")
+	errInvalid = errors.New("IPHelper not initialized or broken")
 )
 
 // IPHelper represents a subset of the Windows iphlpapi.dll.

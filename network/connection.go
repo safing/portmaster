@@ -26,7 +26,7 @@ import (
 type FirewallHandler func(conn *Connection, pkt packet.Packet)
 
 // ProcessContext holds additional information about the process
-// that iniated a connection.
+// that initiated a connection.
 type ProcessContext struct {
 	// ProcessName is the name of the process.
 	ProcessName string
@@ -38,6 +38,8 @@ type ProcessContext struct {
 	CmdLine string
 	// PID is the process identifier.
 	PID int
+	// CreatedAt the time when the process was created.
+	CreatedAt int64
 	// Profile is the ID of the main profile that
 	// is applied to the process.
 	Profile string
@@ -223,6 +225,7 @@ func getProcessContext(ctx context.Context, proc *process.Process) ProcessContex
 		BinaryPath:  proc.Path,
 		CmdLine:     proc.CmdLine,
 		PID:         proc.Pid,
+		CreatedAt:   proc.CreatedAt,
 	}
 
 	// Get local profile.
