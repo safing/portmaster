@@ -129,9 +129,14 @@ func (table *tcpTable) findSocket(pktInfo *packet.Info) (
 		}
 	}
 
+	remoteIP := pktInfo.RemoteIP()
+	remotePort := pktInfo.RemotePort()
+
 	// search connections
 	for _, socketInfo := range table.connections {
 		if localPort == socketInfo.Local.Port &&
+			remotePort == socketInfo.Remote.Port &&
+			remoteIP.Equal(socketInfo.Remote.IP) &&
 			localIP.Equal(socketInfo.Local.IP) {
 			return socketInfo, false
 		}
