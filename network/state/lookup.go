@@ -92,7 +92,7 @@ func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 
 		// If there's a match, check if we have the PID and return.
 		if socketInfo != nil {
-			return checkPID(socketInfo, inbound)
+			return CheckPID(socketInfo, inbound)
 		}
 
 		// DUAL-STACK
@@ -114,7 +114,7 @@ func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 
 		// If there's a match, check if we have the PID and return.
 		if socketInfo != nil {
-			return checkPID(socketInfo, inbound)
+			return CheckPID(socketInfo, inbound)
 		}
 
 		// Search less if we want to be fast.
@@ -199,14 +199,14 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 			// connection. This will be the case for pure checking functions
 			// that do not want to change direction state.
 			if pktInfo.RemotePort() == 0 {
-				return checkPID(socketInfo, pktInfo.Inbound)
+				return CheckPID(socketInfo, pktInfo.Inbound)
 			}
 
 			// Get (and save) the direction of the connection.
 			connInbound := table.getDirection(socketInfo, pktInfo)
 
 			// Check we have the PID and return.
-			return checkPID(socketInfo, connInbound)
+			return CheckPID(socketInfo, connInbound)
 		}
 
 		// DUAL-STACK
@@ -232,14 +232,14 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 			// connection. This will be the case for pure checking functions
 			// that do not want to change direction state.
 			if pktInfo.RemotePort() == 0 {
-				return checkPID(socketInfo, pktInfo.Inbound)
+				return CheckPID(socketInfo, pktInfo.Inbound)
 			}
 
 			// Get (and save) the direction of the connection.
 			connInbound := table.getDirection(socketInfo, pktInfo)
 
 			// Check we have the PID and return.
-			return checkPID(socketInfo, connInbound)
+			return CheckPID(socketInfo, connInbound)
 		}
 
 		// Search less if we want to be fast.

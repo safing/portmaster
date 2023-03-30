@@ -16,7 +16,9 @@ var (
 
 var baseWaitTime = 3 * time.Millisecond
 
-func checkPID(socketInfo socket.Info, connInbound bool) (pid int, inbound bool, err error) {
+// CheckPID checks the if socket info already has a PID and if not, tries to find it.
+// Depending on the OS, this might be a no-op.
+func CheckPID(socketInfo socket.Info, connInbound bool) (pid int, inbound bool, err error) {
 	for i := 1; i <= lookupTries; i++ {
 		// look for PID
 		pid = proc.GetPID(socketInfo)

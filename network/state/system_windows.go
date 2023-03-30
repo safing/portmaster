@@ -12,6 +12,8 @@ var (
 	getUDP6Table = iphelper.GetUDP6Table
 )
 
-func checkPID(socketInfo socket.Info, connInbound bool) (pid int, inbound bool, err error) {
+// CheckPID checks the if socket info already has a PID and if not, tries to find it.
+// Depending on the OS, this might be a no-op.
+func CheckPID(socketInfo socket.Info, connInbound bool) (pid int, inbound bool, err error) {
 	return socketInfo.GetPID(), connInbound, nil
 }
