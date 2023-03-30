@@ -21,7 +21,7 @@ import (
 
 func main() {
 	// set information
-	info.Set("Portmaster", "1.0.10", "AGPLv3", true)
+	info.Set("Portmaster", "1.0.11", "AGPLv3", true)
 
 	// Set default log level.
 	log.SetLogLevel(log.WarningLevel)
