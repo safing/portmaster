@@ -246,17 +246,15 @@ func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*
 	}
 	process.ParentPid = int(ppid)
 
-	// Parent created at time
+	// Parent created time
 	parentPInfo, err := processInfo.NewProcessWithContext(ctx, ppid)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		parentCreatedAt, err := parentPInfo.CreateTimeWithContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		process.ParentCreatedAt = parentCreatedAt
 	}
-
-	parentCreatedAt, err := parentPInfo.CreateTimeWithContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	process.ParentCreatedAt = parentCreatedAt
 
 	// Path
 	process.Path, err = pInfo.ExeWithContext(ctx)
