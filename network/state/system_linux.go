@@ -14,8 +14,10 @@ var (
 	getUDP6Table = proc.GetUDP6Table
 )
 
+var baseWaitTime = 3 * time.Millisecond
+
 func checkPID(socketInfo socket.Info, connInbound bool) (pid int, inbound bool, err error) {
-	for i := 0; i <= lookupRetries; i++ {
+	for i := 1; i <= lookupTries; i++ {
 		// look for PID
 		pid = proc.GetPID(socketInfo)
 		if pid != socket.UndefinedProcessID {
@@ -24,7 +26,7 @@ func checkPID(socketInfo socket.Info, connInbound bool) (pid int, inbound bool, 
 		}
 
 		// every time, except for the last iteration
-		if i < lookupRetries {
+		if i < lookupTries {
 			// we found no PID, we could have been too fast, give the kernel some time to think
 			// back off timer: with 3ms baseWaitTime: 3, 6, 9, 12, 15, 18, 21ms - 84ms in total
 			time.Sleep(time.Duration(i+1) * baseWaitTime)

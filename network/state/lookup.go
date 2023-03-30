@@ -2,7 +2,6 @@ package state
 
 import (
 	"errors"
-	"time"
 
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
@@ -30,9 +29,8 @@ var (
 )
 
 var (
-	baseWaitTime      = 3 * time.Millisecond
-	lookupRetries     = 7 * 2 // Every retry takes two full passes.
-	fastLookupRetries = 2 * 2
+	lookupTries     = 15 // With a max wait of 5ms, this amounts to up to 75ms.
+	fastLookupTries = 2
 )
 
 // Lookup looks for the given connection in the system state tables and returns the PID of the associated process and whether the connection is inbound.
@@ -81,7 +79,7 @@ func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 	)
 
 	// Search for the socket until found.
-	for i := 1; i <= lookupRetries; i++ {
+	for i := 1; i <= lookupTries; i++ {
 		// Get or update tables.
 		if i == 1 {
 			connections, listeners, updateIter = table.getCurrentTables()
@@ -120,7 +118,7 @@ func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 		}
 
 		// Search less if we want to be fast.
-		if fast && i < fastLookupRetries {
+		if fast && i >= fastLookupTries {
 			break
 		}
 	}
@@ -184,7 +182,7 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 	)
 
 	// Search for the socket until found.
-	for i := 1; i <= lookupRetries; i++ {
+	for i := 1; i <= lookupTries; i++ {
 		// Get or update tables.
 		if i == 1 {
 			binds, updateIter = table.getCurrentTables()
@@ -245,7 +243,7 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 		}
 
 		// Search less if we want to be fast.
-		if fast && i < fastLookupRetries {
+		if fast && i >= fastLookupTries {
 			break
 		}
 	}
