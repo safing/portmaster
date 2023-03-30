@@ -14,12 +14,12 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.6.0
 	github.com/jackc/puddle/v2 v2.2.0
-	github.com/miekg/dns v1.1.52
+	github.com/miekg/dns v1.1.53
 	github.com/oschwald/maxminddb-golang v1.10.0
 	github.com/safing/jess v0.3.1
 	github.com/safing/portbase v0.16.4
-	github.com/safing/portmaster-android/go v0.0.0-20230322143234-900a683ded76
-	github.com/safing/spn v0.6.5
+	github.com/safing/portmaster-android/go v0.0.0-20230329101752-28296331340b
+	github.com/safing/spn v0.6.6
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.6.1
 	github.com/spkg/zipfs v0.7.1
@@ -30,7 +30,7 @@ require (
 	golang.org/x/net v0.8.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/sys v0.6.0
-	zombiezen.com/go/sqlite v0.12.0
+	zombiezen.com/go/sqlite v0.13.0
 )
 
 require (
@@ -94,5 +94,5 @@ require (
 	modernc.org/libc v1.22.3 // indirect
 	modernc.org/mathutil v1.5.0 // indirect
 	modernc.org/memory v1.5.0 // indirect
-	modernc.org/sqlite v1.21.0 // indirect
+	modernc.org/sqlite v1.21.1 // indirect
 )
