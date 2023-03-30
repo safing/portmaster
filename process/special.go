@@ -88,9 +88,9 @@ func GetSystemProcess(ctx context.Context) *Process {
 }
 
 func getSpecialProcess(ctx context.Context, template *Process) *Process {
-	p, _, _ := getSpecialProcessSingleInflight.Do(template.key, func() (interface{}, error) {
+	p, _, _ := getSpecialProcessSingleInflight.Do(template.processKey, func() (interface{}, error) {
 		// Check if we have already loaded the special process.
-		process, ok := GetProcessFromStorage(template.key)
+		process, ok := GetProcessFromStorage(template.processKey)
 		if ok {
 			return process, nil
 		}

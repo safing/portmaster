@@ -46,7 +46,7 @@ type Process struct {
 	Env             map[string]string
 
 	// unique process identifier ("Pid-CreatedAt")
-	key string
+	processKey string
 
 	// Profile attributes.
 	// Once set, these don't change; safe for concurrent access.
@@ -160,6 +160,16 @@ func (p *Process) String() string {
 func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 	log.Tracer(ctx).Tracef("process: getting process for PID %d", pid)
 
+	// Check for special processes
+	switch pid {
+	case UnidentifiedProcessID:
+		return GetUnidentifiedProcess(ctx), nil
+	case UnsolicitedProcessID:
+		return GetUnsolicitedProcess(ctx), nil
+	case SystemProcessID:
+		return GetSystemProcess(ctx), nil
+	}
+
 	// Get pid and created time for identification.
 	pInfo, err := processInfo.NewProcessWithContext(ctx, int32(pid))
 	if err != nil {
@@ -187,29 +197,20 @@ func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 }
 
 func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*Process, error) {
-	switch pInfo.Pid {
-	case UnidentifiedProcessID:
-		return GetUnidentifiedProcess(ctx), nil
-	case UnsolicitedProcessID:
-		return GetUnsolicitedProcess(ctx), nil
-	case SystemProcessID:
-		return GetSystemProcess(ctx), nil
-	}
-
 	// Get created time of process. The value should be cached.
 	createdAt, _ := pInfo.CreateTimeWithContext(ctx)
 
-	process, ok := GetProcessFromStorage(getProcessKey(pInfo.Pid, createdAt))
+	process, ok := GetProcessFromStorage(key)
 	if ok {
 		return process, nil
 	}
 
 	// Create new a process object.
 	process = &Process{
-		Pid:       int(pInfo.Pid),
-		CreatedAt: createdAt,
-		FirstSeen: time.Now().Unix(),
-		key:       key,
+		Pid:        int(pInfo.Pid),
+		CreatedAt:  createdAt,
+		FirstSeen:  time.Now().Unix(),
+		processKey: key,
 	}
 
 	// Get process information from the system.
@@ -246,7 +247,12 @@ func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*
 	process.ParentPid = int(ppid)
 
 	// Parent created at time
-	parentCreatedAt, err := pInfo.CreateTimeWithContext(ctx)
+	parentPInfo, err := processInfo.NewProcessWithContext(ctx, ppid)
+	if err != nil {
+		return nil, err
+	}
+
+	parentCreatedAt, err := parentPInfo.CreateTimeWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}

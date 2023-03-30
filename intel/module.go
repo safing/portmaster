@@ -9,5 +9,5 @@ import (
 var Module *modules.Module
 
 func init() {
-	Module = modules.Register("intel", nil, nil, nil, "geoip", "filterlists")
+	Module = modules.Register("intel", nil, nil, nil, "geoip", "filterlists", "customlists")
 }

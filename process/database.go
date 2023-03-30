@@ -59,7 +59,7 @@ func (p *Process) Save() {
 
 		// save
 		processesLock.Lock()
-		processes[p.key] = p
+		processes[p.processKey] = p
 		processesLock.Unlock()
 	}
 
@@ -75,7 +75,7 @@ func (p *Process) Delete() {
 
 	// delete from internal storage
 	processesLock.Lock()
-	delete(processes, p.key)
+	delete(processes, p.processKey)
 	processesLock.Unlock()
 
 	// propagate delete
