@@ -15,7 +15,7 @@ import (
 const processDatabaseNamespace = "network:tree"
 
 var (
-	processes     = make(map[int]*Process)
+	processes     = make(map[string]*Process)
 	processesLock sync.RWMutex
 
 	dbController     *database.Controller
@@ -25,11 +25,11 @@ var (
 )
 
 // GetProcessFromStorage returns a process from the internal storage.
-func GetProcessFromStorage(pid int) (*Process, bool) {
+func GetProcessFromStorage(key string) (*Process, bool) {
 	processesLock.RLock()
 	defer processesLock.RUnlock()
 
-	p, ok := processes[pid]
+	p, ok := processes[key]
 	return p, ok
 }
 
@@ -55,11 +55,11 @@ func (p *Process) Save() {
 
 	if !p.KeyIsSet() {
 		// set key
-		p.SetKey(fmt.Sprintf("%s/%d", processDatabaseNamespace, p.Pid))
+		p.SetKey(fmt.Sprintf("%s/%s", processDatabaseNamespace, getProcessKey(int32(p.Pid), p.CreatedAt)))
 
 		// save
 		processesLock.Lock()
-		processes[p.Pid] = p
+		processes[p.processKey] = p
 		processesLock.Unlock()
 	}
 
@@ -75,7 +75,7 @@ func (p *Process) Delete() {
 
 	// delete from internal storage
 	processesLock.Lock()
-	delete(processes, p.Pid)
+	delete(processes, p.processKey)
 	processesLock.Unlock()
 
 	// propagate delete

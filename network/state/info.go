@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/socket"
 )
 
@@ -24,27 +25,13 @@ type Info struct {
 func GetInfo() *Info {
 	info := &Info{}
 
-	tcp4Table.updateTables()
-	tcp4Table.lock.RLock()
-	info.TCP4Connections = tcp4Table.connections
-	info.TCP4Listeners = tcp4Table.listeners
-	tcp4Table.lock.RUnlock()
+	info.TCP4Connections, info.TCP4Listeners, _ = tcp4Table.updateTables(tcp4Table.updateIter.Load())
+	info.UDP4Binds, _ = udp4Table.updateTables(udp4Table.updateIter.Load())
 
-	tcp6Table.updateTables()
-	tcp6Table.lock.RLock()
-	info.TCP6Connections = tcp6Table.connections
-	info.TCP6Listeners = tcp6Table.listeners
-	tcp6Table.lock.RUnlock()
-
-	udp4Table.updateTable()
-	udp4Table.lock.RLock()
-	info.UDP4Binds = udp4Table.binds
-	udp4Table.lock.RUnlock()
-
-	udp6Table.updateTable()
-	udp6Table.lock.RLock()
-	info.UDP6Binds = udp6Table.binds
-	udp6Table.lock.RUnlock()
+	if netenv.IPv6Enabled() {
+		info.TCP6Connections, info.TCP6Listeners, _ = tcp6Table.updateTables(tcp6Table.updateIter.Load())
+		info.UDP6Binds, _ = udp6Table.updateTables(udp6Table.updateIter.Load())
+	}
 
 	info.UpdateMeta()
 	return info
