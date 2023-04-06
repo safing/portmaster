@@ -170,19 +170,18 @@ func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 		return GetSystemProcess(ctx), nil
 	}
 
-	// Get pid and created time for identification.
+	// Get pid and creation time for identification.
 	pInfo, err := processInfo.NewProcessWithContext(ctx, int32(pid))
 	if err != nil {
 		return nil, err
 	}
-
-	createdTime, err := pInfo.CreateTimeWithContext(ctx)
+	createdAt, err := pInfo.CreateTimeWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}
+	key := getProcessKey(int32(pid), createdAt)
 
-	key := getProcessKey(int32(pid), createdTime)
-
+	// Load process and make sure it is only loaded once.
 	p, err, _ := getProcessSingleInflight.Do(key, func() (interface{}, error) {
 		return loadProcess(ctx, key, pInfo)
 	})
@@ -197,9 +196,7 @@ func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 }
 
 func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*Process, error) {
-	// Get created time of process. The value should be cached.
-	createdAt, _ := pInfo.CreateTimeWithContext(ctx)
-
+	// Check if we already have the process.
 	process, ok := GetProcessFromStorage(key)
 	if ok {
 		return process, nil
@@ -208,13 +205,13 @@ func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*
 	// Create new a process object.
 	process = &Process{
 		Pid:        int(pInfo.Pid),
-		CreatedAt:  createdAt,
 		FirstSeen:  time.Now().Unix(),
 		processKey: key,
 	}
 
-	// Get process information from the system.
-	pInfo, err := processInfo.NewProcessWithContext(ctx, pInfo.Pid)
+	// Get creation time of process. (The value should be cached by the library.)
+	var err error
+	process.CreatedAt, err = pInfo.CreateTimeWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}

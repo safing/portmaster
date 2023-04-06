@@ -38,35 +38,32 @@ func init() {
 var (
 	// unidentifiedProcess is used for non-attributed outgoing connections.
 	unidentifiedProcess = &Process{
-		UserID:          UnidentifiedProcessID,
-		UserName:        "Unknown",
-		Pid:             UnidentifiedProcessID,
-		CreatedAt:       1,
-		ParentPid:       UnidentifiedProcessID,
-		ParentCreatedAt: 1,
-		Name:            profile.UnidentifiedProfileName,
+		UserID:     UnidentifiedProcessID,
+		UserName:   "Unknown",
+		Pid:        UnidentifiedProcessID,
+		ParentPid:  UnidentifiedProcessID,
+		Name:       profile.UnidentifiedProfileName,
+		processKey: getProcessKey(UnidentifiedProcessID, 0),
 	}
 
 	// unsolicitedProcess is used for non-attributed incoming connections.
 	unsolicitedProcess = &Process{
-		UserID:          UnsolicitedProcessID,
-		UserName:        "Unknown",
-		Pid:             UnsolicitedProcessID,
-		CreatedAt:       1,
-		ParentPid:       UnsolicitedProcessID,
-		ParentCreatedAt: 1,
-		Name:            profile.UnsolicitedProfileName,
+		UserID:     UnsolicitedProcessID,
+		UserName:   "Unknown",
+		Pid:        UnsolicitedProcessID,
+		ParentPid:  UnsolicitedProcessID,
+		Name:       profile.UnsolicitedProfileName,
+		processKey: getProcessKey(UnsolicitedProcessID, 0),
 	}
 
 	// systemProcess is used to represent the Kernel.
 	systemProcess = &Process{
-		UserID:          SystemProcessID,
-		UserName:        "Kernel",
-		Pid:             SystemProcessID,
-		CreatedAt:       1,
-		ParentPid:       SystemProcessID,
-		ParentCreatedAt: 1,
-		Name:            profile.SystemProfileName,
+		UserID:     SystemProcessID,
+		UserName:   "Kernel",
+		Pid:        SystemProcessID,
+		ParentPid:  SystemProcessID,
+		Name:       profile.SystemProfileName,
+		processKey: getProcessKey(SystemProcessID, 0),
 	}
 
 	getSpecialProcessSingleInflight singleflight.Group
