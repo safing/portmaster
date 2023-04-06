@@ -127,7 +127,7 @@ func initCobra() {
 
 	// set up logging
 	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
-	log.SetPrefix("[control] ")
+	log.SetPrefix("[pmstart] ")
 	log.SetOutput(os.Stdout)
 
 	// not using portbase logger
@@ -186,7 +186,7 @@ func ensureLoggingDir() error {
 
 func updateRegistryIndex(mustLoadIndex bool) error {
 	// Set indexes based on the release channel.
-	warning := helper.SetIndexes(registry, "", false)
+	warning := helper.SetIndexes(registry, "", false, false, false)
 	if warning != nil {
 		log.Printf("WARNING: %s\n", warning)
 	}

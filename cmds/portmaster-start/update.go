@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/spf13/cobra"
 
-	"github.com/safing/portbase/log"
+	portlog "github.com/safing/portbase/log"
+	"github.com/safing/portbase/updater"
 	"github.com/safing/portmaster/updates/helper"
 )
 
@@ -58,23 +60,16 @@ func downloadUpdates() error {
 		helper.IntelOnly()
 	}
 
+	// Set registry state notify callback.
+	registry.StateNotifyFunc = logProgress
+
 	// Set required updates.
 	registry.MandatoryUpdates = helper.MandatoryUpdates()
 	registry.AutoUnpack = helper.AutoUnpackUpdates()
 
-	// logging is configured as a persistent pre-run method inherited from
-	// the root command but since we don't use run.Run() we need to start
-	// logging ourself.
-	log.SetLogLevel(log.InfoLevel)
-	err := log.Start()
-	if err != nil {
-		fmt.Printf("failed to start logging: %s\n", err)
-	}
-	defer log.Shutdown()
-
 	if reset {
 		// Delete storage.
-		err = os.RemoveAll(registry.StorageDir().Path)
+		err := os.RemoveAll(registry.StorageDir().Path)
 		if err != nil {
 			return fmt.Errorf("failed to reset update dir: %w", err)
 		}
@@ -88,13 +83,19 @@ func downloadUpdates() error {
 	}
 
 	// Update all indexes.
-	err = registry.UpdateIndexes(context.TODO())
+	err := registry.UpdateIndexes(context.TODO())
 	if err != nil {
 		return err
 	}
 
+	// Check if updates are available.
+	if len(registry.GetState().Updates.PendingDownload) == 0 {
+		log.Println("all resources are up to date")
+		return nil
+	}
+
 	// Download all required updates.
-	err = registry.DownloadUpdates(context.TODO())
+	err = registry.DownloadUpdates(context.TODO(), false)
 	if err != nil {
 		return err
 	}
@@ -116,17 +117,43 @@ func downloadUpdates() error {
 	return nil
 }
 
+func logProgress(state *updater.RegistryState) {
+	switch state.ID {
+	case updater.StateChecking:
+		if state.Updates.LastCheckAt == nil {
+			log.Println("checking for new versions")
+		}
+	case updater.StateDownloading:
+		if state.Details == nil {
+			log.Printf("downloading %d updates\n", len(state.Updates.PendingDownload))
+		} else if downloadDetails, ok := state.Details.(*updater.StateDownloadingDetails); ok {
+			if downloadDetails.FinishedUpTo < len(downloadDetails.Resources) {
+				log.Printf(
+					"[%d/%d] downloading %s",
+					downloadDetails.FinishedUpTo+1,
+					len(downloadDetails.Resources),
+					downloadDetails.Resources[downloadDetails.FinishedUpTo],
+				)
+			} else {
+				if state.Updates.LastDownloadAt == nil {
+					log.Println("finalizing downloads")
+				}
+			}
+		}
+	}
+}
+
 func purge() error {
-	log.SetLogLevel(log.TraceLevel)
+	portlog.SetLogLevel(portlog.TraceLevel)
 
 	// logging is configured as a persistent pre-run method inherited from
 	// the root command but since we don't use run.Run() we need to start
 	// logging ourself.
-	err := log.Start()
+	err := portlog.Start()
 	if err != nil {
 		fmt.Printf("failed to start logging: %s\n", err)
 	}
-	defer log.Shutdown()
+	defer portlog.Shutdown()
 
 	registry.Purge(3)
 	return nil

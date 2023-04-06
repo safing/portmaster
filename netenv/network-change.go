@@ -26,7 +26,8 @@ func notifyOfNetworkChange() {
 	module.TriggerEvent(NetworkChangedEvent, nil)
 }
 
-func triggerNetworkChangeCheck() {
+// TriggerNetworkChangeCheck triggers a network change check.
+func TriggerNetworkChangeCheck() {
 	select {
 	case networkChangeCheckTrigger <- struct{}{}:
 	default:

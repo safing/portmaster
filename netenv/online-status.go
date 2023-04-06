@@ -209,7 +209,7 @@ func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string)
 		} else {
 			log.Infof("netenv: setting online status to %s (%s)", status, comment)
 		}
-		triggerNetworkChangeCheck()
+		TriggerNetworkChangeCheck()
 
 		// Notify user.
 		notifyOnlineStatus(status)

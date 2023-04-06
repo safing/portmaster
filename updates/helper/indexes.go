@@ -27,7 +27,13 @@ const (
 
 // SetIndexes sets the update registry indexes and also configures the registry
 // to use pre-releases based on the channel.
-func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string, deleteUnusedIndexes bool) (warning error) {
+func SetIndexes(
+	registry *updater.ResourceRegistry,
+	releaseChannel string,
+	deleteUnusedIndexes bool,
+	autoDownload bool,
+	autoDownloadIntel bool,
+) (warning error) {
 	usePreReleases := false
 
 	// Be reminded that the order is important, as indexes added later will
@@ -39,12 +45,14 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string, delet
 	// Add the intel index first, in order to be able to override it with the
 	// other indexes when needed.
 	registry.AddIndex(updater.Index{
-		Path: "all/intel/intel.json",
+		Path:         "all/intel/intel.json",
+		AutoDownload: autoDownloadIntel,
 	})
 
 	// Always add the stable index as a base.
 	registry.AddIndex(updater.Index{
-		Path: ReleaseChannelStable + ".json",
+		Path:         ReleaseChannelStable + ".json",
+		AutoDownload: autoDownload,
 	})
 
 	// Add beta index if in beta or staging channel.
@@ -53,8 +61,9 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string, delet
 		releaseChannel == ReleaseChannelStaging ||
 		(releaseChannel == "" && indexExists(registry, indexPath)) {
 		registry.AddIndex(updater.Index{
-			Path:       indexPath,
-			PreRelease: true,
+			Path:         indexPath,
+			PreRelease:   true,
+			AutoDownload: autoDownload,
 		})
 		usePreReleases = true
 	} else if deleteUnusedIndexes {
@@ -69,8 +78,9 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string, delet
 	if releaseChannel == ReleaseChannelStaging ||
 		(releaseChannel == "" && indexExists(registry, indexPath)) {
 		registry.AddIndex(updater.Index{
-			Path:       indexPath,
-			PreRelease: true,
+			Path:         indexPath,
+			PreRelease:   true,
+			AutoDownload: autoDownload,
 		})
 		usePreReleases = true
 	} else if deleteUnusedIndexes {
@@ -85,7 +95,8 @@ func SetIndexes(registry *updater.ResourceRegistry, releaseChannel string, delet
 	if releaseChannel == ReleaseChannelSupport ||
 		(releaseChannel == "" && indexExists(registry, indexPath)) {
 		registry.AddIndex(updater.Index{
-			Path: indexPath,
+			Path:         indexPath,
+			AutoDownload: autoDownload,
 		})
 	} else if deleteUnusedIndexes {
 		err := deleteIndex(registry, indexPath)
