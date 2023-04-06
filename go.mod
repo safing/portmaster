@@ -17,11 +17,11 @@ require (
 	github.com/miekg/dns v1.1.53
 	github.com/oschwald/maxminddb-golang v1.10.0
 	github.com/safing/jess v0.3.1
-	github.com/safing/portbase v0.16.4
+	github.com/safing/portbase v0.16.5
 	github.com/safing/portmaster-android/go v0.0.0-20230329101752-28296331340b
-	github.com/safing/spn v0.6.6
+	github.com/safing/spn v0.6.7
 	github.com/shirou/gopsutil v3.21.11+incompatible
-	github.com/spf13/cobra v1.6.1
+	github.com/spf13/cobra v1.7.0
 	github.com/spkg/zipfs v0.7.1
 	github.com/stretchr/testify v1.8.1
 	github.com/tannerryan/ring v1.1.2
@@ -29,7 +29,7 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	golang.org/x/net v0.8.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.6.0
+	golang.org/x/sys v0.7.0
 	zombiezen.com/go/sqlite v0.13.0
 )
 
@@ -85,7 +85,8 @@ require (
 	github.com/zalando/go-keyring v0.2.2 // indirect
 	go.etcd.io/bbolt v1.3.7 // indirect
 	golang.org/x/crypto v0.7.0 // indirect
-	golang.org/x/mod v0.9.0 // indirect
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
+	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.7.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
