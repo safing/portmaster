@@ -10,9 +10,13 @@ func osGetInterfaceAddrs() ([]net.Addr, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	var netList []net.Addr
 	for _, addr := range list {
-		netList = append(netList, addr.ToIPNet())
+		ipNetAddr, err := addr.ToIPNet()
+		if err == nil {
+			netList = append(netList, ipNetAddr)
+		}
 	}
 
 	return netList, nil

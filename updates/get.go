@@ -59,3 +59,14 @@ func GetVersion(identifier string) (*updater.ResourceVersion, error) {
 
 	return rv, nil
 }
+
+// GetVersionWithFullID returns the selected generic version of the given full identifier.
+// The returned resource version may not be modified.
+func GetVersionWithFullID(identifier string) (*updater.ResourceVersion, error) {
+	rv, err := registry.GetVersion(identifier)
+	if err != nil {
+		return nil, err
+	}
+
+	return rv, nil
+}

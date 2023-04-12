@@ -58,6 +58,9 @@ var (
 	// more context to requests made by the registry when
 	// fetching resources from the update server.
 	UserAgent = "Core"
+
+	// Explicitly disables automatic software updates. Used in android.
+	DisableSoftwareAutoUpdate = false
 )
 
 const (
@@ -145,7 +148,7 @@ func start() error {
 		registry,
 		initialReleaseChannel,
 		true,
-		enableSoftwareUpdates(),
+		enableSoftwareUpdates() && !DisableSoftwareAutoUpdate,
 		enableIntelUpdates(),
 	)
 	if warning != nil {
@@ -247,7 +250,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 	}
 
 	defer func() {
-		// Resolve any error and and send succes notification.
+		// Resolve any error and and send success notification.
 		if err == nil {
 			log.Infof("updates: successfully checked for updates")
 			notifyUpdateSuccess(forcedUpdate)
