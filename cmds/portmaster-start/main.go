@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -34,6 +35,7 @@ var (
 		UpdateURLs: []string{
 			"https://updates.safing.io",
 		},
+		UserAgent:    fmt.Sprintf("Portmaster Start (%s %s)", runtime.GOOS, runtime.GOARCH),
 		Verification: helper.VerificationConfig,
 		DevMode:      false,
 		Online:       true, // is disabled later based on command

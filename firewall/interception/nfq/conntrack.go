@@ -27,7 +27,9 @@ func InitNFCT() error {
 
 // TeardownNFCT deinitializes the network filter conntrack library.
 func TeardownNFCT() {
-	_ = nfct.Close()
+	if nfct != nil {
+		_ = nfct.Close()
+	}
 }
 
 // DeleteAllMarkedConnection deletes all marked entries from the conntrack table.

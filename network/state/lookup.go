@@ -29,7 +29,7 @@ var (
 )
 
 var (
-	lookupTries     = 15 // With a max wait of 5ms, this amounts to up to 75ms.
+	lookupTries     = 20 // With a max wait of 5ms, this amounts to up to 100ms.
 	fastLookupTries = 2
 )
 
