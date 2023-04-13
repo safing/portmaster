@@ -115,7 +115,7 @@ func notifyUpdateCheckFailed(forced bool, err error) {
 		// Not failed often enough for notification.
 		return
 	case lastSuccess == nil:
-		// No recorded successful udpate.
+		// No recorded successful update.
 	case time.Now().Add(-failedUpdateNotifyDurationThreshold).Before(*lastSuccess):
 		// Failed too recently for notification.
 		return

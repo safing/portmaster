@@ -2,6 +2,7 @@ package customlists
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"regexp"
@@ -49,36 +50,16 @@ func prep() error {
 		return err
 	}
 
-	return nil
-}
-
-func start() error {
-	// Register to hook to update after config change.
-	if err := module.RegisterEventHook(
-		configModuleName,
-		configChangeEvent,
-		"update custom filter list",
-		func(ctx context.Context, obj interface{}) error {
-			checkAndUpdateFilterList()
-			return nil
-		},
-	); err != nil {
-		return err
-	}
-
-	// Create parser task and enqueue for execution. "checkAndUpdateFilterList" will schedule the next execution.
-	parserTask = module.NewTask("intel/customlists:file-update-check", func(context.Context, *modules.Task) error {
-		checkAndUpdateFilterList()
-		return nil
-	}).Schedule(time.Now().Add(20 * time.Second))
-
 	// Register api endpoint for updating the filter list.
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:      "customlists/update",
 		Write:     api.PermitUser,
 		BelongsTo: module,
 		ActionFunc: func(ar *api.Request) (msg string, err error) {
-			checkAndUpdateFilterList()
+			errCheck := checkAndUpdateFilterList()
+			if errCheck != nil {
+				return "", errCheck
+			}
 			return "Custom filter list loaded successfully.", nil
 		},
 		Name:        "Update custom filter list",
@@ -90,14 +71,36 @@ func start() error {
 	return nil
 }
 
-func checkAndUpdateFilterList() {
+func start() error {
+	// Register to hook to update after config change.
+	if err := module.RegisterEventHook(
+		configModuleName,
+		configChangeEvent,
+		"update custom filter list",
+		func(ctx context.Context, obj interface{}) error {
+			return checkAndUpdateFilterList()
+		},
+	); err != nil {
+		return err
+	}
+
+	// Create parser task and enqueue for execution. "checkAndUpdateFilterList" will schedule the next execution.
+	parserTask = module.NewTask("intel/customlists:file-update-check", func(context.Context, *modules.Task) error {
+		_ = checkAndUpdateFilterList()
+		return nil
+	}).Schedule(time.Now().Add(20 * time.Second))
+
+	return nil
+}
+
+func checkAndUpdateFilterList() error {
 	filterListLock.Lock()
 	defer filterListLock.Unlock()
 
-	// Get path and ignore if empty
+	// Get path and return error if empty
 	filePath := getFilePath()
 	if filePath == "" {
-		return
+		return fmt.Errorf("custom filter list setting is empty")
 	}
 
 	// Schedule next update check
@@ -113,11 +116,12 @@ func checkAndUpdateFilterList() {
 	if filterListFilePath != filePath || !filterListFileModifiedTime.Equal(modifiedTime) {
 		err := parseFile(filePath)
 		if err != nil {
-			return
+			return err
 		}
 		filterListFileModifiedTime = modifiedTime
 		filterListFilePath = filePath
 	}
+	return nil
 }
 
 // LookupIP checks if the IP address is in a custom filter list.
