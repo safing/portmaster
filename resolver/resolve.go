@@ -523,10 +523,6 @@ func shouldResetCache(q *Query) (reset bool) {
 	return false
 }
 
-func init() {
-	netenv.DNSTestQueryFunc = testConnectivity
-}
-
 // testConnectivity test if resolving a query succeeds and returns whether the
 // query itself succeeded, separate from interpreting the result.
 func testConnectivity(ctx context.Context, fdqn string) (ips []net.IP, ok bool, err error) {
@@ -556,9 +552,9 @@ func testConnectivity(ctx context.Context, fdqn string) (ips []net.IP, ok bool, 
 		}
 	case errors.Is(err, ErrNotFound):
 		return nil, true, err
-	case errors.Is(err, ErrBlocked):
-		return nil, true, err
 	case errors.Is(err, ErrNoCompliance):
+		return nil, true, err
+	case errors.Is(err, ErrBlocked):
 		return nil, true, err
 	default:
 		return nil, false, err

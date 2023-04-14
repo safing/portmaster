@@ -16,6 +16,7 @@ import (
 	"github.com/safing/portbase/utils/debug"
 	_ "github.com/safing/portmaster/core/base"
 	"github.com/safing/portmaster/intel"
+	"github.com/safing/portmaster/netenv"
 )
 
 var module *modules.Module
@@ -25,6 +26,9 @@ func init() {
 }
 
 func prep() error {
+	// Set DNS test connectivity function for the online status check
+	netenv.DNSTestQueryFunc = testConnectivity
+
 	intel.SetReverseResolver(ResolveIPAndValidate)
 
 	if err := registerAPI(); err != nil {
