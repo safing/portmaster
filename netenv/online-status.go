@@ -37,6 +37,9 @@ var (
 	PortalTestIP  = net.IPv4(192, 0, 2, 1)
 	PortalTestURL = fmt.Sprintf("http://%s/", PortalTestIP)
 
+	// IP address -> 100.127.247.245 is a special ip used by the android VPN service. Must be ignored during online check.
+	IgnoreIPsInOnlineStatusCheck = []net.IP{net.IPv4(100, 127, 247, 245)}
+
 	DNSTestDomain     = "online-check.safing.io."
 	DNSTestExpectedIP = net.IPv4(0, 65, 67, 75) // Ascii: \0ACK
 	DNSTestQueryFunc  func(ctx context.Context, fdqn string) (ips []net.IP, ok bool, err error)
@@ -178,7 +181,7 @@ func GetOnlineStatus() OnlineStatus {
 // CheckAndGetOnlineStatus triggers a new online status check and returns the result.
 func CheckAndGetOnlineStatus() OnlineStatus {
 	// trigger new investigation
-	triggerOnlineStatusInvestigation()
+	TriggerOnlineStatusInvestigation()
 	// wait for completion
 	onlineStatusInvestigationWg.Wait()
 	// return current status
@@ -328,18 +331,20 @@ func GetCaptivePortal() *CaptivePortal {
 // ReportSuccessfulConnection hints the online status monitoring system that a connection attempt was successful.
 func ReportSuccessfulConnection() {
 	if !onlineStatusQuickCheck.IsSet() {
-		triggerOnlineStatusInvestigation()
+		TriggerOnlineStatusInvestigation()
 	}
 }
 
 // ReportFailedConnection hints the online status monitoring system that a connection attempt has failed. This function has extremely low overhead and may be called as much as wanted.
 func ReportFailedConnection() {
 	if onlineStatusQuickCheck.IsSet() {
-		triggerOnlineStatusInvestigation()
+		TriggerOnlineStatusInvestigation()
 	}
 }
 
-func triggerOnlineStatusInvestigation() {
+// TriggerOnlineStatusInvestigation manually triggers the online status check.
+// It will not trigger it again, if it is already in progress.
+func TriggerOnlineStatusInvestigation() {
 	if onlineStatusInvestigationInProgress.SetToIf(false, true) {
 		onlineStatusInvestigationWg.Add(1)
 	}
@@ -351,7 +356,7 @@ func triggerOnlineStatusInvestigation() {
 }
 
 func monitorOnlineStatus(ctx context.Context) error {
-	triggerOnlineStatusInvestigation()
+	TriggerOnlineStatusInvestigation()
 	for {
 		// wait for trigger
 		select {
@@ -395,6 +400,15 @@ func getDynamicStatusTrigger() <-chan time.Time {
 	}
 }
 
+func ipInList(list []net.IP, ip net.IP) bool {
+	for _, ignoreIP := range list {
+		if ignoreIP.Equal(ip) {
+			return true
+		}
+	}
+	return false
+}
+
 func checkOnlineStatus(ctx context.Context) {
 	// TODO: implement more methods
 	/*status, err := getConnectivityStateFromDbus()
@@ -423,7 +437,13 @@ func checkOnlineStatus(ctx context.Context) {
 		log.Warningf("network: failed to get assigned network addresses: %s", err)
 	} else {
 		var lan bool
+
 		for _, ip := range ipv4 {
+			// Ignore IP if it is in the online check ignore list.
+			if ipInList(IgnoreIPsInOnlineStatusCheck, ip) {
+				continue
+			}
+
 			switch netutils.GetIPScope(ip) { //nolint:exhaustive // Checking to specific values only.
 			case netutils.SiteLocal:
 				lan = true
@@ -433,7 +453,13 @@ func checkOnlineStatus(ctx context.Context) {
 				return
 			}
 		}
+
 		for _, ip := range ipv6 {
+			// Ignore IP if it is in the online check ignore list.
+			if ipInList(IgnoreIPsInOnlineStatusCheck, ip) {
+				continue
+			}
+
 			switch netutils.GetIPScope(ip) { //nolint:exhaustive // Checking to specific values only.
 			case netutils.SiteLocal, netutils.Global:
 				// IPv6 global addresses are also used in local networks

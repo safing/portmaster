@@ -92,7 +92,7 @@ serviceLoop:
 			lastNetworkChecksum = newChecksum
 
 			if trigger {
-				triggerOnlineStatusInvestigation()
+				TriggerOnlineStatusInvestigation()
 			}
 			notifyOfNetworkChange()
 		}
