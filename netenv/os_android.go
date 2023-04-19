@@ -3,7 +3,19 @@ package netenv
 import (
 	"github.com/safing/portmaster-android/go/app_interface"
 	"net"
+	"time"
 )
+
+var (
+	monitorNetworkChangeOnlineTicker  = time.NewTicker(time.Second)
+	monitorNetworkChangeOfflineTicker = time.NewTicker(time.Second)
+)
+
+func init() {
+	// Network change event is monitored by the android system.
+	monitorNetworkChangeOnlineTicker.Stop()
+	monitorNetworkChangeOfflineTicker.Stop()
+}
 
 func osGetInterfaceAddrs() ([]net.Addr, error) {
 	list, err := app_interface.GetNetworkAddresses()
