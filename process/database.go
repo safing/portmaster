@@ -53,9 +53,13 @@ func (p *Process) Save() {
 
 	p.UpdateMeta()
 
+	if p.processKey == "" {
+		p.processKey = getProcessKey(int32(p.Pid), p.CreatedAt)
+	}
+
 	if !p.KeyIsSet() {
 		// set key
-		p.SetKey(fmt.Sprintf("%s/%s", processDatabaseNamespace, getProcessKey(int32(p.Pid), p.CreatedAt)))
+		p.SetKey(fmt.Sprintf("%s/%s", processDatabaseNamespace, p.processKey))
 
 		// save
 		processesLock.Lock()

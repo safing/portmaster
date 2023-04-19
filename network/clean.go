@@ -19,14 +19,14 @@ const (
 )
 
 func connectionCleaner(ctx context.Context) error {
-	ticker := time.NewTicker(cleanerTickDuration)
+	ticker := module.NewSleepyTicker(cleanerTickDuration, 0)
 
 	for {
 		select {
 		case <-ctx.Done():
 			ticker.Stop()
 			return nil
-		case <-ticker.C:
+		case <-ticker.Read():
 			// clean connections and processes
 			activePIDs := cleanConnections()
 			process.CleanProcessStorage(activePIDs)
