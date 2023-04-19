@@ -38,7 +38,7 @@ var (
 	PortalTestURL = fmt.Sprintf("http://%s/", PortalTestIP)
 
 	// IP address -> 100.127.247.245 is a special ip used by the android VPN service. Must be ignored during online check.
-	IgnoreIPsOnlineStatusCheck = []net.IP{net.IPv4(100, 127, 247, 245)}
+	IgnoreIPsInOnlineStatusCheck = []net.IP{net.IPv4(100, 127, 247, 245)}
 
 	DNSTestDomain     = "online-check.safing.io."
 	DNSTestExpectedIP = net.IPv4(0, 65, 67, 75) // Ascii: \0ACK
@@ -342,7 +342,8 @@ func ReportFailedConnection() {
 	}
 }
 
-// TriggerOnlineStatusInvestigation manually trigger online status check.
+// TriggerOnlineStatusInvestigation manually triggers the online status check.
+// It will not trigger it again, if it is already in progress.
 func TriggerOnlineStatusInvestigation() {
 	if onlineStatusInvestigationInProgress.SetToIf(false, true) {
 		onlineStatusInvestigationWg.Add(1)
@@ -399,7 +400,7 @@ func getDynamicStatusTrigger() <-chan time.Time {
 	}
 }
 
-func isIPPartOfList(list []net.IP, ip net.IP) bool {
+func ipInList(list []net.IP, ip net.IP) bool {
 	for _, ignoreIP := range list {
 		if ignoreIP.Equal(ip) {
 			return true
@@ -438,8 +439,8 @@ func checkOnlineStatus(ctx context.Context) {
 		var lan bool
 
 		for _, ip := range ipv4 {
-			// Filter special IP list
-			if isIPPartOfList(IgnoreIPsOnlineStatusCheck, ip) {
+			// Ignore IP if it is in the online check ignore list.
+			if ipInList(IgnoreIPsInOnlineStatusCheck, ip) {
 				continue
 			}
 
@@ -454,8 +455,8 @@ func checkOnlineStatus(ctx context.Context) {
 		}
 
 		for _, ip := range ipv6 {
-			// Filter special IP list
-			if isIPPartOfList(IgnoreIPsOnlineStatusCheck, ip) {
+			// Ignore IP if it is in the online check ignore list.
+			if ipInList(IgnoreIPsInOnlineStatusCheck, ip) {
 				continue
 			}
 
