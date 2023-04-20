@@ -134,10 +134,8 @@ func logProgress(state *updater.RegistryState) {
 					len(downloadDetails.Resources),
 					downloadDetails.Resources[downloadDetails.FinishedUpTo],
 				)
-			} else {
-				if state.Updates.LastDownloadAt == nil {
-					log.Println("finalizing downloads")
-				}
+			} else if state.Updates.LastDownloadAt == nil {
+				log.Println("finalizing downloads")
 			}
 		}
 	}

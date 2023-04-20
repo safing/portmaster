@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -24,10 +25,12 @@ import (
 
 var (
 	dataDir    string
-	staging    bool
 	maxRetries int
 	dataRoot   *utils.DirStructure
 	logsRoot   *utils.DirStructure
+
+	updateURLFlag string
+	userAgentFlag string
 
 	// Create registry.
 	registry = &updater.ResourceRegistry{
@@ -67,8 +70,8 @@ func init() {
 	flags := rootCmd.PersistentFlags()
 	{
 		flags.StringVar(&dataDir, "data", "", "Configures the data directory. Alternatively, this can also be set via the environment variable PORTMASTER_DATA.")
-		flags.StringVar(&registry.UserAgent, "update-agent", "Start", "Sets the user agent for requests to the update server")
-		flags.BoolVar(&staging, "staging", false, "Deprecated, configure in settings instead.")
+		flags.StringVar(&updateURLFlag, "update-server", "", "Set an alternative update server (full URL)")
+		flags.StringVar(&userAgentFlag, "update-agent", "", "Set an alternative user agent for requests to the update server")
 		flags.IntVar(&maxRetries, "max-retries", 5, "Maximum number of retries when starting a Portmaster component")
 		flags.BoolVar(&stdinSignals, "input-signals", false, "Emulate signals using stdin.")
 		_ = rootCmd.MarkPersistentFlagDirname("data")
@@ -137,6 +140,25 @@ func initCobra() {
 }
 
 func configureRegistry(mustLoadIndex bool) error {
+	// Check if update server URL supplied via flag is a valid URL.
+	if updateURLFlag != "" {
+		u, err := url.Parse(updateURLFlag)
+		if err != nil {
+			return fmt.Errorf("supplied update server URL is invalid: %w", err)
+		}
+		if u.Scheme != "https" {
+			return errors.New("supplied update server URL must use HTTPS")
+		}
+	}
+
+	// Override values from flags.
+	if userAgentFlag != "" {
+		registry.UserAgent = userAgentFlag
+	}
+	if updateURLFlag != "" {
+		registry.UpdateURLs = []string{updateURLFlag}
+	}
+
 	// If dataDir is not set, check the environment variable.
 	if dataDir == "" {
 		dataDir = os.Getenv("PORTMASTER_DATA")
