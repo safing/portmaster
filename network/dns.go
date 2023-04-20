@@ -91,7 +91,7 @@ func openDNSRequestWriter(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-ticker.Read():
+		case <-ticker.Wait():
 			writeOpenDNSRequestsToDB()
 		}
 	}

@@ -17,7 +17,7 @@ require (
 	github.com/miekg/dns v1.1.53
 	github.com/oschwald/maxminddb-golang v1.10.0
 	github.com/safing/jess v0.3.1
-	github.com/safing/portbase v0.16.5
+	github.com/safing/portbase v0.16.6
 	github.com/safing/portmaster-android/go v0.0.0-20230329101752-28296331340b
 	github.com/safing/spn v0.6.7
 	github.com/shirou/gopsutil v3.21.11+incompatible

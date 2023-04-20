@@ -26,7 +26,7 @@ func connectionCleaner(ctx context.Context) error {
 		case <-ctx.Done():
 			ticker.Stop()
 			return nil
-		case <-ticker.Read():
+		case <-ticker.Wait():
 			// clean connections and processes
 			activePIDs := cleanConnections()
 			process.CleanProcessStorage(activePIDs)
