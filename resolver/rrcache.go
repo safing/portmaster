@@ -55,7 +55,8 @@ func (rrCache *RRCache) Expired() bool {
 	return rrCache.Expires <= time.Now().Unix()
 }
 
-// ExpiresSoon returns whether the record will expire soon and should already be refreshed.
+// ExpiresSoon returns whether the record will expire soon (or already has) and
+// should already be refreshed.
 func (rrCache *RRCache) ExpiresSoon() bool {
 	return rrCache.Expires <= time.Now().Unix()+refreshTTL
 }

@@ -179,8 +179,21 @@ func Resolve(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
 	// check the cache
 	if !q.NoCaching {
 		rrCache = checkCache(ctx, q)
-		if rrCache != nil && !rrCache.Expired() {
-			return rrCache, nil
+		if rrCache != nil {
+			switch {
+			case !rrCache.Expired():
+				// Return non-expired cached entry immediately.
+				return rrCache, nil
+			case useStaleCache():
+				// Return expired cache if we should use stale cache entries,
+				// but start an async query instead.
+				log.Tracer(ctx).Tracef(
+					"resolver: using stale cache entry that expired %s ago",
+					time.Since(time.Unix(rrCache.Expires, 0)).Round(time.Second),
+				)
+				startAsyncQuery(ctx, q, rrCache)
+				return rrCache, nil
+			}
 		}
 
 		// dedupe!
@@ -188,7 +201,9 @@ func Resolve(ctx context.Context, q *Query) (rrCache *RRCache, err error) {
 		if markRequestFinished == nil {
 			// we waited for another request, recheck the cache!
 			rrCache = checkCache(ctx, q)
-			if rrCache != nil && !rrCache.Expired() {
+			if rrCache != nil && (!rrCache.Expired() || useStaleCache()) {
+				// Return non-expired or expired entry if we should use stale cache entries.
+				// There just was a request, so do not trigger an async query.
 				return rrCache, nil
 			}
 			log.Tracer(ctx).Debugf("resolver: waited for another %s%s query, but cache missed!", q.FQDN, q.QType)
@@ -232,63 +247,71 @@ func checkCache(ctx context.Context, q *Query) *RRCache {
 		return nil
 	}
 
-	// Check if we want to reset the cache for this entry.
-	if shouldResetCache(q) {
+	switch {
+	case shouldResetCache(q):
+		// Check if we want to reset the cache for this entry.
 		err := ResetCachedRecord(q.FQDN, q.QType.String())
 		switch {
 		case err == nil:
-			log.Tracer(ctx).Tracef("resolver: cache for %s%s was reset", q.FQDN, q.QType)
+			log.Tracer(ctx).Infof("resolver: cache for %s%s was reset", q.FQDN, q.QType)
 		case errors.Is(err, database.ErrNotFound):
 			log.Tracer(ctx).Tracef("resolver: cache for %s%s was already reset (is empty)", q.FQDN, q.QType)
 		default:
 			log.Tracer(ctx).Warningf("resolver: failed to reset cache for %s%s: %s", q.FQDN, q.QType, err)
 		}
 		return nil
-	}
 
-	// Check if the cache has already expired.
-	// We still return the cache, if it isn't NXDomain, as it will be used if the
-	// new query fails.
-	if rrCache.Expired() {
+	case rrCache.Expired():
+		// Check if the cache has already expired.
+		// We still return the cache, if it isn't NXDomain, as it will be used if the
+		// new query fails.
 		if rrCache.RCode == dns.RcodeSuccess {
 			return rrCache
 		}
 		return nil
-	}
 
-	// Check if the cache will expire soon and start an async request.
-	if rrCache.ExpiresSoon() {
-		// Set flag that we are refreshing this entry.
-		rrCache.RequestingNew = true
+	case rrCache.ExpiresSoon():
+		// Check if the cache will expire soon and start an async request.
+		startAsyncQuery(ctx, q, rrCache)
+		return rrCache
 
+	default:
+		// Return still valid cache entry.
 		log.Tracer(ctx).Tracef(
-			"resolver: cache for %s will expire in %s, refreshing async now",
-			q.ID(),
+			"resolver: using cached RR (expires in %s)",
 			time.Until(time.Unix(rrCache.Expires, 0)).Round(time.Second),
 		)
-
-		// resolve async
-		module.StartWorker("resolve async", func(asyncCtx context.Context) error {
-			tracingCtx, tracer := log.AddTracer(asyncCtx)
-			defer tracer.Submit()
-			tracer.Tracef("resolver: resolving %s async", q.ID())
-			_, err := resolveAndCache(tracingCtx, q, nil)
-			if err != nil {
-				tracer.Warningf("resolver: async query for %s failed: %s", q.ID(), err)
-			} else {
-				tracer.Infof("resolver: async query for %s succeeded", q.ID())
-			}
-			return nil
-		})
-
 		return rrCache
 	}
+}
 
+func startAsyncQuery(ctx context.Context, q *Query, currentRRCache *RRCache) {
+	// Check if an async query was already started.
+	if currentRRCache.RequestingNew {
+		return
+	}
+
+	// Set flag and log that we are refreshing this entry.
+	currentRRCache.RequestingNew = true
 	log.Tracer(ctx).Tracef(
-		"resolver: using cached RR (expires in %s)",
-		time.Until(time.Unix(rrCache.Expires, 0)).Round(time.Second),
+		"resolver: cache for %s will expire in %s, refreshing async now",
+		q.ID(),
+		time.Until(time.Unix(currentRRCache.Expires, 0)).Round(time.Second),
 	)
-	return rrCache
+
+	// resolve async
+	module.StartWorker("resolve async", func(asyncCtx context.Context) error {
+		tracingCtx, tracer := log.AddTracer(asyncCtx)
+		defer tracer.Submit()
+		tracer.Tracef("resolver: resolving %s async", q.ID())
+		_, err := resolveAndCache(tracingCtx, q, nil)
+		if err != nil {
+			tracer.Warningf("resolver: async query for %s failed: %s", q.ID(), err)
+		} else {
+			tracer.Infof("resolver: async query for %s succeeded", q.ID())
+		}
+		return nil
+	})
 }
 
 func deduplicateRequest(ctx context.Context, q *Query) (finishRequest func()) {
