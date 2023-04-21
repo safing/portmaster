@@ -270,6 +270,8 @@ Examples:
 - "1.1.1.1 ICMP"
 
 Important: DNS Requests are only matched against domain and filter list rules, all others require an IP address and are checked only with the following IP connection.
+
+Pro Tip: You can use "#" to add a comment to a rule.
 `, `"`, "`")
 
 	// rulesVerdictNames defines the verdicts names to be used for filter rules.

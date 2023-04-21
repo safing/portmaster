@@ -2,8 +2,10 @@ package updates
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"net/url"
 	"runtime"
 	"time"
 
@@ -41,9 +43,11 @@ const (
 )
 
 var (
-	module            *modules.Module
-	registry          *updater.ResourceRegistry
-	userAgentFromFlag string
+	module   *modules.Module
+	registry *updater.ResourceRegistry
+
+	userAgentFromFlag    string
+	updateServerFromFlag string
 
 	updateTask          *modules.Task
 	updateASAP          bool
@@ -58,6 +62,11 @@ var (
 	// more context to requests made by the registry when
 	// fetching resources from the update server.
 	UserAgent = fmt.Sprintf("Portmaster (%s %s)", runtime.GOOS, runtime.GOARCH)
+
+	// DefaultUpdateURLs defines the default base URLs of the update server.
+	DefaultUpdateURLs = []string{
+		"https://updates.safing.io",
+	}
 
 	// DisableSoftwareAutoUpdate specifies whether software updates should be disabled.
 	// This is used on Android, as it will never require binary updates.
@@ -75,15 +84,24 @@ func init() {
 	module.RegisterEvent(VersionUpdateEvent, true)
 	module.RegisterEvent(ResourceUpdateEvent, true)
 
-	flag.StringVar(&userAgentFromFlag, "update-agent", "", "set the user agent for requests to the update server")
-
-	var dummy bool
-	flag.BoolVar(&dummy, "staging", false, "deprecated, configure in settings instead")
+	flag.StringVar(&updateServerFromFlag, "update-server", "", "set an alternative update server (full URL)")
+	flag.StringVar(&userAgentFromFlag, "update-agent", "", "set an alternative user agent for requests to the update server")
 }
 
 func prep() error {
 	if err := registerConfig(); err != nil {
 		return err
+	}
+
+	// Check if update server URL supplied via flag is a valid URL.
+	if updateServerFromFlag != "" {
+		u, err := url.Parse(updateServerFromFlag)
+		if err != nil {
+			return fmt.Errorf("supplied update server URL is invalid: %w", err)
+		}
+		if u.Scheme != "https" {
+			return errors.New("supplied update server URL must use HTTPS")
+		}
 	}
 
 	return registerAPIEndpoints()
@@ -104,10 +122,8 @@ func start() error {
 
 	// create registry
 	registry = &updater.ResourceRegistry{
-		Name: ModuleName,
-		UpdateURLs: []string{
-			"https://updates.safing.io",
-		},
+		Name:             ModuleName,
+		UpdateURLs:       DefaultUpdateURLs,
 		UserAgent:        UserAgent,
 		MandatoryUpdates: helper.MandatoryUpdates(),
 		AutoUnpack:       helper.AutoUnpackUpdates(),
@@ -115,9 +131,12 @@ func start() error {
 		DevMode:          devMode(),
 		Online:           true,
 	}
+	// Override values from flags.
 	if userAgentFromFlag != "" {
-		// override with flag value
 		registry.UserAgent = userAgentFromFlag
+	}
+	if updateServerFromFlag != "" {
+		registry.UpdateURLs = []string{updateServerFromFlag}
 	}
 
 	// pre-init state

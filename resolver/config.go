@@ -62,13 +62,17 @@ var (
 	noAssignedNameservers               status.SecurityLevelOptionFunc
 	cfgOptionNoAssignedNameserversOrder = 1
 
+	CfgOptionUseStaleCacheKey   = "dns/useStaleCache"
+	useStaleCache               config.BoolOption
+	cfgOptionUseStaleCacheOrder = 2
+
 	CfgOptionNoMulticastDNSKey   = "dns/noMulticastDNS"
 	noMulticastDNS               status.SecurityLevelOptionFunc
-	cfgOptionNoMulticastDNSOrder = 2
+	cfgOptionNoMulticastDNSOrder = 3
 
 	CfgOptionNoInsecureProtocolsKey   = "dns/noInsecureProtocols"
 	noInsecureProtocols               status.SecurityLevelOptionFunc
-	cfgOptionNoInsecureProtocolsOrder = 3
+	cfgOptionNoInsecureProtocolsOrder = 4
 
 	CfgOptionDontResolveSpecialDomainsKey   = "dns/dontResolveSpecialDomains"
 	dontResolveSpecialDomains               status.SecurityLevelOptionFunc
@@ -161,11 +165,11 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	configuredNameServers = config.Concurrent.GetAsStringArray(CfgOptionNameServersKey, defaultNameServers)
 
 	err = config.Register(&config.Option{
-		Name:           "Retry Timeout",
+		Name:           "Ignore Failing DNS Servers Duration",
 		Key:            CfgOptionNameserverRetryRateKey,
-		Description:    "Timeout between retries when a DNS server fails.",
+		Description:    "Duration in seconds how long a failing DNS server should not be retried.",
 		OptType:        config.OptTypeInt,
-		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   300,
 		Annotations: config.Annotations{
@@ -200,6 +204,24 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 		return err
 	}
 	noAssignedNameservers = status.SecurityLevelOption(CfgOptionNoAssignedNameserversKey)
+
+	err = config.Register(&config.Option{
+		Name:           "Always Use DNS Cache",
+		Key:            CfgOptionUseStaleCacheKey,
+		Description:    "Always use stale entries from the DNS cache and refresh expired entries afterwards. This can improve DNS resolving performance a lot, but may lead to occasional connection errors due to the outdated DNS records.",
+		OptType:        config.OptTypeBool,
+		ExpertiseLevel: config.ExpertiseLevelUser,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   false,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionUseStaleCacheOrder,
+			config.CategoryAnnotation:     "Resolving",
+		},
+	})
+	if err != nil {
+		return err
+	}
+	useStaleCache = config.Concurrent.GetAsBool(CfgOptionUseStaleCacheKey, false)
 
 	err = config.Register(&config.Option{
 		Name:           "Ignore Multicast DNS",
