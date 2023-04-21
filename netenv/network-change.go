@@ -41,10 +41,13 @@ serviceLoop:
 	for {
 		trigger := false
 
-		timeout := 15 * time.Second
-		if !Online() {
-			timeout = time.Second
+		var ticker *time.Ticker
+		if Online() {
+			ticker = monitorNetworkChangeOnlineTicker
+		} else {
+			ticker = monitorNetworkChangeOfflineTicker
 		}
+
 		// wait for trigger
 		select {
 		case <-ctx.Done():
@@ -54,7 +57,7 @@ serviceLoop:
 			// triggers the networkChangeCheck this way. If we would set
 			// trigger == true we would trigger the online check again
 			// resulting in a loop of pointless checks.
-		case <-time.After(timeout):
+		case <-ticker.C:
 			trigger = true
 		}
 

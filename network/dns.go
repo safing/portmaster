@@ -84,14 +84,14 @@ func SaveOpenDNSRequest(q *resolver.Query, rrCache *resolver.RRCache, conn *Conn
 }
 
 func openDNSRequestWriter(ctx context.Context) error {
-	ticker := time.NewTicker(writeOpenDNSRequestsTickDuration)
+	ticker := module.NewSleepyTicker(writeOpenDNSRequestsTickDuration, 0)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-ticker.C:
+		case <-ticker.Wait():
 			writeOpenDNSRequestsToDB()
 		}
 	}
