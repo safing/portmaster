@@ -185,6 +185,8 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 
 // Query executes the given query against the resolver.
 func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
+	queryStarted := time.Now()
+
 	// Get resolver connection.
 	resolverConn, err := tr.getOrCreateResolverConn(ctx)
 	if err != nil {
@@ -231,6 +233,9 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	if tr.resolver.IsBlockedUpstream(reply) {
 		return nil, &BlockedUpstreamError{tr.resolver.Info.DescriptiveName()}
 	}
+
+	// Report request duration for metrics.
+	reportRequestDuration(queryStarted, tr.resolver)
 
 	// Create RRCache from reply and return it.
 	return tq.MakeCacheRecord(reply, tr.resolver.Info), nil
