@@ -208,7 +208,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	err = config.Register(&config.Option{
 		Name:           "Always Use DNS Cache",
 		Key:            CfgOptionUseStaleCacheKey,
-		Description:    "Always use stale entries from the DNS cache and refresh expired entries afterwards. This can improve DNS resolving performance a lot, but may lead to occasional connection errors due to the outdated DNS records.",
+		Description:    "Always use the DNS cache, even if entries have expired. Expired entries are refreshed afterwards in the background. This can improve DNS resolving performance a lot, but may lead to occasional connection errors due to outdated DNS records.",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelStable,

@@ -37,6 +37,8 @@ func NewPlainResolver(resolver *Resolver) *PlainResolver {
 
 // Query executes the given query against the resolver.
 func (pr *PlainResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
+	queryStarted := time.Now()
+
 	// create query
 	dnsQuery := new(dns.Msg)
 	dnsQuery.SetQuestion(q.FQDN, uint16(q.QType))
@@ -54,6 +56,7 @@ func (pr *PlainResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 
 	// create client
 	dnsClient := &dns.Client{
+		UDPSize: 1024,
 		Timeout: timeout,
 		Dialer: &net.Dialer{
 			Timeout:   timeout,
@@ -80,8 +83,11 @@ func (pr *PlainResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 		return nil, &BlockedUpstreamError{pr.resolver.Info.DescriptiveName()}
 	}
 
-	// hint network environment at successful connection
+	// Hint network environment at successful connection.
 	netenv.ReportSuccessfulConnection()
+
+	// Report request duration for metrics.
+	reportRequestDuration(queryStarted, pr.resolver)
 
 	newRecord := &RRCache{
 		Domain:   q.FQDN,

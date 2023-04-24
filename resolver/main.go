@@ -96,6 +96,8 @@ func start() error {
 		return err
 	}
 
+	module.NewTask("suggest using stale cache", suggestUsingStaleCacheTask).Repeat(2 * time.Minute)
+
 	module.StartServiceWorker(
 		"mdns handler",
 		5*time.Second,

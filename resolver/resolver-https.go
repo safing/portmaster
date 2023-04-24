@@ -14,6 +14,7 @@ import (
 	"github.com/miekg/dns"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/netenv"
 )
 
 // HTTPSResolver is a resolver using just a single tcp connection with pipelining.
@@ -56,6 +57,8 @@ func NewHTTPSResolver(resolver *Resolver) *HTTPSResolver {
 
 // Query executes the given query against the resolver.
 func (hr *HTTPSResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
+	queryStarted := time.Now()
+
 	dnsQuery := new(dns.Msg)
 	dnsQuery.SetQuestion(q.FQDN, uint16(q.QType))
 
@@ -88,6 +91,9 @@ func (hr *HTTPSResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 
 	resp, err := hr.client.Do(request)
 	if err != nil {
+		// Hint network environment at failed connection.
+		netenv.ReportFailedConnection()
+
 		return nil, err
 	}
 	defer func() {
@@ -110,6 +116,12 @@ func (hr *HTTPSResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	if err != nil {
 		return nil, err
 	}
+
+	// Hint network environment at successful connection.
+	netenv.ReportSuccessfulConnection()
+
+	// Report request duration for metrics.
+	reportRequestDuration(queryStarted, hr.resolver)
 
 	newRecord := &RRCache{
 		Domain:   q.FQDN,
