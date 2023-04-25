@@ -149,7 +149,7 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 		originalPid = proc.Pid
 		var previousPid int
 
-		// Go up up to two levels, if we don't match the path.
+		// Find parent for up to two levels, if we don't match the path.
 		checkLevels := 2
 	checkLevelsLoop:
 		for i := 0; i < checkLevels+1; i++ {

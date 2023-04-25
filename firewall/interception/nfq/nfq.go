@@ -90,7 +90,7 @@ func New(qid uint16, v6 bool) (*Queue, error) { //nolint:gocognit
 	return q, nil
 }
 
-// open opens a new netlink socket and and creates a new nfqueue.
+// open opens a new netlink socket and creates a new nfqueue.
 // Upon success, the new nfqueue is atomically stored in Queue.nf.
 // Users must use Queue.getNfq to access it. open does not care about
 // any other value or queue that might be stored in Queue.nf at

@@ -70,7 +70,7 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// WarningLastUpdated holds the timestamp when the Warning field was last
 	// updated.
 	WarningLastUpdated time.Time
-	// Homepage may refer the the website of the application
+	// Homepage may refer to the website of the application
 	// vendor.
 	Homepage string
 	// Icon holds the icon of the application. The value

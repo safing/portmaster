@@ -135,7 +135,7 @@ func createPrompt(ctx context.Context, conn *network.Connection) (n *notificatio
 		n.Unlock()
 
 		// If the notification is still active, extend and return.
-		// This can can happen because user input (prompts changing the endpoint
+		// This can happen because user input (prompts changing the endpoint
 		// lists) can happen any time - also between checking the endpoint lists
 		// and now.
 		if state == notifications.Active {

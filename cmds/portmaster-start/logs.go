@@ -17,7 +17,7 @@ import (
 )
 
 func initializeLogFile(logFilePath string, identifier string, version string) *os.File {
-	logFile, err := os.OpenFile(logFilePath, os.O_RDWR|os.O_CREATE, 0o0440)
+	logFile, err := os.OpenFile(logFilePath, os.O_RDWR|os.O_CREATE, 0o0440) //nolint:gosec // As desired.
 	if err != nil {
 		log.Printf("failed to create log file %s: %s\n", logFilePath, err)
 		return nil

@@ -5,6 +5,8 @@ dnsonly
 dnsonly.exe
 main
 main.exe
+integrationtest
+integrationtest.exe
 
 # Dist dir
 dist
