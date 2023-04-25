@@ -19,7 +19,7 @@ delivered correctly, or need special permissions and or sockets to receive
 them. This is the case when doing a traceroute.
 
 In order to keep it simple, the system is only designed to be used by one
-"user" at at time. Further calls to ListenToICMP will wait for the previous
+"user" at a time. Further calls to ListenToICMP will wait for the previous
 operation to complete.
 */
 

@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	processInfo "github.com/shirou/gopsutil/process"
 	"github.com/spf13/cobra"
 
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/network/socket"
 	"github.com/safing/portmaster/network/state"
-
-	processInfo "github.com/shirou/gopsutil/process"
 )
 
 func init() {

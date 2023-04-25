@@ -22,6 +22,7 @@ func (l *Location) IsRegionalNeighbor(other *Location) bool {
 	return false
 }
 
+// Region defines a geographic region and neighboring regions.
 type Region struct {
 	ID        string
 	Name      string

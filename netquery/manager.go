@@ -21,7 +21,7 @@ type (
 	// It is implemented by the *Database type of this package.
 	ConnectionStore interface {
 		// Save is called to perists the new or updated connection. If required,
-		// It's up the the implementation to figure out if the operation is an
+		// It's up to the implementation to figure out if the operation is an
 		// insert or an update.
 		// The ID of Conn is unique and can be trusted to never collide with other
 		// connections of the save device.

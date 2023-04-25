@@ -149,7 +149,7 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		netenv.ReportFailedConnection()
 
 		log.Debugf("resolver: failed to connect to %s: %s", tr.resolver.Info.DescriptiveName(), err)
-		return nil, fmt.Errorf("%w: failed to connect to %s: %s", ErrFailure, tr.resolver.Info.DescriptiveName(), err)
+		return nil, fmt.Errorf("%w: failed to connect to %s: %w", ErrFailure, tr.resolver.Info.DescriptiveName(), err)
 	}
 
 	// Hint network environment at successful connection.

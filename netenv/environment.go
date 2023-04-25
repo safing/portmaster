@@ -10,7 +10,7 @@ import (
 // domain parameter of dhcp
 
 // TODO: get dhcp servers on windows:
-// windows: https://msdn.microsoft.com/en-us/library/windows/desktop/aa365917
+// doc: https://msdn.microsoft.com/en-us/library/windows/desktop/aa365917
 // this info might already be included in the interfaces api provided by golang!
 
 // Nameserver describes a system assigned namserver.

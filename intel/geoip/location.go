@@ -16,7 +16,7 @@ const (
 )
 
 // Location holds information regarding the geographical and network location of an IP address.
-// TODO: We are currently re-using the Continent-Code for the region. Update this and and all dependencies.
+// TODO: We are currently re-using the Continent-Code for the region. Update this and all dependencies.
 type Location struct {
 	Continent struct {
 		Code string `maxminddb:"code"`
