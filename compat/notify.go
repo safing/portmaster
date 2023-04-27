@@ -39,13 +39,13 @@ var (
 	systemIntegrationIssue = &systemIssue{
 		id:      "compat:system-integration-issue",
 		title:   "Detected System Integration Issue",
-		message: "Portmaster detected a problem with its system integration. You can try to restart or reinstall the Portmaster. If that does not help, please report the issue via [GitHub](https://github.com/safing/portmaster/issues) or send a mail to [support@safing.io](mailto:support@safing.io) so we can help you out.",
+		message: "Portmaster detected a problem with its system integration. You can try to restart or reinstall the Portmaster. If that does not help, [get support here](https://safing.io/support/).",
 		level:   notifications.Error,
 	}
 	systemCompatibilityIssue = &systemIssue{
 		id:      "compat:compatibility-issue",
 		title:   "Detected Compatibility Issue",
-		message: "Portmaster detected that something is interfering with its operation. This could be a VPN, an Anti-Virus or another network protection software. Please check if you are running an incompatible [VPN client](https://docs.safing.io/portmaster/install/status/vpn-compatibility) or [software](https://docs.safing.io/portmaster/install/status/software-compatibility). Otherwise, please report the issue via [GitHub](https://github.com/safing/portmaster/issues) or send a mail to [support@safing.io](mailto:support@safing.io) so we can help you out.",
+		message: "Portmaster detected that something is interfering with its operation. This could be a VPN, an Anti-Virus or another network protection software. Please check if you are running an incompatible [VPN client](https://docs.safing.io/portmaster/install/status/vpn-compatibility) or [software](https://docs.safing.io/portmaster/install/status/software-compatibility) and disable it. If that does not help, [get support here](https://safing.io/support/).",
 		level:   notifications.Error,
 	}
 	// manualDNSSetupRequired is additionally initialized in startNotify().
