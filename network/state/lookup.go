@@ -28,11 +28,6 @@ var (
 	ErrPIDNotFound        = errors.New("could not find pid for socket inode")
 )
 
-var (
-	lookupTries     = 20 // With a max wait of 5ms, this amounts to up to 100ms.
-	fastLookupTries = 2
-)
-
 // Lookup looks for the given connection in the system state tables and returns the PID of the associated process and whether the connection is inbound.
 func Lookup(pktInfo *packet.Info, fast bool) (pid int, inbound bool, err error) {
 	// auto-detect version

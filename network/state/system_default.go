@@ -10,6 +10,11 @@ import (
 	"github.com/safing/portmaster/network/socket"
 )
 
+var (
+	lookupTries     = 20 // With a max wait of 5ms, this amounts to up to 100ms.
+	fastLookupTries = 2
+)
+
 func init() {
 	// This increases performance on unsupported system.
 	// It's not critical at all and does not break anything if it fails.
