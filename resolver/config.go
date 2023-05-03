@@ -151,7 +151,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 					Name:   "Foundation for Applied Privacy",
 					Action: config.QuickReplace,
 					Value: []string{
-						"dot://dot1.applied-privacy.net?ip=94.130.106.88&name=AppliedPrivacy",
+						"dot://dot1.applied-privacy.net?ip=146.255.56.98&name=AppliedPrivacy",
 					},
 				},
 			},
