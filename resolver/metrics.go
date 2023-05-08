@@ -31,13 +31,15 @@ func reportRequestDuration(started time.Time, resolver *Resolver) {
 // getSlowQueriesSensorValue returns the current avg query time recorded by the
 // slow queries sensor.
 func getSlowQueriesSensorValue() (avgQueryTime time.Duration) {
-	return time.Duration(
-		slowQueriesSensorSum.Load() / slowQueriesSensorCnt.Load(),
-	)
-}
+	// Get values and check them.
+	sum := slowQueriesSensorSum.Load()
+	cnt := slowQueriesSensorCnt.Load()
+	if cnt < 1 {
+		cnt = 1
+	}
 
-// getAndResetSlowQueriesSensorValue returns the current avg query time
-// recorded by the slow queries sensor and reset the sensor values.
+	return time.Duration(sum / cnt)
+}
 
 // resetSlowQueriesSensorValue reset the slow queries sensor values.
 func resetSlowQueriesSensorValue() {
