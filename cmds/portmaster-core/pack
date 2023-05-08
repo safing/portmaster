@@ -50,7 +50,7 @@ function build {
   fi
 
   # build
-  ./build main.go
+  ./build
   if [[ $? -ne 0 ]]; then
     echo -e "\n${COL_BOLD}[core] $platform v$version: ${COL_RED}BUILD FAILED.${COL_OFF}"
     exit 1

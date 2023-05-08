@@ -12,9 +12,12 @@ var (
 	getTCP6Table = proc.GetTCP6Table
 	getUDP4Table = proc.GetUDP4Table
 	getUDP6Table = proc.GetUDP6Table
-)
 
-var baseWaitTime = 3 * time.Millisecond
+	lookupTries     = 20 // With a max wait of 5ms, this amounts to up to 100ms.
+	fastLookupTries = 2
+
+	baseWaitTime = 3 * time.Millisecond
+)
 
 // CheckPID checks the if socket info already has a PID and if not, tries to find it.
 // Depending on the OS, this might be a no-op.

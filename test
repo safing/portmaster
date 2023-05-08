@@ -131,6 +131,29 @@ if [[ $testonly -eq 0 ]]; then
   fi
 fi
 
+# build portmaster-core for for all supported platforms
+echo "building portmaster-core for all platforms"
+cd ./cmds/portmaster-core
+run env GOOS=linux GOARCH=amd64 ./build
+run env GOOS=windows GOARCH=amd64 ./build
+run env GOOS=darwin GOARCH=amd64 ./build
+run env GOOS=linux GOARCH=arm64 ./build
+run env GOOS=windows GOARCH=arm64 ./build
+run env GOOS=darwin GOARCH=arm64 ./build
+cd "$baseDir"
+
+# build portmaster-start for for all supported platforms
+echo ""
+echo "building portmaster-start for all platforms"
+cd ./cmds/portmaster-start
+run env GOOS=linux GOARCH=amd64 ./build
+# run env GOOS=windows GOARCH=amd64 ./build # TODO: Fix for GitHub CI
+run env GOOS=darwin GOARCH=amd64 ./build
+run env GOOS=linux GOARCH=arm64 ./build
+# run env GOOS=windows GOARCH=arm64 ./build # TODO: Fix for GitHub CI
+run env GOOS=darwin GOARCH=arm64 ./build
+cd "$baseDir"
+
 # target selection
 if [[ "$1" == "" ]]; then
   # get all packages
@@ -138,10 +161,12 @@ if [[ "$1" == "" ]]; then
 else
   # single package testing
   packages=$(go list -e)/$1
+  echo ""
   echo "note: only running tests for package $packages"
 fi
 
 # platform info
+echo ""
 platformInfo=$(go env GOOS GOARCH)
 echo "running tests for ${platformInfo//$'\n'/ }:"
 
