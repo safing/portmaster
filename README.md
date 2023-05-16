@@ -14,7 +14,7 @@ With great defaults your privacy improves without any effort. And if you want to
 3. [Secure Your DNS Requests by Default](https://safing.io/features#secure-dns-by-default)
 4. [Create Your Own Rules](https://safing.io/features#create-your-own-rules)
 5. [Set Global & per‑App Settings](https://safing.io/features#set-global-and-app-settings)
-6. [FAQ](https://docs.safing.io/)
+6. [FAQ](https://wiki.safing.io/en/FAQ/FrequentlyAskedQuestions)
 
 # [Download for Free](https://safing.io/download/)
 
@@ -33,6 +33,9 @@ With great defaults your privacy improves without any effort. And if you want to
 [![ghacks.net](https://safing.io/assets/img//external/ghacks.png)](https://www.ghacks.net/2022/11/08/portmaster-1-0-released-open-source-application-firewall/)
 &nbsp;&nbsp;&nbsp;
 [![Techlore](https://safing.io/assets/img//external/techlore.png)](https://www.youtube.com/watch?v=E8cTRhGtmcM)
+&nbsp;&nbsp;&nbsp;
+[![Lifehacker](https://safing.io/assets/img/external/logos/lifehacker.webp)](https://lifehacker.com/the-lesser-known-apps-everyone-should-install-on-a-new-1850223434)
+
 
 # Technical Introduction
 
@@ -78,34 +81,19 @@ Portmaster is a privacy suite for your desktop OS.
 
 #### Further Readings:
 
-- [Portmaster Architecture Overview](https://docs.safing.io/portmaster/architecture/overview)
+- [Portmaster Architecture Overview](https://wiki.safing.io/en/Portmaster/Architecture/Overview)
 - [SPN Whitepaper](https://safing.io/files/whitepaper/Gate17.pdf)
 
 ## Documentation
 
-All technical details and guides live on the dedicated docs website:
+All details and guides live in the dedicated [wiki](https://wiki.safing.io/)
 
-- [Guides](https://docs.safing.io/portmaster/guides/contribute)
-  - [Contribute](https://docs.safing.io/portmaster/guides/contribute)
-  - [Settings Handbook](https://docs.safing.io/portmaster/settings)
-  - [DNS Configuration](https://docs.safing.io/portmaster/guides/dns-configuration)
-- [Install](https://docs.safing.io/portmaster/install/windows)
-  - [on Windows](https://docs.safing.io/portmaster/install/windows)
-  - [on Linux](https://docs.safing.io/portmaster/install/linux)
-    - [Troubleshooting](https://docs.safing.io/portmaster/install/linux#troubleshooting)
-  - [Status](https://docs.safing.io/portmaster/install/status/vpn-compatibility)
-    - [VPN Compatibility](https://docs.safing.io/portmaster/install/status/vpn-compatibility)
-    - [Software Compatibility](https://docs.safing.io/portmaster/install/status/software-compatibility)
-    - [Mobile](https://docs.safing.io/portmaster/install/status/mobile)
-    - [Mac](https://docs.safing.io/portmaster/install/status/mac)
-- [Architecture](https://docs.safing.io/portmaster/architecture/overview)
-  - [Technical Overview](https://docs.safing.io/portmaster/architecture/overview)
-  - [Core Service](https://docs.safing.io/portmaster/architecture/core-service)
-    - [Fundamentals](https://docs.safing.io/portmaster/architecture/core-service/fundamentals)
-    - [Core](https://docs.safing.io/portmaster/architecture/core-service/core)
-    - [Privacy Filter](https://docs.safing.io/portmaster/architecture/core-service/privacy-filter)
-    - [Secure DNS](https://docs.safing.io/portmaster/architecture/core-service/secure-dns)
-    - [SPN](https://docs.safing.io/portmaster/architecture/core-service/spn)
-  - [OS Integration](https://docs.safing.io/portmaster/architecture/os-integration)
-  - [User Interface](https://docs.safing.io/portmaster/architecture/user-interface)
-  - [Notifier](https://docs.safing.io/portmaster/architecture/notifier)
+- [Getting Started](https://wiki.safing.io/en/Portmaster/App/GettingStarted)
+- Install
+  - [on Windows](https://wiki.safing.io/en/Portmaster/Install/Windows)
+  - [on Linux](https://wiki.safing.io/en/Portmaster/Install/Linux)
+- [Contribute](https://wiki.safing.io/en/Contribute)
+- [VPN Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility#vpn-compatibly)
+- [Software Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility)
+- [Architecture](https://wiki.safing.io/en/Portmaster/Architecture/Overview)
+
