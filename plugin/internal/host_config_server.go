@@ -56,7 +56,13 @@ func (cfg *HostConfigServer) RegisterOption(ctx context.Context, req *proto.Opti
 		},
 	})
 	if err != nil {
-		return err
+		// ignore soft validation errors. This may happen if the already stored configuration value
+		// for this setting is invalid.
+		// TODO(ppacher): we should likely return this error to the caller but for now
+		// it's fine to just drop it and continue.
+		if vErr, ok := err.(*config.ValidationError); ok && !vErr.SoftError {
+			return err
+		}
 	}
 
 	return nil
