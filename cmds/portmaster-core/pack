@@ -14,7 +14,7 @@ destDirPart2="core"
 
 function prep {
   # output
-  output="main"
+  output="portmaster-core"
   # get version
   version=$(grep "info.Set" main.go | cut -d'"' -f4)
   # build versioned file name
