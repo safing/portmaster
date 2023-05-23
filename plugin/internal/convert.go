@@ -56,7 +56,7 @@ func ConnectionFromNetwork(conn *network.Connection) *proto.Connection {
 		Started:    uint64(conn.Started),
 		Tunneled:   conn.Tunneled,
 		Process:    ProcessFromNetwork(conn.ProcessContext),
-		Verdict:    VerdictFromNetwork(conn.Verdict),
+		Verdict:    VerdictFromNetwork(conn.Verdict.Active),
 	}
 
 	return protoConn
