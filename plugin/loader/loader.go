@@ -3,10 +3,12 @@ package loader
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 
 	plugin "github.com/hashicorp/go-plugin"
@@ -87,7 +89,7 @@ func (ldr *PluginLoader) Dispense(ctx context.Context, name string) (*PluginInst
 		return nil, ErrPluginNotRegistered
 	}
 
-	client, err := ldr.dispenseClient(ctx, cfg.Name)
+	client, resolvedPath, err := ldr.dispenseClient(ctx, cfg.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +116,7 @@ func (ldr *PluginLoader) Dispense(ctx context.Context, name string) (*PluginInst
 		pluginManager = NewHostPluginServer(ldr)
 	}
 
-	instance, err := NewPluginInstance(ctx, cfg, ldr, client, base.Environment{
+	instance, err := NewPluginInstance(ctx, cfg, ldr, client, resolvedPath, base.Environment{
 		Config:        configService,
 		Notify:        notifyService,
 		PluginManager: pluginManager,
@@ -241,10 +243,10 @@ func (ldr *PluginLoader) StopInstance(ctx context.Context, name string) error {
 	return nil
 }
 
-func (ldr *PluginLoader) dispenseClient(ctx context.Context, name string) (*plugin.Client, error) {
+func (ldr *PluginLoader) dispenseClient(ctx context.Context, name string) (*plugin.Client, string, error) {
 	path, err := ldr.findPluginBinary(name)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	cmd := exec.Command(path)
@@ -267,10 +269,10 @@ func (ldr *PluginLoader) dispenseClient(ctx context.Context, name string) (*plug
 	// but we want to find a start-up error early and calling start multiple times is safe
 	// and won't do anything if the plugin is already started.
 	if _, err := client.Start(); err != nil {
-		return nil, err
+		return nil, path, err
 	}
 
-	return client, nil
+	return client, path, nil
 }
 
 // Kill kills all plugin sub-processes and resets the internal loader
@@ -307,5 +309,5 @@ func (ldr *PluginLoader) findPluginBinary(name string) (string, error) {
 		}
 	}
 
-	return "", ErrPluginNotFound
+	return "", fmt.Errorf("%w: %s", ErrPluginNotFound, strings.Join(ldr.SearchDirectories, ":"))
 }

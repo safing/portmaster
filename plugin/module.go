@@ -14,6 +14,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
+	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/plugin/loader"
 	"github.com/safing/portmaster/plugin/shared"
 )
@@ -65,7 +66,7 @@ func init() {
 }
 
 func (m *ModuleImpl) prepare() error {
-	pluginDirectory := dataroot.Root().ChildDir("plugins", 0744)
+	pluginDirectory := dataroot.Root().ChildDir("plugins", 0755)
 
 	if err := pluginDirectory.Ensure(); err != nil {
 		return fmt.Errorf("failed to prepare plugin directory: %w", err)
@@ -124,6 +125,15 @@ func (m *ModuleImpl) start() error {
 			m.Module.Error("plugin-dispense-error", "Failed to dispense one or more plugins", err.Error())
 		} else {
 			m.Module.Resolve("plugin-dispense-error")
+
+			if len(m.plugins) > 0 {
+				msg := "The following plugins have been loaded:  \n" // keep the spaces
+				for _, cfg := range m.plugins {
+					msg += fmt.Sprintf("- **%s** (%s)\n", cfg.Name, cfg.ResolvedPath())
+				}
+				notifications.NotifyInfo("plugins-loaded", "Plugins have been loaded", msg)
+			}
+
 		}
 	}
 
@@ -142,7 +152,7 @@ func (m *ModuleImpl) loadPlugins(cfgs []shared.PluginConfig) error {
 			// using the OnPluginStarted callback registered during prepare()
 			_, err := m.Loader.Dispense(m.Ctx, pluginConfig.Name)
 			if err != nil {
-				multierr.Errors = append(multierr.Errors, fmt.Errorf("failed to load plugin: %w", err))
+				multierr.Errors = append(multierr.Errors, fmt.Errorf("failed to load plugin %s: %w", pluginConfig.Name, err))
 
 				continue
 			}

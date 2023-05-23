@@ -43,13 +43,14 @@ type (
 		recentErrorsLock sync.Mutex
 		recentErrors     map[shared.PluginType][]reportedError
 
-		l        sync.RWMutex
-		killed   bool
-		client   *plugin.Client
-		reporter reporter.Reporter
-		decider  decider.Decider
-		resolver resolver.Resolver
-		base     base.Base
+		l            sync.RWMutex
+		killed       bool
+		resolvedPath string
+		client       *plugin.Client
+		reporter     reporter.Reporter
+		decider      decider.Decider
+		resolver     resolver.Resolver
+		base         base.Base
 	}
 
 	reportedError struct {
@@ -58,12 +59,13 @@ type (
 	}
 )
 
-func NewPluginInstance(ctx context.Context, cfg shared.PluginConfig, loader *PluginLoader, client *plugin.Client, env base.Environment) (*PluginInstance, error) {
+func NewPluginInstance(ctx context.Context, cfg shared.PluginConfig, loader *PluginLoader, client *plugin.Client, resolvedPath string, env base.Environment) (*PluginInstance, error) {
 	instance := &PluginInstance{
 		PluginConfig: cfg,
 		loader:       loader,
 		env:          env,
 		client:       client,
+		resolvedPath: resolvedPath,
 		recentErrors: make(map[shared.PluginType][]reportedError),
 	}
 
@@ -76,6 +78,13 @@ func NewPluginInstance(ctx context.Context, cfg shared.PluginConfig, loader *Plu
 	}
 
 	return instance, nil
+}
+
+func (plg *PluginInstance) ResolvedPath() string {
+	plg.l.RLock()
+	defer plg.l.RUnlock()
+
+	return plg.resolvedPath
 }
 
 func (plg *PluginInstance) ReportedErrors() *proto.PluginErrorList {
@@ -196,12 +205,13 @@ func (plg *PluginInstance) relaunchIfExited(ctx context.Context) error {
 	}
 
 	if plg.client.Exited() {
-		client, err := plg.loader.dispenseClient(ctx, plg.Name)
+		client, path, err := plg.loader.dispenseClient(ctx, plg.Name)
 		if err != nil {
 			return fmt.Errorf("plugin %s: failed to relaunch: %w", plg.Name, err)
 		}
 
 		plg.client = client
+		plg.resolvedPath = path
 
 		if err := plg.dispenseRequestedTypes(); err != nil {
 			plg.reportError(shared.PluginTypeBase, err)
