@@ -137,16 +137,24 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	di.Style = ar.Request.URL.Query().Get("style")
 
 	// Add debug information.
+
+	// Very basic information at the start.
 	di.AddVersionInfo()
 	di.AddPlatformInfo(ar.Context())
-	status.AddToDebugInfo(di)
-	config.AddToDebugInfo(di)
-	resolver.AddToDebugInfo(di)
-	captain.AddToDebugInfo(di)
-	compat.AddToDebugInfo(di)
+
+	// Errors and unexpected logs.
 	di.AddLastReportedModuleError()
 	di.AddLastUnexpectedLogs()
+
+	// Status Information from various modules.
+	status.AddToDebugInfo(di)
+	captain.AddToDebugInfo(di)
+	resolver.AddToDebugInfo(di)
+	config.AddToDebugInfo(di)
+
+	// Detailed information.
 	updates.AddToDebugInfo(di)
+	compat.AddToDebugInfo(di)
 	di.AddGoroutineStack()
 
 	// Return data.
