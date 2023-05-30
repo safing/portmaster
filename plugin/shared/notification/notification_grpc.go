@@ -7,10 +7,12 @@ import (
 )
 
 type (
+	// GRPCClient is the client side implementation of notification.Service.
 	GRPCClient struct {
 		Client proto.NotificationServiceClient
 	}
 
+	// GRPCServer implements the gRPC server side of notification.Service.
 	GRPCServer struct {
 		proto.UnimplementedNotificationServiceServer
 
@@ -19,6 +21,7 @@ type (
 	}
 )
 
+// CreateNotification implements the gRPC client side of Service.CreateNotification.
 func (cli *GRPCClient) CreateNotification(ctx context.Context, notif *proto.Notification) (<-chan string, error) {
 	stream, err := cli.Client.CreateNotification(ctx, &proto.CreateNotificationRequest{
 		Notification: notif,
@@ -46,6 +49,7 @@ func (cli *GRPCClient) CreateNotification(ctx context.Context, notif *proto.Noti
 	return ch, nil
 }
 
+// CreateNotification implements the gRPC server side of Service.CreateNotification.
 func (srv *GRPCServer) CreateNotification(req *proto.CreateNotificationRequest, stream proto.NotificationService_CreateNotificationServer) error {
 	ctx := stream.Context()
 

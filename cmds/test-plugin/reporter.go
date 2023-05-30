@@ -7,16 +7,16 @@ import (
 	"github.com/safing/portmaster/plugin/shared/proto"
 )
 
-type ReportHandlerFunc func(*proto.Connection)
+type reportHandlerFunc func(*proto.Connection)
 
-type TestReporterPlugin struct {
+type testReporterPlugin struct {
 	l        sync.Mutex
-	reporter ReportHandlerFunc
+	reporter reportHandlerFunc
 
 	domainFilter []string
 }
 
-func (r *TestReporterPlugin) SetHandler(fn ReportHandlerFunc, domains ...string) {
+func (r *testReporterPlugin) setHandler(fn reportHandlerFunc, domains ...string) {
 	r.l.Lock()
 	defer r.l.Unlock()
 
@@ -24,7 +24,7 @@ func (r *TestReporterPlugin) SetHandler(fn ReportHandlerFunc, domains ...string)
 	r.domainFilter = domains
 }
 
-func (r *TestReporterPlugin) ReportConnection(ctx context.Context, conn *proto.Connection) error {
+func (r *testReporterPlugin) ReportConnection(ctx context.Context, conn *proto.Connection) error {
 	r.l.Lock()
 	defer r.l.Unlock()
 

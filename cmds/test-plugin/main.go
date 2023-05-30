@@ -20,8 +20,8 @@ type checkResult struct {
 }
 
 var (
-	decider  = new(TestDeciderPlugin)
-	reporter = new(TestReporterPlugin)
+	decider  = new(testDeciderPlugin)
+	reporter = new(testReporterPlugin)
 
 	resultsLock sync.Mutex
 	results     []*checkResult
@@ -33,11 +33,15 @@ func getRootCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create a new decider plugin implementation and register it
 			// at the framework
-			framework.RegisterDecider(decider)
+			if err := framework.RegisterDecider(decider); err != nil {
+				log.Fatalf("failed to register decider plugin: %s", err)
+			}
 
 			// Create a new reporter plugin implementation and register it
 			// at the framework
-			framework.RegisterReporter(reporter)
+			if err := framework.RegisterReporter(reporter); err != nil {
+				log.Fatalf("failed to register reporter plugin: %s", err)
+			}
 
 			// Once the framework is initialized we can start doing our
 			// tests.
@@ -119,6 +123,9 @@ func createTestRunNotification() {
 		Message: msg,
 	})
 	if err != nil {
+		// we're going to exit anyway but gocritic likes us to unlock before the exit
+		resultsLock.Unlock()
+
 		log.Fatalf("failed to create notification: %s", err)
 	}
 }
@@ -138,6 +145,8 @@ func launchTests() {
 	RunTest("Reporter is called for connections", TestReporterIsCalled)
 	RunTest("Decider is called for connections", TestDeciderIsCalled)
 	RunTest("Blocking deciders should be ignored", TestBlockingDecider)
+
+	createTestFinishedNotification()
 }
 
 func main() {

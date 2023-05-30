@@ -36,7 +36,7 @@ var (
 	getExecPathOnce        sync.Once
 	executablePath         string
 	resolvedExecutablePath string
-	getExecError           error
+	errGetExecPath         error
 )
 
 // DecideOnConnection passes through to fn and implements decider.Decider.
@@ -99,12 +99,12 @@ func ChainDeciderFunc(fns ...DeciderFunc) DeciderFunc {
 
 func getExecPath() {
 	getExecPathOnce.Do(func() {
-		executablePath, getExecError = os.Executable()
-		if getExecError != nil {
+		executablePath, errGetExecPath = os.Executable()
+		if errGetExecPath != nil {
 			return
 		}
 
-		resolvedExecutablePath, getExecError = filepath.EvalSymlinks(executablePath)
+		resolvedExecutablePath, errGetExecPath = filepath.EvalSymlinks(executablePath)
 	})
 }
 
@@ -120,7 +120,7 @@ func AllowPluginConnections() DeciderFunc {
 	return func(ctx context.Context, c *proto.Connection) (proto.Verdict, string, error) {
 		self, err := IsSelf(c)
 		if err != nil {
-			return proto.Verdict_VERDICT_UNDECIDED, "", fmt.Errorf("failed to get executable path: %s", getExecError)
+			return proto.Verdict_VERDICT_UNDECIDED, "", fmt.Errorf("failed to get executable path: %w", errGetExecPath)
 		}
 		if self {
 			return proto.Verdict_VERDICT_ACCEPT, "own plugin connections are allowed", nil
@@ -138,8 +138,8 @@ func IsSelf(conn *proto.Connection) (bool, error) {
 
 	binary := conn.GetProcess().GetBinaryPath()
 
-	if getExecError != nil {
-		return false, getExecError
+	if errGetExecPath != nil {
+		return false, errGetExecPath
 	}
 
 	if binary == resolvedExecutablePath || binary == executablePath {

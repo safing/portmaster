@@ -7,16 +7,16 @@ import (
 	"github.com/safing/portmaster/plugin/shared/proto"
 )
 
-type DecideHandleFunc func(*proto.Connection) (proto.Verdict, error)
+type decideHandleFunc func(*proto.Connection) (proto.Verdict, error)
 
-type TestDeciderPlugin struct {
+type testDeciderPlugin struct {
 	l sync.Mutex
 
-	handler       DecideHandleFunc
+	handler       decideHandleFunc
 	filterDomains []string
 }
 
-func (d *TestDeciderPlugin) SetHandler(fn DecideHandleFunc, domains ...string) {
+func (d *testDeciderPlugin) setHandler(fn decideHandleFunc, domains ...string) {
 	d.l.Lock()
 	defer d.l.Unlock()
 
@@ -24,7 +24,7 @@ func (d *TestDeciderPlugin) SetHandler(fn DecideHandleFunc, domains ...string) {
 	d.filterDomains = domains
 }
 
-func (d *TestDeciderPlugin) DecideOnConnection(ctx context.Context, conn *proto.Connection) (proto.Verdict, string, error) {
+func (d *testDeciderPlugin) DecideOnConnection(ctx context.Context, conn *proto.Connection) (proto.Verdict, string, error) {
 	d.l.Lock()
 	defer d.l.Unlock()
 

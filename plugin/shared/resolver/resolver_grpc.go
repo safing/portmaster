@@ -20,6 +20,7 @@ type (
 	}
 )
 
+// Resolve implements the gRPC client side of resolver.Service.Resolve.
 func (cli *gRPCClient) Resolve(ctx context.Context, req *proto.DNSQuestion, conn *proto.Connection) (*proto.DNSResponse, error) {
 	res, err := cli.client.Resolve(ctx, &proto.ResolveRequest{
 		Question:   req,
@@ -32,6 +33,7 @@ func (cli *gRPCClient) Resolve(ctx context.Context, req *proto.DNSQuestion, conn
 	return res.GetResponse(), nil
 }
 
+// Resolve implements the gRPC server side of resolver.Service.Resolve.
 func (srv *gRPCServer) Resolve(ctx context.Context, req *proto.ResolveRequest) (*proto.ResolveResponse, error) {
 	res, err := srv.Impl.Resolve(ctx, req.GetQuestion(), req.GetConnection())
 	if err != nil {

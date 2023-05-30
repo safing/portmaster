@@ -21,6 +21,7 @@ type (
 	}
 )
 
+// ReportConnection implements the gRPC client side of reporter.Service.ReportConnection.
 func (m *gRPCClient) ReportConnection(ctx context.Context, conn *proto.Connection) error {
 	_, err := m.client.ReportConnection(ctx, &proto.ReportConnectionRequest{
 		Connection: conn,
@@ -32,6 +33,7 @@ func (m *gRPCClient) ReportConnection(ctx context.Context, conn *proto.Connectio
 	return nil
 }
 
+// ReportConnection implements the gRPC server side of reporter.Service.ReportConnection.
 func (m *gRPCServer) ReportConnection(ctx context.Context, req *proto.ReportConnectionRequest) (*proto.ReportConnectionRespose, error) {
 	err := m.Impl.ReportConnection(ctx, req.Connection)
 	if err != nil {

@@ -29,6 +29,9 @@ type (
 		// Note that plugins only have access to keys the registered. (Plugin keys are scoped
 		// by plugin-name.)
 		GetValue(ctx context.Context, key string) (*proto.Value, error)
+
+		// WatchValue watches a list of configuration keys for changes and emits those
+		// changes on the returned channel.
 		WatchValue(ctx context.Context, key ...string) (<-chan *proto.WatchChangesResponse, error)
 	}
 )

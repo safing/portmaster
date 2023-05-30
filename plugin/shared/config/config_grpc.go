@@ -7,10 +7,12 @@ import (
 )
 
 type (
+	// GRPCClient implements the gRPC client side of config.Service.
 	GRPCClient struct {
 		Client proto.ConfigServiceClient
 	}
 
+	// GRPCServer implements the gRPC server side of config.Service.
 	GRPCServer struct {
 		proto.UnimplementedConfigServiceServer
 
@@ -19,6 +21,7 @@ type (
 	}
 )
 
+// RegisterOption implements the gRPC client side of Service.RegisterOption.
 func (cli *GRPCClient) RegisterOption(ctx context.Context, option *proto.Option) error {
 	_, err := cli.Client.RegisterOption(ctx, &proto.RegisterRequest{
 		Option: option,
@@ -30,6 +33,7 @@ func (cli *GRPCClient) RegisterOption(ctx context.Context, option *proto.Option)
 	return nil
 }
 
+// GetValue implements the gRPC client side of Service.GetValue.
 func (cli *GRPCClient) GetValue(ctx context.Context, key string) (*proto.Value, error) {
 	res, err := cli.Client.GetValue(ctx, &proto.GetValueRequest{
 		Key: key,
@@ -42,6 +46,7 @@ func (cli *GRPCClient) GetValue(ctx context.Context, key string) (*proto.Value, 
 	return res.Value, nil
 }
 
+// WatchValue implements the gRPC client side of Service.WatchValue.
 func (cli *GRPCClient) WatchValue(ctx context.Context, key ...string) (<-chan *proto.WatchChangesResponse, error) {
 	res, err := cli.Client.WatchValues(ctx, &proto.WatchChangesRequest{
 		Keys: key,
@@ -70,6 +75,7 @@ func (cli *GRPCClient) WatchValue(ctx context.Context, key ...string) (<-chan *p
 	return ch, nil
 }
 
+// RegisterOption implements the gRPC server side of Service.RegisterOption.
 func (srv *GRPCServer) RegisterOption(ctx context.Context, req *proto.RegisterRequest) (*proto.RegisterResponse, error) {
 	err := srv.Impl.RegisterOption(ctx, req.Option)
 	if err != nil {
@@ -79,6 +85,7 @@ func (srv *GRPCServer) RegisterOption(ctx context.Context, req *proto.RegisterRe
 	return &proto.RegisterResponse{}, nil
 }
 
+// GetValue implements the gRPC server side of Service.GetValue.
 func (srv *GRPCServer) GetValue(ctx context.Context, req *proto.GetValueRequest) (*proto.GetValueResponse, error) {
 	res, err := srv.Impl.GetValue(ctx, req.Key)
 	if err != nil {
@@ -90,6 +97,7 @@ func (srv *GRPCServer) GetValue(ctx context.Context, req *proto.GetValueRequest)
 	}, nil
 }
 
+// WatchValues implements the gRPC server side of Service.WatchValues.
 func (srv *GRPCServer) WatchValues(req *proto.WatchChangesRequest, stream proto.ConfigService_WatchValuesServer) error {
 	ch, err := srv.Impl.WatchValue(stream.Context(), req.Keys...)
 	if err != nil {
@@ -97,7 +105,9 @@ func (srv *GRPCServer) WatchValues(req *proto.WatchChangesRequest, stream proto.
 	}
 
 	for msg := range ch {
-		stream.Send(msg)
+		if err := stream.Send(msg); err != nil {
+			return err
+		}
 	}
 
 	return nil

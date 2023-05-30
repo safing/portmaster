@@ -21,6 +21,7 @@ type (
 	}
 )
 
+// GRPCServer configures a gRPC Decider Service server on s and implements plugin.GRPCPlugin.
 func (p *Plugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
 	proto.RegisterDeciderServiceServer(s, &gRPCServer{
 		Impl:   p.Impl,
@@ -30,6 +31,7 @@ func (p *Plugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
 	return nil
 }
 
+// GRPCClient returns a Decider implementation that talks to a gRPC server and implements plugin.GRPCPlugin.
 func (p *Plugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return &gRPCClient{
 		client: proto.NewDeciderServiceClient(c),

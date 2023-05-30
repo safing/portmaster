@@ -25,6 +25,7 @@ type (
 	}
 )
 
+// Configure implements the grpc client side of the Base.Configure.
 func (m *gRPCClient) Configure(ctx context.Context, req *proto.ConfigureRequest, env Environment) error {
 	var s *grpc.Server
 	serverFunc := func(opts []grpc.ServerOption) *grpc.Server {
@@ -68,12 +69,14 @@ func (m *gRPCClient) Configure(ctx context.Context, req *proto.ConfigureRequest,
 	return nil
 }
 
+// Shutdown implements the gRPC client side of Base.Shutdown.
 func (m *gRPCClient) Shutdown(ctx context.Context) error {
 	_, err := m.client.Shutdown(ctx, &proto.ShutdownRequest{})
 
 	return err
 }
 
+// Configure implements the gRPC server side of Base.Configure.
 func (m *gRPCServer) Configure(ctx context.Context, req *proto.ConfigureRequest) (*proto.ConfigureResponse, error) {
 	conn, err := m.broker.Dial(req.BackchannelId)
 	if err != nil {
@@ -112,6 +115,7 @@ func (m *gRPCServer) Configure(ctx context.Context, req *proto.ConfigureRequest)
 	return new(proto.ConfigureResponse), nil
 }
 
+// Shutdown implements the gRPC server side of Base.Shutdown.
 func (m *gRPCServer) Shutdown(ctx context.Context, _ *proto.ShutdownRequest) (*proto.ShutdownResponse, error) {
 	err := m.Impl.Shutdown(ctx)
 	if err != nil {

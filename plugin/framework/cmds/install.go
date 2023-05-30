@@ -54,7 +54,11 @@ func InstallCommand(cfg *InstallCommandConfig) *cobra.Command {
 			if err != nil {
 				log.Fatalf("failed to open plugin executable: %s", err)
 			}
-			defer source.Close()
+			defer func() {
+				if err := source.Close(); err != nil {
+					log.Printf("warning: failed to close source file: %s", err)
+				}
+			}()
 
 			// create the executable into the plugins directory
 			target, err := os.OpenFile(pluginTarget, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0555)
@@ -65,18 +69,22 @@ func InstallCommand(cfg *InstallCommandConfig) *cobra.Command {
 			// copy the binary to the new location
 			if _, err := io.Copy(target, source); err != nil {
 				target.Close()
-				os.Remove(target.Name())
+				if err := os.Remove(target.Name()); err != nil {
+					log.Printf("warning: failed to remove stale target file %s: %s", target.Name(), err)
+				}
 
 				log.Fatalf("failed to copy binary: %s", err)
 			}
 
-			target.Close()
+			if err := target.Close(); err != nil {
+				log.Fatalf("warning: failed to close target file: %s", err)
+			}
 
 			// try to open and read the plugins.json file
-			pluginJson := filepath.Join(installDir, "plugins.json")
+			pluginJSON := filepath.Join(installDir, "plugins.json")
 			var cfgs []shared.PluginConfig
 
-			blob, err := os.ReadFile(pluginJson)
+			blob, err := os.ReadFile(pluginJSON)
 			if err != nil && !os.IsNotExist(err) {
 				log.Fatalf("failed to read plugins.json: %s", err)
 			}
@@ -118,7 +126,7 @@ func InstallCommand(cfg *InstallCommandConfig) *cobra.Command {
 				log.Fatalf("failed to marshal JSON configuration file")
 			}
 
-			if err := os.WriteFile(pluginJson, blob, 0644); err != nil {
+			if err := os.WriteFile(pluginJSON, blob, 0644); err != nil {
 				log.Fatalf("failed to write plugins.json: %s", err)
 			}
 

@@ -20,6 +20,7 @@ type (
 	}
 )
 
+// GRPCServer implements the gRPC server side of reporter.Service and implements plugin.GRPCPlugin.
 func (p *Plugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
 	proto.RegisterReporterServiceServer(s, &gRPCServer{
 		Impl:   p.Impl,
@@ -29,6 +30,7 @@ func (p *Plugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
 	return nil
 }
 
+// GRPCClient implements the gRPC client side of reporter.Service.GRPCClient and implements plugin.GRPCPlugin.
 func (p *Plugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return &gRPCClient{
 		client: proto.NewReporterServiceClient(c),
