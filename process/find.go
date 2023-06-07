@@ -25,12 +25,17 @@ func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process 
 	// already be there for a while now.
 	fastSearch := pktInfo.Inbound
 
-	log.Tracer(ctx).Tracef("process: getting pid from system network state")
 	var pid int
-	pid, connInbound, err = state.Lookup(pktInfo, fastSearch)
-	if err != nil {
-		log.Tracer(ctx).Tracef("process: failed to find PID of connection: %s", err)
-		return nil, pktInfo.Inbound, err
+	if pktInfo.PID == 0 {
+		log.Tracer(ctx).Tracef("process: getting pid from system network state")
+		pid, connInbound, err = state.Lookup(pktInfo, fastSearch)
+		if err != nil {
+			log.Tracer(ctx).Tracef("process: failed to find PID of connection: %s", err)
+			return nil, pktInfo.Inbound, err
+		}
+	} else {
+		log.Tracer(ctx).Tracef("process: pid already set in packet (by ebpf or kext ALE layer)")
+		pid = int(pktInfo.PID)
 	}
 
 	// Fallback to special profiles if PID could not be found.

@@ -13,6 +13,8 @@ type Info struct {
 	Protocol         IPProtocol
 	SrcPort, DstPort uint16
 	Src, Dst         net.IP
+
+	PID uint32
 }
 
 // LocalIP returns the local IP of the packet.
