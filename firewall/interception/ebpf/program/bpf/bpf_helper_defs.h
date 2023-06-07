@@ -118,17 +118,17 @@ static __u64 (*bpf_ktime_get_ns)(void) = (void *) 5;
  *
  * 	This helper is a "printk()-like" facility for debugging. It
  * 	prints a message defined by format *fmt* (of size *fmt_size*)
- * 	to file *\/sys/kernel/debug/tracing/trace* from DebugFS, if
+ * 	to file *\/sys/kernel/tracing/trace* from TraceFS, if
  * 	available. It can take up to three additional **u64**
  * 	arguments (as an eBPF helpers, the total number of arguments is
  * 	limited to five).
  *
  * 	Each time the helper is called, it appends a line to the trace.
- * 	Lines are discarded while *\/sys/kernel/debug/tracing/trace* is
- * 	open, use *\/sys/kernel/debug/tracing/trace_pipe* to avoid this.
+ * 	Lines are discarded while *\/sys/kernel/tracing/trace* is
+ * 	open, use *\/sys/kernel/tracing/trace_pipe* to avoid this.
  * 	The format of the trace is customizable, and the exact output
  * 	one will get depends on the options set in
- * 	*\/sys/kernel/debug/tracing/trace_options* (see also the
+ * 	*\/sys/kernel/tracing/trace_options* (see also the
  * 	*README* file under the same directory). However, it usually
  * 	defaults to something like:
  *
@@ -1277,6 +1277,11 @@ static long (*bpf_setsockopt)(void *bpf_socket, int level, int optname, void *op
  * 	  Use with BPF_F_ADJ_ROOM_ENCAP_L2 flag to further specify the
  * 	  L2 type as Ethernet.
  *
+ * 	* **BPF_F_ADJ_ROOM_DECAP_L3_IPV4**,
+ * 	  **BPF_F_ADJ_ROOM_DECAP_L3_IPV6**:
+ * 	  Indicate the new IP header version after decapsulating the outer
+ * 	  IP header. Used when the inner and outer IP versions are different.
+ *
  * 	A call to this helper is susceptible to change the underlying
  * 	packet buffer. Therefore, at load time, all checks on pointers
  * 	previously done by the verifier are invalidated and must be
@@ -1445,7 +1450,7 @@ static long (*bpf_perf_event_read_value)(void *map, __u64 flags, struct bpf_perf
 /*
  * bpf_perf_prog_read_value
  *
- * 	For en eBPF program attached to a perf event, retrieve the
+ * 	For an eBPF program attached to a perf event, retrieve the
  * 	value of the event counter associated to *ctx* and store it in
  * 	the structure pointed by *buf* and of size *buf_size*. Enabled
  * 	and running times are also stored in the structure (see
@@ -1830,6 +1835,11 @@ static long (*bpf_skb_load_bytes_relative)(const void *skb, __u32 offset, void *
  * 	**BPF_FIB_LOOKUP_OUTPUT**
  * 		Perform lookup from an egress perspective (default is
  * 		ingress).
+ * 	**BPF_FIB_LOOKUP_SKIP_NEIGH**
+ * 		Skip the neighbour table lookup. *params*->dmac
+ * 		and *params*->smac will not be set as output. A common
+ * 		use case is to call **bpf_redirect_neigh**\ () after
+ * 		doing **bpf_fib_lookup**\ ().
  *
  * 	*ctx* is either **struct xdp_md** for XDP programs or
  * 	**struct sk_buff** tc cls_act programs.
@@ -4018,6 +4028,12 @@ static long (*bpf_timer_set_callback)(struct bpf_timer *timer, void *callback_fn
  * 	different maps if key/value layout matches across maps.
  * 	Every bpf_timer_set_callback() can have different callback_fn.
  *
+ * 	*flags* can be one of:
+ *
+ * 	**BPF_F_TIMER_ABS**
+ * 		Start the timer in absolute expire value instead of the
+ * 		default relative one.
+ *
  *
  * Returns
  * 	0 on success.
@@ -4498,12 +4514,23 @@ static long (*bpf_dynptr_read)(void *dst, __u32 len, const struct bpf_dynptr *sr
  *
  * 	Write *len* bytes from *src* into *dst*, starting from *offset*
  * 	into *dst*.
- * 	*flags* is currently unused.
+ *
+ * 	*flags* must be 0 except for skb-type dynptrs.
+ *
+ * 	For skb-type dynptrs:
+ * 	    *  All data slices of the dynptr are automatically
+ * 	       invalidated after **bpf_dynptr_write**\ (). This is
+ * 	       because writing may pull the skb and change the
+ * 	       underlying packet buffer.
+ *
+ * 	    *  For *flags*, please see the flags accepted by
+ * 	       **bpf_skb_store_bytes**\ ().
  *
  * Returns
  * 	0 on success, -E2BIG if *offset* + *len* exceeds the length
  * 	of *dst*'s data, -EINVAL if *dst* is an invalid dynptr or if *dst*
- * 	is a read-only dynptr or if *flags* is not 0.
+ * 	is a read-only dynptr or if *flags* is not correct. For skb-type dynptrs,
+ * 	other errors correspond to errors returned by **bpf_skb_store_bytes**\ ().
  */
 static long (*bpf_dynptr_write)(const struct bpf_dynptr *dst, __u32 offset, void *src, __u32 len, __u64 flags) = (void *) 202;
 
@@ -4514,6 +4541,9 @@ static long (*bpf_dynptr_write)(const struct bpf_dynptr *dst, __u32 offset, void
  *
  * 	*len* must be a statically known value. The returned data slice
  * 	is invalidated whenever the dynptr is invalidated.
+ *
+ * 	skb and xdp type dynptrs may not use bpf_dynptr_data. They should
+ * 	instead use bpf_dynptr_slice and bpf_dynptr_slice_rdwr.
  *
  * Returns
  * 	Pointer to the underlying dynptr data, NULL if the dynptr is
