@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"net"
 	"unsafe"
 
@@ -15,7 +14,7 @@ import (
 	"github.com/safing/portmaster/network/packet"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -g -Wall -Werror" -type event bpf program/monitor.c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -g -Wall -Werror" -type Event bpf program/monitor.c
 var stopper chan struct{}
 
 func StartEBPFWorker(ch chan packet.Packet) {
@@ -51,6 +50,15 @@ func StartEBPFWorker(ch chan packet.Packet) {
 		}
 		defer linkv6.Close()
 
+		// Create a link to the tcp_v6_connect program.
+		linkudp, err := link.AttachTracing(link.TracingOptions{
+			Program: objs.bpfPrograms.UdpSendmsg,
+		})
+		if err != nil {
+			log.Errorf("ebpf: failed to attach to udp_sendmsg: %s ", err)
+		}
+		defer linkudp.Close()
+
 		rd, err := ringbuf.NewReader(objs.bpfMaps.Events)
 		if err != nil {
 			log.Errorf("ebpf: failed to open ring buffer: %s", err)
@@ -83,22 +91,23 @@ func StartEBPFWorker(ch chan packet.Packet) {
 				log.Errorf("ebpf: failed to parse ringbuf event: %s", err)
 				continue
 			}
-			ipVersion := packet.IPVersion(event.IpVersion)
-			log.Debugf("ebpf: pid:%d connection %s -> %s ", int(event.Pid), intToIP(event.Saddr, ipVersion).String()+":"+fmt.Sprintf("%d", event.Sport), intToIP(event.Daddr, ipVersion).String()+":"+fmt.Sprintf("%d", event.Dport))
-			pack := &infoPacket{}
 
-			pack.SetPacketInfo(packet.Info{
+			info := packet.Info{
 				Inbound:  false,
 				InTunnel: false,
 				Version:  packet.IPVersion(event.IpVersion),
-				Protocol: packet.TCP,
+				Protocol: packet.IPProtocol(event.Protocol),
 				SrcPort:  event.Sport,
 				DstPort:  event.Dport,
-				Src:      intToIP(event.Saddr, ipVersion),
-				Dst:      intToIP(event.Daddr, ipVersion),
+				Src:      arrayToIP(event.Saddr, packet.IPVersion(event.IpVersion)),
+				Dst:      arrayToIP(event.Daddr, packet.IPVersion(event.IpVersion)),
 				PID:      event.Pid,
-			})
-			ch <- pack
+			}
+			log.Debugf("ebpf: PID: %d conn: %s:%d -> %s:%d %s %s", info.PID, info.LocalIP(), info.LocalPort(), info.RemoteIP(), info.LocalPort(), info.Version.String(), info.Protocol.String())
+
+			p := &infoPacket{}
+			p.SetPacketInfo(info)
+			ch <- p
 		}
 	}()
 }
@@ -107,8 +116,8 @@ func StopEBPFWorker() {
 	close(stopper)
 }
 
-// intToIP converts IPv4 number to net.IP
-func intToIP(ipNum [4]uint32, ipVersion packet.IPVersion) net.IP {
+// arrayToIP converts IPv4 number to net.IP
+func arrayToIP(ipNum [4]uint32, ipVersion packet.IPVersion) net.IP {
 	if ipVersion == packet.IPv4 {
 		return unsafe.Slice((*byte)(unsafe.Pointer(&ipNum)), 4)
 	} else {

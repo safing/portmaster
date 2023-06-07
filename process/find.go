@@ -34,7 +34,7 @@ func GetProcessByConnection(ctx context.Context, pktInfo *packet.Info) (process 
 			return nil, pktInfo.Inbound, err
 		}
 	} else {
-		log.Tracer(ctx).Tracef("process: pid already set in packet (by ebpf or kext ALE layer)")
+		log.Tracer(ctx).Tracef("process: pid already set in packet (by ebpf or kext)")
 		pid = int(pktInfo.PID)
 	}
 

@@ -20,7 +20,8 @@ type bpfEvent struct {
 	Dport     uint16
 	Pid       uint32
 	IpVersion uint8
-	_         [3]byte
+	Protocol  uint8
+	_         [2]byte
 }
 
 // loadBpf returns the embedded CollectionSpec for bpf.
@@ -66,6 +67,8 @@ type bpfSpecs struct {
 type bpfProgramSpecs struct {
 	TcpV4Connect *ebpf.ProgramSpec `ebpf:"tcp_v4_connect"`
 	TcpV6Connect *ebpf.ProgramSpec `ebpf:"tcp_v6_connect"`
+	UdpSendmsg   *ebpf.ProgramSpec `ebpf:"udp_sendmsg"`
+	Udpv6Sendmsg *ebpf.ProgramSpec `ebpf:"udpv6_sendmsg"`
 }
 
 // bpfMapSpecs contains maps before they are loaded into the kernel.
@@ -109,12 +112,16 @@ func (m *bpfMaps) Close() error {
 type bpfPrograms struct {
 	TcpV4Connect *ebpf.Program `ebpf:"tcp_v4_connect"`
 	TcpV6Connect *ebpf.Program `ebpf:"tcp_v6_connect"`
+	UdpSendmsg   *ebpf.Program `ebpf:"udp_sendmsg"`
+	Udpv6Sendmsg *ebpf.Program `ebpf:"udpv6_sendmsg"`
 }
 
 func (p *bpfPrograms) Close() error {
 	return _BpfClose(
 		p.TcpV4Connect,
 		p.TcpV6Connect,
+		p.UdpSendmsg,
+		p.Udpv6Sendmsg,
 	)
 }
 
