@@ -57,8 +57,8 @@ int BPF_PROG(tcp_v4_connect, struct sock *sk) {
 	tcp_info->pid = __builtin_bswap32((u32)bpf_get_current_pid_tgid());
 
 	// Set src and dist ports
-	tcp_info->dport = sk->__sk_common.skc_dport;
 	tcp_info->sport = sk->__sk_common.skc_num;
+	tcp_info->dport = sk->__sk_common.skc_dport;
 
 	// Set src and dist IPs
 	tcp_info->saddr[0] = __builtin_bswap32(sk->__sk_common.skc_rcv_saddr);
@@ -101,8 +101,8 @@ int BPF_PROG(tcp_v6_connect, struct sock *sk) {
 	tcp_info->pid = __builtin_bswap32((u32)bpf_get_current_pid_tgid());
 
 	// Set src and dist ports
-	tcp_info->dport = sk->__sk_common.skc_dport;
 	tcp_info->sport = sk->__sk_common.skc_num;
+	tcp_info->dport = sk->__sk_common.skc_dport;
 
 	// Set src and dist IPs
 	for(int i = 0; i < 4; i++) {
@@ -123,10 +123,10 @@ int BPF_PROG(tcp_v6_connect, struct sock *sk) {
 	return 0;
 };
 
-// Fentry(function enter) of udp_sendmsg will be executed before equivalent kernel function is called.
-// [this-function] -> udp_sendmsg
-SEC("fentry/udp_sendmsg")
-int BPF_PROG(udp_sendmsg, struct sock *sk) {
+// Fexit(function exit) of udp_v4_connect will be executed after the ip4_datagram_connect kernel function is called.
+// ip4_datagram_connect -> udp_v4_connect
+SEC("fexit/ip4_datagram_connect")
+int BPF_PROG(udp_v4_connect, struct sock *sk) {
 	// Ignore everything else then IPv4
 	if (sk->__sk_common.skc_family != AF_INET) {
 		return 0;
@@ -143,8 +143,8 @@ int BPF_PROG(udp_sendmsg, struct sock *sk) {
 	udp_info->pid = __builtin_bswap32((u32)bpf_get_current_pid_tgid());
 
 	// Set src and dist ports
-	udp_info->dport = sk->__sk_common.skc_dport;
 	udp_info->sport = sk->__sk_common.skc_num;
+	udp_info->dport = sk->__sk_common.skc_dport;
 
 	// Set src and dist IPs
 	udp_info->saddr[0] = __builtin_bswap32(sk->__sk_common.skc_rcv_saddr);
@@ -161,10 +161,10 @@ int BPF_PROG(udp_sendmsg, struct sock *sk) {
 	return 0;
 }
 
-// Fentry(function enter) of udpv6_sendmsg will be executed before equivalent kernel function is called.
-// [this-function] -> udpv6_sendmsg
-SEC("fentry/udpv6_sendmsg")
-int BPF_PROG(udpv6_sendmsg, struct sock *sk) {
+// Fentry(function enter) of udp_v6_connect will be executed after the ip6_datagram_connect kernel function is called.
+// ip6_datagram_connect -> udp_v6_connect
+SEC("fexit/ip6_datagram_connect")
+int BPF_PROG(udp_v6_connect, struct sock *sk) {
 	// Ignore everything else then IPv6
 	if (sk->__sk_common.skc_family != AF_INET6) {
 		return 0;
@@ -187,8 +187,8 @@ int BPF_PROG(udpv6_sendmsg, struct sock *sk) {
 	udp_info->pid = __builtin_bswap32((u32)bpf_get_current_pid_tgid());
 
 	// Set src and dist ports
-	udp_info->dport = sk->__sk_common.skc_dport;
 	udp_info->sport = sk->__sk_common.skc_num;
+	udp_info->dport = sk->__sk_common.skc_dport;
 
 	// Set src and dist IPs
 	for(int i = 0; i < 4; i++) {

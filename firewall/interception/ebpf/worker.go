@@ -33,31 +33,40 @@ func StartEBPFWorker(ch chan packet.Packet) {
 		defer objs.Close()
 
 		// Create a link to the tcp_v4_connect program.
-		linkv4, err := link.AttachTracing(link.TracingOptions{
+		linkTCPIPv4, err := link.AttachTracing(link.TracingOptions{
 			Program: objs.bpfPrograms.TcpV4Connect,
 		})
 		if err != nil {
 			log.Errorf("ebpf: failed to attach to tcp_v4_connect: %s ", err)
 		}
-		defer linkv4.Close()
+		defer linkTCPIPv4.Close()
 
 		// Create a link to the tcp_v6_connect program.
-		linkv6, err := link.AttachTracing(link.TracingOptions{
+		linkTCPIPv6, err := link.AttachTracing(link.TracingOptions{
 			Program: objs.bpfPrograms.TcpV6Connect,
 		})
 		if err != nil {
 			log.Errorf("ebpf: failed to attach to tcp_v6_connect: %s ", err)
 		}
-		defer linkv6.Close()
+		defer linkTCPIPv6.Close()
 
-		// Create a link to the tcp_v6_connect program.
-		linkudp, err := link.AttachTracing(link.TracingOptions{
-			Program: objs.bpfPrograms.UdpSendmsg,
+		// Create a link to the udp_v4_connect program.
+		linkUDPV4, err := link.AttachTracing(link.TracingOptions{
+			Program: objs.bpfPrograms.UdpV4Connect,
 		})
 		if err != nil {
-			log.Errorf("ebpf: failed to attach to udp_sendmsg: %s ", err)
+			log.Errorf("ebpf: failed to attach to udp_v4_connect: %s ", err)
 		}
-		defer linkudp.Close()
+		defer linkUDPV4.Close()
+
+		// Create a link to the udp_v6_connect program.
+		linkUDPV6, err := link.AttachTracing(link.TracingOptions{
+			Program: objs.bpfPrograms.UdpV6Connect,
+		})
+		if err != nil {
+			log.Errorf("ebpf: failed to attach to udp_v6_connect: %s ", err)
+		}
+		defer linkUDPV6.Close()
 
 		rd, err := ringbuf.NewReader(objs.bpfMaps.Events)
 		if err != nil {
@@ -103,7 +112,7 @@ func StartEBPFWorker(ch chan packet.Packet) {
 				Dst:      arrayToIP(event.Daddr, packet.IPVersion(event.IpVersion)),
 				PID:      event.Pid,
 			}
-			log.Debugf("ebpf: PID: %d conn: %s:%d -> %s:%d %s %s", info.PID, info.LocalIP(), info.LocalPort(), info.RemoteIP(), info.LocalPort(), info.Version.String(), info.Protocol.String())
+			log.Debugf("ebpf: PID: %d conn: %s:%d -> %s:%d %s %s", info.PID, info.LocalIP(), info.LocalPort(), info.RemoteIP(), info.RemotePort(), info.Version.String(), info.Protocol.String())
 
 			p := &infoPacket{}
 			p.SetPacketInfo(info)

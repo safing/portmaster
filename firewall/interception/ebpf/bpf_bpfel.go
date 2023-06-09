@@ -67,8 +67,8 @@ type bpfSpecs struct {
 type bpfProgramSpecs struct {
 	TcpV4Connect *ebpf.ProgramSpec `ebpf:"tcp_v4_connect"`
 	TcpV6Connect *ebpf.ProgramSpec `ebpf:"tcp_v6_connect"`
-	UdpSendmsg   *ebpf.ProgramSpec `ebpf:"udp_sendmsg"`
-	Udpv6Sendmsg *ebpf.ProgramSpec `ebpf:"udpv6_sendmsg"`
+	UdpV4Connect *ebpf.ProgramSpec `ebpf:"udp_v4_connect"`
+	UdpV6Connect *ebpf.ProgramSpec `ebpf:"udp_v6_connect"`
 }
 
 // bpfMapSpecs contains maps before they are loaded into the kernel.
@@ -112,16 +112,16 @@ func (m *bpfMaps) Close() error {
 type bpfPrograms struct {
 	TcpV4Connect *ebpf.Program `ebpf:"tcp_v4_connect"`
 	TcpV6Connect *ebpf.Program `ebpf:"tcp_v6_connect"`
-	UdpSendmsg   *ebpf.Program `ebpf:"udp_sendmsg"`
-	Udpv6Sendmsg *ebpf.Program `ebpf:"udpv6_sendmsg"`
+	UdpV4Connect *ebpf.Program `ebpf:"udp_v4_connect"`
+	UdpV6Connect *ebpf.Program `ebpf:"udp_v6_connect"`
 }
 
 func (p *bpfPrograms) Close() error {
 	return _BpfClose(
 		p.TcpV4Connect,
 		p.TcpV6Connect,
-		p.UdpSendmsg,
-		p.Udpv6Sendmsg,
+		p.UdpV4Connect,
+		p.UdpV6Connect,
 	)
 }
 
