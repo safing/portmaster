@@ -147,6 +147,9 @@ func RecvVerdictRequest() (*VerdictRequest, error) {
 
 // SetVerdict sets the verdict for a packet and/or connection.
 func SetVerdict(pkt *Packet, verdict network.Verdict) error {
+	if pkt.verdictRequest.pid != 0 {
+		return nil // Ignore info only packets
+	}
 	if pkt.verdictRequest.id == 0 {
 		log.Tracer(pkt.Ctx()).Errorf("kext: failed to set verdict %s: no packet ID", verdict)
 		return ErrNoPacketID

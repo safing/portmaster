@@ -33,7 +33,7 @@ const (
 // VerdictRequest is the request structure from the Kext.
 type VerdictRequest struct {
 	id         uint32 // ID from RegisterPacket
-	_          uint64 // Process ID - does not yet work
+	pid        uint64 // Process ID - info only packets
 	direction  uint8
 	ipV6       uint8     // True: IPv6, False: IPv4
 	protocol   uint8     // Protocol
@@ -108,6 +108,7 @@ func Handler(packets chan packet.Packet) {
 		info.Inbound = packetInfo.direction > 0
 		info.InTunnel = false
 		info.Protocol = packet.IPProtocol(packetInfo.protocol)
+		info.PID = packetInfo.pid
 
 		// IP version
 		if packetInfo.ipV6 == 1 {
