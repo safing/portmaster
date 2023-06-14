@@ -25,7 +25,7 @@ type (
 		// insert or an update.
 		// The ID of Conn is unique and can be trusted to never collide with other
 		// connections of the save device.
-		Save(context.Context, Conn) error
+		Save(context.Context, Conn, bool) error
 	}
 
 	// Manager handles new and updated network.Connections feeds and persists them
@@ -100,7 +100,7 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 
 			log.Tracef("netquery: updating connection %s", conn.ID)
 
-			if err := mng.store.Save(ctx, *model); err != nil {
+			if err := mng.store.Save(ctx, *model, conn.Process().Profile().HistoryEnabled()); err != nil {
 				log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
 
 				continue
