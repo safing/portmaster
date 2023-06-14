@@ -49,6 +49,7 @@ type LayeredProfile struct {
 	DomainHeuristics    config.BoolOption   `json:"-"`
 	UseSPN              config.BoolOption   `json:"-"`
 	SPNRoutingAlgorithm config.StringOption `json:"-"`
+	HistoryEnabled      config.BoolOption   `json:"-"`
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -119,6 +120,10 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	lp.SPNRoutingAlgorithm = lp.wrapStringOption(
 		CfgOptionRoutingAlgorithmKey,
 		cfgOptionRoutingAlgorithm,
+	)
+	lp.HistoryEnabled = lp.wrapBoolOption(
+		CfgOptionEnableHistoryKey,
+		cfgOptionEnableHistory,
 	)
 
 	lp.LayerIDs = append(lp.LayerIDs, localProfile.ScopedID())

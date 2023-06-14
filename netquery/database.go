@@ -355,7 +355,7 @@ func (db *Database) dumpTo(ctx context.Context, w io.Writer) error { //nolint:un
 //
 // Save uses the database write connection instead of relying on the
 // connection pool.
-func (db *Database) Save(ctx context.Context, conn Conn) error {
+func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) error {
 	connMap, err := orm.ToParamMap(ctx, conn, "", orm.DefaultEncodeConfig)
 	if err != nil {
 		return fmt.Errorf("failed to encode connection for SQL: %w", err)
@@ -387,7 +387,13 @@ func (db *Database) Save(ctx context.Context, conn Conn) error {
 
 	// TODO(ppacher): make sure this one can be cached to speed up inserting
 	// and save some CPU cycles for the user
-	for _, dbName := range []string{"main", "history"} {
+	dbNames := []string{"main"}
+
+	if enableHistory {
+		dbNames = append(dbNames, "history")
+	}
+
+	for _, dbName := range dbNames {
 		sql := fmt.Sprintf(
 			`INSERT INTO %s.connections (%s)
 				VALUES(%s)
