@@ -2,6 +2,8 @@ package updates
 
 import (
 	"context"
+	"os/exec"
+	"runtime"
 	"sync"
 	"time"
 
@@ -17,6 +19,10 @@ const (
 )
 
 var (
+	// RebootOnRestart defines whether the whole system, not just the service,
+	// should be restarted automatically when triggering a restart internally.
+	RebootOnRestart bool
+
 	restartTask      *modules.Task
 	restartPending   = abool.New()
 	restartTriggered = abool.New()
@@ -98,11 +104,40 @@ func automaticRestart(_ context.Context, _ *modules.Task) error {
 	if restartTriggered.SetToIf(false, true) {
 		log.Warning("updates: initiating (automatic) restart")
 
+		// Check if we should reboot instead.
+		var rebooting bool
+		if RebootOnRestart {
+			// Trigger system reboot and record success.
+			rebooting = triggerSystemReboot()
+			if !rebooting {
+				log.Warningf("updates: rebooting failed, only restarting service instead")
+			}
+		}
+
 		// Set restart exit code.
-		modules.SetExitStatusCode(RestartExitCode)
+		if !rebooting {
+			modules.SetExitStatusCode(RestartExitCode)
+		}
+
 		// Do not use a worker, as this would block itself here.
 		go modules.Shutdown() //nolint:errcheck
 	}
 
 	return nil
+}
+
+func triggerSystemReboot() (success bool) {
+	switch runtime.GOOS {
+	case "linux":
+		err := exec.Command("systemctl", "reboot").Run()
+		if err != nil {
+			log.Errorf("updates: triggering reboot with systemctl failed: %s", err)
+			return false
+		}
+	default:
+		log.Warningf("updates: rebooting is not support on %s", runtime.GOOS)
+		return false
+	}
+
+	return true
 }
