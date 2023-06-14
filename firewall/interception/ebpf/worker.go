@@ -23,12 +23,14 @@ func StartEBPFWorker(ch chan packet.Packet) {
 		// Allow the current process to lock memory for eBPF resources.
 		if err := rlimit.RemoveMemlock(); err != nil {
 			log.Errorf("ebpf: failed to remove ebpf memlock: %s", err)
+			return
 		}
 
 		// Load pre-compiled programs and maps into the kernel.
 		objs := bpfObjects{}
 		if err := loadBpfObjects(&objs, nil); err != nil {
 			log.Errorf("ebpf: failed to load ebpf object: %s", err)
+			return
 		}
 		defer objs.Close()
 
@@ -38,6 +40,7 @@ func StartEBPFWorker(ch chan packet.Packet) {
 		})
 		if err != nil {
 			log.Errorf("ebpf: failed to attach to tcp_v4_connect: %s ", err)
+			return
 		}
 		defer linkTCPConnect.Close()
 
@@ -47,6 +50,7 @@ func StartEBPFWorker(ch chan packet.Packet) {
 		})
 		if err != nil {
 			log.Errorf("ebpf: failed to attach to udp_v4_connect: %s ", err)
+			return
 		}
 		defer linkUDPV4.Close()
 
@@ -56,12 +60,14 @@ func StartEBPFWorker(ch chan packet.Packet) {
 		})
 		if err != nil {
 			log.Errorf("ebpf: failed to attach to udp_v6_connect: %s ", err)
+			return
 		}
 		defer linkUDPV6.Close()
 
 		rd, err := ringbuf.NewReader(objs.bpfMaps.Events)
 		if err != nil {
 			log.Errorf("ebpf: failed to open ring buffer: %s", err)
+			return
 		}
 		defer rd.Close()
 
