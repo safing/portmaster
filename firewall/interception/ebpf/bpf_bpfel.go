@@ -21,7 +21,8 @@ type bpfEvent struct {
 	Pid       uint32
 	IpVersion uint8
 	Protocol  uint8
-	_         [2]byte
+	Direction uint8
+	_         [1]byte
 }
 
 // loadBpf returns the embedded CollectionSpec for bpf.
@@ -65,8 +66,7 @@ type bpfSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfProgramSpecs struct {
-	TcpV4Connect *ebpf.ProgramSpec `ebpf:"tcp_v4_connect"`
-	TcpV6Connect *ebpf.ProgramSpec `ebpf:"tcp_v6_connect"`
+	TcpConnect   *ebpf.ProgramSpec `ebpf:"tcp_connect"`
 	UdpV4Connect *ebpf.ProgramSpec `ebpf:"udp_v4_connect"`
 	UdpV6Connect *ebpf.ProgramSpec `ebpf:"udp_v6_connect"`
 }
@@ -110,16 +110,14 @@ func (m *bpfMaps) Close() error {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfPrograms struct {
-	TcpV4Connect *ebpf.Program `ebpf:"tcp_v4_connect"`
-	TcpV6Connect *ebpf.Program `ebpf:"tcp_v6_connect"`
+	TcpConnect   *ebpf.Program `ebpf:"tcp_connect"`
 	UdpV4Connect *ebpf.Program `ebpf:"udp_v4_connect"`
 	UdpV6Connect *ebpf.Program `ebpf:"udp_v6_connect"`
 }
 
 func (p *bpfPrograms) Close() error {
 	return _BpfClose(
-		p.TcpV4Connect,
-		p.TcpV6Connect,
+		p.TcpConnect,
 		p.UdpV4Connect,
 		p.UdpV6Connect,
 	)

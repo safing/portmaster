@@ -32,23 +32,14 @@ func StartEBPFWorker(ch chan packet.Packet) {
 		}
 		defer objs.Close()
 
-		// Create a link to the tcp_v4_connect program.
-		linkTCPIPv4, err := link.AttachTracing(link.TracingOptions{
-			Program: objs.bpfPrograms.TcpV4Connect,
+		// Create a link to the tcp_connect program.
+		linkTCPConnect, err := link.AttachTracing(link.TracingOptions{
+			Program: objs.bpfPrograms.TcpConnect,
 		})
 		if err != nil {
 			log.Errorf("ebpf: failed to attach to tcp_v4_connect: %s ", err)
 		}
-		defer linkTCPIPv4.Close()
-
-		// Create a link to the tcp_v6_connect program.
-		linkTCPIPv6, err := link.AttachTracing(link.TracingOptions{
-			Program: objs.bpfPrograms.TcpV6Connect,
-		})
-		if err != nil {
-			log.Errorf("ebpf: failed to attach to tcp_v6_connect: %s ", err)
-		}
-		defer linkTCPIPv6.Close()
+		defer linkTCPConnect.Close()
 
 		// Create a link to the udp_v4_connect program.
 		linkUDPV4, err := link.AttachTracing(link.TracingOptions{
@@ -102,7 +93,7 @@ func StartEBPFWorker(ch chan packet.Packet) {
 			}
 
 			info := packet.Info{
-				Inbound:  false,
+				Inbound:  event.Direction == 1,
 				InTunnel: false,
 				Version:  packet.IPVersion(event.IpVersion),
 				Protocol: packet.IPProtocol(event.Protocol),
@@ -112,11 +103,16 @@ func StartEBPFWorker(ch chan packet.Packet) {
 				Dst:      arrayToIP(event.Daddr, packet.IPVersion(event.IpVersion)),
 				PID:      event.Pid,
 			}
-			log.Debugf("ebpf: PID: %d conn: %s:%d -> %s:%d %s %s", info.PID, info.LocalIP(), info.LocalPort(), info.RemoteIP(), info.RemotePort(), info.Version.String(), info.Protocol.String())
+			if isEventValid(event) {
+				log.Debugf("ebpf: PID: %d conn: %s:%d -> %s:%d %s %s", info.PID, info.LocalIP(), info.LocalPort(), info.RemoteIP(), info.RemotePort(), info.Version.String(), info.Protocol.String())
 
-			p := &infoPacket{}
-			p.SetPacketInfo(info)
-			ch <- p
+				p := &infoPacket{}
+				p.SetPacketInfo(info)
+				ch <- p
+			} else {
+				log.Debugf("ebpf: invalid event PID: %d conn: %s:%d -> %s:%d %s %s", info.PID, info.LocalIP(), info.LocalPort(), info.RemoteIP(), info.RemotePort(), info.Version.String(), info.Protocol.String())
+			}
+
 		}
 	}()
 }
@@ -125,7 +121,28 @@ func StopEBPFWorker() {
 	close(stopper)
 }
 
-// arrayToIP converts IPv4 number to net.IP
+func isEventValid(event bpfEvent) bool {
+	if event.Dport == 0 {
+		return false
+	}
+
+	if event.Sport == 0 {
+		return false
+	}
+
+	if event.IpVersion == 4 {
+		if event.Saddr[0] == 0 {
+			return false
+		}
+
+		if event.Daddr[0] == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// arrayToIP converts IP number array to net.IP
 func arrayToIP(ipNum [4]uint32, ipVersion packet.IPVersion) net.IP {
 	if ipVersion == packet.IPv4 {
 		return unsafe.Slice((*byte)(unsafe.Pointer(&ipNum)), 4)
