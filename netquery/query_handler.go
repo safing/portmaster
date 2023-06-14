@@ -190,7 +190,7 @@ func (req *QueryRequestPayload) generateSQL(ctx context.Context, schema *orm.Tab
 	}
 
 	selectClause := req.generateSelectClause()
-	query := `SELECT ` + selectClause + ` FROM connections`
+	query := `SELECT ` + selectClause + ` FROM ( SELECT *, 'memory' as _source FROM main.connections UNION SELECT *, 'history' as _source FROM history.connections) `
 	if whereClause != "" {
 		query += " WHERE " + whereClause
 	}
@@ -298,7 +298,8 @@ func (req *QueryRequestPayload) generateGroupByClause(schema *orm.TableSchema) (
 func (req *QueryRequestPayload) generateSelectClause() string {
 	selectClause := "*"
 	if len(req.selectedFields) > 0 {
-		selectClause = strings.Join(req.selectedFields, ", ")
+		selectedFields := append(req.selectedFields, "_source")
+		selectClause = strings.Join(selectedFields, ", ")
 	}
 
 	return selectClause

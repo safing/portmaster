@@ -66,12 +66,17 @@ func (ts TableSchema) GetColumnDef(name string) *ColumnDef {
 }
 
 // CreateStatement build the CREATE SQL statement for the table.
-func (ts TableSchema) CreateStatement(ifNotExists bool) string {
+func (ts TableSchema) CreateStatement(databaseName string, ifNotExists bool) string {
 	sql := "CREATE TABLE"
 	if ifNotExists {
 		sql += " IF NOT EXISTS"
 	}
-	sql += " " + ts.Name + " ( "
+	name := ts.Name
+	if databaseName != "" {
+		name = databaseName + "." + ts.Name
+	}
+
+	sql += " " + name + " ( "
 
 	for idx, col := range ts.Columns {
 		sql += col.AsSQL()
