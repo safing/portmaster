@@ -90,6 +90,11 @@ int BPF_PROG(udp_v4_connect, struct sock *sk) {
 		return 0;
 	}
 
+	// ip4_datagram_connect return error
+	if (sk->__sk_common.skc_dport == 0) {
+		return 0;
+	}
+
   // Allocate space for the event.
 	struct Event *udp_info;
 	udp_info = bpf_ringbuf_reserve(&events, sizeof(struct Event), 0);
@@ -125,6 +130,11 @@ SEC("fexit/ip6_datagram_connect")
 int BPF_PROG(udp_v6_connect, struct sock *sk) {
 	// Ignore everything else then IPv6
 	if (sk->__sk_common.skc_family != AF_INET6) {
+		return 0;
+	}
+
+	// ip6_datagram_connect return error
+	if (sk->__sk_common.skc_dport == 0) {
 		return 0;
 	}
 
