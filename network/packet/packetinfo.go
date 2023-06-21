@@ -2,6 +2,7 @@ package packet
 
 import (
 	"net"
+	"time"
 )
 
 // Info holds IP and TCP/UDP header information.
@@ -14,7 +15,8 @@ type Info struct {
 	SrcPort, DstPort uint16
 	Src, Dst         net.IP
 
-	PID uint32
+	PID    int
+	SeenAt time.Time
 }
 
 // LocalIP returns the local IP of the packet.

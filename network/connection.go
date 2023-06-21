@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tevino/abool"
+
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/intel"
@@ -102,6 +104,8 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// set for connections created from DNS requests. LocalPort is
 	// considered immutable once a connection object has been created.
 	LocalPort uint16
+	// PID holds the PID of the owning process.
+	PID int
 	// Entity describes the remote entity that the connection has been
 	// established to. The entity might be changed or information might
 	// be added to it during the livetime of a connection. Access to
@@ -168,6 +172,19 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 		StopTunnel() error
 	}
 
+	// pkgQueue is used to serialize packet handling for a single
+	// connection and is served by the connections packetHandler.
+	pktQueue chan packet.Packet
+	// pktQueueActive signifies whether the packet queue is active and may be written to.
+	pktQueueActive bool
+	// pktQueueLock locks access to pktQueueActive and writing to pktQueue.
+	pktQueueLock sync.Mutex
+
+	// dataComplete signifies that all information about the connection is
+	// available and an actual packet has been seen.
+	// As long as this flag is not set, the connection may not be evaluated for
+	// a verdict and may not be sent to the UI.
+	dataComplete *abool.AtomicBool
 	// Internal is set to true if the connection is attributed as an
 	// Portmaster internal connection. Internal may be set at different
 	// points and access to it must be guarded by the connection lock.
@@ -175,9 +192,6 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// process holds a reference to the actor process. That is, the
 	// process instance that initiated the connection.
 	process *process.Process
-	// pkgQueue is used to serialize packet handling for a single
-	// connection and is served by the connections packetHandler.
-	pktQueue chan packet.Packet
 	// firewallHandler is the firewall handler that is called for
 	// each packet sent to pktQueue.
 	firewallHandler FirewallHandler
@@ -250,8 +264,11 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		ipVersion = packet.IPv4
 	}
 
-	// get Process
-	proc, _, err := process.GetProcessByConnection(
+	// Get Process.
+	// FIXME: Find direct or redirected connection and grab the PID from there.
+
+	// Find process by remote IP/Port.
+	pid, _, _ := process.GetPidOfConnection(
 		ctx,
 		&packet.Info{
 			Inbound:  false, // outbound as we are looking for the process of the source address
@@ -261,18 +278,17 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 			SrcPort:  localPort, // source as in the process we are looking for
 			Dst:      nil,       // do not record direction
 			DstPort:  0,         // do not record direction
+			PID:      process.UndefinedProcessID,
 		},
 	)
-	if err != nil {
-		log.Tracer(ctx).Debugf("network: failed to find process of dns request for %s: %s", fqdn, err)
-		proc = process.GetUnidentifiedProcess(ctx)
-	}
+	proc, _ := process.GetProcessWithProfile(ctx, pid)
 
 	timestamp := time.Now().Unix()
 	dnsConn := &Connection{
 		ID:    connID,
 		Type:  DNSRequest,
 		Scope: fqdn,
+		PID:   proc.Pid,
 		Entity: &intel.Entity{
 			Domain: fqdn,
 			CNAME:  cnames,
@@ -281,6 +297,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		ProcessContext: getProcessContext(ctx, proc),
 		Started:        timestamp,
 		Ended:          timestamp,
+		dataComplete:   abool.NewBool(true),
 	}
 
 	// Inherit internal status of profile.
@@ -292,6 +309,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	// query. Blocked requests are saved immediately, accepted ones are only
 	// saved if they are not "used" by a connection.
 
+	dnsConn.UpdateMeta()
 	return dnsConn
 }
 
@@ -308,6 +326,7 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 		Type:     DNSRequest,
 		External: true,
 		Scope:    fqdn,
+		PID:      process.NetworkHostProcessID,
 		Entity: &intel.Entity{
 			Domain: fqdn,
 			CNAME:  cnames,
@@ -316,6 +335,7 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 		ProcessContext: getProcessContext(ctx, remoteHost),
 		Started:        timestamp,
 		Ended:          timestamp,
+		dataComplete:   abool.NewBool(true),
 	}
 
 	// Inherit internal status of profile.
@@ -327,131 +347,152 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 	// query. Blocked requests are saved immediately, accepted ones are only
 	// saved if they are not "used" by a connection.
 
+	dnsConn.UpdateMeta()
 	return dnsConn, nil
 }
 
-// NewConnectionFromFirstPacket returns a new connection based on the given packet.
-func NewConnectionFromFirstPacket(pkt packet.Packet) *Connection {
-	// get Process
-	proc, inbound, err := process.GetProcessByConnection(pkt.Ctx(), pkt.Info())
-	if err != nil {
-		log.Tracer(pkt.Ctx()).Debugf("network: failed to find process of packet %s: %s", pkt, err)
-		if inbound && !netutils.ClassifyIP(pkt.Info().Dst).IsLocalhost() {
-			proc = process.GetUnsolicitedProcess(pkt.Ctx())
-		} else {
-			proc = process.GetUnidentifiedProcess(pkt.Ctx())
-		}
+// NewIncompleteConnection creates a new incomplete connection with only minimal information.
+func NewIncompleteConnection(pkt packet.Packet) *Connection {
+	info := pkt.Info()
+
+	// Create new connection object.
+	// We do not yet know the direction of the connection for sure, so we can only set minimal information.
+	conn := &Connection{
+		ID:           pkt.GetConnectionID(),
+		Type:         IPConnection,
+		IPVersion:    info.Version,
+		IPProtocol:   info.Protocol,
+		Started:      info.SeenAt.Unix(),
+		PID:          info.PID,
+		dataComplete: abool.NewBool(false),
 	}
 
-	// Create the (remote) entity.
-	entity := &intel.Entity{
-		Protocol: uint8(pkt.Info().Protocol),
-		Port:     pkt.Info().RemotePort(),
+	// Save connection to internal state in order to mitigate creation of
+	// duplicates. Do not propagate yet, as data is not yet complete.
+	conn.UpdateMeta()
+	conns.add(conn)
+
+	return conn
+}
+
+// GatherConnectionInfo gathers information on the process and remote entity.
+func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
+	// Get PID if not yet available.
+	// FIXME: Only match for UndefinedProcessID when integrations have been updated.
+	if conn.PID <= 0 {
+		// Get process by looking at the system state tables.
+		// Apply direction as reported from the state tables.
+		conn.PID, conn.Inbound, _ = process.GetPidOfConnection(pkt.Ctx(), pkt.Info())
+		// Errors are informational and are logged to the context.
 	}
-	entity.SetIP(pkt.Info().RemoteIP())
-	entity.SetDstPort(pkt.Info().DstPort)
 
-	var scope string
-	var resolverInfo *resolver.ResolverInfo
-	var dnsContext *resolver.DNSRequestContext
-
-	if inbound {
-		switch entity.IPScope {
-		case netutils.HostLocal:
-			scope = IncomingHost
-		case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
-			scope = IncomingLAN
-		case netutils.Global, netutils.GlobalMulticast:
-			scope = IncomingInternet
-
-		case netutils.Undefined, netutils.Invalid:
-			fallthrough
-		default:
-			scope = IncomingInvalid
-		}
-	} else {
-
-		// check if we can find a domain for that IP
-		ipinfo, err := resolver.GetIPInfo(proc.Profile().LocalProfile().ID, pkt.Info().RemoteIP().String())
+	// Get Process and Profile.
+	if conn.process == nil {
+		// We got connection from the system.
+		conn.process, err = process.GetProcessWithProfile(pkt.Ctx(), conn.PID)
 		if err != nil {
-			// Try again with the global scope, in case DNS went through the system resolver.
-			ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().RemoteIP().String())
-		}
-		if err == nil {
-			lastResolvedDomain := ipinfo.MostRecentDomain()
-			if lastResolvedDomain != nil {
-				scope = lastResolvedDomain.Domain
-				entity.Domain = lastResolvedDomain.Domain
-				entity.CNAME = lastResolvedDomain.CNAMEs
-				dnsContext = lastResolvedDomain.DNSRequestContext
-				resolverInfo = lastResolvedDomain.Resolver
-				removeOpenDNSRequest(proc.Pid, lastResolvedDomain.Domain)
-			}
+			conn.process = nil
+			err = fmt.Errorf("failed to get process and profile of PID %d: %w", conn.PID, err)
+			log.Tracer(pkt.Ctx()).Debugf("network: %s", err)
+			return err
 		}
 
-		// check if destination IP is the captive portal's IP
-		portal := netenv.GetCaptivePortal()
-		if pkt.Info().RemoteIP().Equal(portal.IP) {
-			scope = portal.Domain
-			entity.Domain = portal.Domain
-		}
+		// Add process/profile metadata for connection.
+		conn.ProcessContext = getProcessContext(pkt.Ctx(), conn.process)
+		conn.ProfileRevisionCounter = conn.process.Profile().RevisionCnt()
 
-		if scope == "" {
-			// outbound direct (possibly P2P) connection
-			switch entity.IPScope {
+		// Inherit internal status of profile.
+		if localProfile := conn.process.Profile().LocalProfile(); localProfile != nil {
+			conn.Internal = localProfile.Internal
+		}
+	}
+
+	// Create remote entity.
+	if conn.Entity == nil {
+		// Remote
+		conn.Entity = &intel.Entity{
+			Protocol: uint8(pkt.Info().Protocol),
+			Port:     pkt.Info().RemotePort(),
+		}
+		conn.Entity.SetIP(pkt.Info().RemoteIP())
+		conn.Entity.SetDstPort(pkt.Info().DstPort)
+		// Local
+		conn.SetLocalIP(pkt.Info().LocalIP())
+		conn.LocalPort = pkt.Info().LocalPort()
+
+		if conn.Inbound {
+			switch conn.Entity.IPScope {
 			case netutils.HostLocal:
-				scope = PeerHost
+				conn.Scope = IncomingHost
 			case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
-				scope = PeerLAN
+				conn.Scope = IncomingLAN
 			case netutils.Global, netutils.GlobalMulticast:
-				scope = PeerInternet
+				conn.Scope = IncomingInternet
 
 			case netutils.Undefined, netutils.Invalid:
 				fallthrough
 			default:
-				scope = PeerInvalid
+				conn.Scope = IncomingInvalid
+			}
+		} else {
+
+			// check if we can find a domain for that IP
+			ipinfo, err := resolver.GetIPInfo(conn.process.Profile().LocalProfile().ID, pkt.Info().RemoteIP().String())
+			if err != nil {
+				// Try again with the global scope, in case DNS went through the system resolver.
+				ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().RemoteIP().String())
+			}
+			if err == nil {
+				lastResolvedDomain := ipinfo.MostRecentDomain()
+				if lastResolvedDomain != nil {
+					conn.Scope = lastResolvedDomain.Domain
+					conn.Entity.Domain = lastResolvedDomain.Domain
+					conn.Entity.CNAME = lastResolvedDomain.CNAMEs
+					conn.DNSContext = lastResolvedDomain.DNSRequestContext
+					conn.Resolver = lastResolvedDomain.Resolver
+					removeOpenDNSRequest(conn.process.Pid, lastResolvedDomain.Domain)
+				}
+			}
+
+			// check if destination IP is the captive portal's IP
+			portal := netenv.GetCaptivePortal()
+			if pkt.Info().RemoteIP().Equal(portal.IP) {
+				conn.Scope = portal.Domain
+				conn.Entity.Domain = portal.Domain
+			}
+
+			if conn.Scope == "" {
+				// outbound direct (possibly P2P) connection
+				switch conn.Entity.IPScope {
+				case netutils.HostLocal:
+					conn.Scope = PeerHost
+				case netutils.LinkLocal, netutils.SiteLocal, netutils.LocalMulticast:
+					conn.Scope = PeerLAN
+				case netutils.Global, netutils.GlobalMulticast:
+					conn.Scope = PeerInternet
+
+				case netutils.Undefined, netutils.Invalid:
+					fallthrough
+				default:
+					conn.Scope = PeerInvalid
+				}
 			}
 		}
 	}
 
-	// Create new connection object.
-	newConn := &Connection{
-		ID:        pkt.GetConnectionID(),
-		Type:      IPConnection,
-		Scope:     scope,
-		IPVersion: pkt.Info().Version,
-		Inbound:   inbound,
-		// local endpoint
-		IPProtocol:     pkt.Info().Protocol,
-		LocalPort:      pkt.Info().LocalPort(),
-		ProcessContext: getProcessContext(pkt.Ctx(), proc),
-		DNSContext:     dnsContext,
-		process:        proc,
-		// remote endpoint
-		Entity: entity,
-		// resolver used to resolve dns request
-		Resolver: resolverInfo,
-		// meta
-		Started:                time.Now().Unix(),
-		ProfileRevisionCounter: proc.Profile().RevisionCnt(),
-	}
-	newConn.SetLocalIP(pkt.Info().LocalIP())
-
-	// Inherit internal status of profile.
-	if localProfile := proc.Profile().LocalProfile(); localProfile != nil {
-		newConn.Internal = localProfile.Internal
+	// Data collection is only complete with a packet.
+	if pkt.InfoOnly() {
+		return nil
 	}
 
-	// Save connection to internal state in order to mitigate creation of
-	// duplicates. Do not propagate yet, as there is no verdict yet.
-	conns.add(newConn)
-
-	return newConn
+	// If we have all data and have seen an actual packet, the connection data is complete.
+	conn.dataComplete.Set()
+	return nil
 }
 
 // GetConnection fetches a Connection from the database.
-func GetConnection(id string) (*Connection, bool) {
-	return conns.get(id)
+func GetConnection(connID string) (*Connection, bool) {
+	return conns.get(connID)
 }
 
 // GetAllConnections Gets all connection.
@@ -563,6 +604,14 @@ func (conn *Connection) VerdictVerb() string {
 	)
 }
 
+// DataIsComplete returns whether all information about the connection is
+// available and an actual packet has been seen.
+// As long as this flag is not set, the connection may not be evaluated for
+// a verdict and may not be sent to the UI.
+func (conn *Connection) DataIsComplete() bool {
+	return conn.dataComplete.IsSet()
+}
+
 // Process returns the connection's process.
 func (conn *Connection) Process() *process.Process {
 	return conn.process
@@ -579,8 +628,12 @@ func (conn *Connection) SaveWhenFinished() {
 // Callers must make sure to lock the connection itself before calling
 // Save().
 func (conn *Connection) Save() {
-	conn.addToMetrics()
 	conn.UpdateMeta()
+
+	// Do not save/update until data is complete.
+	if !conn.DataIsComplete() {
+		return
+	}
 
 	if !conn.KeyIsSet() {
 		if conn.Type == DNSRequest {
@@ -591,6 +644,8 @@ func (conn *Connection) Save() {
 			conns.add(conn)
 		}
 	}
+
+	conn.addToMetrics()
 
 	// notify database controller
 	dbController.PushUpdate(conn)
@@ -610,29 +665,61 @@ func (conn *Connection) delete() {
 	}
 
 	conn.Meta().Delete()
-	dbController.PushUpdate(conn)
+
+	// Notify database controller if data is complete and thus connection was previously exposed.
+	if conn.DataIsComplete() {
+		dbController.PushUpdate(conn)
+	}
 }
 
 // SetFirewallHandler sets the firewall handler for this link, and starts a
 // worker to handle the packets.
 // The caller needs to hold a lock on the connection.
+// Cannot be called with "nil" handler. Call StopFirewallHandler() instead.
 func (conn *Connection) SetFirewallHandler(handler FirewallHandler) {
-	if conn.firewallHandler == nil {
-		conn.pktQueue = make(chan packet.Packet, 100)
+	if handler == nil {
+		return
+	}
 
+	// Start packet handler worker when first handler is set.
+	if conn.firewallHandler == nil {
 		// start handling
 		module.StartWorker("packet handler", conn.packetHandlerWorker)
 	}
+
+	// Set new handler.
 	conn.firewallHandler = handler
+
+	// Initialize packet queue, if needed.
+	conn.pktQueueLock.Lock()
+	defer conn.pktQueueLock.Unlock()
+	if !conn.pktQueueActive {
+		conn.pktQueue = make(chan packet.Packet, 100)
+		conn.pktQueueActive = true
+	}
+}
+
+// UpdateFirewallHandler sets the firewall handler if it already set and the
+// given handler is not nil.
+// The caller needs to hold a lock on the connection.
+func (conn *Connection) UpdateFirewallHandler(handler FirewallHandler) {
+	if handler != nil && conn.firewallHandler != nil {
+		conn.firewallHandler = handler
+	}
 }
 
 // StopFirewallHandler unsets the firewall handler and stops the handler worker.
 // The caller needs to hold a lock on the connection.
 func (conn *Connection) StopFirewallHandler() {
+	conn.pktQueueLock.Lock()
+	defer conn.pktQueueLock.Unlock()
+
+	// Unset the firewall handler to revert to the default handler.
 	conn.firewallHandler = nil
 
 	// Signal the packet handler worker that it can stop.
 	close(conn.pktQueue)
+	conn.pktQueueActive = false
 
 	// Unset the packet queue so that it can be freed.
 	conn.pktQueue = nil
@@ -640,15 +727,25 @@ func (conn *Connection) StopFirewallHandler() {
 
 // HandlePacket queues packet of Link for handling.
 func (conn *Connection) HandlePacket(pkt packet.Packet) {
-	conn.Lock()
-	defer conn.Unlock()
+	conn.pktQueueLock.Lock()
+	defer conn.pktQueueLock.Unlock()
 
 	// execute handler or verdict
-	if conn.firewallHandler != nil {
-		conn.pktQueue <- pkt
-		// TODO: drop if overflowing?
+	if conn.pktQueueActive {
+		select {
+		case conn.pktQueue <- pkt:
+		default:
+			log.Debugf(
+				"filter: dropping packet %s, as there is no space in the connection's handling queue",
+				pkt,
+			)
+			_ = pkt.Drop()
+		}
 	} else {
 		defaultFirewallHandler(conn, pkt)
+
+		// Record metrics.
+		packetHandlingHistogram.UpdateDuration(pkt.Info().SeenAt)
 	}
 }
 
@@ -656,7 +753,12 @@ func (conn *Connection) HandlePacket(pkt packet.Packet) {
 func (conn *Connection) packetHandlerWorker(ctx context.Context) error {
 	// Copy packet queue, so we can remove the reference from the connection
 	// when we stop the firewall handler.
-	pktQueue := conn.pktQueue
+	var pktQueue chan packet.Packet
+	func() {
+		conn.pktQueueLock.Lock()
+		defer conn.pktQueueLock.Unlock()
+		pktQueue = conn.pktQueue
+	}()
 
 	for {
 		select {
@@ -664,20 +766,26 @@ func (conn *Connection) packetHandlerWorker(ctx context.Context) error {
 			if pkt == nil {
 				return nil
 			}
-			packetHandlerHandleConn(conn, pkt)
+			packetHandlerHandleConn(ctx, conn, pkt)
 
 		case <-ctx.Done():
-			conn.Lock()
-			defer conn.Unlock()
-			conn.firewallHandler = nil
 			return nil
 		}
 	}
 }
 
-func packetHandlerHandleConn(conn *Connection, pkt packet.Packet) {
+func packetHandlerHandleConn(ctx context.Context, conn *Connection, pkt packet.Packet) {
 	conn.Lock()
 	defer conn.Unlock()
+
+	// Create tracing context.
+	// Add context tracer and set context on packet.
+	traceCtx, tracer := log.AddTracer(ctx)
+	if tracer != nil {
+		// The trace is submitted in `network.Connection.packetHandler()`.
+		tracer.Tracef("filter: handling packet: %s", pkt)
+	}
+	pkt.SetCtx(traceCtx)
 
 	// Handle packet with appropriate handler.
 	if conn.firewallHandler != nil {
@@ -686,13 +794,22 @@ func packetHandlerHandleConn(conn *Connection, pkt packet.Packet) {
 		defaultFirewallHandler(conn, pkt)
 	}
 
-	// Log verdict.
-	log.Tracer(pkt.Ctx()).Infof("filter: connection %s %s: %s", conn, conn.VerdictVerb(), conn.Reason.Msg)
-	// Submit trace logs.
-	log.Tracer(pkt.Ctx()).Submit()
+	// Record metrics.
+	packetHandlingHistogram.UpdateDuration(pkt.Info().SeenAt)
 
-	// Save() itself does not touch any changing data.
-	// Must not be locked - would deadlock with cleaner functions.
+	// Log result and submit trace.
+	switch {
+	case conn.DataIsComplete():
+		tracer.Infof("filter: connection %s %s: %s", conn, conn.VerdictVerb(), conn.Reason.Msg)
+	case conn.Verdict.Firewall != VerdictUndecided:
+		tracer.Debugf("filter: connection %s fast-tracked", conn)
+	default:
+		tracer.Infof("filter: gathered data on connection %s", conn)
+	}
+	// Submit trace logs.
+	tracer.Submit()
+
+	// Push changes, if there are any.
 	if conn.saveWhenFinished {
 		conn.saveWhenFinished = false
 		conn.Save()

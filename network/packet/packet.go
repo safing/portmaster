@@ -24,6 +24,12 @@ func (pkt *Base) FastTrackedByIntegration() bool {
 	return false
 }
 
+// InfoOnly returns whether the packet is informational only and does not
+// represent an actual packet.
+func (pkt *Base) InfoOnly() bool {
+	return false
+}
+
 // SetCtx sets the packet context.
 func (pkt *Base) SetCtx(ctx context.Context) {
 	pkt.ctx = ctx
@@ -107,6 +113,7 @@ func (pkt *Base) GetConnectionID() string {
 }
 
 func (pkt *Base) createConnectionID() {
+	// TODO: make this ID not depend on the packet direction for better support for forwarded packets.
 	if pkt.info.Protocol == TCP || pkt.info.Protocol == UDP {
 		if pkt.info.Inbound {
 			pkt.connID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.info.Protocol, pkt.info.Dst, pkt.info.DstPort, pkt.info.Src, pkt.info.SrcPort)
@@ -236,6 +243,7 @@ type Packet interface {
 	RerouteToNameserver() error
 	RerouteToTunnel() error
 	FastTrackedByIntegration() bool
+	InfoOnly() bool
 
 	// Info.
 	SetCtx(context.Context)

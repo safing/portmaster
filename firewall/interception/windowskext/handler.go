@@ -8,7 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 	"unsafe"
+
+	"github.com/safing/portmaster/process"
 
 	"github.com/tevino/abool"
 
@@ -103,21 +106,28 @@ func Handler(packets chan packet.Packet) {
 			verdictRequest: packetInfo,
 			verdictSet:     abool.NewBool(false),
 		}
-
 		info := new.Info()
 		info.Inbound = packetInfo.direction > 0
 		info.InTunnel = false
 		info.Protocol = packet.IPProtocol(packetInfo.protocol)
-		info.PID = packetInfo.pid
+		info.PID = int(packetInfo.pid)
+		info.SeenAt = time.Now()
 
-		// IP version
+		// Check PID
+		if info.PID == 0 {
+			// Windows does not have zero PIDs.
+			// Set to UndefinedProcessID.
+			info.PID = process.UndefinedProcessID
+		}
+
+		// Set IP version
 		if packetInfo.ipV6 == 1 {
 			info.Version = packet.IPv6
 		} else {
 			info.Version = packet.IPv4
 		}
 
-		// IPs
+		// Set IPs
 		if info.Version == packet.IPv4 {
 			// IPv4
 			if info.Inbound {
@@ -142,7 +152,7 @@ func Handler(packets chan packet.Packet) {
 			}
 		}
 
-		// Ports
+		// Set Ports
 		if info.Inbound {
 			// Inbound
 			info.SrcPort = packetInfo.remotePort

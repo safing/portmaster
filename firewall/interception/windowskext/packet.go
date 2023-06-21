@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package windowskext
@@ -21,6 +22,12 @@ type Packet struct {
 
 	payloadLoaded bool
 	lock          sync.Mutex
+}
+
+// InfoOnly returns whether the packet is informational only and does not
+// represent an actual packet.
+func (pkt *Packet) InfoOnly() bool {
+	return pkt.verdictRequest.flags&VerdictRequestFlagSocketAuth > 0
 }
 
 // FastTrackedByIntegration returns whether the packet has been fast-track

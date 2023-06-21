@@ -87,6 +87,9 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 			if !ok {
 				return
 			}
+			if !conn.DataIsComplete() {
+				continue
+			}
 
 			model, err := convertConnection(conn)
 			if err != nil {

@@ -141,7 +141,11 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 	authenticatedPath += string(filepath.Separator)
 
 	// Get process of request.
-	proc, _, err := process.GetProcessByConnection(ctx, pktInfo)
+	pid, _, _ := process.GetPidOfConnection(ctx, pktInfo)
+	if pid < 0 {
+		return false, fmt.Errorf(deniedMsgUnidentified, api.ErrAPIAccessDeniedMessage) //nolint:stylecheck // message for user
+	}
+	proc, err := process.GetOrFindProcess(ctx, pid)
 	if err != nil {
 		log.Tracer(ctx).Debugf("filter: failed to get process of api request: %s", err)
 		originalPid = process.UnidentifiedProcessID

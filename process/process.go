@@ -217,7 +217,7 @@ func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*
 	}
 
 	// UID
-	// net yet implemented for windows
+	// TODO: implemented for windows
 	if onLinux {
 		var uids []int32
 		uids, err = pInfo.UidsWithContext(ctx)

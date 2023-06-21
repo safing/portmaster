@@ -25,19 +25,6 @@ import (
 	"github.com/safing/portmaster/profile/endpoints"
 )
 
-// Call order:
-//
-// DNS Query:
-// 1. DecideOnConnection
-//    is called when a DNS query is made, may set verdict to Undeterminable to permit a DNS reply.
-//    is called with a nil packet.
-// 2. DecideOnResolvedDNS
-//    is called to (possibly) filter out A/AAAA records that the filter would deny later.
-//
-// Network Connection:
-// 3. DecideOnConnection
-//    is called with the first packet of a network connection.
-
 const noReasonOptionKey = ""
 
 type deciderFn func(context.Context, *network.Connection, *profile.LayeredProfile, packet.Packet) bool
