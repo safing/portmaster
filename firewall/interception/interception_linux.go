@@ -1,7 +1,8 @@
 package interception
 
 import (
-	"github.com/safing/portmaster/firewall/interception/ebpf"
+	// bandwidth "github.com/safing/portmaster/firewall/interception/ebpf/bandwidth"
+	conn_listener "github.com/safing/portmaster/firewall/interception/ebpf/connection_listener"
 	"github.com/safing/portmaster/firewall/interception/nfq"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
@@ -9,13 +10,19 @@ import (
 
 // start starts the interception.
 func start(ch chan packet.Packet) error {
-	ebpf.StartEBPFWorker(ch)
+	// Start ebpf new connection listener
+	conn_listener.StartEBPFWorker(ch)
+	// Start ebpf bandwidth listener
+	// bandwidth.SetupBandwidthInterface()
 	return StartNfqueueInterception(ch)
 }
 
 // stop starts the interception.
 func stop() error {
-	ebpf.StopEBPFWorker()
+	// Stop ebpf connection listener
+	conn_listener.StopEBPFWorker()
+	// Stop ebpf bandwidth listener
+	// bandwidth.ShutdownBandwithInterface()
 	return StopNfqueueInterception()
 }
 

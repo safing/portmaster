@@ -13,12 +13,6 @@ type infoPacket struct {
 	pmpacket.Base
 }
 
-// InfoOnly returns whether the packet is informational only and does not
-// represent an actual packet.
-func (pkt *infoPacket) InfoOnly() bool {
-	return true
-}
-
 // LoadPacketData does nothing on Linux, as data is always fully parsed.
 func (pkt *infoPacket) LoadPacketData() error {
 	return fmt.Errorf("can't load data in info only packet")

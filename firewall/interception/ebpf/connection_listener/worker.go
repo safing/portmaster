@@ -5,21 +5,18 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
-	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/cilium/ebpf/rlimit"
-
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network/packet"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -g -Wall -Werror" -type Event bpf program/monitor.c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -g -Wall -Werror" -type Event bpf ../programs/monitor.c
 var stopper chan struct{}
 
-// StartEBPFWorker starts the ebpf worker.
 func StartEBPFWorker(ch chan packet.Packet) {
 	stopper = make(chan struct{})
 	go func() {
@@ -35,7 +32,7 @@ func StartEBPFWorker(ch chan packet.Packet) {
 			log.Errorf("ebpf: failed to load ebpf object: %s", err)
 			return
 		}
-		defer objs.Close() //nolint:errcheck
+		defer objs.Close()
 
 		// Create a link to the tcp_connect program.
 		linkTCPConnect, err := link.AttachTracing(link.TracingOptions{
@@ -45,7 +42,7 @@ func StartEBPFWorker(ch chan packet.Packet) {
 			log.Errorf("ebpf: failed to attach to tcp_v4_connect: %s ", err)
 			return
 		}
-		defer linkTCPConnect.Close() //nolint:errcheck
+		defer linkTCPConnect.Close()
 
 		// Create a link to the udp_v4_connect program.
 		linkUDPV4, err := link.AttachTracing(link.TracingOptions{
@@ -55,7 +52,7 @@ func StartEBPFWorker(ch chan packet.Packet) {
 			log.Errorf("ebpf: failed to attach to udp_v4_connect: %s ", err)
 			return
 		}
-		defer linkUDPV4.Close() //nolint:errcheck
+		defer linkUDPV4.Close()
 
 		// Create a link to the udp_v6_connect program.
 		linkUDPV6, err := link.AttachTracing(link.TracingOptions{
@@ -65,14 +62,14 @@ func StartEBPFWorker(ch chan packet.Packet) {
 			log.Errorf("ebpf: failed to attach to udp_v6_connect: %s ", err)
 			return
 		}
-		defer linkUDPV6.Close() //nolint:errcheck
+		defer linkUDPV6.Close()
 
-		rd, err := ringbuf.NewReader(objs.bpfMaps.Events)
+		rd, err := ringbuf.NewReader(objs.bpfMaps.PmConnectionEvents)
 		if err != nil {
 			log.Errorf("ebpf: failed to open ring buffer: %s", err)
 			return
 		}
-		defer rd.Close() //nolint:errcheck
+		defer rd.Close()
 
 		go func() {
 			<-stopper
@@ -111,7 +108,6 @@ func StartEBPFWorker(ch chan packet.Packet) {
 				Src:      arrayToIP(event.Saddr, packet.IPVersion(event.IpVersion)),
 				Dst:      arrayToIP(event.Daddr, packet.IPVersion(event.IpVersion)),
 				PID:      int(event.Pid),
-				SeenAt:   time.Now(),
 			}
 			if isEventValid(event) {
 				log.Debugf("ebpf: PID: %d conn: %s:%d -> %s:%d %s %s", info.PID, info.LocalIP(), info.LocalPort(), info.RemoteIP(), info.RemotePort(), info.Version.String(), info.Protocol.String())
@@ -127,7 +123,6 @@ func StartEBPFWorker(ch chan packet.Packet) {
 	}()
 }
 
-// StopEBPFWorker stops the ebpf worker.
 func StopEBPFWorker() {
 	close(stopper)
 }
@@ -153,12 +148,11 @@ func isEventValid(event bpfEvent) bool {
 	return true
 }
 
-// arrayToIP converts IP number array to net.IP.
+// arrayToIP converts IP number array to net.IP
 func arrayToIP(ipNum [4]uint32, ipVersion packet.IPVersion) net.IP {
 	if ipVersion == packet.IPv4 {
-		// FIXME: maybe convertIPv4 from windowskext package
 		return unsafe.Slice((*byte)(unsafe.Pointer(&ipNum)), 4)
+	} else {
+		return unsafe.Slice((*byte)(unsafe.Pointer(&ipNum)), 16)
 	}
-	// FIXME: maybe use convertIPv6 from windowskext package
-	return unsafe.Slice((*byte)(unsafe.Pointer(&ipNum)), 16)
 }

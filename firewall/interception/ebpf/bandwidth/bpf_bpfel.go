@@ -13,16 +13,19 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type bpfEvent struct {
-	Saddr     [4]uint32
-	Daddr     [4]uint32
-	Sport     uint16
-	Dport     uint16
-	Pid       uint32
-	IpVersion uint8
-	Protocol  uint8
-	Direction uint8
-	_         [1]byte
+type bpfSkInfo struct {
+	Rx uint64
+	Tx uint64
+}
+
+type bpfSkKey struct {
+	SrcIp    [4]uint32
+	DstIp    [4]uint32
+	SrcPort  uint16
+	DstPort  uint16
+	Protocol uint8
+	Ipv6     uint8
+	_        [2]byte
 }
 
 // loadBpf returns the embedded CollectionSpec for bpf.
@@ -66,16 +69,18 @@ type bpfSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfProgramSpecs struct {
-	TcpConnect   *ebpf.ProgramSpec `ebpf:"tcp_connect"`
-	UdpV4Connect *ebpf.ProgramSpec `ebpf:"udp_v4_connect"`
-	UdpV6Connect *ebpf.ProgramSpec `ebpf:"udp_v6_connect"`
+	SocketOperations *ebpf.ProgramSpec `ebpf:"socket_operations"`
+	UdpRecvmsg       *ebpf.ProgramSpec `ebpf:"udp_recvmsg"`
+	UdpSendmsg       *ebpf.ProgramSpec `ebpf:"udp_sendmsg"`
+	Udpv6Recvmsg     *ebpf.ProgramSpec `ebpf:"udpv6_recvmsg"`
+	Udpv6Sendmsg     *ebpf.ProgramSpec `ebpf:"udpv6_sendmsg"`
 }
 
 // bpfMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfMapSpecs struct {
-	Events *ebpf.MapSpec `ebpf:"events"`
+	PmBandwidthMap *ebpf.MapSpec `ebpf:"pm_bandwidth_map"`
 }
 
 // bpfObjects contains all objects after they have been loaded into the kernel.
@@ -97,12 +102,12 @@ func (o *bpfObjects) Close() error {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfMaps struct {
-	Events *ebpf.Map `ebpf:"events"`
+	PmBandwidthMap *ebpf.Map `ebpf:"pm_bandwidth_map"`
 }
 
 func (m *bpfMaps) Close() error {
 	return _BpfClose(
-		m.Events,
+		m.PmBandwidthMap,
 	)
 }
 
@@ -110,16 +115,20 @@ func (m *bpfMaps) Close() error {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfPrograms struct {
-	TcpConnect   *ebpf.Program `ebpf:"tcp_connect"`
-	UdpV4Connect *ebpf.Program `ebpf:"udp_v4_connect"`
-	UdpV6Connect *ebpf.Program `ebpf:"udp_v6_connect"`
+	SocketOperations *ebpf.Program `ebpf:"socket_operations"`
+	UdpRecvmsg       *ebpf.Program `ebpf:"udp_recvmsg"`
+	UdpSendmsg       *ebpf.Program `ebpf:"udp_sendmsg"`
+	Udpv6Recvmsg     *ebpf.Program `ebpf:"udpv6_recvmsg"`
+	Udpv6Sendmsg     *ebpf.Program `ebpf:"udpv6_sendmsg"`
 }
 
 func (p *bpfPrograms) Close() error {
 	return _BpfClose(
-		p.TcpConnect,
-		p.UdpV4Connect,
-		p.UdpV6Connect,
+		p.SocketOperations,
+		p.UdpRecvmsg,
+		p.UdpSendmsg,
+		p.Udpv6Recvmsg,
+		p.Udpv6Sendmsg,
 	)
 }
 

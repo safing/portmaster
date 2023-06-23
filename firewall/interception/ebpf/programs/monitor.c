@@ -20,7 +20,7 @@ char __license[] SEC("license") = "GPL";
 struct {
 	__uint(type, BPF_MAP_TYPE_RINGBUF);
 	__uint(max_entries, 1 << 24);
-} events SEC(".maps");
+} pm_connection_events SEC(".maps");
 
 // Event struct that will be sent to Go on each new connection. (The name should be the same as the go generate command)
 struct Event {
@@ -41,7 +41,7 @@ SEC("fentry/tcp_connect")
 int BPF_PROG(tcp_connect, struct sock *sk) {
 	// Alloc space for the event
 	struct Event *tcp_info;
-	tcp_info = bpf_ringbuf_reserve(&events, sizeof(struct Event), 0);
+	tcp_info = bpf_ringbuf_reserve(&pm_connection_events, sizeof(struct Event), 0);
 	if (!tcp_info) {
 		return 0;
 	}
@@ -97,7 +97,7 @@ int BPF_PROG(udp_v4_connect, struct sock *sk) {
 
   // Allocate space for the event.
 	struct Event *udp_info;
-	udp_info = bpf_ringbuf_reserve(&events, sizeof(struct Event), 0);
+	udp_info = bpf_ringbuf_reserve(&pm_connection_events, sizeof(struct Event), 0);
 	if (!udp_info) {
 		return 0;
 	}
@@ -146,7 +146,7 @@ int BPF_PROG(udp_v6_connect, struct sock *sk) {
 
   // Allocate space for the event.
 	struct Event *udp_info;
-	udp_info = bpf_ringbuf_reserve(&events, sizeof(struct Event), 0);
+	udp_info = bpf_ringbuf_reserve(&pm_connection_events, sizeof(struct Event), 0);
 	if (!udp_info) {
 		return 0;
 	}
