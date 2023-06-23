@@ -1,17 +1,17 @@
 package ebpf
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
 	"path/filepath"
 	"syscall"
-	"time"
-	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network/packet"
 	"golang.org/x/sys/unix"
 )
 
@@ -28,6 +28,7 @@ var ebpfInterface = struct {
 	objs: bpfObjects{},
 }
 
+// SetupBandwidthInterface initializes the ebpf interface and starts gattering bandwidth information for all connections.
 func SetupBandwidthInterface() error {
 
 	// Allow the current process to lock memory for eBPF resources.
@@ -141,6 +142,7 @@ func ShutdownBandwithInterface() {
 	ebpfInterface.objs.Close()
 }
 
+// findCgroupPath returns the default unified path of the cgroup
 func findCgroupPath() (string, error) {
 	cgroupPath := "/sys/fs/cgroup"
 
@@ -156,24 +158,31 @@ func findCgroupPath() (string, error) {
 	return cgroupPath, nil
 }
 
+// printBandwidthData prints the contencs of the shared map in the ebpf program.
 func printBandwidthData() {
 	iter := ebpfInterface.objs.bpfMaps.PmBandwidthMap.Iterate()
 	var skKey bpfSkKey
 	var skInfo bpfSkInfo
 	for iter.Next(&skKey, &skInfo) {
 		log.Debugf("Connection: %d %s:%d %s:%d %d %d", skKey.Protocol,
-			arrayToIP(skKey.SrcIp, skKey.Ipv6).String(), skKey.SrcPort,
-			arrayToIP(skKey.DstIp, skKey.Ipv6).String(), skKey.DstPort,
+			convertArrayToIPv4(skKey.SrcIp, packet.IPVersion(skKey.Ipv6)).String(), skKey.SrcPort,
+			convertArrayToIPv4(skKey.DstIp, packet.IPVersion(skKey.Ipv6)).String(), skKey.DstPort,
 			skInfo.Rx, skInfo.Tx,
 		)
 	}
 }
 
-// arrayToIP converts IP number array to net.IP
-func arrayToIP(ipNum [4]uint32, ipv6 uint8) net.IP {
-	if ipv6 == 0 {
-		return unsafe.Slice((*byte)(unsafe.Pointer(&ipNum)), 4)
+// convertArrayToIPv4 converts an array of uint32 values to an IPv4 net.IP address.
+func convertArrayToIPv4(input [4]uint32, ipVersion packet.IPVersion) net.IP {
+	if ipVersion == packet.IPv4 {
+		addressBuf := make([]byte, 4)
+		binary.LittleEndian.PutUint32(addressBuf, input[0])
+		return net.IP(addressBuf)
 	} else {
-		return unsafe.Slice((*byte)(unsafe.Pointer(&ipNum)), 16)
+		addressBuf := make([]byte, 16)
+		for i := 0; i < 4; i++ {
+			binary.LittleEndian.PutUint32(addressBuf[i*4:i*4+4], input[i])
+		}
+		return net.IP(addressBuf)
 	}
 }

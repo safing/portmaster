@@ -126,6 +126,7 @@ func GetProcessByRequestOrigin(ar *api.Request) (*Process, error) {
 		Protocol: packet.TCP,
 		Src:      remoteIP,   // source as in the process we are looking for
 		SrcPort:  remotePort, // source as in the process we are looking for
+		PID:      -1,
 	}
 
 	pid, _, err := GetPidOfConnection(ar.Context(), pkt)
