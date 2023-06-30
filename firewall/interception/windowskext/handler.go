@@ -68,6 +68,17 @@ type VerdictUpdateInfo struct {
 	verdict    uint8     // New verdict
 }
 
+type ConnectionStat struct {
+	localIP          [4]uint32 //Source Address, only srcIP[0] if IPv4
+	remoteIP         [4]uint32 //Destination Address
+	localPort        uint16    //Source Port
+	remotePort       uint16    //Destination port
+	receivedBytes    uint64    //Number of bytes recived on this connection
+	transmittedBytes uint64    //Number of bytes transsmited from this connection
+	ipV6             uint8     //True: IPv6, False: IPv4
+	protocol         uint8     //Protocol (UDP, TCP, ...)
+}
+
 type VersionInfo struct {
 	major    uint8
 	minor    uint8

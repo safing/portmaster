@@ -104,6 +104,7 @@ func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, er
 				SrcPort:  remotePort, // source as in the process we are looking for
 				Dst:      localIP,
 				DstPort:  localPort,
+				PID:      process.UndefinedProcessID,
 			},
 		)
 		if !retry {

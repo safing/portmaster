@@ -288,6 +288,26 @@ func GetVersion() (*VersionInfo, error) {
 	return version, nil
 }
 
+func GetConnectionsStats() ([]ConnectionStat, error) {
+	kextLock.RLock()
+	defer kextLock.RUnlock()
+
+	// Check if driver is initialized
+	if kextHandle == winInvalidHandleValue {
+		log.Error("kext: failed to clear the cache: kext not ready")
+		return nil, ErrKextNotReady
+	}
+
+	var data [100]ConnectionStat
+	size := len(data)
+	_, err := deviceIOControl(kextHandle, IOCTL_GET_CONNECTIONS_STAT, asByteArray(&size), asByteArray(&data))
+
+	if err != nil {
+		return nil, err
+	}
+	return data[:], nil
+}
+
 func openDriver(filename string) (windows.Handle, error) {
 	u16filename, err := syscall.UTF16FromString(filename)
 	if err != nil {

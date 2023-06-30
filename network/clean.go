@@ -66,6 +66,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 					SrcPort:  conn.LocalPort,
 					Dst:      conn.Entity.IP,
 					DstPort:  conn.Entity.Port,
+					PID:      process.UndefinedProcessID,
 				}, now)
 
 				activePIDs[conn.process.Pid] = struct{}{}

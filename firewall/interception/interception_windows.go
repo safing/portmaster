@@ -28,6 +28,9 @@ func start(ch chan packet.Packet) error {
 
 	go windowskext.Handler(ch)
 
+	// Example worker for the bandwidth data stats. Not ment for production.
+	// windowskext.StartBandwidthWorker()
+
 	return nil
 }
 
