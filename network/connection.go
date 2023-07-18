@@ -760,12 +760,46 @@ func (conn *Connection) packetHandlerWorker(ctx context.Context) error {
 		pktQueue = conn.pktQueue
 	}()
 
+	// pktSeq counts the seen packets.
+	var pktSeq int
+
 	for {
 		select {
 		case pkt := <-pktQueue:
 			if pkt == nil {
 				return nil
 			}
+			pktSeq++
+
+			// Check if we should expect an(other) info only packet.
+			// Only wait if this is the first packet and is not an info packet itself.
+			if pktSeq == 1 && pkt.ExpectInfo() && !pkt.InfoOnly() {
+				// Debug: FIXME
+				// log.Debugf("filter: waiting for info only packet in order to pull forward: %s", pkt)
+				select {
+				case infoPkt := <-pktQueue:
+					if infoPkt != nil {
+						// Debug: FIXME
+						// log.Debugf("filter: packet #%d [pulled forward] info=%v PID=%d packet: %s", pktSeq, pkt.InfoOnly(), pkt.Info().PID, pkt)
+						packetHandlerHandleConn(ctx, conn, pkt)
+						pktSeq++
+					}
+				case <-time.After(5 * time.Millisecond):
+				}
+			}
+
+			// Debug: FIXME
+			// switch {
+			// case pkt.Info().Inbound:
+			// 	log.Debugf("filter: packet #%d info=%v PID=%d packet: %s", pktSeq, pkt.InfoOnly(), pkt.Info().PID, pkt)
+			// case pktSeq == 1 && !pkt.InfoOnly():
+			// 	log.Warningf("filter: packet #%d [should be info only!] info=%v PID=%d packet: %s", pktSeq, pkt.InfoOnly(), pkt.Info().PID, pkt)
+			// case pktSeq >= 2 && pkt.InfoOnly():
+			// 	log.Errorf("filter: packet #%d [should not be info only!] info=%v PID=%d packet: %s", pktSeq, pkt.InfoOnly(), pkt.Info().PID, pkt)
+			// default:
+			// 	log.Debugf("filter: packet #%d info=%v PID=%d packet: %s", pktSeq, pkt.InfoOnly(), pkt.Info().PID, pkt)
+			// }
+
 			packetHandlerHandleConn(ctx, conn, pkt)
 
 		case <-ctx.Done():
@@ -802,7 +836,7 @@ func packetHandlerHandleConn(ctx context.Context, conn *Connection, pkt packet.P
 	case conn.DataIsComplete():
 		tracer.Infof("filter: connection %s %s: %s", conn, conn.VerdictVerb(), conn.Reason.Msg)
 	case conn.Verdict.Firewall != VerdictUndecided:
-		tracer.Debugf("filter: connection %s fast-tracked", conn)
+		tracer.Debugf("filter: connection %s fast-tracked", pkt)
 	default:
 		tracer.Infof("filter: gathered data on connection %s", conn)
 	}

@@ -30,6 +30,11 @@ func (pkt *Base) InfoOnly() bool {
 	return false
 }
 
+// ExpectInfo returns whether the next packet is expected to be informational only.
+func (pkt *Base) ExpectInfo() bool {
+	return false
+}
+
 // SetCtx sets the packet context.
 func (pkt *Base) SetCtx(ctx context.Context) {
 	pkt.ctx = ctx
@@ -244,6 +249,7 @@ type Packet interface {
 	RerouteToTunnel() error
 	FastTrackedByIntegration() bool
 	InfoOnly() bool
+	ExpectInfo() bool
 
 	// Info.
 	SetCtx(context.Context)

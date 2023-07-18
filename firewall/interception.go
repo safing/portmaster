@@ -173,9 +173,13 @@ func interceptionStart() error {
 	getConfig()
 	startAPIAuth()
 
-	interceptionModule.StartServiceWorker("stat logger", 0, statLogger)
 	interceptionModule.StartServiceWorker("packet handler", 0, packetHandler)
 
+	// Start stat logger if logging is set to trace.
+	if log.GetLogLevel() == log.TraceLevel {
+		interceptionModule.StartServiceWorker("stat logger", 0, statLogger)
+	}
+	
 	return interception.Start()
 }
 
@@ -543,6 +547,11 @@ func inspectAndVerdictHandler(conn *network.Connection, pkt packet.Packet) {
 }
 
 func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.Verdict, allowPermanent bool) {
+	// Check if packed was already fast-tracked by the OS integration.
+	if pkt.FastTrackedByIntegration() {
+		return
+	}
+
 	// enable permanent verdict
 	if allowPermanent && !conn.VerdictPermanent {
 		conn.VerdictPermanent = permanentVerdicts()

@@ -30,6 +30,11 @@ const (
 	// connection that was intercepted on an ALE layer instead of in the network
 	// stack itself. Thus, no packet data is available.
 	VerdictRequestFlagSocketAuth = 2
+
+	// VerdictRequestFlagExpectSocketAuth indicates that the next verdict
+	// requests is expected to be an informational socket auth request from
+	// the ALE layer.
+	VerdictRequestFlagExpectSocketAuth = 4
 )
 
 // Do not change the order of the members! The structure is used to communicate with the kernel extension.

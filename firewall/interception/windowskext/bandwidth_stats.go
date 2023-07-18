@@ -1,3 +1,6 @@
+//go:build windows
+// +build windows
+
 package windowskext
 
 // This file contains example code how to read bandwidth stats from the kext. Its not ment to be used in production.
