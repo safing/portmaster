@@ -6,6 +6,7 @@ import (
 	"github.com/safing/portbase/config"
 	"github.com/safing/portmaster/profile/endpoints"
 	"github.com/safing/portmaster/status"
+	"github.com/safing/spn/access/account"
 	"github.com/safing/spn/navigator"
 )
 
@@ -105,7 +106,7 @@ var (
 
 	// Setting "Permanent Verdicts" at order 96.
 
-	CfgOptionEnableHistoryKey   = "filter/enableHistory"
+	CfgOptionEnableHistoryKey   = "history/enabled"
 	cfgOptionEnableHistory      config.BoolOption
 	cfgOptionEnableHistoryOrder = 66
 
@@ -249,12 +250,13 @@ func registerConfiguration() error { //nolint:maintidx
 		Key:            CfgOptionEnableHistoryKey,
 		Description:    "Whether or not to save connections to the history database",
 		OptType:        config.OptTypeBool,
-		ReleaseLevel:   config.ReleaseLevelExperimental,
+		ReleaseLevel:   config.ReleaseLevelStable,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		DefaultValue:   false,
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: cfgOptionEnableHistoryOrder,
-			config.CategoryAnnotation:     "Advanced",
+			config.DisplayOrderAnnotation:     cfgOptionEnableHistoryOrder,
+			config.CategoryAnnotation:         "History",
+			config.SettingRequiresFeaturePlan: account.FeatureHistory,
 		},
 	})
 	if err != nil {

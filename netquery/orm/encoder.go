@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"time"
 
+	"golang.org/x/exp/slices"
 	"zombiezen.com/go/sqlite"
 )
 
@@ -22,7 +23,7 @@ type (
 // ToParamMap returns a map that contains the sqlite compatible value of each struct field of
 // r using the sqlite column name as a map key. It either uses the name of the
 // exported struct field or the value of the "sqlite" tag.
-func ToParamMap(ctx context.Context, r interface{}, keyPrefix string, cfg EncodeConfig) (map[string]interface{}, error) {
+func ToParamMap(ctx context.Context, r interface{}, keyPrefix string, cfg EncodeConfig, skipFields []string) (map[string]interface{}, error) {
 	// make sure we work on a struct type
 	val := reflect.Indirect(reflect.ValueOf(r))
 	if val.Kind() != reflect.Struct {
@@ -43,6 +44,10 @@ func ToParamMap(ctx context.Context, r interface{}, keyPrefix string, cfg Encode
 		colDef, err := getColumnDef(fieldType)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get column definition for %s: %w", fieldType.Name, err)
+		}
+
+		if slices.Contains(skipFields, colDef.Name) {
+			continue
 		}
 
 		x, found, err := runEncodeHooks(

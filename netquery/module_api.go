@@ -2,15 +2,19 @@ package netquery
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
+	"github.com/safing/portbase/modules/subsystems"
 	"github.com/safing/portbase/runtime"
 	"github.com/safing/portmaster/network"
 )
@@ -34,6 +38,15 @@ func init() {
 		"api",
 		"network",
 		"database",
+	)
+
+	subsystems.Register(
+		"history",
+		"Network History",
+		"Keep Network History Data",
+		m.Module,
+		"config:history/",
+		nil,
 	)
 }
 
@@ -88,6 +101,58 @@ func (m *module) prepare() error {
 		HandlerFunc: chartHandler.ServeHTTP,
 		Name:        "Active Connections Chart",
 		Description: "Query the in-memory sqlite connection database and return a chart of active connections.",
+	}); err != nil {
+		return fmt.Errorf("failed to register API endpoint: %w", err)
+	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path:      "netquery/history/clear",
+		MimeType:  "application/json",
+		Read:      api.PermitUser,
+		Write:     api.PermitUser,
+		BelongsTo: m.Module,
+		HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				ProfileIDs []string `json:"profileIDs"`
+			}
+
+			defer r.Body.Close()
+
+			dec := json.NewDecoder(r.Body)
+			dec.DisallowUnknownFields()
+
+			if err := dec.Decode(&body); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			if len(body.ProfileIDs) == 0 {
+				if err := m.mng.store.RemoveAllHistoryData(r.Context()); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+
+					return
+				}
+			} else {
+				merr := new(multierror.Error)
+				for _, profileID := range body.ProfileIDs {
+					if err := m.mng.store.RemoveHistoryForProfile(r.Context(), profileID); err != nil {
+						merr.Errors = append(merr.Errors, fmt.Errorf("failed to clear history for %q: %w", profileID, err))
+					} else {
+						log.Infof("netquery: successfully cleared history for %s", profileID)
+					}
+				}
+
+				if err := merr.ErrorOrNil(); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+
+					return
+				}
+			}
+
+			w.WriteHeader(http.StatusNoContent)
+		},
+		Name:        "Remove connections from profile history",
+		Description: "Remove all connections from the history database for one or more profiles",
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
 	}
@@ -163,5 +228,16 @@ func (m *module) start() error {
 }
 
 func (m *module) stop() error {
+	// we don't use m.Module.Ctx here because it is already cancelled when stop is called.
+	// just give the clean up 1 minute to happen and abort otherwise.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	if err := m.mng.store.MarkAllHistoryConnectionsEnded(ctx); err != nil {
+		// handle the error by just logging it. There's not much we can do here
+		// and returning an error to the module system doesn't help much as well...
+		log.Errorf("failed to mark connections in history database as eded: %w", err)
+	}
+
 	return nil
 }

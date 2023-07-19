@@ -313,6 +313,10 @@ func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*
 	return process, nil
 }
 
+func (p *Process) GetID() string {
+	return p.processKey
+}
+
 // Builds a unique identifier for a processes.
 func getProcessKey(pid int32, createdTime int64) string {
 	return fmt.Sprintf("%d-%d", pid, createdTime)

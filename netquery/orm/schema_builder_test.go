@@ -22,14 +22,14 @@ func TestSchemaBuilder(t *testing.T) {
 				Int   *int        `sqlite:",not-null"`
 				Float interface{} `sqlite:",float,nullable"`
 			}{},
-			`CREATE TABLE Simple ( id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, text TEXT, Int INTEGER NOT NULL, Float REAL );`,
+			`CREATE TABLE main.Simple ( id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, text TEXT, Int INTEGER NOT NULL, Float REAL );`,
 		},
 		{
 			"Varchar",
 			struct {
 				S string `sqlite:",varchar(10)"`
 			}{},
-			`CREATE TABLE Varchar ( S VARCHAR(10) NOT NULL );`,
+			`CREATE TABLE main.Varchar ( S VARCHAR(10) NOT NULL );`,
 		},
 	}
 
@@ -38,6 +38,6 @@ func TestSchemaBuilder(t *testing.T) {
 
 		res, err := GenerateTableSchema(c.Name, c.Model)
 		assert.NoError(t, err)
-		assert.Equal(t, c.ExpectedSQL, res.CreateStatement(false))
+		assert.Equal(t, c.ExpectedSQL, res.CreateStatement("main", false))
 	}
 }
