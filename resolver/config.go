@@ -63,6 +63,7 @@ var (
 	cfgOptionNoAssignedNameserversOrder = 1
 
 	CfgOptionUseStaleCacheKey   = "dns/useStaleCache"
+	useStaleCacheConfigOption   *config.Option
 	useStaleCache               config.BoolOption
 	cfgOptionUseStaleCacheOrder = 2
 
@@ -205,7 +206,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 	}
 	noAssignedNameservers = status.SecurityLevelOption(CfgOptionNoAssignedNameserversKey)
 
-	err = config.Register(&config.Option{
+	useStaleCacheConfigOption = &config.Option{
 		Name:           "Always Use DNS Cache",
 		Key:            CfgOptionUseStaleCacheKey,
 		Description:    "Always use the DNS cache, even if entries have expired. Expired entries are refreshed afterwards in the background. This can improve DNS resolving performance a lot, but may lead to occasional connection errors due to outdated DNS records.",
@@ -217,7 +218,8 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 			config.DisplayOrderAnnotation: cfgOptionUseStaleCacheOrder,
 			config.CategoryAnnotation:     "Resolving",
 		},
-	})
+	}
+	err = config.Register(useStaleCacheConfigOption)
 	if err != nil {
 		return err
 	}

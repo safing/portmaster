@@ -51,7 +51,7 @@ var suggestUsingStaleCacheNotification *notifications.Notification
 
 func suggestUsingStaleCacheTask(ctx context.Context, t *modules.Task) error {
 	switch {
-	case useStaleCache():
+	case useStaleCache() || useStaleCacheConfigOption.IsSetByUser():
 		// If setting is already active, disable task repeating.
 		t.Repeat(0)
 
