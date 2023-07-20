@@ -62,6 +62,9 @@ func (h *SVCHostTagHandler) AddTags(p *process.Process) {
 		p.Name += fmt.Sprintf(" (%s)", strings.Join(svcNames, ", "))
 		// Add services as tags.
 		for _, svcName := range svcNames {
+			// Remove tags from service names, such as "CDPUserSvc_1bf5729".
+			svcName, _, _ := strings.Cut(svcName, "_")
+			// Add service as tag.
 			p.Tags = append(p.Tags, profile.Tag{
 				Key:   svchostTagKey,
 				Value: svcName,
