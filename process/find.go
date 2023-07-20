@@ -25,7 +25,7 @@ func GetProcessWithProfile(ctx context.Context, pid int) (process *Process, err 
 
 	process, err = GetOrFindProcess(ctx, pid)
 	if err != nil {
-		log.Tracer(ctx).Warningf("process: failed to find process with PID: %s", err)
+		log.Tracer(ctx).Debugf("process: failed to find process with PID: %s", err)
 		return GetUnidentifiedProcess(ctx), err
 	}
 
@@ -54,8 +54,8 @@ func GetPidOfConnection(ctx context.Context, pktInfo *packet.Info) (pid int, con
 	fastSearch := pktInfo.Inbound
 	connInbound = pktInfo.Inbound
 
-	// FIXME: Only match for UndefinedProcessID when integrations have been updated.
-	if pktInfo.PID <= 0 {
+	// Check if we need to get the PID.
+	if pktInfo.PID == UndefinedProcessID {
 		log.Tracer(ctx).Tracef("process: getting pid from system network state")
 		pid, connInbound, err = state.Lookup(pktInfo, fastSearch)
 		if err != nil {
