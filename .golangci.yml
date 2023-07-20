@@ -7,6 +7,7 @@ linters:
     - containedctx
     - contextcheck
     - cyclop
+    - depguard
     - exhaustivestruct
     - exhaustruct
     - forbidigo
