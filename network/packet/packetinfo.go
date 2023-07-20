@@ -1,6 +1,7 @@
 package packet
 
 import (
+	"fmt"
 	"net"
 	"time"
 )
@@ -49,4 +50,27 @@ func (pi *Info) RemotePort() uint16 {
 		return pi.SrcPort
 	}
 	return pi.DstPort
+}
+
+// CreateConnectionID creates a connection ID.
+// In most circumstances, this method should not be used directly, but
+// packet.GetConnectionID() should be called instead.
+func (pi *Info) CreateConnectionID() string {
+	return CreateConnectionID(pi.Protocol, pi.Src, pi.SrcPort, pi.Dst, pi.DstPort, pi.Inbound)
+}
+
+// CreateConnectionID creates a connection ID.
+func CreateConnectionID(protocol IPProtocol, src net.IP, srcPort uint16, dst net.IP, dstPort uint16, inbound bool) string {
+	// TODO: make this ID not depend on the packet direction for better support for forwarded packets.
+	if protocol == TCP || protocol == UDP {
+		if inbound {
+			return fmt.Sprintf("%d-%s-%d-%s-%d", protocol, dst, dstPort, src, srcPort)
+		}
+		return fmt.Sprintf("%d-%s-%d-%s-%d", protocol, src, srcPort, dst, dstPort)
+	}
+
+	if inbound {
+		return fmt.Sprintf("%d-%s-%s", protocol, dst, src)
+	}
+	return fmt.Sprintf("%d-%s-%s", protocol, src, dst)
 }

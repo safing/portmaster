@@ -112,26 +112,9 @@ func (pkt *Base) Payload() []byte {
 // GetConnectionID returns the link ID for this packet.
 func (pkt *Base) GetConnectionID() string {
 	if pkt.connID == "" {
-		pkt.createConnectionID()
+		pkt.connID = pkt.info.CreateConnectionID()
 	}
 	return pkt.connID
-}
-
-func (pkt *Base) createConnectionID() {
-	// TODO: make this ID not depend on the packet direction for better support for forwarded packets.
-	if pkt.info.Protocol == TCP || pkt.info.Protocol == UDP {
-		if pkt.info.Inbound {
-			pkt.connID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.info.Protocol, pkt.info.Dst, pkt.info.DstPort, pkt.info.Src, pkt.info.SrcPort)
-		} else {
-			pkt.connID = fmt.Sprintf("%d-%s-%d-%s-%d", pkt.info.Protocol, pkt.info.Src, pkt.info.SrcPort, pkt.info.Dst, pkt.info.DstPort)
-		}
-	} else {
-		if pkt.info.Inbound {
-			pkt.connID = fmt.Sprintf("%d-%s-%s", pkt.info.Protocol, pkt.info.Dst, pkt.info.Src)
-		} else {
-			pkt.connID = fmt.Sprintf("%d-%s-%s", pkt.info.Protocol, pkt.info.Src, pkt.info.Dst)
-		}
-	}
 }
 
 // MatchesAddress checks if a the packet matches a given endpoint (remote or local) in protocol, network and port.
