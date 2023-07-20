@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"sync"
 	"syscall"
-	"time"
 	"unsafe"
 
 	"github.com/safing/portbase/log"
@@ -290,6 +289,8 @@ func GetVersion() (*VersionInfo, error) {
 	return version, nil
 }
 
+var sizeOfConnectionStat = uint32(unsafe.Sizeof(ConnectionStat{}))
+
 func GetConnectionsStats() ([]ConnectionStat, error) {
 	kextLock.RLock()
 	defer kextLock.RUnlock()
@@ -302,12 +303,13 @@ func GetConnectionsStats() ([]ConnectionStat, error) {
 
 	var data [100]ConnectionStat
 	size := len(data)
-	_, err := deviceIOControl(kextHandle, IOCTL_GET_CONNECTIONS_STAT, asByteArray(&size), asByteArray(&data))
+	bytesReturned, err := deviceIOControl(kextHandle, IOCTL_GET_CONNECTIONS_STAT, asByteArray(&size), asByteArray(&data))
 
 	if err != nil {
 		return nil, err
 	}
-	return data[:], nil
+
+	return data[:bytesReturned/sizeOfConnectionStat], nil
 }
 
 func openDriver(filename string) (windows.Handle, error) {

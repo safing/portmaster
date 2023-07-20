@@ -4,6 +4,7 @@
 package windowskext
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -96,9 +97,7 @@ func (v *VersionInfo) String() string {
 }
 
 // Handler transforms received packets to the Packet interface.
-func Handler(packets chan packet.Packet) {
-	defer close(packets)
-
+func Handler(ctx context.Context, packets chan packet.Packet) {
 	for {
 		packetInfo, err := RecvVerdictRequest()
 		if err != nil {
@@ -144,28 +143,14 @@ func Handler(packets chan packet.Packet) {
 		}
 
 		// Set IPs
-		if info.Version == packet.IPv4 {
-			// IPv4
-			if info.Inbound {
-				// Inbound
-				info.Src = convertIPv4(packetInfo.remoteIP)
-				info.Dst = convertIPv4(packetInfo.localIP)
-			} else {
-				// Outbound
-				info.Src = convertIPv4(packetInfo.localIP)
-				info.Dst = convertIPv4(packetInfo.remoteIP)
-			}
+		if info.Inbound {
+			// Inbound
+			info.Src = convertArrayToIP(packetInfo.remoteIP, info.Version == packet.IPv6)
+			info.Dst = convertArrayToIP(packetInfo.localIP, info.Version == packet.IPv6)
 		} else {
-			// IPv6
-			if info.Inbound {
-				// Inbound
-				info.Src = convertIPv6(packetInfo.remoteIP)
-				info.Dst = convertIPv6(packetInfo.localIP)
-			} else {
-				// Outbound
-				info.Src = convertIPv6(packetInfo.localIP)
-				info.Dst = convertIPv6(packetInfo.remoteIP)
-			}
+			// Outbound
+			info.Src = convertArrayToIP(packetInfo.localIP, info.Version == packet.IPv6)
+			info.Dst = convertArrayToIP(packetInfo.remoteIP, info.Version == packet.IPv6)
 		}
 
 		// Set Ports
@@ -183,14 +168,14 @@ func Handler(packets chan packet.Packet) {
 	}
 }
 
-// convertIPv4 as needed for data from the kernel
-func convertIPv4(input [4]uint32) net.IP {
-	addressBuf := make([]byte, 4)
-	binary.BigEndian.PutUint32(addressBuf, input[0])
-	return net.IP(addressBuf)
-}
+// convertArrayToIP converts an array of uint32 values to a net.IP address.
+func convertArrayToIP(input [4]uint32, ipv6 bool) net.IP {
+	if !ipv6 {
+		addressBuf := make([]byte, 4)
+		binary.BigEndian.PutUint32(addressBuf, input[0])
+		return net.IP(addressBuf)
+	}
 
-func convertIPv6(input [4]uint32) net.IP {
 	addressBuf := make([]byte, 16)
 	for i := 0; i < 4; i++ {
 		binary.BigEndian.PutUint32(addressBuf[i*4:i*4+4], input[i])

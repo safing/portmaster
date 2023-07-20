@@ -6,9 +6,11 @@ package windowskext
 // This file contains example code how to read bandwidth stats from the kext. Its not ment to be used in production.
 
 import (
+	"context"
 	"time"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/network/packet"
 )
 
 type Rxtxdata struct {
@@ -27,7 +29,56 @@ type Key struct {
 
 var m = make(map[Key]Rxtxdata)
 
-func StartBandwidthWorker() {
+func BandwidthStatsWorker(ctx context.Context, collectInterval time.Duration, bandwidthUpdates chan *packet.BandwidthUpdate) error {
+	// Setup ticker.
+	ticker := time.NewTicker(collectInterval)
+	defer ticker.Stop()
+
+	// Collect bandwidth at every tick.
+	for {
+		select {
+		case <-ticker.C:
+			err := reportBandwidth(ctx, bandwidthUpdates)
+			if err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func reportBandwidth(ctx context.Context, bandwidthUpdates chan *packet.BandwidthUpdate) error {
+	stats, err := GetConnectionsStats()
+	if err != nil {
+		return err
+	}
+
+	// Report all statistics.
+	for _, stat := range stats {
+		connID := packet.CreateConnectionID(
+			packet.IPProtocol(stat.protocol),
+			convertArrayToIP(stat.localIP, stat.ipV6 == 1), stat.localPort,
+			convertArrayToIP(stat.remoteIP, stat.ipV6 == 1), stat.remotePort,
+			false,
+		)
+		update := &packet.BandwidthUpdate{
+			ConnID:    connID,
+			RecvBytes: stat.receivedBytes,
+			SentBytes: stat.transmittedBytes,
+			Method:    packet.Additive,
+		}
+		select {
+		case bandwidthUpdates <- update:
+		case <-ctx.Done():
+			return nil
+		}
+	}
+
+	return nil
+}
+
+func StartBandwithConsoleLogger() {
 	go func() {
 		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()
@@ -66,14 +117,13 @@ func StartBandwidthWorker() {
 			}
 			log.Debug("----------------------------------")
 			for key, value := range m {
-				if key.ipv6 {
-					log.Debugf("Conn: %d %s:%d %s:%d rx:%d tx:%d", key.protocol, convertIPv6(key.localIP), key.localPort, convertIPv6(key.remoteIP), key.remotePort, value.rx, value.tx)
-				} else {
-					log.Debugf("Conn: %d %s:%d %s:%d rx:%d tx:%d", key.protocol, convertIPv4(key.localIP), key.localPort, convertIPv4(key.remoteIP), key.remotePort, value.rx, value.tx)
-				}
-
+				log.Debugf(
+					"Conn: %d %s:%d %s:%d rx:%d tx:%d", key.protocol,
+					convertArrayToIP(key.localIP, key.ipv6), key.localPort,
+					convertArrayToIP(key.remoteIP, key.ipv6), key.remotePort,
+					value.rx, value.tx,
+				)
 			}
-
 		}
 	}()
 }
