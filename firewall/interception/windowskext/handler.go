@@ -4,11 +4,15 @@
 package windowskext
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
+	"time"
 	"unsafe"
+
+	"github.com/safing/portmaster/process"
 
 	"github.com/tevino/abool"
 
@@ -27,13 +31,18 @@ const (
 	// connection that was intercepted on an ALE layer instead of in the network
 	// stack itself. Thus, no packet data is available.
 	VerdictRequestFlagSocketAuth = 2
+
+	// VerdictRequestFlagExpectSocketAuth indicates that the next verdict
+	// requests is expected to be an informational socket auth request from
+	// the ALE layer.
+	VerdictRequestFlagExpectSocketAuth = 4
 )
 
 // Do not change the order of the members! The structure is used to communicate with the kernel extension.
 // VerdictRequest is the request structure from the Kext.
 type VerdictRequest struct {
 	id         uint32 // ID from RegisterPacket
-	_          uint64 // Process ID - does not yet work
+	pid        uint64 // Process ID - info only packets
 	direction  uint8
 	ipV6       uint8     // True: IPv6, False: IPv4
 	protocol   uint8     // Protocol
@@ -65,6 +74,17 @@ type VerdictUpdateInfo struct {
 	verdict    uint8     // New verdict
 }
 
+type ConnectionStat struct {
+	localIP          [4]uint32 //Source Address, only srcIP[0] if IPv4
+	remoteIP         [4]uint32 //Destination Address
+	localPort        uint16    //Source Port
+	remotePort       uint16    //Destination port
+	receivedBytes    uint64    //Number of bytes recived on this connection
+	transmittedBytes uint64    //Number of bytes transsmited from this connection
+	ipV6             uint8     //True: IPv6, False: IPv4
+	protocol         uint8     //Protocol (UDP, TCP, ...)
+}
+
 type VersionInfo struct {
 	major    uint8
 	minor    uint8
@@ -77,9 +97,7 @@ func (v *VersionInfo) String() string {
 }
 
 // Handler transforms received packets to the Packet interface.
-func Handler(packets chan packet.Packet) {
-	defer close(packets)
-
+func Handler(ctx context.Context, packets chan packet.Packet) {
 	for {
 		packetInfo, err := RecvVerdictRequest()
 		if err != nil {
@@ -103,45 +121,39 @@ func Handler(packets chan packet.Packet) {
 			verdictRequest: packetInfo,
 			verdictSet:     abool.NewBool(false),
 		}
-
 		info := new.Info()
 		info.Inbound = packetInfo.direction > 0
 		info.InTunnel = false
 		info.Protocol = packet.IPProtocol(packetInfo.protocol)
+		info.PID = int(packetInfo.pid)
+		info.SeenAt = time.Now()
 
-		// IP version
+		// Check PID
+		if info.PID == 0 {
+			// Windows does not have zero PIDs.
+			// Set to UndefinedProcessID.
+			info.PID = process.UndefinedProcessID
+		}
+
+		// Set IP version
 		if packetInfo.ipV6 == 1 {
 			info.Version = packet.IPv6
 		} else {
 			info.Version = packet.IPv4
 		}
 
-		// IPs
-		if info.Version == packet.IPv4 {
-			// IPv4
-			if info.Inbound {
-				// Inbound
-				info.Src = convertIPv4(packetInfo.remoteIP)
-				info.Dst = convertIPv4(packetInfo.localIP)
-			} else {
-				// Outbound
-				info.Src = convertIPv4(packetInfo.localIP)
-				info.Dst = convertIPv4(packetInfo.remoteIP)
-			}
+		// Set IPs
+		if info.Inbound {
+			// Inbound
+			info.Src = convertArrayToIP(packetInfo.remoteIP, info.Version == packet.IPv6)
+			info.Dst = convertArrayToIP(packetInfo.localIP, info.Version == packet.IPv6)
 		} else {
-			// IPv6
-			if info.Inbound {
-				// Inbound
-				info.Src = convertIPv6(packetInfo.remoteIP)
-				info.Dst = convertIPv6(packetInfo.localIP)
-			} else {
-				// Outbound
-				info.Src = convertIPv6(packetInfo.localIP)
-				info.Dst = convertIPv6(packetInfo.remoteIP)
-			}
+			// Outbound
+			info.Src = convertArrayToIP(packetInfo.localIP, info.Version == packet.IPv6)
+			info.Dst = convertArrayToIP(packetInfo.remoteIP, info.Version == packet.IPv6)
 		}
 
-		// Ports
+		// Set Ports
 		if info.Inbound {
 			// Inbound
 			info.SrcPort = packetInfo.remotePort
@@ -156,14 +168,14 @@ func Handler(packets chan packet.Packet) {
 	}
 }
 
-// convertIPv4 as needed for data from the kernel
-func convertIPv4(input [4]uint32) net.IP {
-	addressBuf := make([]byte, 4)
-	binary.BigEndian.PutUint32(addressBuf, input[0])
-	return net.IP(addressBuf)
-}
+// convertArrayToIP converts an array of uint32 values to a net.IP address.
+func convertArrayToIP(input [4]uint32, ipv6 bool) net.IP {
+	if !ipv6 {
+		addressBuf := make([]byte, 4)
+		binary.BigEndian.PutUint32(addressBuf, input[0])
+		return net.IP(addressBuf)
+	}
 
-func convertIPv6(input [4]uint32) net.IP {
 	addressBuf := make([]byte, 16)
 	for i := 0; i < 4; i++ {
 		binary.BigEndian.PutUint32(addressBuf[i*4:i*4+4], input[i])

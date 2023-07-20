@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	packetHandlingHistogram            *metrics.Histogram
 	blockedOutConnCounter              *metrics.Counter
 	encryptedAndTunneledOutConnCounter *metrics.Counter
 	encryptedOutConnCounter            *metrics.Counter
@@ -15,8 +16,21 @@ var (
 	outConnCounter                     *metrics.Counter
 )
 
-func registerMetrics() error {
-	_, err := metrics.NewGauge(
+func registerMetrics() (err error) {
+	// This needed to be moved here, because every packet is now handled by the
+	// connection handler worker.
+	packetHandlingHistogram, err = metrics.NewHistogram(
+		"firewall/handling/duration/seconds",
+		nil,
+		&metrics.Options{
+			Permission:     api.PermitUser,
+			ExpertiseLevel: config.ExpertiseLevelExpert,
+		})
+	if err != nil {
+		return err
+	}
+
+	_, err = metrics.NewGauge(
 		"network/connections/active/total",
 		nil,
 		func() float64 {

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"sync"
 	"syscall"
-	"time"
 	"unsafe"
 
 	"github.com/safing/portbase/log"
@@ -127,8 +126,10 @@ func RecvVerdictRequest() (*VerdictRequest, error) {
 		return nil, ErrKextNotReady
 	}
 
-	timestamp := time.Now()
-	defer log.Tracef("winkext: getting verdict request took %s", time.Since(timestamp))
+	// DEBUG:
+	// timestamp := time.Now()
+	// defer log.Tracef("winkext: getting verdict request took %s", time.Since(timestamp))
+
 	// Initialize struct for the output data
 	var new VerdictRequest
 
@@ -147,6 +148,9 @@ func RecvVerdictRequest() (*VerdictRequest, error) {
 
 // SetVerdict sets the verdict for a packet and/or connection.
 func SetVerdict(pkt *Packet, verdict network.Verdict) error {
+	if pkt.verdictRequest.pid != 0 {
+		return nil // Ignore info only packets
+	}
 	if pkt.verdictRequest.id == 0 {
 		log.Tracer(pkt.Ctx()).Errorf("kext: failed to set verdict %s: no packet ID", verdict)
 		return ErrNoPacketID
@@ -283,6 +287,29 @@ func GetVersion() (*VersionInfo, error) {
 		build:    data[3],
 	}
 	return version, nil
+}
+
+var sizeOfConnectionStat = uint32(unsafe.Sizeof(ConnectionStat{}))
+
+func GetConnectionsStats() ([]ConnectionStat, error) {
+	kextLock.RLock()
+	defer kextLock.RUnlock()
+
+	// Check if driver is initialized
+	if kextHandle == winInvalidHandleValue {
+		log.Error("kext: failed to clear the cache: kext not ready")
+		return nil, ErrKextNotReady
+	}
+
+	var data [100]ConnectionStat
+	size := len(data)
+	bytesReturned, err := deviceIOControl(kextHandle, IOCTL_GET_CONNECTIONS_STAT, asByteArray(&size), asByteArray(&data))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return data[:bytesReturned/sizeOfConnectionStat], nil
 }
 
 func openDriver(filename string) (windows.Handle, error) {

@@ -4,22 +4,34 @@ import (
 	"flag"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/network/packet"
 )
 
 var (
-	// Packets channel for feeding the firewall.
+	module *modules.Module
+
+	// Packets is a stream of interception network packest.
 	Packets = make(chan packet.Packet, 1000)
+
+	// BandwidthUpdates is a stream of bandwidth usage update for connections.
+	BandwidthUpdates = make(chan *packet.BandwidthUpdate, 1000)
 
 	disableInterception bool
 )
 
 func init() {
 	flag.BoolVar(&disableInterception, "disable-interception", false, "disable packet interception; this breaks a lot of functionality")
+
+	module = modules.Register("interception", prep, start, stop, "base", "updates", "network", "notifications", "profiles")
+}
+
+func prep() error {
+	return nil
 }
 
 // Start starts the interception.
-func Start() error {
+func start() error {
 	if disableInterception {
 		log.Warning("interception: packet interception is disabled via flag - this breaks a lot of functionality")
 		return nil
@@ -36,16 +48,16 @@ func Start() error {
 		}()
 	}
 
-	return start(inputPackets)
+	return startInterception(inputPackets)
 }
 
 // Stop starts the interception.
-func Stop() error {
+func stop() error {
 	if disableInterception {
 		return nil
 	}
 
 	close(metrics.done)
 
-	return stop()
+	return stopInterception()
 }

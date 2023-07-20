@@ -28,13 +28,18 @@ nextPort:
 		// Check if the generated port is unused.
 	nextConnection:
 		for _, conn := range allConns {
-			// Skip connection if the protocol does not match the protocol of interest.
-			if conn.Entity.Protocol != protocol {
+			switch {
+			case !conn.DataIsComplete():
+				// Skip connection if the data is not complete.
 				continue nextConnection
-			}
-			// Skip port if the local port is in dangerous proximity.
-			// Consecutive port numbers are very common.
-			if conn.LocalPort <= port && conn.LocalPort >= portRangeStart {
+
+			case conn.Entity.Protocol != protocol:
+				// Skip connection if the protocol does not match the protocol of interest.
+				continue nextConnection
+
+			case conn.LocalPort <= port && conn.LocalPort >= portRangeStart:
+				// Skip port if the local port is in dangerous proximity.
+				// Consecutive port numbers are very common.
 				continue nextPort
 			}
 		}

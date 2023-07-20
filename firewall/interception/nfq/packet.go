@@ -55,7 +55,6 @@ func markToString(mark int) string {
 type packet struct {
 	pmpacket.Base
 	pktID          uint32
-	received       time.Time
 	queue          *Queue
 	verdictSet     chan struct{}
 	verdictPending *abool.AtomicBool
@@ -118,7 +117,7 @@ func (pkt *packet) setMark(mark int) error {
 		}
 		break
 	}
-	log.Tracer(pkt.Ctx()).Tracef("nfqueue: marking packet %s (%s -> %s) on queue %d with %s after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, pkt.queue.id, markToString(mark), time.Since(pkt.received))
+	log.Tracer(pkt.Ctx()).Tracef("nfqueue: marking packet %s (%s -> %s) on queue %d with %s after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, pkt.queue.id, markToString(mark), time.Since(pkt.Info().SeenAt))
 	return nil
 }
 

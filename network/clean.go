@@ -51,6 +51,11 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 
 			// delete inactive connections
 			switch {
+			case !conn.DataIsComplete():
+				// Step 0: delete old incomplete connections
+				if conn.Started < deleteOlderThan {
+					conn.delete()
+				}
 			case conn.Ended == 0:
 				// Step 1: check if still active
 				exists := state.Exists(&packet.Info{
@@ -61,6 +66,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 					SrcPort:  conn.LocalPort,
 					Dst:      conn.Entity.IP,
 					DstPort:  conn.Entity.Port,
+					PID:      process.UndefinedProcessID,
 				}, now)
 
 				activePIDs[conn.process.Pid] = struct{}{}

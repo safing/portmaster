@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package windowskext
@@ -27,6 +28,17 @@ type Packet struct {
 // accepted by the OS integration.
 func (pkt *Packet) FastTrackedByIntegration() bool {
 	return pkt.verdictRequest.flags&VerdictRequestFlagFastTrackPermitted > 0
+}
+
+// InfoOnly returns whether the packet is informational only and does not
+// represent an actual packet.
+func (pkt *Packet) InfoOnly() bool {
+	return pkt.verdictRequest.flags&VerdictRequestFlagSocketAuth > 0
+}
+
+// ExpectInfo returns whether the next packet is expected to be informational only.
+func (pkt *Packet) ExpectInfo() bool {
+	return pkt.verdictRequest.flags&VerdictRequestFlagExpectSocketAuth > 0
 }
 
 // GetPayload returns the full raw packet.

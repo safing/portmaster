@@ -11,6 +11,7 @@ import (
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/spn/navigator"
+	"github.com/tevino/abool"
 )
 
 // NewDefaultConnection creates a new connection with default values except local and remote IPs and protocols.
@@ -25,6 +26,7 @@ func NewDefaultConnection(localIP net.IP, localPort uint16, remoteIP net.IP, rem
 		LocalIP:      localIP,
 		LocalIPScope: netutils.Global,
 		LocalPort:    localPort,
+		PID:          process.UnidentifiedProcessID,
 		Entity: &intel.Entity{
 			Protocol: uint8(protocol),
 			IP:       remoteIP,
@@ -35,6 +37,7 @@ func NewDefaultConnection(localIP net.IP, localPort uint16, remoteIP net.IP, rem
 		VerdictPermanent: false,
 		Tunneled:         true,
 		Encrypted:        false,
+		DataComplete:     abool.NewBool(true),
 		Internal:         false,
 		addedToMetrics:   true, // Metrics are not needed for now. This will mark the Connection to be ignored.
 		process:          process.GetUnidentifiedProcess(context.Background()),

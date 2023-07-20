@@ -1,7 +1,9 @@
 package interception
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/safing/portmaster/firewall/interception/windowskext"
 	"github.com/safing/portmaster/network"
@@ -10,7 +12,7 @@ import (
 )
 
 // start starts the interception.
-func start(ch chan packet.Packet) error {
+func startInterception(packets chan packet.Packet) error {
 	kextFile, err := updates.GetPlatformFile("kext/portmaster-kext.sys")
 	if err != nil {
 		return fmt.Errorf("interception: could not get kext sys: %s", err)
@@ -26,13 +28,22 @@ func start(ch chan packet.Packet) error {
 		return fmt.Errorf("interception: could not start windows kext: %s", err)
 	}
 
-	go windowskext.Handler(ch)
+	// Start packet handler.
+	module.StartServiceWorker("kext packet handler", 0, func(ctx context.Context) error {
+		windowskext.Handler(ctx, packets)
+		return nil
+	})
+
+	// Start bandwidth stats monitor.
+	module.StartServiceWorker("kext bandwidth stats monitor", 0, func(ctx context.Context) error {
+		return windowskext.BandwidthStatsWorker(ctx, 1*time.Second, BandwidthUpdates)
+	})
 
 	return nil
 }
 
 // stop starts the interception.
-func stop() error {
+func stopInterception() error {
 	return windowskext.Stop()
 }
 

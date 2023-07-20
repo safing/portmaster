@@ -90,12 +90,12 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 
 	switch scope {
 	case dbScopeDNS:
-		if r, ok := dnsConns.get(id); ok {
-			return r, nil
+		if c, ok := dnsConns.get(id); ok && c.DataIsComplete() {
+			return c, nil
 		}
 	case dbScopeIP:
-		if r, ok := conns.get(id); ok {
-			return r, nil
+		if c, ok := conns.get(id); ok && c.DataIsComplete() {
+			return c, nil
 		}
 	case dbScopeNone:
 		if proc, ok := process.GetProcessFromStorage(pid); ok {
@@ -143,11 +143,16 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 	if scope == dbScopeNone || scope == dbScopeDNS {
 		// dns scopes only
 		for _, dnsConn := range dnsConns.clone() {
+			if !dnsConn.DataIsComplete() {
+				continue
+			}
+
 			func() {
 				dnsConn.Lock()
 				defer dnsConn.Unlock()
 				matches = q.Matches(dnsConn)
 			}()
+
 			if matches {
 				it.Next <- dnsConn
 			}
@@ -157,11 +162,16 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 	if scope == dbScopeNone || scope == dbScopeIP {
 		// connections
 		for _, conn := range conns.clone() {
+			if !conn.DataIsComplete() {
+				continue
+			}
+
 			func() {
 				conn.Lock()
 				defer conn.Unlock()
 				matches = q.Matches(conn)
 			}()
+
 			if matches {
 				it.Next <- conn
 			}

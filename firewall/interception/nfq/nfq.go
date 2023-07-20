@@ -16,6 +16,7 @@ import (
 
 	"github.com/safing/portbase/log"
 	pmpacket "github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/process"
 )
 
 // Queue wraps a nfqueue.
@@ -175,10 +176,11 @@ func (q *Queue) packetHandler(ctx context.Context) func(nfqueue.Attribute) int {
 		pkt := &packet{
 			pktID:          *attrs.PacketID,
 			queue:          q,
-			received:       time.Now(),
 			verdictSet:     make(chan struct{}),
 			verdictPending: abool.New(),
 		}
+		pkt.Info().PID = process.UndefinedProcessID
+		pkt.Info().SeenAt = time.Now()
 
 		if attrs.Payload == nil {
 			// There is not payload.
@@ -194,11 +196,11 @@ func (q *Queue) packetHandler(ctx context.Context) func(nfqueue.Attribute) int {
 
 		select {
 		case q.packets <- pkt:
-			log.Tracef("nfqueue: queued packet %s (%s -> %s) after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.received))
+			log.Tracef("nfqueue: queued packet %s (%s -> %s) after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.Info().SeenAt))
 		case <-ctx.Done():
 			return 0
 		case <-time.After(time.Second):
-			log.Warningf("nfqueue: failed to queue packet (%s since it was handed over by the kernel)", time.Since(pkt.received))
+			log.Warningf("nfqueue: failed to queue packet (%s since it was handed over by the kernel)", time.Since(pkt.Info().SeenAt))
 		}
 
 		go func() {
@@ -206,7 +208,7 @@ func (q *Queue) packetHandler(ctx context.Context) func(nfqueue.Attribute) int {
 			case <-pkt.verdictSet:
 
 			case <-time.After(20 * time.Second):
-				log.Warningf("nfqueue: no verdict set for packet %s (%s -> %s) after %s, dropping", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.received))
+				log.Warningf("nfqueue: no verdict set for packet %s (%s -> %s) after %s, dropping", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.Info().SeenAt))
 				if err := pkt.Drop(); err != nil {
 					log.Warningf("nfqueue: failed to apply default-drop to unveridcted packet %s (%s -> %s)", pkt.ID(), pkt.Info().Src, pkt.Info().Dst)
 				}

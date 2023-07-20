@@ -15,6 +15,8 @@ func GetMulticastRequestConn(responseConn *Connection, responseFromNet *net.IPNe
 	// Find requesting multicast/broadcast connection.
 	for _, conn := range conns.clone() {
 		switch {
+		case !conn.DataIsComplete():
+			// Ignore connection with incomplete data.
 		case conn.Inbound:
 			// Ignore incoming connections.
 		case conn.Ended != 0:
