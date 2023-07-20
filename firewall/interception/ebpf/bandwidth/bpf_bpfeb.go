@@ -14,8 +14,9 @@ import (
 )
 
 type bpfSkInfo struct {
-	Rx uint64
-	Tx uint64
+	Rx       uint64
+	Tx       uint64
+	Reported uint64
 }
 
 type bpfSkKey struct {

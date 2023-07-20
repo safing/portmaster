@@ -9,7 +9,7 @@
 #define PROTOCOL_TCP 6
 #define PROTOCOL_UDP 17
 
-char __license[] SEC("license") = "Dual MIT/GPL";
+char __license[] SEC("license") = "GPL";
 
 struct sk_key {
 	u32 src_ip[4];
@@ -23,6 +23,7 @@ struct sk_key {
 struct sk_info {
 	u64 rx;
 	u64 tx;
+	u64 reported;
 };
 
 // Max number of connections that will be kept. Increse the number if it's not enough.
@@ -84,12 +85,21 @@ int socket_operations(struct bpf_sock_ops *skops) {
 		}
 		key.dst_port = __builtin_bswap16(sk->dst_port);
 		key.ipv6 = 1;
+
+		// FIXME: This should be added here too, but loading the ebpf module fails if we add it.
+		// This 100% the same thing as above. No clue, man.
+
+		// struct sk_info newInfo = {0};
+		// newInfo.rx = skops->bytes_received;
+		// newInfo.tx = skops->bytes_acked;
+
+		// bpf_map_update_elem(&pm_bandwidth_map, &key, &newInfo, BPF_ANY);
 	}
 
 	return 0;
 }
 
-// udp_sendmsg hookes to the equvelent kernel function and saves the bandwoth data
+// udp_sendmsg hookes to the respective kernel function and saves the bandwidth data
 SEC("fentry/udp_sendmsg")
 int BPF_PROG(udp_sendmsg, struct sock *sk, struct msghdr *msg, size_t len) {
 	struct sock_common *skc = &sk->__sk_common;
@@ -106,7 +116,8 @@ int BPF_PROG(udp_sendmsg, struct sock *sk, struct msghdr *msg, size_t len) {
 	// Update the map with the new information
 	struct sk_info *info = bpf_map_lookup_elem(&pm_bandwidth_map, &key);
 	if (info != NULL) {
-		__sync_fetch_and_add(&info->tx, len);
+		__sync_fetch_and_add(&info->tx, len); // TODO: Use atomic instead.
+		__sync_fetch_and_and(&info->reported, 0); // TODO: Use atomic instead.
 	} else {
 		struct sk_info newInfo = {0};
 
@@ -117,7 +128,7 @@ int BPF_PROG(udp_sendmsg, struct sock *sk, struct msghdr *msg, size_t len) {
 	return 0;
 };
 
-// udp_recvmsg hookes to the equvelent kernel function and saves the bandwoth data
+// udp_recvmsg hookes to the respective kernel function and saves the bandwidth data
 SEC("fentry/udp_recvmsg")
 int BPF_PROG(udp_recvmsg, struct sock *sk, struct msghdr *msg, size_t len, int flags, int *addr_len) {
 	struct sock_common *skc = &sk->__sk_common;
@@ -134,7 +145,8 @@ int BPF_PROG(udp_recvmsg, struct sock *sk, struct msghdr *msg, size_t len, int f
 	// Update the map with the new information
 	struct sk_info *info = bpf_map_lookup_elem(&pm_bandwidth_map, &key);
 	if (info != NULL) {
-		__sync_fetch_and_add(&info->rx, len);
+		__sync_fetch_and_add(&info->rx, len); // TODO: Use atomic instead.
+		__sync_fetch_and_and(&info->reported, 0); // TODO: Use atomic instead.
 	} else {
 		struct sk_info newInfo = {0};
 
@@ -145,7 +157,7 @@ int BPF_PROG(udp_recvmsg, struct sock *sk, struct msghdr *msg, size_t len, int f
 	return 0;
 };
 
-// udpv6_sendmsg hookes to the equvelent kernel function and saves the bandwoth data
+// udpv6_sendmsg hookes to the respective kernel function and saves the bandwidth data
 SEC("fentry/udpv6_sendmsg")
 int BPF_PROG(udpv6_sendmsg, struct sock *sk, struct msghdr *msg, size_t len) {
 	struct sock_common *skc = &sk->__sk_common;
@@ -164,7 +176,8 @@ int BPF_PROG(udpv6_sendmsg, struct sock *sk, struct msghdr *msg, size_t len) {
 	// Update the map with the new information
 	struct sk_info *info = bpf_map_lookup_elem(&pm_bandwidth_map, &key);
 	if (info != NULL) {
-		__sync_fetch_and_add(&info->tx, len);
+		__sync_fetch_and_add(&info->tx, len); // TODO: Use atomic instead.
+		__sync_fetch_and_and(&info->reported, 0); // TODO: Use atomic instead.
 	} else {
 		struct sk_info newInfo = {0};
 		newInfo.tx = len;
@@ -174,7 +187,7 @@ int BPF_PROG(udpv6_sendmsg, struct sock *sk, struct msghdr *msg, size_t len) {
 	return 0;
 }
 
-// udpv6_recvmsg hookes to the equvelent kernel function and saves the bandwoth data
+// udpv6_recvmsg hookes to the respective kernel function and saves the bandwidth data
 SEC("fentry/udpv6_recvmsg")
 int BPF_PROG(udpv6_recvmsg, struct sock *sk, struct msghdr *msg, size_t len, int flags, int *addr_len) {
 	struct sock_common *skc = &sk->__sk_common;
@@ -193,7 +206,8 @@ int BPF_PROG(udpv6_recvmsg, struct sock *sk, struct msghdr *msg, size_t len, int
 	// Update the map with the new information
 	struct sk_info *info = bpf_map_lookup_elem(&pm_bandwidth_map, &key);
 	if (info != NULL) {
-		__sync_fetch_and_add(&info->rx, len);
+		__sync_fetch_and_add(&info->rx, len); // TODO: Use atomic instead.
+		__sync_fetch_and_and(&info->reported, 0); // TODO: Use atomic instead.
 	} else {
 		struct sk_info newInfo = {0};
 		newInfo.rx = len;
