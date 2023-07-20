@@ -1,6 +1,7 @@
 package network
 
 import (
+	"strings"
 	"sync"
 )
 
@@ -35,6 +36,21 @@ func (cs *connectionStore) get(id string) (*Connection, bool) {
 
 	conn, ok := cs.items[id]
 	return conn, ok
+}
+
+// findByPrefix returns the first connection where the key matches the given prefix.
+// If the prefix matches multiple entries, the result is not deterministic.
+func (cs *connectionStore) findByPrefix(prefix string) (*Connection, bool) {
+	cs.rw.RLock()
+	defer cs.rw.RUnlock()
+
+	for key, conn := range cs.items {
+		if strings.HasPrefix(key, prefix) {
+			return conn, true
+		}
+	}
+
+	return nil, false
 }
 
 func (cs *connectionStore) clone() map[string]*Connection {
