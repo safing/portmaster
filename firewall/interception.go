@@ -13,7 +13,6 @@ import (
 	"github.com/tevino/abool"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/compat"
 	_ "github.com/safing/portmaster/core/base"
 	"github.com/safing/portmaster/firewall/inspection"
@@ -25,9 +24,9 @@ import (
 	"github.com/safing/portmaster/network/reference"
 )
 
-var (
-	interceptionModule *modules.Module
+// FIXME: rename to "packet_handler"
 
+var (
 	nameserverIPMatcher      func(ip net.IP) bool
 	nameserverIPMatcherSet   = abool.New()
 	nameserverIPMatcherReady = abool.New()
@@ -42,71 +41,6 @@ var (
 
 	ownPID = os.Getpid()
 )
-
-const (
-	configChangeEvent        = "config change"
-	profileConfigChangeEvent = "profile config change"
-	onSPNConnectEvent        = "spn connect"
-)
-
-func init() {
-	// TODO: Move interception module to own package (dir).
-	interceptionModule = modules.Register("interception", interceptionPrep, interceptionStart, interceptionStop, "base", "updates", "network", "notifications", "profiles")
-
-	network.SetDefaultFirewallHandler(verdictHandler)
-}
-
-func interceptionPrep() error {
-	// Reset connections every time configuration changes
-	// this will be triggered on spn enable/disable
-	err := interceptionModule.RegisterEventHook(
-		"config",
-		configChangeEvent,
-		"reset connection verdicts",
-		func(ctx context.Context, _ interface{}) error {
-			resetAllConnectionVerdicts()
-			return nil
-		},
-	)
-	if err != nil {
-		log.Errorf("interception: failed registering event hook: %s", err)
-	}
-
-	// Reset connections every time profile changes
-	err = interceptionModule.RegisterEventHook(
-		"profiles",
-		profileConfigChangeEvent,
-		"reset connection verdicts",
-		func(ctx context.Context, _ interface{}) error {
-			resetAllConnectionVerdicts()
-			return nil
-		},
-	)
-	if err != nil {
-		log.Errorf("failed registering event hook: %s", err)
-	}
-
-	// Reset connections when spn is connected
-	// connect and disconnecting is triggered on config change event but connecting takеs more time
-	err = interceptionModule.RegisterEventHook(
-		"captain",
-		onSPNConnectEvent,
-		"reset connection verdicts",
-		func(ctx context.Context, _ interface{}) error {
-			resetAllConnectionVerdicts()
-			return nil
-		},
-	)
-	if err != nil {
-		log.Errorf("failed registering event hook: %s", err)
-	}
-
-	if err := registerConfig(); err != nil {
-		return err
-	}
-
-	return prepAPIAuth()
-}
 
 func resetAllConnectionVerdicts() {
 	// Resetting will force all the connection to be evaluated by the firewall again
@@ -167,24 +101,6 @@ func resetAllConnectionVerdicts() {
 	}
 	tracer.Infof("filter: changed verdict on %d connections", changedVerdicts)
 	tracer.Submit()
-}
-
-func interceptionStart() error {
-	getConfig()
-	startAPIAuth()
-
-	interceptionModule.StartServiceWorker("packet handler", 0, packetHandler)
-
-	// Start stat logger if logging is set to trace.
-	if log.GetLogLevel() == log.TraceLevel {
-		interceptionModule.StartServiceWorker("stat logger", 0, statLogger)
-	}
-	
-	return interception.Start()
-}
-
-func interceptionStop() error {
-	return interception.Stop()
 }
 
 // SetNameserverIPMatcher sets a function that is used to match the internal
@@ -693,6 +609,57 @@ func packetHandler(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+func bandwidthUpdateHandler(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case bwUpdate := <-interception.BandwidthUpdates:
+			if bwUpdate != nil {
+				updateBandwidth(bwUpdate)
+				// DEBUG:
+				// log.Debugf("filter: bandwidth update: %s", bwUpdate)
+			} else {
+				return errors.New("received nil bandwidth update from interception")
+			}
+		}
+	}
+}
+
+func updateBandwidth(bwUpdate *packet.BandwidthUpdate) {
+	// Check if update makes sense.
+	if bwUpdate.RecvBytes == 0 && bwUpdate.SentBytes == 0 {
+		return
+	}
+
+	// Get connection.
+	conn, ok := network.GetConnection(bwUpdate.ConnID)
+	if !ok {
+		return
+	}
+
+	// Do not wait for connections that are locked.
+	// TODO: Use atomic operations for updating bandwidth stats.
+	if !conn.TryLock() {
+		return
+	}
+	defer conn.Unlock()
+
+	// Update stats according to method.
+	switch bwUpdate.Method {
+	case packet.Absolute:
+		conn.RecvBytes = bwUpdate.RecvBytes
+		conn.SentBytes = bwUpdate.SentBytes
+	case packet.Additive:
+		conn.RecvBytes += bwUpdate.RecvBytes
+		conn.SentBytes += bwUpdate.SentBytes
+	default:
+		log.Warningf("filter: unsupported bandwidth update method: %d", bwUpdate.Method)
+	}
+
+	// TODO: Send update.
 }
 
 func statLogger(ctx context.Context) error {

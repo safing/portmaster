@@ -1,6 +1,7 @@
 package interception
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"sort"
@@ -257,30 +258,30 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 
 	err = activateNfqueueFirewall()
 	if err != nil {
-		_ = Stop()
+		_ = StopNfqueueInterception()
 		return fmt.Errorf("could not initialize nfqueue: %w", err)
 	}
 
 	out4Queue, err = nfq.New(17040, false)
 	if err != nil {
-		_ = Stop()
+		_ = StopNfqueueInterception()
 		return fmt.Errorf("nfqueue(IPv4, out): %w", err)
 	}
 	in4Queue, err = nfq.New(17140, false)
 	if err != nil {
-		_ = Stop()
+		_ = StopNfqueueInterception()
 		return fmt.Errorf("nfqueue(IPv4, in): %w", err)
 	}
 
 	if netenv.IPv6Enabled() {
 		out6Queue, err = nfq.New(17060, true)
 		if err != nil {
-			_ = Stop()
+			_ = StopNfqueueInterception()
 			return fmt.Errorf("nfqueue(IPv6, out): %w", err)
 		}
 		in6Queue, err = nfq.New(17160, true)
 		if err != nil {
-			_ = Stop()
+			_ = StopNfqueueInterception()
 			return fmt.Errorf("nfqueue(IPv6, in): %w", err)
 		}
 	} else {
@@ -289,7 +290,9 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 		in6Queue = &disabledNfQueue{}
 	}
 
-	go handleInterception(packets)
+	module.StartServiceWorker("nfqueue packet handler", 0, func(_ context.Context) error {
+		return handleInterception(packets)
+	})
 	return nil
 }
 
@@ -318,12 +321,12 @@ func StopNfqueueInterception() error {
 	return nil
 }
 
-func handleInterception(packets chan<- packet.Packet) {
+func handleInterception(packets chan<- packet.Packet) error {
 	for {
 		var pkt packet.Packet
 		select {
 		case <-shutdownSignal:
-			return
+			return nil
 		case pkt = <-out4Queue.PacketChannel():
 			pkt.SetOutbound()
 		case pkt = <-in4Queue.PacketChannel():
@@ -337,7 +340,7 @@ func handleInterception(packets chan<- packet.Packet) {
 		select {
 		case packets <- pkt:
 		case <-shutdownSignal:
-			return
+			return nil
 		}
 	}
 }

@@ -1,7 +1,10 @@
 package interception
 
 import (
-	// bandwidth "github.com/safing/portmaster/firewall/interception/ebpf/bandwidth"
+	"context"
+	"time"
+
+	bandwidth "github.com/safing/portmaster/firewall/interception/ebpf/bandwidth"
 	conn_listener "github.com/safing/portmaster/firewall/interception/ebpf/connection_listener"
 	"github.com/safing/portmaster/firewall/interception/nfq"
 	"github.com/safing/portmaster/network"
@@ -9,20 +12,28 @@ import (
 )
 
 // start starts the interception.
-func start(ch chan packet.Packet) error {
-	// Start ebpf new connection listener
-	conn_listener.StartEBPFWorker(ch)
-	// Start ebpf bandwidth listener
-	// bandwidth.SetupBandwidthInterface()
-	return StartNfqueueInterception(ch)
+func startInterception(packets chan packet.Packet) error {
+	// Start packet interception via nfqueue.
+	err := StartNfqueueInterception(packets)
+	if err != nil {
+		return err
+	}
+
+	// Start ebpf new connection listener.
+	module.StartServiceWorker("ebpf connection listener", 0, func(ctx context.Context) error {
+		return conn_listener.ConnectionListenerWorker(ctx, packets)
+	})
+
+	// Start ebpf bandwidth stats monitor.
+	module.StartServiceWorker("ebpf bandwidth stats monitor", 0, func(ctx context.Context) error {
+		return bandwidth.BandwidthStatsWorker(ctx, 1*time.Second, BandwidthUpdates)
+	})
+
+	return nil
 }
 
 // stop starts the interception.
-func stop() error {
-	// Stop ebpf connection listener
-	conn_listener.StopEBPFWorker()
-	// Stop ebpf bandwidth listener
-	// bandwidth.ShutdownBandwithInterface()
+func stopInterception() error {
 	return StopNfqueueInterception()
 }
 
