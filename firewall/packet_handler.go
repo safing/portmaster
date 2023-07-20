@@ -24,8 +24,6 @@ import (
 	"github.com/safing/portmaster/network/reference"
 )
 
-// FIXME: rename to "packet_handler"
-
 var (
 	nameserverIPMatcher      func(ip net.IP) bool
 	nameserverIPMatcherSet   = abool.New()

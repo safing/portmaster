@@ -8,8 +8,6 @@ import (
 	"github.com/safing/portmaster/network/packet"
 )
 
-// FIXME: rename to "module"
-
 var (
 	module *modules.Module
 

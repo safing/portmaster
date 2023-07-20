@@ -11,8 +11,6 @@ import (
 	"github.com/safing/portmaster/network"
 )
 
-// FIXME: rename to "module"
-
 var module *modules.Module
 
 func init() {
