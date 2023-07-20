@@ -2,7 +2,8 @@
 #ifndef __BPF_TRACING_H__
 #define __BPF_TRACING_H__
 
-#include <bpf/bpf_helpers.h>
+// #include <bpf/bpf_helpers.h>
+#include "bpf_helpers.h"
 
 /* Scan the ARCH passed in from ARCH env variable (see Makefile) */
 #if defined(__TARGET_ARCH_x86)
