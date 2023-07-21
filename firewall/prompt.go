@@ -91,12 +91,12 @@ func createPrompt(ctx context.Context, conn *network.Connection) (n *notificatio
 	layeredProfile := conn.Process().Profile()
 	if layeredProfile == nil {
 		log.Tracer(ctx).Warningf("filter: tried creating prompt for connection without profile")
-		return
+		return nil
 	}
 	localProfile := layeredProfile.LocalProfile()
 	if localProfile == nil {
 		log.Tracer(ctx).Warningf("filter: tried creating prompt for connection without local profile")
-		return
+		return nil
 	}
 
 	// first check if there is an existing notification for this.

@@ -112,7 +112,7 @@ type (
 	}
 )
 
-// New opens a new in-memory database named path.
+// New opens a new in-memory database named path and attaches a persistent history database.
 //
 // The returned Database used connection pooling for read-only connections
 // (see Execute). To perform database writes use either Save() or ExecuteWrite().
@@ -131,7 +131,6 @@ func New(dbPath string) (*Database, error) {
 			dbPath,
 			sqlite.OpenReadOnly,
 			sqlite.OpenSharedCache,
-			//sqlite.OpenMemory,
 			sqlite.OpenURI,
 		)
 		if err != nil {
@@ -171,7 +170,6 @@ func New(dbPath string) (*Database, error) {
 		sqlite.OpenReadWrite,
 		sqlite.OpenWAL,
 		sqlite.OpenSharedCache,
-		//sqlite.OpenMemory,
 		sqlite.OpenURI,
 	)
 	if err != nil {
@@ -337,11 +335,14 @@ func (db *Database) Cleanup(ctx context.Context, threshold time.Time) (int, erro
 	return result[0].Count, nil
 }
 
+// RemoveAllHistoryData removes all connections from the history database.
 func (db *Database) RemoveAllHistoryData(ctx context.Context) error {
 	query := fmt.Sprintf("DELETE FROM %s.connections", HistoryDatabase)
 	return db.ExecuteWrite(ctx, query)
 }
 
+// RemoveHistoryForProfile removes all connections from the history database
+// for a given profile ID (source/id).
 func (db *Database) RemoveHistoryForProfile(ctx context.Context, profileID string) error {
 	query := fmt.Sprintf("DELETE FROM %s.connections WHERE profile = :profile", HistoryDatabase)
 	return db.ExecuteWrite(ctx, query, orm.WithNamedArgs(map[string]any{
@@ -389,13 +390,15 @@ func (db *Database) MarkAllHistoryConnectionsEnded(ctx context.Context) error {
 	return nil
 }
 
-func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, processKey string, connID string, incoming *uint64, outgoing *uint64) error {
+// UpdateBandwidth updates bandwidth data for the connection and optionally also writes
+// the bandwidth data to the history database.
+func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, processKey string, connID string, bytesReceived uint64, bytesSent uint64) error {
 	data := connID + "-" + processKey
 	hash := sha256.Sum256([]byte(data))
-	dbConnId := hex.EncodeToString(hash[:])
+	dbConnID := hex.EncodeToString(hash[:])
 
 	params := map[string]any{
-		":id": dbConnId,
+		":id": dbConnID,
 	}
 
 	parts := []string{}
@@ -439,7 +442,7 @@ func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, pro
 func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) error {
 	// convert the connection to a param map where each key is already translated
 	// to the sql column name. We also skip bytes_received and bytes_sent since those
-	// will be updated independenly from the connection object.
+	// will be updated independently from the connection object.
 	connMap, err := orm.ToParamMap(ctx, conn, "", orm.DefaultEncodeConfig, []string{
 		"bytes_received",
 		"bytes_sent",

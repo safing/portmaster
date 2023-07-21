@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/database"
@@ -19,6 +20,7 @@ import (
 	"github.com/safing/portmaster/network"
 )
 
+// DefaultModule is the default netquery module.
 var DefaultModule *module
 
 type module struct {
@@ -119,8 +121,6 @@ func (m *module) prepare() error {
 			var body struct {
 				ProfileIDs []string `json:"profileIDs"`
 			}
-
-			defer r.Body.Close()
 
 			dec := json.NewDecoder(r.Body)
 			dec.DisallowUnknownFields()
@@ -240,7 +240,7 @@ func (m *module) stop() error {
 	if err := m.mng.store.MarkAllHistoryConnectionsEnded(ctx); err != nil {
 		// handle the error by just logging it. There's not much we can do here
 		// and returning an error to the module system doesn't help much as well...
-		log.Errorf("failed to mark connections in history database as eded: %w", err)
+		log.Errorf("netquery: failed to mark connections in history database as ended: %s", err)
 	}
 
 	return nil

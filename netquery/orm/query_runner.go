@@ -148,7 +148,7 @@ func RunQuery(ctx context.Context, conn *sqlite.Conn, sql string, modifiers ...Q
 				for colIdx := 0; colIdx < stmt.ColumnCount(); colIdx++ {
 					name := stmt.ColumnName(colIdx)
 
-					switch stmt.ColumnType(colIdx) {
+					switch stmt.ColumnType(colIdx) { //nolint:exhaustive // TODO: handle type BLOB?
 					case sqlite.TypeText:
 						resultDump[name] = stmt.ColumnText(colIdx)
 					case sqlite.TypeFloat:

@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/safing/portbase/log"
 	"zombiezen.com/go/sqlite"
+
+	"github.com/safing/portbase/log"
 )
 
 var errSkipStructField = errors.New("struct field should be skipped")
@@ -110,13 +111,13 @@ func (def ColumnDef) AsSQL() string {
 	}
 	if def.Default != nil {
 		sql += " DEFAULT "
-		switch def.Type {
+		switch def.Type { //nolint:exhaustive // TODO: handle types BLOB, NULL?
 		case sqlite.TypeFloat:
-			sql += strconv.FormatFloat(def.Default.(float64), 'b', 0, 64)
+			sql += strconv.FormatFloat(def.Default.(float64), 'b', 0, 64) //nolint:forcetypeassert
 		case sqlite.TypeInteger:
-			sql += strconv.FormatInt(def.Default.(int64), 10)
+			sql += strconv.FormatInt(def.Default.(int64), 10) //nolint:forcetypeassert
 		case sqlite.TypeText:
-			sql += fmt.Sprintf("%q", def.Default.(string))
+			sql += fmt.Sprintf("%q", def.Default.(string)) //nolint:forcetypeassert
 		default:
 			log.Errorf("unsupported default value: %q %q", def.Type, def.Default)
 			sql = strings.TrimSuffix(sql, " DEFAULT ")
@@ -257,7 +258,7 @@ func applyStructFieldTag(fieldType reflect.StructField, def *ColumnDef) error {
 
 				if strings.HasPrefix(k, TagTypePrefixDefault) {
 					defaultValue := strings.TrimPrefix(k, TagTypePrefixDefault)
-					switch def.Type {
+					switch def.Type { //nolint:exhaustive
 					case sqlite.TypeFloat:
 						fv, err := strconv.ParseFloat(defaultValue, 64)
 						if err != nil {

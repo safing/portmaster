@@ -14,8 +14,10 @@ import (
 	"github.com/safing/portmaster/netquery/orm"
 )
 
+// DatabaseName is a database name constant.
 type DatabaseName string
 
+// Databases.
 const (
 	LiveDatabase    = DatabaseName("main")
 	HistoryDatabase = DatabaseName("history")

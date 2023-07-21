@@ -511,7 +511,7 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 		atomic.AddUint64(packetsFailed, 1)
 		err = pkt.Drop()
 	case network.VerdictUndecided, network.VerdictUndeterminable:
-		log.Warningf("filter: tried to apply verdict %s to pkt %s: dropping instead", verdict, pkt)
+		log.Tracer(pkt.Ctx()).Warningf("filter: tried to apply verdict %s to pkt %s: dropping instead", verdict, pkt)
 		fallthrough
 	default:
 		atomic.AddUint64(packetsDropped, 1)
@@ -519,7 +519,7 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	}
 
 	if err != nil {
-		log.Warningf("filter: failed to apply verdict to pkt %s: %s", pkt, err)
+		log.Tracer(pkt.Ctx()).Warningf("filter: failed to apply verdict to pkt %s: %s", pkt, err)
 	}
 }
 
@@ -656,8 +656,10 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 		conn.BytesSent += bwUpdate.BytesSent
 	default:
 		log.Warningf("filter: unsupported bandwidth update method: %d", bwUpdate.Method)
+		return
 	}
 
+	// Update bandwidth in the netquery module.
 	if netquery.DefaultModule != nil && conn.BandwidthEnabled {
 		if err := netquery.DefaultModule.Store.UpdateBandwidth(
 			ctx,
@@ -667,7 +669,7 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 			conn.BytesReceived,
 			conn.BytesSent,
 		); err != nil {
-			log.Errorf("firewall: failed to persist bandwidth data: %s", err)
+			log.Errorf("filter: failed to persist bandwidth data: %s", err)
 		}
 	}
 }

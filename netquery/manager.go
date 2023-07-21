@@ -31,16 +31,16 @@ type (
 		// database as ended NOW.
 		MarkAllHistoryConnectionsEnded(context.Context) error
 
-		// RemoveHistoryForProfile removes all connections from the history database
-		// for a given profile ID (source/id)
-		RemoveHistoryForProfile(context.Context, string) error
-
 		// RemoveAllHistoryData removes all connections from the history database.
 		RemoveAllHistoryData(context.Context) error
 
-		// UpdateBandwidth updates bandwith data for the connection and optionally also writes
+		// RemoveHistoryForProfile removes all connections from the history database.
+		// for a given profile ID (source/id)
+		RemoveHistoryForProfile(context.Context, string) error
+
+		// UpdateBandwidth updates bandwidth data for the connection and optionally also writes
 		// the bandwidth data to the history database.
-		UpdateBandwidth(ctx context.Context, enableHistory bool, processKey string, connID string, incoming *uint64, outgoing *uint64) error
+		UpdateBandwidth(ctx context.Context, enableHistory bool, processKey string, connID string, bytesReceived uint64, bytesSent uint64) error
 	}
 
 	// Manager handles new and updated network.Connections feeds and persists them

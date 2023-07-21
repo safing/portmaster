@@ -12,9 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netquery/orm"
-	"golang.org/x/exp/slices"
 )
 
 var charOnlyRegexp = regexp.MustCompile("[a-zA-Z]+")
