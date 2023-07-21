@@ -196,7 +196,8 @@ func (q *Queue) packetHandler(ctx context.Context) func(nfqueue.Attribute) int {
 
 		select {
 		case q.packets <- pkt:
-			log.Tracef("nfqueue: queued packet %s (%s -> %s) after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.Info().SeenAt))
+			// DEBUG:
+			// log.Tracef("nfqueue: queued packet %s (%s -> %s) after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.Info().SeenAt))
 		case <-ctx.Done():
 			return 0
 		case <-time.After(time.Second):

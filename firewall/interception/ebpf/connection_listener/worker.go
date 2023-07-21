@@ -114,7 +114,8 @@ func ConnectionListenerWorker(ctx context.Context, packets chan packet.Packet) e
 			PID:      int(event.Pid),
 		})
 		if isEventValid(event) {
-			log.Debugf("ebpf: received valid connect event: PID: %d Conn: %s", pkt.Info().PID, pkt)
+			// DEBUG:
+			// log.Debugf("ebpf: received valid connect event: PID: %d Conn: %s", pkt.Info().PID, pkt)
 			packets <- pkt
 		} else {
 			log.Warningf("ebpf: received invalid connect event: PID: %d Conn: %s", pkt.Info().PID, pkt)

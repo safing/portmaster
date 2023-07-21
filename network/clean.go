@@ -78,7 +78,8 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 				}
 			case conn.Ended < deleteOlderThan:
 				// Step 3: delete
-				log.Tracef("network.clean: deleted %s (ended at %s)", conn.DatabaseKey(), time.Unix(conn.Ended, 0))
+				// DEBUG:
+				// log.Tracef("network.clean: deleted %s (ended at %s)", conn.DatabaseKey(), time.Unix(conn.Ended, 0))
 				conn.delete()
 			}
 

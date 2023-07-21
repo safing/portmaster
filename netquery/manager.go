@@ -113,7 +113,8 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 				continue
 			}
 
-			log.Tracef("netquery: updating connection %s", conn.ID)
+			// DEBUG:
+			// log.Tracef("netquery: updating connection %s", conn.ID)
 
 			if err := mng.store.Save(ctx, *model, conn.HistoryEnabled); err != nil {
 				log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)

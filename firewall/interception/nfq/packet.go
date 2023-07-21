@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
-	"time"
 
 	"github.com/florianl/go-nfqueue"
 	"github.com/tevino/abool"
@@ -117,7 +116,13 @@ func (pkt *packet) setMark(mark int) error {
 		}
 		break
 	}
-	log.Tracer(pkt.Ctx()).Tracef("nfqueue: marking packet %s (%s -> %s) on queue %d with %s after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, pkt.queue.id, markToString(mark), time.Since(pkt.Info().SeenAt))
+
+	// DEBUG:
+	// log.Tracer(pkt.Ctx()).Tracef(
+	// 	"nfqueue: marking packet %s (%s -> %s) on queue %d with %s after %s",
+	// 	pkt.ID(), pkt.Info().Src, pkt.Info().Dst, pkt.queue.id,
+	// 	markToString(mark), time.Since(pkt.Info().SeenAt),
+	// )
 	return nil
 }
 
