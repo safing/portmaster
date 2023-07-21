@@ -88,12 +88,12 @@ Portmaster is a privacy suite for your desktop OS.
 
 All details and guides live in the dedicated [wiki](https://wiki.safing.io/)
 
-- [Getting Started](https://wiki.safing.io/en/Portmaster/App/GettingStarted)
+- [Getting Started](https://wiki.safing.io/en/Portmaster/App)
 - Install
   - [on Windows](https://wiki.safing.io/en/Portmaster/Install/Windows)
   - [on Linux](https://wiki.safing.io/en/Portmaster/Install/Linux)
 - [Contribute](https://wiki.safing.io/en/Contribute)
 - [VPN Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility#vpn-compatibly)
 - [Software Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility)
-- [Architecture](https://wiki.safing.io/en/Portmaster/Architecture/Overview)
+- [Architecture](https://wiki.safing.io/en/Portmaster/Architecture)
 
