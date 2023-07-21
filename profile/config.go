@@ -254,9 +254,9 @@ func registerConfiguration() error { //nolint:maintidx
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		DefaultValue:   false,
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation:     cfgOptionEnableHistoryOrder,
-			config.CategoryAnnotation:         "History",
-			config.SettingRequiresFeaturePlan: account.FeatureHistory,
+			config.DisplayOrderAnnotation: cfgOptionEnableHistoryOrder,
+			config.CategoryAnnotation:     "History",
+			config.RequiresFeatureID:      account.FeatureHistory,
 		},
 	})
 	if err != nil {
