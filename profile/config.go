@@ -104,11 +104,13 @@ var (
 	cfgOptionDisableAutoPermit      config.IntOption // security level option
 	cfgOptionDisableAutoPermitOrder = 65
 
-	// Setting "Permanent Verdicts" at order 96.
+	// Setting "Permanent Verdicts" at order 80.
 
-	CfgOptionEnableHistoryKey   = "history/enabled"
+	// Network History.
+
+	CfgOptionEnableHistoryKey   = "history/enable"
 	cfgOptionEnableHistory      config.BoolOption
-	cfgOptionEnableHistoryOrder = 66
+	cfgOptionEnableHistoryOrder = 96
 
 	// Setting "Enable SPN" at order 128.
 
