@@ -399,14 +399,14 @@ func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, pro
 	}
 
 	parts := []string{}
-	if incoming != nil {
+	if bytesReceived != 0 {
 		parts = append(parts, "bytes_received = :bytes_received")
-		params[":bytes_received"] = *incoming
+		params[":bytes_received"] = bytesReceived
 	}
 
-	if outgoing != nil {
+	if bytesSent != 0 {
 		parts = append(parts, "bytes_sent = :bytes_sent")
-		params[":bytes_sent"] = *outgoing
+		params[":bytes_sent"] = bytesSent
 	}
 
 	updateSet := strings.Join(parts, ", ")

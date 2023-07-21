@@ -178,6 +178,11 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	RecvBytes uint64
 	SentBytes uint64
 
+	// BytesReceived holds the observed received bytes of the connection.
+	BytesReceived uint64
+	// BytesSent holds the observed sent bytes of the connection.
+	BytesSent uint64
+
 	// pkgQueue is used to serialize packet handling for a single
 	// connection and is served by the connections packetHandler.
 	pktQueue chan packet.Packet

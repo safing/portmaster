@@ -629,7 +629,7 @@ func bandwidthUpdateHandler(ctx context.Context) error {
 
 func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 	// Check if update makes sense.
-	if bwUpdate.RecvBytes == 0 && bwUpdate.SentBytes == 0 {
+	if bwUpdate.BytesReceived == 0 && bwUpdate.BytesSent == 0 {
 		return
 	}
 
@@ -649,11 +649,11 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 	// Update stats according to method.
 	switch bwUpdate.Method {
 	case packet.Absolute:
-		conn.RecvBytes = bwUpdate.RecvBytes
-		conn.SentBytes = bwUpdate.SentBytes
+		conn.BytesReceived = bwUpdate.BytesReceived
+		conn.BytesSent = bwUpdate.BytesSent
 	case packet.Additive:
-		conn.RecvBytes += bwUpdate.RecvBytes
-		conn.SentBytes += bwUpdate.SentBytes
+		conn.BytesReceived += bwUpdate.BytesReceived
+		conn.BytesSent += bwUpdate.BytesSent
 	default:
 		log.Warningf("filter: unsupported bandwidth update method: %d", bwUpdate.Method)
 	}
@@ -664,8 +664,8 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 			conn.HistoryEnabled,
 			conn.Process().GetID(),
 			conn.ID,
-			&conn.RecvBytes,
-			&conn.SentBytes,
+			conn.BytesReceived,
+			conn.BytesSent,
 		); err != nil {
 			log.Errorf("firewall: failed to persist bandwidth data: %s", err)
 		}

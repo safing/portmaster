@@ -63,10 +63,10 @@ func reportBandwidth(ctx context.Context, bandwidthUpdates chan *packet.Bandwidt
 			false,
 		)
 		update := &packet.BandwidthUpdate{
-			ConnID:    connID,
-			RecvBytes: stat.receivedBytes,
-			SentBytes: stat.transmittedBytes,
-			Method:    packet.Additive,
+			ConnID:        connID,
+			BytesReceived: stat.receivedBytes,
+			BytesSent:     stat.transmittedBytes,
+			Method:        packet.Additive,
 		}
 		select {
 		case bandwidthUpdates <- update:
