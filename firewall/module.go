@@ -14,7 +14,7 @@ import (
 var module *modules.Module
 
 func init() {
-	module = modules.Register("filter", prep, start, stop, "core", "interception", "intel")
+	module = modules.Register("filter", prep, start, stop, "core", "interception", "intel", "netquery")
 	subsystems.Register(
 		"filter",
 		"Privacy Filter",

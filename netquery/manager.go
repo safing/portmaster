@@ -13,8 +13,6 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/runtime"
 	"github.com/safing/portmaster/network"
-	"github.com/safing/spn/access"
-	"github.com/safing/spn/access/account"
 )
 
 type (
@@ -117,20 +115,7 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 
 			log.Tracef("netquery: updating connection %s", conn.ID)
 
-			// check if we should persist the connection in the history database.
-			// Also make sure the current SPN User/subscription allows use of the history.
-			historyEnabled := conn.Process().Profile().HistoryEnabled()
-			if historyEnabled {
-				user, err := access.GetUser()
-				if err != nil {
-					// there was an error so disable history
-					historyEnabled = false
-				} else if !user.MayUse(account.FeatureHistory) {
-					historyEnabled = false
-				}
-			}
-
-			if err := mng.store.Save(ctx, *model, historyEnabled); err != nil {
+			if err := mng.store.Save(ctx, *model, conn.HistoryEnabled); err != nil {
 				log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
 
 				continue

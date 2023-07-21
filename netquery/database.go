@@ -101,8 +101,8 @@ type (
 		Allowed         *bool             `sqlite:"allowed"`
 		ProfileRevision int               `sqlite:"profile_revision"`
 		ExitNode        *string           `sqlite:"exit_node"`
-		BWIncoming      uint64            `sqlite:"bw_incoming,default=0"`
-		BWOutgoing      uint64            `sqlite:"bw_outgoing,default=0"`
+		BytesReceived   uint64            `sqlite:"bytes_received,default=0"`
+		BytesSent       uint64            `sqlite:"bytes_sent,default=0"`
 
 		// TODO(ppacher): support "NOT" in search query to get rid of the following helper fields
 		Active bool `sqlite:"active"` // could use "ended IS NOT NULL" or "ended IS NULL"
@@ -400,13 +400,13 @@ func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, pro
 
 	parts := []string{}
 	if incoming != nil {
-		parts = append(parts, "bw_incoming = :bw_incoming")
-		params[":bw_incoming"] = *incoming
+		parts = append(parts, "bytes_received = :bytes_received")
+		params[":bytes_received"] = *incoming
 	}
 
 	if outgoing != nil {
-		parts = append(parts, "bw_outgoing = :bw_outgoing")
-		params[":bw_outgoing"] = *outgoing
+		parts = append(parts, "bytes_sent = :bytes_sent")
+		params[":bytes_sent"] = *outgoing
 	}
 
 	updateSet := strings.Join(parts, ", ")
@@ -438,11 +438,11 @@ func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, pro
 // connection pool.
 func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) error {
 	// convert the connection to a param map where each key is already translated
-	// to the sql column name. We also skip bw_incoming and bw_outgoing since those
+	// to the sql column name. We also skip bytes_received and bytes_sent since those
 	// will be updated independenly from the connection object.
 	connMap, err := orm.ToParamMap(ctx, conn, "", orm.DefaultEncodeConfig, []string{
-		"bw_incoming",
-		"bw_outgoing",
+		"bytes_received",
+		"bytes_sent",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to encode connection for SQL: %w", err)

@@ -19,22 +19,26 @@ import (
 	"github.com/safing/portmaster/network"
 )
 
+var DefaultModule *module
+
 type module struct {
 	*modules.Module
 
-	db       *database.Interface
-	sqlStore *Database
-	mng      *Manager
-	feed     chan *network.Connection
+	Store *Database
+
+	db   *database.Interface
+	mng  *Manager
+	feed chan *network.Connection
 }
 
 func init() {
-	m := new(module)
-	m.Module = modules.Register(
+	DefaultModule = new(module)
+
+	DefaultModule.Module = modules.Register(
 		"netquery",
-		m.prepare,
-		m.start,
-		m.stop,
+		DefaultModule.prepare,
+		DefaultModule.start,
+		DefaultModule.stop,
 		"api",
 		"network",
 		"database",
@@ -44,7 +48,7 @@ func init() {
 		"history",
 		"Network History",
 		"Keep Network History Data",
-		m.Module,
+		DefaultModule.Module,
 		"config:history/",
 		nil,
 	)
@@ -58,12 +62,12 @@ func (m *module) prepare() error {
 		Internal: true,
 	})
 
-	m.sqlStore, err = NewInMemory()
+	m.Store, err = NewInMemory()
 	if err != nil {
 		return fmt.Errorf("failed to create in-memory database: %w", err)
 	}
 
-	m.mng, err = NewManager(m.sqlStore, "netquery/data/", runtime.DefaultRegistry)
+	m.mng, err = NewManager(m.Store, "netquery/data/", runtime.DefaultRegistry)
 	if err != nil {
 		return fmt.Errorf("failed to create manager: %w", err)
 	}
@@ -71,12 +75,12 @@ func (m *module) prepare() error {
 	m.feed = make(chan *network.Connection, 1000)
 
 	queryHander := &QueryHandler{
-		Database:  m.sqlStore,
+		Database:  m.Store,
 		IsDevMode: config.Concurrent.GetAsBool(config.CfgDevModeKey, false),
 	}
 
 	chartHandler := &ChartHandler{
-		Database: m.sqlStore,
+		Database: m.Store,
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
@@ -204,7 +208,7 @@ func (m *module) start() error {
 				return nil
 			case <-time.After(10 * time.Second):
 				threshold := time.Now().Add(-network.DeleteConnsAfterEndedThreshold)
-				count, err := m.sqlStore.Cleanup(ctx, threshold)
+				count, err := m.Store.Cleanup(ctx, threshold)
 				if err != nil {
 					log.Errorf("netquery: failed to count number of rows in memory: %s", err)
 				} else {
@@ -218,7 +222,7 @@ func (m *module) start() error {
 	// the runtime database.
 	// Only expose in development mode.
 	if config.GetAsBool(config.CfgDevModeKey, false)() {
-		_, err := NewRuntimeQueryRunner(m.sqlStore, "netquery/query/", runtime.DefaultRegistry)
+		_, err := NewRuntimeQueryRunner(m.Store, "netquery/query/", runtime.DefaultRegistry)
 		if err != nil {
 			return fmt.Errorf("failed to set up runtime SQL query runner: %w", err)
 		}

@@ -19,6 +19,8 @@ import (
 	"github.com/safing/portmaster/process"
 	_ "github.com/safing/portmaster/process/tags"
 	"github.com/safing/portmaster/resolver"
+	"github.com/safing/spn/access"
+	"github.com/safing/spn/access/account"
 	"github.com/safing/spn/navigator"
 )
 
@@ -218,6 +220,13 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// addedToMetrics signifies if the connection has already been counted in
 	// the metrics.
 	addedToMetrics bool
+
+	// HistoryEnabled is set to true when the connection should be persisted
+	// in the history database.
+	HistoryEnabled bool
+	// BanwidthEnabled is set to true if connection bandwidth data should be persisted
+	// in netquery.
+	BandwidthEnabled bool
 }
 
 // Reason holds information justifying a verdict, as well as additional
@@ -420,7 +429,21 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 			// Inherit internal status of profile.
 			if localProfile := conn.process.Profile().LocalProfile(); localProfile != nil {
 				conn.Internal = localProfile.Internal
+
+				// check if we should persist the connection in the history database.
+				// Also make sure the current SPN User/subscription allows use of the history.
+				user, err := access.GetUser()
+				if err == nil {
+					if user.MayUse(account.FeatureHistory) {
+						conn.HistoryEnabled = localProfile.HistoryEnabled()
+					}
+
+					if user.MayUse(account.FeatureBWVis) {
+						conn.BandwidthEnabled = true
+					}
+				}
 			}
+
 		} else {
 			conn.process = nil
 			if pkt.InfoOnly() {

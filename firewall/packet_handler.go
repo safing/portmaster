@@ -18,6 +18,7 @@ import (
 	"github.com/safing/portmaster/firewall/inspection"
 	"github.com/safing/portmaster/firewall/interception"
 	"github.com/safing/portmaster/netenv"
+	"github.com/safing/portmaster/netquery"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
@@ -616,7 +617,7 @@ func bandwidthUpdateHandler(ctx context.Context) error {
 			return nil
 		case bwUpdate := <-interception.BandwidthUpdates:
 			if bwUpdate != nil {
-				updateBandwidth(bwUpdate)
+				updateBandwidth(ctx, bwUpdate)
 				// DEBUG:
 				// log.Debugf("filter: bandwidth update: %s", bwUpdate)
 			} else {
@@ -626,7 +627,7 @@ func bandwidthUpdateHandler(ctx context.Context) error {
 	}
 }
 
-func updateBandwidth(bwUpdate *packet.BandwidthUpdate) {
+func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 	// Check if update makes sense.
 	if bwUpdate.RecvBytes == 0 && bwUpdate.SentBytes == 0 {
 		return
@@ -657,7 +658,18 @@ func updateBandwidth(bwUpdate *packet.BandwidthUpdate) {
 		log.Warningf("filter: unsupported bandwidth update method: %d", bwUpdate.Method)
 	}
 
-	// TODO: Send update.
+	if netquery.DefaultModule != nil && conn.BandwidthEnabled {
+		if err := netquery.DefaultModule.Store.UpdateBandwidth(
+			ctx,
+			conn.HistoryEnabled,
+			conn.Process().GetID(),
+			conn.ID,
+			&conn.RecvBytes,
+			&conn.SentBytes,
+		); err != nil {
+			log.Errorf("firewall: failed to persist bandwidth data: %s", err)
+		}
+	}
 }
 
 func statLogger(ctx context.Context) error {
