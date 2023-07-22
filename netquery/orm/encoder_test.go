@@ -119,7 +119,7 @@ func TestEncodeAsMap(t *testing.T) { //nolint:tparallel
 	for idx := range cases { //nolint:paralleltest
 		c := cases[idx]
 		t.Run(c.Desc, func(t *testing.T) {
-			res, err := ToParamMap(ctx, c.Input, "", DefaultEncodeConfig)
+			res, err := ToParamMap(ctx, c.Input, "", DefaultEncodeConfig, nil)
 			assert.NoError(t, err)
 			assert.Equal(t, c.Expected, res)
 		})

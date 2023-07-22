@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"sync/atomic"
+	"time"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
@@ -112,9 +113,11 @@ func ConnectionListenerWorker(ctx context.Context, packets chan packet.Packet) e
 			Src:      convertArrayToIPv4(event.Saddr, packet.IPVersion(event.IpVersion)),
 			Dst:      convertArrayToIPv4(event.Daddr, packet.IPVersion(event.IpVersion)),
 			PID:      int(event.Pid),
+			SeenAt:   time.Now(),
 		})
 		if isEventValid(event) {
-			log.Debugf("ebpf: received valid connect event: PID: %d Conn: %s", pkt.Info().PID, pkt)
+			// DEBUG:
+			// log.Debugf("ebpf: received valid connect event: PID: %d Conn: %s", pkt.Info().PID, pkt)
 			packets <- pkt
 		} else {
 			log.Warningf("ebpf: received invalid connect event: PID: %d Conn: %s", pkt.Info().PID, pkt)

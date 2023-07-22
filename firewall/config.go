@@ -23,11 +23,11 @@ var (
 	askTimeout               config.IntOption
 
 	CfgOptionPermanentVerdictsKey   = "filter/permanentVerdicts"
-	cfgOptionPermanentVerdictsOrder = 96
+	cfgOptionPermanentVerdictsOrder = 80
 	permanentVerdicts               config.BoolOption
 
 	CfgOptionDNSQueryInterceptionKey   = "filter/dnsQueryInterception"
-	cfgOptionDNSQueryInterceptionOrder = 97
+	cfgOptionDNSQueryInterceptionOrder = 81
 	dnsQueryInterception               config.BoolOption
 )
 

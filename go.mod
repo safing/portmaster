@@ -20,7 +20,7 @@ require (
 	github.com/safing/jess v0.3.1
 	github.com/safing/portbase v0.17.0
 	github.com/safing/portmaster-android/go v0.0.0-20230605085256-6abf4c495626
-	github.com/safing/spn v0.6.8
+	github.com/safing/spn v0.6.9
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.7.0
 	github.com/spkg/zipfs v0.7.1
@@ -28,6 +28,7 @@ require (
 	github.com/tannerryan/ring v1.1.2
 	github.com/tevino/abool v1.2.0
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
+	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	golang.org/x/net v0.12.0
 	golang.org/x/sync v0.3.0
 	golang.org/x/sys v0.10.0
@@ -86,7 +87,6 @@ require (
 	github.com/zalando/go-keyring v0.2.3 // indirect
 	go.etcd.io/bbolt v1.3.7 // indirect
 	golang.org/x/crypto v0.11.0 // indirect
-	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.11.0 // indirect

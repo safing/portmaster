@@ -143,7 +143,23 @@ func RunQuery(ctx context.Context, conn *sqlite.Conn, sql string, modifiers ...Q
 			currentField := reflect.New(valElemType)
 
 			if err := DecodeStmt(ctx, &args.Schema, stmt, currentField.Interface(), args.DecodeConfig); err != nil {
-				return err
+				resultDump := make(map[string]any)
+
+				for colIdx := 0; colIdx < stmt.ColumnCount(); colIdx++ {
+					name := stmt.ColumnName(colIdx)
+
+					switch stmt.ColumnType(colIdx) { //nolint:exhaustive // TODO: handle type BLOB?
+					case sqlite.TypeText:
+						resultDump[name] = stmt.ColumnText(colIdx)
+					case sqlite.TypeFloat:
+						resultDump[name] = stmt.ColumnFloat(colIdx)
+					case sqlite.TypeInteger:
+						resultDump[name] = stmt.ColumnInt(colIdx)
+					case sqlite.TypeNull:
+						resultDump[name] = "<null>"
+					}
+				}
+				return fmt.Errorf("%w: %+v", err, resultDump)
 			}
 
 			sliceVal = reflect.Append(sliceVal, reflect.Indirect(currentField))

@@ -4,10 +4,10 @@ import "fmt"
 
 // BandwidthUpdate holds an update to the seen bandwidth of a connection.
 type BandwidthUpdate struct {
-	ConnID    string
-	RecvBytes uint64
-	SentBytes uint64
-	Method    BandwidthUpdateMethod
+	ConnID        string
+	BytesReceived uint64
+	BytesSent     uint64
+	Method        BandwidthUpdateMethod
 }
 
 // BandwidthUpdateMethod defines how the bandwidth data of a bandwidth update should be interpreted.
@@ -20,7 +20,7 @@ const (
 )
 
 func (bu *BandwidthUpdate) String() string {
-	return fmt.Sprintf("%s: %dB recv | %dB sent [%s]", bu.ConnID, bu.RecvBytes, bu.SentBytes, bu.Method)
+	return fmt.Sprintf("%s: %dB recv | %dB sent [%s]", bu.ConnID, bu.BytesReceived, bu.BytesSent, bu.Method)
 }
 
 func (bum BandwidthUpdateMethod) String() string {

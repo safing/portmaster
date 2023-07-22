@@ -19,6 +19,8 @@ import (
 	"github.com/safing/portmaster/process"
 	_ "github.com/safing/portmaster/process/tags"
 	"github.com/safing/portmaster/resolver"
+	"github.com/safing/spn/access"
+	"github.com/safing/spn/access/account"
 	"github.com/safing/spn/navigator"
 )
 
@@ -173,8 +175,17 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 		StopTunnel() error
 	}
 
-	RecvBytes uint64
-	SentBytes uint64
+	// HistoryEnabled is set to true when the connection should be persisted
+	// in the history database.
+	HistoryEnabled bool
+	// BanwidthEnabled is set to true if connection bandwidth data should be persisted
+	// in netquery.
+	BandwidthEnabled bool
+
+	// BytesReceived holds the observed received bytes of the connection.
+	BytesReceived uint64
+	// BytesSent holds the observed sent bytes of the connection.
+	BytesSent uint64
 
 	// pkgQueue is used to serialize packet handling for a single
 	// connection and is served by the connections packetHandler.
@@ -326,6 +337,10 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	// Inherit internal status of profile.
 	if localProfile := proc.Profile().LocalProfile(); localProfile != nil {
 		dnsConn.Internal = localProfile.Internal
+
+		if err := dnsConn.updateFeatures(); err != nil {
+			log.Tracer(ctx).Warningf("network: failed to check for enabled features: %s", err)
+		}
 	}
 
 	// DNS Requests are saved by the nameserver depending on the result of the
@@ -364,6 +379,10 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 	// Inherit internal status of profile.
 	if localProfile := remoteHost.Profile().LocalProfile(); localProfile != nil {
 		dnsConn.Internal = localProfile.Internal
+
+		if err := dnsConn.updateFeatures(); err != nil {
+			log.Tracer(ctx).Warningf("network: failed to check for enabled features: %s", err)
+		}
 	}
 
 	// DNS Requests are saved by the nameserver depending on the result of the
@@ -373,6 +392,8 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 	dnsConn.UpdateMeta()
 	return dnsConn, nil
 }
+
+var tooOldTimestamp = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
 
 // NewIncompleteConnection creates a new incomplete connection with only minimal information.
 func NewIncompleteConnection(pkt packet.Packet) *Connection {
@@ -388,6 +409,12 @@ func NewIncompleteConnection(pkt packet.Packet) *Connection {
 		Started:      info.SeenAt.Unix(),
 		PID:          info.PID,
 		dataComplete: abool.NewBool(false),
+	}
+
+	// Bullshit check Started timestamp.
+	if conn.Started < tooOldTimestamp {
+		// Fix timestamp, use current time as fallback.
+		conn.Started = time.Now().Unix()
 	}
 
 	// Save connection to internal state in order to mitigate creation of
@@ -420,7 +447,12 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 			// Inherit internal status of profile.
 			if localProfile := conn.process.Profile().LocalProfile(); localProfile != nil {
 				conn.Internal = localProfile.Internal
+
+				if err := conn.updateFeatures(); err != nil {
+					log.Tracer(pkt.Ctx()).Warningf("network: failed to check for enabled features: %s", err)
+				}
 			}
+
 		} else {
 			conn.process = nil
 			if pkt.InfoOnly() {
@@ -531,6 +563,31 @@ func GetAllConnections() []*Connection {
 func (conn *Connection) SetLocalIP(ip net.IP) {
 	conn.LocalIP = ip
 	conn.LocalIPScope = netutils.GetIPScope(ip)
+}
+
+// updateFeatures checks which connection related features may be used and sets
+// the flags accordingly.
+func (conn *Connection) updateFeatures() error {
+	// Get user.
+	user, err := access.GetUser()
+	if err != nil {
+		return err
+	}
+
+	// Check if history may be used and if it is enabled for this application.
+	if user.MayUse(account.FeatureHistory) {
+		lProfile := conn.Process().Profile()
+		if lProfile != nil {
+			conn.HistoryEnabled = lProfile.HistoryEnabled()
+		}
+	}
+
+	// Check if bandwidth visibility may be used.
+	if user.MayUse(account.FeatureBWVis) {
+		conn.BandwidthEnabled = true
+	}
+
+	return nil
 }
 
 // AcceptWithContext accepts the connection.

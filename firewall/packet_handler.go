@@ -18,6 +18,7 @@ import (
 	"github.com/safing/portmaster/firewall/inspection"
 	"github.com/safing/portmaster/firewall/interception"
 	"github.com/safing/portmaster/netenv"
+	"github.com/safing/portmaster/netquery"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
@@ -510,7 +511,7 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 		atomic.AddUint64(packetsFailed, 1)
 		err = pkt.Drop()
 	case network.VerdictUndecided, network.VerdictUndeterminable:
-		log.Warningf("filter: tried to apply verdict %s to pkt %s: dropping instead", verdict, pkt)
+		log.Tracer(pkt.Ctx()).Warningf("filter: tried to apply verdict %s to pkt %s: dropping instead", verdict, pkt)
 		fallthrough
 	default:
 		atomic.AddUint64(packetsDropped, 1)
@@ -518,7 +519,7 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	}
 
 	if err != nil {
-		log.Warningf("filter: failed to apply verdict to pkt %s: %s", pkt, err)
+		log.Tracer(pkt.Ctx()).Warningf("filter: failed to apply verdict to pkt %s: %s", pkt, err)
 	}
 }
 
@@ -616,7 +617,7 @@ func bandwidthUpdateHandler(ctx context.Context) error {
 			return nil
 		case bwUpdate := <-interception.BandwidthUpdates:
 			if bwUpdate != nil {
-				updateBandwidth(bwUpdate)
+				updateBandwidth(ctx, bwUpdate)
 				// DEBUG:
 				// log.Debugf("filter: bandwidth update: %s", bwUpdate)
 			} else {
@@ -626,9 +627,9 @@ func bandwidthUpdateHandler(ctx context.Context) error {
 	}
 }
 
-func updateBandwidth(bwUpdate *packet.BandwidthUpdate) {
+func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 	// Check if update makes sense.
-	if bwUpdate.RecvBytes == 0 && bwUpdate.SentBytes == 0 {
+	if bwUpdate.BytesReceived == 0 && bwUpdate.BytesSent == 0 {
 		return
 	}
 
@@ -648,16 +649,29 @@ func updateBandwidth(bwUpdate *packet.BandwidthUpdate) {
 	// Update stats according to method.
 	switch bwUpdate.Method {
 	case packet.Absolute:
-		conn.RecvBytes = bwUpdate.RecvBytes
-		conn.SentBytes = bwUpdate.SentBytes
+		conn.BytesReceived = bwUpdate.BytesReceived
+		conn.BytesSent = bwUpdate.BytesSent
 	case packet.Additive:
-		conn.RecvBytes += bwUpdate.RecvBytes
-		conn.SentBytes += bwUpdate.SentBytes
+		conn.BytesReceived += bwUpdate.BytesReceived
+		conn.BytesSent += bwUpdate.BytesSent
 	default:
 		log.Warningf("filter: unsupported bandwidth update method: %d", bwUpdate.Method)
+		return
 	}
 
-	// TODO: Send update.
+	// Update bandwidth in the netquery module.
+	if netquery.DefaultModule != nil && conn.BandwidthEnabled {
+		if err := netquery.DefaultModule.Store.UpdateBandwidth(
+			ctx,
+			conn.HistoryEnabled,
+			conn.Process().GetID(),
+			conn.ID,
+			conn.BytesReceived,
+			conn.BytesSent,
+		); err != nil {
+			log.Errorf("filter: failed to persist bandwidth data: %s", err)
+		}
+	}
 }
 
 func statLogger(ctx context.Context) error {

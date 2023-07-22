@@ -55,7 +55,7 @@ func reportBandwidth(ctx context.Context, bandwidthUpdates chan *packet.Bandwidt
 	}
 
 	// Report all statistics.
-	for _, stat := range stats {
+	for i, stat := range stats {
 		connID := packet.CreateConnectionID(
 			packet.IPProtocol(stat.protocol),
 			convertArrayToIP(stat.localIP, stat.ipV6 == 1), stat.localPort,
@@ -63,14 +63,17 @@ func reportBandwidth(ctx context.Context, bandwidthUpdates chan *packet.Bandwidt
 			false,
 		)
 		update := &packet.BandwidthUpdate{
-			ConnID:    connID,
-			RecvBytes: stat.receivedBytes,
-			SentBytes: stat.transmittedBytes,
-			Method:    packet.Additive,
+			ConnID:        connID,
+			BytesReceived: stat.receivedBytes,
+			BytesSent:     stat.transmittedBytes,
+			Method:        packet.Additive,
 		}
 		select {
 		case bandwidthUpdates <- update:
 		case <-ctx.Done():
+			return nil
+		default:
+			log.Warningf("kext: bandwidth update queue is full, skipping rest of batch (%d entries)", len(stats)-i)
 			return nil
 		}
 	}

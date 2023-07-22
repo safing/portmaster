@@ -14,6 +14,15 @@ import (
 	"github.com/safing/portmaster/netquery/orm"
 )
 
+// DatabaseName is a database name constant.
+type DatabaseName string
+
+// Databases.
+const (
+	LiveDatabase    = DatabaseName("main")
+	HistoryDatabase = DatabaseName("history")
+)
+
 // Collection of Query and Matcher types.
 // NOTE: whenever adding support for new operators make sure
 // to update UnmarshalJSON as well.
@@ -48,11 +57,19 @@ type (
 		Distinct  bool   `json:"distinct"`
 	}
 
+	Min struct {
+		Condition *Query `json:"condition,omitempty"`
+		Field     string `json:"field"`
+		As        string `json:"as"`
+		Distinct  bool   `json:"distinct"`
+	}
+
 	Select struct {
 		Field    string  `json:"field"`
 		Count    *Count  `json:"$count,omitempty"`
 		Sum      *Sum    `json:"$sum,omitempty"`
-		Distinct *string `json:"$distinct"`
+		Min      *Min    `json:"$min,omitempty"`
+		Distinct *string `json:"$distinct,omitempty"`
 	}
 
 	Selects []Select
@@ -68,6 +85,9 @@ type (
 		OrderBy    OrderBys    `json:"orderBy"`
 		GroupBy    []string    `json:"groupBy"`
 		TextSearch *TextSearch `json:"textSearch"`
+		// A list of databases to query. If left empty,
+		// both, the LiveDatabase and the HistoryDatabase are queried
+		Databases []DatabaseName `json:"databases"`
 
 		Pagination
 
@@ -457,6 +477,7 @@ func (sel *Select) UnmarshalJSON(blob []byte) error {
 			Field    string  `json:"field"`
 			Count    *Count  `json:"$count"`
 			Sum      *Sum    `json:"$sum"`
+			Min      *Min    `json:"$min"`
 			Distinct *string `json:"$distinct"`
 		}
 
@@ -468,10 +489,21 @@ func (sel *Select) UnmarshalJSON(blob []byte) error {
 		sel.Field = res.Field
 		sel.Distinct = res.Distinct
 		sel.Sum = res.Sum
+		sel.Min = res.Min
 
 		if sel.Count != nil && sel.Count.As != "" {
 			if !charOnlyRegexp.MatchString(sel.Count.As) {
 				return fmt.Errorf("invalid characters in $count.as, value must match [a-zA-Z]+")
+			}
+		}
+		if sel.Sum != nil && sel.Sum.As != "" {
+			if !charOnlyRegexp.MatchString(sel.Sum.As) {
+				return fmt.Errorf("invalid characters in $sum.as, value must match [a-zA-Z]+")
+			}
+		}
+		if sel.Min != nil && sel.Min.As != "" {
+			if !charOnlyRegexp.MatchString(sel.Min.As) {
+				return fmt.Errorf("invalid characters in $min.as, value must match [a-zA-Z]+")
 			}
 		}
 

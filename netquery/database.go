@@ -2,18 +2,23 @@ package netquery
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"path"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/jackc/puddle/v2"
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 
+	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netquery/orm"
 	"github.com/safing/portmaster/network"
@@ -22,7 +27,7 @@ import (
 )
 
 // InMemory is the "file path" to open a new in-memory database.
-const InMemory = "file:inmem.db"
+const InMemory = "file:inmem.db?mode=memory"
 
 // Available connection types as their string representation.
 const (
@@ -46,6 +51,7 @@ type (
 		Schema *orm.TableSchema
 
 		readConnPool *puddle.Pool[*sqlite.Conn]
+		historyPath  string
 
 		l         sync.Mutex
 		writeConn *sqlite.Conn
@@ -82,7 +88,9 @@ type (
 		Latitude        float64           `sqlite:"latitude"`
 		Longitude       float64           `sqlite:"longitude"`
 		Scope           netutils.IPScope  `sqlite:"scope"`
-		Verdict         network.Verdict   `sqlite:"verdict"`
+		WorstVerdict    network.Verdict   `sqlite:"worst_verdict"`
+		ActiveVerdict   network.Verdict   `sqlite:"verdict"`
+		FirewallVerdict network.Verdict   `sqlite:"firewall_verdict"`
 		Started         time.Time         `sqlite:"started,text,time"`
 		Ended           *time.Time        `sqlite:"ended,text,time"`
 		Tunneled        bool              `sqlite:"tunneled"`
@@ -93,6 +101,8 @@ type (
 		Allowed         *bool             `sqlite:"allowed"`
 		ProfileRevision int               `sqlite:"profile_revision"`
 		ExitNode        *string           `sqlite:"exit_node"`
+		BytesReceived   uint64            `sqlite:"bytes_received,default=0"`
+		BytesSent       uint64            `sqlite:"bytes_sent,default=0"`
 
 		// TODO(ppacher): support "NOT" in search query to get rid of the following helper fields
 		Active bool `sqlite:"active"` // could use "ended IS NOT NULL" or "ended IS NULL"
@@ -102,24 +112,33 @@ type (
 	}
 )
 
-// New opens a new in-memory database named path.
+// New opens a new in-memory database named path and attaches a persistent history database.
 //
 // The returned Database used connection pooling for read-only connections
 // (see Execute). To perform database writes use either Save() or ExecuteWrite().
 // Note that write connections are serialized by the Database object before being
 // handed over to SQLite.
-func New(path string) (*Database, error) {
+func New(dbPath string) (*Database, error) {
+	historyParentDir := dataroot.Root().ChildDir("databases", 0o700)
+	if err := historyParentDir.Ensure(); err != nil {
+		return nil, fmt.Errorf("failed to ensure database directory exists: %w", err)
+	}
+
+	historyPath := "file://" + path.Join(historyParentDir.Path, "history.db")
+
 	constructor := func(ctx context.Context) (*sqlite.Conn, error) {
 		c, err := sqlite.OpenConn(
-			path,
+			dbPath,
 			sqlite.OpenReadOnly,
-			sqlite.OpenNoMutex, //nolint:staticcheck // We like to be explicit.
 			sqlite.OpenSharedCache,
-			sqlite.OpenMemory,
 			sqlite.OpenURI,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open read-only sqlite connection at %s: %w", path, err)
+			return nil, fmt.Errorf("failed to open read-only sqlite connection at %s: %w", dbPath, err)
+		}
+
+		if err := sqlitex.ExecuteTransient(c, "ATTACH DATABASE '"+historyPath+"?mode=ro' AS history", nil); err != nil {
+			return nil, fmt.Errorf("failed to attach history database: %w", err)
 		}
 
 		return c, nil
@@ -146,23 +165,22 @@ func New(path string) (*Database, error) {
 	}
 
 	writeConn, err := sqlite.OpenConn(
-		path,
+		dbPath,
 		sqlite.OpenCreate,
 		sqlite.OpenReadWrite,
-		sqlite.OpenNoMutex, //nolint:staticcheck // We like to be explicit.
 		sqlite.OpenWAL,
 		sqlite.OpenSharedCache,
-		sqlite.OpenMemory,
 		sqlite.OpenURI,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open sqlite at %s: %w", path, err)
+		return nil, fmt.Errorf("failed to open sqlite at %s: %w", dbPath, err)
 	}
 
 	return &Database{
 		readConnPool: pool,
 		Schema:       schema,
 		writeConn:    writeConn,
+		historyPath:  historyPath,
 	}, nil
 }
 
@@ -189,28 +207,42 @@ func NewInMemory() (*Database, error) {
 // any data-migrations. Once the history module is implemented this should
 // become/use a full migration system -- use zombiezen.com/go/sqlite/sqlitemigration.
 func (db *Database) ApplyMigrations() error {
-	// get the create-table SQL statement from the inferred schema
-	sql := db.Schema.CreateStatement(true)
-
+	log.Errorf("applying migrations ...")
 	db.l.Lock()
 	defer db.l.Unlock()
 
-	// execute the SQL
-	if err := sqlitex.ExecuteTransient(db.writeConn, sql, nil); err != nil {
-		return fmt.Errorf("failed to create schema: %w", err)
+	if err := sqlitex.ExecuteTransient(db.writeConn, "ATTACH DATABASE '"+db.historyPath+"?mode=rwc' AS 'history';", nil); err != nil {
+		return fmt.Errorf("failed to attach history database: %w", err)
 	}
 
-	// create a few indexes
-	indexes := []string{
-		`CREATE INDEX profile_id_index ON %s (profile)`,
-		`CREATE INDEX started_time_index ON %s (strftime('%%s', started)+0)`,
-		`CREATE INDEX started_ended_time_index ON %s (strftime('%%s', started)+0, strftime('%%s', ended)+0) WHERE ended IS NOT NULL`,
-	}
-	for _, idx := range indexes {
-		stmt := fmt.Sprintf(idx, db.Schema.Name)
+	dbNames := []string{"main", "history"}
+	for _, dbName := range dbNames {
+		// get the create-table SQL statement from the inferred schema
+		sql := db.Schema.CreateStatement(dbName, true)
+		log.Debugf("creating table schema for database %q", dbName)
 
-		if err := sqlitex.ExecuteTransient(db.writeConn, stmt, nil); err != nil {
-			return fmt.Errorf("failed to create index: %q: %w", idx, err)
+		// execute the SQL
+		if err := sqlitex.ExecuteTransient(db.writeConn, sql, nil); err != nil {
+			return fmt.Errorf("failed to create schema on database %q: %w", dbName, err)
+		}
+
+		// create a few indexes
+		indexes := []string{
+			`CREATE INDEX IF NOT EXISTS %sprofile_id_index ON %s (profile)`,
+			`CREATE INDEX IF NOT EXISTS %sstarted_time_index ON %s (strftime('%%s', started)+0)`,
+			`CREATE INDEX IF NOT EXISTS %sstarted_ended_time_index ON %s (strftime('%%s', started)+0, strftime('%%s', ended)+0) WHERE ended IS NOT NULL`,
+		}
+		for _, idx := range indexes {
+			name := ""
+			if dbName != "" {
+				name = dbName + "."
+			}
+
+			stmt := fmt.Sprintf(idx, name, db.Schema.Name)
+
+			if err := sqlitex.ExecuteTransient(db.writeConn, stmt, nil); err != nil {
+				return fmt.Errorf("failed to create index on database %q: %q: %w", dbName, idx, err)
+			}
 		}
 	}
 
@@ -254,7 +286,7 @@ func (db *Database) CountRows(ctx context.Context) (int, error) {
 		Count int `sqlite:"count"`
 	}
 
-	if err := db.Execute(ctx, "SELECT COUNT(*) AS count FROM connections", orm.WithResult(&result)); err != nil {
+	if err := db.Execute(ctx, "SELECT COUNT(*) AS count FROM (SELECT * FROM main.connections UNION SELECT * from history.connections)", orm.WithResult(&result)); err != nil {
 		return 0, fmt.Errorf("failed to perform query: %w", err)
 	}
 
@@ -265,7 +297,7 @@ func (db *Database) CountRows(ctx context.Context) (int, error) {
 	return result[0].Count, nil
 }
 
-// Cleanup removes all connections that have ended before threshold.
+// Cleanup removes all connections that have ended before threshold from the live database.
 //
 // NOTE(ppacher): there is no easy way to get the number of removed
 // rows other than counting them in a first step. Though, that's
@@ -273,7 +305,7 @@ func (db *Database) CountRows(ctx context.Context) (int, error) {
 func (db *Database) Cleanup(ctx context.Context, threshold time.Time) (int, error) {
 	where := `WHERE ended IS NOT NULL
 			AND datetime(ended) < datetime(:threshold)`
-	sql := "DELETE FROM connections " + where + ";"
+	sql := "DELETE FROM main.connections " + where + ";"
 
 	args := orm.WithNamedArgs(map[string]interface{}{
 		":threshold": threshold.UTC().Format(orm.SqliteTimeFormat),
@@ -303,6 +335,21 @@ func (db *Database) Cleanup(ctx context.Context, threshold time.Time) (int, erro
 	return result[0].Count, nil
 }
 
+// RemoveAllHistoryData removes all connections from the history database.
+func (db *Database) RemoveAllHistoryData(ctx context.Context) error {
+	query := fmt.Sprintf("DELETE FROM %s.connections", HistoryDatabase)
+	return db.ExecuteWrite(ctx, query)
+}
+
+// RemoveHistoryForProfile removes all connections from the history database
+// for a given profile ID (source/id).
+func (db *Database) RemoveHistoryForProfile(ctx context.Context, profileID string) error {
+	query := fmt.Sprintf("DELETE FROM %s.connections WHERE profile = :profile", HistoryDatabase)
+	return db.ExecuteWrite(ctx, query, orm.WithNamedArgs(map[string]any{
+		":profile": profileID,
+	}))
+}
+
 // dumpTo is a simple helper method that dumps all rows stored in the SQLite database
 // as JSON to w.
 // Any error aborts dumping rows and is returned.
@@ -330,13 +377,76 @@ func (db *Database) dumpTo(ctx context.Context, w io.Writer) error { //nolint:un
 	return enc.Encode(conns)
 }
 
+// MarkAllHistoryConnectionsEnded marks all connections in the history database as ended.
+func (db *Database) MarkAllHistoryConnectionsEnded(ctx context.Context) error {
+	query := fmt.Sprintf("UPDATE %s.connections SET active = FALSE, ended = :ended WHERE active = TRUE", HistoryDatabase)
+
+	if err := db.ExecuteWrite(ctx, query, orm.WithNamedArgs(map[string]any{
+		":ended": time.Now().Format(orm.SqliteTimeFormat),
+	})); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UpdateBandwidth updates bandwidth data for the connection and optionally also writes
+// the bandwidth data to the history database.
+func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, processKey string, connID string, bytesReceived uint64, bytesSent uint64) error {
+	data := connID + "-" + processKey
+	hash := sha256.Sum256([]byte(data))
+	dbConnID := hex.EncodeToString(hash[:])
+
+	params := map[string]any{
+		":id": dbConnID,
+	}
+
+	parts := []string{}
+	if bytesReceived != 0 {
+		parts = append(parts, "bytes_received = :bytes_received")
+		params[":bytes_received"] = bytesReceived
+	}
+
+	if bytesSent != 0 {
+		parts = append(parts, "bytes_sent = :bytes_sent")
+		params[":bytes_sent"] = bytesSent
+	}
+
+	updateSet := strings.Join(parts, ", ")
+
+	updateStmts := []string{
+		fmt.Sprintf(`UPDATE %s.connections SET %s WHERE id = :id`, LiveDatabase, updateSet),
+	}
+
+	if enableHistory {
+		updateStmts = append(updateStmts,
+			fmt.Sprintf(`UPDATE %s.connections SET %s WHERE id = :id`, HistoryDatabase, updateSet),
+		)
+	}
+
+	merr := new(multierror.Error)
+	for _, stmt := range updateStmts {
+		if err := db.ExecuteWrite(ctx, stmt, orm.WithNamedArgs(params)); err != nil {
+			merr.Errors = append(merr.Errors, err)
+		}
+	}
+
+	return merr.ErrorOrNil()
+}
+
 // Save inserts the connection conn into the SQLite database. If conn
 // already exists the table row is updated instead.
 //
 // Save uses the database write connection instead of relying on the
 // connection pool.
-func (db *Database) Save(ctx context.Context, conn Conn) error {
-	connMap, err := orm.ToParamMap(ctx, conn, "", orm.DefaultEncodeConfig)
+func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) error {
+	// convert the connection to a param map where each key is already translated
+	// to the sql column name. We also skip bytes_received and bytes_sent since those
+	// will be updated independently from the connection object.
+	connMap, err := orm.ToParamMap(ctx, conn, "", orm.DefaultEncodeConfig, []string{
+		"bytes_received",
+		"bytes_sent",
+	})
 	if err != nil {
 		return fmt.Errorf("failed to encode connection for SQL: %w", err)
 	}
@@ -367,26 +477,35 @@ func (db *Database) Save(ctx context.Context, conn Conn) error {
 
 	// TODO(ppacher): make sure this one can be cached to speed up inserting
 	// and save some CPU cycles for the user
-	sql := fmt.Sprintf(
-		`INSERT INTO connections (%s)
-			VALUES(%s)
-			ON CONFLICT(id) DO UPDATE SET
-			%s
-		`,
-		strings.Join(columns, ", "),
-		strings.Join(placeholders, ", "),
-		strings.Join(updateSets, ", "),
-	)
+	dbNames := []DatabaseName{LiveDatabase}
 
-	if err := sqlitex.Execute(db.writeConn, sql, &sqlitex.ExecOptions{
-		Named: values,
-		ResultFunc: func(stmt *sqlite.Stmt) error {
-			log.Errorf("netquery: got result statement with %d columns", stmt.ColumnCount())
-			return nil
-		},
-	}); err != nil {
-		log.Errorf("netquery: failed to execute:\n\t%q\n\treturned error was: %s\n\tparameters: %+v", sql, err, values)
-		return err
+	if enableHistory {
+		dbNames = append(dbNames, HistoryDatabase)
+	}
+
+	for _, dbName := range dbNames {
+		sql := fmt.Sprintf(
+			`INSERT INTO %s.connections (%s)
+				VALUES(%s)
+				ON CONFLICT(id) DO UPDATE SET
+				%s
+			`,
+			dbName,
+			strings.Join(columns, ", "),
+			strings.Join(placeholders, ", "),
+			strings.Join(updateSets, ", "),
+		)
+
+		if err := sqlitex.Execute(db.writeConn, sql, &sqlitex.ExecOptions{
+			Named: values,
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				log.Errorf("netquery: got result statement with %d columns", stmt.ColumnCount())
+				return nil
+			},
+		}); err != nil {
+			log.Errorf("netquery: failed to execute:\n\t%q\n\treturned error was: %s\n\tparameters: %+v", sql, err, values)
+			return err
+		}
 	}
 
 	return nil

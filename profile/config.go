@@ -6,6 +6,7 @@ import (
 	"github.com/safing/portbase/config"
 	"github.com/safing/portmaster/profile/endpoints"
 	"github.com/safing/portmaster/status"
+	"github.com/safing/spn/access/account"
 	"github.com/safing/spn/navigator"
 )
 
@@ -103,7 +104,13 @@ var (
 	cfgOptionDisableAutoPermit      config.IntOption // security level option
 	cfgOptionDisableAutoPermitOrder = 65
 
-	// Setting "Permanent Verdicts" at order 96.
+	// Setting "Permanent Verdicts" at order 80.
+
+	// Network History.
+
+	CfgOptionEnableHistoryKey   = "history/enable"
+	cfgOptionEnableHistory      config.BoolOption
+	cfgOptionEnableHistoryOrder = 96
 
 	// Setting "Enable SPN" at order 128.
 
@@ -238,6 +245,27 @@ func registerConfiguration() error { //nolint:maintidx
 	}
 	cfgOptionDisableAutoPermit = config.Concurrent.GetAsInt(CfgOptionDisableAutoPermitKey, int64(status.SecurityLevelsAll))
 	cfgIntOptions[CfgOptionDisableAutoPermitKey] = cfgOptionDisableAutoPermit
+
+	// Enable History
+	err = config.Register(&config.Option{
+		Name:           "Enable Connection History",
+		Key:            CfgOptionEnableHistoryKey,
+		Description:    "Whether or not to save connections to the history database",
+		OptType:        config.OptTypeBool,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		DefaultValue:   false,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionEnableHistoryOrder,
+			config.CategoryAnnotation:     "History",
+			config.RequiresFeatureID:      account.FeatureHistory,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionEnableHistory = config.Concurrent.GetAsBool(CfgOptionEnableHistoryKey, false)
+	cfgBoolOptions[CfgOptionEnableHistoryKey] = cfgOptionEnableHistory
 
 	rulesHelp := strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match:
 

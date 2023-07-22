@@ -25,7 +25,22 @@ type (
 		// insert or an update.
 		// The ID of Conn is unique and can be trusted to never collide with other
 		// connections of the save device.
-		Save(context.Context, Conn) error
+		Save(context.Context, Conn, bool) error
+
+		// MarkAllHistoryConnectionsEnded marks all active connections in the history
+		// database as ended NOW.
+		MarkAllHistoryConnectionsEnded(context.Context) error
+
+		// RemoveAllHistoryData removes all connections from the history database.
+		RemoveAllHistoryData(context.Context) error
+
+		// RemoveHistoryForProfile removes all connections from the history database.
+		// for a given profile ID (source/id)
+		RemoveHistoryForProfile(context.Context, string) error
+
+		// UpdateBandwidth updates bandwidth data for the connection and optionally also writes
+		// the bandwidth data to the history database.
+		UpdateBandwidth(ctx context.Context, enableHistory bool, processKey string, connID string, bytesReceived uint64, bytesSent uint64) error
 	}
 
 	// Manager handles new and updated network.Connections feeds and persists them
@@ -98,9 +113,10 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 				continue
 			}
 
-			log.Tracef("netquery: updating connection %s", conn.ID)
+			// DEBUG:
+			// log.Tracef("netquery: updating connection %s", conn.ID)
 
-			if err := mng.store.Save(ctx, *model); err != nil {
+			if err := mng.store.Save(ctx, *model, conn.HistoryEnabled); err != nil {
 				log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
 
 				continue
@@ -158,7 +174,9 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		IPProtocol:      conn.IPProtocol,
 		LocalIP:         conn.LocalIP.String(),
 		LocalPort:       conn.LocalPort,
-		Verdict:         conn.Verdict.Firewall, // TODO: Expose both Worst and Firewall verdicts.
+		FirewallVerdict: conn.Verdict.Firewall,
+		ActiveVerdict:   conn.Verdict.Active,
+		WorstVerdict:    conn.Verdict.Worst,
 		Started:         time.Unix(conn.Started, 0),
 		Tunneled:        conn.Tunneled,
 		Encrypted:       conn.Encrypted,
@@ -250,7 +268,7 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 }
 
 func genConnID(conn *network.Connection) string {
-	data := conn.ID + "-" + time.Unix(conn.Started, 0).String()
+	data := conn.ID + "-" + conn.Process().GetID()
 	hash := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(hash[:])
 }

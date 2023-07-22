@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"zombiezen.com/go/sqlite"
+
+	"github.com/safing/portbase/log"
 )
 
 var errSkipStructField = errors.New("struct field should be skipped")
@@ -25,6 +27,7 @@ var (
 	TagTypePrefixVarchar = "varchar"
 	TagTypeBlob          = "blob"
 	TagTypeFloat         = "float"
+	TagTypePrefixDefault = "default="
 )
 
 var sqlTypeMap = map[sqlite.ColumnType]string{
@@ -52,6 +55,7 @@ type (
 		AutoIncrement bool
 		UnixNano      bool
 		IsTime        bool
+		Default       any
 	}
 )
 
@@ -66,12 +70,17 @@ func (ts TableSchema) GetColumnDef(name string) *ColumnDef {
 }
 
 // CreateStatement build the CREATE SQL statement for the table.
-func (ts TableSchema) CreateStatement(ifNotExists bool) string {
+func (ts TableSchema) CreateStatement(databaseName string, ifNotExists bool) string {
 	sql := "CREATE TABLE"
 	if ifNotExists {
 		sql += " IF NOT EXISTS"
 	}
-	sql += " " + ts.Name + " ( "
+	name := ts.Name
+	if databaseName != "" {
+		name = databaseName + "." + ts.Name
+	}
+
+	sql += " " + name + " ( "
 
 	for idx, col := range ts.Columns {
 		sql += col.AsSQL()
@@ -99,6 +108,21 @@ func (def ColumnDef) AsSQL() string {
 	}
 	if def.AutoIncrement {
 		sql += " AUTOINCREMENT"
+	}
+	if def.Default != nil {
+		sql += " DEFAULT "
+		switch def.Type { //nolint:exhaustive // TODO: handle types BLOB, NULL?
+		case sqlite.TypeFloat:
+			sql += strconv.FormatFloat(def.Default.(float64), 'b', 0, 64) //nolint:forcetypeassert
+		case sqlite.TypeInteger:
+			sql += strconv.FormatInt(def.Default.(int64), 10) //nolint:forcetypeassert
+		case sqlite.TypeText:
+			sql += fmt.Sprintf("%q", def.Default.(string)) //nolint:forcetypeassert
+		default:
+			log.Errorf("unsupported default value: %q %q", def.Type, def.Default)
+			sql = strings.TrimSuffix(sql, " DEFAULT ")
+		}
+		sql += " "
 	}
 	if !def.Nullable {
 		sql += " NOT NULL"
@@ -155,7 +179,7 @@ func getColumnDef(fieldType reflect.StructField) (*ColumnDef, error) {
 	kind := normalizeKind(ft.Kind())
 
 	switch kind { //nolint:exhaustive
-	case reflect.Int:
+	case reflect.Int, reflect.Uint:
 		def.Type = sqlite.TypeInteger
 
 	case reflect.Float64:
@@ -230,6 +254,30 @@ func applyStructFieldTag(fieldType reflect.StructField, def *ColumnDef) error {
 
 					def.Type = sqlite.TypeText
 					def.Length = int(length)
+				}
+
+				if strings.HasPrefix(k, TagTypePrefixDefault) {
+					defaultValue := strings.TrimPrefix(k, TagTypePrefixDefault)
+					switch def.Type { //nolint:exhaustive
+					case sqlite.TypeFloat:
+						fv, err := strconv.ParseFloat(defaultValue, 64)
+						if err != nil {
+							return fmt.Errorf("failed to parse default value as float %q: %w", defaultValue, err)
+						}
+						def.Default = fv
+					case sqlite.TypeInteger:
+						fv, err := strconv.ParseInt(defaultValue, 10, 0)
+						if err != nil {
+							return fmt.Errorf("failed to parse default value as int %q: %w", defaultValue, err)
+						}
+						def.Default = fv
+					case sqlite.TypeText:
+						def.Default = defaultValue
+					case sqlite.TypeBlob:
+						return fmt.Errorf("default values for TypeBlob not yet supported")
+					default:
+						return fmt.Errorf("failed to apply default value for unknown sqlite column type %s", def.Type)
+					}
 				}
 
 			}

@@ -53,3 +53,5 @@ _testmain.go
 
 # Custom dev scripts
 win_dev_*
+go.work
+go.work.sum
