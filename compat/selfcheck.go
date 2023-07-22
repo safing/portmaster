@@ -28,12 +28,12 @@ var (
 	systemIntegrationCheckDialNet      = fmt.Sprintf("ip4:%d", uint8(SystemIntegrationCheckProtocol))
 	systemIntegrationCheckDialIP       = SystemIntegrationCheckDstIP.String()
 	systemIntegrationCheckPackets      = make(chan packet.Packet, 1)
-	systemIntegrationCheckWaitDuration = 20 * time.Second
+	systemIntegrationCheckWaitDuration = 40 * time.Second
 
 	// DNSCheckInternalDomainScope is the domain scope to use for dns checks.
 	DNSCheckInternalDomainScope = ".self-check." + resolver.InternalSpecialUseDomain
 	dnsCheckReceivedDomain      = make(chan string, 1)
-	dnsCheckWaitDuration        = 20 * time.Second
+	dnsCheckWaitDuration        = 40 * time.Second
 	dnsCheckAnswerLock          sync.Mutex
 	dnsCheckAnswer              net.IP
 )
