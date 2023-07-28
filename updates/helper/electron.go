@@ -51,7 +51,7 @@ func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 
 		return fmt.Errorf("failed to chmod: %w", err)
 	}
-	log.Infof("updates: fixed SUID permission for chrome-sandbox")
+	log.Debugf("updates: fixed SUID permission for chrome-sandbox")
 
 	return nil
 }

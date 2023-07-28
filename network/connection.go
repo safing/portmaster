@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -338,7 +339,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	if localProfile := proc.Profile().LocalProfile(); localProfile != nil {
 		dnsConn.Internal = localProfile.Internal
 
-		if err := dnsConn.updateFeatures(); err != nil {
+		if err := dnsConn.updateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
 			log.Tracer(ctx).Warningf("network: failed to check for enabled features: %s", err)
 		}
 	}
@@ -380,7 +381,7 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 	if localProfile := remoteHost.Profile().LocalProfile(); localProfile != nil {
 		dnsConn.Internal = localProfile.Internal
 
-		if err := dnsConn.updateFeatures(); err != nil {
+		if err := dnsConn.updateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
 			log.Tracer(ctx).Warningf("network: failed to check for enabled features: %s", err)
 		}
 	}
@@ -448,7 +449,7 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 			if localProfile := conn.process.Profile().LocalProfile(); localProfile != nil {
 				conn.Internal = localProfile.Internal
 
-				if err := conn.updateFeatures(); err != nil {
+				if err := conn.updateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
 					log.Tracer(pkt.Ctx()).Warningf("network: failed to check for enabled features: %s", err)
 				}
 			}

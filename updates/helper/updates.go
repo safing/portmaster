@@ -44,7 +44,7 @@ func MandatoryUpdates() (identifiers []string) {
 
 	// Stop here if we only want intel data.
 	if intelOnly.IsSet() {
-		return
+		return identifiers
 	}
 
 	// Binaries
