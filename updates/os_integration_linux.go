@@ -167,7 +167,7 @@ func upgradeSystemIntegrationFileContents(
 		return fmt.Errorf("failed to finalize update of %s at %s: %w", name, filePath, err)
 	}
 
-	log.Warningf("updates: %s at %s was upgraded to %s", name, filePath, currentHexSum)
+	log.Warningf("updates: %s at %s was upgraded to %s - a reboot may be required", name, filePath, currentHexSum)
 	return nil
 }
 
