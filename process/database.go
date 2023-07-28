@@ -111,7 +111,8 @@ func CleanProcessStorage(activePIDs map[int]struct{}) {
 		// The PID of a process does not change.
 
 		// Check if this is a special process.
-		if p.Pid == UnidentifiedProcessID || p.Pid == SystemProcessID {
+		switch p.Pid {
+		case UnidentifiedProcessID, UnsolicitedProcessID, SystemProcessID:
 			p.profile.MarkStillActive()
 			continue
 		}

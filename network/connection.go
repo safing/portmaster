@@ -656,14 +656,21 @@ func (conn *Connection) Failed(reason, reasonOptionKey string) {
 func (conn *Connection) SetVerdict(newVerdict Verdict, reason, reasonOptionKey string, reasonCtx interface{}) (ok bool) {
 	conn.SetVerdictDirectly(newVerdict)
 
+	// Set reason and context.
 	conn.Reason.Msg = reason
 	conn.Reason.Context = reasonCtx
 
+	// Reset option key.
 	conn.Reason.OptionKey = ""
 	conn.Reason.Profile = ""
-	if reasonOptionKey != "" && conn.Process() != nil {
-		conn.Reason.OptionKey = reasonOptionKey
-		conn.Reason.Profile = conn.Process().Profile().GetProfileSource(conn.Reason.OptionKey)
+
+	// Set option key if data is available.
+	if reasonOptionKey != "" {
+		lp := conn.Process().Profile()
+		if lp != nil {
+			conn.Reason.OptionKey = reasonOptionKey
+			conn.Reason.Profile = lp.GetProfileSource(conn.Reason.OptionKey)
+		}
 	}
 
 	return true // TODO: remove
