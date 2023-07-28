@@ -20,7 +20,7 @@ require (
 	github.com/safing/jess v0.3.1
 	github.com/safing/portbase v0.17.0
 	github.com/safing/portmaster-android/go v0.0.0-20230605085256-6abf4c495626
-	github.com/safing/spn v0.6.9
+	github.com/safing/spn v0.6.10
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.7.0
 	github.com/spkg/zipfs v0.7.1
@@ -72,7 +72,7 @@ require (
 	github.com/seehuhn/fortuna v1.0.1 // indirect
 	github.com/seehuhn/sha256d v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tidwall/gjson v1.14.4 // indirect
+	github.com/tidwall/gjson v1.15.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
