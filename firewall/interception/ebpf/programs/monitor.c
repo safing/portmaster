@@ -46,8 +46,8 @@ int BPF_PROG(tcp_connect, struct sock *sk) {
 		return 0;
 	}
 
-  // Read PID
-	tcp_info->pid = __builtin_bswap32((u32)bpf_get_current_pid_tgid());
+  // Read PID (Careful: This is the Thread Group ID in kernel speak!)
+	tcp_info->pid = __builtin_bswap32((u32)(bpf_get_current_pid_tgid() >> 32));
 
 	// Set protocol
 	tcp_info->protocol = TCP;
