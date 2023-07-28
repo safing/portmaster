@@ -270,20 +270,20 @@ func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*
 	if runtime.GOOS != "windows" {
 		process.Cwd, err = pInfo.CwdWithContext(ctx)
 		if err != nil {
-			log.Warningf("process: failed to get Cwd: %s", err)
+			log.Warningf("process: failed to get current working dir (PID %d): %s", pInfo.Pid, err)
 		}
 	}
 
 	// Command line arguments
 	process.CmdLine, err = pInfo.CmdlineWithContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Cmdline for p%d: %w", pInfo.Pid, err)
+		log.Tracer(ctx).Warningf("process: failed to get cmdline (PID %d): %s", pInfo.Pid, err)
 	}
 
 	// Name
 	process.Name, err = pInfo.NameWithContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Name for p%d: %w", pInfo.Pid, err)
+		log.Tracer(ctx).Warningf("process: failed to get process name (PID %d): %s", pInfo.Pid, err)
 	}
 	if process.Name == "" {
 		process.Name = process.ExecName
@@ -291,16 +291,17 @@ func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*
 
 	// Get all environment variables
 	env, err := pInfo.EnvironWithContext(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get the environment for p%d: %w", pInfo.Pid, err)
-	}
-	// Split env variables in key and value.
-	process.Env = make(map[string]string, len(env))
-	for _, entry := range env {
-		splitted := strings.SplitN(entry, "=", 2)
-		if len(splitted) == 2 {
-			process.Env[strings.Trim(splitted[0], `'"`)] = strings.Trim(splitted[1], `'"`)
+	if err == nil {
+		// Split env variables in key and value.
+		process.Env = make(map[string]string, len(env))
+		for _, entry := range env {
+			splitted := strings.SplitN(entry, "=", 2)
+			if len(splitted) == 2 {
+				process.Env[strings.Trim(splitted[0], `'"`)] = strings.Trim(splitted[1], `'"`)
+			}
 		}
+	} else {
+		log.Tracer(ctx).Warningf("process: failed to get the process environment (PID %d): %s", pInfo.Pid, err)
 	}
 
 	// Add process tags.
