@@ -335,8 +335,8 @@ func gatherDataHandler(conn *network.Connection, pkt packet.Packet) {
 }
 
 func filterHandler(conn *network.Connection, pkt packet.Packet) {
-	// Skip if data is not complete.
-	if !conn.DataIsComplete() {
+	// Skip if data is not complete or packet is info-only.
+	if !conn.DataIsComplete() || pkt.InfoOnly() {
 		return
 	}
 
@@ -446,10 +446,21 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 }
 
 func verdictHandler(conn *network.Connection, pkt packet.Packet) {
+	// Ignore info-only packets in this handler.
+	if pkt.InfoOnly() {
+		return
+	}
+
 	issueVerdict(conn, pkt, 0, true)
 }
 
 func inspectAndVerdictHandler(conn *network.Connection, pkt packet.Packet) {
+	// Ignore info-only packets in this handler.
+	if pkt.InfoOnly() {
+		return
+	}
+
+	// Run inspectors.
 	pktVerdict, continueInspection := inspection.RunInspectors(conn, pkt)
 	if continueInspection {
 		issueVerdict(conn, pkt, pktVerdict, false)
