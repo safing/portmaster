@@ -69,12 +69,15 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 					PID:      process.UndefinedProcessID,
 				}, now)
 
-				activePIDs[conn.process.Pid] = struct{}{}
-
+				// Step 2: mark as ended
 				if !exists {
-					// Step 2: mark end
 					conn.Ended = nowUnix
 					conn.Save()
+				}
+
+				// If the connection has an associated process, add its PID to the active PID list.
+				if conn.process != nil {
+					activePIDs[conn.process.Pid] = struct{}{}
 				}
 			case conn.Ended < deleteOlderThan:
 				// Step 3: delete

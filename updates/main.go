@@ -284,13 +284,13 @@ func checkForUpdates(ctx context.Context) (err error) {
 
 	if err = registry.UpdateIndexes(ctx); err != nil {
 		err = fmt.Errorf("failed to update indexes: %w", err)
-		return
+		return //nolint:nakedret // TODO: Would "return err" work with the defer?
 	}
 
 	err = registry.DownloadUpdates(ctx, !forcedUpdate)
 	if err != nil {
 		err = fmt.Errorf("failed to download updates: %w", err)
-		return
+		return //nolint:nakedret // TODO: Would "return err" work with the defer?
 	}
 
 	registry.SelectVersions()
@@ -299,7 +299,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 	err = registry.UnpackResources()
 	if err != nil {
 		err = fmt.Errorf("failed to unpack updates: %w", err)
-		return
+		return //nolint:nakedret // TODO: Would "return err" work with the defer?
 	}
 
 	// Purge old resources

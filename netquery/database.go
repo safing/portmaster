@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -124,7 +124,10 @@ func New(dbPath string) (*Database, error) {
 		return nil, fmt.Errorf("failed to ensure database directory exists: %w", err)
 	}
 
-	historyPath := "file://" + path.Join(historyParentDir.Path, "history.db")
+	// Get file location of history database.
+	historyFile := filepath.Join(historyParentDir.Path, "history.db")
+	// Convert to SQLite URI path.
+	historyURI := "file:///" + strings.TrimPrefix(filepath.ToSlash(historyFile), "/")
 
 	constructor := func(ctx context.Context) (*sqlite.Conn, error) {
 		c, err := sqlite.OpenConn(
@@ -137,7 +140,7 @@ func New(dbPath string) (*Database, error) {
 			return nil, fmt.Errorf("failed to open read-only sqlite connection at %s: %w", dbPath, err)
 		}
 
-		if err := sqlitex.ExecuteTransient(c, "ATTACH DATABASE '"+historyPath+"?mode=ro' AS history", nil); err != nil {
+		if err := sqlitex.ExecuteTransient(c, "ATTACH DATABASE '"+historyURI+"?mode=ro' AS history", nil); err != nil {
 			return nil, fmt.Errorf("failed to attach history database: %w", err)
 		}
 
@@ -180,7 +183,7 @@ func New(dbPath string) (*Database, error) {
 		readConnPool: pool,
 		Schema:       schema,
 		writeConn:    writeConn,
-		historyPath:  historyPath,
+		historyPath:  historyURI,
 	}, nil
 }
 
@@ -207,7 +210,6 @@ func NewInMemory() (*Database, error) {
 // any data-migrations. Once the history module is implemented this should
 // become/use a full migration system -- use zombiezen.com/go/sqlite/sqlitemigration.
 func (db *Database) ApplyMigrations() error {
-	log.Errorf("applying migrations ...")
 	db.l.Lock()
 	defer db.l.Unlock()
 

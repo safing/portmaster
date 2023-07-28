@@ -9,6 +9,7 @@ import (
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/updates"
 	"github.com/safing/spn/access"
+	"github.com/safing/spn/access/account"
 	"github.com/safing/spn/captain"
 )
 
@@ -67,11 +68,16 @@ func collectData() interface{} {
 			Error: err,
 		}
 	} else {
-		data["Account"] = &Account{
+		account := &Account{
 			UserRecord: userRecord,
+			Active:     userRecord.MayUse(""),
 			UpToDate:   userRecord.Meta().Modified > time.Now().Add(-7*24*time.Hour).Unix(),
-			MayUseSPN:  userRecord.MayUseSPN(),
 		}
+		// Only add feature IDs when account is active.
+		if account.Active {
+			account.FeatureIDs = userRecord.CurrentPlan.FeatureIDs
+		}
+		data["Account"] = account
 	}
 
 	// Time running.
@@ -101,8 +107,9 @@ type Location struct {
 // Account holds SPN account matching data.
 type Account struct {
 	*access.UserRecord
-	UpToDate  bool
-	MayUseSPN bool
+	Active     bool
+	UpToDate   bool
+	FeatureIDs []account.FeatureID
 }
 
 // DataError represents an error getting some matching data.

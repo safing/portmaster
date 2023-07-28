@@ -64,6 +64,7 @@ func (m *module) prepare() error {
 		Internal: true,
 	})
 
+	// TODO: Open database in start() phase.
 	m.Store, err = NewInMemory()
 	if err != nil {
 		return fmt.Errorf("failed to create in-memory database: %w", err)

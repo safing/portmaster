@@ -28,6 +28,10 @@ func BandwidthStatsWorker(ctx context.Context, collectInterval time.Duration, ba
 	// Allow the current process to lock memory for eBPF resources.
 	err := rlimit.RemoveMemlock()
 	if err != nil {
+		if ebpfLoadingFailed.Add(1) >= 5 {
+			log.Warningf("ebpf: failed to remove memlock 5 times, giving up with error %s", err)
+			return nil
+		}
 		return fmt.Errorf("ebpf: failed to remove memlock: %w", err)
 	}
 

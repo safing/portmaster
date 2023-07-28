@@ -66,15 +66,21 @@ func upgrader(_ context.Context, _ interface{}) error {
 	binBaseName := strings.Split(filepath.Base(os.Args[0]), "_")[0]
 	switch binBaseName {
 	case "portmaster-core":
+		// Notify about upgrade.
 		if err := upgradeCoreNotify(); err != nil {
 			log.Warningf("updates: failed to notify about core upgrade: %s", err)
 		}
 
+		// Fix chrome sandbox permissions.
 		if err := helper.EnsureChromeSandboxPermissions(registry); err != nil {
 			log.Warningf("updates: failed to handle electron upgrade: %s", err)
 		}
 
+		// Upgrade system integration.
+		upgradeSystemIntegration()
+
 	case "spn-hub":
+		// Trigger upgrade procedure.
 		if err := upgradeHub(); err != nil {
 			log.Warningf("updates: failed to initiate hub upgrade: %s", err)
 		}
@@ -213,7 +219,7 @@ func upgradePortmasterStart() error {
 
 	// update portmaster-start in data root
 	rootPmStartPath := filepath.Join(dataroot.Root().Path, filename)
-	err := upgradeFile(rootPmStartPath, pmCtrlUpdate)
+	err := upgradeBinary(rootPmStartPath, pmCtrlUpdate)
 	if err != nil {
 		return err
 	}
@@ -278,7 +284,7 @@ func warnOnIncorrectParentPath() {
 	}
 }
 
-func upgradeFile(fileToUpgrade string, file *updater.File) error {
+func upgradeBinary(fileToUpgrade string, file *updater.File) error {
 	fileExists := false
 	_, err := os.Stat(fileToUpgrade)
 	if err == nil {
@@ -295,7 +301,7 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 			// abort if version matches
 			currentVersion = strings.Trim(strings.TrimSpace(string(out)), "*")
 			if currentVersion == file.Version() {
-				log.Tracef("updates: %s is already v%s", fileToUpgrade, file.Version())
+				log.Debugf("updates: %s is already v%s", fileToUpgrade, file.Version())
 				// already up to date!
 				return nil
 			}
@@ -306,7 +312,7 @@ func upgradeFile(fileToUpgrade string, file *updater.File) error {
 
 		// test currentVersion for sanity
 		if !rawVersionRegex.MatchString(currentVersion) {
-			log.Tracef("updates: version string returned by %s is invalid: %s", fileToUpgrade, currentVersion)
+			log.Debugf("updates: version string returned by %s is invalid: %s", fileToUpgrade, currentVersion)
 		}
 
 		// try removing old version
