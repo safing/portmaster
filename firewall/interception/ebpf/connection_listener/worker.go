@@ -26,6 +26,10 @@ var ebpfLoadingFailed atomic.Uint32
 func ConnectionListenerWorker(ctx context.Context, packets chan packet.Packet) error {
 	// Allow the current process to lock memory for eBPF resources.
 	if err := rlimit.RemoveMemlock(); err != nil {
+		if ebpfLoadingFailed.Add(1) >= 5 {
+			log.Warningf("ebpf: failed to remove memlock 5 times, giving up with error %s", err)
+			return nil
+		}
 		return fmt.Errorf("ebpf: failed to remove ebpf memlock: %w", err)
 	}
 
