@@ -28,21 +28,24 @@ func GetIPScope(ip net.IP) IPScope { //nolint:gocognit
 	if ip4 := ip.To4(); ip4 != nil {
 		// IPv4
 		switch {
+		case ip4[0] == 0 && ip4[1] == 0 && ip4[2] == 0 && ip4[3] == 0:
+			// 0.0.0.0/32
+			return LocalMulticast // Used as source for L2 based protocols with no L3 addressing.
 		case ip4[0] == 0:
 			// 0.0.0.0/8
 			return Invalid
-		case ip4[0] == 127:
-			// 127.0.0.0/8 (RFC1918)
-			return HostLocal
-		case ip4[0] == 169 && ip4[1] == 254:
-			// 169.254.0.0/16 (RFC3927)
-			return LinkLocal
 		case ip4[0] == 10:
 			// 10.0.0.0/8 (RFC1918)
 			return SiteLocal
 		case ip4[0] == 100 && ip4[1]&0b11000000 == 64:
 			// 100.64.0.0/10 (RFC6598)
 			return SiteLocal
+		case ip4[0] == 127:
+			// 127.0.0.0/8 (RFC1918)
+			return HostLocal
+		case ip4[0] == 169 && ip4[1] == 254:
+			// 169.254.0.0/16 (RFC3927)
+			return LinkLocal
 		case ip4[0] == 172 && ip4[1]&0b11110000 == 16:
 			// 172.16.0.0/12 (RFC1918)
 			return SiteLocal
