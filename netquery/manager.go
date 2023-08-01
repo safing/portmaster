@@ -2,8 +2,6 @@ package netquery
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -268,7 +266,5 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 }
 
 func genConnID(conn *network.Connection) string {
-	data := conn.ID + "-" + conn.Process().GetID()
-	hash := sha256.Sum256([]byte(data))
-	return hex.EncodeToString(hash[:])
+	return conn.ID + "-" + conn.Process().GetID()
 }

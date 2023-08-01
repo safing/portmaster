@@ -115,8 +115,8 @@ func (m *module) prepare() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:      "netquery/history/clear",
 		MimeType:  "application/json",
-		Read:      api.PermitUser,
 		Write:     api.PermitUser,
+		Read:      api.PermitUser,
 		BelongsTo: m.Module,
 		HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 			var body struct {

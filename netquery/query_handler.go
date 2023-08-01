@@ -189,8 +189,9 @@ func (req *QueryRequestPayload) generateSQL(ctx context.Context, schema *orm.Tab
 		whereClause = "WHERE " + whereClause
 	}
 
+	// if no database is specified we default to LiveDatabase only.
 	if len(req.Databases) == 0 {
-		req.Databases = []DatabaseName{LiveDatabase, HistoryDatabase}
+		req.Databases = []DatabaseName{LiveDatabase}
 	}
 
 	sources := make([]string, len(req.Databases))
