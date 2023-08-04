@@ -81,7 +81,6 @@ Portmaster is a privacy suite for your desktop OS.
 
 #### Further Readings:
 
-- [Portmaster Architecture Overview](https://wiki.safing.io/en/Portmaster/Architecture/Overview)
 - [SPN Whitepaper](https://safing.io/files/whitepaper/Gate17.pdf)
 
 ## Documentation
@@ -96,4 +95,3 @@ All details and guides live in the dedicated [wiki](https://wiki.safing.io/)
 - [VPN Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility#vpn-compatibly)
 - [Software Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility)
 - [Architecture](https://wiki.safing.io/en/Portmaster/Architecture)
-
