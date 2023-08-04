@@ -130,8 +130,8 @@ func upgradeSystemIntegrationFileContents(
 	}
 
 	// Check if we are allowed to upgrade from the existing file.
-	if !slices.Contains[string](permittedUpgradeHashes, existingHexSum) {
-		return fmt.Errorf("%s at %s %w, as it is not a previously published version and cannot be automatically upgraded - try installing again", name, filePath, ErrRequiresManualUpgrade)
+	if !slices.Contains[[]string, string](permittedUpgradeHashes, existingHexSum) {
+		return fmt.Errorf("%s at %s (sha256:%s) %w, as it is not a previously published version and cannot be automatically upgraded - try installing again", name, filePath, existingHexSum, ErrRequiresManualUpgrade)
 	}
 
 	// Start with upgrade!
