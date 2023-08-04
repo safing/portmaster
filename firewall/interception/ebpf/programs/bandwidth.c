@@ -105,7 +105,7 @@ int BPF_PROG(udp_sendmsg, struct sock *sk, struct msghdr *msg, size_t len) {
 	struct sock_common *skc = &sk->__sk_common;
 
 	// Create a key for the map and set all the nececery information.
-  struct sk_key key = {0};
+	struct sk_key key = {0};
 	key.protocol = PROTOCOL_UDP;
 	key.src_ip[0] = skc->skc_rcv_saddr;
 	key.dst_ip[0] = skc->skc_daddr;
@@ -134,7 +134,7 @@ int BPF_PROG(udp_recvmsg, struct sock *sk, struct msghdr *msg, size_t len, int f
 	struct sock_common *skc = &sk->__sk_common;
 
 	// Create a key for the map and set all the nececery information.
-  struct sk_key key = {0};
+	struct sk_key key = {0};
 	key.protocol = PROTOCOL_UDP;
 	key.src_ip[0] = skc->skc_rcv_saddr;
 	key.dst_ip[0] = skc->skc_daddr;
