@@ -89,8 +89,8 @@ func (m *module) prepare() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "netquery/query",
 		MimeType:    "application/json",
-		Read:        api.PermitUser,
-		Write:       api.PermitUser,
+		Read:        api.PermitUser, // Needs read+write as the query is sent using POST data.
+		Write:       api.PermitUser, // Needs read+write as the query is sent using POST data.
 		BelongsTo:   m.Module,
 		HandlerFunc: queryHander.ServeHTTP,
 		Name:        "Query Connections",
@@ -102,7 +102,6 @@ func (m *module) prepare() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "netquery/charts/connection-active",
 		MimeType:    "application/json",
-		Read:        api.PermitUser,
 		Write:       api.PermitUser,
 		BelongsTo:   m.Module,
 		HandlerFunc: chartHandler.ServeHTTP,
@@ -116,7 +115,6 @@ func (m *module) prepare() error {
 		Path:      "netquery/history/clear",
 		MimeType:  "application/json",
 		Write:     api.PermitUser,
-		Read:      api.PermitUser,
 		BelongsTo: m.Module,
 		HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 			var body struct {

@@ -76,7 +76,7 @@ int BPF_PROG(tcp_connect, struct sock *sk) {
 		tcp_info->ipVersion = 6;
 	}
 
-  // Send event
+	// Send event
 	bpf_ringbuf_submit(tcp_info, 0);
 	return 0;
 };
@@ -95,15 +95,15 @@ int BPF_PROG(udp_v4_connect, struct sock *sk) {
 		return 0;
 	}
 
-  // Allocate space for the event.
+	// Allocate space for the event.
 	struct Event *udp_info;
 	udp_info = bpf_ringbuf_reserve(&pm_connection_events, sizeof(struct Event), 0);
 	if (!udp_info) {
 		return 0;
 	}
 
-	// Read PID
-	udp_info->pid = __builtin_bswap32((u32)bpf_get_current_pid_tgid());
+	// Read PID (Careful: This is the Thread Group ID in kernel speak!)
+	udp_info->pid = __builtin_bswap32((u32)(bpf_get_current_pid_tgid() >> 32));
 
 	// Set src and dist ports
 	udp_info->sport = __builtin_bswap16(sk->__sk_common.skc_num);
@@ -119,7 +119,7 @@ int BPF_PROG(udp_v4_connect, struct sock *sk) {
 	// Set protocol. No way to detect udplite for ipv4
 	udp_info->protocol = UDP;
 
-  // Send event
+	// Send event
 	bpf_ringbuf_submit(udp_info, 0);
 	return 0;
 }
@@ -138,21 +138,21 @@ int BPF_PROG(udp_v6_connect, struct sock *sk) {
 		return 0;
 	}
 
-  // Make sure its udp6 socket
+	// Make sure its udp6 socket
 	struct udp6_sock *us = bpf_skc_to_udp6_sock(sk);
 	if (!us) {
 		return 0;
 	}
 
-  // Allocate space for the event.
+	// Allocate space for the event.
 	struct Event *udp_info;
 	udp_info = bpf_ringbuf_reserve(&pm_connection_events, sizeof(struct Event), 0);
 	if (!udp_info) {
 		return 0;
 	}
 
-  // Read PID
-	udp_info->pid = __builtin_bswap32((u32)bpf_get_current_pid_tgid());
+	// Read PID (Careful: This is the Thread Group ID in kernel speak!)
+	udp_info->pid = __builtin_bswap32((u32)(bpf_get_current_pid_tgid() >> 32));
 
 	// Set src and dist ports
 	udp_info->sport = __builtin_bswap16(sk->__sk_common.skc_num);
@@ -176,7 +176,7 @@ int BPF_PROG(udp_v6_connect, struct sock *sk) {
 		udp_info->protocol = UDPLite;
 	}
 
-  // Send event
+	// Send event
 	bpf_ringbuf_submit(udp_info, 0);
 	return 0;
 }

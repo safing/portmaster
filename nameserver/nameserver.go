@@ -22,7 +22,7 @@ import (
 var hostname string
 
 func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
-	err := module.RunWorker("dns request", func(ctx context.Context) error {
+	err := module.RunWorker("handle dns request", func(ctx context.Context) error {
 		return handleRequest(ctx, w, query)
 	})
 	if err != nil {
@@ -187,6 +187,13 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		if rrCache != nil {
 			conn.DNSContext = rrCache.ToDNSRequestContext()
 			conn.Resolver = rrCache.Resolver
+			conn.Entity.IPScope = rrCache.Resolver.IPScope
+		} else {
+			// Get resolvers for this query to determine the resolving scope.
+			resolvers, _, _ := resolver.GetResolversInScope(ctx, q)
+			if len(resolvers) > 0 {
+				conn.Entity.IPScope = resolvers[0].Info.IPScope
+			}
 		}
 
 		switch conn.Verdict.Active {
@@ -297,11 +304,14 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		return reply(nsutil.ServerFailure("internal error: empty reply"))
 	case rrCache.RCode == dns.RcodeNameError:
 		// Try alternatives domain names for unofficial domain spaces.
-		rrCache = checkAlternativeCaches(ctx, q)
-		if rrCache == nil {
+		altRRCache := checkAlternativeCaches(ctx, q)
+		if altRRCache != nil {
+			rrCache = altRRCache
+		} else {
 			// Return now if NXDomain.
 			return reply(nsutil.NxDomain("no answer found (NXDomain)"))
 		}
+
 	}
 
 	// Check with firewall again after resolving.

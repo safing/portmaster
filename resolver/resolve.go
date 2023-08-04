@@ -293,11 +293,19 @@ func startAsyncQuery(ctx context.Context, q *Query, currentRRCache *RRCache) {
 
 	// Set flag and log that we are refreshing this entry.
 	currentRRCache.RequestingNew = true
-	log.Tracer(ctx).Tracef(
-		"resolver: cache for %s will expire in %s, refreshing async now",
-		q.ID(),
-		time.Until(time.Unix(currentRRCache.Expires, 0)).Round(time.Second),
-	)
+	if currentRRCache.Expired() {
+		log.Tracer(ctx).Tracef(
+			"resolver: cache for %s has expired %s ago, refreshing async now",
+			q.ID(),
+			time.Since(time.Unix(currentRRCache.Expires, 0)).Round(time.Second),
+		)
+	} else {
+		log.Tracer(ctx).Tracef(
+			"resolver: cache for %s will expire in %s, refreshing async now",
+			q.ID(),
+			time.Until(time.Unix(currentRRCache.Expires, 0)).Round(time.Second),
+		)
+	}
 
 	// resolve async
 	module.StartWorker("resolve async", func(asyncCtx context.Context) error {

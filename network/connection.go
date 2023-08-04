@@ -325,8 +325,9 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		Scope: fqdn,
 		PID:   proc.Pid,
 		Entity: &intel.Entity{
-			Domain: fqdn,
-			CNAME:  cnames,
+			Domain:  fqdn,
+			CNAME:   cnames,
+			IPScope: netutils.Global, // Assign a global IP scope as default.
 		},
 		process:        proc,
 		ProcessContext: getProcessContext(ctx, proc),
@@ -367,8 +368,9 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 		Scope:    fqdn,
 		PID:      process.NetworkHostProcessID,
 		Entity: &intel.Entity{
-			Domain: fqdn,
-			CNAME:  cnames,
+			Domain:  fqdn,
+			CNAME:   cnames,
+			IPScope: netutils.Global, // Assign a global IP scope as default.
 		},
 		process:        remoteHost,
 		ProcessContext: getProcessContext(ctx, remoteHost),
@@ -782,15 +784,6 @@ func (conn *Connection) SetFirewallHandler(handler FirewallHandler) {
 		return
 	}
 
-	// Start packet handler worker when first handler is set.
-	if conn.firewallHandler == nil {
-		// start handling
-		module.StartWorker("packet handler", conn.packetHandlerWorker)
-	}
-
-	// Set new handler.
-	conn.firewallHandler = handler
-
 	// Initialize packet queue, if needed.
 	conn.pktQueueLock.Lock()
 	defer conn.pktQueueLock.Unlock()
@@ -798,6 +791,14 @@ func (conn *Connection) SetFirewallHandler(handler FirewallHandler) {
 		conn.pktQueue = make(chan packet.Packet, 100)
 		conn.pktQueueActive = true
 	}
+
+	// Start packet handler worker when new handler is set.
+	if conn.firewallHandler == nil {
+		module.StartWorker("packet handler", conn.packetHandlerWorker)
+	}
+
+	// Set new handler.
+	conn.firewallHandler = handler
 }
 
 // UpdateFirewallHandler sets the firewall handler if it already set and the

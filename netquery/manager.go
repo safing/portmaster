@@ -100,35 +100,42 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 			if !ok {
 				return
 			}
-			if !conn.DataIsComplete() {
-				continue
-			}
 
-			model, err := convertConnection(conn)
-			if err != nil {
-				log.Errorf("netquery: failed to convert connection %s to sqlite model: %s", conn.ID, err)
+			func() {
+				conn.Lock()
+				defer conn.Unlock()
 
-				continue
-			}
+				if !conn.DataIsComplete() {
+					return
+				}
 
-			// DEBUG:
-			// log.Tracef("netquery: updating connection %s", conn.ID)
+				model, err := convertConnection(conn)
+				if err != nil {
+					log.Errorf("netquery: failed to convert connection %s to sqlite model: %s", conn.ID, err)
 
-			if err := mng.store.Save(ctx, *model, conn.HistoryEnabled); err != nil {
-				log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
+					return
+				}
 
-				continue
-			}
+				// DEBUG:
+				// log.Tracef("netquery: updating connection %s", conn.ID)
 
-			// we clone the record metadata from the connection
-			// into the new model so the portbase/database layer
-			// can handle NEW/UPDATE correctly.
-			cloned := conn.Meta().Duplicate()
+				// Save to netquery database.
+				// Do not include internal connections in history.
+				if err := mng.store.Save(ctx, *model, conn.HistoryEnabled && !conn.Internal); err != nil {
+					log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
+					return
+				}
 
-			// push an update for the connection
-			if err := mng.pushConnUpdate(ctx, *cloned, *model); err != nil {
-				log.Errorf("netquery: failed to push update for conn %s via database system: %s", conn.ID, err)
-			}
+				// we clone the record metadata from the connection
+				// into the new model so the portbase/database layer
+				// can handle NEW/UPDATE correctly.
+				cloned := conn.Meta().Duplicate()
+
+				// push an update for the connection
+				if err := mng.pushConnUpdate(ctx, *cloned, *model); err != nil {
+					log.Errorf("netquery: failed to push update for conn %s via database system: %s", conn.ID, err)
+				}
+			}()
 		}
 	}
 }
@@ -155,18 +162,16 @@ func (mng *Manager) pushConnUpdate(_ context.Context, meta record.Meta, conn Con
 }
 
 // convertConnection converts conn to the local representation used
-// to persist the information in SQLite. convertConnection attempts
-// to lock conn and may thus block for some time.
+// to persist the information in SQLite.
+// The caller must hold the lock to the given network.Connection.
 func convertConnection(conn *network.Connection) (*Conn, error) {
-	conn.Lock()
-	defer conn.Unlock()
 	direction := "outbound"
 	if conn.Inbound {
 		direction = "inbound"
 	}
 
 	c := Conn{
-		ID:              genConnID(conn),
+		ID:              makeNqIDFromConn(conn),
 		External:        conn.External,
 		IPVersion:       conn.IPVersion,
 		IPProtocol:      conn.IPProtocol,
@@ -265,6 +270,13 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 	return &c, nil
 }
 
-func genConnID(conn *network.Connection) string {
-	return conn.ID + "-" + conn.Process().GetID()
+// makeNqIDFromConn creates a netquery connection ID from the network connection.
+func makeNqIDFromConn(conn *network.Connection) string {
+	return makeNqIDFromParts(conn.Process().GetKey(), conn.ID)
+}
+
+// makeNqIDFromParts creates a netquery connection ID from the given network
+// connection ID and the process key.
+func makeNqIDFromParts(processKey string, netConnID string) string {
+	return processKey + "-" + netConnID
 }

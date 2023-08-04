@@ -2,8 +2,6 @@ package netquery
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -395,12 +393,8 @@ func (db *Database) MarkAllHistoryConnectionsEnded(ctx context.Context) error {
 // UpdateBandwidth updates bandwidth data for the connection and optionally also writes
 // the bandwidth data to the history database.
 func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, processKey string, connID string, bytesReceived uint64, bytesSent uint64) error {
-	data := connID + "-" + processKey
-	hash := sha256.Sum256([]byte(data))
-	dbConnID := hex.EncodeToString(hash[:])
-
 	params := map[string]any{
-		":id": dbConnID,
+		":id": makeNqIDFromParts(processKey, connID),
 	}
 
 	parts := []string{}
@@ -481,6 +475,12 @@ func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) err
 	// and save some CPU cycles for the user
 	dbNames := []DatabaseName{LiveDatabase}
 
+	// TODO: Should we only add ended connection to the history database to save
+	// a couple INSERTs per connection?
+	// This means we need to write the current live DB to the history DB on
+	// shutdown in order to be able to pick the back up after a restart.
+
+	// Save to history DB if enabled.
 	if enableHistory {
 		dbNames = append(dbNames, HistoryDatabase)
 	}

@@ -224,7 +224,7 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 		Title:        "An app requests access to the Portmaster",
 		Message:      "Allow " + appName + " (" + proc.Profile().LocalProfile().Name + ") to query and modify the Portmaster?\n\nBinary: " + proc.Path,
 		ShowOnSystem: true,
-		Expires:      time.Now().Add(time.Minute).UnixNano(),
+		Expires:      time.Now().Add(time.Minute).Unix(),
 		AvailableActions: []*notifications.Action{
 			{
 				ID:   "allow",

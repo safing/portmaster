@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/record"
@@ -170,7 +171,7 @@ func (info *IPInfo) Save() error {
 	}
 
 	// Calculate and set cache expiry.
-	var expires int64 = 86400 // Minimum TTL of one day.
+	expires := time.Now().Unix() + 86400 // Minimum TTL of one day.
 	for _, rd := range info.ResolvedDomains {
 		if rd.Expires > expires {
 			expires = rd.Expires

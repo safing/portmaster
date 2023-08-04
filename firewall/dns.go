@@ -45,6 +45,7 @@ func filterDNSSection(
 			ip = v.AAAA
 		default:
 			// add non A/AAAA entries
+			// TODO: Add support for dns.SVCB and dns.HTTPS
 			goodEntries = append(goodEntries, rr)
 			continue
 		}
@@ -257,6 +258,32 @@ func UpdateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 
 		case *dns.AAAA:
 			ips = append(ips, v.AAAA)
+
+		case *dns.SVCB:
+			if len(v.Target) >= 2 { // Ignore "" and ".".
+				cnames[v.Hdr.Name] = v.Target
+			}
+			for _, pair := range v.Value {
+				switch svcbParam := pair.(type) {
+				case *dns.SVCBIPv4Hint:
+					ips = append(ips, svcbParam.Hint...)
+				case *dns.SVCBIPv6Hint:
+					ips = append(ips, svcbParam.Hint...)
+				}
+			}
+
+		case *dns.HTTPS:
+			if len(v.Target) >= 2 { // Ignore "" and ".".
+				cnames[v.Hdr.Name] = v.Target
+			}
+			for _, pair := range v.Value {
+				switch svcbParam := pair.(type) {
+				case *dns.SVCBIPv4Hint:
+					ips = append(ips, svcbParam.Hint...)
+				case *dns.SVCBIPv6Hint:
+					ips = append(ips, svcbParam.Hint...)
+				}
+			}
 		}
 	}
 
