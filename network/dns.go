@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"golang.org/x/exp/slices"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/nameserver/nsutil"
@@ -18,6 +19,13 @@ import (
 var (
 	openDNSRequests     = make(map[string]*Connection) // key: <pid>/fqdn
 	openDNSRequestsLock sync.Mutex
+
+	supportedDomainToIPRecordTypes = []uint16{
+		dns.TypeA,
+		dns.TypeAAAA,
+		dns.TypeSVCB,
+		dns.TypeHTTPS,
+	}
 )
 
 const (
@@ -30,6 +38,13 @@ const (
 	openDNSRequestLimit = 3 * time.Second
 )
 
+// IsSupportDNSRecordType returns whether the given DSN RR type is supported
+// by the network package, as in the requests are specially handled and can be
+// "merged" into the resulting connection.
+func IsSupportDNSRecordType(rrType uint16) bool {
+	return slices.Contains[[]uint16, uint16](supportedDomainToIPRecordTypes, rrType)
+}
+
 func getDNSRequestCacheKey(pid int, fqdn string, qType uint16) string {
 	return strconv.Itoa(pid) + "/" + fqdn + dns.Type(qType).String()
 }
@@ -39,28 +54,28 @@ func removeOpenDNSRequest(pid int, fqdn string) {
 	defer openDNSRequestsLock.Unlock()
 
 	// Delete PID-specific requests.
-	delete(openDNSRequests, getDNSRequestCacheKey(pid, fqdn, dns.TypeA))
-	delete(openDNSRequests, getDNSRequestCacheKey(pid, fqdn, dns.TypeAAAA))
+	for _, dnsType := range supportedDomainToIPRecordTypes {
+		delete(openDNSRequests, getDNSRequestCacheKey(pid, fqdn, dnsType))
+	}
 
 	// If process is known, also check for non-attributed requests.
 	if pid != process.UnidentifiedProcessID {
-		delete(openDNSRequests, getDNSRequestCacheKey(process.UnidentifiedProcessID, fqdn, dns.TypeA))
-		delete(openDNSRequests, getDNSRequestCacheKey(process.UnidentifiedProcessID, fqdn, dns.TypeAAAA))
+		for _, dnsType := range supportedDomainToIPRecordTypes {
+			delete(openDNSRequests, getDNSRequestCacheKey(process.UnidentifiedProcessID, fqdn, dnsType))
+		}
 	}
 }
 
 // SaveOpenDNSRequest saves a dns request connection that was allowed to proceed.
 func SaveOpenDNSRequest(q *resolver.Query, rrCache *resolver.RRCache, conn *Connection) {
-	// Only save requests that actually went out to reduce clutter.
-	if rrCache == nil || rrCache.ServedFromCache {
+	// Only save requests that actually went out (or triggered an async resolve) to reduce clutter.
+	if rrCache == nil || (rrCache.ServedFromCache && !rrCache.RequestingNew) {
 		return
 	}
 
-	// Try to "merge" A and AAAA requests into the resulting connection.
+	// Try to "merge" supported requests into the resulting connection.
 	// Save others immediately.
-	switch uint16(q.QType) {
-	case dns.TypeA, dns.TypeAAAA:
-	default:
+	if !IsSupportDNSRecordType(uint16(q.QType)) {
 		conn.Save()
 		return
 	}
@@ -68,18 +83,12 @@ func SaveOpenDNSRequest(q *resolver.Query, rrCache *resolver.RRCache, conn *Conn
 	openDNSRequestsLock.Lock()
 	defer openDNSRequestsLock.Unlock()
 
-	// Check if there is an existing open DNS requests for the same domain/type.
-	// If so, save it now and replace it with the new request.
-	key := getDNSRequestCacheKey(conn.process.Pid, conn.Entity.Domain, uint16(q.QType))
-	if existingConn, ok := openDNSRequests[key]; ok {
-		// End previous request and save it.
-		existingConn.Lock()
-		existingConn.Ended = conn.Started
-		existingConn.Unlock()
-		existingConn.Save()
-	}
+	// Do not check for an existing open DNS request, as duplicates in such quick
+	// succession are not worth keeping.
+	// DNS queries are usually retried pretty quick.
 
 	// Save to open dns requests.
+	key := getDNSRequestCacheKey(conn.process.Pid, conn.Entity.Domain, uint16(q.QType))
 	openDNSRequests[key] = conn
 }
 
@@ -103,12 +112,15 @@ func writeOpenDNSRequestsToDB() {
 
 	threshold := time.Now().Add(-openDNSRequestLimit).Unix()
 	for id, conn := range openDNSRequests {
-		conn.Lock()
-		if conn.Ended < threshold {
-			conn.Save()
-			delete(openDNSRequests, id)
-		}
-		conn.Unlock()
+		func() {
+			conn.Lock()
+			defer conn.Unlock()
+
+			if conn.Ended < threshold {
+				conn.Save()
+				delete(openDNSRequests, id)
+			}
+		}()
 	}
 }
 
