@@ -325,8 +325,9 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		Scope: fqdn,
 		PID:   proc.Pid,
 		Entity: &intel.Entity{
-			Domain: fqdn,
-			CNAME:  cnames,
+			Domain:  fqdn,
+			CNAME:   cnames,
+			IPScope: netutils.Global, // Assign a global IP scope as default.
 		},
 		process:        proc,
 		ProcessContext: getProcessContext(ctx, proc),
@@ -367,8 +368,9 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 		Scope:    fqdn,
 		PID:      process.NetworkHostProcessID,
 		Entity: &intel.Entity{
-			Domain: fqdn,
-			CNAME:  cnames,
+			Domain:  fqdn,
+			CNAME:   cnames,
+			IPScope: netutils.Global, // Assign a global IP scope as default.
 		},
 		process:        remoteHost,
 		ProcessContext: getProcessContext(ctx, remoteHost),

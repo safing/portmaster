@@ -60,6 +60,7 @@ type Entity struct { //nolint:maligned
 	IP net.IP
 
 	// IPScope holds the network scope of the IP.
+	// For DNS requests, this signifies in which scope the DNS request was resolved.
 	IPScope netutils.IPScope
 
 	// Country holds the country the IP address (ASN) is
