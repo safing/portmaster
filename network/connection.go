@@ -784,15 +784,6 @@ func (conn *Connection) SetFirewallHandler(handler FirewallHandler) {
 		return
 	}
 
-	// Start packet handler worker when first handler is set.
-	if conn.firewallHandler == nil {
-		// start handling
-		module.StartWorker("packet handler", conn.packetHandlerWorker)
-	}
-
-	// Set new handler.
-	conn.firewallHandler = handler
-
 	// Initialize packet queue, if needed.
 	conn.pktQueueLock.Lock()
 	defer conn.pktQueueLock.Unlock()
@@ -800,6 +791,14 @@ func (conn *Connection) SetFirewallHandler(handler FirewallHandler) {
 		conn.pktQueue = make(chan packet.Packet, 100)
 		conn.pktQueueActive = true
 	}
+
+	// Start packet handler worker when new handler is set.
+	if conn.firewallHandler == nil {
+		module.StartWorker("packet handler", conn.packetHandlerWorker)
+	}
+
+	// Set new handler.
+	conn.firewallHandler = handler
 }
 
 // UpdateFirewallHandler sets the firewall handler if it already set and the
