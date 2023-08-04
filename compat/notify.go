@@ -236,7 +236,7 @@ func (issue *appIssue) notify(proc *process.Process) {
 }
 
 const (
-	notifyThresholdMinIncidents = 11
+	notifyThresholdMinIncidents = 10
 	notifyThresholdResetAfter   = 2 * time.Minute
 )
 

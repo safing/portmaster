@@ -16,7 +16,7 @@ var (
 	module *modules.Module
 
 	selfcheckTask           *modules.Task
-	selfcheckTaskRetryAfter = 5 * time.Second
+	selfcheckTaskRetryAfter = 15 * time.Second
 
 	// selfCheckIsFailing holds whether or not the self-check is currently
 	// failing. This helps other failure systems to not make noise when there is
@@ -34,7 +34,7 @@ var (
 
 // selfcheckFailThreshold holds the threshold of how many times the selfcheck
 // must fail before it is reported.
-const selfcheckFailThreshold = 5
+const selfcheckFailThreshold = 10
 
 func init() {
 	module = modules.Register("compat", prep, start, stop, "base", "network", "interception", "netenv", "notifications")
@@ -60,7 +60,7 @@ func start() error {
 		Schedule(time.Now().Add(selfcheckTaskRetryAfter))
 
 	module.NewTask("clean notify thresholds", cleanNotifyThreshold).
-		Repeat(10 * time.Minute)
+		Repeat(1 * time.Hour)
 
 	return module.RegisterEventHook(
 		netenv.ModuleName,
