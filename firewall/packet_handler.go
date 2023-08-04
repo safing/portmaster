@@ -628,9 +628,9 @@ func bandwidthUpdateHandler(ctx context.Context) error {
 			return nil
 		case bwUpdate := <-interception.BandwidthUpdates:
 			if bwUpdate != nil {
-				updateBandwidth(ctx, bwUpdate)
 				// DEBUG:
 				// log.Debugf("filter: bandwidth update: %s", bwUpdate)
+				updateBandwidth(ctx, bwUpdate)
 			} else {
 				return errors.New("received nil bandwidth update from interception")
 			}
@@ -653,6 +653,8 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 	// Do not wait for connections that are locked.
 	// TODO: Use atomic operations for updating bandwidth stats.
 	if !conn.TryLock() {
+		// DEBUG:
+		// log.Warningf("filter: failed to lock connection for bandwidth update: %s", conn)
 		return
 	}
 	defer conn.Unlock()
@@ -675,7 +677,7 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 		if err := netquery.DefaultModule.Store.UpdateBandwidth(
 			ctx,
 			conn.HistoryEnabled,
-			conn.Process().GetID(),
+			conn.Process().GetKey(),
 			conn.ID,
 			conn.BytesReceived,
 			conn.BytesSent,

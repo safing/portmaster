@@ -314,10 +314,10 @@ func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*
 	return process, nil
 }
 
-// GetID returns the key that is used internally to identify the process.
-// The ID consists of the PID and the start time of the process as reported by
+// GetKey returns the key that is used internally to identify the process.
+// The key consists of the PID and the start time of the process as reported by
 // the system.
-func (p *Process) GetID() string {
+func (p *Process) GetKey() string {
 	return p.processKey
 }
 
