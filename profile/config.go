@@ -250,10 +250,10 @@ func registerConfiguration() error { //nolint:maintidx
 	err = config.Register(&config.Option{
 		Name:           "Enable Connection History",
 		Key:            CfgOptionEnableHistoryKey,
-		Description:    "Whether or not to save connections to the history database",
+		Description:    "Save connections in a database (on disk) in order to view and search them later. Changes might take a couple minutes to apply to all connections.",
 		OptType:        config.OptTypeBool,
 		ReleaseLevel:   config.ReleaseLevelStable,
-		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionEnableHistoryOrder,
