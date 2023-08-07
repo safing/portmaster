@@ -587,8 +587,10 @@ func (conn *Connection) UpdateFeatures() error {
 	if err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
 		return err
 	}
+	// Caution: user may be nil!
 
 	// Check if history may be used and if it is enabled for this application.
+	conn.HistoryEnabled = false
 	if user.MayUse(account.FeatureHistory) {
 		lProfile := conn.Process().Profile()
 		if lProfile != nil {
@@ -597,9 +599,7 @@ func (conn *Connection) UpdateFeatures() error {
 	}
 
 	// Check if bandwidth visibility may be used.
-	if user.MayUse(account.FeatureBWVis) {
-		conn.BandwidthEnabled = true
-	}
+	conn.BandwidthEnabled = user.MayUse(account.FeatureBWVis)
 
 	return nil
 }
