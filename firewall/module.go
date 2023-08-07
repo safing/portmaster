@@ -9,6 +9,7 @@ import (
 	"github.com/safing/portbase/modules/subsystems"
 	_ "github.com/safing/portmaster/core"
 	"github.com/safing/portmaster/network"
+	"github.com/safing/spn/access"
 )
 
 var module *modules.Module
@@ -57,7 +58,7 @@ func prep() error {
 		},
 	)
 	if err != nil {
-		log.Errorf("interception: failed registering event hook: %s", err)
+		log.Errorf("filter: failed to register event hook: %s", err)
 	}
 
 	// Reset connections every time profile changes
@@ -71,7 +72,7 @@ func prep() error {
 		},
 	)
 	if err != nil {
-		log.Errorf("failed registering event hook: %s", err)
+		log.Errorf("filter: failed to register event hook: %s", err)
 	}
 
 	// Reset connections when spn is connected
@@ -86,7 +87,22 @@ func prep() error {
 		},
 	)
 	if err != nil {
-		log.Errorf("failed registering event hook: %s", err)
+		log.Errorf("filter: failed to register event hook: %s", err)
+	}
+
+	// Reset connections when account is updated.
+	// This will not change verdicts, but will update the feature flags on connections.
+	err = module.RegisterEventHook(
+		"access",
+		access.AccountUpdateEvent,
+		"update connection feature flags",
+		func(ctx context.Context, _ interface{}) error {
+			resetAllConnectionVerdicts()
+			return nil
+		},
+	)
+	if err != nil {
+		log.Errorf("filter: failed to register event hook: %s", err)
 	}
 
 	if err := registerConfig(); err != nil {

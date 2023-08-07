@@ -23,6 +23,7 @@ import (
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/network/reference"
+	"github.com/safing/spn/access"
 )
 
 var (
@@ -60,6 +61,11 @@ func resetAllConnectionVerdicts() {
 		func() {
 			conn.Lock()
 			defer conn.Unlock()
+
+			// Update feature flags.
+			if err := conn.UpdateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
+				tracer.Warningf("network: failed to update connection feature flags: %s", err)
+			}
 
 			// Skip internal connections:
 			// - Pre-authenticated connections from Portmaster
