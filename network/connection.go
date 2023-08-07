@@ -821,8 +821,10 @@ func (conn *Connection) StopFirewallHandler() {
 	conn.firewallHandler = nil
 
 	// Signal the packet handler worker that it can stop.
-	close(conn.pktQueue)
-	conn.pktQueueActive = false
+	if conn.pktQueueActive {
+		close(conn.pktQueue)
+		conn.pktQueueActive = false
+	}
 
 	// Unset the packet queue so that it can be freed.
 	conn.pktQueue = nil

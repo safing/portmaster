@@ -15,6 +15,11 @@ const (
 	// ended connections should be removed from the internal connection state.
 	DeleteConnsAfterEndedThreshold = 10 * time.Minute
 
+	// DeleteIncompleteConnsAfterStartedThreshold defines the amount of time after
+	// which incomplete connections should be removed from the internal
+	// connection state.
+	DeleteIncompleteConnsAfterStartedThreshold = 1 * time.Minute
+
 	cleanerTickDuration = 5 * time.Second
 )
 
@@ -44,6 +49,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 		now := time.Now().UTC()
 		nowUnix := now.Unix()
 		deleteOlderThan := now.Add(-DeleteConnsAfterEndedThreshold).Unix()
+		deleteIncompleteOlderThan := now.Add(-DeleteIncompleteConnsAfterStartedThreshold).Unix()
 
 		// network connections
 		for _, conn := range conns.clone() {
@@ -53,7 +59,10 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 			switch {
 			case !conn.DataIsComplete():
 				// Step 0: delete old incomplete connections
-				if conn.Started < deleteOlderThan {
+				if conn.Started < deleteIncompleteOlderThan {
+					// Stop the firewall handler, in case one is running.
+					conn.StopFirewallHandler()
+					// Remove connection from state.
 					conn.delete()
 				}
 			case conn.Ended == 0:
@@ -83,6 +92,10 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 				// Step 3: delete
 				// DEBUG:
 				// log.Tracef("network.clean: deleted %s (ended at %s)", conn.DatabaseKey(), time.Unix(conn.Ended, 0))
+
+				// Stop the firewall handler, in case one is running.
+				conn.StopFirewallHandler()
+				// Remove connection from state.
 				conn.delete()
 			}
 
