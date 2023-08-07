@@ -2,7 +2,7 @@ package customlists
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net"
 	"os"
 	"regexp"
@@ -35,6 +35,10 @@ var (
 
 	filterListLock sync.RWMutex
 	parserTask     *modules.Task
+
+	// ErrNotConfigured is returned when updating the custom filter list, but it
+	// is not configured.
+	ErrNotConfigured = errors.New("custom filter list not configured")
 )
 
 func init() {
@@ -78,7 +82,10 @@ func start() error {
 		configChangeEvent,
 		"update custom filter list",
 		func(ctx context.Context, obj interface{}) error {
-			return checkAndUpdateFilterList()
+			if err := checkAndUpdateFilterList(); !errors.Is(err, ErrNotConfigured) {
+				return err
+			}
+			return nil
 		},
 	); err != nil {
 		return err
@@ -100,7 +107,7 @@ func checkAndUpdateFilterList() error {
 	// Get path and return error if empty
 	filePath := getFilePath()
 	if filePath == "" {
-		return fmt.Errorf("custom filter list setting is empty")
+		return ErrNotConfigured
 	}
 
 	// Schedule next update check
