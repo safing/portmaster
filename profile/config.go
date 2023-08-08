@@ -112,6 +112,10 @@ var (
 	cfgOptionEnableHistory      config.BoolOption
 	cfgOptionEnableHistoryOrder = 96
 
+	CfgOptionHistoryRetentionKey   = "history/retention"
+	CfgOptionHistoryRetention      config.IntOption
+	cfgOptionHistoryRetentionOrder = 97
+
 	// Setting "Enable SPN" at order 128.
 
 	CfgOptionUseSPNKey   = "spn/use"
@@ -266,6 +270,27 @@ func registerConfiguration() error { //nolint:maintidx
 	}
 	cfgOptionEnableHistory = config.Concurrent.GetAsBool(CfgOptionEnableHistoryKey, false)
 	cfgBoolOptions[CfgOptionEnableHistoryKey] = cfgOptionEnableHistory
+
+	err = config.Register(&config.Option{
+		Name:           "History Data Retention",
+		Key:            CfgOptionHistoryRetentionKey,
+		Description:    "How low, in days, connections should be kept in history.",
+		OptType:        config.OptTypeInt,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		ExpertiseLevel: config.ExpertiseLevelUser,
+		DefaultValue:   7,
+		Annotations: config.Annotations{
+			config.UnitAnnotation:         "Days",
+			config.DisplayOrderAnnotation: cfgOptionHistoryRetentionOrder,
+			config.CategoryAnnotation:     "History",
+			config.RequiresFeatureID:      account.FeatureHistory,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	CfgOptionHistoryRetention = config.Concurrent.GetAsInt(CfgOptionHistoryRetentionKey, 7)
+	cfgIntOptions[CfgOptionHistoryRetentionKey] = CfgOptionHistoryRetention
 
 	rulesHelp := strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match:
 

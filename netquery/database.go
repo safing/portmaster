@@ -22,6 +22,7 @@ import (
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/profile"
 )
 
 // InMemory is the "file path" to open a new in-memory database.
@@ -202,6 +203,42 @@ func NewInMemory() (*Database, error) {
 	return db, nil
 }
 
+func (db *Database) Close() error {
+	db.readConnPool.Close()
+
+	if err := db.writeConn.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func VacuumHistory(ctx context.Context) error {
+	historyParentDir := dataroot.Root().ChildDir("databases", 0o700)
+	if err := historyParentDir.Ensure(); err != nil {
+		return fmt.Errorf("failed to ensure database directory exists: %w", err)
+	}
+
+	// Get file location of history database.
+	historyFile := filepath.Join(historyParentDir.Path, "history.db")
+	// Convert to SQLite URI path.
+	historyURI := "file:///" + strings.TrimPrefix(filepath.ToSlash(historyFile), "/")
+
+	writeConn, err := sqlite.OpenConn(
+		historyURI,
+		sqlite.OpenCreate,
+		sqlite.OpenReadWrite,
+		sqlite.OpenWAL,
+		sqlite.OpenSharedCache,
+		sqlite.OpenURI,
+	)
+	if err != nil {
+		return err
+	}
+
+	return orm.RunQuery(ctx, writeConn, "VACUUM")
+}
+
 // ApplyMigrations applies any table and data migrations that are needed
 // to bring db up-to-date with the built-in schema.
 // TODO(ppacher): right now this only applies the current schema and ignores
@@ -377,6 +414,56 @@ func (db *Database) dumpTo(ctx context.Context, w io.Writer) error { //nolint:un
 	return enc.Encode(conns)
 }
 
+func (db *Database) CleanupHistoryData(ctx context.Context) error {
+	query := "SELECT DISTINCT profile FROM history.connections"
+
+	var result []struct {
+		Profile string `sqlite:"profile"`
+	}
+
+	if err := db.Execute(ctx, query, orm.WithResult(&result)); err != nil {
+		return fmt.Errorf("failed to get a list of profiles from the history database: %w", err)
+	}
+
+	globalRetentionDays := profile.CfgOptionHistoryRetention()
+	merr := new(multierror.Error)
+
+	for _, row := range result {
+		id := strings.TrimPrefix(row.Profile, string(profile.SourceLocal)+"/")
+		p, err := profile.GetLocalProfile(id, nil, nil)
+
+		var retention int
+		if err == nil {
+			retention = p.HistoryRetention()
+		} else {
+			// we failed to get the profile, fallback to the global setting
+			log.Errorf("failed to load profile for id %s: %s", id, err)
+			retention = int(globalRetentionDays)
+		}
+
+		if retention == 0 {
+			log.Infof("skipping history data retention for profile %s: retention is disabled", row.Profile)
+
+			continue
+		}
+
+		threshold := time.Now().Add(-1 * time.Duration(retention) * time.Hour * 24)
+
+		log.Infof("cleaning up history data for profile %s with retention setting %d days (threshold = %s)", row.Profile, retention, threshold.Format(orm.SqliteTimeFormat))
+
+		query := "DELETE FROM history.connections WHERE profile = :profile AND active = FALSE AND datetime(started) < datetime(:threshold)"
+		if err := db.ExecuteWrite(ctx, query, orm.WithNamedArgs(map[string]any{
+			":profile":   row.Profile,
+			":threshold": threshold.Format(orm.SqliteTimeFormat),
+		})); err != nil {
+			log.Errorf("failed to delete connections for profile %s from history: %s", row.Profile, err)
+			merr.Errors = append(merr.Errors, fmt.Errorf("profile %s: %w", row.Profile, err))
+		}
+	}
+
+	return merr.ErrorOrNil()
+}
+
 // MarkAllHistoryConnectionsEnded marks all connections in the history database as ended.
 func (db *Database) MarkAllHistoryConnectionsEnded(ctx context.Context) error {
 	query := fmt.Sprintf("UPDATE %s.connections SET active = FALSE, ended = :ended WHERE active = TRUE", HistoryDatabase)
@@ -511,10 +598,4 @@ func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) err
 	}
 
 	return nil
-}
-
-// Close closes the underlying database connection. db should and cannot be
-// used after Close() has returned.
-func (db *Database) Close() error {
-	return db.writeConn.Close()
 }

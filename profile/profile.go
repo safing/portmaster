@@ -137,6 +137,7 @@ type Profile struct { //nolint:maligned // not worth the effort
 	spnUsagePolicy    endpoints.Endpoints
 	spnExitHubPolicy  endpoints.Endpoints
 	enableHistory     bool
+	historyRetention  int
 
 	// Lifecycle Management
 	outdated   *abool.AtomicBool
@@ -239,6 +240,13 @@ func (profile *Profile) parseConfig() error {
 		profile.enableHistory = enableHistory
 	}
 
+	retention, ok := profile.configPerspective.GetAsInt(CfgOptionHistoryRetentionKey)
+	if ok {
+		profile.historyRetention = int(retention)
+	} else {
+		profile.historyRetention = int(CfgOptionHistoryRetention())
+	}
+
 	return lastErr
 }
 
@@ -324,6 +332,10 @@ func (profile *Profile) IsOutdated() bool {
 // HistoryEnabled returns true if connection history is enabled for the profile.
 func (profile *Profile) HistoryEnabled() bool {
 	return profile.enableHistory
+}
+
+func (profile *Profile) HistoryRetention() int {
+	return profile.historyRetention
 }
 
 // GetEndpoints returns the endpoint list of the profile. This functions

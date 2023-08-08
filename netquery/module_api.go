@@ -158,6 +158,26 @@ func (m *module) prepare() error {
 		Description: "Remove all connections from the history database for one or more profiles",
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
+
+	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path:      "netquery/history/cleanup",
+		MimeType:  "application/json",
+		Write:     api.PermitUser,
+		BelongsTo: m.Module,
+		HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
+			if err := m.Store.CleanupHistoryData(r.Context()); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+
+				return
+			}
+
+			w.WriteHeader(http.StatusNoContent)
+		},
+		Name: "Apply connection history retention threshold",
+	}); err != nil {
+		return fmt.Errorf("failed to register API endpoint: %w", err)
 	}
 
 	return nil
@@ -200,6 +220,10 @@ func (m *module) start() error {
 		return nil
 	})
 
+	m.StartServiceWorker("history-row-cleaner", time.Hour, func(ctx context.Context) error {
+		return m.Store.CleanupHistoryData(ctx)
+	})
+
 	m.StartServiceWorker("netquery-row-cleaner", time.Second, func(ctx context.Context) error {
 		for {
 			select {
@@ -240,6 +264,15 @@ func (m *module) stop() error {
 		// handle the error by just logging it. There's not much we can do here
 		// and returning an error to the module system doesn't help much as well...
 		log.Errorf("netquery: failed to mark connections in history database as ended: %s", err)
+	}
+
+	if err := m.mng.store.Close(); err != nil {
+		log.Errorf("netquery: failed to close sqlite database: %s", err)
+	} else {
+		// try to vaccum the history database now
+		if err := VacuumHistory(ctx); err != nil {
+			log.Errorf("netquery: failed to execute VACCUM in history database: %s", err)
+		}
 	}
 
 	return nil
