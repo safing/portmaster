@@ -53,6 +53,7 @@ type (
 
 	Sum struct {
 		Condition Query  `json:"condition"`
+		Field     string `json:"field"`
 		As        string `json:"as"`
 		Distinct  bool   `json:"distinct"`
 	}
