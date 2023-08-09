@@ -125,7 +125,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 			config.CategoryAnnotation:     "Servers",
 			config.QuickSettingsAnnotation: []config.QuickSetting{
 				{
-					Name:   "Cloudflare (with Malware Filter)",
+					Name:   "Set Cloudflare (with Malware Filter)",
 					Action: config.QuickReplace,
 					Value: []string{
 						"dot://cloudflare-dns.com?ip=1.1.1.2&name=Cloudflare&blockedif=zeroip",
@@ -133,7 +133,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 					},
 				},
 				{
-					Name:   "Quad9",
+					Name:   "Set Quad9",
 					Action: config.QuickReplace,
 					Value: []string{
 						"dot://dns.quad9.net?ip=9.9.9.9&name=Quad9&blockedif=empty",
@@ -141,7 +141,7 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 					},
 				},
 				{
-					Name:   "AdGuard",
+					Name:   "Set AdGuard",
 					Action: config.QuickReplace,
 					Value: []string{
 						"dot://dns.adguard.com?ip=94.140.14.14&name=AdGuard&blockedif=zeroip",
@@ -149,10 +149,18 @@ The format is: "protocol://ip:port?parameter=value&parameter=value"
 					},
 				},
 				{
-					Name:   "Foundation for Applied Privacy",
+					Name:   "Set Foundation for Applied Privacy",
 					Action: config.QuickReplace,
 					Value: []string{
 						"dot://dot1.applied-privacy.net?ip=146.255.56.98&name=AppliedPrivacy",
+					},
+				},
+				{
+					Name:   "Add Cloudflare (as fallback)",
+					Action: config.QuickMergeBottom,
+					Value: []string{
+						"dot://cloudflare-dns.com?ip=1.1.1.1&name=Cloudflare&blockedif=zeroip",
+						"dot://cloudflare-dns.com?ip=1.0.0.1&name=Cloudflare&blockedif=zeroip",
 					},
 				},
 			},

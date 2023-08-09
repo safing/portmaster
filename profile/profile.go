@@ -136,7 +136,6 @@ type Profile struct { //nolint:maligned // not worth the effort
 	filterListIDs     []string
 	spnUsagePolicy    endpoints.Endpoints
 	spnExitHubPolicy  endpoints.Endpoints
-	enableHistory     bool
 
 	// Lifecycle Management
 	outdated   *abool.AtomicBool
@@ -234,11 +233,6 @@ func (profile *Profile) parseConfig() error {
 		}
 	}
 
-	enableHistory, ok := profile.configPerspective.GetAsBool(CfgOptionEnableHistoryKey)
-	if ok {
-		profile.enableHistory = enableHistory
-	}
-
 	return lastErr
 }
 
@@ -319,11 +313,6 @@ func (profile *Profile) String() string {
 // IsOutdated returns whether the this instance of the profile is marked as outdated.
 func (profile *Profile) IsOutdated() bool {
 	return profile.outdated.IsSet()
-}
-
-// HistoryEnabled returns true if connection history is enabled for the profile.
-func (profile *Profile) HistoryEnabled() bool {
-	return profile.enableHistory
 }
 
 // GetEndpoints returns the endpoint list of the profile. This functions
