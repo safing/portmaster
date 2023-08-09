@@ -594,7 +594,7 @@ func (conn *Connection) UpdateFeatures() error {
 	if user.MayUse(account.FeatureHistory) {
 		lProfile := conn.Process().Profile()
 		if lProfile != nil {
-			conn.HistoryEnabled = lProfile.HistoryEnabled()
+			conn.HistoryEnabled = lProfile.EnableHistory()
 		}
 	}
 

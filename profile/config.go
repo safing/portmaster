@@ -112,9 +112,9 @@ var (
 	cfgOptionEnableHistory      config.BoolOption
 	cfgOptionEnableHistoryOrder = 96
 
-	CfgOptionHistoryRetentionKey   = "history/retention"
-	CfgOptionHistoryRetention      config.IntOption
-	cfgOptionHistoryRetentionOrder = 97
+	CfgOptionKeepHistoryKey   = "history/keep"
+	cfgOptionKeepHistory      config.IntOption
+	cfgOptionKeepHistoryOrder = 97
 
 	// Setting "Enable SPN" at order 128.
 
@@ -252,7 +252,7 @@ func registerConfiguration() error { //nolint:maintidx
 
 	// Enable History
 	err = config.Register(&config.Option{
-		Name:           "Enable Connection History",
+		Name:           "Enable Network History",
 		Key:            CfgOptionEnableHistoryKey,
 		Description:    "Save connections in a database (on disk) in order to view and search them later. Changes might take a couple minutes to apply to all connections.",
 		OptType:        config.OptTypeBool,
@@ -261,7 +261,7 @@ func registerConfiguration() error { //nolint:maintidx
 		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionEnableHistoryOrder,
-			config.CategoryAnnotation:     "History",
+			config.CategoryAnnotation:     "General",
 			config.RequiresFeatureID:      account.FeatureHistory,
 		},
 	})
@@ -272,25 +272,29 @@ func registerConfiguration() error { //nolint:maintidx
 	cfgBoolOptions[CfgOptionEnableHistoryKey] = cfgOptionEnableHistory
 
 	err = config.Register(&config.Option{
-		Name:           "History Data Retention",
-		Key:            CfgOptionHistoryRetentionKey,
-		Description:    "How low, in days, connections should be kept in history.",
+		Name: "Keep Network History",
+		Key:  CfgOptionKeepHistoryKey,
+		Description: `Specify how many days the network history data should be kept. Please keep in mind that more available history data makes reports (coming soon) a lot more useful.
+		
+Older data is deleted in intervals and cleared from the database continually. If in a hurry, shutdown or restart Portmaster to clear deleted entries immediately.
+
+Set to 0 days to keep network history forever. Depending on your device, this might affect performance.`,
 		OptType:        config.OptTypeInt,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		ExpertiseLevel: config.ExpertiseLevelUser,
-		DefaultValue:   7,
+		DefaultValue:   30,
 		Annotations: config.Annotations{
 			config.UnitAnnotation:         "Days",
-			config.DisplayOrderAnnotation: cfgOptionHistoryRetentionOrder,
-			config.CategoryAnnotation:     "History",
+			config.DisplayOrderAnnotation: cfgOptionKeepHistoryOrder,
+			config.CategoryAnnotation:     "General",
 			config.RequiresFeatureID:      account.FeatureHistory,
 		},
 	})
 	if err != nil {
 		return err
 	}
-	CfgOptionHistoryRetention = config.Concurrent.GetAsInt(CfgOptionHistoryRetentionKey, 7)
-	cfgIntOptions[CfgOptionHistoryRetentionKey] = CfgOptionHistoryRetention
+	cfgOptionKeepHistory = config.Concurrent.GetAsInt(CfgOptionKeepHistoryKey, 30)
+	cfgIntOptions[CfgOptionKeepHistoryKey] = cfgOptionKeepHistory
 
 	rulesHelp := strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match:
 
