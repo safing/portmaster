@@ -422,12 +422,11 @@ func (db *Database) dumpTo(ctx context.Context, w io.Writer) error { //nolint:un
 	return enc.Encode(conns)
 }
 
-// PurgeOldHistory deletes history data outside of the (per-app) retention time frame.
-func (db *Database) PurgeOldHistory(ctx context.Context) error {
+// CleanupHistory deletes history data outside of the (per-app) retention time frame.
+func (db *Database) CleanupHistory(ctx context.Context) error {
 	// Setup tracer for the clean up process.
 	ctx, tracer := log.AddTracer(ctx)
 	defer tracer.Submit()
-	defer tracer.Info("history: deleted connections outside of retention from %d profiles")
 
 	// Get list of profiles in history.
 	query := "SELECT DISTINCT profile FROM history.connections"
@@ -485,11 +484,14 @@ func (db *Database) PurgeOldHistory(ctx context.Context) error {
 			tracer.Debugf(
 				"history: deleted connections older than %d days (before %s) of %s",
 				retentionDays,
-				threshold,
+				threshold.Format(time.RFC822),
 				profileName,
 			)
 		}
 	}
+
+	// Log summary.
+	tracer.Infof("history: deleted connections outside of retention from %d profiles", profileCnt)
 
 	return merr.ErrorOrNil()
 }

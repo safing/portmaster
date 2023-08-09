@@ -161,7 +161,7 @@ func (m *module) prepare() error {
 		Write:     api.PermitUser,
 		BelongsTo: m.Module,
 		ActionFunc: func(ar *api.Request) (msg string, err error) {
-			if err := m.Store.PurgeOldHistory(ar.Context()); err != nil {
+			if err := m.Store.CleanupHistory(ar.Context()); err != nil {
 				return "", err
 			}
 			return "Deleted outdated connections.", nil
@@ -228,7 +228,7 @@ func (m *module) start() error {
 	})
 
 	m.NewTask("network history cleaner", func(ctx context.Context, _ *modules.Task) error {
-		return m.Store.PurgeOldHistory(ctx)
+		return m.Store.CleanupHistory(ctx)
 	}).Repeat(time.Hour).Schedule(time.Now().Add(10 * time.Minute))
 
 	// For debugging, provide a simple direct SQL query interface using

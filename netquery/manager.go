@@ -40,8 +40,8 @@ type (
 		// the bandwidth data to the history database.
 		UpdateBandwidth(ctx context.Context, enableHistory bool, processKey string, connID string, bytesReceived uint64, bytesSent uint64) error
 
-		// PurgeOldHistory deletes data outside of the retention time frame from the history database.
-		PurgeOldHistory(ctx context.Context) error
+		// CleanupHistory deletes data outside of the retention time frame from the history database.
+		CleanupHistory(ctx context.Context) error
 
 		// Close closes the connection store. It must not be used afterwards.
 		Close() error
