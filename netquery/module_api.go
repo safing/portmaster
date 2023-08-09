@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -118,29 +117,27 @@ func (m *module) prepare() error {
 		MimeType:    "application/json",
 		Write:       api.PermitUser,
 		BelongsTo:   m.Module,
-		HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
+		ActionFunc: func(ar *api.Request) (msg string, err error) {
+			// TODO: Use query parameters instead.
 			var body struct {
 				ProfileIDs []string `json:"profileIDs"`
 			}
 
-			dec := json.NewDecoder(r.Body)
+			dec := json.NewDecoder(ar.Body)
 			dec.DisallowUnknownFields()
 
 			if err := dec.Decode(&body); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
+				return "", err
 			}
 
 			if len(body.ProfileIDs) == 0 {
-				if err := m.mng.store.RemoveAllHistoryData(r.Context()); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-
-					return
+				if err := m.mng.store.RemoveAllHistoryData(ar.Context()); err != nil {
+					return "", err
 				}
 			} else {
 				merr := new(multierror.Error)
 				for _, profileID := range body.ProfileIDs {
-					if err := m.mng.store.RemoveHistoryForProfile(r.Context(), profileID); err != nil {
+					if err := m.mng.store.RemoveHistoryForProfile(ar.Context(), profileID); err != nil {
 						merr.Errors = append(merr.Errors, fmt.Errorf("failed to clear history for %q: %w", profileID, err))
 					} else {
 						log.Infof("netquery: successfully cleared history for %s", profileID)
@@ -148,13 +145,11 @@ func (m *module) prepare() error {
 				}
 
 				if err := merr.ErrorOrNil(); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-
-					return
+					return "", err
 				}
 			}
 
-			w.WriteHeader(http.StatusNoContent)
+			return "Successfully cleared history.", nil
 		},
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
