@@ -31,7 +31,9 @@ type deciderFn func(context.Context, *network.Connection, *profile.LayeredProfil
 
 var defaultDeciders = []deciderFn{
 	checkPortmasterConnection,
-	checkSelfCommunication,
+	// TODO: This is currently very slow.
+	// Find a way to improve performance using the eBPF data.
+	// checkSelfCommunication,
 	checkIfBroadcastReply,
 	checkConnectionType,
 	checkConnectionScope,
