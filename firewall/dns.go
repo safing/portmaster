@@ -177,6 +177,15 @@ func FilterResolvedDNS(
 		return rrCache
 	}
 
+	// Finalize verdict.
+	defer func() {
+		// Reset from previous filtering.
+		conn.Verdict.Active = network.VerdictUndecided
+		conn.Verdict.Worst = network.VerdictUndecided
+		// Update all values again.
+		finalizeVerdict(conn)
+	}()
+
 	// special grant for connectivity domains
 	if checkConnectivityDomain(ctx, conn, layeredProfile, nil) {
 		// returns true if check triggered
