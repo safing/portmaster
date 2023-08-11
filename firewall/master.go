@@ -619,6 +619,11 @@ matchLoop:
 }
 
 func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
+	// Check if any custom list is loaded at all.
+	if !customlists.IsLoaded() {
+		return false
+	}
+
 	// block if the domain name appears in the custom filter list (check for subdomains if enabled)
 	if conn.Entity.Domain != "" {
 		if ok, match := customlists.LookupDomain(conn.Entity.Domain, p.FilterSubDomains()); ok {
