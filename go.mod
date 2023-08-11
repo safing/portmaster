@@ -20,7 +20,7 @@ require (
 	github.com/safing/jess v0.3.1
 	github.com/safing/portbase v0.17.1
 	github.com/safing/portmaster-android/go v0.0.0-20230605085256-6abf4c495626
-	github.com/safing/spn v0.6.14
+	github.com/safing/spn v0.6.15
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.7.0
 	github.com/spkg/zipfs v0.7.1
