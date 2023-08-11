@@ -578,8 +578,8 @@ func (conn *Connection) SetLocalIP(ip net.IP) {
 	conn.LocalIPScope = netutils.GetIPScope(ip)
 }
 
-// UpdateFeatures checks which connection related features may be used and sets
-// the flags accordingly.
+// UpdateFeatures checks which connection related features may and should be
+// used and sets the flags accordingly.
 // The caller must hold a lock on the connection.
 func (conn *Connection) UpdateFeatures() error {
 	// Get user.
@@ -591,7 +591,15 @@ func (conn *Connection) UpdateFeatures() error {
 
 	// Check if history may be used and if it is enabled for this application.
 	conn.HistoryEnabled = false
-	if user.MayUse(account.FeatureHistory) {
+	switch {
+	case conn.Internal:
+		// Do not record internal connections, as they are of low interest in the history.
+		// TODO: Should we create a setting for this?
+	case conn.Entity.IPScope.IsLocalhost():
+		// Do not record localhost-only connections, as they are very low interest in the history.
+		// TODO: Should we create a setting for this?
+	case user.MayUse(account.FeatureHistory):
+		// Check if history may be used and is enabled.
 		lProfile := conn.Process().Profile()
 		if lProfile != nil {
 			conn.HistoryEnabled = lProfile.EnableHistory()

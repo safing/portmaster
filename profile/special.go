@@ -175,8 +175,12 @@ func createSpecialProfile(profileID string, path string) *Profile {
 				// attributed to a connection of a regular process. Otherwise, users
 				// would see two connection prompts for the same domain.
 				CfgOptionDefaultActionKey: DefaultActionPermitValue,
-				// Explicitly allow incoming connections.
-				CfgOptionBlockInboundKey: status.SecurityLevelOff,
+				// Disable force blockers.
+				CfgOptionBlockScopeInternetKey: status.SecurityLevelOff,
+				CfgOptionBlockScopeLANKey:      status.SecurityLevelOff,
+				CfgOptionBlockScopeLocalKey:    status.SecurityLevelOff,
+				CfgOptionBlockP2PKey:           status.SecurityLevelOff,
+				CfgOptionBlockInboundKey:       status.SecurityLevelOff,
 				// Explicitly allow localhost and answers to multicast protocols that
 				// are commonly used by system resolvers.
 				// TODO: When the Portmaster gains the ability to attribute multicast
@@ -233,7 +237,12 @@ func createSpecialProfile(profileID string, path string) *Profile {
 			Source:           SourceLocal,
 			PresentationPath: path,
 			Config: map[string]interface{}{
-				CfgOptionDefaultActionKey: DefaultActionBlockValue,
+				CfgOptionDefaultActionKey:      DefaultActionBlockValue,
+				CfgOptionBlockScopeInternetKey: status.SecurityLevelOff,
+				CfgOptionBlockScopeLANKey:      status.SecurityLevelOff,
+				CfgOptionBlockScopeLocalKey:    status.SecurityLevelOff,
+				CfgOptionBlockP2PKey:           status.SecurityLevelOff,
+				CfgOptionBlockInboundKey:       status.SecurityLevelsAll,
 				CfgOptionEndpointsKey: []string{
 					"+ Localhost",
 					"+ .safing.io",
@@ -248,7 +257,12 @@ func createSpecialProfile(profileID string, path string) *Profile {
 			Source:           SourceLocal,
 			PresentationPath: path,
 			Config: map[string]interface{}{
-				CfgOptionDefaultActionKey: DefaultActionBlockValue,
+				CfgOptionDefaultActionKey:      DefaultActionBlockValue,
+				CfgOptionBlockScopeInternetKey: status.SecurityLevelOff,
+				CfgOptionBlockScopeLANKey:      status.SecurityLevelOff,
+				CfgOptionBlockScopeLocalKey:    status.SecurityLevelOff,
+				CfgOptionBlockP2PKey:           status.SecurityLevelOff,
+				CfgOptionBlockInboundKey:       status.SecurityLevelsAll,
 				CfgOptionEndpointsKey: []string{
 					"+ Localhost",
 				},
@@ -281,11 +295,11 @@ func specialProfileNeedsReset(profile *Profile) bool {
 
 	switch profile.ID {
 	case SystemResolverProfileID:
-		return canBeUpgraded(profile, "21.10.2022")
+		return canBeUpgraded(profile, "12.8.2023") // FIXME: set one day after stable release date.
 	case PortmasterProfileID:
-		return canBeUpgraded(profile, "21.10.2022")
+		return canBeUpgraded(profile, "12.8.2023") // FIXME: set one day after stable release date.
 	case PortmasterAppProfileID:
-		return canBeUpgraded(profile, "8.9.2021")
+		return canBeUpgraded(profile, "12.8.2023") // FIXME: set one day after stable release date.
 	default:
 		// Not a special profile or no upgrade available yet.
 		return false

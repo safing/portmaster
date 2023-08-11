@@ -36,6 +36,25 @@ func initFilterLists() {
 	domainsFilterList = make(map[string]struct{})
 }
 
+// IsLoaded returns whether a custom filter list is loaded.
+func IsLoaded() bool {
+	filterListLock.RLock()
+	defer filterListLock.RUnlock()
+
+	switch {
+	case len(domainsFilterList) > 0:
+		return true
+	case len(ipAddressesFilterList) > 0:
+		return true
+	case len(countryCodesFilterList) > 0:
+		return true
+	case len(autonomousSystemsFilterList) > 0:
+		return true
+	default:
+		return false
+	}
+}
+
 func parseFile(filePath string) error {
 	// Reset all maps, previous (if any) settings will be lost.
 	for key := range countryCodesFilterList {

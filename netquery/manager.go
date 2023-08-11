@@ -127,7 +127,7 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 
 				// Save to netquery database.
 				// Do not include internal connections in history.
-				if err := mng.store.Save(ctx, *model, conn.HistoryEnabled && !conn.Internal); err != nil {
+				if err := mng.store.Save(ctx, *model, conn.HistoryEnabled); err != nil {
 					log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
 					return
 				}

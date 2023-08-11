@@ -31,7 +31,9 @@ type deciderFn func(context.Context, *network.Connection, *profile.LayeredProfil
 
 var defaultDeciders = []deciderFn{
 	checkPortmasterConnection,
-	checkSelfCommunication,
+	// TODO: This is currently very slow.
+	// Find a way to improve performance using the eBPF data.
+	// checkSelfCommunication,
 	checkIfBroadcastReply,
 	checkConnectionType,
 	checkConnectionScope,
@@ -619,6 +621,11 @@ matchLoop:
 }
 
 func checkCustomFilterList(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
+	// Check if any custom list is loaded at all.
+	if !customlists.IsLoaded() {
+		return false
+	}
+
 	// block if the domain name appears in the custom filter list (check for subdomains if enabled)
 	if conn.Entity.Domain != "" {
 		if ok, match := customlists.LookupDomain(conn.Entity.Domain, p.FilterSubDomains()); ok {

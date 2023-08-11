@@ -196,7 +196,7 @@ func registerConfiguration() error { //nolint:maintidx
 	err := config.Register(&config.Option{
 		Name:         "Default Network Action",
 		Key:          CfgOptionDefaultActionKey,
-		Description:  `The default network action is applied when nothing else allows or blocks an outgoing connection. Incoming connections are always blocked by default.`,
+		Description:  `The default network action is applied when nothing else allows or blocks a connection. This affects both outgoing and incoming connections. This setting is the weakest of all and is commonly overruled by Force Block settings or Rules.`,
 		OptType:      config.OptTypeString,
 		DefaultValue: DefaultActionPermitValue,
 		Annotations: config.Annotations{
@@ -252,9 +252,11 @@ func registerConfiguration() error { //nolint:maintidx
 
 	// Enable History
 	err = config.Register(&config.Option{
-		Name:           "Enable Network History",
-		Key:            CfgOptionEnableHistoryKey,
-		Description:    "Save connections in a database (on disk) in order to view and search them later. Changes might take a couple minutes to apply to all connections.",
+		Name: "Enable Network History",
+		Key:  CfgOptionEnableHistoryKey,
+		Description: `Save connections in a database (on disk) in order to view and search them later. Changes might take a couple minutes to apply to all connections.
+
+In order to reduce noise optimize performance, internal and device-only (localhost) connections are not saved to history.`,
 		OptType:        config.OptTypeBool,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		ExpertiseLevel: config.ExpertiseLevelUser,
