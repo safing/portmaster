@@ -81,6 +81,11 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 				// Step 2: mark as ended
 				if !exists {
 					conn.Ended = nowUnix
+
+					// Stop the firewall handler, in case one is running.
+					conn.StopFirewallHandler()
+
+					// Save to database.
 					conn.Save()
 				}
 
@@ -93,8 +98,6 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 				// DEBUG:
 				// log.Tracef("network.clean: deleted %s (ended at %s)", conn.DatabaseKey(), time.Unix(conn.Ended, 0))
 
-				// Stop the firewall handler, in case one is running.
-				conn.StopFirewallHandler()
 				// Remove connection from state.
 				conn.delete()
 			}
