@@ -118,6 +118,9 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 			conn.Unlock()
 		}
 
+		// rerouted dns requests
+		cleanDNSRequestConnections()
+
 		return nil
 	})
 

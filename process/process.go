@@ -112,6 +112,16 @@ func (p *Process) IsIdentified() bool {
 	}
 }
 
+// IsLocal returns whether the process has been identified as a local process.
+func (p *Process) IsLocal() bool {
+	// Check if process exists.
+	if p == nil {
+		return false
+	}
+
+	return p.Pid >= 0
+}
+
 // Equal returns if the two processes are both identified and have the same PID.
 func (p *Process) Equal(other *Process) bool {
 	return p.IsIdentified() && other.IsIdentified() && p.Pid == other.Pid

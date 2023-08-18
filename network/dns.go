@@ -12,12 +12,16 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/nameserver/nsutil"
+	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/resolver"
 )
 
 var (
-	openDNSRequests     = make(map[string]*Connection) // key: <pid>/fqdn
+	dnsRequestConnections     = make(map[string]*Connection) // key: <protocol>-<local ip>-<local port>
+	dnsRequestConnectionsLock sync.RWMutex
+
+	openDNSRequests     = make(map[string]*Connection) // key: <pid>/<fqdn>
 	openDNSRequestsLock sync.Mutex
 
 	supportedDomainToIPRecordTypes = []uint16{
@@ -37,6 +41,82 @@ const (
 	// a following connection are logged.
 	openDNSRequestLimit = 3 * time.Second
 )
+
+func getDNSRequestConnectionKey(packetInfo *packet.Info) (id string, ok bool) {
+	// We only support protocols with ports.
+	if packetInfo.SrcPort == 0 {
+		return "", false
+	}
+
+	return fmt.Sprintf("%d-%s-%d", packetInfo.Protocol, packetInfo.Src, packetInfo.SrcPort), true
+}
+
+// SaveDNSRequestConnection saves a dns request connection for later retrieval.
+func SaveDNSRequestConnection(conn *Connection, pkt packet.Packet) {
+	// Check connection.
+	if conn.PID == process.UndefinedProcessID {
+		log.Tracer(pkt.Ctx()).Tracef("network: not saving dns request connection because the PID is undefined")
+		return
+	}
+
+	// Create key.
+	key, ok := getDNSRequestConnectionKey(pkt.Info())
+	if !ok {
+		log.Tracer(pkt.Ctx()).Debugf("network: not saving dns request connection %s because the protocol is not supported", pkt)
+		return
+	}
+
+	// Add or update DNS request connection.
+	log.Tracer(pkt.Ctx()).Tracef("network: saving %s with PID %d as dns request connection for fast DNS request attribution", pkt, conn.PID)
+	dnsRequestConnectionsLock.Lock()
+	defer dnsRequestConnectionsLock.Unlock()
+	dnsRequestConnections[key] = conn
+}
+
+// GetDNSRequestConnection returns a saved dns request connection.
+func GetDNSRequestConnection(packetInfo *packet.Info) (conn *Connection, ok bool) {
+	// Make key.
+	key, ok := getDNSRequestConnectionKey(packetInfo)
+	if !ok {
+		return nil, false
+	}
+
+	// Get and return
+	dnsRequestConnectionsLock.RLock()
+	defer dnsRequestConnectionsLock.RUnlock()
+
+	conn, ok = dnsRequestConnections[key]
+	return
+}
+
+// deleteDNSRequestConnection removes a connection from the dns request connections.
+func deleteDNSRequestConnection(packetInfo *packet.Info) { //nolint:unused,deadcode
+	dnsRequestConnectionsLock.Lock()
+	defer dnsRequestConnectionsLock.Unlock()
+
+	key, ok := getDNSRequestConnectionKey(packetInfo)
+	if ok {
+		delete(dnsRequestConnections, key)
+	}
+}
+
+// cleanDNSRequestConnections deletes old DNS request connections.
+func cleanDNSRequestConnections() {
+	deleteOlderThan := time.Now().Unix() - 3
+
+	dnsRequestConnectionsLock.Lock()
+	defer dnsRequestConnectionsLock.Unlock()
+
+	for key, conn := range dnsRequestConnections {
+		conn.Lock()
+
+		if conn.Ended > 0 && conn.Ended < deleteOlderThan {
+			delete(dnsRequestConnections, key)
+		}
+
+		conn.Unlock()
+	}
+}
 
 // IsSupportDNSRecordType returns whether the given DSN RR type is supported
 // by the network package, as in the requests are specially handled and can be
