@@ -295,11 +295,11 @@ func specialProfileNeedsReset(profile *Profile) bool {
 
 	switch profile.ID {
 	case SystemResolverProfileID:
-		return canBeUpgraded(profile, "12.8.2023") // FIXME: set one day after stable release date.
+		return canBeUpgraded(profile, "22.8.2023")
 	case PortmasterProfileID:
-		return canBeUpgraded(profile, "12.8.2023") // FIXME: set one day after stable release date.
+		return canBeUpgraded(profile, "22.8.2023")
 	case PortmasterAppProfileID:
-		return canBeUpgraded(profile, "12.8.2023") // FIXME: set one day after stable release date.
+		return canBeUpgraded(profile, "22.8.2023")
 	default:
 		// Not a special profile or no upgrade available yet.
 		return false
