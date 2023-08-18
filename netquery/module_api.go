@@ -122,17 +122,13 @@ func (m *module) prepare() error {
 			var body struct {
 				ProfileIDs []string `json:"profileIDs"`
 			}
-
-			dec := json.NewDecoder(ar.Body)
-			dec.DisallowUnknownFields()
-
-			if err := dec.Decode(&body); err != nil {
-				return "", err
+			if err := json.Unmarshal(ar.InputData, &body); err != nil {
+				return "", fmt.Errorf("failed to decode parameters in body: %w", err)
 			}
 
 			if len(body.ProfileIDs) == 0 {
 				if err := m.mng.store.RemoveAllHistoryData(ar.Context()); err != nil {
-					return "", err
+					return "", fmt.Errorf("failed to remove all history: %w", err)
 				}
 			} else {
 				merr := new(multierror.Error)
