@@ -19,8 +19,6 @@ import (
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
-	"github.com/safing/portmaster/network/state"
-	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
 	"github.com/safing/portmaster/profile/endpoints"
 )
@@ -31,9 +29,6 @@ type deciderFn func(context.Context, *network.Connection, *profile.LayeredProfil
 
 var defaultDeciders = []deciderFn{
 	checkPortmasterConnection,
-	// TODO: This is currently very slow.
-	// Find a way to improve performance using the eBPF data.
-	// checkSelfCommunication,
 	checkIfBroadcastReply,
 	checkConnectionType,
 	checkConnectionScope,
@@ -162,42 +157,6 @@ func checkPortmasterConnection(ctx context.Context, conn *network.Connection, _ 
 	conn.Accept("connection by Portmaster", noReasonOptionKey)
 	conn.Internal = true
 	return true
-}
-
-// checkSelfCommunication checks if the process is communicating with itself.
-func checkSelfCommunication(ctx context.Context, conn *network.Connection, _ *profile.LayeredProfile, pkt packet.Packet) bool {
-	// check if process is communicating with itself
-	if pkt != nil {
-		// TODO: evaluate the case where different IPs in the 127/8 net are used.
-		pktInfo := pkt.Info()
-		if conn.Process().Pid >= 0 && pktInfo.Src.Equal(pktInfo.Dst) {
-			// get PID
-			otherPid, _, err := state.Lookup(&packet.Info{
-				Inbound:  !pktInfo.Inbound, // we want to know the process on the other end
-				Version:  pktInfo.Version,
-				Protocol: pktInfo.Protocol,
-				Src:      pktInfo.Src,
-				SrcPort:  pktInfo.SrcPort,
-				Dst:      pktInfo.Dst,
-				DstPort:  pktInfo.DstPort,
-			}, true)
-			if err != nil {
-				log.Tracer(ctx).Debugf("filter: failed to find local peer process PID: %s", err)
-			} else {
-				// get primary process
-				otherProcess, err := process.GetOrFindProcess(ctx, otherPid)
-				if err != nil {
-					log.Tracer(ctx).Debugf("filter: failed to find load local peer process with PID %d: %s", otherPid, err)
-				} else if otherProcess.Path == conn.Process().Path {
-					conn.Accept("process internal connection", noReasonOptionKey)
-					conn.Internal = true
-					return true
-				}
-			}
-		}
-	}
-
-	return false
 }
 
 func checkIfBroadcastReply(ctx context.Context, conn *network.Connection, _ *profile.LayeredProfile, _ packet.Packet) bool {

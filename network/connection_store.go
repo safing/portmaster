@@ -40,7 +40,7 @@ func (cs *connectionStore) get(id string) (*Connection, bool) {
 
 // findByPrefix returns the first connection where the key matches the given prefix.
 // If the prefix matches multiple entries, the result is not deterministic.
-func (cs *connectionStore) findByPrefix(prefix string) (*Connection, bool) {
+func (cs *connectionStore) findByPrefix(prefix string) (*Connection, bool) { //nolint:unused
 	cs.rw.RLock()
 	defer cs.rw.RUnlock()
 

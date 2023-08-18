@@ -23,6 +23,7 @@ import (
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/network/reference"
+	"github.com/safing/portmaster/process"
 	"github.com/safing/spn/access"
 )
 
@@ -140,12 +141,12 @@ func handlePacket(pkt packet.Packet) {
 }
 
 // fastTrackedPermit quickly permits certain network critical or internal connections.
-func fastTrackedPermit(pkt packet.Packet) (verdict network.Verdict, permanent bool) {
+func fastTrackedPermit(conn *network.Connection, pkt packet.Packet) (verdict network.Verdict, permanent bool) {
 	meta := pkt.Info()
 
 	// Check if packed was already fast-tracked by the OS integration.
 	if pkt.FastTrackedByIntegration() {
-		log.Debugf("filter: fast-tracked by OS integration: %s", pkt)
+		log.Tracer(pkt.Ctx()).Debugf("filter: fast-tracked by OS integration: %s", pkt)
 		return network.VerdictAccept, true
 	}
 
@@ -159,7 +160,7 @@ func fastTrackedPermit(pkt packet.Packet) (verdict network.Verdict, permanent bo
 	// Eg. dig: https://gitlab.isc.org/isc-projects/bind9/-/issues/1140
 	if meta.SrcPort == meta.DstPort &&
 		meta.Src.Equal(meta.Dst) {
-		log.Debugf("filter: fast-track network self-check: %s", pkt)
+		log.Tracer(pkt.Ctx()).Debugf("filter: fast-track network self-check: %s", pkt)
 		return network.VerdictAccept, true
 
 	}
@@ -169,7 +170,7 @@ func fastTrackedPermit(pkt packet.Packet) (verdict network.Verdict, permanent bo
 		// Load packet data.
 		err := pkt.LoadPacketData()
 		if err != nil {
-			log.Debugf("filter: failed to load ICMP packet data: %s", err)
+			log.Tracer(pkt.Ctx()).Debugf("filter: failed to load ICMP packet data: %s", err)
 			return network.VerdictAccept, true
 		}
 
@@ -179,7 +180,7 @@ func fastTrackedPermit(pkt packet.Packet) (verdict network.Verdict, permanent bo
 			// If the packet was submitted to the listener, we must not do a
 			// permanent accept, because then we won't see any future packets of that
 			// connection and thus cannot continue to submit them.
-			log.Debugf("filter: fast-track tracing ICMP/v6: %s", pkt)
+			log.Tracer(pkt.Ctx()).Debugf("filter: fast-track tracing ICMP/v6: %s", pkt)
 			return network.VerdictAccept, false
 		}
 
@@ -202,7 +203,7 @@ func fastTrackedPermit(pkt packet.Packet) (verdict network.Verdict, permanent bo
 		}
 
 		// Permit all ICMP/v6 packets that are not echo requests or replies.
-		log.Debugf("filter: fast-track accepting ICMP/v6: %s", pkt)
+		log.Tracer(pkt.Ctx()).Debugf("filter: fast-track accepting ICMP/v6: %s", pkt)
 		return network.VerdictAccept, true
 
 	case packet.UDP, packet.TCP:
@@ -224,7 +225,7 @@ func fastTrackedPermit(pkt packet.Packet) (verdict network.Verdict, permanent bo
 			}
 
 			// Log and permit.
-			log.Debugf("filter: fast-track accepting DHCP: %s", pkt)
+			log.Tracer(pkt.Ctx()).Debugf("filter: fast-track accepting DHCP: %s", pkt)
 			return network.VerdictAccept, true
 
 		case apiPort:
@@ -249,14 +250,14 @@ func fastTrackedPermit(pkt packet.Packet) (verdict network.Verdict, permanent bo
 			isMe, err := netenv.IsMyIP(meta.Src)
 			switch {
 			case err != nil:
-				log.Debugf("filter: failed to check if %s is own IP for fast-track: %s", meta.Src, err)
+				log.Tracer(pkt.Ctx()).Debugf("filter: failed to check if %s is own IP for fast-track: %s", meta.Src, err)
 				return network.VerdictUndecided, false
 			case !isMe:
 				return network.VerdictUndecided, false
 			}
 
 			// Log and permit.
-			log.Debugf("filter: fast-track accepting api connection: %s", pkt)
+			log.Tracer(pkt.Ctx()).Debugf("filter: fast-track accepting api connection: %s", pkt)
 			return network.VerdictAccept, true
 
 		case 53:
@@ -277,15 +278,24 @@ func fastTrackedPermit(pkt packet.Packet) (verdict network.Verdict, permanent bo
 			isMe, err := netenv.IsMyIP(meta.Src)
 			switch {
 			case err != nil:
-				log.Debugf("filter: failed to check if %s is own IP for fast-track: %s", meta.Src, err)
+				log.Tracer(pkt.Ctx()).Debugf("filter: failed to check if %s is own IP for fast-track: %s", meta.Src, err)
 				return network.VerdictUndecided, false
 			case !isMe:
 				return network.VerdictUndecided, false
 			}
 
 			// Log and permit.
-			log.Debugf("filter: fast-track accepting local dns: %s", pkt)
-			return network.VerdictAccept, true
+			log.Tracer(pkt.Ctx()).Debugf("filter: fast-track accepting local dns: %s", pkt)
+
+			// Add to DNS request connections to attribute DNS request if outgoing.
+			if pkt.IsOutbound() {
+				// Assign PID from packet directly, as processing stops after fast-track.
+				conn.PID = pkt.Info().PID
+				network.SaveDNSRequestConnection(conn, pkt)
+			}
+
+			// Accept local DNS, but only make permanent if we have the PID too.
+			return network.VerdictAccept, conn.PID != process.UndefinedProcessID
 		}
 
 	case compat.SystemIntegrationCheckProtocol:
@@ -299,7 +309,7 @@ func fastTrackedPermit(pkt packet.Packet) (verdict network.Verdict, permanent bo
 }
 
 func fastTrackHandler(conn *network.Connection, pkt packet.Packet) {
-	fastTrackedVerdict, permanent := fastTrackedPermit(pkt)
+	fastTrackedVerdict, permanent := fastTrackedPermit(conn, pkt)
 	if fastTrackedVerdict != network.VerdictUndecided {
 		// Set verdict on connection.
 		conn.Verdict.Active = fastTrackedVerdict
@@ -375,6 +385,10 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 		conn.SetVerdict(network.VerdictRerouteToNameserver, "redirecting rogue dns query", "", nil)
 		conn.Internal = true
 		log.Tracer(pkt.Ctx()).Infof("filter: redirecting dns query %s to Portmaster", conn)
+
+		// Add to DNS request connections to attribute DNS request.
+		network.SaveDNSRequestConnection(conn, pkt)
+
 		// End directly, as no other processing is necessary.
 		conn.StopFirewallHandler()
 		finalizeVerdict(conn)

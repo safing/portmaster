@@ -17,9 +17,12 @@ import (
 type udpTable struct {
 	version int
 
-	binds      []*socket.BindInfo
+	binds []*socket.BindInfo
+	lock  sync.RWMutex
+
 	updateIter atomic.Uint64
-	lock       sync.RWMutex
+	// lastUpdateAt stores the time when the tables where last updated as unix nanoseconds.
+	lastUpdateAt atomic.Int64
 
 	fetchingLock       sync.Mutex
 	fetchingInProgress bool
@@ -152,6 +155,7 @@ func (table *udpTable) updateTables(previousUpdateIter uint64) (
 			defer table.lock.Unlock()
 			table.binds = binds
 			table.updateIter.Add(1)
+			table.lastUpdateAt.Store(time.Now().UnixNano())
 
 			// Return new tables immediately.
 			return table.binds, table.updateIter.Load()

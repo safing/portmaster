@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -293,18 +292,22 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	}
 
 	// Check if the dns request connection was reported with process info.
-	dnsRequestConnID := pi.CreateConnectionID()
-	// Cut the destination, as the dns request may have been redirected and we
-	// don't know the original destination.
-	dnsRequestConnIDPrefix, ok := strings.CutSuffix(dnsRequestConnID, "<nil>-0")
-	if !ok {
-		log.Tracer(ctx).Warningf("network: unexpected connection ID for finding dns requests connection: %s", dnsRequestConnID)
-	}
-	// Find matching dns request connection.
-	dnsRequestConn, ok := conns.findByPrefix(dnsRequestConnIDPrefix)
-	if ok && dnsRequestConn.PID != process.UndefinedProcessID {
-		log.Tracer(ctx).Debugf("network: found matching dns request connection %s", dnsRequestConn)
+	var proc *process.Process
+	dnsRequestConn, ok := GetDNSRequestConnection(pi)
+	switch {
+	case !ok:
+		// No dns request connection found.
+	case dnsRequestConn.PID < 0:
+		// Process is not identified or is special.
+	case dnsRequestConn.Ended > 0 && dnsRequestConn.Ended < time.Now().Unix()-3:
+		// Connection has already ended (too long ago).
+		log.Tracer(ctx).Debugf("network: found ended dns request connection %s for dns request for %s", dnsRequestConn, fqdn)
+	default:
+		log.Tracer(ctx).Debugf("network: found matching dns request connection %s", dnsRequestConn.String())
+		// Inherit PID.
 		pi.PID = dnsRequestConn.PID
+		// Inherit process struct itself, as the PID may already be re-used.
+		proc = dnsRequestConn.process
 	}
 
 	// Find process by remote IP/Port.
@@ -316,7 +319,9 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	}
 
 	// Get process and profile with PID.
-	proc, _ := process.GetProcessWithProfile(ctx, pi.PID)
+	if proc == nil {
+		proc, _ = process.GetProcessWithProfile(ctx, pi.PID)
+	}
 
 	timestamp := time.Now().Unix()
 	dnsConn := &Connection{
@@ -1017,6 +1022,8 @@ func (conn *Connection) SetInspectorData(newInspectorData map[uint8]interface{})
 // String returns a string representation of conn.
 func (conn *Connection) String() string {
 	switch {
+	case conn.process == nil || conn.Entity == nil:
+		return conn.ID
 	case conn.Inbound:
 		return fmt.Sprintf("%s <- %s", conn.process, conn.Entity.IP)
 	case conn.Entity.Domain != "":

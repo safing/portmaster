@@ -48,6 +48,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 	_ = module.RunMicroTask("clean connections", 0, func(ctx context.Context) error {
 		now := time.Now().UTC()
 		nowUnix := now.Unix()
+		ignoreNewer := nowUnix - 1
 		deleteOlderThan := now.Add(-DeleteConnsAfterEndedThreshold).Unix()
 		deleteIncompleteOlderThan := now.Add(-DeleteIncompleteConnsAfterStartedThreshold).Unix()
 
@@ -57,6 +58,8 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 
 			// delete inactive connections
 			switch {
+			case conn.Started >= ignoreNewer:
+				// Skip very fresh connections to evade edge cases.
 			case !conn.DataIsComplete():
 				// Step 0: delete old incomplete connections
 				if conn.Started < deleteIncompleteOlderThan {
@@ -76,6 +79,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 					Dst:      conn.Entity.IP,
 					DstPort:  conn.Entity.Port,
 					PID:      process.UndefinedProcessID,
+					SeenAt:   time.Unix(conn.Started, 0), // State tables will be updated if older than this.
 				}, now)
 
 				// Step 2: mark as ended
@@ -117,6 +121,9 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 
 			conn.Unlock()
 		}
+
+		// rerouted dns requests
+		cleanDNSRequestConnections()
 
 		return nil
 	})
