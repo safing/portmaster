@@ -54,8 +54,9 @@ func getDNSRequestConnectionKey(packetInfo *packet.Info) (id string, ok bool) {
 // SaveDNSRequestConnection saves a dns request connection for later retrieval.
 func SaveDNSRequestConnection(conn *Connection, pkt packet.Packet) {
 	// Check connection.
-	if conn.PID == process.UndefinedProcessID {
-		log.Tracer(pkt.Ctx()).Tracef("network: not saving dns request connection because the PID is undefined")
+	if conn.PID == process.UndefinedProcessID || conn.PID == process.SystemProcessID {
+		// When re-injecting packets on Windows, they are reported with kernel PID (4).
+		log.Tracer(pkt.Ctx()).Tracef("network: not saving dns request connection because the PID is undefined/kernel")
 		return
 	}
 
