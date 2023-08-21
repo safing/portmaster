@@ -39,13 +39,13 @@ With great defaults your privacy improves without any effort. And if you want to
 
 # Technical Introduction
 
-Portmaster is a privacy suite for your desktop OS.
+Portmaster is a privacy suite for your Windows and Linux desktop.
 
 ### Base Technology
 
 - Portmaster integrates into network stack using nfqueue on Linux and a kernel driver (WFP) on Windows.
 - Packets are intercepted at the raw packet level - every packet is seen and can be stopped.
-- Ownership of connections are (currently) found via `/proc` on Linux and the IP Helper API (`iphlpapi.dll`) on Windows.
+- Ownership of connections is found using eBPF and `/proc` on Linux and a kernel driver and the IP Helper API (`iphlpapi.dll`) on Windows.
 - Most settings can be defined per app, which can be matched in different ways.
 - Support for special processes with weird or concealed paths/actors:
   - Snap, AppImage and Script support on Linux
@@ -56,19 +56,28 @@ Portmaster is a privacy suite for your desktop OS.
 - The Portmaster Core Service runs as a system service, the UI elements (App, Notifier) run in user context.
 - The main UI still uses electron as a wrapper :/ - but this will change in the future. You can also open the UI in the browser
 
-### Feature: Privacy Filter
-
-- Define allowed network scopes: Localhost, LAN, Internet, P2P, Inbound.
-- Easy rules based on Internet entities: Domain, IP, Country and more.
-- Filter Lists block common malware, ad, tracker domains etc.
-
 ### Feature: Secure DNS
 
 - Portmaster intercepts "astray" DNS queries and reroutes them to itself for seamless integration.
 - DNS queries are resolved by the default or configured DoT/DoH resolvers.
 - Full support for split horizon and horizon validation to defend against rebinding attacks.
 
-### Feature: Safing Privacy Network (SPN)
+### Feature: Privacy Filter
+
+- Define allowed network scopes: Localhost, LAN, Internet, P2P, Inbound.
+- Easy rules based on Internet entities: Domain, IP, Country and more.
+- Filter Lists block common malware, ad, tracker domains etc.
+
+### Feature: Network History ($)
+
+- Record connections and their details in a local database and search all of it later
+- Auto-delete old history or delete on demand
+
+### Feature: Bandwidth Visibility ($)
+
+- Monitor bandwidth usage per connection and app
+
+### Feature: SPN - Safing Privacy Network ($)
 
 - A Privacy Network aimed at use cases "between" VPN and Tor.
 - Uses onion encryption over multiple hops just like Tor.
