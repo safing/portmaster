@@ -34,7 +34,6 @@ const (
 	parameterBlockedIf  = "blockedif"
 	parameterSearch     = "search"
 	parameterSearchOnly = "search-only"
-	parameterPath       = "path"
 )
 
 var (
@@ -209,8 +208,7 @@ func checkAndSetResolverParamters(u *url.URL, resolver *Resolver) error {
 			parameterIP,
 			parameterBlockedIf,
 			parameterSearch,
-			parameterSearchOnly,
-			parameterPath:
+			parameterSearchOnly:
 			// Known key, continue.
 		default:
 			// Unknown key, abort.
