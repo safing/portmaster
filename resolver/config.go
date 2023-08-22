@@ -26,20 +26,19 @@ var (
 		// https://github.com/safing/portmaster/wiki/DNS-Server-Settings
 
 		// Quad9 (encrypted DNS)
-		// `dot://9.9.9.9:853?verify=dns.quad9.net&name=Quad9&blockedif=empty`,
-		// `dot://149.112.112.112:853?verify=dns.quad9.net&name=Quad9&blockedif=empty`,
+		// "dot://dns.quad9.net?ip=9.9.9.9&name=Quad9&blockedif=empty",
+		// "dot://dns.quad9.net?ip=149.112.112.112&name=Quad9&blockedif=empty",
 
 		// Cloudflare (encrypted DNS, with malware protection)
-		`dot://1.1.1.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip`,
-		`dot://1.0.0.2:853?verify=cloudflare-dns.com&name=Cloudflare&blockedif=zeroip`,
+		"dot://cloudflare-dns.com?ip=1.1.1.2&name=Cloudflare&blockedif=zeroip",
+		"dot://cloudflare-dns.com?ip=1.0.0.2&name=Cloudflare&blockedif=zeroip",
 
 		// AdGuard (encrypted DNS, default flavor)
-		// `dot://94.140.14.14:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
-		// `dot://94.140.15.15:853?verify=dns.adguard.com&name=AdGuard&blockedif=zeroip`,
+		// "dot://dns.adguard.com?ip=94.140.14.14&name=AdGuard&blockedif=zeroip",
+		// "dot://dns.adguard.com?ip=94.140.15.15&name=AdGuard&blockedif=zeroip",
 
 		// Foundation for Applied Privacy (encrypted DNS)
-		// `dot://94.130.106.88:853?verify=dot1.applied-privacy.net&name=AppliedPrivacy`,
-		// `dot://94.130.106.88:443?verify=dot1.applied-privacy.net&name=AppliedPrivacy`,
+		// "dot://dot1.applied-privacy.net?ip=146.255.56.98&name=AppliedPrivacy",
 
 		// Quad9 (plain DNS)
 		// `dns://9.9.9.9:53?name=Quad9&blockedif=empty`,
