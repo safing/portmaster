@@ -132,11 +132,15 @@ var (
 
 	// Setting "Home Node Rules" at order 145.
 
+	CfgOptionTransitHubPolicyKey   = "spn/transitHubPolicy"
+	cfgOptionTransitHubPolicy      config.StringArrayOption
+	cfgOptionTransitHubPolicyOrder = 146
+
 	CfgOptionExitHubPolicyKey   = "spn/exitHubPolicy"
 	cfgOptionExitHubPolicy      config.StringArrayOption
-	cfgOptionExitHubPolicyOrder = 146
+	cfgOptionExitHubPolicyOrder = 147
 
-	// Setting "DNS Exit Node Rules" at order 147.
+	// Setting "DNS Exit Node Rules" at order 148.
 )
 
 // A list of all security level settings.
@@ -719,6 +723,34 @@ Please note that if you are using the system resolver, bypass attempts might be 
 	}
 	cfgOptionSPNUsagePolicy = config.Concurrent.GetAsStringArray(CfgOptionSPNUsagePolicyKey, []string{})
 	cfgStringArrayOptions[CfgOptionSPNUsagePolicyKey] = cfgOptionSPNUsagePolicy
+
+	// Transit Node Rules
+	err = config.Register(&config.Option{
+		Name:           "Transit Node Rules",
+		Key:            CfgOptionTransitHubPolicyKey,
+		Description:    `Customize which countries should or should not be used as Transit Nodes. Transit Nodes are used to transit the SPN from your Home to your Exit Node.`,
+		Help:           SPNRulesHelp,
+		Sensitive:      true,
+		OptType:        config.OptTypeStringArray,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ReleaseLevel:   config.ReleaseLevelBeta,
+		DefaultValue:   []string{},
+		Annotations: config.Annotations{
+			config.StackableAnnotation:                   true,
+			config.CategoryAnnotation:                    "Routing",
+			config.DisplayOrderAnnotation:                cfgOptionTransitHubPolicyOrder,
+			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
+			config.QuickSettingsAnnotation:               SPNRulesQuickSettings,
+			endpoints.EndpointListVerdictNamesAnnotation: SPNRulesVerdictNames,
+		},
+		ValidationRegex: endpoints.ListEntryValidationRegex,
+		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionTransitHubPolicy = config.Concurrent.GetAsStringArray(CfgOptionTransitHubPolicyKey, []string{})
+	cfgStringArrayOptions[CfgOptionTransitHubPolicyKey] = cfgOptionTransitHubPolicy
 
 	// Exit Node Rules
 	err = config.Register(&config.Option{

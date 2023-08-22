@@ -14,12 +14,13 @@ import (
 var (
 	cfgLock sync.RWMutex
 
-	cfgDefaultAction    uint8
-	cfgEndpoints        endpoints.Endpoints
-	cfgServiceEndpoints endpoints.Endpoints
-	cfgSPNUsagePolicy   endpoints.Endpoints
-	cfgSPNExitHubPolicy endpoints.Endpoints
-	cfgFilterLists      []string
+	cfgDefaultAction       uint8
+	cfgEndpoints           endpoints.Endpoints
+	cfgServiceEndpoints    endpoints.Endpoints
+	cfgSPNUsagePolicy      endpoints.Endpoints
+	cfgSPNTransitHubPolicy endpoints.Endpoints
+	cfgSPNExitHubPolicy    endpoints.Endpoints
+	cfgFilterLists         []string
 )
 
 func registerConfigUpdater() error {
@@ -78,6 +79,13 @@ func updateGlobalConfigProfile(ctx context.Context, task *modules.Task) error {
 
 	list = cfgOptionSPNUsagePolicy()
 	cfgSPNUsagePolicy, err = endpoints.ParseEndpoints(list)
+	if err != nil {
+		// TODO: module error?
+		lastErr = err
+	}
+
+	list = cfgOptionTransitHubPolicy()
+	cfgSPNTransitHubPolicy, err = endpoints.ParseEndpoints(list)
 	if err != nil {
 		// TODO: module error?
 		lastErr = err
