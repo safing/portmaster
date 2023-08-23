@@ -160,19 +160,9 @@ var securityLevelSettings = []string{
 }
 
 var (
-	// SPNRulesQuickSettings is a list of countries the SPN currently is present in
-	// as quick settings in order to help users with SPN related policy settings.
-	// This is a quick win to make the MVP easier to use, but will be replaced by
-	// a better solution in the future.
+	// SPNRulesQuickSettings are now generated automatically shorty after start.
 	SPNRulesQuickSettings = []config.QuickSetting{
-		{Name: "Exclude Canada (CA)", Action: config.QuickMergeTop, Value: []string{"- CA"}},
-		{Name: "Exclude Finland (FI)", Action: config.QuickMergeTop, Value: []string{"- FI"}},
-		{Name: "Exclude France (FR)", Action: config.QuickMergeTop, Value: []string{"- FR"}},
-		{Name: "Exclude Germany (DE)", Action: config.QuickMergeTop, Value: []string{"- DE"}},
-		{Name: "Exclude Israel (IL)", Action: config.QuickMergeTop, Value: []string{"- IL"}},
-		{Name: "Exclude Poland (PL)", Action: config.QuickMergeTop, Value: []string{"- PL"}},
-		{Name: "Exclude United Kingdom (GB)", Action: config.QuickMergeTop, Value: []string{"- GB"}},
-		{Name: "Exclude United States of America (US)", Action: config.QuickMergeTop, Value: []string{"- US"}},
+		{Name: "Loading...", Action: config.QuickMergeTop, Value: []string{""}},
 	}
 
 	// SPNRulesVerdictNames defines the verdicts names to be used for SPN Rules.
@@ -733,7 +723,6 @@ Please note that if you are using the system resolver, bypass attempts might be 
 		Sensitive:      true,
 		OptType:        config.OptTypeStringArray,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
-		ReleaseLevel:   config.ReleaseLevelBeta,
 		DefaultValue:   []string{},
 		Annotations: config.Annotations{
 			config.StackableAnnotation:                   true,

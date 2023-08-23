@@ -16,14 +16,14 @@ func init() {
 
 func prep() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path: "intel/geoip/country-centers",
+		Path: "intel/geoip/countries",
 		Read: api.PermitUser,
 		// Do not attach to module, as the data is always available anyway.
 		StructFunc: func(ar *api.Request) (i interface{}, err error) {
-			return countryCoordinates, nil
+			return countries, nil
 		},
-		Name:        "Get Geographic Country Centers",
-		Description: "Returns a map of country centers indexed by ISO-A2 country code",
+		Name:        "Get Country Information",
+		Description: "Returns a map of country information centers indexed by ISO-A2 country code",
 	}); err != nil {
 		return err
 	}

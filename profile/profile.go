@@ -461,7 +461,7 @@ func (profile *Profile) updateMetadata(binaryPath string) (changed bool) {
 		changed = true
 	}
 
-	// Migrato to Fingerprints.
+	// Migrate to Fingerprints.
 	// TODO: Remove in v1.5
 	if len(profile.Fingerprints) == 0 && profile.LinkedPath != "" {
 		profile.Fingerprints = []Fingerprint{
