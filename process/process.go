@@ -112,8 +112,8 @@ func (p *Process) IsIdentified() bool {
 	}
 }
 
-// IsLocal returns whether the process has been identified as a local process.
-func (p *Process) IsLocal() bool {
+// HasValidPID returns whether the process has valid PID of an actual process.
+func (p *Process) HasValidPID() bool {
 	// Check if process exists.
 	if p == nil {
 		return false
