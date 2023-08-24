@@ -3,7 +3,6 @@ package firewall
 import (
 	"context"
 
-	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
@@ -22,18 +21,7 @@ func init() {
 		"DNS and Network Filter",
 		module,
 		"config:filter/",
-		&config.Option{
-			Name:           "Privacy Filter Module",
-			Key:            CfgOptionEnableFilterKey,
-			Description:    "Start the Privacy Filter module. If turned off, all privacy filter protections are fully disabled on this device.",
-			OptType:        config.OptTypeBool,
-			ExpertiseLevel: config.ExpertiseLevelDeveloper,
-			ReleaseLevel:   config.ReleaseLevelStable,
-			DefaultValue:   true,
-			Annotations: config.Annotations{
-				config.CategoryAnnotation: "General",
-			},
-		},
+		nil,
 	)
 }
 
