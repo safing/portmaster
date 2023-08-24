@@ -5,9 +5,11 @@ import (
 	"errors"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
 	"github.com/safing/portmaster/profile/endpoints"
 	"github.com/safing/portmaster/resolver"
@@ -124,59 +126,8 @@ func requestTunneling(ctx context.Context, conn *network.Connection) error {
 		return errors.New("no profile set")
 	}
 
-	// Set options.
-	conn.TunnelOpts = &navigator.Options{
-		HubPolicies:                   layeredProfile.StackedExitHubPolicies(),
-		CheckHubExitPolicyWith:        conn.Entity,
-		RequireTrustedDestinationHubs: !conn.Encrypted,
-		RoutingProfile:                layeredProfile.SPNRoutingAlgorithm(),
-	}
-
-	// Add required verified owners if community nodes should not be used.
-	if !useCommunityNodes() {
-		conn.TunnelOpts.RequireVerifiedOwners = captain.NonCommunityVerifiedOwners
-	}
-
-	// Get routing profile for checking for upgrades.
-	routingProfile := navigator.GetRoutingProfile(conn.TunnelOpts.RoutingProfile)
-
-	// If we have any exit hub policies, we must be able to hop in order to follow the policy.
-	// Switch to single-hop routing to allow for routing with hub selection.
-	if routingProfile.MaxHops <= 1 && conn.TunnelOpts.HubPoliciesAreSet() {
-		conn.TunnelOpts.RoutingProfile = navigator.RoutingProfileSingleHopID
-	}
-
-	// If the current home node is not trusted, then upgrade at least to two hops.
-	if routingProfile.MinHops < 2 {
-		homeNode, _ := navigator.Main.GetHome()
-		if homeNode != nil && !homeNode.State.Has(navigator.StateTrusted) {
-			conn.TunnelOpts.RoutingProfile = navigator.RoutingProfileDoubleHopID
-		}
-	}
-
-	// Special handling for the internal DNS resolver.
-	if conn.Process().Pid == ownPID && resolver.IsResolverAddress(conn.Entity.IP, conn.Entity.Port) {
-		dnsExitHubPolicy, err := captain.GetDNSExitHubPolicy()
-		if err != nil {
-			log.Errorf("firewall: failed to get dns exit hub policy: %s", err)
-		}
-
-		if err == nil && dnsExitHubPolicy.IsSet() {
-			// Apply the dns exit hub policy, if set.
-			conn.TunnelOpts.HubPolicies = []endpoints.Endpoints{dnsExitHubPolicy}
-			// Use the routing algorithm from the profile, as the home profile won't work with the policy.
-			conn.TunnelOpts.RoutingProfile = layeredProfile.SPNRoutingAlgorithm()
-			// Raise the routing algorithm at least to single-hop.
-			if conn.TunnelOpts.RoutingProfile == navigator.RoutingProfileHomeID {
-				conn.TunnelOpts.RoutingProfile = navigator.RoutingProfileSingleHopID
-			}
-		} else {
-			// Disable any policies for the internal DNS resolver.
-			conn.TunnelOpts.HubPolicies = nil
-			// Always use the home routing profile for the internal DNS resolver.
-			conn.TunnelOpts.RoutingProfile = navigator.RoutingProfileHomeID
-		}
-	}
+	// Get tunnel options.
+	conn.TunnelOpts = DeriveTunnelOptions(layeredProfile, conn.Process(), conn.Entity, conn.Encrypted)
 
 	// Queue request in sluice.
 	err := sluice.AwaitRequest(conn, crew.HandleSluiceRequest)
@@ -186,4 +137,77 @@ func requestTunneling(ctx context.Context, conn *network.Connection) error {
 
 	log.Tracer(ctx).Trace("filter: tunneling requested")
 	return nil
+}
+
+func init() {
+	navigator.DeriveTunnelOptions = func(lp *profile.LayeredProfile, destination *intel.Entity, connEncrypted bool) *navigator.Options {
+		return DeriveTunnelOptions(lp, nil, destination, connEncrypted)
+	}
+}
+
+// DeriveTunnelOptions derives and returns the tunnel options from the connection and profile.
+func DeriveTunnelOptions(lp *profile.LayeredProfile, proc *process.Process, destination *intel.Entity, connEncrypted bool) *navigator.Options {
+	// Set options.
+	tunnelOpts := &navigator.Options{
+		Transit: &navigator.TransitHubOptions{
+			HubPolicies: lp.StackedTransitHubPolicies(),
+		},
+		Destination: &navigator.DestinationHubOptions{
+			HubPolicies:        lp.StackedExitHubPolicies(),
+			CheckHubPolicyWith: destination,
+		},
+		RoutingProfile: lp.SPNRoutingAlgorithm(),
+	}
+	if !connEncrypted {
+		tunnelOpts.Destination.Regard = tunnelOpts.Destination.Regard.Add(navigator.StateTrusted)
+	}
+
+	// Add required verified owners if community nodes should not be used.
+	if !useCommunityNodes() {
+		tunnelOpts.Transit.RequireVerifiedOwners = captain.NonCommunityVerifiedOwners
+		tunnelOpts.Destination.RequireVerifiedOwners = captain.NonCommunityVerifiedOwners
+	}
+
+	// Get routing profile for checking for upgrades.
+	routingProfile := navigator.GetRoutingProfile(tunnelOpts.RoutingProfile)
+
+	// If we have any exit hub policies, we must be able to hop in order to follow the policy.
+	// Switch to single-hop routing to allow for routing with hub selection.
+	if routingProfile.MaxHops <= 1 && navigator.HubPoliciesAreSet(tunnelOpts.Destination.HubPolicies) {
+		tunnelOpts.RoutingProfile = navigator.RoutingProfileSingleHopID
+	}
+
+	// If the current home node is not trusted, then upgrade at least to two hops.
+	if routingProfile.MinHops < 2 {
+		homeNode, _ := navigator.Main.GetHome()
+		if homeNode != nil && !homeNode.State.Has(navigator.StateTrusted) {
+			tunnelOpts.RoutingProfile = navigator.RoutingProfileDoubleHopID
+		}
+	}
+
+	// Special handling for the internal DNS resolver.
+	if proc != nil && proc.Pid == ownPID && resolver.IsResolverAddress(destination.IP, destination.Port) {
+		dnsExitHubPolicy, err := captain.GetDNSExitHubPolicy()
+		if err != nil {
+			log.Errorf("firewall: failed to get dns exit hub policy: %s", err)
+		}
+
+		if err == nil && dnsExitHubPolicy.IsSet() {
+			// Apply the dns exit hub policy, if set.
+			tunnelOpts.Destination.HubPolicies = []endpoints.Endpoints{dnsExitHubPolicy}
+			// Use the routing algorithm from the profile, as the home profile won't work with the policy.
+			tunnelOpts.RoutingProfile = lp.SPNRoutingAlgorithm()
+			// Raise the routing algorithm at least to single-hop.
+			if tunnelOpts.RoutingProfile == navigator.RoutingProfileHomeID {
+				tunnelOpts.RoutingProfile = navigator.RoutingProfileSingleHopID
+			}
+		} else {
+			// Disable any policies for the internal DNS resolver.
+			tunnelOpts.Destination.HubPolicies = nil
+			// Always use the home routing profile for the internal DNS resolver.
+			tunnelOpts.RoutingProfile = navigator.RoutingProfileHomeID
+		}
+	}
+
+	return tunnelOpts
 }

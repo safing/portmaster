@@ -22,6 +22,7 @@ type Location struct {
 		Code string `maxminddb:"code"`
 	} `maxminddb:"continent"`
 	Country struct {
+		Name    string
 		ISOCode string `maxminddb:"iso_code"`
 	} `maxminddb:"country"`
 	Coordinates                  Coordinates `maxminddb:"location"`

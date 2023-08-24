@@ -127,15 +127,16 @@ type Profile struct { //nolint:maligned // not worth the effort
 	layeredProfile *LayeredProfile
 
 	// Interpreted Data
-	configPerspective *config.Perspective
-	dataParsed        bool
-	defaultAction     uint8
-	endpoints         endpoints.Endpoints
-	serviceEndpoints  endpoints.Endpoints
-	filterListsSet    bool
-	filterListIDs     []string
-	spnUsagePolicy    endpoints.Endpoints
-	spnExitHubPolicy  endpoints.Endpoints
+	configPerspective   *config.Perspective
+	dataParsed          bool
+	defaultAction       uint8
+	endpoints           endpoints.Endpoints
+	serviceEndpoints    endpoints.Endpoints
+	filterListsSet      bool
+	filterListIDs       []string
+	spnUsagePolicy      endpoints.Endpoints
+	spnTransitHubPolicy endpoints.Endpoints
+	spnExitHubPolicy    endpoints.Endpoints
 
 	// Lifecycle Management
 	outdated   *abool.AtomicBool
@@ -219,6 +220,15 @@ func (profile *Profile) parseConfig() error {
 	profile.spnUsagePolicy = nil
 	if ok {
 		profile.spnUsagePolicy, err = endpoints.ParseEndpoints(list)
+		if err != nil {
+			lastErr = err
+		}
+	}
+
+	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionTransitHubPolicyKey)
+	profile.spnTransitHubPolicy = nil
+	if ok {
+		profile.spnTransitHubPolicy, err = endpoints.ParseEndpoints(list)
 		if err != nil {
 			lastErr = err
 		}
@@ -451,7 +461,7 @@ func (profile *Profile) updateMetadata(binaryPath string) (changed bool) {
 		changed = true
 	}
 
-	// Migrato to Fingerprints.
+	// Migrate to Fingerprints.
 	// TODO: Remove in v1.5
 	if len(profile.Fingerprints) == 0 && profile.LinkedPath != "" {
 		profile.Fingerprints = []Fingerprint{

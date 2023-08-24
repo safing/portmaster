@@ -23,8 +23,7 @@ func GetLocation(ip net.IP) (*Location, error) {
 		return nil, err
 	}
 
-	record.FillMissingInfo()
-	record.AddRegion()
+	record.AddCountryInfo()
 	return record, nil
 }
 

@@ -382,6 +382,23 @@ func (lp *LayeredProfile) MatchSPNUsagePolicy(ctx context.Context, entity *intel
 	return cfgSPNUsagePolicy.Match(ctx, entity)
 }
 
+// StackedTransitHubPolicies returns all transit hub policies of the layered profile, including the global one.
+func (lp *LayeredProfile) StackedTransitHubPolicies() []endpoints.Endpoints {
+	policies := make([]endpoints.Endpoints, 0, len(lp.layers)+3) // +1 for global policy, +2 for intel policies
+
+	for _, layer := range lp.layers {
+		if layer.spnTransitHubPolicy.IsSet() {
+			policies = append(policies, layer.spnTransitHubPolicy)
+		}
+	}
+
+	cfgLock.RLock()
+	defer cfgLock.RUnlock()
+	policies = append(policies, cfgSPNTransitHubPolicy)
+
+	return policies
+}
+
 // StackedExitHubPolicies returns all exit hub policies of the layered profile, including the global one.
 func (lp *LayeredProfile) StackedExitHubPolicies() []endpoints.Endpoints {
 	policies := make([]endpoints.Endpoints, 0, len(lp.layers)+3) // +1 for global policy, +2 for intel policies

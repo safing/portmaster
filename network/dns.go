@@ -87,7 +87,7 @@ func GetDNSRequestConnection(packetInfo *packet.Info) (conn *Connection, ok bool
 	defer dnsRequestConnectionsLock.RUnlock()
 
 	conn, ok = dnsRequestConnections[key]
-	return
+	return conn, ok
 }
 
 // deleteDNSRequestConnection removes a connection from the dns request connections.
