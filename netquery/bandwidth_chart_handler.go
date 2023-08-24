@@ -13,12 +13,17 @@ import (
 	"github.com/safing/portmaster/netquery/orm"
 )
 
-// ChartHandler handles requests for connection charts.
-type ChartHandler struct {
+// BandwidthChartHandler handles requests for connection charts.
+type BandwidthChartHandler struct {
 	Database *Database
 }
 
-func (ch *ChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+type BandwidthChartRequest struct {
+	Profiles    []string `json:"profiles"`
+	Connections []string `json:"connections"`
+}
+
+func (ch *BandwidthChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	requestPayload, err := ch.parseRequest(req)
 	if err != nil {
 		http.Error(resp, err.Error(), http.StatusBadRequest)
@@ -62,7 +67,7 @@ func (ch *ChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	})
 }
 
-func (ch *ChartHandler) parseRequest(req *http.Request) (*QueryActiveConnectionChartPayload, error) { //nolint:dupl
+func (ch *BandwidthChartHandler) parseRequest(req *http.Request) (*BandwidthChartRequest, error) { //nolint:dupl
 	var body io.Reader
 
 	switch req.Method {
@@ -74,7 +79,7 @@ func (ch *ChartHandler) parseRequest(req *http.Request) (*QueryActiveConnectionC
 		return nil, fmt.Errorf("invalid HTTP method")
 	}
 
-	var requestPayload QueryActiveConnectionChartPayload
+	var requestPayload BandwidthChartRequest
 	blob, err := io.ReadAll(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read body" + err.Error())
@@ -92,49 +97,49 @@ func (ch *ChartHandler) parseRequest(req *http.Request) (*QueryActiveConnectionC
 	return &requestPayload, nil
 }
 
-func (req *QueryActiveConnectionChartPayload) generateSQL(ctx context.Context, schema *orm.TableSchema) (string, map[string]interface{}, error) {
-	template := `
-WITH RECURSIVE epoch(x) AS (
-	SELECT strftime('%%s')-600
-	UNION ALL
-		SELECT x+1 FROM epoch WHERE x+1 < strftime('%%s')+0
-)
-SELECT x as timestamp, SUM(verdict IN (2, 5, 6)) AS value, SUM(verdict NOT IN (2, 5, 6)) as countBlocked FROM epoch
-	JOIN connections
-	ON strftime('%%s', connections.started)+0 <= timestamp+0 AND (connections.ended IS NULL OR strftime('%%s', connections.ended)+0 >= timestamp+0)
-		%s
-	GROUP BY round(timestamp/10, 0)*10;`
-
-	clause, params, err := req.Query.toSQLWhereClause(ctx, "", schema, orm.DefaultEncodeConfig)
-	if err != nil {
-		return "", nil, err
+func (req *BandwidthChartRequest) generateSQL(ctx context.Context, schema *orm.TableSchema) (string, map[string]interface{}, error) {
+	selects := []string{
+		"(round(time/10, 0)*10) as time",
+		"SUM(incoming) as incoming",
+		"SUM(outgoing) as outgoing",
 	}
+	groupBy := []string{"round(time/10, 0)*10"}
+	whereClause := ""
+	params := make(map[string]any)
 
-	if params == nil {
-		params = make(map[string]interface{})
-	}
+	if len(req.Profiles) > 0 {
+		groupBy = []string{"profile", "round(time/10, 0)*10"}
+		selects = append(selects, "profile")
+		clauses := make([]string, len(req.Profiles))
 
-	if req.TextSearch != nil {
-		textSearch, textParams, err := req.TextSearch.toSQLConditionClause(ctx, schema, "", orm.DefaultEncodeConfig)
-		if err != nil {
-			return "", nil, err
+		for idx, p := range req.Profiles {
+			key := fmt.Sprintf(":p%d", idx)
+			clauses[idx] = "profile = " + key
+			params[key] = p
 		}
 
-		if textSearch != "" {
-			if clause != "" {
-				clause += " AND "
-			}
-			clause += textSearch
+		whereClause = "WHERE " + strings.Join(clauses, " OR ")
+	} else if len(req.Connections) > 0 {
+		groupBy = []string{"conn_id", "round(time/10, 0)*10"}
+		selects = append(selects, "conn_id")
 
-			for key, val := range textParams {
-				params[key] = val
-			}
+		clauses := make([]string, len(req.Connections))
+
+		for idx, p := range req.Connections {
+			key := fmt.Sprintf(":c%d", idx)
+			clauses[idx] = "conn_id = " + key
+			params[key] = p
 		}
+
+		whereClause = "WHERE " + strings.Join(clauses, " OR ")
 	}
 
-	if clause == "" {
-		return fmt.Sprintf(template, ""), map[string]interface{}{}, nil
-	}
+	template := fmt.Sprintf(
+		`SELECT %s FROM main.bandwidth %s GROUP BY %s ORDER BY time ASC`,
+		strings.Join(selects, ", "),
+		whereClause,
+		strings.Join(groupBy, ", "),
+	)
 
-	return fmt.Sprintf(template, "WHERE ( "+clause+")"), params, nil
+	return template, params, nil
 }
