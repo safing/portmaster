@@ -6,11 +6,11 @@ import (
 
 // IsRegionalNeighbor returns whether the supplied location is a regional neighbor.
 func (l *Location) IsRegionalNeighbor(other *Location) bool {
-	if l.Continent.Code == "" || other.Continent.Code == "" {
+	if l.Country.Continent.Region == "" || other.Country.Continent.Region == "" {
 		return false
 	}
-	if region, ok := regions[l.Continent.Code]; ok {
-		return utils.StringInSlice(region.Neighbors, other.Continent.Code)
+	if region, ok := regions[l.Country.Continent.Region]; ok {
+		return utils.StringInSlice(region.Neighbors, other.Country.Continent.Region)
 	}
 	return false
 }

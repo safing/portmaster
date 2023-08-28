@@ -232,6 +232,10 @@ func parseEndpoint(value string) (endpoint Endpoint, err error) { //nolint:gocog
 	if endpoint, err = parseTypeCountry(fields); endpoint != nil || err != nil {
 		return
 	}
+	// continent
+	if endpoint, err = parseTypeContinent(fields); endpoint != nil || err != nil {
+		return
+	}
 	// asn
 	if endpoint, err = parseTypeASN(fields); endpoint != nil || err != nil {
 		return
