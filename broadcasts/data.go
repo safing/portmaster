@@ -49,7 +49,7 @@ func collectData() interface{} {
 	if ok && locs.Best().LocationOrNil() != nil {
 		loc := locs.Best()
 		data["Location"] = &Location{
-			Country:        loc.Location.Country.ISOCode,
+			Country:        loc.Location.Country.Code,
 			Coordinates:    loc.Location.Coordinates,
 			ASN:            loc.Location.AutonomousSystemNumber,
 			ASOrg:          loc.Location.AutonomousSystemOrganization,

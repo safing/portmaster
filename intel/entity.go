@@ -251,7 +251,7 @@ func (e *Entity) getLocation(ctx context.Context) {
 			return
 		}
 		e.location = loc
-		e.Country = loc.Country.ISOCode
+		e.Country = loc.Country.Code
 		e.Coordinates = &loc.Coordinates
 		e.ASN = loc.AutonomousSystemNumber
 		e.ASOrg = loc.AutonomousSystemOrganization
@@ -272,9 +272,10 @@ func (e *Entity) getLocation(ctx context.Context) {
 
 			// Log location
 			log.Tracer(ctx).Tracef(
-				"intel: located %s in %s (AS%d by %s)%s",
+				"intel: located %s in %s (%s), as part of AS%d by %s%s",
 				e.IP,
-				loc.Country.ISOCode,
+				loc.Country.Name,
+				loc.Country.Code,
 				loc.AutonomousSystemNumber,
 				loc.AutonomousSystemOrganization,
 				flags,
@@ -301,6 +302,16 @@ func (e *Entity) GetCountry(ctx context.Context) (string, bool) {
 		return "", false
 	}
 	return e.Country, true
+}
+
+// GetCountryInfo returns the two letter ISO country code and whether it is set.
+func (e *Entity) GetCountryInfo(ctx context.Context) *geoip.CountryInfo {
+	e.getLocation(ctx)
+
+	if e.LocationError != "" {
+		return nil
+	}
+	return &e.location.Country
 }
 
 // GetASN returns the AS number and whether it is set.

@@ -18,13 +18,7 @@ const (
 // Location holds information regarding the geographical and network location of an IP address.
 // TODO: We are currently re-using the Continent-Code for the region. Update this and all dependencies.
 type Location struct {
-	Continent struct {
-		Code string `maxminddb:"code"`
-	} `maxminddb:"continent"`
-	Country struct {
-		Name    string
-		ISOCode string `maxminddb:"iso_code"`
-	} `maxminddb:"country"`
+	Country                      CountryInfo `maxminddb:"country"`
 	Coordinates                  Coordinates `maxminddb:"location"`
 	AutonomousSystemNumber       uint        `maxminddb:"autonomous_system_number"`
 	AutonomousSystemOrganization string      `maxminddb:"autonomous_system_organization"`
@@ -96,10 +90,9 @@ const (
 // EstimateNetworkProximity aims to calculate the distance between two network locations. Returns a proximity value between 0 (far away) and 100 (nearby).
 func (l *Location) EstimateNetworkProximity(to *Location) (proximity float32) {
 	switch {
-	case l.Country.ISOCode != "" && l.Country.ISOCode == to.Country.ISOCode:
+	case l.Country.Code != "" && l.Country.Code == to.Country.Code:
 		proximity += weightCountryMatch + weightRegionMatch + weightRegionalNeighborMatch
-	case l.Continent.Code != "" && l.Continent.Code == to.Continent.Code:
-		// FYI: This is the region code!
+	case l.Country.Continent.Region != "" && l.Country.Continent.Region == to.Country.Continent.Region:
 		proximity += weightRegionMatch + weightRegionalNeighborMatch
 	case l.IsRegionalNeighbor(to):
 		proximity += weightRegionalNeighborMatch
