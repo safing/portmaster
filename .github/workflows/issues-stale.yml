@@ -39,3 +39,4 @@ jobs:
 
             If the issue has not been resolved, you can [find more information in our Wiki](https://wiki.safing.io/) or [continue the conversation on our Discord](https://discord.gg/safing).
           # TODO: Handle stale PRs
+          days-before-pr-close: 36500 # 100 years - effectively disabled.
