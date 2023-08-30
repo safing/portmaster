@@ -18,6 +18,9 @@ jobs:
       - uses: actions/stale@v8
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          # Increase max operations.
+          # When using GITHUB_TOKEN, the rate limit is 1,000 requests per hour per repository.
+          operations-per-run: 500
           # Handle stale issues
           stale-issue-label: 'stale'
           # Exemptions
