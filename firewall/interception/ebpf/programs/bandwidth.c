@@ -76,24 +76,25 @@ int socket_operations(struct bpf_sock_ops *skops) {
 		bpf_map_update_elem(&pm_bandwidth_map, &key, &newInfo, BPF_ANY);
 	} else if(sk->family == AF_INET6){
 		// Generate key for IPv6
-		for(int i = 0; i < 4; i++) {
-			key.src_ip[i] = sk->src_ip6[i];
-		}
+		key.src_ip[0] = sk->src_ip6[0];
+		key.src_ip[1] = sk->src_ip6[1];
+		key.src_ip[2] = sk->src_ip6[2];
+		key.src_ip[3] = sk->src_ip6[3];
 		key.src_port = sk->src_port;
-		for(int i = 0; i < 4; i++) {
-			key.dst_ip[i] = sk->dst_ip6[i];
-		}
+
+		key.dst_ip[0] = sk->dst_ip6[0];
+		key.dst_ip[1] = sk->dst_ip6[1];
+		key.dst_ip[2] = sk->dst_ip6[2];
+		key.dst_ip[3] = sk->dst_ip6[3];
 		key.dst_port = __builtin_bswap16(sk->dst_port);
+
 		key.ipv6 = 1;
 
-		// FIXME: This should be added here too, but loading the ebpf module fails if we add it.
-		// This 100% the same thing as above. No clue, man.
+		struct sk_info newInfo = {0};
+		newInfo.rx = skops->bytes_received;
+		newInfo.tx = skops->bytes_acked;
 
-		// struct sk_info newInfo = {0};
-		// newInfo.rx = skops->bytes_received;
-		// newInfo.tx = skops->bytes_acked;
-
-		// bpf_map_update_elem(&pm_bandwidth_map, &key, &newInfo, BPF_ANY);
+		bpf_map_update_elem(&pm_bandwidth_map, &key, &newInfo, BPF_ANY);
 	}
 
 	return 0;

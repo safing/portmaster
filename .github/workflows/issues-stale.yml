@@ -1,0 +1,42 @@
+# This workflow warns and then closes stale issues and PRs.
+# Docs: https://github.com/actions/stale
+name: Close Stale Issues 
+
+on:
+  schedule:
+    - cron: "17 5 * * 1-5" # run at 5:17 (UTC) on Monday to Friday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v8
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          # Increase max operations.
+          # When using GITHUB_TOKEN, the rate limit is 1,000 requests per hour per repository.
+          operations-per-run: 500
+          # Handle stale issues
+          stale-issue-label: 'stale'
+          # Exemptions
+          exempt-all-issue-assignees: true
+          exempt-issue-labels: 'support,dependencies,pinned,security'
+          # Mark as stale
+          days-before-issue-stale: 63 # 2 months / 9 weeks
+          stale-issue-message: |
+            This issue has been automatically marked as inactive because it has not had activity in the past two months.
+            
+            If no further activity occurs, this issue will be automatically closed in one week in order to increase our focus on active topics.
+          # Close
+          days-before-issue-close: 7 # 1 week
+          close-issue-message: |
+            This issue has been automatically closed because it has not had recent activity. Thank you for your contributions.
+
+            If the issue has not been resolved, you can [find more information in our Wiki](https://wiki.safing.io/) or [continue the conversation on our Discord](https://discord.gg/safing).
+          # TODO: Handle stale PRs
+          days-before-pr-stale: 36500 # 100 years - effectively disabled.

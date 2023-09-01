@@ -17,8 +17,11 @@ type tcpTable struct {
 
 	connections []*socket.ConnectionInfo
 	listeners   []*socket.BindInfo
-	updateIter  atomic.Uint64
 	lock        sync.RWMutex
+
+	updateIter atomic.Uint64
+	// lastUpdateAt stores the time when the tables where last updated as unix nanoseconds.
+	lastUpdateAt atomic.Int64
 
 	fetchingLock       sync.Mutex
 	fetchingInProgress bool
@@ -133,6 +136,7 @@ func (table *tcpTable) updateTables(previousUpdateIter uint64) (
 			table.connections = connections
 			table.listeners = listeners
 			table.updateIter.Add(1)
+			table.lastUpdateAt.Store(time.Now().UnixNano())
 
 			// Return new tables immediately.
 			return table.connections, table.listeners, table.updateIter.Load()

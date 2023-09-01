@@ -127,10 +127,12 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 
 	// Update metadata.
 	var changed bool
-	if special {
-		changed = updateSpecialProfileMetadata(profile, md.Path())
-	} else {
-		changed = profile.updateMetadata(md.Path())
+	if md != nil {
+		if special {
+			changed = updateSpecialProfileMetadata(profile, md.Path())
+		} else {
+			changed = profile.updateMetadata(md.Path())
+		}
 	}
 
 	// Save if created or changed.

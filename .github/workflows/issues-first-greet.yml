@@ -1,0 +1,26 @@
+# This workflow responds to first time posters with a greeting message.
+# Docs: https://github.com/actions/first-interaction
+name: Greet New Users
+
+# This workflow is triggered when a new issue is created.
+on:
+  issues:
+    types: opened
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  greet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          # Respond to first time issue raisers.
+          issue-message: |
+            Greetings and welcome to our community! As this is the first issue you opened here, we wanted to share some useful infos with you:
+            
+            - 🗣️ Our community on [Discord](https://discord.gg/safing) is super helpful and active. We also have an AI-enabled support bot that knows Portmaster well and can give you immediate help.
+            - 📖 The [Wiki](https://wiki.safing.io/) answers all common questions and has many important details. If you can't find an answer there, let us know, so we can add anything that's missing.

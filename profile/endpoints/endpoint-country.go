@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -14,7 +15,7 @@ var countryRegex = regexp.MustCompile(`^[A-Z]{2}$`)
 type EndpointCountry struct {
 	EndpointBase
 
-	Country string
+	CountryCode string
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
@@ -27,25 +28,29 @@ func (ep *EndpointCountry) Matches(ctx context.Context, entity *intel.Entity) (E
 		return NoMatch, nil
 	}
 
-	country, ok := entity.GetCountry(ctx)
-	if !ok {
-		return MatchError, ep.makeReason(ep, country, "country data not available to match")
+	countryInfo := entity.GetCountryInfo(ctx)
+	if countryInfo == nil {
+		return MatchError, ep.makeReason(ep, "", "country data not available to match")
 	}
 
-	if country == ep.Country {
-		return ep.match(ep, entity, country, "IP is located in")
+	if ep.CountryCode == countryInfo.Code {
+		return ep.match(
+			ep, entity,
+			fmt.Sprintf("%s (%s)", countryInfo.Name, countryInfo.Code),
+			"IP is located in",
+		)
 	}
 	return NoMatch, nil
 }
 
 func (ep *EndpointCountry) String() string {
-	return ep.renderPPP(ep.Country)
+	return ep.renderPPP(ep.CountryCode)
 }
 
 func parseTypeCountry(fields []string) (Endpoint, error) {
 	if countryRegex.MatchString(fields[1]) {
 		ep := &EndpointCountry{
-			Country: strings.ToUpper(fields[1]),
+			CountryCode: strings.ToUpper(fields[1]),
 		}
 		return ep.parsePPP(ep, fields)
 	}

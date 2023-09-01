@@ -112,6 +112,16 @@ func (p *Process) IsIdentified() bool {
 	}
 }
 
+// HasValidPID returns whether the process has valid PID of an actual process.
+func (p *Process) HasValidPID() bool {
+	// Check if process exists.
+	if p == nil {
+		return false
+	}
+
+	return p.Pid >= 0
+}
+
 // Equal returns if the two processes are both identified and have the same PID.
 func (p *Process) Equal(other *Process) bool {
 	return p.IsIdentified() && other.IsIdentified() && p.Pid == other.Pid

@@ -49,7 +49,8 @@ type LayeredProfile struct {
 	DomainHeuristics    config.BoolOption   `json:"-"`
 	UseSPN              config.BoolOption   `json:"-"`
 	SPNRoutingAlgorithm config.StringOption `json:"-"`
-	HistoryEnabled      config.BoolOption   `json:"-"`
+	EnableHistory       config.BoolOption   `json:"-"`
+	KeepHistory         config.IntOption    `json:"-"`
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -121,9 +122,13 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 		CfgOptionRoutingAlgorithmKey,
 		cfgOptionRoutingAlgorithm,
 	)
-	lp.HistoryEnabled = lp.wrapBoolOption(
+	lp.EnableHistory = lp.wrapBoolOption(
 		CfgOptionEnableHistoryKey,
 		cfgOptionEnableHistory,
+	)
+	lp.KeepHistory = lp.wrapIntOption(
+		CfgOptionKeepHistoryKey,
+		cfgOptionKeepHistory,
 	)
 
 	lp.LayerIDs = append(lp.LayerIDs, localProfile.ScopedID())
@@ -375,6 +380,23 @@ func (lp *LayeredProfile) MatchSPNUsagePolicy(ctx context.Context, entity *intel
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
 	return cfgSPNUsagePolicy.Match(ctx, entity)
+}
+
+// StackedTransitHubPolicies returns all transit hub policies of the layered profile, including the global one.
+func (lp *LayeredProfile) StackedTransitHubPolicies() []endpoints.Endpoints {
+	policies := make([]endpoints.Endpoints, 0, len(lp.layers)+3) // +1 for global policy, +2 for intel policies
+
+	for _, layer := range lp.layers {
+		if layer.spnTransitHubPolicy.IsSet() {
+			policies = append(policies, layer.spnTransitHubPolicy)
+		}
+	}
+
+	cfgLock.RLock()
+	defer cfgLock.RUnlock()
+	policies = append(policies, cfgSPNTransitHubPolicy)
+
+	return policies
 }
 
 // StackedExitHubPolicies returns all exit hub policies of the layered profile, including the global one.

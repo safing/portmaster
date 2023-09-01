@@ -116,18 +116,24 @@ func BandwidthStatsWorker(ctx context.Context, collectInterval time.Duration, ba
 
 // reportBandwidth reports the bandwidth to the given updates channel.
 func reportBandwidth(ctx context.Context, objs bpfObjects, bandwidthUpdates chan *packet.BandwidthUpdate) {
+	var (
+		skKey   bpfSkKey
+		skInfo  bpfSkInfo
+		updated int
+		skipped int
+	)
+
 	iter := objs.bpfMaps.PmBandwidthMap.Iterate()
-	var skKey bpfSkKey
-	var skInfo bpfSkInfo
 	for iter.Next(&skKey, &skInfo) {
 		// Check if already reported.
 		if skInfo.Reported >= 1 {
+			skipped++
 			continue
 		}
 		// Mark as reported and update the map.
 		skInfo.Reported = 1
-		if err := objs.bpfMaps.PmBandwidthMap.Put(&skKey, &skInfo); err != nil {
-			log.Debugf("ebpf: failed to update map: %s", err)
+		if err := objs.bpfMaps.PmBandwidthMap.Update(&skKey, &skInfo, ebpf.UpdateExist); err != nil {
+			log.Debugf("ebpf: failed to mark bandwidth map entry as reported: %s", err)
 		}
 
 		connID := packet.CreateConnectionID(
@@ -144,10 +150,11 @@ func reportBandwidth(ctx context.Context, objs bpfObjects, bandwidthUpdates chan
 		}
 		select {
 		case bandwidthUpdates <- update:
+			updated++
 		case <-ctx.Done():
 			return
 		default:
-			log.Warning("ebpf: bandwidth update queue is full, skipping rest of batch")
+			log.Warningf("ebpf: bandwidth update queue is full (updated=%d, skipped=%d), skipping rest of batch", updated, skipped)
 			return
 		}
 	}

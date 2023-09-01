@@ -13,6 +13,7 @@ import (
 // Configuration Keys.
 var (
 	CfgOptionEnableFilterKey = "filter/enable"
+	filterEnabled            config.BoolOption
 
 	CfgOptionAskWithSystemNotificationsKey   = "filter/askWithSystemNotifications"
 	cfgOptionAskWithSystemNotificationsOrder = 2
@@ -33,6 +34,23 @@ var (
 
 func registerConfig() error {
 	err := config.Register(&config.Option{
+		Name:           "Enable Privacy Filter",
+		Key:            CfgOptionEnableFilterKey,
+		Description:    "Enable the Privacy Filter. If turned off, all privacy filter protections are fully disabled on this device. Not meant to be disabled in production - only turn off for testing.",
+		OptType:        config.OptTypeBool,
+		ExpertiseLevel: config.ExpertiseLevelDeveloper,
+		ReleaseLevel:   config.ReleaseLevelExperimental,
+		DefaultValue:   true,
+		Annotations: config.Annotations{
+			config.CategoryAnnotation: "General",
+		},
+	})
+	if err != nil {
+		return err
+	}
+	filterEnabled = config.Concurrent.GetAsBool(CfgOptionEnableFilterKey, true)
+
+	err = config.Register(&config.Option{
 		Name:           "Permanent Verdicts",
 		Key:            CfgOptionPermanentVerdictsKey,
 		Description:    "The Portmaster's system integration intercepts every single packet. Usually the first packet is enough for the Portmaster to set the verdict for a connection - ie. to allow or deny it. Making these verdicts permanent means that the Portmaster will tell the system integration that is does not want to see any more packets of that single connection. This brings a major performance increase.",
@@ -118,7 +136,6 @@ var (
 	devMode          config.BoolOption
 	apiListenAddress config.StringOption
 
-	filterEnabled     config.BoolOption
 	tunnelEnabled     config.BoolOption
 	useCommunityNodes config.BoolOption
 
@@ -129,7 +146,6 @@ func getConfig() {
 	devMode = config.Concurrent.GetAsBool(core.CfgDevModeKey, false)
 	apiListenAddress = config.GetAsString(api.CfgDefaultListenAddressKey, "")
 
-	filterEnabled = config.Concurrent.GetAsBool(CfgOptionEnableFilterKey, true)
 	tunnelEnabled = config.Concurrent.GetAsBool(captain.CfgOptionEnableSPNKey, false)
 	useCommunityNodes = config.Concurrent.GetAsBool(captain.CfgOptionUseCommunityNodesKey, true)
 

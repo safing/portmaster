@@ -35,6 +35,11 @@ func Exists(pktInfo *packet.Info, now time.Time) (exists bool) {
 }
 
 func (table *tcpTable) exists(pktInfo *packet.Info) (exists bool) {
+	// Update tables if older than the connection that is checked.
+	if table.lastUpdateAt.Load() < pktInfo.SeenAt.UnixNano() {
+		table.updateTables(table.updateIter.Load())
+	}
+
 	table.lock.RLock()
 	defer table.lock.RUnlock()
 
@@ -57,6 +62,11 @@ func (table *tcpTable) exists(pktInfo *packet.Info) (exists bool) {
 }
 
 func (table *udpTable) exists(pktInfo *packet.Info, now time.Time) (exists bool) {
+	// Update tables if older than the connection that is checked.
+	if table.lastUpdateAt.Load() < pktInfo.SeenAt.UnixNano() {
+		table.updateTables(table.updateIter.Load())
+	}
+
 	table.lock.RLock()
 	defer table.lock.RUnlock()
 

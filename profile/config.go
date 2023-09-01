@@ -7,7 +7,6 @@ import (
 	"github.com/safing/portmaster/profile/endpoints"
 	"github.com/safing/portmaster/status"
 	"github.com/safing/spn/access/account"
-	"github.com/safing/spn/navigator"
 )
 
 // Configuration Keys.
@@ -112,6 +111,10 @@ var (
 	cfgOptionEnableHistory      config.BoolOption
 	cfgOptionEnableHistoryOrder = 96
 
+	CfgOptionKeepHistoryKey   = "history/keep"
+	cfgOptionKeepHistory      config.IntOption
+	cfgOptionKeepHistoryOrder = 97
+
 	// Setting "Enable SPN" at order 128.
 
 	CfgOptionUseSPNKey   = "spn/use"
@@ -125,14 +128,19 @@ var (
 	CfgOptionRoutingAlgorithmKey   = "spn/routingAlgorithm"
 	cfgOptionRoutingAlgorithm      config.StringOption
 	cfgOptionRoutingAlgorithmOrder = 144
+	DefaultRoutingProfileID        = "double-hop" // Copied due to import loop.
 
 	// Setting "Home Node Rules" at order 145.
 
+	CfgOptionTransitHubPolicyKey   = "spn/transitHubPolicy"
+	cfgOptionTransitHubPolicy      config.StringArrayOption
+	cfgOptionTransitHubPolicyOrder = 146
+
 	CfgOptionExitHubPolicyKey   = "spn/exitHubPolicy"
 	cfgOptionExitHubPolicy      config.StringArrayOption
-	cfgOptionExitHubPolicyOrder = 146
+	cfgOptionExitHubPolicyOrder = 147
 
-	// Setting "DNS Exit Node Rules" at order 147.
+	// Setting "DNS Exit Node Rules" at order 148.
 )
 
 // A list of all security level settings.
@@ -152,19 +160,9 @@ var securityLevelSettings = []string{
 }
 
 var (
-	// SPNRulesQuickSettings is a list of countries the SPN currently is present in
-	// as quick settings in order to help users with SPN related policy settings.
-	// This is a quick win to make the MVP easier to use, but will be replaced by
-	// a better solution in the future.
+	// SPNRulesQuickSettings are now generated automatically shorty after start.
 	SPNRulesQuickSettings = []config.QuickSetting{
-		{Name: "Exclude Canada (CA)", Action: config.QuickMergeTop, Value: []string{"- CA"}},
-		{Name: "Exclude Finland (FI)", Action: config.QuickMergeTop, Value: []string{"- FI"}},
-		{Name: "Exclude France (FR)", Action: config.QuickMergeTop, Value: []string{"- FR"}},
-		{Name: "Exclude Germany (DE)", Action: config.QuickMergeTop, Value: []string{"- DE"}},
-		{Name: "Exclude Israel (IL)", Action: config.QuickMergeTop, Value: []string{"- IL"}},
-		{Name: "Exclude Poland (PL)", Action: config.QuickMergeTop, Value: []string{"- PL"}},
-		{Name: "Exclude United Kingdom (GB)", Action: config.QuickMergeTop, Value: []string{"- GB"}},
-		{Name: "Exclude United States of America (US)", Action: config.QuickMergeTop, Value: []string{"- US"}},
+		{Name: "Loading...", Action: config.QuickMergeTop, Value: []string{""}},
 	}
 
 	// SPNRulesVerdictNames defines the verdicts names to be used for SPN Rules.
@@ -192,7 +190,7 @@ func registerConfiguration() error { //nolint:maintidx
 	err := config.Register(&config.Option{
 		Name:         "Default Network Action",
 		Key:          CfgOptionDefaultActionKey,
-		Description:  `The default network action is applied when nothing else allows or blocks an outgoing connection. Incoming connections are always blocked by default.`,
+		Description:  `The default network action is applied when nothing else allows or blocks a connection. This affects both outgoing and incoming connections. This setting is the weakest of all and is commonly overruled by Force Block settings or Rules.`,
 		OptType:      config.OptTypeString,
 		DefaultValue: DefaultActionPermitValue,
 		Annotations: config.Annotations{
@@ -248,16 +246,18 @@ func registerConfiguration() error { //nolint:maintidx
 
 	// Enable History
 	err = config.Register(&config.Option{
-		Name:           "Enable Connection History",
-		Key:            CfgOptionEnableHistoryKey,
-		Description:    "Whether or not to save connections to the history database",
+		Name: "Enable Network History",
+		Key:  CfgOptionEnableHistoryKey,
+		Description: `Save connections in a database (on disk) in order to view and search them later. Changes might take a couple minutes to apply to all connections.
+
+In order to reduce noise optimize performance, internal and device-only (localhost) connections are not saved to history.`,
 		OptType:        config.OptTypeBool,
 		ReleaseLevel:   config.ReleaseLevelStable,
-		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionEnableHistoryOrder,
-			config.CategoryAnnotation:     "History",
+			config.CategoryAnnotation:     "General",
 			config.RequiresFeatureID:      account.FeatureHistory,
 		},
 	})
@@ -266,6 +266,31 @@ func registerConfiguration() error { //nolint:maintidx
 	}
 	cfgOptionEnableHistory = config.Concurrent.GetAsBool(CfgOptionEnableHistoryKey, false)
 	cfgBoolOptions[CfgOptionEnableHistoryKey] = cfgOptionEnableHistory
+
+	err = config.Register(&config.Option{
+		Name: "Keep Network History",
+		Key:  CfgOptionKeepHistoryKey,
+		Description: `Specify how many days the network history data should be kept. Please keep in mind that more available history data makes reports (coming soon) a lot more useful.
+		
+Older data is deleted in intervals and cleared from the database continually. If in a hurry, shutdown or restart Portmaster to clear deleted entries immediately.
+
+Set to 0 days to keep network history forever. Depending on your device, this might affect performance.`,
+		OptType:        config.OptTypeInt,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		ExpertiseLevel: config.ExpertiseLevelUser,
+		DefaultValue:   30,
+		Annotations: config.Annotations{
+			config.UnitAnnotation:         "Days",
+			config.DisplayOrderAnnotation: cfgOptionKeepHistoryOrder,
+			config.CategoryAnnotation:     "General",
+			config.RequiresFeatureID:      account.FeatureHistory,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionKeepHistory = config.Concurrent.GetAsInt(CfgOptionKeepHistoryKey, 30)
+	cfgIntOptions[CfgOptionKeepHistoryKey] = cfgOptionKeepHistory
 
 	rulesHelp := strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match:
 
@@ -689,6 +714,33 @@ Please note that if you are using the system resolver, bypass attempts might be 
 	cfgOptionSPNUsagePolicy = config.Concurrent.GetAsStringArray(CfgOptionSPNUsagePolicyKey, []string{})
 	cfgStringArrayOptions[CfgOptionSPNUsagePolicyKey] = cfgOptionSPNUsagePolicy
 
+	// Transit Node Rules
+	err = config.Register(&config.Option{
+		Name:           "Transit Node Rules",
+		Key:            CfgOptionTransitHubPolicyKey,
+		Description:    `Customize which countries should or should not be used as Transit Nodes. Transit Nodes are used to transit the SPN from your Home to your Exit Node.`,
+		Help:           SPNRulesHelp,
+		Sensitive:      true,
+		OptType:        config.OptTypeStringArray,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		DefaultValue:   []string{},
+		Annotations: config.Annotations{
+			config.StackableAnnotation:                   true,
+			config.CategoryAnnotation:                    "Routing",
+			config.DisplayOrderAnnotation:                cfgOptionTransitHubPolicyOrder,
+			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
+			config.QuickSettingsAnnotation:               SPNRulesQuickSettings,
+			endpoints.EndpointListVerdictNamesAnnotation: SPNRulesVerdictNames,
+		},
+		ValidationRegex: endpoints.ListEntryValidationRegex,
+		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionTransitHubPolicy = config.Concurrent.GetAsStringArray(CfgOptionTransitHubPolicyKey, []string{})
+	cfgStringArrayOptions[CfgOptionTransitHubPolicyKey] = cfgOptionTransitHubPolicy
+
 	// Exit Node Rules
 	err = config.Register(&config.Option{
 		Name: "Exit Node Rules",
@@ -723,7 +775,7 @@ By default, the Portmaster tries to choose the node closest to the destination a
 		Key:          CfgOptionRoutingAlgorithmKey,
 		Description:  "Select the routing algorithm for your connections through the SPN. Configure your preferred balance between speed and privacy. Portmaster may automatically upgrade the routing algorithm if necessary to protect your privacy.",
 		OptType:      config.OptTypeString,
-		DefaultValue: navigator.DefaultRoutingProfileID,
+		DefaultValue: DefaultRoutingProfileID,
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
 			config.DisplayOrderAnnotation: cfgOptionRoutingAlgorithmOrder,
@@ -755,7 +807,7 @@ By default, the Portmaster tries to choose the node closest to the destination a
 	if err != nil {
 		return err
 	}
-	cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(CfgOptionRoutingAlgorithmKey, navigator.DefaultRoutingProfileID)
+	cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(CfgOptionRoutingAlgorithmKey, DefaultRoutingProfileID)
 	cfgStringOptions[CfgOptionRoutingAlgorithmKey] = cfgOptionRoutingAlgorithm
 
 	return nil

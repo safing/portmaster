@@ -1,0 +1,40 @@
+# Configuration for Label Actions - https://github.com/dessant/label-actions
+
+community support:
+  comment: |
+    Hey @{issue-author}, thank you for raising this issue with us.
+
+    After a first review we noticed that this does not seem to be a technical issue, but rather a configuration issue or general question about how Portmaster works.
+
+    Thus, we invite the community to help with configuration and/or answering this questions.
+
+    If you are in a hurry or haven't received an answer, a good place to ask is in [our Discord community](https://discord.gg/safing).
+
+    If your problem or question has been resolved or answered, please come back and give an update here for other users encountering the same and then close this issue.
+
+    If you are a paying subscriber and want this issue to be checked out by Safing, please send us a message [on Discord](https://discord.gg/safing) or [via Email](mailto:support@safing.io) with your username and the link to this issue, so we can prioritize accordingly.
+
+needs debug info:
+  comment: |
+    Hey @{issue-author}, thank you for raising this issue with us.
+
+    After a first review we noticed that we will require the Debug Info for further investigation. However, you haven't supplied any Debug Info in your report.
+
+    Please [collect Debug Info](https://wiki.safing.io/en/FAQ/DebugInfo) from Portmaster _while_ the reported issue is present.
+
+in/compatibility:
+  comment: |
+    Hey @{issue-author}, thank you for reporting on a compatibility.
+
+    We keep a list of compatible software and user provided guides for improving compatibility [in the wiki - please have a look there](https://wiki.safing.io/en/Portmaster/App/Compatibility).
+    If you can't find your software in the list, then a good starting point is our guide on [How do I make software compatible with Portmaster](https://wiki.safing.io/en/FAQ/MakeSoftwareCompatibleWithPortmaster).
+
+    If you have managed to establish compatibility with an application, please share your findings here. This will greatly help other users encountering the same issues.
+
+fixed:
+  comment: |
+    This issue has been fixed by the recently referenced commit or PR.
+
+    However, the fix is not released yet.
+    
+    It is expected to go into the [Beta Release Channel](https://wiki.safing.io/en/FAQ/SwitchReleaseChannel) for testing within the next two weeks and will be available for everyone within the next four weeks. While this is the typical timeline we work with, things are subject to change.

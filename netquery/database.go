@@ -16,12 +16,14 @@ import (
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 
+	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netquery/orm"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/profile"
 )
 
 // InMemory is the "file path" to open a new in-memory database.
@@ -202,6 +204,49 @@ func NewInMemory() (*Database, error) {
 	return db, nil
 }
 
+// Close closes the database, including pools and connections.
+func (db *Database) Close() error {
+	db.readConnPool.Close()
+
+	if err := db.writeConn.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// VacuumHistory rewrites the history database in order to purge deleted records.
+func VacuumHistory(ctx context.Context) (err error) {
+	historyParentDir := dataroot.Root().ChildDir("databases", 0o700)
+	if err := historyParentDir.Ensure(); err != nil {
+		return fmt.Errorf("failed to ensure database directory exists: %w", err)
+	}
+
+	// Get file location of history database.
+	historyFile := filepath.Join(historyParentDir.Path, "history.db")
+	// Convert to SQLite URI path.
+	historyURI := "file:///" + strings.TrimPrefix(filepath.ToSlash(historyFile), "/")
+
+	writeConn, err := sqlite.OpenConn(
+		historyURI,
+		sqlite.OpenCreate,
+		sqlite.OpenReadWrite,
+		sqlite.OpenWAL,
+		sqlite.OpenSharedCache,
+		sqlite.OpenURI,
+	)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := writeConn.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+
+	return orm.RunQuery(ctx, writeConn, "VACUUM")
+}
+
 // ApplyMigrations applies any table and data migrations that are needed
 // to bring db up-to-date with the built-in schema.
 // TODO(ppacher): right now this only applies the current schema and ignores
@@ -377,6 +422,80 @@ func (db *Database) dumpTo(ctx context.Context, w io.Writer) error { //nolint:un
 	return enc.Encode(conns)
 }
 
+// CleanupHistory deletes history data outside of the (per-app) retention time frame.
+func (db *Database) CleanupHistory(ctx context.Context) error {
+	// Setup tracer for the clean up process.
+	ctx, tracer := log.AddTracer(ctx)
+	defer tracer.Submit()
+
+	// Get list of profiles in history.
+	query := "SELECT DISTINCT profile FROM history.connections"
+	var result []struct {
+		Profile string `sqlite:"profile"`
+	}
+	if err := db.Execute(ctx, query, orm.WithResult(&result)); err != nil {
+		return fmt.Errorf("failed to get a list of profiles from the history database: %w", err)
+	}
+
+	var (
+		// Get global retention days - do not delete in case of error.
+		globalRetentionDays = config.GetAsInt(profile.CfgOptionKeepHistoryKey, 0)()
+
+		profileName   string
+		retentionDays int64
+
+		profileCnt int
+		merr       = new(multierror.Error)
+	)
+	for _, row := range result {
+		// Get profile and retention days.
+		id := strings.TrimPrefix(row.Profile, string(profile.SourceLocal)+"/")
+		p, err := profile.GetLocalProfile(id, nil, nil)
+		if err == nil {
+			profileName = p.String()
+			retentionDays = p.LayeredProfile().KeepHistory()
+		} else {
+			// Getting profile failed, fallback to global setting.
+			tracer.Errorf("history: failed to load profile for id %s: %s", id, err)
+			profileName = row.Profile
+			retentionDays = globalRetentionDays
+		}
+
+		// Skip deleting if history should be kept forever.
+		if retentionDays == 0 {
+			tracer.Tracef("history: retention is disabled for %s, skipping", profileName)
+			continue
+		}
+		// Count profiles where connections were deleted.
+		profileCnt++
+
+		// TODO: count cleared connections
+		threshold := time.Now().Add(-1 * time.Duration(retentionDays) * time.Hour * 24)
+		if err := db.ExecuteWrite(ctx,
+			"DELETE FROM history.connections WHERE profile = :profile AND active = FALSE AND datetime(started) < datetime(:threshold)",
+			orm.WithNamedArgs(map[string]any{
+				":profile":   row.Profile,
+				":threshold": threshold.Format(orm.SqliteTimeFormat),
+			}),
+		); err != nil {
+			tracer.Warningf("history: failed to delete connections of %s: %s", profileName, err)
+			merr.Errors = append(merr.Errors, fmt.Errorf("profile %s: %w", row.Profile, err))
+		} else {
+			tracer.Debugf(
+				"history: deleted connections older than %d days (before %s) of %s",
+				retentionDays,
+				threshold.Format(time.RFC822),
+				profileName,
+			)
+		}
+	}
+
+	// Log summary.
+	tracer.Infof("history: deleted connections outside of retention from %d profiles", profileCnt)
+
+	return merr.ErrorOrNil()
+}
+
 // MarkAllHistoryConnectionsEnded marks all connections in the history database as ended.
 func (db *Database) MarkAllHistoryConnectionsEnded(ctx context.Context) error {
 	query := fmt.Sprintf("UPDATE %s.connections SET active = FALSE, ended = :ended WHERE active = TRUE", HistoryDatabase)
@@ -511,10 +630,4 @@ func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) err
 	}
 
 	return nil
-}
-
-// Close closes the underlying database connection. db should and cannot be
-// used after Close() has returned.
-func (db *Database) Close() error {
-	return db.writeConn.Close()
 }

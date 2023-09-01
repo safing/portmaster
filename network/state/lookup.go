@@ -76,7 +76,7 @@ func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 	// Search for the socket until found.
 	for i := 1; i <= lookupTries; i++ {
 		// Get or update tables.
-		if i == 1 {
+		if i == 1 && pktInfo.SeenAt.UnixNano() >= table.lastUpdateAt.Load() {
 			connections, listeners, updateIter = table.getCurrentTables()
 		} else {
 			connections, listeners, updateIter = table.updateTables(updateIter)
@@ -179,7 +179,7 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 	// Search for the socket until found.
 	for i := 1; i <= lookupTries; i++ {
 		// Get or update tables.
-		if i == 1 {
+		if i == 1 && pktInfo.SeenAt.UnixNano() >= table.lastUpdateAt.Load() {
 			binds, updateIter = table.getCurrentTables()
 		} else {
 			binds, updateIter = table.updateTables(updateIter)

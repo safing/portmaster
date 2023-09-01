@@ -39,6 +39,12 @@ type (
 		// UpdateBandwidth updates bandwidth data for the connection and optionally also writes
 		// the bandwidth data to the history database.
 		UpdateBandwidth(ctx context.Context, enableHistory bool, processKey string, connID string, bytesReceived uint64, bytesSent uint64) error
+
+		// CleanupHistory deletes data outside of the retention time frame from the history database.
+		CleanupHistory(ctx context.Context) error
+
+		// Close closes the connection store. It must not be used afterwards.
+		Close() error
 	}
 
 	// Manager handles new and updated network.Connections feeds and persists them
@@ -121,7 +127,7 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 
 				// Save to netquery database.
 				// Do not include internal connections in history.
-				if err := mng.store.Save(ctx, *model, conn.HistoryEnabled && !conn.Internal); err != nil {
+				if err := mng.store.Save(ctx, *model, conn.HistoryEnabled); err != nil {
 					log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
 					return
 				}

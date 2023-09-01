@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -293,18 +292,22 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	}
 
 	// Check if the dns request connection was reported with process info.
-	dnsRequestConnID := pi.CreateConnectionID()
-	// Cut the destination, as the dns request may have been redirected and we
-	// don't know the original destination.
-	dnsRequestConnIDPrefix, ok := strings.CutSuffix(dnsRequestConnID, "<nil>-0")
-	if !ok {
-		log.Tracer(ctx).Warningf("network: unexpected connection ID for finding dns requests connection: %s", dnsRequestConnID)
-	}
-	// Find matching dns request connection.
-	dnsRequestConn, ok := conns.findByPrefix(dnsRequestConnIDPrefix)
-	if ok && dnsRequestConn.PID != process.UndefinedProcessID {
-		log.Tracer(ctx).Debugf("network: found matching dns request connection %s", dnsRequestConn)
+	var proc *process.Process
+	dnsRequestConn, ok := GetDNSRequestConnection(pi)
+	switch {
+	case !ok:
+		// No dns request connection found.
+	case dnsRequestConn.PID < 0:
+		// Process is not identified or is special.
+	case dnsRequestConn.Ended > 0 && dnsRequestConn.Ended < time.Now().Unix()-3:
+		// Connection has already ended (too long ago).
+		log.Tracer(ctx).Debugf("network: found ended dns request connection %s for dns request for %s", dnsRequestConn, fqdn)
+	default:
+		log.Tracer(ctx).Debugf("network: found matching dns request connection %s", dnsRequestConn.String())
+		// Inherit PID.
 		pi.PID = dnsRequestConn.PID
+		// Inherit process struct itself, as the PID may already be re-used.
+		proc = dnsRequestConn.process
 	}
 
 	// Find process by remote IP/Port.
@@ -316,7 +319,9 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	}
 
 	// Get process and profile with PID.
-	proc, _ := process.GetProcessWithProfile(ctx, pi.PID)
+	if proc == nil {
+		proc, _ = process.GetProcessWithProfile(ctx, pi.PID)
+	}
 
 	timestamp := time.Now().Unix()
 	dnsConn := &Connection{
@@ -340,7 +345,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	if localProfile := proc.Profile().LocalProfile(); localProfile != nil {
 		dnsConn.Internal = localProfile.Internal
 
-		if err := dnsConn.updateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
+		if err := dnsConn.UpdateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
 			log.Tracer(ctx).Warningf("network: failed to check for enabled features: %s", err)
 		}
 	}
@@ -383,7 +388,7 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 	if localProfile := remoteHost.Profile().LocalProfile(); localProfile != nil {
 		dnsConn.Internal = localProfile.Internal
 
-		if err := dnsConn.updateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
+		if err := dnsConn.UpdateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
 			log.Tracer(ctx).Warningf("network: failed to check for enabled features: %s", err)
 		}
 	}
@@ -507,7 +512,7 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 		if localProfile := conn.process.Profile().LocalProfile(); localProfile != nil {
 			conn.Internal = localProfile.Internal
 
-			if err := conn.updateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
+			if err := conn.UpdateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
 				log.Tracer(pkt.Ctx()).Warningf("network: connection %s failed to check for enabled features: %s", conn, err)
 			}
 		}
@@ -578,27 +583,36 @@ func (conn *Connection) SetLocalIP(ip net.IP) {
 	conn.LocalIPScope = netutils.GetIPScope(ip)
 }
 
-// updateFeatures checks which connection related features may be used and sets
-// the flags accordingly.
-func (conn *Connection) updateFeatures() error {
+// UpdateFeatures checks which connection related features may and should be
+// used and sets the flags accordingly.
+// The caller must hold a lock on the connection.
+func (conn *Connection) UpdateFeatures() error {
 	// Get user.
 	user, err := access.GetUser()
-	if err != nil {
+	if err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
 		return err
 	}
+	// Caution: user may be nil!
 
 	// Check if history may be used and if it is enabled for this application.
-	if user.MayUse(account.FeatureHistory) {
+	conn.HistoryEnabled = false
+	switch {
+	case conn.Internal:
+		// Do not record internal connections, as they are of low interest in the history.
+		// TODO: Should we create a setting for this?
+	case conn.Entity.IPScope.IsLocalhost():
+		// Do not record localhost-only connections, as they are very low interest in the history.
+		// TODO: Should we create a setting for this?
+	case user.MayUse(account.FeatureHistory):
+		// Check if history may be used and is enabled.
 		lProfile := conn.Process().Profile()
 		if lProfile != nil {
-			conn.HistoryEnabled = lProfile.HistoryEnabled()
+			conn.HistoryEnabled = lProfile.EnableHistory()
 		}
 	}
 
 	// Check if bandwidth visibility may be used.
-	if user.MayUse(account.FeatureBWVis) {
-		conn.BandwidthEnabled = true
-	}
+	conn.BandwidthEnabled = user.MayUse(account.FeatureBWVis)
 
 	return nil
 }
@@ -820,8 +834,10 @@ func (conn *Connection) StopFirewallHandler() {
 	conn.firewallHandler = nil
 
 	// Signal the packet handler worker that it can stop.
-	close(conn.pktQueue)
-	conn.pktQueueActive = false
+	if conn.pktQueueActive {
+		close(conn.pktQueue)
+		conn.pktQueueActive = false
+	}
 
 	// Unset the packet queue so that it can be freed.
 	conn.pktQueue = nil
@@ -1006,6 +1022,8 @@ func (conn *Connection) SetInspectorData(newInspectorData map[uint8]interface{})
 // String returns a string representation of conn.
 func (conn *Connection) String() string {
 	switch {
+	case conn.process == nil || conn.Entity == nil:
+		return conn.ID
 	case conn.Inbound:
 		return fmt.Sprintf("%s <- %s", conn.process, conn.Entity.IP)
 	case conn.Entity.Domain != "":

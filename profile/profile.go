@@ -127,16 +127,16 @@ type Profile struct { //nolint:maligned // not worth the effort
 	layeredProfile *LayeredProfile
 
 	// Interpreted Data
-	configPerspective *config.Perspective
-	dataParsed        bool
-	defaultAction     uint8
-	endpoints         endpoints.Endpoints
-	serviceEndpoints  endpoints.Endpoints
-	filterListsSet    bool
-	filterListIDs     []string
-	spnUsagePolicy    endpoints.Endpoints
-	spnExitHubPolicy  endpoints.Endpoints
-	enableHistory     bool
+	configPerspective   *config.Perspective
+	dataParsed          bool
+	defaultAction       uint8
+	endpoints           endpoints.Endpoints
+	serviceEndpoints    endpoints.Endpoints
+	filterListsSet      bool
+	filterListIDs       []string
+	spnUsagePolicy      endpoints.Endpoints
+	spnTransitHubPolicy endpoints.Endpoints
+	spnExitHubPolicy    endpoints.Endpoints
 
 	// Lifecycle Management
 	outdated   *abool.AtomicBool
@@ -225,6 +225,15 @@ func (profile *Profile) parseConfig() error {
 		}
 	}
 
+	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionTransitHubPolicyKey)
+	profile.spnTransitHubPolicy = nil
+	if ok {
+		profile.spnTransitHubPolicy, err = endpoints.ParseEndpoints(list)
+		if err != nil {
+			lastErr = err
+		}
+	}
+
 	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionExitHubPolicyKey)
 	profile.spnExitHubPolicy = nil
 	if ok {
@@ -232,11 +241,6 @@ func (profile *Profile) parseConfig() error {
 		if err != nil {
 			lastErr = err
 		}
-	}
-
-	enableHistory, ok := profile.configPerspective.GetAsBool(CfgOptionEnableHistoryKey)
-	if ok {
-		profile.enableHistory = enableHistory
 	}
 
 	return lastErr
@@ -319,11 +323,6 @@ func (profile *Profile) String() string {
 // IsOutdated returns whether the this instance of the profile is marked as outdated.
 func (profile *Profile) IsOutdated() bool {
 	return profile.outdated.IsSet()
-}
-
-// HistoryEnabled returns true if connection history is enabled for the profile.
-func (profile *Profile) HistoryEnabled() bool {
-	return profile.enableHistory
 }
 
 // GetEndpoints returns the endpoint list of the profile. This functions
@@ -462,7 +461,7 @@ func (profile *Profile) updateMetadata(binaryPath string) (changed bool) {
 		changed = true
 	}
 
-	// Migrato to Fingerprints.
+	// Migrate to Fingerprints.
 	// TODO: Remove in v1.5
 	if len(profile.Fingerprints) == 0 && profile.LinkedPath != "" {
 		profile.Fingerprints = []Fingerprint{

@@ -218,8 +218,11 @@ func (req *QueryRequestPayload) prepareSelectedFields(ctx context.Context, schem
 		case s.Distinct != nil:
 			field = *s.Distinct
 		case s.Sum != nil:
-			// field is not used in case of $sum
-			field = "*"
+			if s.Sum.Field != "" {
+				field = s.Sum.Field
+			} else {
+				field = "*"
+			}
 		case s.Min != nil:
 			if s.Min.Field != "" {
 				field = s.Min.Field
@@ -261,9 +264,19 @@ func (req *QueryRequestPayload) prepareSelectedFields(ctx context.Context, schem
 				return fmt.Errorf("missing 'as' for $sum")
 			}
 
-			clause, params, err := s.Sum.Condition.toSQLWhereClause(ctx, fmt.Sprintf("sel%d", idx), schema, orm.DefaultEncodeConfig)
-			if err != nil {
-				return fmt.Errorf("in $sum: %w", err)
+			var (
+				clause string
+				params map[string]any
+			)
+
+			if s.Sum.Field != "" {
+				clause = s.Sum.Field
+			} else {
+				var err error
+				clause, params, err = s.Sum.Condition.toSQLWhereClause(ctx, fmt.Sprintf("sel%d", idx), schema, orm.DefaultEncodeConfig)
+				if err != nil {
+					return fmt.Errorf("in $sum: %w", err)
+				}
 			}
 
 			req.mergeParams(params)

@@ -135,12 +135,8 @@ func (dl *DeviceLocation) IsMoreAccurateThan(other *DeviceLocation) bool {
 		other.Location.AutonomousSystemNumber == 0:
 		// Having an ASN is better than having none.
 		return true
-	case dl.Location.Continent.Code != "" &&
-		other.Location.Continent.Code == "":
-		// Having a Continent is better than having none.
-		return true
-	case dl.Location.Country.ISOCode != "" &&
-		other.Location.Country.ISOCode == "":
+	case dl.Location.Country.Code != "" &&
+		other.Location.Country.Code == "":
 		// Having a Country is better than having none.
 		return true
 	case (dl.Location.Coordinates.Latitude != 0 ||
@@ -178,7 +174,13 @@ func (dl *DeviceLocation) String() string {
 			dl.Location.Coordinates.Longitude,
 		)
 	default:
-		return fmt.Sprintf("%s (AS%d in %s)", dl.IP, dl.Location.AutonomousSystemNumber, dl.Location.Country.ISOCode)
+		return fmt.Sprintf(
+			"%s (AS%d in %s - %s)",
+			dl.IP,
+			dl.Location.AutonomousSystemNumber,
+			dl.Location.Country.Name,
+			dl.Location.Country.Code,
+		)
 	}
 }
 
@@ -255,7 +257,7 @@ func (dls *DeviceLocations) AddIP(ip net.IP, source DeviceLocationSource) (dl *D
 		return nil, false
 	}
 	// Only use location if there is data for it.
-	if geoLoc.Country.ISOCode == "" {
+	if geoLoc.Country.Code == "" {
 		return nil, false
 	}
 	loc.Location = geoLoc

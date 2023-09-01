@@ -15,6 +15,11 @@ const (
 	// ended connections should be removed from the internal connection state.
 	DeleteConnsAfterEndedThreshold = 10 * time.Minute
 
+	// DeleteIncompleteConnsAfterStartedThreshold defines the amount of time after
+	// which incomplete connections should be removed from the internal
+	// connection state.
+	DeleteIncompleteConnsAfterStartedThreshold = 1 * time.Minute
+
 	cleanerTickDuration = 5 * time.Second
 )
 
@@ -43,7 +48,9 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 	_ = module.RunMicroTask("clean connections", 0, func(ctx context.Context) error {
 		now := time.Now().UTC()
 		nowUnix := now.Unix()
+		ignoreNewer := nowUnix - 1
 		deleteOlderThan := now.Add(-DeleteConnsAfterEndedThreshold).Unix()
+		deleteIncompleteOlderThan := now.Add(-DeleteIncompleteConnsAfterStartedThreshold).Unix()
 
 		// network connections
 		for _, conn := range conns.clone() {
@@ -51,9 +58,14 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 
 			// delete inactive connections
 			switch {
+			case conn.Started >= ignoreNewer:
+				// Skip very fresh connections to evade edge cases.
 			case !conn.DataIsComplete():
 				// Step 0: delete old incomplete connections
-				if conn.Started < deleteOlderThan {
+				if conn.Started < deleteIncompleteOlderThan {
+					// Stop the firewall handler, in case one is running.
+					conn.StopFirewallHandler()
+					// Remove connection from state.
 					conn.delete()
 				}
 			case conn.Ended == 0:
@@ -67,11 +79,17 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 					Dst:      conn.Entity.IP,
 					DstPort:  conn.Entity.Port,
 					PID:      process.UndefinedProcessID,
+					SeenAt:   time.Unix(conn.Started, 0), // State tables will be updated if older than this.
 				}, now)
 
 				// Step 2: mark as ended
 				if !exists {
 					conn.Ended = nowUnix
+
+					// Stop the firewall handler, in case one is running.
+					conn.StopFirewallHandler()
+
+					// Save to database.
 					conn.Save()
 				}
 
@@ -83,6 +101,8 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 				// Step 3: delete
 				// DEBUG:
 				// log.Tracef("network.clean: deleted %s (ended at %s)", conn.DatabaseKey(), time.Unix(conn.Ended, 0))
+
+				// Remove connection from state.
 				conn.delete()
 			}
 
@@ -101,6 +121,9 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 
 			conn.Unlock()
 		}
+
+		// rerouted dns requests
+		cleanDNSRequestConnections()
 
 		return nil
 	})
