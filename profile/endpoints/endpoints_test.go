@@ -357,7 +357,7 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 
 		// ASN
 
-		ep, err = parseEndpoint("+ 	AS15169")
+		ep, err = parseEndpoint("+ AS15169")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -399,6 +399,20 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 	testEndpointMatch(t, ep, entity, Permitted)
 	entity.SetIP(net.ParseIP("151.101.1.164")) // nytimes.com
 	testEndpointMatch(t, ep, entity, NoMatch)
+
+	// Port with protocol wildcard
+
+	ep, err = parseEndpoint("+ * */443")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entity = &intel.Entity{
+		Domain:   "",
+		IP:       net.ParseIP("10.2.3.4"),
+		Protocol: 6,
+		Port:     443,
+	}
+	testEndpointMatch(t, ep, entity, Permitted)
 
 	// Lists
 
