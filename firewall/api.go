@@ -2,12 +2,10 @@ package firewall
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +14,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/netenv"
+	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/updates"
@@ -53,7 +52,7 @@ func prepAPIAuth() error {
 
 func startAPIAuth() {
 	var err error
-	apiIP, apiPort, err = parseHostPort(apiListenAddress())
+	apiIP, apiPort, err = netutils.ParseIPPort(apiListenAddress())
 	if err != nil {
 		log.Warningf("filter: failed to parse API address for improved api auth mechanism: %s", err)
 		return
@@ -71,13 +70,13 @@ func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, er
 	}
 
 	// get local IP/Port
-	localIP, localPort, err := parseHostPort(s.Addr)
+	localIP, localPort, err := netutils.ParseIPPort(s.Addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get local IP/Port: %w", err)
 	}
 
 	// get remote IP/Port
-	remoteIP, remotePort, err := parseHostPort(r.RemoteAddr)
+	remoteIP, remotePort, err := netutils.ParseIPPort(r.RemoteAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get remote IP/Port: %w", err)
 	}
@@ -213,23 +212,4 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 			authenticatedPath,
 		)
 	}
-}
-
-func parseHostPort(address string) (net.IP, uint16, error) {
-	ipString, portString, err := net.SplitHostPort(address)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	ip := net.ParseIP(ipString)
-	if ip == nil {
-		return nil, 0, errors.New("invalid IP address")
-	}
-
-	port, err := strconv.ParseUint(portString, 10, 16)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return ip, uint16(port), nil
 }
