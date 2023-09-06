@@ -35,6 +35,14 @@ type Entity struct { //nolint:maligned
 	resolveSubDomainLists bool
 	checkCNAMEs           bool
 
+	// IP is the IP address of the connection. If domain is
+	// set, IP has been resolved by following all CNAMEs.
+	IP net.IP
+
+	// IPScope holds the network scope of the IP.
+	// For DNS requests, this signifies in which scope the DNS request was resolved.
+	IPScope netutils.IPScope
+
 	// Protocol is the protcol number used by the connection.
 	Protocol uint8
 
@@ -54,14 +62,6 @@ type Entity struct { //nolint:maligned
 	// CNAME is a list of domain names that have been
 	// resolved for Domain.
 	CNAME []string
-
-	// IP is the IP address of the connection. If domain is
-	// set, IP has been resolved by following all CNAMEs.
-	IP net.IP
-
-	// IPScope holds the network scope of the IP.
-	// For DNS requests, this signifies in which scope the DNS request was resolved.
-	IPScope netutils.IPScope
 
 	// Country holds the country the IP address (ASN) is
 	// located in.
@@ -106,21 +106,26 @@ type Entity struct { //nolint:maligned
 	loadAsnListOnce     sync.Once
 }
 
-// Init initializes the internal state and returns the entity.
-func (e *Entity) Init() *Entity {
-	// for backwards compatibility, remove that one
+// Init initializes internal metadata about the entity.
+// If the entity does not describe a destination, you can supply a different
+// destination port for endpoint matching.
+// It returns the entity itself for single line formatting.
+func (e *Entity) Init(dstPort uint16) *Entity {
+	// Get IP scope.
+	if e.IP != nil {
+		e.IPScope = netutils.GetIPScope(e.IP)
+	} else {
+		e.IPScope = netutils.Undefined
+	}
+
+	// Set dst port to given value or fall back to entity.
+	if dstPort > 0 {
+		e.dstPort = dstPort
+	} else {
+		e.dstPort = e.Port
+	}
+
 	return e
-}
-
-// SetIP sets the IP address together with its network scope.
-func (e *Entity) SetIP(ip net.IP) {
-	e.IP = ip
-	e.IPScope = netutils.GetIPScope(ip)
-}
-
-// SetDstPort sets the destination port.
-func (e *Entity) SetDstPort(dstPort uint16) {
-	e.dstPort = dstPort
 }
 
 // DstPort returns the destination port.

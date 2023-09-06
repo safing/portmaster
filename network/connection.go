@@ -438,12 +438,12 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 	// Create remote entity.
 	if conn.Entity == nil {
 		// Remote
-		conn.Entity = &intel.Entity{
+		conn.Entity = (&intel.Entity{
+			IP:       pkt.Info().RemoteIP(),
 			Protocol: uint8(pkt.Info().Protocol),
 			Port:     pkt.Info().RemotePort(),
-		}
-		conn.Entity.SetIP(pkt.Info().RemoteIP())
-		conn.Entity.SetDstPort(pkt.Info().DstPort)
+		}).Init(pkt.Info().DstPort)
+
 		// Local
 		conn.SetLocalIP(pkt.Info().LocalIP())
 		conn.LocalPort = pkt.Info().LocalPort()

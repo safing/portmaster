@@ -27,11 +27,11 @@ func NewDefaultConnection(localIP net.IP, localPort uint16, remoteIP net.IP, rem
 		LocalIPScope: netutils.Global,
 		LocalPort:    localPort,
 		PID:          process.UnidentifiedProcessID,
-		Entity: &intel.Entity{
-			Protocol: uint8(protocol),
+		Entity: (&intel.Entity{
 			IP:       remoteIP,
+			Protocol: uint8(protocol),
 			Port:     remotePort,
-		},
+		}).Init(0),
 		Resolver:         nil,
 		Started:          time.Now().Unix(),
 		VerdictPermanent: false,

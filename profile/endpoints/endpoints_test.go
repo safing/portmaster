@@ -19,8 +19,6 @@ func TestMain(m *testing.M) {
 func testEndpointMatch(t *testing.T, ep Endpoint, entity *intel.Entity, expectedResult EPResult) {
 	t.Helper()
 
-	entity.SetDstPort(entity.Port)
-
 	result, _ := ep.Matches(context.TODO(), entity)
 	if result != expectedResult {
 		t.Errorf(
@@ -75,13 +73,13 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 
 	// DOMAIN
 
@@ -93,31 +91,31 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "abc.example.com.",
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "abc-example.com.",
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "abc.example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "abc-example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 
 	ep, err = parseEndpoint("+ *.example.com")
 	if err != nil {
@@ -126,31 +124,31 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "abc.example.com.",
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "abc-example.com.",
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "abc.example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "abc-example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 
 	ep, err = parseEndpoint("+ .example.com")
 	if err != nil {
@@ -159,31 +157,31 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "abc.example.com.",
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "abc-example.com.",
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "abc.example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "abc-example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 
 	ep, err = parseEndpoint("+ example.*")
 	if err != nil {
@@ -192,22 +190,22 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "abc.example.com.",
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "abc.example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 
 	ep, err = parseEndpoint("+ *.exampl*")
 	if err != nil {
@@ -216,22 +214,22 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "abc.example.com.",
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "abc.example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 
 	ep, err = parseEndpoint("+ *.com.")
 	if err != nil {
@@ -240,10 +238,10 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.org.",
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 
 	// protocol
 
@@ -257,16 +255,16 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 17,
 		Port:     443,
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 
 	// ports
 
@@ -280,24 +278,28 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 17,
 		Port:     441,
-	}).Init()
+	}).Init(0)
 	testEndpointMatch(t, ep, entity, NoMatch)
 
 	entity.Port = 442
+	entity.Init(0)
 	testEndpointMatch(t, ep, entity, Permitted)
 
 	entity.Port = 443
+	entity.Init(0)
 	testEndpointMatch(t, ep, entity, Permitted)
 
 	entity.Port = 444
+	entity.Init(0)
 	testEndpointMatch(t, ep, entity, Permitted)
 
 	entity.Port = 445
+	entity.Init(0)
 	testEndpointMatch(t, ep, entity, NoMatch)
 
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 
 	// IP
 
@@ -311,30 +313,30 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "example.com.",
 		IP:       net.ParseIP("10.2.3.4"),
 		Protocol: 17,
 		Port:     443,
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "",
 		IP:       net.ParseIP("10.2.3.3"),
 		Protocol: 6,
 		Port:     443,
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain:   "example.com.",
 		IP:       net.ParseIP("10.2.3.5"),
 		Protocol: 17,
 		Port:     443,
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 
 	testEndpointMatch(t, ep, (&intel.Entity{
 		Domain: "example.com.",
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 
 	// IP Range
 
@@ -344,13 +346,13 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 	}
 	testEndpointMatch(t, ep, (&intel.Entity{
 		IP: net.ParseIP("10.2.2.4"),
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		IP: net.ParseIP("10.2.3.4"),
-	}).Init(), Permitted)
+	}).Init(0), Permitted)
 	testEndpointMatch(t, ep, (&intel.Entity{
 		IP: net.ParseIP("10.2.4.4"),
-	}).Init(), NoMatch)
+	}).Init(0), NoMatch)
 
 	// Skip test that need the geoip database in CI.
 	if !testing.Short() {
@@ -362,12 +364,10 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 			t.Fatal(err)
 		}
 
-		entity = &intel.Entity{}
-		entity.SetIP(net.ParseIP("8.8.8.8"))
+		entity = (&intel.Entity{IP: net.IPv4(8, 8, 8, 8)}).Init(0)
 		testEndpointMatch(t, ep, entity, Permitted)
 
-		entity = &intel.Entity{}
-		entity.SetIP(net.ParseIP("1.1.1.1"))
+		entity = (&intel.Entity{IP: net.IPv4(1, 1, 1, 1)}).Init(0)
 		testEndpointMatch(t, ep, entity, NoMatch)
 
 		// Country
@@ -377,12 +377,10 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 			t.Fatal(err)
 		}
 
-		entity = &intel.Entity{}
-		entity.SetIP(net.ParseIP("194.232.104.1")) // orf.at
+		entity = (&intel.Entity{IP: net.IPv4(194, 232, 104, 1)}).Init(0) // orf.at
 		testEndpointMatch(t, ep, entity, Permitted)
 
-		entity = &intel.Entity{}
-		entity.SetIP(net.ParseIP("151.101.1.164")) // nytimes.com
+		entity = (&intel.Entity{IP: net.IPv4(151, 101, 1, 164)}).Init(0) // nytimes.com
 		testEndpointMatch(t, ep, entity, NoMatch)
 
 	}
@@ -394,10 +392,10 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 		t.Fatal(err)
 	}
 
-	entity = &intel.Entity{}
-	entity.SetIP(net.ParseIP("192.168.0.1"))
+	entity = (&intel.Entity{IP: net.IPv4(192, 168, 0, 1)}).Init(0)
 	testEndpointMatch(t, ep, entity, Permitted)
-	entity.SetIP(net.ParseIP("151.101.1.164")) // nytimes.com
+
+	entity = (&intel.Entity{IP: net.IPv4(151, 101, 1, 164)}).Init(0) // nytimes.com
 	testEndpointMatch(t, ep, entity, NoMatch)
 
 	// Port with protocol wildcard
@@ -412,6 +410,7 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 		Protocol: 6,
 		Port:     443,
 	}
+	entity.Init(0)
 	testEndpointMatch(t, ep, entity, Permitted)
 
 	// Lists
