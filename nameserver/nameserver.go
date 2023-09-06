@@ -84,6 +84,9 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	defer tracer.Submit()
 	tracer.Tracef("nameserver: handling new request for %s from %s:%d", q.ID(), remoteAddr.IP, remoteAddr.Port)
 
+	// Count request.
+	totalHandledRequests.Inc()
+
 	// Setup quick reply function.
 	reply := func(responder nsutil.Responder, rrProviders ...nsutil.RRProvider) error {
 		err := sendResponse(ctx, w, request, responder, rrProviders...)

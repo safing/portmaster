@@ -6,7 +6,10 @@ import (
 	"github.com/safing/portbase/metrics"
 )
 
-var requestsHistogram *metrics.Histogram
+var (
+	requestsHistogram    *metrics.Histogram
+	totalHandledRequests *metrics.Counter
+)
 
 func registerMetrics() (err error) {
 	requestsHistogram, err = metrics.NewHistogram(
@@ -15,7 +18,25 @@ func registerMetrics() (err error) {
 		&metrics.Options{
 			Permission:     api.PermitUser,
 			ExpertiseLevel: config.ExpertiseLevelExpert,
-		})
+		},
+	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	totalHandledRequests, err = metrics.NewCounter(
+		"nameserver/request/total",
+		nil,
+		&metrics.Options{
+			InternalID:     "handled_dns_requests",
+			Permission:     api.PermitUser,
+			ExpertiseLevel: config.ExpertiseLevelExpert,
+			Persist:        true,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

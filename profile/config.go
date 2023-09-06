@@ -303,7 +303,8 @@ Set to 0 days to keep network history forever. Depending on your device, this mi
 	- Matching with a wildcard prefix: "*xample.com"
 	- Matching with a wildcard suffix: "example.*"
 	- Matching domains containing text: "*example*"
-- By country (based on IP): "US" (two-letter country codes according to ISO 3166-1 alpha-2)
+- By country (based on IP): "US" ([two-letter country codes according to ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))
+- By continent (based on IP): "C:US" (prefix "AF", "AN", "AS", "EU", "NA", "OC", or "SA" with "C:")
 - By AS number: "AS123456"
 - By filter list - use the filterlist ID prefixed with "L:": "L:MAL"
 - Match anything: "*"

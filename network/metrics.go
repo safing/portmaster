@@ -37,6 +37,7 @@ func registerMetrics() (err error) {
 			return float64(conns.active())
 		},
 		&metrics.Options{
+			InternalID:     "active_connections",
 			Permission:     api.PermitUser,
 			ExpertiseLevel: config.ExpertiseLevelUser,
 		})
@@ -58,7 +59,13 @@ func registerMetrics() (err error) {
 			"direction": "out",
 			"blocked":   "true",
 		},
-		connCounterOpts,
+		&metrics.Options{
+			Name:           "Connections",
+			InternalID:     "blocked_outgoing_connections",
+			Permission:     api.PermitUser,
+			ExpertiseLevel: config.ExpertiseLevelUser,
+			Persist:        true,
+		},
 	)
 	if err != nil {
 		return err
