@@ -38,11 +38,15 @@ type (
 	Equal interface{}
 
 	Matcher struct {
-		Equal    interface{}   `json:"$eq,omitempty"`
-		NotEqual interface{}   `json:"$ne,omitempty"`
-		In       []interface{} `json:"$in,omitempty"`
-		NotIn    []interface{} `json:"$notIn,omitempty"`
-		Like     string        `json:"$like,omitempty"`
+		Equal          interface{}   `json:"$eq,omitempty"`
+		NotEqual       interface{}   `json:"$ne,omitempty"`
+		In             []interface{} `json:"$in,omitempty"`
+		NotIn          []interface{} `json:"$notIn,omitempty"`
+		Like           string        `json:"$like,omitempty"`
+		Greater        *float64      `json:"$gt,omitempty"`
+		GreaterOrEqual *float64      `json:"$ge,omitempty"`
+		Less           *float64      `json:"$lt,omitempty"`
+		LessOrEqual    *float64      `json:"$le,omitempty"`
 	}
 
 	Count struct {
@@ -258,6 +262,22 @@ func (match Matcher) Validate() error {
 		found++
 	}
 
+	if match.Greater != nil {
+		found++
+	}
+
+	if match.GreaterOrEqual != nil {
+		found++
+	}
+
+	if match.Less != nil {
+		found++
+	}
+
+	if match.LessOrEqual != nil {
+		found++
+	}
+
 	if found == 0 {
 		return fmt.Errorf("no conditions specified")
 	}
@@ -318,10 +338,15 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, suffix string, co
 			params[uniqKey] = encodedValue
 		}
 
+		nameStmt := colDef.Name
+		if colDef.IsTime && colDef.Type == sqlite.TypeText {
+			nameStmt = fmt.Sprintf("strftime('%%s', %s)+0", nameStmt)
+		}
+
 		if len(placeholder) == 1 && !list {
-			queryParts = append(queryParts, fmt.Sprintf("%s %s %s", colDef.Name, operator, placeholder[0]))
+			queryParts = append(queryParts, fmt.Sprintf("%s %s %s", nameStmt, operator, placeholder[0]))
 		} else {
-			queryParts = append(queryParts, fmt.Sprintf("%s %s ( %s )", colDef.Name, operator, strings.Join(placeholder, ", ")))
+			queryParts = append(queryParts, fmt.Sprintf("%s %s ( %s )", nameStmt, operator, strings.Join(placeholder, ", ")))
 		}
 	}
 
@@ -343,6 +368,22 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, suffix string, co
 
 	if match.Like != "" {
 		add("LIKE", "like", false, match.Like)
+	}
+
+	if match.Greater != nil {
+		add(">", "gt", false, *match.Greater)
+	}
+
+	if match.GreaterOrEqual != nil {
+		add(">=", "ge", false, *match.GreaterOrEqual)
+	}
+
+	if match.Less != nil {
+		add("<", "lt", false, *match.Less)
+	}
+
+	if match.LessOrEqual != nil {
+		add("<=", "le", false, *match.LessOrEqual)
 	}
 
 	if len(queryParts) == 0 {

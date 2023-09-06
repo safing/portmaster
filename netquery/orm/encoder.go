@@ -156,6 +156,8 @@ func DatetimeEncoder(loc *time.Location) EncodeFunc {
 			val = reflect.Indirect(val)
 		}
 
+		normalizedKind := normalizeKind(valType.Kind())
+
 		// we only care about "time.Time" here
 		var t time.Time
 		switch {
@@ -178,6 +180,9 @@ func DatetimeEncoder(loc *time.Location) EncodeFunc {
 			if err != nil {
 				return nil, false, fmt.Errorf("failed to parse time as RFC3339: %w", err)
 			}
+
+		case (normalizedKind == reflect.Int || normalizedKind == reflect.Uint || normalizedKind == reflect.Float32) && colDef.IsTime:
+			t = time.Unix(val.Int(), 0)
 
 		default:
 			// we don't care ...
