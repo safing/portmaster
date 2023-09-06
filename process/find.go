@@ -115,7 +115,7 @@ func GetNetworkHost(ctx context.Context, remoteIP net.IP) (process *Process, err
 // GetProcessByRequestOrigin returns the process that initiated the API request ar.
 func GetProcessByRequestOrigin(ar *api.Request) (*Process, error) {
 	// get remote IP/Port
-	remoteIP, remotePort, err := netutils.ParseHostPort(ar.RemoteAddr)
+	remoteIP, remotePort, err := netutils.ParseIPPort(ar.RemoteAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get remote IP/Port: %w", err)
 	}
