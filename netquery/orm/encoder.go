@@ -123,7 +123,7 @@ func encodeBasic() EncodeFunc {
 			val = val.Elem()
 		}
 
-		switch normalizeKind(kind) { //nolint:exhaustive
+		switch NormalizeKind(kind) { //nolint:exhaustive
 		case reflect.String,
 			reflect.Float64,
 			reflect.Bool,
@@ -156,7 +156,7 @@ func DatetimeEncoder(loc *time.Location) EncodeFunc {
 			val = reflect.Indirect(val)
 		}
 
-		normalizedKind := normalizeKind(valType.Kind())
+		normalizedKind := NormalizeKind(valType.Kind())
 
 		// we only care about "time.Time" here
 		var t time.Time

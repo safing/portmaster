@@ -176,7 +176,7 @@ func getColumnDef(fieldType reflect.StructField) (*ColumnDef, error) {
 	}
 
 	def.GoType = ft
-	kind := normalizeKind(ft.Kind())
+	kind := NormalizeKind(ft.Kind())
 
 	switch kind { //nolint:exhaustive
 	case reflect.Int, reflect.Uint:

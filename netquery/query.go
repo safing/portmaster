@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"golang.org/x/exp/slices"
 	"zombiezen.com/go/sqlite"
 
 	"github.com/safing/portmaster/netquery/orm"
@@ -338,8 +340,24 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, suffix string, co
 			params[uniqKey] = encodedValue
 		}
 
+		// NOTE(ppacher): for now we assume that the type of each member of values
+		// is the same. We also can be sure that there is always at least one value.
+		//
+		// FIXME(ppacher): if we start supporting values of different types here
+		// we need to revisit the whole behavior as we might need to do more boolean
+		// expression nesting to support that.
+		kind := orm.NormalizeKind(reflect.TypeOf(values[0]).Kind())
+		isNumber := slices.Contains([]reflect.Kind{
+			reflect.Uint,
+			reflect.Int,
+			reflect.Float64,
+		}, kind)
+
+		// if this is a time column that is stored in "text" format and the provided
+		// value is a number type, we need to wrap the property in a strftime() method
+		// call.
 		nameStmt := colDef.Name
-		if colDef.IsTime && colDef.Type == sqlite.TypeText {
+		if colDef.IsTime && colDef.Type == sqlite.TypeText && isNumber {
 			nameStmt = fmt.Sprintf("strftime('%%s', %s)+0", nameStmt)
 		}
 
