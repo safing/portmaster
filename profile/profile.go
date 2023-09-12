@@ -265,9 +265,16 @@ func New(profile *Profile) *Profile {
 		profile.Config = make(map[string]interface{})
 	}
 
-	// Generate random ID if none is given.
+	// Generate ID if none is given.
 	if profile.ID == "" {
-		profile.ID = utils.RandomUUID("").String()
+		if len(profile.Fingerprints) > 0 {
+			// Derive from fingerprints.
+			profile.ID = deriveProfileID(profile.Fingerprints)
+		} else {
+			// Generate random ID as fallback.
+			log.Warningf("profile: creating new profile without fingerprints to derive ID from")
+			profile.ID = utils.RandomUUID("").String()
+		}
 	}
 
 	// Make key from ID and source.

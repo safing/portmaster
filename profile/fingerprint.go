@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/safing/jess/lhash"
+	"github.com/safing/portbase/container"
+	"golang.org/x/exp/slices"
 )
 
 // # Matching and Scores
@@ -57,6 +61,12 @@ type (
 		Key       string // Key must always fully match.
 		Operation string
 		Value     string
+
+		// MergedFrom holds the ID of the profile from which this fingerprint was
+		// merged from. The merged profile should create a new profile ID derived
+		// from the new fingerprints and add all fingerprints with this field set
+		// to the originating profile ID
+		MergedFrom string
 	}
 
 	// Tag represents a simple key/value kind of tag used in process metadata
@@ -346,4 +356,63 @@ func checkMatchStrength(value int) int {
 		return -maxMatchStrength
 	}
 	return value
+}
+
+const (
+	deriveFPKeyIDForItemStart = iota + 1
+	deriveFPKeyIDForType
+	deriveFPKeyIDForKey
+	deriveFPKeyIDForOperation
+	deriveFPKeyIDForValue
+)
+
+func deriveProfileID(fps []Fingerprint) string {
+	// Sort the fingerprints.
+	sortFingerprints(fps)
+
+	// Compile data for hashing.
+	c := container.New(nil)
+	c.AppendInt(len(fps))
+	for _, fp := range fps {
+		c.AppendNumber(deriveFPKeyIDForItemStart)
+		if fp.Type != "" {
+			c.AppendNumber(deriveFPKeyIDForType)
+			c.AppendAsBlock([]byte(fp.Type))
+		}
+		if fp.Key != "" {
+			c.AppendNumber(deriveFPKeyIDForKey)
+			c.AppendAsBlock([]byte(fp.Key))
+		}
+		if fp.Operation != "" {
+			c.AppendNumber(deriveFPKeyIDForOperation)
+			c.AppendAsBlock([]byte(fp.Operation))
+		}
+		if fp.Value != "" {
+			c.AppendNumber(deriveFPKeyIDForValue)
+			c.AppendAsBlock([]byte(fp.Value))
+		}
+	}
+
+	// Hash and return.
+	h := lhash.Digest(lhash.SHA3_256, c.CompileData())
+	return h.Base58()
+}
+
+func sortFingerprints(fps []Fingerprint) {
+	slices.SortFunc[[]Fingerprint, Fingerprint](fps, func(a, b Fingerprint) int {
+		switch {
+		case a.Type != b.Type:
+			return strings.Compare(a.Type, b.Type)
+		case a.Key != b.Key:
+			return strings.Compare(a.Key, b.Key)
+		case a.Operation != b.Operation:
+			return strings.Compare(a.Operation, b.Operation)
+		case a.Value != b.Value:
+			return strings.Compare(a.Value, b.Value)
+		case a.MergedFrom != b.MergedFrom:
+			return strings.Compare(a.MergedFrom, b.MergedFrom)
+		default:
+			return 0
+		}
+	})
 }
