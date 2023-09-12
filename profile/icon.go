@@ -35,7 +35,8 @@ func (t IconType) sortOrder() int {
 	}
 }
 
-func sortIcons(icons []Icon) {
+func sortAndCompactIcons(icons []Icon) []Icon {
+	// Sort.
 	slices.SortFunc[[]Icon, Icon](icons, func(a, b Icon) int {
 		aOrder := a.Type.sortOrder()
 		bOrder := b.Type.sortOrder()
@@ -49,4 +50,11 @@ func sortIcons(icons []Icon) {
 			return 0
 		}
 	})
+
+	// De-duplicate.
+	icons = slices.CompactFunc[[]Icon, Icon](icons, func(a, b Icon) bool {
+		return a.Type == b.Type && a.Value == b.Value
+	})
+
+	return icons
 }

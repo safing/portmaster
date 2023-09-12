@@ -32,7 +32,7 @@ func MergeProfiles(primary *Profile, secondaries ...*Profile) (newProfile *Profi
 	for _, sp := range secondaries {
 		newProfile.Icons = append(newProfile.Icons, sp.Icons...)
 	}
-	sortIcons(newProfile.Icons)
+	newProfile.Icons = sortAndCompactIcons(newProfile.Icons)
 
 	// Collect all fingerprints.
 	newProfile.Fingerprints = make([]Fingerprint, 0, len(secondaries)+1) // Guess the needed space.
@@ -40,7 +40,7 @@ func MergeProfiles(primary *Profile, secondaries ...*Profile) (newProfile *Profi
 	for _, sp := range secondaries {
 		newProfile.Fingerprints = addFingerprints(newProfile.Fingerprints, sp.Fingerprints, sp.ScopedID())
 	}
-	sortFingerprints(newProfile.Fingerprints)
+	newProfile.Fingerprints = sortAndCompactFingerprints(newProfile.Fingerprints)
 
 	// Save new profile.
 	newProfile = New(newProfile)

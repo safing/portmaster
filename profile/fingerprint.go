@@ -368,7 +368,7 @@ const (
 
 func deriveProfileID(fps []Fingerprint) string {
 	// Sort the fingerprints.
-	sortFingerprints(fps)
+	sortAndCompactFingerprints(fps)
 
 	// Compile data for hashing.
 	c := container.New(nil)
@@ -398,7 +398,8 @@ func deriveProfileID(fps []Fingerprint) string {
 	return h.Base58()
 }
 
-func sortFingerprints(fps []Fingerprint) {
+func sortAndCompactFingerprints(fps []Fingerprint) []Fingerprint {
+	// Sort.
 	slices.SortFunc[[]Fingerprint, Fingerprint](fps, func(a, b Fingerprint) int {
 		switch {
 		case a.Type != b.Type:
@@ -415,4 +416,19 @@ func sortFingerprints(fps []Fingerprint) {
 			return 0
 		}
 	})
+
+	// De-duplicate.
+	// Important: Even if the fingerprint is the same, but MergedFrom is
+	// different, we need to keep the separate fingerprint, so that new installs
+	// will cleanly update to the synced state: Auto-generated profiles need to
+	// be automatically replaced by the merged version.
+	fps = slices.CompactFunc[[]Fingerprint, Fingerprint](fps, func(a, b Fingerprint) bool {
+		return a.Type == b.Type &&
+			a.Key == b.Key &&
+			a.Operation == b.Operation &&
+			a.Value == b.Value &&
+			a.MergedFrom == b.MergedFrom
+	})
+
+	return fps
 }
