@@ -327,12 +327,30 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, suffix string, co
 		var placeholder []string
 
 		for idx, value := range values {
-			encodedValue, err := orm.EncodeValue(ctx, &colDef, value, encoderConfig)
-			if err != nil {
-				errs.Errors = append(errs.Errors,
-					fmt.Errorf("failed to encode %v for column %s: %w", value, colDef.Name, err),
-				)
-				return
+			var (
+				encodedValue any = value
+				err          error
+			)
+
+			kind := orm.NormalizeKind(reflect.TypeOf(value).Kind())
+			isNumber := slices.Contains([]reflect.Kind{
+				reflect.Uint,
+				reflect.Int,
+				reflect.Float64,
+			}, kind)
+
+			// if we query a time-field that is queried as a number, don't do any encoding
+			// here as the orm.DateTimeEncoder would convert the number to a string.
+			if colDef.IsTime && colDef.Type == sqlite.TypeText && isNumber {
+				encodedValue = value
+			} else {
+				encodedValue, err = orm.EncodeValue(ctx, &colDef, value, encoderConfig)
+				if err != nil {
+					errs.Errors = append(errs.Errors,
+						fmt.Errorf("failed to encode %v for column %s: %w", value, colDef.Name, err),
+					)
+					return
+				}
 			}
 
 			uniqKey := fmt.Sprintf(":%s%s%d", key, suffix, idx)
@@ -340,7 +358,7 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, suffix string, co
 			params[uniqKey] = encodedValue
 		}
 
-		// NOTE(ppacher): for now we assume that the type of each member of values
+		// NOTE(ppacher): for now we assume that the type of each element of values
 		// is the same. We also can be sure that there is always at least one value.
 		//
 		// FIXME(ppacher): if we start supporting values of different types here

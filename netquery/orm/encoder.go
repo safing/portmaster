@@ -182,7 +182,17 @@ func DatetimeEncoder(loc *time.Location) EncodeFunc {
 			}
 
 		case (normalizedKind == reflect.Int || normalizedKind == reflect.Uint || normalizedKind == reflect.Float64) && colDef.IsTime:
-			t = time.Unix(val.Int(), 0)
+			seconds := int64(0)
+			switch normalizedKind {
+			case reflect.Int:
+				seconds = val.Int()
+			case reflect.Uint:
+				seconds = int64(val.Uint())
+			case reflect.Float64:
+				seconds = int64(val.Float())
+			}
+
+			t = time.Unix(seconds, 0)
 
 		default:
 			// we don't care ...
