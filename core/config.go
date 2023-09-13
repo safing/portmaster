@@ -13,6 +13,8 @@ var (
 
 	CfgNetworkServiceKey      = "core/networkService"
 	defaultNetworkServiceMode bool
+
+	CfgLocaleKey = "core/localeID"
 )
 
 func init() {
@@ -36,6 +38,33 @@ func registerConfig() error {
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 513,
 			config.CategoryAnnotation:     "Network Service",
+		},
+	}); err != nil {
+		return err
+	}
+
+	if err := config.Register(&config.Option{
+		Name:           "Locale",
+		Key:            CfgLocaleKey,
+		Description:    "Configures the locale for the user interface. This mainly affects rendering of dates, currency and numbers. Note that the Portmaster does not yet support different languages.",
+		OptType:        config.OptTypeString,
+		ExpertiseLevel: config.ExpertiseLevelUser,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   "en-GB",
+		PossibleValues: []config.PossibleValue{
+			{
+				Name:  "en-GB",
+				Value: "en-GB",
+			},
+			{
+				Name:  "en-US",
+				Value: "en-US",
+			},
+		},
+		Annotations: config.Annotations{
+			config.CategoryAnnotation:         "User Interface",
+			config.DisplayHintAnnotation:      config.DisplayHintOneOf,
+			config.RequiresUIReloadAnnotation: true,
 		},
 	}); err != nil {
 		return err
