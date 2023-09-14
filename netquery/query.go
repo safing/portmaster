@@ -86,23 +86,6 @@ type (
 		Value  string   `json:"value"`
 	}
 
-	QueryRequestPayload struct {
-		Select     Selects     `json:"select"`
-		Query      Query       `json:"query"`
-		OrderBy    OrderBys    `json:"orderBy"`
-		GroupBy    []string    `json:"groupBy"`
-		TextSearch *TextSearch `json:"textSearch"`
-		// A list of databases to query. If left empty,
-		// both, the LiveDatabase and the HistoryDatabase are queried
-		Databases []DatabaseName `json:"databases"`
-
-		Pagination
-
-		selectedFields    []string
-		whitelistedFields []string
-		paramMap          map[string]interface{}
-	}
-
 	QueryActiveConnectionChartPayload struct {
 		Query      Query       `json:"query"`
 		TextSearch *TextSearch `json:"textSearch"`
