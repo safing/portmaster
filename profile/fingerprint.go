@@ -5,9 +5,10 @@ import (
 	"regexp"
 	"strings"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/safing/jess/lhash"
 	"github.com/safing/portbase/container"
-	"golang.org/x/exp/slices"
 )
 
 // # Matching and Scores

@@ -2,6 +2,7 @@ package profile
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/hashicorp/go-version"
 
@@ -29,6 +30,11 @@ func registerMigrations() error {
 			Description: "Migrate from Icon Fields to Icon List",
 			Version:     "v1.5.0", // FIXME
 			MigrateFunc: migrateIcons,
+		},
+		migration.Migration{
+			Description: "Migrate from random profile IDs to fingerprint-derived IDs",
+			Version:     "v1.5.1", // FIXME
+			MigrateFunc: migrateToDerivedIDs,
 		},
 	)
 }
@@ -143,6 +149,71 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 	// Check if there was an error while iterating.
 	if err := it.Err(); err != nil {
 		log.Tracer(ctx).Errorf("profile: failed to migrate from icon fields: failed to iterate over profiles for migration: %s", err)
+	}
+
+	return nil
+}
+
+var randomUUIDRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *database.Interface) error {
+	var profilesToDelete []string //nolint:prealloc // We don't know how many profiles there are.
+
+	// Get iterator over all profiles.
+	it, err := db.Query(query.New(profilesDBPath))
+	if err != nil {
+		log.Tracer(ctx).Errorf("profile: failed to migrate to derived profile IDs: failed to start query: %s", err)
+		return nil
+	}
+
+	// Migrate all profiles.
+	for r := range it.Next {
+		// Parse profile.
+		profile, err := EnsureProfile(r)
+		if err != nil {
+			log.Tracer(ctx).Debugf("profiles: failed to parse profile %s for migration: %s", r.Key(), err)
+			continue
+		}
+
+		// Skip if the ID does not look like a random UUID.
+		if !randomUUIDRegex.MatchString(profile.ID) {
+			continue
+		}
+
+		// Generate new ID.
+		newID := deriveProfileID(profile.Fingerprints)
+
+		// If they match, skip migration for this profile.
+		if profile.ID == newID {
+			continue
+		}
+
+		// Add old ID to profiles that we need to delete.
+		profilesToDelete = append(profilesToDelete, profile.ScopedID())
+
+		// Set new ID and rebuild the key.
+		profile.ID = newID
+		profile.makeKey()
+
+		// Save back to DB.
+		err = db.Put(profile)
+		if err != nil {
+			log.Tracer(ctx).Debugf("profiles: failed to save profile %s after migration: %s", r.Key(), err)
+		} else {
+			log.Tracer(ctx).Tracef("profiles: migrated profile %s to %s", r.Key(), to)
+		}
+	}
+
+	// Check if there was an error while iterating.
+	if err := it.Err(); err != nil {
+		log.Tracer(ctx).Errorf("profile: failed to migrate to derived profile IDs: failed to iterate over profiles for migration: %s", err)
+	}
+
+	// Delete old migrated profiles.
+	for _, scopedID := range profilesToDelete {
+		if err := db.Delete(profilesDBPath + scopedID); err != nil {
+			log.Tracer(ctx).Errorf("profile: failed to delete old profile %s during migration: %s", scopedID, err)
+		}
 	}
 
 	return nil
