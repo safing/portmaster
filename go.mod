@@ -3,6 +3,7 @@ module github.com/safing/portmaster
 go 1.20
 
 require (
+	github.com/Xuanwo/go-locale v1.1.0
 	github.com/agext/levenshtein v1.2.3
 	github.com/cilium/ebpf v0.11.0
 	github.com/coreos/go-iptables v0.7.0
@@ -15,12 +16,13 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.6.0
 	github.com/jackc/puddle/v2 v2.2.1
-	github.com/miekg/dns v1.1.55
+	github.com/miekg/dns v1.1.56
+	github.com/mitchellh/go-server-timing v1.0.1
 	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/safing/jess v0.3.1
 	github.com/safing/portbase v0.17.4
 	github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec
-	github.com/safing/spn v0.6.18-prep
+	github.com/safing/spn v0.6.19
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.7.0
 	github.com/spkg/zipfs v0.7.1
@@ -37,7 +39,6 @@ require (
 
 require (
 	github.com/VictoriaMetrics/metrics v1.24.0 // indirect
-	github.com/Xuanwo/go-locale v1.1.0 // indirect
 	github.com/aead/ecdh v0.2.0 // indirect
 	github.com/aead/serpent v0.0.0-20160714141033-fba169763ea6 // indirect
 	github.com/alessio/shellescape v1.4.2 // indirect
@@ -47,12 +48,12 @@ require (
 	github.com/danieljoos/wincred v1.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/felixge/httpsnoop v1.0.0 // indirect
+	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/fxamacker/cbor v1.5.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.5.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
-	github.com/golang/gddo v0.0.0-20180823221919-9d8ff1c67be5 // indirect
+	github.com/golang/gddo v0.0.0-20210115222349-20d68f94ee1f // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.1 // indirect
@@ -63,9 +64,8 @@ require (
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
-	github.com/mdlayher/socket v0.4.1 // indirect
+	github.com/mdlayher/socket v0.5.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
-	github.com/mitchellh/go-server-timing v1.0.1 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
