@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-	"time"
 
+	servertiming "github.com/mitchellh/go-server-timing"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netquery/orm"
 )
@@ -33,7 +33,12 @@ type (
 )
 
 func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	start := time.Now()
+	timing := servertiming.FromContext(req.Context())
+
+	timingQueryParsed := timing.NewMetric("query_parsed").
+		WithDesc("Query has been parsed").
+		Start()
+
 	requestPayload, err := parseQueryRequestPayload[QueryRequestPayload](req)
 	if err != nil {
 		http.Error(resp, err.Error(), http.StatusBadRequest)
@@ -41,7 +46,11 @@ func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	queryParsed := time.Since(start)
+	timingQueryParsed.Stop()
+
+	timingQueryBuilt := timing.NewMetric("query_built").
+		WithDesc("The SQL query has been built").
+		Start()
 
 	query, paramMap, err := requestPayload.generateSQL(req.Context(), qh.Database.Schema)
 	if err != nil {
@@ -50,7 +59,11 @@ func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sqlQueryBuilt := time.Since(start)
+	timingQueryBuilt.Stop()
+
+	timingQueryExecute := timing.NewMetric("sql_exec").
+		WithDesc("SQL query execution time").
+		Start()
 
 	// actually execute the query against the database and collect the result
 	var result []map[string]interface{}
@@ -65,7 +78,7 @@ func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 		return
 	}
-	sqlQueryFinished := time.Since(start)
+	timingQueryExecute.Stop()
 
 	// send the HTTP status code
 	resp.WriteHeader(http.StatusOK)
@@ -86,12 +99,6 @@ func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 			"orderBy":       requestPayload.OrderBy,
 			"groupBy":       requestPayload.GroupBy,
 			"selects":       requestPayload.Select,
-			"times": map[string]interface{}{
-				"start_time":           start,
-				"query_parsed_after":   queryParsed.String(),
-				"query_built_after":    sqlQueryBuilt.String(),
-				"query_executed_after": sqlQueryFinished.String(),
-			},
 		}
 	} else {
 		resultBody = make(map[string]interface{})
