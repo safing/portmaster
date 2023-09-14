@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	servertiming "github.com/mitchellh/go-server-timing"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netquery/orm"
@@ -107,6 +108,98 @@ func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	// and finally stream the response
 	if err := enc.Encode(resultBody); err != nil {
+		// we failed to encode the JSON body to resp so we likely either already sent a
+		// few bytes or the pipe was already closed. In either case, trying to send the
+		// error using http.Error() is non-sense. We just log it out here and that's all
+		// we can do.
+		log.Errorf("failed to encode JSON response: %s", err)
+
+		return
+	}
+
+}
+func (batch *BatchQueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	timing := servertiming.FromContext(req.Context())
+
+	timingQueryParsed := timing.NewMetric("query_parsed").
+		WithDesc("Query has been parsed").
+		Start()
+
+	requestPayload, err := parseQueryRequestPayload[BatchQueryRequestPayload](req)
+	if err != nil {
+		http.Error(resp, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+
+	timingQueryParsed.Stop()
+
+	response := make(map[string][]map[string]any, len(*requestPayload))
+
+	batches := make([]BatchExecute, 0, len(*requestPayload))
+
+	for key, query := range *requestPayload {
+
+		timingQueryBuilt := timing.NewMetric("query_built_" + key).
+			WithDesc("The SQL query has been built").
+			Start()
+
+		sql, paramMap, err := query.generateSQL(req.Context(), batch.Database.Schema)
+		if err != nil {
+			http.Error(resp, err.Error(), http.StatusBadRequest)
+
+			return
+		}
+
+		timingQueryBuilt.Stop()
+
+		var result []map[string]any
+		batches = append(batches, BatchExecute{
+			ID:     key,
+			SQL:    sql,
+			Params: paramMap,
+			Result: &result,
+		})
+	}
+
+	timingQueryExecute := timing.NewMetric("sql_exec").
+		WithDesc("SQL query execution time").
+		Start()
+
+	status := http.StatusOK
+	if err := batch.Database.ExecuteBatch(req.Context(), batches); err != nil {
+		status = http.StatusInternalServerError
+
+		var merr *multierror.Error
+		if errors.As(err, &merr) {
+			for _, e := range merr.Errors {
+				resp.Header().Add("X-Query-Error", e.Error())
+			}
+		} else {
+			// Should not happen, ExecuteBatch always returns a multierror.Error
+			resp.WriteHeader(status)
+
+			return
+		}
+	}
+
+	timingQueryExecute.Stop()
+
+	// collect the results
+	for _, b := range batches {
+		response[b.ID] = *b.Result
+	}
+
+	// send the HTTP status code
+	resp.WriteHeader(status)
+
+	// prepare the result encoder.
+	enc := json.NewEncoder(resp)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+
+	// and finally stream the response
+	if err := enc.Encode(response); err != nil {
 		// we failed to encode the JSON body to resp so we likely either already sent a
 		// few bytes or the pipe was already closed. In either case, trying to send the
 		// error using http.Error() is non-sense. We just log it out here and that's all
