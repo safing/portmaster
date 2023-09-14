@@ -25,11 +25,16 @@ type (
 		IsDevMode func() bool
 		Database  *Database
 	}
+
+	BatchQueryHandler struct {
+		IsDevMode func() bool
+		Database  *Database
+	}
 )
 
 func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	start := time.Now()
-	requestPayload, err := parseQueryRequestPayload(req)
+	requestPayload, err := parseQueryRequestPayload[QueryRequestPayload](req)
 	if err != nil {
 		http.Error(resp, err.Error(), http.StatusBadRequest)
 
@@ -105,8 +110,11 @@ func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func parseQueryRequestPayload(req *http.Request) (*QueryRequestPayload, error) { //nolint:dupl
-	var body io.Reader
+func parseQueryRequestPayload[T any](req *http.Request) (*T, error) { //nolint:dupl
+	var (
+		body           io.Reader
+		requestPayload T
+	)
 
 	switch req.Method {
 	case http.MethodPost, http.MethodPut:
@@ -117,7 +125,6 @@ func parseQueryRequestPayload(req *http.Request) (*QueryRequestPayload, error) {
 		return nil, fmt.Errorf("invalid HTTP method")
 	}
 
-	var requestPayload QueryRequestPayload
 	blob, err := io.ReadAll(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read body" + err.Error())
