@@ -183,7 +183,7 @@ func DatetimeEncoder(loc *time.Location) EncodeFunc {
 
 		case (normalizedKind == reflect.Int || normalizedKind == reflect.Uint || normalizedKind == reflect.Float64) && colDef.IsTime:
 			seconds := int64(0)
-			switch normalizedKind {
+			switch normalizedKind { //nolint:exhaustive // Previous switch case assures these types.
 			case reflect.Int:
 				seconds = val.Int()
 			case reflect.Uint:

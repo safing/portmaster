@@ -57,6 +57,7 @@ type (
 		writeConn *sqlite.Conn
 	}
 
+	// BatchExecute executes multiple queries in one transaction.
 	BatchExecute struct {
 		ID     string
 		SQL    string

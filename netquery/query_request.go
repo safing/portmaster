@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/safing/portmaster/netquery/orm"
 	"golang.org/x/exp/slices"
+
+	"github.com/safing/portmaster/netquery/orm"
 )
 
 type (
+	// QueryRequestPayload describes the payload of a netquery query.
 	QueryRequestPayload struct {
 		Select     Selects     `json:"select"`
 		Query      Query       `json:"query"`

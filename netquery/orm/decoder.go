@@ -461,6 +461,7 @@ func getKind(val reflect.Value) reflect.Kind {
 	return NormalizeKind(kind)
 }
 
+// NormalizeKind returns a normalized kind of the given kind.
 func NormalizeKind(kind reflect.Kind) reflect.Kind {
 	switch {
 	case kind >= reflect.Int && kind <= reflect.Int64:

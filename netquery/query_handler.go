@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	servertiming "github.com/mitchellh/go-server-timing"
+
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/netquery/orm"
 )
@@ -27,6 +28,8 @@ type (
 		Database  *Database
 	}
 
+	// BatchQueryHandler implements http.Handler and allows to perform SQL
+	// query and aggregate functions on Database in batches.
 	BatchQueryHandler struct {
 		IsDevMode func() bool
 		Database  *Database
@@ -116,8 +119,8 @@ func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 		return
 	}
-
 }
+
 func (batch *BatchQueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	timing := servertiming.FromContext(req.Context())
 

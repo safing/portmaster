@@ -311,7 +311,7 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, suffix string, co
 
 		for idx, value := range values {
 			var (
-				encodedValue any = value
+				encodedValue any
 				err          error
 			)
 
@@ -344,7 +344,7 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, suffix string, co
 		// NOTE(ppacher): for now we assume that the type of each element of values
 		// is the same. We also can be sure that there is always at least one value.
 		//
-		// FIXME(ppacher): if we start supporting values of different types here
+		// TODO(ppacher): if we start supporting values of different types here
 		// we need to revisit the whole behavior as we might need to do more boolean
 		// expression nesting to support that.
 		kind := orm.NormalizeKind(reflect.TypeOf(values[0]).Kind())
