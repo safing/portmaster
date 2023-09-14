@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"golang.org/x/exp/slices"
 	"zombiezen.com/go/sqlite"
 
 	"github.com/safing/portmaster/netquery/orm"
@@ -38,11 +40,15 @@ type (
 	Equal interface{}
 
 	Matcher struct {
-		Equal    interface{}   `json:"$eq,omitempty"`
-		NotEqual interface{}   `json:"$ne,omitempty"`
-		In       []interface{} `json:"$in,omitempty"`
-		NotIn    []interface{} `json:"$notIn,omitempty"`
-		Like     string        `json:"$like,omitempty"`
+		Equal          interface{}   `json:"$eq,omitempty"`
+		NotEqual       interface{}   `json:"$ne,omitempty"`
+		In             []interface{} `json:"$in,omitempty"`
+		NotIn          []interface{} `json:"$notIn,omitempty"`
+		Like           string        `json:"$like,omitempty"`
+		Greater        *float64      `json:"$gt,omitempty"`
+		GreaterOrEqual *float64      `json:"$ge,omitempty"`
+		Less           *float64      `json:"$lt,omitempty"`
+		LessOrEqual    *float64      `json:"$le,omitempty"`
 	}
 
 	Count struct {
@@ -78,23 +84,6 @@ type (
 	TextSearch struct {
 		Fields []string `json:"fields"`
 		Value  string   `json:"value"`
-	}
-
-	QueryRequestPayload struct {
-		Select     Selects     `json:"select"`
-		Query      Query       `json:"query"`
-		OrderBy    OrderBys    `json:"orderBy"`
-		GroupBy    []string    `json:"groupBy"`
-		TextSearch *TextSearch `json:"textSearch"`
-		// A list of databases to query. If left empty,
-		// both, the LiveDatabase and the HistoryDatabase are queried
-		Databases []DatabaseName `json:"databases"`
-
-		Pagination
-
-		selectedFields    []string
-		whitelistedFields []string
-		paramMap          map[string]interface{}
 	}
 
 	QueryActiveConnectionChartPayload struct {
@@ -258,6 +247,22 @@ func (match Matcher) Validate() error {
 		found++
 	}
 
+	if match.Greater != nil {
+		found++
+	}
+
+	if match.GreaterOrEqual != nil {
+		found++
+	}
+
+	if match.Less != nil {
+		found++
+	}
+
+	if match.LessOrEqual != nil {
+		found++
+	}
+
 	if found == 0 {
 		return fmt.Errorf("no conditions specified")
 	}
@@ -305,12 +310,30 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, suffix string, co
 		var placeholder []string
 
 		for idx, value := range values {
-			encodedValue, err := orm.EncodeValue(ctx, &colDef, value, encoderConfig)
-			if err != nil {
-				errs.Errors = append(errs.Errors,
-					fmt.Errorf("failed to encode %v for column %s: %w", value, colDef.Name, err),
-				)
-				return
+			var (
+				encodedValue any
+				err          error
+			)
+
+			kind := orm.NormalizeKind(reflect.TypeOf(value).Kind())
+			isNumber := slices.Contains([]reflect.Kind{
+				reflect.Uint,
+				reflect.Int,
+				reflect.Float64,
+			}, kind)
+
+			// if we query a time-field that is queried as a number, don't do any encoding
+			// here as the orm.DateTimeEncoder would convert the number to a string.
+			if colDef.IsTime && colDef.Type == sqlite.TypeText && isNumber {
+				encodedValue = value
+			} else {
+				encodedValue, err = orm.EncodeValue(ctx, &colDef, value, encoderConfig)
+				if err != nil {
+					errs.Errors = append(errs.Errors,
+						fmt.Errorf("failed to encode %v for column %s: %w", value, colDef.Name, err),
+					)
+					return
+				}
 			}
 
 			uniqKey := fmt.Sprintf(":%s%s%d", key, suffix, idx)
@@ -318,10 +341,31 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, suffix string, co
 			params[uniqKey] = encodedValue
 		}
 
+		// NOTE(ppacher): for now we assume that the type of each element of values
+		// is the same. We also can be sure that there is always at least one value.
+		//
+		// TODO(ppacher): if we start supporting values of different types here
+		// we need to revisit the whole behavior as we might need to do more boolean
+		// expression nesting to support that.
+		kind := orm.NormalizeKind(reflect.TypeOf(values[0]).Kind())
+		isNumber := slices.Contains([]reflect.Kind{
+			reflect.Uint,
+			reflect.Int,
+			reflect.Float64,
+		}, kind)
+
+		// if this is a time column that is stored in "text" format and the provided
+		// value is a number type, we need to wrap the property in a strftime() method
+		// call.
+		nameStmt := colDef.Name
+		if colDef.IsTime && colDef.Type == sqlite.TypeText && isNumber {
+			nameStmt = fmt.Sprintf("strftime('%%s', %s)+0", nameStmt)
+		}
+
 		if len(placeholder) == 1 && !list {
-			queryParts = append(queryParts, fmt.Sprintf("%s %s %s", colDef.Name, operator, placeholder[0]))
+			queryParts = append(queryParts, fmt.Sprintf("%s %s %s", nameStmt, operator, placeholder[0]))
 		} else {
-			queryParts = append(queryParts, fmt.Sprintf("%s %s ( %s )", colDef.Name, operator, strings.Join(placeholder, ", ")))
+			queryParts = append(queryParts, fmt.Sprintf("%s %s ( %s )", nameStmt, operator, strings.Join(placeholder, ", ")))
 		}
 	}
 
@@ -343,6 +387,22 @@ func (match Matcher) toSQLConditionClause(ctx context.Context, suffix string, co
 
 	if match.Like != "" {
 		add("LIKE", "like", false, match.Like)
+	}
+
+	if match.Greater != nil {
+		add(">", "gt", false, *match.Greater)
+	}
+
+	if match.GreaterOrEqual != nil {
+		add(">=", "ge", false, *match.GreaterOrEqual)
+	}
+
+	if match.Less != nil {
+		add("<", "lt", false, *match.Less)
+	}
+
+	if match.LessOrEqual != nil {
+		add("<=", "le", false, *match.LessOrEqual)
 	}
 
 	if len(queryParts) == 0 {

@@ -289,7 +289,7 @@ func decodeBasic() DecodeFunc {
 		// if we have the column definition available we
 		// use the target go type from there.
 		if colDef != nil {
-			valueKind = normalizeKind(colDef.GoType.Kind())
+			valueKind = NormalizeKind(colDef.GoType.Kind())
 
 			// if we have a column definition we try to convert the value to
 			// the actual Go-type that was used in the model.
@@ -458,10 +458,11 @@ func runDecodeHooks(colIdx int, colDef *ColumnDef, stmt Stmt, fieldDef reflect.S
 // to their base type.
 func getKind(val reflect.Value) reflect.Kind {
 	kind := val.Kind()
-	return normalizeKind(kind)
+	return NormalizeKind(kind)
 }
 
-func normalizeKind(kind reflect.Kind) reflect.Kind {
+// NormalizeKind returns a normalized kind of the given kind.
+func NormalizeKind(kind reflect.Kind) reflect.Kind {
 	switch {
 	case kind >= reflect.Int && kind <= reflect.Int64:
 		return reflect.Int

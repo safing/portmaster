@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	servertiming "github.com/mitchellh/go-server-timing"
 
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
@@ -81,6 +82,11 @@ func (m *module) prepare() error {
 		IsDevMode: config.Concurrent.GetAsBool(config.CfgDevModeKey, false),
 	}
 
+	batchHander := &BatchQueryHandler{
+		Database:  m.Store,
+		IsDevMode: config.Concurrent.GetAsBool(config.CfgDevModeKey, false),
+	}
+
 	chartHandler := &ChartHandler{
 		Database: m.Store,
 	}
@@ -93,7 +99,20 @@ func (m *module) prepare() error {
 		Read:        api.PermitUser, // Needs read+write as the query is sent using POST data.
 		Write:       api.PermitUser, // Needs read+write as the query is sent using POST data.
 		BelongsTo:   m.Module,
-		HandlerFunc: queryHander.ServeHTTP,
+		HandlerFunc: servertiming.Middleware(queryHander, nil).ServeHTTP,
+	}); err != nil {
+		return fmt.Errorf("failed to register API endpoint: %w", err)
+	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Name:        "Batch Query Connections",
+		Description: "Batch query the in-memory sqlite connection database.",
+		Path:        "netquery/query/batch",
+		MimeType:    "application/json",
+		Read:        api.PermitUser, // Needs read+write as the query is sent using POST data.
+		Write:       api.PermitUser, // Needs read+write as the query is sent using POST data.
+		BelongsTo:   m.Module,
+		HandlerFunc: servertiming.Middleware(batchHander, nil).ServeHTTP,
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
 	}
@@ -105,7 +124,7 @@ func (m *module) prepare() error {
 		MimeType:    "application/json",
 		Write:       api.PermitUser,
 		BelongsTo:   m.Module,
-		HandlerFunc: chartHandler.ServeHTTP,
+		HandlerFunc: servertiming.Middleware(chartHandler, nil).ServeHTTP,
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
 	}

@@ -57,6 +57,14 @@ type (
 		writeConn *sqlite.Conn
 	}
 
+	// BatchExecute executes multiple queries in one transaction.
+	BatchExecute struct {
+		ID     string
+		SQL    string
+		Params map[string]any
+		Result *[]map[string]any
+	}
+
 	// Conn is a network connection that is stored in a SQLite database and accepted
 	// by the *Database type of this package. This also defines, using the ./orm package,
 	// the table schema and the model that is exposed via the runtime database as well as
@@ -322,6 +330,22 @@ func (db *Database) ExecuteWrite(ctx context.Context, sql string, args ...orm.Qu
 func (db *Database) Execute(ctx context.Context, sql string, args ...orm.QueryOption) error {
 	return db.withConn(ctx, func(conn *sqlite.Conn) error {
 		return orm.RunQuery(ctx, conn, sql, args...)
+	})
+}
+
+// ExecuteBatch executes multiple custom SQL query using a read-only connection against the SQLite
+// database used by db.
+func (db *Database) ExecuteBatch(ctx context.Context, batches []BatchExecute) error {
+	return db.withConn(ctx, func(conn *sqlite.Conn) error {
+		merr := new(multierror.Error)
+
+		for _, batch := range batches {
+			if err := orm.RunQuery(ctx, conn, batch.SQL, orm.WithNamedArgs(batch.Params), orm.WithResult(batch.Result)); err != nil {
+				merr.Errors = append(merr.Errors, fmt.Errorf("%s: %w", batch.ID, err))
+			}
+		}
+
+		return merr.ErrorOrNil()
 	})
 }
 

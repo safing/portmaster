@@ -119,7 +119,7 @@ func TestPublicSuffix(t *testing.T) {
 	testSuffix(t, "golang.dev.", "golang.dev.", true)
 	testSuffix(t, "golang.net.", "golang.net.", true)
 	testSuffix(t, "play.golang.org.", "golang.org.", true)
-	testSuffix(t, "gophers.in.space.museum.", "in.space.museum.", true)
+	testSuffix(t, "gophers.in.space.museum.", "space.museum.", true)
 	testSuffix(t, "0emm.com.", "0emm.com.", true)
 	testSuffix(t, "a.0emm.com.", "", true)
 	testSuffix(t, "b.c.d.0emm.com.", "c.d.0emm.com.", true)
