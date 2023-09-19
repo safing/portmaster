@@ -160,6 +160,8 @@ func DeriveTunnelOptions(lp *profile.LayeredProfile, proc *process.Process, dest
 	}
 	if !connEncrypted {
 		tunnelOpts.Destination.Regard = tunnelOpts.Destination.Regard.Add(navigator.StateTrusted)
+		// TODO: Add this when all Hubs are on v0.6.21+
+		// tunnelOpts.Destination.Regard = tunnelOpts.Destination.Regard.Add(navigator.StateAllowUnencrypted)
 	}
 
 	// Add required verified owners if community nodes should not be used.
