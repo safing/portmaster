@@ -48,7 +48,7 @@ func start() error {
 	}
 
 	if err := migrations.Migrate(module.Ctx); err != nil {
-		return err
+		log.Errorf("profile: migrations failed: %s", err)
 	}
 
 	err := registerValidationDBHook()

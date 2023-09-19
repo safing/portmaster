@@ -33,6 +33,7 @@ var defaultDeciders = []deciderFn{
 	checkConnectionType,
 	checkConnectionScope,
 	checkEndpointLists,
+	checkInvalidIP,
 	checkResolverScope,
 	checkConnectivityDomain,
 	checkBypassPrevention,
@@ -371,8 +372,25 @@ func checkConnectionScope(_ context.Context, conn *network.Connection, p *profil
 			return true
 		}
 	case netutils.Undefined, netutils.Invalid:
-		fallthrough
+		// Block Invalid / Undefined IPs _after_ the rules.
+		return false
 	default:
+		conn.Deny("invalid IP", noReasonOptionKey) // Block Outbound / Drop Inbound
+		return true
+	}
+
+	return false
+}
+
+func checkInvalidIP(_ context.Context, conn *network.Connection, p *profile.LayeredProfile, _ packet.Packet) bool {
+	// Only applies to IP connections.
+	if conn.Type != network.IPConnection {
+		return false
+	}
+
+	// Block Invalid / Undefined IPs.
+	switch conn.Entity.IPScope { //nolint:exhaustive // Only looking for specific values.
+	case netutils.Undefined, netutils.Invalid:
 		conn.Deny("invalid IP", noReasonOptionKey) // Block Outbound / Drop Inbound
 		return true
 	}

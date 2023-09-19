@@ -171,8 +171,11 @@ func GetResolversInScope(ctx context.Context, q *Query) (selected []*Resolver, p
 
 	// Special connectivity domains
 	if netenv.IsConnectivityDomain(q.FQDN) && len(systemResolvers) > 0 {
-		// Do not do compliance checks for connectivity domains.
-		selected = append(selected, systemResolvers...) // dhcp assigned resolvers
+		selected = addResolvers(ctx, q, selected, systemResolvers)
+		if len(selected) == 0 {
+			selected = addResolvers(ctx, q, selected, localResolvers)
+			selected = addResolvers(ctx, q, selected, globalResolvers)
+		}
 		return selected, ServerSourceOperatingSystem, false
 	}
 

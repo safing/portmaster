@@ -2,6 +2,7 @@ package base
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,7 +32,9 @@ func logCleaner(_ context.Context, _ *modules.Task) error {
 		filepath.Join(dataroot.Root().Path, logFileDir),
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				log.Warningf("core: failed to access %s while deleting old log files: %s", path, err)
+				if !errors.Is(err, os.ErrNotExist) {
+					log.Warningf("core: failed to access %s while deleting old log files: %s", path, err)
+				}
 				return nil
 			}
 

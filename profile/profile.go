@@ -37,17 +37,6 @@ const (
 	DefaultActionPermit uint8 = 3
 )
 
-// iconType describes the type of the Icon property
-// of a profile.
-type iconType string
-
-// Supported icon types.
-const (
-	IconTypeFile     iconType = "path"
-	IconTypeDatabase iconType = "database"
-	IconTypeBlob     iconType = "blob"
-)
-
 // Profile is used to predefine a security profile for applications.
 type Profile struct { //nolint:maligned // not worth the effort
 	record.Base
@@ -73,12 +62,16 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// Homepage may refer to the website of the application
 	// vendor.
 	Homepage string
-	// Icon holds the icon of the application. The value
+
+	// Deprecated: Icon holds the icon of the application. The value
 	// may either be a filepath, a database key or a blob URL.
 	// See IconType for more information.
 	Icon string
-	// IconType describes the type of the Icon property.
-	IconType iconType
+	// Deprecated: IconType describes the type of the Icon property.
+	IconType IconType
+	// Icons holds a list of icons to represent the application.
+	Icons []Icon
+
 	// Deprecated: LinkedPath used to point to the executableis this
 	// profile was created for.
 	// Until removed, it will be added to the Fingerprints as an exact path match.
@@ -265,9 +258,16 @@ func New(profile *Profile) *Profile {
 		profile.Config = make(map[string]interface{})
 	}
 
-	// Generate random ID if none is given.
+	// Generate ID if none is given.
 	if profile.ID == "" {
-		profile.ID = utils.RandomUUID("").String()
+		if len(profile.Fingerprints) > 0 {
+			// Derive from fingerprints.
+			profile.ID = deriveProfileID(profile.Fingerprints)
+		} else {
+			// Generate random ID as fallback.
+			log.Warningf("profile: creating new profile without fingerprints to derive ID from")
+			profile.ID = utils.RandomUUID("").String()
+		}
 	}
 
 	// Make key from ID and source.

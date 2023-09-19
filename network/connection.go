@@ -488,6 +488,12 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 		// Errors are informational and are logged to the context.
 	}
 
+	// Only get process and profile with first real packet.
+	// TODO: Remove when we got full VM/Docker support.
+	if pkt.InfoOnly() {
+		return nil
+	}
+
 	// Get Process and Profile.
 	if conn.process == nil {
 		conn.process, err = process.GetProcessWithProfile(pkt.Ctx(), conn.PID)
