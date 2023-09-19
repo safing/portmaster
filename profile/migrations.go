@@ -29,14 +29,14 @@ func registerMigrations() error {
 		},
 		migration.Migration{
 			Description: "Migrate from Icon Fields to Icon List",
-			Version:     "v1.5.0", // FIXME
+			Version:     "v1.4.7",
 			MigrateFunc: migrateIcons,
 		},
-		migration.Migration{
-			Description: "Migrate from random profile IDs to fingerprint-derived IDs",
-			Version:     "v1.5.1", // FIXME
-			MigrateFunc: migrateToDerivedIDs,
-		},
+		// migration.Migration{
+		// 	Description: "Migrate from random profile IDs to fingerprint-derived IDs",
+		// 	Version:     "v1.5.1",
+		// 	MigrateFunc: migrateToDerivedIDs,
+		// },
 	)
 }
 
