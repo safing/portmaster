@@ -2,6 +2,7 @@ package profile
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 
 	"github.com/hashicorp/go-version"
@@ -118,6 +119,11 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 	}
 
 	// Migrate all profiles.
+	var (
+		lastErr error
+		failed  int
+		total   int
+	)
 	for r := range it.Next {
 		// Parse profile.
 		profile, err := EnsureProfile(r)
@@ -140,10 +146,13 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 		// Save back to DB.
 		err = db.Put(profile)
 		if err != nil {
+			failed++
+			lastErr = err
 			log.Tracer(ctx).Debugf("profiles: failed to save profile %s after migration: %s", r.Key(), err)
 		} else {
 			log.Tracer(ctx).Tracef("profiles: migrated profile %s to %s", r.Key(), to)
 		}
+		total++
 	}
 
 	// Check if there was an error while iterating.
@@ -151,7 +160,12 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 		log.Tracer(ctx).Errorf("profile: failed to migrate from icon fields: failed to iterate over profiles for migration: %s", err)
 	}
 
-	return nil
+	// Log migration failure and try again next time.
+	if lastErr != nil {
+		return fmt.Errorf("failed to migrate %d profiles (out of %d pending) - last error: %w", failed, total, lastErr)
+	}
+
+	return lastErr
 }
 
 var randomUUIDRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
@@ -167,6 +181,11 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 	}
 
 	// Migrate all profiles.
+	var (
+		lastErr error
+		failed  int
+		total   int
+	)
 	for r := range it.Next {
 		// Parse profile.
 		profile, err := EnsureProfile(r)
@@ -181,6 +200,7 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 		}
 
 		// Generate new ID.
+		oldScopedID := profile.ScopedID()
 		newID := deriveProfileID(profile.Fingerprints)
 
 		// If they match, skip migration for this profile.
@@ -188,9 +208,8 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 			continue
 		}
 
-		// Add old ID to profiles that we need to delete.
-		profilesToDelete = append(profilesToDelete, profile.ScopedID())
-
+		// Reset key.
+		profile.ResetKey()
 		// Set new ID and rebuild the key.
 		profile.ID = newID
 		profile.makeKey()
@@ -198,10 +217,16 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 		// Save back to DB.
 		err = db.Put(profile)
 		if err != nil {
+			failed++
+			lastErr = err
 			log.Tracer(ctx).Debugf("profiles: failed to save profile %s after migration: %s", r.Key(), err)
 		} else {
 			log.Tracer(ctx).Tracef("profiles: migrated profile %s to %s", r.Key(), to)
+
+			// Add old ID to profiles that we need to delete.
+			profilesToDelete = append(profilesToDelete, oldScopedID)
 		}
+		total++
 	}
 
 	// Check if there was an error while iterating.
@@ -214,6 +239,11 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 		if err := db.Delete(profilesDBPath + scopedID); err != nil {
 			log.Tracer(ctx).Errorf("profile: failed to delete old profile %s during migration: %s", scopedID, err)
 		}
+	}
+
+	// Log migration failure and try again next time.
+	if lastErr != nil {
+		return fmt.Errorf("failed to migrate %d profiles (out of %d pending) - last error: %w", failed, total, lastErr)
 	}
 
 	return nil
