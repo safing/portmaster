@@ -13,6 +13,7 @@ import (
 	_ "github.com/safing/portmaster/netenv"
 	_ "github.com/safing/portmaster/netquery"
 	_ "github.com/safing/portmaster/status"
+	_ "github.com/safing/portmaster/sync"
 	_ "github.com/safing/portmaster/ui"
 	"github.com/safing/portmaster/updates"
 )
@@ -29,7 +30,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("core", prep, start, nil, "base", "subsystems", "status", "updates", "api", "notifications", "ui", "netenv", "network", "netquery", "interception", "compat", "broadcasts")
+	module = modules.Register("core", prep, start, nil, "base", "subsystems", "status", "updates", "api", "notifications", "ui", "netenv", "network", "netquery", "interception", "compat", "broadcasts", "sync")
 	subsystems.Register(
 		"core",
 		"Core",
