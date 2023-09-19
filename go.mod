@@ -20,9 +20,9 @@ require (
 	github.com/mitchellh/go-server-timing v1.0.1
 	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/safing/jess v0.3.1
-	github.com/safing/portbase v0.17.4
+	github.com/safing/portbase v0.17.5
 	github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec
-	github.com/safing/spn v0.6.19
+	github.com/safing/spn v0.6.21
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.7.0
 	github.com/spkg/zipfs v0.7.1
