@@ -19,17 +19,14 @@ type IconType string
 const (
 	IconTypeFile     IconType = "path"
 	IconTypeDatabase IconType = "database"
-	IconTypeBlob     IconType = "blob"
 )
 
 func (t IconType) sortOrder() int {
 	switch t {
-	case IconTypeFile:
-		return 1
 	case IconTypeDatabase:
+		return 1
+	case IconTypeFile:
 		return 2
-	case IconTypeBlob:
-		return 3
 	default:
 		return 100
 	}
