@@ -98,6 +98,7 @@ func SetIndexes(
 			Path:         indexPath,
 			AutoDownload: autoDownload,
 		})
+		usePreReleases = true
 	} else if deleteUnusedIndexes {
 		err := deleteIndex(registry, indexPath)
 		if err != nil {
