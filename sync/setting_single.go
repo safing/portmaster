@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ghodss/yaml"
-
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
+	"github.com/safing/portbase/formats/dsd"
 	"github.com/safing/portmaster/profile"
 )
 
@@ -91,7 +90,7 @@ func handleExportSingleSetting(ar *api.Request) (data []byte, err error) {
 	} else {
 		request = &ExportRequest{}
 		if err := json.Unmarshal(ar.InputData, request); err != nil {
-			return nil, fmt.Errorf("%w: failed to parse export request: %s", ErrExportFailed, err)
+			return nil, fmt.Errorf("%w: failed to parse export request: %w", ErrExportFailed, err)
 		}
 	}
 
@@ -106,15 +105,7 @@ func handleExportSingleSetting(ar *api.Request) (data []byte, err error) {
 		return nil, err
 	}
 
-	// Make some yummy yaml.
-	yamlData, err := yaml.Marshal(export)
-	if err != nil {
-		return nil, fmt.Errorf("%w: failed to marshal to yaml: %s", ErrExportFailed, err)
-	}
-
-	// TODO: Add checksum for integrity.
-
-	return yamlData, nil
+	return serializeExport(export, ar)
 }
 
 func handleImportSingleSetting(ar *api.Request) (any, error) {
@@ -128,31 +119,35 @@ func handleImportSingleSetting(ar *api.Request) (any, error) {
 				Target:       q.Get("to"),
 				ValidateOnly: q.Has("validate"),
 				RawExport:    string(ar.InputData),
+				RawMime:      ar.Header.Get("Content-Type"),
 			},
 		}
 	} else {
 		request = &SingleSettingImportRequest{}
-		if err := json.Unmarshal(ar.InputData, request); err != nil {
-			return nil, fmt.Errorf("%w: failed to parse import request: %s", ErrInvalidImport, err)
+		if _, err := dsd.MimeLoad(ar.InputData, ar.Header.Get("Accept"), request); err != nil {
+			return nil, fmt.Errorf("%w: failed to parse import request: %w", ErrInvalidImportRequest, err)
 		}
 	}
 
 	// Check if we need to parse the export.
 	switch {
 	case request.Export != nil && request.RawExport != "":
-		return nil, fmt.Errorf("%w: both Export and RawExport are defined", ErrInvalidImport)
+		return nil, fmt.Errorf("%w: both Export and RawExport are defined", ErrInvalidImportRequest)
 	case request.RawExport != "":
-		// TODO: Verify checksum for integrity.
-
+		// Parse export.
 		export := &SingleSettingExport{}
-		if err := yaml.Unmarshal([]byte(request.RawExport), export); err != nil {
-			return nil, fmt.Errorf("%w: failed to parse export: %s", ErrInvalidImport, err)
+		if err := parseExport(&request.ImportRequest, export); err != nil {
+			return nil, err
 		}
 		request.Export = export
+	case request.Export != nil:
+		// Export is aleady parsed.
+	default:
+		return nil, ErrInvalidImportRequest
 	}
 
 	// Optional check if the setting key matches.
-	if q.Has("key") && q.Get("key") != request.Export.ID {
+	if len(q) > 0 && q.Has("key") && q.Get("key") != request.Export.ID {
 		return nil, ErrMismatch
 	}
 
@@ -162,25 +157,32 @@ func handleImportSingleSetting(ar *api.Request) (any, error) {
 
 // ExportSingleSetting export a single setting.
 func ExportSingleSetting(key, from string) (*SingleSettingExport, error) {
+	option, err := config.GetOption(key)
+	if err != nil {
+		return nil, fmt.Errorf("%w: configuration %w", ErrSettingNotFound, err)
+	}
+
 	var value any
 	if from == ExportTargetGlobal {
-		option, err := config.GetOption(key)
-		if err != nil {
-			return nil, fmt.Errorf("%w: configuration %s", ErrTargetNotFound, err)
-		}
 		value = option.UserValue()
 		if value == nil {
 			return nil, ErrUnchanged
 		}
 	} else {
+		// Check if the setting is settable per app.
+		if !option.AnnotationEquals(config.SettablePerAppAnnotation, true) {
+			return nil, ErrNotSettablePerApp
+		}
+		// Get and load profile.
 		r, err := db.Get(profile.ProfilesDBPath + from)
 		if err != nil {
-			return nil, fmt.Errorf("%w: failed to find profile: %s", ErrTargetNotFound, err)
+			return nil, fmt.Errorf("%w: failed to find profile: %w", ErrTargetNotFound, err)
 		}
 		p, err := profile.EnsureProfile(r)
 		if err != nil {
-			return nil, fmt.Errorf("%w: failed to load profile: %s", ErrExportFailed, err)
+			return nil, fmt.Errorf("%w: failed to load profile: %w", ErrExportFailed, err)
 		}
+		// Flatten config and get key we are looking for.
 		flattened := config.Flatten(p.Config)
 		value = flattened[key]
 		if value == nil {
@@ -205,10 +207,10 @@ func ImportSingeSetting(r *SingleSettingImportRequest) (*ImportResult, error) {
 	// Get option and validate value.
 	option, err := config.GetOption(r.Export.ID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: configuration %s", ErrTargetNotFound, err)
+		return nil, fmt.Errorf("%w: configuration %w", ErrSettingNotFound, err)
 	}
-	if option.ValidateValue(r.Export.Value) != nil {
-		return nil, fmt.Errorf("%w: configuration value is invalid: %s", ErrInvalidSetting, err)
+	if err := option.ValidateValue(r.Export.Value); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidSettingValue, err)
 	}
 
 	// Import single global setting.
@@ -222,19 +224,22 @@ func ImportSingeSetting(r *SingleSettingImportRequest) (*ImportResult, error) {
 		}
 
 		// Actually import the setting.
-		err = config.SetConfigOption(r.Export.ID, r.Export.Value)
-		if err != nil {
-			return nil, fmt.Errorf("%w: configuration value is invalid: %s", ErrInvalidSetting, err)
+		if err := config.SetConfigOption(r.Export.ID, r.Export.Value); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrInvalidSettingValue, err)
 		}
 	} else {
+		// Check if the setting is settable per app.
+		if !option.AnnotationEquals(config.SettablePerAppAnnotation, true) {
+			return nil, ErrNotSettablePerApp
+		}
 		// Import single setting into profile.
 		rec, err := db.Get(profile.ProfilesDBPath + r.Target)
 		if err != nil {
-			return nil, fmt.Errorf("%w: failed to find profile: %s", ErrTargetNotFound, err)
+			return nil, fmt.Errorf("%w: failed to find profile: %w", ErrTargetNotFound, err)
 		}
 		p, err := profile.EnsureProfile(rec)
 		if err != nil {
-			return nil, fmt.Errorf("%w: failed to load profile: %s", ErrImportFailed, err)
+			return nil, fmt.Errorf("%w: failed to load profile: %w", ErrImportFailed, err)
 		}
 
 		// Stop here if we are only validating.
@@ -246,14 +251,11 @@ func ImportSingeSetting(r *SingleSettingImportRequest) (*ImportResult, error) {
 		}
 
 		// Set imported setting on profile.
-		flattened := config.Flatten(p.Config)
-		flattened[r.Export.ID] = r.Export.Value
-		p.Config = config.Expand(flattened)
+		config.PutValueIntoHierarchicalConfig(p.Config, r.Export.ID, r.Export.Value)
 
 		// Save profile back to db.
-		err = p.Save()
-		if err != nil {
-			return nil, fmt.Errorf("%w: failed to save profile: %s", ErrImportFailed, err)
+		if err := p.Save(); err != nil {
+			return nil, fmt.Errorf("%w: failed to save profile: %w", ErrImportFailed, err)
 		}
 	}
 

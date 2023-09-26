@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ghodss/yaml"
-
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
 	"github.com/safing/portmaster/profile"
@@ -91,7 +89,7 @@ func handleExportSettings(ar *api.Request) (data []byte, err error) {
 	} else {
 		request = &ExportRequest{}
 		if err := json.Unmarshal(ar.InputData, request); err != nil {
-			return nil, fmt.Errorf("%w: failed to parse export request: %s", ErrExportFailed, err)
+			return nil, fmt.Errorf("%w: failed to parse export request: %w", ErrExportFailed, err)
 		}
 	}
 
@@ -106,15 +104,7 @@ func handleExportSettings(ar *api.Request) (data []byte, err error) {
 		return nil, err
 	}
 
-	// Make some yummy yaml.
-	yamlData, err := yaml.Marshal(export)
-	if err != nil {
-		return nil, fmt.Errorf("%w: failed to marshal to yaml: %s", ErrExportFailed, err)
-	}
-
-	// TODO: Add checksum for integrity.
-
-	return yamlData, nil
+	return serializeExport(export, ar)
 }
 
 func handleImportSettings(ar *api.Request) (any, error) {
@@ -128,28 +118,32 @@ func handleImportSettings(ar *api.Request) (any, error) {
 				Target:       q.Get("to"),
 				ValidateOnly: q.Has("validate"),
 				RawExport:    string(ar.InputData),
+				RawMime:      ar.Header.Get("Content-Type"),
 			},
 			Reset: q.Has("reset"),
 		}
 	} else {
 		request = &SettingsImportRequest{}
 		if err := json.Unmarshal(ar.InputData, request); err != nil {
-			return nil, fmt.Errorf("%w: failed to parse import request: %s", ErrInvalidImport, err)
+			return nil, fmt.Errorf("%w: failed to parse import request: %w", ErrInvalidImportRequest, err)
 		}
 	}
 
 	// Check if we need to parse the export.
 	switch {
 	case request.Export != nil && request.RawExport != "":
-		return nil, fmt.Errorf("%w: both Export and RawExport are defined", ErrInvalidImport)
+		return nil, fmt.Errorf("%w: both Export and RawExport are defined", ErrInvalidImportRequest)
 	case request.RawExport != "":
-		// TODO: Verify checksum for integrity.
-
+		// Parse export.
 		export := &SettingsExport{}
-		if err := yaml.Unmarshal([]byte(request.RawExport), export); err != nil {
-			return nil, fmt.Errorf("%w: failed to parse export: %s", ErrInvalidImport, err)
+		if err := parseExport(&request.ImportRequest, export); err != nil {
+			return nil, err
 		}
 		request.Export = export
+	case request.Export != nil:
+		// Export is aleady parsed.
+	default:
+		return nil, ErrInvalidImportRequest
 	}
 
 	// Import.
@@ -172,11 +166,11 @@ func ExportSettings(from string) (*SettingsExport, error) {
 	} else {
 		r, err := db.Get(profile.ProfilesDBPath + from)
 		if err != nil {
-			return nil, fmt.Errorf("%w: failed to find profile: %s", ErrTargetNotFound, err)
+			return nil, fmt.Errorf("%w: failed to find profile: %w", ErrTargetNotFound, err)
 		}
 		p, err := profile.EnsureProfile(r)
 		if err != nil {
-			return nil, fmt.Errorf("%w: failed to load profile: %s", ErrExportFailed, err)
+			return nil, fmt.Errorf("%w: failed to load profile: %w", ErrExportFailed, err)
 		}
 		settings = config.Flatten(p.Config)
 	}
@@ -207,8 +201,9 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 
 	// Validate config and gather some metadata.
 	var (
-		result  = &ImportResult{}
-		checked int
+		result                 = &ImportResult{}
+		checked                int
+		globalOnlySettingFound bool
 	)
 	err := config.ForEachOption(func(option *config.Option) error {
 		// Check if any setting is set.
@@ -222,7 +217,7 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 
 			// Validate the new value.
 			if err := option.ValidateValue(newValue); err != nil {
-				return fmt.Errorf("%w: configuration value for %s is invalid: %s", ErrInvalidSetting, option.Key, err)
+				return fmt.Errorf("%w: configuration value for %s is invalid: %w", ErrInvalidSettingValue, option.Key, err)
 			}
 
 			// Collect metadata.
@@ -232,6 +227,9 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 			if !r.Reset && option.IsSetByUser() {
 				result.ReplacesExisting = true
 			}
+			if !option.AnnotationEquals(config.SettablePerAppAnnotation, true) {
+				globalOnlySettingFound = true
+			}
 		}
 		return nil
 	})
@@ -239,7 +237,7 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 		return nil, err
 	}
 	if checked < len(settings) {
-		return nil, fmt.Errorf("%w: the export contains unknown settings", ErrInvalidImport)
+		return nil, fmt.Errorf("%w: the export contains unknown settings", ErrInvalidImportRequest)
 	}
 
 	// Import global settings.
@@ -267,17 +265,20 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 		return result, nil
 	}
 
-	// Import settings into profile.
+	// Check if a setting is settable per app.
+	if globalOnlySettingFound {
+		return nil, fmt.Errorf("%w: export contains settings that cannot be set per app", ErrNotSettablePerApp)
+	}
+
+	// Get and load profile.
 	rec, err := db.Get(profile.ProfilesDBPath + r.Target)
 	if err != nil {
-		return nil, fmt.Errorf("%w: failed to find profile: %s", ErrTargetNotFound, err)
+		return nil, fmt.Errorf("%w: failed to find profile: %w", ErrTargetNotFound, err)
 	}
 	p, err := profile.EnsureProfile(rec)
 	if err != nil {
-		return nil, fmt.Errorf("%w: failed to load profile: %s", ErrImportFailed, err)
+		return nil, fmt.Errorf("%w: failed to load profile: %w", ErrImportFailed, err)
 	}
-
-	// FIXME: check if there are any global-only setting in the import
 
 	// Stop here if we are only validating.
 	if r.ValidateOnly {
@@ -288,17 +289,15 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 	if r.Reset {
 		p.Config = config.Expand(settings)
 	} else {
-		flattenedProfileConfig := config.Flatten(p.Config)
 		for k, v := range settings {
-			flattenedProfileConfig[k] = v
+			config.PutValueIntoHierarchicalConfig(p.Config, k, v)
 		}
-		p.Config = config.Expand(flattenedProfileConfig)
 	}
 
 	// Save profile back to db.
 	err = p.Save()
 	if err != nil {
-		return nil, fmt.Errorf("%w: failed to save profile: %s", ErrImportFailed, err)
+		return nil, fmt.Errorf("%w: failed to save profile: %w", ErrImportFailed, err)
 	}
 
 	return result, nil
