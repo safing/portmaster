@@ -287,6 +287,9 @@ func loadProfile(r record.Record) (*Profile, error) {
 	// Set saved internally to suppress outdating profiles if saving internally.
 	profile.savedInternally = true
 
+	// Mark as recently seen.
+	meta.UpdateLastSeen(profile.ScopedID())
+
 	// return parsed profile
 	return profile, nil
 }

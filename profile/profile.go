@@ -304,6 +304,24 @@ func (profile *Profile) Save() error {
 	return profileDB.Put(profile)
 }
 
+// delete deletes the profile from the database.
+func (profile *Profile) delete() error {
+	// Check if a key is set.
+	if !profile.KeyIsSet() {
+		return errors.New("key is not set")
+	}
+
+	// Delete from database.
+	profile.Meta().Delete()
+	err := profileDB.Put(profile)
+	if err != nil {
+		return err
+	}
+
+	// Post handling is done by the profile update feed.
+	return nil
+}
+
 // MarkStillActive marks the profile as still active.
 func (profile *Profile) MarkStillActive() {
 	atomic.StoreInt64(profile.lastActive, time.Now().Unix())

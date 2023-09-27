@@ -32,11 +32,11 @@ func registerMigrations() error {
 			Version:     "v1.4.7",
 			MigrateFunc: migrateIcons,
 		},
-		// migration.Migration{
-		// 	Description: "Migrate from random profile IDs to fingerprint-derived IDs",
-		// 	Version:     "v1.5.1",
-		// 	MigrateFunc: migrateToDerivedIDs,
-		// },
+		migration.Migration{
+			Description: "Migrate from random profile IDs to fingerprint-derived IDs",
+			Version:     "v1.5.0",
+			MigrateFunc: migrateToDerivedIDs,
+		},
 	)
 }
 
