@@ -4,9 +4,9 @@ package proc
 
 import (
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/safing/portbase/log"
@@ -19,7 +19,7 @@ var (
 )
 
 // GetPID returns the already existing pid of the given socket info or searches for it.
-// This also acts as a getter for socket.*Info.PID, as locking for that occurs here.
+// This also acts as a getter for socket.Info.PID, as locking for that occurs here.
 func GetPID(socketInfo socket.Info) (pid int) {
 	// Get currently assigned PID to the socket info.
 	currentPid := socketInfo.GetPID()
@@ -41,7 +41,7 @@ func GetPID(socketInfo socket.Info) (pid int) {
 
 // findPID returns the pid of the given uid and socket inode.
 func findPID(uid, inode int) (pid int) {
-	socketName := fmt.Sprintf("socket:[%d]", inode)
+	socketName := "socket:[" + strconv.Itoa(inode) + "]"
 
 	for i := 0; i <= lookupRetries; i++ {
 		var pidsUpdated bool
@@ -83,7 +83,7 @@ func findPID(uid, inode int) (pid int) {
 		}
 
 		// We have updated the PID map, but still cannot find anything.
-		// So, there is nothing we can other than wait a little for the kernel to
+		// So, there is nothing we can do other than to wait a little for the kernel to
 		// populate the information.
 
 		// Wait after each try, except for the last iteration
@@ -97,16 +97,20 @@ func findPID(uid, inode int) (pid int) {
 }
 
 func findSocketFromPid(pid int, socketName string) bool {
-	entries := readDirNames(fmt.Sprintf("/proc/%d/fd", pid))
+	socketBase := "/proc/" + strconv.Itoa(pid) + "/fd"
+	entries := readDirNames(socketBase)
 	if len(entries) == 0 {
 		return false
 	}
 
-	for _, entry := range entries {
-		link, err := os.Readlink(fmt.Sprintf("/proc/%d/fd/%s", pid, entry))
+	socketBase += "/"
+	// Look through the FDs in reverse order, because higher/newer FDs will be
+	// more likely to be searched for.
+	for i := len(entries) - 1; i >= 0; i-- {
+		link, err := os.Readlink(socketBase + entries[i])
 		if err != nil {
 			if !errors.Is(err, fs.ErrNotExist) {
-				log.Warningf("proc: failed to read link /proc/%d/fd/%s: %s", pid, entry, err)
+				log.Warningf("proc: failed to read link /proc/%d/fd/%s: %s", pid, entries[i], err)
 			}
 			continue
 		}

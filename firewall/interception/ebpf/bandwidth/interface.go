@@ -154,7 +154,7 @@ func reportBandwidth(ctx context.Context, objs bpfObjects, bandwidthUpdates chan
 		case <-ctx.Done():
 			return
 		default:
-			log.Warningf("ebpf: bandwidth update queue is full (updated=%d, skipped=%d), skipping rest of batch", updated, skipped)
+			log.Warningf("ebpf: bandwidth update queue is full (updated=%d, skipped=%d), ignoring rest of batch", updated, skipped)
 			return
 		}
 	}
