@@ -32,7 +32,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("nameserver", prep, start, stop, "core", "resolver")
+	module = modules.Register("nameserver", prep, start, stop, "core", "resolver", "plugin")
 	subsystems.Register(
 		"dns",
 		"Secure DNS",

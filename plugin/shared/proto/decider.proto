@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package safing.portmaster.plugin.proto;
+
+option go_package = "./proto";
+
+import "network.proto";
+
+service DeciderService {
+    rpc DecideOnConnection(DecideOnConnectionRequest) returns (DecideOnConnectionResponse) {};
+}
+
+message DecideOnConnectionRequest {
+    Connection connection = 1;
+}
+
+message DecideOnConnectionResponse {
+    Verdict verdict = 1;
+    string reason = 2;
+}

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package safing.portmaster.plugin.proto;
+
+option go_package = "./proto";
+
+import "network.proto";
+
+service ReporterService {
+    rpc ReportConnection(ReportConnectionRequest) returns (ReportConnectionRespose) {}
+}
+
+message ReportConnectionRequest {
+    Connection connection = 1;
+}
+
+message ReportConnectionRespose {}

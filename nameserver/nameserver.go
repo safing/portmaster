@@ -16,6 +16,7 @@ import (
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
+	"github.com/safing/portmaster/plugin"
 	"github.com/safing/portmaster/resolver"
 )
 
@@ -256,47 +257,66 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		return reply(conn, conn)
 	}
 
+	// Ask all resolver plugins to resolve the query.
+	pluginResponse, resolverInfo, err := plugin.Module.Resolve(request, conn)
+	if err != nil {
+		tracer.Errorf("nameserver: plugins failed to resolve %s", err)
+	}
+	if pluginResponse != nil {
+		rrCache = &resolver.RRCache{
+			Domain:   q.FQDN,
+			Question: q.QType,
+			RCode:    pluginResponse.Rcode,
+			Answer:   pluginResponse.Answer,
+			Ns:       pluginResponse.Ns,
+			Extra:    pluginResponse.Extra,
+			Resolver: resolverInfo,
+		}
+	}
+
 	// Save security level to query, so that the resolver can react to configuration.
 	q.SecurityLevel = conn.Process().Profile().SecurityLevel()
 
-	// Resolve request.
-	rrCache, err = resolver.Resolve(ctx, q)
-	// Handle error.
-	if err != nil {
-		switch {
-		case errors.Is(err, resolver.ErrNotFound):
-			// Try alternatives domain names for unofficial domain spaces.
-			rrCache = checkAlternativeCaches(ctx, q)
-			if rrCache == nil {
+	if rrCache == nil {
+		// Resolve request.
+		rrCache, err = resolver.Resolve(ctx, q)
+		// Handle error.
+		if err != nil {
+			switch {
+			case errors.Is(err, resolver.ErrNotFound):
+				// Try alternatives domain names for unofficial domain spaces.
+				rrCache = checkAlternativeCaches(ctx, q)
+				if rrCache == nil {
+					tracer.Tracef("nameserver: %s", err)
+					conn.Failed("domain does not exist", "")
+					return reply(nsutil.NxDomain("nxdomain: " + err.Error()))
+				}
+			case errors.Is(err, resolver.ErrBlocked):
 				tracer.Tracef("nameserver: %s", err)
-				conn.Failed("domain does not exist", "")
-				return reply(nsutil.NxDomain("nxdomain: " + err.Error()))
+				conn.Block(err.Error(), "")
+				return reply(nsutil.BlockIP("blocked: " + err.Error()))
+
+			case errors.Is(err, resolver.ErrLocalhost):
+				tracer.Tracef("nameserver: returning localhost records")
+				conn.Accept("allowing query for localhost", "")
+				return reply(nsutil.Localhost())
+
+			case errors.Is(err, resolver.ErrOffline):
+				if rrCache == nil {
+					tracer.Debugf("nameserver: not resolving %s, device is offline", q.ID())
+					conn.Failed("not resolving, device is offline", "")
+					return reply(nsutil.ServerFailure(err.Error()))
+				}
+				// If an rrCache was returned, it's usable as a backup.
+				rrCache.IsBackup = true
+				log.Tracer(ctx).Debugf("nameserver: device is offline, using backup cache for %s", q.ID())
+
+			default:
+				tracer.Warningf("nameserver: failed to resolve %s: %s", q.ID(), err)
+				conn.Failed(fmt.Sprintf("query failed: %s", err), "")
+				addFailingQuery(q, err)
+				return reply(nsutil.ServerFailure("internal error: " + err.Error()))
 			}
-		case errors.Is(err, resolver.ErrBlocked):
-			tracer.Tracef("nameserver: %s", err)
-			conn.Block(err.Error(), "")
-			return reply(nsutil.BlockIP("blocked: " + err.Error()))
-
-		case errors.Is(err, resolver.ErrLocalhost):
-			tracer.Tracef("nameserver: returning localhost records")
-			conn.Accept("allowing query for localhost", "")
-			return reply(nsutil.Localhost())
-
-		case errors.Is(err, resolver.ErrOffline):
-			if rrCache == nil {
-				tracer.Debugf("nameserver: not resolving %s, device is offline", q.ID())
-				conn.Failed("not resolving, device is offline", "")
-				return reply(nsutil.ServerFailure(err.Error()))
-			}
-			// If an rrCache was returned, it's usable as a backup.
-			rrCache.IsBackup = true
-			log.Tracer(ctx).Debugf("nameserver: device is offline, using backup cache for %s", q.ID())
-
-		default:
-			tracer.Warningf("nameserver: failed to resolve %s: %s", q.ID(), err)
-			conn.Failed(fmt.Sprintf("query failed: %s", err), "")
-			addFailingQuery(q, err)
-			return reply(nsutil.ServerFailure("internal error: " + err.Error()))
 		}
 	}
 	// Handle special cases.

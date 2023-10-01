@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package safing.portmaster.plugin.proto;
+
+option go_package = "./proto";
+
+import "plugins.proto";
+
+service BaseService {
+    rpc Configure(ConfigureRequest) returns (ConfigureResponse) {}
+    rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {}
+}
+
+message ConfigureRequest {
+    // The directory of the portmaster installation.
+    string base_directory = 1;
+
+    PluginConfig config = 2;
+
+    // The id of the backchannel that is used to access features
+    // provided by the plugin host (the Portmaster).
+    uint32 backchannel_id = 3;
+
+    // The current version of the Portmaster following the semver
+    // specification.
+    string portmaster_version = 5;
+}
+
+message ConfigureResponse {
+
+}
+
+message ShutdownRequest {}
+message ShutdownResponse {}

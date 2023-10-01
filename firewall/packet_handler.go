@@ -421,7 +421,7 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 	if checkFilter {
 		if filterEnabled() {
 			log.Tracer(ctx).Trace("filter: starting decision process")
-			decideOnConnection(ctx, conn, pkt)
+			DecideOnConnection(ctx, conn, pkt)
 		} else {
 			conn.Accept("privacy filter disabled", noReasonOptionKey)
 		}
