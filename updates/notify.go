@@ -2,6 +2,7 @@ package updates
 
 import (
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -58,14 +59,21 @@ func notifyUpdateSuccess(forced bool) {
 		})
 
 	case updateSuccessPending:
+		msg := fmt.Sprintf(
+			`%d updates are available for download:
+
+- %s
+
+Press "Download Now" or check for updates later to download and automatically apply all pending updates. You will be notified of important updates that need restarting.`,
+			len(updateState.PendingDownload),
+			strings.Join(updateState.PendingDownload, "\n- "),
+		)
+
 		notifications.Notify(&notifications.Notification{
 			EventID: updateSuccess,
 			Type:    notifications.Info,
 			Title:   fmt.Sprintf("%d Updates Available", len(updateState.PendingDownload)),
-			Message: fmt.Sprintf(
-				`%d updates are available for download. Press "Download Now" or check for updates later to download and automatically apply all pending updates. You will be notified of important updates that need restarting.`,
-				len(updateState.PendingDownload),
-			),
+			Message: msg,
 			AvailableActions: []*notifications.Action{
 				{
 					ID:   "ack",
@@ -84,14 +92,24 @@ func notifyUpdateSuccess(forced bool) {
 		})
 
 	case updateSuccessDownloaded:
+		msg := fmt.Sprintf(
+			`%d updates were downloaded and applied:
+
+- %s`,
+			len(updateState.LastDownload),
+			strings.Join(updateState.LastDownload, "\n- "),
+		)
+		if enableSoftwareUpdates() {
+			msg += "\n\nYou will be notified of important updates that need restarting."
+		} else {
+			msg += "\n\nAutomatic software updates are disabled, and you will be notified when a new software update is ready to be downloaded and applied."
+		}
+
 		notifications.Notify(&notifications.Notification{
 			EventID: updateSuccess,
 			Type:    notifications.Info,
 			Title:   fmt.Sprintf("%d Updates Applied", len(updateState.LastDownload)),
-			Message: fmt.Sprintf(
-				`%d updates were downloaded and applied. You will be notified of important updates that need restarting.`,
-				len(updateState.LastDownload),
-			),
+			Message: msg,
 			Expires: time.Now().Add(1 * time.Minute).Unix(),
 			AvailableActions: []*notifications.Action{
 				{
