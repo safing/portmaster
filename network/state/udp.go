@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/network/socket"
@@ -20,14 +21,11 @@ type udpTable struct {
 	binds []*socket.BindInfo
 	lock  sync.RWMutex
 
-	updateIter atomic.Uint64
 	// lastUpdateAt stores the time when the tables where last updated as unix nanoseconds.
 	lastUpdateAt atomic.Int64
 
-	fetchingLock       sync.Mutex
-	fetchingInProgress bool
-	fetchingDoneSignal chan struct{}
-	fetchTable         func() (binds []*socket.BindInfo, err error)
+	fetchLimiter *utils.CallLimiter
+	fetchTable   func() (binds []*socket.BindInfo, err error)
 
 	states     map[string]map[string]*udpState
 	statesLock sync.Mutex
@@ -53,17 +51,17 @@ const (
 
 var (
 	udp6Table = &udpTable{
-		version:            6,
-		fetchingDoneSignal: make(chan struct{}),
-		fetchTable:         getUDP6Table,
-		states:             make(map[string]map[string]*udpState),
+		version:      6,
+		fetchLimiter: utils.NewCallLimiter(minDurationBetweenTableUpdates),
+		fetchTable:   getUDP6Table,
+		states:       make(map[string]map[string]*udpState),
 	}
 
 	udp4Table = &udpTable{
-		version:            4,
-		fetchingDoneSignal: make(chan struct{}),
-		fetchTable:         getUDP4Table,
-		states:             make(map[string]map[string]*udpState),
+		version:      4,
+		fetchLimiter: utils.NewCallLimiter(minDurationBetweenTableUpdates),
+		fetchTable:   getUDP4Table,
+		states:       make(map[string]map[string]*udpState),
 	}
 )
 
@@ -73,97 +71,34 @@ func EnableUDPDualStack() {
 	udp4Table.dualStack = udp6Table
 }
 
-func (table *udpTable) getCurrentTables() (
-	binds []*socket.BindInfo,
-	updateIter uint64,
-) {
+func (table *udpTable) getCurrentTables() (binds []*socket.BindInfo) {
 	table.lock.RLock()
 	defer table.lock.RUnlock()
 
-	return table.binds, table.updateIter.Load()
+	return table.binds
 }
 
-func (table *udpTable) checkFetchingState() (fetch bool, signal chan struct{}) {
-	table.fetchingLock.Lock()
-	defer table.fetchingLock.Unlock()
-
-	// If fetching is already in progress, just return the signal.
-	if table.fetchingInProgress {
-		return false, table.fetchingDoneSignal
-	}
-
-	// Otherwise, tell caller to fetch.
-	table.fetchingInProgress = true
-	return true, nil
-}
-
-func (table *udpTable) signalFetchComplete() {
-	table.fetchingLock.Lock()
-	defer table.fetchingLock.Unlock()
-
-	// Set fetching state.
-	table.fetchingInProgress = false
-
-	// Signal waiting goroutines.
-	close(table.fetchingDoneSignal)
-	table.fetchingDoneSignal = make(chan struct{})
-}
-
-func (table *udpTable) updateTables(previousUpdateIter uint64) (
-	binds []*socket.BindInfo,
-	updateIter uint64,
-) {
-	var tries int
-
-	// Attempt to update the tables until we get a new version of the tables.
-	for previousUpdateIter == table.updateIter.Load() {
-		// Abort if it takes too long.
-		tries++
-		if tries > maxUpdateTries {
-			log.Warningf("state: failed to upate UDP%d socket table %d times", table.version, tries-1)
-			return table.getCurrentTables()
+func (table *udpTable) updateTables() (binds []*socket.BindInfo) {
+	// Fetch tables.
+	table.fetchLimiter.Do(func() {
+		// Fetch new tables from system.
+		binds, err := table.fetchTable()
+		if err != nil {
+			log.Warningf("state: failed to get UDP%d socket table: %s", table.version, err)
+			return
 		}
 
-		// Check if someone is fetching or if we should fetch.
-		fetch, signal := table.checkFetchingState()
-		if fetch {
-			defer table.signalFetchComplete()
-
-			// Just to be sure, check again if there is a new version.
-			if previousUpdateIter < table.updateIter.Load() {
-				return table.getCurrentTables()
-			}
-
-			// Wait for 5 milliseconds.
-			time.Sleep(5 * time.Millisecond)
-
-			// Fetch new tables from system.
-			binds, err := table.fetchTable()
-			if err != nil {
-				log.Warningf("state: failed to get UDP%d socket table: %s", table.version, err)
-				// Return the current tables as fallback, as we need to trigger the defer to complete the fetch.
-				return table.getCurrentTables()
-			}
-
-			// Pre-check for any listeners.
-			for _, bindInfo := range binds {
-				bindInfo.ListensAny = bindInfo.Local.IP.Equal(net.IPv4zero) || bindInfo.Local.IP.Equal(net.IPv6zero)
-			}
-
-			// Apply new tables.
-			table.lock.Lock()
-			defer table.lock.Unlock()
-			table.binds = binds
-			table.updateIter.Add(1)
-			table.lastUpdateAt.Store(time.Now().UnixNano())
-
-			// Return new tables immediately.
-			return table.binds, table.updateIter.Load()
+		// Pre-check for any listeners.
+		for _, bindInfo := range binds {
+			bindInfo.ListensAny = bindInfo.Local.IP.Equal(net.IPv4zero) || bindInfo.Local.IP.Equal(net.IPv6zero)
 		}
 
-		// Otherwise, wait for fetch to complete.
-		<-signal
-	}
+		// Apply new tables.
+		table.lock.Lock()
+		defer table.lock.Unlock()
+		table.binds = binds
+		table.lastUpdateAt.Store(time.Now().UnixNano())
+	})
 
 	return table.getCurrentTables()
 }
@@ -172,11 +107,11 @@ func (table *udpTable) updateTables(previousUpdateIter uint64) (
 func CleanUDPStates(_ context.Context) {
 	now := time.Now().UTC()
 
-	udp4Table.updateTables(udp4Table.updateIter.Load())
+	udp4Table.updateTables()
 	udp4Table.cleanStates(now)
 
 	if netenv.IPv6Enabled() {
-		udp6Table.updateTables(udp6Table.updateIter.Load())
+		udp6Table.updateTables()
 		udp6Table.cleanStates(now)
 	}
 }

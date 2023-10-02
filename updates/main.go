@@ -287,7 +287,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 		return //nolint:nakedret // TODO: Would "return err" work with the defer?
 	}
 
-	err = registry.DownloadUpdates(ctx, !forcedUpdate)
+	err = registry.DownloadUpdates(ctx, forcedUpdate)
 	if err != nil {
 		err = fmt.Errorf("failed to download updates: %w", err)
 		return //nolint:nakedret // TODO: Would "return err" work with the defer?

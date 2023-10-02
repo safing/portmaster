@@ -4,12 +4,12 @@ package proc
 
 import (
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/utils"
@@ -19,7 +19,7 @@ var (
 	// pidsByUserLock is also used for locking the socketInfo.PID on all socket.*Info structs.
 	pidsByUser      = make(map[int][]int)
 	pidsByUserLock  sync.RWMutex
-	fetchPidsByUser utils.OnceAgain
+	fetchPidsByUser = utils.NewCallLimiter(10 * time.Millisecond)
 )
 
 // getPidsByUser returns the cached PIDs for the given UID.
@@ -31,7 +31,7 @@ func getPidsByUser(uid int) (pids []int, ok bool) {
 	return
 }
 
-// updatePids fetches and creates a new pidsByUser map using utils.OnceAgain.
+// updatePids fetches and creates a new pidsByUser map using a call limiter.
 func updatePids() {
 	fetchPidsByUser.Do(func() {
 		newPidsByUser := make(map[int][]int)
@@ -50,7 +50,7 @@ func updatePids() {
 				continue entryLoop
 			}
 
-			statData, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
+			statData, err := os.Stat("/proc/" + strconv.FormatInt(pid, 10))
 			if err != nil {
 				if !errors.Is(err, fs.ErrNotExist) {
 					log.Warningf("proc: could not stat /proc/%d: %s", pid, err)

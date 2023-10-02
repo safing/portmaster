@@ -154,7 +154,7 @@ func verifyUpdates(ctx context.Context) error {
 	// Re-download broken files.
 	registry.MandatoryUpdates = helper.MandatoryUpdates()
 	registry.AutoUnpack = helper.AutoUnpackUpdates()
-	err = registry.DownloadUpdates(ctx, false)
+	err = registry.DownloadUpdates(ctx, true)
 	if err != nil {
 		return fmt.Errorf("failed to re-download files: %w", err)
 	}

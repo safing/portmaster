@@ -66,20 +66,18 @@ func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 	var (
 		connections []*socket.ConnectionInfo
 		listeners   []*socket.BindInfo
-		updateIter  uint64
 
 		dualStackConnections []*socket.ConnectionInfo
 		dualStackListeners   []*socket.BindInfo
-		dualStackUpdateIter  uint64
 	)
 
 	// Search for the socket until found.
 	for i := 1; i <= lookupTries; i++ {
-		// Get or update tables.
+		// Use existing tables for first check if packet was seen after last table update.
 		if i == 1 && pktInfo.SeenAt.UnixNano() >= table.lastUpdateAt.Load() {
-			connections, listeners, updateIter = table.getCurrentTables()
+			connections, listeners = table.getCurrentTables()
 		} else {
-			connections, listeners, updateIter = table.updateTables(updateIter)
+			connections, listeners = table.updateTables()
 		}
 
 		// Check tables for socket.
@@ -97,11 +95,11 @@ func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 			continue
 		}
 
-		// Get or update tables.
-		if i == 0 {
-			dualStackConnections, dualStackListeners, dualStackUpdateIter = table.dualStack.getCurrentTables()
+		// Use existing tables for first check if packet was seen after last table update.
+		if i == 1 && pktInfo.SeenAt.UnixNano() >= table.dualStack.lastUpdateAt.Load() {
+			dualStackConnections, dualStackListeners = table.dualStack.getCurrentTables()
 		} else {
-			dualStackConnections, dualStackListeners, dualStackUpdateIter = table.dualStack.updateTables(dualStackUpdateIter)
+			dualStackConnections, dualStackListeners = table.dualStack.updateTables()
 		}
 
 		// Check tables for socket.
@@ -169,20 +167,17 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 
 	// Prepare variables.
 	var (
-		binds      []*socket.BindInfo
-		updateIter uint64
-
-		dualStackBinds      []*socket.BindInfo
-		dualStackUpdateIter uint64
+		binds          []*socket.BindInfo
+		dualStackBinds []*socket.BindInfo
 	)
 
 	// Search for the socket until found.
 	for i := 1; i <= lookupTries; i++ {
 		// Get or update tables.
 		if i == 1 && pktInfo.SeenAt.UnixNano() >= table.lastUpdateAt.Load() {
-			binds, updateIter = table.getCurrentTables()
+			binds = table.getCurrentTables()
 		} else {
-			binds, updateIter = table.updateTables(updateIter)
+			binds = table.updateTables()
 		}
 
 		// Check tables for socket.
@@ -212,10 +207,10 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 		}
 
 		// Get or update tables.
-		if i == 0 {
-			dualStackBinds, dualStackUpdateIter = table.dualStack.getCurrentTables()
+		if i == 1 && pktInfo.SeenAt.UnixNano() >= table.lastUpdateAt.Load() {
+			dualStackBinds = table.dualStack.getCurrentTables()
 		} else {
-			dualStackBinds, dualStackUpdateIter = table.dualStack.updateTables(dualStackUpdateIter)
+			dualStackBinds = table.dualStack.updateTables()
 		}
 
 		// Check tables for socket.

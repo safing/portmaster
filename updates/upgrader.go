@@ -113,12 +113,12 @@ func upgradeCoreNotify() error {
 			EventID: "updates:core-update-available",
 			Type:    notifications.Info,
 			Title: fmt.Sprintf(
-				"Portmaster Update v%s",
+				"Portmaster Update v%s Is Ready!",
 				pmCoreUpdate.Version(),
 			),
 			Category: "Core",
 			Message: fmt.Sprintf(
-				`A new Portmaster version is available! Restart the Portmaster to upgrade to %s.`,
+				`A new Portmaster version is ready to go! Restart the Portmaster to upgrade to %s.`,
 				pmCoreUpdate.Version(),
 			),
 			ShowOnSystem: true,
