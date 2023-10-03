@@ -85,7 +85,7 @@ func handleExportSingleSetting(ar *api.Request) (data []byte, err error) {
 	if len(q) > 0 {
 		request = &ExportRequest{
 			From: q.Get("from"),
-			Key:  q.Get("key"),
+			Keys: q["key"], // Get []string by direct map access.
 		}
 	} else {
 		request = &ExportRequest{}
@@ -95,12 +95,12 @@ func handleExportSingleSetting(ar *api.Request) (data []byte, err error) {
 	}
 
 	// Check parameters.
-	if request.From == "" || request.Key == "" {
-		return nil, errors.New("missing parameters")
+	if request.From == "" || len(request.Keys) != 1 {
+		return nil, errors.New("missing or malformed parameters")
 	}
 
 	// Export.
-	export, err := ExportSingleSetting(request.Key, request.From)
+	export, err := ExportSingleSetting(request.Keys[0], request.From)
 	if err != nil {
 		return nil, err
 	}

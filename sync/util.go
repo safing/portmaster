@@ -35,8 +35,8 @@ var (
 
 // ExportRequest is a request for an export.
 type ExportRequest struct {
-	From string `json:"from"`
-	Key  string `json:"key"`
+	From string   `json:"from"`
+	Keys []string `json:"keys"`
 }
 
 // ImportRequest is a request to import an export.
@@ -44,16 +44,17 @@ type ImportRequest struct {
 	// Where the export should be import to.
 	Target string `json:"target"`
 	// Only validate, but do not actually change anything.
-	ValidateOnly bool `json:"validate_only"`
+	ValidateOnly bool `json:"validateOnly"`
 
-	RawExport string `json:"raw_export"`
-	RawMime   string `json:"raw_mime"`
+	RawExport string `json:"rawExport"`
+	RawMime   string `json:"rawMime"`
 }
 
 // ImportResult is returned by successful import operations.
 type ImportResult struct {
-	RestartRequired  bool `json:"restart_required"`
-	ReplacesExisting bool `json:"replaces_existing"`
+	RestartRequired  bool `json:"restartRequired"`
+	ReplacesExisting bool `json:"replacesExisting"`
+	ContainsUnknown  bool `json:"containsUnknown"`
 }
 
 // Errors.
@@ -113,7 +114,7 @@ func serializeExport(export any, ar *api.Request) ([]byte, error) {
 	case dsd.JSON:
 		data, err = filesig.AddJSONChecksum(data)
 	case dsd.YAML:
-		data, err = filesig.AddYAMLChecksum(data, filesig.TextPlacementTop)
+		data, err = filesig.AddYAMLChecksum(data, filesig.TextPlacementBottom)
 	default:
 		return nil, dsd.ErrIncompatibleFormat
 	}

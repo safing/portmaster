@@ -28,6 +28,8 @@ type SettingsImportRequest struct {
 	// any settings would be replaced or deleted.
 	Reset bool `json:"reset"`
 
+	AllowUnknown bool `json:"allowUnknown"`
+
 	Export *SettingsExport `json:"export"`
 }
 
@@ -42,6 +44,10 @@ func registerSettingsAPI() error {
 			Method:      http.MethodGet,
 			Field:       "from",
 			Description: "Specify where to export from.",
+		}, {
+			Method:      http.MethodGet,
+			Field:       "key",
+			Description: "Optionally select a single setting to export. Repeat to export selection.",
 		}},
 		BelongsTo: module,
 		DataFunc:  handleExportSettings,
@@ -67,6 +73,10 @@ func registerSettingsAPI() error {
 			Method:      http.MethodPost,
 			Field:       "reset",
 			Description: "Replace all existing settings.",
+		}, {
+			Method:      http.MethodPost,
+			Field:       "allowUnknown",
+			Description: "Allow importing of unknown values.",
 		}},
 		BelongsTo:  module,
 		StructFunc: handleImportSettings,
@@ -85,6 +95,7 @@ func handleExportSettings(ar *api.Request) (data []byte, err error) {
 	if len(q) > 0 {
 		request = &ExportRequest{
 			From: q.Get("from"),
+			Keys: q["key"], // Get []string by direct map access.
 		}
 	} else {
 		request = &ExportRequest{}
@@ -99,7 +110,7 @@ func handleExportSettings(ar *api.Request) (data []byte, err error) {
 	}
 
 	// Export.
-	export, err := ExportSettings(request.From)
+	export, err := ExportSettings(request.From, request.Keys)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +131,8 @@ func handleImportSettings(ar *api.Request) (any, error) {
 				RawExport:    string(ar.InputData),
 				RawMime:      ar.Header.Get("Content-Type"),
 			},
-			Reset: q.Has("reset"),
+			Reset:        q.Has("reset"),
+			AllowUnknown: q.Has("allowUnknown"),
 		}
 	} else {
 		request = &SettingsImportRequest{}
@@ -151,7 +163,7 @@ func handleImportSettings(ar *api.Request) (any, error) {
 }
 
 // ExportSettings exports the global settings.
-func ExportSettings(from string) (*SettingsExport, error) {
+func ExportSettings(from string, keys []string) (*SettingsExport, error) {
 	var settings map[string]any
 	if from == ExportTargetGlobal {
 		// Collect all changed global settings.
@@ -173,6 +185,17 @@ func ExportSettings(from string) (*SettingsExport, error) {
 			return nil, fmt.Errorf("%w: failed to load profile: %w", ErrExportFailed, err)
 		}
 		settings = config.Flatten(p.Config)
+	}
+
+	// Only extract some setting keys, if wanted.
+	if len(keys) > 0 {
+		selection := make(map[string]any, len(keys))
+		for _, key := range keys {
+			if v, ok := settings[key]; ok {
+				selection[key] = v
+			}
+		}
+		settings = selection
 	}
 
 	// Check if there any changed settings.
@@ -237,7 +260,10 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 		return nil, err
 	}
 	if checked < len(settings) {
-		return nil, fmt.Errorf("%w: the export contains unknown settings", ErrInvalidImportRequest)
+		result.ContainsUnknown = true
+		if !r.AllowUnknown {
+			return nil, fmt.Errorf("%w: the export contains unknown settings", ErrInvalidImportRequest)
+		}
 	}
 
 	// Import global settings.
