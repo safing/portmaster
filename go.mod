@@ -1,8 +1,6 @@
 module github.com/safing/portmaster
 
-go 1.21
-
-toolchain go1.21.2
+go 1.20
 
 require (
 	github.com/Xuanwo/go-locale v1.1.0
@@ -21,10 +19,10 @@ require (
 	github.com/miekg/dns v1.1.56
 	github.com/mitchellh/go-server-timing v1.0.1
 	github.com/oschwald/maxminddb-golang v1.12.0
-	github.com/safing/jess v0.3.1
-	github.com/safing/portbase v0.18.5
+	github.com/safing/jess v0.3.2-0.20230926112644-fa3982d07a28
+	github.com/safing/portbase v0.18.2
 	github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec
-	github.com/safing/spn v0.7.4
+	github.com/safing/spn v0.6.23
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.7.0
 	github.com/spkg/zipfs v0.7.1
@@ -92,11 +90,11 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	github.com/zalando/go-keyring v0.2.3 // indirect
 	go.etcd.io/bbolt v1.3.7 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/mod v0.13.0 // indirect
+	golang.org/x/crypto v0.13.0 // indirect
+	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.14.0 // indirect
+	golang.org/x/tools v0.13.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gvisor.dev/gvisor v0.0.0-20231017021626-e69b01c3a8f3 // indirect

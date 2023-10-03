@@ -247,6 +247,8 @@ github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQD
 github.com/safing/jess v0.3.0/go.mod h1:JbYsPk5iJZx0OXDZeMcjS9qEdkGVUg+DCA8Fw2LdN9s=
 github.com/safing/jess v0.3.1 h1:cMZVhi2whW/YdD98MPLeLIWJndQ7o2QVt2HefQ/ByFA=
 github.com/safing/jess v0.3.1/go.mod h1:aj73Eot1zm2ETkJuw9hJlIO8bRom52uBbsCHemvlZmA=
+github.com/safing/jess v0.3.2-0.20230926112644-fa3982d07a28 h1:7enCIKQTOB1Ajdx6tEDgO7lTDXGw4nbS32e3RzBqYTI=
+github.com/safing/jess v0.3.2-0.20230926112644-fa3982d07a28/go.mod h1:T+lt5Ns8CWLUyD4+oBMmZ7jDletFKGL6xy1XY7FcEJE=
 github.com/safing/portbase v0.15.2/go.mod h1:5bHi99fz7Hh/wOsZUOI631WF9ePSHk57c4fdlOMS91Y=
 github.com/safing/portbase v0.16.2/go.mod h1:mzNCWqPbO7vIYbbK5PElGbudwd2vx4YPNawymL8Aro8=
 github.com/safing/portbase v0.18.5 h1:BgIBpreSNOnyHqx6Ovx3xJMkX2yOa3A2uLpfVBbfJPM=
