@@ -28,6 +28,8 @@ type SettingsImportRequest struct {
 	// any settings would be replaced or deleted.
 	Reset bool `json:"reset"`
 
+	// AllowUnknown allows the import of unknown settings.
+	// Otherwise, attempting to import an unknown setting will result in an error.
 	AllowUnknown bool `json:"allowUnknown"`
 
 	Export *SettingsExport `json:"export"`
