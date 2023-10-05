@@ -19,6 +19,7 @@ type BandwidthChartHandler struct {
 }
 
 type BandwidthChartRequest struct {
+	AllProfiles bool     `json:"allProfiles"`
 	Profiles    []string `json:"profiles"`
 	Connections []string `json:"connections"`
 }
@@ -107,18 +108,21 @@ func (req *BandwidthChartRequest) generateSQL(ctx context.Context, schema *orm.T
 	whereClause := ""
 	params := make(map[string]any)
 
-	if len(req.Profiles) > 0 {
+	if (len(req.Profiles) > 0) || (req.AllProfiles == true) {
 		groupBy = []string{"profile", "round(time/10, 0)*10"}
 		selects = append(selects, "profile")
-		clauses := make([]string, len(req.Profiles))
 
-		for idx, p := range req.Profiles {
-			key := fmt.Sprintf(":p%d", idx)
-			clauses[idx] = "profile = " + key
-			params[key] = p
+		if !req.AllProfiles {
+			clauses := make([]string, len(req.Profiles))
+
+			for idx, p := range req.Profiles {
+				key := fmt.Sprintf(":p%d", idx)
+				clauses[idx] = "profile = " + key
+				params[key] = p
+			}
+
+			whereClause = "WHERE " + strings.Join(clauses, " OR ")
 		}
-
-		whereClause = "WHERE " + strings.Join(clauses, " OR ")
 	} else if len(req.Connections) > 0 {
 		groupBy = []string{"conn_id", "round(time/10, 0)*10"}
 		selects = append(selects, "conn_id")

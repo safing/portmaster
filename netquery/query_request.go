@@ -126,6 +126,8 @@ func (req *QueryRequestPayload) prepareSelectedFields(ctx context.Context, schem
 			} else {
 				field = "*"
 			}
+		case s.FieldSelect != nil:
+			field = s.FieldSelect.Field
 		default:
 			field = s.Field
 		}
@@ -141,6 +143,18 @@ func (req *QueryRequestPayload) prepareSelectedFields(ctx context.Context, schem
 		}
 
 		switch {
+		case s.FieldSelect != nil:
+			as := s.FieldSelect.As
+			if as == "" {
+				as = s.FieldSelect.Field
+			}
+
+			req.selectedFields = append(
+				req.selectedFields,
+				fmt.Sprintf("%s AS %s", s.FieldSelect.Field, as),
+			)
+			req.whitelistedFields = append(req.whitelistedFields, as)
+
 		case s.Count != nil:
 			as := s.Count.As
 			if as == "" {
