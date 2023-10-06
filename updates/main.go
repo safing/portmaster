@@ -220,17 +220,20 @@ func start() error {
 }
 
 // TriggerUpdate queues the update task to execute ASAP.
-func TriggerUpdate(force bool) error {
+func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 	switch {
 	case !module.Online():
 		updateASAP = true
 
-	case !force && !enableSoftwareUpdates() && !enableIntelUpdates():
+	case !forceIndexCheck && !enableSoftwareUpdates() && !enableIntelUpdates():
 		return fmt.Errorf("automatic updating is disabled")
 
 	default:
-		if force {
-			forceUpdate.Set()
+		if forceIndexCheck {
+			forceCheck.Set()
+		}
+		if downloadAll {
+			forceDownload.Set()
 		}
 		updateTask.StartASAP()
 	}
@@ -263,8 +266,12 @@ func checkForUpdates(ctx context.Context) (err error) {
 		}
 	}()
 
-	forcedUpdate := forceUpdate.SetToIf(true, false)
-	if !forcedUpdate && !enableSoftwareUpdates() && !enableIntelUpdates() {
+	// Get flags.
+	forceIndexCheck := forceCheck.SetToIf(true, false)
+	downloadAll := forceDownload.SetToIf(true, false)
+
+	// Check again if downloading updates is enabled, or forced.
+	if !forceIndexCheck && !enableSoftwareUpdates() && !enableIntelUpdates() {
 		log.Warningf("updates: automatic updates are disabled")
 		return nil
 	}
@@ -273,13 +280,13 @@ func checkForUpdates(ctx context.Context) (err error) {
 		// Resolve any error and send success notification.
 		if err == nil {
 			log.Infof("updates: successfully checked for updates")
-			notifyUpdateSuccess(forcedUpdate)
+			notifyUpdateSuccess(forceIndexCheck)
 			return
 		}
 
 		// Log and notify error.
 		log.Errorf("updates: check failed: %s", err)
-		notifyUpdateCheckFailed(forcedUpdate, err)
+		notifyUpdateCheckFailed(forceIndexCheck, err)
 	}()
 
 	if err = registry.UpdateIndexes(ctx); err != nil {
@@ -287,7 +294,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 		return //nolint:nakedret // TODO: Would "return err" work with the defer?
 	}
 
-	err = registry.DownloadUpdates(ctx, forcedUpdate)
+	err = registry.DownloadUpdates(ctx, downloadAll)
 	if err != nil {
 		err = fmt.Errorf("failed to download updates: %w", err)
 		return //nolint:nakedret // TODO: Would "return err" work with the defer?
