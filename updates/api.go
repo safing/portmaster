@@ -14,12 +14,12 @@ func registerAPIEndpoints() error {
 		Write:     api.PermitUser,
 		BelongsTo: module,
 		ActionFunc: func(_ *api.Request) (msg string, err error) {
-			if err := TriggerUpdate(true); err != nil {
+			if err := TriggerUpdate(false); err != nil {
 				return "", err
 			}
 			return "triggered update check", nil
 		},
 		Name:        "Check for Updates",
-		Description: "Triggers checking for updates.",
+		Description: "Checks if new versions are available and downloads and applies them, if automatic updates are enabled.",
 	})
 }

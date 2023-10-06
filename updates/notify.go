@@ -32,7 +32,7 @@ func notifyUpdateSuccess(forced bool) {
 		// Show notification if there are pending downloads.
 		flavor = updateSuccessPending
 	case updateState.LastDownloadAt != nil &&
-		time.Since(*updateState.LastDownloadAt) < time.Minute:
+		time.Since(*updateState.LastDownloadAt) < 5*time.Second:
 		// Show notification if we downloaded something within the last minute.
 		flavor = updateSuccessDownloaded
 	case forced:

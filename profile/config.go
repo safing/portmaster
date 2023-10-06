@@ -256,9 +256,9 @@ In order to reduce noise optimize performance, internal and device-only (localho
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   false,
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: cfgOptionEnableHistoryOrder,
-			config.CategoryAnnotation:     "General",
-			config.RequiresFeatureID:      account.FeatureHistory,
+			config.DisplayOrderAnnotation:      cfgOptionEnableHistoryOrder,
+			config.CategoryAnnotation:          "General",
+			config.RequiresFeatureIDAnnotation: account.FeatureHistory,
 		},
 	})
 	if err != nil {
@@ -280,10 +280,10 @@ Set to 0 days to keep network history forever. Depending on your device, this mi
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   30,
 		Annotations: config.Annotations{
-			config.UnitAnnotation:         "Days",
-			config.DisplayOrderAnnotation: cfgOptionKeepHistoryOrder,
-			config.CategoryAnnotation:     "General",
-			config.RequiresFeatureID:      account.FeatureHistory,
+			config.UnitAnnotation:              "Days",
+			config.DisplayOrderAnnotation:      cfgOptionKeepHistoryOrder,
+			config.CategoryAnnotation:          "General",
+			config.RequiresFeatureIDAnnotation: account.FeatureHistory,
 		},
 	})
 	if err != nil {
