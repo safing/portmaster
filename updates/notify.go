@@ -21,7 +21,7 @@ const (
 
 var updateFailedCnt = new(atomic.Int32)
 
-func notifyUpdateSuccess(forced bool) {
+func notifyUpdateSuccess(force bool) {
 	updateFailedCnt.Store(0)
 	module.Resolve(updateFailed)
 	updateState := registry.GetState().Updates
@@ -35,7 +35,7 @@ func notifyUpdateSuccess(forced bool) {
 		time.Since(*updateState.LastDownloadAt) < 5*time.Second:
 		// Show notification if we downloaded something within the last minute.
 		flavor = updateSuccessDownloaded
-	case forced:
+	case force:
 		// Always show notification if update was manually triggered.
 	default:
 		// Otherwise, the update was uneventful. Do not show notification.
@@ -48,7 +48,7 @@ func notifyUpdateSuccess(forced bool) {
 			EventID: updateSuccess,
 			Type:    notifications.Info,
 			Title:   "Portmaster Is Up-To-Date",
-			Message: "Portmaster successfully checked for updates. Everything is up to date. Most updates are applied automatically. You will be notified of important updates that need restarting.",
+			Message: "Portmaster successfully checked for updates. Everything is up to date.\n\n" + getUpdatingInfoMsg(),
 			Expires: time.Now().Add(1 * time.Minute).Unix(),
 			AvailableActions: []*notifications.Action{
 				{
@@ -64,7 +64,7 @@ func notifyUpdateSuccess(forced bool) {
 
 - %s
 
-Press "Download Now" or check for updates later to download and automatically apply all pending updates. You will be notified of important updates that need restarting.`,
+Press "Download Now" to download and automatically apply all pending updates. You will be notified of important updates that need restarting.`,
 			len(updateState.PendingDownload),
 			strings.Join(updateState.PendingDownload, "\n- "),
 		)
@@ -84,7 +84,7 @@ Press "Download Now" or check for updates later to download and automatically ap
 					Text: "Download Now",
 					Type: notifications.ActionTypeWebhook,
 					Payload: &notifications.ActionTypeWebhookPayload{
-						URL:          apiPathCheckForUpdates,
+						URL:          apiPathCheckForUpdates + "?download",
 						ResultAction: "display",
 					},
 				},
@@ -95,15 +95,14 @@ Press "Download Now" or check for updates later to download and automatically ap
 		msg := fmt.Sprintf(
 			`%d updates were downloaded and applied:
 
-- %s`,
+- %s
+
+%s
+`,
 			len(updateState.LastDownload),
 			strings.Join(updateState.LastDownload, "\n- "),
+			getUpdatingInfoMsg(),
 		)
-		if enableSoftwareUpdates() {
-			msg += "\n\nYou will be notified of important updates that need restarting."
-		} else {
-			msg += "\n\nAutomatic software updates are disabled, and you will be notified when a new software update is ready to be downloaded and applied."
-		}
 
 		notifications.Notify(&notifications.Notification{
 			EventID: updateSuccess,
@@ -122,12 +121,23 @@ Press "Download Now" or check for updates later to download and automatically ap
 	}
 }
 
-func notifyUpdateCheckFailed(forced bool, err error) {
+func getUpdatingInfoMsg() string {
+	switch {
+	case enableSoftwareUpdates() && enableIntelUpdates():
+		return "You will be notified of important updates that need restarting."
+	case enableIntelUpdates():
+		return "Automatic software updates are disabled, but you will be notified when a new software update is ready to be downloaded and applied."
+	default:
+		return "Automatic software updates are disabled. Please check for updates regularly yourself."
+	}
+}
+
+func notifyUpdateCheckFailed(force bool, err error) {
 	failedCnt := updateFailedCnt.Add(1)
 	lastSuccess := registry.GetState().Updates.LastSuccessAt
 
 	switch {
-	case forced:
+	case force:
 		// Always show notification if update was manually triggered.
 	case failedCnt < failedUpdateNotifyCountThreshold:
 		// Not failed often enough for notification.

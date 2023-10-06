@@ -24,7 +24,8 @@ var (
 	softwareUpdatesCurrentlyEnabled bool
 	intelUpdatesCurrentlyEnabled    bool
 	previousDevMode                 bool
-	forceUpdate                     = abool.New()
+	forceCheck                      = abool.New()
+	forceDownload                   = abool.New()
 )
 
 func registerConfig() error {
@@ -165,7 +166,7 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 
 		if softwareUpdatesCurrentlyEnabled || intelUpdatesCurrentlyEnabled {
 			module.Resolve("")
-			if err := TriggerUpdate(false); err != nil {
+			if err := TriggerUpdate(true, false); err != nil {
 				log.Warningf("updates: failed to trigger update: %s", err)
 			}
 			log.Infof("updates: automatic updates are now enabled")

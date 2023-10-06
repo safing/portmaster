@@ -219,7 +219,7 @@ func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string)
 
 		// Trigger update check when coming (semi) online.
 		if Online() {
-			_ = updates.TriggerUpdate(false)
+			_ = updates.TriggerUpdate(false, false)
 		}
 	}
 }
