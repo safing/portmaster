@@ -1,6 +1,8 @@
 module github.com/safing/portmaster
 
-go 1.20
+go 1.21
+
+toolchain go1.21.2
 
 require (
 	github.com/Xuanwo/go-locale v1.1.0
@@ -20,9 +22,9 @@ require (
 	github.com/mitchellh/go-server-timing v1.0.1
 	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/safing/jess v0.3.1
-	github.com/safing/portbase v0.18.1
+	github.com/safing/portbase v0.18.2
 	github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec
-	github.com/safing/spn v0.6.23
+	github.com/safing/spn v0.7.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.7.0
 	github.com/spkg/zipfs v0.7.1
@@ -30,10 +32,10 @@ require (
 	github.com/tannerryan/ring v1.1.2
 	github.com/tevino/abool v1.2.0
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
-	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
-	golang.org/x/net v0.15.0
-	golang.org/x/sync v0.3.0
-	golang.org/x/sys v0.12.0
+	golang.org/x/exp v0.0.0-20231005195138-3e424a577f31
+	golang.org/x/net v0.16.0
+	golang.org/x/sync v0.4.0
+	golang.org/x/sys v0.13.0
 	zombiezen.com/go/sqlite v0.13.1
 )
 
@@ -90,14 +92,14 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	github.com/zalando/go-keyring v0.2.3 // indirect
 	go.etcd.io/bbolt v1.3.7 // indirect
-	golang.org/x/crypto v0.13.0 // indirect
-	golang.org/x/mod v0.12.0 // indirect
+	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.13.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gvisor.dev/gvisor v0.0.0-20220817001344-846276b3dbc5 // indirect
+	gvisor.dev/gvisor v0.0.0-20231006032704-15cc3fcbbd77 // indirect
 	modernc.org/libc v1.24.1 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.7.2 // indirect
