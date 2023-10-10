@@ -27,7 +27,9 @@ func init() {
 
 func prep() error {
 	// Set DNS test connectivity function for the online status check
-	netenv.DNSTestQueryFunc = testConnectivity
+	netenv.DNSTestQueryFunc = func(ctx context.Context, fdqn string) (ips []net.IP, ok bool, err error) {
+		return testConnectivity(ctx, fdqn, nil)
+	}
 
 	intel.SetReverseResolver(ResolveIPAndValidate)
 
@@ -96,6 +98,21 @@ func start() error {
 		return err
 	}
 
+	// Check failing resolvers regularly and when the network changes.
+	checkFailingResolversTask := module.NewTask("check failing resolvers", checkFailingResolvers).Repeat(1 * time.Minute)
+	err = module.RegisterEventHook(
+		"netenv",
+		netenv.NetworkChangedEvent,
+		"check failing resolvers",
+		func(_ context.Context, _ any) error {
+			checkFailingResolversTask.StartASAP()
+			return nil
+		},
+	)
+	if err != nil {
+		return err
+	}
+
 	module.NewTask("suggest using stale cache", suggestUsingStaleCacheTask).Repeat(2 * time.Minute)
 
 	module.StartServiceWorker(
@@ -130,9 +147,11 @@ var (
 	failingResolverNotification     *notifications.Notification
 	failingResolverNotificationSet  = abool.New()
 	failingResolverNotificationLock sync.Mutex
+
+	failingResolverErrorID = "resolver:all-configured-resolvers-failed"
 )
 
-func notifyAboutFailingResolvers(err error) {
+func notifyAboutFailingResolvers() {
 	failingResolverNotificationLock.Lock()
 	defer failingResolverNotificationLock.Unlock()
 	failingResolverNotificationSet.Set()
@@ -144,19 +163,32 @@ func notifyAboutFailingResolvers(err error) {
 
 	// Create new notification.
 	n := &notifications.Notification{
-		EventID:      "resolver:all-configured-resolvers-failed",
-		Type:         notifications.Error,
-		Title:        "Detected DNS Compatibility Issue",
-		Message:      "Portmaster detected that something is interfering with its Secure DNS resolver. This could be a firewall or another secure DNS resolver software. Please check if you are running incompatible [software](https://docs.safing.io/portmaster/install/status/software-compatibility). Otherwise, please report the issue via [GitHub](https://github.com/safing/portmaster/issues) or send a mail to [support@safing.io](mailto:support@safing.io) so we can help you out.",
+		EventID: failingResolverErrorID,
+		Type:    notifications.Error,
+		Title:   "Configured DNS Servers Failing",
+		Message: `All configured DNS servers in Portmaster are failing.
+
+You might not be able to connect to these servers, or all of these servers are offline.  
+Choosing different DNS servers might fix this problem.
+
+While the issue persists, Portmaster will use the DNS servers from your system or network, if permitted by configuration.
+
+Alternatively, there might be something on your device that is interfering with Portmaster. This could be a firewall or another secure DNS resolver software. If that is your suspicion, please [check if you are running incompatible software here](https://docs.safing.io/portmaster/install/status/software-compatibility).
+
+This notification will go away when Portmaster detects a working configured DNS server.`,
 		ShowOnSystem: true,
+		AvailableActions: []*notifications.Action{{
+			Text: "Change DNS Servers",
+			Type: notifications.ActionTypeOpenSetting,
+			Payload: &notifications.ActionTypeOpenSettingPayload{
+				Key: CfgOptionNameServersKey,
+			},
+		}},
 	}
 	notifications.Notify(n)
 
 	failingResolverNotification = n
 	n.AttachToModule(module)
-
-	// Report the raw error as module error.
-	module.NewErrorMessage("resolving", err).Report()
 }
 
 func resetFailingResolversNotification() {
@@ -167,10 +199,14 @@ func resetFailingResolversNotification() {
 	failingResolverNotificationLock.Lock()
 	defer failingResolverNotificationLock.Unlock()
 
+	// Remove the notification.
 	if failingResolverNotification != nil {
 		failingResolverNotification.Delete()
 		failingResolverNotification = nil
 	}
+
+	// Additionally, resolve the module error, if not done through the notification.
+	module.Resolve(failingResolverErrorID)
 }
 
 // AddToDebugInfo adds the system status to the given debug.Info.

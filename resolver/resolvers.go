@@ -358,6 +358,12 @@ func getSystemResolvers() (resolvers []*Resolver) {
 const missingResolversErrorID = "missing-resolvers"
 
 func loadResolvers() {
+	defer func() {
+		if !allConfiguredResolversAreFailing() {
+			resetFailingResolversNotification()
+		}
+	}()
+
 	// TODO: what happens when a lot of processes want to reload at once? we do not need to run this multiple times in a short time frame.
 	resolversLock.Lock()
 	defer resolversLock.Unlock()
@@ -383,21 +389,21 @@ func loadResolvers() {
 	)
 
 	if len(newResolvers) == 0 {
-		log.Warning("resolver: no (valid) dns server found in config or system, falling back to global defaults")
-		module.Warning(
-			missingResolversErrorID,
-			"Using Factory Default DNS Servers",
-			"The Portmaster could not find any (valid) DNS servers in the settings or system. In order to prevent being disconnected, the factory defaults are being used instead.",
-		)
-
 		// load defaults directly, overriding config system
 		newResolvers = getConfiguredResolvers(defaultNameServers)
-		if len(newResolvers) == 0 {
+		if len(newResolvers) > 0 {
+			log.Warning("resolver: no (valid) dns server found in config or system, falling back to global defaults")
+			module.Warning(
+				missingResolversErrorID,
+				"Using Factory Default DNS Servers",
+				"The Portmaster could not find any (valid) DNS servers in the settings or system. In order to prevent being disconnected, the factory defaults are being used instead. If you just switched your network, this should be resolved shortly.",
+			)
+		} else {
 			log.Critical("resolver: no (valid) dns server found in config, system or global defaults")
 			module.Error(
 				missingResolversErrorID,
-				"No DNS Server Configured",
-				"The Portmaster could not find any (valid) DNS servers in the settings or system. You will experience severe connectivity problems until resolved.",
+				"No DNS Servers Configured",
+				"The Portmaster could not find any (valid) DNS servers in the settings or system. You will experience severe connectivity problems until resolved. If you just switched your network, this should be resolved shortly.",
 			)
 		}
 	}
@@ -584,4 +590,26 @@ func ForceResolverReconnect(ctx context.Context) {
 		r.Conn.ForceReconnect(ctx)
 	}
 	tracer.Info("resolver: all active resolvers were forced to reconnect")
+}
+
+// allConfiguredResolversAreFailing reports whether all configured resolvers are failing.
+// Return false if there are no configured resolvers.
+func allConfiguredResolversAreFailing() bool {
+	resolversLock.RLock()
+	defer resolversLock.RUnlock()
+
+	// If there are no configured resolvers, return as not failing.
+	if len(currentResolverConfig) == 0 {
+		return false
+	}
+
+	// Return as not failing, if we can find any non-failing configured resolver.
+	for _, resolver := range globalResolvers {
+		if !resolver.Conn.IsFailing() && resolver.Info.Source == ServerSourceConfigured {
+			// We found a non-failing configured resolver.
+			return false
+		}
+	}
+
+	return true
 }

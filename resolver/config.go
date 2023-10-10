@@ -178,9 +178,9 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 	configuredNameServers = config.Concurrent.GetAsStringArray(CfgOptionNameServersKey, defaultNameServers)
 
 	err = config.Register(&config.Option{
-		Name:           "Ignore Failing DNS Servers Duration",
+		Name:           "Retry Failing DNS Servers",
 		Key:            CfgOptionNameserverRetryRateKey,
-		Description:    "Duration in seconds how long a failing DNS server should not be retried.",
+		Description:    "Duration in seconds how often failing DNS server should be retried. This is done continuously in the background.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		ReleaseLevel:   config.ReleaseLevelStable,
