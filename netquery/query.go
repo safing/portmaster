@@ -455,6 +455,7 @@ func (query Query) toSQLWhereClause(ctx context.Context, suffix string, m *orm.T
 		values := query[column]
 		colDef, ok := lm[column]
 		if !ok {
+
 			errs.Errors = append(errs.Errors, fmt.Errorf("column %s is not allowed", column))
 
 			continue

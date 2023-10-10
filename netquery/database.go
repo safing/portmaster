@@ -301,7 +301,6 @@ func (db *Database) ApplyMigrations() error {
 
 	bwSchema := `CREATE TABLE IF NOT EXISTS main.bandwidth (
 		conn_id TEXT NOT NULL,
-		profile TEXT NOT NULL,
 		time INTEGER NOT NULL,
 		incoming INTEGER NOT NULL,
 		outgoing INTEGER NOT NULL,
@@ -555,9 +554,9 @@ func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, pro
 	}
 
 	parts := []string{}
-	parts = append(parts, "bytes_received = :bytes_received")
+	parts = append(parts, "bytes_received = (bytes_received + :bytes_received)")
 	params[":bytes_received"] = bytesReceived
-	parts = append(parts, "bytes_sent = :bytes_sent")
+	parts = append(parts, "bytes_sent = (bytes_sent + :bytes_sent)")
 	params[":bytes_sent"] = bytesSent
 
 	updateSet := strings.Join(parts, ", ")
@@ -581,8 +580,7 @@ func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, pro
 
 	// also add the date to the in-memory bandwidth database
 	params[":time"] = time.Now().Unix()
-	params[":profile"] = profileKey
-	stmt := "INSERT INTO main.bandwidth (conn_id, profile, time, incoming, outgoing) VALUES(:id, :profile, :time, :bytes_received, :bytes_sent)"
+	stmt := "INSERT INTO main.bandwidth (conn_id, time, incoming, outgoing) VALUES(:id, :time, :bytes_received, :bytes_sent)"
 	if err := db.ExecuteWrite(ctx, stmt, orm.WithNamedArgs(params)); err != nil {
 		merr.Errors = append(merr.Errors, fmt.Errorf("failed to update main.bandwidth: %w", err))
 	}

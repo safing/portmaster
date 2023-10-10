@@ -19,9 +19,9 @@ type BandwidthChartHandler struct {
 }
 
 type BandwidthChartRequest struct {
-	AllProfiles bool     `json:"allProfiles"`
-	Profiles    []string `json:"profiles"`
-	Connections []string `json:"connections"`
+	Interval int      `json:"interval"`
+	Query    Query    `json:"query"`
+	GroupBy  []string `json:"groupBy"`
 }
 
 func (ch *BandwidthChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
@@ -99,47 +99,45 @@ func (ch *BandwidthChartHandler) parseRequest(req *http.Request) (*BandwidthChar
 }
 
 func (req *BandwidthChartRequest) generateSQL(ctx context.Context, schema *orm.TableSchema) (string, map[string]interface{}, error) {
-	selects := []string{
-		"(round(time/10, 0)*10) as time",
+	if req.Interval == 0 {
+		req.Interval = 10
+	}
+
+	interval := fmt.Sprintf("round(time/%d, 0)*%d", req.Interval, req.Interval)
+
+	// make sure there are only allowed fields specified in the request group-by
+	for _, gb := range req.GroupBy {
+		def := schema.GetColumnDef(gb)
+		if def == nil {
+			return "", nil, fmt.Errorf("unsupported groupBy key: %q", gb)
+		}
+	}
+
+	selects := append([]string{
+		interval + " as timestamp",
 		"SUM(incoming) as incoming",
 		"SUM(outgoing) as outgoing",
+	}, req.GroupBy...)
+
+	groupBy := append([]string{interval}, req.GroupBy...)
+
+	whereClause, params, err := req.Query.toSQLWhereClause(ctx, "", schema, orm.DefaultEncodeConfig)
+	if err != nil {
+		return "", nil, err
 	}
-	groupBy := []string{"round(time/10, 0)*10"}
-	whereClause := ""
-	params := make(map[string]any)
 
-	if (len(req.Profiles) > 0) || (req.AllProfiles == true) {
-		groupBy = []string{"profile", "round(time/10, 0)*10"}
-		selects = append(selects, "profile")
-
-		if !req.AllProfiles {
-			clauses := make([]string, len(req.Profiles))
-
-			for idx, p := range req.Profiles {
-				key := fmt.Sprintf(":p%d", idx)
-				clauses[idx] = "profile = " + key
-				params[key] = p
-			}
-
-			whereClause = "WHERE " + strings.Join(clauses, " OR ")
-		}
-	} else if len(req.Connections) > 0 {
-		groupBy = []string{"conn_id", "round(time/10, 0)*10"}
-		selects = append(selects, "conn_id")
-
-		clauses := make([]string, len(req.Connections))
-
-		for idx, p := range req.Connections {
-			key := fmt.Sprintf(":c%d", idx)
-			clauses[idx] = "conn_id = " + key
-			params[key] = p
-		}
-
-		whereClause = "WHERE " + strings.Join(clauses, " OR ")
+	if whereClause != "" {
+		whereClause = "WHERE " + whereClause
 	}
 
 	template := fmt.Sprintf(
-		`SELECT %s FROM main.bandwidth %s GROUP BY %s ORDER BY time ASC`,
+		`SELECT %s
+		FROM main.bandwidth AS bw
+		JOIN main.connections AS conns
+			ON bw.conn_id = conns.id
+		%s
+		GROUP BY %s
+		ORDER BY time ASC`,
 		strings.Join(selects, ", "),
 		whereClause,
 		strings.Join(groupBy, ", "),
