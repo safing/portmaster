@@ -679,9 +679,15 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 	}
 	defer conn.Unlock()
 
+	bytesIn := bwUpdate.BytesReceived
+	bytesOut := bwUpdate.BytesSent
+
 	// Update stats according to method.
 	switch bwUpdate.Method {
 	case packet.Absolute:
+		bytesIn = bwUpdate.BytesReceived - conn.BytesReceived
+		bytesOut = bwUpdate.BytesSent - conn.BytesSent
+
 		conn.BytesReceived = bwUpdate.BytesReceived
 		conn.BytesSent = bwUpdate.BytesSent
 	case packet.Additive:
@@ -697,10 +703,11 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 		if err := netquery.DefaultModule.Store.UpdateBandwidth(
 			ctx,
 			conn.HistoryEnabled,
+			fmt.Sprintf("%s/%s", conn.ProcessContext.Source, conn.ProcessContext.Profile),
 			conn.Process().GetKey(),
 			conn.ID,
-			conn.BytesReceived,
-			conn.BytesSent,
+			bytesIn,
+			bytesOut,
 		); err != nil {
 			log.Errorf("filter: failed to persist bandwidth data: %s", err)
 		}

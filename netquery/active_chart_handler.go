@@ -13,12 +13,12 @@ import (
 	"github.com/safing/portmaster/netquery/orm"
 )
 
-// ChartHandler handles requests for connection charts.
-type ChartHandler struct {
+// ActiveChartHandler handles requests for connection charts.
+type ActiveChartHandler struct {
 	Database *Database
 }
 
-func (ch *ChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (ch *ActiveChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) { //nolint:dupl
 	requestPayload, err := ch.parseRequest(req)
 	if err != nil {
 		http.Error(resp, err.Error(), http.StatusBadRequest)
@@ -62,7 +62,7 @@ func (ch *ChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	})
 }
 
-func (ch *ChartHandler) parseRequest(req *http.Request) (*QueryActiveConnectionChartPayload, error) { //nolint:dupl
+func (ch *ActiveChartHandler) parseRequest(req *http.Request) (*QueryActiveConnectionChartPayload, error) { //nolint:dupl
 	var body io.Reader
 
 	switch req.Method {
@@ -99,10 +99,11 @@ WITH RECURSIVE epoch(x) AS (
 	UNION ALL
 		SELECT x+1 FROM epoch WHERE x+1 < strftime('%%s')+0
 )
-SELECT x as timestamp, SUM(verdict IN (2, 5, 6)) AS value, SUM(verdict NOT IN (2, 5, 6)) as countBlocked FROM epoch
+SELECT x as timestamp, SUM(verdict IN (2, 5, 6)) AS value, SUM(verdict NOT IN (2, 5, 6)) as countBlocked
+	FROM epoch
 	JOIN connections
-	ON strftime('%%s', connections.started)+0 <= timestamp+0 AND (connections.ended IS NULL OR strftime('%%s', connections.ended)+0 >= timestamp+0)
-		%s
+		ON strftime('%%s', connections.started)+0 <= timestamp+0 AND (connections.ended IS NULL OR strftime('%%s', connections.ended)+0 >= timestamp+0)
+	%s
 	GROUP BY round(timestamp/10, 0)*10;`
 
 	clause, params, err := req.Query.toSQLWhereClause(ctx, "", schema, orm.DefaultEncodeConfig)

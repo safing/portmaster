@@ -299,6 +299,19 @@ func (db *Database) ApplyMigrations() error {
 		}
 	}
 
+	bwSchema := `CREATE TABLE IF NOT EXISTS main.bandwidth (
+		conn_id TEXT NOT NULL,
+		time INTEGER NOT NULL,
+		incoming INTEGER NOT NULL,
+		outgoing INTEGER NOT NULL,
+		CONSTRAINT fk_conn_id
+			FOREIGN KEY(conn_id) REFERENCES connections(id)
+			ON DELETE CASCADE
+	)`
+	if err := sqlitex.ExecuteTransient(db.writeConn, bwSchema, nil); err != nil {
+		return fmt.Errorf("failed to create main.bandwidth database: %w", err)
+	}
+
 	return nil
 }
 
@@ -535,21 +548,16 @@ func (db *Database) MarkAllHistoryConnectionsEnded(ctx context.Context) error {
 
 // UpdateBandwidth updates bandwidth data for the connection and optionally also writes
 // the bandwidth data to the history database.
-func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, processKey string, connID string, bytesReceived uint64, bytesSent uint64) error {
+func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, profileKey string, processKey string, connID string, bytesReceived uint64, bytesSent uint64) error {
 	params := map[string]any{
 		":id": makeNqIDFromParts(processKey, connID),
 	}
 
 	parts := []string{}
-	if bytesReceived != 0 {
-		parts = append(parts, "bytes_received = :bytes_received")
-		params[":bytes_received"] = bytesReceived
-	}
-
-	if bytesSent != 0 {
-		parts = append(parts, "bytes_sent = :bytes_sent")
-		params[":bytes_sent"] = bytesSent
-	}
+	parts = append(parts, "bytes_received = (bytes_received + :bytes_received)")
+	params[":bytes_received"] = bytesReceived
+	parts = append(parts, "bytes_sent = (bytes_sent + :bytes_sent)")
+	params[":bytes_sent"] = bytesSent
 
 	updateSet := strings.Join(parts, ", ")
 
@@ -568,6 +576,13 @@ func (db *Database) UpdateBandwidth(ctx context.Context, enableHistory bool, pro
 		if err := db.ExecuteWrite(ctx, stmt, orm.WithNamedArgs(params)); err != nil {
 			merr.Errors = append(merr.Errors, err)
 		}
+	}
+
+	// also add the date to the in-memory bandwidth database
+	params[":time"] = time.Now().Unix()
+	stmt := "INSERT INTO main.bandwidth (conn_id, time, incoming, outgoing) VALUES(:id, :time, :bytes_received, :bytes_sent)"
+	if err := db.ExecuteWrite(ctx, stmt, orm.WithNamedArgs(params)); err != nil {
+		merr.Errors = append(merr.Errors, fmt.Errorf("failed to update main.bandwidth: %w", err))
 	}
 
 	return merr.ErrorOrNil()

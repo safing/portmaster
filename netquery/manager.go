@@ -38,7 +38,7 @@ type (
 
 		// UpdateBandwidth updates bandwidth data for the connection and optionally also writes
 		// the bandwidth data to the history database.
-		UpdateBandwidth(ctx context.Context, enableHistory bool, processKey string, connID string, bytesReceived uint64, bytesSent uint64) error
+		UpdateBandwidth(ctx context.Context, enableHistory bool, profileKey string, processKey string, connID string, bytesReceived uint64, bytesSent uint64) error
 
 		// CleanupHistory deletes data outside of the retention time frame from the history database.
 		CleanupHistory(ctx context.Context) error

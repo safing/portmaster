@@ -87,7 +87,11 @@ func (m *module) prepare() error {
 		IsDevMode: config.Concurrent.GetAsBool(config.CfgDevModeKey, false),
 	}
 
-	chartHandler := &ChartHandler{
+	chartHandler := &ActiveChartHandler{
+		Database: m.Store,
+	}
+
+	bwChartHandler := &BandwidthChartHandler{
 		Database: m.Store,
 	}
 
@@ -130,6 +134,19 @@ func (m *module) prepare() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
+		// TODO: Use query parameters instead.
+		Path:        "netquery/charts/bandwidth",
+		MimeType:    "application/json",
+		Write:       api.PermitUser,
+		BelongsTo:   m.Module,
+		HandlerFunc: bwChartHandler.ServeHTTP,
+		Name:        "Bandwidth Chart",
+		Description: "Query the in-memory sqlite connection database and return a chart of bytes sent/received.",
+	}); err != nil {
+		return fmt.Errorf("failed to register API endpoint: %w", err)
+	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
 		Name:        "Remove connections from profile history",
 		Description: "Remove all connections from the history database for one or more profiles",
 		Path:        "netquery/history/clear",
@@ -137,7 +154,6 @@ func (m *module) prepare() error {
 		Write:       api.PermitUser,
 		BelongsTo:   m.Module,
 		ActionFunc: func(ar *api.Request) (msg string, err error) {
-			// TODO: Use query parameters instead.
 			var body struct {
 				ProfileIDs []string `json:"profileIDs"`
 			}

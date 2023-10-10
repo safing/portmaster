@@ -71,12 +71,18 @@ type (
 		Distinct  bool   `json:"distinct"`
 	}
 
+	FieldSelect struct {
+		Field string `json:"field"`
+		As    string `json:"as"`
+	}
+
 	Select struct {
-		Field    string  `json:"field"`
-		Count    *Count  `json:"$count,omitempty"`
-		Sum      *Sum    `json:"$sum,omitempty"`
-		Min      *Min    `json:"$min,omitempty"`
-		Distinct *string `json:"$distinct,omitempty"`
+		Field       string       `json:"field"`
+		FieldSelect *FieldSelect `json:"$field"`
+		Count       *Count       `json:"$count,omitempty"`
+		Sum         *Sum         `json:"$sum,omitempty"`
+		Min         *Min         `json:"$min,omitempty"`
+		Distinct    *string      `json:"$distinct,omitempty"`
 	}
 
 	Selects []Select
@@ -449,6 +455,7 @@ func (query Query) toSQLWhereClause(ctx context.Context, suffix string, m *orm.T
 		values := query[column]
 		colDef, ok := lm[column]
 		if !ok {
+
 			errs.Errors = append(errs.Errors, fmt.Errorf("column %s is not allowed", column))
 
 			continue
@@ -538,11 +545,12 @@ func (sel *Select) UnmarshalJSON(blob []byte) error {
 	// directly
 	if blob[0] == '{' {
 		var res struct {
-			Field    string  `json:"field"`
-			Count    *Count  `json:"$count"`
-			Sum      *Sum    `json:"$sum"`
-			Min      *Min    `json:"$min"`
-			Distinct *string `json:"$distinct"`
+			Field       string       `json:"field"`
+			Count       *Count       `json:"$count"`
+			Sum         *Sum         `json:"$sum"`
+			Min         *Min         `json:"$min"`
+			Distinct    *string      `json:"$distinct"`
+			FieldSelect *FieldSelect `json:"$field"`
 		}
 
 		if err := json.Unmarshal(blob, &res); err != nil {
@@ -551,6 +559,7 @@ func (sel *Select) UnmarshalJSON(blob []byte) error {
 
 		sel.Count = res.Count
 		sel.Field = res.Field
+		sel.FieldSelect = res.FieldSelect
 		sel.Distinct = res.Distinct
 		sel.Sum = res.Sum
 		sel.Min = res.Min
@@ -568,6 +577,11 @@ func (sel *Select) UnmarshalJSON(blob []byte) error {
 		if sel.Min != nil && sel.Min.As != "" {
 			if !charOnlyRegexp.MatchString(sel.Min.As) {
 				return fmt.Errorf("invalid characters in $min.as, value must match [a-zA-Z]+")
+			}
+		}
+		if sel.FieldSelect != nil && sel.FieldSelect.As != "" {
+			if !charOnlyRegexp.MatchString(sel.FieldSelect.As) {
+				return fmt.Errorf("invalid characters in $field.as, value must match [a-zA-Z]+")
 			}
 		}
 
