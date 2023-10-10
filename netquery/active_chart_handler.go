@@ -18,7 +18,7 @@ type ActiveChartHandler struct {
 	Database *Database
 }
 
-func (ch *ActiveChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (ch *ActiveChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) { //nolint:dupl
 	requestPayload, err := ch.parseRequest(req)
 	if err != nil {
 		http.Error(resp, err.Error(), http.StatusBadRequest)

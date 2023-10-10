@@ -18,13 +18,14 @@ type BandwidthChartHandler struct {
 	Database *Database
 }
 
+// BandwidthChartRequest holds a request for a bandwidth chart.
 type BandwidthChartRequest struct {
 	Interval int      `json:"interval"`
 	Query    Query    `json:"query"`
 	GroupBy  []string `json:"groupBy"`
 }
 
-func (ch *BandwidthChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (ch *BandwidthChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) { //nolint:dupl
 	requestPayload, err := ch.parseRequest(req)
 	if err != nil {
 		http.Error(resp, err.Error(), http.StatusBadRequest)
