@@ -1,9 +1,14 @@
 package updates
 
 import (
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/utils"
 )
 
 const (
@@ -11,7 +16,7 @@ const (
 )
 
 func registerAPIEndpoints() error {
-	return api.RegisterEndpoint(api.Endpoint{
+	if err := api.RegisterEndpoint(api.Endpoint{
 		Name:        "Check for Updates",
 		Description: "Checks if new versions are available. If automatic updates are enabled, they are also downloaded and applied.",
 		Parameters: []api.Parameter{{
@@ -39,5 +44,63 @@ func registerAPIEndpoints() error {
 			}
 			return "checking for updates...", nil
 		},
-	})
+	}); err != nil {
+		return err
+	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Name:        "Get Resource",
+		Description: "Returns the requested resource from the udpate system",
+		Path:        `updates/get/{identifier:[A-Za-z0-9/\.\-_]{1,255}}`,
+		Read:        api.PermitUser,
+		ReadMethod:  http.MethodGet,
+		BelongsTo:   module,
+		HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
+			// Get identifier from URL.
+			var identifier string
+			if ar := api.GetAPIRequest(r); ar != nil {
+				identifier = ar.URLVars["identifier"]
+			}
+			if identifier == "" {
+				http.Error(w, "no resource speicified", http.StatusBadRequest)
+				return
+			}
+
+			// Get resource.
+			resource, err := registry.GetFile(identifier)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+
+			// Open file for reading.
+			file, err := os.Open(resource.Path())
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer file.Close() //nolint:errcheck
+
+			// Add version to header.
+			w.Header().Set("Resource-Version", resource.Version())
+
+			// Set Content-Type.
+			contentType, _ := utils.MimeTypeByExtension(filepath.Ext(resource.Path()))
+			w.Header().Set("Content-Type", contentType)
+
+			// Write file.
+			w.WriteHeader(http.StatusOK)
+			if r.Method != http.MethodHead {
+				_, err = io.Copy(w, file)
+				if err != nil {
+					log.Errorf("updates: failed to serve resource file: %s", err)
+					return
+				}
+			}
+		},
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
