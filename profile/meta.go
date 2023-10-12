@@ -51,7 +51,7 @@ func EnsureProfilesMetadata(r record.Record) (*ProfilesMetadata, error) {
 }
 
 var (
-	profilesMetadataKey = ProfilesDBPath + "meta"
+	profilesMetadataKey = "core:profile-states"
 
 	meta *ProfilesMetadata
 
