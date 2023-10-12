@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/metrics"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
 	_ "github.com/safing/portmaster/broadcasts"
@@ -58,6 +60,11 @@ func prep() error {
 
 	if err := registerAPIEndpoints(); err != nil {
 		return err
+	}
+
+	// Enable persistent metrics.
+	if err := metrics.EnableMetricPersistence("core:metrics/storage"); err != nil {
+		log.Warningf("core: failed to enable persisted metrics: %s", err)
 	}
 
 	return nil
