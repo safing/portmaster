@@ -1,11 +1,14 @@
 package updates
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/utils"
@@ -81,6 +84,9 @@ func registerAPIEndpoints() error {
 			}
 			defer file.Close() //nolint:errcheck
 
+			// Assign file to reader
+			var reader io.Reader = file
+
 			// Add version to header.
 			w.Header().Set("Resource-Version", resource.Version())
 
@@ -88,10 +94,60 @@ func registerAPIEndpoints() error {
 			contentType, _ := utils.MimeTypeByExtension(filepath.Ext(resource.Path()))
 			w.Header().Set("Content-Type", contentType)
 
+			// Check if the content type may be returned.
+			accept := r.Header.Get("Accept")
+			if accept != "" {
+				mimeTypes := strings.Split(accept, ",")
+				// First, clean mime types.
+				for i, mimeType := range mimeTypes {
+					mimeType = strings.TrimSpace(mimeType)
+					mimeType, _, _ = strings.Cut(mimeType, ";")
+					mimeTypes[i] = mimeType
+				}
+				// Second, check if we may return anything.
+				var acceptsAny bool
+				for _, mimeType := range mimeTypes {
+					switch mimeType {
+					case "*", "*/*":
+						acceptsAny = true
+					}
+				}
+				// Third, check if we can convert.
+				if !acceptsAny {
+					var converted bool
+					sourceType, _, _ := strings.Cut(contentType, ";")
+				findConvertiblePair:
+					for _, mimeType := range mimeTypes {
+						switch {
+						case sourceType == "application/yaml" && mimeType == "application/json":
+							yamlData, err := io.ReadAll(reader)
+							if err != nil {
+								http.Error(w, err.Error(), http.StatusInternalServerError)
+								return
+							}
+							jsonData, err := yaml.YAMLToJSON(yamlData)
+							if err != nil {
+								http.Error(w, err.Error(), http.StatusInternalServerError)
+								return
+							}
+							reader = bytes.NewReader(jsonData)
+							converted = true
+							break findConvertiblePair
+						}
+					}
+
+					// If we could not convert to acceptable format, return an error.
+					if !converted {
+						http.Error(w, err.Error(), http.StatusNotAcceptable)
+						return
+					}
+				}
+			}
+
 			// Write file.
 			w.WriteHeader(http.StatusOK)
 			if r.Method != http.MethodHead {
-				_, err = io.Copy(w, file)
+				_, err = io.Copy(w, reader)
 				if err != nil {
 					log.Errorf("updates: failed to serve resource file: %s", err)
 					return
