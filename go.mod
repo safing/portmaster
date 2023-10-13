@@ -22,7 +22,7 @@ require (
 	github.com/mitchellh/go-server-timing v1.0.1
 	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/safing/jess v0.3.1
-	github.com/safing/portbase v0.18.3
+	github.com/safing/portbase v0.18.4
 	github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec
 	github.com/safing/spn v0.7.2
 	github.com/shirou/gopsutil v3.21.11+incompatible
