@@ -2,6 +2,7 @@ package base
 
 import (
 	_ "github.com/safing/portbase/config"
+	_ "github.com/safing/portbase/metrics"
 	"github.com/safing/portbase/modules"
 	_ "github.com/safing/portbase/rng"
 )

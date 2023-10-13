@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/utils"
@@ -82,7 +83,7 @@ func registerAPIEndpoints() error {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			defer file.Close() //nolint:errcheck
+			defer file.Close() //nolint:errcheck,gosec
 
 			// Assign file to reader
 			var reader io.Reader = file
