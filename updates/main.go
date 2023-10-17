@@ -235,7 +235,13 @@ func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 		if downloadAll {
 			forceDownload.Set()
 		}
-		updateTask.StartASAP()
+
+		// If index check if forced, start quicker.
+		if forceIndexCheck {
+			updateTask.StartASAP()
+		} else {
+			updateTask.Queue()
+		}
 	}
 
 	log.Debugf("updates: triggering update to run as soon as possible")

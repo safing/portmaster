@@ -645,16 +645,17 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Bypass prevention
 	err = config.Register(&config.Option{
-		Name: "Block Bypassing",
+		Name: "Block Secure DNS Bypassing",
 		Key:  CfgOptionPreventBypassingKey,
-		Description: `Prevent apps from bypassing Portmaster's privacy protections.  
-If Block Bypassing is disabled, Portmaster can no longer protect you or filter connections from the affected applications.
+		Description: `Prevent apps from bypassing Portmaster's Secure DNS resolver.
+If disabled, Portmaster might have reduced information to correctly enforce rules and filter lists.
+Important: Portmaster's firewall itself cannot be bypassed.
 
 Current Features:  
 - Disable Firefox' internal DNS-over-HTTPs resolver
 - Block direct access to public DNS resolvers
 
-Please note that if you are using the system resolver, bypass attempts might be additionally blocked there too.`,
+Please note that DNS bypass attempts might be additionally blocked in the Sytem D there too.`,
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelStable,

@@ -63,7 +63,7 @@ var (
 			},
 		},
 	}
-	manualDNSSetupRequiredMessage = "You have disabled Seamless DNS Integration. As a result, Portmaster can no longer protect you or filter connections reliably. To fix this, you have to manually configure %s as the DNS Server in your system and in any conflicting application. This message will disappear 10 seconds after correct configuration."
+	manualDNSSetupRequiredMessage = "You have disabled Seamless DNS Integration. As a result, Portmaster can no longer protect you or filter connections reliably. To fix this, you have to manually configure %s as the DNS Server in your system and in any conflicting application. This message will disappear some time after correct configuration."
 
 	secureDNSBypassIssue = &appIssue{
 		id:      "compat:secure-dns-bypass-%s",

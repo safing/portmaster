@@ -400,116 +400,102 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 		log.Tracer(ctx).Debugf("resolver: allowing online status test domain %s to resolve even though offline", q.FQDN)
 	}
 
+	// Report when all configured resolvers are failing.
+	var failureReported bool
+	defer func() {
+		if failureReported &&
+			netenv.Online() &&
+			primarySource == ServerSourceConfigured &&
+			allConfiguredResolversAreFailing() {
+			notifyAboutFailingResolvers()
+		}
+	}()
+
 	// start resolving
+	for _, resolver := range resolvers {
+		if module.IsStopping() {
+			return nil, ErrShuttingDown
+		}
 
-	var i int
-	// once with skipping recently failed resolvers, once without
-resolveLoop:
-	for i = 0; i < 2; i++ {
-		for _, resolver := range resolvers {
-			if module.IsStopping() {
-				return nil, ErrShuttingDown
-			}
+		// Skip failing resolvers.
+		if resolver.Conn.IsFailing() {
+			log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it is failing", resolver)
+			continue
+		}
 
-			// check if resolver failed recently (on first run)
-			if i == 0 && resolver.Conn.IsFailing() {
-				log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it failed recently", resolver)
-				continue
-			}
-
-			// resolve
-			log.Tracer(ctx).Tracef("resolver: sending query for %s to %s", q.ID(), resolver.Info.ID())
-			rrCache, err = resolver.Conn.Query(ctx, q)
-			if err != nil {
-				switch {
-				case errors.Is(err, ErrNotFound):
-					// NXDomain, or similar
-					if tryAll {
-						continue
-					}
-					return nil, err
-				case errors.Is(err, ErrBlocked):
-					// some resolvers might also block
-					return nil, err
-				case netenv.GetOnlineStatus() == netenv.StatusOffline &&
-					q.FQDN != netenv.DNSTestDomain &&
-					!netenv.IsConnectivityDomain(q.FQDN):
-					// we are offline and this is not an online check query
-					return oldCache, ErrOffline
-				case errors.Is(err, ErrContinue):
-					continue
-				case errors.Is(err, ErrTimeout):
-					resolver.Conn.ReportFailure()
-					log.Tracer(ctx).Debugf("resolver: query to %s timed out", resolver.Info.ID())
-					continue
-				case errors.Is(err, context.Canceled):
-					return nil, err
-				case errors.Is(err, context.DeadlineExceeded):
-					return nil, err
-				case errors.Is(err, ErrShuttingDown):
-					return nil, err
-				default:
-					resolver.Conn.ReportFailure()
-					log.Tracer(ctx).Warningf("resolver: query to %s failed: %s", resolver.Info.ID(), err)
+		// resolve
+		log.Tracer(ctx).Tracef("resolver: sending query for %s to %s", q.ID(), resolver.Info.ID())
+		rrCache, err = resolver.Conn.Query(ctx, q)
+		if err != nil {
+			switch {
+			case errors.Is(err, ErrNotFound):
+				// NXDomain, or similar
+				if tryAll {
 					continue
 				}
-			}
-			if rrCache == nil {
-				// Defensive: This should normally not happen.
+				return nil, err
+			case errors.Is(err, ErrBlocked):
+				// some resolvers might also block
+				return nil, err
+			case netenv.GetOnlineStatus() == netenv.StatusOffline &&
+				q.FQDN != netenv.DNSTestDomain &&
+				!netenv.IsConnectivityDomain(q.FQDN):
+				// we are offline and this is not an online check query
+				return oldCache, ErrOffline
+			case errors.Is(err, ErrContinue):
+				continue
+			case errors.Is(err, ErrTimeout):
+				resolver.Conn.ReportFailure()
+				failureReported = true
+				log.Tracer(ctx).Debugf("resolver: query to %s timed out", resolver.Info.ID())
+				continue
+			case errors.Is(err, context.Canceled):
+				return nil, err
+			case errors.Is(err, context.DeadlineExceeded):
+				return nil, err
+			case errors.Is(err, ErrShuttingDown):
+				return nil, err
+			default:
+				resolver.Conn.ReportFailure()
+				failureReported = true
+				log.Tracer(ctx).Warningf("resolver: query to %s failed: %s", resolver.Info.ID(), err)
 				continue
 			}
-			// Check if request succeeded and whether we should try another resolver.
-			if rrCache.RCode != dns.RcodeSuccess && tryAll {
-				continue
-			}
-
-			// Report a successful connection.
-			resolver.Conn.ResetFailure()
-			// Reset failing resolvers notification, if querying in global scope.
-			if primarySource == ServerSourceConfigured {
-				resetFailingResolversNotification()
-			}
-
-			break resolveLoop
 		}
+		if rrCache == nil {
+			// Defensive: This should normally not happen.
+			continue
+		}
+		// Check if request succeeded and whether we should try another resolver.
+		if rrCache.RCode != dns.RcodeSuccess && tryAll {
+			continue
+		}
+
+		// Report a successful connection.
+		resolver.Conn.ResetFailure()
+		// Reset failing resolvers notification, if querying in global scope.
+		if primarySource == ServerSourceConfigured && !allConfiguredResolversAreFailing() {
+			resetFailingResolversNotification()
+		}
+
+		break
 	}
 
-	// Post-process errors
-	if err != nil {
-		// tried all resolvers, possibly twice
-		if i > 1 {
-			err = fmt.Errorf("all %d query-compliant resolvers failed, last error: %w", len(resolvers), err)
-
-			if primarySource == ServerSourceConfigured &&
-				netenv.Online() && CompatSelfCheckIsFailing() {
-				notifyAboutFailingResolvers(err)
-			} else {
-				resetFailingResolversNotification()
-			}
-		}
-	} else if rrCache == nil /* defensive */ {
+	// Validate return values.
+	if err == nil && rrCache == nil {
 		err = ErrNotFound
 	}
 
-	// Check if we want to use an older cache instead.
-	if oldCache != nil {
-		oldCache.IsBackup = true
-
-		switch {
-		case err != nil:
-			// There was an error during resolving, return the old cache entry instead.
+	// Handle error.
+	if err != nil {
+		// Check if we can return an older cache instead of the error.
+		if oldCache != nil {
+			oldCache.IsBackup = true
 			log.Tracer(ctx).Debugf("resolver: serving backup cache of %s because query failed: %s", q.ID(), err)
 			return oldCache, nil
-		case !rrCache.Cacheable():
-			// The new result is NXDomain, return the old cache entry instead.
-			log.Tracer(ctx).Debugf("resolver: serving backup cache of %s because fresh response is NXDomain", q.ID())
-			return oldCache, nil
 		}
-	}
 
-	// Return error, if there is one.
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("all %d query-compliant resolvers failed, last error: %w", len(resolvers), err)
 	}
 
 	// Adjust TTLs.
@@ -556,7 +542,8 @@ func shouldResetCache(q *Query) (reset bool) {
 
 // testConnectivity test if resolving a query succeeds and returns whether the
 // query itself succeeded, separate from interpreting the result.
-func testConnectivity(ctx context.Context, fdqn string) (ips []net.IP, ok bool, err error) {
+// Provide a resolver to use or automatically select one if nil.
+func testConnectivity(ctx context.Context, fdqn string, resolver *Resolver) (ips []net.IP, ok bool, err error) {
 	q := &Query{
 		FQDN:      fdqn,
 		QType:     dns.Type(dns.TypeA),
@@ -566,7 +553,15 @@ func testConnectivity(ctx context.Context, fdqn string) (ips []net.IP, ok bool, 
 		return nil, false, ErrInvalid
 	}
 
-	rrCache, err := resolveAndCache(ctx, q, nil)
+	// Resolve with given resolver or auto-select.
+	var rrCache *RRCache
+	if resolver != nil {
+		rrCache, err = resolver.Conn.Query(ctx, q)
+	} else {
+		rrCache, err = resolveAndCache(ctx, q, nil)
+	}
+
+	// Enhance results.
 	switch {
 	case err == nil:
 		switch rrCache.RCode {

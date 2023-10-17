@@ -36,9 +36,6 @@ const (
 	TLSProtocol   = "tls"
 )
 
-// FailThreshold is amount of errors a resolvers must experience in order to be regarded as failed.
-var FailThreshold = 20
-
 // Resolver holds information about an active resolver.
 type Resolver struct {
 	// Server config url (and ID)
@@ -221,10 +218,10 @@ type BasicResolverConn struct {
 
 	resolver *Resolver
 
-	failing      *abool.AtomicBool
-	failingUntil time.Time
-	fails        int
-	failLock     sync.Mutex
+	failing        *abool.AtomicBool
+	failingStarted time.Time
+	fails          int
+	failLock       sync.Mutex
 
 	networkChangedFlag *utils.Flag
 }
@@ -233,67 +230,4 @@ type BasicResolverConn struct {
 func (brc *BasicResolverConn) init() {
 	brc.failing = abool.New()
 	brc.networkChangedFlag = netenv.GetNetworkChangedFlag()
-}
-
-// ReportFailure reports that an error occurred with this resolver.
-func (brc *BasicResolverConn) ReportFailure() {
-	// Don't mark resolver as failed if we are offline.
-	if !netenv.Online() {
-		return
-	}
-
-	brc.failLock.Lock()
-	defer brc.failLock.Unlock()
-
-	brc.fails++
-	if brc.fails > FailThreshold {
-		brc.failing.Set()
-		brc.failingUntil = time.Now().Add(time.Duration(nameserverRetryRate()) * time.Second)
-		brc.fails = 0
-
-		// Refresh the network changed flag in order to only regard changes after
-		// the fail.
-		brc.networkChangedFlag.Refresh()
-	}
-
-	// Report to netenv that a configured server failed.
-	if brc.resolver.Info.Source == ServerSourceConfigured {
-		netenv.ConnectedToDNS.UnSet()
-	}
-}
-
-// IsFailing returns if this resolver is currently failing.
-func (brc *BasicResolverConn) IsFailing() bool {
-	// Check if not failing.
-	if !brc.failing.IsSet() {
-		return false
-	}
-
-	brc.failLock.Lock()
-	defer brc.failLock.Unlock()
-
-	// Reset failure status if the network changed since the last query.
-	if brc.networkChangedFlag.IsSet() {
-		brc.networkChangedFlag.Refresh()
-		brc.fails = 0
-		brc.failing.UnSet()
-		return false
-	}
-
-	// Check if we are still
-	return time.Now().Before(brc.failingUntil)
-}
-
-// ResetFailure resets the failure status.
-func (brc *BasicResolverConn) ResetFailure() {
-	if brc.failing.SetToIf(true, false) {
-		brc.failLock.Lock()
-		defer brc.failLock.Unlock()
-		brc.fails = 0
-	}
-
-	// Report to netenv that a configured server succeeded.
-	if brc.resolver.Info.Source == ServerSourceConfigured {
-		netenv.ConnectedToDNS.Set()
-	}
 }
