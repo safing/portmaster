@@ -432,6 +432,15 @@ func (db *Database) RemoveHistoryForProfile(ctx context.Context, profileID strin
 	}))
 }
 
+// MigrateProfileID migrates the given profile IDs in the history database.
+// This needs to be done when profiles are deleted and replaced by a different profile.
+func (db *Database) MigrateProfileID(ctx context.Context, from string, to string) error {
+	return db.ExecuteWrite(ctx, "UPDATE history.connections SET profile = :to WHERE profile = :from", orm.WithNamedArgs(map[string]any{
+		":from": from,
+		":to":   to,
+	}))
+}
+
 // dumpTo is a simple helper method that dumps all rows stored in the SQLite database
 // as JSON to w.
 // Any error aborts dumping rows and is returned.

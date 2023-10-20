@@ -22,12 +22,14 @@ var (
 const (
 	ConfigChangeEvent = "profile config change"
 	DeletedEvent      = "profile deleted"
+	MigratedEvent     = "profile migrated"
 )
 
 func init() {
 	module = modules.Register("profiles", prep, start, stop, "base", "updates")
 	module.RegisterEvent(ConfigChangeEvent, true)
 	module.RegisterEvent(DeletedEvent, true)
+	module.RegisterEvent(MigratedEvent, true)
 }
 
 func prep() error {

@@ -272,6 +272,21 @@ func (m *module) start() error {
 		}
 	}
 
+	// Migrate profile IDs in history database when profiles are migrated/merged.
+	if err := m.RegisterEventHook(
+		"profiles",
+		"profile migrated",
+		"migrate profile IDs in history database",
+		func(ctx context.Context, data interface{}) error {
+			if profileIDs, ok := data.([]string); ok && len(profileIDs) == 2 {
+				return m.Store.MigrateProfileID(ctx, profileIDs[0], profileIDs[1])
+			}
+			return nil
+		},
+	); err != nil {
+		return err
+	}
+
 	return nil
 }
 
