@@ -263,7 +263,7 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 	}
 	if checked < len(settings) {
 		result.ContainsUnknown = true
-		if !r.AllowUnknown {
+		if !r.AllowUnknown && !r.ValidateOnly {
 			return nil, fmt.Errorf("%w: the export contains unknown settings", ErrInvalidImportRequest)
 		}
 	}

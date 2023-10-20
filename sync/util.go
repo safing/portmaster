@@ -140,7 +140,7 @@ func parseExport(request *ImportRequest, export any) error {
 	default:
 		// Checksums not supported.
 	}
-	if err != nil && errors.Is(err, filesig.ErrChecksumMissing) {
+	if err != nil && !errors.Is(err, filesig.ErrChecksumMissing) {
 		return fmt.Errorf("failed to verify checksum: %w", err)
 	}
 
