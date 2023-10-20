@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
@@ -252,6 +253,9 @@ func ImportSingeSetting(r *SingleSettingImportRequest) (*ImportResult, error) {
 
 		// Set imported setting on profile.
 		config.PutValueIntoHierarchicalConfig(p.Config, r.Export.ID, r.Export.Value)
+
+		// Mark profile as edited by user.
+		p.LastEdited = time.Now().Unix()
 
 		// Save profile back to db.
 		if err := p.Save(); err != nil {

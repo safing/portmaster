@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
@@ -321,6 +322,9 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 			config.PutValueIntoHierarchicalConfig(p.Config, k, v)
 		}
 	}
+
+	// Mark profile as edited by user.
+	p.LastEdited = time.Now().Unix()
 
 	// Save profile back to db.
 	err = p.Save()
