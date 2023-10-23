@@ -99,12 +99,7 @@ func reAttributeConnections(_ context.Context, eventData any) error {
 
 	// Re-attribute connections.
 	for _, conn := range conns.clone() {
-		// Check if connection is complete and attributed to the deleted profile.
-		if conn.DataIsComplete() &&
-			conn.ProcessContext.Profile == profileID &&
-			conn.ProcessContext.Source == profileSource {
-
-			reAttributeConnection(ctx, conn)
+		if reAttributeConnection(ctx, conn, profileID, profileSource) {
 			reAttributed++
 			tracer.Debugf("filter: re-attributed %s to %s", conn, conn.process.PrimaryProfileID)
 		}
@@ -112,12 +107,7 @@ func reAttributeConnections(_ context.Context, eventData any) error {
 
 	// Re-attribute dns connections.
 	for _, conn := range dnsConns.clone() {
-		// Check if connection is complete and attributed to the deleted profile.
-		if conn.DataIsComplete() &&
-			conn.ProcessContext.Profile == profileID &&
-			conn.ProcessContext.Source == profileSource {
-
-			reAttributeConnection(ctx, conn)
+		if reAttributeConnection(ctx, conn, profileID, profileSource) {
 			reAttributed++
 			tracer.Debugf("filter: re-attributed %s to %s", conn, conn.process.PrimaryProfileID)
 		}
@@ -127,20 +117,26 @@ func reAttributeConnections(_ context.Context, eventData any) error {
 	return nil
 }
 
-func reAttributeConnection(ctx context.Context, conn *Connection) {
-	// Check if data is complete.
-	if !conn.DataIsComplete() {
-		return
-	}
-
+func reAttributeConnection(ctx context.Context, conn *Connection, profileID, profileSource string) (reAttributed bool) {
+	// Lock the connection before checking anything to avoid a race condition with connection data collection.
 	conn.Lock()
 	defer conn.Unlock()
+
+	// Check if the connection has the profile we are looking for.
+	switch {
+	case !conn.DataIsComplete():
+		return false
+	case conn.ProcessContext.Profile != profileID:
+		return false
+	case conn.ProcessContext.Source != profileSource:
+		return false
+	}
 
 	// Attempt to assign new profile.
 	err := conn.process.RefetchProfile(ctx)
 	if err != nil {
-		log.Warningf("network: failed to refetch profile for %s: %s", conn, err)
-		return
+		log.Tracer(ctx).Warningf("network: failed to refetch profile for %s: %s", conn, err)
+		return false
 	}
 
 	// Set the new process context.
@@ -149,4 +145,7 @@ func reAttributeConnection(ctx context.Context, conn *Connection) {
 
 	// Trigger event for re-attribution.
 	module.TriggerEvent(ConnectionReattributedEvent, conn.ID)
+
+	log.Tracer(ctx).Debugf("filter: re-attributed %s to %s", conn, conn.process.PrimaryProfileID)
+	return true
 }
