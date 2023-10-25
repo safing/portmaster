@@ -26,7 +26,7 @@ func scan(cmd *cobra.Command, args []string) error {
 	}
 
 	// Export latest versions.
-	data, err := json.MarshalIndent(exportSelected(false), "", " ")
+	data, err := json.MarshalIndent(exportSelected(true), "", " ")
 	if err != nil {
 		return err
 	}

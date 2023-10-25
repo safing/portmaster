@@ -1,8 +1,10 @@
 package profile
 
 import (
+	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/safing/portbase/database/record"
 )
@@ -11,19 +13,42 @@ import (
 // The new profile is saved and returned.
 // Only the icon and fingerprints are inherited from other profiles.
 // All other information is taken only from the primary profile.
-func MergeProfiles(primary *Profile, secondaries ...*Profile) (newProfile *Profile, err error) {
+func MergeProfiles(name string, primary *Profile, secondaries ...*Profile) (newProfile *Profile, err error) {
+	if primary == nil || len(secondaries) == 0 {
+		return nil, errors.New("must supply both a primary and at least one secondary profile for merging")
+	}
+
 	// Fill info from primary profile.
+	nowUnix := time.Now().Unix()
 	newProfile = &Profile{
 		Base:                record.Base{},
 		RWMutex:             sync.RWMutex{},
 		ID:                  "", // Omit ID to derive it from the new fingerprints.
 		Source:              primary.Source,
-		Name:                primary.Name,
+		Name:                name,
 		Description:         primary.Description,
 		Homepage:            primary.Homepage,
 		UsePresentationPath: false, // Disable presentation path.
 		SecurityLevel:       primary.SecurityLevel,
 		Config:              primary.Config,
+		Created:             nowUnix,
+	}
+
+	// Fall back to name of primary profile, if none is set.
+	if newProfile.Name == "" {
+		newProfile.Name = primary.Name
+	}
+
+	// If any profile was edited, set LastEdited to now.
+	if primary.LastEdited > 0 {
+		newProfile.LastEdited = nowUnix
+	} else {
+		for _, sp := range secondaries {
+			if sp.LastEdited > 0 {
+				newProfile.LastEdited = nowUnix
+				break
+			}
+		}
 	}
 
 	// Collect all icons.
@@ -35,7 +60,7 @@ func MergeProfiles(primary *Profile, secondaries ...*Profile) (newProfile *Profi
 	newProfile.Icons = sortAndCompactIcons(newProfile.Icons)
 
 	// Collect all fingerprints.
-	newProfile.Fingerprints = make([]Fingerprint, 0, len(secondaries)+1) // Guess the needed space.
+	newProfile.Fingerprints = make([]Fingerprint, 0, len(primary.Fingerprints)+len(secondaries)) // Guess the needed space.
 	newProfile.Fingerprints = addFingerprints(newProfile.Fingerprints, primary.Fingerprints, primary.ScopedID())
 	for _, sp := range secondaries {
 		newProfile.Fingerprints = addFingerprints(newProfile.Fingerprints, sp.Fingerprints, sp.ScopedID())
@@ -44,26 +69,21 @@ func MergeProfiles(primary *Profile, secondaries ...*Profile) (newProfile *Profi
 
 	// Save new profile.
 	newProfile = New(newProfile)
-	err = newProfile.Save()
-	if err != nil {
+	if err := newProfile.Save(); err != nil {
 		return nil, fmt.Errorf("failed to save merged profile: %w", err)
 	}
-	// FIXME: Should we ... ?
-	// newProfile.updateMetadata()
-	// newProfile.updateMetadataFromSystem()
 
 	// Delete all previous profiles.
-	// FIXME:
-	/*
-		primary.Meta().Delete()
-		// Set as outdated and remove from active profiles.
-		// Signify that profile was deleted and save for sync.
-		for _, sp := range secondaries {
-			sp.Meta().Delete()
-			// Set as outdated and remove from active profiles.
-			// Signify that profile was deleted and save for sync.
+	if err := primary.delete(); err != nil {
+		return nil, fmt.Errorf("failed to delete primary profile %s: %w", primary.ScopedID(), err)
+	}
+	module.TriggerEvent(MigratedEvent, []string{primary.ScopedID(), newProfile.ScopedID()})
+	for _, sp := range secondaries {
+		if err := sp.delete(); err != nil {
+			return nil, fmt.Errorf("failed to delete secondary profile %s: %w", sp.ScopedID(), err)
 		}
-	*/
+		module.TriggerEvent(MigratedEvent, []string{sp.ScopedID(), newProfile.ScopedID()})
+	}
 
 	return newProfile, nil
 }

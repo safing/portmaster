@@ -139,7 +139,7 @@ func registerAPIEndpoints() error {
 
 					// If we could not convert to acceptable format, return an error.
 					if !converted {
-						http.Error(w, err.Error(), http.StatusNotAcceptable)
+						http.Error(w, "conversion to requested format not supported", http.StatusNotAcceptable)
 						return
 					}
 				}

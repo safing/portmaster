@@ -177,7 +177,7 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 // getProfile fetches the profile for the given scoped ID.
 func getProfile(scopedID string) (profile *Profile, err error) {
 	// Get profile from the database.
-	r, err := profileDB.Get(profilesDBPath + scopedID)
+	r, err := profileDB.Get(ProfilesDBPath + scopedID)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +193,7 @@ func findProfile(source profileSource, md MatchingData) (profile *Profile, err e
 	// process might be quite expensive. Measure impact and possibly improve.
 
 	// Get iterator over all profiles.
-	it, err := profileDB.Query(query.New(profilesDBPath + makeScopedID(source, "")))
+	it, err := profileDB.Query(query.New(ProfilesDBPath + makeScopedID(source, "")))
 	if err != nil {
 		return nil, fmt.Errorf("failed to query for profiles: %w", err)
 	}
@@ -287,6 +287,9 @@ func loadProfile(r record.Record) (*Profile, error) {
 	// Set saved internally to suppress outdating profiles if saving internally.
 	profile.savedInternally = true
 
+	// Mark as recently seen.
+	meta.UpdateLastSeen(profile.ScopedID())
+
 	// return parsed profile
 	return profile, nil
 }
@@ -299,7 +302,7 @@ func notifyConflictingProfiles(a, b record.Record, md MatchingData) {
 		idA = profileA.ScopedID()
 		nameA = profileA.Name
 	} else {
-		idA = strings.TrimPrefix(a.Key(), profilesDBPath)
+		idA = strings.TrimPrefix(a.Key(), ProfilesDBPath)
 		nameA = path.Base(idA)
 	}
 	profileB, err := EnsureProfile(b)
@@ -307,7 +310,7 @@ func notifyConflictingProfiles(a, b record.Record, md MatchingData) {
 		idB = profileB.ScopedID()
 		nameB = profileB.Name
 	} else {
-		idB = strings.TrimPrefix(b.Key(), profilesDBPath)
+		idB = strings.TrimPrefix(b.Key(), ProfilesDBPath)
 		nameB = path.Base(idB)
 	}
 

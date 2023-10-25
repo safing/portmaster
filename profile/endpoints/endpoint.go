@@ -202,7 +202,8 @@ func invalidDefinitionError(fields []string, msg string) error {
 	return fmt.Errorf(`invalid endpoint definition: "%s" - %s`, strings.Join(fields, " "), msg)
 }
 
-func parseEndpoint(value string) (endpoint Endpoint, err error) { //nolint:gocognit
+//nolint:gocognit,nakedret
+func parseEndpoint(value string) (endpoint Endpoint, err error) {
 	fields := strings.Fields(value)
 	if len(fields) < 2 {
 		return nil, fmt.Errorf(`invalid endpoint definition: "%s"`, value)

@@ -40,6 +40,24 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	return true, nil
 }
 
+// RefetchProfile removes the profile and finds and assigns a new profile.
+func (p *Process) RefetchProfile(ctx context.Context) error {
+	p.Lock()
+	defer p.Unlock()
+
+	// Get special or regular profile.
+	localProfile, err := profile.GetLocalProfile(p.getSpecialProfileID(), p.MatchingData(), p.CreateProfileCallback)
+	if err != nil {
+		return fmt.Errorf("failed to find profile: %w", err)
+	}
+
+	// Assign profile to process.
+	p.PrimaryProfileID = localProfile.ScopedID()
+	p.profile = localProfile.LayeredProfile()
+
+	return nil
+}
+
 // getSpecialProfileID returns the special profile ID for the process, if any.
 func (p *Process) getSpecialProfileID() (specialProfileID string) {
 	// Check if we need a special profile.

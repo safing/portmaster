@@ -32,11 +32,11 @@ func registerMigrations() error {
 			Version:     "v1.4.7",
 			MigrateFunc: migrateIcons,
 		},
-		// migration.Migration{
-		// 	Description: "Migrate from random profile IDs to fingerprint-derived IDs",
-		// 	Version:     "v1.5.1",
-		// 	MigrateFunc: migrateToDerivedIDs,
-		// },
+		migration.Migration{
+			Description: "Migrate from random profile IDs to fingerprint-derived IDs",
+			Version:     "v1.6.0",
+			MigrateFunc: migrateToDerivedIDs,
+		},
 	)
 }
 
@@ -71,7 +71,7 @@ func migrateNetworkRatingSystem(ctx context.Context, _, to *version.Version, db 
 
 func migrateLinkedPath(ctx context.Context, _, to *version.Version, db *database.Interface) error {
 	// Get iterator over all profiles.
-	it, err := db.Query(query.New(profilesDBPath))
+	it, err := db.Query(query.New(ProfilesDBPath))
 	if err != nil {
 		log.Tracer(ctx).Errorf("profile: failed to migrate from linked path: failed to start query: %s", err)
 		return nil
@@ -112,7 +112,7 @@ func migrateLinkedPath(ctx context.Context, _, to *version.Version, db *database
 
 func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Interface) error {
 	// Get iterator over all profiles.
-	it, err := db.Query(query.New(profilesDBPath))
+	it, err := db.Query(query.New(ProfilesDBPath))
 	if err != nil {
 		log.Tracer(ctx).Errorf("profile: failed to migrate from icon fields: failed to start query: %s", err)
 		return nil
@@ -181,7 +181,7 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 	var profilesToDelete []string //nolint:prealloc // We don't know how many profiles there are.
 
 	// Get iterator over all profiles.
-	it, err := db.Query(query.New(profilesDBPath))
+	it, err := db.Query(query.New(ProfilesDBPath))
 	if err != nil {
 		log.Tracer(ctx).Errorf("profile: failed to migrate to derived profile IDs: failed to start query: %s", err)
 		return nil
@@ -243,7 +243,7 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 
 	// Delete old migrated profiles.
 	for _, scopedID := range profilesToDelete {
-		if err := db.Delete(profilesDBPath + scopedID); err != nil {
+		if err := db.Delete(ProfilesDBPath + scopedID); err != nil {
 			log.Tracer(ctx).Errorf("profile: failed to delete old profile %s during migration: %s", scopedID, err)
 		}
 	}

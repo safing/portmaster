@@ -194,9 +194,10 @@ func registerConfiguration() error { //nolint:maintidx
 		OptType:      config.OptTypeString,
 		DefaultValue: DefaultActionPermitValue,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
-			config.DisplayOrderAnnotation: cfgOptionDefaultActionOrder,
-			config.CategoryAnnotation:     "General",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    config.DisplayHintOneOf,
+			config.DisplayOrderAnnotation:   cfgOptionDefaultActionOrder,
+			config.CategoryAnnotation:       "General",
 		},
 		PossibleValues: []config.PossibleValue{
 			{
@@ -232,9 +233,10 @@ func registerConfiguration() error { //nolint:maintidx
 		ReleaseLevel: config.ReleaseLevelBeta,
 		DefaultValue: status.SecurityLevelsAll,
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: cfgOptionDisableAutoPermitOrder,
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.CategoryAnnotation:     "Advanced",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayOrderAnnotation:   cfgOptionDisableAutoPermitOrder,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.CategoryAnnotation:       "Advanced",
 		},
 		PossibleValues: status.AllSecurityLevelValues,
 	})
@@ -256,6 +258,7 @@ In order to reduce noise optimize performance, internal and device-only (localho
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   false,
 		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation:    true,
 			config.DisplayOrderAnnotation:      cfgOptionEnableHistoryOrder,
 			config.CategoryAnnotation:          "General",
 			config.RequiresFeatureIDAnnotation: account.FeatureHistory,
@@ -280,6 +283,7 @@ Set to 0 days to keep network history forever. Depending on your device, this mi
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   30,
 		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation:    true,
 			config.UnitAnnotation:              "Days",
 			config.DisplayOrderAnnotation:      cfgOptionKeepHistoryOrder,
 			config.CategoryAnnotation:          "General",
@@ -344,6 +348,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{},
 		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation:              true,
 			config.StackableAnnotation:                   true,
 			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
 			config.DisplayOrderAnnotation:                cfgOptionEndpointsOrder,
@@ -370,6 +375,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   []string{},
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation:              true,
 			config.StackableAnnotation:                   true,
 			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
 			config.DisplayOrderAnnotation:                cfgOptionServiceEndpointsOrder,
@@ -426,9 +432,10 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: defaultFilterListsValue,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  "filter list",
-			config.DisplayOrderAnnotation: cfgOptionFilterListsOrder,
-			config.CategoryAnnotation:     "Filter Lists",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    "filter list",
+			config.DisplayOrderAnnotation:   cfgOptionFilterListsOrder,
+			config.CategoryAnnotation:       "Filter Lists",
 		},
 		ValidationRegex: `^[a-zA-Z0-9\-]+$`,
 	})
@@ -447,9 +454,10 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   status.SecurityLevelsAll,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.DisplayOrderAnnotation: cfgOptionFilterCNAMEOrder,
-			config.CategoryAnnotation:     "DNS Filtering",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation:   cfgOptionFilterCNAMEOrder,
+			config.CategoryAnnotation:       "DNS Filtering",
 		},
 		PossibleValues: status.AllSecurityLevelValues,
 	})
@@ -468,9 +476,10 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   status.SecurityLevelsAll,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.DisplayOrderAnnotation: cfgOptionFilterSubDomainsOrder,
-			config.CategoryAnnotation:     "Filter Lists",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation:   cfgOptionFilterSubDomainsOrder,
+			config.CategoryAnnotation:       "Filter Lists",
 		},
 	})
 	if err != nil {
@@ -489,9 +498,10 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   status.SecurityLevelOff,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.DisplayOrderAnnotation: cfgOptionBlockScopeLocalOrder,
-			config.CategoryAnnotation:     "Network Scope",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation:   cfgOptionBlockScopeLocalOrder,
+			config.CategoryAnnotation:       "Network Scope",
 		},
 	})
 	if err != nil {
@@ -509,9 +519,10 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   status.SecurityLevelOff,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.DisplayOrderAnnotation: cfgOptionBlockScopeLANOrder,
-			config.CategoryAnnotation:     "Network Scope",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation:   cfgOptionBlockScopeLANOrder,
+			config.CategoryAnnotation:       "Network Scope",
 		},
 	})
 	if err != nil {
@@ -529,9 +540,10 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   status.SecurityLevelOff,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.DisplayOrderAnnotation: cfgOptionBlockScopeInternetOrder,
-			config.CategoryAnnotation:     "Network Scope",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation:   cfgOptionBlockScopeInternetOrder,
+			config.CategoryAnnotation:       "Network Scope",
 		},
 	})
 	if err != nil {
@@ -549,9 +561,10 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   status.SecurityLevelOff,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.DisplayOrderAnnotation: cfgOptionBlockP2POrder,
-			config.CategoryAnnotation:     "Connection Types",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation:   cfgOptionBlockP2POrder,
+			config.CategoryAnnotation:       "Connection Types",
 		},
 	})
 	if err != nil {
@@ -569,9 +582,10 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   status.SecurityLevelsAll,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.DisplayOrderAnnotation: cfgOptionBlockInboundOrder,
-			config.CategoryAnnotation:     "Connection Types",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation:   cfgOptionBlockInboundOrder,
+			config.CategoryAnnotation:       "Connection Types",
 		},
 	})
 	if err != nil {
@@ -590,9 +604,10 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   status.SecurityLevelsAll,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.DisplayOrderAnnotation: cfgOptionRemoveOutOfScopeDNSOrder,
-			config.CategoryAnnotation:     "DNS Filtering",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation:   cfgOptionRemoveOutOfScopeDNSOrder,
+			config.CategoryAnnotation:       "DNS Filtering",
 		},
 	})
 	if err != nil {
@@ -611,9 +626,10 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   status.SecurityLevelsAll,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.DisplayOrderAnnotation: cfgOptionRemoveBlockedDNSOrder,
-			config.CategoryAnnotation:     "DNS Filtering",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation:   cfgOptionRemoveBlockedDNSOrder,
+			config.CategoryAnnotation:       "DNS Filtering",
 		},
 	})
 	if err != nil {
@@ -632,9 +648,10 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   status.SecurityLevelsAll,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.DisplayOrderAnnotation: cfgOptionDomainHeuristicsOrder,
-			config.CategoryAnnotation:     "DNS Filtering",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation:   cfgOptionDomainHeuristicsOrder,
+			config.CategoryAnnotation:       "DNS Filtering",
 		},
 	})
 	if err != nil {
@@ -662,9 +679,10 @@ Please note that DNS bypass attempts might be additionally blocked in the Sytem 
 		DefaultValue:   status.SecurityLevelsAll,
 		PossibleValues: status.AllSecurityLevelValues,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.DisplayOrderAnnotation: cfgOptionPreventBypassingOrder,
-			config.CategoryAnnotation:     "Advanced",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
+			config.DisplayOrderAnnotation:   cfgOptionPreventBypassingOrder,
+			config.CategoryAnnotation:       "Advanced",
 		},
 	})
 	if err != nil {
@@ -681,8 +699,9 @@ Please note that DNS bypass attempts might be additionally blocked in the Sytem 
 		OptType:      config.OptTypeBool,
 		DefaultValue: true,
 		Annotations: config.Annotations{
-			config.DisplayOrderAnnotation: cfgOptionUseSPNOrder,
-			config.CategoryAnnotation:     "General",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayOrderAnnotation:   cfgOptionUseSPNOrder,
+			config.CategoryAnnotation:       "General",
 		},
 	})
 	if err != nil {
@@ -701,6 +720,7 @@ Please note that DNS bypass attempts might be additionally blocked in the Sytem 
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{},
 		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation:              true,
 			config.StackableAnnotation:                   true,
 			config.CategoryAnnotation:                    "General",
 			config.DisplayOrderAnnotation:                cfgOptionSPNUsagePolicyOrder,
@@ -727,6 +747,7 @@ Please note that DNS bypass attempts might be additionally blocked in the Sytem 
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		DefaultValue:   []string{},
 		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation:              true,
 			config.StackableAnnotation:                   true,
 			config.CategoryAnnotation:                    "Routing",
 			config.DisplayOrderAnnotation:                cfgOptionTransitHubPolicyOrder,
@@ -755,6 +776,7 @@ By default, the Portmaster tries to choose the node closest to the destination a
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: []string{},
 		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation:              true,
 			config.StackableAnnotation:                   true,
 			config.CategoryAnnotation:                    "Routing",
 			config.DisplayOrderAnnotation:                cfgOptionExitHubPolicyOrder,
@@ -779,9 +801,10 @@ By default, the Portmaster tries to choose the node closest to the destination a
 		OptType:      config.OptTypeString,
 		DefaultValue: DefaultRoutingProfileID,
 		Annotations: config.Annotations{
-			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
-			config.DisplayOrderAnnotation: cfgOptionRoutingAlgorithmOrder,
-			config.CategoryAnnotation:     "Routing",
+			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    config.DisplayHintOneOf,
+			config.DisplayOrderAnnotation:   cfgOptionRoutingAlgorithmOrder,
+			config.CategoryAnnotation:       "Routing",
 		},
 		PossibleValues: []config.PossibleValue{
 			{

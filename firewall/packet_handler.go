@@ -43,13 +43,55 @@ var (
 	ownPID = os.Getpid()
 )
 
-func resetAllConnectionVerdicts() {
-	// Resetting will force all the connection to be evaluated by the firewall again
-	// this will set new verdicts if configuration was update or spn has been disabled or enabled.
-	log.Info("interception: re-evaluating all connections")
-
+func resetSingleConnectionVerdict(connID string) {
 	// Create tracing context.
 	ctx, tracer := log.AddTracer(context.Background())
+	defer tracer.Submit()
+
+	conn, ok := network.GetConnection(connID)
+	if !ok {
+		conn, ok = network.GetDNSConnection(connID)
+		if !ok {
+			tracer.Debugf("filter: could not find re-attributed connection %s for re-evaluation", connID)
+			return
+		}
+	}
+
+	resetConnectionVerdict(ctx, conn)
+}
+
+func resetProfileConnectionVerdict(profileSource, profileID string) {
+	// Create tracing context.
+	ctx, tracer := log.AddTracer(context.Background())
+	defer tracer.Submit()
+
+	// Resetting will force all the connection to be evaluated by the firewall again
+	// this will set new verdicts if configuration was update or spn has been disabled or enabled.
+	tracer.Infof("filter: re-evaluating connections of %s/%s", profileSource, profileID)
+
+	// Re-evaluate all connections.
+	var changedVerdicts int
+	for _, conn := range network.GetAllConnections() {
+		// Check if connection is complete and attributed to the deleted profile.
+		if conn.DataIsComplete() &&
+			conn.ProcessContext.Profile == profileID &&
+			conn.ProcessContext.Source == profileSource {
+			if resetConnectionVerdict(ctx, conn) {
+				changedVerdicts++
+			}
+		}
+	}
+	tracer.Infof("filter: changed verdict on %d connections", changedVerdicts)
+}
+
+func resetAllConnectionVerdicts() {
+	// Create tracing context.
+	ctx, tracer := log.AddTracer(context.Background())
+	defer tracer.Submit()
+
+	// Resetting will force all the connection to be evaluated by the firewall again
+	// this will set new verdicts if configuration was update or spn has been disabled or enabled.
+	tracer.Info("filter: re-evaluating all connections")
 
 	// Re-evaluate all connections.
 	var changedVerdicts int
@@ -59,54 +101,60 @@ func resetAllConnectionVerdicts() {
 			continue
 		}
 
-		func() {
-			conn.Lock()
-			defer conn.Unlock()
-
-			// Update feature flags.
-			if err := conn.UpdateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
-				tracer.Warningf("network: failed to update connection feature flags: %s", err)
-			}
-
-			// Skip internal connections:
-			// - Pre-authenticated connections from Portmaster
-			// - Redirected DNS requests
-			// - SPN Uplink to Home Hub
-			if conn.Internal {
-				tracer.Tracef("filter: skipping internal connection %s", conn)
-				return
-			}
-
-			tracer.Debugf("filter: re-evaluating verdict of %s", conn)
-			previousVerdict := conn.Verdict.Firewall
-
-			// Apply privacy filter and check tunneling.
-			FilterConnection(ctx, conn, nil, true, true)
-
-			// Stop existing SPN tunnel if not needed anymore.
-			if conn.Verdict.Active != network.VerdictRerouteToTunnel && conn.TunnelContext != nil {
-				err := conn.TunnelContext.StopTunnel()
-				if err != nil {
-					tracer.Debugf("filter: failed to stopped unneeded tunnel: %s", err)
-				}
-			}
-
-			// Save if verdict changed.
-			if conn.Verdict.Firewall != previousVerdict {
-				err := interception.UpdateVerdictOfConnection(conn)
-				if err != nil {
-					log.Debugf("filter: failed to update connection verdict: %s", err)
-				}
-				conn.Save()
-				tracer.Infof("filter: verdict of connection %s changed from %s to %s", conn, previousVerdict.Verb(), conn.VerdictVerb())
-				changedVerdicts++
-			} else {
-				tracer.Tracef("filter: verdict to connection %s unchanged at %s", conn, conn.VerdictVerb())
-			}
-		}()
+		if resetConnectionVerdict(ctx, conn) {
+			changedVerdicts++
+		}
 	}
 	tracer.Infof("filter: changed verdict on %d connections", changedVerdicts)
-	tracer.Submit()
+}
+
+func resetConnectionVerdict(ctx context.Context, conn *network.Connection) (verdictChanged bool) {
+	tracer := log.Tracer(ctx)
+
+	conn.Lock()
+	defer conn.Unlock()
+
+	// Update feature flags.
+	if err := conn.UpdateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
+		tracer.Warningf("filter: failed to update connection feature flags: %s", err)
+	}
+
+	// Skip internal connections:
+	// - Pre-authenticated connections from Portmaster
+	// - Redirected DNS requests
+	// - SPN Uplink to Home Hub
+	if conn.Internal {
+		// tracer.Tracef("filter: skipping internal connection %s", conn)
+		return false
+	}
+
+	tracer.Debugf("filter: re-evaluating verdict of %s", conn)
+	previousVerdict := conn.Verdict.Firewall
+
+	// Apply privacy filter and check tunneling.
+	FilterConnection(ctx, conn, nil, true, true)
+
+	// Stop existing SPN tunnel if not needed anymore.
+	if conn.Verdict.Active != network.VerdictRerouteToTunnel && conn.TunnelContext != nil {
+		err := conn.TunnelContext.StopTunnel()
+		if err != nil {
+			tracer.Debugf("filter: failed to stopped unneeded tunnel: %s", err)
+		}
+	}
+
+	// Save if verdict changed.
+	if conn.Verdict.Firewall != previousVerdict {
+		err := interception.UpdateVerdictOfConnection(conn)
+		if err != nil {
+			log.Debugf("filter: failed to update connection verdict: %s", err)
+		}
+		conn.Save()
+		tracer.Infof("filter: verdict of connection %s changed from %s to %s", conn, previousVerdict.Verb(), conn.VerdictVerb())
+		return true
+	}
+
+	tracer.Tracef("filter: verdict to connection %s unchanged at %s", conn, conn.VerdictVerb())
+	return false
 }
 
 // SetNameserverIPMatcher sets a function that is used to match the internal

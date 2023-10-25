@@ -16,7 +16,8 @@ import (
 // core:profiles/<scope>/<id>
 // cache:profiles/index/<identifier>/<value>
 
-const profilesDBPath = "core:profiles/"
+// ProfilesDBPath is the base database path for profiles.
+const ProfilesDBPath = "core:profiles/"
 
 var profileDB = database.NewInterface(&database.Options{
 	Local:    true,
@@ -28,17 +29,17 @@ func makeScopedID(source profileSource, id string) string {
 }
 
 func makeProfileKey(source profileSource, id string) string {
-	return profilesDBPath + string(source) + "/" + id
+	return ProfilesDBPath + string(source) + "/" + id
 }
 
 func registerValidationDBHook() (err error) {
-	_, err = database.RegisterHook(query.New(profilesDBPath), &databaseHook{})
+	_, err = database.RegisterHook(query.New(ProfilesDBPath), &databaseHook{})
 	return
 }
 
 func startProfileUpdateChecker() error {
 	module.StartServiceWorker("update active profiles", 0, func(ctx context.Context) (err error) {
-		profilesSub, err := profileDB.Subscribe(query.New(profilesDBPath))
+		profilesSub, err := profileDB.Subscribe(query.New(ProfilesDBPath))
 		if err != nil {
 			return err
 		}
@@ -59,8 +60,14 @@ func startProfileUpdateChecker() error {
 				}
 
 				// Get active profile.
-				activeProfile := getActiveProfile(strings.TrimPrefix(r.Key(), profilesDBPath))
+				scopedID := strings.TrimPrefix(r.Key(), ProfilesDBPath)
+				activeProfile := getActiveProfile(scopedID)
 				if activeProfile == nil {
+					// Check if profile is being deleted.
+					if r.Meta().IsDeleted() {
+						meta.MarkDeleted(scopedID)
+					}
+
 					// Don't do any additional actions if the profile is not active.
 					continue profileFeed
 				}
@@ -74,7 +81,9 @@ func startProfileUpdateChecker() error {
 				// Always mark as outdated if the record is being deleted.
 				if r.Meta().IsDeleted() {
 					activeProfile.outdated.Set()
-					module.TriggerEvent(profileConfigChange, nil)
+
+					meta.MarkDeleted(scopedID)
+					module.TriggerEvent(DeletedEvent, scopedID)
 					continue
 				}
 
@@ -83,7 +92,7 @@ func startProfileUpdateChecker() error {
 				receivedProfile, err := EnsureProfile(r)
 				if err != nil || !receivedProfile.savedInternally {
 					activeProfile.outdated.Set()
-					module.TriggerEvent(profileConfigChange, nil)
+					module.TriggerEvent(ConfigChangeEvent, scopedID)
 				}
 			case <-ctx.Done():
 				return nil
@@ -105,6 +114,11 @@ func (h *databaseHook) UsesPrePut() bool {
 
 // PrePut implements the Hook interface.
 func (h *databaseHook) PrePut(r record.Record) (record.Record, error) {
+	// Do not intervene with metadata key.
+	if r.Key() == profilesMetadataKey {
+		return r, nil
+	}
+
 	// convert
 	profile, err := EnsureProfile(r)
 	if err != nil {

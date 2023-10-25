@@ -2,13 +2,18 @@ package firewall
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	"github.com/safing/portbase/modules/subsystems"
 	_ "github.com/safing/portmaster/core"
 	"github.com/safing/portmaster/network"
+	"github.com/safing/portmaster/profile"
 	"github.com/safing/spn/access"
+	"github.com/safing/spn/captain"
 )
 
 var module *modules.Module
@@ -25,12 +30,6 @@ func init() {
 	)
 }
 
-const (
-	configChangeEvent        = "config change"
-	profileConfigChangeEvent = "profile config change"
-	onSPNConnectEvent        = "spn connect"
-)
-
 func prep() error {
 	network.SetDefaultFirewallHandler(verdictHandler)
 
@@ -38,8 +37,8 @@ func prep() error {
 	// this will be triggered on spn enable/disable
 	err := module.RegisterEventHook(
 		"config",
-		configChangeEvent,
-		"reset connection verdicts",
+		config.ChangeEvent,
+		"reset connection verdicts after global config change",
 		func(ctx context.Context, _ interface{}) error {
 			resetAllConnectionVerdicts()
 			return nil
@@ -52,10 +51,20 @@ func prep() error {
 	// Reset connections every time profile changes
 	err = module.RegisterEventHook(
 		"profiles",
-		profileConfigChangeEvent,
-		"reset connection verdicts",
-		func(ctx context.Context, _ interface{}) error {
-			resetAllConnectionVerdicts()
+		profile.ConfigChangeEvent,
+		"reset connection verdicts after profile config change",
+		func(ctx context.Context, eventData interface{}) error {
+			// Expected event data: scoped profile ID.
+			profileID, ok := eventData.(string)
+			if !ok {
+				return fmt.Errorf("event data is not a string: %v", eventData)
+			}
+			profileSource, profileID, ok := strings.Cut(profileID, "/")
+			if !ok {
+				return fmt.Errorf("event data does not seem to be a scoped profile ID: %v", eventData)
+			}
+
+			resetProfileConnectionVerdict(profileSource, profileID)
 			return nil
 		},
 	)
@@ -67,8 +76,8 @@ func prep() error {
 	// connect and disconnecting is triggered on config change event but connecting takеs more time
 	err = module.RegisterEventHook(
 		"captain",
-		onSPNConnectEvent,
-		"reset connection verdicts",
+		captain.SPNConnectedEvent,
+		"reset connection verdicts on SPN connect",
 		func(ctx context.Context, _ interface{}) error {
 			resetAllConnectionVerdicts()
 			return nil
@@ -83,9 +92,27 @@ func prep() error {
 	err = module.RegisterEventHook(
 		"access",
 		access.AccountUpdateEvent,
-		"update connection feature flags",
+		"update connection feature flags after account update",
 		func(ctx context.Context, _ interface{}) error {
 			resetAllConnectionVerdicts()
+			return nil
+		},
+	)
+	if err != nil {
+		log.Errorf("filter: failed to register event hook: %s", err)
+	}
+
+	err = module.RegisterEventHook(
+		"network",
+		network.ConnectionReattributedEvent,
+		"reset verdict of re-attributed connection",
+		func(ctx context.Context, eventData interface{}) error {
+			// Expected event data: connection ID.
+			connID, ok := eventData.(string)
+			if !ok {
+				return fmt.Errorf("event data is not a string: %v", eventData)
+			}
+			resetSingleConnectionVerdict(connID)
 			return nil
 		},
 	)

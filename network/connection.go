@@ -582,6 +582,11 @@ func GetAllConnections() []*Connection {
 	return conns.list()
 }
 
+// GetDNSConnection fetches a DNS Connection from the database.
+func GetDNSConnection(dnsConnID string) (*Connection, bool) {
+	return dnsConns.get(dnsConnID)
+}
+
 // SetLocalIP sets the local IP address together with its network scope. The
 // connection is not locked for this.
 func (conn *Connection) SetLocalIP(ip net.IP) {

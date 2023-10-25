@@ -1,8 +1,10 @@
 package profile
 
 import (
+	"errors"
 	"os"
 
+	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/migration"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
@@ -16,13 +18,18 @@ var (
 	updatesPath string
 )
 
+// Events.
 const (
-	profileConfigChange = "profile config change"
+	ConfigChangeEvent = "profile config change"
+	DeletedEvent      = "profile deleted"
+	MigratedEvent     = "profile migrated"
 )
 
 func init() {
-	module = modules.Register("profiles", prep, start, nil, "base", "updates")
-	module.RegisterEvent(profileConfigChange, true)
+	module = modules.Register("profiles", prep, start, stop, "base", "updates")
+	module.RegisterEvent(ConfigChangeEvent, true)
+	module.RegisterEvent(DeletedEvent, true)
+	module.RegisterEvent(MigratedEvent, true)
 }
 
 func prep() error {
@@ -46,6 +53,14 @@ func start() error {
 	if updatesPath != "" {
 		updatesPath += string(os.PathSeparator)
 	}
+
+	if err := loadProfilesMetadata(); err != nil {
+		if !errors.Is(err, database.ErrNotFound) {
+			log.Warningf("profile: failed to load profiles metadata, falling back to empty state: %s", err)
+		}
+		meta = &ProfilesMetadata{}
+	}
+	meta.check()
 
 	if err := migrations.Migrate(module.Ctx); err != nil {
 		log.Errorf("profile: migrations failed: %s", err)
@@ -73,5 +88,13 @@ func start() error {
 		log.Warningf("profile: error during loading global profile from configuration: %s", err)
 	}
 
+	if err := registerAPIEndpoints(); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func stop() error {
+	return meta.Save()
 }
