@@ -63,17 +63,17 @@ func prep() error {
 		return err
 	}
 
-	// Enable persistent metrics.
-	if err := metrics.EnableMetricPersistence("core:metrics/storage"); err != nil {
-		log.Warningf("core: failed to enable persisted metrics: %s", err)
-	}
-
 	return nil
 }
 
 func start() error {
 	if err := startPlatformSpecific(); err != nil {
 		return fmt.Errorf("failed to start plattform-specific components: %w", err)
+	}
+
+	// Enable persistent metrics.
+	if err := metrics.EnableMetricPersistence("core:metrics/storage"); err != nil {
+		log.Warningf("core: failed to enable persisted metrics: %s", err)
 	}
 
 	return nil
