@@ -34,7 +34,7 @@ func registerMigrations() error {
 		},
 		migration.Migration{
 			Description: "Migrate from random profile IDs to fingerprint-derived IDs",
-			Version:     "v1.5.0",
+			Version:     "v1.6.0",
 			MigrateFunc: migrateToDerivedIDs,
 		},
 	)
