@@ -1,11 +1,13 @@
 module github.com/safing/portmaster
 
-go 1.20
+go 1.21.1
+
+toolchain go1.21.2
 
 require (
 	github.com/Xuanwo/go-locale v1.1.0
 	github.com/agext/levenshtein v1.2.3
-	github.com/cilium/ebpf v0.12.0
+	github.com/cilium/ebpf v0.12.2
 	github.com/coreos/go-iptables v0.7.0
 	github.com/florianl/go-conntrack v0.4.0
 	github.com/florianl/go-nfqueue v1.3.1
@@ -19,10 +21,10 @@ require (
 	github.com/miekg/dns v1.1.56
 	github.com/mitchellh/go-server-timing v1.0.1
 	github.com/oschwald/maxminddb-golang v1.12.0
-	github.com/safing/jess v0.3.2-0.20230926112644-fa3982d07a28
-	github.com/safing/portbase v0.18.2
+	github.com/safing/jess v0.3.2
+	github.com/safing/portbase v0.18.5
 	github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec
-	github.com/safing/spn v0.6.23
+	github.com/safing/spn v0.7.4
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.7.0
 	github.com/spkg/zipfs v0.7.1
@@ -71,7 +73,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/rot256/pblind v0.0.0-20230622102829-4dc2c6e4b857 // indirect
+	github.com/rot256/pblind v0.0.0-20231024115251-cd3f239f28c1 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/seehuhn/fortuna v1.0.1 // indirect
 	github.com/seehuhn/sha256d v1.0.0 // indirect
@@ -90,15 +92,15 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	github.com/zalando/go-keyring v0.2.3 // indirect
 	go.etcd.io/bbolt v1.3.7 // indirect
-	golang.org/x/crypto v0.13.0 // indirect
-	golang.org/x/mod v0.12.0 // indirect
+	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.13.0 // indirect
+	golang.org/x/tools v0.14.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gvisor.dev/gvisor v0.0.0-20231017021626-e69b01c3a8f3 // indirect
-	modernc.org/libc v1.24.1 // indirect
+	gvisor.dev/gvisor v0.0.0-20231025034759-d4973670c3c9 // indirect
+	modernc.org/libc v1.28.0 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.7.2 // indirect
 	modernc.org/sqlite v1.26.0 // indirect
