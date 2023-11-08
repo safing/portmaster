@@ -62,7 +62,11 @@ func prompt(ctx context.Context, conn *network.Connection) {
 
 	// wait for response/timeout
 	select {
-	case promptResponse := <-n.Response():
+	case promptResponse, ok := <-n.Response():
+		if !ok {
+			return
+		}
+
 		switch promptResponse {
 		case allowDomainAll, allowDomainDistinct, allowIP, allowServingIP:
 			conn.Accept("allowed via prompt", profile.CfgOptionEndpointsKey)
@@ -152,6 +156,7 @@ func createPrompt(ctx context.Context, conn *network.Connection) (n *notificatio
 			switch action {
 			case allowDomainAll, allowDomainDistinct, allowIP, allowServingIP:
 				conn.Accept("allowed via prompt", profile.CfgOptionEndpointsKey)
+
 			default: // deny
 				conn.Deny("blocked via prompt", profile.CfgOptionEndpointsKey)
 			}
@@ -188,6 +193,8 @@ func createPrompt(ctx context.Context, conn *network.Connection) (n *notificatio
 
 	// Set action function.
 	n.SetActionFunction(func(_ context.Context, n *notifications.Notification) error {
+		layeredProfile.RemovePrompt(n)
+
 		return saveResponse(
 			localProfile,
 			entity,
@@ -237,6 +244,8 @@ func createPrompt(ctx context.Context, conn *network.Connection) (n *notificatio
 			},
 		}
 	}
+
+	layeredProfile.AddPrompt(n)
 
 	n.Save()
 	log.Tracer(ctx).Debugf("filter: sent prompt notification")

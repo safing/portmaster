@@ -24,6 +24,7 @@ import (
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/network/reference"
 	"github.com/safing/portmaster/process"
+	"github.com/safing/portmaster/profile"
 	"github.com/safing/spn/access"
 )
 
@@ -64,6 +65,21 @@ func resetProfileConnectionVerdict(profileSource, profileID string) {
 	// Create tracing context.
 	ctx, tracer := log.AddTracer(context.Background())
 	defer tracer.Submit()
+
+	localProfile, err := profile.GetLocalProfile(profileSource+"/"+profileID, nil, nil)
+	if err == nil {
+		lp := localProfile.LayeredProfile()
+		// remove all active prompts of that profile
+		for _, prompt := range lp.ActivePrompts() {
+			tracer.Infof("filter: removing active prompt %q for profile %s/%s", prompt.EventID, profileSource, profileID)
+
+			prompt.Delete()
+			lp.RemovePrompt(prompt)
+		}
+
+	} else {
+		tracer.Errorf("filter: failed to get layered profile %s/%s for re-evaluation: %s", profileSource, profileID, err)
+	}
 
 	// Resetting will force all the connection to be evaluated by the firewall again
 	// this will set new verdicts if configuration was update or spn has been disabled or enabled.

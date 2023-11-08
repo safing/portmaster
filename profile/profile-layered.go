@@ -8,6 +8,7 @@ import (
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/notifications"
 	"github.com/safing/portbase/runtime"
 	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/profile/endpoints"
@@ -51,6 +52,8 @@ type LayeredProfile struct {
 	SPNRoutingAlgorithm config.StringOption `json:"-"`
 	EnableHistory       config.BoolOption   `json:"-"`
 	KeepHistory         config.IntOption    `json:"-"`
+
+	activePrompts []*notifications.Notification
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -164,6 +167,54 @@ func (lp *LayeredProfile) UnlockForUsage() {
 	for _, layer := range lp.layers {
 		layer.RUnlock()
 	}
+}
+
+// AddPrompt adds an active prompt to the profile
+func (lp *LayeredProfile) AddPrompt(p *notifications.Notification) {
+	if lp == nil {
+		return
+	}
+
+	lp.Lock()
+	defer lp.Unlock()
+
+	lp.activePrompts = append(lp.activePrompts, p)
+}
+
+// RemovePrompt removes an active prompt from the profile
+func (lp *LayeredProfile) RemovePrompt(p *notifications.Notification) {
+	if lp == nil {
+		return
+	}
+
+	lp.Lock()
+	defer lp.Unlock()
+
+	promptCopy := make([]*notifications.Notification, 0, len(lp.activePrompts))
+	for _, prompt := range lp.activePrompts {
+		if prompt == p {
+			continue
+		}
+
+		promptCopy = append(promptCopy, prompt)
+	}
+
+	lp.activePrompts = promptCopy
+}
+
+// ActivePrompts returns all active prompts for the profile.
+func (lp *LayeredProfile) ActivePrompts() []*notifications.Notification {
+	if lp == nil {
+		return nil
+	}
+
+	lp.RLock()
+	defer lp.RUnlock()
+
+	promptCopy := make([]*notifications.Notification, len(lp.activePrompts))
+	copy(promptCopy, lp.activePrompts)
+
+	return promptCopy
 }
 
 // LocalProfile returns the local profile associated with this layered profile.
