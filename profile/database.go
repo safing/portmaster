@@ -24,11 +24,13 @@ var profileDB = database.NewInterface(&database.Options{
 	Internal: true,
 })
 
-func makeScopedID(source profileSource, id string) string {
+// MakeScopedID returns a scoped profile ID.
+func MakeScopedID(source ProfileSource, id string) string {
 	return string(source) + "/" + id
 }
 
-func makeProfileKey(source profileSource, id string) string {
+// MakeProfileKey returns a profile key.
+func MakeProfileKey(source ProfileSource, id string) string {
 	return ProfilesDBPath + string(source) + "/" + id
 }
 

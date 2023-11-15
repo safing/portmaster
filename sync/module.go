@@ -25,5 +25,8 @@ func prep() error {
 	if err := registerSingleSettingAPI(); err != nil {
 		return err
 	}
+	if err := registerProfileAPI(); err != nil {
+		return err
+	}
 	return nil
 }

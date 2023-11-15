@@ -221,52 +221,16 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 	if r.Export.Type != TypeSettings {
 		return nil, ErrMismatch
 	}
-
 	// Flatten config.
 	settings := config.Flatten(r.Export.Config)
 
-	// Validate config and gather some metadata.
-	var (
-		result                 = &ImportResult{}
-		checked                int
-		globalOnlySettingFound bool
-	)
-	err := config.ForEachOption(func(option *config.Option) error {
-		// Check if any setting is set.
-		if r.Reset && option.IsSetByUser() {
-			result.ReplacesExisting = true
-		}
-
-		newValue, ok := settings[option.Key]
-		if ok {
-			checked++
-
-			// Validate the new value.
-			if err := option.ValidateValue(newValue); err != nil {
-				return fmt.Errorf("%w: configuration value for %s is invalid: %w", ErrInvalidSettingValue, option.Key, err)
-			}
-
-			// Collect metadata.
-			if option.RequiresRestart {
-				result.RestartRequired = true
-			}
-			if !r.Reset && option.IsSetByUser() {
-				result.ReplacesExisting = true
-			}
-			if !option.AnnotationEquals(config.SettablePerAppAnnotation, true) {
-				globalOnlySettingFound = true
-			}
-		}
-		return nil
-	})
+	// Check settings.
+	result, globalOnlySettingFound, err := checkSettings(settings)
 	if err != nil {
 		return nil, err
 	}
-	if checked < len(settings) {
-		result.ContainsUnknown = true
-		if !r.AllowUnknown && !r.ValidateOnly {
-			return nil, fmt.Errorf("%w: the export contains unknown settings", ErrInvalidImportRequest)
-		}
+	if result.ContainsUnknown && !r.AllowUnknown && !r.ValidateOnly {
+		return nil, fmt.Errorf("%w: the export contains unknown settings", ErrInvalidImportRequest)
 	}
 
 	// Import global settings.
@@ -333,4 +297,49 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 	}
 
 	return result, nil
+}
+
+func checkSettings(settings map[string]any) (result *ImportResult, globalOnlySettingFound bool, err error) {
+	result = &ImportResult{}
+
+	// Validate config and gather some metadata.
+	var checked int
+	err = config.ForEachOption(func(option *config.Option) error {
+		// Check if any setting is set.
+		// TODO: Fix this - it only checks for global settings.
+		// if r.Reset && option.IsSetByUser() {
+		// 	result.ReplacesExisting = true
+		// }
+
+		newValue, ok := settings[option.Key]
+		if ok {
+			checked++
+
+			// Validate the new value.
+			if err := option.ValidateValue(newValue); err != nil {
+				return fmt.Errorf("%w: configuration value for %s is invalid: %w", ErrInvalidSettingValue, option.Key, err)
+			}
+
+			// Collect metadata.
+			if option.RequiresRestart {
+				result.RestartRequired = true
+			}
+			// TODO: Fix this - it only checks for global settings.
+			// if !r.Reset && option.IsSetByUser() {
+			// 	result.ReplacesExisting = true
+			// }
+			if !option.AnnotationEquals(config.SettablePerAppAnnotation, true) {
+				globalOnlySettingFound = true
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	if checked < len(settings) {
+		result.ContainsUnknown = true
+	}
+
+	return result, globalOnlySettingFound, nil
 }

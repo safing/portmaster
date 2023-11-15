@@ -67,7 +67,7 @@ type (
 		// merged from. The merged profile should create a new profile ID derived
 		// from the new fingerprints and add all fingerprints with this field set
 		// to the originating profile ID
-		MergedFrom string
+		MergedFrom string // `json:"mergedFrom,omitempty"`
 	}
 
 	// Tag represents a simple key/value kind of tag used in process metadata
@@ -170,7 +170,8 @@ type parsedFingerprints struct {
 	cmdlinePrints []matchingFingerprint
 }
 
-func parseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *parsedFingerprints, firstErr error) {
+// ParseFingerprints parses the fingerprints to make them ready for matching.
+func ParseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *parsedFingerprints, firstErr error) {
 	parsed = &parsedFingerprints{}
 
 	// Add deprecated LinkedPath to fingerprints, if they are empty.
@@ -230,7 +231,7 @@ func parseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *
 
 		default:
 			if firstErr == nil {
-				firstErr = fmt.Errorf("unknown fingerprint operation: %q", entry.Type)
+				firstErr = fmt.Errorf("unknown fingerprint operation: %q", entry.Operation)
 			}
 		}
 	}
@@ -367,7 +368,8 @@ const (
 	deriveFPKeyIDForValue
 )
 
-func deriveProfileID(fps []Fingerprint) string {
+// DeriveProfileID derives a profile ID from the given fingerprints.
+func DeriveProfileID(fps []Fingerprint) string {
 	// Sort the fingerprints.
 	sortAndCompactFingerprints(fps)
 
