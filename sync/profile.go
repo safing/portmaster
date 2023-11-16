@@ -48,7 +48,7 @@ type ProfileIcon struct {
 	Value string           `json:"value"`
 }
 
-// ProfileIcon represents a profile fingerprint.
+// ProfileFingerprint represents a profile fingerprint.
 type ProfileFingerprint struct {
 	Type       string `json:"type"`
 	Key        string `json:"key,omitempty"`
@@ -165,12 +165,12 @@ func handleExportProfile(ar *api.Request) (data []byte, err error) {
 }
 
 func handleImportProfile(ar *api.Request) (any, error) {
-	var request *ProfileImportRequest
+	var request ProfileImportRequest
 
 	// Get parameters.
 	q := ar.URL.Query()
 	if len(q) > 0 {
-		request = &ProfileImportRequest{
+		request = ProfileImportRequest{
 			ImportRequest: ImportRequest{
 				ValidateOnly: q.Has("validate"),
 				RawExport:    string(ar.InputData),
@@ -180,8 +180,7 @@ func handleImportProfile(ar *api.Request) (any, error) {
 			AllowReplace: q.Has("allowReplace"),
 		}
 	} else {
-		request = &ProfileImportRequest{}
-		if err := json.Unmarshal(ar.InputData, request); err != nil {
+		if err := json.Unmarshal(ar.InputData, &request); err != nil {
 			return nil, fmt.Errorf("%w: failed to parse import request: %w", ErrInvalidImportRequest, err)
 		}
 	}
@@ -204,7 +203,7 @@ func handleImportProfile(ar *api.Request) (any, error) {
 	}
 
 	// Import.
-	return ImportProfile(request, profile.SourceLocal)
+	return ImportProfile(&request, profile.SourceLocal)
 }
 
 // ExportProfile exports a profile.

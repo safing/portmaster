@@ -36,7 +36,7 @@ func registerAPIEndpoints() error {
 
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Name:        "Update Profile Icon",
-		Description: "Merge multiple profiles into a new one.",
+		Description: "Updates a profile icon.",
 		Path:        "profile/icon/update",
 		Write:       api.PermitUser,
 		BelongsTo:   module,
