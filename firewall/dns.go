@@ -177,15 +177,6 @@ func FilterResolvedDNS(
 		return rrCache
 	}
 
-	// Finalize verdict.
-	defer func() {
-		// Reset from previous filtering.
-		conn.Verdict.Active = network.VerdictUndecided
-		conn.Verdict.Worst = network.VerdictUndecided
-		// Update all values again.
-		finalizeVerdict(conn)
-	}()
-
 	// special grant for connectivity domains
 	if checkConnectivityDomain(ctx, conn, layeredProfile, nil) {
 		// returns true if check triggered
@@ -197,7 +188,7 @@ func FilterResolvedDNS(
 
 	// Filter dns records and return if the query is blocked.
 	rrCache = filterDNSResponse(ctx, conn, layeredProfile, rrCache, sysResolver)
-	if conn.Verdict.Active == network.VerdictBlock {
+	if conn.Verdict == network.VerdictBlock {
 		return rrCache
 	}
 

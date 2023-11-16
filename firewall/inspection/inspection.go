@@ -64,7 +64,7 @@ func RunInspectors(conn *network.Connection, pkt packet.Packet) (network.Verdict
 		}
 
 		// check if the active verdict is already past the inspection criteria.
-		if conn.Verdict.Active > inspectVerdicts[key] {
+		if conn.Verdict > inspectVerdicts[key] {
 			activeInspectors[key] = true
 			continue
 		}
@@ -86,11 +86,11 @@ func RunInspectors(conn *network.Connection, pkt packet.Packet) (network.Verdict
 			continueInspection = true
 		case BLOCK_CONN:
 			conn.SetVerdict(network.VerdictBlock, "", "", nil)
-			verdict = conn.Verdict.Active
+			verdict = conn.Verdict
 			activeInspectors[key] = true
 		case DROP_CONN:
 			conn.SetVerdict(network.VerdictDrop, "", "", nil)
-			verdict = conn.Verdict.Active
+			verdict = conn.Verdict
 			activeInspectors[key] = true
 		case STOP_INSPECTING:
 			activeInspectors[key] = true

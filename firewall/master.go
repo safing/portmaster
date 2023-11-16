@@ -103,7 +103,7 @@ func decideOnConnection(ctx context.Context, conn *network.Connection, pkt packe
 	case profile.DefaultActionAsk:
 		// Only prompt if there has not been a decision already.
 		// This prevents prompts from being created when re-evaluating connections.
-		if conn.Verdict.Firewall == network.VerdictUndecided {
+		if conn.Verdict == network.VerdictUndecided {
 			prompt(ctx, conn)
 		}
 	default:

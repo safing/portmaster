@@ -254,7 +254,7 @@ func UpdateVerdict(conn *network.Connection) error {
 		localPort:  conn.LocalPort,
 		remoteIP:   ipAddressToArray(conn.Entity.IP, isIpv6 == 1),
 		remotePort: conn.Entity.Port,
-		verdict:    uint8(conn.Verdict.Active),
+		verdict:    uint8(conn.Verdict),
 	}
 
 	// Make driver request

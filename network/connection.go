@@ -121,17 +121,9 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// Verdict holds the decisions that are made for a connection
 	// The verdict may change so any access to it must be guarded by the
 	// connection lock.
-	Verdict struct {
-		// Worst verdict holds the worst verdict that was assigned to this
-		// connection from a privacy/security perspective.
-		Worst Verdict
-		// Active verdict holds the verdict that Portmaster will respond with.
-		// This is different from the Firewall verdict in order to guarantee proper
-		// transition between verdicts that need the connection to be re-established.
-		Active Verdict
-		// Firewall holds the last (most recent) decision by the firewall.
-		Firewall Verdict
-	}
+	Verdict Verdict
+	// Whether or not the connection has been established at least once.
+	ConnectionEstablished bool
 	// Reason holds information justifying the verdict, as well as additional
 	// information about the reason.
 	// Access to Reason must be guarded by the connection lock.
@@ -722,22 +714,15 @@ func (conn *Connection) SetVerdict(newVerdict Verdict, reason, reasonOptionKey s
 	return true // TODO: remove
 }
 
-// SetVerdictDirectly sets the firewall verdict.
+// SetVerdictDirectly sets the verdict.
 func (conn *Connection) SetVerdictDirectly(newVerdict Verdict) {
-	conn.Verdict.Firewall = newVerdict
+	conn.Verdict = newVerdict
 }
 
 // VerdictVerb returns the verdict as a verb, while taking any special states
 // into account.
 func (conn *Connection) VerdictVerb() string {
-	if conn.Verdict.Firewall == conn.Verdict.Active {
-		return conn.Verdict.Firewall.Verb()
-	}
-	return fmt.Sprintf(
-		"%s (transitioning to %s)",
-		conn.Verdict.Active.Verb(),
-		conn.Verdict.Firewall.Verb(),
-	)
+	return conn.Verdict.Verb()
 }
 
 // DataIsComplete returns whether all information about the connection is
@@ -765,6 +750,14 @@ func (conn *Connection) SaveWhenFinished() {
 // Save().
 func (conn *Connection) Save() {
 	conn.UpdateMeta()
+
+	switch conn.Verdict {
+	case VerdictAccept, VerdictRerouteToNameserver:
+		conn.ConnectionEstablished = true
+	case VerdictRerouteToTunnel:
+		// this is already handled when the connection tunnel has been
+		// established.
+	}
 
 	// Do not save/update until data is complete.
 	if !conn.DataIsComplete() {
@@ -1003,7 +996,7 @@ func packetHandlerHandleConn(ctx context.Context, conn *Connection, pkt packet.P
 	switch {
 	case conn.DataIsComplete():
 		tracer.Infof("filter: connection %s %s: %s", conn, conn.VerdictVerb(), conn.Reason.Msg)
-	case conn.Verdict.Firewall != VerdictUndecided:
+	case conn.Verdict != VerdictUndecided:
 		tracer.Debugf("filter: connection %s fast-tracked", pkt)
 	default:
 		tracer.Debugf("filter: gathered data on connection %s", conn)

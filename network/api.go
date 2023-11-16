@@ -139,8 +139,8 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 		debugConns    []*Connection
 		accepted      int
 		total         int
-		transitioning int
 	)
+	
 	for maybeConn := range it.Next {
 		// Switch to correct type.
 		conn, ok := maybeConn.(*Connection)
@@ -169,14 +169,12 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 
 		// Count.
 		total++
-		switch conn.Verdict.Firewall { //nolint:exhaustive
+		switch conn.Verdict { //nolint:exhaustive
 		case VerdictAccept,
 			VerdictRerouteToNameserver,
 			VerdictRerouteToTunnel:
+
 			accepted++
-		}
-		if conn.Verdict.Active != conn.Verdict.Firewall {
-			transitioning++
 		}
 
 		// Add to list.
@@ -186,10 +184,9 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 	// Add it all.
 	di.AddSection(
 		fmt.Sprintf(
-			"Network: %d/%d [~%d] Connections",
+			"Network: %d/%d Connections",
 			accepted,
 			total,
-			transitioning,
 		),
 		debug.UseCodeSection|debug.AddContentLineBreaks,
 		buildNetworkDebugInfoData(debugConns),

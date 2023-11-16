@@ -31,7 +31,7 @@ func checkTunneling(ctx context.Context, conn *network.Connection) {
 	case conn.Inbound:
 		// Can't tunnel incoming connections.
 		return
-	case conn.Verdict.Firewall != network.VerdictAccept:
+	case conn.Verdict != network.VerdictAccept:
 		// Connection will be blocked.
 		return
 	case conn.IPProtocol != packet.TCP && conn.IPProtocol != packet.UDP:

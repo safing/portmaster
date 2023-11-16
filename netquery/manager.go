@@ -183,9 +183,7 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		IPProtocol:      conn.IPProtocol,
 		LocalIP:         conn.LocalIP.String(),
 		LocalPort:       conn.LocalPort,
-		FirewallVerdict: conn.Verdict.Firewall,
-		ActiveVerdict:   conn.Verdict.Active,
-		WorstVerdict:    conn.Verdict.Worst,
+		ActiveVerdict:   conn.Verdict,
 		Started:         time.Unix(conn.Started, 0),
 		Tunneled:        conn.Tunneled,
 		Encrypted:       conn.Encrypted,
@@ -207,16 +205,7 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		c.Type = ""
 	}
 
-	switch conn.Verdict.Firewall {
-	case network.VerdictAccept, network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel:
-		accepted := true
-		c.Allowed = &accepted
-	case network.VerdictBlock, network.VerdictDrop:
-		allowed := false
-		c.Allowed = &allowed
-	case network.VerdictUndecided, network.VerdictUndeterminable, network.VerdictFailed:
-		c.Allowed = nil
-	}
+	c.Allowed = &conn.ConnectionEstablished
 
 	if conn.Ended > 0 {
 		ended := time.Unix(conn.Ended, 0)
