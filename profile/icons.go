@@ -16,16 +16,20 @@ import (
 var profileIconStoragePath = ""
 
 // GetProfileIcon returns the profile icon with the given ID and extension.
-func GetProfileIcon(id, ext string) (data []byte, err error) {
+func GetProfileIcon(name string) (data []byte, err error) {
 	// Build storage path.
-	iconPath := filepath.Join(profileIconStoragePath, id+"."+ext)
+	iconPath := filepath.Clean(
+		filepath.Join(profileIconStoragePath, name),
+	)
+
 	iconPath, err = filepath.Abs(iconPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check icon path: %w", err)
 	}
+
 	// Do a quick check if we are still within the right directory.
 	// This check is not entirely correct, but is sufficient for this use case.
-	if !strings.HasPrefix(iconPath, profileIconStoragePath) {
+	if filepath.Dir(iconPath) != profileIconStoragePath {
 		return nil, api.ErrorWithStatus(errors.New("invalid icon"), http.StatusBadRequest)
 	}
 

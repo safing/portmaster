@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/safing/portbase/api"
@@ -26,7 +27,7 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Name:        "Get Profile Icon",
 		Description: "Returns the requested profile icon.",
-		Path:        "profile/icon/{id:[0-9a-f]{40-80}}.{ext:[a-z]{3-4}}",
+		Path:        "profile/icon/{id:[a-f0-9]*\\.[a-z]{3,4}}",
 		Read:        api.PermitUser,
 		BelongsTo:   module,
 		DataFunc:    handleGetProfileIcon,
@@ -37,7 +38,7 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Name:        "Update Profile Icon",
 		Description: "Updates a profile icon.",
-		Path:        "profile/icon/update",
+		Path:        "profile/icon",
 		Write:       api.PermitUser,
 		BelongsTo:   module,
 		StructFunc:  handleUpdateProfileIcon,
@@ -92,14 +93,18 @@ func handleMergeProfiles(ar *api.Request) (i interface{}, err error) {
 }
 
 func handleGetProfileIcon(ar *api.Request) (data []byte, err error) {
+	name := ar.URLVars["id"]
+
+	ext := filepath.Ext(name)
+
 	// Get profile icon.
-	data, err = GetProfileIcon(ar.URLVars["id"], ar.URLVars["ext"])
+	data, err = GetProfileIcon(name)
 	if err != nil {
 		return nil, err
 	}
 
 	// Set content type for icon.
-	contentType, ok := utils.MimeTypeByExtension(ar.URLVars["ext"])
+	contentType, ok := utils.MimeTypeByExtension(ext)
 	if ok {
 		ar.ResponseHeader.Set("Content-Type", contentType)
 	}
