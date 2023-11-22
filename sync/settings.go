@@ -15,25 +15,25 @@ import (
 
 // SettingsExport holds an export of settings.
 type SettingsExport struct {
-	Type Type `json:"type"`
+	Type Type `json:"type" yaml:"type"`
 
-	Config map[string]any `json:"config"`
+	Config map[string]any `json:"config" yaml:"config"`
 }
 
 // SettingsImportRequest is a request to import settings.
 type SettingsImportRequest struct {
-	ImportRequest `json:",inline"`
+	ImportRequest `json:",inline" yaml:",inline"`
 
 	// Reset all settings of target before import.
 	// The ImportResult also reacts to this flag and correctly reports whether
 	// any settings would be replaced or deleted.
-	Reset bool `json:"reset"`
+	Reset bool `json:"reset" yaml:"reset"`
 
 	// AllowUnknown allows the import of unknown settings.
 	// Otherwise, attempting to import an unknown setting will result in an error.
-	AllowUnknown bool `json:"allowUnknown"`
+	AllowUnknown bool `json:"allowUnknown" yaml:"allowUnknown"`
 
-	Export *SettingsExport `json:"export"`
+	Export *SettingsExport `json:"export" yaml:"export"`
 }
 
 func registerSettingsAPI() error {

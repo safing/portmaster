@@ -12,49 +12,49 @@ import (
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/profile"
+	"github.com/vincent-petithory/dataurl"
 )
 
 // ProfileExport holds an export of a profile.
 type ProfileExport struct { //nolint:maligned
-	Type Type `json:"type"`
+	Type Type `json:"type" yaml:"type"`
 
 	// Identification
-	ID     string                `json:"id,omitempty"`
-	Source profile.ProfileSource `json:"source,omitempty"`
+	ID     string                `json:"id,omitempty"     yaml:"id,omitempty"`
+	Source profile.ProfileSource `json:"source,omitempty" yaml:"source,omitempty"`
 
 	// Human Metadata
-	Name                string        `json:"name"`
-	Description         string        `json:"description,omitempty"`
-	Homepage            string        `json:"homepage,omitempty"`
-	Icons               []ProfileIcon `json:"icons,omitempty"`
-	PresentationPath    string        `json:"presPath,omitempty"`
-	UsePresentationPath bool          `json:"usePresPath,omitempty"`
+	Name                string `json:"name"                  yaml:"name"`
+	Description         string `json:"description,omitempty" yaml:"description,omitempty"`
+	Homepage            string `json:"homepage,omitempty"    yaml:"homepage,omitempty"`
+	PresentationPath    string `json:"presPath,omitempty"    yaml:"presPath,omitempty"`
+	UsePresentationPath bool   `json:"usePresPath,omitempty" yaml:"usePresPath,omitempty"`
+	IconData            string `json:"iconData,omitempty"    yaml:"iconData,omitempty"` // DataURL
 
 	// Process matching
-	Fingerprints []ProfileFingerprint `json:"fingerprints"`
+	Fingerprints []ProfileFingerprint `json:"fingerprints" yaml:"fingerprints"`
 
 	// Settings
-	Config map[string]any `json:"config,omitempty"`
+	Config map[string]any `json:"config,omitempty" yaml:"config,omitempty"`
 
 	// Metadata
-	LastEdited *time.Time `json:"lastEdited,omitempty"`
-	Created    *time.Time `json:"created,omitempty"`
-	Internal   bool       `json:"internal,omitempty"`
+	LastEdited *time.Time `json:"lastEdited,omitempty" yaml:"lastEdited,omitempty"`
+	Created    *time.Time `json:"created,omitempty"    yaml:"created,omitempty"`
+	Internal   bool       `json:"internal,omitempty"   yaml:"internal,omitempty"`
 }
 
-// ProfileIcon represents a profile icon.
+// ProfileIcon represents a profile icon only.
 type ProfileIcon struct {
-	Type  profile.IconType `json:"type"`
-	Value string           `json:"value"`
+	IconData string `json:"iconData,omitempty" yaml:"iconData,omitempty"` // DataURL
 }
 
 // ProfileFingerprint represents a profile fingerprint.
 type ProfileFingerprint struct {
-	Type       string `json:"type"`
-	Key        string `json:"key,omitempty"`
-	Operation  string `json:"operation"`
-	Value      string `json:"value"`
-	MergedFrom string `json:"mergedFrom,omitempty"`
+	Type       string `json:"type"                 yaml:"type"`
+	Key        string `json:"key,omitempty"        yaml:"key,omitempty"`
+	Operation  string `json:"operation"            yaml:"operation"`
+	Value      string `json:"value"                yaml:"value"`
+	MergedFrom string `json:"mergedFrom,omitempty" yaml:"mergedFrom,omitempty"`
 }
 
 // ProfileExportRequest is a request for a profile export.
@@ -124,7 +124,8 @@ func registerProfileAPI() error {
 				Method:      http.MethodPost,
 				Field:       "allowUnknown",
 				Description: "Allow importing of unknown values.",
-			}},
+			},
+		},
 		BelongsTo:  module,
 		StructFunc: handleImportProfile,
 	}); err != nil {
@@ -161,7 +162,7 @@ func handleExportProfile(ar *api.Request) (data []byte, err error) {
 		return nil, err
 	}
 
-	return serializeExport(export, ar)
+	return serializeProfileExport(export, ar)
 }
 
 func handleImportProfile(ar *api.Request) (any, error) {
@@ -230,7 +231,6 @@ func ExportProfile(scopedID string) (*ProfileExport, error) {
 		Name:                p.Name,
 		Description:         p.Description,
 		Homepage:            p.Homepage,
-		Icons:               convertIconsToExport(p.Icons),
 		PresentationPath:    p.PresentationPath,
 		UsePresentationPath: p.UsePresentationPath,
 
@@ -253,6 +253,22 @@ func ExportProfile(scopedID string) (*ProfileExport, error) {
 		export.Created = &created
 	}
 
+	// Add first exportable icon to export.
+	if len(p.Icons) > 0 {
+		var err error
+		for _, icon := range p.Icons {
+			var iconDataURL string
+			iconDataURL, err = icon.GetIconAsDataURL()
+			if err == nil {
+				export.IconData = iconDataURL
+				break
+			}
+		}
+		if err != nil {
+			return nil, fmt.Errorf("%w: failed to export icon: %w", ErrExportFailed, err)
+		}
+	}
+
 	return export, nil
 }
 
@@ -272,9 +288,8 @@ func ImportProfile(r *ProfileImportRequest, requiredProfileSource profile.Profil
 	profileID := profile.DeriveProfileID(fingerprints)
 	if r.Export.ID != "" && r.Export.ID != profileID {
 		return nil, ErrMismatch
-	} else {
-		r.Export.ID = profileID
 	}
+	r.Export.ID = profileID
 	// Check Fingerprints.
 	_, err := profile.ParseFingerprints(fingerprints, "")
 	if err != nil {
@@ -349,7 +364,6 @@ func ImportProfile(r *ProfileImportRequest, requiredProfileSource profile.Profil
 		Name:                in.Name,
 		Description:         in.Description,
 		Homepage:            in.Homepage,
-		Icons:               convertIconsToInternal(in.Icons),
 		PresentationPath:    in.PresentationPath,
 		UsePresentationPath: in.UsePresentationPath,
 
@@ -370,6 +384,22 @@ func ImportProfile(r *ProfileImportRequest, requiredProfileSource profile.Profil
 		p.Created = in.Created.Unix()
 	}
 
+	// Add icon to profile, if set.
+	if in.IconData != "" {
+		du, err := dataurl.DecodeString(in.IconData)
+		if err != nil {
+			return nil, fmt.Errorf("%w: icon data is invalid: %w", ErrImportFailed, err)
+		}
+		filename, err := profile.UpdateProfileIcon(du.Data, du.MediaType.Subtype)
+		if err != nil {
+			return nil, fmt.Errorf("%w: icon is invalid: %w", ErrImportFailed, err)
+		}
+		p.Icons = []profile.Icon{{
+			Type:  profile.IconTypeAPI,
+			Value: filename,
+		}}
+	}
+
 	// Save profile to db.
 	p.SetKey(profile.MakeProfileKey(p.Source, p.ID))
 	err = p.Save()
@@ -386,28 +416,6 @@ func ImportProfile(r *ProfileImportRequest, requiredProfileSource profile.Profil
 	}
 
 	return result, nil
-}
-
-func convertIconsToExport(icons []profile.Icon) []ProfileIcon {
-	converted := make([]ProfileIcon, 0, len(icons))
-	for _, icon := range icons {
-		converted = append(converted, ProfileIcon{
-			Type:  icon.Type,
-			Value: icon.Value,
-		})
-	}
-	return converted
-}
-
-func convertIconsToInternal(icons []ProfileIcon) []profile.Icon {
-	converted := make([]profile.Icon, 0, len(icons))
-	for _, icon := range icons {
-		converted = append(converted, profile.Icon{
-			Type:  icon.Type,
-			Value: icon.Value,
-		})
-	}
-	return converted
 }
 
 func convertFingerprintsToExport(fingerprints []profile.Fingerprint) []ProfileFingerprint {

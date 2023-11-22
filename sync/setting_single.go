@@ -15,10 +15,10 @@ import (
 
 // SingleSettingExport holds an export of a single setting.
 type SingleSettingExport struct {
-	Type Type   `json:"type"` // Must be TypeSingleSetting
-	ID   string `json:"id"`   // Settings Key
+	Type Type   `json:"type" yaml:"type"` // Must be TypeSingleSetting
+	ID   string `json:"id"   yaml:"id"`   // Settings Key
 
-	Value any `json:"value"`
+	Value any `json:"value" yaml:"value"`
 }
 
 // SingleSettingImportRequest is a request to import a single setting.

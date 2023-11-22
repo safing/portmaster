@@ -1,12 +1,16 @@
 package sync
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 
+	yaml "gopkg.in/yaml.v3"
+
 	"github.com/safing/jess/filesig"
 	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/container"
 	"github.com/safing/portbase/formats/dsd"
 )
 
@@ -101,28 +105,85 @@ var (
 	)
 )
 
-func serializeExport(export any, ar *api.Request) ([]byte, error) {
-	// Serialize data.
-	data, mimeType, format, err := dsd.MimeDump(export, ar.Header.Get("Accept"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize data: %w", err)
-	}
-	ar.ResponseHeader.Set("Content-Type", mimeType)
+func serializeExport(export any, ar *api.Request) (data []byte, err error) {
+	// Get format.
+	format := dsd.FormatFromAccept(ar.Header.Get("Accept"))
 
-	// Add checksum.
+	// Serialize and add checksum.
 	switch format {
 	case dsd.JSON:
-		data, err = filesig.AddJSONChecksum(data)
+		data, err = json.Marshal(export)
+		if err == nil {
+			data, err = filesig.AddJSONChecksum(data)
+		}
 	case dsd.YAML:
-		data, err = filesig.AddYAMLChecksum(data, filesig.TextPlacementBottom)
+		data, err = yaml.Marshal(export)
+		if err == nil {
+			data, err = filesig.AddYAMLChecksum(data, filesig.TextPlacementBottom)
+		}
 	default:
 		return nil, dsd.ErrIncompatibleFormat
 	}
 	if err != nil {
+		return nil, fmt.Errorf("failed to serialize: %w", err)
+	}
+
+	// Set Content-Type HTTP Header.
+	ar.ResponseHeader.Set("Content-Type", dsd.FormatToMimeType[format])
+
+	return data, nil
+}
+
+func serializeProfileExport(export *ProfileExport, ar *api.Request) ([]byte, error) {
+	// Do a regular serialize, if we don't need parts.
+	switch {
+	case export.IconData == "":
+		// With no icon, do a regular export.
+		return serializeExport(export, ar)
+	case dsd.FormatFromAccept(ar.Header.Get("Accept")) != dsd.YAML:
+		// Only export in parts for yaml.
+		return serializeExport(export, ar)
+	}
+
+	// Step 1: Separate profile icon.
+	profileIconExport := &ProfileIcon{
+		IconData: export.IconData,
+	}
+	export.IconData = ""
+
+	// Step 2: Serialize main export.
+	profileData, err := yaml.Marshal(export)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize profile data: %w", err)
+	}
+
+	// Step 3: Serialize icon only.
+	iconData, err := yaml.Marshal(profileIconExport)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize profile icon: %w", err)
+	}
+
+	// Step 4: Stitch data together and add copyright notice for icon.
+	exportData := container.New(
+		profileData,
+		[]byte(`
+# The application icon below is the property of its respective owner.
+# The icon is used for identification purposes only, and does not imply any endorsement or affiliation with their respective owners.
+# It is the sole responsibility of the individual or entity sharing this dataset to ensure they have the necessary permissions to do so.
+`),
+		iconData,
+	).CompileData()
+
+	// Step 4: Add checksum.
+	exportData, err = filesig.AddYAMLChecksum(exportData, filesig.TextPlacementBottom)
+	if err != nil {
 		return nil, fmt.Errorf("failed to add checksum: %w", err)
 	}
 
-	return data, nil
+	// Set Content-Type HTTP Header.
+	ar.ResponseHeader.Set("Content-Type", dsd.FormatToMimeType[dsd.YAML])
+
+	return exportData, nil
 }
 
 func parseExport(request *ImportRequest, export any) error {

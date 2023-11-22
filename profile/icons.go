@@ -17,6 +17,11 @@ var profileIconStoragePath = ""
 
 // GetProfileIcon returns the profile icon with the given ID and extension.
 func GetProfileIcon(name string) (data []byte, err error) {
+	// Check if enabled.
+	if profileIconStoragePath == "" {
+		return nil, errors.New("api icon storage not configured")
+	}
+
 	// Build storage path.
 	iconPath := filepath.Clean(
 		filepath.Join(profileIconStoragePath, name),
