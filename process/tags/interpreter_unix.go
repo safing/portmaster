@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/google/shlex"
 
+	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
 )
@@ -24,7 +26,8 @@ func init() {
 type interpType struct {
 	process.TagDescription
 
-	Regex *regexp.Regexp
+	Extensions []string
+	Regex      *regexp.Regexp
 }
 
 var knownInterperters = []interpType{
@@ -33,35 +36,40 @@ var knownInterperters = []interpType{
 			ID:   "python-script",
 			Name: "Python Script",
 		},
-		Regex: regexp.MustCompile(`^(/usr)?/bin/python[23]\.[0-9]+$`),
+		Extensions: []string{".py", ".py2", ".py3"},
+		Regex:      regexp.MustCompile(`^(/usr)?/bin/python[23](\.[0-9]+)?$`),
 	},
 	{
 		TagDescription: process.TagDescription{
 			ID:   "shell-script",
 			Name: "Shell Script",
 		},
-		Regex: regexp.MustCompile(`^(/usr)?/bin/(ba|k|z|a)?sh$`),
+		Extensions: []string{".sh", ".bash", ".ksh", ".zsh", ".ash"},
+		Regex:      regexp.MustCompile(`^(/usr)?/bin/(ba|k|z|a)?sh$`),
 	},
 	{
 		TagDescription: process.TagDescription{
 			ID:   "perl-script",
 			Name: "Perl Script",
 		},
-		Regex: regexp.MustCompile(`^(/usr)?/bin/perl$`),
+		Extensions: []string{".pl"},
+		Regex:      regexp.MustCompile(`^(/usr)?/bin/perl$`),
 	},
 	{
 		TagDescription: process.TagDescription{
 			ID:   "ruby-script",
 			Name: "Ruby Script",
 		},
-		Regex: regexp.MustCompile(`^(/usr)?/bin/ruby$`),
+		Extensions: []string{".rb"},
+		Regex:      regexp.MustCompile(`^(/usr)?/bin/ruby$`),
 	},
 	{
 		TagDescription: process.TagDescription{
 			ID:   "nodejs-script",
 			Name: "NodeJS Script",
 		},
-		Regex: regexp.MustCompile(`^(/usr)?/bin/node(js)?$`),
+		Extensions: []string{".js"},
+		Regex:      regexp.MustCompile(`^(/usr)?/bin/node(js)?$`),
 	},
 	/*
 	   While similar to nodejs, electron is a bit harder as it uses a multiple processes
@@ -148,16 +156,23 @@ func (h *InterpHandler) CreateProfile(p *process.Process) *profile.Profile {
 				args = args[1:]
 			}
 
+			// Create a nice script name from filename.
+			scriptName := filepath.Base(args[0])
+			for _, ext := range it.Extensions {
+				scriptName, _ = strings.CutSuffix(scriptName, ext)
+			}
+			scriptName = osdetail.GenerateBinaryNameFromPath(scriptName)
+
 			return profile.New(&profile.Profile{
 				Source:              profile.SourceLocal,
-				Name:                fmt.Sprintf("%s: %s", it.Name, args[0]),
+				Name:                fmt.Sprintf("%s: %s", it.Name, scriptName),
 				PresentationPath:    tag.Value,
 				UsePresentationPath: true,
 				Fingerprints: []profile.Fingerprint{
 					{
 						Type:      profile.FingerprintTypeTagID,
-						Operation: profile.FingerprintOperationEqualsID,
 						Key:       it.ID,
+						Operation: profile.FingerprintOperationEqualsID,
 						Value:     tag.Value,
 					},
 				},
