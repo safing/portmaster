@@ -103,6 +103,7 @@ var iconDB = database.NewInterface(&database.Options{
 	Internal: true,
 })
 
+// IconInDatabase represents an icon saved to the database.
 type IconInDatabase struct {
 	sync.Mutex
 	record.Base

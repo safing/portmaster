@@ -8,11 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vincent-petithory/dataurl"
+
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/profile"
-	"github.com/vincent-petithory/dataurl"
 )
 
 // ProfileExport holds an export of a profile.

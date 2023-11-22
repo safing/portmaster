@@ -257,7 +257,7 @@ profileFeed:
 	return profile, nil
 }
 
-func loadProfileFingerprints(r record.Record) (parsed *parsedFingerprints, err error) {
+func loadProfileFingerprints(r record.Record) (parsed *ParsedFingerprints, err error) {
 	// Ensure it's a profile.
 	profile, err := EnsureProfile(r)
 	if err != nil {

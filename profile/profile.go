@@ -21,7 +21,7 @@ import (
 )
 
 // ProfileSource is the source of the profile.
-type ProfileSource string
+type ProfileSource string //nolint:golint
 
 // Profile Sources.
 const (

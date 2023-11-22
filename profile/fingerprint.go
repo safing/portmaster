@@ -163,7 +163,8 @@ func (fp fingerprintRegex) Match(value string) (score int) {
 	return 0
 }
 
-type parsedFingerprints struct {
+// ParsedFingerprints holds parsed fingerprints for fast usage.
+type ParsedFingerprints struct {
 	tagPrints     []matchingFingerprint
 	envPrints     []matchingFingerprint
 	pathPrints    []matchingFingerprint
@@ -171,8 +172,8 @@ type parsedFingerprints struct {
 }
 
 // ParseFingerprints parses the fingerprints to make them ready for matching.
-func ParseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *parsedFingerprints, firstErr error) {
-	parsed = &parsedFingerprints{}
+func ParseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *ParsedFingerprints, firstErr error) {
+	parsed = &ParsedFingerprints{}
 
 	// Add deprecated LinkedPath to fingerprints, if they are empty.
 	// TODO: Remove in v1.5
@@ -239,7 +240,7 @@ func ParseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *
 	return parsed, firstErr
 }
 
-func (parsed *parsedFingerprints) addMatchingFingerprint(fp Fingerprint, matchingPrint matchingFingerprint) {
+func (parsed *ParsedFingerprints) addMatchingFingerprint(fp Fingerprint, matchingPrint matchingFingerprint) {
 	switch fp.Type {
 	case FingerprintTypeTagID:
 		parsed.tagPrints = append(parsed.tagPrints, matchingPrint)
@@ -257,7 +258,7 @@ func (parsed *parsedFingerprints) addMatchingFingerprint(fp Fingerprint, matchin
 
 // MatchFingerprints returns the highest matching score of the given
 // fingerprints and matching data.
-func MatchFingerprints(prints *parsedFingerprints, md MatchingData) (highestScore int) {
+func MatchFingerprints(prints *ParsedFingerprints, md MatchingData) (highestScore int) {
 	// Check tags.
 	tags := md.Tags()
 	if len(tags) > 0 {

@@ -116,6 +116,7 @@ type updateProfileIconResponse struct {
 	Filename string `json:"filename"`
 }
 
+//nolint:goconst
 func handleUpdateProfileIcon(ar *api.Request) (any, error) {
 	// Check input.
 	if len(ar.InputData) == 0 {
