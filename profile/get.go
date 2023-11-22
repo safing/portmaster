@@ -35,7 +35,7 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 	// Get active profile based on the ID, if available.
 	if id != "" {
 		// Check if there already is an active profile.
-		profile = getActiveProfile(makeScopedID(SourceLocal, id))
+		profile = getActiveProfile(MakeScopedID(SourceLocal, id))
 		if profile != nil {
 			// Mark active and return if not outdated.
 			if profile.outdated.IsNotSet() {
@@ -57,9 +57,9 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 			return nil, errors.New("cannot get local profiles without ID and matching data")
 		}
 
-		profile, err = getProfile(makeScopedID(SourceLocal, id))
+		profile, err = getProfile(MakeScopedID(SourceLocal, id))
 		if err != nil {
-			return nil, fmt.Errorf("failed to load profile %s by ID: %w", makeScopedID(SourceLocal, id), err)
+			return nil, fmt.Errorf("failed to load profile %s by ID: %w", MakeScopedID(SourceLocal, id), err)
 		}
 	}
 
@@ -70,7 +70,7 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 
 		// Get special profile from DB.
 		if profile == nil {
-			profile, err = getProfile(makeScopedID(SourceLocal, id))
+			profile, err = getProfile(MakeScopedID(SourceLocal, id))
 			if err != nil && !errors.Is(err, database.ErrNotFound) {
 				log.Warningf("profile: failed to get special profile %s: %s", id, err)
 			}
@@ -188,12 +188,12 @@ func getProfile(scopedID string) (profile *Profile, err error) {
 
 // findProfile searches for a profile with the given linked path. If it cannot
 // find one, it will create a new profile for the given linked path.
-func findProfile(source profileSource, md MatchingData) (profile *Profile, err error) {
+func findProfile(source ProfileSource, md MatchingData) (profile *Profile, err error) {
 	// TODO: Loading every profile from database and parsing it for every new
 	// process might be quite expensive. Measure impact and possibly improve.
 
 	// Get iterator over all profiles.
-	it, err := profileDB.Query(query.New(ProfilesDBPath + makeScopedID(source, "")))
+	it, err := profileDB.Query(query.New(ProfilesDBPath + MakeScopedID(source, "")))
 	if err != nil {
 		return nil, fmt.Errorf("failed to query for profiles: %w", err)
 	}
@@ -257,7 +257,7 @@ profileFeed:
 	return profile, nil
 }
 
-func loadProfileFingerprints(r record.Record) (parsed *parsedFingerprints, err error) {
+func loadProfileFingerprints(r record.Record) (parsed *ParsedFingerprints, err error) {
 	// Ensure it's a profile.
 	profile, err := EnsureProfile(r)
 	if err != nil {
@@ -265,7 +265,7 @@ func loadProfileFingerprints(r record.Record) (parsed *parsedFingerprints, err e
 	}
 
 	// Parse and return fingerprints.
-	return parseFingerprints(profile.Fingerprints, profile.LinkedPath)
+	return ParseFingerprints(profile.Fingerprints, profile.LinkedPath)
 }
 
 func loadProfile(r record.Record) (*Profile, error) {

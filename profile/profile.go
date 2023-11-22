@@ -20,13 +20,13 @@ import (
 	"github.com/safing/portmaster/profile/endpoints"
 )
 
-// profileSource is the source of the profile.
-type profileSource string
+// ProfileSource is the source of the profile.
+type ProfileSource string //nolint:golint
 
 // Profile Sources.
 const (
-	SourceLocal   profileSource = "local"   // local, editable
-	SourceSpecial profileSource = "special" // specials (read-only)
+	SourceLocal   ProfileSource = "local"   // local, editable
+	SourceSpecial ProfileSource = "special" // specials (read-only)
 )
 
 // Default Action IDs.
@@ -45,7 +45,7 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// ID is a unique identifier for the profile.
 	ID string // constant
 	// Source describes the source of the profile.
-	Source profileSource // constant
+	Source ProfileSource // constant
 	// Name is a human readable name of the profile. It
 	// defaults to the basename of the application.
 	Name string
@@ -262,7 +262,7 @@ func New(profile *Profile) *Profile {
 	if profile.ID == "" {
 		if len(profile.Fingerprints) > 0 {
 			// Derive from fingerprints.
-			profile.ID = deriveProfileID(profile.Fingerprints)
+			profile.ID = DeriveProfileID(profile.Fingerprints)
 		} else {
 			// Generate random ID as fallback.
 			log.Warningf("profile: creating new profile without fingerprints to derive ID from")
@@ -284,12 +284,12 @@ func New(profile *Profile) *Profile {
 
 // ScopedID returns the scoped ID (Source + ID) of the profile.
 func (profile *Profile) ScopedID() string {
-	return makeScopedID(profile.Source, profile.ID)
+	return MakeScopedID(profile.Source, profile.ID)
 }
 
 // makeKey derives and sets the record Key from the profile attributes.
 func (profile *Profile) makeKey() {
-	profile.SetKey(makeProfileKey(profile.Source, profile.ID))
+	profile.SetKey(MakeProfileKey(profile.Source, profile.ID))
 }
 
 // Save saves the profile to the database.

@@ -67,7 +67,7 @@ type (
 		// merged from. The merged profile should create a new profile ID derived
 		// from the new fingerprints and add all fingerprints with this field set
 		// to the originating profile ID
-		MergedFrom string
+		MergedFrom string // `json:"mergedFrom,omitempty"`
 	}
 
 	// Tag represents a simple key/value kind of tag used in process metadata
@@ -163,15 +163,17 @@ func (fp fingerprintRegex) Match(value string) (score int) {
 	return 0
 }
 
-type parsedFingerprints struct {
+// ParsedFingerprints holds parsed fingerprints for fast usage.
+type ParsedFingerprints struct {
 	tagPrints     []matchingFingerprint
 	envPrints     []matchingFingerprint
 	pathPrints    []matchingFingerprint
 	cmdlinePrints []matchingFingerprint
 }
 
-func parseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *parsedFingerprints, firstErr error) {
-	parsed = &parsedFingerprints{}
+// ParseFingerprints parses the fingerprints to make them ready for matching.
+func ParseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *ParsedFingerprints, firstErr error) {
+	parsed = &ParsedFingerprints{}
 
 	// Add deprecated LinkedPath to fingerprints, if they are empty.
 	// TODO: Remove in v1.5
@@ -230,7 +232,7 @@ func parseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *
 
 		default:
 			if firstErr == nil {
-				firstErr = fmt.Errorf("unknown fingerprint operation: %q", entry.Type)
+				firstErr = fmt.Errorf("unknown fingerprint operation: %q", entry.Operation)
 			}
 		}
 	}
@@ -238,7 +240,7 @@ func parseFingerprints(raw []Fingerprint, deprecatedLinkedPath string) (parsed *
 	return parsed, firstErr
 }
 
-func (parsed *parsedFingerprints) addMatchingFingerprint(fp Fingerprint, matchingPrint matchingFingerprint) {
+func (parsed *ParsedFingerprints) addMatchingFingerprint(fp Fingerprint, matchingPrint matchingFingerprint) {
 	switch fp.Type {
 	case FingerprintTypeTagID:
 		parsed.tagPrints = append(parsed.tagPrints, matchingPrint)
@@ -256,7 +258,7 @@ func (parsed *parsedFingerprints) addMatchingFingerprint(fp Fingerprint, matchin
 
 // MatchFingerprints returns the highest matching score of the given
 // fingerprints and matching data.
-func MatchFingerprints(prints *parsedFingerprints, md MatchingData) (highestScore int) {
+func MatchFingerprints(prints *ParsedFingerprints, md MatchingData) (highestScore int) {
 	// Check tags.
 	tags := md.Tags()
 	if len(tags) > 0 {
@@ -367,7 +369,8 @@ const (
 	deriveFPKeyIDForValue
 )
 
-func deriveProfileID(fps []Fingerprint) string {
+// DeriveProfileID derives a profile ID from the given fingerprints.
+func DeriveProfileID(fps []Fingerprint) string {
 	// Sort the fingerprints.
 	sortAndCompactFingerprints(fps)
 

@@ -47,7 +47,7 @@ func TestDeriveProfileID(t *testing.T) {
 		})
 
 		// Check if fingerprint matches.
-		id := deriveProfileID(fps)
+		id := DeriveProfileID(fps)
 		assert.Equal(t, "PTSRP7rdCnmvdjRoPMTrtjj7qk7PxR1a9YdBWUGwnZXJh2", id)
 	}
 }

@@ -2,10 +2,12 @@ package profile
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/database/migration"
+	"github.com/safing/portbase/dataroot"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	_ "github.com/safing/portmaster/core/base"
@@ -44,6 +46,13 @@ func prep() error {
 	if err := registerMigrations(); err != nil {
 		return err
 	}
+
+	// Setup icon storage location.
+	iconsDir := dataroot.Root().ChildDir("databases", 0o0700).ChildDir("icons", 0o0700)
+	if err := iconsDir.Ensure(); err != nil {
+		return fmt.Errorf("failed to create/check icons directory: %w", err)
+	}
+	profileIconStoragePath = iconsDir.Path
 
 	return nil
 }

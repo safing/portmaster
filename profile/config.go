@@ -672,7 +672,7 @@ Current Features:
 - Disable Firefox' internal DNS-over-HTTPs resolver
 - Block direct access to public DNS resolvers
 
-Please note that DNS bypass attempts might be additionally blocked in the Sytem D there too.`,
+Please note that DNS bypass attempts might be additionally blocked in the System DNS Client App.`,
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelStable,

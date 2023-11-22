@@ -208,7 +208,7 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 
 		// Generate new ID.
 		oldScopedID := profile.ScopedID()
-		newID := deriveProfileID(profile.Fingerprints)
+		newID := DeriveProfileID(profile.Fingerprints)
 
 		// If they match, skip migration for this profile.
 		if profile.ID == newID {

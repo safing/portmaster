@@ -86,6 +86,7 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
+	github.com/vincent-petithory/dataurl v1.0.0 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.0 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
