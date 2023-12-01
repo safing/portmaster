@@ -34,25 +34,25 @@ var (
 	// Network Scopes.
 
 	CfgOptionBlockScopeInternetKey   = "filter/blockInternet"
-	cfgOptionBlockScopeInternet      config.IntOption // security level option
+	cfgOptionBlockScopeInternet      config.BoolOption
 	cfgOptionBlockScopeInternetOrder = 16
 
 	CfgOptionBlockScopeLANKey   = "filter/blockLAN"
-	cfgOptionBlockScopeLAN      config.IntOption // security level option
+	cfgOptionBlockScopeLAN      config.BoolOption
 	cfgOptionBlockScopeLANOrder = 17
 
 	CfgOptionBlockScopeLocalKey   = "filter/blockLocal"
-	cfgOptionBlockScopeLocal      config.IntOption // security level option
+	cfgOptionBlockScopeLocal      config.BoolOption
 	cfgOptionBlockScopeLocalOrder = 18
 
 	// Connection Types.
 
 	CfgOptionBlockP2PKey   = "filter/blockP2P"
-	cfgOptionBlockP2P      config.IntOption // security level option
+	cfgOptionBlockP2P      config.BoolOption
 	cfgOptionBlockP2POrder = 19
 
 	CfgOptionBlockInboundKey   = "filter/blockInbound"
-	cfgOptionBlockInbound      config.IntOption // security level option
+	cfgOptionBlockInbound      config.BoolOption
 	cfgOptionBlockInboundOrder = 20
 
 	// Rules.
@@ -72,35 +72,35 @@ var (
 	// Setting "Custom Filter List" at order 35.
 
 	CfgOptionFilterSubDomainsKey   = "filter/includeSubdomains"
-	cfgOptionFilterSubDomains      config.IntOption // security level option
+	cfgOptionFilterSubDomains      config.BoolOption
 	cfgOptionFilterSubDomainsOrder = 36
 
 	// DNS Filtering.
 
 	CfgOptionFilterCNAMEKey   = "filter/includeCNAMEs"
-	cfgOptionFilterCNAME      config.IntOption // security level option
+	cfgOptionFilterCNAME      config.BoolOption
 	cfgOptionFilterCNAMEOrder = 48
 
 	CfgOptionRemoveOutOfScopeDNSKey   = "filter/removeOutOfScopeDNS"
-	cfgOptionRemoveOutOfScopeDNS      config.IntOption // security level option
+	cfgOptionRemoveOutOfScopeDNS      config.BoolOption
 	cfgOptionRemoveOutOfScopeDNSOrder = 49
 
 	CfgOptionRemoveBlockedDNSKey   = "filter/removeBlockedDNS"
-	cfgOptionRemoveBlockedDNS      config.IntOption // security level option
+	cfgOptionRemoveBlockedDNS      config.BoolOption
 	cfgOptionRemoveBlockedDNSOrder = 50
 
 	CfgOptionDomainHeuristicsKey   = "filter/domainHeuristics"
-	cfgOptionDomainHeuristics      config.IntOption // security level option
+	cfgOptionDomainHeuristics      config.BoolOption
 	cfgOptionDomainHeuristicsOrder = 51
 
 	// Advanced.
 
 	CfgOptionPreventBypassingKey   = "filter/preventBypassing"
-	cfgOptionPreventBypassing      config.IntOption // security level option
+	cfgOptionPreventBypassing      config.BoolOption
 	cfgOptionPreventBypassingOrder = 64
 
 	CfgOptionDisableAutoPermitKey   = "filter/disableAutoPermit"
-	cfgOptionDisableAutoPermit      config.IntOption // security level option
+	cfgOptionDisableAutoPermit      config.BoolOption
 	cfgOptionDisableAutoPermitOrder = 65
 
 	// Setting "Permanent Verdicts" at order 80.
@@ -142,22 +142,6 @@ var (
 
 	// Setting "DNS Exit Node Rules" at order 148.
 )
-
-// A list of all security level settings.
-var securityLevelSettings = []string{
-	CfgOptionBlockScopeInternetKey,
-	CfgOptionBlockScopeLANKey,
-	CfgOptionBlockScopeLocalKey,
-	CfgOptionBlockP2PKey,
-	CfgOptionBlockInboundKey,
-	CfgOptionFilterSubDomainsKey,
-	CfgOptionFilterCNAMEKey,
-	CfgOptionRemoveOutOfScopeDNSKey,
-	CfgOptionRemoveBlockedDNSKey,
-	CfgOptionDomainHeuristicsKey,
-	CfgOptionPreventBypassingKey,
-	CfgOptionDisableAutoPermitKey,
-}
 
 var (
 	// SPNRulesQuickSettings are now generated automatically shorty after start.
@@ -229,22 +213,22 @@ func registerConfiguration() error { //nolint:maintidx
 		Name:         "Disable Auto Allow",
 		Key:          CfgOptionDisableAutoPermitKey,
 		Description:  `Auto Allow searches for a relation between an app and the destination of a connection - if there is a correlation, the connection will be allowed.`,
-		OptType:      config.OptTypeInt,
+		OptType:      config.OptTypeBool,
 		ReleaseLevel: config.ReleaseLevelBeta,
-		DefaultValue: status.SecurityLevelsAll,
+		DefaultValue: true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayOrderAnnotation:   cfgOptionDisableAutoPermitOrder,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.CategoryAnnotation:       "Advanced",
 		},
-		PossibleValues: status.AllSecurityLevelValues,
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionDisableAutoPermit = config.Concurrent.GetAsInt(CfgOptionDisableAutoPermitKey, int64(status.SecurityLevelsAll))
-	cfgIntOptions[CfgOptionDisableAutoPermitKey] = cfgOptionDisableAutoPermit
+	cfgOptionDisableAutoPermit = config.Concurrent.GetAsBool(CfgOptionDisableAutoPermitKey, true)
+	cfgBoolOptions[CfgOptionDisableAutoPermitKey] = cfgOptionDisableAutoPermit
 
 	// Enable History
 	err = config.Register(&config.Option{
@@ -450,8 +434,8 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		Name:           "Block Domain Aliases",
 		Key:            CfgOptionFilterCNAMEKey,
 		Description:    "Block a domain if a resolved CNAME (alias) is blocked by a rule or filter list.",
-		OptType:        config.OptTypeInt,
-		DefaultValue:   status.SecurityLevelsAll,
+		OptType:        config.OptTypeBool,
+		DefaultValue:   true,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
@@ -459,206 +443,206 @@ Pro Tip: You can use "#" to add a comment to a rule.
 			config.DisplayOrderAnnotation:   cfgOptionFilterCNAMEOrder,
 			config.CategoryAnnotation:       "DNS Filtering",
 		},
-		PossibleValues: status.AllSecurityLevelValues,
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionFilterCNAME = config.Concurrent.GetAsInt(CfgOptionFilterCNAMEKey, int64(status.SecurityLevelsAll))
-	cfgIntOptions[CfgOptionFilterCNAMEKey] = cfgOptionFilterCNAME
+	cfgOptionFilterCNAME = config.Concurrent.GetAsBool(CfgOptionFilterCNAMEKey, true)
+	cfgBoolOptions[CfgOptionFilterCNAMEKey] = cfgOptionFilterCNAME
 
 	// Include subdomains
 	err = config.Register(&config.Option{
-		Name:           "Block Subdomains of Filter List Entries",
-		Key:            CfgOptionFilterSubDomainsKey,
-		Description:    "Additionally block all subdomains of entries in selected filter lists.",
-		OptType:        config.OptTypeInt,
-		DefaultValue:   status.SecurityLevelsAll,
-		PossibleValues: status.AllSecurityLevelValues,
+		Name:         "Block Subdomains of Filter List Entries",
+		Key:          CfgOptionFilterSubDomainsKey,
+		Description:  "Additionally block all subdomains of entries in selected filter lists.",
+		OptType:      config.OptTypeBool,
+		DefaultValue: true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionFilterSubDomainsOrder,
 			config.CategoryAnnotation:       "Filter Lists",
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionFilterSubDomains = config.Concurrent.GetAsInt(CfgOptionFilterSubDomainsKey, int64(status.SecurityLevelsAll))
-	cfgIntOptions[CfgOptionFilterSubDomainsKey] = cfgOptionFilterSubDomains
+	cfgOptionFilterSubDomains = config.Concurrent.GetAsBool(CfgOptionFilterSubDomainsKey, true)
+	cfgBoolOptions[CfgOptionFilterSubDomainsKey] = cfgOptionFilterSubDomains
 
 	// Block Scope Local
 	err = config.Register(&config.Option{
 		Name:           "Force Block Device-Local Connections",
 		Key:            CfgOptionBlockScopeLocalKey,
 		Description:    "Force Block all internal connections on your own device, ie. localhost. Is stronger than Rules (see below).",
-		OptType:        config.OptTypeInt,
+		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
-		DefaultValue:   status.SecurityLevelOff,
-		PossibleValues: status.AllSecurityLevelValues,
+		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockScopeLocalOrder,
 			config.CategoryAnnotation:       "Network Scope",
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockScopeLocal = config.Concurrent.GetAsInt(CfgOptionBlockScopeLocalKey, int64(status.SecurityLevelOff))
-	cfgIntOptions[CfgOptionBlockScopeLocalKey] = cfgOptionBlockScopeLocal
+	cfgOptionBlockScopeLocal = config.Concurrent.GetAsBool(CfgOptionBlockScopeLocalKey, false)
+	cfgBoolOptions[CfgOptionBlockScopeLocalKey] = cfgOptionBlockScopeLocal
 
 	// Block Scope LAN
 	err = config.Register(&config.Option{
-		Name:           "Force Block LAN",
-		Key:            CfgOptionBlockScopeLANKey,
-		Description:    "Force Block all connections from and to the Local Area Network. Is stronger than Rules (see below).",
-		OptType:        config.OptTypeInt,
-		DefaultValue:   status.SecurityLevelOff,
-		PossibleValues: status.AllSecurityLevelValues,
+		Name:         "Force Block LAN",
+		Key:          CfgOptionBlockScopeLANKey,
+		Description:  "Force Block all connections from and to the Local Area Network. Is stronger than Rules (see below).",
+		OptType:      config.OptTypeBool,
+		DefaultValue: false,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockScopeLANOrder,
 			config.CategoryAnnotation:       "Network Scope",
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockScopeLAN = config.Concurrent.GetAsInt(CfgOptionBlockScopeLANKey, int64(status.SecurityLevelOff))
-	cfgIntOptions[CfgOptionBlockScopeLANKey] = cfgOptionBlockScopeLAN
+	cfgOptionBlockScopeLAN = config.Concurrent.GetAsBool(CfgOptionBlockScopeLANKey, false)
+	cfgBoolOptions[CfgOptionBlockScopeLANKey] = cfgOptionBlockScopeLAN
 
 	// Block Scope Internet
 	err = config.Register(&config.Option{
-		Name:           "Force Block Internet Access",
-		Key:            CfgOptionBlockScopeInternetKey,
-		Description:    "Force Block connections from and to the Internet. Is stronger than Rules (see below).",
-		OptType:        config.OptTypeInt,
-		DefaultValue:   status.SecurityLevelOff,
-		PossibleValues: status.AllSecurityLevelValues,
+		Name:         "Force Block Internet Access",
+		Key:          CfgOptionBlockScopeInternetKey,
+		Description:  "Force Block connections from and to the Internet. Is stronger than Rules (see below).",
+		OptType:      config.OptTypeBool,
+		DefaultValue: false,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockScopeInternetOrder,
 			config.CategoryAnnotation:       "Network Scope",
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockScopeInternet = config.Concurrent.GetAsInt(CfgOptionBlockScopeInternetKey, int64(status.SecurityLevelOff))
-	cfgIntOptions[CfgOptionBlockScopeInternetKey] = cfgOptionBlockScopeInternet
+	cfgOptionBlockScopeInternet = config.Concurrent.GetAsBool(CfgOptionBlockScopeInternetKey, false)
+	cfgBoolOptions[CfgOptionBlockScopeInternetKey] = cfgOptionBlockScopeInternet
 
 	// Block Peer to Peer Connections
 	err = config.Register(&config.Option{
-		Name:           "Force Block P2P/Direct Connections",
-		Key:            CfgOptionBlockP2PKey,
-		Description:    "These are connections that are established directly to an IP address or peer on the Internet without resolving a domain name via DNS first. Is stronger than Rules (see below).",
-		OptType:        config.OptTypeInt,
-		DefaultValue:   status.SecurityLevelOff,
-		PossibleValues: status.AllSecurityLevelValues,
+		Name:         "Force Block P2P/Direct Connections",
+		Key:          CfgOptionBlockP2PKey,
+		Description:  "These are connections that are established directly to an IP address or peer on the Internet without resolving a domain name via DNS first. Is stronger than Rules (see below).",
+		OptType:      config.OptTypeBool,
+		DefaultValue: false,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockP2POrder,
 			config.CategoryAnnotation:       "Connection Types",
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockP2P = config.Concurrent.GetAsInt(CfgOptionBlockP2PKey, int64(status.SecurityLevelOff))
-	cfgIntOptions[CfgOptionBlockP2PKey] = cfgOptionBlockP2P
+	cfgOptionBlockP2P = config.Concurrent.GetAsBool(CfgOptionBlockP2PKey, false)
+	cfgBoolOptions[CfgOptionBlockP2PKey] = cfgOptionBlockP2P
 
 	// Block Inbound Connections
 	err = config.Register(&config.Option{
-		Name:           "Force Block Incoming Connections",
-		Key:            CfgOptionBlockInboundKey,
-		Description:    "Connections initiated towards your device from the LAN or Internet. This will usually only be the case if you are running a network service or are using peer to peer software. Is stronger than Rules (see below).",
-		OptType:        config.OptTypeInt,
-		DefaultValue:   status.SecurityLevelsAll,
-		PossibleValues: status.AllSecurityLevelValues,
+		Name:         "Force Block Incoming Connections",
+		Key:          CfgOptionBlockInboundKey,
+		Description:  "Connections initiated towards your device from the LAN or Internet. This will usually only be the case if you are running a network service or are using peer to peer software. Is stronger than Rules (see below).",
+		OptType:      config.OptTypeBool,
+		DefaultValue: true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockInboundOrder,
 			config.CategoryAnnotation:       "Connection Types",
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionBlockInbound = config.Concurrent.GetAsInt(CfgOptionBlockInboundKey, int64(status.SecurityLevelOff))
-	cfgIntOptions[CfgOptionBlockInboundKey] = cfgOptionBlockInbound
+	cfgOptionBlockInbound = config.Concurrent.GetAsBool(CfgOptionBlockInboundKey, false)
+	cfgBoolOptions[CfgOptionBlockInboundKey] = cfgOptionBlockInbound
 
 	// Filter Out-of-Scope DNS Records
 	err = config.Register(&config.Option{
 		Name:           "Enforce Global/Private Split-View",
 		Key:            CfgOptionRemoveOutOfScopeDNSKey,
 		Description:    "Reject private IP addresses (RFC1918 et al.) from public DNS responses. If the system resolver is in use, the resulting connection will be blocked instead of the DNS request.",
-		OptType:        config.OptTypeInt,
+		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
-		DefaultValue:   status.SecurityLevelsAll,
-		PossibleValues: status.AllSecurityLevelValues,
+		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionRemoveOutOfScopeDNSOrder,
 			config.CategoryAnnotation:       "DNS Filtering",
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionRemoveOutOfScopeDNS = config.Concurrent.GetAsInt(CfgOptionRemoveOutOfScopeDNSKey, int64(status.SecurityLevelsAll))
-	cfgIntOptions[CfgOptionRemoveOutOfScopeDNSKey] = cfgOptionRemoveOutOfScopeDNS
+	cfgOptionRemoveOutOfScopeDNS = config.Concurrent.GetAsBool(CfgOptionRemoveOutOfScopeDNSKey, true)
+	cfgBoolOptions[CfgOptionRemoveOutOfScopeDNSKey] = cfgOptionRemoveOutOfScopeDNS
 
 	// Filter DNS Records that would be blocked
 	err = config.Register(&config.Option{
 		Name:           "Reject Blocked IPs",
 		Key:            CfgOptionRemoveBlockedDNSKey,
 		Description:    "Reject blocked IP addresses directly from the DNS response instead of handing them over to the app and blocking a resulting connection. This settings does not affect privacy and only takes effect when the system resolver is not in use.",
-		OptType:        config.OptTypeInt,
+		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
-		DefaultValue:   status.SecurityLevelsAll,
-		PossibleValues: status.AllSecurityLevelValues,
+		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionRemoveBlockedDNSOrder,
 			config.CategoryAnnotation:       "DNS Filtering",
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionRemoveBlockedDNS = config.Concurrent.GetAsInt(CfgOptionRemoveBlockedDNSKey, int64(status.SecurityLevelsAll))
-	cfgIntOptions[CfgOptionRemoveBlockedDNSKey] = cfgOptionRemoveBlockedDNS
+	cfgOptionRemoveBlockedDNS = config.Concurrent.GetAsBool(CfgOptionRemoveBlockedDNSKey, true)
+	cfgBoolOptions[CfgOptionRemoveBlockedDNSKey] = cfgOptionRemoveBlockedDNS
 
 	// Domain heuristics
 	err = config.Register(&config.Option{
 		Name:           "Enable Domain Heuristics",
 		Key:            CfgOptionDomainHeuristicsKey,
 		Description:    "Checks for suspicious domain names and blocks them. This option currently targets domain names generated by malware and DNS data exfiltration channels.",
-		OptType:        config.OptTypeInt,
+		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
-		DefaultValue:   status.SecurityLevelsAll,
-		PossibleValues: status.AllSecurityLevelValues,
+		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionDomainHeuristicsOrder,
 			config.CategoryAnnotation:       "DNS Filtering",
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionDomainHeuristics = config.Concurrent.GetAsInt(CfgOptionDomainHeuristicsKey, int64(status.SecurityLevelsAll))
-	cfgIntOptions[CfgOptionDomainHeuristicsKey] = cfgOptionDomainHeuristics
+	cfgOptionDomainHeuristics = config.Concurrent.GetAsBool(CfgOptionDomainHeuristicsKey, true)
+	cfgBoolOptions[CfgOptionDomainHeuristicsKey] = cfgOptionDomainHeuristics
 
 	// Bypass prevention
 	err = config.Register(&config.Option{
@@ -673,23 +657,23 @@ Current Features:
 - Block direct access to public DNS resolvers
 
 Please note that DNS bypass attempts might be additionally blocked in the System DNS Client App.`,
-		OptType:        config.OptTypeInt,
+		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelStable,
-		DefaultValue:   status.SecurityLevelsAll,
-		PossibleValues: status.AllSecurityLevelValues,
+		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionPreventBypassingOrder,
 			config.CategoryAnnotation:       "Advanced",
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	cfgOptionPreventBypassing = config.Concurrent.GetAsInt((CfgOptionPreventBypassingKey), int64(status.SecurityLevelsAll))
-	cfgIntOptions[CfgOptionPreventBypassingKey] = cfgOptionPreventBypassing
+	cfgOptionPreventBypassing = config.Concurrent.GetAsBool(CfgOptionPreventBypassingKey, true)
+	cfgBoolOptions[CfgOptionPreventBypassingKey] = cfgOptionPreventBypassing
 
 	// Use SPN
 	err = config.Register(&config.Option{

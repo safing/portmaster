@@ -11,7 +11,6 @@ import (
 	"github.com/safing/portbase/runtime"
 	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/profile/endpoints"
-	"github.com/safing/portmaster/status"
 )
 
 // LayeredProfile combines multiple Profiles.
@@ -66,51 +65,51 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 		securityLevel:      &securityLevelVal,
 	}
 
-	lp.DisableAutoPermit = lp.wrapSecurityLevelOption(
+	lp.DisableAutoPermit = lp.wrapBoolOption(
 		CfgOptionDisableAutoPermitKey,
 		cfgOptionDisableAutoPermit,
 	)
-	lp.BlockScopeLocal = lp.wrapSecurityLevelOption(
+	lp.BlockScopeLocal = lp.wrapBoolOption(
 		CfgOptionBlockScopeLocalKey,
 		cfgOptionBlockScopeLocal,
 	)
-	lp.BlockScopeLAN = lp.wrapSecurityLevelOption(
+	lp.BlockScopeLAN = lp.wrapBoolOption(
 		CfgOptionBlockScopeLANKey,
 		cfgOptionBlockScopeLAN,
 	)
-	lp.BlockScopeInternet = lp.wrapSecurityLevelOption(
+	lp.BlockScopeInternet = lp.wrapBoolOption(
 		CfgOptionBlockScopeInternetKey,
 		cfgOptionBlockScopeInternet,
 	)
-	lp.BlockP2P = lp.wrapSecurityLevelOption(
+	lp.BlockP2P = lp.wrapBoolOption(
 		CfgOptionBlockP2PKey,
 		cfgOptionBlockP2P,
 	)
-	lp.BlockInbound = lp.wrapSecurityLevelOption(
+	lp.BlockInbound = lp.wrapBoolOption(
 		CfgOptionBlockInboundKey,
 		cfgOptionBlockInbound,
 	)
-	lp.RemoveOutOfScopeDNS = lp.wrapSecurityLevelOption(
+	lp.RemoveOutOfScopeDNS = lp.wrapBoolOption(
 		CfgOptionRemoveOutOfScopeDNSKey,
 		cfgOptionRemoveOutOfScopeDNS,
 	)
-	lp.RemoveBlockedDNS = lp.wrapSecurityLevelOption(
+	lp.RemoveBlockedDNS = lp.wrapBoolOption(
 		CfgOptionRemoveBlockedDNSKey,
 		cfgOptionRemoveBlockedDNS,
 	)
-	lp.FilterSubDomains = lp.wrapSecurityLevelOption(
+	lp.FilterSubDomains = lp.wrapBoolOption(
 		CfgOptionFilterSubDomainsKey,
 		cfgOptionFilterSubDomains,
 	)
-	lp.FilterCNAMEs = lp.wrapSecurityLevelOption(
+	lp.FilterCNAMEs = lp.wrapBoolOption(
 		CfgOptionFilterCNAMEKey,
 		cfgOptionFilterCNAME,
 	)
-	lp.PreventBypassing = lp.wrapSecurityLevelOption(
+	lp.PreventBypassing = lp.wrapBoolOption(
 		CfgOptionPreventBypassingKey,
 		cfgOptionPreventBypassing,
 	)
-	lp.DomainHeuristics = lp.wrapSecurityLevelOption(
+	lp.DomainHeuristics = lp.wrapBoolOption(
 		CfgOptionDomainHeuristicsKey,
 		cfgOptionDomainHeuristics,
 	)
@@ -444,17 +443,6 @@ func (lp *LayeredProfile) MatchFilterLists(ctx context.Context, entity *intel.En
 	return endpoints.NoMatch, nil
 }
 
-func (lp *LayeredProfile) wrapSecurityLevelOption(configKey string, globalConfig config.IntOption) config.BoolOption {
-	activeAtLevels := lp.wrapIntOption(configKey, globalConfig)
-
-	return func() bool {
-		return uint8(activeAtLevels())&max(
-			lp.SecurityLevel(),           // layered profile security level
-			status.ActiveSecurityLevel(), // global security level
-		) > 0
-	}
-}
-
 func (lp *LayeredProfile) wrapBoolOption(configKey string, globalConfig config.BoolOption) config.BoolOption {
 	var revCnt uint64 = 0
 	var value bool
@@ -563,11 +551,4 @@ func (lp *LayeredProfile) wrapStringOption(configKey string, globalConfig config
 
 		return value
 	}
-}
-
-func max(a, b uint8) uint8 {
-	if a > b {
-		return a
-	}
-	return b
 }

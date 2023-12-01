@@ -58,7 +58,7 @@ var (
 	cfgOptionNameServersOrder = 0
 
 	CfgOptionNoAssignedNameserversKey   = "dns/noAssignedNameservers"
-	noAssignedNameservers               status.SecurityLevelOptionFunc
+	noAssignedNameservers               config.BoolOption
 	cfgOptionNoAssignedNameserversOrder = 1
 
 	CfgOptionUseStaleCacheKey   = "dns/useStaleCache"
@@ -67,15 +67,15 @@ var (
 	cfgOptionUseStaleCacheOrder = 2
 
 	CfgOptionNoMulticastDNSKey   = "dns/noMulticastDNS"
-	noMulticastDNS               status.SecurityLevelOptionFunc
+	noMulticastDNS               config.BoolOption
 	cfgOptionNoMulticastDNSOrder = 3
 
 	CfgOptionNoInsecureProtocolsKey   = "dns/noInsecureProtocols"
-	noInsecureProtocols               status.SecurityLevelOptionFunc
+	noInsecureProtocols               config.BoolOption
 	cfgOptionNoInsecureProtocolsOrder = 4
 
 	CfgOptionDontResolveSpecialDomainsKey   = "dns/dontResolveSpecialDomains"
-	dontResolveSpecialDomains               status.SecurityLevelOptionFunc
+	dontResolveSpecialDomains               config.BoolOption
 	cfgOptionDontResolveSpecialDomainsOrder = 16
 
 	CfgOptionNameserverRetryRateKey   = "dns/nameserverRetryRate"
@@ -201,22 +201,22 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 		Name:           "Ignore System/Network Servers",
 		Key:            CfgOptionNoAssignedNameserversKey,
 		Description:    "Ignore DNS servers configured in your system or network. This may break domains from your local network.",
-		OptType:        config.OptTypeInt,
+		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
-		DefaultValue:   status.SecurityLevelsHighAndExtreme,
-		PossibleValues: status.SecurityLevelValues,
+		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation:   cfgOptionNoAssignedNameserversOrder,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.CategoryAnnotation:       "Servers",
 			"self:detail:specialUseDomains": specialUseDomains,
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	noAssignedNameservers = status.SecurityLevelOption(CfgOptionNoAssignedNameserversKey)
+	noAssignedNameservers = config.Concurrent.GetAsBool(CfgOptionNoAssignedNameserversKey, false)
 
 	useStaleCacheConfigOption = &config.Option{
 		Name:           "Always Use DNS Cache",
@@ -241,42 +241,42 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 		Name:           "Ignore Multicast DNS",
 		Key:            CfgOptionNoMulticastDNSKey,
 		Description:    "Do not resolve using Multicast DNS. This may break certain Plug and Play devices and services.",
-		OptType:        config.OptTypeInt,
+		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
-		DefaultValue:   status.SecurityLevelsHighAndExtreme,
-		PossibleValues: status.SecurityLevelValues,
+		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation:  cfgOptionNoMulticastDNSOrder,
 			config.DisplayHintAnnotation:   status.DisplayHintSecurityLevel,
 			config.CategoryAnnotation:      "Resolving",
 			"self:detail:multicastDomains": multicastDomains,
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	noMulticastDNS = status.SecurityLevelOption(CfgOptionNoMulticastDNSKey)
+	noMulticastDNS = config.Concurrent.GetAsBool(CfgOptionNoMulticastDNSKey, false)
 
 	err = config.Register(&config.Option{
 		Name:           "Use Secure Protocols Only",
 		Key:            CfgOptionNoInsecureProtocolsKey,
 		Description:    "Never resolve using insecure protocols, ie. plain DNS. This may break certain local DNS services, which always use plain DNS.",
-		OptType:        config.OptTypeInt,
+		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
-		DefaultValue:   status.SecurityLevelsHighAndExtreme,
-		PossibleValues: status.SecurityLevelValues,
+		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionNoInsecureProtocolsOrder,
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.CategoryAnnotation:     "Resolving",
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	noInsecureProtocols = status.SecurityLevelOption(CfgOptionNoInsecureProtocolsKey)
+	noInsecureProtocols = config.Concurrent.GetAsBool(CfgOptionNoInsecureProtocolsKey, false)
 
 	err = config.Register(&config.Option{
 		Name: "Block Unofficial TLDs",
@@ -285,22 +285,22 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 			"Block %s. Unofficial domains may pose a security risk. This setting does not affect .onion domains in the Tor Browser.",
 			formatScopeList(specialServiceDomains),
 		),
-		OptType:        config.OptTypeInt,
+		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
-		DefaultValue:   status.SecurityLevelsAll,
-		PossibleValues: status.AllSecurityLevelValues,
+		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation:       cfgOptionDontResolveSpecialDomainsOrder,
 			config.DisplayHintAnnotation:        status.DisplayHintSecurityLevel,
 			config.CategoryAnnotation:           "Resolving",
 			"self:detail:specialServiceDomains": specialServiceDomains,
 		},
+		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
 	if err != nil {
 		return err
 	}
-	dontResolveSpecialDomains = status.SecurityLevelOption(CfgOptionDontResolveSpecialDomainsKey)
+	dontResolveSpecialDomains = config.Concurrent.GetAsBool(CfgOptionDontResolveSpecialDomainsKey, false)
 
 	return nil
 }
