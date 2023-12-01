@@ -53,8 +53,8 @@ const DisplayHintSecurityLevel string = "security level"
 
 // Security levels.
 const (
-	// SecurityLevelOff     uint8 = 0
-	SecurityLevelNormal uint8 = 1
-	// SecurityLevelHigh    uint8 = 2
-	// SecurityLevelExtreme uint8 = 4
+	SecurityLevelOff     uint8 = 0
+	SecurityLevelNormal  uint8 = 1
+	SecurityLevelHigh    uint8 = 2
+	SecurityLevelExtreme uint8 = 4
 )

@@ -143,22 +143,6 @@ var (
 	// Setting "DNS Exit Node Rules" at order 148.
 )
 
-// A list of all security level settings.
-var securityLevelSettings = []string{
-	CfgOptionBlockScopeInternetKey,
-	CfgOptionBlockScopeLANKey,
-	CfgOptionBlockScopeLocalKey,
-	CfgOptionBlockP2PKey,
-	CfgOptionBlockInboundKey,
-	CfgOptionFilterSubDomainsKey,
-	CfgOptionFilterCNAMEKey,
-	CfgOptionRemoveOutOfScopeDNSKey,
-	CfgOptionRemoveBlockedDNSKey,
-	CfgOptionDomainHeuristicsKey,
-	CfgOptionPreventBypassingKey,
-	CfgOptionDisableAutoPermitKey,
-}
-
 var (
 	// SPNRulesQuickSettings are now generated automatically shorty after start.
 	SPNRulesQuickSettings = []config.QuickSetting{

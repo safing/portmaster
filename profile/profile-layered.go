@@ -11,7 +11,6 @@ import (
 	"github.com/safing/portbase/runtime"
 	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/profile/endpoints"
-	"github.com/safing/portmaster/status"
 )
 
 // LayeredProfile combines multiple Profiles.
@@ -444,14 +443,6 @@ func (lp *LayeredProfile) MatchFilterLists(ctx context.Context, entity *intel.En
 	return endpoints.NoMatch, nil
 }
 
-func (lp *LayeredProfile) wrapSecurityLevelOption(configKey string, globalConfig config.IntOption) config.BoolOption {
-	activeAtLevels := lp.wrapIntOption(configKey, globalConfig)
-
-	return func() bool {
-		return uint8(activeAtLevels())&status.SecurityLevelNormal > 0
-	}
-}
-
 func (lp *LayeredProfile) wrapBoolOption(configKey string, globalConfig config.BoolOption) config.BoolOption {
 	var revCnt uint64 = 0
 	var value bool
@@ -560,11 +551,4 @@ func (lp *LayeredProfile) wrapStringOption(configKey string, globalConfig config
 
 		return value
 	}
-}
-
-func max(a, b uint8) uint8 {
-	if a > b {
-		return a
-	}
-	return b
 }
