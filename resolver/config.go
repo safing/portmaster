@@ -207,6 +207,7 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation:   cfgOptionNoAssignedNameserversOrder,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.CategoryAnnotation:       "Servers",
 			"self:detail:specialUseDomains": specialUseDomains,
 		},
@@ -246,6 +247,7 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation:  cfgOptionNoMulticastDNSOrder,
+			config.DisplayHintAnnotation:   status.DisplayHintSecurityLevel,
 			config.CategoryAnnotation:      "Resolving",
 			"self:detail:multicastDomains": multicastDomains,
 		},
@@ -266,6 +268,7 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionNoInsecureProtocolsOrder,
+			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
 			config.CategoryAnnotation:     "Resolving",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
@@ -288,6 +291,7 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation:       cfgOptionDontResolveSpecialDomainsOrder,
+			config.DisplayHintAnnotation:        status.DisplayHintSecurityLevel,
 			config.CategoryAnnotation:           "Resolving",
 			"self:detail:specialServiceDomains": specialServiceDomains,
 		},

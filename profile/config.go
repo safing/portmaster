@@ -235,6 +235,7 @@ func registerConfiguration() error { //nolint:maintidx
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayOrderAnnotation:   cfgOptionDisableAutoPermitOrder,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.CategoryAnnotation:       "Advanced",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
@@ -454,6 +455,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionFilterCNAMEOrder,
 			config.CategoryAnnotation:       "DNS Filtering",
 		},
@@ -474,6 +476,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue: true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionFilterSubDomainsOrder,
 			config.CategoryAnnotation:       "Filter Lists",
 		},
@@ -495,6 +498,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockScopeLocalOrder,
 			config.CategoryAnnotation:       "Network Scope",
 		},
@@ -536,6 +540,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue: false,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockScopeInternetOrder,
 			config.CategoryAnnotation:       "Network Scope",
 		},
@@ -556,6 +561,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue: false,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockP2POrder,
 			config.CategoryAnnotation:       "Connection Types",
 		},
@@ -576,6 +582,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue: true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockInboundOrder,
 			config.CategoryAnnotation:       "Connection Types",
 		},
@@ -597,6 +604,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionRemoveOutOfScopeDNSOrder,
 			config.CategoryAnnotation:       "DNS Filtering",
 		},
@@ -618,6 +626,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionRemoveBlockedDNSOrder,
 			config.CategoryAnnotation:       "DNS Filtering",
 		},
@@ -639,6 +648,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionDomainHeuristicsOrder,
 			config.CategoryAnnotation:       "DNS Filtering",
 		},
@@ -669,6 +679,7 @@ Please note that DNS bypass attempts might be additionally blocked in the System
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
+			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionPreventBypassingOrder,
 			config.CategoryAnnotation:       "Advanced",
 		},
