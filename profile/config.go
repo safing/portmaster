@@ -283,7 +283,7 @@ Set to 0 days to keep network history forever. Depending on your device, this mi
 	rulesHelp := strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match:
 
 - By address: "192.168.0.1"
-- By network: "192.168.0.1/24"
+- By network: "192.168.0.0/24"
 - By network scope: "Localhost", "LAN" or "Internet"
 - By domain:
 	- Matching a distinct domain: "example.com"
