@@ -2,9 +2,9 @@
 
 package icons
 
-import "github.com/safing/portmaster/profile"
+import "context"
 
 // FindIcon returns nil, nil for unsupported platforms.
-func FindIcon(binName string, homeDir string) (*profile.Icon, error) {
+func FindIcon(ctx context.Context, binName string, homeDir string) (*Icon, error) {
 	return nil, nil
 }
