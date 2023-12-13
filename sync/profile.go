@@ -14,6 +14,7 @@ import (
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/profile"
+	"github.com/safing/portmaster/profile/icons"
 )
 
 // ProfileExport holds an export of a profile.
@@ -414,12 +415,12 @@ func ImportProfile(r *ProfileImportRequest, requiredProfileSource profile.Profil
 		if err != nil {
 			return nil, fmt.Errorf("%w: icon data is invalid: %w", ErrImportFailed, err)
 		}
-		filename, err := profile.UpdateProfileIcon(du.Data, du.MediaType.Subtype)
+		filename, err := icons.UpdateProfileIcon(du.Data, du.MediaType.Subtype)
 		if err != nil {
 			return nil, fmt.Errorf("%w: icon is invalid: %w", ErrImportFailed, err)
 		}
-		p.Icons = []profile.Icon{{
-			Type:  profile.IconTypeAPI,
+		p.Icons = []icons.Icon{{
+			Type:  icons.IconTypeAPI,
 			Value: filename,
 		}}
 	}
