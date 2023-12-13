@@ -1,6 +1,7 @@
 package icons
 
 import (
+	"context"
 	"crypto"
 	"encoding/hex"
 	"errors"
@@ -76,6 +77,24 @@ func UpdateProfileIcon(data []byte, ext string) (filename string, err error) {
 	// Save to disk.
 	filename = sum + "." + ext
 	return filename, os.WriteFile(filepath.Join(ProfileIconStoragePath, filename), data, 0o0644) //nolint:gosec
+}
+
+// LoadAndSaveIcon loads an icon from disk, updates it in the icon database
+// and returns the icon object.
+func LoadAndSaveIcon(ctx context.Context, iconPath string) (*Icon, error) {
+	// Load icon and save it.
+	data, err := os.ReadFile(iconPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read icon %s: %w", iconPath, err)
+	}
+	filename, err := UpdateProfileIcon(data, filepath.Ext(iconPath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to import icon %s: %w", iconPath, err)
+	}
+	return &Icon{
+		Type:  IconTypeAPI,
+		Value: filename,
+	}, nil
 }
 
 // TODO: Clean up icons regularly.

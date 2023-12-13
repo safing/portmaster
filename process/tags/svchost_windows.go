@@ -1,6 +1,7 @@
 package tags
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
+	"github.com/safing/portmaster/profile/icons"
 )
 
 func init() {
@@ -81,11 +83,10 @@ func (h *SVCHostTagHandler) AddTags(p *process.Process) {
 // Returns nil to skip.
 func (h *SVCHostTagHandler) CreateProfile(p *process.Process) *profile.Profile {
 	if tag, ok := p.GetTag(svchostTagKey); ok {
-		return profile.New(&profile.Profile{
+		// Create new profile based on tag.
+		newProfile := profile.New(&profile.Profile{
 			Source:              profile.SourceLocal,
 			Name:                "Windows Service: " + osdetail.GenerateBinaryNameFromPath(tag.Value),
-			Icon:                `C:\Windows\System32\@WLOGO_48x48.png`,
-			IconType:            profile.IconTypeFile,
 			UsePresentationPath: false,
 			Fingerprints: []profile.Fingerprint{
 				profile.Fingerprint{
@@ -96,6 +97,14 @@ func (h *SVCHostTagHandler) CreateProfile(p *process.Process) *profile.Profile {
 				},
 			},
 		})
+
+		// Load default icon for windows service.
+		icon, err := icons.LoadAndSaveIcon(context.TODO(), `C:\Windows\System32\@WLOGO_48x48.png`)
+		if err == nil {
+			newProfile.Icons = []icons.Icon{*icon}
+		}
+
+		return newProfile
 	}
 
 	return nil

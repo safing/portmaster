@@ -21,19 +21,7 @@ func FindIcon(ctx context.Context, binName string, homeDir string) (*Icon, error
 		return nil, nil
 	}
 
-	// Load icon and save it.
-	data, err := os.ReadFile(iconPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read icon %s: %w", iconPath, err)
-	}
-	filename, err := UpdateProfileIcon(data, filepath.Ext(iconPath))
-	if err != nil {
-		return nil, fmt.Errorf("failed to import icon %s: %w", iconPath, err)
-	}
-	return &Icon{
-		Type:  IconTypeAPI,
-		Value: filename,
-	}, nil
+	return LoadAndSaveIcon(ctx, iconPath)
 }
 
 func search(binName string, homeDir string) (iconPath string, err error) {
