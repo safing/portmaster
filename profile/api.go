@@ -10,6 +10,7 @@ import (
 	"github.com/safing/portbase/api"
 	"github.com/safing/portbase/formats/dsd"
 	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/profile/icons"
 )
 
 func registerAPIEndpoints() error {
@@ -98,7 +99,7 @@ func handleGetProfileIcon(ar *api.Request) (data []byte, err error) {
 	ext := filepath.Ext(name)
 
 	// Get profile icon.
-	data, err = GetProfileIcon(name)
+	data, err = icons.GetProfileIcon(name)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +153,7 @@ func handleUpdateProfileIcon(ar *api.Request) (any, error) {
 	}
 
 	// Update profile icon.
-	filename, err := UpdateProfileIcon(ar.InputData, ext)
+	filename, err := icons.UpdateProfileIcon(ar.InputData, ext)
 	if err != nil {
 		return nil, err
 	}

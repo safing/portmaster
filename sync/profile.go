@@ -14,6 +14,7 @@ import (
 	"github.com/safing/portbase/config"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/profile"
+	"github.com/safing/portmaster/profile/icons"
 )
 
 // ProfileExport holds an export of a profile.
@@ -254,6 +255,9 @@ func ExportProfile(scopedID string) (*ProfileExport, error) {
 		export.Created = &created
 	}
 
+	// Derive ID to ensure the ID is always correct.
+	export.ID = profile.DeriveProfileID(p.Fingerprints)
+
 	// Add first exportable icon to export.
 	if len(p.Icons) > 0 {
 		var err error
@@ -270,6 +274,14 @@ func ExportProfile(scopedID string) (*ProfileExport, error) {
 		}
 	}
 
+	// Remove presentation path if both Name and Icon are set.
+	if export.Name != "" && export.IconData != "" {
+		p.UsePresentationPath = false
+	}
+	if !p.UsePresentationPath {
+		p.PresentationPath = ""
+	}
+
 	return export, nil
 }
 
@@ -284,11 +296,15 @@ func ImportProfile(r *ProfileImportRequest, requiredProfileSource profile.Profil
 	if r.Export.Source != "" && r.Export.Source != requiredProfileSource {
 		return nil, ErrMismatch
 	}
-	// Check ID.
+	// Convert fingerprints to internal representation.
 	fingerprints := convertFingerprintsToInternal(r.Export.Fingerprints)
+	if len(fingerprints) == 0 {
+		return nil, fmt.Errorf("%w: the export contains no fingerprints", ErrInvalidProfileData)
+	}
+	// Derive ID from fingerprints.
 	profileID := profile.DeriveProfileID(fingerprints)
 	if r.Export.ID != "" && r.Export.ID != profileID {
-		return nil, ErrMismatch
+		return nil, fmt.Errorf("%w: the export profile ID does not match the fingerprints, remove to ignore", ErrInvalidProfileData)
 	}
 	r.Export.ID = profileID
 	// Check Fingerprints.
@@ -385,18 +401,26 @@ func ImportProfile(r *ProfileImportRequest, requiredProfileSource profile.Profil
 		p.Created = in.Created.Unix()
 	}
 
+	// Fill in required values.
+	if p.Config == nil {
+		p.Config = make(map[string]any)
+	}
+	if p.Created == 0 {
+		p.Created = time.Now().Unix()
+	}
+
 	// Add icon to profile, if set.
 	if in.IconData != "" {
 		du, err := dataurl.DecodeString(in.IconData)
 		if err != nil {
 			return nil, fmt.Errorf("%w: icon data is invalid: %w", ErrImportFailed, err)
 		}
-		filename, err := profile.UpdateProfileIcon(du.Data, du.MediaType.Subtype)
+		filename, err := icons.UpdateProfileIcon(du.Data, du.MediaType.Subtype)
 		if err != nil {
 			return nil, fmt.Errorf("%w: icon is invalid: %w", ErrImportFailed, err)
 		}
-		p.Icons = []profile.Icon{{
-			Type:  profile.IconTypeAPI,
+		p.Icons = []icons.Icon{{
+			Type:  icons.IconTypeAPI,
 			Value: filename,
 		}}
 	}

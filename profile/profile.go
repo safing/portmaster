@@ -18,6 +18,7 @@ import (
 	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/profile/endpoints"
+	"github.com/safing/portmaster/profile/icons"
 )
 
 // ProfileSource is the source of the profile.
@@ -68,9 +69,9 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// See IconType for more information.
 	Icon string
 	// Deprecated: IconType describes the type of the Icon property.
-	IconType IconType
+	IconType icons.IconType
 	// Icons holds a list of icons to represent the application.
-	Icons []Icon
+	Icons []icons.Icon
 
 	// Deprecated: LinkedPath used to point to the executableis this
 	// profile was created for.
@@ -505,7 +506,7 @@ func (profile *Profile) updateMetadata(binaryPath string) (changed bool) {
 
 // updateMetadataFromSystem updates the profile metadata with data from the
 // operating system and saves it afterwards.
-func (profile *Profile) updateMetadataFromSystem(ctx context.Context) error {
+func (profile *Profile) updateMetadataFromSystem(ctx context.Context, md MatchingData) error {
 	var changed bool
 
 	// This function is only valid for local profiles.
@@ -531,6 +532,22 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context) error {
 		return nil
 	}
 
+	// Get icon if path matches presentation path.
+	var newIcon *icons.Icon
+	if profile.PresentationPath == md.Path() {
+		// Get home from ENV.
+		var home string
+		if env := md.Env(); env != nil {
+			home = env["HOME"]
+		}
+		var err error
+		newIcon, err = icons.FindIcon(ctx, profile.PresentationPath, home)
+		if err != nil {
+			log.Warningf("profile: failed to find icon for %s: %s", profile.PresentationPath, err)
+			newIcon = nil
+		}
+	}
+
 	// Apply new data to profile.
 	func() {
 		// Lock profile for applying metadata.
@@ -541,6 +558,16 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context) error {
 		if profile.Name != newName {
 			profile.Name = newName
 			changed = true
+		}
+
+		// Apply new icon if found.
+		if newIcon != nil {
+			if len(profile.Icons) == 0 {
+				profile.Icons = []icons.Icon{*newIcon}
+			} else {
+				profile.Icons = append(profile.Icons, *newIcon)
+				profile.Icons = icons.SortAndCompact(profile.Icons)
+			}
 		}
 	}()
 

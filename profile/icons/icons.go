@@ -1,6 +1,7 @@
-package profile
+package icons
 
 import (
+	"context"
 	"crypto"
 	"encoding/hex"
 	"errors"
@@ -13,18 +14,21 @@ import (
 	"github.com/safing/portbase/api"
 )
 
-var profileIconStoragePath = ""
+// ProfileIconStoragePath defines the location where profile icons are stored.
+// Must be set before anything else from this package is called.
+// Must not be changed once set.
+var ProfileIconStoragePath = ""
 
 // GetProfileIcon returns the profile icon with the given ID and extension.
 func GetProfileIcon(name string) (data []byte, err error) {
 	// Check if enabled.
-	if profileIconStoragePath == "" {
+	if ProfileIconStoragePath == "" {
 		return nil, errors.New("api icon storage not configured")
 	}
 
 	// Build storage path.
 	iconPath := filepath.Clean(
-		filepath.Join(profileIconStoragePath, name),
+		filepath.Join(ProfileIconStoragePath, name),
 	)
 
 	iconPath, err = filepath.Abs(iconPath)
@@ -34,7 +38,7 @@ func GetProfileIcon(name string) (data []byte, err error) {
 
 	// Do a quick check if we are still within the right directory.
 	// This check is not entirely correct, but is sufficient for this use case.
-	if filepath.Dir(iconPath) != profileIconStoragePath {
+	if filepath.Dir(iconPath) != ProfileIconStoragePath {
 		return nil, api.ErrorWithStatus(errors.New("invalid icon"), http.StatusBadRequest)
 	}
 
@@ -72,7 +76,25 @@ func UpdateProfileIcon(data []byte, ext string) (filename string, err error) {
 
 	// Save to disk.
 	filename = sum + "." + ext
-	return filename, os.WriteFile(filepath.Join(profileIconStoragePath, filename), data, 0o0644) //nolint:gosec
+	return filename, os.WriteFile(filepath.Join(ProfileIconStoragePath, filename), data, 0o0644) //nolint:gosec
+}
+
+// LoadAndSaveIcon loads an icon from disk, updates it in the icon database
+// and returns the icon object.
+func LoadAndSaveIcon(ctx context.Context, iconPath string) (*Icon, error) {
+	// Load icon and save it.
+	data, err := os.ReadFile(iconPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read icon %s: %w", iconPath, err)
+	}
+	filename, err := UpdateProfileIcon(data, filepath.Ext(iconPath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to import icon %s: %w", iconPath, err)
+	}
+	return &Icon{
+		Type:  IconTypeAPI,
+		Value: filename,
+	}, nil
 }
 
 // TODO: Clean up icons regularly.

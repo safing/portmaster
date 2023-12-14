@@ -11,6 +11,7 @@ import (
 	"github.com/safing/portbase/database/migration"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/profile/icons"
 )
 
 func registerMigrations() error {
@@ -27,7 +28,7 @@ func registerMigrations() error {
 		},
 		migration.Migration{
 			Description: "Migrate from random profile IDs to fingerprint-derived IDs",
-			Version:     "v1.6.0",
+			Version:     "v1.6.3", // Re-run after mixed results in v1.6.0
 			MigrateFunc: migrateToDerivedIDs,
 		},
 	)
@@ -102,7 +103,7 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 		}
 
 		// Migrate to icon list.
-		profile.Icons = []Icon{{
+		profile.Icons = []icons.Icon{{
 			Type:  profile.IconType,
 			Value: profile.Icon,
 		}}
@@ -161,6 +162,8 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 		// Parse profile.
 		profile, err := EnsureProfile(r)
 		if err != nil {
+			failed++
+			lastErr = err
 			log.Tracer(ctx).Debugf("profiles: failed to parse profile %s for migration: %s", r.Key(), err)
 			continue
 		}

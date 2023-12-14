@@ -1,4 +1,4 @@
-package profile
+package icons
 
 import (
 	"errors"
@@ -42,7 +42,8 @@ func (t IconType) sortOrder() int {
 	}
 }
 
-func sortAndCompactIcons(icons []Icon) []Icon {
+// SortAndCompact sorts and compacts a list of icons.
+func SortAndCompact(icons []Icon) []Icon {
 	// Sort.
 	slices.SortFunc[[]Icon, Icon](icons, func(a, b Icon) int {
 		aOrder := a.Type.sortOrder()
