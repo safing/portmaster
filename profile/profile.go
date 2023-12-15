@@ -87,12 +87,6 @@ type Profile struct { //nolint:maligned // not worth the effort
 	UsePresentationPath bool
 	// Fingerprints holds process matching information.
 	Fingerprints []Fingerprint
-	// SecurityLevel is the mininum security level to apply to
-	// connections made with this profile.
-	// Note(ppacher): we may deprecate this one as it can easily
-	//			      be "simulated" by adjusting the settings
-	//				  directly.
-	SecurityLevel uint8
 	// Config holds profile specific setttings. It's a nested
 	// object with keys defining the settings database path. All keys
 	// until the actual settings value (which is everything that is not

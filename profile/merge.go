@@ -30,7 +30,6 @@ func MergeProfiles(name string, primary *Profile, secondaries ...*Profile) (newP
 		Description:         primary.Description,
 		Homepage:            primary.Homepage,
 		UsePresentationPath: false, // Disable presentation path.
-		SecurityLevel:       primary.SecurityLevel,
 		Config:              primary.Config,
 		Created:             nowUnix,
 	}
