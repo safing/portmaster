@@ -36,7 +36,7 @@ func (h *SVCHostTagHandler) Name() string {
 // of this handler.
 func (h *SVCHostTagHandler) TagDescriptions() []process.TagDescription {
 	return []process.TagDescription{
-		process.TagDescription{
+		{
 			ID:          svchostTagKey,
 			Name:        "SvcHost Service Name",
 			Description: "Name of a service running in svchost.exe as reported by Windows.",
@@ -86,10 +86,10 @@ func (h *SVCHostTagHandler) CreateProfile(p *process.Process) *profile.Profile {
 		// Create new profile based on tag.
 		newProfile := profile.New(&profile.Profile{
 			Source:              profile.SourceLocal,
-			Name:                "Windows Service: " + osdetail.GenerateBinaryNameFromPath(tag.Value),
+			Name:                "Windows Service: " + icons.GenerateBinaryNameFromPath(tag.Value),
 			UsePresentationPath: false,
 			Fingerprints: []profile.Fingerprint{
-				profile.Fingerprint{
+				{
 					Type:      profile.FingerprintTypeTagID,
 					Key:       tag.Key,
 					Operation: profile.FingerprintOperationEqualsID,
