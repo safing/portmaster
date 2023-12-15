@@ -15,7 +15,6 @@ import (
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/utils"
-	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/intel/filterlists"
 	"github.com/safing/portmaster/profile/endpoints"
 	"github.com/safing/portmaster/profile/icons"
@@ -476,7 +475,7 @@ func (profile *Profile) updateMetadata(binaryPath string) (changed bool) {
 	// Set Name if unset.
 	if profile.Name == "" && profile.PresentationPath != "" {
 		// Generate a default profile name from path.
-		profile.Name = osdetail.GenerateBinaryNameFromPath(profile.PresentationPath)
+		profile.Name = icons.GenerateBinaryNameFromPath(profile.PresentationPath)
 		changed = true
 	}
 
@@ -514,38 +513,16 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context, md Matchin
 		return fmt.Errorf("tried to update metadata for non-local or non-path profile %s", profile.ScopedID())
 	}
 
-	// Get binary name from PresentationPath.
-	newName, err := osdetail.GetBinaryNameFromSystem(profile.PresentationPath)
+	// Get home from ENV.
+	var home string
+	if env := md.Env(); env != nil {
+		home = env["HOME"]
+	}
+
+	// Get binary icon and name.
+	newIcon, newName, err := icons.GetIconAndName(ctx, profile.PresentationPath, home)
 	if err != nil {
-		switch {
-		case errors.Is(err, osdetail.ErrNotSupported):
-		case errors.Is(err, osdetail.ErrNotFound):
-		case errors.Is(err, osdetail.ErrEmptyOutput):
-		default:
-			log.Warningf("profile: error while getting binary name for %s: %s", profile.PresentationPath, err)
-		}
-		return nil
-	}
-
-	// Check if the new name is valid.
-	if strings.TrimSpace(newName) == "" {
-		return nil
-	}
-
-	// Get icon if path matches presentation path.
-	var newIcon *icons.Icon
-	if profile.PresentationPath == md.Path() {
-		// Get home from ENV.
-		var home string
-		if env := md.Env(); env != nil {
-			home = env["HOME"]
-		}
-		var err error
-		newIcon, err = icons.FindIcon(ctx, profile.PresentationPath, home)
-		if err != nil {
-			log.Warningf("profile: failed to find icon for %s: %s", profile.PresentationPath, err)
-			newIcon = nil
-		}
+		log.Warningf("profile: failed to get binary icon/name for %s: %s", profile.PresentationPath, err)
 	}
 
 	// Apply new data to profile.
@@ -555,7 +532,7 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context, md Matchin
 		defer profile.Unlock()
 
 		// Apply new name if it changed.
-		if profile.Name != newName {
+		if newName != "" && profile.Name != newName {
 			profile.Name = newName
 			changed = true
 		}

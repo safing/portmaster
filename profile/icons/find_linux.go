@@ -9,36 +9,46 @@ import (
 	"strings"
 )
 
-// FindIcon finds an icon for the given binary name.
-// Providing the home directory of the user running the process of that binary can help find an icon.
-func FindIcon(ctx context.Context, binName string, homeDir string) (*Icon, error) {
+// GetIconAndName returns an icon and name of the given binary path.
+// Providing the home directory of the user running the process of that binary can improve results.
+// Even if an error is returned, the other return values are valid, if set.
+func GetIconAndName(ctx context.Context, binPath string, homeDir string) (icon *Icon, name string, err error) {
+	// Derive name from binary.
+	name = GenerateBinaryNameFromPath(binPath)
+
 	// Search for icon.
-	iconPath, err := search(binName, homeDir)
+	iconPath, err := searchForIcon(binPath, homeDir)
 	if iconPath == "" {
 		if err != nil {
-			return nil, fmt.Errorf("failed to find icon for %s: %w", binName, err)
+			return nil, name, fmt.Errorf("failed to find icon for %s: %w", binPath, err)
 		}
-		return nil, nil
+		return nil, name, nil
 	}
 
-	return LoadAndSaveIcon(ctx, iconPath)
+	// Save icon to internal storage.
+	icon, err = LoadAndSaveIcon(ctx, iconPath)
+	if err != nil {
+		return nil, name, fmt.Errorf("failed to store icon for %s: %w", binPath, err)
+	}
+
+	return icon, name, nil
 }
 
-func search(binName string, homeDir string) (iconPath string, err error) {
-	binName = strings.ToLower(binName)
+func searchForIcon(binPath string, homeDir string) (iconPath string, err error) {
+	binPath = strings.ToLower(binPath)
 
 	// Search for icon path.
 	for _, iconLoc := range iconLocations {
-		basePath := iconLoc.GetPath(binName, homeDir)
+		basePath := iconLoc.GetPath(binPath, homeDir)
 		if basePath == "" {
 			continue
 		}
 
 		switch iconLoc.Type {
 		case FlatDir:
-			iconPath, err = searchDirectory(basePath, binName)
+			iconPath, err = searchDirectory(basePath, binPath)
 		case XDGIcons:
-			iconPath, err = searchXDGIconStructure(basePath, binName)
+			iconPath, err = searchXDGIconStructure(basePath, binPath)
 		}
 
 		if iconPath != "" {
@@ -48,10 +58,10 @@ func search(binName string, homeDir string) (iconPath string, err error) {
 	return
 }
 
-func searchXDGIconStructure(baseDirectory string, binName string) (iconPath string, err error) {
+func searchXDGIconStructure(baseDirectory string, binPath string) (iconPath string, err error) {
 	for _, xdgIconDir := range xdgIconPaths {
 		directory := filepath.Join(baseDirectory, xdgIconDir)
-		iconPath, err = searchDirectory(directory, binName)
+		iconPath, err = searchDirectory(directory, binPath)
 		if iconPath != "" {
 			return
 		}
@@ -59,7 +69,7 @@ func searchXDGIconStructure(baseDirectory string, binName string) (iconPath stri
 	return
 }
 
-func searchDirectory(directory string, binName string) (iconPath string, err error) {
+func searchDirectory(directory string, binPath string) (iconPath string, err error) {
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -82,13 +92,13 @@ func searchDirectory(directory string, binName string) (iconPath string, err err
 		iconName := strings.ToLower(entry.Name())
 		iconName = strings.TrimSuffix(iconName, filepath.Ext(iconName))
 		switch {
-		case len(iconName) < len(binName):
+		case len(iconName) < len(binPath):
 			// Continue to next.
-		case iconName == binName:
+		case iconName == binPath:
 			// Exact match, return immediately.
 			return filepath.Join(directory, entry.Name()), nil
-		case strings.HasPrefix(iconName, binName):
-			excessChars := len(iconName) - len(binName)
+		case strings.HasPrefix(iconName, binPath):
+			excessChars := len(iconName) - len(binPath)
 			if bestMatch == "" || excessChars < bestMatchExcessChars {
 				bestMatch = entry.Name()
 				bestMatchExcessChars = excessChars

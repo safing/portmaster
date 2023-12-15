@@ -4,6 +4,9 @@ go 1.21.1
 
 toolchain go1.21.2
 
+// TODO: Remove when https://github.com/tc-hib/winres/pull/4 is merged or changes are otherwise integrated.
+replace github.com/tc-hib/winres => github.com/dhaavi/winres v0.2.2
+
 require (
 	github.com/Xuanwo/go-locale v1.1.0
 	github.com/agext/levenshtein v1.2.3
@@ -11,6 +14,7 @@ require (
 	github.com/coreos/go-iptables v0.7.0
 	github.com/florianl/go-conntrack v0.4.0
 	github.com/florianl/go-nfqueue v1.3.1
+	github.com/fogleman/gg v1.3.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/google/gopacket v1.1.19
@@ -18,6 +22,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.6.0
 	github.com/jackc/puddle/v2 v2.2.1
+	github.com/mat/besticon v3.12.0+incompatible
 	github.com/miekg/dns v1.1.57
 	github.com/mitchellh/go-server-timing v1.0.1
 	github.com/oschwald/maxminddb-golang v1.12.0
@@ -30,6 +35,7 @@ require (
 	github.com/spkg/zipfs v0.7.1
 	github.com/stretchr/testify v1.8.4
 	github.com/tannerryan/ring v1.1.2
+	github.com/tc-hib/winres v0.2.1
 	github.com/tevino/abool v1.2.0
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/vincent-petithory/dataurl v1.0.0
