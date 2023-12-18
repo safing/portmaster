@@ -9,7 +9,7 @@ import (
 	"github.com/safing/portmaster/intel"
 )
 
-var asnRegex = regexp.MustCompile("^(AS)?[0-9]+$")
+var asnRegex = regexp.MustCompile("^AS[0-9]+$")
 
 // EndpointASN matches ASNs.
 type EndpointASN struct {
