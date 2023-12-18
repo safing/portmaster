@@ -107,6 +107,12 @@ func parseTypeDomain(fields []string) (Endpoint, error) {
 		domain += "."
 	}
 
+	// Check if this looks like an IP address.
+	// At least the TLDs has characters.
+	if looksLikeAnIP.MatchString(domain) {
+		return nil, nil
+	}
+
 	// Fix domain case.
 	domain = strings.ToLower(domain)
 	needValidFQDN := true
