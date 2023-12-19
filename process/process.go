@@ -35,6 +35,7 @@ type Process struct {
 	UserName        string
 	UserHome        string
 	Pid             int
+	Pgid            int // linux only
 	CreatedAt       int64
 	ParentPid       int
 	ParentCreatedAt int64
@@ -212,9 +213,12 @@ func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*
 		return process, nil
 	}
 
+	pgid, _ := GetProcessGroupID(ctx, int(pInfo.Pid))
+
 	// Create new a process object.
 	process = &Process{
 		Pid:        int(pInfo.Pid),
+		Pgid:       pgid,
 		FirstSeen:  time.Now().Unix(),
 		processKey: key,
 	}

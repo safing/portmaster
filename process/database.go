@@ -1,12 +1,14 @@
 package process
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	processInfo "github.com/shirou/gopsutil/process"
 	"github.com/tevino/abool"
+	"golang.org/x/exp/maps"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
@@ -44,6 +46,39 @@ func All() map[int]*Process {
 	}
 
 	return all
+}
+
+func FindProcessesByProfile(ctx context.Context, scopedID string) []*Process {
+	all := All()
+
+	pids := make([]int, 0, len(all))
+
+	log.Infof("[DEBUG] searchin processes belonging to %s", scopedID)
+
+	for _, p := range all {
+		p.Lock()
+		if p.profile != nil && p.profile.LocalProfile().ScopedID() == scopedID {
+			pids = append(pids, p.Pid)
+		}
+		p.Unlock()
+	}
+
+	m := make(map[int]*Process)
+
+	for _, pid := range pids {
+		if _, ok := m[pid]; ok {
+			continue
+		}
+
+		process, err := GetProcessGroupLeader(ctx, pid)
+		if err != nil {
+			continue
+		}
+
+		m[process.Pid] = process
+	}
+
+	return maps.Values(m)
 }
 
 // Save saves the process to the internal state and pushes an update.
