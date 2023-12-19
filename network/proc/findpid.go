@@ -7,15 +7,9 @@ import (
 	"io/fs"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network/socket"
-)
-
-var (
-	baseWaitTime  = 3 * time.Millisecond
-	lookupRetries = 3
 )
 
 // GetPID returns the already existing pid of the given socket info or searches for it.
@@ -43,60 +37,27 @@ func GetPID(socketInfo socket.Info) (pid int) {
 func findPID(uid, inode int) (pid int) {
 	socketName := "socket:[" + strconv.Itoa(inode) + "]"
 
-	for i := 0; i <= lookupRetries; i++ {
-		var pidsUpdated bool
+	// Always update pid table (it has a call limiter anyway)
+	updatePids()
 
-		// Get all pids for the given uid.
-		pids, ok := getPidsByUser(uid)
-		if !ok {
-			// If we cannot find the uid in the map, update it.
-			updatePids()
-			pidsUpdated = true
-			pids, ok = getPidsByUser(uid)
-		}
+	// Get all pids for the given uid.
+	pids, ok := getPidsByUser(uid)
+	if !ok {
+		return socket.UndefinedProcessID
+	}
 
-		// If we have found PIDs, search them.
-		if ok {
-			// Look through the PIDs in reverse order, because higher/newer PIDs will be more likely to
-			// be searched for.
-			for i := len(pids) - 1; i >= 0; i-- {
-				if findSocketFromPid(pids[i], socketName) {
-					return pids[i]
-				}
-			}
-		}
-
-		// If we still cannot find our socket, and haven't yet updated the PID map,
-		// do this and then check again immediately.
-		if !pidsUpdated {
-			updatePids()
-			pids, ok = getPidsByUser(uid)
-			if ok {
-				// Look through the PIDs in reverse order, because higher/newer PIDs will be more likely to
-				// be searched for.
-				for i := len(pids) - 1; i >= 0; i-- {
-					if findSocketFromPid(pids[i], socketName) {
-						return pids[i]
-					}
-				}
-			}
-		}
-
-		// We have updated the PID map, but still cannot find anything.
-		// So, there is nothing we can do other than to wait a little for the kernel to
-		// populate the information.
-
-		// Wait after each try, except for the last iteration
-		if i < lookupRetries {
-			// Wait in back-off fashion - with 3ms baseWaitTime: 3, 6, 9 - 18ms in total.
-			time.Sleep(time.Duration(i+1) * baseWaitTime)
+	// Look through the PIDs in reverse order, because higher/newer PIDs will be more likely to
+	// be searched for.
+	for j := len(pids) - 1; j >= 0; j-- {
+		if pidHasSocket(pids[j], socketName) {
+			return pids[j]
 		}
 	}
 
 	return socket.UndefinedProcessID
 }
 
-func findSocketFromPid(pid int, socketName string) bool {
+func pidHasSocket(pid int, socketName string) bool {
 	socketBase := "/proc/" + strconv.Itoa(pid) + "/fd"
 	entries := readDirNames(socketBase)
 	if len(entries) == 0 {

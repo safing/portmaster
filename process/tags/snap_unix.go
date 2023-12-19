@@ -3,9 +3,9 @@ package tags
 import (
 	"strings"
 
-	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
+	"github.com/safing/portmaster/profile/binmeta"
 )
 
 func init() {
@@ -117,7 +117,7 @@ func (h *SnapHandler) CreateProfile(p *process.Process) *profile.Profile {
 
 		return profile.New(&profile.Profile{
 			Source:              profile.SourceLocal,
-			Name:                osdetail.GenerateBinaryNameFromPath(tag.Value),
+			Name:                binmeta.GenerateBinaryNameFromPath(tag.Value),
 			PresentationPath:    p.Path,
 			UsePresentationPath: hasVersion,
 			Fingerprints: []profile.Fingerprint{

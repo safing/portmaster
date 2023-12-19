@@ -15,10 +15,9 @@ import (
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/utils"
-	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/intel/filterlists"
+	"github.com/safing/portmaster/profile/binmeta"
 	"github.com/safing/portmaster/profile/endpoints"
-	"github.com/safing/portmaster/profile/icons"
 )
 
 // ProfileSource is the source of the profile.
@@ -69,9 +68,9 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// See IconType for more information.
 	Icon string
 	// Deprecated: IconType describes the type of the Icon property.
-	IconType icons.IconType
+	IconType binmeta.IconType
 	// Icons holds a list of icons to represent the application.
-	Icons []icons.Icon
+	Icons []binmeta.Icon
 
 	// Deprecated: LinkedPath used to point to the executableis this
 	// profile was created for.
@@ -88,12 +87,6 @@ type Profile struct { //nolint:maligned // not worth the effort
 	UsePresentationPath bool
 	// Fingerprints holds process matching information.
 	Fingerprints []Fingerprint
-	// SecurityLevel is the mininum security level to apply to
-	// connections made with this profile.
-	// Note(ppacher): we may deprecate this one as it can easily
-	//			      be "simulated" by adjusting the settings
-	//				  directly.
-	SecurityLevel uint8
 	// Config holds profile specific setttings. It's a nested
 	// object with keys defining the settings database path. All keys
 	// until the actual settings value (which is everything that is not
@@ -476,7 +469,7 @@ func (profile *Profile) updateMetadata(binaryPath string) (changed bool) {
 	// Set Name if unset.
 	if profile.Name == "" && profile.PresentationPath != "" {
 		// Generate a default profile name from path.
-		profile.Name = osdetail.GenerateBinaryNameFromPath(profile.PresentationPath)
+		profile.Name = binmeta.GenerateBinaryNameFromPath(profile.PresentationPath)
 		changed = true
 	}
 
@@ -514,38 +507,16 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context, md Matchin
 		return fmt.Errorf("tried to update metadata for non-local or non-path profile %s", profile.ScopedID())
 	}
 
-	// Get binary name from PresentationPath.
-	newName, err := osdetail.GetBinaryNameFromSystem(profile.PresentationPath)
+	// Get home from ENV.
+	var home string
+	if env := md.Env(); env != nil {
+		home = env["HOME"]
+	}
+
+	// Get binary icon and name.
+	newIcon, newName, err := binmeta.GetIconAndName(ctx, profile.PresentationPath, home)
 	if err != nil {
-		switch {
-		case errors.Is(err, osdetail.ErrNotSupported):
-		case errors.Is(err, osdetail.ErrNotFound):
-		case errors.Is(err, osdetail.ErrEmptyOutput):
-		default:
-			log.Warningf("profile: error while getting binary name for %s: %s", profile.PresentationPath, err)
-		}
-		return nil
-	}
-
-	// Check if the new name is valid.
-	if strings.TrimSpace(newName) == "" {
-		return nil
-	}
-
-	// Get icon if path matches presentation path.
-	var newIcon *icons.Icon
-	if profile.PresentationPath == md.Path() {
-		// Get home from ENV.
-		var home string
-		if env := md.Env(); env != nil {
-			home = env["HOME"]
-		}
-		var err error
-		newIcon, err = icons.FindIcon(ctx, profile.PresentationPath, home)
-		if err != nil {
-			log.Warningf("profile: failed to find icon for %s: %s", profile.PresentationPath, err)
-			newIcon = nil
-		}
+		log.Warningf("profile: failed to get binary icon/name for %s: %s", profile.PresentationPath, err)
 	}
 
 	// Apply new data to profile.
@@ -555,7 +526,7 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context, md Matchin
 		defer profile.Unlock()
 
 		// Apply new name if it changed.
-		if profile.Name != newName {
+		if newName != "" && profile.Name != newName {
 			profile.Name = newName
 			changed = true
 		}
@@ -563,10 +534,10 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context, md Matchin
 		// Apply new icon if found.
 		if newIcon != nil {
 			if len(profile.Icons) == 0 {
-				profile.Icons = []icons.Icon{*newIcon}
+				profile.Icons = []binmeta.Icon{*newIcon}
 			} else {
 				profile.Icons = append(profile.Icons, *newIcon)
-				profile.Icons = icons.SortAndCompact(profile.Icons)
+				profile.Icons = binmeta.SortAndCompactIcons(profile.Icons)
 			}
 		}
 	}()

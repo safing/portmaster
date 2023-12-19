@@ -11,7 +11,7 @@ import (
 	"github.com/safing/portbase/database/migration"
 	"github.com/safing/portbase/database/query"
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/profile/icons"
+	"github.com/safing/portmaster/profile/binmeta"
 )
 
 func registerMigrations() error {
@@ -103,7 +103,7 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 		}
 
 		// Migrate to icon list.
-		profile.Icons = []icons.Icon{{
+		profile.Icons = []binmeta.Icon{{
 			Type:  profile.IconType,
 			Value: profile.Icon,
 		}}

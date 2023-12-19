@@ -11,7 +11,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/modules"
 	_ "github.com/safing/portmaster/core/base"
-	"github.com/safing/portmaster/profile/icons"
+	"github.com/safing/portmaster/profile/binmeta"
 	"github.com/safing/portmaster/updates"
 )
 
@@ -53,7 +53,7 @@ func prep() error {
 	if err := iconsDir.Ensure(); err != nil {
 		return fmt.Errorf("failed to create/check icons directory: %w", err)
 	}
-	icons.ProfileIconStoragePath = iconsDir.Path
+	binmeta.ProfileIconStoragePath = iconsDir.Path
 
 	return nil
 }

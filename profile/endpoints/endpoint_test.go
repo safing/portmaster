@@ -59,6 +59,9 @@ func TestEndpointParsing(t *testing.T) {
 	testParsing(t, "+ * UDP/1234")
 	testParsing(t, "+ * TCP/HTTP")
 	testParsing(t, "+ * TCP/80-443")
+
+	// TODO: Test fails:
+	// testParsing(t, "+ 1234")
 }
 
 func testParsing(t *testing.T, value string) {
@@ -69,6 +72,7 @@ func testParsing(t *testing.T, value string) {
 		t.Error(err)
 		return
 	}
+	// t.Logf("%T: %+v", ep, ep)
 	if value != ep.String() {
 		t.Errorf(`stringified endpoint mismatch: original was "%s", parsed is "%s"`, value, ep.String())
 	}

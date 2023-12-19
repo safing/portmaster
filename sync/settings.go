@@ -254,6 +254,12 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 			)
 		}
 
+		// Save new config to disk.
+		err := config.SaveConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to save config: %w", err)
+		}
+
 		result.RestartRequired = restartRequired
 		return result, nil
 	}

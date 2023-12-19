@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/safing/portbase/database/record"
-	"github.com/safing/portmaster/profile/icons"
+	"github.com/safing/portmaster/profile/binmeta"
 )
 
 // MergeProfiles merges multiple profiles into a new one.
@@ -30,7 +30,6 @@ func MergeProfiles(name string, primary *Profile, secondaries ...*Profile) (newP
 		Description:         primary.Description,
 		Homepage:            primary.Homepage,
 		UsePresentationPath: false, // Disable presentation path.
-		SecurityLevel:       primary.SecurityLevel,
 		Config:              primary.Config,
 		Created:             nowUnix,
 	}
@@ -53,12 +52,12 @@ func MergeProfiles(name string, primary *Profile, secondaries ...*Profile) (newP
 	}
 
 	// Collect all icons.
-	newProfile.Icons = make([]icons.Icon, 0, len(secondaries)+1) // Guess the needed space.
+	newProfile.Icons = make([]binmeta.Icon, 0, len(secondaries)+1) // Guess the needed space.
 	newProfile.Icons = append(newProfile.Icons, primary.Icons...)
 	for _, sp := range secondaries {
 		newProfile.Icons = append(newProfile.Icons, sp.Icons...)
 	}
-	newProfile.Icons = icons.SortAndCompact(newProfile.Icons)
+	newProfile.Icons = binmeta.SortAndCompactIcons(newProfile.Icons)
 
 	// Collect all fingerprints.
 	newProfile.Fingerprints = make([]Fingerprint, 0, len(primary.Fingerprints)+len(secondaries)) // Guess the needed space.

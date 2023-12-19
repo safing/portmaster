@@ -1,4 +1,4 @@
-package icons
+package binmeta
 
 import (
 	"os"
@@ -19,7 +19,7 @@ func TestFindIcon(t *testing.T) {
 func testFindIcon(t *testing.T, binName string, homeDir string) {
 	t.Helper()
 
-	iconPath, err := search(binName, homeDir)
+	iconPath, err := searchForIcon(binName, homeDir)
 	if err != nil {
 		t.Error(err)
 		return

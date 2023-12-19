@@ -135,8 +135,6 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 
 	// TODO: Load additional profiles.
 
-	lp.updateCaches()
-
 	lp.CreateMeta()
 	lp.SetKey(runtime.DefaultRegistry.DatabaseName() + ":" + revisionProviderPrefix + localProfile.ScopedID())
 
@@ -292,25 +290,11 @@ func (lp *LayeredProfile) Update(md MatchingData, createProfileCallback func() *
 		// get global config validity flag
 		lp.globalValidityFlag.Refresh()
 
-		// update cached data fields
-		lp.updateCaches()
-
 		// bump revision counter
 		lp.increaseRevisionCounter(false)
 	}
 
 	return lp.RevisionCounter
-}
-
-func (lp *LayeredProfile) updateCaches() {
-	// update security level
-	var newLevel uint8
-	for _, layer := range lp.layers {
-		if newLevel < layer.SecurityLevel {
-			newLevel = layer.SecurityLevel
-		}
-	}
-	atomic.StoreUint32(lp.securityLevel, uint32(newLevel))
 }
 
 // SecurityLevel returns the highest security level of all layered profiles. This function is atomic and does not require any locking.

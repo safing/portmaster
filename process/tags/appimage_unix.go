@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
+	"github.com/safing/portmaster/profile/binmeta"
 )
 
 func init() {
@@ -124,7 +124,7 @@ func (h *AppImageHandler) CreateProfile(p *process.Process) *profile.Profile {
 	if tag, ok := p.GetTag(appImagePathTagKey); ok {
 		return profile.New(&profile.Profile{
 			Source:              profile.SourceLocal,
-			Name:                osdetail.GenerateBinaryNameFromPath(p.Path),
+			Name:                binmeta.GenerateBinaryNameFromPath(p.Path),
 			PresentationPath:    p.Path,
 			UsePresentationPath: true,
 			Fingerprints: []profile.Fingerprint{
@@ -141,7 +141,7 @@ func (h *AppImageHandler) CreateProfile(p *process.Process) *profile.Profile {
 	if tag, ok := p.GetTag(appImageMountIDTagKey); ok {
 		return profile.New(&profile.Profile{
 			Source:              profile.SourceLocal,
-			Name:                osdetail.GenerateBinaryNameFromPath(p.Path),
+			Name:                binmeta.GenerateBinaryNameFromPath(p.Path),
 			PresentationPath:    p.Path,
 			UsePresentationPath: true,
 			Fingerprints: []profile.Fingerprint{
