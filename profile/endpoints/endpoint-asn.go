@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/safing/portmaster/intel"
 )
@@ -48,9 +49,10 @@ func (ep *EndpointASN) String() string {
 
 func parseTypeASN(fields []string) (Endpoint, error) {
 	if asnRegex.MatchString(fields[1]) {
-		asn, err := strconv.ParseUint(fields[1][2:], 10, 64)
+		asnString := strings.TrimPrefix(fields[1], "AS")
+		asn, err := strconv.ParseUint(asnString, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse AS number %s", fields[1])
+			return nil, fmt.Errorf("failed to parse AS number %s", asnString)
 		}
 
 		ep := &EndpointASN{
