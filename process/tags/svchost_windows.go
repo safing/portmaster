@@ -9,7 +9,7 @@ import (
 	"github.com/safing/portbase/utils/osdetail"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
-	"github.com/safing/portmaster/profile/icons"
+	"github.com/safing/portmaster/profile/binmeta"
 )
 
 func init() {
@@ -86,7 +86,7 @@ func (h *SVCHostTagHandler) CreateProfile(p *process.Process) *profile.Profile {
 		// Create new profile based on tag.
 		newProfile := profile.New(&profile.Profile{
 			Source:              profile.SourceLocal,
-			Name:                "Windows Service: " + icons.GenerateBinaryNameFromPath(tag.Value),
+			Name:                "Windows Service: " + binmeta.GenerateBinaryNameFromPath(tag.Value),
 			UsePresentationPath: false,
 			Fingerprints: []profile.Fingerprint{
 				{
@@ -99,9 +99,9 @@ func (h *SVCHostTagHandler) CreateProfile(p *process.Process) *profile.Profile {
 		})
 
 		// Load default icon for windows service.
-		icon, err := icons.LoadAndSaveIcon(context.TODO(), `C:\Windows\System32\@WLOGO_48x48.png`)
+		icon, err := binmeta.LoadAndSaveIcon(context.TODO(), `C:\Windows\System32\@WLOGO_48x48.png`)
 		if err == nil {
-			newProfile.Icons = []icons.Icon{*icon}
+			newProfile.Icons = []binmeta.Icon{*icon}
 		}
 
 		return newProfile

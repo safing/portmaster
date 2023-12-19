@@ -8,7 +8,7 @@ import (
 	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
-	"github.com/safing/portmaster/profile/icons"
+	"github.com/safing/portmaster/profile/binmeta"
 )
 
 func init() {
@@ -101,7 +101,7 @@ func (h *WinStoreHandler) CreateProfile(p *process.Process) *profile.Profile {
 	if tag, ok := p.GetTag(winStoreAppNameTagKey); ok {
 		return profile.New(&profile.Profile{
 			Source:              profile.SourceLocal,
-			Name:                icons.GenerateBinaryNameFromPath(tag.Value),
+			Name:                binmeta.GenerateBinaryNameFromPath(tag.Value),
 			PresentationPath:    p.Path,
 			UsePresentationPath: true,
 			Fingerprints: []profile.Fingerprint{

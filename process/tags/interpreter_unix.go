@@ -14,7 +14,7 @@ import (
 
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
-	"github.com/safing/portmaster/profile/icons"
+	"github.com/safing/portmaster/profile/binmeta"
 )
 
 func init() {
@@ -161,7 +161,7 @@ func (h *InterpHandler) CreateProfile(p *process.Process) *profile.Profile {
 			for _, ext := range it.Extensions {
 				scriptName, _ = strings.CutSuffix(scriptName, ext)
 			}
-			scriptName = icons.GenerateBinaryNameFromPath(scriptName)
+			scriptName = binmeta.GenerateBinaryNameFromPath(scriptName)
 
 			return profile.New(&profile.Profile{
 				Source:              profile.SourceLocal,

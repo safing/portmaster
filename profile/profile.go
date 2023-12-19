@@ -16,8 +16,8 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/utils"
 	"github.com/safing/portmaster/intel/filterlists"
+	"github.com/safing/portmaster/profile/binmeta"
 	"github.com/safing/portmaster/profile/endpoints"
-	"github.com/safing/portmaster/profile/icons"
 )
 
 // ProfileSource is the source of the profile.
@@ -68,9 +68,9 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// See IconType for more information.
 	Icon string
 	// Deprecated: IconType describes the type of the Icon property.
-	IconType icons.IconType
+	IconType binmeta.IconType
 	// Icons holds a list of icons to represent the application.
-	Icons []icons.Icon
+	Icons []binmeta.Icon
 
 	// Deprecated: LinkedPath used to point to the executableis this
 	// profile was created for.
@@ -469,7 +469,7 @@ func (profile *Profile) updateMetadata(binaryPath string) (changed bool) {
 	// Set Name if unset.
 	if profile.Name == "" && profile.PresentationPath != "" {
 		// Generate a default profile name from path.
-		profile.Name = icons.GenerateBinaryNameFromPath(profile.PresentationPath)
+		profile.Name = binmeta.GenerateBinaryNameFromPath(profile.PresentationPath)
 		changed = true
 	}
 
@@ -514,7 +514,7 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context, md Matchin
 	}
 
 	// Get binary icon and name.
-	newIcon, newName, err := icons.GetIconAndName(ctx, profile.PresentationPath, home)
+	newIcon, newName, err := binmeta.GetIconAndName(ctx, profile.PresentationPath, home)
 	if err != nil {
 		log.Warningf("profile: failed to get binary icon/name for %s: %s", profile.PresentationPath, err)
 	}
@@ -534,10 +534,10 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context, md Matchin
 		// Apply new icon if found.
 		if newIcon != nil {
 			if len(profile.Icons) == 0 {
-				profile.Icons = []icons.Icon{*newIcon}
+				profile.Icons = []binmeta.Icon{*newIcon}
 			} else {
 				profile.Icons = append(profile.Icons, *newIcon)
-				profile.Icons = icons.SortAndCompact(profile.Icons)
+				profile.Icons = binmeta.SortAndCompactIcons(profile.Icons)
 			}
 		}
 	}()

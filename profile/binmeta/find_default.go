@@ -1,6 +1,6 @@
 //go:build !linux && !windows
 
-package icons
+package binmeta
 
 import "context"
 

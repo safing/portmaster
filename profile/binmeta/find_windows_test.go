@@ -1,4 +1,4 @@
-package icons
+package binmeta
 
 import (
 	"context"

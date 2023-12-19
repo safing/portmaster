@@ -5,7 +5,7 @@ import (
 
 	"github.com/safing/portmaster/process"
 	"github.com/safing/portmaster/profile"
-	"github.com/safing/portmaster/profile/icons"
+	"github.com/safing/portmaster/profile/binmeta"
 )
 
 func init() {
@@ -69,7 +69,7 @@ func (h *flatpakHandler) CreateProfile(p *process.Process) *profile.Profile {
 	if tag, ok := p.GetTag(flatpakIDTagKey); ok {
 		return profile.New(&profile.Profile{
 			Source:              profile.SourceLocal,
-			Name:                icons.GenerateBinaryNameFromPath(p.Path),
+			Name:                binmeta.GenerateBinaryNameFromPath(p.Path),
 			PresentationPath:    p.Path,
 			UsePresentationPath: true,
 			Fingerprints: []profile.Fingerprint{
