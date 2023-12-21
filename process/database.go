@@ -3,15 +3,17 @@ package process
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	processInfo "github.com/shirou/gopsutil/process"
 	"github.com/tevino/abool"
-	"golang.org/x/exp/maps"
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/profile"
 )
 
 const processDatabaseNamespace = "network:tree"
@@ -48,37 +50,33 @@ func All() map[int]*Process {
 	return all
 }
 
-func FindProcessesByProfile(ctx context.Context, scopedID string) []*Process {
-	all := All()
+// GetProcessesWithProfile returns all processes that use the given profile.
+// If preferProcessGroupLeader is set, it returns the process group leader instead, if available.
+func GetProcessesWithProfile(ctx context.Context, profileSource profile.ProfileSource, profileID string, preferProcessGroupLeader bool) []*Process {
+	log.Tracer(ctx).Debugf("process: searching for processes belonging to %s", profile.MakeScopedID(profileSource, profileID))
 
-	pids := make([]int, 0, len(all))
-
-	log.Infof("[DEBUG] searchin processes belonging to %s", scopedID)
-
-	for _, p := range all {
-		p.Lock()
-		if p.profile != nil && p.profile.LocalProfile().ScopedID() == scopedID {
-			pids = append(pids, p.Pid)
+	// Get all processes that match the given profile.
+	procs := make([]*Process, 0, 8)
+	for _, p := range All() {
+		lp := p.profile.LocalProfile()
+		if lp != nil && lp.Source == profileSource && lp.ID == profileID {
+			if preferProcessGroupLeader && p.Leader() != nil {
+				procs = append(procs, p.Leader())
+			} else {
+				procs = append(procs, p)
+			}
 		}
-		p.Unlock()
 	}
 
-	m := make(map[int]*Process)
+	// Sort and compact.
+	slices.SortFunc[[]*Process, *Process](procs, func(a, b *Process) int {
+		return strings.Compare(a.processKey, b.processKey)
+	})
+	slices.CompactFunc[[]*Process, *Process](procs, func(a, b *Process) bool {
+		return a.processKey == b.processKey
+	})
 
-	for _, pid := range pids {
-		if _, ok := m[pid]; ok {
-			continue
-		}
-
-		process, err := GetProcessGroupLeader(ctx, pid)
-		if err != nil {
-			continue
-		}
-
-		m[process.Pid] = process
-	}
-
-	return maps.Values(m)
+	return procs
 }
 
 // Save saves the process to the internal state and pushes an update.

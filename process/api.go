@@ -1,81 +1,45 @@
 package process
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/safing/portbase/api"
+	"github.com/safing/portmaster/profile"
 )
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
+		Name:        "Get Process Tag Metadata",
+		Description: "Get information about process tags.",
 		Path:        "process/tags",
 		Read:        api.PermitUser,
 		BelongsTo:   module,
 		StructFunc:  handleProcessTagMetadata,
-		Name:        "Get Process Tag Metadata",
-		Description: "Get information about process tags.",
 	}); err != nil {
 		return err
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path: "process/by-profile",
-		Parameters: []api.Parameter{
-			{
-				Method:      http.MethodGet,
-				Field:       "scopedId",
-				Value:       "",
-				Description: "The ID of the profile",
-			},
-		},
-		Read:      api.PermitUser,
-		BelongsTo: module,
-		StructFunc: api.StructFunc(func(ar *api.Request) (any, error) {
-			id := ar.URL.Query().Get("scopedId")
-
-			if id == "" {
-				return nil, api.ErrorWithStatus(fmt.Errorf("missing profile id"), http.StatusBadRequest)
-			}
-
-			result := FindProcessesByProfile(ar.Context(), id)
-
-			return result, nil
-		}),
-		Description: "Get all running processes for a given profile",
 		Name:        "Get Processes by Profile",
+		Description: "Get all recently active processes using the given profile",
+		Path:        "process/list/by-profile/{source:[a-z]+}/{id:[A-z0-9-]+}",
+		Read:        api.PermitUser,
+		BelongsTo:   module,
+		StructFunc:  handleGetProcessesByProfile,
 	}); err != nil {
 		return err
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path: "process/by-pid/{pid:[0-9]+}",
-		Parameters: []api.Parameter{
-			{
-				Method:      http.MethodGet,
-				Field:       "pid",
-				Value:       "",
-				Description: "A PID of a process inside the requested process group",
-			},
-		},
-		Read:      api.PermitUser,
-		BelongsTo: module,
-		StructFunc: api.StructFunc(func(ar *api.Request) (i interface{}, err error) {
-			pid, err := strconv.ParseInt(ar.URLVars["pid"], 10, 0)
-			if err != nil {
-				return nil, api.ErrorWithStatus(err, http.StatusBadRequest)
-			}
-
-			process, err := GetProcessGroupLeader(ar.Context(), int(pid))
-			if err != nil {
-				return nil, api.ErrorWithStatus(err, http.StatusInternalServerError)
-			}
-
-			return process, nil
-		}),
-		Description: "Load a process group leader by a child PID",
 		Name:        "Get Process Group Leader By PID",
+		Description: "Load a process group leader by a child PID",
+		Path:        "process/group-leader/{pid:[0-9]+}",
+		Read:        api.PermitUser,
+		BelongsTo:   module,
+		StructFunc:  handleGetProcessGroupLeader,
 	}); err != nil {
 		return err
 	}
@@ -100,4 +64,36 @@ func handleProcessTagMetadata(ar *api.Request) (i interface{}, err error) {
 	}
 
 	return resp, nil
+}
+
+func handleGetProcessesByProfile(ar *api.Request) (any, error) {
+	source := ar.URLVars["source"]
+	id := ar.URLVars["id"]
+	if id == "" || source == "" {
+		return nil, api.ErrorWithStatus(fmt.Errorf("missing profile source/id"), http.StatusBadRequest)
+	}
+
+	result := GetProcessesWithProfile(ar.Context(), profile.ProfileSource(source), id, true)
+	return result, nil
+}
+
+func handleGetProcessGroupLeader(ar *api.Request) (any, error) {
+	pid, err := strconv.ParseInt(ar.URLVars["pid"], 10, 0)
+	if err != nil {
+		return nil, api.ErrorWithStatus(err, http.StatusBadRequest)
+	}
+
+	process, err := GetOrFindProcess(ar.Context(), int(pid))
+	if err != nil {
+		return nil, api.ErrorWithStatus(err, http.StatusInternalServerError)
+	}
+	err = process.FindProcessGroupLeader(ar.Context())
+	switch {
+	case process.Leader() != nil:
+		return process.Leader(), nil
+	case err != nil:
+		return nil, api.ErrorWithStatus(err, http.StatusInternalServerError)
+	default:
+		return nil, api.ErrorWithStatus(errors.New("leader not found"), http.StatusNotFound)
+	}
 }

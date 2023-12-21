@@ -2,83 +2,95 @@ package process
 
 import (
 	"context"
+	"fmt"
 	"syscall"
 
 	"github.com/safing/portbase/log"
 )
 
-// SystemProcessID is the PID of the System/Kernel itself.
-const SystemProcessID = 0
+const (
+	// SystemProcessID is the PID of the System/Kernel itself.
+	SystemProcessID = 0
 
-func GetProcessGroupLeader(ctx context.Context, pid int) (*Process, error) {
-	pgid, err := GetProcessGroupID(ctx, pid)
-	if err != nil {
-		return nil, err
+	// SystemInitID is the PID of the system init process.
+	SystemInitID = 1
+)
+
+// FindProcessGroupLeader returns the process that leads the process group.
+// Returns nil when process ID is not valid (or virtual).
+// If the process group leader is found, it is set on the process.
+// If that process does not exist anymore, then the highest existing parent process is returned.
+// If an error occurs, the best match is set.
+func (p *Process) FindProcessGroupLeader(ctx context.Context) error {
+	p.Lock()
+	defer p.Unlock()
+
+	// Return the leader if we already have it.
+	if p.leader != nil {
+		return nil
 	}
 
-	leader, err := GetOrFindProcess(ctx, pgid)
+	// Check if we have the process group leader PID.
+	if p.LeaderPid == UndefinedProcessID {
+		return nil
+	}
+
+	// Return nil if we already are the leader.
+	if p.LeaderPid == p.Pid {
+		return nil
+	}
+
+	// Get process leader process.
+	leader, err := GetOrFindProcess(ctx, p.LeaderPid)
 	if err == nil {
-		log.Infof("[DBUG] found leader pid=%d pgid=%d", leader.Pid, leader.Pgid)
-		return leader, nil
+		p.leader = leader
+		log.Tracer(ctx).Debugf("process: found process leader of %d: pid=%d pgid=%d", p.Pid, leader.Pid, leader.LeaderPid)
+		return nil
 	}
 
-	// this seems like a orphan process group so find the outermost parent
-	// i.e. the first process in the group
-	iter, err := GetOrFindProcess(ctx, pid)
-	if err != nil {
-		log.Infof("[DBUG] failed to get process for pid %d", pid)
-		return nil, err
-	}
-
-	// This is already the leader
-	if iter.Pid == pgid {
-		log.Infof("[DBUG] iter pid=%d pgid=%d is already leader", pid, pgid)
-		return iter, nil
-	}
-
+	// If we can't get the process leader process, it has likely already exited.
+	// In that case, find the highest existing parent process within the process group.
+	var (
+		nextParentPid = p.ParentPid
+		lastParent    *Process
+	)
 	for {
-		next, err := GetOrFindProcess(ctx, iter.ParentPid)
+		// Get next parent.
+		parent, err := GetOrFindProcess(ctx, nextParentPid)
 		if err != nil {
-			return nil, err
+			p.leader = lastParent
+			return fmt.Errorf("failed to find parent %d: %w", nextParentPid, err)
 		}
 
-		// If the parent process group ID of does not match
-		// the pgid than iter is the first child of the process
-		// group
-		if next.Pgid != pgid {
-			return iter, nil
+		// Check if we are ready to return.
+		switch {
+		case parent.Pid == p.LeaderPid:
+			// Found the process group leader!
+			p.leader = parent
+			return nil
+
+		case parent.LeaderPid != p.LeaderPid:
+			// We are leaving the process group. Return the previous parent.
+			p.leader = lastParent
+			log.Tracer(ctx).Debugf("process: found process leader (highest parent) of %d: pid=%d pgid=%d", p.Pid, parent.Pid, parent.LeaderPid)
+			return nil
+
+		case parent.ParentPid == SystemProcessID,
+			parent.ParentPid == SystemInitID:
+			// Next parent is system or init.
+			// Use current parent.
+			p.leader = parent
+			log.Tracer(ctx).Debugf("process: found process leader (highest parent) of %d: pid=%d pgid=%d", p.Pid, parent.Pid, parent.LeaderPid)
+			return nil
 		}
 
-		iter = next
+		// Check next parent.
+		lastParent = parent
+		nextParentPid = parent.ParentPid
 	}
 }
 
+// GetProcessGroupID returns the process group ID of the given PID.
 func GetProcessGroupID(ctx context.Context, pid int) (int, error) {
 	return syscall.Getpgid(pid)
 }
-
-/*
-func init() {
-	tracer, err := ebpf.New()
-	if err != nil {
-		panic(err)
-	}
-
-	go func() {
-		file, _ := os.Create("/tmp/tracer.json")
-		enc := json.NewEncoder(file)
-		enc.SetIndent("", "  ")
-
-		defer tracer.Close()
-		for {
-			evt, err := tracer.Read()
-			if err != nil {
-				log.Errorf("failed to read from execve tracer: %s", err)
-				return
-			}
-
-			_ = enc.Encode(evt)
-		}
-	}()
-}
-*/

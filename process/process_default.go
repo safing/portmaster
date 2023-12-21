@@ -10,11 +10,14 @@ import (
 // SystemProcessID is the PID of the System/Kernel itself.
 const SystemProcessID = 0
 
-func GetProcessGroupLeader(ctx context.Context, pid int) (*Process, error) {
-	// On systems other than linux we just return the process with PID == pid
-	return GetOrFindProcess(ctx, pid)
+// GetProcessGroupLeader returns the process that leads the process group.
+// Returns nil on unsupported platforms.
+func (p *Process) FindProcessGroupLeader(ctx context.Context) error {
+	return nil
 }
 
+// GetProcessGroupID returns the process group ID of the given PID.
+// Returns undefined process ID on unsupported platforms.
 func GetProcessGroupID(ctx context.Context, pid int) (int, error) {
-	return 0
+	return UndefinedProcessID, nil
 }

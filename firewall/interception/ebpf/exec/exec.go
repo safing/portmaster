@@ -15,8 +15,9 @@ import (
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/hashicorp/go-multierror"
-	"github.com/safing/portbase/log"
 	"golang.org/x/sys/unix"
+
+	"github.com/safing/portbase/log"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -g -Wall -Werror" bpf ../programs/exec.c
@@ -67,6 +68,8 @@ type Event struct {
 	Comm string `json:"comm"`
 }
 
+// Tracer is the exec tracer itself.
+// It must be closed after use.
 type Tracer struct {
 	objs bpfObjects
 	tp   link.Link
