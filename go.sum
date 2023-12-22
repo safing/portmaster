@@ -3,8 +3,8 @@ github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 h1:cTp8I5+VIo
 github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v0.4.1/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
-github.com/VictoriaMetrics/metrics v1.29.0 h1:3qC+jcvymGJaQKt6wsXIlJieVFQwD/par9J1Bxul+Mc=
-github.com/VictoriaMetrics/metrics v1.29.0/go.mod h1:r7hveu6xMdUACXvB8TYdAj8WEsKzWB0EkpJN+RDtOf8=
+github.com/VictoriaMetrics/metrics v1.29.1 h1:yTORfGeO1T0C6P/tEeT4Mf7rBU5TUu3kjmHvmlaoeO8=
+github.com/VictoriaMetrics/metrics v1.29.1/go.mod h1:r7hveu6xMdUACXvB8TYdAj8WEsKzWB0EkpJN+RDtOf8=
 github.com/Xuanwo/go-locale v1.1.0 h1:51gUxhxl66oXAjI9uPGb2O0qwPECpriKQb2hl35mQkg=
 github.com/Xuanwo/go-locale v1.1.0/go.mod h1:UKrHoZB3FPIk9wIG2/tVSobnHgNnceGSH3Y8DY5cASs=
 github.com/aead/ecdh v0.2.0 h1:pYop54xVaq/CEREFEcukHRZfTdjiWvYIsZDXXrBapQQ=
@@ -216,8 +216,8 @@ github.com/safing/portbase v0.18.9 h1:j+ToHKQz0U2+Tx4jMP7QPky/H0R4uY6qUM+lIJlO6k
 github.com/safing/portbase v0.18.9/go.mod h1:Qrh3ck+7VZloFmnozCs9Hj8godhJAi55cmiDiC7BwTc=
 github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec h1:oSJY1seobofPwpMoJRkCgXnTwfiQWNfGMCPDfqgAEfg=
 github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec/go.mod h1:abwyAQrZGemWbSh/aCD9nnkp0SvFFf/mGWkAbOwPnFE=
-github.com/safing/spn v0.7.4 h1:wAE17yWOgL/lEwluRXRj1gM08bhyg1f7GQHKuP3aNSw=
-github.com/safing/spn v0.7.4/go.mod h1:llkmdy3AZq5nR3a8QfUnvh3++L8DcdlLUgljBNvtL4w=
+github.com/safing/spn v0.7.5 h1:WfkMs2omLrwxBWccGGG9Akx0AvsvJLG+W7rjWQpQhl4=
+github.com/safing/spn v0.7.5/go.mod h1:Hg585WJuib4JI3R7Kndq/10MJPCUl1UmeJJwL3JIwdQ=
 github.com/satori/go.uuid v1.2.0 h1:0uYX9dsZ2yD7q2RtLRtPSdGDWzjeM3TbMJP9utgA0ww=
 github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 github.com/seehuhn/fortuna v1.0.1 h1:lu9+CHsmR0bZnx5Ay646XvCSRJ8PJTi5UYJwDBX68H0=

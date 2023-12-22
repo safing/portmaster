@@ -29,7 +29,7 @@ require (
 	github.com/safing/jess v0.3.3
 	github.com/safing/portbase v0.18.9
 	github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec
-	github.com/safing/spn v0.7.4
+	github.com/safing/spn v0.7.5
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.8.0
 	github.com/spkg/zipfs v0.7.1
@@ -48,7 +48,7 @@ require (
 )
 
 require (
-	github.com/VictoriaMetrics/metrics v1.29.0 // indirect
+	github.com/VictoriaMetrics/metrics v1.29.1 // indirect
 	github.com/aead/ecdh v0.2.0 // indirect
 	github.com/aead/serpent v0.0.0-20160714141033-fba169763ea6 // indirect
 	github.com/alessio/shellescape v1.4.2 // indirect
