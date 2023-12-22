@@ -12,6 +12,7 @@ import (
 
 	"github.com/safing/portbase/database/record"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/notifications"
 	"github.com/safing/portmaster/intel"
 	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/netutils"
@@ -186,6 +187,13 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	BytesReceived uint64
 	// BytesSent holds the observed sent bytes of the connection.
 	BytesSent uint64
+
+	// prompt holds the active prompt for this connection, if there is one.
+	prompt *notifications.Notification
+	// promptLock locks the prompt separately from the connection.
+	// This allows goroutines to dismiss the notification, while another goroutine
+	// is waiting for the prompt and holding a lock on the connection.
+	promptLock sync.Mutex
 
 	// pkgQueue is used to serialize packet handling for a single
 	// connection and is served by the connections packetHandler.
@@ -1028,6 +1036,28 @@ func (conn *Connection) GetInspectorData() map[uint8]interface{} {
 // SetInspectorData set the list of inspector data.
 func (conn *Connection) SetInspectorData(newInspectorData map[uint8]interface{}) {
 	conn.inspectorData = newInspectorData
+}
+
+// SetPrompt sets the given prompt on the connection.
+// If there already is a prompt set, the previous prompt notification is deleted.
+func (conn *Connection) SetPrompt(prompt *notifications.Notification) {
+	conn.promptLock.Lock()
+	defer conn.promptLock.Unlock()
+
+	if conn.prompt != nil {
+		conn.prompt.Delete()
+	}
+	conn.prompt = prompt
+}
+
+// RemovePrompt removes the prompt on the connection.
+func (conn *Connection) RemovePrompt() {
+	conn.promptLock.Lock()
+	defer conn.promptLock.Unlock()
+
+	if conn.prompt != nil {
+		conn.prompt.Delete()
+	}
 }
 
 // String returns a string representation of conn.
