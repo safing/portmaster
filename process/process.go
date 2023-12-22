@@ -30,20 +30,26 @@ type Process struct {
 	// Process attributes.
 	// Don't change; safe for concurrent access.
 
-	Name            string
-	UserID          int
-	UserName        string
-	UserHome        string
-	Pid             int
-	CreatedAt       int64
+	Name     string
+	UserID   int
+	UserName string
+	UserHome string
+
+	Pid       int
+	CreatedAt int64
+
 	ParentPid       int
 	ParentCreatedAt int64
-	Path            string
-	ExecName        string
-	Cwd             string
-	CmdLine         string
-	FirstArg        string
-	Env             map[string]string
+
+	LeaderPid int
+	leader    *Process
+
+	Path     string
+	ExecName string
+	Cwd      string
+	CmdLine  string
+	FirstArg string
+	Env      map[string]string
 
 	// unique process identifier ("Pid-CreatedAt")
 	processKey string
@@ -89,6 +95,16 @@ func (p *Process) Profile() *profile.LayeredProfile {
 	}
 
 	return p.profile
+}
+
+// Leader returns the process group leader that is attached to the process.
+// This will not trigger a new search for the process group leader, it only
+// returns existing data.
+func (p *Process) Leader() *Process {
+	p.Lock()
+	defer p.Unlock()
+
+	return p.leader
 }
 
 // IsIdentified returns whether the process has been identified or if it
@@ -246,7 +262,7 @@ func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*
 	// TODO: User Home
 	// new.UserHome, err =
 
-	// Parent process id
+	// Parent process ID
 	ppid, err := pInfo.PpidWithContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get PPID for p%d: %w", pInfo.Pid, err)
@@ -261,6 +277,19 @@ func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*
 			return nil, err
 		}
 		process.ParentCreatedAt = parentCreatedAt
+	}
+
+	// Leader process ID
+	// Get process group ID to find group leader, which is the process "nearest"
+	// to the user and will have more/better information for finding names and
+	// icons, for example.
+	leaderPid, err := GetProcessGroupID(ctx, process.Pid)
+	if err != nil {
+		// Fail gracefully.
+		log.Warningf("process: failed to get process group ID for p%d: %s", process.Pid, err)
+		process.LeaderPid = UndefinedProcessID
+	} else {
+		process.LeaderPid = leaderPid
 	}
 
 	// Path

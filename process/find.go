@@ -29,6 +29,13 @@ func GetProcessWithProfile(ctx context.Context, pid int) (process *Process, err 
 		return GetUnidentifiedProcess(ctx), err
 	}
 
+	// Get process group leader, which is the process "nearest" to the user and
+	// will have more/better information for finding names ans icons, for example.
+	err = process.FindProcessGroupLeader(ctx)
+	if err != nil {
+		log.Warningf("process: failed to get process group leader for %s: %s", process, err)
+	}
+
 	changed, err := process.GetProfile(ctx)
 	if err != nil {
 		log.Tracer(ctx).Errorf("process: failed to get profile for process %s: %s", process, err)

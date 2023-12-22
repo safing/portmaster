@@ -1,7 +1,10 @@
 package process
 
 import (
+	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -10,6 +13,7 @@ import (
 
 	"github.com/safing/portbase/database"
 	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/profile"
 )
 
 const processDatabaseNamespace = "network:tree"
@@ -44,6 +48,35 @@ func All() map[int]*Process {
 	}
 
 	return all
+}
+
+// GetProcessesWithProfile returns all processes that use the given profile.
+// If preferProcessGroupLeader is set, it returns the process group leader instead, if available.
+func GetProcessesWithProfile(ctx context.Context, profileSource profile.ProfileSource, profileID string, preferProcessGroupLeader bool) []*Process {
+	log.Tracer(ctx).Debugf("process: searching for processes belonging to %s", profile.MakeScopedID(profileSource, profileID))
+
+	// Get all processes that match the given profile.
+	procs := make([]*Process, 0, 8)
+	for _, p := range All() {
+		lp := p.profile.LocalProfile()
+		if lp != nil && lp.Source == profileSource && lp.ID == profileID {
+			if preferProcessGroupLeader && p.Leader() != nil {
+				procs = append(procs, p.Leader())
+			} else {
+				procs = append(procs, p)
+			}
+		}
+	}
+
+	// Sort and compact.
+	slices.SortFunc[[]*Process, *Process](procs, func(a, b *Process) int {
+		return strings.Compare(a.processKey, b.processKey)
+	})
+	slices.CompactFunc[[]*Process, *Process](procs, func(a, b *Process) bool {
+		return a.processKey == b.processKey
+	})
+
+	return procs
 }
 
 // Save saves the process to the internal state and pushes an update.
