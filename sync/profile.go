@@ -420,8 +420,9 @@ func ImportProfile(r *ProfileImportRequest, requiredProfileSource profile.Profil
 			return nil, fmt.Errorf("%w: icon is invalid: %w", ErrImportFailed, err)
 		}
 		p.Icons = []binmeta.Icon{{
-			Type:  binmeta.IconTypeAPI,
-			Value: filename,
+			Type:   binmeta.IconTypeAPI,
+			Value:  filename,
+			Source: binmeta.IconSourceImport,
 		}}
 	}
 

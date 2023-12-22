@@ -15,8 +15,9 @@ import (
 
 // Icon describes an icon.
 type Icon struct {
-	Type  IconType
-	Value string
+	Type   IconType
+	Value  string
+	Source IconSource
 }
 
 // IconType describes the type of an Icon.
@@ -38,16 +39,46 @@ func (t IconType) sortOrder() int {
 	case IconTypeFile:
 		return 3
 	default:
-		return 100
+		return 9
 	}
+}
+
+// IconSource describes the source of an Icon.
+type IconSource string
+
+// Supported icon sources.
+const (
+	IconSourceUser   IconSource = "user"
+	IconSourceImport IconSource = "import"
+	IconSourceUI     IconSource = "ui"
+	IconSourceCore   IconSource = "core"
+)
+
+func (s IconSource) sortOrder() int {
+	switch s {
+	case IconSourceUser:
+		return 10
+	case IconSourceImport:
+		return 20
+	case IconSourceUI:
+		return 30
+	case IconSourceCore:
+		return 40
+	default:
+		return 90
+	}
+}
+
+func (icon Icon) sortOrder() int {
+	return icon.Source.sortOrder() + icon.Type.sortOrder()
 }
 
 // SortAndCompactIcons sorts and compacts a list of icons.
 func SortAndCompactIcons(icons []Icon) []Icon {
 	// Sort.
 	slices.SortFunc[[]Icon, Icon](icons, func(a, b Icon) int {
-		aOrder := a.Type.sortOrder()
-		bOrder := b.Type.sortOrder()
+		aOrder := a.sortOrder()
+		bOrder := b.sortOrder()
 
 		switch {
 		case aOrder != bOrder:
@@ -68,7 +99,7 @@ func SortAndCompactIcons(icons []Icon) []Icon {
 }
 
 // GetIconAsDataURL returns the icon data as a data URL.
-func (icon *Icon) GetIconAsDataURL() (bloburl string, err error) {
+func (icon Icon) GetIconAsDataURL() (bloburl string, err error) {
 	switch icon.Type {
 	case IconTypeFile:
 		return "", errors.New("getting icon from file is not supported")

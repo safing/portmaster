@@ -92,8 +92,9 @@ func LoadAndSaveIcon(ctx context.Context, iconPath string) (*Icon, error) {
 		return nil, fmt.Errorf("failed to import icon %s: %w", iconPath, err)
 	}
 	return &Icon{
-		Type:  IconTypeAPI,
-		Value: filename,
+		Type:   IconTypeAPI,
+		Value:  filename,
+		Source: IconSourceCore,
 	}, nil
 }
 
