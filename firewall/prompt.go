@@ -54,6 +54,9 @@ func prompt(ctx context.Context, conn *network.Connection) {
 		return
 	}
 
+	// Add prompt to connection.
+	conn.SetPrompt(n)
+
 	// Get decision timeout and make sure it does not exceed the ask timeout.
 	timeout := decisionTimeout
 	if timeout > askTimeout() {
@@ -65,8 +68,13 @@ func prompt(ctx context.Context, conn *network.Connection) {
 	case promptResponse := <-n.Response():
 		switch promptResponse {
 		case allowDomainAll, allowDomainDistinct, allowIP, allowServingIP:
+			// Accept
 			conn.Accept("allowed via prompt", profile.CfgOptionEndpointsKey)
-		default: // deny
+		case "":
+			// Dismissed
+			conn.Deny("prompting canceled, waiting for new decision", profile.CfgOptionDefaultActionKey)
+		default:
+			// Deny
 			conn.Deny("blocked via prompt", profile.CfgOptionEndpointsKey)
 		}
 

@@ -111,6 +111,9 @@ func resetAllConnectionVerdicts() {
 func resetConnectionVerdict(ctx context.Context, conn *network.Connection) (verdictChanged bool) {
 	tracer := log.Tracer(ctx)
 
+	// Remove any active prompt as we settings are being re-evaluated.
+	conn.RemovePrompt()
+
 	conn.Lock()
 	defer conn.Unlock()
 
@@ -144,12 +147,17 @@ func resetConnectionVerdict(ctx context.Context, conn *network.Connection) (verd
 
 	// Save if verdict changed.
 	if conn.Verdict.Firewall != previousVerdict {
-		err := interception.UpdateVerdictOfConnection(conn)
-		if err != nil {
-			log.Debugf("filter: failed to update connection verdict: %s", err)
-		}
 		conn.Save()
 		tracer.Infof("filter: verdict of connection %s changed from %s to %s", conn, previousVerdict.Verb(), conn.VerdictVerb())
+
+		// Update verdict in OS integration, if an IP connection.
+		if conn.Type == network.IPConnection {
+			err := interception.UpdateVerdictOfConnection(conn)
+			if err != nil {
+				log.Debugf("filter: failed to update connection verdict: %s", err)
+			}
+		}
+
 		return true
 	}
 
