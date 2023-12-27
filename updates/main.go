@@ -22,6 +22,7 @@ const (
 
 	enableSoftwareUpdatesKey = "core/automaticUpdates"
 	enableIntelUpdatesKey    = "core/automaticIntelUpdates"
+	updateProxyURLKey        = "core/updateProxy"
 
 	// ModuleName is the name of the update module
 	// and can be used when declaring module dependencies.
@@ -130,6 +131,7 @@ func start() error {
 		Verification:     helper.VerificationConfig,
 		DevMode:          devMode(),
 		Online:           true,
+		ProxyAddr:        updateProxyURLKey,
 	}
 	// Override values from flags.
 	if userAgentFromFlag != "" {
