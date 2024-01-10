@@ -170,10 +170,10 @@ int BPF_PROG(udp_v6_connect, struct sock *sk) {
 	udp_info->ipVersion = 6;
 
 	// Set protocol for UDPLite
-	if(us->udp.pcflag == 0) {
-		udp_info->protocol = UDP;
-	} else {
+	if(sk->sk_protocol == IPPROTO_UDPLITE) {
 		udp_info->protocol = UDPLite;
+	} else {
+		udp_info->protocol = UDP;
 	}
 
 	// Send event
