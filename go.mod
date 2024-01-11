@@ -39,10 +39,10 @@ require (
 	github.com/tevino/abool v1.2.0
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/vincent-petithory/dataurl v1.0.0
-	golang.org/x/exp v0.0.0-20231219180239-dc181d75b848
-	golang.org/x/net v0.19.0
-	golang.org/x/sync v0.5.0
-	golang.org/x/sys v0.15.0
+	golang.org/x/exp v0.0.0-20240110193028-0dcbfd608b1e
+	golang.org/x/net v0.20.0
+	golang.org/x/sync v0.6.0
+	golang.org/x/sys v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
 	zombiezen.com/go/sqlite v1.0.0
 )
@@ -104,15 +104,15 @@ require (
 	github.com/zalando/go-keyring v0.2.3 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	go.etcd.io/bbolt v1.3.8 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
-	golang.org/x/image v0.14.0 // indirect
+	golang.org/x/crypto v0.18.0 // indirect
+	golang.org/x/image v0.15.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.16.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gvisor.dev/gvisor v0.0.0-20231222013827-149350e5c428 // indirect
-	modernc.org/libc v1.38.0 // indirect
+	gvisor.dev/gvisor v0.0.0-20240110202538-8053cd8f0bf6 // indirect
+	modernc.org/libc v1.40.1 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.7.2 // indirect
 	modernc.org/sqlite v1.28.0 // indirect
