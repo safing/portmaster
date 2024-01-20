@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portmaster/firewall/interception/windowskext"
+	"github.com/safing/portmaster/firewall/interception/windowskext2"
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/updates"
@@ -35,8 +35,29 @@ func startInterception(packets chan packet.Packet) error {
 	})
 
 	// Start bandwidth stats monitor.
-	module.StartServiceWorker("kext bandwidth stats monitor", 0, func(ctx context.Context) error {
-		return windowskext.BandwidthStatsWorker(ctx, 1*time.Second, BandwidthUpdates)
+	// module.StartServiceWorker("kext bandwidth stats monitor", 0, func(ctx context.Context) error {
+	// return windowskext.BandwidthStatsWorker(ctx, 1*time.Second, BandwidthUpdates)
+	// })
+
+	// Start kext logging. The worker will periodically send request to the kext to send logs.
+	module.StartServiceWorker("kext log request worker", 0, func(ctx context.Context) error {
+		timer := time.NewTimer(time.Second)
+		for {
+			select {
+			case <-timer.C:
+				{
+					err := windowskext.SendLogRequest()
+					if err != nil {
+						return err
+					}
+				}
+			case <-ctx.Done():
+				{
+					return nil
+				}
+			}
+
+		}
 	})
 
 	return nil

@@ -39,6 +39,7 @@ require (
 	github.com/tevino/abool v1.2.0
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/vincent-petithory/dataurl v1.0.0
+	github.com/vlabo/portmaster_windows_rust_kext/kext_interface v0.0.0-20240120091731-1a3450b13959
 	golang.org/x/exp v0.0.0-20240110193028-0dcbfd608b1e
 	golang.org/x/net v0.20.0
 	golang.org/x/sync v0.6.0
