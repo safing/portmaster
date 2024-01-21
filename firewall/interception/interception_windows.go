@@ -41,7 +41,7 @@ func startInterception(packets chan packet.Packet) error {
 
 	// Start kext logging. The worker will periodically send request to the kext to send logs.
 	module.StartServiceWorker("kext log request worker", 0, func(ctx context.Context) error {
-		timer := time.NewTimer(time.Second)
+		timer := time.NewTicker(1 * time.Second)
 		for {
 			select {
 			case <-timer.C:

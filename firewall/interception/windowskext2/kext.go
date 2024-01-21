@@ -4,9 +4,7 @@
 package windowskext
 
 import (
-	"errors"
 	"fmt"
-	"unsafe"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network"
@@ -15,9 +13,6 @@ import (
 
 // Package errors
 var (
-	ErrKextNotReady = errors.New("the windows kernel extension (driver) is not ready to accept commands")
-	ErrNoPacketID   = errors.New("the packet has no ID, possibly because it was fast-tracked by the kernel extension")
-
 	driverPath string
 
 	service  *kext_interface.KextService
@@ -28,7 +23,6 @@ const (
 	driverName = "PortmasterKext"
 )
 
-// Init initializes the DLL and the Kext (Kernel Driver).
 func Init(path string) error {
 	driverPath = path
 	return nil
@@ -63,20 +57,32 @@ func Stop() error {
 		log.Warningf("winkext: shutdown request failed: %s", err)
 	}
 	// Close the interface to the driver. Driver will continue to run.
-	kextFile.Close()
+	err = kextFile.Close()
+	if err != nil {
+		log.Warningf("winkext: failed to close kext file: %s", err)
+	}
 
 	// Stop and delete the driver.
-	service.Stop(true)
-	service.Delete()
+	err = service.Stop(true)
+	if err != nil {
+		log.Warningf("winkext: failed to stop kernel service: %s", err)
+	}
+
+	err = service.Delete()
+	if err != nil {
+		log.Warningf("winkext: failed to delete kernel service: %s", err)
+	}
 	return nil
 }
 
+// Sends a shutdown request.
 func shutdownRequest() error {
-	return kext_interface.WriteCommand(kextFile, kext_interface.BuildShutdown())
+	return kext_interface.WriteShutdownCommand(kextFile)
 }
 
+// Send request for logs of the kext.
 func SendLogRequest() error {
-	return kext_interface.WriteCommand(kextFile, kext_interface.BuildGetLogs())
+	return kext_interface.WriteGetLogsCommand(kextFile)
 }
 
 // RecvVerdictRequest waits for the next verdict request from the kext. If a timeout is reached, both *VerdictRequest and error will be nil.
@@ -87,53 +93,52 @@ func RecvVerdictRequest() (*kext_interface.Info, error) {
 // SetVerdict sets the verdict for a packet and/or connection.
 func SetVerdict(pkt *Packet, verdict network.Verdict) error {
 	if verdict == network.VerdictRerouteToNameserver {
-		redirect := kext_interface.Redirect{Id: pkt.verdictRequest, RemoteAddress: []uint8{127, 0, 0, 1}, RemotePort: 53}
-		command := kext_interface.BuildRedirect(redirect)
-		kext_interface.WriteCommand(kextFile, command)
+		redirect := kext_interface.RedirectV4{Id: pkt.verdictRequest, RemoteAddress: [4]uint8{127, 0, 0, 1}, RemotePort: 53}
+		kext_interface.WriteRedirectCommand(kextFile, redirect)
 	} else if verdict == network.VerdictRerouteToTunnel {
-		redirect := kext_interface.Redirect{Id: pkt.verdictRequest, RemoteAddress: []uint8{192, 168, 122, 196}, RemotePort: 717}
-		command := kext_interface.BuildRedirect(redirect)
-		kext_interface.WriteCommand(kextFile, command)
+		redirect := kext_interface.RedirectV4{Id: pkt.verdictRequest, RemoteAddress: [4]uint8{192, 168, 122, 196}, RemotePort: 717}
+		kext_interface.WriteRedirectCommand(kextFile, redirect)
 	} else {
 		verdict := kext_interface.Verdict{Id: pkt.verdictRequest, Verdict: uint8(verdict)}
-		command := kext_interface.BuildVerdict(verdict)
-		kext_interface.WriteCommand(kextFile, command)
+		kext_interface.WriteVerdictCommand(kextFile, verdict)
 	}
 	return nil
 }
 
+// Clears the internal connection cache.
 func ClearCache() error {
-	return kext_interface.WriteCommand(kextFile, kext_interface.BuildClearCache())
+	return kext_interface.WriteClearCacheCommand(kextFile)
 }
 
+// Updates a specific connection verdict.
 func UpdateVerdict(conn *network.Connection) error {
-	redirectAddress := []uint8{}
+	redirectAddress := [4]byte{}
 	redirectPort := 0
 	if conn.Verdict.Active == network.VerdictRerouteToNameserver {
-		redirectAddress = []uint8{127, 0, 0, 1}
+		redirectAddress = [4]byte{127, 0, 0, 1}
 		redirectPort = 53
 	}
 	if conn.Verdict.Active == network.VerdictRerouteToTunnel {
-		redirectAddress = []uint8{192, 168, 122, 196}
+		redirectAddress = [4]byte{192, 168, 122, 196}
 		redirectPort = 717
 	}
 
-	update := kext_interface.Update{
+	update := kext_interface.UpdateV4{
 		Protocol:        conn.Entity.Protocol,
-		LocalAddress:    conn.LocalIP,
+		LocalAddress:    [4]byte(conn.LocalIP),
 		LocalPort:       conn.LocalPort,
-		RemoteAddress:   conn.Entity.IP,
+		RemoteAddress:   [4]byte(conn.Entity.IP),
 		RemotePort:      conn.Entity.Port,
 		Verdict:         uint8(conn.Verdict.Active),
 		RedirectAddress: redirectAddress,
 		RedirectPort:    uint16(redirectPort),
 	}
 
-	command := kext_interface.BuildUpdate(update)
-	kext_interface.WriteCommand(kextFile, command)
+	kext_interface.WriteUpdateCommand(kextFile, update)
 	return nil
 }
 
+// Returns the kext version.
 func GetVersion() (*VersionInfo, error) {
 	data, err := kext_interface.ReadVersion(kextFile)
 	if err != nil {
@@ -147,10 +152,4 @@ func GetVersion() (*VersionInfo, error) {
 		build:    data[3],
 	}
 	return version, nil
-}
-
-var sizeOfConnectionStat = uint32(unsafe.Sizeof(ConnectionStat{}))
-
-func GetConnectionsStats() ([]ConnectionStat, error) {
-	return nil, nil
 }
