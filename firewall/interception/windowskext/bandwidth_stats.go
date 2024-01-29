@@ -81,7 +81,7 @@ func reportBandwidth(ctx context.Context, bandwidthUpdates chan *packet.Bandwidt
 	return nil
 }
 
-func StartBandwithConsoleLogger() {
+func StartBandwidthConsoleLogger() {
 	go func() {
 		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()

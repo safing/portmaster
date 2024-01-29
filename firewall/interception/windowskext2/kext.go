@@ -77,37 +77,41 @@ func Stop() error {
 
 // Sends a shutdown request.
 func shutdownRequest() error {
-	return kext_interface.WriteShutdownCommand(kextFile)
+	return kext_interface.SendShutdownCommand(kextFile)
 }
 
 // Send request for logs of the kext.
 func SendLogRequest() error {
-	return kext_interface.WriteGetLogsCommand(kextFile)
+	return kext_interface.SendGetLogsCommand(kextFile)
+}
+
+func SendBandwidthStatsRequest() error {
+	return kext_interface.SendGetBandwidthStatsCommand(kextFile)
 }
 
 // RecvVerdictRequest waits for the next verdict request from the kext. If a timeout is reached, both *VerdictRequest and error will be nil.
 func RecvVerdictRequest() (*kext_interface.Info, error) {
-	return kext_interface.ReadInfo(kextFile)
+	return kext_interface.RecvInfo(kextFile)
 }
 
 // SetVerdict sets the verdict for a packet and/or connection.
 func SetVerdict(pkt *Packet, verdict network.Verdict) error {
 	if verdict == network.VerdictRerouteToNameserver {
 		redirect := kext_interface.RedirectV4{Id: pkt.verdictRequest, RemoteAddress: [4]uint8{127, 0, 0, 1}, RemotePort: 53}
-		kext_interface.WriteRedirectCommand(kextFile, redirect)
+		kext_interface.SendRedirectV4Command(kextFile, redirect)
 	} else if verdict == network.VerdictRerouteToTunnel {
 		redirect := kext_interface.RedirectV4{Id: pkt.verdictRequest, RemoteAddress: [4]uint8{192, 168, 122, 196}, RemotePort: 717}
-		kext_interface.WriteRedirectCommand(kextFile, redirect)
+		kext_interface.SendRedirectV4Command(kextFile, redirect)
 	} else {
 		verdict := kext_interface.Verdict{Id: pkt.verdictRequest, Verdict: uint8(verdict)}
-		kext_interface.WriteVerdictCommand(kextFile, verdict)
+		kext_interface.SendVerdictCommand(kextFile, verdict)
 	}
 	return nil
 }
 
 // Clears the internal connection cache.
 func ClearCache() error {
-	return kext_interface.WriteClearCacheCommand(kextFile)
+	return kext_interface.SendClearCacheCommand(kextFile)
 }
 
 // Updates a specific connection verdict.
@@ -134,7 +138,7 @@ func UpdateVerdict(conn *network.Connection) error {
 		RedirectPort:    uint16(redirectPort),
 	}
 
-	kext_interface.WriteUpdateCommand(kextFile, update)
+	kext_interface.SendUpdateV4Command(kextFile, update)
 	return nil
 }
 

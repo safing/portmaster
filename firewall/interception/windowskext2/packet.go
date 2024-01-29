@@ -4,6 +4,7 @@
 package windowskext
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/tevino/abool"
@@ -42,7 +43,7 @@ func (pkt *Packet) ExpectInfo() bool {
 
 // GetPayload returns the full raw packet.
 func (pkt *Packet) LoadPacketData() error {
-	return nil
+	return fmt.Errorf("Not implemented")
 }
 
 // Accept accepts the packet.

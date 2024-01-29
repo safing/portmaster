@@ -30,14 +30,30 @@ func startInterception(packets chan packet.Packet) error {
 
 	// Start packet handler.
 	module.StartServiceWorker("kext packet handler", 0, func(ctx context.Context) error {
-		windowskext.Handler(ctx, packets)
+		windowskext.Handler(ctx, packets, BandwidthUpdates)
 		return nil
 	})
 
 	// Start bandwidth stats monitor.
-	// module.StartServiceWorker("kext bandwidth stats monitor", 0, func(ctx context.Context) error {
-	// return windowskext.BandwidthStatsWorker(ctx, 1*time.Second, BandwidthUpdates)
-	// })
+	module.StartServiceWorker("kext bandwidth request worker", 0, func(ctx context.Context) error {
+		timer := time.NewTicker(1 * time.Second)
+		for {
+			select {
+			case <-timer.C:
+				{
+					err := windowskext.SendBandwidthStatsRequest()
+					if err != nil {
+						return err
+					}
+				}
+			case <-ctx.Done():
+				{
+					return nil
+				}
+			}
+
+		}
+	})
 
 	// Start kext logging. The worker will periodically send request to the kext to send logs.
 	module.StartServiceWorker("kext log request worker", 0, func(ctx context.Context) error {
