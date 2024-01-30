@@ -33,7 +33,7 @@ func (pkt *Packet) FastTrackedByIntegration() bool {
 // InfoOnly returns whether the packet is informational only and does not
 // represent an actual packet.
 func (pkt *Packet) InfoOnly() bool {
-	return false
+	return pkt.verdictRequest == 0
 }
 
 // ExpectInfo returns whether the next packet is expected to be informational only.

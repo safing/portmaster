@@ -96,17 +96,8 @@ func RecvVerdictRequest() (*kext_interface.Info, error) {
 
 // SetVerdict sets the verdict for a packet and/or connection.
 func SetVerdict(pkt *Packet, verdict network.Verdict) error {
-	if verdict == network.VerdictRerouteToNameserver {
-		redirect := kext_interface.RedirectV4{Id: pkt.verdictRequest, RemoteAddress: [4]uint8{127, 0, 0, 1}, RemotePort: 53}
-		kext_interface.SendRedirectV4Command(kextFile, redirect)
-	} else if verdict == network.VerdictRerouteToTunnel {
-		redirect := kext_interface.RedirectV4{Id: pkt.verdictRequest, RemoteAddress: [4]uint8{192, 168, 122, 196}, RemotePort: 717}
-		kext_interface.SendRedirectV4Command(kextFile, redirect)
-	} else {
-		verdict := kext_interface.Verdict{Id: pkt.verdictRequest, Verdict: uint8(verdict)}
-		kext_interface.SendVerdictCommand(kextFile, verdict)
-	}
-	return nil
+	verdictCommand := kext_interface.Verdict{Id: pkt.verdictRequest, Verdict: uint8(verdict)}
+	return kext_interface.SendVerdictCommand(kextFile, verdictCommand)
 }
 
 // Clears the internal connection cache.
@@ -116,26 +107,14 @@ func ClearCache() error {
 
 // Updates a specific connection verdict.
 func UpdateVerdict(conn *network.Connection) error {
-	redirectAddress := [4]byte{}
-	redirectPort := 0
-	if conn.Verdict.Active == network.VerdictRerouteToNameserver {
-		redirectAddress = [4]byte{127, 0, 0, 1}
-		redirectPort = 53
-	}
-	if conn.Verdict.Active == network.VerdictRerouteToTunnel {
-		redirectAddress = [4]byte{192, 168, 122, 196}
-		redirectPort = 717
-	}
 
 	update := kext_interface.UpdateV4{
-		Protocol:        conn.Entity.Protocol,
-		LocalAddress:    [4]byte(conn.LocalIP),
-		LocalPort:       conn.LocalPort,
-		RemoteAddress:   [4]byte(conn.Entity.IP),
-		RemotePort:      conn.Entity.Port,
-		Verdict:         uint8(conn.Verdict.Active),
-		RedirectAddress: redirectAddress,
-		RedirectPort:    uint16(redirectPort),
+		Protocol:      conn.Entity.Protocol,
+		LocalAddress:  [4]byte(conn.LocalIP),
+		LocalPort:     conn.LocalPort,
+		RemoteAddress: [4]byte(conn.Entity.IP),
+		RemotePort:    conn.Entity.Port,
+		Verdict:       uint8(conn.Verdict.Active),
 	}
 
 	kext_interface.SendUpdateV4Command(kextFile, update)
