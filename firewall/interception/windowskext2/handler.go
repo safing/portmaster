@@ -18,14 +18,14 @@ import (
 )
 
 type VersionInfo struct {
-	major    uint8
-	minor    uint8
-	revision uint8
-	build    uint8
+	Major    uint8
+	Minor    uint8
+	Revision uint8
+	Build    uint8
 }
 
 func (v *VersionInfo) String() string {
-	return fmt.Sprintf("%d.%d.%d.%d", v.major, v.minor, v.revision, v.build)
+	return fmt.Sprintf("%d.%d.%d.%d", v.Major, v.Minor, v.Revision, v.Build)
 }
 
 // Handler transforms received packets to the Packet interface.

@@ -9,6 +9,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network"
 	"github.com/vlabo/portmaster_windows_rust_kext/kext_interface"
+	"golang.org/x/sys/windows"
 )
 
 // Package errors
@@ -47,6 +48,14 @@ func Start() error {
 	}
 
 	return nil
+}
+
+func GetKextHandle() windows.Handle {
+	return kextFile.GetHandle()
+}
+
+func GetKextServiceHandle() windows.Handle {
+	return service.GetHandle()
 }
 
 // Stop intercepting.
@@ -129,10 +138,10 @@ func GetVersion() (*VersionInfo, error) {
 	}
 
 	version := &VersionInfo{
-		major:    data[0],
-		minor:    data[1],
-		revision: data[2],
-		build:    data[3],
+		Major:    data[0],
+		Minor:    data[1],
+		Revision: data[2],
+		Build:    data[3],
 	}
 	return version, nil
 }
