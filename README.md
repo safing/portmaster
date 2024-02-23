@@ -87,10 +87,7 @@ Portmaster is a privacy suite for your Windows and Linux desktop.
 - Change routing algorithm and focus per app.
 - Nodes are hosted by Safing (company behind Portmaster) and the community.
 - Speeds are pretty decent (>100MBit/s).
-
-#### Further Readings:
-
-- [SPN Whitepaper](https://safing.io/files/whitepaper/Gate17.pdf)
+- Further Reading: [SPN Whitepaper](https://safing.io/files/whitepaper/Gate17.pdf)
 
 ## Documentation
 
