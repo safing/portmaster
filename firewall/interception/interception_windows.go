@@ -38,7 +38,7 @@ func startInterception(packets chan packet.Packet) error {
 	}
 	log.Debugf("Kext version: %s", version.String())
 
-	if version.Minor < 2 {
+	if version.Major < 2 {
 		useOldKext = true
 
 		// Transfer ownership.
@@ -104,6 +104,27 @@ func startInterception(packets chan packet.Packet) error {
 
 			}
 		})
+
+		// Start kext logging. The worker will periodically send request to the kext to print memory stats.
+		// module.StartServiceWorker("kext memory stats request worker", 0, func(ctx context.Context) error {
+		// 	timer := time.NewTicker(20 * time.Second)
+		// 	for {
+		// 		select {
+		// 		case <-timer.C:
+		// 			{
+		// 				err := kext2.SendPrintMemoryStatsCommand()
+		// 				if err != nil {
+		// 					return err
+		// 				}
+		// 			}
+		// 		case <-ctx.Done():
+		// 			{
+		// 				return nil
+		// 			}
+		// 		}
+
+		// 	}
+		// })
 	}
 
 	return nil
