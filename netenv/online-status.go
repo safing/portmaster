@@ -435,7 +435,7 @@ func checkOnlineStatus(ctx context.Context) {
 
 	ipv4, ipv6, err := GetAssignedAddresses()
 	if err != nil {
-		log.Warningf("network: failed to get assigned network addresses: %s", err)
+		log.Warningf("netenv: failed to get assigned network addresses: %s", err)
 	} else {
 		var lan bool
 

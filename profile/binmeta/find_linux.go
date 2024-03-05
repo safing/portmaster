@@ -77,7 +77,8 @@ func searchDirectory(directory string, binPath string) (iconPath string, err err
 		}
 		return "", fmt.Errorf("failed to read directory %s: %w", directory, err)
 	}
-	fmt.Println(directory)
+	// DEBUG:
+	// fmt.Println(directory)
 
 	var (
 		bestMatch            string
