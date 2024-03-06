@@ -105,19 +105,23 @@ int BPF_PROG(udp_v4_connect, struct sock *sk) {
 	// Read PID (Careful: This is the Thread Group ID in kernel speak!)
 	udp_info->pid = __builtin_bswap32((u32)(bpf_get_current_pid_tgid() >> 32));
 
-	// Set src and dist ports
+	// Set src and dst ports
 	udp_info->sport = __builtin_bswap16(sk->__sk_common.skc_num);
 	udp_info->dport = sk->__sk_common.skc_dport;
 
-	// Set src and dist IPs
+	// Set src and dst IPs
 	udp_info->saddr[0] = __builtin_bswap32(sk->__sk_common.skc_rcv_saddr);
 	udp_info->daddr[0] = __builtin_bswap32(sk->__sk_common.skc_daddr);
 
 	// Set IP version
 	udp_info->ipVersion = 4;
 
-	// Set protocol. No way to detect udplite for ipv4
-	udp_info->protocol = UDP;
+	// Set protocol
+	if(sk->sk_protocol == IPPROTO_UDPLITE) {
+		udp_info->protocol = UDPLite;
+	} else {
+		udp_info->protocol = UDP;
+	}
 
 	// Send event
 	bpf_ringbuf_submit(udp_info, 0);
@@ -154,11 +158,11 @@ int BPF_PROG(udp_v6_connect, struct sock *sk) {
 	// Read PID (Careful: This is the Thread Group ID in kernel speak!)
 	udp_info->pid = __builtin_bswap32((u32)(bpf_get_current_pid_tgid() >> 32));
 
-	// Set src and dist ports
+	// Set src and dst ports
 	udp_info->sport = __builtin_bswap16(sk->__sk_common.skc_num);
 	udp_info->dport = sk->__sk_common.skc_dport;
 
-	// Set src and dist IPs
+	// Set src and dst IPs
 	for(int i = 0; i < 4; i++) {
 		udp_info->saddr[i] = __builtin_bswap32(sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32[i]);
 	}
@@ -169,11 +173,11 @@ int BPF_PROG(udp_v6_connect, struct sock *sk) {
 	// IP version
 	udp_info->ipVersion = 6;
 
-	// Set protocol for UDPLite
-	if(us->udp.pcflag == 0) {
-		udp_info->protocol = UDP;
-	} else {
+	// Set protocol
+	if(sk->sk_protocol == IPPROTO_UDPLITE) {
 		udp_info->protocol = UDPLite;
+	} else {
+		udp_info->protocol = UDP;
 	}
 
 	// Send event

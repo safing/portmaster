@@ -87,11 +87,7 @@ Portmaster is a privacy suite for your Windows and Linux desktop.
 - Change routing algorithm and focus per app.
 - Nodes are hosted by Safing (company behind Portmaster) and the community.
 - Speeds are pretty decent (>100MBit/s).
-
-#### Further Readings:
-
-- [Portmaster Architecture Overview](https://wiki.safing.io/en/Portmaster/Architecture/Overview)
-- [SPN Whitepaper](https://safing.io/files/whitepaper/Gate17.pdf)
+- Further Reading: [SPN Whitepaper](https://safing.io/files/whitepaper/Gate17.pdf)
 
 ## Documentation
 
@@ -105,4 +101,3 @@ All details and guides live in the dedicated [wiki](https://wiki.safing.io/)
 - [VPN Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility#vpn-compatibly)
 - [Software Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility)
 - [Architecture](https://wiki.safing.io/en/Portmaster/Architecture)
-
