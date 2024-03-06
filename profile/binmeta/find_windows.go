@@ -35,8 +35,9 @@ func GetIconAndName(ctx context.Context, binPath string, homeDir string) (icon *
 	}
 
 	return &Icon{
-		Type:  IconTypeAPI,
-		Value: filename,
+		Type:   IconTypeAPI,
+		Value:  filename,
+		Source: IconSourceCore,
 	}, name, nil
 }
 
