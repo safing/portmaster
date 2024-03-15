@@ -10,6 +10,7 @@ replace github.com/tc-hib/winres => github.com/dhaavi/winres v0.2.2
 require (
 	github.com/Xuanwo/go-locale v1.1.0
 	github.com/agext/levenshtein v1.2.3
+	github.com/awalterschulze/gographviz v2.0.3+incompatible
 	github.com/cilium/ebpf v0.12.3
 	github.com/coreos/go-iptables v0.7.0
 	github.com/florianl/go-conntrack v0.4.0
@@ -25,11 +26,13 @@ require (
 	github.com/mat/besticon v3.12.0+incompatible
 	github.com/miekg/dns v1.1.57
 	github.com/mitchellh/go-server-timing v1.0.1
+	github.com/mr-tron/base58 v1.2.0
 	github.com/oschwald/maxminddb-golang v1.12.0
+	github.com/r3labs/diff/v3 v3.0.1
+	github.com/rot256/pblind v0.0.0-20231024115251-cd3f239f28c1
 	github.com/safing/jess v0.3.3
 	github.com/safing/portbase v0.18.9
 	github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec
-	github.com/safing/spn v0.7.5
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.8.0
 	github.com/spkg/zipfs v0.7.1
@@ -53,8 +56,8 @@ require (
 	github.com/aead/serpent v0.0.0-20160714141033-fba169763ea6 // indirect
 	github.com/alessio/shellescape v1.4.2 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
-	github.com/awalterschulze/gographviz v2.0.3+incompatible // indirect
 	github.com/bluele/gcache v0.0.2 // indirect
+	github.com/brianvoe/gofakeit v3.18.0+incompatible // indirect
 	github.com/danieljoos/wincred v1.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -79,12 +82,10 @@ require (
 	github.com/mdlayher/socket v0.5.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
-	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/rot256/pblind v0.0.0-20231024115251-cd3f239f28c1 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/seehuhn/fortuna v1.0.1 // indirect
 	github.com/seehuhn/sha256d v1.0.0 // indirect
