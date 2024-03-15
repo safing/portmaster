@@ -64,29 +64,6 @@ func getIconAndNamefromRSS(ctx context.Context, binPath string) (png []byte, nam
 	// 	return true
 	// })
 
-	// Get first icon.
-	var (
-		icon    *winres.Icon
-		iconErr error
-	)
-	rss.WalkType(winres.RT_GROUP_ICON, func(resID winres.Identifier, langID uint16, _ []byte) bool {
-		icon, iconErr = rss.GetIconTranslation(resID, langID)
-		return iconErr != nil
-	})
-	if iconErr != nil {
-		return nil, "", fmt.Errorf("failed to get icon: %w", err)
-	}
-	// Convert icon.
-	icoBuf := &bytes.Buffer{}
-	err = icon.SaveICO(icoBuf)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to save ico: %w", err)
-	}
-	png, err = ConvertICOtoPNG(icoBuf.Bytes())
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to convert ico to png: %w", err)
-	}
-
 	// Get name from version record.
 	var (
 		versionInfo    *version.Info
@@ -111,6 +88,32 @@ func getIconAndNamefromRSS(ctx context.Context, binPath string) (png []byte, nam
 		return name == ""
 	})
 	name = cleanFileDescription(name)
+
+	// Get first icon.
+	var (
+		icon    *winres.Icon
+		iconErr error
+	)
+	rss.WalkType(winres.RT_GROUP_ICON, func(resID winres.Identifier, langID uint16, _ []byte) bool {
+		icon, iconErr = rss.GetIconTranslation(resID, langID)
+		return iconErr != nil
+	})
+	if iconErr != nil {
+		return nil, name, fmt.Errorf("failed to get icon: %w", err)
+	}
+	if icon == nil {
+		return nil, name, errors.New("no icon in resources")
+	}
+	// Convert icon, if it exists.
+	icoBuf := &bytes.Buffer{}
+	err = icon.SaveICO(icoBuf)
+	if err != nil {
+		return nil, name, fmt.Errorf("failed to save ico: %w", err)
+	}
+	png, err = ConvertICOtoPNG(icoBuf.Bytes())
+	if err != nil {
+		return nil, name, fmt.Errorf("failed to convert ico to png: %w", err)
+	}
 
 	return png, name, nil
 }

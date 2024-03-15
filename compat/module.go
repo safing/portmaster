@@ -2,6 +2,7 @@ package compat
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/tevino/abool"
@@ -92,6 +93,9 @@ func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
 	case err == nil:
 		// Successful.
 		tracer.Debugf("compat: self-check successful")
+	case errors.Is(err, errSelfcheckSkipped):
+		// Skipped.
+		tracer.Debugf("compat: %s", err)
 	case issue == nil:
 		// Internal error.
 		tracer.Warningf("compat: %s", err)

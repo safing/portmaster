@@ -14,8 +14,8 @@ var (
 		25:  "SMTP",
 		43:  "WHOIS",
 		53:  "DNS",
-		67:  "DHCP-SERVER",
-		68:  "DHCP-CLIENT",
+		67:  "DHCP_SERVER",
+		68:  "DHCP_CLIENT",
 		69:  "TFTP",
 		80:  "HTTP",
 		110: "POP3",
@@ -27,10 +27,10 @@ var (
 		389: "LDAP",
 		443: "HTTPS",
 		445: "SMB",
-		587: "SMTP-ALT",
-		465: "SMTP-SSL",
-		993: "IMAP-SSL",
-		995: "POP3-SSL",
+		587: "SMTP_ALT",
+		465: "SMTP_SSL",
+		993: "IMAP_SSL",
+		995: "POP3_SSL",
 	}
 
 	portNumbers = map[string]uint16{
@@ -42,7 +42,9 @@ var (
 		"WHOIS":       43,
 		"DNS":         53,
 		"DHCP-SERVER": 67,
+		"DHCP_SERVER": 67,
 		"DHCP-CLIENT": 68,
+		"DHCP_CLIENT": 68,
 		"TFTP":        69,
 		"HTTP":        80,
 		"POP3":        110,
@@ -55,9 +57,13 @@ var (
 		"HTTPS":       443,
 		"SMB":         445,
 		"SMTP-ALT":    587,
+		"SMTP_ALT":    587,
 		"SMTP-SSL":    465,
+		"SMTP_SSL":    465,
 		"IMAP-SSL":    993,
+		"IMAP_SSL":    993,
 		"POP3-SSL":    995,
+		"POP3_SSL":    995,
 	}
 )
 
