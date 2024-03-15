@@ -1,0 +1,123 @@
+#!/bin/bash
+
+baseDir="$( cd "$(dirname "$0")" && pwd )"
+cd "$baseDir"
+
+COL_OFF="\033[0m"
+COL_BOLD="\033[01;01m"
+COL_RED="\033[31m"
+COL_GREEN="\033[32m"
+COL_YELLOW="\033[33m"
+
+destDirPart1="../../dist"
+destDirPart2="hub"
+
+function prep {
+  # output
+  output="main"
+  # get version
+  version=$(grep "info.Set" main.go | cut -d'"' -f4)
+  # build versioned file name
+  filename="spn-hub_v${version//./-}"
+  # platform
+  platform="${GOOS}_${GOARCH}"
+  if [[ $GOOS == "windows" ]]; then
+    filename="${filename}.exe"
+    output="${output}.exe"
+  fi
+  # build destination path
+  destPath=${destDirPart1}/${platform}/${destDirPart2}/$filename
+}
+
+function check {
+  prep
+
+  # check if file exists
+  if [[ -f $destPath ]]; then
+    echo "[hub] $platform v$version already built"
+  else
+    echo -e "${COL_BOLD}[hub] $platform v$version${COL_OFF}"
+  fi
+}
+
+function build {
+  prep
+
+  # check if file exists
+  if [[ -f $destPath ]]; then
+    echo "[hub] $platform already built in v$version, skipping..."
+    return
+  fi
+
+  # build
+  ./build main.go
+  if [[ $? -ne 0 ]]; then
+    echo -e "\n${COL_BOLD}[hub] $platform v$version: ${COL_RED}BUILD FAILED.${COL_OFF}"
+    exit 1
+  fi
+  mkdir -p $(dirname $destPath)
+  cp $output $destPath
+  echo -e "\n${COL_BOLD}[hub] $platform v$version: ${COL_GREEN}successfully built.${COL_OFF}"
+}
+
+function reset {
+  prep
+  
+  # delete if file exists
+  if [[ -f $destPath ]]; then
+    rm $destPath
+    echo "[hub] $platform v$version deleted."
+  fi
+}
+
+function check_all {
+  GOOS=linux GOARCH=amd64 check
+  GOOS=windows GOARCH=amd64 check
+  GOOS=darwin GOARCH=amd64 check
+  GOOS=linux GOARCH=arm64 check
+  GOOS=windows GOARCH=arm64 check
+  GOOS=darwin GOARCH=arm64 check
+}
+
+function build_all {
+  GOOS=linux GOARCH=amd64 build
+  GOOS=windows GOARCH=amd64 build
+  GOOS=darwin GOARCH=amd64 build
+  GOOS=linux GOARCH=arm64 build
+  GOOS=windows GOARCH=arm64 build
+  GOOS=darwin GOARCH=arm64 build
+}
+
+function reset_all {
+  GOOS=linux GOARCH=amd64 reset
+  GOOS=windows GOARCH=amd64 reset
+  GOOS=darwin GOARCH=amd64 reset
+  GOOS=linux GOARCH=arm64 reset
+  GOOS=windows GOARCH=arm64 reset
+  GOOS=darwin GOARCH=arm64 reset
+}
+
+case $1 in
+  "check" )
+    check_all
+    ;;
+  "build" )
+    build_all
+    ;;
+  "reset" )
+    reset_all
+    ;;
+  * )
+    echo ""
+    echo "build list:"
+    echo ""
+    check_all
+    echo ""
+    read -p "press [Enter] to start building" x
+    echo ""
+    build_all
+    echo ""
+    echo "finished building."
+    echo ""
+    ;;
+esac

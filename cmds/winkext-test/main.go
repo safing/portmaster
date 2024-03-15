@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package main
@@ -11,8 +12,8 @@ import (
 	"syscall"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/firewall/interception/windowskext"
-	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/service/firewall/interception/windowskext"
+	"github.com/safing/portmaster/service/network/packet"
 )
 
 var (

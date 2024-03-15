@@ -24,16 +24,19 @@ function safe_execute {
 function check {
   ./cmds/portmaster-core/pack check
   ./cmds/portmaster-start/pack check
+  ./cmds/hub/pack check
 }
 
 function build {
   safe_execute ./cmds/portmaster-core/pack build
   safe_execute ./cmds/portmaster-start/pack build
+  safe_execute ./cmds/hub/pack build
 }
 
 function reset {
   ./cmds/portmaster-core/pack reset
   ./cmds/portmaster-start/pack reset
+  ./cmds/hub/pack resset
 }
 
 case $1 in
