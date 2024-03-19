@@ -2,6 +2,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"runtime"
@@ -38,6 +39,13 @@ func main() {
 	// enable SPN client mode
 	conf.EnableClient(true)
 
+	// Parse flags se service flag is available.
+	flag.Parse()
+
 	// start
-	os.Exit(run.Run())
+	if shouldRunService() {
+		os.Exit(runService())
+	} else {
+		os.Exit(run.Run())
+	}
 }
