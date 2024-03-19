@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -75,7 +76,7 @@ func main() {
 	log.Infof("using .sys at %s", sysPath)
 
 	// init
-	err = windowskext.Init(dllPath, sysPath)
+	err = windowskext.Init(sysPath)
 	if err != nil {
 		log.Criticalf("failed to init kext: %s", err)
 		return
@@ -89,7 +90,7 @@ func main() {
 	}
 
 	packets = make(chan packet.Packet, 1000)
-	go windowskext.Handler(packets)
+	go windowskext.Handler(context.TODO(), packets)
 	go handlePackets()
 
 	// catch interrupt for clean shutdown
@@ -135,12 +136,8 @@ func handlePackets() {
 		handledPackets++
 
 		if getPayload {
-			data, err := pkt.GetPayload()
-			if err != nil {
-				log.Errorf("failed to get payload: %s", err)
-			} else {
-				log.Infof("payload is: %x", data)
-			}
+			data := pkt.Payload()
+			log.Infof("payload is: %x", data)
 		}
 
 		// reroute dns requests to nameserver
