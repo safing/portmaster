@@ -1,0 +1,10 @@
+go.work
+go.work.sum
+
+dist/
+node_modules/
+
+desktop/angular/node_modules
+desktop/angular/dist
+desktop/angular/dist-lib
+desktop/angular/dist-extension
