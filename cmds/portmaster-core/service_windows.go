@@ -45,7 +45,7 @@ func (ws *windowsService) Execute(args []string, changeRequests <-chan svc.Chang
 	} else {
 
 		// Modules are running.
-		changes <- svc.Status{State: svc.Running}
+		changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
 		// Listen for updates
 	service:
