@@ -77,6 +77,7 @@ var (
 		"network-test.debian.org.",       // Debian
 		"204.pop-os.org.",                // Pop OS
 		"conncheck.opensuse.org.",        // OpenSUSE
+		"ping.archlinux.org",             // Arch
 		// There are probably a lot more domains for all the Linux Distro/DE Variants. Please raise issues and/or submit PRs!
 		// https://github.com/solus-project/budgie-desktop/issues/807
 		// https://www.lguruprasad.in/blog/2015/07/21/enabling-captive-portal-detection-in-gnome-3-14-on-debian-jessie/
@@ -434,7 +435,7 @@ func checkOnlineStatus(ctx context.Context) {
 
 	ipv4, ipv6, err := GetAssignedAddresses()
 	if err != nil {
-		log.Warningf("network: failed to get assigned network addresses: %s", err)
+		log.Warningf("netenv: failed to get assigned network addresses: %s", err)
 	} else {
 		var lan bool
 

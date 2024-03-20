@@ -3,6 +3,7 @@ package compat
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/netenv"
 	"github.com/safing/portmaster/network/packet"
 	"github.com/safing/portmaster/resolver"
 )
@@ -36,11 +38,18 @@ var (
 	dnsCheckWaitDuration        = 45 * time.Second
 	dnsCheckAnswerLock          sync.Mutex
 	dnsCheckAnswer              net.IP
+
+	errSelfcheckSkipped = errors.New("self-check skipped")
 )
 
 func selfcheck(ctx context.Context) (issue *systemIssue, err error) {
 	selfcheckLock.Lock()
 	defer selfcheckLock.Unlock()
+
+	// Step 0: Check if self-check makes sense.
+	if !netenv.Online() {
+		return nil, fmt.Errorf("%w: device is offline or in limited network", errSelfcheckSkipped)
+	}
 
 	// Step 1: Check if the system integration sees a packet.
 
