@@ -199,7 +199,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 			}
 		}
 
-		switch conn.Verdict.Active {
+		switch conn.Verdict {
 		// We immediately save blocked, dropped or failed verdicts so
 		// they pop up in the UI.
 		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed, network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel:
@@ -245,7 +245,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	}
 
 	// Check if there is a Verdict to act upon.
-	switch conn.Verdict.Active { //nolint:exhaustive // Only checking for specific values.
+	switch conn.Verdict { //nolint:exhaustive // Only checking for specific values.
 	case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
 		tracer.Infof(
 			"nameserver: returning %s response for %s to %s",
@@ -325,7 +325,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	}
 
 	// Check if there is a Verdict to act upon.
-	switch conn.Verdict.Active { //nolint:exhaustive // Only checking for specific values.
+	switch conn.Verdict { //nolint:exhaustive // Only checking for specific values.
 	case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed:
 		tracer.Infof(
 			"nameserver: returning %s response for %s to %s",

@@ -22,7 +22,6 @@ import (
 	"github.com/safing/portmaster/network"
 	"github.com/safing/portmaster/network/netutils"
 	"github.com/safing/portmaster/network/packet"
-	"github.com/safing/portmaster/network/reference"
 	"github.com/safing/portmaster/process"
 	"github.com/safing/spn/access"
 )
@@ -132,13 +131,13 @@ func resetConnectionVerdict(ctx context.Context, conn *network.Connection) (verd
 	}
 
 	tracer.Debugf("filter: re-evaluating verdict of %s", conn)
-	previousVerdict := conn.Verdict.Firewall
+	previousVerdict := conn.Verdict
 
 	// Apply privacy filter and check tunneling.
 	FilterConnection(ctx, conn, nil, true, true)
 
 	// Stop existing SPN tunnel if not needed anymore.
-	if conn.Verdict.Active != network.VerdictRerouteToTunnel && conn.TunnelContext != nil {
+	if conn.Verdict != network.VerdictRerouteToTunnel && conn.TunnelContext != nil {
 		err := conn.TunnelContext.StopTunnel()
 		if err != nil {
 			tracer.Debugf("filter: failed to stopped unneeded tunnel: %s", err)
@@ -146,7 +145,11 @@ func resetConnectionVerdict(ctx context.Context, conn *network.Connection) (verd
 	}
 
 	// Save if verdict changed.
-	if conn.Verdict.Firewall != previousVerdict {
+	if conn.Verdict != previousVerdict {
+		err := interception.UpdateVerdictOfConnection(conn)
+		if err != nil {
+			log.Debugf("filter: failed to update connection verdict: %s", err)
+		}
 		conn.Save()
 		tracer.Infof("filter: verdict of connection %s changed from %s to %s", conn, previousVerdict.Verb(), conn.VerdictVerb())
 
@@ -368,16 +371,17 @@ func fastTrackHandler(conn *network.Connection, pkt packet.Packet) {
 	fastTrackedVerdict, permanent := fastTrackedPermit(conn, pkt)
 	if fastTrackedVerdict != network.VerdictUndecided {
 		// Set verdict on connection.
-		conn.Verdict.Active = fastTrackedVerdict
-		conn.Verdict.Firewall = fastTrackedVerdict
+		conn.Verdict = fastTrackedVerdict
+
 		// Apply verdict to (real) packet.
 		if !pkt.InfoOnly() {
 			issueVerdict(conn, pkt, fastTrackedVerdict, permanent)
 		}
+
 		// Stop handler if permanent.
 		if permanent {
 			conn.SetVerdict(fastTrackedVerdict, "fast-tracked", "", nil)
-			conn.Verdict.Worst = fastTrackedVerdict
+
 			// Do not finalize verdict, as we are missing necessary data.
 			conn.StopFirewallHandler()
 		}
@@ -447,7 +451,7 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 
 		// End directly, as no other processing is necessary.
 		conn.StopFirewallHandler()
-		finalizeVerdict(conn)
+
 		issueVerdict(conn, pkt, 0, true)
 		return
 	}
@@ -504,19 +508,17 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 		checkTunneling(ctx, conn)
 	}
 
-	// Handle verdict records and transitions.
-	finalizeVerdict(conn)
-
 	// Request tunneling if no tunnel is set and connection should be tunneled.
-	if conn.Verdict.Active == network.VerdictRerouteToTunnel &&
+	if conn.Verdict == network.VerdictRerouteToTunnel &&
 		conn.TunnelContext == nil {
 		err := requestTunneling(ctx, conn)
-		if err != nil {
+		if err == nil {
+			conn.ConnectionEstablished = true
+		} else {
 			// Set connection to failed, but keep tunneling data.
 			// The tunneling data makes connection easy to recognize as a failed SPN
 			// connection and the data will help with debugging and displaying in the UI.
 			conn.Failed(fmt.Sprintf("failed to request tunneling: %s", err), "")
-			finalizeVerdict(conn)
 		}
 	}
 }
@@ -563,8 +565,8 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	}
 
 	// do not allow to circumvent decision: e.g. to ACCEPT packets from a DROP-ed connection
-	if verdict < conn.Verdict.Active {
-		verdict = conn.Verdict.Active
+	if verdict < conn.Verdict {
+		verdict = conn.Verdict
 	}
 
 	var err error
@@ -620,53 +622,6 @@ var verdictRating = []network.Verdict{
 	network.VerdictFailed,
 	network.VerdictUndeterminable,
 	network.VerdictUndecided,
-}
-
-func finalizeVerdict(conn *network.Connection) {
-	// Update worst verdict at the end.
-	defer func() {
-		for _, worstVerdict := range verdictRating {
-			if conn.Verdict.Firewall == worstVerdict {
-				conn.Verdict.Worst = worstVerdict
-			}
-		}
-	}()
-
-	// Check for non-applicable verdicts.
-	// The earlier and clearer we do this, the better.
-	switch conn.Verdict.Firewall { //nolint:exhaustive
-	case network.VerdictUndecided, network.VerdictUndeterminable, network.VerdictFailed:
-		if conn.Inbound {
-			conn.Verdict.Active = network.VerdictDrop
-		} else {
-			conn.Verdict.Active = network.VerdictBlock
-		}
-		return
-	}
-
-	// Apply firewall verdict to active verdict.
-	switch {
-	case conn.Verdict.Active == network.VerdictUndecided:
-		// Apply first verdict without change.
-		conn.Verdict.Active = conn.Verdict.Firewall
-
-	case conn.Verdict.Worst == network.VerdictBlock ||
-		conn.Verdict.Worst == network.VerdictDrop ||
-		conn.Verdict.Worst == network.VerdictFailed ||
-		conn.Verdict.Worst == network.VerdictUndeterminable:
-		// Always allow to change verdict from any real initial/worst non-allowed state.
-		// Note: This check needs to happen before updating the Worst verdict.
-		conn.Verdict.Active = conn.Verdict.Firewall
-
-	case reference.IsPacketProtocol(conn.Entity.Protocol):
-		// For known packet protocols, apply firewall verdict unchanged.
-		conn.Verdict.Active = conn.Verdict.Firewall
-
-	case conn.Verdict.Active != conn.Verdict.Firewall:
-		// For all other protocols (most notably, stream protocols), always block after the first change.
-		// Block in both directions, as there is a live connection, which we want to actively kill.
-		conn.Verdict.Active = network.VerdictBlock
-	}
 }
 
 // func tunnelHandler(pkt packet.Packet) {

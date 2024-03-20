@@ -40,15 +40,7 @@ var connectionTestData = []*Connection{
 			Country:       "",
 			ASN:           0,
 		},
-		Verdict: struct {
-			Worst    Verdict
-			Active   Verdict
-			Firewall Verdict
-		}{
-			Worst:    2,
-			Active:   2,
-			Firewall: 2,
-		},
+		Verdict: 2,
 		Reason: Reason{
 			Msg:       "incoming connection blocked by default",
 			OptionKey: "filter/serviceEndpoints",
@@ -88,15 +80,7 @@ var connectionTestData = []*Connection{
 			Country:       "DE",
 			ASN:           16509,
 		},
-		Verdict: struct {
-			Worst    Verdict
-			Active   Verdict
-			Firewall Verdict
-		}{
-			Worst:    2,
-			Active:   2,
-			Firewall: 2,
-		},
+		Verdict: 2,
 		Reason: Reason{
 			Msg:       "default permit",
 			OptionKey: "filter/defaultAction",
@@ -139,15 +123,7 @@ var connectionTestData = []*Connection{
 			Country: "US",
 			ASN:     15169,
 		},
-		Verdict: struct {
-			Worst    Verdict
-			Active   Verdict
-			Firewall Verdict
-		}{
-			Worst:    2,
-			Active:   2,
-			Firewall: 2,
-		},
+		Verdict: 2,
 		Reason: Reason{
 			Msg:       "default permit",
 			OptionKey: "filter/defaultAction",
