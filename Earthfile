@@ -35,6 +35,13 @@ go-base:
     COPY service ./service
     COPY spn ./spn
 
+    # The cmds/notifier embeds some icons but go:embed is not allowed
+    # to leave the package directory so there's a small go-package in
+    # assets. Once we drop the notify in favor of the tauri replacement
+    # we can remove the following line and also remove all go-code from
+    # ./assets
+    COPY assets ./assets
+
 # mod-tidy runs 'go mod tidy', saving go.mod and go.sum locally.
 mod-tidy:
     FROM +go-base
@@ -140,7 +147,7 @@ angular-deps:
 
     COPY desktop/angular/package.json .
     COPY desktop/angular/package-lock.json .
-    COPY assets/ ./assets
+    COPY assets/data ./assets
 
     RUN npm install
 

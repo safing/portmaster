@@ -8,11 +8,13 @@ toolchain go1.21.2
 replace github.com/tc-hib/winres => github.com/dhaavi/winres v0.2.2
 
 require (
+	fyne.io/systray v1.10.0
 	github.com/Xuanwo/go-locale v1.1.0
 	github.com/agext/levenshtein v1.2.3
 	github.com/awalterschulze/gographviz v2.0.3+incompatible
 	github.com/cilium/ebpf v0.12.3
 	github.com/coreos/go-iptables v0.7.0
+	github.com/dhaavi/go-notify v0.0.0-20190209221809-c404b1f22435
 	github.com/florianl/go-conntrack v0.4.0
 	github.com/florianl/go-nfqueue v1.3.1
 	github.com/fogleman/gg v1.3.0
@@ -43,6 +45,7 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/vincent-petithory/dataurl v1.0.0
 	golang.org/x/exp v0.0.0-20240110193028-0dcbfd608b1e
+	golang.org/x/image v0.15.0
 	golang.org/x/net v0.20.0
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.16.0
@@ -65,6 +68,7 @@ require (
 	github.com/fxamacker/cbor v1.5.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.5.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
+	github.com/godbus/dbus v4.1.0+incompatible // indirect
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/gddo v0.0.0-20210115222349-20d68f94ee1f // indirect
@@ -106,7 +110,6 @@ require (
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	go.etcd.io/bbolt v1.3.8 // indirect
 	golang.org/x/crypto v0.18.0 // indirect
-	golang.org/x/image v0.15.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
