@@ -1,0 +1,11 @@
+<h1>Trackers Are Blocked System-Wide</h1>
+
+<p>Portmaster automatically blocks ads, trackers and malware hosts on your whole device. Portmaster knows what to block
+  through trusted domain lists, which are also used by Ad-Blockers in browsers, etc. You can always customize this in
+  the settings.</p>
+
+<sfng-dropdown label="Customize" class="w-full" maxHeight="300px" maxWidth="600px" offsetY="0">
+  <app-generic-setting class="h-full" [setting]="setting" [attr.id]="setting?.Key" (save)="saveSetting($event)"
+    enableActiveBorder="false" showHeader="false">
+  </app-generic-setting>
+</sfng-dropdown>

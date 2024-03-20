@@ -52,7 +52,7 @@ build-go:
     ARG GOOS=linux
     ARG GOARCH=amd64
     ARG GOARM
-    ARG CMDS=portmaster-start portmaster-core hub
+    ARG CMDS=portmaster-start portmaster-core hub notifier
 
     CACHE --sharing shared "$GOCACHE"
     CACHE --sharing shared "$GOMODCACHE"
@@ -112,7 +112,7 @@ test-go-all-platforms:
     BUILD +test-go --GOARCH=amd64 --GOOS=windows
     BUILD +test-go --GOARCH=arm64 --GOOS=windows
 
-# Builds portmaster-start and portmaster-core for all supported platforms
+# Builds portmaster-start, portmaster-core, hub and notifier for all supported platforms
 build-go-release:
     # Linux platforms:
     BUILD +build-go --GOARCH=amd64 --GOOS=linux
@@ -131,46 +131,61 @@ build-utils:
     BUILD +build-go --CMDS="" --GOARCH=amd64 --GOOS=linux
     BUILD +build-go --CMDS="" --GOARCH=amd64 --GOOS=windows
 
-# Prepares the angular project
+# Prepares the angular project by installing dependencies
 angular-deps:
     FROM node:${node_version}
     WORKDIR /app/ui
 
     RUN apt update && apt install zip
 
-    CACHE --sharing shared "/app/ui/node_modules"
-
     COPY desktop/angular/package.json .
     COPY desktop/angular/package-lock.json .
+    COPY assets/ ./assets
+
     RUN npm install
 
-
+# Copies the UI folder into the working container
+# and builds the shared libraries in the specified configuration (production or development)
 angular-base:
     FROM +angular-deps
+    ARG configuration="production"
 
     COPY desktop/angular/ .
 
-# Build the Portmaster UI (angular) in release mode
+    IF [ "${configuration}" = "production" ]
+        RUN npm run build-libs
+    ELSE
+        RUN npm run build-libs:dev
+    END
+
+# Build an angualr project, zip it and save artifacts locally
+angular-project:
+    ARG --required project
+    ARG --required dist
+    ARG configuration="production"
+    ARG baseHref="/"
+
+    FROM +angular-base --configuration="${configuration}"
+
+    IF [ "${configuration}" = "production" ]
+        ENV NODE_ENV="production"
+    END
+
+    RUN ./node_modules/.bin/ng build --configuration ${configuration} --base-href ${baseHref} "${project}"
+
+    RUN zip -r "./${project}.zip" "${dist}"
+    SAVE ARTIFACT "./${project}.zip" AS LOCAL ${outputDir}/${project}.zip
+    SAVE ARTIFACT "./dist" AS LOCAL ${outputDir}/${project}
+
+# Build the angular projects (portmaster-UI and tauri-builtin) in production mode
 angular-release:
-    FROM +angular-base
+    BUILD +angular-project --project=portmaster --dist=./dist --configuration=production --baseHref=/ui/modules/portmaster
+    BUILD +angular-project --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=production --baseHref="/"
 
-    CACHE --sharing shared "/app/ui/node_modules"
-
-    RUN npm run build
-    RUN zip -r ./angular.zip ./dist
-    SAVE ARTIFACT "./angular.zip" AS LOCAL ${outputDir}/angular.zip
-    SAVE ARTIFACT "./dist" AS LOCAL ${outputDir}/angular
-
-
-# Build the Portmaster UI (angular) in dev mode
+# Build the angular projects (portmaster-UI and tauri-builtin) in dev mode
 angular-dev:
-    FROM +angular-base
-
-    CACHE --sharing shared "/app/ui/node_modules"
-
-    RUN npm run build:dev
-    SAVE ARTIFACT ./dist AS LOCAL ${outputDir}/angular
-
+    BUILD +angular-project --project=portmaster --dist=./dist --configuration=development --baseHref=/ui/modules/portmaster
+    BUILD +angular-project --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=development --baseHref="/"
 
 release:
     BUILD +build-go-release

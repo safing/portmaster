@@ -1,0 +1,120 @@
+//
+// Import our complete theme, order is important!
+//
+@import 'theme/_colors.scss';
+@import 'theme/_tailwind.scss';
+@import '@angular/cdk/overlay-prebuilt';
+@import 'theme/_button.scss';
+@import 'theme/_drag-n-drop.scss';
+@import 'theme/_inputs.scss';
+@import 'theme/_scroll.scss';
+@import 'theme/_search.scss';
+@import 'theme/_trust-level.scss';
+@import 'theme/_verdict.scss';
+@import 'theme/_typography.scss';
+@import 'theme/_markdown.scss';
+@import 'theme/_card.scss';
+@import 'theme/_breadcrumbs.scss';
+@import 'theme/_dialog.scss';
+@import 'theme/_table.scss';
+@import 'theme/_pill.scss';
+
+@import 'safing/ui/theming';
+
+*[routerlink] {
+  cursor: pointer;
+}
+
+.form-field {
+  display: flex;
+  justify-content: flext-start;
+  align-items: center;
+
+  *:not(:last-child) {
+    @apply mr-1;
+  }
+}
+
+.sidebar {
+  @apply bg-background;
+  height: 100vh;
+  flex-shrink: 0;
+  flex-grow: 0;
+  @apply px-2;
+  display: flex;
+  flex-direction: column;
+
+  &.no-scroll {
+    @apply px-0;
+  }
+}
+
+.main {
+  .content {
+    flex-grow: 1;
+    @apply pl-12;
+    @apply pr-16;
+    @apply mr-4;
+    overflow: auto;
+  }
+
+  .header {
+    display: flex;
+    width: 100%;
+    @apply pl-12;
+    @apply pr-5;
+    @apply mb-2;
+    align-items: center;
+    height: 3rem;
+    flex-shrink: 0;
+
+    &:first-of-type {
+      @apply mt-2;
+    }
+
+    >* {
+      flex-grow: 1;
+      margin: 0;
+    }
+
+    >app-expertise {
+      flex-grow: 0;
+      flex-shrink: 0;
+    }
+  }
+}
+
+.tableFixHead {
+  overflow-y: auto;
+}
+
+.tableFixHead thead th {
+  position: sticky;
+  top: 0;
+}
+
+
+fa-icon.tipup,
+fa-icon[icon="question-circle"],
+fa-icon[icon="question"] {
+  max-width: 10px;
+  max-height: 10px;
+  opacity: 0.8;
+  display: inline-block;
+  font-size: 0.75rem;
+  color: rgb(250 250 250 / 55%);
+  margin-left: 3px;
+
+  &:hover {
+    opacity: unset;
+  }
+}
+
+.tipup-preview {
+  transition: all .25s ease-in-out !important;
+  opacity: 0 !important;
+
+  &.visible {
+    opacity: 1 !important;
+  }
+}

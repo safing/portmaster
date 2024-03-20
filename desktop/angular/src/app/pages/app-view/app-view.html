@@ -1,0 +1,425 @@
+<ng-container *ngIf="!showOverview && !!appProfile">
+  <!-- Header -->
+  <div class="flex justify-between items-center p-4 px-12 text-xxs">
+    <!-- Breadcrumbs -->
+    <div class="flex items-center">
+      <a class="text-secondary hover:text-primary" [routerLink]="['/app/overview']">Apps</a>
+      <svg viewBox="0 0 24 24" class="inline-block w-4 h-4 text-secondary">
+        <g fill="none" class="inner" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M10 16l4-4-4-4" />
+        </g>
+      </svg>
+      <span class="text-primary">{{ appProfile.Name }}</span>
+    </div>
+
+    <!-- Expertise level switch -->
+    <app-expertise></app-expertise>
+  </div>
+
+
+  <!-- Application Header -->
+  <div class="relative px-12 transition-all duration-200" [class.p-4]="!collapseHeader">
+    <div class="flex relative z-10 flex-row items-center w-full" [class.py-8]="!collapseHeader">
+      <!-- Application metadata -->
+      <div class="flex flex-col flex-grow items-start space-y-5">
+        <!-- App Name & Icon -->
+        <h1 class="flex flex-row gap-2 items-center mb-0 text-2xl whitespace-nowrap text-primary">
+          <app-icon [profile]="appProfile" style="--app-icon-size: 3rem"></app-icon>
+
+          <span>{{appProfile!.Name}}</span>
+        </h1>
+
+        <!-- App Metadata -->
+        <div class="text-tertiary text-xxs" *ngIf="!collapseHeader" [@fadeIn] [@fadeOut]>
+          <div class="space-x-2" *ngIf="!!applicationDirectory">
+            <span>Path:</span>
+            <span class="text-opacity-75 text-primary">
+              {{ applicationDirectory }}
+            </span>
+          </div>
+          <div class="space-x-2" *ngIf="!!binaryName">
+            <span>Binary:</span>
+            <span class="text-opacity-75 text-primary">
+              {{ binaryName }}
+            </span>
+          </div>
+          <div class="space-x-2">
+            <span>Active Connections:</span>
+            <span class="text-opacity-75 text-primary">{{stats?.countAliveConnections || 0}}</span>
+          </div>
+          <div class="space-x-2">
+            <span>Network History:</span>
+            <ng-container *ngIf="historyAvailableSince">
+              <span class="text-opacity-75 text-primary">As of {{ historyAvailableSince | date }}</span>
+              <span class="-mt-3 underline cursor-pointer text-primary hover:text-secondary text-xxs"
+                (click)="cleanProfileHistory()">Remove all {{ connectionsInHistory }} Connections</span>
+            </ng-container>
+            <ng-container *ngIf="!historyAvailableSince">
+              <span class="text-opacity-75 text-primary"
+                sfng-tooltip="Network History feature is available in Portmaster Plus">None</span>
+            </ng-container>
+          </div>
+        </div>
+
+        <!-- Quick Settings -->
+        <div class="flex flex-row flex-wrap gap-2 items-stretch whitespace-nowrap text-xxs" *ngIf="!collapseHeader" [@fadeIn]
+          [@fadeOut]>
+          <app-qs-internet [settings]="profileSettings" (save)="saveSetting($event)">
+          </app-qs-internet>
+
+          <app-qs-history [canUse]="canUseHistory" [settings]="profileSettings" (save)="saveSetting($event)">
+          </app-qs-history>
+
+          <app-qs-use-spn [canUse]="canUseSPN" [settings]="profileSettings" (save)="saveSetting($event)">
+          </app-qs-use-spn>
+
+          <app-qs-select-exit [canUse]="canUseSPN" [settings]="profileSettings" (save)="saveSetting($event)">
+          </app-qs-select-exit>
+
+          <button class="flex flex-row gap-2 items-center px-4 bg-gray-300 btn" cdkOverlayOrigin #overlayOrigin="cdkOverlayOrigin" (click)="profileMenu.dropdown.toggle(overlayOrigin)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+
+            More
+          </button>
+
+          <app-menu #profileMenu>
+            <app-menu-item (click)="editProfile()">Edit App Profile</app-menu-item>
+            <app-menu-item (click)="exportProfile()">Export App Profile</app-menu-item>
+            <app-menu-item (click)="deleteProfile()">Delete App Profile</app-menu-item>
+          </app-menu>
+
+          <sfng-tipup key="appSettings-QuickSettings"></sfng-tipup>
+        </div>
+      </div>
+
+      <!-- Statistics -->
+      <div class="flex flex-row flex-wrap flex-grow gap-4 justify-end items-center pr-8"
+        *ngIf="!!stats && stats.size > 0">
+        <div [ngClass]="{
+            'h-20 sfng-lg:w-32 sfng-lg:h-24': !collapseHeader
+          }"
+          class="flex flex-col justify-center items-center px-4 py-1 w-24 bg-gray-300 bg-opacity-75 rounded border border-gray-300 shadow transition-all duration-200">
+          <h2 class="p-0 m-0 text-lg sfng-lg:text-xl text-primary">{{ stats!.size | prettyCount }}</h2>
+          <span class="text-secondary">Connections</span>
+        </div>
+
+        <div [ngClass]="{
+            'h-20 sfng-lg:w-32 sfng-lg:h-24': !collapseHeader
+          }"
+          class="flex flex-col justify-center items-center px-4 py-1 w-24 bg-gray-300 bg-opacity-75 rounded border border-gray-300 shadow transition-all duration-200">
+          <h2 class="p-0 m-0 text-lg sfng-lg:text-xl text-primary">{{ (100 / stats!.size) * (stats!.size
+            - stats!.countAllowed) | number:'1.0-1' }}%</h2>
+          <span class="text-secondary">Blocked</span>
+        </div>
+
+        <div [ngClass]="{
+            'h-20 sfng-lg:w-32 sfng-lg:h-24': !collapseHeader
+          }"
+          class="flex flex-col justify-center items-center px-4 py-1 w-24 bg-gray-300 bg-opacity-75 rounded border border-gray-300 shadow transition-all duration-200">
+          <h2 *ngIf="canViewBW; else: cannotViewBW"
+            class="p-0 m-0 text-lg whitespace-nowrap sfng-lg:text-xl text-primary">
+            {{ stats.bytes_received | bytes }}
+          </h2>
+          <ng-template #cannotViewBW>
+            <span routerLink="/dashboard"
+              class="p-0 pb-2.5 m-0 text-opacity-50 whitespace-nowrap text-xxs sfng-lg:text-xs text-tertiary hover:underline">
+              Available in Plus
+            </span>
+          </ng-template>
+          <span class="text-secondary">Received</span>
+        </div>
+
+        <div [ngClass]="{
+            'h-20 sfng-lg:w-32 sfng-lg:h-24': !collapseHeader
+          }"
+          class="flex flex-col justify-center items-center px-4 py-1 w-24 bg-gray-300 bg-opacity-75 rounded border border-gray-300 shadow transition-all duration-200">
+          <h2 *ngIf="canViewBW; else: cannotViewBW"
+            class="p-0 m-0 text-lg whitespace-nowrap sfng-lg:text-xl text-primary">
+            {{ stats.bytes_sent | bytes }}
+          </h2>
+          <span class="text-secondary">Sent</span>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="absolute bottom-0 right-10 z-10 cursor-pointer hover:text-primary text-secondary"
+      (click)="collapseHeader = !collapseHeader">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+        class="w-6 h-6 transition-all duration-200" [class.rotate-180]="collapseHeader">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+      </svg>
+    </div>
+  </div>
+
+  <sfng-tab-group class="flex overflow-hidden flex-col flex-grow p-4 px-12 w-full">
+    <!-- Connections -->
+    <sfng-tab id="connections" title="Connections">
+      <div *sfngTabContent>
+        <sfng-netquery-viewer [filters]="['allowed', 'as_owner', 'country', 'domain']"
+          [mergeFilter]="{profile: appProfile.Source + '/' + appProfile.ID}">
+        </sfng-netquery-viewer>
+      </div>
+    </sfng-tab>
+    <!-- App Settings -->
+    <sfng-tab id="settings" title="Settings">
+      <div *sfngTabContent class="overflow-auto py-4" cdkScrollable>
+
+        <div class="flex flex-row items-center pr-2 mb-4 space-x-4">
+          <input type="text" [(ngModel)]="searchTerm" placeholder="Search Settings">
+
+          <a href="https://docs.safing.io/portmaster/settings?source=Portmaster"
+            class="flex flex-row gap-1 justify-center items-center self-stretch px-2 whitespace-nowrap bg-gray-300 rounded hover:bg-gray-200 text-blue">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+              stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+            </svg>
+            Get Help
+          </a>
+
+          <div sfngTipUpAnchor="left" class="flex space-x-2 flex-rows">
+            <sfng-tipup key="appSettings-Filter"></sfng-tipup>
+            <sfng-select [ngModel]="viewSetting" (ngModelChange)="viewSettingChange.next($event)"
+              sfngTipUpTrigger="appSettings-Filter" sfngTipUpAnchor="left" sfngTipUpPassive>
+              <sfng-select-item *sfngSelectValue="'all'">
+                View All
+              </sfng-select-item>
+              <sfng-select-item *sfngSelectValue="'active'">
+                View Active
+              </sfng-select-item>
+            </sfng-select>
+          </div>
+        </div>
+
+        <div class="flex items-center text-tertiary">
+          <div class="inline-flex items-center" sfngTipUpAnchor=>
+            <span class="mr-3 text-xxs">App Specific Settings</span>
+            <sfng-tipup key="appSettings"></sfng-tipup>
+          </div>
+        </div>
+
+        <ng-container *ngIf="settings.length > 0; else: noSettingsTemplate">
+          <app-settings-view [searchTerm]="searchTerm" [availableSettings]="settings" compactView="true"
+            [highlightKey]="highlightSettingKey" userSettingsMarker="true" (save)="saveSetting($event)"
+            resetLabelText="Use global setting" lockDefaults="true" displayStackable="true" [scope]="appProfile.Source + '/' + appProfile.ID">
+          </app-settings-view>
+        </ng-container>
+
+        <ng-template #noSettingsTemplate>
+          <div class="flex flex-col items-center mt-32">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-32 h-32 text-opacity-50 text-tertiary" viewBox="0 0 20 20"
+              fill="currentColor">
+              <path fill-rule="evenodd"
+                d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                clip-rule="evenodd" />
+            </svg>
+
+            <p class="text-sm">
+              <span class="text-primary">
+                {{ appProfile!.Name }}
+              </span>
+              is fully using the global settings.
+            </p>
+            <p class="mb-4 text-sm">
+              Start creating exceptions for it now.
+            </p>
+            <button (click)="viewSettingChange.next('all')">Edit Settings</button>
+          </div>
+        </ng-template>
+      </div>
+    </sfng-tab>
+
+    <!-- Details -->
+    <sfng-tab id="details" title="Details" [warning]="displayWarning">
+      <div *sfngTabContent class="overflow-auto py-4 space-y-8" cdkScrollable>
+
+        <div class="grid grid-cols-2 gap-4 text-primary text-xxs">
+          <div class="flex flex-col justify-center p-4 bg-gray-200 rounded">
+            <p class="space-x-2">
+              <label class="text-secondary">Name:</label>
+              <span>{{appProfile!.Name}}</span>
+            </p>
+            <p class="space-x-2">
+              <label class="text-secondary">Path:</label>
+              <span>{{appProfile!.PresentationPath}}</span>
+            </p>
+          </div>
+
+          <div class="flex flex-col justify-center p-4 bg-gray-200 rounded">
+            <p class="space-x-2">
+              <label class="text-secondary">Created:</label>
+              <span>{{appProfile!.Created * 1000 | date:'medium'}}</span>
+            </p>
+            <p class="space-x-2">
+              <label class="text-secondary">Last Edited:</label>
+              <span *ngIf="!!appProfile.LastEdited">{{appProfile!.LastEdited * 1000 | date:'medium'}}</span>
+              <span *ngIf="!appProfile.LastEdited">N/A</span>
+            </p>
+          </div>
+
+          <ng-container *appExpertiseLevel="'developer'">
+            <div class="flex flex-col justify-center p-4 bg-gray-200 rounded">
+              <p class="space-x-2">
+                <label class="text-secondary">Internal:</label>
+                <span>{{!!appProfile!.Internal ? 'yes' : 'no'}}</span>
+              </p>
+              <p class="space-x-2">
+                <label class="text-secondary">Source:</label>
+                <span>{{appProfile!.Source}}</span>
+              </p>
+              <p class="space-x-2">
+                <label class="text-secondary">ID:</label>
+                <span>{{appProfile!.ID}}</span>
+              </p>
+            </div>
+
+            <div class="flex flex-col justify-center p-4 bg-gray-200 rounded">
+              <p class="space-x-2">
+                <label class="text-secondary">Revision:</label>
+                <span>{{layeredProfile?.RevisionCounter}}</span>
+              </p>
+              <p class="space-x-2">
+                <label class="text-secondary">Layers:</label>
+                <span>
+                  <ol class="inline-block">
+                    <li *ngFor="let layer of layeredProfile?.LayerIDs"
+                      [routerLink]="['/', 'app'].concat(layer.split('/'))">
+                      {{layer}}
+                    </li>
+                  </ol>
+                </span>
+              </p>
+            </div>
+          </ng-container>
+        </div>
+
+        <!-- Description Section -->
+        <div class="flex flex-col space-y-4" *ngIf="!!appProfile?.Description">
+          <h2 class="flex flex-row items-center p-0 m-0 mr-2 mb-4 text-opacity-75 text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mr-1 w-5 h-5" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span class="mr-2 text-xxs">Description</span>
+            <span class="inline-block flex-grow border-b border-gray-400"></span>
+          </h2>
+
+          <markdown emoji [data]="appProfile.Description"
+            class="block self-stretch p-4 -mb-4 ml-2 w-auto h-auto text-secondary">
+          </markdown>
+        </div>
+
+        <!-- Warning Section -->
+        <div class="flex flex-col space-y-4" *ngIf="displayWarning">
+          <h2 class="flex flex-row items-center p-0 m-0 mr-2 mb-4 text-opacity-75 text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mr-1 w-5 h-5" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span class="mr-2 text-xxs">Warning</span>
+            <span class="inline-block flex-grow border-b border-gray-400"></span>
+          </h2>
+
+          <markdown emoji [data]="appProfile.Warning"
+            class="block self-stretch p-4 ml-2 w-auto h-auto border-l text-secondary border-yellow">
+          </markdown>
+          <span class="text-tertiary text-xxs" *ngIf="appProfile?.WarningLastUpdated">updated
+            {{ appProfile.WarningLastUpdated | timeAgo }}</span>
+        </div>
+
+        <!-- Fingerprints -->
+        <div class="space-y-4 text-xxs">
+          <h2 class="flex flex-row items-center p-0 m-0 mr-2 mb-4 text-opacity-75 text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+              stroke="currentColor" class="mr-1 w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M7.864 4.243A7.5 7.5 0 0119.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 004.5 10.5a7.464 7.464 0 01-1.15 3.993m1.989 3.559A11.209 11.209 0 008.25 10.5a3.75 3.75 0 117.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 01-3.6 9.75m6.633-4.596a18.666 18.666 0 01-2.485 5.33" />
+            </svg>
+
+            <span class="mr-2 text-xxs">Fingerprints</span>
+            <span class="inline-block flex-grow border-b border-gray-400"></span>
+          </h2>
+
+          <span class="text-xs text-secondary">This profile will be applied to processes that match one of the following
+            fingerprints:</span>
+
+          <div
+            class="flex relative flex-row gap-2 items-center p-2 mx-3 bg-gray-200 border-r border-l border-gray-500 w-fit"
+            *ngFor="let fp of appProfile.Fingerprints">
+
+            <span class="block absolute top-0 left-0 w-2 border-b border-gray-500"></span>
+            <span class="block absolute bottom-0 left-0 w-2 border-b border-gray-500"></span>
+
+            <span class="block absolute top-0 right-0 w-2 border-b border-gray-500"></span>
+            <span class="block absolute right-0 bottom-0 w-2 border-b border-gray-500"></span>
+
+            <span class="inline-block px-2 py-1 bg-gray-400 rounded">{{ fp.Type }}</span>
+
+            <ng-container *ngIf="!!fp.Key">
+              <span class="text-secondary">where</span>
+              <span
+                class="inline-block px-2 py-1 bg-gray-400 rounded">{{ fp.Type === 'tag' ? (tagNames[fp.Key] || fp.Key) : fp.Key }}</span>
+            </ng-container>
+
+            <span class="inline-block px-2 py-1 bg-gray-400 rounded">{{ fp.Operation }}</span>
+            <span class="inline-block px-2 py-1 bg-gray-400 rounded">{{ fp.Value }}</span>
+          </div>
+        </div>
+
+        <!-- Delete Profile Section -->
+        <div class="space-y-4">
+          <h2 class="flex flex-row items-center p-0 m-0 mr-2 mb-4 text-opacity-75 text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mr-1 w-5 h-5" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span class="mr-2 text-xxs">Delete Profile</span>
+            <span class="inline-block flex-grow border-b border-gray-400"></span>
+          </h2>
+
+          <span class="text-secondary">You can completely delete this profile to get rid of any settings. The profile
+            will
+            be automatically re-created with default settings as soon as the application starts to use the
+            network.</span>
+
+          <button class="block mt-2" (click)="deleteProfile()">Delete Profile</button>
+        </div>
+
+        <!-- Debug Section -->
+        <div class="space-y-4">
+          <h2 class="flex flex-row items-center p-0 m-0 mr-2 mb-4 text-opacity-75 text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="mr-1 w-5 h-5">
+              <g fill="none">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="m18 7-1 2-1.333.917M5 12h3.11M15.89 12H19M6 3H5c-1.105 0-2 .895-2 2v1M18 21h1c1.105 0 2-.895 2-2v-1M3 18v1c0 1.105.895 2 2 2h1M21 6V5c0-1.105-.895-2-2-2h-1M6 7l1 2 1.333.917M12.444 17h-.889c-1.657 0-3-1.343-3-3v-3c0-1.105.895-2 2-2h2.889c1.105 0 2 .895 2 2v3c0 1.657-1.343 3-3 3ZM6 17l1-2 1.333-.917M18 17l-1-2-1.333-.917M14 9h-4V7c0-.552.448-1 1-1h2c.552 0 1 .448 1 1v2Z" />
+              </g>
+            </svg>
+
+            <span class="mr-2 text-xxs">Debugging</span>
+            <span class="inline-block flex-grow border-b border-gray-400"></span>
+          </h2>
+
+          <span class="text-secondary">When reporting issues with this app please make sure to include the
+            following
+            debug information:</span>
+
+          <button class="block mt-2" (click)="copyDebugInfo()">Copy Debug Information</button>
+        </div>
+      </div>
+    </sfng-tab>
+    <sfng-tab id="insights" title="Insights">
+      <div *sfngTabContent class="py-4 space-y-8 overflow-auto" cdkScrollable>
+        <app-app-insights [profile]="appProfile"></app-app-insights>
+      </div>
+    </sfng-tab>
+  </sfng-tab-group>
+</ng-container>
+
+<app-settings-overview *ngIf="showOverview" class="p-4 px-12"></app-settings-overview>

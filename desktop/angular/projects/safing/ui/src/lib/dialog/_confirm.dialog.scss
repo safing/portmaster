@@ -1,0 +1,95 @@
+.sfng-confirm-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  caption {
+    @apply text-sm;
+    opacity: .6;
+    font-size: .6rem;
+  }
+
+  h1 {
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+  }
+
+  .message,
+  h1 {
+    flex-shrink: 0;
+    text-overflow: ellipsis;
+    word-break: normal;
+  }
+
+  .message {
+    font-size: 0.75rem;
+    flex-grow: 1;
+    opacity: .6;
+    max-width: 300px;
+  }
+
+  .message~input {
+    margin-top: 0.5rem;
+    font-size: 95%;
+  }
+
+  .close-icon {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    opacity: .7;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  input[type="text"] {
+    @apply text-primary;
+    @apply bg-gray-500 border-gray-400 bg-opacity-75 border-opacity-75;
+
+    &::placeholder {
+      @apply text-tertiary;
+    }
+  }
+
+  .actions {
+    margin-top: 1rem;
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+
+    button.action-button {
+      &:not(:last-child) {
+        margin-right: 0.5rem;
+      }
+
+      &:not(.outline) {
+        @apply bg-blue;
+      }
+
+      &.danger {
+        @apply bg-red-300;
+      }
+
+      &.outline {
+        @apply outline-none;
+        @apply border;
+        @apply border-gray-400;
+      }
+    }
+
+    &>span {
+      display: flex;
+      align-items: center;
+
+      label {
+        margin-left: .5rem;
+        user-select: none;
+      }
+    }
+  }
+}

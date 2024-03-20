@@ -1,0 +1,101 @@
+<ng-container *ngIf="!!currentUser && currentUser.state !== '' && currentUser.state !== 'loggedout'">
+  <h1 class="mb-4 text-xl">Account Details</h1>
+
+  <!-- TODO: update to fit style -->
+  <div *ngIf="currentUser.view?.Message" class="flex bg-yellow-100 rounded-lg p-4 mb-4 text-sm text-yellow-700 font-medium" role="alert">
+    <svg class="w-5 h-5 inline mr-3" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+    <div>
+      {{ currentUser.view?.Message }}
+    </div>
+  </div>
+
+  <table *ngIf="!currentUser.view || currentUser.view?.ShowAccountData" class="table-auto m-6">
+    <ng-container *ngIf="currentUser.subscription">
+      <ng-container *ngIf="currentUser.subscription.state === 'manual'; else: subscription">
+        <tr>
+          <th>Your Package</th>
+          <td>{{ currentUser.current_plan?.name }}</td>
+        </tr>
+        <tr *ngIf="currentUser.subscription.ends_at">
+          <th>Access Until</th>
+          <td>{{ currentUser.subscription.ends_at | date:'medium' }}</td>
+        </tr>
+      </ng-container>
+      <ng-template #subscription>
+        <tr>
+          <th>Your Subscription</th>
+          <td>{{ currentUser.current_plan?.name }}</td>
+        </tr>
+        <tr>
+          <th>Status</th>
+          <td class="capitalize">{{ currentUser.subscription.state }}</td>
+        </tr>
+        <tr *ngIf="currentUser.subscription.state === 'active'">
+          <th>Next Payment Date</th>
+          <td>
+            {{ currentUser.subscription.next_billing_date | date:'medium' }}
+            via
+            {{ currentUser.subscription.payment_provider }}
+          </td>
+        </tr>
+        <tr *ngIf="currentUser.subscription.state === 'cancelled'">
+          <th>Access Paid Until</th>
+          <td>{{ currentUser.subscription.ends_at | date:'medium' }}</td>
+        </tr>
+      </ng-template>
+    </ng-container>
+
+    <tr class="table-section-start">
+      <th>Username</th>
+      <td>{{ currentUser.username }} </td>
+    </tr>
+    <tr>
+      <th>Device Name</th>
+      <td>{{ currentUser.device?.name }}</td>
+    </tr>
+
+    <ng-container *appExpertiseLevel="'developer'">
+      <tr class="table-section-start">
+        <th>Account State</th>
+        <td>{{ currentUser.state }} </td>
+      </tr>
+      <tr>
+        <th>Features</th>
+        <td>{{ currentUser.current_plan?.feature_ids?.join(", ") }} </td>
+      </tr>
+      <tr>
+        <th>Device ID</th>
+        <td>{{currentUser.device?.id}}</td>
+      </tr>
+      <tr>
+        <th>Logged in Since</th>
+        <td>{{ currentUser.LoggedInAt | date:'medium' }} </td>
+      </tr>
+    </ng-container>
+  </table>
+
+  <div class="flex items-end justify-end w-full space-x-2">
+    <!-- Always show all buttons, no matter what the view says here. -->
+    <button *ngIf="dialogRef" (click)="dialogRef.close()" class="">Close</button>
+    <div class="flex-grow"></div>
+
+    <a href="https://account.safing.io/?source=Portmaster"
+      class="flex flex-row items-center self-stretch justify-center gap-1 px-2 bg-gray-300 rounded hover:bg-gray-200 text-blue whitespace-nowrap">
+      Open Account Page
+    </a>
+
+    <button (click)="logout()" class="bg-info-red">Logout</button>
+    <button (click)="refreshAccount()" style="width: 70px">
+      <ng-container *ngIf="!refreshing; else: loading">
+        Refresh
+      </ng-container>
+      <ng-template #loading>
+        <fa-icon icon="spinner" [spin]="true"></fa-icon>
+      </ng-template>
+    </button>
+  </div>
+</ng-container>
+
+<app-spn-login
+  *ngIf="!loadingProfile && (currentUser === null || currentUser.state === '' || currentUser.state === 'loggedout')"
+  [forcedLogout]="currentUser?.state === 'loggedout'"></app-spn-login>

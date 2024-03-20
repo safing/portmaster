@@ -1,0 +1,46 @@
+.buttons {
+  display: flex;
+  align-items: flex-end;
+  position: relative;
+  height: 3rem;
+  flex-grow: 0;
+  width: fit-content;
+
+  fa-icon[icon*="question-circle"] {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    margin-left: 1rem;
+  }
+}
+
+.marker {
+  display: block;
+  height: 16px;
+  width: 16px;
+  position: absolute;
+  bottom: -8px;
+  cursor: grab;
+  transition: all .5s cubic-bezier(0.175, 0.885, 0.32, 1.075);
+  @apply rounded-full;
+}
+
+:host {
+  flex-grow: 0;
+  width: fit-content;
+  display: block;
+  outline: none;
+  user-select: none;
+
+  &.disabled {
+    .marker {
+      cursor: unset;
+    }
+  }
+
+  &.grabbing {
+    .marker {
+      cursor: grabbing;
+    }
+  }
+}

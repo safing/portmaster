@@ -1,0 +1,41 @@
+:host {
+  user-select: none;
+  margin-right: .5rem;
+  display: block;
+  @apply rounded-t-sm;
+}
+
+div {
+  cursor: pointer;
+  display: flex;
+  @apply rounded-t;
+  flex-grow: 0;
+  transition: all .1s ease-in-out;
+  justify-content: center;
+  align-items: center;
+  @apply py-1;
+  @apply px-3;
+}
+
+.dropdown {
+  margin-left: 1px;
+  height: auto;
+  padding: 0;
+  margin: 0;
+
+  svg {
+    opacity: 0.7;
+    fill: var(--text-primary);
+    width: 0.51rem;
+    transition: all cubic-bezier(0.175, 0.885, 0.32, 1.275) .2s;
+
+    transform: rotate(90deg);
+    position: relative;
+    top: 3px;
+  }
+}
+
+:host.active {
+  @apply bg-gray-400;
+  color: white !important;
+}

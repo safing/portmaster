@@ -1,0 +1,5 @@
+<div class="buttons">
+  <ng-content></ng-content>
+  <sfng-tipup style="margin-left: 1rem;" *ngIf="!!tipUpKey" [key]="tipUpKey" [anchor]="host"></sfng-tipup>
+</div>
+<span #marker class="marker" (mousedown)="dragStarted($event)"></span>

@@ -1,0 +1,281 @@
+<div class="w-full gap-4 p-4 dashboard-grid">
+  <header class="flex flex-row items-center justify-between w-full" id="header">
+    <div class="flex flex-col flex-grow text-lg font-light text-white">
+      <h1>
+        Dashboard
+        <sfng-tipup key="dashboardIntro" placement="left"></sfng-tipup>
+      </h1>
+
+      <span class="text-sm font-normal text-secondary">
+        <ng-container *ngIf="!!profile; else: noUsername">
+          Welcome back, <span class="text-primary">{{ profile.username }}</span>!
+          <a *ngIf="profile?.state === '' && !!profile?.username" class="text-xs underline cursor-pointer text-tertiary"
+            (click)="logoutCompletely($event)">Clear</a>
+        </ng-container>
+        <ng-template #noUsername>
+          Welcome back!
+        </ng-template>
+      </span>
+      <span class="mt-2 text-xs font-light text-green-300">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+          class="inline-block h-4 -mt-1 bi bi-caret-left-fill" viewBox="0 0 16 16">
+          <path
+            d="m3.86 8.753 5.482 4.796c.646.566 1.658.106 1.658-.753V3.204a1 1 0 0 0-1.659-.753l-5.48 4.796a1 1 0 0 0 0 1.506z" />
+        </svg>
+        New: Click shield to open dashboard
+      </span>
+    </div>
+
+    <div class="flex flex-row gap-8">
+      <div class="flex flex-col text-xs leading-4">
+        <span class="font-light text-secondary">
+          Your current plan is
+          <span class="font-normal text-primary">
+            {{ profile?.current_plan?.name || 'Portmaster Free' }}
+          </span>
+        </span>
+
+        <span class="font-light text-secondary" *ngIf="!profile?.subscription?.next_billing_date">
+          and ends
+          <ng-container *ngIf="profile?.subscription?.ends_at; else: endsNever">
+            in
+            <span class="font-normal text-primary">
+              {{ profile?.subscription?.ends_at! | timeAgo }}
+            </span>
+          </ng-container>
+          <ng-template #endsNever>
+            never
+          </ng-template>
+        </span>
+        <span class="font-light text-secondary" *ngIf="!!profile?.subscription?.next_billing_date">
+          and auto-renews in <span class="font-normal text-primary">
+            {{ profile?.subscription?.next_billing_date! | timeAgo }}
+          </span>
+        </span>
+      </div>
+
+      <ng-container *ngIf="!!profile && profile.state !== ''; else: loginButton">
+        <button (click)="openAccountDetails()"
+          class="text-sm font-normal text-white cursor-pointer btn bg-blue bg-opacity-80 hover:bg-opacity-100 hover:bg-blue">
+          Account Details
+        </button>
+      </ng-container>
+      <ng-template #loginButton>
+        <button (click)="openAccountDetails()"
+          class="text-sm font-normal text-white cursor-pointer btn bg-blue bg-opacity-80 hover:bg-opacity-100 hover:bg-blue">
+          Login / Subscribe
+        </button>
+      </ng-template>
+    </div>
+  </header>
+
+
+  <app-dashboard-widget id="features" label="Features">
+    <div class="feature-card-list">
+      <app-feature-card *ngFor="let feature of (features$ | async)" [feature]="feature" [disabled]="!feature.enabled">
+      </app-feature-card>
+    </div>
+  </app-dashboard-widget>
+
+
+  <app-dashboard-widget id="stats" label="Recent Activity">
+    <!-- Mini Stats -->
+    <div class="mini-stats-list">
+      <div class="mini-stat" routerLink="/monitor" [queryParams]="{q: 'verdict:3 verdict:4'}">
+        <label routerLink="/monitor" [queryParams]="{q: 'verdict:3 verdict:4'}">Connections Blocked</label>
+        <span>{{ blockedConnections }}</span>
+      </div>
+
+      <div class="mini-stat" routerLink="/monitor" [queryParams]="{q: 'active:true'}">
+        <label routerLink="/monitor" [queryParams]="{q: 'active:true'}">Active Connections</label>
+        <span>{{ activeConnections }}</span>
+      </div>
+
+      <div class="mini-stat" routerLink="/monitor" [queryParams]="{q: 'active:true groupby:profile'}">
+        <label routerLink="/monitor" [queryParams]="{q: 'active:true groupby:profile'}">Active Apps</label>
+        <span>{{ activeProfiles }}</span>
+      </div>
+
+      <div class="mini-stat">
+        <label>Data Received</label>
+        <span *ngIf="featureBw">
+          {{ dataIncoming | bytes }}
+        </span>
+        <span *ngIf="!featureBw"
+          class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
+          Available in<br />Portmaster Plus
+        </span>
+      </div>
+
+      <div class="mini-stat">
+        <label>Data Sent</label>
+        <span *ngIf="featureBw">
+          {{ dataOutgoing | bytes }}
+        </span>
+        <span *ngIf="!featureBw"
+          class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
+          Available in<br />Portmaster Plus
+        </span>
+      </div>
+
+      <div class="mini-stat" routerLink="/monitor" [queryParams]="{q: 'tunneled:true groupby:exit_node'}">
+        <label routerLink="/monitor" [queryParams]="{q: 'tunneled:true groupby:exit_node'}">SPN Identities</label>
+        <span *ngIf="featureSPN">{{ activeIdentities }}</span>
+        <span *ngIf="!featureSPN"
+          class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
+          Available in<br />Portmaster Pro
+        </span>
+      </div>
+    </div>
+  </app-dashboard-widget>
+
+  <app-dashboard-widget id="charts">
+    <div class="mini-stats-list">
+      <div class="mini-stat">
+        <label routerLink="/monitor">
+          Active/Blocked Connections
+        </label>
+        <sfng-netquery-line-chart activeConnectionColor="text-green-300 text-opacity-70" class="w-full !h-36"
+          [data]="connectionChart"></sfng-netquery-line-chart>
+      </div>
+      <div class="mini-stat" *ngIf="featureSPN">
+        <label routerLink="/monitor" [queryParams]="{q: 'tunneled:true'}">
+          Connections Tunneled through SPN
+        </label>
+        <sfng-netquery-line-chart
+          [config]="{
+            series: {
+              value: {
+                lineColor: 'text-blue text-opacity-80',
+                areaColor: 'text-blue text-opacity-20',
+              }
+            }
+          }"
+          class="w-full !h-36"
+          [data]="tunneldConnectionChart">
+        </sfng-netquery-line-chart>
+      </div>
+    </div>
+  </app-dashboard-widget>
+
+  <app-dashboard-widget class="flex-grow" id="countries" label="Recent Connections per Country">
+    <div class="block w-full">
+      <ul class="list-none auto-grid-4">
+        <li *ngFor="let country of (connectionsPerCountry | keyvalue); trackBy: trackCountry"
+          [routerLink]="['/monitor']" [queryParams]="{q: 'country:' + country.key}"
+          (mouseenter)="onCountryHover(country.key)" (mouseleave)="onCountryHover(null)"
+          class="flex flex-row items-center p-2 bg-gray-300 rounded-md cursor-pointer hover:bg-gray-400">
+          <div class="flex flex-row items-center flex-grow gap-2">
+            <span class="flex-shrink-0" *ngIf="!!country.key" [appCountryFlags]="country.key"></span>
+            <span
+              class="overflow-hidden text-xs text-secondary whitespace-nowrap">{{ countryNames[country.key] || country.key || 'N/A' }}</span>
+          </div>
+          <span class="ml-2">{{ country.value }}</span>
+        </li>
+      </ul>
+    </div>
+  </app-dashboard-widget>
+
+  <app-dashboard-widget class="flex-grow" id="blocked" label="Recently Blocked Applications">
+    <div class="block w-full h-full">
+      <span *ngIf="!blockedProfiles?.length"
+        class="flex flex-row items-center justify-center h-full gap-2 text-tertiary">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+          class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+
+        <span>
+          No applications have been blocked in the last 10 minutes.
+        </span>
+      </span>
+
+      <ul class="list-none auto-grid-3">
+        <ng-container *ngFor="let entry of blockedProfiles; trackBy: trackApp">
+          <li *ngIf="(entry.profileID | toAppProfile) as profile" (mouseenter)="onProfileHover(entry.profileID)"
+            (mouseleave)="onProfileHover(null)" [routerLink]="['/app', profile.Source, profile.ID]"
+            class="flex flex-row items-center p-2 bg-gray-300 rounded-md cursor-pointer hover:bg-gray-400">
+            <div class="flex flex-row items-center flex-grow gap-2">
+              <app-icon [profile]="profile"></app-icon>
+              <span class="text-xs text-secondary">{{ profile.Name }}</span>
+            </div>
+            {{ entry.count }}
+          </li>
+        </ng-container>
+      </ul>
+    </div>
+  </app-dashboard-widget>
+
+  <app-dashboard-widget class="flex-grow" id="connmap" style="min-height: 400px" label="Recent Connection Countries" beta="true">
+    <spn-map-renderer class="w-full h-full" mapId="dashboard-map"></spn-map-renderer>
+  </app-dashboard-widget>
+
+  <app-dashboard-widget class="flex-grow" id="bwvis-bar" [ngStyle]="{minHeight: featureBw ? '400px' : 'unset'}" label="Recent Top Consumers" beta="true">
+    <sfng-netquery-circular-bar-chart *ngIf="featureBw" class="block w-full h-full" [data]="bandwidthBarData" [config]="bandwidthBarConfig"></sfng-netquery-circular-bar-chart>
+
+    <span *ngIf="!featureBw"
+      class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
+      Available in Portmaster Plus
+    </span>
+  </app-dashboard-widget>
+
+  <app-dashboard-widget class="flex-grow" id="bwvis-line" [ngStyle]="{minHeight: featureBw ? '400px' : 'unset'}" label="Recent Bandwidth Usage" beta="true">
+    <sfng-netquery-line-chart class="block w-full h-full" *ngIf="featureBw" [data]="bandwidthLineChart" [config]="bwChartConfig"></sfng-netquery-line-chart>
+
+    <span *ngIf="!featureBw"
+      class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
+      Available in Portmaster Plus
+    </span>
+  </app-dashboard-widget>
+
+  <app-dashboard-widget class="flex-grow relative" id="news" label="News">
+
+    <div class="flex flex-col items-center justify-center w-full h-full gap-2 font-light" *ngIf="!news">
+      <span>News is only available if intel data updates are enabled</span>
+      <button [routerLink]="['/settings']" [queryParams]="{setting: 'core/automaticIntelUpdates'}">Open Settings</button>
+    </div>
+
+    <div class="flex flex-col items-center justify-center w-full h-full gap-2 font-light" *ngIf="news === 'pending'">
+      <span>Just a second, we're loading the latest news...</span>
+    </div>
+
+    <ng-container *ngIf="!!news && news !== 'pending'">
+      <sfng-tab-group linkRouter="false" [customHeader]="true" #carousel>
+        <sfng-tab *ngFor="let card of news?.cards" [id]="card.title" [title]="card.title">
+          <section *sfngTabContent class="flex flex-col gap-2 p-2 h-full" (mouseenter)="onCarouselTabHover(card)" (mouseleave)="onCarouselTabHover(null)">
+            <a [attr.href]="card.url">
+              <h1 class="flex flex-row gap-2 items-center w-full ml-2 mr-2">
+                {{ card.title }}
+                <svg *ngIf="card.url" role="img" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="text-white text-opacity-50 w-3 h-3">
+                  <path fill="currentColor" d="M352 0c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9L370.7 96 201.4 265.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L416 141.3l41.4 41.4c9.2 9.2 22.9 11.9 34.9 6.9s19.8-16.6 19.8-29.6V32c0-17.7-14.3-32-32-32H352zM80 32C35.8 32 0 67.8 0 112V432c0 44.2 35.8 80 80 80H400c44.2 0 80-35.8 80-80V320c0-17.7-14.3-32-32-32s-32 14.3-32 32V432c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V112c0-8.8 7.2-16 16-16H192c17.7 0 32-14.3 32-32s-14.3-32-32-32H80z"></path>
+                </svg>
+              </h1>
+            </a>
+
+            <markdown class="flex-grow" *ngIf="card.body" emoji [data]="card.body"></markdown>
+
+            <div *ngIf="card.progress as progress" class="ml-2 mr-2">
+              <div class="overflow-hidden rounded border bg-gray-400 border-gray-100 h-5 w-full relative">
+                <div class="h-full" [style]="progress.style" [style.width.%]="progress.percent"></div>
+                <div class="absolute top-0.5 bottom-0 left-0 right-0 flex flex-row justify-center items-center text-xxs text-background">
+                  <span>{{ progress.percent }}%</span>
+                </div>
+              </div>
+            </div>
+
+            <markdown *ngIf="card.footer" emoji [data]="card.footer" class="!text-secondary"></markdown>
+
+          </section>
+        </sfng-tab>
+      </sfng-tab-group>
+
+      <div class="absolute bottom-2 left-0 right-0 flex flex-row items-center justify-center gap-2">
+        <span *ngFor="let dot of carousel.tabs; let index=index"
+          class="block w-2 h-2 transition-all duration-150 ease-in-out bg-opacity-50 rounded-full cursor-pointer bg-background"
+          [class.bg-blue]="carousel.activeTabIndex === index" (click)="carousel.activateTab(index)"></span>
+      </div>
+    </ng-container>
+
+  </app-dashboard-widget>
+</div>

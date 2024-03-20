@@ -1,0 +1,105 @@
+<div class="flex flex-row items-center justify-start text-white w-full gap-2 p-2">
+  <!-- Logo -->
+  <div class="relative w-24 h-20 flex-grow-0 flex-shrink-0 block" id="logo">
+    <svg stroke="currentColor" data-name="Layer-1" viewBox="0 0 128 128" class="animate-spin">
+      <g data-name="Main" fill-rule="evenodd">
+        <path shape-rendering="geometricPrecision" fill="#fff"
+          d="M176.11 36.73l-5-8.61a41.53 41.53 0 00-14.73 57.22l8.55-5.12a31.58 31.58 0 0111.19-43.49z"
+          transform="translate(-127.99 .01)" style="isolation:isolate" opacity=".8"></path>
+        <path shape-rendering="geometricPrecision" fill="#fff" class="inner"
+          d="M222.36 72.63a31.55 31.55 0 01-45 19.35l-4.62 8.84a41.54 41.54 0 0059.17-25.46z"
+          transform="translate(-127.99 .01)" style="isolation:isolate" opacity=".8"></path>
+      </g>
+    </svg>
+    <svg data-name="layer-2" viewBox="0 0 128 128" class="animate-spin">
+      <g data-name="Main" fill-rule="evenodd">
+        <path shape-rendering="geometricPrecision" fill="#fff"
+          d="M197 83a19.66 19.66 0 01-19.25-32.57l-4.5-4.27A25.87 25.87 0 00198.59 89z"
+          transform="translate(-127.99 .01)" style="isolation:isolate" opacity=".6"></path>
+      </g>
+    </svg>
+    <svg data-name="layer-3" viewBox="0 0 128 128">
+      <g data-name="Main" fill-rule="evenodd">
+        <path shape-rendering="geometricPrecision" fill="#fff"
+          d="M192 112.64A48.64 48.64 0 11240.64 64 48.64 48.64 0 01192 112.64zM256 64a64 64 0 10-64 64 64 64 0 0064-64z"
+          transform="translate(-127.99 .1)"></path>
+      </g>
+    </svg>
+  </div>
+
+  <div class="flex flex-col leading-3">
+    <h2>Safing</h2>
+    <h1 class="text-2xl">
+      Portmaster
+    </h1>
+  </div>
+</div>
+
+<div [ngSwitch]="status" class="text-base flex flex-row gap-4 mx-2 text-white mt-2 items-center justify-evenly"
+  [ngClass]="{
+      'bg-red-300 p-2 rounded shadow-inner': status !== 'Running' && status !== null
+    }">
+
+  <ng-template [ngSwitchCase]="null">
+    Connecting to System Service ...
+  </ng-template>
+
+  <ng-template [ngSwitchCase]="'Running'">
+    Connecting to System Service ...
+  </ng-template>
+
+  <ng-template [ngSwitchCase]="'Stopped'">
+
+    Portmaster System Service is not running:
+
+    <button (click)="startService()"
+      class="px-2 py-1 rounded uppercase text-xs block self-end btn bg-white bg-opacity-25 text-white hover:bg-red-100 cursor-pointer">
+      Start Now
+    </button>
+
+  </ng-template>
+
+  <ng-template [ngSwitchCase]="'NotFound'">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+      class="w-12 h-12">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+    </svg>
+
+    <span>
+      Failed to find Portmaster System Service.
+      <br />
+      Please reinstall the application.
+    </span>
+
+    <button (click)="getHelp()"
+      class="px-2 py-1 rounded uppercase text-xs block self-end btn bg-white bg-opacity-25 text-white hover:bg-red-100 cursor-pointer">Get
+      Help</button>
+  </ng-template>
+
+  <ng-template [ngSwitchCase]="'unsupported service manager'">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+      class="w-12 h-12">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+    </svg>
+
+    <span>
+      Your System Service Manager is not supported. Please make sure Portmaster is running.
+    </span>
+  </ng-template>
+
+  <ng-template [ngSwitchCase]="'unsupported operating system'">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+      class="w-12 h-12">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+    </svg>
+
+    <span>
+      Your System Service Manager is not supported. Please make sure Portmaster is running.
+    </span>
+  </ng-template>
+
+  <span *ngSwitchDefault>Unknown error: {{ status }}</span>
+</div>

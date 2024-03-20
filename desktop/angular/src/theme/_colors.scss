@@ -1,0 +1,46 @@
+/**
+ * For debugging purposes, we define all our colors as
+ * CSS3 variables and make tailwind put a reference to those
+ * variables. This way we will see the variable name in the
+ * developer-tools instead of the hex/rgba values.
+ *
+ * You're welcome 🚀
+ */
+:root {
+  --background: #121213;
+
+  --text-primary  : #ffffff;
+  --text-secondary: #ababab;
+  --text-tertiary : #888888;
+
+  --cards-primary      : #222222;
+  --cards-secondary    : #1b1b1b;
+  --cards-secondary-rgb: 27, 27, 27;
+  --cards-tertiary     : #2c2c2c;
+
+  --button-icon : #ababab;
+  --button-dark : #343434;
+  --button-light: #474747;
+
+  --info-green     : #3df57f;
+  --info-red       : #d12e2e;
+  --info-gray      : #ababab;
+  --info-blue      : #4e97fa;
+  --info-yellow    : #e9d31d;
+  --info-yellow-rgb: 233, 211, 29;
+
+  --protection-ok-primary  : rgb(29, 233, 102);
+  --protection-ok-secondary: rgb(24, 130, 61);
+  --protection-ok-tertiary : rgb(20, 61, 36);
+
+  --protection-warn-primary  : rgb(233, 216, 29);
+  --protection-warn-secondary: rgb(130, 121, 24);
+  --protection-warn-tertiary : rgb(61, 58, 20);
+
+  --protection-fail-primary  : rgb(224, 29, 29);
+  --protection-fail-secondary: rgb(129, 24, 24);
+  --protection-fail-tertiary : rgb(61, 20, 20);
+
+  --portmaster-plus: #2fcfae;
+  --portmaster-pro: #029ad0;
+}

@@ -1,0 +1,47 @@
+span.verdict {
+  display     : inline-block;
+  position    : relative;
+  width       : 12px;
+  height      : 9px;
+  align-self  : center;
+  justify-self: center;
+  user-select : none;
+  overflow    : visible;
+
+  &:before {
+    content         : "";
+    display         : block;
+    position        : absolute;
+    height          : 8px;
+    width           : 8px;
+    top             : 0px;
+    left            : 0px;
+    border-radius   : 50%;
+    background-color: var(--bg-color);
+    border          : 1px solid var(--bg-color);
+    @apply shadow-inner-xs;
+  }
+
+  &.failed {
+    --bg-color: theme('colors.info.yellow');
+  }
+
+  &.accept,
+  &.reroutetons,
+  &.reroutetotunnel {
+    --bg-color: theme('colors.info.green');
+  }
+
+  &.block,
+  &.drop {
+    --bg-color: theme('colors.info.red');
+  }
+
+  &.outdated {
+    &:before {
+      background-color: transparent;
+      border-color    : var(--bg-color);
+      opacity         : .85;
+    }
+  }
+}

@@ -2,3 +2,4 @@ node_modules
 dist
 dist-extension
 dist-lib
+.angular

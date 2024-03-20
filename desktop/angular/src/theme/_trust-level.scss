@@ -1,0 +1,73 @@
+span.trust-level {
+  display    : inline-block;
+  position   : relative;
+  width      : 6px;
+  user-select: none;
+  overflow   : visible;
+
+  &~* {
+    @apply ml-2;
+  }
+
+  &:before {
+    content      : "";
+    display      : block;
+    position     : relative;
+    height       : 6px;
+    width        : 6px;
+    top          : -1px;
+    left         : 0px;
+    border-radius: 50%;
+  }
+
+  &.centered:before {
+    top: 0px;
+  }
+
+  &:before {
+    background-color: var(--bg-color);
+    @apply shadow-inner-xs;
+  }
+
+  &.pulse:before {
+    animation : pulsate-trust 1s ease-out infinite;
+    box-shadow: 0 0 10px var(--glow-color);
+  }
+
+  &.off {
+    --bg-color  : theme('colors.info.gray');
+    --glow-color: theme('colors.info.gray');
+  }
+
+  &.auto {
+    --bg-color  : theme('colors.info.blue');
+    --glow-color: theme('colors.info.blue');
+  }
+
+  &.low {
+    --bg-color  : theme('colors.info.green');
+    --glow-color: theme('colors.info.green');
+  }
+
+  &.medium {
+    --bg-color  : theme('colors.info.yellow');
+    --glow-color: theme('colors.info.yellow');
+  }
+
+  &.high {
+    --bg-color  : theme('colors.info.red');
+    --glow-color: theme('colors.info.red');
+  }
+}
+
+@keyframes pulsate-trust {
+  100% {
+    opacity: 0.8;
+  }
+
+  0% {
+    background: var(--glow-color);
+    box-shadow: 0 0 0 var(--glow-color);
+    opacity   : 1;
+  }
+}

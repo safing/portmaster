@@ -1,0 +1,12 @@
+<svg *ngIf="bySafing" class="inline-block" xmlns="http://www.w3.org/2000/svg" width="16" preserveAspectRation="none"
+  height="16">
+  <g transform="translate(9, 7)">
+    <polygon class="{{ nodeClass }}" points="0,-4 -4,4 4,4"></polygon>
+  </g>
+</svg>
+<svg *ngIf="!bySafing" class="inline-block" xmlns="http://www.w3.org/2000/svg" width="16" preserveAspectRation="none"
+  height="16">
+  <g transform="translate(9, 7)">
+    <circle class="{{ nodeClass }}" r="4"></circle>
+  </g>
+</svg>

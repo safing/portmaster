@@ -1,0 +1,182 @@
+<div class="flex flex-row items-center gap-2">
+  <div class="relative w-full">
+    <input type="text" placeholder="SEARCH" [(ngModel)]="searchTerm" (ngModelChange)="triggerSearch.next($event)"
+      class="!pl-7 !pr-16">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+      class="absolute w-4 h-4 top-1.5 left-1.5">
+      <path fill-rule="evenodd"
+        d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
+        clip-rule="evenodd" />
+    </svg>
+    <span class="text-xxs uppercase text-secondary absolute right-1.5 top-2 font-light">
+      {{allProfiles.length}} Apps
+    </span>
+  </div>
+
+  <ng-template #settingsTrigger>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+      class="w-8 h-full p-1.5 bg-gray-300 rounded cursor-pointer text-secondary hover:text-primary">
+      <path fill-rule="evenodd"
+        d="M2.24 6.8a.75.75 0 001.06-.04l1.95-2.1v8.59a.75.75 0 001.5 0V4.66l1.95 2.1a.75.75 0 101.1-1.02l-3.25-3.5a.75.75 0 00-1.1 0L2.2 5.74a.75.75 0 00.04 1.06zm8 6.4a.75.75 0 00-.04 1.06l3.25 3.5a.75.75 0 001.1 0l3.25-3.5a.75.75 0 10-1.1-1.02l-1.95 2.1V6.75a.75.75 0 00-1.5 0v8.59l-1.95-2.1a.75.75 0 00-1.06-.04z"
+        clip-rule="evenodd" />
+    </svg>
+  </ng-template>
+
+  <sfng-dropdown [triggerTemplate]="settingsTrigger">
+    <div class="flex flex-col gap-2 p-2">
+      <h4>Sort By</h4>
+      <sfng-select displayMode="inline" [ngModel]="sortOrder" (ngModelChange)="updateSortOrder($event)">
+        <ng-container *ngFor="let sortMethod of sortTypes">
+          <sfng-select-item
+            *sfngSelectValue="sortMethod; description:(sortMethod === 'Static' ? 'The default sort order which adds new apps to the bottom' : '')">
+            {{ sortMethod }}</sfng-select-item>
+        </ng-container>
+      </sfng-select>
+    </div>
+  </sfng-dropdown>
+
+  <ng-container *ngIf="spnEnabled">
+    <svg *ngIf="expandCollapseState === 'expand'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+      stroke-width="1.5" stroke="currentColor"
+      class="w-8 h-full p-1.5 bg-gray-300 rounded cursor-pointer text-secondary hover:text-primary"
+      (click)="collapseAll()">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+    </svg>
+    <svg *ngIf="expandCollapseState === 'collapse'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+      stroke-width="1.5" stroke="currentColor"
+      class="w-8 h-full p-1.5 bg-gray-300 rounded cursor-pointer text-secondary hover:text-primary"
+      (click)="expandAll()">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+    </svg>
+  </ng-container>
+</div>
+
+<sfng-accordion-group singleMode="false" [headerTemplate]="header" [@fadeInList]="profiles.length"
+  [disabled]="!spnEnabled" class="flex flex-col gap-2">
+  <sfng-accordion *ngFor="let profile of profiles; trackBy: trackProfile" [data]="profile"
+    [(active)]="profile.expanded">
+    <div class="relative my-3 border-t border-gray-300">
+      <span class="absolute right-0 block pl-2 bg-gray-100 text-tertiary -top-2 text-xxs"> {{ profile.exitPins.length }}
+        IDENTITIES</span>
+    </div>
+
+    <span class="block w-full p-2 text-center text-secondary text-xxs" *ngIf="profile.identities.length === 0">
+      Connections from {{ profile.Name }} have not been routed through the SPN.
+    </span>
+
+    <ul class="grid grid-cols-2 gap-3 p-3" [@fadeInList]="profile.exitPins.length">
+      <li
+        *ngFor="let identity of (profile.showMore ? profile.exitPins : profile.exitPins.slice(0, 4)); trackBy: trackPin"
+        class="flex flex-col bg-gray-200 rounded outline-none justify-items-stretch">
+        <span class="flex flex-row items-center p-2 bg-gray-300 rounded-t">
+          <ng-container class="flex-grow overflow-hidden" *ngIf="identity.EntityV4 || identity.EntityV6 as entity">
+            <span class="block w-6 text-left" [appCountryFlags]="entity.Country"></span>
+            <span class="overflow-hidden font-medium text-primary text-ellipsis"> {{ entity.IP }} </span>
+          </ng-container>
+        </span>
+        <div class="flex flex-row">
+          <span class="flex-grow p-2 rounded-bl outline-none cursor-pointer text-primary text-xxs hover:bg-gray-400"
+            [routerLink]="['/monitor']"
+            [queryParams]="{q: 'groupby:\'\' exit_node:' + identity.ID + ' profile:'+profile.ID}"
+            (click)="$event.stopPropagation()">
+            {{ identity.count }}
+            <span class="font-light text-secondary">Connections</span>
+          </span>
+          <span
+            class="p-2 bg-gray-300 bg-opacity-50 rounded-br outline-none cursor-pointer text-primary text-xxs hover:bg-gray-400"
+            [routerLink]="['/spn']" [queryParams]="{app: profile.ID, pin: identity.ID}">
+            <span class="font-light text-secondary">HOPS:</span>
+            {{ identity.HopDistance }}
+          </span>
+        </div>
+      </li>
+    </ul>
+
+    <span class="block w-full text-center text-secondary text-xxs" *ngIf="profile.exitPins.length > 4"
+      (click)="profile.showMore = !profile.showMore">
+      {{ profile.showMore ? 'Show Less Identities' : 'Show More Identities'}}
+    </span>
+  </sfng-accordion>
+</sfng-accordion-group>
+
+<ng-template #header let-data let-active="active" let-accordion="accordion">
+  <div class="flex flex-row items-center w-full gap-3 px-3 py-2 bg-gray-200 rounded-sm outline-none"
+    [ngClass]="{'cursor-pointer hover:bg-gray-300': !spnEnabled}" [routerLink]="['/app/' + data.ID]"
+    [queryParams]="{tab: 0}" (click)="$event.stopPropagation()">
+
+    <svg xmlns="http://www.w3.org/2000/svg" class="flex-shrink-0 w-4 h-4 transition-all duration-150 transform"
+      *ngIf="spnEnabled" [class.rotate-90]="active" viewBox="0 0 20 20" fill="currentColor"
+      (click)="accordion.toggle($event); $event.stopPropagation()">
+      <path fill-rule="evenodd"
+        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+        clip-rule="evenodd" />
+    </svg>
+
+    <span class="flex flex-row items-center flex-grow gap-2 overflow-hidden whitespace-nowrap">
+      <app-icon [profile]="data"></app-icon>
+      <span class="overflow-hidden text-ellipsis">
+        {{ data.Name }}
+      </span>
+    </span>
+
+    <span class="flex self-stretch -top-2 -bottom-2 text-tertiary">
+      <div class="flex items-center justify-center w-6 h-full outline-none cursor-pointer hover:text-primary"
+        [routerLink]="['/spn']" *ngIf="data.identities.length > 0" [queryParams]="{app: data.ID}"
+        (click)="$event.stopPropagation()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-3.5 h-3.5" stroke="currentColor">
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+            <path
+              d="M6.488 15.581c.782.781.782 2.048 0 2.829-.782.781-2.049.781-2.83 0-.782-.781-.782-2.048 0-2.829.781-.781 2.048-.781 2.83 0M13.415 3.586c.782.781.782 2.048 0 2.829-.782.781-2.049.781-2.83 0-.782-.781-.782-2.048 0-2.829.781-.781 2.049-.781 2.83 0M20.343 15.58c.782.781.782 2.048 0 2.829-.782.781-2.049.781-2.83 0-.782-.781-.782-2.048 0-2.829.781-.781 2.048-.781 2.83 0" />
+            <path
+              d="M17.721 18.581C16.269 20.071 14.246 21 12 21c-1.146 0-2.231-.246-3.215-.68M4.293 15.152c-.56-1.999-.352-4.21.769-6.151.574-.995 1.334-1.814 2.205-2.449M13.975 5.254c2.017.512 3.834 1.799 4.957 3.743.569.985.899 2.041 1.018 3.103" />
+          </g>
+        </svg>
+      </div>
+
+      <div class="flex items-center justify-center w-6 h-full outline-none cursor-pointer hover:text-primary"
+        [routerLink]="['/app/' + data.ID]" [queryParams]="{tab: 0}" (click)="$event.stopPropagation()">
+        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5">
+          <g fill="none" stroke="currentColor">
+            <path shape-rendering="geometricPrecision" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8.464 8.464c-1.953 1.953-1.953 5.118 0 7.071 1.953 1.953 5.118 1.953 7.071 0 1.953-1.953 1.953-5.119 0-7.071C14.559 7.488 13.28 7 12 7" />
+            <path shape-rendering="geometricPrecision" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M5.636 5.636c-3.515 3.515-3.515 9.213 0 12.728 3.515 3.515 9.213 3.515 12.728 0 3.515-3.515 3.515-9.213 0-12.728-2.627-2.627-6.474-3.289-9.717-1.989M5.64 5.64L12 12" />
+          </g>
+        </svg>
+      </div>
+
+      <div class="flex items-center justify-center w-6 h-full outline-none cursor-pointer hover:text-primary"
+        [routerLink]="['/app/' + data.ID]" [queryParams]="{tab: 'settings'}" (click)="$event.stopPropagation()">
+        <svg xmlns="http://www.w3.org/2000/svg" data-name="Layer 1" viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none"
+          stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" fill="currentColor"
+            d="M19 21h-3a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2Z" />
+          <path fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M19 9h-3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2ZM5 3h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM5 15h3a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2Z" />
+        </svg>
+      </div>
+
+    </span>
+
+    <app-count-indicator *ngIf="!isByteSortOrder; else: bytesTemplate" [count]="data.size" [countAllowed]="data.countAllowed"></app-count-indicator>
+    <ng-template #bytesTemplate>
+      <div style="font-size: 0.6rem" class="bg-gray-300 font-light p-0.5 pr-1 rounded-md w-14 flex-shrink-0 flex-grow-0 ">
+        <span class="flex flex-row leading-3 justify-between items-center text-deepPurple-200">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
+            <path fill-rule="evenodd" d="M10 15a.75.75 0 01-.75-.75V7.612L7.29 9.77a.75.75 0 01-1.08-1.04l3.25-3.5a.75.75 0 011.08 0l3.25 3.5a.75.75 0 11-1.08 1.04l-1.96-2.158v6.638A.75.75 0 0110 15z" clip-rule="evenodd" />
+          </svg>
+          {{ data.bytes_sent | bytes:"1.0-0" }}
+        </span>
+
+        <span class="flex flex-row leading-3 justify-between items-center text-cyan-700">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
+            <path fill-rule="evenodd" d="M10 5a.75.75 0 01.75.75v6.638l1.96-2.158a.75.75 0 111.08 1.04l-3.25 3.5a.75.75 0 01-1.08 0l-3.25-3.5a.75.75 0 111.08-1.04l1.96 2.158V5.75A.75.75 0 0110 5z" clip-rule="evenodd" />
+          </svg>
+          {{ data.bytes_received | bytes:"1.0-0" }}
+        </span>
+      </div>
+    </ng-template>
+  </div>
+</ng-template>
