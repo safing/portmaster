@@ -15,7 +15,7 @@
     "chrome-extension": "NODE_ENV=production ng build --configuration production portmaster-chrome-extension",
     "chrome-extension:dev": "ng build --configuration development portmaster-chrome-extension --watch",
     "build": "npm run build-libs && NODE_ENV=production ng build --configuration production --base-href /ui/modules/portmaster/",
-    "build-tauri": "npm run build-libs && NODE_ENV=production ng build --configuration production",
+    "build-tauri": "npm run build-libs && NODE_ENV=production ng build --configuration production tauri-builtin",
     "serve-tauri-builtin": "ng serve tauri-builtin --port 4100",
     "serve-app": "ng serve --port 4200 --proxy-config ./proxy.json",
     "tauri-dev": "npm install && run-s build-libs:dev && run-p serve-app serve-tauri-builtin"
