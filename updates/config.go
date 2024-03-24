@@ -106,6 +106,26 @@ func registerConfig() error {
 		return err
 	}
 
+	// Register a setting for the file path in the ui
+	err = config.Register(&config.Option{
+		Name:            "Proxy Address",
+		Key:             updateProxyURLKey,
+		Description:     "Specify a proxy url in the format protocol://ip_address:port to proxy update checks and downloads through",
+		OptType:         config.OptTypeString,
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
+		ReleaseLevel:    config.ReleaseLevelStable,
+		DefaultValue:    "",
+		RequiresRestart: false,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: config.DisplayHintOrdered,
+			config.CategoryAnnotation:     "Updates",
+			config.DisplayHintAnnotation:  config.DisplayHintAnnotation,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
