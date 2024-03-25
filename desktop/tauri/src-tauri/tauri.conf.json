@@ -77,7 +77,11 @@
       "windows": {
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
-        "timestampUrl": ""
+        "timestampUrl": "",
+        "nsis": {
+          "installMode": "perMachine",
+          "template": "bundle/installer_template.nsi"
+        }
       }
     },
     "security": {
