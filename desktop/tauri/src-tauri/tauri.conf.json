@@ -47,8 +47,8 @@
         "depends": []
       },
       "externalBin": [
-        "binaries/portmaster-start",
-        "binaries/portmaster-core"
+        "../binaries/portmaster-start",
+        "../binaries/portmaster-core"
       ],
       "icon": [
         "../assets/icons/pm_dark_512.png",

@@ -404,7 +404,7 @@ fn get_icon_as_png_dataurl(name: &str, size: i8) -> Result<(String, String)> {
 
             let icon_info = gtk_icon_theme_lookup_icon(
                 GTK_DEFAULT_THEME.unwrap(),
-                c_str.as_ptr() as *const i8,
+                c_str.as_ptr() as *const u8,
                 size as c_int,
                 0,
             );

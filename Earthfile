@@ -8,6 +8,7 @@ ARG --global outputDir = "./dist"
 # The list of rust targets we support. They will be automatically converted
 # to GOOS, GOARCH and GOARM when building go binaries. See the +RUST_TO_GO_ARCH_STRING
 # helper method at the bottom of the file.
+
 ARG --global architectures = "x86_64-unknown-linux-gnu" \
                              "aarch64-unknown-linux-gnu" \
                              "armv7-unknown-linux-gnueabihf" \
@@ -21,6 +22,9 @@ IMPORT github.com/earthly/lib/rust:3.0.2 AS rust
 go-deps:
     FROM golang:${go_version}-${distro}
     WORKDIR /go-workdir
+
+    # We need the git cli to extract version information for go-builds
+    RUN apk add git
 
     # These cache dirs will be used in later test and build targets
     # to persist cached go packages.
@@ -54,6 +58,18 @@ go-base:
     # ./assets
     COPY assets ./assets
 
+    # Copy the git folder and extract version information
+    COPY .git ./.git
+
+    LET version = $(git tag --points-at)
+    IF [ "${version}" = "" ]
+        SET version = $(git describe --tags --abbrev=0)
+    END
+    ENV VERSION="${version}"
+
+    LET source = $(git remote -v | cut -f2 | cut -d" " -f1 | head -n 1)
+    ENV SOURCE="${source}"
+
 # updates all go dependencies and runs go mod tidy, saving go.mod and go.sum locally.
 update-go-deps:
     FROM +go-base
@@ -82,9 +98,6 @@ build-go:
     ARG GOARM
     ARG CMDS=portmaster-start portmaster-core hub notifier
 
-    # Get the current version
-    DO +GET_VERSION
-
     CACHE --sharing shared "$GOCACHE"
     CACHE --sharing shared "$GOMODCACHE"
 
@@ -97,12 +110,12 @@ build-go:
 
     # Build all go binaries from the specified in CMDS
     FOR bin IN $CMDS
-        RUN go build  -o "/tmp/build/" ./cmds/${bin}
+        RUN go build  -ldflags="-X github.com/safing/portbase/info.version=${VERSION} -X github.com/safing/portbase/info.buildSource=${SOURCE}" -o "/tmp/build/" ./cmds/${bin}
     END
 
-    FOR bin IN $(ls -1 "/tmp/build/")
-        DO +GO_ARCH_STRING --goos="${GOOS}" --goarch="${GOARCH}" --goarm="${GOARM}"
+    DO +GO_ARCH_STRING --goos="${GOOS}" --goarch="${GOARCH}" --goarm="${GOARM}"
 
+    FOR bin IN $(ls -1 "/tmp/build/")
         SAVE ARTIFACT "/tmp/build/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${bin}"
     END
 
@@ -129,7 +142,8 @@ test-go:
     END
 
 test-go-all-platforms:
-    LOCALLY 
+    FROM alpine:3.18
+
     FOR arch IN ${architectures}
         DO +RUST_TO_GO_ARCH_STRING --rustTarget="${arch}"
         BUILD +test-go --GOARCH="${GOARCH}" --GOOS="${GOOS}" --GOARM="${GOARM}"
@@ -137,9 +151,19 @@ test-go-all-platforms:
 
 # Builds portmaster-start, portmaster-core, hub and notifier for all supported platforms
 build-go-release:
-    LOCALLY
+    FROM alpine:3.18
+
     FOR arch IN ${architectures}
         DO +RUST_TO_GO_ARCH_STRING --rustTarget="${arch}"
+
+        IF [ -z GOARCH ]
+            RUN echo "Failed to extract GOARCH for ${arch}"; exit 1
+        END
+
+        IF [ -z GOOS ]
+            RUN echo "Failed to extract GOOS for ${arch}"; exit 1
+        END
+
         BUILD +build-go --GOARCH="${GOARCH}" --GOOS="${GOOS}" --GOARM="${GOARM}"
     END
 
@@ -207,7 +231,12 @@ angular-dev:
 rust-base:
     FROM rust:1.76-bookworm
 
+    RUN dpkg --add-architecture armhf
+    RUN dpkg --add-architecture arm64
+
     RUN apt-get update -qq
+
+    # Tools and libraries required for cross-compilation
     RUN apt-get install --no-install-recommends -qq \
         autoconf \
         autotools-dev \
@@ -215,28 +244,66 @@ rust-base:
         clang \
         cmake \
         bsdmainutils \
+        gcc-multilib \
+        linux-libc-dev \
+        linux-libc-dev-amd64-cross \
+        linux-libc-dev-arm64-cross \
+        linux-libc-dev-armel-cross \
+        linux-libc-dev-armhf-cross \
+        build-essential \
+        curl \
+        wget \
+        file \
+        libsoup-3.0-dev \
+        libwebkit2gtk-4.1-dev 
+
+    # Install library dependencies for all supported architectures
+    # required for succesfully linking.
+    FOR arch IN amd64 arm64 armhf
+        RUN apt-get install --no-install-recommends -qq \
+            libsoup-3.0-0:${arch} \
+            libwebkit2gtk-4.1-0:${arch} \
+            libssl3:${arch} \
+            libayatana-appindicator3-1:${arch} \
+            librsvg2-bin:${arch} \
+            libgtk-3-0:${arch} \
+            libjavascriptcoregtk-4.1-0:${arch}  \
+            libssl-dev:${arch} \
+            libayatana-appindicator3-dev:${arch} \
+            librsvg2-dev:${arch} \
+            libgtk-3-dev:${arch} \
+            libjavascriptcoregtk-4.1-dev:${arch}  
+   END
+
+   # Note(ppacher): I've no idea why we need to explicitly create those symlinks:
+   # Some how all the other libs work but libsoup and libwebkit2gtk do not create the link file
+   RUN cd /usr/lib/aarch64-linux-gnu && \
+        ln -s libwebkit2gtk-4.1.so.0 libwebkit2gtk-4.1.so && \
+        ln -s libsoup-3.0.so.0 libsoup-3.0.so 
+
+   RUN cd /usr/lib/arm-linux-gnueabihf && \
+        ln -s libwebkit2gtk-4.1.so.0 libwebkit2gtk-4.1.so && \
+        ln -s libsoup-3.0.so.0 libsoup-3.0.so 
+
+    # For what ever reason trying to install the gcc compilers together with the above
+    # command makes apt fail due to conflicts with gcc-multilib. Installing in a separate
+    # step seems to work ...
+    RUN apt-get install --no-install-recommends -qq \
         g++-mingw-w64-x86-64 \
         gcc-aarch64-linux-gnu \
         gcc-arm-none-eabi \
         gcc-arm-linux-gnueabi \
         gcc-arm-linux-gnueabihf \
-        libgtk-3-dev \
-        libjavascriptcoregtk-4.1-dev \
-        libsoup-3.0-dev \
-        libwebkit2gtk-4.1-dev \
-        build-essential \
-        curl \
-        wget \
-        file \
-        libssl-dev \
-        libayatana-appindicator3-dev \
-        librsvg2-dev
+        libc6-dev-arm64-cross \
+        libc6-dev-armel-cross \
+        libc6-dev-armhf-cross \
+        libc6-dev-amd64-cross
 
     # Add some required rustup components
     RUN rustup component add clippy
     RUN rustup component add rustfmt
 
-    # Install toolchains and targets
+    # Install architecture targets
     FOR arch IN ${architectures}
         RUN rustup target add ${arch}
     END
@@ -245,6 +312,9 @@ rust-base:
 
     # For now we need tauri-cli 1.5 for bulding
     DO rust+CARGO --args="install tauri-cli --version ^1.5.11"
+
+    # Required for cross compilation to work.
+    ENV PKG_CONFIG_ALLOW_CROSS=1
 
 tauri-src:
     FROM +rust-base
@@ -268,27 +338,33 @@ build-tauri:
     # we need to do some magic here because tauri expects the binaries to include the rust target tripple.
     # We already knwo that triple because it's a required argument. From that triple, we use +RUST_TO_GO_ARCH_STRING
     # function from below to parse the triple and guess wich GOOS and GOARCH we need.
-    IF [ "${bundle}" != "none" ] 
-        RUN mkdir /tmp/gobuild
-        RUN mkdir ./binaries
+    RUN mkdir /tmp/gobuild
+    RUN mkdir ./binaries
 
-        DO +RUST_TO_GO_ARCH_STRING --rustTarget="${target}"
-        RUN echo "GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} GO_ARCH_STRING=${GO_ARCH_STRING}"
+    DO +RUST_TO_GO_ARCH_STRING --rustTarget="${target}"
+    RUN echo "GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} GO_ARCH_STRING=${GO_ARCH_STRING}"
 
-        COPY (+build-go/output --GOOS="${GOOS}" --CMDS="portmaster-start portmaster-core" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
+    # Our tauri app has externalBins configured so tauri will try to embed them when it finished compiling
+    # the app. Make sure we copy portmaster-start and portmaster-core in all architectures supported.
+    # See documentation for externalBins for more information on how tauri searches for the binaries.
 
-        LET dest=""
-        FOR bin IN $(ls /tmp/gobuild)
-            SET dest="./binaries/${bin}-${target}"
+    COPY (+build-go/output --GOOS="${GOOS}" --CMDS="portmaster-start portmaster-core" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
 
-            IF [ -z "${bin##*.exe}" ]
-                SET dest = "./binaries/${bin%.*}-${target}.exe"
-            END
+    # Place them in the correct folder with the rust target tripple attached.
+    LET dest=""
+    FOR bin IN $(ls /tmp/gobuild)
+        SET dest="./binaries/${bin}-${target}"
 
-            RUN echo "Copying ${bin} to ${dest}"
-            RUN cp "/tmp/gobuild/${bin}" "${dest}"
+        IF [ -z "${bin##*.exe}" ]
+            SET dest = "./binaries/${bin%.*}-${target}.exe"
         END
+
+        RUN echo "Copying ${bin} to ${dest}"
+        RUN cp "/tmp/gobuild/${bin}" "${dest}"
     END
+
+    # Just for debugging ...
+    RUN ls -R ./binaries
 
     # The following is exected to work but doesn't. for whatever reason cargo-sweep errors out on the windows-toolchain.
     #
@@ -300,10 +376,23 @@ build-tauri:
     RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo tauri build --bundles "${bundle}" --ci --target="${target}"
     DO rust+COPY_OUTPUT --output="${output}"
 
+    # BUG(cross-compilation):
+    #
+    # The above command seems to correctly compile for all architectures we want to support but fails during
+    # linking since the target libaries are not available for the requested platforms. Maybe we need to download
+    # the, manually ...
+    #
+    # The earthly rust lib also has support for using cross-rs for cross-compilation but that fails due to the
+    # fact that cross-rs base docker images used for building are heavily outdated (latest = ubunut:16.0, main = ubuntu:20.04)
+    # which does not ship recent enough glib versions (our glib dependency needs glib>2.70 but ubunut:20.04 only ships 2.64)
+    #
+    # The following would use the CROSS function from the earthly lib, this 
+    # DO rust+CROSS --target="${target}"
+
     RUN ls target
 
 tauri-release:
-    LOCALLY
+    FROM alpine:3.18
 
     ARG bundle="none"
 
@@ -311,9 +400,18 @@ tauri-release:
         BUILD +build-tauri --target="${arch}" --bundle="${bundle}"
     END
 
-release:
+build-all:
     BUILD +build-go-release
-    BUILD +angular-release
+    BUILD +tauri-release
+
+release:
+    LOCALLY
+
+    IF ! git diff --quiet
+        RUN echo -e "\033[1;31m Refusing to release a dirty git repository. Please commit your local changes first! \033[0m" ; exit 1
+    END
+
+    BUILD +build-all
 
 
 # Takes GOOS, GOARCH and optionally GOARM and creates a string representation for file-names.
@@ -375,22 +473,3 @@ RUST_TO_GO_ARCH_STRING:
     ENV GOARM="${goarm}"
 
     DO +GO_ARCH_STRING --goos="${goos}" --goarch="${goarch}" --goarm="${goarm}"
-
-GET_VERSION:
-    FUNCTION
-    LOCALLY
-
-    LET VERSION=$(git tag --points-at)
-    IF [ -z "${VERSION}"]
-        SET VERSION=$(git describe --tags --abbrev=0)§dev§build
-    ELSE IF ! git diff --quite
-        SET VERSION="${VERSION}§dev§build"
-    END
-
-    RUN echo "Version is ${VERSION}"
-    ENV VERSION="${VERSION}"
-
-test:
-    LOCALLY
-
-    DO +GET_VERSION
