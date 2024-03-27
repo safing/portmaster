@@ -31,7 +31,7 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use log::debug;
+use log::{debug, error};
 use serde;
 use std::sync::Mutex;
 use tauri::{
@@ -42,6 +42,7 @@ use tauri::{
 pub trait Handler {
     fn on_connect(&mut self, cli: PortAPI) -> ();
     fn on_disconnect(&mut self);
+    fn name(&self) -> String;
 }
 
 pub struct PortmasterPlugin<R: Runtime> {
@@ -107,18 +108,24 @@ impl<R: Runtime> PortmasterPlugin<R> {
     /// Registers a new connection handler that is called on connect
     /// and disconnect of the Portmaster websocket API.
     pub fn register_handler(&self, mut handler: impl Handler + Send + 'static) {
-        // register_handler can only be invoked after the plugin setup
-        // completed. in this case, the websocket thread is already spawned and
-        // we might already be connected or know that the connection failed.
-        // Call the respective handler method immediately now.
-        if let Some(api) = self.get_api() {
-            handler.on_connect(api);
-        } else {
-            handler.on_disconnect();
-        }
-
         if let Ok(mut handlers) = self.handlers.lock() {
+            // register_handler can only be invoked after the plugin setup
+            // completed. in this case, the websocket thread is already spawned and
+            // we might already be connected or know that the connection failed.
+            // Call the respective handler method immediately now.
+            if let Some(api) = self.get_api() {
+                debug!("already connected to Portmaster API, calling on_connect()");
+
+                handler.on_connect(api);
+            } else {
+                debug!("not yet connected to Portmaster API, calling on_disconnect()"); 
+
+                handler.on_disconnect();
+            }
+
             handlers.push(Box::new(handler));
+
+            debug!("number of registered handlers: {}", handlers.len());
         }
     }
 
@@ -211,6 +218,8 @@ impl<R: Runtime> PortmasterPlugin<R> {
 
     /// Internal method to call all on_connect handlers
     fn on_connect(&self, api: PortAPI) {
+        debug!("connection to portmaster established, calling handlers");
+
         self.is_reachable.store(true, Ordering::Relaxed);
 
         // store the new api client.
@@ -224,9 +233,14 @@ impl<R: Runtime> PortmasterPlugin<R> {
         }
 
         if let Ok(mut handlers) = self.handlers.lock() {
+            debug!("executing handler.on_connect()");
+
             for handler in handlers.iter_mut() {
+                debug!("calling registered handler: {}", handler.name());
                 handler.on_connect(api.clone());
             }
+        } else {
+            error!("failed to lock handlers")
         }
     }
 

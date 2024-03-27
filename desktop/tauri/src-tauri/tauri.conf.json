@@ -42,13 +42,21 @@
     "bundle": {
       "active": true,
       "category": "Utility",
-      "copyright": "",
+      "copyright": "Safing Limited Inc",
       "deb": {
-        "depends": []
+        "depends": [
+          "libayatana-appindicator3"
+        ],
+        "desktopTemplate": "../../../packaging/linux/portmaster.desktop",
+        "files": {
+          "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
+          "/etc/xdg/autostart/portmaster.service": "../../../packaging/linux/portmaster-autostart.desktop",
+          "/var/": "../../../packaging/linux/var"
+        }
       },
       "externalBin": [
-        "../binaries/portmaster-start",
-        "../binaries/portmaster-core"
+        "binaries/portmaster-start",
+        "binaries/portmaster-core"
       ],
       "icon": [
         "../assets/icons/pm_dark_512.png",
