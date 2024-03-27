@@ -7,7 +7,7 @@ use gtk_sys::{
 };
 use log::{debug, error};
 use std::collections::HashMap;
-use std::ffi::c_int;
+use std::ffi::{c_char, c_int};
 use std::ffi::{CStr, CString};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -404,7 +404,7 @@ fn get_icon_as_png_dataurl(name: &str, size: i8) -> Result<(String, String)> {
 
             let icon_info = gtk_icon_theme_lookup_icon(
                 GTK_DEFAULT_THEME.unwrap(),
-                c_str.as_ptr() as *const u8,
+                c_str.as_ptr() as *const c_char,
                 size as c_int,
                 0,
             );

@@ -38,7 +38,13 @@ struct WsHandler {
 }
 
 impl portmaster::Handler for WsHandler {
+    fn name(&self) -> String {
+        "main-handler".to_string()
+    }
+
     fn on_connect(&mut self, cli: portapi::client::PortAPI) -> () {
+        info!("connection established, creating main window");
+
         // we successfully connected to Portmaster. Set is_first_connect to false
         // so we don't show the splash-screen when we loose connection.
         self.is_first_connect = false;
@@ -52,6 +58,8 @@ impl portmaster::Handler for WsHandler {
         // bootstrapping.
         if let Err(err) = create_main_window(&self.handle) {
             error!("failed to create main window: {}", err.to_string());
+        } else {
+            debug!("created main window")
         }
 
         let handle = self.handle.clone();
