@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup Go
       uses: actions/setup-go@v5
@@ -30,7 +30,7 @@ jobs:
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v4
       with:
-        version: v1.52.2
+        version: v1.57.1
         only-new-issues: true
         args: -c ./.golangci.yml --timeout 15m
 
