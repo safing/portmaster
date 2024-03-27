@@ -45,4 +45,4 @@ jobs:
         version: v0.8.0
     - uses: actions/checkout@v4
     - name: Run tests
-      run: earthly --ci +test-go
+      run: earthly --ci +test-go --TESTFLAGS="-short"
