@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - develop
+
   pull_request:
     branches:
       - master
@@ -27,11 +28,10 @@ jobs:
       run: go mod download
 
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v4
       with:
         version: v1.52.2
         only-new-issues: true
-        skip-go-installation: true
         args: -c ./.golangci.yml --timeout 15m
 
     - name: Run go vet
