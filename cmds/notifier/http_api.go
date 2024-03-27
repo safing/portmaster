@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
@@ -16,9 +16,7 @@ const (
 	apiShutdownEndpoint = "core/shutdown"
 )
 
-var (
-	httpApiClient *http.Client
-)
+var httpAPIClient *http.Client
 
 func init() {
 	// Make cookie jar.
@@ -29,22 +27,22 @@ func init() {
 	}
 
 	// Create client.
-	httpApiClient = &http.Client{
+	httpAPIClient = &http.Client{
 		Jar:     jar,
 		Timeout: 3 * time.Second,
 	}
 }
 
-func httpApiAction(endpoint string) (response string, err error) {
+func httpAPIAction(endpoint string) (response string, err error) {
 	// Make action request.
-	resp, err := httpApiClient.Post(apiBaseURL+endpoint, "", nil)
+	resp, err := httpAPIClient.Post(apiBaseURL+endpoint, "", nil)
 	if err != nil {
 		return "", fmt.Errorf("request failed: %w", err)
 	}
 
 	// Read the response body.
-	defer resp.Body.Close()
-	respData, err := ioutil.ReadAll(resp.Body)
+	defer func() { _ = resp.Body.Close() }()
+	respData, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read data: %w", err)
 	}
@@ -60,6 +58,6 @@ func httpApiAction(endpoint string) (response string, err error) {
 
 // TriggerShutdown triggers a shutdown via the APi.
 func TriggerShutdown() error {
-	_, err := httpApiAction(apiShutdownEndpoint)
+	_, err := httpAPIAction(apiShutdownEndpoint)
 	return err
 }

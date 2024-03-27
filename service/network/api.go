@@ -136,11 +136,11 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 
 	// Collect matching connections.
 	var ( //nolint:prealloc // We don't know the size.
-		debugConns    []*Connection
-		accepted      int
-		total         int
+		debugConns []*Connection
+		accepted   int
+		total      int
 	)
-	
+
 	for maybeConn := range it.Next {
 		// Switch to correct type.
 		conn, ok := maybeConn.(*Connection)

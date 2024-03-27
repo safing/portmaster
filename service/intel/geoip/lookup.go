@@ -1,7 +1,7 @@
 package geoip
 
 import (
-	"fmt"
+	"errors"
 	"net"
 
 	"github.com/oschwald/maxminddb-golang"
@@ -16,7 +16,7 @@ func getReader(ip net.IP) *maxminddb.Reader {
 func GetLocation(ip net.IP) (*Location, error) {
 	db := getReader(ip)
 	if db == nil {
-		return nil, fmt.Errorf("geoip database not available")
+		return nil, errors.New("geoip database not available")
 	}
 	record := &Location{}
 	if err := db.Lookup(ip, record); err != nil {

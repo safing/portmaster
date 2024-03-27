@@ -751,12 +751,14 @@ func (conn *Connection) SaveWhenFinished() {
 func (conn *Connection) Save() {
 	conn.UpdateMeta()
 
+	// nolint:exhaustive
 	switch conn.Verdict {
 	case VerdictAccept, VerdictRerouteToNameserver:
 		conn.ConnectionEstablished = true
 	case VerdictRerouteToTunnel:
 		// this is already handled when the connection tunnel has been
 		// established.
+	default:
 	}
 
 	// Do not save/update until data is complete.

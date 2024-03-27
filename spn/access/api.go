@@ -1,6 +1,7 @@
 package access
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -86,7 +87,7 @@ func registerAPIEndpoints() error {
 		DataFunc: func(ar *api.Request) (data []byte, err error) {
 			featureID, ok := ar.URLVars["id"]
 			if !ok {
-				return nil, fmt.Errorf("invalid feature id")
+				return nil, errors.New("invalid feature id")
 			}
 
 			for _, feature := range features {
@@ -95,7 +96,7 @@ func registerAPIEndpoints() error {
 				}
 			}
 
-			return nil, fmt.Errorf("feature id not found")
+			return nil, errors.New("feature id not found")
 		},
 	}); err != nil {
 		return err

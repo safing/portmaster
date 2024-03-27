@@ -2,9 +2,9 @@ package intel
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -433,7 +433,7 @@ func (e *Entity) getASNLists(ctx context.Context) {
 	}
 
 	e.loadAsnListOnce.Do(func() {
-		asnStr := fmt.Sprintf("%d", asn)
+		asnStr := strconv.FormatUint(uint64(asn), 10)
 		list, err := filterlists.LookupASNString(asnStr)
 		if err != nil {
 			log.Tracer(ctx).Errorf("intel: failed to get ASN blocklist for %d: %s", asn, err)

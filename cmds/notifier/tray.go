@@ -102,7 +102,6 @@ func onReady() {
 }
 
 func onExit() {
-
 }
 
 func triggerTrayUpdate() {
@@ -172,7 +171,7 @@ func updateTray() {
 	// Set SPN status if changed.
 	if spnStatus != nil && activeSPNStatus != spnStatus.Status {
 		activeSPNStatus = spnStatus.Status
-		menuItemSPNStatus.SetTitle("SPN: " + strings.Title(activeSPNStatus))
+		menuItemSPNStatus.SetTitle("SPN: " + strings.Title(activeSPNStatus)) // nolint:staticcheck
 	}
 
 	// Set SPN switch if changed.

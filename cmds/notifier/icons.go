@@ -18,7 +18,7 @@ func ensureAppIcon() (location string, err error) {
 		if appIconPath == "" {
 			appIconPath = filepath.Join(dataDir, "exec", "portmaster.png")
 		}
-		err = os.WriteFile(appIconPath, icons.PNG, 0o0644)
+		err = os.WriteFile(appIconPath, icons.PNG, 0o0644) // nolint:gosec
 	})
 
 	return appIconPath, err

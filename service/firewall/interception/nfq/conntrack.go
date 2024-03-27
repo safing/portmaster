@@ -4,6 +4,7 @@ package nfq
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 
 	ct "github.com/florianl/go-conntrack"
@@ -35,7 +36,7 @@ func TeardownNFCT() {
 // DeleteAllMarkedConnection deletes all marked entries from the conntrack table.
 func DeleteAllMarkedConnection() error {
 	if nfct == nil {
-		return fmt.Errorf("nfq: nfct not initialized")
+		return errors.New("nfq: nfct not initialized")
 	}
 
 	// Delete all ipv4 marked connections
@@ -87,7 +88,7 @@ func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) (deleted int) {
 // DeleteMarkedConnection removes a specific connection from the conntrack table.
 func DeleteMarkedConnection(conn *network.Connection) error {
 	if nfct == nil {
-		return fmt.Errorf("nfq: nfct not initialized")
+		return errors.New("nfq: nfct not initialized")
 	}
 
 	con := ct.Con{

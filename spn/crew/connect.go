@@ -82,7 +82,7 @@ func (t *Tunnel) connectWorker(ctx context.Context) (err error) {
 		// TODO: Clean this up.
 		t.connInfo.Lock()
 		defer t.connInfo.Unlock()
-		t.connInfo.Failed(fmt.Sprintf("SPN failed to establish route: %s", err), "")
+		t.connInfo.Failed("SPN failed to establish route: "+err.Error(), "")
 		t.connInfo.Save()
 
 		tracer.Warningf("spn/crew: failed to establish route for %s: %s", t.connInfo, err)
@@ -97,7 +97,7 @@ func (t *Tunnel) connectWorker(ctx context.Context) (err error) {
 
 		t.connInfo.Lock()
 		defer t.connInfo.Unlock()
-		t.connInfo.Failed(fmt.Sprintf("SPN failed to initialize data tunnel (connect op): %s", tErr.Error()), "")
+		t.connInfo.Failed("SPN failed to initialize data tunnel (connect op): "+tErr.Error(), "")
 		t.connInfo.Save()
 
 		// TODO: try with another route?

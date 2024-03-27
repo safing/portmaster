@@ -191,10 +191,8 @@ func handleListenError(err error, ip net.IP, port uint16, primaryListener bool) 
 			EventID: eventIDConflictingService + secondaryEventIDSuffix,
 			Type:    notifications.Error,
 			Title:   "Conflicting DNS Software",
-			Message: fmt.Sprintf(
-				"Restart Portmaster after you have deactivated or properly configured the conflicting software: %s",
+			Message: "Restart Portmaster after you have deactivated or properly configured the conflicting software: " +
 				cfDescription,
-			),
 			ShowOnSystem: true,
 			AvailableActions: []*notifications.Action{
 				{

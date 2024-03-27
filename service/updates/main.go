@@ -226,7 +226,7 @@ func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 		updateASAP = true
 
 	case !forceIndexCheck && !enableSoftwareUpdates() && !enableIntelUpdates():
-		return fmt.Errorf("automatic updating is disabled")
+		return errors.New("automatic updating is disabled")
 
 	default:
 		if forceIndexCheck {
@@ -254,7 +254,7 @@ func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 func DisableUpdateSchedule() error {
 	switch module.Status() {
 	case modules.StatusStarting, modules.StatusOnline, modules.StatusStopping:
-		return fmt.Errorf("module already online")
+		return errors.New("module already online")
 	}
 
 	disableTaskSchedule = true

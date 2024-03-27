@@ -274,7 +274,7 @@ func applyStructFieldTag(fieldType reflect.StructField, def *ColumnDef) error {
 					case sqlite.TypeText:
 						def.Default = defaultValue
 					case sqlite.TypeBlob:
-						return fmt.Errorf("default values for TypeBlob not yet supported")
+						return errors.New("default values for TypeBlob not yet supported")
 					default:
 						return fmt.Errorf("failed to apply default value for unknown sqlite column type %s", def.Type)
 					}

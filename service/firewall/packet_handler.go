@@ -612,18 +612,6 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	}
 }
 
-// verdictRating rates the privacy and security aspect of verdicts from worst to best.
-var verdictRating = []network.Verdict{
-	network.VerdictAccept,              // Connection allowed in the open.
-	network.VerdictRerouteToTunnel,     // Connection allowed, but protected.
-	network.VerdictRerouteToNameserver, // Connection allowed, but resolved via Portmaster.
-	network.VerdictBlock,               // Connection blocked, with feedback.
-	network.VerdictDrop,                // Connection blocked, without feedback.
-	network.VerdictFailed,
-	network.VerdictUndeterminable,
-	network.VerdictUndecided,
-}
-
 // func tunnelHandler(pkt packet.Packet) {
 // 	tunnelInfo := GetTunnelInfo(pkt.Info().Dst)
 // 	if tunnelInfo == nil {

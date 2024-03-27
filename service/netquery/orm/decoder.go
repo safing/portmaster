@@ -41,13 +41,13 @@ type (
 	// by *sqlite.Stmt.
 	Stmt interface {
 		ColumnCount() int
-		ColumnName(int) string
-		ColumnType(int) sqlite.ColumnType
-		ColumnText(int) string
-		ColumnBool(int) bool
-		ColumnFloat(int) float64
-		ColumnInt(int) int
-		ColumnReader(int) *bytes.Reader
+		ColumnName(col int) string
+		ColumnType(col int) sqlite.ColumnType
+		ColumnText(col int) string
+		ColumnBool(col int) bool
+		ColumnFloat(col int) float64
+		ColumnInt(col int) int
+		ColumnReader(col int) *bytes.Reader
 	}
 
 	// DecodeFunc is called for each non-basic type during decoding.
@@ -230,7 +230,7 @@ func DatetimeDecoder(loc *time.Location) DecodeFunc {
 
 		case sqlite.TypeFloat:
 			// stored as Julian day numbers
-			return nil, false, fmt.Errorf("REAL storage type not support for time.Time")
+			return nil, false, errors.New("REAL storage type not support for time.Time")
 
 		case sqlite.TypeNull:
 			return nil, true, nil
@@ -359,7 +359,7 @@ func decodeBasic() DecodeFunc {
 
 		case reflect.Slice:
 			if outval.Type().Elem().Kind() != reflect.Uint8 {
-				return nil, false, fmt.Errorf("slices other than []byte for BLOB are not supported")
+				return nil, false, errors.New("slices other than []byte for BLOB are not supported")
 			}
 
 			if colType != sqlite.TypeBlob {

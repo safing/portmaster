@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 
 	"github.com/google/gopacket"
 )
@@ -207,9 +208,9 @@ func (pkt *Base) FmtRemoteIP() string {
 func (pkt *Base) FmtRemotePort() string {
 	if pkt.info.SrcPort != 0 {
 		if pkt.info.Inbound {
-			return fmt.Sprintf("%d", pkt.info.SrcPort)
+			return strconv.FormatUint(uint64(pkt.info.SrcPort), 10)
 		}
-		return fmt.Sprintf("%d", pkt.info.DstPort)
+		return strconv.FormatUint(uint64(pkt.info.DstPort), 10)
 	}
 	return "-"
 }
@@ -235,10 +236,10 @@ type Packet interface {
 	ExpectInfo() bool
 
 	// Info.
-	SetCtx(context.Context)
+	SetCtx(ctx context.Context)
 	Ctx() context.Context
 	Info() *Info
-	SetPacketInfo(Info)
+	SetPacketInfo(info Info)
 	IsInbound() bool
 	IsOutbound() bool
 	SetInbound()
@@ -253,8 +254,8 @@ type Packet interface {
 	Payload() []byte
 
 	// Matching.
-	MatchesAddress(bool, IPProtocol, *net.IPNet, uint16) bool
-	MatchesIP(bool, *net.IPNet) bool
+	MatchesAddress(remote bool, protocol IPProtocol, network *net.IPNet, port uint16) bool
+	MatchesIP(endpoint bool, network *net.IPNet) bool
 
 	// Formatting.
 	String() string

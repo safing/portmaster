@@ -5,7 +5,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCheckStringFormat(t *testing.T) {
@@ -48,9 +48,9 @@ func TestCheckStringFormat(t *testing.T) {
 
 	for testCharacter, isPermitted := range testSet {
 		if isPermitted {
-			assert.NoError(t, checkStringFormat(fmt.Sprintf("test character %q", testCharacter), testCharacter, 3))
+			require.NoError(t, checkStringFormat(fmt.Sprintf("test character %q", testCharacter), testCharacter, 3))
 		} else {
-			assert.Error(t, checkStringFormat(fmt.Sprintf("test character %q", testCharacter), testCharacter, 3))
+			require.Error(t, checkStringFormat(fmt.Sprintf("test character %q", testCharacter), testCharacter, 3))
 		}
 	}
 }
@@ -59,22 +59,22 @@ func TestCheckIPFormat(t *testing.T) {
 	t.Parallel()
 
 	// IPv4
-	assert.NoError(t, checkIPFormat("test IP 1.1.1.1", net.IPv4(1, 1, 1, 1)))
-	assert.NoError(t, checkIPFormat("test IP 192.168.1.1", net.IPv4(192, 168, 1, 1)))
-	assert.Error(t, checkIPFormat("test IP 255.0.0.1", net.IPv4(255, 0, 0, 1)))
+	require.NoError(t, checkIPFormat("test IP 1.1.1.1", net.IPv4(1, 1, 1, 1)))
+	require.NoError(t, checkIPFormat("test IP 192.168.1.1", net.IPv4(192, 168, 1, 1)))
+	require.Error(t, checkIPFormat("test IP 255.0.0.1", net.IPv4(255, 0, 0, 1)))
 
 	// IPv6
-	assert.NoError(t, checkIPFormat("test IP ::1", net.ParseIP("::1")))
-	assert.NoError(t, checkIPFormat("test IP 2606:4700:4700::1111", net.ParseIP("2606:4700:4700::1111")))
+	require.NoError(t, checkIPFormat("test IP ::1", net.ParseIP("::1")))
+	require.NoError(t, checkIPFormat("test IP 2606:4700:4700::1111", net.ParseIP("2606:4700:4700::1111")))
 
 	// Invalid
-	assert.Error(t, checkIPFormat("test IP with length 3", net.IP([]byte{0, 0, 0})))
-	assert.Error(t, checkIPFormat("test IP with length 5", net.IP([]byte{0, 0, 0, 0, 0})))
-	assert.Error(t, checkIPFormat(
+	require.Error(t, checkIPFormat("test IP with length 3", net.IP([]byte{0, 0, 0})))
+	require.Error(t, checkIPFormat("test IP with length 5", net.IP([]byte{0, 0, 0, 0, 0})))
+	require.Error(t, checkIPFormat(
 		"test IP with length 15",
 		net.IP([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}),
 	))
-	assert.Error(t, checkIPFormat(
+	require.Error(t, checkIPFormat(
 		"test IP with length 17",
 		net.IP([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}),
 	))

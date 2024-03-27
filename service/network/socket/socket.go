@@ -44,7 +44,7 @@ type Address struct {
 // Info is a generic interface to both ConnectionInfo and BindInfo.
 type Info interface {
 	GetPID() int
-	SetPID(int)
+	SetPID(pid int)
 	GetUID() int
 	GetUIDandInode() (int, int)
 }

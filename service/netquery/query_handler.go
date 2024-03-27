@@ -19,6 +19,8 @@ import (
 
 var charOnlyRegexp = regexp.MustCompile("[a-zA-Z]+")
 
+const failedQuery = "Failed to execute query: "
+
 type (
 
 	// QueryHandler implements http.Handler and allows to perform SQL
@@ -78,7 +80,7 @@ func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		orm.WithResult(&result),
 		orm.WithSchema(*qh.Database.Schema),
 	); err != nil {
-		http.Error(resp, "Failed to execute query: "+err.Error(), http.StatusInternalServerError)
+		http.Error(resp, failedQuery+err.Error(), http.StatusInternalServerError)
 
 		return
 	}
@@ -230,7 +232,7 @@ func parseQueryRequestPayload[T any](req *http.Request) (*T, error) { //nolint:d
 
 	blob, err := io.ReadAll(body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read body" + err.Error())
+		return nil, fmt.Errorf("failed to read body: %w", err)
 	}
 
 	body = bytes.NewReader(blob)

@@ -102,7 +102,7 @@ func TestUnmarshalQuery(t *testing.T) { //nolint:tparallel
 					assert.Equal(t, c.Error.Error(), err.Error())
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, c.Expected, q)
 			}
 		})
@@ -241,7 +241,7 @@ func TestQueryBuilder(t *testing.T) { //nolint:tparallel
 					assert.Equal(t, c.E.Error(), err.Error(), "test case %d", cID)
 				}
 			} else {
-				assert.NoError(t, err, "test case %d", cID)
+				require.NoError(t, err, "test case %d", cID)
 				assert.Equal(t, c.P, params, "test case %d", cID)
 				assert.Equal(t, c.R, str, "test case %d", cID)
 			}
