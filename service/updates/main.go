@@ -46,8 +46,9 @@ var (
 	module   *modules.Module
 	registry *updater.ResourceRegistry
 
-	userAgentFromFlag    string
-	updateServerFromFlag string
+	userAgentFromFlag             string
+	updateServerFromFlag          string
+	softwareUpdatesDisabledByFlag bool
 
 	updateTask          *modules.Task
 	updateASAP          bool
@@ -86,6 +87,7 @@ func init() {
 
 	flag.StringVar(&updateServerFromFlag, "update-server", "", "set an alternative update server (full URL)")
 	flag.StringVar(&userAgentFromFlag, "update-agent", "", "set an alternative user agent for requests to the update server")
+	flag.BoolVar(&softwareUpdatesDisabledByFlag, "disable-software-updates", false, "Disable automatic software updates")
 }
 
 func prep() error {

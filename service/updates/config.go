@@ -2,6 +2,7 @@ package updates
 
 import (
 	"context"
+	"errors"
 
 	"github.com/tevino/abool"
 
@@ -29,6 +30,9 @@ var (
 )
 
 func registerConfig() error {
+	releaseLevelSet := abool.New()
+	softwareUpdateSet := abool.New()
+
 	err := config.Register(&config.Option{
 		Name:            "Release Channel",
 		Key:             helper.ReleaseChannelKey,
@@ -38,6 +42,23 @@ func registerConfig() error {
 		ReleaseLevel:    config.ReleaseLevelStable,
 		RequiresRestart: true,
 		DefaultValue:    helper.ReleaseChannelStable,
+		// TODO(ppacher): it would actually be better to hide the option from the UI
+		ValidationFunc: func(value interface{}) error {
+			if releaseLevelSet.SetToIf(false, true) || releaseChannel == nil {
+				return nil
+			}
+
+			v, ok := value.(string)
+			if !ok {
+				return errors.New("invalid value")
+			}
+
+			if softwareUpdatesDisabledByFlag && releaseChannel() != v {
+				return errors.New("automatic software updates are not supported by the choosen installation method")
+			}
+
+			return nil
+		},
 		PossibleValues: []config.PossibleValue{
 			{
 				Name:        "Stable",
@@ -78,7 +99,24 @@ func registerConfig() error {
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		RequiresRestart: false,
-		DefaultValue:    true,
+		// TODO(ppacher): it would be better to actually hide the whole setting from the UI.
+		DefaultValue: !softwareUpdatesDisabledByFlag,
+		ValidationFunc: func(value interface{}) error {
+			if softwareUpdateSet.SetToIf(false, true) || enableSoftwareUpdates == nil {
+				return nil
+			}
+
+			v, ok := value.(bool)
+			if !ok {
+				return errors.New("invalid value")
+			}
+
+			if softwareUpdatesDisabledByFlag && v {
+				return errors.New("automatic software updates are not supported by the choosen installation method")
+			}
+
+			return nil
+		},
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: -12,
 			config.CategoryAnnotation:     "Updates",
