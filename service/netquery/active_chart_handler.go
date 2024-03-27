@@ -42,7 +42,7 @@ func (ch *ActiveChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.Requ
 		orm.WithResult(&result),
 		orm.WithSchema(*ch.Database.Schema),
 	); err != nil {
-		http.Error(resp, "Failed to execute query: "+err.Error(), http.StatusInternalServerError)
+		http.Error(resp, failedQuery+err.Error(), http.StatusInternalServerError)
 
 		return
 	}
@@ -77,7 +77,7 @@ func (ch *ActiveChartHandler) parseRequest(req *http.Request) (*QueryActiveConne
 	var requestPayload QueryActiveConnectionChartPayload
 	blob, err := io.ReadAll(body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read body" + err.Error())
+		return nil, fmt.Errorf("failed to read body: %w", err)
 	}
 
 	body = bytes.NewReader(blob)

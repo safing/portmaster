@@ -14,7 +14,7 @@ type Notification struct {
 	systemID NotificationID
 }
 
-// IsSupported returns whether the action is supported on this system.
+// IsSupportedAction returns whether the action is supported on this system.
 func IsSupportedAction(a pbnotify.Action) bool {
 	switch a.Type {
 	case pbnotify.ActionTypeNone:
@@ -26,11 +26,10 @@ func IsSupportedAction(a pbnotify.Action) bool {
 
 // SelectAction sends an action back to the portmaster.
 func (n *Notification) SelectAction(action string) {
-	new := &pbnotify.Notification{
+	upd := &pbnotify.Notification{
 		EventID:          n.EventID,
 		SelectedActionID: action,
 	}
 
-	// FIXME: check response
-	apiClient.Update(fmt.Sprintf("%s%s", dbNotifBasePath, new.EventID), new, nil)
+	_ = apiClient.Update(fmt.Sprintf("%s%s", dbNotifBasePath, upd.EventID), upd, nil)
 }

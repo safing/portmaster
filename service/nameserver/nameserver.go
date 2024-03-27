@@ -21,6 +21,8 @@ import (
 
 var hostname string
 
+const internalError = "internal error: "
+
 func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
 	err := module.RunWorker("handle dns request", func(ctx context.Context) error {
 		return handleRequest(ctx, w, query)
@@ -130,7 +132,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 			tracer.Tracef("nameserver: delaying failing lookup until end of fail duration for %s", remainingFailingDuration.Round(time.Millisecond))
 			time.Sleep(remainingFailingDuration)
 			return reply(nsutil.ServerFailure(
-				"internal error: "+failingErr.Error(),
+				internalError+failingErr.Error(),
 				"delayed failing query to mitigate request flooding",
 			))
 		}
@@ -138,7 +140,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		tracer.Tracef("nameserver: delaying failing lookup for %s", failingDelay.Round(time.Millisecond))
 		time.Sleep(failingDelay)
 		return reply(nsutil.ServerFailure(
-			"internal error: "+failingErr.Error(),
+			internalError+failingErr.Error(),
 			"delayed failing query to mitigate request flooding",
 			fmt.Sprintf("error is cached for another %s", remainingFailingDuration.Round(time.Millisecond)),
 		))
@@ -148,7 +150,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	local, err := netenv.IsMyIP(remoteAddr.IP)
 	if err != nil {
 		tracer.Warningf("nameserver: failed to check if request for %s is local: %s", q.ID(), err)
-		return reply(nsutil.ServerFailure("internal error: failed to check if request is local"))
+		return reply(nsutil.ServerFailure(internalError + " failed to check if request is local"))
 	}
 
 	// Create connection ID for dns request.
@@ -170,7 +172,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		conn, err = network.NewConnectionFromExternalDNSRequest(ctx, q.FQDN, nil, connID, remoteAddr.IP)
 		if err != nil {
 			tracer.Warningf("nameserver: failed to get host/profile for request for %s%s: %s", q.FQDN, q.QType, err)
-			return reply(nsutil.ServerFailure("internal error: failed to get profile"))
+			return reply(nsutil.ServerFailure(internalError + "failed to get profile"))
 		}
 
 	default:
@@ -210,7 +212,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		case network.VerdictUndecided, network.VerdictAccept:
 			// Check if we have a response.
 			if rrCache == nil {
-				conn.Failed("internal error: no reply", "")
+				conn.Failed(internalError+"no reply", "")
 				return
 			}
 
@@ -293,7 +295,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 			tracer.Warningf("nameserver: failed to resolve %s: %s", q.ID(), err)
 			conn.Failed(fmt.Sprintf("query failed: %s", err), "")
 			addFailingQuery(q, err)
-			return reply(nsutil.ServerFailure("internal error: " + err.Error()))
+			return reply(nsutil.ServerFailure(internalError + err.Error()))
 		}
 	}
 	// Handle special cases.
@@ -301,7 +303,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 	case rrCache == nil:
 		tracer.Warning("nameserver: received successful, but empty reply from resolver")
 		addFailingQuery(q, errors.New("emptry reply from resolver"))
-		return reply(nsutil.ServerFailure("internal error: empty reply"))
+		return reply(nsutil.ServerFailure(internalError + "empty reply"))
 	case rrCache.RCode == dns.RcodeNameError:
 		// Try alternatives domain names for unofficial domain spaces.
 		altRRCache := checkAlternativeCaches(ctx, q)

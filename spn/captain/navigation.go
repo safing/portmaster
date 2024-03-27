@@ -128,7 +128,7 @@ findCandidates:
 	if err != nil {
 		return fmt.Errorf("failed to connect to a new home hub - tried %d hubs: %w", tries+1, err)
 	}
-	return fmt.Errorf("no home hub candidates available")
+	return errors.New("no home hub candidates available")
 }
 
 func connectToHomeHub(ctx context.Context, dst *hub.Hub) error {
@@ -200,7 +200,7 @@ func connectToHomeHub(ctx context.Context, dst *hub.Hub) error {
 	// Set new home on map.
 	ok := navigator.Main.SetHome(dst.ID, homeTerminal)
 	if !ok {
-		return fmt.Errorf("failed to set home hub on map")
+		return errors.New("failed to set home hub on map")
 	}
 
 	// Assign crane to home hub in order to query it later.

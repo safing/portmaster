@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -171,7 +172,7 @@ func DatetimeEncoder(loc *time.Location) EncodeFunc {
 			valInterface := val.Interface()
 			t, ok = valInterface.(time.Time)
 			if !ok {
-				return nil, false, fmt.Errorf("cannot convert reflect value to time.Time")
+				return nil, false, errors.New("cannot convert reflect value to time.Time")
 			}
 
 		case valType.Kind() == reflect.String && colDef.IsTime:

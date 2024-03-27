@@ -4,10 +4,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tevino/abool"
+
 	"github.com/safing/portbase/api/client"
 	"github.com/safing/portbase/formats/dsd"
 	"github.com/safing/portbase/log"
-	"github.com/tevino/abool"
 )
 
 const (
@@ -48,10 +49,10 @@ func updateSPNStatus(s *SPNStatus) {
 }
 
 func spnStatusClient() {
-	moduleQueryOp := apiClient.Qsub("query "+spnModuleKey, handleSPNModuleUpdate)
+	moduleQueryOp := apiClient.Qsub(query+spnModuleKey, handleSPNModuleUpdate)
 	moduleQueryOp.EnableResuscitation()
 
-	statusQueryOp := apiClient.Qsub("query "+spnStatusKey, handleSPNStatusUpdate)
+	statusQueryOp := apiClient.Qsub(query+spnStatusKey, handleSPNStatusUpdate)
 	statusQueryOp.EnableResuscitation()
 }
 

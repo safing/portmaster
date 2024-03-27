@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"zombiezen.com/go/sqlite"
 )
 
@@ -120,7 +121,7 @@ func TestEncodeAsMap(t *testing.T) { //nolint:tparallel
 		c := cases[idx]
 		t.Run(c.Desc, func(t *testing.T) {
 			res, err := ToParamMap(ctx, c.Input, "", DefaultEncodeConfig, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, c.Expected, res)
 		})
 	}
@@ -253,7 +254,7 @@ func TestEncodeValue(t *testing.T) { //nolint:tparallel
 		c := cases[idx]
 		t.Run(c.Desc, func(t *testing.T) {
 			res, err := EncodeValue(ctx, &c.Column, c.Input, DefaultEncodeConfig)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, c.Output, res)
 		})
 	}

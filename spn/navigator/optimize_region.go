@@ -210,9 +210,9 @@ func (m *Map) optimizeForSatelliteConnectivity(result *OptimizationResult) {
 
 		// Add to suggested pins.
 		if len(region.regardedPins) <= region.satelliteMinLanes {
-			result.addSuggested(fmt.Sprintf("best to region %s", region.ID), region.regardedPins...)
+			result.addSuggested("best to region "+region.ID, region.regardedPins...)
 		} else {
-			result.addSuggested(fmt.Sprintf("best to region %s", region.ID), region.regardedPins[:region.satelliteMinLanes]...)
+			result.addSuggested("best to region "+region.ID, region.regardedPins[:region.satelliteMinLanes]...)
 		}
 	}
 }

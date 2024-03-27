@@ -25,6 +25,8 @@ const (
 	ReleaseChannelSupport = "support"
 )
 
+const jsonSuffix = ".json"
+
 // SetIndexes sets the update registry indexes and also configures the registry
 // to use pre-releases based on the channel.
 func SetIndexes(
@@ -51,12 +53,12 @@ func SetIndexes(
 
 	// Always add the stable index as a base.
 	registry.AddIndex(updater.Index{
-		Path:         ReleaseChannelStable + ".json",
+		Path:         ReleaseChannelStable + jsonSuffix,
 		AutoDownload: autoDownload,
 	})
 
 	// Add beta index if in beta or staging channel.
-	indexPath := ReleaseChannelBeta + ".json"
+	indexPath := ReleaseChannelBeta + jsonSuffix
 	if releaseChannel == ReleaseChannelBeta ||
 		releaseChannel == ReleaseChannelStaging ||
 		(releaseChannel == "" && indexExists(registry, indexPath)) {
@@ -74,7 +76,7 @@ func SetIndexes(
 	}
 
 	// Add staging index if in staging channel.
-	indexPath = ReleaseChannelStaging + ".json"
+	indexPath = ReleaseChannelStaging + jsonSuffix
 	if releaseChannel == ReleaseChannelStaging ||
 		(releaseChannel == "" && indexExists(registry, indexPath)) {
 		registry.AddIndex(updater.Index{
@@ -91,7 +93,7 @@ func SetIndexes(
 	}
 
 	// Add support index if in support channel.
-	indexPath = ReleaseChannelSupport + ".json"
+	indexPath = ReleaseChannelSupport + jsonSuffix
 	if releaseChannel == ReleaseChannelSupport ||
 		(releaseChannel == "" && indexExists(registry, indexPath)) {
 		registry.AddIndex(updater.Index{

@@ -49,7 +49,7 @@ func (ch *BandwidthChartHandler) ServeHTTP(resp http.ResponseWriter, req *http.R
 		orm.WithResult(&result),
 		orm.WithSchema(*ch.Database.Schema),
 	); err != nil {
-		http.Error(resp, "Failed to execute query: "+err.Error(), http.StatusInternalServerError)
+		http.Error(resp, failedQuery+err.Error(), http.StatusInternalServerError)
 
 		return
 	}
@@ -84,7 +84,7 @@ func (ch *BandwidthChartHandler) parseRequest(req *http.Request) (*BandwidthChar
 	var requestPayload BandwidthChartRequest
 	blob, err := io.ReadAll(body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read body" + err.Error())
+		return nil, fmt.Errorf("failed to read body: %w", err)
 	}
 
 	body = bytes.NewReader(blob)

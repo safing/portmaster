@@ -52,6 +52,8 @@ var (
 	}
 )
 
+const query = "query "
+
 func init() {
 	flag.StringVar(&dataDir, "data", "", "set data directory")
 	flag.BoolVar(&printStackOnExit, "print-stack-on-exit", false, "prints the stack before of shutting down")

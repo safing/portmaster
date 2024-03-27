@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	notify "github.com/dhaavi/go-notify"
+
 	"github.com/safing/portbase/log"
 )
 
@@ -45,7 +47,12 @@ listenForNotifications:
 				continue listenForNotifications
 			}
 
-			notification := n.(*Notification)
+			notification, ok := n.(*Notification)
+			if !ok {
+				log.Errorf("received invalid notification type %T", n)
+
+				continue listenForNotifications
+			}
 
 			log.Tracef("notify: received signal: %+v", sig)
 			if sig.ActionKey != "" {
@@ -62,7 +69,6 @@ listenForNotifications:
 			}
 		}
 	}
-
 }
 
 func actionListener() {
@@ -71,7 +77,7 @@ func actionListener() {
 	go handleActions(mainCtx, actions)
 
 	err := notify.SignalNotify(mainCtx, actions)
-	if err != nil && err != context.Canceled {
+	if err != nil && errors.Is(err, context.Canceled) {
 		log.Errorf("notify: signal listener failed: %s", err)
 	}
 }

@@ -40,6 +40,6 @@ func AddToDebugInfo(di *debug.Info) {
 		fmt.Sprintf("Status: %s", netenv.GetOnlineStatus()),
 		debug.UseCodeSection|debug.AddContentLineBreaks,
 		fmt.Sprintf("OnlineStatus:          %s", netenv.GetOnlineStatus()),
-		fmt.Sprintf("CaptivePortal:         %s", netenv.GetCaptivePortal().URL),
+		"CaptivePortal:         "+netenv.GetCaptivePortal().URL,
 	)
 }

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSchemaBuilder(t *testing.T) {
@@ -37,7 +38,7 @@ func TestSchemaBuilder(t *testing.T) {
 		c := cases[idx]
 
 		res, err := GenerateTableSchema(c.Name, c.Model)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, c.ExpectedSQL, res.CreateStatement("main", false))
 	}
 }

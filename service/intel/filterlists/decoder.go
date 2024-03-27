@@ -103,18 +103,19 @@ func parseHeader(r io.Reader) (compressed bool, format byte, err error) {
 	if _, err = r.Read(listHeader[:]); err != nil {
 		// if we have an error here we can safely abort because
 		// the file must be broken
-		return
+		return compressed, format, err
 	}
 
 	if listHeader[0] != dsd.LIST {
 		err = fmt.Errorf("unexpected file type: %d (%c), expected dsd list", listHeader[0], listHeader[0])
-		return
+
+		return compressed, format, err
 	}
 
 	var compression [1]byte
 	if _, err = r.Read(compression[:]); err != nil {
 		// same here, a DSDL file must have at least 2 bytes header
-		return
+		return compressed, format, err
 	}
 
 	if compression[0] == dsd.GZIP {
@@ -122,15 +123,16 @@ func parseHeader(r io.Reader) (compressed bool, format byte, err error) {
 
 		var formatSlice [1]byte
 		if _, err = r.Read(formatSlice[:]); err != nil {
-			return
+			return compressed, format, err
 		}
 
 		format = formatSlice[0]
-		return
+		return compressed, format, err
 	}
 
 	format = compression[0]
-	return // nolint:nakedret
+
+	return compressed, format, err
 }
 
 // byteReader extends an io.Reader to implement the ByteReader interface.

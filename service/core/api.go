@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -22,6 +23,8 @@ import (
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/captain"
 )
+
+var errInvalidReadPermission = errors.New("invalid read permission")
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
@@ -207,10 +210,10 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 	// convert the requested read and write permissions to their api.Permission
 	// value. This ensures only "user" or "admin" permissions can be requested.
 	if getSavePermission(readPermStr) <= api.NotSupported {
-		return nil, fmt.Errorf("invalid read permission")
+		return nil, errInvalidReadPermission
 	}
 	if getSavePermission(writePermStr) <= api.NotSupported {
-		return nil, fmt.Errorf("invalid read permission")
+		return nil, errInvalidReadPermission
 	}
 
 	proc, err := process.GetProcessByRequestOrigin(ar)
@@ -281,7 +284,7 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 	select {
 	case key := <-ch:
 		if len(key) == 0 {
-			return nil, fmt.Errorf("access denied")
+			return nil, errors.New("access denied")
 		}
 
 		return map[string]interface{}{
@@ -289,6 +292,6 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 			"validUntil": validUntil,
 		}, nil
 	case <-ar.Context().Done():
-		return nil, fmt.Errorf("timeout")
+		return nil, errors.New("timeout")
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func parseT(t *testing.T, definition string) *Transport {
@@ -140,8 +141,8 @@ func TestTransportParsing(t *testing.T) {
 
 	// test invalid
 
-	assert.NotEqual(t, parseTError("spn"), nil, "should fail")
-	assert.NotEqual(t, parseTError("spn:"), nil, "should fail")
-	assert.NotEqual(t, parseTError("spn:0"), nil, "should fail")
-	assert.NotEqual(t, parseTError("spn:65536"), nil, "should fail")
+	require.Error(t, parseTError("spn"), "should fail")
+	require.Error(t, parseTError("spn:"), "should fail")
+	require.Error(t, parseTError("spn:0"), "should fail")
+	require.Error(t, parseTError("spn:65536"), "should fail")
 }

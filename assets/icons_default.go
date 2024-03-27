@@ -9,8 +9,9 @@ import (
 	"image"
 	"image/png"
 
-	"github.com/safing/portbase/log"
 	"golang.org/x/image/draw"
+
+	"github.com/safing/portbase/log"
 )
 
 // Colored Icon IDs.
@@ -35,7 +36,7 @@ var (
 	//go:embed data/icons/pm_light_blue_512.png
 	BluePNG []byte
 
-	// ColoredIcons holds all the icons as .PNGs
+	// ColoredIcons holds all the icons as .PNGs.
 	ColoredIcons [4][]byte
 )
 

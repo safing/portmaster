@@ -72,7 +72,8 @@ func GetProcessesWithProfile(ctx context.Context, profileSource profile.ProfileS
 	slices.SortFunc[[]*Process, *Process](procs, func(a, b *Process) int {
 		return strings.Compare(a.processKey, b.processKey)
 	})
-	slices.CompactFunc[[]*Process, *Process](procs, func(a, b *Process) bool {
+
+	procs = slices.CompactFunc[[]*Process, *Process](procs, func(a, b *Process) bool {
 		return a.processKey == b.processKey
 	})
 

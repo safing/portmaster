@@ -23,18 +23,18 @@ type (
 		// insert or an update.
 		// The ID of Conn is unique and can be trusted to never collide with other
 		// connections of the save device.
-		Save(context.Context, Conn, bool) error
+		Save(ctx context.Context, conn Conn, history bool) error
 
 		// MarkAllHistoryConnectionsEnded marks all active connections in the history
 		// database as ended NOW.
-		MarkAllHistoryConnectionsEnded(context.Context) error
+		MarkAllHistoryConnectionsEnded(ctx context.Context) error
 
 		// RemoveAllHistoryData removes all connections from the history database.
-		RemoveAllHistoryData(context.Context) error
+		RemoveAllHistoryData(ctx context.Context) error
 
 		// RemoveHistoryForProfile removes all connections from the history database.
 		// for a given profile ID (source/id)
-		RemoveHistoryForProfile(context.Context, string) error
+		RemoveHistoryForProfile(ctx context.Context, profile string) error
 
 		// UpdateBandwidth updates bandwidth data for the connection and optionally also writes
 		// the bandwidth data to the history database.

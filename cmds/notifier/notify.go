@@ -9,7 +9,6 @@ import (
 	"github.com/safing/portbase/api/client"
 	"github.com/safing/portbase/formats/dsd"
 	"github.com/safing/portbase/log"
-
 	pbnotify "github.com/safing/portbase/notifications"
 )
 

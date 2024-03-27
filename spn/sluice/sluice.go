@@ -47,7 +47,7 @@ func StartSluice(network, address string) {
 
 	// Start service worker.
 	module.StartServiceWorker(
-		fmt.Sprintf("%s sluice listener", s.network),
+		s.network+" sluice listener",
 		10*time.Second,
 		s.listenHandler,
 	)

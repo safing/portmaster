@@ -622,7 +622,7 @@ func (m *Map) updateQuickSettingExcludeCountryList(ctx context.Context, configKe
 	for _, country := range countryList {
 		quickSettings = append(quickSettings, config.QuickSetting{
 			Name:   fmt.Sprintf("Exclude %s (%s)", country.Name, country.Code),
-			Value:  []string{fmt.Sprintf("- %s", country.Code)},
+			Value:  []string{"- " + country.Code},
 			Action: config.QuickMergeTop,
 		})
 	}
@@ -700,7 +700,7 @@ func (m *Map) updateSelectRuleCountryList(ctx context.Context, configKey string,
 		selections = append(selections, selectCountry{
 			QuickSetting: config.QuickSetting{
 				Name:   fmt.Sprintf("%s (%s)", country.Name, country.Code),
-				Value:  []string{fmt.Sprintf("+ %s", country.Code), "- *"},
+				Value:  []string{"+ " + country.Code, "- *"},
 				Action: config.QuickReplace,
 			},
 			FlagID: country.Code,
@@ -712,7 +712,7 @@ func (m *Map) updateSelectRuleCountryList(ctx context.Context, configKey string,
 		selections = append(selections, selectCountry{
 			QuickSetting: config.QuickSetting{
 				Name:   fmt.Sprintf("%s (C:%s)", continent.Name, continent.Code),
-				Value:  []string{fmt.Sprintf("+ C:%s", continent.Code), "- *"},
+				Value:  []string{"+ C:" + continent.Code, "- *"},
 				Action: config.QuickReplace,
 			},
 		})

@@ -2,7 +2,6 @@ package process
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -70,7 +69,7 @@ func handleGetProcessesByProfile(ar *api.Request) (any, error) {
 	source := ar.URLVars["source"]
 	id := ar.URLVars["id"]
 	if id == "" || source == "" {
-		return nil, api.ErrorWithStatus(fmt.Errorf("missing profile source/id"), http.StatusBadRequest)
+		return nil, api.ErrorWithStatus(errors.New("missing profile source/id"), http.StatusBadRequest)
 	}
 
 	result := GetProcessesWithProfile(ar.Context(), profile.ProfileSource(source), id, true)

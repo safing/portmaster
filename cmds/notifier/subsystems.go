@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/safing/portbase/api/client"
@@ -14,7 +13,7 @@ const (
 
 	// Module Failure Status Values
 	// FailureNone    = 0 // unused
-	// FailureHint    = 1 // unused
+	// FailureHint    = 1 // unused.
 	FailureWarning = 2
 	FailureError   = 3
 )
@@ -92,7 +91,7 @@ func clearSubsystems() {
 }
 
 func subsystemsClient() {
-	subsystemsOp := apiClient.Qsub(fmt.Sprintf("query %s", subsystemsKeySpace), handleSubsystem)
+	subsystemsOp := apiClient.Qsub("query "+subsystemsKeySpace, handleSubsystem)
 	subsystemsOp.EnableResuscitation()
 }
 
