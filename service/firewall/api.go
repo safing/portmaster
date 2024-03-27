@@ -168,10 +168,7 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 
 					// check if the client has been allowed by flag
 					if slices.Contains(allowedClients, realPath) {
-						log.Infof("filter: access to portmaster api allowed for configured client: %s", realPath)
 						return false, nil
-					} else if len(allowedClients) > 0 {
-						log.Warningf("filter: process is not in the allowed clients list: %s (list=%s)", realPath, allowedClients)
 					}
 
 					if strings.HasPrefix(realPath, authenticatedPath) {
