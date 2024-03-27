@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Portmaster
+GenericName=Application Firewall
+Exec={{exec}} --data=/opt/safing/portmaster --with-prompts --with-notifications 
+Icon={{icon}}
+Terminal=false
+Type=Application
+Categories=System

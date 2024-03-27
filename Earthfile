@@ -9,11 +9,14 @@ ARG --global outputDir = "./dist"
 # to GOOS, GOARCH and GOARM when building go binaries. See the +RUST_TO_GO_ARCH_STRING
 # helper method at the bottom of the file.
 
+
 ARG --global architectures = "x86_64-unknown-linux-gnu" \
                              "aarch64-unknown-linux-gnu" \
-                             "armv7-unknown-linux-gnueabihf" \
-                             "arm-unknown-linux-gnueabi" \
                              "x86_64-pc-windows-gnu"
+
+# Compile errors here:
+#                             "armv7-unknown-linux-gnueabihf" \
+#                             "arm-unknown-linux-gnueabi" \
 
 # Import the earthly rust lib since it already provides some useful
 # build-targets and methods to initialize the rust toolchain.
@@ -215,17 +218,17 @@ angular-project:
 
     RUN ./node_modules/.bin/ng build --configuration ${configuration} --base-href ${baseHref} "${project}"
 
-    RUN zip -r "./${project}.zip" "${dist}"
+    RUN cwd=$(pwd) && cd "${dist}" && zip -r "${cwd}/${project}.zip" ./
     SAVE ARTIFACT "./${project}.zip" AS LOCAL ${outputDir}/${project}.zip
     SAVE ARTIFACT "./dist" AS LOCAL ${outputDir}/${project}
 
 # Build the angular projects (portmaster-UI and tauri-builtin) in production mode
 angular-release:
-    BUILD +angular-project --project=portmaster --dist=./dist --configuration=production --baseHref=/ui/modules/portmaster
+    BUILD +angular-project --project=portmaster --dist=./dist --configuration=production --baseHref=/ui/modules/portmaster/
 
 # Build the angular projects (portmaster-UI and tauri-builtin) in dev mode
 angular-dev:
-    BUILD +angular-project --project=portmaster --dist=./dist --configuration=development --baseHref=/ui/modules/portmaster
+    BUILD +angular-project --project=portmaster --dist=./dist --configuration=development --baseHref=/ui/modules/portmaster/
 
 # A base target for rust to prepare the build container
 rust-base:
@@ -325,14 +328,18 @@ tauri-src:
     # are preserved such that Rust's incremental compilation works correctly.
     COPY --keep-ts ./desktop/tauri/ .
     COPY assets/data ./assets
+    COPY packaging/linux ./../../packaging/linux
     COPY (+angular-project/dist/tauri-builtin --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=production --baseHref="/") ./../angular/dist/tauri-builtin
+
+    WORKDIR /app/tauri/src-tauri
 
 build-tauri:
     FROM +tauri-src
 
     ARG --required target
-    ARG output="release/[^\./]+"
+    ARG output = ".*/release/(([^\./]+|([^\./]+\.(dll|exe)))|bundle/.*\.(deb|msi|AppImage))"
     ARG bundle="none"
+
 
     # if we want tauri to create the installer bundles we also need to provide all external binaries
     # we need to do some magic here because tauri expects the binaries to include the rust target tripple.
@@ -351,16 +358,15 @@ build-tauri:
     COPY (+build-go/output --GOOS="${GOOS}" --CMDS="portmaster-start portmaster-core" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
 
     # Place them in the correct folder with the rust target tripple attached.
-    LET dest=""
     FOR bin IN $(ls /tmp/gobuild)
-        SET dest="./binaries/${bin}-${target}"
-
-        IF [ -z "${bin##*.exe}" ]
-            SET dest = "./binaries/${bin%.*}-${target}.exe"
-        END
-
-        RUN echo "Copying ${bin} to ${dest}"
-        RUN cp "/tmp/gobuild/${bin}" "${dest}"
+        # ${bin$.*} does not work in SET commands unfortunately so we use a shell
+        # snippet here:
+        RUN set -e ; \
+            dest="./binaries/${bin}-${target}" ; \
+            if [ -z "${bin##*.exe}" ]; then \
+                dest="./binaries/${bin%.*}-${target}.exe" ; \
+            fi ; \
+            cp "/tmp/gobuild/${bin}" "${dest}" ;
     END
 
     # Just for debugging ...
@@ -389,7 +395,7 @@ build-tauri:
     # The following would use the CROSS function from the earthly lib, this 
     # DO rust+CROSS --target="${target}"
 
-    RUN ls target
+    SAVE ARTIFACT "target/${target}/release/" AS LOCAL "${outputDir}/tauri/${target}"
 
 tauri-release:
     FROM alpine:3.18
