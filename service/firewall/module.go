@@ -2,7 +2,9 @@ package firewall
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/safing/portbase/config"
@@ -16,7 +18,21 @@ import (
 	"github.com/safing/portmaster/spn/captain"
 )
 
-var module *modules.Module
+type stringSliceFlag []string
+
+func (ss *stringSliceFlag) String() string {
+	return strings.Join(*ss, ":")
+}
+
+func (ss *stringSliceFlag) Set(value string) error {
+	*ss = append(*ss, filepath.Clean(value))
+	return nil
+}
+
+var (
+	module         *modules.Module
+	allowedClients stringSliceFlag
+)
 
 func init() {
 	module = modules.Register("filter", prep, start, stop, "core", "interception", "intel", "netquery")
@@ -28,6 +44,8 @@ func init() {
 		"config:filter/",
 		nil,
 	)
+
+	flag.Var(&allowedClients, "allowed-clients", "A list of binaries that are allowed to connect to the Portmaster API")
 }
 
 func prep() error {

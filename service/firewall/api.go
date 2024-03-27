@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -164,6 +165,12 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 			default: // normal process
 				// Check if the requesting process is in database root / updates dir.
 				if realPath, err := filepath.EvalSymlinks(proc.Path); err == nil {
+
+					// check if the client has been allowed by flag
+					if slices.Contains(allowedClients, realPath) {
+						return false, nil
+					}
+
 					if strings.HasPrefix(realPath, authenticatedPath) {
 						return false, nil
 					}
