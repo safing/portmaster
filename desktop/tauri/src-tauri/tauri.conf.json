@@ -50,7 +50,7 @@
         "desktopTemplate": "../../../packaging/linux/portmaster.desktop",
         "files": {
           "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
-          "/etc/xdg/autostart/portmaster.service": "../../../packaging/linux/portmaster-autostart.desktop",
+          "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop",
           "/var/": "../../../packaging/linux/var"
         }
       },
