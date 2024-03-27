@@ -40,16 +40,9 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-    - name: Check out code
-      uses: actions/checkout@v3
-
-    - name: Setup Go
-      uses: actions/setup-go@v4
+    - uses: earthly/actions-setup@v1
       with:
-        go-version: '^1.21'
-
-    - name: Get dependencies
-      run: go mod download
-
+        version: v0.8.0
+    - uses: actions/checkout@v4
     - name: Run tests
-      run: ./test --test-only
+      run: earthly --ci +test-go
