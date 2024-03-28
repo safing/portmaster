@@ -120,17 +120,29 @@ func ClearCache() error {
 
 // Updates a specific connection verdict.
 func UpdateVerdict(conn *network.Connection) error {
+	if conn.IPVersion == 4 {
+		update := kext_interface.UpdateV4{
+			Protocol:      conn.Entity.Protocol,
+			LocalAddress:  [4]byte(conn.LocalIP),
+			LocalPort:     conn.LocalPort,
+			RemoteAddress: [4]byte(conn.Entity.IP),
+			RemotePort:    conn.Entity.Port,
+			Verdict:       uint8(conn.Verdict.Active),
+		}
 
-	update := kext_interface.UpdateV4{
-		Protocol:      conn.Entity.Protocol,
-		LocalAddress:  [4]byte(conn.LocalIP),
-		LocalPort:     conn.LocalPort,
-		RemoteAddress: [4]byte(conn.Entity.IP),
-		RemotePort:    conn.Entity.Port,
-		Verdict:       uint8(conn.Verdict.Active),
+		return kext_interface.SendUpdateV4Command(kextFile, update)
+	} else if conn.IPVersion == 6 {
+		update := kext_interface.UpdateV6{
+			Protocol:      conn.Entity.Protocol,
+			LocalAddress:  [16]byte(conn.LocalIP),
+			LocalPort:     conn.LocalPort,
+			RemoteAddress: [16]byte(conn.Entity.IP),
+			RemotePort:    conn.Entity.Port,
+			Verdict:       uint8(conn.Verdict.Active),
+		}
+
+		return kext_interface.SendUpdateV6Command(kextFile, update)
 	}
-
-	kext_interface.SendUpdateV4Command(kextFile, update)
 	return nil
 }
 
