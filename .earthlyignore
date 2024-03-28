@@ -1,0 +1,25 @@
+go.work
+go.work.sum
+
+dist/
+node_modules/
+
+desktop/angular/node_modules
+desktop/angular/dist
+desktop/angular/dist-lib
+desktop/angular/dist-extension
+desktop/angular/.angular
+
+# Assets are ignored here because the symlink wouldn't work in
+# the buildkit container so we copy the assets directly in Earthfile.
+desktop/angular/assets
+
+
+desktop/tauri/src-tauri/target
+.gitignore
+AUTHORS
+CODE_OF_CONDUCT.md
+LICENSE
+README.md
+TESTING.md
+TRADEMARKS

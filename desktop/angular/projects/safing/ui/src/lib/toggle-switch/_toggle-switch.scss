@@ -1,0 +1,35 @@
+sfng-toggle {
+  @apply flex items-center;
+
+  label {
+    @apply inline-block w-10 h-5 relative bg-gray-500 rounded-full;
+  }
+
+  .slider {
+    @apply absolute cursor-pointer top-0 left-0 right-0 bottom-0 bg-gray-600 transition-all duration-100 rounded-full shadow-inner-xs;
+  }
+
+  .dot {
+    @apply absolute transition-all duration-200 rounded-full bg-white;
+    height: 18px;
+    width: 18px;
+    bottom: 1px;
+    left: 1px;
+  }
+
+  input:checked:not(:disabled)+.slider {
+    @apply bg-green-300 bg-opacity-50 text-green;
+  }
+
+  input:disabled+.slider {
+    @apply opacity-75 cursor-not-allowed;
+  }
+
+  .dot.checked {
+    transform: translateX(calc(2.5rem - 18px - 2px));
+  }
+
+  .dot.disabled {
+    transform: translateX(calc((2.5rem - 18px - 2px)/2));
+  }
+}

@@ -1,0 +1,54 @@
+  <div class="flex flex-col gap-2 bg-gray-200 bg-opacity-50 border border-gray-600 border-opacity-25">
+    <table class="p-2 font-thin custom">
+      <tr>
+        <td class="p-2 font-normal">
+          <spn-node-icon bySafing="true"></spn-node-icon>
+          Safing Nodes
+        </td>
+        <td class="p-2">{{ safingNodeCount }}</td>
+      </tr>
+      <tr>
+        <td class="p-2">
+          <span class="pl-5">
+            <spn-node-icon bySafing="true" isActive="true"></spn-node-icon>
+            used as Transit
+          </span>
+        </td>
+        <td class="p-2">{{ safingActiveCount }}</td>
+      </tr>
+      <tr>
+        <td class="p-2">
+          <span class="pl-5">
+            <spn-node-icon bySafing="true" isExit="true"></spn-node-icon>
+            used as Exit
+          </span>
+        </td>
+        <td class="p-2">{{ safingExitCount }}</td>
+      </tr>
+      <tr>
+        <td class="p-2 font-normal">
+          <spn-node-icon bySafing="false"></spn-node-icon>
+          Community Nodes
+        </td>
+        <td class="p-2">{{ communityNodeCount }}</td>
+      </tr>
+      <tr>
+        <td class="p-2">
+          <span class="pl-5">
+            <spn-node-icon bySafing="false" isActive="true"></spn-node-icon>
+            used as Transit
+          </span>
+        </td>
+        <td class="p-2">{{ communityActiveCount }}</td>
+      </tr>
+      <tr>
+        <td class="p-2">
+          <span class="pl-5">
+            <spn-node-icon bySafing="false" isExit="true"></spn-node-icon>
+            used as Exit
+          </span>
+        </td>
+        <td class="p-2">{{ communityExitCount }}</td>
+      </tr>
+    </table>
+  </div>

@@ -1,0 +1,65 @@
+<div class="w-full h-full flex flex-col p-4 gap-4">
+
+  <header class="flex flex-row justify-start items-center gap-4">
+    <img src="/assets/icons/pm_light_256.png" class="w-10 h-10">
+    <h1 class="m-0">Portmaster</h1>
+  </header>
+
+  <div class="flex flex-col gap-2">
+    <label class="text-xxs font-light text-white">Some applications want to establish connections:</label>
+
+    <ng-container *ngFor="let prompt of prompts; trackBy: trackProfile">
+
+      <div class="flex flex-row items-start justify-start gap-4 rounded bg-gray-100 shadow-inner p-2">
+        <div style="min-width: 200px"
+          class="flex flex-row items-center justify-start gap-3 flex-initial flex-shrink-0 flex-grow-0 pt-2">
+          <app-icon class="[--app-icon-size:48px]" [profile]="prompt.profile"></app-icon>
+          <span class="flex flex-col items-start justify-start">
+            <span>{{ prompt.profile.Name }}</span>
+            <span class="text-white text-xxs font-light">{{ prompt.profile.LinkedPath }}</span>
+          </span>
+        </div>
+
+        <div class="flex flex-col gap-2 flex-grow">
+          <table class="custom flex-grow">
+            <tbody>
+              <ng-container *ngFor="let prompt of prompt.prompts; trackBy: trackPrompt; let last=last">
+
+                <tr>
+                  <td class="text-secondary p-1 w-16">Domain:</td>
+                  <td class="p-1 text-left">
+                    <span [appCountryFlags]="prompt.EventData?.Entity?.Country || ''"></span>
+                    <span>
+                      {{ prompt.EventData?.Entity?.Domain || 'N/A' }}
+                    </span>
+                  </td>
+                  <td rowspan="2">
+                    <div class="flex flex-row gap-2 items-center justify-end">
+                      <button *ngFor="let action of prompt.AvailableActions"
+                        (click)="selectAction(prompt, action.ID)">{{action.Text}}</button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="text-secondary p-1 w-16">IP:</td>
+                  <td class="p-1 text-left">{{ prompt.EventData?.Entity?.IP || 'N/A' }}</td>
+                </tr>
+
+
+                <tr *ngIf="!last">
+                  <td colspan="3">
+                    <div class="block h-2 mb-2 border-b border-dashed border-gray-300"></div>
+                  </td>
+                </tr>
+
+              </ng-container>
+
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+
+</div>

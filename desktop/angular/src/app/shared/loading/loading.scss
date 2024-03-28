@@ -1,0 +1,52 @@
+:host {
+  --internal-dot-size       : var(--dot-size, 5px);
+  --internal-animation-speed: var(--animation-speed, 1.3s);
+
+  display        : flex;
+  position       : relative;
+  justify-content: space-evenly;
+  align-items    : flex-end;
+  width          : var(--animation-width, calc(var(--internal-dot-size) * 5));
+
+  height: calc(var(--internal-dot-size) * 3);
+
+  &.animate {
+    .dot {
+      display    : block;
+      flex-shrink: 0;
+      flex-grow  : 0;
+      width      : var(--internal-dot-size);
+      height     : var(--internal-dot-size);
+
+      @apply shadow-inner-xs;
+      @apply rounded-full;
+      @apply bg-buttons-icon;
+
+      animation: wave var(--internal-animation-speed) linear infinite;
+
+      &:nth-child(2) {
+        animation-delay: -1.1s;
+      }
+
+      &:nth-child(3) {
+        animation-delay: -0.9s;
+      }
+    }
+  }
+
+}
+
+@keyframes wave {
+
+  0%,
+  60%,
+  100% {
+    transform: initial;
+    @apply bg-buttons-light;
+  }
+
+  90% {
+    transform       : translateY(var(--loading-height, -9px));
+    background-color: white;
+  }
+}

@@ -1,0 +1,83 @@
+.header-title {
+  display: flex;
+  width: 100%;
+  padding-left: 3rem;
+  padding-right: 1.25rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+  height: 3rem;
+  flex-shrink: 0;
+
+  h1{
+    flex-grow: unset;
+  }
+
+  fa-icon[icon*="question-circle"]{
+    margin-left: 0.35rem;
+  }
+}
+
+.card-title.meta {
+  div {
+    display: inline-block;
+    @apply mr-2;
+  }
+}
+
+.columns {
+  width         : 100%;
+  display       : flex;
+  flex-direction: row;
+}
+
+.meta {
+
+  span:first-of-type {
+    @apply text-secondary;
+    @apply mr-1;
+  }
+}
+
+.col {
+  flex-grow: 1;
+}
+
+.unstable {
+  @apply text-xs;
+  @apply uppercase;
+  color: theme('colors.info.yellow');
+}
+
+sfng-accordion-group {
+  @apply pl-12;
+  @apply pr-4; // align with the scroll bar on the right side
+  @apply my-4;
+}
+
+div.tableFixHead {
+  @apply mt-4;
+  @apply rounded-t;
+
+  &:not(.empty) {
+    @apply rounded;
+  }
+
+  max-height: 16rem;
+}
+
+.cdk-row.unused {
+  opacity: 0.4;
+}
+
+.card-actions {
+  display    : flex;
+  align-items: center;
+
+  * {
+    @apply ml-2;
+  }
+
+  app-menu-trigger {
+    display: inline-block;
+  }
+}

@@ -1,0 +1,29 @@
+<div class="flex items-center action justify-evenly" [class.text-green-300]="isAllow" [class.text-red]="isBlock">
+  <ng-container *ngIf="!edit; else: selectAction">
+    <span *ngIf="isAllow">{{ symbolMap["+"] }}</span>
+    <span *ngIf="isBlock">{{ symbolMap["-"] }}</span>
+  </ng-container>
+
+  <ng-template #selectAction>
+    <sfng-select [ngModel]="currentAction" (ngModelChange)="setAction($event)" mode="single" dynamicValues="false">
+      <sfng-select-item *sfngSelectValue="'+'">{{ symbolMap["+"] }}</sfng-select-item>
+      <sfng-select-item *sfngSelectValue="'-'">{{ symbolMap["-"] }}</sfng-select-item>
+    </sfng-select>
+  </ng-template>
+</div>
+<div class="value" [class.edit]="edit">
+  <ng-container *ngIf="!edit; else: editValue">
+    {{ display }}
+  </ng-container>
+
+  <ng-template #editValue>
+    <input type="text" [ngModel]="display" (ngModelChange)="setEntity($event)" (keydown.enter)="toggleEdit()">
+  </ng-template>
+
+  <div class="buttons" *ngIf="!readonly">
+    <fa-icon [icon]="edit ? 'check' : 'edit'" (click)="toggleEdit()"></fa-icon>
+    <fa-icon *ngIf="edit" icon="times" (click)="reset()"></fa-icon>
+    <input type="checkbox" *ngIf="!edit" [(ngModel)]="selected" (ngModelChange)="selectedChange.next($event)">
+  </div>
+
+</div>

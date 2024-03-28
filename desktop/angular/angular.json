@@ -1,0 +1,457 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "portmaster": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "style": "scss"
+        },
+        "@schematics/angular:application": {
+          "strict": true
+        }
+      },
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:browser",
+          "options": {
+            "outputPath": "dist",
+            "index": "src/index.html",
+            "main": "src/main.ts",
+            "polyfills": "src/polyfills.ts",
+            "tsConfig": "tsconfig.app.json",
+            "aot": true,
+            "assets": [
+              "src/favicon.ico",
+              "src/assets"
+            ],
+            "styles": [
+              "src/theme.less",
+              "src/styles.scss",
+              "node_modules/prismjs/themes/prism-okaidia.css",
+              "node_modules/prismjs/plugins/line-numbers/prism-line-numbers.css"
+            ],
+            "stylePreprocessorOptions": {
+              "includePaths": [
+                "dist-lib/"
+              ]
+            },
+            "scripts": [
+              "node_modules/marked/marked.min.js",
+              "node_modules/emoji-toolkit/lib/js/joypixels.min.js",
+              "node_modules/prismjs/prism.js",
+              "node_modules/prismjs/components/prism-yaml.min.js",
+              "node_modules/prismjs/components/prism-json.min.js",
+              "node_modules/prismjs/plugins/line-numbers/prism-line-numbers.js"
+            ],
+            "vendorChunk": true,
+            "extractLicenses": false,
+            "buildOptimizer": false,
+            "sourceMap": true,
+            "optimization": false,
+            "namedChunks": true
+          },
+          "configurations": {
+            "development": {},
+            "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                }
+              },
+              "outputHashing": "all",
+              "sourceMap": false,
+              "namedChunks": false,
+              "extractLicenses": true,
+              "vendorChunk": true,
+              "buildOptimizer": true,
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "4mb",
+                  "maximumError": "16mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4mb",
+                  "maximumError": "16mb"
+                }
+              ]
+            }
+          }
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "browserTarget": "portmaster:build"
+          },
+          "configurations": {
+            "production": {
+              "browserTarget": "portmaster:build:production"
+            }
+          }
+        },
+        "extract-i18n": {
+          "builder": "@angular-devkit/build-angular:extract-i18n",
+          "options": {
+            "browserTarget": "portmaster:build"
+          }
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "main": "src/test.ts",
+            "polyfills": "src/polyfills.ts",
+            "tsConfig": "tsconfig.spec.json",
+            "karmaConfig": "karma.conf.js",
+            "assets": [
+              "src/favicon.ico",
+              "src/assets"
+            ],
+            "styles": [
+              "src/styles.scss"
+            ],
+            "scripts": []
+          }
+        },
+        "e2e": {
+          "builder": "@angular-devkit/build-angular:protractor",
+          "options": {
+            "protractorConfig": "e2e/protractor.conf.js",
+            "devServerTarget": "portmaster:serve"
+          },
+          "configurations": {
+            "production": {
+              "devServerTarget": "portmaster:serve:production"
+            }
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "src/**/*.ts",
+              "src/**/*.html"
+            ]
+          }
+        }
+      }
+    },
+    "@safing/ui": {
+      "projectType": "library",
+      "root": "projects/safing/ui",
+      "sourceRoot": "projects/safing/ui/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/safing/ui/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/safing/ui/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/safing/ui/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "main": "projects/safing/ui/src/test.ts",
+            "tsConfig": "projects/safing/ui/tsconfig.spec.json",
+            "karmaConfig": "projects/safing/ui/karma.conf.js"
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "projects/safing/ui/**/*.ts",
+              "projects/safing/ui/**/*.html"
+            ]
+          }
+        }
+      }
+    },
+    "portmaster-chrome-extension": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "style": "scss"
+        }
+      },
+      "root": "projects/portmaster-chrome-extension",
+      "sourceRoot": "projects/portmaster-chrome-extension/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular-builders/custom-webpack:browser",
+          "options": {
+            "customWebpackConfig": {
+              "path": "./browser-extension.config.ts"
+            },
+            "outputPath": "dist-extension",
+            "index": "projects/portmaster-chrome-extension/src/index.html",
+            "main": "projects/portmaster-chrome-extension/src/main.ts",
+            "polyfills": "projects/portmaster-chrome-extension/src/polyfills.ts",
+            "tsConfig": "projects/portmaster-chrome-extension/tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              "projects/portmaster-chrome-extension/src/favicon.ico",
+              "projects/portmaster-chrome-extension/src/assets",
+              "projects/portmaster-chrome-extension/src/manifest.json"
+            ],
+            "styles": [
+              "projects/portmaster-chrome-extension/src/styles.scss"
+            ],
+            "scripts": [],
+            "optimization": {
+              "styles": {
+                "inlineCritical": false
+              }
+            },
+            "outputHashing": "none"
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kb",
+                  "maximumError": "1mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "2kb",
+                  "maximumError": "4kb"
+                }
+              ],
+              "fileReplacements": [
+                {
+                  "replace": "projects/portmaster-chrome-extension/src/environments/environment.ts",
+                  "with": "projects/portmaster-chrome-extension/src/environments/environment.prod.ts"
+                }
+              ],
+              "outputHashing": "none"
+            },
+            "development": {
+              "customWebpackConfig": {
+                "path": "./browser-extension-dev.config.ts"
+              },
+              "buildOptimizer": false,
+              "optimization": false,
+              "vendorChunk": true,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "namedChunks": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "configurations": {
+            "production": {
+              "browserTarget": "portmaster-chrome-extension:build:production"
+            },
+            "development": {
+              "browserTarget": "portmaster-chrome-extension:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+        "extract-i18n": {
+          "builder": "@angular-devkit/build-angular:extract-i18n",
+          "options": {
+            "browserTarget": "portmaster-chrome-extension:build"
+          }
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "main": "projects/portmaster-chrome-extension/src/test.ts",
+            "polyfills": "projects/portmaster-chrome-extension/src/polyfills.ts",
+            "tsConfig": "projects/portmaster-chrome-extension/tsconfig.spec.json",
+            "karmaConfig": "projects/portmaster-chrome-extension/karma.conf.js",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              "projects/portmaster-chrome-extension/src/favicon.ico",
+              "projects/portmaster-chrome-extension/src/assets"
+            ],
+            "styles": [
+              "projects/portmaster-chrome-extension/src/styles.scss"
+            ],
+            "scripts": []
+          }
+        }
+      }
+    },
+    "@safing/portmaster-api": {
+      "projectType": "library",
+      "root": "projects/safing/portmaster-api",
+      "sourceRoot": "projects/safing/portmaster-api/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/safing/portmaster-api/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/safing/portmaster-api/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/safing/portmaster-api/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "main": "projects/safing/portmaster-api/src/test.ts",
+            "tsConfig": "projects/safing/portmaster-api/tsconfig.spec.json",
+            "karmaConfig": "projects/safing/portmaster-api/karma.conf.js"
+          }
+        }
+      }
+    },
+    "tauri-builtin": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "skipTests": true,
+          "style": "scss",
+          "standalone": true
+        },
+        "@schematics/angular:class": {
+          "skipTests": true
+        },
+        "@schematics/angular:directive": {
+          "skipTests": true,
+          "standalone": true
+        },
+        "@schematics/angular:guard": {
+          "skipTests": true
+        },
+        "@schematics/angular:interceptor": {
+          "skipTests": true
+        },
+        "@schematics/angular:pipe": {
+          "skipTests": true,
+          "standalone": true
+        },
+        "@schematics/angular:resolver": {
+          "skipTests": true
+        },
+        "@schematics/angular:service": {
+          "skipTests": true
+        }
+      },
+      "root": "projects/tauri-builtin",
+      "sourceRoot": "projects/tauri-builtin/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:browser",
+          "options": {
+            "outputPath": "dist/tauri-builtin",
+            "index": "projects/tauri-builtin/src/index.html",
+            "main": "projects/tauri-builtin/src/main.ts",
+            "polyfills": [
+              "zone.js"
+            ],
+            "tsConfig": "projects/tauri-builtin/tsconfig.app.json",
+            "assets": [
+              "projects/tauri-builtin/src/favicon.ico",
+              "projects/tauri-builtin/src/assets"
+            ],
+            "styles": [
+              "projects/tauri-builtin/src/styles.scss"
+            ],
+            "inlineStyleLanguage": "scss",
+            "stylePreprocessorOptions": {
+              "includePaths": [
+                "dist-lib/"
+              ]
+            },
+            "scripts": []
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kb",
+                  "maximumError": "1mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "2kb",
+                  "maximumError": "4kb"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "buildOptimizer": false,
+              "optimization": false,
+              "vendorChunk": true,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "namedChunks": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "configurations": {
+            "production": {
+              "browserTarget": "tauri-builtin:build:production"
+            },
+            "development": {
+              "browserTarget": "tauri-builtin:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+        "extract-i18n": {
+          "builder": "@angular-devkit/build-angular:extract-i18n",
+          "options": {
+            "browserTarget": "tauri-builtin:build"
+          }
+        }
+      }
+    }
+  },
+  "cli": {
+    "analytics": false
+  },
+  "schematics": {
+    "@angular-eslint/schematics:application": {
+      "setParserOptionsProject": true
+    },
+    "@angular-eslint/schematics:library": {
+      "setParserOptionsProject": true
+    }
+  }
+}

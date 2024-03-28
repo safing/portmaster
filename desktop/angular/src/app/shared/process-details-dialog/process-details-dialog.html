@@ -1,0 +1,131 @@
+<h1 class="flex flex-row items-center gap-2">
+  Process Details
+</h1>
+
+<sfng-tab-group linkRouter="false" class="flex-grow">
+  <sfng-tab title="General">
+    <div *sfngTabContent>
+      <table class="custom">
+        <tbody>
+          <tr>
+            <th>Name</th>
+            <td>
+              <div class="flex flex-row items-center gap-1">
+                <app-icon [profile]="process"></app-icon>
+                {{ process.Name }}
+              </div>
+            </td>
+            <td></td>
+          </tr>
+          <tr>
+            <th>User</th>
+            <td>{{ process.UserName }} <span class="text-tertiary" *appExpertiseLevel="'expert'">({{ process.UserID
+                }})</span></td>
+            <td></td>
+          </tr>
+          <tr *appExpertiseLevel="'expert'">
+            <th>Process ID</th>
+            <td>{{ process.Pid }}</td>
+            <td></td>
+          </tr>
+
+          <tr *appExpertiseLevel="'expert'">
+            <th>Process Group ID</th>
+            <td (click)="openGroup()">{{ process.Pgid }}</td>
+            <td></td>
+          </tr>
+
+          <tr *appExpertiseLevel="'expert'">
+            <th>Parent Process ID</th>
+            <td (click)="openParent()">{{ process.ParentPid }}</td>
+            <td></td>
+          </tr>
+          <tr>
+            <th>Path</th>
+            <td>{{ process.Path }} <span *ngIf="process.MatchingPath" class="text-tertiary">({{ process.MatchingPath
+                }})</span></td>
+            <td>
+              <button (click)="createProfileForPath()"
+                sfng-tooltip="Create a new profile for all processes with this path">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                  stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+            </td>
+          </tr>
+          <tr>
+            <th>Executable Name</th>
+            <td>{{ process.ExecName }}</td>
+            <td></td>
+          </tr>
+          <tr>
+            <th>Command Line</th>
+            <td>{{ process.CmdLine }}</td>
+            <td>
+              <button (click)="createProfileForCmdline()"
+                sfng-tooltip="Create a new profile for all processes with this command line">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                  stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+            </td>
+          </tr>
+          <tr>
+            <th>
+              <div class="flex flex-row items-center gap-2">
+                Tags
+                <sfng-tipup key="process-tags"></sfng-tipup>
+              </div>
+            </th>
+            <td>
+              <span *ngIf="!process.Tags?.length">This process does not have any tags.</span>
+              <ul>
+                <li *ngFor="let tag of process.Tags"
+                  class="flex flex-row bg-gray-100 border border-gray-500 rounded-sm text-xxs w-fit">
+                  <span class="block px-2 py-1 bg-gray-200 border-r border-gray-500 text-secondary">{{ tag.Key }}</span>
+                  <span class="block px-2 py-1">{{ tag.Value }}</span>
+                </li>
+              </ul>
+            </td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </sfng-tab>
+
+  <sfng-tab title="Environment">
+    <div *sfngTabContent>
+      <div *ngIf="!(process.Env | keyvalue)?.length" class="p-2 text-xs text-center">
+        <span class="text-secondary">This process does not have any environment variables.</span>
+      </div>
+
+      <table class="custom">
+        <tbody>
+          <tr *ngFor="let env of (process.Env | keyvalue)">
+            <th>{{ env.key }}</th>
+            <td>{{ env.value }}</td>
+            <td class="w-8">
+              <button (click)="createProfileForEnv(env)"
+                sfng-tooltip="Create a new profile for all processes with this environment variable">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                  stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </sfng-tab>
+</sfng-tab-group>
+
+<div class="flex flex-row justify-end gap-2">
+  <button (click)="close()">Close</button>
+</div>

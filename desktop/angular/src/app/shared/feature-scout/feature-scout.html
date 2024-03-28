@@ -1,0 +1,106 @@
+<ng-container *appExpertiseLevel="'developer'">
+<div *ngIf="packageHasSPN || packageHasHistory" class="pb-4">
+
+  <div class="flex flex-row justify-center w-full gap-2" [routerLink]="['/dashboard']">
+    <span *ngIf="packageHasHistory">
+      <svg
+        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+        width="18px" class="feature-icon" [class.feature-icon-off]="!historyEnabled">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+      </svg>
+    </span>
+
+    <span *ngIf="packageHasSPN">
+      <svg
+        xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor"
+        width="18px" class="feature-icon" [class.feature-icon-off]="!spnEnabled">
+        <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
+          <path
+            d="M6.488 15.581c.782.781.782 2.048 0 2.829-.782.781-2.049.781-2.83 0-.782-.781-.782-2.048 0-2.829.781-.781 2.048-.781 2.83 0M13.415 3.586c.782.781.782 2.048 0 2.829-.782.781-2.049.781-2.83 0-.782-.781-.782-2.048 0-2.829.781-.781 2.049-.781 2.83 0M20.343 15.58c.782.781.782 2.048 0 2.829-.782.781-2.049.781-2.83 0-.782-.781-.782-2.048 0-2.829.781-.781 2.048-.781 2.83 0">
+          </path>
+          <path
+            d="M17.721 18.581C16.269 20.071 14.246 21 12 21c-1.146 0-2.231-.246-3.215-.68M4.293 15.152c-.56-1.999-.352-4.21.769-6.151.574-.995 1.334-1.814 2.205-2.449M13.975 5.254c2.017.512 3.834 1.799 4.957 3.743.569.985.899 2.041 1.018 3.103">
+          </path>
+        </g>
+      </svg>
+    </span>
+  </div>
+
+  <div *ngIf="spnEnabled" class="flex flex-row justify-center w-full gap-2 pt-2">
+    <div class="status-info" [routerLink]="['/spn']">
+
+      <span [ngSwitch]="spnStatus?.Status" [sfng-tooltip]="spnStatus?.Status === 'connected' ? spnTooltipTemplate : null">
+        <ng-template ngSwitchCase="disabled">
+          SPN is connecting...<br>
+          Fail-safe blocking enabled
+        </ng-template>
+        <ng-template ngSwitchCase="failed">
+          <span class="text-red-300">SPN failed to connect</span><br>
+          Fail-safe blocking enabled
+        </ng-template>
+        <ng-template ngSwitchCase="connecting">
+          SPN is connecting...<br>
+          Fail-safe blocking enabled
+        </ng-template>
+        <ng-template ngSwitchCase="connected">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12px" height="12px" fill="currentColor" viewBox="0 0 16 16"
+            class="text-tertiary" class="inline-block -mt-0.5">
+            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-8 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+          </svg>
+          {{ spnStatus?.HomeHubName }}
+          <span class="text-tertiary">
+            in
+          </span>
+          <span *ngIf="!!spnStatus?.ConnectedCountry?.Code" [appCountryFlags]="spnStatus!.ConnectedCountry!.Code"></span>
+          {{ spnStatus?.ConnectedCountry?.Name }}
+        </ng-template>
+      </span>
+
+    </div>
+  </div>
+
+    <!-- </div>
+      <h2 class="p-0 m-0 font-light outline-none cursor-pointer test-base" [routerLink]="['/spn']">SPN</h2>
+      <sfng-toggle [ngModel]="spnEnabled" (ngModelChange)="setSPNEnabled($event)" class="absolute top-1 right-0"></sfng-toggle>
+
+      <ng-container *ngIf="spnEnabled">
+        <span [ngSwitch]="spnStatus?.Status" class="-mt-1 text-xs font-medium text-secondary">
+          <ng-template ngSwitchCase="disabled">
+            Disabled
+          </ng-template>
+          <ng-template ngSwitchCase="failed">
+            Failed to connect<br>
+            Fail-safe blocking enabled
+          </ng-template>
+          <ng-template ngSwitchCase="connecting">
+            Connecting...<br>
+            Fail-safe blocking enabled
+          </ng-template>
+          <ng-template ngSwitchCase="connected">
+            You're protected
+          </ng-template>
+        </span>
+        <br>
+        <span class="text-secondary text-xxs" *appExpertiseLevel="'advanced'">
+          Home: <u>{{ spnStatus?.ConnectedIP }}</u> via <u>{{ spnStatus?.ConnectedTransport}}</u>
+        </span>
+      </ng-container>
+    </div>
+
+    <div *ngIf="packageHasHistory" class="relative mt-3">
+      <h2 class="p-0 m-0 font-light outline-none cursor-pointer test-base" [routerLink]="['/monitor']">History</h2>
+      <sfng-toggle [ngModel]="historyEnabled" (ngModelChange)="setHistoryEnabled($event)" class="absolute top-1 right-0"></sfng-toggle>
+    </div> -->
+
+</div>
+</ng-container>
+
+<ng-template #spnTooltipTemplate>
+  SPN Home (Entry) Node
+  <ul class="pl-4 list-disc">
+    <li>Connected to {{ spnStatus?.ConnectedIP }}</li>
+    <li>Uplink is always encrypted</li>
+    <li>Built with transport/decoy {{ spnStatus?.ConnectedTransport }}</li>
+  </ul>
+</ng-template>

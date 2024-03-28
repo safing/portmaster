@@ -1,0 +1,15 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 498226a..446ba5e 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.4)
+ 
+ project(snoretoast VERSION 0.6.0)
+ # Always change the guid when the version is changed SNORETOAST_CALLBACK_GUID
+-set(SNORETOAST_CALLBACK_GUID eb1fdd5b-8f70-4b5a-b230-998a2dc19303)
++#We keep it fixed!
++set(SNORETOAST_CALLBACK_GUID 7F00FB48-65D5-4BA8-A35B-F194DA7E1A51)
++
+ 
+ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/)
+ 

@@ -1,0 +1,42 @@
+@mixin pill-container {
+  display        : flex;
+  width          : auto;
+  height         : 18px;
+  align-items    : center;
+  justify-content: flex-end;
+  font-size      : 0.6rem;
+  line-height    : 18px;
+
+  border-radius: 0.5rem;
+  transform    : scale(0.95);
+
+  .counter {
+    flex-grow    : 1;
+    display      : inline-block;
+    text-align   : right;
+    padding-right: 4px;
+    padding-left : 2px;
+    color        : #999999ee;
+    font-size    : 0.65rem;
+    font-weight  : 800;
+    width        : max-content;
+  }
+
+  .pill {
+    display         : inline-block;
+    width           : 29px;
+    height          : 5px;
+    background-color: #686868;
+    border-radius   : 1rem;
+    overflow        : hidden;
+    margin-left     : 0.2rem;
+    margin-right    : 0.6rem;
+
+    .percentage {
+      display         : block;
+      height          : 100%;
+      width           : 75%;
+      background-color: #21ad58;
+    }
+  }
+}

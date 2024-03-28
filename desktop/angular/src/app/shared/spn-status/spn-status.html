@@ -1,0 +1,54 @@
+<div class="relative flex flex-col justify-center w-full">
+  <sfng-netquery-line-chart  *ngIf="spnEnabled && !!spnConnChart.length" [@fadeIn] [@fadeOut]
+    [data]="spnConnChart" showAxis="false"
+          [config]="{
+            series: {
+              value: {
+                lineColor: 'text-blue',
+                areaColor: 'text-blue text-opacity-25',
+              }
+            }
+          }"
+    class="absolute bottom-0 left-0 right-0 h-16">
+  </sfng-netquery-line-chart>
+
+  <div class="relative flex flex-col justify-start gap-1 px-8 py-4">
+    <h2 class="p-0 m-0 font-light outline-none cursor-pointer test-base" [routerLink]="['/spn']">SPN</h2>
+
+    <span [ngSwitch]="spnStatus?.Status" class="-mt-1 text-xs font-medium text-secondary">
+      <ng-template ngSwitchCase="disabled">
+        Increase privacy protection
+      </ng-template>
+      <ng-template ngSwitchCase="failed">
+        Failed to connect
+      </ng-template>
+      <ng-template ngSwitchCase="connecting">
+        Connecting to the SPN ...
+      </ng-template>
+      <ng-template ngSwitchCase="connected">
+        You're protected
+      </ng-template>
+    </span>
+    <ng-container *ngIf="spnEnabled">
+      <span class="text-secondary text-xxs" *appExpertiseLevel="'developer'">
+        Home: <u>{{ spnStatus?.ConnectedIP }}</u> via <u>{{ spnStatus?.ConnectedTransport}}</u>
+      </span>
+    </ng-container>
+
+    <sfng-toggle [ngModel]="spnEnabled" (ngModelChange)="setSPNEnabled($event)"
+      *ngIf="spnEnabled || packageHasSPN"></sfng-toggle>
+
+    <div *ngIf="!packageHasSPN">
+      <button class="px-3 py-1.5 uppercase rounded outline-none text-xxs custom bg-blue hover:bg-blue bg-opacity-70"
+        (click)="openOrLogin()">
+        Upgrade
+      </button>
+    </div>
+  </div>
+  <div class="relative flex flex-col items-end justify-end flex-grow pb-4" *ngIf="spnEnabled">
+    <div class="flex flex-col items-center">
+      <span class="-mb-1 leading-3 uppercase text-xxs text-secondary">Identities</span>
+      <span class="text-lg text-primary">{{ identities }}</span>
+    </div>
+  </div>
+</div>

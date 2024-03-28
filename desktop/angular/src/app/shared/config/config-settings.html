@@ -1,0 +1,111 @@
+<!-- navigation for the settings -->
+<div class="settings-nav hidden sfng-md:block" *ngIf="!loading" [@fadeIn]
+  [ngClass]="{'w-48 pl-12': !compactView, 'w-36 pl-3': compactView}">
+  <ul>
+    <ng-container *ngFor="let subsys of subsystems; trackBy: trackSubsystem">
+      <ng-template [appExpertiseLevel]="subsys.minimumExpertise" [appExpertiseLevelData]="subsys"
+        [appExpertiseLevelOverwrite]="mustShowSubsystem">
+        <li [class.active]="activeSection === subsys.ConfigKeySpace" [class.separated]="subsys.ID === 'core'">
+          <span (click)="scrollTo(subsys.ConfigKeySpace)" class="relative">
+            {{subsys.Name}}
+            <span *ngIf="subsys.hasUserDefinedValues && userSettingsMarker" class="user-defined-value"></span>
+          </span>
+          <ul class="settings">
+            <ng-container *ngFor="let cat of settings.get(subsys.ConfigKeySpace); trackBy: trackCategory">
+              <li [class.active]="activeCategory === cat.name" class="category"
+                *appExpertiseLevel="cat.minimumExpertise; data: cat; overwrite: mustShowCategory"
+                (click)="scrollTo(subsys.ConfigKeySpace + ':' + cat.name, cat)">
+                <span class="relative">
+                  {{cat.name}}
+                  <span *ngIf="cat.hasUserDefinedValues && userSettingsMarker"
+                    class="user-defined-value category"></span>
+                </span>
+              </li>
+            </ng-container>
+          </ul>
+        </li>
+      </ng-template>
+    </ng-container>
+    <li *ngIf="!!others" (click)="scrollTo('config:other')" [class.active]="activeSection === 'config:other'">
+      Other
+    </li>
+  </ul>
+
+  <ul class="bottom-0 mb-7">
+    <li class="mt-3" *ngIf="!exportMode">
+      <button class="bg-grey text-white w-full" (click)="openImportDialog()">Import Settings</button>
+    </li>
+    <li *ngIf="exportMode" class="mt-3">
+      <button class="bg-grey text-white w-full" (click)="generateExport()">Save</button>
+    </li>
+    <li>
+      <button [ngClass]="{'bg-grey': !exportMode, 'bg-gray-400': exportMode}" class="text-white w-full" (click)="toggleExportMode()">{{ !exportMode ? 'Export Settings' : 'Cancel Export' }}</button>
+    </li>
+  </ul>
+
+</div>
+
+<div class="flex justify-center flex-grow px-0 pb-24 pr-4 overflow-auto whitespace-normal" cdkScrollable>
+  <fa-icon icon="spinner" [spin]="true" *ngIf="loading"></fa-icon>
+
+  <div class="w-full space-y-4" *ngIf="!loading">
+    <!-- actual settings -->
+    <ng-container *ngFor="let subsys of subsystems; trackBy: trackSubsystem">
+
+      <ng-template [appExpertiseLevel]="subsys.minimumExpertise" [appExpertiseLevelData]="subsys"
+        [appExpertiseLevelOverwrite]="mustShowSubsystem">
+
+        <h2 class="w-full px-0 ml-0 text-xl text-primary" [attr.id]="subsys.ConfigKeySpace">
+          {{subsys.Name}}
+        </h2>
+
+        <ng-container *ngFor="let cat of settings.get(subsys.ConfigKeySpace); trackBy: trackCategory; let index=index">
+          <div class="max-w-screen-lg space-y-4" #navLink anchor="top" [attr.subsystem]="subsys.ConfigKeySpace"
+            [attr.category]="cat.name"
+            *appExpertiseLevel="cat.minimumExpertise; data: cat; overwrite: mustShowCategory">
+
+            <div (click)="cat.collapsed = !cat.collapsed" [attr.id]="subsys.ConfigKeySpace +':' + cat.name"
+              class="flex items-center justify-between p-3 px-5 bg-gray-300 rounded cursor-pointer select-none">
+              <h4 class="text-md text-primary">{{cat.name}}</h4>
+
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 transition-transform duration-150 transform"
+                [class.rotate-90]="!cat.collapsed" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+
+            </div>
+
+            <div *ngIf="!cat.collapsed" [@fadeIn] [@fadeOut] class="space-y-4">
+              <ng-container *ngFor="let setting of cat.settings; trackBy: configService.trackBy">
+                <div class="ml-6"
+                  *appExpertiseLevel="setting.ExpertiseLevel; data: setting; overwrite: mustShowSetting">
+
+                  <app-generic-setting [class.highlighted]="highlightKey === setting.Key" [setting]="setting"
+                    [attr.id]="setting.Key" [resetLabelText]="resetLabelText" (save)="saveSetting($event, setting)"
+                    [lockDefaults]="lockDefaults" [displayStackable]="displayStackable" [selectMode]="exportMode" [(selected)]="selectedSettings[setting.Key]">
+                  </app-generic-setting>
+
+                </div>
+              </ng-container>
+            </div>
+          </div>
+        </ng-container>
+      </ng-template>
+    </ng-container>
+
+    <ng-container *ngIf="!!others">
+      <h2 id="config:other" #navLink>
+        Other
+      </h2>
+      <div class="category">
+        <ng-container *ngFor="let setting of others; trackBy: configService.trackBy">
+          <app-generic-setting *appExpertiseLevel="setting.ExpertiseLevel; data: setting; overwrite: mustShowSetting"
+            [setting]="setting" [resetLabelText]="resetLabelText" (save)="saveSetting($event, setting)"
+            [lockDefaults]="lockDefaults" [displayStackable]="displayStackable" [selectMode]="exportMode" [(selected)]="selectedSettings[setting.Key]">
+          </app-generic-setting>
+        </ng-container>
+      </div>
+    </ng-container>
+    <div class="pb-24"></div>
+  </div>
+</div>

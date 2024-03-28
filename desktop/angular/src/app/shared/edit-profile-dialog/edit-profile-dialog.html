@@ -1,0 +1,322 @@
+<h1 class="flex flex-row gap-2 items-center">
+  <img
+    [src]="iconObjectURL"
+    *ngIf="imageError === null && !!iconData"
+    class="w-8 h-8 rounded-full border border-gray-400"
+  />
+
+  {{ isEditMode ? 'Edit App Profile' : 'Create New App Profile' }}
+</h1>
+
+<form #profileForm="ngForm">
+  <sfng-tab-group customHeader="false" linkRouter="false">
+    <sfng-tab title="General">
+      <div *sfngTabContent class="tab-content">
+        <span class="py-2 text-secondary">
+          Configure basic profile information like the profile name, it's
+          description and optionally the profile icon.
+        </span>
+
+        <div class="input" *appExpertiseLevel="'developer'">
+          <label>ID</label>
+          <input
+            type="text"
+            name="id"
+            pattern="[a-zA-Z0-9\-\._]*"
+            [(ngModel)]="profile.ID"
+            placeholder="A unique identifier for profile. Leave empty to generate a random one."
+          />
+        </div>
+
+        <div class="input">
+          <label>Name *</label>
+          <input
+            type="text"
+            required
+            name="name"
+            [(ngModel)]="profile.Name"
+            placeholder="A name for labele profile"
+          />
+        </div>
+
+        <div class="input">
+          <label>Description</label>
+          <input
+            type="text"
+            name="description"
+            [(ngModel)]="profile.Description"
+            placeholder="An optional description of the profile"
+          />
+        </div>
+
+        <div class="flex flex-row justify-between">
+          <div class="input">
+            <label>Icon</label>
+            <div class="flex flex-col gap-2 justify-start">
+              <div class="flex flex-row gap-3">
+                <label
+                  for="icon-upload"
+                  class="inline-block p-1 px-4 font-medium whitespace-nowrap bg-opacity-80 rounded-sm cursor-pointer outline-none bg-blue hover:bg-blue text-xxs w-fit"
+                >
+                  Choose Icon
+                </label>
+                <button
+                  *ngIf="!!iconData && profile.Icons?.length"
+                  (click)="resetIcon()"
+                  class="bg-red-300"
+                >
+                  Reset Icon
+                </button>
+              </div>
+              <span class="pl-2 break-normal text-tertiary"
+                >The icon must be smaller than 10kB and it's dimensions must not
+                exceed 512x512 px. Only JPG and PNG files are supported.</span
+              >
+            </div>
+            <input
+              id="icon-upload"
+              class="hidden"
+              type="file"
+              (change)="fileChangeEvent($event)"
+            />
+            <span *ngIf="imageError !== null" class="pl-2 text-red-300 text-xxs"
+              >{{ imageError }}</span
+            >
+          </div>
+
+          <img
+            [src]="iconObjectURL"
+            *ngIf="imageError === null && !!iconData"
+            class="w-12 h-12 rounded-full border border-gray-400"
+          />
+        </div>
+      </div>
+    </sfng-tab>
+
+    <sfng-tab title="Process Matching">
+      <div *sfngTabContent class="flex flex-col tab-content text-xxs">
+        <span class="text-xs text-secondary"
+          >This profile will be applied to processes that match one of the
+          following fingerprints:</span
+        >
+
+        <div *ngIf="!profile.Fingerprints?.length">
+          No fingerprints configured. Please press "Add New" to get started.
+        </div>
+        <div class="flex overflow-auto flex-col flex-grow gap-2 px-1">
+          <div
+            class="flex relative flex-row gap-2 justify-evenly items-center p-2 bg-gray-200 border-r border-l border-gray-500"
+            *ngFor="let fp of profile.Fingerprints; let index=index"
+          >
+            <span
+              class="block absolute top-0 left-0 w-2 border-b border-gray-500"
+            ></span>
+            <span
+              class="block absolute bottom-0 left-0 w-2 border-b border-gray-500"
+            ></span>
+
+            <span
+              class="block absolute top-0 right-0 w-2 border-b border-gray-500"
+            ></span>
+            <span
+              class="block absolute right-0 bottom-0 w-2 border-b border-gray-500"
+            ></span>
+
+            <sfng-select
+              [(ngModel)]="fp.Type"
+              [ngModelOptions]="{standalone: true}"
+            >
+              <sfng-select-item
+                *sfngSelectValue="fingerPrintTypes.Tag; label: 'Tag'"
+              >
+                Tag
+                <sfng-tipup key="process-tags"></sfng-tipup>
+              </sfng-select-item>
+              <sfng-select-item
+                *sfngSelectValue="fingerPrintTypes.Cmdline; label: 'Command Line'"
+                >Command Line
+              </sfng-select-item>
+              <sfng-select-item
+                *sfngSelectValue="fingerPrintTypes.Env; label: 'Environment'"
+                >Environment
+              </sfng-select-item>
+              <sfng-select-item
+                *sfngSelectValue="fingerPrintTypes.Path; label: 'Path'"
+                >Path</sfng-select-item
+              >
+            </sfng-select>
+
+            <input
+              type="text"
+              [(ngModel)]="fp.Key"
+              placeholder="Key"
+              [ngModelOptions]="{standalone: true}"
+              *ngIf="fp.Type === 'env'"
+            />
+
+            <sfng-select
+              [(ngModel)]="fp.Key"
+              placeholder="Key"
+              [ngModelOptions]="{standalone: true}"
+              *ngIf="fp.Type === 'tag'"
+            >
+              <ng-container *ngFor="let tag of processTags">
+                <sfng-select-item *sfngSelectValue="tag.ID; label: tag.Name"
+                  >{{ tag.Name }}</sfng-select-item
+                >
+              </ng-container>
+            </sfng-select>
+
+            <sfng-select
+              [(ngModel)]="fp.Operation"
+              [ngModelOptions]="{standalone: true}"
+            >
+              <sfng-select-item *sfngSelectValue="fingerPrintOperations.Equal"
+                >Equals</sfng-select-item
+              >
+              <sfng-select-item *sfngSelectValue="fingerPrintOperations.Prefix"
+                >Prefix</sfng-select-item
+              >
+              <sfng-select-item *sfngSelectValue="fingerPrintOperations.Regex"
+                >Regex</sfng-select-item
+              >
+            </sfng-select>
+
+            <input
+              type="text"
+              [(ngModel)]="fp.Value"
+              placeholder="Value"
+              [ngModelOptions]="{standalone: true}"
+            />
+
+            <button
+              class="bg-opacity-90 bg-red hover:bg-red"
+              (click)="removeFingerprint(index)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="my-0.5 w-4 h-4"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button (click)="addFingerprint()">Add New</button>
+      </div>
+    </sfng-tab>
+
+    <sfng-tab title="Copy Settings">
+      <div *sfngTabContent class="flex flex-col gap-2 tab-content">
+        <div class="flex flex-row gap-2 items-center p-2 bg-gray-200">
+          <span class="text-secondary"
+            >Select a Profile to copy settings from:</span
+          >
+          <div class="flex-grow"></div>
+          <sfng-select
+            [(ngModel)]="selectedCopyFrom"
+            [ngModelOptions]="{standalone: true}"
+            class="flex-grow"
+            [allowSearch]="true"
+            searchPlaceholder="Search Profiles"
+          >
+            <ng-container *ngFor="let p of allProfiles">
+              <sfng-select-item
+                *sfngSelectValue="p; label:p.Name"
+                class="flex flex-row gap-2 items-center"
+              >
+                <app-icon [profile]="p"></app-icon>
+                {{ p.Name }}
+              </sfng-select-item>
+            </ng-container>
+          </sfng-select>
+          <button
+            [disabled]="selectedCopyFrom === null"
+            (click)="addCopyFrom()"
+          >
+            Add
+          </button>
+        </div>
+
+        <div
+          class="flex overflow-auto flex-col flex-grow gap-2"
+          cdkDropList
+          (cdkDropListDropped)="drop($event)"
+        >
+          <div
+            *ngFor="let p of copySettingsFrom; let index=index"
+            cdkDrag
+            class="flex flex-row items-center p-2 bg-gray-200 rounded-sm"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="mr-2 w-5 h-5 cursor-move text-secondary"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              cdkDragHandle
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 9l4-4 4 4m0 6l-4 4-4-4"
+              />
+            </svg>
+            <app-icon [profile]="p"></app-icon>
+            {{ p.Name }}
+            <div class="flex-grow"></div>
+            <button
+              class="bg-opacity-90 bg-red hover:bg-red"
+              (click)="removeCopyFrom(index)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="my-0.5 w-4 h-4"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <span class="block text-center break-normal text-secondary text-xxs">
+          Settings will be copied from all specified profiles in order with
+          settings from higher profiles taking precedence. <br />
+          Existing settings may be overwritten.
+        </span>
+      </div>
+    </sfng-tab>
+  </sfng-tab-group>
+</form>
+
+<div class="flex flex-row gap-2 justify-end items-center">
+  <button *ngIf="isEditMode" (click)="deleteProfile()" class="bg-red">
+    Delete
+  </button>
+  <div class="flex-grow"></div>
+  <button (click)="abort()" class="">Cancel</button>
+  <button
+    (click)="save()"
+    [disabled]="!profileForm.valid"
+    class="bg-opacity-80 bg-blue hover:bg-blue"
+  >
+    Save
+  </button>
+</div>

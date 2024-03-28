@@ -1,0 +1,71 @@
+:host {
+  @apply block;
+  min-width: 500px;
+  width: 50vw;
+}
+
+.issue-list {
+  width: 100%;
+
+  &,
+  ul {
+    overflow-y: auto;
+  }
+
+  .issue {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    @apply mx-2;
+
+    .header {
+      @apply p-4;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    @apply rounded;
+    @apply bg-cards-primary;
+
+    .title {
+      @apply mr-4;
+    }
+
+    span {
+      word-break: keep-all;
+    }
+
+    &:not(:last-child) {
+      margin-bottom: 0.5rem;
+    }
+
+    .body {
+      @apply bg-cards-secondary;
+      @apply rounded-b;
+      @apply p-4;
+    }
+
+    .meta {
+      @apply text-tertiary;
+      @apply font-normal;
+      opacity: .7;
+      font-size: 95%;
+    }
+
+    &:hover {
+      @apply bg-cards-tertiary;
+    }
+
+    fa-icon {
+      position: absolute;
+      right: 1rem;
+      top: 1rem;
+      opacity: .8;
+      cursor: pointer;
+    }
+  }
+}

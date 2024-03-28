@@ -1,0 +1,17 @@
+:host {
+  @apply block w-full;
+
+  cursor: pointer;
+  @apply p-2;
+  @apply px-4 text-primary text-xxs;
+  font-weight: 500;
+
+  &:hover {
+    @apply bg-gray-300;
+  }
+
+  &.disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}

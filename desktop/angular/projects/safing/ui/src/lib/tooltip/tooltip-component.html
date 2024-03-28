@@ -1,0 +1,6 @@
+<div [@moveInOut]="{value: _appAnimate, params: {value: value, what: what}}" *ngIf="_appAnimate"
+  [style.transformOrigin]="transformOrigin" (@moveInOut.done)="animationDone($event)"
+  class="relative px-2 py-0.5 text-white bg-gray-100 text-xxs border rounded shadow-lg w-fit">
+  {{ message }}
+  <ng-container [cdkPortalOutlet]="portal"></ng-container>
+</div>

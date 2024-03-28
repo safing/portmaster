@@ -1,0 +1,11 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  overflow-y: hidden;
+  width: 419px;
+
+  @apply pt-4;
+}

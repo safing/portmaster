@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# get build data
+if [[ "$BUILD_COMMIT" == "" ]]; then
+  BUILD_COMMIT=$(git describe --all --long --abbrev=99 --dirty 2>/dev/null)
+fi
+if [[ "$BUILD_USER" == "" ]]; then
+  BUILD_USER=$(id -un)
+fi
+if [[ "$BUILD_HOST" == "" ]]; then
+  BUILD_HOST=$(hostname -f)
+fi
+if [[ "$BUILD_DATE" == "" ]]; then
+  BUILD_DATE=$(date +%d.%m.%Y)
+fi
+if [[ "$BUILD_SOURCE" == "" ]]; then
+  BUILD_SOURCE=$(git remote -v | grep origin | cut -f2 | cut -d" " -f1 | head -n 1)
+fi
+if [[ "$BUILD_SOURCE" == "" ]]; then
+  BUILD_SOURCE=$(git remote -v | cut -f2 | cut -d" " -f1 | head -n 1)
+fi
+BUILD_BUILDOPTIONS=$(echo $* | sed "s/ /§/g")
+
+# check
+if [[ "$BUILD_COMMIT" == "" ]]; then
+  echo "could not automatically determine BUILD_COMMIT, please supply manually as environment variable."
+  exit 1
+fi
+if [[ "$BUILD_USER" == "" ]]; then
+  echo "could not automatically determine BUILD_USER, please supply manually as environment variable."
+  exit 1
+fi
+if [[ "$BUILD_HOST" == "" ]]; then
+  echo "could not automatically determine BUILD_HOST, please supply manually as environment variable."
+  exit 1
+fi
+if [[ "$BUILD_DATE" == "" ]]; then
+  echo "could not automatically determine BUILD_DATE, please supply manually as environment variable."
+  exit 1
+fi
+if [[ "$BUILD_SOURCE" == "" ]]; then
+  echo "could not automatically determine BUILD_SOURCE, please supply manually as environment variable."
+  exit 1
+fi
+
+# set build options
+export CGO_ENABLED=0
+if [[ $1 == "dev" ]]; then
+  shift
+  export CGO_ENABLED=1
+  DEV="-race"
+fi
+
+echo "Please notice, that this build script includes metadata into the build."
+echo "This information is useful for debugging and license compliance."
+echo "Run the compiled binary with the -version flag to see the information included."
+
+# build
+BUILD_PATH="github.com/safing/portbase/info"
+go build $DEV -ldflags "-X ${BUILD_PATH}.commit=${BUILD_COMMIT} -X ${BUILD_PATH}.buildOptions=${BUILD_BUILDOPTIONS} -X ${BUILD_PATH}.buildUser=${BUILD_USER} -X ${BUILD_PATH}.buildHost=${BUILD_HOST} -X ${BUILD_PATH}.buildDate=${BUILD_DATE} -X ${BUILD_PATH}.buildSource=${BUILD_SOURCE}" $*

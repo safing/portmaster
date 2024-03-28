@@ -1,0 +1,54 @@
+:host {
+  justify-content: flex-start;
+}
+
+.header-title {
+  display: flex;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  align-items: center;
+  height: 3rem;
+  flex-shrink: 0;
+
+  h1 {
+    flex-grow: unset;
+  }
+
+  fa-icon[icon*="question-circle"] {
+    margin-left: 0.35rem;
+  }
+}
+
+.scrollable {
+  width: auto;
+  flex-grow: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+
+.scrollable-header {
+
+  @apply bg-background;
+  @apply pt-4;
+  @apply pb-1;
+  width: 100%;
+  position: sticky;
+  top: 0px;
+  display: flex;
+
+  grid-column: 1 / -1;
+
+  fa-icon[icon*="question-circle"] {
+    margin-left: 0.35rem;
+  }
+}
+
+
+.card-header {
+  // Card headers have top-margin by default.
+  // Since we're using a grid-gap anyway we need
+  // to clear the margin.
+  @apply mt-0;
+}

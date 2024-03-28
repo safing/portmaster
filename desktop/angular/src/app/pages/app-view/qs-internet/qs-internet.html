@@ -1,0 +1,30 @@
+<div
+  class="relative flex flex-wrap items-center justify-center w-full h-full gap-2 px-3 py-2 bg-gray-300 border border-gray-300 rounded shadow"
+  snfgTooltipPosition="right" [sfng-tooltip]="interferingSettings.length > 0 ? tooltipTemplate : null">
+  <span class="text-primary" [class.cursor-pointer]="interferingSettings.length > 0">
+    Block Connections
+  </span>
+
+  <sfng-toggle *ngIf="currentValue !== 'ask'; else: promptingTemplate" [ngModel]="currentValue === 'block'"
+    (ngModelChange)="updateUseInternet($event)"></sfng-toggle>
+
+  <span class="absolute right-0 block w-2 h-2 bg-yellow-300 border border-gray-100 rounded opacity-75"
+    style="top: 2px; transform: translateX(-2px)" *ngIf="interferingSettings.length > 0"></span>
+
+  <ng-template #promptingTemplate>
+    <span class="mr-2 outline-none cursor-pointer text-secondary hover:underline" [routerLink]="[]"
+      [queryParams]="{setting: 'filter/defaultAction', tab: 'settings'}">Prompting</span>
+  </ng-template>
+</div>
+
+<ng-template #tooltipTemplate>
+  The following enabled settings may interfere:
+  <ul class="pl-4 list-disc">
+    <ng-container *ngFor="let setting of interferingSettings">
+      <li class="cursor-pointer hover:underline" [routerLink]="[]"
+        [queryParams]="{setting: setting.Key, tab: 'settings'}">
+        {{ setting.Name }}
+      </li>
+    </ng-container>
+  </ul>
+</ng-template>

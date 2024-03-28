@@ -1,0 +1,40 @@
+:host {
+  @apply flex flex-row items-center justify-center;
+}
+
+.country-content-wrapper {
+  @apply flex flex-col gap-2 items-center justify-center bg-gray-200 border bg-opacity-50 border-gray-600 border-opacity-25;
+}
+
+.country-name {
+  @apply text-sm flex flex-row gap-1 items-center justify-center bg-gray-100 bg-opacity-50 py-2 w-full;
+}
+
+.country-stats {
+  @apply flex flex-col gap-2 items-start py-2 px-4;
+
+  &>span {
+    @apply flex flex-row gap-1 items-center;
+    @apply text-xs font-light;
+  }
+
+  .count {
+    @apply text-sm font-normal;
+  }
+}
+
+.country-stats--safing {
+  svg polygon {
+    fill: #0376bb;
+    stroke: #0376bb;
+    transform: scale(1.15)
+  }
+}
+
+.country-stats--community {
+  svg circle {
+    fill: #239215;
+    stroke: #239215;
+    transform: scale(1.15)
+  }
+}

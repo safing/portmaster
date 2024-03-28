@@ -1,0 +1,24 @@
+<div *ngIf="!customHeader" class="relative flex flex-row mb-2 border-b outline-none border-secondary" tabindex="0"
+  (keydown)="onKeydown($event)">
+
+  <!-- Tab Group Header -->
+  <div *ngFor="let tab of (tabs$ | async); let index=index"
+    class="flex flex-row items-center justify-center px-4 py-2 space-x-1 cursor-pointer hover:text-primary" #tabHeader
+    [ngClass]="{'text-primary': index === activeTabIndex, 'text-secondary': index !== activeTabIndex}"
+    (click)="activateTab(index)">
+
+    <span>{{ tab.title }}</span>
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-yellow-300" fill="none" viewBox="0 0 24 24"
+      *ngIf="tab.warning" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    </svg>
+    <sfng-tipup [key]="tab.tipUpKey" *ngIf="tab.tipUpKey"></sfng-tipup>
+
+  </div>
+
+  <!-- There are no "transition" classes yet because we add it AFTER the first animation -->
+  <div class="absolute top-0 left-0 border-t border-white opacity-0" #activeTabBar></div>
+</div>
+
+<ng-container cdkPortalOutlet></ng-container>

@@ -1,0 +1,166 @@
+:host {
+  @apply flex flex-row w-full gap-3 p-4 overflow-auto;
+}
+
+.dashboard-grid {
+  @apply grid gap-4;
+
+  align-items: stretch;
+  justify-items: stretch;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-areas:
+    "header header header header"
+    "feature feature feature feature"
+    "feature feature feature feature"
+    "stats stats news news"
+    "stats stats news news"
+    "charts charts charts charts"
+    "charts charts charts charts"
+    "blocked blocked countries countries"
+    "map map map map"
+    "bwvis-bar bwvis-bar bwvis-line bwvis-line";
+}
+
+:host-context(.min-width-1024px) {
+  .dashboard-grid {
+    grid-template-areas:
+      "header header header header"
+      "feature feature feature news"
+      "feature feature feature news"
+      "stats stats stats news"
+      "stats stats stats news"
+      "charts charts charts charts"
+      "countries countries map map"
+      "blocked blocked map map"
+      "bwvis-bar bwvis-bar bwvis-line bwvis-line";
+  }
+}
+
+#header {
+  grid-area: header;
+}
+
+#features {
+  grid-area: feature;
+}
+
+#stats {
+  grid-area: stats;
+}
+
+#charts {
+  grid-area: charts;
+}
+
+#countries {
+  grid-area: countries;
+}
+
+#blocked {
+  grid-area: blocked;
+}
+
+#connmap {
+  grid-area: map;
+}
+
+#bwvis-bar {
+  grid-area: bwvis-bar;
+}
+
+#bwvis-line {
+  grid-area: bwvis-line;
+}
+
+#news {
+  grid-area: news;
+}
+
+.auto-grid-3 {
+  @apply grid gap-4;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.auto-grid-4 {
+  @apply grid gap-4;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+app-dashboard-widget {
+  label {
+    @apply text-xs uppercase text-secondary font-light flex flex-row items-center gap-2 pb-2;
+  }
+
+  .feature-card-list {
+    @apply grid gap-3 w-full;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  .mini-stats-list {
+    @apply grid gap-3 w-full;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  &#news {
+
+    h1 {
+      @apply text-base;
+      @apply font-light;
+    }
+
+    ::ng-deep markdown {
+      @apply font-light;
+
+      a {
+        @apply underline text-blue;
+      }
+
+      strong {
+        @apply font-medium;
+      }
+    }
+  }
+
+}
+
+::ng-deep #dashboard-map {
+  #world-group {
+    --map-bg: #111112;
+    --map-country-active: #424141;
+    --map-country-inactive: #2a2a2a;
+    --map-country-border-width: 1px;
+    --map-country-border-color: #1e1e1e;
+    --map-country-border-color-selected: #858585;
+    --map-country-blocked-primary: #858585;
+    --map-country-blocked-secondary: #402323;
+
+    path {
+      fill: var(--map-country-active);
+      stroke: var(--map-bg);
+      stroke-width: var(--map-country-border-width);
+      stroke-linejoin: round;
+    }
+
+    path.active {
+      color: #1d3c24;
+      fill: currentColor;
+    }
+
+    path.hover {
+      color: #4fae4f;
+      fill: currentColor;
+    }
+  }
+}
+
+.mini-stat {
+  @apply flex flex-col items-center justify-center py-3 px-2 bg-gray-300 rounded shadow;
+
+  label {
+    @apply font-light uppercase text-xxs text-secondary -mb-2;
+  }
+
+  span {
+    @apply text-xl text-blue;
+  }
+}

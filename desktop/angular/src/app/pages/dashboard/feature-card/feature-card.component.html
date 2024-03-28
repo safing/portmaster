@@ -1,0 +1,61 @@
+    <div class="feature-card"
+      [class.disabled]="disabled || comingSoon"
+      [class.clickable]="disabled || comingSoon || !!configValue || !!feature?.ConfigScope"
+      (click)="navigateToConfigScope()">
+      <ng-container *ngIf="disabled || comingSoon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" class="disabled-bg">
+          <defs>
+            <pattern id="pattern_63Hoo" patternUnits="userSpaceOnUse" width="9.5" height="9.5"
+              patternTransform="rotate(45)">
+              <line x1="0" y="0" x2="0" y2="9.5" stroke="currentColor" stroke-width="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#pattern_63Hoo)" :opacity="1" />
+        </svg>
+      </ng-container>
+
+      <header>
+        <img [attr.src]="feature?.IconURL">
+
+        <span>
+          {{ feature?.Name }}
+        </span>
+
+        <div class="relative flex flex-row self-start flex-grow" *ngIf="disabled || comingSoon || !!feature?.Beta">
+          <div class="flex-grow"></div>
+
+          <div *ngIf="!!feature?.Beta && !disabled"
+            class="absolute top-0 right-0 flex flex-col items-center justify-center gap-0 text-yellow-200">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+              stroke="currentColor" class="relative z-10 w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+            </svg>
+            <span class="-mt-1 uppercase" style="font-size: 0.6rem">BETA</span>
+          </div>
+        </div>
+      </header>
+      <div>
+        <span class="font-normal ml-7 text-xxs text-secondary">
+          {{ (disabled ? 'Available in ' : '') + 'Portmaster ' + feature?.InPackage?.Name}}
+          {{ comingSoon ? ' - coming soon' : '' }}
+          {{ feature?.Comment }}
+        </span>
+      </div>
+
+      <div *ngIf="!comingSoon && !disabled && configValue !== undefined" class="absolute right-4 bottom-4">
+        <sfng-toggle [ngModel]="configValue" (ngModelChange)="updateSettingsValue($event)"
+          (click)="$event.cancelBubble = true"></sfng-toggle>
+      </div>
+      <div *ngIf="!comingSoon && !disabled && configValue === undefined" class="absolute right-4 bottom-4">
+        <span class="text-light text-green text-opacity-80">
+          Active
+        </span>
+      </div>
+
+      <div class="ribbon" *ngIf="!!disabled && !!feature?.InPackage"><span class="ribbon__content"
+          [style.backgroundColor]="feature?.InPackage?.HexColor" [style.color]="planColor">
+          {{ feature?.InPackage?.Name }}
+        </span>
+      </div>
+    </div>

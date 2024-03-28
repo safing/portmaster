@@ -1,0 +1,27 @@
+<div class="flex flex-col items-start">
+  <caption *ngIf="!notification.isBroadcast">Notification</caption>
+
+  <caption *ngIf="notification.isBroadcast" sfngTipUpAnchor class="flex flex-row gap-2 items-center">
+    Broadcast Notification
+    <sfng-tipup key="broadcast-info"></sfng-tipup>
+  </caption>
+
+  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 close-icon" viewBox="0 0 20 20" fill="currentColor"
+    (click)="ref.close()">
+    <path fill-rule="evenodd"
+      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+      clip-rule="evenodd" />
+  </svg>
+
+  <h1>{{notification.Title}}</h1>
+
+  <markdown emoji [data]="notification.Message" class="message"></markdown>
+
+  <div class="buttons">
+    <button *ngFor="let action of notification!.AvailableActions"
+      [class.selected]="action.ID === notification!.SelectedActionID" [disabled]="state === 'invalid'"
+      (click)="execute(notification!, action)">
+      {{action.Text}}
+    </button>
+  </div>
+</div>

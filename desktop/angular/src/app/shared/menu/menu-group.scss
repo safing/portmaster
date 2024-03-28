@@ -1,0 +1,13 @@
+:host {
+  display: block;
+  width: 100%;
+
+  @apply p-1;
+  @apply px-4;
+  @apply text-secondary;
+
+  display: block;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  opacity: .7;
+}

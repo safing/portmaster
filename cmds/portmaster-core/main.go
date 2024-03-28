@@ -10,16 +10,16 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portbase/metrics"
 	"github.com/safing/portbase/run"
-	"github.com/safing/portmaster/updates"
-	"github.com/safing/spn/conf"
+	"github.com/safing/portmaster/service/updates"
+	"github.com/safing/portmaster/spn/conf"
 
 	// Include packages here.
 	_ "github.com/safing/portbase/modules/subsystems"
-	_ "github.com/safing/portmaster/core"
-	_ "github.com/safing/portmaster/firewall"
-	_ "github.com/safing/portmaster/nameserver"
-	_ "github.com/safing/portmaster/ui"
-	_ "github.com/safing/spn/captain"
+	_ "github.com/safing/portmaster/service/core"
+	_ "github.com/safing/portmaster/service/firewall"
+	_ "github.com/safing/portmaster/service/nameserver"
+	_ "github.com/safing/portmaster/service/ui"
+	_ "github.com/safing/portmaster/spn/captain"
 )
 
 func main() {

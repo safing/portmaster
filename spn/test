@@ -1,0 +1,168 @@
+#!/bin/bash
+
+warnings=0
+errors=0
+scripted=0
+goUp="\\e[1A"
+fullTestFlags="-short"
+install=0
+testonly=0
+
+function help {
+  echo "usage: $0 [command] [options]"
+  echo ""
+  echo "commands:"
+  echo "  <none>        run baseline tests"
+  echo "  full          run full tests (ie. not short)"
+  echo "  install       install deps for running tests"
+  echo ""
+  echo "options:"
+  echo "  --scripted    don't jump console lines (still use colors)"
+  echo "  --test-only   run tests only, no linters"
+  echo "  [package]     run only on this package"
+}
+
+function run {
+  if [[ $scripted -eq 0 ]]; then
+    echo "[......] $*"
+  fi
+
+  # create tmpfile
+  tmpfile=$(mktemp)
+  # execute
+  $* >$tmpfile 2>&1
+  rc=$?
+  output=$(cat $tmpfile)
+
+  # check return code
+  if [[ $rc -eq 0 ]]; then
+    if [[ $output == *"[no test files]"* ]]; then
+      echo -e "${goUp}[\e[01;33mNOTEST\e[00m] $*"
+      warnings=$((warnings+1))
+    else
+      echo -ne "${goUp}[\e[01;32m  OK  \e[00m] "
+      if [[ $2 == "test" ]]; then
+        echo -n $*
+        echo -n ": "
+        echo $output | cut -f "3-" -d " "
+      else
+        echo $*
+      fi
+    fi
+  else
+    if [[ $output == *"build constraints exclude all Go files"* ]]; then
+      echo -e "${goUp}[ !=OS ] $*"
+    else
+      echo -e "${goUp}[\e[01;31m FAIL \e[00m] $*"
+      cat $tmpfile
+      errors=$((errors+1))
+    fi
+  fi
+
+  rm -f $tmpfile
+}
+
+# get and switch to script dir
+baseDir="$( cd "$(dirname "$0")" && pwd )"
+cd "$baseDir"
+
+# args
+while true; do
+  case "$1" in
+  "-h"|"help"|"--help")
+    help
+    exit 0
+    ;;
+  "--scripted")
+    scripted=1
+    goUp=""
+    shift 1
+    ;;
+  "--test-only")
+    testonly=1
+    shift 1
+    ;;
+  "install")
+    install=1
+    shift 1
+    ;;
+  "full")
+    fullTestFlags=""
+    shift 1
+    ;;
+  *)
+    break
+    ;;
+  esac
+done
+
+# check if $GOPATH/bin is in $PATH
+if [[ $PATH != *"$GOPATH/bin"* ]]; then
+  export PATH=$GOPATH/bin:$PATH
+fi
+
+# install
+if [[ $install -eq 1 ]]; then
+  echo "installing dependencies..."
+  # TODO: update golangci-lint version regularly
+  echo "$ curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.44.0"
+  curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.44.0
+  exit 0
+fi
+
+# check dependencies
+if [[ $(which go) == "" ]]; then
+  echo "go command not found"
+  exit 1
+fi
+if [[ $testonly -eq 0 ]]; then
+  if [[ $(which gofmt) == "" ]]; then
+    echo "gofmt command not found"
+    exit 1
+  fi
+  if [[ $(which golangci-lint) == "" ]]; then
+    echo "golangci-lint command not found"
+    echo "install with: curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin vX.Y.Z"
+    echo "don't forget to specify the version you want"
+    echo "or run: ./test install"
+    echo ""
+    echo "alternatively, install the current dev version with: go get -u github.com/golangci/golangci-lint/cmd/golangci-lint"
+    exit 1
+  fi
+fi
+
+# target selection
+if [[ "$1" == "" ]]; then
+  # get all packages
+  packages=$(go list -e ./...)
+else
+  # single package testing
+  packages=$(go list -e)/$1
+  echo "note: only running tests for package $packages"
+fi
+
+# platform info
+platformInfo=$(go env GOOS GOARCH)
+echo "running tests for ${platformInfo//$'\n'/ }:"
+
+# run vet/test on packages
+for package in $packages; do
+  packagename=${package#github.com/safing/spn} #TODO: could be queried with `go list .`
+  packagename=${packagename#/}
+  echo ""
+  echo $package
+  if [[ $testonly -eq 0 ]]; then
+    run go vet $package
+    run golangci-lint run $packagename
+  fi
+  run go test -cover $fullTestFlags $package
+done
+
+echo ""
+if [[ $errors -gt 0 ]]; then
+  echo "failed with $errors errors and $warnings warnings"
+  exit 1
+else
+  echo "succeeded with $warnings warnings"
+  exit 0
+fi

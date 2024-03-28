@@ -1,0 +1,46 @@
+<div class="header">
+  <div class="breadcrumbs">
+    <span routerLink="/monitor">Network Activity</span>
+  </div>
+  <app-expertise></app-expertise>
+</div>
+<div class="relative flex flex-col flex-grow overflow-auto" cdkScrollable>
+
+  <div class="flex flex-col items-start justify-center py-6">
+    <h1 class="flex flex-row items-center gap-2 text-xl font-semibold text-primary">
+      Network Activity
+      <sfng-tipup key="networkMonitor-App-Focus-connection-history"></sfng-tipup>
+    </h1>
+
+    <span class="flex flex-row items-center gap-2 p-0 mb-2 ml-0 text-secondary">
+      <ng-container *ngIf="(history | async) as data; else: noHistory">
+        <ng-container *ngIf="!!data">
+          <span>
+            Network history data available as of {{ data.first | date }}. ({{ data.count }} connections)
+          </span>
+          <a class="text-xs underline cursor-pointer text-primary" (click)="clearHistoryData()">Clear</a>
+        </ng-container>
+      </ng-container>
+      <ng-template #noHistory>
+        <span>
+          No network history data available.
+          <ng-container *ngIf="(canUseHistory | async) && (historyEnabled | async) === false">
+            <a class="text-xs underline cursor-pointer text-primary" (click)="enableHistory()">Enable</a>
+          </ng-container>
+          <ng-container *ngIf="(canUseHistory | async) === false">
+            <a class="text-xs underline cursor-pointer text-opacity-75" href="https://safing.io/pricing/?source=Portmaster">Available in Portmaster Plus</a>
+          </ng-container>
+        </span>
+      </ng-template>
+    </span>
+
+    <span class="text-secondary">
+      Use the search bar and drop downs to search and filter the last 10 minutes of network traffic.
+      Optionally, search all network history data if enabled.
+    </span>
+  </div>
+
+  <sfng-netquery-viewer [filterPreset]="session.get('monitor/global-filter') || 'scope:4'"
+    (filterChange)="session.set('monitor/global-filter', $event)"></sfng-netquery-viewer>
+
+</div>

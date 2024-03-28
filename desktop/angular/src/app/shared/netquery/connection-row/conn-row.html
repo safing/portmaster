@@ -1,0 +1,146 @@
+<div class="flex flex-row items-center gap-2" name="first">
+  <span class="flex-shrink-0 verdict" [class.outdated]="isOutdated" [ngClass]="helper.getVerdictClass(conn)"
+    [sfng-tooltip]="conn.extra_data?.reason?.Msg || null"></span>
+
+  <ng-container *ngIf="conn.domain as domain; else scopeTranslation">
+    <sfng-netquery-scope-label name="domain" [scope]="conn.domain"
+      class="inline-block overflow-hidden overflow-ellipsis" style="direction: rtl" sfngAddToFilter="domain"
+      [sfngAddToFilterValue]="conn.domain">
+    </sfng-netquery-scope-label>
+  </ng-container>
+
+  <svg xmlns="http://www.w3.org/2000/svg" name="internal" class="flex-grow-0 flex-shrink-0 w-4 h-4 text-tertiary"
+    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" *ngIf="conn.internal"
+    sfng-tooltip="Internal connections are only displayed in Developer Mode">
+    <path stroke-linecap="round" stroke-linejoin="round"
+      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+  </svg>
+
+  <ng-template #scopeTranslation>
+    <span sfngAddToFilter="scope" [sfngAddToFilterValue]="conn.scope" name="scope"
+      class="overflow-hidden text-ellipsis">
+      <ng-container [ngSwitch]="conn.scope">
+        <span *ngSwitchCase="scopes.Global">Internet Peer-to-Peer</span>
+        <span *ngSwitchCase="scopes.GlobalMulitcast">Internet Multicast</span>
+        <span *ngSwitchCase="scopes.HostLocal">Device-Local</span>
+        <span *ngSwitchCase="scopes.LinkLocal">LAN Peer-to-Peer</span>
+        <span *ngSwitchCase="scopes.LocalMulticast">LAN Multicast</span>
+        <span *ngSwitchCase="scopes.SiteLocal">LAN Peer-to-Peer</span>
+
+        <span class="text-tertiary" *ngSwitchCase="scopes.Invalid">N/A</span>
+        <span class="text-tertiary" *ngSwitchCase="scopes.Undefined">N/A</span>
+        <span class="text-tertiary" *ngSwitchDefault>N/A</span>
+      </ng-container>
+
+      <span>{{ conn.direction === 'inbound' ? ' Incoming' : ' Outgoing'}}</span>
+    </span>
+  </ng-template>
+</div>
+
+<ng-template #countryTooltip>
+  <div class="flex flex-row gap-2 items-center justify-start">
+    <span *ngIf="conn.country && conn.type !== 'dns'" [appCountryFlags]="conn.country"></span>
+    <span>{{ conn.country | countryName }}</span>
+  </div>
+</ng-template>
+
+<div [class.text-tertiary]="!conn.country" class="flex-row items-center justify-start hidden gap-1 sfng-md:flex"
+  name="location" [sfngAddToFilter]="!!conn.country ? 'country' : null" [sfngAddToFilterValue]="conn.country"
+  [sfng-tooltip]="conn.country && conn.type !== 'dns' ? countryTooltip : null">
+  <span *ngIf="conn.country && conn.type !== 'dns'" [appCountryFlags]="conn.country"></span>
+  {{ conn | connectionLocation }}
+</div>
+
+<div>
+  <span *ngIf="!!conn.__profile" class="flex flex-row items-center gap-1" name="profile">
+    <app-icon [profile]="conn.__profile"></app-icon>
+    <span [sfngAddToFilter]="'profile'" [sfngAddToFilterValue]="conn.profile">{{ conn.__profile.Name }}</span>
+  </span>
+</div>
+
+<div class="flex flex-row items-center gap-2" name="remote">
+  <fa-icon class="w-4 h-4 transform rotate-45" [ngClass]="{'text-gray-600': !!conn.ended}"
+    [icon]="conn.direction === 'inbound' ? 'arrow-down' : 'arrow-up'">
+  </fa-icon>
+
+  <span *ngIf="conn.type === 'ip'; else dnsRequest" sfngAddToFilter="remote_ip" [sfngAddToFilterValue]="conn.remote_ip">
+    {{ conn.remote_ip }} <span *ngIf="conn.remote_port" class="text-secondary">:{{ conn.remote_port }}</span>
+  </span>
+  <ng-template #dnsRequest>
+    <span class="text-secondary" sfngAddToFilter="type" sfngAddToFilterValue="dns">
+      DNS Request
+    </span>
+  </ng-template>
+</div>
+
+<div class="hidden sfng-md:block text-secondary" [sfng-tooltip]="'Started ' + (conn.started | timeAgo:timeAgoTicker)">
+  <ng-container *ngIf="!!conn.ended">
+    <span class="hidden sfng-xl:inline">ended&nbsp;&nbsp;</span>
+    {{ conn.ended | timeAgo:timeAgoTicker }}
+  </ng-container>
+
+  <ng-container *ngIf="!conn.ended">
+    <span class="hidden sfng-xl:inline">started&nbsp;&nbsp;</span>
+    {{ conn.started | timeAgo:timeAgoTicker }}
+  </ng-container>
+</div>
+
+<div name="reason" class="flex-row items-center justify-start hidden gap-2 sfng-lg:flex">
+  <ng-container *ngIf="conn.extra_data?.reason as reason">
+    <ng-container *ngIf="reason.OptionKey">
+      <span class="hidden sfng-2xl:inline text-tertiary">applied</span>
+      <span class="text-primary">{{ helper.settings[reason.OptionKey] || '' }}</span>
+
+      <svg viewBox="0 0 24 24" class="w-4 h-4" *ngIf="!reason.Profile" sfng-tooltip="from Global Settings">
+        <g fill="none" stroke-linecap="round" stroke="currentColor" stroke-linejoin="round" stroke-width="2">
+          <path shape-rendering="geometricPrecision"
+            d="M13.7678 10.2322c.976311.976311.976311 2.55922 0 3.53553-.976311.976311-2.55922.976311-3.53553 0-.976311-.976311-.976311-2.55922 0-3.53553.976311-.976311 2.55922-.976311 3.53553 0" />
+          <path shape-rendering="geometricPrecision"
+            d="M14.849 4.12l.583.194c.534.178.895.678.895 1.241v.837c0 .712.568 1.293 1.28 1.308l.838.018c.485.01.925.289 1.142.723l.275.55c.252.504.153 1.112-.245 1.51l-.592.592c-.503.503-.512 1.316-.02 1.83l.58.606c.336.351.45.858.296 1.319l-.194.583c-.178.534-.678.895-1.241.895h-.837c-.712 0-1.293.568-1.308 1.28l-.018.838c-.01.485-.289.925-.723 1.142l-.55.275c-.504.252-1.112.153-1.51-.245l-.592-.592c-.503-.503-1.316-.512-1.83-.02l-.606.58c-.351.336-.858.45-1.319.296l-.583-.194c-.534-.178-.895-.678-.895-1.241v-.837c0-.712-.568-1.293-1.28-1.308l-.838-.018c-.485-.01-.925-.289-1.142-.723l-.275-.55c-.252-.504-.153-1.112.245-1.51l.592-.592c.503-.503.512-1.316.02-1.83l-.58-.606c-.337-.352-.451-.86-.297-1.32l.194-.583c.178-.534.678-.895 1.241-.895h.837c.712 0 1.293-.568 1.308-1.28l.018-.838c.012-.485.29-.925.724-1.142l.55-.275c.504-.252 1.112-.153 1.51.245l.592.592c.503.503 1.316.512 1.83.02l.606-.58c.351-.335.859-.449 1.319-.295z" />
+        </g>
+      </svg>
+
+      <svg *ngIf="!!reason.Profile" sfng-tooltip="from Application Settings" xmlns="http://www.w3.org/2000/svg"
+        data-name="Layer 1" viewBox="0 0 24 24" class="w-4 h-4" stroke="currentColor" fill="none">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" fill="currentColor"
+          d="M19 21h-3a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2Z" />
+        <path fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M19 9h-3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2ZM5 3h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM5 15h3a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2Z" />
+      </svg>
+
+      <span class="hidden sfng-xl:inline text-secondary">{{ reason.Profile ? 'App' : 'Global' }}</span>
+    </ng-container>
+  </ng-container>
+</div>
+
+<div class="flex-grow-0 flex-shrink-0 w-6">
+  <app-menu-trigger [menu]="ungroupedConnectionMenu"></app-menu-trigger>
+  <app-menu #ungroupedConnectionMenu>
+    <ng-container *ngIf="conn.extra_data?.reason as reason">
+      <app-menu-item (activate)="helper.redirectToSetting('', conn)" *ngIf="!!reason.OptionKey">
+        App Setting
+      </app-menu-item>
+
+      <app-menu-item (activate)="helper.redirectToSetting('', conn, true)" *ngIf="!!reason.OptionKey">
+        Global Setting
+      </app-menu-item>
+    </ng-container>
+
+    <app-menu-group class="separator"></app-menu-group>
+
+    <app-menu-item *ngIf="(conn | isBlocked); else blockAction"
+      (activate)="helper.unblockAll(conn.domain || conn.remote_ip, conn)" [disabled]="!(conn | canUseRules)">
+      Allow {{ conn.domain ? 'Domain' : 'IP'}}
+    </app-menu-item>
+
+    <ng-template #blockAction>
+      <app-menu-item (activate)="helper.blockAll(conn.domain || conn.remote_ip, conn)"
+        [disabled]="!(conn | canUseRules)">
+        Block {{ conn.domain ? 'Domain' : 'IP '}}
+      </app-menu-item>
+    </ng-template>
+
+
+    <app-menu-item *appExpertiseLevel="'expert'" (click)="helper.dumpConnection(conn)">Copy JSON</app-menu-item>
+  </app-menu>
+</div>

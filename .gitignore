@@ -1,12 +1,6 @@
 # Compiled binaries
-portmaster
-portmaster.exe
-dnsonly
-dnsonly.exe
-main
-main.exe
-integrationtest
-integrationtest.exe
+*.exe
+dist/
 
 # Dist dir
 dist

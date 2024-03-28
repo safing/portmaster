@@ -38,6 +38,9 @@ linters:
     - whitespace
     - wrapcheck
     - wsl
+    - perfsprint # TODO(ppacher): we should re-enanble this one to avoid costly fmt.* calls in the hot-path
+    - testifylint
+    - gomoddirectives
 
 linters-settings:
   revive:

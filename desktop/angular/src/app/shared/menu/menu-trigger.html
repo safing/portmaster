@@ -1,0 +1,14 @@
+<div (click)="toggle($event)" cdkOverlayOrigin>
+  <div class="text-opacity-75 dropdown text-primary hover:text-primary hover:text-opacity-100">
+    <ng-container *ngIf="!useContent">
+      <svg xmlns="http://www.w3.org/2000/svg" data-name="Layer 2" viewBox="0 0 11.86 19.86" fill="currentColor">
+        <circle cx="1.93" cy="1.93" r="1.93" />
+        <circle cx="1.93" cy="9.93" r="1.93" />
+        <circle cx="1.93" cy="17.93" r="1.93" />
+      </svg>
+    </ng-container>
+    <ng-container *ngIf="useContent">
+      <ng-content></ng-content>
+    </ng-container>
+  </div>
+</div>

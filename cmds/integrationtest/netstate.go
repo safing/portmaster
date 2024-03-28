@@ -7,9 +7,9 @@ import (
 	processInfo "github.com/shirou/gopsutil/process"
 	"github.com/spf13/cobra"
 
-	"github.com/safing/portmaster/network/packet"
-	"github.com/safing/portmaster/network/socket"
-	"github.com/safing/portmaster/network/state"
+	"github.com/safing/portmaster/service/network/packet"
+	"github.com/safing/portmaster/service/network/socket"
+	"github.com/safing/portmaster/service/network/state"
 )
 
 func init() {

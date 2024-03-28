@@ -1,0 +1,46 @@
+.cdk-drag {
+  .widget {
+    user-select: none;
+
+    fa-icon {
+      opacity: 1;
+    }
+  }
+}
+
+.cdk-drag-placeholder {
+  user-select: none;
+  position: relative;
+  opacity: 0.5;
+  box-sizing: border-box;
+  cursor: grabbing !important;
+  @apply border-2;
+  @apply rounded;
+  @apply border-dashed;
+  border-color: #292929;
+}
+
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+  user-select: none;
+}
+
+.cdk-drag-preview {
+  user-select: none;
+  box-sizing: border-box;
+  cursor: grabbing !important;
+
+  @apply rounded;
+  @apply border-2;
+  @apply border-dashed;
+  border-color: #292929;
+  @apply text-primary;
+}
+
+.cdk-drag-handle {
+  cursor: grab !important;
+}
+
+.document-grabbing {
+  cursor: grabbing !important;
+}

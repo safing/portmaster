@@ -1,0 +1,53 @@
+<span class="tunnel-path">
+  <div class="line">
+    <!--<span class="arrow"></span>-->
+  </div>
+  <ul>
+    <li>
+      <span class="hop-icon">
+        <fa-icon far icon="dot-circle"></fa-icon>
+      </span>
+      <span class="hop-title text-tertiary">
+        Your Device
+      </span>
+    </li>
+
+    <li *ngFor="let node of route; let first=first; let last=last">
+      <span *ngIf="node.entity.Country as country; else: noCountry" class="country" [appCountryFlags]="country"></span>
+      <ng-template #noCountry>
+        <!-- TODO: use hop icon instead if unknown -->
+        <span class="country unknown"></span>
+      </ng-template>
+      <span>{{ node.entity.Country || 'No Location' }}</span>
+      <span class="ip text-tertiary">{{ node.entity.IP || ''
+        }}</span>
+      <span class="node-tag" *ngIf="first">Home</span>
+      <span class="node-tag" *ngIf="last">Exit</span>
+      <span *appExpertiseLevel="'expert'" class="text-tertiary"><br />{{ node.pin.Name }}
+
+        <span class="ml-2">
+          by
+          <spn-node-icon [bySafing]="node.pin.VerifiedOwner === 'Safing'" isActive="true" isExit="last"></spn-node-icon>
+          {{ node.pin.VerifiedOwner || 'Community' }}
+        </span>
+      </span>
+
+      <span *appExpertiseLevel="'expert'" class="text-tertiary"><br />AS{{ node.entity.ASN }} - {{ node.entity.ASOrg ||
+          'AS Organization not in DB'
+          }}</span>
+
+      <span *appExpertiseLevel="'developer'" class="text-tertiary"><br />{{ node.pin.ID }}</span>
+    </li>
+
+    <li>
+      <span class="hop-icon">
+        <fa-icon far icon="dot-circle"></fa-icon>
+        <!-- TODO: use destination country flag instead if known -->
+      </span>
+      <span class="hop-title text-tertiary">
+        Destination
+      </span>
+      <!-- TODO: add destination details? (Would be duplicate information from above.) -->
+    </li>
+  </ul>
+</span>

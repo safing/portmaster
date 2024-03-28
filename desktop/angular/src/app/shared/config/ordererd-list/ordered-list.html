@@ -1,0 +1,23 @@
+<div class="list-items" cdkDropList (cdkDropListDropped)="drop($event)">
+  <div class="item" *ngFor="let entry of entries; let index=index; trackBy: trackBy" cdkDrag
+    [cdkDragDisabled]="readonly || fixedOrder">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2 text-secondary" fill="none" viewBox="0 0 24 24"
+      stroke="currentColor" cdkDragHandle [class.opacity-0]="readonly || fixedOrder"
+      [class.cusor-move]="!readonly && !fixedOrder">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+    </svg>
+    <app-ordered-list-item [readonly]="readonly" [value]="entry" (valueChange)="updateValue(index, $event)"
+      (delete)="deleteEntry(index)">
+    </app-ordered-list-item>
+  </div>
+</div>
+
+<div class="button-list" *ngIf="!readonly">
+  <button class="new-entry" (click)="addEntry()">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd"
+        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+    </svg>
+    <span>Add</span>
+  </button>
+</div>

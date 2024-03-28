@@ -1,0 +1,204 @@
+<div
+  class="relative flex flex-row flex-wrap items-center h-full px-5 py-5 bg-gray-200 border-l border-transparent rounded-r"
+  [class.pr-8]="lockDefaults" [ngClass]="{
+    'border-blue': enableActiveBorder && _setting?.Value !== undefined && !rejected,
+    'border-red': enableActiveBorder &&  rejected,
+    'border-yellow-300': selected,
+    'rounded-l': !rejected && _setting?.Value === undefined,
+    'hidden': selectMode && !userConfigured
+  }">
+
+  <input class="absolute -left-5 my-auto" type="checkbox" *ngIf="selectMode && userConfigured" [(ngModel)]="selected"
+    (ngModelChange)="selectedChange.next($event)">
+
+  <div class="flex flex-col flex-grow">
+    <div class="flex flex-row items-center justify-start space-x-2 w-fit" *ngIf="showHeader">
+      <h3 [innerHTML]="setting?.Name | safe:'html'" class="mb-0 name"></h3>
+      <sfng-tipup *ngIf="setting?.Description" [key]="setting!.Key" [text]="setting?.Description"
+        [buttons]="sfngTipUpButtons" [title]="setting?.Name"></sfng-tipup>
+
+      <span *ngIf="changeAccepted || restartPending || (changeAccepted && uiReloadRequired)" (click)="restartNow()"
+        class="px-1.5 py-0.5 border  rounded inline-flex justify-evenly items-center text-xxs mb-0.5" [ngClass]="{
+          'border-green-300 text-green-300': !_setting?.RequiresRestart,
+          'border-yellow text-yellow cursor-pointer hover:bg-yellow hover:text-gray-200': _setting?.RequiresRestart
+        }" [@fadeIn]>
+        <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4 mr-1" viewBox="0 0 20 20"
+          fill="currentColor">
+          <path fill-rule="evenodd"
+            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+            clip-rule="evenodd" />
+        </svg>
+
+        Saved {{ _setting?.RequiresRestart ? ' - Restart required' : (uiReloadRequired ? ' - Reload required' : '') }}
+      </span>
+
+      <span *ngIf="rejected" (click)="abortChange()"
+        class="px-1.5 py-0.5 border-red-300 border text-red-300 rounded inline-flex justify-evenly items-center text-xxs hover:bg-red hover:text-white mb-0.5 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4 mr-1" *ngIf="rejected" fill="none"
+          viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        Invalid Value: {{ rejected }}
+      </span>
+
+      <span *ngIf="_upgradeRequired" (click)="openAccountDetails()"
+        class="px-1.5 py-0.5 border-red-300 border text-red-300 rounded inline-flex justify-evenly items-center text-xxs hover:bg-red hover:text-white mb-0.5 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        This feature requires a subscription.
+      </span>
+    </div>
+
+    <span class="flex flex-row items-center justify-start space-x-2" *ngIf="setting?.ReleaseLevel !== releaseLevel.Stable ||
+        setting?.ExpertiseLevel !== expertise.user ||
+        (expertiseLevel|async) === expertiseNames.Developer">
+
+      <span class="inline-block px-1.5 py-0.5 bg-gray-400 rounded text-xxs text-secondary"
+        *appExpertiseLevel="'developer'">{{setting?.Key}}</span>
+
+      <span class="inline-block px-1.5 py-0.5 text-gray-100 bg-yellow-300 rounded text-xxs"
+        *ngIf="setting?.ReleaseLevel === releaseLevel.Beta">Beta</span>
+
+      <span class="inline-block px-1.5 py-0.5 text-white bg-red-300 rounded text-xxs"
+        *ngIf="setting?.ReleaseLevel === releaseLevel.Experimental">Experimental</span>
+
+      <span class="inline-block px-1.5 py-0.5 bg-gray-400 rounded text-xxs text-secondary"
+        *ngIf="setting?.ExpertiseLevel === expertise.expert">Advanced</span>
+
+      <span class="inline-block px-1.5 py-0.5 text-gray-100 bg-yellow-300 rounded text-xxs"
+        *ngIf="setting?.ExpertiseLevel === expertise.developer">Developer</span>
+
+    </span>
+  </div>
+
+
+  <!-- Quick Settings -->
+  <div *ngIf="(quickSettings || []).length > 0 && !disabled">
+    <app-menu-trigger [menu]="quickSettingsMenu" useContent="true" class="text-secondary hover:text-primary">
+      <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+      </svg>
+      <span class="ml-1 text-xs">Quick Settings</span>
+    </app-menu-trigger>
+
+    <app-menu #quickSettingsMenu>
+      <app-menu-item *ngFor="let quick of quickSettings" (click)="applyQuickSetting(quick)">
+        {{quick.Name}}
+      </app-menu-item>
+    </app-menu>
+  </div>
+
+  <!-- Actual settings input -->
+  <ng-container [ngSwitch]="externalOptType(setting)">
+
+    <!-- Rule lists -->
+    <ng-container *ngSwitchCase="optionHint.EndpointList">
+      <app-rule-list class="w-full mt-4" [readonly]="disabled" [ngModel]="_currentValue"
+        (ngModelChange)="updateValue($event, true)" [symbolMap]="symbolMap"></app-rule-list>
+
+      <div class="stacked-values" *ngIf="showStackable">
+        <h4>This setting stacks on top of the following <a class="underline text-tertiary hover:text-primary"
+            routerLink="/settings" [queryParams]="{setting: setting?.Key}">global setting</a>:</h4>
+        <app-rule-list class="w-full mt-4" [readonly]="true" [symbolMap]="symbolMap" [ngModel]="setting?.GlobalDefault">
+        </app-rule-list>
+      </div>
+    </ng-container>
+
+    <!-- Filter lists -->
+    <ng-container *ngSwitchCase="optionHint.FilterList">
+      <app-filter-list class="w-full" [class.mt-4]="showHeader" [ngModel]="_currentValue"
+        (ngModelChange)="updateValue($event, true)">
+      </app-filter-list>
+    </ng-container>
+
+    <!-- Ordered string lists -->
+    <ng-container *ngSwitchCase="optionHint.OrderedList">
+      <app-ordered-list class="w-full mt-4" [ngModel]="_currentValue" (ngModelChange)="updateValue($event, true)"
+        [readonly]="disabled"></app-ordered-list>
+
+      <div class="stacked-values" *ngIf="showStackable">
+        <h4>This setting stacks on top of the following <a class="underline text-tertiary hover:text-primary"
+            routerLink="/settings" [queryParams]="{setting: setting?.Key}">global setting</a>:</h4>
+        <app-ordered-list class="w-full mt-4" [ngModel]="setting?.GlobalDefault" [readonly]="true"></app-ordered-list>
+      </div>
+    </ng-container>
+
+    <!-- Default if no display hint is given -->
+    <ng-container *ngSwitchDefault>
+      <!-- basic string array with fixed order on optional stacking -->
+      <ng-container *ngIf="setting?.OptType === optionType.StringArray; else: basicSetting">
+        <app-ordered-list class="w-full mt-4" fixedOrder="true" [ngModel]="_currentValue"
+          (ngModelChange)="updateValue($event, true)" [readonly]="disabled">
+        </app-ordered-list>
+
+        <div class="stacked-values" *ngIf="showStackable">
+          <h4>This setting stacks on top of the following <a class="underline text-tertiary hover:text-primary"
+              routerLink="/settings" [queryParams]="{setting: setting?.Key}">global setting</a>:</h4>
+          <app-ordered-list class="w-full mt-4" fixedOrder="true" [ngModel]="setting?.GlobalDefault" [readonly]="true">
+          </app-ordered-list>
+        </div>
+      </ng-container>
+
+      <ng-template #basicSetting>
+        <!-- basic inputs -->
+        <app-basic-setting class="block" [setting]="_setting" [disabled]="disabled" [ngModel]="_currentValue"
+          (ngModelChange)="updateValue($event)"
+          (blured)="updateValue(_basicSettingsValueCache!, _currentValue !== _basicSettingsValueCache)">
+        </app-basic-setting>
+      </ng-template>
+    </ng-container>
+  </ng-container>
+
+  <span class="unlock-button" [class.bg-blue]="!isLocked" [class.bg-gray-500]="isLocked" *ngIf="lockDefaults"
+    snfgTooltipPosition="left" [sfng-tooltip]="lockTooltip" (click)="toggleLock()">
+
+    <svg viewBox="0 0 24 24" class="w-4 h-4 text-white" stroke="currentColor" *ngIf="isLocked">
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="inner">
+        <path shape-rendering="geometricPrecision"
+          d="M13.7678 10.2322c.976311.976311.976311 2.55922 0 3.53553-.976311.976311-2.55922.976311-3.53553 0-.976311-.976311-.976311-2.55922 0-3.53553.976311-.976311 2.55922-.976311 3.53553 0" />
+        <path shape-rendering="geometricPrecision"
+          d="M14.849 4.12l.583.194c.534.178.895.678.895 1.241v.837c0 .712.568 1.293 1.28 1.308l.838.018c.485.01.925.289 1.142.723l.275.55c.252.504.153 1.112-.245 1.51l-.592.592c-.503.503-.512 1.316-.02 1.83l.58.606c.336.351.45.858.296 1.319l-.194.583c-.178.534-.678.895-1.241.895h-.837c-.712 0-1.293.568-1.308 1.28l-.018.838c-.01.485-.289.925-.723 1.142l-.55.275c-.504.252-1.112.153-1.51-.245l-.592-.592c-.503-.503-1.316-.512-1.83-.02l-.606.58c-.351.336-.858.45-1.319.296l-.583-.194c-.534-.178-.895-.678-.895-1.241v-.837c0-.712-.568-1.293-1.28-1.308l-.838-.018c-.485-.01-.925-.289-1.142-.723l-.275-.55c-.252-.504-.153-1.112.245-1.51l.592-.592c.503-.503.512-1.316.02-1.83l-.58-.606c-.337-.352-.451-.86-.297-1.32l.194-.583c.178-.534.678-.895 1.241-.895h.837c.712 0 1.293-.568 1.308-1.28l.018-.838c.012-.485.29-.925.724-1.142l.55-.275c.504-.252 1.112-.153 1.51.245l.592.592c.503.503 1.316.512 1.83.02l.606-.58c.351-.335.859-.449 1.319-.295z" />
+      </g>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" data-name="Layer 1" viewBox="0 0 24 24" class="w-4 h-4 text-white"
+      fill="none" stroke=" currentColor" *ngIf="!isLocked">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" fill="currentColor"
+        d="M19 21h-3a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2Z" />
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M19 9h-3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2ZM5 3h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM5 15h3a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2Z" />
+    </svg>
+  </span>
+
+  <ng-template #lockTooltip>
+    <ng-template [ngIf]="isLocked" [ngIfElse]="unlockedTooltip">
+      Inherited from <a [routerLink]="['/settings']" [queryParams]="{setting: setting?.Key}"
+        class="cursor-pointer hover:underline">Global Settings</a>
+    </ng-template>
+    <ng-template #unlockedTooltip>
+      App specific configuration
+    </ng-template>
+  </ng-template>
+</div>
+
+<div *ngIf="userConfigured" class="flex justify-end mt-2" [@fadeIn] [@fadeOut]>
+  <span class="cursor-pointer text-tertiary hover:text-yellow" tabindex="0" (click)="resetValue()">
+    {{resetLabelText}}
+  </span>
+</div>
+
+<ng-template #helpTemplate>
+  <div class="relative flex flex-col overflow-hidden max-w-1/3vw">
+    <fa-icon class="absolute top-0 right-0 mt-2 mr-2 opacity-50 cursor-pointer hover:opacity" icon="times"
+      (click)="closeHelpDialog()"></fa-icon>
+    <h1>{{ _setting?.Name }}</h1>
+
+    <markdown emoji [data]="_setting?.Help" class="flex-grow block overflow-auto"></markdown>
+  </div>
+</ng-template>

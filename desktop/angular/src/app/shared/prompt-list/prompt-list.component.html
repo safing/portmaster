@@ -1,0 +1,68 @@
+<div class="flex flex-col scrollable" [@moveInOutList]="profiles.length">
+  <div class="group" *ngFor="let profile of profiles; trackBy: trackProfile">
+    <div class="group-header">
+      <app-icon [profile]="profile"></app-icon>
+      <span class="app-name">{{ profile.Name }}</span>
+      <span class="prompt-count info-circle">{{ profile.prompts.length }}</span>
+      <app-menu-trigger [menu]="menu"></app-menu-trigger>
+      <app-menu #menu>
+        <app-menu-group>Per Connection</app-menu-group>
+        <app-menu-item (click)="allowAll(profile)">Allow All</app-menu-item>
+        <app-menu-item (click)="denyAll(profile)">Block All</app-menu-item>
+
+        <app-menu-group>Default Action</app-menu-group>
+        <app-menu-item (click)="changeDefault(profile, 'permit')">Allow App</app-menu-item>
+        <app-menu-item (click)="changeDefault(profile, 'block')">Block App</app-menu-item>
+
+        <app-menu-item class="item-seperator" [routerLink]="['/', 'app', profile.Source, profile.ID]"
+          [queryParams]="{setting: 'filter/defaultAction', tab: 'settings'}">Change Default</app-menu-item>
+
+        <app-menu-item class="item-seperator" [routerLink]="['/', 'app', profile.Source, profile.ID]">
+          App Settings
+        </app-menu-item>
+      </app-menu>
+    </div>
+
+    <div class="prompts">
+      <div class="border"></div>
+      <div class="prompt-container"
+        [@moveInOutList]="(profile.showAll ? profile.prompts : profile.promptsLimited).length">
+        <div class="prompt"
+          *ngFor="let prompt of (profile.showAll ? profile.prompts : profile.promptsLimited); trackBy: trackPrompts">
+          <span class="entity">
+            <ng-container *ngIf="!prompt.domain; else: domainView">
+              {{ prompt.EventData?.Entity?.IP || 'N/A' }}
+            </ng-container>
+            <ng-template #domainView>
+              <span *ngIf="!!prompt.subdomain" class="subdomain">{{prompt.subdomain}}.</span>{{prompt.domain}}
+            </ng-template>
+          </span>
+
+          <span class="actions">
+            <button (click)="allow(prompt)">Allow</button>
+            <button (click)="block(prompt)">Block</button>
+          </span>
+        </div>
+        <div class="more-available" *ngIf="!profile.showAll" (click)="profile.showAll = true">
+          {{ profile.prompts.length - profile.promptsLimited.length }}
+          more
+        </div>
+
+        <div class="more-available" *ngIf="profile.showAll && profile.promptsLimited.length < profile.prompts.length"
+          (click)="profile.showAll = false">
+          Show less
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="no-prompts" *ngIf="profiles.length === 0">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"
+      class="w-12 h-12">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+
+    No Prompts
+  </div>
+</div>

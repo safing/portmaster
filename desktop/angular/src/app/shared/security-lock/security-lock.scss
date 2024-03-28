@@ -1,0 +1,120 @@
+svg.shield {
+  width: 100%;
+  max-width: 7.25rem;
+
+  transform: scale(0.95);
+
+  path {
+    top: 0px;
+    left: 0px;
+    transform-origin: center center;
+  }
+
+  .shield-one {
+    transform: scale(.62);
+  }
+
+  .shield-two {
+    animation-delay: -1.2s;
+    opacity: .6;
+    transform: scale(.8);
+  }
+
+  .shield-three {
+    animation-delay: -2.5s;
+    opacity: .4;
+    transform: scale(1);
+  }
+
+  &.text-green-300 {
+    filter: saturate(1.4);
+
+    .shield-one {
+      fill: var(--protection-ok-primary);
+    }
+
+
+    .shield-two {
+      fill: var(--protection-ok-secondary);
+    }
+
+    .shield-three {
+      fill: var(--protection-ok-tertiary);
+    }
+
+    .shield-warn,
+    .shield-fail {
+      display: none;
+    }
+
+    .shield-ok {
+      stroke: var(--background);
+      fill: none;
+      transform: scale(.5);
+    }
+  }
+
+  &.text-yellow-300 {
+    filter: saturate(1.3);
+
+    .shield-one {
+      fill: var(--protection-warn-primary);
+    }
+
+    .shield-three,
+    .shield-two {
+      //animation: shield-pulse 3s linear;
+    }
+
+    .shield-two {
+      fill: var(--protection-warn-secondary);
+    }
+
+    .shield-three {
+      fill: var(--protection-warn-tertiary);
+    }
+
+    .shield-ok,
+    .shield-fail {
+      display: none;
+    }
+
+    .shield-warn {
+      stroke: var(--background);
+      fill: none;
+      transform: scale(.5);
+    }
+  }
+
+  &.text-red-300 {
+    filter: saturate(1.3);
+
+    .shield-one {
+      fill: var(--protection-fail-primary);
+    }
+
+    .shield-three,
+    .shield-two {
+      //animation: shield-pulse 3s linear reverse;
+    }
+
+    .shield-two {
+      fill: var(--protection-fail-secondary);
+    }
+
+    .shield-three {
+      fill: var(--protection-fail-tertiary);
+    }
+
+    .shield-warn,
+    .shield-ok {
+      display: none;
+    }
+
+    .shield-fail {
+      stroke: var(--background);
+      fill: none;
+      transform: scale(.45);
+    }
+  }
+}

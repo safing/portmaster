@@ -1,0 +1,234 @@
+---
+BootstrapHubs:
+- tcp://[2a01:4f8:172:3753::2]:17#Zwtb8EKMatnMRkW1VaLh8CPV3QswD9iuRU4Sda8uLezUkC # fogos [DE]
+- tcp://[2a01:4f9:2a:d48::2]:17#Zwkwujs345P4ZygNZcEafawTqfZieCBVogQZ3xZPWiu7BU # heleus [FI]
+- tcp://138.201.140.70:17#Zwtb8EKMatnMRkW1VaLh8CPV3QswD9iuRU4Sda8uLezUkC # fogos [DE]
+- tcp://95.216.13.61:17#Zwkwujs345P4ZygNZcEafawTqfZieCBVogQZ3xZPWiu7BU # heleus [FI]
+
+Hubs:
+  ZwhpYS1jWzXvPYKFhJqh1ZD3bKquLLoSoJ6RjeshmcXoFx: # voria [US]
+    Trusted: true
+    VerifiedOwner: Safing
+    Override:
+      CountryCode: US
+      Coordinates: # Ashburn, VA
+        Latitude: 39.04
+        Longitude: -77.48
+        AccuracyRadius: 20
+  ZwkAKBoyEd3PkE5RGDNmghahzHiBiTZA7Mg3XH7X3HjS39: # noru [US]
+    Trusted: true
+    VerifiedOwner: Safing
+  ZwkapJz5HFWpgd9PHsZLVueBu9PDmTJHKp382Wm9MB2EB7: # lovas [US]
+    Trusted: true
+    VerifiedOwner: Safing
+    Override:
+      CountryCode: US
+      Coordinates: # Los Angeles, CA
+        Latitude: 34.03
+        Longitude: -118.15
+        AccuracyRadius: 20
+  ZwkLShvVYvQFGmpY1MNhSSPXCktojywMVtv2N86mFbNH4w: # tooina [CA]
+    Trusted: true
+    VerifiedOwner: Safing
+  Zwkwujs345P4ZygNZcEafawTqfZieCBVogQZ3xZPWiu7BU: # heleus [FI]
+    Trusted: true
+    VerifiedOwner: Safing
+  Zwm72XieV6aeNKbwtJW8JdPUwT1hopQaLanLXjxcTfV3B9: # mergan [US]
+    Trusted: true
+    VerifiedOwner: Safing
+  Zwmp5SgUK9FidWBSCDK4d6dyRp3vhz3dQdwma1E4TMfiRw: # grenenia [FR]
+    Trusted: true
+    VerifiedOwner: Safing
+    Override:
+      CountryCode: FR
+      Coordinates: # Gravelines
+        Latitude: 50.59
+        Longitude: 2.07
+        AccuracyRadius: 20
+  ZwnFd1bSQrBegPZqFkS7DZU29x4PbojpFmTQFUnzQoicKp: # telos [IL]
+    Trusted: true
+    VerifiedOwner: Safing
+  Zwpg5FoXYVYidzgbdvDyvBBcrArmmHvK9nH3v7KDHiywtt: # melcor [PL]
+    Trusted: true
+    VerifiedOwner: Safing
+  ZwpsJpwngWyba54AbVkCawcRQ2HP37RRQAgj5LHNR2svRf: # soalis [AU]
+    Trusted: true
+    VerifiedOwner: Safing
+  Zwpy5hbrQkKznJwbUmn9WpJwGkpWD9VqE2pi9yfMDQM7PK: # rin9 [FR]
+    Trusted: true
+    VerifiedOwner: Safing
+    Override:
+      CountryCode: FR
+      Coordinates: # Strasbourg
+        Latitude: 48.35
+        Longitude: 7.45
+        AccuracyRadius: 20
+  ZwqANMrhcyJZb8cRMEd3FdPcXY7ZbvviPPfTUQpLNau12J: # sulkam [GB]
+    Trusted: true
+    VerifiedOwner: Safing
+  ZwwBspMhigqcEYv2cryipzJsi4vkHhnBqUmDmkJ2xizGFx: # surn [US]
+    Trusted: true
+    VerifiedOwner: Safing
+    Override:
+      CountryCode: US
+      Coordinates: # Seattle, WA
+        Latitude: 47.36
+        Longitude: -122.19
+        AccuracyRadius: 20
+  ZwsvsES3SHz1VLnwFPxDbW6DC8Esp1PiEtUHxGnm4BTYHt: # fungvis [DE]
+    Trusted: true
+    VerifiedOwner: Safing
+  Zwtb8EKMatnMRkW1VaLh8CPV3QswD9iuRU4Sda8uLezUkC: # fogos [DS]
+    Trusted: true
+    VerifiedOwner: Safing
+  ZwtfvBuq5wkKYRth8rGCuGyp42nMe4doASUDJiDHJ8iucn: # vamalla [AT]
+    Trusted: true
+    VerifiedOwner: Safing
+  ZwtjwvdPxG4u7oB2zmNJFvsDy5VDLT9UArDkYDGfC9bkDt: # carros [US]
+    Trusted: true
+    VerifiedOwner: Safing
+  ZwvMZt6RcrrRuCdufjApnosxWbzsP8rTPRuHGeHu5KU241: # syniru [SG]
+    Trusted: true
+    VerifiedOwner: Safing
+    Override:
+      CountryCode: SG
+      Coordinates: # Singapore
+        Latitude: 1.18
+        Longitude: 103.50
+        AccuracyRadius: 20
+  ZwvyDLz8221fcSBw6GKZNDnwEn4YmE9m7JPieLUVe7iGR9: # calla [CA]
+    Trusted: true
+    VerifiedOwner: Safing
+  Zwvz9S6uyxn4ww1JGqJiisGMDmH2hz6mhwutmJXvTtwQww: # cidai [US]
+    Trusted: true
+    VerifiedOwner: Safing
+  ZwxJvZDZH18RUEQ3oFcR5uCqeXJaqkoi9P5Sj1aZ62HPin: # nutis [DE]
+    Trusted: true
+    VerifiedOwner: Safing
+  ZwvPQVFkoDbx3J6qThNwfLHZqwvFgUYLYtirCHVd7FfjBz: # perturn [CZ]
+    Trusted: true
+    VerifiedOwner: Safing
+    Override:
+      CountryCode: CZ
+      Coordinates: # Prague
+        Latitude: 50.05
+        Longitude: 14.25
+        AccuracyRadius: 100
+  Zwj52Q7d5ezvFk7HKB42dBtFu152bC9JasYF7BHB724RfG: # sono [NL]
+    Trusted: true
+    VerifiedOwner: Safing
+  ZwmhYMEmw36CzgVUp9sLjoK3gkVDWdMPiupEcekpTAXur8: # ivtos [TR]
+    Trusted: true
+    VerifiedOwner: Safing
+    Override:
+      CountryCode: TR
+      Coordinates: # Izmir
+        Latitude: 38.25
+        Longitude: 27.90
+        AccuracyRadius: 20
+  Zwm9JX1hBNUUvSYc3gpMhmw84ay45SuyXE7D2UgETM7XCn: # porcania [PT]
+    Trusted: true
+    VerifiedOwner: Safing
+  ZwxE83uRV9LcM8Bm3QjXjjejNRhBBBJAethPf14R6gcZwf: # steepeus [SE]
+    Trusted: true
+    VerifiedOwner: Safing
+
+InfoOverrides:
+  workaround:
+    for: bug
+
+AdviseOnlyTrustedHubs: false
+AdviseOnlyTrustedHomeHubs: true
+AdviseOnlyTrustedDestinationHubs: false
+
+HomeHubAdvisory:
+- "- Zwj52Q7d5ezvFk7HKB42dBtFu152bC9JasYF7BHB724RfG" # sono [NL] is too slow for home hub
+- "- Zwm9JX1hBNUUvSYc3gpMhmw84ay45SuyXE7D2UgETM7XCn" # porcania [PT] is too slow for home hub
+- "- ZwmhYMEmw36CzgVUp9sLjoK3gkVDWdMPiupEcekpTAXur8" # ivtos [TR] is too slow for home hub
+- "- ZwvPQVFkoDbx3J6qThNwfLHZqwvFgUYLYtirCHVd7FfjBz" # perturn [CZ] is too slow for home hub
+
+Regions:
+- ID: europe
+  Name: Europe
+  RegionalMinLanes: 5
+  RegionalMinLanesPerHub: 0.7
+  RegionalMaxLanesOnHub: 2
+  SatelliteMinLanes: 2
+  SatelliteMinLanesPerHub: 0.3
+  InternalMinLanesOnHub: 3
+  InternalMaxHops: 3
+  MemberPolicy:
+  - "+ AD"
+  - "+ AL"
+  - "+ AT"
+  - "+ AX"
+  - "+ BA"
+  - "+ BE"
+  - "+ BG"
+  - "+ BY"
+  - "+ CH"
+  - "+ CZ"
+  - "+ DE"
+  - "+ DK"
+  - "+ EE"
+  - "+ ES"
+  - "+ FI"
+  - "+ FO"
+  - "+ FR"
+  - "+ GB"
+  - "+ GG"
+  - "+ GI"
+  - "+ GR"
+  - "+ HR"
+  - "+ HU"
+  - "+ IE"
+  - "+ IM"
+  - "+ IS"
+  - "+ IT"
+  - "+ JE"
+  - "+ LI"
+  - "+ LT"
+  - "+ LU"
+  - "+ LV"
+  - "+ MC"
+  - "+ MD"
+  - "+ ME"
+  - "+ MK"
+  - "+ MT"
+  - "+ NL"
+  - "+ NO"
+  - "+ PL"
+  - "+ PT"
+  - "+ RO"
+  - "+ RS"
+  - "+ RU"
+  - "+ SE"
+  - "+ SI"
+  - "+ SJ"
+  - "+ SK"
+  - "+ SM"
+  - "+ UA"
+  - "+ VA"
+- ID: north-america
+  Name: "North America"
+  RegionalMinLanes: 5
+  RegionalMinLanesPerHub: 0.7
+  RegionalMaxLanesOnHub: 2
+  SatelliteMinLanes: 2
+  SatelliteMinLanesPerHub: 0.3
+  InternalMinLanesOnHub: 3
+  InternalMaxHops: 3
+  MemberPolicy:
+  - "+ BM"
+  - "+ BZ"
+  - "+ CA"
+  - "+ CR"
+  - "+ GL"
+  - "+ GT"
+  - "+ HN"
+  - "+ MX"
+  - "+ NI"
+  - "+ PA"
+  - "+ PM"
+  - "+ SV"
+  - "+ US"

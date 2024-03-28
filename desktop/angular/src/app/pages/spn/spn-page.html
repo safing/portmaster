@@ -1,0 +1,102 @@
+<ng-container *ngIf="(mapService.status$ | async) as status">
+  <div *ngIf="status === 'connected'"
+    class="absolute z-10 flex flex-col items-center justify-center gap-2 text-xs font-medium top-4 left-4 right-4">
+    <div class="flex flex-col items-center justify-center gap-2">
+
+      <div
+        class="flex flex-row items-center justify-center w-full gap-2 px-4 bg-gray-300 rounded-sm bg-opacity-90 text-xxs"
+        [@fadeIn] *ngIf="loading">
+        <fa-icon icon="circle-notch" [spin]="true" class="py-3"></fa-icon>
+        Loading data, please wait ...
+      </div>
+    </div>
+  </div>
+
+  <div class="absolute top-0 bottom-0 left-0 flex flex-row items-start justify-start w-full h-full"
+    [class.w-full]="currentUser === null || status === 'disabled'">
+    <div
+      class="z-10 flex flex-col items-center justify-center flex-grow h-full bg-white bg-opacity-90 backdrop-filter backdrop-blur-sm"
+      *ngIf="!currentUser || status === 'disabled'">
+
+      <spn-feature-carousel class="w-full p-10 mb-6 overflow-visible h-1/2">
+      </spn-feature-carousel>
+
+      <div class="flex flex-col items-center justify-center gap-4">
+        <button (click)="openAccountDetails()" *ngIf="!currentUser?.current_plan?.feature_ids?.includes(featureID)"
+          class="w-56 px-5 py-2 font-medium uppercase rounded-full bg-blue bg-opacity-90 hover:bg-blue text-primary">
+          Login
+        </button>
+
+        <button (click)="toggleSPN()" *ngIf="currentUser?.current_plan?.feature_ids?.includes(featureID)"
+          class="w-56 px-5 py-2 font-medium text-white uppercase rounded-full bg-blue bg-opacity-90 hover:bg-blue">
+          Enable the SPN
+        </button>
+
+        <a href="https://safing.io/pricing/?source=Portmaster"
+          class="w-56 px-5 py-2 font-medium text-center text-white uppercase rounded-full bg-background bg-opacity-90 hover:bg-background">
+          Pricing
+        </a>
+      </div>
+    </div>
+  </div>
+</ng-container>
+
+
+<div class="absolute top-0 right-0 z-10 flex gap-2 mt-4 mr-4">
+  <!-- DISABLED for now as it causes a lot of confusion ...
+
+  <sfng-toggle class="inline-block" [ngModel]="liveMode" (ngModelChange)="toggleLiveMode($event)"></sfng-toggle>
+
+  -->
+  <app-expertise></app-expertise>
+</div>
+
+<div class="relative flex-grow h-full">
+  <spn-map-renderer class="block w-full h-full" mapId="spn-map"
+    [class.disabled]="!currentUser || (mapService.status$ | async) === 'disabled'">
+  </spn-map-renderer>
+
+  <spn-map-country-overlay *ngIf="hoveredCountry as ctry" class="absolute right-10 bottom-10"
+    [countryCode]="ctry.countryCode" [countryName]="ctry.countryName"></spn-map-country-overlay>
+
+  <spn-map-legend *ngIf="!hoveredCountry" class="absolute right-10 bottom-10"></spn-map-legend>
+
+  <div class="absolute bottom-1.5 left-0 right-0 flex items-center justify-center gap-1 text-secondary"
+    *ngIf="!!proTipTemplate">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 -mt-0.5 " viewBox="0 0 20 20" fill="currentColor">
+      <path
+        d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+    </svg>
+    <span class="font-semibold ">Pro Tip:</span>
+    <ng-container *ngTemplateOutlet="proTipTemplate"></ng-container>
+  </div>
+
+  <!-- we use a customer overlay container for all overlays created using the CdkOverlayService here -->
+  <div class="absolute top-0 bottom-0 left-0 right-0 pointer-events-none" #overlayContainer></div>
+</div>
+
+<ng-container>
+  <ng-template #proTip>
+    Hold <b>
+      <pre>CTRL</pre></b> key and click a node on the map to immediately open the node details dialog.
+  </ng-template>
+
+  <ng-template #proTip>
+    Hold <b>
+      <pre>SHIFT</pre></b> key to open more than one node overlay when clicking the node icon.
+  </ng-template>
+
+  <ng-template #proTip>
+    To keep node overlays open move them using
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+      class="inline-block w-4 h-4 opacity-75 hover:opacity-100">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+    </svg>. Double click to revert the overlay position on the map.
+  </ng-template>
+
+  <ng-template #proTip>
+    Click on a country to get more information about all nodes in that country and a list of Apps that use nodes in the
+    country as an identity.
+  </ng-template>
+</ng-container>

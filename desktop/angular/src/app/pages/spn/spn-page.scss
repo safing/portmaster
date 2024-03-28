@@ -1,0 +1,143 @@
+:host {
+  @apply flex flex-row w-full h-full justify-items-stretch items-stretch relative;
+}
+
+.text-info-red {
+  color: theme("colors.info.red");
+}
+
+.network-status-dialog {
+  width: 50vw;
+  height: 50vh;
+  min-height: 300px;
+  min-width: 400px;
+  padding: 12px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+
+  .issue {
+    flex-grow: 1;
+  }
+
+  .issue-list {
+    width: 100% !important;
+    flex-grow: 1;
+
+    ul {
+      overflow: auto;
+    }
+  }
+
+  .issue.expanded {
+    background-color: var(--button-light) !important;
+  }
+
+  .body {
+    background-color: var(--cards-primary) !important;
+  }
+}
+
+.connect-button {
+
+  &.spn-connected {
+    @apply bg-info-blue;
+  }
+
+  &.spn-connecting {
+    @apply bg-info-blue;
+  }
+
+  &.spn-failed {
+    @apply bg-info-red;
+  }
+
+  &:hover {
+    @apply bg-info-blue opacity-75;
+  }
+}
+
+.table {
+  @apply w-full font-normal;
+
+  &>div {
+    @apply text-xs border-buttons-dark flex flex-row justify-between py-1;
+
+    &:not(:last-child) {
+      @apply border-b;
+    }
+
+    span:first-child {
+      @apply text-tertiary;
+    }
+
+    span:last-child {
+      @apply text-primary;
+    }
+  }
+}
+
+
+table tr:nth-child(odd) {
+  background: none;
+}
+
+
+.tunnel-path {
+  position: relative;
+
+  .line {
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 8px;
+    width: 1px;
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+
+  ul {
+    position: relative;
+    padding-left: 20px;
+
+    li:not(:last-of-type) {
+      padding-bottom: 0.35rem;
+    }
+
+    .ip {
+      margin-left: 0.35rem;
+    }
+
+    .hop-icon {
+      display: inline-block;
+      margin-left: -17px;
+      margin-right: 4px;
+      font-weight: 400;
+
+      &.country {
+        margin-left: -20px;
+      }
+    }
+
+    .hop-title {
+      margin-right: 2px;
+    }
+
+    .country {
+      display: inline-block;
+      margin-left: -20px;
+      margin-right: 4px;
+
+      &.unknown {
+        height: 14px;
+        width: 16px;
+        position: relative;
+        top: 3px;
+        border: 1px solid rgba(0, 0, 0, 0.25);
+        opacity: 0.5;
+        border-radius: 3px;
+        @apply bg-buttons-icon;
+      }
+    }
+  }
+}

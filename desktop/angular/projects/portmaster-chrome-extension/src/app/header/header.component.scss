@@ -1,0 +1,29 @@
+svg {
+  transform: scale(0.95);
+
+  path {
+    top: 0px;
+    left: 0px;
+    transform-origin: center center;
+  }
+
+  .shield-one {
+    transform: scale(.62);
+  }
+
+  .shield-two {
+    animation-delay: -1.2s;
+    opacity: .6;
+    transform: scale(.8);
+  }
+
+  .shield-three {
+    animation-delay: -2.5s;
+    opacity: .4;
+    transform: scale(1);
+  }
+
+  .shield-ok {
+    transform: scale(.62);
+  }
+}

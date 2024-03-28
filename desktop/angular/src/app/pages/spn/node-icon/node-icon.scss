@@ -1,0 +1,38 @@
+svg {
+
+  circle,
+  polygon {
+    fill: #626262;
+    stroke: #626262;
+    stroke-width: 1;
+    stroke-linejoin: round;
+    transition: all 200ms linear 0s;
+  }
+
+  polygon.active,
+  polygon.exit {
+    fill: #0376bb;
+    stroke: #0376bb;
+    transform: scale(1.15)
+  }
+
+  circle.active,
+  circle.exit {
+    fill: #239215;
+    stroke: #239215;
+    transform: scale(1.15)
+  }
+
+  circle.exit,
+  polygon.exit {
+    stroke-width: 2;
+  }
+
+  circle.exit {
+    stroke: #30ae20;
+  }
+
+  polygon.exit {
+    stroke: #039af4;
+  }
+}

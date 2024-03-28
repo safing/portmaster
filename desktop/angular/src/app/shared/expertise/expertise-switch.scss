@@ -1,0 +1,12 @@
+:host {
+  display: flex;
+  @apply pl-2;
+  user-select: none;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+sfng-tipup {
+  margin-right: 0.5rem;
+}

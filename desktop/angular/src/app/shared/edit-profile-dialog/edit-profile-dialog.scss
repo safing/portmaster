@@ -1,0 +1,29 @@
+:host {
+  @apply flex flex-col gap-4 max-w-2xl;
+  min-width: 500px;
+  width: 60vw;
+}
+
+.tab-content {
+  @apply flex flex-col gap-4 overflow-x-hidden h-96 pt-2;
+}
+
+.input {
+  @apply flex flex-col gap-1;
+
+  label {
+    @apply text-primary uppercase text-xxs relative left-1.5;
+  }
+
+  input[type="text"] {
+    @apply border border-gray-500;
+
+    &.ng-invalid.ng-dirty {
+      @apply border-red-200;
+    }
+  }
+
+  input[type="file"] {
+    display: none;
+  }
+}

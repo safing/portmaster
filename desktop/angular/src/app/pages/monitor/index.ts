@@ -1,0 +1,1 @@
+export { MonitorPageComponent } from './monitor';

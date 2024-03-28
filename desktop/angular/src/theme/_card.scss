@@ -1,0 +1,110 @@
+.card-header {
+  display        : flex;
+  align-items    : center;
+  cursor         : pointer;
+  outline        : none;
+  justify-content: space-between;
+  @apply text-xs;
+  @apply font-medium;
+  margin-top             : 5px;
+  padding-top            : 0.65rem;
+  padding-bottom         : 0.65rem;
+  padding-left           : 0.65rem;
+  padding-right          : 0.65rem;
+  border-top-left-radius : 4px;
+  border-top-right-radius: 4px;
+  background-color       : #202020e0;
+
+  &:not(.open) {
+    border-radius: 4px;
+  }
+
+  &>*:not(:last-child) {
+    @apply mr-1;
+  }
+
+  &>app-icon:not(:last-child) {
+    @apply mr-2;
+  }
+
+  &:hover {
+    background-color: #292929b0;
+  }
+
+  &.active {
+    background-color: #303030;
+
+    app-count-indicator {
+      background-color: #474747;
+
+      div.state {
+        background-color: #5c5c5c;
+
+      }
+    }
+  }
+
+  &>app-icon {
+    --app-icon-size: 22px;
+  }
+
+  .card-title {
+    flex-grow    : 1;
+    overflow     : hidden;
+    white-space  : nowrap;
+    text-overflow: ellipsis;
+    font-size    : 0.7rem;
+    font-weight  : 600;
+    color        : #cacaca;
+    margin-left  : 3px;
+
+    .card-sub-title {
+      display   : block;
+      font-size : 0.8em;
+      margin-top: -3px;
+      @apply text-tertiary;
+      text-overflow: ellipsis;
+      overflow     : hidden;
+    }
+  }
+
+  .card-actions {
+    @apply mr-2;
+
+    span {
+      display   : inline-block;
+      text-align: center;
+      min-width : 5rem;
+      @apply px-2;
+      @apply rounded;
+      @apply text-xs;
+
+      padding-top   : 0.1rem;
+      padding-bottom: 0.1rem;
+
+      // TODO(ppacher): this is actually a "toggle-switch" / radio-button
+      // component. make it one.
+      &.selected {
+        @apply bg-buttons-dark;
+      }
+
+      &:hover {
+        @apply bg-buttons-light;
+      }
+    }
+  }
+}
+
+.card-content {
+  @apply bg-cards-secondary;
+  @apply rounded-b;
+
+  @apply py-2;
+  @apply px-4;
+  @apply mb-2;
+
+  display        : flex;
+  flex-direction : column;
+  flex           : 1 0;
+  justify-content: space-between;
+}

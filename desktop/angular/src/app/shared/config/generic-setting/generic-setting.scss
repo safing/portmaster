@@ -1,0 +1,97 @@
+:host {
+  @apply block;
+
+  &.ng-invalid {
+    @apply border border-red border-opacity-50;
+  }
+
+  &.rejected {
+    .release-level.rejected {
+      opacity: 1;
+    }
+  }
+
+  &.highlighted:not(.touched) {
+    .name {
+      animation: fade-color 5s ease-out;
+    }
+  }
+}
+
+.stacked-values {
+  margin-top: 0.5rem;
+  opacity: 0.7;
+  @apply w-full;
+}
+
+.unlock-button {
+  @apply flex w-6 h-6 rounded-full;
+
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+
+  position: absolute;
+  right: calc(-1.5rem/2);
+  top: calc(50% - 1.5rem/2);
+
+  &:hover {
+    @apply bg-blue;
+  }
+}
+
+.description,
+.help-text {
+  display: block;
+  @apply text-secondary;
+}
+
+.help-text {
+  @apply mb-2;
+}
+
+.notice {
+  display: block;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  @apply mb-4;
+  @apply text-secondary;
+
+  fa-icon {
+    @apply mr-2;
+  }
+}
+
+.help-text {
+  @apply p-4;
+  @apply bg-cards-secondary;
+  @apply rounded;
+
+  .toggle {
+    position: relative;
+    left: -0.25rem;
+    cursor: pointer;
+
+    fa-icon {
+      @apply pr-1;
+    }
+
+    &:hover {
+      @apply text-primary;
+    }
+  }
+}
+
+@keyframes fade-color {
+  0% {
+    @apply text-blue;
+  }
+
+  90% {
+    @apply text-blue;
+  }
+
+  100% {
+    @apply text-primary;
+  }
+}

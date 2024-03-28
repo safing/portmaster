@@ -1,0 +1,20 @@
+h4.breadcrumbs {
+  * {
+    margin-left : 0.125rem;
+    margin-right: 0.125rem;
+  }
+
+  span {
+    outline: none;
+    @apply text-secondary;
+
+    &:hover {
+      @apply text-primary;
+      text-decoration: underline;
+    }
+
+    &:last-of-type {
+      @apply text-primary;
+    }
+  }
+}

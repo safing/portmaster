@@ -1,0 +1,370 @@
+###########
+### Example
+
+myKey:
+  title: Tipup Example
+  content: |
+    This is the Markdown formatted content.
+
+    This is a super cool, new feature that you will love!
+    It even supports markdown features like:
+    - order lists
+    - with multiple items
+
+    And :rocket: emojis
+
+    ### :tada: :facepalm:
+  url: https://docs.safing.io/?source=Portmaster
+  urlText: Show me!
+  nextKey: navMonitor
+
+##############
+### Navigation
+
+introTipup:
+  title: Hey there!
+  content: |
+    Thanks for installing the Portmaster.
+
+intro:
+  title: Portmaster Tips
+  content: |
+    Open tips to learn how the Portmaster work.
+
+    Tips like this one are found throughout the Portmaster. With some tips you can tour an element or a feature, like this:
+  nextKey: navShield
+
+navShield:
+  title: Status Shield & Dashboard
+  content: |
+    The shield gives you a high level overview of Portmaster's status. If turns any other color than green, look for a notification that tells you what is going on.
+
+    __Click the shield in order to open the dashboard.__
+  nextKey: navMonitor
+
+navMonitor:
+  title: Network Monitor
+  content: |
+    Oversee and investigate everything happening on your device.
+  nextKey: navApps
+  buttons:
+    - name: Take the tour
+      action:
+        Type: open-page
+        Payload: monitor
+      nextKey: networkMonitor
+
+navApps:
+  title: Per-App Settings
+  content: |
+    Configure per-app settings which override the global default.
+  nextKey: navMap
+  buttons:
+    - name: Take the tour
+      action:
+        Type: open-page
+        Payload: apps
+      nextKey: appsTitle
+
+navMap:
+  title: SPN Map
+  content: |
+    View the SPN map and see how your connections are routed.
+  nextKey: navSettings
+
+navSettings:
+  title: Global Settings
+  content: |
+    Configure global Portmaster settings.
+  nextKey: navSupport
+  buttons:
+    - name: Take the tour
+      action:
+        Type: open-page
+        Payload: settings
+      nextKey: globalSettings
+
+navSupport:
+  title: Get Help
+  content: |
+    Report a bug, contact support or view the extended Portmaster docs.
+  nextKey: navTools
+  buttons:
+    - name: Open Page
+      action:
+        Type: open-page
+        Payload: support
+
+navTools:
+  title: Version and Tools
+  content: |
+    View the Portmaster's version and use special actions and tools.
+  nextKey: navPower
+
+navPower:
+  title: Shutdown and Restart
+  content: |
+    Shutdown or Restart Portmaster.
+  nextKey: uiMode
+
+uiMode:
+  title: UI Mode
+  content: |
+    Quickly change the amount of settings and information shown.
+
+    Hidden settings are still in effect. After closing the User Interface it changes back to the default.
+  buttons:
+    - name: Change Default UI Mode
+      action:
+        Type: "open-setting"
+        Payload:
+          Key: "core/expertiseLevel"
+
+############
+### Sidedash
+
+pilot-widget:
+  title: Portmaster Status
+  content: |
+    This shield shows you the current state of the Portmaster:
+
+    - 🟢 all is well
+    - 🟡 something is off, please investigate
+    - 🔴 dangerous condition, respond immediately
+
+    This color code is also displayed as part of the icon in the system tray.
+
+pilot-widget-NetworkRating:
+  title: Network Rating
+  content: |
+    Control your privacy even when connecting to new networks.
+
+    In the Portmaster you configure settings to be active in one environment but not in the other, like allowing sensitive connections at home but not at the public library.
+
+    The only thing you have to do is to change the network rating whenever you connect to a different network.
+  nextKey: pilot-widget-NetworkRating-Trusted
+
+pilot-widget-NetworkRating-Trusted:
+  title: "Network Rating: Trusted"
+  content: |
+    You trust the current network to be secure and protect you.
+
+    Examples:
+     - your home network
+     - network of a trusted friends
+  nextKey: pilot-widget-NetworkRating-Untrusted
+
+pilot-widget-NetworkRating-Untrusted:
+  title: "Network Rating: Untrusted"
+  content: |
+    You do not trust the current network and question if it will keep you secure and private.
+
+    Examples:
+     - public WiFi of a coffeeshop, a library, a train, a hotel, ...
+     - network of a non-tech-savvy relative
+  nextKey: pilot-widget-NetworkRating-Danger
+
+pilot-widget-NetworkRating-Danger:
+  title: "Network Rating: Danger"
+  content: |
+    You think that the current network is hacked or otherwise hostile towards you.
+
+    Examples:
+     - something suspicious is going on in your home network
+
+    <small>_Note: In the "Danger" rating the Portmaster will become very protective. This might break functionality of apps or render them useless._</small>
+
+broadcast-info:
+  title: Broadcast Notifications
+  content: |
+    Broadcast Notifications are public messages downloaded by the Portmaster when checking for updates.
+
+    The Portmaster then locally decides which messages should be displayed.
+  url: https://github.com/safing/portmaster/issues/703
+  urlText: Learn More
+
+# TODO
+# prompt-widget:
+#   title: Prompts
+#   content: |
+#     This is where you can more easily control the
+#     connections for the specific app for the time being.
+
+#     How to use? In App settings, search for "Default Action"
+#     and set it to "Prompt".
+
+#     Note: Don't set the "Prompt" setting in your browser,
+#     you will be spammed. You have been warned.
+#   nextKey: notification-widget
+
+# TODO
+# notification-widget:
+#   title: Notifications
+#   content: |
+#     This informs you with what's going on with portmaster.
+#     Ie, Updates, Errors, Warring etc
+
+#############
+### Dashboard
+
+dashboardIntro:
+  title: Dashboard
+  content: |
+    The Dashboard gives you a first overview of Portmaster's active features and what is happening on your device.
+
+    Unless noted otherwise, all graphs and statistics shown are based on what Portmaster has seen in the last 10 minutes and are refreshed every 10 seconds.
+
+########################
+### Network Monitor Page
+
+networkMonitor:
+  title: Network Activity
+  content: |
+    Oversee everything happening on your device.
+
+    Look at all network connections of all applications and processes that were active in the last 10 minutes. Click on any app or process to investigate further.
+
+# TODO: Wait for overview to be more useful.
+# networkMonitor-Overview:
+#   title: Monitor Overview
+#   content: |
+#     This is just a placeholder for the meantime, but this is
+#     just the Network Monitor with 3 stats on it.
+
+# TODO: Wait for revamp of status indication.
+# networkMonitor-App:
+#   title: App Activity
+#   content: |
+#     There are 3 colours. Ie, Green, Red, Gray.
+
+#     Allowed(Green)
+#     The colour green shows that all the connections are allowed in
+#     the app.
+
+#     Blocked(Red)
+#     The colour red shows that all the connections are blocked in
+#     the app.
+
+#     Allowed/Blocked(Gray)
+#     The colour gray shows that some connections are
+#     allowed and blocked in the app.
+
+networkMonitor-App-Focus-connection-history:
+  title: Network Activity
+  content: |
+    Monitor connections as they happen. Click on any connection to view details and to take action.
+    <br /><br />
+    <span class="inline-block">
+      <span class="pill-container">
+        <span class="counter">2k+</span>
+        <span class="pill">
+          <span class="percentage"></span>
+        </span>
+      </span>
+    </span> <b>Status Summary</b>
+    <br /><br />
+    Grouped connections have a colored bar showing the total amount of connections,
+    as well as the percentage between allowed (green) and blocked/failed connections (grey).
+    <br /><br />
+    An individual connection has three states:<br />
+    <span class="verdict accept"></span><span class="verdict accept outdated"></span> <b>Allowed</b> <br />
+    <span class="block verdict"></span><span class="block verdict outdated"></span> <b>Blocked</b> <br />
+    <span class="verdict failed"></span><span class="verdict failed outdated"></span> <b>Failed</b> <br />
+
+    If the circle is full, your _current_ settings allowed or blocked the connection.<br />
+    If the circle is empty, _previous_ settings allowed or blocked the connection.
+    Your current settings could decide differently.
+
+########################
+### Global Settings Page
+
+globalSettings:
+  title: Global Settings
+  content: |
+    Here you can set system-wide preferences and configure default rules for all your apps and connections.
+
+    It is easy to create a stricter global ruleset and then create exceptions in the app settings, which override the global default.
+
+#########################
+### Per-App Settings Page
+
+appsTitle:
+  title: Application Overview
+  content: |
+    All applications or processes that the Portmaster saw being active on the network are listed and can be configured here.
+
+    Apps are categorized and only appear once:
+
+    - **Active:** apps that are currently active and visible in the Network Monitor
+    - **Recently Used:** apps that were active some time within the last week
+    - **Recently Edited:** apps whose settings were edited within the last week
+    - **Other:** all other apps
+
+appSettings:
+  title: App Settings
+  content: |
+    Here you can configure app-specific settings which override the global settings.
+
+    It is easy to create a stricter global ruleset and then create exceptions in the app settings, which override the global default.
+  nextKey: appSettings-Filter
+
+appSettings-Filter:
+  title: Display Mode
+  content: |
+    Quickly change what settings are displayed:
+
+    **View Active:**<br>
+    Only show app-specific settings which override the global default.
+
+    **View All:**<br>
+    Show all settings. App-specific settings which override the global default are highlighted.
+
+appSettings-QuickSettings:
+  title: Quickly Change the Most Important Settings
+  content: |
+    __Block Connections__
+
+    Set the default action for when nothing else allows or blocks an outgoing connection.
+
+    When other settings might overwrite this, a yellow dot next to the toggle will inform you of possible exceptions.
+
+    __SPN__
+
+    Quickly enable or disable SPN for this app.
+
+    When other settings might overwrite this, a yellow dot next to the toggle will inform you of possible exceptions.
+
+    __Keep History__
+
+    Save connections in a database (on disk) in order to view and search them later.
+    
+    Changes might take a couple minutes to apply to all connections.
+
+#########################
+### Support Page
+
+support-page-related-issues:
+  title: Local Issue Search
+  content: |
+    Public issues are only searched for locally so no data leaves your device until you decide so.
+
+    The public GitHub issues are downloaded via our support system to prevent exposure to GitHub.
+
+#########################
+### Configuration Options
+
+spn:
+  title: Safing Privacy Network
+  content: |
+    The Safing Privacy Network (SPN) is a Portmaster Add-On that protects your identity
+    and Internet traffic from prying eyes. It spreads your connections over multiple server,
+    letting you access the Internet from many places at once in order to effectively hide
+    your tracks.
+  url: https://safing.io/spn/?source=Portmaster
+  urlText: Learn More
+
+###########################
+# Process Matching and Fingerprints
+process-tags:
+  title: Process Tags
+  content: Tags holds special metadata of processes and are gathered by Portmaster. You can use these tags in fingerprints to better match processes, which would otherwise be a lot more difficult or impossible to match correctly.

@@ -1,0 +1,28 @@
+label {
+  @apply text-sm;
+}
+
+input[type="checkbox"] {
+  float: right;
+  user-select: none;
+}
+
+.input-container {
+  display: block;
+  position: relative;
+  font-size: 0.75rem;
+
+  input {
+    font-size: inherit;
+  }
+
+  .suffix {
+    user-select: none;
+    position: absolute;
+    left: 0;
+    top: calc(50% - 0.55rem);
+    padding-left: 0.3rem;
+    color: #aaa;
+    font: inherit;
+  }
+}

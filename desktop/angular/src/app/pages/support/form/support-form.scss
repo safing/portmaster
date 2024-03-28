@@ -1,0 +1,253 @@
+:host {
+  width: 100%;
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  height: 100%;
+}
+
+.scroll-container {
+  overflow: auto;
+  margin-right: 1rem;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  flex-grow: 1;
+
+  @apply p-8;
+
+  h3 {
+    opacity: .9;
+    font-size: 0.95rem;
+  }
+}
+
+.form-wrapper {
+  flex-grow: 2;
+
+  @media (min-width: 1250px) {
+    max-width: 800px;
+  }
+
+}
+
+.issue-list {
+  width: 400px;
+
+  margin-left: 2rem;
+
+  &,
+  ul {
+    overflow-y: hidden;
+  }
+
+  .issue {
+    @apply px-4;
+    @apply pr-8;
+    @apply py-4;
+    @apply rounded;
+    @apply bg-cards-secondary;
+
+    span {
+      word-break: keep-all;
+    }
+
+    display : flex;
+    flex-direction: column;
+    position : relative;
+    cursor : pointer;
+
+    &:not(:last-child) {
+      margin-bottom: 0.5rem;
+    }
+
+    .meta {
+      @apply text-tertiary;
+      @apply font-normal;
+      opacity: .7;
+      font-size: 95%;
+    }
+
+    &:hover {
+      @apply bg-cards-tertiary;
+    }
+
+    fa-icon {
+      position: absolute;
+      right: calc((2rem - 12px) / 2);
+      top: calc(50% - 8px); // actually the half height is 6px but that looks off for the icon we're using
+      opacity: .3;
+    }
+  }
+}
+
+p.prologue {
+  @apply mb-8;
+}
+
+.page-title {
+  margin-top: 20px;
+  margin-bottom: 40px;
+  position: relative;
+  border-bottom: 1px solid rgba(255, 255, 255, .2);
+
+  h1 {
+    position: absolute;
+    top: -1rem;
+    background-color: var(--background);
+    @apply pr-8;
+  }
+}
+
+.repo-list {
+  @apply mb-8;
+
+}
+
+button {
+  @apply p-2;
+  @apply bg-buttons-dark;
+  @apply border;
+  @apply border-buttons-dark;
+  opacity: .4;
+
+  &:not(:last-child) {
+    @apply mr-1;
+  }
+
+  &:hover {
+    @apply bg-buttons-light;
+    @apply border-buttons-light;
+  }
+
+  &.selected {
+    @apply bg-buttons-dark;
+    @apply border-buttons-light;
+    opacity: 1;
+  }
+}
+
+.actions {
+  @apply mt-8;
+  @apply pb-16;
+
+  button {
+    opacity: 1;
+    @apply bg-transparent;
+
+    &.primary {
+      @apply bg-buttons-dark;
+      opacity: 1;
+    }
+
+    &:hover {
+      @apply bg-buttons-light;
+    }
+  }
+
+}
+
+.debug-header {
+  height: 32px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  @apply bg-cards-primary;
+  @apply rounded-t;
+  top: 2px;
+}
+
+textarea {
+  @apply px-4;
+  @apply py-2;
+  min-height: 40px;
+}
+
+textarea,
+input[type="text"].title {
+  @apply font-medium;
+  @apply border;
+  @apply border-cards-secondary;
+  @apply bg-cards-secondary;
+  padding-right: 4.5rem; // copy button width
+
+  &:hover,
+  &:active,
+  &:focus {
+    @apply border-cards-primary;
+  }
+}
+
+input[type="text"].title {
+  padding-left: 1rem;
+}
+
+section {
+  @apply py-8;
+
+  &:not(:first-of-type) {
+    @apply pt-0;
+  }
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.copy-button {
+  user-select: none;
+  position: absolute;
+  top: 1px;
+  right: 0px;
+  width: 4rem;
+  height: 31px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  @apply bg-buttons-dark;
+  @apply rounded-sm;
+  opacity: .5;
+
+  &:hover {
+    opacity: .9;
+  }
+}
+
+.section-help {
+  @apply bg-cards-primary;
+  @apply border-t;
+  @apply border-dashed;
+  @apply border-buttons-light;
+  @apply p-2;
+  @apply px-4;
+  @apply rounded-sm;
+  color: rgba(255, 255, 255, .6);
+  font-size: 0.7rem;
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.gh-author {
+  @apply mt-8;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+
+  .input-wrapper {
+    padding-top: 2px;
+    @apply pr-2;
+  }
+}
+
+input[type="text"].missing,
+textarea.missing {
+  @apply border-info-red;
+}

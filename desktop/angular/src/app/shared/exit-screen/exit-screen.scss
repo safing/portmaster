@@ -1,0 +1,68 @@
+caption {
+  @apply text-sm;
+  opacity  : .6;
+  font-size: .6rem;
+}
+
+.content-wrapper {
+  display       : flex;
+  flex-direction: column;
+  align-items   : flex-start;
+
+  h1 {
+    font-size    : 0.85rem;
+    font-weight  : 500;
+    margin-bottom: 1rem;
+  }
+
+  .message,
+  h1 {
+    flex-shrink  : 0;
+    text-overflow: ellipsis;
+    word-break   : normal;
+  }
+
+  .message {
+    font-size: 0.75rem;
+    flex-grow: 1;
+    opacity  : .6;
+  }
+
+  .close-icon {
+    position: absolute;
+    top     : 1rem;
+    right   : 1rem;
+    opacity : .7;
+    cursor  : pointer;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  .actions {
+    margin-top     : 1rem;
+    width          : 100%;
+    display        : flex;
+    justify-content: space-between;
+    align-items    : center;
+
+    button {
+      @apply bg-info-blue;
+
+      &.danger {
+        @apply bg-info-red;
+      }
+    }
+
+    &>span {
+      display    : flex;
+      align-items: center;
+
+      label {
+        margin-left: .5rem;
+        user-select: none;
+      }
+    }
+  }
+}

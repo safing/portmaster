@@ -1,0 +1,322 @@
+<section *ngIf="conn">
+  <div>
+    <span sfngAddToFilter="started" [sfngAddToFilterValue]="conn.started">
+      <span>Started:</span>
+      <span>
+        {{ conn.started | date:'medium'}}
+      </span>
+    </span>
+
+    <span sfngAddToFilter="ended" [sfngAddToFilterValue]="conn.ended">
+      <span>Ended:</span>
+      <span *ngIf="conn.ended">
+        {{ conn.ended | date:'medium'}}
+      </span>
+      <span *ngIf="!conn.ended">
+        <fa-icon icon="spinner" [spin]="true"></fa-icon>
+      </span>
+    </span>
+
+    <span *ngIf="conn.ended">
+      <span>Duration:</span>
+      <span >
+        {{ [conn.ended, conn.started] | duration }}
+      </span>
+    </span>
+
+    <span *appExpertiseLevel="'developer'" sfngAddToFilter="profile_revision"
+      [sfngAddToFilterValue]="conn.profile_revision">
+      <span>Profile Revision:</span>
+      <span>
+        {{ conn.profile_revision }}
+      </span>
+    </span>
+
+    <span *appExpertiseLevel="'developer'">
+      <span>Connection ID:</span>
+      <span>
+        {{ conn.id }}
+      </span>
+    </span>
+
+    <span *appExpertiseLevel="'expert'" sfngAddToFilter="verdict" [sfngAddToFilterValue]="conn.verdict">
+      <span>Verdict:</span>
+      <span>
+        {{ verdict[conn.verdict] || 'N/A' }}
+      </span>
+    </span>
+
+    <span *appExpertiseLevel="'developer'" sfngAddToFilter="internal" [sfngAddToFilterValue]="conn.internal">
+      <span>Internal Connection:</span>
+      <span>
+        {{ conn.internal ? 'Yes' : 'No' }}
+      </span>
+    </span>
+
+    <span *appExpertiseLevel="'expert'" sfngAddToFilter="local_ip" [sfngAddToFilterValue]="conn.local_ip">
+      <span>Local Address:</span>
+      <span>
+        {{ conn.local_ip }}
+        <span *ngIf="conn.local_port" class="text-tertiary">{{ ':'+conn.local_port }}</span>
+      </span>
+    </span>
+  </div>
+
+  <div *ngIf="conn.type === 'ip'; else: dnsTemplate">
+    <span sfngAddToFilter="direction" [sfngAddToFilterValue]="conn.direction">
+      <span>Direction:</span>
+      <span>
+        <fa-icon class="inline-block mr-1 transform rotate-45" [ngClass]="{'text-gray-600': !!conn.ended}"
+          [icon]="conn.direction === 'inbound' ? 'arrow-down' : 'arrow-up'">
+        </fa-icon>
+        {{ conn.direction === 'inbound' ? 'Incoming' : 'Outgoing' }}
+      </span>
+    </span>
+    <span sfngAddToFilter="ip_protocol" [sfngAddToFilterValue]="conn.ip_protocol">
+      <span>Protocol:</span>
+      <span>{{ Protocols[conn.ip_protocol] || 'N/A' }}</span>
+    </span>
+    <span sfngAddToFilter="encrypted" [sfngAddToFilterValue]="conn.encrypted">
+      <span>Encrypted:</span>
+      <span>{{ conn.encrypted ? 'yes' : 'no' }}</span>
+    </span>
+    <span sfngAddToFilter="tunneled" [sfngAddToFilterValue]="conn.tunneled">
+      <span>SPN Protected:</span>
+      <span>{{ conn.tunneled ? 'yes' : 'no' }}</span>
+    </span>
+
+    <span *ngIf="conn.bytes_received > 0">
+      <span>Data Received:</span>
+      <span>{{ conn.bytes_received  | bytes }}</span>
+    </span>
+    <span *ngIf="conn.bytes_sent > 0">
+      <span>Data Sent:</span>
+      <span>{{ conn.bytes_sent | bytes }}</span>
+    </span>
+
+    <ng-container *ngIf="conn.extra_data?.tls as tls">
+      <span>
+        <span>TLS Version:</span>
+        <span>{{ tls.Version }}</span>
+      </span>
+      <span>
+        <span>TLS SNI:</span>
+        <span>{{ tls.SNI }}</span>
+      </span>
+      <ng-container *ngIf="!!tls.Chain">
+        <ng-container *ngIf="tls.Chain[0] as firstChain">
+          <span>
+            <span>TLS Certificate:</span>
+            <span>{{ firstChain[0].Subject }} <i class="port">by</i> {{ firstChain[0].Issuer }}</span>
+          </span>
+          <span>
+            <span>Trust-Chain</span>
+            <span>
+              <ol>
+                <li *ngFor="let cert of firstChain.slice(1)">
+                  {{ cert.Subject }} <i class="port">by</i> {{ cert.Issuer }}
+                </li>
+              </ol>
+            </span>
+          </span>
+        </ng-container>
+      </ng-container>
+    </ng-container>
+  </div>
+
+  <ng-template #dnsTemplate>
+    <div *ngIf="conn.extra_data?.dns as dns">
+      <span sfngAddToFilter="domain" [sfngAddToFilterValue]="dns.Domain">
+        <span>Domain:</span>
+        <span>{{dns.Domain}}</span>
+      </span>
+      <span>
+        <span>Query:</span>
+        <span>{{dns.Question}}</span>
+      </span>
+
+      <span>
+        <span>Response:</span>
+        <span>{{dns.RCode}}</span>
+      </span>
+
+      <span *appExpertiseLevel="'expert'">
+        <span>Served from Cache:</span>
+        <span>{{dns.ServedFromCache ? 'yes' : 'no'}}</span>
+      </span>
+
+      <span *appExpertiseLevel="'expert'">
+        <span>Expires:</span>
+        <span>{{dns.Expires | date:'medium'}}</span>
+      </span>
+    </div>
+  </ng-template>
+
+  <div *ngIf="conn.type === 'ip'">
+    <span *ngIf="conn.domain" sfngAddToFilter="domain" [sfngAddToFilterValue]="conn.domain">
+      <span>Domain:</span>
+      <sfng-netquery-scope-label leftRightFix="true" [scope]="conn.domain">
+      </sfng-netquery-scope-label>
+    </span>
+
+    <span *ngIf="!conn.domain">
+      <span>Scope:</span>
+      <ng-container [ngSwitch]="conn.scope">
+        <span *ngSwitchCase="scopes.Global">Internet Peer-to-Peer</span>
+        <span *ngSwitchCase="scopes.GlobalMulitcast">Internet Multicast</span>
+        <span *ngSwitchCase="scopes.HostLocal">Device-Local</span>
+        <span *ngSwitchCase="scopes.LinkLocal">LAN Peer-to-Peer</span>
+        <span *ngSwitchCase="scopes.LocalMulticast">LAN Multicast</span>
+        <span *ngSwitchCase="scopes.SiteLocal">LAN Peer-to-Peer</span>
+
+        <span class="text-tertiary" *ngSwitchCase="scopes.Invalid">N/A</span>
+        <span class="text-tertiary" *ngSwitchCase="scopes.Undefined">N/A</span>
+        <span class="text-tertiary" *ngSwitchDefault>N/A</span>
+      </ng-container>
+
+      <span>{{ conn.direction === 'inbound' ? ' Incoming' : ' Outgoing'}}</span>
+    </span>
+
+    <span sfngAddToFilter="remote_ip" [sfngAddToFilterValue]="conn.remote_ip">
+      <span>Remote Peer:</span>
+      <span>
+        <span *ngIf="!!conn.country" [appCountryFlags]="conn.country"></span>
+        {{ conn.remote_ip || 'DNS Request'}}
+        <span *ngIf="conn.remote_port" class="text-tertiary">{{ ':'+conn.remote_port }}</span>
+      </span>
+    </span>
+    <span sfngAddToFilter="country" [sfngAddToFilterValue]="conn.country">
+      <span>Country:</span>
+      <span>{{ conn.country || 'N/A'}}</span>
+    </span>
+    <span sfngAddToFilter="asn" [sfngAddToFilterValue]="conn.asn">
+      <span>ASN:</span>
+      <span>{{ conn.asn || 'N/A' }}</span>
+    </span>
+    <span sfngAddToFilter="as_owner" [sfngAddToFilterValue]="conn.as_owner">
+      <span>AS Org:</span>
+      <span>{{ conn.as_owner || 'N/A' }}</span>
+    </span>
+  </div>
+
+  <div class="col-span-2">
+    <span sfngAddToFilter="path" [sfngAddToFilterValue]="conn.path">
+      <span>Binary Path:</span>
+      <span class="break-normal whitespace-normal">{{ conn.path }} </span>
+    </span>
+    <span>
+      <span>Reason:</span>
+      <span class="break-normal whitespace-normal">
+        {{conn.extra_data?.reason?.Msg}}
+      </span>
+    </span>
+    <span *ngIf="conn.extra_data?.reason?.OptionKey as option">
+      <span>Applied Setting:</span>
+      <span>
+        <span>{{ helper.settings[option] || '' }}&nbsp;</span>
+        <span class="de-emphasize" style="display: inline-block; text-align: left">&nbsp;from&nbsp;{{
+            !!conn.extra_data?.reason?.Profile ? "App" :
+            "Global" }} Settings</span>
+      </span>
+    </span>
+
+    <!-- FIXME
+      <span *ngIf="conn.profile_revision !== helper.profile?.currentProfileRevision">
+        <span>Notice:</span>
+        <span>
+          The settings used for this connection have been superseded.
+        </span>
+      </span>
+      -->
+  </div>
+
+  <div *ngIf="conn.scope === scopes.Global">
+    <h3 class="text-primary text-xxs">SPN Tunnel</h3>
+    <ng-container [ngSwitch]="true">
+      <span *ngSwitchCase="!conn.tunneled" class="inline-flex items-center gap-2 text-secondary">
+        This connection has not been routed through the Safing Privacy Network.
+        <sfng-tipup key="spn"></sfng-tipup>
+      </span>
+
+      <div *ngSwitchCase="!!conn.extra_data?.tunnel" class="meta">
+        <div *ngIf="conn.extra_data?.tunnel as tunnel">
+          <span>
+            <span></span>
+            <sfng-spn-pin-route [route]="tunnel.Path"></sfng-spn-pin-route>
+          </span>
+        </div>
+        <div *appExpertiseLevel="'developer'" class="flex flex-col items-start justify-start gap-1 mt-2">
+          <span class="flex flex-row items-center gap-2">
+            <span class="text-secondary">Path Costs:</span>
+            <span>{{ conn.extra_data?.tunnel?.PathCost }}</span>
+          </span>
+          <span class="flex flex-row items-center gap-2">
+            <span class="text-secondary">Routing Algorithm:</span>
+            <span>{{ conn.extra_data?.tunnel?.RoutingAlg }}</span>
+          </span>
+        </div>
+      </div>
+
+      <span *ngSwitchDefault class="inline-flex items-center gap-2 text-secondary">
+        The connection was routed through the Safing Privacy Network, but the tunnel information is not available. Try
+        reloading the connections.
+      </span>
+    </ng-container>
+  </div>
+
+  <div *ngIf="!!bwData.length" class="col-span-3 block border-t border-gray-400 py-2">
+    <h2 class="text-secondary uppercase w-full text-center text-xxs">Data Usage</h2>
+    <sfng-netquery-line-chart class="block w-full !h-36" [data]="bwData" [config]="{
+      series: {
+        incoming: {
+          lineColor: 'text-green-300',
+          areaColor: 'text-green-200 text-opacity-50',
+        },
+        outgoing: {
+          lineColor: 'text-yellow-300',
+          areaColor: 'text-yellow-200 text-opacity-50',
+        },
+      },
+      time: {
+        from: conn.started,
+        to: conn.ended,
+      },
+      fromMargin: 5,
+      toMargin: 5,
+      valueFormat: formatBytes,
+      timeFormat: formatTime,
+      showDataPoints: true,
+      fillEmptyTicks: {
+        interval: 1
+      },
+      tooltipFormat: tooltipFormat,
+      verticalMarkers: [
+        { text: 'started', time: conn.started },
+        { text: 'ended', time: conn.ended},
+      ]
+    }"></sfng-netquery-line-chart>
+  </div>
+</section>
+
+<div class="flex justify-end border-t border-gray-300 pt-0.5 mt-0.5" *ngIf="!!conn">
+  <button *ngIf="!!process" (click)="openProcessDetails()" class="btn-outline">Process
+    Details</button>
+  <button class="btn-outline" *appExpertiseLevel="'expert'" (click)="helper.dumpConnection(conn)">Copy JSON</button>
+  <button class="btn-outline" *ngIf="(conn | isBlocked); else blockAction"
+    (click)="helper.unblockAll(conn.domain || conn.remote_ip, conn)" [disabled]="!(conn | canUseRules)">
+    Allow {{ conn.domain ? 'Domain' : 'IP'}}
+  </button>
+  <ng-template #blockAction>
+    <button class="btn-outline" (click)="helper.blockAll(conn.domain || conn.remote_ip, conn)"
+      [disabled]="!(conn | canUseRules)">
+      Block {{ conn.domain ? 'Domain' : 'IP '}}
+    </button>
+  </ng-template>
+  <button class="btn-outline" (click)="helper.redirectToSetting('', conn)" *ngIf="!!conn.extra_data?.reason?.OptionKey">
+    App Setting
+  </button>
+  <button class="btn-outline" (click)="helper.redirectToSetting(conn.extra_data!.reason!.OptionKey, conn, true)"
+    *ngIf="!!conn.extra_data?.reason?.OptionKey">
+    Global Setting
+  </button>
+</div>

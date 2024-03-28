@@ -1,0 +1,52 @@
+sfng-tipup-container {
+  display: block;
+
+  caption {
+    @apply text-sm;
+    opacity: .6;
+    font-size: .6rem;
+  }
+
+  h1 {
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+  }
+
+  .message,
+  h1 {
+    flex-shrink: 0;
+    text-overflow: ellipsis;
+    word-break: normal;
+  }
+
+  .message {
+    font-size: 0.75rem;
+    flex-grow: 1;
+    opacity: .8;
+    max-width: 300px;
+    padding: 0;
+  }
+
+  .close-icon {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    opacity: .7;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  .buttons {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  a {
+    text-decoration: underline;
+  }
+}

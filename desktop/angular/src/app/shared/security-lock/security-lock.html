@@ -1,0 +1,25 @@
+<div class="relative flex flex-col items-center justify-center w-full mr-2">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+    class="transition-all duration-200 ease-in-out shield {{lockLevel?.class}}">
+    <path class="shield-three" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"
+      d="M20 11.242c0 4.368-3.157 8.462-7.48 9.686-.338.096-.702.096-1.04 0C7.157 19.705 4 15.61 4 11.242V7.214c0-.812.491-1.544 1.243-1.851l4.864-1.99c1.214-.497 2.574-.497 3.787 0l4.864 1.99C19.509 5.67 20 6.402 20 7.214v4.028z" />
+    <path class="shield-two" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"
+      d="M20 11.242c0 4.368-3.157 8.462-7.48 9.686-.338.096-.702.096-1.04 0C7.157 19.705 4 15.61 4 11.242V7.214c0-.812.491-1.544 1.243-1.851l4.864-1.99c1.214-.497 2.574-.497 3.787 0l4.864 1.99C19.509 5.67 20 6.402 20 7.214v4.028z" />
+    <path class="shield-one" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"
+      d="M20 11.242c0 4.368-3.157 8.462-7.48 9.686-.338.096-.702.096-1.04 0C7.157 19.705 4 15.61 4 11.242V7.214c0-.812.491-1.544 1.243-1.851l4.864-1.99c1.214-.497 2.574-.497 3.787 0l4.864 1.99C19.509 5.67 20 6.402 20 7.214v4.028z" />
+    <path class="shield-ok" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+      d="M8.712 12.566l2.193 2.193 4.787-4.788" />
+    <path class="shield-warn" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+      d="M12 11V7.75M12 14.63a.16.16 0 10.16.16.16.16 0 00-.16-.16" transform="translate(-11.09 -7)" />
+    <path class="shield-fail" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"
+      d="M14.83 9.17l-5.66 5.66M14.83 14.83L9.17 9.17" />
+
+  </svg>
+  <ng-container *ngIf="mode === 'full'">
+    <h2 class="p-0 m-0 -mt-3.5 text-base font-light">{{lockLevel?.displayText}}</h2>
+    <span *ngIf="!!lockLevel?.class && lockLevel!.class !== 'text-green-300'" class="{{lockLevel?.class}}" [@fadeIn]
+      [@fadeOut]>
+      See Notifications
+    </span>
+  </ng-container>
+</div>

@@ -1,0 +1,60 @@
+.feature-card {
+  @apply flex flex-col p-4 bg-gray-300 rounded shadow w-full relative gap-2 overflow-hidden;
+
+  .disabled-bg {
+    @apply absolute top-0 left-0 text-gray-500 opacity-50;
+  }
+
+  &.disabled {
+    @apply opacity-80 shadow-inner;
+  }
+
+  &.clickable {
+    @apply cursor-pointer;
+    &:hover {
+      @apply bg-gray-400;
+    }
+  }
+
+  header {
+    @apply flex flex-row items-center justify-start gap-2 w-full;
+
+    img {
+      @apply w-5 h-5;
+      filter: invert(1);
+    }
+
+    &>span {
+      @apply text-base font-light;
+    }
+  }
+}
+
+.ribbon {
+  width: 90px;
+  height: 100%;
+  overflow: hidden;
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  z-index: 100;
+}
+
+.ribbon__content {
+  left: -7px;
+  top: 25px;
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
+  position: absolute;
+  display: block;
+  width: 125px;
+  padding: 2px 0;
+  text-shadow: 0 1px 0px rgba(0, 0, 0, .2);
+  text-transform: uppercase;
+  text-align: center;
+  border: 2px dotted #fff;
+  outline-color: #fff;
+  outline-width: 1px;
+  outline-style: solid;
+}

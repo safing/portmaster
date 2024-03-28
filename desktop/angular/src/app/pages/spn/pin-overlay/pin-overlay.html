@@ -1,0 +1,117 @@
+<div *ngIf="showContent" [@moveIn]="{value: ':enter', params: {delay: delay}}"
+  (@moveIn.done)="onAnimationComplete($event)"
+  class="flex flex-col items-start justify-start gap-2 p-2 bg-gray-200 border border-gray-500 border-opacity-50 rounded-sm {{ containerClass }}"
+  cdkDrag (cdkDragReleased)="onDragRelease($event)" (cdkDragStart)="onDragStart()">
+  <div class="flex flex-row items-center justify-start w-full gap-1">
+    <app-menu #pinUseMenu>
+      <app-menu-item (click)="openPinDetails()">Show Details</app-menu-item>
+      <app-menu-item (click)="showExitConnections()">Show exit connections</app-menu-item>
+      <app-menu-item (click)="copyNodeID()">Copy Node ID</app-menu-item>
+    </app-menu>
+    <app-menu-trigger class="mr-0 -ml-2" useContent="true" [menu]="pinUseMenu">
+      <span class="flex flex-row items-center gap-1 -ml-2 -mr-2">
+        <span [appCountryFlags]="mapPin.entity.Country"></span>
+        <span>{{ mapPin.pin.Name }}</span>
+
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+          <path fill-rule="evenodd"
+            d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+            clip-rule="evenodd" />
+        </svg>
+      </span>
+    </app-menu-trigger>
+
+    <span class="flex-grow">
+      <!-- flexible padding -->
+    </span>
+
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+      class="w-4 h-4 opacity-75 hover:opacity-100" cdkDragHandle (dblclick)="onDragDblClick()">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+      class="w-4 h-4 ml-2 opacity-75 cursor-pointer hover:opacity-100" (click)="disposeOverlay()">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+    </svg>
+  </div>
+  <div class="space-x-2">
+    <span class="inline-block w-12 font-thin text-secondary">IPv4</span>
+    <span>{{ mapPin.pin.EntityV4?.IP  || 'N/A' }}</span>
+  </div>
+  <div class="space-x-2">
+    <span class="inline-block w-12 font-thin text-secondary">IPv6</span>
+    <span>{{ mapPin.pin.EntityV6?.IP  || 'N/A' }}</span>
+  </div>
+  <div class="flex flex-row items-center gap-2">
+    <span class="inline-block w-12 font-thin text-secondary">Run By</span>
+
+    <span class="inline-flex flex-row items-center gap-1">
+      <svg *ngIf="!!mapPin.pin.VerifiedOwner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 -mt-1 text-green-300">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+      </svg>
+
+      <span>{{ mapPin.pin.VerifiedOwner || 'Community' }}</span>
+    </span>
+  </div>
+  <div class="flex flex-row items-start w-full gap-2 " *ngIf="mapPin.isExit || mapPin.isHome || mapPin.isTransit">
+    <span class="inline-block w-12 font-thin text-secondary">Used As</span>
+
+    <div class="inline-flex flex-col flex-grow gap-1">
+      <span class="flex flex-row items-center w-full gap-1" *ngIf="mapPin.isHome">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+          class="w-4 h-4 text-blue">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+        </svg>
+
+        <span class="flex-grow">Home Node</span>
+        <ng-container
+          *ngTemplateOutlet="helpText; context: {$implicit: 'This node does not know the destinations of you connections but may know where you are'}">
+        </ng-container>
+      </span>
+
+      <span class="flex flex-row items-center w-full gap-1" *ngIf="mapPin.isExit">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+          class="w-4 h-4 text-blue">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+        </svg>
+
+        <span class="flex-grow">Exit Node</span>
+        <ng-container
+          *ngTemplateOutlet="helpText; context: {$implicit: 'This node does not know who you are but knows the destination of connections for which it is used as an exit node'}">
+        </ng-container>
+      </span>
+
+      <span class="flex flex-row items-center w-full gap-1" *ngIf="mapPin.isTransit && !mapPin.isHome">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+          class="w-4 h-4 text-blue">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+        </svg>
+
+        <span class="flex-grow">Transit Node</span>
+        <ng-container
+          *ngTemplateOutlet="helpText; context: {$implicit: 'This node does not know who you are and where you are connecting to'}">
+        </ng-container>
+      </span>
+
+    </div>
+  </div>
+</div>
+
+<ng-template #helpText let-data>
+  <svg viewBox="0 0 24 24" [sfng-tooltip]="data" class="w-4 h-4 text-tertiary">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
+      <path stroke="#ffff" shape-rendering="geometricPrecision"
+        d="M12 21v0c-4.971 0-9-4.029-9-9v0c0-4.971 4.029-9 9-9v0c4.971 0 9 4.029 9 9v0c0 4.971-4.029 9-9 9z" />
+      <path stroke="#ffff" shape-rendering="geometricPrecision"
+        d="M12 17v-5h-1M11.749 8c-.138 0-.25.112-.249.25 0 .138.112.25.25.25s.25-.112.25-.25-.112-.25-.251-.25" />
+    </g>
+  </svg>
+</ng-template>

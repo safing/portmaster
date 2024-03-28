@@ -1,0 +1,73 @@
+.sfng-select {
+  @apply cursor-pointer relative p-0 flex whitespace-nowrap w-full items-center outline-none self-center overflow-hidden;
+  @apply hover:bg-gray-400;
+  @apply bg-gray-300 border border-gray-300 transition ease-in-out duration-200;
+
+  &.disabled {
+    @apply cursor-not-allowed opacity-75 hover:bg-gray-400;
+  }
+
+  min-width: 6rem;
+  max-width: 12rem;
+
+  &.active {
+    @apply bg-gray-400;
+
+    div.arrow svg {
+      @apply transform -rotate-90;
+    }
+  }
+
+  & > span {
+    @apply flex-grow text-ellipsis inline-block overflow-hidden;
+    @apply px-2;
+  }
+
+  div.arrow {
+    @apply flex flex-row items-center justify-center bg-gray-200 rounded-r-sm;
+    @apply w-5 h-7;
+
+    svg {
+      @apply w-4 m-0 p-0 rotate-90 transform transition ease-in-out duration-100;
+
+      g {
+        @apply text-white;
+        stroke: currentColor;
+      }
+    }
+  }
+}
+
+.sfng-select-dropdown {
+  ul {
+    max-height: 12rem;
+    @apply relative py-1 overflow-auto;
+
+    li {
+      @apply py-2;
+      @apply flex flex-row items-center justify-start gap-1 transition duration-200 ease-in-out cursor-pointer hover:bg-gray-300;
+    }
+
+    li:not(.disabled) {
+      @apply hover:bg-gray-300;
+    }
+
+    li.disabled {
+      @apply cursor-not-allowed;
+    }
+  }
+}
+
+.sfng-select-dropdown.sfng-select-inline {
+  ul {
+    max-height: unset;
+  }
+}
+
+sfng-select-item {
+  @apply text-xxs w-full font-medium gap-3 text-primary flex flex-row items-center justify-start;
+
+  &.disabled {
+    @apply opacity-75 cursor-not-allowed;
+  }
+}

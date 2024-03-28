@@ -1,0 +1,50 @@
+<div class="header">
+  <h4 class="breadcrumbs">
+    <span>Get Help</span>
+  </h4>
+  <app-expertise></app-expertise>
+</div>
+
+<div class="list-container" [@fadeIn]="true">
+  <div *ngFor="let section of supportTypes" class="page-section" [class.small]="section.style === 'small'">
+    <div *ngIf="!!section.title" class="section-title">
+      <h4 class="text-lg text-primary -mt-1.5">{{section.title}}</h4>
+    </div>
+
+    <div class="option-list">
+      <section *ngFor="let item of section.choices" (click)="openPage(item)" [@fadeInList]="section.choices.length">
+        <fa-icon *ngIf="!!item.type" icon="external-link-alt"></fa-icon>
+
+        <h3>{{item.title}}</h3>
+        <label *ngIf="!item.type" class="secondary-text">{{ item.shortHelp || item.prologue}}</label>
+        <label *ngIf="item.type" class="secondary-text">{{ item.shortHelp}}</label>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!--
+TODO: Remove when not needed anymore.
+<div class="list-container">
+  <div class="page-section">
+    <div class="section-title">
+      <h4 class="text-lg text-primary -mt-1.5">FAQ</h4>
+    </div>
+
+    <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="searchFaqs.next($event)" placeholder="Search FAQs"
+      class="mb-2">
+
+    <div class="flex flex-col gap-2">
+      <section *ngFor="let faq of faqEntries" [@fadeInList]="faqEntries.length" (click)="openIssue(faq)"
+        class="flex flex-row items-center w-full p-3 bg-gray-200 rounded cursor-pointer hover:bg-gray-300">
+        <span class="flex-grow">
+          {{ faq.title }}
+        </span>
+        <fa-icon icon="external-link-alt" class="text-secondary"></fa-icon>
+      </section>
+    </div>
+  </div>
+</div>
+-->
+
+<div class="flex-grow"></div>

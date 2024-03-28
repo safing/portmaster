@@ -1,0 +1,13 @@
+<div class="grid grid-cols-2 gap-2">
+  <app-dashboard-widget label="Connections" style="min-height: 400px;">
+    <sfng-netquery-line-chart [data]="connectionChart"></sfng-netquery-line-chart>
+  </app-dashboard-widget>
+
+  <app-dashboard-widget label="Data Usage" beta="true" style="min-height: 400px;">
+    <sfng-netquery-line-chart [config]="bwChartConfig" [data]="bandwidthChart"></sfng-netquery-line-chart>
+  </app-dashboard-widget>
+
+  <app-dashboard-widget label="Countries" beta="true" style="min-height: 400px">
+    <sfng-netquery-circular-bar-chart class="block w-full h-full" [data]="countryData" [config]="countryBarConfig"></sfng-netquery-circular-bar-chart>
+  </app-dashboard-widget>
+</div>

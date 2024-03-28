@@ -1,0 +1,22 @@
+sfng-pagination {
+  .pagination {
+    @apply my-2 w-full flex justify-between;
+
+    button {
+      @apply text-xxs px-2 flex items-center justify-start;
+
+      &.page {
+        @apply bg-cards-secondary;
+        @apply opacity-50;
+
+        &:hover {
+          @apply opacity-100;
+        }
+      }
+
+      &.active-page {
+        @apply text-blue font-medium opacity-100;
+      }
+    }
+  }
+}

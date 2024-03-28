@@ -1,0 +1,62 @@
+:host {
+  @apply flex flex-col gap-2 justify-center items-center relative;
+}
+
+section {
+  @apply flex flex-row items-start gap-4 justify-evenly text-background;
+
+  &.reverse {
+    @apply flex-row-reverse
+  }
+
+  &>div {
+    @apply flex flex-col w-1/3 gap-6;
+
+    span {
+      @apply text-base break-normal text-background text-opacity-80;
+    }
+
+    h1,
+    h1>span {
+      @apply text-2xl font-semibold break-normal md:text-3xl lg:text-4xl xl:text-5xl text-background;
+
+    }
+
+    h1>span {
+      &.text-blue {
+        color: theme('colors.blue.DEFAULT') !important;
+      }
+    }
+  }
+
+  img {
+    position: relative;
+    max-width: 50%;
+  }
+
+  table {
+    @apply mb-12;
+
+    th {
+      @apply text-base;
+    }
+
+    td {
+      @apply text-center p-2 leading-6;
+    }
+
+    tr>td:first-of-type {
+      @apply text-left p-2 font-semibold text-base whitespace-nowrap;
+    }
+  }
+}
+
+::ng-deep {
+  spn-feature-carousel {
+    sfng-tab-outlet {
+      &>div {
+        overflow: visible !important;
+      }
+    }
+  }
+}

@@ -1,0 +1,61 @@
+html,
+body {
+  font-family: 'Roboto', sans-serif;
+  @apply text-primary;
+  @apply font-medium;
+}
+
+body,
+.primary-text,
+.secondary-text {
+  @apply text-xs;
+  @apply font-medium;
+}
+
+label,
+.secondary-text {
+  @apply text-secondary;
+}
+
+.primary-text {
+  @apply text-primary;
+}
+
+.tertiary-text {
+  @apply text-tertiary;
+}
+
+h1,
+h2,
+h3 {
+  @apply text-primary;
+}
+
+h1 {
+  display: block;
+
+  @apply mb-1;
+  @apply text-xl;
+  @apply font-normal;
+  @apply mb-2;
+}
+
+h2 {
+  @apply p-2;
+  @apply ml-2;
+  @apply text-lg;
+  @apply font-medium;
+  letter-spacing: -0.01rem;
+}
+
+h3 {
+  @apply mb-1;
+  @apply text-base;
+  @apply font-medium;
+}
+
+h4 {
+  @apply text-xs;
+  @apply font-medium;
+  @apply text-tertiary;
+}

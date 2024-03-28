@@ -1,0 +1,9 @@
+.dialog-screen-backdrop {
+  backdrop-filter : blur(10px);
+  background-color: rgba(#000000, 0.7);
+}
+
+.dialog-screen-backdrop-light {
+  backdrop-filter : blur(3px);
+  background-color: rgba(#000000, 0.4);
+}

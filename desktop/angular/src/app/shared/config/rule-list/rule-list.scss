@@ -1,0 +1,75 @@
+:host {
+  outline: none;
+}
+
+.item,
+.cdk-drag-preview {
+  display: flex;
+  align-items: center;
+  padding: 3px;
+
+  fa-icon {
+    cursor: pointer;
+    @apply text-tertiary;
+    @apply text-lg;
+    @apply mr-2;
+  }
+
+  app-rule-list-item {
+    flex-grow: 1;
+  }
+}
+
+.cdk-drag-placeholder {
+  left: -4px;
+  padding: 1px;
+  padding-left: 4px;
+}
+
+// TODO(ppacher9): move this transition to a mixin
+.list-items.cdk-drop-list-dragging .list:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.cdk-drag-preview {
+  left: -4px;
+  padding: 1px;
+  padding-left: 4px;
+}
+
+.button-list {
+  @apply mt-2;
+  @apply ml-8;
+}
+
+.dotted {
+  @apply w-full;
+  @apply rounded;
+  @apply p-1;
+  @apply border-2;
+  @apply border-dashed;
+  @apply border-buttons-light;
+  @apply bg-background;
+  @apply text-secondary;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  span {
+    @apply font-medium;
+  }
+}
+
+.new-entry {
+  cursor: pointer;
+
+  &:hover {
+    @apply text-primary;
+    @apply bg-gray-300;
+
+    span {
+      @apply text-primary;
+    }
+  }
+}

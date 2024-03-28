@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cobra"
 
-	"github.com/safing/portmaster/firewall/interception"
+	"github.com/safing/portmaster/service/firewall/interception"
 )
 
 var recoverIPTablesCmd = &cobra.Command{

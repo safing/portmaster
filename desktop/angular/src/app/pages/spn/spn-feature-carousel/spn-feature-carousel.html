@@ -1,0 +1,274 @@
+<div class="flex flex-row items-center self-stretch gap-2">
+  <svg (click)="showPrev()" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+    stroke="currentColor"
+    class="flex-shrink-0 w-8 h-8 text-opacity-50 cursor-pointer text-background hover:text-background">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+  </svg>
+
+  <sfng-tab-group #tabs customHeader="true" outletClass="overflow-visible" class="flex-grow">
+    <sfng-tab>
+      <section *sfngTabContent>
+        <div>
+          <h1>Get
+            Multiple Identities for Each App</h1>
+          <span>
+            Automatically get a vast amount of identities (IP addresses). The SPN calculates an individual path for
+            every
+            connection through the privacy network. Spread your connections across the globe, without any effort.
+          </span>
+        </div>
+        <img src="/assets/img/spn-feature-carousel/multiple-identities-for-each-app.png">
+      </section>
+    </sfng-tab>
+
+    <!-- <sfng-tab>
+      <section *sfngTabContent class="reverse">
+        <div>
+          <h1>Simply Access Regional Content</h1>
+          <span>
+            Is a website blocked or restricted in your country? Because SPN makes that connection exit near the
+            destination server, it will automatically unblock the content. SPN has best coverage in Europe and North
+            America.
+          </span>
+        </div>
+        <img src="/assets/img/spn-feature-carousel/access-regional-content-easily.png">
+      </section>
+    </sfng-tab> -->
+
+    <sfng-tab>
+      <section *sfngTabContent>
+        <div>
+          <h1>Easily Adjust <span class="text-blue">Your Privacy</span></h1>
+          <span>
+            SPN just works and does the heavy lifting for you. But of course you can easily configure the settings, so
+            it fits your needs: Exclude certain apps and domains from the SPN. Or never exit in specific countries. And
+            so much more...
+          </span>
+        </div>
+        <img src="/assets/img/spn-feature-carousel/easily-control-your-privacy.png">
+      </section>
+    </sfng-tab>
+
+    <sfng-tab>
+      <section *sfngTabContent class="reverse">
+        <div>
+          <h1>Built from Scratch, for <span class="text-blue">Your Privacy</span></h1>
+          <span>
+            SPN is built from the ground up. Privacy is cooked right into it. Inspired by Tor, it comes with onion
+            routing and state of the art encryption. Fully open source so all our claims can be validated.
+          </span>
+        </div>
+        <img class="-top-16" src="/assets/img/spn-feature-carousel/built-from-the-ground-up.png">
+      </section>
+    </sfng-tab>
+
+    <sfng-tab>
+      <section *sfngTabContent>
+        <div>
+          <h1>Bye Bye, VPNs</h1>
+          <span>
+            VPN technology was NOT built for user privacy, but for company security. Because of that, you can only trust
+            a VPN provider's policy - and many have been caught abusing user data. Honestly, the best way forward: just
+            stop paying for outdated technology.
+          </span>
+        </div>
+        <img src="/assets/img/spn-feature-carousel/bye-bye-vpns.png">
+      </section>
+    </sfng-tab>
+
+    <sfng-tab>
+
+      <ng-template #tmplYes>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+          class="inline-block w-6 h-6 text-green-200">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </ng-template>
+
+      <ng-template #tmplNo>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+          class="inline-block w-6 h-6 text-red-200">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </ng-template>
+
+      <ng-template #windows>
+        <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 89.33 88.6" fill="currentColor"
+          class="w-5 h-5 text-blue">
+          <path
+            d="m0 11.4 35.69-4.86V41L0 41.17Zm35.67 35.53v34.45L0 76.48V46.7ZM42 5.91 89.31 0v40.53L42 40.9Zm47.33 41.34v41.34L42 81.92l-.07-34.74Z" />
+        </svg>
+      </ng-template>
+
+      <ng-template #linux>
+        <svg xmlns="http://www.w4.org/2000/svg" xml:space="preserve" viewBox="0 0 24 24"
+          class="w-5 h-5 text-background">
+          <path
+            d="M20.6 19c-.5-.4-.3-1.4-.9-1.9.6-3.4-1-6.3-2.8-8.2-1.6-1.6-1.1-3.1-1.1-4.5 0-2.1-.9-4.4-3.6-4.4-2.8 0-3.6 2.4-3.6 3.7-.1 3.3.6 4.1-1.3 6.5-2.2 2.8-2.6 5.6-2.1 7.1-.3.4-.7.7-1.2.8-1.7.7-.4 1.9-.9 2.8 0 .2-.1.5-.1.7 0 .8.6 1.4 1.7 1.3 1.5-.1 2.8.9 3.7.9.8 0 1.4-.4 1.7-1 1.4-.3 3.1-.3 4.5.1.2.7.9 1.1 1.7 1.1 1.6 0 1.9-1.8 3.8-2.5.7-.2 1-.9 1-1.5-.1-.4-.2-.7-.5-1zM11.4 8.6c-.3 0-.6-.3-1-.6-.5-.4-1-.6-1-1 0-.3.4-.4.9-.7.5-.3.7-.7 1.2-.7s.7.3 1.4.6 1.2.4 1.2.8-.7.6-1.2.9c-.6.3-.9.7-1.5.7zm1.7-5.2c.9.1 1 1.7.6 2.5l-.4-.1c.2-.5.2-1.4-.4-1.5-.4 0-.6.5-.7.9-.2-.2-.4-.2-.6-.2.1-.9.7-1.8 1.5-1.6zm-3.4.3c.7-.2 1.1.6 1.1 1.4l-.3.2c0-.3-.2-.9-.6-.8-.4.2-.4 1.1-.1 1.3l-.3.2c-.5-.7-.5-2.1.2-2.3zM7.6 22.9c-2-.9-2.6-.7-3-.7-.8 0-1-.6-.7-1.1.2-.5.2-1 .1-1.3-.1-.6-.1-.8.5-1.1.8-.3 1.2-.8 1.4-1.1.8-.9 1.5.5 2.1 1.9.4.9 1.2 1.3 1.5 2.2.2.9-.7 1.8-1.9 1.2zm7-1.8c-1.4.7-3.1 1-4.5.3-.2-.6-.5-.9-.8-1.3.5-.1.9-.8.5-1.5-.5-.7-1.6-1.2-2.6-2s-1.3-2.6 0-4.7c-.7 1.9-.3 3.6.1 4.1.1-1 .1-2.6 1.5-4.6.7-1 .7-2.3.7-3.1l.5.2c.5.3.8.7 1.4.7.8 0 1.3-.5 1.9-.9.2-.1.6-.3.9-.5.5 2.5 2.7 5.5 2.8 7.2.5-1-.1-3.5-.1-3.5.8 1.3.9 2.4.9 3.7.6.2 1.2.9 1.3 1.7h-.2c-.1-.9-2.6-2.3-2.8-.5-1.2.2-.8 2.1-1 3.3-.2.5-.4.9-.5 1.4zm4.8-.1c-1 .4-1.6 1.2-2.1 1.7-.9 1-2 .5-2.2-.4-.1-1 .4-1.5.6-2.6.2-1 0-2.5.4-2.7.3 1.8 2.1 1 2.5.5.7 0 .7.2.9.8.1.4.2.7.6 1.1.4.6.2 1.3-.7 1.6zm-8-13c-.7 0-1.1-.4-1.5-.8-.2-.2.1-.5.3-.3.4.3.8.7 1.3.7.6 0 1.1-.5 1.9-.8.2-.1.4.3.1.4-.8.3-1.3.8-2.1.8z" />
+        </svg>
+      </ng-template>
+
+      <ng-template #mac>
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-500" viewBox="0 0 1000 1187.198">
+          <path fill="currentColor"
+            d="M979.04184 925.18785c-17.95397 41.47737-39.20563 79.65705-63.82824 114.75895-33.56298 47.8528-61.04356 80.9761-82.22194 99.3698-32.83013 30.192-68.00529 45.6544-105.67203 46.5338-27.04089 0-59.6512-7.6946-97.61105-23.3035-38.08442-15.5358-73.08371-23.2303-105.08578-23.2303-33.56296 0-69.55888 7.6945-108.06101 23.2303-38.5608 15.6089-69.62484 23.7432-93.37541 24.5493-36.12049 1.5389-72.1237-14.3632-108.06101-47.7796-22.93711-20.0059-51.62684-54.3017-85.99592-102.8874-36.875274-51.88328-67.191862-112.04745-90.942422-180.639C12.750995 781.70252 0 709.95986 0 640.50361c0-79.5618 17.191859-148.18267 51.626869-205.68673 27.062885-46.18935 63.066121-82.62496 108.126941-109.37275 45.06086-26.74775 93.74914-40.37812 146.18212-41.25019 28.68971 0 66.3125 8.8744 113.06613 26.31542 46.62174 17.49964 76.55727 26.37404 89.68198 26.37404 9.8124 0 43.06758-10.37669 99.4431-31.06405 53.31237-19.18512 98.30724-27.12887 135.16787-23.99975 99.8828 8.06098 174.92313 47.43518 224.82789 118.37174-89.33023 54.12578-133.51903 129.93556-132.63966 227.18753.8061 75.75115 28.28668 138.78795 82.2952 188.8393 24.47603 23.23022 51.81008 41.18421 82.22186 53.93522-6.59525 19.12648-13.557 37.44688-20.95846 55.03446zM749.96366 23.751237c0 59.37343-21.69138 114.810233-64.92748 166.121963-52.17652 60.99961-115.28658 96.24803-183.72426 90.68597-.87204-7.12298-1.37769-14.61967-1.37769-22.49743 0-56.99843 24.81315-117.99801 68.87738-167.873453 21.99909-25.25281 49.978-46.25018 83.90738-63.00018 33.85608-16.50008 65.88014-25.6249796 95.99884-27.18757966.87944 7.93730006 1.24583 15.87509966 1.24583 23.74993966z" />
+        </svg>
+      </ng-template>
+
+      <ng-template #mobile>
+        <svg class="w-5 h-5" version="1.1" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+          xmlns:xlink="http://www.w3.org/1999/xlink">
+          <g fill="none">
+            <path d="M0,0h24v24h-24Z"></path>
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3,12v6">
+            </path>
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21,6v6">
+            </path>
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M10.88,17.5h2.24"></path>
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M9,4h6c1.105,0 2,0.895 2,2v12c0,1.105 -0.895,2 -2,2h-6c-1.105,0 -2,-0.895 -2,-2v-12c0,-1.105 0.895,-2 2,-2Z">
+            </path>
+          </g>
+        </svg>
+      </ng-template>
+
+      <section *sfngTabContent>
+        <table class="custom">
+          <colgroup>
+            <col class="w-fit">
+            <col class="w-40">
+            <col class="w-40 bg-gray bg-opacity-20">
+            <col class="w-40">
+          </colgroup>
+          <thead>
+            <tr>
+              <th></th>
+              <th>
+                <a href="https://safing.io/blog/2022/09/06/spn-vs-vpns/?source=Portmaster">
+                  Most VPNs
+                  <br>
+                  <span class="text-xs underline text-blue">Read Comparison Blog</span>
+                </a>
+              </th>
+              <th>SPN</th>
+              <th>Tor</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Multiple Identities (simultaneous)</td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
+              </td>
+            </tr>
+            <!-- <tr>
+              <td>Automatic Geo-Unblocking</td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
+              </td>
+            </tr> -->
+            <tr>
+              <td>Individual Apps Settings</td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
+              </td>
+            </tr>
+            <tr>
+              <td>Easy Setup</td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
+              </td>
+              <td><strong>Browser Only</strong></td>
+            </tr>
+            <tr>
+              <td>Availabilty</td>
+              <td>
+                <div class="flex flex-row items-center justify-center gap-2">
+                  <ng-container *ngTemplateOutlet="windows"></ng-container>
+                  <ng-container *ngTemplateOutlet="linux"></ng-container>
+                  <ng-container *ngTemplateOutlet="mac"></ng-container>
+                  <ng-container *ngTemplateOutlet="mobile"></ng-container>
+                </div>
+              </td>
+              <td>
+                <div class="flex flex-row items-center justify-center gap-2">
+                  <ng-container *ngTemplateOutlet="windows"></ng-container>
+                  <ng-container *ngTemplateOutlet="linux"></ng-container>
+                </div>
+              </td>
+              <td>
+                <div class="flex flex-row items-center justify-center gap-2">
+                  <ng-container *ngTemplateOutlet="windows"></ng-container>
+                  <ng-container *ngTemplateOutlet="linux"></ng-container>
+                  <ng-container *ngTemplateOutlet="mac"></ng-container>
+                  <ng-container *ngTemplateOutlet="mobile"></ng-container>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>Open Source</td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
+              </td>
+            </tr>
+            <tr>
+              <td>Built for Privacy</td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </sfng-tab>
+  </sfng-tab-group>
+
+  <svg (click)="showNext()" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+    stroke="currentColor"
+    class="flex-shrink-0 w-8 h-8 text-opacity-50 cursor-pointer text-background hover:text-background">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+  </svg>
+
+</div>
+
+<div class="absolute bottom-0 left-0 right-0 flex flex-row items-center justify-center gap-2">
+  <span *ngFor="let dot of carousel; let index=index"
+    class="block w-3 h-3 transition-all duration-150 ease-in-out bg-opacity-50 rounded-full cursor-pointer bg-background"
+    [class.bg-blue]="currentIndex === index" (click)="openTab(index)"></span>
+</div>

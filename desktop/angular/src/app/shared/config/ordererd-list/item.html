@@ -1,0 +1,14 @@
+<div class="value" [class.edit]="_edit">
+  <span *ngIf="!_edit; else: editValue" class="flex-grow">
+    {{value}}
+  </span>
+
+  <ng-template #editValue>
+    <input type="text" [(ngModel)]="_value">
+  </ng-template>
+
+  <div class="buttons" *ngIf="!readonly">
+    <fa-icon [icon]="_edit ? 'check' : 'edit'" (click)="toggleEdit()"></fa-icon>
+    <fa-icon icon="times" (click)="reset()"></fa-icon>
+  </div>
+</div>
