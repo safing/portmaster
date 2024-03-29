@@ -39,6 +39,7 @@ const freeTextSearchFields: (keyof Partial<NetqueryConnection>)[] = [
   'as_owner',
   'path',
   'profile_name',
+  'remote_ip'
 ]
 
 const groupByKeys: (keyof Partial<NetqueryConnection>)[] = [
