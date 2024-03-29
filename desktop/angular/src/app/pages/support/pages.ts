@@ -117,12 +117,7 @@ export const supportTypes: PageSections[] = [
         includeDebugData: true,
         privateTicket: true,
         ghIssuePreset: "report-bug.md",
-        repositories: [
-          { repo: 'portmaster', name: 'Portmaster Core' },
-          { repo: 'portmaster-ui', name: 'User Interface' },
-          { repo: 'portmaster-packaging', name: 'Packaging & Installers' },
-          { repo: 'spn', name: 'SPN' },
-        ]
+        repositories: []
       },
       {
         id: "give-feedback",
@@ -140,12 +135,7 @@ export const supportTypes: PageSections[] = [
         includeDebugData: false,
         privateTicket: true,
         ghIssuePreset: "suggest-feature.md",
-        repositories: [
-          { repo: 'portmaster', name: 'Portmaster Core' },
-          { repo: 'portmaster-ui', name: 'User Interface' },
-          { repo: 'portmaster-packaging', name: 'Packaging & Installers' },
-          { repo: 'spn', name: 'SPN' },
-        ]
+        repositories: []
       },
       {
         id: "compatibility-report",

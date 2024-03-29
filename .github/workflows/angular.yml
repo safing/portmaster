@@ -1,44 +1,48 @@
-name: Go
+name: Angular
 
 on:
   push:
     paths:
-      - '**.go'
+      - 'desktop/angular/**'
     branches:
       - master
       - develop
+      - migration/mono-repo
 
   pull_request:
+    paths:
+      - 'desktop/angular/**'
     branches:
       - master
       - develop
+      - migration/mono-repo
 
 jobs:
   lint:
     name: Linter
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop/angular
+
     steps:
     - name: Check out code
       uses: actions/checkout@v4
 
-    - name: Setup Go
-      uses: actions/setup-go@v5
+    - uses: actions/setup-node@v3
       with:
-        go-version: '^1.21'
-        cache: false
+        node-version: 18
 
-    - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v4
+    - run: npm install
+
+    - uses: sibiraj-s/action-eslint@v3
       with:
-        version: v1.57.1
-        only-new-issues: true
-        args: -c ./.golangci.yml --timeout 15m
-
-    - name: Run go vet
-      run: go vet ./...
+        annotations: true
+        extensions: 'ts,html'
+        working-directory: desktop/angular
 
   test:
-    name: Test
+    name: Build
     runs-on: ubuntu-latest
     steps:
     - uses: earthly/actions-setup@v1
@@ -54,4 +58,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build angular projects
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +test-go --TESTFLAGS="-short"
+      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +build-angular

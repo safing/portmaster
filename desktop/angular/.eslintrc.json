@@ -3,6 +3,9 @@
   "ignorePatterns": [
     "projects/**/*"
   ],
+  "parserOptions": {
+    "tsconfigRootDir": "desktop/angular"
+  },
   "overrides": [
     {
       "files": [

@@ -66,11 +66,11 @@ go-base:
 
     LET version = $(git tag --points-at)
     IF [ "${version}" = "" ]
-        SET version = $(git describe --tags --abbrev=0 || echo "dev build")
+        SET version = $(git describe --tags --abbrev=0 || echo "dev_build")
     END
     ENV VERSION="${version}"
 
-    LET source = $( ( git remote -v | cut -f2 | cut -d" " -f1 | head -n 1 ) || echo "unknown source" )
+    LET source = $( ( git remote -v | cut -f2 | cut -d" " -f1 | head -n 1 ) || echo "unknown_source" )
     ENV SOURCE="${source}"
 
 # updates all go dependencies and runs go mod tidy, saving go.mod and go.sum locally.
@@ -221,6 +221,11 @@ angular-project:
     RUN cwd=$(pwd) && cd "${dist}" && zip -r "${cwd}/${project}.zip" ./
     SAVE ARTIFACT "./${project}.zip" AS LOCAL ${outputDir}/${project}.zip
     SAVE ARTIFACT "./dist" AS LOCAL ${outputDir}/${project}
+
+# Builds all angular projects
+build-angular:
+    BUILD +angular-project --project=portmaster --dist=./dist --configuration=development --baseHref=/ui/modules/portmaster/
+    BUILD +angular-project --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=development --baseHref=/
 
 # Build the angular projects (portmaster-UI and tauri-builtin) in production mode
 angular-release:
