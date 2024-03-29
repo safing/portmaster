@@ -1,5 +1,5 @@
 <ng-template #customTriggerTemplate>
-  <button [class.active]="dropdown?.isOpen" type="button" class="sfng-select" [class.disabled]="disabled">
+  <button [class.active]="dropdown?.isOpen" type="button" class="sfng-select" [class.disabled]="disabled" tabindex="-1">
 
     <ng-template [ngIf]="mode !== 'multi' || (currentItems.length || 0) <= 1" [ngIfElse]="multiTemplate">
       <span *ngIf="!currentItems.length; else: itemTemplate">
@@ -58,7 +58,7 @@
     </li>
 
     <!-- fake item for "dynamic" values -->
-    <li *ngIf="!!searchText && items.length === 0 && dynamicValues"
+    <li *ngIf="!!searchText && items.length === 0 && dynamicValues" 
       (click)="selectItem({selected: false, value: searchText})" class="pl-1 pr-5">
       <sfng-select-item>
         <span>
