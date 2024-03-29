@@ -188,12 +188,12 @@ export class SfngNetqueryLineChartComponent<D extends SeriesData = any> implemen
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes.hasOwnProperty('config') && this.config) {
+    if (Object.prototype.hasOwnProperty.call(changes, 'config') && this.config) {
       this.redraw()
       return
     }
 
-    if (changes.hasOwnProperty('data') && this.data) {
+    if (Object.prototype.hasOwnProperty.call(changes, 'data') && this.data) {
       this.drawChart();
     }
   }
@@ -398,9 +398,9 @@ export class SfngNetqueryLineChartComponent<D extends SeriesData = any> implemen
 
     const interval = this.config.fillEmptyTicks.interval;
 
-    let filledData: D[] = [];
+    const filledData: D[] = [];
     const addEmpty = (ts: number) => {
-      let empty: any = {
+      const empty: any = {
         timestamp: ts,
       }
 
@@ -410,7 +410,11 @@ export class SfngNetqueryLineChartComponent<D extends SeriesData = any> implemen
       filledData.push(empty)
     }
 
-    let firstElement = data[0]!.timestamp;
+    if (!data.length) {
+      return [];
+    }
+
+    let firstElement = data[0].timestamp;
     if (this.config.time?.from) {
       firstElement = Math.round(coerceDate(this.config.time.from).getTime() / 1000)
     }
