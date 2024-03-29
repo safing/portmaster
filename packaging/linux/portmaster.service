@@ -1,0 +1,41 @@
+[Unit]
+Description=Portmaster by Safing
+Documentation=https://safing.io
+Documentation=https://docs.safing.io
+Before=nss-lookup.target network.target shutdown.target
+After=systemd-networkd.service
+Conflicts=shutdown.target
+Conflicts=firewalld.service
+Wants=nss-lookup.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10
+RestartPreventExitStatus=24
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+PIDFile=/var/lib/portmaster/core-lock.pid
+Environment=LOGLEVEL=info
+Environment=PORTMASTER_ARGS=
+EnvironmentFile=-/etc/default/portmaster
+ProtectSystem=true
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+RestrictNamespaces=yes
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+PrivateDevices=yes
+AmbientCapabilities=cap_chown cap_kill cap_net_admin cap_net_bind_service cap_net_broadcast cap_net_raw cap_sys_module cap_sys_ptrace cap_dac_override cap_fowner cap_fsetid
+CapabilityBoundingSet=cap_chown cap_kill cap_net_admin cap_net_bind_service cap_net_broadcast cap_net_raw cap_sys_module cap_sys_ptrace cap_dac_override cap_fowner cap_fsetid
+StateDirectory=portmaster
+ExecStartPre=-/usr/bin/portmaster-start --data $STATE_DIRECTORY clean-structure
+# TODO(ppacher): add --disable-software-updates once it's merged and the release process changed.
+ExecStart=/usr/bin/portmaster-core --data $STATE_DIRECTORY $PORTMASTER_ARGS 
+ExecStartPost=-/usr/bin/portmaster-start recover-iptables
+
+[Install]
+WantedBy=multi-user.target

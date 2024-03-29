@@ -1,0 +1,99 @@
+<header class="flex flex-row justify-between items-center mb-2">
+  <h1 class="m-0 text-sm font-light">
+    Import {{ dialogRef.data.type === "setting" ? "Settings" : "Profile" }}
+  </h1>
+
+  <svg role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"
+    class="w-3 h-3 cursor-pointer text-secondary hover:text-primary" (click)="dialogRef.close()">
+    <path fill="currentColor"
+      d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z">
+    </path>
+  </svg>
+</header>
+
+<span class="text-xs font-light">Please paste the "Export Content" or use "Choose File" to select one from
+  your hard disk.</span>
+
+<pre tabindex="0" class="block flex-grow w-full rounded border border-gray-500 language-yaml overflow-auto outline-none"
+  #codeBlock id="yaml" contenteditable="true" (blur)="onBlur()" (mouseleave)="onBlur()" (paste)="onPaste($event)"></pre>
+
+<fieldset class="p-2 text-xs font-light bg-gray-400 rounded border border-gray-500 border-solid">
+  <legend class="px-2 py-1 m-0 text-xs w-fit">Configuration</legend>
+
+  <div class="p-2 space-y-2">
+    <div class="flex flex-row gap-2" *ngIf="dialogRef.data.type === 'setting'">
+      <input type="checkbox" [(ngModel)]="reset" id="reset" />
+      <label class="text-primary" for="reset">Reset all settings to default before importing</label>
+    </div>
+
+    <div class="flex flex-row gap-2" *ngIf="result?.containsUnknown">
+      <input type="checkbox" id="allowUnknown" [(ngModel)]="allowUnknown" />
+      <label class="text-primary" for="allowUnknown">Allow unknown settings</label>
+    </div>
+
+    <!-- Replacing existing profile must be explicitly accepted for profile (but not for settings...) -->
+    <div class="flex flex-row gap-2" *ngIf="result?.replacesExisting && dialogRef.data.type === 'profile'">
+      <input type="checkbox" id="allowUnknown" [(ngModel)]="allowReplace" />
+      <label class="text-primary" for="allowUnknown">Allow replacing an existing profile</label>
+    </div>
+
+    <div class="flex flex-row gap-2" *ngIf="result?.restartRequired">
+      <input type="checkbox" id="restart" [(ngModel)]="triggerRestart" />
+      <label class="text-primary" for="restart">Automatically restart Portmaster after a successfull import</label>
+    </div>
+  </div>
+</fieldset>
+
+<fieldset class="p-2 text-xs font-light bg-gray-400 rounded border border-gray-500 border-solid" *ngIf="
+    errorMessage ||
+    (result &&
+      (result.containsUnknown ||
+        result.replacesExisting ||
+        result.restartRequired))
+  ">
+  <legend class="px-2 py-1 m-0 text-xs w-fit">Warning</legend>
+
+  <div *ngIf="!!errorMessage" class="flex flex-row gap-2 items-center p-2 w-full text-xs font-normal">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+      class="w-6 h-6 text-red">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+    </svg>
+    <span>{{ errorMessage }}</span>
+  </div>
+
+  <ul *ngIf="result" class="px-2 py-2 pl-7 list-disc">
+    <li *ngIf="result.containsUnknown">
+      This export contains unknown settings. To import it, you must enable
+      "Allow unknown settings".
+    </li>
+
+    <li *ngIf="result.replacesExisting">
+      {{
+      dialogRef.data.type === "setting"
+      ? "This export will overwrite settings that have been changed by you."
+      : "This export will overwrite an existing profile."
+      }}
+
+      <ng-container *ngIf="replacedProfiles.length as count">
+        And deletes {{ count }} previously merged profile{{ count > 1 ? 's' : '' }}
+      </ng-container>
+    </li>
+
+    <li *ngIf="result.restartRequired">
+      This export will require a restart of the Portmaster to take effect.
+    </li>
+  </ul>
+</fieldset>
+
+<div class="flex flex-row justify-between">
+  <button>
+    <label class="block" for="avatarInput"> Choose File </label>
+  </button>
+
+  <button class="text-white bg-blue" (click)="import()" [disabled]="!result">
+    Import
+  </button>
+</div>
+
+<input name="avatarInput" id="avatarInput" class="!hidden" type="file" (change)="loadFile($event)" />

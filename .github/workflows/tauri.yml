@@ -1,0 +1,38 @@
+name: Tauri
+
+on:
+  push:
+    paths:
+      - 'desktop/tauri/**'
+    branches:
+      - master
+      - develop
+      - migration/mono-repo
+
+  pull_request:
+    paths:
+      - 'desktop/tauri/**'
+    branches:
+      - master
+      - develop
+      - migration/mono-repo
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: earthly/actions-setup@v1
+      with:
+        version: v0.8.0
+    - uses: actions/checkout@v4
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build angular projects
+      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +tauri-release

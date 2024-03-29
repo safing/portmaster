@@ -1,0 +1,69 @@
+<ng-container *ngIf="!!setting">
+  <ng-container [ngSwitch]="_type">
+    <ng-container *ngSwitchCase="'string'">
+      <!--
+        Dropdowns for a limited set of allowed values. Either using PossibleValues (the new way)
+        or by parsing the settings validation regex (deprecated)
+      -->
+      <sfng-select *ngIf="externalOptType(setting) === optionHints.OneOf; else: simpleTextInput" [ngModel]="_value"
+        (ngModelChange)="setInternalValue($event); touched()" [disabled]="_disabled">
+
+        <ng-container *ngIf="!!setting.PossibleValues; else: noPossibleValues">
+          <ng-container *ngFor="let opt of setting.PossibleValues">
+            <sfng-select-item *sfngSelectValue="opt.Value; description: opt.Description">{{opt.Name}}</sfng-select-item>
+          </ng-container>
+        </ng-container>
+
+        <ng-template #noPossibleValues>
+          <ng-container *ngFor="let opt of parseSupportedValues(setting)">
+            <sfng-select-item *sfngSelectValue="opt">{{opt}}</sfng-select-item>
+          </ng-container>
+        </ng-template>
+      </sfng-select>
+
+      <!--
+        A simple text input
+      -->
+      <ng-template #simpleTextInput>
+        <div class="input-container">
+          <input type="text" [ngModel]="_value" (ngModelChange)="setInternalValue($event)" [disabled]="_disabled" #input
+            (blur)="touched()" (click)="input.focus()">
+          <span *ngIf="!!unit" class="suffix" #suffixElement>
+            {{ unit }}
+          </span>
+        </div>
+      </ng-template>
+    </ng-container>
+
+    <!--
+      A number input
+    -->
+    <div class="input-container" *ngSwitchCase="'number'">
+      <input type="number" [ngModel]="_value" (ngModelChange)="setInternalValue($event)" [disabled]="_disabled" #input
+        (blur)="touched()">
+      <span *ngIf="!!unit" class="suffix" #suffixElement (click)="input.focus()">
+        {{ unit }}
+      </span>
+    </div>
+
+    <!--
+      Toggle switch (On/Off)
+    -->
+    <ng-container *ngSwitchCase="'boolean'">
+      <sfng-toggle id="check-{{setting.Key}}" name="check" [ngModel]="_value"
+        (ngModelChange)="setInternalValue($event); touched()" [disabled]="_disabled">
+      </sfng-toggle>
+    </ng-container>
+
+    <!--
+      Multi-line text input
+      Mainly used as a fallback if we don't support the given input type
+      yet.
+      This allows direct manipulatoin of the JSON encoded value
+    -->
+    <textarea *ngSwitchDefault [attr.rows]="lineCount(_value)" [ngModel]="_value"
+      (ngModelChange)="setInternalValue($event)" [disabled]="_disabled" (blur)="touched()">
+    </textarea>
+
+  </ng-container>
+</ng-container>

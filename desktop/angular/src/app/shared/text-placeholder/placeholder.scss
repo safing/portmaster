@@ -1,0 +1,32 @@
+.text-placeholder {
+  display : inline-block;
+  height  : 0.75rem;
+  position: relative;
+
+  .background {
+    @apply rounded;
+    opacity                  : 0.8;
+    animation-duration       : 6s;
+    animation-fill-mode      : forwards;
+    animation-iteration-count: infinite;
+    animation-name           : placeHolderShimmer;
+    animation-timing-function: linear;
+    background               : linear-gradient(to right, #4b4b4b 8%, #5a5a5a 18%, #4b4b4b 33%);
+    position                 : absolute;
+    backface-visibility      : hidden;
+    left                     : 0;
+    right                    : 0;
+    top                      : 2px;
+    bottom                   : 0;
+  }
+}
+
+@keyframes placeHolderShimmer {
+  0% {
+    background-position: 0px 0;
+  }
+
+  100% {
+    background-position: 100em 0;
+  }
+}

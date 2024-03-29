@@ -1,0 +1,11 @@
+:host {
+  @apply flex flex-col items-center justify-center;
+}
+
+h1 {
+  @apply text-primary text-2xl font-medium capitalize text-center py-5;
+}
+
+p {
+  @apply text-tertiary text-sm font-medium text-center;
+}

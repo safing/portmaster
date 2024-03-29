@@ -15,7 +15,7 @@ import (
 	"github.com/safing/jess/filesig"
 	portlog "github.com/safing/portbase/log"
 	"github.com/safing/portbase/updater"
-	"github.com/safing/portmaster/updates/helper"
+	"github.com/safing/portmaster/service/updates/helper"
 )
 
 var (

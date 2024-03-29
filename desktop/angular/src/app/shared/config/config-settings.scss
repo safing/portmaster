@@ -1,0 +1,95 @@
+:host {
+  display: flex;
+  overflow: hidden;
+}
+
+
+fa-icon[icon="spinner"] {
+  @apply text-3xl;
+  display: block;
+  width: 100%;
+  text-align: center;
+  height: 6rem;
+}
+
+div.settings-nav {
+  @apply mt-4;
+  flex-shrink: 0;
+  overflow: visible;
+  white-space: nowrap;
+
+  transition: height cubic-bezier(0.25, 0.46, 0.45, 0.94) .5s;
+  @apply text-xs;
+
+
+  ul {
+    position: fixed;
+
+    li {
+      @apply font-medium;
+
+      &.separated {
+        margin-top: 1.25rem;
+      }
+
+    }
+
+    &>li {
+      @apply mb-1;
+      @apply text-tertiary;
+
+      span {
+        cursor: pointer;
+        display: block;
+      }
+
+      &:hover,
+      &.active {
+        @apply text-primary;
+      }
+
+      &.active {
+        &.category:before {
+          content: "";
+          width: 1px;
+          height: 1rem;
+          @apply bg-white block absolute;
+          left: 0.5rem;
+        }
+
+        ul.settings {
+          display: inline-block;
+        }
+      }
+
+      ul.settings {
+        position: unset;
+        @apply mt-2;
+        @apply ml-2;
+        @apply pl-3;
+        @apply text-xs;
+        @apply border-l;
+        @apply border-cards-tertiary;
+        display: none;
+
+        li {
+          cursor: pointer;
+          margin-top: 0;
+        }
+      }
+    }
+  }
+}
+
+.user-defined-value:before {
+  content: "";
+  height: 1rem;
+  @apply bg-blue block absolute rounded-full w-1 h-1;
+  top: 0.45rem;
+  left: -1rem;
+}
+
+.user-defined-value.category:before {
+  left: -2rem;
+  top: 0.35rem;
+}

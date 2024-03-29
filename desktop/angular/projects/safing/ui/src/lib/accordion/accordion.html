@@ -1,0 +1,10 @@
+<div [class.active]="active" [class.cursor-pointer]="!group || !group.disabled" (click)="toggle($event)">
+  <ng-container *ngTemplateOutlet="headerTemplate; context: {$implicit: data, active: active, accordion: component}">
+  </ng-container>
+</div>
+
+<div class="h-auto overflow-visible opacity-100" *ngIf="active" [@fadeIn] [@fadeOut]>
+  <ng-container>
+    <ng-content></ng-content>
+  </ng-container>
+</div>

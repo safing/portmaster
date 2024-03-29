@@ -2,9 +2,12 @@ name: Go
 
 on:
   push:
+    paths:
+      - '**.go'
     branches:
       - master
       - develop
+
   pull_request:
     branches:
       - master
@@ -16,20 +19,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: '^1.21'
-
-    - name: Get dependencies
-      run: go mod download
+        cache: false
 
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v4
       with:
-        version: v1.52.2
+        version: v1.57.1
         only-new-issues: true
         args: -c ./.golangci.yml --timeout 15m
 
@@ -40,16 +41,17 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-    - name: Check out code
-      uses: actions/checkout@v3
-
-    - name: Setup Go
-      uses: actions/setup-go@v4
+    - uses: earthly/actions-setup@v1
       with:
-        go-version: '^1.21'
+        version: v0.8.0
+    - uses: actions/checkout@v4
 
-    - name: Get dependencies
-      run: go mod download
+    - name: Log in to the Container registry
+      uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Run tests
-      run: ./test --test-only
+    - name: Build angular projects
+      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +test-go --TESTFLAGS="-short"

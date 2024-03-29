@@ -1,0 +1,114 @@
+:host {
+  display: flex;
+  @apply bg-background;
+  @apply h-screen overflow-hidden;
+
+  &>* {
+    flex-shrink: 0;
+  }
+}
+
+app-navigation,
+app-side-dash {
+  @apply border-r;
+  @apply border-cards-tertiary;
+  @apply bg-background;
+}
+
+app-navigation {
+  @apply w-16;
+}
+
+div.main {
+  flex-grow: 1;
+  flex-shrink: 1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  @apply bg-background;
+  height: 100vh;
+  overflow: hidden;
+}
+
+app-debug {
+  @apply border-l;
+  @apply border-cards-tertiary;
+  @apply bg-background;
+
+  width: 30vw;
+  height: 100vh;
+  min-width: 350px;
+  top: 0px;
+  position: sticky;
+}
+
+.loading {
+  z-index: 100;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  backdrop-filter: blur(10px);
+  background-color: rgba(#222222, 0.35);
+
+  .message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    flex-direction: column;
+  }
+
+  svg {
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  div.logo {
+    opacity: 0.8;
+    position: relative;
+    width: 10vh;
+    height: 10vh;
+    @apply mt-4;
+  }
+
+  .spin {
+    animation-name: spin;
+    animation-duration: 3500ms;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+  }
+
+  .reverse {
+    animation-name: spin-reverse;
+  }
+}
+
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-reverse {
+  0% {
+    transform: rotate(360deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}

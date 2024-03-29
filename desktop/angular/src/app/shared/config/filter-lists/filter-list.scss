@@ -1,0 +1,101 @@
+:host {
+  display: block;
+  overflow: hidden;
+
+  @apply bg-cards-secondary;
+  @apply rounded;
+  @apply p-2;
+  @apply h-full;
+}
+
+.node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+
+  justify-content: flex-start;
+  @apply py-1;
+
+  .head {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+
+    input {
+      @apply mr-2;
+      position: relative;
+      top: 2px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+    }
+
+    span.details {
+      opacity: 0;
+      text-transform: capitalize;
+      font-size: 0.9em;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      max-width: 6rem;
+      @apply text-tertiary;
+    }
+
+    &:hover {
+      span.details {
+        opacity: 1;
+
+      }
+    }
+  }
+
+  span.name {
+    @apply text-primary;
+
+    .id {
+      @apply text-tertiary;
+      font-style: italic;
+    }
+  }
+
+  .description {
+    position: relative;
+    top: -2px;
+
+    @apply text-tertiary;
+  }
+
+  div.expand {
+    cursor: pointer;
+    @apply text-secondary;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    @apply pb-2;
+
+    fa-icon {
+      margin-right: 0.25rem;
+    }
+  }
+
+  .children {
+    display: flex;
+    flex-direction: column;
+    margin-left: 1.25rem;
+  }
+
+  .border {
+    position: absolute;
+    top: 1.2rem;
+    bottom: 0.5rem;
+    width: 0.7rem;
+    margin-left: -0.85rem;
+    border: 1px solid;
+    border-right: none;
+    border-top: none;
+    @apply border-cards-tertiary;
+  }
+}

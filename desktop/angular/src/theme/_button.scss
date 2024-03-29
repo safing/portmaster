@@ -1,0 +1,60 @@
+@layer components {
+  button {
+    @apply text-xs;
+    @apply bg-buttons-dark;
+    @apply p-1;
+    @apply px-4;
+    @apply capitalize;
+    @apply rounded-sm;
+    @apply font-medium;
+    @apply focus:underline focus:underline-offset-4;
+
+    user-select: none;
+    outline: none;
+    cursor: pointer;
+    font-size: 0.7rem;
+
+    &.btn-outline {
+      background: transparent;
+      opacity: 0.6;
+    }
+
+    &:hover {
+      &:not(.outline):not(.bg-blue) {
+        @apply bg-buttons-light;
+      }
+
+      opacity: 1;
+    }
+
+    &:disabled {
+      @apply cursor-default;
+      opacity: 0.3;
+
+      &:not(.outline):hover {
+        @apply bg-buttons-dark;
+      }
+    }
+
+    &:active {
+      @apply bg-buttons-dark;
+    }
+
+    &:hover,
+    &:focus,
+    &:active {
+      outline: none;
+    }
+  }
+
+  .info-circle {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.8em;
+    @apply rounded-full;
+    @apply bg-buttons-dark;
+  }
+}

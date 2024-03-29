@@ -1,0 +1,65 @@
+:host {
+  display: flex;
+  outline: none;
+  @apply space-x-2;
+
+  &>* {
+    @apply rounded;
+    @apply bg-gray-300;
+  }
+}
+
+div.action {
+  @apply border-gray-500 border;
+  flex-shrink: 0;
+  min-width: 6rem;
+  text-align: center;
+}
+
+div.value {
+  @apply border-gray-500 border;
+  @apply p-1.5;
+  @apply px-2;
+
+  &.edit {
+    @apply p-0;
+    @apply bg-gray-400;
+
+    input {
+      margin: 0;
+      width: auto;
+      height: 100%;
+      flex-grow: 1;
+      border: none;
+      @apply shadow-none;
+    }
+
+    input:focus+.buttons {
+      @apply bg-gray-500 border-gray-600 bg-opacity-75 border-opacity-75;
+    }
+  }
+
+  flex-grow : 1;
+  display : flex;
+  justify-content: space-between;
+  align-items : center;
+
+  .buttons {
+    flex-shrink: 0;
+    height: 100%;
+    width: 4rem;
+    @apply flex items-center justify-evenly;
+
+    fa-icon {
+      cursor: pointer;
+      @apply text-primary;
+      @apply p-1;
+      opacity: 0.7;
+      font-size: 0.6rem;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+  }
+}

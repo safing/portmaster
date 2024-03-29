@@ -1,0 +1,98 @@
+:host {
+  height: 100vh;
+  top: 0px;
+  position: sticky;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+
+  .logo-image {
+    @apply w-6 -top-3 -left-3 absolute;
+    position: absolute;
+  }
+
+  svg {
+    &:not(.connected) {
+      animation-timing-function: cubic-bezier(0.445, 0.05, 0.55, 0.95);
+
+      path.inner {
+        fill: theme('colors.info.red');
+      }
+    }
+  }
+
+  div.nav-list {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  div.nav-lower-list {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    padding-bottom: 1.5rem;
+  }
+
+  div.link {
+    @apply my-2;
+
+    width: 2rem;
+    height: 2rem;
+    border-radius: 10px;
+
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+
+    cursor: pointer;
+
+    & {
+      outline: none;
+
+      svg,
+      fa-icon {
+        opacity: .5;
+      }
+    }
+
+    &:target,
+    &.active {
+      background-color: #2c2c2c;
+
+      svg,
+      fa-icon {
+        opacity: 1;
+        transform: scale(1.08);
+      }
+    }
+
+    &:hover {
+
+      svg,
+      fa-icon {
+        opacity: 1;
+      }
+    }
+
+    svg,
+    fa-icon {
+
+      &.dash,
+      &.spn,
+      &.monitor,
+      &.app,
+      &.help,
+      &.settings {
+        @apply text-white;
+        width: 1.1rem;
+        position: relative;
+        stroke: currentColor;
+      }
+    }
+  }
+}

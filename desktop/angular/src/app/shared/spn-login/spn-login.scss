@@ -1,0 +1,53 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.custom-form-input {
+  background: none;
+  @apply border-0 border-b border-buttons-light text-secondary font-medium px-0;
+
+  &:active,
+  &:focus {
+    background: none;
+  }
+}
+
+.logo-image {
+  @apply w-16 absolute;
+}
+
+svg.logo-image {
+  animation-timing-function: cubic-bezier(0.445, 0.05, 0.55, 0.95);
+}
+
+.spin {
+  animation-name: spin;
+  animation-duration: 3500ms;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+.reverse {
+  animation-name: spin-reverse;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-reverse {
+  0% {
+    transform: rotate(360deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}

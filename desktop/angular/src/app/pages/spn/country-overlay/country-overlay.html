@@ -1,0 +1,25 @@
+<span class="country-content-wrapper">
+
+  <span class="country-name">
+    <span class="country-name-flag" [appCountryFlags]="countryCode"></span>
+    <span class="country-name-name">{{ countryName }}</span>
+  </span>
+
+  <span class="country-stats">
+    <span class="country-stats--safing">
+      <spn-node-icon bySafing="true" isActive="true"></spn-node-icon>
+      <span>Safing Nodes:</span>
+      <span class="count">{{ safingNodes.length }}</span>
+    </span>
+
+    <span class="country-stats--community">
+      <spn-node-icon bySafing="false" isActive="true"></spn-node-icon>
+      <span>Community Nodes:</span>
+      <span class="count">{{ communityNodes.length }}</span>
+    </span>
+  </span>
+
+  <span class="pb-2 text-xxs text-tertiary">
+    Click country for details
+  </span>
+</span>

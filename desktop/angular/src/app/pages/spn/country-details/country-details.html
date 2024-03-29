@@ -1,0 +1,154 @@
+<h1 class="flex flex-row items-center gap-2" cdkDragHandle cdkDrag cdkDragRootElement=".cdk-overlay-pane">
+  <span [appCountryFlags]="countryCode"></span>
+  <span>{{ countryName }}</span>
+  <span class="flex-grow"></span>
+
+  <svg *ngIf="!!dialogRef" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+    stroke-width="2" class="w-4 h-4 ml-2 opacity-75 cursor-pointer hover:opacity-100" (click)="dialogRef.close()">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+  </svg>
+</h1>
+
+<sfng-tab-group linkRouter="false" class="h-full">
+  <!-- Tab that displays all nodes in that country -->
+  <sfng-tab id="pins" title="Nodes">
+    <spn-pin-list *sfngTabContent [pins]="pins" (pinHover)="pinHover.next($event)" (pinClick)="openPinDetails($event)"
+      allowClick="true">
+    </spn-pin-list>
+  </sfng-tab>
+
+  <!-- Tab that displays generale statistics about the country -->
+  <sfng-tab id="Statistics" title="Statistics">
+    <div *sfngTabContent class="flex flex-col gap-3">
+      <table>
+        <tr>
+          <th>
+            <span class="text-primary">Total Nodes</span>
+          </th>
+          <td>{{ totalAliveCount }}</td>
+        </tr>
+        <tr *ngIf="totalAliveCount">
+          <th>
+            <span class="inline-block pl-4">
+              <spn-node-icon bySafing="true" isActive="true"></spn-node-icon>
+              by Safing
+            </span>
+          </th>
+          <td>{{ safingNodeCount }}</td>
+        </tr>
+        <tr *ngIf="totalAliveCount">
+          <th>
+            <span class="inline-block pl-4">
+              <spn-node-icon bySafing="false" isActive="true"></spn-node-icon>
+              by Community
+            </span>
+          </th>
+          <td>{{ communityNodeCount }}</td>
+        </tr>
+        <tr>
+          <th>
+            <span class="text-primary">Exit Nodes</span>
+          </th>
+          <td>{{ exitNodeCount }}</td>
+        </tr>
+        <tr *ngIf="!!exitNodeCount">
+          <th>
+            <span class="inline-block pl-4">
+              <spn-node-icon bySafing="true" isExit="true"></spn-node-icon>
+              by Safing
+            </span>
+          </th>
+          <td>{{ safingExitNodeCount }}</td>
+        </tr>
+        <tr *ngIf="!!exitNodeCount">
+          <th>
+            <span class="inline-block pl-4">
+              <spn-node-icon bySafing="false" isExit="true"></spn-node-icon>
+              by Community
+            </span>
+          </th>
+          <td>{{ communityExitNodeCount }}</td>
+        </tr>
+        <tr>
+          <th>
+            <span class="text-primary">Nodes In Use</span>
+          </th>
+          <td>{{ activeNodeCount }}</td>
+        </tr>
+        <tr *ngIf="activeNodeCount">
+          <th>
+            <span class="inline-block pl-4">
+              <spn-node-icon bySafing="true" isActive="true"></spn-node-icon>
+              by Safing
+            </span>
+          </th>
+          <td>{{ activeSafingNodeCount }}</td>
+        </tr>
+        <tr *ngIf="activeNodeCount">
+          <th>
+            <span class="inline-block pl-4">
+              <spn-node-icon bySafing="false" isActive="true"></spn-node-icon>
+              by Community
+            </span>
+          </th>
+          <td>{{ activeCommunityNodeCount }}</td>
+        </tr>
+      </table>
+    </div>
+  </sfng-tab>
+
+
+  <!-- Tab that displays all apps that exit in this country -->
+  <sfng-tab id="profiles" title="Apps">
+    <div *sfngTabContent>
+      <span class="inline-block p-2 mb-2 text-tertiary">The following Apps have connections that are routed through the
+        SPN and use an
+        exit node in {{ countryName }} ({{ countryCode }}):</span>
+      <table class="w-full custom ">
+        <tbody>
+          <tr *ngFor="let app of profiles; trackBy: trackProfile"
+            class="bg-transparent hover:bg-gray-500 hover:bg-opacity-50">
+            <td class="p-2">
+              <app-icon [profile]="app.profile"></app-icon>
+              {{ app.profile.Name }}
+            </td>
+            <td class="p-2">
+              {{ app.count }} <span class="text-tertiary">connections</span>
+            </td>
+            <td class="w-10 p-2">
+              <div class="flex flex-row items-center gap-2 ">
+                <div class="w-6 outline-none cursor-pointer hover:text-primary text-secondary"
+                  [routerLink]="['/app/', app.profile.Source, app.profile.ID]"
+                  [queryParams]="{tab: 0, q: filterConnectionsByCountryNodes}" (click)="$event.stopPropagation()">
+                  <svg viewBox="0 0 24 24" class="w-4 h-4">
+                    <g fill="none" stroke="currentColor">
+                      <path shape-rendering="geometricPrecision" stroke-linecap="round" stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8.464 8.464c-1.953 1.953-1.953 5.118 0 7.071 1.953 1.953 5.118 1.953 7.071 0 1.953-1.953 1.953-5.119 0-7.071C14.559 7.488 13.28 7 12 7" />
+                      <path shape-rendering="geometricPrecision" stroke-linecap="round" stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M5.636 5.636c-3.515 3.515-3.515 9.213 0 12.728 3.515 3.515 9.213 3.515 12.728 0 3.515-3.515 3.515-9.213 0-12.728-2.627-2.627-6.474-3.289-9.717-1.989M5.64 5.64L12 12" />
+                    </g>
+                  </svg>
+                </div>
+
+                <div class="cursor-pointer w-6outline-none hover:text-primary text-secondary"
+                  [routerLink]="['/app/',  app.profile.Source, app.profile.ID]" [queryParams]="{tab: 'settings'}"
+                  (click)="$event.stopPropagation()">
+                  <svg xmlns="http://www.w3.org/2000/svg" data-name="Layer 1" viewBox="0 0 24 24" class="w-4 h-4"
+                    fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" fill="currentColor"
+                      d="M19 21h-3a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2Z" />
+                    <path fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 9h-3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2ZM5 3h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM5 15h3a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2Z" />
+                  </svg>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </sfng-tab>
+
+</sfng-tab-group>

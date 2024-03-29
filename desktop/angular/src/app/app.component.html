@@ -1,0 +1,53 @@
+<app-navigation #navigation (sideDashChange)="onSideDashChange($event)" class="relative block bg-background">
+</app-navigation>
+
+<div *ngIf="sideDashStatus === 'expanded' && sideDashOverlay" (click)="navigation.toggleSideDash($event)" [@fadeIn]
+  [@fadeOut] class="absolute top-0 bottom-0 right-0 left-16 dialog-screen-backdrop-light" style="z-index: 100"></div>
+
+<app-side-dash class="flex-shrink-0" style="z-index: 100"
+  [ngClass]="{'absolute top-0 left-16 bg-gray-1002 h-full shadow-2xl': sideDashOverlay, 'relative': !sideDashOverlay}"
+  *ngIf="sideDashStatus === 'expanded'" [@fadeIn] (@fadeIn.done)="windowResizeChange.next()" [@fadeOut]
+  (@fadeOut.done)="windowResizeChange.next()">
+</app-side-dash>
+
+<div class="main" #mainContent>
+  <router-outlet></router-outlet>
+</div>
+
+<div class="loading" *ngIf="(showOverlay$ | async) as overlayText" [@fadeIn] [@fadeOut]>
+  <div class="message">
+    <div class="logo" routerLink="monitor">
+      <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+        viewBox="0 0 128 128" class="spin reverse">
+        <g data-name="Main" fill-rule="evenodd">
+          <path fill="#fff" class="inner"
+            d="M176.11 36.73l-5-8.61a41.53 41.53 0 00-14.73 57.22l8.55-5.12a31.58 31.58 0 0111.19-43.49z"
+            transform="translate(-127.99 .01)" style="isolation:isolate" opacity=".8"></path>
+          <path fill="#fff" class="inner"
+            d="M222.36 72.63a31.55 31.55 0 01-45 19.35l-4.62 8.84a41.54 41.54 0 0059.17-25.46z"
+            transform="translate(-127.99 .01)" style="isolation:isolate" opacity=".8"></path>
+        </g>
+      </svg>
+
+      <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+        viewBox="0 0 128 128" class="spin">
+        <g data-name="Main" fill-rule="evenodd">
+          <path fill="#fff" class="inner reverse"
+            d="M197 83a19.66 19.66 0 01-19.25-32.57l-4.5-4.27A25.87 25.87 0 00198.59 89z"
+            transform="translate(-127.99 .01)" style="isolation:isolate" opacity=".6"></path>
+        </g>
+      </svg>
+
+      <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+        viewBox="0 0 128 128">
+        <g data-name="Main" fill-rule="evenodd">
+          <path fill="#fff"
+            d="M192 112.64A48.64 48.64 0 11240.64 64 48.64 48.64 0 01192 112.64zM256 64a64 64 0 10-64 64 64 64 0 0064-64z"
+            transform="translate(-127.99 .1)"></path>
+        </g>
+      </svg>
+    </div>
+    <h1>{{overlayText}}</h1>
+    <h1>...</h1>
+  </div>
+</div>

@@ -1,0 +1,15 @@
+.feature-icon {
+  @apply text-primary text-opacity-80;
+
+  &.feature-icon-off {
+    opacity: 0.25;
+  }
+}
+
+.status-info {
+  @apply text-primary text-opacity-80 text-xxs text-center;
+
+  &:hover {
+    cursor: default;
+  }
+}

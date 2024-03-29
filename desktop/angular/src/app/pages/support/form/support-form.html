@@ -1,0 +1,107 @@
+<div class="header">
+  <h4 class="breadcrumbs">
+    <span routerLink="../">Get Help</span>
+    <fa-icon icon="chevron-right" [@moveInOut]></fa-icon>
+    <span [@moveInOut]>{{ page?.title }}</span>
+  </h4>
+  <app-expertise></app-expertise>
+</div>
+
+<div class=" scroll-container" cdkScrollable [@fadeIn]="true">
+  <div class="form-wrapper">
+    <div class="page-title">
+      <h1>{{ page?.title }}</h1>
+    </div>
+
+    <p class="prologue secondary-text" *ngIf="page?.prologue || page?.shortHelp">
+      {{ page?.prologue || page?.shortHelp }}
+    </p>
+
+    <div class="repo-list" *ngIf="page?.repositories?.length">
+      <h4>{{ page?.repoHelp }}</h4>
+      <button *ngFor="let repo of page?.repositories" [attr.id]="repo.repo"
+        [class.selected]="selectedRepo === repo.repo" (click)="selectRepo(repo.repo)">
+        {{ repo.name }}
+      </button>
+    </div>
+
+    <h3>Title</h3>
+    <div class="input-wrapper">
+      <input class="title" [class.missing]="titleMissing && title === ''" required type="text" [(ngModel)]="title"
+        (ngModelChange)="searchIssues($event)" placeholder="Summarize your report">
+      <span class="copy-button" (click)="copyToClipboard(title)">Copy</span>
+    </div>
+
+    <section *ngFor="let section of page?.sections">
+      <h3>{{section.title}}</h3>
+      <div class="input-wrapper">
+        <textarea [(ngModel)]="form[section.title]" (ngModelChange)="onModelChange()" rows="4"
+          [placeholder]="section.help || ''"></textarea>
+        <span class="copy-button" (click)="copyToClipboard(form[section.title])">Copy</span>
+      </div>
+      <!--
+      <span class="section-help" *ngIf="section.help">
+        {{section.help}}
+      </span>
+    -->
+    </section>
+
+    <ng-template [ngIf]="page?.includeDebugData">
+      <div class="page-title">
+        <h1>Included Debug Info</h1>
+      </div>
+
+      <p class="prologue secondary-text">
+        The following debug information will be sent together with your report. Please check it and remove potentially sensitive
+        information. The debug information sent with your reports will be saved on Safing's self-hosted pastebin server
+        and is viewable via its created url. The data is automatically destroyed after one month.
+      </p>
+      <div class="debug-header">
+        <div class="pl-4 secondary-text">
+          Portmaster Version: <u>{{version}}</u>
+          built on <u>{{buildDate}}</u>
+        </div>
+        <span class="copy-button" (click)="copyToClipboard(debugData)">Copy</span>
+      </div>
+      <textarea [(ngModel)]="debugData" rows="8"></textarea>
+    </ng-template>
+
+    <div class="actions">
+      <button *ngIf="!!page?.ghIssuePreset" class="primary" (click)="createOnGithub()">
+        <fa-icon [icon]="['fab', 'github']" class="mr-1"></fa-icon>
+        {{ haveGhAccount ? 'Open' : 'Create'}} on GitHub
+      </button>
+      <button *ngIf="page?.privateTicket" [class.primary]="!page?.ghIssuePreset" (click)="createPrivateTicket()">
+        Send private Ticket
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="page?.ghIssuePreset" class="issue-list" sfngTipUpAnchor="left">
+    <div class="page-title">
+      <h1>
+        Related Issues
+        <sfng-tipup key="support-page-related-issues"></sfng-tipup>
+      </h1>
+    </div>
+    <p class="prologue secondary-text">
+      Public issues related to your title:
+    </p>
+
+    <p class="prologue secondary-text" *ngIf="!relatedIssues.length">
+      No related issues were found.
+    </p>
+
+    <ul [@fadeInList]="relatedIssues.slice(0, 8).length">
+      <li *ngFor="let issue of relatedIssues.slice(0, 8); trackBy: trackIssue" (click)="openIssue(issue)" class="issue">
+        <span class="title">{{ issue.title }}</span>
+        <span class="meta">{{ issue.closed ? 'closed' : 'opened'}} in <u>{{ repos[issue.repository] || issue.repository
+            }}</u> by <u>{{ issue.user }}</u>
+          {{
+          issue.createdAt | timeAgo
+          }}</span>
+        <fa-icon icon="external-link-alt"></fa-icon>
+      </li>
+    </ul>
+  </div>
+</div>

@@ -1,0 +1,49 @@
+:host {
+  overflow: hidden;
+  flex-direction: row;
+  flex-grow: 1;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-left: 1.7rem;
+  padding-right: 0.8rem;
+
+  .header,
+  .content {
+    padding: 0;
+    margin: 0;
+  }
+
+  .header {
+    padding-top: 0.9rem;
+
+    .breadcrumbs {
+      font-size: 0.715rem;
+      font-weight: 500;
+      color: #cacaca;
+      user-select: none;
+      display: flex;
+
+      span:first-child {
+        opacity: .55;
+        font-weight: 400;
+        margin-right: 4px;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+
+      svg.arrow {
+        width: 1rem;
+        padding: 0;
+        margin: 0;
+
+        .inner {
+          stroke: white;
+        }
+      }
+    }
+  }
+}

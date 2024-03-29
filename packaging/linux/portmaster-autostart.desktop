@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Portmaster
+GenericName=Application Firewall Notifier
+Exec=/usr/bin/portmaster --with-prompts --with-notifications --background
+Icon=portmaster
+Terminal=false
+Type=Application
+Categories=System
+NoDisplay=true

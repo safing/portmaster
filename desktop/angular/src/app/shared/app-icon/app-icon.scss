@@ -1,0 +1,28 @@
+:host {
+  border-radius: 50%;
+  user-select: none;
+
+  height: var(--app-icon-size, 25px);
+  width: var(--app-icon-size, 25px);
+  flex-shrink: 0;
+  @apply mr-2;
+
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+span,
+img {
+  @apply text-primary;
+  @apply font-medium;
+  @apply rounded-full;
+  text-shadow: rgba(0, 0, 0, .8) 0px 0px 1px;
+
+  font-size: calc(var(--app-icon-size, 25px) / 6 * 4);
+}
+
+img {
+  width: 100%;
+  height: 100%;
+}

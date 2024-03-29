@@ -1,0 +1,35 @@
+:host {
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  width          : 6rem;
+  height         : 2.7rem;
+  position       : relative;
+  bottom         : 0;
+  transition     : all .3s cubic-bezier(0.075, 0.82, 0.165, 1);
+
+  @apply bg-buttons-dark;
+
+  @apply border-b-2;
+
+  &.selected {
+    @apply bg-buttons-light;
+    height: 3rem;
+  }
+
+  &:not(.disabled) {
+    cursor: pointer;
+
+    &:hover {
+      @apply bg-buttons-light;
+    }
+  }
+
+  &:first-of-type {
+    @apply rounded-tl;
+  }
+
+  &:last-of-type {
+    @apply rounded-tr;
+  }
+}

@@ -1,0 +1,127 @@
+<h1 class="flex flex-row items-center gap-2 text-base">
+  <span [appCountryFlags]="pin?.entity?.Country || ''"></span>
+  {{ pin?.pin?.Name || 'N/A' }}
+  <span class="flex-grow"></span>
+  <svg *ngIf="!!dialogRef" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+    stroke-width="2" class="w-4 h-4 ml-2 opacity-75 cursor-pointer hover:opacity-100" (click)="dialogRef.close()">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+  </svg>
+</h1>
+
+<span class="text-sm inline-block mt-.5 mb-2 font-thin" *ngIf="pin as pin">
+  This SPN Node is run by
+  <svg sfng-tooltip="Verified operator: {{pin.pin.VerifiedOwner}}" *ngIf="!!pin.pin.VerifiedOwner"
+    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+    class="inline-block w-4 h-4 mx-1 -mt-1 text-green-300">
+    <path stroke-linecap="round" stroke-linejoin="round"
+      d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+  </svg>
+  <span class="font-normal">{{ pin.pin.VerifiedOwner || 'Community' }}</span>
+</span>
+
+<div *ngIf="pin?.isOffline" class="text-sm mt-.5 mb-2 font-thin text-red-300">
+  Node is Offline
+</div>
+<div *ngIf="pin?.hasIssues && !pin?.isOffline" class="text-sm mt-.5 mb-2 font-thin text-yellow-300">
+  Node has Issues
+</div>
+
+<sfng-tab-group *ngIf="pin as pin" linkRouter="false">
+  <sfng-tab id="details" title="Details">
+    <table *sfngTabContent class="custom">
+      <tr>
+        <td class="p-2 font-thin">ID</td>
+        <td>{{ pin.pin.ID }}</td>
+      </tr>
+      <tr>
+        <td class="p-2 font-thin">Verified Owner</td>
+        <td>
+          <pre>{{ pin.pin.VerifiedOwner }}</pre>
+        </td>
+      </tr>
+      <tr>
+        <td class="p-2 font-thin">First Seen</td>
+        <td>{{ pin.pin.FirstSeen | date:'medium' }}</td>
+      </tr>
+      <tr>
+        <td class="p-2 font-thin">IPv4</td>
+        <td *ngIf="pin.pin.EntityV4 as entity">
+          <div class="flex flex-col gap-1">
+            <span class="text-primary">
+              <span [appCountryFlags]="entity.Country"></span>
+              {{ entity.ASOrg }}
+              <span class="font-thin text-tertiary">({{ entity.ASN }})</span>
+            </span>
+            <span class="text-primary">
+              {{ entity.IP || 'N/A' }}
+            </span>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="p-2 font-thin">IPv6</td>
+        <td *ngIf="pin.pin.EntityV6 as entity">
+          <div class="flex flex-col gap-1">
+            <span class="text-primary">
+              <span [appCountryFlags]="entity.Country"></span>
+              {{ entity.ASOrg }}
+              <span class="font-thin text-tertiary">({{ entity.ASN }})</span>
+            </span>
+            <span class="text-primary">
+              {{ entity.IP || 'N/A' }}
+            </span>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="p-2 font-thin">States</td>
+        <td>
+          <pre>{{ pin.pin.States.join(", ") }}</pre>
+        </td>
+      </tr>
+      <tr>
+        <td class="p-2 font-thin">SessionActive</td>
+        <td>
+          <pre>{{ pin.pin.SessionActive }}</pre>
+        </td>
+      </tr>
+      <tr>
+        <td class="p-2 font-thin">HopDistance</td>
+        <td>
+          <pre>{{ pin.pin.HopDistance }}</pre>
+        </td>
+      </tr>
+      <tr>
+        <td class="p-2 font-thin">Exit Connections</td>
+        <td>
+          <div class="flex flex-row items-center gap-2 cursor-pointer" [routerLink]="['/monitor']"
+            [queryParams]="{q: 'exit_node:' + pin.pin.ID}" (click)="dialogRef?.close()">
+            <pre>{{ exitConnectionCount }}</pre>
+            <svg viewBox="0 0 24 24" class="w-4 h-4" sfng-tooltip="Show exit connections in monitor."
+              *ngIf="exitConnectionCount > 0">
+              <g fill="none" stroke="currentColor">
+                <path shape-rendering="geometricPrecision" stroke-linecap="round" stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8.464 8.464c-1.953 1.953-1.953 5.118 0 7.071 1.953 1.953 5.118 1.953 7.071 0 1.953-1.953 1.953-5.119 0-7.071C14.559 7.488 13.28 7 12 7" />
+                <path shape-rendering="geometricPrecision" stroke-linecap="round" stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5.636 5.636c-3.515 3.515-3.515 9.213 0 12.728 3.515 3.515 9.213 3.515 12.728 0 3.515-3.515 3.515-9.213 0-12.728-2.627-2.627-6.474-3.289-9.717-1.989M5.64 5.64L12 12" />
+              </g>
+            </svg>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </sfng-tab>
+
+  <sfng-tab id="routeHome" title="Route" *ngIf="!!pin.pin.Route">
+    <div *sfngTabContent>
+      <sfng-spn-pin-route [route]="pin.pin.Route"></sfng-spn-pin-route>
+    </div>
+  </sfng-tab>
+
+  <sfng-tab id="connectedHubs" title="Connected Nodes">
+    <spn-pin-list *sfngTabContent [pins]="connectedPins" allowHover="false" allowClick="false"></spn-pin-list>
+  </sfng-tab>
+
+</sfng-tab-group>

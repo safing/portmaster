@@ -1,0 +1,27 @@
+<ul>
+  <li class="flex flex-col gap-1 px-2 py-1 hover:bg-gray-300" *ngFor="let req of requests">
+    <div class="flex flex-row items-center justify-start gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-300" viewBox="0 0 20 20" fill="currentColor"
+        *ngIf="!req.latestIsBlocked">
+        <path fill-rule="evenodd"
+          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+          clip-rule="evenodd" />
+      </svg>
+
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-300" viewBox="0 0 20 20" fill="currentColor"
+        *ngIf="req.latestIsBlocked">
+        <path fill-rule="evenodd"
+          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+          clip-rule="evenodd" />
+      </svg>
+
+      <span>
+        {{ req.domain }}
+      </span>
+    </div>
+    <span *ngIf="req.latestIsBlocked && !!req.lastConn" class="flex flex-row gap-2 text-xs text-secondary">
+      <span class="w-4"></span>
+      {{ req.lastConn.extra_data?.reason?.Msg }}
+    </span>
+  </li>
+</ul>
