@@ -43,7 +43,7 @@ export class Lexer {
   }
 
   /** reads a number token */
-  private readNumber(): Token<TokenType.NUMBER> {
+  private readNumber(): Token<TokenType.NUMBER> | null {
     const start = this._input.pos;
 
     let has_dot = false;
@@ -59,9 +59,10 @@ export class Lexer {
       return isDigit(ch);
     });
 
-    if (!this._input.eof() && isIdentChar(this._input.peek())) {
-      this._input.revert(number.length + 1);
-      this._input.croak("invalid number character")
+    if (!this._input.eof() && !isWhitespace(this._input.peek())) {
+      this._input.revert(number.length);
+
+      return null;
     }
 
     return {
@@ -182,13 +183,11 @@ export class Lexer {
       return this.readString('\'', true);
     }
 
-    try {
-      if (isDigit(ch)) {
-        return this.readNumber();
+    if (isDigit(ch)) {
+      const number = this.readNumber();
+      if (number !== null) {
+        return number;
       }
-    } catch (err) {
-      // we ignore that error here as it may only happen for unqoted strings
-      // that start with a number.
     }
 
     if (ch === ':') {
