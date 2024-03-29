@@ -5,37 +5,32 @@ Restore privacy and take back control over all your computer's network activity.
 
 With great defaults your privacy improves without any effort. And if you want to configure and control everything down to the last detail - Portmaster has you covered too. Developed in the EU 🇪🇺, Austria.
 
+__[Download for Free](https://safing.io/download/)__
+
+__[About Us](https://safing.io/about/)__
+
 ![Portmaster User Interface](https://safing.io/assets/img/page-specific/landing/portmaster-thumbnail.png?)
 
-## Features
+_seen on:_  
 
-1. [Monitor All Network Activity](https://safing.io/features#monitor-all-network-activity)
-2. [Automatically Block Trackers & Malware](https://safing.io/features#auto-block-trackers-and-malware)
-3. [Secure Your DNS Requests by Default](https://safing.io/features#secure-dns-by-default)
-4. [Create Your Own Rules](https://safing.io/features#create-your-own-rules)
-5. [Set Global & per‑App Settings](https://safing.io/features#set-global-and-app-settings)
-6. [FAQ](https://wiki.safing.io/en/FAQ/FrequentlyAskedQuestions)
-
-# [Download for Free](https://safing.io/download/)
-
-## About Safing
-
-- [About](https://safing.io/about/)
-- [Pricing](https://safing.io/pricing/)
-- [Business Model](https://safing.io/business-model/)
-- [Ownership](https://safing.io/ownership/)
-- [Team](https://safing.io/team/)
-
-## As Seen on:
-
-[![It's FOSS](https://safing.io/assets/img//external/itsfoss.png)](https://news.itsfoss.com/portmaster-1-release/)
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-[![ghacks.net](https://safing.io/assets/img//external/ghacks.png)](https://www.ghacks.net/2022/11/08/portmaster-1-0-released-open-source-application-firewall/)
+[<img src="https://safing.io/assets/img/external/heise_online.svg" height="35">](https://www.heise.de/tests/Datenschutz-Firewall-Portmaster-im-Test-9611687.html)
 &nbsp;&nbsp;&nbsp;
-[![Techlore](https://safing.io/assets/img//external/techlore.png)](https://www.youtube.com/watch?v=E8cTRhGtmcM)
+[![ghacks.net](https://safing.io/assets/img/external/ghacks.png)](https://www.ghacks.net/2022/11/08/portmaster-1-0-released-open-source-application-firewall/)
+&nbsp;&nbsp;&nbsp;
+[![Techlore](https://safing.io/assets/img/external/techlore.png)](https://www.youtube.com/watch?v=E8cTRhGtmcM)
 &nbsp;&nbsp;&nbsp;
 [![Lifehacker](https://safing.io/assets/img/external/logos/lifehacker.webp)](https://lifehacker.com/the-lesser-known-apps-everyone-should-install-on-a-new-1850223434)
 
+## [Features](https://safing.io/features/)
+
+1. Monitor All Network Activity
+2. Full Control: Block Anything
+3. Automatically Block Trackers & Malware
+4. Set Global & Per‑App Settings
+5. Secure DNS (Doh/DoT)
+6. Record and Search Network Activity ([$](https://safing.io/pricing/))
+7. Per-App Bandwidth Usage ([$](https://safing.io/pricing/))
+8. [SPN, our Next-Gen Privacy Network](https://safing.io/spn/) ([$$](https://safing.io/pricing/))
 
 # Technical Introduction
 
@@ -77,7 +72,7 @@ Portmaster is a privacy suite for your Windows and Linux desktop.
 
 - Monitor bandwidth usage per connection and app
 
-### Feature: SPN - Safing Privacy Network ($)
+### Feature: SPN - Safing Privacy Network ($$)
 
 - A Privacy Network aimed at use cases "between" VPN and Tor.
 - Uses onion encryption over multiple hops just like Tor.
@@ -91,7 +86,7 @@ Portmaster is a privacy suite for your Windows and Linux desktop.
 
 ## Documentation
 
-All details and guides live in the dedicated [wiki](https://wiki.safing.io/)
+All details and guides in the dedicated [wiki](https://wiki.safing.io/)
 
 - [Getting Started](https://wiki.safing.io/en/Portmaster/App)
 - Install
@@ -101,3 +96,12 @@ All details and guides live in the dedicated [wiki](https://wiki.safing.io/)
 - [VPN Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility#vpn-compatibly)
 - [Software Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility)
 - [Architecture](https://wiki.safing.io/en/Portmaster/Architecture)
+- [Settings Handbook](https://docs.safing.io/portmaster/settings)
+- [Portmaster Developer API](https://docs.safing.io/portmaster/api)
+
+# Build Portmaster Yourself (WIP)
+
+1. [Install Earthly CLI](https://earthly.dev/get-earthly)
+2. [Install Docker Engine](https://docs.docker.com/engine/install/)
+3. Run `earthly +release`
+4. Find artifacts in `./dist`
