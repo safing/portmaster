@@ -152,7 +152,7 @@ func NewConnectOp(tunnel *Tunnel) (*ConnectOp, *terminal.Error) {
 
 	// Initialize.
 	tErr := op.t.StartOperation(op, container.New(data), 5*time.Second)
-	if err != nil {
+	if tErr != nil {
 		return nil, tErr
 	}
 
