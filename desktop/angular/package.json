@@ -85,7 +85,7 @@
     "@typescript-eslint/eslint-plugin": "^5.59.6",
     "@typescript-eslint/parser": "^5.59.6",
     "eslint": "^8.40.0",
-    "jasmine-core": "^5.0.0",
+    "jasmine-core": "^5.1.2",
     "jasmine-spec-reporter": "^7.0.0",
     "js-yaml-loader": "^1.2.2",
     "ng-packagr": "^16.0.1",
