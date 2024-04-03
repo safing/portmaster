@@ -36,7 +36,7 @@
     "@fortawesome/fontawesome-svg-core": "^6.4.0",
     "@fortawesome/free-brands-svg-icons": "^6.4.0",
     "@fortawesome/free-regular-svg-icons": "^6.4.0",
-    "@fortawesome/free-solid-svg-icons": "^6.4.0",
+    "@fortawesome/free-solid-svg-icons": "^6.5.2",
     "@tauri-apps/api": "^2.0.0-beta.3",
     "@tauri-apps/plugin-cli": "^2.0.0-beta.1",
     "@tauri-apps/plugin-clipboard-manager": "^2.0.0-alpha.4",
