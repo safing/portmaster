@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Gather build metadata.
+VERSION=$(git tag --points-at)
+if [[ -z "$VERSION" ]]; then
+  VERSION=$(git describe --tags --abbrev=0 || echo "dev_build")
+fi
+SOURCE=$( ( git remote -v | cut -f2 | cut -d" " -f1 | head -n 1 ) || echo "unknown_source" )
+BUILD_TIME=$(date -u "+%Y-%m-%dT%H:%M:%SZ" || echo "unknown_build_time")
+
+# Build
+CGO_ENABLED=0
+BUILD_PATH="github.com/safing/portbase/info"
+go build -ldflags "-X github.com/safing/portbase/info.version=${VERSION} -X github.com/safing/portbase/info.buildSource=${SOURCE} -X github.com/safing/portbase/info.buildTime=${BUILD_TIME}" "$@"

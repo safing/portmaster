@@ -1,8 +1,14 @@
 VERSION --arg-scope-and-set --global-cache 0.8
 
-ARG --global go_version = 1.21
-ARG --global distro = alpine3.18
+ARG --global go_version = 1.22
 ARG --global node_version = 18
+ARG --global rust_version = 1.76
+
+ARG --global go_builder_image = "golang:${go_version}-alpine"
+ARG --global node_builder_image = "node:${node_version}"
+ARG --global rust_builder_image = "rust:${rust_version}-bookworm"
+ARG --global work_image = "alpine"
+
 ARG --global outputDir = "./dist"
 
 # The list of rust targets we support. They will be automatically converted
@@ -23,7 +29,7 @@ ARG --global architectures = "x86_64-unknown-linux-gnu" \
 IMPORT github.com/earthly/lib/rust:3.0.2 AS rust
 
 go-deps:
-    FROM golang:${go_version}-${distro}
+    FROM ${go_builder_image}
     WORKDIR /go-workdir
 
     # We need the git cli to extract version information for go-builds
@@ -43,6 +49,9 @@ go-deps:
     COPY go.mod .
     COPY go.sum .
     RUN go mod download
+
+    # Explicitly cache here.
+    SAVE IMAGE --cache-hint
 
 go-base:
     FROM +go-deps
@@ -72,6 +81,12 @@ go-base:
 
     LET source = $( ( git remote -v | cut -f2 | cut -d" " -f1 | head -n 1 ) || echo "unknown_source" )
     ENV SOURCE="${source}"
+
+    LET build_time = $(date -u "+%Y-%m-%dT%H:%M:%SZ" || echo "unknown_build_time")
+    ENV BUILD_TIME = "${build_time}"
+
+    # Explicitly cache here.
+    SAVE IMAGE --cache-hint
 
 # updates all go dependencies and runs go mod tidy, saving go.mod and go.sum locally.
 update-go-deps:
@@ -113,7 +128,7 @@ build-go:
 
     # Build all go binaries from the specified in CMDS
     FOR bin IN $CMDS
-        RUN go build  -ldflags="-X github.com/safing/portbase/info.version=${VERSION} -X github.com/safing/portbase/info.buildSource=${SOURCE}" -o "/tmp/build/" ./cmds/${bin}
+        RUN --no-cache go build  -ldflags="-X github.com/safing/portbase/info.version=${VERSION} -X github.com/safing/portbase/info.buildSource=${SOURCE} -X github.com/safing/portbase/info.buildTime=${BUILD_TIME}" -o "/tmp/build/" ./cmds/${bin}
     END
 
     DO +GO_ARCH_STRING --goos="${GOOS}" --goarch="${GOARCH}" --goarm="${GOARM}"
@@ -125,9 +140,10 @@ build-go:
     SAVE ARTIFACT "/tmp/build/" ./output
 
 # Test one or more go packages.
+# Test are always run as -short, as "long" tests require a full desktop system.
 # Run `earthly +test-go` to test all packages
 # Run `earthly +test-go --PKG="service/firewall"` to only test a specific package.
-# Run `earthly +test-go --TESTFLAGS="-short"` to add custom flags to go test (-short in this case)
+# Run `earthly +test-go --TESTFLAGS="-args arg1"` to add custom flags to go test (-args in this case)
 test-go:
     FROM +go-base
 
@@ -141,11 +157,11 @@ test-go:
     CACHE --sharing shared "$GOMODCACHE"
 
     FOR pkg IN $(go list -e "./${PKG}")
-        RUN go test -cover ${TESTFLAGS} ${pkg}
+        RUN --no-cache go test -cover -short ${pkg} ${TESTFLAGS}
     END
 
 test-go-all-platforms:
-    FROM alpine:3.18
+    FROM ${work_image}
 
     FOR arch IN ${architectures}
         DO +RUST_TO_GO_ARCH_STRING --rustTarget="${arch}"
@@ -154,7 +170,7 @@ test-go-all-platforms:
 
 # Builds portmaster-start, portmaster-core, hub and notifier for all supported platforms
 build-go-release:
-    FROM alpine:3.18
+    FROM ${work_image}
 
     FOR arch IN ${architectures}
         DO +RUST_TO_GO_ARCH_STRING --rustTarget="${arch}"
@@ -178,7 +194,7 @@ build-utils:
 
 # Prepares the angular project by installing dependencies
 angular-deps:
-    FROM node:${node_version}
+    FROM ${node_builder_image}
     WORKDIR /app/ui
 
     RUN apt update && apt install zip
@@ -203,6 +219,9 @@ angular-base:
         RUN npm run build-libs:dev
     END
 
+    # Explicitly cache here.
+    SAVE IMAGE --cache-hint
+
 # Build an angualr project, zip it and save artifacts locally
 angular-project:
     ARG --required project
@@ -216,28 +235,29 @@ angular-project:
         ENV NODE_ENV="production"
     END
 
-    RUN ./node_modules/.bin/ng build --configuration ${configuration} --base-href ${baseHref} "${project}"
+    RUN --no-cache ./node_modules/.bin/ng build --configuration ${configuration} --base-href ${baseHref} "${project}"
 
-    RUN cwd=$(pwd) && cd "${dist}" && zip -r "${cwd}/${project}.zip" ./
-    SAVE ARTIFACT "./${project}.zip" AS LOCAL ${outputDir}/${project}.zip
-    SAVE ARTIFACT "./dist" AS LOCAL ${outputDir}/${project}
+    RUN --no-cache cwd=$(pwd) && cd "${dist}" && zip -r "${cwd}/${project}.zip" ./
+    SAVE ARTIFACT "${dist}" "./output/${project}"
+    
+    # Save portmaster UI as local artifact.
+    IF [ "${project}" = "portmaster" ]
+        SAVE ARTIFACT "./${project}.zip" AS LOCAL ${outputDir}/all/${project}-ui.zip
+    END
 
-# Builds all angular projects
-build-angular:
+# Build the angular projects (portmaster-UI and tauri-builtin) in dev mode
+angular-dev:
     BUILD +angular-project --project=portmaster --dist=./dist --configuration=development --baseHref=/ui/modules/portmaster/
     BUILD +angular-project --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=development --baseHref=/
 
 # Build the angular projects (portmaster-UI and tauri-builtin) in production mode
 angular-release:
     BUILD +angular-project --project=portmaster --dist=./dist --configuration=production --baseHref=/ui/modules/portmaster/
-
-# Build the angular projects (portmaster-UI and tauri-builtin) in dev mode
-angular-dev:
-    BUILD +angular-project --project=portmaster --dist=./dist --configuration=development --baseHref=/ui/modules/portmaster/
+    BUILD +angular-project --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=production --baseHref=/
 
 # A base target for rust to prepare the build container
 rust-base:
-    FROM rust:1.76-bookworm
+    FROM ${rust_builder_image}
 
     RUN dpkg --add-architecture armhf
     RUN dpkg --add-architecture arm64
@@ -287,11 +307,11 @@ rust-base:
    # Some how all the other libs work but libsoup and libwebkit2gtk do not create the link file
    RUN cd /usr/lib/aarch64-linux-gnu && \
         ln -s libwebkit2gtk-4.1.so.0 libwebkit2gtk-4.1.so && \
-        ln -s libsoup-3.0.so.0 libsoup-3.0.so 
+        ln -s libsoup-3.0.so.0 libsoup-3.0.so
 
    RUN cd /usr/lib/arm-linux-gnueabihf && \
         ln -s libwebkit2gtk-4.1.so.0 libwebkit2gtk-4.1.so && \
-        ln -s libsoup-3.0.so.0 libsoup-3.0.so 
+        ln -s libsoup-3.0.so.0 libsoup-3.0.so
 
     # For what ever reason trying to install the gcc compilers together with the above
     # command makes apt fail due to conflicts with gcc-multilib. Installing in a separate
@@ -324,6 +344,9 @@ rust-base:
     # Required for cross compilation to work.
     ENV PKG_CONFIG_ALLOW_CROSS=1
 
+    # Explicitly cache here.
+    SAVE IMAGE --cache-hint
+
 tauri-src:
     FROM +rust-base
 
@@ -334,15 +357,18 @@ tauri-src:
     COPY --keep-ts ./desktop/tauri/ .
     COPY assets/data ./assets
     COPY packaging/linux ./../../packaging/linux
-    COPY (+angular-project/dist/tauri-builtin --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=production --baseHref="/") ./../angular/dist/tauri-builtin
+    COPY (+angular-project/output/tauri-builtin --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=production --baseHref="/") ./../angular/dist/tauri-builtin
 
     WORKDIR /app/tauri/src-tauri
+
+    # Explicitly cache here.
+    SAVE IMAGE --cache-hint
 
 build-tauri:
     FROM +tauri-src
 
     ARG --required target
-    ARG output = ".*/release/(([^\./]+|([^\./]+\.(dll|exe)))|bundle/.*\.(deb|msi|AppImage))"
+    ARG output=".*/release/(([^\./]+|([^\./]+\.(dll|exe)))|bundle/.*\.(deb|msi|AppImage))"
     ARG bundle="none"
 
 
@@ -400,10 +426,24 @@ build-tauri:
     # The following would use the CROSS function from the earthly lib, this 
     # DO rust+CROSS --target="${target}"
 
-    SAVE ARTIFACT "target/${target}/release/" AS LOCAL "${outputDir}/tauri/${target}"
+    # RUN echo output: $(ls "target/${target}/release")
+    LET outbin="error"
+    FOR bin IN "portmaster Portmaster.exe WebView2Loader.dll"
+        # Modify output binary.
+        SET outbin="${bin}"
+        IF [ "${bin}" = "portmaster" ]
+            SET outbin="portmaster-app"
+        ELSE IF [ "${bin}" = "Portmaster.exe" ]
+            SET outbin="portmaster-app.exe"
+        END
+        # Save output binary as local artifact.
+        IF [ -f "target/${target}/release/${bin}" ]
+            SAVE ARTIFACT "target/${target}/release/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${outbin}"
+        END
+    END
 
 tauri-release:
-    FROM alpine:3.18
+    FROM ${work_image}
 
     ARG bundle="none"
 
@@ -413,6 +453,7 @@ tauri-release:
 
 build-all:
     BUILD +build-go-release
+    BUILD +angular-release
     BUILD +tauri-release
 
 release:
@@ -484,3 +525,14 @@ RUST_TO_GO_ARCH_STRING:
     ENV GOARM="${goarm}"
 
     DO +GO_ARCH_STRING --goos="${goos}" --goarch="${goarch}" --goarm="${goarm}"
+
+# Takes an architecture or GOOS string and sets the BINEXT env var.
+BIN_EXT:
+    FUNCTION
+    ARG --required arch
+
+    LET binext=""
+    IF [ -z "${arch##*windows*}" ]
+        SET binext=".exe"
+    END
+    ENV BINEXT="${goos}"
