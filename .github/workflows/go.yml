@@ -4,11 +4,21 @@ on:
   push:
     paths:
       - '**.go'
+      - 'cmds/**'
+      - 'runtime/**'
+      - 'service/**'
+      - 'spn/**'
     branches:
       - master
       - develop
 
   pull_request:
+    paths:
+      - '**.go'
+      - 'cmds/**'
+      - 'runtime/**'
+      - 'service/**'
+      - 'spn/**'
     branches:
       - master
       - develop
@@ -54,4 +64,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build angular projects
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +test-go --TESTFLAGS="-short"
+      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +test-go
