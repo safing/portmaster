@@ -73,3 +73,14 @@ func IsStreamProtocol(protocol uint8) bool {
 		return false
 	}
 }
+
+// IsICMP returns whether the given protocol is ICMP or ICMPv6.
+func IsICMP(protocol uint8) bool {
+	switch protocol {
+	case 1, // ICMP
+		58: // ICMP6
+		return true
+	default:
+		return false
+	}
+}

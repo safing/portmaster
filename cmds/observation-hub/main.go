@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	info.Set("SPN Observation Hub", "0.7.1", "AGPLv3", true)
+	info.Set("SPN Observation Hub", "0.7.1", "GPLv3")
 
 	// Configure metrics.
 	_ = metrics.SetNamespace("observer")

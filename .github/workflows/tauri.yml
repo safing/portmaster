@@ -7,7 +7,6 @@ on:
     branches:
       - master
       - develop
-      - migration/mono-repo
 
   pull_request:
     paths:
@@ -15,7 +14,6 @@ on:
     branches:
       - master
       - develop
-      - migration/mono-repo
 
 jobs:
   build:
@@ -34,5 +32,5 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build angular projects
+    - name: Build tauri project
       run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +tauri-release
