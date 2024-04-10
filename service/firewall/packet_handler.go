@@ -22,6 +22,7 @@ import (
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
+	"github.com/safing/portmaster/service/network/reference"
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/spn/access"
 )
@@ -556,9 +557,11 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 		return
 	}
 
-	// enable permanent verdict
+	// Enable permanent verdict.
 	if allowPermanent && !conn.VerdictPermanent {
-		conn.VerdictPermanent = permanentVerdicts()
+		// Only enable if enabled in config and it is not ICMP.
+		// ICMP is handled differently based on payload, so we cannot use persistent verdicts.
+		conn.VerdictPermanent = permanentVerdicts() && !reference.IsICMP(conn.Entity.Protocol)
 		if conn.VerdictPermanent {
 			conn.SaveWhenFinished()
 		}
