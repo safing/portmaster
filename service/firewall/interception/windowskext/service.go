@@ -104,7 +104,7 @@ func waitForServiceStatus(handle windows.Handle, neededStatus uint32, timeLimit 
 	var status windows.SERVICE_STATUS
 	status.CurrentState = windows.SERVICE_NO_CHANGE
 	start := time.Now()
-	for status.CurrentState == neededStatus {
+	for status.CurrentState != neededStatus {
 		err := windows.QueryServiceStatus(handle, &status)
 		if err != nil {
 			return false, fmt.Errorf("failed while waiting for service to start: %w", err)
