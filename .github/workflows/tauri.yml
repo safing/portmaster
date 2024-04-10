@@ -32,5 +32,5 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build angular projects
+    - name: Build tauri project
       run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +tauri-release

@@ -63,5 +63,5 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build angular projects
+    - name: Run Go Tests
       run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +test-go
