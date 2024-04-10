@@ -22,7 +22,7 @@ var (
 				Remove(jess.Integrity)                // Only applies to decryption.
 	// SenderAuthentication provides pre-decryption integrity. That is all we need.
 
-	clockSkewTolerance = 1 * time.Hour
+	clockSkewTolerance = 12 * time.Hour
 )
 
 // SignHubMsg signs the given serialized hub msg with the given configuration.
