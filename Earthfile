@@ -75,14 +75,17 @@ go-base:
 
     LET version = $(git tag --points-at)
     IF [ "${version}" = "" ]
-        SET version = $(git describe --tags --abbrev=0 || echo "dev_build")
+        SET version = "$(git describe --tags --abbrev=0)_dev_build"
+    END
+    IF [ "${version}" = "" ]
+        SET version = "dev_build"
     END
     ENV VERSION="${version}"
 
-    LET source = $( ( git remote -v | cut -f2 | cut -d" " -f1 | head -n 1 ) || echo "unknown_source" )
+    LET source = $( ( git remote -v | cut -f2 | cut -d" " -f1 | head -n 1 ) || echo "unknown" )
     ENV SOURCE="${source}"
 
-    LET build_time = $(date -u "+%Y-%m-%dT%H:%M:%SZ" || echo "unknown_build_time")
+    LET build_time = $(date -u "+%Y-%m-%dT%H:%M:%SZ" || echo "unknown")
     ENV BUILD_TIME = "${build_time}"
 
     # Explicitly cache here.

@@ -245,6 +245,10 @@ github.com/safing/portbase v0.19.0 h1:2T6f/w90IdIsSgUfyXoveqZM7tVwW+IFrtLbPVXtY3
 github.com/safing/portbase v0.19.0/go.mod h1:Qrh3ck+7VZloFmnozCs9Hj8godhJAi55cmiDiC7BwTc=
 github.com/safing/portbase v0.19.1 h1:Uk/WyP9HsIJrCn0pE4a7AWIrfUSHyCOObQyRmXsGQ9A=
 github.com/safing/portbase v0.19.1/go.mod h1:Qrh3ck+7VZloFmnozCs9Hj8godhJAi55cmiDiC7BwTc=
+github.com/safing/portbase v0.19.2 h1:qGF5Jv9eEE33d2aIxeBQdnitnBoF44BGVFtboqfE+1A=
+github.com/safing/portbase v0.19.2/go.mod h1:Qrh3ck+7VZloFmnozCs9Hj8godhJAi55cmiDiC7BwTc=
+github.com/safing/portbase v0.19.3 h1:fzb4d2nzhmRq4Lt6sgn9R20iykireAkBNyf9pfGqQjk=
+github.com/safing/portbase v0.19.3/go.mod h1:Qrh3ck+7VZloFmnozCs9Hj8godhJAi55cmiDiC7BwTc=
 github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec h1:oSJY1seobofPwpMoJRkCgXnTwfiQWNfGMCPDfqgAEfg=
 github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec/go.mod h1:abwyAQrZGemWbSh/aCD9nnkp0SvFFf/mGWkAbOwPnFE=
 github.com/safing/spn v0.7.5 h1:WfkMs2omLrwxBWccGGG9Akx0AvsvJLG+W7rjWQpQhl4=
