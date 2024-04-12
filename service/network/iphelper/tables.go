@@ -214,7 +214,7 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 	maxTries := 5
 	usedBufSize := lbf.getBufSize()
 	var buf []byte
-
+triesLoop:
 	for i := 1; i <= maxTries; i++ {
 		bufSizeParam := usedBufSize
 		buf = make([]byte, bufSizeParam)
@@ -256,7 +256,7 @@ func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*so
 			return nil, nil, fmt.Errorf("invalid parameter: [NT 0x%X] %s", r1, err)
 		case windows.NO_ERROR:
 			// success
-			break
+			break triesLoop
 		default:
 			return nil, nil, fmt.Errorf("unexpected error: [NT 0x%X] %s", r1, err)
 		}
