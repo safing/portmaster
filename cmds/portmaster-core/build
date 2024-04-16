@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # Gather build metadata.
-VERSION="$(git tag --points-at)"; test -z "$VERSION" && VERSION="$(git describe --tags --abbrev=0)_dev_build"; test -z "$VERSION" && VERSION="dev_build"
+VERSION="$(git tag --points-at)" || true
+test -z "$VERSION" && DEV_VERSION="$(git describe --tags --first-parent --abbrev=0)" || true
+test -n "$DEV_VERSION" && VERSION="${DEV_VERSION}_dev_build"
+test -z "$VERSION" && VERSION="dev_build"
 SOURCE=$( ( git remote -v | cut -f2 | cut -d" " -f1 | head -n 1 ) || echo "unknown" )
 BUILD_TIME=$(date -u "+%Y-%m-%dT%H:%M:%SZ" || echo "unknown")
 
