@@ -94,7 +94,7 @@ func (pkt *Packet) Drop() error {
 // PermanentAccept permanently accepts connection (and the current packet).
 func (pkt *Packet) PermanentAccept() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, kext_interface.VerdictAccept)
+		return SetVerdict(pkt, kext_interface.VerdictPermanentAccept)
 	}
 	return nil
 }
@@ -102,7 +102,7 @@ func (pkt *Packet) PermanentAccept() error {
 // PermanentBlock permanently blocks connection (and the current packet).
 func (pkt *Packet) PermanentBlock() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, kext_interface.VerdictBlock)
+		return SetVerdict(pkt, kext_interface.VerdictPermanentBlock)
 	}
 	return nil
 }
@@ -110,7 +110,7 @@ func (pkt *Packet) PermanentBlock() error {
 // PermanentDrop permanently drops connection (and the current packet).
 func (pkt *Packet) PermanentDrop() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, kext_interface.VerdictDrop)
+		return SetVerdict(pkt, kext_interface.VerdictPermanentDrop)
 	}
 	return nil
 }
