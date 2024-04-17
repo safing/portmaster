@@ -19,8 +19,8 @@ import (
 // Must not be changed once set.
 var ProfileIconStoragePath = ""
 
-// IconIgnored is returned when the icon should be ignored.
-var IconIgnored = errors.New("icon is ignored")
+// ErrIconIgnored is returned when the icon should be ignored.
+var ErrIconIgnored = errors.New("icon is ignored")
 
 // GetProfileIcon returns the profile icon with the given ID and extension.
 func GetProfileIcon(name string) (data []byte, err error) {
@@ -31,7 +31,7 @@ func GetProfileIcon(name string) (data []byte, err error) {
 
 	// Check if icon should be ignored.
 	if IgnoreIcon(name) {
-		return nil, IconIgnored
+		return nil, ErrIconIgnored
 	}
 
 	// Build storage path.
@@ -69,7 +69,7 @@ func UpdateProfileIcon(data []byte, ext string) (filename string, err error) {
 
 	// Check if icon should be ignored.
 	if IgnoreIcon(sum) {
-		return "", IconIgnored
+		return "", ErrIconIgnored
 	}
 
 	// Check ext.

@@ -518,7 +518,7 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context, md Matchin
 	switch {
 	case err == nil:
 		// Continue
-	case errors.Is(err, binmeta.IconIgnored):
+	case errors.Is(err, binmeta.ErrIconIgnored):
 		newIcon = nil
 		// Continue
 	default:

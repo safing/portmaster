@@ -103,7 +103,7 @@ func handleGetProfileIcon(ar *api.Request) (data []byte, err error) {
 	switch {
 	case err == nil:
 		// Continue
-	case errors.Is(err, binmeta.IconIgnored):
+	case errors.Is(err, binmeta.ErrIconIgnored):
 		return nil, api.ErrorWithStatus(err, http.StatusNotFound)
 	default:
 		return nil, err
