@@ -4,12 +4,12 @@
 package windowskext
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/tevino/abool"
+	"github.com/vlabo/portmaster_windows_rust_kext/kext_interface"
 
-	"github.com/safing/portmaster/network"
+	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/network/packet"
 )
 
@@ -18,6 +18,7 @@ type Packet struct {
 	packet.Base
 
 	verdictRequest uint64
+	payload        []byte
 	verdictSet     *abool.AtomicBool
 
 	payloadLoaded bool
@@ -33,7 +34,7 @@ func (pkt *Packet) FastTrackedByIntegration() bool {
 // InfoOnly returns whether the packet is informational only and does not
 // represent an actual packet.
 func (pkt *Packet) InfoOnly() bool {
-	return pkt.verdictRequest == 0
+	return false
 }
 
 // ExpectInfo returns whether the next packet is expected to be informational only.
@@ -43,13 +44,33 @@ func (pkt *Packet) ExpectInfo() bool {
 
 // GetPayload returns the full raw packet.
 func (pkt *Packet) LoadPacketData() error {
-	return fmt.Errorf("Not implemented")
+	pkt.lock.Lock()
+	defer pkt.lock.Unlock()
+
+	if !pkt.payloadLoaded {
+		pkt.payloadLoaded = true
+
+		if len(pkt.payload) > 0 {
+			err := packet.Parse(pkt.payload, &pkt.Base)
+			if err != nil {
+				log.Tracef("payload: %#v", pkt.payload)
+				log.Tracer(pkt.Ctx()).Warningf("windowskext: failed to parse payload: %s", err)
+				return packet.ErrFailedToLoadPayload
+			}
+		}
+	}
+
+	if len(pkt.Raw()) == 0 {
+		return packet.ErrFailedToLoadPayload
+	}
+
+	return nil
 }
 
 // Accept accepts the packet.
 func (pkt *Packet) Accept() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, -network.VerdictAccept)
+		return SetVerdict(pkt, kext_interface.VerdictAccept)
 	}
 	return nil
 }
@@ -57,7 +78,7 @@ func (pkt *Packet) Accept() error {
 // Block blocks the packet.
 func (pkt *Packet) Block() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, -network.VerdictBlock)
+		return SetVerdict(pkt, kext_interface.VerdictBlock)
 	}
 	return nil
 }
@@ -65,7 +86,7 @@ func (pkt *Packet) Block() error {
 // Drop drops the packet.
 func (pkt *Packet) Drop() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, -network.VerdictDrop)
+		return SetVerdict(pkt, kext_interface.VerdictDrop)
 	}
 	return nil
 }
@@ -73,7 +94,7 @@ func (pkt *Packet) Drop() error {
 // PermanentAccept permanently accepts connection (and the current packet).
 func (pkt *Packet) PermanentAccept() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, network.VerdictAccept)
+		return SetVerdict(pkt, kext_interface.VerdictAccept)
 	}
 	return nil
 }
@@ -81,7 +102,7 @@ func (pkt *Packet) PermanentAccept() error {
 // PermanentBlock permanently blocks connection (and the current packet).
 func (pkt *Packet) PermanentBlock() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, network.VerdictBlock)
+		return SetVerdict(pkt, kext_interface.VerdictBlock)
 	}
 	return nil
 }
@@ -89,7 +110,7 @@ func (pkt *Packet) PermanentBlock() error {
 // PermanentDrop permanently drops connection (and the current packet).
 func (pkt *Packet) PermanentDrop() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, network.VerdictDrop)
+		return SetVerdict(pkt, kext_interface.VerdictDrop)
 	}
 	return nil
 }
@@ -97,7 +118,7 @@ func (pkt *Packet) PermanentDrop() error {
 // RerouteToNameserver permanently reroutes the connection to the local nameserver (and the current packet).
 func (pkt *Packet) RerouteToNameserver() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, network.VerdictRerouteToNameserver)
+		return SetVerdict(pkt, kext_interface.VerdictRerouteToNameserver)
 	}
 	return nil
 }
@@ -105,7 +126,7 @@ func (pkt *Packet) RerouteToNameserver() error {
 // RerouteToTunnel permanently reroutes the connection to the local tunnel entrypoint (and the current packet).
 func (pkt *Packet) RerouteToTunnel() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, network.VerdictRerouteToTunnel)
+		return SetVerdict(pkt, kext_interface.VerdictRerouteToTunnel)
 	}
 	return nil
 }

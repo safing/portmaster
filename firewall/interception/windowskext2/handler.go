@@ -45,8 +45,10 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 				// New Packet
 				new := &Packet{
 					verdictRequest: conn.Id,
+					payload:        conn.Payload,
 					verdictSet:     abool.NewBool(false),
 				}
+				new.Base.Payload()
 				info := new.Info()
 				info.Inbound = conn.Direction > 0
 				info.InTunnel = false
@@ -95,6 +97,7 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 				// New Packet
 				new := &Packet{
 					verdictRequest: conn.Id,
+					payload:        conn.Payload,
 					verdictSet:     abool.NewBool(false),
 				}
 				info := new.Info()

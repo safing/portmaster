@@ -105,26 +105,25 @@ func startInterception(packets chan packet.Packet) error {
 			}
 		})
 
-		// Start kext logging. The worker will periodically send request to the kext to print memory stats.
-		// module.StartServiceWorker("kext memory stats request worker", 0, func(ctx context.Context) error {
-		// 	timer := time.NewTicker(20 * time.Second)
-		// 	for {
-		// 		select {
-		// 		case <-timer.C:
-		// 			{
-		// 				err := kext2.SendPrintMemoryStatsCommand()
-		// 				if err != nil {
-		// 					return err
-		// 				}
-		// 			}
-		// 		case <-ctx.Done():
-		// 			{
-		// 				return nil
-		// 			}
-		// 		}
+		module.StartServiceWorker("kext clean ended connection worker", 0, func(ctx context.Context) error {
+			timer := time.NewTicker(30 * time.Second)
+			for {
+				select {
+				case <-timer.C:
+					{
+						err := kext2.SendCleanEndedConnection()
+						if err != nil {
+							return err
+						}
+					}
+				case <-ctx.Done():
+					{
+						return nil
+					}
+				}
 
-		// 	}
-		// })
+			}
+		})
 	}
 
 	return nil

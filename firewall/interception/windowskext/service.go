@@ -24,6 +24,7 @@ func createKextService(driverName string, driverPath string) (*KextService, erro
 	}
 	defer windows.CloseServiceHandle(manager)
 
+	// Convert the driver name to a UTF16 string
 	driverNameU16, err := syscall.UTF16FromString(driverName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert driver name to UTF16 string: %w", err)

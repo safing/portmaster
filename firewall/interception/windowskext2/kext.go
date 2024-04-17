@@ -102,13 +102,17 @@ func SendPrintMemoryStatsCommand() error {
 	return kext_interface.SendPrintMemoryStatsCommand(kextFile)
 }
 
+func SendCleanEndedConnection() error {
+	return kext_interface.SendCleanEndedConnectionsCommand(kextFile)
+}
+
 // RecvVerdictRequest waits for the next verdict request from the kext. If a timeout is reached, both *VerdictRequest and error will be nil.
 func RecvVerdictRequest() (*kext_interface.Info, error) {
 	return kext_interface.RecvInfo(kextFile)
 }
 
 // SetVerdict sets the verdict for a packet and/or connection.
-func SetVerdict(pkt *Packet, verdict network.Verdict) error {
+func SetVerdict(pkt *Packet, verdict kext_interface.KextVerdict) error {
 	verdictCommand := kext_interface.Verdict{Id: pkt.verdictRequest, Verdict: uint8(verdict)}
 	return kext_interface.SendVerdictCommand(kextFile, verdictCommand)
 }
