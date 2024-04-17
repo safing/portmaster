@@ -56,37 +56,29 @@ go-deps:
 go-base:
     FROM +go-deps
 
-    # Only copy go-code related files to improve caching.
-    # (i.e. do not rebuild go if only the angular app changed)
-    COPY cmds ./cmds
-    COPY runtime ./runtime
-    COPY service ./service
-    COPY spn ./spn
+    # Copy the full repo, as Go embeds whether the state is clean.
+    COPY . .
 
-    # The cmds/notifier embeds some icons but go:embed is not allowed
-    # to leave the package directory so there's a small go-package in
-    # assets. Once we drop the notify in favor of the tauri replacement
-    # we can remove the following line and also remove all go-code from
-    # ./assets
-    COPY assets ./assets
-
-    # Copy the git folder and extract version information
-    COPY .git ./.git
-
-    LET version = $(git tag --points-at)
-    IF [ "${version}" = "" ]
-        SET version = "$(git describe --tags --abbrev=0)_dev_build"
+    LET version = "$(git tag --points-at || true)"
+    IF [ -z "${version}" ]
+        LET dev_version = "$(git describe --tags --first-parent --abbrev=0 || true)"
+        IF [ -n "${dev_version}" ]
+            SET version = "${dev_version}_dev_build"
+        END
     END
-    IF [ "${version}" = "" ]
+    IF [ -z "${version}" ]
         SET version = "dev_build"
     END
     ENV VERSION="${version}"
+    RUN echo "Version: $VERSION"
 
     LET source = $( ( git remote -v | cut -f2 | cut -d" " -f1 | head -n 1 ) || echo "unknown" )
     ENV SOURCE="${source}"
+    RUN echo "Source: $SOURCE"
 
     LET build_time = $(date -u "+%Y-%m-%dT%H:%M:%SZ" || echo "unknown")
     ENV BUILD_TIME = "${build_time}"
+    RUN echo "Build Time: $BUILD_TIME"
 
     # Explicitly cache here.
     SAVE IMAGE --cache-hint
@@ -204,7 +196,6 @@ angular-deps:
 
     COPY desktop/angular/package.json .
     COPY desktop/angular/package-lock.json .
-    COPY assets/data ./assets
 
     RUN npm install
 
@@ -215,6 +206,9 @@ angular-base:
     ARG configuration="production"
 
     COPY desktop/angular/ .
+    # Remove symlink and copy assets directly.
+    RUN rm ./assets
+    COPY assets/data ./assets
 
     IF [ "${configuration}" = "production" ]
         RUN npm run build-libs

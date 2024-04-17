@@ -108,7 +108,7 @@ func upgradeCoreNotify() error {
 	pmCoreUpdate = newFile
 
 	// check for new version
-	if info.GetInfo().Version != pmCoreUpdate.Version() {
+	if info.VersionNumber() != pmCoreUpdate.Version() {
 		n := notifications.Notify(&notifications.Notification{
 			EventID: "updates:core-update-available",
 			Type:    notifications.Info,

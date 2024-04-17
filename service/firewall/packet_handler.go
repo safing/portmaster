@@ -559,10 +559,14 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 
 	// Enable permanent verdict.
 	if allowPermanent && !conn.VerdictPermanent {
-		// Only enable if enabled in config and it is not ICMP.
-		// ICMP is handled differently based on payload, so we cannot use persistent verdicts.
-		conn.VerdictPermanent = permanentVerdicts() && !reference.IsICMP(conn.Entity.Protocol)
-		if conn.VerdictPermanent {
+		switch {
+		case !permanentVerdicts():
+			// Permanent verdicts are disabled by configuration.
+		case conn.Entity != nil && reference.IsICMP(conn.Entity.Protocol):
+		case pkt != nil && reference.IsICMP(uint8(pkt.Info().Protocol)):
+			// ICMP is handled differently based on payload, so we cannot use persistent verdicts.
+		default:
+			conn.VerdictPermanent = true
 			conn.SaveWhenFinished()
 		}
 	}
