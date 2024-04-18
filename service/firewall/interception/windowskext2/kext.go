@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/network"
+	"github.com/safing/portmaster/service/network"
 	"github.com/vlabo/portmaster_windows_rust_kext/kext_interface"
 	"golang.org/x/sys/windows"
 )

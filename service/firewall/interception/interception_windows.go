@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/safing/portbase/log"
-	kext1 "github.com/safing/portmaster/firewall/interception/windowskext"
-	kext2 "github.com/safing/portmaster/firewall/interception/windowskext2"
-	"github.com/safing/portmaster/network"
-	"github.com/safing/portmaster/network/packet"
-	"github.com/safing/portmaster/updates"
+	kext1 "github.com/safing/portmaster/service/firewall/interception/windowskext"
+	kext2 "github.com/safing/portmaster/service/firewall/interception/windowskext2"
+	"github.com/safing/portmaster/service/network"
+	"github.com/safing/portmaster/service/network/packet"
+	"github.com/safing/portmaster/service/updates"
 )
 
 var useOldKext = false

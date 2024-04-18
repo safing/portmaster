@@ -10,7 +10,7 @@ import (
 	"github.com/vlabo/portmaster_windows_rust_kext/kext_interface"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/service/network/packet"
 )
 
 // Packet represents an IP packet.

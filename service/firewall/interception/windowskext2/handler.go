@@ -9,12 +9,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/safing/portmaster/process"
+	"github.com/safing/portmaster/service/process"
 
 	"github.com/tevino/abool"
 
 	"github.com/safing/portbase/log"
-	"github.com/safing/portmaster/network/packet"
+	"github.com/safing/portmaster/service/network/packet"
 )
 
 type VersionInfo struct {
