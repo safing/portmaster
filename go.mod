@@ -7,8 +7,6 @@ toolchain go1.21.2
 // TODO: Remove when https://github.com/tc-hib/winres/pull/4 is merged or changes are otherwise integrated.
 replace github.com/tc-hib/winres => github.com/dhaavi/winres v0.2.2
 
-replace github.com/vlabo/portmaster_windows_rust_kext/kext_interface => /home/vladimir/Dev/Safing/portmaster_windows_rust_kext/kext_interface
-
 require (
 	github.com/Xuanwo/go-locale v1.1.0
 	github.com/agext/levenshtein v1.2.3
