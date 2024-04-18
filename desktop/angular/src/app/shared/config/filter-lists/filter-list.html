@@ -1,0 +1,55 @@
+<div class="scrollable">
+
+  <ng-template #treeNode let-node>
+    <div class="node">
+      <div class="relative head">
+        <span *ngIf="node.hasSelectedChildren"
+          class="relative block w-1 h-1 rounded-full -left-2.5 -mr-1 -top-0.5 bg-blue"></span>
+        <input type="checkbox" [ngModel]="node.selected" (ngModelChange)="updateNode(node, $event)">
+
+        <label>
+          <span class="flex flex-row items-center gap-2 name">
+            {{node.name}}
+            <span class="id">({{ node.id }})</span>
+          </span>
+          <span class="description">{{ node.description }}</span>
+        </label>
+
+        <span class="details">
+          {{ !!node.license ? 'License: ' + node.license : '' }}
+        </span>
+        <span class="details">
+          <a *ngIf="!!node.website" href="{{node.website}}">
+            <fa-icon icon="external-link-square-alt"></fa-icon>
+          </a>
+        </span>
+      </div>
+
+      <div class="children" *ngIf="node.children.length > 0">
+        <div class="expand" (click)="node.expanded = !node.expanded">
+          <ng-container *ngIf="!node.expanded">
+            <fa-icon icon="chevron-right"></fa-icon>
+            Expand
+          </ng-container>
+          <ng-container *ngIf="node.expanded">
+            <fa-icon icon="chevron-down"></fa-icon>
+            Collapse
+          </ng-container>
+        </div>
+      </div>
+
+      <div class="children" *ngIf="node.children.length > 0"
+        [@moveInOutList]="(node.expanded ? node.children : []).length">
+        <div class="border" *ngIf="node.expanded"></div>
+        <ng-container *ngFor="let child of (node.expanded ? node.children : []); trackBy: trackNode">
+          <ng-container *ngTemplateOutlet="treeNode; context: {$implicit: child}"></ng-container>
+        </ng-container>
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-container *ngFor="let node of nodes; trackBy: trackNode">
+    <ng-container *ngTemplateOutlet="treeNode; context: {$implicit: node}"></ng-container>
+  </ng-container>
+
+</div>

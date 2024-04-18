@@ -1,0 +1,63 @@
+# Ignore angular outputs.
+desktop/angular/node_modules
+desktop/angular/dist
+desktop/angular/dist-lib
+desktop/angular/dist-extension
+desktop/angular/.angular
+
+# Ignore tauri outputs.
+desktop/tauri/src-tauri/target
+
+#######################
+# Copy from .gitignore:
+
+# Compiled binaries
+*.exe
+dist/
+
+# Dist dir
+dist
+
+# Custom dev deops
+go.mod.*
+
+# vendor dir
+vendor
+
+# testing
+testing
+
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.a
+*.so
+
+# Folders
+_obj
+_test
+
+# Architecture specific extensions/prefixes
+*.[568vq]
+[568vq].out
+
+*.cgo1.go
+*.cgo2.c
+_cgo_defun.c
+_cgo_gotypes.go
+_cgo_export.*
+
+_testmain.go
+
+*.exe
+*.test
+*.prof
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# OS specifics
+.DS_Store
+
+# Custom dev scripts
+win_dev_*
+go.work
+go.work.sum

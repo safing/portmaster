@@ -3,25 +3,17 @@
 blank_issues_enabled: true  # default: true
 contact_links:
 
-# - name: "🛠 Create Issue for Portmaster"
-#   url: https://github.com/safing/portmaster/issues/new/choose
-#   about: "Create issue related to the main application"
+- name: "Ask Questions on Discord"
+  url: https://safing.io/discord
+  about: Get help from our great community
 
-- name: "🎨 Create Issue for User Interface"
-  url: https://github.com/safing/portmaster-ui/issues/new/choose
-  about: "Create issue for everything connected to the Portmaster's User Interface"
-
-- name: "📦 Create Issue for Packaging & Installers"
-  url: https://github.com/safing/portmaster-packaging/issues/new/choose
-  about: "Create issue for things related to Portmaster's installers, packaging and distribution"
+- name: "Wiki and FAQ"
+  url: https://wiki.safing.io/
+  about: Learn more about Portmaster in our Wiki
 
 - name: "Contribution Guideline"
   url: https://docs.safing.io/portmaster/guides/contribute
   about: Learn how to best contribute and make sure your work is aligned with Safing’s current goals and focus
-
-- name: "Support Requests & Community"
-  url: https://www.reddit.com/r/safing
-  about: Ask for support and any questions you might have on reddit
 
 - name: "Code of Conduct"
   url: https://docs.safing.io/community/code-of-conduct

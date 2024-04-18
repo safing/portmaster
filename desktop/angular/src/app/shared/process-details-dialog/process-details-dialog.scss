@@ -1,0 +1,32 @@
+:host {
+  @apply flex flex-col gap-4 max-w-2xl;
+  min-width: 500px;
+  width: 60vw;
+
+  min-height: 500px;
+  height: 60vh;
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+table.custom {
+  @apply w-full overflow-hidden;
+
+  th,
+  td {
+    @apply px-2 align-top py-2;
+  }
+
+  th {
+    text-align: left;
+    @apply w-32 text-secondary;
+  }
+
+  td {
+    @apply whitespace-normal break-all;
+  }
+
+  td:last-of-type {
+    @apply p-0;
+  }
+}

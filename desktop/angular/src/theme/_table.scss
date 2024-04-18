@@ -1,0 +1,41 @@
+table:not(.custom) {
+  width: 100%;
+
+  th,
+  tr,
+  td {
+    @apply text-xs;
+  }
+
+  th {
+    text-align: left;
+    @apply text-secondary;
+    z-index: 1;
+  }
+
+  td,
+  th {
+    @apply p-2;
+    @apply font-medium;
+  }
+
+  tr:nth-child(even) {
+    @apply bg-cards-secondary;
+    --bg-opacity: 0.5;
+  }
+
+  tr:nth-child(odd) {
+    @apply bg-cards-tertiary;
+    --bg-opacity: 0.6;
+  }
+
+  tr.cdk-header-row th {
+    @apply bg-cards-tertiary;
+    --bg-opacity: 1;
+
+    // we cannot use borders directly due to
+    // the sticky header. Use a box-shadow to
+    // simulate a border.
+    box-shadow: 0 2px rgba(0, 0, 0, 0.3);
+  }
+}

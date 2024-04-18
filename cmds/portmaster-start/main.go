@@ -20,7 +20,7 @@ import (
 	portlog "github.com/safing/portbase/log"
 	"github.com/safing/portbase/updater"
 	"github.com/safing/portbase/utils"
-	"github.com/safing/portmaster/updates/helper"
+	"github.com/safing/portmaster/service/updates/helper"
 )
 
 var (
@@ -83,7 +83,7 @@ func main() {
 	cobra.OnInitialize(initCobra)
 
 	// set meta info
-	info.Set("Portmaster Start", "1.6.0", "AGPLv3", false)
+	info.Set("Portmaster Start", "", "GPLv3")
 
 	// catch interrupt for clean shutdown
 	signalCh := make(chan os.Signal, 2)

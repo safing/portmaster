@@ -1,0 +1,48 @@
+:host {
+  @apply block;
+  max-width: 24rem;
+}
+
+caption {
+  @apply text-xxs;
+  opacity: .6;
+}
+
+h1 {
+  @apply text-base font-normal my-4;
+}
+
+.message,
+h1 {
+  flex-shrink: 0;
+  text-overflow: ellipsis;
+  word-break: normal;
+}
+
+.message {
+  flex-grow: 1;
+  padding: 0;
+}
+
+.close-icon {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  opacity: .7;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.buttons {
+  width: 100%;
+  display: flex;
+
+  @apply flex flex-row justify-end gap-2;
+}
+
+a {
+  text-decoration: underline;
+}

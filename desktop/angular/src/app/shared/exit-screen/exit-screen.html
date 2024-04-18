@@ -1,0 +1,19 @@
+<div class="content-wrapper">
+  <caption>Tip</caption>
+  <fa-icon class="close-icon" icon="times" (click)="cancel()"></fa-icon>
+
+  <h1>Close User Interface</h1>
+
+  <span class="message">Closing the User Interface does not shut down the Portmaster. You can shut down the Portmaster
+    in the Settings or the Tray Notifier.</span>
+
+  <div class="actions">
+    <span>
+      <input name="neveragain" id="neveragain" [(ngModel)]="neveragain" type="checkbox"> <label for="neveragain">Never
+        Show
+        Again</label>
+    </span>
+
+    <button (click)="closeUI()" type="button">Close UI</button>
+  </div>
+</div>

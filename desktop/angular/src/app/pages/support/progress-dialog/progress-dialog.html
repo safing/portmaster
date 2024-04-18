@@ -1,0 +1,114 @@
+<!-- Progress Indicator -->
+<div *ngIf="state !== 'error' && state !== 'done'">
+
+  <caption class="text-xxs text-secondary">Status</caption>
+
+  <div class="flex flex-row gap-2">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+      class="w-5 h-5 animate animate-spin">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+    </svg>
+
+    <div [ngSwitch]="state">
+      <!-- Uploading debug data -->
+      <ng-template ngSwitchCase="debug-info">
+        <span>Uploading debug data ....</span>
+      </ng-template>
+
+      <!-- Github Issue -->
+      <ng-template ngSwitchCase="create-issue">
+        <span>Creating GitHub issue ...</span>
+      </ng-template>
+
+      <!-- Private ticket -->
+      <ng-template ngSwitchCase="create-ticket">
+        <span>Creating private support ticket ...</span>
+      </ng-template>
+    </div>
+  </div>
+</div>
+
+
+<!-- Issue/ticket creation successfull -->
+<ng-template [ngIf]="state === 'done'">
+  <span class="flex flex-row gap-2 items-center justify-start">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="0.75" stroke="currentColor"
+      class="text-green-300 w-10 h-10">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+
+    <span class="text-base text-primary">
+      <ng-template [ngIf]="dialogRef.data.type === 'github' && dialogRef.data.generateUrl">
+        Ticket prepared successfully
+      </ng-template>
+
+      <ng-template [ngIf]="dialogRef.data.type !== 'github' || !dialogRef.data.generateUrl">
+        Ticket created successfully!
+      </ng-template>
+    </span>
+  </span>
+
+  <div *ngIf="dialogRef.data.type === 'github' && dialogRef.data.generateUrl">
+    <span>Use the following button to open the pre-filled GitHub issue form:</span>
+
+    <br />
+
+    <div class="flex flex-row items-center justify-center p-4">
+      <button class="bg-blue" (click)="integration.openExternal(url)">Create Issue</button>
+    </div>
+  </div>
+
+  <div *ngIf="dialogRef.data.type === 'github' && !dialogRef.data.generateUrl" class="flex flex-col">
+    <span>
+      We successfully create the issue on GitHub for you.
+      <br />
+      Use the following link to check for updates:
+    </span>
+
+    <span class="inline-block w-full text-center mt-4 underline text-secondary"
+      (click)="integration.openExternal(url)">{{ url }}</span>
+  </div>
+
+  <span *ngIf="dialogRef.data.type === 'private' && dialogRef.data.email">
+    We will contact you as soon as possbile.
+  </span>
+</ng-template>
+
+<!-- An error occured -->
+<div *ngIf="state === 'error'" class="flex flex-col gap-2">
+
+  <span class="flex flex-row gap-2 items-center justify-start">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="0.75" stroke="currentColor"
+      class="text-red-300 w-10 h-10">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+
+    <span class="text-base text-primary">
+      Failed to create Support Ticket
+    </span>
+  </span>
+
+
+  <span>
+    An error occured while creating your support ticket:
+  </span>
+
+  <span class="text-red block w-full text-center">
+    {{ error || 'Unknown Error' }}
+  </span>
+</div>
+
+
+<div class="flex flex-row justify-center items-center gap-2">
+
+  <button *ngIf="state === 'done' && !!url && dialogRef.data.type === 'github' && !dialogRef.data.generateUrl "
+    class="bg-blue" (click)="integration.openExternal(url)">Open Issue</button>
+
+  <button *ngIf="state === 'done' && !!url && dialogRef.data.type === 'github' && !dialogRef.data.generateUrl "
+    (click)="copyUrl()">Copy URL</button>
+
+  <button (click)="dialogRef.close()" class="btn">Close</button>
+</div>

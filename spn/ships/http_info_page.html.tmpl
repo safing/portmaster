@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPN Node</title>
+  <style>
+    /* Lissom.CSS - https://github.com/lissomware/css */
+    blockquote,button,details[open],input[type=submit],th{background-color:var(--accent-alt)}button:active,h2::before,input[type=submit]:active{opacity:.9}button:hover,h4::before,input[type=submit]:hover{opacity:.7}blockquote::after,h1::before,h2::before,h3::before,h4::before,h5::before,h6::before{position:absolute}a:hover,h1::before,h2::before,h3::before,h4::before,h5::before,h6::before{color:var(--accent-ui)}kbd,summary{font-weight:700}dialog,mark{color:inherit}details,pre{padding:.5em;background-color:var(--tertiary)}hr,td{text-align:center}body,dialog,html,tr:nth-child(2n) td{background-color:var(--light)}code,details,input,kbd,pre,textarea,tr:nth-child(odd) td{background-color:var(--tertiary)}*{box-sizing:border-box}:root{--primary:hsl(265, 38%, 13%);--secondary:hsl(283, 6%, 45%);--tertiary:hsl(257, 15%, 95%);--light:hsl(270, 100%, 99%);--accent:#0376bb;--accent-alt:hsl(279, 100%, 97%);--accent-ui:#0376bb;--semantic-green:hsl(88, 76%, 83%);--semantic-red:hsl(0, 76%, 83%)}@media (prefers-color-scheme:dark){:root{--primary:hsl(300, 100%, 99%);--secondary:hsl(280, 5%, 37%);--tertiary:hsl(270, 5%, 16%);--light:hsl(280, 5%, 12%);--accent:hsl(282, 25%, 40%);--accent-alt:hsl(278, 14%, 20%);--accent-ui:#0376bb;--semantic-green:hsl(88, 35%, 40%);--semantic-red:hsl(0, 35%, 40%)}}body,html{color-scheme:light;accent-color:var(--accent-ui);color:var(--primary);font-family:sans-serif;margin:0;padding:0;line-height:1.4}main{width:min(100% - 3rem,65ch);margin-inline:auto;margin-top:2em;margin-bottom:2em}a{color:var(--primary);text-decoration-color:var(--accent-ui);text-underline-offset:0.15em;text-decoration-thickness:0.1em}a:hover{text-decoration-thickness:0.2em;z-index:2}a:focus-visible{background-color:var(--accent-ui);box-shadow:0 0 0 .2em var(--light),0 0 0 .4em var(--accent-ui);outline:0;z-index:2;animation:1s linear infinite alternate-reverse pulseFill;border-radius:.1em;position:relative}@keyframes pulseFill{0%{background-color:var(--accent-ui);box-shadow:0 0 0 .2em var(--light),0 0 0 .4em var(--accent-ui)}100%{background-color:var(--accent);box-shadow:0 0 0 .2em var(--light),0 0 0 .4em var(--accent)}}blockquote{margin:1.5em 0;position:relative;padding:.7em;z-index:1;border-radius:.5em}blockquote p{margin:0}blockquote::after,blockquote::before{color:var(--accent-ui);font-size:5em;line-height:.8}button,input,input[type=submit],textarea{padding:.4em 1em;font-size:inherit;position:relative;color:var(--primary)}blockquote::before{content:open-quote;vertical-align:top;position:absolute;left:-.15em;top:-.1em}blockquote::after{content:close-quote;vertical-align:bottom;right:-.1em;bottom:-.65em}[lang=fr] blockquote::after,[lang=fr] blockquote::before{font-size:3.5em}[lang=fr] blockquote::before{left:-.3em;top:-.4em}[lang=fr] blockquote::after{right:-.3em;bottom:-.3em}button,input[type=submit]{border:1px solid var(--accent);border-radius:.3em;cursor:pointer}input::placeholder{font-style:italic}button[data-primary],input[type=submit]{color:var(--light);background-color:var(--accent-ui);border-color:var(--accent-ui);outline:1px solid var(--accent);outline-offset:-0.15em;padding:.4em .8em;border-radius:.3em;cursor:pointer;font-weight:700}button:disabled,input:disabled,input[type=submit]:disabled,textarea:disabled{cursor:not-allowed;background-color:var(--tertiary);color:var(--secondary);border-color:var(--secondary);opacity:.5}button:focus-visible,details:has(summary:focus-visible),input:focus-visible,textarea:focus-visible{box-shadow:0 0 0 .2em var(--light),0 0 0 .4em var(--accent-ui);outline:0;z-index:2;animation:1s linear infinite alternate-reverse pulseBorder}details:has(summary:focus-visible) summary{outline:0}@keyframes pulseBorder{0%{box-shadow:0 0 0 .2em var(--light),0 0 0 .4em var(--accent-ui)}100%{box-shadow:0 0 0 .2em var(--light),0 0 0 .4em var(--accent)}}code{border-radius:.3em;font-family:monospace;padding:.1em .2em}details{border:.1em solid var(--secondary);border-radius:.3em;margin:1em 0}details[open] summary{border-bottom:.1em solid var(--accent);padding-bottom:.3em;margin-bottom:.7em}dialog{border-radius:.6em;max-width:min(100% - 3rem,65ch);border:1px solid var(--accent-ui);box-shadow:0 0 .3em .1em var(--accent-alt)}hr,progress{border:none;margin:1em 0}::backdrop{background:rgba(0,0,0,.5)}form:not([data-modal]){display:flex;flex-direction:column;gap:.5rem;margin:1em 0}form>div{display:flex;flex-direction:column}form>div:has(input[type=checkbox]){flex-direction:row;align-items:center;gap:.2em}h1,h2,h3,h4,h5,h6{position:relative}h1::before{content:'#';left:-2ch}h1:dir(rtl)::before{right:-2ch}h2::before{content:'##';left:-3ch}h2:dir(rtl)::before{right:-3ch}h3::before{content:'###';left:-4ch;opacity:.8}h3:dir(rtl)::before{right:-4ch}h4::before{content:'####';left:-5ch}h4:dir(rtl)::before{right:-5ch}h5::before{content:'#####';left:-6ch;opacity:.6}h5:dir(rtl)::before{right:-6ch}h6::before{content:'######';left:-7ch;opacity:.5}h6:dir(rtl)::before{right:-7ch}h1[data-no-heading-level]::before,h2[data-no-heading-level]::before,h3[data-no-heading-level]::before,h4[data-no-heading-level]::before,h5[data-no-heading-level]::before,h6[data-no-heading-level]::before{content:''}hr{border-top:.2em double var(--primary);color:var(--primary);overflow:visible;height:.4em}hr:after{background:var(--light);content:'§';padding:0 4px;position:relative;top:-13px}img{border-radius:.6em;width:100%;height:auto;transition:border-radius .1s linear}img:hover{border-radius:0}input,textarea{border:1px solid var(--secondary);border-radius:.3em;font-family:inherit}kbd{border-radius:.3em;border:1px solid var(--secondary);box-shadow:0 1px 1px var(--secondary),0 2px 0 0 var(--light) inset;color:var(--primary);display:inline-block;font-size:.85em;line-height:1;padding:.2em .4em;white-space:nowrap}mark{background-color:var(--accent)}pre{font-family:monospace;color:var(--primary);border-radius:.6em;border:1px solid var(--secondary)}progress{appearance:none;-moz-appearance:none;-webkit-appearance:none;border-radius:1em;display:block;height:.5rem;overflow:hidden;padding:0;width:100%}progress::-webkit-progress-bar{background-color:var(--accent)}progress::-webkit-progress-value{background-color:var(--accent-ui)}progress::-moz-progress-bar{background-color:var(--accent-ui)}progress::-ms-fill{background-color:var(--accent-ui);border:none}progress:indeterminate{animation:3s linear infinite progressShine;background-color:var(--accent);background-image:linear-gradient(to right,var(--accent) 0,var(--accent-ui) 10%,var(--accent-ui) 30%,var(--accent) 40%);background-position:top left;background-repeat:no-repeat;background-size:150% 150%}progress:indeterminate:dir(rtl){animation-direction:reverse}progress:indeterminate::-webkit-progress-bar{background-color:transparent}progress:indeterminate::-moz-progress-bar{background-color:transparent}progress:indeterminate::-ms-fill{animation-name:none}@keyframes progressShine{0%{background-position:200% 0}100%{background-position:-200% 0}}caption{padding:.8em;caption-side:bottom}table{border-collapse:collapse;border:.1em solid var(--secondary);border-radius:.6em}td,th{border:1px solid var(--secondary);padding:.4em .3em}ins{background-color:var(--semantic-green)}del{background-color:var(--semantic-red)}
+  </style>
+</head>
+<body>
+  <main>
+    <section>
+      <h1>
+        You Have Reached an SPN Node
+      </h1>
+      <p>
+        The server, or at least the exact URL you have accessed, leads to an SPN Node.
+      </p>
+    </section>
+
+    <section>
+      <h3>
+        What is SPN?
+      </h3>
+      <p>
+        SPN stands for "Safing Privacy Network" and is a network of servers that offers high privacy protection of Internet traffic and activity. It was built to replace VPNs for their Internet privacy use case.
+      </p>
+    </section>
+
+    <section>
+      <h3>
+        More Information
+      </h3>
+      <p>
+        You can find out more about SPN here:
+        <ul>
+          <li>Features: <a href="https://safing.io/spn/">https://safing.io/spn/</a></li>
+          <li>Node Hosting Guide: <a href="https://wiki.safing.io/en/SPN/Nodes/Hosting">https://wiki.safing.io/en/SPN/Nodes/Hosting</a></li>
+        </ul>
+      </p>
+    </section>
+
+    <section>
+      <h3>
+        Contact the Operator of This SPN Node
+      </h3>
+      <p>
+        {{ if .ContactAddress }}
+          You can reach the operator of this SPN Node here:
+          {{ .ContactAddress }}
+            {{ if .ContactService }} via {{ .ContactService }}
+          {{ end }}
+        {{ else }}
+          The operator of this SPN Node has not configured any contact data.<br>
+          Please contact the operator using the usual methods via the hosting provider.
+        {{ end }}
+      </p>
+    </section>
+
+    <section>
+      <h3>
+        Are You Tracing Bad Activity?
+      </h3>
+      <p>
+        We are sorry there is an incident involving this server. We condemn any disruptive or illegal activity.
+      <p>
+      </p>
+        Please note that servers are not only operated by Safing (the company behind SPN), but also by third parties.
+      <p>
+      </p>
+        The SPN works very similar to Tor. Its primary goal is to provide people more privacy on the Internet. We also provide our services to people behind censoring firewalls in oppressive regimes.
+      <p>
+      </p>
+        This server does not host any content (as part of its role in the SPN network). Rather, it is part of the network where nodes on the Internet simply pass packets among themselves before sending them to their destinations, just as any Internet intermediary does.
+      <p>
+      </p>
+        Please understand that the SPN makes it technically impossible to single out individual users. We are also legally bound to respective privacy rights.
+      </p>
+      <p>
+        We can offer to block specific destination IPs and ports, but the abuser doesn't use this server specifically; instead, they will just be routed through a different exit node outside of our control.
+      </p>
+    </section>
+
+    <section>
+      <h3>
+        SPN Node Info
+      </h3>
+      <p>
+        <ul style="list-style: none;">
+          <li>Name: {{ .Name }}</li>
+          <li>Group: {{ .Group }}</li>
+          <li>ContactAddress: {{ .ContactAddress }}</li>
+          <li>ContactService: {{ .ContactService }}</li>
+          <li>Version: {{ .Version }}</li>
+          <li>ID: {{ .ID }}</li>
+          <li>
+            Build:
+            <ul style="list-style: none;">
+              <li>Commit: {{ .Info.Commit }}</li>
+              <li>At: {{ .Info.CommitTime }}</li>
+              <li>From: {{ .Info.Source }}</li>
+            </ul>
+          </li>
+        </ul>
+      </p>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!-- login View -->
+<div class="w-full px-5">
+  <h2 class="flex flex-row items-center justify-center w-full gap-4 p-0 pb-4 m-0">
+    <div class="flex flex-col items-center justify-center w-16 h-16 outline-none">
+      <svg data-name="Layer 1" viewBox="0 0 128 128" class="spin reverse logo-image">
+        <g data-name="Main" fill-rule="evenodd">
+          <path shape-rendering="geometricPrecision" fill="#fff" class="inner"
+            d="M176.11 36.73l-5-8.61a41.53 41.53 0 00-14.73 57.22l8.55-5.12a31.58 31.58 0 0111.19-43.49z"
+            transform="translate(-127.99 .01)" style="isolation:isolate" opacity=".8"></path>
+          <path shape-rendering="geometricPrecision" fill="#fff" class="inner"
+            d="M222.36 72.63a31.55 31.55 0 01-45 19.35l-4.62 8.84a41.54 41.54 0 0059.17-25.46z"
+            transform="translate(-127.99 .01)" style="isolation:isolate" opacity=".8"></path>
+        </g>
+      </svg>
+      <svg data-name="Layer 1" viewBox="0 0 128 128" class="spin logo-image">
+        <g data-name="Main" fill-rule="evenodd">
+          <path shape-rendering="geometricPrecision" fill="#fff" class="inner reverse"
+            d="M197 83a19.66 19.66 0 01-19.25-32.57l-4.5-4.27A25.87 25.87 0 00198.59 89z"
+            transform="translate(-127.99 .01)" style="isolation:isolate" opacity=".6"></path>
+        </g>
+      </svg>
+      <svg data-name="Layer 1" viewBox="0 0 128 128" class="logo-image">
+        <g data-name="Main" fill-rule="evenodd">
+          <path shape-rendering="geometricPrecision" fill="#fff"
+            d="M192 112.64A48.64 48.64 0 11240.64 64 48.64 48.64 0 01192 112.64zM256 64a64 64 0 10-64 64 64 64 0 0064-64z"
+            transform="translate(-127.99 .1)"></path>
+        </g>
+      </svg>
+    </div>
+    <span class="flex flex-col items-start justify-start">
+      Safing Account Login
+      <a class="text-xs font-medium text-tertiary" href="https://safing.io/spn?source=Portmaster" target="_blank">
+        Unlock powerful features.
+      </a>
+    </span>
+  </h2>
+
+
+  <div *ngIf="forcedLogout" class="w-full px-4 py-2 mb-4 text-center rounded bg-info-red">
+    You have been logged out by the account server.
+    <br />
+    Please check <a class="underline text-primary" href="https://account.safing.io/?source=Portmaster">your account</a>.
+  </div>
+
+  <form (ngSubmit)="login()">
+    <div class="flex flex-col items-stretch mt-4 space-y-6">
+      <div class="flex flex-col justify-items-start">
+        <label for="username" class="font-semibold text-primary">Username</label>
+        <input type="text" name="username" autocomplete="off" class="custom-form-input" [(ngModel)]="username">
+      </div>
+
+      <div class="flex flex-col justify-items-start">
+        <label for="password" class="font-semibold text-primary">Password</label>
+        <input type="password" name="password" autocomplete="off" class="custom-form-input" [(ngModel)]="password">
+      </div>
+
+      <div>
+        <button
+          class="relative w-full p-2 bg-opacity-75 rounded-full custom text-primary bg-blue hover:bg-blue bg-opacity-702"
+          [disabled]="!username || !password" type="submit">
+          SIGN IN
+        </button>
+        <div class="w-full mt-6 text-xs font-semibold text-center text-tertiary">
+          <span><a class="underline" href="https://account.safing.io/?source=Portmaster">Sign Up and
+              Subscribe</a></span>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

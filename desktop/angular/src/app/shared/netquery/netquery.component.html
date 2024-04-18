@@ -1,0 +1,388 @@
+<div class="sticky top-0 z-50 flex flex-row items-center w-full mb-2 bg-background" *ngIf="tagbarValues?.length">
+
+  <sfng-netquery-tagbar [(ngModel)]="tagbarValues" (ngModelChange)="onTagbarChange($event)" [labels]="keyTranslation"
+    class="p-2 bg-gray-300 rounded-l-sm">
+  </sfng-netquery-tagbar>
+
+  <div
+    class="flex items-center justify-center h-full px-3 py-2 bg-gray-200 rounded-r-sm cursor-pointer hover:text-primary text-tertiary"
+    (click)="copyQuery()" sfng-tooltip="Copy query to clipboard" snfgTooltipPosition="left">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+      stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+    </svg>
+  </div>
+
+  <button class="bg-transparent hover:bg-transparent ml-2 cursor-pointer text-tertiary text-xxs hover:text-primary p-2" (click)="clearQuery()" (keyup.enter)="clearQuery()">
+    Clear All
+  </button>
+</div>
+
+<div class="flex flex-row items-center w-full gap-2">
+  <sfng-netquery-searchbar [(ngModel)]="textSearch" (ngModelChange)="performSearch()" class="block w-full"
+    [labels]="keyTranslation" (fieldsParsed)="onFieldsParsed($event)"></sfng-netquery-searchbar>
+  <button type="button" class="h-full rounded-r-sm btn" (click)="performSearch()">Reload</button>
+</div>
+
+<div class="flex flex-row flex-wrap items-center w-full gap-3">
+  <!--
+    Search / Suggestion boxes for most-commonly used filters
+  -->
+  <ng-container *ngFor="let field of (models | keyvalue)">
+    <ng-container *ngIf="field.value!.visible === true">
+      <sfng-select mode="multi" [itemName]="keyTranslation[field.key] || field.key" dynamicValues="true"
+        [placeholder]="keyTranslation[field.key] || field.key" [(ngModel)]="field.value!.searchValues"
+        allowSearch="true" searchItemThreshold="5" itemLimit="10"
+        [searchPlaceholder]="'Search' + (keyTranslation[field.key] || field.key)" minWidth="400" minHeight="300"
+        (ngModelChange)="performSearch()" (opened)="loadSuggestion(field.key)"
+        [dynamicValueTemplate]="dynamicValueTemplate" [sortBy]="sortByCount">
+        <ng-container *ngIf="field.value?.loading">
+          <sfng-select-item *sfngSelectValue="null; disabled: true" class="text-secondary">Loading ...
+          </sfng-select-item>
+        </ng-container>
+
+        <ng-container *ngFor="let value of field.value?.suggestions; trackBy: trackSuggestion">
+          <sfng-select-item
+            *sfngSelectValue="value.Value; data:value.count, label:value.Name || (value.Value === '' ? 'N/A' : value.Value)">
+            <span *ngIf="field.key === 'country' && !!value.Name" [appCountryFlags]="value.Name"></span>
+            <span class="flex-grow inline-block overflow-hidden overflow-ellipsis whitespace-nowrap"
+              style="max-width: 20rem; direction: rtl;">
+              <span style="direction: ltr; unicode-bidi: bidi-override;">
+                {{ value.Name || 'N/A' }}
+              </span>
+            </span>
+            <span class="pr-3 text-xxs text-tertiary whitespace-nowrap">
+              #{{ value.count }} connections
+            </span>
+          </sfng-select-item>
+
+        </ng-container>
+      </sfng-select>
+
+      <ng-template #dynamicValueTemplate let-item>
+        <sfng-select-item>
+          <span *ngIf="field.key === 'country' && !!item.value" [appCountryFlags]="item.value"></span>
+          <span class="flex-grow inline-block overflow-hidden overflow-ellipsis whitespace-nowrap"
+            style="max-width: 20rem; direction: rtl;">
+            <span style="direction: ltr; unicode-bidi: bidi-override;">
+              {{ item.value || 'N/A' }}
+            </span>
+          </span>
+        </sfng-select-item>
+      </ng-template>
+    </ng-container>
+  </ng-container>
+
+
+  <!-- The combinded "more" drop-down that should look like a select component -->
+  <ng-template #selectTemplate>
+    <button class="sfng-select" [class.active]="customDropdown.isOpen">
+      <span>More</span>
+      <div class="arrow">
+        <svg viewBox="0 0 24 24" class="arrow-icon">
+          <g fill="none" class="inner">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M10 16l4-4-4-4" />
+          </g>
+        </svg>
+      </div>
+    </button>
+  </ng-template>
+
+  <sfng-dropdown #customDropdown [triggerTemplate]="selectTemplate" overlayClass="grid grid-cols-4">
+    <ng-container *ngFor="let model of (models | keyvalue | combinedMenu); let last=last">
+      <div class="border-gray-400 sfng-select-dropdown" [class.border-r]="!last">
+        <h3 class="flex items-center gap-2 px-3 py-0.5 mb-0 border-b border-gray-300 text-xxs text-secondary">
+          <span>Filter by {{ model.value!.menuTitle || model.key }}</span>
+          <sfng-tipup [key]="model.value!.tipupKey" *ngIf="!!model.value!.tipupKey"></sfng-tipup>
+        </h3>
+        <ul>
+          <li class="px-3" *ngFor="let value of model.value!.suggestions" [class.bg-gray-300]="value.selected">
+            <sfng-select-item (click)="toggleCombinedMenuFilter(model.key, value)" class="grid w-full grid-cols-3">
+              <span class="col-span-2">
+                {{ value.Name }}
+              </span>
+
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-all duration-200" viewBox="0 0 20 20"
+                fill="currentColor" [class.opacity-0]="!value.selected">
+                <path fill-rule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clip-rule="evenodd" />
+              </svg>
+            </sfng-select-item>
+          </li>
+        </ul>
+      </div>
+    </ng-container>
+  </sfng-dropdown>
+
+
+  <div class="flex-grow"></div>
+
+  <div class="flex flex-row items-center gap-2 px-2 bg-gray-300 border border-gray-300 rounded text-xxs"
+    *ngIf="(canUseHistory$ | async)">
+    Search History:
+    <nz-range-picker [nzShowTime]="false" class="py-0" [nzRenderExtraFooter]="customTimeRange" [(ngModel)]="dateFilter"
+      [nzBorderless]="true" (ngModelChange)="onDateRangeChange($event)" [nzAllowClear]="true" [nzFormat]="dateFormat">
+    </nz-range-picker>
+
+    <ng-template #customTimeRange>
+      <span class="py-2 uppercase text-xxs text-secondary">Quick Settings</span>
+      <ul class="grid grid-flow-row grid-cols-3 py-2 text-xs">
+        <li tabindex="0" *ngFor="let qds of quickDateSettings" (click)="applyQuickDateSetting(qds)" (keyup.enter)="applyQuickDateSetting(qds)"
+          class="cursor-pointer text-secondary hover:text-primary px-2 py-1.5 hover:bg-gray-500 hover:bg-opacity-50 rounded-md">
+          {{ qds.name }}
+        </li>
+      </ul>
+    </ng-template>
+  </div>
+
+  <div class="flex flex-row items-center gap-3">
+    <!--
+      Group-By selection
+    -->
+    <sfng-select mode="multi" itemName="Group By" placeholder="Group By" allowSearch="false" [(ngModel)]="groupByKeys"
+      (ngModelChange)="performSearch()">
+      <ng-container *ngFor="let value of allowedGroupBy">
+        <sfng-select-item *sfngSelectValue="value">
+          {{ keyTranslation[value] || value }}
+        </sfng-select-item>
+      </ng-container>
+    </sfng-select>
+
+    <!--
+      Order-By selection
+    -->
+    <sfng-select mode="multi" itemName="Sort" placeholder="Sort" allowSearch="false" [(ngModel)]="orderByKeys"
+      (ngModelChange)="performSearch()">
+      <ng-container *ngFor="let value of allowedOrderBy">
+        <sfng-select-item *sfngSelectValue="value">
+          {{ keyTranslation[value] || value }}
+        </sfng-select-item>
+      </ng-container>
+    </sfng-select>
+
+  </div>
+</div>
+
+<div class="relative flex-shrink-0 my-1 bg-gray-200 p-2 rounded grid" [class.grid-cols-2]="featureBw$ | async">
+  <div>
+    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">Connections</h2>
+    <div class="h-32">
+      <sfng-netquery-line-chart [data]="connectionChartData" class="h-full" *ngIf="connectionChartData.length > 0" [@fadeIn]></sfng-netquery-line-chart>
+    </div>
+  </div>
+
+  <div *ngIf="featureBw$ | async">
+    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">Data Usage</h2>
+    <div class="h-32">
+      <sfng-netquery-line-chart [config]="bwChartConfig" [data]="bwChartData" class="h-full" *ngIf="!!bwChartData?.length" [@fadeIn]></sfng-netquery-line-chart>
+    </div>
+  </div>
+
+  <div class="absolute top-0 bottom-0 left-0 right-0 flex items-center justify-center text-secondary"
+    *ngIf="loading || connectionChartData.length === 0">
+    Loading Chart
+  </div>
+</div>
+
+<ng-template #headerTemplate let-data let-active="active">
+  <div class="relative flex flex-row items-center w-full gap-3 px-3 bg-gray-200"
+    [ngClass]="{'rounded-sm': !active, 'rounded-t-sm': active, 'py-2': !!data._group, 'py-1': !data._group}">
+
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-all duration-150 transform"
+      [class.rotate-90]="active" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd"
+        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+        clip-rule="evenodd" />
+    </svg>
+
+    <!-- Group-By VIew -->
+    <ng-template [ngIf]="!!data._group" [ngIfElse]="connView">
+      <app-count-indicator [count]="data.totalCount" [countAllowed]="data.countAllowed">
+      </app-count-indicator>
+
+      <span *ngFor="let key of groupByKeys" class="flex flex-row items-center gap-1 overflow-hidden whitespace-nowrap">
+        <span class="text-xxs text-secondary" *ngIf="groupByKeys.length !== 1">{{ keyTranslation[key] || key }}</span>
+
+        <!-- Country specific colum rendering -->
+        <span class="text-primary" *ngIf="key === 'country' && !!data[key]"
+          [appCountryFlags]="data[key]">{{ data[key] || 'N/A' }}</span>
+
+
+        <!-- Profile specific column rendering -->
+        <span *ngIf="key === 'profile' && !!data.__profile" class="flex flex-row items-center gap-2">
+          <app-icon [profile]="data.__profile"></app-icon>
+          <span>{{ data.__profile.Name }}</span>
+        </span>
+
+        <!-- SPN Pin specific column rendering -->
+        <span *ngIf="key === 'exit_node' && !!data.__exitNode" class="flex flex-row items-center gap-2">
+          <span class="text-secondary text-xxs">
+            (
+            <span class="text-primary"
+              *ngIf="(data.__exitNode.EntityV4 || data.__exitNode.EntityV6)?.Country as country"
+              [appCountryFlags]="country"></span>
+            )
+          </span>
+          <span>{{ data.__exitNode.Name }}</span>
+        </span>
+
+        <!-- everything else -->
+        <span style="direction: rtl" *ngIf="key !== 'domain' && key !== 'profile' && key !== 'exit_node'"
+          class="overflow-hidden text-primary overflow-ellipsis">
+          <span style="direction: ltr; unicode-bidi: bidi-override;">
+            {{ data[key] || 'N/A' }}
+          </span>
+        </span>
+
+        <sfng-netquery-scope-label *ngIf="key === 'domain'" [scope]="data[key]" style="direction: rtl"
+          class="overflow-hidden text-primary overflow-ellipsis">
+        </sfng-netquery-scope-label>
+      </span>
+
+      <div class="flex-grow"></div>
+      <div>
+        <app-menu-trigger [menu]="groupedMenu"></app-menu-trigger>
+        <app-menu #groupedMenu>
+          <app-menu-item (activate)="useAsFilter(data)">Use as filter</app-menu-item>
+          <app-menu-item *ngIf="data.__profile"
+            (activate)="router.navigate(['/app', data.__profile.Source, data.__profile.ID])">App Settings
+          </app-menu-item>
+        </app-menu>
+      </div>
+
+      <ng-container *ngIf="(data._chart | async) as chartData" class="relative">
+        <sfng-netquery-line-chart [data]="$any(chartData)" showAxis="false" margin="0"
+          class="absolute top-0 bottom-0 right-0 w-64 bg-gray-100 bg-opacity-25 border border-gray-400 border-opacity-25 rounded-r opacity-75 shadow-inner-xs">
+        </sfng-netquery-line-chart>
+      </ng-container>
+      <!-- placeholder for the chart -->
+      <div style="flex-basis: 14.5rem"></div>
+    </ng-template>
+
+    <ng-template #connView>
+      <sfng-netquery-connection-row [conn]="data"></sfng-netquery-connection-row>
+    </ng-template>
+
+  </div>
+</ng-template>
+
+<div class="flex flex-row items-center justify-start gap-3 mt-3">
+  <span class="text-xxs text-primary" *ngIf="!loading">{{ totalResultCount }} Results
+    <span class="text-secondary">of {{totalConnCount}} total connections</span>
+  </span>
+  <span class="flex-grow"></span>
+  <span class="pr-3 text-xxs text-secondary" [ngClass]="{
+    'text-yellow-300': ((lastReloadTicker|async)||0) > 60,
+    'text-red-300': ((lastReloadTicker|async)||0) > 600
+  }">
+    Last Reload: {{ lastReload | timeAgo:(lastReloadTicker|async) }}
+  </span>
+</div>
+
+<sfng-pagination *ngIf="!loading; else: loadingTemplate" [source]="paginator" class="flex flex-col">
+  <ng-template [sfngPageContent]>
+    <sfng-accordion-group class="flex flex-col gap-2 pr-4"
+      *ngIf="(paginator.pageLoading$ | async) === false; else: loadingTemplate" [headerTemplate]="headerTemplate"
+      singleMode="false">
+
+      <sfng-accordion [data]="result" #accordion
+        *ngFor="let result of (paginator.pageItems$ | async); trackBy: trackPageItem">
+        <div *ngIf="accordion.active" class="p-3 bg-opacity-75 border-gray-300 rounded-b-sm"
+          [ngClass]="{'bg-gray-300 border-t': !result._group}">
+
+          <!-- nested accordion for connections inside a group -->
+          <ng-container *ngIf="result._group !== null; else: connectionDetails">
+            <sfng-accordion-group class="flex flex-col gap-2 ml-4"
+              *ngIf="(result._group | async) as connsPaginator; else: loadingTemplate" [headerTemplate]="headerTemplate"
+              singleMode="false">
+
+              <div class="flex flex-row items-center p-2 text-secondary" *ngIf="connsPaginator.total === 0">
+                All connections ended more than 10 minutes ago and have been removed.
+              </div>
+
+              <sfng-pagination [source]="connsPaginator" class="flex flex-col flex-grow gap-2">
+                <ng-template [sfngPageContent]>
+                  <sfng-accordion *ngFor="let conn of (connsPaginator.pageItems$ | async); trackBy: trackConnection"
+                    [data]="conn" #subAccordion>
+                    <div *ngIf="subAccordion.active"
+                      class="p-3 bg-gray-300 bg-opacity-75 border-t border-gray-300 rounded-b-sm">
+                      <ng-container *ngTemplateOutlet="connectionDetails; context: {$implicit: conn}"></ng-container>
+                    </div>
+                  </sfng-accordion>
+                </ng-template>
+              </sfng-pagination>
+            </sfng-accordion-group>
+          </ng-container>
+
+          <!-- connection template -->
+          <ng-template #connectionDetails let-conn>
+            <!-- ng-if used to delcare a local variable as an "alias" to (conn || result) -->
+            <ng-container *ngIf="(conn || result) as data">
+              <sfng-netquery-conn-details [conn]="data">
+              </sfng-netquery-conn-details>
+            </ng-container>
+          </ng-template>
+        </div>
+      </sfng-accordion>
+    </sfng-accordion-group>
+  </ng-template>
+</sfng-pagination>
+
+
+<ng-template #loadingTemplate>
+  <div class="flex flex-col items-center justify-center flex-grow gap-2 text-tertiary">
+    <svg class="w-6 h-6 text-secondary animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+      </path>
+    </svg>
+    Loading connections ...
+  </div>
+</ng-template>
+
+<div class="flex flex-row items-center justify-center flex-shrink-0 w-full gap-1 text-xxs text-tertiary"
+  *appExpertiseLevel="'expert'">
+  <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 -mt-0.5 text-primary" viewBox="0 0 20 20" fill="currentColor">
+    <path
+      d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+  </svg>
+  <span class="font-semibold text-primary">Pro Tip:</span>
+  <span class="flex items-center gap-1 protip">
+    <ng-container *ngTemplateOutlet="proTips?.get(proTipIdx) || null"></ng-container>
+  </span>
+</div>
+
+<ng-template #proTip>
+  Press
+  <pre>CTRL + Space</pre>
+  on any page to bring up the quick search box.
+</ng-template>
+
+<ng-template #proTip>
+  Use your keyboard arrows to navigate through the search suggestions. Press
+  <pre>ENTER</pre> to search for the suggestion or use
+  <pre>Shift + Enter</pre> to add it to the search text.
+</ng-template>
+
+<ng-template #proTip>
+  Inside the search box, use
+  <pre>Ctrl + Space</pre> to force loading suggestions.
+</ng-template>
+
+<ng-template #proTip>
+  Use
+  <pre>Shift + Click</pre> to add connection attributes to the current filter.
+</ng-template>
+
+<ng-template #proTip>
+  Hold
+  <pre>Shift</pre> to highlight attributes that can be used in the filter.
+</ng-template>
+
+<ng-template #proTip>
+  Hold
+  <pre>CTRL</pre> and click attributes to copy them to the clipboard.
+</ng-template>

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+systemctl daemon-reload
+systemctl enable portmaster.service
+
+echo "Please reboot your system"

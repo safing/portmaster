@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" *ngIf="canAbort" (click)="close()"
+  class="absolute top-0 right-0 w-5 h-5 -mt-2 -mr-2 opacity-75 cursor-pointer hover:opacity-100" fill="none"
+  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+</svg>
+
+<div class="flex-grow py-4 mb-4" [@moveInOut]="portal.hasAttached()">
+  <ng-container cdkPortalOutlet #portal="cdkPortalOutlet"></ng-container>
+</div>
+
+<ng-template [ngIf]="!!currentStep">
+  <ng-container *ngTemplateOutlet="currentStep?.buttonTemplate || defaultButtonTemplate"></ng-container>
+</ng-template>
+
+<ng-template #defaultButtonTemplate>
+  <div class="flex flex-row justify-between">
+    <button class="w-32 py-2" (click)="goBack()">Go Back</button>
+    <button class="w-32 py-2 custom bg-blue hover:bg-blue hover:bg-opacity-75 active:shadow-inner"
+      [disabled]="(currentStep?.validChange | async) === false" (click)="next()">
+      {{ currentStep?.nextButtonLabel ||  (!isLast ? 'Next' : 'Finish') }}</button>
+  </div>
+</ng-template>

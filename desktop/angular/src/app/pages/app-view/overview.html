@@ -1,0 +1,193 @@
+<div class="flex flex-row justify-between items-center mb-4">
+  <input
+    type="text"
+    placeholder="Search"
+    [ngModel]="searchTerm"
+    (ngModelChange)="searchApps($event)"
+    [autoFocus]="true"
+  />
+  <app-expertise></app-expertise>
+</div>
+
+<div class="header-title">
+  <h1>
+    All Apps
+    <sfng-tipup key="appsTitle"></sfng-tipup>
+  </h1>
+  <div class="flex-grow"></div>
+
+  <app-menu #profileMenu>
+    <app-menu-item (click)="createProfile()">Create profile</app-menu-item>
+    <app-menu-item (click)="importProfile()">Import Profile</app-menu-item>
+    <app-menu-item (click)="selectMode = true"
+      >Merge or Delete profiles</app-menu-item
+    >
+  </app-menu>
+
+  <div class="flex flex-row gap-2 items-center">
+    <app-menu-trigger
+      *ngIf="!selectMode"
+      [menu]="profileMenu"
+      useContent="true"
+    >
+      <div class="flex flex-row gap-2 items-center text-xs font-light">
+        Manage
+
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="w-3 h-3"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z"
+          />
+        </svg>
+      </div>
+    </app-menu-trigger>
+
+    <ng-container *ngIf="selectMode">
+      <app-menu #selectionMenu>
+        <app-menu-item (click)="openMergeDialog()"
+          >Merge Profiles</app-menu-item
+        >
+        <app-menu-item (click)="deleteSelectedProfiles()"
+          >Delete Profiles</app-menu-item
+        >
+        <app-menu-item (click)="selectMode = false">Cancel</app-menu-item>
+      </app-menu>
+
+      <app-menu-trigger [menu]="selectionMenu" useContent="true">
+        <div class="flex flex-row gap-2 items-center text-xs font-light">
+          {{ selectedProfileCount}} selected
+
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-3 h-3"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-7.5A2.25 2.25 0 018.25 18v-1.5m8.25-8.25h-6a2.25 2.25 0 00-2.25 2.25v6"
+            />
+          </svg>
+        </div>
+      </app-menu-trigger>
+    </ng-container>
+  </div>
+</div>
+
+<div class="scrollable" [@fadeInList]="total">
+  <ng-container *ngIf="runningProfiles.length > 0">
+    <div class="scrollable-header">
+      <h4>Active</h4>
+    </div>
+    <ng-container
+      *ngTemplateOutlet="profileList; context: {$implicit: runningProfiles}"
+    ></ng-container>
+  </ng-container>
+
+  <ng-container *ngIf="recentlyEdited.length > 0">
+    <div class="scrollable-header">
+      <h4>Recently Edited</h4>
+    </div>
+    <ng-container
+      *ngTemplateOutlet="profileList; context: {$implicit: recentlyEdited}"
+    ></ng-container>
+  </ng-container>
+
+  <ng-container *ngIf="profiles.length > 0">
+    <div class="scrollable-header">
+      <h4>All</h4>
+    </div>
+    <ng-container
+      *ngTemplateOutlet="profileList; context: {$implicit: profiles}"
+    ></ng-container>
+  </ng-container>
+
+  <ng-template #profileList let-list>
+    <ng-container *ngFor="let profile of list; trackBy: trackProfile">
+      <div
+        *appExpertiseLevel="profile.Internal ? 'developer' : 'user'"
+        class="relative card-header"
+        [ngClass]="{'ring-1 ring-inset ring-yellow-300': profile.selected}"
+        (click)="handleProfileClick(profile, $event)"
+        [routerLink]="selectMode ? null : ['/app', profile.Source,  profile.ID]"
+      >
+        <app-icon [profile]="profile"></app-icon>
+
+        <span class="card-title">
+          <span [innerHTML]="profile?.Name | safe:'html'"></span>
+          <span
+            class="card-sub-title"
+            *appExpertiseLevel="'expert'"
+            [innerHTML]="profile?.PresentationPath | safe:'html'"
+          ></span>
+        </span>
+
+        <input
+          type="checkbox"
+          *ngIf="selectMode"
+          [(ngModel)]="profile.selected"
+          (click)="$event.stopPropagation()"
+        />
+
+        <span
+          *ngIf="profile.hasConfigChanges"
+          sfng-tooltip="Settings Edited"
+          class="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue"
+        ></span>
+      </div>
+    </ng-container>
+
+    <ng-container *ngIf="loading">
+      <div class="card-header">
+        <fa-icon class="card-icon loading" icon="square"></fa-icon>
+        <app-text-placeholder
+          mode="input"
+          width="small"
+          class="card-title"
+        ></app-text-placeholder>
+      </div>
+      <div class="card-header">
+        <fa-icon class="card-icon loading" icon="square"></fa-icon>
+        <app-text-placeholder
+          mode="input"
+          width="small"
+          class="card-title"
+        ></app-text-placeholder>
+      </div>
+      <div class="card-header">
+        <fa-icon class="card-icon loading" icon="square"></fa-icon>
+        <app-text-placeholder
+          mode="input"
+          width="7rem"
+          class="card-title"
+        ></app-text-placeholder>
+      </div>
+      <div class="card-header">
+        <fa-icon class="card-icon loading" icon="square"></fa-icon>
+        <app-text-placeholder
+          mode="input"
+          width="3rem"
+          class="card-title"
+        ></app-text-placeholder>
+      </div>
+    </ng-container>
+  </ng-template>
+</div>
+
+<div
+  *ngIf="total === 0 && searchTerm !== ''"
+  class="flex justify-center items-center p-2 bg-gray-200 text-secondary"
+>
+  No applications match your search term.
+</div>

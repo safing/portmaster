@@ -1,0 +1,75 @@
+{{ define "entity" -}}
+  {{ .IP }} [AS{{ .ASN }} - {{ .ASOrg }}] in {{ if .Country }}
+    {{- with getCountryInfo .Country -}}
+      {{ .Name }} ({{ .Code }}; Region {{ .Continent.Region }})
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{ define "matrix-notification" -}}
+### 🌍 {{ .Title }}{{ if .Summary }}
+
+{{ textBlock .Summary "" "  " }}
+{{ end }}
+
+> Note: Changes were registered at {{ .UpdateTime.UTC.Format "15:04:05 02.01.2006 MST" }} and were possibly merged.
+
+##### Hub Info
+
+> Name: {{ .UpdatedPin.Name }}  
+> ID: {{ .UpdatedPin.ID }}  
+> IPv4: {{ if .UpdatedPin.EntityV4 }}{{ template "entity" .UpdatedPin.EntityV4 }}{{ end }}  
+> IPv6: {{ if .UpdatedPin.EntityV6 }}{{ template "entity" .UpdatedPin.EntityV6 }}{{ end }}  
+> Version: {{ .UpdatedPin.Status.Version }}  
+> States: {{ joinStrings .UpdatedPin.States ", " }}  
+> Status: {{ len .UpdatedPin.Status.Lanes }} Lanes, {{ len .UpdatedPin.Status.Keys }} Keys, {{ .UpdatedPin.Status.Load }} Load  
+> Verified Owner: {{ .UpdatedPin.VerifiedOwner }}  
+> Transports: {{ joinStrings .UpdatedPin.Info.Transports ", " }}  
+> Entry: {{ joinStrings .UpdatedPin.Info.Entry ", " }}  
+> Exit: {{ joinStrings .UpdatedPin.Info.Exit ", " }}  
+> Relations: {{ if .UpdatedPin.Info.Group -}}
+Group={{ .UpdatedPin.Info.Group }} {{ end }}
+
+{{- if .UpdatedPin.Info.Datacenter -}}
+Datacenter={{ .UpdatedPin.Info.Datacenter }} {{ end }}
+
+{{- if .UpdatedPin.Info.Hosters -}}
+Hosters={{ joinStrings .UpdatedPin.Info.Hosters ";" }} {{ end }}
+
+{{- if .UpdatedPin.Info.ContactAddress -}}
+Contact= {{ .UpdatedPin.Info.ContactAddress }}{{ if .UpdatedPin.Info.ContactService }} via {{ .UpdatedPin.Info.ContactService }}{{ end }}{{ end }}
+
+{{- end }}
+
+{{ define "discord-notification" -}}
+# 🌍 {{ .Title }}{{ if .Summary }}
+
+{{ .Summary }}
+{{- end }}
+
+##### Note: Changes were registered at {{ .UpdateTime.UTC.Format "15:04:05 02.01.2006 MST" }} and were possibly merged. - Hub Info:
+
+Name: {{ .UpdatedPin.Name }}
+ID: {{ .UpdatedPin.ID }}
+IPv4: {{ if .UpdatedPin.EntityV4 }}{{ template "entity" .UpdatedPin.EntityV4 }}{{ end }}
+IPv6: {{ if .UpdatedPin.EntityV6 }}{{ template "entity" .UpdatedPin.EntityV6 }}{{ end }}
+Version: {{ .UpdatedPin.Status.Version }}
+States: {{ joinStrings .UpdatedPin.States ", " }}
+Status: {{ len .UpdatedPin.Status.Lanes }} Lanes, {{ len .UpdatedPin.Status.Keys }} Keys, {{ .UpdatedPin.Status.Load }} Load
+Verified Owner: {{ .UpdatedPin.VerifiedOwner }}
+Transports: {{ joinStrings .UpdatedPin.Info.Transports ", " }}
+Entry: {{ joinStrings .UpdatedPin.Info.Entry ", " }}
+Exit: {{ joinStrings .UpdatedPin.Info.Exit ", " }}
+Relations: {{ if .UpdatedPin.Info.Group -}}
+Group={{ .UpdatedPin.Info.Group }} {{ end }}
+
+{{- if .UpdatedPin.Info.Datacenter -}}
+Datacenter={{ .UpdatedPin.Info.Datacenter }} {{ end }}
+
+{{- if .UpdatedPin.Info.Hosters -}}
+Hosters={{ joinStrings .UpdatedPin.Info.Hosters ";" }} {{ end }}
+
+{{- if .UpdatedPin.Info.ContactAddress -}}
+Contact= {{ .UpdatedPin.Info.ContactAddress }}{{ if .UpdatedPin.Info.ContactService }} via {{ .UpdatedPin.Info.ContactService }}{{ end }}{{ end }}
+
+{{- end }}

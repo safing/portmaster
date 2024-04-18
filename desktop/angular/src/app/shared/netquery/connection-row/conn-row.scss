@@ -1,0 +1,43 @@
+:host {
+  @apply w-full flex-grow gap-4 grid justify-start items-center overflow-hidden;
+
+  grid-template-columns:
+    1fr 1fr 1fr 2rem;
+
+  grid-auto-rows: 1.5rem;
+  grid-template-rows: none;
+
+  &>* {
+    @apply overflow-hidden whitespace-nowrap;
+
+    &>*:last-child {
+      @apply overflow-hidden text-ellipsis;
+    }
+  }
+
+  --app-icon-size: 20px;
+}
+
+:host-context(.min-width-768px) {
+  :host {
+    grid-template-columns:
+      1fr 4rem 1fr 1fr 5rem 2rem;
+    ;
+  }
+}
+
+:host-context(.min-width-1024px) {
+  :host {
+    grid-template-columns:
+      1fr 4rem 1fr 1fr 5rem 0.5fr 2rem;
+    ;
+  }
+}
+
+:host-context(.min-width-1280px) {
+  :host {
+    grid-template-columns:
+      1fr 4rem 1fr 1fr 8rem 1fr 2rem;
+    ;
+  }
+}

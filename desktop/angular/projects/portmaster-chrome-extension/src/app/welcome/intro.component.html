@@ -1,0 +1,48 @@
+<div class="flex flex-col items-center">
+
+  <h1 class="flex flex-row items-center gap-4 p-4 bg-gray-200 text-md">
+    <svg class="w-auto h-16 mr-4" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg"
+      xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 128 128">
+      <g data-name="Main" fill-rule="evenodd">
+        <path fill="#fff" d="M176.11 36.73l-5-8.61a41.53 41.53 0 00-14.73 57.22l8.55-5.12a31.58 31.58 0 0111.19-43.49z"
+          transform="translate(-127.99 .01)" style="isolation:isolate" opacity=".8"></path>
+        <path fill="#fff" d="M222.36 72.63a31.55 31.55 0 01-45 19.35l-4.62 8.84a41.54 41.54 0 0059.17-25.46z"
+          transform="translate(-127.99 .01)" style="isolation:isolate" opacity=".8"></path>
+        <path fill="#fff" d="M197 83a19.66 19.66 0 01-19.25-32.57l-4.5-4.27A25.87 25.87 0 00198.59 89z"
+          transform="translate(-127.99 .01)" style="isolation:isolate" opacity=".6"></path>
+        <path fill="#fff"
+          d="M192 112.64A48.64 48.64 0 11240.64 64 48.64 48.64 0 01192 112.64zM256 64a64 64 0 10-64 64 64 64 0 0064-64z"
+          transform="translate(-127.99 .1)"></path>
+      </g>
+    </svg>
+
+    <span class="inline-flex flex-col items-start">
+      <span class="text-secondary">Welcome to the</span>
+      <span class="text-lg font-semibold">
+        Portmaster Browser Extension
+      </span>
+    </span>
+  </h1>
+</div>
+<div class="flex flex-col items-center flex-grow p-4 justify-evenly">
+  <ng-container *ngIf="state === ''; else: authorizingTemplate">
+    <span class="text-sm text-center text-secondary">
+      This extension adds direct support for Portmaster to your Browser. For that, it needs to get access to the
+      Portmaster on your system. For security reasons, you first need to authorize the Browser Extension to talk to the
+      Portmaster.
+    </span>
+
+  </ng-container>
+
+  <ng-template #authorizingTemplate>
+    <h2 class="text-base text-primary">Waiting for Authorization</h2>
+    <span class="text-sm text-center text-secondary">
+      Please open the Portmaster and approve the authorization request.
+    </span>
+  </ng-template>
+
+  <button (click)="authorizeExtension()"
+    class="px-3 py-1.5 text-center text-white rounded-md cursor-pointer hover:bg-blue hover:bg-opacity-70 bg-blue outline-none text-sm"
+    type="button">{{ state === 'authorizing' ? 'Retry' : 'Authorize' }}
+  </button>
+</div>

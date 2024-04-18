@@ -1,0 +1,23 @@
+{
+  "name": "Portmaster Browser Extension",
+  "version": "0.1",
+  "description": "Browser Extension for even better Portmaster integration",
+  "manifest_version": 2,
+  "permissions": [
+      "activeTab",
+      "storage",
+      "webRequest",
+      "webNavigation",
+      "*://*/*"
+  ],
+  "browser_action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      "128": "assets/icon_128.png"
+    }
+  },
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  }
+}

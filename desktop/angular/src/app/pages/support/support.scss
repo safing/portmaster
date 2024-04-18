@@ -1,0 +1,77 @@
+:host {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: auto;
+}
+
+.list-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+
+  .section-title {
+    margin-top: 20px;
+    margin-bottom: 40px;
+    position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, .2);
+
+    h4 {
+      position: absolute;
+      top: -0.5rem;
+      background-color: var(--background);
+      @apply pr-8;
+    }
+  }
+
+  .page-section {
+    width: 100%;
+    display: flex;
+    justify-content: stretch;
+    align-items: stretch;
+    flex-direction: column;
+    @apply px-4;
+
+    @media (min-width: 1250px) {
+      max-width: 800px;
+    }
+  }
+
+  .option-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-gap: 20px;
+    grid-auto-rows: 1fr;
+
+    width: 100%;
+    margin-bottom: 20px;
+
+    section {
+      @apply bg-cards-secondary;
+      @apply p-8;
+      @apply rounded;
+      transition: all 250ms ease-in-out;
+      position: relative;
+      cursor: pointer;
+
+      &:hover {
+        @apply bg-cards-tertiary;
+      }
+
+      fa-icon {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        opacity: .4;
+      }
+    }
+
+
+  }
+
+  .small .option-list section {
+    @apply p-4;
+  }
+}
