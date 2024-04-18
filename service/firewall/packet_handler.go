@@ -111,11 +111,16 @@ func resetAllConnectionVerdicts() {
 func resetConnectionVerdict(ctx context.Context, conn *network.Connection) (verdictChanged bool) {
 	tracer := log.Tracer(ctx)
 
-	// Remove any active prompt as we settings are being re-evaluated.
+	// Remove any active prompt as the settings are being re-evaluated.
 	conn.RemovePrompt()
 
 	conn.Lock()
 	defer conn.Unlock()
+
+	// Do not re-evaluate connection that have already ended.
+	if conn.Ended > 0 {
+		return false
+	}
 
 	// Update feature flags.
 	if err := conn.UpdateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
