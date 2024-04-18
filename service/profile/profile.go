@@ -515,7 +515,13 @@ func (profile *Profile) updateMetadataFromSystem(ctx context.Context, md Matchin
 
 	// Get binary icon and name.
 	newIcon, newName, err := binmeta.GetIconAndName(ctx, profile.PresentationPath, home)
-	if err != nil {
+	switch {
+	case err == nil:
+		// Continue
+	case errors.Is(err, binmeta.ErrIconIgnored):
+		newIcon = nil
+		// Continue
+	default:
 		log.Warningf("profile: failed to get binary icon/name for %s: %s", profile.PresentationPath, err)
 	}
 

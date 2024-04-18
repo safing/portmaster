@@ -15,14 +15,15 @@ ARG --global outputDir = "./dist"
 # to GOOS, GOARCH and GOARM when building go binaries. See the +RUST_TO_GO_ARCH_STRING
 # helper method at the bottom of the file.
 
-
 ARG --global architectures = "x86_64-unknown-linux-gnu" \
                              "aarch64-unknown-linux-gnu" \
                              "x86_64-pc-windows-gnu"
-
-# Compile errors here:
-#                             "armv7-unknown-linux-gnueabihf" \
-#                             "arm-unknown-linux-gnueabi" \
+                             # TODO: Compile errors here:
+                             # "aarch64-pc-windows-gnu" \
+                             # "x86_64-apple-darwin" \
+                             # "aarch64-apple-darwin"
+                             # "armv7-unknown-linux-gnueabihf" \
+                             # "arm-unknown-linux-gnueabi"
 
 # Import the earthly rust lib since it already provides some useful
 # build-targets and methods to initialize the rust toolchain.
@@ -84,7 +85,7 @@ go-base:
     SAVE IMAGE --cache-hint
 
 # updates all go dependencies and runs go mod tidy, saving go.mod and go.sum locally.
-update-go-deps:
+go-update-deps:
     FROM +go-base
 
     RUN go get -u ./..
@@ -100,9 +101,9 @@ mod-tidy:
     SAVE ARTIFACT go.mod AS LOCAL go.mod
     SAVE ARTIFACT --if-exists go.sum AS LOCAL go.sum
 
-# build-go runs 'go build ./cmds/...', saving artifacts locally.
+# go-build runs 'go build ./cmds/...', saving artifacts locally.
 # If --CMDS is not set, it defaults to building portmaster-start, portmaster-core and hub
-build-go:
+go-build:
     FROM +go-base
 
     # Arguments for cross-compilation.
@@ -136,10 +137,10 @@ build-go:
 
 # Test one or more go packages.
 # Test are always run as -short, as "long" tests require a full desktop system.
-# Run `earthly +test-go` to test all packages
-# Run `earthly +test-go --PKG="service/firewall"` to only test a specific package.
-# Run `earthly +test-go --TESTFLAGS="-args arg1"` to add custom flags to go test (-args in this case)
-test-go:
+# Run `earthly +go-test` to test all packages
+# Run `earthly +go-test --PKG="service/firewall"` to only test a specific package.
+# Run `earthly +go-test --TESTFLAGS="-args arg1"` to add custom flags to go test (-args in this case)
+go-test:
     FROM +go-base
 
     ARG GOOS=linux
@@ -155,16 +156,16 @@ test-go:
         RUN --no-cache go test -cover -short ${pkg} ${TESTFLAGS}
     END
 
-test-go-all-platforms:
+go-test-all:
     FROM ${work_image}
 
     FOR arch IN ${architectures}
         DO +RUST_TO_GO_ARCH_STRING --rustTarget="${arch}"
-        BUILD +test-go --GOARCH="${GOARCH}" --GOOS="${GOOS}" --GOARM="${GOARM}"
+        BUILD +go-test --GOARCH="${GOARCH}" --GOOS="${GOOS}" --GOARM="${GOARM}"
     END
 
 # Builds portmaster-start, portmaster-core, hub and notifier for all supported platforms
-build-go-release:
+go-release:
     FROM ${work_image}
 
     FOR arch IN ${architectures}
@@ -178,14 +179,19 @@ build-go-release:
             RUN echo "Failed to extract GOOS for ${arch}"; exit 1
         END
 
-        BUILD +build-go --GOARCH="${GOARCH}" --GOOS="${GOOS}" --GOARM="${GOARM}"
+        BUILD +go-build --GOARCH="${GOARCH}" --GOOS="${GOOS}" --GOARM="${GOARM}"
     END
 
 # Builds all binaries from the cmds/ folder for linux/windows AMD64
 # Most utility binaries are never needed on other platforms.
-build-utils:
-    BUILD +build-go --CMDS="" --GOARCH=amd64 --GOOS=linux
-    BUILD +build-go --CMDS="" --GOARCH=amd64 --GOOS=windows
+go-build-utils:
+    BUILD +go-build --CMDS="" --GOARCH=amd64 --GOOS=linux
+    BUILD +go-build --CMDS="" --GOARCH=amd64 --GOOS=windows
+
+# All targets that should run in CI for go.
+go-ci:
+    BUILD +go-release
+    BUILD +go-test
 
 # Prepares the angular project by installing dependencies
 angular-deps:
@@ -361,7 +367,7 @@ tauri-src:
     # Explicitly cache here.
     SAVE IMAGE --cache-hint
 
-build-tauri:
+tauri-build:
     FROM +tauri-src
 
     ARG --required target
@@ -383,7 +389,7 @@ build-tauri:
     # the app. Make sure we copy portmaster-start and portmaster-core in all architectures supported.
     # See documentation for externalBins for more information on how tauri searches for the binaries.
 
-    COPY (+build-go/output --GOOS="${GOOS}" --CMDS="portmaster-start portmaster-core" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
+    COPY (+go-build/output --GOOS="${GOOS}" --CMDS="portmaster-start portmaster-core" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
 
     # Place them in the correct folder with the rust target tripple attached.
     FOR bin IN $(ls /tmp/gobuild)
@@ -445,11 +451,11 @@ tauri-release:
     ARG bundle="none"
 
     FOR arch IN ${architectures}
-        BUILD +build-tauri --target="${arch}" --bundle="${bundle}"
+        BUILD +tauri-build --target="${arch}" --bundle="${bundle}"
     END
 
-build-all:
-    BUILD +build-go-release
+build:
+    BUILD +go-release
     BUILD +angular-release
     BUILD +tauri-release
 
@@ -493,14 +499,17 @@ RUST_TO_GO_ARCH_STRING:
     LET goos=""
     IF [ -z "${rustTarget##*linux*}" ]
         SET goos="linux"
-    ELSE
+    ELSE IF [ -z "${rustTarget##*windows*}" ]
         SET goos="windows"
+    ELSE IF [ -z "${rustTarget##*darwin*}" ]
+        SET goos="darwin"
+    ELSE
+        RUN echo "GOOS not detected"; \
+            exit 1;
     END
-
 
     LET goarch=""
     LET goarm=""
-
     IF [ -z "${rustTarget##*x86_64*}" ]
         SET goarch="amd64"
     ELSE IF [ -z "${rustTarget##*arm*}" ]
