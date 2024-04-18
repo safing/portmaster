@@ -261,6 +261,14 @@ export class AppIconComponent implements OnInit, OnDestroy {
               case 'api':
                 return of(`${this.httpAPI}/v1/profile/icon/${firstIcon.Value}`);
 
+              case 'path':
+                // TODO: Silently ignore for now.
+                return of('');
+
+              case '':
+                // Icon is not set.
+                return of('');
+
               default:
                 console.error(`Icon type ${firstIcon.Type} not yet supported`);
             }
