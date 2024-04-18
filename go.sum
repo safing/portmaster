@@ -317,6 +317,8 @@ github.com/vincent-petithory/dataurl v1.0.0 h1:cXw+kPto8NLuJtlMsI152irrVw9fRDX8A
 github.com/vincent-petithory/dataurl v1.0.0/go.mod h1:FHafX5vmDzyP+1CQATJn7WFKc9CvnvxyvZy6I1MrG/U=
 github.com/vlabo/portmaster_windows_rust_kext/kext_interface v0.0.0-20240120091731-1a3450b13959 h1:5j8cHx9n4drternoY4HXomea+4aYJuKMgnA3VhlG5WM=
 github.com/vlabo/portmaster_windows_rust_kext/kext_interface v0.0.0-20240120091731-1a3450b13959/go.mod h1:PCv02zl4R2SbmEUDetMKO+kTfvMvsVVZuOzOXRMcHwE=
+github.com/vlabo/portmaster_windows_rust_kext/kext_interface v0.0.0-20240417112037-e925bb329127 h1:bjBak6OaP3i8FsGViCExzMOvsWwjN0rFE7DPAGzYAq0=
+github.com/vlabo/portmaster_windows_rust_kext/kext_interface v0.0.0-20240417112037-e925bb329127/go.mod h1:+1fUhn4PQbvGmO5qqNj1T8F298VXZP6ni1YeKS0JhZA=
 github.com/vmihailenco/msgpack/v5 v5.3.5/go.mod h1:7xyJ9e+0+9SaZT0Wt1RGleJXzli6Q/V5KbhBonMG9jc=
 github.com/vmihailenco/msgpack/v5 v5.4.1 h1:cQriyiUvjTwOHg8QZaPihLWeRAAVoCpE00IUPn0Bjt8=
 github.com/vmihailenco/msgpack/v5 v5.4.1/go.mod h1:GaZTsDaehaPpQVyxrf5mtQlH+pc21PIudVV/E3rRQok=

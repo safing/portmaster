@@ -103,6 +103,7 @@ require (
 	github.com/tklauser/numcpus v0.7.0 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
+	github.com/vlabo/portmaster_windows_rust_kext/kext_interface v0.0.0-20240417112037-e925bb329127 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
