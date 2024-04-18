@@ -40,7 +40,7 @@ export interface IDandName {
 // Some icons we don't want to show on the UI.
 // Note that this works on a best effort basis and might
 // start breaking with updates to the built-in icons...
-const iconsToIngore = [
+const iconBlobsToIgnore = [
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABU0lEQVRYhe2WTUrEQBCF36i4ctm4FsdTKF5AEFxL0knuILgQXAy4ELxDfgTXguAFRG/hDXKCAbtcOB3aSVenMjPRTb5NvdCE97oq3QQYGflnJlbc3T/QXxrfXF9NAGBraKPTk2Nvtey4D1l8OUiIo8ODX/Xt/cMfQCk1SAAi8upWgLquWy8rpbB7+yk2m8+mYvNWAAB4fnlt9MX5WaP397ZhCPgygCFa1IUmwJifCgB5nrMBtdbhAK6pi9QcALIs8+5c1AEOqTmwZge4EUjNiQhpmjbarcvaG4AbgcTcUhSFfwFAHMfhABxScwBIkgRA9wnwBgiOQGBORCjLkl2PoigcgB2BwNzifmi97wEOqTkRoaoqdr2zA9wIJOYWrTW785VPQR+WO2B3vdYIpBBRc9Qkp2Cw/4GVR+BjPpt23u19tUXUgU2aBzuQPz5J8oyMjGyUb9+FOUOmulVPAAAAAElFTkSuQmCC',
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAACLElEQVR4nO2av07DMBDGP1DFxtaFmbeg6gtUqtQZtU3yDkgMSAxIDEi8Q/8gMVdC4m1YYO0TMNQspErdOG3Md25c7rc0st3E353v7EsLKIqiKIqiKMq/5MRueHx6NoeYSCjubm82NJ8eaiISdDtX6HauKq9tWsFmF4DPr6+d1zalBshG18RpNYfJy+tW21GFgA+lK6DdboeeBwVjyvO3qx1wGGC5XO71wCYZykc8QEqCZ/cfjNs4+X64rOz3FQ/sMMDi7R2Dfg+Lt/eN9kG/tzX24rwFA8AYYGXM+nr9aQADs9mG37FWW3HsqqBhMpnsFFRGkiTOvkoD5ELLBNtIiLcdmGXZ5jP/4Pkc2i4gIb5KRl3xrnbaQSiEeN8QGI/Hzj5aDgjh+SzLaJ7P4eWAiJZ9EVoIhBA/nU695uYdAnUI4fk0TUvbXeP3gZcDhMS7CLIL1DsHyIv3DYHRaOTs44YAZD2fpik9EfIOQohn2Rch5wBZ8bPZzOObfwiBurWAtOftoqaO511jaSEgJd4FQzwgmAQlxPuGwHA4dPbJ1QICnk+ShOb5HJlaoOHLvgi/FhAUP5/P9xpbteRtyDlA1vN2UVPH8+K7gJR45/MI4gHyK7HYxANsA7BuVvkcnniAXAtIwxYPRPTboIR4IBIDMMSL7wIhYZbF0RmgsS9EQtDY1+L5r7esCUrGvA3xHBCfeIBkgBjEi+0CMYsHHDmg7N9UiqIoiqIoiqIcFT++NKIXgDvowAAAAABJRU5ErkJggg==',
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAABqUlEQVRYhe2XP2rDMBSHfymhU0dDD5BbJOQCgUDmEv+7Q6FDoUOgQ6F3cJxC50Agt+nSrD5BBr8OqVyrtfWkl8ShoG+SjJE+/95DwoDH4/nf9NTg+eWVLinym8eH+x4AXF1i8/FoiPFoaBwr+p3bAfjc7dixQhNMw7szatmTvb1XY00wCILOZYjIONcEi6JoXSgIAlw/fYhF9ouBsxzQ0IPrzRaz6QTrzbZ6NptOqvHtTR8EQklAWQIl4WdOQEkEqsaHefm9b5Zl7IfEcWwWVDJ1Ke0rHeXqmaRpeljDIrlWQQ5XufreNglGUWQW5EoslQOAJEm0uagHuRJL5YgIy+Wycc06bIIcEjmFStCUnPGYASxKLJQDYJVgGIZmQZsSS+SAv0eIKblWQQ6pHBEhz3N2fTZBrsQSOYVK0JQc24N2JXaXA2CV4Hw+NwtySOUA/QixvU1kPSiQIyKsViv2vaMTlMgpoihik2N7kEMqB6AxwXpiVlfduSAi7Qix7cGL/DS5XHWdC7rIAY4l3i8GTk1+zLsKpwS7lnMS7ErOeMzU/0c9Ho/nNHwBdUH2gB9vJRsAAAAASUVORK5CYII=',
@@ -48,6 +48,15 @@ const iconsToIngore = [
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAByUlEQVRYhe1WQUoDQRCs2UTwEBS8R//gwU+I4DFXX2AENRgQEcGr8RFCHuPRFxgPnkQ0F9Ht9rAzsz0zO8luTFzB1GHDZENXdVX3EGCJ/w7VO+3eJKrZrYOc+GuQ/Ab57t5+4Weiml111jvmy6vrRWsoxMV5H0ktzAJNeRgOhxiPxwCAVquFTqcDANi5e8bTewqAwQzoB8BwvxPn9loD9webE+sGAuQLidHbpy0OBpg5e8GsxRhNpH8HjF5pat1AQBREBV2yIwrM+mgEcanSpSJgyjoN7JekDDDrrtk+JtYNBMSs4jT18jadSydycbnQyXUDATEYB2xRMwfCbmX5dVyYZwRpaomd/MUwknTBy//HEZjq7LjgzQS0U0ap0DCHCMgOnPLXECyIEbozBZW2AGBQgf0sZsM5VxUQj4CyFbMbaIZSv5eDV6H7QEAMZghtZ8RahEuWRaWFzCIgHgF5q+YNonDEnY+KAqIXkZ4BsiKKtiEXMvM9EIXegnzfxVXMDAUlruFFbEFKTubGZmVsB3lxlOIOBcQiaK+v4PHlQxPlXZK/DQJbG6vVBcTw0N8uVWwW1P6XTPVOjgZJ0jisg5yIb+vgXeJv4RvrxrtwzfCUqAAAAABJRU5ErkJggg==',
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADo0lEQVRYhe2Wu28cVRTGf+fcuzZeY0NCUqTgD3C8mzRU0KDQEgmqoBSGhoKWAlFEKYyQAAkrTRRqOpCQkOhAkUCio4D4IYSAzkkKB+wQbLy7c8+hmNmd2WecDQoFfNJodGfn7vc4Z84M/I9/GfLeB1cutdqH7zxSUli9fOntd4EsmrVXL1xcodVqAf6PEl37+AveWDk/dP78s08vA1eBvSgSDnd3bs49DJGKICIg+dod3J3XXn6Ogz9+49WXnu07F1gA9mOWJRqNBrNRcJ8mAQF8ZHYyuBYhI/DlV9cBAqARnBAj2agdjwARoBaETnK+/eY7NMwfaaPZPueefwaA73+4MfKeM80GAC+8+QkA19cukCQOC+ga1zDPR1//jIgjWhzBEQWNBupoNESdldNn2dm5w/FjT/SIpkEcvLAwX0PUQRwNXQGOBCvXoVpxZ31jc2ICEwWY+1y19AvzEQr3GgAtiLUUo8F690tB5DhC3sgiw800f2p/fAJ/tTtoyMOo1yOqnscdnINOIqNDO+vQbrdwMTRWEnBhfXNyAvOn9qmfOBgvwKxwC9TnAskTN3f32PnzHi1robEbv6HFUVGQJ+AOIvkQgL4U6icOqC9OSKCKu4cH/HT7Nh3P0GiEWkEcc+LBEhylB+qL+ywe+328gGrFNre3kWiE6EjsOi5EqPVS6EGEZrOJW0JVR5KMIy8TqCjQmlUcl7GLlvGrlgLcYWNzY2ICk1CUoFSgtdRPHAwtYteQeimUCuDsmebEMX7l3Pv3E1BCY+lUgqNaFZJ663ID3Fh/6ARKhFrqNVq15lVy1dRP1FjGRaZ6lQwnEKqkw+Si/QLMATwnHxhA7o65k2UJM0NwanOP30dATAPkhmjlmuYiuhCcja0fR7prNhqA4W5Fjwz3ydBTEGLZaKoV99p13y8AnGZjeeT4dfd8LrnnCYyoUQTQQsGtW7/y+tPnR7oZxPb2LywvncRd2dzaGnnP6aUlzBLJvKt1tIAsObUAF195kZ2dO0cSsLx0EgAz6yWQO3aSGeZOJ8swS5gNj+c+AeYwE4QgxlPHF6nNzkBKpGQ4EGMAnSksOGCA41nisJP/eTfuVIjAHQRCCITiPaPjBAC0kwMKMkvW7vuJTgZQffSkOBRCLqeL0cN4PKLA6trah2/FGB97wL05oSohKCEEzMBSRkpp4gf+3d3dq+SOTIAZ4Enyz+QwjYgpkIB7wF6RIxGo8eAJTgsDOpB/jP+38TcKdstukjAxWQAAAABJRU5ErkJggg==',
 ];
+const iconIDsToIgnore = [
+  "a27898ddfa4e0481b62c69faa196919a738fcade",
+	"5a3eea8bcd08b9336ce9c5083f26185164268ee9",
+	"573393d6ad238d255b20dc1c1b303c95debe6965",
+	"d459b2cb23c27cc31ccab5025533048d5d8301bf",
+	"d35a0d91ebfda81df5286f68ec5ddb1d6ad6b850",
+	"cc33187385498384f1b648e23be5ef1a2e9f5f71",
+];
+
 
 const profilesToIgnore = ['local/_unidentified', 'local/_unsolicited'];
 
@@ -86,7 +95,7 @@ export class AppIconComponent implements OnInit, OnDestroy {
     this._profile = p || null;
 
     if (this.initDone) {
-      this.updateView();
+      this.updateView(true);
     }
   }
   get profile(): IDandName | null | undefined {
@@ -125,7 +134,7 @@ export class AppIconComponent implements OnInit, OnDestroy {
     }
 
     this.requestedAnimationFrame = requestAnimationFrame(() => {
-      this.__updateView();
+      this.__updateView(skipIcon);
     })
   }
 
@@ -266,7 +275,13 @@ export class AppIconComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (icon) => {
-          if (iconsToIngore.some((i) => i === icon)) {
+          if (iconBlobsToIgnore.some((i) => i === icon)) {
+            icon = '';
+          } else if (iconIDsToIgnore.some((i) => icon.includes(i))) {
+            // TODO: This just checks if the value (blob, URL, etc.) contains
+            // the SHA1 sum of the icon, which is used in the URL of api icon types.
+            // This is very unlikely to have false positivies, but this could still
+            // be done a lot cleaner.
             icon = '';
           }
           if (icon !== '') {
