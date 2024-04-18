@@ -63,5 +63,5 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Run Go Tests
+    - name: Run Go Tests & Build
       run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +go-ci
