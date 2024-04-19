@@ -16,7 +16,7 @@ mod portmaster;
 mod traymenu;
 mod window;
 
-use log::{debug, error, info, trace, warn};
+use log::{debug, error, info};
 use portmaster::PortmasterExt;
 use traymenu::setup_tray_menu;
 use window::{close_splash_window, create_main_window};
@@ -111,7 +111,7 @@ fn main() {
             // Setup the single-instance event listener that will create/focus the main window
             // or the splash-screen.
             let handle = app.handle().clone();
-            app.listen_global("single-instance", move |_event| {
+            app.listen("single-instance", move |_event| {
                 let _ = window::open_window(&handle);
             });
 
@@ -196,7 +196,7 @@ fn main() {
                     );
 
                     api.prevent_close();
-                    if let Some(window) = handle.get_window(label.as_str()) {
+                    if let Some(window) = handle.get_webview_window(label.as_str()) {
                         let _ = window.emit("exit-requested", "");
                     }
                 }

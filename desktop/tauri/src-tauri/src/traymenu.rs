@@ -3,14 +3,14 @@ use std::sync::Mutex;
 
 use log::{debug, error};
 use tauri::{
+    image::Image,
     menu::{
         CheckMenuItem, CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, PredefinedMenuItem,
         SubmenuBuilder,
     },
     tray::{ClickType, TrayIcon, TrayIconBuilder},
-    Icon, Manager, Wry,
+    Manager, Wry,
 };
-use tauri_plugin_dialog::DialogExt;
 
 use crate::{
     portapi::{
@@ -26,6 +26,7 @@ use crate::{
     portmaster::PortmasterExt,
     window::{create_main_window, may_navigate_to_ui, open_window},
 };
+use tauri_plugin_dialog::DialogExt;
 
 pub type AppIcon = TrayIcon<Wry>;
 
@@ -34,32 +35,32 @@ lazy_static! {
     static ref SPN_BUTTON: Mutex<Option<CheckMenuItem<Wry>>> = Mutex::new(None);
 }
 
+const PM_TRAY_ICON_ID: &'static str = "pm_icon";
+
 // Icons
 //
-const BLUE_ICON: &'static [u8] =
-    include_bytes!("../../assets/icons/pm_light_blue_512.ico");
-const RED_ICON: &'static [u8] =
-    include_bytes!("../../assets/icons/pm_light_red_512.ico");
-const YELLOW_ICON: &'static [u8] =
-    include_bytes!("../../assets/icons/pm_light_yellow_512.ico");
-const GREEN_ICON: &'static [u8] =
-    include_bytes!("../../assets/icons/pm_light_green_512.ico");
+const BLUE_ICON: &'static [u8] = include_bytes!("../../assets/icons/pm_light_blue_512.ico");
+const RED_ICON: &'static [u8] = include_bytes!("../../assets/icons/pm_light_red_512.ico");
+const YELLOW_ICON: &'static [u8] = include_bytes!("../../assets/icons/pm_light_yellow_512.ico");
+const GREEN_ICON: &'static [u8] = include_bytes!("../../assets/icons/pm_light_green_512.ico");
 
 pub fn setup_tray_menu(
     app: &mut tauri::App,
 ) -> core::result::Result<AppIcon, Box<dyn std::error::Error>> {
     // Tray menu
-    let close_btn = MenuItemBuilder::with_id("close", "Exit").build(app);
-    let open_btn = MenuItemBuilder::with_id("open", "Open").build(app);
+    let close_btn = MenuItemBuilder::with_id("close", "Exit").build(app)?;
+    let open_btn = MenuItemBuilder::with_id("open", "Open").build(app)?;
 
-    let spn = CheckMenuItemBuilder::with_id("spn", "Use SPN").build(app);
+    let spn = CheckMenuItemBuilder::with_id("spn", "Use SPN")
+        .build(app)
+        .unwrap();
 
     // Store the SPN button reference
-    let mut button_ref = SPN_BUTTON.lock().unwrap();
+    let mut button_ref = SPN_BUTTON.lock()?;
     *button_ref = Some(spn.clone());
 
-    let force_show_window = MenuItemBuilder::with_id("force-show", "Force Show UI").build(app);
-    let reload_btn = MenuItemBuilder::with_id("reload", "Reload User Interface").build(app);
+    let force_show_window = MenuItemBuilder::with_id("force-show", "Force Show UI").build(app)?;
+    let reload_btn = MenuItemBuilder::with_id("reload", "Reload User Interface").build(app)?;
     let developer_menu = SubmenuBuilder::new(app, "Developer")
         .items(&[&reload_btn, &force_show_window])
         .build()?;
@@ -70,15 +71,15 @@ pub fn setup_tray_menu(
     let menu = MenuBuilder::new(app)
         .items(&[
             &spn,
-            &PredefinedMenuItem::separator(app),
+            &PredefinedMenuItem::separator(app)?,
             &open_btn,
             &close_btn,
             &developer_menu,
         ])
         .build()?;
 
-    let icon = TrayIconBuilder::new()
-        .icon(Icon::Raw(RED_ICON.to_vec()))
+    let icon = TrayIconBuilder::with_id(PM_TRAY_ICON_ID)
+        .icon(Image::from_bytes(RED_ICON).unwrap())
         .menu(&menu)
         .on_menu_event(move |app, event| match event.id().as_ref() {
             "close" => {
@@ -136,7 +137,6 @@ pub fn setup_tray_menu(
             }
         })
         .build(app)?;
-
     Ok(icon)
 }
 
@@ -166,11 +166,11 @@ pub fn update_icon(icon: AppIcon, subsystems: HashMap<String, Subsystem>, spn_st
         },
     };
 
-    _ = icon.set_icon(Some(Icon::Raw(next_icon.to_vec())));
+    _ = icon.set_icon(Some(Image::from_bytes(next_icon).unwrap()));
 }
 
 pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
-    let icon = match app.tray() {
+    let icon = match app.tray_by_id(PM_TRAY_ICON_ID) {
         Some(icon) => icon,
         None => {
             error!("cancel try_handler: missing try icon");
@@ -226,7 +226,7 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
         }
     };
 
-    _ = icon.set_icon(Some(Icon::Raw(BLUE_ICON.to_vec())));
+    _ = icon.set_icon(Some(Image::from_bytes(BLUE_ICON).unwrap()));
 
     let mut subsystems: HashMap<String, Subsystem> = HashMap::new();
     let mut spn_status: String = "".to_string();
@@ -340,5 +340,5 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
         _ = btn.set_checked(false);
     }
 
-    _ = icon.set_icon(Some(Icon::Raw(RED_ICON.to_vec())));
+    _ = icon.set_icon(Some(Image::from_bytes(RED_ICON).unwrap()));
 }
