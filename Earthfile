@@ -217,9 +217,9 @@ angular-base:
     COPY assets/data ./assets
 
     IF [ "${configuration}" = "production" ]
-        RUN npm run build-libs
+        RUN --no-cache npm run build-libs
     ELSE
-        RUN npm run build-libs:dev
+        RUN --no-cache npm run build-libs:dev
     END
 
     # Explicitly cache here.
