@@ -102,16 +102,24 @@ fn main() {
         .plugin(tauri_plugin_cli::init())
         // Notification support
         .plugin(tauri_plugin_notification::init())
-        // Our Portmaster Plugin that handles communication between tauri and our angular app.
-        .plugin(portmaster::init())
+        .invoke_handler(tauri::generate_handler![
+            portmaster::commands::get_app_info,
+            portmaster::commands::get_service_manager_status,
+            portmaster::commands::start_service,
+            portmaster::commands::get_state,
+            portmaster::commands::set_state,
+            portmaster::commands::should_show,
+            portmaster::commands::should_handle_prompts
+        ])
         // Setup the app an any listeners
         .setup(|app| {
             setup_tray_menu(app)?;
+            portmaster::setup(app.handle().clone());
 
             // Setup the single-instance event listener that will create/focus the main window
             // or the splash-screen.
             let handle = app.handle().clone();
-            app.listen("single-instance", move |_event| {
+            app.listen_any("single-instance", move |_event| {
                 let _ = window::open_window(&handle);
             });
 
@@ -197,7 +205,12 @@ fn main() {
 
                     api.prevent_close();
                     if let Some(window) = handle.get_webview_window(label.as_str()) {
-                        let _ = window.emit("exit-requested", "");
+                        let result = window.emit("exit-requested", "");
+                        if let Err(err) = result {
+                            error!("failed to emit event: {}", err.to_string());
+                        }
+                    } else {
+                        error!("window was None");
                     }
                 }
                 _ => {}

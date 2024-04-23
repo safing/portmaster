@@ -1,4 +1,4 @@
-use super::PortmasterPlugin;
+use super::PortmasterInterface;
 use crate::service::get_service_manager;
 use crate::service::ServiceManager;
 use log::debug;
@@ -15,7 +15,7 @@ pub struct Error {
 #[tauri::command]
 pub fn should_show<R: Runtime>(
     _window: Window<R>,
-    portmaster: State<'_, PortmasterPlugin<R>>,
+    portmaster: State<'_, PortmasterInterface<R>>,
 ) -> Result {
     if portmaster.get_show_after_bootstrap() {
         debug!("[tauri:rpc:should_show] application should show after bootstrap");
@@ -31,7 +31,7 @@ pub fn should_show<R: Runtime>(
 #[tauri::command]
 pub fn should_handle_prompts<R: Runtime>(
     _window: Window<R>,
-    portmaster: State<'_, PortmasterPlugin<R>>,
+    portmaster: State<'_, PortmasterInterface<R>>,
 ) -> Result {
     if portmaster.handle_prompts.load(Ordering::Relaxed) {
         Ok("true".to_string())
@@ -43,7 +43,7 @@ pub fn should_handle_prompts<R: Runtime>(
 #[tauri::command]
 pub fn get_state<R: Runtime>(
     _window: Window<R>,
-    portmaster: State<'_, PortmasterPlugin<R>>,
+    portmaster: State<'_, PortmasterInterface<R>>,
     key: String,
 ) -> Result {
     let value = portmaster.get_state(key);
@@ -58,7 +58,7 @@ pub fn get_state<R: Runtime>(
 #[tauri::command]
 pub fn set_state<R: Runtime>(
     _window: Window<R>,
-    portmaster: State<'_, PortmasterPlugin<R>>,
+    portmaster: State<'_, PortmasterInterface<R>>,
     key: String,
     value: String,
 ) -> Result {
