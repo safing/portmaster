@@ -18,6 +18,12 @@ export class DebugAPI {
     })
   }
 
+  ready(): Observable<string> {
+    return this.http.get(`${this.httpAPI}/v1/ready`, {
+      responseType: 'text'
+    })
+  }
+
   getStack(): Observable<string> {
     return this.http.get(`${this.httpAPI}/v1/debug/stack`, {
       responseType: 'text'
