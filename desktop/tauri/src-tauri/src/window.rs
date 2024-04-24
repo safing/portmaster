@@ -143,6 +143,11 @@ pub fn may_navigate_to_ui(win: &mut WebviewWindow, force: bool) {
 
         #[cfg(debug_assertions)]
         {
+            // Only for dev build
+            // Allow connection to http://localhost:4200
+            let capabilities = include_str!("../capabilities/default.json")
+                .replace("http://localhost:817", "http://localhost:4200");
+            let _ = win.add_capability(capabilities);
             debug!("[tauri] navigating to http://localhost:4200");
             win.navigate("http://localhost:4200".parse().unwrap());
         }

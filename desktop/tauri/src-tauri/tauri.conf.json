@@ -38,9 +38,49 @@
   "identifier": "io.safing.portmaster",
   "app": {
     "withGlobalTauri": true,
-    "windows": []
+    "security": {
+      "csp": null
+    }
   },
   "bundle": {
+    "active": true,
+    "category": "Utility",
+    "copyright": "Safing Limited Inc",
+    "linux": {
+      "deb": {
+        "depends": [
+          "libayatana-appindicator3"
+        ],
+        "desktopTemplate": "../../../packaging/linux/portmaster.desktop",
+        "files": {
+          "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
+          "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
+        },
+        "postInstallScript": "../../../packaging/linux/postinst",
+        "postRemoveScript": "../../../packaging/linux/postrm"
+      },
+      "rpm": {
+        "depends": [
+          "libayatana-appindicator-gtk3"
+        ],
+        "desktopTemplate": "../../../packaging/linux/portmaster.desktop",
+        "release": "1",
+        "files": {
+          "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
+          "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
+        },
+        "postInstallScript": "../../../packaging/linux/postinst",
+        "postRemoveScript": "../../../packaging/linux/postrm"
+      }
+    },
+    "externalBin": [
+      "binaries/portmaster-start",
+      "binaries/portmaster-core"
+    ],
+    "targets": [
+      "deb",
+      "rpm"
+    ],
     "icon": [
       "../assets/icons/pm_dark_512.png",
       "../assets/icons/pm_dark_512.ico",

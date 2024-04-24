@@ -290,31 +290,29 @@ rust-base:
 
     # Install library dependencies for all supported architectures
     # required for succesfully linking.
-    FOR arch IN amd64 arm64 armhf
-        RUN apt-get install --no-install-recommends -qq \
-            libsoup-3.0-0:${arch} \
-            libwebkit2gtk-4.1-0:${arch} \
-            libssl3:${arch} \
-            libayatana-appindicator3-1:${arch} \
-            librsvg2-bin:${arch} \
-            libgtk-3-0:${arch} \
-            libjavascriptcoregtk-4.1-0:${arch}  \
-            libssl-dev:${arch} \
-            libayatana-appindicator3-dev:${arch} \
-            librsvg2-dev:${arch} \
-            libgtk-3-dev:${arch} \
-            libjavascriptcoregtk-4.1-dev:${arch}  
-   END
+    RUN apt-get install --no-install-recommends -y \
+        libsoup-3.0-0 \
+        libwebkit2gtk-4.1-0 \
+        libssl3 \
+        libayatana-appindicator3-1 \
+        librsvg2-bin \
+        libgtk-3-0 \
+        libjavascriptcoregtk-4.1-0  \
+        libssl-dev \
+        libayatana-appindicator3-dev \
+        librsvg2-dev \
+        libgtk-3-dev \
+        libjavascriptcoregtk-4.1-dev  
 
    # Note(ppacher): I've no idea why we need to explicitly create those symlinks:
    # Some how all the other libs work but libsoup and libwebkit2gtk do not create the link file
-   RUN cd /usr/lib/aarch64-linux-gnu && \
-        ln -s libwebkit2gtk-4.1.so.0 libwebkit2gtk-4.1.so && \
-        ln -s libsoup-3.0.so.0 libsoup-3.0.so
+   # RUN cd /usr/lib/aarch64-linux-gnu && \
+   #      ln -s libwebkit2gtk-4.1.so.0 libwebkit2gtk-4.1.so && \
+   #      ln -s libsoup-3.0.so.0 libsoup-3.0.so 
 
-   RUN cd /usr/lib/arm-linux-gnueabihf && \
-        ln -s libwebkit2gtk-4.1.so.0 libwebkit2gtk-4.1.so && \
-        ln -s libsoup-3.0.so.0 libsoup-3.0.so
+   # RUN cd /usr/lib/arm-linux-gnueabihf && \
+   #      ln -s libwebkit2gtk-4.1.so.0 libwebkit2gtk-4.1.so && \
+   #      ln -s libsoup-3.0.so.0 libsoup-3.0.so
 
     # For what ever reason trying to install the gcc compilers together with the above
     # command makes apt fail due to conflicts with gcc-multilib. Installing in a separate
@@ -341,8 +339,8 @@ rust-base:
 
     DO rust+INIT --keep_fingerprints=true
 
-    # For now we need tauri-cli 1.5 for bulding
-    DO rust+CARGO --args="install tauri-cli --version ^1.5.11"
+    # For now we need tauri-cli 2.0.0 for bulding
+    DO rust+CARGO --args="install tauri-cli --version ^2.0.0-beta"
 
     # Required for cross compilation to work.
     ENV PKG_CONFIG_ALLOW_CROSS=1
@@ -371,7 +369,7 @@ tauri-build:
     FROM +tauri-src
 
     ARG --required target
-    ARG output=".*/release/(([^\./]+|([^\./]+\.(dll|exe)))|bundle/.*\.(deb|msi|AppImage))"
+    ARG output=".*/release/(([^\./]+|([^\./]+\.(dll|exe)))|bundle/.*\.(deb|rpm|msi|AppImage))"
     ARG bundle="none"
 
 
@@ -413,7 +411,7 @@ tauri-build:
     # For, now, we just directly mount the rust target cache and call cargo ourself.
 
     DO rust+SET_CACHE_MOUNTS_ENV
-    RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo tauri build --bundles "${bundle}" --ci --target="${target}"
+    RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo tauri build  --ci --target="${target}"
     DO rust+COPY_OUTPUT --output="${output}"
 
     # BUG(cross-compilation):

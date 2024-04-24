@@ -6597,9 +6597,9 @@ checksum = "e1fc403891a21bcfb7c37834ba66a547a8f402146eba7265b5a6d88059c9ff2f"
 
 [[package]]
 name = "tauri"
-version = "2.0.0-beta.15"
+version = "2.0.0-beta.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd0aba659957a3f1f1666acbf17723e8d41dcc177539bf1adbe55305f5d7118a"
+checksum = "4d411ebb670bbe5cf948f6c24978632937329748b499de1619ab55ad31512652"
 dependencies = [
  "anyhow",
  "bytes",
@@ -6633,35 +6633,35 @@ dependencies = [
  "tauri-macros",
  "tauri-runtime",
  "tauri-runtime-wry",
- "tauri-utils 2.0.0-beta.12",
+ "tauri-utils 2.0.0-beta.13",
  "thiserror",
  "tokio",
  "tray-icon",
  "url",
  "urlpattern",
  "webkit2gtk",
- "webview2-com",
+ "webview2-com 0.30.0",
  "window-vibrancy",
- "windows 0.54.0",
+ "windows 0.56.0",
 ]
 
 [[package]]
 name = "tauri-build"
-version = "2.0.0-beta.12"
+version = "2.0.0-beta.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33de24aabe2b9c340d67005800cb6dd40aac5283126a42896fc8eec0b87cbe45"
+checksum = "abcf98a9b4527567c3e5ca9723431d121e001c2145651b3fa044d22b5e025a7e"
 dependencies = [
  "anyhow",
  "cargo_toml",
  "dirs-next",
  "glob",
- "heck 0.4.1",
+ "heck 0.5.0",
  "json-patch",
  "schemars",
  "semver",
  "serde",
  "serde_json",
- "tauri-utils 2.0.0-beta.12",
+ "tauri-utils 2.0.0-beta.13",
  "tauri-winres",
  "toml 0.8.12",
  "walkdir",
@@ -6698,7 +6698,7 @@ dependencies = [
  "strsim 0.11.1",
  "tar",
  "tauri-icns",
- "tauri-utils 2.0.0-beta.12",
+ "tauri-utils 2.0.0-beta.13",
  "tempfile",
  "thiserror",
  "time",
@@ -6766,7 +6766,7 @@ dependencies = [
  "tauri-bundler",
  "tauri-icns",
  "tauri-utils 1.5.3",
- "tauri-utils 2.0.0-beta.12",
+ "tauri-utils 2.0.0-beta.13",
  "thiserror",
  "tokio",
  "toml 0.8.12",
@@ -6780,9 +6780,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-codegen"
-version = "2.0.0-beta.12"
+version = "2.0.0-beta.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d1d211268a9590bbf75cc85b47208f59b447626c76396256e12479ac7df6c8b"
+checksum = "b383f341efb803852b0235a2f330ca90c4c113f422dd6d646b888685b372cace"
 dependencies = [
  "base64 0.22.0",
  "brotli",
@@ -6797,7 +6797,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "syn 2.0.60",
- "tauri-utils 2.0.0-beta.12",
+ "tauri-utils 2.0.0-beta.13",
  "thiserror",
  "time",
  "url",
@@ -6817,16 +6817,16 @@ dependencies = [
 
 [[package]]
 name = "tauri-macros"
-version = "2.0.0-beta.12"
+version = "2.0.0-beta.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b096f63f2724a1280ae0f5a34d0731de18ca18305e2ef6e5e9a39bb2710e8a85"
+checksum = "71be71718cfe48b149507157bfbad0e2ba0e98ea51658be26c7c677eb188fb0c"
 dependencies = [
  "heck 0.4.1",
  "proc-macro2",
  "quote",
  "syn 2.0.60",
  "tauri-codegen",
- "tauri-utils 2.0.0-beta.12",
+ "tauri-utils 2.0.0-beta.13",
 ]
 
 [[package]]
@@ -6841,7 +6841,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "tauri-utils 2.0.0-beta.12",
+ "tauri-utils 2.0.0-beta.13",
  "toml 0.8.12",
  "walkdir",
 ]
@@ -6989,9 +6989,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-runtime"
-version = "2.0.0-beta.12"
+version = "2.0.0-beta.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96c957749c40db7999959f379f799db095f2248a80bdbb13d8c078f6c299240e"
+checksum = "c7439729d0107c9797764919c39c4a4cc3af64306faaa48271da50d8eb4c0283"
 dependencies = [
  "dpi",
  "gtk",
@@ -7000,17 +7000,17 @@ dependencies = [
  "raw-window-handle 0.6.0",
  "serde",
  "serde_json",
- "tauri-utils 2.0.0-beta.12",
+ "tauri-utils 2.0.0-beta.13",
  "thiserror",
  "url",
- "windows 0.54.0",
+ "windows 0.56.0",
 ]
 
 [[package]]
 name = "tauri-runtime-wry"
-version = "2.0.0-beta.12"
+version = "2.0.0-beta.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b937adb1cf3fa0457928ace959ca3fc1a85ddd69f56b124682d40f3e5683e60"
+checksum = "0c38dcfa7f8c2b2e344c7401972e0ddaaec4fa655666788d94b1852d6c4a7fe8"
 dependencies = [
  "cocoa",
  "gtk",
@@ -7022,11 +7022,11 @@ dependencies = [
  "softbuffer",
  "tao",
  "tauri-runtime",
- "tauri-utils 2.0.0-beta.12",
+ "tauri-utils 2.0.0-beta.13",
  "url",
  "webkit2gtk",
- "webview2-com",
- "windows 0.54.0",
+ "webview2-com 0.30.0",
+ "windows 0.56.0",
  "wry",
 ]
 
@@ -7063,9 +7063,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-utils"
-version = "2.0.0-beta.12"
+version = "2.0.0-beta.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "760ac613d7f0de95067bcbcbcea175fe1df88fc4ab59c7f0b2cc2d01dc16a199"
+checksum = "d4709765385f035338ecc330f3fba753b8ee283c659c235da9768949cdb25469"
 dependencies = [
  "aes-gcm",
  "brotli",
@@ -7074,7 +7074,7 @@ dependencies = [
  "dunce",
  "getrandom 0.2.14",
  "glob",
- "heck 0.4.1",
+ "heck 0.5.0",
  "html5ever",
  "infer 0.15.0",
  "json-patch",
@@ -8184,11 +8184,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38d5949fc3f537e90240c3e4f78dda2fa0431b671d50845a2f582173ef8a1201"
 dependencies = [
  "webview2-com-macros",
- "webview2-com-sys",
+ "webview2-com-sys 0.29.0",
  "windows 0.54.0",
  "windows-core 0.54.0",
  "windows-implement 0.53.0",
  "windows-interface 0.53.0",
+]
+
+[[package]]
+name = "webview2-com"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c914dd492a52f0377bef56fd1b6e74a79090f9ee631d625d5b505a00e4538b6"
+dependencies = [
+ "webview2-com-macros",
+ "webview2-com-sys 0.30.0",
+ "windows 0.56.0",
+ "windows-core 0.56.0",
+ "windows-implement 0.56.0",
+ "windows-interface 0.56.0",
 ]
 
 [[package]]
@@ -8211,6 +8225,17 @@ dependencies = [
  "thiserror",
  "windows 0.54.0",
  "windows-core 0.54.0",
+]
+
+[[package]]
+name = "webview2-com-sys"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a46bcf03482ec28eeb764ca788f67998cde4213adfbbfa90462622058530f5e"
+dependencies = [
+ "thiserror",
+ "windows 0.56.0",
+ "windows-core 0.56.0",
 ]
 
 [[package]]
@@ -8719,7 +8744,7 @@ dependencies = [
  "thiserror",
  "webkit2gtk",
  "webkit2gtk-sys",
- "webview2-com",
+ "webview2-com 0.29.0",
  "windows 0.54.0",
  "windows-version",
  "x11-dl",

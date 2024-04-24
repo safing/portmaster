@@ -34,7 +34,7 @@ use std::{
 use log::{debug, error};
 use serde;
 use std::sync::Mutex;
-use tauri::{AppHandle, EventTarget, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 
 pub trait Handler {
     fn on_connect(&mut self, cli: PortAPI) -> ();
