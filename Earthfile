@@ -262,9 +262,6 @@ angular-release:
 rust-base:
     FROM ${rust_builder_image}
 
-    RUN dpkg --add-architecture armhf
-    RUN dpkg --add-architecture arm64
-
     RUN apt-get update -qq
 
     # Tools and libraries required for cross-compilation
@@ -278,9 +275,6 @@ rust-base:
         gcc-multilib \
         linux-libc-dev \
         linux-libc-dev-amd64-cross \
-        linux-libc-dev-arm64-cross \
-        linux-libc-dev-armel-cross \
-        linux-libc-dev-armhf-cross \
         build-essential \
         curl \
         wget \
@@ -290,7 +284,7 @@ rust-base:
 
     # Install library dependencies for all supported architectures
     # required for succesfully linking.
-    RUN apt-get install --no-install-recommends -y \
+    RUN apt-get install --no-install-recommends -qq \
         libsoup-3.0-0 \
         libwebkit2gtk-4.1-0 \
         libssl3 \
@@ -303,30 +297,6 @@ rust-base:
         librsvg2-dev \
         libgtk-3-dev \
         libjavascriptcoregtk-4.1-dev  
-
-   # Note(ppacher): I've no idea why we need to explicitly create those symlinks:
-   # Some how all the other libs work but libsoup and libwebkit2gtk do not create the link file
-   # RUN cd /usr/lib/aarch64-linux-gnu && \
-   #      ln -s libwebkit2gtk-4.1.so.0 libwebkit2gtk-4.1.so && \
-   #      ln -s libsoup-3.0.so.0 libsoup-3.0.so 
-
-   # RUN cd /usr/lib/arm-linux-gnueabihf && \
-   #      ln -s libwebkit2gtk-4.1.so.0 libwebkit2gtk-4.1.so && \
-   #      ln -s libsoup-3.0.so.0 libsoup-3.0.so
-
-    # For what ever reason trying to install the gcc compilers together with the above
-    # command makes apt fail due to conflicts with gcc-multilib. Installing in a separate
-    # step seems to work ...
-    RUN apt-get install --no-install-recommends -qq \
-        g++-mingw-w64-x86-64 \
-        gcc-aarch64-linux-gnu \
-        gcc-arm-none-eabi \
-        gcc-arm-linux-gnueabi \
-        gcc-arm-linux-gnueabihf \
-        libc6-dev-arm64-cross \
-        libc6-dev-armel-cross \
-        libc6-dev-armhf-cross \
-        libc6-dev-amd64-cross
 
     # Add some required rustup components
     RUN rustup component add clippy
@@ -341,9 +311,6 @@ rust-base:
 
     # For now we need tauri-cli 2.0.0 for bulding
     DO rust+CARGO --args="install tauri-cli --version ^2.0.0-beta"
-
-    # Required for cross compilation to work.
-    ENV PKG_CONFIG_ALLOW_CROSS=1
 
     # Explicitly cache here.
     SAVE IMAGE --cache-hint
@@ -369,13 +336,12 @@ tauri-build:
     FROM +tauri-src
 
     ARG --required target
-    ARG output=".*/release/(([^\./]+|([^\./]+\.(dll|exe)))|bundle/.*\.(deb|rpm|msi|AppImage))"
+    ARG output=".*/release/(([^\./]+|([^\./]+\.(dll|exe)))|bundle/(deb|rpm)/.*\.(deb|rpm))"
     ARG bundle="none"
-
 
     # if we want tauri to create the installer bundles we also need to provide all external binaries
     # we need to do some magic here because tauri expects the binaries to include the rust target tripple.
-    # We already knwo that triple because it's a required argument. From that triple, we use +RUST_TO_GO_ARCH_STRING
+    # We already know that triple because it's a required argument. From that triple, we use +RUST_TO_GO_ARCH_STRING
     # function from below to parse the triple and guess wich GOOS and GOARCH we need.
     RUN mkdir /tmp/gobuild
     RUN mkdir ./binaries
@@ -427,7 +393,7 @@ tauri-build:
     # The following would use the CROSS function from the earthly lib, this 
     # DO rust+CROSS --target="${target}"
 
-    # RUN echo output: $(ls "target/${target}/release")
+    RUN echo output: $(ls -R "target/${target}/release")
     LET outbin="error"
     FOR bin IN "portmaster Portmaster.exe WebView2Loader.dll"
         # Modify output binary.
@@ -442,14 +408,14 @@ tauri-build:
             SAVE ARTIFACT "target/${target}/release/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${outbin}"
         END
     END
+    SAVE ARTIFACT --if-exists "target/${target}/release/bundle/deb/*.deb" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
+    SAVE ARTIFACT --if-exists "target/${target}/release/bundle/rpm/*.rpm" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
 
 tauri-release:
     FROM ${work_image}
 
-    ARG bundle="none"
-
     FOR arch IN ${architectures}
-        BUILD +tauri-build --target="${arch}" --bundle="${bundle}"
+        BUILD +tauri-build --target="${arch}"
     END
 
 build:
