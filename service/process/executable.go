@@ -30,6 +30,10 @@ func (p *Process) GetExecHash(algorithm string) (string, error) {
 		return "", err
 	}
 
+	defer func() {
+		_ = file.Close()
+	}()
+
 	_, err = io.Copy(hasher, file)
 	if err != nil {
 		return "", err
