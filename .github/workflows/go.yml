@@ -48,7 +48,7 @@ jobs:
       run: go vet ./...
 
   test:
-    name: Test
+    name: Test & Build
     runs-on: ubuntu-latest
     steps:
     - uses: earthly/actions-setup@v1
@@ -63,5 +63,5 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Run Go Tests
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +test-go
+    - name: Run Go Tests & Build
+      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +go-ci

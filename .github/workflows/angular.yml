@@ -17,7 +17,7 @@ on:
 
 jobs:
   lint:
-    name: Linter
+    name: Lint
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -56,4 +56,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build angular projects
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +build-angular
+      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +angular-release
