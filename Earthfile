@@ -90,16 +90,16 @@ go-update-deps:
 
     RUN go get -u ./..
     RUN go mod tidy
-    SAVE ARTIFACT go.mod AS LOCAL go.mod
-    SAVE ARTIFACT --if-exists go.sum AS LOCAL go.sum
+    SAVE ARTIFACT --keep-ts go.mod AS LOCAL go.mod
+    SAVE ARTIFACT --keep-ts --if-exists go.sum AS LOCAL go.sum
 
 # mod-tidy runs 'go mod tidy', saving go.mod and go.sum locally.
 mod-tidy:
     FROM +go-base
 
     RUN go mod tidy
-    SAVE ARTIFACT go.mod AS LOCAL go.mod
-    SAVE ARTIFACT --if-exists go.sum AS LOCAL go.sum
+    SAVE ARTIFACT --keep-ts go.mod AS LOCAL go.mod
+    SAVE ARTIFACT --keep-ts --if-exists go.sum AS LOCAL go.sum
 
 # go-build runs 'go build ./cmds/...', saving artifacts locally.
 # If --CMDS is not set, it defaults to building portmaster-start, portmaster-core and hub
@@ -130,10 +130,10 @@ go-build:
     DO +GO_ARCH_STRING --goos="${GOOS}" --goarch="${GOARCH}" --goarm="${GOARM}"
 
     FOR bin IN $(ls -1 "/tmp/build/")
-        SAVE ARTIFACT "/tmp/build/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${bin}"
+        SAVE ARTIFACT --keep-ts "/tmp/build/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${bin}"
     END
 
-    SAVE ARTIFACT "/tmp/build/" ./output
+    SAVE ARTIFACT --keep-ts "/tmp/build/" ./output
 
 # Test one or more go packages.
 # Test are always run as -short, as "long" tests require a full desktop system.
@@ -217,9 +217,9 @@ angular-base:
     COPY assets/data ./assets
 
     IF [ "${configuration}" = "production" ]
-        RUN npm run build-libs
+        RUN --no-cache npm run build-libs
     ELSE
-        RUN npm run build-libs:dev
+        RUN --no-cache npm run build-libs:dev
     END
 
     # Explicitly cache here.
@@ -241,11 +241,11 @@ angular-project:
     RUN --no-cache ./node_modules/.bin/ng build --configuration ${configuration} --base-href ${baseHref} "${project}"
 
     RUN --no-cache cwd=$(pwd) && cd "${dist}" && zip -r "${cwd}/${project}.zip" ./
-    SAVE ARTIFACT "${dist}" "./output/${project}"
+    SAVE ARTIFACT --keep-ts "${dist}" "./output/${project}"
     
     # Save portmaster UI as local artifact.
     IF [ "${project}" = "portmaster" ]
-        SAVE ARTIFACT "./${project}.zip" AS LOCAL ${outputDir}/all/${project}-ui.zip
+        SAVE ARTIFACT --keep-ts "./${project}.zip" AS LOCAL ${outputDir}/all/${project}-ui.zip
     END
 
 # Build the angular projects (portmaster-UI and tauri-builtin) in dev mode
@@ -441,7 +441,7 @@ tauri-build:
         END
         # Save output binary as local artifact.
         IF [ -f "target/${target}/release/${bin}" ]
-            SAVE ARTIFACT "target/${target}/release/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${outbin}"
+            SAVE ARTIFACT --keep-ts "target/${target}/release/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${outbin}"
         END
     END
 
