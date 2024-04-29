@@ -7,10 +7,10 @@ import (
 	"sync"
 
 	"github.com/tevino/abool"
-	"github.com/vlabo/portmaster_windows_rust_kext/kext_interface"
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/service/network/packet"
+	"github.com/safing/portmaster/windows_kext/kext_interface"
 )
 
 // Packet represents an IP packet.

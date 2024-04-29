@@ -8,7 +8,7 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/service/network"
-	"github.com/vlabo/portmaster_windows_rust_kext/kext_interface"
+	"github.com/safing/portmaster/windows_kext/kext_interface"
 	"golang.org/x/sys/windows"
 )
 
@@ -131,7 +131,7 @@ func UpdateVerdict(conn *network.Connection) error {
 			LocalPort:     conn.LocalPort,
 			RemoteAddress: [4]byte(conn.Entity.IP),
 			RemotePort:    conn.Entity.Port,
-			Verdict:       uint8(conn.Verdict.Active),
+			Verdict:       uint8(conn.Verdict),
 		}
 
 		return kext_interface.SendUpdateV4Command(kextFile, update)
@@ -142,7 +142,7 @@ func UpdateVerdict(conn *network.Connection) error {
 			LocalPort:     conn.LocalPort,
 			RemoteAddress: [16]byte(conn.Entity.IP),
 			RemotePort:    conn.Entity.Port,
-			Verdict:       uint8(conn.Verdict.Active),
+			Verdict:       uint8(conn.Verdict),
 		}
 
 		return kext_interface.SendUpdateV6Command(kextFile, update)
