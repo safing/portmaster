@@ -73,13 +73,27 @@
         "postRemoveScript": "../../../packaging/linux/postrm"
       }
     },
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "template": "templates/installer.nsi"
+      },
+      "wix": {
+        "fragmentPaths": [
+          "templates/service.wxs"
+        ],
+        "template": "templates/main.wxs"
+      }
+    },
     "externalBin": [
       "binaries/portmaster-start",
       "binaries/portmaster-core"
     ],
     "targets": [
       "deb",
-      "rpm"
+      "rpm",
+      "nsis",
+      "msi"
     ],
     "icon": [
       "../assets/icons/pm_dark_512.png",
