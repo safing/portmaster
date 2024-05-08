@@ -30,7 +30,7 @@ var (
 
 const (
 	lookupTries     = 5
-	fastLookupTries = 2
+	fastLookupTries = 2 // 1. current table, 2. get table with max 10ms, could be 0ms, 3. 10ms wait
 )
 
 // Lookup looks for the given connection in the system state tables and returns the PID of the associated process and whether the connection is inbound.
