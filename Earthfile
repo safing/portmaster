@@ -368,7 +368,7 @@ tauri-build:
     END
 
     # Just for debugging ...
-    RUN ls -R ./binaries
+    # RUN ls -R ./binaries
 
     # The following is exected to work but doesn't. for whatever reason cargo-sweep errors out on the windows-toolchain.
     #
@@ -410,6 +410,55 @@ tauri-build:
     END
     SAVE ARTIFACT --if-exists "target/${target}/release/bundle/deb/*.deb" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
     SAVE ARTIFACT --if-exists "target/${target}/release/bundle/rpm/*.rpm" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
+
+tauri-prep-windows:
+    FROM +angular-base --configuration=production
+    ARG target="x86_64-pc-windows-msvc"
+
+    # if we want tauri to create the installer bundles we also need to provide all external binaries
+    # we need to do some magic here because tauri expects the binaries to include the rust target tripple.
+    # We already know that triple because it's a required argument. From that triple, we use +RUST_TO_GO_ARCH_STRING
+    # function from below to parse the triple and guess wich GOOS and GOARCH we need.
+    RUN mkdir /tmp/gobuild
+    RUN mkdir ./binaries
+
+    DO +RUST_TO_GO_ARCH_STRING --rustTarget="${target}"
+    RUN echo "GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} GO_ARCH_STRING=${GO_ARCH_STRING}"
+
+    # Our tauri app has externalBins configured so tauri will try to embed them when it finished compiling
+    # the app. Make sure we copy portmaster-start and portmaster-core in all architectures supported.
+    # See documentation for externalBins for more information on how tauri searches for the binaries.
+
+    COPY (+go-build/output --GOOS="${GOOS}" --CMDS="portmaster-start portmaster-core" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
+
+    # Place them in the correct folder with the rust target tripple attached.
+    FOR bin IN $(ls /tmp/gobuild)
+        # ${bin$.*} does not work in SET commands unfortunately so we use a shell
+        # snippet here:
+        RUN set -e ; \
+            dest="./binaries/${bin}-${target}" ; \
+            if [ -z "${bin##*.exe}" ]; then \
+                dest="./binaries/${bin%.*}-${target}.exe" ; \
+            fi ; \
+            cp "/tmp/gobuild/${bin}" "${dest}" ;
+    END
+
+    # Copy source
+    COPY --keep-ts ./desktop/tauri/src-tauri src-tauri
+    COPY --keep-ts ./assets assets
+
+    # Build UI
+    ENV NODE_ENV="production"
+    RUN --no-cache ./node_modules/.bin/ng build --configuration production --base-href / "tauri-builtin"
+
+    # Just for debugging ...
+    # RUN ls -R ./binaries
+    # RUN ls -R ./dist
+
+    SAVE ARTIFACT "./dist/tauri-builtin" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/angular/dist/"
+    SAVE ARTIFACT "./src-tauri" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/tauri/src-tauri"
+    SAVE ARTIFACT "./binaries" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/tauri/src-tauri/"
+    SAVE ARTIFACT "./assets" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/tauri/assets"
 
 tauri-release:
     FROM ${work_image}
