@@ -96,10 +96,10 @@
       "msi"
     ],
     "icon": [
-      "../assets/icons/pm_dark_512.png",
-      "../assets/icons/pm_dark_512.ico",
-      "../assets/icons/pm_light_512.png",
-      "../assets/icons/pm_light_512.ico"
+      "../../../assets/data/icons/pm_dark_512.png",
+      "../../../assets/data/icons/pm_dark_512.ico",
+      "../../../assets/data/icons/pm_light_512.png",
+      "../../../assets/data/icons/pm_light_512.ico"
     ]
   }
 }
