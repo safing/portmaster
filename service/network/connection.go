@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tevino/abool"
@@ -180,6 +181,11 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// BytesSent holds the observed sent bytes of the connection.
 	BytesSent uint64
 
+	// lastSeen holds the timestamp when the connection was last seen.
+	// If permanent verdicts are enabled and bandwidth reporting is not active,
+	// this value will likely not be correct.
+	lastSeen atomic.Int64
+
 	// prompt holds the active prompt for this connection, if there is one.
 	prompt *notifications.Notification
 	// promptLock locks the prompt separately from the connection.
@@ -340,6 +346,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 		Ended:          timestamp,
 		dataComplete:   abool.NewBool(true),
 	}
+	dnsConn.lastSeen.Store(timestamp)
 
 	// Inherit internal status of profile.
 	if localProfile := proc.Profile().LocalProfile(); localProfile != nil {
@@ -383,6 +390,7 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 		Ended:          timestamp,
 		dataComplete:   abool.NewBool(true),
 	}
+	dnsConn.lastSeen.Store(timestamp)
 
 	// Inherit internal status of profile.
 	if localProfile := remoteHost.Profile().LocalProfile(); localProfile != nil {
@@ -418,6 +426,7 @@ func NewIncompleteConnection(pkt packet.Packet) *Connection {
 		PID:          info.PID,
 		dataComplete: abool.NewBool(false),
 	}
+	conn.lastSeen.Store(conn.Started)
 
 	// Bullshit check Started timestamp.
 	if conn.Started < tooOldTimestamp {
@@ -569,6 +578,7 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 		conn.dataComplete.Set()
 	}
 
+	conn.SaveWhenFinished()
 	return nil
 }
 
@@ -859,6 +869,9 @@ func (conn *Connection) StopFirewallHandler() {
 
 // HandlePacket queues packet of Link for handling.
 func (conn *Connection) HandlePacket(pkt packet.Packet) {
+	// Update last seen timestamp.
+	conn.lastSeen.Store(time.Now().Unix())
+
 	conn.pktQueueLock.Lock()
 	defer conn.pktQueueLock.Unlock()
 
@@ -994,17 +1007,19 @@ func packetHandlerHandleConn(ctx context.Context, conn *Connection, pkt packet.P
 	// Record metrics.
 	packetHandlingHistogram.UpdateDuration(pkt.Info().SeenAt)
 
-	// Log result and submit trace.
-	switch {
-	case conn.DataIsComplete():
-		tracer.Infof("filter: connection %s %s: %s", conn, conn.VerdictVerb(), conn.Reason.Msg)
-	case conn.Verdict != VerdictUndecided:
-		tracer.Debugf("filter: connection %s fast-tracked", pkt)
-	default:
-		tracer.Debugf("filter: gathered data on connection %s", conn)
+	// Log result and submit trace, when there are any changes.
+	if conn.saveWhenFinished {
+		switch {
+		case conn.DataIsComplete():
+			tracer.Infof("filter: connection %s %s: %s", conn, conn.VerdictVerb(), conn.Reason.Msg)
+		case conn.Verdict != VerdictUndecided:
+			tracer.Debugf("filter: connection %s fast-tracked", pkt)
+		default:
+			tracer.Debugf("filter: gathered data on connection %s", conn)
+		}
+		// Submit trace logs.
+		tracer.Submit()
 	}
-	// Submit trace logs.
-	tracer.Submit()
 
 	// Push changes, if there are any.
 	if conn.saveWhenFinished {
