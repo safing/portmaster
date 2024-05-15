@@ -68,7 +68,7 @@ checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
 
 [[package]]
 name = "wdk"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "ntstatus",
  "widestring",

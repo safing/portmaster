@@ -64,7 +64,7 @@ func (s *KextService) waitForServiceStatus(neededStatus uint32, timeLimit time.D
 	var status windows.SERVICE_STATUS
 	status.CurrentState = windows.SERVICE_NO_CHANGE
 	start := time.Now()
-	for status.CurrentState == neededStatus {
+	for status.CurrentState != neededStatus {
 		err := windows.QueryServiceStatus(s.handle, &status)
 		if err != nil {
 			return false, fmt.Errorf("failed while waiting for service to start: %w", err)
