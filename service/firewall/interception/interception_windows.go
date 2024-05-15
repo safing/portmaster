@@ -66,19 +66,16 @@ func startInterception(packets chan packet.Packet) error {
 		// Start bandwidth stats monitor.
 		module.StartServiceWorker("kext bandwidth request worker", 0, func(ctx context.Context) error {
 			timer := time.NewTicker(1 * time.Second)
+			defer timer.Stop()
 			for {
 				select {
 				case <-timer.C:
-					{
-						err := kext2.SendBandwidthStatsRequest()
-						if err != nil {
-							return err
-						}
+					err := kext2.SendBandwidthStatsRequest()
+					if err != nil {
+						return err
 					}
 				case <-ctx.Done():
-					{
-						return nil
-					}
+					return nil
 				}
 
 			}
@@ -87,19 +84,16 @@ func startInterception(packets chan packet.Packet) error {
 		// Start kext logging. The worker will periodically send request to the kext to send logs.
 		module.StartServiceWorker("kext log request worker", 0, func(ctx context.Context) error {
 			timer := time.NewTicker(1 * time.Second)
+			defer timer.Stop()
 			for {
 				select {
 				case <-timer.C:
-					{
-						err := kext2.SendLogRequest()
-						if err != nil {
-							return err
-						}
+					err := kext2.SendLogRequest()
+					if err != nil {
+						return err
 					}
 				case <-ctx.Done():
-					{
-						return nil
-					}
+					return nil
 				}
 
 			}
@@ -107,19 +101,16 @@ func startInterception(packets chan packet.Packet) error {
 
 		module.StartServiceWorker("kext clean ended connection worker", 0, func(ctx context.Context) error {
 			timer := time.NewTicker(30 * time.Second)
+			defer timer.Stop()
 			for {
 				select {
 				case <-timer.C:
-					{
-						err := kext2.SendCleanEndedConnection()
-						if err != nil {
-							return err
-						}
+					err := kext2.SendCleanEndedConnection()
+					if err != nil {
+						return err
 					}
 				case <-ctx.Done():
-					{
-						return nil
-					}
+					return nil
 				}
 
 			}

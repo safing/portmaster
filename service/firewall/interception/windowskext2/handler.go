@@ -40,16 +40,15 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 		switch {
 		case packetInfo.ConnectionV4 != nil:
 			{
-				log.Tracef("packet: %+v", packetInfo.ConnectionV4)
+				// log.Tracef("packet: %+v", packetInfo.ConnectionV4)
 				conn := packetInfo.ConnectionV4
 				// New Packet
-				new := &Packet{
+				newPacket := &Packet{
 					verdictRequest: conn.Id,
 					payload:        conn.Payload,
 					verdictSet:     abool.NewBool(false),
 				}
-				new.Base.Payload()
-				info := new.Info()
+				info := newPacket.Info()
 				info.Inbound = conn.Direction > 0
 				info.InTunnel = false
 				info.Protocol = packet.IPProtocol(conn.Protocol)
@@ -88,19 +87,19 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 					info.DstPort = conn.RemotePort
 				}
 
-				packets <- new
+				packets <- newPacket
 			}
 		case packetInfo.ConnectionV6 != nil:
 			{
-				log.Tracef("packet: %+v", packetInfo.ConnectionV6)
+				// log.Tracef("packet: %+v", packetInfo.ConnectionV6)
 				conn := packetInfo.ConnectionV6
 				// New Packet
-				new := &Packet{
+				newPacket := &Packet{
 					verdictRequest: conn.Id,
 					payload:        conn.Payload,
 					verdictSet:     abool.NewBool(false),
 				}
-				info := new.Info()
+				info := newPacket.Info()
 				info.Inbound = conn.Direction > 0
 				info.InTunnel = false
 				info.Protocol = packet.IPProtocol(conn.Protocol)
@@ -139,7 +138,7 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 					info.DstPort = conn.RemotePort
 				}
 
-				packets <- new
+				packets <- newPacket
 			}
 		case packetInfo.LogLine != nil:
 			{
