@@ -48,3 +48,6 @@ _testmain.go
 win_dev_*
 go.work
 go.work.sum
+
+# Kext releases
+windows_kext/release/kext_release_*.zip
