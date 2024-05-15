@@ -49,7 +49,7 @@ func init() {
 }
 
 func prep() error {
-	network.SetDefaultFirewallHandler(verdictHandler)
+	network.SetDefaultFirewallHandler(defaultFirewallHandler)
 
 	// Reset connections every time configuration changes
 	// this will be triggered on spn enable/disable

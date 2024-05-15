@@ -22,7 +22,6 @@ import (
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
-	"github.com/safing/portmaster/service/network/reference"
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/spn/access"
 )
@@ -227,7 +226,6 @@ func fastTrackedPermit(conn *network.Connection, pkt packet.Packet) (verdict net
 		meta.Src.Equal(meta.Dst) {
 		log.Tracer(pkt.Ctx()).Debugf("filter: fast-track network self-check: %s", pkt)
 		return network.VerdictAccept, true
-
 	}
 
 	switch meta.Protocol { //nolint:exhaustive // Checking for specific values only.
@@ -374,6 +372,8 @@ func fastTrackedPermit(conn *network.Connection, pkt packet.Packet) (verdict net
 }
 
 func fastTrackHandler(conn *network.Connection, pkt packet.Packet) {
+	conn.SaveWhenFinished()
+
 	fastTrackedVerdict, permanent := fastTrackedPermit(conn, pkt)
 	if fastTrackedVerdict != network.VerdictUndecided {
 		// Set verdict on connection.
@@ -402,6 +402,8 @@ func fastTrackHandler(conn *network.Connection, pkt packet.Packet) {
 }
 
 func gatherDataHandler(conn *network.Connection, pkt packet.Packet) {
+	conn.SaveWhenFinished()
+
 	// Get process info
 	_ = conn.GatherConnectionInfo(pkt)
 	// Errors are informational and are logged to the context.
@@ -412,11 +414,20 @@ func gatherDataHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	// Continue to filter handler, when connection data is complete.
-	conn.UpdateFirewallHandler(filterHandler)
-	filterHandler(conn, pkt)
+	switch conn.IPProtocol { //nolint:exhaustive
+	case packet.ICMP, packet.ICMPv6:
+		conn.UpdateFirewallHandler(icmpFilterHandler)
+		icmpFilterHandler(conn, pkt)
+
+	default:
+		conn.UpdateFirewallHandler(filterHandler)
+		filterHandler(conn, pkt)
+	}
 }
 
 func filterHandler(conn *network.Connection, pkt packet.Packet) {
+	conn.SaveWhenFinished()
+
 	// Skip if data is not complete or packet is info-only.
 	if !conn.DataIsComplete() || pkt.InfoOnly() {
 		return
@@ -469,11 +480,12 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 	switch {
 	case conn.Inspecting:
 		log.Tracer(pkt.Ctx()).Trace("filter: start inspecting")
-		conn.SetFirewallHandler(inspectAndVerdictHandler)
+		conn.UpdateFirewallHandler(inspectAndVerdictHandler)
 		inspectAndVerdictHandler(conn, pkt)
+
 	default:
 		conn.StopFirewallHandler()
-		issueVerdict(conn, pkt, 0, true)
+		verdictHandler(conn, pkt)
 	}
 }
 
@@ -529,6 +541,18 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 	}
 }
 
+// defaultFirewallHandler is used when no other firewall handler is set on a connection.
+func defaultFirewallHandler(conn *network.Connection, pkt packet.Packet) {
+	switch conn.IPProtocol { //nolint:exhaustive
+	case packet.ICMP, packet.ICMPv6:
+		// Always use the ICMP handler for ICMP connections.
+		icmpFilterHandler(conn, pkt)
+
+	default:
+		verdictHandler(conn, pkt)
+	}
+}
+
 func verdictHandler(conn *network.Connection, pkt packet.Packet) {
 	// Ignore info-only packets in this handler.
 	if pkt.InfoOnly() {
@@ -556,6 +580,73 @@ func inspectAndVerdictHandler(conn *network.Connection, pkt packet.Packet) {
 	issueVerdict(conn, pkt, 0, true)
 }
 
+func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {
+	// Load packet data.
+	err := pkt.LoadPacketData()
+	if err != nil {
+		log.Tracer(pkt.Ctx()).Debugf("filter: failed to load ICMP packet data: %s", err)
+		issueVerdict(conn, pkt, network.VerdictDrop, false)
+		return
+	}
+
+	// Submit to ICMP listener.
+	submitted := netenv.SubmitPacketToICMPListener(pkt)
+	if submitted {
+		issueVerdict(conn, pkt, network.VerdictDrop, false)
+		return
+	}
+
+	// Handle echo request and replies regularly.
+	// Other ICMP packets are considered system business.
+	icmpLayers := pkt.Layers().LayerClass(layers.LayerClassIPControl)
+	switch icmpLayer := icmpLayers.(type) {
+	case *layers.ICMPv4:
+		switch icmpLayer.TypeCode.Type() {
+		case layers.ICMPv4TypeEchoRequest,
+			layers.ICMPv4TypeEchoReply:
+			// Continue
+		default:
+			issueVerdict(conn, pkt, network.VerdictAccept, false)
+			return
+		}
+
+	case *layers.ICMPv6:
+		switch icmpLayer.TypeCode.Type() {
+		case layers.ICMPv6TypeEchoRequest,
+			layers.ICMPv6TypeEchoReply:
+			// Continue
+
+		default:
+			issueVerdict(conn, pkt, network.VerdictAccept, false)
+			return
+		}
+	}
+
+	// Check if we already have a verdict.
+	switch conn.Verdict { //nolint:exhaustive
+	case network.VerdictUndecided, network.VerdictUndeterminable:
+		// Apply privacy filter and check tunneling.
+		FilterConnection(pkt.Ctx(), conn, pkt, true, false)
+
+		// Save and propagate changes.
+		conn.SaveWhenFinished()
+	}
+
+	// Outbound direction has priority.
+	if conn.Inbound && conn.Ended == 0 && pkt.IsOutbound() {
+		// Change direction from inbound to outbound on first outbound ICMP packet.
+		conn.Inbound = false
+
+		// Apply privacy filter and check tunneling.
+		FilterConnection(pkt.Ctx(), conn, pkt, true, false)
+
+		// Save and propagate changes.
+		conn.SaveWhenFinished()
+	}
+
+	issueVerdict(conn, pkt, 0, false)
+}
+
 func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.Verdict, allowPermanent bool) {
 	// Check if packed was already fast-tracked by the OS integration.
 	if pkt.FastTrackedByIntegration() {
@@ -563,17 +654,9 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	}
 
 	// Enable permanent verdict.
-	if allowPermanent && !conn.VerdictPermanent {
-		switch {
-		case !permanentVerdicts():
-			// Permanent verdicts are disabled by configuration.
-		case conn.Entity != nil && reference.IsICMP(conn.Entity.Protocol):
-		case pkt != nil && reference.IsICMP(uint8(pkt.Info().Protocol)):
-			// ICMP is handled differently based on payload, so we cannot use persistent verdicts.
-		default:
-			conn.VerdictPermanent = true
-			conn.SaveWhenFinished()
-		}
+	if allowPermanent && !conn.VerdictPermanent && permanentVerdicts() {
+		conn.VerdictPermanent = true
+		conn.SaveWhenFinished()
 	}
 
 	// do not allow to circumvent decision: e.g. to ACCEPT packets from a DROP-ed connection

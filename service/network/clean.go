@@ -11,6 +11,14 @@ import (
 )
 
 const (
+	// EndConnsAfterInactiveFor defines the amount of time after not seen
+	// connections of unsupported protocols are marked as ended.
+	EndConnsAfterInactiveFor = 5 * time.Minute
+
+	// EndICMPConnsAfterInactiveFor defines the amount of time after not seen
+	// ICMP "connections" are marked as ended.
+	EndICMPConnsAfterInactiveFor = 1 * time.Minute
+
 	// DeleteConnsAfterEndedThreshold defines the amount of time after which
 	// ended connections should be removed from the internal connection state.
 	DeleteConnsAfterEndedThreshold = 10 * time.Minute
@@ -48,7 +56,9 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 	_ = module.RunMicroTask("clean connections", 0, func(ctx context.Context) error {
 		now := time.Now().UTC()
 		nowUnix := now.Unix()
-		ignoreNewer := nowUnix - 1
+		ignoreNewer := nowUnix - 2
+		endNotSeenSince := now.Add(-EndConnsAfterInactiveFor).Unix()
+		endICMPNotSeenSince := now.Add(-EndICMPConnsAfterInactiveFor).Unix()
 		deleteOlderThan := now.Add(-DeleteConnsAfterEndedThreshold).Unix()
 		deleteIncompleteOlderThan := now.Add(-DeleteIncompleteConnsAfterStartedThreshold).Unix()
 
@@ -68,22 +78,37 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 					// Remove connection from state.
 					conn.delete()
 				}
+
 			case conn.Ended == 0:
 				// Step 1: check if still active
-				exists := state.Exists(&packet.Info{
-					Inbound:  false, // src == local
-					Version:  conn.IPVersion,
-					Protocol: conn.IPProtocol,
-					Src:      conn.LocalIP,
-					SrcPort:  conn.LocalPort,
-					Dst:      conn.Entity.IP,
-					DstPort:  conn.Entity.Port,
-					PID:      process.UndefinedProcessID,
-					SeenAt:   time.Unix(conn.Started, 0), // State tables will be updated if older than this.
-				}, now)
+				var connActive bool
+				switch conn.IPProtocol { //nolint:exhaustive
+				case packet.TCP, packet.UDP:
+					connActive = state.Exists(&packet.Info{
+						Inbound:  false, // src == local
+						Version:  conn.IPVersion,
+						Protocol: conn.IPProtocol,
+						Src:      conn.LocalIP,
+						SrcPort:  conn.LocalPort,
+						Dst:      conn.Entity.IP,
+						DstPort:  conn.Entity.Port,
+						PID:      process.UndefinedProcessID,
+						SeenAt:   time.Unix(conn.Started, 0), // State tables will be updated if older than this.
+					}, now)
+					// Update last seen value for permanent verdict connections.
+					if connActive && conn.VerdictPermanent {
+						conn.lastSeen.Store(nowUnix)
+					}
+
+				case packet.ICMP, packet.ICMPv6:
+					connActive = conn.lastSeen.Load() > endICMPNotSeenSince
+
+				default:
+					connActive = conn.lastSeen.Load() > endNotSeenSince
+				}
 
 				// Step 2: mark as ended
-				if !exists {
+				if !connActive {
 					conn.Ended = nowUnix
 
 					// Stop the firewall handler, in case one is running.
@@ -97,6 +122,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 				if conn.process != nil {
 					activePIDs[conn.process.Pid] = struct{}{}
 				}
+
 			case conn.Ended < deleteOlderThan:
 				// Step 3: delete
 				// DEBUG:
