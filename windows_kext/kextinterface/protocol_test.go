@@ -11,7 +11,7 @@ import (
 func TestRustInfoFile(t *testing.T) {
 	t.Parallel()
 
-	file, err := os.Open("../protocol/rust_info_test.bin")
+	file, err := os.Open("testdata/rust_info_test.bin")
 	if err != nil {
 		panic(err)
 	}
@@ -175,7 +175,7 @@ func TestRustInfoFile(t *testing.T) {
 func TestGenerateCommandFile(t *testing.T) {
 	t.Parallel()
 
-	file, err := os.Create("go_command_test.bin")
+	file, err := os.Create("../protocol/testdata/go_command_test.bin")
 	if err != nil {
 		t.Errorf("failed to create file: %s", err)
 	}

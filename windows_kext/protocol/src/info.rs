@@ -425,7 +425,7 @@ use rand::seq::SliceRandom;
 
 #[test]
 fn generate_test_info_file() -> Result<(), std::io::Error> {
-    let mut file = File::create("rust_info_test.bin")?;
+    let mut file = File::create("../kextinterface/testdata/rust_info_test.bin")?;
     let enums = [
         InfoType::LogLine,
         InfoType::ConnectionIpv4,
