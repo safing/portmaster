@@ -3,6 +3,7 @@ VERSION --arg-scope-and-set --global-cache 0.8
 ARG --global go_version = 1.22
 ARG --global node_version = 18
 ARG --global rust_version = 1.76
+ARG --global golangci_lint_version = 1.57.1
 
 ARG --global go_builder_image = "golang:${go_version}-alpine"
 ARG --global node_builder_image = "node:${node_version}"
@@ -163,6 +164,12 @@ go-test-all:
         DO +RUST_TO_GO_ARCH_STRING --rustTarget="${arch}"
         BUILD +go-test --GOARCH="${GOARCH}" --GOOS="${GOOS}" --GOARM="${GOARM}"
     END
+
+go-lint:
+    FROM +go-base
+
+    RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${golangci_lint_version}
+    RUN golangci-lint run -c ./.golangci.yml --timeout 15m --show-stats
 
 # Builds portmaster-start, portmaster-core, hub and notifier for all supported platforms
 go-release:
