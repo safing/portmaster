@@ -58,6 +58,7 @@ require (
 	github.com/alessio/shellescape v1.4.2 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/bluele/gcache v0.0.2 // indirect
+	github.com/brianvoe/gofakeit v3.18.0+incompatible // indirect
 	github.com/danieljoos/wincred v1.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -88,7 +89,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/seehuhn/fortuna v1.0.1 // indirect
 	github.com/seehuhn/sha256d v1.0.0 // indirect
