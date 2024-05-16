@@ -242,7 +242,7 @@ func RecvInfo(reader io.Reader) (*Info, error) {
 			}
 			// Read array
 			statsArray := make([]BandwidthValueV4, size)
-			for i := 0; i < int(size); i++ {
+			for i := range int(size) {
 				err = binary.Read(reader, binary.LittleEndian, &statsArray[i])
 				if err != nil {
 					return nil, errors.Join(ErrUnexpectedReadError, err)
@@ -267,7 +267,7 @@ func RecvInfo(reader io.Reader) (*Info, error) {
 			}
 			// Read array
 			statsArray := make([]BandwidthValueV6, size)
-			for i := 0; i < int(size); i++ {
+			for i := range int(size) {
 				err = binary.Read(reader, binary.LittleEndian, &statsArray[i])
 				if err != nil {
 					return nil, errors.Join(ErrUnexpectedReadError, err)
