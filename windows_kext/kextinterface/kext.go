@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-package kext_interface
+package kextinterface
 
 import (
 	_ "embed"
@@ -36,8 +36,10 @@ var (
 	}()
 )
 
-const winInvalidHandleValue = windows.Handle(^uintptr(0)) // Max value
-const stopServiceTimeoutDuration = time.Duration(30 * time.Second)
+const (
+	winInvalidHandleValue      = windows.Handle(^uintptr(0)) // Max value
+	stopServiceTimeoutDuration = time.Duration(30 * time.Second)
+)
 
 type KextService struct {
 	handle     windows.Handle
@@ -88,7 +90,6 @@ func (s *KextService) Start(wait bool) error {
 
 	// Start the service:
 	err := windows.StartService(s.handle, 0, nil)
-
 	if err != nil {
 		err = windows.GetLastError()
 		if err != windows.ERROR_SERVICE_ALREADY_RUNNING {

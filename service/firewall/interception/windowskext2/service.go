@@ -3,8 +3,8 @@
 
 package windowskext
 
-import "github.com/safing/portmaster/windows_kext/kext_interface"
+import "github.com/safing/portmaster/windows_kext/kextinterface"
 
-func createKextService(driverName string, driverPath string) (*kext_interface.KextService, error) {
-	return kext_interface.CreateKextService(driverName, driverPath)
+func createKextService(driverName string, driverPath string) (*kextinterface.KextService, error) {
+	return kextinterface.CreateKextService(driverName, driverPath)
 }

@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-package kext_interface
+package kextinterface
 
 import (
 	"golang.org/x/sys/windows"
@@ -85,7 +85,6 @@ func (f *KextFile) deviceIOControl(code uint32, inData []byte, outData []byte) (
 		inDataPtr, inDataSize,
 		outDataPtr, outDataSize,
 		nil, overlapped)
-
 	if err != nil {
 		return nil, err
 	}

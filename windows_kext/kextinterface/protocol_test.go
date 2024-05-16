@@ -1,9 +1,8 @@
-package kext_interface
+package kextinterface
 
 import (
 	"bytes"
 	"errors"
-	"io"
 	"math/rand"
 	"os"
 	"testing"
@@ -22,7 +21,7 @@ func TestRustInfoFile(t *testing.T) {
 	for {
 		info, err := RecvInfo(file)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if errors.Is(err, ErrUnexpectedReadError) {
 				t.Errorf("unexpected error: %s\n", err)
 			}
 			return
@@ -40,8 +39,8 @@ func TestRustInfoFile(t *testing.T) {
 		case info.ConnectionV4 != nil:
 			conn := info.ConnectionV4
 			expected := connectionV4Internal{
-				Id:           1,
-				ProcessId:    2,
+				ID:           1,
+				ProcessID:    2,
 				Direction:    3,
 				Protocol:     4,
 				LocalIP:      [4]byte{1, 2, 3, 4},
@@ -60,7 +59,7 @@ func TestRustInfoFile(t *testing.T) {
 		case info.ConnectionV6 != nil:
 			conn := info.ConnectionV6
 			expected := connectionV6Internal{
-				Id:           1,
+				ID:           1,
 				ProcessID:    2,
 				Direction:    3,
 				Protocol:     4,
@@ -80,11 +79,11 @@ func TestRustInfoFile(t *testing.T) {
 		case info.ConnectionEndV4 != nil:
 			endEvent := info.ConnectionEndV4
 			expected := ConnectionEndV4{
-				ProcessId:  1,
+				ProcessID:  1,
 				Direction:  2,
 				Protocol:   3,
-				LocalIp:    [4]byte{1, 2, 3, 4},
-				RemoteIp:   [4]byte{2, 3, 4, 5},
+				LocalIP:    [4]byte{1, 2, 3, 4},
+				RemoteIP:   [4]byte{2, 3, 4, 5},
 				LocalPort:  4,
 				RemotePort: 5,
 			}
@@ -95,11 +94,11 @@ func TestRustInfoFile(t *testing.T) {
 		case info.ConnectionEndV6 != nil:
 			endEvent := info.ConnectionEndV6
 			expected := ConnectionEndV6{
-				ProcessId:  1,
+				ProcessID:  1,
 				Direction:  2,
 				Protocol:   3,
-				LocalIp:    [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
-				RemoteIp:   [16]byte{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},
+				LocalIP:    [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+				RemoteIP:   [16]byte{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},
 				LocalPort:  4,
 				RemotePort: 5,
 			}
@@ -273,5 +272,4 @@ func TestGenerateCommandFile(t *testing.T) {
 			}
 		}
 	}
-
 }

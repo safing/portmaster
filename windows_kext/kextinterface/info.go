@@ -1,4 +1,4 @@
-package kext_interface
+package kextinterface
 
 import (
 	"encoding/binary"
@@ -16,11 +16,14 @@ const (
 	InfoBandwidthStatsV6     = 6
 )
 
-var ErrorUnknownInfoType = errors.New("unknown info type")
+var (
+	ErrUnknownInfoType     = errors.New("unknown info type")
+	ErrUnexpectedReadError = errors.New("unexpected read error")
+)
 
 type connectionV4Internal struct {
-	Id           uint64
-	ProcessId    uint64
+	ID           uint64
+	ProcessID    uint64
 	Direction    byte
 	Protocol     byte
 	LocalIP      [4]byte
@@ -36,8 +39,8 @@ type ConnectionV4 struct {
 }
 
 func (c *ConnectionV4) Compare(other *ConnectionV4) bool {
-	return c.Id == other.Id &&
-		c.ProcessId == other.ProcessId &&
+	return c.ID == other.ID &&
+		c.ProcessID == other.ProcessID &&
 		c.Direction == other.Direction &&
 		c.Protocol == other.Protocol &&
 		c.LocalIP == other.LocalIP &&
@@ -47,7 +50,7 @@ func (c *ConnectionV4) Compare(other *ConnectionV4) bool {
 }
 
 type connectionV6Internal struct {
-	Id           uint64
+	ID           uint64
 	ProcessID    uint64
 	Direction    byte
 	Protocol     byte
@@ -64,7 +67,7 @@ type ConnectionV6 struct {
 }
 
 func (c ConnectionV6) Compare(other *ConnectionV6) bool {
-	return c.Id == other.Id &&
+	return c.ID == other.ID &&
 		c.ProcessID == other.ProcessID &&
 		c.Direction == other.Direction &&
 		c.Protocol == other.Protocol &&
@@ -75,21 +78,21 @@ func (c ConnectionV6) Compare(other *ConnectionV6) bool {
 }
 
 type ConnectionEndV4 struct {
-	ProcessId  uint64
+	ProcessID  uint64
 	Direction  byte
 	Protocol   byte
-	LocalIp    [4]byte
-	RemoteIp   [4]byte
+	LocalIP    [4]byte
+	RemoteIP   [4]byte
 	LocalPort  uint16
 	RemotePort uint16
 }
 
 type ConnectionEndV6 struct {
-	ProcessId  uint64
+	ProcessID  uint64
 	Direction  byte
 	Protocol   byte
-	LocalIp    [16]byte
-	RemoteIp   [16]byte
+	LocalIP    [16]byte
+	RemoteIP   [16]byte
 	LocalPort  uint16
 	RemotePort uint16
 }
@@ -142,6 +145,9 @@ func RecvInfo(reader io.Reader) (*Info, error) {
 	// Read size of data
 	var size uint32
 	err = binary.Read(reader, binary.LittleEndian, &size)
+	if err != nil {
+		return nil, err
+	}
 
 	// Read data
 	switch infoType {
@@ -150,16 +156,19 @@ func RecvInfo(reader io.Reader) (*Info, error) {
 			var fixedSizeValues connectionV4Internal
 			err = binary.Read(reader, binary.LittleEndian, &fixedSizeValues)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(ErrUnexpectedReadError, err)
 			}
 			// Read size of payload
 			var size uint32
 			err = binary.Read(reader, binary.LittleEndian, &size)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(ErrUnexpectedReadError, err)
 			}
 			newInfo := ConnectionV4{connectionV4Internal: fixedSizeValues, Payload: make([]byte, size)}
 			err = binary.Read(reader, binary.LittleEndian, &newInfo.Payload)
+			if err != nil {
+				return nil, errors.Join(ErrUnexpectedReadError, err)
+			}
 			return &Info{ConnectionV4: &newInfo}, nil
 		}
 	case InfoConnectionIpv6:
@@ -167,47 +176,53 @@ func RecvInfo(reader io.Reader) (*Info, error) {
 			var fixedSizeValues connectionV6Internal
 			err = binary.Read(reader, binary.LittleEndian, &fixedSizeValues)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(ErrUnexpectedReadError, err)
 			}
 			// Read size of payload
 			var size uint32
 			err = binary.Read(reader, binary.LittleEndian, &size)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(ErrUnexpectedReadError, err)
 			}
 			newInfo := ConnectionV6{connectionV6Internal: fixedSizeValues, Payload: make([]byte, size)}
 			err = binary.Read(reader, binary.LittleEndian, &newInfo.Payload)
+			if err != nil {
+				return nil, errors.Join(ErrUnexpectedReadError, err)
+			}
 			return &Info{ConnectionV6: &newInfo}, nil
 		}
 	case InfoConnectionEndEventV4:
 		{
-			var new ConnectionEndV4
-			err = binary.Read(reader, binary.LittleEndian, &new)
+			var connectionEnd ConnectionEndV4
+			err = binary.Read(reader, binary.LittleEndian, &connectionEnd)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(ErrUnexpectedReadError, err)
 			}
-			return &Info{ConnectionEndV4: &new}, nil
+			return &Info{ConnectionEndV4: &connectionEnd}, nil
 		}
 	case InfoConnectionEndEventV6:
 		{
-			var new ConnectionEndV6
-			err = binary.Read(reader, binary.LittleEndian, &new)
+			var connectionEnd ConnectionEndV6
+			err = binary.Read(reader, binary.LittleEndian, &connectionEnd)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(ErrUnexpectedReadError, err)
 			}
-			return &Info{ConnectionEndV6: &new}, nil
+			return &Info{ConnectionEndV6: &connectionEnd}, nil
 		}
 	case InfoLogLine:
 		{
-			var logLine = LogLine{}
+			logLine := LogLine{}
 			// Read severity
 			err = binary.Read(reader, binary.LittleEndian, &logLine.Severity)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(ErrUnexpectedReadError, err)
 			}
 			// Read string
-			var line = make([]byte, size-1) // -1 for the severity enum.
+			line := make([]byte, size-1) // -1 for the severity enum.
 			err = binary.Read(reader, binary.LittleEndian, &line)
+			if err != nil {
+				return nil, errors.Join(ErrUnexpectedReadError, err)
+			}
 			logLine.Line = string(line)
 			return &Info{LogLine: &logLine}, nil
 		}
@@ -217,21 +232,24 @@ func RecvInfo(reader io.Reader) (*Info, error) {
 			var protocol uint8
 			err = binary.Read(reader, binary.LittleEndian, &protocol)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(ErrUnexpectedReadError, err)
 			}
 			// Read size of array
 			var size uint32
 			err = binary.Read(reader, binary.LittleEndian, &size)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(ErrUnexpectedReadError, err)
 			}
 			// Read array
-			var stats_array = make([]BandwidthValueV4, size)
+			statsArray := make([]BandwidthValueV4, size)
 			for i := 0; i < int(size); i++ {
-				binary.Read(reader, binary.LittleEndian, &stats_array[i])
+				err = binary.Read(reader, binary.LittleEndian, &statsArray[i])
+				if err != nil {
+					return nil, errors.Join(ErrUnexpectedReadError, err)
+				}
 			}
 
-			return &Info{BandwidthStats: &BandwidthStatsArray{Protocol: protocol, ValuesV4: stats_array}}, nil
+			return &Info{BandwidthStats: &BandwidthStatsArray{Protocol: protocol, ValuesV4: statsArray}}, nil
 		}
 	case InfoBandwidthStatsV6:
 		{
@@ -239,25 +257,31 @@ func RecvInfo(reader io.Reader) (*Info, error) {
 			var protocol uint8
 			err = binary.Read(reader, binary.LittleEndian, &protocol)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(ErrUnexpectedReadError, err)
 			}
 			// Read size of array
 			var size uint32
 			err = binary.Read(reader, binary.LittleEndian, &size)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(ErrUnexpectedReadError, err)
 			}
 			// Read array
-			var stats_array = make([]BandwidthValueV6, size)
+			statsArray := make([]BandwidthValueV6, size)
 			for i := 0; i < int(size); i++ {
-				binary.Read(reader, binary.LittleEndian, &stats_array[i])
+				err = binary.Read(reader, binary.LittleEndian, &statsArray[i])
+				if err != nil {
+					return nil, errors.Join(ErrUnexpectedReadError, err)
+				}
 			}
 
-			return &Info{BandwidthStats: &BandwidthStatsArray{Protocol: protocol, ValuesV6: stats_array}}, nil
+			return &Info{BandwidthStats: &BandwidthStatsArray{Protocol: protocol, ValuesV6: statsArray}}, nil
 		}
 	}
 
+	// Command not recognized, read until the end of command and return.
+	// During normal operation this should not happen.
 	unknownData := make([]byte, size)
-	reader.Read(unknownData)
-	return nil, ErrorUnknownInfoType
+	_, _ = reader.Read(unknownData)
+
+	return nil, ErrUnknownInfoType
 }

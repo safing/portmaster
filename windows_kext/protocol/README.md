@@ -1,4 +1,4 @@
 # Protocol
 
-Defines protocol that communicates with `kext_interface` / Portmaster.
+Defines protocol that communicates with `kextinterface` / Portmaster.
 

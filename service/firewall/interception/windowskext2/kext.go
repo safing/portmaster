@@ -8,7 +8,7 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/service/network"
-	"github.com/safing/portmaster/windows_kext/kext_interface"
+	"github.com/safing/portmaster/windows_kext/kextinterface"
 	"golang.org/x/sys/windows"
 )
 
@@ -16,8 +16,8 @@ import (
 var (
 	driverPath string
 
-	service  *kext_interface.KextService
-	kextFile *kext_interface.KextFile
+	service  *kextinterface.KextService
+	kextFile *kextinterface.KextFile
 )
 
 const (
@@ -31,10 +31,9 @@ func Init(path string) error {
 
 // Start intercepting.
 func Start() error {
-
 	// initialize and start driver service
 	var err error
-	service, err = kext_interface.CreateKextService(driverName, driverPath)
+	service, err = kextinterface.CreateKextService(driverName, driverPath)
 	if err != nil {
 		return fmt.Errorf("failed to create service: %w", err)
 	}
@@ -86,46 +85,46 @@ func Stop() error {
 
 // Sends a shutdown request.
 func shutdownRequest() error {
-	return kext_interface.SendShutdownCommand(kextFile)
+	return kextinterface.SendShutdownCommand(kextFile)
 }
 
 // Send request for logs of the kext.
 func SendLogRequest() error {
-	return kext_interface.SendGetLogsCommand(kextFile)
+	return kextinterface.SendGetLogsCommand(kextFile)
 }
 
 func SendBandwidthStatsRequest() error {
-	return kext_interface.SendGetBandwidthStatsCommand(kextFile)
+	return kextinterface.SendGetBandwidthStatsCommand(kextFile)
 }
 
 func SendPrintMemoryStatsCommand() error {
-	return kext_interface.SendPrintMemoryStatsCommand(kextFile)
+	return kextinterface.SendPrintMemoryStatsCommand(kextFile)
 }
 
 func SendCleanEndedConnection() error {
-	return kext_interface.SendCleanEndedConnectionsCommand(kextFile)
+	return kextinterface.SendCleanEndedConnectionsCommand(kextFile)
 }
 
 // RecvVerdictRequest waits for the next verdict request from the kext. If a timeout is reached, both *VerdictRequest and error will be nil.
-func RecvVerdictRequest() (*kext_interface.Info, error) {
-	return kext_interface.RecvInfo(kextFile)
+func RecvVerdictRequest() (*kextinterface.Info, error) {
+	return kextinterface.RecvInfo(kextFile)
 }
 
 // SetVerdict sets the verdict for a packet and/or connection.
-func SetVerdict(pkt *Packet, verdict kext_interface.KextVerdict) error {
-	verdictCommand := kext_interface.Verdict{Id: pkt.verdictRequest, Verdict: uint8(verdict)}
-	return kext_interface.SendVerdictCommand(kextFile, verdictCommand)
+func SetVerdict(pkt *Packet, verdict kextinterface.KextVerdict) error {
+	verdictCommand := kextinterface.Verdict{ID: pkt.verdictRequest, Verdict: uint8(verdict)}
+	return kextinterface.SendVerdictCommand(kextFile, verdictCommand)
 }
 
 // Clears the internal connection cache.
 func ClearCache() error {
-	return kext_interface.SendClearCacheCommand(kextFile)
+	return kextinterface.SendClearCacheCommand(kextFile)
 }
 
 // Updates a specific connection verdict.
 func UpdateVerdict(conn *network.Connection) error {
 	if conn.IPVersion == 4 {
-		update := kext_interface.UpdateV4{
+		update := kextinterface.UpdateV4{
 			Protocol:      conn.Entity.Protocol,
 			LocalAddress:  [4]byte(conn.LocalIP),
 			LocalPort:     conn.LocalPort,
@@ -134,9 +133,9 @@ func UpdateVerdict(conn *network.Connection) error {
 			Verdict:       uint8(conn.Verdict),
 		}
 
-		return kext_interface.SendUpdateV4Command(kextFile, update)
+		return kextinterface.SendUpdateV4Command(kextFile, update)
 	} else if conn.IPVersion == 6 {
-		update := kext_interface.UpdateV6{
+		update := kextinterface.UpdateV6{
 			Protocol:      conn.Entity.Protocol,
 			LocalAddress:  [16]byte(conn.LocalIP),
 			LocalPort:     conn.LocalPort,
@@ -145,14 +144,14 @@ func UpdateVerdict(conn *network.Connection) error {
 			Verdict:       uint8(conn.Verdict),
 		}
 
-		return kext_interface.SendUpdateV6Command(kextFile, update)
+		return kextinterface.SendUpdateV6Command(kextFile, update)
 	}
 	return nil
 }
 
 // Returns the kext version.
 func GetVersion() (*VersionInfo, error) {
-	data, err := kext_interface.ReadVersion(kextFile)
+	data, err := kextinterface.ReadVersion(kextFile)
 	if err != nil {
 		return nil, err
 	}

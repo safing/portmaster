@@ -5,7 +5,7 @@ echo ========================
 cd protocol
 cargo test info::generate_test_info_file
 
-cd ../kext_interface
+cd ../kextinterface
 go test -v -run TestGenerateCommandFile
 
 cd ..
@@ -15,7 +15,7 @@ echo ========================
 cd protocol
 cargo test command::test_go_command_file
 
-cd ../kext_interface
+cd ../kextinterface
 go test -v -run TestRustInfoFile
 
 echo ========================

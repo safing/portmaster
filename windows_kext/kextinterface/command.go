@@ -1,4 +1,4 @@
-package kext_interface
+package kextinterface
 
 import (
 	"encoding/binary"
@@ -42,20 +42,6 @@ type Verdict struct {
 	command uint8
 	ID      uint64
 	Verdict uint8
-}
-
-type RedirectV4 struct {
-	command       uint8
-	ID            uint64
-	RemoteAddress [4]byte
-	RemotePort    uint16
-}
-
-type RedirectV6 struct {
-	command       uint8
-	ID            uint64
-	RemoteAddress [16]byte
-	RemotePort    uint16
 }
 
 type UpdateV4 struct {

@@ -7,7 +7,7 @@ use wdk::{err, info, interface};
 use windows_sys::Wdk::Foundation::{DEVICE_OBJECT, DRIVER_OBJECT, IRP};
 use windows_sys::Win32::Foundation::{NTSTATUS, STATUS_SUCCESS};
 
-static VERSION: [u8; 4] = include!("../../kext_interface/version.txt");
+static VERSION: [u8; 4] = include!("../../kextinterface/version.txt");
 
 static mut DEVICE: *mut device::Device = core::ptr::null_mut();
 pub fn get_device() -> Option<&'static mut device::Device> {

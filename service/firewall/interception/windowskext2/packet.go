@@ -10,7 +10,7 @@ import (
 
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/service/network/packet"
-	"github.com/safing/portmaster/windows_kext/kext_interface"
+	"github.com/safing/portmaster/windows_kext/kextinterface"
 )
 
 // Packet represents an IP packet.
@@ -70,7 +70,7 @@ func (pkt *Packet) LoadPacketData() error {
 // Accept accepts the packet.
 func (pkt *Packet) Accept() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, kext_interface.VerdictAccept)
+		return SetVerdict(pkt, kextinterface.VerdictAccept)
 	}
 	return nil
 }
@@ -78,7 +78,7 @@ func (pkt *Packet) Accept() error {
 // Block blocks the packet.
 func (pkt *Packet) Block() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, kext_interface.VerdictBlock)
+		return SetVerdict(pkt, kextinterface.VerdictBlock)
 	}
 	return nil
 }
@@ -86,7 +86,7 @@ func (pkt *Packet) Block() error {
 // Drop drops the packet.
 func (pkt *Packet) Drop() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, kext_interface.VerdictDrop)
+		return SetVerdict(pkt, kextinterface.VerdictDrop)
 	}
 	return nil
 }
@@ -94,7 +94,7 @@ func (pkt *Packet) Drop() error {
 // PermanentAccept permanently accepts connection (and the current packet).
 func (pkt *Packet) PermanentAccept() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, kext_interface.VerdictPermanentAccept)
+		return SetVerdict(pkt, kextinterface.VerdictPermanentAccept)
 	}
 	return nil
 }
@@ -102,7 +102,7 @@ func (pkt *Packet) PermanentAccept() error {
 // PermanentBlock permanently blocks connection (and the current packet).
 func (pkt *Packet) PermanentBlock() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, kext_interface.VerdictPermanentBlock)
+		return SetVerdict(pkt, kextinterface.VerdictPermanentBlock)
 	}
 	return nil
 }
@@ -110,7 +110,7 @@ func (pkt *Packet) PermanentBlock() error {
 // PermanentDrop permanently drops connection (and the current packet).
 func (pkt *Packet) PermanentDrop() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, kext_interface.VerdictPermanentDrop)
+		return SetVerdict(pkt, kextinterface.VerdictPermanentDrop)
 	}
 	return nil
 }
@@ -118,7 +118,7 @@ func (pkt *Packet) PermanentDrop() error {
 // RerouteToNameserver permanently reroutes the connection to the local nameserver (and the current packet).
 func (pkt *Packet) RerouteToNameserver() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, kext_interface.VerdictRerouteToNameserver)
+		return SetVerdict(pkt, kextinterface.VerdictRerouteToNameserver)
 	}
 	return nil
 }
@@ -126,7 +126,7 @@ func (pkt *Packet) RerouteToNameserver() error {
 // RerouteToTunnel permanently reroutes the connection to the local tunnel entrypoint (and the current packet).
 func (pkt *Packet) RerouteToTunnel() error {
 	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, kext_interface.VerdictRerouteToTunnel)
+		return SetVerdict(pkt, kextinterface.VerdictRerouteToTunnel)
 	}
 	return nil
 }

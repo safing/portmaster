@@ -86,7 +86,7 @@ use std::panic;
 
 #[test]
 fn test_go_command_file() {
-    let mut file = File::open("../kext_interface/go_command_test.bin").unwrap();
+    let mut file = File::open("../kextinterface/go_command_test.bin").unwrap();
     loop {
         let mut command: [u8; 1] = [0];
         let bytes_count = file.read(&mut command).unwrap();

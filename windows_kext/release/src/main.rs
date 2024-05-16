@@ -5,7 +5,7 @@ use handlebars::Handlebars;
 use serde_json::json;
 use zip::{write::FileOptions, ZipWriter};
 
-static VERSION: [u8; 4] = include!("../../kext_interface/version.txt");
+static VERSION: [u8; 4] = include!("../../kextinterface/version.txt");
 static LIB_PATH: &'static str = "./build/x86_64-pc-windows-msvc/release/driver.lib";
 
 fn main() {

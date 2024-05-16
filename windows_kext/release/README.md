@@ -1,7 +1,7 @@
 # Kext release tool
 
 ### Generate the zip file
-- Make sure `kext_interface/version.txt` is up to date
+- Make sure `kextinterface/version.txt` is up to date
 - Execute: `cargo run`  
   * This will generate release `kext_release_vX-X-X.zip` file. Which contains all the necessary files to make the release.  
 

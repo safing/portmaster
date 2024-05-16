@@ -44,7 +44,7 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 				conn := packetInfo.ConnectionV4
 				// New Packet
 				newPacket := &Packet{
-					verdictRequest: conn.Id,
+					verdictRequest: conn.ID,
 					payload:        conn.Payload,
 					verdictSet:     abool.NewBool(false),
 				}
@@ -52,7 +52,7 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 				info.Inbound = conn.Direction > 0
 				info.InTunnel = false
 				info.Protocol = packet.IPProtocol(conn.Protocol)
-				info.PID = int(conn.ProcessId)
+				info.PID = int(conn.ProcessID)
 				info.SeenAt = time.Now()
 
 				// Check PID
@@ -68,12 +68,12 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 				// Set IPs
 				if info.Inbound {
 					// Inbound
-					info.Src = conn.RemoteIp[:]
-					info.Dst = conn.LocalIp[:]
+					info.Src = conn.RemoteIP[:]
+					info.Dst = conn.LocalIP[:]
 				} else {
 					// Outbound
-					info.Src = conn.LocalIp[:]
-					info.Dst = conn.RemoteIp[:]
+					info.Src = conn.LocalIP[:]
+					info.Dst = conn.RemoteIP[:]
 				}
 
 				// Set Ports
@@ -95,7 +95,7 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 				conn := packetInfo.ConnectionV6
 				// New Packet
 				newPacket := &Packet{
-					verdictRequest: conn.Id,
+					verdictRequest: conn.ID,
 					payload:        conn.Payload,
 					verdictSet:     abool.NewBool(false),
 				}
@@ -103,7 +103,7 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 				info.Inbound = conn.Direction > 0
 				info.InTunnel = false
 				info.Protocol = packet.IPProtocol(conn.Protocol)
-				info.PID = int(conn.ProcessId)
+				info.PID = int(conn.ProcessID)
 				info.SeenAt = time.Now()
 
 				// Check PID
@@ -119,12 +119,12 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 				// Set IPs
 				if info.Inbound {
 					// Inbound
-					info.Src = conn.RemoteIp[:]
-					info.Dst = conn.LocalIp[:]
+					info.Src = conn.RemoteIP[:]
+					info.Dst = conn.LocalIP[:]
 				} else {
 					// Outbound
-					info.Src = conn.LocalIp[:]
-					info.Dst = conn.RemoteIp[:]
+					info.Src = conn.LocalIP[:]
+					info.Dst = conn.RemoteIP[:]
 				}
 
 				// Set Ports
