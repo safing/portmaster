@@ -23,8 +23,8 @@ type connectionV4Internal struct {
 	ProcessId    uint64
 	Direction    byte
 	Protocol     byte
-	LocalIp      [4]byte
-	RemoteIp     [4]byte
+	LocalIP      [4]byte
+	RemoteIP     [4]byte
 	LocalPort    uint16
 	RemotePort   uint16
 	PayloadLayer uint8
@@ -40,19 +40,19 @@ func (c *ConnectionV4) Compare(other *ConnectionV4) bool {
 		c.ProcessId == other.ProcessId &&
 		c.Direction == other.Direction &&
 		c.Protocol == other.Protocol &&
-		c.LocalIp == other.LocalIp &&
-		c.RemoteIp == other.RemoteIp &&
+		c.LocalIP == other.LocalIP &&
+		c.RemoteIP == other.RemoteIP &&
 		c.LocalPort == other.LocalPort &&
 		c.RemotePort == other.RemotePort
 }
 
 type connectionV6Internal struct {
 	Id           uint64
-	ProcessId    uint64
+	ProcessID    uint64
 	Direction    byte
 	Protocol     byte
-	LocalIp      [16]byte
-	RemoteIp     [16]byte
+	LocalIP      [16]byte
+	RemoteIP     [16]byte
 	LocalPort    uint16
 	RemotePort   uint16
 	PayloadLayer uint8
@@ -65,11 +65,11 @@ type ConnectionV6 struct {
 
 func (c ConnectionV6) Compare(other *ConnectionV6) bool {
 	return c.Id == other.Id &&
-		c.ProcessId == other.ProcessId &&
+		c.ProcessID == other.ProcessID &&
 		c.Direction == other.Direction &&
 		c.Protocol == other.Protocol &&
-		c.LocalIp == other.LocalIp &&
-		c.RemoteIp == other.RemoteIp &&
+		c.LocalIP == other.LocalIP &&
+		c.RemoteIP == other.RemoteIP &&
 		c.LocalPort == other.LocalPort &&
 		c.RemotePort == other.RemotePort
 }

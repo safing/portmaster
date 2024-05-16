@@ -9,4 +9,4 @@ func (f *KextFile) Read(buffer []byte) (int, error) {
 	return 0, nil
 }
 
-func (f *KextFile) flush_buffer() {}
+func (f *KextFile) flushBuffer() {}
