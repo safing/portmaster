@@ -466,7 +466,7 @@ release:
         RUN echo -e "\033[1;31m Refusing to release a dirty git repository. Please commit your local changes first! \033[0m" ; exit 1
     END
 
-    BUILD +build-all
+    BUILD +build
 
 
 # Takes GOOS, GOARCH and optionally GOARM and creates a string representation for file-names.
