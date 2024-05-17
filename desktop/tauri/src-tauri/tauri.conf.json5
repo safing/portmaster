@@ -35,7 +35,7 @@
   },
   "productName": "Portmaster",
   "version": "0.1.0",
-  "identifier": "io.safing.portmaster",
+  "identifier": "io.safing.portmaster", // this is added as a property to the shortcut on windows (ApplicationUserModelID). Used for notifications.
   "app": {
     "withGlobalTauri": true,
     "security": {
