@@ -83,11 +83,10 @@ impl portmaster::Handler for WsHandler {
 }
 
 fn main() {
-    pretty_env_logger::init();
-
     let app = tauri::Builder::default()
         // Shell plugin for open_external support
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_log::Builder::default().build())
         // Clipboard support
         .plugin(tauri_plugin_clipboard_manager::init())
         // Dialog (Save/Open) support
