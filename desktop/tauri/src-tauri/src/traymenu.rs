@@ -39,14 +39,12 @@ const PM_TRAY_ICON_ID: &'static str = "pm_icon";
 
 // Icons
 //
-const BLUE_ICON: &'static [u8] =
-    include_bytes!("../../../../assets/data/icons/pm_light_blue_512.ico");
-const RED_ICON: &'static [u8] =
-    include_bytes!("../../../../assets/data/icons/pm_light_red_512.ico");
+const BLUE_ICON: &'static [u8] = include_bytes!("../../../../assets/data/icons/pm_light_blue.ico");
+const RED_ICON: &'static [u8] = include_bytes!("../../../../assets/data/icons/pm_light_red.ico");
 const YELLOW_ICON: &'static [u8] =
-    include_bytes!("../../../../assets/data/icons/pm_light_yellow_512.ico");
+    include_bytes!("../../../../assets/data/icons/pm_light_yellow.ico");
 const GREEN_ICON: &'static [u8] =
-    include_bytes!("../../../../assets/data/icons/pm_light_green_512.ico");
+    include_bytes!("../../../../assets/data/icons/pm_light_green.ico");
 
 pub fn setup_tray_menu(
     app: &mut tauri::App,

@@ -97,9 +97,9 @@
     ],
     "icon": [
       "../../../assets/data/icons/pm_dark_512.png",
-      "../../../assets/data/icons/pm_dark_512.ico",
+      "../../../assets/data/icons/pm_dark.ico",
       "../../../assets/data/icons/pm_light_512.png",
-      "../../../assets/data/icons/pm_light_512.ico"
+      "../../../assets/data/icons/pm_light.ico"
     ]
   }
 }
