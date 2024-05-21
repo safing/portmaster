@@ -121,7 +121,6 @@ impl<R: Runtime> PortmasterInterface<R> {
             }
 
             handlers.push(Box::new(handler));
-
             debug!("number of registered handlers: {}", handlers.len());
         }
     }
@@ -207,9 +206,8 @@ impl<R: Runtime> PortmasterInterface<R> {
     //// Internal functions
     fn start_notification_handler(&self) {
         if let Some(api) = self.get_api() {
-            let cli = api.clone();
             tauri::async_runtime::spawn(async move {
-                notifications::notification_handler(cli).await;
+                notifications::notification_handler(api).await;
             });
         }
     }
@@ -221,9 +219,10 @@ impl<R: Runtime> PortmasterInterface<R> {
         self.is_reachable.store(true, Ordering::Relaxed);
 
         // store the new api client.
-        let mut guard = self.api.lock().unwrap();
-        *guard = Some(api.clone());
-        drop(guard);
+        {
+            let mut guard = self.api.lock().unwrap();
+            *guard = Some(api.clone());
+        }
 
         // fire-off the notification handler.
         if self.handle_notifications.load(Ordering::Relaxed) {
@@ -247,9 +246,10 @@ impl<R: Runtime> PortmasterInterface<R> {
         self.is_reachable.store(false, Ordering::Relaxed);
 
         // clear the current api client reference.
-        let mut guard = self.api.lock().unwrap();
-        *guard = None;
-        drop(guard);
+        {
+            let mut guard = self.api.lock().unwrap();
+            *guard = None;
+        }
 
         if let Ok(mut handlers) = self.handlers.lock() {
             for handler in handlers.iter_mut() {

@@ -131,7 +131,7 @@ pub fn may_navigate_to_ui(win: &mut WebviewWindow, force: bool) {
         return;
     }
 
-    if force || cfg!(debug_assertions) || win.url().as_str() == "tauri://localhost" {
+    if force || cfg!(debug_assertions) || win.url().unwrap().as_str() == "tauri://localhost" {
         #[cfg(debug_assertions)]
         if let Ok(target_url) = std::env::var("TAURI_PM_URL") {
             debug!("[tauri] navigating to {}", target_url);
@@ -157,7 +157,7 @@ pub fn may_navigate_to_ui(win: &mut WebviewWindow, force: bool) {
     } else {
         error!(
             "not navigating to user interface: current url: {}",
-            win.url().as_str()
+            win.url().unwrap().as_str()
         );
     }
 }

@@ -216,9 +216,10 @@ fn main() {
             }
         }
 
-        RunEvent::ExitRequested { api, .. } => {
-            api.prevent_exit();
-        }
+        // TODO(vladimir): why was this needed?
+        // RunEvent::ExitRequested { api, .. } => {
+        //     api.prevent_exit();
+        // }
         _ => {}
     });
 }

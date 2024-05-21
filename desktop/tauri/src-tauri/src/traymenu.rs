@@ -9,7 +9,7 @@ use tauri::{
         SubmenuBuilder,
     },
     tray::{ClickType, TrayIcon, TrayIconBuilder},
-    Manager, Wry,
+    Wry,
 };
 
 use crate::{
@@ -93,7 +93,7 @@ pub fn setup_tray_menu(
                     .cancel_button_label("No")
                     .show(move |answer| {
                         if answer {
-                            let _ = handle.emit("exit-requested", "");
+                            // let _ = handle.emit("exit-requested", "");
                             handle.exit(0);
                         }
                     });
