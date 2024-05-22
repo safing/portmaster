@@ -36,6 +36,8 @@ use serde;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, Runtime};
 
+const PORTMASTER_BASE_URL: &'static str = "http://127.0.0.1:817/api/v1/";
+
 pub trait Handler {
     fn on_connect(&mut self, cli: PortAPI) -> ();
     fn on_disconnect(&mut self);
@@ -201,6 +203,25 @@ impl<R: Runtime> PortmasterInterface<R> {
                 });
             }
         }
+    }
+
+    /// Send Shutdown request to portmaster
+    pub fn trigger_shutdown(&self) {
+        tauri::async_runtime::spawn(async move {
+            let client = reqwest::Client::new();
+            match client
+                .post(format!("{}core/shutdown", PORTMASTER_BASE_URL))
+                .send()
+                .await
+            {
+                Ok(v) => {
+                    debug!("shutdown request sent {:?}", v);
+                }
+                Err(err) => {
+                    error!("failed to send shutdown request {}", err);
+                }
+            }
+        });
     }
 
     //// Internal functions

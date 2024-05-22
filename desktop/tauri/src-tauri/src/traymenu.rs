@@ -1,13 +1,11 @@
-use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
+use std::{collections::HashMap, sync::atomic::Ordering};
 
 use log::{debug, error};
 use tauri::{
     image::Image,
-    menu::{
-        CheckMenuItem, CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, PredefinedMenuItem,
-        SubmenuBuilder,
-    },
+    menu::{MenuBuilder, MenuItem, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
     tray::{ClickType, TrayIcon, TrayIconBuilder},
     Wry,
 };
@@ -30,9 +28,12 @@ use tauri_plugin_dialog::DialogExt;
 
 pub type AppIcon = TrayIcon<Wry>;
 
+static SPN_STATE: AtomicBool = AtomicBool::new(false);
+
 lazy_static! {
-    // Set once setup_tray_menu executed.
-    static ref SPN_BUTTON: Mutex<Option<CheckMenuItem<Wry>>> = Mutex::new(None);
+    static ref SPN_STATUS: Mutex<Option<MenuItem<Wry>>> = Mutex::new(None);
+    static ref SPN_BUTTON: Mutex<Option<MenuItem<Wry>>> = Mutex::new(None);
+    static ref GLOBAL_STATUS: Mutex<Option<MenuItem<Wry>>> = Mutex::new(None);
 }
 
 const PM_TRAY_ICON_ID: &'static str = "pm_icon";
@@ -50,16 +51,36 @@ pub fn setup_tray_menu(
     app: &mut tauri::App,
 ) -> core::result::Result<AppIcon, Box<dyn std::error::Error>> {
     // Tray menu
-    let close_btn = MenuItemBuilder::with_id("close", "Exit").build(app)?;
-    let open_btn = MenuItemBuilder::with_id("open", "Open").build(app)?;
+    let open_btn = MenuItemBuilder::with_id("open", "Open App").build(app)?;
+    let exit_ui_btn = MenuItemBuilder::with_id("exit_ui", "Exit UI").build(app)?;
+    let shutdown_btn = MenuItemBuilder::with_id("shutdown", "Shut Down Portmaster").build(app)?;
 
-    let spn = CheckMenuItemBuilder::with_id("spn", "Use SPN")
+    let global_status = MenuItemBuilder::with_id("global_status", "Status: Secured")
+        .enabled(false)
         .build(app)
         .unwrap();
+    {
+        let mut button_ref = GLOBAL_STATUS.lock()?;
+        *button_ref = Some(global_status.clone());
+    }
 
-    // Store the SPN button reference
-    let mut button_ref = SPN_BUTTON.lock()?;
-    *button_ref = Some(spn.clone());
+    // Setup SPN status
+    let spn_status = MenuItemBuilder::with_id("spn_status", "SPN: Disabled")
+        .enabled(false)
+        .build(app)
+        .unwrap();
+    {
+        let mut button_ref = SPN_STATUS.lock()?;
+        *button_ref = Some(spn_status.clone());
+    }
+    // Setup SPN button
+    let spn = MenuItemBuilder::with_id("spn_toggle", "Enable SPN")
+        .build(app)
+        .unwrap();
+    {
+        let mut button_ref = SPN_BUTTON.lock()?;
+        *button_ref = Some(spn.clone());
+    }
 
     let force_show_window = MenuItemBuilder::with_id("force-show", "Force Show UI").build(app)?;
     let reload_btn = MenuItemBuilder::with_id("reload", "Reload User Interface").build(app)?;
@@ -67,15 +88,17 @@ pub fn setup_tray_menu(
         .items(&[&reload_btn, &force_show_window])
         .build()?;
 
-    // Drop the reference now so we unlock immediately.
-    drop(button_ref);
-
     let menu = MenuBuilder::new(app)
         .items(&[
+            &open_btn,
+            &PredefinedMenuItem::separator(app)?,
+            &global_status,
+            &PredefinedMenuItem::separator(app)?,
+            &spn_status,
             &spn,
             &PredefinedMenuItem::separator(app)?,
-            &open_btn,
-            &close_btn,
+            &exit_ui_btn,
+            &shutdown_btn,
             &developer_menu,
         ])
         .build()?;
@@ -84,7 +107,7 @@ pub fn setup_tray_menu(
         .icon(Image::from_bytes(RED_ICON).unwrap())
         .menu(&menu)
         .on_menu_event(move |app, event| match event.id().as_ref() {
-            "close" => {
+            "exit_ui" => {
                 let handle = app.clone();
                 app.dialog()
                     .message("This does not stop the Portmaster system service")
@@ -119,14 +142,15 @@ pub fn setup_tray_menu(
                     }
                 };
             }
-            "spn" => {
-                let btn = SPN_BUTTON.lock().unwrap();
-
-                if let Some(bt) = &*btn {
-                    if let Ok(is_checked) = bt.is_checked() {
-                        app.portmaster().set_spn_enabled(is_checked);
-                    }
+            "spn_toggle" => {
+                if SPN_STATE.load(Ordering::Acquire) {
+                    app.portmaster().set_spn_enabled(false);
+                } else {
+                    app.portmaster().set_spn_enabled(true);
                 }
+            }
+            "shutdown" => {
+                app.portmaster().trigger_shutdown();
             }
             other => {
                 error!("unknown menu event id: {}", other);
@@ -147,19 +171,27 @@ pub fn update_icon(icon: AppIcon, subsystems: HashMap<String, Subsystem>, spn_st
     let failure = subsystems
         .values()
         .into_iter()
-        .map(|s| s.failure_status)
-        .fold(
-            subsystem::FAILURE_NONE,
-            |acc, s| {
-                if s > acc {
-                    s
-                } else {
-                    acc
+        .map(|s| &s.module_status)
+        .fold((subsystem::FAILURE_NONE, "".to_string()), |mut acc, s| {
+            for m in s {
+                if m.failure_status > acc.0 {
+                    acc = (m.failure_status, m.failure_msg.clone())
                 }
-            },
-        );
+            }
+            acc
+        });
 
-    let next_icon = match failure {
+    if failure.0 == subsystem::FAILURE_NONE {
+        if let Some(global_status) = &mut *(GLOBAL_STATUS.lock().unwrap()) {
+            _ = global_status.set_text("Status: Secured");
+        }
+    } else {
+        if let Some(global_status) = &mut *(GLOBAL_STATUS.lock().unwrap()) {
+            _ = global_status.set_text(format!("Status: {}", failure.1));
+        }
+    }
+
+    let next_icon = match failure.0 {
         subsystem::FAILURE_WARNING => YELLOW_ICON,
         subsystem::FAILURE_ERROR => RED_ICON,
         _ => match spn_status.as_str() {
@@ -314,15 +346,7 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                 if let Some((_, payload)) = res {
                     match payload.parse::<BooleanValue>() {
                         Ok(value) => {
-                            let mut btn = SPN_BUTTON.lock().unwrap();
-
-                            if let Some(btn) = &mut *btn {
-                                if let Some(value) = value.value {
-                                    _ = btn.set_checked(value);
-                                } else {
-                                    _ = btn.set_checked(false);
-                                }
-                            }
+                            update_spn_ui_state(value.value.unwrap_or(false));
                         },
                         Err(err) => match err {
                             ParseError::JSON(err) => {
@@ -338,9 +362,25 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
         }
     }
 
-    if let Some(btn) = &mut *(SPN_BUTTON.lock().unwrap()) {
-        _ = btn.set_checked(false);
-    }
-
+    update_spn_ui_state(false);
     _ = icon.set_icon(Some(Image::from_bytes(RED_ICON).unwrap()));
+}
+
+fn update_spn_ui_state(enabled: bool) {
+    let mut spn_status = SPN_STATUS.lock().unwrap();
+    let Some(spn_status_ref) = &mut *spn_status else {
+        return;
+    };
+    let mut spn_btn = SPN_BUTTON.lock().unwrap();
+    let Some(spn_btn_ref) = &mut *spn_btn else {
+        return;
+    };
+    if enabled {
+        _ = spn_status_ref.set_text("SPN: Connected");
+        _ = spn_btn_ref.set_text("Disable SPN");
+    } else {
+        _ = spn_status_ref.set_text("SPN: Disabled");
+        _ = spn_btn_ref.set_text("Enable SPN");
+    }
+    SPN_STATE.store(enabled, Ordering::SeqCst);
 }
