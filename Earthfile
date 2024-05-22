@@ -461,6 +461,83 @@ tauri-release:
         BUILD +tauri-build --target="${arch}" --bundle="${bundle}"
     END
 
+kext-base:
+    FROM ${rust_builder_image}
+
+    RUN apt-get update -qq
+
+    # Tools and libraries required for cross-compilation
+    RUN apt-get install --no-install-recommends -qq \
+        autoconf \
+        autotools-dev \
+        libtool-bin \
+        clang \
+        cmake \
+        bsdmainutils \
+        gcc-multilib \
+        linux-libc-dev \
+        linux-libc-dev-amd64-cross \
+        linux-libc-dev-arm64-cross \
+        linux-libc-dev-armel-cross \
+        linux-libc-dev-armhf-cross \
+        build-essential \
+        curl \
+        wget \
+        file \
+        mingw-w64
+
+    # Install architecture target
+    RUN rustup target add x86_64-pc-windows-msvc
+
+    DO rust+INIT --keep_fingerprints=true
+
+    # Add some required rustup components
+    RUN rustup component add cargo
+    RUN rustup component add rust-std
+    RUN rustup component add rustc
+
+    # Required for cross compilation to work.
+    ENV PKG_CONFIG_ALLOW_CROSS=1
+    ENV PKG_CONFIG_PATH=/usr/x86_64-w64-mingw32/lib/pkgconfig
+
+    # Explicitly cache here.
+    SAVE IMAGE --cache-hint
+
+kext-build:
+    FROM +kext-base
+    WORKDIR /app/kext
+
+    # Pull and build dependencies.
+    # wdk package
+    COPY --keep-ts ./windows_kext/wdk/Cargo.toml ./wdk/Cargo.toml
+    COPY --keep-ts ./windows_kext/wdk/Cargo.lock ./wdk/Cargo.lock
+    COPY --keep-ts ./windows_kext/wdk/src/lib.rs ./wdk/src/lib.rs
+    # release package
+    COPY --keep-ts ./windows_kext/release/Cargo.toml ./release/Cargo.toml
+    COPY --keep-ts ./windows_kext/release/Cargo.lock ./release/Cargo.lock
+    COPY --keep-ts ./windows_kext/release/src/main.rs ./release/src/main.rs
+    # protocol package
+    COPY --keep-ts ./windows_kext/protocol/Cargo.toml ./protocol/Cargo.toml
+    COPY --keep-ts ./windows_kext/protocol/Cargo.lock ./protocol/Cargo.lock
+    COPY --keep-ts ./windows_kext/protocol/src/lib.rs ./protocol/src/lib.rs
+    # driver package
+    COPY --keep-ts ./windows_kext/driver/Cargo.toml ./driver/Cargo.toml
+    COPY --keep-ts ./windows_kext/driver/Cargo.lock ./driver/Cargo.lock
+    COPY --keep-ts ./windows_kext/driver/src/lib.rs ./driver/src/lib.rs
+    # driver cargo config
+    COPY --keep-ts ./windows_kext/driver/.cargo ./driver/.cargo
+    # fetch
+    DO rust+CARGO --args="fetch --manifest-path ./driver/Cargo.toml --target x86_64-pc-windows-msvc"
+
+    # Build kext
+
+    # --keep-ts is necessary to ensure that the timestamps of the source files
+    # are preserved such that Rust's incremental compilation works correctly.
+    COPY --keep-ts ./windows_kext/ .
+
+    WORKDIR /app/kext/driver
+    DO rust+CARGO --args="build"
+
 build:
     BUILD +go-release
     BUILD +angular-release
