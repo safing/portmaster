@@ -260,6 +260,22 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
         }
     };
 
+    let mut portmaster_shutdown_event_subscription = match cli
+        .request(Request::Subscribe(
+            "query runtime:modules/core/event/shutdown".to_string(),
+        ))
+        .await
+    {
+        Ok(rx) => rx,
+        Err(err) => {
+            error!(
+                "cancel try_handler: failed to subscribe to 'runtime:modules/core/event/shutdown': {}",
+                err
+            );
+            return;
+        }
+    };
+
     _ = icon.set_icon(Some(Image::from_bytes(BLUE_ICON).unwrap()));
 
     let mut subsystems: HashMap<String, Subsystem> = HashMap::new();
@@ -357,6 +373,17 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                             }
                         }
                     }
+                }
+            },
+            msg = portmaster_shutdown_event_subscription.recv() => {
+                let msg = match msg {
+                    Some(m) => m,
+                    None => { break }
+                };
+                debug!("Shutdown request received: {:?}", msg);
+                match msg {
+                    Response::Ok(_, _) | Response::New(_, _) | Response::Update(_, _) => app.exit(0),
+                    _ => {},
                 }
             }
         }
