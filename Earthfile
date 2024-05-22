@@ -323,7 +323,7 @@ tauri-src:
     # --keep-ts is necessary to ensure that the timestamps of the source files
     # are preserved such that Rust's incremental compilation works correctly.
     COPY --keep-ts ./desktop/tauri/ .
-    COPY assets/data ./assets
+    COPY assets/data ./../../assets/data
     COPY packaging/linux ./../../packaging/linux
     COPY (+angular-project/output/tauri-builtin --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=production --baseHref="/") ./../angular/dist/tauri-builtin
 
