@@ -36,11 +36,11 @@ PortmasterKext64.sys = 1
 DefaultDestDir = 12 ; %windir%\system32\drivers
 PortmasterKext.DriverFiles = 12 ; %windir%\system32\drivers
 
-[DefaultInstall]
+[DefaultInstall.NTamd64]
 OptionDesc = %Description%
 CopyFiles = PortmasterKext.DriverFiles
 
-[DefaultInstall.Services]
+[DefaultInstall.NTamd64.Services]
 AddService = %ServiceName%,,PortmasterKext.Service
 
 [DefaultUninstall]
