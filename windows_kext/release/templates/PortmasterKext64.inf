@@ -43,12 +43,6 @@ CopyFiles = PortmasterKext.DriverFiles
 [DefaultInstall.NTamd64.Services]
 AddService = %ServiceName%,,PortmasterKext.Service
 
-[DefaultUninstall]
-DelFiles = PortmasterKext.DriverFiles
-
-[DefaultUninstall.Services]
-DelService = PortmasterKext,0x200 ; SPSVCINST_STOPSERVICE
-
 [PortmasterKext.DriverFiles]
 PortmasterKext64.sys,,,0x00000040 ; COPYFLG_OVERWRITE_OLDER_ONLY
 

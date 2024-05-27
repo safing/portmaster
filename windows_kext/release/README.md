@@ -21,7 +21,8 @@ cd kext_release_v.../
 - Enter "PortmasterKext vX.X.X #1" as the product name
 - Upload `portmaster-kext_vX-X-X.cab`
 - Select the Windows 10 versions that you compiled and tested on
+  - Currently: Windows 11 Client, version 22H2 x64 (Ni)
 - Wait for the process to finish, download the `.zip`.
 
 The zip will contain the release files.  
-> Optionally sign the .sys file. 
+> Optionally sign the .sys file.

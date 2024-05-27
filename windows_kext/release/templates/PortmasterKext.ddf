@@ -1,4 +1,4 @@
-;*** {{version_file}}.ddf
+;*** PortmasterKext.ddf
 .OPTION EXPLICIT     ; Generate errors
 .Set CabinetFileCountThreshold=0
 .Set FolderFileCountThreshold=0
@@ -11,7 +11,7 @@
 .Set Compress=on
 
 ;Specify file name for new cab file
-.Set CabinetNameTemplate={{version_file}}.cab
+.Set CabinetNameTemplate={{cab_file}}
 
 ; Specify the subdirectory for the files.
 ; Your cab file should not have files at the root level,
@@ -19,6 +19,6 @@
 .Set DestinationDir=PortmasterKext
 
 ;Specify files to be included in cab file
-.\cab\\{{version_file}}.inf
-.\cab\\{{version_file}}.sys
-.\cab\\{{version_file}}.pdb
+.\cab\\PortmasterKext64.inf
+.\cab\\PortmasterKext64.sys
+.\cab\\PortmasterKext64.pdb

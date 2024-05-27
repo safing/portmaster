@@ -1,5 +1,7 @@
-del {{version_file}}.cab
+# Remove previous cab build
+Remove-Item -Path "PortmasterKext_v2-0-0.cab" -ErrorAction SilentlyContinue
 
+# Link the driver.
 link.exe /OUT:{{sys_file}} `
 /MANIFEST:NO /PROFILE /Driver `
 "C:\Program Files (x86)\Windows Kits\10\lib\10.0.22621.0\km\x64\wdmsec.lib" `
@@ -14,35 +16,37 @@ link.exe /OUT:{{sys_file}} `
 "C:\Program Files (x86)\Windows Kits\10\lib\wdf\kmdf\x64\1.15\WdfDriverEntry.lib" `
 "{{lib_file}}" `
 /RELEASE /VERSION:"10.0" /DEBUG /MACHINE:X64 /ENTRY:"FxDriverEntry" /OPT:REF /INCREMENTAL:NO /SUBSYSTEM:NATIVE",6.01" /OPT:ICF /ERRORREPORT:PROMPT /MERGE:"_TEXT=.text;_PAGE=PAGE" /NOLOGO /NODEFAULTLIB /SECTION:"INIT,d" 
-
 if(!$?) { 
     Exit $LASTEXITCODE 
 }
 
-move {{sys_file}} cab\\{{sys_file}}
-move {{pdb_file}} cab\\{{pdb_file}}
+# Move the driver and debug symbolds into the cab directory.
+move {{sys_file}} cab\\PortmasterKext64.sys
+move {{pdb_file}} cab\\PortmasterKext64.pdb
 
+# Create the cab.
 Write-Host
 Write-Host =====
 Write-Host creating .cab ...
-MakeCab /f {{version_file}}.ddf
-
+MakeCab /f PortmasterKext.ddf
 if(!$?) { 
     Exit $LASTEXITCODE 
 }
 
+# Clean up after cab creation.
 Write-Host
 Write-Host =====
 Write-Host cleaning up ...
-del setup.inf
-del setup.rpt
-move disk1\\{{version_file}}.cab {{version_file}}.cab
-rmdir disk1
+Remove-Item -Path "setup.inf" -ErrorAction SilentlyContinue
+Remove-Item -Path "setup.rpt" -ErrorAction SilentlyContinue
+Move-Item disk1\\{{cab_file}} {{cab_file}}
+Remove-Item disk1
 
+# Print signing instructions.
 Write-Host
 Write-Host =====
 Write-Host YOUR TURN: sign the .cab
-Write-Host use something along the lines of:
+Write-Host "(If the sha1 fingerprint of the cert has changed, you can find it in the cert properties on Windows as Thumbprint)"
 Write-Host
-Write-Host signtool sign /sha1 C2CBB3A0256A157FEB08B661D72BF490B68724C4 /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a {{version_file}}.cab
+Write-Host signtool sign /sha1 69ADFEACD5AC42D0DB5698E38CA917B9C60FBFA6 /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a {{cab_file}}
 Write-Host

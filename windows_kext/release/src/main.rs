@@ -16,17 +16,8 @@ fn main() {
     );
 
     // Create Zip that will hold all the release files and scripts.
-    let file = File::create(format!(
-        "kext_release_v{}-{}-{}.zip",
-        VERSION[0], VERSION[1], VERSION[2]
-    ))
-    .unwrap();
+    let file = File::create("portmaster-kext-release-bundle.zip").unwrap();
     let mut zip = zip::ZipWriter::new(file);
-
-    let version_file = format!(
-        "portmaster-kext_v{}-{}-{}",
-        VERSION[0], VERSION[1], VERSION[2]
-    );
 
     // Write files to zip
     zip.add_directory("cab", FileOptions::default()).unwrap();
@@ -35,7 +26,7 @@ fn main() {
     // Write ddf file
     write_to_zip(
         &mut zip,
-        &format!("{}.ddf", version_file),
+        "PortmasterKext.ddf",
         get_ddf_content(),
     );
     // Write build cab script
@@ -44,7 +35,7 @@ fn main() {
     // Write inf file
     write_to_zip(
         &mut zip,
-        &format!("cab/{}.inf", version_file),
+        "cab/PortmasterKext64.inf",
         get_inf_content(),
     );
 
@@ -82,28 +73,28 @@ fn get_inf_content() -> String {
 
 fn get_ddf_content() -> String {
     let reg = Handlebars::new();
-    let version_file = format!(
-        "portmaster-kext_v{}-{}-{}",
+    let cab_file = format!(
+        "PortmasterKext_v{}-{}-{}.cab",
         VERSION[0], VERSION[1], VERSION[2]
     );
     reg.render_template(
         include_str!("../templates/PortmasterKext.ddf"),
-        &json!({"version_file": version_file}),
+        &json!({"cab_file": cab_file}),
     )
     .unwrap()
 }
 
 fn get_build_cab_script_content() -> String {
     let reg = Handlebars::new();
-    let version_file = format!(
-        "portmaster-kext_v{}-{}-{}",
+    let cab_file = format!(
+        "PortmasterKext_v{}-{}-{}.cab",
         VERSION[0], VERSION[1], VERSION[2]
     );
 
     reg
         .render_template(
             include_str!("../templates/build_cab.ps1"),
-            &json!({"sys_file": format!("{}.sys", version_file), "pdb_file": format!("{}.pdb", version_file), "lib_file": "driver.lib", "version_file": &version_file }),
+            &json!({"sys_file": "PortmasterKext64.sys", "pdb_file": "PortmasterKext64.pdb", "lib_file": "driver.lib", "cab_file": &cab_file }),
         )
         .unwrap()
 }
