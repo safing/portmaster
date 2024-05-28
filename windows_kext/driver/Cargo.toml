@@ -1,0 +1,26 @@
+[package]
+name = "driver"
+version = "0.0.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "driver"
+path = "src/lib.rs"
+crate-type = ["staticlib"]
+
+[dependencies]
+wdk = { path = "../wdk" }
+protocol = { path = "../protocol" }
+num = { version = "0.4", default-features = false }
+num-derive = { version = "0.4", default-features = false }
+num-traits = { version = "0.2", default-features = false }
+smoltcp = { version = "0.10", default-features = false, features = ["proto-ipv4", "proto-ipv6"] }
+hashbrown = { version = "0.14.3", default-features = false, features = ["ahash"]}
+
+# WARNING: Do not update. The version was choosen for a reason. See wdk/README.md for more detiels.
+[dependencies.windows-sys]
+git = "https://github.com/microsoft/windows-rs"
+rev = "41ad38d8c42c92fd23fe25ba4dca76c2d861ca06"
+features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_SystemServices", "Win32_Foundation", "Win32_Security", "Win32_System_IO", "Win32_System_Kernel", "Win32_System_Power", "Win32_System_WindowsProgramming", "Win32_NetworkManagement_IpHelper", "Win32_Networking_WinSock", "Win32_NetworkManagement_WindowsFilteringPlatform"]

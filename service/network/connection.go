@@ -424,6 +424,7 @@ func NewIncompleteConnection(pkt packet.Packet) *Connection {
 		IPProtocol:   info.Protocol,
 		Started:      info.SeenAt.Unix(),
 		PID:          info.PID,
+		Inbound:      info.Inbound,
 		dataComplete: abool.NewBool(false),
 	}
 	conn.lastSeen.Store(conn.Started)

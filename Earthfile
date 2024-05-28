@@ -3,6 +3,7 @@ VERSION --arg-scope-and-set --global-cache 0.8
 ARG --global go_version = 1.22
 ARG --global node_version = 18
 ARG --global rust_version = 1.76
+ARG --global golangci_lint_version = 1.57.1
 
 ARG --global go_builder_image = "golang:${go_version}-alpine"
 ARG --global node_builder_image = "node:${node_version}"
@@ -163,6 +164,12 @@ go-test-all:
         DO +RUST_TO_GO_ARCH_STRING --rustTarget="${arch}"
         BUILD +go-test --GOARCH="${GOARCH}" --GOOS="${GOOS}" --GOARM="${GOARM}"
     END
+
+go-lint:
+    FROM +go-base
+
+    RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${golangci_lint_version}
+    RUN golangci-lint run -c ./.golangci.yml --timeout 15m --show-stats
 
 # Builds portmaster-start, portmaster-core, hub and notifier for all supported platforms
 go-release:
@@ -454,6 +461,27 @@ tauri-release:
         BUILD +tauri-build --target="${arch}" --bundle="${bundle}"
     END
 
+kext-build:
+    FROM ${rust_builder_image}
+
+    # Install architecture target
+    DO rust+INIT --keep_fingerprints=true
+
+    # Build kext
+    WORKDIR /app/kext
+    # --keep-ts is necessary to ensure that the timestamps of the source files
+    # are preserved such that Rust's incremental compilation works correctly.
+    COPY --keep-ts ./windows_kext/ .
+
+    # Add target architecture
+    RUN rustup target add x86_64-pc-windows-msvc
+    
+    # Build using special earthly lib
+    WORKDIR /app/kext/release
+    DO rust+CARGO --args="run"
+
+    SAVE ARTIFACT --keep-ts "portmaster-kext-release-bundle.zip" AS LOCAL "${outputDir}/windows_amd64/portmaster-kext-release-bundle.zip"
+
 build:
     BUILD +go-release
     BUILD +angular-release
@@ -466,7 +494,7 @@ release:
         RUN echo -e "\033[1;31m Refusing to release a dirty git repository. Please commit your local changes first! \033[0m" ; exit 1
     END
 
-    BUILD +build-all
+    BUILD +build
 
 
 # Takes GOOS, GOARCH and optionally GOARM and creates a string representation for file-names.

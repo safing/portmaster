@@ -76,6 +76,15 @@ func Start() error {
 	return nil
 }
 
+func SetKextHandler(handle windows.Handle) {
+	kextHandle = handle
+}
+
+func SetKextService(handle windows.Handle, path string) {
+	service = &KextService{handle: handle}
+	driverPath = path
+}
+
 // Stop intercepting.
 func Stop() error {
 	// Prepare kernel for shutdown

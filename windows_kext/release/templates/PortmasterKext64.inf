@@ -1,0 +1,62 @@
+
+;/*++
+;
+;Copyright (c) Safing ICS Technologies GmbH.
+;
+;    This program is free software: you can redistribute it and/or modify
+;    it under the terms of the GNU General Public License as published by
+;    the Free Software Foundation, either version 3 of the License, or
+;    (at your option) any later version.
+;
+;    This program is distributed in the hope that it will be useful,
+;    but WITHOUT ANY WARRANTY; without even the implied warranty of
+;    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;    GNU General Public License for more details.
+;
+;    You should have received a copy of the GNU General Public License
+;    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+;
+;--*/
+
+[Version]
+Signature = "$Windows NT$"
+Class = WFPCALLOUTS
+ClassGuid = {57465043-616C-6C6F-7574-5F636C617373}
+Provider = %Provider%
+CatalogFile = PortmasterKext64.Cat
+DriverVer = {{date}},{{version}}
+
+[SourceDisksNames]
+1 = %DiskName%
+
+[SourceDisksFiles]
+PortmasterKext64.sys = 1
+
+[DestinationDirs]
+DefaultDestDir = 12 ; %windir%\system32\drivers
+PortmasterKext.DriverFiles = 12 ; %windir%\system32\drivers
+
+[DefaultInstall.NTamd64]
+OptionDesc = %Description%
+CopyFiles = PortmasterKext.DriverFiles
+
+[DefaultInstall.NTamd64.Services]
+AddService = %ServiceName%,,PortmasterKext.Service
+
+[PortmasterKext.DriverFiles]
+PortmasterKext64.sys,,,0x00000040 ; COPYFLG_OVERWRITE_OLDER_ONLY
+
+[PortmasterKext.Service]
+DisplayName = %ServiceName%
+Description = %ServiceDesc%
+ServiceType = 1  ; SERVICE_KERNEL_DRIVER
+StartType = 0    ; SERVICE_BOOT_START
+ErrorControl = 1 ; SERVICE_ERROR_NORMAL
+ServiceBinary = %12%\PortmasterKext64.sys
+
+[Strings]
+Provider = "Safing ICS Technologies GmbH"
+DiskName = "PortmasterKext Installation Disk"
+Description = "PortmasterKext Driver"
+ServiceName = "PortmasterKext"
+ServiceDesc = "PortmasterKext Driver"

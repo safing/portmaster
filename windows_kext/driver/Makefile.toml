@@ -1,0 +1,18 @@
+[env.development]
+TARGET_PATH = "target/x86_64-pc-windows-msvc/debug"
+
+[env.production]
+TARGET_PATH = "target/x86_64-pc-windows-msvc/release"
+BUILD_FLAGS = "--release"
+
+[tasks.build-driver]
+script = [
+    "cargo build $BUILD_FLAGS",
+]
+
+[tasks.upload]
+dependencies = ["build-driver"]
+script = [
+    "scp $TARGET_PATH/driver.lib windows:'C:/Dev/'",
+]
+
