@@ -11,6 +11,9 @@ export class ConnectionLocationPipe implements PipeTransform {
       return '';
     }
     if (!!conn.country) {
+      if (conn.country === "__") {
+        return "Anycast"
+      }
       return conn.country;
     }
 
