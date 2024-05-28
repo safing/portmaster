@@ -21,23 +21,21 @@ fn main() {
 
     // Write files to zip
     zip.add_directory("cab", FileOptions::default()).unwrap();
+
     // Write driver.lib
     write_lib_file_zip(&mut zip);
+
     // Write ddf file
-    write_to_zip(
-        &mut zip,
-        "PortmasterKext.ddf",
-        get_ddf_content(),
-    );
+    write_to_zip(&mut zip, "PortmasterKext.ddf", get_ddf_content());
+
     // Write build cab script
     write_to_zip(&mut zip, "build_cab.ps1", get_build_cab_script_content());
 
+    // Write metadata file
+    write_to_zip(&mut zip, "version.rc", get_metadata_file_content());
+
     // Write inf file
-    write_to_zip(
-        &mut zip,
-        "cab/PortmasterKext64.inf",
-        get_inf_content(),
-    );
+    write_to_zip(&mut zip, "cab/PortmasterKext64.inf", get_inf_content());
 
     zip.finish().unwrap();
 }
@@ -80,6 +78,20 @@ fn get_ddf_content() -> String {
     reg.render_template(
         include_str!("../templates/PortmasterKext.ddf"),
         &json!({"cab_file": cab_file}),
+    )
+    .unwrap()
+}
+
+fn get_metadata_file_content() -> String {
+    let reg = Handlebars::new();
+
+    let version = format!(
+        "{}, {}, {}, {}",
+        VERSION[0], VERSION[1], VERSION[2], VERSION[3]
+    );
+    reg.render_template(
+        include_str!("../templates/version.rc"),
+        &json!({"version": version, "version_str": version_str()}),
     )
     .unwrap()
 }
