@@ -10,6 +10,7 @@ require (
 	github.com/Xuanwo/go-locale v1.1.0
 	github.com/agext/levenshtein v1.2.3
 	github.com/awalterschulze/gographviz v2.0.3+incompatible
+	github.com/brianvoe/gofakeit v3.18.0+incompatible
 	github.com/cilium/ebpf v0.15.0
 	github.com/coreos/go-iptables v0.7.0
 	github.com/dhaavi/go-notify v0.0.0-20190209221809-c404b1f22435
@@ -32,7 +33,6 @@ require (
 	github.com/rot256/pblind v0.0.0-20231024115251-cd3f239f28c1
 	github.com/safing/jess v0.3.3
 	github.com/safing/portbase v0.19.5
-	github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.8.0
 	github.com/spkg/zipfs v0.7.1
@@ -46,7 +46,7 @@ require (
 	golang.org/x/image v0.15.0
 	golang.org/x/net v0.24.0
 	golang.org/x/sync v0.7.0
-	golang.org/x/sys v0.19.0
+	golang.org/x/sys v0.20.0
 	gopkg.in/yaml.v3 v3.0.1
 	zombiezen.com/go/sqlite v1.2.0
 )
@@ -58,7 +58,6 @@ require (
 	github.com/alessio/shellescape v1.4.2 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/bluele/gcache v0.0.2 // indirect
-	github.com/brianvoe/gofakeit v3.18.0+incompatible // indirect
 	github.com/danieljoos/wincred v1.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -89,6 +88,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/seehuhn/fortuna v1.0.1 // indirect
 	github.com/seehuhn/sha256d v1.0.0 // indirect
