@@ -195,6 +195,8 @@ export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
     data.forEach((country: any) => {
       this.countryNames[country.properties.iso_a2] = country.properties.name
     })
+    // Add special country values.
+    this.countryNames["__"] = "Anycast"
 
     this.worldGroup.selectAll()
       .data<GeoPermissibleObjects>(data)
