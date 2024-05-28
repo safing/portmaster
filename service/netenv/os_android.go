@@ -4,7 +4,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/safing/portmaster/service-android/go/app_interface"
+	"github.com/safing/portmaster-android/go/app_interface"
 )
 
 var (
