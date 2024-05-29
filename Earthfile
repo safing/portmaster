@@ -265,6 +265,16 @@ angular-release:
     BUILD +angular-project --project=portmaster --dist=./dist --configuration=production --baseHref=/ui/modules/portmaster/
     BUILD +angular-project --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=production --baseHref=/
 
+assets:
+    FROM ${work_image}
+    RUN apk add zip
+
+    WORKDIR /app/assets
+    COPY --keep-ts ./assets/data .
+    RUN zip -r -9 -db assets.zip *
+
+    SAVE ARTIFACT --keep-ts "assets.zip" AS LOCAL "${outputDir}/all/assets.zip"
+
 # A base target for rust to prepare the build container
 rust-base:
     FROM ${rust_builder_image}
@@ -486,6 +496,7 @@ build:
     BUILD +go-release
     BUILD +angular-release
     BUILD +tauri-release
+    BUILD +assets
 
 release:
     LOCALLY
