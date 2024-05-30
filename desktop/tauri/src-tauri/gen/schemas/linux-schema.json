@@ -169,6 +169,13 @@
                       ]
                     },
                     {
+                      "description": "shell:allow-spawn -> Enables the spawn command without any pre-configured scope.",
+                      "type": "string",
+                      "enum": [
+                        "shell:allow-spawn"
+                      ]
+                    },
+                    {
                       "description": "shell:allow-stdin-write -> Enables the stdin_write command without any pre-configured scope.",
                       "type": "string",
                       "enum": [
@@ -194,6 +201,13 @@
                       "type": "string",
                       "enum": [
                         "shell:deny-open"
+                      ]
+                    },
+                    {
+                      "description": "shell:deny-spawn -> Denies the spawn command without any pre-configured scope.",
+                      "type": "string",
+                      "enum": [
+                        "shell:deny-spawn"
                       ]
                     },
                     {
@@ -629,6 +643,27 @@
           "type": "string",
           "enum": [
             "image:deny-size"
+          ]
+        },
+        {
+          "description": "log:default -> Allows the log command",
+          "type": "string",
+          "enum": [
+            "log:default"
+          ]
+        },
+        {
+          "description": "log:allow-log -> Enables the log command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "log:allow-log"
+          ]
+        },
+        {
+          "description": "log:deny-log -> Denies the log command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "log:deny-log"
           ]
         },
         {
@@ -1281,6 +1316,13 @@
           ]
         },
         {
+          "description": "shell:allow-spawn -> Enables the spawn command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "shell:allow-spawn"
+          ]
+        },
+        {
           "description": "shell:allow-stdin-write -> Enables the stdin_write command without any pre-configured scope.",
           "type": "string",
           "enum": [
@@ -1306,6 +1348,13 @@
           "type": "string",
           "enum": [
             "shell:deny-open"
+          ]
+        },
+        {
+          "description": "shell:deny-spawn -> Denies the spawn command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "shell:deny-spawn"
           ]
         },
         {

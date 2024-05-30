@@ -22,6 +22,7 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
         debug!("[tauri] creating main window");
 
         let res = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+            .title("Portmaster")
             .visible(false)
             .build();
 
@@ -79,7 +80,7 @@ pub fn create_splash_window(app: &AppHandle) -> Result<WebviewWindow> {
 
 pub fn close_splash_window(app: &AppHandle) -> Result<()> {
     if let Some(window) = app.get_webview_window("splash") {
-        return window.close();
+        return window.hide();
     }
     return Err(tauri::Error::WindowNotFound);
 }
