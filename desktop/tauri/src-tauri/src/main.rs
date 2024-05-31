@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::time::Duration;
+
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 use tauri_plugin_cli::CliExt;
 
@@ -23,6 +25,8 @@ use window::{close_splash_window, create_main_window};
 
 #[macro_use]
 extern crate lazy_static;
+
+const FALLBACK_TO_OLD_UI_EXIT_CODE: i32 = -3;
 
 #[derive(Clone, serde::Serialize)]
 struct Payload {
@@ -82,7 +86,34 @@ impl portmaster::Handler for WsHandler {
     }
 }
 
+fn show_webview_not_installed_dialog() -> i32 {
+    use rfd::MessageDialog;
+
+    let result = MessageDialog::new()
+        .set_title("Portmaster")
+        .set_description("Webkit is not installed. Please install it and run portmaster again")
+        .set_buttons(rfd::MessageButtons::OkCancelCustom(
+            "Go to install page".to_owned(),
+            "Use old UI".to_owned(),
+        ))
+        .show();
+    println!("{:?}", result);
+    if let rfd::MessageDialogResult::Custom(result) = result {
+        if result.eq("Go to install page") {
+            _ = open::that("https://wiki.safing.io/en/Portmaster/Install/Webview");
+            std::thread::sleep(Duration::from_secs(2));
+            return 0;
+        }
+    }
+
+    return FALLBACK_TO_OLD_UI_EXIT_CODE;
+}
+
 fn main() {
+    if let Err(_) = tauri::webview_version() {
+        std::process::exit(show_webview_not_installed_dialog());
+    }
+
     let app = tauri::Builder::default()
         // Shell plugin for open_external support
         .plugin(tauri_plugin_shell::init())
