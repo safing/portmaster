@@ -80,7 +80,8 @@ pub fn create_splash_window(app: &AppHandle) -> Result<WebviewWindow> {
 
 pub fn close_splash_window(app: &AppHandle) -> Result<()> {
     if let Some(window) = app.get_webview_window("splash") {
-        return window.hide();
+        let _ = window.hide();
+        return window.destroy();
     }
     return Err(tauri::Error::WindowNotFound);
 }
@@ -131,8 +132,7 @@ pub fn may_navigate_to_ui(win: &mut WebviewWindow, force: bool) {
 
         return;
     }
-
-    if force || cfg!(debug_assertions) || win.url().unwrap().as_str() == "tauri://localhost" {
+    if force || win.label().eq("main") {
         #[cfg(debug_assertions)]
         if let Ok(target_url) = std::env::var("TAURI_PM_URL") {
             debug!("[tauri] navigating to {}", target_url);

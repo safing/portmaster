@@ -76,7 +76,7 @@
     "windows": {
       "nsis": {
         "installMode": "perMachine",
-        "template": "templates/installer.nsi"
+        "installerHooks": "templates/nsis_install_hooks.nsh"
       },
       "wix": {
         "fragmentPaths": [

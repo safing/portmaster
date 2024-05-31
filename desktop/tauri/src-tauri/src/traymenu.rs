@@ -3,10 +3,11 @@ use std::sync::Mutex;
 use std::{collections::HashMap, sync::atomic::Ordering};
 
 use log::{debug, error};
+use tauri::tray::{MouseButton, MouseButtonState};
 use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItem, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
-    tray::{ClickType, TrayIcon, TrayIconBuilder},
+    tray::{TrayIcon, TrayIconBuilder},
     Wry,
 };
 
@@ -158,8 +159,20 @@ pub fn setup_tray_menu(
         })
         .on_tray_icon_event(|tray, event| {
             // not supported on linux
-            if event.click_type == ClickType::Left {
-                let _ = open_window(tray.app_handle());
+
+            if let tauri::tray::TrayIconEvent::Click {
+                id: _,
+                position: _,
+                rect: _,
+                button,
+                button_state,
+            } = event
+            {
+                if let MouseButton::Left = button {
+                    if let MouseButtonState::Down = button_state {
+                        let _ = open_window(tray.app_handle());
+                    }
+                }
             }
         })
         .build(app)?;

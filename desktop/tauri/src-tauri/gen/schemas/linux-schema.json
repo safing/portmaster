@@ -1869,6 +1869,13 @@
           ]
         },
         {
+          "description": "window:allow-monitor-from-point -> Enables the monitor_from_point command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "window:allow-monitor-from-point"
+          ]
+        },
+        {
           "description": "window:allow-outer-position -> Enables the outer_position command without any pre-configured scope.",
           "type": "string",
           "enum": [
@@ -2300,6 +2307,13 @@
           "type": "string",
           "enum": [
             "window:deny-minimize"
+          ]
+        },
+        {
+          "description": "window:deny-monitor-from-point -> Denies the monitor_from_point command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "window:deny-monitor-from-point"
           ]
         },
         {
