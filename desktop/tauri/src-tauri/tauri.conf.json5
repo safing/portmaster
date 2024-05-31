@@ -76,7 +76,8 @@
     "windows": {
       "nsis": {
         "installMode": "perMachine",
-        "installerHooks": "templates/nsis_install_hooks.nsh"
+        "installerHooks": "templates/nsis_install_hooks.nsh",
+        "installerIcon": "../../../assets/data/icons/pm_light.ico"
       },
       "wix": {
         "fragmentPaths": [
