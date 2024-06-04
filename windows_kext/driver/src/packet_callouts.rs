@@ -278,7 +278,7 @@ fn get_connection_info(
 ) -> Option<ConnectionInfo> {
     if ipv6 {
         let conn_info = connection_cache.read_connection_v6(
-            &key,
+            key,
             |conn: &ConnectionV6| -> Option<ConnectionInfo> {
                 // Function is is behind spin lock. Just copy and return.
                 Some(ConnectionInfo::from_connection(conn))
@@ -287,7 +287,7 @@ fn get_connection_info(
         return conn_info;
     } else {
         let conn_info = connection_cache.read_connection_v4(
-            &key,
+            key,
             |conn: &ConnectionV4| -> Option<ConnectionInfo> {
                 // Function is is behind spin lock. Just copy and return.
                 Some(ConnectionInfo::from_connection(conn))

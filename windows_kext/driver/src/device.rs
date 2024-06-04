@@ -46,9 +46,7 @@ impl Device {
                 Err(err) => return Err(alloc::format!("filter engine error: {}", err)),
             };
 
-        if let Err(err) = filter_engine.commit(callouts::get_callout_vec()) {
-            return Err(err);
-        }
+        filter_engine.commit(callouts::get_callout_vec())?;
 
         Ok(Self {
             filter_engine,

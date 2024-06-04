@@ -56,7 +56,7 @@ impl IdCache {
     }
 }
 
-fn get_payload<'a>(packet: &'a Packet) -> Option<&'a [u8]> {
+fn get_payload(packet: &Packet) -> Option<&[u8]> {
     match packet {
         Packet::PacketLayer(nbl, _) => nbl.get_data(),
         Packet::AleLayer(defer) => {
