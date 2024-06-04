@@ -287,21 +287,7 @@ fn save_packet(
     ale_data: &AleLayerData,
     pend: bool,
 ) -> Result<Packet, alloc::string::String> {
-    let mut packet_list = None;
-    let mut save_packet_list = true;
-    match ale_data.protocol {
-        IpProtocol::Tcp => {
-            if let Direction::Outbound = ale_data.direction {
-                // Only time a packet data is missing is during connect state of outbound TCP connection.
-                // Don't save packet list only if connection is outbound, reauthorize is false and the protocol is TCP.
-                save_packet_list = ale_data.reauthorize;
-            }
-        }
-        _ => {}
-    };
-    if save_packet_list {
-        packet_list = create_packet_list(device, callout_data, ale_data);
-    }
+    let packet_list = create_packet_list(device, callout_data, ale_data);
     if pend && matches!(ale_data.protocol, IpProtocol::Tcp | IpProtocol::Udp) {
         match callout_data.pend_operation(packet_list) {
             Ok(classify_defer) => Ok(Packet::AleLayer(classify_defer)),

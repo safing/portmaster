@@ -32,8 +32,13 @@ impl ClassifyDefer {
         unsafe {
             match self {
                 ClassifyDefer::Initial(context, packet_list) => {
-                    FwpsCompleteOperation0(context, core::ptr::null_mut());
-                    return Ok(packet_list);
+                    if let Some(packet) = packet_list {
+                        FwpsCompleteOperation0(context, packet.net_buffer_list.nbl as _);
+                        return Ok(Some(packet));
+                    } else {
+                        FwpsCompleteOperation0(context, core::ptr::null_mut());
+                    }
+                    return Ok(None);
                 }
                 ClassifyDefer::Reauthorization(_callout_id, packet_list) => {
                     // There is no way to reset single filter. If another request for filter reset is trigger at the same time it will fail.
