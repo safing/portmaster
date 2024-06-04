@@ -28,7 +28,7 @@ require (
 	github.com/miekg/dns v1.1.59
 	github.com/mitchellh/go-server-timing v1.0.1
 	github.com/mr-tron/base58 v1.2.0
-	github.com/oschwald/maxminddb-golang v1.12.0
+	github.com/oschwald/maxminddb-golang v1.13.0
 	github.com/r3labs/diff/v3 v3.0.1
 	github.com/rot256/pblind v0.0.0-20231024115251-cd3f239f28c1
 	github.com/safing/jess v0.3.3
@@ -37,7 +37,7 @@ require (
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.8.0
 	github.com/spkg/zipfs v0.7.1
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/tannerryan/ring v1.1.2
 	github.com/tc-hib/winres v0.3.1
 	github.com/tevino/abool v1.2.0
