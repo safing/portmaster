@@ -56,8 +56,6 @@ type archiveServer struct {
 	defaultModuleName string
 }
 
-func (bs *archiveServer) BelongsTo() *modules.Module { return module }
-
 func (bs *archiveServer) ReadPermission(*http.Request) api.Permission { return api.PermitAnyone }
 
 func (bs *archiveServer) WritePermission(*http.Request) api.Permission { return api.NotSupported }
