@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/profile"

@@ -3,7 +3,7 @@ package patrol
 import (
 	"time"
 
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/spn/conf"
 )
 

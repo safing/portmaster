@@ -7,10 +7,10 @@ import (
 
 	"github.com/safing/jess"
 	"github.com/safing/jess/lhash"
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/container"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/formats/dsd"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/network/netutils"
 )
 

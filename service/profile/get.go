@@ -8,11 +8,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
 )
 
 var getProfileLock sync.Mutex

@@ -8,9 +8,9 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/spn/access/account"
 	"github.com/safing/portmaster/spn/access/token"
 	"github.com/safing/portmaster/spn/conf"

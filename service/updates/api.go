@@ -10,9 +10,9 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 )
 
 const (

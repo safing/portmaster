@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/resolver"

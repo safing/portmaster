@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/updates"

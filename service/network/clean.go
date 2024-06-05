@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/network/state"
 	"github.com/safing/portmaster/service/process"

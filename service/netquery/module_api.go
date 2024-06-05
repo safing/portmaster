@@ -9,14 +9,14 @@ import (
 	"github.com/hashicorp/go-multierror"
 	servertiming "github.com/mitchellh/go-server-timing"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/modules/subsystems"
-	"github.com/safing/portbase/runtime"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/base/modules/subsystems"
+	"github.com/safing/portmaster/base/runtime"
 	"github.com/safing/portmaster/service/network"
 )
 

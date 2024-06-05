@@ -5,10 +5,10 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/dataroot"
-	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/modules"
 )
 
 // Default Values (changeable for testing).

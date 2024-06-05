@@ -3,7 +3,7 @@ package docks
 import (
 	"sync"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 )
 
 var (

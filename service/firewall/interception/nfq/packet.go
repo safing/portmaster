@@ -10,7 +10,7 @@ import (
 	"github.com/florianl/go-nfqueue"
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	pmpacket "github.com/safing/portmaster/service/network/packet"
 )
 

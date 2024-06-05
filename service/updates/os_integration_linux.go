@@ -15,9 +15,9 @@ import (
 	"github.com/tevino/abool"
 	"golang.org/x/exp/slices"
 
-	"github.com/safing/portbase/dataroot"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils/renameio"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils/renameio"
 )
 
 var (

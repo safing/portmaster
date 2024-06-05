@@ -3,7 +3,7 @@ package captain
 import (
 	"time"
 
-	"github.com/safing/portbase/container"
+	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/docks"

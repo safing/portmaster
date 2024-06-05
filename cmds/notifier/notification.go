@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	pbnotify "github.com/safing/portbase/notifications"
+	pbnotify "github.com/safing/portmaster/base/notifications"
 )
 
 // Notification represents a notification that is to be delivered to the user.

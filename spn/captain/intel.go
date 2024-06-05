@@ -6,8 +6,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/hub"

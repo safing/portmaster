@@ -17,13 +17,13 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/api/client"
-	"github.com/safing/portbase/dataroot"
-	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/updater"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/api/client"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 

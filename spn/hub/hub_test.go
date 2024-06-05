@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/modules"
 	_ "github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/core/pmtesting"
 )

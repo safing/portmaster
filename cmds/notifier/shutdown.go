@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/safing/portbase/api/client"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/api/client"
+	"github.com/safing/portmaster/base/log"
 )
 
 func startShutdownEventListener() {

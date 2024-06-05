@@ -3,7 +3,7 @@ package status
 import (
 	"sync"
 
-	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/service/netenv"
 )
 

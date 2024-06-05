@@ -10,10 +10,10 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/notifications"
-	"github.com/safing/portbase/utils/debug"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/base/utils/debug"
 	_ "github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/service/netenv"

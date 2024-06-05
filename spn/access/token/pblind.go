@@ -13,8 +13,8 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/rot256/pblind"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portmaster/base/container"
+	"github.com/safing/portmaster/base/formats/dsd"
 )
 
 const pblindSecretSize = 32

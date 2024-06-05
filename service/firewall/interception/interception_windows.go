@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	kext1 "github.com/safing/portmaster/service/firewall/interception/windowskext"
 	kext2 "github.com/safing/portmaster/service/firewall/interception/windowskext2"
 	"github.com/safing/portmaster/service/network"

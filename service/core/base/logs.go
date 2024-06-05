@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/safing/portbase/dataroot"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
 )
 
 const (

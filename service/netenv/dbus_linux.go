@@ -10,7 +10,7 @@ import (
 
 	"github.com/godbus/dbus/v5"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 )
 
 var (

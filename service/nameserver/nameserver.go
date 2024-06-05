@@ -10,7 +10,7 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/firewall"
 	"github.com/safing/portmaster/service/nameserver/nsutil"
 	"github.com/safing/portmaster/service/netenv"

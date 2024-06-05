@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/sys/unix"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -g -Wall -Werror" bpf ../programs/exec.c

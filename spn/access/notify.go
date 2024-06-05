@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
 )
 
 const (

@@ -1,7 +1,7 @@
 package intel
 
 import (
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/modules"
 	_ "github.com/safing/portmaster/service/intel/customlists"
 )
 

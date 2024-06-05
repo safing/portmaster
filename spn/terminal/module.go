@@ -4,8 +4,8 @@ import (
 	"flag"
 	"time"
 
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/unit"
 )

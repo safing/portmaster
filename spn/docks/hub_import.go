@@ -6,7 +6,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/ships"

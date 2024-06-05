@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/iterator"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/database/storage"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/iterator"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/database/storage"
 	"github.com/safing/portmaster/service/process"
 )
 

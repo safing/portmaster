@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/state"
 	"github.com/safing/portmaster/service/profile"

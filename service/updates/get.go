@@ -3,7 +3,7 @@ package updates
 import (
 	"path"
 
-	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 

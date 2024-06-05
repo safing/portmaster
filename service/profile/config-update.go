@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/profile/endpoints"
 )

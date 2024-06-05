@@ -7,7 +7,7 @@ import (
 
 	"github.com/umahmood/haversine"
 
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/utils"
 )
 
 const (

@@ -10,11 +10,11 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/base/updater"
 )
 
 var updateInProgress = abool.New()

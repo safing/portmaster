@@ -3,7 +3,7 @@ package process
 import (
 	"os"
 
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/updates"
 )
 

@@ -3,8 +3,8 @@ package geoip
 import (
 	"context"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/updates"
 )
 

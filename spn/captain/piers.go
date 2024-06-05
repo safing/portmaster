@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/profile/endpoints"

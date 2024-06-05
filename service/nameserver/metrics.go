@@ -1,9 +1,9 @@
 package nameserver
 
 import (
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/metrics"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/metrics"
 )
 
 var (

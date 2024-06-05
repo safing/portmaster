@@ -7,10 +7,10 @@ import (
 
 	"github.com/hashicorp/go-version"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/migration"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/migration"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/profile/binmeta"
 )
 

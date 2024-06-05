@@ -11,8 +11,8 @@ import (
 
 	"fyne.io/systray"
 
-	"github.com/safing/portbase/log"
 	icons "github.com/safing/portmaster/assets"
+	"github.com/safing/portmaster/base/log"
 )
 
 const (

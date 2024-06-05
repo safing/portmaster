@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'Portmaster'
+    folder: 'Portmaster'
+    disableDeletion: true
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /dashboards
+      foldersFromFilesStructure: true

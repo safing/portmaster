@@ -3,7 +3,7 @@ package token
 import (
 	"testing"
 
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/core/pmtesting"
 )
 

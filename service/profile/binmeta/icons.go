@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/safing/portbase/api"
+	"github.com/safing/portmaster/base/api"
 )
 
 // ProfileIconStoragePath defines the location where profile icons are stored.

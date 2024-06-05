@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/utils/debug"
+	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/base/utils/debug"
 	"github.com/safing/portmaster/service/netenv"
 )
 

@@ -1,7 +1,7 @@
 package compat
 
 import (
-	"github.com/safing/portbase/api"
+	"github.com/safing/portmaster/base/api"
 )
 
 func registerAPIEndpoints() error {

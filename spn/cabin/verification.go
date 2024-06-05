@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/safing/jess"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/formats/dsd"
+	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/spn/hub"
 )
 

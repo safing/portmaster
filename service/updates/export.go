@@ -7,11 +7,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/updater"
-	"github.com/safing/portbase/utils/debug"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/base/utils/debug"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 

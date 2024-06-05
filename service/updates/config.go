@@ -5,8 +5,8 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 

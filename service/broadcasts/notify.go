@@ -12,12 +12,12 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/accessor"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/accessor"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/updates"
 )
 

@@ -9,7 +9,7 @@ import (
 	"github.com/tevino/abool"
 
 	"github.com/safing/jess/lhash"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/access/token"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/terminal"

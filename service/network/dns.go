@@ -10,7 +10,7 @@ import (
 	"github.com/miekg/dns"
 	"golang.org/x/exp/slices"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/nameserver/nsutil"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/process"

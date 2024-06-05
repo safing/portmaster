@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/accessor"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/accessor"
 )
 
 func registerAPIEndpoints() error {

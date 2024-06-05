@@ -12,8 +12,8 @@ import (
 
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/modules"
 )
 
 var module *modules.Module

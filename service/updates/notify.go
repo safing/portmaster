@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/notifications"
 )
 
 const (

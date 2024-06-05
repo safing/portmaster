@@ -14,13 +14,13 @@ import (
 	processInfo "github.com/shirou/gopsutil/process"
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/dataroot"
-	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/notifications"
-	"github.com/safing/portbase/rng"
-	"github.com/safing/portbase/updater"
-	"github.com/safing/portbase/utils/renameio"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/base/utils/renameio"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 

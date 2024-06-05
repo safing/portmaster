@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/varint"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/container"
+	"github.com/safing/portmaster/base/formats/varint"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/spn/terminal"
 )
 

@@ -7,7 +7,7 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/container"
+	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/terminal"
 )

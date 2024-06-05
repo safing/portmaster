@@ -12,8 +12,8 @@ import (
 	"github.com/miekg/dns"
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/netenv"
 )
 

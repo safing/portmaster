@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/spn/navigator"

@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/profile"
 )

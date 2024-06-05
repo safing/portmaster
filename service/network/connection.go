@@ -11,9 +11,9 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/netutils"

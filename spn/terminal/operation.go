@@ -8,9 +8,9 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/container"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 )
 
 // Operation is an interface for all operations.

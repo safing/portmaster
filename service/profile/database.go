@@ -5,11 +5,11 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
 )
 
 // Database paths:

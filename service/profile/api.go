@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/formats/dsd"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/profile/binmeta"
 )
 

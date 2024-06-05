@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/safing/portbase/container"
+	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/spn/unit"
 )
 

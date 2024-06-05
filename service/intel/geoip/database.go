@@ -8,8 +8,8 @@ import (
 
 	maxminddb "github.com/oschwald/maxminddb-golang"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/updates"
 )
 

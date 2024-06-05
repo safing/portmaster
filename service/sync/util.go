@@ -9,9 +9,9 @@ import (
 	yaml "gopkg.in/yaml.v3"
 
 	"github.com/safing/jess/filesig"
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/container"
+	"github.com/safing/portmaster/base/formats/dsd"
 )
 
 // Type is the type of an export.

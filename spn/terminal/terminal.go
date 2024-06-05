@@ -9,10 +9,10 @@ import (
 	"github.com/tevino/abool"
 
 	"github.com/safing/jess"
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/container"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/conf"
 )

@@ -1,10 +1,10 @@
 package base
 
 import (
-	_ "github.com/safing/portbase/config"
-	_ "github.com/safing/portbase/metrics"
-	"github.com/safing/portbase/modules"
-	_ "github.com/safing/portbase/rng"
+	_ "github.com/safing/portmaster/base/config"
+	_ "github.com/safing/portmaster/base/metrics"
+	"github.com/safing/portmaster/base/modules"
+	_ "github.com/safing/portmaster/base/rng"
 )
 
 var module *modules.Module

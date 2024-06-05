@@ -9,7 +9,7 @@ import (
 
 	"zombiezen.com/go/sqlite"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 )
 
 var errSkipStructField = errors.New("struct field should be skipped")

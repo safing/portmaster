@@ -10,7 +10,7 @@ import (
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/firewall/interception/nfq"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/packet"

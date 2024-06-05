@@ -3,9 +3,9 @@ package captain
 import (
 	"time"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/varint"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/container"
+	"github.com/safing/portmaster/base/formats/varint"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/docks"
 	"github.com/safing/portmaster/spn/hub"

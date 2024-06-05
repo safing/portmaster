@@ -6,15 +6,15 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/metrics"
-	"github.com/safing/portbase/run"
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/metrics"
+	"github.com/safing/portmaster/base/run"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/conf"
 
 	// Include packages here.
-	_ "github.com/safing/portbase/modules/subsystems"
+	_ "github.com/safing/portmaster/base/modules/subsystems"
 	_ "github.com/safing/portmaster/service/core"
 	_ "github.com/safing/portmaster/service/firewall"
 	_ "github.com/safing/portmaster/service/nameserver"

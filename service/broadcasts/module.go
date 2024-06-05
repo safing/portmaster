@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/modules"
 )
 
 var (

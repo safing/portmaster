@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/safing/portbase/api"
+	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/service/profile"
 )
 

@@ -73,5 +73,5 @@ echo "This information is useful for debugging and license compliance."
 echo "Run the compiled binary with the -version flag to see the information included."
 
 # build
-BUILD_PATH="github.com/safing/portbase/info"
+BUILD_PATH="github.com/safing/portmaster/base/info"
 go build -ldflags "$EXTRA_LD_FLAGS -X ${BUILD_PATH}.commit=${BUILD_COMMIT} -X ${BUILD_PATH}.buildOptions=${BUILD_BUILDOPTIONS} -X ${BUILD_PATH}.buildUser=${BUILD_USER} -X ${BUILD_PATH}.buildHost=${BUILD_HOST} -X ${BUILD_PATH}.buildDate=${BUILD_DATE} -X ${BUILD_PATH}.buildSource=${BUILD_SOURCE}" "$@"

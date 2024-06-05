@@ -13,11 +13,10 @@ import (
 
 	"github.com/spkg/zipfs"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/updater"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/updates"
 )
 

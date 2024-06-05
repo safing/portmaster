@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/base/rng"
 	_ "github.com/safing/portmaster/spn/access"
 )
 

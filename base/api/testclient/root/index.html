@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<!-- <script src="https://cdn.jsdelivr.net/sockjs/1/sockjs.min.js"></script> -->
+</head>
+<body>
+	<script type="text/javascript">
+
+		var ws = new WebSocket('ws://127.0.0.1:18/api/database/v1')
+
+		ws.onopen = function () {
+	    console.log('open');
+		};
+
+		ws.onerror = function (error) {
+			console.log('error');
+		  console.log(error);
+		};
+
+		ws.onmessage = function (e) {
+			reader = new FileReader()
+			reader.onload = function(e) {
+				console.log(e.target.result)
+      }
+			reader.readAsText(e.data)
+		};
+
+		function send(text) {
+			ws.send(text)
+		}
+
+		// var sock = new SockJS("http://localhost:8080/api/v1");
+		//
+		// sock.onopen = function() {
+		//     console.log('open');
+		// };
+		//
+		// sock.onmessage = function(e) {
+		//     console.log('message received: ', e.data);
+		// };
+		//
+		// sock.onclose = function(e) {
+		//     console.log('close', e);
+		// };
+	</script>
+	yeeee
+</body>
+</html>

@@ -10,10 +10,10 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/modules/subsystems"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/base/modules/subsystems"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/compat"
 	"github.com/safing/portmaster/service/firewall"
 	"github.com/safing/portmaster/service/netenv"

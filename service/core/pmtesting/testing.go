@@ -23,10 +23,10 @@ import (
 	"runtime/pprof"
 	"testing"
 
-	_ "github.com/safing/portbase/database/storage/hashmap"
-	"github.com/safing/portbase/dataroot"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	_ "github.com/safing/portmaster/base/database/storage/hashmap"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/core/base"
 )
 

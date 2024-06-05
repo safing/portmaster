@@ -12,7 +12,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/compat"
 	_ "github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/firewall/inspection"

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/runtime"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/runtime"
 )
 
 const (

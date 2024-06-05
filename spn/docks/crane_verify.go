@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/varint"
+	"github.com/safing/portmaster/base/container"
+	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/terminal"
 )

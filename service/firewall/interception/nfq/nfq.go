@@ -14,7 +14,7 @@ import (
 	"github.com/tevino/abool"
 	"golang.org/x/sys/unix"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	pmpacket "github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/process"
 )
