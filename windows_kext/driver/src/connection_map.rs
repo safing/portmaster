@@ -111,7 +111,7 @@ impl<T: Connection + Clone> ConnectionMap<T> {
 
     pub fn end(&mut self, key: Key) -> Option<T> {
         if let Some(connections) = self.0.get_mut(&key.small()) {
-            for (_, conn) in connections.iter_mut().enumerate() {
+            for conn in connections.iter_mut() {
                 if conn.remote_equals(&key) {
                     conn.end(wdk::utils::get_system_timestamp_ms());
                     return Some(conn.clone());
@@ -124,7 +124,7 @@ impl<T: Connection + Clone> ConnectionMap<T> {
     pub fn end_all_on_port(&mut self, key: (IpProtocol, u16)) -> Option<Vec<T>> {
         if let Some(connections) = self.0.get_mut(&key) {
             let mut vec = Vec::with_capacity(connections.len());
-            for (_, conn) in connections.iter_mut().enumerate() {
+            for conn in connections.iter_mut() {
                 if !conn.has_ended() {
                     conn.end(wdk::utils::get_system_timestamp_ms());
                     vec.push(conn.clone());

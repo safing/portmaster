@@ -59,7 +59,7 @@ impl ConnectionCache {
         process_connection: fn(&ConnectionV4) -> Option<T>,
     ) -> Option<T> {
         let _guard = self.lock_v4.read_lock();
-        self.connections_v4.read(&key, process_connection)
+        self.connections_v4.read(key, process_connection)
     }
 
     pub fn read_connection_v6<T>(
@@ -68,7 +68,7 @@ impl ConnectionCache {
         process_connection: fn(&ConnectionV6) -> Option<T>,
     ) -> Option<T> {
         let _guard = self.lock_v6.read_lock();
-        self.connections_v6.read(&key, process_connection)
+        self.connections_v6.read(key, process_connection)
     }
 
     pub fn end_connection_v4(&mut self, key: Key) -> Option<ConnectionV4> {

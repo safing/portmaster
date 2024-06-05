@@ -13,7 +13,6 @@ use crate::connection_cache::ConnectionCache;
 use crate::connection_map::Key;
 use crate::device::{Device, Packet};
 use crate::packet_util::{get_key_from_nbl_v4, get_key_from_nbl_v6, Redirect};
-use crate::{err, warn};
 
 // IP packet layers
 pub fn ip_packet_layer_outbound_v4(data: CalloutData) {
@@ -141,7 +140,7 @@ fn ip_packet_layer(
         } {
             Ok(key) => key,
             Err(err) => {
-                warn!("failed to get key from nbl: {}", err);
+                crate::warn!("failed to get key from nbl: {}", err);
                 return;
             }
         };
@@ -151,7 +150,7 @@ fn ip_packet_layer(
             return;
         }
 
-        let mut is_tmp_verdict = false;
+        let mut send_request_to_portmaster = true;
         let mut process_id = 0;
 
         if matches!(
@@ -164,13 +163,17 @@ fn ip_packet_layer(
                 process_id = conn_info.process_id;
                 // Check if there is action for this connection.
                 match conn_info.verdict {
-                    Verdict::Undecided | Verdict::Accept | Verdict::Block | Verdict::Drop => {
-                        is_tmp_verdict = true
+                    Verdict::Undecided | Verdict::Accept | Verdict::Block | Verdict::Drop => {}
+                    Verdict::PermanentAccept => {
+                        send_request_to_portmaster = false;
+                        data.action_permit();
                     }
-                    Verdict::PermanentAccept => data.action_permit(),
-                    Verdict::PermanentBlock => data.action_block(),
+                    Verdict::PermanentBlock => {
+                        send_request_to_portmaster = false;
+                        data.action_block();
+                    }
                     Verdict::Undeterminable | Verdict::PermanentDrop | Verdict::Failed => {
-                        data.block_and_absorb()
+                        data.block_and_absorb();
                     }
                     Verdict::RedirectNameServer | Verdict::RedirectTunnel => {
                         if let Some(redirect_info) = conn_info.redirect_info.take() {
@@ -186,10 +189,10 @@ fn ip_packet_layer(
                                 Ok(mut packet) => {
                                     let _ = packet.redirect(redirect_info);
                                     if let Err(err) = device.inject_packet(packet, false) {
-                                        err!("failed to inject packet: {}", err);
+                                        crate::err!("failed to inject packet: {}", err);
                                     }
                                 }
-                                Err(err) => err!("failed to clone packet: {}", err),
+                                Err(err) => crate::err!("failed to clone packet: {}", err),
                             }
                         }
 
@@ -199,24 +202,20 @@ fn ip_packet_layer(
                     }
                 }
             } else {
-                // TCP and UDP always need to go through ALE layer first.
-                if matches!(direction, Direction::Inbound) {
-                    // If it's an inbound packet and the connection is not found, we need to continue to ALE layer
-                    data.action_permit();
-                    return;
+                // Connections is not in the cache.
+                crate::dbg!("packet layer adding connection: {} PID: 0", key);
+                if ipv6 {
+                    let conn = ConnectionV6::from_key(&key, 0, direction).unwrap();
+                    device.connection_cache.add_connection_v6(conn);
                 } else {
-                    // This happens sometimes. Leave the decision for portmaster. TODO(vladimir): Find out why.
-                    err!("Invalid state for: {}", key);
-                    is_tmp_verdict = true;
+                    let conn = ConnectionV4::from_key(&key, 0, direction).unwrap();
+                    device.connection_cache.add_connection_v4(conn);
                 }
             }
-        } else {
-            // Every other protocol treat as a tmp verdict.
-            is_tmp_verdict = true;
         }
 
-        // Clone packet and send to Portmaster if it's a temporary verdict.
-        if is_tmp_verdict {
+        // Clone packet and send to Portmaster.
+        if send_request_to_portmaster {
             let packet = match clone_packet(
                 device,
                 nbl,
@@ -228,7 +227,7 @@ fn ip_packet_layer(
             ) {
                 Ok(p) => p,
                 Err(err) => {
-                    err!("failed to clone packet: {}", err);
+                    crate::err!("failed to clone packet: {}", err);
                     return;
                 }
             };
@@ -236,6 +235,7 @@ fn ip_packet_layer(
             let info = device
                 .packet_cache
                 .push((key, packet), process_id, direction, false);
+
             // Send to Portmaster
             if let Some(info) = info {
                 let _ = device.event_queue.push(info);
@@ -278,7 +278,7 @@ fn get_connection_info(
 ) -> Option<ConnectionInfo> {
     if ipv6 {
         let conn_info = connection_cache.read_connection_v6(
-            &key,
+            key,
             |conn: &ConnectionV6| -> Option<ConnectionInfo> {
                 // Function is is behind spin lock. Just copy and return.
                 Some(ConnectionInfo::from_connection(conn))
@@ -287,7 +287,7 @@ fn get_connection_info(
         return conn_info;
     } else {
         let conn_info = connection_cache.read_connection_v4(
-            &key,
+            key,
             |conn: &ConnectionV4| -> Option<ConnectionInfo> {
                 // Function is is behind spin lock. Just copy and return.
                 Some(ConnectionInfo::from_connection(conn))

@@ -21,15 +21,6 @@ pub fn get_callout_vec() -> Vec<Callout> {
             ale_callouts::ale_layer_connect_v4,
         ),
         Callout::new(
-            "AleLayerInboundV4",
-            "ALE layer for inbound connections for ipv4",
-            0xc6021395_0724_4e2c_ae20_3dde51fc3c68,
-            Layer::AleAuthRecvAcceptV4,
-            consts::FWP_ACTION_CALLOUT_TERMINATING,
-            FilterType::Resettable,
-            ale_callouts::ale_layer_accept_v4,
-        ),
-        Callout::new(
             "AleLayerOutboundV6",
             "ALE layer for outbound connections for ipv6",
             0x4bd2a080_2585_478d_977c_7f340c6bc3d4,
@@ -37,15 +28,6 @@ pub fn get_callout_vec() -> Vec<Callout> {
             consts::FWP_ACTION_CALLOUT_TERMINATING,
             FilterType::Resettable,
             ale_callouts::ale_layer_connect_v6,
-        ),
-        Callout::new(
-            "AleLayerInboundV6",
-            "ALE layer for inbound connections for ipv6",
-            0xd24480da_38fa_4099_9383_b5c83b69e4f2,
-            Layer::AleAuthRecvAcceptV6,
-            consts::FWP_ACTION_CALLOUT_TERMINATING,
-            FilterType::Resettable,
-            ale_callouts::ale_layer_accept_v6,
         ),
         // -----------------------------------------
         // ALE connection end layers

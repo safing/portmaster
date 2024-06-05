@@ -56,7 +56,7 @@ impl IdCache {
     }
 }
 
-fn get_payload<'a>(packet: &'a Packet) -> Option<&'a [u8]> {
+fn get_payload(packet: &Packet) -> Option<&[u8]> {
     match packet {
         Packet::PacketLayer(nbl, _) => nbl.get_data(),
         Packet::AleLayer(defer) => {
@@ -65,7 +65,7 @@ fn get_payload<'a>(packet: &'a Packet) -> Option<&'a [u8]> {
                 wdk::filter_engine::callout_data::ClassifyDefer::Reauthorization(_, p) => p,
             };
             if let Some(tpl) = p {
-                tpl.net_buffer_list_queue.get_data()
+                tpl.net_buffer_list.get_data()
             } else {
                 None
             }

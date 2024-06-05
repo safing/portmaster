@@ -24,7 +24,7 @@ use super::{callout_data::CalloutData, net_buffer::NetBufferList};
 
 pub struct TransportPacketList {
     ipv6: bool,
-    pub net_buffer_list_queue: NetBufferList,
+    pub net_buffer_list: NetBufferList,
     remote_ip: [u8; 16],
     endpoint_handle: u64,
     remote_scope_id: SCOPE_ID,
@@ -112,7 +112,7 @@ impl Injector {
 
         TransportPacketList {
             ipv6,
-            net_buffer_list_queue: net_buffer_list,
+            net_buffer_list,
             remote_ip,
             endpoint_handle: callout_data.get_transport_endpoint_handle().unwrap_or(0),
             remote_scope_id: callout_data
@@ -153,7 +153,7 @@ impl Injector {
             };
             let address_family = if packet_list.ipv6 { AF_INET6 } else { AF_INET };
 
-            let net_buffer_list = packet_list.net_buffer_list_queue;
+            let net_buffer_list = packet_list.net_buffer_list;
             // Escape the stack. Packet buffer should be valid until the packet is injected.
             let boxed_nbl = Box::new(net_buffer_list);
             let raw_nbl = boxed_nbl.nbl;
@@ -338,6 +338,8 @@ unsafe extern "C" fn free_packet(
     if let Some(nbl) = net_buffer_list.as_ref() {
         if let Err(err) = check_ntstatus(nbl.Status) {
             crate::err!("inject status: {}", err);
+        } else {
+            crate::dbg!("inject status: Ok");
         }
     }
     _ = Box::from_raw(context as *mut NetBufferList);

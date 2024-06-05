@@ -7,10 +7,7 @@ use smoltcp::wire::{
     IpAddress, IpProtocol, Ipv4Address, Ipv6Address, IPV4_HEADER_LEN, IPV6_HEADER_LEN,
 };
 use wdk::filter_engine::callout_data::CalloutData;
-use wdk::filter_engine::layer::{
-    self, FieldsAleAuthConnectV4, FieldsAleAuthConnectV6, FieldsAleAuthRecvAcceptV4,
-    FieldsAleAuthRecvAcceptV6, ValueType,
-};
+use wdk::filter_engine::layer::{self, FieldsAleAuthConnectV4, FieldsAleAuthConnectV6, ValueType};
 use wdk::filter_engine::net_buffer::NetBufferList;
 use wdk::filter_engine::packet::{Injector, TransportPacketList};
 
@@ -87,24 +84,6 @@ pub fn ale_layer_connect_v4(data: CalloutData) {
     ale_layer_auth(data, ale_data);
 }
 
-pub fn ale_layer_accept_v4(data: CalloutData) {
-    type Fields = FieldsAleAuthRecvAcceptV4;
-    let ale_data = AleLayerData {
-        is_ipv6: false,
-        reauthorize: data.is_reauthorize(Fields::Flags as usize),
-        process_id: data.get_process_id().unwrap_or(0),
-        protocol: get_protocol(&data, Fields::IpProtocol as usize),
-        direction: Direction::Inbound,
-        local_ip: get_ipv4_address(&data, Fields::IpLocalAddress as usize),
-        local_port: data.get_value_u16(Fields::IpLocalPort as usize),
-        remote_ip: get_ipv4_address(&data, Fields::IpRemoteAddress as usize),
-        remote_port: data.get_value_u16(Fields::IpRemotePort as usize),
-        interface_index: data.get_value_u32(Fields::InterfaceIndex as usize),
-        sub_interface_index: data.get_value_u32(Fields::SubInterfaceIndex as usize),
-    };
-    ale_layer_auth(data, ale_data);
-}
-
 pub fn ale_layer_connect_v6(data: CalloutData) {
     type Fields = FieldsAleAuthConnectV6;
 
@@ -122,24 +101,6 @@ pub fn ale_layer_connect_v6(data: CalloutData) {
         sub_interface_index: data.get_value_u32(Fields::SubInterfaceIndex as usize),
     };
 
-    ale_layer_auth(data, ale_data);
-}
-
-pub fn ale_layer_accept_v6(data: CalloutData) {
-    type Fields = FieldsAleAuthRecvAcceptV6;
-    let ale_data = AleLayerData {
-        is_ipv6: true,
-        reauthorize: data.is_reauthorize(Fields::Flags as usize),
-        process_id: data.get_process_id().unwrap_or(0),
-        protocol: get_protocol(&data, Fields::IpProtocol as usize),
-        direction: Direction::Inbound,
-        local_ip: get_ipv6_address(&data, Fields::IpLocalAddress as usize),
-        local_port: data.get_value_u16(Fields::IpLocalPort as usize),
-        remote_ip: get_ipv6_address(&data, Fields::IpRemoteAddress as usize),
-        remote_port: data.get_value_u16(Fields::IpRemotePort as usize),
-        interface_index: data.get_value_u32(Fields::InterfaceIndex as usize),
-        sub_interface_index: data.get_value_u32(Fields::SubInterfaceIndex as usize),
-    };
     ale_layer_auth(data, ale_data);
 }
 
@@ -265,7 +226,7 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
         };
 
         // Connection is not in cache, add it.
-        crate::dbg!("adding connection: {} PID: {}", key, ale_data.process_id);
+        crate::dbg!("ale layer adding connection: {} PID: {}", key, ale_data.process_id);
         if ale_data.is_ipv6 {
             let conn =
                 ConnectionV6::from_key(&key, ale_data.process_id, ale_data.direction).unwrap();
@@ -289,15 +250,12 @@ fn save_packet(
 ) -> Result<Packet, alloc::string::String> {
     let mut packet_list = None;
     let mut save_packet_list = true;
-    match ale_data.protocol {
-        IpProtocol::Tcp => {
-            if let Direction::Outbound = ale_data.direction {
-                // Only time a packet data is missing is during connect state of outbound TCP connection.
-                // Don't save packet list only if connection is outbound, reauthorize is false and the protocol is TCP.
-                save_packet_list = ale_data.reauthorize;
-            }
+    if ale_data.protocol == IpProtocol::Tcp {
+        if let Direction::Outbound = ale_data.direction {
+            // Only time a packet data is missing is during connect state of outbound TCP connection.
+            // Don't save packet list only if connection is outbound, reauthorize is false and the protocol is TCP.
+            save_packet_list = ale_data.reauthorize;
         }
-        _ => {}
     };
     if save_packet_list {
         packet_list = create_packet_list(device, callout_data, ale_data);
