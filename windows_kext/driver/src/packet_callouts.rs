@@ -201,6 +201,16 @@ fn ip_packet_layer(
                         continue;
                     }
                 }
+            } else {
+                // Connections is not in the cache.
+                crate::dbg!("packet layer adding connection: {} PID: 0", key);
+                if ipv6 {
+                    let conn = ConnectionV6::from_key(&key, 0, direction).unwrap();
+                    device.connection_cache.add_connection_v6(conn);
+                } else {
+                    let conn = ConnectionV4::from_key(&key, 0, direction).unwrap();
+                    device.connection_cache.add_connection_v4(conn);
+                }
             }
         }
 

@@ -226,7 +226,7 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
         };
 
         // Connection is not in cache, add it.
-        crate::dbg!("adding connection: {} PID: {}", key, ale_data.process_id);
+        crate::dbg!("ale layer adding connection: {} PID: {}", key, ale_data.process_id);
         if ale_data.is_ipv6 {
             let conn =
                 ConnectionV6::from_key(&key, ale_data.process_id, ale_data.direction).unwrap();
@@ -250,15 +250,12 @@ fn save_packet(
 ) -> Result<Packet, alloc::string::String> {
     let mut packet_list = None;
     let mut save_packet_list = true;
-    match ale_data.protocol {
-        IpProtocol::Tcp => {
-            if let Direction::Outbound = ale_data.direction {
-                // Only time a packet data is missing is during connect state of outbound TCP connection.
-                // Don't save packet list only if connection is outbound, reauthorize is false and the protocol is TCP.
-                save_packet_list = ale_data.reauthorize;
-            }
+    if ale_data.protocol == IpProtocol::Tcp {
+        if let Direction::Outbound = ale_data.direction {
+            // Only time a packet data is missing is during connect state of outbound TCP connection.
+            // Don't save packet list only if connection is outbound, reauthorize is false and the protocol is TCP.
+            save_packet_list = ale_data.reauthorize;
         }
-        _ => {}
     };
     if save_packet_list {
         packet_list = create_packet_list(device, callout_data, ale_data);

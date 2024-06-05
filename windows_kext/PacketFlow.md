@@ -26,12 +26,11 @@ For outgoing connections this logic fallows:
   - If Packet is not TCP/UDP forward to packet layer
 
 For incoming connection this logic fallow:
-  - Packet enter in one of the Packet layer, if packet is TCP or UDP it will be forwarded to ALE layer. From there:
+  - Packet enter in one of the Packet layer:
     1. Save packet and absorb.
     2. Send an event to Portmaster. 
-    2. Create a cache entry.
+    2. Create a cache entry if the protocol is TCP or UDP.
     3. Wait for Portmasters decision.
-  - If Packet is not TCP/UDP. It will be handled only by the packet layer. 
 
 
 If more packets arrive before Portmaster returns a decision, packet will be absorbed and another event will be sent.
@@ -49,7 +48,9 @@ The next steps depend of the direction of the packet and the verdict
   - Always Allow - this connections are solely handled by the packet layer. (This is true only for outgoing connections) 
 
 * Permanent or Temporary Verdict / Incoming connection
-  - Allow / Block / Drop directly in the ALE layer. They always go through the packet layer first no need to do anything special
+  - Allow / Block / Drop. Handled by the Packet layer
+
+> There is no defined ALE layers for inbound connection. Inbound packets are handed compactly by the packet layer 
 
 Fallowing specifics apply to the ALE layer:  
 1. Connections with flag `reauthorize == false` are special. When the flag is `false` that means that a applications is calling a function `connect()` or `accept()` for a connection. This is a special case because we control the result of the function, telling the application that it's allowed or not allowed to continue with the connection. Since we are making request to Portmaster we need to take longer time. This is done with pending the packet. This allows the kernel extension to pause the event and continue when it has the verdict. See `ale_callouts.rs -> save_packet()` function.
