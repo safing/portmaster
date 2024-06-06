@@ -35,19 +35,22 @@ func start() error {
 	return nil
 }
 
-// UI module the user interface files.
+// UI serves the user interface files.
 type UI struct {
+	mgr *mgr.Manager
+
 	instance instance
 }
 
 // Start starts the module.
-func (ui *UI) Start(_ *mgr.Manager) error {
+func (ui *UI) Start(m *mgr.Manager) error {
+	ui.mgr = m
 	return start()
 }
 
 // Stop stops the module.
 func (ui *UI) Stop(_ *mgr.Manager) error {
-	return start()
+	return stop()
 }
 
 var (

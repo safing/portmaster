@@ -34,7 +34,7 @@ func signalChanges() {
 	validityFlag = abool.NewBool(true)
 	validityFlagLock.Unlock()
 
-	module.TriggerEvent(ChangeEvent, nil)
+	module.EventConfigChange.Submit(struct{}{})
 }
 
 // ValidateConfig validates the given configuration and returns all validation

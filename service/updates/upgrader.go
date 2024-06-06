@@ -21,6 +21,7 @@ import (
 	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/base/utils/renameio"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 
@@ -41,23 +42,19 @@ var (
 )
 
 func initUpgrader() error {
-	return module.RegisterEventHook(
-		ModuleName,
-		ResourceUpdateEvent,
-		"run upgrades",
-		upgrader,
-	)
+	module.EventResourcesUpdated.AddCallback("run upgrades", upgrader)
+	return nil
 }
 
-func upgrader(_ context.Context, _ interface{}) error {
+func upgrader(m *mgr.WorkerCtx, _ struct{}) (cancel bool, err error) {
 	// Lock runs, but discard additional runs.
 	if !upgraderActive.SetToIf(false, true) {
-		return nil
+		return false, nil
 	}
 	defer upgraderActive.SetTo(false)
 
 	// Upgrade portmaster-start.
-	err := upgradePortmasterStart()
+	err = upgradePortmasterStart()
 	if err != nil {
 		log.Warningf("updates: failed to upgrade portmaster-start: %s", err)
 	}
@@ -86,7 +83,7 @@ func upgrader(_ context.Context, _ interface{}) error {
 		}
 	}
 
-	return nil
+	return false, nil
 }
 
 func upgradeCoreNotify() error {

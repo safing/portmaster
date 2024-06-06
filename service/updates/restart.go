@@ -1,7 +1,6 @@
 package updates
 
 import (
-	"context"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -9,8 +8,9 @@ import (
 
 	"github.com/tevino/abool"
 
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 const (
@@ -94,7 +94,7 @@ func RestartNow() {
 	restartTask.StartASAP()
 }
 
-func automaticRestart(_ context.Context, _ *modules.Task) error {
+func automaticRestart(w *mgr.WorkerCtx) error {
 	// Check if the restart is still scheduled.
 	if restartPending.IsNotSet() {
 		return nil
@@ -116,11 +116,10 @@ func automaticRestart(_ context.Context, _ *modules.Task) error {
 
 		// Set restart exit code.
 		if !rebooting {
-			modules.SetExitStatusCode(RestartExitCode)
+			module.shutdownFunc(RestartExitCode)
+		} else {
+			module.shutdownFunc(0)
 		}
-
-		// Do not use a worker, as this would block itself here.
-		go modules.Shutdown() //nolint:errcheck
 	}
 
 	return nil

@@ -9,10 +9,10 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/updates/helper"
 )
@@ -43,7 +43,7 @@ const (
 )
 
 var (
-	module   *modules.Module
+	// module   *modules.Module
 	registry *updater.ResourceRegistry
 
 	userAgentFromFlag    string
@@ -80,9 +80,10 @@ const (
 )
 
 func init() {
-	module = modules.Register(ModuleName, prep, start, stop, "base")
-	module.RegisterEvent(VersionUpdateEvent, true)
-	module.RegisterEvent(ResourceUpdateEvent, true)
+	// FIXME:
+	// module = modules.Register(ModuleName, prep, start, stop, "base")
+	// module.RegisterEvent(VersionUpdateEvent, true)
+	// module.RegisterEvent(ResourceUpdateEvent, true)
 
 	flag.StringVar(&updateServerFromFlag, "update-server", "", "set an alternative update server (full URL)")
 	flag.StringVar(&userAgentFromFlag, "update-agent", "", "set an alternative user agent for requests to the update server")
@@ -110,15 +111,9 @@ func prep() error {
 func start() error {
 	initConfig()
 
-	restartTask = module.NewTask("automatic restart", automaticRestart).MaxDelay(10 * time.Minute)
+	module.mgr.Repeat("automatic restart", 10*time.Minute, automaticRestart)
 
-	if err := module.RegisterEventHook(
-		"config",
-		"config change",
-		"update registry config",
-		updateRegistryConfig); err != nil {
-		return err
-	}
+	module.instance.Config().EventConfigChange.AddCallback("update registry config", updateRegistryConfig)
 
 	// create registry
 	registry = &updater.ResourceRegistry{
@@ -175,7 +170,7 @@ func start() error {
 		log.Warningf("updates: %s", warning)
 	}
 
-	err = registry.LoadIndexes(module.Ctx)
+	err = registry.LoadIndexes(module.mgr.Ctx())
 	if err != nil {
 		log.Warningf("updates: failed to load indexes: %s", err)
 	}
@@ -186,7 +181,7 @@ func start() error {
 	}
 
 	registry.SelectVersions()
-	module.TriggerEvent(VersionUpdateEvent, nil)
+	module.EventVersionsUpdated.Submit(struct{}{})
 
 	// Initialize the version export - this requires the registry to be set up.
 	err = initVersionExport()
@@ -195,14 +190,18 @@ func start() error {
 	}
 
 	// start updater task
-	updateTask = module.NewTask("updater", func(ctx context.Context, task *modules.Task) error {
-		return checkForUpdates(ctx)
-	})
+	// FIXME: remove
+	// updateTask = module.NewTask("updater", func(ctx context.Context, task *modules.Task) error {
+	// 	return checkForUpdates(ctx)
+	// })
 
 	if !disableTaskSchedule {
-		updateTask.
-			Repeat(updateTaskRepeatDuration).
-			MaxDelay(30 * time.Minute)
+		module.mgr.Repeat("updater", 30*time.Minute, checkForUpdates)
+
+		// FIXME: remove
+		// updateTask.
+		// 	Repeat(updateTaskRepeatDuration).
+		// 	MaxDelay(30 * time.Minute)
 	}
 
 	if updateASAP {
@@ -318,7 +317,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 	// Purge old resources
 	registry.Purge(2)
 
-	module.TriggerEvent(ResourceUpdateEvent, nil)
+	module.EventResourcesUpdated.Submit(struct{}{})
 	return nil
 }
 

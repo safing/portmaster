@@ -1,10 +1,10 @@
 package config
 
 import (
-	"context"
 	"flag"
 
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // Configuration Keys.
@@ -78,14 +78,7 @@ func registerBasicOptions() error {
 	logLevel = GetAsString(CfgLogLevel, defaultLogLevel)
 
 	// Register to hook to update the log level.
-	if err := module.RegisterEventHook(
-		"config",
-		ChangeEvent,
-		"update log level",
-		setLogLevel,
-	); err != nil {
-		return err
-	}
+	module.EventConfigChange.AddCallback("update log level", setLogLevel)
 
 	return Register(&Option{
 		Name:           "Development Mode",
@@ -106,8 +99,8 @@ func loadLogLevel() error {
 	return setDefaultConfigOption(CfgLogLevel, log.GetLogLevel().Name(), false)
 }
 
-func setLogLevel(ctx context.Context, data interface{}) error {
+func setLogLevel(_ *mgr.WorkerCtx, _ struct{}) (cancel bool, err error) {
 	log.SetLogLevel(log.ParseLevel(logLevel()))
 
-	return nil
+	return false, nil
 }

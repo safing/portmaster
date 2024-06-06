@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/base/dataroot"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/base/utils/debug"
 )
@@ -20,7 +20,7 @@ import (
 const ChangeEvent = "config change"
 
 var (
-	module   *modules.Module
+	// module   *modules.Module
 	dataRoot *utils.DirStructure
 
 	exportConfig bool
@@ -34,8 +34,8 @@ func SetDataRoot(root *utils.DirStructure) {
 }
 
 func init() {
-	module = modules.Register("config", prep, start, nil, "database")
-	module.RegisterEvent(ChangeEvent, true)
+	// module = modules.Register("config", prep, start, nil, "database")
+	// module.RegisterEvent(ChangeEvent, true)
 
 	flag.BoolVar(&exportConfig, "export-config-options", false, "export configuration registry and exit")
 }
