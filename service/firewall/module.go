@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
-	"github.com/safing/portmaster/base/modules/subsystems"
 	_ "github.com/safing/portmaster/service/core"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/spn/access"
@@ -29,23 +29,31 @@ func (ss *stringSliceFlag) Set(value string) error {
 	return nil
 }
 
-var (
-	module         *modules.Module
-	allowedClients stringSliceFlag
-)
+// module         *modules.Module
+var allowedClients stringSliceFlag
+
+type Filter struct {
+	mgr *mgr.Manager
+
+	instance instance
+}
 
 func init() {
-	module = modules.Register("filter", prep, start, stop, "core", "interception", "intel", "netquery")
-	subsystems.Register(
-		"filter",
-		"Privacy Filter",
-		"DNS and Network Filter",
-		module,
-		"config:filter/",
-		nil,
-	)
-
 	flag.Var(&allowedClients, "allowed-clients", "A list of binaries that are allowed to connect to the Portmaster API")
+}
+
+func (f *Filter) Start(mgr *mgr.Manager) error {
+	f.mgr = mgr
+
+	if err := prep(); err != nil {
+		return err
+	}
+
+	return start()
+}
+
+func (f *Filter) Stop(mgr *mgr.Manager) error {
+	return stop()
 }
 
 func prep() error {
@@ -53,42 +61,23 @@ func prep() error {
 
 	// Reset connections every time configuration changes
 	// this will be triggered on spn enable/disable
-	err := module.RegisterEventHook(
-		"config",
-		config.ChangeEvent,
-		"reset connection verdicts after global config change",
-		func(ctx context.Context, _ interface{}) error {
-			resetAllConnectionVerdicts()
-			return nil
-		},
-	)
-	if err != nil {
-		log.Errorf("filter: failed to register event hook: %s", err)
-	}
+	module.instance.Config().EventConfigChange.AddCallback("reset connection verdicts after global config change", func(w *mgr.WorkerCtx, _ struct{}) (bool, error) {
+		resetAllConnectionVerdicts()
+		return false, nil
+	})
 
-	// Reset connections every time profile changes
-	err = module.RegisterEventHook(
-		"profiles",
-		profile.ConfigChangeEvent,
-		"reset connection verdicts after profile config change",
-		func(ctx context.Context, eventData interface{}) error {
+	module.instance.Profile().EventConfigChange.AddCallback("reset connection verdicts after profile config change",
+		func(m *mgr.WorkerCtx, profileID string) (bool, error) {
 			// Expected event data: scoped profile ID.
-			profileID, ok := eventData.(string)
-			if !ok {
-				return fmt.Errorf("event data is not a string: %v", eventData)
-			}
 			profileSource, profileID, ok := strings.Cut(profileID, "/")
 			if !ok {
-				return fmt.Errorf("event data does not seem to be a scoped profile ID: %v", eventData)
+				return false, fmt.Errorf("event data does not seem to be a scoped profile ID: %v", profileID)
 			}
 
 			resetProfileConnectionVerdict(profileSource, profileID)
-			return nil
+			return false, nil
 		},
 	)
-	if err != nil {
-		log.Errorf("filter: failed to register event hook: %s", err)
-	}
 
 	// Reset connections when spn is connected
 	// connect and disconnecting is triggered on config change event but connecting takеs more time
@@ -149,12 +138,12 @@ func start() error {
 	getConfig()
 	startAPIAuth()
 
-	module.StartServiceWorker("packet handler", 0, packetHandler)
-	module.StartServiceWorker("bandwidth update handler", 0, bandwidthUpdateHandler)
+	module.mgr.Go("packet handler", packetHandler)
+	module.mgr.Go("bandwidth update handler", bandwidthUpdateHandler)
 
 	// Start stat logger if logging is set to trace.
 	if log.GetLogLevel() == log.TraceLevel {
-		module.StartServiceWorker("stat logger", 0, statLogger)
+		module.mgr.Go("stat logger", statLogger)
 	}
 
 	return nil
@@ -162,4 +151,22 @@ func start() error {
 
 func stop() error {
 	return nil
+}
+
+var (
+	module     *Filter
+	shimLoaded atomic.Bool
+)
+
+func New(instance instance) (*Filter, error) {
+	module = &Filter{
+		instance: instance,
+	}
+
+	return module, nil
+}
+
+type instance interface {
+	Config() *config.Config
+	Profile() *profile.ProfileModule
 }

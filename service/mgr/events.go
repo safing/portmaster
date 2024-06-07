@@ -85,7 +85,7 @@ func (em *EventMgr[T]) Submit(event T) {
 
 	// Send to subscriptions.
 	for _, sub := range em.subs {
-		// Check if subcription was canceled.
+		// Check if subscription was canceled.
 		if sub.canceled.Load() {
 			anyCanceled = true
 			continue

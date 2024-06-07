@@ -5,12 +5,32 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"sync/atomic"
 
-	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/service/mgr"
 )
 
+type Metrics struct {
+	mgr      *mgr.Manager
+	instance instance
+}
+
+func (met *Metrics) Start(m *mgr.Manager) error {
+	met.mgr = m
+	if err := prepConfig(); err != nil {
+		return err
+	}
+	return start()
+}
+
+func (met *Metrics) Stop(m *mgr.Manager) error {
+	return stop()
+}
+
 var (
-	module *modules.Module
+	module     *Metrics
+	shimLoaded atomic.Bool
 
 	registry     []Metric
 	registryLock sync.RWMutex
@@ -33,14 +53,6 @@ var (
 	// ErrInvalidOptions is returned when invalid options where provided.
 	ErrInvalidOptions = errors.New("invalid options")
 )
-
-func init() {
-	module = modules.Register("metrics", prep, start, stop, "config", "database", "api")
-}
-
-func prep() error {
-	return prepConfig()
-}
 
 func start() error {
 	// Add metric instance name as global variable if set.
@@ -71,7 +83,7 @@ func start() error {
 	}
 
 	if pushOption() != "" {
-		module.StartServiceWorker("metric pusher", 0, metricsWriter)
+		module.mgr.Do("metric pusher", metricsWriter)
 	}
 
 	return nil
@@ -169,3 +181,17 @@ type byLabeledID []Metric
 func (r byLabeledID) Len() int           { return len(r) }
 func (r byLabeledID) Less(i, j int) bool { return r[i].LabeledID() < r[j].LabeledID() }
 func (r byLabeledID) Swap(i, j int)      { r[i], r[j] = r[j], r[i] }
+
+func New(instance instance) (*Metrics, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &Metrics{
+		instance: instance,
+	}
+
+	return module, nil
+}
+
+type instance interface{}

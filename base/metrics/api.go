@@ -11,6 +11,7 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 func registerAPI() error {
@@ -139,7 +140,7 @@ func writeMetricsTo(ctx context.Context, url string) error {
 	)
 }
 
-func metricsWriter(ctx context.Context) error {
+func metricsWriter(ctx mgr.WorkerCtx) error {
 	pushURL := pushOption()
 	ticker := module.NewSleepyTicker(1*time.Minute, 0)
 	defer ticker.Stop()
@@ -149,7 +150,7 @@ func metricsWriter(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.Wait():
-			err := writeMetricsTo(ctx, pushURL)
+			err := writeMetricsTo(ctx.Ctx(), pushURL)
 			if err != nil {
 				return err
 			}
