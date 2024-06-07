@@ -136,6 +136,29 @@ go-build:
 
     SAVE ARTIFACT --keep-ts "/tmp/build/" ./output
 
+spn-image:
+    # Use minimal image as base.
+    FROM alpine
+
+    # Copy the static executable.
+    COPY (+go-build/output/portmaster-start --GOARCH=amd64 --GOOS=linux --CMDS=portmaster-start) /init/portmaster-start
+
+    # Copy the init script
+    COPY spn/tools/container-init.sh /init.sh
+
+    # Run the hub.
+    ENTRYPOINT ["/init.sh"]
+
+    # Get version.
+    LET version = "$(/init/portmaster-start version --short | tr ' ' -)"
+    RUN echo "Version: ${version}"
+
+    # Save dev image
+    SAVE IMAGE "spn:latest"
+    SAVE IMAGE "spn:${version}"
+    SAVE IMAGE "ghcr.io/safing/spn:latest"
+    SAVE IMAGE "ghcr.io/safing/spn:${version}"
+
 # Test one or more go packages.
 # Test are always run as -short, as "long" tests require a full desktop system.
 # Run `earthly +go-test` to test all packages
@@ -303,7 +326,7 @@ rust-base:
         wget \
         file \
         libsoup-3.0-dev \
-        libwebkit2gtk-4.1-dev 
+        libwebkit2gtk-4.1-dev
 
     # Install library dependencies for all supported architectures
     # required for succesfully linking.
