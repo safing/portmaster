@@ -1,36 +1,35 @@
 package status
 
 import (
-	"context"
+	"errors"
 	"fmt"
+	"sync/atomic"
 
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/utils/debug"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 )
 
-var module *modules.Module
-
-func init() {
-	module = modules.Register("status", nil, start, nil, "base", "config")
+type Status struct {
+	instance instance
 }
 
-func start() error {
+func (s *Status) Start(m *mgr.Manager) error {
 	if err := setupRuntimeProvider(); err != nil {
 		return err
 	}
 
-	if err := module.RegisterEventHook(
-		netenv.ModuleName,
-		netenv.OnlineStatusChangedEvent,
-		"update online status in system status",
-		func(_ context.Context, _ interface{}) error {
+	s.instance.NetEnv().EventOnlineStatusChange.AddCallback("update online status in system status",
+		func(_ *mgr.WorkerCtx, _ netenv.OnlineStatus) (bool, error) {
 			pushSystemStatus()
-			return nil
+			return false, nil
 		},
-	); err != nil {
-		return err
-	}
+	)
+
+	return nil
+}
+
+func (s *Status) Stop(m *mgr.Manager) error {
 	return nil
 }
 
@@ -42,4 +41,25 @@ func AddToDebugInfo(di *debug.Info) {
 		fmt.Sprintf("OnlineStatus:          %s", netenv.GetOnlineStatus()),
 		"CaptivePortal:         "+netenv.GetCaptivePortal().URL,
 	)
+}
+
+var (
+	module     *Status
+	shimLoaded atomic.Bool
+)
+
+func New(instance instance) (*Status, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &Status{
+		instance: instance,
+	}
+
+	return module, nil
+}
+
+type instance interface {
+	NetEnv() *netenv.NetEnv
 }

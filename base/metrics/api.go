@@ -140,7 +140,7 @@ func writeMetricsTo(ctx context.Context, url string) error {
 	)
 }
 
-func metricsWriter(ctx mgr.WorkerCtx) error {
+func metricsWriter(ctx *mgr.WorkerCtx) error {
 	pushURL := pushOption()
 	ticker := module.NewSleepyTicker(1*time.Minute, 0)
 	defer ticker.Stop()

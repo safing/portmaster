@@ -1,8 +1,9 @@
 package rng
 
 import (
-	"context"
 	"time"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
 func getFullFeedDuration() time.Duration {
@@ -17,7 +18,7 @@ func getFullFeedDuration() time.Duration {
 	return time.Duration(secsUntilFullFeed) * time.Second
 }
 
-func fullFeeder(ctx context.Context) error {
+func fullFeeder(ctx *mgr.WorkerCtx) error {
 	fullFeedDuration := getFullFeedDuration()
 
 	for {

@@ -1,13 +1,14 @@
 package notifications
 
 import (
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // AttachToModule attaches the notification to a module and changes to the
 // notification will be reflected on the module failure status.
-func (n *Notification) AttachToModule(m *modules.Module) {
+func (n *Notification) AttachToModule(m mgr.Module) {
 	if m == nil {
 		log.Warningf("notifications: invalid usage: cannot attach %s to nil module", n.EventID)
 		return

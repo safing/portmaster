@@ -1,9 +1,10 @@
 package rng
 
 import (
-	"context"
 	"encoding/binary"
 	"time"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
 func getTickFeederTickDuration() time.Duration {
@@ -31,7 +32,7 @@ func getTickFeederTickDuration() time.Duration {
 
 // tickFeeder is a really simple entropy feeder that adds the least significant bit of the current nanosecond unixtime to its pool every time it 'ticks'.
 // The more work the program does, the better the quality, as the internal schedular cannot immediately run the goroutine when it's ready.
-func tickFeeder(ctx context.Context) error {
+func tickFeeder(ctx *mgr.WorkerCtx) error {
 	var value int64
 	var pushes int
 	feeder := NewFeeder()

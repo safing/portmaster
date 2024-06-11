@@ -18,6 +18,7 @@ import (
 	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/intel/geoip"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/spn/hub"
@@ -558,8 +559,8 @@ func (m *Map) addBootstrapHub(bootstrapTransport string) error {
 }
 
 // UpdateConfigQuickSettings updates config quick settings with available countries.
-func (m *Map) UpdateConfigQuickSettings(ctx context.Context) error {
-	ctx, tracer := log.AddTracer(ctx)
+func (m *Map) UpdateConfigQuickSettings(wc *mgr.WorkerCtx) error {
+	ctx, tracer := log.AddTracer(wc.Ctx())
 	tracer.Trace("navigator: updating SPN rules country quick settings")
 	defer tracer.Submit()
 

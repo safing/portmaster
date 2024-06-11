@@ -1,19 +1,24 @@
 package rng
 
 import (
-	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/aead/serpent"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/seehuhn/fortuna"
-
-	"github.com/safing/portmaster/base/modules"
 )
+
+type Rng struct {
+	mgr *mgr.Manager
+
+	instance instance
+}
 
 var (
 	rng      *fortuna.Generator
@@ -23,12 +28,7 @@ var (
 	rngCipher = "aes"
 	// Possible values: "aes", "serpent".
 
-	module *modules.Module
 )
-
-func init() {
-	module = modules.Register("rng", nil, start, nil)
-}
 
 func newCipher(key []byte) (cipher.Block, error) {
 	switch rngCipher {
@@ -41,7 +41,8 @@ func newCipher(key []byte) (cipher.Block, error) {
 	}
 }
 
-func start() error {
+func (r *Rng) Start(m *mgr.Manager) error {
+	r.mgr = m
 	rngLock.Lock()
 	defer rngLock.Unlock()
 
@@ -51,7 +52,7 @@ func start() error {
 	}
 
 	// add another (async) OS rng seed
-	module.StartWorker("initial rng feed", func(_ context.Context) error {
+	m.Go("initial rng feed", func(_ *mgr.WorkerCtx) error {
 		// get entropy from OS
 		osEntropy := make([]byte, minFeedEntropy/8)
 		_, err := rand.Read(osEntropy)
@@ -69,13 +70,36 @@ func start() error {
 	rngReady = true
 
 	// random source: OS
-	module.StartServiceWorker("os rng feeder", 0, osFeeder)
+	m.Go("os rng feeder", osFeeder)
 
 	// random source: goroutine ticks
-	module.StartServiceWorker("tick rng feeder", 0, tickFeeder)
+	m.Go("tick rng feeder", tickFeeder)
 
 	// full feeder
-	module.StartServiceWorker("full feeder", 0, fullFeeder)
+	m.Go("full feeder", fullFeeder)
 
 	return nil
 }
+
+func (r *Rng) Stop(m *mgr.Manager) error {
+	return nil
+}
+
+var (
+	module     *Rng
+	shimLoaded atomic.Bool
+)
+
+func New(instance instance) (*Rng, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &Rng{
+		instance: instance,
+	}
+
+	return module, nil
+}
+
+type instance interface{}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // FlowControl defines the flow control interface.
@@ -187,7 +188,7 @@ func (dfq *DuplexFlowQueue) reportableRecvSpace() int32 {
 
 // FlowHandler handles all flow queue internals and must be started as a worker
 // in the module where it is used.
-func (dfq *DuplexFlowQueue) FlowHandler(_ context.Context) error {
+func (dfq *DuplexFlowQueue) FlowHandler(_ *mgr.WorkerCtx) error {
 	// The upstreamSender is started by the terminal module, but is tied to the
 	// flow owner instead. Make sure that the flow owner's module depends on the
 	// terminal module so that it is shut down earlier.

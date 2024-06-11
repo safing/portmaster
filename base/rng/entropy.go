@@ -1,12 +1,12 @@
 package rng
 
 import (
-	"context"
 	"encoding/binary"
 
 	"github.com/tevino/abool"
 
 	"github.com/safing/portmaster/base/container"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 const (
@@ -35,7 +35,7 @@ func NewFeeder() *Feeder {
 		needsEntropy: abool.NewBool(true),
 		buffer:       container.New(),
 	}
-	module.StartServiceWorker("feeder", 0, newFeeder.run)
+	module.mgr.Go("feeder", newFeeder.run)
 	return newFeeder
 }
 
@@ -88,7 +88,7 @@ func (f *Feeder) CloseFeeder() {
 	close(f.input)
 }
 
-func (f *Feeder) run(ctx context.Context) error {
+func (f *Feeder) run(ctx *mgr.WorkerCtx) error {
 	defer f.needsEntropy.UnSet()
 
 	for {

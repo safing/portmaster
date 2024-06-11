@@ -15,8 +15,8 @@ import (
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 const (
@@ -351,7 +351,7 @@ func checkAPIKey(r *http.Request) *AuthToken {
 	return token
 }
 
-func updateAPIKeys(_ context.Context, _ interface{}) error {
+func updateAPIKeys(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 	apiKeysLock.Lock()
 	defer apiKeysLock.Unlock()
 
@@ -433,7 +433,7 @@ func updateAPIKeys(_ context.Context, _ interface{}) error {
 	}
 
 	if hasExpiredKeys {
-		module.StartLowPriorityMicroTask("api key cleanup", 0, func(ctx context.Context) error {
+		module.mgr.Go("api key cleanup", func(ctx *mgr.WorkerCtx) error {
 			if err := config.SetConfigOption(CfgAPIKeys, validAPIKeys); err != nil {
 				log.Errorf("api: failed to remove expired API keys: %s", err)
 			} else {
@@ -444,7 +444,7 @@ func updateAPIKeys(_ context.Context, _ interface{}) error {
 		})
 	}
 
-	return nil
+	return false, nil
 }
 
 func checkSessionCookie(r *http.Request) *AuthToken {

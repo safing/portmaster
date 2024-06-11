@@ -1,25 +1,47 @@
 package access
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/tevino/abool"
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/access/account"
 	"github.com/safing/portmaster/spn/access/token"
 	"github.com/safing/portmaster/spn/conf"
 )
 
-var (
-	module *modules.Module
+type Access struct {
+	mgr      *mgr.Manager
+	instance instance
 
-	accountUpdateTask *modules.Task
+	EventAccountUpdate *mgr.EventMgr[struct{}]
+}
+
+func (a *Access) Start(m *mgr.Manager) error {
+	a.mgr = m
+	a.EventAccountUpdate = mgr.NewEventMgr[struct{}](AccountUpdateEvent, m)
+	if err := prep(); err != nil {
+		return err
+	}
+
+	return start()
+}
+
+func (a *Access) Stop(m *mgr.Manager) error {
+	return stop()
+}
+
+var (
+	module     *Access
+	shimLoaded atomic.Bool
+
+	// accountUpdateTask *modules.Task
 
 	tokenIssuerIsFailing     = abool.New()
 	tokenIssuerRetryDuration = 10 * time.Minute
@@ -38,13 +60,7 @@ var (
 	ErrNotLoggedIn          = errors.New("not logged in")
 )
 
-func init() {
-	module = modules.Register("access", prep, start, stop, "terminal")
-}
-
 func prep() error {
-	module.RegisterEvent(AccountUpdateEvent, true)
-
 	// Register API handlers.
 	if conf.Client() {
 		err := registerAPIEndpoints()
@@ -67,7 +83,7 @@ func start() error {
 		loadTokens()
 
 		// Register new task.
-		accountUpdateTask = module.NewTask(
+		accountUpdateTask = module.mgr.Go(
 			"update account",
 			UpdateAccount,
 		).Repeat(24 * time.Hour).Schedule(time.Now().Add(1 * time.Minute))
@@ -93,7 +109,7 @@ func stop() error {
 }
 
 // UpdateAccount updates the user account and fetches new tokens, if needed.
-func UpdateAccount(_ context.Context, task *modules.Task) error {
+func UpdateAccount(_ *mgr.WorkerCtx) error { //, task *modules.Task) error {
 	// Retry sooner if the token issuer is failing.
 	defer func() {
 		if tokenIssuerIsFailing.IsSet() && task != nil {
@@ -192,3 +208,21 @@ func (user *UserRecord) MayUseTheSPN() bool {
 
 	return user.User.MayUseSPN()
 }
+
+// New returns a new Access module.
+func New(instance instance) (*Access, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
+	module = &Access{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface{}

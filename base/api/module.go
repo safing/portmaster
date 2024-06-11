@@ -4,16 +4,19 @@ import (
 	"errors"
 	"sync/atomic"
 
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/service/mgr"
 )
 
 // API is the HTTP/Websockets API module.
 type API struct {
+	mgr      *mgr.Manager
 	instance instance
 }
 
 // Start starts the module.
-func (api *API) Start(_ *mgr.Manager) error {
+func (api *API) Start(m *mgr.Manager) error {
+	api.mgr = m
 	return start()
 }
 
@@ -24,6 +27,7 @@ func (api *API) Stop(_ *mgr.Manager) error {
 
 var (
 	shimLoaded atomic.Bool
+	module     *API
 )
 
 // New returns a new UI module.
@@ -36,10 +40,13 @@ func New(instance instance) (*API, error) {
 		return nil, err
 	}
 
-	return &API{
+	module = &API{
 		instance: instance,
-	}, nil
+	}
+
+	return module, nil
 }
 
 type instance interface {
+	Config() *config.Config
 }

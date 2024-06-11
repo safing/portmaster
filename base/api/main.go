@@ -6,15 +6,9 @@ import (
 	"flag"
 	"os"
 	"time"
-
-	"github.com/safing/portmaster/base/modules"
 )
 
-var (
-	module *modules.Module
-
-	exportEndpoints bool
-)
+var exportEndpoints bool
 
 // API Errors.
 var (
@@ -23,7 +17,7 @@ var (
 )
 
 func init() {
-	module = modules.Register("api", prep, start, stop, "database", "config")
+	// module = modules.Register("api", prep, start, stop, "database", "config")
 
 	flag.BoolVar(&exportEndpoints, "export-api-endpoints", false, "export api endpoint registry and exit")
 }
@@ -59,11 +53,8 @@ func prep() error {
 func start() error {
 	startServer()
 
-	_ = updateAPIKeys(module.Ctx, nil)
-	err := module.RegisterEventHook("config", "config change", "update API keys", updateAPIKeys)
-	if err != nil {
-		return err
-	}
+	_ = updateAPIKeys(module.mgr.Ctx(), nil)
+	module.instance.Config().EventConfigChange.AddCallback("update API keys", updateAPIKeys)
 
 	// start api auth token cleaner
 	if authFnSet.IsSet() {

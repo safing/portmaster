@@ -10,6 +10,7 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/spn/access"
@@ -71,13 +72,13 @@ func triggerClientHealthCheck() {
 	}
 }
 
-func clientManager(ctx context.Context) error {
+func clientManager(ctx *mgr.WorkerCtx) error {
 	defer func() {
 		ready.UnSet()
 		netenv.ConnectedToSPN.UnSet()
 		resetSPNStatus(StatusDisabled, true)
 		module.Resolve("")
-		clientStopHomeHub(ctx)
+		clientStopHomeHub(ctx.Ctx())
 	}()
 
 	module.Hint(
@@ -123,7 +124,7 @@ reconnect:
 			clientConnectToHomeHub,
 			clientSetActiveConnectionStatus,
 		} {
-			switch clientFunc(ctx) {
+			switch clientFunc(ctx.Ctx()) {
 			case clientResultOk:
 				// Continue
 			case clientResultRetry, clientResultReconnect:
@@ -143,8 +144,8 @@ reconnect:
 		ready.Set()
 		netenv.ConnectedToSPN.Set()
 
-		module.TriggerEvent(SPNConnectedEvent, nil)
-		module.StartWorker("update quick setting countries", navigator.Main.UpdateConfigQuickSettings)
+		module.EventSPNConnected.Submit(struct{}{})
+		module.mgr.Go("update quick setting countries", navigator.Main.UpdateConfigQuickSettings)
 
 		// Reset last health check value, as we have just connected.
 		lastHealthCheck = time.Now()
@@ -164,7 +165,7 @@ reconnect:
 				clientCheckAccountAndTokens,
 				clientSetActiveConnectionStatus,
 			} {
-				switch clientFunc(ctx) {
+				switch clientFunc(ctx.Ctx()) {
 				case clientResultOk:
 					// Continue
 				case clientResultRetry:

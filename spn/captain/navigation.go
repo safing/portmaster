@@ -9,6 +9,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/intel"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/spn/access"
@@ -210,7 +211,7 @@ func connectToHomeHub(ctx context.Context, dst *hub.Hub) error {
 	return nil
 }
 
-func optimizeNetwork(ctx context.Context, task *modules.Task) error {
+func optimizeNetwork(ctx *mgr.WorkerCtx) error { //, task *modules.Task) error {
 	if publicIdentity == nil {
 		return nil
 	}

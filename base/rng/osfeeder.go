@@ -1,12 +1,13 @@
 package rng
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
-func osFeeder(ctx context.Context) error {
+func osFeeder(ctx *mgr.WorkerCtx) error {
 	entropyBytes := minFeedEntropy / 8
 	feeder := NewFeeder()
 	defer feeder.CloseFeeder()

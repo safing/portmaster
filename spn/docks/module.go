@@ -5,25 +5,34 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/mgr"
 	_ "github.com/safing/portmaster/spn/access"
 )
 
-var (
-	module *modules.Module
+type Docks struct {
+	mgr      *mgr.Manager
+	instance instance
+}
 
+func (d *Docks) Start(m *mgr.Manager) error {
+	d.mgr = m
+	return start()
+}
+
+func (d *Docks) Stop(m *mgr.Manager) error {
+	return stopAllCranes()
+}
+
+var (
 	allCranes      = make(map[string]*Crane) // ID = Crane ID
 	assignedCranes = make(map[string]*Crane) // ID = connected Hub ID
 	cranesLock     sync.RWMutex
 
 	runningTests bool
 )
-
-func init() {
-	module = modules.Register("docks", nil, start, stopAllCranes, "terminal", "cabin", "access")
-}
 
 func start() error {
 	return registerMetrics()
@@ -115,3 +124,22 @@ func GetAllAssignedCranes() map[string]*Crane {
 	}
 	return copiedCranes
 }
+
+var (
+	module     *Docks
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Docks module.
+func New(instance instance) (*Docks, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &Docks{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface{}

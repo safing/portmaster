@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 
+	"github.com/safing/portbase/modules/subsystems"
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/modules"
-	"github.com/safing/portmaster/base/modules/subsystems"
 	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/crew"
@@ -25,14 +28,31 @@ import (
 
 const controlledFailureExitCode = 24
 
-var module *modules.Module
-
 // SPNConnectedEvent is the name of the event that is fired when the SPN has connected and is ready.
 const SPNConnectedEvent = "spn connect"
 
+type Captain struct {
+	mgr      *mgr.Manager
+	instance instance
+
+	EventSPNConnected *mgr.EventMgr[struct{}]
+}
+
+func (c *Captain) Start(m *mgr.Manager) error {
+	c.mgr = m
+	c.EventSPNConnected = mgr.NewEventMgr[struct{}](SPNConnectedEvent, m)
+	if err := prep(); err != nil {
+		return err
+	}
+
+	return start()
+}
+
+func (c *Captain) Stop(m *mgr.Manager) error {
+	return stop()
+}
+
 func init() {
-	module = modules.Register("captain", prep, start, stop, "base", "terminal", "cabin", "ships", "docks", "crew", "navigator", "sluice", "patrol", "netenv")
-	module.RegisterEvent(SPNConnectedEvent, false)
 	subsystems.Register(
 		"spn",
 		"SPN",
@@ -102,7 +122,7 @@ func start() error {
 	if err := registerIntelUpdateHook(); err != nil {
 		return err
 	}
-	if err := updateSPNIntel(module.Ctx, nil); err != nil {
+	if err := updateSPNIntel(module.mgr.Ctx(), nil); err != nil {
 		log.Errorf("spn/captain: failed to update SPN intel: %s", err)
 	}
 
@@ -152,29 +172,22 @@ func start() error {
 
 	// network optimizer
 	if conf.PublicHub() {
-		module.NewTask("optimize network", optimizeNetwork).
+		module.mgr.Go("optimize network", optimizeNetwork).
 			Repeat(1 * time.Minute).
 			Schedule(time.Now().Add(15 * time.Second))
 	}
 
 	// client + home hub manager
 	if conf.Client() {
-		module.StartServiceWorker("client manager", 0, clientManager)
+		module.mgr.Go("client manager", clientManager)
 
 		// Reset failing hubs when the network changes while not connected.
-		if err := module.RegisterEventHook(
-			"netenv",
-			"network changed",
-			"reset failing hubs",
-			func(_ context.Context, _ interface{}) error {
-				if ready.IsNotSet() {
-					navigator.Main.ResetFailingStates(module.Ctx)
-				}
-				return nil
-			},
-		); err != nil {
-			return err
-		}
+		module.instance.NetEnv().EventNetworkChange.AddCallback("reset failing hubs", func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
+			if ready.IsNotSet() {
+				navigator.Main.ResetFailingStates(module.mgr.Ctx())
+			}
+			return false, nil
+		})
 	}
 
 	return nil
@@ -216,4 +229,25 @@ func apiAuthenticator(r *http.Request, s *http.Server) (*api.AuthToken, error) {
 		Read:  api.PermitUser,
 		Write: api.PermitUser,
 	}, nil
+}
+
+var (
+	module     *Captain
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Captain module.
+func New(instance instance) (*Captain, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &Captain{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface {
+	NetEnv() *netenv.NetEnv
 }

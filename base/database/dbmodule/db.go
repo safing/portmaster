@@ -2,22 +2,25 @@ package dbmodule
 
 import (
 	"errors"
+	"sync/atomic"
 
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/dataroot"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/utils"
+	"github.com/safing/portmaster/service/mgr"
 )
 
-var (
-	databaseStructureRoot *utils.DirStructure
-
-	module *modules.Module
-)
-
-func init() {
-	module = modules.Register("database", prep, start, stop)
+type DBModule struct {
+	mgr      *mgr.Manager
+	instance instance
 }
+
+func (dbm *DBModule) Start(m *mgr.Manager) error {
+	module.mgr = m
+	return start()
+}
+
+var databaseStructureRoot *utils.DirStructure
 
 // SetDatabaseLocation sets the location of the database for initialization. Supply either a path or dir structure.
 func SetDatabaseLocation(dirStructureRoot *utils.DirStructure) {
@@ -48,3 +51,26 @@ func start() error {
 func stop() error {
 	return database.Shutdown()
 }
+
+var (
+	module     *DBModule
+	shimLoaded atomic.Bool
+)
+
+func New(instance instance) (*DBModule, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
+	module = &DBModule{
+		instance: instance,
+	}
+
+	return module, nil
+}
+
+type instance interface{}

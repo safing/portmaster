@@ -1,17 +1,34 @@
 package notifications
 
 import (
+	"errors"
 	"fmt"
-	"time"
+	"sync/atomic"
 
 	"github.com/safing/portmaster/base/config"
-	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/service/mgr"
 )
 
-var module *modules.Module
+type Notifications struct {
+	mgr      *mgr.Manager
+	instance instance
 
-func init() {
-	module = modules.Register("notifications", prep, start, nil, "database", "config", "base")
+	States *mgr.StateMgr
+}
+
+func (n *Notifications) Start(m *mgr.Manager) error {
+	n.mgr = m
+	n.States = mgr.NewStateMgr(n.mgr)
+
+	if err := prep(); err != nil {
+		return err
+	}
+
+	return start()
+}
+
+func (n *Notifications) Stop(m *mgr.Manager) error {
+	return nil
 }
 
 func prep() error {
@@ -26,7 +43,7 @@ func start() error {
 
 	showConfigLoadingErrors()
 
-	go module.StartServiceWorker("cleaner", 1*time.Second, cleaner)
+	module.mgr.Go("cleaner", cleaner)
 	return nil
 }
 
@@ -37,11 +54,12 @@ func showConfigLoadingErrors() {
 	}
 
 	// Trigger a module error for more awareness.
-	module.Error(
-		"config:validation-errors-on-load",
-		"Invalid Settings",
-		"Some current settings are invalid. Please update them and restart the Portmaster.",
-	)
+	module.States.Add(mgr.State{
+		ID:      "config:validation-errors-on-load",
+		Name:    "Invalid Settings",
+		Message: "Some current settings are invalid. Please update them and restart the Portmaster.",
+		Type:    mgr.StateTypeError,
+	})
 
 	// Send one notification per invalid setting.
 	for _, validationError := range config.GetLoadedConfigValidationErrors() {
@@ -64,3 +82,22 @@ Please update the setting and restart the Portmaster, until then the default val
 		)
 	}
 }
+
+var (
+	module     *Notifications
+	shimLoaded atomic.Bool
+)
+
+func New(instance instance) (*Notifications, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &Notifications{
+		instance: instance,
+	}
+
+	return module, nil
+}
+
+type instance interface{}

@@ -1,19 +1,20 @@
 package notifications
 
 import (
-	"context"
 	"time"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
-func cleaner(ctx context.Context) error { //nolint:unparam // Conforms to worker interface
-	ticker := module.NewSleepyTicker(1*time.Second, 0)
+func cleaner(ctx *mgr.WorkerCtx) error { //nolint:unparam // Conforms to worker interface
+	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-ticker.Wait():
+		case <-ticker.C:
 			deleteExpiredNotifs()
 		}
 	}

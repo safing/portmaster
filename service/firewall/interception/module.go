@@ -2,14 +2,19 @@ package interception
 
 import (
 	"flag"
+	"sync/atomic"
 
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/network/packet"
 )
 
+type Interception struct {
+	instance instance
+}
+
 var (
-	module *modules.Module
+	module     *Interception
+	shimLoaded atomic.Bool
 
 	// Packets is a stream of interception network packest.
 	Packets = make(chan packet.Packet, 1000)
@@ -23,7 +28,7 @@ var (
 func init() {
 	flag.BoolVar(&disableInterception, "disable-interception", false, "disable packet interception; this breaks a lot of functionality")
 
-	module = modules.Register("interception", prep, start, stop, "base", "updates", "network", "notifications", "profiles")
+	// module = modules.Register("interception", prep, start, stop, "base", "updates", "network", "notifications", "profiles")
 }
 
 func prep() error {
@@ -61,3 +66,5 @@ func stop() error {
 
 	return stopInterception()
 }
+
+type instance interface{}
