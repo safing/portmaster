@@ -164,6 +164,7 @@ impl Device {
                             crate::connection::Verdict::RedirectNameServer
                             | crate::connection::Verdict::RedirectTunnel => {
                                 if let Some(redirect_info) = redirect_info {
+                                    // Will not redirect packets from ALE layer
                                     if let Err(err) = packet.redirect(redirect_info) {
                                         err!("failed to redirect packet: {}", err);
                                     }
@@ -173,6 +174,8 @@ impl Device {
                                 }
                             }
                             _ => {
+                                // Inject only ALE layer. This will trigger proper block/drop.
+                                // Packet layer just drop the packet.
                                 if let Err(err) = self.inject_packet(packet, true) {
                                     err!("failed to inject packet: {}", err);
                                 }
