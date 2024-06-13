@@ -173,6 +173,7 @@ fn ip_packet_layer(
                         data.action_block();
                     }
                     Verdict::Undeterminable | Verdict::PermanentDrop | Verdict::Failed => {
+                        send_request_to_portmaster = false;
                         data.block_and_absorb();
                     }
                     Verdict::RedirectNameServer | Verdict::RedirectTunnel => {
