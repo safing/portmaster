@@ -21,6 +21,11 @@ import (
 	"github.com/safing/portmaster/spn/captain"
 	"github.com/safing/portmaster/spn/crew"
 	"github.com/safing/portmaster/spn/docks"
+	"github.com/safing/portmaster/spn/navigator"
+	"github.com/safing/portmaster/spn/patrol"
+	"github.com/safing/portmaster/spn/ships"
+	"github.com/safing/portmaster/spn/sluice"
+	"github.com/safing/portmaster/spn/terminal"
 )
 
 // Instance is an instance of a portmaste service.
@@ -36,11 +41,16 @@ type Instance struct {
 	notifications *notifications.Notifications
 	rng           *rng.Rng
 
-	access  *access.Access
-	cabin   *cabin.Cabin
-	captain *captain.Captain
-	crew    *crew.Crew
-	docks   *docks.Docks
+	access    *access.Access
+	cabin     *cabin.Cabin
+	captain   *captain.Captain
+	crew      *crew.Crew
+	docks     *docks.Docks
+	navigator *navigator.Navigator
+	patrol    *patrol.Patrol
+	ships     *ships.Ships
+	sluice    *sluice.SluiceModule
+	terminal  *terminal.TerminalModule
 
 	updates *updates.Updates
 	ui      *ui.UI
@@ -106,6 +116,26 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create docks module: %w", err)
 	}
+	instance.navigator, err = navigator.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create navigator module: %w", err)
+	}
+	instance.patrol, err = patrol.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create patrol module: %w", err)
+	}
+	instance.ships, err = ships.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create ships module: %w", err)
+	}
+	instance.sluice, err = sluice.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create sluice module: %w", err)
+	}
+	instance.terminal, err = terminal.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create terminal module: %w", err)
+	}
 
 	// Service modules
 	instance.updates, err = updates.New(instance, svcCfg.ShutdownFunc)
@@ -147,6 +177,11 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		instance.captain,
 		instance.crew,
 		instance.docks,
+		instance.navigator,
+		instance.patrol,
+		instance.ships,
+		instance.sluice,
+		instance.terminal,
 
 		instance.updates,
 		instance.ui,
@@ -209,9 +244,34 @@ func (i *Instance) Crew() *crew.Crew {
 	return i.crew
 }
 
-// Crew returns the crew module.
+// Docks returns the crew module.
 func (i *Instance) Docks() *docks.Docks {
 	return i.docks
+}
+
+// Navigator returns the navigator module.
+func (i *Instance) Navigator() *navigator.Navigator {
+	return i.navigator
+}
+
+// Patrol returns the patrol module.
+func (i *Instance) Patrol() *patrol.Patrol {
+	return i.patrol
+}
+
+// Ships returns the ships module.
+func (i *Instance) Ships() *ships.Ships {
+	return i.ships
+}
+
+// Sluice returns the ships module.
+func (i *Instance) Sluice() *sluice.SluiceModule {
+	return i.sluice
+}
+
+// Terminal returns the terminal module.
+func (i *Instance) Terminal() *terminal.TerminalModule {
+	return i.terminal
 }
 
 // UI returns the ui module.

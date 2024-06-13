@@ -1,24 +1,35 @@
 package sluice
 
 import (
+	"errors"
+	"sync/atomic"
+
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/spn/conf"
 )
 
-var (
-	module *modules.Module
+type SluiceModule struct {
+	mgr      *mgr.Manager
+	instance instance
+}
 
+func (s *SluiceModule) Start(m *mgr.Manager) error {
+	s.mgr = m
+	return start()
+}
+
+func (s *SluiceModule) Stop(_ *mgr.Manager) error {
+	return stop()
+}
+
+var (
 	entrypointInfoMsg = []byte("You have reached the local SPN entry port, but your connection could not be matched to an SPN tunnel.\n")
 
 	// EnableListener indicates if it should start the sluice listeners. Must be set at startup.
 	EnableListener bool = true
 )
-
-func init() {
-	module = modules.Register("sluice", nil, start, stop, "terminal")
-}
 
 func start() error {
 	// TODO:
@@ -44,3 +55,22 @@ func stop() error {
 	stopAllSluices()
 	return nil
 }
+
+var (
+	module     *SluiceModule
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Config module.
+func New(instance instance) (*SluiceModule, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &SluiceModule{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface{}

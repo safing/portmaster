@@ -1,17 +1,31 @@
 package terminal
 
 import (
+	"errors"
 	"flag"
+	"sync/atomic"
 	"time"
 
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/unit"
 )
 
+type TerminalModule struct {
+	mgr      *mgr.Manager
+	instance instance
+}
+
+func (s *TerminalModule) Start(m *mgr.Manager) error {
+	return start()
+}
+
+func (s *TerminalModule) Stop(m *mgr.Manager) error {
+	return nil
+}
+
 var (
-	module    *modules.Module
 	rngFeeder *rng.Feeder = rng.NewFeeder()
 
 	scheduler *unit.Scheduler
@@ -21,8 +35,6 @@ var (
 
 func init() {
 	flag.BoolVar(&debugUnitScheduling, "debug-unit-scheduling", false, "enable debug logs of the SPN unit scheduler")
-
-	module = modules.Register("terminal", nil, start, nil, "base")
 }
 
 func start() error {
@@ -33,7 +45,7 @@ func start() error {
 		// Debug unit leaks.
 		scheduler.StartDebugLog()
 	}
-	module.StartServiceWorker("msg unit scheduler", 0, scheduler.SlotScheduler)
+	module.mgr.Go("msg unit scheduler", scheduler.SlotScheduler)
 
 	lockOpRegistry()
 
@@ -78,3 +90,22 @@ func getSchedulerConfig() *unit.SchedulerConfig {
 		StatCycleDuration:       1 * time.Minute,       // Match metrics report cycle.
 	}
 }
+
+var (
+	module     *TerminalModule
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Config module.
+func New(instance instance) (*TerminalModule, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &TerminalModule{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface{}

@@ -2,12 +2,13 @@ package navigator
 
 import (
 	"errors"
+	"sync/atomic"
 	"time"
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/intel/geoip"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
 )
 
@@ -33,8 +34,28 @@ var (
 	ErrAllPinsDisregarded = errors.New("all pins have been disregarded")
 )
 
+type Navigator struct {
+	mgr *mgr.Manager
+
+	instance instance
+}
+
+func (n *Navigator) Start(m *mgr.Manager) error {
+	n.mgr = m
+	if err := prep(); err != nil {
+		return err
+	}
+
+	return start()
+}
+
+func (n *Navigator) Stop(m *mgr.Manager) error {
+	return stop()
+}
+
 var (
-	module *modules.Module
+	module     *Navigator
+	shimLoaded atomic.Bool
 
 	// Main is the primary map used.
 	Main *Map
@@ -43,10 +64,6 @@ var (
 	cfgOptionRoutingAlgorithm config.StringOption
 	cfgOptionTrustNodeNodes   config.StringArrayOption
 )
-
-func init() {
-	module = modules.Register("navigator", prep, start, stop, "terminal", "geoip", "netenv")
-}
 
 func prep() error {
 	return registerAPIEndpoints()
@@ -127,3 +144,17 @@ func stop() error {
 
 	return nil
 }
+
+// New returns a new Navigator module.
+func New(instance instance) (*Navigator, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &Navigator{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface{}
