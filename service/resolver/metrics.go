@@ -8,6 +8,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 var (
@@ -49,7 +50,7 @@ func resetSlowQueriesSensorValue() {
 
 var suggestUsingStaleCacheNotification *notifications.Notification
 
-func suggestUsingStaleCacheTask(ctx context.Context, t *modules.Task) error {
+func suggestUsingStaleCacheTask(_ *mgr.WorkerCtx) error { // t *modules.Task) error {
 	switch {
 	case useStaleCache() || useStaleCacheConfigOption.IsSetByUser():
 		// If setting is already active, disable task repeating.

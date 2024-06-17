@@ -50,12 +50,10 @@ func (ui *UI) Start(m *mgr.Manager) error {
 
 // Stop stops the module.
 func (ui *UI) Stop(_ *mgr.Manager) error {
-	return stop()
+	return nil
 }
 
-var (
-	shimLoaded atomic.Bool
-)
+var shimLoaded atomic.Bool
 
 // New returns a new UI module.
 func New(instance instance) (*UI, error) {

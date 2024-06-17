@@ -6,6 +6,7 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 )
 
@@ -71,7 +72,7 @@ func (brc *BasicResolverConn) ResetFailure() {
 	}
 }
 
-func checkFailingResolvers(ctx context.Context, task *modules.Task) error {
+func checkFailingResolvers(wc *mgr.WorkerCtx) error { //, task *modules.Task) error {
 	var resolvers []*Resolver
 
 	// Make a copy of the resolver list.
@@ -84,7 +85,7 @@ func checkFailingResolvers(ctx context.Context, task *modules.Task) error {
 	}()
 
 	// Start logging.
-	ctx, tracer := log.AddTracer(ctx)
+	ctx, tracer := log.AddTracer(wc.Ctx())
 	tracer.Debugf("resolver: checking failed resolvers")
 	defer tracer.Submit()
 

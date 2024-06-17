@@ -9,11 +9,19 @@ import (
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/base/runtime"
+	"github.com/safing/portmaster/service/broadcasts"
+	"github.com/safing/portmaster/service/compat"
 	"github.com/safing/portmaster/service/firewall"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/nameserver"
 	"github.com/safing/portmaster/service/netenv"
+	"github.com/safing/portmaster/service/netquery"
+	"github.com/safing/portmaster/service/network"
+	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/profile"
+	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/portmaster/service/status"
+	"github.com/safing/portmaster/service/sync"
 	"github.com/safing/portmaster/service/ui"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/access"
@@ -52,12 +60,20 @@ type Instance struct {
 	sluice    *sluice.SluiceModule
 	terminal  *terminal.TerminalModule
 
-	updates *updates.Updates
-	ui      *ui.UI
-	profile *profile.ProfileModule
-	filter  *firewall.Filter
-	netenv  *netenv.NetEnv
-	status  *status.Status
+	updates    *updates.Updates
+	ui         *ui.UI
+	profile    *profile.ProfileModule
+	filter     *firewall.Filter
+	netenv     *netenv.NetEnv
+	status     *status.Status
+	broadcasts *broadcasts.Broadcasts
+	compat     *compat.Compat
+	nameserver *nameserver.NameServer
+	netquery   *netquery.NetQuery
+	network    *network.Network
+	process    *process.ProcessModule
+	resolver   *resolver.ResolverModule
+	sync       *sync.Sync
 }
 
 // New returns a new portmaster service instance.
@@ -162,6 +178,38 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create status module: %w", err)
 	}
+	instance.broadcasts, err = broadcasts.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create broadcasts module: %w", err)
+	}
+	instance.compat, err = compat.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create compat module: %w", err)
+	}
+	instance.nameserver, err = nameserver.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create nameserver module: %w", err)
+	}
+	instance.netquery, err = netquery.NewModule(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create netquery module: %w", err)
+	}
+	instance.network, err = network.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create network module: %w", err)
+	}
+	instance.process, err = process.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create process module: %w", err)
+	}
+	instance.resolver, err = resolver.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create resolver module: %w", err)
+	}
+	instance.sync, err = sync.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create sync module: %w", err)
+	}
 
 	// Add all modules to instance group.
 	instance.Group = mgr.NewGroup(
@@ -189,6 +237,14 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		instance.filter,
 		instance.netenv,
 		instance.status,
+		instance.broadcasts,
+		instance.compat,
+		instance.nameserver,
+		instance.netquery,
+		instance.network,
+		instance.process,
+		instance.resolver,
+		instance.sync,
 	)
 
 	return instance, nil
@@ -302,4 +358,44 @@ func (i *Instance) NetEnv() *netenv.NetEnv {
 // Status returns the status module.
 func (i *Instance) Status() *status.Status {
 	return i.status
+}
+
+// Broadcasts returns the broadcast module.
+func (i *Instance) Broadcasts() *status.Status {
+	return i.status
+}
+
+// Compat returns the compat module.
+func (i *Instance) Compat() *compat.Compat {
+	return i.compat
+}
+
+// NameServer returns the nameserver module.
+func (i *Instance) NameServer() *nameserver.NameServer {
+	return i.nameserver
+}
+
+// NetQuery returns the newquery module.
+func (i *Instance) NetQuery() *netquery.NetQuery {
+	return i.netquery
+}
+
+// Network returns the network module.
+func (i *Instance) Network() *network.Network {
+	return i.network
+}
+
+// Process returns the process module.
+func (i *Instance) Process() *process.ProcessModule {
+	return i.process
+}
+
+// Resolver returns the resolver module.
+func (i *Instance) Resolver() *resolver.ResolverModule {
+	return i.resolver
+}
+
+// Sync returns the sync module.
+func (i *Instance) Sync() *sync.Sync {
+	return i.sync
 }

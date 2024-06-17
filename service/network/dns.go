@@ -11,6 +11,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/nameserver/nsutil"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/process"
@@ -173,7 +174,7 @@ func SaveOpenDNSRequest(q *resolver.Query, rrCache *resolver.RRCache, conn *Conn
 	openDNSRequests[key] = conn
 }
 
-func openDNSRequestWriter(ctx context.Context) error {
+func openDNSRequestWriter(ctx *mgr.WorkerCtx) error {
 	ticker := module.NewSleepyTicker(writeOpenDNSRequestsTickDuration, 0)
 	defer ticker.Stop()
 

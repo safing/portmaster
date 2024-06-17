@@ -1,10 +1,10 @@
 package network
 
 import (
-	"context"
 	"time"
 
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/network/state"
 	"github.com/safing/portmaster/service/process"
@@ -31,7 +31,7 @@ const (
 	cleanerTickDuration = 5 * time.Second
 )
 
-func connectionCleaner(ctx context.Context) error {
+func connectionCleaner(ctx *mgr.WorkerCtx) error {
 	ticker := module.NewSleepyTicker(cleanerTickDuration, 0)
 
 	for {
@@ -45,7 +45,7 @@ func connectionCleaner(ctx context.Context) error {
 			process.CleanProcessStorage(activePIDs)
 
 			// clean udp connection states
-			state.CleanUDPStates(ctx)
+			state.CleanUDPStates(ctx.Ctx())
 		}
 	}
 }
@@ -53,7 +53,7 @@ func connectionCleaner(ctx context.Context) error {
 func cleanConnections() (activePIDs map[int]struct{}) {
 	activePIDs = make(map[int]struct{})
 
-	_ = module.RunMicroTask("clean connections", 0, func(ctx context.Context) error {
+	module.mgr.Go("clean connections", func(ctx *mgr.WorkerCtx) error {
 		now := time.Now().UTC()
 		nowUnix := now.Unix()
 		ignoreNewer := nowUnix - 2

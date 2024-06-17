@@ -2,27 +2,43 @@ package resolver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tevino/abool"
 
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/utils/debug"
 	_ "github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/intel"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
+	"github.com/safing/portmaster/spn/captain"
 )
 
-var module *modules.Module
+type ResolverModule struct {
+	mgr      *mgr.Manager
+	instance instance
+}
 
-func init() {
-	module = modules.Register("resolver", prep, start, nil, "base", "netenv")
+func (rm *ResolverModule) Start(m *mgr.Manager) error {
+	rm.mgr = m
+	if err := prep(); err != nil {
+		return err
+	}
+	return start()
+}
+
+func (rm *ResolverModule) Stop(m *mgr.Manager) error {
+	return nil
 }
 
 func prep() error {
@@ -49,41 +65,28 @@ func start() error {
 	loadResolvers()
 
 	// reload after network change
-	err := module.RegisterEventHook(
-		"netenv",
-		"network changed",
+	module.instance.NetEnv().EventNetworkChange.AddCallback(
 		"update nameservers",
-		func(_ context.Context, _ interface{}) error {
+		func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 			loadResolvers()
 			log.Debug("resolver: reloaded nameservers due to network change")
-			return nil
+			return false, nil
 		},
 	)
-	if err != nil {
-		return err
-	}
 
 	// Force resolvers to reconnect when SPN has connected.
-	if err := module.RegisterEventHook(
-		"captain",
-		"spn connect", // Defined by captain.SPNConnectedEvent
+	module.instance.Captain().EventSPNConnected.AddCallback(
 		"force resolver reconnect",
-		func(ctx context.Context, _ any) error {
-			ForceResolverReconnect(ctx)
-			return nil
-		},
-	); err != nil {
-		// This module does not depend on the SPN/Captain module, and probably should not.
-		log.Warningf("resolvers: failed to register event hook for captain/spn-connect: %s", err)
-	}
+		func(ctx *mgr.WorkerCtx, _ struct{}) (bool, error) {
+			ForceResolverReconnect(ctx.Ctx())
+			return false, nil
+		})
 
 	// reload after config change
 	prevNameservers := strings.Join(configuredNameServers(), " ")
-	err = module.RegisterEventHook(
-		"config",
-		"config change",
+	module.instance.Config().EventConfigChange.AddCallback(
 		"update nameservers",
-		func(_ context.Context, _ interface{}) error {
+		func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 			newNameservers := strings.Join(configuredNameServers(), " ")
 			if newNameservers != prevNameservers {
 				prevNameservers = newNameservers
@@ -91,38 +94,27 @@ func start() error {
 				loadResolvers()
 				log.Debug("resolver: reloaded nameservers due to config change")
 			}
-			return nil
-		},
-	)
-	if err != nil {
-		return err
-	}
+			return false, nil
+		})
 
 	// Check failing resolvers regularly and when the network changes.
-	checkFailingResolversTask := module.NewTask("check failing resolvers", checkFailingResolvers).Repeat(1 * time.Minute)
-	err = module.RegisterEventHook(
-		"netenv",
-		netenv.NetworkChangedEvent,
+	module.mgr.Repeat("check failing resolvers", 1*time.Minute, checkFailingResolvers)
+	module.instance.NetEnv().EventNetworkChange.AddCallback(
 		"check failing resolvers",
-		func(_ context.Context, _ any) error {
-			checkFailingResolversTask.StartASAP()
-			return nil
-		},
-	)
-	if err != nil {
-		return err
-	}
+		func(wc *mgr.WorkerCtx, _ struct{}) (bool, error) {
+			checkFailingResolvers(wc)
+			return false, nil
+		})
 
-	module.NewTask("suggest using stale cache", suggestUsingStaleCacheTask).Repeat(2 * time.Minute)
+	module.mgr.Repeat("suggest using stale cache", 2*time.Minute, suggestUsingStaleCacheTask)
 
-	module.StartServiceWorker(
+	module.mgr.Go(
 		"mdns handler",
-		5*time.Second,
 		listenToMDNS,
 	)
 
-	module.StartServiceWorker("name record delayed cache writer", 0, recordDatabase.DelayedCacheWriter)
-	module.StartServiceWorker("ip info delayed cache writer", 0, ipInfoDatabase.DelayedCacheWriter)
+	module.mgr.Go("name record delayed cache writer", recordDatabase.DelayedCacheWriter)
+	module.mgr.Go("ip info delayed cache writer", ipInfoDatabase.DelayedCacheWriter)
 
 	return nil
 }
@@ -246,4 +238,27 @@ func AddToDebugInfo(di *debug.Info) {
 		debug.UseCodeSection|debug.AddContentLineBreaks,
 		content...,
 	)
+}
+
+var (
+	module     *ResolverModule
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Resolver module.
+func New(instance instance) (*ResolverModule, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &ResolverModule{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface {
+	NetEnv() *netenv.NetEnv
+	Captain() *captain.Captain
+	Config() *config.Config
 }

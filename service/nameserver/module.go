@@ -1,27 +1,42 @@
 package nameserver
 
 import (
-	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	"github.com/miekg/dns"
 
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
-	"github.com/safing/portmaster/base/modules/subsystems"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/compat"
 	"github.com/safing/portmaster/service/firewall"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 )
 
-var (
-	module *modules.Module
+type NameServer struct {
+	mgr      *mgr.Manager
+	instance instance
+}
 
+func (ns *NameServer) Start(m *mgr.Manager) error {
+	ns.mgr = m
+	if err := prep(); err != nil {
+		return err
+	}
+	return start()
+}
+
+func (ns *NameServer) Stop(m *mgr.Manager) error {
+	return stop()
+}
+
+var (
 	stopListeners     bool
 	stopListener1     func() error
 	stopListener2     func() error
@@ -32,15 +47,15 @@ var (
 )
 
 func init() {
-	module = modules.Register("nameserver", prep, start, stop, "core", "resolver")
-	subsystems.Register(
-		"dns",
-		"Secure DNS",
-		"DNS resolver with scoping and DNS-over-TLS",
-		module,
-		"config:dns/",
-		nil,
-	)
+	// module = modules.Register("nameserver", prep, start, stop, "core", "resolver")
+	// subsystems.Register(
+	// 	"dns",
+	// 	"Secure DNS",
+	// 	"DNS resolver with scoping and DNS-over-TLS",
+	// 	module,
+	// 	"config:dns/",
+	// 	nil,
+	// )
 }
 
 func prep() error {
@@ -101,7 +116,7 @@ func start() error {
 
 func startListener(ip net.IP, port uint16, first bool) {
 	// Start DNS server as service worker.
-	module.StartServiceWorker("dns resolver", 0, func(ctx context.Context) error {
+	module.mgr.Go("dns resolver", func(ctx *mgr.WorkerCtx) error {
 		// Create DNS server.
 		dnsServer := &dns.Server{
 			Addr: net.JoinHostPort(
@@ -286,3 +301,22 @@ func getListenAddresses(listenAddress string) (ip1, ip2 net.IP, port uint16, err
 
 	return ip1, ip2, uint16(port64), nil
 }
+
+var (
+	module     *NameServer
+	shimLoaded atomic.Bool
+)
+
+// New returns a new NameServer module.
+func New(instance instance) (*NameServer, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &NameServer{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface{}

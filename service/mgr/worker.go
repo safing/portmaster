@@ -350,7 +350,7 @@ repeat:
 			continue repeat
 
 		case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-			// A canceled context or dexceeded eadline also means that the worker is finished.
+			// A canceled context or exceeded deadline also means that the worker is finished.
 			continue repeat
 
 		default:

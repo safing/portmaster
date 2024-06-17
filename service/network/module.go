@@ -2,32 +2,46 @@ package network
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/state"
 	"github.com/safing/portmaster/service/profile"
 )
 
-var (
-	module *modules.Module
-
-	defaultFirewallHandler FirewallHandler
-)
-
 // Events.
-var (
+const (
 	ConnectionReattributedEvent = "connection re-attributed"
 )
 
-func init() {
-	module = modules.Register("network", prep, start, nil, "base", "netenv", "processes")
-	module.RegisterEvent(ConnectionReattributedEvent, false)
+type Network struct {
+	mgr      *mgr.Manager
+	instance instance
+
+	EventConnectionReattributed *mgr.EventMgr[string]
 }
+
+func (n *Network) Start(m *mgr.Manager) error {
+	n.mgr = m
+	n.EventConnectionReattributed = mgr.NewEventMgr[string](ConnectionReattributedEvent, m)
+
+	if err := prep(); err != nil {
+		return err
+	}
+	return start()
+}
+
+func (n *Network) Stop(mgr *mgr.Manager) error {
+	return nil
+}
+
+var defaultFirewallHandler FirewallHandler
 
 // SetDefaultFirewallHandler sets the default firewall handler.
 func SetDefaultFirewallHandler(handler FirewallHandler) {
@@ -55,17 +69,9 @@ func start() error {
 		return err
 	}
 
-	module.StartServiceWorker("clean connections", 0, connectionCleaner)
-	module.StartServiceWorker("write open dns requests", 0, openDNSRequestWriter)
-
-	if err := module.RegisterEventHook(
-		"profiles",
-		profile.DeletedEvent,
-		"re-attribute connections from deleted profile",
-		reAttributeConnections,
-	); err != nil {
-		return err
-	}
+	module.mgr.Go("clean connections", connectionCleaner)
+	module.mgr.Go("write open dns requests", openDNSRequestWriter)
+	module.instance.Profile().EventDelete.AddCallback("re-attribute connections from deleted profile", reAttributeConnections)
 
 	return nil
 }
@@ -74,14 +80,10 @@ var reAttributionLock sync.Mutex
 
 // reAttributeConnections finds all connections of a deleted profile and re-attributes them.
 // Expected event data: scoped profile ID.
-func reAttributeConnections(_ context.Context, eventData any) error {
-	profileID, ok := eventData.(string)
-	if !ok {
-		return fmt.Errorf("event data is not a string: %v", eventData)
-	}
+func reAttributeConnections(_ *mgr.WorkerCtx, profileID string) (bool, error) {
 	profileSource, profileID, ok := strings.Cut(profileID, "/")
 	if !ok {
-		return fmt.Errorf("event data does not seem to be a scoped profile ID: %v", eventData)
+		return false, fmt.Errorf("event data does not seem to be a scoped profile ID: %v", profileID)
 	}
 
 	// Hold a lock for re-attribution, to prevent simultaneous processing of the
@@ -114,7 +116,7 @@ func reAttributeConnections(_ context.Context, eventData any) error {
 	}
 
 	tracer.Infof("filter: re-attributed %d connections", reAttributed)
-	return nil
+	return false, nil
 }
 
 func reAttributeConnection(ctx context.Context, conn *Connection, profileID, profileSource string) (reAttributed bool) {
@@ -144,8 +146,29 @@ func reAttributeConnection(ctx context.Context, conn *Connection, profileID, pro
 	conn.Save()
 
 	// Trigger event for re-attribution.
-	module.TriggerEvent(ConnectionReattributedEvent, conn.ID)
+	module.EventConnectionReattributed.Submit(conn.ID)
 
 	log.Tracer(ctx).Debugf("filter: re-attributed %s to %s", conn, conn.process.PrimaryProfileID)
 	return true
+}
+
+var (
+	module     *Network
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Network module.
+func New(instance instance) (*Network, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &Network{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface {
+	Profile() *profile.ProfileModule
 }

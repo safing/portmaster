@@ -83,10 +83,10 @@ func start() error {
 		loadTokens()
 
 		// Register new task.
-		accountUpdateTask = module.mgr.Go(
-			"update account",
-			UpdateAccount,
-		).Repeat(24 * time.Hour).Schedule(time.Now().Add(1 * time.Minute))
+		module.mgr.Delay("update account delayed", 1*time.Minute, func(_ *mgr.WorkerCtx) error {
+			module.mgr.Repeat("update account", 24*time.Hour, UpdateAccount)
+			return nil
+		})
 	}
 
 	return nil
@@ -95,8 +95,8 @@ func start() error {
 func stop() error {
 	if conf.Client() {
 		// Stop account update task.
-		accountUpdateTask.Cancel()
-		accountUpdateTask = nil
+		// accountUpdateTask.Cancel()
+		// accountUpdateTask = nil
 
 		// Store tokens to database.
 		storeTokens()

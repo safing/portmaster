@@ -7,7 +7,6 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/query"
-	"github.com/safing/portmaster/base/modules"
 )
 
 const (

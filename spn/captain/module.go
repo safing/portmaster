@@ -1,7 +1,6 @@
 package captain
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -95,17 +94,13 @@ func prep() error {
 			return err
 		}
 
-		if err := module.RegisterEventHook(
-			"patrol",
-			patrol.ChangeSignalEventName,
+		module.instance.Patrol().EventChangeSignal.AddCallback(
 			"trigger hub status maintenance",
-			func(_ context.Context, _ any) error {
+			func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 				TriggerHubStatusMaintenance()
-				return nil
+				return false, nil
 			},
-		); err != nil {
-			return err
-		}
+		)
 	}
 
 	return prepConfig()
@@ -172,9 +167,10 @@ func start() error {
 
 	// network optimizer
 	if conf.PublicHub() {
-		module.mgr.Go("optimize network", optimizeNetwork).
-			Repeat(1 * time.Minute).
-			Schedule(time.Now().Add(15 * time.Second))
+		module.mgr.Delay("optimize network delay", 15*time.Second, func(_ *mgr.WorkerCtx) error {
+			module.mgr.Repeat("optimize network", 1*time.Minute, optimizeNetwork)
+			return nil
+		})
 	}
 
 	// client + home hub manager
@@ -250,4 +246,5 @@ func New(instance instance) (*Captain, error) {
 
 type instance interface {
 	NetEnv() *netenv.NetEnv
+	Patrol() *patrol.Patrol
 }

@@ -1,16 +1,16 @@
 package database
 
 import (
-	"context"
 	"errors"
 	"time"
 
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // DelayedCacheWriter must be run by the caller of an interface that uses delayed cache writing.
-func (i *Interface) DelayedCacheWriter(ctx context.Context) error {
+func (i *Interface) DelayedCacheWriter(wc *mgr.WorkerCtx) error {
 	// Check if the DelayedCacheWriter should be run at all.
 	if i.options.CacheSize <= 0 || i.options.DelayCachedWrites == "" {
 		return errors.New("delayed cache writer is not applicable to this database interface")
@@ -32,7 +32,7 @@ func (i *Interface) DelayedCacheWriter(ctx context.Context) error {
 	for {
 		// Wait for trigger for writing the cache.
 		select {
-		case <-ctx.Done():
+		case <-wc.Done():
 			// The caller is shutting down, flush the cache to storage and exit.
 			i.flushWriteCache(0)
 			return nil

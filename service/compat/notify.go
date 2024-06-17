@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/profile"
 )
@@ -273,7 +274,7 @@ func isOverThreshold(id string) bool {
 	return false
 }
 
-func cleanNotifyThreshold(ctx context.Context, task *modules.Task) error {
+func cleanNotifyThreshold(ctx *mgr.WorkerCtx) error {
 	notifyThresholdsLock.Lock()
 	defer notifyThresholdsLock.Unlock()
 

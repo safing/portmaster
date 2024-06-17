@@ -84,7 +84,7 @@ var (
 	shimLoaded atomic.Bool
 )
 
-// New returns a new UI module.
+// New returns a new NetEnv module.
 func New(instance instance) (*NetEnv, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")

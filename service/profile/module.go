@@ -36,7 +36,7 @@ type ProfileModule struct {
 
 	EventConfigChange *mgr.EventMgr[string]
 	EventDelete       *mgr.EventMgr[string]
-	EventMigrated     *mgr.EventMgr[string]
+	EventMigrated     *mgr.EventMgr[[]string]
 }
 
 func (pm *ProfileModule) Start(m *mgr.Manager) error {
@@ -44,7 +44,7 @@ func (pm *ProfileModule) Start(m *mgr.Manager) error {
 
 	pm.EventConfigChange = mgr.NewEventMgr[string](ConfigChangeEvent, m)
 	pm.EventDelete = mgr.NewEventMgr[string](DeletedEvent, m)
-	pm.EventMigrated = mgr.NewEventMgr[string](MigratedEvent, m)
+	pm.EventMigrated = mgr.NewEventMgr[[]string](MigratedEvent, m)
 
 	if err := prep(); err != nil {
 		return err
