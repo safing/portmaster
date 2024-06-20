@@ -112,8 +112,8 @@ func stop() error {
 func UpdateAccount(_ *mgr.WorkerCtx) error { //, task *modules.Task) error {
 	// Retry sooner if the token issuer is failing.
 	defer func() {
-		if tokenIssuerIsFailing.IsSet() && task != nil {
-			task.Schedule(time.Now().Add(tokenIssuerRetryDuration))
+		if tokenIssuerIsFailing.IsSet() {
+			module.mgr.Delay("update account", tokenIssuerRetryDuration, UpdateAccount)
 		}
 	}()
 
@@ -144,15 +144,17 @@ func UpdateAccount(_ *mgr.WorkerCtx) error { //, task *modules.Task) error {
 
 	case time.Until(*u.Subscription.EndsAt) < 24*time.Hour &&
 		time.Since(*u.Subscription.EndsAt) < 24*time.Hour:
-		// Update account every hour 24h hours before and after the subscription ends.
-		task.Schedule(time.Now().Add(time.Hour))
+		// Update account every hour for 24h hours before and after the subscription ends.
+		// TODO(vladimir): Go rotunes will leak if this is called more then once. Figure out a way to test if this is already running.
+		module.mgr.Delay("update account", 1*time.Hour, UpdateAccount)
 
 	case u.Subscription.NextBillingDate == nil: // No auto-subscription.
 
 	case time.Until(*u.Subscription.NextBillingDate) < 24*time.Hour &&
 		time.Since(*u.Subscription.NextBillingDate) < 24*time.Hour:
 		// Update account every hour 24h hours before and after the next billing date.
-		task.Schedule(time.Now().Add(time.Hour))
+		// TODO(vladimir): Go rotunes will leak if this is called more then once. Figure out a way to test if this is already running.
+		module.mgr.Delay("update account", 1*time.Hour, UpdateAccount)
 	}
 
 	return nil
@@ -181,11 +183,12 @@ func tokenIssuerFailed() {
 	if !tokenIssuerIsFailing.SetToIf(false, true) {
 		return
 	}
-	if !module.Online() {
-		return
-	}
+	// TODO(vladimir): Do we need this check?
+	// if !module.Online() {
+	// 	return
+	// }
 
-	accountUpdateTask.Schedule(time.Now().Add(tokenIssuerRetryDuration))
+	module.mgr.Delay("update account", tokenIssuerRetryDuration, UpdateAccount)
 }
 
 // IsLoggedIn returns whether a User is currently logged in.

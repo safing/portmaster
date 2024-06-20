@@ -74,7 +74,7 @@ func bootstrapWithUpdates() error {
 		return errors.New("using the bootstrap-file argument disables bootstrapping via the update system")
 	}
 
-	return updateSPNIntel(module.Ctx, nil)
+	return updateSPNIntel(module.mgr.Ctx(), nil)
 }
 
 // loadBootstrapFile loads a file with bootstrap hub entries and imports them.

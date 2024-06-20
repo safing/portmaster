@@ -85,7 +85,7 @@ func runPublishOp(t terminal.Terminal, opID uint32, data *container.Container) (
 	if err != nil {
 		return nil, terminal.ErrMalformedData.With("failed to get status: %w", err)
 	}
-	h, forward, tErr := docks.ImportAndVerifyHubInfo(module.Ctx, "", announcementData, statusData, conf.MainMapName, conf.MainMapScope)
+	h, forward, tErr := docks.ImportAndVerifyHubInfo(module.mgr.Ctx(), "", announcementData, statusData, conf.MainMapName, conf.MainMapScope)
 	if tErr != nil {
 		return nil, tErr.Wrap("failed to import and verify hub")
 	}

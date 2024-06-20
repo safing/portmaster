@@ -1,7 +1,6 @@
 package compat
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/process"
@@ -139,10 +137,11 @@ func (issue *systemIssue) notify(err error) {
 	notifications.Notify(n)
 
 	systemIssueNotification = n
-	n.AttachToModule(module)
+	// n.AttachToModule(module)
 
 	// Report the raw error as module error.
-	module.NewErrorMessage("selfcheck", err).Report()
+	// FIXME(vladimir): Is there a need for this kind of error reporting?
+	// module.NewErrorMessage("selfcheck", err).Report()
 }
 
 func resetSystemIssue() {
@@ -215,7 +214,7 @@ func (issue *appIssue) notify(proc *process.Process) {
 	notifications.Notify(n)
 
 	// Set warning on profile.
-	module.StartWorker("set app compat warning", func(ctx context.Context) error {
+	module.mgr.Go("set app compat warning", func(ctx *mgr.WorkerCtx) error {
 		var changed bool
 
 		func() {

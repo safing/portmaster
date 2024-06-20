@@ -16,7 +16,6 @@ import (
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 )
 
 // Endpoint describes an API Endpoint.
@@ -61,10 +60,6 @@ type Endpoint struct { //nolint:maligned
 	// This field is currently being introduced and will only warn and not deny
 	// access if the write method does not match.
 	WriteMethod string `json:",omitempty"`
-
-	// BelongsTo defines which module this endpoint belongs to.
-	// The endpoint will not be accessible if the module is not online.
-	BelongsTo *modules.Module `json:"-"`
 
 	// ActionFunc is for simple actions with a return message for the user.
 	ActionFunc ActionFunc `json:"-"`
@@ -376,12 +371,6 @@ func (e *Endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, apiRequest := getAPIContext(r)
 	if apiRequest == nil {
 		http.NotFound(w, r)
-		return
-	}
-
-	// Wait for the owning module to be ready.
-	if !moduleIsReady(e.BelongsTo) {
-		http.Error(w, "The API endpoint is not ready yet or the its module is not enabled. Reload (F5) to try again.", http.StatusServiceUnavailable)
 		return
 	}
 

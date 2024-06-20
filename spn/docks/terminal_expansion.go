@@ -53,7 +53,7 @@ func ExpandTo(from terminal.Terminal, routeTo string, encryptFor *hub.Hub) (*Exp
 
 	// Create base terminal for expansion.
 	base, initData, tErr := terminal.NewLocalBaseTerminal(
-		module.Ctx,
+		module.mgr.Ctx(),
 		0, // Ignore; The ID of the operation is used for communication.
 		from.FmtID(),
 		encryptFor,
@@ -81,7 +81,7 @@ func ExpandTo(from terminal.Terminal, routeTo string, encryptFor *hub.Hub) (*Exp
 	}
 
 	// Start Workers.
-	base.StartWorkers(module, "expansion terminal")
+	base.StartWorkers(module.mgr, "expansion terminal")
 
 	return expansion, nil
 }

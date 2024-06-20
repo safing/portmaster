@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/base/formats/varint"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -19,7 +18,7 @@ type FlowControl interface {
 	Send(msg *Msg, timeout time.Duration) *Error
 	ReadyToSend() <-chan struct{}
 	Flush(timeout time.Duration)
-	StartWorkers(m *modules.Module, terminalName string)
+	StartWorkers(m *mgr.Manager, terminalName string)
 	RecvQueueLen() int
 	SendQueueLen() int
 }
@@ -122,8 +121,8 @@ func NewDuplexFlowQueue(
 }
 
 // StartWorkers starts the necessary workers to operate the flow queue.
-func (dfq *DuplexFlowQueue) StartWorkers(m *modules.Module, terminalName string) {
-	m.StartWorker(terminalName+" flow queue", dfq.FlowHandler)
+func (dfq *DuplexFlowQueue) StartWorkers(m *mgr.Manager, terminalName string) {
+	m.Go(terminalName+" flow queue", dfq.FlowHandler)
 }
 
 // shouldReportRecvSpace returns whether the receive space should be reported.

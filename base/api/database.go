@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -21,6 +20,7 @@ import (
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 const (
@@ -122,13 +122,13 @@ func startDatabaseWebsocketAPI(w http.ResponseWriter, r *http.Request) {
 		newDBAPI.sendQueue <- data
 	}
 
-	module.StartWorker("database api handler", newDBAPI.handler)
-	module.StartWorker("database api writer", newDBAPI.writer)
+	module.mgr.Go("database api handler", newDBAPI.handler)
+	module.mgr.Go("database api writer", newDBAPI.writer)
 
 	log.Tracer(r.Context()).Infof("api request: init websocket %s %s", r.RemoteAddr, r.RequestURI)
 }
 
-func (api *DatabaseWebsocketAPI) handler(context.Context) error {
+func (api *DatabaseWebsocketAPI) handler(_ *mgr.WorkerCtx) error {
 	defer func() {
 		_ = api.shutdown(nil)
 	}()
@@ -143,7 +143,7 @@ func (api *DatabaseWebsocketAPI) handler(context.Context) error {
 	}
 }
 
-func (api *DatabaseWebsocketAPI) writer(ctx context.Context) error {
+func (api *DatabaseWebsocketAPI) writer(ctx *mgr.WorkerCtx) error {
 	defer func() {
 		_ = api.shutdown(nil)
 	}()

@@ -10,7 +10,7 @@ import (
 	"github.com/tevino/abool"
 
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
 )
 
@@ -22,9 +22,9 @@ func HTTPSConnectivityConfirmed() bool {
 	return httpsConnectivityConfirmed.IsSet()
 }
 
-func connectivityCheckTask(ctx context.Context, task *modules.Task) error {
+func connectivityCheckTask(wc *mgr.WorkerCtx) error {
 	// Start tracing logs.
-	ctx, tracer := log.AddTracer(ctx)
+	ctx, tracer := log.AddTracer(wc.Ctx())
 	defer tracer.Submit()
 
 	// Run checks and report status.
@@ -32,14 +32,14 @@ func connectivityCheckTask(ctx context.Context, task *modules.Task) error {
 	if success {
 		tracer.Info("spn/patrol: all connectivity checks succeeded")
 		if httpsConnectivityConfirmed.SetToIf(false, true) {
-			module.TriggerEvent(ChangeSignalEventName, nil)
+			module.EventChangeSignal.Submit(struct{}{})
 		}
 		return nil
 	}
 
 	tracer.Errorf("spn/patrol: connectivity check failed")
 	if httpsConnectivityConfirmed.SetToIf(true, false) {
-		module.TriggerEvent(ChangeSignalEventName, nil)
+		module.EventChangeSignal.Submit(struct{}{})
 	}
 	return nil
 }

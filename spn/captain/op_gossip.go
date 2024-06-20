@@ -128,7 +128,7 @@ func (op *GossipOp) Deliver(msg *terminal.Msg) *terminal.Error {
 	}
 
 	// Import and verify.
-	h, forward, tErr := docks.ImportAndVerifyHubInfo(module.Ctx, "", announcementData, statusData, conf.MainMapName, conf.MainMapScope)
+	h, forward, tErr := docks.ImportAndVerifyHubInfo(module.mgr.Ctx(), "", announcementData, statusData, conf.MainMapName, conf.MainMapScope)
 	if tErr != nil {
 		if tErr.Is(hub.ErrOldData) {
 			log.Debugf("spn/captain: ignoring old %s from %s", gossipMsgType, op.craneID)

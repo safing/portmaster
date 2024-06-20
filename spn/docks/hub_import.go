@@ -170,7 +170,7 @@ func verifyHubIP(ctx context.Context, h *hub.Hub, ip net.IP) error {
 	if err != nil {
 		return fmt.Errorf("failed to create crane: %w", err)
 	}
-	module.StartWorker("crane unloader", crane.unloader)
+	module.mgr.Go("crane unloader", crane.unloader)
 	defer crane.Stop(nil)
 
 	// Verify Hub.

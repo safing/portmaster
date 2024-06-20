@@ -6,8 +6,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/hub"
@@ -23,23 +23,13 @@ var (
 )
 
 func registerIntelUpdateHook() error {
-	if err := module.RegisterEventHook(
-		updates.ModuleName,
-		updates.ResourceUpdateEvent,
-		"update SPN intel",
-		updateSPNIntel,
-	); err != nil {
-		return err
-	}
+	module.instance.Updates().EventResourcesUpdated.AddCallback("update SPN intel", func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
+		return false, updateSPNIntel(wc.Ctx(), nil)
+	})
 
-	if err := module.RegisterEventHook(
-		"config",
-		config.ChangeEvent,
-		"update SPN intel",
-		updateSPNIntel,
-	); err != nil {
-		return err
-	}
+	module.instance.Config().EventConfigChange.AddCallback("update SPN intel", func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
+		return false, updateSPNIntel(wc.Ctx(), nil)
+	})
 
 	return nil
 }

@@ -1,27 +1,42 @@
 package customlists
 
 import (
-	"context"
 	"errors"
 	"net"
 	"os"
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/safing/portmaster/base/api"
-	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/service/mgr"
 )
 
-var module *modules.Module
+type CustomList struct {
+	mgr      *mgr.Manager
+	instance instance
 
-const (
-	configModuleName  = "config"
-	configChangeEvent = "config change"
-)
+	States *mgr.StateMgr
+}
+
+func (cl *CustomList) Start(m *mgr.Manager) error {
+	cl.mgr = m
+	cl.States = mgr.NewStateMgr(m)
+
+	if err := prep(); err != nil {
+		return err
+	}
+	return start()
+}
+
+func (cl *CustomList) Stop(m *mgr.Manager) error {
+	return nil
+}
 
 // Helper variables for parsing the input file.
 var (
@@ -34,16 +49,11 @@ var (
 	filterListFileModifiedTime time.Time
 
 	filterListLock sync.RWMutex
-	parserTask     *modules.Task
 
 	// ErrNotConfigured is returned when updating the custom filter list, but it
 	// is not configured.
 	ErrNotConfigured = errors.New("custom filter list not configured")
 )
-
-func init() {
-	module = modules.Register("customlists", prep, start, nil, "base")
-}
 
 func prep() error {
 	initFilterLists()
@@ -56,9 +66,8 @@ func prep() error {
 
 	// Register api endpoint for updating the filter list.
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:      "customlists/update",
-		Write:     api.PermitUser,
-		BelongsTo: module,
+		Path:  "customlists/update",
+		Write: api.PermitUser,
 		ActionFunc: func(ar *api.Request) (msg string, err error) {
 			errCheck := checkAndUpdateFilterList()
 			if errCheck != nil {
@@ -77,25 +86,21 @@ func prep() error {
 
 func start() error {
 	// Register to hook to update after config change.
-	if err := module.RegisterEventHook(
-		configModuleName,
-		configChangeEvent,
+	module.instance.Config().EventConfigChange.AddCallback(
 		"update custom filter list",
-		func(ctx context.Context, obj interface{}) error {
+		func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 			if err := checkAndUpdateFilterList(); !errors.Is(err, ErrNotConfigured) {
-				return err
+				return false, err
 			}
-			return nil
+			return false, nil
 		},
-	); err != nil {
-		return err
-	}
+	)
 
 	// Create parser task and enqueue for execution. "checkAndUpdateFilterList" will schedule the next execution.
-	parserTask = module.NewTask("intel/customlists:file-update-check", func(context.Context, *modules.Task) error {
+	module.mgr.Repeat("intel/customlists:file-update-check", 20*time.Second, func(_ *mgr.WorkerCtx) error {
 		_ = checkAndUpdateFilterList()
 		return nil
-	}).Schedule(time.Now().Add(20 * time.Second))
+	})
 
 	return nil
 }
@@ -111,7 +116,8 @@ func checkAndUpdateFilterList() error {
 	}
 
 	// Schedule next update check
-	parserTask.Schedule(time.Now().Add(1 * time.Minute))
+	// TODO(vladimir): The task is set to repeate evry few seconds does. Is there another way to make it better?
+	// parserTask.Schedule(time.Now().Add(1 * time.Minute))
 
 	// Try to get file info
 	modifiedTime := time.Now()
@@ -204,4 +210,25 @@ func splitDomain(domain string) []string {
 		domains = append(domains, d)
 	}
 	return domains
+}
+
+var (
+	module     *CustomList
+	shimLoaded atomic.Bool
+)
+
+// New returns a new CustomList module.
+func New(instance instance) (*CustomList, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &CustomList{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface {
+	Config() *config.Config
 }

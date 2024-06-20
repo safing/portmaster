@@ -35,7 +35,7 @@ func NewLocalTestTerminal(
 	if err != nil {
 		return nil, nil, err
 	}
-	t.StartWorkers(module, "test terminal")
+	// t.StartWorkers(module, "test terminal")
 
 	return &TestTerminal{t}, initData, nil
 }
@@ -54,7 +54,7 @@ func NewRemoteTestTerminal(
 	if err != nil {
 		return nil, nil, err
 	}
-	t.StartWorkers(module, "test terminal")
+	// t.StartWorkers(module, "test terminal")
 
 	return &TestTerminal{t}, initMsg, nil
 }
@@ -138,36 +138,36 @@ func (t *TestTerminal) HandleAbandon(err *Error) (errorToSend *Error) {
 
 // NewSimpleTestTerminalPair provides a simple conntected terminal pair for tests.
 func NewSimpleTestTerminalPair(delay time.Duration, delayQueueSize int, opts *TerminalOpts) (a, b *TestTerminal, err error) {
-	if opts == nil {
-		opts = &TerminalOpts{
-			Padding:         defaultTestPadding,
-			FlowControl:     FlowControlDFQ,
-			FlowControlSize: defaultTestQueueSize,
-		}
-	}
+	// if opts == nil {
+	// 	opts = &TerminalOpts{
+	// 		Padding:         defaultTestPadding,
+	// 		FlowControl:     FlowControlDFQ,
+	// 		FlowControlSize: defaultTestQueueSize,
+	// 	}
+	// }
 
-	var initData *container.Container
-	var tErr *Error
-	a, initData, tErr = NewLocalTestTerminal(
-		module.Ctx, 127, "a", nil, opts, UpstreamSendFunc(createDelayingTestForwardingFunc(
-			"a", "b", delay, delayQueueSize, func(msg *Msg, timeout time.Duration) *Error {
-				return b.Deliver(msg)
-			},
-		)),
-	)
-	if tErr != nil {
-		return nil, nil, tErr.Wrap("failed to create local test terminal")
-	}
-	b, _, tErr = NewRemoteTestTerminal(
-		module.Ctx, 127, "b", nil, initData, UpstreamSendFunc(createDelayingTestForwardingFunc(
-			"b", "a", delay, delayQueueSize, func(msg *Msg, timeout time.Duration) *Error {
-				return a.Deliver(msg)
-			},
-		)),
-	)
-	if tErr != nil {
-		return nil, nil, tErr.Wrap("failed to create remote test terminal")
-	}
+	// var initData *container.Container
+	// var tErr *Error
+	// a, initData, tErr = NewLocalTestTerminal(
+	// 	module.Ctx, 127, "a", nil, opts, UpstreamSendFunc(createDelayingTestForwardingFunc(
+	// 		"a", "b", delay, delayQueueSize, func(msg *Msg, timeout time.Duration) *Error {
+	// 			return b.Deliver(msg)
+	// 		},
+	// 	)),
+	// )
+	// if tErr != nil {
+	// 	return nil, nil, tErr.Wrap("failed to create local test terminal")
+	// }
+	// b, _, tErr = NewRemoteTestTerminal(
+	// 	module.Ctx, 127, "b", nil, initData, UpstreamSendFunc(createDelayingTestForwardingFunc(
+	// 		"b", "a", delay, delayQueueSize, func(msg *Msg, timeout time.Duration) *Error {
+	// 			return a.Deliver(msg)
+	// 		},
+	// 	)),
+	// )
+	// if tErr != nil {
+	// 	return nil, nil, tErr.Wrap("failed to create remote test terminal")
+	// }
 
 	return a, b, nil
 }

@@ -8,8 +8,6 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/info"
 	"github.com/safing/portmaster/base/metrics"
-	"github.com/safing/portmaster/base/modules"
-	"github.com/safing/portmaster/base/run"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/service/updates/helper"
 	"github.com/safing/portmaster/spn/captain"

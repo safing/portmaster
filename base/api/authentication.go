@@ -122,7 +122,7 @@ type AuthenticatedHandler interface {
 
 // SetAuthenticator sets an authenticator function for the API endpoint. If none is set, all requests will be permitted.
 func SetAuthenticator(fn AuthenticatorFunc) error {
-	if module.Online() {
+	if module.online {
 		return ErrAuthenticationImmutable
 	}
 
@@ -351,7 +351,7 @@ func checkAPIKey(r *http.Request) *AuthToken {
 	return token
 }
 
-func updateAPIKeys(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
+func updateAPIKeys(_ context.Context) error {
 	apiKeysLock.Lock()
 	defer apiKeysLock.Unlock()
 
@@ -444,7 +444,7 @@ func updateAPIKeys(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 		})
 	}
 
-	return false, nil
+	return nil
 }
 
 func checkSessionCookie(r *http.Request) *AuthToken {
@@ -507,7 +507,7 @@ func createSession(w http.ResponseWriter, r *http.Request, token *AuthToken) err
 	return nil
 }
 
-func cleanSessions(_ context.Context, _ *modules.Task) error {
+func cleanSessions(_ *mgr.WorkerCtx) error {
 	sessionsLock.Lock()
 	defer sessionsLock.Unlock()
 

@@ -15,7 +15,6 @@ import (
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/spn/captain"
 	"github.com/safing/portmaster/spn/navigator"
 )

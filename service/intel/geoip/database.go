@@ -1,7 +1,6 @@
 package geoip
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
 )
 
@@ -148,11 +148,11 @@ func (upd *updateWorker) triggerUpdate() {
 
 func (upd *updateWorker) start() {
 	upd.once.Do(func() {
-		module.StartServiceWorker("geoip-updater", time.Second*10, upd.run)
+		module.mgr.Delay("geoip-updater", time.Second*10, upd.run)
 	})
 }
 
-func (upd *updateWorker) run(ctx context.Context) error {
+func (upd *updateWorker) run(ctx *mgr.WorkerCtx) error {
 	for {
 		if upd.v4.NeedsUpdate() {
 			if v4, err := getGeoIPDB(v4MMDBResource); err == nil {

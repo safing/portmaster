@@ -9,10 +9,12 @@ import (
 )
 
 type Ships struct {
+	mgr      *mgr.Manager
 	instance instance
 }
 
 func (s *Ships) Start(m *mgr.Manager) error {
+	s.mgr = m
 	if conf.PublicHub() {
 		initPageInput()
 	}

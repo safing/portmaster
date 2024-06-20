@@ -52,8 +52,7 @@ func registerSettingsAPI() error {
 			Field:       "key",
 			Description: "Optionally select a single setting to export. Repeat to export selection.",
 		}},
-		BelongsTo: module,
-		DataFunc:  handleExportSettings,
+		DataFunc: handleExportSettings,
 	}); err != nil {
 		return err
 	}
@@ -81,7 +80,6 @@ func registerSettingsAPI() error {
 			Field:       "allowUnknown",
 			Description: "Allow importing of unknown values.",
 		}},
-		BelongsTo:  module,
 		StructFunc: handleImportSettings,
 	}); err != nil {
 		return err

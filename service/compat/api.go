@@ -8,7 +8,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "compat/self-check",
 		Read:        api.PermitUser,
-		BelongsTo:   module,
 		ActionFunc:  selfcheckViaAPI,
 		Name:        "Run Integration Self-Check",
 		Description: "Runs a couple integration self-checks in order to see if the system integration works.",

@@ -175,14 +175,14 @@ func SaveOpenDNSRequest(q *resolver.Query, rrCache *resolver.RRCache, conn *Conn
 }
 
 func openDNSRequestWriter(ctx *mgr.WorkerCtx) error {
-	ticker := module.NewSleepyTicker(writeOpenDNSRequestsTickDuration, 0)
-	defer ticker.Stop()
+	module.dnsRequestTicker = mgr.NewSleepyTicker(writeOpenDNSRequestsTickDuration, 0)
+	defer module.dnsRequestTicker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-ticker.Wait():
+		case <-module.dnsRequestTicker.Wait():
 			writeOpenDNSRequestsToDB()
 		}
 	}

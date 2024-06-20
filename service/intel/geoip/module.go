@@ -1,20 +1,21 @@
 package geoip
 
 import (
-	"context"
+	"errors"
+	"sync/atomic"
 
 	"github.com/safing/portmaster/base/api"
-	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
 )
 
-var module *modules.Module
-
-func init() {
-	module = modules.Register("geoip", prep, nil, nil, "base", "updates")
+type GeoIP struct {
+	mgr      *mgr.Manager
+	instance instance
 }
 
-func prep() error {
+func (g *GeoIP) Start(m *mgr.Manager) error {
+	g.mgr = m
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path: "intel/geoip/countries",
 		Read: api.PermitUser,
@@ -28,13 +29,36 @@ func prep() error {
 		return err
 	}
 
-	return module.RegisterEventHook(
-		updates.ModuleName,
-		updates.ResourceUpdateEvent,
+	module.instance.Updates().EventResourcesUpdated.AddCallback(
 		"Check for GeoIP database updates",
-		func(c context.Context, i interface{}) error {
+		func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 			worker.triggerUpdate()
-			return nil
-		},
-	)
+			return false, nil
+		})
+	return nil
+}
+
+func (g *GeoIP) Stop(m *mgr.Manager) error {
+	return nil
+}
+
+var (
+	module     *GeoIP
+	shimLoaded atomic.Bool
+)
+
+// New returns a new GeoIP module.
+func New(instance instance) (*GeoIP, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &GeoIP{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface {
+	Updates() *updates.Updates
 }

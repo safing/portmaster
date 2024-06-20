@@ -16,6 +16,7 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/utils"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // EnableServer defines if the HTTP server should be started.
@@ -65,7 +66,7 @@ func startServer() {
 	}
 
 	// Start server manager.
-	module.StartServiceWorker("http server manager", 0, serverManager)
+	module.mgr.Go("http server manager", serverManager)
 }
 
 func stopServer() error {
@@ -82,13 +83,13 @@ func stopServer() error {
 }
 
 // Serve starts serving the API endpoint.
-func serverManager(_ context.Context) error {
+func serverManager(_ *mgr.WorkerCtx) error {
 	// start serving
 	log.Infof("api: starting to listen on %s", server.Addr)
 	backoffDuration := 10 * time.Second
 	for {
 		// always returns an error
-		err := module.RunWorker("http endpoint", func(ctx context.Context) error {
+		err := module.mgr.Do("http endpoint", func(ctx *mgr.WorkerCtx) error {
 			return server.ListenAndServe()
 		})
 		// return on shutdown error
@@ -106,7 +107,7 @@ type mainHandler struct {
 }
 
 func (mh *mainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	_ = module.RunWorker("http request", func(_ context.Context) error {
+	_ = module.mgr.Do("http request", func(_ *mgr.WorkerCtx) error {
 		return mh.handle(w, r)
 	})
 }
@@ -269,12 +270,13 @@ func (mh *mainHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Wait for the owning module to be ready.
-	if moduleHandler, ok := handler.(ModuleHandler); ok {
-		if !moduleIsReady(moduleHandler.BelongsTo()) {
-			http.Error(lrw, "The API endpoint is not ready yet. Reload (F5) to try again.", http.StatusServiceUnavailable)
-			return nil
-		}
-	}
+	// TODO(vladimir): no need to check for status anymore right?
+	// if moduleHandler, ok := handler.(ModuleHandler); ok {
+	// 	if !moduleIsReady(moduleHandler.BelongsTo()) {
+	// 		http.Error(lrw, "The API endpoint is not ready yet. Reload (F5) to try again.", http.StatusServiceUnavailable)
+	// 		return nil
+	// 	}
+	// }
 
 	// Check if we have a handler.
 	if handler == nil {
@@ -286,8 +288,9 @@ func (mh *mainHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	defer func() {
 		if panicValue := recover(); panicValue != nil {
 			// Report failure via module system.
-			me := module.NewPanicError("api request", "custom", panicValue)
-			me.Report()
+			// TODO(vladimir): do we need panic report here
+			// me := module.NewPanicError("api request", "custom", panicValue)
+			// me.Report()
 			// Respond with a server error.
 			if devMode() {
 				http.Error(

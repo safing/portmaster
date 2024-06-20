@@ -24,6 +24,9 @@ type Network struct {
 	mgr      *mgr.Manager
 	instance instance
 
+	dnsRequestTicker        *mgr.SleepyTicker
+	connectionCleanerTicker *mgr.SleepyTicker
+
 	EventConnectionReattributed *mgr.EventMgr[string]
 }
 
@@ -39,6 +42,15 @@ func (n *Network) Start(m *mgr.Manager) error {
 
 func (n *Network) Stop(mgr *mgr.Manager) error {
 	return nil
+}
+
+func (n *Network) SetSleep(enabled bool) {
+	if n.dnsRequestTicker != nil {
+		n.dnsRequestTicker.SetSleep(enabled)
+	}
+	if n.connectionCleanerTicker != nil {
+		n.connectionCleanerTicker.SetSleep(enabled)
+	}
 }
 
 var defaultFirewallHandler FirewallHandler

@@ -15,9 +15,7 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/rng"
-	"github.com/safing/portmaster/base/run"
 )
 
 var (

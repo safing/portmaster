@@ -1,13 +1,12 @@
 package intel
 
-import (
-	"github.com/safing/portmaster/base/modules"
-	_ "github.com/safing/portmaster/service/intel/customlists"
-)
+// import (
+// 	_ "github.com/safing/portmaster/service/intel/customlists"
+// )
 
 // Module of this package. Export needed for testing of the endpoints package.
-var Module *modules.Module
+// var Module *modules.Module
 
-func init() {
-	Module = modules.Register("intel", nil, nil, nil, "geoip", "filterlists", "customlists")
-}
+// func init() {
+// 	Module = modules.Register("intel", nil, nil, nil, "geoip", "filterlists", "customlists")
+// }

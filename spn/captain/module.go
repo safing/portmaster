@@ -8,15 +8,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/modules/subsystems"
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/netutils"
+	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/crew"
 	"github.com/safing/portmaster/spn/navigator"
@@ -34,6 +33,11 @@ type Captain struct {
 	mgr      *mgr.Manager
 	instance instance
 
+	shutdownFunc func(exitCode int)
+
+	healthCheckTicker *mgr.SleepyTicker
+
+	States            *mgr.StateMgr
 	EventSPNConnected *mgr.EventMgr[struct{}]
 }
 
@@ -51,25 +55,31 @@ func (c *Captain) Stop(m *mgr.Manager) error {
 	return stop()
 }
 
+func (c *Captain) SetSleep(enabled bool) {
+	if c.healthCheckTicker != nil {
+		c.healthCheckTicker.SetSleep(enabled)
+	}
+}
+
 func init() {
-	subsystems.Register(
-		"spn",
-		"SPN",
-		"Safing Privacy Network",
-		module,
-		"config:spn/",
-		&config.Option{
-			Name:         "SPN Module",
-			Key:          CfgOptionEnableSPNKey,
-			Description:  "Start the Safing Privacy Network module. If turned off, the SPN is fully disabled on this device.",
-			OptType:      config.OptTypeBool,
-			DefaultValue: false,
-			Annotations: config.Annotations{
-				config.DisplayOrderAnnotation: cfgOptionEnableSPNOrder,
-				config.CategoryAnnotation:     "General",
-			},
-		},
-	)
+	// subsystems.Register(
+	// 	"spn",
+	// 	"SPN",
+	// 	"Safing Privacy Network",
+	// 	module,
+	// 	"config:spn/",
+	// 	&config.Option{
+	// 		Name:         "SPN Module",
+	// 		Key:          CfgOptionEnableSPNKey,
+	// 		Description:  "Start the Safing Privacy Network module. If turned off, the SPN is fully disabled on this device.",
+	// 		OptType:      config.OptTypeBool,
+	// 		DefaultValue: false,
+	// 		Annotations: config.Annotations{
+	// 			config.DisplayOrderAnnotation: cfgOptionEnableSPNOrder,
+	// 			config.CategoryAnnotation:     "General",
+	// 		},
+	// 	},
+	// )
 }
 
 func prep() error {
@@ -126,7 +136,7 @@ func start() error {
 		// Load identity.
 		if err := loadPublicIdentity(); err != nil {
 			// We cannot recover from this, set controlled failure (do not retry).
-			modules.SetExitStatusCode(controlledFailureExitCode)
+			module.shutdownFunc(controlledFailureExitCode)
 
 			return err
 		}
@@ -134,7 +144,7 @@ func start() error {
 		// Check if any networks are configured.
 		if !conf.HubHasIPv4() && !conf.HubHasIPv6() {
 			// We cannot recover from this, set controlled failure (do not retry).
-			modules.SetExitStatusCode(controlledFailureExitCode)
+			module.shutdownFunc(controlledFailureExitCode)
 
 			return errors.New("no IP addresses for Hub configured (or detected)")
 		}
@@ -233,13 +243,14 @@ var (
 )
 
 // New returns a new Captain module.
-func New(instance instance) (*Captain, error) {
+func New(instance instance, shutdownFunc func(exitCode int)) (*Captain, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
 
 	module = &Captain{
-		instance: instance,
+		instance:     instance,
+		shutdownFunc: shutdownFunc,
 	}
 	return module, nil
 }
@@ -247,4 +258,6 @@ func New(instance instance) (*Captain, error) {
 type instance interface {
 	NetEnv() *netenv.NetEnv
 	Patrol() *patrol.Patrol
+	Config() *config.Config
+	Updates() *updates.Updates
 }

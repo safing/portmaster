@@ -22,7 +22,6 @@ func registerAPI() error {
 		Description: "List all registered metrics with their metadata.",
 		Path:        "metrics/list",
 		Read:        api.Dynamic,
-		BelongsTo:   module,
 		StructFunc: func(ar *api.Request) (any, error) {
 			return ExportMetrics(ar.AuthToken.Read), nil
 		},
@@ -40,7 +39,6 @@ func registerAPI() error {
 			Field:       "internal-only",
 			Description: "Specify to only return metrics with an alternative internal ID.",
 		}},
-		BelongsTo: module,
 		StructFunc: func(ar *api.Request) (any, error) {
 			return ExportValues(
 				ar.AuthToken.Read,
@@ -142,14 +140,14 @@ func writeMetricsTo(ctx context.Context, url string) error {
 
 func metricsWriter(ctx *mgr.WorkerCtx) error {
 	pushURL := pushOption()
-	ticker := module.NewSleepyTicker(1*time.Minute, 0)
-	defer ticker.Stop()
+	module.metricTicker = mgr.NewSleepyTicker(1*time.Minute, 0)
+	defer module.metricTicker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-ticker.Wait():
+		case <-module.metricTicker.Wait():
 			err := writeMetricsTo(ctx.Ctx(), pushURL)
 			if err != nil {
 				return err

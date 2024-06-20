@@ -342,7 +342,7 @@ func listenForDNSPackets(ctx context.Context, conn *net.UDPConn, messages chan *
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
-			if module.IsStopping() {
+			if module.mgr.IsDone() {
 				return nil
 			}
 			log.Debugf("resolver: failed to read packet: %s", err)

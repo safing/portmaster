@@ -14,7 +14,6 @@ import (
 
 	"github.com/safing/portmaster/base/apprise"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/intel/geoip"
 )
 

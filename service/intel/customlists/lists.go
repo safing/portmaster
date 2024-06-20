@@ -12,6 +12,7 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/netutils"
 )
 
@@ -79,7 +80,12 @@ func parseFile(filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		log.Warningf("intel/customlists: failed to parse file %s", err)
-		module.Warning(parseWarningNotificationID, "Failed to open custom filter list", err.Error())
+		module.States.Add(mgr.State{
+			ID:      parseWarningNotificationID,
+			Name:    "Failed to open custom filter list",
+			Message: err.Error(),
+			Type:    mgr.StateTypeWarning,
+		})
 		return err
 	}
 	defer func() { _ = file.Close() }()
@@ -107,11 +113,15 @@ func parseFile(filePath string) error {
 
 	if invalidLinesRation > rationForInvalidLinesUntilWarning {
 		log.Warning("intel/customlists: Too many invalid lines")
-		module.Warning(zeroIPNotificationID, "Custom filter list has many invalid lines",
-			fmt.Sprintf(`%d out of %d lines are invalid.
-			 Check if you are using the correct file format and if the path to the custom filter list is correct.`, invalidLinesCount, allLinesCount))
+		module.States.Add(mgr.State{
+			ID:   zeroIPNotificationID,
+			Name: "Custom filter list has many invalid lines",
+			Message: fmt.Sprintf(`%d out of %d lines are invalid.
+			 Check if you are using the correct file format and if the path to the custom filter list is correct.`, invalidLinesCount, allLinesCount),
+			Type: mgr.StateTypeWarning,
+		})
 	} else {
-		module.Resolve(zeroIPNotificationID)
+		module.States.Remove(zeroIPNotificationID)
 	}
 
 	allEntriesCount := len(domainsFilterList) + len(ipAddressesFilterList) + len(autonomousSystemsFilterList) + len(countryCodesFilterList)
@@ -130,7 +140,7 @@ func parseFile(filePath string) error {
 			len(autonomousSystemsFilterList),
 			len(countryCodesFilterList)))
 
-	module.Resolve(parseWarningNotificationID)
+	module.States.Remove(parseWarningNotificationID)
 
 	return nil
 }

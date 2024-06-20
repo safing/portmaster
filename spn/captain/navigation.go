@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
@@ -255,7 +254,7 @@ optimize:
 		} else if createdConnections < result.MaxConnect {
 			attemptedConnections++
 
-			crane, tErr := EstablishPublicLane(ctx, connectTo.Hub)
+			crane, tErr := EstablishPublicLane(ctx.Ctx(), connectTo.Hub)
 			if !tErr.IsOK() {
 				log.Warningf("spn/captain: failed to establish lane to %s: %s", connectTo.Hub, tErr)
 			} else {

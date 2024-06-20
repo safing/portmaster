@@ -1,11 +1,9 @@
 package resolver
 
 import (
-	"context"
 	"time"
 
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 )
@@ -72,7 +70,7 @@ func (brc *BasicResolverConn) ResetFailure() {
 	}
 }
 
-func checkFailingResolvers(wc *mgr.WorkerCtx) error { //, task *modules.Task) error {
+func checkFailingResolvers(wc *mgr.WorkerCtx) error {
 	var resolvers []*Resolver
 
 	// Make a copy of the resolver list.
@@ -118,9 +116,7 @@ func checkFailingResolvers(wc *mgr.WorkerCtx) error { //, task *modules.Task) er
 	}
 
 	// Set next execution time.
-	if task != nil {
-		task.Schedule(time.Now().Add(time.Duration(nameserverRetryRate()) * time.Second))
-	}
+	module.mgr.Delay("check failing resolvers", time.Duration(nameserverRetryRate())*time.Second, checkFailingResolvers)
 
 	return nil
 }

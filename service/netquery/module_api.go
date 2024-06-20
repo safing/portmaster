@@ -103,7 +103,6 @@ func (nq *NetQuery) prepare() error {
 		MimeType:    "application/json",
 		Read:        api.PermitUser, // Needs read+write as the query is sent using POST data.
 		Write:       api.PermitUser, // Needs read+write as the query is sent using POST data.
-		BelongsTo:   m.Module,
 		HandlerFunc: servertiming.Middleware(queryHander, nil).ServeHTTP,
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
@@ -116,7 +115,6 @@ func (nq *NetQuery) prepare() error {
 		MimeType:    "application/json",
 		Read:        api.PermitUser, // Needs read+write as the query is sent using POST data.
 		Write:       api.PermitUser, // Needs read+write as the query is sent using POST data.
-		BelongsTo:   m.Module,
 		HandlerFunc: servertiming.Middleware(batchHander, nil).ServeHTTP,
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
@@ -128,7 +126,6 @@ func (nq *NetQuery) prepare() error {
 		Path:        "netquery/charts/connection-active",
 		MimeType:    "application/json",
 		Write:       api.PermitUser,
-		BelongsTo:   m.Module,
 		HandlerFunc: servertiming.Middleware(chartHandler, nil).ServeHTTP,
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
@@ -139,7 +136,6 @@ func (nq *NetQuery) prepare() error {
 		Path:        "netquery/charts/bandwidth",
 		MimeType:    "application/json",
 		Write:       api.PermitUser,
-		BelongsTo:   m.Module,
 		HandlerFunc: bwChartHandler.ServeHTTP,
 		Name:        "Bandwidth Chart",
 		Description: "Query the in-memory sqlite connection database and return a chart of bytes sent/received.",
@@ -153,7 +149,6 @@ func (nq *NetQuery) prepare() error {
 		Path:        "netquery/history/clear",
 		MimeType:    "application/json",
 		Write:       api.PermitUser,
-		BelongsTo:   m.Module,
 		ActionFunc: func(ar *api.Request) (msg string, err error) {
 			var body struct {
 				ProfileIDs []string `json:"profileIDs"`
@@ -188,10 +183,9 @@ func (nq *NetQuery) prepare() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Name:      "Apply connection history retention threshold",
-		Path:      "netquery/history/cleanup",
-		Write:     api.PermitUser,
-		BelongsTo: m.Module,
+		Name:  "Apply connection history retention threshold",
+		Path:  "netquery/history/cleanup",
+		Write: api.PermitUser,
 		ActionFunc: func(ar *api.Request) (msg string, err error) {
 			if err := nq.Store.CleanupHistory(ar.Context()); err != nil {
 				return "", err

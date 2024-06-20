@@ -97,8 +97,7 @@ func registerProfileAPI() error {
 			Field:       "id",
 			Description: "Specify scoped profile ID to export.",
 		}},
-		BelongsTo: module,
-		DataFunc:  handleExportProfile,
+		DataFunc: handleExportProfile,
 	}); err != nil {
 		return err
 	}
@@ -128,7 +127,6 @@ func registerProfileAPI() error {
 				Description: "Allow importing of unknown values.",
 			},
 		},
-		BelongsTo:  module,
 		StructFunc: handleImportProfile,
 	}); err != nil {
 		return err

@@ -74,7 +74,7 @@ func initCraneTerminal(
 	t.SetTerminalExtension(ct)
 
 	// Start workers.
-	t.StartWorkers(module, "crane terminal")
+	t.StartWorkers(module.mgr, "crane terminal")
 
 	return ct
 }

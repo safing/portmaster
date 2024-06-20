@@ -12,12 +12,22 @@ import (
 type API struct {
 	mgr      *mgr.Manager
 	instance instance
+
+	online bool
 }
 
 // Start starts the module.
 func (api *API) Start(m *mgr.Manager) error {
 	api.mgr = m
-	return start()
+	if err := prep(); err != nil {
+		return err
+	}
+	if err := start(); err != nil {
+		return err
+	}
+
+	module.online = true
+	return nil
 }
 
 // Stop stops the module.
@@ -34,10 +44,6 @@ var (
 func New(instance instance) (*API, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
-	}
-
-	if err := prep(); err != nil {
-		return nil, err
 	}
 
 	module = &API{

@@ -32,14 +32,14 @@ const (
 )
 
 func connectionCleaner(ctx *mgr.WorkerCtx) error {
-	ticker := module.NewSleepyTicker(cleanerTickDuration, 0)
+	module.connectionCleanerTicker = mgr.NewSleepyTicker(cleanerTickDuration, 0)
+	defer module.connectionCleanerTicker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			ticker.Stop()
 			return nil
-		case <-ticker.Wait():
+		case <-module.connectionCleanerTicker.Wait():
 			// clean connections and processes
 			activePIDs := cleanConnections()
 			process.CleanProcessStorage(activePIDs)

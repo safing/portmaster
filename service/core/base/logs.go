@@ -1,7 +1,6 @@
 package base
 
 import (
-	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -10,7 +9,7 @@ import (
 
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 const (
@@ -20,12 +19,13 @@ const (
 )
 
 func registerLogCleaner() {
-	module.NewTask("log cleaner", logCleaner).
-		Repeat(24 * time.Hour).
-		Schedule(time.Now().Add(15 * time.Minute))
+	module.mgr.Delay("log cleaner delay", 15*time.Minute, func(w *mgr.WorkerCtx) error {
+		module.mgr.Repeat("log cleaner", 24*time.Hour, logCleaner)
+		return nil
+	})
 }
 
-func logCleaner(_ context.Context, _ *modules.Task) error {
+func logCleaner(_ *mgr.WorkerCtx) error {
 	ageThreshold := time.Now().Add(-logTTL)
 
 	return filepath.Walk(

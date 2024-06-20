@@ -8,8 +8,9 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/info"
-	"github.com/safing/portmaster/base/modules"
 )
+
+var ErrCleanExit = errors.New("clean exit requested")
 
 // Default Values (changeable for testing).
 var (
@@ -25,10 +26,10 @@ func init() {
 	flag.StringVar(&databaseDir, "db", "", "alias to --data (deprecated)")
 	flag.BoolVar(&showVersion, "version", false, "show version and exit")
 
-	modules.SetGlobalPrepFn(globalPrep)
+	// modules.SetGlobalPrepFn(globalPrep)
 }
 
-func globalPrep() error {
+func GlobalPrep() error {
 	// check if meta info is ok
 	err := info.CheckVersion()
 	if err != nil {
@@ -38,7 +39,7 @@ func globalPrep() error {
 	// print version
 	if showVersion {
 		fmt.Println(info.FullVersion())
-		return modules.ErrCleanExit
+		return ErrCleanExit
 	}
 
 	// check data root

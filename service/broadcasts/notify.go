@@ -66,7 +66,7 @@ type BroadcastNotification struct {
 	repeatDuration time.Duration
 }
 
-func broadcastNotify(ctx mgr.WorkerCtx) error {
+func broadcastNotify(ctx *mgr.WorkerCtx) error {
 	// Get broadcast notifications file, load it from disk and parse it.
 	broadcastsResource, err := updates.GetFile(broadcastsResourcePath)
 	if err != nil {
@@ -212,9 +212,10 @@ func handleBroadcast(bn *BroadcastNotification, matchingDataAccessor accessor.Ac
 	n.Save()
 
 	// Attach to module to raise more awareness.
-	if bn.AttachToModule {
-		n.AttachToModule(module)
-	}
+	// TODO(vladimir): is there a need for this?
+	// if bn.AttachToModule {
+	// 	n.AttachToModule(module)
+	// }
 
 	return nil
 }

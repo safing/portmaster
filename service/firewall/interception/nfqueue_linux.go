@@ -1,7 +1,6 @@
 package interception
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"sort"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/firewall/interception/nfq"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/packet"
 )
@@ -290,7 +290,7 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 		in6Queue = &disabledNfQueue{}
 	}
 
-	module.StartServiceWorker("nfqueue packet handler", 0, func(_ context.Context) error {
+	module.mgr.Go("nfqueue packet handler", func(_ *mgr.WorkerCtx) error {
 		return handleInterception(packets)
 	})
 	return nil

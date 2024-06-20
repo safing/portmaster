@@ -9,11 +9,11 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 
@@ -49,7 +49,7 @@ var (
 	userAgentFromFlag    string
 	updateServerFromFlag string
 
-	updateTask          *modules.Task
+	// updateTask          *modules.Task
 	updateASAP          bool
 	disableTaskSchedule bool
 
@@ -204,9 +204,9 @@ func start() error {
 		// 	MaxDelay(30 * time.Minute)
 	}
 
-	if updateASAP {
-		updateTask.StartASAP()
-	}
+	// if updateASAP {
+	// 	updateTask.StartASAP()
+	// }
 
 	// react to upgrades
 	if err := initUpgrader(); err != nil {
@@ -221,8 +221,9 @@ func start() error {
 // TriggerUpdate queues the update task to execute ASAP.
 func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 	switch {
-	case !module.Online():
-		updateASAP = true
+	// FIXME(vladimir): provide alternative for this
+	// case !module.Online():
+	// 	updateASAP = true
 
 	case !forceIndexCheck && !enableSoftwareUpdates() && !enableIntelUpdates():
 		return errors.New("automatic updating is disabled")
@@ -236,11 +237,12 @@ func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 		}
 
 		// If index check if forced, start quicker.
-		if forceIndexCheck {
-			updateTask.StartASAP()
-		} else {
-			updateTask.Queue()
-		}
+		// FIXME(vladimir): provide alternative for this
+		// if forceIndexCheck {
+		// 	updateTask.StartASAP()
+		// } else {
+		// 	updateTask.Queue()
+		// }
 	}
 
 	log.Debugf("updates: triggering update to run as soon as possible")
@@ -251,17 +253,18 @@ func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 // If called, updates are only checked when TriggerUpdate()
 // is called.
 func DisableUpdateSchedule() error {
-	switch module.Status() {
-	case modules.StatusStarting, modules.StatusOnline, modules.StatusStopping:
-		return errors.New("module already online")
-	}
+	// TODO: Updater state should be always on
+	// switch module.Status() {
+	// case modules.StatusStarting, modules.StatusOnline, modules.StatusStopping:
+	// 	return errors.New("module already online")
+	// }
 
 	disableTaskSchedule = true
 
 	return nil
 }
 
-func checkForUpdates(ctx context.Context) (err error) {
+func checkForUpdates(ctx *mgr.WorkerCtx) (err error) {
 	// Set correct error if context was canceled.
 	defer func() {
 		select {
@@ -294,12 +297,12 @@ func checkForUpdates(ctx context.Context) (err error) {
 		notifyUpdateCheckFailed(forceIndexCheck, err)
 	}()
 
-	if err = registry.UpdateIndexes(ctx); err != nil {
+	if err = registry.UpdateIndexes(ctx.Ctx()); err != nil {
 		err = fmt.Errorf("failed to update indexes: %w", err)
 		return //nolint:nakedret // TODO: Would "return err" work with the defer?
 	}
 
-	err = registry.DownloadUpdates(ctx, downloadAll)
+	err = registry.DownloadUpdates(ctx.Ctx(), downloadAll)
 	if err != nil {
 		err = fmt.Errorf("failed to download updates: %w", err)
 		return //nolint:nakedret // TODO: Would "return err" work with the defer?
@@ -334,9 +337,9 @@ func stop() error {
 
 // RootPath returns the root path used for storing updates.
 func RootPath() string {
-	if !module.Online() {
-		return ""
-	}
+	// if !module.Online() {
+	// 	return ""
+	// }
 
 	return registry.StorageDir().Path
 }

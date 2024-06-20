@@ -15,6 +15,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/intel"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
@@ -833,7 +834,7 @@ func (conn *Connection) SetFirewallHandler(handler FirewallHandler) {
 
 	// Start packet handler worker when new handler is set.
 	if conn.firewallHandler == nil {
-		module.StartWorker("packet handler", conn.packetHandlerWorker)
+		module.mgr.Go("packet handler", conn.packetHandlerWorker)
 	}
 
 	// Set new handler.
@@ -899,7 +900,7 @@ func (conn *Connection) HandlePacket(pkt packet.Packet) {
 var infoOnlyPacketsActive = abool.New()
 
 // packetHandlerWorker sequentially handles queued packets.
-func (conn *Connection) packetHandlerWorker(ctx context.Context) error {
+func (conn *Connection) packetHandlerWorker(ctx *mgr.WorkerCtx) error {
 	// Copy packet queue, so we can remove the reference from the connection
 	// when we stop the firewall handler.
 	var pktQueue chan packet.Packet
@@ -948,7 +949,7 @@ func (conn *Connection) packetHandlerWorker(ctx context.Context) error {
 					if infoPkt != nil {
 						// DEBUG:
 						// log.Debugf("filter: packet #%d [pulled forward] info=%v PID=%d packet: %s", pktSeq, infoPkt.InfoOnly(), infoPkt.Info().PID, pkt)
-						packetHandlerHandleConn(ctx, conn, infoPkt)
+						packetHandlerHandleConn(ctx.Ctx(), conn, infoPkt)
 						pktSeq++
 					}
 				case <-time.After(1 * time.Millisecond):
@@ -967,7 +968,7 @@ func (conn *Connection) packetHandlerWorker(ctx context.Context) error {
 			// 	log.Debugf("filter: packet #%d info=%v PID=%d packet: %s", pktSeq, pkt.InfoOnly(), pkt.Info().PID, pkt)
 			// }
 
-			packetHandlerHandleConn(ctx, conn, pkt)
+			packetHandlerHandleConn(ctx.Ctx(), conn, pkt)
 
 		case <-ctx.Done():
 			return nil

@@ -6,6 +6,9 @@ import (
 	"flag"
 	"os"
 	"time"
+
+	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 var exportEndpoints bool
@@ -53,12 +56,15 @@ func prep() error {
 func start() error {
 	startServer()
 
-	_ = updateAPIKeys(module.mgr.Ctx(), nil)
-	module.instance.Config().EventConfigChange.AddCallback("update API keys", updateAPIKeys)
+	_ = updateAPIKeys(module.mgr.Ctx())
+	module.instance.Config().EventConfigChange.AddCallback("update API keys",
+		func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
+			return false, updateAPIKeys(wc.Ctx())
+		})
 
 	// start api auth token cleaner
 	if authFnSet.IsSet() {
-		module.NewTask("clean api sessions", cleanSessions).Repeat(5 * time.Minute)
+		module.mgr.Repeat("clean api sessions", 5*time.Minute, cleanSessions)
 	}
 
 	return registerEndpointBridgeDB()

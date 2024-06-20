@@ -1,7 +1,6 @@
 package terminal
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // CounterOpType is the type ID for the Counter Operation.
@@ -68,7 +68,7 @@ func NewCounterOp(t Terminal, opts CounterOpts) (*CounterOp, *Error) {
 
 	// Start worker if needed.
 	if op.getRemoteCounterTarget() > 0 && !op.opts.suppressWorker {
-		module.StartWorker("counter sender", op.CounterWorker)
+		module.mgr.Go("counter sender", op.CounterWorker)
 	}
 	return op, nil
 }
@@ -91,7 +91,7 @@ func startCounterOp(t Terminal, opID uint32, data *container.Container) (Operati
 
 	// Start worker if needed.
 	if op.getRemoteCounterTarget() > 0 {
-		module.StartWorker("counter sender", op.CounterWorker)
+		module.mgr.Go("counter sender", op.CounterWorker)
 	}
 
 	return op, nil
@@ -219,7 +219,7 @@ func (op *CounterOp) Wait() {
 }
 
 // CounterWorker is a worker that sends counters.
-func (op *CounterOp) CounterWorker(ctx context.Context) error {
+func (op *CounterOp) CounterWorker(ctx *mgr.WorkerCtx) error {
 	for {
 		// Send counter msg.
 		err := op.SendCounter()

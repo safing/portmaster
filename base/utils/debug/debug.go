@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"runtime/pprof"
-	"strings"
 	"time"
 
 	"github.com/safing/portmaster/base/info"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 )
 
 // Info gathers debugging information and stores everything in a buffer in
@@ -114,17 +112,17 @@ func (di *Info) AddGoroutineStack() {
 
 // AddLastReportedModuleError adds the last reported module error, if one exists.
 func (di *Info) AddLastReportedModuleError() {
-	me := modules.GetLastReportedError()
-	if me == nil {
-		di.AddSection("No Module Error", NoFlags)
-		return
-	}
+	// me := modules.GetLastReportedError()
+	// if me == nil {
+	// 	di.AddSection("No Module Error", NoFlags)
+	// 	return
+	// }
 
-	di.AddSection(
-		fmt.Sprintf("%s Module Error", strings.Title(me.ModuleName)), //nolint:staticcheck
-		UseCodeSection,
-		me.Format(),
-	)
+	// di.AddSection(
+	// 	fmt.Sprintf("%s Module Error", strings.Title(me.ModuleName)), //nolint:staticcheck
+	// 	UseCodeSection,
+	// 	me.Format(),
+	// )
 }
 
 // AddLastUnexpectedLogs adds the last 10 unexpected log lines, if any.

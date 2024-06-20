@@ -13,6 +13,7 @@ import (
 	"github.com/tevino/abool"
 
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 )
 
@@ -119,16 +120,18 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 			log.Warningf("resolver: heartbeat for dns client %s failed", tr.resolver.Info.DescriptiveName())
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-module.Stopping():
-			return nil, ErrShuttingDown
+			// TODO(vladimir): there is no need for this right?
+			// case <-module.Stopping():
+			// 	return nil, ErrShuttingDown
 		}
 	} else {
 		// If there is no resolver, check if we are shutting down before dialing!
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-module.Stopping():
-			return nil, ErrShuttingDown
+		// TODO(vladimir): there is no need for this right?
+		// case <-module.Stopping():
+		// 	return nil, ErrShuttingDown
 		default:
 		}
 	}
@@ -175,7 +178,7 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 	}
 
 	// Start worker.
-	module.StartWorker("dns client", resolverConn.handler)
+	module.mgr.Go("dns client", resolverConn.handler)
 
 	// Set resolver conn for reuse.
 	tr.resolverConn = resolverConn
@@ -204,8 +207,9 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	case resolverConn.queries <- tq:
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-module.Stopping():
-		return nil, ErrShuttingDown
+	// TODO(vladimir): there is no need for this right?
+	// case <-module.Stopping():
+	// 	return nil, ErrShuttingDown
 	case <-time.After(defaultRequestTimeout):
 		return nil, ErrTimeout
 	}
@@ -216,8 +220,9 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	case reply = <-tq.Response:
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-module.Stopping():
-		return nil, ErrShuttingDown
+	// TODO(vladimir): there is no need for this right?
+	// case <-module.Stopping():
+	// 	return nil, ErrShuttingDown
 	case <-time.After(defaultRequestTimeout):
 		return nil, ErrTimeout
 	}
@@ -282,9 +287,9 @@ func (trc *tcpResolverConn) shutdown() {
 	}
 }
 
-func (trc *tcpResolverConn) handler(workerCtx context.Context) error {
+func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 	// Set up context and cleanup.
-	trc.ctx, trc.cancelCtx = context.WithCancel(workerCtx)
+	trc.ctx, trc.cancelCtx = context.WithCancel(workerCtx.Ctx())
 	defer trc.shutdown()
 
 	// Set up variables.
@@ -292,7 +297,7 @@ func (trc *tcpResolverConn) handler(workerCtx context.Context) error {
 	ttlTimer := time.After(defaultClientTTL)
 
 	// Start connection reader.
-	module.StartWorker("dns client reader", trc.reader)
+	module.mgr.Go("dns client reader", trc.reader)
 
 	// Handle requests.
 	for {
@@ -416,7 +421,7 @@ func (trc *tcpResolverConn) handleQueryResponse(msg *dns.Msg) {
 	}
 }
 
-func (trc *tcpResolverConn) reader(workerCtx context.Context) error {
+func (trc *tcpResolverConn) reader(workerCtx *mgr.WorkerCtx) error {
 	defer trc.cancelCtx()
 
 	for {

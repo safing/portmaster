@@ -427,7 +427,7 @@ func (crane *Crane) decrypt(shipment *container.Container) (decrypted *container
 	return container.New(decryptedData), nil
 }
 
-func (crane *Crane) unloader(workerCtx context.Context) error {
+func (crane *Crane) unloader(workerCtx *mgr.WorkerCtx) error {
 	// Unclean shutdown safeguard.
 	defer crane.Stop(terminal.ErrUnknownError.With("unloader died"))
 
@@ -517,7 +517,7 @@ func (crane *Crane) unloadUntilFull(buf []byte) error {
 	}
 }
 
-func (crane *Crane) handler(workerCtx context.Context) error {
+func (crane *Crane) handler(workerCtx *mgr.WorkerCtx) error {
 	var partialShipment *container.Container
 	var segmentLength uint32
 
@@ -646,7 +646,7 @@ handling:
 	}
 }
 
-func (crane *Crane) loader(workerCtx context.Context) (err error) {
+func (crane *Crane) loader(workerCtx *mgr.WorkerCtx) (err error) {
 	shipment := container.New()
 	var partialShipment *container.Container
 	var loadingTimer *time.Timer

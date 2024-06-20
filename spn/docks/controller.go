@@ -80,7 +80,7 @@ func initCraneController(
 	t.GrantPermission(terminal.IsCraneController)
 
 	// Start workers.
-	t.StartWorkers(module, "crane controller terminal")
+	t.StartWorkers(module.mgr, "crane controller terminal")
 
 	return cct
 }

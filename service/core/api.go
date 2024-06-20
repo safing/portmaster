@@ -12,7 +12,6 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/base/utils/debug"
@@ -54,7 +53,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "debug/core",
 		Read:        api.PermitAnyone,
-		BelongsTo:   module,
 		DataFunc:    debugInfo,
 		Name:        "Get Debug Information",
 		Description: "Returns network debugging information, similar to debug/info, but with system status data.",
@@ -71,7 +69,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:       "app/auth",
 		Read:       api.PermitAnyone,
-		BelongsTo:  module,
 		StructFunc: authorizeApp,
 		Name:       "Request an authentication token with a given set of permissions. The user will be prompted to either authorize or deny the request. Used for external or third-party tool integrations.",
 		Parameters: []api.Parameter{
@@ -103,7 +100,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:       "app/profile",
 		Read:       api.PermitUser,
-		BelongsTo:  module,
 		StructFunc: getMyProfile,
 		Name:       "Get the ID of the calling profile",
 	}); err != nil {
@@ -118,7 +114,8 @@ func shutdown(_ *api.Request) (msg string, err error) {
 	log.Warning("core: user requested shutdown via action")
 
 	// Do not run in worker, as this would block itself here.
-	go modules.Shutdown() //nolint:errcheck
+	// TODO(vladimir): replace with something better
+	go ShutdownHook() //nolint:errcheck
 
 	return "shutdown initiated", nil
 }

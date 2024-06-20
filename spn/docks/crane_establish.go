@@ -1,11 +1,11 @@
 package docks
 
 import (
-	"context"
 	"time"
 
 	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/terminal"
 )
 
@@ -70,7 +70,7 @@ func (crane *Crane) establishTerminal(id uint32, initData *container.Container) 
 	case crane.terminalMsgs <- msg:
 	default:
 		// Send error async.
-		module.StartWorker("abandon terminal", func(ctx context.Context) error {
+		module.mgr.Go("abandon terminal", func(ctx *mgr.WorkerCtx) error {
 			select {
 			case crane.terminalMsgs <- msg:
 			case <-ctx.Done():

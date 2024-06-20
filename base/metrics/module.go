@@ -7,17 +7,19 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/service/mgr"
 )
 
 type Metrics struct {
 	mgr      *mgr.Manager
 	instance instance
+
+	metricTicker *mgr.SleepyTicker
 }
 
 func (met *Metrics) Start(m *mgr.Manager) error {
 	met.mgr = m
+
 	if err := prepConfig(); err != nil {
 		return err
 	}
@@ -26,6 +28,12 @@ func (met *Metrics) Start(m *mgr.Manager) error {
 
 func (met *Metrics) Stop(m *mgr.Manager) error {
 	return stop()
+}
+
+func (met *Metrics) SetSleep(enabled bool) {
+	if met.metricTicker != nil {
+		met.metricTicker.SetSleep(enabled)
+	}
 }
 
 var (
@@ -128,9 +136,10 @@ func register(m Metric) error {
 	// Set flag that first metric is now registered.
 	firstMetricRegistered = true
 
-	if module.Status() < modules.StatusStarting {
-		return fmt.Errorf("registering metric %q too early", m.ID())
-	}
+	// TODO(vladimir): With the new modules system there is no way this can fail. I may be wrong.
+	// if module.Status() < modules.StatusStarting {
+	// 	return fmt.Errorf("registering metric %q too early", m.ID())
+	// }
 
 	return nil
 }

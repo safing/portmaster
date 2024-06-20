@@ -8,29 +8,30 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/tevino/abool"
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/utils/debug"
 	_ "github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
-	"github.com/safing/portmaster/spn/captain"
 )
 
 type ResolverModule struct {
 	mgr      *mgr.Manager
 	instance instance
+
+	States *mgr.StateMgr
 }
 
 func (rm *ResolverModule) Start(m *mgr.Manager) error {
 	rm.mgr = m
+	rm.States = mgr.NewStateMgr(m)
+
 	if err := prep(); err != nil {
 		return err
 	}
@@ -75,7 +76,7 @@ func start() error {
 	)
 
 	// Force resolvers to reconnect when SPN has connected.
-	module.instance.Captain().EventSPNConnected.AddCallback(
+	module.instance.GetEventSPNConnected().AddCallback(
 		"force resolver reconnect",
 		func(ctx *mgr.WorkerCtx, _ struct{}) (bool, error) {
 			ForceResolverReconnect(ctx.Ctx())
@@ -98,7 +99,7 @@ func start() error {
 		})
 
 	// Check failing resolvers regularly and when the network changes.
-	module.mgr.Repeat("check failing resolvers", 1*time.Minute, checkFailingResolvers)
+	module.mgr.Do("check failing resolvers", checkFailingResolvers)
 	module.instance.NetEnv().EventNetworkChange.AddCallback(
 		"check failing resolvers",
 		func(wc *mgr.WorkerCtx, _ struct{}) (bool, error) {
@@ -106,7 +107,7 @@ func start() error {
 			return false, nil
 		})
 
-	module.mgr.Repeat("suggest using stale cache", 2*time.Minute, suggestUsingStaleCacheTask)
+	module.mgr.Go("suggest using stale cache", suggestUsingStaleCacheTask)
 
 	module.mgr.Go(
 		"mdns handler",
@@ -180,7 +181,8 @@ This notification will go away when Portmaster detects a working configured DNS 
 	notifications.Notify(n)
 
 	failingResolverNotification = n
-	n.AttachToModule(module)
+	// TODO(vladimir): is this needed?
+	// n.AttachToModule(module)
 }
 
 func resetFailingResolversNotification() {
@@ -198,7 +200,7 @@ func resetFailingResolversNotification() {
 	}
 
 	// Additionally, resolve the module error, if not done through the notification.
-	module.Resolve(failingResolverErrorID)
+	module.States.Remove(failingResolverErrorID)
 }
 
 // AddToDebugInfo adds the system status to the given debug.Info.
@@ -259,6 +261,6 @@ func New(instance instance) (*ResolverModule, error) {
 
 type instance interface {
 	NetEnv() *netenv.NetEnv
-	Captain() *captain.Captain
 	Config() *config.Config
+	GetEventSPNConnected() *mgr.EventMgr[struct{}]
 }

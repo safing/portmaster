@@ -120,7 +120,7 @@ func clearTokens() {
 	}
 
 	// Purge database storage prefix.
-	ctx, cancel := context.WithTimeout(module.Ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(module.mgr.Ctx(), 10*time.Second)
 	defer cancel()
 	n, err := db.Purge(ctx, query.New(fmt.Sprintf(tokenStorageKeyTemplate, "")))
 	if err != nil {

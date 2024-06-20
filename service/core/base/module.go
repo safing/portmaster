@@ -1,31 +1,22 @@
 package base
 
 import (
+	"errors"
+	"sync/atomic"
+
 	_ "github.com/safing/portmaster/base/config"
 	_ "github.com/safing/portmaster/base/metrics"
-	"github.com/safing/portmaster/base/modules"
 	_ "github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/mgr"
 )
 
-var module *modules.Module
-
-func init() {
-	module = modules.Register("base", nil, start, nil, "database", "config", "rng", "metrics")
-
-	// For prettier subsystem graph, printed with --print-subsystem-graph
-	/*
-		subsystems.Register(
-			"base",
-			"Base",
-			"THE GROUND.",
-			baseModule,
-			"",
-			nil,
-		)
-	*/
+type Base struct {
+	mgr      *mgr.Manager
+	instance instance
 }
 
-func start() error {
+func (b *Base) Start(m *mgr.Manager) error {
+	b.mgr = m
 	startProfiling()
 
 	if err := registerDatabases(); err != nil {
@@ -36,3 +27,26 @@ func start() error {
 
 	return nil
 }
+
+func (b *Base) Stop(m *mgr.Manager) error {
+	return nil
+}
+
+var (
+	module     *Base
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Base module.
+func New(instance instance) (*Base, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &Base{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface{}

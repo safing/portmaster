@@ -7,7 +7,6 @@ import (
 
 	_ "github.com/safing/portmaster/base/database/dbmodule"
 	"github.com/safing/portmaster/base/dataroot"
-	"github.com/safing/portmaster/base/modules"
 )
 
 func TestMain(m *testing.M) {

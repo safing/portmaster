@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/spn/docks"
 	"github.com/safing/portmaster/spn/terminal"
 )
@@ -25,7 +24,7 @@ const (
 	// 1000c   -> 100h -> capped to 50h.
 )
 
-func (m *Map) measureHubs(ctx context.Context, _ *modules.Task) error {
+func (m *Map) measureHubs(ctx context.Context) error {
 	if home, _ := m.GetHome(); home == nil {
 		log.Debug("spn/navigator: skipping measuring, no home hub set")
 		return nil

@@ -9,22 +9,22 @@ import (
 )
 
 func startMaintenanceTasks() {
-	module.mgr.Go("basic maintenance", maintainBasic).Repeat(10 * time.Minute).MaxDelay(10 * time.Minute)
-	module.mgr.Go("thorough maintenance", maintainThorough).Repeat(1 * time.Hour).MaxDelay(1 * time.Hour)
-	module.mgr.Go("record maintenance", maintainRecords).Repeat(1 * time.Hour).MaxDelay(1 * time.Hour)
+	module.mgr.Repeat("basic maintenance", 10*time.Minute, maintainBasic)
+	module.mgr.Repeat("thorough maintenance", 1*time.Hour, maintainThorough)
+	module.mgr.Repeat("record maintenance", 1*time.Hour, maintainRecords)
 }
 
-func maintainBasic(ctx mgr.WorkerCtx) error {
+func maintainBasic(ctx *mgr.WorkerCtx) error {
 	log.Infof("database: running Maintain")
 	return database.Maintain(ctx.Ctx())
 }
 
-func maintainThorough(ctx mgr.WorkerCtx) error {
+func maintainThorough(ctx *mgr.WorkerCtx) error {
 	log.Infof("database: running MaintainThorough")
 	return database.MaintainThorough(ctx.Ctx())
 }
 
-func maintainRecords(ctx mgr.WorkerCtx) error {
+func maintainRecords(ctx *mgr.WorkerCtx) error {
 	log.Infof("database: running MaintainRecordStates")
 	return database.MaintainRecordStates(ctx.Ctx())
 }

@@ -44,8 +44,7 @@ func registerSingleSettingAPI() error {
 			Field:       "key",
 			Description: "Specify which settings key to export.",
 		}},
-		BelongsTo: module,
-		DataFunc:  handleExportSingleSetting,
+		DataFunc: handleExportSingleSetting,
 	}); err != nil {
 		return err
 	}
@@ -69,7 +68,6 @@ func registerSingleSettingAPI() error {
 			Field:       "validate",
 			Description: "Validate only.",
 		}},
-		BelongsTo:  module,
 		StructFunc: handleImportSingleSetting,
 	}); err != nil {
 		return err

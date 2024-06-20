@@ -11,7 +11,12 @@ import (
 	"github.com/safing/portmaster/base/runtime"
 	"github.com/safing/portmaster/service/broadcasts"
 	"github.com/safing/portmaster/service/compat"
+	"github.com/safing/portmaster/service/core"
+	"github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/firewall"
+	"github.com/safing/portmaster/service/firewall/interception"
+	"github.com/safing/portmaster/service/intel/customlists"
+	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/nameserver"
 	"github.com/safing/portmaster/service/netenv"
@@ -48,6 +53,7 @@ type Instance struct {
 	runtime       *runtime.Runtime
 	notifications *notifications.Notifications
 	rng           *rng.Rng
+	base          *base.Base
 
 	access    *access.Access
 	cabin     *cabin.Cabin
@@ -60,20 +66,24 @@ type Instance struct {
 	sluice    *sluice.SluiceModule
 	terminal  *terminal.TerminalModule
 
-	updates    *updates.Updates
-	ui         *ui.UI
-	profile    *profile.ProfileModule
-	filter     *firewall.Filter
-	netenv     *netenv.NetEnv
-	status     *status.Status
-	broadcasts *broadcasts.Broadcasts
-	compat     *compat.Compat
-	nameserver *nameserver.NameServer
-	netquery   *netquery.NetQuery
-	network    *network.Network
-	process    *process.ProcessModule
-	resolver   *resolver.ResolverModule
-	sync       *sync.Sync
+	updates      *updates.Updates
+	ui           *ui.UI
+	profile      *profile.ProfileModule
+	filter       *firewall.Filter
+	interception *interception.Interception
+	customlist   *customlists.CustomList
+	geoip        *geoip.GeoIP
+	netenv       *netenv.NetEnv
+	status       *status.Status
+	broadcasts   *broadcasts.Broadcasts
+	compat       *compat.Compat
+	nameserver   *nameserver.NameServer
+	netquery     *netquery.NetQuery
+	network      *network.Network
+	process      *process.ProcessModule
+	resolver     *resolver.ResolverModule
+	sync         *sync.Sync
+	core         *core.Core
 }
 
 // New returns a new portmaster service instance.
@@ -110,6 +120,10 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create rng module: %w", err)
 	}
+	instance.base, err = base.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create base module: %w", err)
+	}
 
 	// SPN modules
 	instance.access, err = access.New(instance)
@@ -120,7 +134,7 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create cabin module: %w", err)
 	}
-	instance.captain, err = captain.New(instance)
+	instance.captain, err = captain.New(instance, svcCfg.ShutdownFunc)
 	if err != nil {
 		return nil, fmt.Errorf("create captain module: %w", err)
 	}
@@ -170,6 +184,18 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create filter module: %w", err)
 	}
+	instance.interception, err = interception.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create interception module: %w", err)
+	}
+	instance.customlist, err = customlists.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create customlist module: %w", err)
+	}
+	instance.geoip, err = geoip.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create customlist module: %w", err)
+	}
 	instance.netenv, err = netenv.New(instance)
 	if err != nil {
 		return nil, fmt.Errorf("create netenv module: %w", err)
@@ -210,6 +236,10 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create sync module: %w", err)
 	}
+	instance.core, err = core.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create core module: %w", err)
+	}
 
 	// Add all modules to instance group.
 	instance.Group = mgr.NewGroup(
@@ -219,6 +249,7 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		instance.runtime,
 		instance.notifications,
 		instance.rng,
+		instance.base,
 
 		instance.access,
 		instance.cabin,
@@ -235,6 +266,9 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		instance.ui,
 		instance.profile,
 		instance.filter,
+		instance.interception,
+		instance.customlist,
+		instance.geoip,
 		instance.netenv,
 		instance.status,
 		instance.broadcasts,
@@ -245,9 +279,19 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		instance.process,
 		instance.resolver,
 		instance.sync,
+		instance.core,
 	)
 
+	// FIXME: call this before to trigger shutdown/restart event
+	// core.ShutdownHook()
+
 	return instance, nil
+}
+
+func (i *Instance) SetSleep(enabled bool) {
+	i.metrics.SetSleep(enabled)
+	i.network.SetSleep(enabled)
+	i.captain.SetSleep(enabled)
 }
 
 // Version returns the version.
@@ -278,6 +322,11 @@ func (i *Instance) Notifications() *notifications.Notifications {
 // Rng returns the rng module.
 func (i *Instance) Rng() *rng.Rng {
 	return i.rng
+}
+
+// Base returns the base module.
+func (i *Instance) Base() *base.Base {
+	return i.base
 }
 
 // Access returns the access module.
@@ -330,6 +379,11 @@ func (i *Instance) Terminal() *terminal.TerminalModule {
 	return i.terminal
 }
 
+// Updates returns the updates module.
+func (i *Instance) Updates() *updates.Updates {
+	return i.updates
+}
+
 // UI returns the ui module.
 func (i *Instance) UI() *ui.UI {
 	return i.ui
@@ -345,9 +399,19 @@ func (i *Instance) Profile() *profile.ProfileModule {
 	return i.profile
 }
 
-// Profile returns the profile module.
+// Firewall returns the firewall module.
 func (i *Instance) Firewall() *firewall.Filter {
 	return i.filter
+}
+
+// Interception returns the interception module.
+func (i *Instance) Interception() *interception.Interception {
+	return i.interception
+}
+
+// CustomList returns the customlist module.
+func (i *Instance) CustomList() *customlists.CustomList {
+	return i.customlist
 }
 
 // NetEnv returns the netenv module.
@@ -398,4 +462,15 @@ func (i *Instance) Resolver() *resolver.ResolverModule {
 // Sync returns the sync module.
 func (i *Instance) Sync() *sync.Sync {
 	return i.sync
+}
+
+// Core returns the core module.
+func (i *Instance) Core() *core.Core {
+	return i.core
+}
+
+// Events
+// SPN connected
+func (i *Instance) GetEventSPNConnected() *mgr.EventMgr[struct{}] {
+	return i.captain.EventSPNConnected
 }

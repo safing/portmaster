@@ -77,15 +77,16 @@ func clientManager(ctx *mgr.WorkerCtx) error {
 		ready.UnSet()
 		netenv.ConnectedToSPN.UnSet()
 		resetSPNStatus(StatusDisabled, true)
-		module.Resolve("")
+		module.States.Clear()
 		clientStopHomeHub(ctx.Ctx())
 	}()
 
-	module.Hint(
-		"spn:establishing-home-hub",
-		"Connecting to SPN...",
-		"Connecting to the SPN network is in progress.",
-	)
+	module.States.Add(mgr.State{
+		ID:      "spn:establishing-home-hub",
+		Name:    "Connecting to SPN...",
+		Message: "Connecting to the SPN network is in progress.",
+		Type:    mgr.StateTypeHint,
+	})
 
 	// TODO: When we are starting and the SPN module is faster online than the
 	// nameserver, then updating the account will fail as the DNS query is
@@ -98,7 +99,8 @@ func clientManager(ctx *mgr.WorkerCtx) error {
 		return nil
 	}
 
-	healthCheckTicker := module.NewSleepyTicker(clientHealthCheckTickDuration, clientHealthCheckTickDurationSleepMode)
+	module.healthCheckTicker = mgr.NewSleepyTicker(clientHealthCheckTickDuration, clientHealthCheckTickDurationSleepMode)
+	defer module.healthCheckTicker.Stop()
 
 reconnect:
 	for {
@@ -180,7 +182,7 @@ reconnect:
 
 			// Wait for signal to run maintenance again.
 			select {
-			case <-healthCheckTicker.Wait():
+			case <-module.healthCheckTicker.Wait():
 			case <-clientHealthCheckTrigger:
 			case <-crew.ConnectErrors():
 			case <-clientNetworkChangedFlag.Signal():
@@ -226,7 +228,9 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 			`Please restart Portmaster.`,
 			// TODO: Add restart button.
 			// TODO: Use special UI restart action in order to reload UI on restart.
-		).AttachToModule(module)
+		)
+		// TODO(vladimir): this is not needed right
+		// .AttachToModule(module)
 		resetSPNStatus(StatusFailed, true)
 		log.Errorf("spn/captain: client internal error: %s", err)
 		return clientResultReconnect
@@ -239,7 +243,9 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 			"SPN Login Required",
 			`Please log in to access the SPN.`,
 			spnLoginButton,
-		).AttachToModule(module)
+		)
+		// TODO(vladimir): this is not needed right
+		// .AttachToModule(module)
 		resetSPNStatus(StatusFailed, true)
 		log.Warningf("spn/captain: enabled but not logged in")
 		return clientResultReconnect
@@ -257,7 +263,9 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 					"spn:failed-to-update-user",
 					"SPN Account Server Error",
 					fmt.Sprintf(`The status of your SPN account could not be updated: %s`, err),
-				).AttachToModule(module)
+				)
+				// TODO(vladimir): this is not needed right
+				// .AttachToModule(module)
 				resetSPNStatus(StatusFailed, true)
 				log.Errorf("spn/captain: failed to update ineligible account: %s", err)
 				return clientResultReconnect
@@ -274,7 +282,9 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 					"SPN Not Included In Package",
 					"Your current Portmaster Package does not include access to the SPN. Please upgrade your package on the Account Page.",
 					spnOpenAccountPage,
-				).AttachToModule(module)
+				)
+				// TODO(vladimir): this is not needed right
+				// .AttachToModule(module)
 				resetSPNStatus(StatusFailed, true)
 				return clientResultReconnect
 			}
@@ -289,7 +299,9 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 				"Portmaster Package Issue",
 				"Cannot enable SPN: "+message,
 				spnOpenAccountPage,
-			).AttachToModule(module)
+			)
+			// TODO(vladimir): this is not needed right
+			// .AttachToModule(module)
 			resetSPNStatus(StatusFailed, true)
 			return clientResultReconnect
 		}
@@ -309,7 +321,9 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 					"spn:tokens-exhausted",
 					"SPN Access Tokens Exhausted",
 					`The Portmaster failed to get new access tokens to access the SPN. The Portmaster will automatically retry to get new access tokens.`,
-				).AttachToModule(module)
+				)
+				// TODO(vladimir): this is not needed right
+				// .AttachToModule(module)
 				resetSPNStatus(StatusFailed, false)
 			}
 			return clientResultRetry
@@ -357,7 +371,9 @@ func clientConnectToHomeHub(ctx context.Context) clientComponentResult {
 						Key: CfgOptionHomeHubPolicyKey,
 					},
 				},
-			).AttachToModule(module)
+			)
+			// TODO(vladimir): this is not needed right
+			// .AttachToModule(module)
 
 		case errors.Is(err, ErrReInitSPNSuggested):
 			notifications.NotifyError(
@@ -373,14 +389,18 @@ func clientConnectToHomeHub(ctx context.Context) clientComponentResult {
 						ResultAction: "display",
 					},
 				},
-			).AttachToModule(module)
+			)
+			// TODO(vladimir): this is not needed right
+			// .AttachToModule(module)
 
 		default:
 			notifications.NotifyWarn(
 				"spn:home-hub-failure",
 				"SPN Failed to Connect",
 				fmt.Sprintf("Failed to connect to a home hub: %s. The Portmaster will retry to connect automatically.", err),
-			).AttachToModule(module)
+			)
+			// TODO(vladimir): this is not needed right
+			// .AttachToModule(module)
 		}
 
 		return clientResultReconnect
@@ -403,7 +423,7 @@ func clientSetActiveConnectionStatus(ctx context.Context) clientComponentResult 
 	}
 
 	// Resolve any connection error.
-	module.Resolve("")
+	module.States.Clear()
 
 	// Update SPN Status with connection information, if not already correctly set.
 	spnStatus.Lock()

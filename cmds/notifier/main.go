@@ -21,7 +21,6 @@ import (
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/info"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/updates/helper"

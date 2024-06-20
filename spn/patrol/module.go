@@ -13,17 +13,18 @@ import (
 const ChangeSignalEventName = "change signal"
 
 type Patrol struct {
+	mgr      *mgr.Manager
 	instance instance
 
 	EventChangeSignal *mgr.EventMgr[struct{}]
 }
 
 func (p *Patrol) Start(m *mgr.Manager) error {
+	p.mgr = m
 	p.EventChangeSignal = mgr.NewEventMgr[struct{}](ChangeSignalEventName, m)
 
 	if conf.PublicHub() {
-		module.NewTask("connectivity test", connectivityCheckTask).
-			Repeat(5 * time.Minute)
+		m.Repeat("connectivity test", 5*time.Minute, connectivityCheckTask)
 	}
 	return nil
 }

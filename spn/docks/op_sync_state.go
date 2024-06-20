@@ -6,6 +6,7 @@ import (
 
 	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/formats/dsd"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/terminal"
 )
@@ -39,8 +40,8 @@ func init() {
 
 // startSyncStateOp starts a worker that runs the sync state operation.
 func (crane *Crane) startSyncStateOp() {
-	module.StartWorker("sync crane state", func(ctx context.Context) error {
-		tErr := crane.Controller.SyncState(ctx)
+	module.mgr.Go("sync crane state", func(wc *mgr.WorkerCtx) error {
+		tErr := crane.Controller.SyncState(wc.Ctx())
 		if tErr != nil {
 			return tErr
 		}

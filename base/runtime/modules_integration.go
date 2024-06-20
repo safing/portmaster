@@ -6,8 +6,6 @@ import (
 
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/record"
-	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 )
 
 var modulesIntegrationUpdatePusher func(...record.Record)
@@ -18,9 +16,9 @@ func startModulesIntegration() (err error) {
 		return err
 	}
 
-	if !modules.SetEventSubscriptionFunc(pushModuleEvent) {
-		log.Warningf("runtime: failed to register the modules event subscription function")
-	}
+	// if !modules.SetEventSubscriptionFunc(pushModuleEvent) {
+	// 	log.Warningf("runtime: failed to register the modules event subscription function")
+	// }
 
 	return nil
 }

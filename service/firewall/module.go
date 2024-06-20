@@ -1,7 +1,6 @@
 package firewall
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	_ "github.com/safing/portmaster/service/core"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/netquery"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/spn/access"
@@ -81,51 +81,23 @@ func prep() error {
 
 	// Reset connections when spn is connected
 	// connect and disconnecting is triggered on config change event but connecting takеs more time
-	err = module.RegisterEventHook(
-		"captain",
-		captain.SPNConnectedEvent,
-		"reset connection verdicts on SPN connect",
-		func(ctx context.Context, _ interface{}) error {
-			resetAllConnectionVerdicts()
-			return nil
-		},
-	)
-	if err != nil {
-		log.Errorf("filter: failed to register event hook: %s", err)
-	}
+	module.instance.Captain().EventSPNConnected.AddCallback("reset connection verdicts on SPN connect", func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
+		resetAllConnectionVerdicts()
+		return false, err
+	})
 
 	// Reset connections when account is updated.
 	// This will not change verdicts, but will update the feature flags on connections.
-	err = module.RegisterEventHook(
-		"access",
-		access.AccountUpdateEvent,
-		"update connection feature flags after account update",
-		func(ctx context.Context, _ interface{}) error {
-			resetAllConnectionVerdicts()
-			return nil
-		},
-	)
-	if err != nil {
-		log.Errorf("filter: failed to register event hook: %s", err)
-	}
+	module.instance.Access().EventAccountUpdate.AddCallback("update connection feature flags after account update", func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
+		resetAllConnectionVerdicts()
+		return false, err
+	})
 
-	err = module.RegisterEventHook(
-		"network",
-		network.ConnectionReattributedEvent,
-		"reset verdict of re-attributed connection",
-		func(ctx context.Context, eventData interface{}) error {
-			// Expected event data: connection ID.
-			connID, ok := eventData.(string)
-			if !ok {
-				return fmt.Errorf("event data is not a string: %v", eventData)
-			}
-			resetSingleConnectionVerdict(connID)
-			return nil
-		},
-	)
-	if err != nil {
-		log.Errorf("filter: failed to register event hook: %s", err)
-	}
+	module.instance.Network().EventConnectionReattributed.AddCallback("reset connection verdicts after connection re-attribution", func(wc *mgr.WorkerCtx, connID string) (cancel bool, err error) {
+		// Expected event data: connection ID.
+		resetSingleConnectionVerdict(connID)
+		return false, err
+	})
 
 	if err := registerConfig(); err != nil {
 		return err
@@ -169,4 +141,8 @@ func New(instance instance) (*Filter, error) {
 type instance interface {
 	Config() *config.Config
 	Profile() *profile.ProfileModule
+	Captain() *captain.Captain
+	Access() *access.Access
+	Network() *network.Network
+	NetQuery() *netquery.NetQuery
 }

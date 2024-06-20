@@ -19,7 +19,6 @@ import (
 	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
-	"github.com/safing/portmaster/service/netquery"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
@@ -794,8 +793,8 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 	}
 
 	// Update bandwidth in the netquery module.
-	if netquery.DefaultModule != nil && conn.BandwidthEnabled {
-		if err := netquery.DefaultModule.Store.UpdateBandwidth(
+	if module.instance.NetQuery() != nil && conn.BandwidthEnabled {
+		if err := module.instance.NetQuery().Store.UpdateBandwidth(
 			ctx,
 			conn.HistoryEnabled,
 			fmt.Sprintf("%s/%s", conn.ProcessContext.Source, conn.ProcessContext.Profile),

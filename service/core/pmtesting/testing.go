@@ -26,7 +26,6 @@ import (
 	_ "github.com/safing/portmaster/base/database/storage/hashmap"
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/service/core/base"
 )
 

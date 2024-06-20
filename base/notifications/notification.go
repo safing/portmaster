@@ -8,8 +8,8 @@ import (
 
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/utils"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // Type describes the type of a notification.
@@ -99,9 +99,9 @@ type Notification struct { //nolint:maligned
 	// based on the user selection.
 	SelectedActionID string
 
-	// belongsTo holds the module this notification belongs to. The notification
-	// lifecycle will be mirrored to the module's failure status.
-	belongsTo *modules.Module
+	// belongsTo holds the state this notification belongs to. The notification
+	// lifecycle will be mirrored to the specified failure status.
+	// belongsTo *mgr.StateMgr
 
 	lock           sync.Mutex
 	actionFunction NotificationActionFn // call function to process action
@@ -442,7 +442,7 @@ func (n *Notification) delete(pushUpdate bool) {
 		dbController.PushUpdate(n)
 	}
 
-	n.resolveModuleFailure()
+	// n.resolveModuleFailure()
 }
 
 // Expired notifies the caller when the notification has expired.
@@ -468,8 +468,8 @@ func (n *Notification) selectAndExecuteAction(id string) {
 
 	executed := false
 	if n.actionFunction != nil {
-		module.StartWorker("notification action execution", func(ctx context.Context) error {
-			return n.actionFunction(ctx, n)
+		module.mgr.Go("notification action execution", func(ctx *mgr.WorkerCtx) error {
+			return n.actionFunction(ctx.Ctx(), n)
 		})
 		executed = true
 	}
@@ -495,7 +495,7 @@ func (n *Notification) selectAndExecuteAction(id string) {
 
 	if executed {
 		n.State = Executed
-		n.resolveModuleFailure()
+		// n.resolveModuleFailure()
 	}
 }
 

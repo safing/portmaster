@@ -1,12 +1,7 @@
 package captain
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/safing/portmaster/base/api"
-	"github.com/safing/portmaster/base/database"
-	"github.com/safing/portmaster/base/database/query"
 )
 
 const (
@@ -29,39 +24,41 @@ func registerAPIEndpoints() error {
 }
 
 func handleReInit(ar *api.Request) (msg string, err error) {
-	// Disable module and check
-	changed := module.Disable()
-	if !changed {
-		return "", errors.New("can only re-initialize when the SPN is enabled")
-	}
+	// FIXME: make a better way to disable and enable spn
+	// // Disable module and check
+	// changed := module.Disable()
+	// if !changed {
+	// 	return "", errors.New("can only re-initialize when the SPN is enabled")
+	// }
 
-	// Run module manager.
-	err = modules.ManageModules()
-	if err != nil {
-		return "", fmt.Errorf("failed to stop SPN: %w", err)
-	}
+	// // Run module manager.
+	// err = modules.ManageModules()
+	// if err != nil {
+	// 	return "", fmt.Errorf("failed to stop SPN: %w", err)
+	// }
 
-	// Delete SPN cache.
-	db := database.NewInterface(&database.Options{
-		Local:    true,
-		Internal: true,
-	})
-	deletedRecords, err := db.Purge(ar.Context(), query.New("cache:spn/"))
-	if err != nil {
-		return "", fmt.Errorf("failed to delete SPN cache: %w", err)
-	}
+	// // Delete SPN cache.
+	// db := database.NewInterface(&database.Options{
+	// 	Local:    true,
+	// 	Internal: true,
+	// })
+	// deletedRecords, err := db.Purge(ar.Context(), query.New("cache:spn/"))
+	// if err != nil {
+	// 	return "", fmt.Errorf("failed to delete SPN cache: %w", err)
+	// }
 
-	// Enable module.
-	module.Enable()
+	// // Enable module.
+	// module.Enable()
 
-	// Run module manager.
-	err = modules.ManageModules()
-	if err != nil {
-		return "", fmt.Errorf("failed to start SPN after cache reset: %w", err)
-	}
+	// // Run module manager.
+	// err = modules.ManageModules()
+	// if err != nil {
+	// 	return "", fmt.Errorf("failed to start SPN after cache reset: %w", err)
+	// }
 
-	return fmt.Sprintf(
-		"Completed SPN re-initialization and deleted %d cache records in the process.",
-		deletedRecords,
-	), nil
+	// return fmt.Sprintf(
+	// 	"Completed SPN re-initialization and deleted %d cache records in the process.",
+	// 	deletedRecords,
+	// ), nil
+	return "", nil
 }

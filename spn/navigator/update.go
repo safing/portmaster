@@ -15,7 +15,6 @@ import (
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/modules"
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/mgr"
@@ -421,7 +420,7 @@ func (m *Map) ResetFailingStates(ctx context.Context) {
 	m.PushPinChanges()
 }
 
-func (m *Map) updateFailingStates(ctx context.Context, task *modules.Task) error {
+func (m *Map) updateFailingStates(ctx *mgr.WorkerCtx) error {
 	m.Lock()
 	defer m.Unlock()
 
@@ -434,7 +433,7 @@ func (m *Map) updateFailingStates(ctx context.Context, task *modules.Task) error
 	return nil
 }
 
-func (m *Map) updateStates(ctx context.Context, task *modules.Task) error {
+func (m *Map) updateStates(ctx *mgr.WorkerCtx) error {
 	var toDelete []string
 
 	m.Lock()
@@ -459,7 +458,7 @@ pinLoop:
 
 		// Delete hubs async, as deleting triggers a couple hooks that lock the map.
 		if len(toDelete) > 0 {
-			module.StartWorker("delete hubs", func(_ context.Context) error {
+			module.mgr.Go("delete hubs", func(_ *mgr.WorkerCtx) error {
 				for _, idToDelete := range toDelete {
 					err := hub.RemoveHubAndMsgs(m.Name, idToDelete)
 					if err != nil {
