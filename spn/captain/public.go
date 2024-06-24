@@ -87,11 +87,11 @@ func loadPublicIdentity() (err error) {
 }
 
 func prepPublicIdentityMgmt() error {
-	module.mgr.Repeat("maintain public status", maintainStatusInterval, maintainPublicStatus)
+	module.maintainPublicStatus.Repeat(maintainStatusInterval)
 
 	module.instance.Config().EventConfigChange.AddCallback("update public identity from config",
 		func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
-			module.mgr.Delay("maintain public identity", 5*time.Minute, maintainPublicIdentity)
+			module.maintainPublicStatus.Delay(5 * time.Minute)
 			return false, nil
 		})
 	return nil
@@ -99,7 +99,7 @@ func prepPublicIdentityMgmt() error {
 
 // TriggerHubStatusMaintenance queues the Hub status update task to be executed.
 func TriggerHubStatusMaintenance() {
-	module.mgr.Go("maintain public status", maintainPublicStatus)
+	module.maintainPublicStatus.Go()
 }
 
 func maintainPublicIdentity(ctx *mgr.WorkerCtx) error {

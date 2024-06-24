@@ -33,7 +33,7 @@ func registerConfigUpdater() error {
 
 const globalConfigProfileErrorID = "profile:global-profile-error"
 
-func updateGlobalConfigProfile(ctx context.Context) error {
+func updateGlobalConfigProfile(_ context.Context) error {
 	cfgLock.Lock()
 	defer cfgLock.Unlock()
 
@@ -134,10 +134,10 @@ func updateGlobalConfigProfile(ctx context.Context) error {
 		// Create task after first failure.
 
 		// Schedule task.
-		module.mgr.Delay("retry updating global config profile", 15*time.Second,
+		_ = module.mgr.Delay("retry updating global config profile", 15*time.Second,
 			func(w *mgr.WorkerCtx) error {
 				return updateGlobalConfigProfile(w.Ctx())
-			})
+			}, nil)
 
 		// Add module warning to inform user.
 		module.States.Add(mgr.State{

@@ -73,6 +73,9 @@ func (brc *BasicResolverConn) ResetFailure() {
 func checkFailingResolvers(wc *mgr.WorkerCtx) error {
 	var resolvers []*Resolver
 
+	// Set next execution time.
+	module.failingResolverTask.Delay(time.Duration(nameserverRetryRate()) * time.Second)
+
 	// Make a copy of the resolver list.
 	func() {
 		resolversLock.Lock()
@@ -114,9 +117,6 @@ func checkFailingResolvers(wc *mgr.WorkerCtx) error {
 			return ctx.Err()
 		}
 	}
-
-	// Set next execution time.
-	module.mgr.Delay("check failing resolvers", time.Duration(nameserverRetryRate())*time.Second, checkFailingResolvers)
 
 	return nil
 }

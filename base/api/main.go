@@ -64,7 +64,7 @@ func start() error {
 
 	// start api auth token cleaner
 	if authFnSet.IsSet() {
-		module.mgr.Repeat("clean api sessions", 5*time.Minute, cleanSessions)
+		_ = module.mgr.Repeat("clean api sessions", 5*time.Minute, cleanSessions, nil)
 	}
 
 	return registerEndpointBridgeDB()

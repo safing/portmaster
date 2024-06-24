@@ -19,10 +19,7 @@ const (
 )
 
 func registerLogCleaner() {
-	module.mgr.Delay("log cleaner delay", 15*time.Minute, func(w *mgr.WorkerCtx) error {
-		module.mgr.Repeat("log cleaner", 24*time.Hour, logCleaner)
-		return nil
-	})
+	_ = module.mgr.Delay("log cleaner", 15*time.Minute, logCleaner, nil).Repeat(24 * time.Hour)
 }
 
 func logCleaner(_ *mgr.WorkerCtx) error {

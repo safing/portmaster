@@ -55,7 +55,7 @@ func start() error {
 
 	// Start broadcast notifier task.
 	startOnce.Do(func() {
-		module.mgr.Repeat("broadcast notifier", 10*time.Minute, broadcastNotify)
+		module.mgr.Repeat("broadcast notifier", 10*time.Minute, broadcastNotify, nil)
 	})
 
 	return nil

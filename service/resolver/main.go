@@ -25,6 +25,9 @@ type ResolverModule struct {
 	mgr      *mgr.Manager
 	instance instance
 
+	failingResolverTask        *mgr.Task
+	suggestUsingStaleCacheTask *mgr.Task
+
 	States *mgr.StateMgr
 }
 
@@ -99,7 +102,8 @@ func start() error {
 		})
 
 	// Check failing resolvers regularly and when the network changes.
-	module.mgr.Do("check failing resolvers", checkFailingResolvers)
+	module.failingResolverTask = module.mgr.NewTask("check failing resolvers", checkFailingResolvers, nil)
+	module.failingResolverTask.Go()
 	module.instance.NetEnv().EventNetworkChange.AddCallback(
 		"check failing resolvers",
 		func(wc *mgr.WorkerCtx, _ struct{}) (bool, error) {
@@ -107,7 +111,8 @@ func start() error {
 			return false, nil
 		})
 
-	module.mgr.Go("suggest using stale cache", suggestUsingStaleCacheTask)
+	module.suggestUsingStaleCacheTask = module.mgr.NewTask("suggest using stale cache", suggestUsingStaleCacheTask, nil)
+	module.suggestUsingStaleCacheTask.Go()
 
 	module.mgr.Go(
 		"mdns handler",

@@ -35,7 +35,8 @@ type Captain struct {
 
 	shutdownFunc func(exitCode int)
 
-	healthCheckTicker *mgr.SleepyTicker
+	healthCheckTicker    *mgr.SleepyTicker
+	maintainPublicStatus *mgr.Task
 
 	States            *mgr.StateMgr
 	EventSPNConnected *mgr.EventMgr[struct{}]
@@ -44,6 +45,7 @@ type Captain struct {
 func (c *Captain) Start(m *mgr.Manager) error {
 	c.mgr = m
 	c.EventSPNConnected = mgr.NewEventMgr[struct{}](SPNConnectedEvent, m)
+	c.maintainPublicStatus = m.NewTask("maintain public status", maintainPublicStatus, nil)
 	if err := prep(); err != nil {
 		return err
 	}
@@ -177,10 +179,7 @@ func start() error {
 
 	// network optimizer
 	if conf.PublicHub() {
-		module.mgr.Delay("optimize network delay", 15*time.Second, func(_ *mgr.WorkerCtx) error {
-			module.mgr.Repeat("optimize network", 1*time.Minute, optimizeNetwork)
-			return nil
-		})
+		module.mgr.Delay("optimize network", 15*time.Second, optimizeNetwork, nil).Repeat(1 * time.Minute)
 	}
 
 	// client + home hub manager

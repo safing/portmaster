@@ -16,6 +16,8 @@ type Updates struct {
 	instance     instance
 	shutdownFunc func(exitCode int)
 
+	updateTask *mgr.Task
+
 	EventResourcesUpdated *mgr.EventMgr[struct{}]
 	EventVersionsUpdated  *mgr.EventMgr[struct{}]
 

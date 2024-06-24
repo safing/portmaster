@@ -258,12 +258,9 @@ func (nq *NetQuery) Start(m *mgr.Manager) error {
 		}
 	})
 
-	nq.mgr.Delay("network history cleaner delay", 10*time.Minute, func(_ *mgr.WorkerCtx) error {
-		nq.mgr.Repeat("network history cleaner delay", 1*time.Hour, func(w *mgr.WorkerCtx) error {
-			return nq.Store.CleanupHistory(w.Ctx())
-		})
-		return nil
-	})
+	nq.mgr.Delay("network history cleaner", 10*time.Minute, func(w *mgr.WorkerCtx) error {
+		return nq.Store.CleanupHistory(w.Ctx())
+	}, nil).Repeat(1 * time.Hour)
 
 	// For debugging, provide a simple direct SQL query interface using
 	// the runtime database.
@@ -316,7 +313,7 @@ var (
 	shimLoaded atomic.Bool
 )
 
-// New returns a new NetQuery module.
+// NewModule returns a new NetQuery module.
 func NewModule(instance instance) (*NetQuery, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")

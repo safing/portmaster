@@ -16,6 +16,8 @@ import (
 type Compat struct {
 	mgr      *mgr.Manager
 	instance instance
+
+	selfcheckTask *mgr.Task
 }
 
 // Start starts the module.
@@ -54,8 +56,6 @@ var (
 const selfcheckFailThreshold = 10
 
 func init() {
-	// module = modules.Register("compat", prep, start, stop, "base", "network", "interception", "netenv", "notifications")
-
 	// Workaround resolver integration.
 	// See resolver/compat.go for details.
 	resolver.CompatDNSCheckInternalDomainScope = DNSCheckInternalDomainScope
@@ -71,15 +71,11 @@ func start() error {
 	startNotify()
 
 	selfcheckNetworkChangedFlag.Refresh()
-	module.mgr.Repeat("compatibility self-check", 5*time.Minute, selfcheckTaskFunc)
-	// selfcheckTask = module.NewTask("compatibility self-check", selfcheckTaskFunc).
-	// 	Repeat(5 * time.Minute).
-	// 	MaxDelay(selfcheckTaskRetryAfter).
-	// 	Schedule(time.Now().Add(selfcheckTaskRetryAfter))
+	module.selfcheckTask = module.mgr.Repeat("compatibility self-check", 5*time.Minute, selfcheckTaskFunc, nil).Delay(selfcheckTaskRetryAfter)
 
-	module.mgr.Repeat("clean notify thresholds", 1*time.Hour, cleanNotifyThreshold)
+	_ = module.mgr.Repeat("clean notify thresholds", 1*time.Hour, cleanNotifyThreshold, nil)
 	module.instance.NetEnv().EventNetworkChange.AddCallback("trigger compat self-check", func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
-		module.mgr.Delay("trigger compat self-check", selfcheckTaskRetryAfter, selfcheckTaskFunc)
+		module.selfcheckTask.Delay(selfcheckTaskRetryAfter)
 		return false, nil
 	})
 	return nil
@@ -126,8 +122,7 @@ func selfcheckTaskFunc(wc *mgr.WorkerCtx) error {
 		}
 
 		// Retry quicker when failed.
-		module.mgr.Delay("trigger compat self-check", selfcheckTaskRetryAfter, selfcheckTaskFunc)
-		// task.Schedule(time.Now().Add(selfcheckTaskRetryAfter))
+		module.selfcheckTask.Delay(selfcheckTaskRetryAfter)
 
 		return nil
 	}

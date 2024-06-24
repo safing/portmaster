@@ -21,12 +21,16 @@ type CustomList struct {
 	mgr      *mgr.Manager
 	instance instance
 
+	updateFilterListTask *mgr.Task
+
 	States *mgr.StateMgr
 }
 
 func (cl *CustomList) Start(m *mgr.Manager) error {
 	cl.mgr = m
 	cl.States = mgr.NewStateMgr(m)
+
+	cl.updateFilterListTask = m.NewTask("update custom filter list", checkAndUpdateFilterList, nil)
 
 	if err := prep(); err != nil {
 		return err
@@ -69,7 +73,7 @@ func prep() error {
 		Path:  "customlists/update",
 		Write: api.PermitUser,
 		ActionFunc: func(ar *api.Request) (msg string, err error) {
-			errCheck := checkAndUpdateFilterList()
+			errCheck := checkAndUpdateFilterList(nil)
 			if errCheck != nil {
 				return "", errCheck
 			}
@@ -88,8 +92,8 @@ func start() error {
 	// Register to hook to update after config change.
 	module.instance.Config().EventConfigChange.AddCallback(
 		"update custom filter list",
-		func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
-			if err := checkAndUpdateFilterList(); !errors.Is(err, ErrNotConfigured) {
+		func(wc *mgr.WorkerCtx, _ struct{}) (bool, error) {
+			if err := checkAndUpdateFilterList(wc); !errors.Is(err, ErrNotConfigured) {
 				return false, err
 			}
 			return false, nil
@@ -97,15 +101,12 @@ func start() error {
 	)
 
 	// Create parser task and enqueue for execution. "checkAndUpdateFilterList" will schedule the next execution.
-	module.mgr.Repeat("intel/customlists:file-update-check", 20*time.Second, func(_ *mgr.WorkerCtx) error {
-		_ = checkAndUpdateFilterList()
-		return nil
-	})
+	module.updateFilterListTask.Delay(20 * time.Second).Repeat(1 * time.Minute)
 
 	return nil
 }
 
-func checkAndUpdateFilterList() error {
+func checkAndUpdateFilterList(_ *mgr.WorkerCtx) error {
 	filterListLock.Lock()
 	defer filterListLock.Unlock()
 
@@ -114,10 +115,6 @@ func checkAndUpdateFilterList() error {
 	if filePath == "" {
 		return ErrNotConfigured
 	}
-
-	// Schedule next update check
-	// TODO(vladimir): The task is set to repeate evry few seconds does. Is there another way to make it better?
-	// parserTask.Schedule(time.Now().Add(1 * time.Minute))
 
 	// Try to get file info
 	modifiedTime := time.Now()

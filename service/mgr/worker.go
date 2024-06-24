@@ -139,7 +139,7 @@ func (m *Manager) manageWorker(name string, fn func(w *WorkerCtx) error) {
 			return
 
 		case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-			// A canceled context or dexceeded eadline also means that the worker is finished.
+			// A canceled context or exceeded deadline also means that the worker is finished.
 			return
 
 		default:
@@ -193,26 +193,6 @@ func (m *Manager) manageWorker(name string, fn func(w *WorkerCtx) error) {
 			}
 		}
 	}
-}
-
-// Delay starts the given function delayed in a goroutine (as a "worker").
-// The worker context has
-// - A separate context which is canceled when the functions returns.
-// - Access to named structure logging.
-// - Given function is re-run after failure (with backoff).
-// - Panic catching.
-// - Flow control helpers.
-func (m *Manager) Delay(name string, delay time.Duration, fn func(w *WorkerCtx) error) {
-	go m.delayWorker(name, delay, fn)
-}
-
-func (m *Manager) delayWorker(name string, delay time.Duration, fn func(w *WorkerCtx) error) {
-	select {
-	case <-time.After(delay):
-	case <-m.ctx.Done():
-		return
-	}
-	m.manageWorker(name, fn)
 }
 
 // Do directly executes the given function (as a "worker").
@@ -308,103 +288,21 @@ func (m *Manager) runWorker(w *WorkerCtx, fn func(w *WorkerCtx) error) (panicInf
 // The worker context has
 // - A separate context which is canceled when the functions returns.
 // - Access to named structure logging.
-// - Given function is re-run after failure (with backoff).
-// - Panic catching.
+// - By default error/panic will be logged. For custom behavior supply errorFn, the argument is optional.
 // - Flow control helpers.
-func (m *Manager) Repeat(name string, period time.Duration, fn func(w *WorkerCtx) error) {
-	go m.manageRepeatedWorker(name, period, fn)
+func (m *Manager) Repeat(name string, period time.Duration, fn func(w *WorkerCtx) error, errorFn func(c *WorkerCtx, err error, panicInfo string)) *Task {
+	t := m.NewTask(name, fn, errorFn)
+	return t.Repeat(period)
 }
 
-func (m *Manager) manageRepeatedWorker(name string, period time.Duration, fn func(w *WorkerCtx) error) {
-	m.workerStart()
-	defer m.workerDone()
-
-	w := &WorkerCtx{
-		logger: m.logger.With("worker", name),
-	}
-
-	repeatTick := time.NewTicker(period)
-	execCnt := 0
-
-	backoff := time.Second
-	failCnt := 0
-
-repeat:
-	for {
-		// Wait for repeat period.
-		if execCnt > 0 {
-			select {
-			case <-repeatTick.C:
-			case <-m.ctx.Done():
-				return
-			}
-		}
-
-		// Execute function.
-		execCnt++
-		panicInfo, err := m.runWorker(w, fn)
-
-		switch {
-		case err == nil:
-			// No error means that the worker is finished.
-			continue repeat
-
-		case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-			// A canceled context or exceeded deadline also means that the worker is finished.
-			continue repeat
-
-		default:
-			// Any other errors triggers a restart with backoff.
-
-			// If manager is stopping, just log error and return.
-			if m.IsDone() {
-				if panicInfo != "" {
-					m.Error(
-						"worker failed",
-						"err", err,
-						"file", panicInfo,
-					)
-				} else {
-					m.Error(
-						"worker failed",
-						"err", err,
-					)
-				}
-				return
-			}
-
-			// Count failure and increase backoff (up to limit),
-			failCnt++
-			backoff *= 2
-			if backoff > time.Minute {
-				backoff = time.Minute
-			}
-
-			// Log error and retry after backoff duration.
-			if panicInfo != "" {
-				m.Error(
-					"repeated worker failed",
-					"execCnt", execCnt,
-					"failCnt", failCnt,
-					"backoff", backoff,
-					"err", err,
-					"file", panicInfo,
-				)
-			} else {
-				m.Error(
-					"repeated worker failed",
-					"execCnt", execCnt,
-					"failCnt", failCnt,
-					"backoff", backoff,
-					"err", err,
-				)
-			}
-			select {
-			case <-time.After(backoff):
-			case <-m.ctx.Done():
-				return
-			}
-			repeatTick.Reset(period)
-		}
-	}
+// Delay starts the given function delayed in a goroutine (as a "worker").
+// The worker context has
+// - A separate context which is canceled when the functions returns.
+// - Access to named structure logging.
+// - By default error/panic will be logged. For custom behavior supply errorFn, the argument is optional.
+// - Panic catching.
+// - Flow control helpers.
+func (m *Manager) Delay(name string, period time.Duration, fn func(w *WorkerCtx) error, errorFn func(c *WorkerCtx, err error, panicInfo string)) *Task {
+	t := m.NewTask(name, fn, errorFn)
+	return t.Delay(period)
 }

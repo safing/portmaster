@@ -103,7 +103,7 @@ func suggestUsingStaleCacheTask(_ *mgr.WorkerCtx) error {
 	}
 
 	if scheduleNextCall {
-		module.mgr.Delay("suggest using stale cache", 2*time.Minute, suggestUsingStaleCacheTask)
+		_ = module.suggestUsingStaleCacheTask.Delay(2 * time.Minute)
 	}
 	resetSlowQueriesSensorValue()
 	return nil

@@ -32,7 +32,7 @@ func (api *API) Start(m *mgr.Manager) error {
 
 // Stop stops the module.
 func (api *API) Stop(_ *mgr.Manager) error {
-	return start()
+	return stop()
 }
 
 var (

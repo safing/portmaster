@@ -20,12 +20,16 @@ type Access struct {
 	mgr      *mgr.Manager
 	instance instance
 
+	updateAccountTask *mgr.Task
+
 	EventAccountUpdate *mgr.EventMgr[struct{}]
 }
 
 func (a *Access) Start(m *mgr.Manager) error {
 	a.mgr = m
 	a.EventAccountUpdate = mgr.NewEventMgr[struct{}](AccountUpdateEvent, m)
+	a.updateAccountTask = m.NewTask("update account", UpdateAccount, nil)
+
 	if err := prep(); err != nil {
 		return err
 	}
@@ -83,10 +87,7 @@ func start() error {
 		loadTokens()
 
 		// Register new task.
-		module.mgr.Delay("update account delayed", 1*time.Minute, func(_ *mgr.WorkerCtx) error {
-			module.mgr.Repeat("update account", 24*time.Hour, UpdateAccount)
-			return nil
-		})
+		module.updateAccountTask.Delay(1 * time.Minute)
 	}
 
 	return nil
@@ -94,10 +95,6 @@ func start() error {
 
 func stop() error {
 	if conf.Client() {
-		// Stop account update task.
-		// accountUpdateTask.Cancel()
-		// accountUpdateTask = nil
-
 		// Store tokens to database.
 		storeTokens()
 	}
@@ -110,10 +107,13 @@ func stop() error {
 
 // UpdateAccount updates the user account and fetches new tokens, if needed.
 func UpdateAccount(_ *mgr.WorkerCtx) error { //, task *modules.Task) error {
+	// Schedule next call this will change if other conditions are met bellow.
+	module.updateAccountTask.Delay(24 * time.Hour)
+
 	// Retry sooner if the token issuer is failing.
 	defer func() {
 		if tokenIssuerIsFailing.IsSet() {
-			module.mgr.Delay("update account", tokenIssuerRetryDuration, UpdateAccount)
+			module.updateAccountTask.Delay(tokenIssuerRetryDuration)
 		}
 	}()
 
@@ -145,16 +145,14 @@ func UpdateAccount(_ *mgr.WorkerCtx) error { //, task *modules.Task) error {
 	case time.Until(*u.Subscription.EndsAt) < 24*time.Hour &&
 		time.Since(*u.Subscription.EndsAt) < 24*time.Hour:
 		// Update account every hour for 24h hours before and after the subscription ends.
-		// TODO(vladimir): Go rotunes will leak if this is called more then once. Figure out a way to test if this is already running.
-		module.mgr.Delay("update account", 1*time.Hour, UpdateAccount)
+		module.updateAccountTask.Delay(1 * time.Hour)
 
 	case u.Subscription.NextBillingDate == nil: // No auto-subscription.
 
 	case time.Until(*u.Subscription.NextBillingDate) < 24*time.Hour &&
 		time.Since(*u.Subscription.NextBillingDate) < 24*time.Hour:
 		// Update account every hour 24h hours before and after the next billing date.
-		// TODO(vladimir): Go rotunes will leak if this is called more then once. Figure out a way to test if this is already running.
-		module.mgr.Delay("update account", 1*time.Hour, UpdateAccount)
+		module.updateAccountTask.Delay(1 * time.Hour)
 	}
 
 	return nil
@@ -188,7 +186,7 @@ func tokenIssuerFailed() {
 	// 	return
 	// }
 
-	module.mgr.Delay("update account", tokenIssuerRetryDuration, UpdateAccount)
+	module.updateAccountTask.Delay(tokenIssuerRetryDuration)
 }
 
 // IsLoggedIn returns whether a User is currently logged in.

@@ -111,7 +111,7 @@ func prep() error {
 func start() error {
 	initConfig()
 
-	module.mgr.Repeat("automatic restart", 10*time.Minute, automaticRestart)
+	_ = module.mgr.Repeat("automatic restart", 10*time.Minute, automaticRestart, nil)
 
 	module.instance.Config().EventConfigChange.AddCallback("update registry config", updateRegistryConfig)
 
@@ -190,23 +190,15 @@ func start() error {
 	}
 
 	// start updater task
-	// FIXME: remove
-	// updateTask = module.NewTask("updater", func(ctx context.Context, task *modules.Task) error {
-	// 	return checkForUpdates(ctx)
-	// })
+	module.updateTask = module.mgr.NewTask("updater", checkForUpdates, nil)
 
 	if !disableTaskSchedule {
-		module.mgr.Repeat("updater", 30*time.Minute, checkForUpdates)
-
-		// FIXME: remove
-		// updateTask.
-		// 	Repeat(updateTaskRepeatDuration).
-		// 	MaxDelay(30 * time.Minute)
+		_ = module.updateTask.Repeat(30 * time.Minute)
 	}
 
-	// if updateASAP {
-	// 	updateTask.StartASAP()
-	// }
+	if updateASAP {
+		module.updateTask.Go()
+	}
 
 	// react to upgrades
 	if err := initUpgrader(); err != nil {
@@ -221,10 +213,6 @@ func start() error {
 // TriggerUpdate queues the update task to execute ASAP.
 func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 	switch {
-	// FIXME(vladimir): provide alternative for this
-	// case !module.Online():
-	// 	updateASAP = true
-
 	case !forceIndexCheck && !enableSoftwareUpdates() && !enableIntelUpdates():
 		return errors.New("automatic updating is disabled")
 
@@ -237,12 +225,7 @@ func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 		}
 
 		// If index check if forced, start quicker.
-		// FIXME(vladimir): provide alternative for this
-		// if forceIndexCheck {
-		// 	updateTask.StartASAP()
-		// } else {
-		// 	updateTask.Queue()
-		// }
+		module.updateTask.Go()
 	}
 
 	log.Debugf("updates: triggering update to run as soon as possible")
