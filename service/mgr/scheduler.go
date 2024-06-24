@@ -52,43 +52,20 @@ func (m *Manager) NewScheduler(name string, fn func(w *WorkerCtx) error, errorFn
 }
 
 func (s *Scheduler) taskMgr() {
-	// If the task manager ends, end all descendents too.
+	// If the task manager ends, end all descendants too.
 	defer s.ctx.cancelCtx()
 
-	// Timers and tickers.
-	var (
-		ticker      *time.Ticker
-		nextExecute <-chan time.Time
-		changed     bool
-	)
-	defer func() {
-		if ticker != nil {
-			ticker.Stop()
-		}
-	}()
-
+	// Timers.
+	var nextExecute <-chan time.Time
 manage:
 	for {
 		// Select timer / ticker.
 		switch {
-		case s.delay.Load() > 0:
-			if changed {
-				nextExecute = time.After(time.Duration(s.delay.Load()))
-				changed = false
-			}
+		case s.delay.Swap(0) > 0:
+			nextExecute = time.After(time.Duration(s.delay.Load()))
 
 		case s.repeat.Load() > 0:
-			// FIXME: bug: race condition of multiple evals.
-			// FIXME: bug: After delay, changed will be false.
-			if changed {
-				if ticker != nil {
-					ticker.Reset(time.Duration(s.repeat.Load()))
-				} else {
-					ticker = time.NewTicker(time.Duration(s.repeat.Load()))
-				}
-				nextExecute = ticker.C
-				changed = false
-			}
+			nextExecute = time.After(time.Duration(s.repeat.Load()))
 
 		case !s.keepAlive.Load():
 			// If no delay or repeat is set, end task.
@@ -97,10 +74,6 @@ manage:
 
 		default:
 			// No trigger is set, disable timed execution.
-			if ticker != nil {
-				ticker.Stop()
-				ticker = nil
-			}
 			nextExecute = nil
 		}
 
@@ -109,7 +82,6 @@ manage:
 		case <-s.run:
 		case <-nextExecute:
 		case <-s.eval:
-			changed = true
 			continue manage
 		case <-s.ctx.Done():
 			return
