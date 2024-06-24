@@ -78,6 +78,8 @@ manage:
 			}
 
 		case s.repeat.Load() > 0:
+			// FIXME: bug: race condition of multiple evals.
+			// FIXME: bug: After delay, changed will be false.
 			if changed {
 				if ticker != nil {
 					ticker.Reset(time.Duration(s.repeat.Load()))
@@ -108,7 +110,7 @@ manage:
 		case <-nextExecute:
 		case <-s.eval:
 			changed = true
-			goto manage
+			continue manage
 		case <-s.ctx.Done():
 			return
 		}
