@@ -3,7 +3,7 @@ package mgr
 import (
 	"context"
 	"errors"
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
@@ -12,18 +12,94 @@ type Scheduler struct {
 	mgr *Manager
 	ctx *WorkerCtx
 
-	name string
-	fn   func(w *WorkerCtx) error
-
-	run  chan struct{}
-	eval chan struct{}
-
-	delay     atomic.Int64
-	repeat    atomic.Int64
-	keepAlive atomic.Bool
-
+	// Definition.
+	name    string
+	fn      func(w *WorkerCtx) error
 	errorFn func(c *WorkerCtx, err error, panicInfo string)
+
+	// Manual trigger.
+	run chan struct{}
+
+	// Actions.
+	actionLock   sync.Mutex
+	selectAction chan struct{}
+	delay        *schedulerDelay
+	repeat       *schedulerRepeat
+	keepAlive    *schedulerNoop
 }
+
+type schedulerAction interface {
+	Wait() <-chan time.Time
+	Ack()
+}
+
+type schedulerDelay struct {
+	s     *Scheduler
+	timer *time.Timer
+}
+
+func (s *Scheduler) newDelay(duration time.Duration) *schedulerDelay {
+	return &schedulerDelay{
+		s:     s,
+		timer: time.NewTimer(duration),
+	}
+}
+func (sd *schedulerDelay) Wait() <-chan time.Time { return sd.timer.C }
+
+func (sd *schedulerDelay) Ack() {
+	sd.s.actionLock.Lock()
+	defer sd.s.actionLock.Unlock()
+
+	// Remove delay, as it can only fire once.
+	sd.s.delay = nil
+
+	// Reset repeat.
+	sd.s.repeat.Reset()
+
+	// Stop timer.
+	sd.timer.Stop()
+}
+
+func (sd *schedulerDelay) Stop() {
+	if sd == nil {
+		return
+	}
+	sd.timer.Stop()
+}
+
+type schedulerRepeat struct {
+	ticker   *time.Ticker
+	interval time.Duration
+}
+
+func (s *Scheduler) newRepeat(interval time.Duration) *schedulerRepeat {
+	return &schedulerRepeat{
+		ticker:   time.NewTicker(interval),
+		interval: interval,
+	}
+}
+
+func (sr *schedulerRepeat) Wait() <-chan time.Time { return sr.ticker.C }
+func (sr *schedulerRepeat) Ack()                   {}
+
+func (sr *schedulerRepeat) Reset() {
+	if sr == nil {
+		return
+	}
+	sr.ticker.Reset(sr.interval)
+}
+
+func (sr *schedulerRepeat) Stop() {
+	if sr == nil {
+		return
+	}
+	sr.ticker.Stop()
+}
+
+type schedulerNoop struct{}
+
+func (sn *schedulerNoop) Wait() <-chan time.Time { return nil }
+func (sn *schedulerNoop) Ack()                   {}
 
 // NewScheduler creates a new scheduler for the given worker function.
 // Errors and panic will only be logged by default.
@@ -38,13 +114,13 @@ func (m *Manager) NewScheduler(name string, fn func(w *WorkerCtx) error, errorFn
 	wCtx.ctx, wCtx.cancelCtx = context.WithCancel(m.Ctx())
 
 	s := &Scheduler{
-		mgr:     m,
-		ctx:     wCtx,
-		name:    name,
-		fn:      fn,
-		run:     make(chan struct{}, 1),
-		eval:    make(chan struct{}, 1),
-		errorFn: errorFn,
+		mgr:          m,
+		ctx:          wCtx,
+		name:         name,
+		fn:           fn,
+		errorFn:      errorFn,
+		run:          make(chan struct{}, 1),
+		selectAction: make(chan struct{}, 1),
 	}
 
 	go s.taskMgr()
@@ -52,66 +128,62 @@ func (m *Manager) NewScheduler(name string, fn func(w *WorkerCtx) error, errorFn
 }
 
 func (s *Scheduler) taskMgr() {
+	s.mgr.workerStart()
+	defer s.mgr.workerDone()
+
 	// If the task manager ends, end all descendents too.
 	defer s.ctx.cancelCtx()
 
 	// Timers and tickers.
 	var (
-		ticker      *time.Ticker
-		nextExecute <-chan time.Time
-		changed     bool
+		action schedulerAction
 	)
 	defer func() {
-		if ticker != nil {
-			ticker.Stop()
-		}
+		s.delay.Stop()
+		s.repeat.Stop()
 	}()
+
+	// Wait for the first action.
+	select {
+	case <-s.selectAction:
+	case <-s.ctx.Done():
+		return
+	}
 
 manage:
 	for {
-		// Select timer / ticker.
-		switch {
-		case s.delay.Load() > 0:
-			if changed {
-				nextExecute = time.After(time.Duration(s.delay.Load()))
-				changed = false
-			}
+		// Select action.
+		func() {
+			s.actionLock.Lock()
+			defer s.actionLock.Unlock()
 
-		case s.repeat.Load() > 0:
-			// FIXME: bug: race condition of multiple evals.
-			// FIXME: bug: After delay, changed will be false.
-			if changed {
-				if ticker != nil {
-					ticker.Reset(time.Duration(s.repeat.Load()))
-				} else {
-					ticker = time.NewTicker(time.Duration(s.repeat.Load()))
-				}
-				nextExecute = ticker.C
-				changed = false
+			switch {
+			case s.delay != nil:
+				action = s.delay
+			case s.repeat != nil:
+				action = s.repeat
+			case s.keepAlive != nil:
+				action = s.keepAlive
+			default:
+				action = nil
 			}
-
-		case !s.keepAlive.Load():
-			// If no delay or repeat is set, end task.
-			// Except, if explicitly set to be kept alive.
+		}()
+		if action == nil {
 			return
-
-		default:
-			// No trigger is set, disable timed execution.
-			if ticker != nil {
-				ticker.Stop()
-				ticker = nil
-			}
-			nextExecute = nil
 		}
 
-		// Wait for action or ticker.
+		// Wait for trigger or action.
 		select {
+		case <-action.Wait():
+			action.Ack()
+			// Time-triggered execution.
 		case <-s.run:
-		case <-nextExecute:
-		case <-s.eval:
-			changed = true
+			// Manually triggered execution.
+		case <-s.selectAction:
+			// Re-select action.
 			continue manage
 		case <-s.ctx.Done():
+			// Abort!
 			return
 		}
 
@@ -139,11 +211,10 @@ manage:
 				)
 			}
 
-			// Execute error function, else, end the scheduler.
+			// Delegate error handling to the error function, otherwise just continue the scheduler.
+			// The error handler can stop the scheduler if it wants to.
 			if s.errorFn != nil {
 				s.errorFn(s.ctx, err, panicInfo)
-			} else {
-				return
 			}
 		}
 	}
@@ -152,17 +223,12 @@ manage:
 // Go executes the worker immediately.
 // If the worker is currently being executed,
 // the next execution will commence afterwards.
+// Can only be called after calling one of Delay(), Repeat() or KeepAlive().
 func (s *Scheduler) Go() {
 	select {
 	case s.run <- struct{}{}:
 	default:
 	}
-}
-
-// KeepAlive instructs the scheduler to not self-destruct,
-// even if all scheduled work is complete.
-func (s *Scheduler) KeepAlive() {
-	s.keepAlive.Store(true)
 }
 
 // Stop immediately stops the scheduler and all related workers.
@@ -173,21 +239,43 @@ func (s *Scheduler) Stop() {
 // Delay will schedule the worker to run after the given duration.
 // If set, the repeat schedule will continue afterwards.
 // Disable the delay by passing 0.
-func (s *Scheduler) Delay(duration time.Duration) {
-	s.delay.Store(int64(duration))
+func (s *Scheduler) Delay(duration time.Duration) *Scheduler {
+	s.actionLock.Lock()
+	defer s.actionLock.Unlock()
+
+	s.delay.Stop()
+	s.delay = s.newDelay(duration)
+
 	s.check()
+	return s
 }
 
 // Repeat will repeatedly execute the worker using the given interval.
-// Disable the repeating by passing 0.
-func (s *Scheduler) Repeat(interval time.Duration) {
-	s.repeat.Store(int64(interval))
+// Disable repeating by passing 0.
+func (s *Scheduler) Repeat(interval time.Duration) *Scheduler {
+	s.actionLock.Lock()
+	defer s.actionLock.Unlock()
+
+	s.repeat.Stop()
+	s.repeat = s.newRepeat(interval)
+
 	s.check()
+	return s
+}
+
+// KeepAlive instructs the scheduler to not self-destruct,
+// even if all scheduled work is complete.
+func (s *Scheduler) KeepAlive() *Scheduler {
+	s.actionLock.Lock()
+	defer s.actionLock.Unlock()
+
+	s.keepAlive = &schedulerNoop{}
+	return s
 }
 
 func (s *Scheduler) check() {
 	select {
-	case s.eval <- struct{}{}:
+	case s.selectAction <- struct{}{}:
 	default:
 	}
 }
