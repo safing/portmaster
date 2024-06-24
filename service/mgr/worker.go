@@ -23,7 +23,8 @@ type WorkerCtx struct {
 	ctx       context.Context
 	cancelCtx context.CancelFunc
 
-	logger *slog.Logger
+	scheduler *Scheduler // TODO: Attach to context instead?
+	logger    *slog.Logger
 }
 
 // AddToCtx adds the WorkerCtx to the given context.
@@ -50,6 +51,12 @@ func (w *WorkerCtx) Ctx() context.Context {
 // Is automatically called after the worker stops/returns, regardless of error.
 func (w *WorkerCtx) Cancel() {
 	w.cancelCtx()
+}
+
+// Scheduler returns the scheduler the worker was started from.
+// Returns nil if the worker is not associated with a scheduler.
+func (w *WorkerCtx) Scheduler() *Scheduler {
+	return w.scheduler
 }
 
 // Done returns the context Done channel.
@@ -208,6 +215,7 @@ func (m *Manager) Do(name string, fn func(w *WorkerCtx) error) error {
 
 	// Create context.
 	w := &WorkerCtx{
+		ctx:    m.Ctx(),
 		logger: m.logger.With("worker", name),
 	}
 
@@ -242,7 +250,7 @@ func (m *Manager) Do(name string, fn func(w *WorkerCtx) error) error {
 
 func (m *Manager) runWorker(w *WorkerCtx, fn func(w *WorkerCtx) error) (panicInfo string, err error) {
 	// Create worker context that is canceled when worker finished or dies.
-	w.ctx, w.cancelCtx = context.WithCancel(m.Ctx())
+	w.ctx, w.cancelCtx = context.WithCancel(w.ctx)
 	defer w.Cancel()
 
 	// Recover from panic.
@@ -269,7 +277,7 @@ func (m *Manager) runWorker(w *WorkerCtx, fn func(w *WorkerCtx) error) (panicInf
 						foundPanic = true
 					}
 				} else {
-					if strings.Contains(line, "mycoria") {
+					if strings.Contains(line, "portmaster") {
 						if i+1 < len(stackLines) {
 							panicInfo = strings.SplitN(strings.TrimSpace(stackLines[i+1]), " ", 2)[0]
 						}
