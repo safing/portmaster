@@ -5,6 +5,7 @@ import (
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database/dbmodule"
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
@@ -47,39 +48,41 @@ type Instance struct {
 
 	version string
 
-	api           *api.API
+	database      *dbmodule.DBModule
 	config        *config.Config
+	api           *api.API
 	metrics       *metrics.Metrics
 	runtime       *runtime.Runtime
 	notifications *notifications.Notifications
 	rng           *rng.Rng
 	base          *base.Base
 
+	updates *updates.Updates
+	geoip   *geoip.GeoIP
+	netenv  *netenv.NetEnv
+
 	access    *access.Access
 	cabin     *cabin.Cabin
+	navigator *navigator.Navigator
 	captain   *captain.Captain
 	crew      *crew.Crew
 	docks     *docks.Docks
-	navigator *navigator.Navigator
 	patrol    *patrol.Patrol
 	ships     *ships.Ships
 	sluice    *sluice.SluiceModule
 	terminal  *terminal.TerminalModule
 
-	updates      *updates.Updates
 	ui           *ui.UI
 	profile      *profile.ProfileModule
+	network      *network.Network
+	netquery     *netquery.NetQuery
 	filter       *firewall.Filter
 	interception *interception.Interception
 	customlist   *customlists.CustomList
-	geoip        *geoip.GeoIP
-	netenv       *netenv.NetEnv
 	status       *status.Status
 	broadcasts   *broadcasts.Broadcasts
 	compat       *compat.Compat
 	nameserver   *nameserver.NameServer
-	netquery     *netquery.NetQuery
-	network      *network.Network
 	process      *process.ProcessModule
 	resolver     *resolver.ResolverModule
 	sync         *sync.Sync
@@ -96,6 +99,10 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	var err error
 
 	// Base modules
+	instance.database, err = dbmodule.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create config module: %w", err)
+	}
 	instance.config, err = config.New(instance)
 	if err != nil {
 		return nil, fmt.Errorf("create config module: %w", err)
@@ -125,6 +132,20 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		return nil, fmt.Errorf("create base module: %w", err)
 	}
 
+	// Global service modules
+	instance.updates, err = updates.New(instance, svcCfg.ShutdownFunc)
+	if err != nil {
+		return nil, fmt.Errorf("create updates module: %w", err)
+	}
+	instance.geoip, err = geoip.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create customlist module: %w", err)
+	}
+	instance.netenv, err = netenv.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create netenv module: %w", err)
+	}
+
 	// SPN modules
 	instance.access, err = access.New(instance)
 	if err != nil {
@@ -133,6 +154,10 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	instance.cabin, err = cabin.New(instance)
 	if err != nil {
 		return nil, fmt.Errorf("create cabin module: %w", err)
+	}
+	instance.navigator, err = navigator.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create navigator module: %w", err)
 	}
 	instance.captain, err = captain.New(instance, svcCfg.ShutdownFunc)
 	if err != nil {
@@ -145,10 +170,6 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	instance.docks, err = docks.New(instance)
 	if err != nil {
 		return nil, fmt.Errorf("create docks module: %w", err)
-	}
-	instance.navigator, err = navigator.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create navigator module: %w", err)
 	}
 	instance.patrol, err = patrol.New(instance)
 	if err != nil {
@@ -168,10 +189,6 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	}
 
 	// Service modules
-	instance.updates, err = updates.New(instance, svcCfg.ShutdownFunc)
-	if err != nil {
-		return nil, fmt.Errorf("create updates module: %w", err)
-	}
 	instance.ui, err = ui.New(instance)
 	if err != nil {
 		return nil, fmt.Errorf("create ui module: %w", err)
@@ -179,6 +196,14 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	instance.profile, err = profile.NewModule(instance)
 	if err != nil {
 		return nil, fmt.Errorf("create profile module: %w", err)
+	}
+	instance.network, err = network.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create network module: %w", err)
+	}
+	instance.netquery, err = netquery.NewModule(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create netquery module: %w", err)
 	}
 	instance.filter, err = firewall.New(instance)
 	if err != nil {
@@ -191,14 +216,6 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	instance.customlist, err = customlists.New(instance)
 	if err != nil {
 		return nil, fmt.Errorf("create customlist module: %w", err)
-	}
-	instance.geoip, err = geoip.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create customlist module: %w", err)
-	}
-	instance.netenv, err = netenv.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create netenv module: %w", err)
 	}
 	instance.status, err = status.New(instance)
 	if err != nil {
@@ -215,14 +232,6 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	instance.nameserver, err = nameserver.New(instance)
 	if err != nil {
 		return nil, fmt.Errorf("create nameserver module: %w", err)
-	}
-	instance.netquery, err = netquery.NewModule(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create netquery module: %w", err)
-	}
-	instance.network, err = network.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create network module: %w", err)
 	}
 	instance.process, err = process.New(instance)
 	if err != nil {
@@ -243,6 +252,7 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 
 	// Add all modules to instance group.
 	instance.Group = mgr.NewGroup(
+		instance.database,
 		instance.config,
 		instance.api,
 		instance.metrics,
@@ -251,31 +261,32 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		instance.rng,
 		instance.base,
 
+		instance.updates,
+		instance.geoip,
+		instance.netenv,
+
 		instance.access,
 		instance.cabin,
+		instance.navigator,
 		instance.captain,
 		instance.crew,
 		instance.docks,
-		instance.navigator,
 		instance.patrol,
 		instance.ships,
 		instance.sluice,
 		instance.terminal,
 
-		instance.updates,
 		instance.ui,
 		instance.profile,
+		instance.network,
+		instance.netquery,
 		instance.filter,
 		instance.interception,
 		instance.customlist,
-		instance.geoip,
-		instance.netenv,
 		instance.status,
 		instance.broadcasts,
 		instance.compat,
 		instance.nameserver,
-		instance.netquery,
-		instance.network,
 		instance.process,
 		instance.resolver,
 		instance.sync,
@@ -297,6 +308,16 @@ func (i *Instance) SetSleep(enabled bool) {
 // Version returns the version.
 func (i *Instance) Version() string {
 	return i.version
+}
+
+// Database returns the database module.
+func (i *Instance) Database() *dbmodule.DBModule {
+	return i.database
+}
+
+// Config returns the config module.
+func (i *Instance) Config() *config.Config {
+	return i.config
 }
 
 // API returns the api module.
@@ -327,6 +348,21 @@ func (i *Instance) Rng() *rng.Rng {
 // Base returns the base module.
 func (i *Instance) Base() *base.Base {
 	return i.base
+}
+
+// Updates returns the updates module.
+func (i *Instance) Updates() *updates.Updates {
+	return i.updates
+}
+
+// GeoIP returns the geoip module.
+func (i *Instance) GeoIP() *geoip.GeoIP {
+	return i.geoip
+}
+
+// NetEnv returns the netenv module.
+func (i *Instance) NetEnv() *netenv.NetEnv {
+	return i.netenv
 }
 
 // Access returns the access module.
@@ -379,19 +415,9 @@ func (i *Instance) Terminal() *terminal.TerminalModule {
 	return i.terminal
 }
 
-// Updates returns the updates module.
-func (i *Instance) Updates() *updates.Updates {
-	return i.updates
-}
-
 // UI returns the ui module.
 func (i *Instance) UI() *ui.UI {
 	return i.ui
-}
-
-// Config returns the config module.
-func (i *Instance) Config() *config.Config {
-	return i.config
 }
 
 // Profile returns the profile module.
@@ -414,11 +440,6 @@ func (i *Instance) CustomList() *customlists.CustomList {
 	return i.customlist
 }
 
-// NetEnv returns the netenv module.
-func (i *Instance) NetEnv() *netenv.NetEnv {
-	return i.netenv
-}
-
 // Status returns the status module.
 func (i *Instance) Status() *status.Status {
 	return i.status
@@ -439,7 +460,7 @@ func (i *Instance) NameServer() *nameserver.NameServer {
 	return i.nameserver
 }
 
-// NetQuery returns the newquery module.
+// NetQuery returns the netquery module.
 func (i *Instance) NetQuery() *netquery.NetQuery {
 	return i.netquery
 }

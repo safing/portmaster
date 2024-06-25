@@ -6,9 +6,9 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 func TestEffectiveBandwidth(t *testing.T) { //nolint:paralleltest // Run alone.

@@ -148,7 +148,7 @@ func (upd *updateWorker) triggerUpdate() {
 
 func (upd *updateWorker) start() {
 	upd.once.Do(func() {
-		module.mgr.Delay("geoip-updater", time.Second*10, upd.run, nil)
+		module.mgr.Delay("geoip-updater", time.Second*10, upd.run)
 	})
 }
 

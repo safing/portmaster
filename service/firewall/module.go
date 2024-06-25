@@ -46,6 +46,7 @@ func (f *Filter) Start(mgr *mgr.Manager) error {
 	f.mgr = mgr
 
 	if err := prep(); err != nil {
+		log.Errorf("Failed to prepare firewall module %q", err)
 		return err
 	}
 

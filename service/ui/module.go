@@ -45,6 +45,11 @@ type UI struct {
 // Start starts the module.
 func (ui *UI) Start(m *mgr.Manager) error {
 	ui.mgr = m
+
+	if err := prep(); err != nil {
+		return err
+	}
+
 	return start()
 }
 

@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/base/utils/debug"
@@ -47,7 +46,8 @@ func prep() error {
 	}
 
 	if exportConfig {
-		modules.SetCmdLineOperation(exportConfigCmd)
+		// FIXME(vladimir): migrate
+		// modules.SetCmdLineOperation(exportConfigCmd)
 	}
 
 	return registerBasicOptions()

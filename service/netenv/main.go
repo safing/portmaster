@@ -25,6 +25,9 @@ type NetEnv struct {
 }
 
 func (ne *NetEnv) Start(m *mgr.Manager) error {
+	ne.EventNetworkChange = mgr.NewEventMgr[struct{}]("network change", m)
+	ne.EventOnlineStatusChange = mgr.NewEventMgr[OnlineStatus]("online status change", m)
+
 	if err := prep(); err != nil {
 		return err
 	}
@@ -88,10 +91,6 @@ var (
 func New(instance instance) (*NetEnv, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
-	}
-
-	if err := prep(); err != nil {
-		return nil, err
 	}
 
 	module = &NetEnv{

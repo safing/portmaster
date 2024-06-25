@@ -1,8 +1,8 @@
 package docks
 
 import (
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 // CraneControllerTerminal is a terminal for the crane itself.

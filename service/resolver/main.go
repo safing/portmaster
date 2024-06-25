@@ -25,8 +25,8 @@ type ResolverModule struct {
 	mgr      *mgr.Manager
 	instance instance
 
-	failingResolverTask        *mgr.Task
-	suggestUsingStaleCacheTask *mgr.Task
+	failingResolverWorkerMgr   *mgr.WorkerMgr
+	suggestUsingStaleCacheTask *mgr.WorkerMgr
 
 	States *mgr.StateMgr
 }
@@ -102,8 +102,8 @@ func start() error {
 		})
 
 	// Check failing resolvers regularly and when the network changes.
-	module.failingResolverTask = module.mgr.NewTask("check failing resolvers", checkFailingResolvers, nil)
-	module.failingResolverTask.Go()
+	module.failingResolverWorkerMgr = module.mgr.NewWorkerMgr("check failing resolvers", checkFailingResolvers, nil)
+	module.failingResolverWorkerMgr.Go()
 	module.instance.NetEnv().EventNetworkChange.AddCallback(
 		"check failing resolvers",
 		func(wc *mgr.WorkerCtx, _ struct{}) (bool, error) {
@@ -111,7 +111,7 @@ func start() error {
 			return false, nil
 		})
 
-	module.suggestUsingStaleCacheTask = module.mgr.NewTask("suggest using stale cache", suggestUsingStaleCacheTask, nil)
+	module.suggestUsingStaleCacheTask = module.mgr.NewWorkerMgr("suggest using stale cache", suggestUsingStaleCacheTask, nil)
 	module.suggestUsingStaleCacheTask.Go()
 
 	module.mgr.Go(

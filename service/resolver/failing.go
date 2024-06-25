@@ -74,7 +74,7 @@ func checkFailingResolvers(wc *mgr.WorkerCtx) error {
 	var resolvers []*Resolver
 
 	// Set next execution time.
-	module.failingResolverTask.Delay(time.Duration(nameserverRetryRate()) * time.Second)
+	module.failingResolverWorkerMgr.Delay(time.Duration(nameserverRetryRate()) * time.Second)
 
 	// Make a copy of the resolver list.
 	func() {

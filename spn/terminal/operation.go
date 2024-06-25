@@ -7,10 +7,10 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/structures/container"
 )
 
 // Operation is an interface for all operations.

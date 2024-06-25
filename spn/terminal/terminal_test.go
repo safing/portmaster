@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/hub"
+	"github.com/safing/structures/container"
 )
 
 func TestTerminals(t *testing.T) {

@@ -20,6 +20,10 @@ type Config struct {
 func (u *Config) Start(m *mgr.Manager) error {
 	u.mgr = m
 	u.EventConfigChange = mgr.NewEventMgr[struct{}](ChangeEvent, u.mgr)
+
+	if err := prep(); err != nil {
+		return err
+	}
 	return start()
 }
 
@@ -37,10 +41,6 @@ var (
 func New(instance instance) (*Config, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
-	}
-
-	if err := prep(); err != nil {
-		return nil, err
 	}
 
 	module = &Config{

@@ -8,7 +8,6 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 )
@@ -23,7 +22,7 @@ var (
 	// should be restarted automatically when triggering a restart internally.
 	RebootOnRestart bool
 
-	restartTask      *modules.Task
+	restartWorkerMgr *mgr.WorkerMgr
 	restartPending   = abool.New()
 	restartTriggered = abool.New()
 
@@ -61,7 +60,8 @@ func DelayedRestart(delay time.Duration) {
 	// Schedule the restart task.
 	log.Warningf("updates: restart triggered, will execute in %s", delay)
 	restartAt := time.Now().Add(delay)
-	restartTask.Schedule(restartAt)
+	// FIXME(vladimir): provide restart task
+	// restartTask.Schedule(restartAt)
 
 	// Set restartTime.
 	restartTimeLock.Lock()
@@ -75,7 +75,8 @@ func AbortRestart() {
 		log.Warningf("updates: restart aborted")
 
 		// Cancel schedule.
-		restartTask.Schedule(time.Time{})
+		// FIXME(vladimir): provide restart task
+		// restartTask.Schedule(time.Time{})
 	}
 }
 
@@ -83,7 +84,8 @@ func AbortRestart() {
 // This can be used to prepone a scheduled restart if the conditions are preferable.
 func TriggerRestartIfPending() {
 	if restartPending.IsSet() {
-		restartTask.StartASAP()
+		// FIXME(vladimir): provide restart task
+		// restartTask.StartASAP()
 	}
 }
 
@@ -91,7 +93,8 @@ func TriggerRestartIfPending() {
 // This only works if the process is managed by portmaster-start.
 func RestartNow() {
 	restartPending.Set()
-	restartTask.StartASAP()
+	// FIXME(vladimir): provide restart task
+	// restartTask.StartASAP()
 }
 
 func automaticRestart(w *mgr.WorkerCtx) error {

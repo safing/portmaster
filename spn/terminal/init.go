@@ -4,11 +4,11 @@ import (
 	"context"
 
 	"github.com/safing/jess"
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/hub"
+	"github.com/safing/structures/container"
 )
 
 /*

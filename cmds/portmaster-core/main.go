@@ -2,6 +2,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"runtime"
 
@@ -22,11 +23,14 @@ import (
 )
 
 func main() {
+	flag.Parse()
+
 	// set information
 	info.Set("Portmaster", "", "GPLv3")
 
 	// Set default log level.
 	log.SetLogLevel(log.WarningLevel)
+	log.Start()
 
 	// Configure metrics.
 	_ = metrics.SetNamespace("portmaster")
@@ -37,6 +41,13 @@ func main() {
 	// enable SPN client mode
 	conf.EnableClient(true)
 
+	// Prep
+	err := base.GlobalPrep()
+	if err != nil {
+		fmt.Printf("global prep failed: %s\n", err)
+		return
+	}
+
 	// Create
 	instance, err := service.New("2.0.0", &service.ServiceConfig{
 		ShutdownFunc: func(exitCode int) {
@@ -45,12 +56,6 @@ func main() {
 	})
 	if err != nil {
 		fmt.Printf("error creating an instance: %s\n", err)
-		return
-	}
-	// Prep
-	err = base.GlobalPrep()
-	if err != nil {
-		fmt.Printf("global prep failed: %s\n", err)
 		return
 	}
 	// Start

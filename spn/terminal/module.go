@@ -18,6 +18,7 @@ type TerminalModule struct {
 }
 
 func (s *TerminalModule) Start(m *mgr.Manager) error {
+	s.mgr = m
 	return start()
 }
 
@@ -26,7 +27,7 @@ func (s *TerminalModule) Stop(m *mgr.Manager) error {
 }
 
 var (
-	rngFeeder *rng.Feeder = rng.NewFeeder()
+	rngFeeder *rng.Feeder = nil
 
 	scheduler *unit.Scheduler
 

@@ -20,6 +20,10 @@ func (dbm *DBModule) Start(m *mgr.Manager) error {
 	return start()
 }
 
+func (dbm *DBModule) Stop(m *mgr.Manager) error {
+	return stop()
+}
+
 var databaseStructureRoot *utils.DirStructure
 
 // SetDatabaseLocation sets the location of the database for initialization. Supply either a path or dir structure.

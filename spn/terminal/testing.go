@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/hub"
+	"github.com/safing/structures/container"
 )
 
 const (

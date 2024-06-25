@@ -3,9 +3,9 @@ package docks
 import (
 	"net"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 // CraneTerminal is a terminal started by a crane.

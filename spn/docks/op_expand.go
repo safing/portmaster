@@ -8,10 +8,10 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 // ExpandOpType is the type ID of the expand operation.

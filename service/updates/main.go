@@ -111,7 +111,7 @@ func prep() error {
 func start() error {
 	initConfig()
 
-	_ = module.mgr.Repeat("automatic restart", 10*time.Minute, automaticRestart, nil)
+	_ = module.mgr.Repeat("automatic restart", 10*time.Minute, automaticRestart)
 
 	module.instance.Config().EventConfigChange.AddCallback("update registry config", updateRegistryConfig)
 
@@ -190,14 +190,14 @@ func start() error {
 	}
 
 	// start updater task
-	module.updateTask = module.mgr.NewTask("updater", checkForUpdates, nil)
+	module.updateWorkerMgr = module.mgr.NewWorkerMgr("updater", checkForUpdates, nil)
 
 	if !disableTaskSchedule {
-		_ = module.updateTask.Repeat(30 * time.Minute)
+		_ = module.updateWorkerMgr.Repeat(30 * time.Minute)
 	}
 
 	if updateASAP {
-		module.updateTask.Go()
+		module.updateWorkerMgr.Go()
 	}
 
 	// react to upgrades
@@ -225,7 +225,7 @@ func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 		}
 
 		// If index check if forced, start quicker.
-		module.updateTask.Go()
+		module.updateWorkerMgr.Go()
 	}
 
 	log.Debugf("updates: triggering update to run as soon as possible")

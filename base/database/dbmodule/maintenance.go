@@ -9,9 +9,9 @@ import (
 )
 
 func startMaintenanceTasks() {
-	_ = module.mgr.Repeat("basic maintenance", 10*time.Minute, maintainBasic, nil)
-	_ = module.mgr.Repeat("thorough maintenance", 1*time.Hour, maintainThorough, nil)
-	_ = module.mgr.Repeat("record maintenance", 1*time.Hour, maintainRecords, nil)
+	_ = module.mgr.Repeat("basic maintenance", 10*time.Minute, maintainBasic)
+	_ = module.mgr.Repeat("thorough maintenance", 1*time.Hour, maintainThorough)
+	_ = module.mgr.Repeat("record maintenance", 1*time.Hour, maintainRecords)
 }
 
 func maintainBasic(ctx *mgr.WorkerCtx) error {

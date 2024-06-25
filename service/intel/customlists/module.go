@@ -21,7 +21,7 @@ type CustomList struct {
 	mgr      *mgr.Manager
 	instance instance
 
-	updateFilterListTask *mgr.Task
+	updateFilterListWorkerMgr *mgr.WorkerMgr
 
 	States *mgr.StateMgr
 }
@@ -30,7 +30,7 @@ func (cl *CustomList) Start(m *mgr.Manager) error {
 	cl.mgr = m
 	cl.States = mgr.NewStateMgr(m)
 
-	cl.updateFilterListTask = m.NewTask("update custom filter list", checkAndUpdateFilterList, nil)
+	cl.updateFilterListWorkerMgr = m.NewWorkerMgr("update custom filter list", checkAndUpdateFilterList, nil)
 
 	if err := prep(); err != nil {
 		return err
@@ -101,7 +101,7 @@ func start() error {
 	)
 
 	// Create parser task and enqueue for execution. "checkAndUpdateFilterList" will schedule the next execution.
-	module.updateFilterListTask.Delay(20 * time.Second).Repeat(1 * time.Minute)
+	module.updateFilterListWorkerMgr.Delay(20 * time.Second).Repeat(1 * time.Minute)
 
 	return nil
 }

@@ -258,9 +258,9 @@ func (nq *NetQuery) Start(m *mgr.Manager) error {
 		}
 	})
 
-	nq.mgr.Delay("network history cleaner", 10*time.Minute, func(w *mgr.WorkerCtx) error {
+	nq.mgr.Delay("network history cleaner delay", 10*time.Minute, func(w *mgr.WorkerCtx) error {
 		return nq.Store.CleanupHistory(w.Ctx())
-	}, nil).Repeat(1 * time.Hour)
+	}).Repeat(1 * time.Hour)
 
 	// For debugging, provide a simple direct SQL query interface using
 	// the runtime database.

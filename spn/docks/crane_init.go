@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/safing/jess"
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/base/info"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 /*

@@ -10,8 +10,8 @@ import (
 
 	"github.com/safing/jess/filesig"
 	"github.com/safing/portmaster/base/api"
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/formats/dsd"
+	"github.com/safing/structures/container"
 )
 
 // Type is the type of an export.

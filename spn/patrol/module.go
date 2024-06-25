@@ -24,7 +24,7 @@ func (p *Patrol) Start(m *mgr.Manager) error {
 	p.EventChangeSignal = mgr.NewEventMgr[struct{}](ChangeSignalEventName, m)
 
 	if conf.PublicHub() {
-		m.Repeat("connectivity test", 5*time.Minute, connectivityCheckTask, nil)
+		m.Repeat("connectivity test", 5*time.Minute, connectivityCheckTask)
 	}
 	return nil
 }

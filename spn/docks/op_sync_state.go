@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 // SyncStateOpType is the type ID of the sync state operation.

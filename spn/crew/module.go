@@ -24,7 +24,7 @@ func (c *Crew) Stop(m *mgr.Manager) error {
 }
 
 func start() error {
-	_ = module.mgr.Repeat("sticky cleaner", 10*time.Minute, cleanStickyHubs, nil)
+	_ = module.mgr.Repeat("sticky cleaner", 10*time.Minute, cleanStickyHubs)
 	return registerMetrics()
 }
 

@@ -110,12 +110,12 @@ geoInitCheck:
 	}
 
 	// TODO: delete superseded hubs after x amount of time
-	_ = module.mgr.Delay("update states", 3*time.Minute, Main.updateStates, nil).Repeat(1 * time.Hour)
-	_ = module.mgr.Delay("update failing states delay", 3*time.Minute, Main.updateFailingStates, nil).Repeat(1 * time.Minute)
+	_ = module.mgr.Delay("update states", 3*time.Minute, Main.updateStates).Repeat(1 * time.Hour)
+	_ = module.mgr.Delay("update failing states", 3*time.Minute, Main.updateFailingStates).Repeat(1 * time.Minute)
 
 	if conf.PublicHub() {
 		// Only measure Hubs on public Hubs.
-		module.mgr.Delay("measure hubs delay", 5*time.Minute, Main.measureHubs, nil).Repeat(1 * time.Minute)
+		module.mgr.Delay("measure hubs", 5*time.Minute, Main.measureHubs).Repeat(1 * time.Minute)
 
 		// Only register metrics on Hubs, as they only make sense there.
 		err := registerMetrics()

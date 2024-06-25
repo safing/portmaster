@@ -3,13 +3,13 @@ package captain
 import (
 	"time"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/docks"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 // GossipOpType is the type ID of the gossip operation.

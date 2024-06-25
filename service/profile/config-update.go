@@ -137,7 +137,7 @@ func updateGlobalConfigProfile(_ context.Context) error {
 		_ = module.mgr.Delay("retry updating global config profile", 15*time.Second,
 			func(w *mgr.WorkerCtx) error {
 				return updateGlobalConfigProfile(w.Ctx())
-			}, nil)
+			})
 
 		// Add module warning to inform user.
 		module.States.Add(mgr.State{

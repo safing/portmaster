@@ -12,7 +12,6 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/iterator"
 	"github.com/safing/portmaster/base/database/query"
@@ -21,6 +20,7 @@ import (
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/structures/container"
 )
 
 const (

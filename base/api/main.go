@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -27,7 +26,8 @@ func init() {
 
 func prep() error {
 	if exportEndpoints {
-		modules.SetCmdLineOperation(exportEndpointsCmd)
+		// FIXME(vladimir): migrate
+		// modules.SetCmdLineOperation(exportEndpointsCmd)
 	}
 
 	if getDefaultListenAddress() == "" {
@@ -64,7 +64,7 @@ func start() error {
 
 	// start api auth token cleaner
 	if authFnSet.IsSet() {
-		_ = module.mgr.Repeat("clean api sessions", 5*time.Minute, cleanSessions, nil)
+		_ = module.mgr.Repeat("clean api sessions", 5*time.Minute, cleanSessions)
 	}
 
 	return registerEndpointBridgeDB()

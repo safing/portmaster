@@ -3,12 +3,12 @@ package captain
 import (
 	"time"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/docks"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 // PublishOpType is the type ID of the publish operation.

@@ -10,10 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/info"
+	"github.com/safing/structures/container"
 )
 
 func initializeLogFile(logFilePath string, identifier string, version string) *os.File {

@@ -5,8 +5,8 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/structures/container"
 )
 
 const (

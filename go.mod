@@ -6,8 +6,8 @@ go 1.22.0
 replace github.com/tc-hib/winres => github.com/dhaavi/winres v0.2.2
 
 require (
-	fyne.io/systray v1.10.0
-	github.com/VictoriaMetrics/metrics v1.33.1
+	fyne.io/systray v1.11.0
+	github.com/VictoriaMetrics/metrics v1.34.0
 	github.com/Xuanwo/go-locale v1.1.0
 	github.com/aead/serpent v0.0.0-20160714141033-fba169763ea6
 	github.com/agext/levenshtein v1.2.3
@@ -23,33 +23,34 @@ require (
 	github.com/florianl/go-conntrack v0.4.0
 	github.com/florianl/go-nfqueue v1.3.2
 	github.com/fogleman/gg v1.3.0
-	github.com/fxamacker/cbor/v2 v2.6.0
+	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/google/gopacket v1.1.19
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gorilla/mux v1.8.1
-	github.com/gorilla/websocket v1.5.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jackc/puddle/v2 v2.2.1
 	github.com/mat/besticon v3.12.0+incompatible
-	github.com/miekg/dns v1.1.59
+	github.com/miekg/dns v1.1.61
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-server-timing v1.0.1
 	github.com/mr-tron/base58 v1.2.0
-	github.com/oschwald/maxminddb-golang v1.12.0
+	github.com/oschwald/maxminddb-golang v1.13.0
 	github.com/r3labs/diff/v3 v3.0.1
 	github.com/rot256/pblind v0.0.0-20231024115251-cd3f239f28c1
-	github.com/safing/jess v0.3.3
+	github.com/safing/jess v0.3.4
 	github.com/safing/portbase v0.19.5
 	github.com/safing/portmaster-android/go v0.0.0-20230830120134-3226ceac3bec
+	github.com/safing/structures v1.1.0
 	github.com/seehuhn/fortuna v1.0.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spkg/zipfs v0.7.1
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/tannerryan/ring v1.1.2
 	github.com/tc-hib/winres v0.3.1
 	github.com/tevino/abool v1.2.0
@@ -59,11 +60,11 @@ require (
 	github.com/vincent-petithory/dataurl v1.0.0
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 	go.etcd.io/bbolt v1.3.10
-	golang.org/x/exp v0.0.0-20240525044651-4c93da0ed11d
-	golang.org/x/image v0.16.0
-	golang.org/x/net v0.25.0
+	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8
+	golang.org/x/image v0.17.0
+	golang.org/x/net v0.26.0
 	golang.org/x/sync v0.7.0
-	golang.org/x/sys v0.20.0
+	golang.org/x/sys v0.21.0
 	gopkg.in/yaml.v3 v3.0.1
 	zombiezen.com/go/sqlite v1.3.0
 )
@@ -72,7 +73,7 @@ require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/aead/ecdh v0.2.0 // indirect
 	github.com/alessio/shellescape v1.4.2 // indirect
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/danieljoos/wincred v1.2.1 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -82,15 +83,15 @@ require (
 	github.com/godbus/dbus v4.1.0+incompatible // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/gddo v0.0.0-20210115222349-20d68f94ee1f // indirect
-	github.com/golang/glog v1.2.0 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/glog v1.2.1 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/native v1.1.0 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.5.1 // indirect
@@ -112,18 +113,18 @@ require (
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	github.com/zalando/go-keyring v0.2.4 // indirect
+	github.com/zalando/go-keyring v0.2.5 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
-	golang.org/x/crypto v0.23.0 // indirect
-	golang.org/x/mod v0.17.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/crypto v0.24.0 // indirect
+	golang.org/x/mod v0.18.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.21.0 // indirect
-	google.golang.org/protobuf v1.32.0 // indirect
+	golang.org/x/tools v0.22.0 // indirect
+	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gvisor.dev/gvisor v0.0.0-20240524212851-a244eff8ad49 // indirect
-	modernc.org/libc v1.50.9 // indirect
+	gvisor.dev/gvisor v0.0.0-20240622065613-cd3efc65190a // indirect
+	modernc.org/libc v1.53.3 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.8.0 // indirect
-	modernc.org/sqlite v1.29.10 // indirect
+	modernc.org/sqlite v1.30.1 // indirect
 )

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -28,7 +28,7 @@ func (i *Info) Start(m *mgr.Manager) error {
 	}
 
 	if printVersion() {
-		return modules.ErrCleanExit
+		return base.ErrCleanExit
 	}
 	return nil
 }

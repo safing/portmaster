@@ -6,8 +6,8 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/formats/dsd"
+	"github.com/safing/structures/container"
 )
 
 // ErrMalformedMessage is returned when a malformed message was encountered.

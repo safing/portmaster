@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portmaster/base/container"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/structures/container"
 )
 
 // CounterOpType is the type ID for the Counter Operation.
