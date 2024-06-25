@@ -23,7 +23,7 @@ type WorkerCtx struct {
 	ctx       context.Context
 	cancelCtx context.CancelFunc
 
-	scheduler *Scheduler // TODO: Attach to context instead?
+	workerMgr *WorkerMgr // TODO: Attach to context instead?
 	logger    *slog.Logger
 }
 
@@ -55,8 +55,8 @@ func (w *WorkerCtx) Cancel() {
 
 // Scheduler returns the scheduler the worker was started from.
 // Returns nil if the worker is not associated with a scheduler.
-func (w *WorkerCtx) Scheduler() *Scheduler {
-	return w.scheduler
+func (w *WorkerCtx) WorkerMgr() *WorkerMgr {
+	return w.workerMgr
 }
 
 // Done returns the context Done channel.
@@ -124,6 +124,7 @@ func (w *WorkerCtx) LogAttrs(level slog.Level, msg string, attrs ...slog.Attr) {
 // - Panic catching.
 // - Flow control helpers.
 func (m *Manager) Go(name string, fn func(w *WorkerCtx) error) {
+	m.logger.Log(m.ctx, slog.LevelInfo, "worker started", "name", name)
 	go m.manageWorker(name, fn)
 }
 
@@ -134,6 +135,7 @@ func (m *Manager) manageWorker(name string, fn func(w *WorkerCtx) error) {
 	w := &WorkerCtx{
 		logger: m.logger.With("worker", name),
 	}
+	w.ctx = m.ctx
 
 	backoff := time.Second
 	failCnt := 0
@@ -298,8 +300,9 @@ func (m *Manager) runWorker(w *WorkerCtx, fn func(w *WorkerCtx) error) (panicInf
 // - Access to named structure logging.
 // - By default error/panic will be logged. For custom behavior supply errorFn, the argument is optional.
 // - Flow control helpers.
-func (m *Manager) Repeat(name string, period time.Duration, fn func(w *WorkerCtx) error, errorFn func(c *WorkerCtx, err error, panicInfo string)) *Task {
-	t := m.NewTask(name, fn, errorFn)
+// - Repeat is intended for long running tasks that are mostly idle.
+func (m *Manager) Repeat(name string, period time.Duration, fn func(w *WorkerCtx) error) *WorkerMgr {
+	t := m.NewWorkerMgr(name, fn, nil)
 	return t.Repeat(period)
 }
 
@@ -310,7 +313,7 @@ func (m *Manager) Repeat(name string, period time.Duration, fn func(w *WorkerCtx
 // - By default error/panic will be logged. For custom behavior supply errorFn, the argument is optional.
 // - Panic catching.
 // - Flow control helpers.
-func (m *Manager) Delay(name string, period time.Duration, fn func(w *WorkerCtx) error, errorFn func(c *WorkerCtx, err error, panicInfo string)) *Task {
-	t := m.NewTask(name, fn, errorFn)
+func (m *Manager) Delay(name string, period time.Duration, fn func(w *WorkerCtx) error) *WorkerMgr {
+	t := m.NewWorkerMgr(name, fn, nil)
 	return t.Delay(period)
 }
