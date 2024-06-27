@@ -130,7 +130,7 @@ func UpdateVerdict(conn *network.Connection) error {
 			LocalPort:     conn.LocalPort,
 			RemoteAddress: [4]byte(conn.Entity.IP),
 			RemotePort:    conn.Entity.Port,
-			Verdict:       uint8(conn.Verdict),
+			Verdict:       uint8(getKextVerdictFromConnection(conn)),
 		}
 
 		return kextinterface.SendUpdateV4Command(kextFile, update)
@@ -141,12 +141,55 @@ func UpdateVerdict(conn *network.Connection) error {
 			LocalPort:     conn.LocalPort,
 			RemoteAddress: [16]byte(conn.Entity.IP),
 			RemotePort:    conn.Entity.Port,
-			Verdict:       uint8(conn.Verdict),
+			Verdict:       uint8(getKextVerdictFromConnection(conn)),
 		}
 
 		return kextinterface.SendUpdateV6Command(kextFile, update)
 	}
 	return nil
+}
+
+func getKextVerdictFromConnection(conn *network.Connection) kextinterface.KextVerdict {
+	if conn.VerdictPermanent {
+		switch conn.Verdict {
+		case network.VerdictUndecided:
+			return kextinterface.VerdictUndecided
+		case network.VerdictUndeterminable:
+			return kextinterface.VerdictUndeterminable
+		case network.VerdictAccept:
+			return kextinterface.VerdictPermanentAccept
+		case network.VerdictBlock:
+			return kextinterface.VerdictPermanentBlock
+		case network.VerdictDrop:
+			return kextinterface.VerdictPermanentDrop
+		case network.VerdictRerouteToNameserver:
+			return kextinterface.VerdictRerouteToNameserver
+		case network.VerdictRerouteToTunnel:
+			return kextinterface.VerdictRerouteToTunnel
+		case network.VerdictFailed:
+			return kextinterface.VerdictFailed
+		}
+	} else {
+		switch conn.Verdict {
+		case network.VerdictUndecided:
+			return kextinterface.VerdictUndecided
+		case network.VerdictUndeterminable:
+			return kextinterface.VerdictUndeterminable
+		case network.VerdictAccept:
+			return kextinterface.VerdictAccept
+		case network.VerdictBlock:
+			return kextinterface.VerdictBlock
+		case network.VerdictDrop:
+			return kextinterface.VerdictDrop
+		case network.VerdictRerouteToNameserver:
+			return kextinterface.VerdictRerouteToNameserver
+		case network.VerdictRerouteToTunnel:
+			return kextinterface.VerdictRerouteToTunnel
+		case network.VerdictFailed:
+			return kextinterface.VerdictFailed
+		}
+	}
+	return kextinterface.VerdictUndeterminable
 }
 
 // Returns the kext version.
