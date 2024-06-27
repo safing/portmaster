@@ -57,6 +57,7 @@ type Instance struct {
 	rng           *rng.Rng
 	base          *base.Base
 
+	core    *core.Core
 	updates *updates.Updates
 	geoip   *geoip.GeoIP
 	netenv  *netenv.NetEnv
@@ -86,7 +87,6 @@ type Instance struct {
 	process      *process.ProcessModule
 	resolver     *resolver.ResolverModule
 	sync         *sync.Sync
-	core         *core.Core
 }
 
 // New returns a new portmaster service instance.
@@ -133,6 +133,10 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	}
 
 	// Global service modules
+	instance.core, err = core.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create core module: %w", err)
+	}
 	instance.updates, err = updates.New(instance, svcCfg.ShutdownFunc)
 	if err != nil {
 		return nil, fmt.Errorf("create updates module: %w", err)
@@ -245,10 +249,6 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create sync module: %w", err)
 	}
-	instance.core, err = core.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create core module: %w", err)
-	}
 
 	// Add all modules to instance group.
 	instance.Group = mgr.NewGroup(
@@ -261,6 +261,7 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		instance.rng,
 		instance.base,
 
+		instance.core,
 		instance.updates,
 		instance.geoip,
 		instance.netenv,
@@ -290,7 +291,6 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		instance.process,
 		instance.resolver,
 		instance.sync,
-		instance.core,
 	)
 
 	// FIXME: call this before to trigger shutdown/restart event

@@ -7,7 +7,33 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
+
+const (
+	groupStateOff int32 = iota
+	groupStateStarting
+	groupStateRunning
+	groupStateStopping
+	groupStateInvalid
+)
+
+func groupStateToString(state int32) string {
+	switch state {
+	case groupStateOff:
+		return "off"
+	case groupStateStarting:
+		return "starting"
+	case groupStateRunning:
+		return "running"
+	case groupStateStopping:
+		return "stopping"
+	case groupStateInvalid:
+		return "invalid"
+	}
+
+	return "unknown"
+}
 
 // Group describes a group of modules.
 type Group struct {
@@ -16,6 +42,8 @@ type Group struct {
 	ctx       context.Context
 	cancelCtx context.CancelFunc
 	ctxLock   sync.Mutex
+
+	state atomic.Int32
 }
 
 type groupModule struct {
@@ -64,22 +92,42 @@ func NewGroup(modules ...Module) *Group {
 // If a module fails to start, itself and all previous modules
 // will be stopped in the reverse order.
 func (g *Group) Start() error {
+	if !g.state.CompareAndSwap(groupStateOff, groupStateStarting) {
+		return fmt.Errorf("group is not off, state: %s", groupStateToString(g.state.Load()))
+	}
+
 	g.initGroupContext()
 
 	for i, m := range g.modules {
+		m.mgr.Info("starting")
 		err := m.module.Start(m.mgr)
 		if err != nil {
-			g.stopFrom(i)
+			if !g.stopFrom(i) {
+				g.state.Store(groupStateInvalid)
+			} else {
+				g.state.Store(groupStateOff)
+			}
 			return fmt.Errorf("failed to start %s: %w", makeModuleName(m.module), err)
 		}
 		m.mgr.Info("started")
 	}
+	g.state.Store(groupStateRunning)
 	return nil
 }
 
 // Stop stops all modules in the group in the reverse order.
-func (g *Group) Stop() (ok bool) {
-	return g.stopFrom(len(g.modules) - 1)
+func (g *Group) Stop() error {
+	if !g.state.CompareAndSwap(groupStateRunning, groupStateStopping) {
+		return fmt.Errorf("group is not running, state: %s", groupStateToString(g.state.Load()))
+	}
+
+	if !g.stopFrom(len(g.modules) - 1) {
+		g.state.Store(groupStateInvalid)
+		return errors.New("failed to stop")
+	}
+
+	g.state.Store(groupStateOff)
+	return nil
 }
 
 func (g *Group) stopFrom(index int) (ok bool) {
@@ -150,11 +198,7 @@ func RunModules(ctx context.Context, modules ...Module) error {
 
 	// Stop module when context is canceled.
 	<-ctx.Done()
-	if !g.Stop() {
-		return errors.New("failed to stop")
-	}
-
-	return nil
+	return g.Stop()
 }
 
 func makeModuleName(m Module) string {

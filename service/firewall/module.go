@@ -104,7 +104,7 @@ func prep() error {
 		return err
 	}
 
-	return prepAPIAuth()
+	return nil
 }
 
 func start() error {
@@ -134,6 +134,10 @@ var (
 func New(instance instance) (*Filter, error) {
 	module = &Filter{
 		instance: instance,
+	}
+
+	if err := prepAPIAuth(); err != nil {
+		return nil, err
 	}
 
 	return module, nil

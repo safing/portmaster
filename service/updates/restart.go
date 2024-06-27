@@ -22,7 +22,6 @@ var (
 	// should be restarted automatically when triggering a restart internally.
 	RebootOnRestart bool
 
-	restartWorkerMgr *mgr.WorkerMgr
 	restartPending   = abool.New()
 	restartTriggered = abool.New()
 
@@ -60,8 +59,7 @@ func DelayedRestart(delay time.Duration) {
 	// Schedule the restart task.
 	log.Warningf("updates: restart triggered, will execute in %s", delay)
 	restartAt := time.Now().Add(delay)
-	// FIXME(vladimir): provide restart task
-	// restartTask.Schedule(restartAt)
+	module.restartWorkerMgr.Delay(delay)
 
 	// Set restartTime.
 	restartTimeLock.Lock()
@@ -75,8 +73,7 @@ func AbortRestart() {
 		log.Warningf("updates: restart aborted")
 
 		// Cancel schedule.
-		// FIXME(vladimir): provide restart task
-		// restartTask.Schedule(time.Time{})
+		module.restartWorkerMgr.Delay(0)
 	}
 }
 
@@ -84,8 +81,7 @@ func AbortRestart() {
 // This can be used to prepone a scheduled restart if the conditions are preferable.
 func TriggerRestartIfPending() {
 	if restartPending.IsSet() {
-		// FIXME(vladimir): provide restart task
-		// restartTask.StartASAP()
+		module.restartWorkerMgr.Go()
 	}
 }
 
@@ -93,8 +89,7 @@ func TriggerRestartIfPending() {
 // This only works if the process is managed by portmaster-start.
 func RestartNow() {
 	restartPending.Set()
-	// FIXME(vladimir): provide restart task
-	// restartTask.StartASAP()
+	module.restartWorkerMgr.Go()
 }
 
 func automaticRestart(w *mgr.WorkerCtx) error {

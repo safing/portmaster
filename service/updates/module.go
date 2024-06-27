@@ -16,7 +16,8 @@ type Updates struct {
 	instance     instance
 	shutdownFunc func(exitCode int)
 
-	updateWorkerMgr *mgr.WorkerMgr
+	updateWorkerMgr  *mgr.WorkerMgr
+	restartWorkerMgr *mgr.WorkerMgr
 
 	EventResourcesUpdated *mgr.EventMgr[struct{}]
 	EventVersionsUpdated  *mgr.EventMgr[struct{}]
@@ -29,6 +30,7 @@ func (u *Updates) Start(m *mgr.Manager) error {
 	u.mgr = m
 	u.EventResourcesUpdated = mgr.NewEventMgr[struct{}](ResourceUpdateEvent, u.mgr)
 	u.EventVersionsUpdated = mgr.NewEventMgr[struct{}](VersionUpdateEvent, u.mgr)
+
 	u.States = mgr.NewStateMgr(u.mgr)
 
 	return start()

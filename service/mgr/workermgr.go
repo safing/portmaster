@@ -263,7 +263,10 @@ func (s *WorkerMgr) Delay(duration time.Duration) *WorkerMgr {
 	defer s.actionLock.Unlock()
 
 	s.delay.Stop()
-	s.delay = s.newDelay(duration)
+	s.delay = nil
+	if duration > 0 {
+		s.delay = s.newDelay(duration)
+	}
 
 	s.check()
 	return s
@@ -276,7 +279,10 @@ func (s *WorkerMgr) Repeat(interval time.Duration) *WorkerMgr {
 	defer s.actionLock.Unlock()
 
 	s.repeat.Stop()
-	s.repeat = s.newRepeat(interval)
+	s.repeat = nil
+	if interval > 0 {
+		s.repeat = s.newRepeat(interval)
+	}
 
 	s.check()
 	return s

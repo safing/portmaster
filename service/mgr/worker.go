@@ -124,7 +124,7 @@ func (w *WorkerCtx) LogAttrs(level slog.Level, msg string, attrs ...slog.Attr) {
 // - Panic catching.
 // - Flow control helpers.
 func (m *Manager) Go(name string, fn func(w *WorkerCtx) error) {
-	m.logger.Log(m.ctx, slog.LevelInfo, "worker started", "name", name)
+	// m.logger.Log(m.ctx, slog.LevelInfo, "worker started", "name", name)
 	go m.manageWorker(name, fn)
 }
 

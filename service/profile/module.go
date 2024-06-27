@@ -18,8 +18,7 @@ import (
 )
 
 var (
-	migrations = migration.New("core:migrations/profile")
-	// module      *modules.Module
+	migrations  = migration.New("core:migrations/profile")
 	updatesPath string
 )
 

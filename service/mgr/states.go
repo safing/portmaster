@@ -73,7 +73,7 @@ func (m *StateMgr) Add(s State) {
 		m.states = append(m.states, s)
 	}
 
-	m.statesEventMgr.Submit(m.Export())
+	m.statesEventMgr.Submit(m.export())
 }
 
 // Remove removes the state with the given ID.
@@ -85,7 +85,7 @@ func (m *StateMgr) Remove(id string) {
 		return s.ID == id
 	})
 
-	m.statesEventMgr.Submit(m.Export())
+	m.statesEventMgr.Submit(m.export())
 }
 
 // Clear removes all states.
@@ -95,14 +95,18 @@ func (m *StateMgr) Clear() {
 
 	m.states = nil
 
-	m.statesEventMgr.Submit(m.Export())
+	m.statesEventMgr.Submit(m.export())
 }
 
-// Export returns the current states.
 func (m *StateMgr) Export() StateUpdate {
 	m.statesLock.Lock()
 	defer m.statesLock.Unlock()
 
+	return m.export()
+}
+
+// Export returns the current states.
+func (m *StateMgr) export() StateUpdate {
 	name := ""
 	if m.mgr != nil {
 		name = m.mgr.name

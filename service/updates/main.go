@@ -80,11 +80,6 @@ const (
 )
 
 func init() {
-	// FIXME:
-	// module = modules.Register(ModuleName, prep, start, stop, "base")
-	// module.RegisterEvent(VersionUpdateEvent, true)
-	// module.RegisterEvent(ResourceUpdateEvent, true)
-
 	flag.StringVar(&updateServerFromFlag, "update-server", "", "set an alternative update server (full URL)")
 	flag.StringVar(&userAgentFromFlag, "update-agent", "", "set an alternative user agent for requests to the update server")
 }
@@ -111,8 +106,7 @@ func prep() error {
 func start() error {
 	initConfig()
 
-	_ = module.mgr.Repeat("automatic restart", 10*time.Minute, automaticRestart)
-
+	module.restartWorkerMgr = module.mgr.Repeat("automatic restart", 10*time.Minute, automaticRestart)
 	module.instance.Config().EventConfigChange.AddCallback("update registry config", updateRegistryConfig)
 
 	// create registry
