@@ -18,8 +18,17 @@ func TestRustInfoFile(t *testing.T) {
 	defer func() {
 		_ = file.Close()
 	}()
+	first := true
 	for {
 		info, err := RecvInfo(file)
+		// First info should be with invalid size.
+		if first {
+			if !errors.Is(err, ErrUnexpectedInfoSize) {
+				t.Errorf("unexpected error: %s\n", err)
+			}
+			first = false
+			continue
+		}
 		if err != nil {
 			if errors.Is(err, ErrUnexpectedReadError) {
 				t.Errorf("unexpected error: %s\n", err)
