@@ -105,9 +105,9 @@ impl Injector {
         }
         let mut remote_ip: [u8; 16] = [0; 16];
         if ipv6 {
-            remote_ip[0..16].copy_from_slice(&remote_ip_slice);
+            remote_ip[0..16].copy_from_slice(remote_ip_slice);
         } else {
-            remote_ip[0..4].copy_from_slice(&remote_ip_slice);
+            remote_ip[0..4].copy_from_slice(remote_ip_slice);
         }
 
         TransportPacketList {

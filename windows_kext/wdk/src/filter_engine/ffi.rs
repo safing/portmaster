@@ -113,9 +113,7 @@ pub(crate) fn register_callout(
 
         check_ntstatus(status)?;
 
-        if let Err(err) = callout_add(filter_engine_handle, guid, layer, name, description) {
-            return Err(err);
-        }
+        callout_add(filter_engine_handle, guid, layer, name, description)?;
 
         return Ok(callout_id);
     }

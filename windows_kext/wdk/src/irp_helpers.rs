@@ -67,7 +67,7 @@ impl ReadRequest<'_> {
         for i in 0..bytes_to_write {
             self.buffer[self.fill_index + i] = bytes[i];
         }
-        self.fill_index = self.fill_index + bytes_to_write;
+        self.fill_index += bytes_to_write;
 
         bytes_to_write
     }
@@ -94,7 +94,7 @@ impl WriteRequest<'_> {
     }
 
     pub fn get_buffer(&self) -> &[u8] {
-        &self.buffer
+        self.buffer
     }
 
     pub fn mark_all_as_read(&mut self) {
@@ -155,7 +155,7 @@ impl DeviceControlRequest<'_> {
     }
 
     pub fn get_buffer(&self) -> &[u8] {
-        &self.buffer
+        self.buffer
     }
     pub fn write(&mut self, bytes: &[u8]) -> usize {
         let mut bytes_to_write: usize = bytes.len();
@@ -168,7 +168,7 @@ impl DeviceControlRequest<'_> {
         for i in 0..bytes_to_write {
             self.buffer[self.fill_index + i] = bytes[i];
         }
-        self.fill_index = self.fill_index + bytes_to_write;
+        self.fill_index += bytes_to_write;
 
         bytes_to_write
     }

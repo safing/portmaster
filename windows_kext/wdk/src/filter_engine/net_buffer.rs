@@ -85,7 +85,7 @@ impl NetBufferList {
                 }
 
                 // Allocate space in buffer, if buffer is too small.
-                let mut buffer = alloc::vec![0 as u8; data_length as usize];
+                let mut buffer = alloc::vec![0_u8; data_length as usize];
 
                 let ptr = NdisGetDataBuffer(nb, data_length, buffer.as_mut_ptr(), 1, 0);
 
@@ -209,7 +209,7 @@ impl Iterator for NetBufferListIter {
     }
 }
 
-pub fn read_packet_partial<'a>(nbl: *mut NET_BUFFER_LIST, buffer: &'a mut [u8]) -> Result<(), ()> {
+pub fn read_packet_partial(nbl: *mut NET_BUFFER_LIST, buffer: &mut [u8]) -> Result<(), ()> {
     unsafe {
         let Some(nbl) = nbl.as_ref() else {
             return Err(());

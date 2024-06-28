@@ -37,9 +37,7 @@ impl ClassifyDefer {
                 }
                 ClassifyDefer::Reauthorization(_callout_id, packet_list) => {
                     // There is no way to reset single filter. If another request for filter reset is trigger at the same time it will fail.
-                    if let Err(err) = filter_engine.reset_all_filters() {
-                        return Err(err);
-                    }
+                    filter_engine.reset_all_filters()?;
                     return Ok(packet_list);
                 }
             }
