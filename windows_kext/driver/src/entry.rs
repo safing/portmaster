@@ -38,10 +38,10 @@ pub extern "system" fn driver_entry(
     };
 
     // Set driver functions.
-    driver.set_driver_unload(driver_unload);
-    driver.set_read_fn(driver_read);
-    driver.set_write_fn(driver_write);
-    driver.set_device_control_fn(device_control);
+    driver.set_driver_unload(Some(driver_unload));
+    driver.set_read_fn(Some(driver_read));
+    driver.set_write_fn(Some(driver_write));
+    driver.set_device_control_fn(Some(device_control));
 
     // Initialize device.
     unsafe {
@@ -70,10 +70,10 @@ unsafe extern "system" fn driver_unload(_object: *const DRIVER_OBJECT) {
 
 // driver_read event triggered from user-space on file.Read.
 unsafe extern "system" fn driver_read(
-    _device_object: &mut DEVICE_OBJECT,
-    irp: &mut IRP,
+    _device_object: *const DEVICE_OBJECT,
+    irp: *mut IRP,
 ) -> NTSTATUS {
-    let mut read_request = ReadRequest::new(irp);
+    let mut read_request = ReadRequest::new(irp.as_mut().unwrap());
     let Some(device) = get_device() else {
         read_request.complete();
 
@@ -86,10 +86,10 @@ unsafe extern "system" fn driver_read(
 
 /// driver_write event triggered from user-space on file.Write.
 unsafe extern "system" fn driver_write(
-    _device_object: &mut DEVICE_OBJECT,
-    irp: &mut IRP,
+    _device_object: *const DEVICE_OBJECT,
+    irp: *mut IRP,
 ) -> NTSTATUS {
-    let mut write_request = WriteRequest::new(irp);
+    let mut write_request = WriteRequest::new(irp.as_mut().unwrap());
     let Some(device) = get_device() else {
         write_request.complete();
         return write_request.get_status();
@@ -104,10 +104,10 @@ unsafe extern "system" fn driver_write(
 
 /// device_control event triggered from user-space on file.deviceIOControl.
 unsafe extern "system" fn device_control(
-    _device_object: &mut DEVICE_OBJECT,
-    irp: &mut IRP,
+    _device_object: *const DEVICE_OBJECT,
+    irp: *mut IRP,
 ) -> NTSTATUS {
-    let mut control_request = DeviceControlRequest::new(irp);
+    let mut control_request = DeviceControlRequest::new(irp.as_mut().unwrap());
     let Some(device) = get_device() else {
         control_request.complete();
         return control_request.get_status();

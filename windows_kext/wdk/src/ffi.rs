@@ -270,7 +270,7 @@ impl WdfObjectAttributes {
             evt_destroy_callback: None,
             execution_level: WdfExecutionLevel::InheritFromParent,
             synchronization_scope: WdfSynchronizationScope::InheritFromParent,
-            parent_object: 0,
+            parent_object: core::ptr::null_mut(),
             context_size_override: 0,
             context_type_info: core::ptr::null(),
         }

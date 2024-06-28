@@ -192,7 +192,7 @@ impl Drop for FilterEngine {
             }
         }
 
-        if self.handle != 0 && self.handle != INVALID_HANDLE_VALUE {
+        if !self.handle.is_null() && self.handle != INVALID_HANDLE_VALUE {
             _ = ffi::filter_engine_close(self.handle);
         }
     }
