@@ -41,7 +41,6 @@ func Start() error {
 	// Start service and open file
 	service.Start(true)
 	kextFile, err = service.OpenFile(1024)
-
 	if err != nil {
 		return fmt.Errorf("failed to open driver: %w", err)
 	}
@@ -150,44 +149,35 @@ func UpdateVerdict(conn *network.Connection) error {
 }
 
 func getKextVerdictFromConnection(conn *network.Connection) kextinterface.KextVerdict {
-	if conn.VerdictPermanent {
-		switch conn.Verdict {
-		case network.VerdictUndecided:
-			return kextinterface.VerdictUndecided
-		case network.VerdictUndeterminable:
-			return kextinterface.VerdictUndeterminable
-		case network.VerdictAccept:
+	switch conn.Verdict {
+	case network.VerdictUndecided:
+		return kextinterface.VerdictUndecided
+	case network.VerdictUndeterminable:
+		return kextinterface.VerdictUndeterminable
+	case network.VerdictAccept:
+		if conn.VerdictPermanent {
 			return kextinterface.VerdictPermanentAccept
-		case network.VerdictBlock:
-			return kextinterface.VerdictPermanentBlock
-		case network.VerdictDrop:
-			return kextinterface.VerdictPermanentDrop
-		case network.VerdictRerouteToNameserver:
-			return kextinterface.VerdictRerouteToNameserver
-		case network.VerdictRerouteToTunnel:
-			return kextinterface.VerdictRerouteToTunnel
-		case network.VerdictFailed:
-			return kextinterface.VerdictFailed
-		}
-	} else {
-		switch conn.Verdict {
-		case network.VerdictUndecided:
-			return kextinterface.VerdictUndecided
-		case network.VerdictUndeterminable:
-			return kextinterface.VerdictUndeterminable
-		case network.VerdictAccept:
+		} else {
 			return kextinterface.VerdictAccept
-		case network.VerdictBlock:
-			return kextinterface.VerdictBlock
-		case network.VerdictDrop:
-			return kextinterface.VerdictDrop
-		case network.VerdictRerouteToNameserver:
-			return kextinterface.VerdictRerouteToNameserver
-		case network.VerdictRerouteToTunnel:
-			return kextinterface.VerdictRerouteToTunnel
-		case network.VerdictFailed:
-			return kextinterface.VerdictFailed
 		}
+	case network.VerdictBlock:
+		if conn.VerdictPermanent {
+			return kextinterface.VerdictPermanentBlock
+		} else {
+			return kextinterface.VerdictBlock
+		}
+	case network.VerdictDrop:
+		if conn.VerdictPermanent {
+			return kextinterface.VerdictPermanentDrop
+		} else {
+			return kextinterface.VerdictDrop
+		}
+	case network.VerdictRerouteToNameserver:
+		return kextinterface.VerdictRerouteToNameserver
+	case network.VerdictRerouteToTunnel:
+		return kextinterface.VerdictRerouteToTunnel
+	case network.VerdictFailed:
+		return kextinterface.VerdictFailed
 	}
 	return kextinterface.VerdictUndeterminable
 }
