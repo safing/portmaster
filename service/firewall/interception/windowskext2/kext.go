@@ -39,7 +39,11 @@ func Start() error {
 	}
 
 	// Start service and open file
-	service.Start(true)
+	err = service.Start(true)
+	if err != nil {
+		log.Errorf("failed to start service: %s", err)
+	}
+
 	kextFile, err = service.OpenFile(1024)
 	if err != nil {
 		return fmt.Errorf("failed to open driver: %w", err)

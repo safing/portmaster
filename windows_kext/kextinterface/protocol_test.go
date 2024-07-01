@@ -22,6 +22,7 @@ func TestRustInfoFile(t *testing.T) {
 	for {
 		info, err := RecvInfo(file)
 		// First info should be with invalid size.
+		// This tests if invalid info data is handled properly.
 		if first {
 			if !errors.Is(err, ErrUnexpectedInfoSize) {
 				t.Errorf("unexpected error: %s\n", err)

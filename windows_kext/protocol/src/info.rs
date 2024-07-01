@@ -441,7 +441,7 @@ fn generate_test_info_file() -> Result<(), std::io::Error> {
     for _ in 0..selected.capacity() {
         selected.push(enums.choose(&mut rng).unwrap().clone());
     }
-    // Write wrong size data.
+    // Write wrong size data. To make sure that mismatches between kext and portmaster are handled properly.
     let mut info = connection_info_v6(
         1,
         2,
