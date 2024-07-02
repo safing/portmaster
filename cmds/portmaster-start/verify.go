@@ -13,8 +13,8 @@ import (
 
 	"github.com/safing/jess"
 	"github.com/safing/jess/filesig"
-	portlog "github.com/safing/portbase/log"
-	"github.com/safing/portbase/updater"
+	portlog "github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 

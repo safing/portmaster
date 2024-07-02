@@ -3,7 +3,7 @@ package navigator
 import (
 	"testing"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/core/pmtesting"
 )
 

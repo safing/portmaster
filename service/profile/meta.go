@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/base/database/record"
 )
 
 // ProfilesMetadata holds metadata about all profiles that are not fit to be

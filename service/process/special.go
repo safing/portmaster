@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/network/socket"
 	"github.com/safing/portmaster/service/profile"
 )

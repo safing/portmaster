@@ -5,10 +5,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/runtime"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/runtime"
 	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/service/profile/endpoints"
 )

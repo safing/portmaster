@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	servertiming "github.com/mitchellh/go-server-timing"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/netquery/orm"
 )
 

@@ -1,15 +1,15 @@
 package profile
 
 import (
-	"context"
 	"errors"
 	"strings"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // Database paths:
@@ -40,7 +40,7 @@ func registerValidationDBHook() (err error) {
 }
 
 func startProfileUpdateChecker() error {
-	module.StartServiceWorker("update active profiles", 0, func(ctx context.Context) (err error) {
+	module.mgr.Go("update active profiles", func(ctx *mgr.WorkerCtx) (err error) {
 		profilesSub, err := profileDB.Subscribe(query.New(ProfilesDBPath))
 		if err != nil {
 			return err
@@ -85,7 +85,7 @@ func startProfileUpdateChecker() error {
 					activeProfile.outdated.Set()
 
 					meta.MarkDeleted(scopedID)
-					module.TriggerEvent(DeletedEvent, scopedID)
+					module.EventDelete.Submit(scopedID)
 					continue
 				}
 
@@ -94,7 +94,7 @@ func startProfileUpdateChecker() error {
 				receivedProfile, err := EnsureProfile(r)
 				if err != nil || !receivedProfile.savedInternally {
 					activeProfile.outdated.Set()
-					module.TriggerEvent(ConfigChangeEvent, scopedID)
+					module.EventConfigChange.Submit(scopedID)
 				}
 			case <-ctx.Done():
 				return nil

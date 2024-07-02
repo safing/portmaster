@@ -3,14 +3,13 @@ package netenv
 import (
 	"errors"
 
-	"github.com/safing/portbase/api"
+	"github.com/safing/portmaster/base/api"
 )
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:      "network/gateways",
-		Read:      api.PermitUser,
-		BelongsTo: module,
+		Path: "network/gateways",
+		Read: api.PermitUser,
 		StructFunc: func(ar *api.Request) (i interface{}, err error) {
 			return Gateways(), nil
 		},
@@ -21,9 +20,8 @@ func registerAPIEndpoints() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:      "network/nameservers",
-		Read:      api.PermitUser,
-		BelongsTo: module,
+		Path: "network/nameservers",
+		Read: api.PermitUser,
 		StructFunc: func(ar *api.Request) (i interface{}, err error) {
 			return Nameservers(), nil
 		},
@@ -34,9 +32,8 @@ func registerAPIEndpoints() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:      "network/location",
-		Read:      api.PermitUser,
-		BelongsTo: module,
+		Path: "network/location",
+		Read: api.PermitUser,
 		StructFunc: func(ar *api.Request) (i interface{}, err error) {
 			locs, ok := GetInternetLocation()
 			if ok {
@@ -51,9 +48,8 @@ func registerAPIEndpoints() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:      "network/location/traceroute",
-		Read:      api.PermitUser,
-		BelongsTo: module,
+		Path: "network/location/traceroute",
+		Read: api.PermitUser,
 		StructFunc: func(ar *api.Request) (i interface{}, err error) {
 			return getLocationFromTraceroute(&DeviceLocations{})
 		},

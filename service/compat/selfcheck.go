@@ -10,8 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/resolver"
@@ -130,7 +131,7 @@ func selfcheck(ctx context.Context) (issue *systemIssue, err error) {
 	}
 
 	// Start worker for the DNS lookup.
-	module.StartWorker("dns check lookup", func(_ context.Context) error {
+	module.mgr.Go("dns check lookup", func(_ *mgr.WorkerCtx) error {
 		ips, err := net.LookupIP(randomSubdomain + DNSCheckInternalDomainScope)
 		if err == nil && len(ips) > 0 {
 			dnsCheckReturnedIP = ips[0]

@@ -1,14 +1,14 @@
 package sluice
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 )
 
@@ -46,9 +46,8 @@ func StartSluice(network, address string) {
 	}
 
 	// Start service worker.
-	module.StartServiceWorker(
+	module.mgr.Go(
 		s.network+" sluice listener",
-		10*time.Second,
 		s.listenHandler,
 	)
 }
@@ -189,7 +188,7 @@ func (s *Sluice) handleConnection(conn net.Conn) {
 	success = true
 }
 
-func (s *Sluice) listenHandler(_ context.Context) error {
+func (s *Sluice) listenHandler(_ *mgr.WorkerCtx) error {
 	defer s.abandon()
 	err := s.init()
 	if err != nil {
@@ -201,7 +200,7 @@ func (s *Sluice) listenHandler(_ context.Context) error {
 	for {
 		conn, err := s.listener.Accept()
 		if err != nil {
-			if module.IsStopping() {
+			if module.mgr.IsDone() {
 				return nil
 			}
 			return fmt.Errorf("failed to accept connection: %w", err)

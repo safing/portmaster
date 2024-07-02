@@ -4,7 +4,7 @@ import (
 	"context"
 	"math"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/spn/hub"
 )

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
 )
 
 const (

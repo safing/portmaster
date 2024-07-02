@@ -1,9 +1,9 @@
 package updates
 
 import (
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/runtime"
-	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/runtime"
+	"github.com/safing/portmaster/base/updater"
 )
 
 var pushRegistryStatusUpdate runtime.PushFunc

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/safing/jess"
-	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portmaster/base/formats/dsd"
 )
 
 func TestHubUpdate(t *testing.T) {

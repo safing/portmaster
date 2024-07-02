@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/spn/hub"

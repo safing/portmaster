@@ -2,7 +2,7 @@
 
 package compat
 
-import "github.com/safing/portbase/utils/debug"
+import "github.com/safing/portmaster/base/utils/debug"
 
 // AddToDebugInfo adds compatibility data to the given debug.Info.
 func AddToDebugInfo(di *debug.Info) {

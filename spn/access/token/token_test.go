@@ -3,7 +3,7 @@ package token
 import (
 	"testing"
 
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/rng"
 )
 
 func TestToken(t *testing.T) {

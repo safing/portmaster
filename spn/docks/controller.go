@@ -1,8 +1,8 @@
 package docks
 
 import (
-	"github.com/safing/portbase/container"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 // CraneControllerTerminal is a terminal for the crane itself.
@@ -80,7 +80,7 @@ func initCraneController(
 	t.GrantPermission(terminal.IsCraneController)
 
 	// Start workers.
-	t.StartWorkers(module, "crane controller terminal")
+	t.StartWorkers(module.mgr, "crane controller terminal")
 
 	return cct
 }

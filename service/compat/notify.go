@@ -1,17 +1,16 @@
 package compat
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/profile"
 )
@@ -138,10 +137,11 @@ func (issue *systemIssue) notify(err error) {
 	notifications.Notify(n)
 
 	systemIssueNotification = n
-	n.AttachToModule(module)
+	// n.AttachToModule(module)
 
 	// Report the raw error as module error.
-	module.NewErrorMessage("selfcheck", err).Report()
+	// FIXME(vladimir): Is there a need for this kind of error reporting?
+	// module.NewErrorMessage("selfcheck", err).Report()
 }
 
 func resetSystemIssue() {
@@ -214,7 +214,7 @@ func (issue *appIssue) notify(proc *process.Process) {
 	notifications.Notify(n)
 
 	// Set warning on profile.
-	module.StartWorker("set app compat warning", func(ctx context.Context) error {
+	module.mgr.Go("set app compat warning", func(ctx *mgr.WorkerCtx) error {
 		var changed bool
 
 		func() {
@@ -273,7 +273,7 @@ func isOverThreshold(id string) bool {
 	return false
 }
 
-func cleanNotifyThreshold(ctx context.Context, task *modules.Task) error {
+func cleanNotifyThreshold(ctx *mgr.WorkerCtx) error {
 	notifyThresholdsLock.Lock()
 	defer notifyThresholdsLock.Unlock()
 

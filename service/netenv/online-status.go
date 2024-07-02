@@ -13,8 +13,9 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/updates"
 )
@@ -207,7 +208,7 @@ func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string)
 
 	// Trigger events.
 	if changed {
-		module.TriggerEvent(OnlineStatusChangedEvent, status)
+		module.EventOnlineStatusChange.Submit(status)
 		if status == StatusPortal {
 			log.Infof(`netenv: setting online status to %s at "%s" (%s)`, status, portalURL, comment)
 		} else {
@@ -356,7 +357,7 @@ func TriggerOnlineStatusInvestigation() {
 	}
 }
 
-func monitorOnlineStatus(ctx context.Context) error {
+func monitorOnlineStatus(ctx *mgr.WorkerCtx) error {
 	TriggerOnlineStatusInvestigation()
 	for {
 		// wait for trigger
@@ -372,7 +373,7 @@ func monitorOnlineStatus(ctx context.Context) error {
 			onlineStatusInvestigationWg.Add(1)
 		}
 
-		checkOnlineStatus(ctx)
+		checkOnlineStatus(ctx.Ctx())
 
 		// finished!
 		onlineStatusInvestigationWg.Done()

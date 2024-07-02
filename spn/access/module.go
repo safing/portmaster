@@ -1,25 +1,51 @@
 package access
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/access/account"
 	"github.com/safing/portmaster/spn/access/token"
 	"github.com/safing/portmaster/spn/conf"
 )
 
-var (
-	module *modules.Module
+type Access struct {
+	mgr      *mgr.Manager
+	instance instance
 
-	accountUpdateTask *modules.Task
+	updateAccountWorkerMgr *mgr.WorkerMgr
+
+	EventAccountUpdate *mgr.EventMgr[struct{}]
+}
+
+func (a *Access) Start(m *mgr.Manager) error {
+	a.mgr = m
+	a.EventAccountUpdate = mgr.NewEventMgr[struct{}](AccountUpdateEvent, m)
+	a.updateAccountWorkerMgr = m.NewWorkerMgr("update account", UpdateAccount, nil)
+
+	if err := prep(); err != nil {
+		return err
+	}
+
+	return start()
+}
+
+func (a *Access) Stop(m *mgr.Manager) error {
+	return stop()
+}
+
+var (
+	module     *Access
+	shimLoaded atomic.Bool
+
+	// accountUpdateTask *modules.Task
 
 	tokenIssuerIsFailing     = abool.New()
 	tokenIssuerRetryDuration = 10 * time.Minute
@@ -38,13 +64,7 @@ var (
 	ErrNotLoggedIn          = errors.New("not logged in")
 )
 
-func init() {
-	module = modules.Register("access", prep, start, stop, "terminal")
-}
-
 func prep() error {
-	module.RegisterEvent(AccountUpdateEvent, true)
-
 	// Register API handlers.
 	if conf.Client() {
 		err := registerAPIEndpoints()
@@ -67,10 +87,7 @@ func start() error {
 		loadTokens()
 
 		// Register new task.
-		accountUpdateTask = module.NewTask(
-			"update account",
-			UpdateAccount,
-		).Repeat(24 * time.Hour).Schedule(time.Now().Add(1 * time.Minute))
+		module.updateAccountWorkerMgr.Delay(1 * time.Minute)
 	}
 
 	return nil
@@ -78,10 +95,6 @@ func start() error {
 
 func stop() error {
 	if conf.Client() {
-		// Stop account update task.
-		accountUpdateTask.Cancel()
-		accountUpdateTask = nil
-
 		// Store tokens to database.
 		storeTokens()
 	}
@@ -93,11 +106,14 @@ func stop() error {
 }
 
 // UpdateAccount updates the user account and fetches new tokens, if needed.
-func UpdateAccount(_ context.Context, task *modules.Task) error {
+func UpdateAccount(_ *mgr.WorkerCtx) error { //, task *modules.Task) error {
+	// Schedule next call this will change if other conditions are met bellow.
+	module.updateAccountWorkerMgr.Delay(24 * time.Hour)
+
 	// Retry sooner if the token issuer is failing.
 	defer func() {
-		if tokenIssuerIsFailing.IsSet() && task != nil {
-			task.Schedule(time.Now().Add(tokenIssuerRetryDuration))
+		if tokenIssuerIsFailing.IsSet() {
+			module.updateAccountWorkerMgr.Delay(tokenIssuerRetryDuration)
 		}
 	}()
 
@@ -128,15 +144,15 @@ func UpdateAccount(_ context.Context, task *modules.Task) error {
 
 	case time.Until(*u.Subscription.EndsAt) < 24*time.Hour &&
 		time.Since(*u.Subscription.EndsAt) < 24*time.Hour:
-		// Update account every hour 24h hours before and after the subscription ends.
-		task.Schedule(time.Now().Add(time.Hour))
+		// Update account every hour for 24h hours before and after the subscription ends.
+		module.updateAccountWorkerMgr.Delay(1 * time.Hour)
 
 	case u.Subscription.NextBillingDate == nil: // No auto-subscription.
 
 	case time.Until(*u.Subscription.NextBillingDate) < 24*time.Hour &&
 		time.Since(*u.Subscription.NextBillingDate) < 24*time.Hour:
 		// Update account every hour 24h hours before and after the next billing date.
-		task.Schedule(time.Now().Add(time.Hour))
+		module.updateAccountWorkerMgr.Delay(1 * time.Hour)
 	}
 
 	return nil
@@ -165,11 +181,12 @@ func tokenIssuerFailed() {
 	if !tokenIssuerIsFailing.SetToIf(false, true) {
 		return
 	}
-	if !module.Online() {
-		return
-	}
+	// TODO(vladimir): Do we need this check?
+	// if !module.Online() {
+	// 	return
+	// }
 
-	accountUpdateTask.Schedule(time.Now().Add(tokenIssuerRetryDuration))
+	module.updateAccountWorkerMgr.Delay(tokenIssuerRetryDuration)
 }
 
 // IsLoggedIn returns whether a User is currently logged in.
@@ -192,3 +209,17 @@ func (user *UserRecord) MayUseTheSPN() bool {
 
 	return user.User.MayUseSPN()
 }
+
+// New returns a new Access module.
+func New(instance instance) (*Access, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &Access{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface{}

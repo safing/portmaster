@@ -9,12 +9,12 @@ import (
 	"github.com/tevino/abool"
 
 	"github.com/safing/jess"
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/conf"
+	"github.com/safing/structures/container"
 )
 
 const (
@@ -231,10 +231,10 @@ func (t *TerminalBase) Deliver(msg *Msg) *Error {
 }
 
 // StartWorkers starts the necessary workers to operate the Terminal.
-func (t *TerminalBase) StartWorkers(m *modules.Module, terminalName string) {
+func (t *TerminalBase) StartWorkers(m *mgr.Manager, terminalName string) {
 	// Start terminal workers.
-	m.StartWorker(terminalName+" handler", t.Handler)
-	m.StartWorker(terminalName+" sender", t.Sender)
+	m.Go(terminalName+" handler", t.Handler)
+	m.Go(terminalName+" sender", t.Sender)
 
 	// Start any flow control workers.
 	if t.flowControl != nil {
@@ -250,7 +250,7 @@ const (
 
 // Handler receives and handles messages and must be started as a worker in the
 // module where the Terminal is used.
-func (t *TerminalBase) Handler(_ context.Context) error {
+func (t *TerminalBase) Handler(_ *mgr.WorkerCtx) error {
 	defer t.Abandon(ErrInternalError.With("handler died"))
 
 	var msg *Msg
@@ -322,7 +322,7 @@ func (t *TerminalBase) submitToUpstream(msg *Msg, timeout time.Duration) {
 
 // Sender handles sending messages and must be started as a worker in the
 // module where the Terminal is used.
-func (t *TerminalBase) Sender(_ context.Context) error {
+func (t *TerminalBase) Sender(_ *mgr.WorkerCtx) error {
 	// Don't send messages, if the encryption is net yet set up.
 	// The server encryption session is only initialized with the first
 	// operative message, not on Terminal creation.
@@ -782,7 +782,7 @@ func (t *TerminalBase) sendOpMsgs(msg *Msg) *Error {
 // Should not be overridden by implementations.
 func (t *TerminalBase) Abandon(err *Error) {
 	if t.Abandoning.SetToIf(false, true) {
-		module.StartWorker("terminal abandon procedure", func(_ context.Context) error {
+		module.mgr.Go("terminal abandon procedure", func(_ *mgr.WorkerCtx) error {
 			t.handleAbandonProcedure(err)
 			return nil
 		})

@@ -1,0 +1,23 @@
+struct SimpleTestStruct {
+	S string
+	B byte
+}
+
+struct GenCodeTestStructure {
+	I8   int8
+	I16  int16
+	I32  int32
+	I64  int64
+	UI8  uint8
+	UI16 uint16
+	UI32 uint32
+	UI64 uint64
+	S    string
+	Sp   *string
+	Sa   []string
+	Sap  *[]string
+	B    byte
+	Bp   *byte
+	Ba   []byte
+	Bap  *[]byte
+}

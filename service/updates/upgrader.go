@@ -14,13 +14,14 @@ import (
 	processInfo "github.com/shirou/gopsutil/process"
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/dataroot"
-	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/notifications"
-	"github.com/safing/portbase/rng"
-	"github.com/safing/portbase/updater"
-	"github.com/safing/portbase/utils/renameio"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/base/utils/renameio"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 
@@ -41,23 +42,19 @@ var (
 )
 
 func initUpgrader() error {
-	return module.RegisterEventHook(
-		ModuleName,
-		ResourceUpdateEvent,
-		"run upgrades",
-		upgrader,
-	)
+	module.EventResourcesUpdated.AddCallback("run upgrades", upgrader)
+	return nil
 }
 
-func upgrader(_ context.Context, _ interface{}) error {
+func upgrader(m *mgr.WorkerCtx, _ struct{}) (cancel bool, err error) {
 	// Lock runs, but discard additional runs.
 	if !upgraderActive.SetToIf(false, true) {
-		return nil
+		return false, nil
 	}
 	defer upgraderActive.SetTo(false)
 
 	// Upgrade portmaster-start.
-	err := upgradePortmasterStart()
+	err = upgradePortmasterStart()
 	if err != nil {
 		log.Warningf("updates: failed to upgrade portmaster-start: %s", err)
 	}
@@ -86,7 +83,7 @@ func upgrader(_ context.Context, _ interface{}) error {
 		}
 	}
 
-	return nil
+	return false, nil
 }
 
 func upgradeCoreNotify() error {
@@ -185,14 +182,14 @@ func upgradeHub() error {
 
 		// Increase update checks in order to detect aborts better.
 		if !disableTaskSchedule {
-			updateTask.Repeat(10 * time.Minute)
+			module.updateWorkerMgr.Repeat(10 * time.Minute)
 		}
 	} else {
 		AbortRestart()
 
 		// Set update task schedule back to normal.
 		if !disableTaskSchedule {
-			updateTask.Repeat(updateTaskRepeatDuration)
+			module.updateWorkerMgr.Repeat(updateTaskRepeatDuration)
 		}
 	}
 

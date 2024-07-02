@@ -3,7 +3,7 @@ package compat
 import (
 	"fmt"
 
-	"github.com/safing/portbase/utils/debug"
+	"github.com/safing/portmaster/base/utils/debug"
 )
 
 // AddToDebugInfo adds compatibility data to the given debug.Info.

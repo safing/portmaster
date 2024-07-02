@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/service/profile"
 )
 
@@ -44,8 +44,7 @@ func registerSingleSettingAPI() error {
 			Field:       "key",
 			Description: "Specify which settings key to export.",
 		}},
-		BelongsTo: module,
-		DataFunc:  handleExportSingleSetting,
+		DataFunc: handleExportSingleSetting,
 	}); err != nil {
 		return err
 	}
@@ -69,7 +68,6 @@ func registerSingleSettingAPI() error {
 			Field:       "validate",
 			Description: "Validate only.",
 		}},
-		BelongsTo:  module,
 		StructFunc: handleImportSingleSetting,
 	}); err != nil {
 		return err

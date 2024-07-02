@@ -8,7 +8,7 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/spn/docks"

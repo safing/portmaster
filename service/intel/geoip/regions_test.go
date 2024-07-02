@@ -3,7 +3,7 @@ package geoip
 import (
 	"testing"
 
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/utils"
 )
 
 func TestRegions(t *testing.T) {

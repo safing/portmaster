@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/image/draw"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 )
 
 // Colored Icon IDs.

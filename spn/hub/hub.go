@@ -9,8 +9,8 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/safing/jess"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/profile/endpoints"
 )
 

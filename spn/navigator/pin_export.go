@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/spn/hub"
 )

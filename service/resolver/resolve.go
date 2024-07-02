@@ -12,8 +12,9 @@ import (
 	"github.com/miekg/dns"
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 )
 
@@ -307,8 +308,8 @@ func startAsyncQuery(ctx context.Context, q *Query, currentRRCache *RRCache) {
 	}
 
 	// resolve async
-	module.StartWorker("resolve async", func(asyncCtx context.Context) error {
-		tracingCtx, tracer := log.AddTracer(asyncCtx)
+	module.mgr.Go("resolve async", func(wc *mgr.WorkerCtx) error {
+		tracingCtx, tracer := log.AddTracer(wc.Ctx())
 		defer tracer.Submit()
 		tracer.Tracef("resolver: resolving %s async", q.ID())
 		_, err := resolveAndCache(tracingCtx, q, nil)
@@ -412,7 +413,7 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 
 	// start resolving
 	for _, resolver := range resolvers {
-		if module.IsStopping() {
+		if module.mgr.IsDone() {
 			return nil, ErrShuttingDown
 		}
 

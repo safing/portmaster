@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils/osdetail"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils/osdetail"
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/service/profile/binmeta"

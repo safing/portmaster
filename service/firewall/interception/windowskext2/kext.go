@@ -6,7 +6,7 @@ package windowskext
 import (
 	"fmt"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/windows_kext/kextinterface"
 	"golang.org/x/sys/windows"

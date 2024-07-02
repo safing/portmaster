@@ -1,7 +1,7 @@
 package customlists
 
 import (
-	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/base/config"
 )
 
 var (

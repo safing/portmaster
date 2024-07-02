@@ -1,15 +1,15 @@
 package navigator
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/iterator"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/database/storage"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/iterator"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/database/storage"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 var mapDBController *database.Controller
@@ -82,7 +82,7 @@ func (s *StorageInterface) Query(q *query.Query, local, internal bool) (*iterato
 
 	// Start query worker.
 	it := iterator.New()
-	module.StartWorker("map query", func(_ context.Context) error {
+	module.mgr.Go("map query", func(_ *mgr.WorkerCtx) error {
 		s.processQuery(m, q, it)
 		return nil
 	})
@@ -131,10 +131,10 @@ func withdrawMapDatabase() {
 
 // PushPinChanges pushes all changed pins to subscribers.
 func (m *Map) PushPinChanges() {
-	module.StartWorker("push pin changes", m.pushPinChangesWorker)
+	module.mgr.Go("push pin changes", m.pushPinChangesWorker)
 }
 
-func (m *Map) pushPinChangesWorker(ctx context.Context) error {
+func (m *Map) pushPinChangesWorker(ctx *mgr.WorkerCtx) error {
 	m.RLock()
 	defer m.RUnlock()
 
@@ -155,7 +155,7 @@ func (pin *Pin) pushChange() {
 	}
 
 	// Start worker to push changes.
-	module.StartWorker("push pin change", func(ctx context.Context) error {
+	module.mgr.Go("push pin change", func(ctx *mgr.WorkerCtx) error {
 		if pin.pushChanges.SetToIf(true, false) {
 			mapDBController.PushUpdate(pin.Export())
 		}

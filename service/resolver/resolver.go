@@ -10,7 +10,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/netutils"
 )

@@ -1,22 +1,40 @@
 package compat
 
 import (
-	"context"
 	"errors"
+	"sync/atomic"
 	"time"
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/resolver"
 )
 
-var (
-	module *modules.Module
+type Compat struct {
+	mgr      *mgr.Manager
+	instance instance
 
-	selfcheckTask           *modules.Task
+	selfcheckWorkerMgr *mgr.WorkerMgr
+}
+
+// Start starts the module.
+func (u *Compat) Start(m *mgr.Manager) error {
+	u.mgr = m
+	if err := prep(); err != nil {
+		return err
+	}
+	return start()
+}
+
+// Stop stops the module.
+func (u *Compat) Stop(_ *mgr.Manager) error {
+	return stop()
+}
+
+var (
 	selfcheckTaskRetryAfter = 15 * time.Second
 
 	// selfCheckIsFailing holds whether or not the self-check is currently
@@ -38,8 +56,6 @@ var (
 const selfcheckFailThreshold = 10
 
 func init() {
-	module = modules.Register("compat", prep, start, stop, "base", "network", "interception", "netenv", "notifications")
-
 	// Workaround resolver integration.
 	// See resolver/compat.go for details.
 	resolver.CompatDNSCheckInternalDomainScope = DNSCheckInternalDomainScope
@@ -55,35 +71,26 @@ func start() error {
 	startNotify()
 
 	selfcheckNetworkChangedFlag.Refresh()
-	selfcheckTask = module.NewTask("compatibility self-check", selfcheckTaskFunc).
-		Repeat(5 * time.Minute).
-		MaxDelay(selfcheckTaskRetryAfter).
-		Schedule(time.Now().Add(selfcheckTaskRetryAfter))
+	module.selfcheckWorkerMgr = module.mgr.Repeat("compatibility self-check", 5*time.Minute, selfcheckTaskFunc).Delay(selfcheckTaskRetryAfter)
 
-	module.NewTask("clean notify thresholds", cleanNotifyThreshold).
-		Repeat(1 * time.Hour)
-
-	return module.RegisterEventHook(
-		netenv.ModuleName,
-		netenv.NetworkChangedEvent,
-		"trigger compat self-check",
-		func(_ context.Context, _ interface{}) error {
-			selfcheckTask.Schedule(time.Now().Add(selfcheckTaskRetryAfter))
-			return nil
-		},
-	)
+	_ = module.mgr.Repeat("clean notify thresholds", 1*time.Hour, cleanNotifyThreshold)
+	module.instance.NetEnv().EventNetworkChange.AddCallback("trigger compat self-check", func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
+		module.selfcheckWorkerMgr.Delay(selfcheckTaskRetryAfter)
+		return false, nil
+	})
+	return nil
 }
 
 func stop() error {
-	selfcheckTask.Cancel()
-	selfcheckTask = nil
+	// selfcheckTask.Cancel()
+	// selfcheckTask = nil
 
 	return nil
 }
 
-func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
+func selfcheckTaskFunc(wc *mgr.WorkerCtx) error {
 	// Create tracing logger.
-	ctx, tracer := log.AddTracer(ctx)
+	ctx, tracer := log.AddTracer(wc.Ctx())
 	defer tracer.Submit()
 	tracer.Tracef("compat: running self-check")
 
@@ -115,7 +122,7 @@ func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
 		}
 
 		// Retry quicker when failed.
-		task.Schedule(time.Now().Add(selfcheckTaskRetryAfter))
+		module.selfcheckWorkerMgr.Delay(selfcheckTaskRetryAfter)
 
 		return nil
 	}
@@ -134,4 +141,25 @@ func selfcheckTaskFunc(ctx context.Context, task *modules.Task) error {
 // failing threshold to be met.
 func SelfCheckIsFailing() bool {
 	return selfCheckIsFailing.IsSet()
+}
+
+var (
+	module     *Compat
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Compat module.
+func New(instance instance) (*Compat, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	module = &Compat{
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface {
+	NetEnv() *netenv.NetEnv
 }

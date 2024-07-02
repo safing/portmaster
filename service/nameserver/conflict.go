@@ -6,7 +6,7 @@ import (
 
 	processInfo "github.com/shirou/gopsutil/process"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/network/state"
 )

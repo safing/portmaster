@@ -1,11 +1,12 @@
 package base
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
 	"runtime/pprof"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
 var cpuProfile string
@@ -16,11 +17,11 @@ func init() {
 
 func startProfiling() {
 	if cpuProfile != "" {
-		module.StartWorker("cpu profiler", cpuProfiler)
+		module.mgr.Go("cpu profiler", cpuProfiler)
 	}
 }
 
-func cpuProfiler(ctx context.Context) error {
+func cpuProfiler(ctx *mgr.WorkerCtx) error {
 	f, err := os.Create(cpuProfile)
 	if err != nil {
 		return fmt.Errorf("could not create CPU profile: %w", err)

@@ -3,7 +3,7 @@ package navigator
 import (
 	"context"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/service/profile/endpoints"

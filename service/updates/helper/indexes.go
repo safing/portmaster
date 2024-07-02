@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/safing/jess/filesig"
-	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/base/updater"
 )
 
 // Release Channel Configuration Keys.

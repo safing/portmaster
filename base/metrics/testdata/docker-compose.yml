@@ -1,0 +1,36 @@
+version: '3.8'
+
+networks:
+  pm-metrics-test-net:
+
+services:
+
+  victoriametrics:
+    container_name: pm-metrics-test-victoriametrics
+    image: victoriametrics/victoria-metrics
+    command:
+      - '--storageDataPath=/storage'
+    ports:
+      - 8428:8428
+    volumes:
+      - ./data/victoriametrics:/storage
+    networks:
+      - pm-metrics-test-net
+    restart: always
+
+  grafana:
+    container_name: pm-metrics-test-grafana
+    image: grafana/grafana
+    command:
+      - '--config=/etc/grafana/provisioning/config.ini'
+    depends_on:
+      - "victoriametrics"
+    ports:
+      - 3000:3000
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./grafana:/etc/grafana/provisioning
+      - ./dashboards:/dashboards
+    networks:
+      - pm-metrics-test-net
+    restart: always

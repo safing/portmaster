@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portmaster/base/formats/dsd"
 )
 
 func TestFull(t *testing.T) {

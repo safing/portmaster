@@ -11,7 +11,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/safing/portbase/utils/osdetail"
+	"github.com/safing/portmaster/base/utils/osdetail"
 )
 
 // GetWFPState queries the system for the WFP state and returns a simplified

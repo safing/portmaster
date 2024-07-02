@@ -1,13 +1,13 @@
 package unit
 
 import (
-	"context"
 	"errors"
 	"math"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/tevino/abool"
 )
 
@@ -185,7 +185,7 @@ func (s *Scheduler) announceNextSlot() {
 
 // SlotScheduler manages the slot and schedules units.
 // Must only be started once.
-func (s *Scheduler) SlotScheduler(ctx context.Context) error {
+func (s *Scheduler) SlotScheduler(ctx *mgr.WorkerCtx) error {
 	// Start slot ticker.
 	ticker := time.NewTicker(s.config.SlotDuration / 2)
 	defer ticker.Stop()

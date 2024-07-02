@@ -9,11 +9,11 @@ import (
 
 	semver "github.com/hashicorp/go-version"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/log"
 )
 
 const installInfoDBKey = "core:status/install-info"

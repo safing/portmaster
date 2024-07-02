@@ -6,10 +6,8 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/metrics"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/run"
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/metrics"
 	_ "github.com/safing/portmaster/service/core/base"
 	_ "github.com/safing/portmaster/service/ui"
 	"github.com/safing/portmaster/service/updates"

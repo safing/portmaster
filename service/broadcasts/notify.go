@@ -12,12 +12,12 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/accessor"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/accessor"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
 )
 
@@ -66,7 +66,7 @@ type BroadcastNotification struct {
 	repeatDuration time.Duration
 }
 
-func broadcastNotify(ctx context.Context, t *modules.Task) error {
+func broadcastNotify(ctx *mgr.WorkerCtx) error {
 	// Get broadcast notifications file, load it from disk and parse it.
 	broadcastsResource, err := updates.GetFile(broadcastsResourcePath)
 	if err != nil {
@@ -212,9 +212,10 @@ func handleBroadcast(bn *BroadcastNotification, matchingDataAccessor accessor.Ac
 	n.Save()
 
 	// Attach to module to raise more awareness.
-	if bn.AttachToModule {
-		n.AttachToModule(module)
-	}
+	// TODO(vladimir): is there a need for this?
+	// if bn.AttachToModule {
+	// 	n.AttachToModule(module)
+	// }
 
 	return nil
 }

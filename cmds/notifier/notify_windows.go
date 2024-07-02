@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/cmds/notifier/wintoast"
 	"github.com/safing/portmaster/service/updates/helper"
 )

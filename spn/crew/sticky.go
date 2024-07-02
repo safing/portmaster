@@ -1,13 +1,12 @@
 package crew
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/spn/navigator"
@@ -149,7 +148,7 @@ func (t *Tunnel) avoidDestinationHub() {
 	log.Warningf("spn/crew: avoiding %s for %s", t.dstPin.Hub, ipKey)
 }
 
-func cleanStickyHubs(ctx context.Context, task *modules.Task) error {
+func cleanStickyHubs(ctx *mgr.WorkerCtx) error {
 	stickyLock.Lock()
 	defer stickyLock.Unlock()
 

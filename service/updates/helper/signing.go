@@ -2,7 +2,7 @@ package helper
 
 import (
 	"github.com/safing/jess"
-	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/base/updater"
 )
 
 var (

@@ -9,11 +9,11 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/dataroot"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 
@@ -43,13 +43,13 @@ const (
 )
 
 var (
-	module   *modules.Module
+	// module   *modules.Module
 	registry *updater.ResourceRegistry
 
 	userAgentFromFlag    string
 	updateServerFromFlag string
 
-	updateTask          *modules.Task
+	// updateTask          *modules.Task
 	updateASAP          bool
 	disableTaskSchedule bool
 
@@ -80,10 +80,6 @@ const (
 )
 
 func init() {
-	module = modules.Register(ModuleName, prep, start, stop, "base")
-	module.RegisterEvent(VersionUpdateEvent, true)
-	module.RegisterEvent(ResourceUpdateEvent, true)
-
 	flag.StringVar(&updateServerFromFlag, "update-server", "", "set an alternative update server (full URL)")
 	flag.StringVar(&userAgentFromFlag, "update-agent", "", "set an alternative user agent for requests to the update server")
 }
@@ -110,15 +106,8 @@ func prep() error {
 func start() error {
 	initConfig()
 
-	restartTask = module.NewTask("automatic restart", automaticRestart).MaxDelay(10 * time.Minute)
-
-	if err := module.RegisterEventHook(
-		"config",
-		"config change",
-		"update registry config",
-		updateRegistryConfig); err != nil {
-		return err
-	}
+	module.restartWorkerMgr = module.mgr.Repeat("automatic restart", 10*time.Minute, automaticRestart)
+	module.instance.Config().EventConfigChange.AddCallback("update registry config", updateRegistryConfig)
 
 	// create registry
 	registry = &updater.ResourceRegistry{
@@ -175,7 +164,7 @@ func start() error {
 		log.Warningf("updates: %s", warning)
 	}
 
-	err = registry.LoadIndexes(module.Ctx)
+	err = registry.LoadIndexes(module.mgr.Ctx())
 	if err != nil {
 		log.Warningf("updates: failed to load indexes: %s", err)
 	}
@@ -186,7 +175,7 @@ func start() error {
 	}
 
 	registry.SelectVersions()
-	module.TriggerEvent(VersionUpdateEvent, nil)
+	module.EventVersionsUpdated.Submit(struct{}{})
 
 	// Initialize the version export - this requires the registry to be set up.
 	err = initVersionExport()
@@ -195,18 +184,14 @@ func start() error {
 	}
 
 	// start updater task
-	updateTask = module.NewTask("updater", func(ctx context.Context, task *modules.Task) error {
-		return checkForUpdates(ctx)
-	})
+	module.updateWorkerMgr = module.mgr.NewWorkerMgr("updater", checkForUpdates, nil)
 
 	if !disableTaskSchedule {
-		updateTask.
-			Repeat(updateTaskRepeatDuration).
-			MaxDelay(30 * time.Minute)
+		_ = module.updateWorkerMgr.Repeat(30 * time.Minute)
 	}
 
 	if updateASAP {
-		updateTask.StartASAP()
+		module.updateWorkerMgr.Go()
 	}
 
 	// react to upgrades
@@ -222,9 +207,6 @@ func start() error {
 // TriggerUpdate queues the update task to execute ASAP.
 func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 	switch {
-	case !module.Online():
-		updateASAP = true
-
 	case !forceIndexCheck && !enableSoftwareUpdates() && !enableIntelUpdates():
 		return errors.New("automatic updating is disabled")
 
@@ -237,11 +219,7 @@ func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 		}
 
 		// If index check if forced, start quicker.
-		if forceIndexCheck {
-			updateTask.StartASAP()
-		} else {
-			updateTask.Queue()
-		}
+		module.updateWorkerMgr.Go()
 	}
 
 	log.Debugf("updates: triggering update to run as soon as possible")
@@ -252,17 +230,18 @@ func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 // If called, updates are only checked when TriggerUpdate()
 // is called.
 func DisableUpdateSchedule() error {
-	switch module.Status() {
-	case modules.StatusStarting, modules.StatusOnline, modules.StatusStopping:
-		return errors.New("module already online")
-	}
+	// TODO: Updater state should be always on
+	// switch module.Status() {
+	// case modules.StatusStarting, modules.StatusOnline, modules.StatusStopping:
+	// 	return errors.New("module already online")
+	// }
 
 	disableTaskSchedule = true
 
 	return nil
 }
 
-func checkForUpdates(ctx context.Context) (err error) {
+func checkForUpdates(ctx *mgr.WorkerCtx) (err error) {
 	// Set correct error if context was canceled.
 	defer func() {
 		select {
@@ -295,12 +274,12 @@ func checkForUpdates(ctx context.Context) (err error) {
 		notifyUpdateCheckFailed(forceIndexCheck, err)
 	}()
 
-	if err = registry.UpdateIndexes(ctx); err != nil {
+	if err = registry.UpdateIndexes(ctx.Ctx()); err != nil {
 		err = fmt.Errorf("failed to update indexes: %w", err)
 		return //nolint:nakedret // TODO: Would "return err" work with the defer?
 	}
 
-	err = registry.DownloadUpdates(ctx, downloadAll)
+	err = registry.DownloadUpdates(ctx.Ctx(), downloadAll)
 	if err != nil {
 		err = fmt.Errorf("failed to download updates: %w", err)
 		return //nolint:nakedret // TODO: Would "return err" work with the defer?
@@ -318,7 +297,7 @@ func checkForUpdates(ctx context.Context) (err error) {
 	// Purge old resources
 	registry.Purge(2)
 
-	module.TriggerEvent(ResourceUpdateEvent, nil)
+	module.EventResourcesUpdated.Submit(struct{}{})
 	return nil
 }
 
@@ -335,9 +314,9 @@ func stop() error {
 
 // RootPath returns the root path used for storing updates.
 func RootPath() string {
-	if !module.Online() {
-		return ""
-	}
+	// if !module.Online() {
+	// 	return ""
+	// }
 
 	return registry.StorageDir().Path
 }

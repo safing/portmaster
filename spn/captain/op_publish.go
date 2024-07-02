@@ -3,12 +3,12 @@ package captain
 import (
 	"time"
 
-	"github.com/safing/portbase/container"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/docks"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 // PublishOpType is the type ID of the publish operation.
@@ -85,7 +85,7 @@ func runPublishOp(t terminal.Terminal, opID uint32, data *container.Container) (
 	if err != nil {
 		return nil, terminal.ErrMalformedData.With("failed to get status: %w", err)
 	}
-	h, forward, tErr := docks.ImportAndVerifyHubInfo(module.Ctx, "", announcementData, statusData, conf.MainMapName, conf.MainMapScope)
+	h, forward, tErr := docks.ImportAndVerifyHubInfo(module.mgr.Ctx(), "", announcementData, statusData, conf.MainMapName, conf.MainMapScope)
 	if tErr != nil {
 		return nil, tErr.Wrap("failed to import and verify hub")
 	}

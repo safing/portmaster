@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/network/netutils"

@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/safing/portbase/updater"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/base/utils"
 )
 
 var (

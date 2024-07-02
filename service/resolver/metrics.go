@@ -1,13 +1,12 @@
 package resolver
 
 import (
-	"context"
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 var (
@@ -49,11 +48,12 @@ func resetSlowQueriesSensorValue() {
 
 var suggestUsingStaleCacheNotification *notifications.Notification
 
-func suggestUsingStaleCacheTask(ctx context.Context, t *modules.Task) error {
+func suggestUsingStaleCacheTask(_ *mgr.WorkerCtx) error {
+	scheduleNextCall := true
 	switch {
 	case useStaleCache() || useStaleCacheConfigOption.IsSetByUser():
 		// If setting is already active, disable task repeating.
-		t.Repeat(0)
+		scheduleNextCall = false
 
 		// Delete local reference, if used.
 		if suggestUsingStaleCacheNotification != nil {
@@ -102,6 +102,9 @@ func suggestUsingStaleCacheTask(ctx context.Context, t *modules.Task) error {
 		notifications.Notify(suggestUsingStaleCacheNotification)
 	}
 
+	if scheduleNextCall {
+		_ = module.suggestUsingStaleCacheTask.Delay(2 * time.Minute)
+	}
 	resetSlowQueriesSensorValue()
 	return nil
 }

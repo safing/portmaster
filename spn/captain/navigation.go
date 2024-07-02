@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/intel"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/spn/access"
@@ -210,7 +210,7 @@ func connectToHomeHub(ctx context.Context, dst *hub.Hub) error {
 	return nil
 }
 
-func optimizeNetwork(ctx context.Context, task *modules.Task) error {
+func optimizeNetwork(ctx *mgr.WorkerCtx) error { //, task *modules.Task) error {
 	if publicIdentity == nil {
 		return nil
 	}
@@ -254,7 +254,7 @@ optimize:
 		} else if createdConnections < result.MaxConnect {
 			attemptedConnections++
 
-			crane, tErr := EstablishPublicLane(ctx, connectTo.Hub)
+			crane, tErr := EstablishPublicLane(ctx.Ctx(), connectTo.Hub)
 			if !tErr.IsOK() {
 				log.Warningf("spn/captain: failed to establish lane to %s: %s", connectTo.Hub, tErr)
 			} else {

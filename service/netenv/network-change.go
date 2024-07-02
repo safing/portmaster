@@ -2,13 +2,13 @@ package netenv
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha1"
 	"io"
 	"time"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 var (
@@ -23,7 +23,7 @@ func GetNetworkChangedFlag() *utils.Flag {
 
 func notifyOfNetworkChange() {
 	networkChangedBroadcastFlag.NotifyAndReset()
-	module.TriggerEvent(NetworkChangedEvent, nil)
+	module.EventNetworkChange.Submit(struct{}{})
 }
 
 // TriggerNetworkChangeCheck triggers a network change check.
@@ -34,7 +34,7 @@ func TriggerNetworkChangeCheck() {
 	}
 }
 
-func monitorNetworkChanges(ctx context.Context) error {
+func monitorNetworkChanges(ctx *mgr.WorkerCtx) error {
 	var lastNetworkChecksum []byte
 
 serviceLoop:

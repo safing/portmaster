@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 )
 
 func testReverse(t *testing.T, ip, result, expectedErr string) {

@@ -1,8 +1,8 @@
 package network
 
 import (
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/rng"
 )
 
 // GetUnusedLocalPort returns a local port of the specified protocol that is

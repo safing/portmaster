@@ -8,8 +8,8 @@ import (
 
 	"github.com/safing/jess"
 	"github.com/safing/jess/tools"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/spn/hub"
 )
 

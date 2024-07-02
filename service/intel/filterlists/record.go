@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/base/database/record"
 )
 
 type entityRecord struct {

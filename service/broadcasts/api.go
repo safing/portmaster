@@ -7,16 +7,15 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/accessor"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/accessor"
 )
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        `broadcasts/matching-data`,
 		Read:        api.PermitAdmin,
-		BelongsTo:   module,
 		StructFunc:  handleMatchingData,
 		Name:        "Get Broadcast Notifications Matching Data",
 		Description: "Returns the data used by the broadcast notifications to match the instance.",
@@ -28,7 +27,6 @@ func registerAPIEndpoints() error {
 		Path:        `broadcasts/reset-state`,
 		Write:       api.PermitAdmin,
 		WriteMethod: http.MethodPost,
-		BelongsTo:   module,
 		ActionFunc:  handleResetState,
 		Name:        "Resets the Broadcast Notification States",
 		Description: "Delete the cache of Broadcast Notifications, making them appear again.",
@@ -40,7 +38,6 @@ func registerAPIEndpoints() error {
 		Path:        `broadcasts/simulate`,
 		Write:       api.PermitAdmin,
 		WriteMethod: http.MethodPost,
-		BelongsTo:   module,
 		ActionFunc:  handleSimulate,
 		Name:        "Simulate Broadcast Notifications",
 		Description: "Test broadcast notifications by sending a valid source file in the body.",

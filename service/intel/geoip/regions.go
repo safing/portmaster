@@ -1,7 +1,7 @@
 package geoip
 
 import (
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/utils"
 )
 
 // IsRegionalNeighbor returns whether the supplied location is a regional neighbor.

@@ -7,7 +7,7 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 )
 
 // ResolveIPAndValidate finds (reverse DNS), validates (forward DNS) and returns the domain name assigned to the given IP.

@@ -1,9 +1,9 @@
 package base
 
 import (
-	"github.com/safing/portbase/database"
-	_ "github.com/safing/portbase/database/dbmodule"
-	_ "github.com/safing/portbase/database/storage/bbolt"
+	"github.com/safing/portmaster/base/database"
+	_ "github.com/safing/portmaster/base/database/dbmodule"
+	_ "github.com/safing/portmaster/base/database/storage/bbolt"
 )
 
 // Default Values (changeable for testing).

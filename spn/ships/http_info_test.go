@@ -4,7 +4,7 @@ import (
 	"html/template"
 	"testing"
 
-	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/base/config"
 )
 
 func TestInfoPageTemplate(t *testing.T) {

@@ -3,7 +3,7 @@ package captain
 import (
 	"sync"
 
-	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/spn/conf"

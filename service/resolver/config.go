@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/status"
 )

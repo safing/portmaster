@@ -9,8 +9,8 @@ import (
 	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/exp/slices"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/record"
 )
 
 // Icon describes an icon.

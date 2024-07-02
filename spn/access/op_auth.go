@@ -3,10 +3,10 @@ package access
 import (
 	"time"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/access/token"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 // OpTypeAccessCodeAuth is the type ID of the auth operation.
