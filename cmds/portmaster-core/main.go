@@ -4,7 +4,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"log/slog"
+	"os"
+	"os/signal"
 	"runtime"
+	"runtime/pprof"
+	"syscall"
+	"time"
 
 	"github.com/safing/portmaster/base/info"
 	"github.com/safing/portmaster/base/log"

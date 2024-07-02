@@ -128,75 +128,77 @@ func start() error {
 	ships.EnableMasking(maskingBytes)
 
 	// Initialize intel.
-	if err := registerIntelUpdateHook(); err != nil {
-		return err
-	}
-	if err := updateSPNIntel(module.mgr.Ctx(), nil); err != nil {
-		log.Errorf("spn/captain: failed to update SPN intel: %s", err)
-	}
-
-	// Initialize identity and piers.
-	if conf.PublicHub() {
-		// Load identity.
-		if err := loadPublicIdentity(); err != nil {
-			// We cannot recover from this, set controlled failure (do not retry).
-			module.shutdownFunc(controlledFailureExitCode)
-
+	module.mgr.Go("start", func(wc *mgr.WorkerCtx) error {
+		if err := registerIntelUpdateHook(); err != nil {
 			return err
 		}
-
-		// Check if any networks are configured.
-		if !conf.HubHasIPv4() && !conf.HubHasIPv6() {
-			// We cannot recover from this, set controlled failure (do not retry).
-			module.shutdownFunc(controlledFailureExitCode)
-
-			return errors.New("no IP addresses for Hub configured (or detected)")
+		if err := updateSPNIntel(module.mgr.Ctx(), nil); err != nil {
+			log.Errorf("spn/captain: failed to update SPN intel: %s", err)
 		}
 
-		// Start management of identity and piers.
-		if err := prepPublicIdentityMgmt(); err != nil {
-			return err
-		}
-		// Set ID to display on http info page.
-		ships.DisplayHubID = publicIdentity.ID
-		// Start listeners.
-		if err := startPiers(); err != nil {
-			return err
-		}
+		// Initialize identity and piers.
+		if conf.PublicHub() {
+			// Load identity.
+			if err := loadPublicIdentity(); err != nil {
+				// We cannot recover from this, set controlled failure (do not retry).
+				module.shutdownFunc(controlledFailureExitCode)
 
-		// Enable connect operation.
-		crew.EnableConnecting(publicIdentity.Hub)
-	}
-
-	// Subscribe to updates of cranes.
-	startDockHooks()
-
-	// bootstrapping
-	if err := processBootstrapHubFlag(); err != nil {
-		return err
-	}
-	if err := processBootstrapFileFlag(); err != nil {
-		return err
-	}
-
-	// network optimizer
-	if conf.PublicHub() {
-		module.mgr.Delay("optimize network delay", 15*time.Second, optimizeNetwork).Repeat(1 * time.Minute)
-	}
-
-	// client + home hub manager
-	if conf.Client() {
-		module.mgr.Go("client manager", clientManager)
-
-		// Reset failing hubs when the network changes while not connected.
-		module.instance.NetEnv().EventNetworkChange.AddCallback("reset failing hubs", func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
-			if ready.IsNotSet() {
-				navigator.Main.ResetFailingStates(module.mgr.Ctx())
+				return err
 			}
-			return false, nil
-		})
-	}
 
+			// Check if any networks are configured.
+			if !conf.HubHasIPv4() && !conf.HubHasIPv6() {
+				// We cannot recover from this, set controlled failure (do not retry).
+				module.shutdownFunc(controlledFailureExitCode)
+
+				return errors.New("no IP addresses for Hub configured (or detected)")
+			}
+
+			// Start management of identity and piers.
+			if err := prepPublicIdentityMgmt(); err != nil {
+				return err
+			}
+			// Set ID to display on http info page.
+			ships.DisplayHubID = publicIdentity.ID
+			// Start listeners.
+			if err := startPiers(); err != nil {
+				return err
+			}
+
+			// Enable connect operation.
+			crew.EnableConnecting(publicIdentity.Hub)
+		}
+
+		// Subscribe to updates of cranes.
+		startDockHooks()
+
+		// bootstrapping
+		if err := processBootstrapHubFlag(); err != nil {
+			return err
+		}
+		if err := processBootstrapFileFlag(); err != nil {
+			return err
+		}
+
+		// network optimizer
+		if conf.PublicHub() {
+			module.mgr.Delay("optimize network delay", 15*time.Second, optimizeNetwork).Repeat(1 * time.Minute)
+		}
+
+		// client + home hub manager
+		if conf.Client() {
+			module.mgr.Go("client manager", clientManager)
+
+			// Reset failing hubs when the network changes while not connected.
+			module.instance.NetEnv().EventNetworkChange.AddCallback("reset failing hubs", func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
+				if ready.IsNotSet() {
+					navigator.Main.ResetFailingStates(module.mgr.Ctx())
+				}
+				return false, nil
+			})
+		}
+		return nil
+	})
 	return nil
 }
 

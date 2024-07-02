@@ -229,7 +229,7 @@ func (m *Manager) Do(name string, fn func(w *WorkerCtx) error) error {
 		return nil
 
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-		// A canceled context or dexceeded eadline also means that the worker is finished.
+		// A canceled context or exceeded deadline also means that the worker is finished.
 		return err
 
 	default:

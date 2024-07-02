@@ -68,8 +68,10 @@ func stop() error {
 	}
 
 	close(metrics.done)
-
-	return stopInterception()
+	if err := stopInterception(); err != nil {
+		log.Errorf("failed to stop interception module: %s", err)
+	}
+	return nil
 }
 
 var (

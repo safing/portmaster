@@ -80,49 +80,52 @@ func start() error {
 		return err
 	}
 
-	// Wait for geoip databases to be ready.
-	// Try again if not yet ready, as this is critical.
-	// The "wait" parameter times out after 1 second.
-	// Allow 30 seconds for both databases to load.
-geoInitCheck:
-	for i := 0; i < 30; i++ {
-		switch {
-		case !geoip.IsInitialized(false, true): // First, IPv4.
-		case !geoip.IsInitialized(true, true): // Then, IPv6.
-		default:
-			break geoInitCheck
+	module.mgr.Go("initializing hubs", func(wc *mgr.WorkerCtx) error {
+		// Wait for geoip databases to be ready.
+		// Try again if not yet ready, as this is critical.
+		// The "wait" parameter times out after 1 second.
+		// Allow 30 seconds for both databases to load.
+	geoInitCheck:
+		for i := 0; i < 30; i++ {
+			switch {
+			case !geoip.IsInitialized(false, true): // First, IPv4.
+			case !geoip.IsInitialized(true, true): // Then, IPv6.
+			default:
+				break geoInitCheck
+			}
 		}
-	}
 
-	err = Main.InitializeFromDatabase()
-	if err != nil {
-		// Wait for three seconds, then try again.
-		time.Sleep(3 * time.Second)
 		err = Main.InitializeFromDatabase()
 		if err != nil {
-			// Even if the init fails, we can try to start without it and get data along the way.
-			log.Warningf("spn/navigator: %s", err)
+			// Wait for three seconds, then try again.
+			time.Sleep(3 * time.Second)
+			err = Main.InitializeFromDatabase()
+			if err != nil {
+				// Even if the init fails, we can try to start without it and get data along the way.
+				log.Warningf("spn/navigator: %s", err)
+			}
 		}
-	}
-	err = Main.RegisterHubUpdateHook()
-	if err != nil {
-		return err
-	}
-
-	// TODO: delete superseded hubs after x amount of time
-	_ = module.mgr.Delay("update states", 3*time.Minute, Main.updateStates).Repeat(1 * time.Hour)
-	_ = module.mgr.Delay("update failing states", 3*time.Minute, Main.updateFailingStates).Repeat(1 * time.Minute)
-
-	if conf.PublicHub() {
-		// Only measure Hubs on public Hubs.
-		module.mgr.Delay("measure hubs", 5*time.Minute, Main.measureHubs).Repeat(1 * time.Minute)
-
-		// Only register metrics on Hubs, as they only make sense there.
-		err := registerMetrics()
+		err = Main.RegisterHubUpdateHook()
 		if err != nil {
 			return err
 		}
-	}
+
+		// TODO: delete superseded hubs after x amount of time
+		_ = module.mgr.Delay("update states", 3*time.Minute, Main.updateStates).Repeat(1 * time.Hour)
+		_ = module.mgr.Delay("update failing states", 3*time.Minute, Main.updateFailingStates).Repeat(1 * time.Minute)
+
+		if conf.PublicHub() {
+			// Only measure Hubs on public Hubs.
+			module.mgr.Delay("measure hubs", 5*time.Minute, Main.measureHubs).Repeat(1 * time.Minute)
+
+			// Only register metrics on Hubs, as they only make sense there.
+			err := registerMetrics()
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 
 	return nil
 }

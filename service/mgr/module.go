@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 const (
@@ -100,7 +101,11 @@ func (g *Group) Start() error {
 
 	for i, m := range g.modules {
 		m.mgr.Info("starting")
-		err := m.module.Start(m.mgr)
+		startTime := time.Now()
+
+		err := m.mgr.Do(m.mgr.name+" Start", func(_ *WorkerCtx) error {
+			return m.module.Start(m.mgr)
+		})
 		if err != nil {
 			if !g.stopFrom(i) {
 				g.state.Store(groupStateInvalid)
@@ -109,7 +114,8 @@ func (g *Group) Start() error {
 			}
 			return fmt.Errorf("failed to start %s: %w", makeModuleName(m.module), err)
 		}
-		m.mgr.Info("started")
+		duration := time.Since(startTime)
+		m.mgr.Info("started " + duration.String())
 	}
 	g.state.Store(groupStateRunning)
 	return nil
@@ -134,7 +140,10 @@ func (g *Group) stopFrom(index int) (ok bool) {
 	ok = true
 	for i := index; i >= 0; i-- {
 		m := g.modules[i]
-		err := m.module.Stop(m.mgr)
+
+		err := m.mgr.Do(m.mgr.name+" Stop", func(_ *WorkerCtx) error {
+			return m.module.Stop(m.mgr)
+		})
 		if err != nil {
 			m.mgr.Error("failed to stop", "err", err)
 			ok = false
