@@ -140,7 +140,7 @@ fn ip_packet_layer(
         } {
             Ok(key) => key,
             Err(err) => {
-                crate::warn!("failed to get key from nbl: {}", err);
+                crate::dbg!("failed to get key from nbl: {}", err);
                 return;
             }
         };

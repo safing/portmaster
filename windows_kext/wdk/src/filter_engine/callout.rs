@@ -1,7 +1,7 @@
 use super::{callout_data::CalloutData, ffi, layer::Layer};
 use crate::ffi::FwpsCalloutClassifyFn;
 use alloc::{borrow::ToOwned, format, string::String};
-use windows_sys::Wdk::Foundation::DEVICE_OBJECT;
+use windows_sys::{Wdk::Foundation::DEVICE_OBJECT, Win32::Foundation::HANDLE};
 
 pub enum FilterType {
     Resettable,
@@ -49,13 +49,13 @@ impl Callout {
 
     pub fn register_filter(
         &mut self,
-        filter_engine_handle: isize,
+        filter_engine_handle: HANDLE,
         sublayer_guid: u128,
     ) -> Result<(), String> {
         match ffi::register_filter(
             filter_engine_handle,
             sublayer_guid,
-            &format!("{}-filter", self.name),
+            &self.name,
             &self.description,
             self.guid,
             self.layer,
@@ -75,14 +75,14 @@ impl Callout {
 
     pub(crate) fn register_callout(
         &mut self,
-        filter_engine_handle: isize,
+        filter_engine_handle: HANDLE,
         device_object: *mut DEVICE_OBJECT,
         callout_fn: FwpsCalloutClassifyFn,
     ) -> Result<(), String> {
         match ffi::register_callout(
             device_object,
             filter_engine_handle,
-            &format!("{}-callout", self.name),
+            &self.name,
             &self.description,
             self.guid,
             self.layer,

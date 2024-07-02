@@ -154,10 +154,10 @@ impl FwpsIncomingMetadataValues {
 #[allow(dead_code)]
 #[repr(C)]
 enum FwpsDiscardModule0 {
-    FwpsDiscardModuleNetwork = 0,
-    FwpsDiscardModuleTransport = 1,
-    FwpsDiscardModuleGeneral = 2,
-    FwpsDiscardModuleMax = 3,
+    Network = 0,
+    Transport = 1,
+    General = 2,
+    Max = 3,
 }
 
 #[repr(C)]

@@ -441,6 +441,22 @@ fn generate_test_info_file() -> Result<(), std::io::Error> {
     for _ in 0..selected.capacity() {
         selected.push(enums.choose(&mut rng).unwrap().clone());
     }
+    // Write wrong size data. To make sure that mismatches between kext and portmaster are handled properly.
+    let mut info = connection_info_v6(
+        1,
+        2,
+        3,
+        4,
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+        5,
+        6,
+        7,
+        &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    );
+    info.assert_size();
+    info.0[0] = InfoType::ConnectionIpv4 as u8;
+    file.write_all(&info.0)?;
 
     for value in selected {
         file.write_all(&match value {
@@ -548,5 +564,6 @@ fn generate_test_info_file() -> Result<(), std::io::Error> {
             }
         })?;
     }
+
     return Ok(());
 }

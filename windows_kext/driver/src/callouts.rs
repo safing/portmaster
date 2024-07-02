@@ -12,8 +12,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
         // -----------------------------------------
         // ALE Auth layers
         Callout::new(
-            "AleLayerOutboundV4",
-            "ALE layer for outbound connection for ipv4",
+            "Portmaster ALE Outbound IPv4",
+            "Portmaster uses this layer to block/permit outgoing ipv4 connections",
             0x58545073_f893_454c_bbea_a57bc964f46d,
             Layer::AleAuthConnectV4,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
@@ -21,8 +21,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
             ale_callouts::ale_layer_connect_v4,
         ),
         Callout::new(
-            "AleLayerOutboundV6",
-            "ALE layer for outbound connections for ipv6",
+            "Portmaster ALE Outbound IPv6",
+            "Portmaster uses this layer to block/permit outgoing ipv6 connections",
             0x4bd2a080_2585_478d_977c_7f340c6bc3d4,
             Layer::AleAuthConnectV6,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
@@ -32,8 +32,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
         // -----------------------------------------
         // ALE connection end layers
         Callout::new(
-            "AleEndpointClosureV4",
-            "ALE layer for indicating closing of connection for ipv4",
+            "Portmaster Endpoint Closure IPv4",
+            "Portmaster uses this layer to detect when a IPv4 connection has ended",
             0x58f02845_ace9_4455_ac80_8a84b86fe566,
             Layer::AleEndpointClosureV4,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
@@ -41,8 +41,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
             ale_callouts::endpoint_closure_v4,
         ),
         Callout::new(
-            "AleEndpointClosureV6",
-            "ALE layer for indicating closing of connection for ipv6",
+            "Portmaster Endpoint Closure IPv6",
+            "Portmaster uses this layer to detect when a IPv6 connection has ended",
             0x2bc82359_9dc5_4315_9c93_c89467e283ce,
             Layer::AleEndpointClosureV6,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
@@ -61,8 +61,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
         //     ale_callouts::ale_resource_monitor,
         // ),
         Callout::new(
-            "AleResourceReleaseV4",
-            "Ipv4 Port release monitor",
+            "Portmaster resource release IPv4",
+            "Portmaster uses this layer to detect when a IPv4 port has been released",
             0x7b513bb3_a0be_4f77_a4bc_03c052abe8d7,
             Layer::AleResourceReleaseV4,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
@@ -79,8 +79,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
         //     ale_callouts::ale_resource_monitor,
         // ),
         Callout::new(
-            "AleResourceReleaseV6",
-            "Ipv6 Port release monitor",
+            "Portmaster resource release IPv6",
+            "Portmaster uses this layer to detect when a IPv6 port has been released",
             0x6cf36e04_e656_42c3_8cac_a1ce05328bd1,
             Layer::AleResourceReleaseV6,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
@@ -90,8 +90,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
         // -----------------------------------------
         // Stream layer
         Callout::new(
-            "StreamLayerV4",
-            "Stream layer for ipv4",
+            "Portmaster Stream IPv4",
+            "Portmaster uses this layer for bandwidth statistics of IPv4 TCP connections",
             0xe2ca13bf_9710_4caa_a45c_e8c78b5ac780,
             Layer::StreamV4,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
@@ -99,8 +99,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
             stream_callouts::stream_layer_tcp_v4,
         ),
         Callout::new(
-            "StreamLayerV6",
-            "Stream layer for ipv6",
+            "Portmaster Stream IPv6",
+            "Portmaster uses this layer for bandwidth statistics of IPv6 TCP connections",
             0x66c549b3_11e2_4b27_8f73_856e6fd82baa,
             Layer::StreamV6,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
@@ -108,8 +108,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
             stream_callouts::stream_layer_tcp_v6,
         ),
         Callout::new(
-            "DatagramDataLayerV4",
-            "DatagramData layer for ipv4",
+            "Portmaster Datagram IPv4",
+            "Portmaster uses this layer for bandwidth statistics of IPv4 UDP connections",
             0xe7eeeaba_168a_45bb_8747_e1a702feb2c5,
             Layer::DatagramDataV4,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
@@ -117,8 +117,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
             stream_callouts::stream_layer_udp_v4,
         ),
         Callout::new(
-            "DatagramDataLayerV6",
-            "DatagramData layer for ipv4",
+            "Portmaster Datagram IPv6",
+            "Portmaster uses this layer for bandwidth statistics of IPv6 UDP connections",
             0xb25862cd_f744_4452_b14a_d0c1e5a25b30,
             Layer::DatagramDataV6,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
@@ -128,8 +128,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
         // -----------------------------------------
         // Packet layers
         Callout::new(
-            "IPPacketOutboundV4",
-            "IP packet outbound network layer callout for Ipv4",
+            "Portmaster Packet Outbound IPv4",
+            "Portmaster uses this layer to redirect/block/permit outgoing ipv4 packets",
             0xf3183afe_dc35_49f1_8ea2_b16b5666dd36,
             Layer::OutboundIppacketV4,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
@@ -137,8 +137,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
             packet_callouts::ip_packet_layer_outbound_v4,
         ),
         Callout::new(
-            "IPPacketInboundV4",
-            "IP packet inbound network layer callout for Ipv4",
+            "Portmaster Packet Inbound IPv4",
+            "Portmaster uses this layer to redirect/block/permit inbound ipv4 packets",
             0xf0369374_203d_4bf0_83d2_b2ad3cc17a50,
             Layer::InboundIppacketV4,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
@@ -146,8 +146,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
             packet_callouts::ip_packet_layer_inbound_v4,
         ),
         Callout::new(
-            "IPPacketOutboundV6",
-            "IP packet outbound network layer callout for Ipv6",
+            "Portmaster Packet Outbound IPv6",
+            "Portmaster uses this layer to redirect/block/permit outgoing ipv6 packets",
             0x91daf8bc_0908_4bf8_9f81_2c538ab8f25a,
             Layer::OutboundIppacketV6,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
@@ -155,8 +155,8 @@ pub fn get_callout_vec() -> Vec<Callout> {
             packet_callouts::ip_packet_layer_outbound_v6,
         ),
         Callout::new(
-            "IPPacketInboundV6",
-            "IP packet inbound network layer callout for Ipv6",
+            "Portmaster Packet Inbound IPv6",
+            "Portmaster uses this layer to redirect/block/permit inbound ipv6 packets",
             0xfe9faf5f_ceb2_4cd9_9995_f2f2b4f5fcc0,
             Layer::InboundIppacketV6,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
