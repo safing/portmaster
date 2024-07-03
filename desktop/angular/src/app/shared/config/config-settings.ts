@@ -24,7 +24,7 @@ import {
 } from '@safing/portmaster-api';
 import { BehaviorSubject, Subscription, combineLatest } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
-import { StatusService, Subsystem } from 'src/app/services';
+import { StatusService } from 'src/app/services';
 import {
   fadeInAnimation,
   fadeInListAnimation,
@@ -44,17 +44,13 @@ import {
   ImportDialogComponent,
 } from './import-dialog/import-dialog.component';
 
+import { subsystems, SubsystemWithExpertise } from './subsystems'
+
 interface Category {
   name: string;
   settings: Setting[];
   minimumExpertise: ExpertiseLevelNumber;
   collapsed: boolean;
-  hasUserDefinedValues: boolean;
-}
-
-interface SubsystemWithExpertise extends Subsystem {
-  minimumExpertise: ExpertiseLevelNumber;
-  isDisabled: boolean;
   hasUserDefinedValues: boolean;
 }
 
@@ -66,7 +62,7 @@ interface SubsystemWithExpertise extends Subsystem {
 })
 export class ConfigSettingsViewComponent
   implements OnInit, OnDestroy, AfterViewInit {
-  subsystems: SubsystemWithExpertise[] = [];
+  subsystems: SubsystemWithExpertise[] = subsystems;
   others: Setting[] | null = null;
   settings: Map<string, Category[]> = new Map();
 
@@ -207,7 +203,7 @@ export class ConfigSettingsViewComponent
     private searchService: FuzzySearchService,
     private actionIndicator: ActionIndicatorService,
     private portapi: PortapiService,
-    private dialog: SfngDialogService
+    private dialog: SfngDialogService,
   ) { }
 
   openImportDialog() {
@@ -303,21 +299,12 @@ export class ConfigSettingsViewComponent
   ngOnInit(): void {
     this.subscription = combineLatest([
       this.onSettingsChange,
-      this.statusService.querySubsystem(),
       this.onSearch.pipe(debounceTime(250)),
       this.configService.watch<StringSetting>('core/releaseLevel'),
     ])
       .pipe(debounceTime(10))
       .subscribe(
-        ([settings, subsystems, searchTerm, currentReleaseLevelSetting]) => {
-          this.subsystems = subsystems.map((s) => ({
-            ...s,
-            // we start with developer and decrease to the lowest number required
-            // while grouping the settings.
-            minimumExpertise: ExpertiseLevelNumber.developer,
-            isDisabled: false,
-            hasUserDefinedValues: false,
-          }));
+        ([settings, searchTerm, currentReleaseLevelSetting]) => {
           this.others = [];
           this.settings = new Map();
 
