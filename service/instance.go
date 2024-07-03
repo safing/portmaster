@@ -17,6 +17,7 @@ import (
 	"github.com/safing/portmaster/service/firewall"
 	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/intel/customlists"
+	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/nameserver"
@@ -77,7 +78,8 @@ type Instance struct {
 	profile      *profile.ProfileModule
 	network      *network.Network
 	netquery     *netquery.NetQuery
-	filter       *firewall.Filter
+	firewall     *firewall.Firewall
+	filterLists  *filterlists.FilterLists
 	interception *interception.Interception
 	customlist   *customlists.CustomList
 	status       *status.Status
@@ -101,7 +103,7 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	// Base modules
 	instance.database, err = dbmodule.New(instance)
 	if err != nil {
-		return nil, fmt.Errorf("create config module: %w", err)
+		return nil, fmt.Errorf("create database module: %w", err)
 	}
 	instance.config, err = config.New(instance)
 	if err != nil {
@@ -209,9 +211,13 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create netquery module: %w", err)
 	}
-	instance.filter, err = firewall.New(instance)
+	instance.firewall, err = firewall.New(instance)
 	if err != nil {
-		return nil, fmt.Errorf("create filter module: %w", err)
+		return nil, fmt.Errorf("create firewall module: %w", err)
+	}
+	instance.filterLists, err = filterlists.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create filterLists module: %w", err)
 	}
 	instance.interception, err = interception.New(instance)
 	if err != nil {
@@ -281,7 +287,8 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		instance.profile,
 		instance.network,
 		instance.netquery,
-		instance.filter,
+		instance.firewall,
+		instance.filterLists,
 		instance.interception,
 		instance.customlist,
 		instance.status,
@@ -426,8 +433,13 @@ func (i *Instance) Profile() *profile.ProfileModule {
 }
 
 // Firewall returns the firewall module.
-func (i *Instance) Firewall() *firewall.Filter {
-	return i.filter
+func (i *Instance) Firewall() *firewall.Firewall {
+	return i.firewall
+}
+
+// FilterLists returns the filterLists module.
+func (i *Instance) FilterLists() *filterlists.FilterLists {
+	return i.filterLists
 }
 
 // Interception returns the interception module.

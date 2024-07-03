@@ -154,7 +154,7 @@ func handleImportSettings(ar *api.Request) (any, error) {
 		}
 		request.Export = export
 	case request.Export != nil:
-		// Export is aleady parsed.
+		// Export is already parsed.
 	default:
 		return nil, ErrInvalidImportRequest
 	}

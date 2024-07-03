@@ -30,8 +30,11 @@ func (u *Updates) Start(m *mgr.Manager) error {
 	u.mgr = m
 	u.EventResourcesUpdated = mgr.NewEventMgr[struct{}](ResourceUpdateEvent, u.mgr)
 	u.EventVersionsUpdated = mgr.NewEventMgr[struct{}](VersionUpdateEvent, u.mgr)
-
 	u.States = mgr.NewStateMgr(u.mgr)
+
+	if err := prep(); err != nil {
+		return err
+	}
 
 	return start()
 }

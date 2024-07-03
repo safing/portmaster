@@ -32,7 +32,7 @@ func (ss *stringSliceFlag) Set(value string) error {
 // module         *modules.Module
 var allowedClients stringSliceFlag
 
-type Filter struct {
+type Firewall struct {
 	mgr *mgr.Manager
 
 	instance instance
@@ -42,7 +42,7 @@ func init() {
 	flag.Var(&allowedClients, "allowed-clients", "A list of binaries that are allowed to connect to the Portmaster API")
 }
 
-func (f *Filter) Start(mgr *mgr.Manager) error {
+func (f *Firewall) Start(mgr *mgr.Manager) error {
 	f.mgr = mgr
 
 	if err := prep(); err != nil {
@@ -53,7 +53,7 @@ func (f *Filter) Start(mgr *mgr.Manager) error {
 	return start()
 }
 
-func (f *Filter) Stop(mgr *mgr.Manager) error {
+func (f *Firewall) Stop(mgr *mgr.Manager) error {
 	return stop()
 }
 
@@ -127,12 +127,12 @@ func stop() error {
 }
 
 var (
-	module     *Filter
+	module     *Firewall
 	shimLoaded atomic.Bool
 )
 
-func New(instance instance) (*Filter, error) {
-	module = &Filter{
+func New(instance instance) (*Firewall, error) {
+	module = &Firewall{
 		instance: instance,
 	}
 
