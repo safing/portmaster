@@ -3,6 +3,7 @@ VERSION --arg-scope-and-set --global-cache 0.8
 ARG --global go_version = 1.22
 ARG --global node_version = 18
 ARG --global rust_version = 1.76
+ARG --global golangci_lint_version = 1.57.1
 
 ARG --global go_builder_image = "golang:${go_version}-alpine"
 ARG --global node_builder_image = "node:${node_version}"
@@ -90,16 +91,16 @@ go-update-deps:
 
     RUN go get -u ./..
     RUN go mod tidy
-    SAVE ARTIFACT go.mod AS LOCAL go.mod
-    SAVE ARTIFACT --if-exists go.sum AS LOCAL go.sum
+    SAVE ARTIFACT --keep-ts go.mod AS LOCAL go.mod
+    SAVE ARTIFACT --keep-ts --if-exists go.sum AS LOCAL go.sum
 
 # mod-tidy runs 'go mod tidy', saving go.mod and go.sum locally.
 mod-tidy:
     FROM +go-base
 
     RUN go mod tidy
-    SAVE ARTIFACT go.mod AS LOCAL go.mod
-    SAVE ARTIFACT --if-exists go.sum AS LOCAL go.sum
+    SAVE ARTIFACT --keep-ts go.mod AS LOCAL go.mod
+    SAVE ARTIFACT --keep-ts --if-exists go.sum AS LOCAL go.sum
 
 # go-build runs 'go build ./cmds/...', saving artifacts locally.
 # If --CMDS is not set, it defaults to building portmaster-start, portmaster-core and hub
@@ -130,10 +131,33 @@ go-build:
     DO +GO_ARCH_STRING --goos="${GOOS}" --goarch="${GOARCH}" --goarm="${GOARM}"
 
     FOR bin IN $(ls -1 "/tmp/build/")
-        SAVE ARTIFACT "/tmp/build/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${bin}"
+        SAVE ARTIFACT --keep-ts "/tmp/build/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${bin}"
     END
 
-    SAVE ARTIFACT "/tmp/build/" ./output
+    SAVE ARTIFACT --keep-ts "/tmp/build/" ./output
+
+spn-image:
+    # Use minimal image as base.
+    FROM alpine
+
+    # Copy the static executable.
+    COPY (+go-build/output/portmaster-start --GOARCH=amd64 --GOOS=linux --CMDS=portmaster-start) /init/portmaster-start
+
+    # Copy the init script
+    COPY spn/tools/container-init.sh /init.sh
+
+    # Run the hub.
+    ENTRYPOINT ["/init.sh"]
+
+    # Get version.
+    LET version = "$(/init/portmaster-start version --short | tr ' ' -)"
+    RUN echo "Version: ${version}"
+
+    # Save dev image
+    SAVE IMAGE "spn:latest"
+    SAVE IMAGE "spn:${version}"
+    SAVE IMAGE "ghcr.io/safing/spn:latest"
+    SAVE IMAGE "ghcr.io/safing/spn:${version}"
 
 # Test one or more go packages.
 # Test are always run as -short, as "long" tests require a full desktop system.
@@ -163,6 +187,12 @@ go-test-all:
         DO +RUST_TO_GO_ARCH_STRING --rustTarget="${arch}"
         BUILD +go-test --GOARCH="${GOARCH}" --GOOS="${GOOS}" --GOARM="${GOARM}"
     END
+
+go-lint:
+    FROM +go-base
+
+    RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${golangci_lint_version}
+    RUN golangci-lint run -c ./.golangci.yml --timeout 15m --show-stats
 
 # Builds portmaster-start, portmaster-core, hub and notifier for all supported platforms
 go-release:
@@ -217,9 +247,9 @@ angular-base:
     COPY assets/data ./assets
 
     IF [ "${configuration}" = "production" ]
-        RUN npm run build-libs
+        RUN --no-cache npm run build-libs
     ELSE
-        RUN npm run build-libs:dev
+        RUN --no-cache npm run build-libs:dev
     END
 
     # Explicitly cache here.
@@ -241,11 +271,11 @@ angular-project:
     RUN --no-cache ./node_modules/.bin/ng build --configuration ${configuration} --base-href ${baseHref} "${project}"
 
     RUN --no-cache cwd=$(pwd) && cd "${dist}" && zip -r "${cwd}/${project}.zip" ./
-    SAVE ARTIFACT "${dist}" "./output/${project}"
+    SAVE ARTIFACT --keep-ts "${dist}" "./output/${project}"
     
     # Save portmaster UI as local artifact.
     IF [ "${project}" = "portmaster" ]
-        SAVE ARTIFACT "./${project}.zip" AS LOCAL ${outputDir}/all/${project}-ui.zip
+        SAVE ARTIFACT --keep-ts "./${project}.zip" AS LOCAL ${outputDir}/all/${project}-ui.zip
     END
 
 # Build the angular projects (portmaster-UI and tauri-builtin) in dev mode
@@ -257,6 +287,16 @@ angular-dev:
 angular-release:
     BUILD +angular-project --project=portmaster --dist=./dist --configuration=production --baseHref=/ui/modules/portmaster/
     BUILD +angular-project --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=production --baseHref=/
+
+assets:
+    FROM ${work_image}
+    RUN apk add zip
+
+    WORKDIR /app/assets
+    COPY --keep-ts ./assets/data .
+    RUN zip -r -9 -db assets.zip *
+
+    SAVE ARTIFACT --keep-ts "assets.zip" AS LOCAL "${outputDir}/all/assets.zip"
 
 # A base target for rust to prepare the build container
 rust-base:
@@ -280,7 +320,7 @@ rust-base:
         wget \
         file \
         libsoup-3.0-dev \
-        libwebkit2gtk-4.1-dev 
+        libwebkit2gtk-4.1-dev
 
     # Install library dependencies for all supported architectures
     # required for succesfully linking.
@@ -405,7 +445,7 @@ tauri-build:
         END
         # Save output binary as local artifact.
         IF [ -f "target/${target}/release/${bin}" ]
-            SAVE ARTIFACT "target/${target}/release/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${outbin}"
+            SAVE ARTIFACT --keep-ts "target/${target}/release/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${outbin}"
         END
     END
     SAVE ARTIFACT --if-exists "target/${target}/release/bundle/deb/*.deb" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
@@ -467,10 +507,32 @@ tauri-release:
         BUILD +tauri-build --target="${arch}"
     END
 
+kext-build:
+    FROM ${rust_builder_image}
+
+    # Install architecture target
+    DO rust+INIT --keep_fingerprints=true
+
+    # Build kext
+    WORKDIR /app/kext
+    # --keep-ts is necessary to ensure that the timestamps of the source files
+    # are preserved such that Rust's incremental compilation works correctly.
+    COPY --keep-ts ./windows_kext/ .
+
+    # Add target architecture
+    RUN rustup target add x86_64-pc-windows-msvc
+    
+    # Build using special earthly lib
+    WORKDIR /app/kext/release
+    DO rust+CARGO --args="run"
+
+    SAVE ARTIFACT --keep-ts "portmaster-kext-release-bundle.zip" AS LOCAL "${outputDir}/windows_amd64/portmaster-kext-release-bundle.zip"
+
 build:
     BUILD +go-release
     BUILD +angular-release
     BUILD +tauri-release
+    BUILD +assets
 
 release:
     LOCALLY
@@ -479,7 +541,7 @@ release:
         RUN echo -e "\033[1;31m Refusing to release a dirty git repository. Please commit your local changes first! \033[0m" ; exit 1
     END
 
-    BUILD +build-all
+    BUILD +build
 
 
 # Takes GOOS, GOARCH and optionally GOARM and creates a string representation for file-names.

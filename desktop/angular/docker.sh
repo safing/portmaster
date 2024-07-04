@@ -11,8 +11,8 @@ mnt="$( cd ../.. && pwd )"
 docker run                                \
     -ti                                   \
     --rm                                  \
-    -v $mnt:/portmaster-ui                \
-    -w /portmaster-ui/modules/portmaster  \
+    -v $mnt:/portmaster                   \
+    -w /portmaster/desktop/angular        \
     -p 8081:8080                          \
     node:latest                           \
     npm start -- --host 0.0.0.0 --port 8080

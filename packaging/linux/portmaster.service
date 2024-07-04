@@ -15,6 +15,7 @@ RestartSec=10
 RestartPreventExitStatus=24
 LockPersonality=yes
 MemoryDenyWriteExecute=yes
+MemoryLow=2G
 NoNewPrivileges=yes
 PrivateTmp=yes
 PIDFile=/var/lib/portmaster/core-lock.pid

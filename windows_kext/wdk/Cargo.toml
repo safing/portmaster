@@ -1,0 +1,20 @@
+[package]
+name = "wdk"
+version = "0.0.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ntstatus = { version = "0.1.2", default-features = false }
+
+[dependencies.widestring]
+version = "1.0.2"
+default-features = false 
+features = ["alloc"]
+
+# WARNING: Do not update. The version was choosen for a reason. See wdk/README.md for more detiels.
+[dependencies.windows-sys]
+git = "https://github.com/microsoft/windows-rs"
+rev = "dffa8b03dc4987c278d82e88015ffe96aa8ac317"
+features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_SystemServices", "Win32_Foundation", "Win32_Security", "Win32_System_IO", "Win32_System_Kernel", "Win32_System_Power", "Win32_System_WindowsProgramming", "Win32_NetworkManagement_IpHelper", "Win32_Networking_WinSock", "Win32_NetworkManagement_WindowsFilteringPlatform", "Win32_System_Rpc"]

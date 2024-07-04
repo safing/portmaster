@@ -94,7 +94,7 @@ export class AppIconComponent implements OnInit, OnDestroy {
     this._profile = p || null;
 
     if (this.initDone) {
-      this.updateView(true);
+      this.updateView();
     }
   }
   get profile(): IDandName | null | undefined {

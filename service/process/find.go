@@ -10,6 +10,7 @@ import (
 	"github.com/safing/portbase/log"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
+	"github.com/safing/portmaster/service/network/reference"
 	"github.com/safing/portmaster/service/network/state"
 	"github.com/safing/portmaster/service/profile"
 )
@@ -77,10 +78,22 @@ func GetPidOfConnection(ctx context.Context, pktInfo *packet.Info) (pid int, con
 
 	// Fallback to special profiles if PID could not be found.
 	if pid == UndefinedProcessID {
-		if connInbound && !netutils.ClassifyIP(pktInfo.Dst).IsLocalhost() {
-			pid = UnsolicitedProcessID
-		} else {
+		switch {
+		case !connInbound:
 			pid = UnidentifiedProcessID
+
+		case netutils.ClassifyIP(pktInfo.Dst).IsLocalhost():
+			// Always treat localhost connections as unidentified/unknown.
+			pid = UnidentifiedProcessID
+
+		case reference.IsICMP(uint8(pktInfo.Protocol)):
+			// Always treat ICMP as unidentified/unknown, as the direction
+			// might change to outgoing by new ICMP echo packets.
+			pid = UnidentifiedProcessID
+
+		default:
+			// All other inbound connections are "unsolicited".
+			pid = UnsolicitedProcessID
 		}
 	}
 

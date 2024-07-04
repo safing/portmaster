@@ -180,14 +180,14 @@
     <span sfngAddToFilter="remote_ip" [sfngAddToFilterValue]="conn.remote_ip">
       <span>Remote Peer:</span>
       <span>
-        <span *ngIf="!!conn.country" [appCountryFlags]="conn.country"></span>
         {{ conn.remote_ip || 'DNS Request'}}
         <span *ngIf="conn.remote_port" class="text-tertiary">{{ ':'+conn.remote_port }}</span>
       </span>
     </span>
     <span sfngAddToFilter="country" [sfngAddToFilterValue]="conn.country">
       <span>Country:</span>
-      <span>{{ conn.country || 'N/A'}}</span>
+      <span *ngIf="!!conn.country" [appCountryFlags]="conn.country"></span>
+      <span>{{ (conn.country | countryName) || 'N/A' }}</span>
     </span>
     <span sfngAddToFilter="asn" [sfngAddToFilterValue]="conn.asn">
       <span>ASN:</span>

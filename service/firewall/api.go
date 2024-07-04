@@ -75,6 +75,11 @@ func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to get local IP/Port: %w", err)
 	}
+	// Correct 0.0.0.0 to 127.0.0.1 to fix local process-based authentication,
+	// if 0.0.0.0 is used as the API listen address.
+	if localIP.Equal(net.IPv4zero) {
+		localIP = net.IPv4(127, 0, 0, 1)
+	}
 
 	// get remote IP/Port
 	remoteIP, remotePort, err := netutils.ParseIPPort(r.RemoteAddr)
@@ -110,7 +115,6 @@ func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, er
 		if !retry {
 			break
 		}
-
 		// wait a little
 		time.Sleep(500 * time.Millisecond)
 	}

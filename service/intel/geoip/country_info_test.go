@@ -9,6 +9,11 @@ func TestCountryInfo(t *testing.T) {
 	t.Parallel()
 
 	for key, country := range countries {
+		// Skip special anycast country.
+		if key == "__" {
+			continue
+		}
+
 		if key != country.Code {
 			t.Errorf("%s has a wrong country code of %q", key, country.Code)
 		}

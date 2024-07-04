@@ -1,0 +1,36 @@
+name: Windows Kernel Extension
+
+on:
+  push:
+    paths:
+      - 'windows_kext/**'
+    branches:
+      - master
+      - develop
+
+  pull_request:
+    paths:
+      - 'windows_kext/**'
+    branches:
+      - master
+      - develop
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: earthly/actions-setup@v1
+      with:
+        version: v0.8.0
+    - uses: actions/checkout@v4
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Kernel Extension
+      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +kext-build

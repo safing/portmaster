@@ -11,6 +11,14 @@ func (l *Location) AddCountryInfo() {
 		return
 	}
 
+	// Check for anycast.
+	if l.IsAnycast {
+		// Reset data for anycast.
+		l.Country.Code = "__"
+		l.Coordinates.Latitude = 0
+		l.Coordinates.Longitude = 0
+	}
+
 	// Get country info.
 	info, ok := countries[l.Country.Code]
 	if !ok {
@@ -83,6 +91,10 @@ func init() {
 }
 
 var countries = map[string]CountryInfo{
+	"__": {
+		Name:   "Anycast",
+		Center: Coordinates{AccuracyRadius: earthCircumferenceInKm},
+	},
 	"MN": {
 		Name:      "Mongolia",
 		Continent: ContinentInfo{Region: "AS-E"},
