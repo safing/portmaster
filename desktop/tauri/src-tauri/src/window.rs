@@ -137,7 +137,7 @@ pub fn may_navigate_to_ui(win: &mut WebviewWindow, force: bool) {
         if let Ok(target_url) = std::env::var("TAURI_PM_URL") {
             debug!("[tauri] navigating to {}", target_url);
 
-            win.navigate(target_url.parse().unwrap());
+            _ = win.navigate(target_url.parse().unwrap());
 
             return;
         }
@@ -150,7 +150,7 @@ pub fn may_navigate_to_ui(win: &mut WebviewWindow, force: bool) {
                 .replace("http://localhost:817", "http://localhost:4200");
             let _ = win.add_capability(capabilities);
             debug!("[tauri] navigating to http://localhost:4200");
-            win.navigate("http://localhost:4200".parse().unwrap());
+            _ = win.navigate("http://localhost:4200".parse().unwrap());
         }
 
         #[cfg(not(debug_assertions))]
