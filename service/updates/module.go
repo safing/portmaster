@@ -11,10 +11,8 @@ import (
 
 // Updates provides access to released artifacts.
 type Updates struct {
-	mgr *mgr.Manager
-
-	instance     instance
-	shutdownFunc func(exitCode int)
+	m      *mgr.Manager
+	states *mgr.StateMgr
 
 	updateWorkerMgr  *mgr.WorkerMgr
 	restartWorkerMgr *mgr.WorkerMgr
@@ -22,16 +20,43 @@ type Updates struct {
 	EventResourcesUpdated *mgr.EventMgr[struct{}]
 	EventVersionsUpdated  *mgr.EventMgr[struct{}]
 
-	States *mgr.StateMgr
+	instance     instance
+	shutdownFunc func(exitCode int)
+}
+
+var (
+	module     *Updates
+	shimLoaded atomic.Bool
+)
+
+// New returns a new UI module.
+func New(instance instance, shutdownFunc func(exitCode int)) (*Updates, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	m := mgr.New("updates")
+	module = &Updates{
+		m:                     m,
+		states:                m.NewStateMgr(),
+		updateWorkerMgr:       m.NewWorkerMgr("updater", checkForUpdates, nil), //FIXME
+		restartWorkerMgr:      m.NewWorkerMgr("updater", checkForUpdates, nil), //FIXME
+		EventResourcesUpdated: mgr.NewEventMgr[struct{}](ResourceUpdateEvent, m),
+		EventVersionsUpdated:  mgr.NewEventMgr[struct{}](VersionUpdateEvent, m),
+		instance:              instance,
+		shutdownFunc:          shutdownFunc,
+	}
+
+	return module, nil
+}
+
+// Manager returns the module manager.
+func (u *Updates) Manager() *mgr.Manager {
+	return u.m
 }
 
 // Start starts the module.
 func (u *Updates) Start(m *mgr.Manager) error {
-	u.mgr = m
-	u.EventResourcesUpdated = mgr.NewEventMgr[struct{}](ResourceUpdateEvent, u.mgr)
-	u.EventVersionsUpdated = mgr.NewEventMgr[struct{}](VersionUpdateEvent, u.mgr)
-	u.States = mgr.NewStateMgr(u.mgr)
-
 	if err := prep(); err != nil {
 		return err
 	}
@@ -42,23 +67,6 @@ func (u *Updates) Start(m *mgr.Manager) error {
 // Stop stops the module.
 func (u *Updates) Stop(_ *mgr.Manager) error {
 	return stop()
-}
-
-var (
-	module     *Updates
-	shimLoaded atomic.Bool
-)
-
-// New returns a new UI module.
-func New(instance instance, shutdownFunc func(exitCode int)) (*Updates, error) {
-	if shimLoaded.CompareAndSwap(false, true) {
-		module = &Updates{
-			instance:     instance,
-			shutdownFunc: shutdownFunc,
-		}
-		return module, nil
-	}
-	return nil, errors.New("only one instance allowed")
 }
 
 type instance interface {

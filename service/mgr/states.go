@@ -43,14 +43,17 @@ type StateUpdate struct {
 	States []State
 }
 
-// NewStateMgr returns a new event manager.
-// It is easiest used as a public field on a struct,
-// so that others can simply Subscribe() oder AddCallback().
+// NewStateMgr returns a new state manager.
 func NewStateMgr(mgr *Manager) *StateMgr {
 	return &StateMgr{
 		statesEventMgr: NewEventMgr[StateUpdate]("state update", mgr),
 		mgr:            mgr,
 	}
+}
+
+// NewStateMgr returns a new state manager.
+func (m *Manager) NewStateMgr() *StateMgr {
+	return NewStateMgr(m)
 }
 
 // Add adds a state.
@@ -98,6 +101,7 @@ func (m *StateMgr) Clear() {
 	m.statesEventMgr.Submit(m.export())
 }
 
+// Export returns the current states.
 func (m *StateMgr) Export() StateUpdate {
 	m.statesLock.Lock()
 	defer m.statesLock.Unlock()
@@ -105,7 +109,7 @@ func (m *StateMgr) Export() StateUpdate {
 	return m.export()
 }
 
-// Export returns the current states.
+// export returns the current states.
 func (m *StateMgr) export() StateUpdate {
 	name := ""
 	if m.mgr != nil {

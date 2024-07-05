@@ -53,7 +53,7 @@ func (w *WorkerCtx) Cancel() {
 	w.cancelCtx()
 }
 
-// Scheduler returns the scheduler the worker was started from.
+// WorkerMgr returns the worker manager the worker was started from.
 // Returns nil if the worker is not associated with a scheduler.
 func (w *WorkerCtx) WorkerMgr() *WorkerMgr {
 	return w.workerMgr
