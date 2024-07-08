@@ -199,8 +199,11 @@ func (nq *NetQuery) prepare() error {
 	return nil
 }
 
-func (nq *NetQuery) Start(m *mgr.Manager) error {
-	nq.mgr = m
+func (nq *NetQuery) Manager() *mgr.Manager {
+	return nq.mgr
+}
+
+func (nq *NetQuery) Start() error {
 	if err := nq.prepare(); err != nil {
 		return fmt.Errorf("failed to prepare netquery module: %w", err)
 	}
@@ -284,7 +287,7 @@ func (nq *NetQuery) Start(m *mgr.Manager) error {
 	return nil
 }
 
-func (nq *NetQuery) Stop(m *mgr.Manager) error {
+func (nq *NetQuery) Stop() error {
 	// we don't use m.Module.Ctx here because it is already cancelled when stop is called.
 	// just give the clean up 1 minute to happen and abort otherwise.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -318,8 +321,9 @@ func NewModule(instance instance) (*NetQuery, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("NetQuery")
 	module = &NetQuery{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

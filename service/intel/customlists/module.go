@@ -26,19 +26,18 @@ type CustomList struct {
 	States *mgr.StateMgr
 }
 
-func (cl *CustomList) Start(m *mgr.Manager) error {
-	cl.mgr = m
-	cl.States = mgr.NewStateMgr(m)
+func (cl *CustomList) Manager() *mgr.Manager {
+	return cl.mgr
+}
 
-	cl.updateFilterListWorkerMgr = m.NewWorkerMgr("update custom filter list", checkAndUpdateFilterList, nil)
-
+func (cl *CustomList) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
 	return start()
 }
 
-func (cl *CustomList) Stop(m *mgr.Manager) error {
+func (cl *CustomList) Stop() error {
 	return nil
 }
 
@@ -219,9 +218,13 @@ func New(instance instance) (*CustomList, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("CustomList")
 	module = &CustomList{
+		mgr:      m,
 		instance: instance,
+
+		States:                    mgr.NewStateMgr(m),
+		updateFilterListWorkerMgr: m.NewWorkerMgr("update custom filter list", checkAndUpdateFilterList, nil),
 	}
 	return module, nil
 }

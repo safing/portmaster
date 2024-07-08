@@ -16,11 +16,12 @@ type Config struct {
 	EventConfigChange *mgr.EventMgr[struct{}]
 }
 
-// Start starts the module.
-func (u *Config) Start(m *mgr.Manager) error {
-	u.mgr = m
-	u.EventConfigChange = mgr.NewEventMgr[struct{}](ChangeEvent, u.mgr)
+func (u *Config) Manager() *mgr.Manager {
+	return u.mgr
+}
 
+// Start starts the module.
+func (u *Config) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
@@ -28,7 +29,7 @@ func (u *Config) Start(m *mgr.Manager) error {
 }
 
 // Stop stops the module.
-func (u *Config) Stop(_ *mgr.Manager) error {
+func (u *Config) Stop() error {
 	return nil
 }
 
@@ -42,9 +43,11 @@ func New(instance instance) (*Config, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Config")
 	module = &Config{
-		instance: instance,
+		mgr:               m,
+		instance:          instance,
+		EventConfigChange: mgr.NewEventMgr[struct{}](ChangeEvent, m),
 	}
 	return module, nil
 }

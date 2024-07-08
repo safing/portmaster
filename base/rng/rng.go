@@ -41,8 +41,11 @@ func newCipher(key []byte) (cipher.Block, error) {
 	}
 }
 
-func (r *Rng) Start(m *mgr.Manager) error {
-	r.mgr = m
+func (r *Rng) Manager() *mgr.Manager {
+	return r.mgr
+}
+
+func (r *Rng) Start() error {
 	rngLock.Lock()
 	defer rngLock.Unlock()
 
@@ -52,7 +55,7 @@ func (r *Rng) Start(m *mgr.Manager) error {
 	}
 
 	// add another (async) OS rng seed
-	m.Go("initial rng feed", func(_ *mgr.WorkerCtx) error {
+	r.mgr.Go("initial rng feed", func(_ *mgr.WorkerCtx) error {
 		// get entropy from OS
 		osEntropy := make([]byte, minFeedEntropy/8)
 		_, err := rand.Read(osEntropy)
@@ -70,18 +73,18 @@ func (r *Rng) Start(m *mgr.Manager) error {
 	rngReady = true
 
 	// random source: OS
-	m.Go("os rng feeder", osFeeder)
+	r.mgr.Go("os rng feeder", osFeeder)
 
 	// random source: goroutine ticks
-	m.Go("tick rng feeder", tickFeeder)
+	r.mgr.Go("tick rng feeder", tickFeeder)
 
 	// full feeder
-	m.Go("full feeder", fullFeeder)
+	r.mgr.Go("full feeder", fullFeeder)
 
 	return nil
 }
 
-func (r *Rng) Stop(m *mgr.Manager) error {
+func (r *Rng) Stop() error {
 	return nil
 }
 
@@ -94,8 +97,9 @@ func New(instance instance) (*Rng, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Rng")
 	module = &Rng{
+		mgr:      m,
 		instance: instance,
 	}
 

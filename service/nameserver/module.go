@@ -26,16 +26,18 @@ type NameServer struct {
 	States *mgr.StateMgr
 }
 
-func (ns *NameServer) Start(m *mgr.Manager) error {
-	ns.mgr = m
-	ns.States = mgr.NewStateMgr(m)
+func (ns *NameServer) Manager() *mgr.Manager {
+	return ns.mgr
+}
+
+func (ns *NameServer) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
 	return start()
 }
 
-func (ns *NameServer) Stop(m *mgr.Manager) error {
+func (ns *NameServer) Stop() error {
 	return stop()
 }
 
@@ -316,9 +318,12 @@ func New(instance instance) (*NameServer, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("NameServer")
 	module = &NameServer{
+		mgr:      m,
 		instance: instance,
+
+		States: mgr.NewStateMgr(m),
 	}
 	return module, nil
 }

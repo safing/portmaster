@@ -17,12 +17,15 @@ type TerminalModule struct {
 	instance instance
 }
 
-func (s *TerminalModule) Start(m *mgr.Manager) error {
-	s.mgr = m
+func (s *TerminalModule) Manager() *mgr.Manager {
+	return s.mgr
+}
+
+func (s *TerminalModule) Start() error {
 	return start()
 }
 
-func (s *TerminalModule) Stop(m *mgr.Manager) error {
+func (s *TerminalModule) Stop() error {
 	return nil
 }
 
@@ -102,8 +105,9 @@ func New(instance instance) (*TerminalModule, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("TerminalModule")
 	module = &TerminalModule{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

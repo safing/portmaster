@@ -17,12 +17,15 @@ type Docks struct {
 	instance instance
 }
 
-func (d *Docks) Start(m *mgr.Manager) error {
-	d.mgr = m
+func (d *Docks) Manager() *mgr.Manager {
+	return d.mgr
+}
+
+func (d *Docks) Start() error {
 	return start()
 }
 
-func (d *Docks) Stop(m *mgr.Manager) error {
+func (d *Docks) Stop() error {
 	return stopAllCranes()
 }
 
@@ -135,8 +138,9 @@ func New(instance instance) (*Docks, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Docks")
 	module = &Docks{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

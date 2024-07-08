@@ -26,17 +26,18 @@ type FilterLists struct {
 	States *mgr.StateMgr
 }
 
-func (fl *FilterLists) Start(m *mgr.Manager) error {
-	fl.mgr = m
-	fl.States = mgr.NewStateMgr(m)
+func (fl *FilterLists) Manager() *mgr.Manager {
+	return fl.mgr
+}
 
+func (fl *FilterLists) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
 	return start()
 }
 
-func (fl *FilterLists) Stop(m *mgr.Manager) error {
+func (fl *FilterLists) Stop() error {
 	return stop()
 }
 
@@ -127,9 +128,12 @@ func New(instance instance) (*FilterLists, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("FilterLists")
 	module = &FilterLists{
+		mgr:      m,
 		instance: instance,
+
+		States: mgr.NewStateMgr(m),
 	}
 	return module, nil
 }

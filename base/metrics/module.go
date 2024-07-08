@@ -17,16 +17,18 @@ type Metrics struct {
 	metricTicker *mgr.SleepyTicker
 }
 
-func (met *Metrics) Start(m *mgr.Manager) error {
-	met.mgr = m
+func (met *Metrics) Manager() *mgr.Manager {
+	return met.mgr
+}
 
+func (met *Metrics) Start() error {
 	if err := prepConfig(); err != nil {
 		return err
 	}
 	return start()
 }
 
-func (met *Metrics) Stop(m *mgr.Manager) error {
+func (met *Metrics) Stop() error {
 	return stop()
 }
 
@@ -195,8 +197,9 @@ func New(instance instance) (*Metrics, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Metrics")
 	module = &Metrics{
+		mgr:      m,
 		instance: instance,
 	}
 

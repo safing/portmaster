@@ -15,8 +15,11 @@ type Base struct {
 	instance instance
 }
 
-func (b *Base) Start(m *mgr.Manager) error {
-	b.mgr = m
+func (b *Base) Manager() *mgr.Manager {
+	return b.mgr
+}
+
+func (b *Base) Start() error {
 	startProfiling()
 
 	if err := registerDatabases(); err != nil {
@@ -28,7 +31,7 @@ func (b *Base) Start(m *mgr.Manager) error {
 	return nil
 }
 
-func (b *Base) Stop(m *mgr.Manager) error {
+func (b *Base) Stop() error {
 	return nil
 }
 
@@ -42,8 +45,9 @@ func New(instance instance) (*Base, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Base")
 	module = &Base{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

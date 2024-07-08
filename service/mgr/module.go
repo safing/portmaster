@@ -105,7 +105,7 @@ func (g *Group) Start() error {
 		startTime := time.Now()
 
 		err := m.mgr.Do(m.mgr.name+" Start", func(_ *WorkerCtx) error {
-			return m.module.Start(m.mgr)
+			return m.module.Start()
 		})
 		if err != nil {
 			if !g.stopFrom(i) {
@@ -143,7 +143,7 @@ func (g *Group) stopFrom(index int) (ok bool) {
 		m := g.modules[i]
 
 		err := m.mgr.Do(m.mgr.name+" Stop", func(_ *WorkerCtx) error {
-			return m.module.Stop(m.mgr)
+			return m.module.Stop()
 		})
 		if err != nil {
 			m.mgr.Error("failed to stop", "err", err)

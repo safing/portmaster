@@ -15,12 +15,15 @@ type Interception struct {
 	instance instance
 }
 
-func (i *Interception) Start(m *mgr.Manager) error {
-	i.mgr = m
+func (i *Interception) Manager() *mgr.Manager {
+	return i.mgr
+}
+
+func (i *Interception) Start() error {
 	return start()
 }
 
-func (i *Interception) Stop(m *mgr.Manager) error {
+func (i *Interception) Stop() error {
 	return stop()
 }
 
@@ -84,8 +87,9 @@ func New(instance instance) (*Interception, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Interception")
 	module = &Interception{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

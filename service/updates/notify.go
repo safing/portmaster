@@ -23,7 +23,7 @@ var updateFailedCnt = new(atomic.Int32)
 
 func notifyUpdateSuccess(force bool) {
 	updateFailedCnt.Store(0)
-	module.States.Clear()
+	module.states.Clear()
 	updateState := registry.GetState().Updates
 
 	flavor := updateSuccess

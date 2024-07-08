@@ -13,8 +13,11 @@ type Ships struct {
 	instance instance
 }
 
-func (s *Ships) Start(m *mgr.Manager) error {
-	s.mgr = m
+func (s *Ships) Manager() *mgr.Manager {
+	return s.mgr
+}
+
+func (s *Ships) Start() error {
 	if conf.PublicHub() {
 		initPageInput()
 	}
@@ -22,7 +25,7 @@ func (s *Ships) Start(m *mgr.Manager) error {
 	return nil
 }
 
-func (s *Ships) Stop(m *mgr.Manager) error {
+func (s *Ships) Stop() error {
 	return nil
 }
 
@@ -36,8 +39,9 @@ func New(instance instance) (*Ships, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Ships")
 	module = &Ships{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

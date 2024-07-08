@@ -14,12 +14,15 @@ type Crew struct {
 	instance instance
 }
 
-func (c *Crew) Start(m *mgr.Manager) error {
-	c.mgr = m
+func (c *Crew) Manager() *mgr.Manager {
+	return c.mgr
+}
+
+func (c *Crew) Start() error {
 	return start()
 }
 
-func (c *Crew) Stop(m *mgr.Manager) error {
+func (c *Crew) Stop() error {
 	return stop()
 }
 
@@ -61,8 +64,9 @@ func New(instance instance) (*Crew, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Crew")
 	module = &Crew{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

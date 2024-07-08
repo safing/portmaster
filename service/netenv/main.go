@@ -18,26 +18,28 @@ const (
 )
 
 type NetEnv struct {
+	m        *mgr.Manager
 	instance instance
 
 	EventNetworkChange      *mgr.EventMgr[struct{}]
 	EventOnlineStatusChange *mgr.EventMgr[OnlineStatus]
 }
 
-func (ne *NetEnv) Start(m *mgr.Manager) error {
-	ne.EventNetworkChange = mgr.NewEventMgr[struct{}]("network change", m)
-	ne.EventOnlineStatusChange = mgr.NewEventMgr[OnlineStatus]("online status change", m)
+func (ne *NetEnv) Manager() *mgr.Manager {
+	return ne.m
+}
 
+func (ne *NetEnv) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
 
-	m.Go(
+	ne.m.Go(
 		"monitor network changes",
 		monitorNetworkChanges,
 	)
 
-	m.Go(
+	ne.m.Go(
 		"monitor online status",
 		monitorOnlineStatus,
 	)
@@ -45,7 +47,7 @@ func (ne *NetEnv) Start(m *mgr.Manager) error {
 	return nil
 }
 
-func (ne *NetEnv) Stop(m *mgr.Manager) error {
+func (ne *NetEnv) Stop() error {
 	return nil
 }
 
@@ -92,9 +94,13 @@ func New(instance instance) (*NetEnv, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("NetEnv")
 	module = &NetEnv{
+		m:        m,
 		instance: instance,
+
+		EventNetworkChange:      mgr.NewEventMgr[struct{}]("network change", m),
+		EventOnlineStatusChange: mgr.NewEventMgr[OnlineStatus]("online status change", m),
 	}
 	return module, nil
 }

@@ -15,12 +15,15 @@ type SluiceModule struct {
 	instance instance
 }
 
-func (s *SluiceModule) Start(m *mgr.Manager) error {
-	s.mgr = m
+func (s *SluiceModule) Manager() *mgr.Manager {
+	return s.mgr
+}
+
+func (s *SluiceModule) Start() error {
 	return start()
 }
 
-func (s *SluiceModule) Stop(_ *mgr.Manager) error {
+func (s *SluiceModule) Stop() error {
 	return stop()
 }
 
@@ -66,8 +69,9 @@ func New(instance instance) (*SluiceModule, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("SluiceModule")
 	module = &SluiceModule{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

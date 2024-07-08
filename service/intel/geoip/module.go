@@ -14,8 +14,11 @@ type GeoIP struct {
 	instance instance
 }
 
-func (g *GeoIP) Start(m *mgr.Manager) error {
-	g.mgr = m
+func (g *GeoIP) Manager() *mgr.Manager {
+	return g.mgr
+}
+
+func (g *GeoIP) Start() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path: "intel/geoip/countries",
 		Read: api.PermitUser,
@@ -38,7 +41,7 @@ func (g *GeoIP) Start(m *mgr.Manager) error {
 	return nil
 }
 
-func (g *GeoIP) Stop(m *mgr.Manager) error {
+func (g *GeoIP) Stop() error {
 	return nil
 }
 
@@ -53,7 +56,9 @@ func New(instance instance) (*GeoIP, error) {
 		return nil, errors.New("only one instance allowed")
 	}
 
+	m := mgr.New("geoip")
 	module = &GeoIP{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

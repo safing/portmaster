@@ -40,8 +40,11 @@ type Navigator struct {
 	instance instance
 }
 
-func (n *Navigator) Start(m *mgr.Manager) error {
-	n.mgr = m
+func (n *Navigator) Manager() *mgr.Manager {
+	return n.mgr
+}
+
+func (n *Navigator) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
@@ -49,7 +52,7 @@ func (n *Navigator) Start(m *mgr.Manager) error {
 	return start()
 }
 
-func (n *Navigator) Stop(m *mgr.Manager) error {
+func (n *Navigator) Stop() error {
 	return stop()
 }
 
@@ -145,8 +148,9 @@ func New(instance instance) (*Navigator, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Navigator")
 	module = &Navigator{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

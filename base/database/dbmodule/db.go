@@ -15,12 +15,15 @@ type DBModule struct {
 	instance instance
 }
 
-func (dbm *DBModule) Start(m *mgr.Manager) error {
-	module.mgr = m
+func (dbm *DBModule) Manager() *mgr.Manager {
+	return dbm.mgr
+}
+
+func (dbm *DBModule) Start() error {
 	return start()
 }
 
-func (dbm *DBModule) Stop(m *mgr.Manager) error {
+func (dbm *DBModule) Stop() error {
 	return stop()
 }
 
@@ -69,8 +72,9 @@ func New(instance instance) (*DBModule, error) {
 	if err := prep(); err != nil {
 		return nil, err
 	}
-
+	m := mgr.New("DBModule")
 	module = &DBModule{
+		mgr:      m,
 		instance: instance,
 	}
 

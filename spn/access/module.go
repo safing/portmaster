@@ -25,11 +25,11 @@ type Access struct {
 	EventAccountUpdate *mgr.EventMgr[struct{}]
 }
 
-func (a *Access) Start(m *mgr.Manager) error {
-	a.mgr = m
-	a.EventAccountUpdate = mgr.NewEventMgr[struct{}](AccountUpdateEvent, m)
-	a.updateAccountWorkerMgr = m.NewWorkerMgr("update account", UpdateAccount, nil)
+func (a *Access) Manager() *mgr.Manager {
+	return a.mgr
+}
 
+func (a *Access) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func (a *Access) Start(m *mgr.Manager) error {
 	return start()
 }
 
-func (a *Access) Stop(m *mgr.Manager) error {
+func (a *Access) Stop() error {
 	return stop()
 }
 
@@ -216,8 +216,13 @@ func New(instance instance) (*Access, error) {
 		return nil, errors.New("only one instance allowed")
 	}
 
+	m := mgr.New("Access")
 	module = &Access{
+		mgr:      m,
 		instance: instance,
+
+		EventAccountUpdate:     mgr.NewEventMgr[struct{}](AccountUpdateEvent, m),
+		updateAccountWorkerMgr: m.NewWorkerMgr("update account", UpdateAccount, nil),
 	}
 	return module, nil
 }

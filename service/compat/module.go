@@ -20,9 +20,12 @@ type Compat struct {
 	selfcheckWorkerMgr *mgr.WorkerMgr
 }
 
+func (u *Compat) Manager() *mgr.Manager {
+	return u.mgr
+}
+
 // Start starts the module.
-func (u *Compat) Start(m *mgr.Manager) error {
-	u.mgr = m
+func (u *Compat) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
@@ -30,7 +33,7 @@ func (u *Compat) Start(m *mgr.Manager) error {
 }
 
 // Stop stops the module.
-func (u *Compat) Stop(_ *mgr.Manager) error {
+func (u *Compat) Stop() error {
 	return stop()
 }
 
@@ -153,8 +156,9 @@ func New(instance instance) (*Compat, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Compat")
 	module = &Compat{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

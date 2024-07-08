@@ -42,12 +42,11 @@ type Captain struct {
 	EventSPNConnected *mgr.EventMgr[struct{}]
 }
 
-func (c *Captain) Start(m *mgr.Manager) error {
-	c.mgr = m
-	c.States = mgr.NewStateMgr(m)
-	c.EventSPNConnected = mgr.NewEventMgr[struct{}](SPNConnectedEvent, m)
-	c.maintainPublicStatus = m.NewWorkerMgr("maintain public status", maintainPublicStatus, nil)
+func (c *Captain) Manager() *mgr.Manager {
+	return c.mgr
+}
 
+func (c *Captain) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
@@ -55,7 +54,7 @@ func (c *Captain) Start(m *mgr.Manager) error {
 	return start()
 }
 
-func (c *Captain) Stop(m *mgr.Manager) error {
+func (c *Captain) Stop() error {
 	return stop()
 }
 
@@ -250,10 +249,15 @@ func New(instance instance, shutdownFunc func(exitCode int)) (*Captain, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Captain")
 	module = &Captain{
+		mgr:          m,
 		instance:     instance,
 		shutdownFunc: shutdownFunc,
+
+		States:               mgr.NewStateMgr(m),
+		EventSPNConnected:    mgr.NewEventMgr[struct{}](SPNConnectedEvent, m),
+		maintainPublicStatus: m.NewWorkerMgr("maintain public status", maintainPublicStatus, nil),
 	}
 	return module, nil
 }

@@ -1,6 +1,7 @@
 package firewall
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"path/filepath"
@@ -42,9 +43,11 @@ func init() {
 	flag.Var(&allowedClients, "allowed-clients", "A list of binaries that are allowed to connect to the Portmaster API")
 }
 
-func (f *Firewall) Start(mgr *mgr.Manager) error {
-	f.mgr = mgr
+func (f *Firewall) Manager() *mgr.Manager {
+	return f.mgr
+}
 
+func (f *Firewall) Start() error {
 	if err := prep(); err != nil {
 		log.Errorf("Failed to prepare firewall module %q", err)
 		return err
@@ -53,7 +56,7 @@ func (f *Firewall) Start(mgr *mgr.Manager) error {
 	return start()
 }
 
-func (f *Firewall) Stop(mgr *mgr.Manager) error {
+func (f *Firewall) Stop() error {
 	return stop()
 }
 
@@ -132,7 +135,13 @@ var (
 )
 
 func New(instance instance) (*Firewall, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	m := mgr.New("Firewall")
 	module = &Firewall{
+		mgr:      m,
 		instance: instance,
 	}
 

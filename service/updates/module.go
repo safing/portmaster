@@ -35,12 +35,13 @@ func New(instance instance, shutdownFunc func(exitCode int)) (*Updates, error) {
 		return nil, errors.New("only one instance allowed")
 	}
 
-	m := mgr.New("updates")
+	m := mgr.New("Updates")
 	module = &Updates{
-		m:                     m,
-		states:                m.NewStateMgr(),
-		updateWorkerMgr:       m.NewWorkerMgr("updater", checkForUpdates, nil), //FIXME
-		restartWorkerMgr:      m.NewWorkerMgr("updater", checkForUpdates, nil), //FIXME
+		m:      m,
+		states: m.NewStateMgr(),
+
+		updateWorkerMgr:       m.NewWorkerMgr("updater", checkForUpdates, nil),
+		restartWorkerMgr:      m.NewWorkerMgr("automatic restart", automaticRestart, nil),
 		EventResourcesUpdated: mgr.NewEventMgr[struct{}](ResourceUpdateEvent, m),
 		EventVersionsUpdated:  mgr.NewEventMgr[struct{}](VersionUpdateEvent, m),
 		instance:              instance,
@@ -50,13 +51,18 @@ func New(instance instance, shutdownFunc func(exitCode int)) (*Updates, error) {
 	return module, nil
 }
 
+// State returns the state manager.
+func (u *Updates) State() *mgr.StateMgr {
+	return u.states
+}
+
 // Manager returns the module manager.
 func (u *Updates) Manager() *mgr.Manager {
 	return u.m
 }
 
 // Start starts the module.
-func (u *Updates) Start(m *mgr.Manager) error {
+func (u *Updates) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
@@ -65,7 +71,7 @@ func (u *Updates) Start(m *mgr.Manager) error {
 }
 
 // Stop stops the module.
-func (u *Updates) Stop(_ *mgr.Manager) error {
+func (u *Updates) Stop() error {
 	return stop()
 }
 

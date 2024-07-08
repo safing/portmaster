@@ -164,7 +164,7 @@ func updateRegistryConfig(_ *mgr.WorkerCtx, _ struct{}) (cancel bool, err error)
 		module.EventVersionsUpdated.Submit(struct{}{})
 
 		if softwareUpdatesCurrentlyEnabled || intelUpdatesCurrentlyEnabled {
-			module.States.Clear()
+			module.states.Clear()
 			if err := TriggerUpdate(true, false); err != nil {
 				log.Warningf("updates: failed to trigger update: %s", err)
 			}

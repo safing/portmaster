@@ -9,14 +9,19 @@ import (
 )
 
 type Sync struct {
+	mgr      *mgr.Manager
 	instance instance
 }
 
-func (s *Sync) Start(m *mgr.Manager) error {
+func (s *Sync) Manager() *mgr.Manager {
+	return s.mgr
+}
+
+func (s *Sync) Start() error {
 	return prep()
 }
 
-func (s *Sync) Stop(m *mgr.Manager) error {
+func (s *Sync) Stop() error {
 	return nil
 }
 
@@ -48,8 +53,9 @@ func New(instance instance) (*Sync, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Sync")
 	module = &Sync{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

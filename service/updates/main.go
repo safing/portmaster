@@ -106,7 +106,7 @@ func prep() error {
 func start() error {
 	initConfig()
 
-	module.restartWorkerMgr = module.mgr.Repeat("automatic restart", 10*time.Minute, automaticRestart)
+	module.restartWorkerMgr.Repeat(10 * time.Minute)
 	module.instance.Config().EventConfigChange.AddCallback("update registry config", updateRegistryConfig)
 
 	// create registry
@@ -164,7 +164,7 @@ func start() error {
 		log.Warningf("updates: %s", warning)
 	}
 
-	err = registry.LoadIndexes(module.mgr.Ctx())
+	err = registry.LoadIndexes(module.m.Ctx())
 	if err != nil {
 		log.Warningf("updates: failed to load indexes: %s", err)
 	}
@@ -184,8 +184,6 @@ func start() error {
 	}
 
 	// start updater task
-	module.updateWorkerMgr = module.mgr.NewWorkerMgr("updater", checkForUpdates, nil)
-
 	if !disableTaskSchedule {
 		_ = module.updateWorkerMgr.Repeat(30 * time.Minute)
 	}

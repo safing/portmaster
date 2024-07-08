@@ -30,17 +30,18 @@ type Network struct {
 	EventConnectionReattributed *mgr.EventMgr[string]
 }
 
-func (n *Network) Start(m *mgr.Manager) error {
-	n.mgr = m
-	n.EventConnectionReattributed = mgr.NewEventMgr[string](ConnectionReattributedEvent, m)
+func (n *Network) Manager() *mgr.Manager {
+	return n.mgr
+}
 
+func (n *Network) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
 	return start()
 }
 
-func (n *Network) Stop(mgr *mgr.Manager) error {
+func (n *Network) Stop() error {
 	return nil
 }
 
@@ -174,9 +175,11 @@ func New(instance instance) (*Network, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Network")
 	module = &Network{
-		instance: instance,
+		mgr:                         m,
+		instance:                    instance,
+		EventConnectionReattributed: mgr.NewEventMgr[string](ConnectionReattributedEvent, m),
 	}
 	return module, nil
 }

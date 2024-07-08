@@ -15,15 +15,18 @@ type Broadcasts struct {
 	instance instance
 }
 
-func (b *Broadcasts) Start(m *mgr.Manager) error {
-	b.mgr = m
+func (b *Broadcasts) Manager() *mgr.Manager {
+	return b.mgr
+}
+
+func (b *Broadcasts) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
 	return start()
 }
 
-func (b *Broadcasts) Stop(m *mgr.Manager) error {
+func (b *Broadcasts) Stop() error {
 	return nil
 }
 
@@ -71,8 +74,9 @@ func New(instance instance) (*Broadcasts, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Broadcasts")
 	module = &Broadcasts{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

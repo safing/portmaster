@@ -14,10 +14,15 @@ import (
 var DefaultRegistry = NewRegistry()
 
 type Runtime struct {
+	mgr      *mgr.Manager
 	instance instance
 }
 
-func (r *Runtime) Start(m *mgr.Manager) error {
+func (r *Runtime) Manager() *mgr.Manager {
+	return r.mgr
+}
+
+func (r *Runtime) Start() error {
 	_, err := database.Register(&database.Database{
 		Name:         "runtime",
 		Description:  "Runtime database",
@@ -39,7 +44,7 @@ func (r *Runtime) Start(m *mgr.Manager) error {
 	return nil
 }
 
-func (r *Runtime) Stop(m *mgr.Manager) error {
+func (r *Runtime) Stop() error {
 	return nil
 }
 
@@ -59,7 +64,11 @@ func New(instance instance) (*Runtime, error) {
 		return nil, errors.New("only one instance allowed")
 	}
 
-	module = &Runtime{instance: instance}
+	m := mgr.New("Runtime")
+	module = &Runtime{
+		mgr:      m,
+		instance: instance,
+	}
 
 	return module, nil
 }

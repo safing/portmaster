@@ -16,8 +16,11 @@ type Notifications struct {
 	States *mgr.StateMgr
 }
 
-func (n *Notifications) Start(m *mgr.Manager) error {
-	n.mgr = m
+func (n *Notifications) Manager() *mgr.Manager {
+	return n.mgr
+}
+
+func (n *Notifications) Start() error {
 	n.States = mgr.NewStateMgr(n.mgr)
 
 	if err := prep(); err != nil {
@@ -27,7 +30,7 @@ func (n *Notifications) Start(m *mgr.Manager) error {
 	return start()
 }
 
-func (n *Notifications) Stop(m *mgr.Manager) error {
+func (n *Notifications) Stop() error {
 	return nil
 }
 
@@ -92,9 +95,12 @@ func New(instance instance) (*Notifications, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Notifications")
 	module = &Notifications{
+		mgr:      m,
 		instance: instance,
+
+		States: mgr.NewStateMgr(m),
 	}
 
 	return module, nil

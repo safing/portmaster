@@ -10,10 +10,15 @@ import (
 )
 
 type ProcessModule struct {
+	mgr      *mgr.Manager
 	instance instance
 }
 
-func (pm *ProcessModule) Start(m *mgr.Manager) error {
+func (pm *ProcessModule) Manager() *mgr.Manager {
+	return pm.mgr
+}
+
+func (pm *ProcessModule) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
@@ -21,7 +26,7 @@ func (pm *ProcessModule) Start(m *mgr.Manager) error {
 	return start()
 }
 
-func (pm *ProcessModule) Stop(m *mgr.Manager) error {
+func (pm *ProcessModule) Stop() error {
 	return nil
 }
 
@@ -58,8 +63,9 @@ func New(instance instance) (*ProcessModule, error) {
 	if err := prep(); err != nil {
 		return nil, err
 	}
-
+	m := mgr.New("ProcessModule")
 	module = &ProcessModule{
+		mgr:      m,
 		instance: instance,
 	}
 	return module, nil

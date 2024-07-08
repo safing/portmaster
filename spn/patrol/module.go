@@ -19,17 +19,18 @@ type Patrol struct {
 	EventChangeSignal *mgr.EventMgr[struct{}]
 }
 
-func (p *Patrol) Start(m *mgr.Manager) error {
-	p.mgr = m
-	p.EventChangeSignal = mgr.NewEventMgr[struct{}](ChangeSignalEventName, m)
+func (p *Patrol) Manager() *mgr.Manager {
+	return p.mgr
+}
 
+func (p *Patrol) Start() error {
 	if conf.PublicHub() {
-		m.Repeat("connectivity test", 5*time.Minute, connectivityCheckTask)
+		p.mgr.Repeat("connectivity test", 5*time.Minute, connectivityCheckTask)
 	}
 	return nil
 }
 
-func (p *Patrol) Stop(m *mgr.Manager) error {
+func (p *Patrol) Stop() error {
 	return nil
 }
 
@@ -43,9 +44,12 @@ func New(instance instance) (*Patrol, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Patrol")
 	module = &Patrol{
+		mgr:      m,
 		instance: instance,
+
+		EventChangeSignal: mgr.NewEventMgr[struct{}](ChangeSignalEventName, m),
 	}
 	return module, nil
 }

@@ -31,17 +31,18 @@ type ResolverModule struct {
 	States *mgr.StateMgr
 }
 
-func (rm *ResolverModule) Start(m *mgr.Manager) error {
-	rm.mgr = m
-	rm.States = mgr.NewStateMgr(m)
+func (rm *ResolverModule) Manager() *mgr.Manager {
+	return rm.mgr
+}
 
+func (rm *ResolverModule) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
 	return start()
 }
 
-func (rm *ResolverModule) Stop(m *mgr.Manager) error {
+func (rm *ResolverModule) Stop() error {
 	return nil
 }
 
@@ -257,9 +258,12 @@ func New(instance instance) (*ResolverModule, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Resolver")
 	module = &ResolverModule{
+		mgr:      m,
 		instance: instance,
+
+		States: mgr.NewStateMgr(m),
 	}
 	return module, nil
 }

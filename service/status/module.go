@@ -11,10 +11,15 @@ import (
 )
 
 type Status struct {
+	mgr      *mgr.Manager
 	instance instance
 }
 
-func (s *Status) Start(m *mgr.Manager) error {
+func (s *Status) Manager() *mgr.Manager {
+	return s.mgr
+}
+
+func (s *Status) Start() error {
 	if err := setupRuntimeProvider(); err != nil {
 		return err
 	}
@@ -29,7 +34,7 @@ func (s *Status) Start(m *mgr.Manager) error {
 	return nil
 }
 
-func (s *Status) Stop(m *mgr.Manager) error {
+func (s *Status) Stop() error {
 	return nil
 }
 
@@ -52,8 +57,9 @@ func New(instance instance) (*Status, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Status")
 	module = &Status{
+		mgr:      m,
 		instance: instance,
 	}
 

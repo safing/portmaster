@@ -9,14 +9,19 @@ import (
 )
 
 type Cabin struct {
+	m        *mgr.Manager
 	instance instance
 }
 
-func (c *Cabin) Start(m *mgr.Manager) error {
+func (c *Cabin) Manager() *mgr.Manager {
+	return c.m
+}
+
+func (c *Cabin) Start() error {
 	return prep()
 }
 
-func (c *Cabin) Stop(m *mgr.Manager) error {
+func (c *Cabin) Stop() error {
 	return nil
 }
 
@@ -49,7 +54,9 @@ func New(instance instance) (*Cabin, error) {
 		return nil, err
 	}
 
+	m := mgr.New("Cabin")
 	module = &Cabin{
+		m:        m,
 		instance: instance,
 	}
 	return module, nil

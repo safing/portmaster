@@ -40,15 +40,11 @@ type ProfileModule struct {
 	States *mgr.StateMgr
 }
 
-func (pm *ProfileModule) Start(m *mgr.Manager) error {
-	pm.mgr = m
+func (pm *ProfileModule) Manager() *mgr.Manager {
+	return pm.mgr
+}
 
-	pm.EventConfigChange = mgr.NewEventMgr[string](ConfigChangeEvent, m)
-	pm.EventDelete = mgr.NewEventMgr[string](DeletedEvent, m)
-	pm.EventMigrated = mgr.NewEventMgr[[]string](MigratedEvent, m)
-
-	pm.States = mgr.NewStateMgr(m)
-
+func (pm *ProfileModule) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
@@ -56,7 +52,7 @@ func (pm *ProfileModule) Start(m *mgr.Manager) error {
 	return start()
 }
 
-func (pm *ProfileModule) Stop(m *mgr.Manager) error {
+func (pm *ProfileModule) Stop() error {
 	return stop()
 }
 
@@ -143,9 +139,16 @@ func NewModule(instance instance) (*ProfileModule, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
-
+	m := mgr.New("Profile")
 	module = &ProfileModule{
+		mgr:      m,
 		instance: instance,
+
+		EventConfigChange: mgr.NewEventMgr[string](ConfigChangeEvent, m),
+		EventDelete:       mgr.NewEventMgr[string](DeletedEvent, m),
+		EventMigrated:     mgr.NewEventMgr[[]string](MigratedEvent, m),
+
+		States: mgr.NewStateMgr(m),
 	}
 
 	return module, nil

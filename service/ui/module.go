@@ -42,10 +42,12 @@ type UI struct {
 	instance instance
 }
 
-// Start starts the module.
-func (ui *UI) Start(m *mgr.Manager) error {
-	ui.mgr = m
+func (ui *UI) Manager() *mgr.Manager {
+	return ui.mgr
+}
 
+// Start starts the module.
+func (ui *UI) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
@@ -54,7 +56,7 @@ func (ui *UI) Start(m *mgr.Manager) error {
 }
 
 // Stop stops the module.
-func (ui *UI) Stop(_ *mgr.Manager) error {
+func (ui *UI) Stop() error {
 	return nil
 }
 
@@ -62,12 +64,15 @@ var shimLoaded atomic.Bool
 
 // New returns a new UI module.
 func New(instance instance) (*UI, error) {
-	if shimLoaded.CompareAndSwap(false, true) {
-		return &UI{
-			instance: instance,
-		}, nil
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
 	}
-	return nil, errors.New("only one instance allowed")
+	m := mgr.New("UI")
+	module := &UI{
+		mgr:      m,
+		instance: instance,
+	}
+	return module, nil
 }
 
 type instance interface {

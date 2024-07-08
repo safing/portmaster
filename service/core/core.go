@@ -25,16 +25,18 @@ const (
 )
 
 type Core struct {
+	m        *mgr.Manager
 	instance instance
 
 	EventShutdown *mgr.EventMgr[struct{}]
 	EventRestart  *mgr.EventMgr[struct{}]
 }
 
-func (c *Core) Start(m *mgr.Manager) error {
-	c.EventShutdown = mgr.NewEventMgr[struct{}]("shutdown", m)
-	c.EventRestart = mgr.NewEventMgr[struct{}]("restart", m)
+func (c *Core) Manager() *mgr.Manager {
+	return c.m
+}
 
+func (c *Core) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
@@ -42,7 +44,7 @@ func (c *Core) Start(m *mgr.Manager) error {
 	return start()
 }
 
-func (c *Core) Stop(m *mgr.Manager) error {
+func (c *Core) Stop() error {
 	return nil
 }
 
@@ -123,8 +125,13 @@ func New(instance instance) (*Core, error) {
 		return nil, errors.New("only one instance allowed")
 	}
 
+	m := mgr.New("Core")
 	module = &Core{
+		m:        m,
 		instance: instance,
+
+		EventShutdown: mgr.NewEventMgr[struct{}]("shutdown", m),
+		EventRestart:  mgr.NewEventMgr[struct{}]("restart", m),
 	}
 	return module, nil
 }
