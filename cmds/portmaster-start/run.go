@@ -29,6 +29,9 @@ const (
 	// This disables retrying and exits with an error code.
 	ControlledFailureExitCode = 24
 
+	// StartOldUIExitCode is an exit code that is returned by the UI when there. This is manfully triaged by the user, if the new UI does not work for them.
+	StartOldUIExitCode = -3
+
 	exeSuffix = ".exe"
 	zipSuffix = ".zip"
 )
@@ -38,6 +41,8 @@ var (
 	onWindows        = runtime.GOOS == "windows"
 	stdinSignals     bool
 	childIsRunning   = abool.NewBool(false)
+
+	fallBackToOldUI bool = false
 )
 
 // Options for starting component.
@@ -68,6 +73,12 @@ func init() {
 		{
 			Name:              "Portmaster App",
 			Identifier:        "app/portmaster-app.zip",
+			AllowDownload:     false,
+			AllowHidingWindow: false,
+		},
+		{
+			Name:              "Portmaster App2",
+			Identifier:        "app2/portmaster",
 			AllowDownload:     false,
 			AllowHidingWindow: false,
 		},
@@ -311,6 +322,14 @@ func persistOutputStreams(opts *Options, version string, cmd *exec.Cmd) (chan st
 }
 
 func execute(opts *Options, args []string) (cont bool, err error) {
+	if registry.UsePreReleases && opts.ShortIdentifier == "app" {
+		// Check if new ui was already tried.
+		if !fallBackToOldUI {
+			opts.Identifier = "app2/portmaster"
+			opts.ShortIdentifier = "app2"
+		}
+	}
+
 	file, err := registry.GetFile(
 		helper.PlatformIdentifier(opts.Identifier),
 	)
@@ -440,6 +459,9 @@ func parseExitError(err error) (restart bool, errWithCtx error) {
 			return true, nil
 		case ControlledFailureExitCode:
 			return false, errors.New("controlled failure, check logs")
+		case StartOldUIExitCode:
+			fallBackToOldUI = true
+			return true, errors.New("user requested old UI")
 		default:
 			return true, fmt.Errorf("unknown exit code %w", exErr)
 		}

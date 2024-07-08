@@ -154,7 +154,9 @@ pub fn may_navigate_to_ui(win: &mut WebviewWindow, force: bool) {
         }
 
         #[cfg(not(debug_assertions))]
-        win.navigate("http://localhost:817".parse().unwrap());
+        {
+            _ = win.navigate("http://localhost:817".parse().unwrap());
+        }
     } else {
         error!(
             "not navigating to user interface: current url: {}",
