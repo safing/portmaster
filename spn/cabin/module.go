@@ -18,7 +18,7 @@ func (c *Cabin) Manager() *mgr.Manager {
 }
 
 func (c *Cabin) Start() error {
-	return prep()
+	return nil
 }
 
 func (c *Cabin) Stop() error {
@@ -50,15 +50,16 @@ func New(instance instance) (*Cabin, error) {
 		return nil, errors.New("only one instance allowed")
 	}
 
-	if err := prep(); err != nil {
-		return nil, err
-	}
-
 	m := mgr.New("Cabin")
 	module = &Cabin{
 		m:        m,
 		instance: instance,
 	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 

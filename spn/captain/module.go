@@ -47,10 +47,6 @@ func (c *Captain) Manager() *mgr.Manager {
 }
 
 func (c *Captain) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
-
 	return start()
 }
 
@@ -97,6 +93,7 @@ func prep() error {
 	}
 
 	// Register API endpoints.
+	// FIXME(vladimir): Does this need to be called during start or during construction of module?
 	if err := registerAPIEndpoints(); err != nil {
 		return err
 	}
@@ -259,6 +256,11 @@ func New(instance instance, shutdownFunc func(exitCode int)) (*Captain, error) {
 		EventSPNConnected:    mgr.NewEventMgr[struct{}](SPNConnectedEvent, m),
 		maintainPublicStatus: m.NewWorkerMgr("maintain public status", maintainPublicStatus, nil),
 	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 

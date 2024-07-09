@@ -22,9 +22,6 @@ func (met *Metrics) Manager() *mgr.Manager {
 }
 
 func (met *Metrics) Start() error {
-	if err := prepConfig(); err != nil {
-		return err
-	}
 	return start()
 }
 
@@ -201,6 +198,9 @@ func New(instance instance) (*Metrics, error) {
 	module = &Metrics{
 		mgr:      m,
 		instance: instance,
+	}
+	if err := prepConfig(); err != nil {
+		return nil, err
 	}
 
 	return module, nil

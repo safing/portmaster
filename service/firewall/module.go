@@ -103,10 +103,6 @@ func prep() error {
 		return false, err
 	})
 
-	if err := registerConfig(); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -146,6 +142,10 @@ func New(instance instance) (*Firewall, error) {
 	}
 
 	if err := prepAPIAuth(); err != nil {
+		return nil, err
+	}
+
+	if err := registerConfig(); err != nil {
 		return nil, err
 	}
 

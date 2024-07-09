@@ -85,10 +85,6 @@ func init() {
 }
 
 func prep() error {
-	if err := registerConfig(); err != nil {
-		return err
-	}
-
 	// Check if update server URL supplied via flag is a valid URL.
 	if updateServerFromFlag != "" {
 		u, err := url.Parse(updateServerFromFlag)

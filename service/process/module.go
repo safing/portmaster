@@ -19,10 +19,6 @@ func (pm *ProcessModule) Manager() *mgr.Manager {
 }
 
 func (pm *ProcessModule) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
-
 	return start()
 }
 
@@ -67,6 +63,10 @@ func New(instance instance) (*ProcessModule, error) {
 	module = &ProcessModule{
 		mgr:      m,
 		instance: instance,
+	}
+
+	if err := prep(); err != nil {
+		return nil, err
 	}
 	return module, nil
 }

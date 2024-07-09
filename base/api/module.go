@@ -22,9 +22,6 @@ func (api *API) Manager() *mgr.Manager {
 
 // Start starts the module.
 func (api *API) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
 	if err := start(); err != nil {
 		return err
 	}
@@ -54,6 +51,9 @@ func New(instance instance) (*API, error) {
 		instance: instance,
 	}
 
+	if err := prep(); err != nil {
+		return nil, err
+	}
 	return module, nil
 }
 

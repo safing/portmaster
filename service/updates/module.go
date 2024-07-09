@@ -48,6 +48,10 @@ func New(instance instance, shutdownFunc func(exitCode int)) (*Updates, error) {
 		shutdownFunc:          shutdownFunc,
 	}
 
+	if err := registerConfig(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 

@@ -58,22 +58,10 @@ type Instance struct {
 	rng           *rng.Rng
 	base          *base.Base
 
-	core    *core.Core
-	updates *updates.Updates
-	geoip   *geoip.GeoIP
-	netenv  *netenv.NetEnv
-
-	access    *access.Access
-	cabin     *cabin.Cabin
-	navigator *navigator.Navigator
-	captain   *captain.Captain
-	crew      *crew.Crew
-	docks     *docks.Docks
-	patrol    *patrol.Patrol
-	ships     *ships.Ships
-	sluice    *sluice.SluiceModule
-	terminal  *terminal.TerminalModule
-
+	core         *core.Core
+	updates      *updates.Updates
+	geoip        *geoip.GeoIP
+	netenv       *netenv.NetEnv
 	ui           *ui.UI
 	profile      *profile.ProfileModule
 	network      *network.Network
@@ -89,6 +77,20 @@ type Instance struct {
 	process      *process.ProcessModule
 	resolver     *resolver.ResolverModule
 	sync         *sync.Sync
+
+	access *access.Access
+
+	// SPN modules
+	SpnGroup  *mgr.Group
+	cabin     *cabin.Cabin
+	navigator *navigator.Navigator
+	captain   *captain.Captain
+	crew      *crew.Crew
+	docks     *docks.Docks
+	patrol    *patrol.Patrol
+	ships     *ships.Ships
+	sluice    *sluice.SluiceModule
+	terminal  *terminal.TerminalModule
 }
 
 // New returns a new portmaster service instance.
@@ -134,7 +136,7 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		return nil, fmt.Errorf("create base module: %w", err)
 	}
 
-	// Global service modules
+	// Service modules
 	instance.core, err = core.New(instance)
 	if err != nil {
 		return nil, fmt.Errorf("create core module: %w", err)
@@ -151,50 +153,6 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create netenv module: %w", err)
 	}
-
-	// SPN modules
-	instance.access, err = access.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create access module: %w", err)
-	}
-	instance.cabin, err = cabin.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create cabin module: %w", err)
-	}
-	instance.navigator, err = navigator.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create navigator module: %w", err)
-	}
-	instance.captain, err = captain.New(instance, svcCfg.ShutdownFunc)
-	if err != nil {
-		return nil, fmt.Errorf("create captain module: %w", err)
-	}
-	instance.crew, err = crew.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create crew module: %w", err)
-	}
-	instance.docks, err = docks.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create docks module: %w", err)
-	}
-	instance.patrol, err = patrol.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create patrol module: %w", err)
-	}
-	instance.ships, err = ships.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create ships module: %w", err)
-	}
-	instance.sluice, err = sluice.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create sluice module: %w", err)
-	}
-	instance.terminal, err = terminal.New(instance)
-	if err != nil {
-		return nil, fmt.Errorf("create terminal module: %w", err)
-	}
-
-	// Service modules
 	instance.ui, err = ui.New(instance)
 	if err != nil {
 		return nil, fmt.Errorf("create ui module: %w", err)
@@ -255,6 +213,48 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create sync module: %w", err)
 	}
+	instance.access, err = access.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create access module: %w", err)
+	}
+
+	// SPN modules
+	instance.cabin, err = cabin.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create cabin module: %w", err)
+	}
+	instance.navigator, err = navigator.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create navigator module: %w", err)
+	}
+	instance.captain, err = captain.New(instance, svcCfg.ShutdownFunc)
+	if err != nil {
+		return nil, fmt.Errorf("create captain module: %w", err)
+	}
+	instance.crew, err = crew.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create crew module: %w", err)
+	}
+	instance.docks, err = docks.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create docks module: %w", err)
+	}
+	instance.patrol, err = patrol.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create patrol module: %w", err)
+	}
+	instance.ships, err = ships.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create ships module: %w", err)
+	}
+	instance.sluice, err = sluice.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create sluice module: %w", err)
+	}
+	instance.terminal, err = terminal.New(instance)
+	if err != nil {
+		return nil, fmt.Errorf("create terminal module: %w", err)
+	}
 
 	// Add all modules to instance group.
 	instance.Group = mgr.NewGroup(
@@ -272,17 +272,6 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		instance.geoip,
 		instance.netenv,
 
-		instance.access,
-		instance.cabin,
-		instance.navigator,
-		instance.captain,
-		instance.crew,
-		instance.docks,
-		instance.patrol,
-		instance.ships,
-		instance.sluice,
-		instance.terminal,
-
 		instance.ui,
 		instance.profile,
 		instance.network,
@@ -298,6 +287,20 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		instance.process,
 		instance.resolver,
 		instance.sync,
+		instance.access,
+	)
+
+	// SPN Group
+	instance.SpnGroup = mgr.NewGroup(
+		instance.cabin,
+		instance.navigator,
+		instance.captain,
+		instance.crew,
+		instance.docks,
+		instance.patrol,
+		instance.ships,
+		instance.sluice,
+		instance.terminal,
 	)
 
 	// FIXME: call this before to trigger shutdown/restart event
@@ -500,6 +503,11 @@ func (i *Instance) Sync() *sync.Sync {
 // Core returns the core module.
 func (i *Instance) Core() *core.Core {
 	return i.core
+}
+
+// SPNGroup returns the group of all SPN modules.
+func (i *Instance) SPNGroup() *mgr.Group {
+	return i.SpnGroup
 }
 
 // Events

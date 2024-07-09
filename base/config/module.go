@@ -22,9 +22,6 @@ func (u *Config) Manager() *mgr.Manager {
 
 // Start starts the module.
 func (u *Config) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
 	return start()
 }
 
@@ -49,6 +46,11 @@ func New(instance instance) (*Config, error) {
 		instance:          instance,
 		EventConfigChange: mgr.NewEventMgr[struct{}](ChangeEvent, m),
 	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 

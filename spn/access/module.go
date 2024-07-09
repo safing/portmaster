@@ -77,6 +77,15 @@ func prep() error {
 }
 
 func start() error {
+	module.instance.Config().EventConfigChange.AddCallback("spn enable check", func(wc *mgr.WorkerCtx, s struct{}) (bool, error) {
+		enabled := config.GetAsBool("spn/enable", false)
+		if enabled() {
+			return false, module.instance.SPNGroup().Start()
+		} else {
+			return false, module.instance.SPNGroup().Stop()
+		}
+	})
+
 	// Initialize zones.
 	if err := InitializeZones(); err != nil {
 		return err
@@ -227,4 +236,7 @@ func New(instance instance) (*Access, error) {
 	return module, nil
 }
 
-type instance interface{}
+type instance interface {
+	Config() *config.Config
+	SPNGroup() *mgr.Group
+}

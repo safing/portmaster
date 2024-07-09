@@ -31,9 +31,6 @@ func (ns *NameServer) Manager() *mgr.Manager {
 }
 
 func (ns *NameServer) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
 	return start()
 }
 
@@ -325,6 +322,10 @@ func New(instance instance) (*NameServer, error) {
 
 		States: mgr.NewStateMgr(m),
 	}
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 
