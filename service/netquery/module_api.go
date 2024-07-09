@@ -204,10 +204,6 @@ func (nq *NetQuery) Manager() *mgr.Manager {
 }
 
 func (nq *NetQuery) Start() error {
-	if err := nq.prepare(); err != nil {
-		return fmt.Errorf("failed to prepare netquery module: %w", err)
-	}
-
 	nq.mgr.Go("netquery connection feed listener", func(ctx *mgr.WorkerCtx) error {
 		sub, err := nq.db.Subscribe(query.New("network:"))
 		if err != nil {
@@ -325,6 +321,9 @@ func NewModule(instance instance) (*NetQuery, error) {
 	module = &NetQuery{
 		mgr:      m,
 		instance: instance,
+	}
+	if err := module.prepare(); err != nil {
+		return nil, fmt.Errorf("failed to prepare netquery module: %w", err)
 	}
 	return module, nil
 }

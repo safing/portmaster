@@ -30,10 +30,6 @@ func (a *Access) Manager() *mgr.Manager {
 }
 
 func (a *Access) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
-
 	return start()
 }
 
@@ -233,6 +229,11 @@ func New(instance instance) (*Access, error) {
 		EventAccountUpdate:     mgr.NewEventMgr[struct{}](AccountUpdateEvent, m),
 		updateAccountWorkerMgr: m.NewWorkerMgr("update account", UpdateAccount, nil),
 	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 

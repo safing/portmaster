@@ -26,9 +26,6 @@ func (u *Compat) Manager() *mgr.Manager {
 
 // Start starts the module.
 func (u *Compat) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
 	return start()
 }
 
@@ -160,6 +157,9 @@ func New(instance instance) (*Compat, error) {
 	module = &Compat{
 		mgr:      m,
 		instance: instance,
+	}
+	if err := prep(); err != nil {
+		return nil, err
 	}
 	return module, nil
 }

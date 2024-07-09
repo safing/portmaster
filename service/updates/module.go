@@ -47,8 +47,7 @@ func New(instance instance, shutdownFunc func(exitCode int)) (*Updates, error) {
 		instance:              instance,
 		shutdownFunc:          shutdownFunc,
 	}
-
-	if err := registerConfig(); err != nil {
+	if err := prep(); err != nil {
 		return nil, err
 	}
 
@@ -67,10 +66,6 @@ func (u *Updates) Manager() *mgr.Manager {
 
 // Start starts the module.
 func (u *Updates) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
-
 	return start()
 }
 

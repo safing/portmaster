@@ -35,9 +35,6 @@ func (n *Network) Manager() *mgr.Manager {
 }
 
 func (n *Network) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
 	return start()
 }
 
@@ -181,6 +178,11 @@ func New(instance instance) (*Network, error) {
 		instance:                    instance,
 		EventConnectionReattributed: mgr.NewEventMgr[string](ConnectionReattributedEvent, m),
 	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 

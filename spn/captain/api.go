@@ -10,9 +10,8 @@ const (
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:  apiPathForSPNReInit,
-		Write: api.PermitAdmin,
-		// BelongsTo:   module, // Do not attach to module, as this must run outside of the module.
+		Path:        apiPathForSPNReInit,
+		Write:       api.PermitAdmin,
 		ActionFunc:  handleReInit,
 		Name:        "Re-initialize SPN",
 		Description: "Stops the SPN, resets all caches and starts it again. The SPN account and settings are not changed.",

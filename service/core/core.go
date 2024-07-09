@@ -37,10 +37,6 @@ func (c *Core) Manager() *mgr.Manager {
 }
 
 func (c *Core) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
-
 	return start()
 }
 
@@ -133,6 +129,11 @@ func New(instance instance) (*Core, error) {
 		EventShutdown: mgr.NewEventMgr[struct{}]("shutdown", m),
 		EventRestart:  mgr.NewEventMgr[struct{}]("restart", m),
 	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 

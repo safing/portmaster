@@ -18,7 +18,7 @@ func (s *Sync) Manager() *mgr.Manager {
 }
 
 func (s *Sync) Start() error {
-	return prep()
+	return nil
 }
 
 func (s *Sync) Stop() error {
@@ -58,6 +58,11 @@ func New(instance instance) (*Sync, error) {
 		mgr:      m,
 		instance: instance,
 	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 

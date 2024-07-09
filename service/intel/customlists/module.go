@@ -31,9 +31,6 @@ func (cl *CustomList) Manager() *mgr.Manager {
 }
 
 func (cl *CustomList) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
 	return start()
 }
 
@@ -60,6 +57,12 @@ var (
 
 func prep() error {
 	initFilterLists()
+
+	// Register the config in the ui.
+	err := registerConfig()
+	if err != nil {
+		return err
+	}
 
 	// Register api endpoint for updating the filter list.
 	if err := api.RegisterEndpoint(api.Endpoint{
@@ -220,9 +223,8 @@ func New(instance instance) (*CustomList, error) {
 		States:                    mgr.NewStateMgr(m),
 		updateFilterListWorkerMgr: m.NewWorkerMgr("update custom filter list", checkAndUpdateFilterList, nil),
 	}
-	// Register the config in the ui.
-	err := registerConfig()
-	if err != nil {
+
+	if err := prep(); err != nil {
 		return nil, err
 	}
 

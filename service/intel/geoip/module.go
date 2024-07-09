@@ -19,19 +19,6 @@ func (g *GeoIP) Manager() *mgr.Manager {
 }
 
 func (g *GeoIP) Start() error {
-	if err := api.RegisterEndpoint(api.Endpoint{
-		Path: "intel/geoip/countries",
-		Read: api.PermitUser,
-		// Do not attach to module, as the data is always available anyway.
-		StructFunc: func(ar *api.Request) (i interface{}, err error) {
-			return countries, nil
-		},
-		Name:        "Get Country Information",
-		Description: "Returns a map of country information centers indexed by ISO-A2 country code",
-	}); err != nil {
-		return err
-	}
-
 	module.instance.Updates().EventResourcesUpdated.AddCallback(
 		"Check for GeoIP database updates",
 		func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
@@ -61,6 +48,20 @@ func New(instance instance) (*GeoIP, error) {
 		mgr:      m,
 		instance: instance,
 	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path: "intel/geoip/countries",
+		Read: api.PermitUser,
+		// Do not attach to module, as the data is always available anyway.
+		StructFunc: func(ar *api.Request) (i interface{}, err error) {
+			return countries, nil
+		},
+		Name:        "Get Country Information",
+		Description: "Returns a map of country information centers indexed by ISO-A2 country code",
+	}); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 

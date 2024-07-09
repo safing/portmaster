@@ -36,9 +36,6 @@ func (rm *ResolverModule) Manager() *mgr.Manager {
 }
 
 func (rm *ResolverModule) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
 	return start()
 }
 
@@ -264,6 +261,9 @@ func New(instance instance) (*ResolverModule, error) {
 		instance: instance,
 
 		States: mgr.NewStateMgr(m),
+	}
+	if err := prep(); err != nil {
+		return nil, err
 	}
 	return module, nil
 }

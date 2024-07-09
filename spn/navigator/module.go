@@ -45,10 +45,6 @@ func (n *Navigator) Manager() *mgr.Manager {
 }
 
 func (n *Navigator) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
-
 	return start()
 }
 
@@ -153,6 +149,10 @@ func New(instance instance) (*Navigator, error) {
 		mgr:      m,
 		instance: instance,
 	}
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 

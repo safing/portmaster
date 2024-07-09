@@ -93,7 +93,6 @@ func prep() error {
 	}
 
 	// Register API endpoints.
-	// FIXME(vladimir): Does this need to be called during start or during construction of module?
 	if err := registerAPIEndpoints(); err != nil {
 		return err
 	}

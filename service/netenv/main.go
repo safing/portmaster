@@ -30,10 +30,6 @@ func (ne *NetEnv) Manager() *mgr.Manager {
 }
 
 func (ne *NetEnv) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
-
 	ne.m.Go(
 		"monitor network changes",
 		monitorNetworkChanges,
@@ -52,6 +48,7 @@ func (ne *NetEnv) Stop() error {
 }
 
 func prep() error {
+	// FIXME(vladimir): Does this need to be in the prep function.
 	checkForIPv6Stack()
 
 	if err := registerAPIEndpoints(); err != nil {
@@ -62,6 +59,7 @@ func prep() error {
 		return err
 	}
 
+	// FIXME(vladimir): Does this need to be in the prep function.
 	return prepLocation()
 }
 
@@ -102,6 +100,10 @@ func New(instance instance) (*NetEnv, error) {
 		EventNetworkChange:      mgr.NewEventMgr[struct{}]("network change", m),
 		EventOnlineStatusChange: mgr.NewEventMgr[OnlineStatus]("online status change", m),
 	}
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 

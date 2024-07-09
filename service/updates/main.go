@@ -96,6 +96,10 @@ func prep() error {
 		}
 	}
 
+	if err := registerConfig(); err != nil {
+		return err
+	}
+
 	return registerAPIEndpoints()
 }
 

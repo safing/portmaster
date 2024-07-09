@@ -19,7 +19,11 @@ func (pm *ProcessModule) Manager() *mgr.Manager {
 }
 
 func (pm *ProcessModule) Start() error {
-	return start()
+	updatesPath = updates.RootPath()
+	if updatesPath != "" {
+		updatesPath += string(os.PathSeparator)
+	}
+	return nil
 }
 
 func (pm *ProcessModule) Stop() error {
@@ -29,13 +33,8 @@ func (pm *ProcessModule) Stop() error {
 var updatesPath string
 
 func prep() error {
-	return registerConfiguration()
-}
-
-func start() error {
-	updatesPath = updates.RootPath()
-	if updatesPath != "" {
-		updatesPath += string(os.PathSeparator)
+	if err := registerConfiguration(); err != nil {
+		return err
 	}
 
 	if err := registerAPIEndpoints(); err != nil {
@@ -56,9 +55,6 @@ func New(instance instance) (*ProcessModule, error) {
 		return nil, errors.New("only one instance allowed")
 	}
 
-	if err := prep(); err != nil {
-		return nil, err
-	}
 	m := mgr.New("ProcessModule")
 	module = &ProcessModule{
 		mgr:      m,

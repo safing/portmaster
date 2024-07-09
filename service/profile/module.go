@@ -65,6 +65,10 @@ func prep() error {
 		return err
 	}
 
+	if err := registerAPIEndpoints(); err != nil {
+		return err
+	}
+
 	// Setup icon storage location.
 	iconsDir := dataroot.Root().ChildDir("databases", 0o0700).ChildDir("icons", 0o0700)
 	if err := iconsDir.Ensure(); err != nil {
@@ -113,10 +117,6 @@ func start() error {
 	err = updateGlobalConfigProfile(module.mgr.Ctx())
 	if err != nil {
 		log.Warningf("profile: error during loading global profile from configuration: %s", err)
-	}
-
-	if err := registerAPIEndpoints(); err != nil {
-		return err
 	}
 
 	return nil
