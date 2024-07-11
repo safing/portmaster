@@ -17,7 +17,6 @@ import (
 func registerAPI() error {
 	api.RegisterHandler("/metrics", &metricsAPI{})
 
-	// FIXME(vladimir): This needs to be moved to the prep function.
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Name:        "Export Registered Metrics",
 		Description: "List all registered metrics with their metadata.",

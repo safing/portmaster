@@ -39,7 +39,7 @@ func main() {
 
 	// Set default log level.
 	log.SetLogLevel(log.WarningLevel)
-	log.Start()
+	_ = log.Start()
 
 	// Configure metrics.
 	_ = metrics.SetNamespace("portmaster")
@@ -67,6 +67,17 @@ func main() {
 		fmt.Printf("error creating an instance: %s\n", err)
 		return
 	}
+
+	// execute command if available
+	if instance.CommandLineOperation != nil {
+		// Run the function and exit.
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "cmdline operation failed: %s\n", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	// Start
 	go func() {
 		err = instance.Group.Start()

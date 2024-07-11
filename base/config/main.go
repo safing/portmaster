@@ -32,9 +32,6 @@ func SetDataRoot(root *utils.DirStructure) {
 }
 
 func init() {
-	// module = modules.Register("config", prep, start, nil, "database")
-	// module.RegisterEvent(ChangeEvent, true)
-
 	flag.BoolVar(&exportConfig, "export-config-options", false, "export configuration registry and exit")
 }
 
@@ -45,8 +42,7 @@ func prep() error {
 	}
 
 	if exportConfig {
-		// FIXME(vladimir): migrate
-		// modules.SetCmdLineOperation(exportConfigCmd)
+		module.instance.SetCmdLineOperation(exportConfigCmd)
 	}
 
 	return registerBasicOptions()

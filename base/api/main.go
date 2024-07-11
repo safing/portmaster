@@ -26,8 +26,7 @@ func init() {
 
 func prep() error {
 	if exportEndpoints {
-		// FIXME(vladimir): migrate
-		// modules.SetCmdLineOperation(exportEndpointsCmd)
+		module.instance.SetCmdLineOperation(exportEndpointsCmd)
 	}
 
 	if getDefaultListenAddress() == "" {

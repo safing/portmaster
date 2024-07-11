@@ -370,7 +370,7 @@ func loadResolvers() {
 	defer resolversLock.Unlock()
 
 	// Resolve module error about missing resolvers.
-	module.States.Remove(missingResolversErrorID)
+	module.states.Remove(missingResolversErrorID)
 
 	// Check if settings were changed and clear name cache when they did.
 	newResolverConfig := configuredNameServers()
@@ -394,7 +394,7 @@ func loadResolvers() {
 		newResolvers = getConfiguredResolvers(defaultNameServers)
 		if len(newResolvers) > 0 {
 			log.Warning("resolver: no (valid) dns server found in config or system, falling back to global defaults")
-			module.States.Add(mgr.State{
+			module.states.Add(mgr.State{
 				ID:      missingResolversErrorID,
 				Name:    "Using Factory Default DNS Servers",
 				Message: "The Portmaster could not find any (valid) DNS servers in the settings or system. In order to prevent being disconnected, the factory defaults are being used instead. If you just switched your network, this should be resolved shortly.",
@@ -402,7 +402,7 @@ func loadResolvers() {
 			})
 		} else {
 			log.Critical("resolver: no (valid) dns server found in config, system or global defaults")
-			module.States.Add(mgr.State{
+			module.states.Add(mgr.State{
 				ID:      missingResolversErrorID,
 				Name:    "No DNS Servers Configured",
 				Message: "The Portmaster could not find any (valid) DNS servers in the settings or system. You will experience severe connectivity problems until resolved. If you just switched your network, this should be resolved shortly.",

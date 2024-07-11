@@ -54,4 +54,6 @@ func New(instance instance) (*Config, error) {
 	return module, nil
 }
 
-type instance interface{}
+type instance interface {
+	SetCmdLineOperation(f func() error)
+}

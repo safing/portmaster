@@ -59,4 +59,5 @@ func New(instance instance) (*API, error) {
 
 type instance interface {
 	Config() *config.Config
+	SetCmdLineOperation(f func() error)
 }

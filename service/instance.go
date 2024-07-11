@@ -45,10 +45,9 @@ import (
 
 // Instance is an instance of a portmaste service.
 type Instance struct {
-	*mgr.Group
-
 	version string
 
+	*mgr.Group
 	database      *dbmodule.DBModule
 	config        *config.Config
 	api           *api.API
@@ -91,6 +90,8 @@ type Instance struct {
 	ships     *ships.Ships
 	sluice    *sluice.SluiceModule
 	terminal  *terminal.TerminalModule
+
+	CommandLineOperation func() error
 }
 
 // New returns a new portmaster service instance.
@@ -511,7 +512,15 @@ func (i *Instance) SPNGroup() *mgr.Group {
 }
 
 // Events
-// SPN connected
+
+// GetEventSPNConnected return the event manager for the SPN connected event.
 func (i *Instance) GetEventSPNConnected() *mgr.EventMgr[struct{}] {
 	return i.captain.EventSPNConnected
+}
+
+// Special functions
+
+// SetCmdLineOperation sets a command line operation to be executed instead of starting the system. This is useful when functions need all modules to be prepared for a special operation.
+func (i *Instance) SetCmdLineOperation(f func() error) {
+	i.CommandLineOperation = f
 }
