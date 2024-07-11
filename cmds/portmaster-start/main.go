@@ -28,6 +28,7 @@ var (
 	maxRetries int
 	dataRoot   *utils.DirStructure
 	logsRoot   *utils.DirStructure
+	forceOldUI bool
 
 	updateURLFlag string
 	userAgentFlag string
@@ -74,6 +75,7 @@ func init() {
 		flags.StringVar(&userAgentFlag, "update-agent", "", "Set an alternative user agent for requests to the update server")
 		flags.IntVar(&maxRetries, "max-retries", 5, "Maximum number of retries when starting a Portmaster component")
 		flags.BoolVar(&stdinSignals, "input-signals", false, "Emulate signals using stdin.")
+		flags.BoolVar(&forceOldUI, "old-ui", false, "Use the old ui. (Beta)")
 		_ = rootCmd.MarkPersistentFlagDirname("data")
 		_ = flags.MarkHidden("input-signals")
 	}

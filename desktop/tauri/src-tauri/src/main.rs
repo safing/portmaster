@@ -26,7 +26,7 @@ use window::{close_splash_window, create_main_window};
 #[macro_use]
 extern crate lazy_static;
 
-const FALLBACK_TO_OLD_UI_EXIT_CODE: i32 = -3;
+const FALLBACK_TO_OLD_UI_EXIT_CODE: i32 = 77;
 
 #[derive(Clone, serde::Serialize)]
 struct Payload {
