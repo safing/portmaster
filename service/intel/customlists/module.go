@@ -23,11 +23,15 @@ type CustomList struct {
 
 	updateFilterListWorkerMgr *mgr.WorkerMgr
 
-	States *mgr.StateMgr
+	states *mgr.StateMgr
 }
 
 func (cl *CustomList) Manager() *mgr.Manager {
 	return cl.mgr
+}
+
+func (cl *CustomList) States() *mgr.StateMgr {
+	return cl.states
 }
 
 func (cl *CustomList) Start() error {
@@ -220,7 +224,7 @@ func New(instance instance) (*CustomList, error) {
 		mgr:      m,
 		instance: instance,
 
-		States:                    mgr.NewStateMgr(m),
+		states:                    mgr.NewStateMgr(m),
 		updateFilterListWorkerMgr: m.NewWorkerMgr("update custom filter list", checkAndUpdateFilterList, nil),
 	}
 

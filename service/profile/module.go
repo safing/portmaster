@@ -37,11 +37,15 @@ type ProfileModule struct {
 	EventDelete       *mgr.EventMgr[string]
 	EventMigrated     *mgr.EventMgr[[]string]
 
-	States *mgr.StateMgr
+	states *mgr.StateMgr
 }
 
 func (pm *ProfileModule) Manager() *mgr.Manager {
 	return pm.mgr
+}
+
+func (pm *ProfileModule) States() *mgr.StateMgr {
+	return pm.states
 }
 
 func (pm *ProfileModule) Start() error {
@@ -144,7 +148,7 @@ func NewModule(instance instance) (*ProfileModule, error) {
 		EventDelete:       mgr.NewEventMgr[string](DeletedEvent, m),
 		EventMigrated:     mgr.NewEventMgr[[]string](MigratedEvent, m),
 
-		States: mgr.NewStateMgr(m),
+		states: mgr.NewStateMgr(m),
 	}
 
 	if err := prep(); err != nil {

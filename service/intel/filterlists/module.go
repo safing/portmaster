@@ -23,11 +23,15 @@ type FilterLists struct {
 	mgr      *mgr.Manager
 	instance instance
 
-	States *mgr.StateMgr
+	states *mgr.StateMgr
 }
 
 func (fl *FilterLists) Manager() *mgr.Manager {
 	return fl.mgr
+}
+
+func (fl *FilterLists) States() *mgr.StateMgr {
+	return fl.states
 }
 
 func (fl *FilterLists) Start() error {
@@ -110,7 +114,7 @@ func stop() error {
 }
 
 func warnAboutDisabledFilterLists() {
-	module.States.Add(mgr.State{
+	module.states.Add(mgr.State{
 		ID:      filterlistsDisabled,
 		Name:    "Filter Lists Are Initializing",
 		Message: "Filter lists are being downloaded and set up in the background. They will be activated as configured when finished.",
@@ -133,7 +137,7 @@ func New(instance instance) (*FilterLists, error) {
 		mgr:      m,
 		instance: instance,
 
-		States: mgr.NewStateMgr(m),
+		states: mgr.NewStateMgr(m),
 	}
 	return module, nil
 }

@@ -34,13 +34,13 @@ func tryListUpdate(ctx context.Context) error {
 		// generic one with the returned error.
 
 		hasWarningState := false
-		for _, state := range module.States.Export().States {
+		for _, state := range module.states.Export().States {
 			if state.Type == mgr.StateTypeWarning {
 				hasWarningState = true
 			}
 		}
 		if !hasWarningState {
-			module.States.Add(mgr.State{
+			module.states.Add(mgr.State{
 				ID:      filterlistsUpdateFailed,
 				Name:    "Filter Lists Update Failed",
 				Message: fmt.Sprintf("The Portmaster failed to process a filter lists update. Filtering capabilities are currently either impaired or not available at all. Error: %s", err.Error()),
@@ -134,7 +134,7 @@ func performUpdate(ctx context.Context) error {
 			// if we failed to remove all stale cache entries
 			// we abort now WITHOUT updating the database version. This means
 			// we'll try again during the next update.
-			module.States.Add(mgr.State{
+			module.states.Add(mgr.State{
 				ID:      filterlistsStaleDataSurvived,
 				Name:    "Filter Lists May Overblock",
 				Message: fmt.Sprintf("The Portmaster failed to delete outdated filter list data. Filtering capabilities are fully available, but overblocking may occur. Error: %s", err.Error()), //nolint:misspell // overblocking != overclocking
@@ -153,7 +153,7 @@ func performUpdate(ctx context.Context) error {
 	}
 
 	// The list update succeeded, resolve any states.
-	module.States.Clear()
+	module.states.Clear()
 	return nil
 }
 

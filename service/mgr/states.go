@@ -43,6 +43,10 @@ type StateUpdate struct {
 	States []State
 }
 
+type StatefulModule interface {
+	States() *StateMgr
+}
+
 // NewStateMgr returns a new state manager.
 func NewStateMgr(mgr *Manager) *StateMgr {
 	return &StateMgr{

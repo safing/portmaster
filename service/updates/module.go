@@ -54,8 +54,8 @@ func New(instance instance, shutdownFunc func(exitCode int)) (*Updates, error) {
 	return module, nil
 }
 
-// State returns the state manager.
-func (u *Updates) State() *mgr.StateMgr {
+// States returns the state manager.
+func (u *Updates) States() *mgr.StateMgr {
 	return u.states
 }
 

@@ -38,12 +38,16 @@ type Captain struct {
 	healthCheckTicker    *mgr.SleepyTicker
 	maintainPublicStatus *mgr.WorkerMgr
 
-	States            *mgr.StateMgr
+	states            *mgr.StateMgr
 	EventSPNConnected *mgr.EventMgr[struct{}]
 }
 
 func (c *Captain) Manager() *mgr.Manager {
 	return c.mgr
+}
+
+func (c *Captain) States() *mgr.StateMgr {
+	return c.states
 }
 
 func (c *Captain) Start() error {
@@ -251,7 +255,7 @@ func New(instance instance, shutdownFunc func(exitCode int)) (*Captain, error) {
 		instance:     instance,
 		shutdownFunc: shutdownFunc,
 
-		States:               mgr.NewStateMgr(m),
+		states:               mgr.NewStateMgr(m),
 		EventSPNConnected:    mgr.NewEventMgr[struct{}](SPNConnectedEvent, m),
 		maintainPublicStatus: m.NewWorkerMgr("maintain public status", maintainPublicStatus, nil),
 	}

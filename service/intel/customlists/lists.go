@@ -80,7 +80,7 @@ func parseFile(filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		log.Warningf("intel/customlists: failed to parse file %s", err)
-		module.States.Add(mgr.State{
+		module.states.Add(mgr.State{
 			ID:      parseWarningNotificationID,
 			Name:    "Failed to open custom filter list",
 			Message: err.Error(),
@@ -113,7 +113,7 @@ func parseFile(filePath string) error {
 
 	if invalidLinesRation > rationForInvalidLinesUntilWarning {
 		log.Warning("intel/customlists: Too many invalid lines")
-		module.States.Add(mgr.State{
+		module.states.Add(mgr.State{
 			ID:   zeroIPNotificationID,
 			Name: "Custom filter list has many invalid lines",
 			Message: fmt.Sprintf(`%d out of %d lines are invalid.
@@ -121,7 +121,7 @@ func parseFile(filePath string) error {
 			Type: mgr.StateTypeWarning,
 		})
 	} else {
-		module.States.Remove(zeroIPNotificationID)
+		module.states.Remove(zeroIPNotificationID)
 	}
 
 	allEntriesCount := len(domainsFilterList) + len(ipAddressesFilterList) + len(autonomousSystemsFilterList) + len(countryCodesFilterList)
@@ -140,7 +140,7 @@ func parseFile(filePath string) error {
 			len(autonomousSystemsFilterList),
 			len(countryCodesFilterList)))
 
-	module.States.Remove(parseWarningNotificationID)
+	module.states.Remove(parseWarningNotificationID)
 
 	return nil
 }

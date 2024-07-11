@@ -77,11 +77,11 @@ func clientManager(ctx *mgr.WorkerCtx) error {
 		ready.UnSet()
 		netenv.ConnectedToSPN.UnSet()
 		resetSPNStatus(StatusDisabled, true)
-		module.States.Clear()
+		module.states.Clear()
 		clientStopHomeHub(ctx.Ctx())
 	}()
 
-	module.States.Add(mgr.State{
+	module.states.Add(mgr.State{
 		ID:      "spn:establishing-home-hub",
 		Name:    "Connecting to SPN...",
 		Message: "Connecting to the SPN network is in progress.",
@@ -423,7 +423,7 @@ func clientSetActiveConnectionStatus(ctx context.Context) clientComponentResult 
 	}
 
 	// Resolve any connection error.
-	module.States.Clear()
+	module.states.Clear()
 
 	// Update SPN Status with connection information, if not already correctly set.
 	spnStatus.Lock()

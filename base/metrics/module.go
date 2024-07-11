@@ -85,12 +85,8 @@ func start() error {
 		return err
 	}
 
-	if err := registerAPI(); err != nil {
-		return err
-	}
-
 	if pushOption() != "" {
-		module.mgr.Do("metric pusher", metricsWriter)
+		_ = module.mgr.Do("metric pusher", metricsWriter)
 	}
 
 	return nil
@@ -203,6 +199,9 @@ func New(instance instance) (*Metrics, error) {
 		return nil, err
 	}
 
+	if err := registerAPI(); err != nil {
+		return nil, err
+	}
 	return module, nil
 }
 

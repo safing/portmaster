@@ -19,7 +19,6 @@ import (
 const ChangeEvent = "config change"
 
 var (
-	// module   *modules.Module
 	dataRoot *utils.DirStructure
 
 	exportConfig bool

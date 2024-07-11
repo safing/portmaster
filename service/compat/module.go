@@ -18,10 +18,15 @@ type Compat struct {
 	instance instance
 
 	selfcheckWorkerMgr *mgr.WorkerMgr
+	states             *mgr.StateMgr
 }
 
 func (u *Compat) Manager() *mgr.Manager {
 	return u.mgr
+}
+
+func (u *Compat) States() *mgr.StateMgr {
+	return u.states
 }
 
 // Start starts the module.
@@ -157,6 +162,8 @@ func New(instance instance) (*Compat, error) {
 	module = &Compat{
 		mgr:      m,
 		instance: instance,
+
+		states: mgr.NewStateMgr(m),
 	}
 	if err := prep(); err != nil {
 		return nil, err

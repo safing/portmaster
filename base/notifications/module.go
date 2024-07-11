@@ -13,16 +13,18 @@ type Notifications struct {
 	mgr      *mgr.Manager
 	instance instance
 
-	States *mgr.StateMgr
+	states *mgr.StateMgr
 }
 
 func (n *Notifications) Manager() *mgr.Manager {
 	return n.mgr
 }
 
-func (n *Notifications) Start() error {
-	n.States = mgr.NewStateMgr(n.mgr)
+func (n *Notifications) States() *mgr.StateMgr {
+	return n.states
+}
 
+func (n *Notifications) Start() error {
 	if err := prep(); err != nil {
 		return err
 	}
@@ -57,7 +59,7 @@ func showConfigLoadingErrors() {
 	}
 
 	// Trigger a module error for more awareness.
-	module.States.Add(mgr.State{
+	module.states.Add(mgr.State{
 		ID:      "config:validation-errors-on-load",
 		Name:    "Invalid Settings",
 		Message: "Some current settings are invalid. Please update them and restart the Portmaster.",
@@ -100,7 +102,7 @@ func New(instance instance) (*Notifications, error) {
 		mgr:      m,
 		instance: instance,
 
-		States: mgr.NewStateMgr(m),
+		states: mgr.NewStateMgr(m),
 	}
 
 	return module, nil

@@ -23,11 +23,15 @@ type NameServer struct {
 	mgr      *mgr.Manager
 	instance instance
 
-	States *mgr.StateMgr
+	states *mgr.StateMgr
 }
 
 func (ns *NameServer) Manager() *mgr.Manager {
 	return ns.mgr
+}
+
+func (ns *NameServer) States() *mgr.StateMgr {
+	return ns.states
 }
 
 func (ns *NameServer) Start() error {
@@ -156,7 +160,7 @@ func startListener(ip net.IP, port uint16, first bool) {
 
 		// Resolve generic listener error, if primary listener.
 		if first {
-			module.States.Remove(eventIDListenerFailed)
+			module.states.Remove(eventIDListenerFailed)
 		}
 
 		// Start listening.
@@ -320,7 +324,7 @@ func New(instance instance) (*NameServer, error) {
 		mgr:      m,
 		instance: instance,
 
-		States: mgr.NewStateMgr(m),
+		states: mgr.NewStateMgr(m),
 	}
 	if err := prep(); err != nil {
 		return nil, err

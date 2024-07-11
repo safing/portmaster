@@ -129,7 +129,7 @@ func updateGlobalConfigProfile(_ context.Context) error {
 
 	// If there was any error, try again later until it succeeds.
 	if lastErr == nil {
-		module.States.Remove(globalConfigProfileErrorID)
+		module.states.Remove(globalConfigProfileErrorID)
 	} else {
 		// Create task after first failure.
 
@@ -140,7 +140,7 @@ func updateGlobalConfigProfile(_ context.Context) error {
 			})
 
 		// Add module warning to inform user.
-		module.States.Add(mgr.State{
+		module.states.Add(mgr.State{
 			ID:      globalConfigProfileErrorID,
 			Name:    "Internal Settings Failure",
 			Message: fmt.Sprintf("Some global settings might not be applied correctly. You can try restarting the Portmaster to resolve this problem. Error: %s", err),

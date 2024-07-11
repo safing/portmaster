@@ -28,11 +28,15 @@ type ResolverModule struct {
 	failingResolverWorkerMgr   *mgr.WorkerMgr
 	suggestUsingStaleCacheTask *mgr.WorkerMgr
 
-	States *mgr.StateMgr
+	states *mgr.StateMgr
 }
 
 func (rm *ResolverModule) Manager() *mgr.Manager {
 	return rm.mgr
+}
+
+func (rm *ResolverModule) States() *mgr.StateMgr {
+	return rm.states
 }
 
 func (rm *ResolverModule) Start() error {
@@ -203,7 +207,7 @@ func resetFailingResolversNotification() {
 	}
 
 	// Additionally, resolve the module error, if not done through the notification.
-	module.States.Remove(failingResolverErrorID)
+	module.states.Remove(failingResolverErrorID)
 }
 
 // AddToDebugInfo adds the system status to the given debug.Info.
@@ -260,7 +264,7 @@ func New(instance instance) (*ResolverModule, error) {
 		mgr:      m,
 		instance: instance,
 
-		States: mgr.NewStateMgr(m),
+		states: mgr.NewStateMgr(m),
 	}
 	if err := prep(); err != nil {
 		return nil, err
