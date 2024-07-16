@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
@@ -57,6 +58,12 @@ func (f *Firewall) Start() error {
 }
 
 func (f *Firewall) Stop() error {
+	// Cancel all workers and give them a little time.
+	// The bandwidth updater can crash the sqlite DB for some reason.
+	// TODO: Investigate.
+	f.mgr.Cancel()
+	time.Sleep(100 * time.Millisecond)
+
 	return stop()
 }
 
