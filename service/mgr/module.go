@@ -104,7 +104,7 @@ func (g *Group) Start() error {
 		m.mgr.Info("starting")
 		startTime := time.Now()
 
-		err := m.mgr.Do(m.mgr.name+" Start", func(_ *WorkerCtx) error {
+		err := m.mgr.Do("start module "+m.mgr.name, func(_ *WorkerCtx) error {
 			return m.module.Start()
 		})
 		if err != nil {
@@ -116,7 +116,7 @@ func (g *Group) Start() error {
 			return fmt.Errorf("failed to start %s: %w", makeModuleName(m.module), err)
 		}
 		duration := time.Since(startTime)
-		m.mgr.Info("started " + duration.String())
+		m.mgr.Info("started", "time", duration.String())
 	}
 	g.state.Store(groupStateRunning)
 	return nil
@@ -142,7 +142,7 @@ func (g *Group) stopFrom(index int) (ok bool) {
 	for i := index; i >= 0; i-- {
 		m := g.modules[i]
 
-		err := m.mgr.Do(m.mgr.name+" Stop", func(_ *WorkerCtx) error {
+		err := m.mgr.Do("stop module "+m.mgr.name, func(_ *WorkerCtx) error {
 			return m.module.Stop()
 		})
 		if err != nil {
