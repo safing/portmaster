@@ -46,11 +46,6 @@ func prep() error {
 }
 
 func start() error {
-	err := database.Initialize(databaseStructureRoot)
-	if err != nil {
-		return err
-	}
-
 	startMaintenanceTasks()
 	return nil
 }
@@ -76,6 +71,11 @@ func New(instance instance) (*DBModule, error) {
 	module = &DBModule{
 		mgr:      m,
 		instance: instance,
+	}
+
+	err := database.Initialize(databaseStructureRoot)
+	if err != nil {
+		return nil, err
 	}
 
 	return module, nil

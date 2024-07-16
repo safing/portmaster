@@ -21,11 +21,6 @@ func (b *Base) Manager() *mgr.Manager {
 
 func (b *Base) Start() error {
 	startProfiling()
-
-	if err := registerDatabases(); err != nil {
-		return err
-	}
-
 	registerLogCleaner()
 
 	return nil
@@ -50,6 +45,11 @@ func New(instance instance) (*Base, error) {
 		mgr:      m,
 		instance: instance,
 	}
+
+	if err := registerDatabases(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 

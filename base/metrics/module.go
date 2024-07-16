@@ -86,7 +86,7 @@ func start() error {
 	}
 
 	if pushOption() != "" {
-		_ = module.mgr.Do("metric pusher", metricsWriter)
+		module.mgr.Go("metric pusher", metricsWriter)
 	}
 
 	return nil
