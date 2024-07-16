@@ -64,7 +64,6 @@ import { SecurityLockComponent } from './shared/security-lock';
 import { SPNAccountDetailsComponent } from './shared/spn-account-details';
 import { SPNLoginComponent } from './shared/spn-login';
 import { SPNStatusComponent } from './shared/spn-status';
-import { PilotWidgetComponent } from './shared/status-pilot';
 import { PlaceholderComponent } from './shared/text-placeholder';
 import { DashboardWidgetComponent } from './pages/dashboard/dashboard-widget/dashboard-widget.component';
 import { MergeProfileDialogComponent } from './pages/app-view/merge-profile-dialog/merge-profile-dialog.component';
@@ -133,7 +132,6 @@ const localeConfig = {
     MonitorPageComponent,
     SideDashComponent,
     NavigationComponent,
-    PilotWidgetComponent,
     NotificationListComponent,
     PromptListComponent,
     FuzzySearchPipe,

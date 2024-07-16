@@ -1,5 +1,5 @@
 import { ExpertiseLevelNumber } from "@safing/portmaster-api";
-import { ModuleStatus, Subsystem } from "src/app/services/status.types";
+import { Subsystem } from "src/app/services/status.types";
 
 export interface SubsystemWithExpertise extends Subsystem {
   minimumExpertise: ExpertiseLevelNumber;
@@ -18,70 +18,37 @@ export var subsystems : SubsystemWithExpertise[] = [
     Modules: [
       {
         Name: "core",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "subsystems",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "runtime",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "status",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "ui",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "compat",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "broadcasts",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "sync",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       }
     ],
-    FailureStatus: 0,
     ToggleOptionKey: "",
     ExpertiseLevel: "user",
     ReleaseLevel: 0,
@@ -104,22 +71,13 @@ export var subsystems : SubsystemWithExpertise[] = [
     Modules: [
       {
         Name: "nameserver",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "resolver",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       }
     ],
-    FailureStatus: 0,
     ToggleOptionKey: "",
     ExpertiseLevel: "user",
     ReleaseLevel: 0,
@@ -142,150 +100,77 @@ export var subsystems : SubsystemWithExpertise[] = [
     Modules: [
       {
         Name: "filter",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "interception",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "base",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "database",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "config",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "rng",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "metrics",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "api",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "updates",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "network",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "netenv",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "processes",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "profiles",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "notifications",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "intel",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "geoip",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "filterlists",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       },
       {
         Name: "customlists",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       }
     ],
-    FailureStatus: 0,
     ToggleOptionKey: "",
     ExpertiseLevel: "user",
     ReleaseLevel: 0,
@@ -308,14 +193,9 @@ export var subsystems : SubsystemWithExpertise[] = [
     Modules: [
       {
         Name: "netquery",
-        Enabled: true,
-        Status: ModuleStatus.Operational,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: true
       }
     ],
-    FailureStatus: 0,
     ToggleOptionKey: "",
     ExpertiseLevel: "user",
     ReleaseLevel: 0,
@@ -338,86 +218,45 @@ export var subsystems : SubsystemWithExpertise[] = [
     Modules: [
       {
         Name: "captain",
-        Enabled: false,
-        Status: 2,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: false
       },
       {
         Name: "terminal",
-        Enabled: false,
-        Status: 2,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: false
       },
       {
         Name: "cabin",
-        Enabled: false,
-        Status: 2,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: false
       },
       {
         Name: "ships",
-        Enabled: false,
-        Status: 2,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: false
       },
       {
         Name: "docks",
-        Enabled: false,
-        Status: 2,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: false
       },
       {
         Name: "access",
-        Enabled: false,
-        Status: 2,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: false
       },
       {
         Name: "crew",
-        Enabled: false,
-        Status: 2,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: false
       },
       {
         Name: "navigator",
-        Enabled: false,
-        Status: 2,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: false
       },
       {
         Name: "sluice",
-        Enabled: false,
-        Status: 2,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: false
       },
       {
         Name: "patrol",
-        Enabled: false,
-        Status: 2,
-        FailureStatus: 0,
-        FailureID: "",
-        FailureMsg: ""
+        Enabled: false
       }
     ],
-    FailureStatus: 0,
     ToggleOptionKey: "spn/enable",
     ExpertiseLevel: "user",
     ReleaseLevel: 0,
