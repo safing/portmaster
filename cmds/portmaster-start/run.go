@@ -64,7 +64,7 @@ type Options struct {
 // This is a temp value that will be used to test the new UI in beta.
 var app2Options = Options{
 	Name:              "Portmaster App2",
-	Identifier:        "app2/portmaster",
+	Identifier:        "app2/portmaster-app",
 	AllowDownload:     false,
 	AllowHidingWindow: false,
 	RestartOnFail:     true,
@@ -73,7 +73,7 @@ var app2Options = Options{
 func init() {
 	// Make sure the new UI has a proper extension.
 	if onWindows {
-		app2Options.Identifier += ".exe"
+		app2Options.Identifier += ".zip"
 	}
 
 	registerComponent([]Options{
@@ -93,12 +93,6 @@ func init() {
 			RestartOnFail:     true,
 		},
 		{
-			Name:              "Portmaster App2",
-			Identifier:        "app2/portmaster",
-			AllowDownload:     false,
-			AllowHidingWindow: false,
-		},
-		{
 			Name:              "Portmaster Notifier",
 			Identifier:        "notifier/portmaster-notifier",
 			LockPerUser:       true,
@@ -116,6 +110,26 @@ func init() {
 			RestartOnFail:     true,
 		},
 	})
+
+	if onWindows {
+		registerComponent([]Options{
+			{
+				Name:              "Portmaster App2",
+				Identifier:        "app2/portmaster-app.zip",
+				AllowDownload:     false,
+				AllowHidingWindow: false,
+			},
+		})
+	} else {
+		registerComponent([]Options{
+			{
+				Name:              "Portmaster App2",
+				Identifier:        "app2/portmaster-app",
+				AllowDownload:     false,
+				AllowHidingWindow: false,
+			},
+		})
+	}
 }
 
 func registerComponent(opts []Options) {

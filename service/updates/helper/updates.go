@@ -57,7 +57,7 @@ func MandatoryUpdates() (identifiers []string) {
 			PlatformIdentifier("start/portmaster-start.exe"),
 			PlatformIdentifier("notifier/portmaster-notifier.exe"),
 			PlatformIdentifier("notifier/portmaster-wintoast.dll"),
-			PlatformIdentifier("app2/portmaster.exe"),
+			PlatformIdentifier("app2/portmaster-app.zip"),
 		)
 	} else {
 		identifiers = append(
@@ -65,7 +65,7 @@ func MandatoryUpdates() (identifiers []string) {
 			PlatformIdentifier("core/portmaster-core"),
 			PlatformIdentifier("start/portmaster-start"),
 			PlatformIdentifier("notifier/portmaster-notifier"),
-			PlatformIdentifier("app2/portmaster"),
+			PlatformIdentifier("app2/portmaster-app"),
 		)
 	}
 
@@ -90,5 +90,6 @@ func AutoUnpackUpdates() []string {
 
 	return []string{
 		PlatformIdentifier("app/portmaster-app.zip"),
+		PlatformIdentifier("app2/portmaster-app.zip"),
 	}
 }
