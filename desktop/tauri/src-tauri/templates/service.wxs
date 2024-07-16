@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
 	<Fragment>
-		<CustomAction Id="InstallPortmasterService"
+    <CustomAction Id="InstallPortmasterService"
               Directory="INSTALLDIR"
               ExeCommand="&quot;[INSTALLDIR]portmaster-start.exe&quot; install core-service --data=&quot;[INSTALLDIR]data&quot;"
               Execute="commit"
