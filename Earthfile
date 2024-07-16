@@ -16,10 +16,10 @@ ARG --global outputDir = "./dist"
 # to GOOS, GOARCH and GOARM when building go binaries. See the +RUST_TO_GO_ARCH_STRING
 # helper method at the bottom of the file.
 
-ARG --global architectures = "x86_64-unknown-linux-gnu" \
-                             "aarch64-unknown-linux-gnu" \
-                             "x86_64-pc-windows-gnu"
+ARG --global architectures = "x86_64-unknown-linux-gnu"
                              # TODO: Compile errors here:
+                             # "x86_64-pc-windows-gnu" --> Will work only on windows machine
+                             # "aarch64-unknown-linux-gnu" --> Needs new docker container with arm libraries installed
                              # "aarch64-pc-windows-gnu" \
                              # "x86_64-apple-darwin" \
                              # "aarch64-apple-darwin"

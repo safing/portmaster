@@ -28,7 +28,7 @@ function asyncInvoke<T>(method: string, args: object): Promise<T> {
       if (typeof event.payload === 'object' && 'error' in event.payload) {
         reject(event.payload);
         return
-      };
+      }
 
       resolve(event.payload);
     })
@@ -130,7 +130,7 @@ export class TauriIntegrationService implements IntegrationService {
     }
   }
 
-  get_state(key: string): Promise<string> {
+  get_state(_: string): Promise<string> {
     return invoke<string>("get_state");
   }
 
@@ -150,7 +150,7 @@ export class TauriIntegrationService implements IntegrationService {
   }
 
   onExitRequest(cb: () => void): () => void {
-    let unlisten: () => void = () => { };
+    let unlisten: () => void = () => undefined;
 
     listen('exit-requested', () => {
       cb();
@@ -189,7 +189,7 @@ export class TauriIntegrationService implements IntegrationService {
       return;
     }
 
-    let promptWindow = new Window("prompt", {
+    const promptWindow = new Window("prompt", {
       alwaysOnTop: true,
       decorations: false,
       minimizable: false,
