@@ -36,7 +36,6 @@ func (s *Status) handleModuleStatusUpdate(_ *mgr.WorkerCtx, update mgr.StateUpda
 	s.statesLock.Lock()
 	defer s.statesLock.Unlock()
 
-	s.mgr.Error("received module state update", "state update", update)
 	s.states[update.Module] = update
 	s.deriveNotificationsFromStateUpdate(update)
 	s.triggerPublishStatus()

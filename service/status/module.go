@@ -55,7 +55,6 @@ func (s *Status) Start() error {
 	s.instance.AddStatusCallback("status update", s.handleModuleStatusUpdate)
 	// Get initial states.
 	for _, stateUpdate := range s.instance.GetStatus() {
-		s.mgr.Info("status update", stateUpdate)
 		s.states[stateUpdate.Module] = stateUpdate
 		s.deriveNotificationsFromStateUpdate(stateUpdate)
 	}
