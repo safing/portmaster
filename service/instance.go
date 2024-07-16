@@ -524,3 +524,22 @@ func (i *Instance) GetEventSPNConnected() *mgr.EventMgr[struct{}] {
 func (i *Instance) SetCmdLineOperation(f func() error) {
 	i.CommandLineOperation = f
 }
+
+// GetStatus returns the current Status of all group modules.
+func (i *Instance) GetStatus() []mgr.StateUpdate {
+	mainStates := i.Group.GetStatus()
+	spnStates := i.SpnGroup.GetStatus()
+
+	updates := make([]mgr.StateUpdate, 0, len(mainStates)+len(spnStates))
+	updates = append(updates, mainStates...)
+	updates = append(updates, spnStates...)
+
+	return updates
+}
+
+// AddStatusCallback adds the given callback function to all group modules that
+// expose a state manager at States().
+func (i *Instance) AddStatusCallback(callbackName string, callback mgr.EventCallbackFunc[mgr.StateUpdate]) {
+	i.Group.AddStatusCallback(callbackName, callback)
+	i.SpnGroup.AddStatusCallback(callbackName, callback)
+}

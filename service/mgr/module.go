@@ -196,6 +196,27 @@ func (g *Group) IsDone() bool {
 	return g.ctx.Err() != nil
 }
 
+// GetStatus returns the current Status of all group modules.
+func (g *Group) GetStatus() []StateUpdate {
+	updates := make([]StateUpdate, 0, len(g.modules))
+	for _, gm := range g.modules {
+		if stateful, ok := gm.module.(StatefulModule); ok {
+			updates = append(updates, stateful.States().Export())
+		}
+	}
+	return updates
+}
+
+// AddStatusCallback adds the given callback function to all group modules that
+// expose a state manager at States().
+func (g *Group) AddStatusCallback(callbackName string, callback EventCallbackFunc[StateUpdate]) {
+	for _, gm := range g.modules {
+		if stateful, ok := gm.module.(StatefulModule); ok {
+			stateful.States().AddCallback(callbackName, callback)
+		}
+	}
+}
+
 // RunModules is a simple wrapper function to start modules and stop them again
 // when the given context is canceled.
 func RunModules(ctx context.Context, modules ...Module) error {

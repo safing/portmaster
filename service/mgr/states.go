@@ -37,9 +37,25 @@ const (
 	StateTypeError     = "error"
 )
 
+// Severity returns a number representing the gravity of the state for ordering.
+func (st StateType) Severity() int {
+	switch st {
+	case StateTypeUndefined:
+		return 0
+	case StateTypeHint:
+		return 1
+	case StateTypeWarning:
+		return 2
+	case StateTypeError:
+		return 3
+	default:
+		return 0
+	}
+}
+
 // StateUpdate is used to update others about a state change.
 type StateUpdate struct {
-	Name   string
+	Module string
 	States []State
 }
 
@@ -121,7 +137,7 @@ func (m *StateMgr) export() StateUpdate {
 	}
 
 	return StateUpdate{
-		Name:   name,
+		Module: name,
 		States: slices.Clone(m.states),
 	}
 }
