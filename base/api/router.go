@@ -83,17 +83,20 @@ func stopServer() error {
 }
 
 // Serve starts serving the API endpoint.
-func serverManager(_ *mgr.WorkerCtx) error {
+func serverManager(ctx *mgr.WorkerCtx) error {
 	// start serving
 	log.Infof("api: starting to listen on %s", server.Addr)
 	backoffDuration := 10 * time.Second
 	for {
-		// always returns an error
-		err := module.mgr.Do("http endpoint", func(ctx *mgr.WorkerCtx) error {
-			return server.ListenAndServe()
+		err := module.mgr.Do("http server", func(ctx *mgr.WorkerCtx) error {
+			err := server.ListenAndServe()
+			// return on shutdown error
+			if errors.Is(err, http.ErrServerClosed) {
+				return nil
+			}
+			return err
 		})
-		// return on shutdown error
-		if errors.Is(err, http.ErrServerClosed) {
+		if err == nil {
 			return nil
 		}
 		// log error and restart
