@@ -57,33 +57,30 @@ func main() {
 		return
 	}
 
-	// Create
-	instance, err := service.New("2.0.0", &service.ServiceConfig{
-		ShutdownFunc: func(exitCode int) {
-			fmt.Printf("ExitCode: %d\n", exitCode)
-		},
-	})
+	// Create instance.
+	instance, err := service.New(&service.ServiceConfig{})
 	if err != nil {
 		fmt.Printf("error creating an instance: %s\n", err)
-		return
+		os.Exit(2)
 	}
 
-	// execute command if available
+	// Execute command line operation, if available.
 	if instance.CommandLineOperation != nil {
 		// Run the function and exit.
+		err = instance.CommandLineOperation()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "cmdline operation failed: %s\n", err)
-			os.Exit(1)
+			os.Exit(3)
 		}
 		os.Exit(0)
 	}
 
 	// Start
 	go func() {
-		err = instance.Group.Start()
+		err = instance.Start()
 		if err != nil {
 			fmt.Printf("instance start failed: %s\n", err)
-			return
+			os.Exit(1)
 		}
 	}()
 
@@ -99,50 +96,48 @@ func main() {
 		sigUSR1,
 	)
 
-signalLoop:
-	for {
-		select {
-		case sig := <-signalCh:
-			// Only print and continue to wait if SIGUSR1
-			if sig == sigUSR1 {
-				printStackTo(os.Stderr, "PRINTING STACK ON REQUEST")
-				continue signalLoop
-			}
-
+	select {
+	case sig := <-signalCh:
+		// Only print and continue to wait if SIGUSR1
+		if sig == sigUSR1 {
+			printStackTo(os.Stderr, "PRINTING STACK ON REQUEST")
+		} else {
 			fmt.Println(" <INTERRUPT>") // CLI output.
 			slog.Warn("program was interrupted, stopping")
-
-			// catch signals during shutdown
-			go func() {
-				forceCnt := 5
-				for {
-					<-signalCh
-					forceCnt--
-					if forceCnt > 0 {
-						fmt.Printf(" <INTERRUPT> again, but already shutting down - %d more to force\n", forceCnt)
-					} else {
-						printStackTo(os.Stderr, "PRINTING STACK ON FORCED EXIT")
-						os.Exit(1)
-					}
-				}
-			}()
-
-			go func() {
-				time.Sleep(3 * time.Minute)
-				printStackTo(os.Stderr, "PRINTING STACK - TAKING TOO LONG FOR SHUTDOWN")
-				os.Exit(1)
-			}()
-
-			if err := instance.Stop(); err != nil {
-				slog.Error("failed to stop portmaster", "err", err)
-				continue signalLoop
-			}
-			break signalLoop
-
-		case <-instance.Done():
-			break signalLoop
 		}
+
+	case <-instance.Stopped():
+		os.Exit(instance.ExitCode())
 	}
+
+	// Catch signals during shutdown.
+	// Rapid unplanned disassembly after 5 interrupts.
+	go func() {
+		forceCnt := 5
+		for {
+			<-signalCh
+			forceCnt--
+			if forceCnt > 0 {
+				fmt.Printf(" <INTERRUPT> again, but already shutting down - %d more to force\n", forceCnt)
+			} else {
+				printStackTo(os.Stderr, "PRINTING STACK ON FORCED EXIT")
+				os.Exit(1)
+			}
+		}
+	}()
+
+	// Rapid unplanned disassembly after 3 minutes.
+	go func() {
+		time.Sleep(3 * time.Minute)
+		printStackTo(os.Stderr, "PRINTING STACK - TAKING TOO LONG FOR SHUTDOWN")
+		os.Exit(1)
+	}()
+
+	// Stop instance.
+	if err := instance.Stop(); err != nil {
+		slog.Error("failed to stop portmaster", "err", err)
+	}
+	os.Exit(instance.ExitCode())
 }
 
 func printStackTo(writer io.Writer, msg string) {

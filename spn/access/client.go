@@ -57,16 +57,8 @@ func makeClientRequest(opts *clientRequestOptions) (resp *http.Response, err err
 	// Get context for request.
 	var ctx context.Context
 	var cancel context.CancelFunc
-	// TODO(vladimir): can the module not be online?
-	// if module.Online() {
-	// Only use module context if online.
 	ctx, cancel = context.WithTimeout(module.mgr.Ctx(), opts.requestTimeout)
 	defer cancel()
-	// } else {
-	// 	// Otherwise, use the background context.
-	// 	ctx, cancel = context.WithTimeout(context.Background(), opts.requestTimeout)
-	// 	defer cancel()
-	// }
 
 	// Create new request.
 	request, err := http.NewRequestWithContext(ctx, opts.method, opts.url, nil)

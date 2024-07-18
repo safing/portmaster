@@ -138,10 +138,6 @@ func (issue *systemIssue) notify(err error) {
 
 	systemIssueNotification = n
 	n.SyncWithState(module.states)
-
-	// Report the raw error as module error.
-	// FIXME(vladimir): Is there a need for this kind of error reporting?
-	// module.NewErrorMessage("selfcheck", err).Report()
 }
 
 func resetSystemIssue() {

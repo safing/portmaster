@@ -114,9 +114,9 @@ func automaticRestart(w *mgr.WorkerCtx) error {
 
 		// Set restart exit code.
 		if !rebooting {
-			module.shutdownFunc(RestartExitCode)
+			module.instance.Shutdown(RestartExitCode)
 		} else {
-			module.shutdownFunc(0)
+			module.instance.Shutdown(0)
 		}
 	}
 

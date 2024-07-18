@@ -13,6 +13,8 @@ import (
 type Broadcasts struct {
 	mgr      *mgr.Manager
 	instance instance
+
+	states *mgr.StateMgr
 }
 
 func (b *Broadcasts) Manager() *mgr.Manager {
@@ -25,6 +27,10 @@ func (b *Broadcasts) Start() error {
 
 func (b *Broadcasts) Stop() error {
 	return nil
+}
+
+func (b *Broadcasts) States() *mgr.StateMgr {
+	return b.states
 }
 
 var (
@@ -75,6 +81,7 @@ func New(instance instance) (*Broadcasts, error) {
 	module = &Broadcasts{
 		mgr:      m,
 		instance: instance,
+		states:   m.NewStateMgr(),
 	}
 
 	if err := prep(); err != nil {

@@ -6,9 +6,16 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
+)
+
+var (
+	// ErrUnsuitableGroupState is returned when an operation cannot be executed due to an unsuitable state.
+	ErrUnsuitableGroupState = errors.New("unsuitable group state")
+
+	// ErrInvalidGroupState is returned when a group is in an invalid state and cannot be recovered.
+	ErrInvalidGroupState = errors.New("invalid group state")
 )
 
 const (
@@ -40,10 +47,6 @@ func groupStateToString(state int32) string {
 type Group struct {
 	modules []*groupModule
 
-	ctx       context.Context
-	cancelCtx context.CancelFunc
-	ctxLock   sync.Mutex
-
 	state atomic.Int32
 }
 
@@ -65,11 +68,12 @@ func NewGroup(modules ...Module) *Group {
 	g := &Group{
 		modules: make([]*groupModule, 0, len(modules)),
 	}
-	g.initGroupContext()
 
 	// Initialize groups modules.
 	for _, m := range modules {
-		// Skip non-values.
+		mgr := m.Manager()
+
+		// Check module.
 		switch {
 		case m == nil:
 			// Skip nil values to allow for cleaner code.
@@ -78,12 +82,19 @@ func NewGroup(modules ...Module) *Group {
 			// If nil values are given via a struct, they are will be interfaces to a
 			// nil type. Ignore these too.
 			continue
+		case mgr == nil:
+			// Ignore modules that do not return a manager.
+			continue
+		case mgr.Name() == "":
+			// Force name if none is set.
+			// TODO: Unsafe if module is already logging, etc.
+			mgr.setName(makeModuleName(m))
 		}
 
 		// Add module to group.
 		g.modules = append(g.modules, &groupModule{
 			module: m,
-			mgr:    newManager(g.ctx, makeModuleName(m), "module"),
+			mgr:    mgr,
 		})
 	}
 
@@ -94,12 +105,21 @@ func NewGroup(modules ...Module) *Group {
 // If a module fails to start, itself and all previous modules
 // will be stopped in the reverse order.
 func (g *Group) Start() error {
-	if !g.state.CompareAndSwap(groupStateOff, groupStateStarting) {
-		return fmt.Errorf("group is not off, state: %s", groupStateToString(g.state.Load()))
+	// Check group state.
+	switch g.state.Load() {
+	case groupStateRunning:
+		// Already running.
+		return nil
+	case groupStateInvalid:
+		// Something went terribly wrong, cannot recover from here.
+		return fmt.Errorf("%w: cannot recover", ErrInvalidGroupState)
+	default:
+		if !g.state.CompareAndSwap(groupStateOff, groupStateStarting) {
+			return fmt.Errorf("%w: group is not off, state: %s", ErrUnsuitableGroupState, groupStateToString(g.state.Load()))
+		}
 	}
 
-	g.initGroupContext()
-
+	// Start modules.
 	for i, m := range g.modules {
 		m.mgr.Info("starting")
 		startTime := time.Now()
@@ -118,16 +138,28 @@ func (g *Group) Start() error {
 		duration := time.Since(startTime)
 		m.mgr.Info("started", "time", duration.String())
 	}
+
 	g.state.Store(groupStateRunning)
 	return nil
 }
 
 // Stop stops all modules in the group in the reverse order.
 func (g *Group) Stop() error {
-	if !g.state.CompareAndSwap(groupStateRunning, groupStateStopping) {
-		return fmt.Errorf("group is not running, state: %s", groupStateToString(g.state.Load()))
+	// Check group state.
+	switch g.state.Load() {
+	case groupStateOff:
+		// Already stopped.
+		return nil
+	case groupStateInvalid:
+		// Something went terribly wrong, cannot recover from here.
+		return fmt.Errorf("%w: cannot recover", ErrInvalidGroupState)
+	default:
+		if !g.state.CompareAndSwap(groupStateRunning, groupStateStopping) {
+			return fmt.Errorf("%w: group is not running, state: %s", ErrUnsuitableGroupState, groupStateToString(g.state.Load()))
+		}
 	}
 
+	// Stop modules.
 	if !g.stopFrom(len(g.modules) - 1) {
 		g.state.Store(groupStateInvalid)
 		return errors.New("failed to stop")
@@ -139,6 +171,8 @@ func (g *Group) Stop() error {
 
 func (g *Group) stopFrom(index int) (ok bool) {
 	ok = true
+
+	// Stop modules.
 	for i := index; i >= 0; i-- {
 		m := g.modules[i]
 
@@ -162,42 +196,26 @@ func (g *Group) stopFrom(index int) (ok bool) {
 		}
 	}
 
-	g.stopGroupContext()
-	return
+	// Reset modules.
+	if !ok {
+		// Stopping failed somewhere, reset anyway after a short wait.
+		// This will be very uncommon and can help to mitigate race conditions in these events.
+		time.Sleep(time.Second)
+	}
+	for _, m := range g.modules {
+		m.mgr.Reset()
+	}
+
+	return ok
 }
 
-func (g *Group) initGroupContext() {
-	g.ctxLock.Lock()
-	defer g.ctxLock.Unlock()
-
-	g.ctx, g.cancelCtx = context.WithCancel(context.Background())
+// Ready returns whether all modules in the group have been started and are still running.
+func (g *Group) Ready() bool {
+	return g.state.Load() == groupStateRunning
 }
 
-func (g *Group) stopGroupContext() {
-	g.ctxLock.Lock()
-	defer g.ctxLock.Unlock()
-
-	g.cancelCtx()
-}
-
-// Done returns the context Done channel.
-func (g *Group) Done() <-chan struct{} {
-	g.ctxLock.Lock()
-	defer g.ctxLock.Unlock()
-
-	return g.ctx.Done()
-}
-
-// IsDone checks whether the manager context is done.
-func (g *Group) IsDone() bool {
-	g.ctxLock.Lock()
-	defer g.ctxLock.Unlock()
-
-	return g.ctx.Err() != nil
-}
-
-// GetStatus returns the current Status of all group modules.
-func (g *Group) GetStatus() []StateUpdate {
+// GetStates returns the current states of all group modules.
+func (g *Group) GetStates() []StateUpdate {
 	updates := make([]StateUpdate, 0, len(g.modules))
 	for _, gm := range g.modules {
 		if stateful, ok := gm.module.(StatefulModule); ok {
@@ -207,9 +225,9 @@ func (g *Group) GetStatus() []StateUpdate {
 	return updates
 }
 
-// AddStatusCallback adds the given callback function to all group modules that
+// AddStatesCallback adds the given callback function to all group modules that
 // expose a state manager at States().
-func (g *Group) AddStatusCallback(callbackName string, callback EventCallbackFunc[StateUpdate]) {
+func (g *Group) AddStatesCallback(callbackName string, callback EventCallbackFunc[StateUpdate]) {
 	for _, gm := range g.modules {
 		if stateful, ok := gm.module.(StatefulModule); ok {
 			stateful.States().AddCallback(callbackName, callback)

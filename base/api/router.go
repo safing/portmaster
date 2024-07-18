@@ -272,15 +272,6 @@ func (mh *mainHandler) handle(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	// Wait for the owning module to be ready.
-	// TODO(vladimir): no need to check for status anymore right?
-	// if moduleHandler, ok := handler.(ModuleHandler); ok {
-	// 	if !moduleIsReady(moduleHandler.BelongsTo()) {
-	// 		http.Error(lrw, "The API endpoint is not ready yet. Reload (F5) to try again.", http.StatusServiceUnavailable)
-	// 		return nil
-	// 	}
-	// }
-
 	// Check if we have a handler.
 	if handler == nil {
 		http.Error(lrw, "Not found.", http.StatusNotFound)
@@ -290,10 +281,8 @@ func (mh *mainHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	// Format panics in handler.
 	defer func() {
 		if panicValue := recover(); panicValue != nil {
-			// Report failure via module system.
-			// TODO(vladimir): do we need panic report here
-			// me := module.NewPanicError("api request", "custom", panicValue)
-			// me.Report()
+			// Log failure.
+			log.Errorf("api: handler panic: %s", panicValue)
 			// Respond with a server error.
 			if devMode() {
 				http.Error(

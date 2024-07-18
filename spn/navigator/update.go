@@ -409,7 +409,7 @@ func (m *Map) updateHubLane(pin *Pin, lane *hub.Lane, peer *Pin) {
 }
 
 // ResetFailingStates resets the failing state on all pins.
-func (m *Map) ResetFailingStates(ctx context.Context) {
+func (m *Map) ResetFailingStates() {
 	m.Lock()
 	defer m.Unlock()
 

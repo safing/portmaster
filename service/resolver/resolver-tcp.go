@@ -120,18 +120,16 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 			log.Warningf("resolver: heartbeat for dns client %s failed", tr.resolver.Info.DescriptiveName())
 		case <-ctx.Done():
 			return nil, ctx.Err()
-			// TODO(vladimir): there is no need for this right?
-			// case <-module.Stopping():
-			// 	return nil, ErrShuttingDown
+		case <-module.mgr.Done():
+			return nil, ErrShuttingDown
 		}
 	} else {
 		// If there is no resolver, check if we are shutting down before dialing!
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		// TODO(vladimir): there is no need for this right?
-		// case <-module.Stopping():
-		// 	return nil, ErrShuttingDown
+		case <-module.mgr.Done():
+			return nil, ErrShuttingDown
 		default:
 		}
 	}
@@ -207,9 +205,8 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	case resolverConn.queries <- tq:
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	// TODO(vladimir): there is no need for this right?
-	// case <-module.Stopping():
-	// 	return nil, ErrShuttingDown
+	case <-module.mgr.Done():
+		return nil, ErrShuttingDown
 	case <-time.After(defaultRequestTimeout):
 		return nil, ErrTimeout
 	}
@@ -220,9 +217,8 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	case reply = <-tq.Response:
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	// TODO(vladimir): there is no need for this right?
-	// case <-module.Stopping():
-	// 	return nil, ErrShuttingDown
+	case <-module.mgr.Done():
+		return nil, ErrShuttingDown
 	case <-time.After(defaultRequestTimeout):
 		return nil, ErrTimeout
 	}

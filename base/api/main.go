@@ -45,10 +45,6 @@ func prep() error {
 		return err
 	}
 
-	if err := registerModulesEndpoints(); err != nil {
-		return err
-	}
-
 	return registerMetaEndpoints()
 }
 

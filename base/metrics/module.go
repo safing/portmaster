@@ -42,6 +42,7 @@ var (
 	registry     []Metric
 	registryLock sync.RWMutex
 
+	readyToRegister       bool
 	firstMetricRegistered bool
 	metricNamespace       string
 	globalLabels          = make(map[string]string)
@@ -68,6 +69,13 @@ func start() error {
 			return err
 		}
 	}
+
+	// Mark registry as ready to register metrics.
+	func() {
+		registryLock.Lock()
+		defer registryLock.Unlock()
+		readyToRegister = true
+	}()
 
 	if err := registerInfoMetric(); err != nil {
 		return err
@@ -128,13 +136,13 @@ func register(m Metric) error {
 	registry = append(registry, m)
 	sort.Sort(byLabeledID(registry))
 
+	// Check if we can already register.
+	if !readyToRegister {
+		return fmt.Errorf("registering metric %q too early", m.ID())
+	}
+
 	// Set flag that first metric is now registered.
 	firstMetricRegistered = true
-
-	// TODO(vladimir): With the new modules system there is no way this can fail. I may be wrong.
-	// if module.Status() < modules.StatusStarting {
-	// 	return fmt.Errorf("registering metric %q too early", m.ID())
-	// }
 
 	return nil
 }

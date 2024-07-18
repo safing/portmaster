@@ -52,9 +52,9 @@ func (s *Status) Start() error {
 	s.statesLock.Lock()
 	defer s.statesLock.Unlock()
 	// Add status callback within the lock so we can force the right order.
-	s.instance.AddStatusCallback("status update", s.handleModuleStatusUpdate)
+	s.instance.AddStatesCallback("status update", s.handleModuleStatusUpdate)
 	// Get initial states.
-	for _, stateUpdate := range s.instance.GetStatus() {
+	for _, stateUpdate := range s.instance.GetStates() {
 		s.states[stateUpdate.Module] = stateUpdate
 		s.deriveNotificationsFromStateUpdate(stateUpdate)
 	}
@@ -101,6 +101,6 @@ func New(instance instance) (*Status, error) {
 
 type instance interface {
 	NetEnv() *netenv.NetEnv
-	GetStatus() []mgr.StateUpdate
-	AddStatusCallback(callbackName string, callback mgr.EventCallbackFunc[mgr.StateUpdate])
+	GetStates() []mgr.StateUpdate
+	AddStatesCallback(callbackName string, callback mgr.EventCallbackFunc[mgr.StateUpdate])
 }

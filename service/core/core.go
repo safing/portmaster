@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"sync/atomic"
-	"time"
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
@@ -16,7 +15,6 @@ import (
 	_ "github.com/safing/portmaster/service/status"
 	_ "github.com/safing/portmaster/service/sync"
 	_ "github.com/safing/portmaster/service/ui"
-	"github.com/safing/portmaster/service/updates"
 )
 
 const (
@@ -63,8 +61,6 @@ func init() {
 		false,
 		"disable shutdown event to keep app and notifier open when core shuts down",
 	)
-
-	// modules.SetGlobalShutdownFn(shutdownHook)
 }
 
 func prep() error {
@@ -94,22 +90,6 @@ func start() error {
 	return nil
 }
 
-func ShutdownHook() {
-	// Notify everyone of the restart/shutdown.
-	if !updates.IsRestarting() {
-		// Only trigger shutdown event if not disabled.
-		if !disableShutdownEvent {
-			module.EventShutdown.Submit(struct{}{})
-		}
-	} else {
-		module.EventRestart.Submit(struct{}{})
-	}
-
-	// Wait a bit for the event to propagate.
-	// TODO(vladimir): is this necessary?
-	time.Sleep(100 * time.Millisecond)
-}
-
 var (
 	module     *Core
 	shimLoaded atomic.Bool
@@ -137,4 +117,6 @@ func New(instance instance) (*Core, error) {
 	return module, nil
 }
 
-type instance interface{}
+type instance interface {
+	Shutdown(exitCode int)
+}

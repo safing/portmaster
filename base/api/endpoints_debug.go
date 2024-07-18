@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -128,20 +129,14 @@ You can easily view this data in your browser with this command (with Go install
 
 // ping responds with pong.
 func ping(ar *Request) (msg string, err error) {
-	// TODO: Remove upgrade to "ready" when all UI components have transitioned.
-	// if modules.IsStarting() || modules.IsShuttingDown() {
-	// 	return "", ErrorWithStatus(errors.New("portmaster is not ready, reload (F5) to try again"), http.StatusTooEarly)
-	// }
-
 	return "Pong.", nil
 }
 
 // ready checks if Portmaster has completed starting.
 func ready(ar *Request) (msg string, err error) {
-	// TODO(vladimir): provide alternative for this. Instance state?
-	// if modules.IsStarting() || modules.IsShuttingDown() {
-	// 	return "", ErrorWithStatus(errors.New("portmaster is not ready, reload (F5) to try again"), http.StatusTooEarly)
-	// }
+	if module.instance.Ready() {
+		return "", ErrorWithStatus(errors.New("portmaster is not ready, reload (F5) to try again"), http.StatusTooEarly)
+	}
 	return "Portmaster is ready.", nil
 }
 

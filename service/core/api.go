@@ -113,10 +113,7 @@ func registerAPIEndpoints() error {
 func shutdown(_ *api.Request) (msg string, err error) {
 	log.Warning("core: user requested shutdown via action")
 
-	// Do not run in worker, as this would block itself here.
-	// TODO(vladimir): replace with something better
-	go ShutdownHook() //nolint:errcheck
-
+	module.instance.Shutdown(0)
 	return "shutdown initiated", nil
 }
 

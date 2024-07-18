@@ -33,8 +33,6 @@ type Captain struct {
 	mgr      *mgr.Manager
 	instance instance
 
-	shutdownFunc func(exitCode int)
-
 	healthCheckTicker    *mgr.SleepyTicker
 	maintainPublicStatus *mgr.WorkerMgr
 
@@ -140,7 +138,7 @@ func start() error {
 			// Load identity.
 			if err := loadPublicIdentity(); err != nil {
 				// We cannot recover from this, set controlled failure (do not retry).
-				module.shutdownFunc(controlledFailureExitCode)
+				module.instance.Shutdown(controlledFailureExitCode)
 
 				return err
 			}
@@ -148,7 +146,7 @@ func start() error {
 			// Check if any networks are configured.
 			if !conf.HubHasIPv4() && !conf.HubHasIPv6() {
 				// We cannot recover from this, set controlled failure (do not retry).
-				module.shutdownFunc(controlledFailureExitCode)
+				module.instance.Shutdown(controlledFailureExitCode)
 
 				return errors.New("no IP addresses for Hub configured (or detected)")
 			}
@@ -191,7 +189,7 @@ func start() error {
 			// Reset failing hubs when the network changes while not connected.
 			module.instance.NetEnv().EventNetworkChange.AddCallback("reset failing hubs", func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 				if ready.IsNotSet() {
-					navigator.Main.ResetFailingStates(module.mgr.Ctx())
+					navigator.Main.ResetFailingStates()
 				}
 				return false, nil
 			})
@@ -245,15 +243,14 @@ var (
 )
 
 // New returns a new Captain module.
-func New(instance instance, shutdownFunc func(exitCode int)) (*Captain, error) {
+func New(instance instance) (*Captain, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
 	m := mgr.New("Captain")
 	module = &Captain{
-		mgr:          m,
-		instance:     instance,
-		shutdownFunc: shutdownFunc,
+		mgr:      m,
+		instance: instance,
 
 		states:               mgr.NewStateMgr(m),
 		EventSPNConnected:    mgr.NewEventMgr[struct{}](SPNConnectedEvent, m),
@@ -272,4 +269,6 @@ type instance interface {
 	Patrol() *patrol.Patrol
 	Config() *config.Config
 	Updates() *updates.Updates
+	SPNGroup() *mgr.ExtendedGroup
+	Shutdown(exitCode int)
 }

@@ -53,7 +53,6 @@ func connectionCleaner(ctx *mgr.WorkerCtx) error {
 func cleanConnections() (activePIDs map[int]struct{}) {
 	activePIDs = make(map[int]struct{})
 
-	// FIXME(vladimir): This was previously a MicroTask but it does not seem right, to run it asynchronously. Is'nt activePIDs going to be used after the function is called?
 	_ = module.mgr.Do("clean connections", func(ctx *mgr.WorkerCtx) error {
 		now := time.Now().UTC()
 		nowUnix := now.Unix()

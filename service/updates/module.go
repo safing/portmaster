@@ -20,8 +20,7 @@ type Updates struct {
 	EventResourcesUpdated *mgr.EventMgr[struct{}]
 	EventVersionsUpdated  *mgr.EventMgr[struct{}]
 
-	instance     instance
-	shutdownFunc func(exitCode int)
+	instance instance
 }
 
 var (
@@ -30,7 +29,7 @@ var (
 )
 
 // New returns a new UI module.
-func New(instance instance, shutdownFunc func(exitCode int)) (*Updates, error) {
+func New(instance instance) (*Updates, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
@@ -45,7 +44,6 @@ func New(instance instance, shutdownFunc func(exitCode int)) (*Updates, error) {
 		EventResourcesUpdated: mgr.NewEventMgr[struct{}](ResourceUpdateEvent, m),
 		EventVersionsUpdated:  mgr.NewEventMgr[struct{}](VersionUpdateEvent, m),
 		instance:              instance,
-		shutdownFunc:          shutdownFunc,
 	}
 	if err := prep(); err != nil {
 		return nil, err
@@ -77,4 +75,5 @@ func (u *Updates) Stop() error {
 type instance interface {
 	API() *api.API
 	Config() *config.Config
+	Shutdown(exitCode int)
 }

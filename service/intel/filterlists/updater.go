@@ -24,11 +24,10 @@ var updateInProgress = abool.New()
 func tryListUpdate(ctx context.Context) error {
 	err := performUpdate(ctx)
 	if err != nil {
-		// Check if we are shutting down.
-		// TODO(vladimir): Do we need stopping detection?
-		// if module.IsStopping() {
-		// 	return nil
-		// }
+		// Check if we are shutting down, as to not raise a false alarm.
+		if module.mgr.IsDone() {
+			return nil
+		}
 
 		// Check if the module already has a failure status set. If not, set a
 		// generic one with the returned error.

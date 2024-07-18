@@ -210,12 +210,9 @@ func handleBroadcast(bn *BroadcastNotification, matchingDataAccessor accessor.Ac
 
 	// Display notification.
 	n.Save()
-
-	// Attach to module to raise more awareness.
-	// TODO(vladimir): is there a need for this?
-	// if bn.AttachToModule {
-	// 	n.AttachToModule(module)
-	// }
+	if bn.AttachToModule {
+		n.SyncWithState(module.states)
+	}
 
 	return nil
 }

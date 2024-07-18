@@ -1,7 +1,6 @@
 package captain
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -41,7 +40,7 @@ func ClientReady() bool {
 }
 
 type (
-	clientComponentFunc   func(ctx context.Context) clientComponentResult
+	clientComponentFunc   func(ctx *mgr.WorkerCtx) clientComponentResult
 	clientComponentResult uint8
 )
 
@@ -78,7 +77,7 @@ func clientManager(ctx *mgr.WorkerCtx) error {
 		netenv.ConnectedToSPN.UnSet()
 		resetSPNStatus(StatusDisabled, true)
 		module.states.Clear()
-		clientStopHomeHub(ctx.Ctx())
+		clientStopHomeHub(ctx)
 	}()
 
 	module.states.Add(mgr.State{
@@ -105,10 +104,8 @@ func clientManager(ctx *mgr.WorkerCtx) error {
 reconnect:
 	for {
 		// Check if we are shutting down.
-		select {
-		case <-ctx.Done():
+		if ctx.IsDone() {
 			return nil
-		default:
 		}
 
 		// Reset SPN status.
@@ -126,7 +123,7 @@ reconnect:
 			clientConnectToHomeHub,
 			clientSetActiveConnectionStatus,
 		} {
-			switch clientFunc(ctx.Ctx()) {
+			switch clientFunc(ctx) {
 			case clientResultOk:
 				// Continue
 			case clientResultRetry, clientResultReconnect:
@@ -167,7 +164,7 @@ reconnect:
 				clientCheckAccountAndTokens,
 				clientSetActiveConnectionStatus,
 			} {
-				switch clientFunc(ctx.Ctx()) {
+				switch clientFunc(ctx) {
 				case clientResultOk:
 					// Continue
 				case clientResultRetry:
@@ -194,7 +191,7 @@ reconnect:
 	}
 }
 
-func clientCheckNetworkReady(ctx context.Context) clientComponentResult {
+func clientCheckNetworkReady(ctx *mgr.WorkerCtx) clientComponentResult {
 	// Check if we are online enough for connecting.
 	switch netenv.GetOnlineStatus() { //nolint:exhaustive
 	case netenv.StatusOffline,
@@ -214,7 +211,7 @@ func clientCheckNetworkReady(ctx context.Context) clientComponentResult {
 // Attempts to use the same will result in errors.
 var DisableAccount bool
 
-func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
+func clientCheckAccountAndTokens(ctx *mgr.WorkerCtx) clientComponentResult {
 	if DisableAccount {
 		return clientResultOk
 	}
@@ -321,7 +318,7 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 	return clientResultOk
 }
 
-func clientStopHomeHub(ctx context.Context) clientComponentResult {
+func clientStopHomeHub(ctx *mgr.WorkerCtx) clientComponentResult {
 	// Don't use the context in this function, as it will likely be canceled
 	// already and would disrupt any context usage in here.
 
@@ -340,9 +337,13 @@ func clientStopHomeHub(ctx context.Context) clientComponentResult {
 	return clientResultOk
 }
 
-func clientConnectToHomeHub(ctx context.Context) clientComponentResult {
+func clientConnectToHomeHub(ctx *mgr.WorkerCtx) clientComponentResult {
 	err := establishHomeHub(ctx)
 	if err != nil {
+		if ctx.IsDone() {
+			return clientResultShutdown
+		}
+
 		log.Errorf("spn/captain: failed to establish connection to home hub: %s", err)
 		resetSPNStatus(StatusFailed, true)
 
@@ -397,7 +398,7 @@ func clientConnectToHomeHub(ctx context.Context) clientComponentResult {
 	return clientResultOk
 }
 
-func clientSetActiveConnectionStatus(ctx context.Context) clientComponentResult {
+func clientSetActiveConnectionStatus(ctx *mgr.WorkerCtx) clientComponentResult {
 	// Get current home.
 	home, homeTerminal := navigator.Main.GetHome()
 	if home == nil || homeTerminal == nil {
@@ -440,7 +441,7 @@ func clientSetActiveConnectionStatus(ctx context.Context) clientComponentResult 
 	return clientResultOk
 }
 
-func clientCheckHomeHubConnection(ctx context.Context) clientComponentResult {
+func clientCheckHomeHubConnection(ctx *mgr.WorkerCtx) clientComponentResult {
 	// Check the status of the Home Hub.
 	home, homeTerminal := navigator.Main.GetHome()
 	if home == nil || homeTerminal == nil || homeTerminal.IsBeingAbandoned() {
@@ -462,7 +463,7 @@ func clientCheckHomeHubConnection(ctx context.Context) clientComponentResult {
 		// Prepare to reconnect to the network.
 
 		// Reset all failing states, as these might have been caused by the failing home hub.
-		navigator.Main.ResetFailingStates(ctx)
+		navigator.Main.ResetFailingStates()
 
 		// If the last health check is clearly too long ago, assume that the device was sleeping and do not set the home node to failing yet.
 		if time.Since(lastHealthCheck) > clientHealthCheckTickDuration+
@@ -482,7 +483,7 @@ func clientCheckHomeHubConnection(ctx context.Context) clientComponentResult {
 	return clientResultOk
 }
 
-func pingHome(ctx context.Context, t terminal.Terminal, timeout time.Duration) (latency time.Duration, err *terminal.Error) {
+func pingHome(ctx *mgr.WorkerCtx, t terminal.Terminal, timeout time.Duration) (latency time.Duration, err *terminal.Error) {
 	started := time.Now()
 
 	// Start ping operation.

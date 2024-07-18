@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+// ManagerNameSLogKey is used as the logging key for the name of the manager.
+var ManagerNameSLogKey = "manager"
+
 // Manager manages workers.
 type Manager struct {
 	name   string
@@ -21,27 +24,29 @@ type Manager struct {
 
 // New returns a new manager.
 func New(name string) *Manager {
-	return NewWithContext(context.Background(), name)
+	return newManager(name)
 }
 
-// NewWithContext returns a new manager that uses the given context.
-func NewWithContext(ctx context.Context, name string) *Manager {
-	return newManager(ctx, name, "manager")
-}
-
-func newManager(ctx context.Context, name string, logNameKey string) *Manager {
+func newManager(name string) *Manager {
 	m := &Manager{
 		name:        name,
-		logger:      slog.Default().With(logNameKey, name),
+		logger:      slog.Default().With(ManagerNameSLogKey, name),
 		workersDone: make(chan struct{}),
 	}
-	m.ctx, m.cancelCtx = context.WithCancel(ctx)
+	m.ctx, m.cancelCtx = context.WithCancel(context.Background())
 	return m
 }
 
 // Name returns the manager name.
 func (m *Manager) Name() string {
 	return m.name
+}
+
+// setName sets the manager name and resets the logger to use that name.
+// Not safe for concurrent use with any other module methods.
+func (m *Manager) setName(newName string) {
+	m.name = newName
+	m.logger = slog.Default().With(ManagerNameSLogKey, m.name)
 }
 
 // Ctx returns the worker context.
@@ -161,4 +166,16 @@ func (m *Manager) workerDone() {
 			}
 		}
 	}
+}
+
+// Reset resets the manager in order to be able to be used again.
+// In the process, the current context is canceled.
+// As part of a module (in a group), the module might be stopped and started again.
+// This method is not goroutine-safe. The caller must make sure the manager is
+// not being used in any way during execution.
+func (m *Manager) Reset() {
+	m.cancelCtx()
+	m.ctx, m.cancelCtx = context.WithCancel(context.Background())
+	m.workerCnt.Store(0)
+	m.workersDone = make(chan struct{})
 }

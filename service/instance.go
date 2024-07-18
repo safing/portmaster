@@ -1,7 +1,10 @@
 package service
 
 import (
+	"context"
 	"fmt"
+	"sync/atomic"
+	"time"
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
@@ -45,9 +48,12 @@ import (
 
 // Instance is an instance of a portmaste service.
 type Instance struct {
-	version string
+	ctx          context.Context
+	cancelCtx    context.CancelFunc
+	serviceGroup *mgr.Group
 
-	*mgr.Group
+	exitCode atomic.Int32
+
 	database      *dbmodule.DBModule
 	config        *config.Config
 	api           *api.API
@@ -80,7 +86,7 @@ type Instance struct {
 	access *access.Access
 
 	// SPN modules
-	SpnGroup  *mgr.Group
+	SpnGroup  *mgr.ExtendedGroup
 	cabin     *cabin.Cabin
 	navigator *navigator.Navigator
 	captain   *captain.Captain
@@ -95,11 +101,10 @@ type Instance struct {
 }
 
 // New returns a new portmaster service instance.
-func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
+func New(svcCfg *ServiceConfig) (*Instance, error) {
 	// Create instance to pass it to modules.
-	instance := &Instance{
-		version: version,
-	}
+	instance := &Instance{}
+	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
 
 	var err error
 
@@ -142,7 +147,7 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create core module: %w", err)
 	}
-	instance.updates, err = updates.New(instance, svcCfg.ShutdownFunc)
+	instance.updates, err = updates.New(instance)
 	if err != nil {
 		return nil, fmt.Errorf("create updates module: %w", err)
 	}
@@ -228,7 +233,7 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create navigator module: %w", err)
 	}
-	instance.captain, err = captain.New(instance, svcCfg.ShutdownFunc)
+	instance.captain, err = captain.New(instance)
 	if err != nil {
 		return nil, fmt.Errorf("create captain module: %w", err)
 	}
@@ -258,7 +263,7 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	}
 
 	// Add all modules to instance group.
-	instance.Group = mgr.NewGroup(
+	instance.serviceGroup = mgr.NewGroup(
 		instance.database,
 		instance.config,
 		instance.api,
@@ -275,8 +280,8 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 
 		instance.ui,
 		instance.profile,
-		instance.network,
 		instance.netquery,
+		instance.network,
 		instance.firewall,
 		instance.filterLists,
 		instance.interception,
@@ -292,7 +297,7 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 	)
 
 	// SPN Group
-	instance.SpnGroup = mgr.NewGroup(
+	instance.SpnGroup = mgr.NewExtendedGroup(
 		instance.cabin,
 		instance.navigator,
 		instance.captain,
@@ -304,9 +309,6 @@ func New(version string, svcCfg *ServiceConfig) (*Instance, error) {
 		instance.terminal,
 	)
 
-	// FIXME: call this before to trigger shutdown/restart event
-	// core.ShutdownHook()
-
 	return instance, nil
 }
 
@@ -314,11 +316,6 @@ func (i *Instance) SetSleep(enabled bool) {
 	i.metrics.SetSleep(enabled)
 	i.network.SetSleep(enabled)
 	i.captain.SetSleep(enabled)
-}
-
-// Version returns the version.
-func (i *Instance) Version() string {
-	return i.version
 }
 
 // Database returns the database module.
@@ -507,7 +504,7 @@ func (i *Instance) Core() *core.Core {
 }
 
 // SPNGroup returns the group of all SPN modules.
-func (i *Instance) SPNGroup() *mgr.Group {
+func (i *Instance) SPNGroup() *mgr.ExtendedGroup {
 	return i.SpnGroup
 }
 
@@ -525,10 +522,10 @@ func (i *Instance) SetCmdLineOperation(f func() error) {
 	i.CommandLineOperation = f
 }
 
-// GetStatus returns the current Status of all group modules.
-func (i *Instance) GetStatus() []mgr.StateUpdate {
-	mainStates := i.Group.GetStatus()
-	spnStates := i.SpnGroup.GetStatus()
+// GetStates returns the current states of all group modules.
+func (i *Instance) GetStates() []mgr.StateUpdate {
+	mainStates := i.serviceGroup.GetStates()
+	spnStates := i.SpnGroup.GetStates()
 
 	updates := make([]mgr.StateUpdate, 0, len(mainStates)+len(spnStates))
 	updates = append(updates, mainStates...)
@@ -537,9 +534,68 @@ func (i *Instance) GetStatus() []mgr.StateUpdate {
 	return updates
 }
 
-// AddStatusCallback adds the given callback function to all group modules that
+// AddStatesCallback adds the given callback function to all group modules that
 // expose a state manager at States().
-func (i *Instance) AddStatusCallback(callbackName string, callback mgr.EventCallbackFunc[mgr.StateUpdate]) {
-	i.Group.AddStatusCallback(callbackName, callback)
-	i.SpnGroup.AddStatusCallback(callbackName, callback)
+func (i *Instance) AddStatesCallback(callbackName string, callback mgr.EventCallbackFunc[mgr.StateUpdate]) {
+	i.serviceGroup.AddStatesCallback(callbackName, callback)
+	i.SpnGroup.AddStatesCallback(callbackName, callback)
+}
+
+// Ready returns whether all modules in the main service module group have been started and are still running.
+func (i *Instance) Ready() bool {
+	return i.serviceGroup.Ready()
+}
+
+// Ctx returns the instance context.
+// It is only canceled on shutdown.
+func (i *Instance) Ctx() context.Context {
+	return i.ctx
+}
+
+// Start starts the instance.
+func (i *Instance) Start() error {
+	return i.serviceGroup.Start()
+}
+
+// Stop stops the instance and cancels the instance context when done.
+func (i *Instance) Stop() error {
+	defer i.cancelCtx()
+	return i.serviceGroup.Stop()
+}
+
+// Shutdown asynchronously stops the instance.
+func (i *Instance) Shutdown(exitCode int) {
+	i.exitCode.Store(int32(exitCode))
+
+	m := mgr.New("instance")
+	m.Go("shutdown", func(w *mgr.WorkerCtx) error {
+		for {
+			if err := i.Stop(); err != nil {
+				w.Error("failed to shutdown", "error", err, "retry", "1s")
+				time.Sleep(1 * time.Second)
+			} else {
+				return nil
+			}
+		}
+	})
+}
+
+// Stopping returns whether the instance is shutting down.
+func (i *Instance) Stopping() bool {
+	return i.ctx.Err() == nil
+}
+
+// Stopped returns a channel that is triggered when the instance has shut down.
+func (i *Instance) Stopped() <-chan struct{} {
+	return i.ctx.Done()
+}
+
+// SetExitCode sets the exit code on the instance.
+func (i *Instance) SetExitCode(exitCode int) {
+	i.exitCode.Store(int32(exitCode))
+}
+
+// ExitCode returns the set exit code of the instance.
+func (i *Instance) ExitCode() int {
+	return int(i.exitCode.Load())
 }

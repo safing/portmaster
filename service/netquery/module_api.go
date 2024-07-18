@@ -284,7 +284,12 @@ func (nq *NetQuery) Start() error {
 }
 
 func (nq *NetQuery) Stop() error {
-	// we don't use m.Module.Ctx here because it is already cancelled when stop is called.
+	// Cacnel the module context.
+	nq.mgr.Cancel()
+	// Wait for all workers before we start the shutdown.
+	nq.mgr.WaitForWorkers(time.Minute)
+
+	// we don't use the module ctx here because it is already canceled.
 	// just give the clean up 1 minute to happen and abort otherwise.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
