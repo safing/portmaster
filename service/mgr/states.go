@@ -18,12 +18,32 @@ type StateMgr struct {
 
 // State describes the state of a manager or module.
 type State struct {
-	ID      string    // Required.
-	Name    string    // Required.
-	Message string    // Optional.
-	Type    StateType // Optional.
-	Time    time.Time // Optional, will be set to current time if not set.
-	Data    any       // Optional.
+	// ID is a program-unique ID.
+	// It must not only be unique within the StateMgr, but for the whole program,
+	// as it may be re-used with related systems.
+	// Required.
+	ID string
+
+	// Name is the name of the state.
+	// This may also serve as a notification title.
+	// Required.
+	Name string
+
+	// Message is a more detailed message about the state.
+	// Optional.
+	Message string
+
+	// Type defines the type of the state.
+	// Optional.
+	Type StateType
+
+	// Time is the time when the state was created or the originating incident occured.
+	// Optional, will be set to current time if not set.
+	Time time.Time
+
+	// Data can hold any additional data necessary for further processing of connected systems.
+	// Optional.
+	Data any
 }
 
 // StateType defines commonly used states.
@@ -59,6 +79,7 @@ type StateUpdate struct {
 	States []State
 }
 
+// StatefulModule is used for interface checks on modules.
 type StatefulModule interface {
 	States() *StateMgr
 }
@@ -87,10 +108,10 @@ func (m *StateMgr) Add(s State) {
 	}
 
 	// Update or add state.
-	index := slices.IndexFunc[[]State, State](m.states, func(es State) bool {
+	index := slices.IndexFunc(m.states, func(es State) bool {
 		return es.ID == s.ID
 	})
-	if index > 0 {
+	if index >= 0 {
 		m.states[index] = s
 	} else {
 		m.states = append(m.states, s)
@@ -104,11 +125,18 @@ func (m *StateMgr) Remove(id string) {
 	m.statesLock.Lock()
 	defer m.statesLock.Unlock()
 
-	slices.DeleteFunc[[]State, State](m.states, func(s State) bool {
-		return s.ID == id
+	var entryRemoved bool
+	m.states = slices.DeleteFunc(m.states, func(s State) bool {
+		if s.ID == id {
+			entryRemoved = true
+			return true
+		}
+		return false
 	})
 
-	m.statesEventMgr.Submit(m.export())
+	if entryRemoved {
+		m.statesEventMgr.Submit(m.export())
+	}
 }
 
 // Clear removes all states.

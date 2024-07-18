@@ -164,5 +164,5 @@ func notifyUpdateCheckFailed(force bool, err error) {
 				ResultAction: "display",
 			},
 		},
-	) // FIXME: add replacement for this .AttachToModule(module)
+	).SyncWithState(module.states)
 }

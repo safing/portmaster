@@ -101,7 +101,7 @@ type Notification struct { //nolint:maligned
 
 	// belongsTo holds the state this notification belongs to. The notification
 	// lifecycle will be mirrored to the specified failure status.
-	// belongsTo *mgr.StateMgr
+	belongsTo *mgr.StateMgr
 
 	lock           sync.Mutex
 	actionFunction NotificationActionFn // call function to process action
@@ -425,6 +425,11 @@ func (n *Notification) delete(pushUpdate bool) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 
+	// Check if notification is already deleted.
+	if n.Meta().IsDeleted() {
+		return
+	}
+
 	// Save ID for deletion
 	id = n.EventID
 
@@ -442,7 +447,10 @@ func (n *Notification) delete(pushUpdate bool) {
 		dbController.PushUpdate(n)
 	}
 
-	// n.resolveModuleFailure()
+	// Remove the connected state.
+	if n.belongsTo != nil {
+		n.belongsTo.Remove(n.EventID)
+	}
 }
 
 // Expired notifies the caller when the notification has expired.

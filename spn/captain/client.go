@@ -228,9 +228,7 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 			`Please restart Portmaster.`,
 			// TODO: Add restart button.
 			// TODO: Use special UI restart action in order to reload UI on restart.
-		)
-		// TODO(vladimir): this is not needed right
-		// .AttachToModule(module)
+		).SyncWithState(module.states)
 		resetSPNStatus(StatusFailed, true)
 		log.Errorf("spn/captain: client internal error: %s", err)
 		return clientResultReconnect
@@ -243,9 +241,7 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 			"SPN Login Required",
 			`Please log in to access the SPN.`,
 			spnLoginButton,
-		)
-		// TODO(vladimir): this is not needed right
-		// .AttachToModule(module)
+		).SyncWithState(module.states)
 		resetSPNStatus(StatusFailed, true)
 		log.Warningf("spn/captain: enabled but not logged in")
 		return clientResultReconnect
@@ -263,9 +259,7 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 					"spn:failed-to-update-user",
 					"SPN Account Server Error",
 					fmt.Sprintf(`The status of your SPN account could not be updated: %s`, err),
-				)
-				// TODO(vladimir): this is not needed right
-				// .AttachToModule(module)
+				).SyncWithState(module.states)
 				resetSPNStatus(StatusFailed, true)
 				log.Errorf("spn/captain: failed to update ineligible account: %s", err)
 				return clientResultReconnect
@@ -282,9 +276,7 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 					"SPN Not Included In Package",
 					"Your current Portmaster Package does not include access to the SPN. Please upgrade your package on the Account Page.",
 					spnOpenAccountPage,
-				)
-				// TODO(vladimir): this is not needed right
-				// .AttachToModule(module)
+				).SyncWithState(module.states)
 				resetSPNStatus(StatusFailed, true)
 				return clientResultReconnect
 			}
@@ -299,9 +291,7 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 				"Portmaster Package Issue",
 				"Cannot enable SPN: "+message,
 				spnOpenAccountPage,
-			)
-			// TODO(vladimir): this is not needed right
-			// .AttachToModule(module)
+			).SyncWithState(module.states)
 			resetSPNStatus(StatusFailed, true)
 			return clientResultReconnect
 		}
@@ -321,9 +311,7 @@ func clientCheckAccountAndTokens(ctx context.Context) clientComponentResult {
 					"spn:tokens-exhausted",
 					"SPN Access Tokens Exhausted",
 					`The Portmaster failed to get new access tokens to access the SPN. The Portmaster will automatically retry to get new access tokens.`,
-				)
-				// TODO(vladimir): this is not needed right
-				// .AttachToModule(module)
+				).SyncWithState(module.states)
 				resetSPNStatus(StatusFailed, false)
 			}
 			return clientResultRetry
@@ -371,9 +359,7 @@ func clientConnectToHomeHub(ctx context.Context) clientComponentResult {
 						Key: CfgOptionHomeHubPolicyKey,
 					},
 				},
-			)
-			// TODO(vladimir): this is not needed right
-			// .AttachToModule(module)
+			).SyncWithState(module.states)
 
 		case errors.Is(err, ErrReInitSPNSuggested):
 			notifications.NotifyError(
@@ -389,18 +375,14 @@ func clientConnectToHomeHub(ctx context.Context) clientComponentResult {
 						ResultAction: "display",
 					},
 				},
-			)
-			// TODO(vladimir): this is not needed right
-			// .AttachToModule(module)
+			).SyncWithState(module.states)
 
 		default:
 			notifications.NotifyWarn(
 				"spn:home-hub-failure",
 				"SPN Failed to Connect",
 				fmt.Sprintf("Failed to connect to a home hub: %s. The Portmaster will retry to connect automatically.", err),
-			)
-			// TODO(vladimir): this is not needed right
-			// .AttachToModule(module)
+			).SyncWithState(module.states)
 		}
 
 		return clientResultReconnect

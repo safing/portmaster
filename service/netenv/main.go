@@ -48,7 +48,6 @@ func (ne *NetEnv) Stop() error {
 }
 
 func prep() error {
-	// FIXME(vladimir): Does this need to be in the prep function.
 	checkForIPv6Stack()
 
 	if err := registerAPIEndpoints(); err != nil {
@@ -59,7 +58,6 @@ func prep() error {
 		return err
 	}
 
-	// FIXME(vladimir): Does this need to be in the prep function.
 	return prepLocation()
 }
 

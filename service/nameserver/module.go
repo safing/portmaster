@@ -179,7 +179,7 @@ func startListener(ip net.IP, port uint16, first bool) {
 }
 
 func handleListenError(err error, ip net.IP, port uint16, primaryListener bool) {
-	// var n *notifications.Notification
+	var n *notifications.Notification
 
 	// Create suffix for secondary listener
 	var secondaryEventIDSuffix string
@@ -208,7 +208,7 @@ func handleListenError(err error, ip net.IP, port uint16, primaryListener bool) 
 		}
 
 		// Notify user about conflicting service.
-		_ = notifications.Notify(&notifications.Notification{
+		n = notifications.Notify(&notifications.Notification{
 			EventID: eventIDConflictingService + secondaryEventIDSuffix,
 			Type:    notifications.Error,
 			Title:   "Conflicting DNS Software",
@@ -225,7 +225,7 @@ func handleListenError(err error, ip net.IP, port uint16, primaryListener bool) 
 		})
 	} else {
 		// If no conflict is found, report the error directly.
-		_ = notifications.Notify(&notifications.Notification{
+		n = notifications.Notify(&notifications.Notification{
 			EventID: eventIDListenerFailed + secondaryEventIDSuffix,
 			Type:    notifications.Error,
 			Title:   "Secure DNS Error",
@@ -238,10 +238,9 @@ func handleListenError(err error, ip net.IP, port uint16, primaryListener bool) 
 	}
 
 	// Attach error to module, if primary listener.
-	// TODO(vladimir): is this needed?
-	// if primaryListener {
-	// 	n.AttachToModule(module)
-	// }
+	if primaryListener {
+		n.SyncWithState(module.states)
+	}
 }
 
 func stop() error {

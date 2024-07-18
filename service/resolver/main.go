@@ -188,8 +188,7 @@ This notification will go away when Portmaster detects a working configured DNS 
 	notifications.Notify(n)
 
 	failingResolverNotification = n
-	// TODO(vladimir): is this needed?
-	// n.AttachToModule(module)
+	n.SyncWithState(module.states)
 }
 
 func resetFailingResolversNotification() {
