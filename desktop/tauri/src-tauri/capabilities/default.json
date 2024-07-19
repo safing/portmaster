@@ -1,0 +1,32 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": [
+    "main",
+    "splash"
+  ],
+  "remote": {
+    "urls": [
+      "http://localhost:817"
+    ]
+  },
+  "permissions": [
+    "path:default",
+    "event:allow-listen",
+    "event:allow-unlisten",
+    "event:allow-emit",
+    "event:allow-emit-to",
+    "window:allow-hide",
+    "window:allow-show",
+    "window:allow-is-visible",
+    "window:allow-set-focus",
+    "app:default",
+    "image:default",
+    "resources:default",
+    "menu:default",
+    "tray:default",
+    "shell:allow-open",
+    "notification:default"
+  ]
+}

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Fragment>
+    <CustomAction Id="InstallPortmasterService"
+              Directory="INSTALLDIR"
+              ExeCommand="&quot;[INSTALLDIR]portmaster-start.exe&quot; install core-service --data=&quot;[INSTALLDIR]data&quot;"
+              Execute="commit"
+              Return="check"
+              Impersonate="no"
+    />
+    <CustomAction Id="StopPortmasterService"
+          Directory="INSTALLDIR"
+          ExeCommand="sc.exe stop PortmasterCore"
+          Execute="commit"
+          Return="ignore"
+          Impersonate="no"
+     />
+    <CustomAction Id="DeletePortmasterService"
+          Directory="INSTALLDIR"
+          ExeCommand="sc.exe delete PortmasterCore"
+          Execute="commit"
+          Return="ignore"
+          Impersonate="no"
+     />
+    <InstallExecuteSequence>
+        <Custom Action="InstallPortmasterService" Before='InstallFinalize'>
+            <![CDATA[NOT Installed]]>
+        </Custom>
+        <Custom Action="StopPortmasterService" Before='InstallFinalize'>
+            REMOVE
+        </Custom>
+        <Custom Action="DeletePortmasterService" Before='InstallFinalize'>
+            REMOVE
+        </Custom>
+    </InstallExecuteSequence>
+	</Fragment>
+</Wix>

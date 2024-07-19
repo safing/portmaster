@@ -29,6 +29,10 @@ const (
 	// This disables retrying and exits with an error code.
 	ControlledFailureExitCode = 24
 
+	// StartOldUIExitCode is an exit code that is returned by the UI when there. This is manfully triaged by the user, if the new UI does not work for them.
+	StartOldUIExitCode        = 77
+	MissingDependencyExitCode = 0xc0000135 // Windows STATUS_DLL_NOT_FOUND
+
 	exeSuffix = ".exe"
 	zipSuffix = ".zip"
 )
@@ -38,6 +42,8 @@ var (
 	onWindows        = runtime.GOOS == "windows"
 	stdinSignals     bool
 	childIsRunning   = abool.NewBool(false)
+
+	fallBackToOldUI bool = false
 )
 
 // Options for starting component.
@@ -55,7 +61,21 @@ type Options struct {
 	RestartOnFail     bool // Try restarting automatically, if the started component fails.
 }
 
+// This is a temp value that will be used to test the new UI in beta.
+var app2Options = Options{
+	Name:              "Portmaster App2",
+	Identifier:        "app2/portmaster-app",
+	AllowDownload:     false,
+	AllowHidingWindow: false,
+	RestartOnFail:     true,
+}
+
 func init() {
+	// Make sure the new UI has a proper extension.
+	if onWindows {
+		app2Options.Identifier += ".zip"
+	}
+
 	registerComponent([]Options{
 		{
 			Name:              "Portmaster Core",
@@ -70,6 +90,7 @@ func init() {
 			Identifier:        "app/portmaster-app.zip",
 			AllowDownload:     false,
 			AllowHidingWindow: false,
+			RestartOnFail:     true,
 		},
 		{
 			Name:              "Portmaster Notifier",
@@ -89,6 +110,26 @@ func init() {
 			RestartOnFail:     true,
 		},
 	})
+
+	if onWindows {
+		registerComponent([]Options{
+			{
+				Name:              "Portmaster App2",
+				Identifier:        "app2/portmaster-app.zip",
+				AllowDownload:     false,
+				AllowHidingWindow: false,
+			},
+		})
+	} else {
+		registerComponent([]Options{
+			{
+				Name:              "Portmaster App2",
+				Identifier:        "app2/portmaster-app",
+				AllowDownload:     false,
+				AllowHidingWindow: false,
+			},
+		})
+	}
 }
 
 func registerComponent(opts []Options) {
@@ -311,6 +352,14 @@ func persistOutputStreams(opts *Options, version string, cmd *exec.Cmd) (chan st
 }
 
 func execute(opts *Options, args []string) (cont bool, err error) {
+	if !forceOldUI && registry.UsePreReleases && opts.ShortIdentifier == "app" {
+		// Check if new ui was already tried.
+		if !fallBackToOldUI {
+			opts = &app2Options
+			log.Println("Using new UI")
+		}
+	}
+
 	file, err := registry.GetFile(
 		helper.PlatformIdentifier(opts.Identifier),
 	)
@@ -440,6 +489,12 @@ func parseExitError(err error) (restart bool, errWithCtx error) {
 			return true, nil
 		case ControlledFailureExitCode:
 			return false, errors.New("controlled failure, check logs")
+		case StartOldUIExitCode:
+			fallBackToOldUI = true
+			return true, errors.New("user requested old UI")
+		case MissingDependencyExitCode:
+			fallBackToOldUI = true
+			return true, errors.New("new UI failed with missing dependency")
 		default:
 			return true, fmt.Errorf("unknown exit code %w", exErr)
 		}

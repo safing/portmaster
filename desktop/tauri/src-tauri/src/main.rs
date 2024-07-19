@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::time::Duration;
+
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 use tauri_plugin_cli::CliExt;
 
@@ -16,13 +18,15 @@ mod portmaster;
 mod traymenu;
 mod window;
 
-use log::{debug, error, info, trace, warn};
+use log::{debug, error, info};
 use portmaster::PortmasterExt;
 use traymenu::setup_tray_menu;
 use window::{close_splash_window, create_main_window};
 
 #[macro_use]
 extern crate lazy_static;
+
+const FALLBACK_TO_OLD_UI_EXIT_CODE: i32 = 77;
 
 #[derive(Clone, serde::Serialize)]
 struct Payload {
@@ -82,12 +86,38 @@ impl portmaster::Handler for WsHandler {
     }
 }
 
+fn show_webview_not_installed_dialog() -> i32 {
+    use rfd::MessageDialog;
+
+    let result = MessageDialog::new()
+        .set_title("Portmaster")
+        .set_description("Webkit is not installed. Please install it and run portmaster again")
+        .set_buttons(rfd::MessageButtons::OkCancelCustom(
+            "Go to install page".to_owned(),
+            "Use old UI".to_owned(),
+        ))
+        .show();
+    println!("{:?}", result);
+    if let rfd::MessageDialogResult::Custom(result) = result {
+        if result.eq("Go to install page") {
+            _ = open::that("https://wiki.safing.io/en/Portmaster/Install/Webview");
+            std::thread::sleep(Duration::from_secs(2));
+            return 0;
+        }
+    }
+
+    return FALLBACK_TO_OLD_UI_EXIT_CODE;
+}
+
 fn main() {
-    pretty_env_logger::init();
+    if let Err(_) = tauri::webview_version() {
+        std::process::exit(show_webview_not_installed_dialog());
+    }
 
     let app = tauri::Builder::default()
         // Shell plugin for open_external support
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_log::Builder::default().build())
         // Clipboard support
         .plugin(tauri_plugin_clipboard_manager::init())
         // Dialog (Save/Open) support
@@ -102,16 +132,24 @@ fn main() {
         .plugin(tauri_plugin_cli::init())
         // Notification support
         .plugin(tauri_plugin_notification::init())
-        // Our Portmaster Plugin that handles communication between tauri and our angular app.
-        .plugin(portmaster::init())
+        .invoke_handler(tauri::generate_handler![
+            portmaster::commands::get_app_info,
+            portmaster::commands::get_service_manager_status,
+            portmaster::commands::start_service,
+            portmaster::commands::get_state,
+            portmaster::commands::set_state,
+            portmaster::commands::should_show,
+            portmaster::commands::should_handle_prompts
+        ])
         // Setup the app an any listeners
         .setup(|app| {
             setup_tray_menu(app)?;
+            portmaster::setup(app.handle().clone());
 
             // Setup the single-instance event listener that will create/focus the main window
             // or the splash-screen.
             let handle = app.handle().clone();
-            app.listen_global("single-instance", move |_event| {
+            app.listen_any("single-instance", move |_event| {
                 let _ = window::open_window(&handle);
             });
 
@@ -196,17 +234,23 @@ fn main() {
                     );
 
                     api.prevent_close();
-                    if let Some(window) = handle.get_window(label.as_str()) {
-                        let _ = window.emit("exit-requested", "");
+                    if let Some(window) = handle.get_webview_window(label.as_str()) {
+                        let result = window.emit("exit-requested", "");
+                        if let Err(err) = result {
+                            error!("failed to emit event: {}", err.to_string());
+                        }
+                    } else {
+                        error!("window was None");
                     }
                 }
                 _ => {}
             }
         }
 
-        RunEvent::ExitRequested { api, .. } => {
-            api.prevent_exit();
-        }
+        // TODO(vladimir): why was this needed?
+        // RunEvent::ExitRequested { api, .. } => {
+        //     api.prevent_exit();
+        // }
         _ => {}
     });
 }

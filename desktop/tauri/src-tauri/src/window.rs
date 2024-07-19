@@ -1,5 +1,7 @@
 use log::{debug, error};
-use tauri::{AppHandle, Manager, Result, UserAttentionType, Window, WindowBuilder, WindowUrl};
+use tauri::{
+    AppHandle, Manager, Result, UserAttentionType, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+};
 
 use crate::portmaster::PortmasterExt;
 
@@ -11,15 +13,16 @@ use crate::portmaster::PortmasterExt;
 /// if ::websocket::is_portapi_reachable returns true.
 ///
 /// Either the existing or the newly created window is returned.
-pub fn create_main_window(app: &AppHandle) -> Result<Window> {
-    let mut window = if let Some(window) = app.get_window("main") {
+pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
+    let mut window = if let Some(window) = app.get_webview_window("main") {
         debug!("[tauri] main window already created");
 
         window
     } else {
         debug!("[tauri] creating main window");
 
-        let res = WindowBuilder::new(app, "main", WindowUrl::App("index.html".into()))
+        let res = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+            .title("Portmaster")
             .visible(false)
             .build();
 
@@ -54,12 +57,12 @@ pub fn create_main_window(app: &AppHandle) -> Result<Window> {
     Ok(window)
 }
 
-pub fn create_splash_window(app: &AppHandle) -> Result<Window> {
-    if let Some(window) = app.get_window("splash") {
+pub fn create_splash_window(app: &AppHandle) -> Result<WebviewWindow> {
+    if let Some(window) = app.get_webview_window("splash") {
         let _ = window.show();
         Ok(window)
     } else {
-        let window = WindowBuilder::new(app, "splash", WindowUrl::App("index.html".into()))
+        let window = WebviewWindowBuilder::new(app, "splash", WebviewUrl::App("index.html".into()))
             .center()
             .closable(false)
             .focused(true)
@@ -76,8 +79,9 @@ pub fn create_splash_window(app: &AppHandle) -> Result<Window> {
 }
 
 pub fn close_splash_window(app: &AppHandle) -> Result<()> {
-    if let Some(window) = app.get_window("splash") {
-        return window.close();
+    if let Some(window) = app.get_webview_window("splash") {
+        let _ = window.hide();
+        return window.destroy();
     }
     return Err(tauri::Error::WindowNotFound);
 }
@@ -94,9 +98,9 @@ pub fn close_splash_window(app: &AppHandle) -> Result<()> {
 ///
 /// If the Portmaster API is unreachable and there's no main window yet, we show the
 /// splash-screen window.
-pub fn open_window(app: &AppHandle) -> Result<Window> {
+pub fn open_window(app: &AppHandle) -> Result<WebviewWindow> {
     if app.portmaster().is_reachable() {
-        match app.get_window("main") {
+        match app.get_webview_window("main") {
             Some(win) => {
                 app.portmaster().show_window();
 
@@ -122,32 +126,41 @@ pub fn open_window(app: &AppHandle) -> Result<Window> {
 /// In #[cfg(debug_assertions)] the TAURI_PM_URL environment variable will be used
 /// if set.
 /// Otherwise or in release builds, it will be navigated to http://127.0.0.1:817.
-pub fn may_navigate_to_ui(win: &mut Window, force: bool) {
+pub fn may_navigate_to_ui(win: &mut WebviewWindow, force: bool) {
     if !win.app_handle().portmaster().is_reachable() && !force {
         error!("[tauri] portmaster API is not reachable, not navigating");
 
         return;
     }
-
-    if force || cfg!(debug_assertions) || win.url().as_str() == "tauri://localhost" {
+    if force || win.label().eq("main") {
         #[cfg(debug_assertions)]
         if let Ok(target_url) = std::env::var("TAURI_PM_URL") {
             debug!("[tauri] navigating to {}", target_url);
 
-            win.navigate(target_url.parse().unwrap());
+            _ = win.navigate(target_url.parse().unwrap());
 
             return;
         }
 
         #[cfg(debug_assertions)]
         {
+            // Only for dev build
+            // Allow connection to http://localhost:4200
+            let capabilities = include_str!("../capabilities/default.json")
+                .replace("http://localhost:817", "http://localhost:4200");
+            let _ = win.add_capability(capabilities);
             debug!("[tauri] navigating to http://localhost:4200");
-            win.navigate("http://localhost:4200".parse().unwrap());
+            _ = win.navigate("http://localhost:4200".parse().unwrap());
         }
 
         #[cfg(not(debug_assertions))]
-        win.navigate("http://localhost:817".parse().unwrap());
+        {
+            _ = win.navigate("http://localhost:817".parse().unwrap());
+        }
     } else {
-        error!("not navigating to user interface: current url: {}", win.url().as_str());
+        error!(
+            "not navigating to user interface: current url: {}",
+            win.url().unwrap().as_str()
+        );
     }
 }

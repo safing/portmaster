@@ -1,0 +1,106 @@
+{
+  "build": {
+    "beforeDevCommand": {
+      "script": "npm run tauri-dev",
+      "cwd": "../../angular",
+      "wait": false
+    },
+    "frontendDist": "../../angular/dist/tauri-builtin",
+    "devUrl": "http://localhost:4100"
+  },
+  "plugins": {
+    "cli": {
+      "args": [
+        {
+          "short": "d",
+          "name": "data",
+          "description": "Path to the installation directory",
+          "takesValue": true
+        },
+        {
+          "short": "b",
+          "name": "background",
+          "description": "Start in the background without opening a window"
+        },
+        {
+          "name": "with-notifications",
+          "description": "Enable experimental notifications via Tauri. Replaces the notifier app."
+        },
+        {
+          "name": "with-prompts",
+          "description": "Enable experimental prompt support via Tauri. Replaces the notifier app."
+        }
+      ]
+    }
+  },
+  "productName": "Portmaster",
+  "version": "0.1.0",
+  "identifier": "io.safing.portmaster", // this is added as a property to the shortcut on windows (ApplicationUserModelID). Used for notifications.
+  "app": {
+    "withGlobalTauri": true,
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "category": "Utility",
+    "copyright": "Safing Limited Inc",
+    "linux": {
+      "deb": {
+        "depends": [
+          "libayatana-appindicator3"
+        ],
+        "desktopTemplate": "../../../packaging/linux/portmaster.desktop",
+        "files": {
+          "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
+          "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
+        },
+        "postInstallScript": "../../../packaging/linux/postinst",
+        "postRemoveScript": "../../../packaging/linux/postrm"
+      },
+      "rpm": {
+        "depends": [
+          "libayatana-appindicator-gtk3"
+        ],
+        "desktopTemplate": "../../../packaging/linux/portmaster.desktop",
+        "release": "1",
+        "files": {
+          "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
+          "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
+        },
+        "postInstallScript": "../../../packaging/linux/postinst",
+        "postRemoveScript": "../../../packaging/linux/postrm"
+      }
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "installerHooks": "templates/nsis_install_hooks.nsh",
+        "installerIcon": "../../../assets/data/icons/pm_light.ico"
+      },
+      "wix": {
+        "fragmentPaths": [
+          "templates/service.wxs"
+        ],
+        "template": "templates/main.wxs"
+      }
+    },
+    "externalBin": [
+      "binaries/portmaster-start",
+      "binaries/portmaster-core"
+    ],
+    "targets": [
+      "deb",
+      "rpm",
+      "nsis",
+      "msi"
+    ],
+    "icon": [
+      "../../../assets/data/icons/pm_dark_512.png",
+      "../../../assets/data/icons/pm_dark.ico",
+      "../../../assets/data/icons/pm_light_512.png",
+      "../../../assets/data/icons/pm_light.ico"
+    ]
+  }
+}

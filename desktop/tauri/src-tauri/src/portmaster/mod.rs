@@ -13,7 +13,7 @@
 /// in the crate root.
 // The commands module contains tauri commands that are available to Javascript
 // using the invoke() and our custom invokeAsync() command.
-mod commands;
+pub mod commands;
 
 // The websocket module spawns an async function on tauri's runtime that manages
 // a persistent connection to the Portmaster websocket API and updates the tauri Portmaster
@@ -34,10 +34,9 @@ use std::{
 use log::{debug, error};
 use serde;
 use std::sync::Mutex;
-use tauri::{
-    plugin::{Builder, TauriPlugin},
-    AppHandle, Manager, Runtime,
-};
+use tauri::{AppHandle, Manager, Runtime};
+
+const PORTMASTER_BASE_URL: &'static str = "http://127.0.0.1:817/api/v1/";
 
 pub trait Handler {
     fn on_connect(&mut self, cli: PortAPI) -> ();
@@ -45,7 +44,7 @@ pub trait Handler {
     fn name(&self) -> String;
 }
 
-pub struct PortmasterPlugin<R: Runtime> {
+pub struct PortmasterInterface<R: Runtime> {
     #[allow(dead_code)]
     app: AppHandle<R>,
 
@@ -76,7 +75,7 @@ pub struct PortmasterPlugin<R: Runtime> {
     should_show_after_bootstrap: AtomicBool,
 }
 
-impl<R: Runtime> PortmasterPlugin<R> {
+impl<R: Runtime> PortmasterInterface<R> {
     /// Returns a state stored in the portmaster plugin.
     pub fn get_state(&self, key: String) -> Option<String> {
         let map = self.state.lock();
@@ -118,13 +117,12 @@ impl<R: Runtime> PortmasterPlugin<R> {
 
                 handler.on_connect(api);
             } else {
-                debug!("not yet connected to Portmaster API, calling on_disconnect()"); 
+                debug!("not yet connected to Portmaster API, calling on_disconnect()");
 
                 handler.on_disconnect();
             }
 
             handlers.push(Box::new(handler));
-
             debug!("number of registered handlers: {}", handlers.len());
         }
     }
@@ -174,7 +172,7 @@ impl<R: Runtime> PortmasterPlugin<R> {
         self.should_show_after_bootstrap.load(Ordering::Relaxed)
     }
 
-    /// Tells the angular applicatoin to show the window by emitting an event.
+    /// Tells the angular application to show the window by emitting an event.
     /// It calls set_show_after_bootstrap(true) automatically so the application
     /// also shows after bootstrapping.
     pub fn show_window(&self) {
@@ -184,8 +182,9 @@ impl<R: Runtime> PortmasterPlugin<R> {
         // misses the event below because it's still bootstrapping.
         self.set_show_after_bootstrap(true);
 
-        // ignore the error here, there's nothing we could do about it anyways.
-        let _ = self.app.emit("portmaster:show", "");
+        if let Err(err) = self.app.emit("portmaster:show", "") {
+            error!("failed to emit show event: {}", err.to_string());
+        }
     }
 
     /// Enables or disables the SPN.
@@ -206,12 +205,30 @@ impl<R: Runtime> PortmasterPlugin<R> {
         }
     }
 
+    /// Send Shutdown request to portmaster
+    pub fn trigger_shutdown(&self) {
+        tauri::async_runtime::spawn(async move {
+            let client = reqwest::Client::new();
+            match client
+                .post(format!("{}core/shutdown", PORTMASTER_BASE_URL))
+                .send()
+                .await
+            {
+                Ok(v) => {
+                    debug!("shutdown request sent {:?}", v);
+                }
+                Err(err) => {
+                    error!("failed to send shutdown request {}", err);
+                }
+            }
+        });
+    }
+
     //// Internal functions
     fn start_notification_handler(&self) {
         if let Some(api) = self.get_api() {
-            let cli = api.clone();
             tauri::async_runtime::spawn(async move {
-                notifications::notification_handler(cli).await;
+                notifications::notification_handler(api).await;
             });
         }
     }
@@ -223,9 +240,10 @@ impl<R: Runtime> PortmasterPlugin<R> {
         self.is_reachable.store(true, Ordering::Relaxed);
 
         // store the new api client.
-        let mut guard = self.api.lock().unwrap();
-        *guard = Some(api.clone());
-        drop(guard);
+        {
+            let mut guard = self.api.lock().unwrap();
+            *guard = Some(api.clone());
+        }
 
         // fire-off the notification handler.
         if self.handle_notifications.load(Ordering::Relaxed) {
@@ -249,9 +267,10 @@ impl<R: Runtime> PortmasterPlugin<R> {
         self.is_reachable.store(false, Ordering::Relaxed);
 
         // clear the current api client reference.
-        let mut guard = self.api.lock().unwrap();
-        *guard = None;
-        drop(guard);
+        {
+            let mut guard = self.api.lock().unwrap();
+            *guard = None;
+        }
 
         if let Ok(mut handlers) = self.handlers.lock() {
             for handler in handlers.iter_mut() {
@@ -262,47 +281,32 @@ impl<R: Runtime> PortmasterPlugin<R> {
 }
 
 pub trait PortmasterExt<R: Runtime> {
-    fn portmaster(&self) -> &PortmasterPlugin<R>;
+    fn portmaster(&self) -> &PortmasterInterface<R>;
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct Config {}
 
 impl<R: Runtime, T: Manager<R>> PortmasterExt<R> for T {
-    fn portmaster(&self) -> &PortmasterPlugin<R> {
-        self.state::<PortmasterPlugin<R>>().inner()
+    fn portmaster(&self) -> &PortmasterInterface<R> {
+        self.state::<PortmasterInterface<R>>().inner()
     }
 }
 
-pub fn init<R: Runtime>() -> TauriPlugin<R, Option<Config>> {
-    Builder::<R, Option<Config>>::new("portmaster")
-        .invoke_handler(tauri::generate_handler![
-            commands::get_app_info,
-            commands::get_service_manager_status,
-            commands::start_service,
-            commands::get_state,
-            commands::set_state,
-            commands::should_show,
-            commands::should_handle_prompts
-        ])
-        .setup(|app, _api| {
-            let plugin = PortmasterPlugin {
-                app: app.clone(),
-                state: Mutex::new(HashMap::new()),
-                is_reachable: AtomicBool::new(false),
-                handlers: Mutex::new(Vec::new()),
-                api: Mutex::new(None),
-                handle_notifications: AtomicBool::new(false),
-                handle_prompts: AtomicBool::new(false),
-                should_show_after_bootstrap: AtomicBool::new(true),
-            };
+pub fn setup(app: AppHandle) {
+    let interface = PortmasterInterface {
+        app: app.clone(),
+        state: Mutex::new(HashMap::new()),
+        is_reachable: AtomicBool::new(false),
+        handlers: Mutex::new(Vec::new()),
+        api: Mutex::new(None),
+        handle_notifications: AtomicBool::new(false),
+        handle_prompts: AtomicBool::new(false),
+        should_show_after_bootstrap: AtomicBool::new(true),
+    };
 
-            app.manage(plugin);
+    app.manage(interface);
 
-            // fire of the websocket handler
-            websocket::start_websocket_thread(app.clone());
-
-            Ok(())
-        })
-        .build()
+    // fire of the websocket handler
+    websocket::start_websocket_thread(app.clone());
 }

@@ -12,7 +12,6 @@ use std::process::ExitStatus;
 #[cfg(target_os = "linux")]
 use crate::service::systemd::SystemdServiceManager;
 
-use log::info;
 use thiserror::Error;
 
 use self::status::StatusResult;
@@ -63,7 +62,7 @@ pub fn get_service_manager() -> Result<impl ServiceManager> {
     #[cfg(target_os = "linux")]
     {
         if SystemdServiceManager::is_installed() {
-            info!("system service manager: systemd");
+            log::info!("system service manager: systemd");
 
             Ok(SystemdServiceManager {})
         } else {

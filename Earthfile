@@ -12,23 +12,89 @@ ARG --global work_image = "alpine"
 
 ARG --global outputDir = "./dist"
 
+# Architectures:
 # The list of rust targets we support. They will be automatically converted
 # to GOOS, GOARCH and GOARM when building go binaries. See the +RUST_TO_GO_ARCH_STRING
 # helper method at the bottom of the file.
-
-ARG --global architectures = "x86_64-unknown-linux-gnu" \
-                             "aarch64-unknown-linux-gnu" \
-                             "x86_64-pc-windows-gnu"
-                             # TODO: Compile errors here:
-                             # "aarch64-pc-windows-gnu" \
-                             # "x86_64-apple-darwin" \
-                             # "aarch64-apple-darwin"
-                             # "armv7-unknown-linux-gnueabihf" \
-                             # "arm-unknown-linux-gnueabi"
+#
+# Linux:
+# x86_64-unknown-linux-gnu
+# aarch64-unknown-linux-gnu
+# armv7-unknown-linux-gnueabihf
+# arm-unknown-linux-gnueabi
+#
+# Windows:
+# x86_64-pc-windows-gnu
+# aarch64-pc-windows-gnu
+#
+# Mac:
+# x86_64-apple-darwin
+# aarch64-apple-darwin
 
 # Import the earthly rust lib since it already provides some useful
 # build-targets and methods to initialize the rust toolchain.
 IMPORT github.com/earthly/lib/rust:3.0.2 AS rust
+
+build:
+    # Build all Golang binaries:
+    # ./dist/linux_amd64/portmaster-core
+    # ./dist/linux_amd64/portmaster-start
+    # ./dist/linux_arm64/portmaster-core
+    # ./dist/linux_arm64/portmaster-start
+    # ./dist/windows_amd64/portmaster-core.exe
+    # ./dist/windows_amd64/portmaster-start.exe
+    # ./dist/windows_arm64/portmaster-core.exe
+    # ./dist/windows_arm64/portmaster-start.exe
+    BUILD +go-build --GOOS="linux"   --GOARCH="amd64"
+    BUILD +go-build --GOOS="linux"   --GOARCH="arm64"
+    BUILD +go-build --GOOS="windows" --GOARCH="amd64"
+    BUILD +go-build --GOOS="windows" --GOARCH="arm64"
+
+    # Build the Angular UI:
+    # ./dist/all/portmaster-ui.zip
+    BUILD +angular-release
+
+    # Build Tauri app binaries:
+    # ./dist/linux_amd64/portmaster-app
+    # ./dist/linux_amd64/Portmaster-0.1.0-1.x86_64.rpm
+    # ./dist/linux_amd64/Portmaster_0.1.0_amd64.deb
+    BUILD +tauri-build --target="x86_64-unknown-linux-gnu"
+    # TODO:
+    # BUILD +tauri-build --target="x86_64-pc-windows-gnu"
+
+    # Bild Tauri release bundle for Windows:
+    # ./dist/windows_amd64/portmaster-app_vX-X-X.zip
+    BUILD +tauri-windows-release-bundle
+
+    # Build UI assets:
+    # ./dist/all/assets.zip
+    BUILD +assets
+
+go-ci:
+    BUILD +go-build --GOOS="linux"   --GOARCH="amd64"
+    BUILD +go-build --GOOS="linux"   --GOARCH="arm64"
+    BUILD +go-build --GOOS="windows" --GOARCH="amd64"
+    BUILD +go-build --GOOS="windows" --GOARCH="arm64"
+    BUILD +go-test
+
+angular-ci:
+    BUILD +angular-release
+
+tauri-ci:
+    BUILD +tauri-build --target="x86_64-unknown-linux-gnu"
+    BUILD +tauri-windows-release-bundle
+
+kext-ci:
+    BUILD +kext-build
+
+release:
+    LOCALLY
+
+    IF ! git diff --quiet
+        RUN echo -e "\033[1;31m Refusing to release a dirty git repository. Please commit your local changes first! \033[0m" ; exit 1
+    END
+
+    BUILD +build
 
 go-deps:
     FROM ${go_builder_image}
@@ -111,7 +177,7 @@ go-build:
     ARG GOOS=linux
     ARG GOARCH=amd64
     ARG GOARM
-    ARG CMDS=portmaster-start portmaster-core hub notifier
+    ARG CMDS=portmaster-start portmaster-core
 
     CACHE --sharing shared "$GOCACHE"
     CACHE --sharing shared "$GOMODCACHE"
@@ -182,6 +248,7 @@ go-test:
 
 go-test-all:
     FROM ${work_image}
+    ARG --required architectures
 
     FOR arch IN ${architectures}
         DO +RUST_TO_GO_ARCH_STRING --rustTarget="${arch}"
@@ -197,6 +264,7 @@ go-lint:
 # Builds portmaster-start, portmaster-core, hub and notifier for all supported platforms
 go-release:
     FROM ${work_image}
+    ARG --required architectures
 
     FOR arch IN ${architectures}
         DO +RUST_TO_GO_ARCH_STRING --rustTarget="${arch}"
@@ -217,11 +285,6 @@ go-release:
 go-build-utils:
     BUILD +go-build --CMDS="" --GOARCH=amd64 --GOOS=linux
     BUILD +go-build --CMDS="" --GOARCH=amd64 --GOOS=windows
-
-# All targets that should run in CI for go.
-go-ci:
-    BUILD +go-release
-    BUILD +go-test
 
 # Prepares the angular project by installing dependencies
 angular-deps:
@@ -272,7 +335,7 @@ angular-project:
 
     RUN --no-cache cwd=$(pwd) && cd "${dist}" && zip -r "${cwd}/${project}.zip" ./
     SAVE ARTIFACT --keep-ts "${dist}" "./output/${project}"
-    
+
     # Save portmaster UI as local artifact.
     IF [ "${project}" = "portmaster" ]
         SAVE ARTIFACT --keep-ts "./${project}.zip" AS LOCAL ${outputDir}/all/${project}-ui.zip
@@ -302,9 +365,6 @@ assets:
 rust-base:
     FROM ${rust_builder_image}
 
-    RUN dpkg --add-architecture armhf
-    RUN dpkg --add-architecture arm64
-
     RUN apt-get update -qq
 
     # Tools and libraries required for cross-compilation
@@ -318,74 +378,39 @@ rust-base:
         gcc-multilib \
         linux-libc-dev \
         linux-libc-dev-amd64-cross \
-        linux-libc-dev-arm64-cross \
-        linux-libc-dev-armel-cross \
-        linux-libc-dev-armhf-cross \
         build-essential \
         curl \
         wget \
         file \
         libsoup-3.0-dev \
-        libwebkit2gtk-4.1-dev
+        libwebkit2gtk-4.1-dev \
+        gcc-mingw-w64-x86-64 \
+        zip
 
     # Install library dependencies for all supported architectures
     # required for succesfully linking.
-    FOR arch IN amd64 arm64 armhf
-        RUN apt-get install --no-install-recommends -qq \
-            libsoup-3.0-0:${arch} \
-            libwebkit2gtk-4.1-0:${arch} \
-            libssl3:${arch} \
-            libayatana-appindicator3-1:${arch} \
-            librsvg2-bin:${arch} \
-            libgtk-3-0:${arch} \
-            libjavascriptcoregtk-4.1-0:${arch}  \
-            libssl-dev:${arch} \
-            libayatana-appindicator3-dev:${arch} \
-            librsvg2-dev:${arch} \
-            libgtk-3-dev:${arch} \
-            libjavascriptcoregtk-4.1-dev:${arch}  
-   END
-
-   # Note(ppacher): I've no idea why we need to explicitly create those symlinks:
-   # Some how all the other libs work but libsoup and libwebkit2gtk do not create the link file
-   RUN cd /usr/lib/aarch64-linux-gnu && \
-        ln -s libwebkit2gtk-4.1.so.0 libwebkit2gtk-4.1.so && \
-        ln -s libsoup-3.0.so.0 libsoup-3.0.so
-
-   RUN cd /usr/lib/arm-linux-gnueabihf && \
-        ln -s libwebkit2gtk-4.1.so.0 libwebkit2gtk-4.1.so && \
-        ln -s libsoup-3.0.so.0 libsoup-3.0.so
-
-    # For what ever reason trying to install the gcc compilers together with the above
-    # command makes apt fail due to conflicts with gcc-multilib. Installing in a separate
-    # step seems to work ...
     RUN apt-get install --no-install-recommends -qq \
-        g++-mingw-w64-x86-64 \
-        gcc-aarch64-linux-gnu \
-        gcc-arm-none-eabi \
-        gcc-arm-linux-gnueabi \
-        gcc-arm-linux-gnueabihf \
-        libc6-dev-arm64-cross \
-        libc6-dev-armel-cross \
-        libc6-dev-armhf-cross \
-        libc6-dev-amd64-cross
+        libsoup-3.0-0 \
+        libwebkit2gtk-4.1-0 \
+        libssl3 \
+        libayatana-appindicator3-1 \
+        librsvg2-bin \
+        libgtk-3-0 \
+        libjavascriptcoregtk-4.1-0  \
+        libssl-dev \
+        libayatana-appindicator3-dev \
+        librsvg2-dev \
+        libgtk-3-dev \
+        libjavascriptcoregtk-4.1-dev  
 
     # Add some required rustup components
     RUN rustup component add clippy
     RUN rustup component add rustfmt
 
-    # Install architecture targets
-    FOR arch IN ${architectures}
-        RUN rustup target add ${arch}
-    END
-
     DO rust+INIT --keep_fingerprints=true
 
-    # For now we need tauri-cli 1.5 for bulding
-    DO rust+CARGO --args="install tauri-cli --version ^1.5.11"
-
-    # Required for cross compilation to work.
-    ENV PKG_CONFIG_ALLOW_CROSS=1
+    # For now we need tauri-cli 2.0.0 for bulding
+    DO rust+CARGO --args="install tauri-cli --version ^2.0.0-beta"
 
     # Explicitly cache here.
     SAVE IMAGE --cache-hint
@@ -398,7 +423,7 @@ tauri-src:
     # --keep-ts is necessary to ensure that the timestamps of the source files
     # are preserved such that Rust's incremental compilation works correctly.
     COPY --keep-ts ./desktop/tauri/ .
-    COPY assets/data ./assets
+    COPY assets/data ./../../assets/data
     COPY packaging/linux ./../../packaging/linux
     COPY (+angular-project/output/tauri-builtin --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=production --baseHref="/") ./../angular/dist/tauri-builtin
 
@@ -411,13 +436,151 @@ tauri-build:
     FROM +tauri-src
 
     ARG --required target
-    ARG output=".*/release/(([^\./]+|([^\./]+\.(dll|exe)))|bundle/.*\.(deb|msi|AppImage))"
+    ARG output=".*/release/(([^\./]+|([^\./]+\.(dll|exe)))|bundle/(deb|rpm)/.*\.(deb|rpm))"
     ARG bundle="none"
-
 
     # if we want tauri to create the installer bundles we also need to provide all external binaries
     # we need to do some magic here because tauri expects the binaries to include the rust target tripple.
-    # We already knwo that triple because it's a required argument. From that triple, we use +RUST_TO_GO_ARCH_STRING
+    # We already know that triple because it's a required argument. From that triple, we use +RUST_TO_GO_ARCH_STRING
+    # function from below to parse the triple and guess wich GOOS and GOARCH we need.
+    RUN mkdir /tmp/gobuild
+    RUN mkdir ./binaries
+
+    DO +RUST_TO_GO_ARCH_STRING --rustTarget="${target}"
+    RUN echo "GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} GO_ARCH_STRING=${GO_ARCH_STRING}"
+
+    # Our tauri app has externalBins configured so tauri will try to embed them when it finished compiling
+    # the app. Make sure we copy portmaster-start and portmaster-core in all architectures supported.
+    # See documentation for externalBins for more information on how tauri searches for the binaries.
+    COPY (+go-build/output --CMDS="portmaster-start portmaster-core" --GOOS="${GOOS}" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
+
+    # Place them in the correct folder with the rust target tripple attached.
+    FOR bin IN $(ls /tmp/gobuild)
+        # ${bin$.*} does not work in SET commands unfortunately so we use a shell
+        # snippet here:
+        RUN set -e ; \
+            dest="./binaries/${bin}-${target}" ; \
+            if [ -z "${bin##*.exe}" ]; then \
+                dest="./binaries/${bin%.*}-${target}.exe" ; \
+            fi ; \
+            cp "/tmp/gobuild/${bin}" "${dest}" ;
+    END
+
+    # Just for debugging ...
+    # RUN ls -R ./binaries
+
+    # The following is exected to work but doesn't. for whatever reason cargo-sweep errors out on the windows-toolchain.
+    #
+    #   DO rust+CARGO --args="tauri build --bundles none --ci --target=${target}" --output="release/[^/\.]+"
+    #
+    # For, now, we just directly mount the rust target cache and call cargo ourself.
+
+    DO rust+SET_CACHE_MOUNTS_ENV
+    RUN rustup target add "${target}"
+    RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo tauri build  --ci --target="${target}"
+    DO rust+COPY_OUTPUT --output="${output}"
+
+    # BUG(cross-compilation):
+    #
+    # The above command seems to correctly compile for all architectures we want to support but fails during
+    # linking since the target libaries are not available for the requested platforms. Maybe we need to download
+    # the, manually ...
+    #
+    # The earthly rust lib also has support for using cross-rs for cross-compilation but that fails due to the
+    # fact that cross-rs base docker images used for building are heavily outdated (latest = ubunut:16.0, main = ubuntu:20.04)
+    # which does not ship recent enough glib versions (our glib dependency needs glib>2.70 but ubunut:20.04 only ships 2.64)
+    #
+    # The following would use the CROSS function from the earthly lib, this 
+    # DO rust+CROSS --target="${target}"
+
+    RUN echo output: $(ls -R "target/${target}/release")
+    LET outbin="error"
+    FOR bin IN "portmaster Portmaster.exe WebView2Loader.dll"
+        # Modify output binary.
+        SET outbin="${bin}"
+        IF [ "${bin}" = "portmaster" ]
+            SET outbin="portmaster-app"
+        ELSE IF [ "${bin}" = "Portmaster.exe" ]
+            SET outbin="portmaster-app.exe"
+        END
+        # Save output binary as local artifact.
+        SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${outbin}"
+    END
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/bundle/deb/*.deb" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/bundle/rpm/*.rpm" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
+
+tauri-windows-release-bundle:
+    FROM +tauri-src
+
+    ARG target="x86_64-pc-windows-gnu"
+    ARG output=".*/release/(([^\./]+|([^\./]+\.(dll|exe))))"
+    ARG bundle="none"
+
+    ARG GOOS=windows
+    ARG GOARCH=amd64
+    ARG GOARM
+
+    # The binaries will not be used but we still need to create them. Tauri will check for them.
+    RUN mkdir /tmp/gobuild
+    RUN mkdir ./binaries
+
+    DO +RUST_TO_GO_ARCH_STRING --rustTarget="${target}"
+    RUN echo "GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} GO_ARCH_STRING=${GO_ARCH_STRING}"
+
+    # Our tauri app has externalBins configured so tauri will look for them when it finished compiling
+    # the app. Make sure we copy portmaster-start and portmaster-core in all architectures supported.
+    # See documentation for externalBins for more information on how tauri searches for the binaries.
+    COPY (+go-build/output --GOOS="${GOOS}" --CMDS="portmaster-start portmaster-core" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
+
+    # Place them in the correct folder with the rust target tripple attached.
+    FOR bin IN $(ls /tmp/gobuild)
+        # ${bin$.*} does not work in SET commands unfortunately so we use a shell
+        # snippet here:
+        RUN set -e ; \
+            dest="./binaries/${bin}-${target}" ; \
+            if [ -z "${bin##*.exe}" ]; then \
+                dest="./binaries/${bin%.*}-${target}.exe" ; \
+            fi ; \
+            cp "/tmp/gobuild/${bin}" "${dest}" ;
+    END
+
+    # Just for debugging ...
+    # RUN ls -R ./binaries
+
+    DO rust+SET_CACHE_MOUNTS_ENV
+    RUN rustup target add "${target}"
+    RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo tauri build --no-bundle --ci --target="${target}"
+    DO rust+COPY_OUTPUT --output="${output}"
+
+    # Get version from git.
+    COPY .git .
+    LET version = "$(git tag --points-at || true)"
+    IF [ -z "${version}" ]
+        LET dev_version = "$(git describe --tags --first-parent --abbrev=0 || true)"
+        IF [ -n "${dev_version}" ]
+            SET version = "${dev_version}"
+        END
+    END
+    IF [ -z "${version}" ]
+        SET version = "v0.0.0"
+    END
+    ENV VERSION="${version}"
+    RUN echo "Version: $VERSION"
+    ENV VERSION_SUFFIX="$(echo $VERSION | tr '.' '-')"
+    RUN echo "Version Suffix: $VERSION_SUFFIX"
+
+    RUN echo output: $(ls -R "target/${target}/release")
+    RUN mv "target/${target}/release/app.exe" "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.exe"
+    RUN zip "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.zip" "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.exe" -j portmaster-app${VERSION_SUFFIX}.exe "target/${target}/release/WebView2Loader.dll" -j WebView2Loader.dll
+    SAVE ARTIFACT --if-exists "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.zip" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
+
+tauri-prep-windows:
+    FROM +angular-base --configuration=production
+    ARG target="x86_64-pc-windows-msvc"
+
+    # if we want tauri to create the installer bundles we also need to provide all external binaries
+    # we need to do some magic here because tauri expects the binaries to include the rust target tripple.
+    # We already know that triple because it's a required argument. From that triple, we use +RUST_TO_GO_ARCH_STRING
     # function from below to parse the triple and guess wich GOOS and GOARCH we need.
     RUN mkdir /tmp/gobuild
     RUN mkdir ./binaries
@@ -443,55 +606,29 @@ tauri-build:
             cp "/tmp/gobuild/${bin}" "${dest}" ;
     END
 
+    # Copy source
+    COPY --keep-ts ./desktop/tauri/src-tauri src-tauri
+    COPY --keep-ts ./assets assets
+
+    # Build UI
+    ENV NODE_ENV="production"
+    RUN --no-cache ./node_modules/.bin/ng build --configuration production --base-href / "tauri-builtin"
+
     # Just for debugging ...
-    RUN ls -R ./binaries
+    # RUN ls -R ./binaries
+    # RUN ls -R ./dist
 
-    # The following is exected to work but doesn't. for whatever reason cargo-sweep errors out on the windows-toolchain.
-    #
-    #   DO rust+CARGO --args="tauri build --bundles none --ci --target=${target}" --output="release/[^/\.]+"
-    #
-    # For, now, we just directly mount the rust target cache and call cargo ourself.
-
-    DO rust+SET_CACHE_MOUNTS_ENV
-    RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo tauri build --bundles "${bundle}" --ci --target="${target}"
-    DO rust+COPY_OUTPUT --output="${output}"
-
-    # BUG(cross-compilation):
-    #
-    # The above command seems to correctly compile for all architectures we want to support but fails during
-    # linking since the target libaries are not available for the requested platforms. Maybe we need to download
-    # the, manually ...
-    #
-    # The earthly rust lib also has support for using cross-rs for cross-compilation but that fails due to the
-    # fact that cross-rs base docker images used for building are heavily outdated (latest = ubunut:16.0, main = ubuntu:20.04)
-    # which does not ship recent enough glib versions (our glib dependency needs glib>2.70 but ubunut:20.04 only ships 2.64)
-    #
-    # The following would use the CROSS function from the earthly lib, this 
-    # DO rust+CROSS --target="${target}"
-
-    # RUN echo output: $(ls "target/${target}/release")
-    LET outbin="error"
-    FOR bin IN "portmaster Portmaster.exe WebView2Loader.dll"
-        # Modify output binary.
-        SET outbin="${bin}"
-        IF [ "${bin}" = "portmaster" ]
-            SET outbin="portmaster-app"
-        ELSE IF [ "${bin}" = "Portmaster.exe" ]
-            SET outbin="portmaster-app.exe"
-        END
-        # Save output binary as local artifact.
-        IF [ -f "target/${target}/release/${bin}" ]
-            SAVE ARTIFACT --keep-ts "target/${target}/release/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${outbin}"
-        END
-    END
+    SAVE ARTIFACT "./dist/tauri-builtin" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/desktop/angular/dist/"
+    SAVE ARTIFACT "./src-tauri" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/desktop/tauri/src-tauri"
+    SAVE ARTIFACT "./binaries" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/desktop/tauri/src-tauri/"
+    SAVE ARTIFACT "./assets" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/assets"
 
 tauri-release:
     FROM ${work_image}
-
-    ARG bundle="none"
+    ARG --required architectures
 
     FOR arch IN ${architectures}
-        BUILD +tauri-build --target="${arch}" --bundle="${bundle}"
+        BUILD +tauri-build --target="${arch}"
     END
 
 kext-build:
@@ -514,21 +651,6 @@ kext-build:
     DO rust+CARGO --args="run"
 
     SAVE ARTIFACT --keep-ts "portmaster-kext-release-bundle.zip" AS LOCAL "${outputDir}/windows_amd64/portmaster-kext-release-bundle.zip"
-
-build:
-    BUILD +go-release
-    BUILD +angular-release
-    BUILD +tauri-release
-    BUILD +assets
-
-release:
-    LOCALLY
-
-    IF ! git diff --quiet
-        RUN echo -e "\033[1;31m Refusing to release a dirty git repository. Please commit your local changes first! \033[0m" ; exit 1
-    END
-
-    BUILD +build
 
 
 # Takes GOOS, GOARCH and optionally GOARM and creates a string representation for file-names.
