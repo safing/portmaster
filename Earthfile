@@ -70,6 +70,23 @@ build:
     # ./dist/all/assets.zip
     BUILD +assets
 
+go-ci:
+    BUILD +go-build --GOOS="linux"   --GOARCH="amd64"
+    BUILD +go-build --GOOS="linux"   --GOARCH="arm64"
+    BUILD +go-build --GOOS="windows" --GOARCH="amd64"
+    BUILD +go-build --GOOS="windows" --GOARCH="arm64"
+    BUILD +go-test
+
+angular-ci:
+    BUILD +angular-release
+
+tauri-ci:
+    BUILD +tauri-build --target="x86_64-unknown-linux-gnu"
+    BUILD +tauri-windows-release-bundle
+
+kext-ci:
+    BUILD +kext-build
+
 release:
     LOCALLY
 
@@ -268,11 +285,6 @@ go-release:
 go-build-utils:
     BUILD +go-build --CMDS="" --GOARCH=amd64 --GOOS=linux
     BUILD +go-build --CMDS="" --GOARCH=amd64 --GOOS=windows
-
-# All targets that should run in CI for go.
-go-ci:
-    BUILD +go-release
-    BUILD +go-test
 
 # Prepares the angular project by installing dependencies
 angular-deps:
