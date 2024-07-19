@@ -34,6 +34,7 @@ const (
 	parameterBlockedIf  = "blockedif"
 	parameterSearch     = "search"
 	parameterSearchOnly = "search-only"
+	parameterLinkLocal  = "link-local"
 )
 
 var (
@@ -179,6 +180,21 @@ func createResolver(resolverURL, source string) (*Resolver, bool, error) {
 		}
 	}
 
+	// Check if this is a link-local resolver.
+	if query.Has(parameterLinkLocal) {
+		if query.Get(parameterLinkLocal) != "" {
+			return nil, false, fmt.Errorf("%s may only be used as an empty parameter", parameterLinkLocal)
+		}
+		// Check if resolver IP is link-local.
+		resolverNet, err := netenv.GetLocalNetwork(newResolver.Info.IP)
+		switch {
+		case err != nil:
+			newResolver.LinkLocalUnavailable = true
+		case resolverNet == nil:
+			newResolver.LinkLocalUnavailable = true
+		}
+	}
+
 	newResolver.Conn = resolverConnFactory(newResolver)
 	return newResolver, false, nil
 }
@@ -208,7 +224,8 @@ func checkAndSetResolverParamters(u *url.URL, resolver *Resolver) error {
 			parameterIP,
 			parameterBlockedIf,
 			parameterSearch,
-			parameterSearchOnly:
+			parameterSearchOnly,
+			parameterLinkLocal:
 			// Known key, continue.
 		default:
 			// Unknown key, abort.

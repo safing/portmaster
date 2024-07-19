@@ -67,6 +67,8 @@ type Resolver struct {
 	Search     []string
 	SearchOnly bool
 	Path       string
+	// Special States
+	LinkLocalUnavailable bool
 
 	// logic interface
 	Conn ResolverConn `json:"-"`

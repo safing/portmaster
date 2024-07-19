@@ -422,6 +422,12 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 			continue
 		}
 
+		// Skip unreachable link-local resolvers.
+		if resolver.LinkLocalUnavailable {
+			log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it is link-local and not available", resolver)
+			continue
+		}
+
 		// resolve
 		log.Tracer(ctx).Tracef("resolver: sending query for %s to %s", q.ID(), resolver.Info.ID())
 		rrCache, err = resolver.Conn.Query(ctx, q)
