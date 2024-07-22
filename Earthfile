@@ -495,12 +495,12 @@ tauri-build:
 
     RUN echo output: $(ls -R "target/${target}/release")
     LET outbin="error"
-    FOR bin IN "portmaster Portmaster.exe WebView2Loader.dll"
+    FOR bin IN "app app.exe WebView2Loader.dll"
         # Modify output binary.
         SET outbin="${bin}"
-        IF [ "${bin}" = "portmaster" ]
+        IF [ "${bin}" = "app" ]
             SET outbin="portmaster-app"
-        ELSE IF [ "${bin}" = "Portmaster.exe" ]
+        ELSE IF [ "${bin}" = "app.exe" ]
             SET outbin="portmaster-app.exe"
         END
         # Save output binary as local artifact.
