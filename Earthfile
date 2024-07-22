@@ -62,9 +62,9 @@ build:
     # TODO:
     # BUILD +tauri-build --target="x86_64-pc-windows-gnu"
 
-    # Bild Tauri release bundle for Windows:
+    # Bild Tauri bundle for Windows:
     # ./dist/windows_amd64/portmaster-app_vX-X-X.zip
-    BUILD +tauri-windows-release-bundle
+    BUILD +tauri-build-windows-bundle
 
     # Build UI assets:
     # ./dist/all/assets.zip
@@ -82,7 +82,7 @@ angular-ci:
 
 tauri-ci:
     BUILD +tauri-build --target="x86_64-unknown-linux-gnu"
-    BUILD +tauri-windows-release-bundle
+    BUILD +tauri-build-windows-bundle
 
 kext-ci:
     BUILD +kext-build
@@ -504,22 +504,17 @@ tauri-build:
     # DO rust+CROSS --target="${target}"
 
     RUN echo output: $(ls -R "target/${target}/release")
-    LET outbin="error"
-    FOR bin IN "app app.exe WebView2Loader.dll"
-        # Modify output binary.
-        SET outbin="${bin}"
-        IF [ "${bin}" = "app" ]
-            SET outbin="portmaster-app"
-        ELSE IF [ "${bin}" = "app.exe" ]
-            SET outbin="portmaster-app.exe"
-        END
-        # Save output binary as local artifact.
-        SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${outbin}"
-    END
+
+    # Binaries
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/app" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster-app"
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/app.exe" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster-app.exe"
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/WebView2Loader.dll" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/WebView2Loader.dll"
+
+    # Installers
     SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/bundle/deb/*.deb" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
     SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/bundle/rpm/*.rpm" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
 
-tauri-windows-release-bundle:
+tauri-build-windows-bundle:
     FROM +tauri-src
 
     ARG target="x86_64-pc-windows-gnu"
