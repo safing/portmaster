@@ -183,19 +183,29 @@ go-build:
     CACHE --sharing shared "$GOMODCACHE"
 
     RUN mkdir /tmp/build
-    ENV CGO_ENABLED = "0"
 
+    # Fall back to build all binaries when none is specified.
     IF [ "${CMDS}" = "" ]
         LET CMDS=$(ls -1 "./cmds/")
     END
 
     # Build all go binaries from the specified in CMDS
     FOR bin IN $CMDS
-        RUN --no-cache go build  -ldflags="-X github.com/safing/portbase/info.version=${VERSION} -X github.com/safing/portbase/info.buildSource=${SOURCE} -X github.com/safing/portbase/info.buildTime=${BUILD_TIME}" -o "/tmp/build/" ./cmds/${bin}
+        # Add special build options.
+        IF [ "${GOOS}" = "windows" ] &&  [ "${bin}" = "portmaster-start" ]
+            # Windows, portmaster-start
+            ENV CGO_ENABLED = "1"
+            ENV EXTRA_LD_FLAGS = "-H windowsgui"
+        ELSE
+            # Defaults
+            ENV CGO_ENABLED = "0"
+            ENV EXTRA_LD_FLAGS = ""
+        END
+
+        RUN --no-cache go build -ldflags="-X github.com/safing/portbase/info.version=${VERSION} -X github.com/safing/portbase/info.buildSource=${SOURCE} -X github.com/safing/portbase/info.buildTime=${BUILD_TIME} ${EXTRA_LD_FLAGS}" -o "/tmp/build/" ./cmds/${bin}
     END
 
     DO +GO_ARCH_STRING --goos="${GOOS}" --goarch="${GOARCH}" --goarm="${GOARM}"
-
     FOR bin IN $(ls -1 "/tmp/build/")
         SAVE ARTIFACT --keep-ts "/tmp/build/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${bin}"
     END
