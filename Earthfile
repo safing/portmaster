@@ -62,9 +62,9 @@ build:
     # TODO:
     # BUILD +tauri-build --target="x86_64-pc-windows-gnu"
 
-    # Bild Tauri release bundle for Windows:
+    # Bild Tauri bundle for Windows:
     # ./dist/windows_amd64/portmaster-app_vX-X-X.zip
-    BUILD +tauri-windows-release-bundle
+    BUILD +tauri-build-windows-bundle
 
     # Build UI assets:
     # ./dist/all/assets.zip
@@ -82,7 +82,7 @@ angular-ci:
 
 tauri-ci:
     BUILD +tauri-build --target="x86_64-unknown-linux-gnu"
-    BUILD +tauri-windows-release-bundle
+    BUILD +tauri-build-windows-bundle
 
 kext-ci:
     BUILD +kext-build
@@ -183,19 +183,29 @@ go-build:
     CACHE --sharing shared "$GOMODCACHE"
 
     RUN mkdir /tmp/build
-    ENV CGO_ENABLED = "0"
 
+    # Fall back to build all binaries when none is specified.
     IF [ "${CMDS}" = "" ]
         LET CMDS=$(ls -1 "./cmds/")
     END
 
     # Build all go binaries from the specified in CMDS
     FOR bin IN $CMDS
-        RUN --no-cache go build  -ldflags="-X github.com/safing/portbase/info.version=${VERSION} -X github.com/safing/portbase/info.buildSource=${SOURCE} -X github.com/safing/portbase/info.buildTime=${BUILD_TIME}" -o "/tmp/build/" ./cmds/${bin}
+        # Add special build options.
+        IF [ "${GOOS}" = "windows" ] &&  [ "${bin}" = "portmaster-start" ]
+            # Windows, portmaster-start
+            ENV CGO_ENABLED = "1"
+            ENV EXTRA_LD_FLAGS = "-H windowsgui"
+        ELSE
+            # Defaults
+            ENV CGO_ENABLED = "0"
+            ENV EXTRA_LD_FLAGS = ""
+        END
+
+        RUN --no-cache go build -ldflags="-X github.com/safing/portbase/info.version=${VERSION} -X github.com/safing/portbase/info.buildSource=${SOURCE} -X github.com/safing/portbase/info.buildTime=${BUILD_TIME} ${EXTRA_LD_FLAGS}" -o "/tmp/build/" ./cmds/${bin}
     END
 
     DO +GO_ARCH_STRING --goos="${GOOS}" --goarch="${GOARCH}" --goarm="${GOARM}"
-
     FOR bin IN $(ls -1 "/tmp/build/")
         SAVE ARTIFACT --keep-ts "/tmp/build/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${bin}"
     END
@@ -494,22 +504,17 @@ tauri-build:
     # DO rust+CROSS --target="${target}"
 
     RUN echo output: $(ls -R "target/${target}/release")
-    LET outbin="error"
-    FOR bin IN "portmaster Portmaster.exe WebView2Loader.dll"
-        # Modify output binary.
-        SET outbin="${bin}"
-        IF [ "${bin}" = "portmaster" ]
-            SET outbin="portmaster-app"
-        ELSE IF [ "${bin}" = "Portmaster.exe" ]
-            SET outbin="portmaster-app.exe"
-        END
-        # Save output binary as local artifact.
-        SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/${bin}" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/${outbin}"
-    END
+
+    # Binaries
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/app" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster-app"
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/app.exe" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster-app.exe"
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/WebView2Loader.dll" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/WebView2Loader.dll"
+
+    # Installers
     SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/bundle/deb/*.deb" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
     SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/bundle/rpm/*.rpm" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
 
-tauri-windows-release-bundle:
+tauri-build-windows-bundle:
     FROM +tauri-src
 
     ARG target="x86_64-pc-windows-gnu"

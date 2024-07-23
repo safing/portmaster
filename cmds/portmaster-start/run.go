@@ -109,27 +109,8 @@ func init() {
 			PIDFile:           true,
 			RestartOnFail:     true,
 		},
+		app2Options,
 	})
-
-	if onWindows {
-		registerComponent([]Options{
-			{
-				Name:              "Portmaster App2",
-				Identifier:        "app2/portmaster-app.zip",
-				AllowDownload:     false,
-				AllowHidingWindow: false,
-			},
-		})
-	} else {
-		registerComponent([]Options{
-			{
-				Name:              "Portmaster App2",
-				Identifier:        "app2/portmaster-app",
-				AllowDownload:     false,
-				AllowHidingWindow: false,
-			},
-		})
-	}
 }
 
 func registerComponent(opts []Options) {
@@ -352,12 +333,13 @@ func persistOutputStreams(opts *Options, version string, cmd *exec.Cmd) (chan st
 }
 
 func execute(opts *Options, args []string) (cont bool, err error) {
-	if !forceOldUI && registry.UsePreReleases && opts.ShortIdentifier == "app" {
-		// Check if new ui was already tried.
-		if !fallBackToOldUI {
-			opts = &app2Options
-			log.Println("Using new UI")
-		}
+	// Auto-upgrade to new UI if in beta and new UI is not disabled or failed.
+	if opts.ShortIdentifier == "app" &&
+		registry.UsePreReleases &&
+		!forceOldUI &&
+		!fallBackToOldUI {
+		log.Println("auto-upgraded to new UI")
+		opts = &app2Options
 	}
 
 	file, err := registry.GetFile(
