@@ -3,7 +3,7 @@ use crate::service::get_service_manager;
 use crate::service::ServiceManager;
 use log::debug;
 use std::sync::atomic::Ordering;
-use tauri::{Manager, Runtime, State, Window};
+use tauri::{Emitter, Runtime, State, Window};
 
 pub type Result = std::result::Result<String, String>;
 

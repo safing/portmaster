@@ -20,6 +20,7 @@ mod window;
 
 use log::{debug, error, info};
 use portmaster::PortmasterExt;
+use tauri_plugin_window_state::{AppHandleExt, StateFlags, WindowExt};
 use traymenu::setup_tray_menu;
 use window::{close_splash_window, create_main_window};
 
@@ -125,6 +126,8 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         // OS Version and Architecture support
         .plugin(tauri_plugin_os::init())
+        // Initialize save windows state plugin.
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         // Single instance guard
         .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
             let _ = app.emit("single-instance", Payload { args: argv, cwd });

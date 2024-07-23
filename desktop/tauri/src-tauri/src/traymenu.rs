@@ -10,6 +10,7 @@ use tauri::{
     tray::{TrayIcon, TrayIconBuilder},
     Wry,
 };
+use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 
 use crate::{
     portapi::{
@@ -40,7 +41,6 @@ lazy_static! {
 const PM_TRAY_ICON_ID: &'static str = "pm_icon";
 
 // Icons
-//
 const BLUE_ICON: &'static [u8] = include_bytes!("../../../../assets/data/icons/pm_light_blue.ico");
 const RED_ICON: &'static [u8] = include_bytes!("../../../../assets/data/icons/pm_light_red.ico");
 const YELLOW_ICON: &'static [u8] =
@@ -395,7 +395,11 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                 };
                 debug!("Shutdown request received: {:?}", msg);
                 match msg {
-                    Response::Ok(_, _) | Response::New(_, _) | Response::Update(_, _) => app.exit(0),
+                    Response::Ok(_, _) | Response::New(_, _) | Response::Update(_, _) => {
+                        if let Err(err) = app.save_window_state(StateFlags::SIZE | StateFlags::POSITION) {
+                            error!("failed to save window state: {}", err);
+                        }
+                        app.exit(0)},
                     _ => {},
                 }
             }

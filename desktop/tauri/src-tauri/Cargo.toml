@@ -25,6 +25,7 @@ tauri-plugin-single-instance = "2.0.0-beta"
 tauri-plugin-cli = "2.0.0-beta"
 tauri-plugin-notification = "2.0.0-beta"
 tauri-plugin-log = "2.0.0-beta"
+tauri-plugin-window-state = "2.0.0-beta.11"
 
 tauri-cli = "2.0.0-beta.21"
 
