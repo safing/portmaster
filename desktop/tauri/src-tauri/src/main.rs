@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
+use tauri::{AppHandle, Emitter, Listener, Manager, RunEvent, WindowEvent};
 use tauri_plugin_cli::CliExt;
 
 // Library crates
@@ -117,6 +117,7 @@ fn main() {
     let app = tauri::Builder::default()
         // Shell plugin for open_external support
         .plugin(tauri_plugin_shell::init())
+        // Initialize Logging plugin.
         .plugin(tauri_plugin_log::Builder::default().build())
         // Clipboard support
         .plugin(tauri_plugin_clipboard_manager::init())
