@@ -1,6 +1,7 @@
 use log::{debug, error};
 use tauri::{
-    AppHandle, Manager, Result, UserAttentionType, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    AppHandle, Listener, Manager, Result, Theme, UserAttentionType, WebviewUrl, WebviewWindow,
+    WebviewWindowBuilder,
 };
 
 use crate::portmaster::PortmasterExt;
@@ -16,7 +17,6 @@ use crate::portmaster::PortmasterExt;
 pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
     let mut window = if let Some(window) = app.get_webview_window("main") {
         debug!("[tauri] main window already created");
-
         window
     } else {
         debug!("[tauri] creating main window");
@@ -24,6 +24,8 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
         let res = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
             .title("Portmaster")
             .visible(false)
+            .inner_size(1200.0, 700.0)
+            .theme(Some(Theme::Dark))
             .build();
 
         match res {
