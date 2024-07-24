@@ -44,9 +44,9 @@ const PM_TRAY_ICON_ID: &'static str = "pm_icon";
 
 fn get_green_icon() -> &'static [u8] {
     const LIGHT_GREEN_ICON: &'static [u8] =
-        include_bytes!("../../../../assets/data/icons/pm_light_green.ico");
+        include_bytes!("../../../../assets/data/icons/pm_light_green_64.png");
     const DARK_GREEN_ICON: &'static [u8] =
-        include_bytes!("../../../../assets/data/icons/pm_dark_green.ico");
+        include_bytes!("../../../../assets/data/icons/pm_dark_green_64.png");
 
     let mode = dark_light::detect();
     match mode {
@@ -57,9 +57,9 @@ fn get_green_icon() -> &'static [u8] {
 
 fn get_blue_icon() -> &'static [u8] {
     const LIGHT_BLUE_ICON: &'static [u8] =
-        include_bytes!("../../../../assets/data/icons/pm_light_blue.ico");
+        include_bytes!("../../../../assets/data/icons/pm_light_blue_64.png");
     const DARK_BLUE_ICON: &'static [u8] =
-        include_bytes!("../../../../assets/data/icons/pm_dark_blue.ico");
+        include_bytes!("../../../../assets/data/icons/pm_dark_blue_64.png");
     let mode = dark_light::detect();
     match mode {
         dark_light::Mode::Light => DARK_BLUE_ICON,
@@ -69,9 +69,9 @@ fn get_blue_icon() -> &'static [u8] {
 
 fn get_red_icon() -> &'static [u8] {
     const LIGHT_RED_ICON: &'static [u8] =
-        include_bytes!("../../../../assets/data/icons/pm_light_red.ico");
+        include_bytes!("../../../../assets/data/icons/pm_light_red_64.png");
     const DARK_RED_ICON: &'static [u8] =
-        include_bytes!("../../../../assets/data/icons/pm_dark_red.ico");
+        include_bytes!("../../../../assets/data/icons/pm_dark_red_64.png");
     let mode = dark_light::detect();
     match mode {
         dark_light::Mode::Light => DARK_RED_ICON,
@@ -81,10 +81,10 @@ fn get_red_icon() -> &'static [u8] {
 
 fn get_yellow_icon() -> &'static [u8] {
     const LIGHT_YELLOW_ICON: &'static [u8] =
-        include_bytes!("../../../../assets/data/icons/pm_light_yellow.ico");
+        include_bytes!("../../../../assets/data/icons/pm_light_yellow_64.png");
 
     const DARK_YELLOW_ICON: &'static [u8] =
-        include_bytes!("../../../../assets/data/icons/pm_dark_yellow.ico");
+        include_bytes!("../../../../assets/data/icons/pm_dark_yellow_64.png");
     let mode = dark_light::detect();
     match mode {
         dark_light::Mode::Light => DARK_YELLOW_ICON,
