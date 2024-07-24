@@ -1,10 +1,14 @@
 use log::{debug, error};
 use tauri::{
-    AppHandle, Listener, Manager, Result, Theme, UserAttentionType, WebviewUrl, WebviewWindow,
-    WebviewWindowBuilder,
+    image::Image, AppHandle, Listener, Manager, Result, Theme, UserAttentionType, WebviewUrl,
+    WebviewWindow, WebviewWindowBuilder,
 };
 
 use crate::portmaster::PortmasterExt;
+
+const LIGHT_PM_ICON: &'static [u8] =
+    include_bytes!("../../../../assets/data/icons/pm_light_512.png");
+const DARK_PM_ICON: &'static [u8] = include_bytes!("../../../../assets/data/icons/pm_dark_512.png");
 
 /// Either returns the existing "main" window or creates a new one.
 ///
@@ -46,6 +50,11 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
 
     // If the window is not yet navigated to the Portmaster UI, do it now.
     may_navigate_to_ui(&mut window, false);
+
+    let _ = match dark_light::detect() {
+        dark_light::Mode::Light => window.set_icon(Image::from_bytes(DARK_PM_ICON).unwrap()),
+        _ => window.set_icon(Image::from_bytes(LIGHT_PM_ICON).unwrap()),
+    };
 
     #[cfg(debug_assertions)]
     if let Ok(_) = std::env::var("TAURI_SHOW_IMMEDIATELY") {

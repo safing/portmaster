@@ -46,6 +46,7 @@ pub trait ServiceManager {
     fn start(&self) -> Result<StatusResult>;
 }
 
+#[allow(dead_code)]
 struct EmptyServiceManager();
 
 impl ServiceManager for EmptyServiceManager {

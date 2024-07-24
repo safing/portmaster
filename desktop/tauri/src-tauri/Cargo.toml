@@ -53,6 +53,8 @@ reqwest = { version = "0.12" }
 rfd = { version = "*", default-features = false, features = [ "tokio", "gtk3", "common-controls-v6" ] }
 open = "5.1.3"
 
+dark-light = "1.1.1"
+
 # Linux only
 [target.'cfg(target_os = "linux")'.dependencies]
 glib = "0.18.4"

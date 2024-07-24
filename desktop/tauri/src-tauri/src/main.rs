@@ -20,7 +20,6 @@ mod window;
 
 use log::{debug, error, info};
 use portmaster::PortmasterExt;
-use tauri_plugin_window_state::{AppHandleExt, StateFlags, WindowExt};
 use traymenu::setup_tray_menu;
 use window::{close_splash_window, create_main_window};
 
