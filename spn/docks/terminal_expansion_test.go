@@ -102,7 +102,7 @@ func testExpansion( //nolint:maintidx,thelper
 			panic(fmt.Sprintf("expansion test %s could not create crane1: %s", testID, err))
 		}
 		crane1.ID = "c1"
-		err = crane1.Start(module.Ctx)
+		err = crane1.Start(module.mgr.Ctx())
 		if err != nil {
 			panic(fmt.Sprintf("expansion test %s could not start crane1: %s", testID, err))
 		}
@@ -116,7 +116,7 @@ func testExpansion( //nolint:maintidx,thelper
 			panic(fmt.Sprintf("expansion test %s could not create crane2to1: %s", testID, err))
 		}
 		crane2to1.ID = "c2to1"
-		err = crane2to1.Start(module.Ctx)
+		err = crane2to1.Start(module.mgr.Ctx())
 		if err != nil {
 			panic(fmt.Sprintf("expansion test %s could not start crane2to1: %s", testID, err))
 		}
@@ -130,7 +130,7 @@ func testExpansion( //nolint:maintidx,thelper
 			panic(fmt.Sprintf("expansion test %s could not create crane2to3: %s", testID, err))
 		}
 		crane2to3.ID = "c2to3"
-		err = crane2to3.Start(module.Ctx)
+		err = crane2to3.Start(module.mgr.Ctx())
 		if err != nil {
 			panic(fmt.Sprintf("expansion test %s could not start crane2to3: %s", testID, err))
 		}
@@ -144,7 +144,7 @@ func testExpansion( //nolint:maintidx,thelper
 			panic(fmt.Sprintf("expansion test %s could not create crane3to2: %s", testID, err))
 		}
 		crane3to2.ID = "c3to2"
-		err = crane3to2.Start(module.Ctx)
+		err = crane3to2.Start(module.mgr.Ctx())
 		if err != nil {
 			panic(fmt.Sprintf("expansion test %s could not start crane3to2: %s", testID, err))
 		}
@@ -158,7 +158,7 @@ func testExpansion( //nolint:maintidx,thelper
 			panic(fmt.Sprintf("expansion test %s could not create crane3to4: %s", testID, err))
 		}
 		crane3to4.ID = "c3to4"
-		err = crane3to4.Start(module.Ctx)
+		err = crane3to4.Start(module.mgr.Ctx())
 		if err != nil {
 			panic(fmt.Sprintf("expansion test %s could not start crane3to4: %s", testID, err))
 		}
@@ -172,7 +172,7 @@ func testExpansion( //nolint:maintidx,thelper
 			panic(fmt.Sprintf("expansion test %s could not create crane4: %s", testID, err))
 		}
 		crane4.ID = "c4"
-		err = crane4.Start(module.Ctx)
+		err = crane4.Start(module.mgr.Ctx())
 		if err != nil {
 			panic(fmt.Sprintf("expansion test %s could not start crane4: %s", testID, err))
 		}

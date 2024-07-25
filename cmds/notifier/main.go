@@ -76,10 +76,10 @@ func main() {
 	}
 
 	// print help
-	if modules.HelpFlag {
-		flag.Usage()
-		os.Exit(0)
-	}
+	// if modules.HelpFlag {
+	// 	flag.Usage()
+	// 	os.Exit(0)
+	// }
 
 	if showVersion {
 		fmt.Println(info.FullVersion())

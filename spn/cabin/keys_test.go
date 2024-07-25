@@ -10,7 +10,7 @@ import (
 func TestKeyMaintenance(t *testing.T) {
 	t.Parallel()
 
-	id, err := CreateIdentity(module.Ctx, conf.MainMapName)
+	id, err := CreateIdentity(module.m.Ctx(), conf.MainMapName)
 	if err != nil {
 		t.Fatal(err)
 	}

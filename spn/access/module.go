@@ -115,7 +115,7 @@ func stop() error {
 	// Make sure SPN is stopped before we proceed.
 	err := module.mgr.Do("ensure SPN is shut down", module.instance.SPNGroup().EnsureStoppedWorker)
 	if err != nil {
-		log.Errorf("access: stop SPN: %w", err)
+		log.Errorf("access: stop SPN: %s", err)
 	}
 
 	if conf.Client() {

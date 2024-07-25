@@ -8,7 +8,7 @@ import (
 func TestVerification(t *testing.T) {
 	t.Parallel()
 
-	id, err := CreateIdentity(module.Ctx, "test")
+	id, err := CreateIdentity(module.m.Ctx(), "test")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -35,7 +35,7 @@ func TestLatencyOp(t *testing.T) {
 	b.GrantPermission(terminal.IsCraneController)
 	op, tErr := NewLatencyTestOp(a)
 	if tErr != nil {
-		t.Fatalf("failed to start op: %s", err)
+		t.Fatalf("failed to start op: %s", tErr)
 	}
 
 	// Wait for result and check error.

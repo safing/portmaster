@@ -55,14 +55,6 @@ func makeAuthTestPath(reading bool, p Permission) string {
 	return fmt.Sprintf("/test/auth/write/%s", p)
 }
 
-func init() {
-	// Set test authenticator.
-	err := SetAuthenticator(testAuthenticator)
-	if err != nil {
-		panic(err)
-	}
-}
-
 func TestPermissions(t *testing.T) {
 	t.Parallel()
 

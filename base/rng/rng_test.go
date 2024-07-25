@@ -5,7 +5,13 @@ import (
 )
 
 func init() {
-	err := start()
+	var err error
+	module, err = New(struct{}{})
+	if err != nil {
+		panic(err)
+	}
+
+	err = module.Start()
 	if err != nil {
 		panic(err)
 	}

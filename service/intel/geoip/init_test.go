@@ -1,4 +1,4 @@
-package navigator
+package geoip
 
 import (
 	"fmt"
@@ -8,9 +8,6 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/dbmodule"
-	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/service/core/base"
-	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/updates"
 )
 
@@ -19,9 +16,9 @@ type testInstance struct {
 	api     *api.API
 	config  *config.Config
 	updates *updates.Updates
-	base    *base.Base
-	geoip   *geoip.GeoIP
 }
+
+var _ instance = &testInstance{}
 
 func (stub *testInstance) Updates() *updates.Updates {
 	return stub.updates
@@ -35,10 +32,6 @@ func (stub *testInstance) Config() *config.Config {
 	return stub.config
 }
 
-func (stub *testInstance) Base() *base.Base {
-	return stub.base
-}
-
 func (stub *testInstance) Ready() bool {
 	return true
 }
@@ -49,74 +42,54 @@ func (stub *testInstance) SetCmdLineOperation(f func() error) {}
 
 func runTest(m *testing.M) error {
 	api.SetDefaultAPIListenAddress("0.0.0.0:8080")
-	ds, err := config.InitializeUnitTestDataroot("test-navigator")
+	ds, err := config.InitializeUnitTestDataroot("test-geoip")
 	if err != nil {
 		return fmt.Errorf("failed to initialize dataroot: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(ds) }()
 
 	stub := &testInstance{}
-	log.SetLogLevel(log.DebugLevel)
-
-	// Init
 	stub.db, err = dbmodule.New(stub)
 	if err != nil {
-		return fmt.Errorf("failed to create db: %w", err)
-	}
-	stub.api, err = api.New(stub)
-	if err != nil {
-		return fmt.Errorf("failed to create api: %w", err)
+		return fmt.Errorf("failed to create database: %w", err)
 	}
 	stub.config, err = config.New(stub)
 	if err != nil {
 		return fmt.Errorf("failed to create config: %w", err)
 	}
+	stub.api, err = api.New(stub)
+	if err != nil {
+		return fmt.Errorf("failed to create api: %w", err)
+	}
 	stub.updates, err = updates.New(stub)
 	if err != nil {
 		return fmt.Errorf("failed to create updates: %w", err)
 	}
-	stub.base, err = base.New(stub)
-	if err != nil {
-		return fmt.Errorf("failed to create base: %w", err)
-	}
-	stub.geoip, err = geoip.New(stub)
-	if err != nil {
-		return fmt.Errorf("failed to create geoip: %w", err)
-	}
 	module, err = New(stub)
 	if err != nil {
-		return fmt.Errorf("failed to create navigator module: %w", err)
+		return fmt.Errorf("failed to initialize module: %w", err)
 	}
-	// Start
+
 	err = stub.db.Start()
 	if err != nil {
-		return fmt.Errorf("failed to start db module: %w", err)
-	}
-	err = stub.api.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start api: %w", err)
+		return fmt.Errorf("Failed to start database: %w", err)
 	}
 	err = stub.config.Start()
 	if err != nil {
-		return fmt.Errorf("failed to start config: %w", err)
+		return fmt.Errorf("Failed to start config: %w", err)
+	}
+	err = stub.api.Start()
+	if err != nil {
+		return fmt.Errorf("Failed to start api: %w", err)
 	}
 	err = stub.updates.Start()
 	if err != nil {
-		return fmt.Errorf("failed to start updates: %w", err)
-	}
-	err = stub.base.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start base module: %w", err)
-	}
-	err = stub.geoip.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start geoip module: %w", err)
+		return fmt.Errorf("Failed to start updates: %w", err)
 	}
 	err = module.Start()
 	if err != nil {
-		return fmt.Errorf("failed to start navigator module: %w", err)
+		return fmt.Errorf("failed to start module: %w", err)
 	}
-
 	m.Run()
 	return nil
 }
