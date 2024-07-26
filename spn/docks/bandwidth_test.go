@@ -66,7 +66,7 @@ func TestEffectiveBandwidth(t *testing.T) { //nolint:paralleltest // Run alone.
 		t.Fatal(tErr)
 	}
 	// Start handler.
-	module.StartWorker("op capacity handler", op.handler)
+	module.mgr.Go("op capacity handler", op.handler)
 
 	// Wait for result and check error.
 	tErr = <-op.Result()

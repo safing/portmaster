@@ -1,43 +1,64 @@
 package main
 
 import (
-	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"runtime"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/core/base"
+	"github.com/safing/portmaster/service/mgr"
 )
 
+type Test struct {
+	mgr *mgr.Manager
+
+	instance instance
+}
+
 var (
-	module *modules.Module
+	module     *Test
+	shimLoaded atomic.Bool
 
 	outputFile *os.File
 	outputSize uint64 = 1000000
 )
 
 func init() {
-	module = modules.Register("main", prep, start, nil, "rng")
+	// module = modules.Register("main", prep, start, nil, "rng")
 }
 
 func main() {
 	runtime.GOMAXPROCS(1)
-	os.Exit(run.Run())
+	var err error
+	module, err = New(struct{}{})
+	if err != nil {
+		fmt.Printf("failed to initialize module: %s", err)
+		return
+	}
+
+	err = start()
+	if err != nil {
+		fmt.Printf("failed to initialize module: %s", err)
+		return
+	}
 }
 
 func prep() error {
 	if len(os.Args) < 3 {
 		fmt.Printf("usage: ./%s {fortuna|tickfeeder} <file> [output size in MB]", os.Args[0])
-		return modules.ErrCleanExit
+		return base.ErrCleanExit
 	}
 
 	switch os.Args[1] {
@@ -72,11 +93,11 @@ func start() error {
 
 	switch os.Args[1] {
 	case "fortuna":
-		module.StartWorker("fortuna", fortuna)
+		module.mgr.Go("fortuna", fortuna)
 
 	case "tickfeeder":
-		module.StartWorker("noise", noise)
-		module.StartWorker("tickfeeder", tickfeeder)
+		module.mgr.Go("noise", noise)
+		module.mgr.Go("tickfeeder", tickfeeder)
 
 	default:
 		return fmt.Errorf("usage: ./%s {fortuna|tickfeeder}", os.Args[0])
@@ -85,11 +106,11 @@ func start() error {
 	return nil
 }
 
-func fortuna(_ context.Context) error {
+func fortuna(_ *mgr.WorkerCtx) error {
 	var bytesWritten uint64
 
 	for {
-		if module.IsStopping() {
+		if module.mgr.IsDone() {
 			return nil
 		}
 
@@ -115,17 +136,17 @@ func fortuna(_ context.Context) error {
 		}
 	}
 
-	go modules.Shutdown() //nolint:errcheck
+	go module.mgr.Cancel() //nolint:errcheck
 	return nil
 }
 
-func tickfeeder(ctx context.Context) error {
+func tickfeeder(ctx *mgr.WorkerCtx) error {
 	var bytesWritten uint64
 	var value int64
 	var pushes int
 
 	for {
-		if module.IsStopping() {
+		if module.mgr.IsDone() {
 			return nil
 		}
 
@@ -157,11 +178,11 @@ func tickfeeder(ctx context.Context) error {
 		}
 	}
 
-	go modules.Shutdown() //nolint:errcheck
+	go module.mgr.Cancel() //nolint:errcheck
 	return nil
 }
 
-func noise(ctx context.Context) error {
+func noise(ctx *mgr.WorkerCtx) error {
 	// do some aes ctr for noise
 
 	key, _ := hex.DecodeString("6368616e676520746869732070617373")
@@ -187,3 +208,23 @@ func noise(ctx context.Context) error {
 		}
 	}
 }
+
+func New(instance instance) (*Test, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	m := mgr.New("geoip")
+	module = &Test{
+		mgr:      m,
+		instance: instance,
+	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
+	return module, nil
+}
+
+type instance interface{}

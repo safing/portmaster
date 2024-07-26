@@ -1,11 +1,12 @@
 package database
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"sync"
 	"testing"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
 func benchmarkCacheWriting(b *testing.B, storageType string, cacheSize int, sampleSize int, delayWrites bool) { //nolint:gocognit,gocyclo,thelper
@@ -35,22 +36,23 @@ func benchmarkCacheWriting(b *testing.B, storageType string, cacheSize int, samp
 		db := NewInterface(options)
 
 		// Start
-		ctx, cancelCtx := context.WithCancel(context.Background())
+		m := mgr.New("Cache writing benchmark test")
 		var wg sync.WaitGroup
 		if cacheSize > 0 && delayWrites {
 			wg.Add(1)
-			go func() {
-				err := db.DelayedCacheWriter(ctx)
+			m.Go("Cache writing benchmark worker", func(wc *mgr.WorkerCtx) error {
+				err := db.DelayedCacheWriter(wc)
 				if err != nil {
 					panic(err)
 				}
 				wg.Done()
-			}()
+				return nil
+			})
 		}
 
 		// Start Benchmark.
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for i := range b.N {
 			testRecordID := i % sampleSize
 			r := NewExample(
 				dbName+":"+strconv.Itoa(testRecordID),
@@ -64,7 +66,7 @@ func benchmarkCacheWriting(b *testing.B, storageType string, cacheSize int, samp
 		}
 
 		// End cache writer and wait
-		cancelCtx()
+		m.Cancel()
 		wg.Wait()
 	})
 }
@@ -96,23 +98,24 @@ func benchmarkCacheReadWrite(b *testing.B, storageType string, cacheSize int, sa
 		db := NewInterface(options)
 
 		// Start
-		ctx, cancelCtx := context.WithCancel(context.Background())
+		m := mgr.New("Cache read/write benchmark test")
 		var wg sync.WaitGroup
 		if cacheSize > 0 && delayWrites {
 			wg.Add(1)
-			go func() {
-				err := db.DelayedCacheWriter(ctx)
+			m.Go("Cache read/write benchmark worker", func(wc *mgr.WorkerCtx) error {
+				err := db.DelayedCacheWriter(wc)
 				if err != nil {
 					panic(err)
 				}
 				wg.Done()
-			}()
+				return nil
+			})
 		}
 
 		// Start Benchmark.
 		b.ResetTimer()
 		writing := true
-		for i := 0; i < b.N; i++ {
+		for i := range b.N {
 			testRecordID := i % sampleSize
 			key := dbName + ":" + strconv.Itoa(testRecordID)
 
@@ -132,7 +135,7 @@ func benchmarkCacheReadWrite(b *testing.B, storageType string, cacheSize int, sa
 		}
 
 		// End cache writer and wait
-		cancelCtx()
+		m.Cancel()
 		wg.Wait()
 	})
 }

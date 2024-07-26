@@ -1,12 +1,12 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"path"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	diff "github.com/r3labs/diff/v3"
@@ -16,12 +16,31 @@ import (
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/captain"
 	"github.com/safing/portmaster/spn/navigator"
 )
 
+type Observer struct {
+	mgr      *mgr.Manager
+	instance instance
+}
+
+func (o *Observer) Manager() *mgr.Manager {
+	return o.mgr
+}
+
+func (o *Observer) Start() error {
+	return startObserver()
+}
+
+func (o *Observer) Stop() error {
+	return nil
+}
+
 var (
-	observerModule *modules.Module
+	observerModule *Observer
+	shimLoaded     atomic.Bool
 
 	db = database.NewInterface(&database.Options{
 		Local:    true,
@@ -37,7 +56,7 @@ var (
 )
 
 func init() {
-	observerModule = modules.Register("observer", prepObserver, startObserver, nil, "captain", "apprise")
+	// observerModule = modules.Register("observer", prepObserver, startObserver, nil, "captain", "apprise")
 
 	flag.BoolVar(&reportAllChanges, "report-all-changes", false, "report all changes, no just interesting ones")
 	flag.StringVar(&reportingDelayFlag, "reporting-delay", "10m", "delay reports to summarize changes")
@@ -56,7 +75,7 @@ func prepObserver() error {
 }
 
 func startObserver() error {
-	observerModule.StartServiceWorker("observer", 0, observerWorker)
+	observerModule.mgr.Go("observer", observerWorker)
 
 	return nil
 }
@@ -79,7 +98,7 @@ type observedChange struct {
 	SPNStatus *captain.SPNStatus
 }
 
-func observerWorker(ctx context.Context) error {
+func observerWorker(ctx *mgr.WorkerCtx) error {
 	log.Info("observer: starting")
 	defer log.Info("observer: stopped")
 
@@ -405,3 +424,24 @@ func makeHubName(name, id string) string {
 		return fmt.Sprintf("%s (%s)", name, shortenedID)
 	}
 }
+
+// New returns a new Observer module.
+func New(instance instance) (*Observer, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	m := mgr.New("observer")
+	observerModule = &Observer{
+		mgr:      m,
+		instance: instance,
+	}
+
+	if err := prepObserver(); err != nil {
+		return nil, err
+	}
+
+	return observerModule, nil
+}
+
+type instance interface{}

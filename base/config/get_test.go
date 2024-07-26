@@ -307,7 +307,7 @@ func BenchmarkGetAsStringCached(b *testing.B) {
 	b.ResetTimer()
 
 	// Start benchmark
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		monkey()
 	}
 }
@@ -325,7 +325,7 @@ func BenchmarkGetAsStringRefetch(b *testing.B) {
 	b.ResetTimer()
 
 	// Start benchmark
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		getValueCache("monkey", nil, OptTypeString)
 	}
 }
@@ -344,7 +344,7 @@ func BenchmarkGetAsIntCached(b *testing.B) {
 	b.ResetTimer()
 
 	// Start benchmark
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		elephant()
 	}
 }
@@ -362,7 +362,7 @@ func BenchmarkGetAsIntRefetch(b *testing.B) {
 	b.ResetTimer()
 
 	// Start benchmark
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		getValueCache("elephant", nil, OptTypeInt)
 	}
 }

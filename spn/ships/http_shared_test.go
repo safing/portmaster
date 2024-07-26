@@ -8,10 +8,15 @@ import (
 )
 
 func TestSharedHTTP(t *testing.T) { //nolint:paralleltest // Test checks global state.
+	_, err := New(struct{}{})
+	if err != nil {
+		t.Errorf("failed to create module ships: %s", err)
+	}
+
 	const testPort = 65100
 
 	// Register multiple handlers.
-	err := addHTTPHandler(testPort, "", ServeInfoPage)
+	err = addHTTPHandler(testPort, "", ServeInfoPage)
 	require.NoError(t, err, "should be able to share http listener")
 	err = addHTTPHandler(testPort, "/test", ServeInfoPage)
 	require.NoError(t, err, "should be able to share http listener")

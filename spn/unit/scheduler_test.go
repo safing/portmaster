@@ -1,8 +1,9 @@
 package unit
 
 import (
-	"context"
 	"testing"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
 func BenchmarkScheduler(b *testing.B) {
@@ -10,21 +11,22 @@ func BenchmarkScheduler(b *testing.B) {
 
 	// Create and start scheduler.
 	s := NewScheduler(&SchedulerConfig{})
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
+	m := mgr.New("unit-test")
+	m.Go("test", func(ctx *mgr.WorkerCtx) error {
 		err := s.SlotScheduler(ctx)
 		if err != nil {
 			panic(err)
 		}
-	}()
-	defer cancel()
+		return nil
+	})
+	defer m.Cancel()
 
 	// Init control structures.
 	done := make(chan struct{})
 	finishedCh := make(chan struct{})
 
 	// Start workers.
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
 			for {
 				u := s.NewUnit()
@@ -41,7 +43,7 @@ func BenchmarkScheduler(b *testing.B) {
 
 	// Start benchmark.
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		<-finishedCh
 	}
 	b.StopTimer()

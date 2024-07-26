@@ -3,6 +3,7 @@ package geoip
 import (
 	"net"
 	"testing"
+	"time"
 )
 
 func TestLocationLookup(t *testing.T) {
@@ -11,6 +12,17 @@ func TestLocationLookup(t *testing.T) {
 		t.Skip()
 	}
 	t.Parallel()
+
+	// Wait for db to be initialized
+	worker.v4.rw.Lock()
+	waiter := worker.v4.getWaiter()
+	worker.v4.rw.Unlock()
+
+	worker.triggerUpdate()
+	select {
+	case <-waiter:
+	case <-time.After(15 * time.Second):
+	}
 
 	ip1 := net.ParseIP("81.2.69.142")
 	loc1, err := GetLocation(ip1)

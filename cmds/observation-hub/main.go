@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 
 	"github.com/safing/portmaster/base/api"
@@ -34,9 +33,21 @@ func main() {
 	sluice.EnableListener = false
 	api.EnableServer = false
 
+	/// TODO(vladimir) initialize dependency modules
+
 	// Disable module management, as we want to start all modules.
-	modules.DisableModuleManagement()
+	// module.DisableModuleManagement()
+	module, err := New(struct{}{})
+	if err != nil {
+		fmt.Printf("error creating observer: %s\n", err)
+		return
+	}
+	err = module.Start()
+	if err != nil {
+		fmt.Printf("failed to start observer: %s\n", err)
+		return
+	}
 
 	// Start.
-	os.Exit(run.Run())
+	// os.Exit(run.Start())
 }

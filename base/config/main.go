@@ -134,3 +134,19 @@ func GetActiveConfigValues() map[string]interface{} {
 
 	return values
 }
+
+func InitializeUnitTestDataroot(testName string) (string, error) {
+	basePath, err := os.MkdirTemp("", fmt.Sprintf("portmaster-%s", testName))
+	if err != nil {
+		return "", fmt.Errorf("failed to make tmp dir: %w", err)
+	}
+
+	ds := utils.NewDirStructure(basePath, 0o0755)
+	SetDataRoot(ds)
+	err = dataroot.Initialize(basePath, 0o0755)
+	if err != nil {
+		return "", fmt.Errorf("failed to initialize dataroot: %w", err)
+	}
+
+	return basePath, nil
+}

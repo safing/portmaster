@@ -20,7 +20,7 @@ func TestIdentity(t *testing.T) {
 
 	// Create new identity.
 	identityTestKey := "core:spn/public/identity"
-	id, err := CreateIdentity(module.Ctx, conf.MainMapName)
+	id, err := CreateIdentity(module.m.Ctx(), conf.MainMapName)
 	if err != nil {
 		t.Fatal(err)
 	}

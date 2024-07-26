@@ -60,7 +60,7 @@ func testCapacityOp(t *testing.T, opts *CapacityTestOptions) {
 	b.GrantPermission(terminal.IsCraneController)
 	op, tErr := NewCapacityTestOp(a, opts)
 	if tErr != nil {
-		t.Fatalf("failed to start op: %s", err)
+		t.Fatalf("failed to start op: %s", tErr)
 	}
 
 	// Wait for result and check error.

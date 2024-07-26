@@ -44,7 +44,7 @@ func TestConnectOp(t *testing.T) {
 	// Set up connect op.
 	b.GrantPermission(terminal.MayConnect)
 	conf.EnablePublicHub(true)
-	identity, err := cabin.CreateIdentity(module.Ctx, "test")
+	identity, err := cabin.CreateIdentity(module.mgr.Ctx(), "test")
 	if err != nil {
 		t.Fatalf("failed to create identity: %s", err)
 	}
