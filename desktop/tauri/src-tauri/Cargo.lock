@@ -209,6 +209,7 @@ version = "0.1.0"
 dependencies = [
  "assert_matches",
  "cached",
+ "clap 4.5.9",
  "ctor",
  "dark-light",
  "dataurl",
@@ -7679,9 +7680,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-log"
-version = "2.0.0-beta.8"
+version = "2.0.0-beta.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cc0912ad72022b4d931c909582f06edb0c5e696cb945f16189ed6abf48a0ebd"
+checksum = "80f80d78a6e8102acf05a1e735f006991a2abfc71566d4e484f820b7495cd52c"
 dependencies = [
  "android_logger",
  "byte-unit",
@@ -7695,6 +7696,7 @@ dependencies = [
  "swift-rs",
  "tauri",
  "tauri-plugin",
+ "thiserror",
  "time",
 ]
 

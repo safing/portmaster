@@ -23,13 +23,18 @@
           "description": "Start in the background without opening a window"
         },
         {
+          "name": "log",
+          "description": "Log level to use: off, error, warn, info, debug, trace",
+          "takesValue": true
+        },
+        {
           "name": "with-notifications",
           "description": "Enable experimental notifications via Tauri. Replaces the notifier app."
         },
         {
           "name": "with-prompts",
           "description": "Enable experimental prompt support via Tauri. Replaces the notifier app."
-        }
+        },
       ]
     }
   },

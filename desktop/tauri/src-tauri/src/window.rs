@@ -29,6 +29,7 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
             .title("Portmaster")
             .visible(false)
             .inner_size(1200.0, 700.0)
+            .min_inner_size(800.0, 600.0)
             .theme(Some(Theme::Dark))
             .build();
 
@@ -114,7 +115,7 @@ pub fn open_window(app: &AppHandle) -> Result<WebviewWindow> {
         match app.get_webview_window("main") {
             Some(win) => {
                 app.portmaster().show_window();
-
+                let _ = win.set_focus();
                 Ok(win)
             }
             None => {
