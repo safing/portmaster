@@ -87,6 +87,8 @@ func parseFile(filePath string) error {
 			Type:    mgr.StateTypeWarning,
 		})
 		return err
+	} else {
+		module.states.Remove(parseWarningNotificationID)
 	}
 	defer func() { _ = file.Close() }()
 
@@ -139,8 +141,6 @@ func parseFile(filePath string) error {
 			len(ipAddressesFilterList),
 			len(autonomousSystemsFilterList),
 			len(countryCodesFilterList)))
-
-	module.states.Remove(parseWarningNotificationID)
 
 	return nil
 }

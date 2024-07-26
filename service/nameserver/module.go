@@ -52,18 +52,6 @@ var (
 	eventIDListenerFailed     = "nameserver:listener-failed"
 )
 
-func init() {
-	// module = modules.Register("nameserver", prep, start, stop, "core", "resolver")
-	// subsystems.Register(
-	// 	"dns",
-	// 	"Secure DNS",
-	// 	"DNS resolver with scoping and DNS-over-TLS",
-	// 	module,
-	// 	"config:dns/",
-	// 	nil,
-	// )
-}
-
 func prep() error {
 	return registerConfig()
 }

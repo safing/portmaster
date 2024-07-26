@@ -125,6 +125,13 @@ func (m *StateMgr) Remove(id string) {
 	m.statesLock.Lock()
 	defer m.statesLock.Unlock()
 
+	// Quick check if slice is empty.
+	// It is a common pattern to remove a state when no error was encountered at
+	// a critical operation. This means that StateMgr.Remove will be called often.
+	if len(m.states) == 0 {
+		return
+	}
+
 	var entryRemoved bool
 	m.states = slices.DeleteFunc(m.states, func(s State) bool {
 		if s.ID == id {

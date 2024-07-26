@@ -12,6 +12,7 @@ import (
 	diff "github.com/r3labs/diff/v3"
 	"golang.org/x/exp/slices"
 
+	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/log"

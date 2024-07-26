@@ -1,5 +1,6 @@
 package template
 
+// FIXME: update template to new best way to do it.
 // import (
 // 	"context"
 // 	"time"

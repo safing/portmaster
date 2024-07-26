@@ -33,30 +33,6 @@ type NetQuery struct {
 	feed chan *network.Connection
 }
 
-// DefaultModule is the default netquery module.
-func init() {
-	// DefaultModule = new(module)
-
-	// DefaultModule.Module = modules.Register(
-	// 	"netquery",
-	// 	DefaultModule.prepare,
-	// 	DefaultModule.start,
-	// 	DefaultModule.stop,
-	// 	"api",
-	// 	"network",
-	// 	"database",
-	// )
-
-	// subsystems.Register(
-	// 	"history",
-	// 	"Network History",
-	// 	"Keep Network History Data",
-	// 	DefaultModule.Module,
-	// 	"config:history/",
-	// 	nil,
-	// )
-}
-
 func (nq *NetQuery) prepare() error {
 	var err error
 

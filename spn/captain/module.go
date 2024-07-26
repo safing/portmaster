@@ -62,27 +62,6 @@ func (c *Captain) SetSleep(enabled bool) {
 	}
 }
 
-func init() {
-	// subsystems.Register(
-	// 	"spn",
-	// 	"SPN",
-	// 	"Safing Privacy Network",
-	// 	module,
-	// 	"config:spn/",
-	// 	&config.Option{
-	// 		Name:         "SPN Module",
-	// 		Key:          CfgOptionEnableSPNKey,
-	// 		Description:  "Start the Safing Privacy Network module. If turned off, the SPN is fully disabled on this device.",
-	// 		OptType:      config.OptTypeBool,
-	// 		DefaultValue: false,
-	// 		Annotations: config.Annotations{
-	// 			config.DisplayOrderAnnotation: cfgOptionEnableSPNOrder,
-	// 			config.CategoryAnnotation:     "General",
-	// 		},
-	// 	},
-	// )
-}
-
 func prep() error {
 	// Check if we can parse the bootstrap hub flag.
 	if err := prepBootstrapHubFlag(); err != nil {

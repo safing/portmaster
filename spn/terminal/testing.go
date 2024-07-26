@@ -35,6 +35,7 @@ func NewLocalTestTerminal(
 	if err != nil {
 		return nil, nil, err
 	}
+	// FIXME: We need this!
 	// t.StartWorkers(module, "test terminal")
 
 	return &TestTerminal{t}, initData, nil
@@ -54,6 +55,7 @@ func NewRemoteTestTerminal(
 	if err != nil {
 		return nil, nil, err
 	}
+	// FIXME: We need this!
 	// t.StartWorkers(module, "test terminal")
 
 	return &TestTerminal{t}, initMsg, nil
@@ -138,6 +140,8 @@ func (t *TestTerminal) HandleAbandon(err *Error) (errorToSend *Error) {
 
 // NewSimpleTestTerminalPair provides a simple conntected terminal pair for tests.
 func NewSimpleTestTerminalPair(delay time.Duration, delayQueueSize int, opts *TerminalOpts) (a, b *TestTerminal, err error) {
+	// FIXME: I think we need this?
+
 	// if opts == nil {
 	// 	opts = &TerminalOpts{
 	// 		Padding:         defaultTestPadding,

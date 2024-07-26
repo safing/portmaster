@@ -54,8 +54,6 @@ var (
 
 func init() {
 	ignoreNetEnvEvents.Set()
-
-	// module = modules.Register("filterlists", prep, start, stop, "base", "updates")
 }
 
 func prep() error {

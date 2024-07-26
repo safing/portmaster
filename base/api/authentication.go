@@ -122,7 +122,7 @@ type AuthenticatedHandler interface {
 
 // SetAuthenticator sets an authenticator function for the API endpoint. If none is set, all requests will be permitted.
 func SetAuthenticator(fn AuthenticatorFunc) error {
-	if module.online {
+	if module.online.Load() {
 		return ErrAuthenticationImmutable
 	}
 

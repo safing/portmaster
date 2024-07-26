@@ -46,7 +46,7 @@ import (
 	"github.com/safing/portmaster/spn/terminal"
 )
 
-// Instance is an instance of a portmaste service.
+// Instance is an instance of a Portmaster service.
 type Instance struct {
 	ctx          context.Context
 	cancelCtx    context.CancelFunc
@@ -100,7 +100,7 @@ type Instance struct {
 	CommandLineOperation func() error
 }
 
-// New returns a new portmaster service instance.
+// New returns a new Portmaster service instance.
 func New(svcCfg *ServiceConfig) (*Instance, error) {
 	// Create instance to pass it to modules.
 	instance := &Instance{}
@@ -313,6 +313,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) {
 }
 
 func (i *Instance) SetSleep(enabled bool) {
+	// FIXME(Daniel): Use a loop and a interface check to set sleep on all supported modules.
 	i.metrics.SetSleep(enabled)
 	i.network.SetSleep(enabled)
 	i.captain.SetSleep(enabled)

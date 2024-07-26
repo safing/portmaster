@@ -110,21 +110,6 @@ func (di *Info) AddGoroutineStack() {
 	)
 }
 
-// AddLastReportedModuleError adds the last reported module error, if one exists.
-func (di *Info) AddLastReportedModuleError() {
-	// me := modules.GetLastReportedError()
-	// if me == nil {
-	// 	di.AddSection("No Module Error", NoFlags)
-	// 	return
-	// }
-
-	// di.AddSection(
-	// 	fmt.Sprintf("%s Module Error", strings.Title(me.ModuleName)), //nolint:staticcheck
-	// 	UseCodeSection,
-	// 	me.Format(),
-	// )
-}
-
 // AddLastUnexpectedLogs adds the last 10 unexpected log lines, if any.
 func (di *Info) AddLastUnexpectedLogs() {
 	lines := log.GetLastUnexpectedLogs()

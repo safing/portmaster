@@ -41,8 +41,6 @@ var (
 	module     *Access
 	shimLoaded atomic.Bool
 
-	// accountUpdateTask *modules.Task
-
 	tokenIssuerIsFailing     = abool.New()
 	tokenIssuerRetryDuration = 10 * time.Minute
 

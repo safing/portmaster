@@ -39,8 +39,6 @@ var (
 
 func init() {
 	flag.BoolVar(&disableInterception, "disable-interception", false, "disable packet interception; this breaks a lot of functionality")
-
-	// module = modules.Register("interception", prep, start, stop, "base", "updates", "network", "notifications", "profiles")
 }
 
 // Start starts the interception.

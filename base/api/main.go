@@ -19,8 +19,6 @@ var (
 )
 
 func init() {
-	// module = modules.Register("api", prep, start, stop, "database", "config")
-
 	flag.BoolVar(&exportEndpoints, "export-api-endpoints", false, "export api endpoint registry and exit")
 }
 

@@ -13,7 +13,7 @@ type API struct {
 	mgr      *mgr.Manager
 	instance instance
 
-	online bool
+	online atomic.Bool
 }
 
 func (api *API) Manager() *mgr.Manager {
@@ -26,12 +26,13 @@ func (api *API) Start() error {
 		return err
 	}
 
-	module.online = true
+	api.online.Store(true)
 	return nil
 }
 
 // Stop stops the module.
 func (api *API) Stop() error {
+	defer api.online.Store(false)
 	return stop()
 }
 

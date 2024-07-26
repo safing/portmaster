@@ -45,16 +45,6 @@ func (c *Core) Stop() error {
 var disableShutdownEvent bool
 
 func init() {
-	// module = modules.Register("core", prep, start, nil, "base", "subsystems", "status", "updates", "api", "notifications", "ui", "netenv", "network", "netquery", "interception", "compat", "broadcasts", "sync")
-	// subsystems.Register(
-	// 	"core",
-	// 	"Core",
-	// 	"Base Structure and System Integration",
-	// 	module,
-	// 	"config:core/",
-	// 	nil,
-	// )
-
 	flag.BoolVar(
 		&disableShutdownEvent,
 		"disable-shutdown-event",

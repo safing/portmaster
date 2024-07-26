@@ -131,7 +131,7 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 		// Normally, an icon migration would not be such a big error, but this is a test
 		// run for the profile IDs and we absolutely need to know if anything went wrong.
 		module.states.Add(mgr.State{
-			ID:      "migration-failed",
+			ID:      "migration-failed-icons",
 			Name:    "Profile Migration Failed",
 			Message: fmt.Sprintf("Failed to migrate icons of %d profiles (out of %d pending). The last error was: %s\n\nPlease restart Portmaster to try the migration again.", failed, total, lastErr),
 			Type:    mgr.StateTypeError,
@@ -220,7 +220,7 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 	// Log migration failure and try again next time.
 	if lastErr != nil {
 		module.states.Add(mgr.State{
-			ID:      "migration-failed",
+			ID:      "migration-failed-derived-IDs",
 			Name:    "Profile Migration Failed",
 			Message: fmt.Sprintf("Failed to migrate profile IDs of %d profiles (out of %d pending). The last error was: %s\n\nPlease restart Portmaster to try the migration again.", failed, total, lastErr),
 			Type:    mgr.StateTypeError,

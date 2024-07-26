@@ -84,6 +84,10 @@ func GetIPScope(ip net.IP) IPScope { //nolint:gocognit
 		}
 	} else if len(ip) == net.IPv6len {
 		// IPv6
+
+		// TODO: Add IPv6 RFC5771 test / doc networks
+		// 2001:db8::/32
+		// 3fff::/20
 		switch {
 		case ip.Equal(net.IPv6zero):
 			return Invalid

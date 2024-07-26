@@ -17,8 +17,10 @@ type Compat struct {
 	mgr      *mgr.Manager
 	instance instance
 
-	selfcheckWorkerMgr *mgr.WorkerMgr
-	states             *mgr.StateMgr
+	selfcheckWorkerMgr            *mgr.WorkerMgr
+	cleanNotifyThresholdWorkerMgr *mgr.WorkerMgr
+
+	states *mgr.StateMgr
 }
 
 func (u *Compat) Manager() *mgr.Manager {
@@ -76,9 +78,9 @@ func start() error {
 	startNotify()
 
 	selfcheckNetworkChangedFlag.Refresh()
-	module.selfcheckWorkerMgr = module.mgr.Repeat("compatibility self-check", 5*time.Minute, selfcheckTaskFunc).Delay(selfcheckTaskRetryAfter)
+	module.selfcheckWorkerMgr.Repeat(5 * time.Minute).Delay(selfcheckTaskRetryAfter)
+	module.cleanNotifyThresholdWorkerMgr.Repeat(1 * time.Hour)
 
-	_ = module.mgr.Repeat("clean notify thresholds", 1*time.Hour, cleanNotifyThreshold)
 	module.instance.NetEnv().EventNetworkChange.AddCallback("trigger compat self-check", func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 		module.selfcheckWorkerMgr.Delay(selfcheckTaskRetryAfter)
 		return false, nil
@@ -162,6 +164,9 @@ func New(instance instance) (*Compat, error) {
 	module = &Compat{
 		mgr:      m,
 		instance: instance,
+
+		selfcheckWorkerMgr:            m.NewWorkerMgr("compatibility self-check", selfcheckTaskFunc, nil),
+		cleanNotifyThresholdWorkerMgr: m.NewWorkerMgr("clean notify thresholds", cleanNotifyThreshold, nil),
 
 		states: mgr.NewStateMgr(m),
 	}

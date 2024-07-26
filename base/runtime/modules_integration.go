@@ -16,6 +16,7 @@ func startModulesIntegration() (err error) {
 		return err
 	}
 
+	// FIXME(Daniel): What did this do? Do we need it?
 	// if !modules.SetEventSubscriptionFunc(pushModuleEvent) {
 	// 	log.Warningf("runtime: failed to register the modules event subscription function")
 	// }
