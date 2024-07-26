@@ -235,6 +235,15 @@ func (g *Group) AddStatesCallback(callbackName string, callback EventCallbackFun
 	}
 }
 
+// Modules returns a copy of the modules.
+func (g *Group) Modules() []Module {
+	copied := make([]Module, 0, len(g.modules))
+	for _, gm := range g.modules {
+		copied = append(copied, gm.module)
+	}
+	return copied
+}
+
 // RunModules is a simple wrapper function to start modules and stop them again
 // when the given context is canceled.
 func RunModules(ctx context.Context, modules ...Module) error {

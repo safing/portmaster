@@ -312,11 +312,23 @@ func New(svcCfg *ServiceConfig) (*Instance, error) {
 	return instance, nil
 }
 
+// SleepyModule is an interface for modules that can enter some sort of sleep mode.
+type SleepyModule interface {
+	SetSleep(enabled bool)
+}
+
+// SetSleep sets sleep mode on all modules that satisfy the SleepyModule interface.
 func (i *Instance) SetSleep(enabled bool) {
-	// FIXME(Daniel): Use a loop and a interface check to set sleep on all supported modules.
-	i.metrics.SetSleep(enabled)
-	i.network.SetSleep(enabled)
-	i.captain.SetSleep(enabled)
+	for _, module := range i.serviceGroup.Modules() {
+		if sm, ok := module.(SleepyModule); ok {
+			sm.SetSleep(enabled)
+		}
+	}
+	for _, module := range i.SpnGroup.Modules() {
+		if sm, ok := module.(SleepyModule); ok {
+			sm.SetSleep(enabled)
+		}
+	}
 }
 
 // Database returns the database module.
