@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"errors"
-	"fmt"
 	"sync/atomic"
 
 	"github.com/safing/portmaster/base/database"
@@ -35,10 +34,6 @@ func (r *Runtime) Start() error {
 
 	if err := DefaultRegistry.InjectAsDatabase("runtime"); err != nil {
 		return err
-	}
-
-	if err := startModulesIntegration(); err != nil {
-		return fmt.Errorf("failed to start modules integration: %w", err)
 	}
 
 	return nil

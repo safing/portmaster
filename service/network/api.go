@@ -77,8 +77,7 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	di.AddVersionInfo()
 	di.AddPlatformInfo(ar.Context())
 
-	// Errors and unexpected logs.
-	di.AddLastReportedModuleError()
+	// Unexpected logs.
 	di.AddLastUnexpectedLogs()
 
 	// Network Connections.

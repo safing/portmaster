@@ -241,7 +241,6 @@ func debugInfo(ar *Request) (data []byte, err error) {
 	// Add debug information.
 	di.AddVersionInfo()
 	di.AddPlatformInfo(ar.Context())
-	di.AddLastReportedModuleError()
 	di.AddLastUnexpectedLogs()
 	di.AddGoroutineStack()
 

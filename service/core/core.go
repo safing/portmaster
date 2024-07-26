@@ -64,6 +64,10 @@ func prep() error {
 		return err
 	}
 
+	if err := initModulesIntegration(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
