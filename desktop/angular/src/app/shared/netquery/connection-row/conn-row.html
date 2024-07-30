@@ -1,5 +1,5 @@
 <div class="flex flex-row items-center gap-2" name="first">
-  <span class="flex-shrink-0 verdict" [class.outdated]="isOutdated" [ngClass]="helper.getVerdictClass(conn)"
+  <span class="flex-shrink-0 verdict" [ngClass]="helper.getVerdictClass(conn)"
     [sfng-tooltip]="conn.extra_data?.reason?.Msg || null"></span>
 
   <ng-container *ngIf="conn.domain as domain; else scopeTranslation">

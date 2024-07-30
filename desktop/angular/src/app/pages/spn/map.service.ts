@@ -30,9 +30,6 @@ export interface MapPin {
 
   // whether the pin has any known issues
   hasIssues: boolean;
-
-  // FIXME: remove me
-  collapsed?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
