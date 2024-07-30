@@ -192,9 +192,10 @@ manage:
 
 		// Run worker.
 		wCtx := &WorkerCtx{
-			logger: s.mgr.logger.With("worker", s.name),
+			workerMgr: s,
+			logger:    s.ctx.logger,
 		}
-		wCtx.ctx, wCtx.cancelCtx = context.WithCancel(s.mgr.Ctx())
+		wCtx.ctx, wCtx.cancelCtx = context.WithCancel(s.ctx.ctx)
 		panicInfo, err := s.mgr.runWorker(wCtx, s.fn)
 
 		switch {
@@ -207,13 +208,13 @@ manage:
 		default:
 			// Log error and return.
 			if panicInfo != "" {
-				s.ctx.Error(
+				wCtx.Error(
 					"worker failed",
 					"err", err,
 					"file", panicInfo,
 				)
 			} else {
-				s.ctx.Error(
+				wCtx.Error(
 					"worker failed",
 					"err", err,
 				)
@@ -231,10 +232,20 @@ manage:
 // Go executes the worker immediately.
 // If the worker is currently being executed,
 // the next execution will commence afterwards.
-// Can only be called after calling one of Delay(), Repeat() or KeepAlive().
+// Calling Go() implies KeepAlive() if nothing else was specified yet.
 func (s *WorkerMgr) Go() {
 	s.actionLock.Lock()
 	defer s.actionLock.Unlock()
+
+	// Check if any action is already defined.
+	switch {
+	case s.delay != nil:
+	case s.repeat != nil:
+	case s.keepAlive != nil:
+	default:
+		s.keepAlive = &workerMgrNoop{}
+		s.check()
+	}
 
 	// Reset repeat if set.
 	s.repeat.Reset()
@@ -295,6 +306,8 @@ func (s *WorkerMgr) KeepAlive() *WorkerMgr {
 	defer s.actionLock.Unlock()
 
 	s.keepAlive = &workerMgrNoop{}
+
+	s.check()
 	return s
 }
 
