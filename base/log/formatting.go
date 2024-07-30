@@ -9,48 +9,91 @@ var counter uint16
 
 const (
 	maxCount   uint16 = 999
-	timeFormat string = "060102 15:04:05.000"
+	timeFormat string = "2006-01-02 15:04:05.000"
 )
 
 func (s Severity) String() string {
 	switch s {
 	case TraceLevel:
-		return "TRAC"
+		return "TRC"
 	case DebugLevel:
-		return "DEBU"
+		return "DBG"
 	case InfoLevel:
-		return "INFO"
+		return "INF"
 	case WarningLevel:
-		return "WARN"
+		return "WRN"
 	case ErrorLevel:
-		return "ERRO"
+		return "ERR"
 	case CriticalLevel:
-		return "CRIT"
+		return "CRT"
 	default:
-		return "NONE"
+		return "NON"
 	}
 }
 
 func formatLine(line *logLine, duplicates uint64, useColor bool) string {
-	colorStart := ""
-	colorEnd := ""
+	var colorStart, colorEnd, colorDim, colorEndDim string
 	if useColor {
 		colorStart = line.level.color()
 		colorEnd = endColor()
+		colorDim = dimColor()
+		colorEndDim = endDimColor()
 	}
 
 	counter++
 
 	var fLine string
 	if line.line == 0 {
-		fLine = fmt.Sprintf("%s%s ? %s %s %03d%s%s %s", colorStart, line.timestamp.Format(timeFormat), rightArrow, line.level.String(), counter, formatDuplicates(duplicates), colorEnd, line.msg)
+		fLine = fmt.Sprintf(
+			"%s%s%s %s%s%s %s? %s %03d%s%s %s",
+
+			colorDim,
+			line.timestamp.Format(timeFormat),
+			colorEndDim,
+
+			colorStart,
+			line.level.String(),
+			colorEnd,
+
+			colorDim,
+
+			rightArrow,
+
+			counter,
+			formatDuplicates(duplicates),
+			colorEndDim,
+
+			line.msg,
+		)
 	} else {
 		fLen := len(line.file)
 		fPartStart := fLen - 10
 		if fPartStart < 0 {
 			fPartStart = 0
 		}
-		fLine = fmt.Sprintf("%s%s %s:%03d %s %s %03d%s%s %s", colorStart, line.timestamp.Format(timeFormat), line.file[fPartStart:], line.line, rightArrow, line.level.String(), counter, formatDuplicates(duplicates), colorEnd, line.msg)
+		fLine = fmt.Sprintf(
+			"%s%s%s %s%s%s %s%s:%03d %s %03d%s%s %s",
+
+			colorDim,
+			line.timestamp.Format(timeFormat),
+			colorEndDim,
+
+			colorStart,
+			line.level.String(),
+			colorEnd,
+
+			colorDim,
+			line.file[fPartStart:],
+			line.line,
+
+			rightArrow,
+
+			counter,
+			formatDuplicates(duplicates),
+			colorEndDim,
+
+			line.msg,
+		)
 	}
 
 	if line.tracer != nil {
@@ -78,7 +121,25 @@ func formatLine(line *logLine, duplicates uint64, useColor bool) string {
 			} else {
 				d = line.tracer.logs[i+1].timestamp.Sub(action.timestamp)
 			}
-			fLine += fmt.Sprintf("\n%s%19s %s:%03d %s %s%s     %s", colorStart, d, action.file[fPartStart:], action.line, rightArrow, action.level.String(), colorEnd, action.msg)
+			fLine += fmt.Sprintf(
+				"\n%s%23s%s %s%s%s %s%s:%03d %s%s     %s",
+				colorDim,
+				d,
+				colorEndDim,
+
+				colorStart,
+				action.level.String(),
+				colorEnd,
+
+				colorDim,
+				action.file[fPartStart:],
+				action.line,
+
+				rightArrow,
+				colorEndDim,
+
+				action.msg,
+			)
 		}
 	}
 

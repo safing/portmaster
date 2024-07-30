@@ -100,7 +100,17 @@ func defaultColorFormater(line Message, duplicates uint64) string {
 }
 
 func startWriter() {
-	fmt.Printf("%s%s %s BOF%s\n", InfoLevel.color(), time.Now().Format(timeFormat), rightArrow, endColor())
+	fmt.Printf(
+		"%s%s%s %sBOF %s%s\n",
+
+		dimColor(),
+		time.Now().Format(timeFormat),
+		endDimColor(),
+
+		blueColor(),
+		rightArrow,
+		endColor(),
+	)
 
 	shutdownWaitGroup.Add(1)
 	go writerManager()
@@ -225,7 +235,17 @@ func finalizeWriting() {
 		case line := <-logBuffer:
 			adapter.Write(line, 0)
 		case <-time.After(10 * time.Millisecond):
-			fmt.Printf("%s%s %s EOF%s\n", InfoLevel.color(), time.Now().Format(timeFormat), leftArrow, endColor())
+			fmt.Printf(
+				"%s%s%s %sEOF %s%s\n",
+
+				dimColor(),
+				time.Now().Format(timeFormat),
+				endDimColor(),
+
+				blueColor(),
+				leftArrow,
+				endColor(),
+			)
 			return
 		}
 	}

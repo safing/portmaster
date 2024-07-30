@@ -142,6 +142,9 @@ func GetLogLevel() Severity {
 // SetLogLevel sets a new log level. Only effective after Start().
 func SetLogLevel(level Severity) {
 	atomic.StoreUint32(logLevel, uint32(level))
+
+	// Setup slog here for the transition period.
+	setupSLog(level)
 }
 
 // Name returns the name of the log level.
@@ -199,6 +202,9 @@ func Start() (err error) {
 		}
 
 		SetLogLevel(initialLogLevel)
+	} else {
+		// Setup slog here for the transition period.
+		setupSLog(GetLogLevel())
 	}
 
 	// get and set file loglevels

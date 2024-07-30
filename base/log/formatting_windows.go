@@ -10,13 +10,17 @@ const (
 )
 
 const (
-	// colorBlack   = "\033[30m"
-	colorRed = "\033[31m"
-	// colorGreen   = "\033[32m"
-	colorYellow  = "\033[33m"
+	colorDim     = "\033[2m"
+	colorEndDim  = "\033[22m"
+	colorRed     = "\033[91m"
+	colorYellow  = "\033[93m"
 	colorBlue    = "\033[34m"
 	colorMagenta = "\033[35m"
 	colorCyan    = "\033[36m"
+	colorGreen   = "\033[92m"
+
+	// colorBlack   = "\033[30m"
+	// colorGreen   = "\033[32m"
 	// colorWhite   = "\033[37m"
 )
 
@@ -34,7 +38,7 @@ func (s Severity) color() string {
 		case DebugLevel:
 			return colorCyan
 		case InfoLevel:
-			return colorBlue
+			return colorGreen
 		case WarningLevel:
 			return colorYellow
 		case ErrorLevel:
@@ -51,6 +55,27 @@ func (s Severity) color() string {
 func endColor() string {
 	if colorsSupported {
 		return "\033[0m"
+	}
+	return ""
+}
+
+func blueColor() string {
+	if colorsSupported {
+		return colorBlue
+	}
+	return ""
+}
+
+func dimColor() string {
+	if colorsSupported {
+		return colorDim
+	}
+	return ""
+}
+
+func endDimColor() string {
+	if colorsSupported {
+		return colorEndDim
 	}
 	return ""
 }
