@@ -3,6 +3,7 @@ package mgr
 import (
 	"context"
 	"log/slog"
+	"runtime"
 	"sync/atomic"
 	"time"
 )
@@ -78,49 +79,91 @@ func (m *Manager) LogEnabled(level slog.Level) bool {
 // Debug logs at LevelDebug.
 // The manager context is automatically supplied.
 func (m *Manager) Debug(msg string, args ...any) {
-	m.logger.DebugContext(m.ctx, msg, args...)
+	if !m.logger.Enabled(m.ctx, slog.LevelDebug) {
+		return
+	}
+	m.writeLog(slog.LevelDebug, msg, args...)
 }
 
 // Info logs at LevelInfo.
 // The manager context is automatically supplied.
 func (m *Manager) Info(msg string, args ...any) {
-	m.logger.InfoContext(m.ctx, msg, args...)
+	if !m.logger.Enabled(m.ctx, slog.LevelInfo) {
+		return
+	}
+	m.writeLog(slog.LevelInfo, msg, args...)
 }
 
 // Warn logs at LevelWarn.
 // The manager context is automatically supplied.
 func (m *Manager) Warn(msg string, args ...any) {
-	m.logger.WarnContext(m.ctx, msg, args...)
+	if !m.logger.Enabled(m.ctx, slog.LevelWarn) {
+		return
+	}
+	m.writeLog(slog.LevelWarn, msg, args...)
 }
 
 // Error logs at LevelError.
 // The manager context is automatically supplied.
 func (m *Manager) Error(msg string, args ...any) {
-	m.logger.ErrorContext(m.ctx, msg, args...)
+	if !m.logger.Enabled(m.ctx, slog.LevelError) {
+		return
+	}
+	m.writeLog(slog.LevelError, msg, args...)
 }
 
 // Log emits a log record with the current time and the given level and message.
 // The manager context is automatically supplied.
 func (m *Manager) Log(level slog.Level, msg string, args ...any) {
-	m.logger.Log(m.ctx, level, msg, args...)
+	if !m.logger.Enabled(m.ctx, level) {
+		return
+	}
+	m.writeLog(level, msg, args...)
 }
 
 // LogAttrs is a more efficient version of Log() that accepts only Attrs.
 // The manager context is automatically supplied.
 func (m *Manager) LogAttrs(level slog.Level, msg string, attrs ...slog.Attr) {
-	m.logger.LogAttrs(m.ctx, level, msg, attrs...)
+	if !m.logger.Enabled(m.ctx, level) {
+		return
+	}
+
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:]) // skip "Callers" and "LogAttrs".
+	r := slog.NewRecord(time.Now(), level, msg, pcs[0])
+	r.AddAttrs(attrs...)
+	_ = m.logger.Handler().Handle(m.ctx, r)
+}
+
+func (m *Manager) writeLog(level slog.Level, msg string, args ...any) {
+	var pcs [1]uintptr
+	runtime.Callers(3, pcs[:]) // skip "Callers", "writeLog" and the calling function.
+	r := slog.NewRecord(time.Now(), level, msg, pcs[0])
+	r.Add(args...)
+	_ = m.logger.Handler().Handle(m.ctx, r)
 }
 
 // WaitForWorkers waits for all workers of this manager to be done.
 // The default maximum waiting time is one minute.
 func (m *Manager) WaitForWorkers(max time.Duration) (done bool) {
+	return m.waitForWorkers(max, 0)
+}
+
+// WaitForWorkersFromStop is a special version of WaitForWorkers, meant to be called from the stop routine.
+// It waits for all workers of this manager to be done, except for the Stop function.
+// The default maximum waiting time is one minute.
+func (m *Manager) WaitForWorkersFromStop(max time.Duration) (done bool) {
+	return m.waitForWorkers(max, 1)
+}
+
+func (m *Manager) waitForWorkers(max time.Duration, limit int32) (done bool) {
 	// Return immediately if there are no workers.
-	if m.workerCnt.Load() == 0 {
+	if m.workerCnt.Load() <= limit {
 		return true
 	}
 
 	// Setup timers.
-	reCheckDuration := 100 * time.Millisecond
+	reCheckDuration := 10 * time.Millisecond
 	if max <= 0 {
 		max = time.Minute
 	}
@@ -131,13 +174,15 @@ func (m *Manager) WaitForWorkers(max time.Duration) (done bool) {
 
 	// Wait for workers to finish, plus check the count in intervals.
 	for {
-		if m.workerCnt.Load() == 0 {
+		if m.workerCnt.Load() <= limit {
 			return true
 		}
 
 		select {
 		case <-m.workersDone:
-			return true
+			if m.workerCnt.Load() <= limit {
+				return true
+			}
 
 		case <-reCheck.C:
 			// Check worker count again.
@@ -146,7 +191,7 @@ func (m *Manager) WaitForWorkers(max time.Duration) (done bool) {
 			reCheck.Reset(reCheckDuration)
 
 		case <-maxWait.C:
-			return m.workerCnt.Load() == 0
+			return m.workerCnt.Load() <= limit
 		}
 	}
 }
@@ -156,7 +201,7 @@ func (m *Manager) workerStart() {
 }
 
 func (m *Manager) workerDone() {
-	if m.workerCnt.Add(-1) == 0 {
+	if m.workerCnt.Add(-1) <= 1 {
 		// Notify all waiters.
 		for {
 			select {

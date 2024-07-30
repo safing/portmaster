@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -83,37 +84,68 @@ func (w *WorkerCtx) LogEnabled(level slog.Level) bool {
 // Debug logs at LevelDebug.
 // The worker context is automatically supplied.
 func (w *WorkerCtx) Debug(msg string, args ...any) {
-	w.logger.DebugContext(w.ctx, msg, args...)
+	if !w.logger.Enabled(w.ctx, slog.LevelDebug) {
+		return
+	}
+	w.writeLog(slog.LevelDebug, msg, args...)
 }
 
 // Info logs at LevelInfo.
 // The worker context is automatically supplied.
 func (w *WorkerCtx) Info(msg string, args ...any) {
-	w.logger.InfoContext(w.ctx, msg, args...)
+	if !w.logger.Enabled(w.ctx, slog.LevelInfo) {
+		return
+	}
+	w.writeLog(slog.LevelInfo, msg, args...)
 }
 
 // Warn logs at LevelWarn.
 // The worker context is automatically supplied.
 func (w *WorkerCtx) Warn(msg string, args ...any) {
-	w.logger.WarnContext(w.ctx, msg, args...)
+	if !w.logger.Enabled(w.ctx, slog.LevelWarn) {
+		return
+	}
+	w.writeLog(slog.LevelWarn, msg, args...)
 }
 
 // Error logs at LevelError.
 // The worker context is automatically supplied.
 func (w *WorkerCtx) Error(msg string, args ...any) {
-	w.logger.ErrorContext(w.ctx, msg, args...)
+	if !w.logger.Enabled(w.ctx, slog.LevelError) {
+		return
+	}
+	w.writeLog(slog.LevelError, msg, args...)
 }
 
 // Log emits a log record with the current time and the given level and message.
 // The worker context is automatically supplied.
 func (w *WorkerCtx) Log(level slog.Level, msg string, args ...any) {
-	w.logger.Log(w.ctx, level, msg, args...)
+	if !w.logger.Enabled(w.ctx, level) {
+		return
+	}
+	w.writeLog(level, msg, args...)
 }
 
 // LogAttrs is a more efficient version of Log() that accepts only Attrs.
 // The worker context is automatically supplied.
 func (w *WorkerCtx) LogAttrs(level slog.Level, msg string, attrs ...slog.Attr) {
-	w.logger.LogAttrs(w.ctx, level, msg, attrs...)
+	if !w.logger.Enabled(w.ctx, level) {
+		return
+	}
+
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:]) // skip "Callers" and "LogAttrs".
+	r := slog.NewRecord(time.Now(), level, msg, pcs[0])
+	r.AddAttrs(attrs...)
+	_ = w.logger.Handler().Handle(w.ctx, r)
+}
+
+func (w *WorkerCtx) writeLog(level slog.Level, msg string, args ...any) {
+	var pcs [1]uintptr
+	runtime.Callers(3, pcs[:]) // skip "Callers", "writeLog" and the calling function.
+	r := slog.NewRecord(time.Now(), level, msg, pcs[0])
+	r.Add(args...)
+	_ = w.logger.Handler().Handle(w.ctx, r)
 }
 
 // Go starts the given function in a goroutine (as a "worker").
@@ -157,13 +189,13 @@ func (m *Manager) manageWorker(name string, fn func(w *WorkerCtx) error) {
 			// If manager is stopping, just log error and return.
 			if m.IsDone() {
 				if panicInfo != "" {
-					m.Error(
+					w.Error(
 						"worker failed",
 						"err", err,
 						"file", panicInfo,
 					)
 				} else {
-					m.Error(
+					w.Error(
 						"worker failed",
 						"err", err,
 					)
@@ -180,7 +212,7 @@ func (m *Manager) manageWorker(name string, fn func(w *WorkerCtx) error) {
 
 			// Log error and retry after backoff duration.
 			if panicInfo != "" {
-				m.Error(
+				w.Error(
 					"worker failed",
 					"failCnt", failCnt,
 					"backoff", backoff,
@@ -188,7 +220,7 @@ func (m *Manager) manageWorker(name string, fn func(w *WorkerCtx) error) {
 					"file", panicInfo,
 				)
 			} else {
-				m.Error(
+				w.Error(
 					"worker failed",
 					"failCnt", failCnt,
 					"backoff", backoff,
@@ -235,13 +267,13 @@ func (m *Manager) Do(name string, fn func(w *WorkerCtx) error) error {
 	default:
 		// Log error and return.
 		if panicInfo != "" {
-			m.Error(
+			w.Error(
 				"worker failed",
 				"err", err,
 				"file", panicInfo,
 			)
 		} else {
-			m.Error(
+			w.Error(
 				"worker failed",
 				"err", err,
 			)
