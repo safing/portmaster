@@ -3,7 +3,6 @@ package database
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 
 	"github.com/tevino/abool"
 
@@ -39,13 +38,6 @@ func Initialize(dirStructureRoot *utils.DirStructure) error {
 		err := databasesStructure.Ensure()
 		if err != nil {
 			return fmt.Errorf("could not create/open database directory (%s): %w", rootStructure.Path, err)
-		}
-
-		if registryPersistence.IsSet() {
-			err = loadRegistry()
-			if err != nil {
-				return fmt.Errorf("could not load database registry (%s): %w", filepath.Join(rootStructure.Path, registryFileName), err)
-			}
 		}
 
 		return nil

@@ -1,4 +1,4 @@
-package service
+package spn
 
 import (
 	"context"
@@ -12,27 +12,12 @@ import (
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
-	"github.com/safing/portmaster/base/runtime"
-	"github.com/safing/portmaster/service/broadcasts"
-	"github.com/safing/portmaster/service/compat"
 	"github.com/safing/portmaster/service/core"
 	"github.com/safing/portmaster/service/core/base"
-	"github.com/safing/portmaster/service/firewall"
-	"github.com/safing/portmaster/service/firewall/interception"
-	"github.com/safing/portmaster/service/intel/customlists"
 	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/service/nameserver"
 	"github.com/safing/portmaster/service/netenv"
-	"github.com/safing/portmaster/service/netquery"
-	"github.com/safing/portmaster/service/network"
-	"github.com/safing/portmaster/service/process"
-	"github.com/safing/portmaster/service/profile"
-	"github.com/safing/portmaster/service/resolver"
-	"github.com/safing/portmaster/service/status"
-	"github.com/safing/portmaster/service/sync"
-	"github.com/safing/portmaster/service/ui"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/access"
 	"github.com/safing/portmaster/spn/cabin"
@@ -54,39 +39,20 @@ type Instance struct {
 
 	exitCode atomic.Int32
 
-	database      *dbmodule.DBModule
-	config        *config.Config
-	api           *api.API
-	metrics       *metrics.Metrics
-	runtime       *runtime.Runtime
-	notifications *notifications.Notifications
-	rng           *rng.Rng
-	base          *base.Base
+	base     *base.Base
+	database *dbmodule.DBModule
+	config   *config.Config
+	api      *api.API
+	metrics  *metrics.Metrics
+	rng      *rng.Rng
 
-	core         *core.Core
-	updates      *updates.Updates
-	geoip        *geoip.GeoIP
-	netenv       *netenv.NetEnv
-	ui           *ui.UI
-	profile      *profile.ProfileModule
-	network      *network.Network
-	netquery     *netquery.NetQuery
-	firewall     *firewall.Firewall
-	filterLists  *filterlists.FilterLists
-	interception *interception.Interception
-	customlist   *customlists.CustomList
-	status       *status.Status
-	broadcasts   *broadcasts.Broadcasts
-	compat       *compat.Compat
-	nameserver   *nameserver.NameServer
-	process      *process.ProcessModule
-	resolver     *resolver.ResolverModule
-	sync         *sync.Sync
+	core        *core.Core
+	updates     *updates.Updates
+	geoip       *geoip.GeoIP
+	netenv      *netenv.NetEnv
+	filterLists *filterlists.FilterLists
 
-	access *access.Access
-
-	// SPN modules
-	SpnGroup  *mgr.ExtendedGroup
+	access    *access.Access
 	cabin     *cabin.Cabin
 	navigator *navigator.Navigator
 	captain   *captain.Captain
@@ -101,7 +67,7 @@ type Instance struct {
 }
 
 // New returns a new Portmaster service instance.
-func New(svcCfg *ServiceConfig) (*Instance, error) {
+func New() (*Instance, error) {
 	// Create instance to pass it to modules.
 	instance := &Instance{}
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
@@ -129,14 +95,6 @@ func New(svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return instance, fmt.Errorf("create metrics module: %w", err)
 	}
-	instance.runtime, err = runtime.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create runtime module: %w", err)
-	}
-	instance.notifications, err = notifications.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create runtime module: %w", err)
-	}
 	instance.rng, err = rng.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create rng module: %w", err)
@@ -159,72 +117,16 @@ func New(svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return instance, fmt.Errorf("create netenv module: %w", err)
 	}
-	instance.ui, err = ui.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create ui module: %w", err)
-	}
-	instance.profile, err = profile.NewModule(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create profile module: %w", err)
-	}
-	instance.network, err = network.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create network module: %w", err)
-	}
-	instance.netquery, err = netquery.NewModule(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create netquery module: %w", err)
-	}
-	instance.firewall, err = firewall.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create firewall module: %w", err)
-	}
 	instance.filterLists, err = filterlists.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create filterLists module: %w", err)
 	}
-	instance.interception, err = interception.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create interception module: %w", err)
-	}
-	instance.customlist, err = customlists.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create customlist module: %w", err)
-	}
-	instance.status, err = status.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create status module: %w", err)
-	}
-	instance.broadcasts, err = broadcasts.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create broadcasts module: %w", err)
-	}
-	instance.compat, err = compat.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create compat module: %w", err)
-	}
-	instance.nameserver, err = nameserver.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create nameserver module: %w", err)
-	}
-	instance.process, err = process.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create process module: %w", err)
-	}
-	instance.resolver, err = resolver.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create resolver module: %w", err)
-	}
-	instance.sync, err = sync.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create sync module: %w", err)
-	}
+
+	// SPN modules
 	instance.access, err = access.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create access module: %w", err)
 	}
-
-	// SPN modules
 	instance.cabin, err = cabin.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create cabin module: %w", err)
@@ -232,10 +134,6 @@ func New(svcCfg *ServiceConfig) (*Instance, error) {
 	instance.navigator, err = navigator.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create navigator module: %w", err)
-	}
-	instance.captain, err = captain.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create captain module: %w", err)
 	}
 	instance.crew, err = crew.New(instance)
 	if err != nil {
@@ -261,6 +159,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return instance, fmt.Errorf("create terminal module: %w", err)
 	}
+	instance.captain, err = captain.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create captain module: %w", err)
+	}
 
 	// Add all modules to instance group.
 	instance.serviceGroup = mgr.NewGroup(
@@ -269,8 +171,6 @@ func New(svcCfg *ServiceConfig) (*Instance, error) {
 		instance.config,
 		instance.api,
 		instance.metrics,
-		instance.runtime,
-		instance.notifications,
 		instance.rng,
 
 		instance.core,
@@ -278,27 +178,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) {
 		instance.geoip,
 		instance.netenv,
 
-		instance.ui,
-		instance.profile,
-		instance.netquery,
-		instance.network,
-		instance.firewall,
-		instance.filterLists,
-		instance.interception,
-		instance.customlist,
-		instance.status,
-		instance.broadcasts,
-		instance.compat,
-		instance.nameserver,
-		instance.process,
-		instance.resolver,
-		instance.sync,
-
 		instance.access,
-	)
-
-	// SPN Group
-	instance.SpnGroup = mgr.NewExtendedGroup(
 		instance.cabin,
 		instance.navigator,
 		instance.captain,
@@ -325,11 +205,6 @@ func (i *Instance) SetSleep(enabled bool) {
 			sm.SetSleep(enabled)
 		}
 	}
-	for _, module := range i.SpnGroup.Modules() {
-		if sm, ok := module.(SleepyModule); ok {
-			sm.SetSleep(enabled)
-		}
-	}
 }
 
 // Database returns the database module.
@@ -350,16 +225,6 @@ func (i *Instance) API() *api.API {
 // Metrics returns the metrics module.
 func (i *Instance) Metrics() *metrics.Metrics {
 	return i.metrics
-}
-
-// Runtime returns the runtime module.
-func (i *Instance) Runtime() *runtime.Runtime {
-	return i.runtime
-}
-
-// Notifications returns the notifications module.
-func (i *Instance) Notifications() *notifications.Notifications {
-	return i.notifications
 }
 
 // Rng returns the rng module.
@@ -437,89 +302,14 @@ func (i *Instance) Terminal() *terminal.TerminalModule {
 	return i.terminal
 }
 
-// UI returns the ui module.
-func (i *Instance) UI() *ui.UI {
-	return i.ui
-}
-
-// Profile returns the profile module.
-func (i *Instance) Profile() *profile.ProfileModule {
-	return i.profile
-}
-
-// Firewall returns the firewall module.
-func (i *Instance) Firewall() *firewall.Firewall {
-	return i.firewall
-}
-
 // FilterLists returns the filterLists module.
 func (i *Instance) FilterLists() *filterlists.FilterLists {
 	return i.filterLists
 }
 
-// Interception returns the interception module.
-func (i *Instance) Interception() *interception.Interception {
-	return i.interception
-}
-
-// CustomList returns the customlist module.
-func (i *Instance) CustomList() *customlists.CustomList {
-	return i.customlist
-}
-
-// Status returns the status module.
-func (i *Instance) Status() *status.Status {
-	return i.status
-}
-
-// Broadcasts returns the broadcast module.
-func (i *Instance) Broadcasts() *broadcasts.Broadcasts {
-	return i.broadcasts
-}
-
-// Compat returns the compat module.
-func (i *Instance) Compat() *compat.Compat {
-	return i.compat
-}
-
-// NameServer returns the nameserver module.
-func (i *Instance) NameServer() *nameserver.NameServer {
-	return i.nameserver
-}
-
-// NetQuery returns the netquery module.
-func (i *Instance) NetQuery() *netquery.NetQuery {
-	return i.netquery
-}
-
-// Network returns the network module.
-func (i *Instance) Network() *network.Network {
-	return i.network
-}
-
-// Process returns the process module.
-func (i *Instance) Process() *process.ProcessModule {
-	return i.process
-}
-
-// Resolver returns the resolver module.
-func (i *Instance) Resolver() *resolver.ResolverModule {
-	return i.resolver
-}
-
-// Sync returns the sync module.
-func (i *Instance) Sync() *sync.Sync {
-	return i.sync
-}
-
 // Core returns the core module.
 func (i *Instance) Core() *core.Core {
 	return i.core
-}
-
-// SPNGroup returns the group of all SPN modules.
-func (i *Instance) SPNGroup() *mgr.ExtendedGroup {
-	return i.SpnGroup
 }
 
 // Events
@@ -538,21 +328,13 @@ func (i *Instance) SetCmdLineOperation(f func() error) {
 
 // GetStates returns the current states of all group modules.
 func (i *Instance) GetStates() []mgr.StateUpdate {
-	mainStates := i.serviceGroup.GetStates()
-	spnStates := i.SpnGroup.GetStates()
-
-	updates := make([]mgr.StateUpdate, 0, len(mainStates)+len(spnStates))
-	updates = append(updates, mainStates...)
-	updates = append(updates, spnStates...)
-
-	return updates
+	return i.serviceGroup.GetStates()
 }
 
 // AddStatesCallback adds the given callback function to all group modules that
 // expose a state manager at States().
 func (i *Instance) AddStatesCallback(callbackName string, callback mgr.EventCallbackFunc[mgr.StateUpdate]) {
 	i.serviceGroup.AddStatesCallback(callbackName, callback)
-	i.SpnGroup.AddStatesCallback(callbackName, callback)
 }
 
 // Ready returns whether all modules in the main service module group have been started and are still running.
@@ -613,3 +395,14 @@ func (i *Instance) SetExitCode(exitCode int) {
 func (i *Instance) ExitCode() int {
 	return int(i.exitCode.Load())
 }
+
+// SPNGroup fakes interface conformance.
+// SPNGroup is only needed on SPN clients.
+func (i *Instance) SPNGroup() *mgr.ExtendedGroup {
+	return nil
+}
+
+// Unsupported Modules.
+
+// Notifications returns nil.
+func (i *Instance) Notifications() *notifications.Notifications { return nil }

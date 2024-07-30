@@ -23,27 +23,30 @@ func init() {
 }
 
 func prep() error {
+	// Register endpoints.
+	if err := registerConfig(); err != nil {
+		return err
+	}
+	if err := registerDebugEndpoints(); err != nil {
+		return err
+	}
+	if err := registerConfigEndpoints(); err != nil {
+		return err
+	}
+	if err := registerMetaEndpoints(); err != nil {
+		return err
+	}
+
 	if exportEndpoints {
 		module.instance.SetCmdLineOperation(exportEndpointsCmd)
+		return mgr.ErrExecuteCmdLineOp
 	}
 
 	if getDefaultListenAddress() == "" {
 		return errors.New("no default listen address for api available")
 	}
 
-	if err := registerConfig(); err != nil {
-		return err
-	}
-
-	if err := registerDebugEndpoints(); err != nil {
-		return err
-	}
-
-	if err := registerConfigEndpoints(); err != nil {
-		return err
-	}
-
-	return registerMetaEndpoints()
+	return nil
 }
 
 func start() error {

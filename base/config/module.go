@@ -16,6 +16,7 @@ type Config struct {
 	EventConfigChange *mgr.EventMgr[struct{}]
 }
 
+// Manager returns the module's manager.
 func (u *Config) Manager() *mgr.Manager {
 	return u.mgr
 }

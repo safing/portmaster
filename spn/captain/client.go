@@ -13,6 +13,7 @@ import (
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/spn/access"
+	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/crew"
 	"github.com/safing/portmaster/spn/docks"
 	"github.com/safing/portmaster/spn/navigator"
@@ -144,7 +145,9 @@ reconnect:
 		netenv.ConnectedToSPN.Set()
 
 		module.EventSPNConnected.Submit(struct{}{})
-		module.mgr.Go("update quick setting countries", navigator.Main.UpdateConfigQuickSettings)
+		if conf.Integrated() {
+			module.mgr.Go("update quick setting countries", navigator.Main.UpdateConfigQuickSettings)
+		}
 
 		// Reset last health check value, as we have just connected.
 		lastHealthCheck = time.Now()

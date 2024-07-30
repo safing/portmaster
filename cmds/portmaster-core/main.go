@@ -2,6 +2,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -17,16 +18,9 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/service"
-	"github.com/safing/portmaster/service/core/base"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/conf"
-
-	// Include packages here.
-	_ "github.com/safing/portmaster/service/core"
-	_ "github.com/safing/portmaster/service/firewall"
-	_ "github.com/safing/portmaster/service/nameserver"
-	_ "github.com/safing/portmaster/service/ui"
-	_ "github.com/safing/portmaster/spn/captain"
 )
 
 var sigUSR1 = syscall.Signal(0xa)
@@ -37,10 +31,6 @@ func main() {
 	// set information
 	info.Set("Portmaster", "", "GPLv3")
 
-	// Set default log level.
-	log.SetLogLevel(log.WarningLevel)
-	_ = log.Start()
-
 	// Configure metrics.
 	_ = metrics.SetNamespace("portmaster")
 
@@ -49,31 +39,41 @@ func main() {
 
 	// enable SPN client mode
 	conf.EnableClient(true)
-
-	// Prep
-	err := base.GlobalPrep()
-	if err != nil {
-		fmt.Printf("global prep failed: %s\n", err)
-		return
-	}
+	conf.EnableIntegration(true)
 
 	// Create instance.
+	var execCmdLine bool
 	instance, err := service.New(&service.ServiceConfig{})
-	if err != nil {
+	switch {
+	case err == nil:
+		// Continue
+	case errors.Is(err, mgr.ErrExecuteCmdLineOp):
+		execCmdLine = true
+	default:
 		fmt.Printf("error creating an instance: %s\n", err)
 		os.Exit(2)
 	}
 
-	// Execute command line operation, if available.
-	if instance.CommandLineOperation != nil {
+	// Execute command line operation, if requested or available.
+	switch {
+	case !execCmdLine:
+		// Run service.
+	case instance.CommandLineOperation == nil:
+		fmt.Println("command line operation execution requested, but not set")
+		os.Exit(3)
+	default:
 		// Run the function and exit.
 		err = instance.CommandLineOperation()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "cmdline operation failed: %s\n", err)
+			fmt.Fprintf(os.Stderr, "command line operation failed: %s\n", err)
 			os.Exit(3)
 		}
 		os.Exit(0)
 	}
+
+	// Set default log level.
+	log.SetLogLevel(log.WarningLevel)
+	_ = log.Start()
 
 	// Start
 	go func() {
@@ -107,6 +107,7 @@ func main() {
 		}
 
 	case <-instance.Stopped():
+		log.Shutdown()
 		os.Exit(instance.ExitCode())
 	}
 
@@ -135,8 +136,9 @@ func main() {
 
 	// Stop instance.
 	if err := instance.Stop(); err != nil {
-		slog.Error("failed to stop portmaster", "err", err)
+		slog.Error("failed to stop", "err", err)
 	}
+	log.Shutdown()
 	os.Exit(instance.ExitCode())
 }
 

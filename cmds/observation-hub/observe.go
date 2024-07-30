@@ -55,8 +55,6 @@ var (
 )
 
 func init() {
-	// observerModule = modules.Register("observer", prepObserver, startObserver, nil, "captain", "apprise")
-
 	flag.BoolVar(&reportAllChanges, "report-all-changes", false, "report all changes, no just interesting ones")
 	flag.StringVar(&reportingDelayFlag, "reporting-delay", "10m", "delay reports to summarize changes")
 }

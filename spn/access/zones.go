@@ -48,7 +48,7 @@ func InitializeZones() error {
 
 	// Special client zone config.
 	var requestSignalHandler func(token.Handler)
-	if conf.Client() {
+	if conf.Integrated() {
 		requestSignalHandler = shouldRequestTokensHandler
 	}
 

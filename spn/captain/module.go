@@ -21,7 +21,6 @@ import (
 	"github.com/safing/portmaster/spn/navigator"
 	"github.com/safing/portmaster/spn/patrol"
 	"github.com/safing/portmaster/spn/ships"
-	_ "github.com/safing/portmaster/spn/sluice"
 )
 
 const controlledFailureExitCode = 24
@@ -62,7 +61,7 @@ func (c *Captain) SetSleep(enabled bool) {
 	}
 }
 
-func prep() error {
+func (c *Captain) prep() error {
 	// Check if we can parse the bootstrap hub flag.
 	if err := prepBootstrapHubFlag(); err != nil {
 		return err
@@ -84,7 +83,7 @@ func prep() error {
 			return err
 		}
 
-		module.instance.Patrol().EventChangeSignal.AddCallback(
+		c.instance.Patrol().EventChangeSignal.AddCallback(
 			"trigger hub status maintenance",
 			func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 				TriggerHubStatusMaintenance()
@@ -103,6 +102,33 @@ func start() error {
 	}
 	ships.EnableMasking(maskingBytes)
 
+	// Initialize identity and piers.
+	if conf.PublicHub() {
+		// Load identity.
+		if err := loadPublicIdentity(); err != nil {
+			return fmt.Errorf("load public identity: %w", err)
+		}
+
+		// Check if any networks are configured.
+		if !conf.HubHasIPv4() && !conf.HubHasIPv6() {
+			return errors.New("no IP addresses for Hub configured (or detected)")
+		}
+
+		// Start management of identity and piers.
+		if err := prepPublicIdentityMgmt(); err != nil {
+			return err
+		}
+		// Set ID to display on http info page.
+		ships.DisplayHubID = publicIdentity.ID
+		// Start listeners.
+		if err := startPiers(); err != nil {
+			return err
+		}
+
+		// Enable connect operation.
+		crew.EnableConnecting(publicIdentity.Hub)
+	}
+
 	// Initialize intel.
 	module.mgr.Go("start", func(wc *mgr.WorkerCtx) error {
 		if err := registerIntelUpdateHook(); err != nil {
@@ -111,70 +137,38 @@ func start() error {
 		if err := updateSPNIntel(module.mgr.Ctx(), nil); err != nil {
 			log.Errorf("spn/captain: failed to update SPN intel: %s", err)
 		}
-
-		// Initialize identity and piers.
-		if conf.PublicHub() {
-			// Load identity.
-			if err := loadPublicIdentity(); err != nil {
-				// We cannot recover from this, set controlled failure (do not retry).
-				module.instance.Shutdown(controlledFailureExitCode)
-
-				return err
-			}
-
-			// Check if any networks are configured.
-			if !conf.HubHasIPv4() && !conf.HubHasIPv6() {
-				// We cannot recover from this, set controlled failure (do not retry).
-				module.instance.Shutdown(controlledFailureExitCode)
-
-				return errors.New("no IP addresses for Hub configured (or detected)")
-			}
-
-			// Start management of identity and piers.
-			if err := prepPublicIdentityMgmt(); err != nil {
-				return err
-			}
-			// Set ID to display on http info page.
-			ships.DisplayHubID = publicIdentity.ID
-			// Start listeners.
-			if err := startPiers(); err != nil {
-				return err
-			}
-
-			// Enable connect operation.
-			crew.EnableConnecting(publicIdentity.Hub)
-		}
-
-		// Subscribe to updates of cranes.
-		startDockHooks()
-
-		// bootstrapping
-		if err := processBootstrapHubFlag(); err != nil {
-			return err
-		}
-		if err := processBootstrapFileFlag(); err != nil {
-			return err
-		}
-
-		// network optimizer
-		if conf.PublicHub() {
-			module.mgr.Delay("optimize network delay", 15*time.Second, optimizeNetwork).Repeat(1 * time.Minute)
-		}
-
-		// client + home hub manager
-		if conf.Client() {
-			module.mgr.Go("client manager", clientManager)
-
-			// Reset failing hubs when the network changes while not connected.
-			module.instance.NetEnv().EventNetworkChange.AddCallback("reset failing hubs", func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
-				if ready.IsNotSet() {
-					navigator.Main.ResetFailingStates()
-				}
-				return false, nil
-			})
-		}
 		return nil
 	})
+
+	// Subscribe to updates of cranes.
+	startDockHooks()
+
+	// bootstrapping
+	if err := processBootstrapHubFlag(); err != nil {
+		return err
+	}
+	if err := processBootstrapFileFlag(); err != nil {
+		return err
+	}
+
+	// network optimizer
+	if conf.PublicHub() {
+		module.mgr.Delay("optimize network delay", 15*time.Second, optimizeNetwork).Repeat(1 * time.Minute)
+	}
+
+	// client + home hub manager
+	if conf.Client() {
+		module.mgr.Go("client manager", clientManager)
+
+		// Reset failing hubs when the network changes while not connected.
+		module.instance.NetEnv().EventNetworkChange.AddCallback("reset failing hubs", func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
+			if ready.IsNotSet() {
+				navigator.Main.ResetFailingStates()
+			}
+			return false, nil
+		})
+	}
+
 	return nil
 }
 
@@ -236,7 +230,7 @@ func New(instance instance) (*Captain, error) {
 		maintainPublicStatus: m.NewWorkerMgr("maintain public status", maintainPublicStatus, nil),
 	}
 
-	if err := prep(); err != nil {
+	if err := module.prep(); err != nil {
 		return nil, err
 	}
 

@@ -4,9 +4,6 @@ import (
 	"errors"
 	"sync/atomic"
 
-	_ "github.com/safing/portmaster/base/config"
-	_ "github.com/safing/portmaster/base/metrics"
-	_ "github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -46,6 +43,9 @@ func New(instance instance) (*Base, error) {
 		instance: instance,
 	}
 
+	if err := prep(instance); err != nil {
+		return nil, err
+	}
 	if err := registerDatabases(); err != nil {
 		return nil, err
 	}
@@ -53,4 +53,6 @@ func New(instance instance) (*Base, error) {
 	return module, nil
 }
 
-type instance interface{}
+type instance interface {
+	SetCmdLineOperation(f func() error)
+}

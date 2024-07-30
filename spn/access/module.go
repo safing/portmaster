@@ -60,7 +60,7 @@ var (
 
 func prep() error {
 	// Register API handlers.
-	if conf.Client() {
+	if conf.Integrated() {
 		err := registerAPIEndpoints()
 		if err != nil {
 			return err
@@ -71,34 +71,34 @@ func prep() error {
 }
 
 func start() error {
-	// Add config listener to enable/disable SPN.
-	module.instance.Config().EventConfigChange.AddCallback("spn enable check", func(wc *mgr.WorkerCtx, s struct{}) (bool, error) {
-		// Do not do anything when we are shutting down.
-		if module.instance.Stopping() {
-			return true, nil
-		}
-
-		enabled := config.GetAsBool("spn/enable", false)
-		if enabled() {
-			module.mgr.Go("ensure SPN is started", module.instance.SPNGroup().EnsureStartedWorker)
-		} else {
-			module.mgr.Go("ensure SPN is stopped", module.instance.SPNGroup().EnsureStoppedWorker)
-		}
-		return false, nil
-	})
-
-	// Check if we need to enable SPN now.
-	enabled := config.GetAsBool("spn/enable", false)
-	if enabled() {
-		module.mgr.Go("ensure SPN is started", module.instance.SPNGroup().EnsureStartedWorker)
-	}
-
 	// Initialize zones.
 	if err := InitializeZones(); err != nil {
 		return err
 	}
 
-	if conf.Client() {
+	if conf.Integrated() {
+		// Add config listener to enable/disable SPN.
+		module.instance.Config().EventConfigChange.AddCallback("spn enable check", func(wc *mgr.WorkerCtx, s struct{}) (bool, error) {
+			// Do not do anything when we are shutting down.
+			if module.instance.Stopping() {
+				return true, nil
+			}
+
+			enabled := config.GetAsBool("spn/enable", false)
+			if enabled() {
+				module.mgr.Go("ensure SPN is started", module.instance.SPNGroup().EnsureStartedWorker)
+			} else {
+				module.mgr.Go("ensure SPN is stopped", module.instance.SPNGroup().EnsureStoppedWorker)
+			}
+			return false, nil
+		})
+
+		// Check if we need to enable SPN now.
+		enabled := config.GetAsBool("spn/enable", false)
+		if enabled() {
+			module.mgr.Go("ensure SPN is started", module.instance.SPNGroup().EnsureStartedWorker)
+		}
+
 		// Load tokens from database.
 		loadTokens()
 
@@ -110,13 +110,13 @@ func start() error {
 }
 
 func stop() error {
-	// Make sure SPN is stopped before we proceed.
-	err := module.mgr.Do("ensure SPN is shut down", module.instance.SPNGroup().EnsureStoppedWorker)
-	if err != nil {
-		log.Errorf("access: stop SPN: %s", err)
-	}
+	if conf.Integrated() {
+		// Make sure SPN is stopped before we proceed.
+		err := module.mgr.Do("ensure SPN is shut down", module.instance.SPNGroup().EnsureStoppedWorker)
+		if err != nil {
+			log.Errorf("access: stop SPN: %s", err)
+		}
 
-	if conf.Client() {
 		// Store tokens to database.
 		storeTokens()
 	}
@@ -128,7 +128,7 @@ func stop() error {
 }
 
 // UpdateAccount updates the user account and fetches new tokens, if needed.
-func UpdateAccount(_ *mgr.WorkerCtx) error { //, task *modules.Task) error {
+func UpdateAccount(_ *mgr.WorkerCtx) error {
 	// Schedule next call - this will change if other conditions are met bellow.
 	module.updateAccountWorkerMgr.Delay(24 * time.Hour)
 

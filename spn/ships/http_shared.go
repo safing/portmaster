@@ -97,8 +97,7 @@ func addHTTPHandler(port uint16, path string, handler http.HandlerFunc) error {
 		WriteTimeout:      1 * time.Minute,
 		IdleTimeout:       1 * time.Minute,
 		MaxHeaderBytes:    4096,
-		// ErrorLog:          &log.Logger{}, // FIXME
-		BaseContext: func(net.Listener) context.Context { return module.mgr.Ctx() },
+		BaseContext:       func(net.Listener) context.Context { return module.mgr.Ctx() },
 	}
 	shared.server = server
 

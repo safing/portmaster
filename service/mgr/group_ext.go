@@ -47,7 +47,7 @@ func (eg *ExtendedGroup) EnsureStartedWorker(wCtx *WorkerCtx) error {
 		case err == nil:
 			return nil
 		case errors.Is(err, ErrInvalidGroupState):
-			wCtx.Debug("group start delayed", "error", err)
+			wCtx.Debug("group start delayed", "err", err)
 		default:
 			return err
 		}
@@ -78,7 +78,7 @@ func (eg *ExtendedGroup) EnsureStoppedWorker(wCtx *WorkerCtx) error {
 		case err == nil:
 			return nil
 		case errors.Is(err, ErrInvalidGroupState):
-			wCtx.Debug("group stop delayed", "error", err)
+			wCtx.Debug("group stop delayed", "err", err)
 		default:
 			return err
 		}

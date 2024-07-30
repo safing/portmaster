@@ -13,6 +13,7 @@ import (
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/base/utils/debug"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // ChangeEvent is the name of the config change event.
@@ -43,6 +44,7 @@ func prep() error {
 
 	if exportConfig {
 		module.instance.SetCmdLineOperation(exportConfigCmd)
+		return mgr.ErrExecuteCmdLineOp
 	}
 
 	return registerBasicOptions()
@@ -135,6 +137,7 @@ func GetActiveConfigValues() map[string]interface{} {
 	return values
 }
 
+// InitializeUnitTestDataroot initializes a new random tmp directory for running tests.
 func InitializeUnitTestDataroot(testName string) (string, error) {
 	basePath, err := os.MkdirTemp("", fmt.Sprintf("portmaster-%s", testName))
 	if err != nil {

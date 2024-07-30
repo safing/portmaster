@@ -71,8 +71,13 @@ func prep() error {
 func start() error {
 	Main = NewMap(conf.MainMapName, true)
 	devMode = config.Concurrent.GetAsBool(config.CfgDevModeKey, false)
-	cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(cfgOptionRoutingAlgorithmKey, DefaultRoutingProfileID)
 	cfgOptionTrustNodeNodes = config.Concurrent.GetAsStringArray(cfgOptionTrustNodeNodesKey, []string{})
+
+	if conf.Integrated() {
+		cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(cfgOptionRoutingAlgorithmKey, DefaultRoutingProfileID)
+	} else {
+		cfgOptionRoutingAlgorithm = func() string { return DefaultRoutingProfileID }
+	}
 
 	err := registerMapDatabase()
 	if err != nil {

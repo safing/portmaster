@@ -206,7 +206,11 @@ This setting mainly exists for when you need to simulate your presence in anothe
 	}
 
 	// Config options for use.
-	cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(profile.CfgOptionRoutingAlgorithmKey, navigator.DefaultRoutingProfileID)
+	if conf.Integrated() {
+		cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(profile.CfgOptionRoutingAlgorithmKey, navigator.DefaultRoutingProfileID)
+	} else {
+		cfgOptionRoutingAlgorithm = func() string { return navigator.DefaultRoutingProfileID }
+	}
 
 	return nil
 }

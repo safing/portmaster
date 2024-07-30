@@ -1,12 +1,8 @@
 package database
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
-	"os"
-	"path"
 	"regexp"
 	"sync"
 	"time"
@@ -33,10 +29,6 @@ var (
 // the description and the primary API will be
 // updated and the effective object will be returned.
 func Register(db *Database) (*Database, error) {
-	if !initialized.IsSet() {
-		return nil, errors.New("database not initialized")
-	}
-
 	registryLock.Lock()
 	defer registryLock.Unlock()
 
@@ -72,10 +64,6 @@ func Register(db *Database) (*Database, error) {
 		if ok {
 			registeredDB.Updated()
 		}
-		err := saveRegistry(false)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if ok {
@@ -98,71 +86,4 @@ func getDatabase(name string) (*Database, error) {
 	registeredDB.Loaded()
 
 	return registeredDB, nil
-}
-
-// EnableRegistryPersistence enables persistence of the database registry.
-func EnableRegistryPersistence() {
-	if registryPersistence.SetToIf(false, true) {
-		// start registry writer
-		go registryWriter()
-		// TODO: make an initial write if database system is already initialized
-	}
-}
-
-func loadRegistry() error {
-	registryLock.Lock()
-	defer registryLock.Unlock()
-
-	// read file
-	filePath := path.Join(rootStructure.Path, registryFileName)
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil
-		}
-		return err
-	}
-
-	// parse
-	databases := make(map[string]*Database)
-	err = json.Unmarshal(data, &databases)
-	if err != nil {
-		return err
-	}
-
-	// set
-	registry = databases
-	return nil
-}
-
-func saveRegistry(lock bool) error {
-	if lock {
-		registryLock.Lock()
-		defer registryLock.Unlock()
-	}
-
-	// marshal
-	data, err := json.MarshalIndent(registry, "", "\t")
-	if err != nil {
-		return err
-	}
-
-	// write file
-	// TODO: write atomically (best effort)
-	filePath := path.Join(rootStructure.Path, registryFileName)
-	return os.WriteFile(filePath, data, 0o0600)
-}
-
-func registryWriter() {
-	for {
-		select {
-		case <-time.After(1 * time.Hour):
-			if writeRegistrySoon.SetToIf(true, false) {
-				_ = saveRegistry(true)
-			}
-		case <-shutdownSignal:
-			_ = saveRegistry(true)
-			return
-		}
-	}
 }

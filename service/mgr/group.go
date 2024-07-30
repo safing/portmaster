@@ -16,6 +16,10 @@ var (
 
 	// ErrInvalidGroupState is returned when a group is in an invalid state and cannot be recovered.
 	ErrInvalidGroupState = errors.New("invalid group state")
+
+	// ErrExecuteCmdLineOp is returned when modules are created, but request
+	// execution of a (somewhere else set) command line operation instead.
+	ErrExecuteCmdLineOp = errors.New("command line operation execution requested")
 )
 
 const (
@@ -121,22 +125,26 @@ func (g *Group) Start() error {
 
 	// Start modules.
 	for i, m := range g.modules {
-		m.mgr.Info("starting")
+		m.mgr.Debug("starting")
 		startTime := time.Now()
 
 		err := m.mgr.Do("start module "+m.mgr.name, func(_ *WorkerCtx) error {
-			return m.module.Start()
+			return m.module.Start() //nolint:scopelint // Execution is synchronous.
 		})
 		if err != nil {
+			m.mgr.Error(
+				"failed to start",
+				"err", err,
+				"time", time.Since(startTime),
+			)
 			if !g.stopFrom(i) {
 				g.state.Store(groupStateInvalid)
 			} else {
 				g.state.Store(groupStateOff)
 			}
-			return fmt.Errorf("failed to start %s: %w", makeModuleName(m.module), err)
+			return fmt.Errorf("failed to start %s: %w", m.mgr.name, err)
 		}
-		duration := time.Since(startTime)
-		m.mgr.Info("started", "time", duration.String())
+		m.mgr.Info("started", "time", time.Since(startTime))
 	}
 
 	g.state.Store(groupStateRunning)
@@ -175,23 +183,30 @@ func (g *Group) stopFrom(index int) (ok bool) {
 	// Stop modules.
 	for i := index; i >= 0; i-- {
 		m := g.modules[i]
+		m.mgr.Debug("stopping")
+		startTime := time.Now()
 
 		err := m.mgr.Do("stop module "+m.mgr.name, func(_ *WorkerCtx) error {
 			return m.module.Stop()
 		})
 		if err != nil {
-			m.mgr.Error("failed to stop", "err", err)
+			m.mgr.Error(
+				"failed to stop",
+				"err", err,
+				"time", time.Since(startTime),
+			)
 			ok = false
 		}
 		m.mgr.Cancel()
 		if m.mgr.WaitForWorkers(0) {
-			m.mgr.Info("stopped")
+			m.mgr.Info("stopped", "time", time.Since(startTime))
 		} else {
 			ok = false
 			m.mgr.Error(
 				"failed to stop",
 				"err", "timed out",
 				"workerCnt", m.mgr.workerCnt.Load(),
+				"time", time.Since(startTime),
 			)
 		}
 	}

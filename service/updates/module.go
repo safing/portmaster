@@ -6,6 +6,7 @@ import (
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -76,4 +77,5 @@ type instance interface {
 	API() *api.API
 	Config() *config.Config
 	Shutdown(exitCode int)
+	Notifications() *notifications.Notifications
 }

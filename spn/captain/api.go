@@ -7,6 +7,7 @@ import (
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/spn/conf"
 )
 
 const (
@@ -28,6 +29,10 @@ func registerAPIEndpoints() error {
 }
 
 func handleReInit(ar *api.Request) (msg string, err error) {
+	if !conf.Client() && !conf.Integrated() {
+		return "", fmt.Errorf("re-initialization only possible on integrated clients")
+	}
+
 	// Make sure SPN is stopped and wait for it to complete.
 	err = module.mgr.Do("stop SPN for re-init", module.instance.SPNGroup().EnsureStoppedWorker)
 	if err != nil {

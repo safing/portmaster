@@ -21,7 +21,15 @@ const (
 
 var updateFailedCnt = new(atomic.Int32)
 
+func (u *Updates) notificationsEnabled() bool {
+	return u.instance.Notifications() != nil
+}
+
 func notifyUpdateSuccess(force bool) {
+	if !module.notificationsEnabled() {
+		return
+	}
+
 	updateFailedCnt.Store(0)
 	module.states.Clear()
 	updateState := registry.GetState().Updates
@@ -133,6 +141,10 @@ func getUpdatingInfoMsg() string {
 }
 
 func notifyUpdateCheckFailed(force bool, err error) {
+	if !module.notificationsEnabled() {
+		return
+	}
+
 	failedCnt := updateFailedCnt.Add(1)
 	lastSuccess := registry.GetState().Updates.LastSuccessAt
 
