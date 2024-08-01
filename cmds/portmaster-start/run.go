@@ -154,7 +154,7 @@ func getExecArgs(opts *Options, cmdArgs []string) []string {
 		args = append(args, "--input-signals")
 	}
 
-	if runtime.GOOS == "linux" && opts.Identifier == "app/portmaster-app.zip" {
+	if runtime.GOOS == "linux" && opts.ShortIdentifier == "app" {
 		// see https://www.freedesktop.org/software/systemd/man/pam_systemd.html#type=
 		if xdgSessionType := os.Getenv("XDG_SESSION_TYPE"); xdgSessionType == "wayland" {
 			// we're running the Portmaster UI App under Wayland so make sure we add some arguments
@@ -179,10 +179,6 @@ func run(opts *Options, cmdArgs []string) (err error) {
 	if isShuttingDown() {
 		return nil
 	}
-
-	// get original arguments
-	// additional parameters can be specified using -- --some-parameter
-	args := getExecArgs(opts, cmdArgs)
 
 	// check for duplicate instances
 	if opts.PIDFile {
@@ -226,7 +222,7 @@ func run(opts *Options, cmdArgs []string) (err error) {
 		}
 	}
 
-	return runAndRestart(opts, args)
+	return runAndRestart(opts, cmdArgs)
 }
 
 func runAndRestart(opts *Options, args []string) error {
@@ -341,6 +337,10 @@ func execute(opts *Options, args []string) (cont bool, err error) {
 		log.Println("auto-upgraded to new UI")
 		opts = &app2Options
 	}
+
+	// Compile arguments and add additional arguments based on system configuration.
+	// Extra parameters can be specified using "-- --some-parameter".
+	args = getExecArgs(opts, args)
 
 	file, err := registry.GetFile(
 		helper.PlatformIdentifier(opts.Identifier),
