@@ -3,9 +3,8 @@
 
 use std::{env, path::Path, time::Duration};
 
-use clap::{command, Parser};
+use clap::{Arg, Command};
 use tauri::{AppHandle, Emitter, Listener, Manager, RunEvent, WindowEvent};
-use tauri_plugin_cli::CliExt;
 
 // Library crates
 mod portapi;
@@ -49,14 +48,21 @@ struct WsHandler {
     is_first_connect: bool,
 }
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct BasicCli {
-    #[arg(long)]
+struct CliArguments {
+    // Path to the installation directory
     data: Option<String>,
 
-    #[arg(long)]
-    log: Option<String>,
+    // Log level to use: off, error, warn, info, debug, trace
+    log: String,
+
+    // Start in the background without opening a window
+    background: bool,
+
+    // Enable experimental notifications via Tauri. Replaces the notifier app.
+    with_prompts: bool,
+
+    // Enable experimental prompt support via Tauri. Replaces the notifier app.
+    with_notifications: bool,
 }
 
 impl portmaster::Handler for WsHandler {
@@ -98,7 +104,6 @@ impl portmaster::Handler for WsHandler {
         // since there's already a main window with the angular application.
         if !self.background && self.is_first_connect {
             let _ = window::create_splash_window(&self.handle.clone());
-
             self.is_first_connect = false
         }
     }
@@ -132,27 +137,87 @@ fn main() {
         std::process::exit(show_webview_not_installed_dialog());
     }
 
-    let mut target = tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout);
+    let matches = Command::new("Portmaster")
+        .ignore_errors(true)
+        .arg(
+            Arg::new("data")
+                .short('d')
+                .long("data")
+                .required(false)
+                .help("Path to the installation directory."),
+        )
+        .arg(
+            Arg::new("log")
+                .short('l')
+                .long("log")
+                .required(false)
+                .help("Log level to use: off, error, warn, info, debug, trace."),
+        )
+        .arg(
+            Arg::new("background")
+                .short('b')
+                .long("background")
+                .required(false)
+                .help("Start in the background without opening a window."),
+        )
+        .arg(
+            Arg::new("with_prompts")
+                .long("with_prompts")
+                .required(false)
+                .action(clap::ArgAction::SetTrue)
+                .help("Enable experimental notifications via Tauri. Replaces the notifier app."),
+        )
+        .arg(
+            Arg::new("with_notifications")
+                .long("with_notifications")
+                .required(false)
+                .action(clap::ArgAction::SetTrue)
+                .help("Enable experimental prompt support via Tauri. Replaces the notifier app."),
+        )
+        .get_matches();
 
-    let cli = BasicCli::parse();
-    if let Some(data_dir) = cli.data {
-        target = tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
-            path: Path::new(&format!("{}/logs/app2", data_dir)).into(),
-            file_name: None,
-        });
+    let mut cli = CliArguments {
+        data: None,
+        log: LOG_LEVEL.to_string(),
+        background: false,
+        with_prompts: false,
+        with_notifications: false,
+    };
+
+    if let Some(data) = matches.get_one::<String>("data") {
+        cli.data = Some(data.to_string());
     }
 
+    if let Some(log) = matches.get_one::<String>("log") {
+        cli.log = log.to_string();
+    }
+
+    if let Some(value) = matches.get_one::<bool>("with_prompts") {
+        cli.with_prompts = *value;
+    }
+
+    if let Some(value) = matches.get_one::<bool>("with_notifications") {
+        cli.with_notifications = *value;
+    }
+
+    let log_target = if let Some(data_dir) = cli.data {
+        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+            path: Path::new(&format!("{}/logs/app2", data_dir)).into(),
+            file_name: None,
+        })
+    } else {
+        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout)
+    };
+
     let mut log_level = LOG_LEVEL;
-    if let Some(level) = cli.log {
-        match level.as_str() {
-            "off" => log_level = LevelFilter::Off,
-            "error" => log_level = LevelFilter::Error,
-            "warn" => log_level = LevelFilter::Warn,
-            "info" => log_level = LevelFilter::Info,
-            "debug" => log_level = LevelFilter::Debug,
-            "trace" => log_level = LevelFilter::Trace,
-            _ => {}
-        }
+    match cli.log.as_ref() {
+        "off" => log_level = LevelFilter::Off,
+        "error" => log_level = LevelFilter::Error,
+        "warn" => log_level = LevelFilter::Warn,
+        "info" => log_level = LevelFilter::Info,
+        "debug" => log_level = LevelFilter::Debug,
+        "trace" => log_level = LevelFilter::Trace,
+        _ => {}
     }
 
     let app = tauri::Builder::default()
@@ -164,7 +229,7 @@ fn main() {
                 .level(log_level)
                 .rotation_strategy(RotationStrategy::KeepAll)
                 .clear_targets()
-                .target(target)
+                .target(log_target)
                 .build(),
         )
         // Clipboard support
@@ -177,10 +242,9 @@ fn main() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         // Single instance guard
         .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            // Send info to already dunning instance.
             let _ = app.emit("single-instance", Payload { args: argv, cwd });
         }))
-        // Custom CLI arguments
-        .plugin(tauri_plugin_cli::init())
         // Notification support
         .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
@@ -193,7 +257,7 @@ fn main() {
             portmaster::commands::should_handle_prompts
         ])
         // Setup the app an any listeners
-        .setup(|app| {
+        .setup(move |app| {
             setup_tray_menu(app)?;
             portmaster::setup(app.handle().clone());
             // Setup the single-instance event listener that will create/focus the main window
@@ -204,50 +268,16 @@ fn main() {
             });
 
             // Handle cli flags:
-            //
-            let mut background = false;
-            match app.cli().matches() {
-                Ok(matches) => {
-                    debug!("cli matches={:?}", matches);
-
-                    if let Some(bg_flag) = matches.args.get("background") {
-                        match bg_flag.value.as_bool() {
-                            Some(value) => {
-                                background = value;
-                                app.portmaster().set_show_after_bootstrap(!background);
-                            }
-                            None => {}
-                        }
-                    }
-
-                    if let Some(nf_flag) = matches.args.get("with-notifications") {
-                        match nf_flag.value.as_bool() {
-                            Some(v) => {
-                                app.portmaster().with_notification_support(v);
-                            }
-                            None => {}
-                        }
-                    }
-
-                    if let Some(pf_flag) = matches.args.get("with-prompts") {
-                        match pf_flag.value.as_bool() {
-                            Some(v) => {
-                                app.portmaster().with_connection_prompts(v);
-                            }
-                            None => {}
-                        }
-                    }
-                }
-                Err(err) => {
-                    error!("failed to parse cli arguments: {}", err.to_string());
-                }
-            };
+            app.portmaster().set_show_after_bootstrap(!cli.background);
+            app.portmaster()
+                .with_notification_support(cli.with_notifications);
+            app.portmaster().with_connection_prompts(cli.with_prompts);
 
             // prepare a custom portmaster plugin handler that will show the splash-screen
             // (if not in --background) and launch the tray-icon handler.
             let handler = WsHandler {
                 handle: app.handle().clone(),
-                background,
+                background: cli.background,
                 is_first_connect: true,
             };
 
