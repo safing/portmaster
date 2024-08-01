@@ -236,7 +236,6 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-cli",
- "tauri-plugin-cli",
  "tauri-plugin-clipboard-manager",
  "tauri-plugin-dialog",
  "tauri-plugin-log",
@@ -7609,21 +7608,6 @@ dependencies = [
  "tauri-utils 2.0.0-beta.19",
  "toml 0.8.15",
  "walkdir",
-]
-
-[[package]]
-name = "tauri-plugin-cli"
-version = "2.0.0-beta.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22c997925db64e1cfa748dfc52b25b053c1b74453fd32a800a6b36d4e7a83e0f"
-dependencies = [
- "clap 4.5.9",
- "log",
- "serde",
- "serde_json",
- "tauri",
- "tauri-plugin",
- "thiserror",
 ]
 
 [[package]]
