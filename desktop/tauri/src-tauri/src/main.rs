@@ -1,9 +1,10 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::time::Duration;
+use std::{env, path::Path, time::Duration};
 
-use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
+use clap::{command, Parser};
+use tauri::{AppHandle, Emitter, Listener, Manager, RunEvent, WindowEvent};
 use tauri_plugin_cli::CliExt;
 
 // Library crates
@@ -18,8 +19,9 @@ mod portmaster;
 mod traymenu;
 mod window;
 
-use log::{debug, error, info};
+use log::{debug, error, info, LevelFilter};
 use portmaster::PortmasterExt;
+use tauri_plugin_log::RotationStrategy;
 use traymenu::setup_tray_menu;
 use window::{close_splash_window, create_main_window};
 
@@ -27,6 +29,12 @@ use window::{close_splash_window, create_main_window};
 extern crate lazy_static;
 
 const FALLBACK_TO_OLD_UI_EXIT_CODE: i32 = 77;
+
+#[cfg(not(debug_assertions))]
+const LOG_LEVEL: LevelFilter = LevelFilter::Warn;
+
+#[cfg(debug_assertions)]
+const LOG_LEVEL: LevelFilter = LevelFilter::Debug;
 
 #[derive(Clone, serde::Serialize)]
 struct Payload {
@@ -39,6 +47,16 @@ struct WsHandler {
     background: bool,
 
     is_first_connect: bool,
+}
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct BasicCli {
+    #[arg(long)]
+    data: Option<String>,
+
+    #[arg(long)]
+    log: Option<String>,
 }
 
 impl portmaster::Handler for WsHandler {
@@ -114,16 +132,49 @@ fn main() {
         std::process::exit(show_webview_not_installed_dialog());
     }
 
+    let mut target = tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout);
+
+    let cli = BasicCli::parse();
+    if let Some(data_dir) = cli.data {
+        target = tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+            path: Path::new(&format!("{}/logs/app2", data_dir)).into(),
+            file_name: None,
+        });
+    }
+
+    let mut log_level = LOG_LEVEL;
+    if let Some(level) = cli.log {
+        match level.as_str() {
+            "off" => log_level = LevelFilter::Off,
+            "error" => log_level = LevelFilter::Error,
+            "warn" => log_level = LevelFilter::Warn,
+            "info" => log_level = LevelFilter::Info,
+            "debug" => log_level = LevelFilter::Debug,
+            "trace" => log_level = LevelFilter::Trace,
+            _ => {}
+        }
+    }
+
     let app = tauri::Builder::default()
         // Shell plugin for open_external support
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_log::Builder::default().build())
+        // Initialize Logging plugin.
+        .plugin(
+            tauri_plugin_log::Builder::default()
+                .level(log_level)
+                .rotation_strategy(RotationStrategy::KeepAll)
+                .clear_targets()
+                .target(target)
+                .build(),
+        )
         // Clipboard support
         .plugin(tauri_plugin_clipboard_manager::init())
         // Dialog (Save/Open) support
         .plugin(tauri_plugin_dialog::init())
         // OS Version and Architecture support
         .plugin(tauri_plugin_os::init())
+        // Initialize save windows state plugin.
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         // Single instance guard
         .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
             let _ = app.emit("single-instance", Payload { args: argv, cwd });
@@ -145,7 +196,6 @@ fn main() {
         .setup(|app| {
             setup_tray_menu(app)?;
             portmaster::setup(app.handle().clone());
-
             // Setup the single-instance event listener that will create/focus the main window
             // or the splash-screen.
             let handle = app.handle().clone();

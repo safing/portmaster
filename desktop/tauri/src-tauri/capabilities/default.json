@@ -21,12 +21,15 @@
     "window:allow-show",
     "window:allow-is-visible",
     "window:allow-set-focus",
+    "window:allow-close",
     "app:default",
     "image:default",
     "resources:default",
     "menu:default",
     "tray:default",
     "shell:allow-open",
-    "notification:default"
+    "notification:default",
+    "window-state:allow-save-window-state",
+    "window-state:allow-restore-state"
   ]
 }

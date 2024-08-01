@@ -169,7 +169,7 @@ pub fn get_app_info(process_info: ProcessInfo) -> Result<AppInfo> {
                     return Ok(info.0);
                 }
                 Err(err) => {
-                    error!(
+                    dbg!(
                         "{}: failed to get icon: {}",
                         info.0.icon_name,
                         err.to_string()
@@ -409,7 +409,7 @@ fn get_icon_as_png_dataurl(name: &str, size: i8) -> Result<(String, String)> {
                 0,
             );
             if icon_info.is_null() {
-                error!("failed to lookup icon {}", name);
+                dbg!("failed to lookup icon {}", name);
 
                 continue;
             }
@@ -423,7 +423,7 @@ fn get_icon_as_png_dataurl(name: &str, size: i8) -> Result<(String, String)> {
             match read_and_convert_pixbuf(filename.clone()) {
                 Ok(pb) => return Ok((filename, pb)),
                 Err(err) => {
-                    error!("failed to load icon from {}: {}", filename, err.to_string());
+                    dbg!("failed to load icon from {}: {}", filename, err.to_string());
 
                     continue;
                 }

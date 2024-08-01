@@ -1,9 +1,14 @@
 use log::{debug, error};
 use tauri::{
-    AppHandle, Manager, Result, UserAttentionType, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    image::Image, AppHandle, Listener, Manager, Result, Theme, UserAttentionType, WebviewUrl,
+    WebviewWindow, WebviewWindowBuilder,
 };
 
 use crate::portmaster::PortmasterExt;
+
+const LIGHT_PM_ICON: &'static [u8] =
+    include_bytes!("../../../../assets/data/icons/pm_light_512.png");
+const DARK_PM_ICON: &'static [u8] = include_bytes!("../../../../assets/data/icons/pm_dark_512.png");
 
 /// Either returns the existing "main" window or creates a new one.
 ///
@@ -16,7 +21,6 @@ use crate::portmaster::PortmasterExt;
 pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
     let mut window = if let Some(window) = app.get_webview_window("main") {
         debug!("[tauri] main window already created");
-
         window
     } else {
         debug!("[tauri] creating main window");
@@ -24,6 +28,9 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
         let res = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
             .title("Portmaster")
             .visible(false)
+            .inner_size(1200.0, 700.0)
+            .min_inner_size(800.0, 600.0)
+            .theme(Some(Theme::Dark))
             .build();
 
         match res {
@@ -44,6 +51,11 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
 
     // If the window is not yet navigated to the Portmaster UI, do it now.
     may_navigate_to_ui(&mut window, false);
+
+    let _ = match dark_light::detect() {
+        dark_light::Mode::Light => window.set_icon(Image::from_bytes(DARK_PM_ICON).unwrap()),
+        _ => window.set_icon(Image::from_bytes(LIGHT_PM_ICON).unwrap()),
+    };
 
     #[cfg(debug_assertions)]
     if let Ok(_) = std::env::var("TAURI_SHOW_IMMEDIATELY") {
@@ -103,7 +115,7 @@ pub fn open_window(app: &AppHandle) -> Result<WebviewWindow> {
         match app.get_webview_window("main") {
             Some(win) => {
                 app.portmaster().show_window();
-
+                let _ = win.set_focus();
                 Ok(win)
             }
             None => {

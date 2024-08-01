@@ -34,7 +34,7 @@ use std::{
 use log::{debug, error};
 use serde;
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 const PORTMASTER_BASE_URL: &'static str = "http://127.0.0.1:817/api/v1/";
 

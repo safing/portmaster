@@ -2287,6 +2287,13 @@
           ]
         },
         {
+          "description": "window:allow-set-title-bar-style -> Enables the set_title_bar_style command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "window:allow-set-title-bar-style"
+          ]
+        },
+        {
           "description": "window:allow-set-visible-on-all-workspaces -> Enables the set_visible_on_all_workspaces command without any pre-configured scope.",
           "type": "string",
           "enum": [
@@ -2728,6 +2735,13 @@
           ]
         },
         {
+          "description": "window:deny-set-title-bar-style -> Denies the set_title_bar_style command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "window:deny-set-title-bar-style"
+          ]
+        },
+        {
           "description": "window:deny-set-visible-on-all-workspaces -> Denies the set_visible_on_all_workspaces command without any pre-configured scope.",
           "type": "string",
           "enum": [
@@ -2788,6 +2802,55 @@
           "type": "string",
           "enum": [
             "window:deny-unminimize"
+          ]
+        },
+        {
+          "description": "window-state:default -> This permission set configures what kind of\noperations are available from the window state plugin.\n\n#### Granted Permissions\n\nAll operations are enabled by default.\n\n",
+          "type": "string",
+          "enum": [
+            "window-state:default"
+          ]
+        },
+        {
+          "description": "window-state:allow-filename -> Enables the filename command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "window-state:allow-filename"
+          ]
+        },
+        {
+          "description": "window-state:allow-restore-state -> Enables the restore_state command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "window-state:allow-restore-state"
+          ]
+        },
+        {
+          "description": "window-state:allow-save-window-state -> Enables the save_window_state command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "window-state:allow-save-window-state"
+          ]
+        },
+        {
+          "description": "window-state:deny-filename -> Denies the filename command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "window-state:deny-filename"
+          ]
+        },
+        {
+          "description": "window-state:deny-restore-state -> Denies the restore_state command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "window-state:deny-restore-state"
+          ]
+        },
+        {
+          "description": "window-state:deny-save-window-state -> Denies the save_window_state command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "window-state:deny-save-window-state"
           ]
         }
       ]

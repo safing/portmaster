@@ -10,6 +10,7 @@ use tauri::{
     tray::{TrayIcon, TrayIconBuilder},
     Wry,
 };
+use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 
 use crate::{
     portapi::{
@@ -40,13 +41,56 @@ lazy_static! {
 const PM_TRAY_ICON_ID: &'static str = "pm_icon";
 
 // Icons
-//
-const BLUE_ICON: &'static [u8] = include_bytes!("../../../../assets/data/icons/pm_light_blue.ico");
-const RED_ICON: &'static [u8] = include_bytes!("../../../../assets/data/icons/pm_light_red.ico");
-const YELLOW_ICON: &'static [u8] =
-    include_bytes!("../../../../assets/data/icons/pm_light_yellow.ico");
-const GREEN_ICON: &'static [u8] =
-    include_bytes!("../../../../assets/data/icons/pm_light_green.ico");
+
+fn get_green_icon() -> &'static [u8] {
+    const LIGHT_GREEN_ICON: &'static [u8] =
+        include_bytes!("../../../../assets/data/icons/pm_light_green_64.png");
+    const DARK_GREEN_ICON: &'static [u8] =
+        include_bytes!("../../../../assets/data/icons/pm_dark_green_64.png");
+
+    let mode = dark_light::detect();
+    match mode {
+        dark_light::Mode::Light => DARK_GREEN_ICON,
+        _ => LIGHT_GREEN_ICON,
+    }
+}
+
+fn get_blue_icon() -> &'static [u8] {
+    const LIGHT_BLUE_ICON: &'static [u8] =
+        include_bytes!("../../../../assets/data/icons/pm_light_blue_64.png");
+    const DARK_BLUE_ICON: &'static [u8] =
+        include_bytes!("../../../../assets/data/icons/pm_dark_blue_64.png");
+    let mode = dark_light::detect();
+    match mode {
+        dark_light::Mode::Light => DARK_BLUE_ICON,
+        _ => LIGHT_BLUE_ICON,
+    }
+}
+
+fn get_red_icon() -> &'static [u8] {
+    const LIGHT_RED_ICON: &'static [u8] =
+        include_bytes!("../../../../assets/data/icons/pm_light_red_64.png");
+    const DARK_RED_ICON: &'static [u8] =
+        include_bytes!("../../../../assets/data/icons/pm_dark_red_64.png");
+    let mode = dark_light::detect();
+    match mode {
+        dark_light::Mode::Light => DARK_RED_ICON,
+        _ => LIGHT_RED_ICON,
+    }
+}
+
+fn get_yellow_icon() -> &'static [u8] {
+    const LIGHT_YELLOW_ICON: &'static [u8] =
+        include_bytes!("../../../../assets/data/icons/pm_light_yellow_64.png");
+
+    const DARK_YELLOW_ICON: &'static [u8] =
+        include_bytes!("../../../../assets/data/icons/pm_dark_yellow_64.png");
+    let mode = dark_light::detect();
+    match mode {
+        dark_light::Mode::Light => DARK_YELLOW_ICON,
+        _ => LIGHT_YELLOW_ICON,
+    }
+}
 
 pub fn setup_tray_menu(
     app: &mut tauri::App,
@@ -105,7 +149,7 @@ pub fn setup_tray_menu(
         .build()?;
 
     let icon = TrayIconBuilder::with_id(PM_TRAY_ICON_ID)
-        .icon(Image::from_bytes(RED_ICON).unwrap())
+        .icon(Image::from_bytes(get_red_icon()).unwrap())
         .menu(&menu)
         .on_menu_event(move |app, event| match event.id().as_ref() {
             "exit_ui" => {
@@ -205,11 +249,11 @@ pub fn update_icon(icon: AppIcon, subsystems: HashMap<String, Subsystem>, spn_st
     }
 
     let next_icon = match failure.0 {
-        subsystem::FAILURE_WARNING => YELLOW_ICON,
-        subsystem::FAILURE_ERROR => RED_ICON,
+        subsystem::FAILURE_WARNING => get_yellow_icon(),
+        subsystem::FAILURE_ERROR => get_red_icon(),
         _ => match spn_status.as_str() {
-            "connected" | "connecting" => BLUE_ICON,
-            _ => GREEN_ICON,
+            "connected" | "connecting" => get_blue_icon(),
+            _ => get_green_icon(),
         },
     };
 
@@ -289,7 +333,7 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
         }
     };
 
-    _ = icon.set_icon(Some(Image::from_bytes(BLUE_ICON).unwrap()));
+    _ = icon.set_icon(Some(Image::from_bytes(get_blue_icon()).unwrap()));
 
     let mut subsystems: HashMap<String, Subsystem> = HashMap::new();
     let mut spn_status: String = "".to_string();
@@ -395,7 +439,11 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                 };
                 debug!("Shutdown request received: {:?}", msg);
                 match msg {
-                    Response::Ok(_, _) | Response::New(_, _) | Response::Update(_, _) => app.exit(0),
+                    Response::Ok(_, _) | Response::New(_, _) | Response::Update(_, _) => {
+                        if let Err(err) = app.save_window_state(StateFlags::SIZE | StateFlags::POSITION) {
+                            error!("failed to save window state: {}", err);
+                        }
+                        app.exit(0)},
                     _ => {},
                 }
             }
@@ -403,7 +451,7 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
     }
 
     update_spn_ui_state(false);
-    _ = icon.set_icon(Some(Image::from_bytes(RED_ICON).unwrap()));
+    _ = icon.set_icon(Some(Image::from_bytes(get_red_icon()).unwrap()));
 }
 
 fn update_spn_ui_state(enabled: bool) {
