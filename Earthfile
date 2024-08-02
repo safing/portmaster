@@ -506,8 +506,8 @@ tauri-build:
     RUN echo output: $(ls -R "target/${target}/release")
 
     # Binaries
-    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/app" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster-app"
-    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/app.exe" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster-app.exe"
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/portmaster" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster-app"
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/portmaster.exe" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster-app.exe"
     SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/WebView2Loader.dll" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/WebView2Loader.dll"
 
     # Installers
@@ -575,7 +575,7 @@ tauri-build-windows-bundle:
     RUN echo "Version Suffix: $VERSION_SUFFIX"
 
     RUN echo output: $(ls -R "target/${target}/release")
-    RUN mv "target/${target}/release/app.exe" "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.exe"
+    RUN mv "target/${target}/release/portmaster.exe" "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.exe"
     RUN zip "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.zip" "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.exe" -j portmaster-app${VERSION_SUFFIX}.exe "target/${target}/release/WebView2Loader.dll" -j WebView2Loader.dll
     SAVE ARTIFACT --if-exists "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.zip" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
 
