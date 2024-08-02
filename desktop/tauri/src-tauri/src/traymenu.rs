@@ -46,13 +46,11 @@ enum IconColor {
 static CURRENT_ICON_COLOR: RwLock<IconColor> = RwLock::new(IconColor::Red);
 pub static USER_THEME: RwLock<dark_light::Mode> = RwLock::new(dark_light::Mode::Default);
 
-lazy_static! {
-    static ref SPN_STATUS: Mutex<Option<MenuItem<Wry>>> = Mutex::new(None);
-    static ref SPN_BUTTON: Mutex<Option<MenuItem<Wry>>> = Mutex::new(None);
-    static ref GLOBAL_STATUS: Mutex<Option<MenuItem<Wry>>> = Mutex::new(None);
-}
+static SPN_STATUS: Mutex<Option<MenuItem<Wry>>> = Mutex::new(None);
+static SPN_BUTTON: Mutex<Option<MenuItem<Wry>>> = Mutex::new(None);
+static GLOBAL_STATUS: Mutex<Option<MenuItem<Wry>>> = Mutex::new(None);
 
-const PM_TRAY_ICON_ID: &'static str = "pm_icon";
+const PM_TRAY_ICON_ID: &str = "pm_icon";
 
 // Icons
 
@@ -64,9 +62,9 @@ fn get_theme_mode() -> dark_light::Mode {
 }
 
 fn get_green_icon() -> &'static [u8] {
-    const LIGHT_GREEN_ICON: &'static [u8] =
+    const LIGHT_GREEN_ICON: &[u8] =
         include_bytes!("../../../../assets/data/icons/pm_light_green_64.png");
-    const DARK_GREEN_ICON: &'static [u8] =
+    const DARK_GREEN_ICON: &[u8] =
         include_bytes!("../../../../assets/data/icons/pm_dark_green_64.png");
 
     match get_theme_mode() {
@@ -76,9 +74,9 @@ fn get_green_icon() -> &'static [u8] {
 }
 
 fn get_blue_icon() -> &'static [u8] {
-    const LIGHT_BLUE_ICON: &'static [u8] =
+    const LIGHT_BLUE_ICON: &[u8] =
         include_bytes!("../../../../assets/data/icons/pm_light_blue_64.png");
-    const DARK_BLUE_ICON: &'static [u8] =
+    const DARK_BLUE_ICON: &[u8] =
         include_bytes!("../../../../assets/data/icons/pm_dark_blue_64.png");
     match get_theme_mode() {
         dark_light::Mode::Light => DARK_BLUE_ICON,
@@ -87,20 +85,27 @@ fn get_blue_icon() -> &'static [u8] {
 }
 
 fn get_red_icon() -> &'static [u8] {
-    const LIGHT_RED_ICON: &'static [u8] =
+    const LIGHT_RED_ICON: &[u8] =
         include_bytes!("../../../../assets/data/icons/pm_light_red_64.png");
     const DARK_RED_ICON: &'static [u8] =
         include_bytes!("../../../../assets/data/icons/pm_dark_red_64.png");
     match get_theme_mode() {
+    const DARK_RED_ICON: &'static [u8] =
+        include_bytes!("../../../../assets/data/icons/pm_dark_red_64.png");
+    let mode = dark_light::detect();
+    match mode {
+    const DARK_RED_ICON: &[u8] = include_bytes!("../../../../assets/data/icons/pm_dark_red_64.png");
+    let mode = dark_light::detect();
+    match mode {
         dark_light::Mode::Light => DARK_RED_ICON,
         _ => LIGHT_RED_ICON,
     }
 }
 
 fn get_yellow_icon() -> &'static [u8] {
-    const LIGHT_YELLOW_ICON: &'static [u8] =
+    const LIGHT_YELLOW_ICON: &[u8] =
         include_bytes!("../../../../assets/data/icons/pm_light_yellow_64.png");
-    const DARK_YELLOW_ICON: &'static [u8] =
+    const DARK_YELLOW_ICON: &[u8] =
         include_bytes!("../../../../assets/data/icons/pm_dark_yellow_64.png");
     match get_theme_mode() {
         dark_light::Mode::Light => DARK_YELLOW_ICON,
@@ -257,10 +262,8 @@ pub fn setup_tray_menu(
                 button_state,
             } = event
             {
-                if let MouseButton::Left = button {
-                    if let MouseButtonState::Down = button_state {
-                        let _ = open_window(tray.app_handle());
-                    }
+                if let (MouseButton::Left, MouseButtonState::Down) = (button, button_state) {
+                    let _ = open_window(tray.app_handle());
                 }
             }
         })
@@ -269,20 +272,20 @@ pub fn setup_tray_menu(
 }
 
 pub fn update_icon(icon: AppIcon, subsystems: HashMap<String, Subsystem>, spn_status: String) {
-    // iterate over the subsytems and check if there's a module failure
-    let failure = subsystems
-        .values()
-        .into_iter()
-        .map(|s| &s.module_status)
-        .fold((subsystem::FAILURE_NONE, "".to_string()), |mut acc, s| {
+    // iterate over the subsystems and check if there's a module failure
+    let failure = subsystems.values().map(|s| &s.module_status).fold(
+        (subsystem::FAILURE_NONE, "".to_string()),
+        |mut acc, s| {
             for m in s {
                 if m.failure_status > acc.0 {
                     acc = (m.failure_status, m.failure_msg.clone())
                 }
             }
             acc
-        });
+        },
+    );
 
+    #[allow(clippy::collapsible_else_if)]
     if failure.0 == subsystem::FAILURE_NONE {
         if let Some(global_status) = &mut *(GLOBAL_STATUS.lock().unwrap()) {
             _ = global_status.set_text("Status: Secured");
@@ -405,7 +408,7 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                             update_icon(icon.clone(), subsystems.clone(), spn_status.clone());
                         },
                         Err(err) => match err {
-                            ParseError::JSON(err) => {
+                            ParseError::Json(err) => {
                                 error!("failed to parse subsystem: {}", err);
                             }
                             _ => {
@@ -437,7 +440,7 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                             update_icon(icon.clone(), subsystems.clone(), spn_status.clone());
                         },
                         Err(err) => match err {
-                            ParseError::JSON(err) => {
+                            ParseError::Json(err) => {
                                 error!("failed to parse spn status value: {}", err)
                             },
                             _ => {
@@ -466,7 +469,7 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                             update_spn_ui_state(value.value.unwrap_or(false));
                         },
                         Err(err) => match err {
-                            ParseError::JSON(err) => {
+                            ParseError::Json(err) => {
                                 error!("failed to parse config value: {}", err)
                             },
                             _ => {

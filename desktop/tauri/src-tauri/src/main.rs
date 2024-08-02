@@ -48,7 +48,7 @@ impl portmaster::Handler for WsHandler {
         "main-handler".to_string()
     }
 
-    fn on_connect(&mut self, cli: portapi::client::PortAPI) -> () {
+    fn on_connect(&mut self, cli: portapi::client::PortAPI) {
         info!("connection established, creating main window");
 
         // we successfully connected to Portmaster. Set is_first_connect to false
@@ -116,11 +116,11 @@ fn show_webview_not_installed_dialog() -> i32 {
         }
     }
 
-    return FALLBACK_TO_OLD_UI_EXIT_CODE;
+    FALLBACK_TO_OLD_UI_EXIT_CODE
 }
 
 fn main() {
-    if let Err(_) = tauri::webview_version() {
+    if tauri::webview_version().is_err() {
         std::process::exit(show_webview_not_installed_dialog());
     }
 
@@ -251,8 +251,8 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
-    app.run(|handle, e| match e {
-        RunEvent::WindowEvent { label, event, .. } => {
+    app.run(|handle, e| {
+        if let RunEvent::WindowEvent { label, event, .. } = e {
             if label != "main" {
                 // We only have one window at most so any other label is unexpected
                 return;
@@ -266,32 +266,22 @@ fn main() {
             //
             // Note: the above javascript does NOT trigger the CloseRequested event so
             // there's no need to handle that case here.
-            //
-            match event {
-                WindowEvent::CloseRequested { api, .. } => {
-                    debug!(
-                        "window (label={}) close request received, forwarding to user-interface.",
-                        label
-                    );
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                debug!(
+                    "window (label={}) close request received, forwarding to user-interface.",
+                    label
+                );
 
-                    api.prevent_close();
-                    if let Some(window) = handle.get_webview_window(label.as_str()) {
-                        let result = window.emit("exit-requested", "");
-                        if let Err(err) = result {
-                            error!("failed to emit event: {}", err.to_string());
-                        }
-                    } else {
-                        error!("window was None");
+                api.prevent_close();
+                if let Some(window) = handle.get_webview_window(label.as_str()) {
+                    let result = window.emit("exit-requested", "");
+                    if let Err(err) = result {
+                        error!("failed to emit event: {}", err.to_string());
                     }
+                } else {
+                    error!("window was None");
                 }
-                _ => {}
             }
         }
-
-        // TODO(vladimir): why was this needed?
-        // RunEvent::ExitRequested { api, .. } => {
-        //     api.prevent_exit();
-        // }
-        _ => {}
     });
 }

@@ -7,7 +7,7 @@ license = ""
 repository = ""
 default-run = "portmaster"
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.64"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -80,3 +80,6 @@ ctor = "0.2.6"
 # If you use cargo directly instead of tauri's cli you can use this feature flag to switch between tauri's `dev` and `build` modes.
 # DO NOT REMOVE!!
 custom-protocol = [ "tauri/custom-protocol" ]
+
+[package.metadata.clippy]
+allow = ["clippy::collapsible_else_if"]
