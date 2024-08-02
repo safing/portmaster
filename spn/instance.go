@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/base/runtime"
 	"github.com/safing/portmaster/service/core"
 	"github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/intel/filterlists"
@@ -44,6 +45,7 @@ type Instance struct {
 	config   *config.Config
 	api      *api.API
 	metrics  *metrics.Metrics
+	runtime  *runtime.Runtime
 	rng      *rng.Rng
 
 	core        *core.Core
@@ -94,6 +96,10 @@ func New() (*Instance, error) {
 	instance.metrics, err = metrics.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create metrics module: %w", err)
+	}
+	instance.runtime, err = runtime.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create runtime module: %w", err)
 	}
 	instance.rng, err = rng.New(instance)
 	if err != nil {
@@ -171,6 +177,7 @@ func New() (*Instance, error) {
 		instance.config,
 		instance.api,
 		instance.metrics,
+		instance.runtime,
 		instance.rng,
 
 		instance.core,
@@ -191,6 +198,12 @@ func New() (*Instance, error) {
 	)
 
 	return instance, nil
+}
+
+// AddModule validates the given module and adds it to the service group, if all requirements are met.
+// All modules must be added before anything is done with the instance.
+func (i *Instance) AddModule(m mgr.Module) {
+	i.serviceGroup.Add(m)
 }
 
 // SleepyModule is an interface for modules that can enter some sort of sleep mode.
@@ -225,6 +238,11 @@ func (i *Instance) API() *api.API {
 // Metrics returns the metrics module.
 func (i *Instance) Metrics() *metrics.Metrics {
 	return i.metrics
+}
+
+// Runtime returns the runtime module.
+func (i *Instance) Runtime() *runtime.Runtime {
+	return i.runtime
 }
 
 // Rng returns the rng module.
@@ -359,8 +377,29 @@ func (i *Instance) Stop() error {
 	return i.serviceGroup.Stop()
 }
 
+// RestartExitCode will instruct portmaster-start to restart the process immediately, potentially with a new version.
+const RestartExitCode = 23
+
 // Shutdown asynchronously stops the instance.
-func (i *Instance) Shutdown(exitCode int) {
+func (i *Instance) Restart() {
+	// Send a restart event, give it 10ms extra to propagate.
+	i.core.EventRestart.Submit(struct{}{})
+	time.Sleep(10 * time.Millisecond)
+
+	i.shutdown(RestartExitCode)
+}
+
+// Shutdown asynchronously stops the instance.
+func (i *Instance) Shutdown() {
+	// Send a shutdown event, give it 10ms extra to propagate.
+	i.core.EventShutdown.Submit(struct{}{})
+	time.Sleep(10 * time.Millisecond)
+
+	i.shutdown(0)
+}
+
+func (i *Instance) shutdown(exitCode int) {
+	// Set given exit code.
 	i.exitCode.Store(int32(exitCode))
 
 	m := mgr.New("instance")
@@ -384,11 +423,6 @@ func (i *Instance) Stopping() bool {
 // Stopped returns a channel that is triggered when the instance has shut down.
 func (i *Instance) Stopped() <-chan struct{} {
 	return i.ctx.Done()
-}
-
-// SetExitCode sets the exit code on the instance.
-func (i *Instance) SetExitCode(exitCode int) {
-	i.exitCode.Store(int32(exitCode))
 }
 
 // ExitCode returns the set exit code of the instance.

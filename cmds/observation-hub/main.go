@@ -65,6 +65,14 @@ func main() {
 		os.Exit(2)
 	}
 
+	// Add additional modules.
+	observer, err := New(instance)
+	if err != nil {
+		fmt.Printf("error creating an instance: create observer module: %s\n", err)
+		os.Exit(2)
+	}
+	instance.AddModule(observer)
+
 	// Execute command line operation, if requested or available.
 	switch {
 	case !execCmdLine:

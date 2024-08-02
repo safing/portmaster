@@ -75,34 +75,41 @@ func NewGroup(modules ...Module) *Group {
 
 	// Initialize groups modules.
 	for _, m := range modules {
-		mgr := m.Manager()
-
-		// Check module.
-		switch {
-		case m == nil:
-			// Skip nil values to allow for cleaner code.
-			continue
-		case reflect.ValueOf(m).IsNil():
-			// If nil values are given via a struct, they are will be interfaces to a
-			// nil type. Ignore these too.
-			continue
-		case mgr == nil:
-			// Ignore modules that do not return a manager.
-			continue
-		case mgr.Name() == "":
-			// Force name if none is set.
-			// TODO: Unsafe if module is already logging, etc.
-			mgr.setName(makeModuleName(m))
-		}
-
-		// Add module to group.
-		g.modules = append(g.modules, &groupModule{
-			module: m,
-			mgr:    mgr,
-		})
+		g.Add(m)
 	}
 
 	return g
+}
+
+// Add validates the given module and adds it to the group, if all requirements are met.
+// Not safe for concurrent use with any other method.
+// All modules must be added before anything else is done with the group.
+func (g *Group) Add(m Module) {
+	mgr := m.Manager()
+
+	// Check module.
+	switch {
+	case m == nil:
+		// Skip nil values to allow for cleaner code.
+		return
+	case reflect.ValueOf(m).IsNil():
+		// If nil values are given via a struct, they are will be interfaces to a
+		// nil type. Ignore these too.
+		return
+	case mgr == nil:
+		// Ignore modules that do not return a manager.
+		return
+	case mgr.Name() == "":
+		// Force name if none is set.
+		// TODO: Unsafe if module is already logging, etc.
+		mgr.setName(makeModuleName(m))
+	}
+
+	// Add module to group.
+	g.modules = append(g.modules, &groupModule{
+		module: m,
+		mgr:    mgr,
+	})
 }
 
 // Start starts all modules in the group in the defined order.

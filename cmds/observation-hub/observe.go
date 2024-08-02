@@ -51,7 +51,8 @@ var (
 	errNoChanges = errors.New("no changes")
 
 	reportingDelayFlag string
-	reportingDelay     = 10 * time.Minute
+	reportingDelay     = 5 * time.Minute
+	reportingMaxDelay  = reportingDelay * 3
 )
 
 func init() {
@@ -67,6 +68,7 @@ func prepObserver() error {
 		}
 		reportingDelay = duration
 	}
+	reportingMaxDelay = reportingDelay * 3
 
 	return nil
 }
@@ -81,8 +83,9 @@ type observedPin struct {
 	previous *navigator.PinExport
 	latest   *navigator.PinExport
 
-	lastUpdate         time.Time
-	lastUpdateReported bool
+	firstUpdate    time.Time
+	lastUpdate     time.Time
+	updateReported bool
 }
 
 type observedChange struct {
@@ -149,19 +152,20 @@ func observerWorker(ctx *mgr.WorkerCtx) error {
 
 	// Put all current pins in a map.
 	observedPins := make(map[string]*observedPin)
-query:
+initialQuery:
 	for {
 		select {
 		case r := <-q.Next:
 			// Check if we are done.
 			if r == nil {
-				break query
+				break initialQuery
 			}
 			// Add all pins to seen pins.
 			if pin, ok := r.(*navigator.PinExport); ok {
 				observedPins[pin.ID] = &observedPin{
-					previous: pin,
-					latest:   pin,
+					previous:       pin,
+					latest:         pin,
+					updateReported: true,
 				}
 			} else {
 				log.Warningf("observer: received invalid pin export: %s", r)
@@ -216,13 +220,18 @@ query:
 					if ok {
 						// Update previously observed Hub.
 						existingObservedPin.latest = pin
+						if existingObservedPin.updateReported {
+							existingObservedPin.firstUpdate = time.Now()
+						}
 						existingObservedPin.lastUpdate = time.Now()
-						existingObservedPin.lastUpdateReported = false
+						existingObservedPin.updateReported = false
 					} else {
 						// Add new Hub.
 						observedPins[pin.ID] = &observedPin{
-							latest:     pin,
-							lastUpdate: time.Now(),
+							latest:         pin,
+							firstUpdate:    time.Now(),
+							lastUpdate:     time.Now(),
+							updateReported: false,
 						}
 					}
 				} else {
@@ -242,15 +251,19 @@ query:
 				}
 
 				switch {
-				case observedPin.lastUpdateReported:
+				case observedPin.updateReported:
 					// Change already reported.
-				case time.Since(observedPin.lastUpdate) < reportingDelay:
+				case time.Since(observedPin.lastUpdate) < reportingDelay &&
+					time.Since(observedPin.firstUpdate) < reportingMaxDelay:
 					// Only report changes if older than the configured delay.
+					// Up to a maximum delay.
 				default:
 					// Format and report.
 					title, changes, err := formatPinChanges(observedPin.previous, observedPin.latest)
 					if err != nil {
-						if !errors.Is(err, errNoChanges) {
+						if errors.Is(err, errNoChanges) {
+							log.Debugf("observer: no reportable changes found for %s", observedPin.latest.HumanName())
+						} else {
 							log.Warningf("observer: failed to format pin changes: %s", err)
 						}
 					} else {
@@ -266,7 +279,7 @@ query:
 
 					// Update observed pin.
 					observedPin.previous = observedPin.latest
-					observedPin.lastUpdateReported = true
+					observedPin.updateReported = true
 				}
 			}
 		}
