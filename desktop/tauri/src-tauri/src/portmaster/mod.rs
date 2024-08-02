@@ -32,14 +32,13 @@ use std::{
 };
 
 use log::{debug, error};
-use serde;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-const PORTMASTER_BASE_URL: &'static str = "http://127.0.0.1:817/api/v1/";
+const PORTMASTER_BASE_URL: &str = "http://127.0.0.1:817/api/v1/";
 
 pub trait Handler {
-    fn on_connect(&mut self, cli: PortAPI) -> ();
+    fn on_connect(&mut self, cli: PortAPI);
     fn on_disconnect(&mut self);
     fn name(&self) -> String;
 }
@@ -81,10 +80,7 @@ impl<R: Runtime> PortmasterInterface<R> {
         let map = self.state.lock();
 
         if let Ok(map) = map {
-            match map.get(&key) {
-                Some(value) => Some(value.clone()),
-                None => None,
-            }
+            map.get(&key).cloned()
         } else {
             None
         }
@@ -129,11 +125,8 @@ impl<R: Runtime> PortmasterInterface<R> {
 
     /// Returns the current portapi client.
     pub fn get_api(&self) -> Option<PortAPI> {
-        if let Ok(mut api) = self.api.lock() {
-            match &mut *api {
-                Some(api) => Some(api.clone()),
-                None => None,
-            }
+        if let Ok(api) = self.api.lock() {
+            (*api).clone()
         } else {
             None
         }
