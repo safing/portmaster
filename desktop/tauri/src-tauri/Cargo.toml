@@ -1,11 +1,11 @@
 [package]
-name = "app"
+name = "portmaster"
 version = "0.1.0"
 description = "Portmaster UI"
 authors = ["Safing"]
 license = ""
 repository = ""
-default-run = "app"
+default-run = "portmaster"
 edition = "2021"
 rust-version = "1.60"
 
