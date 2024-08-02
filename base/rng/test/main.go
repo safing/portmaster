@@ -17,7 +17,6 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/rng"
-	"github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -57,8 +56,7 @@ func main() {
 
 func prep() error {
 	if len(os.Args) < 3 {
-		fmt.Printf("usage: ./%s {fortuna|tickfeeder} <file> [output size in MB]", os.Args[0])
-		return base.ErrCleanExit
+		return fmt.Errorf("usage: ./%s {fortuna|tickfeeder} <file> [output size in MB]", os.Args[0])
 	}
 
 	switch os.Args[1] {

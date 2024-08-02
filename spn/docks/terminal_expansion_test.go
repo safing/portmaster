@@ -1,6 +1,7 @@
 package docks
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime/pprof"
@@ -93,6 +94,8 @@ func testExpansion( //nolint:maintidx,thelper
 
 	var crane1, crane2to1, crane2to3, crane3to2, crane3to4, crane4 *Crane
 	var craneWg sync.WaitGroup
+	started := time.Now()
+	craneCtx, cancelCraneCtx := context.WithCancel(context.Background())
 	craneWg.Add(6)
 
 	go func() {
@@ -102,7 +105,7 @@ func testExpansion( //nolint:maintidx,thelper
 			panic(fmt.Sprintf("expansion test %s could not create crane1: %s", testID, err))
 		}
 		crane1.ID = "c1"
-		err = crane1.Start(module.mgr.Ctx())
+		err = crane1.Start(craneCtx)
 		if err != nil {
 			panic(fmt.Sprintf("expansion test %s could not start crane1: %s", testID, err))
 		}
@@ -116,7 +119,7 @@ func testExpansion( //nolint:maintidx,thelper
 			panic(fmt.Sprintf("expansion test %s could not create crane2to1: %s", testID, err))
 		}
 		crane2to1.ID = "c2to1"
-		err = crane2to1.Start(module.mgr.Ctx())
+		err = crane2to1.Start(craneCtx)
 		if err != nil {
 			panic(fmt.Sprintf("expansion test %s could not start crane2to1: %s", testID, err))
 		}
@@ -130,7 +133,7 @@ func testExpansion( //nolint:maintidx,thelper
 			panic(fmt.Sprintf("expansion test %s could not create crane2to3: %s", testID, err))
 		}
 		crane2to3.ID = "c2to3"
-		err = crane2to3.Start(module.mgr.Ctx())
+		err = crane2to3.Start(craneCtx)
 		if err != nil {
 			panic(fmt.Sprintf("expansion test %s could not start crane2to3: %s", testID, err))
 		}
@@ -144,7 +147,7 @@ func testExpansion( //nolint:maintidx,thelper
 			panic(fmt.Sprintf("expansion test %s could not create crane3to2: %s", testID, err))
 		}
 		crane3to2.ID = "c3to2"
-		err = crane3to2.Start(module.mgr.Ctx())
+		err = crane3to2.Start(craneCtx)
 		if err != nil {
 			panic(fmt.Sprintf("expansion test %s could not start crane3to2: %s", testID, err))
 		}
@@ -158,7 +161,7 @@ func testExpansion( //nolint:maintidx,thelper
 			panic(fmt.Sprintf("expansion test %s could not create crane3to4: %s", testID, err))
 		}
 		crane3to4.ID = "c3to4"
-		err = crane3to4.Start(module.mgr.Ctx())
+		err = crane3to4.Start(craneCtx)
 		if err != nil {
 			panic(fmt.Sprintf("expansion test %s could not start crane3to4: %s", testID, err))
 		}
@@ -172,7 +175,7 @@ func testExpansion( //nolint:maintidx,thelper
 			panic(fmt.Sprintf("expansion test %s could not create crane4: %s", testID, err))
 		}
 		crane4.ID = "c4"
-		err = crane4.Start(module.mgr.Ctx())
+		err = crane4.Start(craneCtx)
 		if err != nil {
 			panic(fmt.Sprintf("expansion test %s could not start crane4: %s", testID, err))
 		}
@@ -288,12 +291,17 @@ func testExpansion( //nolint:maintidx,thelper
 		op1.Wait()
 	}
 
-	// Wait for completion.
+	// Wait for double the time, so that the counters can complete in both directions.
+	time.Sleep(time.Since(started))
+
+	// Signal completion.
 	close(finished)
 
 	// Wait a little so that all errors can be propagated, so we can truly see
 	// if we succeeded.
 	time.Sleep(100 * time.Millisecond)
+
+	cancelCraneCtx()
 
 	// Check errors.
 	if op1.Error != nil {
