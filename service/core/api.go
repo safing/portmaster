@@ -113,7 +113,7 @@ func registerAPIEndpoints() error {
 func shutdown(_ *api.Request) (msg string, err error) {
 	log.Warning("core: user requested shutdown via action")
 
-	module.instance.Shutdown(0)
+	module.instance.Shutdown()
 	return "shutdown initiated", nil
 }
 

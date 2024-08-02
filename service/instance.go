@@ -577,8 +577,29 @@ func (i *Instance) Stop() error {
 	return i.serviceGroup.Stop()
 }
 
+// RestartExitCode will instruct portmaster-start to restart the process immediately, potentially with a new version.
+const RestartExitCode = 23
+
 // Shutdown asynchronously stops the instance.
-func (i *Instance) Shutdown(exitCode int) {
+func (i *Instance) Restart() {
+	// Send a restart event, give it 10ms extra to propagate.
+	i.core.EventRestart.Submit(struct{}{})
+	time.Sleep(10 * time.Millisecond)
+
+	i.shutdown(RestartExitCode)
+}
+
+// Shutdown asynchronously stops the instance.
+func (i *Instance) Shutdown() {
+	// Send a shutdown event, give it 10ms extra to propagate.
+	i.core.EventShutdown.Submit(struct{}{})
+	time.Sleep(10 * time.Millisecond)
+
+	i.shutdown(0)
+}
+
+func (i *Instance) shutdown(exitCode int) {
+	// Set given exit code.
 	i.exitCode.Store(int32(exitCode))
 
 	m := mgr.New("instance")
@@ -602,11 +623,6 @@ func (i *Instance) Stopping() bool {
 // Stopped returns a channel that is triggered when the instance has shut down.
 func (i *Instance) Stopped() <-chan struct{} {
 	return i.ctx.Done()
-}
-
-// SetExitCode sets the exit code on the instance.
-func (i *Instance) SetExitCode(exitCode int) {
-	i.exitCode.Store(int32(exitCode))
 }
 
 // ExitCode returns the set exit code of the instance.

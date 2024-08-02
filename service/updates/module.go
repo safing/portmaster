@@ -76,6 +76,7 @@ func (u *Updates) Stop() error {
 type instance interface {
 	API() *api.API
 	Config() *config.Config
-	Shutdown(exitCode int)
+	Restart()
+	Shutdown()
 	Notifications() *notifications.Notifications
 }

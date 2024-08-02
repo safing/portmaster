@@ -243,5 +243,4 @@ type instance interface {
 	Config() *config.Config
 	Updates() *updates.Updates
 	SPNGroup() *mgr.ExtendedGroup
-	Shutdown(exitCode int)
 }

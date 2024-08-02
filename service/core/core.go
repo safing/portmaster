@@ -112,5 +112,5 @@ func New(instance instance) (*Core, error) {
 }
 
 type instance interface {
-	Shutdown(exitCode int)
+	Shutdown()
 }

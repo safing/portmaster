@@ -12,11 +12,6 @@ import (
 	"github.com/safing/portmaster/service/mgr"
 )
 
-const (
-	// RestartExitCode will instruct portmaster-start to restart the process immediately, potentially with a new version.
-	RestartExitCode = 23
-)
-
 var (
 	// RebootOnRestart defines whether the whole system, not just the service,
 	// should be restarted automatically when triggering a restart internally.
@@ -114,9 +109,9 @@ func automaticRestart(w *mgr.WorkerCtx) error {
 
 		// Set restart exit code.
 		if !rebooting {
-			module.instance.Shutdown(RestartExitCode)
+			module.instance.Restart()
 		} else {
-			module.instance.Shutdown(0)
+			module.instance.Shutdown()
 		}
 	}
 

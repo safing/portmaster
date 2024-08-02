@@ -8,6 +8,7 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/dbmodule"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
@@ -43,11 +44,17 @@ func (stub *testInstance) NetEnv() *netenv.NetEnv {
 	return stub.netenv
 }
 
+func (stub *testInstance) Notifications() *notifications.Notifications {
+	return nil
+}
+
 func (stub *testInstance) Ready() bool {
 	return true
 }
 
-func (stub *testInstance) Shutdown(exitCode int) {}
+func (stub *testInstance) Restart() {}
+
+func (stub *testInstance) Shutdown() {}
 
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
 
