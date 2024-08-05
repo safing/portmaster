@@ -1,13 +1,13 @@
 [package]
-name = "app"
+name = "portmaster"
 version = "0.1.0"
 description = "Portmaster UI"
 authors = ["Safing"]
 license = ""
 repository = ""
-default-run = "app"
+default-run = "portmaster"
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.64"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -27,7 +27,7 @@ tauri-plugin-log = "2.0.0-beta"
 tauri-plugin-window-state = "2.0.0-beta"
 
 tauri-cli = "2.0.0-beta.21"
-clap = { version = "4" }
+clap_lex = "0.7.2"
 
 # General
 serde_json = "1.0"
@@ -80,3 +80,6 @@ ctor = "0.2.6"
 # If you use cargo directly instead of tauri's cli you can use this feature flag to switch between tauri's `dev` and `build` modes.
 # DO NOT REMOVE!!
 custom-protocol = [ "tauri/custom-protocol" ]
+
+[package.metadata.clippy]
+allow = ["clippy::collapsible_else_if"]

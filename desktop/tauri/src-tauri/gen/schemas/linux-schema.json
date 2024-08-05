@@ -391,27 +391,6 @@
           ]
         },
         {
-          "description": "cli:default -> Allows reading the CLI matches",
-          "type": "string",
-          "enum": [
-            "cli:default"
-          ]
-        },
-        {
-          "description": "cli:allow-cli-matches -> Enables the cli_matches command without any pre-configured scope.",
-          "type": "string",
-          "enum": [
-            "cli:allow-cli-matches"
-          ]
-        },
-        {
-          "description": "cli:deny-cli-matches -> Denies the cli_matches command without any pre-configured scope.",
-          "type": "string",
-          "enum": [
-            "cli:deny-cli-matches"
-          ]
-        },
-        {
           "type": "string",
           "enum": [
             "clipboard-manager:default"
@@ -2273,6 +2252,13 @@
           ]
         },
         {
+          "description": "window:allow-set-size-constraints -> Enables the set_size_constraints command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "window:allow-set-size-constraints"
+          ]
+        },
+        {
           "description": "window:allow-set-skip-taskbar -> Enables the set_skip_taskbar command without any pre-configured scope.",
           "type": "string",
           "enum": [
@@ -2718,6 +2704,13 @@
           "type": "string",
           "enum": [
             "window:deny-set-size"
+          ]
+        },
+        {
+          "description": "window:deny-set-size-constraints -> Denies the set_size_constraints command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "window:deny-set-size-constraints"
           ]
         },
         {
