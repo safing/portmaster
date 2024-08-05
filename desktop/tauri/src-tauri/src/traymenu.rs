@@ -4,11 +4,12 @@ use std::sync::{Mutex, RwLock};
 use std::{collections::HashMap, sync::atomic::Ordering};
 
 use log::{debug, error};
+use tauri::menu::{Menu, MenuItemKind};
 use tauri::tray::{MouseButton, MouseButtonState};
-use tauri::Manager;
+use tauri::Runtime;
 use tauri::{
     image::Image,
-    menu::{MenuBuilder, MenuItem, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
+    menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
     tray::{TrayIcon, TrayIconBuilder},
     Wry,
 };
@@ -46,9 +47,9 @@ enum IconColor {
 static CURRENT_ICON_COLOR: RwLock<IconColor> = RwLock::new(IconColor::Red);
 pub static USER_THEME: RwLock<dark_light::Mode> = RwLock::new(dark_light::Mode::Default);
 
-static SPN_STATUS: Mutex<Option<MenuItem<Wry>>> = Mutex::new(None);
-static SPN_BUTTON: Mutex<Option<MenuItem<Wry>>> = Mutex::new(None);
-static GLOBAL_STATUS: Mutex<Option<MenuItem<Wry>>> = Mutex::new(None);
+static SPN_STATUS_KEY: &str = "spn_status";
+static SPN_BUTTON_KEY: &str = "spn_toggle";
+static GLOBAL_STATUS_KEY: &str = "global_status";
 
 const PM_TRAY_ICON_ID: &str = "pm_icon";
 
@@ -135,13 +136,9 @@ pub fn setup_tray_menu(
         .enabled(false)
         .build(app)
         .unwrap();
-    {
-        let mut button_ref = GLOBAL_STATUS.lock()?;
-        *button_ref = Some(global_status.clone());
-    }
 
     // Setup SPN status
-    let spn_status = MenuItemBuilder::with_id("spn_status", "SPN: Disabled")
+    let spn_status = MenuItemBuilder::with_id(SPN_STATUS_KEY, "SPN: Disabled")
         .enabled(false)
         .build(app)
         .unwrap();
@@ -149,15 +146,10 @@ pub fn setup_tray_menu(
         let mut button_ref = SPN_STATUS.lock()?;
         *button_ref = Some(spn_status.clone());
     }
-
     // Setup SPN button
-    let spn = MenuItemBuilder::with_id("spn_toggle", "Enable SPN")
+    let spn_button = MenuItemBuilder::with_id(SPN_BUTTON_KEY, "Enable SPN")
         .build(app)
         .unwrap();
-    {
-        let mut button_ref = SPN_BUTTON.lock()?;
-        *button_ref = Some(spn.clone());
-    }
 
     let system_theme = MenuItemBuilder::with_id("system_theme", "System")
         .build(app)
@@ -185,7 +177,7 @@ pub fn setup_tray_menu(
             &global_status,
             &PredefinedMenuItem::separator(app)?,
             &spn_status,
-            &spn,
+            &spn_button,
             &PredefinedMenuItem::separator(app)?,
             &theme_menu,
             &PredefinedMenuItem::separator(app)?,
@@ -271,7 +263,12 @@ pub fn setup_tray_menu(
     Ok(icon)
 }
 
-pub fn update_icon(icon: AppIcon, subsystems: HashMap<String, Subsystem>, spn_status: String) {
+pub fn update_icon<R: Runtime>(
+    icon: AppIcon,
+    menu: Option<Menu<R>>,
+    subsystems: HashMap<String, Subsystem>,
+    spn_status: String,
+) {
     // iterate over the subsystems and check if there's a module failure
     let failure = subsystems.values().map(|s| &s.module_status).fold(
         (subsystem::FAILURE_NONE, "".to_string()),
@@ -285,14 +282,13 @@ pub fn update_icon(icon: AppIcon, subsystems: HashMap<String, Subsystem>, spn_st
         },
     );
 
-    #[allow(clippy::collapsible_else_if)]
-    if failure.0 == subsystem::FAILURE_NONE {
-        if let Some(global_status) = &mut *(GLOBAL_STATUS.lock().unwrap()) {
-            _ = global_status.set_text("Status: Secured");
-        }
-    } else {
-        if let Some(global_status) = &mut *(GLOBAL_STATUS.lock().unwrap()) {
-            _ = global_status.set_text(format!("Status: {}", failure.1));
+    if let Some(menu) = menu {
+        if let Some(MenuItemKind::MenuItem(global_status)) = menu.get(GLOBAL_STATUS_KEY) {
+            if failure.0 == subsystem::FAILURE_NONE {
+                _ = global_status.set_text("Status: Secured");
+            } else {
+                _ = global_status.set_text(format!("Status: {}", failure.1));
+            }
         }
     }
 
@@ -405,7 +401,7 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                         Ok(n) => {
                             subsystems.insert(n.id.clone(), n);
 
-                            update_icon(icon.clone(), subsystems.clone(), spn_status.clone());
+                            update_icon(icon.clone(), app.menu(), subsystems.clone(), spn_status.clone());
                         },
                         Err(err) => match err {
                             ParseError::Json(err) => {
@@ -437,7 +433,7 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                             debug!("SPN status update: {}", value.status);
                             spn_status = value.status.clone();
 
-                            update_icon(icon.clone(), subsystems.clone(), spn_status.clone());
+                            update_icon(icon.clone(), app.menu(), subsystems.clone(), spn_status.clone());
                         },
                         Err(err) => match err {
                             ParseError::Json(err) => {
@@ -466,7 +462,9 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                 if let Some((_, payload)) = res {
                     match payload.parse::<BooleanValue>() {
                         Ok(value) => {
-                            update_spn_ui_state(value.value.unwrap_or(false));
+                            if let Some(menu) = app.menu() {
+                                update_spn_ui_state(menu, value.value.unwrap_or(false));
+                            }
                         },
                         Err(err) => match err {
                             ParseError::Json(err) => {
@@ -563,23 +561,23 @@ fn save_theme(app: &tauri::AppHandle, mode: dark_light::Mode) {
         }
         Err(err) => error!("failed to load config file: {}", err),
     }
+    if let Some(menu) = app.menu() {
+        update_spn_ui_state(menu, false);
+    }
+    _ = icon.set_icon(Some(Image::from_bytes(get_red_icon()).unwrap()));
 }
 
-fn update_spn_ui_state(enabled: bool) {
-    let mut spn_status = SPN_STATUS.lock().unwrap();
-    let Some(spn_status_ref) = &mut *spn_status else {
-        return;
-    };
-    let mut spn_btn = SPN_BUTTON.lock().unwrap();
-    let Some(spn_btn_ref) = &mut *spn_btn else {
-        return;
-    };
-    if enabled {
-        _ = spn_status_ref.set_text("SPN: Connected");
-        _ = spn_btn_ref.set_text("Disable SPN");
-    } else {
-        _ = spn_status_ref.set_text("SPN: Disabled");
-        _ = spn_btn_ref.set_text("Enable SPN");
+fn update_spn_ui_state<R: Runtime>(menu: Menu<R>, enabled: bool) {
+    if let (Some(MenuItemKind::MenuItem(spn_status)), Some(MenuItemKind::MenuItem(spn_btn))) =
+        (menu.get(SPN_STATUS_KEY), menu.get(SPN_BUTTON_KEY))
+    {
+        if enabled {
+            _ = spn_status.set_text("SPN: Connected");
+            _ = spn_btn.set_text("Disable SPN");
+        } else {
+            _ = spn_status.set_text("SPN: Disabled");
+            _ = spn_btn.set_text("Enable SPN");
+        }
+        SPN_STATE.store(enabled, Ordering::Release);
     }
-    SPN_STATE.store(enabled, Ordering::SeqCst);
 }
