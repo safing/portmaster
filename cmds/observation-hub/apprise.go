@@ -19,20 +19,24 @@ import (
 	"github.com/safing/portmaster/service/mgr"
 )
 
+// Apprise is the apprise notification module.
 type Apprise struct {
 	mgr *mgr.Manager
 
 	instance instance
 }
 
+// Manager returns the module manager.
 func (a *Apprise) Manager() *mgr.Manager {
 	return a.mgr
 }
 
+// Start starts the module.
 func (a *Apprise) Start() error {
 	return startApprise()
 }
 
+// Stop stops the module.
 func (a *Apprise) Stop() error {
 	return nil
 }
@@ -276,7 +280,7 @@ func getCountryInfo(code string) geoip.CountryInfo {
 // 	}
 // }
 
-// New returns a new Apprise module.
+// NewApprise returns a new Apprise module.
 func NewApprise(instance instance) (*Observer, error) {
 	if !appriseShimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")

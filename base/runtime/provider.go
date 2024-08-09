@@ -31,7 +31,7 @@ type (
 		// should be returned. It is guaranteed that the key of
 		// the record passed to Set is prefixed with the key used
 		// to register the value provider.
-		Set(record.Record) (record.Record, error)
+		Set(r record.Record) (record.Record, error)
 		// Get should return one or more records that match keyOrPrefix.
 		// keyOrPrefix is guaranteed to be at least the prefix used to
 		// register the ValueProvider.

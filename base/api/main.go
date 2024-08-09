@@ -52,10 +52,11 @@ func prep() error {
 func start() error {
 	startServer()
 
-	_ = updateAPIKeys(module.mgr.Ctx())
+	updateAPIKeys()
 	module.instance.Config().EventConfigChange.AddCallback("update API keys",
 		func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
-			return false, updateAPIKeys(wc.Ctx())
+			updateAPIKeys()
+			return false, nil
 		})
 
 	// start api auth token cleaner

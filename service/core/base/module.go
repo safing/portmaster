@@ -7,15 +7,18 @@ import (
 	"github.com/safing/portmaster/service/mgr"
 )
 
+// Base is the base module.
 type Base struct {
 	mgr      *mgr.Manager
 	instance instance
 }
 
+// Manager returns the module manager.
 func (b *Base) Manager() *mgr.Manager {
 	return b.mgr
 }
 
+// Start starts the module.
 func (b *Base) Start() error {
 	startProfiling()
 	registerLogCleaner()
@@ -23,6 +26,7 @@ func (b *Base) Start() error {
 	return nil
 }
 
+// Stop stops the module.
 func (b *Base) Stop() error {
 	return nil
 }

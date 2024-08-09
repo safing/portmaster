@@ -21,7 +21,8 @@ import (
 	"github.com/safing/portmaster/service/netenv"
 )
 
-type ResolverModule struct {
+// ResolverModule is the DNS resolver module.
+type ResolverModule struct { //nolint
 	mgr      *mgr.Manager
 	instance instance
 
@@ -31,18 +32,22 @@ type ResolverModule struct {
 	states *mgr.StateMgr
 }
 
+// Manager returns the module manager.
 func (rm *ResolverModule) Manager() *mgr.Manager {
 	return rm.mgr
 }
 
+// States returns the module state manager.
 func (rm *ResolverModule) States() *mgr.StateMgr {
 	return rm.states
 }
 
+// Start starts the module.
 func (rm *ResolverModule) Start() error {
 	return start()
 }
 
+// Stop stops the module.
 func (rm *ResolverModule) Stop() error {
 	return nil
 }
@@ -109,8 +114,7 @@ func start() error {
 	module.instance.NetEnv().EventNetworkChange.AddCallback(
 		"check failing resolvers",
 		func(wc *mgr.WorkerCtx, _ struct{}) (bool, error) {
-			checkFailingResolvers(wc)
-			return false, nil
+			return false, checkFailingResolvers(wc)
 		})
 
 	module.suggestUsingStaleCacheTask = module.mgr.NewWorkerMgr("suggest using stale cache", suggestUsingStaleCacheTask, nil)

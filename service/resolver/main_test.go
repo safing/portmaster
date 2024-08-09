@@ -58,7 +58,7 @@ func (stub *testInstance) Shutdown() {}
 
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
 
-func (i *testInstance) GetEventSPNConnected() *mgr.EventMgr[struct{}] {
+func (stub *testInstance) GetEventSPNConnected() *mgr.EventMgr[struct{}] {
 	return mgr.NewEventMgr[struct{}]("spn connect", nil)
 }
 

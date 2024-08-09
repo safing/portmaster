@@ -43,13 +43,11 @@ const (
 )
 
 var (
-	// module   *modules.Module
 	registry *updater.ResourceRegistry
 
 	userAgentFromFlag    string
 	updateServerFromFlag string
 
-	// updateTask          *modules.Task
 	updateASAP          bool
 	disableTaskSchedule bool
 

@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/tevino/abool"
+
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/packet"
-	"github.com/tevino/abool"
 )
 
 // SetFirewallHandler sets the firewall handler for this link, and starts a

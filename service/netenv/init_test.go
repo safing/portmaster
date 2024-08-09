@@ -91,7 +91,7 @@ func runTest(m *testing.M) error {
 
 	_, err = New(stub)
 	if err != nil {
-		return fmt.Errorf("failed to initialize module %s", err)
+		return fmt.Errorf("failed to initialize module %w", err)
 	}
 
 	m.Run()

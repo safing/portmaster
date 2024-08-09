@@ -101,7 +101,7 @@ type Instance struct {
 }
 
 // New returns a new Portmaster service instance.
-func New(svcCfg *ServiceConfig) (*Instance, error) {
+func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	// Create instance to pass it to modules.
 	instance := &Instance{}
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
@@ -580,7 +580,8 @@ func (i *Instance) Stop() error {
 // RestartExitCode will instruct portmaster-start to restart the process immediately, potentially with a new version.
 const RestartExitCode = 23
 
-// Shutdown asynchronously stops the instance.
+// Restart asynchronously restarts the instance.
+// This only works if the underlying system/process supports this.
 func (i *Instance) Restart() {
 	// Send a restart event, give it 10ms extra to propagate.
 	i.core.EventRestart.Submit(struct{}{})

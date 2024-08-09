@@ -210,7 +210,7 @@ func connectToHomeHub(wCtx *mgr.WorkerCtx, dst *hub.Hub) error {
 	return nil
 }
 
-func optimizeNetwork(ctx *mgr.WorkerCtx) error { //, task *modules.Task) error {
+func optimizeNetwork(ctx *mgr.WorkerCtx) error {
 	if publicIdentity == nil {
 		return nil
 	}

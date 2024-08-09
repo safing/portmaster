@@ -23,38 +23,44 @@ import (
 	"github.com/safing/portmaster/spn/ships"
 )
 
-const controlledFailureExitCode = 24
-
 // SPNConnectedEvent is the name of the event that is fired when the SPN has connected and is ready.
 const SPNConnectedEvent = "spn connect"
 
+// Captain is the main module of the SPN.
 type Captain struct {
 	mgr      *mgr.Manager
 	instance instance
 
-	healthCheckTicker    *mgr.SleepyTicker
-	maintainPublicStatus *mgr.WorkerMgr
+	healthCheckTicker *mgr.SleepyTicker
+
+	publicIdentityUpdater *mgr.WorkerMgr
+	statusUpdater         *mgr.WorkerMgr
 
 	states            *mgr.StateMgr
 	EventSPNConnected *mgr.EventMgr[struct{}]
 }
 
+// Manager returns the module manager.
 func (c *Captain) Manager() *mgr.Manager {
 	return c.mgr
 }
 
+// States returns the module states.
 func (c *Captain) States() *mgr.StateMgr {
 	return c.states
 }
 
+// Start starts the module.
 func (c *Captain) Start() error {
 	return start()
 }
 
+// Stop stops the module.
 func (c *Captain) Stop() error {
 	return stop()
 }
 
+// SetSleep sets the sleep mode of the module.
 func (c *Captain) SetSleep(enabled bool) {
 	if c.healthCheckTicker != nil {
 		c.healthCheckTicker.SetSleep(enabled)
@@ -225,9 +231,11 @@ func New(instance instance) (*Captain, error) {
 		mgr:      m,
 		instance: instance,
 
-		states:               mgr.NewStateMgr(m),
-		EventSPNConnected:    mgr.NewEventMgr[struct{}](SPNConnectedEvent, m),
-		maintainPublicStatus: m.NewWorkerMgr("maintain public status", maintainPublicStatus, nil),
+		states:            mgr.NewStateMgr(m),
+		EventSPNConnected: mgr.NewEventMgr[struct{}](SPNConnectedEvent, m),
+
+		publicIdentityUpdater: m.NewWorkerMgr("maintain public identity", maintainPublicIdentity, nil),
+		statusUpdater:         m.NewWorkerMgr("maintain public status", maintainPublicStatus, nil),
 	}
 
 	if err := module.prep(); err != nil {

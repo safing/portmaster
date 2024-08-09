@@ -20,6 +20,7 @@ import (
 	"github.com/safing/portmaster/service/mgr"
 )
 
+// Test tests the rng.
 type Test struct {
 	mgr *mgr.Manager
 
@@ -207,6 +208,7 @@ func noise(ctx *mgr.WorkerCtx) error {
 	}
 }
 
+// New returns a new rng test.
 func New(instance instance) (*Test, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")

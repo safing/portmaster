@@ -37,7 +37,7 @@ type State struct {
 	// Optional.
 	Type StateType
 
-	// Time is the time when the state was created or the originating incident occured.
+	// Time is the time when the state was created or the originating incident occurred.
 	// Optional, will be set to current time if not set.
 	Time time.Time
 

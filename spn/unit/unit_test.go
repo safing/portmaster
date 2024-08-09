@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/safing/portmaster/service/mgr"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
 func TestUnit(t *testing.T) { //nolint:paralleltest

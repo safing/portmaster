@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -116,8 +115,8 @@ func (sess *session) Refresh(ttl time.Duration) {
 // permission for an API handler. The returned permission is the required
 // permission for the request to proceed.
 type AuthenticatedHandler interface {
-	ReadPermission(*http.Request) Permission
-	WritePermission(*http.Request) Permission
+	ReadPermission(r *http.Request) Permission
+	WritePermission(r *http.Request) Permission
 }
 
 // SetAuthenticator sets an authenticator function for the API endpoint. If none is set, all requests will be permitted.
@@ -351,7 +350,7 @@ func checkAPIKey(r *http.Request) *AuthToken {
 	return token
 }
 
-func updateAPIKeys(_ context.Context) error {
+func updateAPIKeys() {
 	apiKeysLock.Lock()
 	defer apiKeysLock.Unlock()
 
@@ -443,8 +442,6 @@ func updateAPIKeys(_ context.Context) error {
 			return nil
 		})
 	}
-
-	return nil
 }
 
 func checkSessionCookie(r *http.Request) *AuthToken {

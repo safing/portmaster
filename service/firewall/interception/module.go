@@ -10,19 +10,23 @@ import (
 	"github.com/safing/portmaster/service/network/packet"
 )
 
+// Interception is the packet interception module.
 type Interception struct {
 	mgr      *mgr.Manager
 	instance instance
 }
 
+// Manager returns the module manager.
 func (i *Interception) Manager() *mgr.Manager {
 	return i.mgr
 }
 
+// Start starts the module.
 func (i *Interception) Start() error {
 	return start()
 }
 
+// Stop stops the module.
 func (i *Interception) Stop() error {
 	return stop()
 }

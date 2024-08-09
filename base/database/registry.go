@@ -6,18 +6,9 @@ import (
 	"regexp"
 	"sync"
 	"time"
-
-	"github.com/tevino/abool"
-)
-
-const (
-	registryFileName = "databases.json"
 )
 
 var (
-	registryPersistence = abool.NewBool(false)
-	writeRegistrySoon   = abool.NewBool(false)
-
 	registry     = make(map[string]*Database)
 	registryLock sync.Mutex
 
@@ -33,17 +24,14 @@ func Register(db *Database) (*Database, error) {
 	defer registryLock.Unlock()
 
 	registeredDB, ok := registry[db.Name]
-	save := false
 
 	if ok {
 		// update database
 		if registeredDB.Description != db.Description {
 			registeredDB.Description = db.Description
-			save = true
 		}
 		if registeredDB.ShadowDelete != db.ShadowDelete {
 			registeredDB.ShadowDelete = db.ShadowDelete
-			save = true
 		}
 	} else {
 		// register new database
@@ -57,13 +45,6 @@ func Register(db *Database) (*Database, error) {
 		db.LastLoaded = time.Time{}
 
 		registry[db.Name] = db
-		save = true
-	}
-
-	if save && registryPersistence.IsSet() {
-		if ok {
-			registeredDB.Updated()
-		}
 	}
 
 	if ok {
@@ -79,9 +60,6 @@ func getDatabase(name string) (*Database, error) {
 	registeredDB, ok := registry[name]
 	if !ok {
 		return nil, fmt.Errorf(`database "%s" not registered`, name)
-	}
-	if time.Now().Add(-24 * time.Hour).After(registeredDB.LastLoaded) {
-		writeRegistrySoon.Set()
 	}
 	registeredDB.Loaded()
 

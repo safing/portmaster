@@ -13,6 +13,7 @@ import (
 	"github.com/safing/portmaster/service/resolver"
 )
 
+// Compat is the compatibility check module.
 type Compat struct {
 	mgr      *mgr.Manager
 	instance instance
@@ -23,10 +24,12 @@ type Compat struct {
 	states *mgr.StateMgr
 }
 
+// Manager returns the module manager.
 func (u *Compat) Manager() *mgr.Manager {
 	return u.mgr
 }
 
+// States returns the module state manager.
 func (u *Compat) States() *mgr.StateMgr {
 	return u.states
 }

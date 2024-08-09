@@ -20,19 +20,23 @@ import (
 	"github.com/safing/portmaster/spn/navigator"
 )
 
+// Observer is the network observer module.
 type Observer struct {
 	mgr      *mgr.Manager
 	instance instance
 }
 
+// Manager returns the module manager.
 func (o *Observer) Manager() *mgr.Manager {
 	return o.mgr
 }
 
+// Start starts the module.
 func (o *Observer) Start() error {
 	return startObserver()
 }
 
+// Stop stops the module.
 func (o *Observer) Stop() error {
 	return nil
 }

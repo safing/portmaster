@@ -12,19 +12,23 @@ import (
 	_ "github.com/safing/portmaster/spn/access"
 )
 
+// Docks handles connections to other network participants.
 type Docks struct {
 	mgr      *mgr.Manager
 	instance instance
 }
 
+// Manager returns the module manager.
 func (d *Docks) Manager() *mgr.Manager {
 	return d.mgr
 }
 
+// Start starts the module.
 func (d *Docks) Start() error {
 	return start()
 }
 
+// Stop stops the module.
 func (d *Docks) Stop() error {
 	return stopAllCranes()
 }

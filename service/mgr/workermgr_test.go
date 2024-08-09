@@ -7,6 +7,8 @@ import (
 )
 
 func TestWorkerMgrDelay(t *testing.T) {
+	t.Parallel()
+
 	m := New("DelayTest")
 
 	value := atomic.Bool{}
@@ -21,7 +23,7 @@ func TestWorkerMgrDelay(t *testing.T) {
 	// Check if value is set after 1 second and not before or after.
 	iterations := 0
 	for !value.Load() {
-		iterations += 1
+		iterations++
 		time.Sleep(10 * time.Millisecond)
 	}
 
@@ -32,6 +34,8 @@ func TestWorkerMgrDelay(t *testing.T) {
 }
 
 func TestWorkerMgrRepeat(t *testing.T) {
+	t.Parallel()
+
 	m := New("RepeatTest")
 
 	value := atomic.Bool{}
@@ -47,7 +51,7 @@ func TestWorkerMgrRepeat(t *testing.T) {
 	for range 10 {
 		iterations := 0
 		for !value.Load() {
-			iterations += 1
+			iterations++
 			time.Sleep(10 * time.Millisecond)
 		}
 
@@ -61,7 +65,9 @@ func TestWorkerMgrRepeat(t *testing.T) {
 	}
 }
 
-func TestWorkerMgrDelayAndRepeat(t *testing.T) {
+func TestWorkerMgrDelayAndRepeat(t *testing.T) { //nolint:dupl
+	t.Parallel()
+
 	m := New("DelayAndRepeatTest")
 
 	value := atomic.Bool{}
@@ -75,7 +81,7 @@ func TestWorkerMgrDelayAndRepeat(t *testing.T) {
 
 	iterations := 0
 	for !value.Load() {
-		iterations += 1
+		iterations++
 		time.Sleep(10 * time.Millisecond)
 	}
 
@@ -91,7 +97,7 @@ func TestWorkerMgrDelayAndRepeat(t *testing.T) {
 	for range 10 {
 		iterations = 0
 		for !value.Load() {
-			iterations += 1
+			iterations++
 			time.Sleep(10 * time.Millisecond)
 		}
 
@@ -105,7 +111,9 @@ func TestWorkerMgrDelayAndRepeat(t *testing.T) {
 	}
 }
 
-func TestWorkerMgrRepeatAndDelay(t *testing.T) {
+func TestWorkerMgrRepeatAndDelay(t *testing.T) { //nolint:dupl
+	t.Parallel()
+
 	m := New("RepeatAndDelayTest")
 
 	value := atomic.Bool{}
@@ -119,7 +127,7 @@ func TestWorkerMgrRepeatAndDelay(t *testing.T) {
 
 	iterations := 0
 	for !value.Load() {
-		iterations += 1
+		iterations++
 		time.Sleep(10 * time.Millisecond)
 	}
 
@@ -134,7 +142,7 @@ func TestWorkerMgrRepeatAndDelay(t *testing.T) {
 	for range 10 {
 		iterations := 0
 		for !value.Load() {
-			iterations += 1
+			iterations++
 			time.Sleep(10 * time.Millisecond)
 		}
 

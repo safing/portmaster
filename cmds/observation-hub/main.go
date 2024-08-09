@@ -73,6 +73,13 @@ func main() {
 	}
 	instance.AddModule(observer)
 
+	_, err = NewApprise(instance)
+	if err != nil {
+		fmt.Printf("error creating an instance: create apprise module: %s\n", err)
+		os.Exit(2)
+	}
+	instance.AddModule(observer)
+
 	// Execute command line operation, if requested or available.
 	switch {
 	case !execCmdLine:

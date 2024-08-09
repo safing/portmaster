@@ -87,11 +87,11 @@ func loadPublicIdentity() (err error) {
 }
 
 func prepPublicIdentityMgmt() error {
-	module.maintainPublicStatus.Repeat(maintainStatusInterval)
+	module.statusUpdater.Repeat(maintainStatusInterval)
 
 	module.instance.Config().EventConfigChange.AddCallback("update public identity from config",
 		func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
-			module.maintainPublicStatus.Delay(5 * time.Minute)
+			module.publicIdentityUpdater.Delay(5 * time.Minute)
 			return false, nil
 		})
 	return nil
@@ -99,10 +99,10 @@ func prepPublicIdentityMgmt() error {
 
 // TriggerHubStatusMaintenance queues the Hub status update task to be executed.
 func TriggerHubStatusMaintenance() {
-	module.maintainPublicStatus.Go()
+	module.statusUpdater.Go()
 }
 
-func maintainPublicIdentity(ctx *mgr.WorkerCtx) error {
+func maintainPublicIdentity(_ *mgr.WorkerCtx) error {
 	changed, err := publicIdentity.MaintainAnnouncement(nil, false)
 	if err != nil {
 		return fmt.Errorf("failed to maintain announcement: %w", err)

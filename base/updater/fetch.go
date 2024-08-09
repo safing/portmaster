@@ -49,7 +49,6 @@ func (reg *ResourceRegistry) fetchFile(ctx context.Context, client *http.Client,
 			rv.versionedSigPath(), rv.SigningMetadata(),
 			tries,
 		)
-
 		if err != nil {
 			switch rv.resource.VerificationOptions.DownloadPolicy {
 			case SignaturePolicyRequire:

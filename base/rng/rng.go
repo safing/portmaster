@@ -10,10 +10,12 @@ import (
 	"sync/atomic"
 
 	"github.com/aead/serpent"
-	"github.com/safing/portmaster/service/mgr"
 	"github.com/seehuhn/fortuna"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
+// Rng is a random number generator.
 type Rng struct {
 	mgr *mgr.Manager
 
@@ -27,7 +29,6 @@ var (
 
 	rngCipher = "aes"
 	// Possible values: "aes", "serpent".
-
 )
 
 func newCipher(key []byte) (cipher.Block, error) {
@@ -41,10 +42,12 @@ func newCipher(key []byte) (cipher.Block, error) {
 	}
 }
 
+// Manager returns the module manager.
 func (r *Rng) Manager() *mgr.Manager {
 	return r.mgr
 }
 
+// Start starts the module.
 func (r *Rng) Start() error {
 	rngLock.Lock()
 	defer rngLock.Unlock()
@@ -84,6 +87,7 @@ func (r *Rng) Start() error {
 	return nil
 }
 
+// Stop stops the module.
 func (r *Rng) Stop() error {
 	return nil
 }
@@ -93,6 +97,7 @@ var (
 	shimLoaded atomic.Bool
 )
 
+// New returns a new rng.
 func New(instance instance) (*Rng, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")

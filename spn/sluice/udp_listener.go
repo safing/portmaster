@@ -8,10 +8,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portmaster/service/mgr"
 	"github.com/tevino/abool"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
 const onWindows = runtime.GOOS == "windows"

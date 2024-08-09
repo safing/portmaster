@@ -31,7 +31,6 @@ func (ss *stringSliceFlag) Set(value string) error {
 	return nil
 }
 
-// module         *modules.Module
 var allowedClients stringSliceFlag
 
 type Firewall struct {
