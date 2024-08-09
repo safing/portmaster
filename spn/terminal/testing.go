@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/hub"
+	"github.com/safing/structures/container"
 )
 
 const (
@@ -35,7 +35,7 @@ func NewLocalTestTerminal(
 	if err != nil {
 		return nil, nil, err
 	}
-	t.StartWorkers(module, "test terminal")
+	t.StartWorkers(module.mgr, "test terminal")
 
 	return &TestTerminal{t}, initData, nil
 }
@@ -54,7 +54,7 @@ func NewRemoteTestTerminal(
 	if err != nil {
 		return nil, nil, err
 	}
-	t.StartWorkers(module, "test terminal")
+	t.StartWorkers(module.mgr, "test terminal")
 
 	return &TestTerminal{t}, initMsg, nil
 }
@@ -136,7 +136,7 @@ func (t *TestTerminal) HandleAbandon(err *Error) (errorToSend *Error) {
 	return
 }
 
-// NewSimpleTestTerminalPair provides a simple conntected terminal pair for tests.
+// NewSimpleTestTerminalPair provides a simple connected terminal pair for tests.
 func NewSimpleTestTerminalPair(delay time.Duration, delayQueueSize int, opts *TerminalOpts) (a, b *TestTerminal, err error) {
 	if opts == nil {
 		opts = &TerminalOpts{
@@ -149,7 +149,7 @@ func NewSimpleTestTerminalPair(delay time.Duration, delayQueueSize int, opts *Te
 	var initData *container.Container
 	var tErr *Error
 	a, initData, tErr = NewLocalTestTerminal(
-		module.Ctx, 127, "a", nil, opts, UpstreamSendFunc(createDelayingTestForwardingFunc(
+		module.mgr.Ctx(), 127, "a", nil, opts, UpstreamSendFunc(createDelayingTestForwardingFunc(
 			"a", "b", delay, delayQueueSize, func(msg *Msg, timeout time.Duration) *Error {
 				return b.Deliver(msg)
 			},
@@ -159,7 +159,7 @@ func NewSimpleTestTerminalPair(delay time.Duration, delayQueueSize int, opts *Te
 		return nil, nil, tErr.Wrap("failed to create local test terminal")
 	}
 	b, _, tErr = NewRemoteTestTerminal(
-		module.Ctx, 127, "b", nil, initData, UpstreamSendFunc(createDelayingTestForwardingFunc(
+		module.mgr.Ctx(), 127, "b", nil, initData, UpstreamSendFunc(createDelayingTestForwardingFunc(
 			"b", "a", delay, delayQueueSize, func(msg *Msg, timeout time.Duration) *Error {
 				return a.Deliver(msg)
 			},

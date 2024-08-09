@@ -11,10 +11,10 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/profile/binmeta"
 	"github.com/safing/portmaster/service/profile/endpoints"

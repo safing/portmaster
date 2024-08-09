@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/service/profile"
 )
 
@@ -52,8 +52,7 @@ func registerSettingsAPI() error {
 			Field:       "key",
 			Description: "Optionally select a single setting to export. Repeat to export selection.",
 		}},
-		BelongsTo: module,
-		DataFunc:  handleExportSettings,
+		DataFunc: handleExportSettings,
 	}); err != nil {
 		return err
 	}
@@ -81,7 +80,6 @@ func registerSettingsAPI() error {
 			Field:       "allowUnknown",
 			Description: "Allow importing of unknown values.",
 		}},
-		BelongsTo:  module,
 		StructFunc: handleImportSettings,
 	}); err != nil {
 		return err
@@ -156,7 +154,7 @@ func handleImportSettings(ar *api.Request) (any, error) {
 		}
 		request.Export = export
 	case request.Export != nil:
-		// Export is aleady parsed.
+		// Export is already parsed.
 	default:
 		return nil, ErrInvalidImportRequest
 	}

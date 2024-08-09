@@ -84,6 +84,10 @@ func GetIPScope(ip net.IP) IPScope { //nolint:gocognit
 		}
 	} else if len(ip) == net.IPv6len {
 		// IPv6
+
+		// TODO: Add IPv6 RFC5771 test / doc networks
+		// 2001:db8::/32
+		// 3fff::/20
 		switch {
 		case ip.Equal(net.IPv6zero):
 			return Invalid
@@ -153,7 +157,7 @@ func GetBroadcastAddress(ip net.IP, netMask net.IPMask) net.IP {
 	// Merge to broadcast address
 	n := len(ip)
 	broadcastAddress := make(net.IP, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		broadcastAddress[i] = ip[i] | ^mask[i]
 	}
 	return broadcastAddress

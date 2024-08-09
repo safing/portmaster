@@ -17,7 +17,7 @@ func TestTestShip(t *testing.T) {
 
 	srvShip := tShip.Reverse()
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// client send
 		err := ship.Load(testData)
 		if err != nil {

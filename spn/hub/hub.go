@@ -9,8 +9,8 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/safing/jess"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/profile/endpoints"
 )
 
@@ -425,7 +425,7 @@ func equalStringSlice(a, b []string) bool {
 		return false
 	}
 
-	for i := 0; i < len(a); i++ {
+	for i := range len(a) {
 		if a[i] != b[i] {
 			return false
 		}

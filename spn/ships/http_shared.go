@@ -9,7 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
 )
 
@@ -96,8 +97,7 @@ func addHTTPHandler(port uint16, path string, handler http.HandlerFunc) error {
 		WriteTimeout:      1 * time.Minute,
 		IdleTimeout:       1 * time.Minute,
 		MaxHeaderBytes:    4096,
-		// ErrorLog:          &log.Logger{}, // FIXME
-		BaseContext: func(net.Listener) context.Context { return module.Ctx },
+		BaseContext:       func(net.Listener) context.Context { return module.mgr.Ctx() },
 	}
 	shared.server = server
 
@@ -121,11 +121,10 @@ func addHTTPHandler(port uint16, path string, handler http.HandlerFunc) error {
 	sharedHTTPServers[port] = shared
 
 	// Start servers in service workers.
-	for _, listener := range listeners {
-		serviceListener := listener
-		module.StartServiceWorker(
-			fmt.Sprintf("shared http server listener on %s", listener.Addr()), 0,
-			func(ctx context.Context) error {
+	for _, serviceListener := range listeners {
+		module.mgr.Go(
+			fmt.Sprintf("shared http server listener on %s", serviceListener.Addr()),
+			func(_ *mgr.WorkerCtx) error {
 				err := shared.server.Serve(serviceListener)
 				if !errors.Is(http.ErrServerClosed, err) {
 					return err

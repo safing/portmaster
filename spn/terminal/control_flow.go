@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/formats/varint"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/structures/varint"
 )
 
 // FlowControl defines the flow control interface.
@@ -18,7 +18,7 @@ type FlowControl interface {
 	Send(msg *Msg, timeout time.Duration) *Error
 	ReadyToSend() <-chan struct{}
 	Flush(timeout time.Duration)
-	StartWorkers(m *modules.Module, terminalName string)
+	StartWorkers(m *mgr.Manager, terminalName string)
 	RecvQueueLen() int
 	SendQueueLen() int
 }
@@ -121,8 +121,8 @@ func NewDuplexFlowQueue(
 }
 
 // StartWorkers starts the necessary workers to operate the flow queue.
-func (dfq *DuplexFlowQueue) StartWorkers(m *modules.Module, terminalName string) {
-	m.StartWorker(terminalName+" flow queue", dfq.FlowHandler)
+func (dfq *DuplexFlowQueue) StartWorkers(m *mgr.Manager, terminalName string) {
+	m.Go(terminalName+" flow queue", dfq.FlowHandler)
 }
 
 // shouldReportRecvSpace returns whether the receive space should be reported.
@@ -187,7 +187,7 @@ func (dfq *DuplexFlowQueue) reportableRecvSpace() int32 {
 
 // FlowHandler handles all flow queue internals and must be started as a worker
 // in the module where it is used.
-func (dfq *DuplexFlowQueue) FlowHandler(_ context.Context) error {
+func (dfq *DuplexFlowQueue) FlowHandler(_ *mgr.WorkerCtx) error {
 	// The upstreamSender is started by the terminal module, but is tied to the
 	// flow owner instead. Make sure that the flow owner's module depends on the
 	// terminal module so that it is shut down earlier.

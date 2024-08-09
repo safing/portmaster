@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/profile/binmeta"
+	"github.com/safing/structures/dsd"
 )
 
 func registerAPIEndpoints() error {
@@ -19,7 +19,6 @@ func registerAPIEndpoints() error {
 		Description: "Merge multiple profiles into a new one.",
 		Path:        "profile/merge",
 		Write:       api.PermitUser,
-		BelongsTo:   module,
 		StructFunc:  handleMergeProfiles,
 	}); err != nil {
 		return err
@@ -30,7 +29,6 @@ func registerAPIEndpoints() error {
 		Description: "Returns the requested profile icon.",
 		Path:        "profile/icon/{id:[a-f0-9]*\\.[a-z]{3,4}}",
 		Read:        api.PermitUser,
-		BelongsTo:   module,
 		DataFunc:    handleGetProfileIcon,
 	}); err != nil {
 		return err
@@ -41,7 +39,6 @@ func registerAPIEndpoints() error {
 		Description: "Updates a profile icon.",
 		Path:        "profile/icon",
 		Write:       api.PermitUser,
-		BelongsTo:   module,
 		StructFunc:  handleUpdateProfileIcon,
 	}); err != nil {
 		return err

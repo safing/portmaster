@@ -1,13 +1,13 @@
 package interception
 
 import (
-	"context"
 	"fmt"
 	"time"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	kext1 "github.com/safing/portmaster/service/firewall/interception/windowskext"
 	kext2 "github.com/safing/portmaster/service/firewall/interception/windowskext2"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/updates"
@@ -46,25 +46,25 @@ func startInterception(packets chan packet.Packet) error {
 		kext1.SetKextService(kext2.GetKextServiceHandle(), kextFile.Path())
 
 		// Start packet handler.
-		module.StartServiceWorker("kext packet handler", 0, func(ctx context.Context) error {
-			kext1.Handler(ctx, packets)
+		module.mgr.Go("kext packet handler", func(w *mgr.WorkerCtx) error {
+			kext1.Handler(w.Ctx(), packets)
 			return nil
 		})
 
 		// Start bandwidth stats monitor.
-		module.StartServiceWorker("kext bandwidth stats monitor", 0, func(ctx context.Context) error {
-			return kext1.BandwidthStatsWorker(ctx, 1*time.Second, BandwidthUpdates)
+		module.mgr.Go("kext bandwidth stats monitor", func(w *mgr.WorkerCtx) error {
+			return kext1.BandwidthStatsWorker(w.Ctx(), 1*time.Second, BandwidthUpdates)
 		})
 	} else {
 
 		// Start packet handler.
-		module.StartServiceWorker("kext packet handler", 0, func(ctx context.Context) error {
-			kext2.Handler(ctx, packets, BandwidthUpdates)
+		module.mgr.Go("kext packet handler", func(w *mgr.WorkerCtx) error {
+			kext2.Handler(w.Ctx(), packets, BandwidthUpdates)
 			return nil
 		})
 
 		// Start bandwidth stats monitor.
-		module.StartServiceWorker("kext bandwidth request worker", 0, func(ctx context.Context) error {
+		module.mgr.Go("kext bandwidth request worker", func(w *mgr.WorkerCtx) error {
 			timer := time.NewTicker(1 * time.Second)
 			defer timer.Stop()
 			for {
@@ -74,7 +74,7 @@ func startInterception(packets chan packet.Packet) error {
 					if err != nil {
 						return err
 					}
-				case <-ctx.Done():
+				case <-w.Done():
 					return nil
 				}
 
@@ -82,7 +82,7 @@ func startInterception(packets chan packet.Packet) error {
 		})
 
 		// Start kext logging. The worker will periodically send request to the kext to send logs.
-		module.StartServiceWorker("kext log request worker", 0, func(ctx context.Context) error {
+		module.mgr.Go("kext log request worker", func(w *mgr.WorkerCtx) error {
 			timer := time.NewTicker(1 * time.Second)
 			defer timer.Stop()
 			for {
@@ -92,14 +92,14 @@ func startInterception(packets chan packet.Packet) error {
 					if err != nil {
 						return err
 					}
-				case <-ctx.Done():
+				case <-w.Done():
 					return nil
 				}
 
 			}
 		})
 
-		module.StartServiceWorker("kext clean ended connection worker", 0, func(ctx context.Context) error {
+		module.mgr.Go("kext clean ended connection worker", func(w *mgr.WorkerCtx) error {
 			timer := time.NewTicker(30 * time.Second)
 			defer timer.Stop()
 			for {
@@ -109,7 +109,7 @@ func startInterception(packets chan packet.Packet) error {
 					if err != nil {
 						return err
 					}
-				case <-ctx.Done():
+				case <-w.Done():
 					return nil
 				}
 

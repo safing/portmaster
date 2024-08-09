@@ -15,8 +15,8 @@ import (
 
 	"github.com/awalterschulze/gographviz"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/docks"
 	"github.com/safing/portmaster/spn/hub"
 )
@@ -52,7 +52,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        `spn/map/{map:[A-Za-z0-9]{1,255}}/pins`,
 		Read:        api.PermitUser,
-		BelongsTo:   module,
 		StructFunc:  handleMapPinsRequest,
 		Name:        "Get SPN map pins",
 		Description: "Returns a list of pins on the map.",
@@ -63,7 +62,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        `spn/map/{map:[A-Za-z0-9]{1,255}}/intel/update`,
 		Write:       api.PermitSelf,
-		BelongsTo:   module,
 		ActionFunc:  handleIntelUpdateRequest,
 		Name:        "Update map intelligence.",
 		Description: "Updates the intel data of the map.",
@@ -74,7 +72,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        `spn/map/{map:[A-Za-z0-9]{1,255}}/optimization`,
 		Read:        api.PermitUser,
-		BelongsTo:   module,
 		StructFunc:  handleMapOptimizationRequest,
 		Name:        "Get SPN map optimization",
 		Description: "Returns the calculated optimization for the map.",
@@ -85,7 +82,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        `spn/map/{map:[A-Za-z0-9]{1,255}}/optimization/table`,
 		Read:        api.PermitUser,
-		BelongsTo:   module,
 		DataFunc:    handleMapOptimizationTableRequest,
 		Name:        "Get SPN map optimization as a table",
 		Description: "Returns the calculated optimization for the map as a table.",
@@ -96,7 +92,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        `spn/map/{map:[A-Za-z0-9]{1,255}}/measurements`,
 		Read:        api.PermitUser,
-		BelongsTo:   module,
 		StructFunc:  handleMapMeasurementsRequest,
 		Name:        "Get SPN map measurements",
 		Description: "Returns the measurements of the map.",
@@ -108,7 +103,6 @@ func registerAPIEndpoints() error {
 		Path:        `spn/map/{map:[A-Za-z0-9]{1,255}}/measurements/table`,
 		MimeType:    api.MimeTypeText,
 		Read:        api.PermitUser,
-		BelongsTo:   module,
 		DataFunc:    handleMapMeasurementsTableRequest,
 		Name:        "Get SPN map measurements as a table",
 		Description: "Returns the measurements of the map as a table.",
@@ -119,7 +113,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        `spn/map/{map:[A-Za-z0-9]{1,255}}/graph{format:\.[a-z]{2,4}}`,
 		Read:        api.PermitUser,
-		BelongsTo:   module,
 		HandlerFunc: handleMapGraphRequest,
 		Name:        "Get SPN map graph",
 		Description: "Returns a graph of the given SPN map.",

@@ -7,7 +7,7 @@ import (
 
 	notify "github.com/dhaavi/go-notify"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 )
 
 type NotificationID uint32

@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/safing/jess"
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/formats/varint"
-	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
+	"github.com/safing/structures/varint"
 )
 
 /*
@@ -71,7 +71,7 @@ func (crane *Crane) Start(callerCtx context.Context) error {
 }
 
 func (crane *Crane) startLocal(callerCtx context.Context) *terminal.Error {
-	module.StartWorker("crane unloader", crane.unloader)
+	module.mgr.Go("crane unloader", crane.unloader)
 
 	if !crane.ship.IsSecure() {
 		// Start encrypted channel.
@@ -171,8 +171,8 @@ func (crane *Crane) startLocal(callerCtx context.Context) *terminal.Error {
 	}
 
 	// Start remaining workers.
-	module.StartWorker("crane loader", crane.loader)
-	module.StartWorker("crane handler", crane.handler)
+	module.mgr.Go("crane loader", crane.loader)
+	module.mgr.Go("crane handler", crane.handler)
 
 	return nil
 }
@@ -180,7 +180,7 @@ func (crane *Crane) startLocal(callerCtx context.Context) *terminal.Error {
 func (crane *Crane) startRemote(callerCtx context.Context) *terminal.Error {
 	var initMsg *container.Container
 
-	module.StartWorker("crane unloader", crane.unloader)
+	module.mgr.Go("crane unloader", crane.unloader)
 
 handling:
 	for {
@@ -270,8 +270,8 @@ handling:
 	}
 
 	// Start remaining workers.
-	module.StartWorker("crane loader", crane.loader)
-	module.StartWorker("crane handler", crane.handler)
+	module.mgr.Go("crane loader", crane.loader)
+	module.mgr.Go("crane handler", crane.handler)
 
 	return nil
 }

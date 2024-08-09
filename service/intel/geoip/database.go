@@ -1,15 +1,15 @@
 package geoip
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	maxminddb "github.com/oschwald/maxminddb-golang"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
 )
 
@@ -148,11 +148,11 @@ func (upd *updateWorker) triggerUpdate() {
 
 func (upd *updateWorker) start() {
 	upd.once.Do(func() {
-		module.StartServiceWorker("geoip-updater", time.Second*10, upd.run)
+		module.mgr.Go("geoip-updater", upd.run)
 	})
 }
 
-func (upd *updateWorker) run(ctx context.Context) error {
+func (upd *updateWorker) run(ctx *mgr.WorkerCtx) error {
 	for {
 		if upd.v4.NeedsUpdate() {
 			if v4, err := getGeoIPDB(v4MMDBResource); err == nil {

@@ -12,14 +12,15 @@ import (
 	"github.com/tevino/abool"
 
 	"github.com/safing/jess"
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/varint"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/ships"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/varint"
 )
 
 const (
@@ -110,7 +111,7 @@ type Crane struct {
 // NewCrane returns a new crane.
 func NewCrane(ship ships.Ship, connectedHub *hub.Hub, id *cabin.Identity) (*Crane, error) {
 	// Cranes always run in module context.
-	ctx, cancelCtx := context.WithCancel(module.Ctx)
+	ctx, cancelCtx := context.WithCancel(module.mgr.Ctx())
 
 	newCrane := &Crane{
 		ctx:           ctx,
@@ -351,7 +352,7 @@ func (crane *Crane) AbandonTerminal(id uint32, err *terminal.Error) {
 		if crane.stopping.IsSet() &&
 			crane.terminalCount() <= 1 {
 			// Stop the crane in worker, so the caller can do some work.
-			module.StartWorker("retire crane", func(_ context.Context) error {
+			module.mgr.Go("retire crane", func(_ *mgr.WorkerCtx) error {
 				// Let enough time for the last errors to be sent, as terminals are abandoned in a goroutine.
 				time.Sleep(3 * time.Second)
 				crane.Stop(nil)
@@ -426,7 +427,7 @@ func (crane *Crane) decrypt(shipment *container.Container) (decrypted *container
 	return container.New(decryptedData), nil
 }
 
-func (crane *Crane) unloader(workerCtx context.Context) error {
+func (crane *Crane) unloader(workerCtx *mgr.WorkerCtx) error {
 	// Unclean shutdown safeguard.
 	defer crane.Stop(terminal.ErrUnknownError.With("unloader died"))
 
@@ -516,7 +517,7 @@ func (crane *Crane) unloadUntilFull(buf []byte) error {
 	}
 }
 
-func (crane *Crane) handler(workerCtx context.Context) error {
+func (crane *Crane) handler(workerCtx *mgr.WorkerCtx) error {
 	var partialShipment *container.Container
 	var segmentLength uint32
 
@@ -618,7 +619,7 @@ handling:
 						if deliveryErr != nil {
 							msg.Finish()
 							// This is a hot path. Start a worker for abandoning the terminal.
-							module.StartWorker("end terminal", func(_ context.Context) error {
+							module.mgr.Go("end terminal", func(_ *mgr.WorkerCtx) error {
 								crane.AbandonTerminal(t.ID(), deliveryErr.Wrap("failed to deliver data"))
 								return nil
 							})
@@ -635,7 +636,7 @@ handling:
 						receivedErr = terminal.ErrUnknownError.AsExternal()
 					}
 					// This is a hot path. Start a worker for abandoning the terminal.
-					module.StartWorker("end terminal", func(_ context.Context) error {
+					module.mgr.Go("end terminal", func(_ *mgr.WorkerCtx) error {
 						crane.AbandonTerminal(terminalID, receivedErr)
 						return nil
 					})
@@ -645,7 +646,7 @@ handling:
 	}
 }
 
-func (crane *Crane) loader(workerCtx context.Context) (err error) {
+func (crane *Crane) loader(workerCtx *mgr.WorkerCtx) (err error) {
 	shipment := container.New()
 	var partialShipment *container.Container
 	var loadingTimer *time.Timer

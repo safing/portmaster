@@ -1,13 +1,13 @@
 package captain
 
 import (
-	"errors"
 	"fmt"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/spn/conf"
 )
 
 const (
@@ -16,9 +16,8 @@ const (
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:  apiPathForSPNReInit,
-		Write: api.PermitAdmin,
-		// BelongsTo:   module, // Do not attach to module, as this must run outside of the module.
+		Path:        apiPathForSPNReInit,
+		Write:       api.PermitAdmin,
 		ActionFunc:  handleReInit,
 		Name:        "Re-initialize SPN",
 		Description: "Stops the SPN, resets all caches and starts it again. The SPN account and settings are not changed.",
@@ -30,16 +29,14 @@ func registerAPIEndpoints() error {
 }
 
 func handleReInit(ar *api.Request) (msg string, err error) {
-	// Disable module and check
-	changed := module.Disable()
-	if !changed {
-		return "", errors.New("can only re-initialize when the SPN is enabled")
+	if !conf.Client() && !conf.Integrated() {
+		return "", fmt.Errorf("re-initialization only possible on integrated clients")
 	}
 
-	// Run module manager.
-	err = modules.ManageModules()
+	// Make sure SPN is stopped and wait for it to complete.
+	err = module.mgr.Do("stop SPN for re-init", module.instance.SPNGroup().EnsureStoppedWorker)
 	if err != nil {
-		return "", fmt.Errorf("failed to stop SPN: %w", err)
+		return "", fmt.Errorf("failed to stop SPN for re-init: %w", err)
 	}
 
 	// Delete SPN cache.
@@ -52,13 +49,10 @@ func handleReInit(ar *api.Request) (msg string, err error) {
 		return "", fmt.Errorf("failed to delete SPN cache: %w", err)
 	}
 
-	// Enable module.
-	module.Enable()
-
-	// Run module manager.
-	err = modules.ManageModules()
-	if err != nil {
-		return "", fmt.Errorf("failed to start SPN after cache reset: %w", err)
+	// Start SPN if it is enabled.
+	enabled := config.GetAsBool("spn/enable", false)
+	if enabled() {
+		module.mgr.Go("ensure SPN is started", module.instance.SPNGroup().EnsureStartedWorker)
 	}
 
 	return fmt.Sprintf(

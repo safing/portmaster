@@ -10,11 +10,11 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 var updateInProgress = abool.New()
@@ -24,20 +24,27 @@ var updateInProgress = abool.New()
 func tryListUpdate(ctx context.Context) error {
 	err := performUpdate(ctx)
 	if err != nil {
-		// Check if we are shutting down.
-		if module.IsStopping() {
+		// Check if we are shutting down, as to not raise a false alarm.
+		if module.mgr.IsDone() {
 			return nil
 		}
 
 		// Check if the module already has a failure status set. If not, set a
 		// generic one with the returned error.
-		failureStatus, _, _ := module.FailureStatus()
-		if failureStatus < modules.FailureWarning {
-			module.Warning(
-				filterlistsUpdateFailed,
-				"Filter Lists Update Failed",
-				fmt.Sprintf("The Portmaster failed to process a filter lists update. Filtering capabilities are currently either impaired or not available at all. Error: %s", err.Error()),
-			)
+
+		hasWarningState := false
+		for _, state := range module.states.Export().States {
+			if state.Type == mgr.StateTypeWarning {
+				hasWarningState = true
+			}
+		}
+		if !hasWarningState {
+			module.states.Add(mgr.State{
+				ID:      filterlistsUpdateFailed,
+				Name:    "Filter Lists Update Failed",
+				Message: fmt.Sprintf("The Portmaster failed to process a filter lists update. Filtering capabilities are currently either impaired or not available at all. Error: %s", err.Error()),
+				Type:    mgr.StateTypeWarning,
+			})
 		}
 
 		return err
@@ -122,15 +129,16 @@ func performUpdate(ctx context.Context) error {
 	// been updated now. Once we are done, start a worker
 	// for that purpose.
 	if cleanupRequired {
-		if err := module.RunWorker("filterlists:cleanup", removeAllObsoleteFilterEntries); err != nil {
+		if err := module.mgr.Do("filterlists:cleanup", removeAllObsoleteFilterEntries); err != nil {
 			// if we failed to remove all stale cache entries
 			// we abort now WITHOUT updating the database version. This means
 			// we'll try again during the next update.
-			module.Warning(
-				filterlistsStaleDataSurvived,
-				"Filter Lists May Overblock",
-				fmt.Sprintf("The Portmaster failed to delete outdated filter list data. Filtering capabilities are fully available, but overblocking may occur. Error: %s", err.Error()), //nolint:misspell // overblocking != overclocking
-			)
+			module.states.Add(mgr.State{
+				ID:      filterlistsStaleDataSurvived,
+				Name:    "Filter Lists May Overblock",
+				Message: fmt.Sprintf("The Portmaster failed to delete outdated filter list data. Filtering capabilities are fully available, but overblocking may occur. Error: %s", err.Error()), //nolint:misspell // overblocking != overclocking
+				Type:    mgr.StateTypeWarning,
+			})
 			return fmt.Errorf("failed to cleanup stale cache records: %w", err)
 		}
 	}
@@ -144,13 +152,13 @@ func performUpdate(ctx context.Context) error {
 	}
 
 	// The list update succeeded, resolve any states.
-	module.Resolve("")
+	module.states.Clear()
 	return nil
 }
 
-func removeAllObsoleteFilterEntries(ctx context.Context) error {
+func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx) error {
 	log.Debugf("intel/filterlists: cleanup task started, removing obsolete filter list entries ...")
-	n, err := cache.Purge(ctx, query.New(filterListKeyPrefix).Where(
+	n, err := cache.Purge(wc.Ctx(), query.New(filterListKeyPrefix).Where(
 		// TODO(ppacher): remember the timestamp we started the last update
 		// and use that rather than "one hour ago"
 		query.Where("UpdatedAt", query.LessThan, time.Now().Add(-time.Hour).Unix()),

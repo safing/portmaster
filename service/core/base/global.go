@@ -5,10 +5,10 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/dataroot"
-	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // Default Values (changeable for testing).
@@ -24,11 +24,9 @@ func init() {
 	flag.StringVar(&dataDir, "data", "", "set data directory")
 	flag.StringVar(&databaseDir, "db", "", "alias to --data (deprecated)")
 	flag.BoolVar(&showVersion, "version", false, "show version and exit")
-
-	modules.SetGlobalPrepFn(globalPrep)
 }
 
-func globalPrep() error {
+func prep(instance instance) error {
 	// check if meta info is ok
 	err := info.CheckVersion()
 	if err != nil {
@@ -37,8 +35,8 @@ func globalPrep() error {
 
 	// print version
 	if showVersion {
-		fmt.Println(info.FullVersion())
-		return modules.ErrCleanExit
+		instance.SetCmdLineOperation(printVersion)
+		return mgr.ErrExecuteCmdLineOp
 	}
 
 	// check data root
@@ -65,5 +63,10 @@ func globalPrep() error {
 	// set api listen address
 	api.SetDefaultAPIListenAddress(DefaultAPIListenAddress)
 
+	return nil
+}
+
+func printVersion() error {
+	fmt.Println(info.FullVersion())
 	return nil
 }

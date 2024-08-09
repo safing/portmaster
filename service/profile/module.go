@@ -4,20 +4,21 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync/atomic"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/migration"
-	"github.com/safing/portbase/dataroot"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/migration"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/log"
 	_ "github.com/safing/portmaster/service/core/base"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/profile/binmeta"
 	"github.com/safing/portmaster/service/updates"
 )
 
 var (
 	migrations  = migration.New("core:migrations/profile")
-	module      *modules.Module
 	updatesPath string
 )
 
@@ -28,11 +29,31 @@ const (
 	MigratedEvent     = "profile migrated"
 )
 
-func init() {
-	module = modules.Register("profiles", prep, start, stop, "base", "updates")
-	module.RegisterEvent(ConfigChangeEvent, true)
-	module.RegisterEvent(DeletedEvent, true)
-	module.RegisterEvent(MigratedEvent, true)
+type ProfileModule struct {
+	mgr      *mgr.Manager
+	instance instance
+
+	EventConfigChange *mgr.EventMgr[string]
+	EventDelete       *mgr.EventMgr[string]
+	EventMigrated     *mgr.EventMgr[[]string]
+
+	states *mgr.StateMgr
+}
+
+func (pm *ProfileModule) Manager() *mgr.Manager {
+	return pm.mgr
+}
+
+func (pm *ProfileModule) States() *mgr.StateMgr {
+	return pm.states
+}
+
+func (pm *ProfileModule) Start() error {
+	return start()
+}
+
+func (pm *ProfileModule) Stop() error {
+	return stop()
 }
 
 func prep() error {
@@ -45,6 +66,10 @@ func prep() error {
 	}
 
 	if err := registerMigrations(); err != nil {
+		return err
+	}
+
+	if err := registerAPIEndpoints(); err != nil {
 		return err
 	}
 
@@ -72,7 +97,7 @@ func start() error {
 	}
 	meta.check()
 
-	if err := migrations.Migrate(module.Ctx); err != nil {
+	if err := migrations.Migrate(module.mgr.Ctx()); err != nil {
 		log.Errorf("profile: migrations failed: %s", err)
 	}
 
@@ -91,15 +116,11 @@ func start() error {
 		return err
 	}
 
-	module.StartServiceWorker("clean active profiles", 0, cleanActiveProfiles)
+	module.mgr.Go("clean active profiles", cleanActiveProfiles)
 
-	err = updateGlobalConfigProfile(module.Ctx, nil)
+	err = updateGlobalConfigProfile(module.mgr.Ctx())
 	if err != nil {
 		log.Warningf("profile: error during loading global profile from configuration: %s", err)
-	}
-
-	if err := registerAPIEndpoints(); err != nil {
-		return err
 	}
 
 	return nil
@@ -107,4 +128,36 @@ func start() error {
 
 func stop() error {
 	return meta.Save()
+}
+
+var (
+	module     *ProfileModule
+	shimLoaded atomic.Bool
+)
+
+func NewModule(instance instance) (*ProfileModule, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+	m := mgr.New("Profile")
+	module = &ProfileModule{
+		mgr:      m,
+		instance: instance,
+
+		EventConfigChange: mgr.NewEventMgr[string](ConfigChangeEvent, m),
+		EventDelete:       mgr.NewEventMgr[string](DeletedEvent, m),
+		EventMigrated:     mgr.NewEventMgr[[]string](MigratedEvent, m),
+
+		states: mgr.NewStateMgr(m),
+	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
+	return module, nil
+}
+
+type instance interface {
+	Config() *config.Config
 }

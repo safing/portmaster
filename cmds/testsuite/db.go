@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/safing/portbase/database"
-	_ "github.com/safing/portbase/database/storage/hashmap"
+	"github.com/safing/portmaster/base/database"
+	_ "github.com/safing/portmaster/base/database/storage/hashmap"
 )
 
 func setupDatabases(path string) error {

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/intel"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/spn/access"
@@ -28,7 +28,7 @@ var (
 	ErrReInitSPNSuggested = errors.New("SPN re-init suggested")
 )
 
-func establishHomeHub(ctx context.Context) error {
+func establishHomeHub(ctx *mgr.WorkerCtx) error {
 	// Get own IP.
 	locations, ok := netenv.GetInternetLocation()
 	if !ok || len(locations.All) == 0 {
@@ -46,10 +46,10 @@ func establishHomeHub(ctx context.Context) error {
 	var myEntity *intel.Entity
 	if dl := locations.BestV4(); dl != nil && dl.IP != nil {
 		myEntity = (&intel.Entity{IP: dl.IP}).Init(0)
-		myEntity.FetchData(ctx)
+		myEntity.FetchData(ctx.Ctx())
 	} else if dl := locations.BestV6(); dl != nil && dl.IP != nil {
 		myEntity = (&intel.Entity{IP: dl.IP}).Init(0)
-		myEntity.FetchData(ctx)
+		myEntity.FetchData(ctx.Ctx())
 	}
 
 	// Get home hub policy for selecting the home hub.
@@ -112,8 +112,8 @@ findCandidates:
 		err = connectToHomeHub(ctx, candidate)
 		if err != nil {
 			// Check if context is canceled.
-			if ctx.Err() != nil {
-				return ctx.Err()
+			if ctx.IsDone() {
+				return ctx.Ctx().Err()
 			}
 			// Check if the SPN protocol is stopping again.
 			if errors.Is(err, terminal.ErrStopping) {
@@ -131,12 +131,12 @@ findCandidates:
 	return errors.New("no home hub candidates available")
 }
 
-func connectToHomeHub(ctx context.Context, dst *hub.Hub) error {
+func connectToHomeHub(wCtx *mgr.WorkerCtx, dst *hub.Hub) error {
 	// Create new context with timeout.
 	// The maximum timeout is a worst case safeguard.
 	// Keep in mind that multiple IPs and protocols may be tried in all configurations.
 	// Some servers will be (possibly on purpose) hard to reach.
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	ctx, cancel := context.WithTimeout(wCtx.Ctx(), 5*time.Minute)
 	defer cancel()
 
 	// Set and clean up exceptions.
@@ -210,7 +210,7 @@ func connectToHomeHub(ctx context.Context, dst *hub.Hub) error {
 	return nil
 }
 
-func optimizeNetwork(ctx context.Context, task *modules.Task) error {
+func optimizeNetwork(ctx *mgr.WorkerCtx) error {
 	if publicIdentity == nil {
 		return nil
 	}
@@ -254,7 +254,7 @@ optimize:
 		} else if createdConnections < result.MaxConnect {
 			attemptedConnections++
 
-			crane, tErr := EstablishPublicLane(ctx, connectTo.Hub)
+			crane, tErr := EstablishPublicLane(ctx.Ctx(), connectTo.Hub)
 			if !tErr.IsOK() {
 				log.Warningf("spn/captain: failed to establish lane to %s: %s", connectTo.Hub, tErr)
 			} else {

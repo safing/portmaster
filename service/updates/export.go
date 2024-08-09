@@ -1,17 +1,17 @@
 package updates
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"strings"
 	"sync"
 
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/updater"
-	"github.com/safing/portbase/utils/debug"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/base/utils/debug"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 
@@ -152,12 +152,8 @@ func initVersionExport() (err error) {
 		log.Warningf("updates: failed to export version information: %s", err)
 	}
 
-	return module.RegisterEventHook(
-		ModuleName,
-		VersionUpdateEvent,
-		"export version status",
-		export,
-	)
+	module.EventVersionsUpdated.AddCallback("export version status", export)
+	return nil
 }
 
 func (v *Versions) save() error {
@@ -182,20 +178,20 @@ func (s *UpdateStateExport) save() error {
 }
 
 // export is an event hook.
-func export(_ context.Context, _ interface{}) error {
+func export(_ *mgr.WorkerCtx, _ struct{}) (cancel bool, err error) {
 	// Export versions.
 	if err := GetVersions().save(); err != nil {
-		return err
+		return false, err
 	}
 	if err := GetSimpleVersions().save(); err != nil {
-		return err
+		return false, err
 	}
 	// Export udpate state.
 	if err := GetStateExport().save(); err != nil {
-		return err
+		return false, err
 	}
 
-	return nil
+	return false, nil
 }
 
 // AddToDebugInfo adds the update system status to the given debug.Info.

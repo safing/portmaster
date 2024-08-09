@@ -12,13 +12,13 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/compat"
 	_ "github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/firewall/inspection"
 	"github.com/safing/portmaster/service/firewall/interception"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
-	"github.com/safing/portmaster/service/netquery"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
@@ -720,10 +720,10 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 // 	return
 // }
 
-func packetHandler(ctx context.Context) error {
+func packetHandler(w *mgr.WorkerCtx) error {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-w.Done():
 			return nil
 		case pkt := <-interception.Packets:
 			if pkt != nil {
@@ -735,16 +735,16 @@ func packetHandler(ctx context.Context) error {
 	}
 }
 
-func bandwidthUpdateHandler(ctx context.Context) error {
+func bandwidthUpdateHandler(w *mgr.WorkerCtx) error {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-w.Done():
 			return nil
 		case bwUpdate := <-interception.BandwidthUpdates:
 			if bwUpdate != nil {
 				// DEBUG:
 				// log.Debugf("filter: bandwidth update: %s", bwUpdate)
-				updateBandwidth(ctx, bwUpdate)
+				updateBandwidth(w.Ctx(), bwUpdate)
 			} else {
 				return errors.New("received nil bandwidth update from interception")
 			}
@@ -793,8 +793,8 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 	}
 
 	// Update bandwidth in the netquery module.
-	if netquery.DefaultModule != nil && conn.BandwidthEnabled {
-		if err := netquery.DefaultModule.Store.UpdateBandwidth(
+	if module.instance.NetQuery() != nil && conn.BandwidthEnabled {
+		if err := module.instance.NetQuery().Store.UpdateBandwidth(
 			ctx,
 			conn.HistoryEnabled,
 			fmt.Sprintf("%s/%s", conn.ProcessContext.Source, conn.ProcessContext.Profile),
@@ -808,10 +808,10 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 	}
 }
 
-func statLogger(ctx context.Context) error {
+func statLogger(w *mgr.WorkerCtx) error {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-w.Done():
 			return nil
 		case <-time.After(10 * time.Second):
 			log.Tracef(

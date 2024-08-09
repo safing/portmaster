@@ -1,59 +1,73 @@
 package captain
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/modules/subsystems"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/netutils"
+	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/crew"
 	"github.com/safing/portmaster/spn/navigator"
 	"github.com/safing/portmaster/spn/patrol"
 	"github.com/safing/portmaster/spn/ships"
-	_ "github.com/safing/portmaster/spn/sluice"
 )
-
-const controlledFailureExitCode = 24
-
-var module *modules.Module
 
 // SPNConnectedEvent is the name of the event that is fired when the SPN has connected and is ready.
 const SPNConnectedEvent = "spn connect"
 
-func init() {
-	module = modules.Register("captain", prep, start, stop, "base", "terminal", "cabin", "ships", "docks", "crew", "navigator", "sluice", "patrol", "netenv")
-	module.RegisterEvent(SPNConnectedEvent, false)
-	subsystems.Register(
-		"spn",
-		"SPN",
-		"Safing Privacy Network",
-		module,
-		"config:spn/",
-		&config.Option{
-			Name:         "SPN Module",
-			Key:          CfgOptionEnableSPNKey,
-			Description:  "Start the Safing Privacy Network module. If turned off, the SPN is fully disabled on this device.",
-			OptType:      config.OptTypeBool,
-			DefaultValue: false,
-			Annotations: config.Annotations{
-				config.DisplayOrderAnnotation: cfgOptionEnableSPNOrder,
-				config.CategoryAnnotation:     "General",
-			},
-		},
-	)
+// Captain is the main module of the SPN.
+type Captain struct {
+	mgr      *mgr.Manager
+	instance instance
+
+	healthCheckTicker *mgr.SleepyTicker
+
+	publicIdentityUpdater *mgr.WorkerMgr
+	statusUpdater         *mgr.WorkerMgr
+
+	states            *mgr.StateMgr
+	EventSPNConnected *mgr.EventMgr[struct{}]
 }
 
-func prep() error {
+// Manager returns the module manager.
+func (c *Captain) Manager() *mgr.Manager {
+	return c.mgr
+}
+
+// States returns the module states.
+func (c *Captain) States() *mgr.StateMgr {
+	return c.states
+}
+
+// Start starts the module.
+func (c *Captain) Start() error {
+	return start()
+}
+
+// Stop stops the module.
+func (c *Captain) Stop() error {
+	return stop()
+}
+
+// SetSleep sets the sleep mode of the module.
+func (c *Captain) SetSleep(enabled bool) {
+	if c.healthCheckTicker != nil {
+		c.healthCheckTicker.SetSleep(enabled)
+	}
+}
+
+func (c *Captain) prep() error {
 	// Check if we can parse the bootstrap hub flag.
 	if err := prepBootstrapHubFlag(); err != nil {
 		return err
@@ -75,17 +89,13 @@ func prep() error {
 			return err
 		}
 
-		if err := module.RegisterEventHook(
-			"patrol",
-			patrol.ChangeSignalEventName,
+		c.instance.Patrol().EventChangeSignal.AddCallback(
 			"trigger hub status maintenance",
-			func(_ context.Context, _ any) error {
+			func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 				TriggerHubStatusMaintenance()
-				return nil
+				return false, nil
 			},
-		); err != nil {
-			return err
-		}
+		)
 	}
 
 	return prepConfig()
@@ -98,29 +108,15 @@ func start() error {
 	}
 	ships.EnableMasking(maskingBytes)
 
-	// Initialize intel.
-	if err := registerIntelUpdateHook(); err != nil {
-		return err
-	}
-	if err := updateSPNIntel(module.Ctx, nil); err != nil {
-		log.Errorf("spn/captain: failed to update SPN intel: %s", err)
-	}
-
 	// Initialize identity and piers.
 	if conf.PublicHub() {
 		// Load identity.
 		if err := loadPublicIdentity(); err != nil {
-			// We cannot recover from this, set controlled failure (do not retry).
-			modules.SetExitStatusCode(controlledFailureExitCode)
-
-			return err
+			return fmt.Errorf("load public identity: %w", err)
 		}
 
 		// Check if any networks are configured.
 		if !conf.HubHasIPv4() && !conf.HubHasIPv6() {
-			// We cannot recover from this, set controlled failure (do not retry).
-			modules.SetExitStatusCode(controlledFailureExitCode)
-
 			return errors.New("no IP addresses for Hub configured (or detected)")
 		}
 
@@ -139,6 +135,17 @@ func start() error {
 		crew.EnableConnecting(publicIdentity.Hub)
 	}
 
+	// Initialize intel.
+	module.mgr.Go("start", func(wc *mgr.WorkerCtx) error {
+		if err := registerIntelUpdateHook(); err != nil {
+			return err
+		}
+		if err := updateSPNIntel(module.mgr.Ctx(), nil); err != nil {
+			log.Errorf("spn/captain: failed to update SPN intel: %s", err)
+		}
+		return nil
+	})
+
 	// Subscribe to updates of cranes.
 	startDockHooks()
 
@@ -152,29 +159,20 @@ func start() error {
 
 	// network optimizer
 	if conf.PublicHub() {
-		module.NewTask("optimize network", optimizeNetwork).
-			Repeat(1 * time.Minute).
-			Schedule(time.Now().Add(15 * time.Second))
+		module.mgr.Delay("optimize network delay", 15*time.Second, optimizeNetwork).Repeat(1 * time.Minute)
 	}
 
 	// client + home hub manager
 	if conf.Client() {
-		module.StartServiceWorker("client manager", 0, clientManager)
+		module.mgr.Go("client manager", clientManager)
 
 		// Reset failing hubs when the network changes while not connected.
-		if err := module.RegisterEventHook(
-			"netenv",
-			"network changed",
-			"reset failing hubs",
-			func(_ context.Context, _ interface{}) error {
-				if ready.IsNotSet() {
-					navigator.Main.ResetFailingStates(module.Ctx)
-				}
-				return nil
-			},
-		); err != nil {
-			return err
-		}
+		module.instance.NetEnv().EventNetworkChange.AddCallback("reset failing hubs", func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
+			if ready.IsNotSet() {
+				navigator.Main.ResetFailingStates()
+			}
+			return false, nil
+		})
 	}
 
 	return nil
@@ -216,4 +214,41 @@ func apiAuthenticator(r *http.Request, s *http.Server) (*api.AuthToken, error) {
 		Read:  api.PermitUser,
 		Write: api.PermitUser,
 	}, nil
+}
+
+var (
+	module     *Captain
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Captain module.
+func New(instance instance) (*Captain, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+	m := mgr.New("Captain")
+	module = &Captain{
+		mgr:      m,
+		instance: instance,
+
+		states:            mgr.NewStateMgr(m),
+		EventSPNConnected: mgr.NewEventMgr[struct{}](SPNConnectedEvent, m),
+
+		publicIdentityUpdater: m.NewWorkerMgr("maintain public identity", maintainPublicIdentity, nil),
+		statusUpdater:         m.NewWorkerMgr("maintain public status", maintainPublicStatus, nil),
+	}
+
+	if err := module.prep(); err != nil {
+		return nil, err
+	}
+
+	return module, nil
+}
+
+type instance interface {
+	NetEnv() *netenv.NetEnv
+	Patrol() *patrol.Patrol
+	Config() *config.Config
+	Updates() *updates.Updates
+	SPNGroup() *mgr.ExtendedGroup
 }

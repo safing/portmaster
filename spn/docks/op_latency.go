@@ -2,15 +2,15 @@ package docks
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"time"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/varint"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/varint"
 )
 
 const (
@@ -82,12 +82,12 @@ func NewLatencyTestOp(t terminal.Terminal) (*LatencyTestClientOp, *terminal.Erro
 	}
 
 	// Start handler.
-	module.StartWorker("op latency handler", op.handler)
+	module.mgr.Go("op latency handler", op.handler)
 
 	return op, nil
 }
 
-func (op *LatencyTestClientOp) handler(ctx context.Context) error {
+func (op *LatencyTestClientOp) handler(ctx *mgr.WorkerCtx) error {
 	returnErr := terminal.ErrStopping
 	defer func() {
 		// Linters don't get that returnErr is used when directly used as defer.

@@ -10,8 +10,9 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/netutils"
 )
 
@@ -79,8 +80,15 @@ func parseFile(filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		log.Warningf("intel/customlists: failed to parse file %s", err)
-		module.Warning(parseWarningNotificationID, "Failed to open custom filter list", err.Error())
+		module.states.Add(mgr.State{
+			ID:      parseWarningNotificationID,
+			Name:    "Failed to open custom filter list",
+			Message: err.Error(),
+			Type:    mgr.StateTypeWarning,
+		})
 		return err
+	} else {
+		module.states.Remove(parseWarningNotificationID)
 	}
 	defer func() { _ = file.Close() }()
 
@@ -107,11 +115,15 @@ func parseFile(filePath string) error {
 
 	if invalidLinesRation > rationForInvalidLinesUntilWarning {
 		log.Warning("intel/customlists: Too many invalid lines")
-		module.Warning(zeroIPNotificationID, "Custom filter list has many invalid lines",
-			fmt.Sprintf(`%d out of %d lines are invalid.
-			 Check if you are using the correct file format and if the path to the custom filter list is correct.`, invalidLinesCount, allLinesCount))
+		module.states.Add(mgr.State{
+			ID:   zeroIPNotificationID,
+			Name: "Custom filter list has many invalid lines",
+			Message: fmt.Sprintf(`%d out of %d lines are invalid.
+			 Check if you are using the correct file format and if the path to the custom filter list is correct.`, invalidLinesCount, allLinesCount),
+			Type: mgr.StateTypeWarning,
+		})
 	} else {
-		module.Resolve(zeroIPNotificationID)
+		module.states.Remove(zeroIPNotificationID)
 	}
 
 	allEntriesCount := len(domainsFilterList) + len(ipAddressesFilterList) + len(autonomousSystemsFilterList) + len(countryCodesFilterList)
@@ -129,8 +141,6 @@ func parseFile(filePath string) error {
 			len(ipAddressesFilterList),
 			len(autonomousSystemsFilterList),
 			len(countryCodesFilterList)))
-
-	module.Resolve(parseWarningNotificationID)
 
 	return nil
 }

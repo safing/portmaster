@@ -3,7 +3,7 @@ package profile
 import (
 	"strings"
 
-	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/service/status"
 	"github.com/safing/portmaster/spn/access/account"

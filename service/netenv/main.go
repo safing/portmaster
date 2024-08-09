@@ -1,10 +1,13 @@
 package netenv
 
 import (
+	"errors"
+	"sync/atomic"
+
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // Event Names.
@@ -14,12 +17,34 @@ const (
 	OnlineStatusChangedEvent = "online status changed"
 )
 
-var module *modules.Module
+type NetEnv struct {
+	m        *mgr.Manager
+	instance instance
 
-func init() {
-	module = modules.Register(ModuleName, prep, start, nil)
-	module.RegisterEvent(NetworkChangedEvent, true)
-	module.RegisterEvent(OnlineStatusChangedEvent, true)
+	EventNetworkChange      *mgr.EventMgr[struct{}]
+	EventOnlineStatusChange *mgr.EventMgr[OnlineStatus]
+}
+
+func (ne *NetEnv) Manager() *mgr.Manager {
+	return ne.m
+}
+
+func (ne *NetEnv) Start() error {
+	ne.m.Go(
+		"monitor network changes",
+		monitorNetworkChanges,
+	)
+
+	ne.m.Go(
+		"monitor online status",
+		monitorOnlineStatus,
+	)
+
+	return nil
+}
+
+func (ne *NetEnv) Stop() error {
+	return nil
 }
 
 func prep() error {
@@ -34,22 +59,6 @@ func prep() error {
 	}
 
 	return prepLocation()
-}
-
-func start() error {
-	module.StartServiceWorker(
-		"monitor network changes",
-		0,
-		monitorNetworkChanges,
-	)
-
-	module.StartServiceWorker(
-		"monitor online status",
-		0,
-		monitorOnlineStatus,
-	)
-
-	return nil
 }
 
 var ipv6Enabled = abool.NewBool(true)
@@ -70,3 +79,30 @@ func checkForIPv6Stack() {
 	// Set IPv6 as enabled if any IPv6 addresses are found.
 	ipv6Enabled.SetTo(len(v6IPs) > 0)
 }
+
+var (
+	module     *NetEnv
+	shimLoaded atomic.Bool
+)
+
+// New returns a new NetEnv module.
+func New(instance instance) (*NetEnv, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+	m := mgr.New("NetEnv")
+	module = &NetEnv{
+		m:        m,
+		instance: instance,
+
+		EventNetworkChange:      mgr.NewEventMgr[struct{}]("network change", m),
+		EventOnlineStatusChange: mgr.NewEventMgr[OnlineStatus]("online status change", m),
+	}
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
+	return module, nil
+}
+
+type instance interface{}

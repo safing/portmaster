@@ -12,7 +12,8 @@ import (
 	"github.com/miekg/dns"
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 )
 
@@ -119,7 +120,7 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 			log.Warningf("resolver: heartbeat for dns client %s failed", tr.resolver.Info.DescriptiveName())
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-module.Stopping():
+		case <-module.mgr.Done():
 			return nil, ErrShuttingDown
 		}
 	} else {
@@ -127,7 +128,7 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-module.Stopping():
+		case <-module.mgr.Done():
 			return nil, ErrShuttingDown
 		default:
 		}
@@ -175,7 +176,7 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 	}
 
 	// Start worker.
-	module.StartWorker("dns client", resolverConn.handler)
+	module.mgr.Go("dns client", resolverConn.handler)
 
 	// Set resolver conn for reuse.
 	tr.resolverConn = resolverConn
@@ -204,7 +205,7 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	case resolverConn.queries <- tq:
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-module.Stopping():
+	case <-module.mgr.Done():
 		return nil, ErrShuttingDown
 	case <-time.After(defaultRequestTimeout):
 		return nil, ErrTimeout
@@ -216,7 +217,7 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	case reply = <-tq.Response:
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-module.Stopping():
+	case <-module.mgr.Done():
 		return nil, ErrShuttingDown
 	case <-time.After(defaultRequestTimeout):
 		return nil, ErrTimeout
@@ -282,9 +283,9 @@ func (trc *tcpResolverConn) shutdown() {
 	}
 }
 
-func (trc *tcpResolverConn) handler(workerCtx context.Context) error {
+func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 	// Set up context and cleanup.
-	trc.ctx, trc.cancelCtx = context.WithCancel(workerCtx)
+	trc.ctx, trc.cancelCtx = context.WithCancel(workerCtx.Ctx())
 	defer trc.shutdown()
 
 	// Set up variables.
@@ -292,7 +293,7 @@ func (trc *tcpResolverConn) handler(workerCtx context.Context) error {
 	ttlTimer := time.After(defaultClientTTL)
 
 	// Start connection reader.
-	module.StartWorker("dns client reader", trc.reader)
+	module.mgr.Go("dns client reader", trc.reader)
 
 	// Handle requests.
 	for {
@@ -357,7 +358,7 @@ func (trc *tcpResolverConn) handler(workerCtx context.Context) error {
 // assignUniqueID makes sure that ID assigned to msg is unique.
 func (trc *tcpResolverConn) assignUniqueID(msg *dns.Msg) {
 	// try a random ID 10000 times
-	for i := 0; i < 10000; i++ { // don't try forever
+	for range 10000 { // don't try forever
 		_, exists := trc.inFlightQueries[msg.Id]
 		if !exists {
 			return // we are unique, yay!
@@ -416,7 +417,7 @@ func (trc *tcpResolverConn) handleQueryResponse(msg *dns.Msg) {
 	}
 }
 
-func (trc *tcpResolverConn) reader(workerCtx context.Context) error {
+func (trc *tcpResolverConn) reader(workerCtx *mgr.WorkerCtx) error {
 	defer trc.cancelCtx()
 
 	for {

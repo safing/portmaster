@@ -10,8 +10,9 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/firewall"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/nameserver/nsutil"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network"
@@ -24,8 +25,8 @@ var hostname string
 const internalError = "internal error: "
 
 func handleRequestAsWorker(w dns.ResponseWriter, query *dns.Msg) {
-	err := module.RunWorker("handle dns request", func(ctx context.Context) error {
-		return handleRequest(ctx, w, query)
+	err := module.mgr.Do("handle dns request", func(wc *mgr.WorkerCtx) error {
+		return handleRequest(wc.Ctx(), w, query)
 	})
 	if err != nil {
 		log.Warningf("nameserver: failed to handle dns request: %s", err)

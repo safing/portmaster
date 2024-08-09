@@ -3,28 +3,28 @@ package netquery
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	servertiming "github.com/mitchellh/go-server-timing"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/modules/subsystems"
-	"github.com/safing/portbase/runtime"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/runtime"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network"
+	"github.com/safing/portmaster/service/profile"
 )
 
-// DefaultModule is the default netquery module.
-var DefaultModule *module
-
-type module struct {
-	*modules.Module
+type NetQuery struct {
+	mgr      *mgr.Manager
+	instance instance
 
 	Store *Database
 
@@ -33,66 +33,43 @@ type module struct {
 	feed chan *network.Connection
 }
 
-func init() {
-	DefaultModule = new(module)
-
-	DefaultModule.Module = modules.Register(
-		"netquery",
-		DefaultModule.prepare,
-		DefaultModule.start,
-		DefaultModule.stop,
-		"api",
-		"network",
-		"database",
-	)
-
-	subsystems.Register(
-		"history",
-		"Network History",
-		"Keep Network History Data",
-		DefaultModule.Module,
-		"config:history/",
-		nil,
-	)
-}
-
-func (m *module) prepare() error {
+func (nq *NetQuery) prepare() error {
 	var err error
 
-	m.db = database.NewInterface(&database.Options{
+	nq.db = database.NewInterface(&database.Options{
 		Local:    true,
 		Internal: true,
 	})
 
 	// TODO: Open database in start() phase.
-	m.Store, err = NewInMemory()
+	nq.Store, err = NewInMemory()
 	if err != nil {
 		return fmt.Errorf("failed to create in-memory database: %w", err)
 	}
 
-	m.mng, err = NewManager(m.Store, "netquery/data/", runtime.DefaultRegistry)
+	nq.mng, err = NewManager(nq.Store, "netquery/data/", runtime.DefaultRegistry)
 	if err != nil {
 		return fmt.Errorf("failed to create manager: %w", err)
 	}
 
-	m.feed = make(chan *network.Connection, 1000)
+	nq.feed = make(chan *network.Connection, 1000)
 
 	queryHander := &QueryHandler{
-		Database:  m.Store,
+		Database:  nq.Store,
 		IsDevMode: config.Concurrent.GetAsBool(config.CfgDevModeKey, false),
 	}
 
 	batchHander := &BatchQueryHandler{
-		Database:  m.Store,
+		Database:  nq.Store,
 		IsDevMode: config.Concurrent.GetAsBool(config.CfgDevModeKey, false),
 	}
 
 	chartHandler := &ActiveChartHandler{
-		Database: m.Store,
+		Database: nq.Store,
 	}
 
 	bwChartHandler := &BandwidthChartHandler{
-		Database: m.Store,
+		Database: nq.Store,
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
@@ -102,7 +79,6 @@ func (m *module) prepare() error {
 		MimeType:    "application/json",
 		Read:        api.PermitUser, // Needs read+write as the query is sent using POST data.
 		Write:       api.PermitUser, // Needs read+write as the query is sent using POST data.
-		BelongsTo:   m.Module,
 		HandlerFunc: servertiming.Middleware(queryHander, nil).ServeHTTP,
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
@@ -115,7 +91,6 @@ func (m *module) prepare() error {
 		MimeType:    "application/json",
 		Read:        api.PermitUser, // Needs read+write as the query is sent using POST data.
 		Write:       api.PermitUser, // Needs read+write as the query is sent using POST data.
-		BelongsTo:   m.Module,
 		HandlerFunc: servertiming.Middleware(batchHander, nil).ServeHTTP,
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
@@ -127,7 +102,6 @@ func (m *module) prepare() error {
 		Path:        "netquery/charts/connection-active",
 		MimeType:    "application/json",
 		Write:       api.PermitUser,
-		BelongsTo:   m.Module,
 		HandlerFunc: servertiming.Middleware(chartHandler, nil).ServeHTTP,
 	}); err != nil {
 		return fmt.Errorf("failed to register API endpoint: %w", err)
@@ -138,7 +112,6 @@ func (m *module) prepare() error {
 		Path:        "netquery/charts/bandwidth",
 		MimeType:    "application/json",
 		Write:       api.PermitUser,
-		BelongsTo:   m.Module,
 		HandlerFunc: bwChartHandler.ServeHTTP,
 		Name:        "Bandwidth Chart",
 		Description: "Query the in-memory sqlite connection database and return a chart of bytes sent/received.",
@@ -152,7 +125,6 @@ func (m *module) prepare() error {
 		Path:        "netquery/history/clear",
 		MimeType:    "application/json",
 		Write:       api.PermitUser,
-		BelongsTo:   m.Module,
 		ActionFunc: func(ar *api.Request) (msg string, err error) {
 			var body struct {
 				ProfileIDs []string `json:"profileIDs"`
@@ -162,13 +134,13 @@ func (m *module) prepare() error {
 			}
 
 			if len(body.ProfileIDs) == 0 {
-				if err := m.mng.store.RemoveAllHistoryData(ar.Context()); err != nil {
+				if err := nq.mng.store.RemoveAllHistoryData(ar.Context()); err != nil {
 					return "", fmt.Errorf("failed to remove all history: %w", err)
 				}
 			} else {
 				merr := new(multierror.Error)
 				for _, profileID := range body.ProfileIDs {
-					if err := m.mng.store.RemoveHistoryForProfile(ar.Context(), profileID); err != nil {
+					if err := nq.mng.store.RemoveHistoryForProfile(ar.Context(), profileID); err != nil {
 						merr.Errors = append(merr.Errors, fmt.Errorf("failed to clear history for %q: %w", profileID, err))
 					} else {
 						log.Infof("netquery: successfully cleared history for %s", profileID)
@@ -187,12 +159,11 @@ func (m *module) prepare() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Name:      "Apply connection history retention threshold",
-		Path:      "netquery/history/cleanup",
-		Write:     api.PermitUser,
-		BelongsTo: m.Module,
+		Name:  "Apply connection history retention threshold",
+		Path:  "netquery/history/cleanup",
+		Write: api.PermitUser,
 		ActionFunc: func(ar *api.Request) (msg string, err error) {
-			if err := m.Store.CleanupHistory(ar.Context()); err != nil {
+			if err := nq.Store.CleanupHistory(ar.Context()); err != nil {
 				return "", err
 			}
 			return "Deleted outdated connections.", nil
@@ -204,13 +175,17 @@ func (m *module) prepare() error {
 	return nil
 }
 
-func (m *module) start() error {
-	m.StartServiceWorker("netquery connection feed listener", 0, func(ctx context.Context) error {
-		sub, err := m.db.Subscribe(query.New("network:"))
+func (nq *NetQuery) Manager() *mgr.Manager {
+	return nq.mgr
+}
+
+func (nq *NetQuery) Start() error {
+	nq.mgr.Go("netquery connection feed listener", func(ctx *mgr.WorkerCtx) error {
+		sub, err := nq.db.Subscribe(query.New("network:"))
 		if err != nil {
 			return fmt.Errorf("failed to subscribe to network tree: %w", err)
 		}
-		defer close(m.feed)
+		defer close(nq.feed)
 		defer func() {
 			_ = sub.Cancel()
 		}()
@@ -231,24 +206,24 @@ func (m *module) start() error {
 					continue
 				}
 
-				m.feed <- conn
+				nq.feed <- conn
 			}
 		}
 	})
 
-	m.StartServiceWorker("netquery connection feed handler", 0, func(ctx context.Context) error {
-		m.mng.HandleFeed(ctx, m.feed)
+	nq.mgr.Go("netquery connection feed handler", func(ctx *mgr.WorkerCtx) error {
+		nq.mng.HandleFeed(ctx.Ctx(), nq.feed)
 		return nil
 	})
 
-	m.StartServiceWorker("netquery live db cleaner", 0, func(ctx context.Context) error {
+	nq.mgr.Go("netquery live db cleaner", func(ctx *mgr.WorkerCtx) error {
 		for {
 			select {
 			case <-ctx.Done():
 				return nil
 			case <-time.After(10 * time.Second):
 				threshold := time.Now().Add(-network.DeleteConnsAfterEndedThreshold)
-				count, err := m.Store.Cleanup(ctx, threshold)
+				count, err := nq.Store.Cleanup(ctx.Ctx(), threshold)
 				if err != nil {
 					log.Errorf("netquery: failed to removed old connections from live db: %s", err)
 				} else {
@@ -258,51 +233,50 @@ func (m *module) start() error {
 		}
 	})
 
-	m.NewTask("network history cleaner", func(ctx context.Context, _ *modules.Task) error {
-		return m.Store.CleanupHistory(ctx)
-	}).Repeat(time.Hour).Schedule(time.Now().Add(10 * time.Minute))
+	nq.mgr.Delay("network history cleaner delay", 10*time.Minute, func(w *mgr.WorkerCtx) error {
+		return nq.Store.CleanupHistory(w.Ctx())
+	}).Repeat(1 * time.Hour)
 
 	// For debugging, provide a simple direct SQL query interface using
 	// the runtime database.
 	// Only expose in development mode.
 	if config.GetAsBool(config.CfgDevModeKey, false)() {
-		_, err := NewRuntimeQueryRunner(m.Store, "netquery/query/", runtime.DefaultRegistry)
+		_, err := NewRuntimeQueryRunner(nq.Store, "netquery/query/", runtime.DefaultRegistry)
 		if err != nil {
 			return fmt.Errorf("failed to set up runtime SQL query runner: %w", err)
 		}
 	}
 
 	// Migrate profile IDs in history database when profiles are migrated/merged.
-	if err := m.RegisterEventHook(
-		"profiles",
-		"profile migrated",
-		"migrate profile IDs in history database",
-		func(ctx context.Context, data interface{}) error {
-			if profileIDs, ok := data.([]string); ok && len(profileIDs) == 2 {
-				return m.Store.MigrateProfileID(ctx, profileIDs[0], profileIDs[1])
+	nq.instance.Profile().EventMigrated.AddCallback("migrate profile IDs in history database",
+		func(ctx *mgr.WorkerCtx, profileIDs []string) (bool, error) {
+			if len(profileIDs) == 2 {
+				return false, nq.Store.MigrateProfileID(ctx.Ctx(), profileIDs[0], profileIDs[1])
 			}
-			return nil
-		},
-	); err != nil {
-		return err
-	}
+			return false, nil
+		})
 
 	return nil
 }
 
-func (m *module) stop() error {
-	// we don't use m.Module.Ctx here because it is already cancelled when stop is called.
+func (nq *NetQuery) Stop() error {
+	// Cacnel the module context.
+	nq.mgr.Cancel()
+	// Wait for all workers before we start the shutdown.
+	nq.mgr.WaitForWorkersFromStop(time.Minute)
+
+	// we don't use the module ctx here because it is already canceled.
 	// just give the clean up 1 minute to happen and abort otherwise.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	if err := m.mng.store.MarkAllHistoryConnectionsEnded(ctx); err != nil {
+	if err := nq.mng.store.MarkAllHistoryConnectionsEnded(ctx); err != nil {
 		// handle the error by just logging it. There's not much we can do here
 		// and returning an error to the module system doesn't help much as well...
 		log.Errorf("netquery: failed to mark connections in history database as ended: %s", err)
 	}
 
-	if err := m.mng.store.Close(); err != nil {
+	if err := nq.mng.store.Close(); err != nil {
 		log.Errorf("netquery: failed to close sqlite database: %s", err)
 	} else {
 		// Clear deleted connections from database.
@@ -312,4 +286,29 @@ func (m *module) stop() error {
 	}
 
 	return nil
+}
+
+var (
+	module     *NetQuery
+	shimLoaded atomic.Bool
+)
+
+// NewModule returns a new NetQuery module.
+func NewModule(instance instance) (*NetQuery, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+	m := mgr.New("NetQuery")
+	module = &NetQuery{
+		mgr:      m,
+		instance: instance,
+	}
+	if err := module.prepare(); err != nil {
+		return nil, fmt.Errorf("failed to prepare netquery module: %w", err)
+	}
+	return module, nil
+}
+
+type instance interface {
+	Profile() *profile.ProfileModule
 }

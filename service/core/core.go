@@ -1,58 +1,58 @@
 package core
 
 import (
+	"errors"
 	"flag"
 	"fmt"
-	"time"
+	"sync/atomic"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/metrics"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/modules/subsystems"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/metrics"
 	_ "github.com/safing/portmaster/service/broadcasts"
+	"github.com/safing/portmaster/service/mgr"
 	_ "github.com/safing/portmaster/service/netenv"
 	_ "github.com/safing/portmaster/service/netquery"
 	_ "github.com/safing/portmaster/service/status"
 	_ "github.com/safing/portmaster/service/sync"
 	_ "github.com/safing/portmaster/service/ui"
-	"github.com/safing/portmaster/service/updates"
 )
 
-const (
-	eventShutdown = "shutdown"
-	eventRestart  = "restart"
-)
+// Core is the core service module.
+type Core struct {
+	m        *mgr.Manager
+	instance instance
 
-var (
-	module *modules.Module
+	EventShutdown *mgr.EventMgr[struct{}]
+	EventRestart  *mgr.EventMgr[struct{}]
+}
 
-	disableShutdownEvent bool
-)
+// Manager returns the manager.
+func (c *Core) Manager() *mgr.Manager {
+	return c.m
+}
+
+// Start starts the module.
+func (c *Core) Start() error {
+	return start()
+}
+
+// Stop stops the module.
+func (c *Core) Stop() error {
+	return nil
+}
+
+var disableShutdownEvent bool
 
 func init() {
-	module = modules.Register("core", prep, start, nil, "base", "subsystems", "status", "updates", "api", "notifications", "ui", "netenv", "network", "netquery", "interception", "compat", "broadcasts", "sync")
-	subsystems.Register(
-		"core",
-		"Core",
-		"Base Structure and System Integration",
-		module,
-		"config:core/",
-		nil,
-	)
-
 	flag.BoolVar(
 		&disableShutdownEvent,
 		"disable-shutdown-event",
 		false,
 		"disable shutdown event to keep app and notifier open when core shuts down",
 	)
-
-	modules.SetGlobalShutdownFn(shutdownHook)
 }
 
 func prep() error {
-	registerEvents()
-
 	// init config
 	err := registerConfig()
 	if err != nil {
@@ -60,6 +60,10 @@ func prep() error {
 	}
 
 	if err := registerAPIEndpoints(); err != nil {
+		return err
+	}
+
+	if err := initModulesIntegration(); err != nil {
 		return err
 	}
 
@@ -79,22 +83,33 @@ func start() error {
 	return nil
 }
 
-func registerEvents() {
-	module.RegisterEvent(eventShutdown, true)
-	module.RegisterEvent(eventRestart, true)
-}
+var (
+	module     *Core
+	shimLoaded atomic.Bool
+)
 
-func shutdownHook() {
-	// Notify everyone of the restart/shutdown.
-	if !updates.IsRestarting() {
-		// Only trigger shutdown event if not disabled.
-		if !disableShutdownEvent {
-			module.TriggerEvent(eventShutdown, nil)
-		}
-	} else {
-		module.TriggerEvent(eventRestart, nil)
+// New returns a new NetEnv module.
+func New(instance instance) (*Core, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
 	}
 
-	// Wait a bit for the event to propagate.
-	time.Sleep(100 * time.Millisecond)
+	m := mgr.New("Core")
+	module = &Core{
+		m:        m,
+		instance: instance,
+
+		EventShutdown: mgr.NewEventMgr[struct{}]("shutdown", m),
+		EventRestart:  mgr.NewEventMgr[struct{}]("restart", m),
+	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
+	return module, nil
+}
+
+type instance interface {
+	Shutdown()
 }

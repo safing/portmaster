@@ -9,7 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/spn/access"
@@ -37,7 +38,7 @@ func HandleSluiceRequest(connInfo *network.Connection, conn net.Conn) {
 		connInfo: connInfo,
 		conn:     conn,
 	}
-	module.StartWorker("tunnel handler", t.connectWorker)
+	module.mgr.Go("tunnel handler", t.connectWorker)
 }
 
 // Tunnel represents the local information and endpoint of a data tunnel.
@@ -52,9 +53,9 @@ type Tunnel struct {
 	stickied    bool
 }
 
-func (t *Tunnel) connectWorker(ctx context.Context) (err error) {
+func (t *Tunnel) connectWorker(wc *mgr.WorkerCtx) (err error) {
 	// Get tracing logger.
-	ctx, tracer := log.AddTracer(ctx)
+	ctx, tracer := log.AddTracer(wc.Ctx())
 	defer tracer.Submit()
 
 	// Save start time.

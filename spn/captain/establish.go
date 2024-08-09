@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/docks"
 	"github.com/safing/portmaster/spn/hub"
@@ -28,8 +28,8 @@ func EstablishCrane(callerCtx context.Context, dst *hub.Hub) (*docks.Crane, erro
 		return nil, fmt.Errorf("failed to launch ship: %w", err)
 	}
 
-	// On pure clients, mark all ships as public in order to show unmasked data in logs.
-	if conf.Client() && !conf.PublicHub() {
+	// If not a public hub, mark all ships as public in order to show unmasked data in logs.
+	if !conf.PublicHub() {
 		ship.MarkPublic()
 	}
 

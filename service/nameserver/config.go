@@ -4,7 +4,7 @@ import (
 	"flag"
 	"runtime"
 
-	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/service/core"
 )
 

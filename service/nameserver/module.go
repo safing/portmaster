@@ -1,27 +1,48 @@
 package nameserver
 
 import (
-	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	"github.com/miekg/dns"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/modules/subsystems"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/compat"
 	"github.com/safing/portmaster/service/firewall"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 )
 
-var (
-	module *modules.Module
+type NameServer struct {
+	mgr      *mgr.Manager
+	instance instance
 
+	states *mgr.StateMgr
+}
+
+func (ns *NameServer) Manager() *mgr.Manager {
+	return ns.mgr
+}
+
+func (ns *NameServer) States() *mgr.StateMgr {
+	return ns.states
+}
+
+func (ns *NameServer) Start() error {
+	return start()
+}
+
+func (ns *NameServer) Stop() error {
+	return stop()
+}
+
+var (
 	stopListeners     bool
 	stopListener1     func() error
 	stopListener2     func() error
@@ -30,18 +51,6 @@ var (
 	eventIDConflictingService = "nameserver:conflicting-service"
 	eventIDListenerFailed     = "nameserver:listener-failed"
 )
-
-func init() {
-	module = modules.Register("nameserver", prep, start, stop, "core", "resolver")
-	subsystems.Register(
-		"dns",
-		"Secure DNS",
-		"DNS resolver with scoping and DNS-over-TLS",
-		module,
-		"config:dns/",
-		nil,
-	)
-}
 
 func prep() error {
 	return registerConfig()
@@ -101,7 +110,7 @@ func start() error {
 
 func startListener(ip net.IP, port uint16, first bool) {
 	// Start DNS server as service worker.
-	module.StartServiceWorker("dns resolver", 0, func(ctx context.Context) error {
+	module.mgr.Go("dns resolver", func(ctx *mgr.WorkerCtx) error {
 		// Create DNS server.
 		dnsServer := &dns.Server{
 			Addr: net.JoinHostPort(
@@ -139,7 +148,7 @@ func startListener(ip net.IP, port uint16, first bool) {
 
 		// Resolve generic listener error, if primary listener.
 		if first {
-			module.Resolve(eventIDListenerFailed)
+			module.states.Remove(eventIDListenerFailed)
 		}
 
 		// Start listening.
@@ -147,7 +156,7 @@ func startListener(ip net.IP, port uint16, first bool) {
 		err := dnsServer.ListenAndServe()
 		if err != nil {
 			// Stop worker without error if we are shutting down.
-			if module.IsStopping() {
+			if module.mgr.IsDone() {
 				return nil
 			}
 			log.Warningf("nameserver: failed to listen on %s: %s", dnsServer.Addr, err)
@@ -218,7 +227,7 @@ func handleListenError(err error, ip net.IP, port uint16, primaryListener bool) 
 
 	// Attach error to module, if primary listener.
 	if primaryListener {
-		n.AttachToModule(module)
+		n.SyncWithState(module.states)
 	}
 }
 
@@ -286,3 +295,29 @@ func getListenAddresses(listenAddress string) (ip1, ip2 net.IP, port uint16, err
 
 	return ip1, ip2, uint16(port64), nil
 }
+
+var (
+	module     *NameServer
+	shimLoaded atomic.Bool
+)
+
+// New returns a new NameServer module.
+func New(instance instance) (*NameServer, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+	m := mgr.New("NameServer")
+	module = &NameServer{
+		mgr:      m,
+		instance: instance,
+
+		states: mgr.NewStateMgr(m),
+	}
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
+	return module, nil
+}
+
+type instance interface{}

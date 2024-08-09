@@ -510,28 +510,4 @@ export class NetqueryHelper {
         }
       });
   }
-
-  /**
-   * Iterates of all outgoing rules and collects which domains are blocked.
-   * It stops collecting domains as soon as the first "allow something" rule
-   * is hit.
-   */
-  // FIXME
-  /*
-  private collectBlockedDomains() {
-    let blockedDomains = new Set<string>();
-
-    const rules = getAppSetting<string[]>(this.profile!.profile!.Config, 'filter/endpoints') || [];
-    for (let i = 0; i < rules.length; i++) {
-      const rule = rules[i];
-      if (rule.startsWith('+ ')) {
-        break;
-      }
-
-      blockedDomains.add(rule.slice(2))
-    }
-
-    this.blockedDomains = Array.from(blockedDomains)
-  }
-  */
 }

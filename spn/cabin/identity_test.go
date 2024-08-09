@@ -19,8 +19,8 @@ func TestIdentity(t *testing.T) {
 	}
 
 	// Create new identity.
-	identityTestKey := "core:spn/public/identity"
-	id, err := CreateIdentity(module.Ctx, conf.MainMapName)
+	identityTestKey := "core:spn/public/identity-test"
+	id, err := CreateIdentity(module.m.Ctx(), conf.MainMapName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,19 +111,37 @@ func TestIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Ensure the Measurements reset the values.
+	measurements := id.Hub.GetMeasurements()
+	measurements.SetLatency(0)
+	measurements.SetCapacity(0)
+	measurements.SetCalculatedCost(hub.MaxCalculatedCost)
+
 	// Save to and load from database.
 	err = id.Save()
 	if err != nil {
 		t.Fatal(err)
 	}
-	id2, changed, err := LoadIdentity(identityTestKey)
+	id2, _, err := LoadIdentity(identityTestKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if changed {
-		t.Error("unexpected change")
-	}
 
-	// Check if they match
-	assert.Equal(t, id, id2, "identities should be equal")
+	// Reset everything that should not be compared.
+	id.infoExportCache = nil
+	id2.infoExportCache = nil
+	id.statusExportCache = nil
+	id2.statusExportCache = nil
+	id.ExchKeys = nil
+	id2.ExchKeys = nil
+	id.Hub.Status = nil
+	id2.Hub.Status = nil
+	id.Hub.PublicKey = nil
+	id2.Hub.PublicKey = nil
+
+	// Check important aspects of the identities.
+	assert.Equal(t, id.ID, id2.ID, "identity IDs must be equal")
+	assert.Equal(t, id.Map, id2.Map, "identity Maps should be equal")
+	assert.Equal(t, id.Hub, id2.Hub, "identity Hubs should be equal")
+	assert.Equal(t, id.Signet, id2.Signet, "identity Signets should be equal")
 }

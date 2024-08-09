@@ -3,9 +3,9 @@ package docks
 import (
 	"net"
 
-	"github.com/safing/portbase/container"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 // CraneTerminal is a terminal started by a crane.
@@ -74,7 +74,7 @@ func initCraneTerminal(
 	t.SetTerminalExtension(ct)
 
 	// Start workers.
-	t.StartWorkers(module, "crane terminal")
+	t.StartWorkers(module.mgr, "crane terminal")
 
 	return ct
 }

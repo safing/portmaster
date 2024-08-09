@@ -1,22 +1,33 @@
 package crew
 
 import (
+	"errors"
+	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/terminal"
 )
 
-var module *modules.Module
+type Crew struct {
+	mgr      *mgr.Manager
+	instance instance
+}
 
-func init() {
-	module = modules.Register("crew", nil, start, stop, "terminal", "docks", "navigator", "intel", "cabin")
+func (c *Crew) Manager() *mgr.Manager {
+	return c.mgr
+}
+
+func (c *Crew) Start() error {
+	return start()
+}
+
+func (c *Crew) Stop() error {
+	return stop()
 }
 
 func start() error {
-	module.NewTask("sticky cleaner", cleanStickyHubs).
-		Repeat(10 * time.Minute)
-
+	_ = module.mgr.Repeat("sticky cleaner", 10*time.Minute, cleanStickyHubs)
 	return registerMetrics()
 }
 
@@ -42,3 +53,23 @@ func reportConnectError(tErr *terminal.Error) {
 func ConnectErrors() <-chan *terminal.Error {
 	return connectErrors
 }
+
+var (
+	module     *Crew
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Config module.
+func New(instance instance) (*Crew, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+	m := mgr.New("Crew")
+	module = &Crew{
+		mgr:      m,
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface{}

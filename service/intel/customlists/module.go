@@ -1,27 +1,46 @@
 package customlists
 
 import (
-	"context"
 	"errors"
 	"net"
 	"os"
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/service/mgr"
 )
 
-var module *modules.Module
+type CustomList struct {
+	mgr      *mgr.Manager
+	instance instance
 
-const (
-	configModuleName  = "config"
-	configChangeEvent = "config change"
-)
+	updateFilterListWorkerMgr *mgr.WorkerMgr
+
+	states *mgr.StateMgr
+}
+
+func (cl *CustomList) Manager() *mgr.Manager {
+	return cl.mgr
+}
+
+func (cl *CustomList) States() *mgr.StateMgr {
+	return cl.states
+}
+
+func (cl *CustomList) Start() error {
+	return start()
+}
+
+func (cl *CustomList) Stop() error {
+	return nil
+}
 
 // Helper variables for parsing the input file.
 var (
@@ -34,16 +53,11 @@ var (
 	filterListFileModifiedTime time.Time
 
 	filterListLock sync.RWMutex
-	parserTask     *modules.Task
 
 	// ErrNotConfigured is returned when updating the custom filter list, but it
 	// is not configured.
 	ErrNotConfigured = errors.New("custom filter list not configured")
 )
-
-func init() {
-	module = modules.Register("customlists", prep, start, nil, "base")
-}
 
 func prep() error {
 	initFilterLists()
@@ -56,11 +70,10 @@ func prep() error {
 
 	// Register api endpoint for updating the filter list.
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:      "customlists/update",
-		Write:     api.PermitUser,
-		BelongsTo: module,
+		Path:  "customlists/update",
+		Write: api.PermitUser,
 		ActionFunc: func(ar *api.Request) (msg string, err error) {
-			errCheck := checkAndUpdateFilterList()
+			errCheck := checkAndUpdateFilterList(nil)
 			if errCheck != nil {
 				return "", errCheck
 			}
@@ -77,30 +90,23 @@ func prep() error {
 
 func start() error {
 	// Register to hook to update after config change.
-	if err := module.RegisterEventHook(
-		configModuleName,
-		configChangeEvent,
+	module.instance.Config().EventConfigChange.AddCallback(
 		"update custom filter list",
-		func(ctx context.Context, obj interface{}) error {
-			if err := checkAndUpdateFilterList(); !errors.Is(err, ErrNotConfigured) {
-				return err
+		func(wc *mgr.WorkerCtx, _ struct{}) (bool, error) {
+			if err := checkAndUpdateFilterList(wc); !errors.Is(err, ErrNotConfigured) {
+				return false, err
 			}
-			return nil
+			return false, nil
 		},
-	); err != nil {
-		return err
-	}
+	)
 
 	// Create parser task and enqueue for execution. "checkAndUpdateFilterList" will schedule the next execution.
-	parserTask = module.NewTask("intel/customlists:file-update-check", func(context.Context, *modules.Task) error {
-		_ = checkAndUpdateFilterList()
-		return nil
-	}).Schedule(time.Now().Add(20 * time.Second))
+	module.updateFilterListWorkerMgr.Delay(20 * time.Second).Repeat(1 * time.Minute)
 
 	return nil
 }
 
-func checkAndUpdateFilterList() error {
+func checkAndUpdateFilterList(_ *mgr.WorkerCtx) error {
 	filterListLock.Lock()
 	defer filterListLock.Unlock()
 
@@ -109,9 +115,6 @@ func checkAndUpdateFilterList() error {
 	if filePath == "" {
 		return ErrNotConfigured
 	}
-
-	// Schedule next update check
-	parserTask.Schedule(time.Now().Add(1 * time.Minute))
 
 	// Try to get file info
 	modifiedTime := time.Now()
@@ -204,4 +207,34 @@ func splitDomain(domain string) []string {
 		domains = append(domains, d)
 	}
 	return domains
+}
+
+var (
+	module     *CustomList
+	shimLoaded atomic.Bool
+)
+
+// New returns a new CustomList module.
+func New(instance instance) (*CustomList, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+	m := mgr.New("CustomList")
+	module = &CustomList{
+		mgr:      m,
+		instance: instance,
+
+		states:                    mgr.NewStateMgr(m),
+		updateFilterListWorkerMgr: m.NewWorkerMgr("update custom filter list", checkAndUpdateFilterList, nil),
+	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
+	return module, nil
+}
+
+type instance interface {
+	Config() *config.Config
 }

@@ -6,8 +6,8 @@ import (
 	locale "github.com/Xuanwo/go-locale"
 	"golang.org/x/exp/slices"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
 )
 
 // Configuration Keys.

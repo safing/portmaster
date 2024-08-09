@@ -47,7 +47,7 @@ func testCraneWithCounter(t *testing.T, testID string, encrypting bool, loadSize
 		if err != nil {
 			panic(fmt.Sprintf("crane test %s could not create crane1: %s", testID, err))
 		}
-		err = crane1.Start(module.Ctx)
+		err = crane1.Start(module.mgr.Ctx())
 		if err != nil {
 			panic(fmt.Sprintf("crane test %s could not start crane1: %s", testID, err))
 		}
@@ -59,7 +59,7 @@ func testCraneWithCounter(t *testing.T, testID string, encrypting bool, loadSize
 		if err != nil {
 			panic(fmt.Sprintf("crane test %s could not create crane2: %s", testID, err))
 		}
-		err = crane2.Start(module.Ctx)
+		err = crane2.Start(module.mgr.Ctx())
 		if err != nil {
 			panic(fmt.Sprintf("crane test %s could not start crane2: %s", testID, err))
 		}
@@ -122,7 +122,7 @@ func (t *StreamingTerminal) ID() uint32 {
 }
 
 func (t *StreamingTerminal) Ctx() context.Context {
-	return module.Ctx
+	return module.mgr.Ctx()
 }
 
 func (t *StreamingTerminal) Deliver(msg *terminal.Msg) *terminal.Error {
@@ -170,7 +170,7 @@ func testCraneWithStreaming(t *testing.T, testID string, encrypting bool, loadSi
 		if err != nil {
 			panic(fmt.Sprintf("crane test %s could not create crane1: %s", testID, err))
 		}
-		err = crane1.Start(module.Ctx)
+		err = crane1.Start(module.mgr.Ctx())
 		if err != nil {
 			panic(fmt.Sprintf("crane test %s could not start crane1: %s", testID, err))
 		}
@@ -182,7 +182,7 @@ func testCraneWithStreaming(t *testing.T, testID string, encrypting bool, loadSi
 		if err != nil {
 			panic(fmt.Sprintf("crane test %s could not create crane2: %s", testID, err))
 		}
-		err = crane2.Start(module.Ctx)
+		err = crane2.Start(module.mgr.Ctx())
 		if err != nil {
 			panic(fmt.Sprintf("crane test %s could not start crane2: %s", testID, err))
 		}
@@ -257,7 +257,7 @@ func getTestIdentity(t *testing.T) (*cabin.Identity, *hub.Hub) {
 
 	if testIdentity == nil {
 		var err error
-		testIdentity, err = cabin.CreateIdentity(module.Ctx, "test")
+		testIdentity, err = cabin.CreateIdentity(module.mgr.Ctx(), "test")
 		if err != nil {
 			t.Fatalf("failed to create identity: %s", err)
 		}

@@ -9,7 +9,7 @@ import (
 
 	"zombiezen.com/go/sqlite"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 )
 
 var errSkipStructField = errors.New("struct field should be skipped")
@@ -142,7 +142,7 @@ func GenerateTableSchema(name string, d interface{}) (*TableSchema, error) {
 		return nil, fmt.Errorf("%w, got %T", errStructExpected, d)
 	}
 
-	for i := 0; i < val.NumField(); i++ {
+	for i := range val.NumField() {
 		fieldType := val.Type().Field(i)
 		if !fieldType.IsExported() {
 			continue

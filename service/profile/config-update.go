@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/modules"
 	"github.com/safing/portmaster/service/intel/filterlists"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/profile/endpoints"
 )
 
@@ -24,19 +24,16 @@ var (
 )
 
 func registerConfigUpdater() error {
-	return module.RegisterEventHook(
-		"config",
-		"config change",
-		"update global config profile",
-		func(ctx context.Context, _ interface{}) error {
-			return updateGlobalConfigProfile(ctx, nil)
-		},
-	)
+	module.instance.Config().EventConfigChange.AddCallback("update global config profile", func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
+		return false, updateGlobalConfigProfile(wc.Ctx())
+	})
+
+	return nil
 }
 
 const globalConfigProfileErrorID = "profile:global-profile-error"
 
-func updateGlobalConfigProfile(ctx context.Context, task *modules.Task) error {
+func updateGlobalConfigProfile(_ context.Context) error {
 	cfgLock.Lock()
 	defer cfgLock.Unlock()
 
@@ -132,25 +129,23 @@ func updateGlobalConfigProfile(ctx context.Context, task *modules.Task) error {
 
 	// If there was any error, try again later until it succeeds.
 	if lastErr == nil {
-		module.Resolve(globalConfigProfileErrorID)
+		module.states.Remove(globalConfigProfileErrorID)
 	} else {
 		// Create task after first failure.
-		if task == nil {
-			task = module.NewTask(
-				"retry updating global config profile",
-				updateGlobalConfigProfile,
-			)
-		}
 
 		// Schedule task.
-		task.Schedule(time.Now().Add(15 * time.Second))
+		_ = module.mgr.Delay("retry updating global config profile", 15*time.Second,
+			func(w *mgr.WorkerCtx) error {
+				return updateGlobalConfigProfile(w.Ctx())
+			})
 
 		// Add module warning to inform user.
-		module.Warning(
-			globalConfigProfileErrorID,
-			"Internal Settings Failure",
-			fmt.Sprintf("Some global settings might not be applied correctly. You can try restarting the Portmaster to resolve this problem. Error: %s", err),
-		)
+		module.states.Add(mgr.State{
+			ID:      globalConfigProfileErrorID,
+			Name:    "Internal Settings Failure",
+			Message: fmt.Sprintf("Some global settings might not be applied correctly. You can try restarting the Portmaster to resolve this problem. Error: %s", err),
+			Type:    mgr.StateTypeWarning,
+		})
 	}
 
 	return lastErr

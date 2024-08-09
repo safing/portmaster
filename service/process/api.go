@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/safing/portbase/api"
+	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/service/profile"
 )
 
@@ -15,7 +15,6 @@ func registerAPIEndpoints() error {
 		Description: "Get information about process tags.",
 		Path:        "process/tags",
 		Read:        api.PermitUser,
-		BelongsTo:   module,
 		StructFunc:  handleProcessTagMetadata,
 	}); err != nil {
 		return err
@@ -26,7 +25,6 @@ func registerAPIEndpoints() error {
 		Description: "Get all recently active processes using the given profile",
 		Path:        "process/list/by-profile/{source:[a-z]+}/{id:[A-z0-9-]+}",
 		Read:        api.PermitUser,
-		BelongsTo:   module,
 		StructFunc:  handleGetProcessesByProfile,
 	}); err != nil {
 		return err
@@ -37,7 +35,6 @@ func registerAPIEndpoints() error {
 		Description: "Load a process group leader by a child PID",
 		Path:        "process/group-leader/{pid:[0-9]+}",
 		Read:        api.PermitUser,
-		BelongsTo:   module,
 		StructFunc:  handleGetProcessGroupLeader,
 	}); err != nil {
 		return err

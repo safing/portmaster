@@ -8,9 +8,10 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/container"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 // ExpandOpType is the type ID of the expand operation.
@@ -201,13 +202,13 @@ func expand(t terminal.Terminal, opID uint32, data *container.Container) (termin
 	}
 
 	// Start workers.
-	module.StartWorker("expand op forward relay", op.forwardHandler)
-	module.StartWorker("expand op backward relay", op.backwardHandler)
+	module.mgr.Go("expand op forward relay", op.forwardHandler)
+	module.mgr.Go("expand op backward relay", op.backwardHandler)
 	if op.flowControl != nil {
-		op.flowControl.StartWorkers(module, "expand op")
+		op.flowControl.StartWorkers(module.mgr, "expand op")
 	}
 	if op.relayTerminal.flowControl != nil {
-		op.relayTerminal.flowControl.StartWorkers(module, "expand op terminal")
+		op.relayTerminal.flowControl.StartWorkers(module.mgr, "expand op terminal")
 	}
 
 	return op, nil
@@ -259,7 +260,7 @@ func (op *ExpandOp) submitBackwardUpstream(msg *terminal.Msg, timeout time.Durat
 	}
 }
 
-func (op *ExpandOp) forwardHandler(_ context.Context) error {
+func (op *ExpandOp) forwardHandler(_ *mgr.WorkerCtx) error {
 	// Metrics setup and submitting.
 	atomic.AddInt64(activeExpandOps, 1)
 	started := time.Now()
@@ -290,7 +291,7 @@ func (op *ExpandOp) forwardHandler(_ context.Context) error {
 	}
 }
 
-func (op *ExpandOp) backwardHandler(_ context.Context) error {
+func (op *ExpandOp) backwardHandler(_ *mgr.WorkerCtx) error {
 	for {
 		select {
 		case msg := <-op.relayTerminal.recvProxy():
@@ -336,7 +337,7 @@ func (op *ExpandOp) HandleStop(err *terminal.Error) (errorToSend *terminal.Error
 // Abandon shuts down the terminal unregistering it from upstream and calling HandleAbandon().
 func (t *ExpansionRelayTerminal) Abandon(err *terminal.Error) {
 	if t.abandoning.SetToIf(false, true) {
-		module.StartWorker("terminal abandon procedure", func(_ context.Context) error {
+		module.mgr.Go("terminal abandon procedure", func(_ *mgr.WorkerCtx) error {
 			t.handleAbandonProcedure(err)
 			return nil
 		})

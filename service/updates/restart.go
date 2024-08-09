@@ -1,7 +1,6 @@
 package updates
 
 import (
-	"context"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -9,13 +8,8 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-)
-
-const (
-	// RestartExitCode will instruct portmaster-start to restart the process immediately, potentially with a new version.
-	RestartExitCode = 23
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 var (
@@ -23,7 +17,6 @@ var (
 	// should be restarted automatically when triggering a restart internally.
 	RebootOnRestart bool
 
-	restartTask      *modules.Task
 	restartPending   = abool.New()
 	restartTriggered = abool.New()
 
@@ -61,7 +54,7 @@ func DelayedRestart(delay time.Duration) {
 	// Schedule the restart task.
 	log.Warningf("updates: restart triggered, will execute in %s", delay)
 	restartAt := time.Now().Add(delay)
-	restartTask.Schedule(restartAt)
+	module.restartWorkerMgr.Delay(delay)
 
 	// Set restartTime.
 	restartTimeLock.Lock()
@@ -75,7 +68,7 @@ func AbortRestart() {
 		log.Warningf("updates: restart aborted")
 
 		// Cancel schedule.
-		restartTask.Schedule(time.Time{})
+		module.restartWorkerMgr.Delay(0)
 	}
 }
 
@@ -83,7 +76,7 @@ func AbortRestart() {
 // This can be used to prepone a scheduled restart if the conditions are preferable.
 func TriggerRestartIfPending() {
 	if restartPending.IsSet() {
-		restartTask.StartASAP()
+		module.restartWorkerMgr.Go()
 	}
 }
 
@@ -91,10 +84,10 @@ func TriggerRestartIfPending() {
 // This only works if the process is managed by portmaster-start.
 func RestartNow() {
 	restartPending.Set()
-	restartTask.StartASAP()
+	module.restartWorkerMgr.Go()
 }
 
-func automaticRestart(_ context.Context, _ *modules.Task) error {
+func automaticRestart(w *mgr.WorkerCtx) error {
 	// Check if the restart is still scheduled.
 	if restartPending.IsNotSet() {
 		return nil
@@ -116,11 +109,10 @@ func automaticRestart(_ context.Context, _ *modules.Task) error {
 
 		// Set restart exit code.
 		if !rebooting {
-			modules.SetExitStatusCode(RestartExitCode)
+			module.instance.Restart()
+		} else {
+			module.instance.Shutdown()
 		}
-
-		// Do not use a worker, as this would block itself here.
-		go modules.Shutdown() //nolint:errcheck
 	}
 
 	return nil

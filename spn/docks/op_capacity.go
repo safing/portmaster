@@ -2,16 +2,16 @@ package docks
 
 import (
 	"bytes"
-	"context"
 	"sync/atomic"
 	"time"
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
 )
 
 const (
@@ -116,7 +116,7 @@ func NewCapacityTestOp(t terminal.Terminal, opts *CapacityTestOptions) (*Capacit
 	}
 
 	// Start handler.
-	module.StartWorker("op capacity handler", op.handler)
+	module.mgr.Go("op capacity handler", op.handler)
 
 	return op, nil
 }
@@ -157,13 +157,13 @@ func startCapacityTestOp(t terminal.Terminal, opID uint32, data *container.Conta
 
 	// Start handler and sender.
 	op.senderStarted = true
-	module.StartWorker("op capacity handler", op.handler)
-	module.StartWorker("op capacity sender", op.sender)
+	module.mgr.Go("op capacity handler", op.handler)
+	module.mgr.Go("op capacity sender", op.sender)
 
 	return op, nil
 }
 
-func (op *CapacityTestOp) handler(ctx context.Context) error {
+func (op *CapacityTestOp) handler(ctx *mgr.WorkerCtx) error {
 	defer capacityTestRunning.UnSet()
 
 	returnErr := terminal.ErrStopping
@@ -204,7 +204,7 @@ func (op *CapacityTestOp) handler(ctx context.Context) error {
 				maxTestTimeReached = time.After(op.opts.MaxTime)
 				if !op.senderStarted {
 					op.senderStarted = true
-					module.StartWorker("op capacity sender", op.sender)
+					module.mgr.Go("op capacity sender", op.sender)
 				}
 			}
 
@@ -241,7 +241,7 @@ func (op *CapacityTestOp) handler(ctx context.Context) error {
 	}
 }
 
-func (op *CapacityTestOp) sender(ctx context.Context) error {
+func (op *CapacityTestOp) sender(ctx *mgr.WorkerCtx) error {
 	for {
 		// Send next chunk.
 		msg := op.NewMsg(capacityTestSendData)

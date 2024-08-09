@@ -1,27 +1,49 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"path"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	diff "github.com/r3labs/diff/v3"
 	"golang.org/x/exp/slices"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/captain"
 	"github.com/safing/portmaster/spn/navigator"
 )
 
+// Observer is the network observer module.
+type Observer struct {
+	mgr      *mgr.Manager
+	instance instance
+}
+
+// Manager returns the module manager.
+func (o *Observer) Manager() *mgr.Manager {
+	return o.mgr
+}
+
+// Start starts the module.
+func (o *Observer) Start() error {
+	return startObserver()
+}
+
+// Stop stops the module.
+func (o *Observer) Stop() error {
+	return nil
+}
+
 var (
-	observerModule *modules.Module
+	observerModule *Observer
+	shimLoaded     atomic.Bool
 
 	db = database.NewInterface(&database.Options{
 		Local:    true,
@@ -33,12 +55,11 @@ var (
 	errNoChanges = errors.New("no changes")
 
 	reportingDelayFlag string
-	reportingDelay     = 10 * time.Minute
+	reportingDelay     = 5 * time.Minute
+	reportingMaxDelay  = reportingDelay * 3
 )
 
 func init() {
-	observerModule = modules.Register("observer", prepObserver, startObserver, nil, "captain", "apprise")
-
 	flag.BoolVar(&reportAllChanges, "report-all-changes", false, "report all changes, no just interesting ones")
 	flag.StringVar(&reportingDelayFlag, "reporting-delay", "10m", "delay reports to summarize changes")
 }
@@ -51,12 +72,13 @@ func prepObserver() error {
 		}
 		reportingDelay = duration
 	}
+	reportingMaxDelay = reportingDelay * 3
 
 	return nil
 }
 
 func startObserver() error {
-	observerModule.StartServiceWorker("observer", 0, observerWorker)
+	observerModule.mgr.Go("observer", observerWorker)
 
 	return nil
 }
@@ -65,8 +87,9 @@ type observedPin struct {
 	previous *navigator.PinExport
 	latest   *navigator.PinExport
 
-	lastUpdate         time.Time
-	lastUpdateReported bool
+	firstUpdate    time.Time
+	lastUpdate     time.Time
+	updateReported bool
 }
 
 type observedChange struct {
@@ -79,7 +102,7 @@ type observedChange struct {
 	SPNStatus *captain.SPNStatus
 }
 
-func observerWorker(ctx context.Context) error {
+func observerWorker(ctx *mgr.WorkerCtx) error {
 	log.Info("observer: starting")
 	defer log.Info("observer: stopped")
 
@@ -133,19 +156,20 @@ func observerWorker(ctx context.Context) error {
 
 	// Put all current pins in a map.
 	observedPins := make(map[string]*observedPin)
-query:
+initialQuery:
 	for {
 		select {
 		case r := <-q.Next:
 			// Check if we are done.
 			if r == nil {
-				break query
+				break initialQuery
 			}
 			// Add all pins to seen pins.
 			if pin, ok := r.(*navigator.PinExport); ok {
 				observedPins[pin.ID] = &observedPin{
-					previous: pin,
-					latest:   pin,
+					previous:       pin,
+					latest:         pin,
+					updateReported: true,
 				}
 			} else {
 				log.Warningf("observer: received invalid pin export: %s", r)
@@ -200,13 +224,18 @@ query:
 					if ok {
 						// Update previously observed Hub.
 						existingObservedPin.latest = pin
+						if existingObservedPin.updateReported {
+							existingObservedPin.firstUpdate = time.Now()
+						}
 						existingObservedPin.lastUpdate = time.Now()
-						existingObservedPin.lastUpdateReported = false
+						existingObservedPin.updateReported = false
 					} else {
 						// Add new Hub.
 						observedPins[pin.ID] = &observedPin{
-							latest:     pin,
-							lastUpdate: time.Now(),
+							latest:         pin,
+							firstUpdate:    time.Now(),
+							lastUpdate:     time.Now(),
+							updateReported: false,
 						}
 					}
 				} else {
@@ -226,15 +255,19 @@ query:
 				}
 
 				switch {
-				case observedPin.lastUpdateReported:
+				case observedPin.updateReported:
 					// Change already reported.
-				case time.Since(observedPin.lastUpdate) < reportingDelay:
+				case time.Since(observedPin.lastUpdate) < reportingDelay &&
+					time.Since(observedPin.firstUpdate) < reportingMaxDelay:
 					// Only report changes if older than the configured delay.
+					// Up to a maximum delay.
 				default:
 					// Format and report.
 					title, changes, err := formatPinChanges(observedPin.previous, observedPin.latest)
 					if err != nil {
-						if !errors.Is(err, errNoChanges) {
+						if errors.Is(err, errNoChanges) {
+							log.Debugf("observer: no reportable changes found for %s", observedPin.latest.HumanName())
+						} else {
 							log.Warningf("observer: failed to format pin changes: %s", err)
 						}
 					} else {
@@ -250,7 +283,7 @@ query:
 
 					// Update observed pin.
 					observedPin.previous = observedPin.latest
-					observedPin.lastUpdateReported = true
+					observedPin.updateReported = true
 				}
 			}
 		}
@@ -405,3 +438,24 @@ func makeHubName(name, id string) string {
 		return fmt.Sprintf("%s (%s)", name, shortenedID)
 	}
 }
+
+// New returns a new Observer module.
+func New(instance instance) (*Observer, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	m := mgr.New("observer")
+	observerModule = &Observer{
+		mgr:      m,
+		instance: instance,
+	}
+
+	if err := prepObserver(); err != nil {
+		return nil, err
+	}
+
+	return observerModule, nil
+}
+
+type instance interface{}

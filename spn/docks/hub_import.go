@@ -6,7 +6,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/ships"
@@ -33,7 +33,7 @@ func ImportAndVerifyHubInfo(ctx context.Context, hubID string, announcementData,
 	var hubKnown, hubChanged bool
 	if announcementData != nil {
 		hubFromMsg, known, changed, err := hub.ApplyAnnouncement(nil, announcementData, mapName, scope, false)
-		if err != nil && firstErr == nil {
+		if err != nil {
 			firstErr = terminal.ErrInternalError.With("failed to apply announcement: %w", err)
 		}
 		if known {
@@ -170,7 +170,7 @@ func verifyHubIP(ctx context.Context, h *hub.Hub, ip net.IP) error {
 	if err != nil {
 		return fmt.Errorf("failed to create crane: %w", err)
 	}
-	module.StartWorker("crane unloader", crane.unloader)
+	module.mgr.Go("crane unloader", crane.unloader)
 	defer crane.Stop(nil)
 
 	// Verify Hub.

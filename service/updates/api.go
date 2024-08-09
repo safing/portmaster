@@ -10,9 +10,9 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 )
 
 const (
@@ -29,9 +29,8 @@ func registerAPIEndpoints() error {
 			Value:       "",
 			Description: "Force downloading and applying of all updates, regardless of auto-update settings.",
 		}},
-		Path:      apiPathCheckForUpdates,
-		Write:     api.PermitUser,
-		BelongsTo: module,
+		Path:  apiPathCheckForUpdates,
+		Write: api.PermitUser,
 		ActionFunc: func(r *api.Request) (msg string, err error) {
 			// Check if we should also download regardless of settings.
 			downloadAll := r.URL.Query().Has("download")
@@ -58,7 +57,6 @@ func registerAPIEndpoints() error {
 		Path:        `updates/get/{identifier:[A-Za-z0-9/\.\-_]{1,255}}`,
 		Read:        api.PermitUser,
 		ReadMethod:  http.MethodGet,
-		BelongsTo:   module,
 		HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 			// Get identifier from URL.
 			var identifier string

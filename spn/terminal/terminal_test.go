@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/safing/portbase/container"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/hub"
+	"github.com/safing/structures/container"
 )
 
 func TestTerminals(t *testing.T) {
 	t.Parallel()
 
-	identity, erro := cabin.CreateIdentity(module.Ctx, "test")
+	identity, erro := cabin.CreateIdentity(module.mgr.Ctx(), "test")
 	if erro != nil {
 		t.Fatalf("failed to create identity: %s", erro)
 	}
@@ -65,7 +65,7 @@ func testTerminals(t *testing.T, identity *cabin.Identity, terminalOpts *Termina
 	var initData *container.Container
 	var err *Error
 	term1, initData, err = NewLocalTestTerminal(
-		module.Ctx, 127, "c1", dstHub, terminalOpts, createForwardingUpstream(
+		module.mgr.Ctx(), 127, "c1", dstHub, terminalOpts, createForwardingUpstream(
 			t, "c1", "c2", func(msg *Msg) *Error {
 				return term2.Deliver(msg)
 			},
@@ -75,7 +75,7 @@ func testTerminals(t *testing.T, identity *cabin.Identity, terminalOpts *Termina
 		t.Fatalf("failed to create local terminal: %s", err)
 	}
 	term2, _, err = NewRemoteTestTerminal(
-		module.Ctx, 127, "c2", identity, initData, createForwardingUpstream(
+		module.mgr.Ctx(), 127, "c2", identity, initData, createForwardingUpstream(
 			t, "c2", "c1", func(msg *Msg) *Error {
 				return term1.Deliver(msg)
 			},

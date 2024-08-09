@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/runtime"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/runtime"
 	"github.com/safing/portmaster/service/network"
+	"github.com/safing/structures/dsd"
 )
 
 type (

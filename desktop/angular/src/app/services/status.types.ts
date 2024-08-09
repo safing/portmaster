@@ -6,22 +6,6 @@ export interface CaptivePortal {
   Domain: string;
 }
 
-export enum ModuleStatus {
-  Off = 0,
-  Error = 1,
-  Warning = 2,
-  Operational = 3
-}
-
-/**
- * Returns a string represetnation of the module status.
- *
- * @param stat The module status to translate
- */
-export function getModuleStatusString(stat: ModuleStatus): string {
-  return getEnumKey(ModuleStatus, stat)
-}
-
 export enum OnlineStatus {
   Unknown = 0,
   Offline = 1,
@@ -40,55 +24,46 @@ export function getOnlineStatusString(stat: OnlineStatus): string {
   return getEnumKey(OnlineStatus, stat)
 }
 
-export interface Threat<T = any> {
-  ID: string;
-  Name: string;
-  Description: string;
-  AdditionalData: T;
-  MitigationLevel: SecurityLevel;
-  Started: number;
-  Ended: number;
-}
-
 export interface CoreStatus extends Record {
-  ActiveSecurityLevel: SecurityLevel;
-  SelectedSecurityLevel: SecurityLevel;
-  ThreatMitigationLevel: SecurityLevel;
   OnlineStatus: OnlineStatus;
-  Threats: Threat[];
   CaptivePortal: CaptivePortal;
+  // Modules: []ModuleState; // TODO: Do we need all modules?
+  WorstState: {
+    Module: string,
+    ID: string,
+    Name: string,
+    Message: string,
+    Type: ModuleStateType,
+    // Time: time.Time, // TODO: How do we best use Go's time.Time?
+    Data: any
+  }
 }
 
-export enum FailureStatus {
-  Operational = 0,
-  Hint = 1,
-  Warning = 2,
-  Error = 3
+export enum ModuleStateType {
+  Undefined = "",
+  Hint = "hint",
+  Warning = "warning",
+  Error = "error"
 }
 
 /**
  * Returns a string representation of a failure status value.
  *
- * @param stat The failure status value.
+ * @param stateType The module state type value.
  */
-export function getFailureStatusString(stat: FailureStatus): string {
-  return getEnumKey(FailureStatus, stat)
+export function getModuleStateString(stateType: ModuleStateType): string {
+  return getEnumKey(ModuleStateType, stateType)
 }
 
 export interface Module {
   Enabled: boolean;
-  FailureID: string;
-  FailureMsg: string;
-  FailureStatus: FailureStatus;
   Name: string;
-  Status: ModuleStatus;
 }
 
 export interface Subsystem extends Record {
   ConfigKeySpace: string;
   Description: string;
   ExpertiseLevel: string;
-  FailureStatus: FailureStatus;
   ID: string;
   Modules: Module[];
   Name: string;

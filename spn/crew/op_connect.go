@@ -10,13 +10,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
 )
 
 // ConnectOpType is the type ID for the connection operation.
@@ -141,7 +142,7 @@ func NewConnectOp(tunnel *Tunnel) (*ConnectOp, *terminal.Error) {
 		entry:       true,
 		tunnel:      tunnel,
 	}
-	op.ctx, op.cancelCtx = context.WithCancel(module.Ctx)
+	op.ctx, op.cancelCtx = context.WithCancel(module.mgr.Ctx())
 	op.dfq = terminal.NewDuplexFlowQueue(op.Ctx(), request.QueueSize, op.submitUpstream)
 
 	// Prepare init msg.
@@ -159,9 +160,9 @@ func NewConnectOp(tunnel *Tunnel) (*ConnectOp, *terminal.Error) {
 	// Setup metrics.
 	op.started = time.Now()
 
-	module.StartWorker("connect op conn reader", op.connReader)
-	module.StartWorker("connect op conn writer", op.connWriter)
-	module.StartWorker("connect op flow handler", op.dfq.FlowHandler)
+	module.mgr.Go("connect op conn reader", op.connReader)
+	module.mgr.Go("connect op conn writer", op.connWriter)
+	module.mgr.Go("connect op flow handler", op.dfq.FlowHandler)
 
 	log.Infof("spn/crew: connected to %s via %s", request, tunnel.dstPin.Hub)
 	return op, nil
@@ -202,12 +203,12 @@ func startConnectOp(t terminal.Terminal, opID uint32, data *container.Container)
 	op.dfq = terminal.NewDuplexFlowQueue(op.Ctx(), request.QueueSize, op.submitUpstream)
 
 	// Start worker to complete setting up the connection.
-	module.StartWorker("connect op setup", op.handleSetup)
+	module.mgr.Go("connect op setup", op.handleSetup)
 
 	return op, nil
 }
 
-func (op *ConnectOp) handleSetup(_ context.Context) error {
+func (op *ConnectOp) handleSetup(_ *mgr.WorkerCtx) error {
 	// Get terminal session for rate limiting.
 	var session *terminal.Session
 	if sessionTerm, ok := op.t.(terminal.SessionTerminal); ok {
@@ -309,9 +310,9 @@ func (op *ConnectOp) setup(session *terminal.Session) {
 	op.conn = conn
 
 	// Start worker.
-	module.StartWorker("connect op conn reader", op.connReader)
-	module.StartWorker("connect op conn writer", op.connWriter)
-	module.StartWorker("connect op flow handler", op.dfq.FlowHandler)
+	module.mgr.Go("connect op conn reader", op.connReader)
+	module.mgr.Go("connect op conn writer", op.connWriter)
+	module.mgr.Go("connect op flow handler", op.dfq.FlowHandler)
 
 	connectOpCntConnected.Inc()
 	log.Infof("spn/crew: connected op %s#%d to %s", op.t.FmtID(), op.ID(), op.request)
@@ -337,7 +338,7 @@ const (
 	rateLimitMaxMbit   = 128
 )
 
-func (op *ConnectOp) connReader(_ context.Context) error {
+func (op *ConnectOp) connReader(_ *mgr.WorkerCtx) error {
 	// Metrics setup and submitting.
 	atomic.AddInt64(activeConnectOps, 1)
 	defer func() {
@@ -403,7 +404,7 @@ func (op *ConnectOp) Deliver(msg *terminal.Msg) *terminal.Error {
 	return op.dfq.Deliver(msg)
 }
 
-func (op *ConnectOp) connWriter(_ context.Context) error {
+func (op *ConnectOp) connWriter(_ *mgr.WorkerCtx) error {
 	// Metrics submitting.
 	defer func() {
 		connectOpOutgoingDataHistogram.Update(float64(op.outgoingTraffic.Load()))

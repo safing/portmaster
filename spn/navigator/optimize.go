@@ -373,7 +373,7 @@ func (m *Map) optimizeForDistanceConstraint(result *OptimizationResult, max int)
 	// Add approach.
 	result.addApproach(fmt.Sprintf("Satisfy max hop constraint of %d globally.", optimizationHopDistanceTarget))
 
-	for i := 0; i < max; i++ {
+	for range max {
 		// Sort by lowest cost.
 		sort.Sort(sortBySuggestedHopDistanceAndLowestMeasuredCost(m.regardedPins))
 

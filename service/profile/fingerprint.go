@@ -8,7 +8,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/safing/jess/lhash"
-	"github.com/safing/portbase/container"
+	"github.com/safing/structures/container"
 )
 
 // # Matching and Scores

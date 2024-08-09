@@ -4,10 +4,10 @@ import (
 	"crypto/subtle"
 	"time"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
 )
 
 const (

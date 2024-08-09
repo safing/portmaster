@@ -5,8 +5,8 @@ import (
 	"net"
 	"os"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/spn/hub"

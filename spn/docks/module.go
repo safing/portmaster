@@ -5,25 +5,41 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/mgr"
 	_ "github.com/safing/portmaster/spn/access"
 )
 
-var (
-	module *modules.Module
+// Docks handles connections to other network participants.
+type Docks struct {
+	mgr      *mgr.Manager
+	instance instance
+}
 
+// Manager returns the module manager.
+func (d *Docks) Manager() *mgr.Manager {
+	return d.mgr
+}
+
+// Start starts the module.
+func (d *Docks) Start() error {
+	return start()
+}
+
+// Stop stops the module.
+func (d *Docks) Stop() error {
+	return stopAllCranes()
+}
+
+var (
 	allCranes      = make(map[string]*Crane) // ID = Crane ID
 	assignedCranes = make(map[string]*Crane) // ID = connected Hub ID
 	cranesLock     sync.RWMutex
 
 	runningTests bool
 )
-
-func init() {
-	module = modules.Register("docks", nil, start, stopAllCranes, "terminal", "cabin", "access")
-}
 
 func start() error {
 	return registerMetrics()
@@ -34,7 +50,7 @@ func registerCrane(crane *Crane) error {
 	defer cranesLock.Unlock()
 
 	// Generate new IDs until a unique one is found.
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// Generate random ID.
 		randomID, err := rng.Bytes(3)
 		if err != nil {
@@ -115,3 +131,23 @@ func GetAllAssignedCranes() map[string]*Crane {
 	}
 	return copiedCranes
 }
+
+var (
+	module     *Docks
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Docks module.
+func New(instance instance) (*Docks, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+	m := mgr.New("Docks")
+	module = &Docks{
+		mgr:      m,
+		instance: instance,
+	}
+	return module, nil
+}
+
+type instance interface{}

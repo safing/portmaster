@@ -202,7 +202,7 @@ go-build:
             ENV EXTRA_LD_FLAGS = ""
         END
 
-        RUN --no-cache go build -ldflags="-X github.com/safing/portbase/info.version=${VERSION} -X github.com/safing/portbase/info.buildSource=${SOURCE} -X github.com/safing/portbase/info.buildTime=${BUILD_TIME} ${EXTRA_LD_FLAGS}" -o "/tmp/build/" ./cmds/${bin}
+        RUN --no-cache go build  -ldflags="-X github.com/safing/portmaster/base/info.version=${VERSION} -X github.com/safing/portmaster/base/info.buildSource=${SOURCE} -X github.com/safing/portmaster/base/info.buildTime=${BUILD_TIME}" -o "/tmp/build/" ./cmds/${bin}
     END
 
     DO +GO_ARCH_STRING --goos="${GOOS}" --goarch="${GOARCH}" --goarm="${GOARM}"

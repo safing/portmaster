@@ -6,7 +6,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/hub"
 )
@@ -81,7 +82,7 @@ func establishTCPPier(transport *hub.Transport, dockingRequests chan Ship) (Pier
 	}
 
 	// Create new pier.
-	pierCtx, cancelCtx := context.WithCancel(module.Ctx)
+	pierCtx, cancelCtx := context.WithCancel(module.mgr.Ctx())
 	pier := &TCPPier{
 		PierBase: PierBase{
 			transport:       transport,
@@ -95,9 +96,8 @@ func establishTCPPier(transport *hub.Transport, dockingRequests chan Ship) (Pier
 
 	// Start workers.
 	for _, listener := range pier.listeners {
-		serviceListener := listener
-		module.StartServiceWorker("accept TCP docking requests", 0, func(ctx context.Context) error {
-			return pier.dockingWorker(ctx, serviceListener)
+		module.mgr.Go("accept TCP docking requests", func(wc *mgr.WorkerCtx) error {
+			return pier.dockingWorker(wc.Ctx(), listener)
 		})
 	}
 

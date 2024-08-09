@@ -7,7 +7,7 @@ import (
 	"github.com/mr-tron/base58"
 
 	"github.com/safing/jess/lhash"
-	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/structures/dsd"
 )
 
 const (

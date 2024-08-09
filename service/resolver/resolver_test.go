@@ -10,7 +10,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 )
 
 var (
@@ -62,7 +62,7 @@ func TestSingleResolving(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(100)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		startQuery(t, wg, resolver.Conn, &Query{
 			FQDN:  <-domainFeed,
 			QType: dns.Type(dns.TypeA),
@@ -94,7 +94,7 @@ func TestBulkResolving(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(100)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		go startQuery(t, wg, resolver.Conn, &Query{
 			FQDN:  <-domainFeed,
 			QType: dns.Type(dns.TypeA),

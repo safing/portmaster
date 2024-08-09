@@ -8,8 +8,8 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/profile"

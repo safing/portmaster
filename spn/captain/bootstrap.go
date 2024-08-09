@@ -7,11 +7,11 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/navigator"
+	"github.com/safing/structures/dsd"
 )
 
 // BootstrapFile is used for sideloading bootstrap data.
@@ -74,7 +74,7 @@ func bootstrapWithUpdates() error {
 		return errors.New("using the bootstrap-file argument disables bootstrapping via the update system")
 	}
 
-	return updateSPNIntel(module.Ctx, nil)
+	return updateSPNIntel(module.mgr.Ctx(), nil)
 }
 
 // loadBootstrapFile loads a file with bootstrap hub entries and imports them.

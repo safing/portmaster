@@ -9,13 +9,12 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/notifications"
-	"github.com/safing/portbase/rng"
-	"github.com/safing/portbase/utils/debug"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/base/utils/debug"
 	"github.com/safing/portmaster/service/compat"
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/resolver"
@@ -54,7 +53,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "debug/core",
 		Read:        api.PermitAnyone,
-		BelongsTo:   module,
 		DataFunc:    debugInfo,
 		Name:        "Get Debug Information",
 		Description: "Returns network debugging information, similar to debug/info, but with system status data.",
@@ -71,7 +69,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:       "app/auth",
 		Read:       api.PermitAnyone,
-		BelongsTo:  module,
 		StructFunc: authorizeApp,
 		Name:       "Request an authentication token with a given set of permissions. The user will be prompted to either authorize or deny the request. Used for external or third-party tool integrations.",
 		Parameters: []api.Parameter{
@@ -103,7 +100,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:       "app/profile",
 		Read:       api.PermitUser,
-		BelongsTo:  module,
 		StructFunc: getMyProfile,
 		Name:       "Get the ID of the calling profile",
 	}); err != nil {
@@ -117,9 +113,7 @@ func registerAPIEndpoints() error {
 func shutdown(_ *api.Request) (msg string, err error) {
 	log.Warning("core: user requested shutdown via action")
 
-	// Do not run in worker, as this would block itself here.
-	go modules.Shutdown() //nolint:errcheck
-
+	module.instance.Shutdown()
 	return "shutdown initiated", nil
 }
 
@@ -145,8 +139,7 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	di.AddVersionInfo()
 	di.AddPlatformInfo(ar.Context())
 
-	// Errors and unexpected logs.
-	di.AddLastReportedModuleError()
+	// Unexpected logs.
 	di.AddLastUnexpectedLogs()
 
 	// Status Information from various modules.

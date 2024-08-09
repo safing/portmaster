@@ -1,16 +1,15 @@
 package captain
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"sort"
 	"time"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/metrics"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/metrics"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/docks"
@@ -27,9 +26,6 @@ const (
 var (
 	publicIdentity    *cabin.Identity
 	publicIdentityKey = "core:spn/public/identity"
-
-	publicIdentityUpdateTask *modules.Task
-	statusUpdateTask         *modules.Task
 )
 
 func loadPublicIdentity() (err error) {
@@ -42,7 +38,7 @@ func loadPublicIdentity() (err error) {
 		log.Infof("spn/captain: loaded public hub identity %s", publicIdentity.Hub.ID)
 	case errors.Is(err, database.ErrNotFound):
 		// does not exist, create new
-		publicIdentity, err = cabin.CreateIdentity(module.Ctx, conf.MainMapName)
+		publicIdentity, err = cabin.CreateIdentity(module.mgr.Ctx(), conf.MainMapName)
 		if err != nil {
 			return fmt.Errorf("failed to create new identity: %w", err)
 		}
@@ -91,36 +87,22 @@ func loadPublicIdentity() (err error) {
 }
 
 func prepPublicIdentityMgmt() error {
-	publicIdentityUpdateTask = module.NewTask(
-		"maintain public identity",
-		maintainPublicIdentity,
-	)
+	module.statusUpdater.Repeat(maintainStatusInterval)
 
-	statusUpdateTask = module.NewTask(
-		"maintain public status",
-		maintainPublicStatus,
-	).Repeat(maintainStatusInterval)
-
-	return module.RegisterEventHook(
-		"config",
-		"config change",
-		"update public identity from config",
-		func(_ context.Context, _ interface{}) error {
-			// trigger update in 5 minutes
-			publicIdentityUpdateTask.Schedule(time.Now().Add(5 * time.Minute))
-			return nil
-		},
-	)
+	module.instance.Config().EventConfigChange.AddCallback("update public identity from config",
+		func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
+			module.publicIdentityUpdater.Delay(5 * time.Minute)
+			return false, nil
+		})
+	return nil
 }
 
 // TriggerHubStatusMaintenance queues the Hub status update task to be executed.
 func TriggerHubStatusMaintenance() {
-	if statusUpdateTask != nil {
-		statusUpdateTask.Queue()
-	}
+	module.statusUpdater.Go()
 }
 
-func maintainPublicIdentity(ctx context.Context, task *modules.Task) error {
+func maintainPublicIdentity(_ *mgr.WorkerCtx) error {
 	changed, err := publicIdentity.MaintainAnnouncement(nil, false)
 	if err != nil {
 		return fmt.Errorf("failed to maintain announcement: %w", err)
@@ -146,7 +128,7 @@ func maintainPublicIdentity(ctx context.Context, task *modules.Task) error {
 	return nil
 }
 
-func maintainPublicStatus(ctx context.Context, task *modules.Task) error {
+func maintainPublicStatus(ctx *mgr.WorkerCtx) error {
 	// Get current lanes.
 	cranes := docks.GetAllAssignedCranes()
 	lanes := make([]*hub.Lane, 0, len(cranes))

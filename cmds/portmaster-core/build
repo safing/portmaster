@@ -10,5 +10,5 @@ BUILD_TIME=$(date -u "+%Y-%m-%dT%H:%M:%SZ" || echo "unknown")
 
 # Build
 export CGO_ENABLED=0
-BUILD_PATH="github.com/safing/portbase/info"
-go build -ldflags "-X github.com/safing/portbase/info.version=${VERSION} -X github.com/safing/portbase/info.buildSource=${SOURCE} -X github.com/safing/portbase/info.buildTime=${BUILD_TIME}" "$@"
+BUILD_PATH="github.com/safing/portmaster/base/info"
+go build -ldflags "-X github.com/safing/portmaster/base/info.version=${VERSION} -X github.com/safing/portmaster/base/info.buildSource=${SOURCE} -X github.com/safing/portmaster/base/info.buildTime=${BUILD_TIME}" "$@"

@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/notifications"
 )
 
 const (
@@ -21,9 +21,17 @@ const (
 
 var updateFailedCnt = new(atomic.Int32)
 
+func (u *Updates) notificationsEnabled() bool {
+	return u.instance.Notifications() != nil
+}
+
 func notifyUpdateSuccess(force bool) {
+	if !module.notificationsEnabled() {
+		return
+	}
+
 	updateFailedCnt.Store(0)
-	module.Resolve(updateFailed)
+	module.states.Clear()
 	updateState := registry.GetState().Updates
 
 	flavor := updateSuccess
@@ -133,6 +141,10 @@ func getUpdatingInfoMsg() string {
 }
 
 func notifyUpdateCheckFailed(force bool, err error) {
+	if !module.notificationsEnabled() {
+		return
+	}
+
 	failedCnt := updateFailedCnt.Add(1)
 	lastSuccess := registry.GetState().Updates.LastSuccessAt
 
@@ -164,5 +176,5 @@ func notifyUpdateCheckFailed(force bool, err error) {
 				ResultAction: "display",
 			},
 		},
-	).AttachToModule(module)
+	).SyncWithState(module.states)
 }

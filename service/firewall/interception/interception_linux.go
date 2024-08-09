@@ -1,12 +1,12 @@
 package interception
 
 import (
-	"context"
 	"time"
 
 	bandwidth "github.com/safing/portmaster/service/firewall/interception/ebpf/bandwidth"
 	conn_listener "github.com/safing/portmaster/service/firewall/interception/ebpf/connection_listener"
 	"github.com/safing/portmaster/service/firewall/interception/nfq"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/packet"
 )
@@ -20,13 +20,13 @@ func startInterception(packets chan packet.Packet) error {
 	}
 
 	// Start ebpf new connection listener.
-	module.StartServiceWorker("ebpf connection listener", 0, func(ctx context.Context) error {
-		return conn_listener.ConnectionListenerWorker(ctx, packets)
+	module.mgr.Go("ebpf connection listener", func(wc *mgr.WorkerCtx) error {
+		return conn_listener.ConnectionListenerWorker(wc.Ctx(), packets)
 	})
 
 	// Start ebpf bandwidth stats monitor.
-	module.StartServiceWorker("ebpf bandwidth stats monitor", 0, func(ctx context.Context) error {
-		return bandwidth.BandwidthStatsWorker(ctx, 1*time.Second, BandwidthUpdates)
+	module.mgr.Go("ebpf bandwidth stats monitor", func(wc *mgr.WorkerCtx) error {
+		return bandwidth.BandwidthStatsWorker(wc.Ctx(), 1*time.Second, BandwidthUpdates)
 	})
 
 	return nil

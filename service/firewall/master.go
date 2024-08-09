@@ -11,7 +11,7 @@ import (
 	"github.com/agext/levenshtein"
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/detection/dga"
 	"github.com/safing/portmaster/service/intel/customlists"
 	"github.com/safing/portmaster/service/intel/filterlists"

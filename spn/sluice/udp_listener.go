@@ -1,7 +1,6 @@
 package sluice
 
 import (
-	"context"
 	"io"
 	"net"
 	"runtime"
@@ -12,6 +11,8 @@ import (
 	"github.com/tevino/abool"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
 const onWindows = runtime.GOOS == "windows"
@@ -64,8 +65,8 @@ func ListenUDP(network, address string) (net.Listener, error) {
 	}
 
 	// Start workers.
-	module.StartServiceWorker("udp listener reader", 0, ln.reader)
-	module.StartServiceWorker("udp listener cleaner", time.Minute, ln.cleaner)
+	module.mgr.Go("udp listener reader", ln.reader)
+	module.mgr.Go("udp listener cleaner", ln.cleaner)
 
 	return ln, nil
 }
@@ -126,7 +127,7 @@ func (ln *UDPListener) setConn(conn *UDPConn) {
 	ln.conns[conn.addr.String()] = conn
 }
 
-func (ln *UDPListener) reader(_ context.Context) error {
+func (ln *UDPListener) reader(_ *mgr.WorkerCtx) error {
 	for {
 		// TODO: Find good buf size.
 		// With a buf size of 512 we have seen this error on Windows:
@@ -180,7 +181,7 @@ func (ln *UDPListener) reader(_ context.Context) error {
 	}
 }
 
-func (ln *UDPListener) cleaner(ctx context.Context) error {
+func (ln *UDPListener) cleaner(ctx *mgr.WorkerCtx) error {
 	for {
 		select {
 		case <-time.After(1 * time.Minute):

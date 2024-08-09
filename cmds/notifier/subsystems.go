@@ -3,9 +3,9 @@ package main
 import (
 	"sync"
 
-	"github.com/safing/portbase/api/client"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/api/client"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/structures/dsd"
 )
 
 const (

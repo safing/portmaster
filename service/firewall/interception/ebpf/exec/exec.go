@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/sys/unix"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -g -Wall -Werror" bpf ../programs/exec.c
@@ -202,7 +202,7 @@ func (t *Tracer) Read() (*Event, error) {
 	if argc > arglen {
 		argc = arglen
 	}
-	for i := 0; i < argc; i++ {
+	for i := range argc {
 		str := unix.ByteSliceToString(rawEvent.Argv[i][:])
 		if strings.TrimSpace(str) != "" {
 			ev.Argv = append(ev.Argv, str)

@@ -6,9 +6,9 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/dsd"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
 )
 
 func TestEffectiveBandwidth(t *testing.T) { //nolint:paralleltest // Run alone.
@@ -66,7 +66,7 @@ func TestEffectiveBandwidth(t *testing.T) { //nolint:paralleltest // Run alone.
 		t.Fatal(tErr)
 	}
 	// Start handler.
-	module.StartWorker("op capacity handler", op.handler)
+	module.mgr.Go("op capacity handler", op.handler)
 
 	// Wait for result and check error.
 	tErr = <-op.Result()

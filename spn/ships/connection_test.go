@@ -35,8 +35,7 @@ func TestConnections(t *testing.T) {
 		registryLock.Unlock()
 	})
 
-	for k, v := range registry { //nolint:paralleltest // False positive.
-		protocol, builder := k, v
+	for protocol, builder := range registry {
 		t.Run(protocol, func(t *testing.T) {
 			t.Parallel()
 
@@ -85,7 +84,7 @@ func TestConnections(t *testing.T) {
 			assert.Equal(t, testData, buf, "should match")
 			fmt.Print(".")
 
-			for i := 0; i < 100; i++ {
+			for range 100 {
 				// server send
 				err = srvShip.Load(testData)
 				if err != nil {

@@ -44,7 +44,7 @@ func TestConnectOp(t *testing.T) {
 	// Set up connect op.
 	b.GrantPermission(terminal.MayConnect)
 	conf.EnablePublicHub(true)
-	identity, err := cabin.CreateIdentity(module.Ctx, "test")
+	identity, err := cabin.CreateIdentity(module.mgr.Ctx(), "test")
 	if err != nil {
 		t.Fatalf("failed to create identity: %s", err)
 	}
@@ -61,8 +61,7 @@ func TestConnectOp(t *testing.T) {
 		t.Fatalf("failed to update identity: %s", err)
 	}
 	EnableConnecting(identity.Hub)
-
-	for i := 0; i < 1; i++ {
+	{
 		appConn, sluiceConn := net.Pipe()
 		_, tErr := NewConnectOp(&Tunnel{
 			connInfo: &network.Connection{

@@ -6,9 +6,9 @@ import (
 	"html/template"
 	"net/http"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/info"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/log"
 )
 
 var (

@@ -11,7 +11,8 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/netutils"
 )
@@ -74,7 +75,7 @@ func indexOfRR(entry *dns.RR_Header, list *[]dns.RR) int {
 }
 
 //nolint:gocyclo,gocognit // TODO: make simpler
-func listenToMDNS(ctx context.Context) error {
+func listenToMDNS(wc *mgr.WorkerCtx) error {
 	var err error
 	messages := make(chan *dns.Msg, 32)
 
@@ -86,8 +87,8 @@ func listenToMDNS(ctx context.Context) error {
 		// TODO: retry after some time
 		log.Warningf("intel(mdns): failed to create udp4 listen multicast socket: %s", err)
 	} else {
-		module.StartServiceWorker("mdns udp4 multicast listener", 0, func(ctx context.Context) error {
-			return listenForDNSPackets(ctx, multicast4Conn, messages)
+		module.mgr.Go("mdns udp4 multicast listener", func(wc *mgr.WorkerCtx) error {
+			return listenForDNSPackets(wc.Ctx(), multicast4Conn, messages)
 		})
 		defer func() {
 			_ = multicast4Conn.Close()
@@ -99,8 +100,8 @@ func listenToMDNS(ctx context.Context) error {
 		// TODO: retry after some time
 		log.Warningf("intel(mdns): failed to create udp4 listen socket: %s", err)
 	} else {
-		module.StartServiceWorker("mdns udp4 unicast listener", 0, func(ctx context.Context) error {
-			return listenForDNSPackets(ctx, unicast4Conn, messages)
+		module.mgr.Go("mdns udp4 unicast listener", func(wc *mgr.WorkerCtx) error {
+			return listenForDNSPackets(wc.Ctx(), unicast4Conn, messages)
 		})
 		defer func() {
 			_ = unicast4Conn.Close()
@@ -113,8 +114,8 @@ func listenToMDNS(ctx context.Context) error {
 			// TODO: retry after some time
 			log.Warningf("intel(mdns): failed to create udp6 listen multicast socket: %s", err)
 		} else {
-			module.StartServiceWorker("mdns udp6 multicast listener", 0, func(ctx context.Context) error {
-				return listenForDNSPackets(ctx, multicast6Conn, messages)
+			module.mgr.Go("mdns udp6 multicast listener", func(wc *mgr.WorkerCtx) error {
+				return listenForDNSPackets(wc.Ctx(), multicast6Conn, messages)
 			})
 			defer func() {
 				_ = multicast6Conn.Close()
@@ -126,8 +127,8 @@ func listenToMDNS(ctx context.Context) error {
 			// TODO: retry after some time
 			log.Warningf("intel(mdns): failed to create udp6 listen socket: %s", err)
 		} else {
-			module.StartServiceWorker("mdns udp6 unicast listener", 0, func(ctx context.Context) error {
-				return listenForDNSPackets(ctx, unicast6Conn, messages)
+			module.mgr.Go("mdns udp6 unicast listener", func(wc *mgr.WorkerCtx) error {
+				return listenForDNSPackets(wc.Ctx(), unicast6Conn, messages)
 			})
 			defer func() {
 				_ = unicast6Conn.Close()
@@ -138,12 +139,12 @@ func listenToMDNS(ctx context.Context) error {
 	}
 
 	// start message handler
-	module.StartServiceWorker("mdns message handler", 0, func(ctx context.Context) error {
-		return handleMDNSMessages(ctx, messages)
+	module.mgr.Go("mdns message handler", func(wc *mgr.WorkerCtx) error {
+		return handleMDNSMessages(wc.Ctx(), messages)
 	})
 
 	// wait for shutdown
-	<-module.Ctx.Done()
+	<-wc.Done()
 	return nil
 }
 
@@ -341,7 +342,7 @@ func listenForDNSPackets(ctx context.Context, conn *net.UDPConn, messages chan *
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
-			if module.IsStopping() {
+			if module.mgr.IsDone() {
 				return nil
 			}
 			log.Debugf("resolver: failed to read packet: %s", err)

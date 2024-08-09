@@ -1,0 +1,10 @@
+package record
+
+type course struct {
+  Created   int64
+  Modified  int64
+  Expires   int64
+  Deleted   int64
+  Secret    bool
+  Cronjewel bool
+}

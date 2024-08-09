@@ -2,27 +2,54 @@ package resolver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
 	"sync"
-	"time"
+	"sync/atomic"
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/notifications"
-	"github.com/safing/portbase/utils/debug"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/base/utils/debug"
 	_ "github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/intel"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 )
 
-var module *modules.Module
+// ResolverModule is the DNS resolver module.
+type ResolverModule struct { //nolint
+	mgr      *mgr.Manager
+	instance instance
 
-func init() {
-	module = modules.Register("resolver", prep, start, nil, "base", "netenv")
+	failingResolverWorkerMgr   *mgr.WorkerMgr
+	suggestUsingStaleCacheTask *mgr.WorkerMgr
+
+	states *mgr.StateMgr
+}
+
+// Manager returns the module manager.
+func (rm *ResolverModule) Manager() *mgr.Manager {
+	return rm.mgr
+}
+
+// States returns the module state manager.
+func (rm *ResolverModule) States() *mgr.StateMgr {
+	return rm.states
+}
+
+// Start starts the module.
+func (rm *ResolverModule) Start() error {
+	return start()
+}
+
+// Stop stops the module.
+func (rm *ResolverModule) Stop() error {
+	return nil
 }
 
 func prep() error {
@@ -49,41 +76,28 @@ func start() error {
 	loadResolvers()
 
 	// reload after network change
-	err := module.RegisterEventHook(
-		"netenv",
-		"network changed",
+	module.instance.NetEnv().EventNetworkChange.AddCallback(
 		"update nameservers",
-		func(_ context.Context, _ interface{}) error {
+		func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 			loadResolvers()
 			log.Debug("resolver: reloaded nameservers due to network change")
-			return nil
+			return false, nil
 		},
 	)
-	if err != nil {
-		return err
-	}
 
 	// Force resolvers to reconnect when SPN has connected.
-	if err := module.RegisterEventHook(
-		"captain",
-		"spn connect", // Defined by captain.SPNConnectedEvent
+	module.instance.GetEventSPNConnected().AddCallback(
 		"force resolver reconnect",
-		func(ctx context.Context, _ any) error {
-			ForceResolverReconnect(ctx)
-			return nil
-		},
-	); err != nil {
-		// This module does not depend on the SPN/Captain module, and probably should not.
-		log.Warningf("resolvers: failed to register event hook for captain/spn-connect: %s", err)
-	}
+		func(ctx *mgr.WorkerCtx, _ struct{}) (bool, error) {
+			ForceResolverReconnect(ctx.Ctx())
+			return false, nil
+		})
 
 	// reload after config change
 	prevNameservers := strings.Join(configuredNameServers(), " ")
-	err = module.RegisterEventHook(
-		"config",
-		"config change",
+	module.instance.Config().EventConfigChange.AddCallback(
 		"update nameservers",
-		func(_ context.Context, _ interface{}) error {
+		func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 			newNameservers := strings.Join(configuredNameServers(), " ")
 			if newNameservers != prevNameservers {
 				prevNameservers = newNameservers
@@ -91,38 +105,28 @@ func start() error {
 				loadResolvers()
 				log.Debug("resolver: reloaded nameservers due to config change")
 			}
-			return nil
-		},
-	)
-	if err != nil {
-		return err
-	}
+			return false, nil
+		})
 
 	// Check failing resolvers regularly and when the network changes.
-	checkFailingResolversTask := module.NewTask("check failing resolvers", checkFailingResolvers).Repeat(1 * time.Minute)
-	err = module.RegisterEventHook(
-		"netenv",
-		netenv.NetworkChangedEvent,
+	module.failingResolverWorkerMgr = module.mgr.NewWorkerMgr("check failing resolvers", checkFailingResolvers, nil)
+	module.failingResolverWorkerMgr.Go()
+	module.instance.NetEnv().EventNetworkChange.AddCallback(
 		"check failing resolvers",
-		func(_ context.Context, _ any) error {
-			checkFailingResolversTask.StartASAP()
-			return nil
-		},
-	)
-	if err != nil {
-		return err
-	}
+		func(wc *mgr.WorkerCtx, _ struct{}) (bool, error) {
+			return false, checkFailingResolvers(wc)
+		})
 
-	module.NewTask("suggest using stale cache", suggestUsingStaleCacheTask).Repeat(2 * time.Minute)
+	module.suggestUsingStaleCacheTask = module.mgr.NewWorkerMgr("suggest using stale cache", suggestUsingStaleCacheTask, nil)
+	module.suggestUsingStaleCacheTask.Go()
 
-	module.StartServiceWorker(
+	module.mgr.Go(
 		"mdns handler",
-		5*time.Second,
 		listenToMDNS,
 	)
 
-	module.StartServiceWorker("name record delayed cache writer", 0, recordDatabase.DelayedCacheWriter)
-	module.StartServiceWorker("ip info delayed cache writer", 0, ipInfoDatabase.DelayedCacheWriter)
+	module.mgr.Go("name record delayed cache writer", recordDatabase.DelayedCacheWriter)
+	module.mgr.Go("ip info delayed cache writer", ipInfoDatabase.DelayedCacheWriter)
 
 	return nil
 }
@@ -188,7 +192,7 @@ This notification will go away when Portmaster detects a working configured DNS 
 	notifications.Notify(n)
 
 	failingResolverNotification = n
-	n.AttachToModule(module)
+	n.SyncWithState(module.states)
 }
 
 func resetFailingResolversNotification() {
@@ -206,7 +210,7 @@ func resetFailingResolversNotification() {
 	}
 
 	// Additionally, resolve the module error, if not done through the notification.
-	module.Resolve(failingResolverErrorID)
+	module.states.Remove(failingResolverErrorID)
 }
 
 // AddToDebugInfo adds the system status to the given debug.Info.
@@ -249,4 +253,33 @@ func AddToDebugInfo(di *debug.Info) {
 		debug.UseCodeSection|debug.AddContentLineBreaks,
 		content...,
 	)
+}
+
+var (
+	module     *ResolverModule
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Resolver module.
+func New(instance instance) (*ResolverModule, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+	m := mgr.New("Resolver")
+	module = &ResolverModule{
+		mgr:      m,
+		instance: instance,
+
+		states: mgr.NewStateMgr(m),
+	}
+	if err := prep(); err != nil {
+		return nil, err
+	}
+	return module, nil
+}
+
+type instance interface {
+	NetEnv() *netenv.NetEnv
+	Config() *config.Config
+	GetEventSPNConnected() *mgr.EventMgr[struct{}]
 }

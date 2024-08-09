@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/network/reference"

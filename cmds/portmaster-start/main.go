@@ -15,11 +15,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/safing/portbase/dataroot"
-	"github.com/safing/portbase/info"
-	portlog "github.com/safing/portbase/log"
-	"github.com/safing/portbase/updater"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/info"
+	portlog "github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 

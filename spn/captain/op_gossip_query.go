@@ -5,13 +5,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/varint"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/docks"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/varint"
 )
 
 // GossipQueryOpType is the type ID of the gossip query operation.
@@ -63,12 +64,12 @@ func runGossipQueryOp(t terminal.Terminal, opID uint32, data *container.Containe
 	op.ctx, op.cancelCtx = context.WithCancel(t.Ctx())
 	op.InitOperationBase(t, opID)
 
-	module.StartWorker("gossip query handler", op.handler)
+	module.mgr.Go("gossip query handler", op.handler)
 
 	return op, nil
 }
 
-func (op *GossipQueryOp) handler(_ context.Context) error {
+func (op *GossipQueryOp) handler(_ *mgr.WorkerCtx) error {
 	tErr := op.sendMsgs(hub.MsgTypeAnnouncement)
 	if tErr != nil {
 		op.Stop(op, tErr)
@@ -166,7 +167,7 @@ func (op *GossipQueryOp) Deliver(msg *terminal.Msg) *terminal.Error {
 	}
 
 	// Import and verify.
-	h, forward, tErr := docks.ImportAndVerifyHubInfo(module.Ctx, "", announcementData, statusData, conf.MainMapName, conf.MainMapScope)
+	h, forward, tErr := docks.ImportAndVerifyHubInfo(module.mgr.Ctx(), "", announcementData, statusData, conf.MainMapName, conf.MainMapScope)
 	if tErr != nil {
 		log.Warningf("spn/captain: failed to import %s from gossip query: %s", gossipMsgType, tErr)
 	} else {

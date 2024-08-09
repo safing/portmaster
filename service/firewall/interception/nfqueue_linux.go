@@ -1,7 +1,6 @@
 package interception
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"sort"
@@ -10,8 +9,9 @@ import (
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/firewall/interception/nfq"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/packet"
 )
@@ -258,30 +258,25 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 
 	err = activateNfqueueFirewall()
 	if err != nil {
-		_ = StopNfqueueInterception()
 		return fmt.Errorf("could not initialize nfqueue: %w", err)
 	}
 
 	out4Queue, err = nfq.New(17040, false)
 	if err != nil {
-		_ = StopNfqueueInterception()
 		return fmt.Errorf("nfqueue(IPv4, out): %w", err)
 	}
 	in4Queue, err = nfq.New(17140, false)
 	if err != nil {
-		_ = StopNfqueueInterception()
 		return fmt.Errorf("nfqueue(IPv4, in): %w", err)
 	}
 
 	if netenv.IPv6Enabled() {
 		out6Queue, err = nfq.New(17060, true)
 		if err != nil {
-			_ = StopNfqueueInterception()
 			return fmt.Errorf("nfqueue(IPv6, out): %w", err)
 		}
 		in6Queue, err = nfq.New(17160, true)
 		if err != nil {
-			_ = StopNfqueueInterception()
 			return fmt.Errorf("nfqueue(IPv6, in): %w", err)
 		}
 	} else {
@@ -290,7 +285,7 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 		in6Queue = &disabledNfQueue{}
 	}
 
-	module.StartServiceWorker("nfqueue packet handler", 0, func(_ context.Context) error {
+	module.mgr.Go("nfqueue packet handler", func(_ *mgr.WorkerCtx) error {
 		return handleInterception(packets)
 	})
 	return nil

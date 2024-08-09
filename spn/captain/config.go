@@ -3,7 +3,7 @@ package captain
 import (
 	"sync"
 
-	"github.com/safing/portbase/config"
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/spn/conf"
@@ -56,8 +56,24 @@ var (
 )
 
 func prepConfig() error {
-	// Home Node Rules
+	// Register spn module setting.
 	err := config.Register(&config.Option{
+		Name:         "SPN Module",
+		Key:          CfgOptionEnableSPNKey,
+		Description:  "Start the Safing Privacy Network module. If turned off, the SPN is fully disabled on this device.",
+		OptType:      config.OptTypeBool,
+		DefaultValue: false,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionEnableSPNOrder,
+			config.CategoryAnnotation:     "General",
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Home Node Rules
+	err = config.Register(&config.Option{
 		Name: "Home Node Rules",
 		Key:  CfgOptionHomeHubPolicyKey,
 		Description: `Customize which countries should or should not be used for your Home Node. The Home Node is your entry into the SPN. You connect directly to it and all your connections are routed through it.
@@ -190,7 +206,11 @@ This setting mainly exists for when you need to simulate your presence in anothe
 	}
 
 	// Config options for use.
-	cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(profile.CfgOptionRoutingAlgorithmKey, navigator.DefaultRoutingProfileID)
+	if conf.Integrated() {
+		cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(profile.CfgOptionRoutingAlgorithmKey, navigator.DefaultRoutingProfileID)
+	} else {
+		cfgOptionRoutingAlgorithm = func() string { return navigator.DefaultRoutingProfileID }
+	}
 
 	return nil
 }

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/utils/debug"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/utils/debug"
 	"github.com/safing/portmaster/service/network/state"
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/resolver"
@@ -23,7 +23,6 @@ func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "debug/network",
 		Read:        api.PermitUser,
-		BelongsTo:   module,
 		DataFunc:    debugInfo,
 		Name:        "Get Network Debug Information",
 		Description: "Returns network debugging information, similar to debug/core, but with connection data.",
@@ -52,9 +51,8 @@ func registerAPIEndpoints() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:      "debug/network/state",
-		Read:      api.PermitUser,
-		BelongsTo: module,
+		Path: "debug/network/state",
+		Read: api.PermitUser,
 		StructFunc: func(ar *api.Request) (i interface{}, err error) {
 			return state.GetInfo(), nil
 		},
@@ -79,8 +77,7 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	di.AddVersionInfo()
 	di.AddPlatformInfo(ar.Context())
 
-	// Errors and unexpected logs.
-	di.AddLastReportedModuleError()
+	// Unexpected logs.
 	di.AddLastUnexpectedLogs()
 
 	// Network Connections.

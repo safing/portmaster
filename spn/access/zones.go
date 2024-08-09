@@ -9,7 +9,7 @@ import (
 	"github.com/tevino/abool"
 
 	"github.com/safing/jess/lhash"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/access/token"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/terminal"
@@ -48,7 +48,7 @@ func InitializeZones() error {
 
 	// Special client zone config.
 	var requestSignalHandler func(token.Handler)
-	if conf.Client() {
+	if conf.Integrated() {
 		requestSignalHandler = shouldRequestTokensHandler
 	}
 
@@ -139,14 +139,8 @@ func initializeTestZone() error {
 }
 
 func shouldRequestTokensHandler(_ token.Handler) {
-	// accountUpdateTask is always set in client mode and when the module is online.
-	// Check if it's set in case this gets executed in other circumstances.
-	if accountUpdateTask == nil {
-		log.Warningf("spn/access: trying to trigger account update, but the task is not available")
-		return
-	}
-
-	accountUpdateTask.StartASAP()
+	// Run the account update task as now.
+	module.updateAccountWorkerMgr.Go()
 }
 
 // GetTokenAmount returns the amount of tokens for the given zones.

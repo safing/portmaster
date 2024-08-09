@@ -1,18 +1,18 @@
 package profile
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"path"
 	"strings"
 	"sync"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 var getProfileLock sync.Mutex
@@ -147,8 +147,8 @@ func GetLocalProfile(id string, md MatchingData, createProfileCallback func() *P
 
 	// Trigger further metadata fetching from system if profile was created.
 	if created && profile.UsePresentationPath && !special {
-		module.StartWorker("get profile metadata", func(ctx context.Context) error {
-			return profile.updateMetadataFromSystem(ctx, md)
+		module.mgr.Go("get profile metadata", func(wc *mgr.WorkerCtx) error {
+			return profile.updateMetadataFromSystem(wc.Ctx(), md)
 		})
 	}
 

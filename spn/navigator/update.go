@@ -10,14 +10,14 @@ import (
 	"github.com/tevino/abool"
 	"golang.org/x/exp/slices"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/intel/geoip"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/spn/hub"
@@ -409,7 +409,7 @@ func (m *Map) updateHubLane(pin *Pin, lane *hub.Lane, peer *Pin) {
 }
 
 // ResetFailingStates resets the failing state on all pins.
-func (m *Map) ResetFailingStates(ctx context.Context) {
+func (m *Map) ResetFailingStates() {
 	m.Lock()
 	defer m.Unlock()
 
@@ -420,7 +420,7 @@ func (m *Map) ResetFailingStates(ctx context.Context) {
 	m.PushPinChanges()
 }
 
-func (m *Map) updateFailingStates(ctx context.Context, task *modules.Task) error {
+func (m *Map) updateFailingStates(ctx *mgr.WorkerCtx) error {
 	m.Lock()
 	defer m.Unlock()
 
@@ -433,7 +433,7 @@ func (m *Map) updateFailingStates(ctx context.Context, task *modules.Task) error
 	return nil
 }
 
-func (m *Map) updateStates(ctx context.Context, task *modules.Task) error {
+func (m *Map) updateStates(ctx *mgr.WorkerCtx) error {
 	var toDelete []string
 
 	m.Lock()
@@ -458,7 +458,7 @@ pinLoop:
 
 		// Delete hubs async, as deleting triggers a couple hooks that lock the map.
 		if len(toDelete) > 0 {
-			module.StartWorker("delete hubs", func(_ context.Context) error {
+			module.mgr.Go("delete hubs", func(_ *mgr.WorkerCtx) error {
 				for _, idToDelete := range toDelete {
 					err := hub.RemoveHubAndMsgs(m.Name, idToDelete)
 					if err != nil {
@@ -558,8 +558,8 @@ func (m *Map) addBootstrapHub(bootstrapTransport string) error {
 }
 
 // UpdateConfigQuickSettings updates config quick settings with available countries.
-func (m *Map) UpdateConfigQuickSettings(ctx context.Context) error {
-	ctx, tracer := log.AddTracer(ctx)
+func (m *Map) UpdateConfigQuickSettings(wc *mgr.WorkerCtx) error {
+	ctx, tracer := log.AddTracer(wc.Ctx())
 	tracer.Trace("navigator: updating SPN rules country quick settings")
 	defer tracer.Submit()
 

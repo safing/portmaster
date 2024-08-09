@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/safing/portbase/container"
 	"github.com/safing/portmaster/spn/unit"
+	"github.com/safing/structures/container"
 )
 
 // Msg is a message within the SPN network stack.

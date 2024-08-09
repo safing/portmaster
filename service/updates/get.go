@@ -3,7 +3,7 @@ package updates
 import (
 	"path"
 
-	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 
@@ -16,7 +16,7 @@ func GetPlatformFile(identifier string) (*updater.File, error) {
 		return nil, err
 	}
 
-	module.TriggerEvent(VersionUpdateEvent, nil)
+	module.EventVersionsUpdated.Submit(struct{}{})
 	return file, nil
 }
 
@@ -29,7 +29,7 @@ func GetFile(identifier string) (*updater.File, error) {
 		return nil, err
 	}
 
-	module.TriggerEvent(VersionUpdateEvent, nil)
+	module.EventVersionsUpdated.Submit(struct{}{})
 	return file, nil
 }
 

@@ -13,8 +13,8 @@ import (
 	processInfo "github.com/shirou/gopsutil/process"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/profile"
 )
 

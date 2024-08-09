@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/record"
 )
 
 const (

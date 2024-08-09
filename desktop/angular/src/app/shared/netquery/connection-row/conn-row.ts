@@ -30,21 +30,6 @@ export class SfngNetqueryConnectionRowComponent implements OnInit, OnDestroy {
   @Input()
   activeRevision: number | undefined = 0;
 
-  get isOutdated() {
-    // FIXME(ppacher)
-    return false;
-    /*
-        if (!this.conn || !this.helper.profile) {
-          return false;
-        }
-        if (this.helper.profile.currentProfileRevision === -1) {
-          // we don't know the revision counter yet ...
-          return false;
-        }
-        return this.conn.profile_revision !== this.helper.profile.currentProfileRevision;
-    */
-  }
-
   /* timeAgoTicker ticks every 10000 seconds to force a refresh
      of the timeAgo pipes */
   timeAgoTicker: number = 0;

@@ -7,9 +7,9 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/container"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
 )
 
 // ExpansionTerminal is used for expanding to another Hub.
@@ -53,7 +53,7 @@ func ExpandTo(from terminal.Terminal, routeTo string, encryptFor *hub.Hub) (*Exp
 
 	// Create base terminal for expansion.
 	base, initData, tErr := terminal.NewLocalBaseTerminal(
-		module.Ctx,
+		module.mgr.Ctx(),
 		0, // Ignore; The ID of the operation is used for communication.
 		from.FmtID(),
 		encryptFor,
@@ -81,7 +81,7 @@ func ExpandTo(from terminal.Terminal, routeTo string, encryptFor *hub.Hub) (*Exp
 	}
 
 	// Start Workers.
-	base.StartWorkers(module, "expansion terminal")
+	base.StartWorkers(module.mgr, "expansion terminal")
 
 	return expansion, nil
 }

@@ -1,10 +1,11 @@
 package navigator
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/spn/hub"
 )
@@ -95,4 +96,26 @@ func (pin *Pin) Export() *PinExport {
 	})
 
 	return export
+}
+
+// HumanName returns a human-readable version of a Hub's name.
+// This name will likely consist of two parts: the given name and the ending of the ID to make it unique.
+func (h *PinExport) HumanName() string {
+	if len(h.ID) < 8 {
+		return fmt.Sprintf("<Hub %s>", h.ID)
+	}
+
+	shortenedID := h.ID[len(h.ID)-8:len(h.ID)-4] +
+		"-" +
+		h.ID[len(h.ID)-4:]
+
+	// Be more careful, as the Hub name is user input.
+	switch {
+	case h.Info.Name == "":
+		return fmt.Sprintf("<Hub %s>", shortenedID)
+	case len(h.Info.Name) > 16:
+		return fmt.Sprintf("<Hub %s %s>", h.Info.Name[:16], shortenedID)
+	default:
+		return fmt.Sprintf("<Hub %s %s>", h.Info.Name, shortenedID)
+	}
 }

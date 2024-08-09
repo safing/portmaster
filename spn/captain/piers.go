@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/intel"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/spn/docks"
@@ -45,7 +46,7 @@ func startPiers() error {
 	}
 
 	// Start worker to handle docking requests.
-	module.StartServiceWorker("docking request handler", 0, dockingRequestHandler)
+	module.mgr.Go("docking request handler", dockingRequestHandler)
 
 	return nil
 }
@@ -56,7 +57,7 @@ func stopPiers() {
 	}
 }
 
-func dockingRequestHandler(ctx context.Context) error {
+func dockingRequestHandler(wc *mgr.WorkerCtx) error {
 	// Sink all waiting ships when this worker ends.
 	// But don't be destructive so the service worker could recover.
 	defer func() {
@@ -74,7 +75,7 @@ func dockingRequestHandler(ctx context.Context) error {
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-wc.Done():
 			return nil
 		case ship := <-dockingRequests:
 			// Ignore nil ships.
@@ -82,7 +83,7 @@ func dockingRequestHandler(ctx context.Context) error {
 				continue
 			}
 
-			if err := checkDockingPermission(ctx, ship); err != nil {
+			if err := checkDockingPermission(wc.Ctx(), ship); err != nil {
 				log.Warningf("spn/captain: denied ship from %s to dock at pier %s: %s", ship.RemoteAddr(), ship.Transport().String(), err)
 			} else {
 				handleDockingRequest(ship)
@@ -123,8 +124,8 @@ func handleDockingRequest(ship ships.Ship) {
 		return
 	}
 
-	module.StartWorker("start crane", func(ctx context.Context) error {
-		_ = crane.Start(ctx)
+	module.mgr.Go("start crane", func(wc *mgr.WorkerCtx) error {
+		_ = crane.Start(wc.Ctx())
 		// Crane handles errors internally.
 		return nil
 	})

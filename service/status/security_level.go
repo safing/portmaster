@@ -1,6 +1,6 @@
 package status
 
-import "github.com/safing/portbase/config"
+import "github.com/safing/portmaster/base/config"
 
 // MigrateSecurityLevelToBoolean migrates a security level (int) option value to a boolean option value.
 func MigrateSecurityLevelToBoolean(option *config.Option, value any) any {

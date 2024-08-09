@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/access/token"
+	"github.com/safing/structures/dsd"
 )
 
 func loadTokens() {
@@ -120,7 +120,7 @@ func clearTokens() {
 	}
 
 	// Purge database storage prefix.
-	ctx, cancel := context.WithTimeout(module.Ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(module.mgr.Ctx(), 10*time.Second)
 	defer cancel()
 	n, err := db.Purge(ctx, query.New(fmt.Sprintf(tokenStorageKeyTemplate, "")))
 	if err != nil {

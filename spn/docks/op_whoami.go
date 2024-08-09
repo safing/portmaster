@@ -3,9 +3,9 @@ package docks
 import (
 	"time"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/dsd"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
 )
 
 const (

@@ -1,13 +1,26 @@
 package token
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
-	"github.com/safing/portbase/modules"
-	"github.com/safing/portmaster/service/core/pmtesting"
+	"github.com/safing/portmaster/base/rng"
 )
 
+type testInstance struct{}
+
 func TestMain(m *testing.M) {
-	module := modules.Register("token", nil, nil, nil, "rng")
-	pmtesting.TestMain(m, module)
+	rng, err := rng.New(testInstance{})
+	if err != nil {
+		fmt.Printf("failed to create RNG module: %s", err)
+		os.Exit(1)
+	}
+
+	err = rng.Start()
+	if err != nil {
+		fmt.Printf("failed to start RNG module: %s", err)
+		os.Exit(1)
+	}
+	m.Run()
 }

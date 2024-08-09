@@ -1,12 +1,11 @@
 package navigator
 
 import (
-	"context"
 	"sort"
 	"time"
 
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/docks"
 	"github.com/safing/portmaster/spn/terminal"
 )
@@ -25,7 +24,7 @@ const (
 	// 1000c   -> 100h -> capped to 50h.
 )
 
-func (m *Map) measureHubs(ctx context.Context, _ *modules.Task) error {
+func (m *Map) measureHubs(wc *mgr.WorkerCtx) error {
 	if home, _ := m.GetHome(); home == nil {
 		log.Debug("spn/navigator: skipping measuring, no home hub set")
 		return nil
@@ -74,7 +73,7 @@ func (m *Map) measureHubs(ctx context.Context, _ *modules.Task) error {
 		}
 
 		// Measure connection.
-		tErr := docks.MeasureHub(ctx, pin.Hub, checkWithTTL)
+		tErr := docks.MeasureHub(wc.Ctx(), pin.Hub, checkWithTTL)
 
 		// Independent of outcome, recalculate the cost.
 		latency, _ := pin.measurements.GetLatency()

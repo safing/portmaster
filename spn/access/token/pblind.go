@@ -13,8 +13,8 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/rot256/pblind"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
 )
 
 const pblindSecretSize = 32
@@ -217,7 +217,7 @@ func (pbh *PBlindHandler) CreateSetup() (state *PBlindSignerState, setupResponse
 	}
 
 	// Go through the batch.
-	for i := 0; i < pbh.opts.BatchSize; i++ {
+	for i := range pbh.opts.BatchSize {
 		info, err := pbh.makeInfo(i + 1)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create info #%d: %w", i, err)
@@ -257,7 +257,7 @@ func (pbh *PBlindHandler) CreateTokenRequest(requestSetup *PBlindSetupResponse) 
 	}
 
 	// Go through the batch.
-	for i := 0; i < pbh.opts.BatchSize; i++ {
+	for i := range pbh.opts.BatchSize {
 		// Check if we have setup data.
 		if requestSetup.Msgs[i] == nil {
 			return nil, fmt.Errorf("missing setup data #%d", i)
@@ -319,7 +319,7 @@ func (pbh *PBlindHandler) IssueTokens(state *PBlindSignerState, request *PBlindT
 	}
 
 	// Go through the batch.
-	for i := 0; i < pbh.opts.BatchSize; i++ {
+	for i := range pbh.opts.BatchSize {
 		// Check if we have request data.
 		if request.Msgs[i] == nil {
 			return nil, fmt.Errorf("missing request data #%d", i)
@@ -360,7 +360,7 @@ func (pbh *PBlindHandler) ProcessIssuedTokens(issuedTokens *IssuedPBlindTokens) 
 	finalizedTokens := make([]*PBlindToken, pbh.opts.BatchSize)
 
 	// Go through the batch.
-	for i := 0; i < pbh.opts.BatchSize; i++ {
+	for i := range pbh.opts.BatchSize {
 		// Finalize token.
 		err := pbh.requestState[i].State.ProcessMessage3(*issuedTokens.Msgs[i])
 		if err != nil {

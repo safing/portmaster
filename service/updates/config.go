@@ -1,12 +1,11 @@
 package updates
 
 import (
-	"context"
-
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates/helper"
 )
 
@@ -123,7 +122,7 @@ func initConfig() {
 	previousDevMode = devMode()
 }
 
-func updateRegistryConfig(_ context.Context, _ interface{}) error {
+func updateRegistryConfig(_ *mgr.WorkerCtx, _ struct{}) (cancel bool, err error) {
 	changed := false
 
 	if enableSoftwareUpdates() != softwareUpdatesCurrentlyEnabled {
@@ -162,10 +161,10 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 
 		// Select versions depending on new indexes and modes.
 		registry.SelectVersions()
-		module.TriggerEvent(VersionUpdateEvent, nil)
+		module.EventVersionsUpdated.Submit(struct{}{})
 
 		if softwareUpdatesCurrentlyEnabled || intelUpdatesCurrentlyEnabled {
-			module.Resolve("")
+			module.states.Clear()
 			if err := TriggerUpdate(true, false); err != nil {
 				log.Warningf("updates: failed to trigger update: %s", err)
 			}
@@ -175,5 +174,5 @@ func updateRegistryConfig(_ context.Context, _ interface{}) error {
 		}
 	}
 
-	return nil
+	return false, nil
 }

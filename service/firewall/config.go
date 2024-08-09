@@ -3,9 +3,9 @@ package firewall
 import (
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/notifications"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/core"
 	"github.com/safing/portmaster/spn/captain"
 )

@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/formats/dsd"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/access/account"
 	"github.com/safing/portmaster/spn/access/token"
+	"github.com/safing/structures/dsd"
 )
 
 // Client URLs.
@@ -57,15 +57,8 @@ func makeClientRequest(opts *clientRequestOptions) (resp *http.Response, err err
 	// Get context for request.
 	var ctx context.Context
 	var cancel context.CancelFunc
-	if module.Online() {
-		// Only use module context if online.
-		ctx, cancel = context.WithTimeout(module.Ctx, opts.requestTimeout)
-		defer cancel()
-	} else {
-		// Otherwise, use the background context.
-		ctx, cancel = context.WithTimeout(context.Background(), opts.requestTimeout)
-		defer cancel()
-	}
+	ctx, cancel = context.WithTimeout(module.mgr.Ctx(), opts.requestTimeout)
+	defer cancel()
 
 	// Create new request.
 	request, err := http.NewRequestWithContext(ctx, opts.method, opts.url, nil)
@@ -214,7 +207,7 @@ func Login(username, password string) (user *UserRecord, code int, err error) {
 	defer clientRequestLock.Unlock()
 
 	// Trigger account update when done.
-	defer module.TriggerEvent(AccountUpdateEvent, nil)
+	defer module.EventAccountUpdate.Submit(struct{}{})
 
 	// Get previous user.
 	previousUser, err := GetUser()
@@ -300,7 +293,7 @@ func Logout(shallow, purge bool) error {
 	defer clientRequestLock.Unlock()
 
 	// Trigger account update when done.
-	defer module.TriggerEvent(AccountUpdateEvent, nil)
+	defer module.EventAccountUpdate.Submit(struct{}{})
 
 	// Clear caches.
 	clearUserCaches()
@@ -382,7 +375,7 @@ func UpdateUser() (user *UserRecord, statusCode int, err error) {
 	defer clientRequestLock.Unlock()
 
 	// Trigger account update when done.
-	defer module.TriggerEvent(AccountUpdateEvent, nil)
+	defer module.EventAccountUpdate.Submit(struct{}{})
 
 	// Create request options.
 	userData := &account.User{}

@@ -1,7 +1,6 @@
 package unit
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"math/rand"
@@ -10,6 +9,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
 func TestUnit(t *testing.T) { //nolint:paralleltest
@@ -20,25 +21,27 @@ func TestUnit(t *testing.T) { //nolint:paralleltest
 	size := 1000000
 	workers := 100
 
+	m := mgr.New("unit-test")
 	// Create and start scheduler.
 	s := NewScheduler(&SchedulerConfig{})
 	s.StartDebugLog()
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		err := s.SlotScheduler(ctx)
+	// ctx, cancel := context.WithCancel(context.Background())
+	m.Go("test", func(w *mgr.WorkerCtx) error {
+		err := s.SlotScheduler(w)
 		if err != nil {
 			panic(err)
 		}
-	}()
-	defer cancel()
+		return nil
+	})
+	defer m.Cancel()
 
 	// Create 10 workers.
 	var wg sync.WaitGroup
 	wg.Add(workers)
 	sizePerWorker := size / workers
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
-			for i := 0; i < sizePerWorker; i++ {
+			for range sizePerWorker {
 				u := s.NewUnit()
 
 				// Make 1% high priority.
@@ -96,7 +99,7 @@ func TestUnit(t *testing.T) { //nolint:paralleltest
 	)
 
 	// Shutdown
-	cancel()
+	m.Cancel()
 	time.Sleep(s.config.SlotDuration * 10)
 
 	// Check if scheduler shut down correctly.

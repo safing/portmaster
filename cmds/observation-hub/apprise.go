@@ -9,18 +9,42 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"text/template"
 	"time"
 
-	"github.com/safing/portbase/apprise"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/apprise"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/intel/geoip"
+	"github.com/safing/portmaster/service/mgr"
 )
 
+// Apprise is the apprise notification module.
+type Apprise struct {
+	mgr *mgr.Manager
+
+	instance instance
+}
+
+// Manager returns the module manager.
+func (a *Apprise) Manager() *mgr.Manager {
+	return a.mgr
+}
+
+// Start starts the module.
+func (a *Apprise) Start() error {
+	return startApprise()
+}
+
+// Stop stops the module.
+func (a *Apprise) Stop() error {
+	return nil
+}
+
 var (
-	appriseModule   *modules.Module
-	appriseNotifier *apprise.Notifier
+	appriseModule     *Apprise
+	appriseShimLoaded atomic.Bool
+	appriseNotifier   *apprise.Notifier
 
 	appriseURL        string
 	appriseTag        string
@@ -30,7 +54,7 @@ var (
 )
 
 func init() {
-	appriseModule = modules.Register("apprise", nil, startApprise, nil)
+	// appriseModule = modules.Register("apprise", nil, startApprise, nil)
 
 	flag.StringVar(&appriseURL, "apprise-url", "", "set the apprise URL to enable notifications via apprise")
 	flag.StringVar(&appriseTag, "apprise-tag", "", "set the apprise tag(s) according to their docs")
@@ -78,7 +102,7 @@ func startApprise() error {
 	}
 
 	if appriseGreet {
-		err := appriseNotifier.Send(appriseModule.Ctx, &apprise.Message{
+		err := appriseNotifier.Send(appriseModule.mgr.Ctx(), &apprise.Message{
 			Title: "👋 Observation Hub Reporting In",
 			Body:  "I am the Observation Hub. I am connected to the SPN and watch out for it. I will report notable changes to the network here.",
 		})
@@ -101,7 +125,7 @@ func reportToApprise(change *observedChange) (errs error) {
 handleTag:
 	for _, tag := range strings.Split(appriseNotifier.DefaultTag, ",") {
 		// Check if we are shutting down.
-		if appriseModule.IsStopping() {
+		if appriseModule.mgr.IsDone() {
 			return nil
 		}
 
@@ -127,9 +151,9 @@ handleTag:
 
 		// Send notification to apprise.
 		var err error
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			// Try three times.
-			err = appriseNotifier.Send(appriseModule.Ctx, &apprise.Message{
+			err = appriseNotifier.Send(appriseModule.mgr.Ctx(), &apprise.Message{
 				Body: buf.String(),
 				Tag:  tag,
 			})
@@ -255,3 +279,18 @@ func getCountryInfo(code string) geoip.CountryInfo {
 // 		panic(err)
 // 	}
 // }
+
+// NewApprise returns a new Apprise module.
+func NewApprise(instance instance) (*Observer, error) {
+	if !appriseShimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	m := mgr.New("apprise")
+	appriseModule = &Apprise{
+		mgr:      m,
+		instance: instance,
+	}
+
+	return observerModule, nil
+}

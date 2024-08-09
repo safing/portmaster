@@ -3,15 +3,14 @@ package resolver
 import (
 	"net/http"
 
-	"github.com/safing/portbase/api"
-	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/database/record"
 )
 
 func registerAPI() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "dns/clear",
 		Write:       api.PermitUser,
-		BelongsTo:   module,
 		ActionFunc:  clearNameCacheHandler,
 		Name:        "Clear cached DNS records",
 		Description: "Deletes all saved DNS records from the database.",
@@ -22,7 +21,6 @@ func registerAPI() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "dns/resolvers",
 		Read:        api.PermitAnyone,
-		BelongsTo:   module,
 		StructFunc:  exportDNSResolvers,
 		Name:        "List DNS Resolvers",
 		Description: "List currently configured DNS resolvers and their status.",
@@ -31,9 +29,8 @@ func registerAPI() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:      `dns/cache/{query:[a-z0-9\.-]{0,512}\.[A-Z]{1,32}}`,
-		Read:      api.PermitUser,
-		BelongsTo: module,
+		Path: `dns/cache/{query:[a-z0-9\.-]{0,512}\.[A-Z]{1,32}}`,
+		Read: api.PermitUser,
 		RecordFunc: func(r *api.Request) (record.Record, error) {
 			return recordDatabase.Get(nameRecordsKeyPrefix + r.URLVars["query"])
 		},

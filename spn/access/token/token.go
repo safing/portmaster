@@ -8,7 +8,7 @@ import (
 
 	"github.com/mr-tron/base58"
 
-	"github.com/safing/portbase/container"
+	"github.com/safing/structures/container"
 )
 
 // Token represents a token, consisting of a zone (name) and some data.

@@ -1,25 +1,45 @@
 package access
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/modules"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/access/account"
 	"github.com/safing/portmaster/spn/access/token"
 	"github.com/safing/portmaster/spn/conf"
 )
 
-var (
-	module *modules.Module
+type Access struct {
+	mgr      *mgr.Manager
+	instance instance
 
-	accountUpdateTask *modules.Task
+	updateAccountWorkerMgr *mgr.WorkerMgr
+
+	EventAccountUpdate *mgr.EventMgr[struct{}]
+}
+
+func (a *Access) Manager() *mgr.Manager {
+	return a.mgr
+}
+
+func (a *Access) Start() error {
+	return start()
+}
+
+func (a *Access) Stop() error {
+	return stop()
+}
+
+var (
+	module     *Access
+	shimLoaded atomic.Bool
 
 	tokenIssuerIsFailing     = abool.New()
 	tokenIssuerRetryDuration = 10 * time.Minute
@@ -38,15 +58,9 @@ var (
 	ErrNotLoggedIn          = errors.New("not logged in")
 )
 
-func init() {
-	module = modules.Register("access", prep, start, stop, "terminal")
-}
-
 func prep() error {
-	module.RegisterEvent(AccountUpdateEvent, true)
-
 	// Register API handlers.
-	if conf.Client() {
+	if conf.Integrated() {
 		err := registerAPIEndpoints()
 		if err != nil {
 			return err
@@ -62,25 +76,46 @@ func start() error {
 		return err
 	}
 
-	if conf.Client() {
+	if conf.Integrated() {
+		// Add config listener to enable/disable SPN.
+		module.instance.Config().EventConfigChange.AddCallback("spn enable check", func(wc *mgr.WorkerCtx, s struct{}) (bool, error) {
+			// Do not do anything when we are shutting down.
+			if module.instance.Stopping() {
+				return true, nil
+			}
+
+			enabled := config.GetAsBool("spn/enable", false)
+			if enabled() {
+				module.mgr.Go("ensure SPN is started", module.instance.SPNGroup().EnsureStartedWorker)
+			} else {
+				module.mgr.Go("ensure SPN is stopped", module.instance.SPNGroup().EnsureStoppedWorker)
+			}
+			return false, nil
+		})
+
+		// Check if we need to enable SPN now.
+		enabled := config.GetAsBool("spn/enable", false)
+		if enabled() {
+			module.mgr.Go("ensure SPN is started", module.instance.SPNGroup().EnsureStartedWorker)
+		}
+
 		// Load tokens from database.
 		loadTokens()
 
 		// Register new task.
-		accountUpdateTask = module.NewTask(
-			"update account",
-			UpdateAccount,
-		).Repeat(24 * time.Hour).Schedule(time.Now().Add(1 * time.Minute))
+		module.updateAccountWorkerMgr.Delay(1 * time.Minute)
 	}
 
 	return nil
 }
 
 func stop() error {
-	if conf.Client() {
-		// Stop account update task.
-		accountUpdateTask.Cancel()
-		accountUpdateTask = nil
+	if conf.Integrated() {
+		// Make sure SPN is stopped before we proceed.
+		err := module.mgr.Do("ensure SPN is shut down", module.instance.SPNGroup().EnsureStoppedWorker)
+		if err != nil {
+			log.Errorf("access: stop SPN: %s", err)
+		}
 
 		// Store tokens to database.
 		storeTokens()
@@ -93,11 +128,14 @@ func stop() error {
 }
 
 // UpdateAccount updates the user account and fetches new tokens, if needed.
-func UpdateAccount(_ context.Context, task *modules.Task) error {
+func UpdateAccount(_ *mgr.WorkerCtx) error {
+	// Schedule next call - this will change if other conditions are met bellow.
+	module.updateAccountWorkerMgr.Delay(24 * time.Hour)
+
 	// Retry sooner if the token issuer is failing.
 	defer func() {
-		if tokenIssuerIsFailing.IsSet() && task != nil {
-			task.Schedule(time.Now().Add(tokenIssuerRetryDuration))
+		if tokenIssuerIsFailing.IsSet() {
+			module.updateAccountWorkerMgr.Delay(tokenIssuerRetryDuration)
 		}
 	}()
 
@@ -128,15 +166,15 @@ func UpdateAccount(_ context.Context, task *modules.Task) error {
 
 	case time.Until(*u.Subscription.EndsAt) < 24*time.Hour &&
 		time.Since(*u.Subscription.EndsAt) < 24*time.Hour:
-		// Update account every hour 24h hours before and after the subscription ends.
-		task.Schedule(time.Now().Add(time.Hour))
+		// Update account every hour for 24h hours before and after the subscription ends.
+		module.updateAccountWorkerMgr.Delay(1 * time.Hour)
 
 	case u.Subscription.NextBillingDate == nil: // No auto-subscription.
 
 	case time.Until(*u.Subscription.NextBillingDate) < 24*time.Hour &&
 		time.Since(*u.Subscription.NextBillingDate) < 24*time.Hour:
 		// Update account every hour 24h hours before and after the next billing date.
-		task.Schedule(time.Now().Add(time.Hour))
+		module.updateAccountWorkerMgr.Delay(1 * time.Hour)
 	}
 
 	return nil
@@ -165,11 +203,8 @@ func tokenIssuerFailed() {
 	if !tokenIssuerIsFailing.SetToIf(false, true) {
 		return
 	}
-	if !module.Online() {
-		return
-	}
 
-	accountUpdateTask.Schedule(time.Now().Add(tokenIssuerRetryDuration))
+	module.updateAccountWorkerMgr.Delay(tokenIssuerRetryDuration)
 }
 
 // IsLoggedIn returns whether a User is currently logged in.
@@ -191,4 +226,32 @@ func (user *UserRecord) MayUseTheSPN() bool {
 	defer user.Unlock()
 
 	return user.User.MayUseSPN()
+}
+
+// New returns a new Access module.
+func New(instance instance) (*Access, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	m := mgr.New("Access")
+	module = &Access{
+		mgr:      m,
+		instance: instance,
+
+		EventAccountUpdate:     mgr.NewEventMgr[struct{}](AccountUpdateEvent, m),
+		updateAccountWorkerMgr: m.NewWorkerMgr("update account", UpdateAccount, nil),
+	}
+
+	if err := prep(); err != nil {
+		return nil, err
+	}
+
+	return module, nil
+}
+
+type instance interface {
+	Config() *config.Config
+	SPNGroup() *mgr.ExtendedGroup
+	Stopping() bool
 }

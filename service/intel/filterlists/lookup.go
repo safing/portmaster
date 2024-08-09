@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/log"
 )
 
 // lookupBlockLists loads the entity record for key from

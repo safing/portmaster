@@ -1,16 +1,16 @@
 package terminal
 
 import (
-	"context"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/utils"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
+	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/structures/container"
 )
 
 // Operation is an interface for all operations.
@@ -245,7 +245,7 @@ func (t *TerminalBase) StopOperation(op Operation, err *Error) {
 		log.Warningf("spn/terminal: operation %s %s failed: %s", op.Type(), fmtOperationID(t.parentID, t.id, op.ID()), err)
 	}
 
-	module.StartWorker("stop operation", func(_ context.Context) error {
+	module.mgr.Go("stop operation", func(_ *mgr.WorkerCtx) error {
 		// Call operation stop handle function for proper shutdown cleaning up.
 		err = op.HandleStop(err)
 

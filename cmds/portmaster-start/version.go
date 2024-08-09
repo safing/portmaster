@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/safing/portbase/info"
+	"github.com/safing/portmaster/base/info"
 )
 
 var (

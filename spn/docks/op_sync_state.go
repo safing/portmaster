@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/safing/portbase/container"
-	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/terminal"
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
 )
 
 // SyncStateOpType is the type ID of the sync state operation.
@@ -39,8 +40,8 @@ func init() {
 
 // startSyncStateOp starts a worker that runs the sync state operation.
 func (crane *Crane) startSyncStateOp() {
-	module.StartWorker("sync crane state", func(ctx context.Context) error {
-		tErr := crane.Controller.SyncState(ctx)
+	module.mgr.Go("sync crane state", func(wc *mgr.WorkerCtx) error {
+		tErr := crane.Controller.SyncState(wc.Ctx())
 		if tErr != nil {
 			return tErr
 		}

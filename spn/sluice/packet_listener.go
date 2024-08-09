@@ -1,7 +1,6 @@
 package sluice
 
 import (
-	"context"
 	"io"
 	"net"
 	"sync"
@@ -9,6 +8,8 @@ import (
 	"time"
 
 	"github.com/tevino/abool"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // PacketListener is a listener for packet based protocols.
@@ -37,8 +38,8 @@ func ListenPacket(network, address string) (net.Listener, error) {
 		newConns: make(chan *PacketConn),
 		conns:    make(map[string]*PacketConn),
 	}
-	module.StartServiceWorker("packet listener reader", 0, ln.reader)
-	module.StartServiceWorker("packet listener cleaner", time.Minute, ln.cleaner)
+	module.mgr.Go("packet listener reader", ln.reader)
+	module.mgr.Go("packet listener cleaner", ln.cleaner)
 
 	return ln, nil
 }
@@ -99,7 +100,7 @@ func (ln *PacketListener) setConn(conn *PacketConn) {
 	ln.conns[conn.addr.String()] = conn
 }
 
-func (ln *PacketListener) reader(_ context.Context) error {
+func (ln *PacketListener) reader(_ *mgr.WorkerCtx) error {
 	for {
 		// Read data from connection.
 		buf := make([]byte, 512)
@@ -145,7 +146,7 @@ func (ln *PacketListener) reader(_ context.Context) error {
 	}
 }
 
-func (ln *PacketListener) cleaner(ctx context.Context) error {
+func (ln *PacketListener) cleaner(ctx *mgr.WorkerCtx) error {
 	for {
 		select {
 		case <-time.After(1 * time.Minute):

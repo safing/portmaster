@@ -58,7 +58,7 @@ func createRandomTestMap(seed int64, size int) *Map {
 	}
 
 	// Create Hub list.
-	var hubs []*hub.Hub
+	hubs := make([]*hub.Hub, 0, size)
 
 	// Create Intel data structure.
 	mapIntel := &hub.Intel{
@@ -69,7 +69,7 @@ func createRandomTestMap(seed int64, size int) *Map {
 	var currentGroup string
 
 	// Create [size] fake Hubs.
-	for i := 0; i < size; i++ {
+	for i := range size {
 		// Change group every 5 Hubs.
 		if i%5 == 0 {
 			currentGroup = gofakeit.Username()
@@ -81,7 +81,7 @@ func createRandomTestMap(seed int64, size int) *Map {
 	}
 
 	// Fake three superseeded Hubs.
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		h := hubs[size-1-i]
 
 		// Set FirstSeen in the past and copy an IP address of an existing Hub.
@@ -95,7 +95,7 @@ func createRandomTestMap(seed int64, size int) *Map {
 
 	// Create Lanes between Hubs in order to create the network.
 	totalConnections := size * 10
-	for i := 0; i < totalConnections; i++ {
+	for range totalConnections {
 		// Get new random indexes.
 		indexA := gofakeit.Number(0, size-1)
 		indexB := gofakeit.Number(0, size-1)
@@ -246,7 +246,7 @@ func createFakeHub(group string, randomFailes bool, mapIntel *hub.Intel) *hub.Hu
 
 func createGoodIP(v4 bool) (net.IP, *geoip.Location) {
 	var candidate net.IP
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		if v4 {
 			candidate = net.ParseIP(gofakeit.IPv4Address())
 		} else {

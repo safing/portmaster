@@ -1,16 +1,16 @@
 package network
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/iterator"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/database/record"
-	"github.com/safing/portbase/database/storage"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/iterator"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/database/storage"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/process"
 )
 
@@ -110,7 +110,7 @@ func (s *StorageInterface) Get(key string) (record.Record, error) {
 func (s *StorageInterface) Query(q *query.Query, local, internal bool) (*iterator.Iterator, error) {
 	it := iterator.New()
 
-	module.StartWorker("connection query", func(_ context.Context) error {
+	module.mgr.Go("connection query", func(_ *mgr.WorkerCtx) error {
 		s.processQuery(q, it)
 		return nil
 	})

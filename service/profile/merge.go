@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/service/profile/binmeta"
 )
 
@@ -77,12 +77,12 @@ func MergeProfiles(name string, primary *Profile, secondaries ...*Profile) (newP
 	if err := primary.delete(); err != nil {
 		return nil, fmt.Errorf("failed to delete primary profile %s: %w", primary.ScopedID(), err)
 	}
-	module.TriggerEvent(MigratedEvent, []string{primary.ScopedID(), newProfile.ScopedID()})
+	module.EventMigrated.Submit([]string{primary.ScopedID(), newProfile.ScopedID()})
 	for _, sp := range secondaries {
 		if err := sp.delete(); err != nil {
 			return nil, fmt.Errorf("failed to delete secondary profile %s: %w", sp.ScopedID(), err)
 		}
-		module.TriggerEvent(MigratedEvent, []string{sp.ScopedID(), newProfile.ScopedID()})
+		module.EventMigrated.Submit([]string{sp.ScopedID(), newProfile.ScopedID()})
 	}
 
 	return newProfile, nil

@@ -1,9 +1,10 @@
 package profile
 
 import (
-	"context"
 	"sync"
 	"time"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
 const (
@@ -53,7 +54,7 @@ func addActiveProfile(profile *Profile) {
 	activeProfiles[profile.ScopedID()] = profile
 }
 
-func cleanActiveProfiles(ctx context.Context) error {
+func cleanActiveProfiles(ctx *mgr.WorkerCtx) error {
 	for {
 		select {
 		case <-time.After(activeProfileCleanerTickDuration):

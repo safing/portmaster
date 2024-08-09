@@ -1,8 +1,6 @@
 package captain
 
 import (
-	"time"
-
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/docks"
@@ -34,7 +32,7 @@ func handleCraneUpdate(crane *docks.Crane) {
 
 func updateConnectionStatus() {
 	// Delay updating status for a better chance to combine multiple changes.
-	statusUpdateTask.Schedule(time.Now().Add(maintainStatusUpdateDelay))
+	module.statusUpdater.Delay(maintainStatusUpdateDelay)
 
 	// Check if we lost all connections and trigger a pending restart if we did.
 	for _, crane := range docks.GetAllAssignedCranes() {

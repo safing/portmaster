@@ -8,8 +8,8 @@ import (
 
 	"github.com/safing/jess"
 	"github.com/safing/jess/tools"
-	"github.com/safing/portbase/log"
-	"github.com/safing/portbase/rng"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/spn/hub"
 )
 
@@ -144,7 +144,7 @@ func (id *Identity) MaintainExchKeys(newStatus *hub.Status, now time.Time) (chan
 func (id *Identity) createExchKey(eks *providedExchKeyScheme, now time.Time) error {
 	// get ID
 	var keyID string
-	for i := 0; i < 1000000; i++ { // not forever
+	for range 1000000 { // not forever
 		// generate new ID
 		b, err := rng.Bytes(3)
 		if err != nil {

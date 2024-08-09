@@ -7,10 +7,11 @@ import (
 
 	"github.com/hashicorp/go-version"
 
-	"github.com/safing/portbase/database"
-	"github.com/safing/portbase/database/migration"
-	"github.com/safing/portbase/database/query"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/migration"
+	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/profile/binmeta"
 )
 
@@ -129,11 +130,12 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 	if lastErr != nil {
 		// Normally, an icon migration would not be such a big error, but this is a test
 		// run for the profile IDs and we absolutely need to know if anything went wrong.
-		module.Error(
-			"migration-failed",
-			"Profile Migration Failed",
-			fmt.Sprintf("Failed to migrate icons of %d profiles (out of %d pending). The last error was: %s\n\nPlease restart Portmaster to try the migration again.", failed, total, lastErr),
-		)
+		module.states.Add(mgr.State{
+			ID:      "migration-failed-icons",
+			Name:    "Profile Migration Failed",
+			Message: fmt.Sprintf("Failed to migrate icons of %d profiles (out of %d pending). The last error was: %s\n\nPlease restart Portmaster to try the migration again.", failed, total, lastErr),
+			Type:    mgr.StateTypeError,
+		})
 		return fmt.Errorf("failed to migrate %d profiles (out of %d pending) - last error: %w", failed, total, lastErr)
 	}
 
@@ -217,11 +219,12 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 
 	// Log migration failure and try again next time.
 	if lastErr != nil {
-		module.Error(
-			"migration-failed",
-			"Profile Migration Failed",
-			fmt.Sprintf("Failed to migrate profile IDs of %d profiles (out of %d pending). The last error was: %s\n\nPlease restart Portmaster to try the migration again.", failed, total, lastErr),
-		)
+		module.states.Add(mgr.State{
+			ID:      "migration-failed-derived-IDs",
+			Name:    "Profile Migration Failed",
+			Message: fmt.Sprintf("Failed to migrate profile IDs of %d profiles (out of %d pending). The last error was: %s\n\nPlease restart Portmaster to try the migration again.", failed, total, lastErr),
+			Type:    mgr.StateTypeError,
+		})
 		return fmt.Errorf("failed to migrate %d profiles (out of %d pending) - last error: %w", failed, total, lastErr)
 	}
 

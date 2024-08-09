@@ -16,9 +16,9 @@ import (
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 
-	"github.com/safing/portbase/config"
-	"github.com/safing/portbase/dataroot"
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/netquery/orm"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/netutils"
