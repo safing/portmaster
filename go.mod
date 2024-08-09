@@ -23,7 +23,6 @@ require (
 	github.com/florianl/go-conntrack v0.4.0
 	github.com/florianl/go-nfqueue v1.3.2
 	github.com/fogleman/gg v1.3.0
-	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/gofrs/uuid v4.4.0+incompatible
@@ -61,12 +60,11 @@ require (
 	github.com/tidwall/sjson v1.2.5
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/vincent-petithory/dataurl v1.0.0
-	github.com/vmihailenco/msgpack/v5 v5.4.1
 	go.etcd.io/bbolt v1.3.10
 	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8
-	golang.org/x/image v0.17.0
+	golang.org/x/image v0.19.0
 	golang.org/x/net v0.26.0
-	golang.org/x/sync v0.7.0
+	golang.org/x/sync v0.8.0
 	golang.org/x/sys v0.21.0
 	gopkg.in/yaml.v3 v3.0.1
 	zombiezen.com/go/sqlite v1.3.0
@@ -82,6 +80,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fxamacker/cbor v1.5.1 // indirect
+	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus v4.1.0+incompatible // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
@@ -112,6 +111,7 @@ require (
 	github.com/tklauser/numcpus v0.8.0 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
+	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
@@ -119,7 +119,7 @@ require (
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	golang.org/x/crypto v0.24.0 // indirect
 	golang.org/x/mod v0.18.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/text v0.17.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
