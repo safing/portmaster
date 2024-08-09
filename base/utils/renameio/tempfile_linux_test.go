@@ -95,9 +95,7 @@ func TestTempDir(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		testCase := tt
-
+	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 

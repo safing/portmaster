@@ -39,9 +39,9 @@ func TestUnit(t *testing.T) { //nolint:paralleltest
 	var wg sync.WaitGroup
 	wg.Add(workers)
 	sizePerWorker := size / workers
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go func() {
-			for i := 0; i < sizePerWorker; i++ {
+			for range sizePerWorker {
 				u := s.NewUnit()
 
 				// Make 1% high priority.

@@ -36,27 +36,27 @@ var testMeta = &Meta{
 }
 
 func BenchmarkAllocateBytes(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = make([]byte, 33)
 	}
 }
 
 func BenchmarkAllocateStruct1(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		var newMeta Meta
 		_ = newMeta
 	}
 }
 
 func BenchmarkAllocateStruct2(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = Meta{}
 	}
 }
 
 func BenchmarkMetaSerializeContainer(b *testing.B) {
 	// Start benchmark
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		c := container.New()
 		c.AppendNumber(uint64(testMeta.Created))
 		c.AppendNumber(uint64(testMeta.Modified))
@@ -98,7 +98,7 @@ func BenchmarkMetaUnserializeContainer(b *testing.B) {
 	b.ResetTimer()
 
 	// Start benchmark
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		var newMeta Meta
 		var err error
 		var num uint64
@@ -152,7 +152,7 @@ func BenchmarkMetaUnserializeContainer(b *testing.B) {
 
 func BenchmarkMetaSerializeVarInt(b *testing.B) {
 	// Start benchmark
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		encoded := make([]byte, 33)
 		offset := 0
 		data := varint.Pack64(uint64(testMeta.Created))
@@ -231,7 +231,7 @@ func BenchmarkMetaUnserializeVarInt(b *testing.B) {
 	b.ResetTimer()
 
 	// Start benchmark
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		var newMeta Meta
 		offset = 0
 
@@ -284,7 +284,7 @@ func BenchmarkMetaUnserializeVarInt(b *testing.B) {
 }
 
 func BenchmarkMetaSerializeWithCodegen(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := testMeta.GenCodeMarshal(nil)
 		if err != nil {
 			b.Errorf("failed to serialize with codegen: %s", err)
@@ -305,7 +305,7 @@ func BenchmarkMetaUnserializeWithCodegen(b *testing.B) {
 	b.ResetTimer()
 
 	// Start benchmark
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		var newMeta Meta
 		_, err := newMeta.GenCodeUnmarshal(encodedData)
 		if err != nil {
@@ -316,7 +316,7 @@ func BenchmarkMetaUnserializeWithCodegen(b *testing.B) {
 }
 
 func BenchmarkMetaSerializeWithDSDJSON(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := dsd.Dump(testMeta, dsd.JSON)
 		if err != nil {
 			b.Errorf("failed to serialize with DSD/JSON: %s", err)
@@ -337,7 +337,7 @@ func BenchmarkMetaUnserializeWithDSDJSON(b *testing.B) {
 	b.ResetTimer()
 
 	// Start benchmark
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		var newMeta Meta
 		_, err := dsd.Load(encodedData, &newMeta)
 		if err != nil {

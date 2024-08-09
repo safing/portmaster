@@ -63,7 +63,7 @@ func loginAndRefresh(t *testing.T, doLogin bool, refreshTimes int) {
 		t.Logf("auth token: %+v", authToken.Token)
 	}
 
-	for i := 0; i < refreshTimes; i++ {
+	for range refreshTimes {
 		user, _, err := UpdateUser()
 		if err != nil {
 			t.Fatalf("getting profile failed: %s", err)

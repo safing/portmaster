@@ -90,7 +90,7 @@ func start() error {
 		// The "wait" parameter times out after 1 second.
 		// Allow 30 seconds for both databases to load.
 	geoInitCheck:
-		for i := 0; i < 30; i++ {
+		for range 30 {
 			switch {
 			case !geoip.IsInitialized(false, true): // First, IPv4.
 			case !geoip.IsInitialized(true, true): // Then, IPv6.

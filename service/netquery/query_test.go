@@ -92,18 +92,17 @@ func TestUnmarshalQuery(t *testing.T) { //nolint:tparallel
 	}
 
 	for _, testCase := range cases { //nolint:paralleltest
-		c := testCase
-		t.Run(c.Name, func(t *testing.T) {
+		t.Run(testCase.Name, func(t *testing.T) {
 			var q Query
-			err := json.Unmarshal([]byte(c.Input), &q)
+			err := json.Unmarshal([]byte(testCase.Input), &q)
 
-			if c.Error != nil {
+			if testCase.Error != nil {
 				if assert.Error(t, err) {
-					assert.Equal(t, c.Error.Error(), err.Error())
+					assert.Equal(t, testCase.Error.Error(), err.Error())
 				}
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, c.Expected, q)
+				assert.Equal(t, testCase.Expected, q)
 			}
 		})
 	}
@@ -230,20 +229,18 @@ func TestQueryBuilder(t *testing.T) { //nolint:tparallel
 	tbl, err := orm.GenerateTableSchema("connections", Conn{})
 	require.NoError(t, err)
 
-	for idx, testCase := range cases { //nolint:paralleltest
-		cID := idx
-		c := testCase
-		t.Run(c.N, func(t *testing.T) {
-			str, params, err := c.Q.toSQLWhereClause(context.TODO(), "", tbl, orm.DefaultEncodeConfig)
+	for cID, testCase := range cases { //nolint:paralleltest
+		t.Run(testCase.N, func(t *testing.T) {
+			str, params, err := testCase.Q.toSQLWhereClause(context.TODO(), "", tbl, orm.DefaultEncodeConfig)
 
-			if c.E != nil {
+			if testCase.E != nil {
 				if assert.Error(t, err) {
-					assert.Equal(t, c.E.Error(), err.Error(), "test case %d", cID)
+					assert.Equal(t, testCase.E.Error(), err.Error(), "test case %d", cID)
 				}
 			} else {
 				require.NoError(t, err, "test case %d", cID)
-				assert.Equal(t, c.P, params, "test case %d", cID)
-				assert.Equal(t, c.R, str, "test case %d", cID)
+				assert.Equal(t, testCase.P, params, "test case %d", cID)
+				assert.Equal(t, testCase.R, str, "test case %d", cID)
 			}
 		})
 	}

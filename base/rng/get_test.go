@@ -19,7 +19,7 @@ func TestNumberRandomness(t *testing.T) {
 	var testSize uint64 = 10000
 
 	results := make([]uint64, int(subjects))
-	for i := 0; i < int(subjects*testSize); i++ {
+	for range int(subjects * testSize) {
 		n, err := Number(subjects - 1)
 		if err != nil {
 			t.Fatal(err)

@@ -7,7 +7,7 @@ import (
 func TestFullFeeder(t *testing.T) {
 	t.Parallel()
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			rngFeeder <- []byte{0}
 		}()

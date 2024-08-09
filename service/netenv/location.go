@@ -418,7 +418,7 @@ nextHop:
 			// Send ICMP packet.
 			// Try to send three times, as this can be flaky.
 		sendICMP:
-			for i := 0; i < 3; i++ {
+			for range 3 {
 				_, err = conn.WriteTo(pingPacket, locationTestingIPv4Addr)
 				if err == nil {
 					break sendICMP

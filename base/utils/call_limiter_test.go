@@ -21,9 +21,9 @@ func TestCallLimiter(t *testing.T) {
 	// We are doing this without sleep in function, so dummy exec first to trigger first pause.
 	oa.Do(func() {})
 	// Start
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		testWg.Add(100)
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			go func() {
 				oa.Do(func() {
 					if !executed.SetToIf(false, true) {
@@ -48,7 +48,7 @@ func TestCallLimiter(t *testing.T) {
 	// Choose values so that about 10 executions are expected
 	var execs uint32
 	testWg.Add(200)
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		go func() {
 			oa.Do(func() {
 				atomic.AddUint32(&execs, 1)
@@ -74,7 +74,7 @@ func TestCallLimiter(t *testing.T) {
 
 	// Check if the limiter correctly handles panics.
 	testWg.Add(100)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		go func() {
 			defer func() {
 				_ = recover()

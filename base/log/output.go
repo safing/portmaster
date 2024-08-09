@@ -129,6 +129,8 @@ func writerManager() {
 	}
 }
 
+// defer should be able to edit the err. So naked return is required.
+// nolint:golint,nakedret
 func writer() (err error) {
 	defer func() {
 		// recover from panic

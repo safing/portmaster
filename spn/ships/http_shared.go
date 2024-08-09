@@ -121,10 +121,9 @@ func addHTTPHandler(port uint16, path string, handler http.HandlerFunc) error {
 	sharedHTTPServers[port] = shared
 
 	// Start servers in service workers.
-	for _, listener := range listeners {
-		serviceListener := listener
+	for _, serviceListener := range listeners {
 		module.mgr.Go(
-			fmt.Sprintf("shared http server listener on %s", listener.Addr()),
+			fmt.Sprintf("shared http server listener on %s", serviceListener.Addr()),
 			func(_ *mgr.WorkerCtx) error {
 				err := shared.server.Serve(serviceListener)
 				if !errors.Is(http.ErrServerClosed, err) {

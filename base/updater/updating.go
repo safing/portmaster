@@ -75,7 +75,7 @@ func (reg *ResourceRegistry) downloadIndex(ctx context.Context, client *http.Cli
 	}
 
 	// Download new index and signature.
-	for tries := 0; tries < 3; tries++ {
+	for tries := range 3 {
 		// Index and signature need to be fetched together, so that they are
 		// fetched from the same source. One source should always have a matching
 		// index and signature. Backup sources may be behind a little.
@@ -219,7 +219,7 @@ func (reg *ResourceRegistry) DownloadUpdates(ctx context.Context, includeManual 
 			rv.resource.Identifier, rv.VersionNumber,
 		)
 		var err error
-		for tries := 0; tries < 3; tries++ {
+		for tries := range 3 {
 			err = reg.fetchFile(ctx, client, rv, tries)
 			if err == nil {
 				// Update resource version state.
@@ -249,7 +249,7 @@ func (reg *ResourceRegistry) DownloadUpdates(ctx context.Context, includeManual 
 
 		for _, rv := range missingSigs {
 			var err error
-			for tries := 0; tries < 3; tries++ {
+			for tries := range 3 {
 				err = reg.fetchMissingSig(ctx, client, rv, tries)
 				if err == nil {
 					// Update resource version state.
@@ -338,10 +338,10 @@ func (reg *ResourceRegistry) GetPendingDownloads(manual, auto bool) (resources, 
 		}()
 	}
 
-	slices.SortFunc[[]*ResourceVersion, *ResourceVersion](toUpdate, func(a, b *ResourceVersion) int {
+	slices.SortFunc(toUpdate, func(a, b *ResourceVersion) int {
 		return strings.Compare(a.resource.Identifier, b.resource.Identifier)
 	})
-	slices.SortFunc[[]*ResourceVersion, *ResourceVersion](missingSigs, func(a, b *ResourceVersion) int {
+	slices.SortFunc(missingSigs, func(a, b *ResourceVersion) int {
 		return strings.Compare(a.resource.Identifier, b.resource.Identifier)
 	})
 

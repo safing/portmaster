@@ -33,7 +33,7 @@ func ToParamMap(ctx context.Context, r interface{}, keyPrefix string, cfg Encode
 
 	res := make(map[string]interface{}, val.NumField())
 
-	for i := 0; i < val.NumField(); i++ {
+	for i := range val.NumField() {
 		fieldType := val.Type().Field(i)
 		field := val.Field(i)
 

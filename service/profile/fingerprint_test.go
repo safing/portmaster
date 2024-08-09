@@ -40,7 +40,7 @@ func TestDeriveProfileID(t *testing.T) {
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
 
 	// Test 100 times.
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// Shuffle fingerprints.
 		rnd.Shuffle(len(fps), func(i, j int) {
 			fps[i], fps[j] = fps[j], fps[i]

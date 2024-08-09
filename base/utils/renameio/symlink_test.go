@@ -25,7 +25,7 @@ func TestSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		if err := Symlink("hello.txt", filepath.Join(d, "hi.txt")); err != nil {
 			t.Fatal(err)
 		}

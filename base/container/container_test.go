@@ -29,7 +29,7 @@ func TestContainerDataHandling(t *testing.T) {
 	c1c := c1.carbonCopy()
 
 	c2 := New()
-	for i := 0; i < len(testData); i++ {
+	for range len(testData) {
 		oneByte := make([]byte, 1)
 		c1c.WriteToSlice(oneByte)
 		c2.Append(oneByte)
@@ -48,7 +48,7 @@ func TestContainerDataHandling(t *testing.T) {
 	c3c = c3.carbonCopy()
 
 	d5 := make([]byte, len(testData))
-	for i := 0; i < len(testData); i++ {
+	for i := range len(testData) {
 		c3c.WriteToSlice(d5[i : i+1])
 	}
 
@@ -61,7 +61,7 @@ func TestContainerDataHandling(t *testing.T) {
 	}
 
 	c8 := New(testDataSplitted...)
-	for i := 0; i < 110; i++ {
+	for range 110 {
 		c8.Prepend(nil)
 	}
 	c8.clean()
@@ -155,7 +155,7 @@ func TestContainerBlockHandling(t *testing.T) {
 	c1c := c1.carbonCopy()
 
 	c2 := New(nil)
-	for i := 0; i < c1.Length(); i++ {
+	for range c1.Length() {
 		oneByte := make([]byte, 1)
 		c1c.WriteToSlice(oneByte)
 		c2.Append(oneByte)

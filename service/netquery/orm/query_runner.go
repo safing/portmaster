@@ -145,7 +145,7 @@ func RunQuery(ctx context.Context, conn *sqlite.Conn, sql string, modifiers ...Q
 			if err := DecodeStmt(ctx, &args.Schema, stmt, currentField.Interface(), args.DecodeConfig); err != nil {
 				resultDump := make(map[string]any)
 
-				for colIdx := 0; colIdx < stmt.ColumnCount(); colIdx++ {
+				for colIdx := range stmt.ColumnCount() {
 					name := stmt.ColumnName(colIdx)
 
 					switch stmt.ColumnType(colIdx) { //nolint:exhaustive // TODO: handle type BLOB?

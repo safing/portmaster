@@ -84,11 +84,9 @@ func (s *Status) buildSystemStatus() *SystemStatusRecord {
 		OnlineStatus:  netenv.GetOnlineStatus(),
 		Modules:       make([]mgr.StateUpdate, 0, len(s.states)),
 	}
-	for _, v := range s.states {
+	for _, newStateUpdate := range s.states {
 		// Deep copy state.
-		newStateUpdate := v
-		newStateUpdate.States = make([]mgr.State, len(v.States))
-		copy(newStateUpdate.States, v.States)
+		newStateUpdate.States = append([]mgr.State(nil), newStateUpdate.States...)
 		status.Modules = append(status.Modules, newStateUpdate)
 
 		// Check if state is worst so far.

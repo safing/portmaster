@@ -151,7 +151,7 @@ handleTag:
 
 		// Send notification to apprise.
 		var err error
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			// Try three times.
 			err = appriseNotifier.Send(appriseModule.mgr.Ctx(), &apprise.Message{
 				Body: buf.String(),

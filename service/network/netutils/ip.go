@@ -157,7 +157,7 @@ func GetBroadcastAddress(ip net.IP, netMask net.IPMask) net.IP {
 	// Merge to broadcast address
 	n := len(ip)
 	broadcastAddress := make(net.IP, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		broadcastAddress[i] = ip[i] | ^mask[i]
 	}
 	return broadcastAddress

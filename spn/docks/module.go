@@ -50,7 +50,7 @@ func registerCrane(crane *Crane) error {
 	defer cranesLock.Unlock()
 
 	// Generate new IDs until a unique one is found.
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// Generate random ID.
 		randomID, err := rng.Bytes(3)
 		if err != nil {

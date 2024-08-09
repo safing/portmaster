@@ -16,7 +16,7 @@ func TestRateLimit(t *testing.T) {
 	s := NewSession()
 
 	// Everything should be okay within the min limit.
-	for i := 0; i < rateLimitMinOps; i++ {
+	for range rateLimitMinOps {
 		tErr = s.RateLimit()
 		if tErr != nil {
 			t.Error("should not rate limit within min limit")
@@ -24,7 +24,7 @@ func TestRateLimit(t *testing.T) {
 	}
 
 	// Somewhere here we should rate limiting.
-	for i := 0; i < rateLimitMaxOpsPerSecond; i++ {
+	for range rateLimitMaxOpsPerSecond {
 		tErr = s.RateLimit()
 	}
 	assert.ErrorIs(t, tErr, ErrRateLimited, "should rate limit")
@@ -37,7 +37,7 @@ func TestSuspicionLimit(t *testing.T) {
 	s := NewSession()
 
 	// Everything should be okay within the min limit.
-	for i := 0; i < rateLimitMinSuspicion; i++ {
+	for range rateLimitMinSuspicion {
 		tErr = s.RateLimit()
 		if tErr != nil {
 			t.Error("should not rate limit within min limit")
@@ -46,7 +46,7 @@ func TestSuspicionLimit(t *testing.T) {
 	}
 
 	// Somewhere here we should rate limiting.
-	for i := 0; i < rateLimitMaxSuspicionPerSecond; i++ {
+	for range rateLimitMaxSuspicionPerSecond {
 		s.ReportSuspiciousActivity(SusFactorCommon)
 		tErr = s.RateLimit()
 	}
@@ -66,8 +66,7 @@ func TestConcurrencyLimit(t *testing.T) {
 
 	// Start many workers to test concurrency.
 	wg.Add(workers)
-	for i := 0; i < workers; i++ {
-		workerNum := i
+	for workerNum := range workers {
 		go func() {
 			defer func() {
 				_ = recover()

@@ -27,13 +27,12 @@ func TestStablePoolRealWorld(t *testing.T) {
 	// 	cnt++
 	// 	testPool.Put(cnt)
 	// }
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// block round
 		testWg.Add(1)
 		// add workers
 		testWorkerWg.Add(100)
-		for j := 0; j < 100; j++ {
-			k := j
+		for j := range 100 {
 			go func() {
 				// wait for round to start
 				testWg.Wait()
@@ -43,7 +42,7 @@ func TestStablePoolRealWorld(t *testing.T) {
 				// "work"
 				time.Sleep(5 * time.Microsecond)
 				// re-insert 99%
-				if k%100 > 0 {
+				if j%100 > 0 {
 					testPool.Put(x)
 				}
 				// mark as finished
@@ -62,11 +61,11 @@ func TestStablePoolRealWorld(t *testing.T) {
 	// optimal usage test
 
 	optPool := &StablePool{}
-	for i := 0; i < 1000; i++ {
-		for j := 0; j < 100; j++ {
+	for range 1000 {
+		for j := range 100 {
 			optPool.Put(j)
 		}
-		for k := 0; k < 100; k++ {
+		for k := range 100 {
 			assert.Equal(t, k, optPool.Get(), "should match")
 		}
 	}
@@ -82,12 +81,11 @@ func TestStablePoolFuzzing(t *testing.T) {
 	var fuzzWorkerWg sync.WaitGroup
 	// start goroutines and wait
 	fuzzWg.Add(1)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		fuzzWorkerWg.Add(2)
-		j := i
 		go func() {
 			fuzzWg.Wait()
-			fuzzPool.Put(j)
+			fuzzPool.Put(i)
 			fuzzWorkerWg.Done()
 		}()
 		go func() {
@@ -107,13 +105,13 @@ func TestStablePoolBreaking(t *testing.T) {
 	// try to break it
 
 	breakPool := &StablePool{}
-	for i := 0; i < 10; i++ {
-		for j := 0; j < 100; j++ {
+	for range 10 {
+		for j := range 100 {
 			breakPool.Put(nil)
 			breakPool.Put(j)
 			breakPool.Put(nil)
 		}
-		for k := 0; k < 100; k++ {
+		for k := range 100 {
 			assert.Equal(t, k, breakPool.Get(), "should match")
 		}
 	}

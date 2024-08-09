@@ -124,7 +124,7 @@ func TestPBlindLibrary(t *testing.T) {
 
 	// Create signers and prep requests.
 	start := time.Now()
-	for i := 0; i < batchSize; i++ {
+	for i := range batchSize {
 		signer, err := pblind.CreateSigner(sk, info)
 		if err != nil {
 			t.Fatal(err)
@@ -146,7 +146,7 @@ func TestPBlindLibrary(t *testing.T) {
 
 	// Create requesters and create requests.
 	start = time.Now()
-	for i := 0; i < batchSize; i++ {
+	for i := range batchSize {
 		requester, err := pblind.CreateRequester(pk, info, msgStr)
 		if err != nil {
 			t.Fatal(err)
@@ -178,7 +178,7 @@ func TestPBlindLibrary(t *testing.T) {
 
 	// Sign requests
 	start = time.Now()
-	for i := 0; i < batchSize; i++ {
+	for i := range batchSize {
 		var msg2S pblind.Message2
 		_, err = asn1.Unmarshal(toServer[i], &msg2S)
 		if err != nil {
@@ -204,7 +204,7 @@ func TestPBlindLibrary(t *testing.T) {
 
 	// Verify signed requests
 	start = time.Now()
-	for i := 0; i < batchSize; i++ {
+	for i := range batchSize {
 		var msg3R pblind.Message3
 		_, err := asn1.Unmarshal(toClient[i], &msg3R)
 		if err != nil {
@@ -234,7 +234,7 @@ func TestPBlindLibrary(t *testing.T) {
 
 	// Verify on server
 	start = time.Now()
-	for i := 0; i < batchSize; i++ {
+	for i := range batchSize {
 		var sig pblind.Signature
 		_, err := asn1.Unmarshal(toServer[i], &sig)
 		if err != nil {
