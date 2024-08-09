@@ -7,6 +7,7 @@ import (
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/dbmodule"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/service/core/base"
@@ -46,6 +47,8 @@ func (stub *testInstance) Stopping() bool {
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
 
 func runTest(m *testing.M) error {
+	log.Start()
+
 	ds, err := config.InitializeUnitTestDataroot("test-docks")
 	if err != nil {
 		return fmt.Errorf("failed to initialize dataroot: %w", err)
