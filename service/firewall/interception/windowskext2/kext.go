@@ -39,9 +39,12 @@ func Start() error {
 	}
 
 	// Start service and open file
-	service.Start(true)
-	kextFile, err = service.OpenFile(1024)
+	err = service.Start(true)
+	if err != nil {
+		log.Errorf("failed to start service: %s", err)
+	}
 
+	kextFile, err = service.OpenFile(1024)
 	if err != nil {
 		return fmt.Errorf("failed to open driver: %w", err)
 	}
@@ -130,7 +133,7 @@ func UpdateVerdict(conn *network.Connection) error {
 			LocalPort:     conn.LocalPort,
 			RemoteAddress: [4]byte(conn.Entity.IP),
 			RemotePort:    conn.Entity.Port,
-			Verdict:       uint8(conn.Verdict),
+			Verdict:       uint8(getKextVerdictFromConnection(conn)),
 		}
 
 		return kextinterface.SendUpdateV4Command(kextFile, update)
@@ -141,12 +144,46 @@ func UpdateVerdict(conn *network.Connection) error {
 			LocalPort:     conn.LocalPort,
 			RemoteAddress: [16]byte(conn.Entity.IP),
 			RemotePort:    conn.Entity.Port,
-			Verdict:       uint8(conn.Verdict),
+			Verdict:       uint8(getKextVerdictFromConnection(conn)),
 		}
 
 		return kextinterface.SendUpdateV6Command(kextFile, update)
 	}
 	return nil
+}
+
+func getKextVerdictFromConnection(conn *network.Connection) kextinterface.KextVerdict {
+	switch conn.Verdict {
+	case network.VerdictUndecided:
+		return kextinterface.VerdictUndecided
+	case network.VerdictUndeterminable:
+		return kextinterface.VerdictUndeterminable
+	case network.VerdictAccept:
+		if conn.VerdictPermanent {
+			return kextinterface.VerdictPermanentAccept
+		} else {
+			return kextinterface.VerdictAccept
+		}
+	case network.VerdictBlock:
+		if conn.VerdictPermanent {
+			return kextinterface.VerdictPermanentBlock
+		} else {
+			return kextinterface.VerdictBlock
+		}
+	case network.VerdictDrop:
+		if conn.VerdictPermanent {
+			return kextinterface.VerdictPermanentDrop
+		} else {
+			return kextinterface.VerdictDrop
+		}
+	case network.VerdictRerouteToNameserver:
+		return kextinterface.VerdictRerouteToNameserver
+	case network.VerdictRerouteToTunnel:
+		return kextinterface.VerdictRerouteToTunnel
+	case network.VerdictFailed:
+		return kextinterface.VerdictFailed
+	}
+	return kextinterface.VerdictUndeterminable
 }
 
 // Returns the kext version.

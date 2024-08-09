@@ -43,8 +43,8 @@ unsafe impl GlobalAlloc for WindowsAllocator {
     }
 
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        let pool = self.alloc(layout);
-        pool
+        
+        self.alloc(layout)
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {

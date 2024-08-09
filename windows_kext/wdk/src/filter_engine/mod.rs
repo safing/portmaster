@@ -107,9 +107,7 @@ impl FilterEngine {
                 filter_engine.callouts = Some(boxed_callouts);
             }
 
-            if let Err(err) = filter_engine.commit() {
-                return Err(err);
-            }
+            filter_engine.commit()?
         }
         self.committed = true;
         info!("transaction committed");
@@ -147,9 +145,7 @@ impl FilterEngine {
             }
         }
         // Commit transaction.
-        if let Err(err) = filter_engine.commit() {
-            return Err(err);
-        }
+        filter_engine.commit()?;
         return Ok(());
     }
 
@@ -192,7 +188,7 @@ impl Drop for FilterEngine {
             }
         }
 
-        if self.handle != 0 && self.handle != INVALID_HANDLE_VALUE {
+        if !self.handle.is_null() && self.handle != INVALID_HANDLE_VALUE {
             _ = ffi::filter_engine_close(self.handle);
         }
     }

@@ -10,5 +10,7 @@ see: `wdk/src/driver.rs`
 see: `wdk/src/irp_helper.rs`
 
 Open issues need to be resolved:
-https://github.com/microsoft/wdkmetadata/issues/59
 https://github.com/microsoft/windows-rs/issues/2805
+
+Resolved:
+https://github.com/microsoft/wdkmetadata/issues/59

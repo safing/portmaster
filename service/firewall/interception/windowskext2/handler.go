@@ -5,11 +5,13 @@ package windowskext
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"time"
 
 	"github.com/safing/portmaster/service/process"
+	"github.com/safing/portmaster/windows_kext/kextinterface"
 
 	"github.com/tevino/abool"
 
@@ -32,8 +34,15 @@ func (v *VersionInfo) String() string {
 func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate chan *packet.BandwidthUpdate) {
 	for {
 		packetInfo, err := RecvVerdictRequest()
+
+		if errors.Is(err, kextinterface.ErrUnexpectedInfoSize) || errors.Is(err, kextinterface.ErrUnexpectedReadError) {
+			log.Criticalf("unexpected kext info data: %s", err)
+			continue // Depending on the info type this may not affect the functionality. Try to continue reading the next commands.
+		}
+
 		if err != nil {
 			log.Warningf("failed to get packet from windows kext: %s", err)
+			// Probably IO error, nothing else we can do.
 			return
 		}
 

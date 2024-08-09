@@ -105,9 +105,9 @@ impl Injector {
         }
         let mut remote_ip: [u8; 16] = [0; 16];
         if ipv6 {
-            remote_ip[0..16].copy_from_slice(&remote_ip_slice);
+            remote_ip[0..16].copy_from_slice(remote_ip_slice);
         } else {
-            remote_ip[0..4].copy_from_slice(&remote_ip_slice);
+            remote_ip[0..4].copy_from_slice(remote_ip_slice);
         }
 
         TransportPacketList {
@@ -163,7 +163,7 @@ impl Injector {
             let status = if packet_list.inbound {
                 FwpsInjectTransportReceiveAsync0(
                     self.transport_inject_handle,
-                    0,
+                    core::ptr::null_mut(),
                     core::ptr::null_mut(),
                     0,
                     address_family,
@@ -177,7 +177,7 @@ impl Injector {
             } else {
                 FwpsInjectTransportSendAsync1(
                     self.transport_inject_handle,
-                    0,
+                    core::ptr::null_mut(),
                     packet_list.endpoint_handle,
                     0,
                     &mut send_params,
@@ -222,7 +222,7 @@ impl Injector {
             unsafe {
                 FwpsInjectNetworkReceiveAsync0(
                     inject_handle,
-                    0,
+                    core::ptr::null_mut(),
                     0,
                     UNSPECIFIED_COMPARTMENT_ID,
                     inject_info.interface_index,
@@ -237,7 +237,7 @@ impl Injector {
             unsafe {
                 FwpsInjectNetworkSendAsync0(
                     inject_handle,
-                    0,
+                    core::ptr::null_mut(),
                     0,
                     UNSPECIFIED_COMPARTMENT_ID,
                     nbl,
@@ -269,7 +269,7 @@ impl Injector {
         } else {
             self.packet_inject_handle_v4
         };
-        if inject_handle == INVALID_HANDLE_VALUE || inject_handle == 0 {
+        if inject_handle == INVALID_HANDLE_VALUE || inject_handle.is_null() {
             return false;
         }
 
@@ -309,19 +309,19 @@ impl Drop for Injector {
     fn drop(&mut self) {
         unsafe {
             if self.transport_inject_handle != INVALID_HANDLE_VALUE
-                && self.transport_inject_handle != 0
+                && !self.transport_inject_handle.is_null()
             {
                 FwpsInjectionHandleDestroy0(self.transport_inject_handle);
                 self.transport_inject_handle = INVALID_HANDLE_VALUE;
             }
             if self.packet_inject_handle_v4 != INVALID_HANDLE_VALUE
-                && self.packet_inject_handle_v4 != 0
+                && !self.packet_inject_handle_v4.is_null()
             {
                 FwpsInjectionHandleDestroy0(self.packet_inject_handle_v4);
                 self.packet_inject_handle_v4 = INVALID_HANDLE_VALUE;
             }
             if self.packet_inject_handle_v6 != INVALID_HANDLE_VALUE
-                && self.packet_inject_handle_v6 != 0
+                && !self.packet_inject_handle_v6.is_null()
             {
                 FwpsInjectionHandleDestroy0(self.packet_inject_handle_v6);
                 self.packet_inject_handle_v6 = INVALID_HANDLE_VALUE;

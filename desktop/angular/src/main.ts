@@ -60,9 +60,9 @@ if (document.addEventListener) {
 
   let linkTag = document.createElement("link");
   linkTag.rel = "stylesheet";
-  linkTag.href = "/assets/vendor/fonts/roboto.css";
+  linkTag.href = "/assets/fonts/roboto.css";
   if (navigator.platform.startsWith("Win")) {
-    linkTag.href = "/assets/vendor/fonts/roboto-slimfix.css"
+    linkTag.href = "/assets/fonts/roboto-slimfix.css"
   }
 
   document.head.appendChild(linkTag);

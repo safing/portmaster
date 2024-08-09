@@ -140,7 +140,7 @@ fn ip_packet_layer(
         } {
             Ok(key) => key,
             Err(err) => {
-                crate::warn!("failed to get key from nbl: {}", err);
+                crate::dbg!("failed to get key from nbl: {}", err);
                 return;
             }
         };
@@ -173,6 +173,7 @@ fn ip_packet_layer(
                         data.action_block();
                     }
                     Verdict::Undeterminable | Verdict::PermanentDrop | Verdict::Failed => {
+                        send_request_to_portmaster = false;
                         data.block_and_absorb();
                     }
                     Verdict::RedirectNameServer | Verdict::RedirectTunnel => {

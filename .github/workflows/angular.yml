@@ -56,4 +56,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build angular projects
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +angular-release
+      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +angular-ci

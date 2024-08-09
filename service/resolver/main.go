@@ -233,6 +233,9 @@ func AddToDebugInfo(di *debug.Info) {
 		if len(resolver.Search) > 0 {
 			content = append(content, fmt.Sprintf("  Search Domains: %v", strings.Join(resolver.Search, ", ")))
 		}
+		if resolver.LinkLocalUnavailable {
+			content = append(content, "  Link-local, but not available: ignoring")
+		}
 		content = append(content, fmt.Sprintf("  Failing: %v", resolver.Conn.IsFailing()))
 
 		// Add a empty line for all but the last entry.

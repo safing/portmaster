@@ -14,16 +14,16 @@ const (
 
 // Icons.
 var (
-	//go:embed data/icons/pm_light_green_512.ico
+	//go:embed data/icons/pm_light_green_256.png
 	GreenICO []byte
 
-	//go:embed data/icons/pm_light_yellow_512.ico
+	//go:embed data/icons/pm_light_yellow_256.png
 	YellowICO []byte
 
-	//go:embed data/icons/pm_light_red_512.ico
+	//go:embed data/icons/pm_light_red_256.png
 	RedICO []byte
 
-	//go:embed data/icons/pm_light_blue_512.ico
+	//go:embed data/icons/pm_light_blue_256.png
 	BlueICO []byte
 
 	// ColoredIcons holds all the icons as .ICOs
