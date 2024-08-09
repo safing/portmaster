@@ -12,8 +12,8 @@ import (
 
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/record"
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/structures/dsd"
 )
 
 // MigrateFunc is called when a migration should be applied to the

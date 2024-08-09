@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/safing/portmaster/base/api"
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/profile/binmeta"
+	"github.com/safing/structures/dsd"
 )
 
 func registerAPIEndpoints() error {

@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/terminal"
 	"github.com/safing/structures/container"
+	"github.com/safing/structures/varint"
 )
 
 const (

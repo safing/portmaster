@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/safing/portmaster/base/formats/varint"
+	"github.com/safing/structures/varint"
 )
 
 // Error is a terminal error.

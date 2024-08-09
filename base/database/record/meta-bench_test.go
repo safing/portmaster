@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/safing/portmaster/base/formats/dsd"
-	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
+	"github.com/safing/structures/varint"
 )
 
 var testMeta = &Meta{

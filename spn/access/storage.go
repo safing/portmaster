@@ -9,9 +9,9 @@ import (
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/database/record"
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/access/token"
+	"github.com/safing/structures/dsd"
 )
 
 func loadTokens() {

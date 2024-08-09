@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/safing/portmaster/base/database/record"
-	"github.com/safing/portmaster/base/formats/dsd"
+	"github.com/safing/structures/dsd"
 )
 
 // copied from https://github.com/tidwall/gjson/blob/master/gjson_test.go

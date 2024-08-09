@@ -4,8 +4,8 @@ import (
 	"sync"
 
 	"github.com/safing/portmaster/base/api/client"
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/structures/dsd"
 )
 
 const (

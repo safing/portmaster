@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/base/api/client"
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
 	pbnotify "github.com/safing/portmaster/base/notifications"
+	"github.com/safing/structures/dsd"
 )
 
 const (

@@ -7,11 +7,11 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/navigator"
+	"github.com/safing/structures/dsd"
 )
 
 // BootstrapFile is used for sideloading bootstrap data.

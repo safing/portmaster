@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/safing/portmaster/base/database/accessor"
-	"github.com/safing/portmaster/base/formats/dsd"
-	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
+	"github.com/safing/structures/varint"
 )
 
 // Wrapper wraps raw data and implements the Record interface.

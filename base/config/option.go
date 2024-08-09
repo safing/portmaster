@@ -11,7 +11,7 @@ import (
 	"github.com/tidwall/sjson"
 
 	"github.com/safing/portmaster/base/database/record"
-	"github.com/safing/portmaster/base/formats/dsd"
+	"github.com/safing/structures/dsd"
 )
 
 // OptionType defines the value type of an option.

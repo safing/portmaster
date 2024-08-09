@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/safing/portmaster/base/database/record"
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/runtime"
 	"github.com/safing/portmaster/service/netquery/orm"
+	"github.com/safing/structures/dsd"
 )
 
 // RuntimeQueryRunner provides a simple interface for the runtime database

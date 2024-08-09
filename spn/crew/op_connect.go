@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/netutils"
@@ -18,6 +17,7 @@ import (
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/terminal"
 	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
 )
 
 // ConnectOpType is the type ID for the connection operation.

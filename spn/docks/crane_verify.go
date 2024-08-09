@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/terminal"
 	"github.com/safing/structures/container"
+	"github.com/safing/structures/varint"
 )
 
 const (

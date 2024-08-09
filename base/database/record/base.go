@@ -4,9 +4,9 @@ import (
 	"errors"
 
 	"github.com/safing/portmaster/base/database/accessor"
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
 )
 
 // TODO(ppacher):

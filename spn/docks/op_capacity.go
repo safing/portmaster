@@ -7,11 +7,11 @@ import (
 
 	"github.com/tevino/abool"
 
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/terminal"
 	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
 )
 
 const (

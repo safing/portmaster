@@ -14,8 +14,8 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/safing/portmaster/base/database/record"
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/structures/dsd"
 )
 
 // Endpoint describes an API Endpoint.

@@ -1,8 +1,8 @@
 package terminal
 
 import (
-	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/structures/container"
+	"github.com/safing/structures/varint"
 )
 
 /*

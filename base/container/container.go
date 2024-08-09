@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/safing/portmaster/base/formats/varint"
+	"github.com/safing/structures/varint"
 )
 
 // Container is []byte sclie on steroids, allowing for quick data appending, prepending and fetching.

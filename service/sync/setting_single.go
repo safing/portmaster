@@ -9,8 +9,8 @@ import (
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/service/profile"
+	"github.com/safing/structures/dsd"
 )
 
 // SingleSettingExport holds an export of a single setting.

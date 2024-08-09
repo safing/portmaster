@@ -8,10 +8,10 @@ import (
 	"github.com/safing/jess"
 	"github.com/safing/jess/lhash"
 	"github.com/safing/portmaster/base/database"
-	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
 )
 
 var (
