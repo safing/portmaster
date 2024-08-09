@@ -2,13 +2,25 @@ package updates
 
 import (
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync/atomic"
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
 )
+
+type UpdateIndex struct {
+	Directory string
+	Ignore    []string
+	IndexURLs []string
+	AutoApply bool
+}
 
 // Updates provides access to released artifacts.
 type Updates struct {
@@ -20,6 +32,9 @@ type Updates struct {
 
 	EventResourcesUpdated *mgr.EventMgr[struct{}]
 	EventVersionsUpdated  *mgr.EventMgr[struct{}]
+
+	binUpdates   UpdateIndex
+	intelUpdates UpdateIndex
 
 	instance instance
 }
@@ -46,11 +61,58 @@ func New(instance instance) (*Updates, error) {
 		EventVersionsUpdated:  mgr.NewEventMgr[struct{}](VersionUpdateEvent, m),
 		instance:              instance,
 	}
-	if err := prep(); err != nil {
-		return nil, err
+
+	module.binUpdates = UpdateIndex{
+		Directory: "/usr/local/bin/portmaster",
+		Ignore:    []string{"databases", "intel", "config.json"},
+		IndexURLs: []string{"https://updates.safing.io/test-intel-1.json"},
+		AutoApply: false,
 	}
 
+	module.intelUpdates = UpdateIndex{
+		Directory: "/var/portmaster/intel",
+		IndexURLs: []string{"https://updates.safing.io/test-stable-1.json"},
+		AutoApply: true,
+	}
 	return module, nil
+}
+
+func deleteUnfinishedDownloads(rootDir string) error {
+	return filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Check if the current file has the specified extension
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".download") {
+			log.Warningf("updates deleting unfinished: %s\n", path)
+			err := os.Remove(path)
+			if err != nil {
+				return fmt.Errorf("failed to delete file %s: %w", path, err)
+			}
+		}
+
+		return nil
+	})
+}
+
+func (m *Updates) fetchUpdates() {
+	binBundle, err := fetchBundle(m.binUpdates)
+	if err == nil {
+		// No error. Error already logged.
+		log.Debugf("Bin Bundle: %+v", binBundle)
+		dir := "new_bin"
+		deleteUnfinishedDownloads(dir)
+		downloadAndVerify(binBundle, dir)
+	}
+	intelBundle, err := fetchBundle(m.intelUpdates)
+	if err == nil {
+		// No error. Error already logged.
+		log.Debugf("Intel Bundle: %+v", intelBundle)
+		dir := "new_intel"
+		deleteUnfinishedDownloads(dir)
+		downloadAndVerify(intelBundle, dir)
+	}
 }
 
 // States returns the state manager.
@@ -65,7 +127,12 @@ func (u *Updates) Manager() *mgr.Manager {
 
 // Start starts the module.
 func (u *Updates) Start() error {
-	return start()
+	initConfig()
+	u.m.Go("check for updates", func(w *mgr.WorkerCtx) error {
+		module.fetchUpdates()
+		return nil
+	})
+	return nil
 }
 
 // Stop stops the module.
