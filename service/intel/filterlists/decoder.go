@@ -8,8 +8,16 @@ import (
 	"fmt"
 	"io"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/utils"
+||||||| 151a548c
+	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portbase/utils"
+=======
+	"github.com/safing/portmaster/base/utils"
+	"github.com/safing/structures/dsd"
+>>>>>>> develop
 )
 
 type listEntry struct {

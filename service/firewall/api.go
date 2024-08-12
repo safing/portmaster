@@ -98,7 +98,7 @@ func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, er
 
 	// It is important that this works, retry 5 times: every 500ms for 2.5s.
 	var retry bool
-	for tries := 0; tries < 5; tries++ {
+	for range 5 {
 		retry, err = authenticateAPIRequest(
 			r.Context(),
 			&packet.Info{
@@ -161,7 +161,7 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 		// Find parent for up to two levels, if we don't match the path.
 		checkLevels := 2
 	checkLevelsLoop:
-		for i := 0; i < checkLevels+1; i++ {
+		for i := range checkLevels + 1 {
 			// Check for eligible path.
 			switch proc.Pid {
 			case process.UnidentifiedProcessID, process.SystemProcessID:

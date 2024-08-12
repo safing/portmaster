@@ -1,8 +1,16 @@
 package terminal
 
 import (
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/structures/container"
+||||||| 151a548c
+	"github.com/safing/portbase/container"
+	"github.com/safing/portbase/formats/varint"
+=======
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/varint"
+>>>>>>> develop
 )
 
 /*

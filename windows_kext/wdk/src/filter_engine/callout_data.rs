@@ -37,9 +37,7 @@ impl ClassifyDefer {
                 }
                 ClassifyDefer::Reauthorization(_callout_id, packet_list) => {
                     // There is no way to reset single filter. If another request for filter reset is trigger at the same time it will fail.
-                    if let Err(err) = filter_engine.reset_all_filters() {
-                        return Err(err);
-                    }
+                    filter_engine.reset_all_filters()?;
                     return Ok(packet_list);
                 }
             }
@@ -140,7 +138,7 @@ impl<'a> CalloutData<'a> {
         packet_list: Option<TransportPacketList>,
     ) -> Result<ClassifyDefer, String> {
         unsafe {
-            let mut completion_context = 0;
+            let mut completion_context: HANDLE = core::ptr::null_mut();
             if let Some(completion_handle) = (*self.metadata).get_completion_handle() {
                 let status = FwpsPendOperation0(completion_handle, &mut completion_context);
                 check_ntstatus(status)?;

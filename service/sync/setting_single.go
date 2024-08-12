@@ -7,10 +7,20 @@ import (
 	"net/http"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/formats/dsd"
+||||||| 151a548c
+	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/config"
+	"github.com/safing/portbase/formats/dsd"
+=======
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
+>>>>>>> develop
 	"github.com/safing/portmaster/service/profile"
+	"github.com/safing/structures/dsd"
 )
 
 // SingleSettingExport holds an export of a single setting.

@@ -7,11 +7,27 @@ import (
 
 	"github.com/safing/jess"
 	"github.com/safing/jess/lhash"
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
+||||||| 151a548c
+	"github.com/safing/portbase/container"
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portbase/log"
+=======
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/log"
+>>>>>>> develop
 	"github.com/safing/portmaster/service/network/netutils"
+<<<<<<< HEAD
 	"github.com/safing/structures/container"
+||||||| 151a548c
+=======
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
+>>>>>>> develop
 )
 
 var (

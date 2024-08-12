@@ -87,22 +87,70 @@ func loadPublicIdentity() (err error) {
 }
 
 func prepPublicIdentityMgmt() error {
+<<<<<<< HEAD
 	module.maintainPublicStatus.Repeat(maintainStatusInterval)
+||||||| 151a548c
+	publicIdentityUpdateTask = module.NewTask(
+		"maintain public identity",
+		maintainPublicIdentity,
+	)
+=======
+	module.statusUpdater.Repeat(maintainStatusInterval)
+>>>>>>> develop
 
+<<<<<<< HEAD
 	module.instance.Config().EventConfigChange.AddCallback("update public identity from config",
 		func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
 			module.maintainPublicStatus.Delay(5 * time.Minute)
 			return false, nil
 		})
 	return nil
+||||||| 151a548c
+	statusUpdateTask = module.NewTask(
+		"maintain public status",
+		maintainPublicStatus,
+	).Repeat(maintainStatusInterval)
+
+	return module.RegisterEventHook(
+		"config",
+		"config change",
+		"update public identity from config",
+		func(_ context.Context, _ interface{}) error {
+			// trigger update in 5 minutes
+			publicIdentityUpdateTask.Schedule(time.Now().Add(5 * time.Minute))
+			return nil
+		},
+	)
+=======
+	module.instance.Config().EventConfigChange.AddCallback("update public identity from config",
+		func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
+			module.publicIdentityUpdater.Delay(5 * time.Minute)
+			return false, nil
+		})
+	return nil
+>>>>>>> develop
 }
 
 // TriggerHubStatusMaintenance queues the Hub status update task to be executed.
 func TriggerHubStatusMaintenance() {
+<<<<<<< HEAD
 	module.maintainPublicStatus.Go()
+||||||| 151a548c
+	if statusUpdateTask != nil {
+		statusUpdateTask.Queue()
+	}
+=======
+	module.statusUpdater.Go()
+>>>>>>> develop
 }
 
+<<<<<<< HEAD
 func maintainPublicIdentity(ctx *mgr.WorkerCtx) error {
+||||||| 151a548c
+func maintainPublicIdentity(ctx context.Context, task *modules.Task) error {
+=======
+func maintainPublicIdentity(_ *mgr.WorkerCtx) error {
+>>>>>>> develop
 	changed, err := publicIdentity.MaintainAnnouncement(nil, false)
 	if err != nil {
 		return fmt.Errorf("failed to maintain announcement: %w", err)

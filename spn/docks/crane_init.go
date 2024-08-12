@@ -5,13 +5,31 @@ import (
 	"time"
 
 	"github.com/safing/jess"
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/base/info"
 	"github.com/safing/portmaster/base/log"
+||||||| 151a548c
+	"github.com/safing/portbase/container"
+	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portbase/formats/varint"
+	"github.com/safing/portbase/info"
+	"github.com/safing/portbase/log"
+=======
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/log"
+>>>>>>> develop
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/terminal"
+<<<<<<< HEAD
 	"github.com/safing/structures/container"
+||||||| 151a548c
+=======
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
+	"github.com/safing/structures/varint"
+>>>>>>> develop
 )
 
 /*

@@ -109,6 +109,15 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
         return;
     };
 
+    // Check if packet was previously injected from the packet layer.
+    if device
+        .injector
+        .was_network_packet_injected_by_self(data.get_layer_data() as _, ale_data.is_ipv6)
+    {
+        data.action_permit();
+        return;
+    }
+
     match ale_data.protocol {
         IpProtocol::Tcp | IpProtocol::Udp => {
             // Only TCP and UDP make sense to be supported in the ALE layer.
@@ -226,7 +235,11 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
         };
 
         // Connection is not in cache, add it.
-        crate::dbg!("ale layer adding connection: {} PID: {}", key, ale_data.process_id);
+        crate::dbg!(
+            "ale layer adding connection: {} PID: {}",
+            key,
+            ale_data.process_id
+        );
         if ale_data.is_ipv6 {
             let conn =
                 ConnectionV6::from_key(&key, ale_data.process_id, ale_data.direction).unwrap();

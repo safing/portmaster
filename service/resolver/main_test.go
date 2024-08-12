@@ -17,6 +17,7 @@ import (
 
 var domainFeed = make(chan string)
 
+<<<<<<< HEAD
 type testInstance struct {
 	db      *dbmodule.DBModule
 	base    *base.Base
@@ -133,6 +134,125 @@ func runTest(m *testing.M) error {
 	return nil
 }
 
+||||||| 151a548c
+=======
+type testInstance struct {
+	db      *dbmodule.DBModule
+	base    *base.Base
+	api     *api.API
+	config  *config.Config
+	updates *updates.Updates
+	netenv  *netenv.NetEnv
+}
+
+// var _ instance = &testInstance{}
+
+func (stub *testInstance) Updates() *updates.Updates {
+	return stub.updates
+}
+
+func (stub *testInstance) API() *api.API {
+	return stub.api
+}
+
+func (stub *testInstance) Config() *config.Config {
+	return stub.config
+}
+
+func (stub *testInstance) NetEnv() *netenv.NetEnv {
+	return stub.netenv
+}
+
+func (stub *testInstance) Notifications() *notifications.Notifications {
+	return nil
+}
+
+func (stub *testInstance) Ready() bool {
+	return true
+}
+
+func (stub *testInstance) Restart() {}
+
+func (stub *testInstance) Shutdown() {}
+
+func (stub *testInstance) SetCmdLineOperation(f func() error) {}
+
+func (stub *testInstance) GetEventSPNConnected() *mgr.EventMgr[struct{}] {
+	return mgr.NewEventMgr[struct{}]("spn connect", nil)
+}
+
+func runTest(m *testing.M) error {
+	api.SetDefaultAPIListenAddress("0.0.0.0:8080")
+	ds, err := config.InitializeUnitTestDataroot("test-resolver")
+	if err != nil {
+		return fmt.Errorf("failed to initialize dataroot: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(ds) }()
+
+	stub := &testInstance{}
+	stub.db, err = dbmodule.New(stub)
+	if err != nil {
+		return fmt.Errorf("failed to create database: %w", err)
+	}
+	stub.config, err = config.New(stub)
+	if err != nil {
+		return fmt.Errorf("failed to create config: %w", err)
+	}
+	stub.base, err = base.New(stub)
+	if err != nil {
+		return fmt.Errorf("failed to create base: %w", err)
+	}
+	stub.api, err = api.New(stub)
+	if err != nil {
+		return fmt.Errorf("failed to create api: %w", err)
+	}
+	stub.netenv, err = netenv.New(stub)
+	if err != nil {
+		return fmt.Errorf("failed to create netenv: %w", err)
+	}
+	stub.updates, err = updates.New(stub)
+	if err != nil {
+		return fmt.Errorf("failed to create updates: %w", err)
+	}
+	module, err := New(stub)
+	if err != nil {
+		return fmt.Errorf("failed to create module: %w", err)
+	}
+
+	err = stub.db.Start()
+	if err != nil {
+		return fmt.Errorf("Failed to start database: %w", err)
+	}
+	err = stub.config.Start()
+	if err != nil {
+		return fmt.Errorf("Failed to start config: %w", err)
+	}
+	err = stub.base.Start()
+	if err != nil {
+		return fmt.Errorf("Failed to start base: %w", err)
+	}
+	err = stub.api.Start()
+	if err != nil {
+		return fmt.Errorf("Failed to start api: %w", err)
+	}
+	err = stub.updates.Start()
+	if err != nil {
+		return fmt.Errorf("Failed to start updates: %w", err)
+	}
+	err = stub.netenv.Start()
+	if err != nil {
+		return fmt.Errorf("Failed to start netenv: %w", err)
+	}
+	err = module.Start()
+	if err != nil {
+		return fmt.Errorf("Failed to start module: %w", err)
+	}
+
+	m.Run()
+	return nil
+}
+
+>>>>>>> develop
 func TestMain(m *testing.M) {
 	if err := runTest(m); err != nil {
 		fmt.Printf("%s", err)

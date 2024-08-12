@@ -4,11 +4,25 @@ import (
 	"context"
 
 	"github.com/safing/jess"
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/formats/varint"
+||||||| 151a548c
+	"github.com/safing/portbase/container"
+	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portbase/formats/varint"
+=======
+>>>>>>> develop
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/hub"
+<<<<<<< HEAD
 	"github.com/safing/structures/container"
+||||||| 151a548c
+=======
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
+	"github.com/safing/structures/varint"
+>>>>>>> develop
 )
 
 /*

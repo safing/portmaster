@@ -5,14 +5,29 @@ import (
 	"strings"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
+||||||| 151a548c
+	"github.com/safing/portbase/container"
+	"github.com/safing/portbase/formats/varint"
+	"github.com/safing/portbase/log"
+=======
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/mgr"
+>>>>>>> develop
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/docks"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/terminal"
+<<<<<<< HEAD
 	"github.com/safing/structures/container"
+||||||| 151a548c
+=======
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/varint"
+>>>>>>> develop
 )
 
 // GossipQueryOpType is the type ID of the gossip query operation.

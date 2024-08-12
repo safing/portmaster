@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portmaster/spn/unit"
 )
 
+<<<<<<< HEAD
 type TerminalModule struct {
 	mgr      *mgr.Manager
 	instance instance
@@ -29,6 +30,30 @@ func (s *TerminalModule) Stop() error {
 	return nil
 }
 
+||||||| 151a548c
+=======
+// TerminalModule is the command multiplexing module.
+type TerminalModule struct { //nolint:golint
+	mgr      *mgr.Manager
+	instance instance
+}
+
+// Manager returns the module manager.
+func (s *TerminalModule) Manager() *mgr.Manager {
+	return s.mgr
+}
+
+// Start starts the module.
+func (s *TerminalModule) Start() error {
+	return start()
+}
+
+// Stop stops the module.
+func (s *TerminalModule) Stop() error {
+	return nil
+}
+
+>>>>>>> develop
 var (
 	rngFeeder *rng.Feeder = nil
 

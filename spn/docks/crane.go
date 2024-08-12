@@ -12,15 +12,32 @@ import (
 	"github.com/tevino/abool"
 
 	"github.com/safing/jess"
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/service/mgr"
+||||||| 151a548c
+	"github.com/safing/portbase/container"
+	"github.com/safing/portbase/formats/varint"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/rng"
+=======
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/service/mgr"
+>>>>>>> develop
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/ships"
 	"github.com/safing/portmaster/spn/terminal"
+<<<<<<< HEAD
 	"github.com/safing/structures/container"
+||||||| 151a548c
+=======
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/varint"
+>>>>>>> develop
 )
 
 const (

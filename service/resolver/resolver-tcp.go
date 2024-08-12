@@ -358,7 +358,7 @@ func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 // assignUniqueID makes sure that ID assigned to msg is unique.
 func (trc *tcpResolverConn) assignUniqueID(msg *dns.Msg) {
 	// try a random ID 10000 times
-	for i := 0; i < 10000; i++ { // don't try forever
+	for range 10000 { // don't try forever
 		_, exists := trc.inFlightQueries[msg.Id]
 		if !exists {
 			return // we are unique, yay!

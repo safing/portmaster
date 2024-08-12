@@ -84,6 +84,7 @@ func start() error {
 		return err
 	}
 
+<<<<<<< HEAD
 	module.mgr.Go("initializing hubs", func(wc *mgr.WorkerCtx) error {
 		// Wait for geoip databases to be ready.
 		// Try again if not yet ready, as this is critical.
@@ -97,6 +98,33 @@ func start() error {
 			default:
 				break geoInitCheck
 			}
+||||||| 151a548c
+	// Wait for geoip databases to be ready.
+	// Try again if not yet ready, as this is critical.
+	// The "wait" parameter times out after 1 second.
+	// Allow 30 seconds for both databases to load.
+geoInitCheck:
+	for i := 0; i < 30; i++ {
+		switch {
+		case !geoip.IsInitialized(false, true): // First, IPv4.
+		case !geoip.IsInitialized(true, true): // Then, IPv6.
+		default:
+			break geoInitCheck
+=======
+	module.mgr.Go("initializing hubs", func(wc *mgr.WorkerCtx) error {
+		// Wait for geoip databases to be ready.
+		// Try again if not yet ready, as this is critical.
+		// The "wait" parameter times out after 1 second.
+		// Allow 30 seconds for both databases to load.
+	geoInitCheck:
+		for range 30 {
+			switch {
+			case !geoip.IsInitialized(false, true): // First, IPv4.
+			case !geoip.IsInitialized(true, true): // Then, IPv6.
+			default:
+				break geoInitCheck
+			}
+>>>>>>> develop
 		}
 
 		err = Main.InitializeFromDatabase()

@@ -31,6 +31,7 @@ func (ss *stringSliceFlag) Set(value string) error {
 	return nil
 }
 
+<<<<<<< HEAD
 // module         *modules.Module
 var allowedClients stringSliceFlag
 
@@ -39,6 +40,20 @@ type Firewall struct {
 
 	instance instance
 }
+||||||| 151a548c
+var (
+	module         *modules.Module
+	allowedClients stringSliceFlag
+)
+=======
+var allowedClients stringSliceFlag
+
+type Firewall struct {
+	mgr *mgr.Manager
+
+	instance instance
+}
+>>>>>>> develop
 
 func init() {
 	flag.Var(&allowedClients, "allowed-clients", "A list of binaries that are allowed to connect to the Portmaster API")

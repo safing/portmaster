@@ -34,7 +34,7 @@ func registerIntelUpdateHook() error {
 	return nil
 }
 
-func updateSPNIntel(ctx context.Context, _ interface{}) (err error) {
+func updateSPNIntel(_ context.Context, _ interface{}) (err error) {
 	intelResourceUpdateLock.Lock()
 	defer intelResourceUpdateLock.Unlock()
 

@@ -4,7 +4,13 @@ import (
 	"testing"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/formats/dsd"
+||||||| 151a548c
+	"github.com/safing/portbase/formats/dsd"
+=======
+	"github.com/safing/structures/dsd"
+>>>>>>> develop
 )
 
 func TestFull(t *testing.T) {

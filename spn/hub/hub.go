@@ -425,7 +425,7 @@ func equalStringSlice(a, b []string) bool {
 		return false
 	}
 
-	for i := 0; i < len(a); i++ {
+	for i := range len(a) {
 		if a[i] != b[i] {
 			return false
 		}

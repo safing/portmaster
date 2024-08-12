@@ -182,11 +182,11 @@ func convertArrayToIP(input [4]uint32, ipv6 bool) net.IP {
 		addressBuf := make([]byte, 4)
 		binary.LittleEndian.PutUint32(addressBuf, input[0])
 		return net.IP(addressBuf)
+	} else {
+		addressBuf := make([]byte, 16)
+		for i := range 4 {
+			binary.LittleEndian.PutUint32(addressBuf[i*4:i*4+4], input[i])
+		}
+		return net.IP(addressBuf)
 	}
-
-	addressBuf := make([]byte, 16)
-	for i := 0; i < 4; i++ {
-		binary.LittleEndian.PutUint32(addressBuf[i*4:i*4+4], input[i])
-	}
-	return net.IP(addressBuf)
 }

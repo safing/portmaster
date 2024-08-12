@@ -9,6 +9,8 @@ import (
 
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/tevino/abool"
+
+	"github.com/safing/portmaster/service/mgr"
 )
 
 // PacketListener is a listener for packet based protocols.

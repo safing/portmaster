@@ -13,10 +13,21 @@ import (
 	"github.com/safing/portmaster/service/resolver"
 )
 
+<<<<<<< HEAD
 type Compat struct {
 	mgr      *mgr.Manager
 	instance instance
+||||||| 151a548c
+var (
+	module *modules.Module
+=======
+// Compat is the compatibility check module.
+type Compat struct {
+	mgr      *mgr.Manager
+	instance instance
+>>>>>>> develop
 
+<<<<<<< HEAD
 	selfcheckWorkerMgr            *mgr.WorkerMgr
 	cleanNotifyThresholdWorkerMgr *mgr.WorkerMgr
 
@@ -42,6 +53,37 @@ func (u *Compat) Stop() error {
 }
 
 var (
+||||||| 151a548c
+	selfcheckTask           *modules.Task
+=======
+	selfcheckWorkerMgr            *mgr.WorkerMgr
+	cleanNotifyThresholdWorkerMgr *mgr.WorkerMgr
+
+	states *mgr.StateMgr
+}
+
+// Manager returns the module manager.
+func (u *Compat) Manager() *mgr.Manager {
+	return u.mgr
+}
+
+// States returns the module state manager.
+func (u *Compat) States() *mgr.StateMgr {
+	return u.states
+}
+
+// Start starts the module.
+func (u *Compat) Start() error {
+	return start()
+}
+
+// Stop stops the module.
+func (u *Compat) Stop() error {
+	return stop()
+}
+
+var (
+>>>>>>> develop
 	selfcheckTaskRetryAfter = 15 * time.Second
 
 	// selfCheckIsFailing holds whether or not the self-check is currently

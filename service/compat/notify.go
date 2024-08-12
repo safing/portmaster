@@ -111,7 +111,7 @@ func systemCompatOrManualDNSIssue() *systemIssue {
 	return manualDNSSetupRequired
 }
 
-func (issue *systemIssue) notify(err error) {
+func (issue *systemIssue) notify(err error) { //nolint // TODO: Should we use the error?
 	systemIssueNotificationLock.Lock()
 	defer systemIssueNotificationLock.Unlock()
 

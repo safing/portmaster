@@ -28,7 +28,7 @@ function asyncInvoke<T>(method: string, args: object): Promise<T> {
       if (typeof event.payload === 'object' && 'error' in event.payload) {
         reject(event.payload);
         return
-      };
+      }
 
       resolve(event.payload);
     })
@@ -75,7 +75,7 @@ export class TauriIntegrationService implements IntegrationService {
   }
 
   getAppInfo(info: ProcessInfo): Promise<AppInfo> {
-    return asyncInvoke("plugin:portmaster|get_app_info", {
+    return asyncInvoke("get_app_info", {
       ...info,
     })
   }
@@ -112,7 +112,7 @@ export class TauriIntegrationService implements IntegrationService {
 
   async shouldShow(): Promise<boolean> {
     try {
-      const response = await invoke<string>("plugin:portmaster|should_show");
+      const response = await invoke<string>("should_show");
       return response === "show";
     } catch (err) {
       console.error(err);
@@ -122,7 +122,7 @@ export class TauriIntegrationService implements IntegrationService {
 
   async shouldHandlePrompts(): Promise<boolean> {
     try {
-      const response = await invoke<string>("plugin:portmaster|should_handle_prompts")
+      const response = await invoke<string>("should_handle_prompts")
       return response === "true"
     } catch (err) {
       console.error(err);
@@ -130,27 +130,27 @@ export class TauriIntegrationService implements IntegrationService {
     }
   }
 
-  get_state(key: string): Promise<string> {
-    return invoke<string>("plugin:portmaster|get_state");
+  get_state(_: string): Promise<string> {
+    return invoke<string>("get_state");
   }
 
   set_state(key: string, value: string): Promise<void> {
-    return invoke<void>("plugin:portmaster|set_state", {
+    return invoke<void>("set_state", {
       key,
       value
     })
   }
 
   getServiceManagerStatus(): Promise<ServiceManagerStatus> {
-    return asyncInvoke("plugin:portmaster|get_service_manager_status", {})
+    return asyncInvoke("get_service_manager_status", {})
   }
 
   startService(): Promise<any> {
-    return asyncInvoke("plugin:portmaster|start_service", {});
+    return asyncInvoke("start_service", {});
   }
 
   onExitRequest(cb: () => void): () => void {
-    let unlisten: () => void = () => { };
+    let unlisten: () => void = () => undefined;
 
     listen('exit-requested', () => {
       cb();
@@ -189,7 +189,7 @@ export class TauriIntegrationService implements IntegrationService {
       return;
     }
 
-    let promptWindow = new Window("prompt", {
+    const promptWindow = new Window("prompt", {
       alwaysOnTop: true,
       decorations: false,
       minimizable: false,

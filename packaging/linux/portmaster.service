@@ -33,10 +33,9 @@ PrivateDevices=yes
 AmbientCapabilities=cap_chown cap_kill cap_net_admin cap_net_bind_service cap_net_broadcast cap_net_raw cap_sys_module cap_sys_ptrace cap_dac_override cap_fowner cap_fsetid
 CapabilityBoundingSet=cap_chown cap_kill cap_net_admin cap_net_bind_service cap_net_broadcast cap_net_raw cap_sys_module cap_sys_ptrace cap_dac_override cap_fowner cap_fsetid
 StateDirectory=portmaster
-ExecStartPre=-/usr/bin/portmaster-start --data $STATE_DIRECTORY clean-structure
 # TODO(ppacher): add --disable-software-updates once it's merged and the release process changed.
-ExecStart=/usr/bin/portmaster-core --data $STATE_DIRECTORY $PORTMASTER_ARGS 
-ExecStartPost=-/usr/bin/portmaster-start recover-iptables
+ExecStart=/usr/bin/portmaster-start --data /opt/safing/portmaster core -- $PORTMASTER_ARGS
+ExecStopPost=-/usr/bin/portmaster-start recover-iptables
 
 [Install]
 WantedBy=multi-user.target

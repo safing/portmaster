@@ -19,6 +19,7 @@ import (
 	"github.com/safing/portmaster/service/mgr"
 )
 
+<<<<<<< HEAD
 type Apprise struct {
 	mgr *mgr.Manager
 
@@ -37,6 +38,31 @@ func (a *Apprise) Stop() error {
 	return nil
 }
 
+||||||| 151a548c
+=======
+// Apprise is the apprise notification module.
+type Apprise struct {
+	mgr *mgr.Manager
+
+	instance instance
+}
+
+// Manager returns the module manager.
+func (a *Apprise) Manager() *mgr.Manager {
+	return a.mgr
+}
+
+// Start starts the module.
+func (a *Apprise) Start() error {
+	return startApprise()
+}
+
+// Stop stops the module.
+func (a *Apprise) Stop() error {
+	return nil
+}
+
+>>>>>>> develop
 var (
 	appriseModule     *Apprise
 	appriseShimLoaded atomic.Bool
@@ -147,7 +173,7 @@ handleTag:
 
 		// Send notification to apprise.
 		var err error
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			// Try three times.
 			err = appriseNotifier.Send(appriseModule.mgr.Ctx(), &apprise.Message{
 				Body: buf.String(),
@@ -275,6 +301,7 @@ func getCountryInfo(code string) geoip.CountryInfo {
 // 		panic(err)
 // 	}
 // }
+<<<<<<< HEAD
 
 // New returns a new Apprise module.
 func NewApprise(instance instance) (*Observer, error) {
@@ -290,3 +317,21 @@ func NewApprise(instance instance) (*Observer, error) {
 
 	return observerModule, nil
 }
+||||||| 151a548c
+=======
+
+// NewApprise returns a new Apprise module.
+func NewApprise(instance instance) (*Observer, error) {
+	if !appriseShimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+
+	m := mgr.New("apprise")
+	appriseModule = &Apprise{
+		mgr:      m,
+		instance: instance,
+	}
+
+	return observerModule, nil
+}
+>>>>>>> develop

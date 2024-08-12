@@ -6,9 +6,21 @@ import (
 
 	"github.com/tevino/abool"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/formats/dsd"
+||||||| 151a548c
+	"github.com/safing/portbase/container"
+	"github.com/safing/portbase/formats/dsd"
+=======
+>>>>>>> develop
 	"github.com/safing/portmaster/spn/terminal"
+<<<<<<< HEAD
 	"github.com/safing/structures/container"
+||||||| 151a548c
+=======
+	"github.com/safing/structures/container"
+	"github.com/safing/structures/dsd"
+>>>>>>> develop
 )
 
 func TestEffectiveBandwidth(t *testing.T) { //nolint:paralleltest // Run alone.

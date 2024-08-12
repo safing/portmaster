@@ -202,7 +202,7 @@ func (t *Tracer) Read() (*Event, error) {
 	if argc > arglen {
 		argc = arglen
 	}
-	for i := 0; i < argc; i++ {
+	for i := range argc {
 		str := unix.ByteSliceToString(rawEvent.Argv[i][:])
 		if strings.TrimSpace(str) != "" {
 			ev.Argv = append(ev.Argv, str)

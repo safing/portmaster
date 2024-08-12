@@ -23,11 +23,20 @@ import (
 	"github.com/safing/portmaster/spn/ships"
 )
 
+<<<<<<< HEAD
 const controlledFailureExitCode = 24
 
+||||||| 151a548c
+const controlledFailureExitCode = 24
+
+var module *modules.Module
+
+=======
+>>>>>>> develop
 // SPNConnectedEvent is the name of the event that is fired when the SPN has connected and is ready.
 const SPNConnectedEvent = "spn connect"
 
+<<<<<<< HEAD
 type Captain struct {
 	mgr      *mgr.Manager
 	instance instance
@@ -37,8 +46,45 @@ type Captain struct {
 
 	states            *mgr.StateMgr
 	EventSPNConnected *mgr.EventMgr[struct{}]
+||||||| 151a548c
+func init() {
+	module = modules.Register("captain", prep, start, stop, "base", "terminal", "cabin", "ships", "docks", "crew", "navigator", "sluice", "patrol", "netenv")
+	module.RegisterEvent(SPNConnectedEvent, false)
+	subsystems.Register(
+		"spn",
+		"SPN",
+		"Safing Privacy Network",
+		module,
+		"config:spn/",
+		&config.Option{
+			Name:         "SPN Module",
+			Key:          CfgOptionEnableSPNKey,
+			Description:  "Start the Safing Privacy Network module. If turned off, the SPN is fully disabled on this device.",
+			OptType:      config.OptTypeBool,
+			DefaultValue: false,
+			Annotations: config.Annotations{
+				config.DisplayOrderAnnotation: cfgOptionEnableSPNOrder,
+				config.CategoryAnnotation:     "General",
+			},
+		},
+	)
+=======
+// Captain is the main module of the SPN.
+type Captain struct {
+	mgr      *mgr.Manager
+	instance instance
+
+	healthCheckTicker *mgr.SleepyTicker
+
+	publicIdentityUpdater *mgr.WorkerMgr
+	statusUpdater         *mgr.WorkerMgr
+
+	states            *mgr.StateMgr
+	EventSPNConnected *mgr.EventMgr[struct{}]
+>>>>>>> develop
 }
 
+<<<<<<< HEAD
 func (c *Captain) Manager() *mgr.Manager {
 	return c.mgr
 }
@@ -62,6 +108,38 @@ func (c *Captain) SetSleep(enabled bool) {
 }
 
 func (c *Captain) prep() error {
+||||||| 151a548c
+func prep() error {
+=======
+// Manager returns the module manager.
+func (c *Captain) Manager() *mgr.Manager {
+	return c.mgr
+}
+
+// States returns the module states.
+func (c *Captain) States() *mgr.StateMgr {
+	return c.states
+}
+
+// Start starts the module.
+func (c *Captain) Start() error {
+	return start()
+}
+
+// Stop stops the module.
+func (c *Captain) Stop() error {
+	return stop()
+}
+
+// SetSleep sets the sleep mode of the module.
+func (c *Captain) SetSleep(enabled bool) {
+	if c.healthCheckTicker != nil {
+		c.healthCheckTicker.SetSleep(enabled)
+	}
+}
+
+func (c *Captain) prep() error {
+>>>>>>> develop
 	// Check if we can parse the bootstrap hub flag.
 	if err := prepBootstrapHubFlag(); err != nil {
 		return err
@@ -209,6 +287,7 @@ func apiAuthenticator(r *http.Request, s *http.Server) (*api.AuthToken, error) {
 		Write: api.PermitUser,
 	}, nil
 }
+<<<<<<< HEAD
 
 var (
 	module     *Captain
@@ -244,3 +323,43 @@ type instance interface {
 	Updates() *updates.Updates
 	SPNGroup() *mgr.ExtendedGroup
 }
+||||||| 151a548c
+=======
+
+var (
+	module     *Captain
+	shimLoaded atomic.Bool
+)
+
+// New returns a new Captain module.
+func New(instance instance) (*Captain, error) {
+	if !shimLoaded.CompareAndSwap(false, true) {
+		return nil, errors.New("only one instance allowed")
+	}
+	m := mgr.New("Captain")
+	module = &Captain{
+		mgr:      m,
+		instance: instance,
+
+		states:            mgr.NewStateMgr(m),
+		EventSPNConnected: mgr.NewEventMgr[struct{}](SPNConnectedEvent, m),
+
+		publicIdentityUpdater: m.NewWorkerMgr("maintain public identity", maintainPublicIdentity, nil),
+		statusUpdater:         m.NewWorkerMgr("maintain public status", maintainPublicStatus, nil),
+	}
+
+	if err := module.prep(); err != nil {
+		return nil, err
+	}
+
+	return module, nil
+}
+
+type instance interface {
+	NetEnv() *netenv.NetEnv
+	Patrol() *patrol.Patrol
+	Config() *config.Config
+	Updates() *updates.Updates
+	SPNGroup() *mgr.ExtendedGroup
+}
+>>>>>>> develop

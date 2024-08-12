@@ -7,10 +7,20 @@ import (
 	"path/filepath"
 	"strings"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/utils"
+||||||| 151a548c
+	"github.com/safing/portbase/api"
+	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portbase/utils"
+=======
+	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/utils"
+>>>>>>> develop
 	"github.com/safing/portmaster/service/profile/binmeta"
+	"github.com/safing/structures/dsd"
 )
 
 func registerAPIEndpoints() error {

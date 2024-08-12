@@ -76,7 +76,7 @@ func testExpansion( //nolint:maintidx,thelper
 	serverCountTo uint64,
 	inParallel bool,
 ) {
-	testID += fmt.Sprintf(":encrypt=%v,flowType=%d,parallel=%v", terminalOpts.Encrypt, terminalOpts.FlowControl, inParallel)
+	testID += fmt.Sprintf(":encrypt=%v,flowCtrl=%d,parallel=%v", terminalOpts.Encrypt, terminalOpts.FlowControl, inParallel)
 
 	var identity2, identity3, identity4 *cabin.Identity
 	var connectedHub2, connectedHub3, connectedHub4 *hub.Hub
@@ -97,6 +97,9 @@ func testExpansion( //nolint:maintidx,thelper
 	started := time.Now()
 	craneCtx, cancelCraneCtx := context.WithCancel(context.Background())
 	craneWg.Add(6)
+
+	craneCtx, cancelCraneCtx := context.WithCancel(context.Background())
+	defer cancelCraneCtx()
 
 	go func() {
 		var err error
@@ -291,10 +294,16 @@ func testExpansion( //nolint:maintidx,thelper
 		op1.Wait()
 	}
 
+<<<<<<< HEAD
 	// Wait for double the time, so that the counters can complete in both directions.
 	time.Sleep(time.Since(started))
 
 	// Signal completion.
+||||||| 151a548c
+	// Wait for completion.
+=======
+	// Signal completion.
+>>>>>>> develop
 	close(finished)
 
 	// Wait a little so that all errors can be propagated, so we can truly see

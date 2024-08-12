@@ -13,7 +13,7 @@ func GetUnusedLocalPort(protocol uint8) (port uint16, ok bool) {
 
 	// Try up to 1000 times to find an unused port.
 nextPort:
-	for i := 0; i < tries; i++ {
+	for i := range tries {
 		// Generate random port between 10000 and 65535
 		rN, err := rng.Number(55535)
 		if err != nil {

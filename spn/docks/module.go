@@ -12,11 +12,23 @@ import (
 	_ "github.com/safing/portmaster/spn/access"
 )
 
+<<<<<<< HEAD
 type Docks struct {
 	mgr      *mgr.Manager
 	instance instance
 }
+||||||| 151a548c
+var (
+	module *modules.Module
+=======
+// Docks handles connections to other network participants.
+type Docks struct {
+	mgr      *mgr.Manager
+	instance instance
+}
+>>>>>>> develop
 
+<<<<<<< HEAD
 func (d *Docks) Manager() *mgr.Manager {
 	return d.mgr
 }
@@ -30,6 +42,25 @@ func (d *Docks) Stop() error {
 }
 
 var (
+||||||| 151a548c
+=======
+// Manager returns the module manager.
+func (d *Docks) Manager() *mgr.Manager {
+	return d.mgr
+}
+
+// Start starts the module.
+func (d *Docks) Start() error {
+	return start()
+}
+
+// Stop stops the module.
+func (d *Docks) Stop() error {
+	return stopAllCranes()
+}
+
+var (
+>>>>>>> develop
 	allCranes      = make(map[string]*Crane) // ID = Crane ID
 	assignedCranes = make(map[string]*Crane) // ID = connected Hub ID
 	cranesLock     sync.RWMutex
@@ -46,7 +77,7 @@ func registerCrane(crane *Crane) error {
 	defer cranesLock.Unlock()
 
 	// Generate new IDs until a unique one is found.
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// Generate random ID.
 		randomID, err := rng.Bytes(3)
 		if err != nil {

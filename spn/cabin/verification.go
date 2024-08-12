@@ -6,9 +6,17 @@ import (
 	"fmt"
 
 	"github.com/safing/jess"
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/rng"
+||||||| 151a548c
+	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portbase/rng"
+=======
+	"github.com/safing/portmaster/base/rng"
+>>>>>>> develop
 	"github.com/safing/portmaster/spn/hub"
+	"github.com/safing/structures/dsd"
 )
 
 var (

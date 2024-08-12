@@ -33,4 +33,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build Kernel Extension
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +kext-build
+      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +kext-ci

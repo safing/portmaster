@@ -26,6 +26,7 @@ vendor
 
 # testing
 testing
+spn/testing/simple/testdata
 
 # Compiled Object files, Static and Dynamic libs (Shared Objects)
 *.a

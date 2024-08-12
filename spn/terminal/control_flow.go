@@ -7,8 +7,16 @@ import (
 	"sync/atomic"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/formats/varint"
 	"github.com/safing/portmaster/service/mgr"
+||||||| 151a548c
+	"github.com/safing/portbase/formats/varint"
+	"github.com/safing/portbase/modules"
+=======
+	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/structures/varint"
+>>>>>>> develop
 )
 
 // FlowControl defines the flow control interface.

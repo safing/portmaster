@@ -12,7 +12,7 @@ func TestFindNearest(t *testing.T) {
 	fakeLock.Lock()
 	defer fakeLock.Unlock()
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// Create a random destination address
 		ip4, loc4 := createGoodIP(true)
 
@@ -24,7 +24,7 @@ func TestFindNearest(t *testing.T) {
 		}
 	}
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// Create a random destination address
 		ip6, loc6 := createGoodIP(true)
 

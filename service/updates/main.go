@@ -5,10 +5,26 @@ import (
 	"runtime"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/mgr"
+||||||| 151a548c
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/dataroot"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/modules"
+	"github.com/safing/portbase/updater"
+	"github.com/safing/portmaster/service/updates/helper"
+=======
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/updates/helper"
+>>>>>>> develop
 )
 
 const (
@@ -42,6 +58,17 @@ var (
 	userAgentFromFlag    string
 	updateServerFromFlag string
 
+<<<<<<< HEAD
+||||||| 151a548c
+	updateTask          *modules.Task
+	updateASAP          bool
+	disableTaskSchedule bool
+
+=======
+	updateASAP          bool
+	disableTaskSchedule bool
+
+>>>>>>> develop
 	db = database.NewInterface(&database.Options{
 		Local:    true,
 		Internal: true,
@@ -57,10 +84,67 @@ const (
 	updateTaskRepeatDuration = 1 * time.Hour
 )
 
+<<<<<<< HEAD
+||||||| 151a548c
+func init() {
+	module = modules.Register(ModuleName, prep, start, stop, "base")
+	module.RegisterEvent(VersionUpdateEvent, true)
+	module.RegisterEvent(ResourceUpdateEvent, true)
+
+	flag.StringVar(&updateServerFromFlag, "update-server", "", "set an alternative update server (full URL)")
+	flag.StringVar(&userAgentFromFlag, "update-agent", "", "set an alternative user agent for requests to the update server")
+}
+
+func prep() error {
+	if err := registerConfig(); err != nil {
+		return err
+	}
+
+	// Check if update server URL supplied via flag is a valid URL.
+	if updateServerFromFlag != "" {
+		u, err := url.Parse(updateServerFromFlag)
+		if err != nil {
+			return fmt.Errorf("supplied update server URL is invalid: %w", err)
+		}
+		if u.Scheme != "https" {
+			return errors.New("supplied update server URL must use HTTPS")
+		}
+	}
+
+	return registerAPIEndpoints()
+}
+
+=======
+func init() {
+	flag.StringVar(&updateServerFromFlag, "update-server", "", "set an alternative update server (full URL)")
+	flag.StringVar(&userAgentFromFlag, "update-agent", "", "set an alternative user agent for requests to the update server")
+}
+
+func prep() error {
+	// Check if update server URL supplied via flag is a valid URL.
+	if updateServerFromFlag != "" {
+		u, err := url.Parse(updateServerFromFlag)
+		if err != nil {
+			return fmt.Errorf("supplied update server URL is invalid: %w", err)
+		}
+		if u.Scheme != "https" {
+			return errors.New("supplied update server URL must use HTTPS")
+		}
+	}
+
+	if err := registerConfig(); err != nil {
+		return err
+	}
+
+	return registerAPIEndpoints()
+}
+
+>>>>>>> develop
 func start() error {
 	// module.restartWorkerMgr.Repeat(10 * time.Minute)
 	// module.instance.Config().EventConfigChange.AddCallback("update registry config", updateRegistryConfig)
 
+<<<<<<< HEAD
 	// // create registry
 	// registry = &updater.ResourceRegistry{
 	// 	Name:             ModuleName,
@@ -90,6 +174,80 @@ func start() error {
 	// 		return err
 	// 	}
 	// }
+||||||| 151a548c
+	restartTask = module.NewTask("automatic restart", automaticRestart).MaxDelay(10 * time.Minute)
+
+	if err := module.RegisterEventHook(
+		"config",
+		"config change",
+		"update registry config",
+		updateRegistryConfig); err != nil {
+		return err
+	}
+
+	// create registry
+	registry = &updater.ResourceRegistry{
+		Name:             ModuleName,
+		UpdateURLs:       DefaultUpdateURLs,
+		UserAgent:        UserAgent,
+		MandatoryUpdates: helper.MandatoryUpdates(),
+		AutoUnpack:       helper.AutoUnpackUpdates(),
+		Verification:     helper.VerificationConfig,
+		DevMode:          devMode(),
+		Online:           true,
+	}
+	// Override values from flags.
+	if userAgentFromFlag != "" {
+		registry.UserAgent = userAgentFromFlag
+	}
+	if updateServerFromFlag != "" {
+		registry.UpdateURLs = []string{updateServerFromFlag}
+	}
+
+	// pre-init state
+	updateStateExport, err := LoadStateExport()
+	if err != nil {
+		log.Debugf("updates: failed to load exported update state: %s", err)
+	} else if updateStateExport.UpdateState != nil {
+		err := registry.PreInitUpdateState(*updateStateExport.UpdateState)
+		if err != nil {
+			return err
+		}
+	}
+=======
+	module.restartWorkerMgr.Repeat(10 * time.Minute)
+	module.instance.Config().EventConfigChange.AddCallback("update registry config", updateRegistryConfig)
+
+	// create registry
+	registry = &updater.ResourceRegistry{
+		Name:             ModuleName,
+		UpdateURLs:       DefaultUpdateURLs,
+		UserAgent:        UserAgent,
+		MandatoryUpdates: helper.MandatoryUpdates(),
+		AutoUnpack:       helper.AutoUnpackUpdates(),
+		Verification:     helper.VerificationConfig,
+		DevMode:          devMode(),
+		Online:           true,
+	}
+	// Override values from flags.
+	if userAgentFromFlag != "" {
+		registry.UserAgent = userAgentFromFlag
+	}
+	if updateServerFromFlag != "" {
+		registry.UpdateURLs = []string{updateServerFromFlag}
+	}
+
+	// pre-init state
+	updateStateExport, err := LoadStateExport()
+	if err != nil {
+		log.Debugf("updates: failed to load exported update state: %s", err)
+	} else if updateStateExport.UpdateState != nil {
+		err := registry.PreInitUpdateState(*updateStateExport.UpdateState)
+		if err != nil {
+			return err
+		}
+	}
+>>>>>>> develop
 
 	// initialize
 	// err := registry.Initialize(dataroot.Root().ChildDir(updatesDirName, 0o0755))
@@ -116,18 +274,38 @@ func start() error {
 	// 	log.Warningf("updates: %s", warning)
 	// }
 
+<<<<<<< HEAD
 	// err = registry.LoadIndexes(module.m.Ctx())
 	// if err != nil {
 	// 	log.Warningf("updates: failed to load indexes: %s", err)
 	// }
+||||||| 151a548c
+	err = registry.LoadIndexes(module.Ctx)
+	if err != nil {
+		log.Warningf("updates: failed to load indexes: %s", err)
+	}
+=======
+	err = registry.LoadIndexes(module.m.Ctx())
+	if err != nil {
+		log.Warningf("updates: failed to load indexes: %s", err)
+	}
+>>>>>>> develop
 
 	// err = registry.ScanStorage("")
 	// if err != nil {
 	// 	log.Warningf("updates: error during storage scan: %s", err)
 	// }
 
+<<<<<<< HEAD
 	// registry.SelectVersions()
 	// module.EventVersionsUpdated.Submit(struct{}{})
+||||||| 151a548c
+	registry.SelectVersions()
+	module.TriggerEvent(VersionUpdateEvent, nil)
+=======
+	registry.SelectVersions()
+	module.EventVersionsUpdated.Submit(struct{}{})
+>>>>>>> develop
 
 	// // Initialize the version export - this requires the registry to be set up.
 	// err = initVersionExport()
@@ -135,6 +313,7 @@ func start() error {
 	// 	return err
 	// }
 
+<<<<<<< HEAD
 	// // start updater task
 	// if !disableTaskSchedule {
 	// 	_ = module.updateWorkerMgr.Repeat(30 * time.Minute)
@@ -143,11 +322,38 @@ func start() error {
 	// if updateASAP {
 	// 	module.updateWorkerMgr.Go()
 	// }
+||||||| 151a548c
+	// start updater task
+	updateTask = module.NewTask("updater", func(ctx context.Context, task *modules.Task) error {
+		return checkForUpdates(ctx)
+	})
 
+	if !disableTaskSchedule {
+		updateTask.
+			Repeat(updateTaskRepeatDuration).
+			MaxDelay(30 * time.Minute)
+	}
+=======
+	// start updater task
+	if !disableTaskSchedule {
+		_ = module.updateWorkerMgr.Repeat(30 * time.Minute)
+	}
+>>>>>>> develop
+
+<<<<<<< HEAD
 	// // react to upgrades
 	// if err := initUpgrader(); err != nil {
 	// 	return err
 	// }
+||||||| 151a548c
+	if updateASAP {
+		updateTask.StartASAP()
+	}
+=======
+	if updateASAP {
+		module.updateWorkerMgr.Go()
+	}
+>>>>>>> develop
 
 	// warnOnIncorrectParentPath()
 
@@ -156,6 +362,7 @@ func start() error {
 
 // TriggerUpdate queues the update task to execute ASAP.
 func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
+<<<<<<< HEAD
 	// switch {
 	// case !forceIndexCheck && !enableSoftwareUpdates() && !enableIntelUpdates():
 	// 	return errors.New("automatic updating is disabled")
@@ -167,10 +374,52 @@ func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 	// 	if downloadAll {
 	// 		forceDownload.Set()
 	// 	}
+||||||| 151a548c
+	switch {
+	case !module.Online():
+		updateASAP = true
 
+	case !forceIndexCheck && !enableSoftwareUpdates() && !enableIntelUpdates():
+		return errors.New("automatic updating is disabled")
+=======
+	switch {
+	case !forceIndexCheck && !enableSoftwareUpdates() && !enableIntelUpdates():
+		return errors.New("automatic updating is disabled")
+>>>>>>> develop
+
+<<<<<<< HEAD
 	// 	// If index check if forced, start quicker.
 	// 	module.updateWorkerMgr.Go()
 	// }
+||||||| 151a548c
+	default:
+		if forceIndexCheck {
+			forceCheck.Set()
+		}
+		if downloadAll {
+			forceDownload.Set()
+		}
+
+		// If index check if forced, start quicker.
+		if forceIndexCheck {
+			updateTask.StartASAP()
+		} else {
+			updateTask.Queue()
+		}
+	}
+=======
+	default:
+		if forceIndexCheck {
+			forceCheck.Set()
+		}
+		if downloadAll {
+			forceDownload.Set()
+		}
+
+		// If index check if forced, start quicker.
+		module.updateWorkerMgr.Go()
+	}
+>>>>>>> develop
 
 	log.Debugf("updates: triggering update to run as soon as possible")
 	return nil
@@ -180,11 +429,28 @@ func TriggerUpdate(forceIndexCheck, downloadAll bool) error {
 // If called, updates are only checked when TriggerUpdate()
 // is called.
 func DisableUpdateSchedule() error {
+<<<<<<< HEAD
 	// TODO: Updater state should be always on
 	// switch module.Status() {
 	// case modules.StatusStarting, modules.StatusOnline, modules.StatusStopping:
 	// 	return errors.New("module already online")
 	// }
+||||||| 151a548c
+	switch module.Status() {
+	case modules.StatusStarting, modules.StatusOnline, modules.StatusStopping:
+		return errors.New("module already online")
+	}
+
+	disableTaskSchedule = true
+=======
+	// TODO: Updater state should be always on
+	// switch module.Status() {
+	// case modules.StatusStarting, modules.StatusOnline, modules.StatusStopping:
+	// 	return errors.New("module already online")
+	// }
+
+	disableTaskSchedule = true
+>>>>>>> develop
 
 	return nil
 }
@@ -222,16 +488,42 @@ func checkForUpdates(ctx *mgr.WorkerCtx) (err error) {
 	// 	notifyUpdateCheckFailed(forceIndexCheck, err)
 	// }()
 
+<<<<<<< HEAD
 	// if err = registry.UpdateIndexes(ctx.Ctx()); err != nil {
 	// 	err = fmt.Errorf("failed to update indexes: %w", err)
 	// 	return //nolint:nakedret // TODO: Would "return err" work with the defer?
 	// }
+||||||| 151a548c
+	if err = registry.UpdateIndexes(ctx); err != nil {
+		err = fmt.Errorf("failed to update indexes: %w", err)
+		return //nolint:nakedret // TODO: Would "return err" work with the defer?
+	}
+=======
+	if err = registry.UpdateIndexes(ctx.Ctx()); err != nil {
+		err = fmt.Errorf("failed to update indexes: %w", err)
+		return //nolint:nakedret // TODO: Would "return err" work with the defer?
+	}
+>>>>>>> develop
 
+<<<<<<< HEAD
 	// err = registry.DownloadUpdates(ctx.Ctx(), downloadAll)
 	// if err != nil {
 	// 	err = fmt.Errorf("failed to download updates: %w", err)
 	// 	return //nolint:nakedret // TODO: Would "return err" work with the defer?
 	// }
+||||||| 151a548c
+	err = registry.DownloadUpdates(ctx, downloadAll)
+	if err != nil {
+		err = fmt.Errorf("failed to download updates: %w", err)
+		return //nolint:nakedret // TODO: Would "return err" work with the defer?
+	}
+=======
+	err = registry.DownloadUpdates(ctx.Ctx(), downloadAll)
+	if err != nil {
+		err = fmt.Errorf("failed to download updates: %w", err)
+		return //nolint:nakedret // TODO: Would "return err" work with the defer?
+	}
+>>>>>>> develop
 
 	// registry.SelectVersions()
 
@@ -245,7 +537,13 @@ func checkForUpdates(ctx *mgr.WorkerCtx) (err error) {
 	// // Purge old resources
 	// registry.Purge(2)
 
+<<<<<<< HEAD
 	// module.EventResourcesUpdated.Submit(struct{}{})
+||||||| 151a548c
+	module.TriggerEvent(ResourceUpdateEvent, nil)
+=======
+	module.EventResourcesUpdated.Submit(struct{}{})
+>>>>>>> develop
 	return nil
 }
 

@@ -7,12 +7,26 @@ import (
 	"strings"
 	"sync"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/updater"
+||||||| 151a548c
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/updater"
+=======
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
+>>>>>>> develop
 	"github.com/safing/portmaster/service/updates"
+	"github.com/safing/structures/dsd"
 )
 
 // the following definitions are copied from the intelhub repository

@@ -13,7 +13,7 @@ func TestFindRoutes(t *testing.T) {
 	fakeLock.Lock()
 	defer fakeLock.Unlock()
 
-	for i := 0; i < 1; i++ {
+	for i := range 1 {
 		// Create a random destination address
 		dstIP, _ := createGoodIP(i%2 == 0)
 
@@ -37,13 +37,13 @@ func BenchmarkFindRoutes(b *testing.B) {
 
 	// Pre-generate 100 IPs
 	preGenIPs := make([]net.IP, 0, 100)
-	for i := 0; i < cap(preGenIPs); i++ {
+	for i := range cap(preGenIPs) {
 		ip, _ := createGoodIP(i%2 == 0)
 		preGenIPs = append(preGenIPs, ip)
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		routes, err := m.FindRoutes(preGenIPs[i%len(preGenIPs)], m.DefaultOptions())
 		if err != nil {
 			b.Error(err)

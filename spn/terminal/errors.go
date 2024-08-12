@@ -5,7 +5,13 @@ import (
 	"errors"
 	"fmt"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/formats/varint"
+||||||| 151a548c
+	"github.com/safing/portbase/formats/varint"
+=======
+	"github.com/safing/structures/varint"
+>>>>>>> develop
 )
 
 // Error is a terminal error.

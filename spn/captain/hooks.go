@@ -32,7 +32,13 @@ func handleCraneUpdate(crane *docks.Crane) {
 
 func updateConnectionStatus() {
 	// Delay updating status for a better chance to combine multiple changes.
+<<<<<<< HEAD
 	module.maintainPublicStatus.Delay(maintainStatusUpdateDelay)
+||||||| 151a548c
+	statusUpdateTask.Schedule(time.Now().Add(maintainStatusUpdateDelay))
+=======
+	module.statusUpdater.Delay(maintainStatusUpdateDelay)
+>>>>>>> develop
 
 	// Check if we lost all connections and trigger a pending restart if we did.
 	for _, crane := range docks.GetAllAssignedCranes() {

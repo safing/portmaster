@@ -7,7 +7,13 @@ import (
 	"github.com/mr-tron/base58"
 
 	"github.com/safing/jess/lhash"
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/formats/dsd"
+||||||| 151a548c
+	"github.com/safing/portbase/formats/dsd"
+=======
+	"github.com/safing/structures/dsd"
+>>>>>>> develop
 )
 
 const (

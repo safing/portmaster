@@ -6,11 +6,23 @@ import (
 	"fmt"
 	"strings"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/runtime"
+||||||| 151a548c
+	"github.com/safing/portbase/database/record"
+	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portbase/log"
+	"github.com/safing/portbase/runtime"
+=======
+	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/runtime"
+>>>>>>> develop
 	"github.com/safing/portmaster/service/netquery/orm"
+	"github.com/safing/structures/dsd"
 )
 
 // RuntimeQueryRunner provides a simple interface for the runtime database

@@ -29,6 +29,10 @@ const (
 	// This disables retrying and exits with an error code.
 	ControlledFailureExitCode = 24
 
+	// StartOldUIExitCode is an exit code that is returned by the UI when there. This is manfully triaged by the user, if the new UI does not work for them.
+	StartOldUIExitCode        = 77
+	MissingDependencyExitCode = 0xc0000135 // Windows STATUS_DLL_NOT_FOUND
+
 	exeSuffix = ".exe"
 	zipSuffix = ".zip"
 )
@@ -38,6 +42,8 @@ var (
 	onWindows        = runtime.GOOS == "windows"
 	stdinSignals     bool
 	childIsRunning   = abool.NewBool(false)
+
+	fallBackToOldUI bool = false
 )
 
 // Options for starting component.
@@ -55,7 +61,21 @@ type Options struct {
 	RestartOnFail     bool // Try restarting automatically, if the started component fails.
 }
 
+// This is a temp value that will be used to test the new UI in beta.
+var app2Options = Options{
+	Name:              "Portmaster App2",
+	Identifier:        "app2/portmaster-app",
+	AllowDownload:     false,
+	AllowHidingWindow: false,
+	RestartOnFail:     true,
+}
+
 func init() {
+	// Make sure the new UI has a proper extension.
+	if onWindows {
+		app2Options.Identifier += ".zip"
+	}
+
 	registerComponent([]Options{
 		{
 			Name:              "Portmaster Core",
@@ -70,6 +90,7 @@ func init() {
 			Identifier:        "app/portmaster-app.zip",
 			AllowDownload:     false,
 			AllowHidingWindow: false,
+			RestartOnFail:     true,
 		},
 		{
 			Name:              "Portmaster Notifier",
@@ -88,6 +109,7 @@ func init() {
 			PIDFile:           true,
 			RestartOnFail:     true,
 		},
+		app2Options,
 	})
 }
 
@@ -132,7 +154,7 @@ func getExecArgs(opts *Options, cmdArgs []string) []string {
 		args = append(args, "--input-signals")
 	}
 
-	if runtime.GOOS == "linux" && opts.Identifier == "app/portmaster-app.zip" {
+	if runtime.GOOS == "linux" && opts.ShortIdentifier == "app" {
 		// see https://www.freedesktop.org/software/systemd/man/pam_systemd.html#type=
 		if xdgSessionType := os.Getenv("XDG_SESSION_TYPE"); xdgSessionType == "wayland" {
 			// we're running the Portmaster UI App under Wayland so make sure we add some arguments
@@ -157,10 +179,6 @@ func run(opts *Options, cmdArgs []string) (err error) {
 	if isShuttingDown() {
 		return nil
 	}
-
-	// get original arguments
-	// additional parameters can be specified using -- --some-parameter
-	args := getExecArgs(opts, cmdArgs)
 
 	// check for duplicate instances
 	if opts.PIDFile {
@@ -204,7 +222,7 @@ func run(opts *Options, cmdArgs []string) (err error) {
 		}
 	}
 
-	return runAndRestart(opts, args)
+	return runAndRestart(opts, cmdArgs)
 }
 
 func runAndRestart(opts *Options, args []string) error {
@@ -311,6 +329,19 @@ func persistOutputStreams(opts *Options, version string, cmd *exec.Cmd) (chan st
 }
 
 func execute(opts *Options, args []string) (cont bool, err error) {
+	// Auto-upgrade to new UI if in beta and new UI is not disabled or failed.
+	if opts.ShortIdentifier == "app" &&
+		registry.UsePreReleases &&
+		!forceOldUI &&
+		!fallBackToOldUI {
+		log.Println("auto-upgraded to new UI")
+		opts = &app2Options
+	}
+
+	// Compile arguments and add additional arguments based on system configuration.
+	// Extra parameters can be specified using "-- --some-parameter".
+	args = getExecArgs(opts, args)
+
 	file, err := registry.GetFile(
 		helper.PlatformIdentifier(opts.Identifier),
 	)
@@ -440,6 +471,12 @@ func parseExitError(err error) (restart bool, errWithCtx error) {
 			return true, nil
 		case ControlledFailureExitCode:
 			return false, errors.New("controlled failure, check logs")
+		case StartOldUIExitCode:
+			fallBackToOldUI = true
+			return true, errors.New("user requested old UI")
+		case MissingDependencyExitCode:
+			fallBackToOldUI = true
+			return true, errors.New("new UI failed with missing dependency")
 		default:
 			return true, fmt.Errorf("unknown exit code %w", exErr)
 		}

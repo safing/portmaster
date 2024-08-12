@@ -101,7 +101,7 @@ func DecodeStmt(ctx context.Context, schema *TableSchema, stmt Stmt, result inte
 	// create a lookup map from field name (or sqlite:"" tag)
 	// to the field name
 	lm := make(map[string]string)
-	for i := 0; i < target.NumField(); i++ {
+	for i := range target.NumField() {
 		fieldType := t.Field(i)
 
 		// skip unexported fields
@@ -114,7 +114,7 @@ func DecodeStmt(ctx context.Context, schema *TableSchema, stmt Stmt, result inte
 
 	// iterate over all columns and assign them to the correct
 	// fields
-	for i := 0; i < stmt.ColumnCount(); i++ {
+	for i := range stmt.ColumnCount() {
 		colName := stmt.ColumnName(i)
 		fieldName, ok := lm[colName]
 		if !ok {
@@ -246,7 +246,7 @@ func decodeIntoMap(_ context.Context, schema *TableSchema, stmt Stmt, mp *map[st
 		*mp = make(map[string]interface{})
 	}
 
-	for i := 0; i < stmt.ColumnCount(); i++ {
+	for i := range stmt.ColumnCount() {
 		var x interface{}
 
 		colDef := schema.GetColumnDef(stmt.ColumnName(i))

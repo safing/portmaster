@@ -6,10 +6,22 @@ import (
 	"sync"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/api/client"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
 	pbnotify "github.com/safing/portmaster/base/notifications"
+||||||| 151a548c
+	"github.com/safing/portbase/api/client"
+	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portbase/log"
+	pbnotify "github.com/safing/portbase/notifications"
+=======
+	"github.com/safing/portmaster/base/api/client"
+	"github.com/safing/portmaster/base/log"
+	pbnotify "github.com/safing/portmaster/base/notifications"
+	"github.com/safing/structures/dsd"
+>>>>>>> develop
 )
 
 const (

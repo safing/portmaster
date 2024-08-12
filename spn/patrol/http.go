@@ -84,7 +84,7 @@ func checkHTTPSConnectivity(ctx context.Context, network string, checks int, req
 
 	// Run tests.
 	var succeeded int
-	for i := 0; i < checks; i++ {
+	for range checks {
 		if checkHTTPSConnection(ctx, network) {
 			succeeded++
 		}

@@ -21,10 +21,20 @@ import (
 	"github.com/safing/portmaster/service/netenv"
 )
 
+<<<<<<< HEAD
 type ResolverModule struct {
 	mgr      *mgr.Manager
 	instance instance
+||||||| 151a548c
+var module *modules.Module
+=======
+// ResolverModule is the DNS resolver module.
+type ResolverModule struct { //nolint
+	mgr      *mgr.Manager
+	instance instance
+>>>>>>> develop
 
+<<<<<<< HEAD
 	failingResolverWorkerMgr   *mgr.WorkerMgr
 	suggestUsingStaleCacheTask *mgr.WorkerMgr
 
@@ -45,6 +55,35 @@ func (rm *ResolverModule) Start() error {
 
 func (rm *ResolverModule) Stop() error {
 	return nil
+||||||| 151a548c
+func init() {
+	module = modules.Register("resolver", prep, start, nil, "base", "netenv")
+=======
+	failingResolverWorkerMgr   *mgr.WorkerMgr
+	suggestUsingStaleCacheTask *mgr.WorkerMgr
+
+	states *mgr.StateMgr
+}
+
+// Manager returns the module manager.
+func (rm *ResolverModule) Manager() *mgr.Manager {
+	return rm.mgr
+}
+
+// States returns the module state manager.
+func (rm *ResolverModule) States() *mgr.StateMgr {
+	return rm.states
+}
+
+// Start starts the module.
+func (rm *ResolverModule) Start() error {
+	return start()
+}
+
+// Stop stops the module.
+func (rm *ResolverModule) Stop() error {
+	return nil
+>>>>>>> develop
 }
 
 func prep() error {
@@ -108,10 +147,25 @@ func start() error {
 	module.failingResolverWorkerMgr.Go()
 	module.instance.NetEnv().EventNetworkChange.AddCallback(
 		"check failing resolvers",
+<<<<<<< HEAD
 		func(wc *mgr.WorkerCtx, _ struct{}) (bool, error) {
 			checkFailingResolvers(wc)
 			return false, nil
 		})
+||||||| 151a548c
+		func(_ context.Context, _ any) error {
+			checkFailingResolversTask.StartASAP()
+			return nil
+		},
+	)
+	if err != nil {
+		return err
+	}
+=======
+		func(wc *mgr.WorkerCtx, _ struct{}) (bool, error) {
+			return false, checkFailingResolvers(wc)
+		})
+>>>>>>> develop
 
 	module.suggestUsingStaleCacheTask = module.mgr.NewWorkerMgr("suggest using stale cache", suggestUsingStaleCacheTask, nil)
 	module.suggestUsingStaleCacheTask.Go()
@@ -232,6 +286,9 @@ func AddToDebugInfo(di *debug.Info) {
 		}
 		if len(resolver.Search) > 0 {
 			content = append(content, fmt.Sprintf("  Search Domains: %v", strings.Join(resolver.Search, ", ")))
+		}
+		if resolver.LinkLocalUnavailable {
+			content = append(content, "  Link-local, but not available: ignoring")
 		}
 		content = append(content, fmt.Sprintf("  Failing: %v", resolver.Conn.IsFailing()))
 

@@ -61,8 +61,7 @@ func TestConnectOp(t *testing.T) {
 		t.Fatalf("failed to update identity: %s", err)
 	}
 	EnableConnecting(identity.Hub)
-
-	for i := 0; i < 1; i++ {
+	{
 		appConn, sluiceConn := net.Pipe()
 		_, tErr := NewConnectOp(&Tunnel{
 			connInfo: &network.Connection{

@@ -10,11 +10,23 @@ import (
 	"github.com/safing/portmaster/service/network/packet"
 )
 
+<<<<<<< HEAD
 type Interception struct {
 	mgr      *mgr.Manager
 	instance instance
 }
+||||||| 151a548c
+var (
+	module *modules.Module
+=======
+// Interception is the packet interception module.
+type Interception struct {
+	mgr      *mgr.Manager
+	instance instance
+}
+>>>>>>> develop
 
+<<<<<<< HEAD
 func (i *Interception) Manager() *mgr.Manager {
 	return i.mgr
 }
@@ -29,6 +41,27 @@ func (i *Interception) Stop() error {
 
 var (
 	// Packets is a stream of interception network packets.
+||||||| 151a548c
+	// Packets is a stream of interception network packest.
+=======
+// Manager returns the module manager.
+func (i *Interception) Manager() *mgr.Manager {
+	return i.mgr
+}
+
+// Start starts the module.
+func (i *Interception) Start() error {
+	return start()
+}
+
+// Stop stops the module.
+func (i *Interception) Stop() error {
+	return stop()
+}
+
+var (
+	// Packets is a stream of interception network packets.
+>>>>>>> develop
 	Packets = make(chan packet.Packet, 1000)
 
 	// BandwidthUpdates is a stream of bandwidth usage update for connections.

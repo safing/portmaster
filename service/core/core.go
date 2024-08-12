@@ -17,15 +17,25 @@ import (
 	_ "github.com/safing/portmaster/service/ui"
 )
 
-const (
-	eventShutdown = "shutdown"
-	eventRestart  = "restart"
-)
-
+// Core is the core service module.
 type Core struct {
 	m        *mgr.Manager
 	instance instance
 
+<<<<<<< HEAD
+type Core struct {
+	m        *mgr.Manager
+	instance instance
+||||||| 151a548c
+var (
+	module *modules.Module
+=======
+	EventShutdown *mgr.EventMgr[struct{}]
+	EventRestart  *mgr.EventMgr[struct{}]
+}
+>>>>>>> develop
+
+<<<<<<< HEAD
 	EventShutdown *mgr.EventMgr[struct{}]
 	EventRestart  *mgr.EventMgr[struct{}]
 }
@@ -43,6 +53,27 @@ func (c *Core) Stop() error {
 }
 
 var disableShutdownEvent bool
+||||||| 151a548c
+	disableShutdownEvent bool
+)
+=======
+// Manager returns the manager.
+func (c *Core) Manager() *mgr.Manager {
+	return c.m
+}
+
+// Start starts the module.
+func (c *Core) Start() error {
+	return start()
+}
+
+// Stop stops the module.
+func (c *Core) Stop() error {
+	return nil
+}
+
+var disableShutdownEvent bool
+>>>>>>> develop
 
 func init() {
 	flag.BoolVar(

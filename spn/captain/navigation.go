@@ -210,7 +210,13 @@ func connectToHomeHub(wCtx *mgr.WorkerCtx, dst *hub.Hub) error {
 	return nil
 }
 
+<<<<<<< HEAD
 func optimizeNetwork(ctx *mgr.WorkerCtx) error { //, task *modules.Task) error {
+||||||| 151a548c
+func optimizeNetwork(ctx context.Context, task *modules.Task) error {
+=======
+func optimizeNetwork(ctx *mgr.WorkerCtx) error {
+>>>>>>> develop
 	if publicIdentity == nil {
 		return nil
 	}

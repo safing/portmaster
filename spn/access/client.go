@@ -8,11 +8,21 @@ import (
 	"sync"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/formats/dsd"
 	"github.com/safing/portmaster/base/log"
+||||||| 151a548c
+	"github.com/safing/portbase/database"
+	"github.com/safing/portbase/formats/dsd"
+	"github.com/safing/portbase/log"
+=======
+	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/log"
+>>>>>>> develop
 	"github.com/safing/portmaster/spn/access/account"
 	"github.com/safing/portmaster/spn/access/token"
+	"github.com/safing/structures/dsd"
 )
 
 // Client URLs.
