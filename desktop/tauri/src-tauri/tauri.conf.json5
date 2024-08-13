@@ -73,6 +73,7 @@
         "release": "1",
         "files": {
           "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
+          "/usr/lib/portmaster/portmaster-core": "binaries/portmaster-core",
           "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
         },
         "postInstallScript": "../../../packaging/linux/postinst",

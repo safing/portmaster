@@ -181,16 +181,16 @@ func upgradeHub() error {
 		DelayedRestart(time.Duration(delayMinutes+60) * time.Minute)
 
 		// Increase update checks in order to detect aborts better.
-		if !disableTaskSchedule {
-			module.updateWorkerMgr.Repeat(10 * time.Minute)
-		}
+		// if !disableTaskSchedule {
+		module.updateWorkerMgr.Repeat(10 * time.Minute)
+		// }
 	} else {
 		AbortRestart()
 
 		// Set update task schedule back to normal.
-		if !disableTaskSchedule {
-			module.updateWorkerMgr.Repeat(updateTaskRepeatDuration)
-		}
+		// if !disableTaskSchedule {
+		module.updateWorkerMgr.Repeat(updateTaskRepeatDuration)
+		// }
 	}
 
 	return nil

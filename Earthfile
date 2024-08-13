@@ -462,17 +462,14 @@ tauri-build:
     # Our tauri app has externalBins configured so tauri will try to embed them when it finished compiling
     # the app. Make sure we copy portmaster-start and portmaster-core in all architectures supported.
     # See documentation for externalBins for more information on how tauri searches for the binaries.
-    COPY (+go-build/output --CMDS="portmaster-start portmaster-core" --GOOS="${GOOS}" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
+    COPY (+go-build/output --CMDS="portmaster-core" --GOOS="${GOOS}" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
 
     # Place them in the correct folder with the rust target tripple attached.
     FOR bin IN $(ls /tmp/gobuild)
         # ${bin$.*} does not work in SET commands unfortunately so we use a shell
         # snippet here:
         RUN set -e ; \
-            dest="./binaries/${bin}-${target}" ; \
-            if [ -z "${bin##*.exe}" ]; then \
-                dest="./binaries/${bin%.*}-${target}.exe" ; \
-            fi ; \
+            dest="./binaries/${bin}" ; \
             cp "/tmp/gobuild/${bin}" "${dest}" ;
     END
 
