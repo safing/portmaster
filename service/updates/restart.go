@@ -54,7 +54,7 @@ func DelayedRestart(delay time.Duration) {
 	// Schedule the restart task.
 	log.Warningf("updates: restart triggered, will execute in %s", delay)
 	restartAt := time.Now().Add(delay)
-	module.restartWorkerMgr.Delay(delay)
+	// module.restartWorkerMgr.Delay(delay)
 
 	// Set restartTime.
 	restartTimeLock.Lock()
@@ -68,23 +68,23 @@ func AbortRestart() {
 		log.Warningf("updates: restart aborted")
 
 		// Cancel schedule.
-		module.restartWorkerMgr.Delay(0)
+		// module.restartWorkerMgr.Delay(0)
 	}
 }
 
 // TriggerRestartIfPending triggers an automatic restart, if one is pending.
 // This can be used to prepone a scheduled restart if the conditions are preferable.
 func TriggerRestartIfPending() {
-	if restartPending.IsSet() {
-		module.restartWorkerMgr.Go()
-	}
+	// if restartPending.IsSet() {
+	// 	module.restartWorkerMgr.Go()
+	// }
 }
 
 // RestartNow immediately executes a restart.
 // This only works if the process is managed by portmaster-start.
 func RestartNow() {
 	restartPending.Set()
-	module.restartWorkerMgr.Go()
+	// module.restartWorkerMgr.Go()
 }
 
 func automaticRestart(w *mgr.WorkerCtx) error {
@@ -108,11 +108,11 @@ func automaticRestart(w *mgr.WorkerCtx) error {
 		}
 
 		// Set restart exit code.
-		if !rebooting {
-			module.instance.Restart()
-		} else {
-			module.instance.Shutdown()
-		}
+		// if !rebooting {
+		// 	module.instance.Restart()
+		// } else {
+		// 	module.instance.Shutdown()
+		// }
 	}
 
 	return nil

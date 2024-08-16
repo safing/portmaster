@@ -1,4 +1,4 @@
-package updates
+package registry
 
 import (
 	"archive/zip"
@@ -17,6 +17,12 @@ import (
 	"github.com/safing/portmaster/base/log"
 )
 
+const (
+	defaultFileMode    = os.FileMode(0o0644)
+	executableFileMode = os.FileMode(0o0744)
+	defaultDirMode     = os.FileMode(0o0755)
+)
+
 const MaxUnpackSize = 1 << 30 // 2^30 == 1GB
 
 type Artifact struct {
@@ -29,40 +35,40 @@ type Artifact struct {
 }
 
 type Bundle struct {
+	dir       string
 	Name      string     `json:"Bundle"`
 	Version   string     `json:"Version"`
 	Published time.Time  `json:"Published"`
 	Artifacts []Artifact `json:"Artifacts"`
 }
 
-func (bundle Bundle) downloadAndVerify(dataDir string) {
+func (bundle Bundle) downloadAndVerify() {
 	client := http.Client{}
 	for _, artifact := range bundle.Artifacts {
 
-		filePath := fmt.Sprintf("%s/%s", dataDir, artifact.Filename)
+		filePath := fmt.Sprintf("%s/%s", bundle.dir, artifact.Filename)
 		// TODO(vladimir): is this needed?
-		_ = os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
+		_ = os.MkdirAll(filepath.Dir(filePath), defaultDirMode)
 
 		// Check file is already downloaded and valid.
-		exists, err := checkIfFileIsValid(filePath, artifact)
+		exists, _ := checkIfFileIsValid(filePath, artifact)
 		if exists {
-			log.Debugf("file already download: %s", filePath)
+			log.Debugf("updates: file already downloaded: %s", filePath)
 			continue
-		} else if err != nil {
-			log.Errorf("error while checking old download: %s", err)
 		}
 
 		// Download artifact
-		err = processArtifact(&client, artifact, filePath)
+		err := processArtifact(&client, artifact, filePath)
 		if err != nil {
 			log.Errorf("updates: %s", err)
 		}
 	}
 }
 
-func (bundle Bundle) Verify(dataDir string) error {
+// Verify checks if the files are present int the dataDir and have the correct hash.
+func (bundle Bundle) Verify() error {
 	for _, artifact := range bundle.Artifacts {
-		artifactPath := fmt.Sprintf("%s/%s", dataDir, artifact.Filename)
+		artifactPath := fmt.Sprintf("%s/%s", bundle.dir, artifact.Filename)
 		file, err := os.Open(artifactPath)
 		if err != nil {
 			return fmt.Errorf("failed to open file %s: %w", artifactPath, err)
@@ -86,8 +92,7 @@ func checkIfFileIsValid(filename string, artifact Artifact) (bool, error) {
 	// Check if file already exists
 	file, err := os.Open(filename)
 	if err != nil {
-		//nolint:nilerr
-		return false, nil
+		return false, err
 	}
 	defer func() { _ = file.Close() }()
 
@@ -131,7 +136,7 @@ func processArtifact(client *http.Client, artifact Artifact, filePath string) er
 	// Verify
 	hash := sha256.Sum256(content)
 	if !bytes.Equal(providedHash, hash[:]) {
-		// FIXME(vladimir): just for testing. Make it an error before commit.
+		// FIXME(vladimir): just for testing. Make it an error.
 		err = fmt.Errorf("failed to verify artifact: %s", artifact.Filename)
 		log.Debugf("updates: %s", err)
 	}
@@ -141,6 +146,11 @@ func processArtifact(client *http.Client, artifact Artifact, filePath string) er
 	file, err := os.Create(tmpFilename)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
+	}
+	if artifact.Platform == "" {
+		_ = file.Chmod(defaultFileMode)
+	} else {
+		_ = file.Chmod(executableFileMode)
 	}
 	_, err = file.Write(content)
 	if err != nil {

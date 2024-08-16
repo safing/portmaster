@@ -13,8 +13,8 @@ import (
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/updates/registry"
 )
 
 var updateInProgress = abool.New()
@@ -174,51 +174,51 @@ func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx) error {
 // getUpgradableFiles returns a slice of filterlists files
 // that should be updated. The files MUST be updated and
 // processed in the returned order!
-func getUpgradableFiles() ([]*updater.File, error) {
-	var updateOrder []*updater.File
+func getUpgradableFiles() ([]*registry.File, error) {
+	var updateOrder []*registry.File
 
-	cacheDBInUse := isLoaded()
+	// cacheDBInUse := isLoaded()
 
-	if baseFile == nil || baseFile.UpgradeAvailable() || !cacheDBInUse {
-		var err error
-		baseFile, err = getFile(baseListFilePath)
-		if err != nil {
-			return nil, err
-		}
-		log.Tracef("intel/filterlists: base file needs update, selected version %s", baseFile.Version())
-		updateOrder = append(updateOrder, baseFile)
-	}
+	// if baseFile == nil  || !cacheDBInUse { // TODO(vladimir): || baseFile.UpgradeAvailable()
+	// 	var err error
+	// 	baseFile, err = module.instance.Updates().GetFile(baseListFilePath)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	log.Tracef("intel/filterlists: base file needs update, selected version %s", baseFile.Version())
+	// 	updateOrder = append(updateOrder, baseFile)
+	// }
 
-	if intermediateFile == nil || intermediateFile.UpgradeAvailable() || !cacheDBInUse {
-		var err error
-		intermediateFile, err = getFile(intermediateListFilePath)
-		if err != nil && !errors.Is(err, updater.ErrNotFound) {
-			return nil, err
-		}
+	// if intermediateFile == nil || intermediateFile.UpgradeAvailable() || !cacheDBInUse {
+	// 	var err error
+	// 	intermediateFile, err = getFile(intermediateListFilePath)
+	// 	if err != nil && !errors.Is(err, updater.ErrNotFound) {
+	// 		return nil, err
+	// 	}
 
-		if err == nil {
-			log.Tracef("intel/filterlists: intermediate file needs update, selected version %s", intermediateFile.Version())
-			updateOrder = append(updateOrder, intermediateFile)
-		}
-	}
+	// 	if err == nil {
+	// 		log.Tracef("intel/filterlists: intermediate file needs update, selected version %s", intermediateFile.Version())
+	// 		updateOrder = append(updateOrder, intermediateFile)
+	// 	}
+	// }
 
-	if urgentFile == nil || urgentFile.UpgradeAvailable() || !cacheDBInUse {
-		var err error
-		urgentFile, err = getFile(urgentListFilePath)
-		if err != nil && !errors.Is(err, updater.ErrNotFound) {
-			return nil, err
-		}
+	// if urgentFile == nil || urgentFile.UpgradeAvailable() || !cacheDBInUse {
+	// 	var err error
+	// 	urgentFile, err = getFile(urgentListFilePath)
+	// 	if err != nil && !errors.Is(err, updater.ErrNotFound) {
+	// 		return nil, err
+	// 	}
 
-		if err == nil {
-			log.Tracef("intel/filterlists: urgent file needs update, selected version %s", urgentFile.Version())
-			updateOrder = append(updateOrder, urgentFile)
-		}
-	}
+	// 	if err == nil {
+	// 		log.Tracef("intel/filterlists: urgent file needs update, selected version %s", urgentFile.Version())
+	// 		updateOrder = append(updateOrder, urgentFile)
+	// 	}
+	// }
 
 	return resolveUpdateOrder(updateOrder)
 }
 
-func resolveUpdateOrder(updateOrder []*updater.File) ([]*updater.File, error) {
+func resolveUpdateOrder(updateOrder []*registry.File) ([]*registry.File, error) {
 	// sort the update order by ascending version
 	sort.Sort(byAscVersion(updateOrder))
 	log.Tracef("intel/filterlists: order of updates: %v", updateOrder)
@@ -258,7 +258,7 @@ func resolveUpdateOrder(updateOrder []*updater.File) ([]*updater.File, error) {
 	return updateOrder[startAtIdx:], nil
 }
 
-type byAscVersion []*updater.File
+type byAscVersion []*registry.File
 
 func (fs byAscVersion) Len() int { return len(fs) }
 

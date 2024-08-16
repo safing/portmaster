@@ -17,7 +17,6 @@ import (
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/netutils"
-	"github.com/safing/portmaster/service/updates"
 )
 
 // OnlineStatus represent a state of connectivity to the Internet.
@@ -221,7 +220,7 @@ func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string)
 
 		// Trigger update check when coming (semi) online.
 		if Online() {
-			_ = updates.TriggerUpdate(false, false)
+			module.instance.Updates().EventResourcesUpdated.Submit(struct{}{})
 		}
 	}
 }

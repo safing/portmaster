@@ -8,6 +8,7 @@ import (
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/updates"
 )
 
 func prep() error {
@@ -56,7 +57,10 @@ func (ui *UI) Stop() error {
 	return nil
 }
 
-var shimLoaded atomic.Bool
+var (
+	shimLoaded atomic.Bool
+	module     *UI
+)
 
 // New returns a new UI module.
 func New(instance instance) (*UI, error) {
@@ -64,7 +68,7 @@ func New(instance instance) (*UI, error) {
 		return nil, errors.New("only one instance allowed")
 	}
 	m := mgr.New("UI")
-	module := &UI{
+	module = &UI{
 		mgr:      m,
 		instance: instance,
 	}
@@ -78,4 +82,5 @@ func New(instance instance) (*UI, error) {
 
 type instance interface {
 	API() *api.API
+	Updates() *updates.Updates
 }

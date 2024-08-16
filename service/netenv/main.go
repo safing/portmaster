@@ -8,6 +8,7 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/updates"
 )
 
 // Event Names.
@@ -105,4 +106,6 @@ func New(instance instance) (*NetEnv, error) {
 	return module, nil
 }
 
-type instance interface{}
+type instance interface {
+	Updates() *updates.Updates
+}

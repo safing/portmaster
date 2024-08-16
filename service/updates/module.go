@@ -2,10 +2,8 @@ package updates
 
 import (
 	"errors"
+	"flag"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 	"sync/atomic"
 
 	"github.com/safing/portmaster/base/api"
@@ -13,34 +11,33 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/updates/registry"
 )
 
-const (
-	defaultFileMode = os.FileMode(0o0644)
-	defaultDirMode  = os.FileMode(0o0755)
-)
+var applyUpdates bool
+
+func init() {
+	flag.BoolVar(&applyUpdates, "update", false, "apply downloaded updates")
+}
 
 // Updates provides access to released artifacts.
 type Updates struct {
 	m      *mgr.Manager
 	states *mgr.StateMgr
 
-	updateWorkerMgr  *mgr.WorkerMgr
-	restartWorkerMgr *mgr.WorkerMgr
+	updateBinaryWorkerMgr *mgr.WorkerMgr
+	updateIntelWorkerMgr  *mgr.WorkerMgr
+	restartWorkerMgr      *mgr.WorkerMgr
 
 	EventResourcesUpdated *mgr.EventMgr[struct{}]
 	EventVersionsUpdated  *mgr.EventMgr[struct{}]
 
-	binUpdates   UpdateIndex
-	intelUpdates UpdateIndex
+	registry registry.Registry
 
 	instance instance
 }
 
-var (
-	module     *Updates
-	shimLoaded atomic.Bool
-)
+var shimLoaded atomic.Bool
 
 // New returns a new UI module.
 func New(instance instance) (*Updates, error) {
@@ -49,20 +46,22 @@ func New(instance instance) (*Updates, error) {
 	}
 
 	m := mgr.New("Updates")
-	module = &Updates{
+	module := &Updates{
 		m:      m,
 		states: m.NewStateMgr(),
 
 		EventResourcesUpdated: mgr.NewEventMgr[struct{}](ResourceUpdateEvent, m),
 		EventVersionsUpdated:  mgr.NewEventMgr[struct{}](VersionUpdateEvent, m),
-		instance:              instance,
+
+		instance: instance,
 	}
 
 	// Events
-	module.updateWorkerMgr = m.NewWorkerMgr("updater", module.checkForUpdates, nil)
+	module.updateBinaryWorkerMgr = m.NewWorkerMgr("binary updater", module.checkForBinaryUpdates, nil)
+	module.updateIntelWorkerMgr = m.NewWorkerMgr("intel updater", module.checkForIntelUpdates, nil)
 	module.restartWorkerMgr = m.NewWorkerMgr("automatic restart", automaticRestart, nil)
 
-	module.binUpdates = UpdateIndex{
+	binIndex := registry.UpdateIndex{
 		Directory:         "/usr/lib/portmaster",
 		DownloadDirectory: "/var/portmaster/new_bin",
 		Ignore:            []string{"databases", "intel", "config.json"},
@@ -71,62 +70,48 @@ func New(instance instance) (*Updates, error) {
 		AutoApply:         false,
 	}
 
-	module.intelUpdates = UpdateIndex{
+	intelIndex := registry.UpdateIndex{
 		Directory:         "/var/portmaster/intel",
 		DownloadDirectory: "/var/portmaster/new_intel",
 		IndexURLs:         []string{"http://localhost:8000/test-intel.json"},
 		IndexFile:         "intel-index.json",
 		AutoApply:         true,
 	}
+	module.registry = registry.New(binIndex, intelIndex)
 
 	return module, nil
 }
 
-func deleteUnfinishedDownloads(rootDir string) error {
-	return filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+func (u *Updates) checkForBinaryUpdates(_ *mgr.WorkerCtx) error {
+	hasUpdates, err := u.registry.CheckForBinaryUpdates()
+	if err != nil {
+		log.Errorf("updates: failed to check for binary updates: %s", err)
+	}
+	if hasUpdates {
+		log.Infof("updates: there is updates available in the binary bundle")
+		err = u.registry.DownloadBinaryUpdates()
 		if err != nil {
-			return err
+			log.Errorf("updates: failed to download bundle: %s", err)
 		}
-
-		// Check if the current file has the specified extension
-		if !info.IsDir() && strings.HasSuffix(info.Name(), ".download") {
-			log.Warningf("updates deleting unfinished: %s\n", path)
-			err := os.Remove(path)
-			if err != nil {
-				return fmt.Errorf("failed to delete file %s: %w", path, err)
-			}
-		}
-
-		return nil
-	})
+	} else {
+		log.Infof("updates: no new binary updates")
+	}
+	return nil
 }
 
-func (u *Updates) checkForUpdates(_ *mgr.WorkerCtx) error {
-	_ = deleteUnfinishedDownloads(u.binUpdates.DownloadDirectory)
-	hasUpdate, err := u.binUpdates.checkForUpdates()
+func (u *Updates) checkForIntelUpdates(_ *mgr.WorkerCtx) error {
+	hasUpdates, err := u.registry.CheckForIntelUpdates()
 	if err != nil {
-		log.Warningf("failed to get binary index file: %s", err)
+		log.Errorf("updates: failed to check for intel updates: %s", err)
 	}
-	if hasUpdate {
-		binBundle, err := u.binUpdates.GetUpdateBundle()
-		if err == nil {
-			log.Debugf("Bin Bundle: %+v", binBundle)
-			_ = os.MkdirAll(u.binUpdates.DownloadDirectory, defaultDirMode)
-			binBundle.downloadAndVerify(u.binUpdates.DownloadDirectory)
+	if hasUpdates {
+		log.Infof("updates: there is updates available in the intel bundle")
+		err = u.registry.DownloadIntelUpdates()
+		if err != nil {
+			log.Errorf("updates: failed to download bundle: %s", err)
 		}
-	}
-	_ = deleteUnfinishedDownloads(u.intelUpdates.DownloadDirectory)
-	hasUpdate, err = u.intelUpdates.checkForUpdates()
-	if err != nil {
-		log.Warningf("failed to get intel index file: %s", err)
-	}
-	if hasUpdate {
-		intelBundle, err := u.intelUpdates.GetUpdateBundle()
-		if err == nil {
-			log.Debugf("Intel Bundle: %+v", intelBundle)
-			_ = os.MkdirAll(u.intelUpdates.DownloadDirectory, defaultDirMode)
-			intelBundle.downloadAndVerify(u.intelUpdates.DownloadDirectory)
-		}
+	} else {
+		log.Infof("updates: no new intel data updates")
 	}
 	return nil
 }
@@ -143,36 +128,34 @@ func (u *Updates) Manager() *mgr.Manager {
 
 // Start starts the module.
 func (u *Updates) Start() error {
-	initConfig()
-	u.m.Go("check for updates", func(w *mgr.WorkerCtx) error {
-		binBundle, err := u.binUpdates.GetInstallBundle()
-		if err != nil {
-			log.Warningf("failed to get binary bundle: %s", err)
-		} else {
-			err = binBundle.Verify(u.binUpdates.Directory)
-			if err != nil {
-				log.Warningf("binary bundle is not valid: %s", err)
-			} else {
-				log.Infof("binary bundle is valid")
-			}
-		}
+	// initConfig()
 
-		intelBundle, err := u.intelUpdates.GetInstallBundle()
+	if applyUpdates {
+		err := u.registry.ApplyBinaryUpdates()
 		if err != nil {
-			log.Warningf("failed to get intel bundle: %s", err)
-		} else {
-			err = intelBundle.Verify(u.intelUpdates.Directory)
-			if err != nil {
-				log.Warningf("intel bundle is not valid: %s", err)
-			} else {
-				log.Infof("intel bundle is valid")
-			}
+			log.Errorf("updates: failed to apply binary updates: %s", err)
 		}
-
+		err = u.registry.ApplyIntelUpdates()
+		if err != nil {
+			log.Errorf("updates: failed to apply intel updates: %s", err)
+		}
+		u.instance.Restart()
 		return nil
-	})
-	u.updateWorkerMgr.Go()
+	}
+
+	err := u.registry.Initialize()
+	if err != nil {
+		// TODO(vladimir): Find a better way to handle this error. The service will stop if parsing of the bundle files fails.
+		return fmt.Errorf("failed to initialize registry: %w", err)
+	}
+
+	u.updateBinaryWorkerMgr.Go()
+	u.updateIntelWorkerMgr.Go()
 	return nil
+}
+
+func (u *Updates) GetFile(id string) (*registry.File, error) {
+	return u.registry.GetFile(id)
 }
 
 // Stop stops the module.

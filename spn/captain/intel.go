@@ -6,9 +6,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/service/updates"
+	"github.com/safing/portmaster/service/updates/registry"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/navigator"
@@ -16,7 +15,7 @@ import (
 )
 
 var (
-	intelResource           *updater.File
+	intelResource           *registry.File
 	intelResourcePath       = "intel/spn/main-intel.yaml"
 	intelResourceMapName    = "main"
 	intelResourceUpdateLock sync.Mutex
@@ -44,12 +43,13 @@ func updateSPNIntel(_ context.Context, _ interface{}) (err error) {
 	}
 
 	// Check if there is something to do.
-	if intelResource != nil && !intelResource.UpgradeAvailable() {
+	// TODO(vladimir): is update check needed
+	if intelResource != nil { //&& !intelResource.UpgradeAvailable() {
 		return nil
 	}
 
 	// Get intel file and load it from disk.
-	intelResource, err = updates.GetFile(intelResourcePath)
+	intelResource, err = module.instance.Updates().GetFile(intelResourcePath)
 	if err != nil {
 		return fmt.Errorf("failed to get SPN intel update: %w", err)
 	}

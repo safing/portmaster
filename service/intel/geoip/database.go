@@ -8,9 +8,8 @@ import (
 	maxminddb "github.com/oschwald/maxminddb-golang"
 
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/service/updates"
+	"github.com/safing/portmaster/service/updates/registry"
 )
 
 var worker *updateWorker
@@ -22,13 +21,13 @@ func init() {
 }
 
 const (
-	v4MMDBResource = "intel/geoip/geoipv4.mmdb.gz"
-	v6MMDBResource = "intel/geoip/geoipv6.mmdb.gz"
+	v4MMDBResource = "geoipv4.mmdb"
+	v6MMDBResource = "geoipv6.mmdb"
 )
 
 type geoIPDB struct {
 	*maxminddb.Reader
-	file *updater.File
+	file *registry.File
 }
 
 // updateBroadcaster stores a geoIPDB and provides synchronized
@@ -47,7 +46,7 @@ func (ub *updateBroadcaster) NeedsUpdate() bool {
 	ub.rw.RLock()
 	defer ub.rw.RUnlock()
 
-	return ub.db == nil || ub.db.file.UpgradeAvailable()
+	return ub.db == nil // TODO(vladimir) is this needed: || ub.db.file.UpgradeAvailable()
 }
 
 // ReplaceDatabase replaces (or initially sets) the mmdb database.
@@ -181,12 +180,12 @@ func (upd *updateWorker) run(ctx *mgr.WorkerCtx) error {
 func getGeoIPDB(resource string) (*geoIPDB, error) {
 	log.Debugf("geoip: opening database %s", resource)
 
-	file, unpackedPath, err := openAndUnpack(resource)
+	file, err := open(resource)
 	if err != nil {
 		return nil, err
 	}
 
-	reader, err := maxminddb.Open(unpackedPath)
+	reader, err := maxminddb.Open(file.Path())
 	if err != nil {
 		return nil, fmt.Errorf("failed to open: %w", err)
 	}
@@ -198,16 +197,16 @@ func getGeoIPDB(resource string) (*geoIPDB, error) {
 	}, nil
 }
 
-func openAndUnpack(resource string) (*updater.File, string, error) {
-	f, err := updates.GetFile(resource)
+func open(resource string) (*registry.File, error) {
+	f, err := module.instance.Updates().GetFile(resource)
 	if err != nil {
-		return nil, "", fmt.Errorf("getting file: %w", err)
+		return nil, fmt.Errorf("getting file: %w", err)
 	}
 
-	unpacked, err := f.Unpack(".gz", updater.UnpackGZIP)
-	if err != nil {
-		return nil, "", fmt.Errorf("unpacking file: %w", err)
-	}
+	// unpacked, err := f.Unpack(".gz", updater.UnpackGZIP)
+	// if err != nil {
+	// 	return nil, "", fmt.Errorf("unpacking file: %w", err)
+	// }
 
-	return f, unpacked, nil
+	return f, nil
 }

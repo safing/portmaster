@@ -16,7 +16,6 @@ import (
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/portmaster/service/status"
-	"github.com/safing/portmaster/service/updates"
 )
 
 func registerAPIEndpoints() error {
@@ -94,7 +93,7 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	config.AddToDebugInfo(di)
 
 	// Detailed information.
-	updates.AddToDebugInfo(di)
+	// TODO(vladimir): updates.AddToDebugInfo(di)
 	// compat.AddToDebugInfo(di) // TODO: Cannot use due to interception import requirement which we don't want for SPN Hubs.
 	di.AddGoroutineStack()
 

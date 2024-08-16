@@ -18,7 +18,6 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/service/updates"
 )
 
 const (
@@ -68,7 +67,7 @@ type BroadcastNotification struct {
 
 func broadcastNotify(ctx *mgr.WorkerCtx) error {
 	// Get broadcast notifications file, load it from disk and parse it.
-	broadcastsResource, err := updates.GetFile(broadcastsResourcePath)
+	broadcastsResource, err := module.instance.Updates().GetFile(broadcastsResourcePath)
 	if err != nil {
 		return fmt.Errorf("failed to get broadcast notifications update: %w", err)
 	}
