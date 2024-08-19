@@ -43,6 +43,7 @@
   "identifier": "io.safing.portmaster", // this is added as a property to the shortcut on windows (ApplicationUserModelID). Used for notifications.
   "app": {
     "withGlobalTauri": true,
+    "enableGTKAppId": false,
     "security": {
       "csp": null
     }
@@ -91,10 +92,6 @@
         "template": "templates/main.wxs"
       }
     },
-    "externalBin": [
-      "binaries/portmaster-start",
-      "binaries/portmaster-core"
-    ],
     "targets": [
       "deb",
       "rpm",
