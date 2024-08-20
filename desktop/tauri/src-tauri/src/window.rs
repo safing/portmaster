@@ -115,6 +115,7 @@ pub fn open_window(app: &AppHandle) -> Result<WebviewWindow> {
         match app.get_webview_window("main") {
             Some(win) => {
                 app.portmaster().show_window();
+                let _ = win.show();
                 let _ = win.set_focus();
                 Ok(win)
             }
