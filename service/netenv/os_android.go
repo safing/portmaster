@@ -1,40 +1,43 @@
 package netenv
 
-import (
-	"net"
-	"time"
+// TODO: Re-enable Android interfaces.
+// Deactived for transition to new module system.
 
-	"github.com/safing/portmaster-android/go/app_interface"
-)
+// import (
+// 	"net"
+// 	"time"
 
-var (
-	monitorNetworkChangeOnlineTicker  = time.NewTicker(time.Second)
-	monitorNetworkChangeOfflineTicker = time.NewTicker(time.Second)
-)
+// 	"github.com/safing/portmaster-android/go/app_interface"
+// )
 
-func init() {
-	// Network change event is monitored by the android system.
-	monitorNetworkChangeOnlineTicker.Stop()
-	monitorNetworkChangeOfflineTicker.Stop()
-}
+// var (
+// 	monitorNetworkChangeOnlineTicker  = time.NewTicker(time.Second)
+// 	monitorNetworkChangeOfflineTicker = time.NewTicker(time.Second)
+// )
 
-func osGetInterfaceAddrs() ([]net.Addr, error) {
-	list, err := app_interface.GetNetworkAddresses()
-	if err != nil {
-		return nil, err
-	}
+// func init() {
+// 	// Network change event is monitored by the android system.
+// 	monitorNetworkChangeOnlineTicker.Stop()
+// 	monitorNetworkChangeOfflineTicker.Stop()
+// }
 
-	var netList []net.Addr
-	for _, addr := range list {
-		ipNetAddr, err := addr.ToIPNet()
-		if err == nil {
-			netList = append(netList, ipNetAddr)
-		}
-	}
+// func osGetInterfaceAddrs() ([]net.Addr, error) {
+// 	list, err := app_interface.GetNetworkAddresses()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return netList, nil
-}
+// 	var netList []net.Addr
+// 	for _, addr := range list {
+// 		ipNetAddr, err := addr.ToIPNet()
+// 		if err == nil {
+// 			netList = append(netList, ipNetAddr)
+// 		}
+// 	}
 
-func osGetNetworkInterfaces() ([]app_interface.NetworkInterface, error) {
-	return app_interface.GetNetworkInterfaces()
-}
+// 	return netList, nil
+// }
+
+// func osGetNetworkInterfaces() ([]app_interface.NetworkInterface, error) {
+// 	return app_interface.GetNetworkInterfaces()
+// }
