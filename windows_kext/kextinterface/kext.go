@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/safing/portbase/log"
+	"github.com/safing/portmaster/base/log"
 	"golang.org/x/sys/windows"
 )
 
