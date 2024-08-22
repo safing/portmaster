@@ -1,7 +1,7 @@
-//nolint:gci,nolintlint
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -23,7 +23,17 @@ import (
 	"github.com/safing/portmaster/spn/conf"
 )
 
-var sigUSR1 = syscall.Signal(0xa)
+var (
+	printStackOnExit   bool
+	enableInputSignals bool
+
+	sigUSR1 = syscall.Signal(0xa) // dummy for windows
+)
+
+func init() {
+	flag.BoolVar(&printStackOnExit, "print-stack-on-exit", false, "prints the stack before of shutting down")
+	flag.BoolVar(&enableInputSignals, "input-signals", false, "emulate signals using stdin")
+}
 
 func main() {
 	flag.Parse()
@@ -80,12 +90,21 @@ func main() {
 		err = instance.Start()
 		if err != nil {
 			fmt.Printf("instance start failed: %s\n", err)
+
+			// Print stack on start failure, if enabled.
+			if printStackOnExit {
+				printStackTo(os.Stdout, "PRINTING STACK ON START FAILURE")
+			}
+
 			os.Exit(1)
 		}
 	}()
 
 	// Wait for signal.
 	signalCh := make(chan os.Signal, 1)
+	if enableInputSignals {
+		go inputSignals(signalCh)
+	}
 	signal.Notify(
 		signalCh,
 		os.Interrupt,
@@ -139,6 +158,12 @@ func main() {
 		slog.Error("failed to stop", "err", err)
 	}
 	log.Shutdown()
+
+	// Print stack on shutdown, if enabled.
+	if printStackOnExit {
+		printStackTo(os.Stdout, "PRINTING STACK ON EXIT")
+	}
+
 	os.Exit(instance.ExitCode())
 }
 
@@ -149,5 +174,23 @@ func printStackTo(writer io.Writer, msg string) {
 	}
 	if err != nil {
 		slog.Error("failed to write stack trace", "err", err)
+	}
+}
+
+func inputSignals(signalCh chan os.Signal) {
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		switch scanner.Text() {
+		case "SIGHUP":
+			signalCh <- syscall.SIGHUP
+		case "SIGINT":
+			signalCh <- syscall.SIGINT
+		case "SIGQUIT":
+			signalCh <- syscall.SIGQUIT
+		case "SIGTERM":
+			signalCh <- syscall.SIGTERM
+		case "SIGUSR1":
+			signalCh <- sigUSR1
+		}
 	}
 }
