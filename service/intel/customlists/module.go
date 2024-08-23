@@ -93,7 +93,8 @@ func start() error {
 	module.instance.Config().EventConfigChange.AddCallback(
 		"update custom filter list",
 		func(wc *mgr.WorkerCtx, _ struct{}) (bool, error) {
-			if err := checkAndUpdateFilterList(wc); !errors.Is(err, ErrNotConfigured) {
+			err := checkAndUpdateFilterList(wc)
+			if !errors.Is(err, ErrNotConfigured) {
 				return false, err
 			}
 			return false, nil
@@ -224,8 +225,18 @@ func New(instance instance) (*CustomList, error) {
 		mgr:      m,
 		instance: instance,
 
-		states:                    mgr.NewStateMgr(m),
-		updateFilterListWorkerMgr: m.NewWorkerMgr("update custom filter list", checkAndUpdateFilterList, nil),
+		states: mgr.NewStateMgr(m),
+		updateFilterListWorkerMgr: m.NewWorkerMgr(
+			"update custom filter list",
+			func(ctx *mgr.WorkerCtx) error {
+				err := checkAndUpdateFilterList(ctx)
+				if !errors.Is(err, ErrNotConfigured) {
+					return err
+				}
+				return nil
+			},
+			nil,
+		),
 	}
 
 	if err := prep(); err != nil {
