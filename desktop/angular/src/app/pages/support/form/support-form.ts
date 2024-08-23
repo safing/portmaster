@@ -84,7 +84,7 @@ export class SupportFormComponent implements OnInit {
     this.statusService.getVersions()
       .subscribe(status => {
         this.version = status.Core.Version;
-        this.buildDate = status.Core.BuildDate;
+        this.buildDate = status.Core.BuildTime;
       })
 
     this.route.paramMap

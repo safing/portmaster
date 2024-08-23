@@ -72,15 +72,20 @@ export interface Subsystem extends Record {
 }
 
 export interface CoreVersion {
-  BuildDate: string;
-  BuildHost: string;
-  BuildOptions: string;
-  BuildSource: string;
-  BuildUser: string;
-  Commit: string;
-  License: string;
-  Name: string;
-  Version: string;
+  // Copied from base/info/version.go
+
+  Name:          string;
+  Version:       string;
+  VersionNumber: string;
+  License:       string;
+
+  Source:    string;
+  BuildTime: string;
+  CGO:       boolean;
+
+  Commit:     string;
+  CommitTime: string;
+  Dirty:      boolean;
 }
 
 export interface ResourceVersion {
