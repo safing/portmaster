@@ -265,34 +265,35 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	// Add all modules to instance group.
 	instance.serviceGroup = mgr.NewGroup(
 		instance.base,
+		instance.rng,
 		instance.database,
 		instance.config,
 		instance.api,
 		instance.metrics,
 		instance.runtime,
 		instance.notifications,
-		instance.rng,
 
 		instance.core,
 		instance.updates,
 		instance.geoip,
 		instance.netenv,
 
-		instance.ui,
+		instance.process,
 		instance.profile,
-		instance.netquery,
 		instance.network,
+		instance.netquery,
 		instance.firewall,
+		instance.nameserver,
+		instance.resolver,
 		instance.filterLists,
-		instance.interception,
 		instance.customlist,
+		instance.interception,
+
+		instance.compat,
 		instance.status,
 		instance.broadcasts,
-		instance.compat,
-		instance.nameserver,
-		instance.process,
-		instance.resolver,
 		instance.sync,
+		instance.ui,
 
 		instance.access,
 	)
