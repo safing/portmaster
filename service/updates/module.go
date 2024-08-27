@@ -63,7 +63,7 @@ func New(instance instance) (*Updates, error) {
 
 	binIndex := registry.UpdateIndex{
 		Directory:         "/usr/lib/portmaster",
-		DownloadDirectory: "/var/portmaster/new_bin",
+		DownloadDirectory: "/var/lib/portmaster/new_bin",
 		Ignore:            []string{"databases", "intel", "config.json"},
 		IndexURLs:         []string{"http://localhost:8000/test-binary.json"},
 		IndexFile:         "bin-index.json",
@@ -71,8 +71,8 @@ func New(instance instance) (*Updates, error) {
 	}
 
 	intelIndex := registry.UpdateIndex{
-		Directory:         "/var/portmaster/intel",
-		DownloadDirectory: "/var/portmaster/new_intel",
+		Directory:         "/var/lib/portmaster/intel",
+		DownloadDirectory: "/var/lib/portmaster/new_intel",
 		IndexURLs:         []string{"http://localhost:8000/test-intel.json"},
 		IndexFile:         "intel-index.json",
 		AutoApply:         true,
