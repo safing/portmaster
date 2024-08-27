@@ -8,6 +8,7 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
+	"github.com/safing/portmaster/base/utils/debug"
 	_ "github.com/safing/portmaster/service/broadcasts"
 	"github.com/safing/portmaster/service/mgr"
 	_ "github.com/safing/portmaster/service/netenv"
@@ -112,4 +113,5 @@ func New(instance instance) (*Core, error) {
 
 type instance interface {
 	Shutdown()
+	AddWorkerInfoToDebugInfo(di *debug.Info)
 }

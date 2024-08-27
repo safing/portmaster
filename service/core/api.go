@@ -151,6 +151,7 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	// Detailed information.
 	updates.AddToDebugInfo(di)
 	compat.AddToDebugInfo(di)
+	module.instance.AddWorkerInfoToDebugInfo(di)
 	di.AddGoroutineStack()
 
 	// Return data.

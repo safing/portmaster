@@ -21,6 +21,9 @@ var WorkerCtxContextKey = workerContextKey{}
 // WorkerCtx provides workers with the necessary environment for flow control
 // and logging.
 type WorkerCtx struct {
+	name     string
+	workFunc func(w *WorkerCtx) error
+
 	ctx       context.Context
 	cancelCtx context.CancelFunc
 
@@ -161,13 +164,15 @@ func (m *Manager) Go(name string, fn func(w *WorkerCtx) error) {
 }
 
 func (m *Manager) manageWorker(name string, fn func(w *WorkerCtx) error) {
-	m.workerStart()
-	defer m.workerDone()
-
 	w := &WorkerCtx{
-		logger: m.logger.With("worker", name),
+		name:     name,
+		workFunc: fn,
+		logger:   m.logger.With("worker", name),
 	}
 	w.ctx = m.ctx
+
+	m.workerStart(w)
+	defer m.workerDone(w)
 
 	backoff := time.Second
 	failCnt := 0
@@ -244,14 +249,16 @@ func (m *Manager) manageWorker(name string, fn func(w *WorkerCtx) error) {
 // - Panic catching.
 // - Flow control helpers.
 func (m *Manager) Do(name string, fn func(w *WorkerCtx) error) error {
-	m.workerStart()
-	defer m.workerDone()
-
 	// Create context.
 	w := &WorkerCtx{
-		ctx:    m.Ctx(),
-		logger: m.logger.With("worker", name),
+		name:     name,
+		workFunc: fn,
+		ctx:      m.Ctx(),
+		logger:   m.logger.With("worker", name),
 	}
+
+	m.workerStart(w)
+	defer m.workerDone(w)
 
 	// Run worker.
 	panicInfo, err := m.runWorker(w, fn)

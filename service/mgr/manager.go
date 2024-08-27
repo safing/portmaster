@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -21,6 +22,10 @@ type Manager struct {
 
 	workerCnt   atomic.Int32
 	workersDone chan struct{}
+
+	workers      []*WorkerCtx
+	workersIndex int
+	workersLock  sync.Mutex
 }
 
 // New returns a new manager.
@@ -33,6 +38,7 @@ func newManager(name string) *Manager {
 		name:        name,
 		logger:      slog.Default().With(ManagerNameSLogKey, name),
 		workersDone: make(chan struct{}),
+		workers:     make([]*WorkerCtx, 4),
 	}
 	m.ctx, m.cancelCtx = context.WithCancel(context.Background())
 	return m
@@ -196,11 +202,13 @@ func (m *Manager) waitForWorkers(max time.Duration, limit int32) (done bool) {
 	}
 }
 
-func (m *Manager) workerStart() {
+func (m *Manager) workerStart(w *WorkerCtx) {
+	m.registerWorker(w)
 	m.workerCnt.Add(1)
 }
 
-func (m *Manager) workerDone() {
+func (m *Manager) workerDone(w *WorkerCtx) {
+	m.unregisterWorker(w)
 	if m.workerCnt.Add(-1) <= 1 {
 		// Notify all waiters.
 		for {
