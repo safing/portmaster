@@ -38,11 +38,15 @@ func tickFeeder(ctx *mgr.WorkerCtx) error {
 	feeder := NewFeeder()
 	defer feeder.CloseFeeder()
 
-	tickDuration := getTickFeederTickDuration()
+	ticker := time.NewTicker(getTickFeederTickDuration())
+	defer ticker.Stop()
 
 	for {
-		// wait for tick
-		time.Sleep(tickDuration)
+		select {
+		case <-ticker.C:
+		case <-ctx.Done():
+			return nil
+		}
 
 		// add tick value
 		value = (value << 1) | (time.Now().UnixNano() % 2)
@@ -63,13 +67,6 @@ func tickFeeder(ctx *mgr.WorkerCtx) error {
 			}:
 			case <-ctx.Done():
 				return nil
-			}
-		} else {
-			// check if are done
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
 			}
 		}
 	}
