@@ -9,6 +9,8 @@ import (
 )
 
 func TestDebug(t *testing.T) {
+	t.Parallel()
+
 	// Create test instance with at least one worker.
 	i := &Instance{}
 	n, err := notifications.New(i)

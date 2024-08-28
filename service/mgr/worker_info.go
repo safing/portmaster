@@ -176,7 +176,8 @@ func (m *Manager) WorkerInfo(s *stack.Snapshot) (*WorkerInfo, error) {
 			"waiting", "dead", "enqueue", "copystack":
 			wi.Running++
 		case "chan send", "chan receive", "select", "IO wait",
-			"panicwait", "semacquire", "semarelease", "sleep":
+			"panicwait", "semacquire", "semarelease", "sleep",
+			"sync.Mutex.Lock":
 			wi.Waiting++
 		case "":
 			if w.workerMgr != nil {
@@ -213,10 +214,10 @@ func (wi *WorkerInfo) Format() string {
 
 	// Build table.
 	tabWriter := tabwriter.NewWriter(buf, 4, 4, 3, ' ', 0)
-	fmt.Fprintf(tabWriter, "#\tState\tModule\tName\tWorker Func\tCurrent Line\tExtra Info\n")
+	_, _ = fmt.Fprintf(tabWriter, "#\tState\tModule\tName\tWorker Func\tCurrent Line\tExtra Info\n")
 
 	for _, wd := range wi.Workers {
-		fmt.Fprintf(tabWriter,
+		_, _ = fmt.Fprintf(tabWriter,
 			"%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			wd.Count,
 			wd.State,
@@ -365,13 +366,14 @@ func workerDetailsAreEqual(a, b *WorkerInfoDetail) bool {
 	}
 }
 
+//nolint:goconst
 func goroutineStateOrder(state string) int {
 	switch state {
 	case "runnable", "running", "syscall":
 		return 0 // Active.
 	case "idle", "waiting", "dead", "enqueue", "copystack":
 		return 1 // Active-ish.
-	case "semacquire", "semarelease", "sleep", "panicwait":
+	case "semacquire", "semarelease", "sleep", "panicwait", "sync.Mutex.Lock":
 		return 2 // Bad (practice) blocking.
 	case "chan send", "chan receive", "select":
 		return 3 // Potentially bad (practice), but normal blocking.

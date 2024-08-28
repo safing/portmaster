@@ -196,6 +196,7 @@ manage:
 			workerMgr: s,
 			logger:    s.ctx.logger,
 		}
+		//nolint:fatcontext // Every run gets a new context.
 		wCtx.ctx, wCtx.cancelCtx = context.WithCancel(s.ctx.ctx)
 		panicInfo, err := s.mgr.runWorker(wCtx, s.fn)
 
