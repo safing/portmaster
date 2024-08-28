@@ -149,11 +149,11 @@ func (m *StateMgr) Remove(id string) {
 // Clear removes all states.
 func (m *StateMgr) Clear() {
 	m.statesLock.Lock()
-	defer m.statesLock.Unlock()
-
 	m.states = nil
+	m.statesLock.Unlock()
 
-	m.statesEventMgr.Submit(m.export())
+	// Submit event without lock, because callbacks might come back to change states.
+	defer m.statesEventMgr.Submit(m.Export())
 }
 
 // Export returns the current states.
