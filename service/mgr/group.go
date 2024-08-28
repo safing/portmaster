@@ -30,6 +30,7 @@ const (
 	groupStateInvalid
 )
 
+//nolint:goconst
 func groupStateToString(state int32) string {
 	switch state {
 	case groupStateOff:

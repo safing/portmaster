@@ -18,11 +18,13 @@ linters:
     - gocyclo
     - goerr113 
     - gomnd
+    - gomoddirectives
     - ifshort
     - interfacebloat
     - interfacer
     - ireturn
     - lll
+    - mnd
     - musttag
     - nestif
     - nilnil
@@ -31,16 +33,15 @@ linters:
     - nolintlint
     - nonamedreturns
     - nosnakecase
+    - perfsprint # TODO(ppacher): we should re-enanble this one to avoid costly fmt.* calls in the hot-path
     - revive
     - tagliatelle
+    - testifylint
     - testpackage
     - varnamelen
     - whitespace
     - wrapcheck
     - wsl
-    - perfsprint # TODO(ppacher): we should re-enanble this one to avoid costly fmt.* calls in the hot-path
-    - testifylint
-    - gomoddirectives
 
 linters-settings:
   revive:

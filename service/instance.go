@@ -619,7 +619,7 @@ func (i *Instance) shutdown(exitCode int) {
 
 // Stopping returns whether the instance is shutting down.
 func (i *Instance) Stopping() bool {
-	return i.ctx.Err() == nil
+	return i.ctx.Err() != nil
 }
 
 // Stopped returns a channel that is triggered when the instance has shut down.

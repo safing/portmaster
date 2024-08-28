@@ -125,14 +125,15 @@ func (m *Manager) NewWorkerMgr(name string, fn func(w *WorkerCtx) error, errorFn
 		run:          make(chan struct{}, 1),
 		selectAction: make(chan struct{}, 1),
 	}
+	wCtx.workerMgr = s
 
 	go s.taskMgr()
 	return s
 }
 
 func (s *WorkerMgr) taskMgr() {
-	s.mgr.workerStart()
-	defer s.mgr.workerDone()
+	s.mgr.workerStart(s.ctx)
+	defer s.mgr.workerDone(s.ctx)
 
 	// If the task manager ends, end all descendants too.
 	defer s.ctx.cancelCtx()
@@ -195,6 +196,7 @@ manage:
 			workerMgr: s,
 			logger:    s.ctx.logger,
 		}
+		//nolint:fatcontext // Every run gets a new context.
 		wCtx.ctx, wCtx.cancelCtx = context.WithCancel(s.ctx.ctx)
 		panicInfo, err := s.mgr.runWorker(wCtx, s.fn)
 
@@ -226,6 +228,23 @@ manage:
 				s.errorFn(s.ctx, err, panicInfo)
 			}
 		}
+	}
+}
+
+// Status returns the current status of the worker manager.
+func (s *WorkerMgr) Status() string {
+	s.actionLock.Lock()
+	defer s.actionLock.Unlock()
+
+	switch {
+	case s.delay != nil:
+		return "delayed"
+	case s.repeat != nil:
+		return "repeated every " + s.repeat.interval.String()
+	case s.keepAlive != nil:
+		return "on demand"
+	default:
+		return "created"
 	}
 }
 

@@ -23,7 +23,7 @@ var (
 	cfgFilterLists         []string
 )
 
-func registerConfigUpdater() error {
+func registerGlobalConfigProfileUpdater() error {
 	module.instance.Config().EventConfigChange.AddCallback("update global config profile", func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
 		return false, updateGlobalConfigProfile(wc.Ctx())
 	})

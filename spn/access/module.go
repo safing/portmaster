@@ -86,21 +86,23 @@ func start() error {
 
 			enabled := config.GetAsBool("spn/enable", false)
 			if enabled() {
+				log.Info("spn: starting SPN")
 				module.mgr.Go("ensure SPN is started", module.instance.SPNGroup().EnsureStartedWorker)
 			} else {
+				log.Info("spn: stopping SPN")
 				module.mgr.Go("ensure SPN is stopped", module.instance.SPNGroup().EnsureStoppedWorker)
 			}
 			return false, nil
 		})
+
+		// Load tokens from database.
+		loadTokens()
 
 		// Check if we need to enable SPN now.
 		enabled := config.GetAsBool("spn/enable", false)
 		if enabled() {
 			module.mgr.Go("ensure SPN is started", module.instance.SPNGroup().EnsureStartedWorker)
 		}
-
-		// Load tokens from database.
-		loadTokens()
 
 		// Register new task.
 		module.updateAccountWorkerMgr.Delay(1 * time.Minute)
