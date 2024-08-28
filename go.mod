@@ -16,7 +16,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/brianvoe/gofakeit v3.18.0+incompatible
 	github.com/cilium/ebpf v0.16.0
-	github.com/coreos/go-iptables v0.7.0
+	github.com/coreos/go-iptables v0.8.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger v1.6.2
 	github.com/dhaavi/go-notify v0.0.0-20190209221809-c404b1f22435
