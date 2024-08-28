@@ -61,10 +61,6 @@ func prep() error {
 		return err
 	}
 
-	if err := registerConfigUpdater(); err != nil {
-		return err
-	}
-
 	if err := registerMigrations(); err != nil {
 		return err
 	}
@@ -117,6 +113,12 @@ func start() error {
 	}
 
 	module.mgr.Go("clean active profiles", cleanActiveProfiles)
+
+	// Register config callback when starting, as it depends on the updates module,
+	// but the config system will already submit events earlier.
+	if err := registerGlobalConfigProfileUpdater(); err != nil {
+		return err
+	}
 
 	err = updateGlobalConfigProfile(module.mgr.Ctx())
 	if err != nil {
