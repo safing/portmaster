@@ -30,6 +30,8 @@
     "shell:allow-open",
     "notification:default",
     "window-state:allow-save-window-state",
-    "window-state:allow-restore-state"
+    "window-state:allow-restore-state",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text"
   ]
 }

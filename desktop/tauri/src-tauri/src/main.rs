@@ -200,11 +200,20 @@ fn main() {
         cli.with_notifications = *value;
     }
 
+    #[cfg(target_os = "linux")]
     let log_target = if let Some(data_dir) = cli.data {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
             path: Path::new(&format!("{}/logs/app2", data_dir)).into(),
             file_name: None,
         })
+    } else {
+        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout)
+    };
+
+    // TODO(vladimir): Permission for logs/app2 folder are not guaranteed. Use the default location for now.
+    #[cfg(target_os = "windows")]
+    let log_target = if let Some(data_dir) = cli.data {
+        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir { file_name: None })
     } else {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout)
     };
