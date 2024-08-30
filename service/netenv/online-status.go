@@ -220,7 +220,7 @@ func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string)
 
 		// Trigger update check when coming (semi) online.
 		if Online() {
-			module.instance.Updates().EventResourcesUpdated.Submit(struct{}{})
+			module.instance.IntelUpdates().EventResourcesUpdated.Submit(struct{}{})
 		}
 	}
 }

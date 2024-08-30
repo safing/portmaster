@@ -67,7 +67,7 @@ type BroadcastNotification struct {
 
 func broadcastNotify(ctx *mgr.WorkerCtx) error {
 	// Get broadcast notifications file, load it from disk and parse it.
-	broadcastsResource, err := module.instance.Updates().GetFile(broadcastsResourcePath)
+	broadcastsResource, err := module.instance.IntelUpdates().GetFile(broadcastsResourcePath)
 	if err != nil {
 		return fmt.Errorf("failed to get broadcast notifications update: %w", err)
 	}

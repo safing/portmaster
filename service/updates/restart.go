@@ -1,15 +1,12 @@
 package updates
 
 import (
-	"os/exec"
-	"runtime"
 	"sync"
 	"time"
 
 	"github.com/tevino/abool"
 
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/service/mgr"
 )
 
 var (
@@ -85,51 +82,4 @@ func TriggerRestartIfPending() {
 func RestartNow() {
 	restartPending.Set()
 	// module.restartWorkerMgr.Go()
-}
-
-func automaticRestart(w *mgr.WorkerCtx) error {
-	// Check if the restart is still scheduled.
-	if restartPending.IsNotSet() {
-		return nil
-	}
-
-	// Trigger restart.
-	if restartTriggered.SetToIf(false, true) {
-		log.Warning("updates: initiating (automatic) restart")
-
-		// Check if we should reboot instead.
-		var rebooting bool
-		if RebootOnRestart {
-			// Trigger system reboot and record success.
-			rebooting = triggerSystemReboot()
-			if !rebooting {
-				log.Warningf("updates: rebooting failed, only restarting service instead")
-			}
-		}
-
-		// Set restart exit code.
-		// if !rebooting {
-		// 	module.instance.Restart()
-		// } else {
-		// 	module.instance.Shutdown()
-		// }
-	}
-
-	return nil
-}
-
-func triggerSystemReboot() (success bool) {
-	switch runtime.GOOS {
-	case "linux":
-		err := exec.Command("systemctl", "reboot").Run()
-		if err != nil {
-			log.Errorf("updates: triggering reboot with systemctl failed: %s", err)
-			return false
-		}
-	default:
-		log.Warningf("updates: rebooting is not support on %s", runtime.GOOS)
-		return false
-	}
-
-	return true
 }

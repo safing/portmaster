@@ -34,6 +34,7 @@ import (
 	"github.com/safing/portmaster/service/sync"
 	"github.com/safing/portmaster/service/ui"
 	"github.com/safing/portmaster/service/updates"
+	"github.com/safing/portmaster/service/updates/registry"
 	"github.com/safing/portmaster/spn/access"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/captain"
@@ -45,6 +46,23 @@ import (
 	"github.com/safing/portmaster/spn/sluice"
 	"github.com/safing/portmaster/spn/terminal"
 )
+
+var binaryUpdateIndex = registry.UpdateIndex{
+	Directory:         "/usr/lib/portmaster",
+	DownloadDirectory: "/var/lib/portmaster/new_bin",
+	Ignore:            []string{"databases", "intel", "config.json"},
+	IndexURLs:         []string{"http://localhost:8000/test-binary.json"},
+	IndexFile:         "bin-index.json",
+	AutoApply:         false,
+}
+
+var intelUpdateIndex = registry.UpdateIndex{
+	Directory:         "/var/lib/portmaster/intel",
+	DownloadDirectory: "/var/lib/portmaster/new_intel",
+	IndexURLs:         []string{"http://localhost:8000/test-intel.json"},
+	IndexFile:         "intel-index.json",
+	AutoApply:         true,
+}
 
 // Instance is an instance of a Portmaster service.
 type Instance struct {
@@ -63,25 +81,26 @@ type Instance struct {
 	rng           *rng.Rng
 	base          *base.Base
 
-	core         *core.Core
-	updates      *updates.Updates
-	geoip        *geoip.GeoIP
-	netenv       *netenv.NetEnv
-	ui           *ui.UI
-	profile      *profile.ProfileModule
-	network      *network.Network
-	netquery     *netquery.NetQuery
-	firewall     *firewall.Firewall
-	filterLists  *filterlists.FilterLists
-	interception *interception.Interception
-	customlist   *customlists.CustomList
-	status       *status.Status
-	broadcasts   *broadcasts.Broadcasts
-	compat       *compat.Compat
-	nameserver   *nameserver.NameServer
-	process      *process.ProcessModule
-	resolver     *resolver.ResolverModule
-	sync         *sync.Sync
+	core          *core.Core
+	binaryUpdates *updates.Updates
+	intelUpdates  *updates.Updates
+	geoip         *geoip.GeoIP
+	netenv        *netenv.NetEnv
+	ui            *ui.UI
+	profile       *profile.ProfileModule
+	network       *network.Network
+	netquery      *netquery.NetQuery
+	firewall      *firewall.Firewall
+	filterLists   *filterlists.FilterLists
+	interception  *interception.Interception
+	customlist    *customlists.CustomList
+	status        *status.Status
+	broadcasts    *broadcasts.Broadcasts
+	compat        *compat.Compat
+	nameserver    *nameserver.NameServer
+	process       *process.ProcessModule
+	resolver      *resolver.ResolverModule
+	sync          *sync.Sync
 
 	access *access.Access
 
@@ -147,7 +166,11 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create core module: %w", err)
 	}
-	instance.updates, err = updates.New(instance)
+	instance.binaryUpdates, err = updates.New(instance, "Binary Updater", binaryUpdateIndex)
+	if err != nil {
+		return instance, fmt.Errorf("create updates module: %w", err)
+	}
+	instance.intelUpdates, err = updates.New(instance, "Intel Updater", intelUpdateIndex)
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
 	}
@@ -274,7 +297,8 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.notifications,
 
 		instance.core,
-		instance.updates,
+		instance.binaryUpdates,
+		instance.intelUpdates,
 		instance.geoip,
 		instance.netenv,
 
@@ -373,9 +397,14 @@ func (i *Instance) Base() *base.Base {
 	return i.base
 }
 
-// Updates returns the updates module.
-func (i *Instance) Updates() *updates.Updates {
-	return i.updates
+// BinaryUpdates returns the updates module.
+func (i *Instance) BinaryUpdates() *updates.Updates {
+	return i.binaryUpdates
+}
+
+// IntelUpdates returns the updates module.
+func (i *Instance) IntelUpdates() *updates.Updates {
+	return i.intelUpdates
 }
 
 // GeoIP returns the geoip module.

@@ -17,12 +17,6 @@ import (
 	"github.com/safing/portmaster/base/log"
 )
 
-const (
-	defaultFileMode    = os.FileMode(0o0644)
-	executableFileMode = os.FileMode(0o0744)
-	defaultDirMode     = os.FileMode(0o0755)
-)
-
 const MaxUnpackSize = 1 << 30 // 2^30 == 1GB
 
 type Artifact struct {
@@ -35,18 +29,17 @@ type Artifact struct {
 }
 
 type Bundle struct {
-	dir       string
 	Name      string     `json:"Bundle"`
 	Version   string     `json:"Version"`
 	Published time.Time  `json:"Published"`
 	Artifacts []Artifact `json:"Artifacts"`
 }
 
-func (bundle Bundle) downloadAndVerify() {
+func (bundle Bundle) downloadAndVerify(dir string) {
 	client := http.Client{}
 	for _, artifact := range bundle.Artifacts {
 
-		filePath := fmt.Sprintf("%s/%s", bundle.dir, artifact.Filename)
+		filePath := fmt.Sprintf("%s/%s", dir, artifact.Filename)
 		// TODO(vladimir): is this needed?
 		_ = os.MkdirAll(filepath.Dir(filePath), defaultDirMode)
 
@@ -66,9 +59,9 @@ func (bundle Bundle) downloadAndVerify() {
 }
 
 // Verify checks if the files are present int the dataDir and have the correct hash.
-func (bundle Bundle) Verify() error {
+func (bundle Bundle) Verify(dir string) error {
 	for _, artifact := range bundle.Artifacts {
-		artifactPath := fmt.Sprintf("%s/%s", bundle.dir, artifact.Filename)
+		artifactPath := fmt.Sprintf("%s/%s", dir, artifact.Filename)
 		file, err := os.Open(artifactPath)
 		if err != nil {
 			return fmt.Errorf("failed to open file %s: %w", artifactPath, err)

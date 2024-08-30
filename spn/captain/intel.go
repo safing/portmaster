@@ -22,7 +22,7 @@ var (
 )
 
 func registerIntelUpdateHook() error {
-	module.instance.Updates().EventResourcesUpdated.AddCallback("update SPN intel", func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
+	module.instance.IntelUpdates().EventResourcesUpdated.AddCallback("update SPN intel", func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
 		return false, updateSPNIntel(wc.Ctx(), nil)
 	})
 
@@ -49,7 +49,7 @@ func updateSPNIntel(_ context.Context, _ interface{}) (err error) {
 	}
 
 	// Get intel file and load it from disk.
-	intelResource, err = module.instance.Updates().GetFile(intelResourcePath)
+	intelResource, err = module.instance.IntelUpdates().GetFile(intelResourcePath)
 	if err != nil {
 		return fmt.Errorf("failed to get SPN intel update: %w", err)
 	}

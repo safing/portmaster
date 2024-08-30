@@ -12,6 +12,7 @@ import (
 type UpdateIndex struct {
 	Directory         string
 	DownloadDirectory string
+	PurgeDirectory    string
 	Ignore            []string
 	IndexURLs         []string
 	IndexFile         string
@@ -23,7 +24,7 @@ func (ui *UpdateIndex) downloadIndexFile() (err error) {
 	for _, url := range ui.IndexURLs {
 		err = ui.downloadIndexFileFromURL(url)
 		if err != nil {
-			log.Warningf("updates: %s", err)
+			log.Warningf("updates: failed while downloading index file %s", err)
 			continue
 		}
 		// Downloading was successful.
@@ -37,7 +38,7 @@ func (ui *UpdateIndex) downloadIndexFileFromURL(url string) error {
 	client := http.Client{}
 	resp, err := client.Get(url)
 	if err != nil {
-		return fmt.Errorf("failed a get request to %s: %w", url, err)
+		return fmt.Errorf("failed GET request to %s: %w", url, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	filePath := fmt.Sprintf("%s/%s", ui.DownloadDirectory, ui.IndexFile)

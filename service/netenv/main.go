@@ -107,5 +107,5 @@ func New(instance instance) (*NetEnv, error) {
 }
 
 type instance interface {
-	Updates() *updates.Updates
+	IntelUpdates() *updates.Updates
 }

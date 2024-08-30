@@ -175,7 +175,7 @@ func updateListIndex() error {
 	case listIndexUpdate == nil:
 		// This is the first time this function is run, get updater file for index.
 		var err error
-		listIndexUpdate, err = module.instance.Updates().GetFile(listIndexFilePath)
+		listIndexUpdate, err = module.instance.IntelUpdates().GetFile(listIndexFilePath)
 		if err != nil {
 			return err
 		}

@@ -14,6 +14,12 @@ import (
 
 var ErrNotFound error = errors.New("file not found")
 
+const (
+	defaultFileMode    = os.FileMode(0o0644)
+	executableFileMode = os.FileMode(0o0744)
+	defaultDirMode     = os.FileMode(0o0755)
+)
+
 type File struct {
 	id   string
 	path string
@@ -32,24 +38,19 @@ func (f *File) Version() string {
 }
 
 type Registry struct {
-	binaryUpdateIndex UpdateIndex
-	intelUpdateIndex  UpdateIndex
+	updateIndex UpdateIndex
 
-	binaryBundle *Bundle
-	intelBundle  *Bundle
-
-	binaryUpdateBundle *Bundle
-	intelUpdateBundle  *Bundle
+	bundle       *Bundle
+	updateBundle *Bundle
 
 	files map[string]File
 }
 
 // New create new Registry.
-func New(binIndex UpdateIndex, intelIndex UpdateIndex) Registry {
+func New(index UpdateIndex) Registry {
 	return Registry{
-		binaryUpdateIndex: binIndex,
-		intelUpdateIndex:  intelIndex,
-		files:             make(map[string]File),
+		updateIndex: index,
+		files:       make(map[string]File),
 	}
 }
 
@@ -58,26 +59,20 @@ func (reg *Registry) Initialize() error {
 	var err error
 
 	// Parse current installed binary bundle.
-	reg.binaryBundle, err = parseBundle(reg.binaryUpdateIndex.Directory, reg.binaryUpdateIndex.IndexFile)
+	reg.bundle, err = parseBundle(reg.updateIndex.Directory, reg.updateIndex.IndexFile)
 	if err != nil {
 		return fmt.Errorf("failed to parse binary bundle: %w", err)
 	}
-	// Parse current installed intel bundle.
-	reg.intelBundle, err = parseBundle(reg.intelUpdateIndex.Directory, reg.intelUpdateIndex.IndexFile)
-	if err != nil {
-		return fmt.Errorf("failed to parse intel bundle: %w", err)
-	}
 
 	// Add bundle artifacts to registry.
-	reg.processBundle(reg.binaryBundle)
-	reg.processBundle(reg.intelBundle)
+	reg.processBundle(reg.bundle)
 
 	return nil
 }
 
 func (reg *Registry) processBundle(bundle *Bundle) {
 	for _, artifact := range bundle.Artifacts {
-		artifactPath := fmt.Sprintf("%s/%s", bundle.dir, artifact.Filename)
+		artifactPath := fmt.Sprintf("%s/%s", reg.updateIndex.Directory, artifact.Filename)
 		reg.files[artifact.Filename] = File{id: artifact.Filename, path: artifactPath}
 	}
 }
@@ -89,112 +84,84 @@ func (reg *Registry) GetFile(id string) (*File, error) {
 		return &file, nil
 	} else {
 		log.Errorf("updates: requested file id not found: %s", id)
+		for _, file := range reg.files {
+			log.Debugf("File: %s", file)
+		}
 		return nil, ErrNotFound
 	}
 }
 
-// CheckForBinaryUpdates checks if there is a new binary bundle updates.
-func (reg *Registry) CheckForBinaryUpdates() (bool, error) {
-	err := reg.binaryUpdateIndex.downloadIndexFile()
+// CheckForUpdates checks if there is a new binary bundle updates.
+func (reg *Registry) CheckForUpdates() (bool, error) {
+	err := reg.updateIndex.downloadIndexFile()
 	if err != nil {
 		return false, err
 	}
 
-	reg.binaryUpdateBundle, err = parseBundle(reg.binaryUpdateIndex.DownloadDirectory, reg.binaryUpdateIndex.IndexFile)
+	reg.updateBundle, err = parseBundle(reg.updateIndex.DownloadDirectory, reg.updateIndex.IndexFile)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse bundle file: %w", err)
+		return false, err
 	}
 
 	// TODO(vladimir): Make a better check.
-	if reg.binaryBundle.Version != reg.binaryUpdateBundle.Version {
+	if reg.bundle.Version != reg.updateBundle.Version {
 		return true, nil
 	}
 
 	return false, nil
 }
 
-// DownloadBinaryUpdates downloads available binary updates.
-func (reg *Registry) DownloadBinaryUpdates() error {
-	if reg.binaryUpdateBundle == nil {
+// DownloadUpdates downloads available binary updates.
+func (reg *Registry) DownloadUpdates() error {
+	if reg.updateBundle == nil {
 		//  CheckForBinaryUpdates needs to be called before this.
 		return fmt.Errorf("no valid update bundle found")
 	}
-	_ = deleteUnfinishedDownloads(reg.binaryBundle.dir)
-	reg.binaryUpdateBundle.downloadAndVerify()
+	_ = deleteUnfinishedDownloads(reg.updateIndex.DownloadDirectory)
+	reg.updateBundle.downloadAndVerify(reg.updateIndex.DownloadDirectory)
 	return nil
 }
 
-// CheckForIntelUpdates checks if there is a new intel data bundle updates.
-func (reg *Registry) CheckForIntelUpdates() (bool, error) {
-	err := reg.intelUpdateIndex.downloadIndexFile()
+// ApplyUpdates removes the current binary folder and replaces it with the downloaded one.
+func (reg *Registry) ApplyUpdates() error {
+	// Create purge dir.
+	err := os.MkdirAll(filepath.Dir(reg.updateIndex.PurgeDirectory), defaultDirMode)
 	if err != nil {
-		return false, err
+		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	reg.intelUpdateBundle, err = parseBundle(reg.intelUpdateIndex.DownloadDirectory, reg.intelUpdateIndex.IndexFile)
+	// Read all files in the current version folder.
+	files, err := os.ReadDir(reg.updateIndex.Directory)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse bundle file: %w", err)
+		return err
 	}
 
-	// TODO(vladimir): Make a better check.
-	if reg.intelBundle.Version != reg.intelUpdateBundle.Version {
-		return true, nil
+	// Move current version files into purge folder.
+	for _, file := range files {
+		filepath := fmt.Sprintf("%s/%s", reg.updateIndex.Directory, file.Name())
+		purgePath := fmt.Sprintf("%s/%s", reg.updateIndex.PurgeDirectory, file.Name())
+		err := os.Rename(filepath, purgePath)
+		if err != nil {
+			return fmt.Errorf("failed to move file %s: %w", filepath, err)
+		}
 	}
 
-	return false, nil
-}
-
-// DownloadIntelUpdates downloads available intel data updates.
-func (reg *Registry) DownloadIntelUpdates() error {
-	if reg.intelUpdateBundle == nil {
-		//  CheckForIntelUpdates needs to be called before this.
-		return fmt.Errorf("no valid update bundle found")
-	}
-	_ = deleteUnfinishedDownloads(reg.intelBundle.dir)
-	reg.intelUpdateBundle.downloadAndVerify()
-	return nil
-}
-
-// ApplyBinaryUpdates removes the current binary folder and replaces it with the downloaded one.
-func (reg *Registry) ApplyBinaryUpdates() error {
-	bundle, err := parseBundle(reg.binaryUpdateIndex.DownloadDirectory, reg.binaryUpdateIndex.IndexFile)
+	// Move the new index file
+	indexFile := fmt.Sprintf("%s/%s", reg.updateIndex.DownloadDirectory, reg.updateIndex.IndexFile)
+	newIndexFile := fmt.Sprintf("%s/%s", reg.updateIndex.Directory, reg.updateIndex.IndexFile)
+	err = os.Rename(indexFile, newIndexFile)
 	if err != nil {
-		return fmt.Errorf("failed to parse index file: %w", err)
-	}
-	err = bundle.Verify()
-	if err != nil {
-		return fmt.Errorf("binary bundle is not valid: %w", err)
+		return fmt.Errorf("failed to move index file %s: %w", indexFile, err)
 	}
 
-	err = os.RemoveAll(reg.binaryUpdateIndex.Directory)
-	if err != nil {
-		return fmt.Errorf("failed to remove dir: %w", err)
-	}
-	err = os.Rename(reg.binaryUpdateIndex.DownloadDirectory, reg.binaryUpdateIndex.Directory)
-	if err != nil {
-		return fmt.Errorf("failed to move dir: %w", err)
-	}
-	return nil
-}
-
-// ApplyIntelUpdates removes the current intel folder and replaces it with the downloaded one.
-func (reg *Registry) ApplyIntelUpdates() error {
-	bundle, err := parseBundle(reg.intelUpdateIndex.DownloadDirectory, reg.intelUpdateIndex.IndexFile)
-	if err != nil {
-		return fmt.Errorf("failed to parse index file: %w", err)
-	}
-	err = bundle.Verify()
-	if err != nil {
-		return fmt.Errorf("binary bundle is not valid: %w", err)
-	}
-
-	err = os.RemoveAll(reg.intelUpdateIndex.Directory)
-	if err != nil {
-		return fmt.Errorf("failed to remove dir: %w", err)
-	}
-	err = os.Rename(reg.intelUpdateIndex.DownloadDirectory, reg.intelUpdateIndex.Directory)
-	if err != nil {
-		return fmt.Errorf("failed to move dir: %w", err)
+	// Move downloaded files to the current version folder.
+	for _, artifact := range reg.bundle.Artifacts {
+		fromFilepath := fmt.Sprintf("%s/%s", reg.updateIndex.DownloadDirectory, artifact.Filename)
+		toFilepath := fmt.Sprintf("%s/%s", reg.updateIndex.Directory, artifact.Filename)
+		err = os.Rename(fromFilepath, toFilepath)
+		if err != nil {
+			return fmt.Errorf("failed to move file %s: %w", fromFilepath, err)
+		}
 	}
 	return nil
 }
@@ -220,8 +187,6 @@ func parseBundle(dir string, indexFile string) (*Bundle, error) {
 	if err != nil {
 		return nil, err
 	}
-	bundle.dir = dir
-
 	return &bundle, nil
 }
 

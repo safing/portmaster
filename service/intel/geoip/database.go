@@ -198,7 +198,7 @@ func getGeoIPDB(resource string) (*geoIPDB, error) {
 }
 
 func open(resource string) (*registry.File, error) {
-	f, err := module.instance.Updates().GetFile(resource)
+	f, err := module.instance.IntelUpdates().GetFile(resource)
 	if err != nil {
 		return nil, fmt.Errorf("getting file: %w", err)
 	}

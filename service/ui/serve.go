@@ -91,7 +91,7 @@ func (bs *archiveServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get file from update system
-	zipFile, err := module.instance.Updates().GetFile(fmt.Sprintf("%s.zip", moduleName))
+	zipFile, err := module.instance.BinaryUpdates().GetFile(fmt.Sprintf("%s.zip", moduleName))
 	if err != nil {
 		if errors.Is(err, registry.ErrNotFound) {
 			log.Tracef("ui: requested module %s does not exist", moduleName)
