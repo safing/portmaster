@@ -3,7 +3,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { open } from '@tauri-apps/plugin-shell';
 import { listen, once } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core'
-import { getCurrent, Window } from '@tauri-apps/api/window';
+import { getCurrentWindow, Window } from '@tauri-apps/api/window';
 
 // Returns a new uuidv4. If crypto.randomUUID is not available it fals back to
 // using Math.random(). While this is not as random as it should be it's still
@@ -102,7 +102,7 @@ export class TauriIntegrationService implements IntegrationService {
     //            we waste some system resources due to tauri window objects and the angular
     //            application.
 
-    getCurrent().hide()
+    getCurrentWindow().hide()
 
     return Promise.resolve();
   }
@@ -164,7 +164,7 @@ export class TauriIntegrationService implements IntegrationService {
   }
 
   openApp() {
-    Window.getByLabel("splash")?.close();
+    Window.getByLabel("splash").then(splash => { splash?.close();});
     const current = Window.getCurrent()
 
     current.isVisible()
@@ -177,7 +177,7 @@ export class TauriIntegrationService implements IntegrationService {
   }
 
   closePrompt() {
-    Window.getByLabel("prompt")?.close();
+    Window.getByLabel("prompt").then(window => { window?.close();});
   }
 
   openPrompt() {
@@ -185,32 +185,34 @@ export class TauriIntegrationService implements IntegrationService {
       return;
     }
 
-    if (Window.getByLabel("prompt")) {
-      return;
-    }
+    Window.getByLabel("prompt").then(prompt => { 
+      if (prompt) {
+        return;
+      }
 
-    const promptWindow = new Window("prompt", {
-      alwaysOnTop: true,
-      decorations: false,
-      minimizable: false,
-      maximizable: false,
-      resizable: false,
-      title: 'Portmaster Prompt',
-      visible: false, // the prompt marks it self as visible.
-      skipTaskbar: true,
-      closable: false,
-      center: true,
-      width: 600,
-      height: 300,
+      const promptWindow = new Window("prompt", {
+        alwaysOnTop: true,
+        decorations: false,
+        minimizable: false,
+        maximizable: false,
+        resizable: false,
+        title: 'Portmaster Prompt',
+        visible: false, // the prompt marks it self as visible.
+        skipTaskbar: true,
+        closable: false,
+        center: true,
+        width: 600,
+        height: 300,
 
-      // in src/main.ts we check the current location path
-      // and if it matches /prompt, we bootstrap the PromptEntryPointComponent
-      // instead of the AppComponent.
-      url: `http://${window.location.host}/prompt`,
-    } as any)
+        // in src/main.ts we check the current location path
+        // and if it matches /prompt, we bootstrap the PromptEntryPointComponent
+        // instead of the AppComponent.
+        url: `http://${window.location.host}/prompt`,
+      } as any)
 
-    promptWindow.once("tauri://error", (err) => {
-      console.error(err);
+      promptWindow.once("tauri://error", (err) => {
+        console.error(err);
+      });
     });
   }
 }
