@@ -1,7 +1,7 @@
 import { CommonModule } from "@angular/common";
 import { Component, OnInit, TrackByFunction, inject } from "@angular/core";
 import { AppProfile, AppProfileService, PortapiService } from "@safing/portmaster-api";
-import { combineLatest, forkJoin, map, merge, mergeAll, of, switchMap } from "rxjs";
+import { combineLatest, forkJoin, map, of, switchMap } from "rxjs";
 import { ConnectionPrompt, NotificationType, NotificationsService } from "../services";
 import { SfngAppIconModule } from "../shared/app-icon";
 import { getCurrentWindow } from '@tauri-apps/api/window';
