@@ -14,6 +14,7 @@ mod service;
 mod xdg;
 
 // App modules
+mod config;
 mod portmaster;
 mod traymenu;
 mod window;
@@ -22,7 +23,7 @@ use log::{debug, error, info, LevelFilter};
 use portmaster::PortmasterExt;
 use tauri_plugin_log::RotationStrategy;
 use traymenu::setup_tray_menu;
-use window::{close_splash_window, create_main_window};
+use window::{close_splash_window, create_main_window, hide_splash_window};
 
 #[macro_use]
 extern crate lazy_static;
@@ -77,7 +78,11 @@ impl portmaster::Handler for WsHandler {
         // so we don't show the splash-screen when we loose connection.
         self.is_first_connect = false;
 
-        if let Err(err) = close_splash_window(&self.handle) {
+        // The order is important. If all current windows are destroyed tauri will exit.
+        // First create the main ui window then destroy the splash screen.
+
+        // Hide splash screen. Will be closed after main window is created.
+        if let Err(err) = hide_splash_window(&self.handle) {
             error!("failed to close splash window: {}", err.to_string());
         }
 
@@ -88,6 +93,11 @@ impl portmaster::Handler for WsHandler {
             error!("failed to create main window: {}", err.to_string());
         } else {
             debug!("created main window")
+        }
+
+        // Now it is safe to destroy the splash window.
+        if let Err(err) = close_splash_window(&self.handle) {
+            error!("failed to close splash window: {}", err.to_string());
         }
 
         let handle = self.handle.clone();

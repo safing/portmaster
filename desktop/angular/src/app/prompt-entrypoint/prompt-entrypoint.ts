@@ -1,10 +1,10 @@
 import { CommonModule } from "@angular/common";
 import { Component, OnInit, TrackByFunction, inject } from "@angular/core";
 import { AppProfile, AppProfileService, PortapiService } from "@safing/portmaster-api";
-import { combineLatest, combineLatestAll, forkJoin, map, merge, mergeAll, of, switchMap } from "rxjs";
+import { combineLatest, forkJoin, map, of, switchMap } from "rxjs";
 import { ConnectionPrompt, NotificationType, NotificationsService } from "../services";
 import { SfngAppIconModule } from "../shared/app-icon";
-import { getCurrent } from '@tauri-apps/api/window';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { CountryFlagModule } from "../shared/country-flag";
 
 interface Prompt {
@@ -64,7 +64,7 @@ export class PromptEntryPointComponent implements OnInit {
 
         // show the prompt now since we're ready
         if (this.prompts.length) {
-          getCurrent()!.show();
+          getCurrentWindow()!.show();
         }
       })
   }

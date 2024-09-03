@@ -4,7 +4,7 @@ use tauri::{
     WebviewWindow, WebviewWindowBuilder,
 };
 
-use crate::portmaster::PortmasterExt;
+use crate::{portmaster::PortmasterExt, traymenu};
 
 const LIGHT_PM_ICON: &'static [u8] =
     include_bytes!("../../../../assets/data/icons/pm_light_512.png");
@@ -51,11 +51,7 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
 
     // If the window is not yet navigated to the Portmaster UI, do it now.
     may_navigate_to_ui(&mut window, false);
-
-    let _ = match dark_light::detect() {
-        dark_light::Mode::Light => window.set_icon(Image::from_bytes(DARK_PM_ICON).unwrap()),
-        _ => window.set_icon(Image::from_bytes(LIGHT_PM_ICON).unwrap()),
-    };
+    set_window_icon(&window);
 
     #[cfg(debug_assertions)]
     if let Ok(_) = std::env::var("TAURI_SHOW_IMMEDIATELY") {
@@ -83,6 +79,7 @@ pub fn create_splash_window(app: &AppHandle) -> Result<WebviewWindow> {
             .title("Portmaster")
             .inner_size(600.0, 250.0)
             .build()?;
+        set_window_icon(&window);
 
         let _ = window.request_user_attention(Some(UserAttentionType::Informational));
 
@@ -96,6 +93,30 @@ pub fn close_splash_window(app: &AppHandle) -> Result<()> {
         return window.destroy();
     }
     return Err(tauri::Error::WindowNotFound);
+}
+
+pub fn hide_splash_window(app: &AppHandle) -> Result<()> {
+    if let Some(window) = app.get_webview_window("splash") {
+        return window.hide();
+    }
+    return Err(tauri::Error::WindowNotFound);
+}
+
+pub fn set_window_icon(window: &WebviewWindow) {
+    let mut mode = if let Ok(value) = traymenu::USER_THEME.read() {
+        *value
+    } else {
+        dark_light::Mode::Default
+    };
+
+    if mode == dark_light::Mode::Default {
+        mode = dark_light::detect();
+    }
+
+    let _ = match mode {
+        dark_light::Mode::Light => window.set_icon(Image::from_bytes(DARK_PM_ICON).unwrap()),
+        _ => window.set_icon(Image::from_bytes(LIGHT_PM_ICON).unwrap()),
+    };
 }
 
 /// Opens a window for the tauri application.
@@ -117,6 +138,7 @@ pub fn open_window(app: &AppHandle) -> Result<WebviewWindow> {
                 app.portmaster().show_window();
                 let _ = win.show();
                 let _ = win.set_focus();
+                set_window_icon(&win);
                 Ok(win)
             }
             None => {

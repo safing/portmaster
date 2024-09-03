@@ -22,6 +22,7 @@
     "core:window:allow-is-visible",
     "core:window:allow-set-focus",
     "core:window:allow-close",
+    "core:window:allow-get-all-windows",
     "core:app:default",
     "core:image:default",
     "core:resources:default",
