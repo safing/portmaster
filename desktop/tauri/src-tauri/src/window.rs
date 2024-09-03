@@ -98,6 +98,13 @@ pub fn close_splash_window(app: &AppHandle) -> Result<()> {
     return Err(tauri::Error::WindowNotFound);
 }
 
+pub fn hide_splash_window(app: &AppHandle) -> Result<()> {
+    if let Some(window) = app.get_webview_window("splash") {
+        return window.hide();
+    }
+    return Err(tauri::Error::WindowNotFound);
+}
+
 /// Opens a window for the tauri application.
 ///
 /// If the main window has already been created, it is instructed to
