@@ -53,7 +53,7 @@ reqwest = { version = "0.12" }
 rfd = { version = "*", default-features = false, features = [ "tokio", "gtk3", "common-controls-v6" ] }
 open = "5.1.3"
 
-dark-light = "1.1.1"
+dark-light = { git = "https://github.com/vlabo/rust-dark-light", rev = "1f955c84d0ea05729bb5ecab29fb1b315b9897de" }
 
 # Linux only
 [target.'cfg(target_os = "linux")'.dependencies]

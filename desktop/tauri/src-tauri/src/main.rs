@@ -14,6 +14,7 @@ mod service;
 mod xdg;
 
 // App modules
+mod config;
 mod portmaster;
 mod traymenu;
 mod window;
