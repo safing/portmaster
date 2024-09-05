@@ -27,7 +27,7 @@ tauri-plugin-log = "2.0.0-rc"
 tauri-plugin-window-state = "2.0.0-rc"
 
 tauri-cli = "2.0.0-rc.8"
-clap = { version = "4" }
+clap_lex = "0.7.2"
 
 # General
 serde_json = "1.0"

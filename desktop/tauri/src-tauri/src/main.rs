@@ -13,8 +13,8 @@ mod service;
 mod xdg;
 
 // App modules
-mod config;
 mod cli;
+mod config;
 mod portmaster;
 mod traymenu;
 mod window;
@@ -126,32 +126,8 @@ fn main() {
 
     let cli_args = cli::parse(std::env::args());
 
-    let mut cli = CliArguments {
-        data: None,
-        log: LOG_LEVEL.to_string(),
-        background: false,
-        with_prompts: false,
-        with_notifications: false,
-    };
-
-    if let Some(data) = matches.get_one::<String>("data") {
-        cli.data = Some(data.to_string());
-    }
-
-    if let Some(log) = matches.get_one::<String>("log") {
-        cli.log = log.to_string();
-    }
-
-    if let Some(value) = matches.get_one::<bool>("with_prompts") {
-        cli.with_prompts = *value;
-    }
-
-    if let Some(value) = matches.get_one::<bool>("with_notifications") {
-        cli.with_notifications = *value;
-    }
-
     #[cfg(target_os = "linux")]
-    let log_target = if let Some(data_dir) = cli.data {
+    let log_target = if let Some(data_dir) = cli_args.data {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
             path: Path::new(&format!("{}/logs/app2", data_dir)).into(),
             file_name: None,
@@ -167,17 +143,6 @@ fn main() {
     } else {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout)
     };
-
-    let mut log_level = LOG_LEVEL;
-    match cli.log.as_ref() {
-        "off" => log_level = LevelFilter::Off,
-        "error" => log_level = LevelFilter::Error,
-        "warn" => log_level = LevelFilter::Warn,
-        "info" => log_level = LevelFilter::Info,
-        "debug" => log_level = LevelFilter::Debug,
-        "trace" => log_level = LevelFilter::Trace,
-        _ => {}
-    }
 
     let app = tauri::Builder::default()
         // Shell plugin for open_external support

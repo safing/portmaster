@@ -1,18 +1,18 @@
 use std::ops::Deref;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Mutex, RwLock};
+use std::sync::RwLock;
 use std::{collections::HashMap, sync::atomic::Ordering};
 
 use log::{debug, error};
 use tauri::menu::{Menu, MenuItemKind};
 use tauri::tray::{MouseButton, MouseButtonState};
-use tauri::Runtime;
 use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
     tray::{TrayIcon, TrayIconBuilder},
     Wry,
 };
+use tauri::{Manager, Runtime};
 use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 
 use crate::config;
@@ -91,13 +91,6 @@ fn get_red_icon() -> &'static [u8] {
     const DARK_RED_ICON: &'static [u8] =
         include_bytes!("../../../../assets/data/icons/pm_dark_red_64.png");
     match get_theme_mode() {
-    const DARK_RED_ICON: &'static [u8] =
-        include_bytes!("../../../../assets/data/icons/pm_dark_red_64.png");
-    let mode = dark_light::detect();
-    match mode {
-    const DARK_RED_ICON: &[u8] = include_bytes!("../../../../assets/data/icons/pm_dark_red_64.png");
-    let mode = dark_light::detect();
-    match mode {
         dark_light::Mode::Light => DARK_RED_ICON,
         _ => LIGHT_RED_ICON,
     }
@@ -142,10 +135,7 @@ pub fn setup_tray_menu(
         .enabled(false)
         .build(app)
         .unwrap();
-    {
-        let mut button_ref = SPN_STATUS.lock()?;
-        *button_ref = Some(spn_status.clone());
-    }
+
     // Setup SPN button
     let spn_button = MenuItemBuilder::with_id(SPN_BUTTON_KEY, "Enable SPN")
         .build(app)
@@ -496,7 +486,9 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
             }
         }
     }
-    update_spn_ui_state(false);
+    if let Some(menu) = app.menu() {
+        update_spn_ui_state(menu, false);
+    }
     update_icon_color(&icon, IconColor::Red);
 }
 
@@ -564,7 +556,6 @@ fn save_theme(app: &tauri::AppHandle, mode: dark_light::Mode) {
     if let Some(menu) = app.menu() {
         update_spn_ui_state(menu, false);
     }
-    _ = icon.set_icon(Some(Image::from_bytes(get_red_icon()).unwrap()));
 }
 
 fn update_spn_ui_state<R: Runtime>(menu: Menu<R>, enabled: bool) {
