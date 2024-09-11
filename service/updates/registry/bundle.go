@@ -12,12 +12,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/safing/portmaster/base/log"
 )
 
 const MaxUnpackSize = 1 << 30 // 2^30 == 1GB
+
+const current_platform = runtime.GOOS + "_" + runtime.GOARCH
 
 type Artifact struct {
 	Filename string   `json:"Filename"`
@@ -107,6 +110,11 @@ func checkIfFileIsValid(filename string, artifact Artifact) (bool, error) {
 }
 
 func processArtifact(client *http.Client, artifact Artifact, filePath string) error {
+	// Skip artifacts not meant for this machine.
+	if artifact.Platform != "" && artifact.Platform != current_platform {
+		return nil
+	}
+
 	providedHash, err := hex.DecodeString(artifact.SHA256)
 	if err != nil || len(providedHash) != sha256.Size {
 		return fmt.Errorf("invalid provided hash %s: %w", artifact.SHA256, err)
@@ -149,6 +157,7 @@ func processArtifact(client *http.Client, artifact Artifact, filePath string) er
 	if err != nil {
 		return fmt.Errorf("failed to write to file: %w", err)
 	}
+	file.Close()
 
 	// Rename
 	err = os.Rename(tmpFilename, filePath)

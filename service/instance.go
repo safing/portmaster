@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	go_runtime "runtime"
 	"sync/atomic"
 	"time"
 
@@ -46,23 +47,6 @@ import (
 	"github.com/safing/portmaster/spn/sluice"
 	"github.com/safing/portmaster/spn/terminal"
 )
-
-var binaryUpdateIndex = registry.UpdateIndex{
-	Directory:         "/usr/lib/portmaster",
-	DownloadDirectory: "/var/lib/portmaster/new_bin",
-	Ignore:            []string{"databases", "intel", "config.json"},
-	IndexURLs:         []string{"http://localhost:8000/test-binary.json"},
-	IndexFile:         "bin-index.json",
-	AutoApply:         false,
-}
-
-var intelUpdateIndex = registry.UpdateIndex{
-	Directory:         "/var/lib/portmaster/intel",
-	DownloadDirectory: "/var/lib/portmaster/new_intel",
-	IndexURLs:         []string{"http://localhost:8000/test-intel.json"},
-	IndexFile:         "intel-index.json",
-	AutoApply:         true,
-}
 
 // Instance is an instance of a Portmaster service.
 type Instance struct {
@@ -121,6 +105,48 @@ type Instance struct {
 
 // New returns a new Portmaster service instance.
 func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
+	var binaryUpdateIndex registry.UpdateIndex
+	var intelUpdateIndex registry.UpdateIndex
+	if go_runtime.GOOS == "windows" {
+		binaryUpdateIndex = registry.UpdateIndex{
+			Directory:         "C:/Program Files/Portmaster/binary",
+			DownloadDirectory: "C:/Program Files/Portmaster/new_binary",
+			PurgeDirectory:    "C:/Program Files/Portmaster/old_binary",
+			Ignore:            []string{"databases", "intel", "config.json"},
+			IndexURLs:         []string{"http://192.168.88.11:8000/test-binary.json"},
+			IndexFile:         "bin-index.json",
+			AutoApply:         false,
+		}
+
+		intelUpdateIndex = registry.UpdateIndex{
+			Directory:         "C:/Program Files/Portmaster/intel",
+			DownloadDirectory: "C:/Program Files/Portmaster/new_intel",
+			PurgeDirectory:    "C:/Program Files/Portmaster/old_intel",
+			IndexURLs:         []string{"http://192.168.88.11:8000/test-intel.json"},
+			IndexFile:         "intel-index.json",
+			AutoApply:         true,
+		}
+	} else if go_runtime.GOOS == "linux" {
+		binaryUpdateIndex = registry.UpdateIndex{
+			Directory:         "/usr/lib/portmaster",
+			DownloadDirectory: "/var/lib/portmaster/new_bin",
+			PurgeDirectory:    "/var/lib/portmaster/old_bin",
+			Ignore:            []string{"databases", "intel", "config.json"},
+			IndexURLs:         []string{"http://localhost:8000/test-binary.json"},
+			IndexFile:         "bin-index.json",
+			AutoApply:         false,
+		}
+
+		intelUpdateIndex = registry.UpdateIndex{
+			Directory:         "/var/lib/portmaster/intel",
+			DownloadDirectory: "/var/lib/portmaster/new_intel",
+			PurgeDirectory:    "/var/lib/portmaster/intel_bin",
+			IndexURLs:         []string{"http://localhost:8000/test-intel.json"},
+			IndexFile:         "intel-index.json",
+			AutoApply:         true,
+		}
+	}
+
 	// Create instance to pass it to modules.
 	instance := &Instance{}
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())

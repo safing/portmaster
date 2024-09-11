@@ -125,7 +125,7 @@ func (reg *Registry) DownloadUpdates() error {
 // ApplyUpdates removes the current binary folder and replaces it with the downloaded one.
 func (reg *Registry) ApplyUpdates() error {
 	// Create purge dir.
-	err := os.MkdirAll(filepath.Dir(reg.updateIndex.PurgeDirectory), defaultDirMode)
+	err := os.MkdirAll(reg.updateIndex.PurgeDirectory, defaultDirMode)
 	if err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
@@ -198,7 +198,7 @@ func deleteUnfinishedDownloads(rootDir string) error {
 
 		// Check if the current file has the specified extension
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".download") {
-			log.Warningf("updates deleting unfinished: %s\n", path)
+			log.Warningf("updates: deleting unfinished: %s\n", path)
 			err := os.Remove(path)
 			if err != nil {
 				return fmt.Errorf("failed to delete file %s: %w", path, err)

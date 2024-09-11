@@ -120,6 +120,7 @@ fn show_webview_not_installed_dialog() -> i32 {
 }
 
 fn main() {
+    env::set_var("GDK_BACKEND", "x11");
     if tauri::webview_version().is_err() {
         std::process::exit(show_webview_not_installed_dialog());
     }
