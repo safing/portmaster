@@ -9,7 +9,7 @@ import (
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/service/updates/registry"
+	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/structures/dsd"
 )
 
@@ -162,7 +162,7 @@ func getListIndexFromCache() (*ListIndexFile, error) {
 
 var (
 	// listIndexUpdate must only be used by updateListIndex.
-	listIndexUpdate     *registry.File
+	listIndexUpdate     *updates.File
 	listIndexUpdateLock sync.Mutex
 )
 

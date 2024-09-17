@@ -341,14 +341,16 @@
         </InstallExecuteSequence>
         {{/if}}
 
-        <CustomActionRef Id='InstallPortmasterService' />
-        <CustomActionRef Id='StopPortmasterService' />
-        <CustomActionRef Id='DeletePortmasterService' />
-
         <InstallExecuteSequence>
           <Custom Action="LaunchApplication" After="InstallFinalize">AUTOLAUNCHAPP AND NOT Installed</Custom>
         </InstallExecuteSequence>
 
         <SetProperty Id="ARPINSTALLLOCATION" Value="[INSTALLDIR]" After="CostFinalize"/>
+
+        <!-- Service fragments -->
+        <CustomActionRef Id='InstallPortmasterService' />
+        <CustomActionRef Id='StopPortmasterService' />
+        <CustomActionRef Id='DeletePortmasterService' />
+        <!-- End Service fragments -->
     </Product>
 </Wix>

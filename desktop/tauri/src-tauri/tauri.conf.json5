@@ -109,8 +109,10 @@
       },
       "wix": {
         "fragmentPaths": [
-          "templates/service.wxs"
+          "templates/service.wxs",
+          "templates/files.wxs"
         ],
+        "componentGroupRefs": ["BinaryAndIntelFiles"],
         "template": "templates/main.wxs"
       }
     },

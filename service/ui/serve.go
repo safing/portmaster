@@ -16,7 +16,7 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/utils"
-	"github.com/safing/portmaster/service/updates/registry"
+	"github.com/safing/portmaster/service/updates"
 )
 
 var (
@@ -93,7 +93,7 @@ func (bs *archiveServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// get file from update system
 	zipFile, err := module.instance.BinaryUpdates().GetFile(fmt.Sprintf("%s.zip", moduleName))
 	if err != nil {
-		if errors.Is(err, registry.ErrNotFound) {
+		if errors.Is(err, updates.ErrNotFound) {
 			log.Tracef("ui: requested module %s does not exist", moduleName)
 			http.Error(w, err.Error(), http.StatusNotFound)
 		} else {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/service/updates/registry"
+	"github.com/safing/portmaster/service/updates"
 )
 
 var worker *updateWorker
@@ -27,7 +27,7 @@ const (
 
 type geoIPDB struct {
 	*maxminddb.Reader
-	file *registry.File
+	file *updates.File
 }
 
 // updateBroadcaster stores a geoIPDB and provides synchronized
@@ -197,7 +197,7 @@ func getGeoIPDB(resource string) (*geoIPDB, error) {
 	}, nil
 }
 
-func open(resource string) (*registry.File, error) {
+func open(resource string) (*updates.File, error) {
 	f, err := module.instance.IntelUpdates().GetFile(resource)
 	if err != nil {
 		return nil, fmt.Errorf("getting file: %w", err)

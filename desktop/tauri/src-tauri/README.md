@@ -33,7 +33,9 @@ Update WIX installer template:
 2. Replace the contents of `templates/main_original.wxs` with the repository version.
 3. Replace the contents of `templates/main.wsx` and add the fallowing lines at the end of the file, inside the `Product` tag. 
 ```xml
+    <!-- Service fragments -->
     <CustomActionRef Id='InstallPortmasterService' />
     <CustomActionRef Id='StopPortmasterService' />
     <CustomActionRef Id='DeletePortmasterService' />
+    <!-- End Service fragments -->
 ```

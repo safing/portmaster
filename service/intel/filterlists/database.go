@@ -14,7 +14,7 @@ import (
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/service/updates/registry"
+	"github.com/safing/portmaster/service/updates"
 )
 
 const (
@@ -39,9 +39,9 @@ var (
 	filterListLock sync.RWMutex
 
 	// Updater files for tracking upgrades.
-	baseFile         *registry.File
-	intermediateFile *registry.File
-	urgentFile       *registry.File
+	baseFile         *updates.File
+	intermediateFile *updates.File
+	urgentFile       *updates.File
 
 	filterListsLoaded chan struct{}
 )
@@ -77,7 +77,7 @@ func isLoaded() bool {
 
 // processListFile opens the latest version of file and decodes it's DSDL
 // content. It calls processEntry for each decoded filterlists entry.
-func processListFile(ctx context.Context, filter *scopedBloom, file *registry.File) error {
+func processListFile(ctx context.Context, filter *scopedBloom, file *updates.File) error {
 	f, err := os.Open(file.Path())
 	if err != nil {
 		return err

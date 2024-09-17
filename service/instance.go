@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	go_runtime "runtime"
 	"sync/atomic"
 	"time"
@@ -35,7 +37,6 @@ import (
 	"github.com/safing/portmaster/service/sync"
 	"github.com/safing/portmaster/service/ui"
 	"github.com/safing/portmaster/service/updates"
-	"github.com/safing/portmaster/service/updates/registry"
 	"github.com/safing/portmaster/spn/access"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/captain"
@@ -103,31 +104,54 @@ type Instance struct {
 	CommandLineOperation func() error
 }
 
+func getCurrentBinaryFolder() (string, error) {
+	// Get the path of the currently running executable
+	exePath, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("failed to get executable path: %w", err)
+	}
+
+	// Get the absolute path
+	absPath, err := filepath.Abs(exePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	// Get the directory of the executable
+	installDir := filepath.Dir(absPath)
+
+	return installDir, nil
+}
+
 // New returns a new Portmaster service instance.
 func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
-	var binaryUpdateIndex registry.UpdateIndex
-	var intelUpdateIndex registry.UpdateIndex
+	var binaryUpdateIndex updates.UpdateIndex
+	var intelUpdateIndex updates.UpdateIndex
 	if go_runtime.GOOS == "windows" {
-		binaryUpdateIndex = registry.UpdateIndex{
-			Directory:         "C:/Program Files/Portmaster/binary",
-			DownloadDirectory: "C:/Program Files/Portmaster/new_binary",
-			PurgeDirectory:    "C:/Program Files/Portmaster/old_binary",
+		binaryFolder, err := getCurrentBinaryFolder()
+		if err != nil {
+			return nil, err
+		}
+		binaryUpdateIndex = updates.UpdateIndex{
+			Directory:         binaryFolder, // Default: C:/Program Files/Portmaster/binary
+			DownloadDirectory: os.ExpandEnv("%ProgramData%/Portmaster/new_binary"),
+			PurgeDirectory:    os.ExpandEnv("%ProgramData%/Portmaster/old_binary"),
 			Ignore:            []string{"databases", "intel", "config.json"},
 			IndexURLs:         []string{"http://192.168.88.11:8000/test-binary.json"},
 			IndexFile:         "bin-index.json",
 			AutoApply:         false,
 		}
 
-		intelUpdateIndex = registry.UpdateIndex{
-			Directory:         "C:/Program Files/Portmaster/intel",
-			DownloadDirectory: "C:/Program Files/Portmaster/new_intel",
-			PurgeDirectory:    "C:/Program Files/Portmaster/old_intel",
+		intelUpdateIndex = updates.UpdateIndex{
+			Directory:         os.ExpandEnv("%ProgramData%/Portmaster/intel"),
+			DownloadDirectory: os.ExpandEnv("%ProgramData%/Portmaster/new_intel"),
+			PurgeDirectory:    os.ExpandEnv("%ProgramData%/Portmaster/old_intel"),
 			IndexURLs:         []string{"http://192.168.88.11:8000/test-intel.json"},
 			IndexFile:         "intel-index.json",
 			AutoApply:         true,
 		}
 	} else if go_runtime.GOOS == "linux" {
-		binaryUpdateIndex = registry.UpdateIndex{
+		binaryUpdateIndex = updates.UpdateIndex{
 			Directory:         "/usr/lib/portmaster",
 			DownloadDirectory: "/var/lib/portmaster/new_bin",
 			PurgeDirectory:    "/var/lib/portmaster/old_bin",
@@ -137,7 +161,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			AutoApply:         false,
 		}
 
-		intelUpdateIndex = registry.UpdateIndex{
+		intelUpdateIndex = updates.UpdateIndex{
 			Directory:         "/var/lib/portmaster/intel",
 			DownloadDirectory: "/var/lib/portmaster/new_intel",
 			PurgeDirectory:    "/var/lib/portmaster/intel_bin",

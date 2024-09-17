@@ -1,4 +1,4 @@
-package registry
+package updates
 
 import (
 	"archive/zip"
@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -20,7 +21,7 @@ import (
 
 const MaxUnpackSize = 1 << 30 // 2^30 == 1GB
 
-const current_platform = runtime.GOOS + "_" + runtime.GOARCH
+const currentPlatform = runtime.GOOS + "_" + runtime.GOARCH
 
 type Artifact struct {
 	Filename string   `json:"Filename"`
@@ -38,7 +39,73 @@ type Bundle struct {
 	Artifacts []Artifact `json:"Artifacts"`
 }
 
-func (bundle Bundle) downloadAndVerify(dir string) {
+func ParseBundle(dir string, indexFile string) (*Bundle, error) {
+	filepath := fmt.Sprintf("%s/%s", dir, indexFile)
+	// Check if the file exists.
+	file, err := os.Open(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open index file: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	// Read
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse
+	var bundle Bundle
+	err = json.Unmarshal(content, &bundle)
+	if err != nil {
+		return nil, err
+	}
+	return &bundle, nil
+}
+
+// CopyMatchingFilesFromCurrent check if there the current bundle files has matching files with the new bundle and copies them if they match.
+func (bundle Bundle) CopyMatchingFilesFromCurrent(current Bundle, currentDir, newDir string) error {
+	for _, currentArtifact := range current.Artifacts {
+	new:
+		for _, newArtifact := range bundle.Artifacts {
+			if currentArtifact.Filename == newArtifact.Filename {
+				if currentArtifact.SHA256 == newArtifact.SHA256 {
+					// Files match, make sure new dir exists
+					_ = os.MkdirAll(newDir, defaultDirMode)
+
+					// Open the current file
+					sourceFilePath := fmt.Sprintf("%s/%s", currentDir, newArtifact.Filename)
+					sourceFile, err := os.Open(sourceFilePath)
+					if err != nil {
+						return fmt.Errorf("failed to open %s file: %w", sourceFilePath, err)
+					}
+					defer sourceFile.Close()
+
+					// Create new file
+					destFilePath := fmt.Sprintf("%s/%s", newDir, newArtifact.Filename)
+					destFile, err := os.Create(destFilePath)
+					if err != nil {
+						return fmt.Errorf("failed to create %s file: %w", destFilePath, err)
+					}
+					defer destFile.Close()
+
+					// Copy
+					_, err = io.Copy(destFile, sourceFile)
+					if err != nil {
+						return fmt.Errorf("failed to copy contents: %w", err)
+					}
+					// Flush
+					_ = destFile.Sync()
+
+				}
+				break new
+			}
+		}
+	}
+	return nil
+}
+
+func (bundle Bundle) DownloadAndVerify(dir string) {
 	client := http.Client{}
 	for _, artifact := range bundle.Artifacts {
 
@@ -111,7 +178,7 @@ func checkIfFileIsValid(filename string, artifact Artifact) (bool, error) {
 
 func processArtifact(client *http.Client, artifact Artifact, filePath string) error {
 	// Skip artifacts not meant for this machine.
-	if artifact.Platform != "" && artifact.Platform != current_platform {
+	if artifact.Platform != "" && artifact.Platform != currentPlatform {
 		return nil
 	}
 

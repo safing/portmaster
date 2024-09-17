@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/service/updates/registry"
+	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/navigator"
@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	intelResource           *registry.File
+	intelResource           *updates.File
 	intelResourcePath       = "intel/spn/main-intel.yaml"
 	intelResourceMapName    = "main"
 	intelResourceUpdateLock sync.Mutex

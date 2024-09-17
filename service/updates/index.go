@@ -1,4 +1,4 @@
-package registry
+package updates
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ type UpdateIndex struct {
 	AutoApply         bool
 }
 
-func (ui *UpdateIndex) downloadIndexFile() (err error) {
+func (ui *UpdateIndex) DownloadIndexFile() (err error) {
 	_ = os.MkdirAll(ui.DownloadDirectory, defaultDirMode)
 	for _, url := range ui.IndexURLs {
 		err = ui.downloadIndexFileFromURL(url)

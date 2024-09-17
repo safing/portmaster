@@ -35,20 +35,12 @@ type windowsService struct {
 func (ws *windowsService) Execute(args []string, changeRequests <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
 	changes <- svc.Status{State: svc.StartPending}
-
-	startupComplete := make(chan struct{})
-	go func() {
-		for !ws.instance.Ready() {
-			time.Sleep(1 * time.Second)
-		}
-		startupComplete <- struct{}{}
-	}()
+	ws.instance.Start()
+	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
 service:
 	for {
 		select {
-		case <-startupComplete:
-			changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 		case <-ws.instance.Stopped():
 			changes <- svc.Status{State: svc.StopPending}
 			break service
@@ -59,13 +51,13 @@ service:
 			case svc.Stop, svc.Shutdown:
 				ws.instance.Shutdown()
 			default:
-				log.Errorf("unexpected control request: #%d\n", c)
+				log.Errorf("unexpected control request: #%d", c)
 			}
 		}
 	}
 
 	// wait until everything else is finished
-	finishWg.Wait()
+	// finishWg.Wait()
 
 	log.Shutdown()
 
@@ -88,12 +80,12 @@ func run(instance *service.Instance) error {
 	// select service run type
 	svcRun := svc.Run
 	if !isService {
-		log.Warningf("running interactively, switching to debug execution (no real service).\n")
+		log.Warningf("running interactively, switching to debug execution (no real service).")
 		svcRun = debug.Run
 		go registerSignalHandler(instance)
 	}
 
-	runWg.Add(2)
+	runWg.Add(1)
 
 	// run service client
 	go func() {
@@ -105,29 +97,27 @@ func run(instance *service.Instance) error {
 		} else {
 			log.Infof("shuting down service")
 		}
-		instance.Shutdown()
 		runWg.Done()
 	}()
 
-	finishWg.Add(1)
+	// finishWg.Add(1)
 	// run service
-	go func() {
-		// run slightly delayed
-		time.Sleep(250 * time.Millisecond)
-		instance.Start()
+	// go func() {
+	// 	// run slightly delayed
+	// 	time.Sleep(250 * time.Millisecond)
 
-		if err != nil {
-			fmt.Printf("instance start failed: %s\n", err)
+	// 	if err != nil {
+	// 		fmt.Printf("instance start failed: %s\n", err)
 
-			// Print stack on start failure, if enabled.
-			if printStackOnExit {
-				printStackTo(os.Stdout, "PRINTING STACK ON START FAILURE")
-			}
+	// 		// Print stack on start failure, if enabled.
+	// 		if printStackOnExit {
+	// 			printStackTo(os.Stdout, "PRINTING STACK ON START FAILURE")
+	// 		}
 
-		}
-		runWg.Done()
-		finishWg.Done()
-	}()
+	// 	}
+	// 	runWg.Done()
+	// 	finishWg.Done()
+	// }()
 
 	runWg.Wait()
 

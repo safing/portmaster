@@ -14,7 +14,7 @@ import (
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/service/updates/registry"
+	"github.com/safing/portmaster/service/updates"
 )
 
 var updateInProgress = abool.New()
@@ -174,8 +174,8 @@ func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx) error {
 // getUpgradableFiles returns a slice of filterlists files
 // that should be updated. The files MUST be updated and
 // processed in the returned order!
-func getUpgradableFiles() ([]*registry.File, error) {
-	var updateOrder []*registry.File
+func getUpgradableFiles() ([]*updates.File, error) {
+	var updateOrder []*updates.File
 
 	// cacheDBInUse := isLoaded()
 
@@ -218,7 +218,7 @@ func getUpgradableFiles() ([]*registry.File, error) {
 	return resolveUpdateOrder(updateOrder)
 }
 
-func resolveUpdateOrder(updateOrder []*registry.File) ([]*registry.File, error) {
+func resolveUpdateOrder(updateOrder []*updates.File) ([]*updates.File, error) {
 	// sort the update order by ascending version
 	sort.Sort(byAscVersion(updateOrder))
 	log.Tracef("intel/filterlists: order of updates: %v", updateOrder)
@@ -258,7 +258,7 @@ func resolveUpdateOrder(updateOrder []*registry.File) ([]*registry.File, error) 
 	return updateOrder[startAtIdx:], nil
 }
 
-type byAscVersion []*registry.File
+type byAscVersion []*updates.File
 
 func (fs byAscVersion) Len() int { return len(fs) }
 
