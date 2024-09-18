@@ -106,6 +106,32 @@ func registerAPIEndpoints() error {
 		return err
 	}
 
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path: "updates/check",
+		Read: api.PermitUser,
+		ActionFunc: func(ar *api.Request) (string, error) {
+			module.instance.BinaryUpdates().TriggerUpdateCheck()
+			module.instance.IntelUpdates().TriggerUpdateCheck()
+			return "update check triggered", nil
+		},
+		Name: "Get the ID of the calling profile",
+	}); err != nil {
+		return err
+	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path: "updates/apply",
+		Read: api.PermitUser,
+		ActionFunc: func(ar *api.Request) (string, error) {
+			module.instance.BinaryUpdates().TriggerApplyUpdates()
+			module.instance.IntelUpdates().TriggerApplyUpdates()
+			return "upgrade triggered", nil
+		},
+		Name: "Get the ID of the calling profile",
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 

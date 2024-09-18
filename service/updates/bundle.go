@@ -58,44 +58,54 @@ func ParseBundle(dir string, indexFile string) (*Bundle, error) {
 	var bundle Bundle
 	err = json.Unmarshal(content, &bundle)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s %w", filepath, err)
 	}
+
+	// Filter artifacts
+	filtered := make([]Artifact, 0)
+	for _, a := range bundle.Artifacts {
+		if a.Platform == "" || a.Platform == currentPlatform {
+			filtered = append(filtered, a)
+		}
+	}
+	bundle.Artifacts = filtered
+
 	return &bundle, nil
 }
 
 // CopyMatchingFilesFromCurrent check if there the current bundle files has matching files with the new bundle and copies them if they match.
 func (bundle Bundle) CopyMatchingFilesFromCurrent(current Bundle, currentDir, newDir string) error {
+	// Make sure new dir exists
+	_ = os.MkdirAll(newDir, defaultDirMode)
+
 	for _, currentArtifact := range current.Artifacts {
 	new:
 		for _, newArtifact := range bundle.Artifacts {
 			if currentArtifact.Filename == newArtifact.Filename {
 				if currentArtifact.SHA256 == newArtifact.SHA256 {
-					// Files match, make sure new dir exists
-					_ = os.MkdirAll(newDir, defaultDirMode)
-
-					// Open the current file
-					sourceFilePath := fmt.Sprintf("%s/%s", currentDir, newArtifact.Filename)
-					sourceFile, err := os.Open(sourceFilePath)
+					// Read the content of the current file.
+					sourceFilePath := filepath.Join(currentDir, newArtifact.Filename)
+					content, err := os.ReadFile(sourceFilePath)
 					if err != nil {
-						return fmt.Errorf("failed to open %s file: %w", sourceFilePath, err)
+						return fmt.Errorf("failed to read file %s: %w", sourceFilePath, err)
 					}
-					defer sourceFile.Close()
+
+					// Check if the content matches the artifact hash
+					expectedHash, err := hex.DecodeString(newArtifact.SHA256)
+					if err != nil || len(expectedHash) != sha256.Size {
+						return fmt.Errorf("invalid artifact hash %s: %w", newArtifact.SHA256, err)
+					}
+					hash := sha256.Sum256(content)
+					if !bytes.Equal(expectedHash, hash[:]) {
+						return fmt.Errorf("expected and file hash mismatch: %s", sourceFilePath)
+					}
 
 					// Create new file
-					destFilePath := fmt.Sprintf("%s/%s", newDir, newArtifact.Filename)
-					destFile, err := os.Create(destFilePath)
+					destFilePath := filepath.Join(newDir, newArtifact.Filename)
+					err = os.WriteFile(destFilePath, content, defaultFileMode)
 					if err != nil {
-						return fmt.Errorf("failed to create %s file: %w", destFilePath, err)
+						return fmt.Errorf("failed to write to file %s: %w", destFilePath, err)
 					}
-					defer destFile.Close()
-
-					// Copy
-					_, err = io.Copy(destFile, sourceFile)
-					if err != nil {
-						return fmt.Errorf("failed to copy contents: %w", err)
-					}
-					// Flush
-					_ = destFile.Sync()
 
 				}
 				break new
@@ -108,8 +118,7 @@ func (bundle Bundle) CopyMatchingFilesFromCurrent(current Bundle, currentDir, ne
 func (bundle Bundle) DownloadAndVerify(dir string) {
 	client := http.Client{}
 	for _, artifact := range bundle.Artifacts {
-
-		filePath := fmt.Sprintf("%s/%s", dir, artifact.Filename)
+		filePath := filepath.Join(dir, artifact.Filename)
 		// TODO(vladimir): is this needed?
 		_ = os.MkdirAll(filepath.Dir(filePath), defaultDirMode)
 
@@ -131,13 +140,7 @@ func (bundle Bundle) DownloadAndVerify(dir string) {
 // Verify checks if the files are present int the dataDir and have the correct hash.
 func (bundle Bundle) Verify(dir string) error {
 	for _, artifact := range bundle.Artifacts {
-		artifactPath := fmt.Sprintf("%s/%s", dir, artifact.Filename)
-		file, err := os.Open(artifactPath)
-		if err != nil {
-			return fmt.Errorf("failed to open file %s: %w", artifactPath, err)
-		}
-		defer func() { _ = file.Close() }()
-
+		artifactPath := filepath.Join(dir, artifact.Filename)
 		isValid, err := checkIfFileIsValid(artifactPath, artifact)
 		if err != nil {
 			return err
@@ -177,11 +180,6 @@ func checkIfFileIsValid(filename string, artifact Artifact) (bool, error) {
 }
 
 func processArtifact(client *http.Client, artifact Artifact, filePath string) error {
-	// Skip artifacts not meant for this machine.
-	if artifact.Platform != "" && artifact.Platform != currentPlatform {
-		return nil
-	}
-
 	providedHash, err := hex.DecodeString(artifact.SHA256)
 	if err != nil || len(providedHash) != sha256.Size {
 		return fmt.Errorf("invalid provided hash %s: %w", artifact.SHA256, err)
@@ -211,20 +209,14 @@ func processArtifact(client *http.Client, artifact Artifact, filePath string) er
 
 	// Save
 	tmpFilename := fmt.Sprintf("%s.download", filePath)
-	file, err := os.Create(tmpFilename)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
+	fileMode := defaultFileMode
+	if artifact.Platform == currentPlatform {
+		fileMode = executableFileMode
 	}
-	if artifact.Platform == "" {
-		_ = file.Chmod(defaultFileMode)
-	} else {
-		_ = file.Chmod(executableFileMode)
-	}
-	_, err = file.Write(content)
+	err = os.WriteFile(tmpFilename, content, fileMode)
 	if err != nil {
 		return fmt.Errorf("failed to write to file: %w", err)
 	}
-	file.Close()
 
 	// Rename
 	err = os.Rename(tmpFilename, filePath)
@@ -265,17 +257,11 @@ func downloadFile(client *http.Client, urls []string) ([]byte, error) {
 func unpack(cType string, fileBytes []byte) ([]byte, error) {
 	switch cType {
 	case "zip":
-		{
-			return decompressZip(fileBytes)
-		}
+		return decompressZip(fileBytes)
 	case "gz":
-		{
-			return decompressGzip(fileBytes)
-		}
+		return decompressGzip(fileBytes)
 	default:
-		{
-			return nil, fmt.Errorf("unsupported compression type")
-		}
+		return nil, fmt.Errorf("unsupported compression type")
 	}
 }
 

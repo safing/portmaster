@@ -42,7 +42,7 @@ func (ui *UpdateIndex) downloadIndexFileFromURL(url string) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	filePath := fmt.Sprintf("%s/%s", ui.DownloadDirectory, ui.IndexFile)
-	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, defaultFileMode)
+	file, err := os.Create(filePath)
 	if err != nil {
 		return err
 	}

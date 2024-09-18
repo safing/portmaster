@@ -15,7 +15,7 @@ const (
 	defaultDirMode     = os.FileMode(0o0755)
 )
 
-func applyUpdates(updateIndex UpdateIndex, newBundle Bundle) error {
+func switchFolders(updateIndex UpdateIndex, newBundle Bundle) error {
 	// Create purge dir.
 	err := os.MkdirAll(updateIndex.PurgeDirectory, defaultDirMode)
 	if err != nil {
@@ -30,17 +30,17 @@ func applyUpdates(updateIndex UpdateIndex, newBundle Bundle) error {
 
 	// Move current version files into purge folder.
 	for _, file := range files {
-		filepath := fmt.Sprintf("%s/%s", updateIndex.Directory, file.Name())
-		purgePath := fmt.Sprintf("%s/%s", updateIndex.PurgeDirectory, file.Name())
-		err := os.Rename(filepath, purgePath)
+		currentFilepath := filepath.Join(updateIndex.Directory, file.Name())
+		purgePath := filepath.Join(updateIndex.PurgeDirectory, file.Name())
+		err := os.Rename(currentFilepath, purgePath)
 		if err != nil {
-			return fmt.Errorf("failed to move file %s: %w", filepath, err)
+			return fmt.Errorf("failed to move file %s: %w", currentFilepath, err)
 		}
 	}
 
 	// Move the new index file
-	indexFile := fmt.Sprintf("%s/%s", updateIndex.DownloadDirectory, updateIndex.IndexFile)
-	newIndexFile := fmt.Sprintf("%s/%s", updateIndex.Directory, updateIndex.IndexFile)
+	indexFile := filepath.Join(updateIndex.DownloadDirectory, updateIndex.IndexFile)
+	newIndexFile := filepath.Join(updateIndex.Directory, updateIndex.IndexFile)
 	err = os.Rename(indexFile, newIndexFile)
 	if err != nil {
 		return fmt.Errorf("failed to move index file %s: %w", indexFile, err)
@@ -48,8 +48,8 @@ func applyUpdates(updateIndex UpdateIndex, newBundle Bundle) error {
 
 	// Move downloaded files to the current version folder.
 	for _, artifact := range newBundle.Artifacts {
-		fromFilepath := fmt.Sprintf("%s/%s", updateIndex.DownloadDirectory, artifact.Filename)
-		toFilepath := fmt.Sprintf("%s/%s", updateIndex.Directory, artifact.Filename)
+		fromFilepath := filepath.Join(updateIndex.DownloadDirectory, artifact.Filename)
+		toFilepath := filepath.Join(updateIndex.Directory, artifact.Filename)
 		err = os.Rename(fromFilepath, toFilepath)
 		if err != nil {
 			return fmt.Errorf("failed to move file %s: %w", fromFilepath, err)
@@ -64,12 +64,12 @@ func deleteUnfinishedDownloads(rootDir string) error {
 			return err
 		}
 
-		// Check if the current file has the specified extension
+		// Check if the current file has the download extension
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".download") {
-			log.Warningf("updates: deleting unfinished: %s\n", path)
+			log.Warningf("updates: deleting unfinished download file: %s\n", path)
 			err := os.Remove(path)
 			if err != nil {
-				return fmt.Errorf("failed to delete file %s: %w", path, err)
+				log.Errorf("updates: failed to delete unfinished download file %s: %w", path, err)
 			}
 		}
 

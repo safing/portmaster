@@ -14,6 +14,8 @@ import (
 	"github.com/safing/portmaster/service/mgr"
 )
 
+const updateAvailableNotificationID = "updates:update-available"
+
 type File struct {
 	id   string
 	path string
@@ -65,24 +67,15 @@ func New(instance instance, name string, index UpdateIndex) (*Updates, error) {
 		EventVersionsUpdated:  mgr.NewEventMgr[struct{}](VersionUpdateEvent, m),
 
 		updateIndex: index,
+		files:       make(map[string]File),
 
 		instance: instance,
 	}
 
 	// Events
 	module.updateCheckWorkerMgr = m.NewWorkerMgr("update checker", module.checkForUpdates, nil)
-	module.updateCheckWorkerMgr.Repeat(30 * time.Second)
-	module.upgraderWorkerMgr = m.NewWorkerMgr("upgrader", func(w *mgr.WorkerCtx) error {
-		err := applyUpdates(module.updateIndex, *module.updateBundle)
-		if err != nil {
-			// TODO(vladimir): Send notification to UI
-			log.Errorf("updates: failed to apply updates: %s", err)
-		} else {
-			// TODO(vladimir): Prompt user to restart?
-			module.instance.Restart()
-		}
-		return nil
-	}, nil)
+	module.updateCheckWorkerMgr.Repeat(1 * time.Hour)
+	module.upgraderWorkerMgr = m.NewWorkerMgr("upgrader", module.applyUpdates, nil)
 
 	var err error
 	module.bundle, err = ParseBundle(module.updateIndex.Directory, module.updateIndex.IndexFile)
@@ -92,16 +85,42 @@ func New(instance instance, name string, index UpdateIndex) (*Updates, error) {
 
 	// Add bundle artifacts to registry.
 	module.processBundle(module.bundle)
+	err = module.registerEndpoints()
+	if err != nil {
+		log.Errorf("failed to register endpoints: %s", err)
+	}
 
-	// Remove old files
-	m.Go("old files cleaner", func(ctx *mgr.WorkerCtx) error {
-		err := os.RemoveAll(module.updateIndex.PurgeDirectory)
-		if err != nil {
-			return fmt.Errorf("failed to delete folder: %w", err)
-		}
-		return nil
-	})
 	return module, nil
+}
+
+func (u *Updates) registerEndpoints() error {
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Name:        "Check for update",
+		Description: "Trigger update check",
+		Path:        "updates/check",
+		Read:        api.PermitAnyone,
+		ActionFunc: func(ar *api.Request) (msg string, err error) {
+			u.updateCheckWorkerMgr.Go()
+			return "Check for updates triggered", nil
+		},
+	}); err != nil {
+		return err
+	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Name:        "Apply update",
+		Description: "Triggers update",
+		Path:        "updates/apply",
+		Read:        api.PermitAnyone,
+		ActionFunc: func(ar *api.Request) (msg string, err error) {
+			u.upgraderWorkerMgr.Go()
+			return "Apply updates triggered", nil
+		},
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (reg *Updates) processBundle(bundle *Bundle) {
@@ -119,33 +138,52 @@ func (u *Updates) checkForUpdates(_ *mgr.WorkerCtx) error {
 
 	u.updateBundle, err = ParseBundle(u.updateIndex.DownloadDirectory, u.updateIndex.IndexFile)
 	if err != nil {
-		return fmt.Errorf("failed parse bundle: %s", err)
+		return fmt.Errorf("failed parsing bundle: %s", err)
 	}
 	defer u.EventResourcesUpdated.Submit(struct{}{})
 
-	// Compare current and downloaded index version.
-	currentVersion, err := semver.NewVersion(u.bundle.Version)
-	downloadVersion, err := semver.NewVersion(u.updateBundle.Version)
-	if currentVersion.Compare(downloadVersion) <= 0 {
-		// no updates
-		log.Info("updates: check complete: no new updates")
+	hasUpdate, err := u.checkVersionIncrement()
+	if err != nil {
+		return fmt.Errorf("failed to compare versions: %s", err)
+	}
+
+	if !hasUpdate {
+		log.Infof("updates: check compete: no new updates")
 		return nil
 	}
 
 	log.Infof("updates: check complete: downloading new version: %s %s", u.updateBundle.Name, u.updateBundle.Version)
-	err = u.DownloadUpdates()
+	err = u.downloadUpdates()
 	if err != nil {
 		log.Errorf("updates: failed to download bundle: %s", err)
-	} else if u.updateIndex.AutoApply {
-		u.ApplyUpdates()
+	} else {
+		notifications.NotifyPrompt(updateAvailableNotificationID, "Update available", "Apply update and restart?", notifications.Action{
+			ID:      "apply",
+			Text:    "Apply",
+			Type:    notifications.ActionTypeInjectEvent,
+			Payload: "apply-updates",
+		})
 	}
 	return nil
 }
 
-// DownloadUpdates downloads available binary updates.
-func (u *Updates) DownloadUpdates() error {
+func (u *Updates) checkVersionIncrement() (bool, error) {
+	// Compare current and downloaded index version.
+	currentVersion, err := semver.NewVersion(u.bundle.Version)
+	if err != nil {
+		return false, err
+	}
+	downloadVersion, err := semver.NewVersion(u.updateBundle.Version)
+	if err != nil {
+		return false, err
+	}
+	log.Debugf("updates: checking version: curr: %s new: %s", currentVersion.String(), downloadVersion.String())
+	return downloadVersion.GreaterThan(currentVersion), nil
+}
+
+func (u *Updates) downloadUpdates() error {
 	if u.updateBundle == nil {
-		// CheckForBinaryUpdates needs to be called before this.
+		// checkForUpdates needs to be called before this.
 		return fmt.Errorf("no valid update bundle found")
 	}
 	_ = deleteUnfinishedDownloads(u.updateIndex.DownloadDirectory)
@@ -157,7 +195,40 @@ func (u *Updates) DownloadUpdates() error {
 	return nil
 }
 
-func (u *Updates) ApplyUpdates() {
+func (u *Updates) applyUpdates(_ *mgr.WorkerCtx) error {
+	// Check if we have new version
+	hasNewVersion, err := u.checkVersionIncrement()
+	if err != nil {
+		return fmt.Errorf("error while reading bundle version: %w", err)
+	}
+
+	if !hasNewVersion {
+		return fmt.Errorf("there is no new version to apply")
+	}
+
+	err = u.updateBundle.Verify(u.updateIndex.DownloadDirectory)
+	if err != nil {
+		return fmt.Errorf("failed to apply update: %s", err)
+	}
+
+	err = switchFolders(u.updateIndex, *u.updateBundle)
+	if err != nil {
+		// TODO(vladimir): Send notification to UI
+		log.Errorf("updates: failed to apply updates: %s", err)
+	} else {
+		// TODO(vladimir): Prompt user to restart?
+		u.instance.Restart()
+	}
+	return nil
+}
+
+// TriggerUpdateCheck triggers an update check
+func (u *Updates) TriggerUpdateCheck() {
+	u.updateCheckWorkerMgr.Go()
+}
+
+// TriggerApplyUpdates triggers upgrade
+func (u *Updates) TriggerApplyUpdates() {
 	u.upgraderWorkerMgr.Go()
 }
 
@@ -173,7 +244,16 @@ func (u *Updates) Manager() *mgr.Manager {
 
 // Start starts the module.
 func (u *Updates) Start() error {
+	// Remove old files
+	u.m.Go("old files cleaner", func(ctx *mgr.WorkerCtx) error {
+		err := os.RemoveAll(u.updateIndex.PurgeDirectory)
+		if err != nil {
+			return fmt.Errorf("failed to delete folder: %w", err)
+		}
+		return nil
+	})
 	u.updateCheckWorkerMgr.Go()
+
 	return nil
 }
 
