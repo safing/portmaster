@@ -115,12 +115,12 @@ func (bundle Bundle) CopyMatchingFilesFromCurrent(current Bundle, currentDir, ne
 	return nil
 }
 
-func (bundle Bundle) DownloadAndVerify(dir string) {
-	client := http.Client{}
+func (bundle Bundle) DownloadAndVerify(client *http.Client, dir string) {
+	// Make sure dir exists
+	_ = os.MkdirAll(dir, defaultDirMode)
+
 	for _, artifact := range bundle.Artifacts {
 		filePath := filepath.Join(dir, artifact.Filename)
-		// TODO(vladimir): is this needed?
-		_ = os.MkdirAll(filepath.Dir(filePath), defaultDirMode)
 
 		// Check file is already downloaded and valid.
 		exists, _ := checkIfFileIsValid(filePath, artifact)
@@ -130,7 +130,7 @@ func (bundle Bundle) DownloadAndVerify(dir string) {
 		}
 
 		// Download artifact
-		err := processArtifact(&client, artifact, filePath)
+		err := processArtifact(client, artifact, filePath)
 		if err != nil {
 			log.Errorf("updates: %s", err)
 		}
@@ -202,9 +202,7 @@ func processArtifact(client *http.Client, artifact Artifact, filePath string) er
 	// Verify
 	hash := sha256.Sum256(content)
 	if !bytes.Equal(providedHash, hash[:]) {
-		// FIXME(vladimir): just for testing. Make it an error.
-		err = fmt.Errorf("failed to verify artifact: %s", artifact.Filename)
-		log.Debugf("updates: %s", err)
+		return fmt.Errorf("failed to verify artifact: %s", artifact.Filename)
 	}
 
 	// Save

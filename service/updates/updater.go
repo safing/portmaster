@@ -59,20 +59,20 @@ func switchFolders(updateIndex UpdateIndex, newBundle Bundle) error {
 }
 
 func deleteUnfinishedDownloads(rootDir string) error {
-	return filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
+	entries, err := os.ReadDir(rootDir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
 		// Check if the current file has the download extension
-		if !info.IsDir() && strings.HasSuffix(info.Name(), ".download") {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".download") {
+			path := filepath.Join(rootDir, e.Name())
 			log.Warningf("updates: deleting unfinished download file: %s\n", path)
 			err := os.Remove(path)
 			if err != nil {
-				log.Errorf("updates: failed to delete unfinished download file %s: %w", path, err)
+				log.Errorf("updates: failed to delete unfinished download file %s: %s", path, err)
 			}
 		}
-
-		return nil
-	})
+	}
+	return nil
 }

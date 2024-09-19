@@ -3,6 +3,7 @@ package updates
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -131,7 +132,8 @@ func (reg *Updates) processBundle(bundle *Bundle) {
 }
 
 func (u *Updates) checkForUpdates(_ *mgr.WorkerCtx) error {
-	err := u.updateIndex.DownloadIndexFile()
+	httpClient := http.Client{}
+	err := u.updateIndex.DownloadIndexFile(&httpClient)
 	if err != nil {
 		return fmt.Errorf("failed to download index file: %s", err)
 	}
@@ -153,7 +155,7 @@ func (u *Updates) checkForUpdates(_ *mgr.WorkerCtx) error {
 	}
 
 	log.Infof("updates: check complete: downloading new version: %s %s", u.updateBundle.Name, u.updateBundle.Version)
-	err = u.downloadUpdates()
+	err = u.downloadUpdates(&httpClient)
 	if err != nil {
 		log.Errorf("updates: failed to download bundle: %s", err)
 	} else {
@@ -181,7 +183,7 @@ func (u *Updates) checkVersionIncrement() (bool, error) {
 	return downloadVersion.GreaterThan(currentVersion), nil
 }
 
-func (u *Updates) downloadUpdates() error {
+func (u *Updates) downloadUpdates(client *http.Client) error {
 	if u.updateBundle == nil {
 		// checkForUpdates needs to be called before this.
 		return fmt.Errorf("no valid update bundle found")
@@ -191,7 +193,7 @@ func (u *Updates) downloadUpdates() error {
 	if err != nil {
 		log.Warningf("updates: error while coping file from current to update: %s", err)
 	}
-	u.updateBundle.DownloadAndVerify(u.updateIndex.DownloadDirectory)
+	u.updateBundle.DownloadAndVerify(client, u.updateIndex.DownloadDirectory)
 	return nil
 }
 
