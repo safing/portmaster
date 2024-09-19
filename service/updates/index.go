@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,13 +19,14 @@ type UpdateIndex struct {
 	IndexURLs         []string
 	IndexFile         string
 	AutoApply         bool
+	NeedsRestart      bool
 }
 
-func (ui *UpdateIndex) DownloadIndexFile(client *http.Client) (err error) {
+func (ui *UpdateIndex) DownloadIndexFile(ctx context.Context, client *http.Client) (err error) {
 	// Make sure dir exists
 	_ = os.MkdirAll(ui.DownloadDirectory, defaultDirMode)
 	for _, url := range ui.IndexURLs {
-		err = ui.downloadIndexFileFromURL(client, url)
+		err = ui.downloadIndexFileFromURL(ctx, client, url)
 		if err != nil {
 			log.Warningf("updates: failed while downloading index file %s", err)
 			continue
@@ -36,9 +38,18 @@ func (ui *UpdateIndex) DownloadIndexFile(client *http.Client) (err error) {
 	return
 }
 
-func (ui *UpdateIndex) downloadIndexFileFromURL(client *http.Client, url string) error {
+func (ui *UpdateIndex) downloadIndexFileFromURL(ctx context.Context, client *http.Client, url string) error {
 	// Request the index file
-	resp, err := client.Get(url)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("failed to create GET request to %s: %w", url, err)
+	}
+	if UserAgent != "" {
+		req.Header.Set("User-Agent", UserAgent)
+	}
+
+	// Perform request
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed GET request to %s: %w", url, err)
 	}

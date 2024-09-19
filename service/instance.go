@@ -133,13 +133,14 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			return nil, err
 		}
 		binaryUpdateIndex = updates.UpdateIndex{
-			Directory:         binaryFolder, // Default: C:/Program Files/Portmaster/binary
+			Directory:         binaryFolder, // Default: C:/Program Files/Portmaster
 			DownloadDirectory: os.ExpandEnv("%ProgramData%/Portmaster/new_binary"),
 			PurgeDirectory:    os.ExpandEnv("%ProgramData%/Portmaster/old_binary"),
 			Ignore:            []string{"databases", "intel", "config.json"},
 			IndexURLs:         []string{"http://192.168.88.11:8000/test-binary.json"},
 			IndexFile:         "bin-index.json",
 			AutoApply:         false,
+			NeedsRestart:      true,
 		}
 
 		intelUpdateIndex = updates.UpdateIndex{
@@ -149,6 +150,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			IndexURLs:         []string{"http://192.168.88.11:8000/test-intel.json"},
 			IndexFile:         "intel-index.json",
 			AutoApply:         true,
+			NeedsRestart:      false,
 		}
 	} else if go_runtime.GOOS == "linux" {
 		binaryUpdateIndex = updates.UpdateIndex{
@@ -159,6 +161,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			IndexURLs:         []string{"http://localhost:8000/test-binary.json"},
 			IndexFile:         "bin-index.json",
 			AutoApply:         false,
+			NeedsRestart:      true,
 		}
 
 		intelUpdateIndex = updates.UpdateIndex{
@@ -168,6 +171,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			IndexURLs:         []string{"http://localhost:8000/test-intel.json"},
 			IndexFile:         "intel-index.json",
 			AutoApply:         true,
+			NeedsRestart:      false,
 		}
 	}
 

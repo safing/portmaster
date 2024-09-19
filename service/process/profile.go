@@ -72,19 +72,20 @@ func (p *Process) getSpecialProfileID() (specialProfileID string) {
 		specialProfileID = profile.PortmasterProfileID
 	default:
 		// Check if this is another Portmaster component.
-		if updatesPath != "" && strings.HasPrefix(p.Path, updatesPath) {
-			switch {
-			case strings.Contains(p.Path, "portmaster-app"):
-				specialProfileID = profile.PortmasterAppProfileID
-			case strings.Contains(p.Path, "portmaster-notifier"):
-				specialProfileID = profile.PortmasterNotifierProfileID
-			default:
-				// Unexpected binary from within the Portmaster updates directpry.
-				log.Warningf("process: unexpected binary in the updates directory: %s", p.Path)
-				// TODO: Assign a fully restricted profile in the future when we are
-				// sure that we won't kill any of our own things.
-			}
-		}
+		// FIXME(vladimir): provide a better check for detecting filepath. Note there is exception on linux with portmaster ui.
+		// if updatesPath != "" && strings.HasPrefix(p.Path, updatesPath) {
+		// 	switch {
+		// 	case strings.Contains(p.Path, "portmaster-app"):
+		// 		specialProfileID = profile.PortmasterAppProfileID
+		// 	case strings.Contains(p.Path, "portmaster-notifier"):
+		// 		specialProfileID = profile.PortmasterNotifierProfileID
+		// 	default:
+		// 		// Unexpected binary from within the Portmaster updates directpry.
+		// 		log.Warningf("process: unexpected binary in the updates directory: %s", p.Path)
+		// 		// TODO: Assign a fully restricted profile in the future when we are
+		// 		// sure that we won't kill any of our own things.
+		// 	}
+		// }
 		// Check if this is the system resolver.
 		switch runtime.GOOS {
 		case "windows":

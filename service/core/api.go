@@ -107,27 +107,29 @@ func registerAPIEndpoints() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path: "updates/check",
-		Read: api.PermitUser,
+		Path:        "updates/check",
+		WriteMethod: "POST",
+		Write:       api.PermitUser,
 		ActionFunc: func(ar *api.Request) (string, error) {
 			module.instance.BinaryUpdates().TriggerUpdateCheck()
 			module.instance.IntelUpdates().TriggerUpdateCheck()
 			return "update check triggered", nil
 		},
-		Name: "Get the ID of the calling profile",
+		Name: "Trigger updates check event",
 	}); err != nil {
 		return err
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path: "updates/apply",
-		Read: api.PermitUser,
+		Path:        "updates/apply",
+		WriteMethod: "POST",
+		Write:       api.PermitUser,
 		ActionFunc: func(ar *api.Request) (string, error) {
 			module.instance.BinaryUpdates().TriggerApplyUpdates()
 			module.instance.IntelUpdates().TriggerApplyUpdates()
 			return "upgrade triggered", nil
 		},
-		Name: "Get the ID of the calling profile",
+		Name: "Trigger updates apply event",
 	}); err != nil {
 		return err
 	}

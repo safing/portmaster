@@ -2,11 +2,9 @@ package process
 
 import (
 	"errors"
-	"os"
 	"sync/atomic"
 
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/service/updates"
 )
 
 type ProcessModule struct {
@@ -19,18 +17,12 @@ func (pm *ProcessModule) Manager() *mgr.Manager {
 }
 
 func (pm *ProcessModule) Start() error {
-	updatesPath = updates.RootPath()
-	if updatesPath != "" {
-		updatesPath += string(os.PathSeparator)
-	}
 	return nil
 }
 
 func (pm *ProcessModule) Stop() error {
 	return nil
 }
-
-var updatesPath string
 
 func prep() error {
 	if err := registerConfiguration(); err != nil {

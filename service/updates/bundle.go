@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -106,7 +107,7 @@ func (bundle Bundle) CopyMatchingFilesFromCurrent(current Bundle, currentDir, ne
 					if err != nil {
 						return fmt.Errorf("failed to write to file %s: %w", destFilePath, err)
 					}
-
+					log.Debugf("updates: file copied from current version: %s", newArtifact.Filename)
 				}
 				break new
 			}
@@ -115,7 +116,7 @@ func (bundle Bundle) CopyMatchingFilesFromCurrent(current Bundle, currentDir, ne
 	return nil
 }
 
-func (bundle Bundle) DownloadAndVerify(client *http.Client, dir string) {
+func (bundle Bundle) DownloadAndVerify(ctx context.Context, client *http.Client, dir string) {
 	// Make sure dir exists
 	_ = os.MkdirAll(dir, defaultDirMode)
 
@@ -130,7 +131,7 @@ func (bundle Bundle) DownloadAndVerify(client *http.Client, dir string) {
 		}
 
 		// Download artifact
-		err := processArtifact(client, artifact, filePath)
+		err := processArtifact(ctx, client, artifact, filePath)
 		if err != nil {
 			log.Errorf("updates: %s", err)
 		}
@@ -179,14 +180,15 @@ func checkIfFileIsValid(filename string, artifact Artifact) (bool, error) {
 	return true, nil
 }
 
-func processArtifact(client *http.Client, artifact Artifact, filePath string) error {
+func processArtifact(ctx context.Context, client *http.Client, artifact Artifact, filePath string) error {
 	providedHash, err := hex.DecodeString(artifact.SHA256)
 	if err != nil || len(providedHash) != sha256.Size {
 		return fmt.Errorf("invalid provided hash %s: %w", artifact.SHA256, err)
 	}
 
 	// Download
-	content, err := downloadFile(client, artifact.URLs)
+	log.Debugf("updates: downloading file: %s", artifact.Filename)
+	content, err := downloadFile(ctx, client, artifact.URLs)
 	if err != nil {
 		return fmt.Errorf("failed to download artifact: %w", err)
 	}
@@ -222,13 +224,23 @@ func processArtifact(client *http.Client, artifact Artifact, filePath string) er
 		return fmt.Errorf("failed to rename file: %w", err)
 	}
 
+	log.Infof("updates: file downloaded and verified: %s", artifact.Filename)
+
 	return nil
 }
 
-func downloadFile(client *http.Client, urls []string) ([]byte, error) {
+func downloadFile(ctx context.Context, client *http.Client, urls []string) ([]byte, error) {
 	for _, url := range urls {
 		// Try to make the request
-		resp, err := client.Get(url)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+		if err != nil {
+			log.Warningf("failed to create GET request to %s: %s", url, err)
+			continue
+		}
+		if UserAgent != "" {
+			req.Header.Set("User-Agent", UserAgent)
+		}
+		resp, err := client.Do(req)
 		if err != nil {
 			log.Warningf("failed a get file request to: %s", err)
 			continue

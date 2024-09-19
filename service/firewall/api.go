@@ -18,7 +18,6 @@ import (
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/process"
-	"github.com/safing/portmaster/service/updates"
 )
 
 const (
@@ -133,7 +132,8 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 	var originalPid int
 
 	// Get authenticated path.
-	authenticatedPath := updates.RootPath()
+	// FIXME(vladimir): provide a better check for detecting filepath. Note there is exception on linux with portmaster ui.
+	authenticatedPath := "" // updates.RootPath()
 	if authenticatedPath == "" {
 		return false, fmt.Errorf(deniedMsgMisconfigured, api.ErrAPIAccessDeniedMessage) //nolint:stylecheck // message for user
 	}

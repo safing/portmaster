@@ -1,10 +1,12 @@
 package updates
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 
 	semver "github.com/hashicorp/go-version"
@@ -15,7 +17,29 @@ import (
 	"github.com/safing/portmaster/service/mgr"
 )
 
-const updateAvailableNotificationID = "updates:update-available"
+const (
+	updateTaskRepeatDuration      = 1 * time.Hour
+	updateAvailableNotificationID = "updates:update-available"
+
+	// VersionUpdateEvent is emitted every time a new
+	// version of a monitored resource is selected.
+	// During module initialization VersionUpdateEvent
+	// is also emitted.
+	VersionUpdateEvent = "active version update"
+
+	// ResourceUpdateEvent is emitted every time the
+	// updater successfully performed a resource update.
+	// ResourceUpdateEvent is emitted even if no new
+	// versions are available. Subscribers are expected
+	// to check if new versions of their resources are
+	// available by checking File.UpgradeAvailable().
+	ResourceUpdateEvent = "resource update"
+)
+
+// UserAgent is an HTTP User-Agent that is used to add
+// more context to requests made by the registry when
+// fetching resources from the update server.
+var UserAgent = fmt.Sprintf("Portmaster (%s %s)", runtime.GOOS, runtime.GOARCH)
 
 type File struct {
 	id   string
@@ -75,7 +99,7 @@ func New(instance instance, name string, index UpdateIndex) (*Updates, error) {
 
 	// Events
 	module.updateCheckWorkerMgr = m.NewWorkerMgr("update checker", module.checkForUpdates, nil)
-	module.updateCheckWorkerMgr.Repeat(1 * time.Hour)
+	module.updateCheckWorkerMgr.Repeat(updateTaskRepeatDuration)
 	module.upgraderWorkerMgr = m.NewWorkerMgr("upgrader", module.applyUpdates, nil)
 
 	var err error
@@ -86,42 +110,8 @@ func New(instance instance, name string, index UpdateIndex) (*Updates, error) {
 
 	// Add bundle artifacts to registry.
 	module.processBundle(module.bundle)
-	err = module.registerEndpoints()
-	if err != nil {
-		log.Errorf("failed to register endpoints: %s", err)
-	}
 
 	return module, nil
-}
-
-func (u *Updates) registerEndpoints() error {
-	if err := api.RegisterEndpoint(api.Endpoint{
-		Name:        "Check for update",
-		Description: "Trigger update check",
-		Path:        "updates/check",
-		Read:        api.PermitAnyone,
-		ActionFunc: func(ar *api.Request) (msg string, err error) {
-			u.updateCheckWorkerMgr.Go()
-			return "Check for updates triggered", nil
-		},
-	}); err != nil {
-		return err
-	}
-
-	if err := api.RegisterEndpoint(api.Endpoint{
-		Name:        "Apply update",
-		Description: "Triggers update",
-		Path:        "updates/apply",
-		Read:        api.PermitAnyone,
-		ActionFunc: func(ar *api.Request) (msg string, err error) {
-			u.upgraderWorkerMgr.Go()
-			return "Apply updates triggered", nil
-		},
-	}); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (reg *Updates) processBundle(bundle *Bundle) {
@@ -131,9 +121,9 @@ func (reg *Updates) processBundle(bundle *Bundle) {
 	}
 }
 
-func (u *Updates) checkForUpdates(_ *mgr.WorkerCtx) error {
+func (u *Updates) checkForUpdates(wc *mgr.WorkerCtx) error {
 	httpClient := http.Client{}
-	err := u.updateIndex.DownloadIndexFile(&httpClient)
+	err := u.updateIndex.DownloadIndexFile(wc.Ctx(), &httpClient)
 	if err != nil {
 		return fmt.Errorf("failed to download index file: %s", err)
 	}
@@ -155,16 +145,23 @@ func (u *Updates) checkForUpdates(_ *mgr.WorkerCtx) error {
 	}
 
 	log.Infof("updates: check complete: downloading new version: %s %s", u.updateBundle.Name, u.updateBundle.Version)
-	err = u.downloadUpdates(&httpClient)
+	err = u.downloadUpdates(wc.Ctx(), &httpClient)
 	if err != nil {
 		log.Errorf("updates: failed to download bundle: %s", err)
 	} else {
-		notifications.NotifyPrompt(updateAvailableNotificationID, "Update available", "Apply update and restart?", notifications.Action{
-			ID:      "apply",
-			Text:    "Apply",
-			Type:    notifications.ActionTypeInjectEvent,
-			Payload: "apply-updates",
-		})
+		if u.updateIndex.AutoApply {
+			u.upgraderWorkerMgr.Go()
+		} else {
+			notifications.NotifyPrompt(updateAvailableNotificationID, "Update available", "Apply update and restart?", notifications.Action{
+				ID:   "apply",
+				Text: "Apply",
+				Type: notifications.ActionTypeWebhook,
+				Payload: notifications.ActionTypeWebhookPayload{
+					Method: "POST",
+					URL:    "updates/apply",
+				},
+			})
+		}
 	}
 	return nil
 }
@@ -183,7 +180,7 @@ func (u *Updates) checkVersionIncrement() (bool, error) {
 	return downloadVersion.GreaterThan(currentVersion), nil
 }
 
-func (u *Updates) downloadUpdates(client *http.Client) error {
+func (u *Updates) downloadUpdates(ctx context.Context, client *http.Client) error {
 	if u.updateBundle == nil {
 		// checkForUpdates needs to be called before this.
 		return fmt.Errorf("no valid update bundle found")
@@ -193,7 +190,7 @@ func (u *Updates) downloadUpdates(client *http.Client) error {
 	if err != nil {
 		log.Warningf("updates: error while coping file from current to update: %s", err)
 	}
-	u.updateBundle.DownloadAndVerify(client, u.updateIndex.DownloadDirectory)
+	u.updateBundle.DownloadAndVerify(ctx, client, u.updateIndex.DownloadDirectory)
 	return nil
 }
 
@@ -208,18 +205,23 @@ func (u *Updates) applyUpdates(_ *mgr.WorkerCtx) error {
 		return fmt.Errorf("there is no new version to apply")
 	}
 
+	// Verify files of the downloaded files.
 	err = u.updateBundle.Verify(u.updateIndex.DownloadDirectory)
 	if err != nil {
-		return fmt.Errorf("failed to apply update: %s", err)
+		return fmt.Errorf("failed to verify downloaded files: %s", err)
 	}
 
+	// New version is downloaded and verified. Start the update process
+	log.Infof("update: starting update: %s %s -> %s", u.bundle.Name, u.bundle.Version, u.updateBundle.Version)
 	err = switchFolders(u.updateIndex, *u.updateBundle)
 	if err != nil {
 		// TODO(vladimir): Send notification to UI
 		log.Errorf("updates: failed to apply updates: %s", err)
 	} else {
 		// TODO(vladimir): Prompt user to restart?
-		u.instance.Restart()
+		if u.updateIndex.NeedsRestart {
+			u.instance.Restart()
+		}
 	}
 	return nil
 }
@@ -274,7 +276,7 @@ func (u *Updates) GetFile(id string) (*File, error) {
 
 // Stop stops the module.
 func (u *Updates) Stop() error {
-	return stop()
+	return nil
 }
 
 type instance interface {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/safing/portmaster/base/log"
@@ -29,6 +30,7 @@ func switchFolders(updateIndex UpdateIndex, newBundle Bundle) error {
 	}
 
 	// Move current version files into purge folder.
+	log.Debugf("updates: removing the old version")
 	for _, file := range files {
 		currentFilepath := filepath.Join(updateIndex.Directory, file.Name())
 		purgePath := filepath.Join(updateIndex.PurgeDirectory, file.Name())
@@ -39,6 +41,7 @@ func switchFolders(updateIndex UpdateIndex, newBundle Bundle) error {
 	}
 
 	// Move the new index file
+	log.Debugf("updates: installing the new version")
 	indexFile := filepath.Join(updateIndex.DownloadDirectory, updateIndex.IndexFile)
 	newIndexFile := filepath.Join(updateIndex.Directory, updateIndex.IndexFile)
 	err = os.Rename(indexFile, newIndexFile)
@@ -52,9 +55,27 @@ func switchFolders(updateIndex UpdateIndex, newBundle Bundle) error {
 		toFilepath := filepath.Join(updateIndex.Directory, artifact.Filename)
 		err = os.Rename(fromFilepath, toFilepath)
 		if err != nil {
-			return fmt.Errorf("failed to move file %s: %w", fromFilepath, err)
+			log.Errorf("failed to move file %s: %s", fromFilepath, err)
+		} else {
+			log.Debugf("updates: %s moved", artifact.Filename)
+		}
+
+		// Special case for linux.
+		// When installed the portmaster ui path is `/usr/bin/portmaster`. During update the ui will be placed in `/usr/lib/portmaster/portmaster`
+		// After an update the original binary should be deleted and replaced by symlink
+		// `/usr/bin/portmaster` -> `/usr/lib/portmaster/portmaster`
+		if runtime.GOOS == "linux" && artifact.Filename == "portmaster" && artifact.Platform == currentPlatform {
+			err = makeSymlinkForUI(updateIndex.Directory)
+			if err != nil {
+				log.Errorf("failed to create symlink for the ui: %s", err)
+			} else {
+				log.Infof("ui symlink successfully created")
+			}
 		}
 	}
+
+	log.Debugf("updates: update complete")
+
 	return nil
 }
 
@@ -73,6 +94,14 @@ func deleteUnfinishedDownloads(rootDir string) error {
 				log.Errorf("updates: failed to delete unfinished download file %s: %s", path, err)
 			}
 		}
+	}
+	return nil
+}
+
+func makeSymlinkForUI(directory string) error {
+	err := os.Symlink(filepath.Join(directory, "portmaster"), "/usr/bin/portmaster")
+	if err != nil {
+		return fmt.Errorf("failed to create symlink: %w", err)
 	}
 	return nil
 }
