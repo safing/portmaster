@@ -62,7 +62,7 @@ func prep() error {
 			if ignoreUpdateEvents.IsSet() {
 				return false, nil
 			}
-			log.Debugf("performing filter list upadte")
+			log.Debugf("performing filter list update")
 
 			return false, tryListUpdate(wc.Ctx())
 		})

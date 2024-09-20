@@ -1,15 +1,10 @@
 package updates
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"net/http"
-	"os"
 	"runtime"
 	"time"
 
-	semver "github.com/hashicorp/go-version"
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
@@ -21,12 +16,6 @@ const (
 	updateTaskRepeatDuration      = 1 * time.Hour
 	updateAvailableNotificationID = "updates:update-available"
 
-	// VersionUpdateEvent is emitted every time a new
-	// version of a monitored resource is selected.
-	// During module initialization VersionUpdateEvent
-	// is also emitted.
-	VersionUpdateEvent = "active version update"
-
 	// ResourceUpdateEvent is emitted every time the
 	// updater successfully performed a resource update.
 	// ResourceUpdateEvent is emitted even if no new
@@ -34,6 +23,12 @@ const (
 	// to check if new versions of their resources are
 	// available by checking File.UpgradeAvailable().
 	ResourceUpdateEvent = "resource update"
+
+	// VersionUpdateEvent is emitted every time a new
+	// version of a monitored resource is selected.
+	// During module initialization VersionUpdateEvent
+	// is also emitted.
+	VersionUpdateEvent = "active version update"
 )
 
 // UserAgent is an HTTP User-Agent that is used to add
@@ -41,24 +36,17 @@ const (
 // fetching resources from the update server.
 var UserAgent = fmt.Sprintf("Portmaster (%s %s)", runtime.GOOS, runtime.GOARCH)
 
-type File struct {
-	id   string
-	path string
+// UpdateIndex holds the configuration for the updates module
+type UpdateIndex struct {
+	Directory         string
+	DownloadDirectory string
+	PurgeDirectory    string
+	Ignore            []string
+	IndexURLs         []string
+	IndexFile         string
+	AutoApply         bool
+	NeedsRestart      bool
 }
-
-func (f *File) Identifier() string {
-	return f.id
-}
-
-func (f *File) Path() string {
-	return f.path
-}
-
-func (f *File) Version() string {
-	return ""
-}
-
-var ErrNotFound error = errors.New("file not found")
 
 // Updates provides access to released artifacts.
 type Updates struct {
@@ -71,12 +59,11 @@ type Updates struct {
 	EventResourcesUpdated *mgr.EventMgr[struct{}]
 	EventVersionsUpdated  *mgr.EventMgr[struct{}]
 
-	updateIndex UpdateIndex
+	registry   Registry
+	downloader Downloader
 
-	bundle       *Bundle
-	updateBundle *Bundle
-
-	files map[string]File
+	autoApply    bool
+	needsRestart bool
 
 	instance instance
 }
@@ -91,8 +78,8 @@ func New(instance instance, name string, index UpdateIndex) (*Updates, error) {
 		EventResourcesUpdated: mgr.NewEventMgr[struct{}](ResourceUpdateEvent, m),
 		EventVersionsUpdated:  mgr.NewEventMgr[struct{}](VersionUpdateEvent, m),
 
-		updateIndex: index,
-		files:       make(map[string]File),
+		autoApply:    index.AutoApply,
+		needsRestart: index.NeedsRestart,
 
 		instance: instance,
 	}
@@ -103,53 +90,39 @@ func New(instance instance, name string, index UpdateIndex) (*Updates, error) {
 	module.upgraderWorkerMgr = m.NewWorkerMgr("upgrader", module.applyUpdates, nil)
 
 	var err error
-	module.bundle, err = ParseBundle(module.updateIndex.Directory, module.updateIndex.IndexFile)
+	module.registry, err = CreateRegistry(index)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse binary bundle: %s", err)
+		return nil, fmt.Errorf("failed to create registry: %w", err)
 	}
 
-	// Add bundle artifacts to registry.
-	module.processBundle(module.bundle)
+	module.downloader = CreateDownloader(index)
 
 	return module, nil
 }
 
-func (reg *Updates) processBundle(bundle *Bundle) {
-	for _, artifact := range bundle.Artifacts {
-		artifactPath := fmt.Sprintf("%s/%s", reg.updateIndex.Directory, artifact.Filename)
-		reg.files[artifact.Filename] = File{id: artifact.Filename, path: artifactPath}
-	}
-}
-
 func (u *Updates) checkForUpdates(wc *mgr.WorkerCtx) error {
-	httpClient := http.Client{}
-	err := u.updateIndex.DownloadIndexFile(wc.Ctx(), &httpClient)
+	err := u.downloader.downloadIndexFile(wc.Ctx())
 	if err != nil {
-		return fmt.Errorf("failed to download index file: %s", err)
+		return fmt.Errorf("failed to download index file: %w", err)
 	}
 
-	u.updateBundle, err = ParseBundle(u.updateIndex.DownloadDirectory, u.updateIndex.IndexFile)
-	if err != nil {
-		return fmt.Errorf("failed parsing bundle: %s", err)
-	}
 	defer u.EventResourcesUpdated.Submit(struct{}{})
 
-	hasUpdate, err := u.checkVersionIncrement()
-	if err != nil {
-		return fmt.Errorf("failed to compare versions: %s", err)
-	}
-
-	if !hasUpdate {
+	if u.downloader.version.LessThanOrEqual(u.registry.version) {
 		log.Infof("updates: check compete: no new updates")
 		return nil
 	}
-
-	log.Infof("updates: check complete: downloading new version: %s %s", u.updateBundle.Name, u.updateBundle.Version)
-	err = u.downloadUpdates(wc.Ctx(), &httpClient)
+	downloadBundle := u.downloader.bundle
+	log.Infof("updates: check complete: downloading new version: %s %s", downloadBundle.Name, downloadBundle.Version)
+	err = u.downloader.copyMatchingFilesFromCurrent(u.registry.files)
 	if err != nil {
-		log.Errorf("updates: failed to download bundle: %s", err)
+		log.Warningf("updates: failed to copy files from current installation: %s", err)
+	}
+	err = u.downloader.downloadAndVerify(wc.Ctx())
+	if err != nil {
+		log.Errorf("updates: failed to download update: %s", err)
 	} else {
-		if u.updateIndex.AutoApply {
+		if u.autoApply {
 			u.upgraderWorkerMgr.Go()
 		} else {
 			notifications.NotifyPrompt(updateAvailableNotificationID, "Update available", "Apply update and restart?", notifications.Action{
@@ -166,72 +139,28 @@ func (u *Updates) checkForUpdates(wc *mgr.WorkerCtx) error {
 	return nil
 }
 
-func (u *Updates) checkVersionIncrement() (bool, error) {
-	// Compare current and downloaded index version.
-	currentVersion, err := semver.NewVersion(u.bundle.Version)
-	if err != nil {
-		return false, err
-	}
-	downloadVersion, err := semver.NewVersion(u.updateBundle.Version)
-	if err != nil {
-		return false, err
-	}
-	log.Debugf("updates: checking version: curr: %s new: %s", currentVersion.String(), downloadVersion.String())
-	return downloadVersion.GreaterThan(currentVersion), nil
-}
-
-func (u *Updates) downloadUpdates(ctx context.Context, client *http.Client) error {
-	if u.updateBundle == nil {
-		// checkForUpdates needs to be called before this.
-		return fmt.Errorf("no valid update bundle found")
-	}
-	_ = deleteUnfinishedDownloads(u.updateIndex.DownloadDirectory)
-	err := u.updateBundle.CopyMatchingFilesFromCurrent(*u.bundle, u.updateIndex.Directory, u.updateIndex.DownloadDirectory)
-	if err != nil {
-		log.Warningf("updates: error while coping file from current to update: %s", err)
-	}
-	u.updateBundle.DownloadAndVerify(ctx, client, u.updateIndex.DownloadDirectory)
-	return nil
-}
-
 func (u *Updates) applyUpdates(_ *mgr.WorkerCtx) error {
-	// Check if we have new version
-	hasNewVersion, err := u.checkVersionIncrement()
-	if err != nil {
-		return fmt.Errorf("error while reading bundle version: %w", err)
-	}
-
-	if !hasNewVersion {
-		return fmt.Errorf("there is no new version to apply")
-	}
-
-	// Verify files of the downloaded files.
-	err = u.updateBundle.Verify(u.updateIndex.DownloadDirectory)
-	if err != nil {
-		return fmt.Errorf("failed to verify downloaded files: %s", err)
-	}
-
-	// New version is downloaded and verified. Start the update process
-	log.Infof("update: starting update: %s %s -> %s", u.bundle.Name, u.bundle.Version, u.updateBundle.Version)
-	err = switchFolders(u.updateIndex, *u.updateBundle)
+	currentBundle := u.registry.bundle
+	downloadBundle := u.downloader.bundle
+	log.Infof("update: starting update: %s %s -> %s", currentBundle.Name, currentBundle.Version, downloadBundle.Version)
+	err := u.registry.performUpgrade(u.downloader.dir, u.downloader.indexFile)
 	if err != nil {
 		// TODO(vladimir): Send notification to UI
 		log.Errorf("updates: failed to apply updates: %s", err)
-	} else {
+	} else if u.needsRestart {
 		// TODO(vladimir): Prompt user to restart?
-		if u.updateIndex.NeedsRestart {
-			u.instance.Restart()
-		}
+		u.instance.Restart()
 	}
+	u.EventResourcesUpdated.Submit(struct{}{})
 	return nil
 }
 
-// TriggerUpdateCheck triggers an update check
+// TriggerUpdateCheck triggers an update check.
 func (u *Updates) TriggerUpdateCheck() {
 	u.updateCheckWorkerMgr.Go()
 }
 
-// TriggerApplyUpdates triggers upgrade
+// TriggerApplyUpdates triggers upgrade.
 func (u *Updates) TriggerApplyUpdates() {
 	u.upgraderWorkerMgr.Go()
 }
@@ -250,10 +179,8 @@ func (u *Updates) Manager() *mgr.Manager {
 func (u *Updates) Start() error {
 	// Remove old files
 	u.m.Go("old files cleaner", func(ctx *mgr.WorkerCtx) error {
-		err := os.RemoveAll(u.updateIndex.PurgeDirectory)
-		if err != nil {
-			return fmt.Errorf("failed to delete folder: %w", err)
-		}
+		_ = u.registry.CleanOldFiles()
+		_ = u.downloader.deleteUnfinishedDownloads()
 		return nil
 	})
 	u.updateCheckWorkerMgr.Go()
@@ -261,15 +188,13 @@ func (u *Updates) Start() error {
 	return nil
 }
 
+// GetFile returns the path of a file given the name.
 func (u *Updates) GetFile(id string) (*File, error) {
-	file, ok := u.files[id]
+	file, ok := u.registry.files[id]
 	if ok {
 		return &file, nil
 	} else {
 		log.Errorf("updates: requested file id not found: %s", id)
-		for _, file := range u.files {
-			log.Debugf("File: %s", file)
-		}
 		return nil, ErrNotFound
 	}
 }
