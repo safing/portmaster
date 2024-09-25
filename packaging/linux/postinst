@@ -11,6 +11,9 @@ if command -V semanage >/dev/null 2>&1; then
     restorecon -R /usr/lib/portmaster/portmaster-core 2>/dev/null >&2 || :
 fi
 
+mv /usr/bin/portmaster /usr/lib/portmaster/portmaster
+ln -s /usr/lib/portmaster/portmaster /usr/bin/portmaster 
+
 systemctl daemon-reload
 systemctl enable portmaster.service
 

@@ -132,8 +132,7 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 	var originalPid int
 
 	// Get authenticated path.
-	// FIXME(vladimir): provide a better check for detecting filepath. Note there is exception on linux with portmaster ui.
-	authenticatedPath := "" // updates.RootPath()
+	authenticatedPath := module.instance.BinaryUpdates().GetRootPath()
 	if authenticatedPath == "" {
 		return false, fmt.Errorf(deniedMsgMisconfigured, api.ErrAPIAccessDeniedMessage) //nolint:stylecheck // message for user
 	}

@@ -188,6 +188,10 @@ func (u *Updates) Start() error {
 	return nil
 }
 
+func (u *Updates) GetRootPath() string {
+	return u.registry.dir
+}
+
 // GetFile returns the path of a file given the name.
 func (u *Updates) GetFile(id string) (*File, error) {
 	file, ok := u.registry.files[id]

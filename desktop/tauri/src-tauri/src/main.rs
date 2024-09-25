@@ -120,7 +120,6 @@ fn show_webview_not_installed_dialog() -> i32 {
 }
 
 fn main() {
-    env::set_var("GDK_BACKEND", "x11");
     if tauri::webview_version().is_err() {
         std::process::exit(show_webview_not_installed_dialog());
     }
@@ -139,7 +138,7 @@ fn main() {
 
     // TODO(vladimir): Permission for logs/app2 folder are not guaranteed. Use the default location for now.
     #[cfg(target_os = "windows")]
-    let log_target = if let Some(data_dir) = cli.data {
+    let log_target = if let Some(data_dir) = cli_args.data {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir { file_name: None })
     } else {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout)

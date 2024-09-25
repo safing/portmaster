@@ -4,12 +4,16 @@ import (
 	"errors"
 	"sync/atomic"
 
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/updates"
 )
 
 type ProcessModule struct {
 	mgr      *mgr.Manager
 	instance instance
+
+	portmasterUIPath string
 }
 
 func (pm *ProcessModule) Manager() *mgr.Manager {
@@ -17,6 +21,12 @@ func (pm *ProcessModule) Manager() *mgr.Manager {
 }
 
 func (pm *ProcessModule) Start() error {
+	file, err := pm.instance.BinaryUpdates().GetFile("portmaster")
+	if err != nil {
+		log.Errorf("process: failed to get path of ui: %s", err)
+	} else {
+		pm.portmasterUIPath = file.Path()
+	}
 	return nil
 }
 
@@ -59,4 +69,6 @@ func New(instance instance) (*ProcessModule, error) {
 	return module, nil
 }
 
-type instance interface{}
+type instance interface {
+	BinaryUpdates() *updates.Updates
+}
