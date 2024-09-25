@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	semver "github.com/hashicorp/go-version"
 	"github.com/safing/portmaster/base/log"
@@ -112,19 +111,6 @@ func (r *Registry) performUpgrade(downloadDir string, indexFile string) error {
 		} else {
 			log.Debugf("updates: %s moved", artifact.Filename)
 		}
-
-		// Special case for linux.
-		// When installed the portmaster ui path is `/usr/bin/portmaster`. During update the ui will be placed in `/usr/lib/portmaster/portmaster`
-		// After an update the original binary should be deleted and replaced by symlink
-		// `/usr/bin/portmaster` -> `/usr/lib/portmaster/portmaster`
-		if runtime.GOOS == "linux" && artifact.Filename == "portmaster" && artifact.Platform == currentPlatform {
-			err = r.makeSymlinkForUI()
-			if err != nil {
-				log.Errorf("failed to create symlink for the ui: %s", err)
-			} else {
-				log.Infof("updates: ui symlink successfully created")
-			}
-		}
 	}
 
 	log.Infof("updates: update complete")
@@ -208,16 +194,6 @@ func (r *Registry) CleanOldFiles() error {
 	err := os.RemoveAll(r.purgeDir)
 	if err != nil {
 		return fmt.Errorf("failed to delete folder: %w", err)
-	}
-	return nil
-}
-
-func (r *Registry) makeSymlinkForUI() error {
-	portmasterBinPath := "/usr/bin/portmaster"
-	_ = os.Remove(portmasterBinPath)
-	err := os.Symlink(filepath.Join(r.dir, "portmaster"), portmasterBinPath)
-	if err != nil {
-		return fmt.Errorf("failed to create symlink: %w", err)
 	}
 	return nil
 }
