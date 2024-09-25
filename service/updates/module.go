@@ -36,7 +36,7 @@ const (
 // fetching resources from the update server.
 var UserAgent = fmt.Sprintf("Portmaster (%s %s)", runtime.GOOS, runtime.GOARCH)
 
-// UpdateIndex holds the configuration for the updates module
+// UpdateIndex holds the configuration for the updates module.
 type UpdateIndex struct {
 	Directory         string
 	DownloadDirectory string
@@ -143,7 +143,7 @@ func (u *Updates) applyUpdates(_ *mgr.WorkerCtx) error {
 	currentBundle := u.registry.bundle
 	downloadBundle := u.downloader.bundle
 	log.Infof("update: starting update: %s %s -> %s", currentBundle.Name, currentBundle.Version, downloadBundle.Version)
-	err := u.registry.performUpgrade(u.downloader.dir, u.downloader.indexFile)
+	err := u.registry.performRecoverableUpgrade(u.downloader.dir, u.downloader.indexFile)
 	if err != nil {
 		// TODO(vladimir): Send notification to UI
 		log.Errorf("updates: failed to apply updates: %s", err)

@@ -134,8 +134,8 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		}
 		binaryUpdateIndex = updates.UpdateIndex{
 			Directory:         binaryFolder, // Default: C:/Program Files/Portmaster
-			DownloadDirectory: os.ExpandEnv("%ProgramData%/Portmaster/new_binary"),
-			PurgeDirectory:    os.ExpandEnv("%ProgramData%/Portmaster/old_binary"),
+			DownloadDirectory: os.ExpandEnv("$ProgramData/Portmaster/new_binary"),
+			PurgeDirectory:    filepath.Join(binaryFolder, "old_binary"), // Default: C:/Program Files/Portmaster/old_binary
 			Ignore:            []string{"databases", "intel", "config.json"},
 			IndexURLs:         []string{"http://192.168.88.11:8000/test-binary.json"},
 			IndexFile:         "bin-index.json",
@@ -144,9 +144,9 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		}
 
 		intelUpdateIndex = updates.UpdateIndex{
-			Directory:         os.ExpandEnv("%ProgramData%/Portmaster/intel"),
-			DownloadDirectory: os.ExpandEnv("%ProgramData%/Portmaster/new_intel"),
-			PurgeDirectory:    os.ExpandEnv("%ProgramData%/Portmaster/old_intel"),
+			Directory:         os.ExpandEnv("$ProgramData/Portmaster/intel"),
+			DownloadDirectory: os.ExpandEnv("$ProgramData/Portmaster/new_intel"),
+			PurgeDirectory:    os.ExpandEnv("$ProgramData/Portmaster/old_intel"),
 			IndexURLs:         []string{"http://192.168.88.11:8000/test-intel.json"},
 			IndexFile:         "intel-index.json",
 			AutoApply:         true,

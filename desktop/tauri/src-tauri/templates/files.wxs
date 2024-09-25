@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Fragment>
-    <DirectoryRef Id="INSTALLDIR">
-      <Directory Id="BinaryDir" Name="binary" />
-      <Directory Id="IntelDir" Name="intel" />
+    <DirectoryRef Id="TARGETDIR">
+      <Directory Id="CommonAppDataFolder" Name="CommonAppData">
+        <Directory Id="PortmasterDir" Name="Portmaster">
+          <Directory Id="IntelDir" Name="intel" />
+        </Directory>
+      </Directory>
     </DirectoryRef>
   </Fragment>
 
   <Fragment>
-    <Component Id="BinaryFiles" Directory="BinaryDir" Guid="850cdd31-424d-45f5-b8f0-95df950ebd0d">
+    <Component Id="BinaryFiles" Directory="INSTALLDIR" Guid="850cdd31-424d-45f5-b8f0-95df950ebd0d">
       <File Id="BinIndexJson" Source="..\..\..\..\binaries\bin-index.json" />
       <File Id="PortmasterCoreExe" Source="..\..\..\..\binaries\portmaster-core.exe" />
       <File Id="PortmasterKextSys" Source="..\..\..\..\binaries\portmaster-kext.sys" />

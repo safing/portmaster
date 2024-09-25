@@ -3,6 +3,7 @@ package updates
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -67,11 +68,8 @@ func (r *Registry) performUpgrade(downloadDir string, indexFile string) error {
 		return fmt.Errorf("invalid update: %w", err)
 	}
 
-	// Create purge dir.
-	err = os.MkdirAll(r.purgeDir, defaultDirMode)
-	if err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
-	}
+	// Make sure purge dir is empty.
+	_ = os.RemoveAll(r.purgeDir)
 
 	// Read all files in the current version folder.
 	files, err := os.ReadDir(r.dir)
@@ -79,12 +77,18 @@ func (r *Registry) performUpgrade(downloadDir string, indexFile string) error {
 		return err
 	}
 
+	// Create purge dir. Calling this after ReadDIr is important.
+	err = os.MkdirAll(r.purgeDir, defaultDirMode)
+	if err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
 	// Move current version files into purge folder.
 	log.Debugf("updates: removing the old version")
 	for _, file := range files {
 		currentFilepath := filepath.Join(r.dir, file.Name())
 		purgePath := filepath.Join(r.purgeDir, file.Name())
-		err := os.Rename(currentFilepath, purgePath)
+		err := moveFile(currentFilepath, purgePath)
 		if err != nil {
 			return fmt.Errorf("failed to move file %s: %w", currentFilepath, err)
 		}
@@ -93,7 +97,7 @@ func (r *Registry) performUpgrade(downloadDir string, indexFile string) error {
 	// Move the new index file
 	log.Debugf("updates: installing the new version")
 	newIndexFile := filepath.Join(r.dir, indexFile)
-	err = os.Rename(indexFilepath, newIndexFile)
+	err = moveFile(indexFilepath, newIndexFile)
 	if err != nil {
 		return fmt.Errorf("failed to move index file %s: %w", indexFile, err)
 	}
@@ -102,9 +106,9 @@ func (r *Registry) performUpgrade(downloadDir string, indexFile string) error {
 	for _, artifact := range bundle.Artifacts {
 		fromFilepath := filepath.Join(downloadDir, artifact.Filename)
 		toFilepath := filepath.Join(r.dir, artifact.Filename)
-		err = os.Rename(fromFilepath, toFilepath)
+		err = moveFile(fromFilepath, toFilepath)
 		if err != nil {
-			log.Errorf("failed to move file %s: %s", fromFilepath, err)
+			return fmt.Errorf("failed to move file %s: %w", fromFilepath, err)
 		} else {
 			log.Debugf("updates: %s moved", artifact.Filename)
 		}
@@ -125,9 +129,76 @@ func (r *Registry) performUpgrade(downloadDir string, indexFile string) error {
 
 	log.Infof("updates: update complete")
 
-	err = r.CleanOldFiles()
+	return nil
+}
+
+func moveFile(currentPath, newPath string) error {
+	err := os.Rename(currentPath, newPath)
+	if err == nil {
+		// Moving was successful return
+		return nil
+	}
+
+	log.Debugf("updates: failed to move '%s' fallback to copy+delete: %s -> %s", err, currentPath, newPath)
+
+	// Failed to move, try copy and delete
+	currentFile, err := os.Open(currentPath)
 	if err != nil {
-		log.Warningf("updates: error while cleaning old file: %s", err)
+		return err
+	}
+	defer func() { _ = currentFile.Close() }()
+
+	newFile, err := os.Create(newPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = newFile.Close() }()
+
+	_, err = io.Copy(newFile, currentFile)
+	if err != nil {
+		return err
+	}
+
+	// Make sure file is closed before deletion.
+	_ = currentFile.Close()
+	currentFile = nil
+
+	err = os.Remove(currentPath)
+	if err != nil {
+		log.Errorf("updates: failed to delete while moving file: %s", err)
+	}
+
+	return nil
+}
+
+func (r *Registry) performRecoverableUpgrade(downloadDir string, indexFile string) error {
+	upgradeError := r.performUpgrade(downloadDir, indexFile)
+	if upgradeError != nil {
+		err := r.recover()
+		recoverStatus := "(recovery successful)"
+		if err != nil {
+			recoverStatus = "(recovery failed)"
+			log.Errorf("updates: failed to recover: %s", err)
+		}
+
+		return fmt.Errorf("upgrade failed: %w %s", upgradeError, recoverStatus)
+	}
+	return nil
+}
+
+func (r *Registry) recover() error {
+	files, err := os.ReadDir(r.purgeDir)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		recoverPath := filepath.Join(r.purgeDir, file.Name())
+		currentFilepath := filepath.Join(r.dir, file.Name())
+		err := moveFile(recoverPath, currentFilepath)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
