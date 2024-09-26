@@ -15,20 +15,11 @@ import (
 const (
 	updateTaskRepeatDuration      = 1 * time.Hour
 	updateAvailableNotificationID = "updates:update-available"
+	updateFailedNotificationID    = "updates:update-failed"
 
 	// ResourceUpdateEvent is emitted every time the
 	// updater successfully performed a resource update.
-	// ResourceUpdateEvent is emitted even if no new
-	// versions are available. Subscribers are expected
-	// to check if new versions of their resources are
-	// available by checking File.UpgradeAvailable().
 	ResourceUpdateEvent = "resource update"
-
-	// VersionUpdateEvent is emitted every time a new
-	// version of a monitored resource is selected.
-	// During module initialization VersionUpdateEvent
-	// is also emitted.
-	VersionUpdateEvent = "active version update"
 )
 
 // UserAgent is an HTTP User-Agent that is used to add
@@ -57,7 +48,6 @@ type Updates struct {
 	upgraderWorkerMgr    *mgr.WorkerMgr
 
 	EventResourcesUpdated *mgr.EventMgr[struct{}]
-	EventVersionsUpdated  *mgr.EventMgr[struct{}]
 
 	registry   Registry
 	downloader Downloader
@@ -76,7 +66,6 @@ func New(instance instance, name string, index UpdateIndex) (*Updates, error) {
 		states: m.NewStateMgr(),
 
 		EventResourcesUpdated: mgr.NewEventMgr[struct{}](ResourceUpdateEvent, m),
-		EventVersionsUpdated:  mgr.NewEventMgr[struct{}](VersionUpdateEvent, m),
 
 		autoApply:    index.AutoApply,
 		needsRestart: index.NeedsRestart,
@@ -84,9 +73,8 @@ func New(instance instance, name string, index UpdateIndex) (*Updates, error) {
 		instance: instance,
 	}
 
-	// Events
-	module.updateCheckWorkerMgr = m.NewWorkerMgr("update checker", module.checkForUpdates, nil)
-	module.updateCheckWorkerMgr.Repeat(updateTaskRepeatDuration)
+	// Workers
+	module.updateCheckWorkerMgr = m.NewWorkerMgr("update checker", module.checkForUpdates, nil).Repeat(updateTaskRepeatDuration)
 	module.upgraderWorkerMgr = m.NewWorkerMgr("upgrader", module.applyUpdates, nil)
 
 	var err error
@@ -101,17 +89,18 @@ func New(instance instance, name string, index UpdateIndex) (*Updates, error) {
 }
 
 func (u *Updates) checkForUpdates(wc *mgr.WorkerCtx) error {
+	// Download the index file.
 	err := u.downloader.downloadIndexFile(wc.Ctx())
 	if err != nil {
 		return fmt.Errorf("failed to download index file: %w", err)
 	}
-
-	defer u.EventResourcesUpdated.Submit(struct{}{})
-
+	// Check if there is a new version.
 	if u.downloader.version.LessThanOrEqual(u.registry.version) {
 		log.Infof("updates: check compete: no new updates")
 		return nil
 	}
+
+	// Download the new version.
 	downloadBundle := u.downloader.bundle
 	log.Infof("updates: check complete: downloading new version: %s %s", downloadBundle.Name, downloadBundle.Version)
 	err = u.downloader.copyMatchingFilesFromCurrent(u.registry.files)
@@ -123,9 +112,11 @@ func (u *Updates) checkForUpdates(wc *mgr.WorkerCtx) error {
 		log.Errorf("updates: failed to download update: %s", err)
 	} else {
 		if u.autoApply {
+			// Trigger upgrade.
 			u.upgraderWorkerMgr.Go()
 		} else {
-			notifications.NotifyPrompt(updateAvailableNotificationID, "Update available", "Apply update and restart?", notifications.Action{
+			// Notify the user with option to trigger upgrade.
+			notifications.NotifyPrompt(updateAvailableNotificationID, "New update is available.", fmt.Sprintf("%s %s", downloadBundle.Name, downloadBundle.Version), notifications.Action{
 				ID:   "apply",
 				Text: "Apply",
 				Type: notifications.ActionTypeWebhook,
@@ -142,16 +133,26 @@ func (u *Updates) checkForUpdates(wc *mgr.WorkerCtx) error {
 func (u *Updates) applyUpdates(_ *mgr.WorkerCtx) error {
 	currentBundle := u.registry.bundle
 	downloadBundle := u.downloader.bundle
+	if u.downloader.version.LessThanOrEqual(u.registry.version) {
+		// No new version, silently return.
+		return nil
+	}
+
 	log.Infof("update: starting update: %s %s -> %s", currentBundle.Name, currentBundle.Version, downloadBundle.Version)
 	err := u.registry.performRecoverableUpgrade(u.downloader.dir, u.downloader.indexFile)
 	if err != nil {
-		// TODO(vladimir): Send notification to UI
-		log.Errorf("updates: failed to apply updates: %s", err)
-	} else if u.needsRestart {
-		// TODO(vladimir): Prompt user to restart?
-		u.instance.Restart()
+		// Notify the user that update failed.
+		notifications.NotifyPrompt(updateFailedNotificationID, "Failed to apply update.", err.Error())
+		return fmt.Errorf("updates: failed to apply updates: %w", err)
 	}
-	u.EventResourcesUpdated.Submit(struct{}{})
+
+	if u.needsRestart {
+		// Perform restart.
+		u.instance.Restart()
+	} else {
+		// Update completed and no restart was needed. Submit an event.
+		u.EventResourcesUpdated.Submit(struct{}{})
+	}
 	return nil
 }
 
