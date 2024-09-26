@@ -44,7 +44,7 @@ func updateSPNIntel(_ context.Context, _ interface{}) (err error) {
 
 	// Check if there is something to do.
 	// TODO(vladimir): is update check needed
-	if intelResource != nil { //&& !intelResource.UpgradeAvailable() {
+	if intelResource != nil { // && !intelResource.UpgradeAvailable() {
 		return nil
 	}
 

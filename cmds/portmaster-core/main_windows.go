@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -24,6 +25,8 @@ var (
 	// wait groups
 	runWg    sync.WaitGroup
 	finishWg sync.WaitGroup
+
+	defaultRestartCommand = exec.Command("sc.exe", "restart", "PortmasterCore")
 )
 
 const serviceName = "PortmasterCore"
@@ -167,4 +170,12 @@ func registerSignalHandler(instance *service.Instance) {
 			}
 		}
 	}()
+}
+
+func isRunningAsService() bool {
+	isService, err := svc.IsWindowsService()
+	if err != nil {
+		return false
+	}
+	return isService
 }

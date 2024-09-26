@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	semver "github.com/hashicorp/go-version"
+
 	"github.com/safing/portmaster/base/log"
 )
 

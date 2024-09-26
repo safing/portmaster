@@ -1,3 +1,8 @@
 package service
 
-type ServiceConfig struct{}
+import "os/exec"
+
+type ServiceConfig struct {
+	IsRunningAsService    bool
+	DefaultRestartCommand *exec.Cmd
+}

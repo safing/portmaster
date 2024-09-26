@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	semver "github.com/hashicorp/go-version"
+
 	"github.com/safing/portmaster/base/log"
 )
 

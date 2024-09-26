@@ -150,7 +150,7 @@ func (u *Updates) applyUpdates(_ *mgr.WorkerCtx) error {
 		// Perform restart.
 		u.instance.Restart()
 	} else {
-		// Update completed and no restart was needed. Submit an event.
+		// Update completed and no restart is needed. Submit an event.
 		u.EventResourcesUpdated.Submit(struct{}{})
 	}
 	return nil

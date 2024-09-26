@@ -4,13 +4,18 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
 
+	processInfo "github.com/shirou/gopsutil/process"
+
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service"
 )
+
+var defaultRestartCommand = exec.Command("systemctl", "restart", "portmaster")
 
 func run(instance *service.Instance) {
 	// Set default log level.
@@ -97,4 +102,21 @@ func run(instance *service.Instance) {
 	}
 
 	os.Exit(instance.ExitCode())
+}
+
+func isRunningAsService() bool {
+	// Get the current process ID
+	pid := os.Getpid()
+
+	currentProcess, err := processInfo.NewProcess(int32(pid))
+	if err != nil {
+		return false
+	}
+
+	ppid, err := currentProcess.Ppid()
+	if err != nil {
+		return false
+	}
+	// Check if the parent process ID is 1 == init system
+	return ppid == 1
 }

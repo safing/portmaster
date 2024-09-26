@@ -114,6 +114,7 @@ func New(instance instance) (*Core, error) {
 
 type instance interface {
 	Shutdown()
+	Restart()
 	AddWorkerInfoToDebugInfo(di *debug.Info)
 	BinaryUpdates() *updates.Updates
 	IntelUpdates() *updates.Updates

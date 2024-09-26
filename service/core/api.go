@@ -19,7 +19,6 @@ import (
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/portmaster/service/status"
-	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/captain"
 )
 
@@ -149,8 +148,8 @@ func shutdown(_ *api.Request) (msg string, err error) {
 func restart(_ *api.Request) (msg string, err error) {
 	log.Info("core: user requested restart via action")
 
-	// Let the updates module handle restarting.
-	updates.RestartNow()
+	// Trigger restart
+	module.instance.Restart()
 
 	return "restart initiated", nil
 }
