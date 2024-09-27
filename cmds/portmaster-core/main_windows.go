@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -19,14 +18,6 @@ import (
 	"github.com/safing/portmaster/service"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
-)
-
-var (
-	// wait groups
-	runWg    sync.WaitGroup
-	finishWg sync.WaitGroup
-
-	defaultRestartCommand = exec.Command("sc.exe", "restart", "PortmasterCore")
 )
 
 const serviceName = "PortmasterCore"
@@ -45,22 +36,21 @@ service:
 	for {
 		select {
 		case <-ws.instance.Stopped():
-			changes <- svc.Status{State: svc.StopPending}
+			log.Infof("instance stopped")
 			break service
 		case c := <-changeRequests:
 			switch c.Cmd {
 			case svc.Interrogate:
 				changes <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown:
+				log.Debugf("received shutdown command")
+				changes <- svc.Status{State: svc.StopPending}
 				ws.instance.Shutdown()
 			default:
 				log.Errorf("unexpected control request: #%d", c)
 			}
 		}
 	}
-
-	// wait until everything else is finished
-	// finishWg.Wait()
 
 	log.Shutdown()
 
@@ -75,11 +65,13 @@ service:
 func run(instance *service.Instance) error {
 	log.SetLogLevel(log.WarningLevel)
 	_ = log.Start()
+
 	// check if we are running interactively
 	isService, err := svc.IsWindowsService()
 	if err != nil {
 		return fmt.Errorf("could not determine if running interactively: %s", err)
 	}
+
 	// select service run type
 	svcRun := svc.Run
 	if !isService {
@@ -88,41 +80,20 @@ func run(instance *service.Instance) error {
 		go registerSignalHandler(instance)
 	}
 
-	runWg.Add(1)
-
 	// run service client
-	go func() {
-		sErr := svcRun(serviceName, &windowsService{
-			instance: instance,
-		})
-		if sErr != nil {
-			log.Infof("shuting down service with error: %s", sErr)
-		} else {
-			log.Infof("shuting down service")
-		}
-		runWg.Done()
-	}()
+	sErr := svcRun(serviceName, &windowsService{
+		instance: instance,
+	})
+	if sErr != nil {
+		fmt.Printf("shuting down service with error: %s", sErr)
+	} else {
+		fmt.Printf("shuting down service")
+	}
 
-	// finishWg.Add(1)
-	// run service
-	// go func() {
-	// 	// run slightly delayed
-	// 	time.Sleep(250 * time.Millisecond)
-
-	// 	if err != nil {
-	// 		fmt.Printf("instance start failed: %s\n", err)
-
-	// 		// Print stack on start failure, if enabled.
-	// 		if printStackOnExit {
-	// 			printStackTo(os.Stdout, "PRINTING STACK ON START FAILURE")
-	// 		}
-
-	// 	}
-	// 	runWg.Done()
-	// 	finishWg.Done()
-	// }()
-
-	runWg.Wait()
+	// Check if restart was trigger and send start service command if true.
+	if isRunningAsService() && instance.ShouldRestart {
+		_ = runServiceRestart()
+	}
 
 	return err
 }
@@ -178,4 +149,25 @@ func isRunningAsService() bool {
 		return false
 	}
 	return isService
+}
+
+func runServiceRestart() error {
+	// Script that wait for portmaster service status to change to stop
+	// and then sends a start command for the same service.
+	command := `
+$serviceName = "PortmasterCore"
+while ((Get-Service -Name $serviceName).Status -ne 'Stopped') {
+    Start-Sleep -Seconds 1
+}
+sc.exe start $serviceName`
+
+	// Create the command to execute the PowerShell script
+	cmd := exec.Command("powershell.exe", "-Command", command)
+	// Start the command. The script will continue even after the parent process exits.
+	err := cmd.Start()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

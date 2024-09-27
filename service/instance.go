@@ -4,17 +4,14 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	go_runtime "runtime"
-	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/dbmodule"
-	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
@@ -104,9 +101,8 @@ type Instance struct {
 	sluice    *sluice.SluiceModule
 	terminal  *terminal.TerminalModule
 
-	CommandLineOperation  func() error
-	isRunningAsService    bool
-	defaultRestartCommand *exec.Cmd
+	CommandLineOperation func() error
+	ShouldRestart        bool
 }
 
 func getCurrentBinaryFolder() (string, error) {
@@ -183,8 +179,6 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	// Create instance to pass it to modules.
 	instance := &Instance{}
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
-	instance.isRunningAsService = svcCfg.IsRunningAsService
-	instance.defaultRestartCommand = svcCfg.DefaultRestartCommand
 
 	var err error
 
@@ -275,6 +269,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create customlist module: %w", err)
 	}
+
 	instance.status, err = status.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create status module: %w", err)
@@ -678,7 +673,9 @@ func (i *Instance) Restart() {
 	i.core.EventRestart.Submit(struct{}{})
 	time.Sleep(10 * time.Millisecond)
 
-	i.serviceRestart()
+	// Set the restart flag and shutdown.
+	i.ShouldRestart = true
+	i.shutdown(RestartExitCode)
 }
 
 // Shutdown asynchronously stops the instance.
@@ -705,25 +702,6 @@ func (i *Instance) shutdown(exitCode int) {
 			}
 		}
 	})
-}
-
-func (i *Instance) serviceRestart() {
-	if !i.isRunningAsService {
-		i.shutdown(RestartExitCode)
-		return
-	}
-	cmd := i.defaultRestartCommand
-
-	// Check if user defined custom command for restarting the service.
-	restartCommand, exists := os.LookupEnv("PORTMASTER_RESTART_COMMAND")
-
-	log.Debugf(`instance: running command "%s", %v`, restartCommand, exists)
-	if exists && restartCommand != "" {
-		commandSplit := strings.Split(restartCommand, " ")
-		cmd = exec.Command(commandSplit[0], commandSplit[1:]...)
-	}
-	log.Debugf("instance: running command %s", cmd.String())
-	_ = cmd.Run()
 }
 
 // Stopping returns whether the instance is shutting down.

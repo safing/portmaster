@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -14,8 +15,6 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service"
 )
-
-var defaultRestartCommand = exec.Command("systemctl", "restart", "portmaster")
 
 func run(instance *service.Instance) {
 	// Set default log level.
@@ -101,7 +100,32 @@ func run(instance *service.Instance) {
 		printStackTo(os.Stdout, "PRINTING STACK ON EXIT")
 	}
 
+	// Check if restart was trigger and send start service command if true.
+	if isRunningAsService() && instance.ShouldRestart {
+		_ = runServiceRestart()
+	}
+
 	os.Exit(instance.ExitCode())
+}
+
+func runServiceRestart() error {
+	// Check if user defined custom command for restarting the service.
+	restartCommand, exists := os.LookupEnv("PORTMASTER_RESTART_COMMAND")
+
+	// Run the service restart
+	if exists && restartCommand != "" {
+		log.Debugf(`instance: running custom restart command: "%s"`, restartCommand)
+		commandSplit := strings.Split(restartCommand, " ")
+		cmd := exec.Command(commandSplit[0], commandSplit[1:]...)
+		_ = cmd.Run()
+	} else {
+		cmd := exec.Command("systemctl", "restart", "portmaster")
+		if err := cmd.Start(); err != nil {
+			return fmt.Errorf("failed run restart command: %w", err)
+		}
+
+	}
+	return nil
 }
 
 func isRunningAsService() bool {

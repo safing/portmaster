@@ -55,10 +55,7 @@ func initialize() *service.Instance {
 
 	// Create instance.
 	var execCmdLine bool
-	instance, err := service.New(&service.ServiceConfig{
-		IsRunningAsService:    isRunningAsService(),
-		DefaultRestartCommand: defaultRestartCommand,
-	})
+	instance, err := service.New(&service.ServiceConfig{})
 	switch {
 	case err == nil:
 		// Continue
