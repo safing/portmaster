@@ -171,3 +171,5 @@ sc.exe start $serviceName`
 
 	return nil
 }
+
+func platformSpecificChecks() {}

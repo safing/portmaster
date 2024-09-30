@@ -144,3 +144,17 @@ func isRunningAsService() bool {
 	// Check if the parent process ID is 1 == init system
 	return ppid == 1
 }
+
+func platformSpecificChecks() {
+	// If flag is set. Run recover IP tables and exit. (Can be true only on linux)
+	if recoverIPTables {
+		exitCode := 0
+		err := recoverIPTablesCmd()
+		if err != nil {
+			fmt.Printf("failed: %s", err)
+			exitCode = 1
+		}
+
+		os.Exit(exitCode)
+	}
+}

@@ -33,13 +33,15 @@ func init() {
 }
 
 func main() {
+	flag.Parse()
+	// Call platform specific checks, that will execute commands like "recover-iptables"
+	platformSpecificChecks()
+
 	instance := initialize()
 	run(instance)
 }
 
 func initialize() *service.Instance {
-	flag.Parse()
-
 	// set information
 	info.Set("Portmaster", "", "GPLv3")
 
