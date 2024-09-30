@@ -1,7 +1,6 @@
 package updates
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -71,13 +70,7 @@ func (r *Registry) performUpgrade(downloadDir string, indexFile string) error {
 	// Make sure purge dir is empty.
 	_ = os.RemoveAll(r.purgeDir)
 
-	// Read all files in the current version folder.
-	files, err := os.ReadDir(r.dir)
-	if err != nil {
-		return err
-	}
-
-	// Create purge dir. Calling this after ReadDIr is important.
+	// Create purge dir.
 	err = os.MkdirAll(r.purgeDir, defaultDirMode)
 	if err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
@@ -85,12 +78,11 @@ func (r *Registry) performUpgrade(downloadDir string, indexFile string) error {
 
 	// Move current version files into purge folder.
 	log.Debugf("updates: removing the old version")
-	for _, file := range files {
-		currentFilepath := filepath.Join(r.dir, file.Name())
-		purgePath := filepath.Join(r.purgeDir, file.Name())
-		err := moveFile(currentFilepath, purgePath)
+	for _, file := range r.files {
+		purgePath := filepath.Join(r.purgeDir, file.id)
+		err := moveFile(file.path, purgePath)
 		if err != nil {
-			return fmt.Errorf("failed to move file %s: %w", currentFilepath, err)
+			return fmt.Errorf("failed to move file %s: %w", file.path, err)
 		}
 	}
 
@@ -206,20 +198,22 @@ type File struct {
 	sha256  string
 }
 
+// Identifier return the id of the file witch is the same as the filename.
 func (f *File) Identifier() string {
 	return f.id
 }
 
+// Path returns the path + filename of the file.
 func (f *File) Path() string {
 	return f.path
 }
 
+// Version returns the version of the file. (currently not filled).
 func (f *File) Version() string {
 	return f.version
 }
 
+// Sha256 returns the sha356 sum of the file.
 func (f *File) Sha256() string {
 	return f.sha256
 }
-
-var ErrNotFound error = errors.New("file not found")

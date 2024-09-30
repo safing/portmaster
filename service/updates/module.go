@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 	"time"
@@ -22,10 +23,14 @@ const (
 	ResourceUpdateEvent = "resource update"
 )
 
-// UserAgent is an HTTP User-Agent that is used to add
-// more context to requests made by the registry when
-// fetching resources from the update server.
-var UserAgent = fmt.Sprintf("Portmaster (%s %s)", runtime.GOOS, runtime.GOARCH)
+var (
+	// UserAgent is an HTTP User-Agent that is used to add
+	// more context to requests made by the registry when
+	// fetching resources from the update server.
+	UserAgent = fmt.Sprintf("Portmaster (%s %s)", runtime.GOOS, runtime.GOARCH)
+
+	ErrNotFound error = errors.New("file not found")
+)
 
 // UpdateIndex holds the configuration for the updates module.
 type UpdateIndex struct {
@@ -193,7 +198,7 @@ func (u *Updates) GetRootPath() string {
 	return u.registry.dir
 }
 
-// GetFile returns the path of a file given the name.
+// GetFile returns the path of a file given the name. Returns ErrNotFound if file is not found.
 func (u *Updates) GetFile(id string) (*File, error) {
 	file, ok := u.registry.files[id]
 	if ok {
