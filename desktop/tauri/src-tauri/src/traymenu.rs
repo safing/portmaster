@@ -59,7 +59,7 @@ fn get_theme_mode() -> dark_light::Mode {
     if let Ok(value) = USER_THEME.read() {
         return *value.deref();
     }
-    return dark_light::detect();
+    dark_light::detect()
 }
 
 fn get_green_icon() -> &'static [u8] {
@@ -88,8 +88,7 @@ fn get_blue_icon() -> &'static [u8] {
 fn get_red_icon() -> &'static [u8] {
     const LIGHT_RED_ICON: &[u8] =
         include_bytes!("../../../../assets/data/icons/pm_light_red_64.png");
-    const DARK_RED_ICON: &'static [u8] =
-        include_bytes!("../../../../assets/data/icons/pm_dark_red_64.png");
+    const DARK_RED_ICON: &[u8] = include_bytes!("../../../../assets/data/icons/pm_dark_red_64.png");
     match get_theme_mode() {
         dark_light::Mode::Light => DARK_RED_ICON,
         _ => LIGHT_RED_ICON,
@@ -421,7 +420,7 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                     match payload.parse::<SPNStatus>() {
                         Ok(value) => {
                             debug!("SPN status update: {}", value.status);
-                            spn_status = value.status.clone();
+                            spn_status.clone_from(&value.status);
 
                             update_icon(icon.clone(), app.menu(), subsystems.clone(), spn_status.clone());
                         },

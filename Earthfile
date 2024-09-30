@@ -459,20 +459,6 @@ tauri-build:
     DO +RUST_TO_GO_ARCH_STRING --rustTarget="${target}"
     RUN echo "GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} GO_ARCH_STRING=${GO_ARCH_STRING}"
 
-    # Our tauri app has externalBins configured so tauri will try to embed them when it finished compiling
-    # the app. Make sure we copy portmaster-start and portmaster-core in all architectures supported.
-    # See documentation for externalBins for more information on how tauri searches for the binaries.
-    COPY (+go-build/output --CMDS="portmaster-core" --GOOS="${GOOS}" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
-
-    # Place them in the correct folder with the rust target tripple attached.
-    FOR bin IN $(ls /tmp/gobuild)
-        # ${bin$.*} does not work in SET commands unfortunately so we use a shell
-        # snippet here:
-        RUN set -e ; \
-            dest="./binaries/${bin}" ; \
-            cp "/tmp/gobuild/${bin}" "${dest}" ;
-    END
-
     # Just for debugging ...
     # RUN ls -R ./binaries
 
@@ -634,39 +620,14 @@ tauri-release:
     END
 
 tauri-lint:
-    FROM +tauri-src
-    
-    # Clippy (rust linter) will try to build the project before it runs the linter.
-    # Make sure we have evrything needed to build the project.    
+    FROM +rust-base
     ARG target="x86_64-unknown-linux-gnu"
 
-    # if we want tauri to create the installer bundles we also need to provide all external binaries
-    # we need to do some magic here because tauri expects the binaries to include the rust target tripple.
-    # We already know that triple because it's a required argument. From that triple, we use +RUST_TO_GO_ARCH_STRING
-    # function from below to parse the triple and guess wich GOOS and GOARCH we need.
-    RUN mkdir /tmp/gobuild
-    RUN mkdir ./binaries
-
-    DO +RUST_TO_GO_ARCH_STRING --rustTarget="${target}"
-    RUN echo "GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} GO_ARCH_STRING=${GO_ARCH_STRING}"
-
-    # Our tauri app has externalBins configured so tauri will try to embed them when it finished compiling
-    # the app. Make sure we copy portmaster-start and portmaster-core in all architectures supported.
-    # See documentation for externalBins for more information on how tauri searches for the binaries.
-    COPY (+go-build/output --CMDS="portmaster-start portmaster-core" --GOOS="${GOOS}" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
-
-    # Place them in the correct folder with the rust target tripple attached.
-    FOR bin IN $(ls /tmp/gobuild)
-        # ${bin$.*} does not work in SET commands unfortunately so we use a shell
-        # snippet here:
-        RUN set -e ; \
-            dest="./binaries/${bin}-${target}" ; \
-            if [ -z "${bin##*.exe}" ]; then \
-                dest="./binaries/${bin%.*}-${target}.exe" ; \
-            fi ; \
-            cp "/tmp/gobuild/${bin}" "${dest}" ;
-    END
-    DO rust+SET_CACHE_MOUNTS_ENV
+    WORKDIR /app
+    COPY --keep-ts ./assets ./assets
+    COPY --keep-ts ./desktop/tauri ./desktop/tauri
+    RUN mkdir -p ./desktop/angular/dist/tauri-builtin
+    WORKDIR /app/desktop/tauri/src-tauri
     RUN cargo clippy --all-targets --all-features -- -D warnings
 
 kext-build:

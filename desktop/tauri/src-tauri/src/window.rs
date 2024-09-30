@@ -98,7 +98,7 @@ pub fn hide_splash_window(app: &AppHandle) -> Result<()> {
     if let Some(window) = app.get_webview_window("splash") {
         return window.hide();
     }
-    return Err(tauri::Error::WindowNotFound);
+    Err(tauri::Error::WindowNotFound)
 }
 
 pub fn set_window_icon(window: &WebviewWindow) {

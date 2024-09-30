@@ -61,10 +61,6 @@ func recoverIPTablesCmd() error {
 	return nil
 }
 
-// func init() {
-// 	rootCmd.AddCommand(recoverIPTablesCmd)
-// }
-
 func formatNfqErrors(es []error) string {
 	if len(es) == 1 {
 		return fmt.Sprintf("1 error occurred:\n\t* %s\n\n", es[0])

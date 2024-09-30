@@ -16,7 +16,7 @@ pub struct Config {
     pub theme: Theme,
 }
 
-const CONFIG_FILE_NAME: &'static str = "config.json";
+const CONFIG_FILE_NAME: &str = "config.json";
 
 pub fn save(app: &AppHandle, config: Config) -> tauri::Result<()> {
     let config_dir = app.path().app_config_dir()?;
