@@ -3,6 +3,7 @@ VERSION --arg-scope-and-set --global-cache 0.8
 ARG --global go_version = 1.22
 ARG --global node_version = 18
 ARG --global rust_version = 1.79
+ARG --global tauri_version = "2.0.0-rc.8"
 ARG --global golangci_lint_version = 1.57.1
 
 ARG --global go_builder_image = "golang:${go_version}-alpine"
@@ -56,15 +57,14 @@ build:
 
     # Build Tauri app binaries:
     # ./dist/linux_amd64/portmaster-app
+    # ./dist/windows_amd64/portmaster-app
+    BUILD +tauri-build --target="x86_64-unknown-linux-gnu"
+    BUILD +tauri-build --target="x86_64-pc-windows-gnu"
+
+    # TODO(vladimir): Build bundles
     # ./dist/linux_amd64/Portmaster-0.1.0-1.x86_64.rpm
     # ./dist/linux_amd64/Portmaster_0.1.0_amd64.deb
-    BUILD +tauri-build --target="x86_64-unknown-linux-gnu"
-    # TODO:
-    # BUILD +tauri-build --target="x86_64-pc-windows-gnu"
-
     # Bild Tauri bundle for Windows:
-    # ./dist/windows_amd64/portmaster-app_vX-X-X.zip
-    BUILD +tauri-build-windows-bundle
 
     # Build UI assets:
     # ./dist/all/assets.zip
@@ -82,7 +82,7 @@ angular-ci:
 
 tauri-ci:
     BUILD +tauri-build --target="x86_64-unknown-linux-gnu"
-    BUILD +tauri-build-windows-bundle
+    BUILD +tauri-build --target="x86_64-pc-windows-gnu"
 
 kext-ci:
     BUILD +kext-build
@@ -349,6 +349,7 @@ angular-project:
     # Save portmaster UI as local artifact.
     IF [ "${project}" = "portmaster" ]
         SAVE ARTIFACT --keep-ts "./${project}.zip" AS LOCAL ${outputDir}/all/${project}-ui.zip
+        SAVE ARTIFACT --keep-ts "./${project}.zip" output/${project}.zip
     END
 
 # Build the angular projects (portmaster-UI and tauri-builtin) in dev mode
@@ -420,7 +421,7 @@ rust-base:
     DO rust+INIT --keep_fingerprints=true
 
     # For now we need tauri-cli 2.0.0 for bulding
-    DO rust+CARGO --args="install tauri-cli --version ^2.0.0-beta"
+    DO rust+CARGO --args="install tauri-cli --version ${tauri_version} --locked"
 
     # Explicitly cache here.
     SAVE IMAGE --cache-hint
@@ -434,7 +435,7 @@ tauri-src:
     # are preserved such that Rust's incremental compilation works correctly.
     COPY --keep-ts ./desktop/tauri/ .
     COPY assets/data ./../../assets/data
-    COPY packaging/linux ./../../packaging/linux
+    COPY packaging ./../../packaging
     COPY (+angular-project/output/tauri-builtin --project=tauri-builtin --dist=./dist/tauri-builtin --configuration=production --baseHref="/") ./../angular/dist/tauri-builtin
 
     WORKDIR /app/tauri/src-tauri
@@ -446,31 +447,14 @@ tauri-build:
     FROM +tauri-src
 
     ARG --required target
-    ARG output=".*/release/(([^\./]+|([^\./]+\.(dll|exe)))|bundle/(deb|rpm)/.*\.(deb|rpm))"
-    ARG bundle="none"
 
-    # if we want tauri to create the installer bundles we also need to provide all external binaries
-    # we need to do some magic here because tauri expects the binaries to include the rust target tripple.
-    # We already know that triple because it's a required argument. From that triple, we use +RUST_TO_GO_ARCH_STRING
-    # function from below to parse the triple and guess wich GOOS and GOARCH we need.
-    RUN mkdir /tmp/gobuild
-    RUN mkdir ./binaries
-
+    ARG output=".*/release/([^\./]+|([^\./]+\.(dll|exe)))"
     DO +RUST_TO_GO_ARCH_STRING --rustTarget="${target}"
     RUN echo "GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} GO_ARCH_STRING=${GO_ARCH_STRING}"
 
-    # Just for debugging ...
-    # RUN ls -R ./binaries
-
-    # The following is exected to work but doesn't. for whatever reason cargo-sweep errors out on the windows-toolchain.
-    #
-    #   DO rust+CARGO --args="tauri build --bundles none --ci --target=${target}" --output="release/[^/\.]+"
-    #
-    # For, now, we just directly mount the rust target cache and call cargo ourself.
-
     DO rust+SET_CACHE_MOUNTS_ENV
     RUN rustup target add "${target}"
-    RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo tauri build  --ci --target="${target}"
+    RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo tauri build  --ci --target="${target}" --no-bundle
     DO rust+COPY_OUTPUT --output="${output}"
 
     # BUG(cross-compilation):
@@ -489,127 +473,13 @@ tauri-build:
     RUN echo output: $(ls -R "target/${target}/release")
 
     # Binaries
-    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/portmaster" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster-app"
-    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/portmaster.exe" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster-app.exe"
-    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/WebView2Loader.dll" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/WebView2Loader.dll"
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/portmaster" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster"
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/portmaster.exe" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster.exe"
+    # SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/WebView2Loader.dll" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/WebView2Loader.dll"
 
-    # Installers
-    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/bundle/deb/*.deb" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
-    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/bundle/rpm/*.rpm" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/portmaster" ./output/portmaster
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/portmaster.exe" ./output/portmaster.exe
 
-tauri-build-windows-bundle:
-    FROM +tauri-src
-
-    ARG target="x86_64-pc-windows-gnu"
-    ARG output=".*/release/(([^\./]+|([^\./]+\.(dll|exe))))"
-    ARG bundle="none"
-
-    ARG GOOS=windows
-    ARG GOARCH=amd64
-    ARG GOARM
-
-    # The binaries will not be used but we still need to create them. Tauri will check for them.
-    RUN mkdir /tmp/gobuild
-    RUN mkdir ./binaries
-
-    DO +RUST_TO_GO_ARCH_STRING --rustTarget="${target}"
-    RUN echo "GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} GO_ARCH_STRING=${GO_ARCH_STRING}"
-
-    # Our tauri app has externalBins configured so tauri will look for them when it finished compiling
-    # the app. Make sure we copy portmaster-start and portmaster-core in all architectures supported.
-    # See documentation for externalBins for more information on how tauri searches for the binaries.
-    COPY (+go-build/output --GOOS="${GOOS}" --CMDS="portmaster-start portmaster-core" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
-
-    # Place them in the correct folder with the rust target tripple attached.
-    FOR bin IN $(ls /tmp/gobuild)
-        # ${bin$.*} does not work in SET commands unfortunately so we use a shell
-        # snippet here:
-        RUN set -e ; \
-            dest="./binaries/${bin}-${target}" ; \
-            if [ -z "${bin##*.exe}" ]; then \
-                dest="./binaries/${bin%.*}-${target}.exe" ; \
-            fi ; \
-            cp "/tmp/gobuild/${bin}" "${dest}" ;
-    END
-
-    # Just for debugging ...
-    # RUN ls -R ./binaries
-
-    DO rust+SET_CACHE_MOUNTS_ENV
-    RUN rustup target add "${target}"
-    RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo tauri build --no-bundle --ci --target="${target}"
-    DO rust+COPY_OUTPUT --output="${output}"
-
-    # Get version from git.
-    COPY .git .
-    LET version = "$(git tag --points-at || true)"
-    IF [ -z "${version}" ]
-        LET dev_version = "$(git describe --tags --first-parent --abbrev=0 || true)"
-        IF [ -n "${dev_version}" ]
-            SET version = "${dev_version}"
-        END
-    END
-    IF [ -z "${version}" ]
-        SET version = "v0.0.0"
-    END
-    ENV VERSION="${version}"
-    RUN echo "Version: $VERSION"
-    ENV VERSION_SUFFIX="$(echo $VERSION | tr '.' '-')"
-    RUN echo "Version Suffix: $VERSION_SUFFIX"
-
-    RUN echo output: $(ls -R "target/${target}/release")
-    RUN mv "target/${target}/release/portmaster.exe" "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.exe"
-    RUN zip "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.zip" "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.exe" -j portmaster-app${VERSION_SUFFIX}.exe "target/${target}/release/WebView2Loader.dll" -j WebView2Loader.dll
-    SAVE ARTIFACT --if-exists "target/${target}/release/portmaster-app_${VERSION_SUFFIX}.zip" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
-
-tauri-prep-windows:
-    FROM +angular-base --configuration=production
-    ARG target="x86_64-pc-windows-msvc"
-
-    # if we want tauri to create the installer bundles we also need to provide all external binaries
-    # we need to do some magic here because tauri expects the binaries to include the rust target tripple.
-    # We already know that triple because it's a required argument. From that triple, we use +RUST_TO_GO_ARCH_STRING
-    # function from below to parse the triple and guess wich GOOS and GOARCH we need.
-    RUN mkdir /tmp/gobuild
-    RUN mkdir ./binaries
-
-    DO +RUST_TO_GO_ARCH_STRING --rustTarget="${target}"
-    RUN echo "GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} GO_ARCH_STRING=${GO_ARCH_STRING}"
-
-    # Our tauri app has externalBins configured so tauri will try to embed them when it finished compiling
-    # the app. Make sure we copy portmaster-start and portmaster-core in all architectures supported.
-    # See documentation for externalBins for more information on how tauri searches for the binaries.
-
-    COPY (+go-build/output --GOOS="${GOOS}" --CMDS="portmaster-start portmaster-core" --GOARCH="${GOARCH}" --GOARM="${GOARM}") /tmp/gobuild
-
-    # Place them in the correct folder with the rust target tripple attached.
-    FOR bin IN $(ls /tmp/gobuild)
-        # ${bin$.*} does not work in SET commands unfortunately so we use a shell
-        # snippet here:
-        RUN set -e ; \
-            dest="./binaries/${bin}-${target}" ; \
-            if [ -z "${bin##*.exe}" ]; then \
-                dest="./binaries/${bin%.*}-${target}.exe" ; \
-            fi ; \
-            cp "/tmp/gobuild/${bin}" "${dest}" ;
-    END
-
-    # Copy source
-    COPY --keep-ts ./desktop/tauri/src-tauri src-tauri
-    COPY --keep-ts ./assets assets
-
-    # Build UI
-    ENV NODE_ENV="production"
-    RUN --no-cache ./node_modules/.bin/ng build --configuration production --base-href / "tauri-builtin"
-
-    # Just for debugging ...
-    # RUN ls -R ./binaries
-    # RUN ls -R ./dist
-
-    SAVE ARTIFACT "./dist/tauri-builtin" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/desktop/angular/dist/"
-    SAVE ARTIFACT "./src-tauri" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/desktop/tauri/src-tauri"
-    SAVE ARTIFACT "./binaries" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/desktop/tauri/src-tauri/"
-    SAVE ARTIFACT "./assets" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/assets"
 
 tauri-release:
     FROM ${work_image}
@@ -624,11 +494,78 @@ tauri-lint:
     ARG target="x86_64-unknown-linux-gnu"
 
     WORKDIR /app
+    # Copy static files that are embedded inside the executable.
     COPY --keep-ts ./assets ./assets
+
+    # Copy all the rust code
     COPY --keep-ts ./desktop/tauri ./desktop/tauri
+
+    # Create a empty ui dir so it will satisfy the build.
     RUN mkdir -p ./desktop/angular/dist/tauri-builtin
+
+    SAVE IMAGE --cache-hint
+
+    # Run the linter.
     WORKDIR /app/desktop/tauri/src-tauri
-    RUN cargo clippy --all-targets --all-features -- -D warnings
+    RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo clippy --all-targets --all-features -- -D warnings
+
+tauri-bundle-linux:
+    FROM +rust-base
+    # ARG --required target
+    ARG target="x86_64-unknown-linux-gnu"
+
+    WORKDIR /app/tauri
+    COPY --keep-ts ./desktop/tauri/ .
+    COPY assets/data ./../../assets/data
+    COPY packaging ./../../packaging
+
+    WORKDIR /app/tauri/src-tauri
+
+    SAVE IMAGE --cache-hint
+
+    
+    DO +RUST_TO_GO_ARCH_STRING --rustTarget="${target}"
+
+    # Build and copy the binaries
+    RUN mkdir -p target/${target}/release
+    COPY (+tauri-build/output/portmaster --target=x86_64-unknown-linux-gnu) ./target/${target}/release/portmaster
+
+
+    RUN mkdir -p binary
+    COPY (+go-build/output/portmaster-core --GOARCH=amd64 --GOOS=linux --CMDS=portmaster-core) ./binary/portmaster-core
+
+    COPY (+assets/assets.zip) ./binary/assets.zip
+    COPY (+angular-project/output/portmaster.zip --project=portmaster --dist=./dist --configuration=production --baseHref=/ui/modules/portmaster/) ./binary/portmaster.zip
+   
+
+    # Download the intel data
+    RUN mkdir -p intel
+
+    RUN wget -O ./intel/geoipv4.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv4_v20240529-0-1.mmdb.gz" && \
+        wget -O ./intel/geoipv6.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv6_v20240529-0-1.mmdb.gz" && \
+        gzip -d ./intel/geoipv4.mmdb.gz && \
+        gzip -d ./intel/geoipv6.mmdb.gz
+
+    RUN touch "./intel/index.dsd"
+    RUN touch "./intel/base.dsdl"
+    RUN touch "./intel/intermediate.dsdl"
+    RUN touch "./intel/urgent.dsdl"
+
+
+    # Generate index files
+    COPY (+go-build/output/updatemgr --GOARCH=amd64 --GOOS=linux --CMDS=updatemgr) ./updatemgr
+    RUN ./updatemgr -dir "./binary" -name "Binary" > ./binary/bin-index.json
+    RUN ./updatemgr -dir "./intel" -name "Intel" > ./intel/intel-index.json
+
+    RUN cat ./binary/bin-index.json
+    RUN cat ./intel/intel-index.json
+
+    # build the installers
+    RUN cargo tauri bundle --ci --target="${target}"
+
+    # Installers
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/bundle/deb/*.deb" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/bundle/rpm/*.rpm" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
 
 kext-build:
     FROM ${rust_builder_image}

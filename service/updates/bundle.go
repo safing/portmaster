@@ -120,3 +120,57 @@ func checkIfFileIsValid(filename string, artifact Artifact) (bool, error) {
 	}
 	return true, nil
 }
+
+// GenerateBundleFromDir generates a bundle from a given folder.
+func GenerateBundleFromDir(name string, version string, properties map[string]Artifact, dirPath string) (*Bundle, error) {
+	files, err := os.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+	artifacts := make([]Artifact, 0, len(files))
+	for _, f := range files {
+		// Skip dirs
+		if f.IsDir() {
+			continue
+		}
+
+		artifact := Artifact{
+			Filename: f.Name(),
+		}
+		predefined, ok := properties[f.Name()]
+		// Check if caller supplied predefined settings for this artifact.
+		if ok {
+			// File that have compression may have different filename and artifact filename. (because of the extension)
+			// If caller did not specify the artifact filename set it as the same as the filename.
+			if predefined.Filename == "" {
+				predefined.Filename = f.Name()
+			}
+			artifact = predefined
+		}
+		content, err := os.ReadFile(filepath.Join(dirPath, f.Name()))
+		if err != nil {
+			return nil, err
+		}
+
+		// Decompress if compression was applied to the file.
+		if artifact.Unpack != "" {
+			content, err = unpack(artifact.Unpack, content)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		hash := sha256.Sum256(content)
+		hashStr := hex.EncodeToString(hash[:])
+		artifact.SHA256 = hashStr
+
+		artifacts = append(artifacts, artifact)
+	}
+
+	return &Bundle{
+		Name:      name,
+		Version:   version,
+		Artifacts: artifacts,
+		Published: time.Now(),
+	}, nil
+}

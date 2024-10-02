@@ -1,58 +1,51 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 
-	"github.com/spf13/cobra"
-
-	"github.com/safing/portmaster/base/updater"
-	"github.com/safing/portmaster/base/utils"
+	"github.com/safing/portmaster/service/updates"
 )
 
-var (
-	registry *updater.ResourceRegistry
-	distDir  string
-)
-
-var rootCmd = &cobra.Command{
-	Use:   "updatemgr",
-	Short: "A simple tool to assist in the update and release process",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Check if the distribution directory exists.
-		absDistPath, err := filepath.Abs(distDir)
-		if err != nil {
-			return fmt.Errorf("failed to get absolute path of distribution directory: %w", err)
-		}
-		_, err = os.Stat(absDistPath)
-		if err != nil {
-			return fmt.Errorf("failed to access distribution directory: %w", err)
-		}
-
-		registry = &updater.ResourceRegistry{}
-		err = registry.Initialize(utils.NewDirStructure(absDistPath, 0o0755))
-		if err != nil {
-			return err
-		}
-
-		err = registry.ScanStorage("")
-		if err != nil {
-			return err
-		}
-
-		return nil
+var binaryMap = map[string]updates.Artifact{
+	"portmaster-core": {
+		Platform: "linux_amd64",
 	},
-	SilenceUsage: true,
-}
-
-func init() {
-	flags := rootCmd.PersistentFlags()
-	flags.StringVar(&distDir, "dist-dir", "dist", "Set the distribution directory. Falls back to ./dist if available.")
+	"portmaster-core.exe": {
+		Platform: "windows_amd64",
+	},
+	"portmaster-kext.sys": {
+		Platform: "windows_amd64",
+	},
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+	dir := flag.String("dir", "", "path to the directory that contains the artifacts")
+	name := flag.String("name", "", "name of the bundle")
+	version := flag.String("version", "", "version of the bundle")
+
+	flag.Parse()
+	if *dir == "" {
+		fmt.Fprintf(os.Stderr, "-dir parameter is required\n")
+		return
 	}
+	if *name == "" {
+		fmt.Fprintf(os.Stderr, "-name parameter is required\n")
+		return
+	}
+
+	bundle, err := updates.GenerateBundleFromDir(*name, *version, binaryMap, *dir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to generate bundle: %s\n", err)
+		return
+	}
+
+	bundleStr, err := json.MarshalIndent(&bundle, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to marshal bundle: %s\n", err)
+	}
+
+	fmt.Printf("%s", bundleStr)
 }
