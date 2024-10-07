@@ -140,7 +140,7 @@ func getSHA256(path string, unpackType string) (string, error) {
 
 	// Decompress if compression was applied to the file.
 	if unpackType != "" {
-		content, err = unpack(unpackType, content)
+		content, err = decompress(unpackType, content)
 		if err != nil {
 			return "", err
 		}
@@ -151,10 +151,7 @@ func getSHA256(path string, unpackType string) (string, error) {
 	return hex.EncodeToString(hash[:]), nil
 }
 
-var (
-	fileVersionRegex = regexp.MustCompile(`_v[0-9]+-[0-9]+-[0-9]+(-[a-z]+)?`)
-	rawVersionRegex  = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+)?$`)
-)
+var fileVersionRegex = regexp.MustCompile(`_v[0-9]+-[0-9]+-[0-9]+(-[a-z]+)?`)
 
 func getIdentifierAndVersion(versionedPath string) (identifier, version string, ok bool) {
 	dirPath, filename := path.Split(versionedPath)

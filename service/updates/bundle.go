@@ -46,25 +46,40 @@ type Bundle struct {
 	Artifacts []Artifact `json:"Artifacts"`
 }
 
-func ParseBundle(indexFile string) (*Bundle, error) {
-	// Check if the file exists.
-	file, err := os.Open(indexFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open index file: %w", err)
-	}
-	defer func() { _ = file.Close() }()
-
+// LoadBundle loads and parses a bundle from filepath.
+func LoadBundle(indexFilepath string) (*Bundle, error) {
 	// Read
-	content, err := io.ReadAll(file)
+	content, err := os.ReadFile(indexFilepath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read index file: %w", err)
 	}
 
 	// Parse
 	var bundle Bundle
 	err = json.Unmarshal(content, &bundle)
 	if err != nil {
-		return nil, fmt.Errorf("%s %w", indexFile, err)
+		return nil, fmt.Errorf("%s %w", indexFilepath, err)
+	}
+
+	// Filter artifacts
+	filtered := make([]Artifact, 0)
+	for _, a := range bundle.Artifacts {
+		if a.Platform == "" || a.Platform == currentPlatform {
+			filtered = append(filtered, a)
+		}
+	}
+	bundle.Artifacts = filtered
+
+	return &bundle, nil
+}
+
+// ParseBundle parses a bundle from json string.
+func ParseBundle(jsonContent string) (*Bundle, error) {
+	// Parse
+	var bundle Bundle
+	err := json.Unmarshal([]byte(jsonContent), &bundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse bundle: %w", err)
 	}
 
 	// Filter artifacts
@@ -80,7 +95,7 @@ func ParseBundle(indexFile string) (*Bundle, error) {
 }
 
 // Verify checks if the files are present int the dataDir and have the correct hash.
-func (bundle Bundle) Verify(dir string) error {
+func (bundle *Bundle) Verify(dir string) error {
 	for _, artifact := range bundle.Artifacts {
 		artifactPath := filepath.Join(dir, artifact.Filename)
 		isValid, err := checkIfFileIsValid(artifactPath, artifact)

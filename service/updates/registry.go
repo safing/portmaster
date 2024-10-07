@@ -35,7 +35,7 @@ func CreateRegistry(index UpdateIndex) (Registry, error) {
 	}
 	// Parse bundle
 	var err error
-	registry.bundle, err = ParseBundle(filepath.Join(index.Directory, index.IndexFile))
+	registry.bundle, err = LoadBundle(filepath.Join(index.Directory, index.IndexFile))
 	if err != nil {
 		return Registry{}, err
 	}
@@ -57,7 +57,7 @@ func CreateRegistry(index UpdateIndex) (Registry, error) {
 func (r *Registry) performUpgrade(downloadDir string, indexFile string) error {
 	// Make sure provided update is valid
 	indexFilepath := filepath.Join(downloadDir, indexFile)
-	bundle, err := ParseBundle(indexFilepath)
+	bundle, err := LoadBundle(indexFilepath)
 	if err != nil {
 		return fmt.Errorf("invalid update: %w", err)
 	}
