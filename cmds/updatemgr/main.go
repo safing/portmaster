@@ -10,15 +10,19 @@ import (
 )
 
 var binaryMap = map[string]updates.Artifact{
-	"portmaster-core": {
-		Platform: "linux_amd64",
+	"geoipv4.mmdb.gz": {
+		Filename: "geoipv4.mmdb",
+		Unpack:   "gz",
 	},
-	"portmaster-core.exe": {
-		Platform: "windows_amd64",
+	"geoipv6.mmdb.gz": {
+		Filename: "geoipv6.mmdb",
+		Unpack:   "gz",
 	},
-	"portmaster-kext.sys": {
-		Platform: "windows_amd64",
-	},
+}
+
+var ignoreFiles = map[string]struct{}{
+	"bin-index.json":   {},
+	"intel-index.json": {},
 }
 
 func main() {
@@ -36,7 +40,13 @@ func main() {
 		return
 	}
 
-	bundle, err := updates.GenerateBundleFromDir(*name, *version, binaryMap, *dir)
+	settings := updates.BundleFileSettings{
+		Name:        *name,
+		Version:     *version,
+		Properties:  binaryMap,
+		IgnoreFiles: ignoreFiles,
+	}
+	bundle, err := updates.GenerateBundleFromDir(*dir, settings)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to generate bundle: %s\n", err)
 		return

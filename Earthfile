@@ -3,7 +3,7 @@ VERSION --arg-scope-and-set --global-cache 0.8
 ARG --global go_version = 1.22
 ARG --global node_version = 18
 ARG --global rust_version = 1.79
-ARG --global tauri_version = "2.0.0-rc.8"
+ARG --global tauri_version = "2.0.1"
 ARG --global golangci_lint_version = 1.57.1
 
 ARG --global go_builder_image = "golang:${go_version}-alpine"
@@ -509,7 +509,65 @@ tauri-lint:
     WORKDIR /app/desktop/tauri/src-tauri
     RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo clippy --all-targets --all-features -- -D warnings
 
-tauri-bundle-linux:
+release-prep:
+    FROM +rust-base
+
+    # Linux specific
+    COPY (+tauri-build/output/portmaster --target="x86_64-unknown-linux-gnu") ./output/binary/linux_amd64/portmaster
+    COPY (+go-build/output/portmaster-core --GOARCH=amd64 --GOOS=linux --CMDS=portmaster-core) ./output/binary/linux_amd64/portmaster-core
+
+    # Windows specific
+    COPY (+tauri-build/output/portmaster.exe --target="x86_64-pc-windows-gnu") ./output/binary/windows_amd64/portmaster.exe
+    COPY (+go-build/output/portmaster-core.exe --GOARCH=amd64 --GOOS=windows --CMDS=portmaster-core) ./output/binary/windows_amd64/portmaster-core.exe
+    # TODO(vladimir): figure out a way to get the lastest release of the kext.
+    RUN touch ./output/binary/windows_amd64/portmaster-kext.sys
+
+    # All platforms
+    COPY (+assets/assets.zip) ./output/binary/all/assets.zip
+    COPY (+angular-project/output/portmaster.zip --project=portmaster --dist=./dist --configuration=production --baseHref=/ui/modules/portmaster/) ./output/binary/all/portmaster.zip
+
+    # Intel
+    # TODO(vladimir): figure out a way to download all latest intel data.
+    RUN mkdir -p ./output/intel
+    RUN wget -O ./output/intel/geoipv4.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv4_v20240529-0-1.mmdb.gz" && \
+        wget -O ./output/intel/geoipv6.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv6_v20240529-0-1.mmdb.gz" 
+
+    RUN touch "./output/intel/index.dsd"
+    RUN touch "./output/intel/base.dsdl"
+    RUN touch "./output/intel/intermediate.dsdl"
+    RUN touch "./output/intel/urgent.dsdl"
+
+    COPY (+go-build/output/updatemgr --GOARCH=amd64 --GOOS=linux --CMDS=updatemgr) ./updatemgr
+    RUN ./updatemgr -dir "./output/binary" -name "Binary" > ./output/binary/bin-index.json
+    RUN ./updatemgr -dir "./output/intel" -name "Intel" > ./output/intel/intel-index.json
+
+    # Intel Extracted (needed for the installers)
+    RUN mkdir -p ./output/intel_decompressed
+    RUN cp ./output/intel/intel-index.json ./output/intel_decompressed/intel-index.json
+    RUN gzip -dc ./output/intel/geoipv4.mmdb.gz > ./output/intel_decompressed/geoipv4.mmdb
+    RUN gzip -dc ./output/intel/geoipv6.mmdb.gz > ./output/intel_decompressed/geoipv6.mmdb
+    RUN touch "./output/intel_decompressed/index.dsd"
+    RUN touch "./output/intel_decompressed/base.dsdl"
+    RUN touch "./output/intel_decompressed/intermediate.dsdl"
+    RUN touch "./output/intel_decompressed/urgent.dsdl"
+
+    # Save all artifacts to output folder
+    SAVE ARTIFACT --if-exists --keep-ts "output/binary/bin-index.json" AS LOCAL "${outputDir}/binary/bin-index.json"
+    SAVE ARTIFACT --if-exists --keep-ts "output/binary/all/*" AS LOCAL "${outputDir}/binary/all/"
+    SAVE ARTIFACT --if-exists --keep-ts "output/binary/linux_amd64/*" AS LOCAL "${outputDir}/binary/linux_amd64/"
+    SAVE ARTIFACT --if-exists --keep-ts "output/binary/windows_amd64/*" AS LOCAL "${outputDir}/binary/windows_amd64/"
+    SAVE ARTIFACT --if-exists --keep-ts "output/intel/*" AS LOCAL "${outputDir}/intel/"
+    SAVE ARTIFACT --if-exists --keep-ts "output/intel_decompressed/*" AS LOCAL "${outputDir}/intel_decompressed/"
+
+    # Save all artifacts to the container output folder so other containers can access it.
+    SAVE ARTIFACT --if-exists --keep-ts "output/binary/bin-index.json" "output/binary/bin-index.json"
+    SAVE ARTIFACT --if-exists --keep-ts "output/binary/all/*" "output/binary/all/"
+    SAVE ARTIFACT --if-exists --keep-ts "output/binary/linux_amd64/*" "output/binary/linux_amd64/"
+    SAVE ARTIFACT --if-exists --keep-ts "output/binary/windows_amd64/*" "output/binary/windows_amd64/"
+    SAVE ARTIFACT --if-exists --keep-ts "output/intel/*" "output/intel/"
+    SAVE ARTIFACT --if-exists --keep-ts "output/intel_decompressed/*" "output/intel_decompressed/"
+
+installer-linux:
     FROM +rust-base
     # ARG --required target
     ARG target="x86_64-unknown-linux-gnu"
@@ -523,42 +581,21 @@ tauri-bundle-linux:
 
     SAVE IMAGE --cache-hint
 
-    
     DO +RUST_TO_GO_ARCH_STRING --rustTarget="${target}"
 
     # Build and copy the binaries
     RUN mkdir -p target/${target}/release
-    COPY (+tauri-build/output/portmaster --target=x86_64-unknown-linux-gnu) ./target/${target}/release/portmaster
-
+    COPY (+release-prep/output/binary/linux_amd64/portmaster) ./target/${target}/release/portmaster
 
     RUN mkdir -p binary
-    COPY (+go-build/output/portmaster-core --GOARCH=amd64 --GOOS=linux --CMDS=portmaster-core) ./binary/portmaster-core
-
-    COPY (+assets/assets.zip) ./binary/assets.zip
-    COPY (+angular-project/output/portmaster.zip --project=portmaster --dist=./dist --configuration=production --baseHref=/ui/modules/portmaster/) ./binary/portmaster.zip
-   
+    COPY (+release-prep/output/binary/bin-index.json) ./binary/bin-index.json
+    COPY (+release-prep/output/binary/linux_amd64/portmaster-core) ./binary/portmaster-core
+    COPY (+release-prep/output/binary/all/portmaster.zip) ./binary/portmaster.zip
+    COPY (+release-prep/output/binary/all/assets.zip) ./binary/assets.zip
 
     # Download the intel data
     RUN mkdir -p intel
-
-    RUN wget -O ./intel/geoipv4.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv4_v20240529-0-1.mmdb.gz" && \
-        wget -O ./intel/geoipv6.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv6_v20240529-0-1.mmdb.gz" && \
-        gzip -d ./intel/geoipv4.mmdb.gz && \
-        gzip -d ./intel/geoipv6.mmdb.gz
-
-    RUN touch "./intel/index.dsd"
-    RUN touch "./intel/base.dsdl"
-    RUN touch "./intel/intermediate.dsdl"
-    RUN touch "./intel/urgent.dsdl"
-
-
-    # Generate index files
-    COPY (+go-build/output/updatemgr --GOARCH=amd64 --GOOS=linux --CMDS=updatemgr) ./updatemgr
-    RUN ./updatemgr -dir "./binary" -name "Binary" > ./binary/bin-index.json
-    RUN ./updatemgr -dir "./intel" -name "Intel" > ./intel/intel-index.json
-
-    RUN cat ./binary/bin-index.json
-    RUN cat ./intel/intel-index.json
+    COPY (+release-prep/output/intel_decompressed/*) ./intel/
 
     # build the installers
     RUN cargo tauri bundle --ci --target="${target}"
