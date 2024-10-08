@@ -181,7 +181,7 @@ func (d *Downloader) downloadAndVerify(ctx context.Context) error {
 	// Make sure we have the bundle file parsed.
 	err := d.parseBundle()
 	if err != nil {
-		log.Errorf("updates: invalid update bundle file: %s", err)
+		return fmt.Errorf("invalid update bundle file: %w", err)
 	}
 
 	// Make sure dir exists

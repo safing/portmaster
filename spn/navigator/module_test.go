@@ -24,7 +24,7 @@ type testInstance struct {
 	geoip   *geoip.GeoIP
 }
 
-func (stub *testInstance) Updates() *updates.Updates {
+func (stub *testInstance) IntelUpdates() *updates.Updates {
 	return stub.updates
 }
 
@@ -78,7 +78,7 @@ func runTest(m *testing.M) error {
 	if err != nil {
 		return fmt.Errorf("failed to create config: %w", err)
 	}
-	stub.updates, err = updates.New(stub)
+	stub.updates, err = updates.New(stub, "Intel Test", updates.UpdateIndex{})
 	if err != nil {
 		return fmt.Errorf("failed to create updates: %w", err)
 	}

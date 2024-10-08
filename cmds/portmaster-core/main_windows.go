@@ -47,7 +47,7 @@ service:
 				changes <- svc.Status{State: svc.StopPending}
 				ws.instance.Shutdown()
 			default:
-				log.Errorf("unexpected control request: #%d", c)
+				log.Errorf("unexpected control request: %+v", c)
 			}
 		}
 	}

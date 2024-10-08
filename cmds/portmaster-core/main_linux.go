@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -113,17 +112,15 @@ func runServiceRestart() error {
 	restartCommand, exists := os.LookupEnv("PORTMASTER_RESTART_COMMAND")
 
 	// Run the service restart
+	var cmd *exec.Cmd
 	if exists && restartCommand != "" {
 		log.Debugf(`instance: running custom restart command: "%s"`, restartCommand)
-		commandSplit := strings.Split(restartCommand, " ")
-		cmd := exec.Command(commandSplit[0], commandSplit[1:]...)
-		_ = cmd.Run()
+		cmd = exec.Command("sh", "-c", restartCommand)
 	} else {
-		cmd := exec.Command("systemctl", "restart", "portmaster")
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("failed run restart command: %w", err)
-		}
-
+		cmd = exec.Command("systemctl", "restart", "portmaster")
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed run restart command: %w", err)
 	}
 	return nil
 }

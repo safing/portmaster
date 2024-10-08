@@ -25,11 +25,15 @@
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
-  ExecWait 'sc.exe create PortmasterCore binPath= "$INSTDIR\portmaster-core.exe" --data="$COMMONPROGRAMDATA\Portmaster\data"'
+  ExecWait 'sc.exe create PortmasterCore binPath= "$INSTDIR\portmaster-core.exe" --data="$COMMONPROGRAMDATA\Portmaster\data"' $0
+  IntCmp $0 0 +2
+    MessageBox MB_OK "Failed to create PortmasterCore service."
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
-  ExecWait 'sc.exe stop PortmasterCore'
-  ExecWait 'sc.exe delete PortmasterCore'
+  ExecWait 'sc.exe stop PortmasterCore' $0
+  ; Ignore errors if the service is not running
+  ExecWait 'sc.exe delete PortmasterCore' $0
+  ; Ignore errors if the service does not exist
 !macroend
 

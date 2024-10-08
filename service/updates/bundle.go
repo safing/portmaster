@@ -120,8 +120,11 @@ func checkIfFileIsValid(filename string, artifact Artifact) (bool, error) {
 	defer func() { _ = file.Close() }()
 
 	providedHash, err := hex.DecodeString(artifact.SHA256)
-	if err != nil || len(providedHash) != sha256.Size {
+	if err != nil {
 		return false, fmt.Errorf("invalid provided hash %s: %w", artifact.SHA256, err)
+	}
+	if len(providedHash) != sha256.Size {
+		return false, fmt.Errorf("invalid hash length for %s", artifact.SHA256)
 	}
 
 	// Calculate hash of the file
