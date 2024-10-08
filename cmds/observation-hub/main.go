@@ -19,7 +19,6 @@ import (
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
-	"github.com/safing/portmaster/service/updates/helper"
 	"github.com/safing/portmaster/spn"
 	"github.com/safing/portmaster/spn/captain"
 	"github.com/safing/portmaster/spn/conf"
@@ -38,7 +37,6 @@ func main() {
 
 	// Configure user agent and updates.
 	updates.UserAgent = fmt.Sprintf("SPN Observation Hub (%s %s)", runtime.GOOS, runtime.GOARCH)
-	helper.IntelOnly()
 
 	// Configure SPN mode.
 	conf.EnableClient(true)

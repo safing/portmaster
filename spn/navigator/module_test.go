@@ -62,6 +62,16 @@ func runTest(m *testing.M) error {
 	}
 	defer func() { _ = os.RemoveAll(ds) }()
 
+	installDir, err := os.MkdirTemp("", "geoip_installdir")
+	if err != nil {
+		return fmt.Errorf("failed to create tmp install dir: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(installDir) }()
+	err = updates.GenerateMockFolder(installDir, "Test Intel", "1.0.0")
+	if err != nil {
+		return fmt.Errorf("failed to generate mock installation: %w", err)
+	}
+
 	stub := &testInstance{}
 	log.SetLogLevel(log.DebugLevel)
 
@@ -78,7 +88,10 @@ func runTest(m *testing.M) error {
 	if err != nil {
 		return fmt.Errorf("failed to create config: %w", err)
 	}
-	stub.updates, err = updates.New(stub, "Intel Test", updates.UpdateIndex{})
+	stub.updates, err = updates.New(stub, "Test Intel", updates.UpdateIndex{
+		Directory: installDir,
+		IndexFile: "index.json",
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create updates: %w", err)
 	}

@@ -40,8 +40,10 @@ func CreateDownloader(index UpdateIndex) Downloader {
 
 func (d *Downloader) downloadIndexFile(ctx context.Context) error {
 	// Make sure dir exists
-	_ = os.MkdirAll(d.dir, defaultDirMode)
-	var err error
+	err := os.MkdirAll(d.dir, defaultDirMode)
+	if err != nil {
+		return fmt.Errorf("failed to create directory for updates: %s", d.dir)
+	}
 	var content string
 	for _, url := range d.indexURLs {
 		content, err = d.downloadIndexFileFromURL(ctx, url)
@@ -50,15 +52,15 @@ func (d *Downloader) downloadIndexFile(ctx context.Context) error {
 			continue
 		}
 		// Downloading was successful.
-
-		bundle, err := ParseBundle(content)
+		var bundle *Bundle
+		bundle, err = ParseBundle(content)
 		if err != nil {
 			log.Warningf("updates: %s", err)
 			continue
 		}
 		// Parsing was successful
-
-		version, err := semver.NewVersion(d.bundle.Version)
+		var version *semver.Version
+		version, err = semver.NewVersion(d.bundle.Version)
 		if err != nil {
 			log.Warningf("updates: failed to parse bundle version: %s", err)
 			continue
@@ -79,7 +81,7 @@ func (d *Downloader) downloadIndexFile(ctx context.Context) error {
 	indexFilepath := filepath.Join(d.dir, d.indexFile)
 	err = os.WriteFile(indexFilepath, []byte(content), defaultFileMode)
 	if err != nil {
-		return fmt.Errorf("failed to write index file: %s", err)
+		return fmt.Errorf("failed to write index file: %w", err)
 	}
 
 	return nil

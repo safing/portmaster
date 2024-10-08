@@ -3,6 +3,7 @@ package updates
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -178,4 +179,51 @@ func getIdentifierAndVersion(versionedPath string) (identifier, version string, 
 	// Put the full path back together and return it.
 	// `dirPath + filename` is guaranteed by path.Split()
 	return dirPath + filename, version, true
+}
+
+// GenerateMockFolder generates mock bundle folder for testing.
+func GenerateMockFolder(dir, name, version string) error {
+	// Make sure dir exists
+	_ = os.MkdirAll(dir, defaultDirMode)
+
+	// Create empty files
+	file, err := os.Create(filepath.Join(dir, "portmaster"))
+	if err != nil {
+		return err
+	}
+	_ = file.Close()
+	file, err = os.Create(filepath.Join(dir, "portmaster-core"))
+	if err != nil {
+		return err
+	}
+	_ = file.Close()
+	file, err = os.Create(filepath.Join(dir, "portmaster.zip"))
+	if err != nil {
+		return err
+	}
+	_ = file.Close()
+	file, err = os.Create(filepath.Join(dir, "assets.zip"))
+	if err != nil {
+		return err
+	}
+	_ = file.Close()
+
+	bundle, err := GenerateBundleFromDir(dir, BundleFileSettings{
+		Name:    name,
+		Version: version,
+	})
+	if err != nil {
+		return err
+	}
+
+	bundleStr, err := json.MarshalIndent(bundle, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to marshal bundle: %s\n", err)
+	}
+
+	err = os.WriteFile(filepath.Join(dir, "index.json"), bundleStr, defaultFileMode)
+	if err != nil {
+		return err
+	}
+	return nil
 }

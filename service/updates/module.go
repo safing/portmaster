@@ -6,8 +6,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/safing/portmaster/base/api"
-	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
@@ -215,8 +213,6 @@ func (u *Updates) Stop() error {
 }
 
 type instance interface {
-	API() *api.API
-	Config() *config.Config
 	Restart()
 	Shutdown()
 	Notifications() *notifications.Notifications
