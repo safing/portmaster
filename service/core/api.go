@@ -133,6 +133,22 @@ func registerAPIEndpoints() error {
 		return err
 	}
 
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path:        "updates/from-url",
+		WriteMethod: "POST",
+		Write:       api.PermitAnyone,
+		ActionFunc: func(ar *api.Request) (string, error) {
+			err := module.instance.BinaryUpdates().UpdateFromURL(string(ar.InputData))
+			if err != nil {
+				return err.Error(), err
+			}
+			return "upgrade triggered", nil
+		},
+		Name: "Replace current version from the version supplied in the URL",
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 

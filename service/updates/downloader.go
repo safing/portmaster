@@ -48,7 +48,7 @@ func (d *Downloader) downloadIndexFile(ctx context.Context) error {
 	for _, url := range d.indexURLs {
 		content, err = d.downloadIndexFileFromURL(ctx, url)
 		if err != nil {
-			log.Warningf("updates: failed while downloading index file %s", err)
+			log.Warningf("updates: failed while downloading index file: %s", err)
 			continue
 		}
 		// Downloading was successful.
@@ -60,7 +60,7 @@ func (d *Downloader) downloadIndexFile(ctx context.Context) error {
 		}
 		// Parsing was successful
 		var version *semver.Version
-		version, err = semver.NewVersion(d.bundle.Version)
+		version, err = semver.NewVersion(bundle.Version)
 		if err != nil {
 			log.Warningf("updates: failed to parse bundle version: %s", err)
 			continue
@@ -116,7 +116,7 @@ func (d *Downloader) downloadIndexFileFromURL(ctx context.Context, url string) (
 	// Request the index file
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
-		return "", fmt.Errorf("failed to create GET request to %s: %w", url, err)
+		return "", fmt.Errorf("failed to create GET request to: %w", err)
 	}
 	if UserAgent != "" {
 		req.Header.Set("User-Agent", UserAgent)
@@ -281,14 +281,14 @@ func (d *Downloader) downloadFile(ctx context.Context, url string) ([]byte, erro
 	// Try to make the request
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create GET request to %s: %s", url, err)
+		return nil, fmt.Errorf("failed to create GET request to %s: %w", url, err)
 	}
 	if UserAgent != "" {
 		req.Header.Set("User-Agent", UserAgent)
 	}
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed a get file request to: %s", err)
+		return nil, fmt.Errorf("failed a get file request to: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -299,7 +299,7 @@ func (d *Downloader) downloadFile(ctx context.Context, url string) ([]byte, erro
 
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read body of response: %s", err)
+		return nil, fmt.Errorf("failed to read body of response: %w", err)
 	}
 	return content, nil
 }

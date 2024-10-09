@@ -9,6 +9,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/tevino/abool"
 )
 
 const (
@@ -48,7 +49,7 @@ type Updates struct {
 	states *mgr.StateMgr
 
 	updateCheckWorkerMgr *mgr.WorkerMgr
-	upgraderWorkerMgr    *mgr.WorkerMgr
+	upgradeWorkerMgr     *mgr.WorkerMgr
 
 	EventResourcesUpdated *mgr.EventMgr[struct{}]
 
@@ -57,6 +58,8 @@ type Updates struct {
 
 	autoApply    bool
 	needsRestart bool
+
+	isUpdateRunning *abool.AtomicBool
 
 	instance instance
 }
@@ -70,15 +73,25 @@ func New(instance instance, name string, index UpdateIndex) (*Updates, error) {
 
 		EventResourcesUpdated: mgr.NewEventMgr[struct{}](ResourceUpdateEvent, m),
 
-		autoApply:    index.AutoApply,
-		needsRestart: index.NeedsRestart,
+		autoApply:       index.AutoApply,
+		needsRestart:    index.NeedsRestart,
+		isUpdateRunning: abool.NewBool(false),
 
 		instance: instance,
 	}
 
 	// Workers
 	module.updateCheckWorkerMgr = m.NewWorkerMgr("update checker", module.checkForUpdates, nil).Repeat(updateTaskRepeatDuration)
-	module.upgraderWorkerMgr = m.NewWorkerMgr("upgrader", module.applyUpdates, nil)
+	module.upgradeWorkerMgr = m.NewWorkerMgr("upgrader", func(w *mgr.WorkerCtx) error {
+		if !module.isUpdateRunning.SetToIf(false, true) {
+			return fmt.Errorf("unable to apply updates, concurrent updater task is running")
+		}
+		// Make sure to unset it
+		defer module.isUpdateRunning.UnSet()
+
+		module.applyUpdates(module.downloader, false)
+		return nil
+	}, nil)
 
 	var err error
 	module.registry, err = CreateRegistry(index)
@@ -92,11 +105,17 @@ func New(instance instance, name string, index UpdateIndex) (*Updates, error) {
 }
 
 func (u *Updates) checkForUpdates(wc *mgr.WorkerCtx) error {
+	if !u.isUpdateRunning.SetToIf(false, true) {
+		return fmt.Errorf("unable to check for updates, concurrent updater task is running")
+	}
+	// Make sure to unset it on return.
+	defer u.isUpdateRunning.UnSet()
 	// Download the index file.
 	err := u.downloader.downloadIndexFile(wc.Ctx())
 	if err != nil {
 		return fmt.Errorf("failed to download index file: %w", err)
 	}
+
 	// Check if there is a new version.
 	if u.downloader.version.LessThanOrEqual(u.registry.version) {
 		log.Infof("updates: check compete: no new updates")
@@ -115,8 +134,8 @@ func (u *Updates) checkForUpdates(wc *mgr.WorkerCtx) error {
 		log.Errorf("updates: failed to download update: %s", err)
 	} else {
 		if u.autoApply {
-			// Trigger upgrade.
-			u.upgraderWorkerMgr.Go()
+			// Apply updates.
+			u.applyUpdates(u.downloader, false)
 		} else {
 			// Notify the user with option to trigger upgrade.
 			notifications.NotifyPrompt(updateAvailableNotificationID, "New update is available.", fmt.Sprintf("%s %s", downloadBundle.Name, downloadBundle.Version), notifications.Action{
@@ -133,16 +152,57 @@ func (u *Updates) checkForUpdates(wc *mgr.WorkerCtx) error {
 	return nil
 }
 
-func (u *Updates) applyUpdates(_ *mgr.WorkerCtx) error {
-	currentBundle := u.registry.bundle
-	downloadBundle := u.downloader.bundle
-	if u.downloader.version.LessThanOrEqual(u.registry.version) {
-		// No new version, silently return.
+// UpdateFromURL installs an update from the provided url.
+func (u *Updates) UpdateFromURL(url string) error {
+	if !u.isUpdateRunning.SetToIf(false, true) {
+		return fmt.Errorf("unable to upgrade from url, concurrent updater task is running")
+	}
+
+	u.m.Go("custom-url-downloader", func(w *mgr.WorkerCtx) error {
+		// Make sure to unset it on return.
+		defer u.isUpdateRunning.UnSet()
+
+		// Initialize parameters
+		index := UpdateIndex{
+			DownloadDirectory: u.downloader.dir,
+			IndexURLs:         []string{url},
+			IndexFile:         u.downloader.indexFile,
+		}
+
+		// Initialize with proper values and download the index file.
+		downloader := CreateDownloader(index)
+		err := downloader.downloadIndexFile(w.Ctx())
+		if err != nil {
+			return err
+		}
+
+		// Start downloading the artifacts
+		err = downloader.downloadAndVerify(w.Ctx())
+		if err != nil {
+			return err
+		}
+
+		// Artifacts are downloaded, perform the update.
+		u.applyUpdates(downloader, true)
+
 		return nil
+	})
+	return nil
+}
+
+func (u *Updates) applyUpdates(downloader Downloader, force bool) error {
+	currentBundle := u.registry.bundle
+	downloadBundle := downloader.bundle
+
+	if !force {
+		if u.downloader.version.LessThanOrEqual(u.registry.version) {
+			// No new version, silently return.
+			return nil
+		}
 	}
 
 	log.Infof("update: starting update: %s %s -> %s", currentBundle.Name, currentBundle.Version, downloadBundle.Version)
-	err := u.registry.performRecoverableUpgrade(u.downloader.dir, u.downloader.indexFile)
+	err := u.registry.performRecoverableUpgrade(downloader.dir, downloader.indexFile)
 	if err != nil {
 		// Notify the user that update failed.
 		notifications.NotifyPrompt(updateFailedNotificationID, "Failed to apply update.", err.Error())
@@ -166,7 +226,7 @@ func (u *Updates) TriggerUpdateCheck() {
 
 // TriggerApplyUpdates triggers upgrade.
 func (u *Updates) TriggerApplyUpdates() {
-	u.upgraderWorkerMgr.Go()
+	u.upgradeWorkerMgr.Go()
 }
 
 // States returns the state manager.
