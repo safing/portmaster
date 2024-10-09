@@ -24,6 +24,8 @@ type Artifact struct {
 	Platform string   `json:"Platform,omitempty"`
 	Unpack   string   `json:"Unpack,omitempty"`
 	Version  string   `json:"Version,omitempty"`
+
+	localFile string
 }
 
 func (a *Artifact) GetFileMode() os.FileMode {
