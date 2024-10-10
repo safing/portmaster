@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	semver "github.com/hashicorp/go-version"
 
@@ -51,6 +52,35 @@ func CreateRegistry(index UpdateIndex) (Registry, error) {
 		artifactPath := filepath.Join(registry.dir, artifact.Filename)
 		registry.files[artifact.Filename] = File{id: artifact.Filename, path: artifactPath, version: registry.bundle.Version, sha256: artifact.SHA256}
 	}
+	return registry, nil
+}
+
+func CreateRegistryFromFolder(index UpdateIndex) (Registry, error) {
+	registry := Registry{
+		dir:      index.Directory,
+		purgeDir: index.PurgeDirectory,
+		files:    make(map[string]File),
+	}
+
+	files, err := os.ReadDir(index.Directory)
+	if err != nil {
+		return Registry{}, nil
+	}
+	for _, file := range files {
+		// Skip dirs
+		if file.IsDir() {
+			continue
+		}
+
+		// Skip the uninstaller. (Windows)
+		if strings.Contains(strings.ToLower(file.Name()), "uninstall") {
+			continue
+		}
+
+		artifactPath := filepath.Join(registry.dir, file.Name())
+		registry.files[file.Name()] = File{id: file.Name(), path: artifactPath, version: "", sha256: ""}
+	}
+
 	return registry, nil
 }
 

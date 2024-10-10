@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	updateTaskRepeatDuration      = 1 * time.Hour
-	updateAvailableNotificationID = "updates:update-available"
-	updateFailedNotificationID    = "updates:update-failed"
+	updateTaskRepeatDuration          = 1 * time.Hour
+	updateAvailableNotificationID     = "updates:update-available"
+	updateFailedNotificationID        = "updates:update-failed"
+	corruptInstallationNotificationID = "updates:corrupt-installation"
 
 	// ResourceUpdateEvent is emitted every time the
 	// updater successfully performed a resource update.
@@ -59,6 +60,8 @@ type Updates struct {
 	autoApply    bool
 	needsRestart bool
 
+	corruptedInstallation bool
+
 	isUpdateRunning *abool.AtomicBool
 
 	instance instance
@@ -96,7 +99,14 @@ func New(instance instance, name string, index UpdateIndex) (*Updates, error) {
 	var err error
 	module.registry, err = CreateRegistry(index)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create registry: %w", err)
+		// Installation is corrupt, set flag and fall back to folder scanning for artifacts discovery.
+		log.Criticalf("updates: failed to create registry: %s (falling back to folder scanning)", err)
+		module.corruptedInstallation = true
+
+		module.registry, err = CreateRegistryFromFolder(index)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	module.downloader = CreateDownloader(index)
@@ -194,14 +204,16 @@ func (u *Updates) applyUpdates(downloader Downloader, force bool) error {
 	currentBundle := u.registry.bundle
 	downloadBundle := downloader.bundle
 
-	if !force {
+	if !force && u.registry.version != nil {
 		if u.downloader.version.LessThanOrEqual(u.registry.version) {
 			// No new version, silently return.
 			return nil
 		}
 	}
+	if currentBundle != nil {
+		log.Infof("update: starting update: %s %s -> %s", currentBundle.Name, currentBundle.Version, downloadBundle.Version)
+	}
 
-	log.Infof("update: starting update: %s %s -> %s", currentBundle.Name, currentBundle.Version, downloadBundle.Version)
 	err := u.registry.performRecoverableUpgrade(downloader.dir, downloader.indexFile)
 	if err != nil {
 		// Notify the user that update failed.
@@ -247,6 +259,11 @@ func (u *Updates) Start() error {
 		_ = u.downloader.deleteUnfinishedDownloads()
 		return nil
 	})
+
+	if u.corruptedInstallation {
+		notifications.NotifyError(corruptInstallationNotificationID, "Corrupted installation. Reinstall the software.", "")
+	}
+
 	u.updateCheckWorkerMgr.Go()
 
 	return nil
