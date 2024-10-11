@@ -22,11 +22,13 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build all artifacts
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +release-prep
+      run: earthly --remote-cache=ghcr.io/safing/build-cache --push +release-prep
+
+    - name: Upload Dist
       uses: actions/upload-artifact@v4
       with:
         name: dist
-        path: dist/
+        path: ./dist/
         if-no-files-found: error
 
   installer-linux:
@@ -48,6 +50,7 @@ jobs:
 
     - name: Build linux installers
       run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +installer-linux
+      # --ci include --no-output flag
 
   installer-windows:
     name: Installer windows
@@ -61,9 +64,12 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build windows artifacts
-      run: powershell -NoProfile -File ./packaging/windows/generate_windows_installer.ps1
+    - name: Download Dist
       uses: actions/download-artifact@v4
       with:
         name: dist
         path: dist/
+
+    - name: Build windows artifacts
+      run: powershell -NoProfile -File ./packaging/windows/generate_windows_installer.ps1
+
