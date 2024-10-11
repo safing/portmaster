@@ -1,6 +1,10 @@
 name: Release
 
-on: workflow_dispatch
+on:
+  push:
+    paths:
+    - '.github/workflows/release.yml'
+  workflow_dispatch:
 
 jobs:
   release-prep:
