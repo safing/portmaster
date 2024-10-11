@@ -12,11 +12,13 @@ $originalDirectory = Get-Location
 $destinationDir = "desktop/tauri/src-tauri"
 $binaryDir = "$destinationDir/binary"
 $intelDir = "$destinationDir/intel"
+$targetDir = "$destinationDir/target/release"
 
-# Make sure distination folder exists.
+# Make sure binary folder exists.
 if (-not (Test-Path -Path $binaryDir)) {
     New-Item -ItemType Directory -Path $binaryDir > $null
 }
+
 
 Write-Output "Copying binary files"
 Copy-Item -Force -Path "dist/binary/bin-index.json" -Destination "$binaryDir/bin-index.json"
@@ -24,9 +26,14 @@ Copy-Item -Force -Path "dist/binary/windows_amd64/portmaster-core.exe" -Destinat
 Copy-Item -Force -Path "dist/binary/windows_amd64/portmaster-kext.sys" -Destination "$binaryDir/portmaster-kext.sys"
 Copy-Item -Force -Path "dist/binary/all/portmaster.zip" -Destination "$binaryDir/portmaster.zip"
 Copy-Item -Force -Path "dist/binary/all/assets.zip" -Destination "$binaryDir/assets.zip"
-Copy-Item -Force -Path "dist/binary/windows_amd64/portmaster.exe" -Destination "$destinationDir/target/release/portmaster.exe"
 
-# Make sure distination folder exists.
+# Make sure target folder exists.
+if (-not (Test-Path -Path $targetDir)) {
+    New-Item -ItemType Directory -Path $targetDir > $null
+}
+Copy-Item -Force -Path "dist/binary/windows_amd64/portmaster.exe" -Destination "$targetDir/portmaster.exe"
+
+# Make sure intel folder exists.
 if (-not (Test-Path -Path $intelDir)) {
     New-Item -ItemType Directory -Path $intelDir > $null
 }
@@ -61,5 +68,29 @@ if (-not (Test-Path -Path $installerDist)) {
 Copy-Item -Path ".\target\release\bundle\msi\*" -Destination $installerDist
 Copy-Item -Path ".\target\release\bundle\nsis\*" -Destination $installerDist
 
+
 # Restore the original directory
 Set-Location $originalDirectory
+
+
+# FIXME: remove
+function Show-Tree {
+    param (
+        [string]$Path = ".",
+        [int]$Indent = 0
+    )
+
+    $items = Get-ChildItem -Path $Path
+
+    foreach ($item in $items) {
+        Write-Host (" " * $Indent) -NoNewline
+        Write-Host "+-- " -NoNewline
+        Write-Host $item.Name
+
+        if ($item.PSIsContainer) {
+            Show-Tree -Path $item.FullName -Indent ($Indent + 4)
+        }
+    }
+}
+
+Show-Tree 'C:\Program Files (x86)\Windows Kits\10\Include'
