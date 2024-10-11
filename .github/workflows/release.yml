@@ -67,5 +67,5 @@ jobs:
         path: dist/
 
     - name: Build windows artifacts
-      run: powershell -NoProfile -File ./packaging/windows/generate_windows_installer.ps1
+      run: powershell -NoProfile -File ./packaging/windows/generate_windows_installers.ps1
 
