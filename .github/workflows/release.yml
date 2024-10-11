@@ -27,7 +27,7 @@ jobs:
       run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +release-prep
 
     - name: Upload Dist
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: dist
         path: dist/
@@ -67,7 +67,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Download Dist
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: dist
         path: dist/
