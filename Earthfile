@@ -538,8 +538,8 @@ release-prep:
     RUN touch "./output/intel/urgent.dsdl"
 
     COPY (+go-build/output/updatemgr --GOARCH=amd64 --GOOS=linux --CMDS=updatemgr) ./updatemgr
-    RUN ./updatemgr -dir "./output/binary" -name "Binary" > ./output/binary/bin-index.json
-    RUN ./updatemgr -dir "./output/intel" -name "Intel" > ./output/intel/intel-index.json
+    RUN ./updatemgr scan --dir "./output/binary" > ./output/binary/bin-index.json
+    RUN ./updatemgr scan --dir "./output/intel" > ./output/intel/intel-index.json
 
     # Intel Extracted (needed for the installers)
     RUN mkdir -p ./output/intel_decompressed
