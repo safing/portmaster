@@ -23,12 +23,11 @@ jobs:
 
     - name: Build all artifacts
       run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +release-prep
-
-    - name: Upload Dist
       uses: actions/upload-artifact@v4
       with:
         name: dist
         path: dist/
+        if-no-files-found: error
 
   installer-linux:
     name: Installer linux
@@ -62,12 +61,9 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Download Dist
+    - name: Build windows artifacts
+      run: powershell -NoProfile -File ./packaging/windows/generate_windows_installer.ps1
       uses: actions/download-artifact@v4
       with:
         name: dist
         path: dist/
-
-    - name: Build windows artifacts
-      run: powershell -NoProfile -File ./packaging/windows/generate_windows_installer.ps1
-
