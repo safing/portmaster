@@ -1,23 +1,23 @@
 !macro NSIS_HOOK_PREINSTALL
-  ; Current working directory is <project-dir>\target\release\nsis\x64
+  ; Current working directory is <project-dir>\desktop\tauri\src-tauri\target\release\nsis\x64
 
   SetOutPath "$INSTDIR"
 
-  File "..\..\..\..\binaries\bin-index.json"
-  File "..\..\..\..\binaries\portmaster-core.exe"
-  File "..\..\..\..\binaries\portmaster-kext.sys"
-  File "..\..\..\..\binaries\portmaster.zip"
-  File "..\..\..\..\binaries\assets.zip"
+  File "..\..\..\..\binary\bin-index.json"
+  File "..\..\..\..\binary\portmaster-core.exe"
+  File "..\..\..\..\binary\portmaster-kext.sys"
+  File "..\..\..\..\binary\portmaster.zip"
+  File "..\..\..\..\binary\assets.zip"
 
   SetOutPath "$COMMONPROGRAMDATA\Portmaster\intel"
 
-  File "..\..\..\..\binaries\intel-index.json"
-  File "..\..\..\..\binaries\base.dsdl"
-  File "..\..\..\..\binaries\geoipv4.mmdb"
-  File "..\..\..\..\binaries\geoipv6.mmdb"
-  File "..\..\..\..\binaries\index.dsd"
-  File "..\..\..\..\binaries\intermediate.dsdl"
-  File "..\..\..\..\binaries\urgent.dsdl"
+  File "..\..\..\..\intel\intel-index.json"
+  File "..\..\..\..\intel\base.dsdl"
+  File "..\..\..\..\intel\geoipv4.mmdb"
+  File "..\..\..\..\intel\geoipv6.mmdb"
+  File "..\..\..\..\intel\index.dsd"
+  File "..\..\..\..\intel\intermediate.dsdl"
+  File "..\..\..\..\intel\urgent.dsdl"
 
   ; restire previous state
   SetOutPath "$INSTDIR"
@@ -25,15 +25,11 @@
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
-  ExecWait 'sc.exe create PortmasterCore binPath= "$INSTDIR\portmaster-core.exe" --data="$COMMONPROGRAMDATA\Portmaster\data"' $0
-  IntCmp $0 0 +2
-    MessageBox MB_OK "Failed to create PortmasterCore service."
+  ExecWait 'sc.exe create PortmasterCore binPath= "$INSTDIR\portmaster-core.exe" --data="$COMMONPROGRAMDATA\Portmaster\data"'
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
-  ExecWait 'sc.exe stop PortmasterCore' $0
-  ; Ignore errors if the service is not running
-  ExecWait 'sc.exe delete PortmasterCore' $0
-  ; Ignore errors if the service does not exist
+  ExecWait 'sc.exe stop PortmasterCore'
+  ExecWait 'sc.exe delete PortmasterCore'
 !macroend
 

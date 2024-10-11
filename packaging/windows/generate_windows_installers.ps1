@@ -72,25 +72,3 @@ Copy-Item -Path ".\target\release\bundle\nsis\*" -Destination $installerDist
 # Restore the original directory
 Set-Location $originalDirectory
 
-
-# FIXME: remove
-function Show-Tree {
-    param (
-        [string]$Path = ".",
-        [int]$Indent = 0
-    )
-
-    $items = Get-ChildItem -Path $Path
-
-    foreach ($item in $items) {
-        Write-Host (" " * $Indent) -NoNewline
-        Write-Host "+-- " -NoNewline
-        Write-Host $item.Name
-
-        if ($item.PSIsContainer) {
-            Show-Tree -Path $item.FullName -Indent ($Indent + 4)
-        }
-    }
-}
-
-Show-Tree 'C:\Program Files (x86)\Windows Kits\10\Include'
