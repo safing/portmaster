@@ -185,8 +185,10 @@ pub fn setup_tray_menu(
                 app.dialog()
                     .message("This does not stop the Portmaster system service")
                     .title("Do you really want to quit the user interface?")
-                    .ok_button_label("Yes, exit")
-                    .cancel_button_label("No")
+                    .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancelCustom(
+                        "Yes, exit".to_owned(),
+                        "No".to_owned(),
+                    ))
                     .show(move |answer| {
                         if answer {
                             // let _ = handle.emit("exit-requested", "");
