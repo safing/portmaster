@@ -3,11 +3,8 @@ use protocol::info::{BandwidthValueV4, BandwidthValueV6, Info};
 use smoltcp::wire::{IpProtocol, Ipv4Address, Ipv6Address};
 use wdk::rw_spin_lock::RwSpinLock;
 
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
-pub struct Key<Address: Ord>
-where
-    Address: Eq + PartialEq,
-{
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
+pub struct Key<Address: Ord> {
     pub local_ip: Address,
     pub local_port: u16,
     pub remote_ip: Address,
@@ -139,10 +136,10 @@ impl Bandwidth {
         let stats_map;
         {
             let _guard = self.stats_udp_v6_lock.write_lock();
-            if self.stats_tcp_v6.is_empty() {
+            if self.stats_udp_v6.is_empty() {
                 return None;
             }
-            stats_map = core::mem::replace(&mut self.stats_tcp_v6, BTreeMap::new());
+            stats_map = core::mem::replace(&mut self.stats_udp_v6, BTreeMap::new());
         }
 
         let mut values = alloc::vec::Vec::with_capacity(stats_map.len());
@@ -234,7 +231,7 @@ impl Bandwidth {
         );
     }
 
-    fn update<Address: Eq + PartialEq + core::hash::Hash + Ord>(
+    fn update<Address: Ord>(
         map: &mut BTreeMap<Key<Address>, Value>,
         lock: &mut RwSpinLock,
         key: Key<Address>,
