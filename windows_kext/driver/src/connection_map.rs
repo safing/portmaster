@@ -1,8 +1,7 @@
 use core::{fmt::Display, time::Duration};
 
 use crate::connection::Connection;
-use alloc::vec::Vec;
-use hashbrown::HashMap;
+use alloc::{collections::BTreeMap, vec::Vec};
 use smoltcp::wire::{IpAddress, IpProtocol};
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
@@ -63,11 +62,11 @@ impl Key {
     }
 }
 
-pub struct ConnectionMap<T: Connection>(HashMap<(IpProtocol, u16), Vec<T>>);
+pub struct ConnectionMap<T: Connection>(BTreeMap<(IpProtocol, u16), Vec<T>>);
 
 impl<T: Connection + Clone> ConnectionMap<T> {
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self(BTreeMap::new())
     }
 
     pub fn add(&mut self, conn: T) {
@@ -164,16 +163,11 @@ impl<T: Connection + Clone> ConnectionMap<T> {
         self.0.retain(|_, v| !v.is_empty());
     }
 
-    #[allow(dead_code)]
     pub fn get_count(&self) -> usize {
         let mut count = 0;
         for conn in self.0.values() {
             count += conn.len();
         }
         return count;
-    }
-
-    pub fn iter(&self) -> hashbrown::hash_map::Iter<'_, (IpProtocol, u16), Vec<T>> {
-        self.0.iter()
     }
 }

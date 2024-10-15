@@ -4,6 +4,8 @@ use wdk::filter_engine::{callout_data::CalloutData, layer, net_buffer::NetBuffer
 use crate::{bandwidth, connection::Direction};
 
 pub fn stream_layer_tcp_v4(data: CalloutData) {
+    type Fields = layer::FieldsStreamV4;
+
     let Some(device) = crate::entry::get_device() else {
         return;
     };
@@ -16,7 +18,6 @@ pub fn stream_layer_tcp_v4(data: CalloutData) {
     } else {
         return;
     };
-    type Fields = layer::FieldsStreamV4;
     let local_ip = Ipv4Address::from_bytes(
         &data
             .get_value_u32(Fields::IpLocalAddress as usize)
@@ -56,6 +57,8 @@ pub fn stream_layer_tcp_v4(data: CalloutData) {
 }
 
 pub fn stream_layer_tcp_v6(data: CalloutData) {
+    type Fields = layer::FieldsStreamV6;
+
     let Some(device) = crate::entry::get_device() else {
         return;
     };
@@ -68,16 +71,18 @@ pub fn stream_layer_tcp_v6(data: CalloutData) {
     } else {
         return;
     };
-    type Fields = layer::FieldsStreamV6;
+
     if data_length == 0 {
         return;
     }
     let local_ip =
         Ipv6Address::from_bytes(data.get_value_byte_array16(Fields::IpLocalAddress as usize));
     let local_port = data.get_value_u16(Fields::IpLocalPort as usize);
+
     let remote_ip =
         Ipv6Address::from_bytes(data.get_value_byte_array16(Fields::IpRemoteAddress as usize));
     let remote_port = data.get_value_u16(Fields::IpRemotePort as usize);
+
     match direction {
         Direction::Outbound => {
             device.bandwidth_stats.update_tcp_v6_tx(
@@ -105,6 +110,8 @@ pub fn stream_layer_tcp_v6(data: CalloutData) {
 }
 
 pub fn stream_layer_udp_v4(data: CalloutData) {
+    type Fields = layer::FieldsDatagramDataV4;
+
     let Some(device) = crate::entry::get_device() else {
         return;
     };
@@ -112,7 +119,6 @@ pub fn stream_layer_udp_v4(data: CalloutData) {
     for nbl in NetBufferListIter::new(data.get_layer_data() as _) {
         data_length += nbl.get_data_length() as usize;
     }
-    type Fields = layer::FieldsDatagramDataV4;
     let mut direction = Direction::Inbound;
     if data.get_value_u8(Fields::Direction as usize) == 0 {
         direction = Direction::Outbound;
@@ -157,6 +163,8 @@ pub fn stream_layer_udp_v4(data: CalloutData) {
 }
 
 pub fn stream_layer_udp_v6(data: CalloutData) {
+    type Fields = layer::FieldsDatagramDataV6;
+
     let Some(device) = crate::entry::get_device() else {
         return;
     };
@@ -164,7 +172,6 @@ pub fn stream_layer_udp_v6(data: CalloutData) {
     for nbl in NetBufferListIter::new(data.get_layer_data() as _) {
         data_length += nbl.get_data_length() as usize;
     }
-    type Fields = layer::FieldsDatagramDataV6;
     let mut direction = Direction::Inbound;
     if data.get_value_u8(Fields::Direction as usize) == 0 {
         direction = Direction::Outbound;

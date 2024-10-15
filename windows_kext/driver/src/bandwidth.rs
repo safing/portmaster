@@ -1,11 +1,10 @@
+use alloc::collections::BTreeMap;
 use protocol::info::{BandwidthValueV4, BandwidthValueV6, Info};
 use smoltcp::wire::{IpProtocol, Ipv4Address, Ipv6Address};
 use wdk::rw_spin_lock::RwSpinLock;
 
-use crate::driver_hashmap::DeviceHashMap;
-
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
-pub struct Key<Address>
+pub struct Key<Address: Ord>
 where
     Address: Eq + PartialEq,
 {
@@ -25,32 +24,32 @@ enum Direction {
     Rx(usize),
 }
 pub struct Bandwidth {
-    stats_tcp_v4: DeviceHashMap<Key<Ipv4Address>, Value>,
+    stats_tcp_v4: BTreeMap<Key<Ipv4Address>, Value>,
     stats_tcp_v4_lock: RwSpinLock,
 
-    stats_tcp_v6: DeviceHashMap<Key<Ipv6Address>, Value>,
+    stats_tcp_v6: BTreeMap<Key<Ipv6Address>, Value>,
     stats_tcp_v6_lock: RwSpinLock,
 
-    stats_udp_v4: DeviceHashMap<Key<Ipv4Address>, Value>,
+    stats_udp_v4: BTreeMap<Key<Ipv4Address>, Value>,
     stats_udp_v4_lock: RwSpinLock,
 
-    stats_udp_v6: DeviceHashMap<Key<Ipv6Address>, Value>,
+    stats_udp_v6: BTreeMap<Key<Ipv6Address>, Value>,
     stats_udp_v6_lock: RwSpinLock,
 }
 
 impl Bandwidth {
     pub fn new() -> Self {
         Self {
-            stats_tcp_v4: DeviceHashMap::new(),
+            stats_tcp_v4: BTreeMap::new(),
             stats_tcp_v4_lock: RwSpinLock::default(),
 
-            stats_tcp_v6: DeviceHashMap::new(),
+            stats_tcp_v6: BTreeMap::new(),
             stats_tcp_v6_lock: RwSpinLock::default(),
 
-            stats_udp_v4: DeviceHashMap::new(),
+            stats_udp_v4: BTreeMap::new(),
             stats_udp_v4_lock: RwSpinLock::default(),
 
-            stats_udp_v6: DeviceHashMap::new(),
+            stats_udp_v6: BTreeMap::new(),
             stats_udp_v6_lock: RwSpinLock::default(),
         }
     }
@@ -62,7 +61,7 @@ impl Bandwidth {
             if self.stats_tcp_v4.is_empty() {
                 return None;
             }
-            stats_map = core::mem::replace(&mut self.stats_tcp_v4, DeviceHashMap::new());
+            stats_map = core::mem::replace(&mut self.stats_tcp_v4, BTreeMap::new());
         }
 
         let mut values = alloc::vec::Vec::with_capacity(stats_map.len());
@@ -89,7 +88,7 @@ impl Bandwidth {
             if self.stats_tcp_v6.is_empty() {
                 return None;
             }
-            stats_map = core::mem::replace(&mut self.stats_tcp_v6, DeviceHashMap::new());
+            stats_map = core::mem::replace(&mut self.stats_tcp_v6, BTreeMap::new());
         }
 
         let mut values = alloc::vec::Vec::with_capacity(stats_map.len());
@@ -116,7 +115,7 @@ impl Bandwidth {
             if self.stats_udp_v4.is_empty() {
                 return None;
             }
-            stats_map = core::mem::replace(&mut self.stats_udp_v4, DeviceHashMap::new());
+            stats_map = core::mem::replace(&mut self.stats_udp_v4, BTreeMap::new());
         }
 
         let mut values = alloc::vec::Vec::with_capacity(stats_map.len());
@@ -143,7 +142,7 @@ impl Bandwidth {
             if self.stats_tcp_v6.is_empty() {
                 return None;
             }
-            stats_map = core::mem::replace(&mut self.stats_tcp_v6, DeviceHashMap::new());
+            stats_map = core::mem::replace(&mut self.stats_tcp_v6, BTreeMap::new());
         }
 
         let mut values = alloc::vec::Vec::with_capacity(stats_map.len());
@@ -235,8 +234,8 @@ impl Bandwidth {
         );
     }
 
-    fn update<Address: Eq + PartialEq + core::hash::Hash>(
-        map: &mut DeviceHashMap<Key<Address>, Value>,
+    fn update<Address: Eq + PartialEq + core::hash::Hash + Ord>(
+        map: &mut BTreeMap<Key<Address>, Value>,
         lock: &mut RwSpinLock,
         key: Key<Address>,
         bytes: Direction,
