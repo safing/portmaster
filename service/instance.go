@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	go_runtime "runtime"
 	"sync/atomic"
 	"time"
 
@@ -63,25 +66,26 @@ type Instance struct {
 	rng           *rng.Rng
 	base          *base.Base
 
-	core         *core.Core
-	updates      *updates.Updates
-	geoip        *geoip.GeoIP
-	netenv       *netenv.NetEnv
-	ui           *ui.UI
-	profile      *profile.ProfileModule
-	network      *network.Network
-	netquery     *netquery.NetQuery
-	firewall     *firewall.Firewall
-	filterLists  *filterlists.FilterLists
-	interception *interception.Interception
-	customlist   *customlists.CustomList
-	status       *status.Status
-	broadcasts   *broadcasts.Broadcasts
-	compat       *compat.Compat
-	nameserver   *nameserver.NameServer
-	process      *process.ProcessModule
-	resolver     *resolver.ResolverModule
-	sync         *sync.Sync
+	core          *core.Core
+	binaryUpdates *updates.Updates
+	intelUpdates  *updates.Updates
+	geoip         *geoip.GeoIP
+	netenv        *netenv.NetEnv
+	ui            *ui.UI
+	profile       *profile.ProfileModule
+	network       *network.Network
+	netquery      *netquery.NetQuery
+	firewall      *firewall.Firewall
+	filterLists   *filterlists.FilterLists
+	interception  *interception.Interception
+	customlist    *customlists.CustomList
+	status        *status.Status
+	broadcasts    *broadcasts.Broadcasts
+	compat        *compat.Compat
+	nameserver    *nameserver.NameServer
+	process       *process.ProcessModule
+	resolver      *resolver.ResolverModule
+	sync          *sync.Sync
 
 	access *access.Access
 
@@ -98,10 +102,80 @@ type Instance struct {
 	terminal  *terminal.TerminalModule
 
 	CommandLineOperation func() error
+	ShouldRestart        bool
+}
+
+func getCurrentBinaryFolder() (string, error) {
+	// Get the path of the currently running executable
+	exePath, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("failed to get executable path: %w", err)
+	}
+
+	// Get the absolute path
+	absPath, err := filepath.Abs(exePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	// Get the directory of the executable
+	installDir := filepath.Dir(absPath)
+
+	return installDir, nil
 }
 
 // New returns a new Portmaster service instance.
 func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
+	var binaryUpdateIndex updates.UpdateIndex
+	var intelUpdateIndex updates.UpdateIndex
+	if go_runtime.GOOS == "windows" {
+		binaryFolder, err := getCurrentBinaryFolder()
+		if err != nil {
+			return nil, err
+		}
+		binaryUpdateIndex = updates.UpdateIndex{
+			Directory:         binaryFolder, // Default: C:/Program Files/Portmaster
+			DownloadDirectory: os.ExpandEnv("$ProgramData/Portmaster/new_binary"),
+			PurgeDirectory:    filepath.Join(binaryFolder, "old_binary"), // Default: C:/Program Files/Portmaster/old_binary
+			Ignore:            []string{"databases", "intel", "config.json"},
+			IndexURLs:         []string{"http://192.168.88.11:8000/test-binary.json"},
+			IndexFile:         "bin-index.json",
+			AutoApply:         false,
+			NeedsRestart:      true,
+		}
+
+		intelUpdateIndex = updates.UpdateIndex{
+			Directory:         os.ExpandEnv("$ProgramData/Portmaster/intel"),
+			DownloadDirectory: os.ExpandEnv("$ProgramData/Portmaster/new_intel"),
+			PurgeDirectory:    os.ExpandEnv("$ProgramData/Portmaster/old_intel"),
+			IndexURLs:         []string{"http://192.168.88.11:8000/test-intel.json"},
+			IndexFile:         "intel-index.json",
+			AutoApply:         true,
+			NeedsRestart:      false,
+		}
+	} else if go_runtime.GOOS == "linux" {
+		binaryUpdateIndex = updates.UpdateIndex{
+			Directory:         "/usr/lib/portmaster",
+			DownloadDirectory: "/var/lib/portmaster/new_bin",
+			PurgeDirectory:    "/var/lib/portmaster/old_bin",
+			Ignore:            []string{"databases", "intel", "config.json"},
+			IndexURLs:         []string{"http://localhost:8000/test-binary.json"},
+			IndexFile:         "bin-index.json",
+			AutoApply:         false,
+			NeedsRestart:      true,
+		}
+
+		intelUpdateIndex = updates.UpdateIndex{
+			Directory:         "/var/lib/portmaster/intel",
+			DownloadDirectory: "/var/lib/portmaster/new_intel",
+			PurgeDirectory:    "/var/lib/portmaster/intel_bin",
+			IndexURLs:         []string{"http://localhost:8000/test-intel.json"},
+			IndexFile:         "intel-index.json",
+			AutoApply:         true,
+			NeedsRestart:      false,
+		}
+	}
+
 	// Create instance to pass it to modules.
 	instance := &Instance{}
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
@@ -147,7 +221,11 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create core module: %w", err)
 	}
-	instance.updates, err = updates.New(instance)
+	instance.binaryUpdates, err = updates.New(instance, "Binary Updater", binaryUpdateIndex)
+	if err != nil {
+		return instance, fmt.Errorf("create updates module: %w", err)
+	}
+	instance.intelUpdates, err = updates.New(instance, "Intel Updater", intelUpdateIndex)
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
 	}
@@ -191,6 +269,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create customlist module: %w", err)
 	}
+
 	instance.status, err = status.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create status module: %w", err)
@@ -274,7 +353,8 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.notifications,
 
 		instance.core,
-		instance.updates,
+		instance.binaryUpdates,
+		instance.intelUpdates,
 		instance.geoip,
 		instance.netenv,
 
@@ -373,9 +453,14 @@ func (i *Instance) Base() *base.Base {
 	return i.base
 }
 
-// Updates returns the updates module.
-func (i *Instance) Updates() *updates.Updates {
-	return i.updates
+// BinaryUpdates returns the updates module.
+func (i *Instance) BinaryUpdates() *updates.Updates {
+	return i.binaryUpdates
+}
+
+// IntelUpdates returns the updates module.
+func (i *Instance) IntelUpdates() *updates.Updates {
+	return i.intelUpdates
 }
 
 // GeoIP returns the geoip module.
@@ -588,6 +673,8 @@ func (i *Instance) Restart() {
 	i.core.EventRestart.Submit(struct{}{})
 	time.Sleep(10 * time.Millisecond)
 
+	// Set the restart flag and shutdown.
+	i.ShouldRestart = true
 	i.shutdown(RestartExitCode)
 }
 

@@ -48,11 +48,12 @@ type Instance struct {
 	runtime  *runtime.Runtime
 	rng      *rng.Rng
 
-	core        *core.Core
-	updates     *updates.Updates
-	geoip       *geoip.GeoIP
-	netenv      *netenv.NetEnv
-	filterLists *filterlists.FilterLists
+	core          *core.Core
+	binaryUpdates *updates.Updates
+	intelUpdates  *updates.Updates
+	geoip         *geoip.GeoIP
+	netenv        *netenv.NetEnv
+	filterLists   *filterlists.FilterLists
 
 	access    *access.Access
 	cabin     *cabin.Cabin
@@ -73,6 +74,14 @@ func New() (*Instance, error) {
 	// Create instance to pass it to modules.
 	instance := &Instance{}
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
+
+	binaryUpdateIndex := updates.UpdateIndex{
+		// FIXME: fill
+	}
+
+	intelUpdateIndex := updates.UpdateIndex{
+		// FIXME: fill
+	}
 
 	var err error
 
@@ -111,7 +120,11 @@ func New() (*Instance, error) {
 	if err != nil {
 		return instance, fmt.Errorf("create core module: %w", err)
 	}
-	instance.updates, err = updates.New(instance)
+	instance.binaryUpdates, err = updates.New(instance, "Binary Updater", binaryUpdateIndex)
+	if err != nil {
+		return instance, fmt.Errorf("create updates module: %w", err)
+	}
+	instance.intelUpdates, err = updates.New(instance, "Intel Updater", intelUpdateIndex)
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
 	}
@@ -181,7 +194,8 @@ func New() (*Instance, error) {
 		instance.rng,
 
 		instance.core,
-		instance.updates,
+		instance.binaryUpdates,
+		instance.intelUpdates,
 		instance.geoip,
 		instance.netenv,
 
@@ -255,9 +269,14 @@ func (i *Instance) Base() *base.Base {
 	return i.base
 }
 
-// Updates returns the updates module.
-func (i *Instance) Updates() *updates.Updates {
-	return i.updates
+// BinaryUpdates returns the updates module.
+func (i *Instance) BinaryUpdates() *updates.Updates {
+	return i.binaryUpdates
+}
+
+// IntelUpdates returns the updates module.
+func (i *Instance) IntelUpdates() *updates.Updates {
+	return i.intelUpdates
 }
 
 // GeoIP returns the geoip module.

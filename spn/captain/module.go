@@ -249,6 +249,6 @@ type instance interface {
 	NetEnv() *netenv.NetEnv
 	Patrol() *patrol.Patrol
 	Config() *config.Config
-	Updates() *updates.Updates
+	IntelUpdates() *updates.Updates
 	SPNGroup() *mgr.ExtendedGroup
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/packet"
+	"github.com/safing/portmaster/service/updates"
 )
 
 // Interception is the packet interception module.
@@ -97,4 +98,6 @@ func New(instance instance) (*Interception, error) {
 	return module, nil
 }
 
-type instance interface{}
+type instance interface {
+	BinaryUpdates() *updates.Updates
+}

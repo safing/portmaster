@@ -3,7 +3,6 @@ package profile
 import (
 	"errors"
 	"fmt"
-	"os"
 	"sync/atomic"
 
 	"github.com/safing/portmaster/base/config"
@@ -14,13 +13,9 @@ import (
 	_ "github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/profile/binmeta"
-	"github.com/safing/portmaster/service/updates"
 )
 
-var (
-	migrations  = migration.New("core:migrations/profile")
-	updatesPath string
-)
+var migrations = migration.New("core:migrations/profile")
 
 // Events.
 const (
@@ -80,11 +75,6 @@ func prep() error {
 }
 
 func start() error {
-	updatesPath = updates.RootPath()
-	if updatesPath != "" {
-		updatesPath += string(os.PathSeparator)
-	}
-
 	if err := loadProfilesMetadata(); err != nil {
 		if !errors.Is(err, database.ErrNotFound) {
 			log.Warningf("profile: failed to load profiles metadata, falling back to empty state: %s", err)
