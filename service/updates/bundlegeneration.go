@@ -209,6 +209,11 @@ func GenerateBundleFromDir(bundleDir string, settings BundleFileSettings) (*Bund
 			artifact.Version = version
 		}
 
+		// Remove unpack suffix.
+		if artifact.Unpack != "" {
+			artifact.Filename, _ = strings.CutSuffix(artifact.Filename, "."+artifact.Unpack)
+		}
+
 		// Set local file path.
 		artifact.localFile = fullpath
 

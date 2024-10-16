@@ -31,15 +31,22 @@ var (
 			"**/hubs*.json",
 			"**/*mini*.mmdb.gz",
 
+			// Unsupported platforms.
+			"darwin_amd64/**",
+			"darwin_arm64/**",
+
 			// Deprecated artifacts.
+			"**/portmaster-start*",
+			"**/portmaster-app*",
+			"**/portmaster-notifier*",
+			"**/portmaster-wintoast*.dll",
+			"**/portmaster-snoretoast*.exe",
+			"**/portmaster-kext*.dll",
 			"**/profilemgr*.zip",
 			"**/settings*.zip",
 			"**/monitor*.zip",
 			"**/base*.zip",
 			"**/console*.zip",
-			"**/portmaster-wintoast*.dll",
-			"**/portmaster-snoretoast*.exe",
-			"**/portmaster-kext*.dll",
 		},
 		UnpackFiles: map[string]string{
 			"gz":  "**/*.gz",

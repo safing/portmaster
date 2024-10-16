@@ -177,7 +177,7 @@ go-build:
     ARG GOOS=linux
     ARG GOARCH=amd64
     ARG GOARM
-    ARG CMDS=portmaster-start portmaster-core
+    ARG CMDS=portmaster-core
 
     CACHE --sharing shared "$GOCACHE"
     CACHE --sharing shared "$GOMODCACHE"
