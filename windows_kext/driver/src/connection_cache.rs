@@ -1,10 +1,8 @@
-use core::time::Duration;
-
 use crate::{
     connection::{Connection, ConnectionV4, ConnectionV6, RedirectInfo, Verdict},
     connection_map::{ConnectionMap, Key},
 };
-use alloc::{format, string::String, vec::Vec};
+use alloc::vec::Vec;
 
 use smoltcp::wire::IpProtocol;
 use wdk::rw_spin_lock::RwSpinLock;
@@ -127,74 +125,5 @@ impl ConnectionCache {
         }
 
         return size;
-    }
-
-    #[allow(dead_code)]
-    pub fn get_full_cache_info(&self) -> String {
-        let mut info = String::new();
-        let now = wdk::utils::get_system_timestamp_ms();
-        {
-            let _guard = self.lock_v4.read_lock();
-            for ((protocol, port), connections) in self.connections_v4.iter() {
-                info.push_str(&format!("{} -> {}\n", protocol, port,));
-                for conn in connections {
-                    let active_time_seconds =
-                        Duration::from_millis(now - conn.get_last_accessed_time()).as_secs();
-                    info.push_str(&format!(
-                        "\t{}:{} -> {}:{} {} last active {}m {}s ago",
-                        conn.local_address,
-                        conn.local_port,
-                        conn.remote_address,
-                        conn.remote_port,
-                        conn.verdict,
-                        active_time_seconds / 60,
-                        active_time_seconds % 60
-                    ));
-                    if conn.has_ended() {
-                        let end_time_seconds =
-                            Duration::from_millis(now - conn.get_end_time()).as_secs();
-                        info.push_str(&format!(
-                            "\t ended {}m {}s ago",
-                            end_time_seconds / 60,
-                            end_time_seconds % 60
-                        ));
-                    }
-                    info.push('\n');
-                }
-            }
-        }
-
-        {
-            let _guard = self.lock_v6.read_lock();
-            for ((protocol, port), connections) in self.connections_v6.iter() {
-                info.push_str(&format!("{} -> {} \n", protocol, port));
-                for conn in connections {
-                    let active_time_seconds =
-                        Duration::from_millis(now - conn.get_last_accessed_time()).as_secs();
-                    info.push_str(&format!(
-                        "\t{}:{} -> {}:{} {} last active {}m {}s ago",
-                        conn.local_address,
-                        conn.local_port,
-                        conn.remote_address,
-                        conn.remote_port,
-                        conn.verdict,
-                        active_time_seconds / 60,
-                        active_time_seconds % 60
-                    ));
-                    if conn.has_ended() {
-                        let end_time_seconds =
-                            Duration::from_millis(now - conn.get_end_time()).as_secs();
-                        info.push_str(&format!(
-                            "\t ended {}m {}s ago",
-                            end_time_seconds / 60,
-                            end_time_seconds % 60
-                        ));
-                    }
-                    info.push('\n');
-                }
-            }
-        }
-
-        return info;
     }
 }

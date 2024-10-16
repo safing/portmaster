@@ -38,7 +38,7 @@ var (
 )
 
 const (
-	winInvalidHandleValue      = windows.Handle(^uintptr(0)) // Max value
+	winInvalidHandleValue      = windows.InvalidHandle
 	stopServiceTimeoutDuration = time.Duration(30 * time.Second)
 )
 
@@ -48,7 +48,7 @@ type KextService struct {
 }
 
 func (s *KextService) isValid() bool {
-	return s != nil && s.handle != winInvalidHandleValue && s.handle != 0
+	return s != nil && s.handle != windows.InvalidHandle && s.handle != 0
 }
 
 func (s *KextService) isRunning() (bool, error) {
@@ -99,7 +99,7 @@ func (s *KextService) Start(wait bool) error {
 			_ = windows.ControlService(s.handle, windows.SERVICE_CONTROL_STOP, &status)
 			_ = windows.DeleteService(s.handle)
 			_ = windows.CloseServiceHandle(s.handle)
-			s.handle = winInvalidHandleValue
+			s.handle = windows.InvalidHandle
 			return err
 		}
 	}
@@ -158,7 +158,7 @@ func (s *KextService) Delete() error {
 		return fmt.Errorf("failed to close service handle: %s", err)
 	}
 
-	s.handle = winInvalidHandleValue
+	s.handle = windows.InvalidHandle
 	return nil
 }
 
@@ -234,7 +234,7 @@ func CreateKextService(driverName string, driverPath string) (*KextService, erro
 			return nil, err
 		}
 
-		service = winInvalidHandleValue
+		service = windows.InvalidHandle
 		log.Warning("kext: old driver service was deleted successfully")
 	}
 

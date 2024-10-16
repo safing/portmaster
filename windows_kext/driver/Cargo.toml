@@ -17,7 +17,6 @@ num = { version = "0.4", default-features = false }
 num-derive = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 smoltcp = { version = "0.10", default-features = false, features = ["proto-ipv4", "proto-ipv6"] }
-hashbrown = { version = "0.14.3", default-features = false, features = ["ahash"]}
 
 # WARNING: Do not update. The version was choosen for a reason. See wdk/README.md for more detiels.
 [dependencies.windows-sys]
