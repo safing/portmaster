@@ -78,7 +78,7 @@ func (f *KextFile) Write(buffer []byte) (int, error) {
 	return int(count), err
 }
 
-// Close closes the handle to the kext. This will cancel all active Read and Writes.
+// Close closes the handle to the kext. This will cancel all active Reads and Writes.
 func (f *KextFile) Close() error {
 	if err := f.IsValid(); err != nil {
 		return fmt.Errorf("failed to close: %w", err)
