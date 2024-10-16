@@ -67,7 +67,7 @@ func (f *KextFile) refill_read_buffer() error {
 	return nil
 }
 
-// Write send the buffer bytes to the kext. The function will block until the whole buffer is written to the kext.
+// Write sends the buffer bytes to the kext. The function will block until the whole buffer is written to the kext.
 func (f *KextFile) Write(buffer []byte) (int, error) {
 	if err := f.IsValid(); err != nil {
 		return 0, fmt.Errorf("failed to write: %w", err)
