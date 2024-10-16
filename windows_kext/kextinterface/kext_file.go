@@ -123,7 +123,7 @@ func (f *KextFile) deviceIOControl(code uint32, inData []byte, outData []byte) (
 	return overlapped, nil
 }
 
-// GetHandle return the handle of the kext.
+// GetHandle returns the handle of the kext.
 func (f *KextFile) GetHandle() windows.Handle {
 	return f.handle
 }
