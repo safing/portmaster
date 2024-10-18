@@ -538,12 +538,12 @@ release-prep:
     RUN touch "./output/intel/urgent.dsdl"
 
     COPY (+go-build/output/updatemgr --GOARCH=amd64 --GOOS=linux --CMDS=updatemgr) ./updatemgr
-    RUN ./updatemgr scan --dir "./output/binary" > ./output/binary/bin-index.json
-    RUN ./updatemgr scan --dir "./output/intel" > ./output/intel/intel-index.json
+    RUN ./updatemgr scan --dir "./output/binary" > ./output/binary/index.json
+    RUN ./updatemgr scan --dir "./output/intel" > ./output/intel/index.json
 
     # Intel Extracted (needed for the installers)
     RUN mkdir -p ./output/intel_decompressed
-    RUN cp ./output/intel/intel-index.json ./output/intel_decompressed/intel-index.json
+    RUN cp ./output/intel/index.json ./output/intel_decompressed/index.json
     RUN gzip -dc ./output/intel/geoipv4.mmdb.gz > ./output/intel_decompressed/geoipv4.mmdb
     RUN gzip -dc ./output/intel/geoipv6.mmdb.gz > ./output/intel_decompressed/geoipv6.mmdb
     RUN touch "./output/intel_decompressed/index.dsd"
@@ -552,7 +552,7 @@ release-prep:
     RUN touch "./output/intel_decompressed/urgent.dsdl"
 
     # Save all artifacts to output folder
-    SAVE ARTIFACT --if-exists --keep-ts "output/binary/bin-index.json" AS LOCAL "${outputDir}/binary/bin-index.json"
+    SAVE ARTIFACT --if-exists --keep-ts "output/binary/index.json" AS LOCAL "${outputDir}/binary/index.json"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/all/*" AS LOCAL "${outputDir}/binary/all/"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/linux_amd64/*" AS LOCAL "${outputDir}/binary/linux_amd64/"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/windows_amd64/*" AS LOCAL "${outputDir}/binary/windows_amd64/"
@@ -560,7 +560,7 @@ release-prep:
     SAVE ARTIFACT --if-exists --keep-ts "output/intel_decompressed/*" AS LOCAL "${outputDir}/intel_decompressed/"
 
     # Save all artifacts to the container output folder so other containers can access it.
-    SAVE ARTIFACT --if-exists --keep-ts "output/binary/bin-index.json" "output/binary/bin-index.json"
+    SAVE ARTIFACT --if-exists --keep-ts "output/binary/index.json" "output/binary/index.json"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/all/*" "output/binary/all/"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/linux_amd64/*" "output/binary/linux_amd64/"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/windows_amd64/*" "output/binary/windows_amd64/"
@@ -588,7 +588,7 @@ installer-linux:
     COPY (+release-prep/output/binary/linux_amd64/portmaster) ./target/${target}/release/portmaster
 
     RUN mkdir -p binary
-    COPY (+release-prep/output/binary/bin-index.json) ./binary/bin-index.json
+    COPY (+release-prep/output/binary/index.json) ./binary/index.json
     COPY (+release-prep/output/binary/linux_amd64/portmaster-core) ./binary/portmaster-core
     COPY (+release-prep/output/binary/all/portmaster.zip) ./binary/portmaster.zip
     COPY (+release-prep/output/binary/all/assets.zip) ./binary/assets.zip

@@ -36,7 +36,7 @@ func CreateRegistry(index UpdateIndex) (Registry, error) {
 	}
 	// Parse bundle
 	var err error
-	registry.bundle, err = LoadBundle(filepath.Join(index.Directory, index.IndexFile))
+	registry.bundle, err = LoadBundle(filepath.Join(index.Directory, indexFilename))
 	if err != nil {
 		return Registry{}, err
 	}

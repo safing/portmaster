@@ -18,6 +18,8 @@ const (
 	updateFailedNotificationID        = "updates:update-failed"
 	corruptInstallationNotificationID = "updates:corrupt-installation"
 
+	indexFilename = "index.json"
+
 	// ResourceUpdateEvent is emitted every time the
 	// updater successfully performed a resource update.
 	ResourceUpdateEvent = "resource update"
@@ -39,7 +41,6 @@ type UpdateIndex struct {
 	PurgeDirectory    string
 	Ignore            []string
 	IndexURLs         []string
-	IndexFile         string
 	AutoApply         bool
 	NeedsRestart      bool
 }
@@ -176,7 +177,6 @@ func (u *Updates) UpdateFromURL(url string) error {
 		index := UpdateIndex{
 			DownloadDirectory: u.downloader.dir,
 			IndexURLs:         []string{url},
-			IndexFile:         u.downloader.indexFile,
 		}
 
 		// Initialize with proper values and download the index file.
@@ -214,7 +214,7 @@ func (u *Updates) applyUpdates(downloader Downloader, force bool) error {
 		log.Infof("update: starting update: %s %s -> %s", currentBundle.Name, currentBundle.Version, downloadBundle.Version)
 	}
 
-	err := u.registry.performRecoverableUpgrade(downloader.dir, downloader.indexFile)
+	err := u.registry.performRecoverableUpgrade(downloader.dir, indexFilename)
 	if err != nil {
 		// Notify the user that update failed.
 		notifications.NotifyPrompt(updateFailedNotificationID, "Failed to apply update.", err.Error())

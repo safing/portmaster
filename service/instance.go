@@ -138,8 +138,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			DownloadDirectory: os.ExpandEnv("$ProgramData/Portmaster/new_binary"),
 			PurgeDirectory:    filepath.Join(binaryFolder, "old_binary"), // Default: C:/Program Files/Portmaster/old_binary
 			Ignore:            []string{"databases", "intel", "config.json"},
-			IndexURLs:         []string{"http://192.168.88.11:8000/test-binary.json"},
-			IndexFile:         "bin-index.json",
+			IndexURLs:         []string{"https://updates.safing.io/stable.v3.json"},
 			AutoApply:         false,
 			NeedsRestart:      true,
 		}
@@ -148,8 +147,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			Directory:         os.ExpandEnv("$ProgramData/Portmaster/intel"),
 			DownloadDirectory: os.ExpandEnv("$ProgramData/Portmaster/new_intel"),
 			PurgeDirectory:    os.ExpandEnv("$ProgramData/Portmaster/old_intel"),
-			IndexURLs:         []string{"http://192.168.88.11:8000/test-intel.json"},
-			IndexFile:         "intel-index.json",
+			IndexURLs:         []string{"https://updates.safing.io/intel.v3.json"},
 			AutoApply:         true,
 			NeedsRestart:      false,
 		}
@@ -159,8 +157,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			DownloadDirectory: "/var/lib/portmaster/new_bin",
 			PurgeDirectory:    "/var/lib/portmaster/old_bin",
 			Ignore:            []string{"databases", "intel", "config.json"},
-			IndexURLs:         []string{"http://localhost:8000/test-binary.json"},
-			IndexFile:         "bin-index.json",
+			IndexURLs:         []string{"https://updates.safing.io/stable.v3.json"},
 			AutoApply:         false,
 			NeedsRestart:      true,
 		}
@@ -169,8 +166,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			Directory:         "/var/lib/portmaster/intel",
 			DownloadDirectory: "/var/lib/portmaster/new_intel",
 			PurgeDirectory:    "/var/lib/portmaster/intel_bin",
-			IndexURLs:         []string{"http://localhost:8000/test-intel.json"},
-			IndexFile:         "intel-index.json",
+			IndexURLs:         []string{"https://updates.safing.io/intel.v3.json"},
 			AutoApply:         true,
 			NeedsRestart:      false,
 		}

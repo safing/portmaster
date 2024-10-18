@@ -22,7 +22,6 @@ import (
 
 type Downloader struct {
 	dir       string
-	indexFile string
 	indexURLs []string
 	bundle    *Bundle
 	version   *semver.Version
@@ -33,7 +32,6 @@ type Downloader struct {
 func CreateDownloader(index UpdateIndex) Downloader {
 	return Downloader{
 		dir:       index.DownloadDirectory,
-		indexFile: index.IndexFile,
 		indexURLs: index.IndexURLs,
 	}
 }
@@ -78,7 +76,7 @@ func (d *Downloader) downloadIndexFile(ctx context.Context) error {
 	}
 
 	// Write the content into a file.
-	indexFilepath := filepath.Join(d.dir, d.indexFile)
+	indexFilepath := filepath.Join(d.dir, indexFilename)
 	err = os.WriteFile(indexFilepath, []byte(content), defaultFileMode)
 	if err != nil {
 		return fmt.Errorf("failed to write index file: %w", err)
@@ -98,7 +96,7 @@ func (d *Downloader) Verify() error {
 }
 
 func (d *Downloader) parseBundle() error {
-	indexFilepath := filepath.Join(d.dir, d.indexFile)
+	indexFilepath := filepath.Join(d.dir, indexFilename)
 	var err error
 	d.bundle, err = LoadBundle(indexFilepath)
 	if err != nil {
