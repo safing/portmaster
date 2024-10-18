@@ -7,12 +7,13 @@
 
 ### Generate the cab file
 - Copy the zip and extract it on a windows machine.
-  * Some version Visual Studio needs to be installed.
+  * Visual Studio 2022 and WDK need to be installed.
 - From VS Command Prompt / PowerShell run:
 ```
 cd kext_release_v.../
 ./build_cab.bat
 ```
+> Script is written for VS `$SDK_Version = "10.0.22621.0"`. If different version is used update the script.
 
 3. Sing the cab file
 
@@ -25,4 +26,4 @@ cd kext_release_v.../
 - Wait for the process to finish, download the `.zip`.
 
 The zip will contain the release files.  
-> Optionally sign the .sys file.
+> Optionally sign the .sys file, with company certificate.

@@ -5,51 +5,55 @@ Implementation of Safing's Portmaster Windows kernel extension in Rust.
 
 - [Driver](driver/README.md) -> entry point.
 - [WDK](wdk/README.md) -> Windows Driver Kit interface.
-- [Packet Path](PacketDoc.md) -> Detiled documentation of what happens to a packet when it enters the kernel extension.
-- [Release](release/README.md) -> Guide how to do a release build
+- [Packet Path](PacketFlow.md) -> Detailed documentation of what happens to a packet when it enters the kernel extension.
+- [Release](release/README.md) -> Guide how to do a release build.
+- [Windows Filtering Platform - MS](https://learn.microsoft.com/en-us/windows-hardware/drivers/network/roadmap-for-developing-wfp-callout-drivers) -> The driver is build on top of WFP.
+
 
 ### Building
 
 The Windows Portmaster Kernel Extension is currently only developed and tested for the amd64 (64-bit) architecture.
 
-__Prerequesites:__
+__Prerequirements:__
 
 - Visual Studio 2022
     - Install C++ and Windows 11 SDK (22H2) components
     - Add `link.exe` and `signtool` in the PATH
-- Rust
+- Windows Driver Kit
+    - https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk
+- Rust (Can be separate machine)
     - https://www.rust-lang.org/tools/install
-- Cargo make(optional)
-    - https://github.com/sagiegurari/cargo-make
 
 __Setup Test Signing:__
 
-In order to test the driver on your machine, you will have to test sign it (starting with Windows 10).
+> Not recommended for a work machine. Usually done on virtual machine dedicated for testing.
 
+In order to test the driver on your machine, you will have to sign it (starting with Windows 10).
 
 Create a new certificate for test signing:
 
-    :: Open a *x64 Free Build Environment* console as Administrator.
+```ps1
+    # Open a *x64 Free Build Environment* console as Administrator.
 
-    :: Run the MakeCert.exe tool to create a test certificate:
+    # Run the MakeCert.exe tool to create a test certificate:
     MakeCert -r -pe -ss PrivateCertStore -n "CN=DriverCertificate" DriverCertificate.cer
 
-    :: Install the test certificate with CertMgr.exe:
+    # Install the test certificate with CertMgr.exe:
     CertMgr /add DriverCertificate.cer /s /r localMachine root
-
+```
 
 Enable Test Signing on the dev machine:
-
-    :: Before you can load test-signed drivers, you must enable Windows test mode. To do this, run this command:
+```ps1
+    # Before you can load test-signed drivers, you must enable Windows test mode. To do this, run this command:
     Bcdedit.exe -set TESTSIGNING ON
-    :: Then, restart Windows. For more information, see The TESTSIGNING Boot Configuration Option.
-
+    # Then, restart Windows. For more information, see The TESTSIGNING Boot Configuration Option.
+```
 
 __Build driver:__
 
-```
-cd driver
-cargo build
+```sh
+    cd driver
+    cargo build
 ```
 > Build also works on linux
 
@@ -63,9 +67,9 @@ Run `link.bat`.
 - Install go
     - https://go.dev/dl/
 
-```
-cd kext_tester
-go run .
+```sh
+    cd kext_tester
+    go run .
 ```
 
 > make sure the hardcoded path in main.go is pointing to the correct `.sys` file
