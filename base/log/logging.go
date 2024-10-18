@@ -2,6 +2,7 @@ package log
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"sync"
@@ -32,6 +33,26 @@ import (
 
 // Severity describes a log level.
 type Severity uint32
+
+func (s Severity) toSLogLevel() slog.Level {
+	// Convert to slog level.
+	switch s {
+	case TraceLevel:
+		return slog.LevelDebug
+	case DebugLevel:
+		return slog.LevelDebug
+	case InfoLevel:
+		return slog.LevelInfo
+	case WarningLevel:
+		return slog.LevelWarn
+	case ErrorLevel:
+		return slog.LevelError
+	case CriticalLevel:
+		return slog.LevelError
+	}
+	// Failed to convert, return default log level
+	return slog.LevelWarn
+}
 
 // Message describes a log level message and is implemented
 // by logLine.
@@ -187,13 +208,17 @@ func ParseLevel(level string) Severity {
 }
 
 // Start starts the logging system. Must be called in order to see logs.
-func Start() (err error) {
+func Start(level Severity) (err error) {
 	if !initializing.SetToIf(false, true) {
 		return nil
 	}
 
-	logBuffer = make(chan *logLine, 1024)
+	atomic.StoreUint32(logLevel, uint32(level))
 
+	// Initialize slog
+	setupSLog(level)
+
+	// Parse command line log level argument
 	if logLevelFlag != "" {
 		initialLogLevel := ParseLevel(logLevelFlag)
 		if initialLogLevel == 0 {
@@ -202,10 +227,9 @@ func Start() (err error) {
 		}
 
 		SetLogLevel(initialLogLevel)
-	} else {
-		// Setup slog here for the transition period.
-		setupSLog(GetLogLevel())
 	}
+
+	logBuffer = make(chan *logLine, 1024)
 
 	// get and set file loglevels
 	pkgLogLevels := pkgLogLevelsFlag
@@ -246,4 +270,5 @@ func Shutdown() {
 		close(shutdownSignal)
 	}
 	shutdownWaitGroup.Wait()
+	GlobalWriter.Close()
 }

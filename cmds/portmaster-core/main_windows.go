@@ -63,8 +63,7 @@ service:
 }
 
 func run(instance *service.Instance) error {
-	log.SetLogLevel(log.WarningLevel)
-	_ = log.Start()
+	_ = log.Start(log.WarningLevel)
 
 	// check if we are running interactively
 	isService, err := svc.IsWindowsService()

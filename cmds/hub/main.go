@@ -44,9 +44,8 @@ func main() {
 	// Set SPN public hub mode.
 	conf.EnablePublicHub(true)
 
-	// Set default log level.
-	log.SetLogLevel(log.WarningLevel)
-	_ = log.Start()
+	// Start logger with default log level.
+	_ = log.Start(log.WarningLevel)
 
 	// Create instance.
 	var execCmdLine bool

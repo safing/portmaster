@@ -17,8 +17,7 @@ import (
 
 func run(instance *service.Instance) {
 	// Set default log level.
-	log.SetLogLevel(log.WarningLevel)
-	_ = log.Start()
+	_ = log.Start(log.WarningLevel)
 
 	// Start
 	go func() {

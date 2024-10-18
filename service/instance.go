@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/dbmodule"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
@@ -128,6 +129,9 @@ func getCurrentBinaryFolder() (string, error) {
 func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	var binaryUpdateIndex updates.UpdateIndex
 	var intelUpdateIndex updates.UpdateIndex
+
+	var logDir string
+
 	if go_runtime.GOOS == "windows" {
 		binaryFolder, err := getCurrentBinaryFolder()
 		if err != nil {
@@ -153,6 +157,8 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			AutoApply:         true,
 			NeedsRestart:      false,
 		}
+
+		logDir = os.ExpandEnv("$ProgramData/Portmaster/data/log")
 	} else if go_runtime.GOOS == "linux" {
 		binaryUpdateIndex = updates.UpdateIndex{
 			Directory:         "/usr/lib/portmaster",
@@ -174,15 +180,33 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			AutoApply:         true,
 			NeedsRestart:      false,
 		}
+
+		logDir = "/var/lib/portmaster/data/log"
+	}
+
+	// Initialize log
+	if svcCfg.LogStdout {
+		log.GlobalWriter = log.NewStdoutWriter()
+	} else {
+		var err error
+		log.GlobalWriter, err = log.NewFileWriter(logDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to initialize log file: %s", err)
+		}
+
+		// Delete all logs older then 1 week
+		err = log.CleanOldLogs(logDir, 7*24*time.Hour)
+		if err != nil {
+			log.Errorf("instance: failed to clean old log files: %s", err)
+		}
 	}
 
 	// Create instance to pass it to modules.
 	instance := &Instance{}
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
 
-	var err error
-
 	// Base modules
+	var err error
 	instance.base, err = base.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create base module: %w", err)
