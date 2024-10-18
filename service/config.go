@@ -1,3 +1,5 @@
 package service
 
-type ServiceConfig struct{}
+type ServiceConfig struct {
+	LogStdout bool
+}

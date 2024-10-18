@@ -9,6 +9,7 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/dbmodule"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
@@ -82,6 +83,11 @@ func New() (*Instance, error) {
 	intelUpdateIndex := updates.UpdateIndex{
 		// FIXME: fill
 	}
+
+	// Initialize log
+	log.GlobalWriter = log.NewStdoutWriter()
+
+	// FIXME: initialize log file.
 
 	var err error
 

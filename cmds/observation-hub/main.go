@@ -46,9 +46,8 @@ func main() {
 	sluice.EnableListener = false
 	api.EnableServer = false
 
-	// Set default log level.
-	log.SetLogLevel(log.WarningLevel)
-	_ = log.Start()
+	// Start logger with default log level.
+	_ = log.Start(log.WarningLevel)
 
 	// Create instance.
 	var execCmdLine bool

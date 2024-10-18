@@ -23,6 +23,7 @@ import (
 var (
 	printStackOnExit   bool
 	enableInputSignals bool
+	logStdout          bool
 
 	sigUSR1 = syscall.Signal(0xa) // dummy for windows
 )
@@ -30,6 +31,7 @@ var (
 func init() {
 	flag.BoolVar(&printStackOnExit, "print-stack-on-exit", false, "prints the stack before of shutting down")
 	flag.BoolVar(&enableInputSignals, "input-signals", false, "emulate signals using stdin")
+	flag.BoolVar(&logStdout, "log-stdout", false, "directs the logging to stdout")
 }
 
 func main() {
@@ -57,7 +59,7 @@ func initialize() *service.Instance {
 
 	// Create instance.
 	var execCmdLine bool
-	instance, err := service.New(&service.ServiceConfig{})
+	instance, err := service.New(&service.ServiceConfig{LogStdout: logStdout})
 	switch {
 	case err == nil:
 		// Continue
