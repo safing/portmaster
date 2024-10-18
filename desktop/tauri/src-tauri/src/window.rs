@@ -6,9 +6,8 @@ use tauri::{
 
 use crate::{portmaster::PortmasterExt, traymenu};
 
-const LIGHT_PM_ICON: &'static [u8] =
-    include_bytes!("../../../../assets/data/icons/pm_light_512.png");
-const DARK_PM_ICON: &'static [u8] = include_bytes!("../../../../assets/data/icons/pm_dark_512.png");
+const LIGHT_PM_ICON: &[u8] = include_bytes!("../../../../assets/data/icons/pm_light_512.png");
+const DARK_PM_ICON: &[u8] = include_bytes!("../../../../assets/data/icons/pm_dark_512.png");
 
 /// Either returns the existing "main" window or creates a new one.
 ///
@@ -54,7 +53,7 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
     set_window_icon(&window);
 
     #[cfg(debug_assertions)]
-    if let Ok(_) = std::env::var("TAURI_SHOW_IMMEDIATELY") {
+    if std::env::var("TAURI_SHOW_IMMEDIATELY").is_ok() {
         debug!("[tauri] TAURI_SHOW_IMMEDIATELY is set, opening window");
 
         if let Err(err) = window.show() {
@@ -92,14 +91,14 @@ pub fn close_splash_window(app: &AppHandle) -> Result<()> {
         let _ = window.hide();
         return window.destroy();
     }
-    return Err(tauri::Error::WindowNotFound);
+    Err(tauri::Error::WindowNotFound)
 }
 
 pub fn hide_splash_window(app: &AppHandle) -> Result<()> {
     if let Some(window) = app.get_webview_window("splash") {
         return window.hide();
     }
-    return Err(tauri::Error::WindowNotFound);
+    Err(tauri::Error::WindowNotFound)
 }
 
 pub fn set_window_icon(window: &WebviewWindow) {

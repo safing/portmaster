@@ -18,7 +18,6 @@ import (
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/process"
-	"github.com/safing/portmaster/service/updates"
 )
 
 const (
@@ -133,7 +132,7 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 	var originalPid int
 
 	// Get authenticated path.
-	authenticatedPath := updates.RootPath()
+	authenticatedPath := module.instance.BinaryUpdates().GetRootPath()
 	if authenticatedPath == "" {
 		return false, fmt.Errorf(deniedMsgMisconfigured, api.ErrAPIAccessDeniedMessage) //nolint:stylecheck // message for user
 	}

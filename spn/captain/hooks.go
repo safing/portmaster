@@ -1,7 +1,6 @@
 package captain
 
 import (
-	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/docks"
 )
@@ -41,5 +40,7 @@ func updateConnectionStatus() {
 			return
 		}
 	}
-	updates.TriggerRestartIfPending()
+
+	// TODO(vladimir): what was this needed for?
+	// updates.TriggerRestartIfPending()
 }

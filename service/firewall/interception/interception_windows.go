@@ -10,14 +10,13 @@ import (
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/packet"
-	"github.com/safing/portmaster/service/updates"
 )
 
 var useOldKext = false
 
 // start starts the interception.
 func startInterception(packets chan packet.Packet) error {
-	kextFile, err := updates.GetPlatformFile("kext/portmaster-kext.sys")
+	kextFile, err := module.instance.BinaryUpdates().GetFile("portmaster-kext.sys")
 	if err != nil {
 		return fmt.Errorf("interception: could not get kext sys: %s", err)
 	}
@@ -77,7 +76,6 @@ func startInterception(packets chan packet.Packet) error {
 				case <-w.Done():
 					return nil
 				}
-
 			}
 		})
 
@@ -95,7 +93,6 @@ func startInterception(packets chan packet.Packet) error {
 				case <-w.Done():
 					return nil
 				}
-
 			}
 		})
 
@@ -112,7 +109,6 @@ func startInterception(packets chan packet.Packet) error {
 				case <-w.Done():
 					return nil
 				}
-
 			}
 		})
 	}
@@ -159,5 +155,4 @@ func GetKextVersion() (string, error) {
 		}
 		return version.String(), nil
 	}
-
 }
