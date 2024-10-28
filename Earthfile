@@ -529,13 +529,12 @@ release-prep:
     # Intel
     # TODO(vladimir): figure out a way to download all latest intel data.
     RUN mkdir -p ./output/intel
-    RUN wget -O ./output/intel/geoipv4.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv4_v20240529-0-1.mmdb.gz" && \
-        wget -O ./output/intel/geoipv6.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv6_v20240529-0-1.mmdb.gz" 
-
-    RUN touch "./output/intel/index.dsd"
-    RUN touch "./output/intel/base.dsdl"
-    RUN touch "./output/intel/intermediate.dsdl"
-    RUN touch "./output/intel/urgent.dsdl"
+    RUN wget -O ./output/intel/geoipv4.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv4_v20240820-0-1.mmdb.gz" && \
+        wget -O ./output/intel/geoipv6.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv6_v20240820-0-1.mmdb.gz" && \
+        wget -O ./output/intel/index.dsd "https://updates.safing.io/all/intel/lists/index_v2023-6-13.dsd" && \
+        wget -O ./output/intel/base.dsdl "https://updates.safing.io/all/intel/lists/base_v20241001-0-9.dsdl" && \
+        wget -O ./output/intel/intermediate.dsdl "https://updates.safing.io/all/intel/lists/intermediate_v20240929-0-0.dsdl" && \
+        wget -O ./output/intel/urgent.dsdl "https://updates.safing.io/all/intel/lists/urgent_v20241002-2-14.dsdl"
 
     COPY (+go-build/output/updatemgr --GOARCH=amd64 --GOOS=linux --CMDS=updatemgr) ./updatemgr
     RUN ./updatemgr scan --dir "./output/binary" > ./output/binary/index.json
@@ -546,10 +545,10 @@ release-prep:
     RUN cp ./output/intel/index.json ./output/intel_decompressed/index.json
     RUN gzip -dc ./output/intel/geoipv4.mmdb.gz > ./output/intel_decompressed/geoipv4.mmdb
     RUN gzip -dc ./output/intel/geoipv6.mmdb.gz > ./output/intel_decompressed/geoipv6.mmdb
-    RUN touch "./output/intel_decompressed/index.dsd"
-    RUN touch "./output/intel_decompressed/base.dsdl"
-    RUN touch "./output/intel_decompressed/intermediate.dsdl"
-    RUN touch "./output/intel_decompressed/urgent.dsdl"
+    RUN cp ./output/intel/index.dsd ./output/intel_decompressed/index.dsd
+    RUN cp ./output/intel/base.dsdl ./output/intel_decompressed/base.dsdl
+    RUN cp ./output/intel/intermediate.dsdl ./output/intel_decompressed/intermediate.dsdl
+    RUN cp ./output/intel/urgent.dsdl ./output/intel_decompressed/urgent.dsdl
 
     # Save all artifacts to output folder
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/index.json" AS LOCAL "${outputDir}/binary/index.json"
