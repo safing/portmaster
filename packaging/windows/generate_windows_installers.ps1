@@ -21,7 +21,7 @@ if (-not (Test-Path -Path $binaryDir)) {
 
 
 Write-Output "Copying binary files"
-Copy-Item -Force -Path "dist/binary/bin-index.json" -Destination "$binaryDir/bin-index.json"
+Copy-Item -Force -Path "dist/binary/index.json" -Destination "$binaryDir/index.json"
 Copy-Item -Force -Path "dist/binary/windows_amd64/portmaster-core.exe" -Destination "$binaryDir/portmaster-core.exe"
 Copy-Item -Force -Path "dist/binary/windows_amd64/portmaster-kext.sys" -Destination "$binaryDir/portmaster-kext.sys"
 Copy-Item -Force -Path "dist/binary/all/portmaster.zip" -Destination "$binaryDir/portmaster.zip"

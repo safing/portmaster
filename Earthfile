@@ -529,30 +529,29 @@ release-prep:
     # Intel
     # TODO(vladimir): figure out a way to download all latest intel data.
     RUN mkdir -p ./output/intel
-    RUN wget -O ./output/intel/geoipv4.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv4_v20240529-0-1.mmdb.gz" && \
-        wget -O ./output/intel/geoipv6.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv6_v20240529-0-1.mmdb.gz" 
-
-    RUN touch "./output/intel/index.dsd"
-    RUN touch "./output/intel/base.dsdl"
-    RUN touch "./output/intel/intermediate.dsdl"
-    RUN touch "./output/intel/urgent.dsdl"
+    RUN wget -O ./output/intel/geoipv4.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv4_v20240820-0-1.mmdb.gz" && \
+        wget -O ./output/intel/geoipv6.mmdb.gz "https://updates.safing.io/all/intel/geoip/geoipv6_v20240820-0-1.mmdb.gz" && \
+        wget -O ./output/intel/index.dsd "https://updates.safing.io/all/intel/lists/index_v2023-6-13.dsd" && \
+        wget -O ./output/intel/base.dsdl "https://updates.safing.io/all/intel/lists/base_v20241001-0-9.dsdl" && \
+        wget -O ./output/intel/intermediate.dsdl "https://updates.safing.io/all/intel/lists/intermediate_v20240929-0-0.dsdl" && \
+        wget -O ./output/intel/urgent.dsdl "https://updates.safing.io/all/intel/lists/urgent_v20241002-2-14.dsdl"
 
     COPY (+go-build/output/updatemgr --GOARCH=amd64 --GOOS=linux --CMDS=updatemgr) ./updatemgr
-    RUN ./updatemgr scan --dir "./output/binary" > ./output/binary/bin-index.json
-    RUN ./updatemgr scan --dir "./output/intel" > ./output/intel/intel-index.json
+    RUN ./updatemgr scan --dir "./output/binary" > ./output/binary/index.json
+    RUN ./updatemgr scan --dir "./output/intel" > ./output/intel/index.json
 
     # Intel Extracted (needed for the installers)
     RUN mkdir -p ./output/intel_decompressed
-    RUN cp ./output/intel/intel-index.json ./output/intel_decompressed/intel-index.json
+    RUN cp ./output/intel/index.json ./output/intel_decompressed/index.json
     RUN gzip -dc ./output/intel/geoipv4.mmdb.gz > ./output/intel_decompressed/geoipv4.mmdb
     RUN gzip -dc ./output/intel/geoipv6.mmdb.gz > ./output/intel_decompressed/geoipv6.mmdb
-    RUN touch "./output/intel_decompressed/index.dsd"
-    RUN touch "./output/intel_decompressed/base.dsdl"
-    RUN touch "./output/intel_decompressed/intermediate.dsdl"
-    RUN touch "./output/intel_decompressed/urgent.dsdl"
+    RUN cp ./output/intel/index.dsd ./output/intel_decompressed/index.dsd
+    RUN cp ./output/intel/base.dsdl ./output/intel_decompressed/base.dsdl
+    RUN cp ./output/intel/intermediate.dsdl ./output/intel_decompressed/intermediate.dsdl
+    RUN cp ./output/intel/urgent.dsdl ./output/intel_decompressed/urgent.dsdl
 
     # Save all artifacts to output folder
-    SAVE ARTIFACT --if-exists --keep-ts "output/binary/bin-index.json" AS LOCAL "${outputDir}/binary/bin-index.json"
+    SAVE ARTIFACT --if-exists --keep-ts "output/binary/index.json" AS LOCAL "${outputDir}/binary/index.json"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/all/*" AS LOCAL "${outputDir}/binary/all/"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/linux_amd64/*" AS LOCAL "${outputDir}/binary/linux_amd64/"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/windows_amd64/*" AS LOCAL "${outputDir}/binary/windows_amd64/"
@@ -560,7 +559,7 @@ release-prep:
     SAVE ARTIFACT --if-exists --keep-ts "output/intel_decompressed/*" AS LOCAL "${outputDir}/intel_decompressed/"
 
     # Save all artifacts to the container output folder so other containers can access it.
-    SAVE ARTIFACT --if-exists --keep-ts "output/binary/bin-index.json" "output/binary/bin-index.json"
+    SAVE ARTIFACT --if-exists --keep-ts "output/binary/index.json" "output/binary/index.json"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/all/*" "output/binary/all/"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/linux_amd64/*" "output/binary/linux_amd64/"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/windows_amd64/*" "output/binary/windows_amd64/"
@@ -588,7 +587,7 @@ installer-linux:
     COPY (+release-prep/output/binary/linux_amd64/portmaster) ./target/${target}/release/portmaster
 
     RUN mkdir -p binary
-    COPY (+release-prep/output/binary/bin-index.json) ./binary/bin-index.json
+    COPY (+release-prep/output/binary/index.json) ./binary/index.json
     COPY (+release-prep/output/binary/linux_amd64/portmaster-core) ./binary/portmaster-core
     COPY (+release-prep/output/binary/all/portmaster.zip) ./binary/portmaster.zip
     COPY (+release-prep/output/binary/all/assets.zip) ./binary/assets.zip
