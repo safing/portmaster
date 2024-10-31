@@ -56,7 +56,7 @@ func TestPreformUpdate(t *testing.T) {
 	}
 
 	// Create updater
-	updates, err := New(stub, "Test", UpdateIndex{
+	updates, err := New(stub, "Test", Config{
 		Directory:         installedDir,
 		DownloadDirectory: updateDir,
 		PurgeDirectory:    purgeDir,

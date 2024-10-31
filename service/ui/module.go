@@ -82,5 +82,5 @@ func New(instance instance) (*UI, error) {
 
 type instance interface {
 	API() *api.API
-	BinaryUpdates() *updates.Updates
+	BinaryUpdates() *updates.Updater
 }

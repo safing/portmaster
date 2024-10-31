@@ -99,5 +99,5 @@ func New(instance instance) (*Interception, error) {
 }
 
 type instance interface {
-	BinaryUpdates() *updates.Updates
+	BinaryUpdates() *updates.Updater
 }

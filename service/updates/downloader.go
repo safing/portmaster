@@ -10,275 +10,210 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
-
-	semver "github.com/hashicorp/go-version"
 
 	"github.com/safing/portmaster/base/log"
 )
 
 type Downloader struct {
-	dir       string
-	indexFile string
+	u         *Updater
+	index     *Index
 	indexURLs []string
-	bundle    *Bundle
-	version   *semver.Version
+
+	existingFiles map[string]string
 
 	httpClient http.Client
 }
 
-func CreateDownloader(index UpdateIndex) Downloader {
-	return Downloader{
-		dir:       index.DownloadDirectory,
-		indexFile: index.IndexFile,
-		indexURLs: index.IndexURLs,
+func NewDownloader(u *Updater, indexURLs []string) *Downloader {
+	return &Downloader{
+		u:         u,
+		indexURLs: indexURLs,
 	}
 }
 
-func (d *Downloader) downloadIndexFile(ctx context.Context) error {
-	// Make sure dir exists
-	err := os.MkdirAll(d.dir, defaultDirMode)
+func (d *Downloader) updateIndex(ctx context.Context) error {
+	// Make sure dir exists.
+	err := os.MkdirAll(d.u.cfg.DownloadDirectory, defaultDirMode)
 	if err != nil {
-		return fmt.Errorf("failed to create directory for updates: %s", d.dir)
+		return fmt.Errorf("create download directory: %s", d.u.cfg.DownloadDirectory)
 	}
-	var content string
+
+	// Try to download the index from one of the index URLs.
+	var (
+		indexData []byte
+		index     *Index
+	)
 	for _, url := range d.indexURLs {
-		content, err = d.downloadIndexFileFromURL(ctx, url)
-		if err != nil {
-			log.Warningf("updates: failed while downloading index file: %s", err)
-			continue
-		}
-		// Downloading was successful.
-		var bundle *Bundle
-		bundle, err = ParseBundle(content)
-		if err != nil {
-			log.Warningf("updates: %s", err)
-			continue
-		}
-		// Parsing was successful
-		var version *semver.Version
-		version, err = semver.NewVersion(bundle.Version)
-		if err != nil {
-			log.Warningf("updates: failed to parse bundle version: %s", err)
-			continue
+		// Download and verify index.
+		indexData, index, err = d.getIndex(ctx, url)
+		if err == nil {
+			// Valid index found!
+			break
 		}
 
-		// All checks passed. Set and exit the loop.
-		d.bundle = bundle
-		d.version = version
-		err = nil
-		break
+		log.Warningf("updates: failed to update index from %q: %s", url, err)
+		err = fmt.Errorf("update index file from %q: %s", url, err)
 	}
-
 	if err != nil {
-		return err
+		return fmt.Errorf("all index URLs failed, last error: %w", err)
 	}
+	d.index = index
 
-	// Write the content into a file.
-	indexFilepath := filepath.Join(d.dir, d.indexFile)
-	err = os.WriteFile(indexFilepath, []byte(content), defaultFileMode)
+	// Write the index into a file.
+	indexFilepath := filepath.Join(d.u.cfg.DownloadDirectory, d.u.cfg.IndexFile)
+	err = os.WriteFile(indexFilepath, []byte(indexData), defaultFileMode)
 	if err != nil {
-		return fmt.Errorf("failed to write index file: %w", err)
+		return fmt.Errorf("write index file: %w", err)
 	}
 
 	return nil
 }
 
-// Verify verifies if the downloaded files match the corresponding hash.
-func (d *Downloader) Verify() error {
-	err := d.parseBundle()
+func (d *Downloader) getIndex(ctx context.Context, url string) (indexData []byte, bundle *Index, err error) {
+	// Download data from URL.
+	indexData, err = d.downloadData(ctx, url)
 	if err != nil {
-		return err
+		return nil, nil, fmt.Errorf("GET index: %w", err)
 	}
 
-	return d.bundle.Verify(d.dir)
+	// Verify and parse index.
+	bundle, err = ParseIndex(indexData, d.u.cfg.Verify)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse index: %w", err)
+	}
+
+	return indexData, bundle, nil
 }
 
-func (d *Downloader) parseBundle() error {
-	indexFilepath := filepath.Join(d.dir, d.indexFile)
-	var err error
-	d.bundle, err = LoadBundle(indexFilepath)
-	if err != nil {
-		return err
+// gatherExistingFiles gathers the checksums on existing files.
+func (d *Downloader) gatherExistingFiles(dir string) error {
+	// Make sure map is initialized.
+	if d.existingFiles == nil {
+		d.existingFiles = make(map[string]string)
 	}
 
-	d.version, err = semver.NewVersion(d.bundle.Version)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (d *Downloader) downloadIndexFileFromURL(ctx context.Context, url string) (string, error) {
-	// Request the index file
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
-	if err != nil {
-		return "", fmt.Errorf("failed to create GET request to: %w", err)
-	}
-	if UserAgent != "" {
-		req.Header.Set("User-Agent", UserAgent)
-	}
-
-	// Perform request
-	resp, err := d.httpClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed GET request to %s: %w", url, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	// Check the status code
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("received error from the server status code: %s", resp.Status)
-	}
-
-	// Read the content.
-	content, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return string(content), nil
-}
-
-// CopyMatchingFilesFromCurrent check if there the current bundle files has matching files with the new bundle and copies them if they match.
-func (d *Downloader) copyMatchingFilesFromCurrent(currentFiles map[string]File) error {
-	// Make sure new dir exists
-	_ = os.MkdirAll(d.dir, defaultDirMode)
-
-	for _, a := range d.bundle.Artifacts {
-		currentFile, ok := currentFiles[a.Filename]
-		if ok && currentFile.Sha256() == a.SHA256 {
-			// Read the content of the current file.
-			content, err := os.ReadFile(currentFile.Path())
-			if err != nil {
-				return fmt.Errorf("failed to read file %s: %w", currentFile.Path(), err)
-			}
-
-			// Check if the content matches the artifact hash
-			expectedHash, err := hex.DecodeString(a.SHA256)
-			if err != nil || len(expectedHash) != sha256.Size {
-				return fmt.Errorf("invalid artifact hash %s: %w", a.SHA256, err)
-			}
-			hash := sha256.Sum256(content)
-			if !bytes.Equal(expectedHash, hash[:]) {
-				return fmt.Errorf("expected and file hash mismatch: %s", currentFile.Path())
-			}
-
-			// Create new file
-			destFilePath := filepath.Join(d.dir, a.Filename)
-			err = os.WriteFile(destFilePath, content, a.GetFileMode())
-			if err != nil {
-				return fmt.Errorf("failed to write to file %s: %w", destFilePath, err)
-			}
-			log.Debugf("updates: file copied from current version: %s", a.Filename)
-		}
-	}
-	return nil
-}
-
-func (d *Downloader) downloadAndVerify(ctx context.Context) error {
-	// Make sure we have the bundle file parsed.
-	err := d.parseBundle()
-	if err != nil {
-		return fmt.Errorf("invalid update bundle file: %w", err)
-	}
-
-	// Make sure dir exists
-	_ = os.MkdirAll(d.dir, defaultDirMode)
-
-	for _, artifact := range d.bundle.Artifacts {
-		filePath := filepath.Join(d.dir, artifact.Filename)
-
-		// Check file is already downloaded and valid.
-		exists, _ := checkIfFileIsValid(filePath, artifact)
-		if exists {
-			log.Debugf("updates: file already downloaded: %s", filePath)
-			continue
-		}
-
-		// Download artifact
-		err := d.processArtifact(ctx, artifact, filePath)
+	// Walk directory, just log errors.
+	err := filepath.WalkDir(dir, func(fullpath string, entry fs.DirEntry, err error) error {
+		// Fail on access error.
 		if err != nil {
 			return err
 		}
-	}
-	return nil
-}
 
-func (d *Downloader) processArtifact(ctx context.Context, artifact Artifact, filePath string) error {
-	providedHash, err := hex.DecodeString(artifact.SHA256)
-	if err != nil || len(providedHash) != sha256.Size {
-		return fmt.Errorf("invalid provided hash %s: %w", artifact.SHA256, err)
-	}
+		// Skip folders.
+		if entry.IsDir() {
+			return nil
+		}
 
-	// Download and verify
-	log.Debugf("updates: downloading file: %s", artifact.Filename)
-	content, err := d.downloadAndVerifyArtifact(ctx, artifact.URLs, artifact.Unpack, providedHash)
-	if err != nil {
-		return fmt.Errorf("failed to download artifact: %w", err)
-	}
-
-	// Save
-	tmpFilename := fmt.Sprintf("%s.download", filePath)
-	err = os.WriteFile(tmpFilename, content, artifact.GetFileMode())
-	if err != nil {
-		return fmt.Errorf("failed to write to file: %w", err)
-	}
-
-	// Rename
-	err = os.Rename(tmpFilename, filePath)
-	if err != nil {
-		return fmt.Errorf("failed to rename file: %w", err)
-	}
-
-	log.Infof("updates: file downloaded and verified: %s", artifact.Filename)
-
-	return nil
-}
-
-func (d *Downloader) downloadAndVerifyArtifact(ctx context.Context, urls []string, unpack string, expectedHash []byte) ([]byte, error) {
-	var err error
-	var content []byte
-
-	for _, url := range urls {
-		// Download
-		content, err = d.downloadFile(ctx, url)
+		// Read full file.
+		fileData, err := os.ReadFile(fullpath)
 		if err != nil {
-			err := fmt.Errorf("failed to download artifact from url: %s, %w", url, err)
-			log.Warningf("%s", err)
-			continue
+			log.Debugf("updates: failed to read file %q while searching for existing files: %w", fullpath, err)
+			return fmt.Errorf("failed to read file %s: %w", fullpath, err)
 		}
 
-		// Decompress
-		if unpack != "" {
-			content, err = decompress(unpack, content)
-			if err != nil {
-				err = fmt.Errorf("failed to decompress artifact: %w", err)
-				log.Warningf("%s", err)
-				continue
-			}
-		}
+		// Calculate checksum and add it to the existing files.
+		hashSum := sha256.Sum256(fileData)
+		d.existingFiles[hex.EncodeToString(hashSum[:])] = fullpath
 
-		// Calculate and verify hash
-		hash := sha256.Sum256(content)
-		if !bytes.Equal(expectedHash, hash[:]) {
-			err := fmt.Errorf("artifact hash does not match")
-			log.Warningf("%s", err)
-			continue
-		}
-
-		// All file downloaded and verified.
-		return content, nil
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("searching for existing files: %w", err)
 	}
 
-	return nil, err
+	return nil
 }
 
-func (d *Downloader) downloadFile(ctx context.Context, url string) ([]byte, error) {
-	// Try to make the request
+func (d *Downloader) downloadArtifacts(ctx context.Context) error {
+	// Make sure dir exists.
+	err := os.MkdirAll(d.u.cfg.DownloadDirectory, defaultDirMode)
+	if err != nil {
+		return fmt.Errorf("create download directory: %s", d.u.cfg.DownloadDirectory)
+	}
+
+artifacts:
+	for _, artifact := range d.index.Artifacts {
+		dstFilePath := filepath.Join(d.u.cfg.DownloadDirectory, artifact.Filename)
+
+		// Check if we can copy the artifact from disk instead.
+		if existingFile, ok := d.existingFiles[artifact.SHA256]; ok {
+			// Check if this is the same file.
+			if existingFile == dstFilePath {
+				continue artifacts
+			}
+			// Copy and check.
+			err = copyAndCheckSHA256Sum(existingFile, dstFilePath, artifact.SHA256, artifact.GetFileMode())
+			if err == nil {
+				continue artifacts
+			}
+			log.Debugf("updates: failed to copy existing file %s: %w", artifact.Filename, err)
+		}
+
+		// Try to download the artifact from one of the URLs.
+		var artifactData []byte
+	artifactURLs:
+		for _, url := range artifact.URLs {
+			// Download and verify index.
+			artifactData, err = d.getArtifact(ctx, artifact, url)
+			if err == nil {
+				// Valid artifact found!
+				break artifactURLs
+			}
+			err = fmt.Errorf("update index file from %q: %s", url, err)
+		}
+		if err != nil {
+			return fmt.Errorf("all artifact URLs for %s failed, last error: %w", artifact.Filename, err)
+		}
+
+		// Write artifact to temporary file.
+		tmpFilename := dstFilePath + ".download"
+		err = os.WriteFile(tmpFilename, artifactData, artifact.GetFileMode())
+		if err != nil {
+			return fmt.Errorf("write %s to temp file: %w", artifact.Filename, err)
+		}
+
+		// Rename/Move to actual location.
+		err = os.Rename(tmpFilename, dstFilePath)
+		if err != nil {
+			return fmt.Errorf("rename %s after write: %w", artifact.Filename, err)
+		}
+
+		log.Infof("updates: downloaded and verified %s", artifact.Filename)
+	}
+	return nil
+}
+
+func (d *Downloader) getArtifact(ctx context.Context, artifact Artifact, url string) ([]byte, error) {
+	// Download data from URL.
+	artifactData, err := d.downloadData(ctx, url)
+	if err != nil {
+		return nil, fmt.Errorf("GET artifact: %w", err)
+	}
+
+	// Decompress artifact data, if configured.
+	// TODO: Normally we should do operations on "untrusted" data _after_ verification,
+	// but we really want the checksum to be for the unpacked data. Should we add another checksum, or is HTTPS enough?
+	if artifact.Unpack != "" {
+		artifactData, err = decompress(artifact.Unpack, artifactData)
+		if err != nil {
+			return nil, fmt.Errorf("decompress: %w", err)
+		}
+	}
+
+	// Verify checksum.
+	if err := checkSHA256Sum(artifactData, artifact.SHA256); err != nil {
+		return nil, err
+	}
+
+	return artifactData, nil
+}
+
+func (d *Downloader) downloadData(ctx context.Context, url string) ([]byte, error) {
+	// Setup request.
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GET request to %s: %w", url, err)
@@ -286,41 +221,25 @@ func (d *Downloader) downloadFile(ctx context.Context, url string) ([]byte, erro
 	if UserAgent != "" {
 		req.Header.Set("User-Agent", UserAgent)
 	}
+
+	// Start request with shared http client.
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed a get file request to: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	// Check if the server returned an error
+	// Check for HTTP status errors.
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("server returned non-OK status: %d %s", resp.StatusCode, resp.Status)
 	}
 
+	// Read the full body and return it.
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read body of response: %w", err)
 	}
 	return content, nil
-}
-
-func (d *Downloader) deleteUnfinishedDownloads() error {
-	entries, err := os.ReadDir(d.dir)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		// Check if the current file has the download extension
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".download") {
-			path := filepath.Join(d.dir, e.Name())
-			log.Warningf("updates: deleting unfinished download file: %s\n", path)
-			err := os.Remove(path)
-			if err != nil {
-				log.Errorf("updates: failed to delete unfinished download file %s: %s", path, err)
-			}
-		}
-	}
-	return nil
 }
 
 func decompress(cType string, fileBytes []byte) ([]byte, error) {
@@ -335,46 +254,48 @@ func decompress(cType string, fileBytes []byte) ([]byte, error) {
 }
 
 func decompressGzip(data []byte) ([]byte, error) {
-	// Create a gzip reader from the byte array
+	// Create a gzip reader from the byte slice.
 	gzipReader, err := gzip.NewReader(bytes.NewReader(data))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+		return nil, fmt.Errorf("create gzip reader: %w", err)
 	}
 	defer func() { _ = gzipReader.Close() }()
 
+	// Copy from the gzip reader into a new buffer.
 	var buf bytes.Buffer
 	_, err = io.CopyN(&buf, gzipReader, MaxUnpackSize)
 	if err != nil && !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("failed to read gzip file: %w", err)
+		return nil, fmt.Errorf("read gzip file: %w", err)
 	}
 
 	return buf.Bytes(), nil
 }
 
 func decompressZip(data []byte) ([]byte, error) {
-	// Create a zip reader from the byte array
+	// Create a zip reader from the byte slice.
 	zipReader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create zip reader: %w", err)
+		return nil, fmt.Errorf("create zip reader: %w", err)
 	}
 
-	// Ensure there is only one file in the zip
+	// Ensure there is only one file in the zip.
 	if len(zipReader.File) != 1 {
 		return nil, fmt.Errorf("zip file must contain exactly one file")
 	}
 
-	// Read the single file in the zip
+	// Open single file in the zip.
 	file := zipReader.File[0]
 	fileReader, err := file.Open()
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file in zip: %w", err)
+		return nil, fmt.Errorf("open file in zip: %w", err)
 	}
 	defer func() { _ = fileReader.Close() }()
 
+	// Copy from the zip reader into a new buffer.
 	var buf bytes.Buffer
 	_, err = io.CopyN(&buf, fileReader, MaxUnpackSize)
 	if err != nil && !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("failed to read file in zip: %w", err)
+		return nil, fmt.Errorf("read file in zip: %w", err)
 	}
 
 	return buf.Bytes(), nil

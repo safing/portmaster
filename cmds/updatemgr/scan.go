@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	bundleSettings = updates.BundleFileSettings{
+	bundleSettings = updates.IndexScanConfig{
 		Name:            "Portmaster Binaries",
 		PrimaryArtifact: "linux_amd64/portmaster-core",
 		BaseURL:         "https://updates.safing.io/",

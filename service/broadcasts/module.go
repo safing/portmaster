@@ -93,5 +93,5 @@ func New(instance instance) (*Broadcasts, error) {
 }
 
 type instance interface {
-	IntelUpdates() *updates.Updates
+	IntelUpdates() *updates.Updater
 }

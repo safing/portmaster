@@ -116,6 +116,6 @@ type instance interface {
 	Shutdown()
 	Restart()
 	AddWorkerInfoToDebugInfo(di *debug.Info)
-	BinaryUpdates() *updates.Updates
-	IntelUpdates() *updates.Updates
+	BinaryUpdates() *updates.Updater
+	IntelUpdates() *updates.Updater
 }

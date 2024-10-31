@@ -20,11 +20,11 @@ type testInstance struct {
 	db      *dbmodule.DBModule
 	api     *api.API
 	config  *config.Config
-	updates *updates.Updates
+	updates *updates.Updater
 	base    *base.Base
 }
 
-func (stub *testInstance) IntelUpdates() *updates.Updates {
+func (stub *testInstance) IntelUpdates() *updates.Updater {
 	return stub.updates
 }
 
@@ -86,7 +86,7 @@ func runTest(m *testing.M) error {
 	if err != nil {
 		return fmt.Errorf("failed to create config: %w", err)
 	}
-	stub.updates, err = updates.New(stub, "Test Intel", updates.UpdateIndex{
+	stub.updates, err = updates.New(stub, "Test Intel", updates.Config{
 		Directory: installDir,
 		IndexFile: "index.json",
 	})

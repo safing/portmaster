@@ -142,6 +142,6 @@ func New(instance instance) (*FilterLists, error) {
 }
 
 type instance interface {
-	IntelUpdates() *updates.Updates
+	IntelUpdates() *updates.Updater
 	NetEnv() *netenv.NetEnv
 }

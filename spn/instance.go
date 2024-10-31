@@ -49,8 +49,8 @@ type Instance struct {
 	rng      *rng.Rng
 
 	core          *core.Core
-	binaryUpdates *updates.Updates
-	intelUpdates  *updates.Updates
+	binaryUpdates *updates.Updater
+	intelUpdates  *updates.Updater
 	geoip         *geoip.GeoIP
 	netenv        *netenv.NetEnv
 	filterLists   *filterlists.FilterLists
@@ -75,11 +75,11 @@ func New() (*Instance, error) {
 	instance := &Instance{}
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
 
-	binaryUpdateIndex := updates.UpdateIndex{
+	binaryUpdateIndex := updates.Config{
 		// FIXME: fill
 	}
 
-	intelUpdateIndex := updates.UpdateIndex{
+	intelUpdateIndex := updates.Config{
 		// FIXME: fill
 	}
 
@@ -270,12 +270,12 @@ func (i *Instance) Base() *base.Base {
 }
 
 // BinaryUpdates returns the updates module.
-func (i *Instance) BinaryUpdates() *updates.Updates {
+func (i *Instance) BinaryUpdates() *updates.Updater {
 	return i.binaryUpdates
 }
 
 // IntelUpdates returns the updates module.
-func (i *Instance) IntelUpdates() *updates.Updates {
+func (i *Instance) IntelUpdates() *updates.Updater {
 	return i.intelUpdates
 }
 

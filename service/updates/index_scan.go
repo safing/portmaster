@@ -19,7 +19,7 @@ import (
 	semver "github.com/hashicorp/go-version"
 )
 
-type BundleFileSettings struct {
+type IndexScanConfig struct {
 	Name            string
 	Version         string
 	PrimaryArtifact string
@@ -34,7 +34,7 @@ type BundleFileSettings struct {
 	unpackFilesGlobs map[string]glob.Glob
 }
 
-func (bs *BundleFileSettings) init() error {
+func (bs *IndexScanConfig) init() error {
 	// Transform base URL into expected format.
 	bs.cleanedBaseURL = strings.TrimSuffix(bs.BaseURL, "/") + "/"
 
@@ -62,7 +62,7 @@ func (bs *BundleFileSettings) init() error {
 }
 
 // IsIgnored returns whether a filename should be ignored.
-func (bs *BundleFileSettings) IsIgnored(filename string) bool {
+func (bs *IndexScanConfig) IsIgnored(filename string) bool {
 	for _, ignoreGlob := range bs.ignoreFilesGlobs {
 		if ignoreGlob.Match(filename) {
 			return true
@@ -73,7 +73,7 @@ func (bs *BundleFileSettings) IsIgnored(filename string) bool {
 }
 
 // UnpackSetting returns the unpack setings for the given filename.
-func (bs *BundleFileSettings) UnpackSetting(filename string) (string, error) {
+func (bs *IndexScanConfig) UnpackSetting(filename string) (string, error) {
 	var foundSetting string
 
 settings:
@@ -94,21 +94,21 @@ settings:
 	return foundSetting, nil
 }
 
-// GenerateBundleFromDir generates a bundle from a given folder.
-func GenerateBundleFromDir(bundleDir string, settings BundleFileSettings) (*Bundle, error) {
+// GenerateIndexFromDir generates a index from a given folder.
+func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error) {
 	artifacts := make(map[string]Artifact)
 
 	// Initialize.
-	err := settings.init()
+	err := cfg.init()
 	if err != nil {
-		return nil, fmt.Errorf("invalid bundle settings: %w", err)
+		return nil, fmt.Errorf("invalid index scan config: %w", err)
 	}
-	bundleDir, err = filepath.Abs(bundleDir)
+	sourceDir, err = filepath.Abs(sourceDir)
 	if err != nil {
-		return nil, fmt.Errorf("invalid bundle dir: %w", err)
+		return nil, fmt.Errorf("invalid index dir: %w", err)
 	}
 
-	err = filepath.WalkDir(bundleDir, func(fullpath string, d fs.DirEntry, err error) error {
+	err = filepath.WalkDir(sourceDir, func(fullpath string, d fs.DirEntry, err error) error {
 		// Fail on access error.
 		if err != nil {
 			return err
@@ -122,13 +122,13 @@ func GenerateBundleFromDir(bundleDir string, settings BundleFileSettings) (*Bund
 		}
 
 		// Get relative path for processing.
-		relpath, err := filepath.Rel(bundleDir, fullpath)
+		relpath, err := filepath.Rel(sourceDir, fullpath)
 		if err != nil {
 			return fmt.Errorf("invalid relative path for %s: %w", fullpath, err)
 		}
 
 		// Check if file is in the ignore list.
-		if settings.IsIgnored(relpath) {
+		if cfg.IsIgnored(relpath) {
 			return nil
 		}
 
@@ -184,7 +184,7 @@ func GenerateBundleFromDir(bundleDir string, settings BundleFileSettings) (*Bund
 		artifact := Artifact{}
 
 		// Check if the caller provided a template for the artifact.
-		if t, ok := settings.Templates[identifier]; ok {
+		if t, ok := cfg.Templates[identifier]; ok {
 			artifact = t
 		}
 
@@ -192,14 +192,14 @@ func GenerateBundleFromDir(bundleDir string, settings BundleFileSettings) (*Bund
 		if artifact.Filename == "" {
 			artifact.Filename = identifier
 		}
-		if len(artifact.URLs) == 0 && settings.BaseURL != "" {
-			artifact.URLs = []string{settings.cleanedBaseURL + relpath}
+		if len(artifact.URLs) == 0 && cfg.BaseURL != "" {
+			artifact.URLs = []string{cfg.cleanedBaseURL + relpath}
 		}
 		if artifact.Platform == "" {
 			artifact.Platform = platform
 		}
 		if artifact.Unpack == "" {
-			unpackSetting, err := settings.UnpackSetting(relpath)
+			unpackSetting, err := cfg.UnpackSetting(relpath)
 			if err != nil {
 				return fmt.Errorf("invalid unpack setting for %s at %s: %w", key, relpath, err)
 			}
@@ -225,20 +225,20 @@ func GenerateBundleFromDir(bundleDir string, settings BundleFileSettings) (*Bund
 		return nil, fmt.Errorf("scanning dir: %w", err)
 	}
 
-	// Create base bundle.
-	bundle := &Bundle{
-		Name:      settings.Name,
-		Version:   settings.Version,
+	// Create base index.
+	index := &Index{
+		Name:      cfg.Name,
+		Version:   cfg.Version,
 		Published: time.Now(),
 	}
-	if bundle.Version == "" && settings.PrimaryArtifact != "" {
-		pv, ok := artifacts[settings.PrimaryArtifact]
+	if index.Version == "" && cfg.PrimaryArtifact != "" {
+		pv, ok := artifacts[cfg.PrimaryArtifact]
 		if ok {
-			bundle.Version = pv.Version
+			index.Version = pv.Version
 		}
 	}
-	if bundle.Name == "" {
-		bundle.Name = strings.Trim(filepath.Base(bundleDir), "./\\")
+	if index.Name == "" {
+		index.Name = strings.Trim(filepath.Base(sourceDir), "./\\")
 	}
 
 	// Convert to slice and compute hashes.
@@ -257,7 +257,7 @@ func GenerateBundleFromDir(bundleDir string, settings BundleFileSettings) (*Bund
 		}
 
 		// Remove default versions.
-		if artifact.Version == bundle.Version {
+		if artifact.Version == index.Version {
 			artifact.Version = ""
 		}
 
@@ -282,8 +282,8 @@ func GenerateBundleFromDir(bundleDir string, settings BundleFileSettings) (*Bund
 	})
 
 	// Assign and return.
-	bundle.Artifacts = export
-	return bundle, nil
+	index.Artifacts = export
+	return index, nil
 }
 
 func selectLatestArtifacts(artifacts []Artifact) ([]Artifact, error) {
@@ -373,8 +373,8 @@ func getIdentifierAndVersion(versionedPath string) (identifier, version string, 
 	return dirPath + filename, version, true
 }
 
-// GenerateMockFolder generates mock bundle folder for testing.
-func GenerateMockFolder(dir, name, version string) error {
+// GenerateMockFolder generates mock index folder for testing.
+func GenerateMockFolder(dir, name, version string) error { // FIXME: move this to test?
 	// Make sure dir exists
 	_ = os.MkdirAll(dir, defaultDirMode)
 
@@ -400,7 +400,7 @@ func GenerateMockFolder(dir, name, version string) error {
 	}
 	_ = file.Close()
 
-	bundle, err := GenerateBundleFromDir(dir, BundleFileSettings{
+	index, err := GenerateIndexFromDir(dir, IndexScanConfig{
 		Name:    name,
 		Version: version,
 	})
@@ -408,12 +408,12 @@ func GenerateMockFolder(dir, name, version string) error {
 		return err
 	}
 
-	bundleStr, err := json.MarshalIndent(bundle, "", "  ")
+	indexJson, err := json.MarshalIndent(index, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to marshal bundle: %s\n", err)
+		fmt.Fprintf(os.Stderr, "failed to marshal index: %s\n", err)
 	}
 
-	err = os.WriteFile(filepath.Join(dir, "index.json"), bundleStr, defaultFileMode)
+	err = os.WriteFile(filepath.Join(dir, "index.json"), indexJson, defaultFileMode)
 	if err != nil {
 		return err
 	}

@@ -161,7 +161,7 @@ func New(instance instance) (*Firewall, error) {
 
 type instance interface {
 	Config() *config.Config
-	BinaryUpdates() *updates.Updates
+	BinaryUpdates() *updates.Updater
 	Profile() *profile.ProfileModule
 	Captain() *captain.Captain
 	Access() *access.Access

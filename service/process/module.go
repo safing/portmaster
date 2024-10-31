@@ -70,5 +70,5 @@ func New(instance instance) (*ProcessModule, error) {
 }
 
 type instance interface {
-	BinaryUpdates() *updates.Updates
+	BinaryUpdates() *updates.Updater
 }

@@ -36,6 +36,47 @@ func (n *Notifications) Stop() error {
 	return nil
 }
 
+// NotifyInfo is a helper method for quickly showing an info notification.
+// The notification will be activated immediately.
+// If the provided id is empty, an id will derived from msg.
+// ShowOnSystem is disabled.
+// If no actions are defined, a default "OK" (ID:"ack") action will be added.
+func (n *Notifications) NotifyInfo(id, title, msg string, actions ...Action) *Notification {
+	return NotifyInfo(id, title, msg, actions...)
+}
+
+// NotifyWarn is a helper method for quickly showing a warning notification
+// The notification will be activated immediately.
+// If the provided id is empty, an id will derived from msg.
+// ShowOnSystem is enabled.
+// If no actions are defined, a default "OK" (ID:"ack") action will be added.
+func (n *Notifications) NotifyWarn(id, title, msg string, actions ...Action) *Notification {
+	return NotifyWarn(id, title, msg, actions...)
+}
+
+// NotifyError is a helper method for quickly showing an error notification.
+// The notification will be activated immediately.
+// If the provided id is empty, an id will derived from msg.
+// ShowOnSystem is enabled.
+// If no actions are defined, a default "OK" (ID:"ack") action will be added.
+func (n *Notifications) NotifyError(id, title, msg string, actions ...Action) *Notification {
+	return NotifyError(id, title, msg, actions...)
+}
+
+// NotifyPrompt is a helper method for quickly showing a prompt notification.
+// The notification will be activated immediately.
+// If the provided id is empty, an id will derived from msg.
+// ShowOnSystem is disabled.
+// If no actions are defined, a default "OK" (ID:"ack") action will be added.
+func (n *Notifications) NotifyPrompt(id, title, msg string, actions ...Action) *Notification {
+	return NotifyPrompt(id, title, msg, actions...)
+}
+
+// Notify sends the given notification.
+func (n *Notifications) Notify(notification *Notification) *Notification {
+	return Notify(notification)
+}
+
 func prep() error {
 	return registerConfig()
 }

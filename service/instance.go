@@ -67,8 +67,8 @@ type Instance struct {
 	base          *base.Base
 
 	core          *core.Core
-	binaryUpdates *updates.Updates
-	intelUpdates  *updates.Updates
+	binaryUpdates *updates.Updater
+	intelUpdates  *updates.Updater
 	geoip         *geoip.GeoIP
 	netenv        *netenv.NetEnv
 	ui            *ui.UI
@@ -126,14 +126,14 @@ func getCurrentBinaryFolder() (string, error) {
 
 // New returns a new Portmaster service instance.
 func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
-	var binaryUpdateIndex updates.UpdateIndex
-	var intelUpdateIndex updates.UpdateIndex
+	var binaryUpdateIndex updates.Config
+	var intelUpdateIndex updates.Config
 	if go_runtime.GOOS == "windows" {
 		binaryFolder, err := getCurrentBinaryFolder()
 		if err != nil {
 			return nil, err
 		}
-		binaryUpdateIndex = updates.UpdateIndex{
+		binaryUpdateIndex = updates.Config{
 			Directory:         binaryFolder, // Default: C:/Program Files/Portmaster
 			DownloadDirectory: os.ExpandEnv("$ProgramData/Portmaster/new_binary"),
 			PurgeDirectory:    filepath.Join(binaryFolder, "old_binary"), // Default: C:/Program Files/Portmaster/old_binary
@@ -144,7 +144,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			NeedsRestart:      true,
 		}
 
-		intelUpdateIndex = updates.UpdateIndex{
+		intelUpdateIndex = updates.Config{
 			Directory:         os.ExpandEnv("$ProgramData/Portmaster/intel"),
 			DownloadDirectory: os.ExpandEnv("$ProgramData/Portmaster/new_intel"),
 			PurgeDirectory:    os.ExpandEnv("$ProgramData/Portmaster/old_intel"),
@@ -154,7 +154,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			NeedsRestart:      false,
 		}
 	} else if go_runtime.GOOS == "linux" {
-		binaryUpdateIndex = updates.UpdateIndex{
+		binaryUpdateIndex = updates.Config{
 			Directory:         "/usr/lib/portmaster",
 			DownloadDirectory: "/var/lib/portmaster/new_bin",
 			PurgeDirectory:    "/var/lib/portmaster/old_bin",
@@ -165,7 +165,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 			NeedsRestart:      true,
 		}
 
-		intelUpdateIndex = updates.UpdateIndex{
+		intelUpdateIndex = updates.Config{
 			Directory:         "/var/lib/portmaster/intel",
 			DownloadDirectory: "/var/lib/portmaster/new_intel",
 			PurgeDirectory:    "/var/lib/portmaster/intel_bin",
@@ -454,12 +454,12 @@ func (i *Instance) Base() *base.Base {
 }
 
 // BinaryUpdates returns the updates module.
-func (i *Instance) BinaryUpdates() *updates.Updates {
+func (i *Instance) BinaryUpdates() *updates.Updater {
 	return i.binaryUpdates
 }
 
 // IntelUpdates returns the updates module.
-func (i *Instance) IntelUpdates() *updates.Updates {
+func (i *Instance) IntelUpdates() *updates.Updater {
 	return i.intelUpdates
 }
 
