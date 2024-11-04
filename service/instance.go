@@ -19,6 +19,7 @@ import (
 	"github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/firewall"
 	"github.com/safing/portmaster/service/firewall/interception"
+	"github.com/safing/portmaster/service/firewall/interception/dnslistener"
 	"github.com/safing/portmaster/service/intel/customlists"
 	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/intel/geoip"
@@ -74,6 +75,7 @@ type Instance struct {
 	firewall     *firewall.Firewall
 	filterLists  *filterlists.FilterLists
 	interception *interception.Interception
+	dnslistener  *dnslistener.DNSListener
 	customlist   *customlists.CustomList
 	status       *status.Status
 	broadcasts   *broadcasts.Broadcasts
@@ -187,6 +189,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create interception module: %w", err)
 	}
+	instance.dnslistener, err = dnslistener.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create dns-listener module: %w", err)
+	}
 	instance.customlist, err = customlists.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create customlist module: %w", err)
@@ -288,6 +294,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.filterLists,
 		instance.customlist,
 		instance.interception,
+		instance.dnslistener,
 
 		instance.compat,
 		instance.status,
@@ -461,6 +468,11 @@ func (i *Instance) FilterLists() *filterlists.FilterLists {
 // Interception returns the interception module.
 func (i *Instance) Interception() *interception.Interception {
 	return i.interception
+}
+
+// DNSListener returns the dns-listener module.
+func (i *Instance) DNSListener() *dnslistener.DNSListener {
+	return i.dnslistener
 }
 
 // CustomList returns the customlist module.
