@@ -444,8 +444,9 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 		filterConnection = false
 		log.Tracer(pkt.Ctx()).Infof("filter: granting own pre-authenticated connection %s", conn)
 
-		// Redirect outbound DNS packets if enabled,
+	// Redirect outbound DNS packets if enabled,
 	case dnsQueryInterception() &&
+		module.instance.Resolver().IsDisabled.IsNotSet() &&
 		pkt.IsOutbound() &&
 		pkt.Info().DstPort == 53 &&
 		// that don't match the address of our nameserver,

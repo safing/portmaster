@@ -43,6 +43,18 @@ func PreventBypassing(ctx context.Context, conn *network.Connection) (endpoints.
 		return endpoints.NoMatch, "", nil
 	}
 
+	// If Portmaster resolver is disabled allow requests going to system dns resolver.
+	// And allow all connections out of the System Resolver.
+	if module.instance.Resolver().IsDisabled.IsSet() {
+		// TODO(vladimir): Is there a more specific check that can be done?
+		if conn.Process().IsSystemResolver() {
+			return endpoints.NoMatch, "", nil
+		}
+		if conn.Entity.Port == 53 && conn.Entity.IPScope.IsLocalhost() {
+			return endpoints.NoMatch, "", nil
+		}
+	}
+
 	// Block bypass attempts using an (encrypted) DNS server.
 	switch {
 	case conn.Entity.Port == 53:

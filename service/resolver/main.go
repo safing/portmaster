@@ -29,6 +29,8 @@ type ResolverModule struct { //nolint
 	failingResolverWorkerMgr   *mgr.WorkerMgr
 	suggestUsingStaleCacheTask *mgr.WorkerMgr
 
+	IsDisabled abool.AtomicBool
+
 	states *mgr.StateMgr
 }
 
@@ -267,8 +269,9 @@ func New(instance instance) (*ResolverModule, error) {
 	}
 	m := mgr.New("Resolver")
 	module = &ResolverModule{
-		mgr:      m,
-		instance: instance,
+		mgr:        m,
+		instance:   instance,
+		IsDisabled: *abool.New(),
 
 		states: mgr.NewStateMgr(m),
 	}
