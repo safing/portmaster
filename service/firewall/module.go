@@ -160,6 +160,7 @@ func New(instance instance) (*Firewall, error) {
 }
 
 type instance interface {
+	BinDir() string
 	Config() *config.Config
 	BinaryUpdates() *updates.Updater
 	Profile() *profile.ProfileModule

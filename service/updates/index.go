@@ -35,7 +35,8 @@ type Artifact struct {
 	Unpack   string   `json:"Unpack,omitempty"`
 	Version  string   `json:"Version,omitempty"`
 
-	localFile string
+	localFile  string
+	versionNum *semver.Version
 }
 
 // GetFileMode returns the required filesystem permission for the artifact.
@@ -50,6 +51,67 @@ func (a *Artifact) GetFileMode() os.FileMode {
 	}
 
 	return defaultFileMode
+}
+
+// Path returns the absolute path to the local file.
+func (a *Artifact) Path() string {
+	return a.localFile
+}
+
+// SemVer returns the version of the artifact.
+func (a *Artifact) SemVer() *semver.Version {
+	return a.versionNum
+}
+
+// IsNewerThan returns whether the artifact is newer than the given artifact.
+// Returns true if the given artifact is nil.
+// The second return value "ok" is false when version could not be compared.
+// In this case, it is up to the caller to decide how to proceed.
+func (a *Artifact) IsNewerThan(b *Artifact) (newer, ok bool) {
+	switch {
+	case a == nil:
+		return false, false
+	case b == nil:
+		return true, true
+	case a.versionNum == nil:
+		return false, false
+	case b.versionNum == nil:
+		return false, false
+	case a.versionNum.GreaterThan(b.versionNum):
+		return true, true
+	default:
+		return false, true
+	}
+}
+
+func (a *Artifact) export(dir string, indexVersion *semver.Version) *Artifact {
+	copy := &Artifact{
+		Filename:   a.Filename,
+		SHA256:     a.SHA256,
+		URLs:       a.URLs,
+		Platform:   a.Platform,
+		Unpack:     a.Unpack,
+		Version:    a.Version,
+		localFile:  filepath.Join(dir, a.Filename),
+		versionNum: a.versionNum,
+	}
+
+	// Make sure we have a version number.
+	switch {
+	case copy.versionNum != nil:
+		// Version already parsed.
+	case copy.Version != "":
+		// Need to parse version.
+		v, err := semver.NewVersion(copy.Version)
+		if err == nil {
+			copy.versionNum = v
+		}
+	default:
+		// No version defined, inherit index version.
+		copy.versionNum = indexVersion
+	}
+
+	return copy
 }
 
 // Index represents a collection of artifacts with metadata.
@@ -90,16 +152,26 @@ func ParseIndex(jsonContent []byte, trustStore jess.TrustStore) (*Index, error) 
 		return nil, fmt.Errorf("parse index: %w", err)
 	}
 
+	// Initialize data.
+	err = index.init()
+	if err != nil {
+		return nil, err
+	}
+
+	return &index, nil
+}
+
+func (index *Index) init() error {
 	// Parse version number, if set.
 	if index.Version != "" {
 		versionNum, err := semver.NewVersion(index.Version)
 		if err != nil {
-			return nil, fmt.Errorf("invalid index version %q: %w", index.Version, err)
+			return fmt.Errorf("invalid index version %q: %w", index.Version, err)
 		}
 		index.versionNum = versionNum
 	}
 
-	// Filter artifacts by currnet platform.
+	// Filter artifacts by current platform.
 	filtered := make([]Artifact, 0)
 	for _, a := range index.Artifacts {
 		if a.Platform == "" || a.Platform == currentPlatform {
@@ -108,7 +180,19 @@ func ParseIndex(jsonContent []byte, trustStore jess.TrustStore) (*Index, error) 
 	}
 	index.Artifacts = filtered
 
-	return &index, nil
+	// Parse artifact version numbers.
+	for _, a := range index.Artifacts {
+		if a.Version != "" {
+			v, err := semver.NewVersion(a.Version)
+			if err == nil {
+				a.versionNum = v
+			}
+		} else {
+			a.versionNum = index.versionNum
+		}
+	}
+
+	return nil
 }
 
 // CanDoUpgrades returns whether the index is able to follow a secure upgrade path.

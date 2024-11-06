@@ -56,5 +56,6 @@ func New(instance instance) (*Config, error) {
 }
 
 type instance interface {
+	DataDir() string
 	SetCmdLineOperation(f func() error)
 }

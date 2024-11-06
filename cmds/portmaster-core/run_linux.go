@@ -129,7 +129,7 @@ func isRunningAsService() bool {
 	// Get the current process ID
 	pid := os.Getpid()
 
-	currentProcess, err := processInfo.NewProcess(int32(pid))
+	currentProcess, err := processInfo.NewProcess(int32(pid)) //nolint:gosec
 	if err != nil {
 		return false
 	}

@@ -45,6 +45,8 @@ var (
 
 // Config holds the configuration for the updates module.
 type Config struct {
+	// Name of the updater.
+	Name string
 	// Directory is the main directory where the currently to-be-used artifacts live.
 	Directory string
 	// DownloadDirectory is the directory where new artifacts are downloaded to and prepared for upgrading.
@@ -80,6 +82,8 @@ type Config struct {
 func (cfg *Config) Check() error {
 	// Check if required fields are set.
 	switch {
+	case cfg.Name == "":
+		return errors.New("name must be set")
 	case cfg.Directory == "":
 		return errors.New("directory must be set")
 	case cfg.DownloadDirectory == "":
@@ -157,19 +161,22 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 
 	// Load index.
 	index, err := LoadIndex(filepath.Join(cfg.Directory, cfg.IndexFile), cfg.Verify)
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			log.Errorf("updates: invalid index file, falling back to dir scan: %w", err)
-		}
-
-		// Fall back to scanning the directory.
-		index, err = GenerateIndexFromDir(cfg.Directory, IndexScanConfig{Version: "0.0.0"})
-		if err != nil {
-			return nil, fmt.Errorf("updates index load and dir scan failed: %w", err)
-		}
+	if err == nil {
+		module.index = index
+		return module, nil
 	}
-	module.index = index
 
+	// Fall back to scanning the directory.
+	if !errors.Is(err, os.ErrNotExist) {
+		log.Errorf("updates/%s: invalid index file, falling back to dir scan: %w", cfg.Name, err)
+	}
+	index, err = GenerateIndexFromDir(cfg.Directory, IndexScanConfig{Version: "0.0.0"})
+	if err == nil && index.init() == nil {
+		module.index = index
+		return module, nil
+	}
+
+	// Fall back to empty index.
 	return module, nil
 }
 
@@ -207,7 +214,7 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 		u.indexLock.Unlock()
 		// Check with local pointer to index.
 		if err := index.ShouldUpgradeTo(downloader.index); err != nil {
-			log.Infof("updates: no new or eligible update: %s", err)
+			log.Infof("updates/%s: no new or eligible update: %s", u.cfg.Name, err)
 			if u.cfg.Notify && u.instance.Notifications() != nil {
 				u.instance.Notifications().NotifyInfo(
 					noNewUpdateNotificationID,
@@ -247,12 +254,12 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 
 	// Download any remaining needed files.
 	// If everything is already found in the download directory, then this is a no-op.
-	log.Infof("updates: downloading new version: %s %s", downloader.index.Name, downloader.index.Version)
+	log.Infof("updates/%s: downloading new version: %s %s", u.cfg.Name, downloader.index.Name, downloader.index.Version)
 	err = downloader.downloadArtifacts(w.Ctx())
 	if err != nil {
-		log.Errorf("updates: failed to download update: %s", err)
+		log.Errorf("updates/%s: failed to download update: %s", u.cfg.Name, err)
 		if err := u.deleteUnfinishedFiles(u.cfg.DownloadDirectory); err != nil {
-			log.Debugf("updates: failed to delete unfinished files in download directory %s", u.cfg.DownloadDirectory)
+			log.Debugf("updates/%s: failed to delete unfinished files in download directory %s", u.cfg.Name, u.cfg.DownloadDirectory)
 		}
 		return fmt.Errorf("downloading failed: %w", err)
 	}
@@ -282,7 +289,7 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 	err = u.upgrade(downloader, ignoreVersion)
 	if err != nil {
 		if err := u.deleteUnfinishedFiles(u.cfg.PurgeDirectory); err != nil {
-			log.Debugf("updates: failed to delete unfinished files in purge directory %s", u.cfg.PurgeDirectory)
+			log.Debugf("updates/%s: failed to delete unfinished files in purge directory %s", u.cfg.Name, u.cfg.PurgeDirectory)
 		}
 		return err
 	}
@@ -334,6 +341,14 @@ func (u *Updater) upgradeWorker(w *mgr.WorkerCtx) error {
 	return nil
 }
 
+// ForceUpdate executes a forced update and upgrade directly and synchronously
+// and is intended to be used only within a tool, not a service.
+func (u *Updater) ForceUpdate() error {
+	return u.m.Do("update and upgrade", func(w *mgr.WorkerCtx) error {
+		return u.updateAndUpgrade(w, u.cfg.IndexURLs, true, true)
+	})
+}
+
 // UpdateFromURL installs an update from the provided url.
 func (u *Updater) UpdateFromURL(url string) error {
 	u.m.Go("custom update from url", func(w *mgr.WorkerCtx) error {
@@ -383,9 +398,14 @@ func (u *Updater) GetMainDir() string {
 }
 
 // GetFile returns the path of a file given the name. Returns ErrNotFound if file is not found.
-func (u *Updater) GetFile(name string) (string, error) {
+func (u *Updater) GetFile(name string) (*Artifact, error) {
 	u.indexLock.Lock()
 	defer u.indexLock.Unlock()
+
+	// Check if any index is active.
+	if u.index == nil {
+		return nil, ErrNotFound
+	}
 
 	for _, artifact := range u.index.Artifacts {
 		switch {
@@ -396,11 +416,11 @@ func (u *Updater) GetFile(name string) (string, error) {
 			// Platforms are usually pre-filtered, but just to be sure.
 		default:
 			// Artifact matches!
-			return filepath.Join(u.cfg.Directory, artifact.Filename), nil
+			return artifact.export(u.cfg.Directory, u.index.versionNum), nil
 		}
 	}
 
-	return "", ErrNotFound
+	return nil, ErrNotFound
 }
 
 // Stop stops the module.

@@ -197,7 +197,7 @@ func (profile *Profile) parseConfig() error {
 	if ok {
 		profile.filterListIDs, err = filterlists.ResolveListIDs(list)
 		if err != nil {
-			lastErr = err
+			log.Warningf("profiles: failed to resolve filter list IDs: %s", err)
 		} else {
 			profile.filterListsSet = true
 		}

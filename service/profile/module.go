@@ -3,12 +3,13 @@ package profile
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/migration"
-	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
 	_ "github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/mgr"
@@ -65,11 +66,11 @@ func prep() error {
 	}
 
 	// Setup icon storage location.
-	iconsDir := dataroot.Root().ChildDir("databases", 0o0700).ChildDir("icons", 0o0700)
-	if err := iconsDir.Ensure(); err != nil {
+	iconsDir := filepath.Join(module.instance.DataDir(), "databases", "icons")
+	if err := os.MkdirAll(iconsDir, 0o0700); err != nil {
 		return fmt.Errorf("failed to create/check icons directory: %w", err)
 	}
-	binmeta.ProfileIconStoragePath = iconsDir.Path
+	binmeta.ProfileIconStoragePath = iconsDir
 
 	return nil
 }
@@ -151,5 +152,6 @@ func NewModule(instance instance) (*ProfileModule, error) {
 }
 
 type instance interface {
+	DataDir() string
 	Config() *config.Config
 }

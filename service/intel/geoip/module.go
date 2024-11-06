@@ -66,5 +66,6 @@ func New(instance instance) (*GeoIP, error) {
 }
 
 type instance interface {
+	BinaryUpdates() *updates.Updater
 	IntelUpdates() *updates.Updater
 }

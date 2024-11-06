@@ -39,9 +39,9 @@ var (
 	filterListLock sync.RWMutex
 
 	// Updater files for tracking upgrades.
-	baseFile         *updates.File
-	intermediateFile *updates.File
-	urgentFile       *updates.File
+	baseFile         *updates.Artifact
+	intermediateFile *updates.Artifact
+	urgentFile       *updates.Artifact
 
 	filterListsLoaded chan struct{}
 )
@@ -77,7 +77,7 @@ func isLoaded() bool {
 
 // processListFile opens the latest version of file and decodes it's DSDL
 // content. It calls processEntry for each decoded filterlists entry.
-func processListFile(ctx context.Context, filter *scopedBloom, file *updates.File) error {
+func processListFile(ctx context.Context, filter *scopedBloom, file *updates.Artifact) error {
 	f, err := os.Open(file.Path())
 	if err != nil {
 		return err

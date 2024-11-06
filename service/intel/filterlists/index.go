@@ -162,7 +162,7 @@ func getListIndexFromCache() (*ListIndexFile, error) {
 
 var (
 	// listIndexUpdate must only be used by updateListIndex.
-	listIndexUpdate     *updates.File
+	listIndexUpdate     *updates.Artifact
 	listIndexUpdateLock sync.Mutex
 )
 

@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	bundleSettings = updates.IndexScanConfig{
+	scanConfig = updates.IndexScanConfig{
 		Name:            "Portmaster Binaries",
 		PrimaryArtifact: "linux_amd64/portmaster-core",
 		BaseURL:         "https://updates.safing.io/",
@@ -60,17 +60,17 @@ var (
 		RunE:  scan,
 	}
 
-	bundleDir string
+	scanDir string
 )
 
 func init() {
 	rootCmd.AddCommand(scanCmd)
-	scanCmd.Flags().StringVarP(&bundleDir, "dir", "d", "", "directory to create index from (required)")
+	scanCmd.Flags().StringVarP(&scanDir, "dir", "d", "", "directory to create index from (required)")
 	_ = scanCmd.MarkFlagRequired("dir")
 }
 
 func scan(cmd *cobra.Command, args []string) error {
-	bundle, err := updates.GenerateBundleFromDir(bundleDir, bundleSettings)
+	bundle, err := updates.GenerateIndexFromDir(scanDir, scanConfig)
 	if err != nil {
 		return err
 	}

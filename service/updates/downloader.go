@@ -55,7 +55,7 @@ func (d *Downloader) updateIndex(ctx context.Context) error {
 			break
 		}
 
-		log.Warningf("updates: failed to update index from %q: %s", url, err)
+		log.Warningf("updates/%s: failed to update index from %q: %s", d.u.cfg.Name, url, err)
 		err = fmt.Errorf("update index file from %q: %s", url, err)
 	}
 	if err != nil {
@@ -111,7 +111,7 @@ func (d *Downloader) gatherExistingFiles(dir string) error {
 		// Read full file.
 		fileData, err := os.ReadFile(fullpath)
 		if err != nil {
-			log.Debugf("updates: failed to read file %q while searching for existing files: %w", fullpath, err)
+			log.Debugf("updates/%s: failed to read file %q while searching for existing files: %w", d.u.cfg.Name, fullpath, err)
 			return fmt.Errorf("failed to read file %s: %w", fullpath, err)
 		}
 
@@ -150,7 +150,7 @@ artifacts:
 			if err == nil {
 				continue artifacts
 			}
-			log.Debugf("updates: failed to copy existing file %s: %w", artifact.Filename, err)
+			log.Debugf("updates/%s: failed to copy existing file %s: %w", d.u.cfg.Name, artifact.Filename, err)
 		}
 
 		// Try to download the artifact from one of the URLs.
@@ -182,7 +182,7 @@ artifacts:
 			return fmt.Errorf("rename %s after write: %w", artifact.Filename, err)
 		}
 
-		log.Infof("updates: downloaded and verified %s", artifact.Filename)
+		log.Infof("updates/%s: downloaded and verified %s", d.u.cfg.Name, artifact.Filename)
 	}
 	return nil
 }

@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
-	go_runtime "runtime"
 	"sync/atomic"
 	"time"
 
@@ -54,6 +52,9 @@ type Instance struct {
 	ctx          context.Context
 	cancelCtx    context.CancelFunc
 	serviceGroup *mgr.Group
+
+	binDir  string
+	dataDir string
 
 	exitCode atomic.Int32
 
@@ -105,82 +106,26 @@ type Instance struct {
 	ShouldRestart        bool
 }
 
-func getCurrentBinaryFolder() (string, error) {
-	// Get the path of the currently running executable
-	exePath, err := os.Executable()
-	if err != nil {
-		return "", fmt.Errorf("failed to get executable path: %w", err)
-	}
-
-	// Get the absolute path
-	absPath, err := filepath.Abs(exePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to get absolute path: %w", err)
-	}
-
-	// Get the directory of the executable
-	installDir := filepath.Dir(absPath)
-
-	return installDir, nil
-}
-
 // New returns a new Portmaster service instance.
 func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
-	var binaryUpdateIndex updates.Config
-	var intelUpdateIndex updates.Config
-	if go_runtime.GOOS == "windows" {
-		binaryFolder, err := getCurrentBinaryFolder()
-		if err != nil {
-			return nil, err
-		}
-		binaryUpdateIndex = updates.Config{
-			Directory:         binaryFolder, // Default: C:/Program Files/Portmaster
-			DownloadDirectory: os.ExpandEnv("$ProgramData/Portmaster/new_binary"),
-			PurgeDirectory:    filepath.Join(binaryFolder, "old_binary"), // Default: C:/Program Files/Portmaster/old_binary
-			Ignore:            []string{"databases", "intel", "config.json"},
-			IndexURLs:         []string{"http://192.168.88.11:8000/test-binary.json"},
-			IndexFile:         "bin-index.json",
-			AutoApply:         false,
-			NeedsRestart:      true,
-		}
+	// Initialize config.
+	err := svcCfg.Init()
+	if err != nil {
+		return nil, fmt.Errorf("internal service config error: %w", err)
+	}
 
-		intelUpdateIndex = updates.Config{
-			Directory:         os.ExpandEnv("$ProgramData/Portmaster/intel"),
-			DownloadDirectory: os.ExpandEnv("$ProgramData/Portmaster/new_intel"),
-			PurgeDirectory:    os.ExpandEnv("$ProgramData/Portmaster/old_intel"),
-			IndexURLs:         []string{"http://192.168.88.11:8000/test-intel.json"},
-			IndexFile:         "intel-index.json",
-			AutoApply:         true,
-			NeedsRestart:      false,
-		}
-	} else if go_runtime.GOOS == "linux" {
-		binaryUpdateIndex = updates.Config{
-			Directory:         "/usr/lib/portmaster",
-			DownloadDirectory: "/var/lib/portmaster/new_bin",
-			PurgeDirectory:    "/var/lib/portmaster/old_bin",
-			Ignore:            []string{"databases", "intel", "config.json"},
-			IndexURLs:         []string{"http://localhost:8000/test-binary.json"},
-			IndexFile:         "bin-index.json",
-			AutoApply:         false,
-			NeedsRestart:      true,
-		}
-
-		intelUpdateIndex = updates.Config{
-			Directory:         "/var/lib/portmaster/intel",
-			DownloadDirectory: "/var/lib/portmaster/new_intel",
-			PurgeDirectory:    "/var/lib/portmaster/intel_bin",
-			IndexURLs:         []string{"http://localhost:8000/test-intel.json"},
-			IndexFile:         "intel-index.json",
-			AutoApply:         true,
-			NeedsRestart:      false,
-		}
+	// Make sure data dir exists, so that child directories don't dictate the permissions.
+	err = os.MkdirAll(svcCfg.DataDir, 0o0755)
+	if err != nil {
+		return nil, fmt.Errorf("data directory %s is not accessible: %w", svcCfg.DataDir, err)
 	}
 
 	// Create instance to pass it to modules.
-	instance := &Instance{}
+	instance := &Instance{
+		binDir:  svcCfg.BinDir,
+		dataDir: svcCfg.DataDir,
+	}
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
-
-	var err error
 
 	// Base modules
 	instance.base, err = base.New(instance)
@@ -221,11 +166,15 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create core module: %w", err)
 	}
-	instance.binaryUpdates, err = updates.New(instance, "Binary Updater", binaryUpdateIndex)
+	binaryUpdateConfig, intelUpdateConfig, err := MakeUpdateConfigs(svcCfg)
+	if err != nil {
+		return instance, fmt.Errorf("create updates config: %w", err)
+	}
+	instance.binaryUpdates, err = updates.New(instance, "Binary Updater", *binaryUpdateConfig)
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
 	}
-	instance.intelUpdates, err = updates.New(instance, "Intel Updater", intelUpdateIndex)
+	instance.intelUpdates, err = updates.New(instance, "Intel Updater", *intelUpdateConfig)
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
 	}
@@ -411,6 +360,18 @@ func (i *Instance) SetSleep(enabled bool) {
 			sm.SetSleep(enabled)
 		}
 	}
+}
+
+// BinDir returns the directory for binaries.
+// This directory may be read-only.
+func (i *Instance) BinDir() string {
+	return i.binDir
+}
+
+// DataDir returns the directory for variable data.
+// This directory is expected to be read/writeable.
+func (i *Instance) DataDir() string {
+	return i.dataDir
 }
 
 // Database returns the database module.

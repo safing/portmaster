@@ -43,7 +43,7 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 	}
 
 	// Recovery failed too.
-	return fmt.Errorf("upgrade (including recovery) failed: %s", upgradeError)
+	return fmt.Errorf("upgrade (including recovery) failed: %s", u.cfg.Name, upgradeError)
 }
 
 func (u *Updater) upgradeMoveFiles(downloader *Downloader, ignoreVersion bool) error {
@@ -60,7 +60,9 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader, ignoreVersion bool) e
 	}
 
 	// Move current version files into purge folder.
-	log.Debugf("updates: removing the old version (v%s from %s)", u.index.Version, u.index.Published)
+	if u.index != nil {
+		log.Debugf("updates/%s: removing the old version (v%s from %s)", u.cfg.Name, u.index.Version, u.index.Published)
+	}
 	files, err := os.ReadDir(u.cfg.Directory)
 	if err != nil {
 		return fmt.Errorf("read current directory: %w", err)
@@ -74,17 +76,17 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader, ignoreVersion bool) e
 		// Otherwise, move file to purge dir.
 		src := filepath.Join(u.cfg.Directory, file.Name())
 		dst := filepath.Join(u.cfg.PurgeDirectory, file.Name())
-		err := moveFile(src, dst, "", file.Type().Perm())
+		err := u.moveFile(src, dst, "", file.Type().Perm())
 		if err != nil {
 			return fmt.Errorf("failed to move current file %s to purge dir: %w", file.Name(), err)
 		}
 	}
 
 	// Move the new index file into main directory.
-	log.Debugf("updates: installing the new version (v%s from %s)", u.index.Version, u.index.Published)
+	log.Debugf("updates/%s: installing the new version (v%s from %s)", u.cfg.Name, downloader.index.Version, downloader.index.Published)
 	src := filepath.Join(u.cfg.DownloadDirectory, u.cfg.IndexFile)
 	dst := filepath.Join(u.cfg.Directory, u.cfg.IndexFile)
-	err = moveFile(src, dst, "", defaultFileMode)
+	err = u.moveFile(src, dst, "", defaultFileMode)
 	if err != nil {
 		return fmt.Errorf("failed to move index file to %s: %w", dst, err)
 	}
@@ -93,30 +95,30 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader, ignoreVersion bool) e
 	for _, artifact := range downloader.index.Artifacts {
 		src = filepath.Join(u.cfg.DownloadDirectory, artifact.Filename)
 		dst = filepath.Join(u.cfg.Directory, artifact.Filename)
-		err = moveFile(src, dst, artifact.SHA256, artifact.GetFileMode())
+		err = u.moveFile(src, dst, artifact.SHA256, artifact.GetFileMode())
 		if err != nil {
 			return fmt.Errorf("failed to move file %s: %w", artifact.Filename, err)
 		} else {
-			log.Debugf("updates: %s moved", artifact.Filename)
+			log.Debugf("updates/%s: %s moved", u.cfg.Name, artifact.Filename)
 		}
 	}
 
 	// Set new index on module.
 	u.index = downloader.index
-	log.Infof("updates: update complete (v%s from %s)", u.index.Version, u.index.Published)
+	log.Infof("updates/%s: update complete (v%s from %s)", u.cfg.Name, u.index.Version, u.index.Published)
 
 	return nil
 }
 
 // moveFile moves a file and falls back to copying if it fails.
-func moveFile(currentPath, newPath string, sha256sum string, fileMode fs.FileMode) error {
+func (u *Updater) moveFile(currentPath, newPath string, sha256sum string, fileMode fs.FileMode) error {
 	// Try to simply move file.
 	err := os.Rename(currentPath, newPath)
 	if err == nil {
 		// Moving was successful, return.
 		return nil
 	}
-	log.Tracef("updates: failed to move to %q, falling back to copy+delete: %w", newPath, err)
+	log.Tracef("updates/%s: failed to move to %q, falling back to copy+delete: %w", u.cfg.Name, newPath, err)
 
 	// Copy and check the checksum while we are at it.
 	err = copyAndCheckSHA256Sum(currentPath, newPath, sha256sum, fileMode)
@@ -139,10 +141,10 @@ func (u *Updater) recoverFromFailedUpgrade() error {
 	for _, file := range files {
 		purgedFile := filepath.Join(u.cfg.PurgeDirectory, file.Name())
 		activeFile := filepath.Join(u.cfg.Directory, file.Name())
-		err := moveFile(purgedFile, activeFile, "", file.Type().Perm())
+		err := u.moveFile(purgedFile, activeFile, "", file.Type().Perm())
 		if err != nil {
 			// Only warn and continue to recover as many files as possible.
-			log.Warningf("updates: failed to roll back file %s: %w", file.Name(), err)
+			log.Warningf("updates/%s: failed to roll back file %s: %w", u.cfg.Name, file.Name(), err)
 		}
 	}
 
@@ -176,18 +178,18 @@ func (u *Updater) deleteUnfinishedFiles(dir string) error {
 
 		case strings.HasSuffix(e.Name(), ".download"):
 			path := filepath.Join(dir, e.Name())
-			log.Warningf("updates: deleting unfinished download file: %s\n", path)
+			log.Warningf("updates/%s: deleting unfinished download file: %s", u.cfg.Name, path)
 			err := os.Remove(path)
 			if err != nil {
-				log.Errorf("updates: failed to delete unfinished download file %s: %s", path, err)
+				log.Errorf("updates/%s: failed to delete unfinished download file %s: %s", u.cfg.Name, path, err)
 			}
 
 		case strings.HasSuffix(e.Name(), ".copy"):
 			path := filepath.Join(dir, e.Name())
-			log.Warningf("updates: deleting unfinished copied file: %s\n", path)
+			log.Warningf("updates/%s: deleting unfinished copied file: %s", u.cfg.Name, path)
 			err := os.Remove(path)
 			if err != nil {
-				log.Errorf("updates: failed to delete unfinished copied file %s: %s", path, err)
+				log.Errorf("updates/%s: failed to delete unfinished copied file %s: %s", u.cfg.Name, path, err)
 			}
 		}
 	}
