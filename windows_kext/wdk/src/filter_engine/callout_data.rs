@@ -133,6 +133,10 @@ impl<'a> CalloutData<'a> {
         }
     }
 
+    pub fn is_fragment_data(&self) -> bool {
+        unsafe { (*self.metadata).is_fragment_data() }
+    }
+
     pub fn pend_operation(
         &mut self,
         packet_list: Option<TransportPacketList>,
