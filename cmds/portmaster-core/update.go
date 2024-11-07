@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/spf13/cobra"
 
@@ -53,11 +54,11 @@ func update(cmd *cobra.Command, args []string) error {
 	// Force update all.
 	binErr := binaryUpdates.ForceUpdate()
 	if binErr != nil {
-		log.Errorf("binary update failed: %s", binErr)
+		slog.Error("binary update failed", "err", binErr)
 	}
 	intelErr := intelUpdates.ForceUpdate()
 	if intelErr != nil {
-		log.Errorf("intel update failed: %s", intelErr)
+		slog.Error("intel update failed", "err", intelErr)
 	}
 
 	// Return error.

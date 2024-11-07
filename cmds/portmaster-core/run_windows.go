@@ -12,138 +12,165 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service"
+	"github.com/spf13/cobra"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
 )
 
 const serviceName = "PortmasterCore"
 
-type windowsService struct {
+type WindowsSystemService struct {
 	instance *service.Instance
 }
 
-func (ws *windowsService) Execute(args []string, changeRequests <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
-	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
-	changes <- svc.Status{State: svc.StartPending}
-	ws.instance.Start()
-	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
+func NewSystemService(instance *service.Instance) *WindowsSystemService {
+	return &WindowsSystemService{instance: instance}
+}
 
-service:
+func (s *WindowsSystemService) Run() {
+	svcRun := svc.Run
+
+	// Check if we are running interactively.
+	isService, err := svc.IsWindowsService()
+	switch {
+	case err != nil:
+		slog.Warn("failed to determine if running interactively", "err", err)
+		slog.Warn("continuing without service integration (no real service)")
+		svcRun = debug.Run
+
+	case !isService:
+		slog.Warn("running interactively, switching to debug execution (no real service)")
+		svcRun = debug.Run
+	}
+
+	// Run service client.
+	err = svcRun(serviceName, s)
+	if err != nil {
+		slog.Error("service execution failed", "err", err)
+		os.Exit(1)
+	}
+
+	// Execution continues in s.Execute().
+}
+
+func (s *WindowsSystemService) Execute(args []string, changeRequests <-chan svc.ChangeRequest, changes chan<- svc.Status) (svcSpecificEC bool, exitCode uint32) {
+	// Tell service manager we are starting.
+	changes <- svc.Status{State: svc.StartPending}
+
+	// Start instance.
+	err := s.instance.Start()
+	if err != nil {
+		fmt.Printf("failed to start: %s\n", err)
+
+		// Print stack on start failure, if enabled.
+		if printStackOnExit {
+			printStackTo(os.Stderr, "PRINTING STACK ON START FAILURE")
+		}
+
+		// Notify service manager we stopped again.
+		changes <- svc.Status{State: svc.Stopped}
+
+		// Relay exit code to service manager.
+		return false, 1
+	}
+
+	// Tell service manager we are up and running!
+	changes <- svc.Status{State: svc.Running, Accepts: svc.AcceptStop | svc.AcceptShutdown}
+
+	// Subscribe to signals.
+	// Docs: https://pkg.go.dev/os/signal?GOOS=windows
+	signalCh := make(chan os.Signal, 4)
+	signal.Notify(
+		signalCh,
+
+		// Windows ^C (Control-C) or ^BREAK (Control-Break).
+		// Completely prevents kill.
+		os.Interrupt,
+
+		// Windows CTRL_CLOSE_EVENT, CTRL_LOGOFF_EVENT or CTRL_SHUTDOWN_EVENT.
+		// Does not prevent kill, but gives a little time to stop service.
+		syscall.SIGTERM,
+	)
+
+	// Wait for shutdown signal.
+waitSignal:
 	for {
 		select {
-		case <-ws.instance.Stopped():
-			log.Infof("instance stopped")
-			break service
+		case sig := <-signalCh:
+			// Trigger shutdown.
+			fmt.Printf(" <SIGNAL: %v>", sig) // CLI output.
+			slog.Warn("received stop signal", "signal", sig)
+			break waitSignal
+
 		case c := <-changeRequests:
 			switch c.Cmd {
 			case svc.Interrogate:
 				changes <- c.CurrentStatus
+
 			case svc.Stop, svc.Shutdown:
-				log.Debugf("received shutdown command")
-				changes <- svc.Status{State: svc.StopPending}
-				ws.instance.Shutdown()
+				fmt.Printf(" <SERVICE CMD: %v>", serviceCmdName(c.Cmd)) // CLI output.
+				slog.Warn("received service shutdown command", "cmd", c.Cmd)
+				break waitSignal
+
 			default:
-				log.Errorf("unexpected control request: %+v", c)
+				slog.Error("unexpected service control request", "cmd", serviceCmdName(c.Cmd))
 			}
+
+		case <-s.instance.ShuttingDown():
+			break waitSignal
 		}
 	}
 
-	log.Shutdown()
-
-	// send stopped status
-	changes <- svc.Status{State: svc.Stopped}
-	// wait a little for the status to reach Windows
-	time.Sleep(100 * time.Millisecond)
-
-	return ssec, errno
-}
-
-func run(instance *service.Instance) error {
-	log.SetLogLevel(log.WarningLevel)
-	_ = log.Start()
-
-	// check if we are running interactively
-	isService, err := svc.IsWindowsService()
-	if err != nil {
-		return fmt.Errorf("could not determine if running interactively: %s", err)
-	}
-
-	// select service run type
-	svcRun := svc.Run
-	if !isService {
-		log.Warningf("running interactively, switching to debug execution (no real service).")
-		svcRun = debug.Run
-		go registerSignalHandler(instance)
-	}
-
-	// run service client
-	sErr := svcRun(serviceName, &windowsService{
-		instance: instance,
-	})
-	if sErr != nil {
-		fmt.Printf("shuting down service with error: %s", sErr)
-	} else {
-		fmt.Printf("shuting down service")
-	}
-
-	// Check if restart was trigger and send start service command if true.
-	if isRunningAsService() && instance.ShouldRestart {
-		_ = runServiceRestart()
-	}
-
-	return err
-}
-
-func registerSignalHandler(instance *service.Instance) {
-	// Wait for signal.
-	signalCh := make(chan os.Signal, 1)
-	if enableInputSignals {
-		go inputSignals(signalCh)
-	}
-	signal.Notify(
-		signalCh,
-		os.Interrupt,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-		sigUSR1,
-	)
-
-	select {
-	case sig := <-signalCh:
-		// Only print and continue to wait if SIGUSR1
-		if sig == sigUSR1 {
-			printStackTo(os.Stderr, "PRINTING STACK ON REQUEST")
-		} else {
-			fmt.Println(" <INTERRUPT>") // CLI output.
-			slog.Warn("program was interrupted, stopping")
-			instance.Shutdown()
-		}
-	}
+	// Wait for shutdown to finish.
+	changes <- svc.Status{State: svc.StopPending}
 
 	// Catch signals during shutdown.
-	// Rapid unplanned disassembly after 5 interrupts.
-	go func() {
-		forceCnt := 5
-		for {
-			<-signalCh
+	// Force exit after 5 interrupts.
+	forceCnt := 5
+waitShutdown:
+	for {
+		select {
+		case <-s.instance.ShutdownComplete():
+			break waitShutdown
+
+		case sig := <-signalCh:
 			forceCnt--
 			if forceCnt > 0 {
-				fmt.Printf(" <INTERRUPT> again, but already shutting down - %d more to force\n", forceCnt)
+				fmt.Printf(" <SIGNAL: %s> but already shutting down - %d more to force\n", sig, forceCnt)
 			} else {
 				printStackTo(os.Stderr, "PRINTING STACK ON FORCED EXIT")
 				os.Exit(1)
 			}
+
+		case c := <-changeRequests:
+			switch c.Cmd {
+			case svc.Interrogate:
+				changes <- c.CurrentStatus
+
+			case svc.Stop, svc.Shutdown:
+				forceCnt--
+				if forceCnt > 0 {
+					fmt.Printf(" <SERVICE CMD: %v> but already shutting down - %d more to force\n", serviceCmdName(c.Cmd), forceCnt)
+				} else {
+					printStackTo(os.Stderr, "PRINTING STACK ON FORCED EXIT")
+					os.Exit(1)
+				}
+
+			default:
+				slog.Error("unexpected service control request", "cmd", serviceCmdName(c.Cmd))
+			}
 		}
-	}()
+	}
+
+	// Notify service manager.
+	changes <- svc.Status{State: svc.Stopped}
+
+	return false, 0
 }
 
-func isRunningAsService() bool {
+func (s *WindowsSystemService) IsService() bool {
 	isService, err := svc.IsWindowsService()
 	if err != nil {
 		return false
@@ -151,7 +178,7 @@ func isRunningAsService() bool {
 	return isService
 }
 
-func runServiceRestart() error {
+func (s *WindowsSystemService) RestartService() error {
 	// Script that wait for portmaster service status to change to stop
 	// and then sends a start command for the same service.
 	command := `
@@ -172,4 +199,41 @@ sc.exe start $serviceName`
 	return nil
 }
 
-func platformSpecificChecks() {}
+func runPlatformSpecifics(cmd *cobra.Command, args []string)
+
+func serviceCmdName(cmd svc.Cmd) string {
+	switch cmd {
+	case svc.Stop:
+		return "Stop"
+	case svc.Pause:
+		return "Pause"
+	case svc.Continue:
+		return "Continue"
+	case svc.Interrogate:
+		return "Interrogate"
+	case svc.Shutdown:
+		return "Shutdown"
+	case svc.ParamChange:
+		return "ParamChange"
+	case svc.NetBindAdd:
+		return "NetBindAdd"
+	case svc.NetBindRemove:
+		return "NetBindRemove"
+	case svc.NetBindEnable:
+		return "NetBindEnable"
+	case svc.NetBindDisable:
+		return "NetBindDisable"
+	case svc.DeviceEvent:
+		return "DeviceEvent"
+	case svc.HardwareProfileChange:
+		return "HardwareProfileChange"
+	case svc.PowerEvent:
+		return "PowerEvent"
+	case svc.SessionChange:
+		return "SessionChange"
+	case svc.PreShutdown:
+		return "PreShutdown"
+	default:
+		return "Unknown Command"
+	}
+}

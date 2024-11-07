@@ -49,8 +49,12 @@ import (
 
 // Instance is an instance of a Portmaster service.
 type Instance struct {
-	ctx          context.Context
-	cancelCtx    context.CancelFunc
+	ctx       context.Context
+	cancelCtx context.CancelFunc
+
+	shutdownCtx       context.Context
+	cancelShutdownCtx context.CancelFunc
+
 	serviceGroup *mgr.Group
 
 	binDir  string
@@ -607,20 +611,13 @@ func (i *Instance) Ready() bool {
 	return i.serviceGroup.Ready()
 }
 
-// Ctx returns the instance context.
-// It is only canceled on shutdown.
-func (i *Instance) Ctx() context.Context {
-	return i.ctx
-}
-
-// Start starts the instance.
+// Start starts the instance modules.
 func (i *Instance) Start() error {
 	return i.serviceGroup.Start()
 }
 
-// Stop stops the instance and cancels the instance context when done.
+// Stop stops the instance modules.
 func (i *Instance) Stop() error {
-	defer i.cancelCtx()
 	return i.serviceGroup.Stop()
 }
 
@@ -649,9 +646,19 @@ func (i *Instance) Shutdown() {
 }
 
 func (i *Instance) shutdown(exitCode int) {
+	// Only shutdown once.
+	if i.IsShuttingDown() {
+		return
+	}
+
 	// Set given exit code.
 	i.exitCode.Store(int32(exitCode))
 
+	// Cancel contexts.
+	i.cancelCtx()
+	defer i.cancelShutdownCtx()
+
+	// Start shutdown asynchronously in a separate manager.
 	m := mgr.New("instance")
 	m.Go("shutdown", func(w *mgr.WorkerCtx) error {
 		for {
@@ -665,14 +672,36 @@ func (i *Instance) shutdown(exitCode int) {
 	})
 }
 
-// Stopping returns whether the instance is shutting down.
-func (i *Instance) Stopping() bool {
+// Ctx returns the instance context.
+// It is canceled when shutdown is started.
+func (i *Instance) Ctx() context.Context {
+	return i.ctx
+}
+
+// IsShuttingDown returns whether the instance is shutting down.
+func (i *Instance) IsShuttingDown() bool {
 	return i.ctx.Err() != nil
 }
 
-// Stopped returns a channel that is triggered when the instance has shut down.
-func (i *Instance) Stopped() <-chan struct{} {
+// ShuttingDown returns a channel that is triggered when the instance starts shutting down.
+func (i *Instance) ShuttingDown() <-chan struct{} {
 	return i.ctx.Done()
+}
+
+// ShutdownCtx returns the instance shutdown context.
+// It is canceled when shutdown is complete.
+func (i *Instance) ShutdownCtx() context.Context {
+	return i.shutdownCtx
+}
+
+// IsShutDown returns whether the instance has stopped.
+func (i *Instance) IsShutDown() bool {
+	return i.shutdownCtx.Err() != nil
+}
+
+// ShutDownComplete returns a channel that is triggered when the instance has shut down.
+func (i *Instance) ShutdownComplete() <-chan struct{} {
+	return i.shutdownCtx.Done()
 }
 
 // ExitCode returns the set exit code of the instance.

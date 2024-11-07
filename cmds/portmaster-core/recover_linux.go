@@ -8,17 +8,28 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/spf13/cobra"
 
 	"github.com/safing/portmaster/service/firewall/interception"
 )
 
-var recoverIPTables bool
+var (
+	recoverCmd = &cobra.Command{
+		Use:   "recover-iptables",
+		Short: "Force an update of all components.",
+		RunE:  update,
+	}
+
+	recoverIPTables bool
+)
 
 func init() {
-	flag.BoolVar(&recoverIPTables, "recover-iptables", false, "recovers ip table rules")
+	rootCmd.AddCommand(recoverCmd)
+
+	flag.BoolVar(&recoverIPTables, "recover-iptables", false, "recovers ip table rules (backward compatibility; use command instead)")
 }
 
-func recoverIPTablesCmd() error {
+func recover(cmd *cobra.Command, args []string) error {
 	// interception.DeactiveNfqueueFirewall uses coreos/go-iptables
 	// which shells out to the /sbin/iptables binary. As a result,
 	// we don't get the errno of the actual error and need to parse the

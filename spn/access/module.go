@@ -80,7 +80,7 @@ func start() error {
 		// Add config listener to enable/disable SPN.
 		module.instance.Config().EventConfigChange.AddCallback("spn enable check", func(wc *mgr.WorkerCtx, s struct{}) (bool, error) {
 			// Do not do anything when we are shutting down.
-			if module.instance.Stopping() {
+			if module.instance.IsShuttingDown() {
 				return true, nil
 			}
 
@@ -255,5 +255,5 @@ func New(instance instance) (*Access, error) {
 type instance interface {
 	Config() *config.Config
 	SPNGroup() *mgr.ExtendedGroup
-	Stopping() bool
+	IsShuttingDown() bool
 }
