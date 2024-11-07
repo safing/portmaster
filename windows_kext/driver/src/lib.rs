@@ -22,6 +22,11 @@ mod stream_callouts;
 
 use wdk::allocator::WindowsAllocator;
 
+// For constancy of development debug mode should not be used.
+// Certain behavior of the compiler will change and this can result in errors and different behavior in debug and release mode.
+#[cfg(debug_assertions)]
+compile_error!("build in release mode");
+
 #[cfg(not(test))]
 use core::panic::PanicInfo;
 

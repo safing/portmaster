@@ -266,6 +266,7 @@ pub fn get_key_from_nbl_v4(nbl: &NetBufferList, direction: Direction) -> Result<
         return Err("failed to get net_buffer data".to_string());
     }
 
+    // This will panic in debug mode, probably because of runtime checks.
     // Parse packet
     let ip_packet = Ipv4Packet::new_unchecked(&headers);
     let (src_port, dst_port) = get_ports(
@@ -310,6 +311,8 @@ pub fn get_key_from_nbl_v6(nbl: &NetBufferList, direction: Direction) -> Result<
     let Ok(()) = nbl.read_bytes(&mut headers) else {
         return Err("failed to get net_buffer data".to_string());
     };
+
+    // This will panic in debug mode, probably because of runtime checks.
     // Parse packet
     let ip_packet = Ipv6Packet::new_unchecked(&headers);
     let (src_port, dst_port) = get_ports(
