@@ -6,11 +6,8 @@ use core::{
 };
 use protocol::info::{Info, Severity};
 
-#[cfg(not(debug_assertions))]
 pub const LOG_LEVEL: u8 = Severity::Warning as u8;
-
-#[cfg(debug_assertions)]
-pub const LOG_LEVEL: u8 = Severity::Trace as u8;
+// pub const LOG_LEVEL: u8 = Severity::Trace as u8;
 
 pub const MAX_LOG_LINE_SIZE: usize = 150;
 
