@@ -21,6 +21,7 @@ const (
 	updateTaskRepeatDuration          = 1 * time.Hour
 	noNewUpdateNotificationID         = "updates:no-new-update"
 	updateAvailableNotificationID     = "updates:update-available"
+	restartRequiredNotificationID     = "updates:restart-required"
 	updateFailedNotificationID        = "updates:update-failed"
 	corruptInstallationNotificationID = "updates:corrupt-installation"
 
@@ -216,11 +217,19 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 		if err := index.ShouldUpgradeTo(downloader.index); err != nil {
 			log.Infof("updates/%s: no new or eligible update: %s", u.cfg.Name, err)
 			if u.cfg.Notify && u.instance.Notifications() != nil {
-				u.instance.Notifications().NotifyInfo(
-					noNewUpdateNotificationID,
-					"No Updates Available",
-					"Portmaster v"+u.index.Version+" is the newest version.",
-				)
+				u.instance.Notifications().Notify(&notifications.Notification{
+					EventID: noNewUpdateNotificationID,
+					Type:    notifications.Info,
+					Title:   "Portmaster Is Up-To-Date",
+					Message: "Portmaster v" + index.Version + " is the newest version.",
+					Expires: time.Now().Add(1 * time.Minute).Unix(),
+					AvailableActions: []*notifications.Action{
+						{
+							ID:   "ack",
+							Text: "OK",
+						},
+					},
+				})
 			}
 			return ErrNoUpdateAvailable
 		}
@@ -229,20 +238,27 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 	// Check if automatic downloads are enabled.
 	if !u.cfg.AutoDownload && !forceApply {
 		if u.cfg.Notify && u.instance.Notifications() != nil {
-			u.instance.Notifications().NotifyInfo(
-				updateAvailableNotificationID,
-				"New Update",
-				"Portmaster v"+downloader.index.Version+" is available. Click Upgrade to download and upgrade now.",
-				notifications.Action{
-					ID:   "upgrade",
-					Text: "Upgrade Now",
-					Type: notifications.ActionTypeWebhook,
-					Payload: notifications.ActionTypeWebhookPayload{
-						Method: "POST",
-						URL:    "updates/apply",
+			u.instance.Notifications().Notify(&notifications.Notification{
+				EventID: updateAvailableNotificationID,
+				Type:    notifications.Info,
+				Title:   "New Update Available",
+				Message: "Portmaster v" + downloader.index.Version + " is available. Click Upgrade to download and upgrade now.",
+				AvailableActions: []*notifications.Action{
+					{
+						ID:   "ack",
+						Text: "OK",
+					},
+					{
+						ID:   "upgrade",
+						Text: "Upgrade Now",
+						Type: notifications.ActionTypeWebhook,
+						Payload: notifications.ActionTypeWebhookPayload{
+							Method: "POST",
+							URL:    "updates/apply",
+						},
 					},
 				},
-			)
+			})
 		}
 		return fmt.Errorf("%w: apply updates to download and upgrade", ErrActionRequired)
 	}
@@ -267,20 +283,27 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 	// Notify the user that an upgrade is available.
 	if !u.cfg.AutoApply && !forceApply {
 		if u.cfg.Notify && u.instance.Notifications() != nil {
-			u.instance.Notifications().NotifyInfo(
-				updateAvailableNotificationID,
-				"New Update",
-				"Portmaster v"+downloader.index.Version+" is available. Click Upgrade to upgrade now.",
-				notifications.Action{
-					ID:   "upgrade",
-					Text: "Upgrade Now",
-					Type: notifications.ActionTypeWebhook,
-					Payload: notifications.ActionTypeWebhookPayload{
-						Method: "POST",
-						URL:    "updates/apply",
+			u.instance.Notifications().Notify(&notifications.Notification{
+				EventID: updateAvailableNotificationID,
+				Type:    notifications.Info,
+				Title:   "New Update Ready",
+				Message: "Portmaster v" + downloader.index.Version + " is available. Click Upgrade to upgrade now.",
+				AvailableActions: []*notifications.Action{
+					{
+						ID:   "ack",
+						Text: "OK",
+					},
+					{
+						ID:   "upgrade",
+						Text: "Upgrade Now",
+						Type: notifications.ActionTypeWebhook,
+						Payload: notifications.ActionTypeWebhookPayload{
+							Method: "POST",
+							URL:    "updates/apply",
+						},
 					},
 				},
-			)
+			})
 		}
 		return fmt.Errorf("%w: apply updates to download and upgrade", ErrActionRequired)
 	}
@@ -307,6 +330,29 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 
 	// Notify user that a restart is required.
 	if u.cfg.Notify && u.instance.Notifications() != nil {
+
+		u.instance.Notifications().Notify(&notifications.Notification{
+			EventID: restartRequiredNotificationID,
+			Type:    notifications.Info,
+			Title:   "Restart Required",
+			Message: "Portmaster v" + downloader.index.Version + " is installed. Restart to use new version.",
+			AvailableActions: []*notifications.Action{
+				{
+					ID:   "ack",
+					Text: "Later",
+				},
+				{
+					ID:   "restart",
+					Text: "Restart Now",
+					Type: notifications.ActionTypeWebhook,
+					Payload: notifications.ActionTypeWebhookPayload{
+						Method: "POST",
+						URL:    "updates/apply",
+					},
+				},
+			},
+		})
+
 		u.instance.Notifications().NotifyInfo(
 			updateAvailableNotificationID,
 			"Restart Required",
