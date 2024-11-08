@@ -250,6 +250,8 @@ github.com/russross/blackfriday v1.5.2/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/safing/jess v0.3.4 h1:/p6ensqEUn2jI/z1EB9JUdwH4MJQirh/C9jEwNBzxw8=
 github.com/safing/jess v0.3.4/go.mod h1:+B6UJnXVxi406Wk08SDnoC5NNBL7t3N0vZGokEbkVQI=
+github.com/safing/jess v0.3.5 h1:KS5elTKfWcDUow8SUoCj5QdyyGJNoExJNySerNkbxUU=
+github.com/safing/jess v0.3.5/go.mod h1:+B6UJnXVxi406Wk08SDnoC5NNBL7t3N0vZGokEbkVQI=
 github.com/safing/structures v1.1.0 h1:QzHBQBjaZSLzw2f6PM4ibSmPcfBHAOB5CKJ+k4FYkhQ=
 github.com/safing/structures v1.1.0/go.mod h1:QUrB74FcU41ahQ5oy3YNFCoSq+twE/n3+vNZc2K35II=
 github.com/satori/go.uuid v1.2.0 h1:0uYX9dsZ2yD7q2RtLRtPSdGDWzjeM3TbMJP9utgA0ww=

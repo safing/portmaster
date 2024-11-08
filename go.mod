@@ -44,7 +44,7 @@ require (
 	github.com/oschwald/maxminddb-golang v1.13.1
 	github.com/r3labs/diff/v3 v3.0.1
 	github.com/rot256/pblind v0.0.0-20240730113005-f3275049ead5
-	github.com/safing/jess v0.3.4
+	github.com/safing/jess v0.3.5
 	github.com/safing/structures v1.1.0
 	github.com/seehuhn/fortuna v1.0.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
