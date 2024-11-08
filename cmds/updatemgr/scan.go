@@ -70,16 +70,16 @@ func init() {
 }
 
 func scan(cmd *cobra.Command, args []string) error {
-	bundle, err := updates.GenerateIndexFromDir(scanDir, scanConfig)
+	index, err := updates.GenerateIndexFromDir(scanDir, scanConfig)
 	if err != nil {
 		return err
 	}
 
-	bundleStr, err := json.MarshalIndent(&bundle, "", "  ")
+	indexJson, err := json.MarshalIndent(&index, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal index: %w", err)
 	}
 
-	fmt.Printf("%s", bundleStr)
+	fmt.Printf("%s", indexJson)
 	return nil
 }

@@ -1,12 +1,15 @@
 package updates
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/mgr"
 )
 
 type testInstance struct{}
@@ -24,66 +27,129 @@ func (i *testInstance) Ready() bool {
 
 func (i *testInstance) SetCmdLineOperation(f func() error) {}
 
-func TestPreformUpdate(t *testing.T) {
+func TestPerformUpdate(t *testing.T) {
 	t.Parallel()
 
 	// Initialize mock instance
 	stub := &testInstance{}
 
 	// Make tmp dirs
-	installedDir, err := os.MkdirTemp("", "updates_current")
+	installedDir, err := os.MkdirTemp("", "updates_current_")
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	defer func() { _ = os.RemoveAll(installedDir) }()
-	updateDir, err := os.MkdirTemp("", "updates_new")
+	updateDir, err := os.MkdirTemp("", "updates_new_")
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	defer func() { _ = os.RemoveAll(updateDir) }()
-	purgeDir, err := os.MkdirTemp("", "updates_purge")
+	purgeDir, err := os.MkdirTemp("", "updates_purge_")
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	defer func() { _ = os.RemoveAll(purgeDir) }()
 
 	// Generate mock files
-	if err := GenerateMockFolder(installedDir, "Test", "1.0.0"); err != nil {
-		panic(err)
+	now := time.Now()
+	if err := GenerateMockFolder(installedDir, "Test", "1.0.0", now); err != nil {
+		t.Fatal(err)
 	}
-	if err := GenerateMockFolder(updateDir, "Test", "1.0.1"); err != nil {
-		panic(err)
+	if err := GenerateMockFolder(updateDir, "Test", "1.0.1", now.Add(1*time.Minute)); err != nil {
+		t.Fatal(err)
 	}
 
-	// Create updater
-	updates, err := New(stub, "Test", Config{
+	// Create updater (loads index).
+	updater, err := New(stub, "Test", Config{
+		Name:              "Test",
 		Directory:         installedDir,
 		DownloadDirectory: updateDir,
 		PurgeDirectory:    purgeDir,
 		IndexFile:         "index.json",
-		AutoApply:         false,
-		NeedsRestart:      false,
+		AutoDownload:      true,
+		AutoApply:         true,
 	})
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
-	// Read and parse the index file
-	if err := updates.downloader.Verify(); err != nil {
-		panic(err)
-	}
+
 	// Try to apply the updates
-	err = updates.applyUpdates(nil)
+	m := mgr.New("updates test")
+	_ = m.Do("test update and upgrade", func(w *mgr.WorkerCtx) error {
+		if err := updater.updateAndUpgrade(w, nil, false, false); err != nil {
+			if data, err := os.ReadFile(filepath.Join(installedDir, "index.json")); err == nil {
+				fmt.Println(string(data))
+				fmt.Println(updater.index.Version)
+				fmt.Println(updater.index.versionNum)
+			}
+			if data, err := os.ReadFile(filepath.Join(updateDir, "index.json")); err == nil {
+				fmt.Println(string(data))
+				idx, err := ParseIndex(data, nil)
+				if err == nil {
+					fmt.Println(idx.Version)
+					fmt.Println(idx.versionNum)
+				}
+			}
+
+			t.Fatal(err)
+		}
+		return nil
+	})
+
+	// Check if the current version is now the new.
+	newIndex, err := LoadIndex(filepath.Join(installedDir, "index.json"), nil)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
+	}
+	if newIndex.Version != "1.0.1" {
+		t.Fatalf("expected version 1.0.1 found %s", newIndex.Version)
+	}
+}
+
+// GenerateMockFolder generates mock index folder for testing.
+func GenerateMockFolder(dir, name, version string, published time.Time) error {
+	// Make sure dir exists
+	_ = os.MkdirAll(dir, defaultDirMode)
+
+	// Create empty files
+	file, err := os.Create(filepath.Join(dir, "portmaster"))
+	if err != nil {
+		return err
+	}
+	_ = file.Close()
+	file, err = os.Create(filepath.Join(dir, "portmaster-core"))
+	if err != nil {
+		return err
+	}
+	_ = file.Close()
+	file, err = os.Create(filepath.Join(dir, "portmaster.zip"))
+	if err != nil {
+		return err
+	}
+	_ = file.Close()
+	file, err = os.Create(filepath.Join(dir, "assets.zip"))
+	if err != nil {
+		return err
+	}
+	_ = file.Close()
+
+	index, err := GenerateIndexFromDir(dir, IndexScanConfig{
+		Name:    name,
+		Version: version,
+	})
+	if err != nil {
+		return err
+	}
+	index.Published = published
+
+	indexJSON, err := json.MarshalIndent(index, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to marshal index: %s\n", err)
 	}
 
-	// CHeck if the current version is now the new.
-	bundle, err := LoadBundle(filepath.Join(installedDir, "index.json"))
+	err = os.WriteFile(filepath.Join(dir, "index.json"), indexJSON, defaultFileMode)
 	if err != nil {
-		panic(err)
+		return err
 	}
-
-	if bundle.Version != "1.0.1" {
-		panic(fmt.Errorf("expected version 1.0.1 found %s", bundle.Version))
-	}
+	return nil
 }

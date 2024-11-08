@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -31,7 +32,7 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 	}
 
 	// Execute the upgrade.
-	upgradeError := u.upgradeMoveFiles(downloader, ignoreVersion)
+	upgradeError := u.upgradeMoveFiles(downloader)
 	if upgradeError == nil {
 		return nil
 	}
@@ -43,10 +44,10 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 	}
 
 	// Recovery failed too.
-	return fmt.Errorf("upgrade (including recovery) failed: %s", u.cfg.Name, upgradeError)
+	return fmt.Errorf("upgrade (including recovery) failed: %w", upgradeError)
 }
 
-func (u *Updater) upgradeMoveFiles(downloader *Downloader, ignoreVersion bool) error {
+func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 	// Important:
 	// We assume that the downloader has done its job and all artifacts are verified.
 	// Files will just be moved here.
@@ -65,20 +66,28 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader, ignoreVersion bool) e
 	}
 	files, err := os.ReadDir(u.cfg.Directory)
 	if err != nil {
-		return fmt.Errorf("read current directory: %w", err)
-	}
-	for _, file := range files {
-		// Check if file is ignored.
-		if slices.Contains(u.cfg.Ignore, file.Name()) {
-			continue
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("read current directory: %w", err)
 		}
-
-		// Otherwise, move file to purge dir.
-		src := filepath.Join(u.cfg.Directory, file.Name())
-		dst := filepath.Join(u.cfg.PurgeDirectory, file.Name())
-		err := u.moveFile(src, dst, "", file.Type().Perm())
+		err = os.MkdirAll(u.cfg.Directory, defaultDirMode)
 		if err != nil {
-			return fmt.Errorf("failed to move current file %s to purge dir: %w", file.Name(), err)
+			return fmt.Errorf("create current directory: %w", err)
+		}
+	} else {
+		// Move files.
+		for _, file := range files {
+			// Check if file is ignored.
+			if slices.Contains(u.cfg.Ignore, file.Name()) {
+				continue
+			}
+
+			// Otherwise, move file to purge dir.
+			src := filepath.Join(u.cfg.Directory, file.Name())
+			dst := filepath.Join(u.cfg.PurgeDirectory, file.Name())
+			err := u.moveFile(src, dst, "", file.Type().Perm())
+			if err != nil {
+				return fmt.Errorf("failed to move current file %s to purge dir: %w", file.Name(), err)
+			}
 		}
 	}
 
@@ -118,7 +127,7 @@ func (u *Updater) moveFile(currentPath, newPath string, sha256sum string, fileMo
 		// Moving was successful, return.
 		return nil
 	}
-	log.Tracef("updates/%s: failed to move to %q, falling back to copy+delete: %w", u.cfg.Name, newPath, err)
+	log.Tracef("updates/%s: failed to move to %q, falling back to copy+delete: %s", u.cfg.Name, newPath, err)
 
 	// Copy and check the checksum while we are at it.
 	err = copyAndCheckSHA256Sum(currentPath, newPath, sha256sum, fileMode)
@@ -144,7 +153,7 @@ func (u *Updater) recoverFromFailedUpgrade() error {
 		err := u.moveFile(purgedFile, activeFile, "", file.Type().Perm())
 		if err != nil {
 			// Only warn and continue to recover as many files as possible.
-			log.Warningf("updates/%s: failed to roll back file %s: %w", u.cfg.Name, file.Name(), err)
+			log.Warningf("updates/%s: failed to roll back file %s: %s", u.cfg.Name, file.Name(), err)
 		}
 	}
 

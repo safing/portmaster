@@ -56,7 +56,7 @@ func (d *Downloader) updateIndex(ctx context.Context) error {
 		}
 
 		log.Warningf("updates/%s: failed to update index from %q: %s", d.u.cfg.Name, url, err)
-		err = fmt.Errorf("update index file from %q: %s", url, err)
+		err = fmt.Errorf("update index file from %q: %w", url, err)
 	}
 	if err != nil {
 		return fmt.Errorf("all index URLs failed, last error: %w", err)
@@ -65,7 +65,7 @@ func (d *Downloader) updateIndex(ctx context.Context) error {
 
 	// Write the index into a file.
 	indexFilepath := filepath.Join(d.u.cfg.DownloadDirectory, d.u.cfg.IndexFile)
-	err = os.WriteFile(indexFilepath, []byte(indexData), defaultFileMode)
+	err = os.WriteFile(indexFilepath, indexData, defaultFileMode)
 	if err != nil {
 		return fmt.Errorf("write index file: %w", err)
 	}
@@ -111,7 +111,7 @@ func (d *Downloader) gatherExistingFiles(dir string) error {
 		// Read full file.
 		fileData, err := os.ReadFile(fullpath)
 		if err != nil {
-			log.Debugf("updates/%s: failed to read file %q while searching for existing files: %w", d.u.cfg.Name, fullpath, err)
+			log.Debugf("updates/%s: failed to read file %q while searching for existing files: %s", d.u.cfg.Name, fullpath, err)
 			return fmt.Errorf("failed to read file %s: %w", fullpath, err)
 		}
 
@@ -150,7 +150,12 @@ artifacts:
 			if err == nil {
 				continue artifacts
 			}
-			log.Debugf("updates/%s: failed to copy existing file %s: %w", d.u.cfg.Name, artifact.Filename, err)
+			log.Debugf("updates/%s: failed to copy existing file %s: %s", d.u.cfg.Name, artifact.Filename, err)
+		}
+
+		// Check if the artifact has download URLs.
+		if len(artifact.URLs) == 0 {
+			return fmt.Errorf("artifact %s is missing download URLs", artifact.Filename)
 		}
 
 		// Try to download the artifact from one of the URLs.
@@ -163,7 +168,7 @@ artifacts:
 				// Valid artifact found!
 				break artifactURLs
 			}
-			err = fmt.Errorf("update index file from %q: %s", url, err)
+			err = fmt.Errorf("update index file from %q: %w", url, err)
 		}
 		if err != nil {
 			return fmt.Errorf("all artifact URLs for %s failed, last error: %w", artifact.Filename, err)

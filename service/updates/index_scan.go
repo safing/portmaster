@@ -3,7 +3,6 @@ package updates
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -95,7 +94,7 @@ settings:
 }
 
 // GenerateIndexFromDir generates a index from a given folder.
-func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error) {
+func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error) { //nolint:maintidx
 	artifacts := make(map[string]Artifact)
 
 	// Initialize.
@@ -106,6 +105,13 @@ func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error)
 	sourceDir, err = filepath.Abs(sourceDir)
 	if err != nil {
 		return nil, fmt.Errorf("invalid index dir: %w", err)
+	}
+	var indexVersion *semver.Version
+	if cfg.Version != "" {
+		indexVersion, err = semver.NewVersion(cfg.Version)
+		if err != nil {
+			return nil, fmt.Errorf("invalid index version: %w", err)
+		}
 	}
 
 	err = filepath.WalkDir(sourceDir, func(fullpath string, d fs.DirEntry, err error) error {
@@ -227,9 +233,10 @@ func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error)
 
 	// Create base index.
 	index := &Index{
-		Name:      cfg.Name,
-		Version:   cfg.Version,
-		Published: time.Now(),
+		Name:       cfg.Name,
+		Version:    cfg.Version,
+		Published:  time.Now(),
+		versionNum: indexVersion,
 	}
 	if index.Version == "" && cfg.PrimaryArtifact != "" {
 		pv, ok := artifacts[cfg.PrimaryArtifact]
@@ -286,45 +293,6 @@ func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error)
 	return index, nil
 }
 
-func selectLatestArtifacts(artifacts []Artifact) ([]Artifact, error) {
-	artifactsMap := make(map[string]Artifact)
-
-	for _, a := range artifacts {
-		// Make the key platform specific since there can be same filename for multiple platforms.
-		key := a.Filename + a.Platform
-		aMap, ok := artifactsMap[key]
-		if !ok {
-			artifactsMap[key] = a
-			continue
-		}
-
-		if aMap.Version == "" || a.Version == "" {
-			return nil, fmt.Errorf("invalid mix version and non versioned files for: %s", a.Filename)
-		}
-
-		mapVersion, err := semver.NewVersion(aMap.Version)
-		if err != nil {
-			return nil, fmt.Errorf("invalid version for artifact: %s", aMap.Filename)
-		}
-
-		artifactVersion, err := semver.NewVersion(a.Version)
-		if err != nil {
-			return nil, fmt.Errorf("invalid version for artifact: %s", a.Filename)
-		}
-
-		if mapVersion.LessThan(artifactVersion) {
-			artifactsMap[key] = a
-		}
-	}
-
-	artifactsFiltered := make([]Artifact, 0, len(artifactsMap))
-	for _, a := range artifactsMap {
-		artifactsFiltered = append(artifactsFiltered, a)
-	}
-
-	return artifactsFiltered, nil
-}
-
 func getSHA256(path string, unpackType string) (string, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -371,51 +339,4 @@ func getIdentifierAndVersion(versionedPath string) (identifier, version string, 
 	// Put the full path back together and return it.
 	// `dirPath + filename` is guaranteed by path.Split()
 	return dirPath + filename, version, true
-}
-
-// GenerateMockFolder generates mock index folder for testing.
-func GenerateMockFolder(dir, name, version string) error { // FIXME: move this to test?
-	// Make sure dir exists
-	_ = os.MkdirAll(dir, defaultDirMode)
-
-	// Create empty files
-	file, err := os.Create(filepath.Join(dir, "portmaster"))
-	if err != nil {
-		return err
-	}
-	_ = file.Close()
-	file, err = os.Create(filepath.Join(dir, "portmaster-core"))
-	if err != nil {
-		return err
-	}
-	_ = file.Close()
-	file, err = os.Create(filepath.Join(dir, "portmaster.zip"))
-	if err != nil {
-		return err
-	}
-	_ = file.Close()
-	file, err = os.Create(filepath.Join(dir, "assets.zip"))
-	if err != nil {
-		return err
-	}
-	_ = file.Close()
-
-	index, err := GenerateIndexFromDir(dir, IndexScanConfig{
-		Name:    name,
-		Version: version,
-	})
-	if err != nil {
-		return err
-	}
-
-	indexJson, err := json.MarshalIndent(index, "", "  ")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to marshal index: %s\n", err)
-	}
-
-	err = os.WriteFile(filepath.Join(dir, "index.json"), indexJson, defaultFileMode)
-	if err != nil {
-		return err
-	}
-	return nil
 }

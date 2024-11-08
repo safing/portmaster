@@ -130,6 +130,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		dataDir: svcCfg.DataDir,
 	}
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
+	instance.shutdownCtx, instance.cancelShutdownCtx = context.WithCancel(context.Background())
 
 	// Base modules
 	instance.base, err = base.New(instance)
@@ -651,24 +652,23 @@ func (i *Instance) shutdown(exitCode int) {
 		return
 	}
 
+	// Cancel main  context.
+	i.cancelCtx()
+
 	// Set given exit code.
 	i.exitCode.Store(int32(exitCode))
-
-	// Cancel contexts.
-	i.cancelCtx()
-	defer i.cancelShutdownCtx()
 
 	// Start shutdown asynchronously in a separate manager.
 	m := mgr.New("instance")
 	m.Go("shutdown", func(w *mgr.WorkerCtx) error {
-		for {
-			if err := i.Stop(); err != nil {
-				w.Error("failed to shutdown", "err", err, "retry", "1s")
-				time.Sleep(1 * time.Second)
-			} else {
-				return nil
-			}
+		// Stop all modules.
+		if err := i.Stop(); err != nil {
+			w.Error("failed to shutdown", "err", err)
 		}
+
+		// Cancel shutdown process context.
+		i.cancelShutdownCtx()
+		return nil
 	})
 }
 

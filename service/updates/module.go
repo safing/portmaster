@@ -10,11 +10,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tevino/abool"
+
 	"github.com/safing/jess"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/tevino/abool"
 )
 
 const (
@@ -169,7 +170,7 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 
 	// Fall back to scanning the directory.
 	if !errors.Is(err, os.ErrNotExist) {
-		log.Errorf("updates/%s: invalid index file, falling back to dir scan: %w", cfg.Name, err)
+		log.Errorf("updates/%s: invalid index file, falling back to dir scan: %s", cfg.Name, err)
 	}
 	index, err = GenerateIndexFromDir(cfg.Directory, IndexScanConfig{Version: "0.0.0"})
 	if err == nil && index.init() == nil {
@@ -181,13 +182,12 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 	return module, nil
 }
 
-func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreVersion, forceApply bool) (err error) {
+func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreVersion, forceApply bool) (err error) { //nolint:maintidx
 	// Make sure only one update process is running.
 	if !u.isUpdateRunning.SetToIf(false, true) {
 		return fmt.Errorf("an updater task is already running, please try again later")
 	}
 	defer u.isUpdateRunning.UnSet()
-	// FIXME: Switch to mutex?
 
 	// Create a new downloader.
 	downloader := NewDownloader(u, indexURLs)
@@ -201,7 +201,7 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 		}
 	} else {
 		// Otherwise, load index from download dir.
-		downloader.index, err = LoadIndex(filepath.Join(u.cfg.Directory, u.cfg.IndexFile), u.cfg.Verify)
+		downloader.index, err = LoadIndex(filepath.Join(u.cfg.DownloadDirectory, u.cfg.IndexFile), u.cfg.Verify)
 		if err != nil {
 			return fmt.Errorf("load previously downloaded index file: %w", err)
 		}
@@ -215,23 +215,42 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 		u.indexLock.Unlock()
 		// Check with local pointer to index.
 		if err := index.ShouldUpgradeTo(downloader.index); err != nil {
-			log.Infof("updates/%s: no new or eligible update: %s", u.cfg.Name, err)
-			if u.cfg.Notify && u.instance.Notifications() != nil {
-				u.instance.Notifications().Notify(&notifications.Notification{
-					EventID: noNewUpdateNotificationID,
-					Type:    notifications.Info,
-					Title:   "Portmaster Is Up-To-Date",
-					Message: "Portmaster v" + index.Version + " is the newest version.",
-					Expires: time.Now().Add(1 * time.Minute).Unix(),
-					AvailableActions: []*notifications.Action{
-						{
-							ID:   "ack",
-							Text: "OK",
+			if errors.Is(err, ErrSameIndex) {
+				log.Infof("updates/%s: no new update", u.cfg.Name)
+				if u.cfg.Notify && u.instance.Notifications() != nil {
+					u.instance.Notifications().Notify(&notifications.Notification{
+						EventID: noNewUpdateNotificationID,
+						Type:    notifications.Info,
+						Title:   "Portmaster Is Up-To-Date",
+						Message: "Portmaster v" + index.Version + " is the newest version.",
+						Expires: time.Now().Add(1 * time.Minute).Unix(),
+						AvailableActions: []*notifications.Action{
+							{
+								ID:   "ack",
+								Text: "OK",
+							},
 						},
-					},
-				})
+					})
+				}
+			} else {
+				log.Warningf("updates/%s: cannot update: %s", u.cfg.Name, err)
+				if u.cfg.Notify && u.instance.Notifications() != nil {
+					u.instance.Notifications().Notify(&notifications.Notification{
+						EventID: noNewUpdateNotificationID,
+						Type:    notifications.Info,
+						Title:   "Portmaster Is Up-To-Date*",
+						Message: "While Portmaster v" + index.Version + " is the newest version, there is an internal issue with checking for updates: " + err.Error(),
+						Expires: time.Now().Add(1 * time.Minute).Unix(),
+						AvailableActions: []*notifications.Action{
+							{
+								ID:   "ack",
+								Text: "OK",
+							},
+						},
+					})
+				}
 			}
-			return ErrNoUpdateAvailable
+			return fmt.Errorf("%w: %w", ErrNoUpdateAvailable, err)
 		}
 	}
 
@@ -320,7 +339,10 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 	// Install is complete!
 
 	// Clean up and notify modules of changed files.
-	u.cleanupAfterUpgrade()
+	err = u.cleanupAfterUpgrade()
+	if err != nil {
+		log.Debugf("updates/%s: failed to clean up after upgrade: %s", u.cfg.Name, err)
+	}
 	u.EventResourcesUpdated.Submit(struct{}{})
 
 	// If no restart is needed, we are done.
@@ -363,7 +385,7 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 				Type: notifications.ActionTypeWebhook,
 				Payload: notifications.ActionTypeWebhookPayload{
 					Method: "POST",
-					URL:    "updates/apply", // FIXME
+					URL:    "core/restart",
 				},
 			},
 		)
@@ -376,15 +398,35 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 }
 
 func (u *Updater) updateCheckWorker(w *mgr.WorkerCtx) error {
-	_ = u.updateAndUpgrade(w, u.cfg.IndexURLs, false, false)
-	// FIXME: Handle errors.
-	return nil
+	err := u.updateAndUpgrade(w, u.cfg.IndexURLs, false, false)
+	switch {
+	case err == nil:
+		return nil // Success!
+	case errors.Is(err, ErrSameIndex):
+		return nil // Nothing to do.
+	case errors.Is(err, ErrNoUpdateAvailable):
+		return nil // Already logged.
+	case errors.Is(err, ErrActionRequired) && !u.cfg.Notify:
+		return fmt.Errorf("user action required, but notifying user is disabled: %w", err)
+	default:
+		return fmt.Errorf("udpating failed: %w", err)
+	}
 }
 
 func (u *Updater) upgradeWorker(w *mgr.WorkerCtx) error {
-	_ = u.updateAndUpgrade(w, u.cfg.IndexURLs, false, true)
-	// FIXME: Handle errors.
-	return nil
+	err := u.updateAndUpgrade(w, u.cfg.IndexURLs, false, true)
+	switch {
+	case err == nil:
+		return nil // Success!
+	case errors.Is(err, ErrSameIndex):
+		return nil // Nothing to do.
+	case errors.Is(err, ErrNoUpdateAvailable):
+		return nil // Already logged.
+	case errors.Is(err, ErrActionRequired) && !u.cfg.Notify:
+		return fmt.Errorf("user action required, but notifying user is disabled: %w", err)
+	default:
+		return fmt.Errorf("udpating failed: %w", err)
+	}
 }
 
 // ForceUpdate executes a forced update and upgrade directly and synchronously

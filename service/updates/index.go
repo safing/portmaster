@@ -15,6 +15,7 @@ import (
 	"time"
 
 	semver "github.com/hashicorp/go-version"
+
 	"github.com/safing/jess"
 	"github.com/safing/jess/filesig"
 )
@@ -26,7 +27,7 @@ const currentPlatform = runtime.GOOS + "_" + runtime.GOARCH
 
 var zeroVersion = semver.Must(semver.NewVersion("0.0.0"))
 
-// Artifacts represents a single file with metadata.
+// Artifact represents a single file with metadata.
 type Artifact struct {
 	Filename string   `json:"Filename"`
 	SHA256   string   `json:"SHA256"`
@@ -85,7 +86,7 @@ func (a *Artifact) IsNewerThan(b *Artifact) (newer, ok bool) {
 }
 
 func (a *Artifact) export(dir string, indexVersion *semver.Version) *Artifact {
-	copy := &Artifact{
+	copied := &Artifact{
 		Filename:   a.Filename,
 		SHA256:     a.SHA256,
 		URLs:       a.URLs,
@@ -98,20 +99,20 @@ func (a *Artifact) export(dir string, indexVersion *semver.Version) *Artifact {
 
 	// Make sure we have a version number.
 	switch {
-	case copy.versionNum != nil:
+	case copied.versionNum != nil:
 		// Version already parsed.
-	case copy.Version != "":
+	case copied.Version != "":
 		// Need to parse version.
-		v, err := semver.NewVersion(copy.Version)
+		v, err := semver.NewVersion(copied.Version)
 		if err == nil {
-			copy.versionNum = v
+			copied.versionNum = v
 		}
 	default:
 		// No version defined, inherit index version.
-		copy.versionNum = indexVersion
+		copied.versionNum = indexVersion
 	}
 
-	return copy
+	return copied
 }
 
 // Index represents a collection of artifacts with metadata.
@@ -146,8 +147,8 @@ func ParseIndex(jsonContent []byte, trustStore jess.TrustStore) (*Index, error) 
 	}
 
 	// Parse json.
-	var index Index
-	err := json.Unmarshal([]byte(jsonContent), &index)
+	index := &Index{}
+	err := json.Unmarshal(jsonContent, index)
 	if err != nil {
 		return nil, fmt.Errorf("parse index: %w", err)
 	}
@@ -158,7 +159,7 @@ func ParseIndex(jsonContent []byte, trustStore jess.TrustStore) (*Index, error) 
 		return nil, err
 	}
 
-	return &index, nil
+	return index, nil
 }
 
 func (index *Index) init() error {
@@ -219,7 +220,7 @@ func (index *Index) ShouldUpgradeTo(newIndex *Index) error {
 		return fmt.Errorf("current index cannot do upgrades: %w", err)
 	}
 	if err := newIndex.CanDoUpgrades(); err != nil {
-		return fmt.Errorf("new index cannot do upgrade: %w")
+		return fmt.Errorf("new index cannot do upgrade: %w", err)
 	}
 
 	switch {
@@ -229,13 +230,14 @@ func (index *Index) ShouldUpgradeTo(newIndex *Index) error {
 		return nil
 
 	case index.Name != newIndex.Name:
-		return errors.New("index names do not match")
-
-	case index.versionNum.GreaterThan(newIndex.versionNum):
-		return errors.New("current index has newer version")
+		return errors.New("new index name does not match")
 
 	case index.Published.After(newIndex.Published):
-		return errors.New("current index was published later")
+		return errors.New("new index is older (time)")
+
+	case index.versionNum.Segments()[0] > newIndex.versionNum.Segments()[0]:
+		// Downgrades are allowed, if they are not breaking changes.
+		return errors.New("new index is a breaking change downgrade")
 
 	case index.Published.Equal(newIndex.Published):
 		// "Do nothing".
@@ -252,7 +254,7 @@ func (index *Index) VerifyArtifacts(dir string) error {
 	for _, artifact := range index.Artifacts {
 		err := checkSHA256SumFile(filepath.Join(dir, artifact.Filename), artifact.SHA256)
 		if err != nil {
-			return fmt.Errorf("verify %s: %s", artifact.Filename, err)
+			return fmt.Errorf("verify %s: %w", artifact.Filename, err)
 		}
 	}
 

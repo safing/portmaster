@@ -29,21 +29,23 @@ func newTestInstance(testName string) (*testInstance, error) {
 	}, nil
 }
 
-func TestConfigPersistence(t *testing.T) {
-	t.Parallel()
-
+func TestMain(m *testing.M) {
 	instance, err := newTestInstance("test-config")
 	if err != nil {
-		t.Fatalf("failed to create test instance: %s", err)
+		panic(fmt.Errorf("failed to create test instance: %w", err))
 	}
 	defer func() { _ = os.RemoveAll(instance.DataDir()) }()
 
 	module, err = New(instance)
 	if err != nil {
-		t.Fatalf("failed to initialize module: %s", err)
+		panic(fmt.Errorf("failed to initialize module: %w", err))
 	}
 
-	err = SaveConfig()
+	m.Run()
+}
+
+func TestConfigPersistence(t *testing.T) { //nolint:paralleltest
+	err := SaveConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
