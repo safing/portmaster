@@ -52,6 +52,8 @@ func (s *LinuxSystemService) Run() {
 wait:
 	for {
 		select {
+		case <-s.instance.ShuttingDown():
+			break wait
 		case sig := <-signalCh:
 			// Only print and continue to wait if SIGUSR1
 			if sig == syscall.SIGUSR1 {
@@ -64,8 +66,6 @@ wait:
 				s.instance.Shutdown()
 				break wait
 			}
-		case <-s.instance.ShuttingDown():
-			break wait
 		}
 	}
 

@@ -24,8 +24,6 @@ func init() {
 
 func update(cmd *cobra.Command, args []string) error {
 	// Finalize config.
-	svcCfg.VerifyBinaryUpdates = nil // FIXME
-	svcCfg.VerifyIntelUpdates = nil  // FIXME
 	err := svcCfg.Init()
 	if err != nil {
 		return fmt.Errorf("internal configuration error: %w", err)

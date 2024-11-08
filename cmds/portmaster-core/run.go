@@ -36,10 +36,8 @@ func cmdRun(cmd *cobra.Command, args []string) {
 
 	// SETUP
 
-	svcCfg.VerifyBinaryUpdates = nil // FIXME
-	svcCfg.VerifyIntelUpdates = nil  // FIXME
-
-	// enable SPN client mode
+	// Enable SPN client mode.
+	// TODO: Move this to service config.
 	conf.EnableClient(true)
 	conf.EnableIntegration(true)
 
@@ -97,16 +95,12 @@ func cmdRun(cmd *cobra.Command, args []string) {
 	// Wait for shutdown to be finished.
 	select {
 	case <-instance.ShutdownComplete():
+		// Print stack on shutdown, if enabled.
+		if printStackOnExit {
+			printStackTo(os.Stdout, "PRINTING STACK ON EXIT")
+		}
 	case <-time.After(3 * time.Minute):
 		printStackTo(os.Stderr, "PRINTING STACK - TAKING TOO LONG FOR SHUTDOWN")
-	}
-
-	// Stop logging.
-	log.Shutdown()
-
-	// Print stack on shutdown, if enabled.
-	if printStackOnExit {
-		printStackTo(os.Stdout, "PRINTING STACK ON EXIT")
 	}
 
 	// Check if restart was triggered and send start service command if true.
@@ -115,6 +109,9 @@ func cmdRun(cmd *cobra.Command, args []string) {
 			slog.Error("failed to restart service", "err", err)
 		}
 	}
+
+	// Stop logging.
+	log.Shutdown()
 
 	// Give a small amount of time for everything to settle:
 	// - All logs written.

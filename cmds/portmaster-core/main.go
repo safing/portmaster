@@ -29,6 +29,7 @@ var (
 
 func init() {
 	// Add Go's default flag set.
+	// TODO: Move flags throughout Portmaster to here and add their values to the service config.
 	rootCmd.Flags().AddGoFlagSet(flag.CommandLine)
 
 	// Add persisent flags for all commands.
