@@ -302,11 +302,11 @@ func UpdateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 			Expires:           rrCache.Expires,
 		}
 
-		// Resolve all CNAMEs in the correct order and add the to the record.
+		// Resolve all CNAMEs in the correct order and add the to the record - up to max 50 layers.
 		domain := q.FQDN
-		for {
+		for range 50 {
 			nextDomain, isCNAME := cnames[domain]
-			if !isCNAME {
+			if !isCNAME || nextDomain == domain {
 				break
 			}
 
