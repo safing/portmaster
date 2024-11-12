@@ -12,6 +12,8 @@ import (
 	"github.com/safing/portmaster/base/log"
 )
 
+// FIXME: previous update system did in-place service file upgrades. Check if this is still necessary and if changes are in current installers.
+
 const (
 	defaultFileMode      = os.FileMode(0o0644)
 	executableFileMode   = os.FileMode(0o0744)
@@ -25,7 +27,7 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 	defer u.indexLock.Unlock()
 
 	// Check if we should upgrade at all.
-	if !ignoreVersion {
+	if !ignoreVersion && u.index != nil {
 		if err := u.index.ShouldUpgradeTo(downloader.index); err != nil {
 			return fmt.Errorf("cannot upgrade: %w", ErrNoUpdateAvailable)
 		}

@@ -58,7 +58,7 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 	svcCfg = &service.ServiceConfig{
 		BinDir:              binDir,
 		DataDir:             dataDir,
-		BinariesIndexURLs:   service.DefaultBinaryIndexURLs,
+		BinariesIndexURLs:   service.DefaultStableBinaryIndexURLs,
 		IntelIndexURLs:      service.DefaultIntelIndexURLs,
 		VerifyBinaryUpdates: service.BinarySigningTrustStore,
 		VerifyIntelUpdates:  service.BinarySigningTrustStore,

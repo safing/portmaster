@@ -10,6 +10,8 @@ import (
 	"sync"
 )
 
+// FIXME: version does not show in portmaster
+
 var (
 	name    string
 	license string

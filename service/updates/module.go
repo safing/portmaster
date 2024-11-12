@@ -41,6 +41,7 @@ var (
 	ErrNotFound  = errors.New("file not found")
 	ErrSameIndex = errors.New("same index")
 
+	ErrAutoCheckDisabled = errors.New("automatic update checks are disabled")
 	ErrNoUpdateAvailable = errors.New("no update available")
 	ErrActionRequired    = errors.New("action required")
 )
@@ -67,6 +68,8 @@ type Config struct {
 	// Verify enables and specifies the trust the index signatures will be checked against.
 	Verify jess.TrustStore
 
+	// AutoCheck defines that new indexes may be downloaded automatically without outside trigger.
+	AutoCheck bool
 	// AutoDownload defines that updates may be downloaded automatically without outside trigger.
 	AutoDownload bool
 	// AutoApply defines that updates may be automatically applied without outside trigger.
@@ -157,8 +160,7 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 	}
 
 	// Create Workers.
-	module.updateCheckWorkerMgr = m.NewWorkerMgr("update checker", module.updateCheckWorker, nil).
-		Repeat(updateTaskRepeatDuration)
+	module.updateCheckWorkerMgr = m.NewWorkerMgr("update checker", module.updateCheckWorker, nil)
 	module.upgradeWorkerMgr = m.NewWorkerMgr("upgrader", module.upgradeWorker, nil)
 
 	// Load index.
@@ -207,12 +209,13 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 		}
 	}
 
+	// Get index to check version.
+	u.indexLock.Lock()
+	index := u.index
+	u.indexLock.Unlock()
+
 	// Check if there is a new version.
-	if !ignoreVersion {
-		// Get index to check version.
-		u.indexLock.Lock()
-		index := u.index
-		u.indexLock.Unlock()
+	if !ignoreVersion && index != nil {
 		// Check with local pointer to index.
 		if err := index.ShouldUpgradeTo(downloader.index); err != nil {
 			if errors.Is(err, ErrSameIndex) {
@@ -351,44 +354,31 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 	}
 
 	// Notify user that a restart is required.
-	if u.cfg.Notify && u.instance.Notifications() != nil {
-
-		u.instance.Notifications().Notify(&notifications.Notification{
-			EventID: restartRequiredNotificationID,
-			Type:    notifications.Info,
-			Title:   "Restart Required",
-			Message: "Portmaster v" + downloader.index.Version + " is installed. Restart to use new version.",
-			AvailableActions: []*notifications.Action{
-				{
-					ID:   "ack",
-					Text: "Later",
-				},
-				{
-					ID:   "restart",
-					Text: "Restart Now",
-					Type: notifications.ActionTypeWebhook,
-					Payload: notifications.ActionTypeWebhookPayload{
-						Method: "POST",
-						URL:    "updates/apply",
+	if u.cfg.Notify {
+		if u.instance.Notifications() != nil {
+			u.instance.Notifications().Notify(&notifications.Notification{
+				EventID: restartRequiredNotificationID,
+				Type:    notifications.Info,
+				Title:   "Restart Required",
+				Message: "Portmaster v" + downloader.index.Version + " is installed. Restart to use new version.",
+				AvailableActions: []*notifications.Action{
+					{
+						ID:   "ack",
+						Text: "Later",
+					},
+					{
+						ID:   "restart",
+						Text: "Restart Now",
+						Type: notifications.ActionTypeWebhook,
+						Payload: notifications.ActionTypeWebhookPayload{
+							Method: "POST",
+							URL:    "updates/apply",
+						},
 					},
 				},
-			},
-		})
+			})
+		}
 
-		u.instance.Notifications().NotifyInfo(
-			updateAvailableNotificationID,
-			"Restart Required",
-			"Portmaster v"+downloader.index.Version+" is installed. Restart to use new version.",
-			notifications.Action{
-				ID:   "restart",
-				Text: "Restart Now",
-				Type: notifications.ActionTypeWebhook,
-				Payload: notifications.ActionTypeWebhookPayload{
-					Method: "POST",
-					URL:    "core/restart",
-				},
-			},
-		)
 		return fmt.Errorf("%w: restart required", ErrActionRequired)
 	}
 
@@ -470,6 +460,7 @@ func (u *Updater) Manager() *mgr.Manager {
 // Start starts the module.
 func (u *Updater) Start() error {
 	if u.corruptedInstallation && u.cfg.Notify && u.instance.Notifications() != nil {
+		// FIXME: this might make sense as a module state
 		u.instance.Notifications().NotifyError(
 			corruptInstallationNotificationID,
 			"Install Corruption",
@@ -477,7 +468,12 @@ func (u *Updater) Start() error {
 		)
 	}
 
-	u.updateCheckWorkerMgr.Delay(15 * time.Second)
+	// Check for updates automatically, if enabled.
+	if u.cfg.AutoCheck {
+		u.updateCheckWorkerMgr.
+			Repeat(updateTaskRepeatDuration).
+			Delay(15 * time.Second)
+	}
 	return nil
 }
 

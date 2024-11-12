@@ -9,9 +9,19 @@ import (
 )
 
 var (
-	DefaultBinaryIndexURLs = []string{
+	DefaultStableBinaryIndexURLs = []string{
 		"https://updates.safing.io/stable.v3.json",
 	}
+	DefaultBetaBinaryIndexURLs = []string{
+		"https://updates.safing.io/beta.v3.json",
+	}
+	DefaultStagingBinaryIndexURLs = []string{
+		"https://updates.safing.io/staging.v3.json",
+	}
+	DefaultSupportBinaryIndexURLs = []string{
+		"https://updates.safing.io/support.v3.json",
+	}
+
 	DefaultIntelIndexURLs = []string{
 		"https://updates.safing.io/intel.v3.json",
 	}
@@ -53,6 +63,7 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 			IndexURLs:         svcCfg.BinariesIndexURLs,
 			IndexFile:         "index.json",
 			Verify:            svcCfg.VerifyBinaryUpdates,
+			AutoCheck:         true, // FIXME: Get from setting.
 			AutoDownload:      false,
 			AutoApply:         false,
 			NeedsRestart:      true,
@@ -66,6 +77,7 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 			IndexURLs:         svcCfg.IntelIndexURLs,
 			IndexFile:         "index.json",
 			Verify:            svcCfg.VerifyIntelUpdates,
+			AutoCheck:         true, // FIXME: Get from setting.
 			AutoDownload:      true,
 			AutoApply:         true,
 			NeedsRestart:      false,
@@ -82,6 +94,7 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 			IndexURLs:         svcCfg.BinariesIndexURLs,
 			IndexFile:         "index.json",
 			Verify:            svcCfg.VerifyBinaryUpdates,
+			AutoCheck:         true, // FIXME: Get from setting.
 			AutoDownload:      false,
 			AutoApply:         false,
 			NeedsRestart:      true,
@@ -95,6 +108,7 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 			IndexURLs:         svcCfg.IntelIndexURLs,
 			IndexFile:         "index.json",
 			Verify:            svcCfg.VerifyIntelUpdates,
+			AutoCheck:         true, // FIXME: Get from setting.
 			AutoDownload:      true,
 			AutoApply:         true,
 			NeedsRestart:      false,

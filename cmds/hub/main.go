@@ -24,6 +24,7 @@ import (
 
 func init() {
 	// flag.BoolVar(&updates.RebootOnRestart, "reboot-on-restart", false, "reboot server on auto-upgrade")
+	// FIXME
 }
 
 var sigUSR1 = syscall.Signal(0xa)
@@ -47,6 +48,8 @@ func main() {
 	// Set default log level.
 	log.SetLogLevel(log.WarningLevel)
 	_ = log.Start()
+
+	// FIXME: Use service?
 
 	// Create instance.
 	var execCmdLine bool
@@ -109,7 +112,7 @@ func main() {
 			slog.Warn("program was interrupted, stopping")
 		}
 
-	case <-instance.Stopped():
+	case <-instance.ShutdownComplete():
 		log.Shutdown()
 		os.Exit(instance.ExitCode())
 	}

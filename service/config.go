@@ -60,7 +60,8 @@ func (sc *ServiceConfig) Init() error {
 
 	// Apply defaults for required fields.
 	if len(sc.BinariesIndexURLs) == 0 {
-		sc.BinariesIndexURLs = DefaultBinaryIndexURLs
+		// FIXME: Select based on setting.
+		sc.BinariesIndexURLs = DefaultStableBinaryIndexURLs
 	}
 	if len(sc.IntelIndexURLs) == 0 {
 		sc.IntelIndexURLs = DefaultIntelIndexURLs

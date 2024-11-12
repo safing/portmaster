@@ -78,6 +78,8 @@ func main() {
 	}
 	instance.AddModule(observer)
 
+	// FIXME: Use service?
+
 	// Execute command line operation, if requested or available.
 	switch {
 	case !execCmdLine:
@@ -126,7 +128,7 @@ func main() {
 			slog.Warn("program was interrupted, stopping")
 		}
 
-	case <-instance.Stopped():
+	case <-instance.ShuttingDown():
 		log.Shutdown()
 		os.Exit(instance.ExitCode())
 	}
