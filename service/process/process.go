@@ -256,7 +256,7 @@ func loadProcess(ctx context.Context, key string, pInfo *processInfo.Process) (*
 	// Username
 	process.UserName, err = pInfo.UsernameWithContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("process: failed to get Username for p%d: %w", pInfo.Pid, err)
+		log.Tracer(ctx).Warningf("process: failed to get username (PID %d): %s", pInfo.Pid, err)
 	}
 
 	// TODO: User Home
