@@ -2,78 +2,25 @@ package log
 
 import (
 	"fmt"
-	"os"
 	"runtime/debug"
 	"sync"
 	"time"
+
+	"github.com/safing/portmaster/base/info"
 )
 
-type (
-	// Adapter is used to write logs.
-	Adapter interface {
-		// Write is called for each log message.
-		Write(msg Message, duplicates uint64)
-	}
-
-	// AdapterFunc is a convenience type for implementing
-	// Adapter.
-	AdapterFunc func(msg Message, duplicates uint64)
-
-	// FormatFunc formats msg into a string.
-	FormatFunc func(msg Message, duplicates uint64) string
-
-	// SimpleFileAdapter implements Adapter and writes all
-	// messages to File.
-	SimpleFileAdapter struct {
-		Format FormatFunc
-		File   *os.File
-	}
-)
+// Adapter is used to write logs.
+type Adapter interface {
+	// Write is called for each log message.
+	WriteMessage(msg Message, duplicates uint64)
+}
 
 var (
-	// StdoutAdapter is a simple file adapter that writes
-	// all logs to os.Stdout using a predefined format.
-	StdoutAdapter = &SimpleFileAdapter{
-		File:   os.Stdout,
-		Format: defaultColorFormater,
-	}
-
-	// StderrAdapter is a simple file adapter that writes
-	// all logs to os.Stdout using a predefined format.
-	StderrAdapter = &SimpleFileAdapter{
-		File:   os.Stderr,
-		Format: defaultColorFormater,
-	}
-)
-
-var (
-	adapter Adapter = StdoutAdapter
-
 	schedulingEnabled = false
 	writeTrigger      = make(chan struct{})
 )
 
-// SetAdapter configures the logging adapter to use.
-// This must be called before the log package is initialized.
-func SetAdapter(a Adapter) {
-	if initializing.IsSet() || a == nil {
-		return
-	}
-
-	adapter = a
-}
-
-// Write implements Adapter and calls fn.
-func (fn AdapterFunc) Write(msg Message, duplicates uint64) {
-	fn(msg, duplicates)
-}
-
-// Write implements Adapter and writes msg the underlying file.
-func (fileAdapter *SimpleFileAdapter) Write(msg Message, duplicates uint64) {
-	fmt.Fprintln(fileAdapter.File, fileAdapter.Format(msg, duplicates))
-}
-
-// EnableScheduling enables external scheduling of the logger. This will require to manually trigger writes via TriggerWrite whenevery logs should be written. Please note that full buffers will also trigger writing. Must be called before Start() to have an effect.
+// EnableScheduling enables external scheduling of the logger. This will require to manually trigger writes via TriggerWrite whenever logs should be written. Please note that full buffers will also trigger writing. Must be called before Start() to have an effect.
 func EnableScheduling() {
 	if !initializing.IsSet() {
 		schedulingEnabled = true
@@ -95,25 +42,45 @@ func TriggerWriterChannel() chan struct{} {
 	return writeTrigger
 }
 
-func defaultColorFormater(line Message, duplicates uint64) string {
-	return formatLine(line.(*logLine), duplicates, true) //nolint:forcetypeassert // TODO: improve
-}
-
 func startWriter() {
-	fmt.Printf(
-		"%s%s%s %sBOF %s%s\n",
+	if GlobalWriter.isStdout {
+		fmt.Fprintf(GlobalWriter,
+			"%s%s%s %sBOF %s%s\n",
 
-		dimColor(),
-		time.Now().Format(timeFormat),
-		endDimColor(),
+			dimColor(),
+			time.Now().Format(timeFormat),
+			endDimColor(),
 
-		blueColor(),
-		rightArrow,
-		endColor(),
-	)
+			blueColor(),
+			rightArrow,
+			endColor(),
+		)
+	} else {
+		fmt.Fprintf(GlobalWriter,
+			"%s BOF %s\n",
+			time.Now().Format(timeFormat),
+			rightArrow,
+		)
+	}
+	writeVersion()
 
 	shutdownWaitGroup.Add(1)
 	go writerManager()
+}
+
+func writeVersion() {
+	if GlobalWriter.isStdout {
+		fmt.Fprintf(GlobalWriter, "%s%s%s running %s%s%s\n",
+			dimColor(),
+			time.Now().Format(timeFormat),
+			endDimColor(),
+
+			blueColor(),
+			info.CondensedVersion(),
+			endColor())
+	} else {
+		fmt.Fprintf(GlobalWriter, "%s running %s\n", time.Now().Format(timeFormat), info.CondensedVersion())
+	}
 }
 
 func writerManager() {
@@ -129,18 +96,17 @@ func writerManager() {
 	}
 }
 
-// defer should be able to edit the err. So naked return is required.
-// nolint:golint,nakedret
-func writer() (err error) {
+func writer() error {
+	var err error
 	defer func() {
 		// recover from panic
 		panicVal := recover()
 		if panicVal != nil {
-			err = fmt.Errorf("%s", panicVal)
+			_, err = fmt.Fprintf(GlobalWriter, "%s", panicVal)
 
 			// write stack to stderr
 			fmt.Fprintf(
-				os.Stderr,
+				GlobalWriter,
 				`===== Error Report =====
 Message: %s
 StackTrace:
@@ -169,7 +135,7 @@ StackTrace:
 		case <-forceEmptyingOfBuffer: // log buffer is full!
 		case <-shutdownSignal: // shutting down
 			finalizeWriting()
-			return
+			return err
 		}
 
 		// wait for timeslot to log
@@ -178,7 +144,7 @@ StackTrace:
 		case <-forceEmptyingOfBuffer: // log buffer is full!
 		case <-shutdownSignal: // shutting down
 			finalizeWriting()
-			return
+			return err
 		}
 
 		// write all the logs!
@@ -201,7 +167,7 @@ StackTrace:
 				}
 
 				// if currentLine and line are _not_ equal, output currentLine
-				adapter.Write(currentLine, duplicates)
+				GlobalWriter.WriteMessage(currentLine, duplicates)
 				// add to unexpected logs
 				addUnexpectedLogs(currentLine)
 				// reset duplicate counter
@@ -215,7 +181,7 @@ StackTrace:
 
 		// write final line
 		if currentLine != nil {
-			adapter.Write(currentLine, duplicates)
+			GlobalWriter.WriteMessage(currentLine, duplicates)
 			// add to unexpected logs
 			addUnexpectedLogs(currentLine)
 		}
@@ -225,7 +191,7 @@ StackTrace:
 		case <-time.After(10 * time.Millisecond):
 		case <-shutdownSignal:
 			finalizeWriting()
-			return
+			return err
 		}
 
 	}
@@ -235,19 +201,27 @@ func finalizeWriting() {
 	for {
 		select {
 		case line := <-logBuffer:
-			adapter.Write(line, 0)
+			GlobalWriter.WriteMessage(line, 0)
 		case <-time.After(10 * time.Millisecond):
-			fmt.Printf(
-				"%s%s%s %sEOF %s%s\n",
+			if GlobalWriter.isStdout {
+				fmt.Fprintf(GlobalWriter,
+					"%s%s%s %sEOF %s%s\n",
 
-				dimColor(),
-				time.Now().Format(timeFormat),
-				endDimColor(),
+					dimColor(),
+					time.Now().Format(timeFormat),
+					endDimColor(),
 
-				blueColor(),
-				leftArrow,
-				endColor(),
-			)
+					blueColor(),
+					leftArrow,
+					endColor(),
+				)
+			} else {
+				fmt.Fprintf(GlobalWriter,
+					"%s EOF %s\n",
+					time.Now().Format(timeFormat),
+					leftArrow,
+				)
+			}
 			return
 		}
 	}

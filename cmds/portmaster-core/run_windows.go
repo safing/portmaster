@@ -13,10 +13,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/safing/portmaster/service"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
+
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service"
 )
 
 const serviceName = "PortmasterCore"
@@ -66,7 +68,7 @@ func (s *WindowsSystemService) Execute(args []string, changeRequests <-chan svc.
 
 		// Print stack on start failure, if enabled.
 		if printStackOnExit {
-			printStackTo(os.Stderr, "PRINTING STACK ON START FAILURE")
+			printStackTo(log.GlobalWriter, "PRINTING STACK ON START FAILURE")
 		}
 
 		// Notify service manager we stopped again.
@@ -140,7 +142,7 @@ waitShutdown:
 			if forceCnt > 0 {
 				fmt.Printf(" <SIGNAL: %s> but already shutting down - %d more to force\n", sig, forceCnt)
 			} else {
-				printStackTo(os.Stderr, "PRINTING STACK ON FORCED EXIT")
+				printStackTo(log.GlobalWriter, "PRINTING STACK ON FORCED EXIT")
 				os.Exit(1)
 			}
 
@@ -154,7 +156,7 @@ waitShutdown:
 				if forceCnt > 0 {
 					fmt.Printf(" <SERVICE CMD: %v> but already shutting down - %d more to force\n", serviceCmdName(c.Cmd), forceCnt)
 				} else {
-					printStackTo(os.Stderr, "PRINTING STACK ON FORCED EXIT")
+					printStackTo(log.GlobalWriter, "PRINTING STACK ON FORCED EXIT")
 					os.Exit(1)
 				}
 

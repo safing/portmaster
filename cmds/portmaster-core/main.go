@@ -24,6 +24,10 @@ var (
 	binDir  string
 	dataDir string
 
+	logToStdout bool
+	logDir      string
+	logLevel    string
+
 	svcCfg *service.ServiceConfig
 )
 
@@ -35,6 +39,11 @@ func init() {
 	// Add persisent flags for all commands.
 	rootCmd.PersistentFlags().StringVar(&binDir, "bin-dir", "", "set directory for executable binaries (rw/ro)")
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", "set directory for variable data (rw)")
+
+	// Add flags for service only.
+	rootCmd.Flags().BoolVar(&logToStdout, "log-stdout", false, "log to stdout instead of file")
+	rootCmd.Flags().StringVar(&logDir, "log-dir", "", "set directory for logs")
+	rootCmd.Flags().StringVar(&logLevel, "log", "", "set log level to [trace|debug|info|warning|error|critical]")
 }
 
 func main() {
@@ -56,8 +65,13 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 
 	// Create service config.
 	svcCfg = &service.ServiceConfig{
-		BinDir:              binDir,
-		DataDir:             dataDir,
+		BinDir:  binDir,
+		DataDir: dataDir,
+
+		LogToStdout: logToStdout,
+		LogDir:      logDir,
+		LogLevel:    logLevel,
+
 		BinariesIndexURLs:   service.DefaultStableBinaryIndexURLs,
 		IntelIndexURLs:      service.DefaultIntelIndexURLs,
 		VerifyBinaryUpdates: service.BinarySigningTrustStore,

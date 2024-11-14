@@ -28,10 +28,11 @@ func update(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("internal configuration error: %w", err)
 	}
+	// Force logging to stdout.
+	svcCfg.LogToStdout = true
 
 	// Start logging.
-	log.SetLogLevel(log.InfoLevel)
-	_ = log.Start()
+	_ = log.Start(svcCfg.LogLevel, svcCfg.LogToStdout, svcCfg.LogDir)
 	defer log.Shutdown()
 
 	// Create updaters.

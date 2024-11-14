@@ -8,11 +8,16 @@ import (
 	"runtime"
 
 	"github.com/safing/jess"
+	"github.com/safing/portmaster/base/log"
 )
 
 type ServiceConfig struct {
 	BinDir  string
 	DataDir string
+
+	LogToStdout bool
+	LogDir      string
+	LogLevel    string
 
 	BinariesIndexURLs   []string
 	IntelIndexURLs      []string
@@ -21,9 +26,10 @@ type ServiceConfig struct {
 }
 
 func (sc *ServiceConfig) Init() error {
-	// Check directories
+	// Check directories.
 	switch runtime.GOOS {
 	case "windows":
+		// Fall back to defaults.
 		if sc.BinDir == "" {
 			exeDir, err := getCurrentBinaryFolder() // Default: C:/Program Files/Portmaster
 			if err != nil {
@@ -34,6 +40,9 @@ func (sc *ServiceConfig) Init() error {
 		if sc.DataDir == "" {
 			sc.DataDir = filepath.FromSlash("$ProgramData/Portmaster")
 		}
+		if sc.LogDir == "" {
+			sc.LogDir = filepath.Join(sc.DataDir, "logs")
+		}
 
 	case "linux":
 		// Fall back to defaults.
@@ -42,6 +51,9 @@ func (sc *ServiceConfig) Init() error {
 		}
 		if sc.DataDir == "" {
 			sc.DataDir = "/var/lib/portmaster"
+		}
+		if sc.LogDir == "" {
+			sc.LogDir = "/var/log/portmaster"
 		}
 
 	default:
@@ -52,11 +64,15 @@ func (sc *ServiceConfig) Init() error {
 		if sc.DataDir == "" {
 			return errors.New("binary directory must be configured - auto-detection not supported on this platform")
 		}
+		if !sc.LogToStdout && sc.LogDir == "" {
+			return errors.New("logging directory must be configured - auto-detection not supported on this platform")
+		}
 	}
 
 	// Expand path variables.
 	sc.BinDir = os.ExpandEnv(sc.BinDir)
 	sc.DataDir = os.ExpandEnv(sc.DataDir)
+	sc.LogDir = os.ExpandEnv(sc.LogDir)
 
 	// Apply defaults for required fields.
 	if len(sc.BinariesIndexURLs) == 0 {
@@ -65,6 +81,11 @@ func (sc *ServiceConfig) Init() error {
 	}
 	if len(sc.IntelIndexURLs) == 0 {
 		sc.IntelIndexURLs = DefaultIntelIndexURLs
+	}
+
+	// Check log level.
+	if sc.LogLevel != "" && log.ParseLevel(sc.LogLevel) == 0 {
+		return fmt.Errorf("invalid log level %q", sc.LogLevel)
 	}
 
 	return nil

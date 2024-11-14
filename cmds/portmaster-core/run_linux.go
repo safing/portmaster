@@ -11,6 +11,7 @@ import (
 	processInfo "github.com/shirou/gopsutil/process"
 	"github.com/spf13/cobra"
 
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service"
 )
 
@@ -30,7 +31,7 @@ func (s *LinuxSystemService) Run() {
 
 		// Print stack on start failure, if enabled.
 		if printStackOnExit {
-			printStackTo(os.Stderr, "PRINTING STACK ON START FAILURE")
+			printStackTo(log.GlobalWriter, "PRINTING STACK ON START FAILURE")
 		}
 
 		os.Exit(1)
@@ -57,7 +58,7 @@ wait:
 		case sig := <-signalCh:
 			// Only print and continue to wait if SIGUSR1
 			if sig == syscall.SIGUSR1 {
-				printStackTo(os.Stdout, "PRINTING STACK ON REQUEST")
+				printStackTo(log.GlobalWriter, "PRINTING STACK ON REQUEST")
 				continue wait
 			} else {
 				// Trigger shutdown.
@@ -84,7 +85,7 @@ wait:
 				if forceCnt > 0 {
 					fmt.Printf(" <SIGNAL: %s> again, but already shutting down - %d more to force\n", sig, forceCnt)
 				} else {
-					printStackTo(os.Stderr, "PRINTING STACK ON FORCED EXIT")
+					printStackTo(log.GlobalWriter, "PRINTING STACK ON FORCED EXIT")
 					os.Exit(1)
 				}
 			}

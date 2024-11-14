@@ -75,9 +75,15 @@ func cmdRun(cmd *cobra.Command, args []string) {
 
 	// START
 
-	// Set default log level and start logging.
-	log.SetLogLevel(log.WarningLevel)
-	_ = log.Start()
+	// FIXME: fix color and duplicate level when logging with slog
+	// FIXME: check for tty for color enabling
+
+	// Start logging.
+	err = log.Start(svcCfg.LogLevel, svcCfg.LogToStdout, svcCfg.LogDir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(4)
+	}
 
 	// Create system service.
 	service := NewSystemService(instance)
@@ -97,10 +103,10 @@ func cmdRun(cmd *cobra.Command, args []string) {
 	case <-instance.ShutdownComplete():
 		// Print stack on shutdown, if enabled.
 		if printStackOnExit {
-			printStackTo(os.Stdout, "PRINTING STACK ON EXIT")
+			printStackTo(log.GlobalWriter, "PRINTING STACK ON EXIT")
 		}
 	case <-time.After(3 * time.Minute):
-		printStackTo(os.Stderr, "PRINTING STACK - TAKING TOO LONG FOR SHUTDOWN")
+		printStackTo(log.GlobalWriter, "PRINTING STACK - TAKING TOO LONG FOR SHUTDOWN")
 	}
 
 	// Check if restart was triggered and send start service command if true.
