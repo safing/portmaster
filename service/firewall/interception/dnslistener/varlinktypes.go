@@ -1,3 +1,6 @@
+//go:build linux
+// +build linux
+
 package dnslistener
 
 // List of struct that define the systemd-resolver varlink dns event protocol.

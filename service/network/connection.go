@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -542,6 +543,23 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 			// Try again with the global scope, in case DNS went through the system resolver.
 			ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().RemoteIP().String())
 		}
+
+		if runtime.GOOS == "windows" {
+			// On windows domains may come with delay.
+			if err != nil && module.instance.Resolver().IsDisabled.IsSet() {
+				// Flush the dns listener buffer and try again.
+				for i := range 4 {
+					_ = module.instance.DNSListener().Flush()
+					ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().RemoteIP().String())
+					if err == nil {
+						log.Tracer(pkt.Ctx()).Debugf("network: found domain from dnslistener after %d tries", i+1)
+						break
+					}
+					time.Sleep(5 * time.Millisecond)
+				}
+			}
+		}
+
 		if err == nil {
 			lastResolvedDomain := ipinfo.MostRecentDomain()
 			if lastResolvedDomain != nil {
