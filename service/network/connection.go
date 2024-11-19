@@ -19,6 +19,7 @@ import (
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
+	"github.com/safing/portmaster/service/network/reference"
 	"github.com/safing/portmaster/service/process"
 	_ "github.com/safing/portmaster/service/process/tags"
 	"github.com/safing/portmaster/service/resolver"
@@ -544,9 +545,9 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 			ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().RemoteIP().String())
 		}
 
-		if runtime.GOOS == "windows" {
+		if runtime.GOOS == "windows" && err != nil {
 			// On windows domains may come with delay.
-			if err != nil && module.instance.Resolver().IsDisabled.IsSet() {
+			if module.instance.Resolver().IsDisabled.IsSet() && conn.shouldWaitForDomain() {
 				// Flush the dns listener buffer and try again.
 				for i := range 4 {
 					_ = module.instance.DNSListener().Flush()
@@ -886,4 +887,14 @@ func (conn *Connection) String() string {
 	default:
 		return fmt.Sprintf("%s -> %s", conn.process, conn.Entity.IP)
 	}
+}
+
+func (conn *Connection) shouldWaitForDomain() bool {
+	// Should wait for Global Unicast, outgoing not ICMP connections
+	if conn.Entity.IPScope == netutils.Global &&
+		!conn.Inbound &&
+		reference.IsICMP(conn.Entity.Protocol) {
+		return true
+	}
+	return false
 }

@@ -8,11 +8,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/miekg/dns"
-	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/service/network/netutils"
-	"github.com/safing/portmaster/service/resolver"
 	"github.com/varlink/go/varlink"
 )
 
@@ -20,16 +16,16 @@ type Listener struct {
 	varlinkConn *varlink.Connection
 }
 
-func newListener(m *mgr.Manager) (*Listener, error) {
+func newListener(module *DNSListener) (*Listener, error) {
 	// Create the varlink connection with the systemd resolver.
-	varlinkConn, err := varlink.NewConnection(m.Ctx(), "unix:/run/systemd/resolve/io.systemd.Resolve.Monitor")
+	varlinkConn, err := varlink.NewConnection(module.mgr.Ctx(), "unix:/run/systemd/resolve/io.systemd.Resolve.Monitor")
 	if err != nil {
 		return nil, fmt.Errorf("dnslistener: failed to connect to systemd-resolver varlink service: %w", err)
 	}
 
 	listener := &Listener{varlinkConn: varlinkConn}
 
-	m.Go("systemd-resolver-event-listener", func(w *mgr.WorkerCtx) error {
+	module.mgr.Go("systemd-resolver-event-listener", func(w *mgr.WorkerCtx) error {
 		// Subscribe to the dns query events
 		receive, err := listener.varlinkConn.Send(w.Ctx(), "io.systemd.Resolve.Monitor.SubscribeQueryResults", nil, varlink.More)
 		if err != nil {
@@ -70,7 +66,7 @@ func newListener(m *mgr.Manager) (*Listener, error) {
 	return listener, nil
 }
 
-func (l *Listener) flish() error {
+func (l *Listener) flush() error {
 	// Nothing to flush
 	return nil
 }
@@ -107,41 +103,5 @@ func (l *Listener) processAnswer(queryResult *QueryResult) {
 		}
 	}
 
-	for _, ip := range ips {
-		// Never save domain attributions for localhost IPs.
-		if netutils.GetIPScope(ip) == netutils.HostLocal {
-			continue
-		}
-		fqdn := dns.Fqdn(domain)
-
-		// Create new record for this IP.
-		record := resolver.ResolvedDomain{
-			Domain:            fqdn,
-			Resolver:          &ResolverInfo,
-			DNSRequestContext: &resolver.DNSRequestContext{},
-			Expires:           0,
-		}
-
-		for {
-			nextDomain, isCNAME := cnames[domain]
-			if !isCNAME {
-				break
-			}
-
-			record.CNAMEs = append(record.CNAMEs, nextDomain)
-			domain = nextDomain
-		}
-
-		info := resolver.IPInfo{
-			IP: ip.String(),
-		}
-
-		// Add the new record to the resolved domains for this IP and scope.
-		info.AddDomain(record)
-
-		// Save if the record is new or has been updated.
-		if err := info.Save(); err != nil {
-			log.Errorf("nameserver: failed to save IP info record: %s", err)
-		}
-	}
+	saveDomain(domain, ips, cnames)
 }

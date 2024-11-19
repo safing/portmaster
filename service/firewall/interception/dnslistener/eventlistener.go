@@ -3,17 +3,13 @@
 
 package dnslistener
 
-import (
-	"github.com/safing/portmaster/service/mgr"
-)
-
 type Listener struct{}
 
-func newListener(_ *mgr.Manager) (*Listener, error) {
+func newListener(module *DNSListener) (*Listener, error) {
 	return &Listener{}, nil
 }
 
-func (l *Listener) flish() error {
+func (l *Listener) flush() error {
 	// Nothing to flush
 	return nil
 }

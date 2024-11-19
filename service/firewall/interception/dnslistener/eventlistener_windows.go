@@ -10,32 +10,31 @@ import (
 	"strings"
 
 	"github.com/miekg/dns"
-	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/service/network/netutils"
-	"github.com/safing/portmaster/service/resolver"
 )
 
 type Listener struct {
 	etw *ETWSession
 }
 
-func newListener(m *mgr.Manager) (*Listener, error) {
+func newListener(module *DNSListener) (*Listener, error) {
 	listener := &Listener{}
 	var err error
-	listener.etw, err = NewSession("C:/Dev/ETWDNSTrace.dll", listener.processEvent)
+	// Intialize new dns event session.
+	listener.etw, err = NewSession(module.instance.OSIntegration().GetETWInterface(), listener.processEvent)
 	if err != nil {
 		return nil, err
 	}
 
-	m.Go("etw-dns-event-listener", func(w *mgr.WorkerCtx) error {
+	// Start lisening for events.
+	module.mgr.Go("etw-dns-event-listener", func(w *mgr.WorkerCtx) error {
 		return listener.etw.StartTrace()
 	})
 
 	return listener, nil
 }
 
-func (l *Listener) flish() error {
+func (l *Listener) flush() error {
 	return l.etw.FlushTrace()
 }
 
@@ -44,8 +43,9 @@ func (l *Listener) stop() error {
 		return fmt.Errorf("listener is nil")
 	}
 	if l.etw == nil {
-		return fmt.Errorf("invalid ewt session")
+		return fmt.Errorf("invalid etw session")
 	}
+	// Stop and destroy trace. Destory should be called even if stop failes for some reason.
 	err := l.etw.StopTrace()
 	err2 := l.etw.DestroySession()
 
@@ -54,12 +54,13 @@ func (l *Listener) stop() error {
 	}
 
 	if err2 != nil {
-		return fmt.Errorf("DestorySession failed: %d", err)
+		return fmt.Errorf("DestorySession failed: %d", err2)
 	}
 	return nil
 }
 
 func (l *Listener) processEvent(domain string, result string) {
+	// Ignore empty results
 	if len(result) == 0 {
 		return
 	}
@@ -69,60 +70,25 @@ func (l *Listener) processEvent(domain string, result string) {
 
 	resultArray := strings.Split(result, ";")
 	for _, r := range resultArray {
+		// For result different then IP the string starts with "type:"
 		if strings.HasPrefix(r, "type:") {
 			dnsValueArray := strings.Split(r, " ")
 			if len(dnsValueArray) < 3 {
 				continue
 			}
 
-			if value, err := strconv.ParseInt(dnsValueArray[1], 10, 8); err == nil && value == 5 {
-				// CNAME
+			// Ignore evrything else exept CNAME.
+			if value, err := strconv.ParseInt(dnsValueArray[1], 10, 16); err == nil && value == int64(dns.TypeCNAME) {
 				cnames[domain] = dnsValueArray[2]
 			}
 
 		} else {
+			// The events deosn't start with "type:" that means it's an IP address.
 			ip := net.ParseIP(r)
 			if ip != nil {
 				ips = append(ips, ip)
 			}
 		}
 	}
-
-	for _, ip := range ips {
-		// Never save domain attributions for localhost IPs.
-		if netutils.GetIPScope(ip) == netutils.HostLocal {
-			continue
-		}
-		fqdn := dns.Fqdn(domain)
-
-		// Create new record for this IP.
-		record := resolver.ResolvedDomain{
-			Domain:            fqdn,
-			Resolver:          &ResolverInfo,
-			DNSRequestContext: &resolver.DNSRequestContext{},
-			Expires:           0,
-		}
-
-		for {
-			nextDomain, isCNAME := cnames[domain]
-			if !isCNAME {
-				break
-			}
-
-			record.CNAMEs = append(record.CNAMEs, nextDomain)
-			domain = nextDomain
-		}
-
-		info := resolver.IPInfo{
-			IP: ip.String(),
-		}
-
-		// Add the new record to the resolved domains for this IP and scope.
-		info.AddDomain(record)
-
-		// Save if the record is new or has been updated.
-		if err := info.Save(); err != nil {
-			log.Errorf("nameserver: failed to save IP info record: %s", err)
-		}
-	}
+	saveDomain(domain, ips, cnames)
 }

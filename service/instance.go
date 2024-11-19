@@ -20,6 +20,7 @@ import (
 	"github.com/safing/portmaster/service/firewall"
 	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/firewall/interception/dnslistener"
+	"github.com/safing/portmaster/service/integration"
 	"github.com/safing/portmaster/service/intel/customlists"
 	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/intel/geoip"
@@ -66,6 +67,7 @@ type Instance struct {
 
 	core         *core.Core
 	updates      *updates.Updates
+	intergration *integration.OSIntegration
 	geoip        *geoip.GeoIP
 	netenv       *netenv.NetEnv
 	ui           *ui.UI
@@ -152,6 +154,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	instance.updates, err = updates.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
+	}
+	instance.intergration, err = integration.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create integration module: %w", err)
 	}
 	instance.geoip, err = geoip.New(instance)
 	if err != nil {
@@ -281,6 +287,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 
 		instance.core,
 		instance.updates,
+		instance.intergration,
 		instance.geoip,
 		instance.netenv,
 
@@ -383,6 +390,11 @@ func (i *Instance) Base() *base.Base {
 // Updates returns the updates module.
 func (i *Instance) Updates() *updates.Updates {
 	return i.updates
+}
+
+// OSIntegration returns the intergration module.
+func (i *Instance) OSIntegration() *integration.OSIntegration {
+	return i.intergration
 }
 
 // GeoIP returns the geoip module.
