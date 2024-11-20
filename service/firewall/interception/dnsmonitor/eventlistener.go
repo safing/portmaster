@@ -1,11 +1,11 @@
 //go:build !linux && !windows
 // +build !linux,!windows
 
-package dnslistener
+package dnsmonitor
 
 type Listener struct{}
 
-func newListener(module *DNSListener) (*Listener, error) {
+func newListener(_ *DNSMonitor) (*Listener, error) {
 	return &Listener{}, nil
 }
 

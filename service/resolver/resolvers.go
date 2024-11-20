@@ -401,9 +401,9 @@ func loadResolvers() {
 
 	// If no resolvers are configure set the disabled state. So other modules knows that the users does not want to use Portmaster resolver.
 	if len(newResolverConfig) == 0 {
-		module.IsDisabled.Set()
+		module.isDisabled.Store(true)
 	} else {
-		module.IsDisabled.UnSet()
+		module.isDisabled.Store(false)
 	}
 
 	currentResolverConfig = newResolverConfig

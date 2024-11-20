@@ -20,7 +20,7 @@ type OSIntegration struct {
 
 var shimLoaded atomic.Bool
 
-// New returns a new UI module.
+// New returns a new OSIntegration module.
 func New(instance instance) (*OSIntegration, error) {
 	if !shimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
@@ -49,7 +49,7 @@ func (i *OSIntegration) Start() error {
 
 // Stop stops the module.
 func (i *OSIntegration) Stop() error {
-	return nil
+	return i.CleanUp()
 }
 
 type instance interface {

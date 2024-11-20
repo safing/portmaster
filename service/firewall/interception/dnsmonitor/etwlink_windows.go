@@ -1,4 +1,7 @@
-package dnslistener
+//go:build windows
+// +build windows
+
+package dnsmonitor
 
 import (
 	"fmt"
@@ -80,14 +83,12 @@ func (l *ETWSession) StopTrace() error {
 
 // DestroySession closes the session and frees the allocated memory. Listener cannot be used after this function is called.
 func (l *ETWSession) DestroySession() error {
-	if l.shutdownGuard.Load() {
-		return nil
-	}
-
 	l.shutdownMutex.Lock()
 	defer l.shutdownMutex.Unlock()
 
-	l.shutdownGuard.Store(true)
+	if l.shutdownGuard.Swap(true) {
+		return nil
+	}
 
 	err := l.i.DestroySession(l.state)
 	if err != nil {

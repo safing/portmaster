@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-package dnslistener
+package dnsmonitor
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type Listener struct {
 	etw *ETWSession
 }
 
-func newListener(module *DNSListener) (*Listener, error) {
+func newListener(module *DNSMonitor) (*Listener, error) {
 	listener := &Listener{}
 	var err error
 	// Intialize new dns event session.
@@ -50,11 +50,11 @@ func (l *Listener) stop() error {
 	err2 := l.etw.DestroySession()
 
 	if err != nil {
-		return fmt.Errorf("StopTrace failed: %d", err)
+		return fmt.Errorf("StopTrace failed: %w", err)
 	}
 
 	if err2 != nil {
-		return fmt.Errorf("DestorySession failed: %d", err2)
+		return fmt.Errorf("DestorySession failed: %w", err2)
 	}
 	return nil
 }
@@ -70,20 +70,20 @@ func (l *Listener) processEvent(domain string, result string) {
 
 	resultArray := strings.Split(result, ";")
 	for _, r := range resultArray {
-		// For result different then IP the string starts with "type:"
+		// For results other than IP addresses, the string starts with "type:"
 		if strings.HasPrefix(r, "type:") {
 			dnsValueArray := strings.Split(r, " ")
 			if len(dnsValueArray) < 3 {
 				continue
 			}
 
-			// Ignore evrything else exept CNAME.
+			// Ignore everything except CNAME records
 			if value, err := strconv.ParseInt(dnsValueArray[1], 10, 16); err == nil && value == int64(dns.TypeCNAME) {
 				cnames[domain] = dnsValueArray[2]
 			}
 
 		} else {
-			// The events deosn't start with "type:" that means it's an IP address.
+			// If the event doesn't start with "type:", it's an IP address
 			ip := net.ParseIP(r)
 			if ip != nil {
 				ips = append(ips, ip)

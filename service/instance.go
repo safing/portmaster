@@ -19,7 +19,7 @@ import (
 	"github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/firewall"
 	"github.com/safing/portmaster/service/firewall/interception"
-	"github.com/safing/portmaster/service/firewall/interception/dnslistener"
+	"github.com/safing/portmaster/service/firewall/interception/dnsmonitor"
 	"github.com/safing/portmaster/service/integration"
 	"github.com/safing/portmaster/service/intel/customlists"
 	"github.com/safing/portmaster/service/intel/filterlists"
@@ -67,7 +67,7 @@ type Instance struct {
 
 	core         *core.Core
 	updates      *updates.Updates
-	intergration *integration.OSIntegration
+	integration  *integration.OSIntegration
 	geoip        *geoip.GeoIP
 	netenv       *netenv.NetEnv
 	ui           *ui.UI
@@ -77,7 +77,7 @@ type Instance struct {
 	firewall     *firewall.Firewall
 	filterLists  *filterlists.FilterLists
 	interception *interception.Interception
-	dnslistener  *dnslistener.DNSListener
+	dnsmonitor   *dnsmonitor.DNSMonitor
 	customlist   *customlists.CustomList
 	status       *status.Status
 	broadcasts   *broadcasts.Broadcasts
@@ -155,7 +155,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
 	}
-	instance.intergration, err = integration.New(instance)
+	instance.integration, err = integration.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create integration module: %w", err)
 	}
@@ -195,7 +195,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create interception module: %w", err)
 	}
-	instance.dnslistener, err = dnslistener.New(instance)
+	instance.dnsmonitor, err = dnsmonitor.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create dns-listener module: %w", err)
 	}
@@ -287,7 +287,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 
 		instance.core,
 		instance.updates,
-		instance.intergration,
+		instance.integration,
 		instance.geoip,
 		instance.netenv,
 
@@ -301,7 +301,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.filterLists,
 		instance.customlist,
 		instance.interception,
-		instance.dnslistener,
+		instance.dnsmonitor,
 
 		instance.compat,
 		instance.status,
@@ -394,7 +394,7 @@ func (i *Instance) Updates() *updates.Updates {
 
 // OSIntegration returns the intergration module.
 func (i *Instance) OSIntegration() *integration.OSIntegration {
-	return i.intergration
+	return i.integration
 }
 
 // GeoIP returns the geoip module.
@@ -482,9 +482,9 @@ func (i *Instance) Interception() *interception.Interception {
 	return i.interception
 }
 
-// DNSListener returns the dns-listener module.
-func (i *Instance) DNSListener() *dnslistener.DNSListener {
-	return i.dnslistener
+// DNSMonitor returns the dns-listener module.
+func (i *Instance) DNSMonitor() *dnsmonitor.DNSMonitor {
+	return i.dnsmonitor
 }
 
 // CustomList returns the customlist module.

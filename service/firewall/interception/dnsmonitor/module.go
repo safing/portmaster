@@ -1,9 +1,7 @@
-package dnslistener
+package dnsmonitor
 
 import (
-	"errors"
 	"net"
-	"sync/atomic"
 
 	"github.com/miekg/dns"
 	"github.com/safing/portmaster/base/log"
@@ -19,7 +17,7 @@ var ResolverInfo = resolver.ResolverInfo{
 	Source: "System",
 }
 
-type DNSListener struct {
+type DNSMonitor struct {
 	instance instance
 	mgr      *mgr.Manager
 
@@ -27,12 +25,12 @@ type DNSListener struct {
 }
 
 // Manager returns the module manager.
-func (dl *DNSListener) Manager() *mgr.Manager {
+func (dl *DNSMonitor) Manager() *mgr.Manager {
 	return dl.mgr
 }
 
 // Start starts the module.
-func (dl *DNSListener) Start() error {
+func (dl *DNSMonitor) Start() error {
 	// Initialize dns event listener
 	var err error
 	dl.listener, err = newListener(dl)
@@ -44,7 +42,7 @@ func (dl *DNSListener) Start() error {
 }
 
 // Stop stops the module.
-func (dl *DNSListener) Stop() error {
+func (dl *DNSMonitor) Stop() error {
 	if dl.listener != nil {
 		err := dl.listener.stop()
 		if err != nil {
@@ -55,7 +53,7 @@ func (dl *DNSListener) Stop() error {
 }
 
 // Flush flushes the buffer forcing all events to be processed.
-func (dl *DNSListener) Flush() error {
+func (dl *DNSMonitor) Flush() error {
 	return dl.listener.flush()
 }
 
@@ -75,9 +73,9 @@ func saveDomain(domain string, ips []net.IP, cnames map[string]string) {
 			Expires:           0,
 		}
 
-		for {
+		for range 50 {
 			nextDomain, isCNAME := cnames[domain]
-			if !isCNAME {
+			if !isCNAME || nextDomain == domain {
 				break
 			}
 
@@ -99,15 +97,10 @@ func saveDomain(domain string, ips []net.IP, cnames map[string]string) {
 	}
 }
 
-var shimLoaded atomic.Bool
-
-func New(instance instance) (*DNSListener, error) {
-	if !shimLoaded.CompareAndSwap(false, true) {
-		return nil, errors.New("only one instance allowed")
-	}
+func New(instance instance) (*DNSMonitor, error) {
 	// Initialize module
-	m := mgr.New("DNSListener")
-	module := &DNSListener{
+	m := mgr.New("DNSMonitor")
+	module := &DNSMonitor{
 		mgr:      m,
 		instance: instance,
 	}

@@ -38,6 +38,14 @@ func (i *OSIntegration) Initialize() error {
 	return nil
 }
 
+// CleanUp releases any resourses allocated during initializaion.
+func (i *OSIntegration) CleanUp() error {
+	if i.os.dll != nil {
+		return i.os.dll.Release()
+	}
+	return nil
+}
+
 // GetETWInterface return struct containing all the ETW related functions.
 func (i *OSIntegration) GetETWInterface() ETWFunctions {
 	return i.os.etwFunctions

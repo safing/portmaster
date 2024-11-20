@@ -1,7 +1,7 @@
 //go:build linux
 // +build linux
 
-package dnslistener
+package dnsmonitor
 
 import (
 	"errors"
@@ -16,11 +16,11 @@ type Listener struct {
 	varlinkConn *varlink.Connection
 }
 
-func newListener(module *DNSListener) (*Listener, error) {
+func newListener(module *DNSMonitor) (*Listener, error) {
 	// Create the varlink connection with the systemd resolver.
 	varlinkConn, err := varlink.NewConnection(module.mgr.Ctx(), "unix:/run/systemd/resolve/io.systemd.Resolve.Monitor")
 	if err != nil {
-		return nil, fmt.Errorf("dnslistener: failed to connect to systemd-resolver varlink service: %w", err)
+		return nil, fmt.Errorf("dnsmonitor: failed to connect to systemd-resolver varlink service: %w", err)
 	}
 
 	listener := &Listener{varlinkConn: varlinkConn}

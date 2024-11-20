@@ -1,9 +1,10 @@
 //go:build linux
 // +build linux
 
-package dnslistener
+package dnsmonitor
 
 // List of struct that define the systemd-resolver varlink dns event protocol.
+// Source: `sudo varlinkctl introspect /run/systemd/resolve/io.systemd.Resolve.Monitor io.systemd.Resolve.Monitor`
 
 type ResourceKey struct {
 	Class int    `json:"class"`

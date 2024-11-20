@@ -446,7 +446,7 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 
 	// Redirect outbound DNS packets if enabled,
 	case dnsQueryInterception() &&
-		module.instance.Resolver().IsDisabled.IsNotSet() &&
+		!module.instance.Resolver().IsDisabled() &&
 		pkt.IsOutbound() &&
 		pkt.Info().DstPort == 53 &&
 		// that don't match the address of our nameserver,

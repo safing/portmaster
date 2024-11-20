@@ -547,13 +547,13 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 
 		if runtime.GOOS == "windows" && err != nil {
 			// On windows domains may come with delay.
-			if module.instance.Resolver().IsDisabled.IsSet() && conn.shouldWaitForDomain() {
+			if module.instance.Resolver().IsDisabled() && conn.shouldWaitForDomain() {
 				// Flush the dns listener buffer and try again.
 				for i := range 4 {
-					_ = module.instance.DNSListener().Flush()
+					_ = module.instance.DNSMonitor().Flush()
 					ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().RemoteIP().String())
 					if err == nil {
-						log.Tracer(pkt.Ctx()).Debugf("network: found domain from dnslistener after %d tries", i+1)
+						log.Tracer(pkt.Ctx()).Debugf("network: found domain from dnsmonitor after %d tries", i+1)
 						break
 					}
 					time.Sleep(5 * time.Millisecond)
@@ -890,11 +890,15 @@ func (conn *Connection) String() string {
 }
 
 func (conn *Connection) shouldWaitForDomain() bool {
-	// Should wait for Global Unicast, outgoing not ICMP connections
-	if conn.Entity.IPScope == netutils.Global &&
-		!conn.Inbound &&
-		reference.IsICMP(conn.Entity.Protocol) {
-		return true
+	// Should wait for Global Unicast, outgoing and not ICMP connections
+	switch {
+	case conn.Entity.IPScope != netutils.Global:
+		return false
+	case conn.Inbound:
+		return false
+	case reference.IsICMP(conn.Entity.Protocol):
+		return false
 	}
-	return false
+
+	return true
 }

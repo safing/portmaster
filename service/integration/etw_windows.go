@@ -24,31 +24,31 @@ func initializeETW(dll *windows.DLL) (ETWFunctions, error) {
 	var err error
 	functions.createState, err = dll.FindProc("PM_ETWCreateState")
 	if err != nil {
-		return functions, fmt.Errorf("faild to load function PM_ETWCreateState: %q", err)
+		return functions, fmt.Errorf("failed to load function PM_ETWCreateState: %q", err)
 	}
 	functions.initializeSession, err = dll.FindProc("PM_ETWInitializeSession")
 	if err != nil {
-		return functions, fmt.Errorf("faild to load function PM_ETWInitializeSession: %q", err)
+		return functions, fmt.Errorf("failed to load function PM_ETWInitializeSession: %q", err)
 	}
 	functions.startTrace, err = dll.FindProc("PM_ETWStartTrace")
 	if err != nil {
-		return functions, fmt.Errorf("faild to load function PM_ETWStartTrace: %q", err)
+		return functions, fmt.Errorf("failed to load function PM_ETWStartTrace: %q", err)
 	}
 	functions.flushTrace, err = dll.FindProc("PM_ETWFlushTrace")
 	if err != nil {
-		return functions, fmt.Errorf("faild to load function PM_ETWFlushTrace: %q", err)
+		return functions, fmt.Errorf("failed to load function PM_ETWFlushTrace: %q", err)
 	}
 	functions.stopTrace, err = dll.FindProc("PM_ETWStopTrace")
 	if err != nil {
-		return functions, fmt.Errorf("faild to load function PM_ETWStopTrace: %q", err)
+		return functions, fmt.Errorf("failed to load function PM_ETWStopTrace: %q", err)
 	}
 	functions.destroySession, err = dll.FindProc("PM_ETWDestroySession")
 	if err != nil {
-		return functions, fmt.Errorf("faild to load function PM_ETWDestroySession: %q", err)
+		return functions, fmt.Errorf("failed to load function PM_ETWDestroySession: %q", err)
 	}
 	functions.stopOldSession, err = dll.FindProc("PM_ETWStopOldSession")
 	if err != nil {
-		return functions, fmt.Errorf("faild to load function PM_ETWDestroySession: %q", err)
+		return functions, fmt.Errorf("failed to load function PM_ETWDestroySession: %q", err)
 	}
 	return functions, nil
 }
