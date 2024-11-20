@@ -1,9 +1,6 @@
 package integration
 
 import (
-	"errors"
-	"sync/atomic"
-
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
 )
@@ -18,14 +15,8 @@ type OSIntegration struct {
 	instance instance
 }
 
-var shimLoaded atomic.Bool
-
 // New returns a new OSIntegration module.
 func New(instance instance) (*OSIntegration, error) {
-	if !shimLoaded.CompareAndSwap(false, true) {
-		return nil, errors.New("only one instance allowed")
-	}
-
 	m := mgr.New("OSIntegration")
 	module := &OSIntegration{
 		m:      m,
