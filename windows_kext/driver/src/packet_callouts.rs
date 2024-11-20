@@ -115,7 +115,7 @@ fn ip_packet_layer(
 
     // Block all fragment data. No easy way to keep track of the origin and they are rarely used.
     if data.is_fragment_data() {
-        data.action_block();
+        data.block_and_absorb();
         crate::err!("blocked fragment packet");
         return;
     }

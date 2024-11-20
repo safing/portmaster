@@ -80,6 +80,11 @@ impl ClassifyOut {
         self.flags |= FWPS_CLASSIFY_OUT_FLAG_ABSORB;
     }
 
+    // Removes the absorb flag.
+    pub fn clear_absorb_flag(&mut self) {
+        self.flags &= !FWPS_CLASSIFY_OUT_FLAG_ABSORB;
+    }
+
     // Clear the write flag permission. Next filter in the chain will not change the action.
     pub fn clear_write_flag(&mut self) {
         self.rights &= !FWPS_RIGHT_ACTION_WRITE;
