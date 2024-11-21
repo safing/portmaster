@@ -111,7 +111,6 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
 
 	var err error
-
 	// Base modules
 	instance.base, err = base.New(instance)
 	if err != nil {

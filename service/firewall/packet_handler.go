@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/gopacket/layers"
+	"github.com/miekg/dns"
 	"github.com/tevino/abool"
 
 	"github.com/safing/portmaster/base/log"
@@ -479,15 +480,35 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 
 	// Decide how to continue handling connection.
 	switch {
+	case conn.Inspecting && looksLikeOutgoingDNSRequest(conn):
+		inspectDNSPacket(conn, pkt)
+		conn.UpdateFirewallHandler(inspectDNSPacket)
 	case conn.Inspecting:
 		log.Tracer(pkt.Ctx()).Trace("filter: start inspecting")
 		conn.UpdateFirewallHandler(inspectAndVerdictHandler)
 		inspectAndVerdictHandler(conn, pkt)
-
 	default:
 		conn.StopFirewallHandler()
 		verdictHandler(conn, pkt)
 	}
+}
+
+func looksLikeOutgoingDNSRequest(conn *network.Connection) bool {
+	// Outbound on remote port 53, UDP and Global Unicast.
+	if conn.Inbound {
+		return false
+	}
+	if conn.Entity.Port != 53 {
+		return false
+	}
+	if conn.IPProtocol != packet.UDP {
+		return false
+	}
+	if conn.Entity.IPScope != netutils.Global {
+		return false
+	}
+
+	return true
 }
 
 // FilterConnection runs all the filtering (and tunneling) procedures.
@@ -507,7 +528,7 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 	}
 
 	// TODO: Enable inspection framework again.
-	conn.Inspecting = false
+	// conn.Inspecting = false
 
 	// TODO: Quick fix for the SPN.
 	// Use inspection framework for proper encryption detection.
@@ -579,6 +600,25 @@ func inspectAndVerdictHandler(conn *network.Connection, pkt packet.Packet) {
 	// we are done with inspecting
 	conn.StopFirewallHandler()
 	issueVerdict(conn, pkt, 0, true)
+}
+
+func inspectDNSPacket(conn *network.Connection, pkt packet.Packet) {
+	// Ignore info-only packets in this handler.
+	if pkt.InfoOnly() {
+		return
+	}
+
+	dnsPacket := new(dns.Msg)
+
+	err := dnsPacket.Unpack(pkt.Payload())
+	if err != nil {
+		pkt.Block()
+		conn.SetVerdict(network.VerdictBlock, "none DNS data on DNS port", "", nil)
+		return
+	}
+	log.Criticalf("packet inspection: %+v", dnsPacket)
+
+	pkt.Accept()
 }
 
 func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {

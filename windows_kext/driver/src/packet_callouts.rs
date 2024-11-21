@@ -110,6 +110,13 @@ fn ip_packet_layer(
     interface_index: u32,
     sub_interface_index: u32,
 ) {
+    // Block all fragment data. No easy way to keep track of the origin and they are rarely used.
+    if data.is_fragment_data() {
+        data.action_block();
+        crate::err!("blocked fragment packet");
+        return;
+    }
+
     let Some(device) = crate::entry::get_device() else {
         return;
     };

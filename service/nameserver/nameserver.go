@@ -224,8 +224,8 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 			}
 
 			// Save the request as open, as we don't know if there will be a connection or not.
-			network.SaveOpenDNSRequest(q, rrCache, conn)
 			firewall.UpdateIPsAndCNAMEs(q, rrCache, conn)
+			network.SaveOpenDNSRequest(q, rrCache, conn)
 
 		case network.VerdictUndeterminable:
 			fallthrough
