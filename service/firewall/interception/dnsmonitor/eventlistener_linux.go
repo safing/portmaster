@@ -9,6 +9,8 @@ import (
 	"net"
 	"os"
 
+	"github.com/miekg/dns"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/varlink/go/varlink"
 )
@@ -38,8 +40,16 @@ func newListener(module *DNSMonitor) (*Listener, error) {
 		// Initialize varlink connection
 		varlinkConn, err := varlink.NewConnection(module.mgr.Ctx(), "unix:/run/systemd/resolve/io.systemd.Resolve.Monitor")
 		if err != nil {
-			return fmt.Errorf("dnsmonitor: failed to connect to systemd-resolver varlink service: %w", err)
+			return fmt.Errorf("failed to connect to systemd-resolver varlink service: %w", err)
 		}
+		defer func() {
+			if varlinkConn != nil {
+				err = varlinkConn.Close()
+				if err != nil {
+					log.Errorf("dnsmonitor: failed to close varlink connection: %s", err)
+				}
+			}
+		}()
 
 		listener.varlinkConn = varlinkConn
 		// Subscribe to the dns query events
@@ -71,11 +81,23 @@ func newListener(module *DNSMonitor) (*Listener, error) {
 				break
 			}
 
+			// Ignore if there is no question.
+			if queryResult.Question == nil || len(*queryResult.Question) == 0 {
+				continue
+			}
+
+			// Protmaster self check
+			domain := (*queryResult.Question)[0].Name
+			if processIfSelfCheckDomain(dns.Fqdn(domain)) {
+				// Not need to process result.
+				continue
+			}
+
 			if queryResult.Rcode != nil {
 				continue // Ignore DNS errors
 			}
 
-			listener.processAnswer(&queryResult)
+			listener.processAnswer(domain, &queryResult)
 		}
 		return nil
 	})
@@ -88,23 +110,18 @@ func (l *Listener) flush() error {
 }
 
 func (l *Listener) stop() error {
-	if l.varlinkConn != nil {
-		return l.varlinkConn.Close()
-	}
 	return nil
 }
 
-func (l *Listener) processAnswer(queryResult *QueryResult) {
+func (l *Listener) processAnswer(domain string, queryResult *QueryResult) {
 	// Allocated data struct for the parsed result.
 	cnames := make(map[string]string)
 	ips := make([]net.IP, 0, 5)
 
 	// Check if the query is valid
-	if queryResult.Question == nil || len(*queryResult.Question) == 0 || queryResult.Answer == nil {
+	if queryResult.Answer == nil {
 		return
 	}
-
-	domain := (*queryResult.Question)[0].Name
 
 	// Go trough each answer entry.
 	for _, a := range *queryResult.Answer {

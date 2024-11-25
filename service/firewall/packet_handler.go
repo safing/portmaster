@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -607,14 +608,28 @@ func inspectDNSPacket(conn *network.Connection, pkt packet.Packet) {
 
 	conn.Type = network.DNSRequest
 
-	// Check if packet contains all the need data.
-	if len(dnsPacket.Question) == 0 && len(dnsPacket.Answer) == 0 {
+	// Check if packet has a question.
+	if len(dnsPacket.Question) == 0 {
 		return
 	}
 
 	// Read create structs with the needed data.
 	question := dnsPacket.Question[0]
 	fqdn := dns.Fqdn(question.Name)
+
+	// Check for compat check dns request.
+	if strings.HasSuffix(fqdn, compat.DNSCheckInternalDomainScope) {
+		subdomain := strings.TrimSuffix(fqdn, compat.DNSCheckInternalDomainScope)
+		_ = compat.SubmitDNSCheckDomain(subdomain)
+		log.Infof("packet_handler: self-check domain received")
+		// No need to parse the answer.
+		return
+	}
+
+	// Check if there is an answer.
+	if len(dnsPacket.Answer) == 0 {
+		return
+	}
 
 	resolverInfo := &resolver.ResolverInfo{
 		Name:    "Direct DNS request", // TODO(vladimir): Better name?

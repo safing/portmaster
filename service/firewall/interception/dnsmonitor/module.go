@@ -3,10 +3,12 @@ package dnsmonitor
 import (
 	"errors"
 	"net"
+	"strings"
 
 	"github.com/miekg/dns"
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/compat"
 	"github.com/safing/portmaster/service/integration"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/netutils"
@@ -37,7 +39,7 @@ func (dl *DNSMonitor) Start() error {
 	var err error
 	dl.listener, err = newListener(dl)
 	if err != nil {
-		log.Errorf("failed to start dns listener: %s", err)
+		log.Errorf("dnsmonitor: failed to start dns listener: %s", err)
 	}
 
 	return nil
@@ -48,7 +50,7 @@ func (dl *DNSMonitor) Stop() error {
 	if dl.listener != nil {
 		err := dl.listener.stop()
 		if err != nil {
-			log.Errorf("failed to close listener: %s", err)
+			log.Errorf("dnsmonitor: failed to close listener: %s", err)
 		}
 	}
 	return nil
@@ -90,6 +92,19 @@ type instance interface {
 	OSIntegration() *integration.OSIntegration
 }
 
+func processIfSelfCheckDomain(fqdn string) bool {
+	// Check for compat check dns request.
+	if strings.HasSuffix(fqdn, compat.DNSCheckInternalDomainScope) {
+		subdomain := strings.TrimSuffix(fqdn, compat.DNSCheckInternalDomainScope)
+		_ = compat.SubmitDNSCheckDomain(subdomain)
+		log.Infof("dnsmonitor: self-check domain received")
+		// No need to parse the answer.
+		return true
+	}
+
+	return false
+}
+
 // saveIPsInCache saves the provided ips in the dns cashe assoseted with the record Domain and CNAMEs.
 func saveIPsInCache(ips []net.IP, profileID string, record resolver.ResolvedDomain) {
 	// Package IPs and CNAMEs into IPInfo structs.
@@ -103,7 +118,7 @@ func saveIPsInCache(ips []net.IP, profileID string, record resolver.ResolvedDoma
 		info, err := resolver.GetIPInfo(profileID, ipString)
 		if err != nil {
 			if !errors.Is(err, database.ErrNotFound) {
-				log.Errorf("nameserver: failed to search for IP info record: %s", err)
+				log.Errorf("dnsmonitor: failed to search for IP info record: %s", err)
 			}
 
 			info = &resolver.IPInfo{
@@ -117,7 +132,7 @@ func saveIPsInCache(ips []net.IP, profileID string, record resolver.ResolvedDoma
 
 		// Save if the record is new or has been updated.
 		if err := info.Save(); err != nil {
-			log.Errorf("nameserver: failed to save IP info record: %s", err)
+			log.Errorf("dnsmonitor: failed to save IP info record: %s", err)
 		}
 	}
 }

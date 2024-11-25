@@ -20,13 +20,13 @@ type Listener struct {
 func newListener(module *DNSMonitor) (*Listener, error) {
 	listener := &Listener{}
 	var err error
-	// Intialize new dns event session.
+	// Initialize new dns event session.
 	listener.etw, err = NewSession(module.instance.OSIntegration().GetETWInterface(), listener.processEvent)
 	if err != nil {
 		return nil, err
 	}
 
-	// Start lisening for events.
+	// Start listening for events.
 	module.mgr.Go("etw-dns-event-listener", func(w *mgr.WorkerCtx) error {
 		return listener.etw.StartTrace()
 	})
@@ -45,7 +45,7 @@ func (l *Listener) stop() error {
 	if l.etw == nil {
 		return fmt.Errorf("invalid etw session")
 	}
-	// Stop and destroy trace. Destory should be called even if stop failes for some reason.
+	// Stop and destroy trace. Destroy should be called even if stop fails for some reason.
 	err := l.etw.StopTrace()
 	err2 := l.etw.DestroySession()
 
@@ -54,12 +54,17 @@ func (l *Listener) stop() error {
 	}
 
 	if err2 != nil {
-		return fmt.Errorf("DestorySession failed: %w", err2)
+		return fmt.Errorf("DestroySession failed: %w", err2)
 	}
 	return nil
 }
 
 func (l *Listener) processEvent(domain string, result string) {
+	if processIfSelfCheckDomain(dns.Fqdn(domain)) {
+		// Not need to process result.
+		return
+	}
+
 	// Ignore empty results
 	if len(result) == 0 {
 		return

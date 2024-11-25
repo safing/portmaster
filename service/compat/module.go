@@ -99,12 +99,6 @@ func stop() error {
 }
 
 func selfcheckTaskFunc(wc *mgr.WorkerCtx) error {
-	res := module.instance.Resolver()
-	if res.IsDisabled() {
-		log.Debugf("compat: skipping self-check: resolver is disabled")
-		return nil
-	}
-
 	// Create tracing logger.
 	ctx, tracer := log.AddTracer(wc.Ctx())
 	defer tracer.Submit()
@@ -124,8 +118,6 @@ func selfcheckTaskFunc(wc *mgr.WorkerCtx) error {
 		tracer.Warningf("compat: %s", err)
 	case selfcheckNetworkChangedFlag.IsSet():
 		// The network changed, ignore the issue.
-	case res.IsDisabled():
-		// Portmaster resolver is disabled, ignore this issue.
 	default:
 		// The self-check failed.
 
