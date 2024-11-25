@@ -62,7 +62,7 @@ pub(crate) fn register_sublayer(
         sublayer.displayData.name = name.as_ptr() as _;
         sublayer.displayData.description = description.as_ptr() as _;
         sublayer.flags = 0;
-        sublayer.weight = 0xFFFF;
+        sublayer.weight = 0xFFFF; // Set to Max value. Weight compared to other sublayers.
 
         let status = FwpmSubLayerAdd0(filter_engine_handle, &sublayer, core::ptr::null_mut());
         check_ntstatus(status as i32)?;
