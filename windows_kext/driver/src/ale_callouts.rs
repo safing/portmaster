@@ -105,6 +105,9 @@ pub fn ale_layer_connect_v6(data: CalloutData) {
 }
 
 fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
+    // Make the default path as drop.
+    data.block_and_absorb();
+
     let Some(device) = crate::entry::get_device() else {
         return;
     };
