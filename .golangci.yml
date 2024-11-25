@@ -24,6 +24,7 @@ linters:
     - interfacer
     - ireturn
     - lll
+    - mnd
     - musttag
     - nestif
     - nilnil
