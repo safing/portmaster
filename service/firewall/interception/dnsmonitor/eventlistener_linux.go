@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/varlink/go/varlink"
@@ -17,15 +18,30 @@ type Listener struct {
 }
 
 func newListener(module *DNSMonitor) (*Listener, error) {
-	// Create the varlink connection with the systemd resolver.
-	varlinkConn, err := varlink.NewConnection(module.mgr.Ctx(), "unix:/run/systemd/resolve/io.systemd.Resolve.Monitor")
-	if err != nil {
-		return nil, fmt.Errorf("dnsmonitor: failed to connect to systemd-resolver varlink service: %w", err)
+	// Check if the system has systemd-resolver.
+	_, err := os.Stat("/run/systemd/resolve/io.systemd.Resolve.Monitor")
+	if os.IsNotExist(err) {
+		return nil, fmt.Errorf("system does not support systemd resolver monitor")
 	}
 
-	listener := &Listener{varlinkConn: varlinkConn}
+	listener := &Listener{}
+
+	restartAttempts := 0
 
 	module.mgr.Go("systemd-resolver-event-listener", func(w *mgr.WorkerCtx) error {
+		// Stop start if the connection failed after too many tries.
+		if restartAttempts > 10 {
+			return nil
+		}
+		defer func() { restartAttempts += 1 }()
+
+		// Initialize varlink connection
+		varlinkConn, err := varlink.NewConnection(module.mgr.Ctx(), "unix:/run/systemd/resolve/io.systemd.Resolve.Monitor")
+		if err != nil {
+			return fmt.Errorf("dnsmonitor: failed to connect to systemd-resolver varlink service: %w", err)
+		}
+
+		listener.varlinkConn = varlinkConn
 		// Subscribe to the dns query events
 		receive, err := listener.varlinkConn.Send(w.Ctx(), "io.systemd.Resolve.Monitor.SubscribeQueryResults", nil, varlink.More)
 		if err != nil {

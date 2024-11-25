@@ -57,9 +57,10 @@ func PreventBypassing(ctx context.Context, conn *network.Connection) (endpoints.
 
 	// Block bypass attempts using an (encrypted) DNS server.
 	switch {
-	case conn.Entity.Port == 53 && module.instance.Resolver().IsDisabled():
+	case looksLikeOutgoingDNSRequest(conn) && module.instance.Resolver().IsDisabled():
 		// Allow. Packet will be analyzed and blocked if its not a dns request, before sent.
 		conn.Inspecting = true
+		return endpoints.NoMatch, "", nil
 	case conn.Entity.Port == 53:
 		return endpoints.Denied,
 			"blocked DNS query, manual dns setup required",
@@ -76,4 +77,18 @@ func PreventBypassing(ctx context.Context, conn *network.Connection) (endpoints.
 	}
 
 	return endpoints.NoMatch, "", nil
+}
+
+func looksLikeOutgoingDNSRequest(conn *network.Connection) bool {
+	// Outbound on remote port 53, UDP.
+	if conn.Inbound {
+		return false
+	}
+	if conn.Entity.Port != 53 {
+		return false
+	}
+	if conn.IPProtocol != packet.UDP {
+		return false
+	}
+	return true
 }

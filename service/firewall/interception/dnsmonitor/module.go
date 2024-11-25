@@ -1,9 +1,11 @@
 package dnsmonitor
 
 import (
+	"errors"
 	"net"
 
 	"github.com/miekg/dns"
+	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/integration"
 	"github.com/safing/portmaster/service/mgr"
@@ -13,7 +15,7 @@ import (
 
 var ResolverInfo = resolver.ResolverInfo{
 	Name:   "SystemdResolver",
-	Type:   "env",
+	Type:   resolver.ServerSourceEnv,
 	Source: "System",
 }
 
@@ -58,43 +60,20 @@ func (dl *DNSMonitor) Flush() error {
 }
 
 func saveDomain(domain string, ips []net.IP, cnames map[string]string) {
-	for _, ip := range ips {
-		// Never save domain attributions for localhost IPs.
-		if netutils.GetIPScope(ip) == netutils.HostLocal {
-			continue
-		}
-		fqdn := dns.Fqdn(domain)
-
-		// Create new record for this IP.
-		record := resolver.ResolvedDomain{
-			Domain:            fqdn,
-			Resolver:          &ResolverInfo,
-			DNSRequestContext: &resolver.DNSRequestContext{},
-			Expires:           0,
-		}
-
-		for range 50 {
-			nextDomain, isCNAME := cnames[domain]
-			if !isCNAME || nextDomain == domain {
-				break
-			}
-
-			record.CNAMEs = append(record.CNAMEs, nextDomain)
-			domain = nextDomain
-		}
-
-		info := resolver.IPInfo{
-			IP: ip.String(),
-		}
-
-		// Add the new record to the resolved domains for this IP and scope.
-		info.AddDomain(record)
-
-		// Save if the record is new or has been updated.
-		if err := info.Save(); err != nil {
-			log.Errorf("nameserver: failed to save IP info record: %s", err)
-		}
+	fqdn := dns.Fqdn(domain)
+	// Create new record for this IP.
+	record := resolver.ResolvedDomain{
+		Domain:            fqdn,
+		Resolver:          &ResolverInfo,
+		DNSRequestContext: &resolver.DNSRequestContext{},
+		Expires:           0,
 	}
+
+	// Process cnames
+	record.AddCNAMEs(cnames)
+
+	// Add to cache
+	saveIPsInCache(ips, resolver.IPInfoProfileScopeGlobal, record)
 }
 
 func New(instance instance) (*DNSMonitor, error) {
@@ -109,4 +88,36 @@ func New(instance instance) (*DNSMonitor, error) {
 
 type instance interface {
 	OSIntegration() *integration.OSIntegration
+}
+
+// saveIPsInCache saves the provided ips in the dns cashe assoseted with the record Domain and CNAMEs.
+func saveIPsInCache(ips []net.IP, profileID string, record resolver.ResolvedDomain) {
+	// Package IPs and CNAMEs into IPInfo structs.
+	for _, ip := range ips {
+		// Never save domain attributions for localhost IPs.
+		if netutils.GetIPScope(ip) == netutils.HostLocal {
+			continue
+		}
+
+		ipString := ip.String()
+		info, err := resolver.GetIPInfo(profileID, ipString)
+		if err != nil {
+			if !errors.Is(err, database.ErrNotFound) {
+				log.Errorf("nameserver: failed to search for IP info record: %s", err)
+			}
+
+			info = &resolver.IPInfo{
+				IP:        ipString,
+				ProfileID: profileID,
+			}
+		}
+
+		// Add the new record to the resolved domains for this IP and scope.
+		info.AddDomain(record)
+
+		// Save if the record is new or has been updated.
+		if err := info.Save(); err != nil {
+			log.Errorf("nameserver: failed to save IP info record: %s", err)
+		}
+	}
 }

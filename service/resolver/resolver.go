@@ -28,6 +28,7 @@ const (
 	ServerSourceOperatingSystem = "system"
 	ServerSourceMDNS            = "mdns"
 	ServerSourceEnv             = "env"
+	ServerSourcePacket          = "packet"
 )
 
 // DNS resolver scheme aliases.
@@ -82,7 +83,7 @@ type ResolverInfo struct { //nolint:golint,maligned // TODO
 	Name string
 
 	// Type describes the type of the resolver.
-	// Possible values include dns, tcp, dot, doh, mdns, env.
+	// Possible values include dns, tcp, dot, doh, mdns, env, packet.
 	Type string
 
 	// Source describes where the resolver configuration came from.

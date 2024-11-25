@@ -24,6 +24,7 @@ import (
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/process"
+	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/portmaster/spn/access"
 )
 
@@ -493,24 +494,6 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 }
 
-func looksLikeOutgoingDNSRequest(conn *network.Connection) bool {
-	// Outbound on remote port 53, UDP and Global Unicast.
-	if conn.Inbound {
-		return false
-	}
-	if conn.Entity.Port != 53 {
-		return false
-	}
-	if conn.IPProtocol != packet.UDP {
-		return false
-	}
-	if conn.Entity.IPScope != netutils.Global {
-		return false
-	}
-
-	return true
-}
-
 // FilterConnection runs all the filtering (and tunneling) procedures.
 func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet, checkFilter, checkTunnel bool) {
 	// Skip if data is not complete.
@@ -609,16 +592,61 @@ func inspectDNSPacket(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	dnsPacket := new(dns.Msg)
+	pkt.LoadPacketData()
 
+	// Parse and block invalid packets.
 	err := dnsPacket.Unpack(pkt.Payload())
 	if err != nil {
-		pkt.Block()
+		pkt.PermanentBlock()
 		conn.SetVerdict(network.VerdictBlock, "none DNS data on DNS port", "", nil)
+		conn.VerdictPermanent = true
+		conn.Save()
 		return
 	}
-	log.Criticalf("packet inspection: %+v", dnsPacket)
-
 	pkt.Accept()
+
+	conn.Type = network.DNSRequest
+
+	// Check if packet contains all the need data.
+	if len(dnsPacket.Question) == 0 && len(dnsPacket.Answer) == 0 {
+		return
+	}
+
+	// Read create structs with the needed data.
+	question := dnsPacket.Question[0]
+	fqdn := dns.Fqdn(question.Name)
+
+	resolverInfo := &resolver.ResolverInfo{
+		Name:    "Direct DNS request", // TODO(vladimir): Better name?
+		Type:    resolver.ServerTypeDNS,
+		Source:  resolver.ServerSourcePacket,
+		IP:      conn.Entity.IP,
+		Domain:  conn.Entity.Domain,
+		IPScope: conn.Entity.IPScope,
+	}
+
+	rrCache := &resolver.RRCache{
+		Domain:   fqdn,
+		Question: dns.Type(question.Qtype),
+		RCode:    dnsPacket.Rcode,
+		Answer:   dnsPacket.Answer,
+		Ns:       dnsPacket.Ns,
+		Extra:    dnsPacket.Extra,
+		Resolver: resolverInfo,
+	}
+
+	query := &resolver.Query{
+		FQDN:               fqdn,
+		QType:              dns.Type(question.Qtype),
+		NoCaching:          false,
+		IgnoreFailing:      false,
+		LocalResolversOnly: false,
+		ICANNSpace:         false,
+		DomainRoot:         "",
+	}
+
+	// Save to cache
+	UpdateIPsAndCNAMEs(query, rrCache, conn)
 }
 
 func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {

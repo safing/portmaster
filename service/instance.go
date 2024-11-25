@@ -391,7 +391,7 @@ func (i *Instance) Updates() *updates.Updates {
 	return i.updates
 }
 
-// OSIntegration returns the intergration module.
+// OSIntegration returns the integration module.
 func (i *Instance) OSIntegration() *integration.OSIntegration {
 	return i.integration
 }
