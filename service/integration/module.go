@@ -10,6 +10,7 @@ type OSIntegration struct {
 	m      *mgr.Manager
 	states *mgr.StateMgr
 
+	//nolint:unused
 	os OSSpecific
 
 	instance instance

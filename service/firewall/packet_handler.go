@@ -593,18 +593,31 @@ func inspectDNSPacket(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	dnsPacket := new(dns.Msg)
-	pkt.LoadPacketData()
+	err := pkt.LoadPacketData()
+	if err != nil {
+		_ = pkt.Block()
+		log.Errorf("filter: failed to load packet payload: %s", err)
+		return
+	}
 
 	// Parse and block invalid packets.
-	err := dnsPacket.Unpack(pkt.Payload())
+	err = dnsPacket.Unpack(pkt.Payload())
 	if err != nil {
-		pkt.PermanentBlock()
-		conn.SetVerdict(network.VerdictBlock, "none DNS data on DNS port", "", nil)
+		err = pkt.PermanentBlock()
+		if err != nil {
+			log.Errorf("filter: failed to block packet: %s", err)
+		}
+		_ = conn.SetVerdict(network.VerdictBlock, "none DNS data on DNS port", "", nil)
 		conn.VerdictPermanent = true
 		conn.Save()
 		return
 	}
-	pkt.Accept()
+
+	// Packet was parsed, accept the connection and continue.
+	err = pkt.Accept()
+	if err != nil {
+		log.Errorf("filter: failed to accept dns packet: %s", err)
+	}
 
 	conn.Type = network.DNSRequest
 

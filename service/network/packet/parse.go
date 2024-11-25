@@ -174,6 +174,14 @@ func ParseLayer4(packetData []byte, pktBase *Base) (err error) {
 		layer = layers.LayerTypeUDP
 	case ICMPv6:
 		layer = layers.LayerTypeICMPv6
+	case UDPLite:
+		return fmt.Errorf("UDPLite not supported")
+	case RAW:
+		return fmt.Errorf("RAW protocol not supported")
+	case AnyHostInternalProtocol61:
+		return fmt.Errorf("AnyHostInternalProtocol61 protocol not supported")
+	default:
+		return fmt.Errorf("protocol not supported")
 	}
 
 	packet := gopacket.NewPacket(packetData, layer, gopacket.DecodeOptions{
