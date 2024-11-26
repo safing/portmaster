@@ -272,7 +272,7 @@ func fixExecPerm(path string) error {
 		return nil
 	}
 
-	if err := os.Chmod(path, 0o0755); err != nil { //nolint:gosec // Set execution rights.
+	if err := os.Chmod(path, 0o0755); err != nil { //nolint:gosec
 		return fmt.Errorf("failed to chmod %s: %w", path, err)
 	}
 

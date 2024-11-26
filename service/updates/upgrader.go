@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hectane/go-acl"
 	processInfo "github.com/shirou/gopsutil/process"
 	"github.com/tevino/abool"
 
@@ -349,7 +350,12 @@ func upgradeBinary(fileToUpgrade string, file *updater.File) error {
 	}
 
 	// check permissions
-	if !onWindows {
+	if onWindows {
+		err = acl.Chmod(fileToUpgrade, 0o0755)
+		if err != nil {
+			return fmt.Errorf("failed to set permissions on %s: %w", fileToUpgrade, err)
+		}
+	} else {
 		info, err := os.Stat(fileToUpgrade)
 		if err != nil {
 			return fmt.Errorf("failed to get file info on %s: %w", fileToUpgrade, err)
