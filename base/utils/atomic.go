@@ -6,7 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 
 	"github.com/hectane/go-acl"
@@ -44,7 +44,7 @@ func CreateAtomic(dest string, r io.Reader, opts *AtomicFileOptions) error {
 
 	if opts.Mode != 0 {
 		if runtime.GOOS == "windows" {
-			err = acl.Chmod(path.Join(opts.TempDir, dest), opts.Mode)
+			err = acl.Chmod(filepath.Join(opts.TempDir, dest), opts.Mode)
 		} else {
 			err = tmpFile.Chmod(opts.Mode)
 		}

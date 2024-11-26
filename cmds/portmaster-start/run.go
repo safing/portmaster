@@ -261,7 +261,7 @@ func runAndRestart(opts *Options, args []string) error {
 
 func fixExecPerm(path string) error {
 	if onWindows {
-		return nil
+		return acl.Chmod(path, 0o0755)
 	}
 
 	info, err := os.Stat(path)
@@ -273,12 +273,7 @@ func fixExecPerm(path string) error {
 		return nil
 	}
 
-	if runtime.GOOS == "windows" {
-		err = acl.Chmod(path, 0o0755)
-	} else {
-		err = os.Chmod(path, 0o0755)
-	}
-	if err != nil { //nolint:gosec
+	if err := os.Chmod(path, 0o0755); err != nil { //nolint:gosec
 		return fmt.Errorf("failed to chmod %s: %w", path, err)
 	}
 
