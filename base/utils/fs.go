@@ -41,7 +41,7 @@ func EnsureDirectory(path string, perm os.FileMode) error {
 		}
 		if isWindows {
 			return acl.Chmod(path, perm)
-		} else if f.Mode().Perm() != perm {
+		} else {
 			return os.Chmod(path, perm)
 		}
 	}
