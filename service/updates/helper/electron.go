@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/hectane/go-acl"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/updater"
 )
@@ -46,11 +47,16 @@ func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 		filepath.Ext(pmElectronUpdate.Path()),
 	)
 	sandboxFile := filepath.Join(unpackedPath, "chrome-sandbox")
-	if err := os.Chmod(sandboxFile, 0o0755|os.ModeSetuid); err != nil {
+	if runtime.GOOS == "windows" {
+		err = acl.Chmod(sandboxFile, 0o0755|os.ModeSetuid)
+	} else {
+		err = os.Chmod(sandboxFile, 0o0755|os.ModeSetuid)
+	}
+	if err != nil {
 		log.Errorf(suidBitWarning, 0o0755|os.ModeSetuid, sandboxFile)
-
 		return fmt.Errorf("failed to chmod: %w", err)
 	}
+
 	log.Debugf("updates: fixed SUID permission for chrome-sandbox")
 
 	return nil

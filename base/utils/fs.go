@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"os"
 	"runtime"
+
+	"github.com/hectane/go-acl"
 )
 
 const isWindows = runtime.GOOS == "windows"
@@ -20,8 +22,7 @@ func EnsureDirectory(path string, perm os.FileMode) error {
 		if f.IsDir() {
 			// directory exists, check permissions
 			if isWindows {
-				// TODO: set correct permission on windows
-				// acl.Chmod(path, perm)
+				return acl.Chmod(path, perm)
 			} else if f.Mode().Perm() != perm {
 				return os.Chmod(path, perm)
 			}
@@ -38,7 +39,11 @@ func EnsureDirectory(path string, perm os.FileMode) error {
 		if err != nil {
 			return fmt.Errorf("could not create dir %s: %w", path, err)
 		}
-		return os.Chmod(path, perm)
+		if isWindows {
+			return acl.Chmod(path, perm)
+		} else if f.Mode().Perm() != perm {
+			return os.Chmod(path, perm)
+		}
 	}
 	// other error opening path
 	return fmt.Errorf("failed to access %s: %w", path, err)

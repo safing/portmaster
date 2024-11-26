@@ -6,7 +6,10 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
+	"runtime"
 
+	"github.com/hectane/go-acl"
 	"github.com/safing/portmaster/base/utils/renameio"
 )
 
@@ -40,7 +43,12 @@ func CreateAtomic(dest string, r io.Reader, opts *AtomicFileOptions) error {
 	defer tmpFile.Cleanup() //nolint:errcheck
 
 	if opts.Mode != 0 {
-		if err := tmpFile.Chmod(opts.Mode); err != nil {
+		if runtime.GOOS == "windows" {
+			err = acl.Chmod(path.Join(opts.TempDir, dest), opts.Mode)
+		} else {
+			err = tmpFile.Chmod(opts.Mode)
+		}
+		if err != nil {
 			return fmt.Errorf("failed to update mode bits of temp file: %w", err)
 		}
 	}

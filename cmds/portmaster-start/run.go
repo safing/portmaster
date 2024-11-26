@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hectane/go-acl"
 	"github.com/spf13/cobra"
 	"github.com/tevino/abool"
 
@@ -272,7 +273,12 @@ func fixExecPerm(path string) error {
 		return nil
 	}
 
-	if err := os.Chmod(path, 0o0755); err != nil { //nolint:gosec // Set execution rights.
+	if runtime.GOOS == "windows" {
+		err = acl.Chmod(path, 0o0755)
+	} else {
+		err = os.Chmod(path, 0o0755)
+	}
+	if err != nil { //nolint:gosec
 		return fmt.Errorf("failed to chmod %s: %w", path, err)
 	}
 
