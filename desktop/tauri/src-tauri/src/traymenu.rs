@@ -29,7 +29,7 @@ use crate::{
     portmaster::PortmasterExt,
     window::{create_main_window, may_navigate_to_ui, open_window},
 };
-use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 
 pub type AppIcon = TrayIcon<Wry>;
 
@@ -199,8 +199,10 @@ pub fn setup_tray_menu(
                 app.dialog()
                     .message("This does not stop the Portmaster system service")
                     .title("Do you really want to quit the user interface?")
-                    .ok_button_label("Yes, exit")
-                    .cancel_button_label("No")
+                    .buttons(MessageDialogButtons::OkCancelCustom(
+                        "Yes, exit".to_owned(),
+                        "No".to_owned(),
+                    ))
                     .show(move |answer| {
                         if answer {
                             // let _ = handle.emit("exit-requested", "");
