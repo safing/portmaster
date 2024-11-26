@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hectane/go-acl"
 	"github.com/spf13/cobra"
 	"github.com/tevino/abool"
 
@@ -261,7 +260,7 @@ func runAndRestart(opts *Options, args []string) error {
 
 func fixExecPerm(path string) error {
 	if onWindows {
-		return acl.Chmod(path, 0o0755)
+		return nil
 	}
 
 	info, err := os.Stat(path)

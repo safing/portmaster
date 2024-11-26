@@ -22,7 +22,9 @@ func EnsureDirectory(path string, perm os.FileMode) error {
 		if f.IsDir() {
 			// directory exists, check permissions
 			if isWindows {
-				return acl.Chmod(path, perm)
+				// Ignore windows permission error. For none admin users it will always fail.
+				acl.Chmod(path, perm)
+				return nil
 			} else if f.Mode().Perm() != perm {
 				return os.Chmod(path, perm)
 			}
@@ -40,7 +42,9 @@ func EnsureDirectory(path string, perm os.FileMode) error {
 			return fmt.Errorf("could not create dir %s: %w", path, err)
 		}
 		if isWindows {
-			return acl.Chmod(path, perm)
+			// Ignore windows permission error. For none admin users it will always fail.
+			acl.Chmod(path, perm)
+			return nil
 		} else {
 			return os.Chmod(path, perm)
 		}
