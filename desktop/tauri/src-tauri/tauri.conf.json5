@@ -59,25 +59,7 @@
         ],
         "desktopTemplate": "../../../packaging/linux/portmaster.desktop",
         "files": {
-          // Service file
           "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
-
-          // Binary files
-          "/usr/lib/portmaster/bin-index.json": "binary/bin-index.json",
-          "/usr/lib/portmaster/portmaster-core": "binary/portmaster-core",
-          "/usr/lib/portmaster/portmaster.zip": "binary/portmaster.zip",
-          "/usr/lib/portmaster/assets.zip": "binary/assets.zip",
-
-          // Intel files
-          "/var/lib/portmaster/intel/intel-index.json": "intel/intel-index.json",
-          "/var/lib/portmaster/intel/base.dsdl": "intel/base.dsdl",
-          "/var/lib/portmaster/intel/geoipv4.mmdb": "intel/geoipv4.mmdb",
-          "/var/lib/portmaster/intel/geoipv6.mmdb": "intel/geoipv6.mmdb",
-          "/var/lib/portmaster/intel/index.dsd": "intel/index.dsd",
-          "/var/lib/portmaster/intel/intermediate.dsdl": "intel/intermediate.dsdl",
-          "/var/lib/portmaster/intel/urgent.dsdl": "intel/urgent.dsdl",
-
-          // Shortcut
           "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
         },
         "postInstallScript": "../../../packaging/linux/postinst",
@@ -90,25 +72,7 @@
         "desktopTemplate": "../../../packaging/linux/portmaster.desktop",
         "release": "1",
         "files": {
-          // Service file
           "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
-
-          // Binary files
-          "/usr/lib/portmaster/bin-index.json": "binary/bin-index.json",
-          "/usr/lib/portmaster/portmaster-core": "binary/portmaster-core",
-          "/usr/lib/portmaster/portmaster.zip": "binary/portmaster.zip",
-          "/usr/lib/portmaster/assets.zip": "binary/assets.zip",
-
-          // Intel files
-          "/var/lib/portmaster/intel/intel-index.json": "intel/intel-index.json",
-          "/var/lib/portmaster/intel/base.dsdl": "intel/base.dsdl",
-          "/var/lib/portmaster/intel/geoipv4.mmdb": "intel/geoipv4.mmdb",
-          "/var/lib/portmaster/intel/geoipv6.mmdb": "intel/geoipv6.mmdb",
-          "/var/lib/portmaster/intel/index.dsd": "intel/index.dsd",
-          "/var/lib/portmaster/intel/intermediate.dsdl": "intel/intermediate.dsdl",
-          "/var/lib/portmaster/intel/urgent.dsdl": "intel/urgent.dsdl",
-
-          // Shortcut
           "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
         },
         "postInstallScript": "../../../packaging/linux/postinst",
@@ -123,10 +87,8 @@
       },
       "wix": {
         "fragmentPaths": [
-          "templates/service.wxs",
-          "templates/files.wxs"
+          "templates/service.wxs"
         ],
-        "componentGroupRefs": ["BinaryAndIntelFiles"],
         "template": "templates/main.wxs"
       }
     },

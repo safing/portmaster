@@ -29,13 +29,13 @@ pub async fn notification_handler(cli: PortAPI) {
                         }
 
                         // Skip if this action has already been acted on
-                        if n.selected_action_id.is_empty() {
+                        if n.selected_action_id != "" {
                             return;
                         }
                         show_notification(&cli, key, n).await;
                     }
                     Err(err) => match err {
-                        ParseError::Json(err) => {
+                        ParseError::JSON(err) => {
                             error!("failed to parse notification: {}", err);
                         }
                         _ => {
@@ -81,7 +81,7 @@ pub async fn show_notification(cli: &PortAPI, key: String, n: Notification) {
                                     let _ = cli_clone
                                         .request(Request::Update(
                                             key,
-                                            Payload::Json(
+                                            Payload::JSON(
                                                 json!({
                                                     "SelectedActionID": value
                                                 })
@@ -125,7 +125,7 @@ pub async fn show_notification(cli: &PortAPI, key: String, n: Notification) {
                     let _ = cli
                         .request(Request::Update(
                             key,
-                            Payload::Json(
+                            Payload::JSON(
                                 json!({
                                     "SelectedActionID": value
                                 })

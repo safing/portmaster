@@ -19,6 +19,7 @@ import (
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
+	"github.com/safing/portmaster/service/updates/helper"
 	"github.com/safing/portmaster/spn"
 	"github.com/safing/portmaster/spn/captain"
 	"github.com/safing/portmaster/spn/conf"
@@ -37,6 +38,7 @@ func main() {
 
 	// Configure user agent and updates.
 	updates.UserAgent = fmt.Sprintf("SPN Observation Hub (%s %s)", runtime.GOOS, runtime.GOARCH)
+	helper.IntelOnly()
 
 	// Configure SPN mode.
 	conf.EnableClient(true)
@@ -46,8 +48,9 @@ func main() {
 	sluice.EnableListener = false
 	api.EnableServer = false
 
-	// Start logger with default log level.
-	_ = log.Start(log.WarningLevel)
+	// Set default log level.
+	log.SetLogLevel(log.WarningLevel)
+	_ = log.Start()
 
 	// Create instance.
 	var execCmdLine bool
@@ -76,8 +79,6 @@ func main() {
 		os.Exit(2)
 	}
 	instance.AddModule(observer)
-
-	// FIXME: Use service?
 
 	// Execute command line operation, if requested or available.
 	switch {
@@ -127,7 +128,7 @@ func main() {
 			slog.Warn("program was interrupted, stopping")
 		}
 
-	case <-instance.ShuttingDown():
+	case <-instance.Stopped():
 		log.Shutdown()
 		os.Exit(instance.ExitCode())
 	}

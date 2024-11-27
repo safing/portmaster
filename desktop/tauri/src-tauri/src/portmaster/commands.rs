@@ -86,7 +86,7 @@ pub fn get_app_info<R: Runtime>(
         matching_path,
     };
 
-    if id.is_empty() {
+    if id == "" {
         id = uuid::Uuid::new_v4().to_string()
     }
     let cloned = id.clone();
@@ -137,7 +137,7 @@ pub fn get_app_info<R: Runtime>(
 pub fn get_service_manager_status<R: Runtime>(window: Window<R>, response_id: String) -> Result {
     let mut id = response_id;
 
-    if id.is_empty() {
+    if id == "" {
         id = uuid::Uuid::new_v4().to_string();
     }
     let cloned = id.clone();
@@ -161,7 +161,7 @@ pub fn get_service_manager_status<R: Runtime>(window: Window<R>, response_id: St
 pub fn start_service<R: Runtime>(window: Window<R>, response_id: String) -> Result {
     let mut id = response_id;
 
-    if id.is_empty() {
+    if id == "" {
         id = uuid::Uuid::new_v4().to_string();
     }
     let cloned = id.clone();

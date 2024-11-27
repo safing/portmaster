@@ -213,6 +213,4 @@ func New(instance instance) (*Metrics, error) {
 	return module, nil
 }
 
-type instance interface {
-	DataDir() string
-}
+type instance interface{}

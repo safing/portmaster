@@ -4,11 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/structures/dsd"
 )
@@ -162,7 +164,7 @@ func getListIndexFromCache() (*ListIndexFile, error) {
 
 var (
 	// listIndexUpdate must only be used by updateListIndex.
-	listIndexUpdate     *updates.Artifact
+	listIndexUpdate     *updater.File
 	listIndexUpdateLock sync.Mutex
 )
 
@@ -175,24 +177,24 @@ func updateListIndex() error {
 	case listIndexUpdate == nil:
 		// This is the first time this function is run, get updater file for index.
 		var err error
-		listIndexUpdate, err = module.instance.IntelUpdates().GetFile(listIndexFilePath)
+		listIndexUpdate, err = updates.GetFile(listIndexFilePath)
 		if err != nil {
 			return err
 		}
 
 		// Check if the version in the cache is current.
-		_, err = getListIndexFromCache()
+		index, err := getListIndexFromCache()
 		switch {
 		case errors.Is(err, database.ErrNotFound):
 			log.Info("filterlists: index not in cache, starting update")
 		case err != nil:
 			log.Warningf("filterlists: failed to load index from cache, starting update: %s", err)
-		// case !listIndexUpdate.EqualsVersion(strings.TrimPrefix(index.Version, "v")):
-		// 	log.Infof(
-		// 		"filterlists: index from cache is outdated, starting update (%s != %s)",
-		// 		strings.TrimPrefix(index.Version, "v"),
-		// 		listIndexUpdate.Version(),
-		// 	)
+		case !listIndexUpdate.EqualsVersion(strings.TrimPrefix(index.Version, "v")):
+			log.Infof(
+				"filterlists: index from cache is outdated, starting update (%s != %s)",
+				strings.TrimPrefix(index.Version, "v"),
+				listIndexUpdate.Version(),
+			)
 		default:
 			// List is in cache and current, there is nothing to do.
 			log.Debug("filterlists: index is up to date")
@@ -202,8 +204,8 @@ func updateListIndex() error {
 
 			return nil
 		}
-	// case listIndexUpdate.UpgradeAvailable():
-	// 	log.Info("filterlists: index update available, starting update")
+	case listIndexUpdate.UpgradeAvailable():
+		log.Info("filterlists: index update available, starting update")
 	default:
 		// Index is loaded and no update is available, there is nothing to do.
 		return nil

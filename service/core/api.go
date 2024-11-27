@@ -19,6 +19,7 @@ import (
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/portmaster/service/status"
+	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/captain"
 )
 
@@ -105,50 +106,6 @@ func registerAPIEndpoints() error {
 		return err
 	}
 
-	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:        "updates/check",
-		WriteMethod: "POST",
-		Write:       api.PermitUser,
-		ActionFunc: func(ar *api.Request) (string, error) {
-			module.instance.BinaryUpdates().TriggerUpdateCheck()
-			module.instance.IntelUpdates().TriggerUpdateCheck()
-			return "update check triggered", nil
-		},
-		Name: "Trigger updates check event",
-	}); err != nil {
-		return err
-	}
-
-	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:        "updates/apply",
-		WriteMethod: "POST",
-		Write:       api.PermitUser,
-		ActionFunc: func(ar *api.Request) (string, error) {
-			module.instance.BinaryUpdates().TriggerApplyUpdates()
-			module.instance.IntelUpdates().TriggerApplyUpdates()
-			return "upgrade triggered", nil
-		},
-		Name: "Trigger updates apply event",
-	}); err != nil {
-		return err
-	}
-
-	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:        "updates/from-url",
-		WriteMethod: "POST",
-		Write:       api.PermitAnyone,
-		ActionFunc: func(ar *api.Request) (string, error) {
-			err := module.instance.BinaryUpdates().UpdateFromURL(string(ar.InputData))
-			if err != nil {
-				return err.Error(), err
-			}
-			return "upgrade triggered", nil
-		},
-		Name: "Replace current version from the version supplied in the URL",
-	}); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -164,8 +121,8 @@ func shutdown(_ *api.Request) (msg string, err error) {
 func restart(_ *api.Request) (msg string, err error) {
 	log.Info("core: user requested restart via action")
 
-	// Trigger restart
-	module.instance.Restart()
+	// Let the updates module handle restarting.
+	updates.RestartNow()
 
 	return "restart initiated", nil
 }
@@ -192,7 +149,7 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	config.AddToDebugInfo(di)
 
 	// Detailed information.
-	// TODO(vladimir): updates.AddToDebugInfo(di)
+	updates.AddToDebugInfo(di)
 	compat.AddToDebugInfo(di)
 	module.instance.AddWorkerInfoToDebugInfo(di)
 	di.AddGoroutineStack()

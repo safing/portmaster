@@ -6,36 +6,54 @@ import (
 	"runtime"
 
 	"github.com/lmittmann/tint"
+	"github.com/mattn/go-colorable"
+	"github.com/mattn/go-isatty"
 )
 
-func setupSLog(level Severity) {
-	// Set highest possible level, so it can be changed in runtime.
-	handlerLogLevel := level.toSLogLevel()
+func setupSLog(logLevel Severity) {
+	// Convert to slog level.
+	var level slog.Level
+	switch logLevel {
+	case TraceLevel:
+		level = slog.LevelDebug
+	case DebugLevel:
+		level = slog.LevelDebug
+	case InfoLevel:
+		level = slog.LevelInfo
+	case WarningLevel:
+		level = slog.LevelWarn
+	case ErrorLevel:
+		level = slog.LevelError
+	case CriticalLevel:
+		level = slog.LevelError
+	}
 
+	// Setup logging.
+	// Define output.
+	logOutput := os.Stdout
 	// Create handler depending on OS.
 	var logHandler slog.Handler
 	switch runtime.GOOS {
 	case "windows":
 		logHandler = tint.NewHandler(
-			GlobalWriter,
+			colorable.NewColorable(logOutput),
 			&tint.Options{
 				AddSource:  true,
-				Level:      handlerLogLevel,
+				Level:      level,
 				TimeFormat: timeFormat,
-				NoColor:    !GlobalWriter.IsStdout(), // FIXME: also check for tty.
 			},
 		)
 	case "linux":
-		logHandler = tint.NewHandler(GlobalWriter, &tint.Options{
+		logHandler = tint.NewHandler(logOutput, &tint.Options{
 			AddSource:  true,
-			Level:      handlerLogLevel,
+			Level:      level,
 			TimeFormat: timeFormat,
-			NoColor:    !GlobalWriter.IsStdout(), // FIXME: also check for tty.
+			NoColor:    !isatty.IsTerminal(logOutput.Fd()),
 		})
 	default:
 		logHandler = tint.NewHandler(os.Stdout, &tint.Options{
 			AddSource:  true,
-			Level:      handlerLogLevel,
+			Level:      level,
 			TimeFormat: timeFormat,
 			NoColor:    true,
 		})
@@ -43,6 +61,5 @@ func setupSLog(level Severity) {
 
 	// Set as default logger.
 	slog.SetDefault(slog.New(logHandler))
-	// Set actual log level.
-	slog.SetLogLoggerLevel(handlerLogLevel)
+	slog.SetLogLoggerLevel(level)
 }

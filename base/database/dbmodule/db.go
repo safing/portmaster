@@ -2,10 +2,11 @@ package dbmodule
 
 import (
 	"errors"
-	"path/filepath"
 	"sync/atomic"
 
 	"github.com/safing/portmaster/base/database"
+	"github.com/safing/portmaster/base/dataroot"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -26,18 +27,18 @@ func (dbm *DBModule) Stop() error {
 	return stop()
 }
 
-var databasesRootDir string
+var databaseStructureRoot *utils.DirStructure
 
 // SetDatabaseLocation sets the location of the database for initialization. Supply either a path or dir structure.
-func SetDatabaseLocation(dir string) {
-	if databasesRootDir == "" {
-		databasesRootDir = dir
+func SetDatabaseLocation(dirStructureRoot *utils.DirStructure) {
+	if databaseStructureRoot == nil {
+		databaseStructureRoot = dirStructureRoot
 	}
 }
 
 func prep() error {
-	SetDatabaseLocation(filepath.Join(module.instance.DataDir(), "databases"))
-	if databasesRootDir == "" {
+	SetDatabaseLocation(dataroot.Root())
+	if databaseStructureRoot == nil {
 		return errors.New("database location not specified")
 	}
 
@@ -63,16 +64,16 @@ func New(instance instance) (*DBModule, error) {
 		return nil, errors.New("only one instance allowed")
 	}
 
+	if err := prep(); err != nil {
+		return nil, err
+	}
 	m := mgr.New("DBModule")
 	module = &DBModule{
 		mgr:      m,
 		instance: instance,
 	}
-	if err := prep(); err != nil {
-		return nil, err
-	}
 
-	err := database.Initialize(databasesRootDir)
+	err := database.Initialize(databaseStructureRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +81,4 @@ func New(instance instance) (*DBModule, error) {
 	return module, nil
 }
 
-type instance interface {
-	DataDir() string
-}
+type instance interface{}

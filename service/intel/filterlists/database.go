@@ -14,14 +14,15 @@ import (
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/updates"
 )
 
 const (
-	baseListFilePath         = "base.dsdl"
-	intermediateListFilePath = "intermediate.dsdl"
-	urgentListFilePath       = "urgent.dsdl"
-	listIndexFilePath        = "index.dsd"
+	baseListFilePath         = "intel/lists/base.dsdl"
+	intermediateListFilePath = "intel/lists/intermediate.dsdl"
+	urgentListFilePath       = "intel/lists/urgent.dsdl"
+	listIndexFilePath        = "intel/lists/index.dsd"
 )
 
 // default bloomfilter element sizes (estimated).
@@ -39,9 +40,9 @@ var (
 	filterListLock sync.RWMutex
 
 	// Updater files for tracking upgrades.
-	baseFile         *updates.Artifact
-	intermediateFile *updates.Artifact
-	urgentFile       *updates.Artifact
+	baseFile         *updater.File
+	intermediateFile *updater.File
+	urgentFile       *updater.File
 
 	filterListsLoaded chan struct{}
 )
@@ -55,10 +56,11 @@ var cache = database.NewInterface(&database.Options{
 // getFileFunc is the function used to get a file from
 // the updater. It's basically updates.GetFile and used
 // for unit testing.
+type getFileFunc func(string) (*updater.File, error)
 
 // getFile points to updates.GetFile but may be set to
 // something different during unit testing.
-// var getFile getFileFunc = registry.GetFile
+var getFile getFileFunc = updates.GetFile
 
 func init() {
 	filterListsLoaded = make(chan struct{})
@@ -77,7 +79,7 @@ func isLoaded() bool {
 
 // processListFile opens the latest version of file and decodes it's DSDL
 // content. It calls processEntry for each decoded filterlists entry.
-func processListFile(ctx context.Context, filter *scopedBloom, file *updates.Artifact) error {
+func processListFile(ctx context.Context, filter *scopedBloom, file *updater.File) error {
 	f, err := os.Open(file.Path())
 	if err != nil {
 		return err

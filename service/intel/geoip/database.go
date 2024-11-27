@@ -8,6 +8,7 @@ import (
 	maxminddb "github.com/oschwald/maxminddb-golang"
 
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
 )
@@ -17,66 +18,36 @@ var worker *updateWorker
 func init() {
 	worker = &updateWorker{
 		trigger: make(chan struct{}),
-		v4: updateBroadcaster{
-			dbName: v4MMDBResource,
-		},
-		v6: updateBroadcaster{
-			dbName: v6MMDBResource,
-		},
 	}
 }
 
 const (
-	v4MMDBResource = "geoipv4.mmdb"
-	v6MMDBResource = "geoipv6.mmdb"
+	v4MMDBResource = "intel/geoip/geoipv4.mmdb.gz"
+	v6MMDBResource = "intel/geoip/geoipv6.mmdb.gz"
 )
 
 type geoIPDB struct {
 	*maxminddb.Reader
-	update *updates.Artifact
+	file *updater.File
 }
 
 // updateBroadcaster stores a geoIPDB and provides synchronized
 // access to the MMDB reader. It also supports broadcasting to
 // multiple waiters when a new database becomes available.
 type updateBroadcaster struct {
-	rw     sync.RWMutex
-	db     *geoIPDB
-	dbName string
+	rw sync.RWMutex
+	db *geoIPDB
 
 	waiter chan struct{}
 }
 
-// AvailableUpdate returns a new update artifact if the current broadcaster
-// needs a database update.
-func (ub *updateBroadcaster) AvailableUpdate() *updates.Artifact {
+// NeedsUpdate returns true if the current broadcaster needs a
+// database update.
+func (ub *updateBroadcaster) NeedsUpdate() bool {
 	ub.rw.RLock()
 	defer ub.rw.RUnlock()
 
-	// Get artifact.
-	artifact, err := module.instance.IntelUpdates().GetFile(ub.dbName)
-	if err != nil {
-		// Check if the geoip database is included in the binary index instead.
-		// TODO: Remove when intelhub builds the geoip database.
-		if artifact2, err2 := module.instance.BinaryUpdates().GetFile(ub.dbName); err2 == nil {
-			artifact = artifact2
-			err = nil
-		} else {
-			log.Warningf("geoip: failed to get geoip update: %s", err)
-			return nil
-		}
-	}
-
-	// Return artifact if not yet initialized.
-	if ub.db == nil {
-		return artifact
-	}
-
-	// Compare and return artifact only when confirmed newer.
-	if newer, _ := artifact.IsNewerThan(ub.db.update); newer {
-		return artifact
-	}
-	return nil
+	return ub.db == nil || ub.db.file.UpgradeAvailable()
 }
 
 // ReplaceDatabase replaces (or initially sets) the mmdb database.
@@ -183,18 +154,16 @@ func (upd *updateWorker) start() {
 
 func (upd *updateWorker) run(ctx *mgr.WorkerCtx) error {
 	for {
-		update := upd.v4.AvailableUpdate()
-		if update != nil {
-			if v4, err := getGeoIPDB(update); err == nil {
+		if upd.v4.NeedsUpdate() {
+			if v4, err := getGeoIPDB(v4MMDBResource); err == nil {
 				upd.v4.ReplaceDatabase(v4)
 			} else {
 				log.Warningf("geoip: failed to get v4 database: %s", err)
 			}
 		}
 
-		update = upd.v6.AvailableUpdate()
-		if update != nil {
-			if v6, err := getGeoIPDB(update); err == nil {
+		if upd.v6.NeedsUpdate() {
+			if v6, err := getGeoIPDB(v6MMDBResource); err == nil {
 				upd.v6.ReplaceDatabase(v6)
 			} else {
 				log.Warningf("geoip: failed to get v6 database: %s", err)
@@ -209,17 +178,36 @@ func (upd *updateWorker) run(ctx *mgr.WorkerCtx) error {
 	}
 }
 
-func getGeoIPDB(update *updates.Artifact) (*geoIPDB, error) {
-	log.Debugf("geoip: opening database %s", update.Path())
+func getGeoIPDB(resource string) (*geoIPDB, error) {
+	log.Debugf("geoip: opening database %s", resource)
 
-	reader, err := maxminddb.Open(update.Path())
+	file, unpackedPath, err := openAndUnpack(resource)
+	if err != nil {
+		return nil, err
+	}
+
+	reader, err := maxminddb.Open(unpackedPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open: %w", err)
 	}
-	log.Debugf("geoip: successfully opened database %s", update.Filename)
+	log.Debugf("geoip: successfully opened database %s", resource)
 
 	return &geoIPDB{
 		Reader: reader,
-		update: update,
+		file:   file,
 	}, nil
+}
+
+func openAndUnpack(resource string) (*updater.File, string, error) {
+	f, err := updates.GetFile(resource)
+	if err != nil {
+		return nil, "", fmt.Errorf("getting file: %w", err)
+	}
+
+	unpacked, err := f.Unpack(".gz", updater.UnpackGZIP)
+	if err != nil {
+		return nil, "", fmt.Errorf("unpacking file: %w", err)
+	}
+
+	return f, unpacked, nil
 }

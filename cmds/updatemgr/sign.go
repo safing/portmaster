@@ -3,7 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -11,35 +13,43 @@ import (
 	"github.com/safing/jess"
 	"github.com/safing/jess/filesig"
 	"github.com/safing/jess/truststores"
-	"github.com/safing/portmaster/service/updates"
 )
 
 func init() {
 	rootCmd.AddCommand(signCmd)
 
 	// Required argument: envelope
-	signCmd.Flags().StringVarP(&envelopeName, "envelope", "", "",
+	signCmd.PersistentFlags().StringVarP(&envelopeName, "envelope", "", "",
 		"specify envelope name used for signing",
 	)
 	_ = signCmd.MarkFlagRequired("envelope")
 
 	// Optional arguments: verbose, tsdir, tskeyring
-	signCmd.Flags().BoolVarP(&signVerbose, "verbose", "v", false,
+	signCmd.PersistentFlags().BoolVarP(&signVerbose, "verbose", "v", false,
 		"enable verbose output",
 	)
-	signCmd.Flags().StringVarP(&trustStoreDir, "tsdir", "", "",
+	signCmd.PersistentFlags().StringVarP(&trustStoreDir, "tsdir", "", "",
 		"specify a truststore directory (default loaded from JESS_TS_DIR env variable)",
 	)
-	signCmd.Flags().StringVarP(&trustStoreKeyring, "tskeyring", "", "",
+	signCmd.PersistentFlags().StringVarP(&trustStoreKeyring, "tskeyring", "", "",
 		"specify a truststore keyring namespace (default loaded from JESS_TS_KEYRING env variable) - lower priority than tsdir",
 	)
+
+	// Subcommand for signing indexes.
+	signCmd.AddCommand(signIndexCmd)
 }
 
 var (
 	signCmd = &cobra.Command{
-		Use:   "sign [index.json file]",
-		Short: "Sign an index",
+		Use:   "sign",
+		Short: "Sign resources",
 		RunE:  sign,
+		Args:  cobra.NoArgs,
+	}
+	signIndexCmd = &cobra.Command{
+		Use:   "index",
+		Short: "Sign indexes",
+		RunE:  signIndex,
 		Args:  cobra.ExactArgs(1),
 	}
 
@@ -48,8 +58,6 @@ var (
 )
 
 func sign(cmd *cobra.Command, args []string) error {
-	indexFilename := args[0]
-
 	// Setup trust store.
 	trustStore, err := setupTrustStore()
 	if err != nil {
@@ -62,44 +70,159 @@ func sign(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Read index file from disk.
-	unsignedIndexData, err := os.ReadFile(indexFilename)
-	if err != nil {
-		return fmt.Errorf("read index file: %w", err)
+	// Get all resources and iterate over all versions.
+	export := registry.Export()
+	var verified, signed, fails int
+	for _, rv := range export {
+		for _, version := range rv.Versions {
+			file := version.GetFile()
+
+			// Check if there is an existing signature.
+			_, err := os.Stat(file.Path() + filesig.Extension)
+			switch {
+			case err == nil || errors.Is(err, fs.ErrExist):
+				// If the file exists, just verify.
+				fileData, err := filesig.VerifyFile(
+					file.Path(),
+					file.Path()+filesig.Extension,
+					file.SigningMetadata(),
+					trustStore,
+				)
+				if err != nil {
+					fmt.Printf("[FAIL] signature error for %s: %s\n", file.Path(), err)
+					fails++
+				} else {
+					if signVerbose {
+						fmt.Printf("[ OK ] valid signature for %s: signed by %s\n", file.Path(), getSignedByMany(fileData, trustStore))
+					}
+					verified++
+				}
+
+			case errors.Is(err, fs.ErrNotExist):
+				// Attempt to sign file.
+				fileData, err := filesig.SignFile(
+					file.Path(),
+					file.Path()+filesig.Extension,
+					file.SigningMetadata(),
+					signingEnvelope,
+					trustStore,
+				)
+				if err != nil {
+					fmt.Printf("[FAIL] failed to sign %s: %s\n", file.Path(), err)
+					fails++
+				} else {
+					fmt.Printf("[SIGN] signed %s with %s\n", file.Path(), getSignedBySingle(fileData, trustStore))
+					signed++
+				}
+
+			default:
+				// File access error.
+				fmt.Printf("[FAIL] failed to access %s: %s\n", file.Path(), err)
+				fails++
+			}
+		}
 	}
 
-	// Parse index and check if it is valid.
-	index, err := updates.ParseIndex(unsignedIndexData, nil)
-	if err != nil {
-		return fmt.Errorf("invalid index: %w", err)
+	if verified > 0 {
+		fmt.Printf("[STAT] verified %d files\n", verified)
 	}
-	err = index.CanDoUpgrades()
+	if signed > 0 {
+		fmt.Printf("[STAT] signed %d files\n", signed)
+	}
+	if fails > 0 {
+		return fmt.Errorf("signing or verification failed on %d files", fails)
+	}
+	return nil
+}
+
+func signIndex(cmd *cobra.Command, args []string) error {
+	// Setup trust store.
+	trustStore, err := setupTrustStore()
 	if err != nil {
-		return fmt.Errorf("invalid index: %w", err)
+		return err
 	}
 
-	// Sign index.
-	signedIndexData, err := filesig.AddJSONSignature(unsignedIndexData, signingEnvelope, trustStore)
+	// Get envelope.
+	signingEnvelope, err := trustStore.GetEnvelope(envelopeName)
 	if err != nil {
-		return fmt.Errorf("sign: %w", err)
+		return err
 	}
 
-	// Check by parsing again.
-	index, err = updates.ParseIndex(signedIndexData, nil)
-	if err != nil {
-		return fmt.Errorf("invalid index after signing: %w", err)
-	}
-	err = index.CanDoUpgrades()
-	if err != nil {
-		return fmt.Errorf("invalid index after signing: %w", err)
-	}
-
-	// Write back to file.
-	err = os.WriteFile(indexFilename, signedIndexData, 0o0644)
-	if err != nil {
-		return fmt.Errorf("write signed index file: %w", err)
+	// Resolve globs.
+	files := make([]string, 0, len(args))
+	for _, arg := range args {
+		matches, err := filepath.Glob(arg)
+		if err != nil {
+			return err
+		}
+		files = append(files, matches...)
 	}
 
+	// Go through all files.
+	var verified, signed, fails int
+	for _, file := range files {
+		sigFile := file + filesig.Extension
+
+		// Ignore matches for the signatures.
+		if strings.HasSuffix(file, filesig.Extension) {
+			continue
+		}
+
+		// Check if there is an existing signature.
+		_, err := os.Stat(sigFile)
+		switch {
+		case err == nil || errors.Is(err, fs.ErrExist):
+			// If the file exists, just verify.
+			fileData, err := filesig.VerifyFile(
+				file,
+				sigFile,
+				nil,
+				trustStore,
+			)
+			if err == nil {
+				if signVerbose {
+					fmt.Printf("[ OK ] valid signature for %s: signed by %s\n", file, getSignedByMany(fileData, trustStore))
+				}
+				verified++
+
+				// Indexes are expected to change, so just sign the index again if verification fails.
+				continue
+			}
+
+			fallthrough
+		case errors.Is(err, fs.ErrNotExist):
+			// Attempt to sign file.
+			fileData, err := filesig.SignFile(
+				file,
+				sigFile,
+				nil,
+				signingEnvelope,
+				trustStore,
+			)
+			if err != nil {
+				fmt.Printf("[FAIL] failed to sign %s: %s\n", file, err)
+				fails++
+			} else {
+				fmt.Printf("[SIGN] signed %s with %s\n", file, getSignedBySingle(fileData, trustStore))
+				signed++
+			}
+
+		default:
+			// File access error.
+			fmt.Printf("[FAIL] failed to access %s: %s\n", sigFile, err)
+			fails++
+		}
+	}
+
+	if verified > 0 {
+		fmt.Printf("[STAT] verified %d files", verified)
+	}
+	if signed > 0 {
+		fmt.Printf("[STAT] signed %d files", signed)
+	}
+	if fails > 0 {
+		return fmt.Errorf("signing failed on %d files", fails)
+	}
 	return nil
 }
 

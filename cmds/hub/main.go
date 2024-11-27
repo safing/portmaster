@@ -18,13 +18,13 @@ import (
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
+	"github.com/safing/portmaster/service/updates/helper"
 	"github.com/safing/portmaster/spn"
 	"github.com/safing/portmaster/spn/conf"
 )
 
 func init() {
-	// flag.BoolVar(&updates.RebootOnRestart, "reboot-on-restart", false, "reboot server on auto-upgrade")
-	// FIXME
+	flag.BoolVar(&updates.RebootOnRestart, "reboot-on-restart", false, "reboot server on auto-upgrade")
 }
 
 var sigUSR1 = syscall.Signal(0xa)
@@ -40,15 +40,14 @@ func main() {
 
 	// Configure user agent and updates.
 	updates.UserAgent = fmt.Sprintf("SPN Hub (%s %s)", runtime.GOOS, runtime.GOARCH)
-	// helper.IntelOnly()
+	helper.IntelOnly()
 
 	// Set SPN public hub mode.
 	conf.EnablePublicHub(true)
 
-	// Start logger with default log level.
-	_ = log.Start(log.WarningLevel)
-
-	// FIXME: Use service?
+	// Set default log level.
+	log.SetLogLevel(log.WarningLevel)
+	_ = log.Start()
 
 	// Create instance.
 	var execCmdLine bool
@@ -111,7 +110,7 @@ func main() {
 			slog.Warn("program was interrupted, stopping")
 		}
 
-	case <-instance.ShutdownComplete():
+	case <-instance.Stopped():
 		log.Shutdown()
 		os.Exit(instance.ExitCode())
 	}

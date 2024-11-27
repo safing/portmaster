@@ -6,52 +6,30 @@ import (
 	"testing"
 )
 
-type testInstance struct {
-	dataDir string
-}
+type testInstance struct{}
 
 var _ instance = testInstance{}
 
-func (stub testInstance) DataDir() string {
-	return stub.dataDir
-}
-
 func (stub testInstance) SetCmdLineOperation(f func() error) {}
 
-func newTestInstance(testName string) (*testInstance, error) {
-	testDir, err := os.MkdirTemp("", fmt.Sprintf("portmaster-%s", testName))
+func runTest(m *testing.M) error {
+	ds, err := InitializeUnitTestDataroot("test-config")
 	if err != nil {
-		return nil, fmt.Errorf("failed to make tmp dir: %w", err)
+		return fmt.Errorf("failed to initialize dataroot: %w", err)
 	}
-
-	return &testInstance{
-		dataDir: testDir,
-	}, nil
-}
-
-func TestMain(m *testing.M) {
-	instance, err := newTestInstance("test-config")
+	defer func() { _ = os.RemoveAll(ds) }()
+	module, err = New(&testInstance{})
 	if err != nil {
-		panic(fmt.Errorf("failed to create test instance: %w", err))
-	}
-	defer func() { _ = os.RemoveAll(instance.DataDir()) }()
-
-	module, err = New(instance)
-	if err != nil {
-		panic(fmt.Errorf("failed to initialize module: %w", err))
+		return fmt.Errorf("failed to initialize module: %w", err)
 	}
 
 	m.Run()
+	return nil
 }
 
-func TestConfigPersistence(t *testing.T) { //nolint:paralleltest
-	err := SaveConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = loadConfig(true)
-	if err != nil {
-		t.Fatal(err)
+func TestMain(m *testing.M) {
+	if err := runTest(m); err != nil {
+		fmt.Printf("%s\n", err)
+		os.Exit(1)
 	}
 }

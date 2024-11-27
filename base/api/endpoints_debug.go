@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/base/info"
-	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/utils/debug"
 )
 
@@ -153,12 +152,12 @@ func getStack(_ *Request) (data []byte, err error) {
 
 // printStack prints the current goroutine stack to stderr.
 func printStack(_ *Request) (msg string, err error) {
-	_, err = fmt.Fprint(log.GlobalWriter, "===== PRINTING STACK =====\n")
+	_, err = fmt.Fprint(os.Stderr, "===== PRINTING STACK =====\n")
 	if err == nil {
 		err = pprof.Lookup("goroutine").WriteTo(os.Stderr, 1)
 	}
 	if err == nil {
-		_, err = fmt.Fprint(log.GlobalWriter, "===== END OF STACK =====\n")
+		_, err = fmt.Fprint(os.Stderr, "===== END OF STACK =====\n")
 	}
 	if err != nil {
 		return "", err

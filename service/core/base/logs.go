@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 )
@@ -25,7 +26,7 @@ func logCleaner(_ *mgr.WorkerCtx) error {
 	ageThreshold := time.Now().Add(-logTTL)
 
 	return filepath.Walk(
-		filepath.Join(module.instance.DataDir(), logFileDir),
+		filepath.Join(dataroot.Root().Path, logFileDir),
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				if !errors.Is(err, os.ErrNotExist) {

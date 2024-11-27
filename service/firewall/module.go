@@ -16,7 +16,6 @@ import (
 	"github.com/safing/portmaster/service/netquery"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/profile"
-	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/access"
 	"github.com/safing/portmaster/spn/captain"
 )
@@ -160,9 +159,7 @@ func New(instance instance) (*Firewall, error) {
 }
 
 type instance interface {
-	BinDir() string
 	Config() *config.Config
-	BinaryUpdates() *updates.Updater
 	Profile() *profile.ProfileModule
 	Captain() *captain.Captain
 	Access() *access.Access

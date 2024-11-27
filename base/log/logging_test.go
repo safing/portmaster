@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	err := Start("info", true, "")
+	err := Start()
 	if err != nil {
 		panic(fmt.Sprintf("start failed: %s", err))
 	}
@@ -55,6 +55,9 @@ func TestLogging(t *testing.T) {
 
 	// wait logs to be written
 	time.Sleep(1 * time.Millisecond)
+
+	// just for show
+	UnSetPkgLevels()
 
 	// do not really shut down, we may need logging for other tests
 	// ShutdownLogging()

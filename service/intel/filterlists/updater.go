@@ -13,8 +13,8 @@ import (
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/service/updates"
 )
 
 var updateInProgress = abool.New()
@@ -63,7 +63,7 @@ func performUpdate(ctx context.Context) error {
 	// First, update the list index.
 	err := updateListIndex()
 	if err != nil {
-		log.Warningf("intel/filterlists: failed update list index: %s", err)
+		log.Errorf("intel/filterlists: failed update list index: %s", err)
 	}
 
 	upgradables, err := getUpgradableFiles()
@@ -83,7 +83,7 @@ func performUpdate(ctx context.Context) error {
 	// perform the actual upgrade by processing each file
 	// in the returned order.
 	for idx, file := range upgradables {
-		log.Debugf("intel/filterlists: applying update (%d) %s version %s", idx, file.Filename, file.Version)
+		log.Debugf("intel/filterlists: applying update (%d) %s version %s", idx, file.Identifier(), file.Version())
 
 		if file == baseFile {
 			if idx != 0 {
@@ -101,7 +101,7 @@ func performUpdate(ctx context.Context) error {
 		}
 
 		if err := processListFile(ctx, filterToUpdate, file); err != nil {
-			return fmt.Errorf("failed to process upgrade %s version %s: %w", file.Filename, file.Version, err)
+			return fmt.Errorf("failed to process upgrade %s: %w", file.Identifier(), err)
 		}
 	}
 
@@ -145,10 +145,10 @@ func performUpdate(ctx context.Context) error {
 
 	// try to save the highest version of our files.
 	highestVersion := upgradables[len(upgradables)-1]
-	if err := setCacheDatabaseVersion(highestVersion.Version); err != nil {
+	if err := setCacheDatabaseVersion(highestVersion.Version()); err != nil {
 		log.Errorf("intel/filterlists: failed to save cache database version: %s", err)
 	} else {
-		log.Infof("intel/filterlists: successfully migrated cache database to %s", highestVersion.Version)
+		log.Infof("intel/filterlists: successfully migrated cache database to %s", highestVersion.Version())
 	}
 
 	// The list update succeeded, resolve any states.
@@ -174,51 +174,51 @@ func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx) error {
 // getUpgradableFiles returns a slice of filterlists files
 // that should be updated. The files MUST be updated and
 // processed in the returned order!
-func getUpgradableFiles() ([]*updates.Artifact, error) {
-	var updateOrder []*updates.Artifact
+func getUpgradableFiles() ([]*updater.File, error) {
+	var updateOrder []*updater.File
 
 	cacheDBInUse := isLoaded()
 
-	newBaseFile, err := module.instance.IntelUpdates().GetFile(baseListFilePath)
-	if err != nil {
-		log.Warningf("intel/filterlists: failed to get base update: %s", err)
-	} else if newer, _ := newBaseFile.IsNewerThan(baseFile); newer || !cacheDBInUse {
-		log.Tracef("intel/filterlists: base file needs update to version %s", newBaseFile.Version)
-		if newBaseFile.SemVer() == nil {
-			log.Warningf("intel/filterlists: base file needs update to version %s, but semver is invalid", newBaseFile.Version)
-		} else {
-			updateOrder = append(updateOrder, newBaseFile)
+	if baseFile == nil || baseFile.UpgradeAvailable() || !cacheDBInUse {
+		var err error
+		baseFile, err = getFile(baseListFilePath)
+		if err != nil {
+			return nil, err
+		}
+		log.Tracef("intel/filterlists: base file needs update, selected version %s", baseFile.Version())
+		updateOrder = append(updateOrder, baseFile)
+	}
+
+	if intermediateFile == nil || intermediateFile.UpgradeAvailable() || !cacheDBInUse {
+		var err error
+		intermediateFile, err = getFile(intermediateListFilePath)
+		if err != nil && !errors.Is(err, updater.ErrNotFound) {
+			return nil, err
+		}
+
+		if err == nil {
+			log.Tracef("intel/filterlists: intermediate file needs update, selected version %s", intermediateFile.Version())
+			updateOrder = append(updateOrder, intermediateFile)
 		}
 	}
 
-	newIntermediateFile, err := module.instance.IntelUpdates().GetFile(intermediateListFilePath)
-	if err != nil {
-		log.Warningf("intel/filterlists: failed to get intermediate update: %s", err)
-	} else if newer, _ := newIntermediateFile.IsNewerThan(intermediateFile); newer || !cacheDBInUse {
-		log.Tracef("intel/filterlists: intermediate file needs update to version %s", newIntermediateFile.Version)
-		if newIntermediateFile.SemVer() == nil {
-			log.Warningf("intel/filterlists: intermediate file needs update to version %s, but semver is invalid", newIntermediateFile.Version)
-		} else {
-			updateOrder = append(updateOrder, newIntermediateFile)
+	if urgentFile == nil || urgentFile.UpgradeAvailable() || !cacheDBInUse {
+		var err error
+		urgentFile, err = getFile(urgentListFilePath)
+		if err != nil && !errors.Is(err, updater.ErrNotFound) {
+			return nil, err
 		}
-	}
 
-	newUrgentFile, err := module.instance.IntelUpdates().GetFile(urgentListFilePath)
-	if err != nil {
-		log.Warningf("intel/filterlists: failed to get urgent update: %s", err)
-	} else if newer, _ := newUrgentFile.IsNewerThan(urgentFile); newer || !cacheDBInUse {
-		log.Tracef("intel/filterlists: urgent file needs update to version %s", newUrgentFile.Version)
-		if newUrgentFile.SemVer() == nil {
-			log.Warningf("intel/filterlists: urgent file needs update to version %s, but semver is invalid", newUrgentFile.Version)
-		} else {
-			updateOrder = append(updateOrder, newUrgentFile)
+		if err == nil {
+			log.Tracef("intel/filterlists: urgent file needs update, selected version %s", urgentFile.Version())
+			updateOrder = append(updateOrder, urgentFile)
 		}
 	}
 
 	return resolveUpdateOrder(updateOrder)
 }
 
-func resolveUpdateOrder(updateOrder []*updates.Artifact) ([]*updates.Artifact, error) {
+func resolveUpdateOrder(updateOrder []*updater.File) ([]*updater.File, error) {
 	// sort the update order by ascending version
 	sort.Sort(byAscVersion(updateOrder))
 	log.Tracef("intel/filterlists: order of updates: %v", updateOrder)
@@ -239,8 +239,9 @@ func resolveUpdateOrder(updateOrder []*updates.Artifact) ([]*updates.Artifact, e
 
 	startAtIdx := -1
 	for idx, file := range updateOrder {
-		log.Tracef("intel/filterlists: checking file with version %s against %s", file.SemVer(), cacheDBVersion)
-		if file.SemVer().GreaterThan(cacheDBVersion) && (startAtIdx == -1 || file == baseFile) {
+		ver, _ := version.NewSemver(file.Version())
+		log.Tracef("intel/filterlists: checking file with version %s against %s", ver, cacheDBVersion)
+		if ver.GreaterThan(cacheDBVersion) && (startAtIdx == -1 || file == baseFile) {
 			startAtIdx = idx
 		}
 	}
@@ -257,12 +258,15 @@ func resolveUpdateOrder(updateOrder []*updates.Artifact) ([]*updates.Artifact, e
 	return updateOrder[startAtIdx:], nil
 }
 
-type byAscVersion []*updates.Artifact
+type byAscVersion []*updater.File
 
 func (fs byAscVersion) Len() int { return len(fs) }
 
 func (fs byAscVersion) Less(i, j int) bool {
-	return fs[i].SemVer().LessThan(fs[j].SemVer())
+	vi, _ := version.NewSemver(fs[i].Version())
+	vj, _ := version.NewSemver(fs[j].Version())
+
+	return vi.LessThan(vj)
 }
 
 func (fs byAscVersion) Swap(i, j int) {

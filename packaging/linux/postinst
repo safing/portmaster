@@ -1,19 +1,5 @@
 #!/bin/bash
 
-chmod +x /usr/lib/portmaster/portmaster-core
-
-#
-# Fix selinux permissions for portmaster-core if we have semanage
-# available.
-#
-if command -V semanage >/dev/null 2>&1; then
-    semanage fcontext -a -t bin_t -s system_u $(realpath /usr/lib)'/portmaster/portmaster-core' || :
-    restorecon -R /usr/lib/portmaster/portmaster-core 2>/dev/null >&2 || :
-fi
-
-mv /usr/bin/portmaster /usr/lib/portmaster/portmaster
-ln -s /usr/lib/portmaster/portmaster /usr/bin/portmaster 
-
 systemctl daemon-reload
 systemctl enable portmaster.service
 

@@ -23,11 +23,11 @@ type testInstance struct {
 	db      *dbmodule.DBModule
 	api     *api.API
 	config  *config.Config
-	updates *updates.Updater
+	updates *updates.Updates
 	geoip   *geoip.GeoIP
 }
 
-func (stub *testInstance) IntelUpdates() *updates.Updater {
+func (stub *testInstance) Updates() *updates.Updates {
 	return stub.updates
 }
 
@@ -61,16 +61,6 @@ func runTest(m *testing.M) error {
 	}
 	defer func() { _ = os.RemoveAll(ds) }()
 
-	installDir, err := os.MkdirTemp("", "endpoints_installdir")
-	if err != nil {
-		return fmt.Errorf("failed to create tmp install dir: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(installDir) }()
-	err = updates.GenerateMockFolder(installDir, "Test Intel", "1.0.0")
-	if err != nil {
-		return fmt.Errorf("failed to generate mock installation: %w", err)
-	}
-
 	stub := &testInstance{}
 	stub.db, err = dbmodule.New(stub)
 	if err != nil {
@@ -84,10 +74,7 @@ func runTest(m *testing.M) error {
 	if err != nil {
 		return fmt.Errorf("failed to create api: %w", err)
 	}
-	stub.updates, err = updates.New(stub, "Test Intel", updates.Config{
-		Directory: installDir,
-		IndexFile: "index.json",
-	})
+	stub.updates, err = updates.New(stub)
 	if err != nil {
 		return fmt.Errorf("failed to create updates: %w", err)
 	}

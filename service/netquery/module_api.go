@@ -310,6 +310,5 @@ func NewModule(instance instance) (*NetQuery, error) {
 }
 
 type instance interface {
-	DataDir() string
 	Profile() *profile.ProfileModule
 }

@@ -3,10 +3,14 @@ package database
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/tevino/abool"
+
+	"github.com/safing/portmaster/base/utils"
+)
+
+const (
+	databasesSubDir = "databases"
 )
 
 var (
@@ -15,18 +19,25 @@ var (
 	shuttingDown   = abool.NewBool(false)
 	shutdownSignal = make(chan struct{})
 
-	rootDir string
+	rootStructure      *utils.DirStructure
+	databasesStructure *utils.DirStructure
 )
 
-// Initialize initializes the database at the specified location.
-func Initialize(databasesRootDir string) error {
-	if initialized.SetToIf(false, true) {
-		rootDir = databasesRootDir
+// InitializeWithPath initializes the database at the specified location using a path.
+func InitializeWithPath(dirPath string) error {
+	return Initialize(utils.NewDirStructure(dirPath, 0o0755))
+}
 
-		// Ensure database root dir exists.
-		err := os.MkdirAll(rootDir, 0o0700)
+// Initialize initializes the database at the specified location using a dir structure.
+func Initialize(dirStructureRoot *utils.DirStructure) error {
+	if initialized.SetToIf(false, true) {
+		rootStructure = dirStructureRoot
+
+		// ensure root and databases dirs
+		databasesStructure = rootStructure.ChildDir(databasesSubDir, 0o0700)
+		err := databasesStructure.Ensure()
 		if err != nil {
-			return fmt.Errorf("could not create/open database directory (%s): %w", rootDir, err)
+			return fmt.Errorf("could not create/open database directory (%s): %w", rootStructure.Path, err)
 		}
 
 		return nil
@@ -56,12 +67,11 @@ func Shutdown() (err error) {
 
 // getLocation returns the storage location for the given name and type.
 func getLocation(name, storageType string) (string, error) {
-	location := filepath.Join(rootDir, name, storageType)
-
-	// Make sure location exists.
-	err := os.MkdirAll(location, 0o0700)
+	location := databasesStructure.ChildDir(name, 0o0700).ChildDir(storageType, 0o0700)
+	// check location
+	err := location.Ensure()
 	if err != nil {
-		return "", fmt.Errorf("failed to create/check database dir %q: %w", location, err)
+		return "", fmt.Errorf(`failed to create/check database dir "%s": %w`, location.Path, err)
 	}
-	return location, nil
+	return location.Path, nil
 }

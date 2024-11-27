@@ -1,10 +1,1 @@
 #!/bin/bash
-
-#
-# Remove selinux permissions for portmaster-core if we have semanage
-# available.
-#
-if command -V semanage >/dev/null 2>&1; then
-    semanage fcontext --delete $(realpath /usr/lib)'/portmaster/portmaster-core' || :
-    restorecon -R /usr/lib/portmaster/portmaster-core 2>/dev/null >&2 || :
-fi

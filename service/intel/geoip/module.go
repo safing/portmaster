@@ -19,7 +19,7 @@ func (g *GeoIP) Manager() *mgr.Manager {
 }
 
 func (g *GeoIP) Start() error {
-	module.instance.IntelUpdates().EventResourcesUpdated.AddCallback(
+	module.instance.Updates().EventResourcesUpdated.AddCallback(
 		"Check for GeoIP database updates",
 		func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 			worker.triggerUpdate()
@@ -66,6 +66,5 @@ func New(instance instance) (*GeoIP, error) {
 }
 
 type instance interface {
-	BinaryUpdates() *updates.Updater
-	IntelUpdates() *updates.Updater
+	Updates() *updates.Updates
 }

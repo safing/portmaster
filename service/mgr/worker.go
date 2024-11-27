@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"runtime"
 	"runtime/debug"
 	"strings"
 	"time"
-
-	"github.com/safing/portmaster/base/log"
 )
 
 // workerContextKey is a key used for the context key/value storage.
@@ -304,7 +303,7 @@ func (m *Manager) runWorker(w *WorkerCtx, fn func(w *WorkerCtx) error) (panicInf
 			// Print panic to stderr.
 			stackTrace := string(debug.Stack())
 			fmt.Fprintf(
-				log.GlobalWriter,
+				os.Stderr,
 				"===== PANIC =====\n%s\n\n%s=====  END  =====\n",
 				panicVal,
 				stackTrace,

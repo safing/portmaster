@@ -26,7 +26,7 @@ impl From<std::process::Output> for ServiceManagerError {
                     .ok()
                     .filter(|s| !s.trim().is_empty())
             })
-            .unwrap_or_else(|| "Failed to run `systemctl`".to_string());
+            .unwrap_or_else(|| format!("Failed to run `systemctl`"));
 
         ServiceManagerError::Other(output.status, msg)
     }
@@ -231,11 +231,11 @@ fn trim_newline(s: &mut String) {
 }
 
 fn get_sudo_cmd() -> std::result::Result<SudoCommand, std::io::Error> {
-    if fs::metadata("/usr/bin/pkexec").is_ok() {
+    if let Ok(_) = fs::metadata("/usr/bin/pkexec") {
         return Ok(SudoCommand::Pkexec);
     }
 
-    if fs::metadata("/usr/bin/gksudo").is_ok() {
+    if let Ok(_) = fs::metadata("/usr/bin/gksudo") {
         return Ok(SudoCommand::Gksu);
     }
 

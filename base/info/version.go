@@ -10,8 +10,6 @@ import (
 	"sync"
 )
 
-// FIXME: version does not show in portmaster
-
 var (
 	name    string
 	license string
@@ -151,28 +149,6 @@ func FullVersion() string {
 	builder.WriteString(fmt.Sprintf("\nLicensed under the %s license.", license))
 
 	return builder.String()
-}
-
-// CondensedVersion returns the rather complete, but condensed version string.
-func CondensedVersion() string {
-	info := GetInfo()
-
-	cgoInfo := "-cgo"
-	if info.CGO {
-		cgoInfo = "+cgo"
-	}
-	dirtyInfo := "clean"
-	if info.Dirty {
-		dirtyInfo = "dirty"
-	}
-
-	return fmt.Sprintf(
-		"%s %s (%s; built with %s [%s %s] from %s [%s] at %s)",
-		info.Name, version,
-		runtime.GOOS,
-		runtime.Version(), runtime.Compiler, cgoInfo,
-		info.Commit, dirtyInfo, info.CommitTime,
-	)
 }
 
 // CheckVersion checks if the metadata is ok.

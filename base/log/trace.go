@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -23,8 +24,36 @@ var key = ContextTracerKey{}
 // AddTracer adds a ContextTracer to the returned Context. Will return a nil ContextTracer if logging level is not set to trace. Will return a nil ContextTracer if one already exists. Will return a nil ContextTracer in case of an error. Will return a nil context if nil.
 func AddTracer(ctx context.Context) (context.Context, *ContextTracer) {
 	if ctx != nil && fastcheck(TraceLevel) {
-		// Check log level.
-		if atomic.LoadUint32(logLevel) > uint32(TraceLevel) {
+		// check pkg levels
+		if pkgLevelsActive.IsSet() {
+			// get file
+			_, file, _, ok := runtime.Caller(1)
+			if !ok {
+				// cannot get file, ignore
+				return ctx, nil
+			}
+
+			pathSegments := strings.Split(file, "/")
+			if len(pathSegments) < 2 {
+				// file too short for package levels
+				return ctx, nil
+			}
+			pkgLevelsLock.Lock()
+			severity, ok := pkgLevels[pathSegments[len(pathSegments)-2]]
+			pkgLevelsLock.Unlock()
+			if ok {
+				// check against package level
+				if TraceLevel < severity {
+					return ctx, nil
+				}
+			} else {
+				// no package level set, check against global level
+				if uint32(TraceLevel) < atomic.LoadUint32(logLevel) {
+					return ctx, nil
+				}
+			}
+		} else if uint32(TraceLevel) < atomic.LoadUint32(logLevel) {
+			// no package levels set, check against global level
 			return ctx, nil
 		}
 
