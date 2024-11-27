@@ -52,3 +52,4 @@ go.work.sum
 
 # Kext releases
 windows_kext/release/kext_release_*.zip
+windows_core_dll/.vs/windows_core_dll

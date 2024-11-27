@@ -19,6 +19,8 @@ import (
 	"github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/firewall"
 	"github.com/safing/portmaster/service/firewall/interception"
+	"github.com/safing/portmaster/service/firewall/interception/dnsmonitor"
+	"github.com/safing/portmaster/service/integration"
 	"github.com/safing/portmaster/service/intel/customlists"
 	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/intel/geoip"
@@ -65,6 +67,7 @@ type Instance struct {
 
 	core         *core.Core
 	updates      *updates.Updates
+	integration  *integration.OSIntegration
 	geoip        *geoip.GeoIP
 	netenv       *netenv.NetEnv
 	ui           *ui.UI
@@ -74,6 +77,7 @@ type Instance struct {
 	firewall     *firewall.Firewall
 	filterLists  *filterlists.FilterLists
 	interception *interception.Interception
+	dnsmonitor   *dnsmonitor.DNSMonitor
 	customlist   *customlists.CustomList
 	status       *status.Status
 	broadcasts   *broadcasts.Broadcasts
@@ -107,7 +111,6 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
 
 	var err error
-
 	// Base modules
 	instance.base, err = base.New(instance)
 	if err != nil {
@@ -151,6 +154,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
 	}
+	instance.integration, err = integration.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create integration module: %w", err)
+	}
 	instance.geoip, err = geoip.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create customlist module: %w", err)
@@ -186,6 +193,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	instance.interception, err = interception.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create interception module: %w", err)
+	}
+	instance.dnsmonitor, err = dnsmonitor.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create dns-listener module: %w", err)
 	}
 	instance.customlist, err = customlists.New(instance)
 	if err != nil {
@@ -275,6 +286,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 
 		instance.core,
 		instance.updates,
+		instance.integration,
 		instance.geoip,
 		instance.netenv,
 
@@ -288,6 +300,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.filterLists,
 		instance.customlist,
 		instance.interception,
+		instance.dnsmonitor,
 
 		instance.compat,
 		instance.status,
@@ -378,6 +391,11 @@ func (i *Instance) Updates() *updates.Updates {
 	return i.updates
 }
 
+// OSIntegration returns the integration module.
+func (i *Instance) OSIntegration() *integration.OSIntegration {
+	return i.integration
+}
+
 // GeoIP returns the geoip module.
 func (i *Instance) GeoIP() *geoip.GeoIP {
 	return i.geoip
@@ -461,6 +479,11 @@ func (i *Instance) FilterLists() *filterlists.FilterLists {
 // Interception returns the interception module.
 func (i *Instance) Interception() *interception.Interception {
 	return i.interception
+}
+
+// DNSMonitor returns the dns-listener module.
+func (i *Instance) DNSMonitor() *dnsmonitor.DNSMonitor {
+	return i.dnsmonitor
 }
 
 // CustomList returns the customlist module.

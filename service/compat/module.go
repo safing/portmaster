@@ -181,4 +181,5 @@ func New(instance instance) (*Compat, error) {
 
 type instance interface {
 	NetEnv() *netenv.NetEnv
+	Resolver() *resolver.ResolverModule
 }

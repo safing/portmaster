@@ -388,7 +388,6 @@ func loadResolvers() {
 
 	// Resolve module error about missing resolvers.
 	module.states.Remove(missingResolversErrorID)
-
 	// Check if settings were changed and clear name cache when they did.
 	newResolverConfig := configuredNameServers()
 	if len(currentResolverConfig) > 0 &&
@@ -399,6 +398,14 @@ func loadResolvers() {
 			return err
 		})
 	}
+
+	// If no resolvers are configure set the disabled state. So other modules knows that the users does not want to use Portmaster resolver.
+	if len(newResolverConfig) == 0 {
+		module.isDisabled.Store(true)
+	} else {
+		module.isDisabled.Store(false)
+	}
+
 	currentResolverConfig = newResolverConfig
 
 	newResolvers := append(
@@ -431,7 +438,7 @@ func loadResolvers() {
 	// save resolvers
 	globalResolvers = newResolvers
 
-	// assing resolvers to scopes
+	// assign resolvers to scopes
 	setScopedResolvers(globalResolvers)
 
 	// set active resolvers (for cache validation)

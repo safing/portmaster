@@ -106,11 +106,12 @@ func checkError(packet gopacket.Packet, info *Info) error {
 	return nil
 }
 
-// Parse parses an IP packet and saves the information in the given packet object.
-func Parse(packetData []byte, pktBase *Base) (err error) {
+// ParseLayer3 parses an IP packet and saves the information in the given packet object.
+func ParseLayer3(packetData []byte, pktBase *Base) (err error) {
 	if len(packetData) == 0 {
 		return errors.New("empty packet")
 	}
+
 	pktBase.layer3Data = packetData
 
 	ipVersion := packetData[0] >> 4
@@ -133,6 +134,62 @@ func Parse(packetData []byte, pktBase *Base) (err error) {
 	availableDecoders := []func(gopacket.Packet, *Info) error{
 		parseIPv4,
 		parseIPv6,
+		parseTCP,
+		parseUDP,
+		// parseUDPLite, // We don't yet support udplite.
+		parseICMPv4,
+		parseICMPv6,
+		parseIGMP,
+		checkError,
+	}
+
+	for _, dec := range availableDecoders {
+		if err := dec(packet, pktBase.Info()); err != nil {
+			return err
+		}
+	}
+
+	pktBase.layers = packet
+	if transport := packet.TransportLayer(); transport != nil {
+		pktBase.layer5Data = transport.LayerPayload()
+	}
+	return nil
+}
+
+// ParseLayer4 parses an layer 4 packet and saves the information in the given packet object.
+func ParseLayer4(packetData []byte, pktBase *Base) (err error) {
+	if len(packetData) == 0 {
+		return errors.New("empty packet")
+	}
+
+	var layer gopacket.LayerType
+	switch pktBase.info.Protocol {
+	case ICMP:
+		layer = layers.LayerTypeICMPv4
+	case IGMP:
+		layer = layers.LayerTypeIGMP
+	case TCP:
+		layer = layers.LayerTypeTCP
+	case UDP:
+		layer = layers.LayerTypeUDP
+	case ICMPv6:
+		layer = layers.LayerTypeICMPv6
+	case UDPLite:
+		return fmt.Errorf("UDPLite not supported")
+	case RAW:
+		return fmt.Errorf("RAW protocol not supported")
+	case AnyHostInternalProtocol61:
+		return fmt.Errorf("AnyHostInternalProtocol61 protocol not supported")
+	default:
+		return fmt.Errorf("protocol not supported")
+	}
+
+	packet := gopacket.NewPacket(packetData, layer, gopacket.DecodeOptions{
+		Lazy:   true,
+		NoCopy: true,
+	})
+
+	availableDecoders := []func(gopacket.Packet, *Info) error{
 		parseTCP,
 		parseUDP,
 		// parseUDPLite, // We don't yet support udplite.

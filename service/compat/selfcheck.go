@@ -158,6 +158,12 @@ func selfcheck(ctx context.Context) (issue *systemIssue, err error) {
 
 	// Step 3: Have the nameserver respond with random data in the answer section.
 
+	// Check if the resolver is enabled
+	if module.instance.Resolver().IsDisabled() {
+		// There is no control over the response, there is nothing more that can be checked.
+		return nil, nil
+	}
+
 	// Wait for the reply from the resolver.
 	select {
 	case err := <-dnsCheckLookupError:
