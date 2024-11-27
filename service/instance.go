@@ -167,10 +167,6 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	}
 
 	// Service modules
-	instance.core, err = core.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create core module: %w", err)
-	}
 	binaryUpdateConfig, intelUpdateConfig, err := MakeUpdateConfigs(svcCfg)
 	if err != nil {
 		return instance, fmt.Errorf("create updates config: %w", err)
@@ -182,6 +178,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	instance.intelUpdates, err = updates.New(instance, "Intel Updater", *intelUpdateConfig)
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
+	}
+	instance.core, err = core.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create core module: %w", err)
 	}
 	instance.geoip, err = geoip.New(instance)
 	if err != nil {
@@ -707,4 +707,24 @@ func (i *Instance) ShutdownComplete() <-chan struct{} {
 // ExitCode returns the set exit code of the instance.
 func (i *Instance) ExitCode() int {
 	return int(i.exitCode.Load())
+}
+
+// ShouldRestartIsSet returns whether the service/instance should be restarted.
+func (i *Instance) ShouldRestartIsSet() bool {
+	return i.ShouldRestart
+}
+
+// CommandLineOperationIsSet returns whether the command line option is set.
+func (i *Instance) CommandLineOperationIsSet() bool {
+	return i.CommandLineOperation != nil
+}
+
+// CommandLineOperationExecute executes the set command line option.
+func (i *Instance) CommandLineOperationExecute() error {
+	return i.CommandLineOperation()
+}
+
+// AddModule adds a module to the service group.
+func (i *Instance) AddModule(m mgr.Module) {
+	i.serviceGroup.Add(m)
 }

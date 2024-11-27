@@ -6,7 +6,7 @@ import (
 )
 
 func setupDatabases(path string) error {
-	err := database.InitializeWithPath(path)
+	err := database.Initialize(path)
 	if err != nil {
 		return err
 	}

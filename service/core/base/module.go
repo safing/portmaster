@@ -4,8 +4,12 @@ import (
 	"errors"
 	"sync/atomic"
 
+	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/service/mgr"
 )
+
+// DefaultAPIListenAddress is the default listen address for the API.
+var DefaultAPIListenAddress = "127.0.0.1:817"
 
 // Base is the base module.
 type Base struct {
@@ -47,9 +51,9 @@ func New(instance instance) (*Base, error) {
 		instance: instance,
 	}
 
-	if err := prep(instance); err != nil {
-		return nil, err
-	}
+	// Set api listen address.
+	api.SetDefaultAPIListenAddress(DefaultAPIListenAddress)
+
 	if err := registerDatabases(); err != nil {
 		return nil, err
 	}

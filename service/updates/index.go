@@ -117,10 +117,10 @@ func (a *Artifact) export(dir string, indexVersion *semver.Version) *Artifact {
 
 // Index represents a collection of artifacts with metadata.
 type Index struct {
-	Name      string     `json:"Name"`
-	Version   string     `json:"Version"`
-	Published time.Time  `json:"Published"`
-	Artifacts []Artifact `json:"Artifacts"`
+	Name      string      `json:"Name"`
+	Version   string      `json:"Version"`
+	Published time.Time   `json:"Published"`
+	Artifacts []*Artifact `json:"Artifacts"`
 
 	versionNum *semver.Version
 }
@@ -173,7 +173,7 @@ func (index *Index) init() error {
 	}
 
 	// Filter artifacts by current platform.
-	filtered := make([]Artifact, 0)
+	filtered := make([]*Artifact, 0)
 	for _, a := range index.Artifacts {
 		if a.Platform == "" || a.Platform == currentPlatform {
 			filtered = append(filtered, a)
@@ -189,6 +189,7 @@ func (index *Index) init() error {
 				a.versionNum = v
 			}
 		} else {
+			a.Version = index.Version
 			a.versionNum = index.versionNum
 		}
 	}

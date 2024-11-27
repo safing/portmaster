@@ -95,7 +95,7 @@ settings:
 
 // GenerateIndexFromDir generates a index from a given folder.
 func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error) { //nolint:maintidx
-	artifacts := make(map[string]Artifact)
+	artifacts := make(map[string]*Artifact)
 
 	// Initialize.
 	err := cfg.init()
@@ -187,11 +187,12 @@ func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error)
 
 		// Step 3: Create new Artifact.
 
-		artifact := Artifact{}
+		artifact := &Artifact{}
 
 		// Check if the caller provided a template for the artifact.
 		if t, ok := cfg.Templates[identifier]; ok {
-			artifact = t
+			fromTemplate := t
+			artifact = &fromTemplate
 		}
 
 		// Set artifact properties.
@@ -249,7 +250,7 @@ func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error)
 	}
 
 	// Convert to slice and compute hashes.
-	export := make([]Artifact, 0, len(artifacts))
+	export := make([]*Artifact, 0, len(artifacts))
 	for _, artifact := range artifacts {
 		// Compute hash.
 		hash, err := getSHA256(artifact.localFile, artifact.Unpack)
@@ -273,7 +274,7 @@ func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error)
 	}
 
 	// Sort final artifacts.
-	slices.SortFunc(export, func(a, b Artifact) int {
+	slices.SortFunc(export, func(a, b *Artifact) int {
 		switch {
 		case a.Filename != b.Filename:
 			return strings.Compare(a.Filename, b.Filename)

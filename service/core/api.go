@@ -1,19 +1,27 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
+
+	"github.com/ghodss/yaml"
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/base/utils/debug"
 	"github.com/safing/portmaster/service/compat"
 	"github.com/safing/portmaster/service/process"
@@ -149,6 +157,17 @@ func registerAPIEndpoints() error {
 		return err
 	}
 
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Name:        "Get Resource",
+		Description: "Returns the requested resource from the udpate system",
+		Path:        `updates/get/?{artifact_path:[A-Za-z0-9/\.\-_]{1,255}}/{artifact_name:[A-Za-z0-9\.\-_]{1,255}}`,
+		Read:        api.PermitUser,
+		ReadMethod:  http.MethodGet,
+		HandlerFunc: getUpdateResource,
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -168,6 +187,113 @@ func restart(_ *api.Request) (msg string, err error) {
 	module.instance.Restart()
 
 	return "restart initiated", nil
+}
+
+func getUpdateResource(w http.ResponseWriter, r *http.Request) {
+	// Get identifier from URL.
+	var identifier string
+	if ar := api.GetAPIRequest(r); ar != nil {
+		identifier = ar.URLVars["artifact_name"]
+	}
+	if identifier == "" {
+		http.Error(w, "no resource specified", http.StatusBadRequest)
+		return
+	}
+
+	// Get resource.
+	artifact, err := module.instance.BinaryUpdates().GetFile(identifier)
+	if err != nil {
+		intelArtifact, intelErr := module.instance.IntelUpdates().GetFile(identifier)
+		if intelErr == nil {
+			artifact = intelArtifact
+		} else {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+	}
+
+	// Open file for reading.
+	file, err := os.Open(artifact.Path())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer file.Close() //nolint:errcheck,gosec
+
+	// Assign file to reader
+	var reader io.Reader = file
+
+	// Add version and hash to header.
+	if artifact.Version != "" {
+		w.Header().Set("Resource-Version", artifact.Version)
+	}
+	if artifact.SHA256 != "" {
+		w.Header().Set("Resource-SHA256", artifact.SHA256)
+	}
+
+	// Set Content-Type.
+	contentType, _ := utils.MimeTypeByExtension(filepath.Ext(artifact.Path()))
+	w.Header().Set("Content-Type", contentType)
+
+	// Check if the content type may be returned.
+	accept := r.Header.Get("Accept")
+	if accept != "" {
+		mimeTypes := strings.Split(accept, ",")
+		// First, clean mime types.
+		for i, mimeType := range mimeTypes {
+			mimeType = strings.TrimSpace(mimeType)
+			mimeType, _, _ = strings.Cut(mimeType, ";")
+			mimeTypes[i] = mimeType
+		}
+		// Second, check if we may return anything.
+		var acceptsAny bool
+		for _, mimeType := range mimeTypes {
+			switch mimeType {
+			case "*", "*/*":
+				acceptsAny = true
+			}
+		}
+		// Third, check if we can convert.
+		if !acceptsAny {
+			var converted bool
+			sourceType, _, _ := strings.Cut(contentType, ";")
+		findConvertiblePair:
+			for _, mimeType := range mimeTypes {
+				switch {
+				case sourceType == "application/yaml" && mimeType == "application/json":
+					yamlData, err := io.ReadAll(reader)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					jsonData, err := yaml.YAMLToJSON(yamlData)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					reader = bytes.NewReader(jsonData)
+					converted = true
+					break findConvertiblePair
+				}
+			}
+
+			// If we could not convert to acceptable format, return an error.
+			if !converted {
+				http.Error(w, "conversion to requested format not supported", http.StatusNotAcceptable)
+				return
+			}
+		}
+	}
+
+	// Write file.
+	w.WriteHeader(http.StatusOK)
+	if r.Method != http.MethodHead {
+		_, err = io.Copy(w, reader)
+		if err != nil {
+			log.Errorf("updates: failed to serve resource file: %s", err)
+			return
+		}
+	}
 }
 
 // debugInfo returns the debugging information for support requests.
@@ -192,7 +318,7 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	config.AddToDebugInfo(di)
 
 	// Detailed information.
-	// TODO(vladimir): updates.AddToDebugInfo(di)
+	AddVersionsToDebugInfo(di)
 	compat.AddToDebugInfo(di)
 	module.instance.AddWorkerInfoToDebugInfo(di)
 	di.AddGoroutineStack()

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/utils/debug"
@@ -18,6 +20,11 @@ import (
 	_ "github.com/safing/portmaster/service/ui"
 	"github.com/safing/portmaster/service/updates"
 )
+
+var db = database.NewInterface(&database.Options{
+	Local:    true,
+	Internal: true,
+})
 
 // Core is the core service module.
 type Core struct {
@@ -56,8 +63,10 @@ func init() {
 
 func prep() error {
 	// init config
-	err := registerConfig()
-	if err != nil {
+	if err := registerConfig(); err != nil {
+		return err
+	}
+	if err := registerUpdateConfig(); err != nil {
 		return err
 	}
 
@@ -76,6 +85,10 @@ func start() error {
 	if err := startPlatformSpecific(); err != nil {
 		return fmt.Errorf("failed to start plattform-specific components: %w", err)
 	}
+
+	// Setup update system.
+	initUpdateConfig()
+	initVersionExport()
 
 	// Enable persistent metrics.
 	if err := metrics.EnableMetricPersistence("core:metrics/storage"); err != nil {
@@ -116,6 +129,7 @@ type instance interface {
 	Shutdown()
 	Restart()
 	AddWorkerInfoToDebugInfo(di *debug.Info)
+	Config() *config.Config
 	BinaryUpdates() *updates.Updater
 	IntelUpdates() *updates.Updater
 }

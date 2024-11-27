@@ -192,7 +192,7 @@ artifacts:
 	return nil
 }
 
-func (d *Downloader) getArtifact(ctx context.Context, artifact Artifact, url string) ([]byte, error) {
+func (d *Downloader) getArtifact(ctx context.Context, artifact *Artifact, url string) ([]byte, error) {
 	// Download data from URL.
 	artifactData, err := d.downloadData(ctx, url)
 	if err != nil {

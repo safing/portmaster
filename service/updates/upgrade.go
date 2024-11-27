@@ -12,8 +12,6 @@ import (
 	"github.com/safing/portmaster/base/log"
 )
 
-// FIXME: previous update system did in-place service file upgrades. Check if this is still necessary and if changes are in current installers.
-
 const (
 	defaultFileMode      = os.FileMode(0o0644)
 	executableFileMode   = os.FileMode(0o0744)
