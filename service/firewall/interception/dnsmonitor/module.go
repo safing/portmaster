@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/miekg/dns"
+
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/compat"
@@ -38,7 +39,7 @@ func (dl *DNSMonitor) Start() error {
 	var err error
 	dl.listener, err = newListener(dl)
 	if err != nil {
-		log.Errorf("dnsmonitor: failed to start dns listener: %s", err)
+		log.Warningf("dnsmonitor: failed to start dns listener: %s", err)
 	}
 
 	return nil

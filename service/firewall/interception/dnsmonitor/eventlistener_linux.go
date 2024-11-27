@@ -10,10 +10,11 @@ import (
 	"os"
 
 	"github.com/miekg/dns"
+	"github.com/varlink/go/varlink"
+
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/resolver"
-	"github.com/varlink/go/varlink"
 )
 
 type Listener struct {
