@@ -16,9 +16,8 @@ import (
 )
 
 var ResolverInfo = resolver.ResolverInfo{
-	Name:   "SystemdResolver",
-	Type:   resolver.ServerSourceEnv,
-	Source: "System",
+	Name: "SystemResolver",
+	Type: resolver.ServerTypeMonitor,
 }
 
 type DNSMonitor struct {
@@ -85,6 +84,7 @@ func New(instance instance) (*DNSMonitor, error) {
 		mgr:      m,
 		instance: instance,
 	}
+
 	return module, nil
 }
 

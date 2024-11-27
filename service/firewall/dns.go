@@ -297,7 +297,9 @@ func UpdateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 	// Process CNAMEs
 	record.AddCNAMEs(cnames)
 	// Link connection with cnames.
-	conn.Entity.CNAME = record.CNAMEs
+	if conn.Type == network.DNSRequest {
+		conn.Entity.CNAME = record.CNAMEs
+	}
 
 	SaveIPsInCache(ips, profileID, record)
 }

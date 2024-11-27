@@ -11,6 +11,7 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/resolver"
 )
 
 type Listener struct {
@@ -18,6 +19,9 @@ type Listener struct {
 }
 
 func newListener(module *DNSMonitor) (*Listener, error) {
+	// Set source of the resolver.
+	ResolverInfo.Source = resolver.ServerSourceETW
+
 	listener := &Listener{}
 	var err error
 	// Initialize new dns event session.

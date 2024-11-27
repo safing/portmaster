@@ -613,13 +613,14 @@ func inspectDNSPacket(conn *network.Connection, pkt packet.Packet) {
 		return
 	}
 
-	// Packet was parsed, accept the connection and continue.
-	err = pkt.Accept()
-	if err != nil {
-		log.Errorf("filter: failed to accept dns packet: %s", err)
-	}
-
-	conn.Type = network.DNSRequest
+	// Packet was parsed.
+	// Allow it but only after the answer was added to the cache.
+	defer func() {
+		err = pkt.Accept()
+		if err != nil {
+			log.Errorf("filter: failed to accept dns packet: %s", err)
+		}
+	}()
 
 	// Check if packet has a question.
 	if len(dnsPacket.Question) == 0 {
@@ -645,9 +646,9 @@ func inspectDNSPacket(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	resolverInfo := &resolver.ResolverInfo{
-		Name:    "Direct DNS request", // TODO(vladimir): Better name?
-		Type:    resolver.ServerTypeDNS,
-		Source:  resolver.ServerSourcePacket,
+		Name:    "DNSRequestObserver",
+		Type:    resolver.ServerTypeFirewall,
+		Source:  resolver.ServerSourceFirewall,
 		IP:      conn.Entity.IP,
 		Domain:  conn.Entity.Domain,
 		IPScope: conn.Entity.IPScope,

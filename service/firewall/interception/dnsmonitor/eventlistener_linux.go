@@ -12,6 +12,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/resolver"
 	"github.com/varlink/go/varlink"
 )
 
@@ -20,9 +21,12 @@ type Listener struct {
 }
 
 func newListener(module *DNSMonitor) (*Listener, error) {
+	// Set source of the resolver.
+	ResolverInfo.Source = resolver.ServerSourceSystemd
+
 	// Check if the system has systemd-resolver.
 	_, err := os.Stat("/run/systemd/resolve/io.systemd.Resolve.Monitor")
-	if os.IsNotExist(err) {
+	if err != nil {
 		return nil, fmt.Errorf("system does not support systemd resolver monitor")
 	}
 
@@ -31,11 +35,11 @@ func newListener(module *DNSMonitor) (*Listener, error) {
 	restartAttempts := 0
 
 	module.mgr.Go("systemd-resolver-event-listener", func(w *mgr.WorkerCtx) error {
-		// Stop start if the connection failed after too many tries.
+		// Abort initialization if the connection failed after too many tries.
 		if restartAttempts > 10 {
 			return nil
 		}
-		defer func() { restartAttempts += 1 }()
+		restartAttempts += 1
 
 		// Initialize varlink connection
 		varlinkConn, err := varlink.NewConnection(module.mgr.Ctx(), "unix:/run/systemd/resolve/io.systemd.Resolve.Monitor")
