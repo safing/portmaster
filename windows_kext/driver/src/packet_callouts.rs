@@ -110,9 +110,12 @@ fn ip_packet_layer(
     interface_index: u32,
     sub_interface_index: u32,
 ) {
+    // Make the default path as drop.
+    data.block_and_absorb();
+
     // Block all fragment data. No easy way to keep track of the origin and they are rarely used.
     if data.is_fragment_data() {
-        data.action_block();
+        data.block_and_absorb();
         crate::err!("blocked fragment packet");
         return;
     }
@@ -147,7 +150,7 @@ fn ip_packet_layer(
         } {
             Ok(key) => key,
             Err(err) => {
-                crate::dbg!("failed to get key from nbl: {}", err);
+                crate::err!("failed to get key from nbl: {}", err);
                 return;
             }
         };

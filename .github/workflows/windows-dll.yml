@@ -1,0 +1,41 @@
+name: Windows Portmaster Core DLL
+
+on:
+  push:
+    paths:
+      - 'windows_core_dll/**'
+    branches:
+      - master
+      - develop
+
+  pull_request:
+    paths:
+      - 'windows_core_dll/**'
+    branches:
+      - master
+      - develop
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: windows-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v2
+    - name: Build DLL
+      run: msbuild windows_core_dll\windows_core_dll.sln -t:rebuild -property:Configuration=Release
+    - name: Verify DLL
+      shell: powershell
+      run: |
+        if (!(Test-Path "windows_core_dll/x64/Release/portmaster-core.dll")) {
+          Write-Error "DLL build failed: portmaster-core.dll not found"
+          exit 1
+        }
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: portmaster-core-dll
+        path: windows_core_dll/x64/Release/portmaster-core.dll

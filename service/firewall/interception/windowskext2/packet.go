@@ -4,6 +4,7 @@
 package windowskext
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/tevino/abool"
@@ -19,6 +20,7 @@ type Packet struct {
 
 	verdictRequest uint64
 	payload        []byte
+	payloadLayer   uint8
 	verdictSet     *abool.AtomicBool
 
 	payloadLoaded bool
@@ -51,7 +53,15 @@ func (pkt *Packet) LoadPacketData() error {
 		pkt.payloadLoaded = true
 
 		if len(pkt.payload) > 0 {
-			err := packet.Parse(pkt.payload, &pkt.Base)
+			var err error
+			switch pkt.payloadLayer {
+			case 3:
+				err = packet.ParseLayer3(pkt.payload, &pkt.Base)
+			case 4:
+				err = packet.ParseLayer4(pkt.payload, &pkt.Base)
+			default:
+				err = fmt.Errorf("unsupported payload layer: %d", pkt.payloadLayer)
+			}
 			if err != nil {
 				log.Tracef("payload: %#v", pkt.payload)
 				log.Tracer(pkt.Ctx()).Warningf("windowskext: failed to parse payload: %s", err)

@@ -52,6 +52,27 @@ type ResolvedDomain struct {
 	Expires int64
 }
 
+// AddCNAMEs adds all cnames from the map related to its set Domain.
+func (resolved *ResolvedDomain) AddCNAMEs(cnames map[string]string) {
+	// Resolve all CNAMEs in the correct order and add the to the record - up to max 50 layers.
+	domain := resolved.Domain
+domainLoop:
+	for range 50 {
+		nextDomain, isCNAME := cnames[domain]
+		switch {
+		case !isCNAME:
+			break domainLoop
+		case nextDomain == resolved.Domain:
+			break domainLoop
+		case nextDomain == domain:
+			break domainLoop
+		}
+
+		resolved.CNAMEs = append(resolved.CNAMEs, nextDomain)
+		domain = nextDomain
+	}
+}
+
 // String returns a string representation of ResolvedDomain including
 // the CNAME chain. It implements fmt.Stringer.
 func (resolved *ResolvedDomain) String() string {

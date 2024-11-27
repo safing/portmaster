@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/gopacket/layers"
+	"github.com/miekg/dns"
 	"github.com/tevino/abool"
 
 	"github.com/safing/portmaster/base/log"
@@ -23,6 +25,7 @@ import (
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/process"
+	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/portmaster/spn/access"
 )
 
@@ -444,8 +447,9 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 		filterConnection = false
 		log.Tracer(pkt.Ctx()).Infof("filter: granting own pre-authenticated connection %s", conn)
 
-		// Redirect outbound DNS packets if enabled,
+	// Redirect outbound DNS packets if enabled,
 	case dnsQueryInterception() &&
+		!module.instance.Resolver().IsDisabled() &&
 		pkt.IsOutbound() &&
 		pkt.Info().DstPort == 53 &&
 		// that don't match the address of our nameserver,
@@ -478,11 +482,13 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 
 	// Decide how to continue handling connection.
 	switch {
+	case conn.Inspecting && looksLikeOutgoingDNSRequest(conn):
+		inspectDNSPacket(conn, pkt)
+		conn.UpdateFirewallHandler(inspectDNSPacket)
 	case conn.Inspecting:
 		log.Tracer(pkt.Ctx()).Trace("filter: start inspecting")
 		conn.UpdateFirewallHandler(inspectAndVerdictHandler)
 		inspectAndVerdictHandler(conn, pkt)
-
 	default:
 		conn.StopFirewallHandler()
 		verdictHandler(conn, pkt)
@@ -506,7 +512,7 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 	}
 
 	// TODO: Enable inspection framework again.
-	conn.Inspecting = false
+	// conn.Inspecting = false
 
 	// TODO: Quick fix for the SPN.
 	// Use inspection framework for proper encryption detection.
@@ -578,6 +584,98 @@ func inspectAndVerdictHandler(conn *network.Connection, pkt packet.Packet) {
 	// we are done with inspecting
 	conn.StopFirewallHandler()
 	issueVerdict(conn, pkt, 0, true)
+}
+
+func inspectDNSPacket(conn *network.Connection, pkt packet.Packet) {
+	// Ignore info-only packets in this handler.
+	if pkt.InfoOnly() {
+		return
+	}
+
+	dnsPacket := new(dns.Msg)
+	err := pkt.LoadPacketData()
+	if err != nil {
+		_ = pkt.Block()
+		log.Errorf("filter: failed to load packet payload: %s", err)
+		return
+	}
+
+	// Parse and block invalid packets.
+	err = dnsPacket.Unpack(pkt.Payload())
+	if err != nil {
+		err = pkt.PermanentBlock()
+		if err != nil {
+			log.Errorf("filter: failed to block packet: %s", err)
+		}
+		_ = conn.SetVerdict(network.VerdictBlock, "none DNS data on DNS port", "", nil)
+		conn.VerdictPermanent = true
+		conn.Save()
+		return
+	}
+
+	// Packet was parsed.
+	// Allow it but only after the answer was added to the cache.
+	defer func() {
+		err = pkt.Accept()
+		if err != nil {
+			log.Errorf("filter: failed to accept dns packet: %s", err)
+		}
+	}()
+
+	// Check if packet has a question.
+	if len(dnsPacket.Question) == 0 {
+		return
+	}
+
+	// Read create structs with the needed data.
+	question := dnsPacket.Question[0]
+	fqdn := dns.Fqdn(question.Name)
+
+	// Check for compat check dns request.
+	if strings.HasSuffix(fqdn, compat.DNSCheckInternalDomainScope) {
+		subdomain := strings.TrimSuffix(fqdn, compat.DNSCheckInternalDomainScope)
+		_ = compat.SubmitDNSCheckDomain(subdomain)
+		log.Infof("packet_handler: self-check domain received")
+		// No need to parse the answer.
+		return
+	}
+
+	// Check if there is an answer.
+	if len(dnsPacket.Answer) == 0 {
+		return
+	}
+
+	resolverInfo := &resolver.ResolverInfo{
+		Name:    "DNSRequestObserver",
+		Type:    resolver.ServerTypeFirewall,
+		Source:  resolver.ServerSourceFirewall,
+		IP:      conn.Entity.IP,
+		Domain:  conn.Entity.Domain,
+		IPScope: conn.Entity.IPScope,
+	}
+
+	rrCache := &resolver.RRCache{
+		Domain:   fqdn,
+		Question: dns.Type(question.Qtype),
+		RCode:    dnsPacket.Rcode,
+		Answer:   dnsPacket.Answer,
+		Ns:       dnsPacket.Ns,
+		Extra:    dnsPacket.Extra,
+		Resolver: resolverInfo,
+	}
+
+	query := &resolver.Query{
+		FQDN:               fqdn,
+		QType:              dns.Type(question.Qtype),
+		NoCaching:          false,
+		IgnoreFailing:      false,
+		LocalResolversOnly: false,
+		ICANNSpace:         false,
+		DomainRoot:         "",
+	}
+
+	// Save to cache
+	UpdateIPsAndCNAMEs(query, rrCache, conn)
 }
 
 func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {

@@ -188,7 +188,7 @@ func (q *Queue) packetHandler(ctx context.Context) func(nfqueue.Attribute) int {
 			return 0
 		}
 
-		if err := pmpacket.Parse(*attrs.Payload, &pkt.Base); err != nil {
+		if err := pmpacket.ParseLayer3(*attrs.Payload, &pkt.Base); err != nil {
 			log.Warningf("nfqueue: failed to parse payload: %s", err)
 			_ = pkt.Drop()
 			return 0

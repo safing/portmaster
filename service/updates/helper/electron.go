@@ -48,9 +48,9 @@ func EnsureChromeSandboxPermissions(reg *updater.ResourceRegistry) error {
 	sandboxFile := filepath.Join(unpackedPath, "chrome-sandbox")
 	if err := os.Chmod(sandboxFile, 0o0755|os.ModeSetuid); err != nil {
 		log.Errorf(suidBitWarning, 0o0755|os.ModeSetuid, sandboxFile)
-
 		return fmt.Errorf("failed to chmod: %w", err)
 	}
+
 	log.Debugf("updates: fixed SUID permission for chrome-sandbox")
 
 	return nil

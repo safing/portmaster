@@ -29,6 +29,8 @@ type ResolverModule struct { //nolint
 	failingResolverWorkerMgr   *mgr.WorkerMgr
 	suggestUsingStaleCacheTask *mgr.WorkerMgr
 
+	isDisabled atomic.Bool
+
 	states *mgr.StateMgr
 }
 
@@ -50,6 +52,10 @@ func (rm *ResolverModule) Start() error {
 // Stop stops the module.
 func (rm *ResolverModule) Stop() error {
 	return nil
+}
+
+func (rm *ResolverModule) IsDisabled() bool {
+	return rm.isDisabled.Load()
 }
 
 func prep() error {
