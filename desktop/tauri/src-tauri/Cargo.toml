@@ -1,33 +1,33 @@
 [package]
-name = "app"
+name = "portmaster"
 version = "0.1.0"
 description = "Portmaster UI"
 authors = ["Safing"]
 license = ""
 repository = ""
-default-run = "app"
+default-run = "portmaster"
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.64"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { version = "2.0.0-rc.7", features = [] }
+tauri-build = { version = "2.0.1", features = [] }
 
 [dependencies]
 # Tauri
-tauri = { version = "2.0.0-rc.8", features = ["tray-icon", "image-png", "config-json5", "devtools"] }
-tauri-plugin-shell = "2.0.0-rc"
-tauri-plugin-dialog = "2.0.0-rc"
-tauri-plugin-clipboard-manager = "2.0.0-rc"
-tauri-plugin-os = "2.0.0-rc"
-tauri-plugin-single-instance = "2.0.0-rc"
-tauri-plugin-notification = "2.0.0-rc"
-tauri-plugin-log = "2.0.0-rc"
-tauri-plugin-window-state = "2.0.0-rc"
+tauri = { version = "2.0.1", features = ["tray-icon", "image-png", "config-json5", "devtools"] }
+tauri-plugin-shell = "2.0.1"
+tauri-plugin-dialog = "2.0.1"
+tauri-plugin-clipboard-manager = "2.0.1"
+tauri-plugin-os = "2.0.1"
+tauri-plugin-single-instance = "2.0.1"
+tauri-plugin-notification = "2.0.1"
+tauri-plugin-log = "2.0.1"
+tauri-plugin-window-state = "2.0.1"
 
-tauri-cli = "2.0.0-rc.8"
-clap = { version = "4" }
+tauri-cli = "2.0.1"
+clap_lex = "0.7.2"
 
 # General
 serde_json = "1.0"
@@ -80,3 +80,6 @@ ctor = "0.2.6"
 # If you use cargo directly instead of tauri's cli you can use this feature flag to switch between tauri's `dev` and `build` modes.
 # DO NOT REMOVE!!
 custom-protocol = [ "tauri/custom-protocol" ]
+
+[package.metadata.clippy]
+allow = ["clippy::collapsible_else_if"]

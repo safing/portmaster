@@ -8,6 +8,7 @@ import (
 
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/updates"
 )
 
 type Broadcasts struct {
@@ -91,4 +92,6 @@ func New(instance instance) (*Broadcasts, error) {
 	return module, nil
 }
 
-type instance interface{}
+type instance interface {
+	IntelUpdates() *updates.Updater
+}

@@ -2,6 +2,7 @@ package log
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"sync"
@@ -32,6 +33,26 @@ import (
 
 // Severity describes a log level.
 type Severity uint32
+
+func (s Severity) toSLogLevel() slog.Level {
+	// Convert to slog level.
+	switch s {
+	case TraceLevel:
+		return slog.LevelDebug
+	case DebugLevel:
+		return slog.LevelDebug
+	case InfoLevel:
+		return slog.LevelInfo
+	case WarningLevel:
+		return slog.LevelWarn
+	case ErrorLevel:
+		return slog.LevelError
+	case CriticalLevel:
+		return slog.LevelError
+	}
+	// Failed to convert, return default log level
+	return slog.LevelWarn
+}
 
 // Message describes a log level message and is implemented
 // by logLine.
@@ -105,10 +126,6 @@ var (
 	logLevelInt = uint32(InfoLevel)
 	logLevel    = &logLevelInt
 
-	pkgLevelsActive = abool.NewBool(false)
-	pkgLevels       = make(map[string]Severity)
-	pkgLevelsLock   sync.Mutex
-
 	logsWaiting     = make(chan struct{}, 1)
 	logsWaitingFlag = abool.NewBool(false)
 
@@ -120,19 +137,6 @@ var (
 	started       = abool.NewBool(false)
 	startedSignal = make(chan struct{})
 )
-
-// SetPkgLevels sets individual log levels for packages. Only effective after Start().
-func SetPkgLevels(levels map[string]Severity) {
-	pkgLevelsLock.Lock()
-	pkgLevels = levels
-	pkgLevelsLock.Unlock()
-	pkgLevelsActive.Set()
-}
-
-// UnSetPkgLevels removes all individual log levels for packages.
-func UnSetPkgLevels() {
-	pkgLevelsActive.UnSet()
-}
 
 // GetLogLevel returns the current log level.
 func GetLogLevel() Severity {
@@ -187,47 +191,36 @@ func ParseLevel(level string) Severity {
 }
 
 // Start starts the logging system. Must be called in order to see logs.
-func Start() (err error) {
+func Start(level string, logToStdout bool, logDir string) (err error) {
 	if !initializing.SetToIf(false, true) {
 		return nil
 	}
 
-	logBuffer = make(chan *logLine, 1024)
-
-	if logLevelFlag != "" {
-		initialLogLevel := ParseLevel(logLevelFlag)
+	// Parse log level argument.
+	initialLogLevel := InfoLevel
+	if level != "" {
+		initialLogLevel = ParseLevel(level)
 		if initialLogLevel == 0 {
-			fmt.Fprintf(os.Stderr, "log warning: invalid log level \"%s\", falling back to level info\n", logLevelFlag)
+			fmt.Fprintf(os.Stderr, "log warning: invalid log level %q, falling back to level info\n", level)
 			initialLogLevel = InfoLevel
 		}
+	}
 
-		SetLogLevel(initialLogLevel)
+	// Setup writer.
+	if logToStdout {
+		GlobalWriter = NewStdoutWriter()
 	} else {
-		// Setup slog here for the transition period.
-		setupSLog(GetLogLevel())
+		// Create file log writer.
+		var err error
+		GlobalWriter, err = NewFileWriter(logDir)
+		if err != nil {
+			return fmt.Errorf("failed to initialize log file: %w", err)
+		}
 	}
 
-	// get and set file loglevels
-	pkgLogLevels := pkgLogLevelsFlag
-	if len(pkgLogLevels) > 0 {
-		newPkgLevels := make(map[string]Severity)
-		for _, pair := range strings.Split(pkgLogLevels, ",") {
-			splitted := strings.Split(pair, "=")
-			if len(splitted) != 2 {
-				err = fmt.Errorf("log warning: invalid file log level \"%s\", ignoring", pair)
-				fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-				break
-			}
-			fileLevel := ParseLevel(splitted[1])
-			if fileLevel == 0 {
-				err = fmt.Errorf("log warning: invalid file log level \"%s\", ignoring", pair)
-				fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-				break
-			}
-			newPkgLevels[splitted[0]] = fileLevel
-		}
-		SetPkgLevels(newPkgLevels)
-	}
+	// Init logging systems.
+	SetLogLevel(initialLogLevel)
+	logBuffer = make(chan *logLine, 1024)
 
 	if !schedulingEnabled {
 		close(writeTrigger)
@@ -236,6 +229,14 @@ func Start() (err error) {
 
 	started.Set()
 	close(startedSignal)
+
+	// Delete all logs older than one month.
+	if !logToStdout {
+		err = CleanOldLogs(logDir, 30*24*time.Hour)
+		if err != nil {
+			Errorf("log: failed to clean old log files: %s", err)
+		}
+	}
 
 	return err
 }
@@ -246,4 +247,5 @@ func Shutdown() {
 		close(shutdownSignal)
 	}
 	shutdownWaitGroup.Wait()
+	GlobalWriter.Close()
 }

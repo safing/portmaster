@@ -16,6 +16,7 @@ import (
 	_ "github.com/safing/portmaster/service/status"
 	_ "github.com/safing/portmaster/service/sync"
 	_ "github.com/safing/portmaster/service/ui"
+	"github.com/safing/portmaster/service/updates"
 )
 
 // Core is the core service module.
@@ -113,5 +114,8 @@ func New(instance instance) (*Core, error) {
 
 type instance interface {
 	Shutdown()
+	Restart()
 	AddWorkerInfoToDebugInfo(di *debug.Info)
+	BinaryUpdates() *updates.Updater
+	IntelUpdates() *updates.Updater
 }

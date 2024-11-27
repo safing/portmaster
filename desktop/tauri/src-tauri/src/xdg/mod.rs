@@ -18,7 +18,6 @@ use std::{
 };
 use thiserror::Error;
 
-use dirs;
 use ini::{Ini, ParseOption};
 
 static mut GTK_DEFAULT_THEME: Option<*mut GtkIconTheme> = None;
@@ -146,7 +145,7 @@ pub fn get_app_info(process_info: ProcessInfo) -> Result<AppInfo> {
             .unwrap()
             .insert(process_info.exec_path, None);
 
-        Err(Error::new(ErrorKind::NotFound, format!("failed to find app info")).into())
+        Err(Error::new(ErrorKind::NotFound, "failed to find app info".to_string()).into())
     } else {
         // sort matches by length
         matches.sort_by(|a, b| a.1.cmp(&b.1));
@@ -178,7 +177,7 @@ pub fn get_app_info(process_info: ProcessInfo) -> Result<AppInfo> {
             };
         }
 
-        Err(Error::new(ErrorKind::NotFound, format!("failed to find app info")).into())
+        Err(Error::new(ErrorKind::NotFound, "failed to find app info".to_string()).into())
     }
 }
 
@@ -336,7 +335,7 @@ fn try_get_app_info(
         }
     }
 
-    if result.len() > 0 {
+    if !result.is_empty() {
         Ok(result)
     } else {
         Err(Error::new(ErrorKind::NotFound, "no matching .desktop files found").into())
@@ -393,7 +392,7 @@ fn get_icon_as_png_dataurl(name: &str, size: i8) -> Result<(String, String)> {
     //      - network
     //
     name_without_ext
-        .split("-")
+        .split('-')
         .for_each(|part| icons.push(part));
 
     for name in icons {
@@ -554,15 +553,7 @@ mod tests {
                         matching_path: bin.clone(),
                         pid: 0,
                     })
-                    .expect(
-                        format!(
-                            "expected to find app info for {} ({})",
-                            bin,
-                            cmd.to_string()
-                        )
-                        .as_str(),
-                    );
-
+                    .unwrap_or_else(|_| panic!("expected to find app info for {} ({})", bin, cmd));
                     let empty_string = String::from("");
 
                     // just make sure all fields are populated

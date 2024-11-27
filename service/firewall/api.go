@@ -11,14 +11,11 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/base/api"
-	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/process"
-	"github.com/safing/portmaster/service/updates"
 )
 
 const (
@@ -39,15 +36,12 @@ For production use please create an API key in the settings.`
 )
 
 var (
-	dataRoot *utils.DirStructure
-
 	apiPortSet bool
 	apiIP      net.IP
 	apiPort    uint16
 )
 
 func prepAPIAuth() error {
-	dataRoot = dataroot.Root()
 	return api.SetAuthenticator(apiAuthenticator)
 }
 
@@ -133,7 +127,7 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 	var originalPid int
 
 	// Get authenticated path.
-	authenticatedPath := updates.RootPath()
+	authenticatedPath := module.instance.BinaryUpdates().GetMainDir()
 	if authenticatedPath == "" {
 		return false, fmt.Errorf(deniedMsgMisconfigured, api.ErrAPIAccessDeniedMessage) //nolint:stylecheck // message for user
 	}
@@ -215,7 +209,7 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 		return false, fmt.Errorf(deniedMsgSystem, api.ErrAPIAccessDeniedMessage) //nolint:stylecheck // message for user
 
 	default: // normal process
-		log.Tracer(ctx).Warningf("filter: denying api access to %s - also checked %s (trusted root is %s)", procsChecked[0], strings.Join(procsChecked[1:], " "), dataRoot.Path)
+		log.Tracer(ctx).Warningf("filter: denying api access to %s - also checked %s (trusted root is %s)", procsChecked[0], strings.Join(procsChecked[1:], " "), module.instance.BinDir())
 		return false, fmt.Errorf( //nolint:stylecheck // message for user
 			deniedMsgUnauthorized,
 			api.ErrAPIAccessDeniedMessage,

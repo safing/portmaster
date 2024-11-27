@@ -10,7 +10,6 @@ import (
 	"github.com/shirou/gopsutil/mem"
 
 	"github.com/safing/portmaster/base/api"
-	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
 )
 
@@ -209,18 +208,9 @@ func getDiskStat() *disk.UsageStat {
 		return diskStat
 	}
 
-	// Check if we have a data root.
-	dataRoot := dataroot.Root()
-	if dataRoot == nil {
-		log.Warning("metrics: cannot get disk stats without data root")
-		diskStat = nil
-		diskStatExpires = time.Now().Add(hostStatTTL)
-		return diskStat
-	}
-
 	// Refresh.
 	var err error
-	diskStat, err = disk.Usage(dataRoot.Path)
+	diskStat, err = disk.Usage(module.instance.DataDir())
 	if err != nil {
 		log.Warningf("metrics: failed to get load avg: %s", err)
 		diskStat = nil

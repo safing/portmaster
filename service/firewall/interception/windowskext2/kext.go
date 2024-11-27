@@ -62,6 +62,9 @@ func GetKextServiceHandle() windows.Handle {
 
 // Stop intercepting.
 func Stop() error {
+	if kextFile == nil {
+		return fmt.Errorf("kextfile is nil")
+	}
 	// Prepare kernel for shutdown
 	err := shutdownRequest()
 	if err != nil {

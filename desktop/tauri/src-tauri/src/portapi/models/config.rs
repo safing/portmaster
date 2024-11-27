@@ -1,5 +1,5 @@
-use serde::*;
 use super::super::message::Payload;
+use serde::*;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct BooleanValue {
@@ -13,6 +13,6 @@ impl TryInto<Payload> for BooleanValue {
     fn try_into(self) -> Result<Payload, Self::Error> {
         let str = serde_json::to_string(&self)?;
 
-        Ok(Payload::JSON(str))
+        Ok(Payload::Json(str))
     }
 }

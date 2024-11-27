@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	err = InitializeWithPath(testDir)
+	err = Initialize(testDir)
 	if err != nil {
 		panic(err)
 	}

@@ -3,7 +3,6 @@ package log
 import (
 	"fmt"
 	"runtime"
-	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -25,6 +24,11 @@ func log(level Severity, msg string, tracer *ContextTracer) {
 		return
 	}
 
+	// Check log level.
+	if uint32(level) < atomic.LoadUint32(logLevel) {
+		return
+	}
+
 	// get time
 	now := time.Now()
 
@@ -39,31 +43,6 @@ func log(level Severity, msg string, tracer *ContextTracer) {
 		} else {
 			file = ""
 		}
-	}
-
-	// check if level is enabled for file or generally
-	if pkgLevelsActive.IsSet() {
-		pathSegments := strings.Split(file, "/")
-		if len(pathSegments) < 2 {
-			// file too short for package levels
-			return
-		}
-		pkgLevelsLock.Lock()
-		severity, ok := pkgLevels[pathSegments[len(pathSegments)-2]]
-		pkgLevelsLock.Unlock()
-		if ok {
-			if level < severity {
-				return
-			}
-		} else {
-			// no package level set, check against global level
-			if uint32(level) < atomic.LoadUint32(logLevel) {
-				return
-			}
-		}
-	} else if uint32(level) < atomic.LoadUint32(logLevel) {
-		// no package levels set, check against global level
-		return
 	}
 
 	// create log object
@@ -101,13 +80,7 @@ func log(level Severity, msg string, tracer *ContextTracer) {
 }
 
 func fastcheck(level Severity) bool {
-	if pkgLevelsActive.IsSet() {
-		return true
-	}
-	if uint32(level) >= atomic.LoadUint32(logLevel) {
-		return true
-	}
-	return false
+	return uint32(level) >= atomic.LoadUint32(logLevel)
 }
 
 // Trace is used to log tiny steps. Log traces to context if you can!

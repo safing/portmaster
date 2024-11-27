@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <DirectoryRef Id="TARGETDIR">
+      <Directory Id="CommonAppDataFolder" Name="CommonAppData">
+        <Directory Id="PortmasterDir" Name="Portmaster">
+          <Directory Id="IntelDir" Name="intel" />
+        </Directory>
+      </Directory>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <Component Id="BinaryFiles" Directory="INSTALLDIR" Guid="850cdd31-424d-45f5-b8f0-95df950ebd0d">
+      <File Id="BinIndexJson" Source="..\..\..\..\binary\bin-index.json" />
+      <File Id="PortmasterCoreExe" Source="..\..\..\..\binary\portmaster-core.exe" />
+      <File Id="PortmasterKextSys" Source="..\..\..\..\binary\portmaster-kext.sys" />
+      <File Id="PortmasterZip" Source="..\..\..\..\binary\portmaster.zip" />
+      <File Id="AssetsZip" Source="..\..\..\..\binary\assets.zip" />
+    </Component>
+
+    <Component Id="IntelFiles" Directory="IntelDir" Guid="0bb439f1-2075-45b0-95bf-78ed3dffeb69">
+      <File Id="IntelIndexJson" Source="..\..\..\..\intel\intel-index.json" />
+      <File Id="BaseDsdl" Source="..\..\..\..\intel\base.dsdl" />
+      <File Id="Geoipv4Mmdb" Source="..\..\..\..\intel\geoipv4.mmdb" />
+      <File Id="Geoipv6Mmdb" Source="..\..\..\..\intel\geoipv6.mmdb" />
+      <File Id="IndexDsd" Source="..\..\..\..\intel\index.dsd" />
+      <File Id="IntermediateDsdl" Source="..\..\..\..\intel\intermediate.dsdl" />
+      <File Id="UrgentDsdl" Source="..\..\..\..\intel\urgent.dsdl" />
+    </Component>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="BinaryAndIntelFiles">
+      <ComponentRef Id="BinaryFiles" />
+      <ComponentRef Id="IntelFiles" />
+    </ComponentGroup>
+  </Fragment>
+</Wix>

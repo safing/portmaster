@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/safing/portmaster/base/dataroot"
-	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/base/utils/debug"
 	"github.com/safing/portmaster/service/mgr"
 )
@@ -19,29 +17,13 @@ import (
 // ChangeEvent is the name of the config change event.
 const ChangeEvent = "config change"
 
-var (
-	dataRoot *utils.DirStructure
-
-	exportConfig bool
-)
-
-// SetDataRoot sets the data root from which the updates module derives its paths.
-func SetDataRoot(root *utils.DirStructure) {
-	if dataRoot == nil {
-		dataRoot = root
-	}
-}
+var exportConfig bool
 
 func init() {
 	flag.BoolVar(&exportConfig, "export-config-options", false, "export configuration registry and exit")
 }
 
 func prep() error {
-	SetDataRoot(dataroot.Root())
-	if dataRoot == nil {
-		return errors.New("data root is not set")
-	}
-
 	if exportConfig {
 		module.instance.SetCmdLineOperation(exportConfigCmd)
 		return mgr.ErrExecuteCmdLineOp
@@ -51,7 +33,7 @@ func prep() error {
 }
 
 func start() error {
-	configFilePath = filepath.Join(dataRoot.Path, "config.json")
+	configFilePath = filepath.Join(module.instance.DataDir(), "config.json")
 
 	// Load log level from log package after it started.
 	err := loadLogLevel()
@@ -135,21 +117,4 @@ func GetActiveConfigValues() map[string]interface{} {
 	})
 
 	return values
-}
-
-// InitializeUnitTestDataroot initializes a new random tmp directory for running tests.
-func InitializeUnitTestDataroot(testName string) (string, error) {
-	basePath, err := os.MkdirTemp("", fmt.Sprintf("portmaster-%s", testName))
-	if err != nil {
-		return "", fmt.Errorf("failed to make tmp dir: %w", err)
-	}
-
-	ds := utils.NewDirStructure(basePath, 0o0755)
-	SetDataRoot(ds)
-	err = dataroot.Initialize(basePath, 0o0755)
-	if err != nil {
-		return "", fmt.Errorf("failed to initialize dataroot: %w", err)
-	}
-
-	return basePath, nil
 }

@@ -2,12 +2,14 @@ package ui
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 
 	"github.com/safing/portmaster/base/api"
-	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/updates"
 )
 
 func prep() error {
@@ -27,7 +29,8 @@ func start() error {
 	// may seem dangerous, but proper permission on the parent directory provide
 	// (some) protection.
 	// Processes must _never_ read from this directory.
-	err := dataroot.Root().ChildDir("exec", 0o0777).Ensure()
+	execDir := filepath.Join(module.instance.DataDir(), "exec")
+	err := os.MkdirAll(execDir, 0o0777) //nolint:gosec // This is intentional.
 	if err != nil {
 		log.Warningf("ui: failed to create safe exec dir: %s", err)
 	}
@@ -56,7 +59,10 @@ func (ui *UI) Stop() error {
 	return nil
 }
 
-var shimLoaded atomic.Bool
+var (
+	shimLoaded atomic.Bool
+	module     *UI
+)
 
 // New returns a new UI module.
 func New(instance instance) (*UI, error) {
@@ -64,7 +70,7 @@ func New(instance instance) (*UI, error) {
 		return nil, errors.New("only one instance allowed")
 	}
 	m := mgr.New("UI")
-	module := &UI{
+	module = &UI{
 		mgr:      m,
 		instance: instance,
 	}
@@ -77,5 +83,7 @@ func New(instance instance) (*UI, error) {
 }
 
 type instance interface {
+	DataDir() string
 	API() *api.API
+	BinaryUpdates() *updates.Updater
 }

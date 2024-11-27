@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -111,6 +112,9 @@ func (ii *InstallInfo) checkVersion() {
 // MakeNumericVersion makes a numeric version with the first three version
 // segment always using three digits.
 func MakeNumericVersion(version string) (numericVersion int64, err error) {
+	// Remove any comments.
+	version = strings.SplitN(version, " ", 2)[0]
+
 	// Parse version string.
 	ver, err := semver.NewVersion(version)
 	if err != nil {

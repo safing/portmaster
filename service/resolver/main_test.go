@@ -22,13 +22,11 @@ type testInstance struct {
 	base    *base.Base
 	api     *api.API
 	config  *config.Config
-	updates *updates.Updates
+	updates *updates.Updater
 	netenv  *netenv.NetEnv
 }
 
-// var _ instance = &testInstance{}
-
-func (stub *testInstance) Updates() *updates.Updates {
+func (stub *testInstance) IntelUpdates() *updates.Updater {
 	return stub.updates
 }
 
@@ -70,6 +68,16 @@ func runTest(m *testing.M) error {
 	}
 	defer func() { _ = os.RemoveAll(ds) }()
 
+	installDir, err := os.MkdirTemp("", "resolver_installdir")
+	if err != nil {
+		return fmt.Errorf("failed to create tmp install dir: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(installDir) }()
+	err = updates.GenerateMockFolder(installDir, "Test Intel", "1.0.0")
+	if err != nil {
+		return fmt.Errorf("failed to generate mock installation: %w", err)
+	}
+
 	stub := &testInstance{}
 	stub.db, err = dbmodule.New(stub)
 	if err != nil {
@@ -91,7 +99,10 @@ func runTest(m *testing.M) error {
 	if err != nil {
 		return fmt.Errorf("failed to create netenv: %w", err)
 	}
-	stub.updates, err = updates.New(stub)
+	stub.updates, err = updates.New(stub, "Test Intel", updates.Config{
+		Directory: installDir,
+		IndexFile: "index.json",
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create updates: %w", err)
 	}

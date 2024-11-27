@@ -6,7 +6,6 @@ import (
 	"os"
 	"sync"
 
-	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/conf"
@@ -16,14 +15,14 @@ import (
 )
 
 var (
-	intelResource           *updater.File
-	intelResourcePath       = "intel/spn/main-intel.yaml"
+	intelResource           *updates.Artifact
+	intelResourceName       = "main-intel.yaml"
 	intelResourceMapName    = "main"
 	intelResourceUpdateLock sync.Mutex
 )
 
 func registerIntelUpdateHook() error {
-	module.instance.Updates().EventResourcesUpdated.AddCallback("update SPN intel", func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
+	module.instance.IntelUpdates().EventResourcesUpdated.AddCallback("update SPN intel", func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
 		return false, updateSPNIntel(wc.Ctx(), nil)
 	})
 
@@ -43,17 +42,21 @@ func updateSPNIntel(_ context.Context, _ interface{}) (err error) {
 		return fmt.Errorf("intel resource not for map %q", conf.MainMapName)
 	}
 
-	// Check if there is something to do.
-	if intelResource != nil && !intelResource.UpgradeAvailable() {
-		return nil
-	}
-
-	// Get intel file and load it from disk.
-	intelResource, err = updates.GetFile(intelResourcePath)
+	// Get possibly updated file.
+	file, err := module.instance.IntelUpdates().GetFile(intelResourceName)
 	if err != nil {
 		return fmt.Errorf("failed to get SPN intel update: %w", err)
 	}
-	intelData, err := os.ReadFile(intelResource.Path())
+
+	// Check if file is newer.
+	// Continue on check failure.
+	newer, ok := file.IsNewerThan(intelResource)
+	if ok && !newer {
+		return nil
+	}
+
+	// Load intel file from disk.
+	intelData, err := os.ReadFile(file.Path())
 	if err != nil {
 		return fmt.Errorf("failed to load SPN intel update: %w", err)
 	}
@@ -64,8 +67,15 @@ func updateSPNIntel(_ context.Context, _ interface{}) (err error) {
 		return fmt.Errorf("failed to parse SPN intel update: %w", err)
 	}
 
+	// Apply new intel.
 	setVirtualNetworkConfig(intel.VirtualNetworks)
-	return navigator.Main.UpdateIntel(intel, cfgOptionTrustNodeNodes())
+	err = navigator.Main.UpdateIntel(intel, cfgOptionTrustNodeNodes())
+	if err != nil {
+		return fmt.Errorf("failed to update intel on map: %w", err)
+	}
+
+	intelResource = file
+	return nil
 }
 
 func resetSPNIntel() {

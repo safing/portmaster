@@ -57,11 +57,12 @@ func init() {
 }
 
 func prep() error {
-	module.instance.Updates().EventResourcesUpdated.AddCallback("Check for blocklist updates",
+	module.instance.IntelUpdates().EventResourcesUpdated.AddCallback("Check for blocklist updates",
 		func(wc *mgr.WorkerCtx, s struct{}) (bool, error) {
 			if ignoreUpdateEvents.IsSet() {
 				return false, nil
 			}
+			log.Debugf("performing filter list update")
 
 			return false, tryListUpdate(wc.Ctx())
 		})
@@ -141,6 +142,6 @@ func New(instance instance) (*FilterLists, error) {
 }
 
 type instance interface {
-	Updates() *updates.Updates
+	IntelUpdates() *updates.Updater
 	NetEnv() *netenv.NetEnv
 }
