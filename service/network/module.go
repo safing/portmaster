@@ -9,10 +9,12 @@ import (
 	"sync/atomic"
 
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/firewall/interception/dnsmonitor"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/state"
 	"github.com/safing/portmaster/service/profile"
+	"github.com/safing/portmaster/service/resolver"
 )
 
 // Events.
@@ -188,4 +190,6 @@ func New(instance instance) (*Network, error) {
 
 type instance interface {
 	Profile() *profile.ProfileModule
+	Resolver() *resolver.ResolverModule
+	DNSMonitor() *dnsmonitor.DNSMonitor
 }

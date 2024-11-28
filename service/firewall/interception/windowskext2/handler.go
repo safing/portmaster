@@ -55,6 +55,7 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 				newPacket := &Packet{
 					verdictRequest: conn.ID,
 					payload:        conn.Payload,
+					payloadLayer:   conn.PayloadLayer,
 					verdictSet:     abool.NewBool(false),
 				}
 				info := newPacket.Info()

@@ -16,6 +16,7 @@ import (
 	"github.com/safing/portmaster/service/netquery"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/profile"
+	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/access"
 	"github.com/safing/portmaster/spn/captain"
@@ -35,8 +36,7 @@ func (ss *stringSliceFlag) Set(value string) error {
 var allowedClients stringSliceFlag
 
 type Firewall struct {
-	mgr *mgr.Manager
-
+	mgr      *mgr.Manager
 	instance instance
 }
 
@@ -168,4 +168,5 @@ type instance interface {
 	Access() *access.Access
 	Network() *network.Network
 	NetQuery() *netquery.NetQuery
+	Resolver() *resolver.ResolverModule
 }
