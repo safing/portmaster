@@ -18,7 +18,7 @@ type OSSpecific struct {
 // Initialize loads the dll and finds all the needed functions from it.
 func (i *OSIntegration) Initialize() error {
 	// Find path to the dll.
-	file, err := updates.GetFile("portmaster-core.dll")
+	file, err := updates.GetPlatformFile("dll/portmaster-core.dll")
 	if err != nil {
 		return err
 	}
