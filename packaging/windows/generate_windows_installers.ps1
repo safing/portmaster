@@ -53,7 +53,8 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
 }
 
 Write-Output "Downloading tauri-cli"
-Invoke-WebRequest -Uri https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v2.0.1/cargo-tauri-x86_64-pc-windows-msvc.zip -OutFile tauri-cli.zip
+
+Invoke-WebRequest -Uri https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v2.1.0/cargo-tauri-x86_64-pc-windows-msvc.zip -OutFile tauri-cli.zip
 Expand-Archive -Force tauri-cli.zip
 ./tauri-cli/cargo-tauri.exe bundle
 

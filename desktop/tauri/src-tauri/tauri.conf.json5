@@ -63,13 +63,13 @@
           "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
 
           // Binary files
-          "/usr/lib/portmaster/bin-index.json": "binary/bin-index.json",
+          "/usr/lib/portmaster/index.json": "binary/index.json",
           "/usr/lib/portmaster/portmaster-core": "binary/portmaster-core",
           "/usr/lib/portmaster/portmaster.zip": "binary/portmaster.zip",
           "/usr/lib/portmaster/assets.zip": "binary/assets.zip",
 
           // Intel files
-          "/var/lib/portmaster/intel/intel-index.json": "intel/intel-index.json",
+          "/var/lib/portmaster/intel/index.json": "intel/index.json",
           "/var/lib/portmaster/intel/base.dsdl": "intel/base.dsdl",
           "/var/lib/portmaster/intel/geoipv4.mmdb": "intel/geoipv4.mmdb",
           "/var/lib/portmaster/intel/geoipv6.mmdb": "intel/geoipv6.mmdb",
@@ -94,13 +94,13 @@
           "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
 
           // Binary files
-          "/usr/lib/portmaster/bin-index.json": "binary/bin-index.json",
+          "/usr/lib/portmaster/index.json": "binary/index.json",
           "/usr/lib/portmaster/portmaster-core": "binary/portmaster-core",
           "/usr/lib/portmaster/portmaster.zip": "binary/portmaster.zip",
           "/usr/lib/portmaster/assets.zip": "binary/assets.zip",
 
           // Intel files
-          "/var/lib/portmaster/intel/intel-index.json": "intel/intel-index.json",
+          "/var/lib/portmaster/intel/index.json": "intel/index.json",
           "/var/lib/portmaster/intel/base.dsdl": "intel/base.dsdl",
           "/var/lib/portmaster/intel/geoipv4.mmdb": "intel/geoipv4.mmdb",
           "/var/lib/portmaster/intel/geoipv6.mmdb": "intel/geoipv6.mmdb",

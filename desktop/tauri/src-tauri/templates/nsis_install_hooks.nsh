@@ -3,7 +3,7 @@
 
   SetOutPath "$INSTDIR"
 
-  File "..\..\..\..\binary\bin-index.json"
+  File "..\..\..\..\binary\index.json"
   File "..\..\..\..\binary\portmaster-core.exe"
   File "..\..\..\..\binary\portmaster-kext.sys"
   File "..\..\..\..\binary\portmaster.zip"
@@ -11,7 +11,7 @@
 
   SetOutPath "$COMMONPROGRAMDATA\Portmaster\intel"
 
-  File "..\..\..\..\intel\intel-index.json"
+  File "..\..\..\..\intel\index.json"
   File "..\..\..\..\intel\base.dsdl"
   File "..\..\..\..\intel\geoipv4.mmdb"
   File "..\..\..\..\intel\geoipv6.mmdb"
