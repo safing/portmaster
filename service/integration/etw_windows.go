@@ -19,8 +19,8 @@ type ETWFunctions struct {
 	stopOldSession    *windows.Proc
 }
 
-func initializeETW(dll *windows.DLL) (ETWFunctions, error) {
-	var functions ETWFunctions
+func initializeETW(dll *windows.DLL) (*ETWFunctions, error) {
+	functions := &ETWFunctions{}
 	var err error
 	functions.createState, err = dll.FindProc("PM_ETWCreateState")
 	if err != nil {

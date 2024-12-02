@@ -550,7 +550,11 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 			if module.instance.Resolver().IsDisabled() && conn.shouldWaitForDomain() {
 				// Flush the dns listener buffer and try again.
 				for i := range 4 {
-					_ = module.instance.DNSMonitor().Flush()
+					err = module.instance.DNSMonitor().Flush()
+					if err != nil {
+						// Error flushing, dont try again.
+						break
+					}
 					ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().RemoteIP().String())
 					if err == nil {
 						log.Tracer(pkt.Ctx()).Debugf("network: found domain from dnsmonitor after %d tries", i+1)
