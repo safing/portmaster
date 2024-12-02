@@ -5,6 +5,7 @@ package integration
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
@@ -24,14 +25,25 @@ func (i *OSIntegration) Initialize() error {
 	if err != nil {
 		log.Errorf("integration: failed to load dll: %s", err)
 
+		callbackLock := sync.Mutex{}
 		// listen for event from the updater and try to load again if any.
 		i.instance.Updates().EventResourcesUpdated.AddCallback("core-dll-loader", func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
+			// Make sure no multiple callas are executed at the same time.
+			callbackLock.Lock()
+			defer callbackLock.Unlock()
+
+			// Try to load again.
 			err = i.loadDLL()
 			if err != nil {
 				log.Errorf("integration: failed to load dll: %s", err)
+			} else {
+				log.Info("integration: initialize successful after updater event")
 			}
 			return false, nil
 		})
+
+	} else {
+		log.Info("integration: initialize successful")
 	}
 	return nil
 }

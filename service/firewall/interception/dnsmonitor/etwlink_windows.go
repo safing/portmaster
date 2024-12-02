@@ -68,6 +68,10 @@ func (l *ETWSession) IsRunning() bool {
 
 // FlushTrace flushes the trace buffer.
 func (l *ETWSession) FlushTrace() error {
+	if l.i == nil {
+		return fmt.Errorf("session not initialized")
+	}
+
 	l.shutdownMutex.Lock()
 	defer l.shutdownMutex.Unlock()
 
@@ -86,6 +90,9 @@ func (l *ETWSession) StopTrace() error {
 
 // DestroySession closes the session and frees the allocated memory. Listener cannot be used after this function is called.
 func (l *ETWSession) DestroySession() error {
+	if l.i == nil {
+		return fmt.Errorf("session not initialized")
+	}
 	l.shutdownMutex.Lock()
 	defer l.shutdownMutex.Unlock()
 

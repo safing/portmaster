@@ -52,6 +52,9 @@ func initializeSessions(module *DNSMonitor, listener *Listener) error {
 }
 
 func (l *Listener) flush() error {
+	if l.etw == nil {
+		return fmt.Errorf("etw not initialized")
+	}
 	return l.etw.FlushTrace()
 }
 
