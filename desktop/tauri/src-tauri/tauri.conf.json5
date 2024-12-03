@@ -28,12 +28,12 @@
           "takesValue": true
         },
         {
-          "name": "with-notifications",
-          "description": "Enable experimental notifications via Tauri. Replaces the notifier app."
+          "name": "no-notifications",
+          "description": "Disable notifications via Tauri."
         },
         {
-          "name": "with-prompts",
-          "description": "Enable experimental prompt support via Tauri. Replaces the notifier app."
+          "name": "no-prompts",
+          "description": "Disable prompt support via Tauri."
         },
       ]
     }

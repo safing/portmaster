@@ -37,7 +37,7 @@ func (i *OSIntegration) Initialize() error {
 	return nil
 }
 
-// CleanUp releases any resourses allocated during initializaion.
+// CleanUp releases any resources allocated during initialization.
 func (i *OSIntegration) CleanUp() error {
 	if i.os.dll != nil {
 		return i.os.dll.Release()

@@ -474,10 +474,11 @@ tauri-build:
     # Binaries
     SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/portmaster" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster"
     SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/portmaster.exe" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/portmaster.exe"
-    # SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/WebView2Loader.dll" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/WebView2Loader.dll"
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/WebView2Loader.dll" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/WebView2Loader.dll"
 
     SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/portmaster" ./output/portmaster
     SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/portmaster.exe" ./output/portmaster.exe
+    SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/WebView2Loader.dll" ./output/WebView2Loader.dll
 
 
 tauri-release:
@@ -517,9 +518,11 @@ release-prep:
 
     # Windows specific
     COPY (+tauri-build/output/portmaster.exe --target="x86_64-pc-windows-gnu") ./output/binary/windows_amd64/portmaster.exe
+    COPY (+tauri-build/output/WebView2Loader.dll --target="x86_64-pc-windows-gnu") ./output/binary/windows_amd64/WebView2Loader.dll
     COPY (+go-build/output/portmaster-core.exe --GOARCH=amd64 --GOOS=windows --CMDS=portmaster-core) ./output/binary/windows_amd64/portmaster-core.exe
-    # TODO(vladimir): figure out a way to get the lastest release of the kext.
-    RUN touch ./output/binary/windows_amd64/portmaster-kext.sys
+    # TODO(vladimir): figure out a way to get the lastest release of the kext and dll.
+    RUN wget -O ./output/binary/windows_amd64/portmaster-kext.sys https://updates.safing.io/windows_amd64/kext/portmaster-kext_v2-0-4.sys
+    RUN touch ./output/binary/windows_amd64/portmaster-core.dll
 
     # All platforms
     COPY (+assets/assets.zip) ./output/binary/all/assets.zip

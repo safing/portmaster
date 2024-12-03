@@ -2,6 +2,7 @@ use crate::portapi::client::*;
 use crate::portapi::message::*;
 use crate::portapi::models::notification::*;
 use crate::portapi::types::*;
+use log::debug;
 use log::error;
 use serde_json::json;
 use tauri::async_runtime;
@@ -25,12 +26,12 @@ pub async fn notification_handler(cli: PortAPI) {
                     Ok(n) => {
                         // Skip if this one should not be shown using the system notifications
                         if !n.show_on_system {
-                            return;
+                            continue;
                         }
 
                         // Skip if this action has already been acted on
-                        if n.selected_action_id.is_empty() {
-                            return;
+                        if !n.selected_action_id.is_empty() {
+                            continue;
                         }
                         show_notification(&cli, key, n).await;
                     }

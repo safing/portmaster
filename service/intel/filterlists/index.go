@@ -238,14 +238,14 @@ func updateListIndex() error {
 func ResolveListIDs(ids []string) ([]string, error) {
 	index, err := getListIndexFromCache()
 	if err != nil {
-		if errors.Is(err, database.ErrNotFound) {
-			if err := updateListIndex(); err != nil {
-				return nil, err
-			}
+		// if errors.Is(err, database.ErrNotFound) {
+		// 	if err := updateListIndex(); err != nil {
+		// 		return nil, err
+		// 	}
 
-			// retry resolving IDs
-			return ResolveListIDs(ids)
-		}
+		// 	// retry resolving IDs
+		// 	return ResolveListIDs(ids)
+		// }
 
 		log.Errorf("failed to resolved ids %v: %s", ids, err)
 		return nil, err
