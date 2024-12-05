@@ -79,7 +79,7 @@ func (l *Listener) stop() error {
 	return nil
 }
 
-func (l *Listener) processEvent(domain string, result string) {
+func (l *Listener) processEvent(domain string, _pid uint32, result string) {
 	if processIfSelfCheckDomain(dns.Fqdn(domain)) {
 		// Not need to process result.
 		return

@@ -22,7 +22,7 @@ static const GUID PORTMASTER_ETW_SESSION_GUID = {
 #define LOGSESSION_NAME L"PortmasterDNSEventListener"
 
 // Fuction type of the callback that will be called on each event.
-typedef uint64_t(*GoEventRecordCallback)(wchar_t* domain, wchar_t* result);
+typedef uint64_t(*GoEventRecordCallback)(wchar_t* domain, uint32_t pid, wchar_t* result);
 
 // Holds the state of the ETW Session.
 struct ETWSessionState {
@@ -41,7 +41,7 @@ static bool getPropertyValue(PEVENT_RECORD evt, LPWSTR prop, PBYTE* pData) {
     DataDescriptor.ArrayIndex = 0;
 
     DWORD PropertySize = 0;
-    // Check if the data is avaliable and what is the size of it.
+    // Check if the data is available and what is the size of it.
     DWORD status =
         TdhGetPropertySize(evt, 0, NULL, 1, &DataDescriptor, &PropertySize);
     if (ERROR_SUCCESS != status) {
@@ -79,7 +79,7 @@ static void WINAPI EventRecordCallback(PEVENT_RECORD eventRecord) {
     ETWSessionState* state = (ETWSessionState*)eventRecord->UserContext;
 
     if (resultValue != NULL && domainValue != NULL) {
-        state->callback((wchar_t*)domainValue, (wchar_t*)resultValue);
+        state->callback((wchar_t*)domainValue, eventRecord->EventHeader.ProcessId, (wchar_t*)resultValue);
     }
 
     free(resultValue);
@@ -160,7 +160,7 @@ extern "C" {
             EVENT_TRACE_CONTROL_STOP);
     }
 
-    // PM_ETWFlushTrace Closes the session and frees resourses.
+    // PM_ETWFlushTrace Closes the session and frees recourses.
     __declspec(dllexport) uint32_t PM_ETWDestroySession(ETWSessionState* state) {
         if (state == NULL) {
             return 1;
