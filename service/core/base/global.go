@@ -8,6 +8,7 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -54,7 +55,7 @@ func prep(instance instance) error {
 		}
 
 		// initialize structure
-		err := dataroot.Initialize(dataDir, 0o0755)
+		err := dataroot.Initialize(dataDir, utils.PublicReadPermission)
 		if err != nil {
 			return err
 		}

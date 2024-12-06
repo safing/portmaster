@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/safing/portmaster/base/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +25,7 @@ var cleanStructureCmd = &cobra.Command{
 }
 
 func cleanAndEnsureExecDir() error {
-	execDir := dataRoot.ChildDir("exec", 0o777)
+	execDir := dataRoot.ChildDir("exec", utils.PublicWritePermission)
 
 	// Clean up and remove exec dir.
 	err := os.RemoveAll(execDir.Path)

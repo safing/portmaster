@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/base/utils"
 )
 
 var (
@@ -63,7 +64,7 @@ func release(cmd *cobra.Command, args []string) error {
 			fmt.Println("aborted...")
 			return nil
 		}
-		symlinksDir := registry.StorageDir().ChildDir("latest", 0o755)
+		symlinksDir := registry.StorageDir().ChildDir("latest", utils.PublicReadPermission)
 		err = registry.CreateSymlinks(symlinksDir)
 		if err != nil {
 			return err

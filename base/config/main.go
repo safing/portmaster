@@ -144,9 +144,9 @@ func InitializeUnitTestDataroot(testName string) (string, error) {
 		return "", fmt.Errorf("failed to make tmp dir: %w", err)
 	}
 
-	ds := utils.NewDirStructure(basePath, 0o0755)
+	ds := utils.NewDirStructure(basePath, utils.PublicReadPermission)
 	SetDataRoot(ds)
-	err = dataroot.Initialize(basePath, 0o0755)
+	err = dataroot.Initialize(basePath, utils.PublicReadPermission)
 	if err != nil {
 		return "", fmt.Errorf("failed to initialize dataroot: %w", err)
 	}

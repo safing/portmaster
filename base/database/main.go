@@ -25,7 +25,7 @@ var (
 
 // InitializeWithPath initializes the database at the specified location using a path.
 func InitializeWithPath(dirPath string) error {
-	return Initialize(utils.NewDirStructure(dirPath, 0o0755))
+	return Initialize(utils.NewDirStructure(dirPath, utils.PublicReadPermission))
 }
 
 // Initialize initializes the database at the specified location using a dir structure.
@@ -34,7 +34,7 @@ func Initialize(dirStructureRoot *utils.DirStructure) error {
 		rootStructure = dirStructureRoot
 
 		// ensure root and databases dirs
-		databasesStructure = rootStructure.ChildDir(databasesSubDir, 0o0700)
+		databasesStructure = rootStructure.ChildDir(databasesSubDir, utils.AdminOnlyPermission)
 		err := databasesStructure.Ensure()
 		if err != nil {
 			return fmt.Errorf("could not create/open database directory (%s): %w", rootStructure.Path, err)
@@ -67,7 +67,7 @@ func Shutdown() (err error) {
 
 // getLocation returns the storage location for the given name and type.
 func getLocation(name, storageType string) (string, error) {
-	location := databasesStructure.ChildDir(name, 0o0700).ChildDir(storageType, 0o0700)
+	location := databasesStructure.ChildDir(name, utils.AdminOnlyPermission).ChildDir(storageType, utils.AdminOnlyPermission)
 	// check location
 	err := location.Ensure()
 	if err != nil {

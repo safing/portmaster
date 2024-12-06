@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 		DevMode:        true,
 		Online:         true,
 	}
-	err = registry.Initialize(utils.NewDirStructure(tmpDir, 0o0777))
+	err = registry.Initialize(utils.NewDirStructure(tmpDir, utils.PublicWritePermission))
 	if err != nil {
 		panic(err)
 	}

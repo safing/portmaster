@@ -13,13 +13,13 @@ func ExampleDirStructure() {
 	// output:
 	// / [755]
 	// /repo [777]
-	// /repo/b [707]
-	// /repo/b/c [750]
-	// /repo/b/d [707]
-	// /repo/b/d/e [707]
-	// /repo/b/d/f [707]
-	// /repo/b/d/f/g [707]
-	// /repo/b/d/f/g/h [707]
+	// /repo/b [755]
+	// /repo/b/c [777]
+	// /repo/b/d [755]
+	// /repo/b/d/e [755]
+	// /repo/b/d/f [755]
+	// /repo/b/d/f/g [755]
+	// /repo/b/d/f/g/h [755]
 	// /secret [700]
 
 	basePath, err := os.MkdirTemp("", "")
@@ -28,12 +28,12 @@ func ExampleDirStructure() {
 		return
 	}
 
-	ds := NewDirStructure(basePath, 0o0755)
-	secret := ds.ChildDir("secret", 0o0700)
-	repo := ds.ChildDir("repo", 0o0777)
-	_ = repo.ChildDir("a", 0o0700)
-	b := repo.ChildDir("b", 0o0707)
-	c := b.ChildDir("c", 0o0750)
+	ds := NewDirStructure(basePath, PublicReadPermission)
+	secret := ds.ChildDir("secret", AdminOnlyPermission)
+	repo := ds.ChildDir("repo", PublicWritePermission)
+	_ = repo.ChildDir("a", AdminOnlyPermission)
+	b := repo.ChildDir("b", PublicReadPermission)
+	c := b.ChildDir("c", PublicWritePermission)
 
 	err = ds.Ensure()
 	if err != nil {
