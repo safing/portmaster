@@ -7,32 +7,71 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+var (
+	systemSID *windows.SID
+	adminsSID *windows.SID
+	usersSID  *windows.SID
+)
+
+func init() {
+	var err error
+	systemSID, err = windows.StringToSid("S-1-5") // NT Authority / SYSTEM
+	if err != nil {
+		panic(err)
+	}
+	adminsSID, err = windows.StringToSid("S-1-5-32-544") // Administrators
+	if err != nil {
+		panic(err)
+	}
+	usersSID, err = windows.StringToSid("S-1-5-32-545") // Users
+	if err != nil {
+		panic(err)
+	}
+}
+
+// SetDirPermission sets the permission of a directory.
 func SetDirPermission(path string, perm FSPermission) error {
-	setWindowsFilePermissions(path, perm)
+	SetFilePermission(path, perm)
 	return nil
 }
 
 // SetExecPermission sets the permission of an executable file.
 func SetExecPermission(path string, perm FSPermission) error {
-	return SetDirPermission(path, perm)
+	SetFilePermission(path, perm)
+	return nil
 }
 
-func setWindowsFilePermissions(path string, perm FSPermission) {
+// SetFilePermission sets the permission of a non executable file.
+func SetFilePermission(path string, perm FSPermission) {
 	switch perm {
 	case AdminOnlyPermission:
 		// Set only admin rights, remove all others.
-		acl.Apply(path, true, false, acl.GrantName(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, "Administrators"))
+		acl.Apply(
+			path,
+			true,
+			false,
+			acl.GrantSid(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, systemSID),
+			acl.GrantSid(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, adminsSID),
+		)
 	case PublicReadPermission:
 		// Set admin rights and read/execute rights for users, remove all others.
-		acl.Apply(path, true, false, acl.GrantName(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, "Administrators"))
-		acl.Apply(path, false, false, acl.GrantName(windows.GENERIC_EXECUTE, "Users"))
-		acl.Apply(path, false, false, acl.GrantName(windows.GENERIC_READ, "Users"))
+		acl.Apply(
+			path,
+			true,
+			false,
+			acl.GrantSid(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, systemSID),
+			acl.GrantSid(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, adminsSID),
+			acl.GrantSid(windows.GENERIC_READ|windows.GENERIC_EXECUTE, usersSID),
+		)
 	case PublicWritePermission:
 		// Set full control to admin and regular users. Guest users will not have access.
-		acl.Apply(path, true, false, acl.GrantName(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, "Administrators"))
-		acl.Apply(path, false, false, acl.GrantName(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, "Users"))
+		acl.Apply(
+			path,
+			true,
+			false,
+			acl.GrantSid(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, systemSID),
+			acl.GrantSid(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, adminsSID),
+			acl.GrantSid(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, usersSID),
+		)
 	}
-
-	// For completeness
-	acl.Apply(path, false, false, acl.GrantName(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, "SYSTEM"))
 }
