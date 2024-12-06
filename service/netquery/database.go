@@ -19,6 +19,7 @@ import (
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/netquery/orm"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/netutils"
@@ -127,7 +128,7 @@ type (
 // Note that write connections are serialized by the Database object before being
 // handed over to SQLite.
 func New(dbPath string) (*Database, error) {
-	historyParentDir := dataroot.Root().ChildDir("databases", 0o700)
+	historyParentDir := dataroot.Root().ChildDir("databases", utils.AdminOnlyPermission)
 	if err := historyParentDir.Ensure(); err != nil {
 		return nil, fmt.Errorf("failed to ensure database directory exists: %w", err)
 	}
@@ -225,7 +226,7 @@ func (db *Database) Close() error {
 
 // VacuumHistory rewrites the history database in order to purge deleted records.
 func VacuumHistory(ctx context.Context) (err error) {
-	historyParentDir := dataroot.Root().ChildDir("databases", 0o700)
+	historyParentDir := dataroot.Root().ChildDir("databases", utils.AdminOnlyPermission)
 	if err := historyParentDir.Ensure(); err != nil {
 		return fmt.Errorf("failed to ensure database directory exists: %w", err)
 	}

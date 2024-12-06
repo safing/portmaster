@@ -289,11 +289,8 @@ func writeFile(filename string, data []byte, perm os.FileMode) error {
 	defer t.Cleanup() //nolint:errcheck
 
 	// Set permissions before writing data, in case the data is sensitive.
-	if onWindows {
-		err = acl.Chmod(filename, perm)
-	} else {
-		err = t.Chmod(perm)
-	}
+	// TODO(vladimir): to set permissions on windows we need the full path of the file.
+	err = t.Chmod(perm)
 	if err != nil {
 		return err
 	}
