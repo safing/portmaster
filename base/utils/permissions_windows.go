@@ -14,8 +14,10 @@ var (
 )
 
 func init() {
+	// Initialize Security ID for all need groups.
+	// Reference: https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-identifiers
 	var err error
-	systemSID, err = windows.StringToSid("S-1-5") // NT Authority / SYSTEM
+	systemSID, err = windows.StringToSid("S-1-5-18") // SYSTEM (Local System)
 	if err != nil {
 		panic(err)
 	}
