@@ -16,7 +16,7 @@ const (
 	PublicWritePermission
 )
 
-// AsUnixDirPermission return the corresponding unix permission for a directory or executable.
+// AsUnixDirExecPermission return the corresponding unix permission for a directory or executable.
 func (perm FSPermission) AsUnixDirExecPermission() fs.FileMode {
 	switch perm {
 	case AdminOnlyPermission:
@@ -30,13 +30,13 @@ func (perm FSPermission) AsUnixDirExecPermission() fs.FileMode {
 	return 0
 }
 
-// AsUnixDirPermission return the corresponding unix permission for a regular file.
+// AsUnixFilePermission return the corresponding unix permission for a regular file.
 func (perm FSPermission) AsUnixFilePermission() fs.FileMode {
 	switch perm {
 	case AdminOnlyPermission:
 		return 0o600
 	case PublicReadPermission:
-		return 0o655
+		return 0o644
 	case PublicWritePermission:
 		return 0o666
 	}

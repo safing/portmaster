@@ -21,7 +21,7 @@ func EnsureDirectory(path string, perm FSPermission) error {
 			// directory exists, check permissions
 			if isWindows {
 				// Ignore windows permission error. For none admin users it will always fail.
-				SetDirPermission(path, perm)
+				_ = SetDirPermission(path, perm)
 				return nil
 			} else if f.Mode().Perm() != perm.AsUnixDirExecPermission() {
 				return SetDirPermission(path, perm)
@@ -39,10 +39,11 @@ func EnsureDirectory(path string, perm FSPermission) error {
 		if err != nil {
 			return fmt.Errorf("could not create dir %s: %w", path, err)
 		}
-		// Set windows permissions. Linux permission where already set with creation.
-		if isWindows {
-			// Ignore windows permission error. For none admin users it will always fail.
-			SetDirPermission(path, perm)
+		// Set permissions.
+		err = SetDirPermission(path, perm)
+		// Ignore windows permission error. For none admin users it will always fail.
+		if !isWindows {
+			return err
 		}
 		return nil
 	}

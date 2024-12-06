@@ -5,16 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/utils"
-)
-
-const (
-	onWindows = runtime.GOOS == "windows"
 )
 
 // ResourceRegistry is a registry for managing update resources.

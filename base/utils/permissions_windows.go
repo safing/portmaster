@@ -32,4 +32,7 @@ func setWindowsFilePermissions(path string, perm FSPermission) {
 		acl.Apply(path, true, false, acl.GrantName(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, "Administrators"))
 		acl.Apply(path, false, false, acl.GrantName(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, "Users"))
 	}
+
+	// For completeness
+	acl.Apply(path, false, false, acl.GrantName(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, "SYSTEM"))
 }

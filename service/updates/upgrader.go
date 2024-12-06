@@ -351,7 +351,7 @@ func upgradeBinary(fileToUpgrade string, file *updater.File) error {
 
 	// check permissions
 	if onWindows {
-		utils.SetExecPermission(fileToUpgrade, utils.PublicReadPermission)
+		_ = utils.SetExecPermission(fileToUpgrade, utils.PublicReadPermission)
 	} else {
 		perm := utils.PublicReadPermission
 		info, err := os.Stat(fileToUpgrade)

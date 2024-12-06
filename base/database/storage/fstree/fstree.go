@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hectane/go-acl"
 	"github.com/safing/portmaster/base/database/iterator"
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/database/record"
