@@ -12,11 +12,11 @@ desktop/tauri/src-tauri/target
 # Copy from .gitignore:
 
 # Compiled binaries
-*.exe
-dist/
+# *.exe
+# dist/
 
 # Dist dir
-dist
+# dist
 
 # Custom dev deops
 go.mod.*
