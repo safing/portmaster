@@ -126,6 +126,7 @@ fn main() {
 
     let cli_args = cli::parse(std::env::args());
 
+    // TODO(vladimir): Support for other log targets?
     #[cfg(target_os = "linux")]
     let log_target = tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout);
     // let log_target = if let Some(data_dir) = cli_args.data {

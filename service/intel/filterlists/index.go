@@ -182,11 +182,13 @@ func updateListIndex() error {
 
 		// Check if the version in the cache is current.
 		_, err = getListIndexFromCache()
+		// index, err = getListIndexFromCache()
 		switch {
 		case errors.Is(err, database.ErrNotFound):
 			log.Info("filterlists: index not in cache, starting update")
 		case err != nil:
 			log.Warningf("filterlists: failed to load index from cache, starting update: %s", err)
+		// TODO(vladimir): Change so it fits the new updater
 		// case !listIndexUpdate.EqualsVersion(strings.TrimPrefix(index.Version, "v")):
 		// 	log.Infof(
 		// 		"filterlists: index from cache is outdated, starting update (%s != %s)",
@@ -238,6 +240,7 @@ func updateListIndex() error {
 func ResolveListIDs(ids []string) ([]string, error) {
 	index, err := getListIndexFromCache()
 	if err != nil {
+		// FIXME(vladimir): Fix the stack overflow bug
 		// if errors.Is(err, database.ErrNotFound) {
 		// 	if err := updateListIndex(); err != nil {
 		// 		return nil, err
