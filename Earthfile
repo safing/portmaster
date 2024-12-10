@@ -513,7 +513,8 @@ release-prep:
     FROM +rust-base
 
     WORKDIR /app
-    COPY ./dist ./dist
+    COPY ./dist/intel ./dist/intel
+    COPY ./dist/windows_amd64 ./dist/windows_amd64
 
     # Linux specific
     COPY (+tauri-build/output/portmaster --target="x86_64-unknown-linux-gnu") ./output/binary/linux_amd64/portmaster
@@ -523,23 +524,21 @@ release-prep:
     COPY (+tauri-build/output/portmaster.exe --target="x86_64-pc-windows-gnu") ./output/binary/windows_amd64/portmaster.exe
     COPY (+tauri-build/output/WebView2Loader.dll --target="x86_64-pc-windows-gnu") ./output/binary/windows_amd64/WebView2Loader.dll
     COPY (+go-build/output/portmaster-core.exe --GOARCH=amd64 --GOOS=windows --CMDS=portmaster-core) ./output/binary/windows_amd64/portmaster-core.exe
-    # TODO(vladimir): figure out a way to get the lastest release of the kext and the dll.
-    RUN cp "${outputDir}/windows_amd64/portmaster-kext.sys" ./output/binary/windows_amd64/portmaster-kext.sys
-    RUN cp "${outputDir}/windows_amd64/portmaster-core.dll" ./output/binary/windows_amd64/portmaster-core.dll
+    RUN cp dist/windows_amd64/portmaster-kext.sys ./output/binary/windows_amd64/portmaster-kext.sys
+    RUN cp dist/windows_amd64/portmaster-core.dll ./output/binary/windows_amd64/portmaster-core.dll
 
     # All platforms
     COPY (+assets/assets.zip) ./output/binary/all/assets.zip
     COPY (+angular-project/output/portmaster.zip --project=portmaster --dist=./dist --configuration=production --baseHref=/ui/modules/portmaster/) ./output/binary/all/portmaster.zip
 
     # Intel
-    # TODO(vladimir): figure out a way to download all the latest intel data.
     RUN mkdir -p ./output/intel
-    RUN cp "${outputDir}/intel/geoipv4.mmdb.gz" ./output/intel/geoipv4.mmdb.gz
-    RUN cp "${outputDir}/intel/geoipv6.mmdb.gz" ./output/intel/geoipv6.mmdb.gz
-    RUN cp "${outputDir}/intel/index.dsd" ./output/intel/index.dsd
-    RUN cp "${outputDir}/intel/base.dsdl" ./output/intel/base.dsdl
-    RUN cp "${outputDir}/intel/intermediate.dsdl" ./output/intel/intermediate.dsdl
-    RUN cp "${outputDir}/intel/urgent.dsdl" ./output/intel/urgent.dsdl
+    RUN cp "dist/intel/geoipv4.mmdb.gz" ./output/intel/geoipv4.mmdb.gz
+    RUN cp "dist/intel/geoipv6.mmdb.gz" ./output/intel/geoipv6.mmdb.gz
+    RUN cp "dist/intel/index.dsd" ./output/intel/index.dsd
+    RUN cp "dist/intel/base.dsdl" ./output/intel/base.dsdl
+    RUN cp "dist/intel/intermediate.dsdl" ./output/intel/intermediate.dsdl
+    RUN cp "dist/intel/urgent.dsdl" ./output/intel/urgent.dsdl
 
     # Genereate index files
     COPY (+go-build/output/updatemgr --GOARCH=amd64 --GOOS=linux --CMDS=updatemgr) ./updatemgr
@@ -548,13 +547,14 @@ release-prep:
 
     # Intel Extracted (needed for the installers)
     RUN mkdir -p ./output/intel_decompressed
-    RUN cp ${outputDir}/intel/index.json ./output/intel_decompressed/index.json
-    RUN gzip -dc ${outputDir}/intel/geoipv4.mmdb.gz > ./output/intel_decompressed/geoipv4.mmdb
-    RUN gzip -dc ./${outputDir}/intel/geoipv6.mmdb.gz > ./output/intel_decompressed/geoipv6.mmdb
-    RUN cp ${outputDir}/intel/index.dsd ./output/intel_decompressed/index.dsd
-    RUN cp ${outputDir}/intel/base.dsdl ./output/intel_decompressed/base.dsdl
-    RUN cp ${outputDir}/intel/intermediate.dsdl ./output/intel_decompressed/intermediate.dsdl
-    RUN cp ${outputDir}/intel/urgent.dsdl ./output/intel_decompressed/urgent.dsdl
+    RUN cp output/intel/index.json ./output/intel_decompressed/index.json
+
+    RUN gzip -dc dist/intel/geoipv4.mmdb.gz > ./output/intel_decompressed/geoipv4.mmdb
+    RUN gzip -dc dist/intel/geoipv6.mmdb.gz > ./output/intel_decompressed/geoipv6.mmdb
+    RUN cp dist/intel/index.dsd ./output/intel_decompressed/index.dsd
+    RUN cp dist/intel/base.dsdl ./output/intel_decompressed/base.dsdl
+    RUN cp dist/intel/intermediate.dsdl ./output/intel_decompressed/intermediate.dsdl
+    RUN cp dist/intel/urgent.dsdl ./output/intel_decompressed/urgent.dsdl
 
     # Save all artifacts to output folder
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/index.json" AS LOCAL "${outputDir}/binary/index.json"
