@@ -14,7 +14,9 @@
     <Component Id="BinaryFiles" Directory="INSTALLDIR" Guid="850cdd31-424d-45f5-b8f0-95df950ebd0d">
       <File Id="BinIndexJson" Source="..\..\..\..\binary\index.json" />
       <File Id="PortmasterCoreExe" Source="..\..\..\..\binary\portmaster-core.exe" />
+      <File Id="PortmasterCoreDLL" Source="..\..\..\..\binary\portmaster-core.dll" />
       <File Id="PortmasterKextSys" Source="..\..\..\..\binary\portmaster-kext.sys" />
+      <File Id="WebView2Loader" Source="..\..\..\..\binary\WebView2Loader.dll" />
       <File Id="PortmasterZip" Source="..\..\..\..\binary\portmaster.zip" />
       <File Id="AssetsZip" Source="..\..\..\..\binary\assets.zip" />
     </Component>
