@@ -11,7 +11,6 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/utils/debug"
-	_ "github.com/safing/portmaster/service/broadcasts"
 	"github.com/safing/portmaster/service/mgr"
 	_ "github.com/safing/portmaster/service/netenv"
 	_ "github.com/safing/portmaster/service/netquery"

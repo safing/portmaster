@@ -93,7 +93,6 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 	config.AddToDebugInfo(di)
 
 	// Detailed information.
-	// TODO(vladimir): updates.AddToDebugInfo(di)
 	// compat.AddToDebugInfo(di) // TODO: Cannot use due to interception import requirement which we don't want for SPN Hubs.
 	di.AddGoroutineStack()
 
