@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/safing/portmaster/base/database"
@@ -181,20 +182,18 @@ func updateListIndex() error {
 		}
 
 		// Check if the version in the cache is current.
-		_, err = getListIndexFromCache()
-		// index, err = getListIndexFromCache()
+		index, err := getListIndexFromCache()
 		switch {
 		case errors.Is(err, database.ErrNotFound):
 			log.Info("filterlists: index not in cache, starting update")
 		case err != nil:
 			log.Warningf("filterlists: failed to load index from cache, starting update: %s", err)
-		// TODO(vladimir): Change so it fits the new updater
-		// case !listIndexUpdate.EqualsVersion(strings.TrimPrefix(index.Version, "v")):
-		// 	log.Infof(
-		// 		"filterlists: index from cache is outdated, starting update (%s != %s)",
-		// 		strings.TrimPrefix(index.Version, "v"),
-		// 		listIndexUpdate.Version(),
-		// 	)
+		case listIndexUpdate.Version != strings.TrimPrefix(index.Version, "v"):
+			log.Infof(
+				"filterlists: index from cache is outdated, starting update (%s != %s)",
+				strings.TrimPrefix(index.Version, "v"),
+				listIndexUpdate.Version,
+			)
 		default:
 			// List is in cache and current, there is nothing to do.
 			log.Debug("filterlists: index is up to date")
@@ -204,8 +203,6 @@ func updateListIndex() error {
 
 			return nil
 		}
-	// case listIndexUpdate.UpgradeAvailable():
-	// 	log.Info("filterlists: index update available, starting update")
 	default:
 		// Index is loaded and no update is available, there is nothing to do.
 		return nil
@@ -238,20 +235,22 @@ func updateListIndex() error {
 // ResolveListIDs resolves a slice of source or category IDs into
 // a slice of distinct source IDs.
 func ResolveListIDs(ids []string) ([]string, error) {
+	// Try get the list
 	index, err := getListIndexFromCache()
 	if err != nil {
-		// FIXME(vladimir): Fix the stack overflow bug
-		// if errors.Is(err, database.ErrNotFound) {
-		// 	if err := updateListIndex(); err != nil {
-		// 		return nil, err
-		// 	}
-
-		// 	// retry resolving IDs
-		// 	return ResolveListIDs(ids)
-		// }
-
-		log.Errorf("failed to resolved ids %v: %s", ids, err)
-		return nil, err
+		if errors.Is(err, database.ErrNotFound) {
+			// Update the list index
+			if err = updateListIndex(); err != nil {
+				return nil, err
+			}
+			// Retry getting the list.
+			if index, err = getListIndexFromCache(); err != nil {
+				return nil, err
+			}
+		} else {
+			log.Errorf("failed to resolved ids %v: %s", ids, err)
+			return nil, err
+		}
 	}
 
 	resolved := index.getDistictSourceIDs(ids...)
