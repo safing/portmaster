@@ -25,7 +25,7 @@ func (b *Base) Manager() *mgr.Manager {
 // Start starts the module.
 func (b *Base) Start() error {
 	startProfiling()
-	registerLogCleaner()
+	// registerLogCleaner()
 
 	return nil
 }

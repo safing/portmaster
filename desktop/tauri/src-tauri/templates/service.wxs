@@ -3,7 +3,7 @@
 	<Fragment>
     <CustomAction Id="InstallPortmasterService"
               Directory="INSTALLDIR"
-              ExeCommand="sc.exe create PortmasterCore binPath= &quot;[INSTALLDIR]portmaster-core.exe&quot;"
+              ExeCommand="sc.exe create PortmasterCore binPath= &quot;[INSTALLDIR]portmaster-core.exe --log-dir=%PROGRAMDATA%\Portmaster\logs&quot;"
               Execute="commit"
               Return="check"
               Impersonate="no"

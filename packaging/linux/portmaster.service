@@ -35,7 +35,7 @@ CapabilityBoundingSet=cap_chown cap_kill cap_net_admin cap_net_bind_service cap_
 StateDirectory=portmaster
 # TODO(ppacher): add --disable-software-updates once it's merged and the release process changed.
 WorkingDirectory=/var/lib/portmaster/data
-ExecStart=/usr/lib/portmaster/portmaster-core --data /var/lib/portmaster/data -devmode -- $PORTMASTER_ARGS
+ExecStart=/usr/lib/portmaster/portmaster-core --log-dir=/var/lib/portmaster/log -- $PORTMASTER_ARGS
 ExecStopPost=-/usr/lib/portmaster/portmaster-core -recover-iptables
 
 [Install]

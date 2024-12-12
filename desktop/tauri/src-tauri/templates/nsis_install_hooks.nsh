@@ -27,7 +27,7 @@
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
-  ExecWait 'sc.exe create PortmasterCore binPath= "$INSTDIR\portmaster-core.exe"'
+  ExecWait 'sc.exe create PortmasterCore binPath= "$INSTDIR\portmaster-core.exe --log-dir=%PROGRAMDATA%\Portmaster\logs"'
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
