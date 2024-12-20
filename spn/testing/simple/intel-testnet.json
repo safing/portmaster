@@ -1,0 +1,17 @@
+{
+	"BootstrapHubs": [
+	],
+	"TrustedHubs": [
+		"ZwrY9G9HDo1J3qQrrQs8VF2KD99bj7KyWesJ5kWFUDBU6r",
+		"Zwj56ZFXrsud8gc1Rw3zuxRwMLhGkwvtvnTxCVtJ8EWLhQ",
+		"ZwpdW87ityD9i3N9x8oweCJnbZEqo346VBg4mCsCvTr1Zo",
+		"ZwpJ6ebddk1sccUVpo92JUqicBfKzBN2w4pEGoEY7UsNhX",
+		"Zwte3Jffp9PWmeWfrn8RyGuvZZFCg3v7XR3tpQjdo9TpVt",
+		"ZwrTcdiPF5zR5h9q9EdjHCrrXzYVBdQe5HmEYUWXdLkke3",
+		"Zwv7tSn5iU6bYKn53NaGCxPtL8vSxSK7F9VdQezDaDCLBt",
+		"Zwvtdq3K9knP9iNaRS1Ju8CETWTqy7oRwbScjBtJGBpqhB"
+	],
+	"AdviseOnlyTrustedHubs": true,
+	"AdviseOnlyTrustedHomeHubs": true,
+	"AdviseOnlyTrustedDestinationHubs": true
+}
