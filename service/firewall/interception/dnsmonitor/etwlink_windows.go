@@ -22,8 +22,8 @@ type ETWSession struct {
 	state uintptr
 }
 
-// NewSession creates new ETW event listener and initilizes it. This is a low level interface, make sure to call DestorySession when you are done using it.
-func NewSession(etwInterface *integration.ETWFunctions, callback func(domain string, result string)) (*ETWSession, error) {
+// NewSession creates new ETW event listener and initializes it. This is a low level interface, make sure to call DestroySession when you are done using it.
+func NewSession(etwInterface *integration.ETWFunctions, callback func(domain string, pid uint32, result string)) (*ETWSession, error) {
 	if etwInterface == nil {
 		return nil, fmt.Errorf("etw interface was nil")
 	}
@@ -35,8 +35,8 @@ func NewSession(etwInterface *integration.ETWFunctions, callback func(domain str
 	_ = etwSession.i.StopOldSession()
 
 	// Initialize notification activated callback
-	win32Callback := windows.NewCallback(func(domain *uint16, result *uint16) uintptr {
-		callback(windows.UTF16PtrToString(domain), windows.UTF16PtrToString(result))
+	win32Callback := windows.NewCallback(func(domain *uint16, pid uint32, result *uint16) uintptr {
+		callback(windows.UTF16PtrToString(domain), pid, windows.UTF16PtrToString(result))
 		return 0
 	})
 	// The function only allocates memory it will not fail.
@@ -83,7 +83,7 @@ func (l *ETWSession) FlushTrace() error {
 	return l.i.FlushTrace(l.state)
 }
 
-// StopTrace stopes the trace. This will cause StartTrace to return.
+// StopTrace stops the trace. This will cause StartTrace to return.
 func (l *ETWSession) StopTrace() error {
 	return l.i.StopTrace(l.state)
 }
