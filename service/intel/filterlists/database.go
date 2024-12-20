@@ -50,7 +50,7 @@ var (
 var cache = database.NewInterface(&database.Options{
 	Local:     true,
 	Internal:  true,
-	CacheSize: 2 ^ 8,
+	CacheSize: 256,
 })
 
 // getFileFunc is the function used to get a file from
