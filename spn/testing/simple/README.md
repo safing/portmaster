@@ -33,7 +33,7 @@ For testing just one Hub with a different build or config, you can simply use `.
 
 For connecting to the SPN test network with Portmaster, execute portmaster like this:
 
-sudo ../../../cmds/portmaster-core/portmaster-core --disable-shutdown-event --devmode --log debug --data /opt/safing/portmaster
+sudo ../../../cmds/portmaster-core/portmaster-core --disable-shutdown-event --devmode --log debug --data /opt/safing/portmaster --spn-map test --bootstrap-file ./testdata/shared/bootstrap.dsd
 
 Note:
 This uses the same portmaster data and config as your installed version.
