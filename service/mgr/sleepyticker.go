@@ -4,7 +4,7 @@ import "time"
 
 // SleepyTicker is wrapper over time.Ticker that respects the sleep mode of the module.
 type SleepyTicker struct {
-	ticker         time.Ticker
+	ticker         *time.Ticker
 	normalDuration time.Duration
 	sleepDuration  time.Duration
 	sleepMode      bool
@@ -16,7 +16,7 @@ type SleepyTicker struct {
 // If sleepDuration is set to 0 ticker will not tick during sleep.
 func NewSleepyTicker(normalDuration time.Duration, sleepDuration time.Duration) *SleepyTicker {
 	st := &SleepyTicker{
-		ticker:         *time.NewTicker(normalDuration),
+		ticker:         time.NewTicker(normalDuration),
 		normalDuration: normalDuration,
 		sleepDuration:  sleepDuration,
 		sleepMode:      false,
