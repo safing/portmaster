@@ -11,6 +11,7 @@ import (
 	"github.com/safing/portmaster/base/database/migration"
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 	_ "github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/profile/binmeta"
@@ -70,7 +71,7 @@ func prep() error {
 	}
 
 	// Setup icon storage location.
-	iconsDir := dataroot.Root().ChildDir("databases", 0o0700).ChildDir("icons", 0o0700)
+	iconsDir := dataroot.Root().ChildDir("databases", utils.AdminOnlyPermission).ChildDir("icons", utils.AdminOnlyPermission)
 	if err := iconsDir.Ensure(); err != nil {
 		return fmt.Errorf("failed to create/check icons directory: %w", err)
 	}

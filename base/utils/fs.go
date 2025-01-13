@@ -6,15 +6,13 @@ import (
 	"io/fs"
 	"os"
 	"runtime"
-
-	"github.com/hectane/go-acl"
 )
 
 const isWindows = runtime.GOOS == "windows"
 
 // EnsureDirectory ensures that the given directory exists and that is has the given permissions set.
 // If path is a file, it is deleted and a directory created.
-func EnsureDirectory(path string, perm os.FileMode) error {
+func EnsureDirectory(path string, perm FSPermission) error {
 	// open path
 	f, err := os.Stat(path)
 	if err == nil {
@@ -23,10 +21,10 @@ func EnsureDirectory(path string, perm os.FileMode) error {
 			// directory exists, check permissions
 			if isWindows {
 				// Ignore windows permission error. For none admin users it will always fail.
-				acl.Chmod(path, perm)
+				_ = SetDirPermission(path, perm)
 				return nil
-			} else if f.Mode().Perm() != perm {
-				return os.Chmod(path, perm)
+			} else if f.Mode().Perm() != perm.AsUnixDirExecPermission() {
+				return SetDirPermission(path, perm)
 			}
 			return nil
 		}
@@ -37,17 +35,17 @@ func EnsureDirectory(path string, perm os.FileMode) error {
 	}
 	// file does not exist (or has been deleted)
 	if err == nil || errors.Is(err, fs.ErrNotExist) {
-		err = os.Mkdir(path, perm)
+		err = os.Mkdir(path, perm.AsUnixDirExecPermission())
 		if err != nil {
 			return fmt.Errorf("could not create dir %s: %w", path, err)
 		}
-		if isWindows {
-			// Ignore windows permission error. For none admin users it will always fail.
-			acl.Chmod(path, perm)
-			return nil
-		} else {
-			return os.Chmod(path, perm)
+		// Set permissions.
+		err = SetDirPermission(path, perm)
+		// Ignore windows permission error. For none admin users it will always fail.
+		if !isWindows {
+			return err
 		}
+		return nil
 	}
 	// other error opening path
 	return fmt.Errorf("failed to access %s: %w", path, err)

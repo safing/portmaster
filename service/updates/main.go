@@ -13,6 +13,7 @@ import (
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/updater"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates/helper"
 )
@@ -138,7 +139,7 @@ func start() error {
 	}
 
 	// initialize
-	err = registry.Initialize(dataroot.Root().ChildDir(updatesDirName, 0o0755))
+	err = registry.Initialize(dataroot.Root().ChildDir(updatesDirName, utils.PublicReadPermission))
 	if err != nil {
 		return err
 	}

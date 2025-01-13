@@ -225,14 +225,14 @@ func configureRegistry(mustLoadIndex bool) error {
 	// Remove left over quotes.
 	dataDir = strings.Trim(dataDir, `\"`)
 	// Initialize data root.
-	err := dataroot.Initialize(dataDir, 0o0755)
+	err := dataroot.Initialize(dataDir, utils.PublicReadPermission)
 	if err != nil {
 		return fmt.Errorf("failed to initialize data root: %w", err)
 	}
 	dataRoot = dataroot.Root()
 
 	// Initialize registry.
-	err = registry.Initialize(dataRoot.ChildDir("updates", 0o0755))
+	err = registry.Initialize(dataRoot.ChildDir("updates", utils.PublicReadPermission))
 	if err != nil {
 		return err
 	}

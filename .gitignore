@@ -12,8 +12,7 @@ go.mod.*
 vendor
 
 # testing
-testing
-spn/testing/simple/testdata
+testdata
 
 # Compiled Object files, Static and Dynamic libs (Shared Objects)
 *.a
