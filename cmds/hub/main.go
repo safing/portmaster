@@ -33,7 +33,7 @@ func main() {
 	flag.Parse()
 
 	// Set name and license.
-	info.Set("SPN Hub", "", "GPLv3")
+	info.Set("SPN Hub", "0.7.8", "GPLv3")
 
 	// Configure metrics.
 	_ = metrics.SetNamespace("hub")
@@ -44,10 +44,6 @@ func main() {
 
 	// Set SPN public hub mode.
 	conf.EnablePublicHub(true)
-
-	// Set default log level.
-	log.SetLogLevel(log.WarningLevel)
-	_ = log.Start()
 
 	// Create instance.
 	var execCmdLine bool
@@ -78,6 +74,10 @@ func main() {
 		}
 		os.Exit(0)
 	}
+
+	// Set default log level.
+	log.SetLogLevel(log.WarningLevel)
+	_ = log.Start()
 
 	// Start
 	go func() {

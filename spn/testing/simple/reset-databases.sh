@@ -2,6 +2,6 @@
 
 cd "$( dirname "${BASH_SOURCE[0]}" )"
 
-rm -rf data/me/*
-rm -rf data/shared/*
-rm -rf data/hub*/databases
+rm -rf testdata/me/*
+rm -rf testdata/shared/*
+rm -rf testdata/hub*/databases
