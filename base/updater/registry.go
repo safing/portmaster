@@ -5,16 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/utils"
-)
-
-const (
-	onWindows = runtime.GOOS == "windows"
 )
 
 // ResourceRegistry is a registry for managing update resources.
@@ -98,7 +93,7 @@ func (reg *ResourceRegistry) Initialize(storageDir *utils.DirStructure) error {
 
 	// initialize private attributes
 	reg.storageDir = storageDir
-	reg.tmpDir = storageDir.ChildDir("tmp", 0o0700)
+	reg.tmpDir = storageDir.ChildDir("tmp", utils.AdminOnlyPermission)
 	reg.resources = make(map[string]*Resource)
 	if reg.state == nil {
 		reg.state = &RegistryState{}

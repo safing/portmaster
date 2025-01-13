@@ -7,6 +7,7 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -27,7 +28,7 @@ func start() error {
 	// may seem dangerous, but proper permission on the parent directory provide
 	// (some) protection.
 	// Processes must _never_ read from this directory.
-	err := dataroot.Root().ChildDir("exec", 0o0777).Ensure()
+	err := dataroot.Root().ChildDir("exec", utils.PublicWritePermission).Ensure()
 	if err != nil {
 		log.Warningf("ui: failed to create safe exec dir: %s", err)
 	}
