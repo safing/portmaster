@@ -12,36 +12,39 @@ type FSPermission uint8
 
 const (
 	AdminOnlyPermission FSPermission = iota
+	AdminOnlyExecPermission
 	PublicReadPermission
+	PublicReadExecPermission
 	PublicWritePermission
+	PublicWriteExecPermission
 )
 
 // AsUnixDirExecPermission return the corresponding unix permission for a directory or executable.
-func (perm FSPermission) AsUnixDirExecPermission() fs.FileMode {
+func (perm FSPermission) AsUnixPermission() fs.FileMode {
 	switch perm {
 	case AdminOnlyPermission:
+		return 0o600
+	case AdminOnlyExecPermission:
 		return 0o700
 	case PublicReadPermission:
+		return 0o644
+	case PublicReadExecPermission:
 		return 0o755
 	case PublicWritePermission:
+		return 0o666
+	case PublicWriteExecPermission:
 		return 0o777
 	}
 
 	return 0
 }
 
-// AsUnixFilePermission return the corresponding unix permission for a regular file.
-func (perm FSPermission) AsUnixFilePermission() fs.FileMode {
+func (perm FSPermission) IsExecPermission() bool {
 	switch perm {
-	case AdminOnlyPermission:
-		return 0o600
-	case PublicReadPermission:
-		return 0o644
-	case PublicWritePermission:
-		return 0o666
+	case AdminOnlyExecPermission, PublicReadExecPermission, PublicWriteExecPermission:
+		return true
 	}
-
-	return 0
+	return false
 }
 
 // DirStructure represents a directory structure with permissions that should be enforced.

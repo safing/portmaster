@@ -37,7 +37,7 @@ func start() error {
 	}
 
 	// Ensure directory permission
-	err = utils.EnsureDirectory(execDir, utils.PublicWritePermission)
+	err = utils.EnsureDirectory(execDir, utils.PublicWriteExecPermission)
 	if err != nil {
 		log.Warningf("ui: failed to set permissions to directory %s: %s", execDir, err)
 	}

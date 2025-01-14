@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -129,12 +128,9 @@ type (
 // handed over to SQLite.
 func New(dbPath string) (*Database, error) {
 	historyParentDir := filepath.Join(module.instance.DataDir(), "databases")
-	if err := os.MkdirAll(historyParentDir, 0o0700); err != nil {
-		return nil, fmt.Errorf("failed to ensure database directory exists: %w", err)
-	}
-	err := utils.EnsureDirectory(historyParentDir, utils.AdminOnlyPermission)
+	err := utils.EnsureDirectory(historyParentDir, utils.AdminOnlyExecPermission)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set permission to folder %s: %w", historyParentDir, err)
+		return nil, fmt.Errorf("failed to ensure database directory exists: %w", err)
 	}
 
 	// Get file location of history database.
@@ -231,12 +227,9 @@ func (db *Database) Close() error {
 // VacuumHistory rewrites the history database in order to purge deleted records.
 func VacuumHistory(ctx context.Context) (err error) {
 	historyParentDir := filepath.Join(module.instance.DataDir(), "databases")
-	if err := os.MkdirAll(historyParentDir, 0o0700); err != nil {
-		return fmt.Errorf("failed to ensure database directory exists: %w", err)
-	}
-	err = utils.EnsureDirectory(historyParentDir, utils.AdminOnlyPermission)
+	err = utils.EnsureDirectory(historyParentDir, utils.AdminOnlyExecPermission)
 	if err != nil {
-		return fmt.Errorf("failed to set permission to folder %s: %w", historyParentDir, err)
+		return fmt.Errorf("failed to ensure database directory exists: %w", err)
 	}
 
 	// Get file location of history database.

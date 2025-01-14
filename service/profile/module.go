@@ -3,7 +3,6 @@ package profile
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync/atomic"
 
@@ -68,19 +67,15 @@ func prep() error {
 
 	// Setup icon storage location.
 	databaseDir := filepath.Join(module.instance.DataDir(), "databases")
+	// Ensure folder existents and permission
+	err := utils.EnsureDirectory(databaseDir, utils.AdminOnlyExecPermission)
+	if err != nil {
+		return fmt.Errorf("failed to ensure directory existence %s: %w", databaseDir, err)
+	}
 	iconsDir := filepath.Join(databaseDir, "icons")
-	if err := os.MkdirAll(iconsDir, 0o0700); err != nil {
-		return fmt.Errorf("failed to create/check icons directory: %w", err)
-	}
-
-	// Ensure folder permissions
-	err := utils.EnsureDirectory(databaseDir, utils.AdminOnlyPermission)
+	err = utils.EnsureDirectory(iconsDir, utils.AdminOnlyExecPermission)
 	if err != nil {
-		return fmt.Errorf("failed to set permission to folder %s: %w", databaseDir, err)
-	}
-	err = utils.EnsureDirectory(iconsDir, utils.AdminOnlyPermission)
-	if err != nil {
-		return fmt.Errorf("failed to set permission to folder %s: %w", iconsDir, err)
+		return fmt.Errorf("failed to ensure directory existence %s: %w", iconsDir, err)
 	}
 
 	binmeta.ProfileIconStoragePath = iconsDir

@@ -3,7 +3,6 @@ package database
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/safing/portmaster/base/utils"
@@ -24,14 +23,10 @@ func Initialize(databasesRootDir string) error {
 	if initialized.SetToIf(false, true) {
 		rootDir = databasesRootDir
 
-		err := os.MkdirAll(rootDir, 0o0700)
+		// ensure root and databases dirs
+		err := utils.EnsureDirectory(rootDir, utils.AdminOnlyExecPermission)
 		if err != nil {
 			return fmt.Errorf("failed to create/check database dir %q: %w", rootDir, err)
-		}
-		// ensure root and databases dirs
-		err = utils.EnsureDirectory(rootDir, utils.AdminOnlyPermission)
-		if err != nil {
-			return fmt.Errorf("could not set permissions to database directory (%s): %w", rootDir, err)
 		}
 
 		return nil
@@ -64,13 +59,9 @@ func getLocation(name, storageType string) (string, error) {
 	location := filepath.Join(rootDir, name, storageType)
 
 	// Make sure location exists.
-	err := os.MkdirAll(location, 0o0700)
+	err := utils.EnsureDirectory(location, utils.AdminOnlyExecPermission)
 	if err != nil {
 		return "", fmt.Errorf("failed to create/check database dir %q: %w", location, err)
-	}
-	err = utils.EnsureDirectory(location, utils.AdminOnlyPermission)
-	if err != nil {
-		return "", fmt.Errorf("could not set permissions to directory (%s): %w", location, err)
 	}
 	return location, nil
 }

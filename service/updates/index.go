@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/safing/jess"
 	"github.com/safing/jess/filesig"
+	"github.com/safing/portmaster/base/utils"
 )
 
 // MaxUnpackSize defines the maximum size that is allowed to be unpacked.
@@ -41,17 +41,12 @@ type Artifact struct {
 }
 
 // GetFileMode returns the required filesystem permission for the artifact.
-func (a *Artifact) GetFileMode() os.FileMode {
-	// Special case for portmaster ui. Should be able to be executed from the regular user
-	if a.Platform == currentPlatform && a.Filename == "portmaster" {
-		return executableUIFileMode
-	}
-
+func (a *Artifact) GetFileMode() utils.FSPermission {
 	if a.Platform == currentPlatform {
-		return executableFileMode
+		return utils.PublicReadExecPermission
 	}
 
-	return defaultFileMode
+	return utils.PublicReadPermission
 }
 
 // Path returns the absolute path to the local file.
@@ -338,7 +333,7 @@ func checkSHA256Sum(fileData []byte, sha256sum string) error {
 
 // copyAndCheckSHA256Sum copies the file from src to dst and check the sha256 sum.
 // As a special case, if the sha256sum is not given, it is not checked.
-func copyAndCheckSHA256Sum(src, dst, sha256sum string, fileMode fs.FileMode) error {
+func copyAndCheckSHA256Sum(src, dst, sha256sum string, filePermission utils.FSPermission) error {
 	// Check expected hash.
 	var expectedDigest []byte
 	if sha256sum != "" {
@@ -367,7 +362,7 @@ func copyAndCheckSHA256Sum(src, dst, sha256sum string, fileMode fs.FileMode) err
 
 	// Write to temporary file.
 	tmpDst := dst + ".copy"
-	err = os.WriteFile(tmpDst, fileData, fileMode)
+	err = os.WriteFile(tmpDst, fileData, filePermission.AsUnixPermission())
 	if err != nil {
 		return fmt.Errorf("write temp dst file: %w", err)
 	}
@@ -377,6 +372,7 @@ func copyAndCheckSHA256Sum(src, dst, sha256sum string, fileMode fs.FileMode) err
 	if err != nil {
 		return fmt.Errorf("rename dst file after write: %w", err)
 	}
+	utils.SetFilePermission(dst, filePermission)
 
 	return nil
 }

@@ -31,22 +31,10 @@ func init() {
 	}
 }
 
-// SetDirPermission sets the permission of a directory.
-func SetDirPermission(path string, perm FSPermission) error {
-	SetFilePermission(path, perm)
-	return nil
-}
-
-// SetExecPermission sets the permission of an executable file.
-func SetExecPermission(path string, perm FSPermission) error {
-	SetFilePermission(path, perm)
-	return nil
-}
-
-// SetFilePermission sets the permission of a non executable file.
-func SetFilePermission(path string, perm FSPermission) {
+// SetFilePermission sets the permission of a file or directory.
+func SetFilePermission(path string, perm FSPermission) error {
 	switch perm {
-	case AdminOnlyPermission:
+	case AdminOnlyPermission, AdminOnlyExecPermission:
 		// Set only admin rights, remove all others.
 		acl.Apply(
 			path,
@@ -55,7 +43,7 @@ func SetFilePermission(path string, perm FSPermission) {
 			acl.GrantSid(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, systemSID),
 			acl.GrantSid(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, adminsSID),
 		)
-	case PublicReadPermission:
+	case PublicReadPermission, PublicReadExecPermission:
 		// Set admin rights and read/execute rights for users, remove all others.
 		acl.Apply(
 			path,
@@ -65,7 +53,7 @@ func SetFilePermission(path string, perm FSPermission) {
 			acl.GrantSid(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, adminsSID),
 			acl.GrantSid(windows.GENERIC_READ|windows.GENERIC_EXECUTE, usersSID),
 		)
-	case PublicWritePermission:
+	case PublicWritePermission, PublicWriteExecPermission:
 		// Set full control to admin and regular users. Guest users will not have access.
 		acl.Apply(
 			path,
@@ -76,4 +64,5 @@ func SetFilePermission(path string, perm FSPermission) {
 			acl.GrantSid(windows.GENERIC_ALL|windows.STANDARD_RIGHTS_ALL, usersSID),
 		)
 	}
+	return nil
 }

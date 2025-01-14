@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 )
 
 type Downloader struct {
@@ -37,7 +38,7 @@ func NewDownloader(u *Updater, indexURLs []string) *Downloader {
 
 func (d *Downloader) updateIndex(ctx context.Context) error {
 	// Make sure dir exists.
-	err := os.MkdirAll(d.u.cfg.DownloadDirectory, defaultDirMode)
+	err := os.MkdirAll(d.u.cfg.DownloadDirectory, utils.PublicReadExecPermission.AsUnixPermission())
 	if err != nil {
 		return fmt.Errorf("create download directory: %s", d.u.cfg.DownloadDirectory)
 	}
@@ -65,7 +66,7 @@ func (d *Downloader) updateIndex(ctx context.Context) error {
 
 	// Write the index into a file.
 	indexFilepath := filepath.Join(d.u.cfg.DownloadDirectory, d.u.cfg.IndexFile)
-	err = os.WriteFile(indexFilepath, indexData, defaultFileMode)
+	err = os.WriteFile(indexFilepath, indexData, utils.PublicReadExecPermission.AsUnixPermission())
 	if err != nil {
 		return fmt.Errorf("write index file: %w", err)
 	}
@@ -130,7 +131,7 @@ func (d *Downloader) gatherExistingFiles(dir string) error {
 
 func (d *Downloader) downloadArtifacts(ctx context.Context) error {
 	// Make sure dir exists.
-	err := os.MkdirAll(d.u.cfg.DownloadDirectory, defaultDirMode)
+	err := os.MkdirAll(d.u.cfg.DownloadDirectory, utils.PublicReadExecPermission.AsUnixPermission())
 	if err != nil {
 		return fmt.Errorf("create download directory: %s", d.u.cfg.DownloadDirectory)
 	}
@@ -176,7 +177,7 @@ artifacts:
 
 		// Write artifact to temporary file.
 		tmpFilename := dstFilePath + ".download"
-		err = os.WriteFile(tmpFilename, artifactData, artifact.GetFileMode())
+		err = os.WriteFile(tmpFilename, artifactData, artifact.GetFileMode().AsUnixPermission())
 		if err != nil {
 			return fmt.Errorf("write %s to temp file: %w", artifact.Filename, err)
 		}
