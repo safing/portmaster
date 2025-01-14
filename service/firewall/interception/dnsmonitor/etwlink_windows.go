@@ -14,7 +14,7 @@ import (
 )
 
 type ETWSession struct {
-	i integration.ETWFunctions
+	i *integration.ETWFunctions
 
 	shutdownGuard atomic.Bool
 	shutdownMutex sync.Mutex
@@ -23,7 +23,10 @@ type ETWSession struct {
 }
 
 // NewSession creates new ETW event listener and initilizes it. This is a low level interface, make sure to call DestorySession when you are done using it.
-func NewSession(etwInterface integration.ETWFunctions, callback func(domain string, result string)) (*ETWSession, error) {
+func NewSession(etwInterface *integration.ETWFunctions, callback func(domain string, result string)) (*ETWSession, error) {
+	if etwInterface == nil {
+		return nil, fmt.Errorf("etw interface was nil")
+	}
 	etwSession := &ETWSession{
 		i: etwInterface,
 	}
@@ -47,7 +50,7 @@ func NewSession(etwInterface integration.ETWFunctions, callback func(domain stri
 	// Initialize session.
 	err := etwSession.i.InitializeSession(etwSession.state)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialzie session: %q", err)
+		return nil, fmt.Errorf("failed to initialize session: %q", err)
 	}
 
 	return etwSession, nil
@@ -65,6 +68,10 @@ func (l *ETWSession) IsRunning() bool {
 
 // FlushTrace flushes the trace buffer.
 func (l *ETWSession) FlushTrace() error {
+	if l.i == nil {
+		return fmt.Errorf("session not initialized")
+	}
+
 	l.shutdownMutex.Lock()
 	defer l.shutdownMutex.Unlock()
 
@@ -83,6 +90,9 @@ func (l *ETWSession) StopTrace() error {
 
 // DestroySession closes the session and frees the allocated memory. Listener cannot be used after this function is called.
 func (l *ETWSession) DestroySession() error {
+	if l.i == nil {
+		return fmt.Errorf("session not initialized")
+	}
 	l.shutdownMutex.Lock()
 	defer l.shutdownMutex.Unlock()
 

@@ -11,6 +11,7 @@ import (
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/migration"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 	_ "github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/profile/binmeta"
@@ -66,10 +67,22 @@ func prep() error {
 	}
 
 	// Setup icon storage location.
-	iconsDir := filepath.Join(module.instance.DataDir(), "databases", "icons")
+	databaseDir := filepath.Join(module.instance.DataDir(), "databases")
+	iconsDir := filepath.Join(databaseDir, "icons")
 	if err := os.MkdirAll(iconsDir, 0o0700); err != nil {
 		return fmt.Errorf("failed to create/check icons directory: %w", err)
 	}
+
+	// Ensure folder permissions
+	err := utils.EnsureDirectory(databaseDir, utils.AdminOnlyPermission)
+	if err != nil {
+		return fmt.Errorf("failed to set permission to folder %s: %w", databaseDir, err)
+	}
+	err = utils.EnsureDirectory(iconsDir, utils.AdminOnlyPermission)
+	if err != nil {
+		return fmt.Errorf("failed to set permission to folder %s: %w", iconsDir, err)
+	}
+
 	binmeta.ProfileIconStoragePath = iconsDir
 
 	return nil

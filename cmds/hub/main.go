@@ -33,7 +33,7 @@ var (
 )
 
 func init() {
-	// Add persisent flags for all commands.
+	// Add persistent flags for all commands.
 	rootCmd.PersistentFlags().StringVar(&binDir, "bin-dir", "", "set directory for executable binaries (rw/ro)")
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", "set directory for variable data (rw)")
 
@@ -61,8 +61,8 @@ func main() {
 }
 
 func initializeGlobals(cmd *cobra.Command, args []string) {
-	// Set version info.
-	info.Set("SPN Hub", "", "GPLv3")
+	// Set name and license.
+	info.Set("SPN Hub", "0.7.8", "GPLv3")
 
 	// Configure metrics.
 	_ = metrics.SetNamespace("hub")
@@ -78,6 +78,7 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 		svc, err := service.New(svcCfg)
 		return svc, err
 	}
+
 	cmdbase.SvcConfig = &service.ServiceConfig{
 		BinDir:  binDir,
 		DataDir: dataDir,

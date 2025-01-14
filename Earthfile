@@ -70,6 +70,11 @@ build:
     # ./dist/all/assets.zip
     BUILD +assets
 
+build-spn:
+    BUILD +go-build --CMDS="hub" --GOOS="linux"   --GOARCH="amd64"
+    BUILD +go-build --CMDS="hub" --GOOS="linux"   --GOARCH="arm64"
+    # TODO: Add other platforms
+
 go-ci:
     BUILD +go-build --GOOS="linux"   --GOARCH="amd64"
     BUILD +go-build --GOOS="linux"   --GOARCH="arm64"

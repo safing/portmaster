@@ -1,0 +1,25 @@
+# Get current list of IDs from test net:
+#   curl http://127.0.0.1:817/api/v1/spn/map/test/pins | jq ".[] | .ID"
+# Then import into test client with:
+#   curl -X POST --upload-file intel-client.yaml http://127.0.0.1:817/api/v1/spn/map/test/intel/update
+Hubs:
+  Zwm48YWWFGdwXjhE1MyEkWfqxPr9DiUBoXpusTZ1FMQnuK:
+    Trusted: true
+  Zwu5LkkbfCbAcYxWG3vtWF1VvWjgWpc1GJfkwRdLFNtytV:
+    Trusted: true
+  ZwuQpz5CqYmYoLnt9KXQ8oxnmosBzfrCYwCGhxT4fsG1Dz:
+    Trusted: true
+  ZwwmC3dHzr7J6XW9mc2KD6FDNuXwPVJUFi9dLnDSNMyjLk:
+    Trusted: true
+  ZwxSBdvqtJyz8zRWKZe6QyK51KH9av6VFay2GQvpFrWKHq:
+    Trusted: true
+  ZwxnuL6zMLj4AxJX8Bj369w2tNrVtYxzffVcXZuMxdxbGj:
+    Trusted: true
+  ZwyXdnC8JkC7m796skGD7QWGoYycByR3KVntkXMY8CxRZQ:
+    Trusted: true
+  Zwz7AHiH1EevD9eYFqvQQPbVWyBBcksTRxxafbRx5Cvc4F:
+    Trusted: true
+  ZwzMtc65t9XBMwmLm2xNSL69FvqHGPLiqeNBZ3eEN5a9sS:
+    Trusted: true
+  ZwzjnCUNGsuWnkYmN3QEj8JPLxU6V1QQFk9b47AigmPKiH:
+    Trusted: true

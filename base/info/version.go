@@ -74,6 +74,7 @@ func Set(setName string, setVersion string, setLicenseName string) {
 
 	if setVersion != "" {
 		version = setVersion
+		versionNumber = setVersion
 	}
 }
 

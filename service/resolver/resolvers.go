@@ -510,7 +510,7 @@ func setScopedResolvers(resolvers []*Resolver) {
 	for _, resolver := range resolvers {
 		if resolver.Info.IPScope.IsLAN() {
 			localResolvers = append(localResolvers, resolver)
-		} else if _, err := netenv.GetLocalNetwork(resolver.Info.IP); err != nil {
+		} else if net, _ := netenv.GetLocalNetwork(resolver.Info.IP); net != nil {
 			localResolvers = append(localResolvers, resolver)
 		}
 

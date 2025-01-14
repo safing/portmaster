@@ -23,22 +23,38 @@ func newListener(module *DNSMonitor) (*Listener, error) {
 	ResolverInfo.Source = resolver.ServerSourceETW
 
 	listener := &Listener{}
-	var err error
 	// Initialize new dns event session.
-	listener.etw, err = NewSession(module.instance.OSIntegration().GetETWInterface(), listener.processEvent)
+	err := initializeSessions(module, listener)
 	if err != nil {
-		return nil, err
+		// Listen for event if the dll has been loaded
+		module.instance.OSIntegration().OnInitializedEvent.AddCallback("loader-listener", func(wc *mgr.WorkerCtx, s struct{}) (cancel bool, err error) {
+			err = initializeSessions(module, listener)
+			if err != nil {
+				return false, err
+			}
+			return true, nil
+		})
 	}
-
-	// Start listening for events.
-	module.mgr.Go("etw-dns-event-listener", func(w *mgr.WorkerCtx) error {
-		return listener.etw.StartTrace()
-	})
-
 	return listener, nil
 }
 
+func initializeSessions(module *DNSMonitor, listener *Listener) error {
+	var err error
+	listener.etw, err = NewSession(module.instance.OSIntegration().GetETWInterface(), listener.processEvent)
+	if err != nil {
+		return err
+	}
+	// Start listener
+	module.mgr.Go("etw-dns-event-listener", func(w *mgr.WorkerCtx) error {
+		return listener.etw.StartTrace()
+	})
+	return nil
+}
+
 func (l *Listener) flush() error {
+	if l.etw == nil {
+		return fmt.Errorf("etw not initialized")
+	}
 	return l.etw.FlushTrace()
 }
 

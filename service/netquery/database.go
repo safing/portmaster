@@ -19,6 +19,7 @@ import (
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/netquery/orm"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/netutils"
@@ -131,6 +132,10 @@ func New(dbPath string) (*Database, error) {
 	if err := os.MkdirAll(historyParentDir, 0o0700); err != nil {
 		return nil, fmt.Errorf("failed to ensure database directory exists: %w", err)
 	}
+	err := utils.EnsureDirectory(historyParentDir, utils.AdminOnlyPermission)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set permission to folder %s: %w", historyParentDir, err)
+	}
 
 	// Get file location of history database.
 	historyFile := filepath.Join(historyParentDir, "history.db")
@@ -228,6 +233,10 @@ func VacuumHistory(ctx context.Context) (err error) {
 	historyParentDir := filepath.Join(module.instance.DataDir(), "databases")
 	if err := os.MkdirAll(historyParentDir, 0o0700); err != nil {
 		return fmt.Errorf("failed to ensure database directory exists: %w", err)
+	}
+	err = utils.EnsureDirectory(historyParentDir, utils.AdminOnlyPermission)
+	if err != nil {
+		return fmt.Errorf("failed to set permission to folder %s: %w", historyParentDir, err)
 	}
 
 	// Get file location of history database.

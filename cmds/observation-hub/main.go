@@ -35,7 +35,7 @@ var (
 )
 
 func init() {
-	// Add persisent flags for all commands.
+	// Add persistent flags for all commands.
 	rootCmd.PersistentFlags().StringVar(&binDir, "bin-dir", "", "set directory for executable binaries (rw/ro)")
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", "set directory for variable data (rw)")
 

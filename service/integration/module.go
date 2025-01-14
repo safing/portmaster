@@ -7,8 +7,9 @@ import (
 
 // OSIntegration module provides special integration with the OS.
 type OSIntegration struct {
-	m      *mgr.Manager
-	states *mgr.StateMgr
+	m *mgr.Manager
+
+	OnInitializedEvent *mgr.EventMgr[struct{}]
 
 	//nolint:unused
 	os OSSpecific
@@ -20,10 +21,9 @@ type OSIntegration struct {
 func New(instance instance) (*OSIntegration, error) {
 	m := mgr.New("OSIntegration")
 	module := &OSIntegration{
-		m:      m,
-		states: m.NewStateMgr(),
-
-		instance: instance,
+		m:                  m,
+		OnInitializedEvent: mgr.NewEventMgr[struct{}]("on-initialized", m),
+		instance:           instance,
 	}
 
 	return module, nil
