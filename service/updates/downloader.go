@@ -38,7 +38,7 @@ func NewDownloader(u *Updater, indexURLs []string) *Downloader {
 
 func (d *Downloader) updateIndex(ctx context.Context) error {
 	// Make sure dir exists.
-	err := os.MkdirAll(d.u.cfg.DownloadDirectory, utils.PublicReadExecPermission.AsUnixPermission())
+	err := utils.EnsureDirectory(d.u.cfg.DownloadDirectory, utils.PublicReadExecPermission)
 	if err != nil {
 		return fmt.Errorf("create download directory: %s", d.u.cfg.DownloadDirectory)
 	}
@@ -131,7 +131,7 @@ func (d *Downloader) gatherExistingFiles(dir string) error {
 
 func (d *Downloader) downloadArtifacts(ctx context.Context) error {
 	// Make sure dir exists.
-	err := os.MkdirAll(d.u.cfg.DownloadDirectory, utils.PublicReadExecPermission.AsUnixPermission())
+	err := utils.EnsureDirectory(d.u.cfg.DownloadDirectory, utils.PublicReadExecPermission)
 	if err != nil {
 		return fmt.Errorf("create download directory: %s", d.u.cfg.DownloadDirectory)
 	}
@@ -181,6 +181,8 @@ artifacts:
 		if err != nil {
 			return fmt.Errorf("write %s to temp file: %w", artifact.Filename, err)
 		}
+
+		_ = utils.SetFilePermission(tmpFilename, artifact.GetFileMode())
 
 		// Rename/Move to actual location.
 		err = os.Rename(tmpFilename, dstFilePath)

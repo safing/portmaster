@@ -3,7 +3,6 @@ package spn
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync/atomic"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/base/runtime"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service"
 	"github.com/safing/portmaster/service/core"
 	"github.com/safing/portmaster/service/core/base"
@@ -88,7 +88,7 @@ func New(svcCfg *service.ServiceConfig) (*Instance, error) {
 	}
 
 	// Make sure data dir exists, so that child directories don't dictate the permissions.
-	err = os.MkdirAll(svcCfg.DataDir, 0o0755)
+	err = utils.EnsureDirectory(svcCfg.DataDir, utils.PublicReadExecPermission)
 	if err != nil {
 		return nil, fmt.Errorf("data directory %s is not accessible: %w", svcCfg.DataDir, err)
 	}
