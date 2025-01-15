@@ -141,5 +141,5 @@ func (l *Listener) processAnswer(domain string, queryResult *QueryResult) {
 		}
 	}
 
-	saveDomain(domain, ips, cnames)
+	saveDomain(domain, ips, cnames, resolver.IPInfoProfileScopeGlobal)
 }

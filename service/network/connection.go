@@ -538,8 +538,9 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 
 	// Find domain and DNS context of entity.
 	if conn.Entity.Domain == "" && conn.process.Profile() != nil {
+		profileScope := conn.process.Profile().LocalProfile().ID
 		// check if we can find a domain for that IP
-		ipinfo, err := resolver.GetIPInfo(conn.process.Profile().LocalProfile().ID, pkt.Info().RemoteIP().String())
+		ipinfo, err := resolver.GetIPInfo(profileScope, pkt.Info().RemoteIP().String())
 		if err != nil {
 			// Try again with the global scope, in case DNS went through the system resolver.
 			ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().RemoteIP().String())
@@ -555,6 +556,13 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 						// Error flushing, dont try again.
 						break
 					}
+					// Try with profile scope
+					ipinfo, err = resolver.GetIPInfo(profileScope, pkt.Info().RemoteIP().String())
+					if err == nil {
+						log.Tracer(pkt.Ctx()).Debugf("network: found domain with scope (%s) from dnsmonitor after %d tries", profileScope, +1)
+						break
+					}
+					// Try again with the global scope
 					ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().RemoteIP().String())
 					if err == nil {
 						log.Tracer(pkt.Ctx()).Debugf("network: found domain from dnsmonitor after %d tries", i+1)

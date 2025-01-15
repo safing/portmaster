@@ -61,7 +61,7 @@ func (dl *DNSMonitor) Flush() error {
 	return dl.listener.flush()
 }
 
-func saveDomain(domain string, ips []net.IP, cnames map[string]string) {
+func saveDomain(domain string, ips []net.IP, cnames map[string]string, profileScope string) {
 	fqdn := dns.Fqdn(domain)
 	// Create new record for this IP.
 	record := resolver.ResolvedDomain{
@@ -75,7 +75,7 @@ func saveDomain(domain string, ips []net.IP, cnames map[string]string) {
 	record.AddCNAMEs(cnames)
 
 	// Add to cache
-	saveIPsInCache(ips, resolver.IPInfoProfileScopeGlobal, record)
+	saveIPsInCache(ips, profileScope, record)
 }
 
 func New(instance instance) (*DNSMonitor, error) {
