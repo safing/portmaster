@@ -529,45 +529,34 @@ release-prep:
     COPY (+tauri-build/output/portmaster.exe --target="x86_64-pc-windows-gnu") ./output/binary/windows_amd64/portmaster.exe
     COPY (+tauri-build/output/WebView2Loader.dll --target="x86_64-pc-windows-gnu") ./output/binary/windows_amd64/WebView2Loader.dll
     COPY (+go-build/output/portmaster-core.exe --GOARCH=amd64 --GOOS=windows --CMDS=portmaster-core) ./output/binary/windows_amd64/portmaster-core.exe
-    RUN cp dist/windows_amd64/portmaster-kext.sys ./output/binary/windows_amd64/portmaster-kext.sys
-    RUN cp dist/windows_amd64/portmaster-core.dll ./output/binary/windows_amd64/portmaster-core.dll
 
     # All platforms
     COPY (+assets/assets.zip) ./output/binary/all/assets.zip
     COPY (+angular-project/output/portmaster.zip --project=portmaster --dist=./dist --configuration=production --baseHref=/ui/modules/portmaster/) ./output/binary/all/portmaster.zip
 
-    # Intel
-    RUN mkdir -p ./output/intel
-    RUN cp "dist/intel/geoipv4.mmdb.gz" ./output/intel/geoipv4.mmdb.gz
-    RUN cp "dist/intel/geoipv6.mmdb.gz" ./output/intel/geoipv6.mmdb.gz
-    RUN cp "dist/intel/index.dsd" ./output/intel/index.dsd
-    RUN cp "dist/intel/base.dsdl" ./output/intel/base.dsdl
-    RUN cp "dist/intel/intermediate.dsdl" ./output/intel/intermediate.dsdl
-    RUN cp "dist/intel/urgent.dsdl" ./output/intel/urgent.dsdl
-
-    # Genereate index files
+    # Build update manager
     COPY (+go-build/output/updatemgr --GOARCH=amd64 --GOOS=linux --CMDS=updatemgr) ./updatemgr
+ 
+    # Get binary artifacts from current release
+    RUN mkdir ./output/download/windows_amd64 && ./updatemgr download https://updates.safing.io/stable.v3.json --platform windows_amd64 ./output/download/windows_amd64
+
+    # Copy required artifacts
+    RUN cp ./output/download/windows_amd64/portmaster-kext.sys ./output/binary/windows_amd64/portmaster-kext.sys
+    RUN cp ./output/download/windows_amd64/portmaster-kext.pdb ./output/binary/windows_amd64/portmaster-kext.pdb
+    RUN cp ./output/download/windows_amd64/portmaster-kext.dll ./output/binary/windows_amd64/portmaster-kext.dll
+
+    # Create new binary index from artifacts
     RUN ./updatemgr scan --dir "./output/binary" > ./output/binary/index.json
-    RUN ./updatemgr scan --dir "./output/intel" > ./output/intel/index.json
-
-    # Intel Extracted (needed for the installers)
-    RUN mkdir -p ./output/intel_decompressed
-    RUN cp output/intel/index.json ./output/intel_decompressed/index.json
-
-    RUN gzip -dc dist/intel/geoipv4.mmdb.gz > ./output/intel_decompressed/geoipv4.mmdb
-    RUN gzip -dc dist/intel/geoipv6.mmdb.gz > ./output/intel_decompressed/geoipv6.mmdb
-    RUN cp dist/intel/index.dsd ./output/intel_decompressed/index.dsd
-    RUN cp dist/intel/base.dsdl ./output/intel_decompressed/base.dsdl
-    RUN cp dist/intel/intermediate.dsdl ./output/intel_decompressed/intermediate.dsdl
-    RUN cp dist/intel/urgent.dsdl ./output/intel_decompressed/urgent.dsdl
+ 
+    # Get intel index and assets
+    RUN mkdir ./output/intel && ./updatemgr download https://updates.safing.io/intel.v3.json ./output/intel
 
     # Save all artifacts to output folder
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/index.json" AS LOCAL "${outputDir}/binary/index.json"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/all/*" AS LOCAL "${outputDir}/binary/all/"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/linux_amd64/*" AS LOCAL "${outputDir}/binary/linux_amd64/"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/windows_amd64/*" AS LOCAL "${outputDir}/binary/windows_amd64/"
-    # SAVE ARTIFACT --if-exists --keep-ts "output/intel/*" AS LOCAL "${outputDir}/intel/"
-    SAVE ARTIFACT --if-exists --keep-ts "output/intel_decompressed/*" AS LOCAL "${outputDir}/intel_decompressed/"
+    SAVE ARTIFACT --if-exists --keep-ts "output/intel/*" AS LOCAL "${outputDir}/intel/"
 
     # Save all artifacts to the container output folder so other containers can access it.
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/index.json" "output/binary/index.json"
@@ -575,7 +564,7 @@ release-prep:
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/linux_amd64/*" "output/binary/linux_amd64/"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/windows_amd64/*" "output/binary/windows_amd64/"
     SAVE ARTIFACT --if-exists --keep-ts "output/intel/*" "output/intel/"
-    SAVE ARTIFACT --if-exists --keep-ts "output/intel_decompressed/*" "output/intel_decompressed/"
+    SAVE ARTIFACT --if-exists --keep-ts "output/download/*" "output/download/"
 
 installer-linux:
     FROM +rust-base
@@ -605,7 +594,7 @@ installer-linux:
 
     # Download the intel data
     RUN mkdir -p intel
-    COPY (+release-prep/output/intel_decompressed/*) ./intel/
+    COPY (+release-prep/output/intel/*) ./intel/
 
     # build the installers
     RUN cargo tauri bundle --ci --target="${target}"

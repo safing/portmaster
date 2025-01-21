@@ -2,6 +2,12 @@ name: Release
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'desktop/angular/**'
+    branches:
+      - v2.0
+      - feature/new-installer
 
 jobs:
   release-prep:

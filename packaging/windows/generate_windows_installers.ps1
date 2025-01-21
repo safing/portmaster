@@ -19,11 +19,10 @@ if (-not (Test-Path -Path $binaryDir)) {
     New-Item -ItemType Directory -Path $binaryDir > $null
 }
 
-
 Write-Output "Copying binary files"
-Copy-Item -Force -Path "dist/binary/index.json" -Destination "$binaryDir/index.json"
-Copy-Item -Force -Path "dist/binary/windows_amd64/portmaster-core.exe" -Destination "$binaryDir/portmaster-core.exe"
-Copy-Item -Force -Path "dist/binary/windows_amd64/portmaster-kext.sys" -Destination "$binaryDir/portmaster-kext.sys"
+Copy-Item -Force -Path "dist/download/windows_amd64/portmaster-core.exe" -Destination "$binaryDir/portmaster-core.exe"
+Copy-Item -Force -Path "dist/download/windows_amd64/portmaster-kext.sys" -Destination "$binaryDir/portmaster-kext.sys"
+Copy-Item -Force -Path "dist/download/windows_amd64/portmaster-kext.dll" -Destination "$binaryDir/portmaster-kext.dll"
 Copy-Item -Force -Path "dist/binary/all/portmaster.zip" -Destination "$binaryDir/portmaster.zip"
 Copy-Item -Force -Path "dist/binary/all/assets.zip" -Destination "$binaryDir/assets.zip"
 
@@ -39,7 +38,7 @@ if (-not (Test-Path -Path $intelDir)) {
 }
 
 Write-Output "Copying intel files"
-Copy-Item -Force -Path "dist/intel_decompressed/*" -Destination "$intelDir/"
+Copy-Item -Force -Path "dist/intel/*" -Destination "$intelDir/"
 
 Set-Location $destinationDir
 
