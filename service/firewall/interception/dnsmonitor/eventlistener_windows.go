@@ -94,8 +94,13 @@ func (l *Listener) processEvent(domain string, pid uint32, result string) {
 	}
 
 	profileScope := resolver.IPInfoProfileScopeGlobal
+	// Get the profile ID if the process can be found
 	if proc, err := process.GetOrFindProcess(context.Background(), int(pid)); err == nil {
-		profileScope = proc.Profile().LocalProfile().ID
+		if profile := proc.Profile(); profile != nil {
+			if localProfile := profile.LocalProfile(); localProfile != nil {
+				profileScope = localProfile.ID
+			}
+		}
 	}
 	cnames := make(map[string]string)
 	ips := []net.IP{}
