@@ -69,7 +69,7 @@ func sign(cmd *cobra.Command, args []string) error {
 	}
 
 	// Parse index and check if it is valid.
-	index, err := updates.ParseIndex(unsignedIndexData, nil)
+	index, err := updates.ParseIndex(unsignedIndexData, "", nil)
 	if err != nil {
 		return fmt.Errorf("invalid index: %w", err)
 	}
@@ -85,7 +85,7 @@ func sign(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check by parsing again.
-	index, err = updates.ParseIndex(signedIndexData, nil)
+	index, err = updates.ParseIndex(signedIndexData, "", nil)
 	if err != nil {
 		return fmt.Errorf("invalid index after signing: %w", err)
 	}

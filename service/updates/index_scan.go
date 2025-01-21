@@ -253,7 +253,7 @@ func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error)
 	export := make([]*Artifact, 0, len(artifacts))
 	for _, artifact := range artifacts {
 		// Compute hash.
-		hash, err := getSHA256(artifact.localFile, artifact.Unpack)
+		hash, err := GetSHA256(artifact.localFile, artifact.Unpack)
 		if err != nil {
 			return nil, fmt.Errorf("calculate hash of file: %s %w", artifact.localFile, err)
 		}
@@ -294,7 +294,8 @@ func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error)
 	return index, nil
 }
 
-func getSHA256(path string, unpackType string) (string, error) {
+// GetSHA256 gets the sha256sum of the given file and unpacks it if necessary.
+func GetSHA256(path string, unpackType string) (string, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -302,7 +303,7 @@ func getSHA256(path string, unpackType string) (string, error) {
 
 	// Decompress if compression was applied to the file.
 	if unpackType != "" {
-		content, err = decompress(unpackType, content)
+		content, err = Decompress(unpackType, content)
 		if err != nil {
 			return "", err
 		}

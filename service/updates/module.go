@@ -68,6 +68,8 @@ type Config struct {
 	IndexFile string
 	// Verify enables and specifies the trust the index signatures will be checked against.
 	Verify jess.TrustStore
+	// Platform defines the platform to download artifacts for. Defaults to current platform.
+	Platform string
 
 	// AutoCheck defines that new indexes may be downloaded automatically without outside trigger.
 	AutoCheck bool
@@ -114,6 +116,11 @@ func (cfg *Config) Check() error {
 		if !strings.HasPrefix(url, "https://") {
 			return fmt.Errorf("index URL #%d invalid: is not a HTTPS url", i+1)
 		}
+	}
+
+	// Check platform.
+	if cfg.Platform == "" {
+		cfg.Platform = currentPlatform
 	}
 
 	return nil
@@ -168,7 +175,7 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 	module.upgradeWorkerMgr = m.NewWorkerMgr("upgrader", module.upgradeWorker, nil)
 
 	// Load index.
-	index, err := LoadIndex(filepath.Join(cfg.Directory, cfg.IndexFile), cfg.Verify)
+	index, err := LoadIndex(filepath.Join(cfg.Directory, cfg.IndexFile), cfg.Platform, cfg.Verify)
 	if err == nil {
 		// Verify artifacts.
 		if err := index.VerifyArtifacts(cfg.Directory); err != nil {
@@ -186,7 +193,7 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 		module.corruptedInstallation = fmt.Errorf("invalid index: %w", err)
 	}
 	index, err = GenerateIndexFromDir(cfg.Directory, IndexScanConfig{Version: "0.0.0"})
-	if err == nil && index.init() == nil {
+	if err == nil && index.init(currentPlatform) == nil {
 		module.index = index
 		return module, nil
 	}
@@ -214,7 +221,7 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 		}
 	} else {
 		// Otherwise, load index from download dir.
-		downloader.index, err = LoadIndex(filepath.Join(u.cfg.DownloadDirectory, u.cfg.IndexFile), u.cfg.Verify)
+		downloader.index, err = LoadIndex(filepath.Join(u.cfg.DownloadDirectory, u.cfg.IndexFile), u.cfg.Platform, u.cfg.Verify)
 		if err != nil {
 			return fmt.Errorf("load previously downloaded index file: %w", err)
 		}
@@ -573,7 +580,7 @@ func (u *Updater) GetFiles() ([]*Artifact, error) {
 	export := make([]*Artifact, 0, len(u.index.Artifacts))
 	for _, artifact := range u.index.Artifacts {
 		switch {
-		case artifact.Platform != "" && artifact.Platform != currentPlatform:
+		case artifact.Platform != "" && artifact.Platform != u.cfg.Platform:
 			// Platform is defined and does not match.
 			// Platforms are usually pre-filtered, but just to be sure.
 		default:
@@ -604,7 +611,7 @@ func (u *Updater) GetFile(name string) (*Artifact, error) {
 		switch {
 		case artifact.Filename != name:
 			// Name does not match.
-		case artifact.Platform != "" && artifact.Platform != currentPlatform:
+		case artifact.Platform != "" && artifact.Platform != u.cfg.Platform:
 			// Platform is defined and does not match.
 			// Platforms are usually pre-filtered, but just to be sure.
 		default:

@@ -82,7 +82,7 @@ func (d *Downloader) getIndex(ctx context.Context, url string) (indexData []byte
 	}
 
 	// Verify and parse index.
-	bundle, err = ParseIndex(indexData, d.u.cfg.Verify)
+	bundle, err = ParseIndex(indexData, d.u.cfg.Platform, d.u.cfg.Verify)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse index: %w", err)
 	}
@@ -206,14 +206,14 @@ func (d *Downloader) getArtifact(ctx context.Context, artifact *Artifact, url st
 	// TODO: Normally we should do operations on "untrusted" data _after_ verification,
 	// but we really want the checksum to be for the unpacked data. Should we add another checksum, or is HTTPS enough?
 	if artifact.Unpack != "" {
-		artifactData, err = decompress(artifact.Unpack, artifactData)
+		artifactData, err = Decompress(artifact.Unpack, artifactData)
 		if err != nil {
 			return nil, fmt.Errorf("decompress: %w", err)
 		}
 	}
 
 	// Verify checksum.
-	if err := checkSHA256Sum(artifactData, artifact.SHA256); err != nil {
+	if err := CheckSHA256Sum(artifactData, artifact.SHA256); err != nil {
 		return nil, err
 	}
 
@@ -250,7 +250,8 @@ func (d *Downloader) downloadData(ctx context.Context, url string) ([]byte, erro
 	return content, nil
 }
 
-func decompress(cType string, fileBytes []byte) ([]byte, error) {
+// Decompress decompresses the given data according to the specified type.
+func Decompress(cType string, fileBytes []byte) ([]byte, error) {
 	switch cType {
 	case "zip":
 		return decompressZip(fileBytes)

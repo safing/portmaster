@@ -121,7 +121,8 @@ type Index struct {
 }
 
 // LoadIndex loads and parses an index from the given filename.
-func LoadIndex(filename string, trustStore jess.TrustStore) (*Index, error) {
+// Leave platform empty to use current platform.
+func LoadIndex(filename string, platform string, trustStore jess.TrustStore) (*Index, error) {
 	// Read index file from disk.
 	content, err := os.ReadFile(filename)
 	if err != nil {
@@ -129,11 +130,12 @@ func LoadIndex(filename string, trustStore jess.TrustStore) (*Index, error) {
 	}
 
 	// Parse and return.
-	return ParseIndex(content, trustStore)
+	return ParseIndex(content, platform, trustStore)
 }
 
 // ParseIndex parses an index from a json string.
-func ParseIndex(jsonContent []byte, trustStore jess.TrustStore) (*Index, error) {
+// Leave platform empty to use current platform.
+func ParseIndex(jsonContent []byte, platform string, trustStore jess.TrustStore) (*Index, error) {
 	// Verify signature.
 	if trustStore != nil {
 		if err := filesig.VerifyJSONSignature(jsonContent, trustStore); err != nil {
@@ -148,8 +150,13 @@ func ParseIndex(jsonContent []byte, trustStore jess.TrustStore) (*Index, error) 
 		return nil, fmt.Errorf("parse index: %w", err)
 	}
 
+	// Check platform.
+	if platform == "" {
+		platform = currentPlatform
+	}
+
 	// Initialize data.
-	err = index.init()
+	err = index.init(platform)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +164,7 @@ func ParseIndex(jsonContent []byte, trustStore jess.TrustStore) (*Index, error) 
 	return index, nil
 }
 
-func (index *Index) init() error {
+func (index *Index) init(platform string) error {
 	// Parse version number, if set.
 	if index.Version != "" {
 		versionNum, err := semver.NewVersion(index.Version)
@@ -167,10 +174,10 @@ func (index *Index) init() error {
 		index.versionNum = versionNum
 	}
 
-	// Filter artifacts by current platform.
+	// Filter artifacts by platform.
 	filtered := make([]*Artifact, 0)
 	for _, a := range index.Artifacts {
-		if a.Platform == "" || a.Platform == currentPlatform {
+		if a.Platform == "" || a.Platform == platform {
 			filtered = append(filtered, a)
 		}
 	}
@@ -248,7 +255,7 @@ func (index *Index) ShouldUpgradeTo(newIndex *Index) error {
 // VerifyArtifacts checks if all artifacts are present in the given dir and have the correct hash.
 func (index *Index) VerifyArtifacts(dir string) error {
 	for _, artifact := range index.Artifacts {
-		err := checkSHA256SumFile(filepath.Join(dir, artifact.Filename), artifact.SHA256)
+		err := CheckSHA256SumFile(filepath.Join(dir, artifact.Filename), artifact.SHA256)
 		if err != nil {
 			return fmt.Errorf("verify %s: %w", artifact.Filename, err)
 		}
@@ -283,7 +290,8 @@ func (index *Index) Export(signingKey *jess.Signet, trustStore jess.TrustStore) 
 	return signedIndex, nil
 }
 
-func checkSHA256SumFile(filename string, sha256sum string) error {
+// CheckSHA256SumFile checks the sha256sum of the given file.
+func CheckSHA256SumFile(filename string, sha256sum string) error {
 	// Check expected hash.
 	expectedDigest, err := hex.DecodeString(sha256sum)
 	if err != nil {
@@ -312,7 +320,8 @@ func checkSHA256SumFile(filename string, sha256sum string) error {
 	return nil
 }
 
-func checkSHA256Sum(fileData []byte, sha256sum string) error {
+// CheckSHA256Sum checks the sha256sum of the given data.
+func CheckSHA256Sum(fileData []byte, sha256sum string) error {
 	// Check expected hash.
 	expectedDigest, err := hex.DecodeString(sha256sum)
 	if err != nil {

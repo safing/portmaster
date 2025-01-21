@@ -84,7 +84,7 @@ func TestPerformUpdate(t *testing.T) {
 			}
 			if data, err := os.ReadFile(filepath.Join(updateDir, "index.json")); err == nil {
 				fmt.Println(string(data))
-				idx, err := ParseIndex(data, nil)
+				idx, err := ParseIndex(data, updater.cfg.Platform, nil)
 				if err == nil {
 					fmt.Println(idx.Version)
 					fmt.Println(idx.versionNum)
@@ -97,7 +97,7 @@ func TestPerformUpdate(t *testing.T) {
 	})
 
 	// Check if the current version is now the new.
-	newIndex, err := LoadIndex(filepath.Join(installedDir, "index.json"), nil)
+	newIndex, err := LoadIndex(filepath.Join(installedDir, "index.json"), updater.cfg.Platform, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
