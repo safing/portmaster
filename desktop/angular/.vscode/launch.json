@@ -1,0 +1,24 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run UI in Chrome (npm run start)",
+            "type": "chrome",
+            "request": "launch",
+            "preLaunchTask": "debugproj",
+            "postDebugTask": "killnode",
+            "url": "http://localhost:4200/",
+            "webRoot": "${workspaceFolder}",
+            "sourceMapPathOverrides": {
+              "webpack:/*": "${webRoot}/*",
+              "/./*": "${webRoot}/*",
+              "/src/*": "${webRoot}/*",
+              "/*": "*",
+              "/./~/*": "${webRoot}/node_modules/*"
+            }
+          },
+    ]
+}
