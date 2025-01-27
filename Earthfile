@@ -425,6 +425,7 @@ rust-base:
 
     DO rust+INIT --keep_fingerprints=true
 
+    # For now we need tauri-cli 2.0.0 for bulding
     DO rust+CARGO --args="install tauri-cli --version 2.1.0 --locked"
 
     # Explicitly cache here.

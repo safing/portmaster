@@ -4,6 +4,7 @@
 package dnsmonitor
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/resolver"
 )
 
@@ -79,7 +81,7 @@ func (l *Listener) stop() error {
 	return nil
 }
 
-func (l *Listener) processEvent(domain string, result string) {
+func (l *Listener) processEvent(domain string, pid uint32, result string) {
 	if processIfSelfCheckDomain(dns.Fqdn(domain)) {
 		// Not need to process result.
 		return
@@ -90,6 +92,15 @@ func (l *Listener) processEvent(domain string, result string) {
 		return
 	}
 
+	profileScope := resolver.IPInfoProfileScopeGlobal
+	// Get the profile ID if the process can be found
+	if proc, err := process.GetOrFindProcess(context.Background(), int(pid)); err == nil {
+		if profile := proc.Profile(); profile != nil {
+			if localProfile := profile.LocalProfile(); localProfile != nil {
+				profileScope = localProfile.ID
+			}
+		}
+	}
 	cnames := make(map[string]string)
 	ips := []net.IP{}
 
@@ -115,5 +126,5 @@ func (l *Listener) processEvent(domain string, result string) {
 			}
 		}
 	}
-	saveDomain(domain, ips, cnames)
+	saveDomain(domain, ips, cnames, profileScope)
 }
