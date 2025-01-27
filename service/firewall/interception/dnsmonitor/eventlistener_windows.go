@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/miekg/dns"
-	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/resolver"
