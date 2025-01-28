@@ -9,6 +9,10 @@ Implementation of Safing's Portmaster Windows kernel extension in Rust.
 - [Release](release/README.md) -> Guide how to do a release build.
 - [Windows Filtering Platform - MS](https://learn.microsoft.com/en-us/windows-hardware/drivers/network/roadmap-for-developing-wfp-callout-drivers) -> The driver is build on top of WFP.
 
+### Building (For release)
+
+Please refer to [release/README.md](release/README.md) for details about the release procedure.
+
 ### Building (For testing and development)
 
 The Windows Portmaster Kernel Extension is currently only developed and tested for the amd64 (64-bit) architecture.
