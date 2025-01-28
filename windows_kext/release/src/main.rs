@@ -10,13 +10,17 @@ static LIB_PATH: &'static str = "./build/x86_64-pc-windows-msvc/release/driver.l
 
 fn main() {
     build_driver();
-    println!(
-        "Building kext v{}-{}-{} #{}",
+
+    let filename = format!(
+        "portmaster-kext-release-bundle-v{}-{}-{}-{}.zip",
         VERSION[0], VERSION[1], VERSION[2], VERSION[3]
     );
 
+    println!("Building KEXT: {}", filename);
+
     // Create Zip that will hold all the release files and scripts.
-    let file = File::create("portmaster-kext-release-bundle.zip").unwrap();
+    let file = File::create(&filename).unwrap();
+
     let mut zip = zip::ZipWriter::new(file);
 
     // Write files to zip
