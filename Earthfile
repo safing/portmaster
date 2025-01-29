@@ -519,8 +519,6 @@ release-prep:
     FROM +rust-base
 
     WORKDIR /app
-    COPY ./dist/intel ./dist/intel
-    COPY ./dist/windows_amd64 ./dist/windows_amd64
 
     # Linux specific
     COPY (+tauri-build/output/portmaster --target="x86_64-unknown-linux-gnu") ./output/binary/linux_amd64/portmaster
@@ -539,18 +537,18 @@ release-prep:
     COPY (+go-build/output/updatemgr --GOARCH=amd64 --GOOS=linux --CMDS=updatemgr) ./updatemgr
  
     # Get binary artifacts from current release
-    RUN mkdir ./output/download/windows_amd64 && ./updatemgr download https://updates.safing.io/stable.v3.json --platform windows_amd64 ./output/download/windows_amd64
+    RUN mkdir -p ./output/download/windows_amd64 && ./updatemgr download https://updates.safing.io/stable.v3.json --platform windows_amd64 ./output/download/windows_amd64
 
     # Copy required artifacts
     RUN cp ./output/download/windows_amd64/portmaster-kext.sys ./output/binary/windows_amd64/portmaster-kext.sys
     RUN cp ./output/download/windows_amd64/portmaster-kext.pdb ./output/binary/windows_amd64/portmaster-kext.pdb
-    RUN cp ./output/download/windows_amd64/portmaster-kext.dll ./output/binary/windows_amd64/portmaster-kext.dll
+    RUN cp ./output/download/windows_amd64/portmaster-core.dll ./output/binary/windows_amd64/portmaster-core.dll
 
     # Create new binary index from artifacts
     RUN ./updatemgr scan --dir "./output/binary" > ./output/binary/index.json
- 
+
     # Get intel index and assets
-    RUN mkdir ./output/intel && ./updatemgr download https://updates.safing.io/intel.v3.json ./output/intel
+    RUN mkdir -p ./output/intel && ./updatemgr download https://updates.safing.io/intel.v3.json ./output/intel
 
     # Save all artifacts to output folder
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/index.json" AS LOCAL "${outputDir}/binary/index.json"
