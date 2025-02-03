@@ -238,13 +238,13 @@ export class EditProfileDialog implements OnInit, OnDestroy {
           this.portapi.delete(icon.Value).subscribe();
         }
 
-        // FIXME(ppacher): we cannot yet delete API based icons ...
+        // TODO(ppacher): we cannot yet delete API based icons ...
       });
 
       if (this.iconData !== '') {
         // save the new icon in the cache database
 
-        // FIXME(ppacher): we currently need to calls because the icon API in portmaster
+        // TODO(ppacher): we currently need to calls because the icon API in portmaster
         // does not update the profile but just saves the file and returns the filename.
         // So we still need to update the profile manually.
         updateIcon = this.profileService
@@ -261,7 +261,7 @@ export class EditProfileDialog implements OnInit, OnDestroy {
             })
           );
 
-        // FIXME(ppacher): reset presentationpath
+        // TODO(ppacher): reset presentationpath
       } else {
         // just clear out that there was an icon
         this.profile.Icons = [];

@@ -543,7 +543,7 @@ export class SfngNetqueryLineChartComponent<D extends SeriesData = any> implemen
       .append("title")
       .text(d => d.text)
 
-    // FIXME(ppacher): somehow d3 does not recognize which data points must be removed
+    // TODO(ppacher): somehow d3 does not recognize which data points must be removed
     // or re-placed. For now, just remove them all
     this.svgInner
       .select('.points')

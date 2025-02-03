@@ -1,4 +1,4 @@
-package main
+package cmdbase
 
 import (
 	"fmt"
@@ -12,32 +12,28 @@ import (
 	"github.com/safing/portmaster/service/updates"
 )
 
-var updateCmd = &cobra.Command{
+var UpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Force an update of all components.",
 	RunE:  update,
 }
 
-func init() {
-	rootCmd.AddCommand(updateCmd)
-}
-
 func update(cmd *cobra.Command, args []string) error {
 	// Finalize config.
-	err := svcCfg.Init()
+	err := SvcConfig.Init()
 	if err != nil {
 		return fmt.Errorf("internal configuration error: %w", err)
 	}
 	// Force logging to stdout.
-	svcCfg.LogToStdout = true
+	SvcConfig.LogToStdout = true
 
 	// Start logging.
-	_ = log.Start(svcCfg.LogLevel, svcCfg.LogToStdout, svcCfg.LogDir)
+	_ = log.Start(SvcConfig.LogLevel, SvcConfig.LogToStdout, SvcConfig.LogDir)
 	defer log.Shutdown()
 
 	// Create updaters.
 	instance := &updateDummyInstance{}
-	binaryUpdateConfig, intelUpdateConfig, err := service.MakeUpdateConfigs(svcCfg)
+	binaryUpdateConfig, intelUpdateConfig, err := service.MakeUpdateConfigs(SvcConfig)
 	if err != nil {
 		return fmt.Errorf("init updater config: %w", err)
 	}

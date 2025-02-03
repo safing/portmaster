@@ -43,10 +43,6 @@ var (
 	startOnce sync.Once
 )
 
-func init() {
-	// module = modules.Register("broadcasts", prep, start, nil, "updates", "netenv", "notifications")
-}
-
 func prep() error {
 	// Register API endpoints.
 	if err := registerAPIEndpoints(); err != nil {

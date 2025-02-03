@@ -126,15 +126,16 @@ fn main() {
 
     let cli_args = cli::parse(std::env::args());
 
+    // TODO(vladimir): Support for other log targets?
     #[cfg(target_os = "linux")]
-    let log_target = if let Some(data_dir) = cli_args.data {
-        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
-            path: Path::new(&format!("{}/logs/app2", data_dir)).into(),
-            file_name: None,
-        })
-    } else {
-        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout)
-    };
+    let log_target = tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout);
+    // let log_target = if let Some(data_dir) = cli_args.data {
+    //     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+    //         path: Path::new(&format!("{}/logs/app2", data_dir)).into(),
+    //         file_name: None,
+    //     })
+    // } else {
+    // };
 
     // TODO(vladimir): Permission for logs/app2 folder are not guaranteed. Use the default location for now.
     #[cfg(target_os = "windows")]

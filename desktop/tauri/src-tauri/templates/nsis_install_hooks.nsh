@@ -3,15 +3,17 @@
 
   SetOutPath "$INSTDIR"
 
-  File "..\..\..\..\binary\bin-index.json"
+  File "..\..\..\..\binary\index.json"
   File "..\..\..\..\binary\portmaster-core.exe"
   File "..\..\..\..\binary\portmaster-kext.sys"
+  File "..\..\..\..\binary\portmaster-core.dll"
+  File "..\..\..\..\binary\WebView2Loader.dll"
   File "..\..\..\..\binary\portmaster.zip"
   File "..\..\..\..\binary\assets.zip"
 
   SetOutPath "$COMMONPROGRAMDATA\Portmaster\intel"
 
-  File "..\..\..\..\intel\intel-index.json"
+  File "..\..\..\..\intel\index.json"
   File "..\..\..\..\intel\base.dsdl"
   File "..\..\..\..\intel\geoipv4.mmdb"
   File "..\..\..\..\intel\geoipv6.mmdb"
@@ -25,7 +27,7 @@
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
-  ExecWait 'sc.exe create PortmasterCore binPath= "$INSTDIR\portmaster-core.exe" --data="$COMMONPROGRAMDATA\Portmaster\data"'
+  ExecWait 'sc.exe create PortmasterCore binPath= "$INSTDIR\portmaster-core.exe --log-dir=%PROGRAMDATA%\Portmaster\logs"'
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL

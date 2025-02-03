@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -67,6 +68,8 @@ type Config struct {
 	IndexFile string
 	// Verify enables and specifies the trust the index signatures will be checked against.
 	Verify jess.TrustStore
+	// Platform defines the platform to download artifacts for. Defaults to current platform.
+	Platform string
 
 	// AutoCheck defines that new indexes may be downloaded automatically without outside trigger.
 	AutoCheck bool
@@ -115,6 +118,11 @@ func (cfg *Config) Check() error {
 		}
 	}
 
+	// Check platform.
+	if cfg.Platform == "" {
+		cfg.Platform = currentPlatform
+	}
+
 	return nil
 }
 
@@ -132,9 +140,11 @@ type Updater struct {
 
 	EventResourcesUpdated *mgr.EventMgr[struct{}]
 
-	corruptedInstallation bool
+	corruptedInstallation error
 
 	isUpdateRunning *abool.AtomicBool
+	started         *abool.AtomicBool
+	configureLock   sync.Mutex
 
 	instance instance
 }
@@ -150,6 +160,7 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 		EventResourcesUpdated: mgr.NewEventMgr[struct{}](ResourceUpdateEvent, m),
 
 		isUpdateRunning: abool.NewBool(false),
+		started:         abool.NewBool(false),
 
 		instance: instance,
 	}
@@ -164,8 +175,14 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 	module.upgradeWorkerMgr = m.NewWorkerMgr("upgrader", module.upgradeWorker, nil)
 
 	// Load index.
-	index, err := LoadIndex(filepath.Join(cfg.Directory, cfg.IndexFile), cfg.Verify)
+	index, err := LoadIndex(filepath.Join(cfg.Directory, cfg.IndexFile), cfg.Platform, cfg.Verify)
 	if err == nil {
+		// Verify artifacts.
+		if err := index.VerifyArtifacts(cfg.Directory); err != nil {
+			module.corruptedInstallation = fmt.Errorf("invalid artifact: %w", err)
+		}
+
+		// Save index to module and return.
 		module.index = index
 		return module, nil
 	}
@@ -173,9 +190,10 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 	// Fall back to scanning the directory.
 	if !errors.Is(err, os.ErrNotExist) {
 		log.Errorf("updates/%s: invalid index file, falling back to dir scan: %s", cfg.Name, err)
+		module.corruptedInstallation = fmt.Errorf("invalid index: %w", err)
 	}
 	index, err = GenerateIndexFromDir(cfg.Directory, IndexScanConfig{Version: "0.0.0"})
-	if err == nil && index.init() == nil {
+	if err == nil && index.init(currentPlatform) == nil {
 		module.index = index
 		return module, nil
 	}
@@ -203,7 +221,7 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 		}
 	} else {
 		// Otherwise, load index from download dir.
-		downloader.index, err = LoadIndex(filepath.Join(u.cfg.DownloadDirectory, u.cfg.IndexFile), u.cfg.Verify)
+		downloader.index, err = LoadIndex(filepath.Join(u.cfg.DownloadDirectory, u.cfg.IndexFile), u.cfg.Platform, u.cfg.Verify)
 		if err != nil {
 			return fmt.Errorf("load previously downloaded index file: %w", err)
 		}
@@ -259,6 +277,7 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 
 	// Check if automatic downloads are enabled.
 	if !u.cfg.AutoDownload && !forceApply {
+		log.Infof("updates/%s: new update to v%s available, action required to download and upgrade", u.cfg.Name, downloader.index.Version)
 		if u.cfg.Notify && u.instance.Notifications() != nil {
 			u.instance.Notifications().Notify(&notifications.Notification{
 				EventID: updateAvailableNotificationID,
@@ -304,6 +323,7 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 
 	// Notify the user that an upgrade is available.
 	if !u.cfg.AutoApply && !forceApply {
+		log.Infof("updates/%s: new update to v%s available, action required to upgrade", u.cfg.Name, downloader.index.Version)
 		if u.cfg.Notify && u.instance.Notifications() != nil {
 			u.instance.Notifications().Notify(&notifications.Notification{
 				EventID: updateAvailableNotificationID,
@@ -387,8 +407,15 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 	return nil
 }
 
+func (u *Updater) getIndexURLsWithLock() []string {
+	u.configureLock.Lock()
+	defer u.configureLock.Unlock()
+
+	return u.cfg.IndexURLs
+}
+
 func (u *Updater) updateCheckWorker(w *mgr.WorkerCtx) error {
-	err := u.updateAndUpgrade(w, u.cfg.IndexURLs, false, false)
+	err := u.updateAndUpgrade(w, u.getIndexURLsWithLock(), false, false)
 	switch {
 	case err == nil:
 		return nil // Success!
@@ -404,7 +431,7 @@ func (u *Updater) updateCheckWorker(w *mgr.WorkerCtx) error {
 }
 
 func (u *Updater) upgradeWorker(w *mgr.WorkerCtx) error {
-	err := u.updateAndUpgrade(w, u.cfg.IndexURLs, false, true)
+	err := u.updateAndUpgrade(w, u.getIndexURLsWithLock(), false, true)
 	switch {
 	case err == nil:
 		return nil // Success!
@@ -423,7 +450,7 @@ func (u *Updater) upgradeWorker(w *mgr.WorkerCtx) error {
 // and is intended to be used only within a tool, not a service.
 func (u *Updater) ForceUpdate() error {
 	return u.m.Do("update and upgrade", func(w *mgr.WorkerCtx) error {
-		return u.updateAndUpgrade(w, u.cfg.IndexURLs, true, true)
+		return u.updateAndUpgrade(w, u.getIndexURLsWithLock(), true, true)
 	})
 }
 
@@ -435,6 +462,33 @@ func (u *Updater) UpdateFromURL(url string) error {
 	})
 
 	return nil
+}
+
+// Configure makes slight configuration changes to the updater.
+// It locks the index, which can take a while an update is running.
+func (u *Updater) Configure(autoCheck bool, indexURLs []string) {
+	u.configureLock.Lock()
+	defer u.configureLock.Unlock()
+
+	// Apply new config.
+	var changed bool
+	if u.cfg.AutoCheck != autoCheck {
+		u.cfg.AutoCheck = autoCheck
+		changed = true
+	}
+	if !slices.Equal(u.cfg.IndexURLs, indexURLs) {
+		u.cfg.IndexURLs = indexURLs
+		changed = true
+	}
+
+	// Trigger update check if enabled and something changed.
+	if changed && u.started.IsSet() {
+		if autoCheck {
+			u.updateCheckWorkerMgr.Repeat(updateTaskRepeatDuration).Go()
+		} else {
+			u.updateCheckWorkerMgr.Repeat(0)
+		}
+	}
 }
 
 // TriggerUpdateCheck triggers an update check.
@@ -459,13 +513,17 @@ func (u *Updater) Manager() *mgr.Manager {
 
 // Start starts the module.
 func (u *Updater) Start() error {
-	if u.corruptedInstallation && u.cfg.Notify && u.instance.Notifications() != nil {
-		// FIXME: this might make sense as a module state
-		u.instance.Notifications().NotifyError(
-			corruptInstallationNotificationID,
-			"Install Corruption",
-			"Portmaster has detected that one or more of its own files have been corrupted. Please re-install the software.",
-		)
+	u.configureLock.Lock()
+	defer u.configureLock.Unlock()
+
+	if u.corruptedInstallation != nil && u.cfg.Notify && u.instance.Notifications() != nil {
+		u.states.Add(mgr.State{
+			ID:      corruptInstallationNotificationID,
+			Name:    "Install Corruption",
+			Message: "Portmaster has detected that one or more of its own files have been corrupted. Please re-install the software. Error: " + u.corruptedInstallation.Error(),
+			Type:    mgr.StateTypeError,
+			Data:    u.corruptedInstallation,
+		})
 	}
 
 	// Check for updates automatically, if enabled.
@@ -474,11 +532,69 @@ func (u *Updater) Start() error {
 			Repeat(updateTaskRepeatDuration).
 			Delay(15 * time.Second)
 	}
+
+	u.started.SetTo(true)
 	return nil
 }
 
 func (u *Updater) GetMainDir() string {
 	return u.cfg.Directory
+}
+
+// GetIndex returns a copy of the index.
+func (u *Updater) GetIndex() (*Index, error) {
+	// Copy Artifacts.
+	artifacts, err := u.GetFiles()
+	if err != nil {
+		return nil, err
+	}
+
+	u.indexLock.Lock()
+	defer u.indexLock.Unlock()
+
+	// Check if any index is active.
+	if u.index == nil {
+		return nil, ErrNotFound
+	}
+
+	return &Index{
+		Name:       u.index.Name,
+		Version:    u.index.Version,
+		Published:  u.index.Published,
+		Artifacts:  artifacts,
+		versionNum: u.index.versionNum,
+	}, nil
+}
+
+// GetFiles returns all artifacts. Returns ErrNotFound if no artifacts are found.
+func (u *Updater) GetFiles() ([]*Artifact, error) {
+	u.indexLock.Lock()
+	defer u.indexLock.Unlock()
+
+	// Check if any index is active.
+	if u.index == nil {
+		return nil, ErrNotFound
+	}
+
+	// Export all artifacts.
+	export := make([]*Artifact, 0, len(u.index.Artifacts))
+	for _, artifact := range u.index.Artifacts {
+		switch {
+		case artifact.Platform != "" && artifact.Platform != u.cfg.Platform:
+			// Platform is defined and does not match.
+			// Platforms are usually pre-filtered, but just to be sure.
+		default:
+			// Artifact matches!
+			export = append(export, artifact.export(u.cfg.Directory, u.index.versionNum))
+		}
+	}
+
+	// Check if anything was exported.
+	if len(export) == 0 {
+		return nil, ErrNotFound
+	}
+
+	return export, nil
 }
 
 // GetFile returns the path of a file given the name. Returns ErrNotFound if file is not found.
@@ -495,7 +611,7 @@ func (u *Updater) GetFile(name string) (*Artifact, error) {
 		switch {
 		case artifact.Filename != name:
 			// Name does not match.
-		case artifact.Platform != "" && artifact.Platform != currentPlatform:
+		case artifact.Platform != "" && artifact.Platform != u.cfg.Platform:
 			// Platform is defined and does not match.
 			// Platforms are usually pre-filtered, but just to be sure.
 		default:
@@ -509,6 +625,7 @@ func (u *Updater) GetFile(name string) (*Artifact, error) {
 
 // Stop stops the module.
 func (u *Updater) Stop() error {
+	u.started.SetTo(false)
 	return nil
 }
 

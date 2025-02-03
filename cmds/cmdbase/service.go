@@ -1,12 +1,14 @@
-package main
+package cmdbase
 
 import (
+	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"os/exec"
+	"runtime"
 	"runtime/pprof"
 	"time"
 
@@ -15,14 +17,12 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service"
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/spn/conf"
 )
 
-var printStackOnExit bool
-
-func init() {
-	flag.BoolVar(&printStackOnExit, "print-stack-on-exit", false, "prints the stack before of shutting down")
-}
+var (
+	RebootOnRestart  bool
+	PrintStackOnExit bool
+)
 
 type SystemService interface {
 	Run()
@@ -30,21 +30,47 @@ type SystemService interface {
 	RestartService() error
 }
 
-func cmdRun(cmd *cobra.Command, args []string) {
-	// Run platform specific setup or switches.
-	runPlatformSpecifics(cmd, args)
+type ServiceInstance interface {
+	Ready() bool
+	Start() error
+	Stop() error
+	Restart()
+	Shutdown()
+	Ctx() context.Context
+	IsShuttingDown() bool
+	ShuttingDown() <-chan struct{}
+	ShutdownCtx() context.Context
+	IsShutDown() bool
+	ShutdownComplete() <-chan struct{}
+	ExitCode() int
+	ShouldRestartIsSet() bool
+	CommandLineOperationIsSet() bool
+	CommandLineOperationExecute() error
+}
 
-	// SETUP
+var (
+	SvcFactory func(*service.ServiceConfig) (ServiceInstance, error)
+	SvcConfig  *service.ServiceConfig
+)
 
-	// Enable SPN client mode.
-	// TODO: Move this to service config.
-	conf.EnableClient(true)
-	conf.EnableIntegration(true)
+func RunService(cmd *cobra.Command, args []string) {
+	if SvcFactory == nil || SvcConfig == nil {
+		fmt.Fprintln(os.Stderr, "internal error: service not set up in cmdbase")
+		os.Exit(1)
+	}
+
+	// Start logging.
+	// Note: Must be created before the service instance, so that they use the right logger.
+	err := log.Start(SvcConfig.LogLevel, SvcConfig.LogToStdout, SvcConfig.LogDir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(4)
+	}
 
 	// Create instance.
 	// Instance modules might request a cmdline execution of a function.
 	var execCmdLine bool
-	instance, err := service.New(svcCfg)
+	instance, err := SvcFactory(SvcConfig)
 	switch {
 	case err == nil:
 		// Continue
@@ -59,13 +85,13 @@ func cmdRun(cmd *cobra.Command, args []string) {
 	switch {
 	case !execCmdLine:
 		// Run service.
-	case instance.CommandLineOperation == nil:
+	case !instance.CommandLineOperationIsSet():
 		fmt.Println("command line operation execution requested, but not set")
 		os.Exit(3)
 	default:
 		// Run the function and exit.
 		fmt.Println("executing cmdline op")
-		err = instance.CommandLineOperation()
+		err = instance.CommandLineOperationExecute()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "command line operation failed: %s\n", err)
 			os.Exit(3)
@@ -74,16 +100,6 @@ func cmdRun(cmd *cobra.Command, args []string) {
 	}
 
 	// START
-
-	// FIXME: fix color and duplicate level when logging with slog
-	// FIXME: check for tty for color enabling
-
-	// Start logging.
-	err = log.Start(svcCfg.LogLevel, svcCfg.LogToStdout, svcCfg.LogDir)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(4)
-	}
 
 	// Create system service.
 	service := NewSystemService(instance)
@@ -102,7 +118,7 @@ func cmdRun(cmd *cobra.Command, args []string) {
 	select {
 	case <-instance.ShutdownComplete():
 		// Print stack on shutdown, if enabled.
-		if printStackOnExit {
+		if PrintStackOnExit {
 			printStackTo(log.GlobalWriter, "PRINTING STACK ON EXIT")
 		}
 	case <-time.After(3 * time.Minute):
@@ -110,9 +126,22 @@ func cmdRun(cmd *cobra.Command, args []string) {
 	}
 
 	// Check if restart was triggered and send start service command if true.
-	if instance.ShouldRestart && service.IsService() {
-		if err := service.RestartService(); err != nil {
-			slog.Error("failed to restart service", "err", err)
+	if instance.ShouldRestartIsSet() && service.IsService() {
+		// Check if we should reboot instead.
+		var rebooting bool
+		if RebootOnRestart {
+			// Trigger system reboot and record success.
+			rebooting = triggerSystemReboot()
+			if !rebooting {
+				log.Warningf("updates: rebooting failed, only restarting service instead")
+			}
+		}
+
+		// Restart service if not rebooting.
+		if !rebooting {
+			if err := service.RestartService(); err != nil {
+				slog.Error("failed to restart service", "err", err)
+			}
 		}
 	}
 
@@ -137,4 +166,20 @@ func printStackTo(writer io.Writer, msg string) {
 	if err != nil {
 		slog.Error("failed to write stack trace", "err", err)
 	}
+}
+
+func triggerSystemReboot() (success bool) {
+	switch runtime.GOOS {
+	case "linux":
+		err := exec.Command("systemctl", "reboot").Run()
+		if err != nil {
+			log.Errorf("updates: triggering reboot with systemctl failed: %s", err)
+			return false
+		}
+	default:
+		log.Warningf("updates: rebooting is not support on %s", runtime.GOOS)
+		return false
+	}
+
+	return true
 }

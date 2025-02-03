@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -13,23 +12,17 @@ import (
 	"github.com/safing/portmaster/service/firewall/interception"
 )
 
-var (
-	recoverCmd = &cobra.Command{
-		Use:   "recover-iptables",
-		Short: "Force an update of all components.",
-		RunE:  update,
-	}
-
-	recoverIPTables bool
-)
+var recoverCmd = &cobra.Command{
+	Use:   "recover-iptables",
+	Short: "Clean up Portmaster rules in iptables",
+	RunE:  recoverIPTables,
+}
 
 func init() {
 	rootCmd.AddCommand(recoverCmd)
-
-	flag.BoolVar(&recoverIPTables, "recover-iptables", false, "recovers ip table rules (backward compatibility; use command instead)")
 }
 
-func recover(cmd *cobra.Command, args []string) error {
+func recoverIPTables(cmd *cobra.Command, args []string) error {
 	// interception.DeactiveNfqueueFirewall uses coreos/go-iptables
 	// which shells out to the /sbin/iptables binary. As a result,
 	// we don't get the errno of the actual error and need to parse the

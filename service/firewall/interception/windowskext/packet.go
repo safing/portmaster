@@ -59,7 +59,7 @@ func (pkt *Packet) LoadPacketData() error {
 			return packet.ErrFailedToLoadPayload
 		}
 
-		err = packet.Parse(payload, &pkt.Base)
+		err = packet.ParseLayer3(payload, &pkt.Base)
 		if err != nil {
 			log.Tracer(pkt.Ctx()).Warningf("windowskext: failed to parse payload: %s", err)
 			return packet.ErrFailedToLoadPayload

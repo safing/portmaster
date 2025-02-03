@@ -1,4 +1,4 @@
-package main
+package cmdbase
 
 // Based on the official Go examples from
 // https://github.com/golang/sys/blob/master/windows/svc/example
@@ -13,21 +13,19 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/spf13/cobra"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
 
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/service"
 )
 
 const serviceName = "PortmasterCore"
 
 type WindowsSystemService struct {
-	instance *service.Instance
+	instance ServiceInstance
 }
 
-func NewSystemService(instance *service.Instance) *WindowsSystemService {
+func NewSystemService(instance ServiceInstance) *WindowsSystemService {
 	return &WindowsSystemService{instance: instance}
 }
 
@@ -67,7 +65,7 @@ func (s *WindowsSystemService) Execute(args []string, changeRequests <-chan svc.
 		fmt.Printf("failed to start: %s\n", err)
 
 		// Print stack on start failure, if enabled.
-		if printStackOnExit {
+		if PrintStackOnExit {
 			printStackTo(log.GlobalWriter, "PRINTING STACK ON START FAILURE")
 		}
 
@@ -102,7 +100,7 @@ waitSignal:
 		select {
 		case sig := <-signalCh:
 			// Trigger shutdown.
-			fmt.Printf(" <SIGNAL: %v>", sig) // CLI output.
+			fmt.Printf(" <SIGNAL: %v>\n", sig) // CLI output.
 			slog.Warn("received stop signal", "signal", sig)
 			break waitSignal
 
@@ -112,7 +110,7 @@ waitSignal:
 				changes <- c.CurrentStatus
 
 			case svc.Stop, svc.Shutdown:
-				fmt.Printf(" <SERVICE CMD: %v>", serviceCmdName(c.Cmd)) // CLI output.
+				fmt.Printf(" <SERVICE CMD: %v>\n", serviceCmdName(c.Cmd)) // CLI output.
 				slog.Warn("received service shutdown command", "cmd", c.Cmd)
 				break waitSignal
 
@@ -200,8 +198,6 @@ sc.exe start $serviceName`
 
 	return nil
 }
-
-func runPlatformSpecifics(cmd *cobra.Command, args []string)
 
 func serviceCmdName(cmd svc.Cmd) string {
 	switch cmd {

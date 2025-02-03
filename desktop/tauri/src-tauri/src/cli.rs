@@ -1,9 +1,9 @@
 use log::LevelFilter;
 
-#[cfg(not(debug_assertions))]
-const DEFAULT_LOG_LEVEL: log::LevelFilter = log::LevelFilter::Warn;
+// #[cfg(not(debug_assertions))]
+// const DEFAULT_LOG_LEVEL: log::LevelFilter = log::LevelFilter::Warn;
 
-#[cfg(debug_assertions)]
+// #[cfg(debug_assertions)]
 const DEFAULT_LOG_LEVEL: log::LevelFilter = log::LevelFilter::Debug;
 
 #[derive(Debug)]
@@ -43,8 +43,8 @@ pub fn parse(raw: impl IntoIterator<Item = impl Into<std::ffi::OsString>>) -> Cl
         data: None,
         log_level: DEFAULT_LOG_LEVEL,
         background: false,
-        with_prompts: false,
-        with_notifications: false,
+        with_prompts: true,
+        with_notifications: true,
     };
 
     let raw = clap_lex::RawArgs::new(raw);
@@ -67,11 +67,11 @@ pub fn parse(raw: impl IntoIterator<Item = impl Into<std::ffi::OsString>>) -> Cl
                 Ok("background") => {
                     cli.background = true;
                 }
-                Ok("with_prompts") => {
-                    cli.with_prompts = true;
+                Ok("no-prompts") => {
+                    cli.with_prompts = false;
                 }
-                Ok("with_notifications") => {
-                    cli.with_notifications = true;
+                Ok("no-notifications") => {
+                    cli.with_notifications = false;
                 }
                 _ => {
                     // Ignore unexpected flags

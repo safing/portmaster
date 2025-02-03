@@ -8,6 +8,7 @@ import (
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/updates"
 )
@@ -33,6 +34,12 @@ func start() error {
 	err := os.MkdirAll(execDir, 0o0777) //nolint:gosec // This is intentional.
 	if err != nil {
 		log.Warningf("ui: failed to create safe exec dir: %s", err)
+	}
+
+	// Ensure directory permission
+	err = utils.EnsureDirectory(execDir, utils.PublicWriteExecPermission)
+	if err != nil {
+		log.Warningf("ui: failed to set permissions to directory %s: %s", execDir, err)
 	}
 
 	return nil

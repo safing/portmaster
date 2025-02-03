@@ -191,7 +191,7 @@ func ParseLevel(level string) Severity {
 }
 
 // Start starts the logging system. Must be called in order to see logs.
-func Start(level string, logToStdout bool, logDir string) (err error) {
+func Start(level string, logToStdout bool, logDir string) error {
 	if !initializing.SetToIf(false, true) {
 		return nil
 	}
@@ -232,13 +232,13 @@ func Start(level string, logToStdout bool, logDir string) (err error) {
 
 	// Delete all logs older than one month.
 	if !logToStdout {
-		err = CleanOldLogs(logDir, 30*24*time.Hour)
+		err := CleanOldLogs(logDir, 30*24*time.Hour)
 		if err != nil {
 			Errorf("log: failed to clean old log files: %s", err)
 		}
 	}
 
-	return err
+	return nil
 }
 
 // Shutdown writes remaining log lines and then stops the log system.

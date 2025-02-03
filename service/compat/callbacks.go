@@ -3,6 +3,7 @@ package compat
 import (
 	"net"
 
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/process"
 )
@@ -31,10 +32,16 @@ func SubmitDNSCheckDomain(subdomain string) (respondWith net.IP) {
 
 // ReportSecureDNSBypassIssue reports a DNS bypassing issue for the given process.
 func ReportSecureDNSBypassIssue(p *process.Process) {
-	secureDNSBypassIssue.notify(p)
+	module.mgr.Go("report secure dns bypass issue", func(w *mgr.WorkerCtx) error {
+		secureDNSBypassIssue.notify(p)
+		return nil
+	})
 }
 
 // ReportMultiPeerUDPTunnelIssue reports a multi-peer UDP tunnel for the given process.
 func ReportMultiPeerUDPTunnelIssue(p *process.Process) {
-	multiPeerUDPTunnelIssue.notify(p)
+	module.mgr.Go("report multi-peer udp tunnel issue", func(w *mgr.WorkerCtx) error {
+		multiPeerUDPTunnelIssue.notify(p)
+		return nil
+	})
 }

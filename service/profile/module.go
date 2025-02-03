@@ -3,7 +3,6 @@ package profile
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync/atomic"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/migration"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 	_ "github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/profile/binmeta"
@@ -66,10 +66,18 @@ func prep() error {
 	}
 
 	// Setup icon storage location.
-	iconsDir := filepath.Join(module.instance.DataDir(), "databases", "icons")
-	if err := os.MkdirAll(iconsDir, 0o0700); err != nil {
-		return fmt.Errorf("failed to create/check icons directory: %w", err)
+	databaseDir := filepath.Join(module.instance.DataDir(), "databases")
+	// Ensure folder existents and permission
+	err := utils.EnsureDirectory(databaseDir, utils.AdminOnlyExecPermission)
+	if err != nil {
+		return fmt.Errorf("failed to ensure directory existence %s: %w", databaseDir, err)
 	}
+	iconsDir := filepath.Join(databaseDir, "icons")
+	err = utils.EnsureDirectory(iconsDir, utils.AdminOnlyExecPermission)
+	if err != nil {
+		return fmt.Errorf("failed to ensure directory existence %s: %w", iconsDir, err)
+	}
+
 	binmeta.ProfileIconStoragePath = iconsDir
 
 	return nil

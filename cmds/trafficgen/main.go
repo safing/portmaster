@@ -37,13 +37,12 @@ func main() {
 	}
 
 	// Start logging.
-	err := log.Start()
+	err := log.Start("trace", true, "")
 	if err != nil {
 		fmt.Printf("failed to start logging: %s\n", err)
 		os.Exit(1)
 	}
 	defer log.Shutdown()
-	log.SetLogLevel(log.TraceLevel)
 	log.Info("starting traffic generator")
 
 	// Execute requests

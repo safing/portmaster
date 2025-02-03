@@ -1,6 +1,12 @@
 name: Release
 
 on:
+  push:
+    branches:
+      - v2.0
+      - feature/new-installer
+    tags:        
+      - v*
   workflow_dispatch:
 
 jobs:
@@ -26,7 +32,6 @@ jobs:
     - name: Upload Dist
       uses: actions/upload-artifact@v4
       with:
-        name: dist
         path: ./dist/
         if-no-files-found: error
 
@@ -51,6 +56,12 @@ jobs:
       run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +installer-linux
       # --ci include --no-output flag
 
+    - name: Upload Installers
+      uses: actions/upload-artifact@v4
+      with:
+        path: ./dist/linux_amd64/
+        if-no-files-found: error
+
   installer-windows:
     name: Installer windows
     runs-on: windows-latest
@@ -62,9 +73,13 @@ jobs:
     - name: Download Dist
       uses: actions/download-artifact@v4
       with:
-        name: dist
         path: dist/
 
     - name: Build windows artifacts
       run: powershell -NoProfile -File ./packaging/windows/generate_windows_installers.ps1
 
+    - name: Upload Installers
+      uses: actions/upload-artifact@v4
+      with:
+        path: ./dist/windows_amd64/
+        if-no-files-found: error

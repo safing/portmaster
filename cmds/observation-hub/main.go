@@ -1,41 +1,75 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"log/slog"
 	"os"
-	"os/signal"
 	"runtime"
-	"runtime/pprof"
-	"syscall"
-	"time"
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/info"
-	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
-	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/cmds/cmdbase"
+	"github.com/safing/portmaster/service"
+	"github.com/safing/portmaster/service/configure"
 	"github.com/safing/portmaster/service/updates"
-	"github.com/safing/portmaster/spn"
 	"github.com/safing/portmaster/spn/captain"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/sluice"
+	"github.com/spf13/cobra"
 )
 
-var sigUSR1 = syscall.Signal(0xa)
+var (
+	rootCmd = &cobra.Command{
+		Use:              "observation-hub",
+		PersistentPreRun: initializeGlobals,
+		Run:              cmdbase.RunService,
+	}
+
+	binDir  string
+	dataDir string
+
+	logToStdout bool
+	logDir      string
+	logLevel    string
+)
+
+func init() {
+	// Add persistent flags for all commands.
+	rootCmd.PersistentFlags().StringVar(&binDir, "bin-dir", "", "set directory for executable binaries (rw/ro)")
+	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", "set directory for variable data (rw)")
+
+	// Add flags for service only.
+	rootCmd.Flags().BoolVar(&logToStdout, "log-stdout", false, "log to stdout instead of file")
+	rootCmd.Flags().StringVar(&logDir, "log-dir", "", "set directory for logs")
+	rootCmd.Flags().StringVar(&logLevel, "log", "", "set log level to [trace|debug|info|warning|error|critical]")
+	rootCmd.Flags().BoolVar(&cmdbase.PrintStackOnExit, "print-stack-on-exit", false, "prints the stack before of shutting down")
+	rootCmd.Flags().BoolVar(&cmdbase.RebootOnRestart, "reboot-on-restart", false, "reboot server instead of service restart")
+
+	// Add other commands.
+	rootCmd.AddCommand(cmdbase.VersionCmd)
+	rootCmd.AddCommand(cmdbase.UpdateCmd)
+}
 
 func main() {
-	flag.Parse()
+	// Add Go's default flag set.
+	// TODO: Move flags throughout Portmaster to here and add their values to the service config.
+	rootCmd.Flags().AddGoFlagSet(flag.CommandLine)
 
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func initializeGlobals(cmd *cobra.Command, args []string) {
+	// Set version info.
 	info.Set("SPN Observation Hub", "", "GPLv3")
 
 	// Configure metrics.
 	_ = metrics.SetNamespace("observer")
 
-	// Configure user agent and updates.
+	// Configure user agent.
 	updates.UserAgent = fmt.Sprintf("SPN Observation Hub (%s %s)", runtime.GOOS, runtime.GOARCH)
 
 	// Configure SPN mode.
@@ -46,129 +80,37 @@ func main() {
 	sluice.EnableListener = false
 	api.EnableServer = false
 
-	// Start logger with default log level.
-	_ = log.Start(log.WarningLevel)
+	// Configure service.
+	cmdbase.SvcFactory = func(svcCfg *service.ServiceConfig) (cmdbase.ServiceInstance, error) {
+		svc, err := service.New(svcCfg)
 
-	// Create instance.
-	var execCmdLine bool
-	instance, err := spn.New()
-	switch {
-	case err == nil:
-		// Continue
-	case errors.Is(err, mgr.ErrExecuteCmdLineOp):
-		execCmdLine = true
-	default:
-		fmt.Printf("error creating an instance: %s\n", err)
-		os.Exit(2)
-	}
-
-	// Add additional modules.
-	observer, err := New(instance)
-	if err != nil {
-		fmt.Printf("error creating an instance: create observer module: %s\n", err)
-		os.Exit(2)
-	}
-	instance.AddModule(observer)
-
-	_, err = NewApprise(instance)
-	if err != nil {
-		fmt.Printf("error creating an instance: create apprise module: %s\n", err)
-		os.Exit(2)
-	}
-	instance.AddModule(observer)
-
-	// FIXME: Use service?
-
-	// Execute command line operation, if requested or available.
-	switch {
-	case !execCmdLine:
-		// Run service.
-	case instance.CommandLineOperation == nil:
-		fmt.Println("command line operation execution requested, but not set")
-		os.Exit(3)
-	default:
-		// Run the function and exit.
-		err = instance.CommandLineOperation()
+		// Add additional modules.
+		observer, err := New(svc)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "command line operation failed: %s\n", err)
-			os.Exit(3)
+			fmt.Printf("error creating an instance: create observer module: %s\n", err)
+			os.Exit(2)
 		}
-		os.Exit(0)
-	}
-
-	// Start
-	go func() {
-		err = instance.Start()
+		svc.AddModule(observer)
+		_, err = NewApprise(svc)
 		if err != nil {
-			fmt.Printf("instance start failed: %s\n", err)
-			os.Exit(1)
+			fmt.Printf("error creating an instance: create apprise module: %s\n", err)
+			os.Exit(2)
 		}
-	}()
+		svc.AddModule(observer)
 
-	// Wait for signal.
-	signalCh := make(chan os.Signal, 1)
-	signal.Notify(
-		signalCh,
-		os.Interrupt,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-		sigUSR1,
-	)
-
-	select {
-	case sig := <-signalCh:
-		// Only print and continue to wait if SIGUSR1
-		if sig == sigUSR1 {
-			printStackTo(os.Stderr, "PRINTING STACK ON REQUEST")
-		} else {
-			fmt.Println(" <INTERRUPT>") // CLI output.
-			slog.Warn("program was interrupted, stopping")
-		}
-
-	case <-instance.ShuttingDown():
-		log.Shutdown()
-		os.Exit(instance.ExitCode())
+		return svc, err
 	}
+	cmdbase.SvcConfig = &service.ServiceConfig{
+		BinDir:  binDir,
+		DataDir: dataDir,
 
-	// Catch signals during shutdown.
-	// Rapid unplanned disassembly after 5 interrupts.
-	go func() {
-		forceCnt := 5
-		for {
-			<-signalCh
-			forceCnt--
-			if forceCnt > 0 {
-				fmt.Printf(" <INTERRUPT> again, but already shutting down - %d more to force\n", forceCnt)
-			} else {
-				printStackTo(os.Stderr, "PRINTING STACK ON FORCED EXIT")
-				os.Exit(1)
-			}
-		}
-	}()
+		LogToStdout: logToStdout,
+		LogDir:      logDir,
+		LogLevel:    logLevel,
 
-	// Rapid unplanned disassembly after 3 minutes.
-	go func() {
-		time.Sleep(3 * time.Minute)
-		printStackTo(os.Stderr, "PRINTING STACK - TAKING TOO LONG FOR SHUTDOWN")
-		os.Exit(1)
-	}()
-
-	// Stop instance.
-	if err := instance.Stop(); err != nil {
-		slog.Error("failed to stop", "err", err)
-	}
-	log.Shutdown()
-	os.Exit(instance.ExitCode())
-}
-
-func printStackTo(writer io.Writer, msg string) {
-	_, err := fmt.Fprintf(writer, "===== %s =====\n", msg)
-	if err == nil {
-		err = pprof.Lookup("goroutine").WriteTo(writer, 1)
-	}
-	if err != nil {
-		slog.Error("failed to write stack trace", "err", err)
+		BinariesIndexURLs:   configure.DefaultStableBinaryIndexURLs,
+		IntelIndexURLs:      configure.DefaultIntelIndexURLs,
+		VerifyBinaryUpdates: configure.BinarySigningTrustStore,
+		VerifyIntelUpdates:  configure.BinarySigningTrustStore,
 	}
 }

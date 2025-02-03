@@ -2,11 +2,50 @@ package utils
 
 import (
 	"fmt"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"sync"
 )
+
+type FSPermission uint8
+
+const (
+	AdminOnlyPermission FSPermission = iota
+	AdminOnlyExecPermission
+	PublicReadPermission
+	PublicReadExecPermission
+	PublicWritePermission
+	PublicWriteExecPermission
+)
+
+// AsUnixDirExecPermission return the corresponding unix permission for a directory or executable.
+func (perm FSPermission) AsUnixPermission() fs.FileMode {
+	switch perm {
+	case AdminOnlyPermission:
+		return 0o600
+	case AdminOnlyExecPermission:
+		return 0o700
+	case PublicReadPermission:
+		return 0o644
+	case PublicReadExecPermission:
+		return 0o755
+	case PublicWritePermission:
+		return 0o666
+	case PublicWriteExecPermission:
+		return 0o777
+	}
+
+	return 0
+}
+
+func (perm FSPermission) IsExecPermission() bool {
+	switch perm {
+	case AdminOnlyExecPermission, PublicReadExecPermission, PublicWriteExecPermission:
+		return true
+	}
+	return false
+}
 
 // DirStructure represents a directory structure with permissions that should be enforced.
 type DirStructure struct {
@@ -14,13 +53,13 @@ type DirStructure struct {
 
 	Path     string
 	Dir      string
-	Perm     os.FileMode
+	Perm     FSPermission
 	Parent   *DirStructure
 	Children map[string]*DirStructure
 }
 
 // NewDirStructure returns a new DirStructure.
-func NewDirStructure(path string, perm os.FileMode) *DirStructure {
+func NewDirStructure(path string, perm FSPermission) *DirStructure {
 	return &DirStructure{
 		Path:     path,
 		Perm:     perm,
@@ -29,7 +68,7 @@ func NewDirStructure(path string, perm os.FileMode) *DirStructure {
 }
 
 // ChildDir adds a new child DirStructure and returns it. Should the child already exist, the existing child is returned and the permissions are updated.
-func (ds *DirStructure) ChildDir(dirName string, perm os.FileMode) (child *DirStructure) {
+func (ds *DirStructure) ChildDir(dirName string, perm FSPermission) (child *DirStructure) {
 	ds.Lock()
 	defer ds.Unlock()
 

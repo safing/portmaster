@@ -9,11 +9,12 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/dbmodule"
-	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/base/runtime"
+	"github.com/safing/portmaster/base/utils"
+	"github.com/safing/portmaster/service"
 	"github.com/safing/portmaster/service/core"
 	"github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/intel/filterlists"
@@ -79,26 +80,26 @@ type Instance struct {
 }
 
 // New returns a new Portmaster service instance.
-func New() (*Instance, error) {
+func New(svcCfg *service.ServiceConfig) (*Instance, error) {
+	// Initialize config.
+	err := svcCfg.Init()
+	if err != nil {
+		return nil, fmt.Errorf("internal service config error: %w", err)
+	}
+
+	// Make sure data dir exists, so that child directories don't dictate the permissions.
+	err = utils.EnsureDirectory(svcCfg.DataDir, utils.PublicReadExecPermission)
+	if err != nil {
+		return nil, fmt.Errorf("data directory %s is not accessible: %w", svcCfg.DataDir, err)
+	}
+
 	// Create instance to pass it to modules.
-	instance := &Instance{}
+	instance := &Instance{
+		binDir:  svcCfg.BinDir,
+		dataDir: svcCfg.DataDir,
+	}
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
 	instance.shutdownCtx, instance.cancelShutdownCtx = context.WithCancel(context.Background())
-
-	binaryUpdateIndex := updates.Config{
-		// FIXME: fill
-	}
-
-	intelUpdateIndex := updates.Config{
-		// FIXME: fill
-	}
-
-	// Initialize log
-	log.GlobalWriter = log.NewStdoutWriter()
-
-	// FIXME: initialize log file.
-
-	var err error
 
 	// Base modules
 	instance.base, err = base.New(instance)
@@ -131,17 +132,21 @@ func New() (*Instance, error) {
 	}
 
 	// Service modules
+	binaryUpdateConfig, intelUpdateConfig, err := service.MakeUpdateConfigs(svcCfg)
+	if err != nil {
+		return instance, fmt.Errorf("create updates config: %w", err)
+	}
+	instance.binaryUpdates, err = updates.New(instance, "Binary Updater", *binaryUpdateConfig)
+	if err != nil {
+		return instance, fmt.Errorf("create updates module: %w", err)
+	}
+	instance.intelUpdates, err = updates.New(instance, "Intel Updater", *intelUpdateConfig)
+	if err != nil {
+		return instance, fmt.Errorf("create updates module: %w", err)
+	}
 	instance.core, err = core.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create core module: %w", err)
-	}
-	instance.binaryUpdates, err = updates.New(instance, "Binary Updater", binaryUpdateIndex)
-	if err != nil {
-		return instance, fmt.Errorf("create updates module: %w", err)
-	}
-	instance.intelUpdates, err = updates.New(instance, "Intel Updater", intelUpdateIndex)
-	if err != nil {
-		return instance, fmt.Errorf("create updates module: %w", err)
 	}
 	instance.geoip, err = geoip.New(instance)
 	if err != nil {

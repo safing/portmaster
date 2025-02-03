@@ -287,6 +287,30 @@ func UpdateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 		}
 	}
 
+	// Create new record for this IP.
+	record := resolver.ResolvedDomain{
+		Domain:            q.FQDN,
+		Resolver:          rrCache.Resolver,
+		DNSRequestContext: rrCache.ToDNSRequestContext(),
+		Expires:           rrCache.Expires,
+	}
+	// Process CNAMEs
+	record.AddCNAMEs(cnames)
+	// Link connection with cnames.
+	if conn.Type == network.DNSRequest {
+		conn.Entity.CNAME = record.CNAMEs
+	}
+
+	SaveIPsInCache(ips, profileID, record)
+}
+
+// formatRR is a friendlier alternative to miekg/dns.RR.String().
+func formatRR(rr dns.RR) string {
+	return strings.ReplaceAll(rr.String(), "\t", " ")
+}
+
+// SaveIPsInCache saves the provided ips in the dns cashe assoseted with the record Domain and CNAMEs.
+func SaveIPsInCache(ips []net.IP, profileID string, record resolver.ResolvedDomain) {
 	// Package IPs and CNAMEs into IPInfo structs.
 	for _, ip := range ips {
 		// Never save domain attributions for localhost IPs.
@@ -294,31 +318,6 @@ func UpdateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 			continue
 		}
 
-		// Create new record for this IP.
-		record := resolver.ResolvedDomain{
-			Domain:            q.FQDN,
-			Resolver:          rrCache.Resolver,
-			DNSRequestContext: rrCache.ToDNSRequestContext(),
-			Expires:           rrCache.Expires,
-		}
-
-		// Resolve all CNAMEs in the correct order and add the to the record.
-		domain := q.FQDN
-		for {
-			nextDomain, isCNAME := cnames[domain]
-			if !isCNAME {
-				break
-			}
-
-			record.CNAMEs = append(record.CNAMEs, nextDomain)
-			domain = nextDomain
-		}
-
-		// Update the entity to include the CNAMEs of the query response.
-		conn.Entity.CNAME = record.CNAMEs
-
-		// Check if there is an existing record for this DNS response.
-		// Else create a new one.
 		ipString := ip.String()
 		info, err := resolver.GetIPInfo(profileID, ipString)
 		if err != nil {
@@ -340,9 +339,4 @@ func UpdateIPsAndCNAMEs(q *resolver.Query, rrCache *resolver.RRCache, conn *netw
 			log.Errorf("nameserver: failed to save IP info record: %s", err)
 		}
 	}
-}
-
-// formatRR is a friendlier alternative to miekg/dns.RR.String().
-func formatRR(rr dns.RR) string {
-	return strings.ReplaceAll(rr.String(), "\t", " ")
 }

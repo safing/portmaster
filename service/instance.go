@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync/atomic"
 	"time"
 
@@ -14,12 +13,15 @@ import (
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/base/runtime"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/broadcasts"
 	"github.com/safing/portmaster/service/compat"
 	"github.com/safing/portmaster/service/core"
 	"github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/firewall"
 	"github.com/safing/portmaster/service/firewall/interception"
+	"github.com/safing/portmaster/service/firewall/interception/dnsmonitor"
+	"github.com/safing/portmaster/service/integration"
 	"github.com/safing/portmaster/service/intel/customlists"
 	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/intel/geoip"
@@ -74,6 +76,7 @@ type Instance struct {
 	core          *core.Core
 	binaryUpdates *updates.Updater
 	intelUpdates  *updates.Updater
+	integration   *integration.OSIntegration
 	geoip         *geoip.GeoIP
 	netenv        *netenv.NetEnv
 	ui            *ui.UI
@@ -83,6 +86,7 @@ type Instance struct {
 	firewall      *firewall.Firewall
 	filterLists   *filterlists.FilterLists
 	interception  *interception.Interception
+	dnsmonitor    *dnsmonitor.DNSMonitor
 	customlist    *customlists.CustomList
 	status        *status.Status
 	broadcasts    *broadcasts.Broadcasts
@@ -119,7 +123,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	}
 
 	// Make sure data dir exists, so that child directories don't dictate the permissions.
-	err = os.MkdirAll(svcCfg.DataDir, 0o0755)
+	err = utils.EnsureDirectory(svcCfg.DataDir, utils.PublicReadExecPermission)
 	if err != nil {
 		return nil, fmt.Errorf("data directory %s is not accessible: %w", svcCfg.DataDir, err)
 	}
@@ -167,10 +171,6 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	}
 
 	// Service modules
-	instance.core, err = core.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create core module: %w", err)
-	}
 	binaryUpdateConfig, intelUpdateConfig, err := MakeUpdateConfigs(svcCfg)
 	if err != nil {
 		return instance, fmt.Errorf("create updates config: %w", err)
@@ -182,6 +182,14 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	instance.intelUpdates, err = updates.New(instance, "Intel Updater", *intelUpdateConfig)
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
+	}
+	instance.core, err = core.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create core module: %w", err)
+	}
+	instance.integration, err = integration.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create integration module: %w", err)
 	}
 	instance.geoip, err = geoip.New(instance)
 	if err != nil {
@@ -218,6 +226,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	instance.interception, err = interception.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create interception module: %w", err)
+	}
+	instance.dnsmonitor, err = dnsmonitor.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create dns-listener module: %w", err)
 	}
 	instance.customlist, err = customlists.New(instance)
 	if err != nil {
@@ -309,6 +321,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.core,
 		instance.binaryUpdates,
 		instance.intelUpdates,
+		instance.integration,
 		instance.geoip,
 		instance.netenv,
 
@@ -322,6 +335,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.filterLists,
 		instance.customlist,
 		instance.interception,
+		instance.dnsmonitor,
 
 		instance.compat,
 		instance.status,
@@ -429,6 +443,11 @@ func (i *Instance) IntelUpdates() *updates.Updater {
 	return i.intelUpdates
 }
 
+// OSIntegration returns the integration module.
+func (i *Instance) OSIntegration() *integration.OSIntegration {
+	return i.integration
+}
+
 // GeoIP returns the geoip module.
 func (i *Instance) GeoIP() *geoip.GeoIP {
 	return i.geoip
@@ -512,6 +531,11 @@ func (i *Instance) FilterLists() *filterlists.FilterLists {
 // Interception returns the interception module.
 func (i *Instance) Interception() *interception.Interception {
 	return i.interception
+}
+
+// DNSMonitor returns the dns-listener module.
+func (i *Instance) DNSMonitor() *dnsmonitor.DNSMonitor {
+	return i.dnsmonitor
 }
 
 // CustomList returns the customlist module.
@@ -707,4 +731,24 @@ func (i *Instance) ShutdownComplete() <-chan struct{} {
 // ExitCode returns the set exit code of the instance.
 func (i *Instance) ExitCode() int {
 	return int(i.exitCode.Load())
+}
+
+// ShouldRestartIsSet returns whether the service/instance should be restarted.
+func (i *Instance) ShouldRestartIsSet() bool {
+	return i.ShouldRestart
+}
+
+// CommandLineOperationIsSet returns whether the command line option is set.
+func (i *Instance) CommandLineOperationIsSet() bool {
+	return i.CommandLineOperation != nil
+}
+
+// CommandLineOperationExecute executes the set command line option.
+func (i *Instance) CommandLineOperationExecute() error {
+	return i.CommandLineOperation()
+}
+
+// AddModule adds a module to the service group.
+func (i *Instance) AddModule(m mgr.Module) {
+	i.serviceGroup.Add(m)
 }

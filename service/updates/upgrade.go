@@ -3,22 +3,13 @@ package updates
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/safing/portmaster/base/log"
-)
-
-// FIXME: previous update system did in-place service file upgrades. Check if this is still necessary and if changes are in current installers.
-
-const (
-	defaultFileMode      = os.FileMode(0o0644)
-	executableFileMode   = os.FileMode(0o0744)
-	executableUIFileMode = os.FileMode(0o0755)
-	defaultDirMode       = os.FileMode(0o0755)
+	"github.com/safing/portmaster/base/utils"
 )
 
 func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
@@ -57,7 +48,7 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 
 	// Reset purge directory, so that we can do a clean rollback later.
 	_ = os.RemoveAll(u.cfg.PurgeDirectory)
-	err := os.MkdirAll(u.cfg.PurgeDirectory, defaultDirMode)
+	err := utils.EnsureDirectory(u.cfg.PurgeDirectory, utils.PublicReadExecPermission)
 	if err != nil {
 		return fmt.Errorf("failed to create purge directory: %w", err)
 	}
@@ -71,7 +62,7 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("read current directory: %w", err)
 		}
-		err = os.MkdirAll(u.cfg.Directory, defaultDirMode)
+		err := utils.EnsureDirectory(u.cfg.PurgeDirectory, utils.PublicReadExecPermission)
 		if err != nil {
 			return fmt.Errorf("create current directory: %w", err)
 		}
@@ -86,7 +77,7 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 			// Otherwise, move file to purge dir.
 			src := filepath.Join(u.cfg.Directory, file.Name())
 			dst := filepath.Join(u.cfg.PurgeDirectory, file.Name())
-			err := u.moveFile(src, dst, "", file.Type().Perm())
+			err := u.moveFile(src, dst, "", utils.PublicReadPermission)
 			if err != nil {
 				return fmt.Errorf("failed to move current file %s to purge dir: %w", file.Name(), err)
 			}
@@ -97,7 +88,7 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 	log.Debugf("updates/%s: installing the new version (v%s from %s)", u.cfg.Name, downloader.index.Version, downloader.index.Published)
 	src := filepath.Join(u.cfg.DownloadDirectory, u.cfg.IndexFile)
 	dst := filepath.Join(u.cfg.Directory, u.cfg.IndexFile)
-	err = u.moveFile(src, dst, "", defaultFileMode)
+	err = u.moveFile(src, dst, "", utils.PublicReadPermission)
 	if err != nil {
 		return fmt.Errorf("failed to move index file to %s: %w", dst, err)
 	}
@@ -122,17 +113,18 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 }
 
 // moveFile moves a file and falls back to copying if it fails.
-func (u *Updater) moveFile(currentPath, newPath string, sha256sum string, fileMode fs.FileMode) error {
+func (u *Updater) moveFile(currentPath, newPath string, sha256sum string, filePermission utils.FSPermission) error {
 	// Try to simply move file.
 	err := os.Rename(currentPath, newPath)
 	if err == nil {
 		// Moving was successful, return.
+		utils.SetFilePermission(newPath, filePermission)
 		return nil
 	}
 	log.Tracef("updates/%s: failed to move to %q, falling back to copy+delete: %s", u.cfg.Name, newPath, err)
 
 	// Copy and check the checksum while we are at it.
-	err = copyAndCheckSHA256Sum(currentPath, newPath, sha256sum, fileMode)
+	err = copyAndCheckSHA256Sum(currentPath, newPath, sha256sum, filePermission)
 	if err != nil {
 		return fmt.Errorf("move failed, copy+delete fallback failed: %w", err)
 	}
@@ -152,7 +144,7 @@ func (u *Updater) recoverFromFailedUpgrade() error {
 	for _, file := range files {
 		purgedFile := filepath.Join(u.cfg.PurgeDirectory, file.Name())
 		activeFile := filepath.Join(u.cfg.Directory, file.Name())
-		err := u.moveFile(purgedFile, activeFile, "", file.Type().Perm())
+		err := u.moveFile(purgedFile, activeFile, "", utils.PublicReadPermission)
 		if err != nil {
 			// Only warn and continue to recover as many files as possible.
 			log.Warningf("updates/%s: failed to roll back file %s: %s", u.cfg.Name, file.Name(), err)

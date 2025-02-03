@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
+	"github.com/safing/portmaster/service/network/reference"
 	"github.com/safing/portmaster/service/process"
 	_ "github.com/safing/portmaster/service/process/tags"
 	"github.com/safing/portmaster/service/resolver"
@@ -536,12 +538,41 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 
 	// Find domain and DNS context of entity.
 	if conn.Entity.Domain == "" && conn.process.Profile() != nil {
+		profileScope := conn.process.Profile().LocalProfile().ID
 		// check if we can find a domain for that IP
-		ipinfo, err := resolver.GetIPInfo(conn.process.Profile().LocalProfile().ID, pkt.Info().RemoteIP().String())
+		ipinfo, err := resolver.GetIPInfo(profileScope, pkt.Info().RemoteIP().String())
 		if err != nil {
 			// Try again with the global scope, in case DNS went through the system resolver.
 			ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().RemoteIP().String())
 		}
+
+		if runtime.GOOS == "windows" && err != nil {
+			// On windows domains may come with delay.
+			if module.instance.Resolver().IsDisabled() && conn.shouldWaitForDomain() {
+				// Flush the dns listener buffer and try again.
+				for i := range 4 {
+					err = module.instance.DNSMonitor().Flush()
+					if err != nil {
+						// Error flushing, dont try again.
+						break
+					}
+					// Try with profile scope
+					ipinfo, err = resolver.GetIPInfo(profileScope, pkt.Info().RemoteIP().String())
+					if err == nil {
+						log.Tracer(pkt.Ctx()).Debugf("network: found domain with scope (%s) from dnsmonitor after %d tries", profileScope, +1)
+						break
+					}
+					// Try again with the global scope
+					ipinfo, err = resolver.GetIPInfo(resolver.IPInfoProfileScopeGlobal, pkt.Info().RemoteIP().String())
+					if err == nil {
+						log.Tracer(pkt.Ctx()).Debugf("network: found domain from dnsmonitor after %d tries", i+1)
+						break
+					}
+					time.Sleep(5 * time.Millisecond)
+				}
+			}
+		}
+
 		if err == nil {
 			lastResolvedDomain := ipinfo.MostRecentDomain()
 			if lastResolvedDomain != nil {
@@ -868,4 +899,18 @@ func (conn *Connection) String() string {
 	default:
 		return fmt.Sprintf("%s -> %s", conn.process, conn.Entity.IP)
 	}
+}
+
+func (conn *Connection) shouldWaitForDomain() bool {
+	// Should wait for Global Unicast, outgoing and not ICMP connections
+	switch {
+	case conn.Entity.IPScope != netutils.Global:
+		return false
+	case conn.Inbound:
+		return false
+	case reference.IsICMP(conn.Entity.Protocol):
+		return false
+	}
+
+	return true
 }

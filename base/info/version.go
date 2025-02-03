@@ -10,8 +10,6 @@ import (
 	"sync"
 )
 
-// FIXME: version does not show in portmaster
-
 var (
 	name    string
 	license string
@@ -76,6 +74,7 @@ func Set(setName string, setVersion string, setLicenseName string) {
 
 	if setVersion != "" {
 		version = setVersion
+		versionNumber = setVersion
 	}
 }
 
@@ -167,9 +166,9 @@ func CondensedVersion() string {
 	}
 
 	return fmt.Sprintf(
-		"%s %s (%s; built with %s [%s %s] from %s [%s] at %s)",
+		"%s %s (%s/%s; built with %s [%s %s] from %s [%s] at %s)",
 		info.Name, version,
-		runtime.GOOS,
+		runtime.GOOS, runtime.GOARCH,
 		runtime.Version(), runtime.Compiler, cgoInfo,
 		info.Commit, dirtyInfo, info.CommitTime,
 	)

@@ -184,7 +184,7 @@ export class SfngNetquerySearchbarComponent implements ControlValueAccessor, OnI
           const queries: Observable<SfngSearchbarSuggestion<any>>[] = [];
           const queryKeys: (keyof Partial<NetqueryConnection>)[] = [];
 
-          // FIXME(ppacher): confirm .type is an actually allowed field
+          // TODO(ppacher): confirm .type is an actually allowed field
           if (!!parser.lastUnterminatedCondition) {
             fields = [parser.lastUnterminatedCondition.type as keyof NetqueryConnection];
             limit = 0;

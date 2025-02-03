@@ -133,6 +133,10 @@ impl<'a> CalloutData<'a> {
         }
     }
 
+    pub fn is_fragment_data(&self) -> bool {
+        unsafe { (*self.metadata).is_fragment_data() }
+    }
+
     pub fn pend_operation(
         &mut self,
         packet_list: Option<TransportPacketList>,
@@ -157,24 +161,28 @@ impl<'a> CalloutData<'a> {
     pub fn action_permit(&mut self) {
         unsafe {
             (*self.classify_out).action_permit();
+            (*self.classify_out).clear_absorb_flag();
         }
     }
 
     pub fn action_continue(&mut self) {
         unsafe {
             (*self.classify_out).action_continue();
+            (*self.classify_out).clear_absorb_flag();
         }
     }
 
     pub fn action_block(&mut self) {
         unsafe {
             (*self.classify_out).action_block();
+            (*self.classify_out).clear_absorb_flag();
         }
     }
 
     pub fn action_none(&mut self) {
         unsafe {
             (*self.classify_out).set_none();
+            (*self.classify_out).clear_absorb_flag();
         }
     }
 
@@ -192,13 +200,6 @@ impl<'a> CalloutData<'a> {
 
     pub fn is_reauthorize(&self, flags_index: usize) -> bool {
         self.get_value_u32(flags_index) & FWP_CONDITION_FLAG_IS_REAUTHORIZE > 0
-    }
-
-    pub fn parmit_and_absorb(&mut self) {
-        unsafe {
-            (*self.classify_out).action_permit();
-            (*self.classify_out).set_absorb();
-        }
     }
 
     pub fn get_callout_id(&self) -> usize {

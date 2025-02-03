@@ -7,9 +7,9 @@ use windows_sys::Win32::{
     NetworkManagement::{
         IpHelper::IP_ADDRESS_PREFIX,
         WindowsFilteringPlatform::{
-            FWPS_METADATA_FIELD_COMPLETION_HANDLE, FWPS_METADATA_FIELD_PROCESS_ID,
-            FWPS_METADATA_FIELD_PROCESS_PATH, FWPS_METADATA_FIELD_REMOTE_SCOPE_ID,
-            FWPS_METADATA_FIELD_TRANSPORT_CONTROL_DATA,
+            FWPS_METADATA_FIELD_COMPLETION_HANDLE, FWPS_METADATA_FIELD_FRAGMENT_DATA,
+            FWPS_METADATA_FIELD_PROCESS_ID, FWPS_METADATA_FIELD_PROCESS_PATH,
+            FWPS_METADATA_FIELD_REMOTE_SCOPE_ID, FWPS_METADATA_FIELD_TRANSPORT_CONTROL_DATA,
             FWPS_METADATA_FIELD_TRANSPORT_ENDPOINT_HANDLE, FWP_BYTE_BLOB, FWP_DIRECTION,
         },
     },
@@ -135,6 +135,14 @@ impl FwpsIncomingMetadataValues {
         }
 
         None
+    }
+
+    pub(crate) fn is_fragment_data(&self) -> bool {
+        if self.has_field(FWPS_METADATA_FIELD_FRAGMENT_DATA) {
+            return self.fragment_metadata.fragment_offset != 0;
+        }
+
+        false
     }
 
     pub(crate) unsafe fn get_control_data(&self) -> Option<NonNull<[u8]>> {

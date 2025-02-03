@@ -245,8 +245,6 @@ fn print_packet(packet: &[u8]) {
 ///
 /// * `Ok(Key)` - A key containing the protocol, local and remote addresses and ports.
 /// * `Err(String)` - An error message if the function fails to get net_buffer data.
-const HEADERS_LEN: usize = smoltcp::wire::IPV4_HEADER_LEN + smoltcp::wire::TCP_HEADER_LEN;
-
 fn get_ports(packet: &[u8], protocol: smoltcp::wire::IpProtocol) -> (u16, u16) {
     match protocol {
         smoltcp::wire::IpProtocol::Tcp => {
@@ -262,12 +260,13 @@ fn get_ports(packet: &[u8], protocol: smoltcp::wire::IpProtocol) -> (u16, u16) {
 }
 
 pub fn get_key_from_nbl_v4(nbl: &NetBufferList, direction: Direction) -> Result<Key, String> {
-    // Get bytes
-    let mut headers = [0; HEADERS_LEN];
+    // Get first bytes of the packet. IP header + src port (2 bytes) + dst port (2 bytes)
+    let mut headers = [0; smoltcp::wire::IPV4_HEADER_LEN + 4];
     if nbl.read_bytes(&mut headers).is_err() {
         return Err("failed to get net_buffer data".to_string());
     }
 
+    // This will panic in debug mode, probably because of runtime checks.
     // Parse packet
     let ip_packet = Ipv4Packet::new_unchecked(&headers);
     let (src_port, dst_port) = get_ports(
@@ -307,11 +306,13 @@ pub fn get_key_from_nbl_v4(nbl: &NetBufferList, direction: Direction) -> Result<
 /// * `Ok(Key)` - A key containing the protocol, local and remote addresses and ports.
 /// * `Err(String)` - An error message if the function fails to get net_buffer data.
 pub fn get_key_from_nbl_v6(nbl: &NetBufferList, direction: Direction) -> Result<Key, String> {
-    // Get bytes
-    let mut headers = [0; smoltcp::wire::IPV6_HEADER_LEN + smoltcp::wire::TCP_HEADER_LEN];
+    // Get first bytes of the packet. IP header + src port (2 bytes) + dst port (2 bytes)
+    let mut headers = [0; smoltcp::wire::IPV6_HEADER_LEN + 4];
     let Ok(()) = nbl.read_bytes(&mut headers) else {
         return Err("failed to get net_buffer data".to_string());
     };
+
+    // This will panic in debug mode, probably because of runtime checks.
     // Parse packet
     let ip_packet = Ipv6Packet::new_unchecked(&headers);
     let (src_port, dst_port) = get_ports(

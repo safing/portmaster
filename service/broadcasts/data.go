@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/service/core"
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/spn/access"
@@ -17,19 +18,18 @@ var portmasterStarted = time.Now()
 func collectData() interface{} {
 	data := make(map[string]interface{})
 
-	// TODO(vladimir)
 	// Get data about versions.
-	// versions := updates.GetSimpleVersions()
-	// data["Updates"] = versions
-	// data["Version"] = versions.Build.Version
-	// numericVersion, err := MakeNumericVersion(versions.Build.Version)
-	// if err != nil {
-	// 	data["NumericVersion"] = &DataError{
-	// 		Error: err,
-	// 	}
-	// } else {
-	// 	data["NumericVersion"] = numericVersion
-	// }
+	versions := core.GetSimpleVersions()
+	data["Updates"] = versions
+	data["Version"] = versions.Build.Version
+	numericVersion, err := MakeNumericVersion(versions.Build.Version)
+	if err != nil {
+		data["NumericVersion"] = &DataError{
+			Error: err,
+		}
+	} else {
+		data["NumericVersion"] = numericVersion
+	}
 
 	// Get data about install.
 	installInfo, err := GetInstallInfo()

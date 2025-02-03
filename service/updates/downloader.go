@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 )
 
 type Downloader struct {
@@ -37,7 +38,7 @@ func NewDownloader(u *Updater, indexURLs []string) *Downloader {
 
 func (d *Downloader) updateIndex(ctx context.Context) error {
 	// Make sure dir exists.
-	err := os.MkdirAll(d.u.cfg.DownloadDirectory, defaultDirMode)
+	err := utils.EnsureDirectory(d.u.cfg.DownloadDirectory, utils.PublicReadExecPermission)
 	if err != nil {
 		return fmt.Errorf("create download directory: %s", d.u.cfg.DownloadDirectory)
 	}
@@ -65,7 +66,7 @@ func (d *Downloader) updateIndex(ctx context.Context) error {
 
 	// Write the index into a file.
 	indexFilepath := filepath.Join(d.u.cfg.DownloadDirectory, d.u.cfg.IndexFile)
-	err = os.WriteFile(indexFilepath, indexData, defaultFileMode)
+	err = os.WriteFile(indexFilepath, indexData, utils.PublicReadExecPermission.AsUnixPermission())
 	if err != nil {
 		return fmt.Errorf("write index file: %w", err)
 	}
@@ -81,7 +82,7 @@ func (d *Downloader) getIndex(ctx context.Context, url string) (indexData []byte
 	}
 
 	// Verify and parse index.
-	bundle, err = ParseIndex(indexData, d.u.cfg.Verify)
+	bundle, err = ParseIndex(indexData, d.u.cfg.Platform, d.u.cfg.Verify)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse index: %w", err)
 	}
@@ -130,7 +131,7 @@ func (d *Downloader) gatherExistingFiles(dir string) error {
 
 func (d *Downloader) downloadArtifacts(ctx context.Context) error {
 	// Make sure dir exists.
-	err := os.MkdirAll(d.u.cfg.DownloadDirectory, defaultDirMode)
+	err := utils.EnsureDirectory(d.u.cfg.DownloadDirectory, utils.PublicReadExecPermission)
 	if err != nil {
 		return fmt.Errorf("create download directory: %s", d.u.cfg.DownloadDirectory)
 	}
@@ -176,10 +177,12 @@ artifacts:
 
 		// Write artifact to temporary file.
 		tmpFilename := dstFilePath + ".download"
-		err = os.WriteFile(tmpFilename, artifactData, artifact.GetFileMode())
+		err = os.WriteFile(tmpFilename, artifactData, artifact.GetFileMode().AsUnixPermission())
 		if err != nil {
 			return fmt.Errorf("write %s to temp file: %w", artifact.Filename, err)
 		}
+
+		_ = utils.SetFilePermission(tmpFilename, artifact.GetFileMode())
 
 		// Rename/Move to actual location.
 		err = os.Rename(tmpFilename, dstFilePath)
@@ -192,7 +195,7 @@ artifacts:
 	return nil
 }
 
-func (d *Downloader) getArtifact(ctx context.Context, artifact Artifact, url string) ([]byte, error) {
+func (d *Downloader) getArtifact(ctx context.Context, artifact *Artifact, url string) ([]byte, error) {
 	// Download data from URL.
 	artifactData, err := d.downloadData(ctx, url)
 	if err != nil {
@@ -203,14 +206,14 @@ func (d *Downloader) getArtifact(ctx context.Context, artifact Artifact, url str
 	// TODO: Normally we should do operations on "untrusted" data _after_ verification,
 	// but we really want the checksum to be for the unpacked data. Should we add another checksum, or is HTTPS enough?
 	if artifact.Unpack != "" {
-		artifactData, err = decompress(artifact.Unpack, artifactData)
+		artifactData, err = Decompress(artifact.Unpack, artifactData)
 		if err != nil {
 			return nil, fmt.Errorf("decompress: %w", err)
 		}
 	}
 
 	// Verify checksum.
-	if err := checkSHA256Sum(artifactData, artifact.SHA256); err != nil {
+	if err := CheckSHA256Sum(artifactData, artifact.SHA256); err != nil {
 		return nil, err
 	}
 
@@ -247,7 +250,8 @@ func (d *Downloader) downloadData(ctx context.Context, url string) ([]byte, erro
 	return content, nil
 }
 
-func decompress(cType string, fileBytes []byte) ([]byte, error) {
+// Decompress decompresses the given data according to the specified type.
+func Decompress(cType string, fileBytes []byte) ([]byte, error) {
 	switch cType {
 	case "zip":
 		return decompressZip(fileBytes)

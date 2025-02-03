@@ -9,6 +9,8 @@ import (
 
 	"github.com/safing/jess"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/configure"
+	"github.com/safing/portmaster/service/updates"
 )
 
 type ServiceConfig struct {
@@ -76,11 +78,10 @@ func (sc *ServiceConfig) Init() error {
 
 	// Apply defaults for required fields.
 	if len(sc.BinariesIndexURLs) == 0 {
-		// FIXME: Select based on setting.
-		sc.BinariesIndexURLs = DefaultStableBinaryIndexURLs
+		sc.BinariesIndexURLs = configure.DefaultStableBinaryIndexURLs
 	}
 	if len(sc.IntelIndexURLs) == 0 {
-		sc.IntelIndexURLs = DefaultIntelIndexURLs
+		sc.IntelIndexURLs = configure.DefaultIntelIndexURLs
 	}
 
 	// Check log level.
@@ -108,4 +109,72 @@ func getCurrentBinaryFolder() (string, error) {
 	installDir := filepath.Dir(absPath)
 
 	return installDir, nil
+}
+
+func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateConfig *updates.Config, err error) {
+	switch runtime.GOOS {
+	case "windows":
+		binaryUpdateConfig = &updates.Config{
+			Name:              "binaries",
+			Directory:         svcCfg.BinDir,
+			DownloadDirectory: filepath.Join(svcCfg.DataDir, "download_binaries"),
+			PurgeDirectory:    filepath.Join(svcCfg.BinDir, "upgrade_obsolete_binaries"),
+			Ignore:            []string{"databases", "intel", "config.json"},
+			IndexURLs:         svcCfg.BinariesIndexURLs, // May be changed by config during instance startup.
+			IndexFile:         "index.json",
+			Verify:            svcCfg.VerifyBinaryUpdates,
+			AutoCheck:         true, // May be changed by config during instance startup.
+			AutoDownload:      false,
+			AutoApply:         false,
+			NeedsRestart:      true,
+			Notify:            true,
+		}
+		intelUpdateConfig = &updates.Config{
+			Name:              "intel",
+			Directory:         filepath.Join(svcCfg.DataDir, "intel"),
+			DownloadDirectory: filepath.Join(svcCfg.DataDir, "download_intel"),
+			PurgeDirectory:    filepath.Join(svcCfg.DataDir, "upgrade_obsolete_intel"),
+			IndexURLs:         svcCfg.IntelIndexURLs,
+			IndexFile:         "index.json",
+			Verify:            svcCfg.VerifyIntelUpdates,
+			AutoCheck:         true, // May be changed by config during instance startup.
+			AutoDownload:      true,
+			AutoApply:         true,
+			NeedsRestart:      false,
+			Notify:            false,
+		}
+
+	case "linux":
+		binaryUpdateConfig = &updates.Config{
+			Name:              "binaries",
+			Directory:         svcCfg.BinDir,
+			DownloadDirectory: filepath.Join(svcCfg.DataDir, "download_binaries"),
+			PurgeDirectory:    filepath.Join(svcCfg.DataDir, "upgrade_obsolete_binaries"),
+			Ignore:            []string{"databases", "intel", "config.json"},
+			IndexURLs:         svcCfg.BinariesIndexURLs, // May be changed by config during instance startup.
+			IndexFile:         "index.json",
+			Verify:            svcCfg.VerifyBinaryUpdates,
+			AutoCheck:         true, // May be changed by config during instance startup.
+			AutoDownload:      false,
+			AutoApply:         false,
+			NeedsRestart:      true,
+			Notify:            true,
+		}
+		intelUpdateConfig = &updates.Config{
+			Name:              "intel",
+			Directory:         filepath.Join(svcCfg.DataDir, "intel"),
+			DownloadDirectory: filepath.Join(svcCfg.DataDir, "download_intel"),
+			PurgeDirectory:    filepath.Join(svcCfg.DataDir, "upgrade_obsolete_intel"),
+			IndexURLs:         svcCfg.IntelIndexURLs,
+			IndexFile:         "index.json",
+			Verify:            svcCfg.VerifyIntelUpdates,
+			AutoCheck:         true, // May be changed by config during instance startup.
+			AutoDownload:      true,
+			AutoApply:         true,
+			NeedsRestart:      false,
+			Notify:            false,
+		}
+	}
+
+	return
 }

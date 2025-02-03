@@ -17,17 +17,22 @@ import (
 
 // DNS Resolver Attributes.
 const (
-	ServerTypeDNS  = "dns"
-	ServerTypeTCP  = "tcp"
-	ServerTypeDoT  = "dot"
-	ServerTypeDoH  = "doh"
-	ServerTypeMDNS = "mdns"
-	ServerTypeEnv  = "env"
+	ServerTypeDNS      = "dns"
+	ServerTypeTCP      = "tcp"
+	ServerTypeDoT      = "dot"
+	ServerTypeDoH      = "doh"
+	ServerTypeMDNS     = "mdns"
+	ServerTypeEnv      = "env"
+	ServerTypeMonitor  = "monitor"
+	ServerTypeFirewall = "firewall"
 
 	ServerSourceConfigured      = "config"
 	ServerSourceOperatingSystem = "system"
 	ServerSourceMDNS            = "mdns"
 	ServerSourceEnv             = "env"
+	ServerSourceETW             = "etw"
+	ServerSourceSystemd         = "systemd"
+	ServerSourceFirewall        = "firewall"
 )
 
 // DNS resolver scheme aliases.
@@ -82,11 +87,11 @@ type ResolverInfo struct { //nolint:golint,maligned // TODO
 	Name string
 
 	// Type describes the type of the resolver.
-	// Possible values include dns, tcp, dot, doh, mdns, env.
+	// Possible values include dns, tcp, dot, doh, mdns, env, monitor, firewall.
 	Type string
 
 	// Source describes where the resolver configuration came from.
-	// Possible values include config, system, mdns, env.
+	// Possible values include config, system, mdns, env, etw, systemd, firewall.
 	Source string
 
 	// IP is the IP address of the resolver

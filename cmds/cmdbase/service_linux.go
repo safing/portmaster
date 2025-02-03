@@ -1,4 +1,4 @@
-package main
+package cmdbase
 
 import (
 	"fmt"
@@ -9,17 +9,15 @@ import (
 	"syscall"
 
 	processInfo "github.com/shirou/gopsutil/process"
-	"github.com/spf13/cobra"
 
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/service"
 )
 
 type LinuxSystemService struct {
-	instance *service.Instance
+	instance ServiceInstance
 }
 
-func NewSystemService(instance *service.Instance) *LinuxSystemService {
+func NewSystemService(instance ServiceInstance) *LinuxSystemService {
 	return &LinuxSystemService{instance: instance}
 }
 
@@ -30,7 +28,7 @@ func (s *LinuxSystemService) Run() {
 		slog.Error("failed to start", "err", err)
 
 		// Print stack on start failure, if enabled.
-		if printStackOnExit {
+		if PrintStackOnExit {
 			printStackTo(log.GlobalWriter, "PRINTING STACK ON START FAILURE")
 		}
 
@@ -62,7 +60,7 @@ wait:
 				continue wait
 			} else {
 				// Trigger shutdown.
-				fmt.Printf(" <SIGNAL: %v>", sig) // CLI output.
+				fmt.Printf(" <SIGNAL: %v>\n", sig) // CLI output.
 				slog.Warn("received stop signal", "signal", sig)
 				s.instance.Shutdown()
 				break wait
@@ -127,19 +125,4 @@ func (s *LinuxSystemService) IsService() bool {
 
 	// Check if the parent process ID is 1 == init system
 	return ppid == 1
-}
-
-func runPlatformSpecifics(cmd *cobra.Command, args []string) {
-	// If recover-iptables flag is set, run the recover-iptables command.
-	// This is for backwards compatibility
-	if recoverIPTables {
-		exitCode := 0
-		err := recover(cmd, args)
-		if err != nil {
-			fmt.Printf("failed: %s", err)
-			exitCode = 1
-		}
-
-		os.Exit(exitCode)
-	}
 }

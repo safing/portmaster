@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	broadcastsResourcePath = "intel/portmaster/notifications.yaml"
+	broadcastsResourceName = "notifications.yaml"
 
 	broadcastNotificationIDPrefix = "broadcasts:"
 
@@ -67,7 +67,7 @@ type BroadcastNotification struct {
 
 func broadcastNotify(ctx *mgr.WorkerCtx) error {
 	// Get broadcast notifications file, load it from disk and parse it.
-	broadcastsResource, err := module.instance.IntelUpdates().GetFile(broadcastsResourcePath)
+	broadcastsResource, err := module.instance.IntelUpdates().GetFile(broadcastsResourceName)
 	if err != nil {
 		return fmt.Errorf("failed to get broadcast notifications update: %w", err)
 	}
