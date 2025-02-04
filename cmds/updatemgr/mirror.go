@@ -30,10 +30,15 @@ var (
 	UserAgent = fmt.Sprintf("Portmaster Update Mgr (%s %s)", runtime.GOOS, runtime.GOARCH)
 
 	client http.Client
+
+	mirrorCheckFlag       bool
+	mirrorIncludeSigsFlag bool
 )
 
 func init() {
 	rootCmd.AddCommand(mirrorCmd)
+	mirrorCmd.Flags().BoolVarP(&mirrorCheckFlag, "check", "", false, "Check local artifacts only, do not download")
+	mirrorCmd.Flags().BoolVarP(&mirrorIncludeSigsFlag, "sigs", "", false, "Also download signatures, if available")
 }
 
 var (
@@ -104,18 +109,48 @@ func mirror(cmd *cobra.Command, args []string) error {
 		return errors.New("invalid index file extension")
 	}
 
+	// Check if we should check only.
+	if mirrorCheckFlag {
+		return checkMirror(index, targetDir)
+	}
+
 	// Download and save artifacts.
+artifacts:
 	for _, artifact := range index.Artifacts {
-		fmt.Printf("downloading %s...\n", artifact.Filename)
+		// Check URL.
+		if len(artifact.URLs) == 0 {
+			return fmt.Errorf("get artifact %s: no URLS defined", artifact.Filename)
+		}
+		u, err := url.Parse(artifact.URLs[0])
+		if err != nil {
+			return fmt.Errorf("get artifact %s: invalid URL: %w", artifact.Filename, err)
+		}
+		artifactLocation := strings.TrimPrefix(u.Path, "/")
+
+		fmt.Printf("getting %s...\n", artifactLocation)
+
+		// Check if artifact already exists locally and check checksum.
+		artifactDst := filepath.Join(targetDir, filepath.FromSlash(artifactLocation))
+		if artifact.SHA256 != "" {
+			_, err := os.Stat(artifactDst)
+			if err == nil {
+				err = updates.CheckSHA256SumFile(artifactDst, artifact.SHA256)
+				if err == nil {
+					fmt.Printf("    skipping download, verified SHA256 checksum: %s\n", artifact.SHA256)
+					continue artifacts
+				} else {
+					fmt.Printf("    existing file did not match: %s\n", err)
+				}
+			}
+		}
 
 		// Download artifact and add any missing checksums.
-		artifactData, artifactLocation, err := getArtifact(cmd.Context(), artifact)
+		artifactData, err := getArtifact(cmd.Context(), artifact)
 		if err != nil {
-			return fmt.Errorf("get artifact %s: %w", artifact.Filename, err)
+			return fmt.Errorf("get artifact %s: %w", artifactLocation, err)
 		}
 
 		// Write artifact to correct location.
-		artifactDst := filepath.Join(targetDir, filepath.FromSlash(artifactLocation))
 		artifactDir, _ := filepath.Split(artifactDst)
 		err = os.MkdirAll(artifactDir, 0o0755)
 		if err != nil {
@@ -123,7 +158,21 @@ func mirror(cmd *cobra.Command, args []string) error {
 		}
 		err = os.WriteFile(artifactDst, artifactData, 0o0644)
 		if err != nil {
-			return fmt.Errorf("save artifact %s: %w", artifact.Filename, err)
+			return fmt.Errorf("save artifact %s: %w", artifactLocation, err)
+		}
+
+		// Download signature, if enabled.
+		if mirrorIncludeSigsFlag {
+			sigData := getSignatureFile(cmd.Context(), artifact)
+			if sigData != nil {
+				sigDst := artifactDst + ".sig"
+				err = os.WriteFile(sigDst, sigData, 0o0644)
+				if err == nil {
+					fmt.Printf("    sig written to %s\n", sigDst)
+				} else {
+					fmt.Printf("    failed to write sig: %s", err)
+				}
+			}
 		}
 	}
 
@@ -141,20 +190,42 @@ func mirror(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-func getArtifact(ctx context.Context, artifact *updates.Artifact) (artifactData []byte, artifactLocation string, err error) {
-	// Check URL.
-	if len(artifact.URLs) == 0 {
-		return nil, "", errors.New("no URLs defined")
-	}
-	u, err := url.Parse(artifact.URLs[0])
-	if err != nil {
-		return nil, "", fmt.Errorf("invalid URL: %w", err)
+func checkMirror(index *updates.Index, targetDir string) error {
+	// check all artifacts defined in index.
+	for _, artifact := range index.Artifacts {
+		// Check URL.
+		if len(artifact.URLs) == 0 {
+			return fmt.Errorf("check artifact %s: no URLS defined (required for path)", artifact.Filename)
+		}
+		u, err := url.Parse(artifact.URLs[0])
+		if err != nil {
+			return fmt.Errorf("check artifact %s: invalid URL (required for path): %w", artifact.Filename, err)
+		}
+		artifactLocation := strings.TrimPrefix(u.Path, "/")
+
+		// Check artifact.
+		if artifact.SHA256 == "" {
+			return fmt.Errorf("check artifact %s: no checksum defined, please be sure you are using v3 index", artifactLocation)
+		}
+
+		// Check if artifact already exists locally and check checksum.
+		artifactDst := filepath.Join(targetDir, filepath.FromSlash(artifactLocation))
+		err = updates.CheckSHA256SumFile(artifactDst, artifact.SHA256)
+		if err == nil {
+			fmt.Printf("verified: %s\n", artifactLocation)
+		} else {
+			fmt.Printf("failed to verify %s: %s\n", artifactLocation, err)
+		}
 	}
 
+	return nil
+}
+
+func getArtifact(ctx context.Context, artifact *updates.Artifact) (artifactData []byte, err error) {
 	// Download data from URL.
 	artifactData, err = downloadData(ctx, artifact.URLs[0])
 	if err != nil {
-		return nil, "", fmt.Errorf("GET artifact: %w", err)
+		return nil, fmt.Errorf("GET artifact: %w", err)
 	}
 
 	// Decompress artifact data, if configured.
@@ -162,7 +233,7 @@ func getArtifact(ctx context.Context, artifact *updates.Artifact) (artifactData 
 	if artifact.Unpack != "" {
 		finalArtifactData, err = updates.Decompress(artifact.Unpack, artifactData)
 		if err != nil {
-			return nil, "", fmt.Errorf("decompress: %w", err)
+			return nil, fmt.Errorf("decompress: %w", err)
 		}
 	} else {
 		finalArtifactData = artifactData
@@ -171,20 +242,31 @@ func getArtifact(ctx context.Context, artifact *updates.Artifact) (artifactData 
 	// Verify or generate checksum.
 	if artifact.SHA256 != "" {
 		if err := updates.CheckSHA256Sum(finalArtifactData, artifact.SHA256); err != nil {
-			return nil, "", err
+			return nil, err
 		}
 	} else {
 		fileHash := sha256.New()
 		if _, err := io.Copy(fileHash, bytes.NewReader(finalArtifactData)); err != nil {
-			return nil, "", fmt.Errorf("digest file: %w", err)
+			return nil, fmt.Errorf("digest file: %w", err)
 		}
 		artifact.SHA256 = hex.EncodeToString(fileHash.Sum(nil))
 	}
 
-	return artifactData, u.Path, nil
+	return artifactData, nil
+}
+
+func getSignatureFile(ctx context.Context, artifact *updates.Artifact) []byte {
+	// Download data from URL.
+	sigData, err := downloadData(ctx, artifact.URLs[0]+".sig")
+	if err == nil {
+		return sigData
+	}
+	return nil
 }
 
 func downloadData(ctx context.Context, url string) ([]byte, error) {
+	fmt.Printf("    fetching from %s\n", url)
+
 	// Setup request.
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
