@@ -31,8 +31,8 @@ Please disclose security related issues privately to support@safing.io.
 
 <!--
 Paste debug information below:
-- General issue: Click on "Copy Debug Information" on the Settings page.
-- App related issue: Click on "Copy Debug Information" in the dropdown menu of an app in the Monitor view.
+- General issue: Click on the 🛠️ icon in the bottom left, then "Copy Debug Info"
+- App related issue: Click on the app -> "Details" tab -> "Debugging" -> "Copy Debug Information"
 
 ⚠ Please remove sensitive/private information from the "Unexpected Logs" and "Network Connections" sections.
 This is easiest to do in the preview mode.
