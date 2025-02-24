@@ -12,21 +12,20 @@ rust-version = "1.64"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { version = "2.0.3", features = [] }
+tauri-build = { version = "2.0.5", features = [] }
 
 [dependencies]
 # Tauri
-tauri = { version = "2.1.1", features = ["tray-icon", "image-png", "config-json5", "devtools"] }
-tauri-plugin-shell = "2.0.2"
-tauri-plugin-dialog = "2.0.3"
-tauri-plugin-clipboard-manager = "2.0.2"
-tauri-plugin-os = "2.0.1"
-tauri-plugin-single-instance = "2.0.1"
-tauri-plugin-notification = "2.0.1"
-tauri-plugin-log = "2.0.2"
-tauri-plugin-window-state = "2.0.2"
+tauri = { version = "2.2.5", features = ["tray-icon", "image-png", "config-json5", "devtools"] }
+tauri-plugin-shell = "2.2.0"
+tauri-plugin-dialog = "2.2.0"
+tauri-plugin-clipboard-manager = "2.1.11"
+tauri-plugin-os = "2.2.0"
+tauri-plugin-single-instance = "2.2.1"
+tauri-plugin-notification = "2.2.1"
+tauri-plugin-log = "2.2.1"
+tauri-plugin-window-state = "2.2.1"
 
-tauri-cli = "2.1.0"
 clap_lex = "0.7.2"
 
 # General
