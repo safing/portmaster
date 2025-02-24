@@ -10,8 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmds/portmaster-core",
-            "args": ["--data=D:\\delme\\pmdata", "--disable-interception=true"],    // TODO: update the path to the data folder if needed
-            "env": {} //{ "ENV_VAR1": "value1", "ENV_VAR2": "value2" }
+            "args": ["--data=D:\\delme\\pmdata", "--disable-interception=true", "-log=trace"],  // TODO: update the path to the data folder if needed
         },
         {
             "name": "portmaster-start",
@@ -19,8 +18,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmds/portmaster-start",
-            "args": ["app", "--data=D:\\delme\\pmdata"],                            // TODO: update the path to the data folder if needed
-            "env": {} //{ "ENV_VAR1": "value1", "ENV_VAR2": "value2" }
+            "args": ["app", "--data=D:\\delme\\pmdata", "-log=trace"],                          // TODO: update the path to the data folder if needed
         },
         {
             "name": "notifier",
@@ -28,8 +26,23 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmds/notifier",
-            "args": ["--data=D:\\delme\\pmdata"],                                   // TODO: update the path to the data folder if needed
-            "env": {} //{ "ENV_VAR1": "value1", "ENV_VAR2": "value2" }
+            "args": ["--data=D:\\delme\\pmdata", "-log=trace"],                                 // TODO: update the path to the data folder if needed
+        },
+        {
+            "name": "observation-hub",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmds/observation-hub",
+            "args": ["--data=D:\\delme\\pmdata", "-log=trace"],                                 // TODO: update the path to the data folder if needed
+        }        ,
+        {
+            "name": "hub",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmds/hub",
+            "args": ["--data=D:\\delme\\pmdata_hub", "-log=trace"],                             // TODO: update the path to the data folder if needed
         }
     ]
 }
