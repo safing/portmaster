@@ -1,0 +1,5 @@
+development:
+  dialect: sqlite3
+  datasource: testdata/schema.db
+  dir: migrations
+  table: migrations
