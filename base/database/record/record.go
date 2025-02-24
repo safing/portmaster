@@ -20,6 +20,7 @@ type Record interface {
 
 	// Serialization.
 	Marshal(self Record, format uint8) ([]byte, error)
+	MarshalDataOnly(self Record, format uint8) ([]byte, error)
 	MarshalRecord(self Record) ([]byte, error)
 	GetAccessor(self Record) accessor.Accessor
 
