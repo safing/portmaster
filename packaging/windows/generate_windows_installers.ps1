@@ -20,11 +20,13 @@ if (-not (Test-Path -Path $binaryDir)) {
 }
 
 Write-Output "Copying binary files"
-Copy-Item -Force -Path "dist/download/windows_amd64/portmaster-core.exe" -Destination "$binaryDir/portmaster-core.exe"
 Copy-Item -Force -Path "dist/download/windows_amd64/portmaster-kext.sys" -Destination "$binaryDir/portmaster-kext.sys"
-Copy-Item -Force -Path "dist/download/windows_amd64/portmaster-kext.dll" -Destination "$binaryDir/portmaster-kext.dll"
+Copy-Item -Force -Path "dist/download/windows_amd64/portmaster-core.dll" -Destination "$binaryDir/portmaster-kext.dll"
+Copy-Item -Force -Path "dist/binary/windows_amd64/portmaster-core.exe" -Destination "$binaryDir/portmaster-core.exe"
+Copy-Item -Force -Path "dist/binary/windows_amd64/WebView2Loader.dll" -Destination "$binaryDir/WebView2Loader.dll"
 Copy-Item -Force -Path "dist/binary/all/portmaster.zip" -Destination "$binaryDir/portmaster.zip"
 Copy-Item -Force -Path "dist/binary/all/assets.zip" -Destination "$binaryDir/assets.zip"
+Copy-Item -Force -Path "dist/binary/index.json" -Destination "$binaryDir/index.json"
 
 # Make sure target folder exists.
 if (-not (Test-Path -Path $targetDir)) {
@@ -52,8 +54,7 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
 }
 
 Write-Output "Downloading tauri-cli"
-
-Invoke-WebRequest -Uri https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v2.1.0/cargo-tauri-x86_64-pc-windows-msvc.zip -OutFile tauri-cli.zip
+Invoke-WebRequest -Uri https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v2.2.7/cargo-tauri-x86_64-pc-windows-msvc.zip -OutFile tauri-cli.zip
 Expand-Archive -Force tauri-cli.zip
 ./tauri-cli/cargo-tauri.exe bundle
 
