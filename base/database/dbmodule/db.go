@@ -35,6 +35,11 @@ func SetDatabaseLocation(dir string) {
 	}
 }
 
+// GetDatabaseLocation returns the initialized database location.
+func GetDatabaseLocation() string {
+	return databasesRootDir
+}
+
 func prep() error {
 	SetDatabaseLocation(filepath.Join(module.instance.DataDir(), "databases"))
 	if databasesRootDir == "" {
