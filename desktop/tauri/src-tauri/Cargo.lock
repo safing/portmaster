@@ -1144,7 +1144,6 @@ dependencies = [
 [[package]]
 name = "dark-light"
 version = "1.1.1"
-source = "git+https://github.com/vlabo/rust-dark-light?rev=1f955c84d0ea05729bb5ecab29fb1b315b9897de#1f955c84d0ea05729bb5ecab29fb1b315b9897de"
 dependencies = [
  "anyhow",
  "ashpd 0.7.0",
