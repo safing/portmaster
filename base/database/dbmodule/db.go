@@ -36,6 +36,11 @@ func SetDatabaseLocation(dirStructureRoot *utils.DirStructure) {
 	}
 }
 
+// GetDatabaseLocation returns the initialized database location.
+func GetDatabaseLocation() string {
+	return databaseStructureRoot.Path
+}
+
 func prep() error {
 	SetDatabaseLocation(dataroot.Root())
 	if databaseStructureRoot == nil {
