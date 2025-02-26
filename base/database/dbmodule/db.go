@@ -5,7 +5,6 @@ import (
 	"sync/atomic"
 
 	"github.com/safing/portmaster/base/database"
-	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/mgr"
 )
@@ -36,13 +35,7 @@ func SetDatabaseLocation(dirStructureRoot *utils.DirStructure) {
 	}
 }
 
-// GetDatabaseLocation returns the initialized database location.
-func GetDatabaseLocation() string {
-	return databaseStructureRoot.Path
-}
-
 func prep() error {
-	SetDatabaseLocation(dataroot.Root())
 	if databaseStructureRoot == nil {
 		return errors.New("database location not specified")
 	}

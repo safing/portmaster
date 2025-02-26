@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 
 	"github.com/safing/portmaster/base/database"
-	"github.com/safing/portmaster/base/database/dbmodule"
 	_ "github.com/safing/portmaster/base/database/storage/bbolt"
+	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/utils"
 )
 
@@ -17,7 +17,7 @@ var (
 func registerDatabases() error {
 	// If there is an existing bbolt core database, use it instead.
 	coreStorageType := DefaultDatabaseStorageType
-	if utils.PathExists(filepath.Join(dbmodule.GetDatabaseLocation(), "core", "bbolt")) {
+	if utils.PathExists(filepath.Join(dataroot.Root().Path, database.DatabasesSubDir, "core", "bbolt")) {
 		coreStorageType = "bbolt"
 	}
 
@@ -33,7 +33,7 @@ func registerDatabases() error {
 
 	// If there is an existing cache bbolt database, use it instead.
 	cacheStorageType := DefaultDatabaseStorageType
-	if utils.PathExists(filepath.Join(dbmodule.GetDatabaseLocation(), "cache", "bbolt")) {
+	if utils.PathExists(filepath.Join(dataroot.Root().Path, database.DatabasesSubDir, "cache", "bbolt")) {
 		cacheStorageType = "bbolt"
 	}
 
