@@ -115,17 +115,13 @@ func TestSQLite(t *testing.T) {
 	qZ := &TestRecord{}
 	qZ.SetKey("test:z")
 	qZ.CreateMeta()
-	// put
-	_, err = db.Put(qA)
-	if err == nil {
-		_, err = db.Put(qB)
-	}
-	if err == nil {
-		_, err = db.Put(qC)
-	}
-	if err == nil {
-		_, err = db.Put(qZ)
-	}
+	put, errs := db.PutMany(false)
+	put <- qA
+	put <- qB
+	put <- qC
+	put <- qZ
+	close(put)
+	err = <-errs
 	if err != nil {
 		t.Fatal(err)
 	}

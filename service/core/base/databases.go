@@ -5,6 +5,7 @@ import (
 
 	"github.com/safing/portmaster/base/database"
 	_ "github.com/safing/portmaster/base/database/storage/bbolt"
+	_ "github.com/safing/portmaster/base/database/storage/sqlite"
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/utils"
 )
