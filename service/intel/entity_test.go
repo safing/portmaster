@@ -24,6 +24,8 @@ var splitDomainTestCases = [][]string{
 }
 
 func TestSplitDomain(t *testing.T) {
+	t.Parallel()
+
 	for _, testCase := range splitDomainTestCases {
 		splitted := splitDomain(testCase[0])
 		assert.Equal(t, testCase, splitted, "result must match")
