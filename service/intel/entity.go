@@ -397,28 +397,32 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 }
 
 func splitDomain(domain string) []string {
-	domain = strings.Trim(domain, ".")
-	suffix, _ := publicsuffix.PublicSuffix(domain)
-	if suffix == domain {
+	// Get suffix.
+	d := strings.TrimSuffix(domain, ".")
+	suffix, icann := publicsuffix.PublicSuffix(d)
+	if suffix == d {
 		return []string{domain}
 	}
 
-	domainWithoutSuffix := domain[:len(domain)-len(suffix)]
-	domainWithoutSuffix = strings.Trim(domainWithoutSuffix, ".")
-
-	splitted := strings.FieldsFunc(domainWithoutSuffix, func(r rune) bool {
+	// Split all subdomain into labels.
+	labels := strings.FieldsFunc(d[:len(d)-len(suffix)], func(r rune) bool {
 		return r == '.'
 	})
 
-	domains := make([]string, 0, len(splitted))
-	for idx := range splitted {
-
-		d := strings.Join(splitted[idx:], ".") + "." + suffix
-		if d[len(d)-1] != '.' {
-			d += "."
-		}
-		domains = append(domains, d)
+	// Build list of all domains up to the public suffix.
+	domains := make([]string, 0, len(labels)+1)
+	for idx := range labels {
+		domains = append(
+			domains,
+			strings.Join(labels[idx:], ".")+"."+suffix+".",
+		)
 	}
+
+	// If the suffix is not a real TLD, but a public suffix, add it to the list.
+	if !icann {
+		domains = append(domains, suffix+".")
+	}
+
 	return domains
 }
 
