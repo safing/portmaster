@@ -2,8 +2,8 @@ VERSION --arg-scope-and-set --global-cache 0.8
 
 ARG --global go_version = 1.22
 ARG --global node_version = 18
-ARG --global rust_version = 1.79
-ARG --global tauri_version = "2.0.1"
+ARG --global rust_version = 1.81
+ARG --global tauri_version = "2.2.5"
 ARG --global golangci_lint_version = 1.57.1
 
 ARG --global go_builder_image = "golang:${go_version}-alpine"
@@ -426,7 +426,7 @@ rust-base:
     DO rust+INIT --keep_fingerprints=true
 
     # For now we need tauri-cli 2.0.0 for bulding
-    DO rust+CARGO --args="install tauri-cli --version 2.1.0 --locked"
+    DO rust+CARGO --args="install tauri-cli --version 2.2.7 --locked"
 
     # Explicitly cache here.
     SAVE IMAGE --cache-hint
@@ -542,7 +542,7 @@ release-prep:
     # Copy required artifacts
     RUN cp ./output/download/windows_amd64/portmaster-kext.sys ./output/binary/windows_amd64/portmaster-kext.sys
     RUN cp ./output/download/windows_amd64/portmaster-kext.pdb ./output/binary/windows_amd64/portmaster-kext.pdb
-    RUN cp ./output/download/windows_amd64/portmaster-core.dll ./output/binary/windows_amd64/portmaster-core.dll
+    # RUN cp ./output/download/windows_amd64/portmaster-core.dll ./output/binary/windows_amd64/portmaster-core.dll
 
     # Create new binary index from artifacts
     RUN ./updatemgr scan --dir "./output/binary" > ./output/binary/index.json
