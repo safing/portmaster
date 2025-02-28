@@ -3,8 +3,8 @@
 CREATE TABLE records (
     key TEXT PRIMARY KEY,
 
-    format SMALLINT NOT NULL,
-    value  BLOB NOT NULL,
+    format SMALLINT,
+    value  BLOB,
 
     created    BIGINT NOT NULL,
     modified   BIGINT NOT NULL,

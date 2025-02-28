@@ -10,7 +10,15 @@ import (
 	"time"
 
 	"github.com/aarondl/opt/omit"
+	"github.com/aarondl/opt/omitnull"
 	migrate "github.com/rubenv/sql-migrate"
+	sqldblogger "github.com/simukti/sqldb-logger"
+	"github.com/stephenafamo/bob"
+	"github.com/stephenafamo/bob/dialect/sqlite"
+	"github.com/stephenafamo/bob/dialect/sqlite/im"
+	"github.com/stephenafamo/bob/dialect/sqlite/um"
+	_ "modernc.org/sqlite"
+
 	"github.com/safing/portmaster/base/database/accessor"
 	"github.com/safing/portmaster/base/database/iterator"
 	"github.com/safing/portmaster/base/database/query"
@@ -19,12 +27,6 @@ import (
 	"github.com/safing/portmaster/base/database/storage/sqlite/models"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/structures/dsd"
-	"github.com/stephenafamo/bob"
-	"github.com/stephenafamo/bob/dialect/sqlite"
-	"github.com/stephenafamo/bob/dialect/sqlite/im"
-	"github.com/stephenafamo/bob/dialect/sqlite/um"
-
-	_ "modernc.org/sqlite"
 )
 
 // SQLite storage.
@@ -47,12 +49,38 @@ func init() {
 
 // NewSQLite creates a sqlite database.
 func NewSQLite(name, location string) (*SQLite, error) {
+	return openSQLite(name, location, false)
+}
+
+// openSQLite creates a sqlite database.
+func openSQLite(name, location string, printStmts bool) (*SQLite, error) {
 	dbFile := filepath.Join(location, "db.sqlite")
 
 	// Open database file.
+	// Default settings:
+	// _time_format = YYYY-MM-DDTHH:MM:SS.SSS
+	// _txlock = deferred
 	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
+	}
+
+	// Enable statement printing.
+	if printStmts {
+		db = sqldblogger.OpenDriver(dbFile, db.Driver(), &statementLogger{})
+	}
+
+	// Set other settings.
+	pragmas := []string{
+		"PRAGMA journal_mode=WAL;",   // Corruption safe write ahead log for txs.
+		"PRAGMA synchronous=NORMAL;", // Best for WAL.
+		"PRAGMA cache_size=-10000;",  // 10MB Cache.
+	}
+	for _, pragma := range pragmas {
+		_, err := db.Exec(pragma)
+		if err != nil {
+			return nil, fmt.Errorf("failed to init sqlite with %s: %w", pragma, err)
+		}
 	}
 
 	// Run migrations on database.
@@ -84,7 +112,13 @@ func (db *SQLite) Get(key string) (record.Record, error) {
 	}
 
 	// Return data in wrapper.
-	return record.NewWrapperFromDatabase(db.name, key, getMeta(r), uint8(r.Format), r.Value)
+	return record.NewWrapperFromDatabase(
+		db.name,
+		key,
+		getMeta(r),
+		uint8(r.Format.GetOrZero()),
+		r.Value.GetOrZero(),
+	)
 }
 
 // GetMeta returns the metadata of a database record.
@@ -114,13 +148,20 @@ func (db *SQLite) putRecord(r record.Record, tx *bob.Tx) (record.Record, error) 
 	if err != nil {
 		return nil, err
 	}
+	// Prepare for setter.
+	setFormat := omitnull.From(int16(dsd.JSON))
+	setData := omitnull.From(data)
+	if len(data) == 0 {
+		setFormat.Null()
+		setData.Null()
+	}
 
 	// Create structure for insert.
 	m := r.Meta()
 	setter := models.RecordSetter{
 		Key:        omit.From(r.DatabaseKey()),
-		Format:     omit.From(int16(dsd.JSON)),
-		Value:      omit.From(data),
+		Format:     setFormat,
+		Value:      setData,
 		Created:    omit.From(m.Created),
 		Modified:   omit.From(m.Modified),
 		Expires:    omit.From(m.Expires),
@@ -269,7 +310,11 @@ recordsLoop:
 
 		// Check Data.
 		if q.HasWhereCondition() {
-			jsonData := string(r.Value)
+			if r.Format.IsNull() || r.Value.IsNull() {
+				continue recordsLoop
+			}
+
+			jsonData := string(r.Value.GetOrZero())
 			jsonAccess := accessor.NewJSONAccessor(&jsonData)
 			if !q.MatchesAccessor(jsonAccess) {
 				continue recordsLoop
@@ -277,7 +322,13 @@ recordsLoop:
 		}
 
 		// Build database record.
-		matched, _ := record.NewWrapperFromDatabase(db.name, r.Key, m, uint8(r.Format), r.Value)
+		matched, _ := record.NewWrapperFromDatabase(
+			db.name,
+			r.Key,
+			m,
+			uint8(r.Format.GetOrZero()),
+			r.Value.GetOrZero(),
+		)
 
 		select {
 		case <-queryIter.Done:
@@ -301,7 +352,7 @@ recordsLoop:
 
 // Purge deletes all records that match the given query. It returns the number of successful deletes and an error.
 func (db *SQLite) Purge(ctx context.Context, q *query.Query, local, internal, shadowDelete bool) (int, error) {
-	// Optimize for local and internal queries without where clause.
+	// Optimize for local and internal queries without where clause and without shadow delete.
 	if local && internal && !shadowDelete && !q.HasWhereCondition() {
 		db.lock.Lock()
 		defer db.lock.Unlock()
@@ -321,21 +372,49 @@ func (db *SQLite) Purge(ctx context.Context, q *query.Query, local, internal, sh
 		return int(n), err
 	}
 
-	// Otherwise, iterate over all entries and delete matching ones.
+	// Optimize for local and internal queries without where clause, but with shadow delete.
+	if local && internal && shadowDelete && !q.HasWhereCondition() {
+		db.lock.Lock()
+		defer db.lock.Unlock()
 
-	// Create iterator to check all matching records.
-	queryIter := iterator.New()
-	defer queryIter.Cancel()
-	go db.queryExecutor(queryIter, q, local, internal)
+		// First count entries (SQLite does not support affected rows)
+		n, err := models.Records.Query(
+			models.SelectWhere.Records.Key.Like(q.DatabaseKeyPrefix()+"%"),
+		).Count(db.ctx, db.bob)
+		if err != nil || n == 0 {
+			return int(n), err
+		}
 
-	// Delete all matching records.
-	var deleted int
-	for r := range queryIter.Next {
-		db.Delete(r.DatabaseKey())
-		deleted++
+		// Mark purged records as deleted.
+		now := time.Now().Unix()
+		_, err = models.Records.Update(
+			um.SetCol("format").ToArg(nil),
+			um.SetCol("value").ToArg(nil),
+			um.SetCol("deleted").ToArg(now),
+			models.UpdateWhere.Records.Key.Like(q.DatabaseKeyPrefix()+"%"),
+		).Exec(db.ctx, db.bob)
+		return int(n), err
 	}
 
-	return deleted, nil
+	// Otherwise, iterate over all entries and delete matching ones.
+	return 0, storage.ErrNotImplemented
+
+	// Create iterator to check all matching records.
+
+	// TODO: This is untested and also needs handling of shadowDelete.
+	// For now: Use only without where condition and with a local and internal db interface.
+	// queryIter := iterator.New()
+	// defer queryIter.Cancel()
+	// go db.queryExecutor(queryIter, q, local, internal)
+
+	// // Delete all matching records.
+	// var deleted int
+	// for r := range queryIter.Next {
+	// 	db.Delete(r.DatabaseKey())
+	// 	deleted++
+	// }
+
+	// return deleted, nil
 }
 
 // ReadOnly returns whether the database is read only.
@@ -360,6 +439,8 @@ func (db *SQLite) MaintainRecordStates(ctx context.Context, purgeDeletedBefore t
 	if shadowDelete {
 		// Mark expired records as deleted.
 		models.Records.Update(
+			um.SetCol("format").ToArg(nil),
+			um.SetCol("value").ToArg(nil),
 			um.SetCol("deleted").ToArg(now),
 			models.UpdateWhere.Records.Deleted.EQ(0),
 			models.UpdateWhere.Records.Expires.GT(0),
@@ -415,4 +496,10 @@ func (db *SQLite) Shutdown() error {
 	db.cancelCtx()
 
 	return db.bob.Close()
+}
+
+type statementLogger struct{}
+
+func (sl statementLogger) Log(ctx context.Context, level sqldblogger.Level, msg string, data map[string]interface{}) {
+	fmt.Printf("SQL: %s --- %+v\n", msg, data)
 }

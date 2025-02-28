@@ -7,7 +7,9 @@ import (
 	"context"
 	"io"
 
+	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
+	"github.com/aarondl/opt/omitnull"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/sqlite"
 	"github.com/stephenafamo/bob/dialect/sqlite/dialect"
@@ -19,15 +21,15 @@ import (
 
 // Record is an object representing the database table.
 type Record struct {
-	Key        string `db:"key,pk" `
-	Format     int16  `db:"format" `
-	Value      []byte `db:"value" `
-	Created    int64  `db:"created" `
-	Modified   int64  `db:"modified" `
-	Expires    int64  `db:"expires" `
-	Deleted    int64  `db:"deleted" `
-	Secret     bool   `db:"secret" `
-	Crownjewel bool   `db:"crownjewel" `
+	Key        string           `db:"key,pk" `
+	Format     null.Val[int16]  `db:"format" `
+	Value      null.Val[[]byte] `db:"value" `
+	Created    int64            `db:"created" `
+	Modified   int64            `db:"modified" `
+	Expires    int64            `db:"expires" `
+	Deleted    int64            `db:"deleted" `
+	Secret     bool             `db:"secret" `
+	Crownjewel bool             `db:"crownjewel" `
 }
 
 // RecordSlice is an alias for a slice of pointers to Record.
@@ -92,8 +94,8 @@ func buildRecordColumns(alias string) recordColumns {
 
 type recordWhere[Q sqlite.Filterable] struct {
 	Key        sqlite.WhereMod[Q, string]
-	Format     sqlite.WhereMod[Q, int16]
-	Value      sqlite.WhereMod[Q, []byte]
+	Format     sqlite.WhereNullMod[Q, int16]
+	Value      sqlite.WhereNullMod[Q, []byte]
 	Created    sqlite.WhereMod[Q, int64]
 	Modified   sqlite.WhereMod[Q, int64]
 	Expires    sqlite.WhereMod[Q, int64]
@@ -109,8 +111,8 @@ func (recordWhere[Q]) AliasedAs(alias string) recordWhere[Q] {
 func buildRecordWhere[Q sqlite.Filterable](cols recordColumns) recordWhere[Q] {
 	return recordWhere[Q]{
 		Key:        sqlite.Where[Q, string](cols.Key),
-		Format:     sqlite.Where[Q, int16](cols.Format),
-		Value:      sqlite.Where[Q, []byte](cols.Value),
+		Format:     sqlite.WhereNull[Q, int16](cols.Format),
+		Value:      sqlite.WhereNull[Q, []byte](cols.Value),
 		Created:    sqlite.Where[Q, int64](cols.Created),
 		Modified:   sqlite.Where[Q, int64](cols.Modified),
 		Expires:    sqlite.Where[Q, int64](cols.Expires),
@@ -124,15 +126,15 @@ func buildRecordWhere[Q sqlite.Filterable](cols recordColumns) recordWhere[Q] {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type RecordSetter struct {
-	Key        omit.Val[string] `db:"key,pk" `
-	Format     omit.Val[int16]  `db:"format" `
-	Value      omit.Val[[]byte] `db:"value" `
-	Created    omit.Val[int64]  `db:"created" `
-	Modified   omit.Val[int64]  `db:"modified" `
-	Expires    omit.Val[int64]  `db:"expires" `
-	Deleted    omit.Val[int64]  `db:"deleted" `
-	Secret     omit.Val[bool]   `db:"secret" `
-	Crownjewel omit.Val[bool]   `db:"crownjewel" `
+	Key        omit.Val[string]     `db:"key,pk" `
+	Format     omitnull.Val[int16]  `db:"format" `
+	Value      omitnull.Val[[]byte] `db:"value" `
+	Created    omit.Val[int64]      `db:"created" `
+	Modified   omit.Val[int64]      `db:"modified" `
+	Expires    omit.Val[int64]      `db:"expires" `
+	Deleted    omit.Val[int64]      `db:"deleted" `
+	Secret     omit.Val[bool]       `db:"secret" `
+	Crownjewel omit.Val[bool]       `db:"crownjewel" `
 }
 
 func (s RecordSetter) SetColumns() []string {
@@ -181,10 +183,10 @@ func (s RecordSetter) Overwrite(t *Record) {
 		t.Key, _ = s.Key.Get()
 	}
 	if !s.Format.IsUnset() {
-		t.Format, _ = s.Format.Get()
+		t.Format, _ = s.Format.GetNull()
 	}
 	if !s.Value.IsUnset() {
-		t.Value, _ = s.Value.Get()
+		t.Value, _ = s.Value.GetNull()
 	}
 	if !s.Created.IsUnset() {
 		t.Created, _ = s.Created.Get()

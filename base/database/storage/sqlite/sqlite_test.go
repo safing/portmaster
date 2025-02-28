@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/database/storage"
-	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -51,7 +52,7 @@ func TestSQLite(t *testing.T) {
 	}()
 
 	// start
-	db, err := NewSQLite("test", testDir)
+	db, err := openSQLite("test", testDir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,16 +106,18 @@ func TestSQLite(t *testing.T) {
 	// setup query test records
 	qA := &TestRecord{}
 	qA.SetKey("test:path/to/A")
-	qA.CreateMeta()
+	qA.UpdateMeta()
 	qB := &TestRecord{}
 	qB.SetKey("test:path/to/B")
-	qB.CreateMeta()
+	qB.UpdateMeta()
 	qC := &TestRecord{}
 	qC.SetKey("test:path/to/C")
-	qC.CreateMeta()
+	qC.UpdateMeta()
+	// Set expiry in the past.
+	qC.Meta().Expires = time.Now().Add(-time.Hour).Unix()
 	qZ := &TestRecord{}
 	qZ.SetKey("test:z")
-	qZ.CreateMeta()
+	qZ.UpdateMeta()
 	put, errs := db.PutMany(false)
 	put <- qA
 	put <- qB
@@ -139,7 +142,8 @@ func TestSQLite(t *testing.T) {
 	if it.Err() != nil {
 		t.Fatal(it.Err())
 	}
-	if cnt != 3 {
+	if cnt != 2 {
+		// Note: One is expired.
 		t.Fatalf("unexpected query result count: %d", cnt)
 	}
 
@@ -156,7 +160,7 @@ func TestSQLite(t *testing.T) {
 	}
 
 	// maintenance
-	err = db.MaintainRecordStates(context.TODO(), time.Now(), true)
+	err = db.MaintainRecordStates(context.TODO(), time.Now().Add(-time.Minute), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,11 +172,11 @@ func TestSQLite(t *testing.T) {
 	}
 
 	// purging
-	n, err := db.Purge(context.TODO(), query.New("test:path/to/").MustBeValid(), true, true, false)
+	n, err := db.Purge(context.TODO(), query.New("test:path/to/").MustBeValid(), true, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 3 {
+	if n != 2 {
 		t.Fatalf("unexpected purge delete count: %d", n)
 	}
 
