@@ -1,6 +1,6 @@
 VERSION --arg-scope-and-set --global-cache 0.8
 
-ARG --global go_version = 1.22
+ARG --global go_version = 1.24
 ARG --global node_version = 18
 ARG --global rust_version = 1.79
 ARG --global golangci_lint_version = 1.57.1
