@@ -21,7 +21,7 @@ if (-not (Test-Path -Path $binaryDir)) {
 
 Write-Output "Copying binary files"
 Copy-Item -Force -Path "dist/download/windows_amd64/portmaster-kext.sys" -Destination "$binaryDir/portmaster-kext.sys"
-Copy-Item -Force -Path "dist/download/windows_amd64/portmaster-core.dll" -Destination "$binaryDir/portmaster-kext.dll"
+Copy-Item -Force -Path "dist/download/windows_amd64/portmaster-core.dll" -Destination "$binaryDir/portmaster-core.dll"
 Copy-Item -Force -Path "dist/binary/windows_amd64/portmaster-core.exe" -Destination "$binaryDir/portmaster-core.exe"
 Copy-Item -Force -Path "dist/binary/windows_amd64/WebView2Loader.dll" -Destination "$binaryDir/WebView2Loader.dll"
 Copy-Item -Force -Path "dist/binary/all/portmaster.zip" -Destination "$binaryDir/portmaster.zip"

@@ -539,11 +539,6 @@ release-prep:
     # Get binary artifacts from current release
     RUN mkdir -p ./output/download/windows_amd64 && ./updatemgr download https://updates.safing.io/stable.v3.json --platform windows_amd64 ./output/download/windows_amd64
 
-    # Copy required artifacts
-    RUN cp ./output/download/windows_amd64/portmaster-kext.sys ./output/binary/windows_amd64/portmaster-kext.sys
-    RUN cp ./output/download/windows_amd64/portmaster-kext.pdb ./output/binary/windows_amd64/portmaster-kext.pdb
-    # RUN cp ./output/download/windows_amd64/portmaster-core.dll ./output/binary/windows_amd64/portmaster-core.dll
-
     # Create new binary index from artifacts
     RUN ./updatemgr scan --dir "./output/binary" > ./output/binary/index.json
 
@@ -556,6 +551,7 @@ release-prep:
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/linux_amd64/*" AS LOCAL "${outputDir}/binary/linux_amd64/"
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/windows_amd64/*" AS LOCAL "${outputDir}/binary/windows_amd64/"
     SAVE ARTIFACT --if-exists --keep-ts "output/intel/*" AS LOCAL "${outputDir}/intel/"
+    SAVE ARTIFACT --if-exists --keep-ts "output/download/windows_amd64/portmaster-kext.*" AS LOCAL "${outputDir}/download/windows_amd64/" #  precompiled (downloaded) KEXT binary
 
     # Save all artifacts to the container output folder so other containers can access it.
     SAVE ARTIFACT --if-exists --keep-ts "output/binary/index.json" "output/binary/index.json"
