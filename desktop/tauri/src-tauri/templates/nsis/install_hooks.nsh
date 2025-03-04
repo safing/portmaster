@@ -6,7 +6,6 @@ var oldInstallationDir
 var dataDir
 
 !macro NSIS_HOOK_PREINSTALL
-
   ; Abort if old service is running
   SimpleSC::ServiceIsStopped "PortmasterCore"
   Pop $0
@@ -65,11 +64,13 @@ var dataDir
   SimpleSC::InstallService "PortmasterCore" "Portmaster Core" "16" "2" "$INSTDIR\portmaster-core.exe --log-dir=%PROGRAMDATA%\Portmaster\logs" "" "" ""
   Pop $0  ; returns error code (0 on success)
   ${If} $0 != 0
-    SimpleSC::GetErrorMessage $installErr
+    SimpleSC::GetErrorMessage $0
     Pop $0
-    MessageBox MB_OK "Service creation failed. Error: $errorMsg"
+    MessageBox MB_OK "Service creation failed. Error: $0"
     Abort
   ${EndIf}
+
+  SimpleSC::SetServiceDescription "PortmasterCore" "Portmaster Application Firewall - Core Service"
 
   StrCpy $oldInstallationDir "$COMMONPROGRAMDATA\Safing\Portmaster"
   StrCpy $dataDir "$COMMONPROGRAMDATA\Portmaster"
@@ -95,6 +96,14 @@ var dataDir
   ; Delete v1 shortcuts
   RMDir /r "$SMPROGRAMS\Portmaster"
   Delete "$SMSTARTUP\Portmaster Notifier.lnk"
+
+  ; Delete v1 uninstaller
+  Delete "$oldInstallationDir\portmaster-uninstaller.exe"
+
+  ; Delete v1 user shortuct if there.
+  SetShellVarContext current
+  Delete "$AppData\Microsoft\Windows\Start Menu\Programs\Portmaster.lnk"
+  SetShellVarContext all
 
   Finish:
 
