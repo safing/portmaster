@@ -123,11 +123,12 @@
       },
       "wix": {
         "fragmentPaths": [
-          "templates/service.wxs",
-          "templates/files.wxs"
+          "templates/wix/files.wxs",
+          "templates/wix/old_service_check.wxs",
+          "templates/wix/migration.wxs",
         ],
         "componentGroupRefs": ["BinaryAndIntelFiles"],
-        "template": "templates/main.wxs"
+        "template": "templates/wix/main.wxs"
       }
     },
     "targets": [

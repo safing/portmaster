@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Fragment>
+
+	  <!-- Load the VBscript -->
+    <Binary Id="Migration.vbs" SourceFile="..\..\..\..\templates\wix\Migration.vbs" />
+
+    <!-- VBscript script to copy the files from the old installation -->
+    <CustomAction
+      Id="Migration"
+      VBScriptCall=""
+      BinaryKey="Migration.vbs"
+      Return="check"
+      Impersonate="no"
+      Execute="deferred"
+       />
+
+	  <!-- This passes the path to CommonAppDataFolder path (usually "C:\ProgramData\") to the vbscirt custom action -->
+    <CustomAction Id="MigrationPropertySet" Property="Migration" Value="[CommonAppDataFolder], [ProgramMenuFolder], [StartupFolder], [AppDataFolder]" />
+
+    <!-- Check if service is running -->
+    <InstallExecuteSequence>
+      <Custom Action="MigrationPropertySet" Before="Migration">NOT(REMOVE)</Custom>
+      <Custom Action="Migration" Before="InstallFinalize">NOT(REMOVE)</Custom>
+    </InstallExecuteSequence>
+
+	</Fragment>
+</Wix>
