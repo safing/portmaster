@@ -8,6 +8,7 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/dbmodule"
+	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/updates"
 )
@@ -56,6 +57,7 @@ func runTest(m *testing.M) error {
 	defer func() { _ = os.RemoveAll(ds) }()
 
 	stub := &testInstance{}
+	dbmodule.SetDatabaseLocation(dataroot.Root())
 	stub.db, err = dbmodule.New(stub)
 	if err != nil {
 		return fmt.Errorf("failed to create database: %w", err)

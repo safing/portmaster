@@ -1,8 +1,6 @@
 package sqlite
 
 import (
-	"context"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -43,15 +41,8 @@ type TestRecord struct { //nolint:maligned
 func TestSQLite(t *testing.T) {
 	t.Parallel()
 
-	testDir, err := os.MkdirTemp("", "testing-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		_ = os.RemoveAll(testDir) // clean up
-	}()
-
 	// start
+	testDir := t.TempDir()
 	db, err := openSQLite("test", testDir, true)
 	if err != nil {
 		t.Fatal(err)
@@ -160,19 +151,19 @@ func TestSQLite(t *testing.T) {
 	}
 
 	// maintenance
-	err = db.MaintainRecordStates(context.TODO(), time.Now().Add(-time.Minute), true)
+	err = db.MaintainRecordStates(t.Context(), time.Now().Add(-time.Minute), true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// maintenance
-	err = db.MaintainRecordStates(context.TODO(), time.Now(), false)
+	err = db.MaintainRecordStates(t.Context(), time.Now(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// purging
-	n, err := db.Purge(context.TODO(), query.New("test:path/to/").MustBeValid(), true, true, true)
+	n, err := db.Purge(t.Context(), query.New("test:path/to/").MustBeValid(), true, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}

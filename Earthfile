@@ -3,7 +3,7 @@ VERSION --arg-scope-and-set --global-cache 0.8
 ARG --global go_version = 1.24
 ARG --global node_version = 18
 ARG --global rust_version = 1.79
-ARG --global golangci_lint_version = 1.57.1
+ARG --global golangci_lint_version = 1.64.6
 
 ARG --global go_builder_image = "golang:${go_version}-alpine"
 ARG --global node_builder_image = "node:${node_version}"

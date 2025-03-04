@@ -54,6 +54,7 @@ require (
 	github.com/safing/structures v1.2.0
 	github.com/seehuhn/fortuna v1.0.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
+	github.com/simukti/sqldb-logger v0.0.0-20230108155151-646c1a075551
 	github.com/spf13/cobra v1.8.1
 	github.com/spkg/zipfs v0.7.1
 	github.com/stephenafamo/bob v0.30.0
@@ -145,7 +146,6 @@ require (
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/seehuhn/sha256d v1.0.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
-	github.com/simukti/sqldb-logger v0.0.0-20230108155151-646c1a075551 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stephenafamo/scan v0.6.1 // indirect

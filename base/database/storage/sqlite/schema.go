@@ -19,6 +19,7 @@ import (
 	"embed"
 
 	migrate "github.com/rubenv/sql-migrate"
+
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/database/storage/sqlite/models"
 )
@@ -47,13 +48,4 @@ func getMeta(r *models.Record) *record.Meta {
 		meta.MakeCrownJewel()
 	}
 	return meta
-}
-
-func setMeta(r *models.Record, m *record.Meta) {
-	r.Created = m.Created
-	r.Modified = m.Modified
-	r.Expires = m.Expires
-	r.Deleted = m.Deleted
-	r.Secret = m.IsSecret()
-	r.Crownjewel = m.IsCrownJewel()
 }

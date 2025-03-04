@@ -29,6 +29,11 @@ import (
 	"github.com/safing/structures/dsd"
 )
 
+// Errors.
+var (
+	ErrQueryTimeout = errors.New("query timeout")
+)
+
 // SQLite storage.
 type SQLite struct {
 	name string
@@ -108,7 +113,7 @@ func (db *SQLite) Get(key string) (record.Record, error) {
 	// Get record from database.
 	r, err := models.FindRecord(db.ctx, db.bob, key)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", storage.ErrNotFound, err)
+		return nil, fmt.Errorf("%w: %w", storage.ErrNotFound, err)
 	}
 
 	// Return data in wrapper.
@@ -116,7 +121,7 @@ func (db *SQLite) Get(key string) (record.Record, error) {
 		db.name,
 		key,
 		getMeta(r),
-		uint8(r.Format.GetOrZero()),
+		uint8(r.Format.GetOrZero()), //nolint:gosec // Values are within uint8.
 		r.Value.GetOrZero(),
 	)
 }
@@ -285,7 +290,9 @@ func (db *SQLite) queryExecutor(queryIter *iterator.Iterator, q *query.Query, lo
 		queryIter.Finish(err)
 		return
 	}
-	defer cursor.Close()
+	defer func() {
+		_ = cursor.Close()
+	}()
 
 recordsLoop:
 	for cursor.Next() {
@@ -326,7 +333,7 @@ recordsLoop:
 			db.name,
 			r.Key,
 			m,
-			uint8(r.Format.GetOrZero()),
+			uint8(r.Format.GetOrZero()), //nolint:gosec // Values are within uint8.
 			r.Value.GetOrZero(),
 		)
 
@@ -340,7 +347,7 @@ recordsLoop:
 				break recordsLoop
 			case queryIter.Next <- matched:
 			case <-time.After(1 * time.Second):
-				err = errors.New("query timeout")
+				err = ErrQueryTimeout
 				break recordsLoop
 			}
 		}
@@ -435,7 +442,7 @@ func (db *SQLite) MaintainRecordStates(ctx context.Context, purgeDeletedBefore t
 	// Option 1: Using shadow delete.
 	if shadowDelete {
 		// Mark expired records as deleted.
-		models.Records.Update(
+		_, err := models.Records.Update(
 			um.SetCol("format").ToArg(nil),
 			um.SetCol("value").ToArg(nil),
 			um.SetCol("deleted").ToArg(now),
@@ -443,26 +450,39 @@ func (db *SQLite) MaintainRecordStates(ctx context.Context, purgeDeletedBefore t
 			models.UpdateWhere.Records.Expires.GT(0),
 			models.UpdateWhere.Records.Expires.LT(now),
 		).Exec(db.ctx, db.bob)
+		if err != nil {
+			return fmt.Errorf("failed to shadow delete expired records: %w", err)
+		}
 
 		// Purge deleted records before threshold.
-		models.Records.Delete(
+		_, err = models.Records.Delete(
 			models.DeleteWhere.Records.Deleted.GT(0),
 			models.DeleteWhere.Records.Deleted.LT(purgeThreshold),
 		).Exec(db.ctx, db.bob)
+		if err != nil {
+			return fmt.Errorf("failed to purge deleted records (before threshold): %w", err)
+		}
 		return nil
 	}
 
 	// Option 2: Immediate delete.
 
 	// Delete expired record.
-	models.Records.Delete(
+	_, err := models.Records.Delete(
 		models.DeleteWhere.Records.Expires.GT(0),
 		models.DeleteWhere.Records.Expires.LT(now),
 	).Exec(db.ctx, db.bob)
+	if err != nil {
+		return fmt.Errorf("failed to delete expired records: %w", err)
+	}
+
 	// Delete shadow deleted records.
-	models.Records.Delete(
+	_, err = models.Records.Delete(
 		models.DeleteWhere.Records.Deleted.GT(0),
 	).Exec(db.ctx, db.bob)
+	if err != nil {
+		return fmt.Errorf("failed to purge deleted records: %w", err)
+	}
 
 	return nil
 }
