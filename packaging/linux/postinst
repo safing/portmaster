@@ -15,23 +15,25 @@ fi
 OLD_INSTALLATION_DIR="/opt/safing/portmaster"
 MIGRATED_FILE_FLAG="$OLD_INSTALLATION_DIR/migrated.txt"
 
-if [ ! -e "$MIGRATED_FILE_FLAG" ]; then
-    echo "Starting migration form v1"
+if [ -d "$OLD_INSTALLATION_DIR" ]; then
+    if [ ! -e "$MIGRATED_FILE_FLAG" ]; then
+        echo "Starting migration form v1"
 
-    # Becoause the service file need to change path, first the links to the old service needs to be removed.
-    systemctl stop portmaster.service
-    systemctl disable portmaster.service
+        # Becoause the service file need to change path, first the links to the old service needs to be removed.
+        systemctl stop portmaster.service
+        systemctl disable portmaster.service
 
-    # Migrate config
-    cp -r $OLD_INSTALLATION_DIR/databases /var/lib/portmaster
-    cp -r $OLD_INSTALLATION_DIR/config.json /var/lib/portmaster/config.json
+        # Migrate config
+        cp -r $OLD_INSTALLATION_DIR/databases /var/lib/portmaster
+        cp -r $OLD_INSTALLATION_DIR/config.json /var/lib/portmaster/config.json
 
-    # Remove shortcut
-    rm /etc/xdg/autostart/portmaster_notifier.desktop
-    rm /usr/share/applications/portmaster_notifier.desktop
+        # Remove shortcut
+        rm /etc/xdg/autostart/portmaster_notifier.desktop
+        rm /usr/share/applications/portmaster_notifier.desktop
 
-    touch $MIGRATED_FILE_FLAG
-    echo "Migration complete"
+        touch $MIGRATED_FILE_FLAG
+        echo "Migration complete"
+    fi
 fi
 
 mv /usr/bin/portmaster /usr/lib/portmaster/portmaster
