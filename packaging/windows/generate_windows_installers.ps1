@@ -1,16 +1,57 @@
-# Tested with docker image 'abrarov/msvc-2022:latest'
-# sha256:f49435d194108cd56f173ad5bc6a27c70eed98b7e8cd54488f5acd85efbd51c9
-
+#------------------------------------------------------------------------------
+# Portmaster Windows Installer Generator
+#------------------------------------------------------------------------------
+# This script creates Windows installers (MSI and NSIS) for Portmaster application
+# by combining pre-compiled binaries and packaging them with Tauri.
+#
+# ## Workflow for creating Portmaster Windows installers:
+#
+# 1. Compile Core Binaries (Linux environment)
+#    ```
+#    earthly +release-prep
+#    ```
+#    This compiles and places files into the 'dist' folder with the required structure.
+#    Note: Latest KEXT binaries and Intel data will be downloaded from https://updates.safing.io
+#
+# 2. Compile Windows-Specific Binaries (Windows environment)
+#    Some files cannot be compiled by Earthly and require Windows.
+#    - Compile 'portmaster-core.dll' from the /windows_core_dll folder
+#    - Copy the compiled DLL to <project-root>/dist/download/windows_amd64
+#
+# 3. Sign All Binaries (Windows environment)
+#    ```
+#    .\sign_binaries_in_dist.ps1 -certSha1 <SHA1_of_the_certificate>
+#    ```
+#    This signs all binary files in the dist directory
+#
+# 4. Create Installers (Windows environment)
+#    Note! You can run it from docker container (see example bellow).
+#    ```
+#    .\generate_windows_installers.ps1
+#    ```
+#    Installers will be placed in <project-root>/dist/windows_amd64
+#
+# 5. Sign Installers (Windows environment)
+#    ```
+#    .\sign_binaries_in_dist.ps1 -certSha1 <SHA1_of_the_certificate>
+#    ```
+#    This signs the newly created installer files
+#
+#------------------------------------------------------------------------------
 # Running inside Docker container
+#       Tested with docker image 'abrarov/msvc-2022:latest'
+#       sha256:f49435d194108cd56f173ad5bc6a27c70eed98b7e8cd54488f5acd85efbd51c9
 # 
 # Note! Ensure you switched Docker Desktop to use Windows containers.
 # Start powershell and cd to the root of the project.
 # Then run:
 #   $path = Convert-Path .  # Get the absolute path of the current directory
 #   docker run -it --rm -v "${path}:C:/app" -w "C:/app" abrarov/msvc-2022 powershell -NoProfile -File C:/app/packaging/windows/generate_windows_installers.ps1
-
+#------------------------------------------------------------------------------
+#
 # Optional arguments:
 # -i, --interactive: Can prompt for user input (e.g. when a file is not found in the primary folder but found in the alternate folder)
+#------------------------------------------------------------------------------
 param (
     [Alias('i')]
     [switch]$interactive
