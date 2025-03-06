@@ -39,7 +39,7 @@
     }
   },
   "productName": "Portmaster",
-  "version": "0.1.0",
+  "version": "0.1.0", // If removed the version number from Cargo.toml is used.  
   "identifier": "io.safing.portmaster", // this is added as a property to the shortcut on windows (ApplicationUserModelID). Used for notifications.
   "app": {
     "withGlobalTauri": true,

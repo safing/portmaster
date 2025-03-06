@@ -128,34 +128,42 @@ function Find-And-Copy-File {
 }
 # >>>>>>>>>>>>>>>>>>>>>>> End Functions >>>>>>>>>>>>>>>>>>>>>>>>
 
-# CONSTANTS
-$destinationDir = "desktop/tauri/src-tauri"
-$binaryDir = "$destinationDir/binary"           #portmaster\desktop\tauri\src-tauri\binary
-$intelDir  = "$destinationDir/intel"            #portmaster\desktop\tauri\src-tauri\intel
-$targetDir = "$destinationDir/target/release"   #portmaster\desktop\tauri\src-tauri\target\release
+# Set-Location relative to the script location "../.." (root of the project). So that the script can be run from any location.
+Set-Location -Path (Join-Path -Path $PSScriptRoot -ChildPath "../..")
+try {
+    # CONSTANTS
+    $destinationDir = "desktop/tauri/src-tauri"
+    $binaryDir = "$destinationDir/binary"           #portmaster\desktop\tauri\src-tauri\binary
+    $intelDir  = "$destinationDir/intel"            #portmaster\desktop\tauri\src-tauri\intel
+    $targetDir = "$destinationDir/target/release"   #portmaster\desktop\tauri\src-tauri\target\release
 
-# Copying BINARY FILES
-Write-Output "`n[+] Copying binary files:"
-$filesToCopy = @(
-    @{Folder="";                            File="portmaster-kext.sys";     Destination=$binaryDir; AlternateFolder="dist/download/windows_amd64"},
-    @{Folder="dist/binary/windows_amd64";   File="portmaster-core.dll";     Destination=$binaryDir; AlternateFolder="dist/download/windows_amd64"},
-    @{Folder="dist/binary/windows_amd64";   File="portmaster-core.exe";     Destination=$binaryDir},
-    @{Folder="dist/binary/windows_amd64";   File="WebView2Loader.dll";      Destination=$binaryDir},
-    @{Folder="dist/binary/all";             File="portmaster.zip";          Destination=$binaryDir},
-    @{Folder="dist/binary/all";             File="assets.zip";              Destination=$binaryDir},
-    @{Folder="dist/binary";                 File="index.json";              Destination=$binaryDir},
-    @{Folder="dist/binary/windows_amd64";   File="portmaster.exe";          Destination=$targetDir}
-)
-foreach ($file in $filesToCopy) {    
-    Find-And-Copy-File -SourceDir $file.Folder -File $file.File -DestinationDir $file.Destination -AlternateSourceDir $file.AlternateFolder
-}
+    # Copying BINARY FILES
+    Write-Output "`n[+] Copying binary files:"
+    $filesToCopy = @(
+        @{Folder="";                            File="portmaster-kext.sys";     Destination=$binaryDir; AlternateFolder="dist/download/windows_amd64"},
+        @{Folder="dist/binary/windows_amd64";   File="portmaster-core.dll";     Destination=$binaryDir; AlternateFolder="dist/download/windows_amd64"},
+        @{Folder="dist/binary/windows_amd64";   File="portmaster-core.exe";     Destination=$binaryDir},
+        @{Folder="dist/binary/windows_amd64";   File="WebView2Loader.dll";      Destination=$binaryDir},
+        @{Folder="dist/binary/all";             File="portmaster.zip";          Destination=$binaryDir},
+        @{Folder="dist/binary/all";             File="assets.zip";              Destination=$binaryDir},
+        @{Folder="dist/binary";                 File="index.json";              Destination=$binaryDir},
+        @{Folder="dist/binary/windows_amd64";   File="portmaster.exe";          Destination=$targetDir}
+    )
+    foreach ($file in $filesToCopy) {    
+        Find-And-Copy-File -SourceDir $file.Folder -File $file.File -DestinationDir $file.Destination -AlternateSourceDir $file.AlternateFolder
+    }
 
-# Copying INTEL FILES
-Write-Output "`n[+] Copying intel files"
-if (-not (Test-Path -Path $intelDir)) {
-    New-Item -ItemType Directory -Path $intelDir -ErrorAction Stop > $null
+    # Copying INTEL FILES
+    Write-Output "`n[+] Copying intel files"
+    if (-not (Test-Path -Path $intelDir)) {
+        New-Item -ItemType Directory -Path $intelDir -ErrorAction Stop > $null
+    }
+    Copy-Item -Force -Path "dist/intel/*" -Destination "$intelDir/" -ErrorAction Stop
+} catch {
+    Set-Location $originalDirectory
+    Write-Error "[!] Failed! Error: $_"
+    exit 1
 }
-Copy-Item -Force -Path "dist/intel/*" -Destination "$intelDir/" -ErrorAction Stop
 
 Set-Location $destinationDir
 try {
@@ -188,7 +196,7 @@ try {
     Write-Output ""
 
     # Building Tauri app bundle
-    Write-Output "[+] Building Tauri app bundle"    
+    Write-Output "[+] Building Tauri app bundle"
     & $cargoTauriCommand bundle
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Tauri bundle command failed with exit code $LASTEXITCODE"
