@@ -264,6 +264,20 @@ func (c *Controller) Purge(ctx context.Context, q *query.Query, local, internal 
 	return 0, ErrNotImplemented
 }
 
+// PurgeOlderThan deletes all records last updated before the given time.
+// It returns the number of successful deletes and an error.
+func (c *Controller) PurgeOlderThan(ctx context.Context, prefix string, purgeBefore time.Time, local, internal bool) (int, error) {
+	if shuttingDown.IsSet() {
+		return 0, ErrShuttingDown
+	}
+
+	if purger, ok := c.storage.(storage.PurgeOlderThan); ok {
+		return purger.PurgeOlderThan(ctx, prefix, purgeBefore, local, internal, c.shadowDelete)
+	}
+
+	return 0, ErrNotImplemented
+}
+
 // Shutdown shuts down the storage.
 func (c *Controller) Shutdown() error {
 	return c.storage.Shutdown()

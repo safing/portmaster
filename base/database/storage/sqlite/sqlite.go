@@ -99,6 +99,7 @@ func openSQLite(name, location string, printStmts bool) (*SQLite, error) {
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	return &SQLite{
 		name:      name,
+		db:        db,
 		bob:       bob.NewDB(db),
 		ctx:       ctx,
 		cancelCtx: cancelCtx,
@@ -401,24 +402,62 @@ func (db *SQLite) Purge(ctx context.Context, q *query.Query, local, internal, sh
 	}
 
 	// Otherwise, iterate over all entries and delete matching ones.
+
+	// TODO: Non-local, non-internal or content matching queries are not supported at the moment.
 	return 0, storage.ErrNotImplemented
+}
 
-	// Create iterator to check all matching records.
+// PurgeOlderThan deletes all records last updated before the given time. It returns the number of successful deletes and an error.
+func (db *SQLite) PurgeOlderThan(ctx context.Context, prefix string, purgeBefore time.Time, local, internal, shadowDelete bool) (int, error) {
+	db.wg.Add(1)
+	defer db.wg.Done()
 
-	// TODO: This is untested and also needs handling of shadowDelete.
-	// For now: Use only without where condition and with a local and internal db interface.
-	// queryIter := iterator.New()
-	// defer queryIter.Cancel()
-	// go db.queryExecutor(queryIter, q, local, internal)
+	purgeBeforeInt := purgeBefore.Unix()
 
-	// // Delete all matching records.
-	// var deleted int
-	// for r := range queryIter.Next {
-	// 	db.Delete(r.DatabaseKey())
-	// 	deleted++
-	// }
+	// Optimize for local and internal queries without where clause and without shadow delete.
+	if local && internal && !shadowDelete {
+		// First count entries (SQLite does not support affected rows)
+		n, err := models.Records.Query(
+			models.SelectWhere.Records.Key.Like(prefix+"%"),
+			models.SelectWhere.Records.Modified.LT(purgeBeforeInt),
+		).Count(db.ctx, db.bob)
+		if err != nil || n == 0 {
+			return int(n), err
+		}
 
-	// return deleted, nil
+		// Delete entries.
+		_, err = models.Records.Delete(
+			models.DeleteWhere.Records.Key.Like(prefix+"%"),
+			models.DeleteWhere.Records.Modified.LT(purgeBeforeInt),
+		).Exec(db.ctx, db.bob)
+		return int(n), err
+	}
+
+	// Optimize for local and internal queries without where clause, but with shadow delete.
+	if local && internal && shadowDelete {
+		// First count entries (SQLite does not support affected rows)
+		n, err := models.Records.Query(
+			models.SelectWhere.Records.Key.Like(prefix+"%"),
+			models.SelectWhere.Records.Modified.LT(purgeBeforeInt),
+		).Count(db.ctx, db.bob)
+		if err != nil || n == 0 {
+			return int(n), err
+		}
+
+		// Mark purged records as deleted.
+		now := time.Now().Unix()
+		_, err = models.Records.Update(
+			um.SetCol("format").ToArg(nil),
+			um.SetCol("value").ToArg(nil),
+			um.SetCol("deleted").ToArg(now),
+			models.UpdateWhere.Records.Key.Like(prefix+"%"),
+			models.UpdateWhere.Records.Modified.LT(purgeBeforeInt),
+		).Exec(db.ctx, db.bob)
+		return int(n), err
+	}
+
+	// TODO: Non-local or non-internal queries are not supported at the moment.
+	return 0, storage.ErrNotImplemented
 }
 
 // ReadOnly returns whether the database is read only.
