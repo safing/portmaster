@@ -99,6 +99,7 @@ func openSQLite(name, location string, printStmts bool) (*SQLite, error) {
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	return &SQLite{
 		name:      name,
+		db:        db,
 		bob:       bob.NewDB(db),
 		ctx:       ctx,
 		cancelCtx: cancelCtx,

@@ -187,6 +187,16 @@ func TestSQLite(t *testing.T) {
 		t.Fatalf("unexpected purge delete count: %d", n)
 	}
 
+	// Maintenance
+	err = db.Maintain(t.Context())
+	if err != nil {
+		t.Fatalf("Maintain: %s", err)
+	}
+	err = db.MaintainThorough(t.Context())
+	if err != nil {
+		t.Fatalf("MaintainThorough: %s", err)
+	}
+
 	// test query
 	q = query.New("test").MustBeValid()
 	it, err = db.Query(q, true, true)
