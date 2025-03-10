@@ -98,17 +98,24 @@ func TestSQLite(t *testing.T) {
 	qA := &TestRecord{}
 	qA.SetKey("test:path/to/A")
 	qA.UpdateMeta()
+
 	qB := &TestRecord{}
 	qB.SetKey("test:path/to/B")
 	qB.UpdateMeta()
+	// Set creation/modification in the past.
+	qB.Meta().Created = time.Now().Add(-time.Hour).Unix()
+	qB.Meta().Modified = time.Now().Add(-time.Hour).Unix()
+
 	qC := &TestRecord{}
 	qC.SetKey("test:path/to/C")
 	qC.UpdateMeta()
 	// Set expiry in the past.
 	qC.Meta().Expires = time.Now().Add(-time.Hour).Unix()
+
 	qZ := &TestRecord{}
 	qZ.SetKey("test:z")
 	qZ.UpdateMeta()
+
 	put, errs := db.PutMany(false)
 	put <- qA
 	put <- qB
@@ -150,6 +157,15 @@ func TestSQLite(t *testing.T) {
 		t.Fatal("should fail")
 	}
 
+	// purge older than
+	n, err := db.PurgeOlderThan(t.Context(), "path/to/", time.Now().Add(-30*time.Minute), true, true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("unexpected purge older than delete count: %d", n)
+	}
+
 	// maintenance
 	err = db.MaintainRecordStates(t.Context(), time.Now().Add(-time.Minute), true)
 	if err != nil {
@@ -162,12 +178,12 @@ func TestSQLite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// purging
-	n, err := db.Purge(t.Context(), query.New("test:path/to/").MustBeValid(), true, true, true)
+	// purge
+	n, err = db.Purge(t.Context(), query.New("test:path/to/").MustBeValid(), true, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 2 {
+	if n != 1 {
 		t.Fatalf("unexpected purge delete count: %d", n)
 	}
 
