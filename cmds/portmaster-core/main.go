@@ -14,6 +14,7 @@ import (
 	"github.com/safing/portmaster/service"
 	"github.com/safing/portmaster/service/configure"
 	"github.com/safing/portmaster/service/updates"
+	"github.com/safing/portmaster/spn/conf"
 )
 
 var (
@@ -75,6 +76,10 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 
 	// Configure user agent.
 	updates.UserAgent = fmt.Sprintf("Portmaster Core (%s %s)", runtime.GOOS, runtime.GOARCH)
+
+	// Enable SPN client mode
+	conf.EnableClient(true)
+	conf.EnableIntegration(true)
 
 	// Configure service.
 	cmdbase.SvcFactory = func(svcCfg *service.ServiceConfig) (cmdbase.ServiceInstance, error) {
