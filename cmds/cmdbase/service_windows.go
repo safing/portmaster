@@ -123,9 +123,13 @@ waitSignal:
 		}
 	}
 
-	// Wait for shutdown to finish.
+	// Trigger shutdown.
+	s.instance.Shutdown()
+
+	// Notify the service host that service is in shutting down state.
 	changes <- svc.Status{State: svc.StopPending}
 
+	// Wait for shutdown to finish.
 	// Catch signals during shutdown.
 	// Force exit after 5 interrupts.
 	forceCnt := 5
