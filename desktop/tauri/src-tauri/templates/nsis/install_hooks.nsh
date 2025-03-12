@@ -48,10 +48,6 @@ var dataDir
   DetailPrint "Installing service"
   ; Remove old service
   SimpleSC::RemoveService "PortmasterCore"
-  Pop $0
-  ${If} $0 != 0
-    DetailPrint "Failed to remove PortmasterCore service. Error: $0"
-  ${EndIf}
 
   ; Install the service:
   ; Parameters:
@@ -61,7 +57,7 @@ var dataDir
   ;   4. Start Type: "2" for SERVICE_AUTO_START
   ;   5. Binary Path: Executable with arguments.
   ;   6 & 7. Dependencies and account info (empty uses defaults).
-  SimpleSC::InstallService "PortmasterCore" "Portmaster Core" "16" "2" "$INSTDIR\portmaster-core.exe --log-dir=%PROGRAMDATA%\Portmaster\logs" "" "" ""
+  SimpleSC::InstallService "PortmasterCore" "Portmaster Core" 16 2 "$INSTDIR\portmaster-core.exe --log-dir=%PROGRAMDATA%\Portmaster\logs" "" "" ""
   Pop $0  ; returns error code (0 on success)
   ${If} $0 != 0
     SimpleSC::GetErrorMessage $0
@@ -113,9 +109,9 @@ var dataDir
 ; Pre-uninstall hook:
 ; - Stops and removes the service.
 !macro NSIS_HOOK_PREUNINSTALL
-
   DetailPrint "Stopping service"
-  SimpleSC::StopService "PortmasterCore" "1" "30"
+  ; Trigger service stop. In the worst case the service should stop in ~60 seconds.
+  SimpleSC::StopService "PortmasterCore" 1 90
   Pop $0
   ${If} $0 != 0
     DetailPrint "Failed to stop PortmasterCore service. Error: $0"
@@ -133,3 +129,32 @@ var dataDir
   ${EndIf}
 !macroend
 
+;--------------------------------------------------
+; Post-uninstall hook:
+; - Delete files
+!macro NSIS_HOOK_POSTUNINSTALL
+  ; Delete binarys
+  Delete /REBOOTOK "$INSTDIR\index.json"
+  Delete /REBOOTOK "$INSTDIR\portmaster-core.exe"
+  Delete /REBOOTOK "$INSTDIR\portmaster-kext.sys"
+  Delete /REBOOTOK "$INSTDIR\portmaster-core.dll"
+  Delete /REBOOTOK "$INSTDIR\WebView2Loader.dll"
+  Delete /REBOOTOK "$INSTDIR\portmaster.zip"
+  Delete /REBOOTOK "$INSTDIR\assets.zip"
+
+  ; Delete intel data
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\index.json"
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\base.dsdl"
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\geoipv4.mmdb"
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\geoipv6.mmdb"
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\index.dsd"
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\intermediate.dsdl"
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\urgent.dsdl"
+  RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel"
+
+  ${If} $DeleteAppDataCheckboxState = 1
+    RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster"
+    RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Safing"
+  ${EndIf}
+
+!macroend
