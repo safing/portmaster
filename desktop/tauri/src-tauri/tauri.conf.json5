@@ -39,7 +39,7 @@
     }
   },
   "productName": "Portmaster",
-  "version": "0.1.0", // If removed the version number from Cargo.toml is used.  
+  "version": "0.1.3", // If removed the version number from Cargo.toml is used.  
   "identifier": "io.safing.portmaster", // this is added as a property to the shortcut on windows (ApplicationUserModelID). Used for notifications.
   "app": {
     "withGlobalTauri": true,
@@ -63,7 +63,6 @@
           "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
 
           // Binary files
-          "/usr/lib/portmaster/index.json": "binary/index.json",
           "/usr/lib/portmaster/portmaster-core": "binary/portmaster-core",
           "/usr/lib/portmaster/portmaster.zip": "binary/portmaster.zip",
           "/usr/lib/portmaster/assets.zip": "binary/assets.zip",
@@ -94,7 +93,6 @@
           "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
 
           // Binary files
-          "/usr/lib/portmaster/index.json": "binary/index.json",
           "/usr/lib/portmaster/portmaster-core": "binary/portmaster-core",
           "/usr/lib/portmaster/portmaster.zip": "binary/portmaster.zip",
           "/usr/lib/portmaster/assets.zip": "binary/assets.zip",

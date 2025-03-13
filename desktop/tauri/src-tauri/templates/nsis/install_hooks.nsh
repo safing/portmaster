@@ -17,7 +17,6 @@ var dataDir
     ${EndIf}
   ${EndIf}
 
-  File "..\..\..\..\binary\index.json"
   File "..\..\..\..\binary\portmaster-core.exe"
   File "..\..\..\..\binary\portmaster-kext.sys"
   File "..\..\..\..\binary\portmaster-core.dll"

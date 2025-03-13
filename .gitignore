@@ -4,6 +4,7 @@ dist/
 
 # Dist dir
 dist
+packaging/_precompiled/
 
 # Custom dev deops
 go.mod.*
@@ -52,3 +53,7 @@ go.work.sum
 # Kext releases
 windows_kext/release/kext_release_*.zip
 windows_core_dll/.vs/windows_core_dll
+
+#windows_core_dll
+windows_core_dll/x64/
+windows_core_dll/portmaster-core/x64/

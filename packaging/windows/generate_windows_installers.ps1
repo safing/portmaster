@@ -20,7 +20,7 @@
 #
 # 3. Sign All Binaries (Windows environment)
 #    ```
-#    .\sign_binaries_in_dist.ps1 -certSha1 <SHA1_of_the_certificate>
+#    .\packaging\windows\sign_binaries_in_dist.ps1 -certSha1 <SHA1_of_the_certificate>
 #    ```
 #    This signs all binary files in the dist directory
 #
@@ -33,7 +33,7 @@
 #
 # 5. Sign Installers (Windows environment)
 #    ```
-#    .\sign_binaries_in_dist.ps1 -certSha1 <SHA1_of_the_certificate>
+#    .\packaging\windows\sign_binaries_in_dist.ps1 -certSha1 <SHA1_of_the_certificate>
 #    ```
 #    This signs the newly created installer files
 #
@@ -140,13 +140,12 @@ try {
     # Copying BINARY FILES
     Write-Output "`n[+] Copying binary files:"
     $filesToCopy = @(
-        @{Folder="";                            File="portmaster-kext.sys";     Destination=$binaryDir; AlternateFolder="dist/download/windows_amd64"},
-        @{Folder="dist/binary/windows_amd64";   File="portmaster-core.dll";     Destination=$binaryDir; AlternateFolder="dist/download/windows_amd64"},
+        @{Folder="dist/binary/windows_amd64";   File="portmaster-kext.sys";     Destination=$binaryDir; AlternateFolder="dist/downloaded/windows_amd64"},
+        @{Folder="dist/binary/windows_amd64";   File="portmaster-core.dll";     Destination=$binaryDir; AlternateFolder="dist/downloaded/windows_amd64"},
         @{Folder="dist/binary/windows_amd64";   File="portmaster-core.exe";     Destination=$binaryDir},
         @{Folder="dist/binary/windows_amd64";   File="WebView2Loader.dll";      Destination=$binaryDir},
         @{Folder="dist/binary/all";             File="portmaster.zip";          Destination=$binaryDir},
         @{Folder="dist/binary/all";             File="assets.zip";              Destination=$binaryDir},
-        @{Folder="dist/binary";                 File="index.json";              Destination=$binaryDir},
         @{Folder="dist/binary/windows_amd64";   File="portmaster.exe";          Destination=$targetDir}
     )
     foreach ($file in $filesToCopy) {    
