@@ -55,7 +55,7 @@
     "linux": {
       "deb": {
         "depends": [
-          "libayatana-appindicator3"
+          "libayatana-appindicator3-1"
         ],
         "desktopTemplate": "../../../packaging/linux/portmaster.desktop",
         "files": {
