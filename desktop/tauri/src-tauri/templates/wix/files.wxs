@@ -27,6 +27,9 @@
       <File Id="IndexDsd" Source="..\..\..\..\intel\index.dsd" />
       <File Id="IntermediateDsdl" Source="..\..\..\..\intel\intermediate.dsdl" />
       <File Id="UrgentDsdl" Source="..\..\..\..\intel\urgent.dsdl" />
+      <File Id="MainIntelYaml" Source="..\..\..\..\intel\main-intel.yaml" />
+      <File Id="NotificationsYaml" Source="..\..\..\..\intel\notifications.yaml" />
+      <File Id="NewsYaml" Source="..\..\..\..\intel\news.yaml" />
     </Component>
 
     <Component Id="PortmasterCoreService" Directory="INSTALLDIR" Guid="76ebd748-d620-484b-9035-5a64bbe2c26d">

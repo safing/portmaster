@@ -33,6 +33,9 @@ var dataDir
   File "..\..\..\..\intel\index.dsd"
   File "..\..\..\..\intel\intermediate.dsdl"
   File "..\..\..\..\intel\urgent.dsdl"
+  File "..\..\..\..\intel\main-intel.yaml"
+  File "..\..\..\..\intel\notifications.yaml"
+  File "..\..\..\..\intel\news.yaml"
 
   ; restire previous state
   SetOutPath "$INSTDIR"
@@ -149,6 +152,9 @@ var dataDir
   Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\index.dsd"
   Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\intermediate.dsdl"
   Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\urgent.dsdl"
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\main-intel.yaml"
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\notifications.yaml"
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\news.yaml"
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel"
 
   ${If} $DeleteAppDataCheckboxState = 1

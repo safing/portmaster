@@ -76,6 +76,10 @@
           "/var/lib/portmaster/intel/intermediate.dsdl": "intel/intermediate.dsdl",
           "/var/lib/portmaster/intel/urgent.dsdl": "intel/urgent.dsdl",
 
+          "/var/lib/portmaster/intel/main-intel.yaml"   : "intel/main-intel.yaml",
+          "/var/lib/portmaster/intel/notifications.yaml": "intel/notifications.yaml",
+          "/var/lib/portmaster/intel/news.yaml"         : "intel/news.yaml",
+
           // Shortcut
           "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
         },
@@ -105,6 +109,10 @@
           "/var/lib/portmaster/intel/index.dsd": "intel/index.dsd",
           "/var/lib/portmaster/intel/intermediate.dsdl": "intel/intermediate.dsdl",
           "/var/lib/portmaster/intel/urgent.dsdl": "intel/urgent.dsdl",
+
+          "/var/lib/portmaster/intel/main-intel.yaml"   : "intel/main-intel.yaml",
+          "/var/lib/portmaster/intel/notifications.yaml": "intel/notifications.yaml",
+          "/var/lib/portmaster/intel/news.yaml"         : "intel/news.yaml",
 
           // Shortcut
           "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
