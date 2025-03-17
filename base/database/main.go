@@ -9,9 +9,8 @@ import (
 	"github.com/safing/portmaster/base/utils"
 )
 
-const (
-	databasesSubDir = "databases"
-)
+// DatabasesSubDir defines the sub directory where the databases are stored.
+const DatabasesSubDir = "databases"
 
 var (
 	initialized = abool.NewBool(false)
@@ -34,7 +33,7 @@ func Initialize(dirStructureRoot *utils.DirStructure) error {
 		rootStructure = dirStructureRoot
 
 		// ensure root and databases dirs
-		databasesStructure = rootStructure.ChildDir(databasesSubDir, utils.AdminOnlyPermission)
+		databasesStructure = rootStructure.ChildDir(DatabasesSubDir, utils.AdminOnlyPermission)
 		err := databasesStructure.Ensure()
 		if err != nil {
 			return fmt.Errorf("could not create/open database directory (%s): %w", rootStructure.Path, err)

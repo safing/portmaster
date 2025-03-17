@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/safing/portmaster/base/database/dbmodule"
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/base/utils/debug"
@@ -150,6 +151,7 @@ func InitializeUnitTestDataroot(testName string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to initialize dataroot: %w", err)
 	}
+	dbmodule.SetDatabaseLocation(dataroot.Root())
 
 	return basePath, nil
 }

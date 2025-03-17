@@ -49,9 +49,19 @@ func (m *Meta) MakeCrownJewel() {
 	m.cronjewel = true
 }
 
+// IsCrownJewel returns whether the database record is marked as a crownjewel.
+func (m *Meta) IsCrownJewel() bool {
+	return m.cronjewel
+}
+
 // MakeSecret sets the database record as secret, meaning that it may only be used internally, and not by interfacing processes, such as the UI.
 func (m *Meta) MakeSecret() {
 	m.secret = true
+}
+
+// IsSecret returns whether the database record is marked as a secret.
+func (m *Meta) IsSecret() bool {
+	return m.secret
 }
 
 // Update updates the internal meta states and should be called before writing the record to the database.

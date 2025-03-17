@@ -12,6 +12,7 @@ import (
 
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/query"
+	"github.com/safing/portmaster/base/database/storage"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/updater"
 	"github.com/safing/portmaster/service/mgr"
@@ -158,9 +159,25 @@ func performUpdate(ctx context.Context) error {
 
 func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx) error {
 	log.Debugf("intel/filterlists: cleanup task started, removing obsolete filter list entries ...")
-	n, err := cache.Purge(wc.Ctx(), query.New(filterListKeyPrefix).Where(
-		// TODO(ppacher): remember the timestamp we started the last update
-		// and use that rather than "one hour ago"
+
+	// TODO: Remember the timestamp we started the last update and use that rather than "one hour ago".
+
+	// First try to purge with PurgeOlderThan.
+	n, err := cache.PurgeOlderThan(wc.Ctx(), filterListKeyPrefix, time.Now().Add(-time.Hour))
+	switch {
+	case err == nil:
+		// Success!
+		log.Debugf("intel/filterlists: successfully removed %d obsolete entries", n)
+		return nil
+	case errors.Is(err, database.ErrNotImplemented) || errors.Is(err, storage.ErrNotImplemented):
+		// Try next method.
+	default:
+		// Return error.
+		return err
+	}
+
+	// Try with regular purge.
+	n, err = cache.Purge(wc.Ctx(), query.New(filterListKeyPrefix).Where(
 		query.Where("UpdatedAt", query.LessThan, time.Now().Add(-time.Hour).Unix()),
 	))
 	if err != nil {

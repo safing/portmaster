@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/database/dbmodule"
 	"github.com/safing/portmaster/base/dataroot"
 	"github.com/safing/portmaster/base/info"
 	"github.com/safing/portmaster/base/utils"
@@ -59,6 +60,9 @@ func prep(instance instance) error {
 		if err != nil {
 			return err
 		}
+
+		// Set root dir for the databases.
+		dbmodule.SetDatabaseLocation(dataroot.Root())
 	}
 
 	// set api listen address
