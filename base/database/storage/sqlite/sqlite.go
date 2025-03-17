@@ -205,6 +205,11 @@ func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error
 	db.wg.Add(1)
 	defer db.wg.Done()
 
+	// Check if we should use prepared statement optimized inserting.
+	if UsePreparedStatements {
+		return db.putManyWithPreparedStmts(shadowDelete)
+	}
+
 	batch := make(chan record.Record, 100)
 	errs := make(chan error, 1)
 
