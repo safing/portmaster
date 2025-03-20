@@ -1,4 +1,8 @@
-VERSION --arg-scope-and-set --global-cache 0.8
+VERSION 0.8
+
+# Custom argument: "custom_version" to manually set the version of the build (and ignore Git Tag value)
+# Usage example: earthly --build-arg custom_version="1.2.3" +<target>
+ARG --global custom_version = ""
 
 ARG --global go_version = 1.22
 ARG --global node_version = 18
@@ -131,27 +135,9 @@ go-base:
 
     # Copy the full repo, as Go embeds whether the state is clean.
     COPY . .
-
-    LET version = "$(git tag --points-at || true)"
-    IF [ -z "${version}" ]
-        LET dev_version = "$(git describe --tags --first-parent --abbrev=0 || true)"
-        IF [ -n "${dev_version}" ]
-            SET version = "${dev_version}_dev_build"
-        END
-    END
-    IF [ -z "${version}" ]
-        SET version = "dev_build"
-    END
-    ENV VERSION="${version}"
-    RUN echo "Version: $VERSION"
-
-    LET source = $( ( git remote -v | cut -f2 | cut -d" " -f1 | head -n 1 ) || echo "unknown" )
-    ENV SOURCE="${source}"
-    RUN echo "Source: $SOURCE"
-
-    LET build_time = $(date -u "+%Y-%m-%dT%H:%M:%SZ" || echo "unknown")
-    ENV BUILD_TIME = "${build_time}"
-    RUN echo "Build Time: $BUILD_TIME"
+    
+    # Set version information: VERSION, SOURCE, BUILD_TIME and VERSION_SemVer
+    DO +SET_VERSION_INFO 
 
     # Explicitly cache here.
     SAVE IMAGE --cache-hint
@@ -450,7 +436,7 @@ tauri-src:
 
 tauri-build:
     FROM +tauri-src
-
+    
     ARG --required target
 
     ARG output=".*/release/([^\./]+|([^\./]+\.(dll|exe)))"
@@ -459,6 +445,12 @@ tauri-build:
 
     DO rust+SET_CACHE_MOUNTS_ENV
     RUN rustup target add "${target}"
+   
+    # Init version information: VERSION, SOURCE, BUILD_TIME and VERSION_SemVer
+    DO +SET_VERSION_INFO 
+    # Set version in Cargo.toml if it's a valid SemVer (required to set correct version of the output binary)
+    RUN if [ -n "$VERSION_SemVer" ]; then sed -i 's/^version = ".*"/version = "'"$VERSION_SemVer"'"/g' Cargo.toml; fi
+    # Build
     RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo tauri build  --ci --target="${target}" --no-bundle
     DO rust+COPY_OUTPUT --output="${output}"
 
@@ -603,6 +595,11 @@ installer-linux:
     RUN mkdir -p intel
     COPY (+release-prep/output/intel/*) ./intel/
 
+    # Init version information: VERSION, SOURCE, BUILD_TIME and VERSION_SemVer
+    DO +SET_VERSION_INFO 
+    # Set version in Cargo.toml if it's a valid SemVer (required for using in the installer file names)
+    RUN if [ -n "$VERSION_SemVer" ]; then sed -i 's/^version = ".*"/version = "'"$VERSION_SemVer"'"/g' Cargo.toml; fi
+    
     # build the installers
     RUN cargo tauri bundle --ci --target="${target}"
 
@@ -705,3 +702,62 @@ BIN_EXT:
         SET binext=".exe"
     END
     ENV BINEXT="${goos}"
+
+# Function to set the version-related environment variables (variables: VERSION, SOURCE, BUILD_TIME and VERSION_SemVer)
+# Call example:
+#    DO +SET_VERSION_INFO
+SET_VERSION_INFO:
+    FUNCTION
+    ARG gitDir="/tmp/git-info"
+    
+    # Check if already initialized and skip the rest if true
+    IF [ -n "$BUILD_TIME" ]
+        #RUN echo "Version info already initialized"       
+    ELSE
+        # Make sure git is installed in the image
+        RUN which git || apk add --no-cache git
+        # Create a temporary directory for git information only
+        RUN mkdir -p ${gitDir}        
+        # Copy only the .git directory to the temporary location
+        COPY --dir .git ${gitDir}/.git
+        
+        # Check if custom version was provided via command line
+        IF [ -n "$custom_version" ]
+            ENV VERSION="${custom_version}"
+            RUN echo "Using custom version from command line: $VERSION"
+        ELSE
+            # Get version from git tags without changing workdir
+            LET version = "$(git --git-dir=${gitDir}/.git tag --points-at || true)"
+            IF [ -z "${version}" ]
+                LET dev_version = "$(git --git-dir=${gitDir}/.git describe --tags --first-parent --abbrev=0 || true)"
+                IF [ -n "${dev_version}" ]
+                    SET version = "${dev_version}_dev_build"
+                END
+            END
+            IF [ -z "${version}" ]
+                SET version = "dev_build"
+            END
+            ENV VERSION="${version}"
+            RUN echo "Version: $VERSION"
+        END
+
+        # Create cleaned version without 'v' prefix and without suffix starting with '_'
+        # Only set VERSION_SemVer if it matches semantic versioning format
+        LET version_clean = "$(echo "${VERSION}" | sed -E 's/^[vV]//' | sed -E 's/_.*$//')"    
+        IF [ $(echo "${version_clean}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$') ]
+            ENV VERSION_SemVer="${version_clean}"
+            RUN echo "VERSION_SemVer: $VERSION_SemVer"
+        ELSE
+            RUN echo "VERSION_SemVer: [Empty - not a valid SemVer in Git Tag] - !!! WARNING !!!"
+        END
+
+        # Get source information without changing workdir
+        LET source = "$( (git --git-dir=${gitDir}/.git remote -v | cut -f2 | cut -d" " -f1 | head -n 1) || echo "unknown" )"
+        ENV SOURCE="${source}"
+        RUN echo "Source: $SOURCE"
+
+        # Get build time
+        LET build_time = "$(date -u "+%Y-%m-%dT%H:%M:%SZ" || echo "unknown")"
+        ENV BUILD_TIME = "${build_time}"
+        RUN echo "Build Time: $BUILD_TIME"
+    END

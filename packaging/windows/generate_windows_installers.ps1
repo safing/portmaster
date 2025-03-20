@@ -54,7 +54,10 @@
 #------------------------------------------------------------------------------
 param (
     [Alias('i')]
-    [switch]$interactive
+    [switch]$interactive,
+
+    [Alias('v')]
+    [string]$version
 )
 
 # Save the current directory
@@ -126,6 +129,38 @@ function Find-And-Copy-File {
         exit 1
     }
 }
+
+# Function to set and restore Cargo.toml version
+function Set-CargoVersion { 
+    param ([string]$Version)
+    if (-not (Test-Path "Cargo.toml.bak")) {        
+        Copy-Item "Cargo.toml" "Cargo.toml.bak" -Force
+    }
+    # Update the version in Cargo.toml.
+    # This will allow the Tauri CLI to set the correct filename for the installer.
+    # NOTE: This works only when the version is not explicitly defined in tauri.conf.json5.
+    (Get-Content "Cargo.toml" -Raw) -replace '(\[package\][^\[]*?)version\s*=\s*"[^"]+"', ('$1version = "' + $Version + '"') | Set-Content "Cargo.toml"
+}
+function Restore-CargoVersion {
+    if (Test-Path "Cargo.toml.bak") {
+        Copy-Item "Cargo.toml.bak" "Cargo.toml" -Force
+        Remove-Item "Cargo.toml.bak" -Force
+    }
+}
+
+function Get-GitTagVersion {
+    # Try to get exact tag pointing to current commit
+    $version = $(git tag --points-at 2>$null)    
+    # If no tag points to current commit, use most recent tag
+    if ([string]::IsNullOrEmpty($version)) {
+        $devVersion = $(git describe --tags --first-parent --abbrev=0 2>$null)
+        if (-not [string]::IsNullOrEmpty($devVersion)) {
+            $version = "${devVersion}"
+        }
+    }
+    $version = $version -replace '^v', ''
+    return $version
+}
 # >>>>>>>>>>>>>>>>>>>>>>> End Functions >>>>>>>>>>>>>>>>>>>>>>>>
 
 # Set-Location relative to the script location "../.." (root of the project). So that the script can be run from any location.
@@ -164,6 +199,38 @@ try {
     exit 1
 }
 
+$VERSION_GIT_TAG    = Get-GitTagVersion
+
+# Check versions of UI and Core binaries
+$VERSION_UI         = (Get-Item "$targetDir/portmaster.exe").VersionInfo.FileVersion
+$VERSION_CORE       = (& "$binaryDir/portmaster-core.exe" version | Select-String -Pattern "Portmaster\s+(\d+\.\d+\.\d+)" | ForEach-Object { $_.Matches.Groups[1].Value })
+$VERSION_KEXT       = (Get-Item "$binaryDir/portmaster-kext.sys").VersionInfo.FileVersion
+Write-Output "`n[i] VERSIONS INFO:"
+Write-Output "    VERSION_GIT_TAG : $VERSION_GIT_TAG"
+Write-Output "    VERSION_CORE    : $VERSION_CORE"
+Write-Output "    VERSION_UI      : $VERSION_UI"
+Write-Output "    VERSION_KEXT    : $VERSION_KEXT"
+if ($VERSION_UI -ne $VERSION_CORE -or $VERSION_CORE -ne $VERSION_GIT_TAG) {
+    Write-Warning "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    Write-Warning "Version mismatch between UI($VERSION_UI), Core($VERSION_CORE) and GitTag($VERSION_GIT_TAG)!"
+    Write-Warning "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    if ($interactive) {
+        $response = Read-Host "[?] Continue anyway? (y/n)"
+        if ($response -ne 'y' -and $response -ne 'Y') {
+            Write-Error "Cancelled. Version mismatch between UI and Core binaries."
+            exit 1
+        }     
+    } 
+}
+# Determine which version to use for building
+if ($version) {
+    Write-Output "`n[i] Using explicitly provided version ($version) for installer file name`n"
+    $VERSION_TO_USE  = $version
+} else {
+    Write-Output "`n[i] Using Core version version ($VERSION_CORE) for installer file name`n"
+    $VERSION_TO_USE  = $VERSION_CORE    
+}
+
 Set-Location $destinationDir
 try {
     # Ensure Rust toolchain is installed
@@ -189,17 +256,26 @@ try {
         $cargoTauriCommand = "./tauri-cli/cargo-tauri.exe"
     }
 
-    Write-Output "[i] VERSIONS INFO:"
+    Write-Output "[i] Tools versions info:"
     Write-Output "    Tauri CLI: $((& $cargoTauriCommand -V | Out-String).Trim().Replace("`r`n", " "))"
     Write-Output "    Rust     : $((rustc -V | Out-String).Trim().Replace("`r`n", " ")); $((cargo -V | Out-String).Trim().Replace("`r`n", " "))"
     Write-Output ""
 
     # Building Tauri app bundle
-    Write-Output "[+] Building Tauri app bundle"
-    & $cargoTauriCommand bundle
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Tauri bundle command failed with exit code $LASTEXITCODE"
+    try {
+        Write-Output "[+] Building Tauri app bundle with version $VERSION_TO_USE"
+        Set-CargoVersion -Version $VERSION_TO_USE
+        & $cargoTauriCommand bundle
+        if ($LASTEXITCODE -ne 0) {
+            throw "Tauri bundle command failed with exit code $LASTEXITCODE"         
+        }
+    }
+    catch {
+        Write-Error "[!] Bundle failed: $_"
         exit 1
+    }
+    finally {
+       Restore-CargoVersion
     }
 
     Write-Output "[+] Copying generated bundles"
