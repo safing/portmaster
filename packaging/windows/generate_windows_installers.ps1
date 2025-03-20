@@ -16,7 +16,7 @@
 # 2. Compile Windows-Specific Binaries (Windows environment)
 #    Some files cannot be compiled by Earthly and require Windows.
 #    - Compile 'portmaster-core.dll' from the /windows_core_dll folder
-#    - Copy the compiled DLL to <project-root>/dist/download/windows_amd64
+#    - Copy the compiled DLL to <project-root>/dist/downloaded/windows_amd64
 #
 # 3. Sign All Binaries (Windows environment)
 #    ```
@@ -109,7 +109,7 @@ function Find-And-Copy-File {
     try {
         # Print details about the file
         $fileInfo = Get-Item -Path $fullSourcePath        
-        $output = "{0,-22}: {1,-28} -> {2,-38} [{3,-20} {4,18}{5}]" -f 
+        $output = "{0,-22}: {1,-29} -> {2,-38} [{3,-20} {4,18}{5}]" -f 
                $File,
                $(Split-Path -Path $fullSourcePath -Parent),
                $(Split-Path -Path $destinationPath -Parent),               
@@ -149,6 +149,12 @@ function Restore-CargoVersion {
 }
 
 function Get-GitTagVersion {
+    # Check if running in Docker and configure Git accordingly
+    if ($env:ComputerName -like "*container*" -or $env:USERNAME -eq "ContainerAdministrator") {
+        $currentDir = (Get-Location).Path        
+        git config --global --add safe.directory $currentDir
+    }
+
     # Try to get exact tag pointing to current commit
     $version = $(git tag --points-at 2>$null)    
     # If no tag points to current commit, use most recent tag
@@ -283,7 +289,7 @@ try {
     if (-not (Test-Path -Path $installerDist)) {
         New-Item -ItemType Directory -Path $installerDist -ErrorAction Stop > $null
     }
-    Copy-Item -Path ".\target\release\bundle\msi\*"  -Destination $installerDist -ErrorAction Stop
+    #Copy-Item -Path ".\target\release\bundle\msi\*"  -Destination $installerDist -ErrorAction Stop
     Copy-Item -Path ".\target\release\bundle\nsis\*" -Destination $installerDist -ErrorAction Stop
 
     Write-Output "[i] Done."
