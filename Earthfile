@@ -445,11 +445,7 @@ tauri-build:
 
     DO rust+SET_CACHE_MOUNTS_ENV
     RUN rustup target add "${target}"
-   
-    # Init version information: VERSION, SOURCE, BUILD_TIME and VERSION_SemVer
-    DO +SET_VERSION_INFO 
-    # Set version in Cargo.toml if it's a valid SemVer (required to set correct version of the output binary)
-    RUN if [ -n "$VERSION_SemVer" ]; then sed -i 's/^version = ".*"/version = "'"$VERSION_SemVer"'"/g' Cargo.toml; fi
+
     # Build
     RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo tauri build  --ci --target="${target}" --no-bundle
     DO rust+COPY_OUTPUT --output="${output}"
