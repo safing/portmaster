@@ -51,6 +51,7 @@
 #
 # Optional arguments:
 # -i, --interactive: Can prompt for user input (e.g. when a file is not found in the primary folder but found in the alternate folder)
+# -v, --version: Explicitly set the version to use for the installer file name
 #------------------------------------------------------------------------------
 param (
     [Alias('i')]
@@ -83,25 +84,33 @@ function Find-And-Copy-File {
         [string]$SourceDir,        
         [string]$File,
         [string]$DestinationDir,
-        [string]$AlternateSourceDir
+        [string[]]$AlternateSourceDirs  # Changed from single string to array
     )
     $destinationPath = "$DestinationDir/$File"
     $fullSourcePath  = if ($SourceDir) { "$SourceDir/$File" } else { "" }    
     
-    if ($AlternateSourceDir -and (-not $fullSourcePath -or -not (Test-Path -Path $fullSourcePath))) {
-        # File doesn't exist, check in alternate folder
-        $fallbackSourcePath = "$AlternateSourceDir/$File"                
-        if (Test-Path -Path $fallbackSourcePath) {
-            if ($interactive -and $fullSourcePath) { # Do not prompt if the sourceDir is empty or "interactive" mode is not set
-                $response = Read-Host "    [?] The file '$File' found only in fallback '$AlternateSourceDir' folder.`n    Do you want to use it? (y/n)"
-                if ($response -ne 'y' -and $response -ne 'Y') {
-                    Write-Error "Cancelled. Required file not found: $fullSourcePath"
-                    exit 1
-                } 
-            }           
-            $fullSourcePath = $fallbackSourcePath            
-        } else {
-            Write-Error "Required file '$File' not found in: '$SourceDir', '$AlternateSourceDir'"
+    if ($AlternateSourceDirs -and (-not $fullSourcePath -or -not (Test-Path -Path $fullSourcePath))) {
+        # File doesn't exist, check in alternate folders
+        $foundInAlternate = $false
+        
+        foreach ($altDir in $AlternateSourceDirs) {
+            $fallbackSourcePath = "$altDir/$File"    
+            if (Test-Path -Path $fallbackSourcePath) {
+                if ($interactive -and $fullSourcePath) { # Do not prompt if the sourceDir is empty or "interactive" mode is not set
+                    $response = Read-Host "    [?] The file '$File' found in fallback '$altDir' folder.`n    Do you want to use it? (y/n)"
+                    if ($response -ne 'y' -and $response -ne 'Y') {
+                        continue  # Try next alternate directory
+                    } 
+                }           
+                $fullSourcePath = $fallbackSourcePath
+                $foundInAlternate = $true
+                break  # Found a usable file, stop searching
+            }
+        }
+        
+        if (-not $foundInAlternate) {
+            $altDirsString = $AlternateSourceDirs -join "', '"
+            Write-Error "Required file '$File' not found in: '$SourceDir', '$altDirsString'"
             exit 1
         }
     }
@@ -181,16 +190,16 @@ try {
     # Copying BINARY FILES
     Write-Output "`n[+] Copying binary files:"
     $filesToCopy = @(
-        @{Folder="dist/binary/windows_amd64";   File="portmaster-kext.sys";     Destination=$binaryDir; AlternateFolder="dist/downloaded/windows_amd64"},
-        @{Folder="dist/binary/windows_amd64";   File="portmaster-core.dll";     Destination=$binaryDir; AlternateFolder="dist/downloaded/windows_amd64"},
-        @{Folder="dist/binary/windows_amd64";   File="portmaster-core.exe";     Destination=$binaryDir},
-        @{Folder="dist/binary/windows_amd64";   File="WebView2Loader.dll";      Destination=$binaryDir},
-        @{Folder="dist/binary/all";             File="portmaster.zip";          Destination=$binaryDir},
-        @{Folder="dist/binary/all";             File="assets.zip";              Destination=$binaryDir},
-        @{Folder="dist/binary/windows_amd64";   File="portmaster.exe";          Destination=$targetDir}
+        @{Folder="dist/binary/windows_amd64";   File="portmaster-kext.sys";     Destination=$binaryDir; AlternateSourceDirs=@("dist/downloaded/windows_amd64", "dist")},
+        @{Folder="dist/binary/windows_amd64";   File="portmaster-core.dll";     Destination=$binaryDir; AlternateSourceDirs=@("dist/downloaded/windows_amd64", "dist")},
+        @{Folder="dist/binary/windows_amd64";   File="portmaster-core.exe";     Destination=$binaryDir; AlternateSourceDirs=@("dist")},
+        @{Folder="dist/binary/windows_amd64";   File="WebView2Loader.dll";      Destination=$binaryDir; AlternateSourceDirs=@("dist")},
+        @{Folder="dist/binary/all";             File="portmaster.zip";          Destination=$binaryDir; AlternateSourceDirs=@("dist")},
+        @{Folder="dist/binary/all";             File="assets.zip";              Destination=$binaryDir; AlternateSourceDirs=@("dist")},
+        @{Folder="dist/binary/windows_amd64";   File="portmaster.exe";          Destination=$targetDir; AlternateSourceDirs=@("dist")}
     )
     foreach ($file in $filesToCopy) {    
-        Find-And-Copy-File -SourceDir $file.Folder -File $file.File -DestinationDir $file.Destination -AlternateSourceDir $file.AlternateFolder
+        Find-And-Copy-File -SourceDir $file.Folder -File $file.File -DestinationDir $file.Destination -AlternateSourceDirs $file.AlternateSourceDirs
     }
 
     # Copying INTEL FILES
