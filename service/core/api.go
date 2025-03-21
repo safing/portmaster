@@ -159,8 +159,8 @@ func registerAPIEndpoints() error {
 
 	if err := api.RegisterEndpoint(api.Endpoint{
 		Name:        "Get Resource",
-		Description: "Returns the requested resource from the udpate system",
-		Path:        `updates/get/?{artifact_path:[A-Za-z0-9/\.\-_]{1,255}}/{artifact_name:[A-Za-z0-9\.\-_]{1,255}}`,
+		Description: "Returns the requested resource from the update system",
+		Path:        `updates/get/{artifact_path:[A-Za-z0-9/\.\-_]{1,255}}/{artifact_name:[A-Za-z0-9\.\-_]{1,255}}`,
 		Read:        api.PermitUser,
 		ReadMethod:  http.MethodGet,
 		HandlerFunc: getUpdateResource,

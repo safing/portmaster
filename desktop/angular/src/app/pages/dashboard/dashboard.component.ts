@@ -41,7 +41,7 @@ interface News {
   cards: NewsCard[];
 }
 
-const newsResourceIdentifier = "all/intel/portmaster/news.yaml"
+const newsResourceIdentifier = "intel/news.yaml"
 
 @Component({
   selector: 'app-dashboard',
