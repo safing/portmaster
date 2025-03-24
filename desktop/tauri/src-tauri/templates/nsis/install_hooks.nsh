@@ -95,13 +95,25 @@ var dataDir
   RMDir /r "$SMPROGRAMS\Portmaster"
   Delete "$SMSTARTUP\Portmaster Notifier.lnk"
 
-  ; Delete v1 uninstaller
+  ; Delete v1 old binaries
   Delete "$oldInstallationDir\portmaster-uninstaller.exe"
+  Delete "$oldInstallationDir\portmaster-start.exe"
+  Delete "$oldInstallationDir\portmaster.ico"
+  RMDir /r "$oldInstallationDir\exec"
+  RMDir /r "$oldInstallationDir\updates"
+  RMDir /r "$oldInstallationDir\databases\cache"
+  RMDir /r "$oldInstallationDir\intel"
 
-  ; Delete v1 user shortuct if there.
+  ; Delete the link to the ProgramData folder
+  RMDir /r "$PROGRAMFILES\Safing"
+
+  ; Delete v1 user shortcut if its there.
   SetShellVarContext current
   Delete "$AppData\Microsoft\Windows\Start Menu\Programs\Portmaster.lnk"
   SetShellVarContext all
+
+  ; Delete v1 registry values
+  DeleteRegKey HKLM "Computer\HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Portmaster"
 
   Finish:
 
@@ -143,6 +155,10 @@ var dataDir
   Delete /REBOOTOK "$INSTDIR\WebView2Loader.dll"
   Delete /REBOOTOK "$INSTDIR\portmaster.zip"
   Delete /REBOOTOK "$INSTDIR\assets.zip"
+  RMDir /r /REBOOTOK "$INSTDIR"
+
+  ; Delete Tauri leftovers
+  RMDir /r /REBOOTOK "$APPDATA\Portmaster"
 
   ; Delete intel data
   Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\index.json"
