@@ -12,8 +12,6 @@
 
   <Fragment>
     <Component Id="BinaryFiles" Directory="INSTALLDIR" Guid="850cdd31-424d-45f5-b8f0-95df950ebd0d">
-      <File Id="BinIndexJson" Source="..\..\..\..\binary\index.json" />
-      <File Id="PortmasterCoreExe" Source="..\..\..\..\binary\portmaster-core.exe" />
       <File Id="PortmasterCoreDLL" Source="..\..\..\..\binary\portmaster-core.dll" />
       <File Id="PortmasterKextSys" Source="..\..\..\..\binary\portmaster-kext.sys" />
       <File Id="WebView2Loader" Source="..\..\..\..\binary\WebView2Loader.dll" />
@@ -29,6 +27,33 @@
       <File Id="IndexDsd" Source="..\..\..\..\intel\index.dsd" />
       <File Id="IntermediateDsdl" Source="..\..\..\..\intel\intermediate.dsdl" />
       <File Id="UrgentDsdl" Source="..\..\..\..\intel\urgent.dsdl" />
+      <File Id="MainIntelYaml" Source="..\..\..\..\intel\main-intel.yaml" />
+      <File Id="NotificationsYaml" Source="..\..\..\..\intel\notifications.yaml" />
+      <File Id="NewsYaml" Source="..\..\..\..\intel\news.yaml" />
+    </Component>
+
+    <Component Id="PortmasterCoreService" Directory="INSTALLDIR" Guid="76ebd748-d620-484b-9035-5a64bbe2c26d">
+      <File Id="PortmasterCoreExe" Source="..\..\..\..\binary\portmaster-core.exe" />
+      <ServiceInstall
+          Id="PortmasterServiceInstall"
+          Type="ownProcess"
+          Name="PortmasterCore"
+          DisplayName="Portmaster Core"
+          Description="Portmaster Application Firewall - Core Service"
+          Start="auto"
+          ErrorControl="normal"
+          Vital="yes"
+          Interactive="no"
+          Arguments="--log-dir=%PROGRAMDATA%\Portmaster\logs"
+          Account="LocalSystem" />
+
+      <ServiceControl
+          Id="PortmasterServiceDeleteExisting"
+          Name="PortmasterCore"
+          Remove="uninstall"
+          Stop="both"
+          Wait="yes"
+          />
     </Component>
   </Fragment>
 
@@ -36,6 +61,7 @@
     <ComponentGroup Id="BinaryAndIntelFiles">
       <ComponentRef Id="BinaryFiles" />
       <ComponentRef Id="IntelFiles" />
+      <ComponentRef Id="PortmasterCoreService" />
     </ComponentGroup>
   </Fragment>
 </Wix>

@@ -34,7 +34,7 @@ AmbientCapabilities=cap_chown cap_kill cap_net_admin cap_net_bind_service cap_ne
 CapabilityBoundingSet=cap_chown cap_kill cap_net_admin cap_net_bind_service cap_net_broadcast cap_net_raw cap_sys_module cap_sys_ptrace cap_dac_override cap_fowner cap_fsetid cap_sys_resource cap_bpf cap_perfmon
 StateDirectory=portmaster
 # TODO(ppacher): add --disable-software-updates once it's merged and the release process changed.
-WorkingDirectory=/var/lib/portmaster/data
+WorkingDirectory=/var/lib/portmaster
 ExecStart=/usr/lib/portmaster/portmaster-core --log-dir=/var/lib/portmaster/log -- $PORTMASTER_ARGS
 ExecStopPost=-/usr/lib/portmaster/portmaster-core -recover-iptables
 

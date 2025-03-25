@@ -56,15 +56,8 @@ func (ub *updateBroadcaster) AvailableUpdate() *updates.Artifact {
 	// Get artifact.
 	artifact, err := module.instance.IntelUpdates().GetFile(ub.dbName)
 	if err != nil {
-		// Check if the geoip database is included in the binary index instead.
-		// TODO: Remove when intelhub builds the geoip database.
-		if artifact2, err2 := module.instance.BinaryUpdates().GetFile(ub.dbName); err2 == nil {
-			artifact = artifact2
-			err = nil
-		} else {
-			log.Warningf("geoip: failed to get geoip update: %s", err)
-			return nil
-		}
+		log.Warningf("geoip: failed to get geoip update: %s", err)
+		return nil
 	}
 
 	// Return artifact if not yet initialized.

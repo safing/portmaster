@@ -39,7 +39,6 @@
     }
   },
   "productName": "Portmaster",
-  "version": "0.1.0",
   "identifier": "io.safing.portmaster", // this is added as a property to the shortcut on windows (ApplicationUserModelID). Used for notifications.
   "app": {
     "withGlobalTauri": true,
@@ -55,7 +54,7 @@
     "linux": {
       "deb": {
         "depends": [
-          "libayatana-appindicator3"
+          "libayatana-appindicator3-1"
         ],
         "desktopTemplate": "../../../packaging/linux/portmaster.desktop",
         "files": {
@@ -63,7 +62,6 @@
           "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
 
           // Binary files
-          "/usr/lib/portmaster/index.json": "binary/index.json",
           "/usr/lib/portmaster/portmaster-core": "binary/portmaster-core",
           "/usr/lib/portmaster/portmaster.zip": "binary/portmaster.zip",
           "/usr/lib/portmaster/assets.zip": "binary/assets.zip",
@@ -76,6 +74,10 @@
           "/var/lib/portmaster/intel/index.dsd": "intel/index.dsd",
           "/var/lib/portmaster/intel/intermediate.dsdl": "intel/intermediate.dsdl",
           "/var/lib/portmaster/intel/urgent.dsdl": "intel/urgent.dsdl",
+
+          "/var/lib/portmaster/intel/main-intel.yaml"   : "intel/main-intel.yaml",
+          "/var/lib/portmaster/intel/notifications.yaml": "intel/notifications.yaml",
+          "/var/lib/portmaster/intel/news.yaml"         : "intel/news.yaml",
 
           // Shortcut
           "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
@@ -94,7 +96,6 @@
           "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
 
           // Binary files
-          "/usr/lib/portmaster/index.json": "binary/index.json",
           "/usr/lib/portmaster/portmaster-core": "binary/portmaster-core",
           "/usr/lib/portmaster/portmaster.zip": "binary/portmaster.zip",
           "/usr/lib/portmaster/assets.zip": "binary/assets.zip",
@@ -108,6 +109,10 @@
           "/var/lib/portmaster/intel/intermediate.dsdl": "intel/intermediate.dsdl",
           "/var/lib/portmaster/intel/urgent.dsdl": "intel/urgent.dsdl",
 
+          "/var/lib/portmaster/intel/main-intel.yaml"   : "intel/main-intel.yaml",
+          "/var/lib/portmaster/intel/notifications.yaml": "intel/notifications.yaml",
+          "/var/lib/portmaster/intel/news.yaml"         : "intel/news.yaml",
+
           // Shortcut
           "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
         },
@@ -118,23 +123,23 @@
     "windows": {
       "nsis": {
         "installMode": "perMachine",
-        "installerHooks": "templates/nsis_install_hooks.nsh",
+        "installerHooks": "templates/nsis/install_hooks.nsh",
         "installerIcon": "../../../assets/data/icons/pm_light.ico"
       },
       "wix": {
         "fragmentPaths": [
-          "templates/service.wxs",
-          "templates/files.wxs"
+          "templates/wix/files.wxs",
+          "templates/wix/old_service_check.wxs",
+          "templates/wix/migration.wxs",
         ],
         "componentGroupRefs": ["BinaryAndIntelFiles"],
-        "template": "templates/main.wxs"
+        "template": "templates/wix/main.wxs"
       }
     },
     "targets": [
       "deb",
       "rpm",
-      "nsis",
-      "msi"
+      "nsis"  //,      "msi"
     ],
     "icon": [
       "../../../assets/data/icons/pm_dark_512.png",

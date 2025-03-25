@@ -35,7 +35,7 @@ func (sc *ServiceConfig) Init() error {
 		if sc.BinDir == "" {
 			exeDir, err := getCurrentBinaryFolder() // Default: C:/Program Files/Portmaster
 			if err != nil {
-				return fmt.Errorf("derive bin dir from runnning exe: %w", err)
+				return fmt.Errorf("derive bin dir from running exe: %w", err)
 			}
 			sc.BinDir = exeDir
 		}
