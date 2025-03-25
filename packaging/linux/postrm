@@ -1,10 +1,35 @@
 #!/bin/bash
 
+echo "[ ] Post-Remove script [arg1='$1' arg2='$2']"
+
+# DEB argument on upgrade - 'upgrade'; RPM - '1'
+if [ "$1" = "upgrade" ] || [ "$1" = "1" ] ; then
+    echo "[ ] Post-Remove script: This is an upgrade."
+    exit 0
+fi
+
 #
-# Remove selinux permissions for portmaster-core if we have semanage
-# available.
+# Remove selinux permissions for portmaster-core if we have semanage available.
 #
 if command -V semanage >/dev/null 2>&1; then
+    echo "[ ] Removing SELinux permissions"
     semanage fcontext --delete $(realpath /usr/lib)'/portmaster/portmaster-core' || :
     restorecon -R /usr/lib/portmaster/portmaster-core 2>/dev/null >&2 || :
+fi
+
+echo "[ ] Stopping and disabling service"
+systemctl stop portmaster.service
+systemctl disable portmaster.service
+
+echo "[ ] Removing files"
+# Remove binaries folder
+sudo rm -fr /usr/lib/portmaster
+# Remove data folder
+sudo rm -fr /var/lib/portmaster
+
+# remove V1 migration flag (if exists)
+MIGRATED_FILE_FLAG="/opt/safing/portmaster/migrated.txt"
+if [ -e "$MIGRATED_FILE_FLAG" ]; then
+    echo "[ ] Removing V1 migration flag"
+    rm "$MIGRATED_FILE_FLAG"
 fi
