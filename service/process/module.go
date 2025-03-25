@@ -21,7 +21,7 @@ func (pm *ProcessModule) Manager() *mgr.Manager {
 }
 
 func (pm *ProcessModule) Start() error {
-	file, err := pm.instance.BinaryUpdates().GetFile("portmaster")
+	file, err := pm.instance.BinaryUpdates().GetFile("portmaster.zip")
 	if err != nil {
 		log.Errorf("process: failed to get path of ui: %s", err)
 	} else {
