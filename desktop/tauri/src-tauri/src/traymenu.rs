@@ -251,8 +251,6 @@ pub fn setup_tray_menu(
             }
         })
         .build(app)?;
-
-    _ = app.set_menu(menu);
     Ok(icon)
 }
 
