@@ -6,14 +6,25 @@ var oldInstallationDir
 var dataDir
 
 !macro NSIS_HOOK_PREINSTALL
-  ; Abort if old service is running
+  ; Try to stop the service if it's running
   SimpleSC::ServiceIsStopped "PortmasterCore"
   Pop $0
   Pop $1
   ${If} $0 == 0
     ${If} $1 == 0
-      MessageBox MB_OK "Portmaster service is running. Stop it and run the installer again."
-      Abort
+
+      DetailPrint "PortmasterCore service is running. Stopping service ..."
+      SimpleSC::StopService "PortmasterCore" 1 60
+      Pop $0
+      ${If} $0 != 0
+        DetailPrint "Failed to stop PortmasterCore service. Error: $0"
+        MessageBox MB_OK "PortmasterCore service is running. Stop it and run the installer again."
+        Abort
+      ${EndIf}
+      
+      ; wait a little (give change for service to fully stop)
+      Sleep 2000
+
     ${EndIf}
   ${EndIf}
 
@@ -125,7 +136,7 @@ var dataDir
 !macro NSIS_HOOK_PREUNINSTALL
   DetailPrint "Stopping service"
   ; Trigger service stop. In the worst case the service should stop in ~60 seconds.
-  SimpleSC::StopService "PortmasterCore" 1 90
+  SimpleSC::StopService "PortmasterCore" 1 60
   Pop $0
   ${If} $0 != 0
     DetailPrint "Failed to stop PortmasterCore service. Error: $0"
