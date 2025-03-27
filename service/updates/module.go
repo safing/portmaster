@@ -18,6 +18,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/utils"
+	"github.com/safing/portmaster/service/configure"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -201,11 +202,19 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 		module.corruptedInstallation = fmt.Errorf("invalid index: %w", err)
 	}
 	index, err = GenerateIndexFromDir(cfg.Directory, IndexScanConfig{
+		Name:    configure.DefaultBinaryIndexName,
 		Version: info.VersionNumber(),
 	})
-	if err == nil && index.init(currentPlatform) == nil {
-		module.index = index
-		return module, nil
+	if err == nil {
+		// As the index is generated from the current directory,
+		// we must set the published date to a fixed point in the past.
+		// New indexes will only be considered if their published date is later than the current one.
+		index.Published = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+
+		if index.init(currentPlatform) == nil {
+			module.index = index
+			return module, nil
+		}
 	}
 
 	// Fall back to empty index.
