@@ -124,7 +124,7 @@ var dataDir
   SetShellVarContext all
 
   ; Delete v1 registry values
-  DeleteRegKey HKLM "Computer\HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Portmaster"
+  DeleteRegKey HKLM "SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Portmaster"
 
   Finish:
 
