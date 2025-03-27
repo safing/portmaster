@@ -116,7 +116,7 @@ var dataDir
   RMDir /r "$oldInstallationDir\intel"
 
   ; Delete the link to the ProgramData folder
-  RMDir /r "$PROGRAMFILES\Safing"
+  RMDir /r "$PROGRAMFILES64\Safing"
 
   ; Delete v1 user shortcut if its there.
   SetShellVarContext current
@@ -158,7 +158,7 @@ var dataDir
 ; Post-uninstall hook:
 ; - Delete files
 !macro NSIS_HOOK_POSTUNINSTALL
-  ; Delete binarys
+  ; Delete binaries
   Delete /REBOOTOK "$INSTDIR\index.json"
   Delete /REBOOTOK "$INSTDIR\portmaster-core.exe"
   Delete /REBOOTOK "$INSTDIR\portmaster-kext.sys"
@@ -168,25 +168,22 @@ var dataDir
   Delete /REBOOTOK "$INSTDIR\assets.zip"
   RMDir /r /REBOOTOK "$INSTDIR"
 
-  ; Delete Tauri leftovers
-  RMDir /r /REBOOTOK "$APPDATA\Portmaster"
-
-  ; Delete intel data
-  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\index.json"
-  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\base.dsdl"
-  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\geoipv4.mmdb"
-  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\geoipv6.mmdb"
-  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\index.dsd"
-  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\intermediate.dsdl"
-  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\urgent.dsdl"
-  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\main-intel.yaml"
-  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\notifications.yaml"
-  Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\news.yaml"
+  ; delete data files
+  Delete  /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\databases\history.db"
+  RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\databases\cache"
+  RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\databases\icons"
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel"
+  RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\download_intel"
+  RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\download_binaries"
+  RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\exec"
+  RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\logs"
 
   ${If} $DeleteAppDataCheckboxState = 1
+    DetailPrint "Deleting the application data..."
     RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster"
     RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Safing"
+  ${Else}
+    DetailPrint "Application data kept as requested by the user."
   ${EndIf}
 
 !macroend
