@@ -73,6 +73,10 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 			if slices.Contains(u.cfg.Ignore, file.Name()) {
 				continue
 			}
+			// ignore PurgeDirectory itself
+			if strings.EqualFold(u.cfg.PurgeDirectory, filepath.Join(u.cfg.Directory, file.Name())) {
+				continue
+			}
 
 			// Otherwise, move file to purge dir.
 			src := filepath.Join(u.cfg.Directory, file.Name())
