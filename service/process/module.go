@@ -2,6 +2,7 @@ package process
 
 import (
 	"errors"
+	"runtime"
 	"sync/atomic"
 
 	"github.com/safing/portmaster/base/log"
@@ -21,7 +22,12 @@ func (pm *ProcessModule) Manager() *mgr.Manager {
 }
 
 func (pm *ProcessModule) Start() error {
-	file, err := pm.instance.BinaryUpdates().GetFile("portmaster")
+	identifier := "portmaster"
+	if runtime.GOOS == "windows" {
+		identifier += ".exe"
+	}
+
+	file, err := pm.instance.BinaryUpdates().GetFile(identifier)
 	if err != nil {
 		log.Errorf("process: failed to get path of ui: %s", err)
 	} else {
