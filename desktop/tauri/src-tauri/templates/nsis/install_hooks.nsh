@@ -173,6 +173,9 @@ var dataDir
   Delete /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel\news.yaml"
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel"
 
+  ; Remove PMv1 migration flag
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Safing\Portmaster\migrated.txt"
+
   ${If} $DeleteAppDataCheckboxState = 1
     RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster"
     RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Safing"
