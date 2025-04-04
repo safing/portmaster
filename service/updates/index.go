@@ -118,6 +118,14 @@ type Index struct {
 	Artifacts []*Artifact `json:"Artifacts"`
 
 	versionNum *semver.Version
+
+	// isLocallyGenerated indicates whether the index was generated from a local directory.
+	//
+	// When true:
+	//   - The `Published` field represents the generation time, not a formal release date.
+	//     This timestamp should be ignored when checking for online updates.
+	//   - Downgrades from this locally generated version to an online index should be prevented.
+	isLocallyGenerated bool
 }
 
 // LoadIndex loads and parses an index from the given filename.
@@ -234,6 +242,15 @@ func (index *Index) ShouldUpgradeTo(newIndex *Index) error {
 
 	case index.Name != newIndex.Name:
 		return errors.New("new index name does not match")
+
+	case index.isLocallyGenerated:
+		if newIndex.versionNum.GreaterThan(index.versionNum) {
+			// Upgrade! (from a locally generated index to an online index)
+			return nil
+		} else {
+			// "Do nothing".
+			return ErrSameIndex
+		}
 
 	case index.Published.After(newIndex.Published):
 		return errors.New("new index is older (time)")
