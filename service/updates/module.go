@@ -14,8 +14,10 @@ import (
 	"github.com/tevino/abool"
 
 	"github.com/safing/jess"
+	"github.com/safing/portmaster/base/info"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -170,6 +172,12 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 		return nil, fmt.Errorf("config is invalid: %w", err)
 	}
 
+	// Make sure main dir exists.
+	err := utils.EnsureDirectory(module.cfg.Directory, utils.PublicReadExecPermission)
+	if err != nil {
+		return nil, fmt.Errorf("create update target directory: %s", module.cfg.DownloadDirectory)
+	}
+
 	// Create Workers.
 	module.updateCheckWorkerMgr = m.NewWorkerMgr("update checker", module.updateCheckWorker, nil)
 	module.upgradeWorkerMgr = m.NewWorkerMgr("upgrader", module.upgradeWorker, nil)
@@ -192,7 +200,9 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 		log.Errorf("updates/%s: invalid index file, falling back to dir scan: %s", cfg.Name, err)
 		module.corruptedInstallation = fmt.Errorf("invalid index: %w", err)
 	}
-	index, err = GenerateIndexFromDir(cfg.Directory, IndexScanConfig{Version: "0.0.0"})
+	index, err = GenerateIndexFromDir(cfg.Directory, IndexScanConfig{
+		Version: info.VersionNumber(),
+	})
 	if err == nil && index.init(currentPlatform) == nil {
 		module.index = index
 		return module, nil

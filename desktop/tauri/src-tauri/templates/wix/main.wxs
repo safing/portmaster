@@ -70,9 +70,12 @@
         <Property Id="ARPURLUPDATEINFO" Value="{{homepage}}"/>
         {{/if}}
 
-        <!-- initialize with previous InstallDir -->
         <Property Id="INSTALLDIR">
-            <RegistrySearch Id="PrevInstallDirReg" Root="HKCU" Key="Software\\{{manufacturer}}\\{{product_name}}" Name="InstallDir" Type="raw"/>
+          <!-- First attempt: Search for "InstallDir" -->
+          <RegistrySearch Id="PrevInstallDirWithName" Root="HKCU" Key="Software\\{{manufacturer}}\\{{product_name}}" Name="InstallDir" Type="raw" />
+
+          <!-- Second attempt: If the first fails, search for the default key value (this is how the nsis installer currently stores the path) -->
+          <RegistrySearch Id="PrevInstallDirNoName" Root="HKCU" Key="Software\\{{manufacturer}}\\{{product_name}}" Type="raw" />
         </Property>
 
         <!-- launch app checkbox -->
@@ -161,6 +164,7 @@
             </Component>
             <Component Id="UpdateTaskInstaller" Guid="011F25ED-9BE3-50A7-9E9B-3519ED2B9932" Win64="$(var.Win64)">
                 <File Id="UpdateTaskInstaller" Source="install-task.ps1" KeyPath="yes" Checksum="yes"/>
+                
             </Component>
             <Component Id="UpdateTaskUninstaller" Guid="D4F6CC3F-32DC-5FD0-95E8-782FFD7BBCE1" Win64="$(var.Win64)">
                 <File Id="UpdateTaskUninstaller" Source="uninstall-task.ps1" KeyPath="yes" Checksum="yes"/>
@@ -323,6 +327,7 @@
             Execute="commit"
             Impersonate="yes"
             ExeCommand="powershell.exe -WindowStyle hidden .\install-task.ps1" />
+
         <InstallExecuteSequence>
             <Custom Action='CreateUpdateTask' Before='InstallFinalize'>
                 NOT(REMOVE)
@@ -348,9 +353,11 @@
         <SetProperty Id="ARPINSTALLLOCATION" Value="[INSTALLDIR]" After="CostFinalize"/>
 
         <!-- Service fragments -->
-        <CustomActionRef Id='InstallPortmasterService' />
-        <CustomActionRef Id='StopPortmasterService' />
-        <CustomActionRef Id='DeletePortmasterService' />
+        <CustomActionRef Id='MigrationPropertySet' />
+        <CustomActionRef Id='Migration' />
+        <!-- Uncommenting the next line will cause the installer to check if the old service is running and fail. Without, it will automatically stop and remove the old service without notifing the user. -->
+        <!-- <CustomActionRef Id='CheckServiceStatus' /> -->
         <!-- End Service fragments -->
+
     </Product>
 </Wix>

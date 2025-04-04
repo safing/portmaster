@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Fragment>
+	  <!-- Load the VBscript -->
+    <Binary Id="CheckServiceStatusScript" SourceFile="..\..\..\..\templates\wix\CheckServiceStatus.vbs" />
+
+    <!-- VBscript script custom action to check if the service is running -->
+    <CustomAction
+      Id="CheckServiceStatus"
+      VBScriptCall=""
+      BinaryKey="CheckServiceStatusScript"
+      Return="check" />
+
+    <!-- Check if service is running -->
+    <InstallExecuteSequence>
+      <Custom Action="CheckServiceStatus" Before="InstallInitialize">NOT(REMOVE)</Custom>
+    </InstallExecuteSequence>
+
+	</Fragment>
+</Wix>

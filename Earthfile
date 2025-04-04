@@ -1,9 +1,13 @@
-VERSION --arg-scope-and-set --global-cache 0.8
+VERSION 0.8
+
+# Custom argument: "custom_version" to manually set the version of the build (and ignore Git Tag value)
+# Usage example: earthly --build-arg custom_version="1.2.3" +<target>
+ARG --global custom_version = ""
 
 ARG --global go_version = 1.22
 ARG --global node_version = 18
-ARG --global rust_version = 1.79
-ARG --global tauri_version = "2.0.1"
+ARG --global rust_version = 1.81
+ARG --global tauri_version = "2.2.5"
 ARG --global golangci_lint_version = 1.57.1
 
 ARG --global go_builder_image = "golang:${go_version}-alpine"
@@ -131,27 +135,9 @@ go-base:
 
     # Copy the full repo, as Go embeds whether the state is clean.
     COPY . .
-
-    LET version = "$(git tag --points-at || true)"
-    IF [ -z "${version}" ]
-        LET dev_version = "$(git describe --tags --first-parent --abbrev=0 || true)"
-        IF [ -n "${dev_version}" ]
-            SET version = "${dev_version}_dev_build"
-        END
-    END
-    IF [ -z "${version}" ]
-        SET version = "dev_build"
-    END
-    ENV VERSION="${version}"
-    RUN echo "Version: $VERSION"
-
-    LET source = $( ( git remote -v | cut -f2 | cut -d" " -f1 | head -n 1 ) || echo "unknown" )
-    ENV SOURCE="${source}"
-    RUN echo "Source: $SOURCE"
-
-    LET build_time = $(date -u "+%Y-%m-%dT%H:%M:%SZ" || echo "unknown")
-    ENV BUILD_TIME = "${build_time}"
-    RUN echo "Build Time: $BUILD_TIME"
+    
+    # Set version information: VERSION, SOURCE, BUILD_TIME and VERSION_SemVer
+    DO +SET_VERSION_INFO 
 
     # Explicitly cache here.
     SAVE IMAGE --cache-hint
@@ -426,7 +412,7 @@ rust-base:
     DO rust+INIT --keep_fingerprints=true
 
     # For now we need tauri-cli 2.0.0 for bulding
-    DO rust+CARGO --args="install tauri-cli --version 2.1.0 --locked"
+    DO rust+CARGO --args="install tauri-cli --version 2.2.7 --locked"
 
     # Explicitly cache here.
     SAVE IMAGE --cache-hint
@@ -450,7 +436,7 @@ tauri-src:
 
 tauri-build:
     FROM +tauri-src
-
+    
     ARG --required target
 
     ARG output=".*/release/([^\./]+|([^\./]+\.(dll|exe)))"
@@ -459,6 +445,8 @@ tauri-build:
 
     DO rust+SET_CACHE_MOUNTS_ENV
     RUN rustup target add "${target}"
+
+    # Build
     RUN --mount=$EARTHLY_RUST_TARGET_CACHE cargo tauri build  --ci --target="${target}" --no-bundle
     DO rust+COPY_OUTPUT --output="${output}"
 
@@ -535,35 +523,44 @@ release-prep:
 
     # Build update manager
     COPY (+go-build/output/updatemgr --GOARCH=amd64 --GOOS=linux --CMDS=updatemgr) ./updatemgr
- 
-    # Get binary artifacts from current release
-    RUN mkdir -p ./output/download/windows_amd64 && ./updatemgr download https://updates.safing.io/stable.v3.json --platform windows_amd64 ./output/download/windows_amd64
-
-    # Copy required artifacts
-    RUN cp ./output/download/windows_amd64/portmaster-kext.sys ./output/binary/windows_amd64/portmaster-kext.sys
-    RUN cp ./output/download/windows_amd64/portmaster-kext.pdb ./output/binary/windows_amd64/portmaster-kext.pdb
-    RUN cp ./output/download/windows_amd64/portmaster-core.dll ./output/binary/windows_amd64/portmaster-core.dll
-
-    # Create new binary index from artifacts
-    RUN ./updatemgr scan --dir "./output/binary" > ./output/binary/index.json
-
-    # Get intel index and assets
+    # Get "portmaster-kext.sys" and "portmaster-core.dll" from current stable release
+    RUN mkdir -p ./output/downloaded/windows_amd64 && ./updatemgr download https://updates.safing.io/stable.v3.json --platform windows_amd64 ./output/downloaded/windows_amd64
+    RUN find ./output/downloaded/windows_amd64 -type f ! -name "portmaster-kext.sys" ! -name "portmaster-core.dll" -delete  # We are only interested in the KEXT and core DLL. Remove the rest.
+    # Get intel artifacts
     RUN mkdir -p ./output/intel && ./updatemgr download https://updates.safing.io/intel.v3.json ./output/intel
-
-    # Save all artifacts to output folder
-    SAVE ARTIFACT --if-exists --keep-ts "output/binary/index.json" AS LOCAL "${outputDir}/binary/index.json"
-    SAVE ARTIFACT --if-exists --keep-ts "output/binary/all/*" AS LOCAL "${outputDir}/binary/all/"
-    SAVE ARTIFACT --if-exists --keep-ts "output/binary/linux_amd64/*" AS LOCAL "${outputDir}/binary/linux_amd64/"
-    SAVE ARTIFACT --if-exists --keep-ts "output/binary/windows_amd64/*" AS LOCAL "${outputDir}/binary/windows_amd64/"
-    SAVE ARTIFACT --if-exists --keep-ts "output/intel/*" AS LOCAL "${outputDir}/intel/"
+    
+    # Save all artifacts to output folder (on host)
+    SAVE ARTIFACT --keep-ts "output/binary/all/*"           AS LOCAL "${outputDir}/binary/all/"
+    SAVE ARTIFACT --keep-ts "output/binary/linux_amd64/*"   AS LOCAL "${outputDir}/binary/linux_amd64/"
+    SAVE ARTIFACT --keep-ts "output/binary/windows_amd64/*" AS LOCAL "${outputDir}/binary/windows_amd64/"
+    SAVE ARTIFACT --keep-ts "output/intel/*"                AS LOCAL "${outputDir}/intel/"
+    SAVE ARTIFACT --keep-ts "output/downloaded/*"           AS LOCAL "${outputDir}/downloaded/" # KEXT and core DLL: artifacts from the current stable release
 
     # Save all artifacts to the container output folder so other containers can access it.
-    SAVE ARTIFACT --if-exists --keep-ts "output/binary/index.json" "output/binary/index.json"
-    SAVE ARTIFACT --if-exists --keep-ts "output/binary/all/*" "output/binary/all/"
-    SAVE ARTIFACT --if-exists --keep-ts "output/binary/linux_amd64/*" "output/binary/linux_amd64/"
-    SAVE ARTIFACT --if-exists --keep-ts "output/binary/windows_amd64/*" "output/binary/windows_amd64/"
-    SAVE ARTIFACT --if-exists --keep-ts "output/intel/*" "output/intel/"
-    SAVE ARTIFACT --if-exists --keep-ts "output/download/*" "output/download/"
+    SAVE ARTIFACT --keep-ts "output/binary/all/*"           "output/binary/all/"
+    SAVE ARTIFACT --keep-ts "output/binary/linux_amd64/*"   "output/binary/linux_amd64/"
+    SAVE ARTIFACT --keep-ts "output/binary/windows_amd64/*" "output/binary/windows_amd64/"
+    SAVE ARTIFACT --keep-ts "output/intel/*"                "output/intel/"
+    SAVE ARTIFACT --keep-ts "output/downloaded/*"           "output/downloaded/"
+
+    # IMPORTANT: COPYING PRECOMPILED LOCAL FILES!
+    # If "packaging/_precompiled" foledr exists, it's contents has priority to be used; it's files will overwrite the ones from the build!
+    # Expected structure:
+    # - packaging/_precompiled/binary/...    
+    # - packaging/_precompiled/intel    
+    #   Careful! If there are any files in the '_precompiled/intel' folder, the final 'intel/index.json' may be broken due to incorrect hash values!
+    COPY --if-exists --keep-ts ./packaging/_precompiled/binary  ./packaging/precompiled/binary
+    COPY --if-exists --keep-ts ./packaging/_precompiled/intel   ./packaging/precompiled/intel
+    IF --no-cache [ -d ./packaging/precompiled ]
+        RUN --no-cache echo "[ !!! ATTENTION  !!! ] PRECOMPILED FILES IN USE:" && find ./packaging/precompiled -type f;
+        IF --no-cache [ -d ./packaging/precompiled/intel ]
+            RUN --no-cache echo "[!!! ATTENTION !!!] ENSURE THAT 'intel/index.json' CONTAINS THE CORRECT HASHES!"
+        END
+        SAVE ARTIFACT --if-exists --keep-ts "packaging/precompiled/intel/*"  AS LOCAL "${outputDir}/intel/"     # save to host
+        SAVE ARTIFACT --if-exists --keep-ts "packaging/precompiled/binary/*" AS LOCAL "${outputDir}/binary/"    # save to host
+        SAVE ARTIFACT --if-exists --keep-ts "packaging/precompiled/intel/*"           "output/intel/"           # save to container (so other containers can access it)
+        SAVE ARTIFACT --if-exists --keep-ts "packaging/precompiled/binary/*"          "output/binary/"          # save to container (so other containers can access it)
+    END
 
 installer-linux:
     FROM +rust-base
@@ -586,7 +583,6 @@ installer-linux:
     COPY (+release-prep/output/binary/linux_amd64/portmaster) ./target/${target}/release/portmaster
 
     RUN mkdir -p binary
-    COPY (+release-prep/output/binary/index.json) ./binary/index.json
     COPY (+release-prep/output/binary/linux_amd64/portmaster-core) ./binary/portmaster-core
     COPY (+release-prep/output/binary/all/portmaster.zip) ./binary/portmaster.zip
     COPY (+release-prep/output/binary/all/assets.zip) ./binary/assets.zip
@@ -595,6 +591,11 @@ installer-linux:
     RUN mkdir -p intel
     COPY (+release-prep/output/intel/*) ./intel/
 
+    # Init version information: VERSION, SOURCE, BUILD_TIME and VERSION_SemVer
+    DO +SET_VERSION_INFO 
+    # Set version in Cargo.toml if it's a valid SemVer (required for using in the installer file names)
+    RUN if [ -n "$VERSION_SemVer" ]; then sed -i 's/^version = ".*"/version = "'"$VERSION_SemVer"'"/g' Cargo.toml; fi
+    
     # build the installers
     RUN cargo tauri bundle --ci --target="${target}"
 
@@ -697,3 +698,62 @@ BIN_EXT:
         SET binext=".exe"
     END
     ENV BINEXT="${goos}"
+
+# Function to set the version-related environment variables (variables: VERSION, SOURCE, BUILD_TIME and VERSION_SemVer)
+# Call example:
+#    DO +SET_VERSION_INFO
+SET_VERSION_INFO:
+    FUNCTION
+    ARG gitDir="/tmp/git-info"
+    
+    # Check if already initialized and skip the rest if true
+    IF [ -n "$BUILD_TIME" ]
+        #RUN echo "Version info already initialized"       
+    ELSE
+        # Make sure git is installed in the image
+        RUN which git || apk add --no-cache git
+        # Create a temporary directory for git information only
+        RUN mkdir -p ${gitDir}        
+        # Copy only the .git directory to the temporary location
+        COPY --dir .git ${gitDir}/.git
+        
+        # Check if custom version was provided via command line
+        IF [ -n "$custom_version" ]
+            ENV VERSION="${custom_version}"
+            RUN echo "Using custom version from command line: $VERSION"
+        ELSE
+            # Get version from git tags without changing workdir
+            LET version = "$(git --git-dir=${gitDir}/.git tag --points-at || true)"
+            IF [ -z "${version}" ]
+                LET dev_version = "$(git --git-dir=${gitDir}/.git describe --tags --first-parent --abbrev=0 || true)"
+                IF [ -n "${dev_version}" ]
+                    SET version = "${dev_version}_dev_build"
+                END
+            END
+            IF [ -z "${version}" ]
+                SET version = "dev_build"
+            END
+            ENV VERSION="${version}"
+            RUN echo "Version: $VERSION"
+        END
+
+        # Create cleaned version without 'v' prefix and without suffix starting with '_'
+        # Only set VERSION_SemVer if it matches semantic versioning format
+        LET version_clean = "$(echo "${VERSION}" | sed -E 's/^[vV]//' | sed -E 's/_.*$//')"    
+        IF [ $(echo "${version_clean}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$') ]
+            ENV VERSION_SemVer="${version_clean}"
+            RUN echo "VERSION_SemVer: $VERSION_SemVer"
+        ELSE
+            RUN echo "VERSION_SemVer: [Empty - not a valid SemVer in Git Tag] - !!! WARNING !!!"
+        END
+
+        # Get source information without changing workdir
+        LET source = "$( (git --git-dir=${gitDir}/.git remote -v | cut -f2 | cut -d" " -f1 | head -n 1) || echo "unknown" )"
+        ENV SOURCE="${source}"
+        RUN echo "Source: $SOURCE"
+
+        # Get build time
+        LET build_time = "$(date -u "+%Y-%m-%dT%H:%M:%SZ" || echo "unknown")"
+        ENV BUILD_TIME = "${build_time}"
+        RUN echo "Build Time: $BUILD_TIME"
+    END
