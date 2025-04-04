@@ -80,6 +80,7 @@ func openSQLite(name, location string, printStmts bool) (*SQLite, error) {
 		"PRAGMA journal_mode=WAL;",   // Corruption safe write ahead log for txs.
 		"PRAGMA synchronous=NORMAL;", // Best for WAL.
 		"PRAGMA cache_size=-10000;",  // 10MB Cache.
+		"PRAGMA busy_timeout=3000;",  // 3s (3000ms) timeout for locked tables.
 	}
 	for _, pragma := range pragmas {
 		_, err := db.Exec(pragma)
