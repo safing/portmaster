@@ -178,6 +178,9 @@ var dataDir
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\exec"
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\logs"
 
+  ; Remove PMv1 migration flag
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Safing\Portmaster\migrated.txt"
+
   ${If} $DeleteAppDataCheckboxState = 1
     DetailPrint "Deleting the application data..."
     RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster"
