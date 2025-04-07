@@ -20,6 +20,7 @@ import (
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/configure"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/ui"
 )
 
 const (
@@ -645,4 +646,5 @@ type instance interface {
 	Restart()
 	Shutdown()
 	Notifications() *notifications.Notifications
+	UI() *ui.UI
 }

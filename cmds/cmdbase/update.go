@@ -9,6 +9,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service"
+	"github.com/safing/portmaster/service/ui"
 	"github.com/safing/portmaster/service/updates"
 )
 
@@ -71,3 +72,4 @@ type updateDummyInstance struct{}
 func (udi *updateDummyInstance) Restart()                                    {}
 func (udi *updateDummyInstance) Shutdown()                                   {}
 func (udi *updateDummyInstance) Notifications() *notifications.Notifications { return nil }
+func (udi *updateDummyInstance) UI() *ui.UI                                  { return nil }
