@@ -508,6 +508,21 @@ func (i *Instance) ExitCode() int {
 	return int(i.exitCode.Load())
 }
 
+// ShouldRestartIsSet returns whether the service/instance should be restarted.
+func (i *Instance) ShouldRestartIsSet() bool {
+	return i.ShouldRestart
+}
+
+// CommandLineOperationIsSet returns whether the command line option is set.
+func (i *Instance) CommandLineOperationIsSet() bool {
+	return i.CommandLineOperation != nil
+}
+
+// CommandLineOperationExecute executes the set command line option.
+func (i *Instance) CommandLineOperationExecute() error {
+	return i.CommandLineOperation()
+}
+
 // SPNGroup fakes interface conformance.
 // SPNGroup is only needed on SPN clients.
 func (i *Instance) SPNGroup() *mgr.ExtendedGroup {
