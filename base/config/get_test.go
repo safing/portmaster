@@ -55,7 +55,7 @@ func TestGet(t *testing.T) { //nolint:paralleltest
 	// reset
 	options = make(map[string]*Option)
 
-	err := log.Start()
+	err := log.Start("info", true, "")
 	if err != nil {
 		t.Fatal(err)
 	}

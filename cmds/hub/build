@@ -51,6 +51,12 @@ if [[ $1 == "dev" ]]; then
   DEV="-race"
 fi
 
+# Set GOOS and GOARCH for Darwin to use Linux architecture
+if [[ "$(uname)" == "Darwin" ]]; then
+  export GOOS=linux
+  export GOARCH=amd64
+fi
+
 echo "Please notice, that this build script includes metadata into the build."
 echo "This information is useful for debugging and license compliance."
 echo "Run the compiled binary with the -version flag to see the information included."
