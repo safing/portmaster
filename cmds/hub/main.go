@@ -93,7 +93,7 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 		LogDir:      logDir,
 		LogLevel:    logLevel,
 
-		BinariesIndexURLs:   configure.DefaultStableBinaryIndexURLs,
+		BinariesIndexURLs:   configure.DefaultSpnStableBinaryIndexURLs,
 		IntelIndexURLs:      configure.DefaultIntelIndexURLs,
 		VerifyBinaryUpdates: configure.BinarySigningTrustStore,
 	}
