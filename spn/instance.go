@@ -136,6 +136,11 @@ func New(svcCfg *service.ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return instance, fmt.Errorf("create updates config: %w", err)
 	}
+
+	//Enable autodownload and autoapply
+	binaryUpdateConfig.AutoDownload = true
+	binaryUpdateConfig.AutoApply = true
+
 	instance.binaryUpdates, err = updates.New(instance, "Binary Updater", *binaryUpdateConfig)
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
