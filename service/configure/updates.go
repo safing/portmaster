@@ -12,7 +12,7 @@ var (
 		"https://updates.safing.io/stable.v3.json",
 	}
 	DefaultSpnStableBinaryIndexURLs = []string{
-		"https://updates.safing.io/stable.v3.json",
+		"https://updates.safing.io/spn-stable.v3.json",
 	}
 	DefaultBetaBinaryIndexURLs = []string{
 		"https://updates.safing.io/beta.v3.json",
