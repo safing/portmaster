@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/cmds/cmdbase"
 	"github.com/safing/portmaster/service"
@@ -73,6 +74,10 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 
 	// Set SPN public hub mode.
 	conf.EnablePublicHub(true)
+
+	// Set default log level.
+	log.SetLogLevel(log.WarningLevel)
+	_ = log.Start(log.InfoLevel.String(), true, "")
 
 	// Configure service.
 	cmdbase.SvcFactory = func(svcCfg *service.ServiceConfig) (cmdbase.ServiceInstance, error) {
