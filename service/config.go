@@ -115,7 +115,7 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 	switch runtime.GOOS {
 	case "windows":
 		binaryUpdateConfig = &updates.Config{
-			Name:              "binaries",
+			Name:              configure.DefaultBinaryIndexName,
 			Directory:         svcCfg.BinDir,
 			DownloadDirectory: filepath.Join(svcCfg.DataDir, "download_binaries"),
 			PurgeDirectory:    filepath.Join(svcCfg.BinDir, "upgrade_obsolete_binaries"),
@@ -130,7 +130,7 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 			Notify:            true,
 		}
 		intelUpdateConfig = &updates.Config{
-			Name:              "intel",
+			Name:              configure.DefaultIntelIndexName,
 			Directory:         filepath.Join(svcCfg.DataDir, "intel"),
 			DownloadDirectory: filepath.Join(svcCfg.DataDir, "download_intel"),
 			PurgeDirectory:    filepath.Join(svcCfg.DataDir, "upgrade_obsolete_intel"),
@@ -146,7 +146,7 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 
 	case "linux":
 		binaryUpdateConfig = &updates.Config{
-			Name:              "binaries",
+			Name:              configure.DefaultBinaryIndexName,
 			Directory:         svcCfg.BinDir,
 			DownloadDirectory: filepath.Join(svcCfg.DataDir, "download_binaries"),
 			PurgeDirectory:    filepath.Join(svcCfg.DataDir, "upgrade_obsolete_binaries"),
@@ -161,7 +161,7 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 			Notify:            true,
 		}
 		intelUpdateConfig = &updates.Config{
-			Name:              "intel",
+			Name:              configure.DefaultIntelIndexName,
 			Directory:         filepath.Join(svcCfg.DataDir, "intel"),
 			DownloadDirectory: filepath.Join(svcCfg.DataDir, "download_intel"),
 			PurgeDirectory:    filepath.Join(svcCfg.DataDir, "upgrade_obsolete_intel"),
