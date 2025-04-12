@@ -146,6 +146,8 @@ fn main() {
     };
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_websocket::init())
+        .plugin(tauri_plugin_http::init())
         // Shell plugin for open_external support
         .plugin(tauri_plugin_shell::init())
         // Initialize Logging plugin.
