@@ -119,8 +119,8 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 			Directory:         svcCfg.BinDir,
 			DownloadDirectory: filepath.Join(svcCfg.DataDir, "download_binaries"),
 			PurgeDirectory:    filepath.Join(svcCfg.BinDir, "upgrade_obsolete_binaries"),
-			Ignore:            []string{"databases", "intel", "config.json"},
-			IndexURLs:         svcCfg.BinariesIndexURLs, // May be changed by config during instance startup.
+			Ignore:            []string{"uninstall.exe"}, // "databases", "intel" and "config.json" not needed here since they are not in the bin dir.
+			IndexURLs:         svcCfg.BinariesIndexURLs,  // May be changed by config during instance startup.
 			IndexFile:         "index.json",
 			Verify:            svcCfg.VerifyBinaryUpdates,
 			AutoCheck:         true, // May be changed by config during instance startup.
@@ -150,7 +150,7 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 			Directory:         svcCfg.BinDir,
 			DownloadDirectory: filepath.Join(svcCfg.DataDir, "download_binaries"),
 			PurgeDirectory:    filepath.Join(svcCfg.DataDir, "upgrade_obsolete_binaries"),
-			Ignore:            []string{"databases", "intel", "config.json"},
+			Ignore:            []string{},               // "databases", "intel" and "config.json" not needed here since they are not in the bin dir.
 			IndexURLs:         svcCfg.BinariesIndexURLs, // May be changed by config during instance startup.
 			IndexFile:         "index.json",
 			Verify:            svcCfg.VerifyBinaryUpdates,
