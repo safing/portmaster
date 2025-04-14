@@ -72,7 +72,7 @@ type Profile struct { //nolint:maligned // not worth the effort
 	// Icons holds a list of icons to represent the application.
 	Icons []binmeta.Icon
 
-	// Deprecated: LinkedPath used to point to the executableis this
+	// Deprecated: LinkedPath used to point to the executables this
 	// profile was created for.
 	// Until removed, it will be added to the Fingerprints as an exact path match.
 	LinkedPath string // constant

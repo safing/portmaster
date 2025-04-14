@@ -19,7 +19,7 @@ var (
 	// pidsByUserLock is also used for locking the socketInfo.PID on all socket.*Info structs.
 	pidsByUser      = make(map[int][]int)
 	pidsByUserLock  sync.RWMutex
-	fetchPidsByUser = utils.NewCallLimiter(10 * time.Millisecond)
+	fetchPidsByUser = utils.NewCallLimiter2(10 * time.Millisecond)
 )
 
 // getPidsByUser returns the cached PIDs for the given UID.

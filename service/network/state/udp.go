@@ -24,7 +24,7 @@ type udpTable struct {
 	// lastUpdateAt stores the time when the tables where last updated as unix nanoseconds.
 	lastUpdateAt atomic.Int64
 
-	fetchLimiter *utils.CallLimiter
+	fetchLimiter *utils.CallLimiter2
 	fetchTable   func() (binds []*socket.BindInfo, err error)
 
 	states     map[string]map[string]*udpState
@@ -52,14 +52,14 @@ const (
 var (
 	udp6Table = &udpTable{
 		version:      6,
-		fetchLimiter: utils.NewCallLimiter(minDurationBetweenTableUpdates),
+		fetchLimiter: utils.NewCallLimiter2(minDurationBetweenTableUpdates),
 		fetchTable:   getUDP6Table,
 		states:       make(map[string]map[string]*udpState),
 	}
 
 	udp4Table = &udpTable{
 		version:      4,
-		fetchLimiter: utils.NewCallLimiter(minDurationBetweenTableUpdates),
+		fetchLimiter: utils.NewCallLimiter2(minDurationBetweenTableUpdates),
 		fetchTable:   getUDP4Table,
 		states:       make(map[string]map[string]*udpState),
 	}
