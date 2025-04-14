@@ -9,26 +9,19 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/spkg/zipfs"
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/utils"
-	"github.com/safing/portmaster/service/updates"
 )
 
-var (
-	apps     = make(map[string]*zipfs.FileSystem)
-	appsLock sync.RWMutex
-)
-
-func registerRoutes() error {
+func (ui *UI) registerRoutes() error {
 	// Server assets.
 	api.RegisterHandler(
 		"/assets/{resPath:[a-zA-Z0-9/\\._-]+}",
-		&archiveServer{defaultModuleName: "assets"},
+		&archiveServer{ui: ui, defaultModuleName: "assets"},
 	)
 
 	// Add slash to plain module namespaces.
@@ -38,7 +31,7 @@ func registerRoutes() error {
 	)
 
 	// Serve modules.
-	srv := &archiveServer{}
+	srv := &archiveServer{ui: ui}
 	api.RegisterHandler("/ui/modules/{moduleName:[a-z]+}/", srv)
 	api.RegisterHandler("/ui/modules/{moduleName:[a-z]+}/{resPath:[a-zA-Z0-9/\\._-]+}", srv)
 
@@ -52,6 +45,7 @@ func registerRoutes() error {
 }
 
 type archiveServer struct {
+	ui                *UI
 	defaultModuleName string
 }
 
@@ -82,39 +76,35 @@ func (bs *archiveServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resPath = "index.html"
 	}
 
-	appsLock.RLock()
-	archiveFS, ok := apps[moduleName]
-	appsLock.RUnlock()
+	archiveFS, ok := bs.ui.getArchive(moduleName)
 	if ok {
 		ServeFileFromArchive(w, r, moduleName, archiveFS, resPath)
 		return
 	}
 
+	// Check if the upgrade lock is enabled.
+	if bs.ui.upgradeLock.Load() {
+		http.Error(w, "Resources locked, upgrade in progress.", http.StatusLocked)
+		return
+	}
+
 	// get file from update system
-	zipFile, err := module.instance.BinaryUpdates().GetFile(fmt.Sprintf("%s.zip", moduleName))
+	zipFile, err := bs.ui.instance.GetBinaryUpdateFile(fmt.Sprintf("%s.zip", moduleName))
 	if err != nil {
-		if errors.Is(err, updates.ErrNotFound) {
-			log.Tracef("ui: requested module %s does not exist", moduleName)
-			http.Error(w, err.Error(), http.StatusNotFound)
-		} else {
-			log.Tracef("ui: error loading module %s: %s", moduleName, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		log.Tracef("ui: error loading module %s: %s", moduleName, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Open archive from disk.
-	archiveFS, err = zipfs.New(zipFile.Path())
+	archiveFS, err = zipfs.New(zipFile)
 	if err != nil {
 		log.Tracef("ui: error prepping module %s: %s", moduleName, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	appsLock.Lock()
-	apps[moduleName] = archiveFS
-	appsLock.Unlock()
-
+	bs.ui.setArchive(moduleName, archiveFS)
 	ServeFileFromArchive(w, r, moduleName, archiveFS, resPath)
 }
 

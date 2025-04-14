@@ -438,6 +438,15 @@ func (i *Instance) BinaryUpdates() *updates.Updater {
 	return i.binaryUpdates
 }
 
+// GetBinaryUpdateFile returns the file path of a binary update file.
+func (i *Instance) GetBinaryUpdateFile(name string) (path string, err error) {
+	file, err := i.binaryUpdates.GetFile(name)
+	if err != nil {
+		return "", err
+	}
+	return file.Path(), nil
+}
+
 // IntelUpdates returns the updates module.
 func (i *Instance) IntelUpdates() *updates.Updater {
 	return i.intelUpdates

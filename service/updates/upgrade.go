@@ -24,6 +24,10 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 		}
 	}
 
+	// Unload UI assets to be able to move files on Windows.
+	u.instance.UI().EnableUpgradeLock()
+	defer u.instance.UI().DisableUpgradeLock()
+
 	// Execute the upgrade.
 	upgradeError := u.upgradeMoveFiles(downloader)
 	if upgradeError == nil {
