@@ -21,6 +21,7 @@ import (
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
+	"github.com/safing/portmaster/service/ui"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/access"
 	"github.com/safing/portmaster/spn/cabin"
@@ -74,6 +75,7 @@ type Instance struct {
 	ships     *ships.Ships
 	sluice    *sluice.SluiceModule
 	terminal  *terminal.TerminalModule
+	ui        *ui.UI
 
 	CommandLineOperation func() error
 	ShouldRestart        bool
@@ -374,6 +376,11 @@ func (i *Instance) Sluice() *sluice.SluiceModule {
 // Terminal returns the terminal module.
 func (i *Instance) Terminal() *terminal.TerminalModule {
 	return i.terminal
+}
+
+// UI returns the ui module.
+func (i *Instance) UI() *ui.UI {
+	return i.ui
 }
 
 // FilterLists returns the filterLists module.
