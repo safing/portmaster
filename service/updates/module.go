@@ -405,7 +405,7 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 						Type: notifications.ActionTypeWebhook,
 						Payload: notifications.ActionTypeWebhookPayload{
 							Method: "POST",
-							URL:    "updates/apply",
+							URL:    "core/restart",
 						},
 					},
 				},
