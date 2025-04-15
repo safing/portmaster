@@ -79,6 +79,21 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 	log.SetLogLevel(log.WarningLevel)
 	_ = log.Start(log.InfoLevel.String(), true, "")
 
+	// Configure SPN binary updates.
+	configure.DefaultBinaryIndexName = "SPN Binaries"
+	configure.DefaultStableBinaryIndexURLs = []string{
+		"https://updates.safing.io/spn-stable.v3.json",
+	}
+	configure.DefaultBetaBinaryIndexURLs = []string{
+		"https://updates.safing.io/spn-beta.v3.json",
+	}
+	configure.DefaultStagingBinaryIndexURLs = []string{
+		"https://updates.safing.io/spn-staging.v3.json",
+	}
+	configure.DefaultSupportBinaryIndexURLs = []string{
+		"https://updates.safing.io/spn-support.v3.json",
+	}
+
 	// Configure service.
 	cmdbase.SvcFactory = func(svcCfg *service.ServiceConfig) (cmdbase.ServiceInstance, error) {
 		svc, err := spn.New(svcCfg)
@@ -93,7 +108,7 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 		LogDir:      logDir,
 		LogLevel:    logLevel,
 
-		BinariesIndexURLs:   configure.DefaultSpnStableBinaryIndexURLs,
+		BinariesIndexURLs:   configure.DefaultStableBinaryIndexURLs,
 		IntelIndexURLs:      configure.DefaultIntelIndexURLs,
 		VerifyBinaryUpdates: configure.BinarySigningTrustStore,
 	}

@@ -241,7 +241,10 @@ func (index *Index) ShouldUpgradeTo(newIndex *Index) error {
 		return nil
 
 	case index.Name != newIndex.Name:
-		return errors.New("new index name does not match")
+		return fmt.Errorf(
+			"new index name (%q) does not match current index name (%q)",
+			newIndex.Name, index.Name,
+		)
 
 	case index.isLocallyGenerated:
 		if newIndex.versionNum.GreaterThan(index.versionNum) {
