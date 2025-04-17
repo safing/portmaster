@@ -1,7 +1,7 @@
 <span *ngIf="!src && !isIgnoredProfile">
   {{letter}}
 </span>
-<img [attr.src]="src" *ngIf="!!src" loading="lazy">
+<img [attr.src]="src | httpImgSrc | async" *ngIf="!!src">
 <svg *ngIf="!src && isIgnoredProfile" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
   stroke-width="1.5" stroke="currentColor" class="w-full h-full text-gray-700">
   <path stroke-linecap="round" stroke-linejoin="round"

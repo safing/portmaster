@@ -245,7 +245,7 @@ export class AppIconComponent implements OnInit, OnDestroy {
           if (!!profile.Icons?.length) {
             const firstIcon = profile.Icons[0];
 
-            console.log(`profile ${profile.Name} has icon of from source ${firstIcon.Source} stored in ${firstIcon.Type}`)
+            console.log(`profile '${profile.Name}' has icon of from source '${firstIcon.Source}' stored in '${firstIcon.Type}'`)
 
             switch (firstIcon.Type) {
               case 'database':
@@ -292,7 +292,7 @@ export class AppIconComponent implements OnInit, OnDestroy {
             icon = '';
           }
           if (icon !== '') {
-            this.src = this.sanitzier.bypassSecurityTrustUrl(icon);
+            this.src = icon; // this.src = this.sanitzier.bypassSecurityTrustUrl(icon);
             this.color = 'unset';
           } else {
             this.src = '';

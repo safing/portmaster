@@ -15,7 +15,7 @@
       </ng-container>
 
       <header>
-        <img [attr.src]="feature?.IconURL">
+        <img [attr.src]="feature?.IconURL | httpImgSrc | async">
 
         <span>
           {{ feature?.Name }}
