@@ -4,7 +4,6 @@ import { PortalModule } from '@angular/cdk/portal';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { CdkTableModule } from '@angular/cdk/table';
 import { CommonModule, registerLocaleData } from '@angular/common';
-import { HttpClientModule } from '@angular/common/http';
 
 import { APP_INITIALIZER, LOCALE_ID, NgModule } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -174,7 +173,6 @@ const localeConfig = {
     PortalModule,
     CdkTableModule,
     DragDropModule,
-    HttpClientModule,
     MarkdownModule.forRoot(),
     ScrollingModule,
     SfngAccordionModule,
