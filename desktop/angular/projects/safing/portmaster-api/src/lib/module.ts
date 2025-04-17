@@ -8,16 +8,12 @@ import { PortapiService, PORTMASTER_HTTP_API_ENDPOINT, PORTMASTER_WS_API_ENDPOIN
 import { SPNService } from "./spn.service";
 import { WebsocketService } from "./websocket.service";
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { TauriHttpInterceptor } from "./tauri-http-interceptor";
+import { TauriHttpInterceptor } from "./platform-specific/tauri/tauri-http-interceptor";
+import { IsTauriEnvironment } from "./platform-specific/utils";
 
 export interface ModuleConfig {
   httpAPI?: string;
   websocketAPI?: string;
-}
-
-// Simple function to detect if the app is running in a Tauri environment
-export function IsTauriEnvironment(): boolean {
-  return '__TAURI__' in window;
 }
 
 // Factory function to provide the appropriate HTTP client configuration

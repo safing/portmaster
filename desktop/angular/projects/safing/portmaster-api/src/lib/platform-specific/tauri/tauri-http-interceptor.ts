@@ -64,12 +64,25 @@ export function TauriHttpInterceptor(req: HttpRequest<unknown>, next: HttpHandle
             };
                 
             switch (responseType) {
-                case 'arraybuffer':
-                    return from(response.arrayBuffer()).pipe(map(createResponse));                    
-                case 'blob':
-                    return from(response.blob()).pipe(map(createResponse));                    
                 case 'text':
-                    return from(response.text()).pipe(map(createResponse));                    
+                    return from(response.text()).pipe(map(createResponse));
+                case 'arraybuffer':
+                    return from(response.arrayBuffer()).pipe(map(createResponse));
+                case 'blob':
+                    return from(response.blob()).pipe(
+                        map(blob => {
+                            // Get content-type from response headers
+                            const contentType = response.headers.get('content-type') || '';
+                            // Create a new blob with the proper MIME type
+                            if (contentType && (!blob.type || blob.type === 'application/octet-stream')) {
+                                // Create new blob with the correct MIME type
+                                const typedBlob = new Blob([blob], { type: contentType });
+                                return createResponse(typedBlob);
+                            }
+                            
+                            return createResponse(blob);
+                        })
+                    );
                 case 'json':
                 default:
                     return from(response.text()).pipe(
