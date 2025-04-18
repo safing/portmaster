@@ -45,8 +45,6 @@
     "@tauri-apps/plugin-notification": ">=2.0.0",
     "@tauri-apps/plugin-os": ">=2.0.0",
     "@tauri-apps/plugin-shell": "^2.0.1",
-    "@tauri-apps/plugin-http": ">=2.2.0",
-    "@tauri-apps/plugin-websocket": ">=2.2.0",
     "autoprefixer": "^10.4.14",
     "d3": "^7.8.4",
     "data-urls": "^5.0.0",
