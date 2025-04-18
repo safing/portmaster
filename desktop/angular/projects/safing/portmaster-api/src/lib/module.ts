@@ -26,14 +26,14 @@ export interface ModuleConfig {
 export function HttpClientProviderFactory() {
   if (IsTauriEnvironment()) 
   {
-    console.log("[app] running under tauri - using TauriHttpClient");
+    console.log("[portmaster-api] Running under Tauri - using TauriHttpClient");
     return provideHttpClient(
       withInterceptors([TauriHttpInterceptor])
     );
   } 
   else 
   {
-    console.log("[app] running in browser - using default HttpClient");
+    console.log("[portmaster-api] Running in browser - using default HttpClient");
     return provideHttpClient();
   }
 }
