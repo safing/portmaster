@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 /// Struct representing an RGB color
+#[allow(dead_code)] // Suppress warnings for unused fields in this struct only
 pub(crate) struct Rgb(pub(crate) u32, pub(crate) u32, pub(crate) u32);
 
 impl FromStr for Rgb {

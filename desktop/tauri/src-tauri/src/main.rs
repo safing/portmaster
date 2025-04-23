@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{env, path::Path, time::Duration};
+use std::{env, time::Duration};
 
 use tauri::{AppHandle, Emitter, Listener, Manager, RunEvent, WindowEvent};
 
@@ -139,7 +139,7 @@ fn main() {
 
     // TODO(vladimir): Permission for logs/app2 folder are not guaranteed. Use the default location for now.
     #[cfg(target_os = "windows")]
-    let log_target = if let Some(data_dir) = cli_args.data {
+    let log_target = if let Some(_) = cli_args.data {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir { file_name: None })
     } else {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout)
