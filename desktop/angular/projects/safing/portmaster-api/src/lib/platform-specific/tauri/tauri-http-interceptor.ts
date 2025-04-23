@@ -22,7 +22,7 @@ export function TauriHttpInterceptor(req: HttpRequest<unknown>, next: HttpHandle
             acc[key] = req.headers.get(key) || '';
             return acc;
         }, {}),
-        body: req.body ? JSON.stringify(req.body) : undefined,
+        body: getRequestBody(req),
     };
     //console.log('[TauriHttpInterceptor] Fetching:', req.url, "Headers:", fetchOptions.headers);
     return from(fetch(req.url, fetchOptions)).pipe(
@@ -126,3 +126,19 @@ export function TauriHttpInterceptor(req: HttpRequest<unknown>, next: HttpHandle
     );
 }
 
+function getRequestBody(req: HttpRequest<unknown>): any {
+    if (!req.body) {
+        return undefined;
+    }
+    
+    // Handle different body types properly
+    if (req.body instanceof FormData || 
+        req.body instanceof Blob || 
+        req.body instanceof ArrayBuffer ||
+        req.body instanceof URLSearchParams) {
+        return req.body;
+    }
+    
+    // Default to JSON stringify for object data
+    return JSON.stringify(req.body);
+}
