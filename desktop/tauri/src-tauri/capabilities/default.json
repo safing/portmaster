@@ -33,20 +33,7 @@
     "window-state:allow-save-window-state",
     "window-state:allow-restore-state",
     "clipboard-manager:allow-read-text",
-    "clipboard-manager:allow-write-text",
-    {
-      "identifier": "http:default",
-      "allow": [
-        {
-          "url": "http://127.0.0.1:817/**"
-        },
-        {
-          "url": "http://localhost:817/**"
-        }
-      ]
-    },
-    "websocket:default",
-    "http:default",
+    "clipboard-manager:allow-write-text",    
     "websocket:default"
   ]
 }

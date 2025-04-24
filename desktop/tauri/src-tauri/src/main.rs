@@ -18,6 +18,7 @@ mod config;
 mod portmaster;
 mod traymenu;
 mod window;
+mod commands;
 
 use log::{debug, error, info};
 use portmaster::PortmasterExt;
@@ -145,9 +146,16 @@ fn main() {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout)
     };
 
+    // Create a single HTTP client that:
+    // - Pools and reuses connections for better performance
+    // - Is exposed to UI through 'send_tauri_http_request()' command
+    // - Such requests execute directly from the Tauri app binary, not from the WebView process
+    let http_client = commands::tauri_http::create_http_client();
+
     let app = tauri::Builder::default()
+        // make HTTP client accessible in commands ('send_tauri_http_request()')
+        .manage(http_client) 
         .plugin(tauri_plugin_websocket::init())
-        .plugin(tauri_plugin_http::init())
         // Shell plugin for open_external support
         .plugin(tauri_plugin_shell::init())
         // Initialize Logging plugin.
@@ -181,7 +189,8 @@ fn main() {
             portmaster::commands::get_state,
             portmaster::commands::set_state,
             portmaster::commands::should_show,
-            portmaster::commands::should_handle_prompts
+            portmaster::commands::should_handle_prompts,
+            commands::tauri_http::send_tauri_http_request,
         ])
         // Setup the app an any listeners
         .setup(move |app| {

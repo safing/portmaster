@@ -1,6 +1,6 @@
-import { HttpEvent, HttpEventType, HttpHandlerFn, HttpRequest, HttpResponse, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
-import { from, Observable, switchMap, map, tap, catchError, throwError } from 'rxjs';
-import { fetch } from '@tauri-apps/plugin-http';
+import { HttpEvent, HttpHandlerFn, HttpRequest, HttpResponse, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
+import { from, Observable, switchMap, map, catchError, throwError } from 'rxjs';
+import { invoke } from '@tauri-apps/api/core'
 
 /**
  * TauriHttpInterceptor intercepts HTTP requests and routes them through Tauri's `@tauri-apps/plugin-http` API.
@@ -12,7 +12,6 @@ import { fetch } from '@tauri-apps/plugin-http';
  * that headers and response data are properly mapped to Angular's HttpResponse format.
  * 
  * References:
- * - https://v2.tauri.app/plugin/http-client/
  * - https://angular.dev/guide/http/interceptors 
  */
 export function TauriHttpInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn): Observable<HttpEvent<unknown>> {
@@ -25,7 +24,7 @@ export function TauriHttpInterceptor(req: HttpRequest<unknown>, next: HttpHandle
         body: getRequestBody(req),
     };
     //console.log('[TauriHttpInterceptor] Fetching:', req.url, "Headers:", fetchOptions.headers);
-    return from(fetch(req.url, fetchOptions)).pipe(
+    return from(send_tauri_http_request(req.url, fetchOptions)).pipe(
         switchMap(response => {
             // Copy all response headers
             const headerMap: Record<string, string> = {};                
@@ -71,11 +70,9 @@ export function TauriHttpInterceptor(req: HttpRequest<unknown>, next: HttpHandle
                 case 'blob':
                     return from(response.blob()).pipe(
                         map(blob => {
-                            // Get content-type from response headers
                             const contentType = response.headers.get('content-type') || '';
                             // Create a new blob with the proper MIME type
                             if (contentType && (!blob.type || blob.type === 'application/octet-stream')) {
-                                // Create new blob with the correct MIME type
                                 const typedBlob = new Blob([blob], { type: contentType });
                                 return createResponse(typedBlob);
                             }
@@ -142,3 +139,34 @@ function getRequestBody(req: HttpRequest<unknown>): any {
     // Default to JSON stringify for object data
     return JSON.stringify(req.body);
 }
+
+export async function send_tauri_http_request(
+    url: string,
+    init: RequestInit = {}
+  ): Promise<Response> {
+    // Extract method, headers, and body buffer
+    const method = init.method || 'GET';
+    const headers = [...(init.headers instanceof Headers
+      ? (() => {
+          const headerArray: [string, string][] = [];
+          init.headers.forEach((value, key) => headerArray.push([key, value]));
+          return headerArray;
+        })()
+      : Object.entries(init.headers || {}))];
+    const body = init.body
+      ? new Uint8Array(await new Response(init.body as any).arrayBuffer())
+      : undefined;
+  
+    const res = await invoke<{
+      status: number;
+      status_text: string;
+      headers: [string, string][];
+      body: number[];
+    }>('send_tauri_http_request', { url, opts: { method, headers, body } });
+  
+    return new Response(new Uint8Array(res.body), {
+      status: res.status,
+      statusText: res.status_text,
+      headers: res.headers,
+    });
+  }
