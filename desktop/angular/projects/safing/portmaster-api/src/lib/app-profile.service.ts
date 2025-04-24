@@ -15,9 +15,7 @@ import {
 } from './portapi.service';
 import { Process } from './portapi.types';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable()
 export class AppProfileService {
   private watchedProfiles = new Map<string, Observable<AppProfile>>();
 
