@@ -5,7 +5,6 @@ import { ToAppProfilePipe } from "./to-profile.pipe";
 import { DurationPipe } from "./duration.pipe";
 import { RoundPipe } from "./round.pipe";
 import { ToSecondsPipe } from "./to-seconds.pipe";
-import { HttpImgSrcPipe } from "./http-img-src.pipe";
 
 @NgModule({
   declarations: [
@@ -14,8 +13,7 @@ import { HttpImgSrcPipe } from "./http-img-src.pipe";
     ToAppProfilePipe,
     DurationPipe,
     RoundPipe,
-    ToSecondsPipe,
-    HttpImgSrcPipe
+    ToSecondsPipe
   ],
   exports: [
     TimeAgoPipe,
@@ -23,8 +21,7 @@ import { HttpImgSrcPipe } from "./http-img-src.pipe";
     ToAppProfilePipe,
     DurationPipe,
     RoundPipe,
-    ToSecondsPipe,
-    HttpImgSrcPipe
+    ToSecondsPipe
   ]
 })
 export class CommonPipesModule { }
