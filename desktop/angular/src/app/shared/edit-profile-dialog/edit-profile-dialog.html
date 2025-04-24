@@ -1,6 +1,6 @@
 <h1 class="flex flex-row gap-2 items-center">
   <img
-    [src]="iconObjectURL | httpImgSrc | async"
+    [src]="iconObjectURL"
     *ngIf="imageError === null && !!iconData"
     class="w-8 h-8 rounded-full border border-gray-400"
   />
@@ -85,7 +85,7 @@
           </div>
 
           <img
-            [src]="iconObjectURL | httpImgSrc | async"
+            [src]="iconObjectURL"
             *ngIf="imageError === null && !!iconData"
             class="w-12 h-12 rounded-full border border-gray-400"
           />
