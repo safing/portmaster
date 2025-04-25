@@ -24,6 +24,7 @@ use portmaster::PortmasterExt;
 use tauri_plugin_log::RotationStrategy;
 use traymenu::setup_tray_menu;
 use window::{close_splash_window, create_main_window, hide_splash_window};
+use tauri_plugin_window_state::StateFlags;
 
 #[macro_use]
 extern crate lazy_static;
@@ -164,7 +165,12 @@ fn main() {
         // OS Version and Architecture support
         .plugin(tauri_plugin_os::init())
         // Initialize save windows state plugin.
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_window_state::Builder::default()
+            // Don't save visibility state, so it will not interfere with "--background" command line argument 
+            .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE) 
+            // Don't save splash window state
+            .with_denylist(&["splash",])
+            .build())
         // Single instance guard
         .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
             // Send info to already dunning instance.
