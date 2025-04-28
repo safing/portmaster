@@ -92,7 +92,8 @@ func (sc *ServiceConfig) Init() error {
 	return nil
 }
 
-func getCurrentBinaryFolder() (string, error) {
+// returns the absolute path of the currently running executable
+func getCurrentBinaryPath() (string, error) {
 	// Get the path of the currently running executable
 	exePath, err := os.Executable()
 	if err != nil {
@@ -103,6 +104,16 @@ func getCurrentBinaryFolder() (string, error) {
 	absPath, err := filepath.Abs(exePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	return absPath, nil
+}
+
+func getCurrentBinaryFolder() (string, error) {
+	// Get the absolute path of the currently running executable
+	absPath, err := getCurrentBinaryPath()
+	if err != nil {
+		return "", err
 	}
 
 	// Get the directory of the executable
@@ -160,6 +171,21 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 			NeedsRestart:      true,
 			Notify:            true,
 		}
+		if binPath, err := getCurrentBinaryPath(); err == nil {
+			binaryUpdateConfig.PostUpgradeCommands = []updates.UpdateCommandConfig{
+				// Restore SELinux context for the new core binary after upgrade
+				// (`restorecon /usr/lib/portmaster/portmaster-core`)
+				{
+					Command:              "restorecon",
+					Args:                 []string{binPath},
+					TriggerArtifactFName: binPath,
+					FailOnError:          false, // Ignore error: 'restorecon' may not be available on a non-SELinux systems.
+				},
+			}
+		} else {
+			return nil, nil, fmt.Errorf("failed to get current binary path: %w", err)
+		}
+
 		intelUpdateConfig = &updates.Config{
 			Name:              configure.DefaultIntelIndexName,
 			Directory:         filepath.Join(svcCfg.DataDir, "intel"),
