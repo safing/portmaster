@@ -81,6 +81,15 @@ var dataDir
 
   SimpleSC::SetServiceDescription "PortmasterCore" "Portmaster Application Firewall - Core Service"
 
+  ; 
+  ; Auto start the UI
+  ;
+  DetailPrint "Creating registry entry for autostart"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Run" "Portmaster" '"$INSTDIR\portmaster.exe" --with-prompts --with-notifications --background'
+
+  ;
+  ; MIGRATION FROM PMv1 TO PMv2
+  ;
   StrCpy $oldInstallationDir "$COMMONPROGRAMDATA\Safing\Portmaster"
   StrCpy $dataDir "$COMMONPROGRAMDATA\Portmaster"
 
@@ -168,6 +177,10 @@ var dataDir
   Delete /REBOOTOK "$INSTDIR\assets.zip"
   RMDir /r /REBOOTOK "$INSTDIR"
 
+  ; remove the registry entry for the autostart
+  DetailPrint "Removing registry entry for autostart"
+  DeleteRegKey HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+
   ; delete data files
   Delete  /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\databases\history.db"
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\databases\cache"
@@ -177,6 +190,9 @@ var dataDir
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\download_binaries"
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\exec"
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\logs"
+
+  ; Remove PMv1 migration flag
+  Delete /REBOOTOK "$COMMONPROGRAMDATA\Safing\Portmaster\migrated.txt"
 
   ${If} $DeleteAppDataCheckboxState = 1
     DetailPrint "Deleting the application data..."

@@ -2,7 +2,6 @@ use crate::portapi::client::*;
 use crate::portapi::message::*;
 use crate::portapi::models::notification::*;
 use crate::portapi::types::*;
-use log::debug;
 use log::error;
 use serde_json::json;
 use tauri::async_runtime;

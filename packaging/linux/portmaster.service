@@ -23,6 +23,7 @@ Environment=LOGLEVEL=info
 Environment=PORTMASTER_ARGS=
 EnvironmentFile=-/etc/default/portmaster
 ProtectSystem=true
+ReadWritePaths=/usr/lib/portmaster
 RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
 RestrictNamespaces=yes
 ProtectHome=read-only

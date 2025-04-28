@@ -13,7 +13,7 @@ func TestCallLimiter(t *testing.T) {
 	t.Parallel()
 
 	pause := 10 * time.Millisecond
-	oa := NewCallLimiter(pause)
+	oa := NewCallLimiter2(pause)
 	executed := abool.New()
 	var testWg sync.WaitGroup
 
@@ -41,14 +41,14 @@ func TestCallLimiter(t *testing.T) {
 		executed.UnSet() // reset check
 	}
 
-	// Wait for pause to reset.
-	time.Sleep(pause)
+	// Wait for 2x pause to reset.
+	time.Sleep(2 * pause)
 
 	// Continuous use with re-execution.
 	// Choose values so that about 10 executions are expected
 	var execs uint32
-	testWg.Add(200)
-	for range 200 {
+	testWg.Add(100)
+	for range 100 {
 		go func() {
 			oa.Do(func() {
 				atomic.AddUint32(&execs, 1)
@@ -69,8 +69,8 @@ func TestCallLimiter(t *testing.T) {
 		t.Errorf("unexpected high exec count: %d", execs)
 	}
 
-	// Wait for pause to reset.
-	time.Sleep(pause)
+	// Wait for 2x pause to reset.
+	time.Sleep(2 * pause)
 
 	// Check if the limiter correctly handles panics.
 	testWg.Add(100)

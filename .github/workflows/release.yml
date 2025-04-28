@@ -1,4 +1,4 @@
-name: Release
+name: Release v2.X
 
 on:
   push:
@@ -36,6 +36,8 @@ jobs:
         if-no-files-found: error
 
   installer-linux:
+    #JOB DISABLED FOR NOW
+    if: false
     name: Installer linux
     runs-on: ubuntu-latest
     needs: release-prep
@@ -63,6 +65,8 @@ jobs:
         if-no-files-found: error
 
   installer-windows:
+    #JOB DISABLED FOR NOW
+    if: false
     name: Installer windows
     runs-on: windows-latest
     needs: release-prep

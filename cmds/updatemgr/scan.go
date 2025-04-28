@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/safing/portmaster/service/configure"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/spf13/cobra"
 )
 
 var (
 	scanConfig = updates.IndexScanConfig{
-		Name:            "Portmaster Binaries",
+		Name:            configure.DefaultBinaryIndexName,
 		PrimaryArtifact: "linux_amd64/portmaster-core",
 		BaseURL:         "https://updates.safing.io/",
 		IgnoreFiles: []string{

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -24,8 +25,20 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 		}
 	}
 
+	// If we are running in a UI instance, we need to unload the UI assets
+	if u.instance != nil {
+		u.instance.UI().EnableUpgradeLock()
+		defer u.instance.UI().DisableUpgradeLock()
+	}
+
 	// Execute the upgrade.
 	upgradeError := u.upgradeMoveFiles(downloader)
+	if upgradeError == nil {
+		// Files upgraded successfully.
+		// Applying post-upgrade tasks, if any.
+		upgradeError = u.applyPostUpgradeCommands()
+	}
+
 	if upgradeError == nil {
 		return nil
 	}
@@ -71,6 +84,10 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 		for _, file := range files {
 			// Check if file is ignored.
 			if slices.Contains(u.cfg.Ignore, file.Name()) {
+				continue
+			}
+			// ignore PurgeDirectory itself
+			if strings.EqualFold(u.cfg.PurgeDirectory, filepath.Join(u.cfg.Directory, file.Name())) {
 				continue
 			}
 
@@ -194,6 +211,44 @@ func (u *Updater) deleteUnfinishedFiles(dir string) error {
 			if err != nil {
 				log.Errorf("updates/%s: failed to delete unfinished copied file %s: %s", u.cfg.Name, path, err)
 			}
+		}
+	}
+
+	return nil
+}
+
+func (u *Updater) applyPostUpgradeCommands() error {
+	// At this point, we assume that the upgrade was successful and all files are in place.
+	// We need to execute the post-upgrade commands, if any.
+
+	if len(u.cfg.PostUpgradeCommands) == 0 {
+		return nil
+	}
+
+	// collect full paths to files that were upgraded, required to check the trigger.
+	upgradedFiles := make(map[string]struct{})
+	for _, artifact := range u.index.Artifacts {
+		upgradedFiles[filepath.Join(u.cfg.Directory, artifact.Filename)] = struct{}{}
+	}
+
+	// Execute post-upgrade commands.
+	for _, puCmd := range u.cfg.PostUpgradeCommands {
+
+		// Check trigger to ensure that we need to run this command.
+		if len(puCmd.TriggerArtifactFName) > 0 {
+			if _, ok := upgradedFiles[puCmd.TriggerArtifactFName]; !ok {
+				continue
+			}
+		}
+
+		log.Debugf("updates/%s: executing post-upgrade command: '%s %s'", u.cfg.Name, puCmd.Command, strings.Join(puCmd.Args, " "))
+		output, err := exec.Command(puCmd.Command, puCmd.Args...).CombinedOutput()
+		if err != nil {
+			if puCmd.FailOnError {
+				return fmt.Errorf("post-upgrade command '%s %s' failed: %w, output: %s", puCmd.Command, strings.Join(puCmd.Args, " "), err, string(output))
+			}
+
+			log.Warningf("updates/%s: post-upgrade command '%s %s' failed, but ignored. Error: %s", u.cfg.Name, puCmd.Command, strings.Join(puCmd.Args, " "), err)
 		}
 	}
 

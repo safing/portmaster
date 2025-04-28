@@ -234,10 +234,11 @@ func GenerateIndexFromDir(sourceDir string, cfg IndexScanConfig) (*Index, error)
 
 	// Create base index.
 	index := &Index{
-		Name:       cfg.Name,
-		Version:    cfg.Version,
-		Published:  time.Now(),
-		versionNum: indexVersion,
+		Name:               cfg.Name,
+		Version:            cfg.Version,
+		Published:          time.Now(),
+		versionNum:         indexVersion,
+		isLocallyGenerated: true,
 	}
 	if index.Version == "" && cfg.PrimaryArtifact != "" {
 		pv, ok := artifacts[cfg.PrimaryArtifact]

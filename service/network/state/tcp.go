@@ -25,7 +25,7 @@ type tcpTable struct {
 	// lastUpdateAt stores the time when the tables where last updated as unix nanoseconds.
 	lastUpdateAt atomic.Int64
 
-	fetchLimiter *utils.CallLimiter
+	fetchLimiter *utils.CallLimiter2
 	fetchTable   func() (connections []*socket.ConnectionInfo, listeners []*socket.BindInfo, err error)
 
 	dualStack *tcpTable
@@ -34,13 +34,13 @@ type tcpTable struct {
 var (
 	tcp6Table = &tcpTable{
 		version:      6,
-		fetchLimiter: utils.NewCallLimiter(minDurationBetweenTableUpdates),
+		fetchLimiter: utils.NewCallLimiter2(minDurationBetweenTableUpdates),
 		fetchTable:   getTCP6Table,
 	}
 
 	tcp4Table = &tcpTable{
 		version:      4,
-		fetchLimiter: utils.NewCallLimiter(minDurationBetweenTableUpdates),
+		fetchLimiter: utils.NewCallLimiter2(minDurationBetweenTableUpdates),
 		fetchTable:   getTCP4Table,
 	}
 )

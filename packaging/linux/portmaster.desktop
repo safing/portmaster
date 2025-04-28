@@ -3,6 +3,7 @@ Name=Portmaster
 GenericName=Application Firewall
 Exec={{exec}} --data=/opt/safing/portmaster --with-prompts --with-notifications 
 Icon={{icon}}
+StartupWMClass=portmaster
 Terminal=false
 Type=Application
 Categories=System

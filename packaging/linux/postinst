@@ -28,6 +28,9 @@ if [ -d "$OLD_INSTALLATION_DIR" ]; then
         echo "[ ] V1 migration: Removing V1 shortcuts"
         rm /etc/xdg/autostart/portmaster_notifier.desktop
         rm /usr/share/applications/portmaster_notifier.desktop
+        # app V1 shortcut
+        # NOTE: new V2 shortcut registered as "Portmaster.desktop" (first letter uppercase), so we can distinguish between V1 and V2 shortcuts.
+        rm /usr/share/applications/portmaster.desktop 
 
         # Remove V1 files (except configuration)
         # (keeping V1 configuration for a smooth downgrade, if needed)

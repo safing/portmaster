@@ -603,6 +603,10 @@ installer-linux:
     SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/bundle/deb/*.deb" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
     SAVE ARTIFACT --if-exists --keep-ts "target/${target}/release/bundle/rpm/*.rpm" AS LOCAL "${outputDir}/${GO_ARCH_STRING}/"
 
+all-artifacts:
+    BUILD +release-prep
+    BUILD +installer-linux
+
 kext-build:
     FROM ${rust_builder_image}
 

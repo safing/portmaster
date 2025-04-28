@@ -60,3 +60,7 @@ windows_core_dll/portmaster-core/x64/
 
 #Tauri-generated files
 desktop/tauri/src-tauri/gen/
+
+#Binaries used for installer gereneration for Windows
+desktop/tauri/src-tauri/binary/
+desktop/tauri/src-tauri/intel/

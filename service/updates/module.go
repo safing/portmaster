@@ -18,7 +18,9 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/utils"
+	"github.com/safing/portmaster/service/configure"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/ui"
 )
 
 const (
@@ -48,6 +50,22 @@ var (
 	ErrNoUpdateAvailable = errors.New("no update available")
 	ErrActionRequired    = errors.New("action required")
 )
+
+// UpdateCommandConfig defines the configuration for a shell command
+// that is executed when an update is applied
+type UpdateCommandConfig struct {
+	// Shell command to execute
+	Command string
+	// Arguments to pass to the command
+	Args []string
+	// Execute triggers: if not empty, the command will be executed only if specified file was updated
+	// if empty, the command will be executed always
+	TriggerArtifactFName string
+	// FailOnError defines whether the upgrade should fail if the command fails
+	// true - upgrade will fail if the command fails
+	// false - upgrade will continue even if the command fails
+	FailOnError bool
+}
 
 // Config holds the configuration for the updates module.
 type Config struct {
@@ -86,6 +104,9 @@ type Config struct {
 	// Notify defines whether the user shall be informed about events via notifications.
 	// If enabled, disables automatic restart after upgrade.
 	Notify bool
+
+	// list of shell commands needed to run after the upgrade (if any)
+	PostUpgradeCommands []UpdateCommandConfig
 }
 
 // Check looks for obvious configuration errors.
@@ -201,6 +222,7 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 		module.corruptedInstallation = fmt.Errorf("invalid index: %w", err)
 	}
 	index, err = GenerateIndexFromDir(cfg.Directory, IndexScanConfig{
+		Name:    configure.DefaultBinaryIndexName,
 		Version: info.VersionNumber(),
 	})
 	if err == nil && index.init(currentPlatform) == nil {
@@ -402,7 +424,7 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 						Type: notifications.ActionTypeWebhook,
 						Payload: notifications.ActionTypeWebhookPayload{
 							Method: "POST",
-							URL:    "updates/apply",
+							URL:    "core/restart",
 						},
 					},
 				},
@@ -643,4 +665,5 @@ type instance interface {
 	Restart()
 	Shutdown()
 	Notifications() *notifications.Notifications
+	UI() *ui.UI
 }

@@ -50,15 +50,19 @@
 #------------------------------------------------------------------------------
 #
 # Optional arguments:
-# -i, --interactive: Can prompt for user input (e.g. when a file is not found in the primary folder but found in the alternate folder)
-# -v, --version: Explicitly set the version to use for the installer file name
+# -i: (interactive) Can prompt for user input (e.g. when a file is not found in the primary folder but found in the alternate folder)
+# -v: (version)     Explicitly set the version to use for the installer file name
+# -e: (erase)       Just erase work directories
 #------------------------------------------------------------------------------
 param (
     [Alias('i')]
     [switch]$interactive,
 
     [Alias('v')]
-    [string]$version
+    [string]$version,
+
+    [Alias('e')]
+    [switch]$erase
 )
 
 # Save the current directory
@@ -185,7 +189,18 @@ try {
     $destinationDir = "desktop/tauri/src-tauri"
     $binaryDir = "$destinationDir/binary"           #portmaster\desktop\tauri\src-tauri\binary
     $intelDir  = "$destinationDir/intel"            #portmaster\desktop\tauri\src-tauri\intel
-    $targetDir = "$destinationDir/target/release"   #portmaster\desktop\tauri\src-tauri\target\release
+    $targetBase= "$destinationDir/target"           #portmaster\desktop\tauri\src-tauri\target
+    $targetDir = "$targetBase/release"              #portmaster\desktop\tauri\src-tauri\target\release
+
+    # Erasing work directories
+    Write-Output "[+] Erasing work directories: '$binaryDir', '$intelDir', '$targetBase'"
+    Remove-Item -Recurse -Force -Path $binaryDir -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force -Path $intelDir -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force -Path $targetBase -ErrorAction SilentlyContinue
+    if ($erase) {
+        Write-Output "[ ] Done"
+        exit 0
+    }
 
     # Copying BINARY FILES
     Write-Output "`n[+] Copying binary files:"
