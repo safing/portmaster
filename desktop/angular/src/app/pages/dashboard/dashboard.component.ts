@@ -348,11 +348,13 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
       )
       .subscribe(response => {
         // bandwidth bar chart
-        const barChartData = response.bwBarChart
-          .filter(value => (value.sent + value.received) > 0)
-          .sort((a, b) => (b.sent + b.received) - (a.sent + a.received))
-          .slice(0, 10);
-        this.bandwidthBarData = splitQueryResult(barChartData, ['sent', 'received']) as BandwidthBarData[]
+        if (response?.bwBarChart){
+          const barChartData = response.bwBarChart
+            .filter(value => (value.sent + value.received) > 0)
+            .sort((a, b) => (b.sent + b.received) - (a.sent + a.received))
+            .slice(0, 10);
+          this.bandwidthBarData = splitQueryResult(barChartData, ['sent', 'received']) as BandwidthBarData[]
+        }
 
         // profileCount
         this.blockedConnections = 0;

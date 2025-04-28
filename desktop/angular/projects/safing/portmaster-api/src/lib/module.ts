@@ -7,10 +7,35 @@ import { Netquery } from "./netquery.service";
 import { PortapiService, PORTMASTER_HTTP_API_ENDPOINT, PORTMASTER_WS_API_ENDPOINT } from "./portapi.service";
 import { SPNService } from "./spn.service";
 import { WebsocketService } from "./websocket.service";
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { TauriHttpInterceptor } from "./platform-specific/tauri/tauri-http-interceptor";
+import { IsTauriEnvironment } from "./platform-specific/utils";
 
 export interface ModuleConfig {
   httpAPI?: string;
   websocketAPI?: string;
+}
+
+// Factory function to provide the appropriate HTTP client configuration
+//
+// This function determines the appropriate HTTP client configuration based on the runtime environment.
+// If the application is running in a Tauri environment, it uses the TauriHttpInterceptor to ensure
+// that all HTTP requests are made from the application binary instead of the WebView instance.
+// This allows for more direct and controlled communication with the Portmaster API.
+// In other environments (e.g., browser, Electron), the standard HttpClient is used without any interceptors.
+export function HttpClientProviderFactory() {
+  if (IsTauriEnvironment()) 
+  {
+    console.log("[portmaster-api] Running under Tauri - using TauriHttpClient");
+    return provideHttpClient(
+      withInterceptors([TauriHttpInterceptor])
+    );
+  } 
+  else 
+  {
+    console.log("[portmaster-api] Running in browser - using default HttpClient");
+    return provideHttpClient();
+  }
 }
 
 @NgModule({})
@@ -32,6 +57,7 @@ export class PortmasterAPIModule {
     return {
       ngModule: PortmasterAPIModule,
       providers: [
+        HttpClientProviderFactory(), 
         PortapiService,
         WebsocketService,
         MetaAPI,
