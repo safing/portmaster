@@ -1,6 +1,6 @@
 {
   "name": "portmaster",
-  "version": "2.0.9",
+  "version": "2.0.12",
   "scripts": {
     "ng": "ng",
     "start": "npm install && npm run build-libs:dev && ng serve --proxy-config ./proxy.json",
