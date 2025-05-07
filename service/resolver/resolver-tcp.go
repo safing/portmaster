@@ -107,15 +107,21 @@ func (tr *TCPResolver) UseTLS() *TCPResolver {
 }
 
 func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolverConn, error) {
+	var existingConn *tcpResolverConn
+
+	// Minimize the time we hold the lock to avoid blocking other threads.
 	tr.Lock()
-	defer tr.Unlock()
+	if tr.resolverConn != nil && tr.resolverConn.abandoned.IsNotSet() {
+		existingConn = tr.resolverConn
+	}
+	tr.Unlock()
 
 	// Check if we have a resolver.
-	if tr.resolverConn != nil && tr.resolverConn.abandoned.IsNotSet() {
+	if existingConn != nil {
 		// If there is one, check if it's alive!
 		select {
-		case tr.resolverConn.heartbeat <- struct{}{}:
-			return tr.resolverConn, nil
+		case existingConn.heartbeat <- struct{}{}:
+			return existingConn, nil
 		case <-time.After(heartbeatTimeout):
 			log.Warningf("resolver: heartbeat for dns client %s failed", tr.resolver.Info.DescriptiveName())
 		case <-ctx.Done():
@@ -161,6 +167,10 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		"resolver: connected to %s",
 		tr.resolver.Info.DescriptiveName(),
 	)
+
+	// Thread-safe resolverConn creation.
+	tr.Lock()
+	defer tr.Unlock()
 
 	// Create resolver connection.
 	tr.resolverConnInstanceID++
