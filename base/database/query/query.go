@@ -99,6 +99,11 @@ func (q *Query) MatchesKey(dbKey string) bool {
 	return strings.HasPrefix(dbKey, q.dbKeyPrefix)
 }
 
+// HasWhereCondition returns whether the query has a "where" condition set.
+func (q *Query) HasWhereCondition() bool {
+	return q.where != nil
+}
+
 // MatchesRecord checks whether the query matches the supplied database record (value only).
 func (q *Query) MatchesRecord(r record.Record) bool {
 	if q.where == nil {
