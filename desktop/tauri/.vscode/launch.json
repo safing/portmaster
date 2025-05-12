@@ -1,0 +1,40 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+
+    // How to debug Tauri project:
+    //    https://v2.tauri.app/develop/debug/
+    //
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "lldb",                 // `vscode-lldb` extension has to be installed (https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
+        "request": "launch",
+        "name": "Debug Dev",
+        "cargo": {
+          "args": [
+            "build",
+            "--manifest-path=./src-tauri/Cargo.toml",
+            "--no-default-features"
+          ]
+        },
+      },
+      {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Debug Prod",
+        "cargo": {
+          "args": ["build", "--release", "--manifest-path=./src-tauri/Cargo.toml"]
+        },
+      },
+      {
+        "name": "Debug Dev (VS Win Debugger)",
+        "type": "cppvsdbg",
+        "request": "launch",
+        "program": "${workspaceRoot}/src-tauri/target/debug/app.exe",
+        "cwd": "${workspaceRoot}",
+        "preLaunchTask": "build:debug"
+      }
+    ]
+  }
