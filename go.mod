@@ -2,9 +2,6 @@ module github.com/safing/portmaster
 
 go 1.22.0
 
-// TODO: Remove when https://github.com/tc-hib/winres/pull/4 is released.
-replace github.com/tc-hib/winres => github.com/dhaavi/winres v0.2.2
-
 require (
 	github.com/VictoriaMetrics/metrics v1.35.1
 	github.com/Xuanwo/go-locale v1.1.1
