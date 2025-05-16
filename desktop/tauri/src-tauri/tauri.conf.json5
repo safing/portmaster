@@ -44,7 +44,7 @@
     "withGlobalTauri": true,
     "enableGTKAppId": false,
     "security": {
-      "csp": "default-src 'self'; connect-src http://127.0.0.1:817 ws://127.0.0.1:817;"
+      "csp": null
     }
   },
   "bundle": {
