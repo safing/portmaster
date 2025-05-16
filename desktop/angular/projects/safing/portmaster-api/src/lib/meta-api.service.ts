@@ -43,7 +43,7 @@ export interface AuthKeyResponse {
 export class MetaAPI {
   constructor(
     private http: HttpClient,
-    @Inject(PORTMASTER_HTTP_API_ENDPOINT) @Optional() private httpEndpoint: string = 'http://localhost:817/api',
+    @Inject(PORTMASTER_HTTP_API_ENDPOINT) @Optional() private httpEndpoint: string = 'http://127.0.0.1:817/api',
   ) { }
 
   listEndpoints(): Observable<MetaEndpoint[]> {

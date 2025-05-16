@@ -48,10 +48,10 @@ export class PortmasterAPIModule {
    */
   static forRoot(cfg: ModuleConfig = {}): ModuleWithProviders<PortmasterAPIModule> {
     if (cfg.httpAPI === undefined) {
-      cfg.httpAPI = `http://${window.location.host}/api`;
+      cfg.httpAPI = `http://127.0.0.1:817/api`;
     }
     if (cfg.websocketAPI === undefined) {
-      cfg.websocketAPI = `ws://${window.location.host}/api/database/v1`;
+      cfg.websocketAPI = `ws://127.0.0.1:817/api/database/v1`;
     }
 
     return {

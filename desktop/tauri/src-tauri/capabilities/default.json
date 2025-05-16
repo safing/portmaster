@@ -8,7 +8,7 @@
   ],
   "remote": {
     "urls": [
-      "http://localhost:817"
+      "http://127.0.0.1:817"
     ]
   },
   "permissions": [

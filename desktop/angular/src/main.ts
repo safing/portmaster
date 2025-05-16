@@ -80,8 +80,8 @@ if (location.pathname !== "/prompt") {
     providers: [
       provideHttpClient(),
       importProvidersFrom(PortmasterAPIModule.forRoot({
-        websocketAPI: "ws://localhost:817/api/database/v1",
-        httpAPI: "http://localhost:817/api"
+        websocketAPI: "ws://127.0.0.1:817/api/database/v1",
+        httpAPI: "http://127.0.0.1:817/api"
       })),
       NotificationsService,
       {
