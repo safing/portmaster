@@ -181,15 +181,15 @@ pub fn may_navigate_to_ui(win: &mut WebviewWindow, force: bool) {
             // Only for dev build
             // Allow connection to http://localhost:4200
             let capabilities = include_str!("../capabilities/default.json")
-                .replace("http://localhost:817", "http://localhost:4200");
+                .replace("http://127.0.0.1:817", "http://127.0.0.1:4200");
             let _ = win.add_capability(capabilities);
-            debug!("[tauri] navigating to http://localhost:4200");
-            _ = win.navigate("http://localhost:4200".parse().unwrap());
+            debug!("[tauri] navigating to http://127.0.0.1:4200");
+            _ = win.navigate("http://127.0.0.1:4200".parse().unwrap());
         }
 
         #[cfg(not(debug_assertions))]
         {
-            _ = win.navigate("http://localhost:817".parse().unwrap());
+            _ = win.navigate("http://127.0.0.1:817".parse().unwrap());
         }
     } else {
         error!(
