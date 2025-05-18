@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -72,7 +73,7 @@ func (p *Process) getSpecialProfileID() (specialProfileID string) {
 		specialProfileID = profile.PortmasterProfileID
 	default:
 		// Check if this is another Portmaster component.
-		if module.portmasterUIPath != "" && p.Path == module.portmasterUIPath {
+		if p.IsPortmasterUi(context.Background()) {
 			specialProfileID = profile.PortmasterAppProfileID
 		}
 		// Check if this is the system resolver.
@@ -103,4 +104,38 @@ func (p *Process) getSpecialProfileID() (specialProfileID string) {
 	}
 
 	return specialProfileID
+}
+
+// IsPortmasterUi checks if the process is the Portmaster UI or its child (up to 3 parent levels).
+func (p *Process) IsPortmasterUi(ctx context.Context) bool {
+	if module.portmasterUIPath == "" {
+		return false
+	}
+
+	// Find parent for up to two levels, if we don't match the path.
+	const checkLevels = 3
+
+	var previousPid int
+	proc := p
+
+	for i := 0; i < checkLevels; i++ {
+		if proc.Pid == UnidentifiedProcessID || proc.Pid == SystemProcessID {
+			break
+		}
+
+		realPath, err := filepath.EvalSymlinks(proc.Path)
+		if err == nil && realPath == module.portmasterUIPath {
+			return true
+		}
+
+		if i < checkLevels-1 { // no need to check parent if we are at the last level
+			previousPid = proc.Pid
+			proc, err = GetOrFindProcess(ctx, proc.ParentPid)
+			if err != nil || proc.Pid == previousPid {
+				break
+			}
+		}
+	}
+
+	return false
 }

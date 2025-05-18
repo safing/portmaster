@@ -6,7 +6,7 @@ import { FeatureID } from "./features";
 import { PORTMASTER_HTTP_API_ENDPOINT, PortapiService } from './portapi.service';
 import { Feature, Pin, SPNStatus, UserProfile } from "./spn.types";
 
-@Injectable({ providedIn: 'root' })
+@Injectable()
 export class SPNService {
 
   /** Emits the SPN status whenever it changes */

@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{env, path::Path, time::Duration};
+use std::{env, time::Duration};
 
 use tauri::{AppHandle, Emitter, Listener, Manager, RunEvent, WindowEvent};
 
@@ -18,12 +18,14 @@ mod config;
 mod portmaster;
 mod traymenu;
 mod window;
+mod commands;
 
 use log::{debug, error, info};
 use portmaster::PortmasterExt;
 use tauri_plugin_log::RotationStrategy;
 use traymenu::setup_tray_menu;
 use window::{close_splash_window, create_main_window, hide_splash_window};
+use tauri_plugin_window_state::StateFlags;
 
 #[macro_use]
 extern crate lazy_static;
@@ -139,13 +141,22 @@ fn main() {
 
     // TODO(vladimir): Permission for logs/app2 folder are not guaranteed. Use the default location for now.
     #[cfg(target_os = "windows")]
-    let log_target = if let Some(data_dir) = cli_args.data {
+    let log_target = if let Some(_) = cli_args.data {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir { file_name: None })
     } else {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout)
     };
 
+    // Create a single HTTP client that:
+    // - Pools and reuses connections for better performance
+    // - Is exposed to UI through 'send_tauri_http_request()' command
+    // - Such requests execute directly from the Tauri app binary, not from the WebView process
+    let http_client = commands::tauri_http::create_http_client();
+
     let app = tauri::Builder::default()
+        // make HTTP client accessible in commands ('send_tauri_http_request()')
+        .manage(http_client) 
+        .plugin(tauri_plugin_websocket::init())
         // Shell plugin for open_external support
         .plugin(tauri_plugin_shell::init())
         // Initialize Logging plugin.
@@ -164,7 +175,12 @@ fn main() {
         // OS Version and Architecture support
         .plugin(tauri_plugin_os::init())
         // Initialize save windows state plugin.
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_window_state::Builder::default()
+            // Don't save visibility state, so it will not interfere with "--background" command line argument 
+            .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE) 
+            // Don't save splash window state
+            .with_denylist(&["splash",])
+            .build())
         // Single instance guard
         .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
             // Send info to already dunning instance.
@@ -179,7 +195,8 @@ fn main() {
             portmaster::commands::get_state,
             portmaster::commands::set_state,
             portmaster::commands::should_show,
-            portmaster::commands::should_handle_prompts
+            portmaster::commands::should_handle_prompts,
+            commands::tauri_http::send_tauri_http_request,
         ])
         // Setup the app an any listeners
         .setup(move |app| {

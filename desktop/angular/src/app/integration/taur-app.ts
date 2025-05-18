@@ -24,7 +24,7 @@ function asyncInvoke<T>(method: string, args: object): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const eventId = uuid();
 
-    once<T & { error: string }>(eventId, (event) => {
+    const listenerPromise = once<T & { error: string }>(eventId, (event) => {
       if (typeof event.payload === 'object' && 'error' in event.payload) {
         reject(event.payload);
         return
@@ -33,14 +33,17 @@ function asyncInvoke<T>(method: string, args: object): Promise<T> {
       resolve(event.payload);
     })
 
-    invoke<string>(method, {
-      ...args,
-      responseId: eventId,
-    }).catch((err: any) => {
-      console.error("tauri:invoke rejected: ", method, args, err);
-      reject(err)
-    });
-  })
+    // Only make the invoke call after the listener is registered
+    listenerPromise.then(() => {
+      invoke<string>(method, {
+        ...args,
+        responseId: eventId,
+      }).catch((err: any) => {
+        console.error("tauri:invoke rejected: ", method, args, err);
+        reject(err)
+      });
+    })
+  });
 }
 
 export type ServiceManagerStatus = 'Running' | 'Stopped' | 'NotFound' | 'unsupported service manager' | 'unsupported operating system';

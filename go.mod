@@ -2,9 +2,6 @@ module github.com/safing/portmaster
 
 go 1.22.0
 
-// TODO: Remove when https://github.com/tc-hib/winres/pull/4 is released.
-replace github.com/tc-hib/winres => github.com/dhaavi/winres v0.2.2
-
 require (
 	github.com/VictoriaMetrics/metrics v1.35.1
 	github.com/Xuanwo/go-locale v1.1.1
@@ -35,7 +32,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.1
 	github.com/lmittmann/tint v1.0.5
 	github.com/maruel/panicparse/v2 v2.3.1
-	github.com/mat/besticon v3.12.0+incompatible
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.20
 	github.com/miekg/dns v1.1.62
@@ -70,6 +66,8 @@ require (
 	zombiezen.com/go/sqlite v1.3.0
 )
 
+require github.com/sergeymakinen/go-bmp v1.0.0 // indirect
+
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/aead/ecdh v0.2.0 // indirect
@@ -101,6 +99,7 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/seehuhn/sha256d v1.0.0 // indirect
+	github.com/sergeymakinen/go-ico v1.0.0-beta.0
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect

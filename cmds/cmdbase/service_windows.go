@@ -94,6 +94,7 @@ func (s *WindowsSystemService) Execute(args []string, changeRequests <-chan svc.
 		syscall.SIGTERM,
 	)
 
+	isShuttingDown := false
 	// Wait for shutdown signal.
 waitSignal:
 	for {
@@ -119,12 +120,16 @@ waitSignal:
 			}
 
 		case <-s.instance.ShuttingDown():
+			isShuttingDown = true
 			break waitSignal
 		}
 	}
 
-	// Trigger shutdown.
-	s.instance.Shutdown()
+	// Trigger shutdown,
+	// but only if we are not already shutting down.
+	if !isShuttingDown {
+		s.instance.Shutdown()
+	}
 
 	// Notify the service host that service is in shutting down state.
 	changes <- svc.Status{State: svc.StopPending}

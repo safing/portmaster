@@ -1,6 +1,6 @@
 [package]
 name = "portmaster"
-version = "2.0.0"
+version = "2.0.14"
 description = "Portmaster UI"
 authors = ["Safing"]
 license = ""
@@ -25,8 +25,7 @@ tauri-plugin-single-instance = "2.2.1"
 tauri-plugin-notification = "2.2.1"
 tauri-plugin-log = "2.2.1"
 tauri-plugin-window-state = "2.2.1"
-tauri-plugin-http = "2.2.1"
-tauri-plugin-websocket = "2.2.1"
+tauri-plugin-websocket = "2"
 
 clap_lex = "0.7.2"
 
@@ -49,7 +48,7 @@ http = "1.0.0"
 url = "2.5.0"
 thiserror = "1.0"
 log = "0.4.21"
-reqwest = { version = "0.12" }
+reqwest = { version = "0.12", features = ["cookies", "json"] }
 
 rfd = { version = "*", default-features = false, features = [ "tokio", "gtk3", "common-controls-v6" ] }
 open = "5.1.3"
