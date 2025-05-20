@@ -76,12 +76,13 @@ if (location.pathname !== "/prompt") {
 
 } else {
   // bootstrap the prompt interface
+  console.log("[INFO] Bootstrapping prompt entry point.");
   bootstrapApplication(PromptEntryPointComponent, {
     providers: [
       provideHttpClient(),
       importProvidersFrom(PortmasterAPIModule.forRoot({
-        websocketAPI: "ws://127.0.0.1:817/api/database/v1",
-        httpAPI: "http://127.0.0.1:817/api"
+        websocketAPI: "ws://localhost:817/api/database/v1",
+        httpAPI: "http://localhost:817/api"
       })),
       NotificationsService,
       {
