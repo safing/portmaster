@@ -237,14 +237,20 @@ func createSpecialProfile(profileID string, path string) *Profile {
 			Source:           SourceLocal,
 			PresentationPath: path,
 			Config: map[string]interface{}{
+				// Block all connections by default for the Portmaster UI profile,
+				// since the only required connections are to the Portmaster Core,
+				// which are fast-tracked.
+				//
+				// This ensures that any unexpected connections —
+				// possibly made by the internal WebView implementation —
+				// are blocked.
 				CfgOptionDefaultActionKey:      DefaultActionBlockValue,
-				CfgOptionBlockScopeInternetKey: false,
-				CfgOptionBlockScopeLANKey:      false,
-				CfgOptionBlockScopeLocalKey:    false,
-				CfgOptionBlockP2PKey:           false,
+				CfgOptionBlockScopeInternetKey: true,
+				CfgOptionBlockScopeLANKey:      true,
+				CfgOptionBlockScopeLocalKey:    true,
+				CfgOptionBlockP2PKey:           true,
 				CfgOptionBlockInboundKey:       true,
 				CfgOptionEndpointsKey: []string{
-					"+ Localhost",
 					"+ .safing.io",
 				},
 			},
