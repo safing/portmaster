@@ -118,6 +118,8 @@ func (p *Process) IsPortmasterUi(ctx context.Context) bool {
 	var previousPid int
 	proc := p
 
+	hasPmWebviewEnvVar := false
+
 	for i := 0; i < checkLevels; i++ {
 		if proc.Pid == UnidentifiedProcessID || proc.Pid == SystemProcessID {
 			break
@@ -125,7 +127,32 @@ func (p *Process) IsPortmasterUi(ctx context.Context) bool {
 
 		realPath, err := filepath.EvalSymlinks(proc.Path)
 		if err == nil && realPath == module.portmasterUIPath {
-			return true
+			if runtime.GOOS != "windows" {
+				return true
+			}
+
+			// On Windows, avoid false positive detection of the Portmaster UI.
+			// For example:
+			//   There may be cases where a system browser is launched from the Portmaster UI,
+			//   making it a child of the Portmaster UI process (e.g., user clicked a link in the UI).
+			// To ensure that 'p' is the actual Portmaster UI process, we check for the presence
+			// of the 'PORTMASTER_UI_WEBVIEW_PROCESS' environment variable in the process and its parents.
+			// If the env var is set, we are a child (WebView window) of the Portmaster UI process.
+			// Otherwise, the process was launched by the Portmaster UI, but should not be trusted as the Portmaster UI process.
+			if i == 0 {
+				return true // We are the main Portmaster UI process.
+			}
+			if hasPmWebviewEnvVar {
+				return true // We are a WebView window of the Portmaster UI process.
+			}
+			// The process was launched by the Portmaster UI, but should not be trusted as the Portmaster UI process.
+			log.Tracer(ctx).Warning(fmt.Sprintf("process: %d '%s' is a child of the Portmaster UI, but does not have the PORTMASTER_UI_WEBVIEW_PROCESS environment variable set. Ignoring.", p.Pid, p.Path))
+			return false
+		}
+
+		// Check if the process has the environment variable set.
+		if _, ok := proc.Env["PORTMASTER_UI_WEBVIEW_PROCESS"]; ok {
+			hasPmWebviewEnvVar = true
 		}
 
 		if i < checkLevels-1 { // no need to check parent if we are at the last level

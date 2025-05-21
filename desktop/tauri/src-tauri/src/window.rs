@@ -9,6 +9,8 @@ use crate::{portmaster::PortmasterExt, traymenu};
 const LIGHT_PM_ICON: &[u8] = include_bytes!("../../../../assets/data/icons/pm_light_512.png");
 const DARK_PM_ICON: &[u8] = include_bytes!("../../../../assets/data/icons/pm_dark_512.png");
 
+const CUSTOM_ENVVAR_FOR_WEBVIEW_PROCESS: &str = "PORTMASTER_UI_WEBVIEW_PROCESS";
+
 /// Either returns the existing "main" window or creates a new one.
 ///
 /// The window is not automatically shown (i.e it starts hidden).
@@ -24,6 +26,7 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
     } else {
         debug!("[tauri] creating main window");
 
+        do_before_window_create(); // required operations before window creation
         let res = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
             .title("Portmaster")
             .visible(false)
@@ -31,6 +34,7 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
             .min_inner_size(800.0, 600.0)
             .theme(Some(Theme::Dark))
             .build();
+        do_after_window_create(); // required operations after window creation
 
         match res {
             Ok(win) => {
@@ -69,6 +73,8 @@ pub fn create_splash_window(app: &AppHandle) -> Result<WebviewWindow> {
         let _ = window.show();
         Ok(window)
     } else {
+
+        do_before_window_create(); // required operations before window creation
         let window = WebviewWindowBuilder::new(app, "splash", WebviewUrl::App("index.html".into()))
             .center()
             .closable(false)
@@ -78,6 +84,7 @@ pub fn create_splash_window(app: &AppHandle) -> Result<WebviewWindow> {
             .title("Portmaster")
             .inner_size(600.0, 250.0)
             .build()?;
+        do_after_window_create(); // required operations after window creation
         set_window_icon(&window);
 
         let _ = window.request_user_attention(Some(UserAttentionType::Informational));
@@ -117,6 +124,28 @@ pub fn set_window_icon(window: &WebviewWindow) {
         _ => window.set_icon(Image::from_bytes(LIGHT_PM_ICON).unwrap()),
     };
 }
+
+/// This function must be called before the window is created.
+/// 
+/// Temporarily sets the environment variable `PORTMASTER_WEBVIEW_UI_PROCESS` to "true".
+/// This ensures that any child process (i.e., the WebView process) spawned during window creation
+/// will inherit this environment variable. This allows portmaster-core to detect that the process
+/// is a child WebView of the main process.
+/// 
+/// IMPORTANT: After the window is created, you must call `do_after_window_create()` to remove
+/// the environment variable from the main process environment.
+pub fn do_before_window_create() {
+    std::env::set_var(CUSTOM_ENVVAR_FOR_WEBVIEW_PROCESS, "true");
+}
+
+/// This function must be called after the window is created.
+/// 
+/// Removes the `PORTMASTER_WEBVIEW_UI_PROCESS` environment variable from the main process.
+/// This ensures that only the child WebView process has the variable set, and the main process
+/// does not retain it.
+pub fn do_after_window_create() {
+    std::env::remove_var(CUSTOM_ENVVAR_FOR_WEBVIEW_PROCESS);
+} 
 
 /// Opens a window for the tauri application.
 ///
