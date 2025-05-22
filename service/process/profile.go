@@ -152,7 +152,7 @@ func (p *Process) IsPortmasterUi(ctx context.Context) bool {
 				return true // We are a WebView window of the Portmaster UI process.
 			}
 			// The process was launched by the Portmaster UI, but should not be trusted as the Portmaster UI process.
-			log.Tracer(ctx).Warningf("process: %d '%s' is a child of the Portmaster UI, but does not have the PORTMASTER_UI_WEBVIEW_PROCESS environment variable set. Ignoring.", p.Pid, p.Path)
+			log.Tracer(ctx).Warningf("process: %d %q is a child of the Portmaster UI, but does not have the PORTMASTER_UI_WEBVIEW_PROCESS environment variable set. Ignoring.", p.Pid, p.Path)
 			return false
 		}
 
