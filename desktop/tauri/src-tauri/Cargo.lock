@@ -3945,7 +3945,7 @@ dependencies = [
 
 [[package]]
 name = "portmaster"
-version = "2.0.14"
+version = "2.0.16"
 dependencies = [
  "assert_matches",
  "cached",
