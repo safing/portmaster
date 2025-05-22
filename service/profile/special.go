@@ -245,7 +245,7 @@ func createSpecialProfile(profileID string, path string) *Profile {
 				// possibly made by the internal WebView implementation —
 				// are blocked.
 				CfgOptionDefaultActionKey:      DefaultActionBlockValue,
-				CfgOptionBlockScopeInternetKey: true,
+				CfgOptionBlockScopeInternetKey: false, // This is stronger than the rules, and thus must be false in order to access safing.io.
 				CfgOptionBlockScopeLANKey:      true,
 				CfgOptionBlockScopeLocalKey:    true,
 				CfgOptionBlockP2PKey:           true,
