@@ -111,11 +111,6 @@ download_spnbinary() {
     chmod a+x ${dest}
 }
 
-download_updates() {
-    log "Downloading updates ..."
-    ${INSTALLDIR}/hub update
-}
-
 setup_systemd() {
     log "Installing systemd service unit ..."
     if [ ! "${INSTALLSYSTEMD}" = "yes" ]; then
@@ -316,7 +311,6 @@ EOT
     # Setup hub
     ensure_install_dir
     download_spnbinary
-    download_updates
     write_config_file "${INSTALLDIR}/config.json"
 
     # setup systemd
