@@ -102,7 +102,7 @@ func (b *Base) SetMeta(meta *Meta) {
 	b.meta = meta
 }
 
-// Marshal marshals the object, without the database key or metadata. It returns nil if the record is deleted.
+// Marshal marshals the format and data.
 func (b *Base) Marshal(self Record, format uint8) ([]byte, error) {
 	if b.Meta() == nil {
 		return nil, errors.New("missing meta")
@@ -119,7 +119,20 @@ func (b *Base) Marshal(self Record, format uint8) ([]byte, error) {
 	return dumped, nil
 }
 
-// MarshalRecord packs the object, including metadata, into a byte array for saving in a database.
+// MarshalDataOnly marshals the data only.
+func (b *Base) MarshalDataOnly(self Record, format uint8) ([]byte, error) {
+	if b.Meta() == nil {
+		return nil, errors.New("missing meta")
+	}
+
+	if b.Meta().Deleted > 0 {
+		return nil, nil
+	}
+
+	return dsd.DumpWithoutIdentifier(self, format, "")
+}
+
+// MarshalRecord marshals the data, format and metadata.
 func (b *Base) MarshalRecord(self Record) ([]byte, error) {
 	if b.Meta() == nil {
 		return nil, errors.New("missing meta")

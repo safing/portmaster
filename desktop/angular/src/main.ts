@@ -27,9 +27,15 @@ if (typeof (CSS as any)['registerProperty'] === 'function') {
 }
 
 function handleExternalResources(e: Event) {
+  // TODO: 
+  //    This code executes "openExternal()" when any "<a />" element in the app is clicked.
+  //    This could potentially be a security issue.
+  //    We should consider restricting this to only external links that belong to a certain domain (e.g., https://safing.io).
+  
   // get click target
   let target: HTMLElement | null = e.target as HTMLElement;
-  // traverse until we reach an a tag
+    
+  // traverse until we reach element "<a />"
   while (!!target && target.tagName !== "A") {
     target = target.parentElement;
   }

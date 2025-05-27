@@ -1,7 +1,7 @@
 # Portmaster Windows kext
 Implementation of Safing's Portmaster Windows kernel extension in Rust.
 
-### Documentation 
+### Documentation
 
 - [Driver](driver/README.md) -> entry point.
 - [WDK](wdk/README.md) -> Windows Driver Kit interface.
@@ -9,8 +9,11 @@ Implementation of Safing's Portmaster Windows kernel extension in Rust.
 - [Release](release/README.md) -> Guide how to do a release build.
 - [Windows Filtering Platform - MS](https://learn.microsoft.com/en-us/windows-hardware/drivers/network/roadmap-for-developing-wfp-callout-drivers) -> The driver is build on top of WFP.
 
+### Building (For release)
 
-### Building
+Please refer to [release/README.md](release/README.md) for details about the release procedure.
+
+### Building (For testing and development)
 
 The Windows Portmaster Kernel Extension is currently only developed and tested for the amd64 (64-bit) architecture.
 
@@ -53,23 +56,18 @@ __Build driver:__
 
 ```sh
     cd driver
-    cargo build
+    cargo build --release
 ```
 > Build also works on linux
 
 __Link and sign:__
-On a windows machine copy `driver.lib` form the project target directory (`driver/target/x86_64-pc-windows-msvc/debug/driver.lib`) in the same folder as `link.bat`.
-Run `link.bat`.
+On a windows machine copy `driver.lib` from the project target directory (`driver/target/x86_64-pc-windows-msvc/release/driver.lib`) in the same folder as `link-dev.ps1`.
+Run `link-dev.ps1`.
 
-`driver.sys` should appear in the folder. Load and use the driver.
+`driver.sys` should appear in the folder.
 
-### Test
-- Install go
-    - https://go.dev/dl/
-
-```sh
-    cd kext_tester
-    go run .
+Sign the driver with the test certificate:
 ```
-
-> make sure the hardcoded path in main.go is pointing to the correct `.sys` file
+  SignTool sign /v /s TestCertStoreName /n TestCertName driver.sys
+```
+Load and use the driver.
