@@ -71,7 +71,8 @@ func getStickiedHub(conn *network.Connection) (sticksTo *stickyHub) {
 
 	// If the IP did not stick and we have a domain, check if that sticks.
 	if sticksTo == nil && conn.Entity.Domain != "" {
-		sticksTo, ok := stickyDomains[makeStickyDomainKey(conn)]
+		var ok bool
+		sticksTo, ok = stickyDomains[makeStickyDomainKey(conn)]
 		if ok && !sticksTo.isExpired() {
 			sticksTo.LastSeen = time.Now()
 		}
@@ -146,6 +147,8 @@ func (t *Tunnel) avoidDestinationHub() {
 		Avoid:    true,
 	}
 	log.Warningf("spn/crew: avoiding %s for %s", t.dstPin.Hub, ipKey)
+
+	// TODO: Question: Should we avoid the domain as well? (stickyDomains)
 }
 
 func cleanStickyHubs(ctx *mgr.WorkerCtx) error {

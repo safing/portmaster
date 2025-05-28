@@ -79,7 +79,21 @@ func NewWrapper(key string, meta *Meta, format uint8, data []byte) (*Wrapper, er
 	}, nil
 }
 
-// Marshal marshals the object, without the database key or metadata.
+// NewWrapperFromDatabase returns a new record wrapper for the given data.
+func NewWrapperFromDatabase(dbName, dbKey string, meta *Meta, format uint8, data []byte) (*Wrapper, error) {
+	return &Wrapper{
+		Base{
+			dbName: dbName,
+			dbKey:  dbKey,
+			meta:   meta,
+		},
+		sync.Mutex{},
+		format,
+		data,
+	}, nil
+}
+
+// Marshal marshals the format and data.
 func (w *Wrapper) Marshal(r Record, format uint8) ([]byte, error) {
 	if w.Meta() == nil {
 		return nil, errors.New("missing meta")
@@ -100,7 +114,24 @@ func (w *Wrapper) Marshal(r Record, format uint8) ([]byte, error) {
 	return data, nil
 }
 
-// MarshalRecord packs the object, including metadata, into a byte array for saving in a database.
+// MarshalDataOnly marshals the data only.
+func (w *Wrapper) MarshalDataOnly(self Record, format uint8) ([]byte, error) {
+	if w.Meta() == nil {
+		return nil, errors.New("missing meta")
+	}
+
+	if w.Meta().Deleted > 0 {
+		return nil, nil
+	}
+
+	if format != dsd.AUTO && format != w.Format {
+		return nil, errors.New("could not dump model, wrapped object format mismatch")
+	}
+
+	return w.Data, nil
+}
+
+// MarshalRecord marshals the data, format and metadata.
 func (w *Wrapper) MarshalRecord(r Record) ([]byte, error) {
 	// Duplication necessary, as the version from Base would call Base.Marshal instead of Wrapper.Marshal
 

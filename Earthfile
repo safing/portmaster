@@ -4,11 +4,11 @@ VERSION 0.8
 # Usage example: earthly --build-arg custom_version="1.2.3" +<target>
 ARG --global custom_version = ""
 
-ARG --global go_version = 1.22
+ARG --global go_version = 1.24
 ARG --global node_version = 18
 ARG --global rust_version = 1.81
 ARG --global tauri_version = "2.2.5"
-ARG --global golangci_lint_version = 1.57.1
+ARG --global golangci_lint_version = 1.64.6
 
 ARG --global go_builder_image = "golang:${go_version}-alpine"
 ARG --global node_builder_image = "node:${node_version}"
