@@ -14,7 +14,7 @@ set -e
 
 ARCH=
 INSTALLDIR=
-PMSTART=
+SPNBINARY=
 ENABLENOW=
 INSTALLSYSTEMD=
 SYSTEMDINSTALLPATH=
@@ -22,7 +22,7 @@ SYSTEMDINSTALLPATH=
 apply_defaults() {
     ARCH=${ARCH:-amd64}
     INSTALLDIR=${INSTALLDIR:-/opt/safing/spn}
-    PMSTART=${PMSTART:-https://updates.safing.io/latest/linux_${ARCH}/start/portmaster-start}
+    SPNBINARY=${SPNBINARY:-https://updates.safing.io/latest/linux_${ARCH}/hub/spn-hub}
     SYSTEMDINSTALLPATH=${SYSTEMDINSTALLPATH:-/etc/systemd/system/spn.service}
 
     if command_exists systemctl; then
@@ -98,22 +98,17 @@ ensure_install_dir() {
     mkdir -p ${INSTALLDIR}
 }
 
-download_pmstart() {
-    log "Downloading portmaster-start ..."
-    local dest="${INSTALLDIR}/portmaster-start"
+download_spnbinary() {
+    log "Downloading SPN binary ..."
+    local dest="${INSTALLDIR}/hub"
     if [ -f "${dest}" ]; then
-        warn "Overwriting existing portmaster-start at ${dest}"
+        warn "Overwriting existing hub at ${dest}"
     fi
 
-    download_file ${PMSTART} ${dest}
+    download_file ${SPNBINARY} ${dest}
 
     log "Changing permissions"
     chmod a+x ${dest}
-}
-
-download_updates() {
-    log "Downloading updates ..."
-    ${INSTALLDIR}/portmaster-start --data=${INSTALLDIR} update
 }
 
 setup_systemd() {
@@ -122,7 +117,7 @@ setup_systemd() {
         warn "Skipping setup of systemd service unit"
         echo "To launch the hub, execute the following as root:"
         echo ""
-        echo "${INSTALLDIR}/portmaster-start --data ${INSTALLDIR} hub"
+        echo "${INSTALLDIR}/hub --data-dir ${INSTALLDIR}"
         echo ""
         return
     fi
@@ -146,7 +141,7 @@ LimitNOFILE=infinity
 Environment=LOGLEVEL=warning
 Environment=SPN_ARGS=
 EnvironmentFile=-/etc/default/spn
-ExecStart=${INSTALLDIR}/portmaster-start --data ${INSTALLDIR} hub -- --log \$LOGLEVEL \$SPN_ARGS
+ExecStart=${INSTALLDIR}/hub --data-dir ${INSTALLDIR} --log \$LOGLEVEL \$SPN_ARGS
 
 [Install]
 WantedBy=multi-user.target
@@ -210,7 +205,7 @@ confirm_config() {
     log "Installation configuration:"
     echo ""
     echo "   Architecture: ${BOLD}${ARCH}${RESET}"
-    echo "   Download-URL: ${BOLD}${PMSTART}${RESET}"
+    echo "   Download-URL: ${BOLD}${SPNBINARY}${RESET}"
     echo "     Target Dir: ${BOLD}${INSTALLDIR}${RESET}"
     echo "Install systemd: ${BOLD}${INSTALLSYSTEMD}${RESET}"
     echo "      Unit path: ${BOLD}${SYSTEMDINSTALLPATH}${RESET}"
@@ -247,7 +242,7 @@ ${BOLD}Options:${RESET}
     ${GREEN}-t, --target PATH${RESET}          Configure the installation directory.
     ${GREEN}-h, --help${RESET}                 Display this help text
     ${GREEN}-a, --arch${RESET}                 Configure the binary architecture.
-    ${GREEN}-u, --url URL${RESET}              Set download URL for portmaster start.
+    ${GREEN}-u, --url URL${RESET}              Set download URL for spn-hub.
     ${GREEN}-S, --no-systemd${RESET}           Do not install systemd service unit.
     ${GREEN}-s, --service-path PATH${RESET}    Location for the systemd unit file.
 EOT
@@ -278,7 +273,7 @@ main() {
                 shift
                 ;;
             --url | -u)
-                PMSTART=$2
+                SPNBINARY=$2
                 shift
                 ;;
             --no-systemd | -S)
@@ -315,8 +310,7 @@ EOT
 
     # Setup hub
     ensure_install_dir
-    download_pmstart
-    download_updates
+    download_spnbinary
     write_config_file "${INSTALLDIR}/config.json"
 
     # setup systemd
