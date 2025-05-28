@@ -94,8 +94,12 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 		"https://updates.safing.io/spn-support.v3.json",
 	}
 
-	binDir = "/opt/safing/spn"
-	dataDir = "/opt/safing/spn"
+	if binDir == "" {
+		binDir = "/opt/safing/spn"
+	}
+	if dataDir == "" {
+		dataDir = "/opt/safing/spn"
+	}
 
 	// Configure service.
 	cmdbase.SvcFactory = func(svcCfg *service.ServiceConfig) (cmdbase.ServiceInstance, error) {
