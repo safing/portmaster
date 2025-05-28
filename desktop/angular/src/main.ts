@@ -27,9 +27,15 @@ if (typeof (CSS as any)['registerProperty'] === 'function') {
 }
 
 function handleExternalResources(e: Event) {
+  // TODO: 
+  //    This code executes "openExternal()" when any "<a />" element in the app is clicked.
+  //    This could potentially be a security issue.
+  //    We should consider restricting this to only external links that belong to a certain domain (e.g., https://safing.io).
+  
   // get click target
   let target: HTMLElement | null = e.target as HTMLElement;
-  // traverse until we reach an a tag
+    
+  // traverse until we reach element "<a />"
   while (!!target && target.tagName !== "A") {
     target = target.parentElement;
   }
@@ -76,12 +82,13 @@ if (location.pathname !== "/prompt") {
 
 } else {
   // bootstrap the prompt interface
+  console.log("[INFO] Bootstrapping prompt entry point.");
   bootstrapApplication(PromptEntryPointComponent, {
     providers: [
       provideHttpClient(),
       importProvidersFrom(PortmasterAPIModule.forRoot({
-        websocketAPI: "ws://127.0.0.1:817/api/database/v1",
-        httpAPI: "http://127.0.0.1:817/api"
+        websocketAPI: "ws://localhost:817/api/database/v1",
+        httpAPI: "http://localhost:817/api"
       })),
       NotificationsService,
       {

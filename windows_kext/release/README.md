@@ -1,25 +1,31 @@
 # Kext release tool
 
-### Generate the zip file
+## Generate the zip file
 
-- Make sure `kextinterface/version.txt` is up to date
+- Make sure the deriver version in `kextinterface/version.txt` is up to date
+
 - Execute: `cargo run`  
-  * This will generate release `kext_release_vX-X-X.zip` file. Which contains all the necessary files to make the release.  
+  _This will generate release `portmaster-kext-release-bundle-vX-X-X-X.zip` file. Which contains all the necessary files to make the release._
 
-### Generate the cab file
+## Generate the cab file
 
-- Copy the zip and extract it on a windows machine.
-  * Visual Studio 2022 and WDK need to be installed.
-- From VS Command Prompt / PowerShell run:
-```
-cd kext_release_v.../
-./build_cab.bat
-```
-> Script is written for VS `$SDK_Version = "10.0.22621.0"`. If different version is used update the script.
+  **Precondition:** Visual Studio 2022 and WDK need to be installed.
 
-- Sing the cab file
+- copy the zip and extract it on a windows machine.
 
-### Let Microsoft Sign
+- update `.\build_cab.ps1`: set correct SDK version you use.
+  _e.g.: $SDK_Version = "10.0.26100.0" (see in `C:\Program Files (x86)\Windows Kits\10\Lib`)_
+
+- Use "Developer PowerShell for VS":
+
+  ```powershell
+  cd portmaster-kext-release-bundle-v...
+  .\build_cab.ps1
+  ```
+
+- Sing the the output cab file: `portmaster-kext-release-bundle-v...\PortmasterKext_v....cab`
+
+## Let Microsoft Sign
 
 - Go to https://partner.microsoft.com/en-us/dashboard/hardware/driver/New
 - Enter "PortmasterKext vX.X.X #1" as the product name

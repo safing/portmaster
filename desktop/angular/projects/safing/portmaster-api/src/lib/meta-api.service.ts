@@ -43,8 +43,13 @@ export interface AuthKeyResponse {
 export class MetaAPI {
   constructor(
     private http: HttpClient,
-    @Inject(PORTMASTER_HTTP_API_ENDPOINT) @Optional() private httpEndpoint: string = 'http://127.0.0.1:817/api',
-  ) { }
+    @Inject(PORTMASTER_HTTP_API_ENDPOINT) @Optional() private httpEndpoint: string,
+  ) { 
+      if (!this.httpEndpoint) {
+        this.httpEndpoint = `http://localhost:817/api`;
+        console.warn("[portmaster-api: MetaAPI] No HTTP API endpoint provided, using default: " + this.httpEndpoint);
+      }
+  }
 
   listEndpoints(): Observable<MetaEndpoint[]> {
     return this.http.get<MetaEndpoint[]>(`${this.httpEndpoint}/v1/endpoints`)

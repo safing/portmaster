@@ -47,11 +47,13 @@ export class PortmasterAPIModule {
    * @param cfg The module configuration defining the Portmaster HTTP and Websocket API endpoints.
    */
   static forRoot(cfg: ModuleConfig = {}): ModuleWithProviders<PortmasterAPIModule> {
-    if (cfg.httpAPI === undefined) {
-      cfg.httpAPI = `http://127.0.0.1:817/api`;
+    if (!cfg.httpAPI) {
+      cfg.httpAPI = `http://${window.location.host}/api`;
+      console.warn("[portmaster-api] No HTTP API endpoint provided, using default: " + cfg.httpAPI);
     }
-    if (cfg.websocketAPI === undefined) {
-      cfg.websocketAPI = `ws://127.0.0.1:817/api/database/v1`;
+    if (!cfg.websocketAPI) {
+      cfg.websocketAPI = `ws://${window.location.host}/api/database/v1`;
+      console.warn("[portmaster-api] No WebSocket API endpoint provided, using default: " + cfg.websocketAPI);
     }
 
     return {

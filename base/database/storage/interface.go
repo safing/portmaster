@@ -46,3 +46,8 @@ type Batcher interface {
 type Purger interface {
 	Purge(ctx context.Context, q *query.Query, local, internal, shadowDelete bool) (int, error)
 }
+
+// PurgeOlderThan defines the database storage API for backends that support the PurgeOlderThan operation.
+type PurgeOlderThan interface {
+	PurgeOlderThan(ctx context.Context, prefix string, purgeBefore time.Time, local, internal, shadowDelete bool) (int, error)
+}

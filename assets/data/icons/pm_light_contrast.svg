@@ -1,0 +1,11 @@
+<svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128.01 128.01">
+<!-- Background -->
+<circle cx="64" cy="64" r="64" fill="black" opacity="1.0"/>
+
+<g data-name="Main" transform="translate(6.4,6.4) scale(0.9)">
+	<path d="M176.11 36.73l-5-8.61a41.53 41.53 0 00-14.73 57.22l8.55-5.12a31.58 31.58 0 0111.19-43.49z" transform="translate(-127.99 .01)" style="isolation:isolate" fill="#FFFFFF" />
+	<path d="M222.36 72.63a31.55 31.55 0 01-45 19.35l-4.62 8.84a41.54 41.54 0 0059.17-25.46z" transform="translate(-127.99 .01)" style="isolation:isolate" fill="#FFFFFF" />
+	<path d="M197 83a19.66 19.66 0 01-19.25-32.57l-4.5-4.27A25.87 25.87 0 00198.59 89z" transform="translate(-127.99 .01)" style="isolation:isolate" fill="#FFFFFF" />
+	<path d="M192 112.64A48.64 48.64 0 11240.64 64 48.64 48.64 0 01192 112.64zM256 64a64 64 0 10-64 64 64 64 0 0064-64z" transform="translate(-127.99 .01)" fill="#FFFFFF"/>
+</g>
+</svg>
