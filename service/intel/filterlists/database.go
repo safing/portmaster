@@ -144,7 +144,7 @@ func persistRecords(startJob func(func() error), records <-chan record.Record) {
 
 		timePerEntity := time.Since(start) / time.Duration(cnt)
 		speed := float64(time.Second) / float64(timePerEntity)
-		log.Debugf("processed %d entities in %s with %s / entity (%.2f entities/second)", cnt, time.Since(start), timePerEntity, speed)
+		log.Debugf("intel/filterlists: processed %d entities in %s with %s / entity (%.2f entities/second)", cnt, time.Since(start), timePerEntity, speed)
 	}
 
 	batch := database.NewInterface(&database.Options{Local: true, Internal: true})

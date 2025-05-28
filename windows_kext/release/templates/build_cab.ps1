@@ -1,7 +1,7 @@
 # Remove previous cab build
 Remove-Item -Path "PortmasterKext_v2-0-0.cab" -ErrorAction SilentlyContinue
 
-$SDK_Version = "10.0.22621.0"
+$SDK_Version = "10.0.26100.0"
 
 # Build metadata file
 rc -I "C:\Program Files (x86)\Windows Kits\10\Include\$SDK_Version\um" `

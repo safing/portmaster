@@ -562,6 +562,27 @@ func (i *Interface) Purge(ctx context.Context, q *query.Query) (int, error) {
 	return db.Purge(ctx, q, i.options.Local, i.options.Internal)
 }
 
+// PurgeOlderThan deletes all records last updated before the given time.
+// It returns the number of successful deletes and an error.
+func (i *Interface) PurgeOlderThan(ctx context.Context, prefix string, purgeBefore time.Time) (int, error) {
+	dbName, dbKeyPrefix := record.ParseKey(prefix)
+	if dbName == "" {
+		return 0, errors.New("unknown database")
+	}
+
+	db, err := getController(dbName)
+	if err != nil {
+		return 0, err
+	}
+
+	// Check if database is read only before we add to the cache.
+	if db.ReadOnly() {
+		return 0, ErrReadOnly
+	}
+
+	return db.PurgeOlderThan(ctx, dbKeyPrefix, purgeBefore, i.options.Local, i.options.Internal)
+}
+
 // Subscribe subscribes to updates matching the given query.
 func (i *Interface) Subscribe(q *query.Query) (*Subscription, error) {
 	_, err := q.Check()
