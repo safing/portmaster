@@ -18,12 +18,14 @@ SPNBINARY=
 ENABLENOW=
 INSTALLSYSTEMD=
 SYSTEMDINSTALLPATH=
+LOGDIR=
 
 apply_defaults() {
     ARCH=${ARCH:-amd64}
     INSTALLDIR=${INSTALLDIR:-/opt/safing/spn}
     SPNBINARY=${SPNBINARY:-https://updates.safing.io/latest/linux_${ARCH}/hub/spn-hub}
     SYSTEMDINSTALLPATH=${SYSTEMDINSTALLPATH:-/etc/systemd/system/spn.service}
+    LOGDIR=${LOGDIR:-/opt/safing/spn}
 
     if command_exists systemctl; then
         INSTALLSYSTEMD=${INSTALLSYSTEMD:-yes}
@@ -141,7 +143,7 @@ LimitNOFILE=infinity
 Environment=LOGLEVEL=warning
 Environment=SPN_ARGS=
 EnvironmentFile=-/etc/default/spn
-ExecStart=${INSTALLDIR}/hub --data-dir ${INSTALLDIR} --log \$LOGLEVEL \$SPN_ARGS
+ExecStart=${INSTALLDIR}/hub --data-dir ${INSTALLDIR} --log \$LOGLEVEL --log-dir ${LOGDIR} \$SPN_ARGS
 
 [Install]
 WantedBy=multi-user.target
