@@ -77,7 +77,7 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 
 	// Set default log level.
 	log.SetLogLevel(log.WarningLevel)
-	_ = log.Start(log.InfoLevel.String(), true, "")
+	_ = log.Start("warning", true, "")
 
 	// Configure SPN binary updates.
 	configure.DefaultBinaryIndexName = "SPN Binaries"
