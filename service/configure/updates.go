@@ -6,7 +6,7 @@ import (
 
 var (
 	DefaultBinaryIndexName = "Portmaster Binaries"
-	DefaultIntelIndexName  = "intel"
+	DefaultIntelIndexName  = "Portmaster Intel"
 
 	DefaultStableBinaryIndexURLs = []string{
 		"https://updates.safing.io/stable.v3.json",

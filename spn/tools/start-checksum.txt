@@ -1,1 +1,1 @@
-3f45f0814c6db28c3899b39ae0ab01f8f20a8cc98697dbe8039162ccd9590bf8  ./portmaster-start
+da0ca5ca57f3f5e80a7cb61a8e0ad9b1423051fc12e518b0539c7c69b7a68ee8  ./spn-hub

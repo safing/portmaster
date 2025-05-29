@@ -45,7 +45,7 @@ func main() {
 	}
 
 	// logging
-	err := log.Start()
+	err := log.Start("info", true, "")
 	if err != nil {
 		fmt.Printf("failed to start logging: %s\n", err)
 		os.Exit(1)

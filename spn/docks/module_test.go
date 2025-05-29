@@ -47,7 +47,7 @@ func (stub *testInstance) Stopping() bool {
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
 
 func runTest(m *testing.M) error {
-	_ = log.Start()
+	_ = log.Start("info", true, "")
 
 	ds, err := config.InitializeUnitTestDataroot("test-docks")
 	if err != nil {

@@ -18,7 +18,6 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/utils"
-	"github.com/safing/portmaster/service/configure"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/ui"
 )
@@ -222,7 +221,7 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 		module.corruptedInstallation = fmt.Errorf("invalid index: %w", err)
 	}
 	index, err = GenerateIndexFromDir(cfg.Directory, IndexScanConfig{
-		Name:    configure.DefaultBinaryIndexName,
+		Name:    cfg.Name,
 		Version: info.VersionNumber(),
 	})
 	if err == nil && index.init(currentPlatform) == nil {

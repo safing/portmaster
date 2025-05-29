@@ -14,6 +14,7 @@ import (
 	"github.com/safing/portmaster/service"
 	"github.com/safing/portmaster/service/configure"
 	"github.com/safing/portmaster/service/updates"
+	"github.com/safing/portmaster/spn"
 	"github.com/safing/portmaster/spn/conf"
 )
 
@@ -73,9 +74,31 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 	// Set SPN public hub mode.
 	conf.EnablePublicHub(true)
 
+	// Configure SPN binary updates.
+	configure.DefaultBinaryIndexName = "SPN Binaries"
+	configure.DefaultStableBinaryIndexURLs = []string{
+		"https://updates.safing.io/spn-stable.v3.json",
+	}
+	configure.DefaultBetaBinaryIndexURLs = []string{
+		"https://updates.safing.io/spn-beta.v3.json",
+	}
+	configure.DefaultStagingBinaryIndexURLs = []string{
+		"https://updates.safing.io/spn-staging.v3.json",
+	}
+	configure.DefaultSupportBinaryIndexURLs = []string{
+		"https://updates.safing.io/spn-support.v3.json",
+	}
+
+	if binDir == "" {
+		binDir = "/opt/safing/spn"
+	}
+	if dataDir == "" {
+		dataDir = "/opt/safing/spn"
+	}
+
 	// Configure service.
 	cmdbase.SvcFactory = func(svcCfg *service.ServiceConfig) (cmdbase.ServiceInstance, error) {
-		svc, err := service.New(svcCfg)
+		svc, err := spn.New(svcCfg)
 		return svc, err
 	}
 

@@ -21,6 +21,7 @@ import (
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
+	"github.com/safing/portmaster/service/ui"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/access"
 	"github.com/safing/portmaster/spn/cabin"
@@ -74,6 +75,7 @@ type Instance struct {
 	ships     *ships.Ships
 	sluice    *sluice.SluiceModule
 	terminal  *terminal.TerminalModule
+	ui        *ui.UI
 
 	CommandLineOperation func() error
 	ShouldRestart        bool
@@ -136,6 +138,11 @@ func New(svcCfg *service.ServiceConfig) (*Instance, error) {
 	if err != nil {
 		return instance, fmt.Errorf("create updates config: %w", err)
 	}
+
+	//Enable autodownload and autoapply
+	binaryUpdateConfig.AutoDownload = true
+	binaryUpdateConfig.AutoApply = true
+
 	instance.binaryUpdates, err = updates.New(instance, "Binary Updater", *binaryUpdateConfig)
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
@@ -371,6 +378,11 @@ func (i *Instance) Terminal() *terminal.TerminalModule {
 	return i.terminal
 }
 
+// UI returns the ui module.
+func (i *Instance) UI() *ui.UI {
+	return i.ui
+}
+
 // FilterLists returns the filterLists module.
 func (i *Instance) FilterLists() *filterlists.FilterLists {
 	return i.filterLists
@@ -506,6 +518,21 @@ func (i *Instance) ShutdownComplete() <-chan struct{} {
 // ExitCode returns the set exit code of the instance.
 func (i *Instance) ExitCode() int {
 	return int(i.exitCode.Load())
+}
+
+// ShouldRestartIsSet returns whether the service/instance should be restarted.
+func (i *Instance) ShouldRestartIsSet() bool {
+	return i.ShouldRestart
+}
+
+// CommandLineOperationIsSet returns whether the command line option is set.
+func (i *Instance) CommandLineOperationIsSet() bool {
+	return i.CommandLineOperation != nil
+}
+
+// CommandLineOperationExecute executes the set command line option.
+func (i *Instance) CommandLineOperationExecute() error {
+	return i.CommandLineOperation()
 }
 
 // SPNGroup fakes interface conformance.

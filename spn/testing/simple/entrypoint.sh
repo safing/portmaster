@@ -14,4 +14,4 @@ cat /opt/shared/config-template.json | sed "s/\$HUBNAME/$HUBNAME/g" > /opt/data/
 BIN=$(ls /opt/ | grep hub)
 
 # Start Hub.
-/opt/$BIN --data /opt/data --log trace --spn-map test --bootstrap-file /opt/shared/bootstrap.dsd --api-address 0.0.0.0:817 --devmode
+/opt/$BIN  --log trace --spn-map test --bootstrap-file /opt/shared/bootstrap.dsd --api-address 0.0.0.0:817 --devmode
