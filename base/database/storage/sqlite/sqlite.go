@@ -89,6 +89,14 @@ func openSQLite(name, location string, printStmts bool) (*SQLite, error) {
 		}
 	}
 
+	// Limit concurrent writes to avoid "SQLITE_BUSY" errors on large workloads.
+	// SQLite typically allows only one writer at a time anyway.
+	// In WAL mode, concurrent readers can still function,
+	// but we keep a single writer to reduce lock contention.
+	db.SetMaxOpenConns(1)    // Only 1 open connection can be active
+	db.SetMaxIdleConns(1)    // Maintain at most 1 idle connection in the pool
+	db.SetConnMaxLifetime(0) // Keep the single connection alive indefinitely
+
 	// Run migrations on database.
 	n, err := migrate.Exec(db, "sqlite3", getMigrations(), migrate.Up)
 	if err != nil {
