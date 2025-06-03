@@ -184,7 +184,6 @@ var dataDir
   ; delete data files
   Delete  /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\databases\history.db"
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\databases\cache"
-  RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\databases\icons"
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\intel"
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\download_intel"
   RMDir /r /REBOOTOK "$COMMONPROGRAMDATA\Portmaster\download_binaries"
