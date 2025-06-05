@@ -37,7 +37,7 @@ export function createTauriWsConnection<T>(opts: WebSocketSubjectConfig<T>, ngZo
     
     // A queue for messages that need to be sent before the connection is established
     const pendingMessages: T[] = [];
-        
+
     // Function to establish a WebSocket connection
     const connect = (): void => {
         WebSocket.connect(opts.url)
@@ -84,12 +84,30 @@ export function createTauriWsConnection<T>(opts: WebSocketSubjectConfig<T>, ngZo
         wsConnection = null;
         
         // Connect again after a delay
-        console.log(`${LOG_PREFIX} Attempting to reconnect in 1 second...`);
+        console.log(`${LOG_PREFIX} Attempting to reconnect in 2 seconds...`);
         reconnectTimeout = setTimeout(() => {
           reconnectTimeout = null;
           connect();
-        }, 1000);
+        }, 2000);
     };
+
+    // Function to check if connection alive, and reconnect, if necessary
+    let pingTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    const checkConnectionAliveOrReconnect = () => {
+      if (!pingTimeoutId && wsConnection) {
+        console.log(`${LOG_PREFIX} Verifying connection status with ping...`);
+        wsConnection.send( {type: 'Ping', data: [1]} ).then(() => {
+            pingTimeoutId = setTimeout(() => { // The timeout will be stopped if we receive a Pong response
+                console.error(`${LOG_PREFIX} No response to ping - connection appears dead`);
+                pingTimeoutId = null;
+                reconnect();
+            }, 5000);
+        }).catch(err => {
+            console.error(`${LOG_PREFIX} Failed to send ping - connection is dead:`, err);
+            reconnect();
+        });
+      }
+    }
 
     // Function to remove the message listener
     let listenerRemovalFn: (() => void) | null = null; // Store the removal function for the ws listener
@@ -105,9 +123,7 @@ export function createTauriWsConnection<T>(opts: WebSocketSubjectConfig<T>, ngZo
     }
 
     // Function to set up the message listener
-    const setupMessageListener = (ws: WebSocket) => {        
-        let pingTimeoutId: ReturnType<typeof setTimeout> | null = null;
-        
+    const setupMessageListener = (ws: WebSocket) => {
         listenerRemovalFn = ws.addListener((message: Message) => {
             // Process message inside ngZone to trigger change detection
             try {
@@ -150,24 +166,8 @@ export function createTauriWsConnection<T>(opts: WebSocketSubjectConfig<T>, ngZo
 
                     // All other message types are unexpected. Proceed with reconnect.
                     default:
-                      console.warn(`${LOG_PREFIX} Received unexpected message: '${message}'`);
-                      
-                      // Don't immediately reconnect - first verify if the connection is actually dead.
-                      // If we don't receive a pong response within 2 seconds, we consider the connection dead.
-                      if (!pingTimeoutId && wsConnection) {
-                          console.log(`${LOG_PREFIX} Verifying connection status with ping...`);
-                          wsConnection.send( {type: 'Ping', data: [1]} ).then(() => {
-                              pingTimeoutId = setTimeout(() => {
-                                  console.error(`${LOG_PREFIX} No response to ping - connection appears dead`);
-                                  pingTimeoutId = null;
-                                  reconnect();
-                              }, 2000);                              
-                          }).catch(err => {
-                              console.error(`${LOG_PREFIX} Failed to send ping - connection is dead:`, err);
-                              reconnect();
-                          });
-                      }
-
+                      console.warn(`${LOG_PREFIX} Received unexpected message: '${message}'`);                      
+                      checkConnectionAliveOrReconnect();
                       break;
                 }
             } catch (error) {
@@ -220,6 +220,7 @@ export function createTauriWsConnection<T>(opts: WebSocketSubjectConfig<T>, ngZo
             // Send the serialized message through the WebSocket connection
             wsConnection?.send(serializedMessage).catch((err: Error) => {
               console.error(`${LOG_PREFIX} Error sending message:`, err);
+              checkConnectionAliveOrReconnect();
             });
         });
       },
