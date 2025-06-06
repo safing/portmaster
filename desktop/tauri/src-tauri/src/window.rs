@@ -178,6 +178,9 @@ pub fn open_window(app: &AppHandle) -> Result<WebviewWindow> {
     if app.portmaster().is_reachable() {
         match app.get_webview_window("main") {
             Some(win) => {
+                if let Ok(true) = win.is_minimized() {
+                    let _ = win.unminimize();
+                }
                 app.portmaster().show_window();
                 let _ = win.show();
                 let _ = win.set_focus();
