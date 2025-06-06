@@ -801,7 +801,7 @@ export class PortapiService {
           }
         },
         error: (err) => {
-          console.error(err, attrs);
+          console.error("[portapi] request error:", err.message || err, attrs);
           observer.error(err);
         },
         complete: () => {
