@@ -153,17 +153,36 @@ export async function send_tauri_http_request(
           return headerArray;
         })()
       : Object.entries(init.headers || {}))];
-    const body = init.body
-      ? new Uint8Array(await new Response(init.body as any).arrayBuffer())
-      : undefined;
+
+    let body: Uint8Array | undefined;
+    if (init.body) {
+        if (typeof init.body === 'string') {
+            // Most efficient way to convert a string to Uint8Array
+            body = new TextEncoder().encode(init.body);
+        } else if (init.body instanceof ArrayBuffer) {
+            body = new Uint8Array(init.body);
+        } else if (init.body instanceof Uint8Array) {
+            body = init.body;
+        } else if (init.body instanceof Blob) {
+            // Efficiently read Blob data
+            body = new Uint8Array(await init.body.arrayBuffer());
+        } else if (init.body instanceof URLSearchParams) {
+            body = new TextEncoder().encode(init.body.toString());
+        } else {
+            // Fallback for other types, though the inefficient path is kept for unsupported types
+            // This path should ideally be avoided by handling types in getRequestBody.
+            console.warn('[TauriHttpInterceptor] Using inefficient body conversion for unknown type.');
+            body = new Uint8Array(await new Response(init.body as any).arrayBuffer());
+        }
+    }
   
     const res = await invoke<{
       status: number;
       status_text: string;
       headers: [string, string][];
       body: number[];
-    }>('send_tauri_http_request', { url, opts: { method, headers, body } });
-  
+    }>('send_tauri_http_request', { url, opts: { method, headers, body: body ? Array.from(body) : undefined } });
+                                  
     return new Response(new Uint8Array(res.body), {
       status: res.status,
       statusText: res.status_text,
