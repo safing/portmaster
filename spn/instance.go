@@ -9,6 +9,7 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/dbmodule"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
@@ -142,6 +143,22 @@ func New(svcCfg *service.ServiceConfig) (*Instance, error) {
 	//Enable autodownload and autoapply
 	binaryUpdateConfig.AutoDownload = true
 	binaryUpdateConfig.AutoApply = true
+
+	//Force delayed restart for SPN instances
+	binaryUpdateConfig.CustomRestartFunc = func() error {
+
+		// Get random delay with up to three hours.
+		delayMinutes, err := rng.Number(3 * 60)
+		if err != nil {
+			return err
+		}
+		// Delay restart for at least one hour for preparations.
+		log.Warningf("updates: restart triggered, will execute in %s", time.Duration(delayMinutes)*time.Minute)
+		time.Sleep(time.Duration(delayMinutes) * time.Minute)
+		instance.Restart()
+
+		return nil
+	}
 
 	instance.binaryUpdates, err = updates.New(instance, "Binary Updater", *binaryUpdateConfig)
 	if err != nil {

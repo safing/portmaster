@@ -106,6 +106,9 @@ type Config struct {
 
 	// list of shell commands needed to run after the upgrade (if any)
 	PostUpgradeCommands []UpdateCommandConfig
+
+	// CustomRestartFunc defines a custom restart function that is called when a restart is required.
+	CustomRestartFunc func() error
 }
 
 // Check looks for obvious configuration errors.
@@ -431,6 +434,12 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 		}
 
 		return fmt.Errorf("%w: restart required", ErrActionRequired)
+	}
+
+	// If a custom restart function is provided, use it.
+	if u.cfg.CustomRestartFunc != nil {
+		u.cfg.CustomRestartFunc()
+		return nil
 	}
 
 	// Otherwise, trigger restart immediately.
