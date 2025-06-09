@@ -296,9 +296,21 @@ impl Device {
         }
     }
 
-    pub fn shutdown(&self) {
+    pub fn shutdown(&mut self) {
         // End blocking operations from the queue. This will end pending read requests.
         self.event_queue.rundown();
+
+		// Resolve all pending packets. This is important for proper driver unload.
+        let pending_packets = self.packet_cache.pop_all();
+        for el in pending_packets {
+            let key = el.value.0;
+            let packet = el.value.1;
+            // Set any verdict. Driver will unload after that and the filter will not be active.
+            _ = self
+                .connection_cache
+                .update_connection(key, crate::connection::Verdict::PermanentBlock);
+            _ = self.inject_packet(packet, true); // Blocked must be set, so it only handles the ALE layer.
+        }
     }
 
     pub fn inject_packet(&mut self, packet: Packet, blocked: bool) -> Result<(), String> {
