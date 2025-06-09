@@ -15,6 +15,7 @@ import {
   retryWhen,
   takeWhile,
   tap,
+  bufferTime,
 } from 'rxjs/operators';
 import { WebSocketSubject } from 'rxjs/webSocket';
 import {
@@ -111,27 +112,34 @@ export class PortapiService {
               )
             )
           )
-        )
+        ),
+        // Buffer all incoming messages for X ms. This creates batches (arrays of messages).
+        bufferTime(25),
+        // Don't process empty batches that can occur during idle periods.
+        filter(batch => batch.length > 0),
       )
       .subscribe(
-        (msg) => {
-          const observer = this._streams$.get(msg.id);
-          if (!observer) {
-            // it's expected that we receive done messages from time to time here
-            // as portmaster sends a "done" message after we "cancel" a subscription
-            // and we already remove the observer from _streams$ if the subscription
-            // is unsubscribed. So just hide that warning message for "done"
-            if (msg.type !== 'done') {
-              console.warn(
-                `Received message for unknown request id ${msg.id} (type=${msg.type})`,
-                msg
-              );
+        // The subscriber now receives an array of messages (a batch).
+        (batch) => {
+          // Re-enter the Angular Zone ONCE for the entire batch.
+          this.ngZone.run(() => {
+            for (const msg of batch) {
+              const observer = this._streams$.get(msg.id);
+              if (!observer) {
+                // it's expected that we receive done messages from time to time here
+                // as portmaster sends a "done" message after we "cancel" a subscription
+                // and we already remove the observer from _streams$ if the subscription
+                // is unsubscribed. So just hide that warning message for "done"
+                if (msg.type !== 'done') {
+                  console.warn(`Received message for unknown request id ${msg.id} (type=${msg.type})`, msg);
+                }
+                continue;
+              }
+              
+              // forward the message to the actual stream.
+              observer.next(msg as ReplyMessage);
             }
-            return;
-          }
-
-          // forward the message to the actual stream.
-          observer.next(msg as ReplyMessage);
+          });
         },
         console.error,
         () => {
