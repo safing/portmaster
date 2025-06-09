@@ -87,15 +87,20 @@ impl NetBufferList {
                 // Allocate space in buffer, if buffer is too small.
                 let mut buffer = alloc::vec![0_u8; data_length as usize];
 
-                let ptr = NdisGetDataBuffer(nb, data_length, buffer.as_mut_ptr(), 1, 0);
+                let buffer_ptr = buffer.as_mut_ptr();
 
-                if !ptr.is_null() {
+                // Two options returns a pointer to the raw packet buffer,
+                // or copies the data to the supplied buffer
+                // and returns a pointer to the supplied buffer.
+                let ptr = NdisGetDataBuffer(nb, data_length, buffer_ptr, 1, 0);
+
+                if ptr.is_null() {
+                    return Err("failed to copy packet buffer".to_string());
+                }
+
+                // If the pointers differ the data is not in the correct place.
+                if ptr != buffer_ptr {
                     buffer.copy_from_slice(core::slice::from_raw_parts(ptr, data_length as usize));
-                } else {
-                    let ptr = NdisGetDataBuffer(nb, data_length, buffer.as_mut_ptr(), 1, 0);
-                    if ptr.is_null() {
-                        return Err("failed to copy packet buffer".to_string());
-                    }
                 }
 
                 let new_nbl = net_allocator.wrap_packet_in_nbl(&buffer)?;
