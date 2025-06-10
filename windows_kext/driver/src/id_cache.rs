@@ -1,3 +1,5 @@
+use core::mem;
+
 use alloc::collections::VecDeque;
 use protocol::info::Info;
 use smoltcp::wire::{IpAddress, IpProtocol};
@@ -5,8 +7,8 @@ use wdk::rw_spin_lock::RwSpinLock;
 
 use crate::{connection::Direction, connection_map::Key, device::Packet};
 
-struct Entry<T> {
-    value: T,
+pub struct Entry<T> {
+    pub value: T,
     id: u64,
 }
 
@@ -53,6 +55,14 @@ impl IdCache {
     pub fn get_entries_count(&self) -> usize {
         let _guard = self.lock.read_lock();
         return self.values.len();
+    }
+
+    pub fn pop_all(&mut self) -> VecDeque<Entry<(Key, Packet)>> {
+        let mut values = VecDeque::with_capacity(1);
+        let _guard = self.lock.write_lock();
+        mem::swap(&mut self.values, &mut values);
+
+        return values;
     }
 }
 

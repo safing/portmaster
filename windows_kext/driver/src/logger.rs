@@ -10,15 +10,16 @@ pub const LOG_LEVEL: u8 = Severity::Warning as u8;
 // pub const LOG_LEVEL: u8 = Severity::Trace as u8;
 
 pub const MAX_LOG_LINE_SIZE: usize = 150;
-
-static mut LOG_LINES: [AtomicPtr<Info>; 1024] = unsafe { MaybeUninit::zeroed().assume_init() };
+const SIZE_OF_LOG_LINE_BUFFER: usize = 1024;
+static mut LOG_LINES: [AtomicPtr<Info>; SIZE_OF_LOG_LINE_BUFFER] =
+    unsafe { MaybeUninit::zeroed().assume_init() };
 static START_INDEX: AtomicUsize = unsafe { MaybeUninit::zeroed().assume_init() };
 static END_INDEX: AtomicUsize = unsafe { MaybeUninit::zeroed().assume_init() };
 
 pub fn add_line(log_line: Info) {
     let mut index = END_INDEX.fetch_add(1, Ordering::Acquire);
     unsafe {
-        index %= LOG_LINES.len();
+        index %= SIZE_OF_LOG_LINE_BUFFER;
         let ptr = &mut LOG_LINES[index];
         let line = Box::new(log_line);
         let old = ptr.swap(Box::into_raw(line), Ordering::SeqCst);
@@ -38,7 +39,7 @@ pub fn flush() -> Vec<Info> {
     unsafe {
         let count = end_index - start_index;
         for i in start_index..start_index + count {
-            let index = i % LOG_LINES.len();
+            let index = i % SIZE_OF_LOG_LINE_BUFFER;
             let ptr = LOG_LINES[index].swap(core::ptr::null_mut(), Ordering::SeqCst);
             if !ptr.is_null() {
                 vec.push(*Box::from_raw(ptr));
