@@ -151,7 +151,7 @@ func New(svcCfg *service.ServiceConfig) (*Instance, error) {
 		if err != nil {
 			return err
 		}
-		updates.DelayedRestart(time.Duration(delayMinutes) * time.Minute)
+		updates.DelayedRestart(time.Duration(delayMinutes+60) * time.Minute)
 		return nil
 	}
 
