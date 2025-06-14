@@ -48,6 +48,8 @@ var (
 	ErrAutoCheckDisabled = errors.New("automatic update checks are disabled")
 	ErrNoUpdateAvailable = errors.New("no update available")
 	ErrActionRequired    = errors.New("action required")
+
+	module *Updater
 )
 
 // UpdateCommandConfig defines the configuration for a shell command
@@ -162,6 +164,7 @@ type Updater struct {
 
 	updateCheckWorkerMgr *mgr.WorkerMgr
 	upgradeWorkerMgr     *mgr.WorkerMgr
+	restartWorkerMgr     *mgr.WorkerMgr
 
 	EventResourcesUpdated *mgr.EventMgr[struct{}]
 
@@ -204,6 +207,7 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 	// Create Workers.
 	module.updateCheckWorkerMgr = m.NewWorkerMgr("update checker", module.updateCheckWorker, nil)
 	module.upgradeWorkerMgr = m.NewWorkerMgr("upgrader", module.upgradeWorker, nil)
+	module.restartWorkerMgr = m.NewWorkerMgr("automatic restart", automaticRestart, nil)
 
 	// Load index.
 	index, err := LoadIndex(filepath.Join(cfg.Directory, cfg.IndexFile), cfg.Platform, cfg.Verify)

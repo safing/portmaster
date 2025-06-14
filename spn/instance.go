@@ -9,7 +9,6 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/dbmodule"
-	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/base/rng"
@@ -152,11 +151,7 @@ func New(svcCfg *service.ServiceConfig) (*Instance, error) {
 		if err != nil {
 			return err
 		}
-		// Delay restart for at least one hour for preparations.
-		log.Warningf("updates: restart triggered, will execute in %s", time.Duration(delayMinutes)*time.Minute)
-		time.Sleep(time.Duration(delayMinutes) * time.Minute)
-		instance.Restart()
-
+		updates.DelayedRestart(time.Duration(delayMinutes) * time.Minute)
 		return nil
 	}
 
