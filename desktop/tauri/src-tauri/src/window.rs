@@ -48,6 +48,21 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
                     error!("failed to open tauri window: {}", event.payload());
                 });
 
+                #[cfg(target_os = "linux")]
+                {
+                    // Workaround for KDE/Wayland environments on Linux:
+                    // On KDE with Wayland, after hiding and showing the window,
+                    // the title-bar buttons (close, minimize, maximize) may stop working.
+                    // Toggling the resizable property appears to resolve this issue.
+                    // Issue: https://github.com/safing/portmaster/issues/1909
+                    // Additional info: https://github.com/tauri-apps/tauri/issues/6162#issuecomment-1423304398
+                    let win_clone = win.clone();
+                    win.listen("tauri://focus", move |event| {
+                        let _ = win_clone.set_resizable(false);
+                        let _ = win_clone.set_resizable(true);
+                    });
+                }
+
                 win
             }
             Err(err) => {
