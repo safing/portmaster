@@ -1,6 +1,8 @@
 import { HttpEvent, HttpHandlerFn, HttpRequest, HttpResponse, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { from, Observable, switchMap, map, catchError, throwError } from 'rxjs';
 import { invoke } from '@tauri-apps/api/core'
+import { inject } from '@angular/core';
+import { PORTMASTER_HTTP_API_ENDPOINT } from '../../portapi.service';
 
 /**
  * TauriHttpInterceptor intercepts HTTP requests and routes them through Tauri's `@tauri-apps/plugin-http` API.
@@ -15,6 +17,13 @@ import { invoke } from '@tauri-apps/api/core'
  * - https://angular.dev/guide/http/interceptors 
  */
 export function TauriHttpInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn): Observable<HttpEvent<unknown>> {
+    const httpApiEndpoint = inject(PORTMASTER_HTTP_API_ENDPOINT);
+    if (httpApiEndpoint && !req.url.startsWith(httpApiEndpoint)) {
+        // If the request URL does not start with the configured HTTP API endpoint, skip interception
+        console.log('[TauriHttpInterceptor] Non-API request, skipping interception:', req.url);
+        return next(req);
+    }
+
     const fetchOptions: RequestInit = {
         method: req.method,
         headers: req.headers.keys().reduce((acc: Record<string, string>, key) => {
