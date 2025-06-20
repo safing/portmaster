@@ -25,6 +25,7 @@ ClassGuid = {57465043-616C-6C6F-7574-5F636C617373}
 Provider = %Provider%
 CatalogFile = PortmasterKext64.Cat
 DriverVer = {{date}},{{version}}
+PnpLockdown=1
 
 [SourceDisksNames]
 1 = %DiskName%
