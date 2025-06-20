@@ -1,5 +1,7 @@
 # Remove previous cab build
-Remove-Item -Path "PortmasterKext_v2-0-0.cab" -ErrorAction SilentlyContinue
+Remove-Item -Path "{{cab_file}}" -ErrorAction SilentlyContinue
+Remove-Item -Path cab\\PortmasterKext64.sys -ErrorAction SilentlyContinue
+Remove-Item -Path cab\\PortmasterKext64.pdb -ErrorAction SilentlyContinue
 
 $SDK_Version = "10.0.26100.0"
 
@@ -55,5 +57,5 @@ Write-Host =====
 Write-Host YOUR TURN: sign the .cab
 Write-Host "(If the sha1 fingerprint of the cert has changed, you can find it in the cert properties on Windows as Thumbprint)"
 Write-Host
-Write-Host signtool sign /sha1 69ADFEACD5AC42D0DB5698E38CA917B9C60FBFA6 /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a {{cab_file}}
+Write-Host signtool sign /sha1 d3bf5973eb1ec3dbd6ec45d77d556881a350acd2 /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a {{cab_file}}
 Write-Host
