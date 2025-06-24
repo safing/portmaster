@@ -143,6 +143,18 @@ func New(svcCfg *service.ServiceConfig) (*Instance, error) {
 	binaryUpdateConfig.AutoDownload = true
 	binaryUpdateConfig.AutoApply = true
 
+	//Force delayed restart for SPN instances
+	binaryUpdateConfig.CustomRestartFunc = func() error {
+
+		// Get random delay with up to three hours.
+		delayMinutes, err := rng.Number(3 * 60)
+		if err != nil {
+			return err
+		}
+		updates.DelayedRestart(time.Duration(delayMinutes+60) * time.Minute)
+		return nil
+	}
+
 	instance.binaryUpdates, err = updates.New(instance, "Binary Updater", *binaryUpdateConfig)
 	if err != nil {
 		return instance, fmt.Errorf("create updates module: %w", err)
