@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/safing/portmaster/base/log"
@@ -36,7 +35,7 @@ type WorkerCtx struct {
 	// the manager. When true, the manager will not wait for this worker to
 	// finish during stop, preventing deadlocks where the stop worker
 	// would wait for itself to complete.
-	isStopWorker atomic.Bool
+	isStopWorker bool
 }
 
 // AddToCtx adds the WorkerCtx to the given context.
@@ -273,12 +272,12 @@ func (m *Manager) DoAsStopWorker(name string, fn func(w *WorkerCtx) error) error
 func (m *Manager) do(name string, isStopWorker bool, fn func(w *WorkerCtx) error) error {
 	// Create context.
 	w := &WorkerCtx{
-		name:     name,
-		workFunc: fn,
-		ctx:      m.Ctx(),
-		logger:   m.logger.With("worker", name),
+		name:         name,
+		workFunc:     fn,
+		ctx:          m.Ctx(),
+		logger:       m.logger.With("worker", name),
+		isStopWorker: isStopWorker,
 	}
-	w.isStopWorker.Store(isStopWorker)
 
 	m.workerStart(w)
 	defer m.workerDone(w)

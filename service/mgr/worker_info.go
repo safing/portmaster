@@ -81,7 +81,7 @@ func (m *Manager) hasStopWorker() bool {
 		if w == nil {
 			continue
 		}
-		if w.isStopWorker.Load() {
+		if w.isStopWorker {
 			return true
 		}
 	}
