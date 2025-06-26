@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/safing/portmaster/base/log"
@@ -30,6 +31,12 @@ type WorkerCtx struct {
 
 	workerMgr *WorkerMgr // TODO: Attach to context instead?
 	logger    *slog.Logger
+
+	// isStopWorker indicates whether this worker is responsible for stopping
+	// the manager. When true, the manager will not wait for this worker to
+	// finish during stop, preventing deadlocks where the stop worker
+	// would wait for itself to complete.
+	isStopWorker atomic.Bool
 }
 
 // AddToCtx adds the WorkerCtx to the given context.
@@ -250,6 +257,20 @@ func (m *Manager) manageWorker(name string, fn func(w *WorkerCtx) error) {
 // - Panic catching.
 // - Flow control helpers.
 func (m *Manager) Do(name string, fn func(w *WorkerCtx) error) error {
+	return m.do(name, false, fn)
+}
+
+// DoAsStopWorker is like Do(...), but marks the worker as a stop worker.
+// This means that the manager will not wait for this worker to finish when stopping.
+// Only one stop worker can be started at a time.
+func (m *Manager) DoAsStopWorker(name string, fn func(w *WorkerCtx) error) error {
+	if m.hasStopWorker() {
+		return fmt.Errorf("cannot start stop worker %q: already has a stop worker", name)
+	}
+	return m.do(name, true, fn)
+}
+
+func (m *Manager) do(name string, isStopWorker bool, fn func(w *WorkerCtx) error) error {
 	// Create context.
 	w := &WorkerCtx{
 		name:     name,
@@ -257,6 +278,7 @@ func (m *Manager) Do(name string, fn func(w *WorkerCtx) error) error {
 		ctx:      m.Ctx(),
 		logger:   m.logger.With("worker", name),
 	}
+	w.isStopWorker.Store(isStopWorker)
 
 	m.workerStart(w)
 	defer m.workerDone(w)

@@ -34,7 +34,7 @@ func handleReInit(ar *api.Request) (msg string, err error) {
 	}
 
 	// Make sure SPN is stopped and wait for it to complete.
-	err = module.mgr.Do("stop SPN for re-init", module.instance.SPNGroup().EnsureStoppedWorker)
+	err = module.mgr.DoAsStopWorker("stop SPN for re-init", module.instance.SPNGroup().EnsureStoppedWorker)
 	if err != nil {
 		return "", fmt.Errorf("failed to stop SPN for re-init: %w", err)
 	}

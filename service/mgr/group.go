@@ -206,7 +206,15 @@ func (g *Group) stopFrom(index int) (ok bool) {
 			ok = false
 		}
 		m.mgr.Cancel()
-		if m.mgr.WaitForWorkers(0) {
+
+		var waitSucceeded bool
+		if m.mgr.hasStopWorker() {
+			waitSucceeded = m.mgr.WaitForWorkersFromStop(0)
+		} else {
+			waitSucceeded = m.mgr.WaitForWorkers(0)
+		}
+
+		if waitSucceeded {
 			m.mgr.Info("stopped", "time", time.Since(startTime))
 		} else {
 			ok = false
