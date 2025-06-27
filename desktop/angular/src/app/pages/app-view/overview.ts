@@ -134,11 +134,22 @@ export class AppOverviewComponent implements OnInit, OnDestroy {
     });
   }
 
+  stripHtmlTags(text: string): string {
+    if (!text) return '';  
+    // Only strip if we have proper HTML tags (opening and closing with same tag name)
+    return text.replace(/<([a-zA-Z][a-zA-Z0-9]*)[^>]*>([^<]*)<\/\1>/g, '$2');
+  }
+
   openMergeDialog() {
     this.dialog.create(MergeProfileDialogComponent, {
       autoclose: true,
       backdrop: 'light',
-      data: this.profiles.filter((p) => p.selected),
+      data: this.profiles.filter((p) => p.selected)
+      .map((p) => ({
+        ...p,
+        // Strip HTML tags from Name if it exists (e.g., highlighted search results)
+        ...(p.Name ? { Name: this.stripHtmlTags(p.Name) } : {})
+      })), 
     });
 
     this.selectMode = false;
