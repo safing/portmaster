@@ -73,6 +73,22 @@ func (m *Manager) unregisterWorker(w *WorkerCtx) {
 	}
 }
 
+func (m *Manager) hasStopWorker() bool {
+	m.workersLock.Lock()
+	defer m.workersLock.Unlock()
+
+	for _, w := range m.workers {
+		if w == nil {
+			continue
+		}
+		if w.isStopWorker {
+			return true
+		}
+	}
+
+	return false
+}
+
 // WorkerInfo holds status information about a managers workers.
 type WorkerInfo struct {
 	Running int
