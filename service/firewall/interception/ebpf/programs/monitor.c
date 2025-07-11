@@ -81,9 +81,15 @@ int BPF_PROG(tcp_connect, struct sock *sk) {
 	return 0;
 };
 
-// Fexit(function exit) of udp_v4_connect will be executed after the ip4_datagram_connect kernel function is called.
-// ip4_datagram_connect -> udp_v4_connect
-SEC("fexit/ip4_datagram_connect")
+// Fexit(function exit) of `udp_v4_connect` will be executed after the `udp_connect` kernel function is called.
+//
+// Kernel compatibility note:
+// - Linux kernels < 6.13: use `ip4_datagram_connect` function 
+//   https://elixir.bootlin.com/linux/v6.12.34/source/net/ipv4/udp.c#L2997
+// - Linux kernels >= 6.13: function renamed to `udp_connect` 
+//   https://elixir.bootlin.com/linux/v6.13-rc1/source/net/ipv4/udp.c#L3131
+//
+SEC("fexit/udp_connect") // Note: This attach point name may be overwritten (see worker.go: modifyProgramsAttachPoints())
 int BPF_PROG(udp_v4_connect, struct sock *sk) {
 	// Ignore everything else then IPv4
 	if (sk->__sk_common.skc_family != AF_INET) {
@@ -128,9 +134,15 @@ int BPF_PROG(udp_v4_connect, struct sock *sk) {
 	return 0;
 }
 
-// Fentry(function enter) of udp_v6_connect will be executed after the ip6_datagram_connect kernel function is called.
-// ip6_datagram_connect -> udp_v6_connect
-SEC("fexit/ip6_datagram_connect")
+// Fentry(function enter) of `udp_v6_connect` will be executed after the `udpv6_connect` kernel function is called.
+//
+// Kernel compatibility note:
+// - Linux kernels < 6.13: use `ip6_datagram_connect` function 
+//   https://elixir.bootlin.com/linux/v6.12.34/source/net/ipv4/udp.c#L2997
+// - Linux kernels >= 6.13: function renamed to `udpv6_connect` 
+//   https://elixir.bootlin.com/linux/v6.13-rc1/source/net/ipv4/udp.c#L3131
+//
+SEC("fexit/udpv6_connect") // Note: This attach point name may be overwritten (see worker.go: modifyProgramsAttachPoints())
 int BPF_PROG(udp_v6_connect, struct sock *sk) {
 	// Ignore everything else then IPv6
 	if (sk->__sk_common.skc_family != AF_INET6) {
