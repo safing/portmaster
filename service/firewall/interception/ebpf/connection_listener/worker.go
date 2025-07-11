@@ -150,7 +150,7 @@ func loadBpfObjects_Ex(objs interface{}, opts *ebpf.CollectionOptions) error {
 		return fmt.Errorf("ebpf: failed to modify program attach points: %w", err)
 	}
 	// Load the eBPF programs and maps into the kernel.
-	if err := spec.LoadAndAssign(objs, opts); err != nil { // object only has ONE tracing prog
+	if err := spec.LoadAndAssign(objs, opts); err != nil {
 		return fmt.Errorf("ebpf: failed to load and assign ebpf objects: %w", err)
 	}
 	return nil
@@ -159,13 +159,13 @@ func loadBpfObjects_Ex(objs interface{}, opts *ebpf.CollectionOptions) error {
 // modifyProgramAttachPoints modifies the attach points of the eBPF programs, if necessary.
 // This is needed to ensure compatibility with different kernel versions.
 func modifyProgramsAttachPoints(spec *ebpf.CollectionSpec) error {
-	// Load the kernel spec to find the udp_connect function.
+	// Load the kernel spec
 	kspec, err := btf.LoadKernelSpec()
 	if err != nil {
 		return err
 	}
 
-	// Function to update the attach point to single bpf program
+	// Function to update the attach point to a single BPF program
 	updateIfNeeded := func(bpfProgramName, attachPoint, attachPointLegacy string) error {
 		ps, ok := spec.Programs[bpfProgramName]
 		if !ok {
