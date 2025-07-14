@@ -7,9 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/cilium/ebpf/rlimit"
@@ -35,7 +38,7 @@ func ConnectionListenerWorker(ctx context.Context, packets chan packet.Packet) e
 
 	// Load pre-compiled programs and maps into the kernel.
 	objs := bpfObjects{}
-	if err := loadBpfObjects(&objs, nil); err != nil {
+	if err := loadBpfObjects_Ex(&objs, nil); err != nil {
 		if ebpfLoadingFailed.Add(1) >= 5 {
 			log.Warningf("ebpf: failed to load ebpf object 5 times, giving up with error %s", err)
 			return nil
@@ -127,6 +130,97 @@ func ConnectionListenerWorker(ctx context.Context, packets chan packet.Packet) e
 			log.Warningf("ebpf: received invalid connect event: PID: %d Conn: %s", pkt.Info().PID, pkt)
 		}
 	}
+}
+
+// loadBpfObjects_Ex loads eBPF objects with kernel-aware attach point selection.
+// (it extends the standard loadBpfObjects())
+//
+// This enhanced loader automatically detects available kernel functions and selects
+// appropriate attach points for maximum compatibility across kernel versions. It handles
+// the transition from legacy function names (e.g., ip4_datagram_connect) to modern ones
+// (e.g., udp_connect) introduced in Linux 6.13+.
+func loadBpfObjects_Ex(objs interface{}, opts *ebpf.CollectionOptions) error {
+	// Load pre-compiled programs
+	spec, err := loadBpf()
+	if err != nil {
+		return fmt.Errorf("ebpf: failed to load ebpf spec: %w", err)
+	}
+	// Modify the attach points of the eBPF programs, if necessary.
+	if err := modifyProgramsAttachPoints(spec); err != nil {
+		return fmt.Errorf("ebpf: failed to modify program attach points: %w", err)
+	}
+	// Load the eBPF programs and maps into the kernel.
+	if err := spec.LoadAndAssign(objs, opts); err != nil {
+		return fmt.Errorf("ebpf: failed to load and assign ebpf objects: %w", err)
+	}
+	return nil
+}
+
+// modifyProgramAttachPoints modifies the attach points of the eBPF programs, if necessary.
+// This is needed to ensure compatibility with different kernel versions.
+func modifyProgramsAttachPoints(spec *ebpf.CollectionSpec) error {
+	// Load the kernel spec
+	kspec, err := btf.LoadKernelSpec()
+	if err != nil {
+		return err
+	}
+
+	// Function to update the attach point to a single BPF program
+	updateIfNeeded := func(bpfProgramName, attachPoint, attachPointLegacy string) error {
+		ps, ok := spec.Programs[bpfProgramName]
+		if !ok {
+			return fmt.Errorf("ebpf: program %q not found in spec", bpfProgramName)
+		}
+		var fn *btf.Func
+		if err := kspec.TypeByName(attachPoint, &fn); err == nil {
+			if !strings.EqualFold(ps.AttachTo, attachPoint) {
+				ps.AttachTo = attachPoint
+				log.Debugf("ebpf: using attach point %q for %q program", attachPoint, bpfProgramName)
+			}
+		} else {
+			if !strings.EqualFold(ps.AttachTo, attachPointLegacy) {
+				ps.AttachTo = attachPointLegacy
+				log.Debugf("ebpf: using legacy attach point %q for %q program", attachPointLegacy, bpfProgramName)
+			}
+		}
+		return nil
+	}
+
+	// 'udp_v4_connect' program is designed to attach to the `udp_connect` function in the kernel.
+	// If the kernel does not support this function, we fall back to using the `ip4_datagram_connect` function.
+	//
+	// Kernel compatibility note:
+	// - Linux kernels < 6.13: use `ip4_datagram_connect` function
+	//   https://elixir.bootlin.com/linux/v6.12.34/source/net/ipv4/udp.c#L2997
+	// - Linux kernels >= 6.13: function renamed to `udp_connect`
+	//   https://elixir.bootlin.com/linux/v6.13-rc1/source/net/ipv4/udp.c#L3131
+	const (
+		udpV4ConnectProgramName       = "udp_v4_connect"
+		udpV4ConnectAttachPoint       = "udp_connect"
+		udpV4ConnectAttachPointLegacy = "ip4_datagram_connect"
+	)
+	if err := updateIfNeeded(udpV4ConnectProgramName, udpV4ConnectAttachPoint, udpV4ConnectAttachPointLegacy); err != nil {
+		return err
+	}
+
+	// 'udp_v6_connect' program is designed to attach to the `udpv6_connect` function in the kernel.
+	// If the kernel does not support this function, we fall back to using the `ip6_datagram_connect` function.
+	//
+	// Kernel compatibility note:
+	// - Linux kernels < 6.13: use `ip6_datagram_connect` function
+	//   https://elixir.bootlin.com/linux/v6.12.34/source/net/ipv4/udp.c#L2997
+	// - Linux kernels >= 6.13: function renamed to `udpv6_connect`
+	//   https://elixir.bootlin.com/linux/v6.13-rc1/source/net/ipv4/udp.c#L3131
+	const (
+		udpV6ConnectProgramName       = "udp_v6_connect"
+		udpV6ConnectAttachPoint       = "udpv6_connect"
+		udpV6ConnectAttachPointLegacy = "ip6_datagram_connect"
+	)
+	if err := updateIfNeeded(udpV6ConnectProgramName, udpV6ConnectAttachPoint, udpV6ConnectAttachPointLegacy); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // isEventValid checks whether the given bpfEvent is valid or not.
