@@ -48,6 +48,8 @@ var (
 	ErrAutoCheckDisabled = errors.New("automatic update checks are disabled")
 	ErrNoUpdateAvailable = errors.New("no update available")
 	ErrActionRequired    = errors.New("action required")
+
+	module *Updater
 )
 
 // UpdateCommandConfig defines the configuration for a shell command
@@ -106,6 +108,9 @@ type Config struct {
 
 	// list of shell commands needed to run after the upgrade (if any)
 	PostUpgradeCommands []UpdateCommandConfig
+
+	// CustomRestartFunc defines a custom restart function that is called when a restart is required.
+	CustomRestartFunc func() error
 }
 
 // Check looks for obvious configuration errors.
@@ -159,6 +164,7 @@ type Updater struct {
 
 	updateCheckWorkerMgr *mgr.WorkerMgr
 	upgradeWorkerMgr     *mgr.WorkerMgr
+	restartWorkerMgr     *mgr.WorkerMgr
 
 	EventResourcesUpdated *mgr.EventMgr[struct{}]
 
@@ -201,6 +207,7 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 	// Create Workers.
 	module.updateCheckWorkerMgr = m.NewWorkerMgr("update checker", module.updateCheckWorker, nil)
 	module.upgradeWorkerMgr = m.NewWorkerMgr("upgrader", module.upgradeWorker, nil)
+	module.restartWorkerMgr = m.NewWorkerMgr("automatic restart", automaticRestart, nil)
 
 	// Load index.
 	index, err := LoadIndex(filepath.Join(cfg.Directory, cfg.IndexFile), cfg.Platform, cfg.Verify)
@@ -431,6 +438,12 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 		}
 
 		return fmt.Errorf("%w: restart required", ErrActionRequired)
+	}
+
+	// If a custom restart function is provided, use it.
+	if u.cfg.CustomRestartFunc != nil {
+		u.cfg.CustomRestartFunc()
+		return nil
 	}
 
 	// Otherwise, trigger restart immediately.
