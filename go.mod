@@ -1,8 +1,6 @@
 module github.com/safing/portmaster
 
-go 1.24
-
-toolchain go1.24.0
+go 1.24.0
 
 require (
 	github.com/VictoriaMetrics/metrics v1.35.1
@@ -32,7 +30,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
-	github.com/jackc/puddle/v2 v2.2.1
+	github.com/jackc/puddle/v2 v2.2.2
 	github.com/lmittmann/tint v1.0.5
 	github.com/maruel/panicparse/v2 v2.3.1
 	github.com/mattn/go-colorable v0.1.13
@@ -52,8 +50,8 @@ require (
 	github.com/simukti/sqldb-logger v0.0.0-20230108155151-646c1a075551
 	github.com/spf13/cobra v1.8.1
 	github.com/spkg/zipfs v0.7.1
-	github.com/stephenafamo/bob v0.30.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stephenafamo/bob v0.38.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tannerryan/ring v1.1.2
 	github.com/tc-hib/winres v0.3.1
 	github.com/tevino/abool v1.2.0
@@ -63,24 +61,29 @@ require (
 	github.com/varlink/go v0.4.0
 	github.com/vincent-petithory/dataurl v1.0.0
 	go.etcd.io/bbolt v1.3.10
-	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
+	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
 	golang.org/x/image v0.19.0
-	golang.org/x/net v0.28.0
-	golang.org/x/sync v0.10.0
-	golang.org/x/sys v0.29.0
+	golang.org/x/net v0.37.0
+	golang.org/x/sync v0.13.0
+	golang.org/x/sys v0.32.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.32.0
 	zombiezen.com/go/sqlite v1.3.0
 )
 
-require github.com/sergeymakinen/go-bmp v1.0.0 // indirect
+require (
+	dario.cat/mergo v1.0.1 // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
+	github.com/sergeymakinen/go-bmp v1.0.0 // indirect
+	github.com/stephenafamo/sqlparser v0.0.0-20250521201114-5cfed001272d // indirect
+)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.2.0 // indirect
-	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
+	github.com/Masterminds/semver/v3 v3.3.0 // indirect
+	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/aarondl/json v0.0.0-20221020222930-8b0db17ef1bf // indirect
 	github.com/aead/ecdh v0.2.0 // indirect
 	github.com/alessio/shellescape v1.4.2 // indirect
@@ -107,12 +110,11 @@ require (
 	github.com/golang/gddo v0.0.0-20210115222349-20d68f94ee1f // indirect
 	github.com/golang/glog v1.2.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
-	github.com/huandu/xstrings v1.4.0 // indirect
-	github.com/imdario/mergo v0.3.13 // indirect
+	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
@@ -142,10 +144,10 @@ require (
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/seehuhn/sha256d v1.0.0 // indirect
 	github.com/sergeymakinen/go-ico v1.0.0-beta.0
-	github.com/shopspring/decimal v1.3.1 // indirect
-	github.com/spf13/cast v1.5.0 // indirect
+	github.com/shopspring/decimal v1.4.0 // indirect
+	github.com/spf13/cast v1.7.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stephenafamo/scan v0.6.1 // indirect
+	github.com/stephenafamo/scan v0.6.2 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
@@ -162,11 +164,11 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zalando/go-keyring v0.2.5 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/mod v0.20.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
-	golang.org/x/tools v0.24.0 // indirect
-	google.golang.org/protobuf v1.34.2 // indirect
+	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/mod v0.24.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
+	golang.org/x/tools v0.31.0 // indirect
+	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/gc/v3 v3.0.0-20240107210532-573471604cb6 // indirect
 	modernc.org/libc v1.59.9 // indirect
@@ -174,7 +176,7 @@ require (
 	modernc.org/memory v1.8.0 // indirect
 	modernc.org/strutil v1.2.0 // indirect
 	modernc.org/token v1.1.0 // indirect
-	mvdan.cc/gofumpt v0.5.0 // indirect
+	mvdan.cc/gofumpt v0.7.0 // indirect
 )
 
 tool (
