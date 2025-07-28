@@ -5,15 +5,20 @@ on:
     paths:
       - 'windows_core_dll/**'
     branches:
-      - master
-      - develop
+      - main
+      - development
+      - v1-legacy
+      - v1-legacy-develop
 
   pull_request:
     paths:
       - 'windows_core_dll/**'
     branches:
-      - master
-      - develop
+      - main
+      - development
+      - v1-legacy
+      - v1-legacy-develop
+
   workflow_dispatch:
 
 jobs:

@@ -3,8 +3,9 @@ name: Release v2.X
 on:
   push:
     branches:
-      - v2.0
-      - feature/new-installer
+      - main
+      - development
+
     tags:        
       - v*
   workflow_dispatch:

@@ -5,15 +5,19 @@ on:
     paths:
       - 'windows_kext/**'
     branches:
-      - master
-      - develop
+      - main
+      - development
+      - v1-legacy
+      - v1-legacy-develop
 
   pull_request:
     paths:
       - 'windows_kext/**'
     branches:
-      - master
-      - develop
+      - main
+      - development
+      - v1-legacy
+      - v1-legacy-develop
 
 jobs:
   build:

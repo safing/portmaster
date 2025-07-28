@@ -9,8 +9,10 @@ on:
       - 'service/**'
       - 'spn/**'
     branches:
-      - master
-      - develop
+      - main
+      - development
+      - v1-legacy
+      - v1-legacy-develop
 
   pull_request:
     paths:
@@ -20,8 +22,10 @@ on:
       - 'service/**'
       - 'spn/**'
     branches:
-      - master
-      - develop
+      - main
+      - development
+      - v1-legacy
+      - v1-legacy-develop
 
 jobs:
   lint:
