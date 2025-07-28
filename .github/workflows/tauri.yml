@@ -5,15 +5,15 @@ on:
     paths:
       - 'desktop/tauri/**'
     branches:
-      - master
-      - develop
+      - v1-legacy
+      - v1-legacy-develop
 
   pull_request:
     paths:
       - 'desktop/tauri/**'
     branches:
-      - master
-      - develop
+      - v1-legacy
+      - v1-legacy-develop
 
 jobs:
   build:
