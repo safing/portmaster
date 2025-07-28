@@ -66,7 +66,7 @@ require (
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
 	golang.org/x/image v0.19.0
 	golang.org/x/net v0.28.0
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.16.0
 	golang.org/x/sys v0.29.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.32.0
