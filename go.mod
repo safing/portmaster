@@ -34,8 +34,8 @@ require (
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
 	github.com/jackc/puddle/v2 v2.2.1
 	github.com/lmittmann/tint v1.0.5
-	github.com/maruel/panicparse/v2 v2.3.1
-	github.com/mattn/go-colorable v0.1.13
+	github.com/maruel/panicparse/v2 v2.5.0
+	github.com/mattn/go-colorable v0.1.14
 	github.com/mattn/go-isatty v0.0.20
 	github.com/miekg/dns v1.1.62
 	github.com/mitchellh/copystructure v1.2.0
@@ -67,7 +67,7 @@ require (
 	golang.org/x/image v0.19.0
 	golang.org/x/net v0.28.0
 	golang.org/x/sync v0.10.0
-	golang.org/x/sys v0.29.0
+	golang.org/x/sys v0.31.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.32.0
 	zombiezen.com/go/sqlite v1.3.0
@@ -107,7 +107,7 @@ require (
 	github.com/golang/gddo v0.0.0-20210115222349-20d68f94ee1f // indirect
 	github.com/golang/glog v1.2.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
