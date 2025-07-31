@@ -32,7 +32,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
-	github.com/jackc/puddle/v2 v2.2.1
+	github.com/jackc/puddle/v2 v2.2.2
 	github.com/lmittmann/tint v1.0.5
 	github.com/maruel/panicparse/v2 v2.3.1
 	github.com/mattn/go-colorable v0.1.13
