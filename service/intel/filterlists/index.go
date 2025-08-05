@@ -209,7 +209,7 @@ func updateListIndex() error {
 			)
 		default:
 			// List is in cache and current, there is nothing to do.
-			log.Debug("filterlists: index is up to date")
+			log.Debugf("filterlists: index is up to date (%s == %s)", index.Version, listIndexUpdate.Version)
 
 			// Update the unbreak filter list IDs on initial load.
 			updateUnbreakFilterListIDs()

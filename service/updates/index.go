@@ -59,6 +59,10 @@ func (a *Artifact) SemVer() *semver.Version {
 	return a.versionNum
 }
 
+func (a *Artifact) String() string {
+	return fmt.Sprintf("%s(v%s)", a.Filename, a.Version)
+}
+
 // IsNewerThan returns whether the artifact is newer than the given artifact.
 // Returns true if the given artifact is nil.
 // The second return value "ok" is false when version could not be compared.
