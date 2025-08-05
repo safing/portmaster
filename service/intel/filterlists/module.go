@@ -45,14 +45,17 @@ func (fl *FilterLists) Stop() error {
 	return stop()
 }
 
-// booleans mainly used to decouple the module
-// during testing.
 var (
+	moduleInitDone chan struct{}
+
+	// booleans mainly used to decouple the module during testing.
 	ignoreUpdateEvents = abool.New()
 	ignoreNetEnvEvents = abool.New()
 )
 
 func init() {
+	moduleInitDone = make(chan struct{})
+
 	ignoreNetEnvEvents.Set()
 }
 
@@ -87,6 +90,10 @@ func start() error {
 	filterListLock.Lock()
 	defer filterListLock.Unlock()
 
+	// Signal that the module has been initialized.
+	// This indicates that the module is ready for use, with the default filter
+	defer close(moduleInitDone)
+
 	ver, err := getCacheDatabaseVersion()
 	if err == nil {
 		log.Debugf("intel/filterlists: cache database has version %s", ver.String())
@@ -108,6 +115,7 @@ func start() error {
 }
 
 func stop() error {
+	moduleInitDone = make(chan struct{})
 	filterListsLoaded = make(chan struct{})
 	return nil
 }

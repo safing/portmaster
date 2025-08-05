@@ -238,7 +238,7 @@ func getUpgradableFiles() ([]*updates.Artifact, error) {
 func resolveUpdateOrder(updateOrder []*updates.Artifact) ([]*updates.Artifact, error) {
 	// sort the update order by ascending version
 	sort.Sort(byAscVersion(updateOrder))
-	log.Tracef("intel/filterlists: order of updates: %v", updateOrder)
+	log.Tracef("intel/filterlists: order of potential updates: %v", updateOrder)
 
 	var cacheDBVersion *version.Version
 	if !isLoaded() {

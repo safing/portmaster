@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/go-version"
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/log"
@@ -167,6 +168,16 @@ var (
 	listIndexUpdateLock sync.Mutex
 )
 
+// Compares two version strings and returns true only if both are successfully parsed and equal
+func areSemversEqual(v1, v2 string) bool {
+	parsedV1, err1 := version.NewSemver(v1)
+	parsedV2, err2 := version.NewSemver(v2)
+	if err1 != nil || err2 != nil {
+		return false
+	}
+	return parsedV1.Equal(parsedV2)
+}
+
 func updateListIndex() error {
 	listIndexUpdateLock.Lock()
 	defer listIndexUpdateLock.Unlock()
@@ -188,7 +199,9 @@ func updateListIndex() error {
 			log.Info("filterlists: index not in cache, starting update")
 		case err != nil:
 			log.Warningf("filterlists: failed to load index from cache, starting update: %s", err)
-		case listIndexUpdate.Version != strings.TrimPrefix(index.Version, "v"):
+		case listIndexUpdate.Version != strings.TrimPrefix(index.Version, "v") &&
+			// Avoid false positives by checking if the version is actually different (e.g. "2025.04.14 == 2025.4.14")
+			!areSemversEqual(listIndexUpdate.Version, index.Version):
 			log.Infof(
 				"filterlists: index from cache is outdated, starting update (%s != %s)",
 				strings.TrimPrefix(index.Version, "v"),
@@ -196,7 +209,7 @@ func updateListIndex() error {
 			)
 		default:
 			// List is in cache and current, there is nothing to do.
-			log.Debug("filterlists: index is up to date")
+			log.Debugf("filterlists: index is up to date (%s == %s)", index.Version, listIndexUpdate.Version)
 
 			// Update the unbreak filter list IDs on initial load.
 			updateUnbreakFilterListIDs()
