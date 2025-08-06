@@ -210,7 +210,7 @@ func testDatabase(t *testing.T, storageType string, shadowDelete bool) { //nolin
 			// run maintenance
 			// Since previous call MaintainRecordStates() saved actual timestamp for deleted records,
 			// use 'now + 1sec' just to guarantee that time is bigger)
-			err = dbController.MaintainRecordStates(context.TODO(), time.Now().Add(time.Second).UTC())
+			err = dbController.MaintainRecordStates(t.Context(), time.Now().Add(time.Second).UTC())
 			if err != nil {
 				t.Fatal(err)
 			}

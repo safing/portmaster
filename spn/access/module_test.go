@@ -86,5 +86,5 @@ func TestMain(m *testing.M) {
 	conf.EnableClient(true)
 	m.Run()
 
-	exitCode = 0 //success
+	exitCode = 0 // success
 }
