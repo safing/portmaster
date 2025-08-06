@@ -18,6 +18,7 @@ import (
 	_ "github.com/safing/portmaster/base/database/storage/bbolt"
 	_ "github.com/safing/portmaster/base/database/storage/fstree"
 	_ "github.com/safing/portmaster/base/database/storage/hashmap"
+	_ "github.com/safing/portmaster/base/database/storage/sqlite"
 )
 
 func TestMain(m *testing.M) {
@@ -181,12 +182,22 @@ func testDatabase(t *testing.T, storageType string, shadowDelete bool) { //nolin
 			if !errors.Is(err, storage.ErrNotFound) {
 				t.Errorf("A should be deleted and purged, err=%s", err)
 			}
-			B1, err := dbController.storage.Get("B")
-			if err != nil {
-				t.Fatalf("should exist: %s, original meta: %+v", err, B.Meta())
-			}
-			if B1.Meta().Deleted == 0 {
-				t.Errorf("B should be deleted")
+
+			if !shadowDelete {
+				// previous call MaintainRecordStates() must purge all expired and deleted records
+				_, err := dbController.storage.Get("B")
+				if !errors.Is(err, storage.ErrNotFound) {
+					t.Errorf("B should be deleted and purged, err=%s", err)
+				}
+			} else {
+				B1, err := dbController.storage.Get("B")
+				if err != nil {
+					t.Fatalf("should exist: %s, original meta: %+v", err, B.Meta())
+				}
+
+				if B1.Meta().Deleted == 0 {
+					t.Errorf("B should be deleted")
+				}
 			}
 
 			// delete last entry
@@ -197,7 +208,9 @@ func testDatabase(t *testing.T, storageType string, shadowDelete bool) { //nolin
 			}
 
 			// run maintenance
-			err = dbController.MaintainRecordStates(context.TODO(), now)
+			// Since previous call MaintainRecordStates() saved actual timestamp for deleted records,
+			// use 'now + 1sec' just to guarantee that time is bigger)
+			err = dbController.MaintainRecordStates(context.TODO(), time.Now().Add(time.Second).UTC())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -251,6 +264,7 @@ func TestDatabaseSystem(t *testing.T) { //nolint:tparallel
 	}()
 
 	for _, shadowDelete := range []bool{false, true} {
+		testDatabase(t, "sqlite", shadowDelete)
 		testDatabase(t, "bbolt", shadowDelete)
 		testDatabase(t, "hashmap", shadowDelete)
 		testDatabase(t, "fstree", shadowDelete)
