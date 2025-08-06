@@ -106,7 +106,7 @@ func TestPerformUpdate(t *testing.T) {
 // GenerateMockFolder generates mock index folder for testing.
 func GenerateMockFolder(dir, name, version string, published time.Time) error {
 	// Make sure dir exists
-	_ = os.MkdirAll(dir, 0o644)
+	_ = os.MkdirAll(dir, 0o750)
 
 	// Create empty files
 	file, err := os.Create(filepath.Join(dir, "portmaster"))
@@ -144,7 +144,7 @@ func GenerateMockFolder(dir, name, version string, published time.Time) error {
 		fmt.Fprintf(os.Stderr, "failed to marshal index: %s\n", err)
 	}
 
-	err = os.WriteFile(filepath.Join(dir, "index.json"), indexJSON, 0o644)
+	err = os.WriteFile(filepath.Join(dir, "index.json"), indexJSON, 0o600)
 	if err != nil {
 		return err
 	}

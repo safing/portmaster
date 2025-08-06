@@ -167,7 +167,7 @@ func testDatabase(t *testing.T, storageType string, shadowDelete bool) { //nolin
 			}
 
 			// run maintenance
-			err = dbController.MaintainRecordStates(context.TODO(), now.Add(-60*time.Second))
+			err = dbController.MaintainRecordStates(t.Context(), now.Add(-60*time.Second))
 			if err != nil {
 				t.Fatal(err)
 			}

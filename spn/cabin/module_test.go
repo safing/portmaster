@@ -15,34 +15,19 @@ import (
 )
 
 type testInstance struct {
-	db       *dbmodule.DBModule
-	api      *api.API
-	config   *config.Config
-	rng      *rng.Rng
-	base     *base.Base
-	_dataDir string
+	db     *dbmodule.DBModule
+	api    *api.API
+	config *config.Config
+	rng    *rng.Rng
+	base   *base.Base
 }
 
-func (stub *testInstance) Config() *config.Config {
-	return stub.config
-}
-
-func (stub *testInstance) SPNGroup() *mgr.ExtendedGroup {
-	return nil
-}
-
-func (stub *testInstance) Stopping() bool {
-	return false
-}
-
-func (stub *testInstance) Ready() bool {
-	return true
-}
+func (stub *testInstance) Config() *config.Config             { return stub.config }
+func (stub *testInstance) SPNGroup() *mgr.ExtendedGroup       { return nil }
+func (stub *testInstance) Stopping() bool                     { return false }
+func (stub *testInstance) Ready() bool                        { return true }
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
-
-func (stub *testInstance) DataDir() string {
-	return _dataDir
-}
+func (stub *testInstance) DataDir() string                    { return _dataDir }
 
 var _dataDir string
 
