@@ -21,7 +21,8 @@ func TestLocationLookup(t *testing.T) {
 	worker.triggerUpdate()
 	select {
 	case <-waiter:
-	case <-time.After(15 * time.Second):
+	case <-time.After(50 * time.Second):
+		t.Error("timeout waiting for geoip database to be initialized (updated)")
 	}
 
 	ip1 := net.ParseIP("81.2.69.142")

@@ -10,22 +10,17 @@ import (
 
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/ui"
 )
 
 type testInstance struct{}
 
-func (i *testInstance) Restart()  {}
-func (i *testInstance) Shutdown() {}
-
-func (i *testInstance) Notifications() *notifications.Notifications {
-	return nil
-}
-
-func (i *testInstance) Ready() bool {
-	return true
-}
-
-func (i *testInstance) SetCmdLineOperation(f func() error) {}
+func (i *testInstance) Restart()                                    {}
+func (i *testInstance) Shutdown()                                   {}
+func (i *testInstance) Notifications() *notifications.Notifications { return nil }
+func (i *testInstance) Ready() bool                                 { return true }
+func (i *testInstance) SetCmdLineOperation(f func() error)          {}
+func (i *testInstance) UI() *ui.UI                                  { return nil }
 
 func TestPerformUpdate(t *testing.T) {
 	t.Parallel()
@@ -39,11 +34,13 @@ func TestPerformUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = os.RemoveAll(installedDir) }()
+
 	updateDir, err := os.MkdirTemp("", "updates_new_")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = os.RemoveAll(updateDir) }()
+
 	purgeDir, err := os.MkdirTemp("", "updates_purge_")
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +106,7 @@ func TestPerformUpdate(t *testing.T) {
 // GenerateMockFolder generates mock index folder for testing.
 func GenerateMockFolder(dir, name, version string, published time.Time) error {
 	// Make sure dir exists
-	_ = os.MkdirAll(dir, defaultDirMode)
+	_ = os.MkdirAll(dir, 0o644)
 
 	// Create empty files
 	file, err := os.Create(filepath.Join(dir, "portmaster"))
@@ -147,7 +144,7 @@ func GenerateMockFolder(dir, name, version string, published time.Time) error {
 		fmt.Fprintf(os.Stderr, "failed to marshal index: %s\n", err)
 	}
 
-	err = os.WriteFile(filepath.Join(dir, "index.json"), indexJSON, defaultFileMode)
+	err = os.WriteFile(filepath.Join(dir, "index.json"), indexJSON, 0o644)
 	if err != nil {
 		return err
 	}

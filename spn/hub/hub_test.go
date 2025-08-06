@@ -8,90 +8,36 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/safing/portmaster/base/api"
-	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/dbmodule"
-	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/core/base"
-	"github.com/safing/portmaster/service/updates"
 )
 
 type testInstance struct {
-	db      *dbmodule.DBModule
-	api     *api.API
-	config  *config.Config
-	updates *updates.Updater
-	base    *base.Base
+	db   *dbmodule.DBModule
+	base *base.Base
 }
-
-func (stub *testInstance) IntelUpdates() *updates.Updater {
-	return stub.updates
-}
-
-func (stub *testInstance) API() *api.API {
-	return stub.api
-}
-
-func (stub *testInstance) Config() *config.Config {
-	return stub.config
-}
-
-func (stub *testInstance) Notifications() *notifications.Notifications {
-	return nil
-}
-
-func (stub *testInstance) Base() *base.Base {
-	return stub.base
-}
-
-func (stub *testInstance) Ready() bool {
-	return true
-}
-
-func (stub *testInstance) Restart() {}
-
-func (stub *testInstance) Shutdown() {}
 
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
+func (stub *testInstance) DataDir() string                    { return _dataDir }
+
+var _dataDir string
 
 func runTest(m *testing.M) error {
-	api.SetDefaultAPIListenAddress("0.0.0.0:8080")
-	ds, err := config.InitializeUnitTestDataroot("test-hub")
-	if err != nil {
-		return fmt.Errorf("failed to initialize dataroot: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(ds) }()
+	var err error
 
-	installDir, err := os.MkdirTemp("", "hub_installdir")
+	// Create a temporary directory for testing
+	_dataDir, err = os.MkdirTemp("", "")
 	if err != nil {
-		return fmt.Errorf("failed to create tmp install dir: %w", err)
+		return fmt.Errorf("failed to create temporary data directory: %w", err)
 	}
-	defer func() { _ = os.RemoveAll(installDir) }()
-	err = updates.GenerateMockFolder(installDir, "Test Intel", "1.0.0")
-	if err != nil {
-		return fmt.Errorf("failed to generate mock installation: %w", err)
-	}
+	defer func() { _ = os.RemoveAll(_dataDir) }()
 
+	// Initialize the instance with the necessary components
 	stub := &testInstance{}
 	// Init
 	stub.db, err = dbmodule.New(stub)
 	if err != nil {
 		return fmt.Errorf("failed to create database: %w", err)
-	}
-	stub.api, err = api.New(stub)
-	if err != nil {
-		return fmt.Errorf("failed to create api: %w", err)
-	}
-	stub.config, err = config.New(stub)
-	if err != nil {
-		return fmt.Errorf("failed to create config: %w", err)
-	}
-	stub.updates, err = updates.New(stub, "Test Intel", updates.Config{
-		Directory: installDir,
-		IndexFile: "index.json",
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create updates: %w", err)
 	}
 	stub.base, err = base.New(stub)
 	if err != nil {
@@ -102,18 +48,6 @@ func runTest(m *testing.M) error {
 	err = stub.db.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start database: %w", err)
-	}
-	err = stub.api.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start api: %w", err)
-	}
-	err = stub.config.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start config: %w", err)
-	}
-	err = stub.updates.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start updates: %w", err)
 	}
 	err = stub.base.Start()
 	if err != nil {
