@@ -15,11 +15,12 @@ import (
 )
 
 type testInstance struct {
-	db     *dbmodule.DBModule
-	api    *api.API
-	config *config.Config
-	rng    *rng.Rng
-	base   *base.Base
+	db       *dbmodule.DBModule
+	api      *api.API
+	config   *config.Config
+	rng      *rng.Rng
+	base     *base.Base
+	_dataDir string
 }
 
 func (stub *testInstance) Config() *config.Config {
@@ -39,14 +40,21 @@ func (stub *testInstance) Ready() bool {
 }
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
 
+func (stub *testInstance) DataDir() string {
+	return _dataDir
+}
+
+var _dataDir string
+
 func runTest(m *testing.M) error {
 	api.SetDefaultAPIListenAddress("0.0.0.0:8080")
-	// Initialize dataroot
-	ds, err := config.InitializeUnitTestDataroot("test-cabin")
+
+	// Create a temporary directory for the data
+	_dataDir, err := os.MkdirTemp("", "")
 	if err != nil {
 		return fmt.Errorf("failed to initialize dataroot: %w", err)
 	}
-	defer func() { _ = os.RemoveAll(ds) }()
+	defer func() { _ = os.RemoveAll(_dataDir) }()
 
 	// Init
 	instance := &testInstance{}

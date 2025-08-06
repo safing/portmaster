@@ -28,12 +28,12 @@ func ExampleDirStructure() {
 		return
 	}
 
-	ds := NewDirStructure(basePath, PublicReadPermission)
-	secret := ds.ChildDir("secret", AdminOnlyPermission)
-	repo := ds.ChildDir("repo", PublicWritePermission)
-	_ = repo.ChildDir("a", AdminOnlyPermission)
-	b := repo.ChildDir("b", PublicReadPermission)
-	c := b.ChildDir("c", PublicWritePermission)
+	ds := NewDirStructure(basePath, PublicReadExecPermission)
+	secret := ds.ChildDir("secret", AdminOnlyExecPermission)
+	repo := ds.ChildDir("repo", PublicWriteExecPermission)
+	_ = repo.ChildDir("a", AdminOnlyExecPermission)
+	b := repo.ChildDir("b", PublicReadExecPermission)
+	c := b.ChildDir("c", PublicWriteExecPermission)
 
 	err = ds.Ensure()
 	if err != nil {

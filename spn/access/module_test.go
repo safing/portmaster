@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database"
+	_ "github.com/safing/portmaster/base/database/storage/hashmap"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
 )
@@ -25,11 +27,43 @@ func (stub *testInstance) SPNGroup() *mgr.ExtendedGroup {
 func (stub *testInstance) Stopping() bool {
 	return false
 }
+
+func (stub *testInstance) IsShuttingDown() bool {
+	return false
+}
+
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
 
+func (stub *testInstance) DataDir() string {
+	return _dataDir
+}
+
+var _dataDir string
+
 func TestMain(m *testing.M) {
+	// Create a temporary directory for the data
+	_dataDir, err := os.MkdirTemp("", "")
+	if err != nil {
+		fmt.Printf("failed to create temporary data directory: %s", err)
+		os.Exit(0)
+	}
+	defer func() { _ = os.RemoveAll(_dataDir) }()
+
+	// Initialize the database module
+	database.Initialize(_dataDir)
+	_, err = database.Register(&database.Database{
+		Name:        "core",
+		Description: "Holds core data, such as settings and profiles",
+		StorageType: "hashmap",
+	})
+	if err != nil {
+		fmt.Printf("failed to register core database: %s", err)
+		os.Exit(0)
+	}
+
+	// Initialize the instance
 	instance := &testInstance{}
-	var err error
+
 	instance.config, err = config.New(instance)
 	if err != nil {
 		fmt.Printf("failed to create config module: %s", err)
