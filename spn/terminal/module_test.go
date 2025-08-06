@@ -22,6 +22,18 @@ type testInstance struct {
 	rng     *rng.Rng
 	base    *base.Base
 	cabin   *cabin.Cabin
+	dataDir string
+}
+
+func (stub *testInstance) DataDir() string {
+	if len(stub.dataDir) == 0 {
+		var err error
+		stub.dataDir, err = os.MkdirTemp("", "")
+		if err != nil {
+			panic(fmt.Sprintf("failed to create temp dir: %v", err))
+		}
+	}
+	return stub.dataDir
 }
 
 func (stub *testInstance) Config() *config.Config {
@@ -42,11 +54,7 @@ func (stub *testInstance) Stopping() bool {
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
 
 func runTest(m *testing.M) error {
-	ds, err := config.InitializeUnitTestDataroot("test-terminal")
-	if err != nil {
-		return fmt.Errorf("failed to initialize dataroot: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(ds) }()
+	var err error
 
 	conf.EnablePublicHub(true) // Make hub config available.
 

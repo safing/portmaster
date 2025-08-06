@@ -29,31 +29,25 @@ type testInstance struct {
 	cabin    *cabin.Cabin
 }
 
-func (stub *testInstance) Config() *config.Config {
-	return stub.config
-}
-
-func (stub *testInstance) Metrics() *metrics.Metrics {
-	return stub.metrics
-}
-
-func (stub *testInstance) SPNGroup() *mgr.ExtendedGroup {
-	return nil
-}
-
-func (stub *testInstance) Stopping() bool {
-	return false
-}
+func (stub *testInstance) Config() *config.Config             { return stub.config }
+func (stub *testInstance) SPNGroup() *mgr.ExtendedGroup       { return nil }
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
+func (stub *testInstance) IsShuttingDown() bool               { return false }
+func (stub *testInstance) DataDir() string                    { return _dataDir }
+
+var _dataDir string
 
 func runTest(m *testing.M) error {
 	_ = log.Start("info", true, "")
 
-	ds, err := config.InitializeUnitTestDataroot("test-docks")
+	var err error
+
+	// Create a temporary directory for the data
+	_dataDir, err = os.MkdirTemp("", "")
 	if err != nil {
 		return fmt.Errorf("failed to initialize dataroot: %w", err)
 	}
-	defer func() { _ = os.RemoveAll(ds) }()
+	defer func() { _ = os.RemoveAll(_dataDir) }()
 
 	instance := &testInstance{}
 	runningTests = true

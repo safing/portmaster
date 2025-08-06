@@ -22,31 +22,24 @@ type testInstance struct {
 	base   *base.Base
 }
 
-func (stub *testInstance) Config() *config.Config {
-	return stub.config
-}
-
-func (stub *testInstance) SPNGroup() *mgr.ExtendedGroup {
-	return nil
-}
-
-func (stub *testInstance) Stopping() bool {
-	return false
-}
-
-func (stub *testInstance) Ready() bool {
-	return true
-}
+func (stub *testInstance) Config() *config.Config             { return stub.config }
+func (stub *testInstance) SPNGroup() *mgr.ExtendedGroup       { return nil }
+func (stub *testInstance) Stopping() bool                     { return false }
+func (stub *testInstance) Ready() bool                        { return true }
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
+func (stub *testInstance) DataDir() string                    { return _dataDir }
+
+var _dataDir string
 
 func runTest(m *testing.M) error {
 	api.SetDefaultAPIListenAddress("0.0.0.0:8080")
-	// Initialize dataroot
-	ds, err := config.InitializeUnitTestDataroot("test-cabin")
+	var err error
+	// Create a temporary directory for the data
+	_dataDir, err = os.MkdirTemp("", "")
 	if err != nil {
 		return fmt.Errorf("failed to initialize dataroot: %w", err)
 	}
-	defer func() { _ = os.RemoveAll(ds) }()
+	defer func() { _ = os.RemoveAll(_dataDir) }()
 
 	// Init
 	instance := &testInstance{}
