@@ -27,7 +27,11 @@ type testInstance struct {
 
 func (stub *testInstance) DataDir() string {
 	if len(stub.dataDir) == 0 {
-		stub.dataDir, _ = os.MkdirTemp("", "")
+		var err error
+		stub.dataDir, err = os.MkdirTemp("", "")
+		if err != nil {
+			panic(fmt.Sprintf("failed to create temp dir: %v", err))
+		}
 	}
 	return stub.dataDir
 }

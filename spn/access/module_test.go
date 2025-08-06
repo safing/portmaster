@@ -41,8 +41,9 @@ func (stub *testInstance) DataDir() string {
 var _dataDir string
 
 func TestMain(m *testing.M) {
+	var err error
 	// Create a temporary directory for the data
-	_dataDir, err := os.MkdirTemp("", "")
+	_dataDir, err = os.MkdirTemp("", "")
 	if err != nil {
 		fmt.Printf("failed to create temporary data directory: %s", err)
 		os.Exit(0)

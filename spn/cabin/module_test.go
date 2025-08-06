@@ -48,9 +48,9 @@ var _dataDir string
 
 func runTest(m *testing.M) error {
 	api.SetDefaultAPIListenAddress("0.0.0.0:8080")
-
+	var err error
 	// Create a temporary directory for the data
-	_dataDir, err := os.MkdirTemp("", "")
+	_dataDir, err = os.MkdirTemp("", "")
 	if err != nil {
 		return fmt.Errorf("failed to initialize dataroot: %w", err)
 	}

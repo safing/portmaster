@@ -52,8 +52,9 @@ var _dataDir string
 
 func runTest(m *testing.M) error {
 	conf.EnablePublicHub(true) // Make hub config available.
+	var err error
 	// Create a temporary directory for the data
-	_dataDir, err := os.MkdirTemp("", "")
+	_dataDir, err = os.MkdirTemp("", "")
 	if err != nil {
 		return fmt.Errorf("failed to initialize dataroot: %w", err)
 	}
