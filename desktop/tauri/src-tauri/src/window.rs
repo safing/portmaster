@@ -35,6 +35,7 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
             .visible(false)
             .inner_size(1200.0, 700.0)
             .min_inner_size(800.0, 600.0)
+            .zoom_hotkeys_enabled(true)
             .theme(Some(Theme::Dark))
             .on_page_load(|_window, _event| {
                 debug!("[tauri] main window page loaded: {}", _event.url());
@@ -104,6 +105,7 @@ pub fn create_splash_window(app: &AppHandle) -> Result<WebviewWindow> {
             .visible(true)
             .title("Portmaster")
             .inner_size(600.0, 250.0)
+            .zoom_hotkeys_enabled(true)
             .build()?;
         set_window_icon(&window);
 

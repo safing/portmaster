@@ -28,6 +28,7 @@
     "core:resources:default",
     "core:menu:default",
     "core:tray:default",
+    "core:webview:allow-set-webview-zoom",
     "shell:allow-open",
     "notification:default",
     "window-state:allow-save-window-state",
