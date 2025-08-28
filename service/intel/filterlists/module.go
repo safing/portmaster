@@ -35,9 +35,6 @@ func (fl *FilterLists) States() *mgr.StateMgr {
 }
 
 func (fl *FilterLists) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
 	return start()
 }
 
@@ -46,26 +43,21 @@ func (fl *FilterLists) Stop() error {
 }
 
 var (
-	moduleInitDone chan struct{}
-
 	// booleans mainly used to decouple the module during testing.
 	ignoreUpdateEvents = abool.New()
 	ignoreNetEnvEvents = abool.New()
 )
 
 func init() {
-	moduleInitDone = make(chan struct{})
-
 	ignoreNetEnvEvents.Set()
 }
 
-func prep() error {
+func registerEventCallbacks() error {
 	module.instance.IntelUpdates().EventResourcesUpdated.AddCallback("Check for blocklist updates",
 		func(wc *mgr.WorkerCtx, s struct{}) (bool, error) {
 			if ignoreUpdateEvents.IsSet() {
 				return false, nil
 			}
-			log.Debugf("performing filter list update")
 
 			return false, tryListUpdate(wc.Ctx())
 		})
@@ -90,9 +82,22 @@ func start() error {
 	filterListLock.Lock()
 	defer filterListLock.Unlock()
 
-	// Signal that the module has been initialized.
-	// This indicates that the module is ready for use, with the default filter
-	defer close(moduleInitDone)
+	// Any call of tryListUpdate() must be only after module fully initialized
+	defer func() {
+		// Register event callbacks
+		if err := registerEventCallbacks(); err != nil {
+			log.Errorf("intel/filterlists: failed to register callbacks: %q", err.Error())
+		}
+
+		// Initial check filterlists updates
+		module.Manager().Go("intel/filterlists inital check for update", func(ctx *mgr.WorkerCtx) error {
+			if err := tryListUpdate(ctx.Ctx()); err != nil {
+				log.Errorf("intel/filterlists: tryListUpdate() failed: %q", err.Error())
+				return err
+			}
+			return nil
+		})
+	}()
 
 	ver, err := getCacheDatabaseVersion()
 	if err == nil {
@@ -115,7 +120,6 @@ func start() error {
 }
 
 func stop() error {
-	moduleInitDone = make(chan struct{})
 	filterListsLoaded = make(chan struct{})
 	return nil
 }

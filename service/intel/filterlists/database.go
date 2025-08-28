@@ -118,14 +118,6 @@ func processListFile(ctx context.Context, filter *scopedBloom, file *updates.Art
 		return
 	})
 
-	// Wait for the module initialization to complete to ensure the filter is fully loaded.
-	// This avoids prolonged locks during filter updates caused by concurrent database loading.
-	select {
-	case <-moduleInitDone:
-	case <-time.After(time.Second * 20):
-		log.Warning("intel/filterlists: timeout waiting for module initialization")
-	}
-
 	// Process each entry and send records to records channel.
 	startSafe(func() error {
 		defer close(records)
