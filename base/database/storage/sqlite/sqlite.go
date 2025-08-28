@@ -161,13 +161,28 @@ func (db *SQLite) putRecord(r record.Record, tx *bob.Tx) (record.Record, error) 
 		defer r.Unlock()
 	}
 
-	// Serialize to JSON.
-	data, err := r.MarshalDataOnly(r, dsd.JSON)
+	// default serialization format - JSON
+	format := uint8(dsd.JSON)
+
+	// For wrapped records, check the required format
+	if r.IsWrapped() {
+		wrapper, ok := r.(*record.Wrapper)
+		if !ok {
+			return nil, errors.New("record is malformed (reports to be wrapped but is not of type *record.Wrapper)")
+		}
+		format, ok = dsd.ValidateSerializationFormat(wrapper.Format)
+		if !ok {
+			return nil, dsd.ErrIncompatibleFormat
+		}
+	}
+
+	// Serialize.
+	data, err := r.MarshalDataOnly(r, format)
 	if err != nil {
 		return nil, err
 	}
 	// Prepare for setter.
-	setFormat := omitnull.From(int16(dsd.JSON))
+	setFormat := omitnull.From(int16(format))
 	setData := omitnull.From(data)
 	if len(data) == 0 {
 		setFormat.Null()
