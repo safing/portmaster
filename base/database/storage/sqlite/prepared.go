@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 	"strconv"
 
 	"github.com/stephenafamo/bob"
@@ -83,8 +84,23 @@ func writeWithPreparedStatement(ctx context.Context, pStmt *bob.StdPrepared, r r
 	r.Lock()
 	defer r.Unlock()
 
-	// Serialize to JSON.
-	data, err := r.MarshalDataOnly(r, dsd.JSON)
+	// default serialization format - JSON
+	format := uint8(dsd.JSON)
+
+	// For wrapped records, check the required format
+	if r.IsWrapped() {
+		wrapper, ok := r.(*record.Wrapper)
+		if !ok {
+			return errors.New("record is malformed (reports to be wrapped but is not of type *record.Wrapper)")
+		}
+		format, ok = dsd.ValidateSerializationFormat(wrapper.Format)
+		if !ok {
+			return dsd.ErrIncompatibleFormat
+		}
+	}
+
+	// Serialize.
+	data, err := r.MarshalDataOnly(r, format)
 	if err != nil {
 		return err
 	}
@@ -94,7 +110,7 @@ func writeWithPreparedStatement(ctx context.Context, pStmt *bob.StdPrepared, r r
 
 	// Insert.
 	if len(data) > 0 {
-		format := strconv.Itoa(dsd.JSON)
+		format := strconv.Itoa(int(format))
 		_, err = pStmt.ExecContext(
 			ctx,
 			r.DatabaseKey(),
