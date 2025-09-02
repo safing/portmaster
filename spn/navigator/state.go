@@ -91,6 +91,12 @@ const (
 		StateOffline |
 		StateUsageDiscouraged |
 		StateIsHomeHub
+
+	// StateSummaryStatusesAppliedFromIntel summarizes all states that are applied from the intel file.
+	StateSummaryStatusesAppliedFromIntel = StateTrusted |
+		StateUsageDiscouraged |
+		StateUsageAsHomeDiscouraged |
+		StateUsageAsDestinationDiscouraged
 )
 
 var allStates = []PinState{

@@ -168,9 +168,10 @@ func (m *Map) updateHub(h *hub.Hub, lockMap, lockHub bool) {
 		pin.Hub = h
 	} else {
 		pin = &Pin{
-			Hub:         h,
-			ConnectedTo: make(map[string]*Lane),
-			pushChanges: abool.New(),
+			Hub:               h,
+			ConnectedTo:       make(map[string]*Lane),
+			stateIntelApplied: abool.New(),
+			pushChanges:       abool.New(),
 		}
 		m.all[h.ID] = pin
 	}

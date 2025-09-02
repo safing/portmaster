@@ -67,13 +67,17 @@ func (m *Map) GetIntel() *hub.Intel {
 }
 
 func (m *Map) updateIntelStatuses(pin *Pin, trustNodes []string) {
-	// Reset all related states.
-	pin.removeStates(StateTrusted | StateUsageDiscouraged | StateUsageAsHomeDiscouraged | StateUsageAsDestinationDiscouraged)
+	// Reset all related states (StateSummaryStatusesAppliedFromIntel).
+	pin.stateIntelApplied.UnSet()
+	pin.removeStates(StateTrusted | StateUsageDiscouraged | StateUsageAsHomeDiscouraged | StateUsageAsDestinationDiscouraged) // same as: StateSummaryStatusesAppliedFromIntel
 
 	// Check if Intel data is loaded.
 	if m.intel == nil {
 		return
 	}
+
+	// Indicate that intel statuses have been applied to the pin
+	defer pin.stateIntelApplied.Set()
 
 	// Check Hub Intel
 	hubIntel, ok := m.intel.Hubs[pin.Hub.ID]
