@@ -168,7 +168,7 @@ func (db *SQLite) putRecord(r record.Record, tx *bob.Tx) (record.Record, error) 
 	if r.IsWrapped() {
 		wrapper, ok := r.(*record.Wrapper)
 		if !ok {
-			return nil, errors.New("record is malformed (reports to be wrapped but is not of type *record.Wrapper)")
+			return nil, fmt.Errorf("%w: reports to be wrapped but is not of type *record.Wrapper", storage.ErrRecordMalformed)
 		}
 		format, ok = dsd.ValidateSerializationFormat(wrapper.Format)
 		if !ok {

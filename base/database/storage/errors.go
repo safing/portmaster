@@ -4,5 +4,6 @@ import "errors"
 
 // Errors for storages.
 var (
-	ErrNotFound = errors.New("storage entry not found")
+	ErrNotFound        = errors.New("storage entry not found")
+	ErrRecordMalformed = errors.New("record is malformed")
 )
