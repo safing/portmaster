@@ -26,6 +26,10 @@ type Pin struct { //nolint:maligned
 
 	// Hub Status
 	State PinState
+
+	// stateIntelApplied signifies that states from intel file were applied to the pin.
+	stateIntelApplied *abool.AtomicBool
+
 	// VerifiedOwner holds the name of the verified owner / operator of the Hub.
 	VerifiedOwner string
 	// HopDistance signifies the needed hops to reach this Hub.

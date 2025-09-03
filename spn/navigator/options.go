@@ -246,6 +246,14 @@ func (o *HubOptions) Matcher(hubType HubType, hubIntel *hub.Intel) PinMatcher {
 			return false
 		}
 
+		// Check if all required states from intel were applied.
+		if regard.HasAnyOf(StateSummaryStatusesAppliedFromIntel) || disregard.HasAnyOf(StateSummaryStatusesAppliedFromIntel) {
+			if pin.stateIntelApplied.IsNotSet() {
+				log.Warningf("spn/navigator: pin %s skipped as intel statuses were not applied", pin.Hub.ID)
+				return false
+			}
+		}
+
 		// Check verified owners.
 		if len(o.RequireVerifiedOwners) > 0 {
 			// Check if Pin has a verified owner at all.

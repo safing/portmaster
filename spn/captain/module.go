@@ -135,8 +135,9 @@ func start() error {
 		crew.EnableConnecting(publicIdentity.Hub)
 	}
 
-	// Initialize intel.
-	module.mgr.Go("start", func(wc *mgr.WorkerCtx) error {
+	// Initialize SPN intel.
+	// Do this synchronously to ensure everything is up to date before
+	err = module.mgr.Do("start", func(wc *mgr.WorkerCtx) error {
 		if err := registerIntelUpdateHook(); err != nil {
 			return err
 		}
@@ -145,6 +146,9 @@ func start() error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 
 	// Subscribe to updates of cranes.
 	startDockHooks()
