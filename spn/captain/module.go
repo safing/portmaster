@@ -137,7 +137,7 @@ func start() error {
 
 	// Initialize SPN intel.
 	// Do this synchronously to ensure everything is up to date before
-	module.mgr.Do("start", func(wc *mgr.WorkerCtx) error {
+	err = module.mgr.Do("start", func(wc *mgr.WorkerCtx) error {
 		if err := registerIntelUpdateHook(); err != nil {
 			return err
 		}
@@ -146,6 +146,9 @@ func start() error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 
 	// Subscribe to updates of cranes.
 	startDockHooks()
