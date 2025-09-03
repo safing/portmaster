@@ -52,7 +52,7 @@ func init() {
 	ignoreNetEnvEvents.Set()
 }
 
-func registerEventCallbacks() error {
+func registerEventCallbacks() {
 	module.instance.IntelUpdates().EventResourcesUpdated.AddCallback("Check for blocklist updates",
 		func(wc *mgr.WorkerCtx, s struct{}) (bool, error) {
 			if ignoreUpdateEvents.IsSet() {
@@ -74,8 +74,6 @@ func registerEventCallbacks() error {
 
 			return false, tryListUpdate(wc.Ctx())
 		})
-
-	return nil
 }
 
 func start() error {
@@ -85,12 +83,10 @@ func start() error {
 	// Any call of tryListUpdate() must be only after module fully initialized
 	defer func() {
 		// Register event callbacks
-		if err := registerEventCallbacks(); err != nil {
-			log.Errorf("intel/filterlists: failed to register callbacks: %q", err.Error())
-		}
+		registerEventCallbacks()
 
 		// Initial check filterlists updates
-		module.Manager().Go("intel/filterlists inital check for update", func(ctx *mgr.WorkerCtx) error {
+		module.Manager().Go("intel/filterlists initial check for update", func(ctx *mgr.WorkerCtx) error {
 			if err := tryListUpdate(ctx.Ctx()); err != nil {
 				log.Errorf("intel/filterlists: tryListUpdate() failed: %q", err.Error())
 				return err
