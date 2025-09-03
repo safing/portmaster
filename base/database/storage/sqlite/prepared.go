@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/safing/structures/dsd"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/sqlite/im"
 	"github.com/stephenafamo/bob/expr"
@@ -13,6 +12,7 @@ import (
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/database/storage"
 	"github.com/safing/portmaster/base/database/storage/sqlite/models"
+	"github.com/safing/structures/dsd"
 )
 
 var UsePreparedStatements bool = true
