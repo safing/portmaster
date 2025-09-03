@@ -6,7 +6,7 @@ toolchain go1.24.0
 
 require (
 	github.com/VictoriaMetrics/metrics v1.35.1
-	github.com/Xuanwo/go-locale v1.1.1
+	github.com/Xuanwo/go-locale v1.1.3
 	github.com/aarondl/opt v0.0.0-20230114172057-b91f370c41f0
 	github.com/aead/serpent v0.0.0-20160714141033-fba169763ea6
 	github.com/agext/levenshtein v1.2.3
