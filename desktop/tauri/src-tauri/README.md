@@ -4,22 +4,22 @@ Check latest versions of tauri packages and update them accordingly (https://cra
 Cargo.toml:  
 ```toml
 [build-dependencies]
-tauri-build = { version = "2.0.0-beta.19", features = [] } # Update to latest
+tauri-build = { version = "x.x.x-beta.19", features = [] } # Update to latest
 
 [dependencies]
 # Tauri
-tauri = { version = "2.0.0-beta.24", features = ["tray-icon", "image-png", "config-json5", "devtools"] } # Update to latest
-tauri-plugin-shell = "2.0.0-beta"
-tauri-plugin-dialog = "2.0.0-beta"
-tauri-plugin-clipboard-manager = "2.0.0-beta"
-tauri-plugin-os = "2.0.0-beta"
-tauri-plugin-single-instance = "2.0.0-beta"
-tauri-plugin-cli = "2.0.0-beta"
-tauri-plugin-notification = "2.0.0-beta"
-tauri-plugin-log = "2.0.0-beta"
-tauri-plugin-window-state = "2.0.0-beta"
+tauri = { version = "x.x.x-beta.24", features = ["tray-icon", "image-png", "config-json5", "devtools"] } # Update to latest
+tauri-plugin-shell = "x.x.x-beta"
+tauri-plugin-dialog = "x.x.x-beta"
+tauri-plugin-clipboard-manager = "x.x.x-beta"
+tauri-plugin-os = "x.x.x-beta"
+tauri-plugin-single-instance = "x.x.x-beta"
+tauri-plugin-cli = "x.x.x-beta"
+tauri-plugin-notification = "x.x.x-beta"
+tauri-plugin-log = "x.x.x-beta"
+tauri-plugin-window-state = "x.x.x-beta"
 
-tauri-cli = "2.0.0-beta.21" # Update to latest
+tauri-cli = "x.x.x-beta.21" # Update to latest
 ```
 
 Run:
