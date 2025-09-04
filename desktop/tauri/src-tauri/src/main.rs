@@ -24,13 +24,21 @@ use log::{debug, error, info};
 use portmaster::PortmasterExt;
 use tauri_plugin_log::RotationStrategy;
 use traymenu::setup_tray_menu;
-use window::{close_splash_window, create_main_window, hide_splash_window};
-use tauri_plugin_window_state::StateFlags;
+use window::{close_splash_window, create_main_window, hide_splash_window, create_debounced_window_state_saver};
+use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 
 #[macro_use]
 extern crate lazy_static;
 
 const FALLBACK_TO_OLD_UI_EXIT_CODE: i32 = 77;
+
+// Window state configuration: save all properties except visibility to avoid 
+// interference with the "--background" command line argument
+const WINDOW_STATE_FLAGS_TO_SAVE: StateFlags = StateFlags::from_bits_truncate(
+    StateFlags::all().bits() & !StateFlags::VISIBLE.bits()
+);
+// Default timeout for debounced window state saving
+const WINDOW_STATE_SAVE_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[derive(Clone, serde::Serialize)]
 struct Payload {
@@ -177,7 +185,7 @@ fn main() {
         // Initialize save windows state plugin.
         .plugin(tauri_plugin_window_state::Builder::default()
             // Don't save visibility state, so it will not interfere with "--background" command line argument 
-            .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE) 
+            .with_state_flags(WINDOW_STATE_FLAGS_TO_SAVE) 
             // Don't save splash window state
             .with_denylist(&["splash",])
             .build())
@@ -228,6 +236,15 @@ fn main() {
             // register the custom handler
             app.portmaster().register_handler(handler);
 
+            // Setup window state saving on move/resize events with debouncing
+            let save_trigger = create_debounced_window_state_saver(app, 
+                WINDOW_STATE_FLAGS_TO_SAVE, 
+                WINDOW_STATE_SAVE_TIMEOUT);
+            let tx_move = save_trigger.clone();
+            let tx_resize = save_trigger;
+            app.listen_any("tauri://move",   move |_event| { let _ = tx_move.try_send(()); });
+            app.listen_any("tauri://resize", move |_event| { let _ = tx_resize.try_send(()); });
+
             Ok(())
         })
         .any_thread()
@@ -254,6 +271,10 @@ fn main() {
                     "window (label={}) close request received, forwarding to user-interface.",
                     label
                 );
+
+                // Manually save the window state on close attempt. 
+                // This ensures the state is saved since we prevent the close event.
+                let _ = handle.save_window_state(WINDOW_STATE_FLAGS_TO_SAVE);
 
                 api.prevent_close();
                 if let Some(window) = handle.get_webview_window(label.as_str()) {

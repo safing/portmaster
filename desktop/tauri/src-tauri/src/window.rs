@@ -4,6 +4,7 @@ use tauri::{
     WebviewWindow, WebviewWindowBuilder,
 };
 use std::sync::{atomic::{AtomicBool, Ordering}};
+use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 
 use crate::{portmaster::PortmasterExt, traymenu};
 
@@ -261,4 +262,53 @@ pub fn may_navigate_to_ui(win: &mut WebviewWindow, force: bool) {
             win.url().unwrap().as_str()
         );
     }
+}
+
+/// Creates a debounced window state saver that waits for a quiet period before saving.
+///
+/// Returns a sender that can be used to trigger save events. Multiple rapid events
+/// will be debounced - only saving after the specified timeout with no new events.
+///
+/// # Example
+/// ```rust
+/// let save_trigger = create_debounced_window_state_saver(app, state_flags, Duration::from_secs(5));
+/// let _ = save_trigger.try_send(()); // Trigger a save (will be debounced)
+/// ```
+pub fn create_debounced_window_state_saver(
+    app: &tauri::App, 
+    state_flags: StateFlags,
+    debounce_timeout: std::time::Duration,
+) -> tokio::sync::mpsc::Sender<()> {
+    
+    let app_handle = app.handle().clone();
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(10);
+    
+    // Spawn debouncer task - saves state after the specified timeout following the last event
+    tauri::async_runtime::spawn(async move {
+        loop {
+            if rx.recv().await.is_none() {
+                break; // Channel closed
+            }
+
+            loop {
+                match tokio::time::timeout(debounce_timeout, rx.recv()).await {
+                    Ok(Some(_)) => {                        
+                        continue; // Received another event within timeout period, restart the timer
+                    }
+                    Ok(None) => {                        
+                        return; // Channel closed
+                    }
+                    Err(_) => {
+                        // Timeout: specified duration passed without new events, save state
+                        if let Err(e) = app_handle.save_window_state(state_flags) {
+                            debug!("Failed to save window state: {}", e);
+                        } 
+                        break; // Exit inner loop and wait for next event
+                    }
+                }
+            }
+        }
+    });
+
+    tx
 }
