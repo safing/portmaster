@@ -42,6 +42,14 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
                 debug!("[tauri] main window page loaded: {}", _event.url());
                 do_after_main_window_created(); // required operations after Main window creation
             })
+            .on_navigation(|url| {
+                debug!("[tauri] main window navigation event: {}", url);
+                if url.as_str() == "about:blank" {
+                    debug!("[tauri] blocking navigation to about:blank");
+                    return false;
+                }
+                return true;
+            })
             .build();
 
         match res {
