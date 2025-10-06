@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -45,6 +46,8 @@ func recoverIPTables(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	chainNotExistPattern := regexp.MustCompile(`(?i)chain\s+\S+\s+does not exist`) // "Chain ... does not exist"
+
 	var filteredErrors *multierror.Error
 	for _, err := range mr.Errors {
 		// if we have a permission denied error, all errors will be the same
@@ -52,7 +55,9 @@ func recoverIPTables(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to cleanup iptables: %w", os.ErrPermission)
 		}
 
-		if !strings.Contains(err.Error(), "No such file or directory") {
+		if !strings.Contains(err.Error(), "No such file or directory") &&
+			!chainNotExistPattern.MatchString(err.Error()) {
+
 			filteredErrors = multierror.Append(filteredErrors, err)
 		}
 	}

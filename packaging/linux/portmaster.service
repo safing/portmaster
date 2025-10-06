@@ -37,7 +37,7 @@ StateDirectory=portmaster
 # TODO(ppacher): add --disable-software-updates once it's merged and the release process changed.
 WorkingDirectory=/var/lib/portmaster
 ExecStart=/usr/lib/portmaster/portmaster-core --log-dir=/var/lib/portmaster/log -- $PORTMASTER_ARGS
-ExecStopPost=-/usr/lib/portmaster/portmaster-core -recover-iptables
+ExecStopPost=-/usr/lib/portmaster/portmaster-core --recover-iptables
 
 [Install]
 WantedBy=multi-user.target
