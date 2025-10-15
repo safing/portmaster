@@ -5,7 +5,7 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, Router } from "@angular/router";
 import { BandwidthChartResult, ChartResult, Condition, Database, FeatureID, GreaterOrEqual, IPScope, LessOrEqual, Netquery, NetqueryConnection, OrderBy, Pin, PossilbeValue, Query, QueryResult, SPNService, Select, Verdict } from "@safing/portmaster-api";
 import { Datasource, DynamicItemsPaginator, SelectOption } from "@safing/ui";
-import { BehaviorSubject, Observable, Subject, combineLatest, forkJoin, interval, of, timer } from "rxjs";
+import { BehaviorSubject, Observable, Subject, combineLatest, forkJoin, interval, merge, of, timer } from "rxjs";
 import { catchError, debounceTime, filter, map, share, skip, startWith, switchMap, take, takeUntil } from "rxjs/operators";
 import { ActionIndicatorService } from "../action-indicator";
 import { ExpertiseService } from "../expertise";
@@ -248,7 +248,11 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
   lastReload: Date = new Date();
 
   /** @private Used to refresh the "Last reload xxx ago" message */
-  lastReloadTicker = interval(2000)
+  private lastReloadTickerForceUpdate$ = new Subject<void>();
+  lastReloadTicker = merge(
+    interval(2000), 
+    this.lastReloadTickerForceUpdate$.pipe(takeUntilDestroyed(this.destroyRef))
+  )
     .pipe(
       takeUntilDestroyed(this.destroyRef),
       map(() => Math.floor((new Date()).getTime() - this.lastReload.getTime()) / 1000),
@@ -716,6 +720,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
         this.skipUrlUpdate = false;
 
         this.lastReload = new Date();
+        this.lastReloadTickerForceUpdate$.next();
         this.loading = false;
         this.cdr.markForCheck();
       })
