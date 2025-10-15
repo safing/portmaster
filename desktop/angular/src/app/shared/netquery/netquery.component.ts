@@ -281,6 +281,11 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       map(() => {
         if (this.loading) return 0;
 
+        if (this.dateFilter?.length >= 2 && this.dateFilter[1].getTime() <= this.lastReload.getTime()) {
+          // Skip reload when dateFilter[1] (end date) <= lastReload (no new results expected)
+          return 0;
+        }
+
         const intervalSeconds = reloadIntervalValues[this.autoReloadIntervalName] || 0;
         if (intervalSeconds <= 0) return 0;
       
