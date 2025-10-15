@@ -586,15 +586,17 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
                   // the the correct resulsts here which depend on whether or not
                   // we're applying a group by.
                   let totalCount = 0;
-                  if (this.groupByKeys.length === 0) {
-                    totalCount = response.totalCount[0].totalCount;
-                  } else {
-                    totalCount = response.totalCount.length;
+                  if (response?.totalCount) {
+                    if (this.groupByKeys.length === 0 ) {
+                      totalCount = response.totalCount[0].totalCount;
+                    } else {
+                      totalCount = response.totalCount.length;
+                    }
                   }
 
                   return {
                     totalCount,
-                    totalConnCount: response.totalConnCount,
+                    totalConnCount: response?.totalConnCount || [],
                   }
                 })
               ),
@@ -633,7 +635,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
         // reset the paginator with the new total result count and
         // open the first page.
         this.paginator.reset(result.response.totalCount);
-        this.totalConnCount = result.response.totalConnCount[0].totalConnCount;
+        this.totalConnCount = result.response?.totalConnCount[0]?.totalConnCount || 0;
         this.totalResultCount = result.response.totalCount;
 
         // update the current URL to include the new search
