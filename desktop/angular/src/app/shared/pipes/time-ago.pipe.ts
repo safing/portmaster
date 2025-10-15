@@ -52,5 +52,5 @@ export function timeAgo(value: number | Date | string) {
     }
   }
 
-  return "< 1 min" + suffix // actually just now (diffInSeconds == 0)
+  return "< 1 min " + suffix // actually just now (diffInSeconds == 0)
 }

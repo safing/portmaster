@@ -5,8 +5,8 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, Router } from "@angular/router";
 import { BandwidthChartResult, ChartResult, Condition, Database, FeatureID, GreaterOrEqual, IPScope, LessOrEqual, Netquery, NetqueryConnection, OrderBy, Pin, PossilbeValue, Query, QueryResult, SPNService, Select, Verdict } from "@safing/portmaster-api";
 import { Datasource, DynamicItemsPaginator, SelectOption } from "@safing/ui";
-import { BehaviorSubject, Observable, Subject, combineLatest, forkJoin, interval, of } from "rxjs";
-import { catchError, debounceTime, filter, map, share, skip, switchMap, take, takeUntil } from "rxjs/operators";
+import { BehaviorSubject, Observable, Subject, combineLatest, forkJoin, interval, of, timer } from "rxjs";
+import { catchError, debounceTime, filter, map, share, skip, startWith, switchMap, take, takeUntil } from "rxjs/operators";
 import { ActionIndicatorService } from "../action-indicator";
 import { ExpertiseService } from "../expertise";
 import { objKeys } from "../utils";
@@ -61,6 +61,15 @@ const orderByKeys: (keyof Partial<NetqueryConnection>)[] = [
   'ended',
   'profile',
 ]
+
+export const reloadIntervalValues: { [key: string]: number } = {
+  "⏸\u00A0\u00A0Don't auto-reload": 0,
+  "↻\u00A0\u00A0Reload every 10 seconds": 10,
+  "↻\u00A0\u00A0Reload every 30 seconds": 30,
+  "↻\u00A0\u00A0Reload every 1 minute": 60,
+  "↻\u00A0\u00A0Reload every 5 minutes": 300,
+  "↻\u00A0\u00A0Reload every 30 minutes": 1800,
+}
 
 interface LocalQueryResult extends QueryResult {
   _chart: Observable<ChartResult[]> | null;
@@ -245,6 +254,48 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       map(() => Math.floor((new Date()).getTime() - this.lastReload.getTime()) / 1000),
       share()
     )
+
+
+  /** Auto-reload: The list of all intervals */
+  readonly reloadIntervals = Object.keys(reloadIntervalValues);
+  /** Auto-reload: The name of the currently selected auto-reload interval */
+  autoReloadIntervalName: string = ''; 
+  /** Auto-reload: The timestamp of auto-reload being enabled */
+  autoReloadEnabledTimestamp: Date | null = null;
+  /** Auto-reload: Enable/disable auto-reload and set the interval */
+  onAutoRefreshChange(intervalName: string) {
+    let delaySec = reloadIntervalValues[intervalName] || 0;
+    if (delaySec <= 0) {      
+      this.autoReloadIntervalName = '';     
+      return;
+    }
+    this.autoReloadEnabledTimestamp = new Date();
+    this.autoReloadIntervalName = intervalName;
+  }
+  /** Auto-reload: An observable that emits the remaining seconds until the next reload, and triggers reloads*/
+  autoReloadInterval$ = interval(900) // use less than 1 second to prevent skipping a second
+    .pipe(
+      startWith(0), // Emit immediately when subscribed
+      takeUntilDestroyed(this.destroyRef),
+      filter(() => !!this.autoReloadIntervalName), // Only emit when auto-reload is enabled
+      map(() => {
+        if (this.loading) return 0;
+
+        const intervalSeconds = reloadIntervalValues[this.autoReloadIntervalName] || 0;
+        if (intervalSeconds <= 0) return 0;
+      
+        let startTime = (this.autoReloadEnabledTimestamp && this.autoReloadEnabledTimestamp > this.lastReload) ? this.autoReloadEnabledTimestamp : this.lastReload;
+        const elapsedSeconds = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
+        const remainingSeconds = intervalSeconds - elapsedSeconds;
+
+        if (remainingSeconds <= 0) {
+          this.performSearch(); // Trigger reload when time is up
+          return 0;
+        }
+        return remainingSeconds;
+      }),
+      share()
+    );
 
   // whether or not the history database should be queried as well.
   get useHistory() {
@@ -552,8 +603,8 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     // The actual searching is debounced by second so we don't flood the Portmaster service
     // with queries while the user is still configuring their filters.
     this.search$
-      .pipe(
-        debounceTime(1000),
+      .pipe(        
+        this.adaptiveDebounce(1000, () => this.lastReload.getTime()),
         switchMap(() => {
           this.loading = true;
           this.connectionChartData = [];
@@ -659,6 +710,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
         }
         this.skipUrlUpdate = false;
 
+        this.lastReload = new Date();
         this.loading = false;
         this.cdr.markForCheck();
       })
@@ -809,6 +861,30 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     this.search$.complete();
     this.helper.dispose();
   }
+
+/**
+ * Delays emissions only when last operation was recent.
+ * 
+ * @param minDelayMs - Minimum milliseconds between operations
+ * @param getLastOperationTime - Function returning last operation timestamp
+ * 
+ * @example
+ * // Delay search only if last search was < 1 second ago
+ * this.search$.pipe(adaptiveDebounce(1000, () => this.lastReload.getTime()))
+ */
+ adaptiveDebounce<T>(  minDelayMs: number,   getLastOperationTime: () => number) {
+  return (source: Observable<T>) => source.pipe(
+    switchMap((value) => {
+      const timeSinceLastOperation = Date.now() - getLastOperationTime();
+      if (timeSinceLastOperation >= minDelayMs) {
+        return of(value); // Execute immediately
+      } else {
+        const remainingDelay = minDelayMs - timeSinceLastOperation;
+        return timer(remainingDelay).pipe(map(() => value));
+      }
+    })
+  );
+}
 
   // lazyLoadGroup returns an observable that will emit a DynamicItemsPaginator once subscribed.
   // This is used in "group-by" views to lazy-load the content of the group once the user
@@ -1001,8 +1077,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
 
   /** @private Query the portmaster service for connections matching the current settings */
   performSearch() {
-    this.loading = true;
-    this.lastReload = new Date();
+    this.loading = true;    
     this.paginator.clear()
     this.search$.next();
     this.updateTagbarValues();
