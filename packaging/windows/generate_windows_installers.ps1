@@ -9,6 +9,9 @@
 # 1. Compile Core Binaries (Linux environment)
 #    ```
 #    earthly +release-prep
+#
+#    # Or use command to do the same AND build Linux packages:
+#    # earthly +all-artifacts
 #    ```
 #    This compiles and places files into the 'dist' folder with the required structure.
 #    Note: Latest KEXT binaries and Intel data will be downloaded from https://updates.safing.io
@@ -20,7 +23,7 @@
 #
 # 3. Sign All Binaries (Windows environment)
 #    ```
-#    .\packaging\windows\sign_binaries_in_dist.ps1 -certSha1 <SHA1_of_the_certificate>
+#    .\packaging\windows\sign_binaries_in_dist.ps1 -certSha1 d3bf5973eb1ec3dbd6ec45d77d556881a350acd2
 #    ```
 #    This signs all binary files in the dist directory
 #
@@ -121,13 +124,14 @@ function Find-And-Copy-File {
 
     try {
         # Print details about the file
-        $fileInfo = Get-Item -Path $fullSourcePath        
-        $output = "{0,-22}: {1,-29} -> {2,-38} [{3,-20} {4,18}{5}]" -f 
+        $fileInfo = Get-Item -Path $fullSourcePath
+        $fileHash = (Get-FileHash -Path $fullSourcePath -Algorithm SHA256).Hash
+        $hashShort = $fileHash.Substring(0, 4) + "..." + $fileHash.Substring($fileHash.Length - 8)
+        $output = "{0,-22}: {1,-29} -> {2,-38} [{3}{4}]" -f 
                $File,
                $(Split-Path -Path $fullSourcePath -Parent),
                $(Split-Path -Path $destinationPath -Parent),               
-               "$($fileInfo.LastAccessTime.ToString("yyyy-MM-dd HH:mm:ss"));",
-               "$($fileInfo.Length) bytes",
+               "SHA256: $hashShort",
                $(if ($fileInfo.VersionInfo.FileVersion) { "; v$($fileInfo.VersionInfo.FileVersion)" } else { "" })
         Write-Output "$output"
 
@@ -205,13 +209,13 @@ try {
     # Copying BINARY FILES
     Write-Output "`n[+] Copying binary files:"
     $filesToCopy = @(
-        @{Folder="dist/binary/windows_amd64";   File="portmaster-kext.sys";     Destination=$binaryDir; AlternateSourceDirs=@("dist/downloaded/windows_amd64", "dist")},
-        @{Folder="dist/binary/windows_amd64";   File="portmaster-core.dll";     Destination=$binaryDir; AlternateSourceDirs=@("dist/downloaded/windows_amd64", "dist")},
-        @{Folder="dist/binary/windows_amd64";   File="portmaster-core.exe";     Destination=$binaryDir; AlternateSourceDirs=@("dist")},
-        @{Folder="dist/binary/windows_amd64";   File="WebView2Loader.dll";      Destination=$binaryDir; AlternateSourceDirs=@("dist")},
-        @{Folder="dist/binary/all";             File="portmaster.zip";          Destination=$binaryDir; AlternateSourceDirs=@("dist")},
-        @{Folder="dist/binary/all";             File="assets.zip";              Destination=$binaryDir; AlternateSourceDirs=@("dist")},
-        @{Folder="dist/binary/windows_amd64";   File="portmaster.exe";          Destination=$targetDir; AlternateSourceDirs=@("dist")}
+        @{Folder="dist/downloaded/windows_amd64";   File="portmaster-kext.sys";     Destination=$binaryDir; },
+        @{Folder="dist/downloaded/windows_amd64";   File="portmaster-core.dll";     Destination=$binaryDir; },
+        @{Folder="dist/binary/windows_amd64";   File="portmaster-core.exe";     Destination=$binaryDir; },
+        @{Folder="dist/binary/windows_amd64";   File="WebView2Loader.dll";      Destination=$binaryDir; },
+        @{Folder="dist/binary/all";             File="portmaster.zip";          Destination=$binaryDir; },
+        @{Folder="dist/binary/all";             File="assets.zip";              Destination=$binaryDir; },
+        @{Folder="dist/binary/windows_amd64";   File="portmaster.exe";          Destination=$targetDir; }
     )
     foreach ($file in $filesToCopy) {    
         Find-And-Copy-File -SourceDir $file.Folder -File $file.File -DestinationDir $file.Destination -AlternateSourceDirs $file.AlternateSourceDirs

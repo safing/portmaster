@@ -555,7 +555,8 @@ release-prep:
         RUN --no-cache echo "[ !!! ATTENTION  !!! ] PRECOMPILED FILES IN USE:" && find ./packaging/precompiled -type f;
         IF --no-cache [ -d ./packaging/precompiled/intel ]
             RUN --no-cache echo "[!!! ATTENTION !!!] ENSURE THAT 'intel/index.json' CONTAINS THE CORRECT HASHES!"
-        END
+        END        
+        RUN --no-cache echo "Script paused. Press Enter to continue..." && read
         SAVE ARTIFACT --if-exists --keep-ts "packaging/precompiled/intel/*"  AS LOCAL "${outputDir}/intel/"     # save to host
         SAVE ARTIFACT --if-exists --keep-ts "packaging/precompiled/binary/*" AS LOCAL "${outputDir}/binary/"    # save to host
         SAVE ARTIFACT --if-exists --keep-ts "packaging/precompiled/intel/*"           "output/intel/"           # save to container (so other containers can access it)
