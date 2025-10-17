@@ -268,17 +268,58 @@
   </div>
 </ng-template>
 
-<div class="flex flex-row items-center justify-start gap-3 mt-3">
+<!-- "Total connections & LastReload info "-->
+<div class="flex flex-row items-center justify-start gap-3">
+
   <span class="text-xxs text-primary" *ngIf="!loading">{{ totalResultCount }} Results
     <span class="text-secondary">of {{totalConnCount}} total connections</span>
   </span>
   <span class="flex-grow"></span>
-  <span class="pr-3 text-xxs text-secondary" [ngClass]="{
-    'text-yellow-300': ((lastReloadTicker|async)||0) > 60,
-    'text-red-300': ((lastReloadTicker|async)||0) > 600
-  }">
-    Last Reload: {{ lastReload | timeAgo:(lastReloadTicker|async) }}
-  </span>
+
+  <div class="flex flex-row items-center">
+    <div class="flex flex-row">
+
+      <!-- Auto-Reload Interval selector -->
+      <app-menu-trigger [menu]="autoReloadMenu" useContent="true"
+        class="text-secondary hover:text-primary flex !m-0" 
+        >
+        <div class="flex flex-row items-center">
+          <!-- Auto-Reload Interval countdown--->
+          <span *ngIf="!!autoReloadIntervalName" class="pr-3 text-xxs text-secondary" style="opacity: 0.5;" >
+            {{autoReloadIntervalName}} 
+            
+            <span *ngIf="(autoReloadInterval$ | async) as interval">
+              <span *ngIf="interval > 0 && interval <= 30">
+                (in {{interval}} sec)
+              </span>
+            </span>            
+          </span>
+
+          <!-- Last Reload Time -->
+          <span class="pr-3 text-xxs text-secondary" [ngClass]="{
+            'text-yellow-300': ((lastReloadTicker|async)||0) > 60,
+            'text-red-300': ((lastReloadTicker|async)||0) > 600
+          }">
+          Last Reload: {{ lastReload | timeAgo:(lastReloadTicker|async) }}
+          </span>
+
+          <svg xmlns="http://www.w3.org/2000/svg" 
+            class="w-4 h-4"          
+            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+          </svg>
+        </div>
+      </app-menu-trigger>
+
+      <app-menu #autoReloadMenu>
+        <app-menu-item *ngFor="let value of reloadIntervals" (click)="onAutoRefreshChange(value)">
+        {{value}}
+        </app-menu-item>
+      </app-menu>
+    </div>
+  </div>
+
 </div>
 
 <sfng-pagination *ngIf="!loading; else: loadingTemplate" [source]="paginator" class="flex flex-col">
