@@ -6,7 +6,7 @@ ARG --global custom_version = ""
 
 ARG --global go_version = 1.24
 ARG --global node_version = 18
-ARG --global rust_version = 1.81
+ARG --global rust_version = 1.89
 ARG --global tauri_version = "2.2.5"
 ARG --global golangci_lint_version = 1.64.6
 
