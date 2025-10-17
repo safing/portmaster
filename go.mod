@@ -3,9 +3,9 @@ module github.com/safing/portmaster
 go 1.24.0
 
 require (
-	github.com/VictoriaMetrics/metrics v1.35.1
-	github.com/Xuanwo/go-locale v1.1.1
-	github.com/aarondl/opt v0.0.0-20230114172057-b91f370c41f0
+	github.com/VictoriaMetrics/metrics v1.35.4
+	github.com/Xuanwo/go-locale v1.1.3
+	github.com/aarondl/opt v0.0.0-20250607033636-982744e1bd65
 	github.com/aead/serpent v0.0.0-20160714141033-fba169763ea6
 	github.com/agext/levenshtein v1.2.3
 	github.com/armon/go-radix v1.0.0
@@ -30,22 +30,22 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
-	github.com/jackc/puddle/v2 v2.2.1
-	github.com/lmittmann/tint v1.0.5
+	github.com/jackc/puddle/v2 v2.2.2
+	github.com/lmittmann/tint v1.0.7
 	github.com/maruel/panicparse/v2 v2.3.1
-	github.com/mattn/go-colorable v0.1.13
+	github.com/mattn/go-colorable v0.1.14
 	github.com/mattn/go-isatty v0.0.20
-	github.com/miekg/dns v1.1.62
+	github.com/miekg/dns v1.1.68
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-server-timing v1.0.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oschwald/maxminddb-golang v1.13.1
 	github.com/r3labs/diff/v3 v3.0.1
-	github.com/rot256/pblind v0.0.0-20240730113005-f3275049ead5
-	github.com/rubenv/sql-migrate v1.7.1
+	github.com/rot256/pblind v0.0.0-20250826112722-8244c3966ed3
+	github.com/rubenv/sql-migrate v1.7.2
 	github.com/safing/jess v0.3.5
 	github.com/safing/structures v1.2.0
-	github.com/seehuhn/fortuna v1.0.1
+	github.com/seehuhn/fortuna v1.0.2
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/simukti/sqldb-logger v0.0.0-20230108155151-646c1a075551
 	github.com/spf13/cobra v1.8.1
@@ -60,12 +60,12 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/varlink/go v0.4.0
 	github.com/vincent-petithory/dataurl v1.0.0
-	go.etcd.io/bbolt v1.3.10
-	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
+	go.etcd.io/bbolt v1.3.12
+	golang.org/x/exp v0.0.0-20251009144603-d2f985daa21b
 	golang.org/x/image v0.19.0
-	golang.org/x/net v0.43.0
+	golang.org/x/net v0.46.0
 	golang.org/x/sync v0.17.0
-	golang.org/x/sys v0.35.0
+	golang.org/x/sys v0.37.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.32.0
 	zombiezen.com/go/sqlite v1.3.0
@@ -79,7 +79,6 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
-	github.com/aarondl/json v0.0.0-20221020222930-8b0db17ef1bf // indirect
 	github.com/aead/ecdh v0.2.0 // indirect
 	github.com/alessio/shellescape v1.4.2 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
@@ -92,7 +91,7 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.7.1 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -113,7 +112,7 @@ require (
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/native v1.1.0 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
 	github.com/knadh/koanf/maps v0.1.1 // indirect
 	github.com/knadh/koanf/parsers/yaml v0.1.0 // indirect
 	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
@@ -128,7 +127,7 @@ require (
 	github.com/mdlayher/socket v0.5.1 // indirect
 	github.com/mitchellh/cli v1.1.5 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
-	github.com/ncruces/go-strftime v0.1.9 // indirect
+	github.com/ncruces/go-strftime v0.1.10 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -142,12 +141,12 @@ require (
 	github.com/sergeymakinen/go-ico v1.0.0-beta.0
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stephenafamo/scan v0.6.1 // indirect
+	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/stephenafamo/scan v0.6.2 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
-	github.com/tklauser/go-sysconf v0.3.14 // indirect
-	github.com/tklauser/numcpus v0.8.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.15 // indirect
+	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/urfave/cli/v2 v2.23.7 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
@@ -160,17 +159,17 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zalando/go-keyring v0.2.5 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
-	golang.org/x/crypto v0.41.0 // indirect
-	golang.org/x/mod v0.26.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
-	golang.org/x/tools v0.35.0 // indirect
+	golang.org/x/crypto v0.43.0 // indirect
+	golang.org/x/mod v0.29.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
+	golang.org/x/tools v0.38.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	modernc.org/gc/v3 v3.0.0-20240107210532-573471604cb6 // indirect
+	modernc.org/gc/v3 v3.0.0 // indirect
 	modernc.org/libc v1.59.9 // indirect
-	modernc.org/mathutil v1.6.0 // indirect
-	modernc.org/memory v1.8.0 // indirect
-	modernc.org/strutil v1.2.0 // indirect
+	modernc.org/mathutil v1.7.1 // indirect
+	modernc.org/memory v1.8.2 // indirect
+	modernc.org/strutil v1.2.1 // indirect
 	modernc.org/token v1.1.0 // indirect
 	mvdan.cc/gofumpt v0.5.0 // indirect
 )
