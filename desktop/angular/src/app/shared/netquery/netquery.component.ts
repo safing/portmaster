@@ -6,7 +6,7 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { BandwidthChartResult, ChartResult, Condition, Database, FeatureID, GreaterOrEqual, IPScope, LessOrEqual, Netquery, NetqueryConnection, OrderBy, Pin, PossilbeValue, Query, QueryResult, SPNService, Select, Verdict } from "@safing/portmaster-api";
 import { Datasource, DynamicItemsPaginator, SelectOption } from "@safing/ui";
 import { BehaviorSubject, Observable, Subject, combineLatest, forkJoin, interval, merge, of, timer } from "rxjs";
-import { catchError, debounceTime, filter, map, share, skip, startWith, switchMap, take, takeUntil } from "rxjs/operators";
+import { catchError, filter, map, share, skip, startWith, switchMap, take, takeUntil } from "rxjs/operators";
 import { ActionIndicatorService } from "../action-indicator";
 import { ExpertiseService } from "../expertise";
 import { objKeys } from "../utils";
@@ -266,7 +266,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
   autoReloadEnabledTimestamp: Date | null = null;
   /** Auto-reload: Enable/disable auto-reload and set the interval */
   onAutoRefreshChange(intervalName: string) {
-    let delaySec = reloadIntervalValues[intervalName] || 0;
+    const delaySec = reloadIntervalValues[intervalName] || 0;
     if (delaySec <= 0) {      
       this.autoReloadIntervalName = '';     
       return;
@@ -283,7 +283,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       map(() => {
         if (this.loading) return 0;
 
-        if (this.dateFilter?.length >= 2 && this.dateFilter[1].getTime() <= this.lastReload.getTime()) {
+        if (this.dateFilter?.length >= 2 && this.dateFilter[1] && this.dateFilter[1].getTime() <= this.lastReload.getTime()) {
           // Skip reload when dateFilter[1] (end date) <= lastReload (no new results expected)
           return 0;
         }
@@ -291,7 +291,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
         const intervalSeconds = reloadIntervalValues[this.autoReloadIntervalName] || 0;
         if (intervalSeconds <= 0) return 0;
       
-        let startTime = (this.autoReloadEnabledTimestamp && this.autoReloadEnabledTimestamp > this.lastReload) ? this.autoReloadEnabledTimestamp : this.lastReload;
+        const startTime = (this.autoReloadEnabledTimestamp && this.autoReloadEnabledTimestamp > this.lastReload) ? this.autoReloadEnabledTimestamp : this.lastReload;
         const elapsedSeconds = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
         const remainingSeconds = intervalSeconds - elapsedSeconds;
 
