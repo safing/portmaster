@@ -65,10 +65,8 @@ const orderByKeys: (keyof Partial<NetqueryConnection>)[] = [
 export const reloadIntervalValues: { [key: string]: number } = {
   "⏸\u00A0\u00A0Don't auto-reload": 0,
   "↻\u00A0\u00A0Reload every 10 seconds": 10,
-  "↻\u00A0\u00A0Reload every 30 seconds": 30,
   "↻\u00A0\u00A0Reload every 1 minute": 60,
   "↻\u00A0\u00A0Reload every 5 minutes": 300,
-  "↻\u00A0\u00A0Reload every 30 minutes": 1800,
 }
 
 interface LocalQueryResult extends QueryResult {
