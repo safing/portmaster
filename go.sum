@@ -16,8 +16,8 @@ github.com/Masterminds/sprig/v3 v3.2.3/go.mod h1:rXcFaZ2zZbLRJv/xSysmlgIM1u11eBa
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/UNO-SOFT/zlog v0.8.1 h1:TEFkGJHtUfTRgMkLZiAjLSHALjwSBdw6/zByMC5GJt4=
 github.com/UNO-SOFT/zlog v0.8.1/go.mod h1:yqFOjn3OhvJ4j7ArJqQNA+9V+u6t9zSAyIZdWdMweWc=
-github.com/VictoriaMetrics/metrics v1.35.4 h1:GhZ17bHYkujpSzGaH459F7huTLNJ7z90ZXsOXjhHx/8=
-github.com/VictoriaMetrics/metrics v1.35.4/go.mod h1:r7hveu6xMdUACXvB8TYdAj8WEsKzWB0EkpJN+RDtOf8=
+github.com/VictoriaMetrics/metrics v1.40.2 h1:OVSjKcQEx6JAwGeu8/KQm9Su5qJ72TMEW4xYn5vw3Ac=
+github.com/VictoriaMetrics/metrics v1.40.2/go.mod h1:XE4uudAAIRaJE614Tl5HMrtoEU6+GDZO4QTnNSsZRuA=
 github.com/Xuanwo/go-locale v1.1.3 h1:EWZZJJt5rqPHHbqPRH1zFCn5D7xHjjebODctA4aUO3A=
 github.com/Xuanwo/go-locale v1.1.3/go.mod h1:REn+F/c+AtGSWYACBSYZgl23AP+0lfQC+SEFPN+hj30=
 github.com/aarondl/opt v0.0.0-20250607033636-982744e1bd65 h1:lbdPe4LBNmNDzeQFwNhEc88w90841qv737MI4+aXSYU=
