@@ -67,8 +67,8 @@ require (
 	golang.org/x/sync v0.17.0
 	golang.org/x/sys v0.37.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.32.0
-	zombiezen.com/go/sqlite v1.3.0
+	modernc.org/sqlite v1.37.1
+	zombiezen.com/go/sqlite v1.4.2
 )
 
 require github.com/sergeymakinen/go-bmp v1.0.0 // indirect
@@ -107,7 +107,6 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -165,12 +164,9 @@ require (
 	golang.org/x/tools v0.38.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	modernc.org/gc/v3 v3.0.0 // indirect
-	modernc.org/libc v1.59.9 // indirect
+	modernc.org/libc v1.65.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
-	modernc.org/memory v1.8.2 // indirect
-	modernc.org/strutil v1.2.1 // indirect
-	modernc.org/token v1.1.0 // indirect
+	modernc.org/memory v1.11.0 // indirect
 	mvdan.cc/gofumpt v0.5.0 // indirect
 )
 
