@@ -48,7 +48,7 @@ require (
 	github.com/seehuhn/fortuna v1.0.2
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/simukti/sqldb-logger v0.0.0-20230108155151-646c1a075551
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.10.1
 	github.com/spkg/zipfs v0.7.1
 	github.com/stephenafamo/bob v0.30.0
 	github.com/stretchr/testify v1.9.0
@@ -83,7 +83,7 @@ require (
 	github.com/alessio/shellescape v1.4.2 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
 	github.com/danieljoos/wincred v1.2.2 // indirect
 	github.com/denisenkom/go-mssqldb v0.9.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
