@@ -16,6 +16,7 @@ import (
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/broadcasts"
 	"github.com/safing/portmaster/service/compat"
+	"github.com/safing/portmaster/service/control"
 	"github.com/safing/portmaster/service/core"
 	"github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/firewall"
@@ -95,6 +96,7 @@ type Instance struct {
 	process       *process.ProcessModule
 	resolver      *resolver.ResolverModule
 	sync          *sync.Sync
+	control       *control.Control
 
 	access *access.Access
 
@@ -264,6 +266,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create sync module: %w", err)
 	}
+	instance.control, err = control.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create control module: %w", err)
+	}
 	instance.access, err = access.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create access module: %w", err)
@@ -342,6 +348,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.broadcasts,
 		instance.sync,
 		instance.ui,
+		instance.control,
 
 		instance.access,
 	)

@@ -78,6 +78,8 @@ func prep() error {
 }
 
 func start() error {
+	isActive.Store(true)
+
 	startNotify()
 
 	selfcheckNetworkChangedFlag.Refresh()
@@ -92,13 +94,17 @@ func start() error {
 }
 
 func stop() error {
-	// selfcheckTask.Cancel()
-	// selfcheckTask = nil
+	isActive.Store(false)
+	resetSelfCheckState()
 
 	return nil
 }
 
 func selfcheckTaskFunc(wc *mgr.WorkerCtx) error {
+	if !isActive.Load() {
+		return nil
+	}
+
 	// Create tracing logger.
 	ctx, tracer := log.AddTracer(wc.Ctx())
 	defer tracer.Submit()
@@ -138,12 +144,16 @@ func selfcheckTaskFunc(wc *mgr.WorkerCtx) error {
 	}
 
 	// Reset self-check state.
+	resetSelfCheckState()
+
+	return nil
+}
+
+func resetSelfCheckState() {
 	selfcheckNetworkChangedFlag.Refresh()
 	selfCheckIsFailing.UnSet()
 	selfcheckFails = 0
 	resetSystemIssue()
-
-	return nil
 }
 
 // SelfCheckIsFailing returns whether the self check is currently failing.
@@ -156,6 +166,9 @@ func SelfCheckIsFailing() bool {
 var (
 	module     *Compat
 	shimLoaded atomic.Bool
+	// isActive is a simple shutdown flag to prevent self-check worker from executing during stop().
+	// TODO: consider correct start/stop of the workers instead.
+	isActive atomic.Bool
 )
 
 // New returns a new Compat module.
