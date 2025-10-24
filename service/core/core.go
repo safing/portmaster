@@ -2,7 +2,6 @@ package core
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"sync/atomic"
 
@@ -47,17 +46,6 @@ func (c *Core) Start() error {
 // Stop stops the module.
 func (c *Core) Stop() error {
 	return nil
-}
-
-var disableShutdownEvent bool
-
-func init() {
-	flag.BoolVar(
-		&disableShutdownEvent,
-		"disable-shutdown-event",
-		false,
-		"disable shutdown event to keep app and notifier open when core shuts down",
-	)
 }
 
 func prep() error {
