@@ -1,9 +1,17 @@
 package control
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/safing/portmaster/base/api"
+)
+
+const (
+	APIEndpointPause  = "control/pause"
+	APIEndpointResume = "control/resume"
 )
 
 type pauseRequestParams struct {
@@ -14,7 +22,7 @@ type pauseRequestParams struct {
 func (c *Control) registerAPIEndpoints() error {
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:        "control/pause",
+		Path:        APIEndpointPause,
 		Write:       api.PermitAdmin,
 		ActionFunc:  c.handlePause,
 		Name:        "Pause Portmaster",
@@ -36,7 +44,7 @@ func (c *Control) registerAPIEndpoints() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:        "control/resume",
+		Path:        APIEndpointResume,
 		Write:       api.PermitAdmin,
 		ActionFunc:  c.handleResume,
 		Name:        "Resume Portmaster",
@@ -46,4 +54,33 @@ func (c *Control) registerAPIEndpoints() error {
 	}
 
 	return nil
+}
+
+func (c *Control) handlePause(r *api.Request) (msg string, err error) {
+	params := pauseRequestParams{}
+	if r.InputData != nil {
+		if err := json.Unmarshal(r.InputData, &params); err != nil {
+			return "Bad Request: invalid input data", err
+		}
+	}
+
+	if params.OnlySPN {
+		c.mgr.Info(fmt.Sprintf("Received SPN Pause(%v) action request ", params.Duration))
+	} else {
+		c.mgr.Info(fmt.Sprintf("Received Pause(%v) action request ", params.Duration))
+	}
+
+	if err := c.pause(time.Duration(params.Duration)*time.Second, params.OnlySPN); err != nil {
+		return "Failed to pause", err
+	}
+	return "Pause initiated", nil
+}
+
+func (c *Control) handleResume(_ *api.Request) (msg string, err error) {
+	c.mgr.Info("Received Resume action request")
+
+	if err := c.resume(); err != nil {
+		return "Failed to resume", err
+	}
+	return "Resume initiated", nil
 }

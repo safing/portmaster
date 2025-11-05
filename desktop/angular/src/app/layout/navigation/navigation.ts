@@ -4,7 +4,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, In
 import { ConfigService, DebugAPI, PortapiService, SPNService, StringSetting } from '@safing/portmaster-api';
 import { tap } from 'rxjs/operators';
 import { AppComponent } from 'src/app/app.component';
-import { NotificationType, NotificationsService, StatusService, VersionStatus } from 'src/app/services';
+import { NotificationType, NotificationsService, StatusService, VersionStatus, GetModuleState, ControlPauseStateData } from 'src/app/services';
 import { ActionIndicatorService } from 'src/app/shared/action-indicator';
 import { fadeInAnimation, fadeOutAnimation } from 'src/app/shared/animations';
 import { ExitService } from 'src/app/shared/exit-screen';
@@ -35,6 +35,24 @@ export class NavigationComponent implements OnInit {
 
   /** The color to use for the notifcation-available hint (dot) */
   notificationColor: string = 'text-green-300';
+
+  pauseState: ControlPauseStateData | null = null;
+  get isPaused(): boolean { return this.pauseState?.Interception===true || this.pauseState?.SPN===true; }
+  get isPausedInterception(): boolean { return this.pauseState?.Interception===true; }
+  get pauseInfo(): string {
+    if (this.pauseState?.Interception===true && this.pauseState?.SPN===true) 
+      return 'Portmaster and SPN';
+    else if (this.pauseState?.Interception===true)
+      return 'Portmaster';
+    else if (this.pauseState?.SPN===true)
+      return 'SPN';
+    return '';
+  }
+  get pauseInfoTillTime(): string {
+    if (this.isPaused && this.pauseState?.TillTime)
+      return new Date(this.pauseState.TillTime).toLocaleTimeString(undefined, { hour12: false });
+    return '';
+  }
 
   /** Whether or not we have new, unseen prompts */
   hasNewPrompts = false;
@@ -92,6 +110,10 @@ export class NavigationComponent implements OnInit {
         this.versions = versions;
         this.cdr.markForCheck();
       });
+
+    this.statusService.status$.subscribe(status => {
+      this.pauseState = GetModuleState(status, 'Control', 'control:paused')?.Data || null;
+    });
 
     this.configService.watch<StringSetting>('filter/defaultAction')
       .subscribe(defaultAction => {
@@ -251,6 +273,43 @@ export class NavigationComponent implements OnInit {
       ))
   }
 
+   pause(event: Event, duration: number) {
+    // prevent default and stop-propagation to avoid
+    // expanding the accordion body.
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.portapi.pause(duration, false)
+      .subscribe(this.actionIndicator.httpObserver(
+        'Pausing ...',
+        'Failed to Pause',
+      ))
+  }
+  pauseSPN(event: Event, duration: number) {
+    // prevent default and stop-propagation to avoid
+    // expanding the accordion body.
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.portapi.pause(duration, true)
+      .subscribe(this.actionIndicator.httpObserver(
+        'Pausing SPN...',
+        'Failed to Pause SPN',
+      ))
+  }
+  resume(event: Event) {
+    // prevent default and stop-propagation to avoid
+    // expanding the accordion body.
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.portapi.resume()
+      .subscribe(this.actionIndicator.httpObserver(
+        'Resuming ...',
+        'Failed to Resume',
+      ))
+  }
+    
   /**
    * @private
    * Opens the data-directory of the portmaster installation.

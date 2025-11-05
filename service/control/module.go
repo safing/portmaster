@@ -7,23 +7,27 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/compat"
 	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/mgr"
 )
 
-var logPrefix = "control: "
+type PauseInfo struct {
+	Interception bool      // Whether Portmaster interception is paused
+	SPN          bool      // Whether SPN is paused
+	TillTime     time.Time // When the pause will end
+}
 
 type Control struct {
 	mgr      *mgr.Manager
 	instance instance
+	states   *mgr.StateMgr
 
-	locker         sync.Mutex
-	pauseWorker    *mgr.WorkerMgr
-	isPaused       bool
-	isPausedSPN    bool
-	pauseStartTime time.Time
-	pauseDuration  time.Duration
+	locker            sync.Mutex
+	resumeWorker      *mgr.WorkerMgr
+	pauseNotification *notifications.Notification
+	pauseInfo         PauseInfo
 }
 
 type instance interface {
@@ -31,6 +35,7 @@ type instance interface {
 	Interception() *interception.Interception
 	Compat() *compat.Compat
 	SPNGroup() *mgr.ExtendedGroup
+	IsShuttingDown() bool
 }
 
 var (
@@ -42,10 +47,11 @@ func New(instance instance) (*Control, error) {
 		return nil, fmt.Errorf("control: New failed: instance already created")
 	}
 
-	mgr := mgr.New("Control")
+	m := mgr.New("Control")
 	module := &Control{
-		mgr:      mgr,
+		mgr:      m,
 		instance: instance,
+		states:   mgr.NewStateMgr(m),
 	}
 	if err := module.prep(); err != nil {
 		return nil, err
@@ -55,6 +61,10 @@ func New(instance instance) (*Control, error) {
 
 func (c *Control) Manager() *mgr.Manager {
 	return c.mgr
+}
+
+func (u *Control) States() *mgr.StateMgr {
+	return u.states
 }
 
 func (c *Control) Start() error {

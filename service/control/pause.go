@@ -1,58 +1,43 @@
 package control
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
 )
 
-func (c *Control) handlePause(r *api.Request) (msg string, err error) {
-	params := pauseRequestParams{}
-	if r.InputData != nil {
-		if err := json.Unmarshal(r.InputData, &params); err != nil {
-			return "Bad Request: invalid input data", err
-		}
+func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
+	if c.instance.IsShuttingDown() {
+		c.mgr.Debug("Cannot pause: system is shutting down")
+		return nil
 	}
 
-	if params.OnlySPN {
-		c.mgr.Info(fmt.Sprintf("Received SPN PAUSE(%v) action request ", params.Duration))
-	} else {
-		c.mgr.Info(fmt.Sprintf("Received PAUSE(%v) action request ", params.Duration))
-	}
-
-	if err := c.impl_pause(time.Duration(params.Duration)*time.Second, params.OnlySPN); err != nil {
-		return "Failed to pause", err
-	}
-	return "Pause initiated", nil
-}
-
-func (c *Control) handleResume(_ *api.Request) (msg string, err error) {
-	c.mgr.Info("Received RESUME action request")
-	if err := c.impl_resume(); err != nil {
-		return "Failed to resume", err
-	}
-	return "Resume initiated", nil
-}
-
-func (c *Control) impl_pause(duration time.Duration, onlySPN bool) (retErr error) {
 	c.locker.Lock()
 	defer c.locker.Unlock()
 
+	defer func() {
+		// update states after pause attempt
+		c.updateStatesAndNotify()
+		// log error if pause failed
+		if retErr != nil {
+			c.mgr.Error("Failed to pause: " + retErr.Error())
+		}
+	}()
+
 	if duration <= 0 {
-		return errors.New(logPrefix + "invalid pause duration")
+		return errors.New("invalid pause duration")
 	}
 
 	if onlySPN {
-		if c.isPaused {
-			return errors.New(logPrefix + "cannot pause SPN separately when core is paused")
+		if c.pauseInfo.Interception {
+			return errors.New("cannot pause SPN separately when core is paused")
 		}
-		if !c.isPausedSPN && !c.instance.SPNGroup().Ready() {
-			return errors.New(logPrefix + "cannot pause SPN when it is not running")
+		if !c.pauseInfo.SPN && !c.instance.SPNGroup().Ready() {
+			return errors.New("cannot pause SPN when it is not running")
 		}
 	}
 
@@ -64,99 +49,83 @@ func (c *Control) impl_pause(duration time.Duration, onlySPN bool) (retErr error
 		}
 	}()
 
-	if !c.isPausedSPN {
+	if !c.pauseInfo.SPN {
 		if c.instance.SPNGroup().Ready() {
-
-			// TODO: the 'pause' state must not make permanent config changes.
-			// Consider possibility to not store permanent config changes.
-			// E.g. SPN enabled -> pause SPN -> restart PC/Portmaster -> SPN should be enabled again.
 			enabled := config.GetAsBool("spn/enable", false)
 			if enabled() {
+				// TODO: the 'pause' state must not make permanent config changes.
+				// Consider possibility to not store permanent config changes.
+				// E.g. SPN enabled -> pause SPN -> restart PC/Portmaster -> SPN should be enabled again.
 				config.SetConfigOption("spn/enable", false)
+				c.mgr.Info("SPN paused")
 			}
-
-			// Alternatively, we could directly stop SPN here:
-			//  if c.instance.IsShuttingDown() {
-			//	  c.mgr.Warn("Skipping pause during shutdown")
-			//	  return nil
-			//  }
-			//	err := c.instance.SPNGroup().Stop()
-			//	if err != nil {
-			//		return err
-			//	}
-			//	c.mgr.Info("SPN paused")
-
-			c.isPausedSPN = true
+			c.pauseInfo.SPN = true
 		}
 	}
 
 	if onlySPN {
 		return nil
 	}
-	if c.isPaused {
-		return nil
-	}
 
-	modulesToResume := []mgr.Module{
-		c.instance.Compat(),
-		c.instance.Interception(),
-	}
-	for _, m := range modulesToResume {
-		if err := m.Stop(); err != nil {
-			return err
+	if !c.pauseInfo.Interception {
+		modulesToResume := []mgr.Module{
+			c.instance.Compat(),
+			c.instance.Interception(),
 		}
-	}
+		for _, m := range modulesToResume {
+			if err := m.Stop(); err != nil {
+				return err
+			}
+		}
 
-	c.mgr.Info("interception paused")
-	c.isPaused = true
+		c.mgr.Info("interception paused")
+		c.pauseInfo.Interception = true
+	}
 
 	return nil
 }
 
-func (c *Control) impl_resume() error {
+func (c *Control) resume() (retErr error) {
+	if c.instance.IsShuttingDown() {
+		c.mgr.Debug("Cannot resume: system is shutting down")
+		return nil
+	}
+
 	c.locker.Lock()
 	defer c.locker.Unlock()
 
+	defer func() {
+		// update states after resume attempt
+		c.updateStatesAndNotify()
+		// log error if resume failed
+		if retErr != nil {
+			c.mgr.Error("Failed to resume: " + retErr.Error())
+		}
+	}()
+
 	c.stopResumeWorker()
 
-	if c.isPausedSPN {
-
-		// TODO: consider using event to handle  "spn/enable" changes:
-		//	 	module.instance.Config().EventConfigChange
-		enabled := config.GetAsBool("spn/enable", false)
-		if !enabled() {
-			config.SetConfigOption("spn/enable", true)
-		}
-
-		// Alternatively, we could directly start SPN here:
-		//  if c.instance.IsShuttingDown() {
-		// 	 c.mgr.Warn("Skipping resume during shutdown")
-		// 	 return nil
-		//  }
-		//	if !c.instance.SPNGroup().Ready() {
-		//		err := c.instance.SPNGroup().Start()
-		//		if err != nil {
-		//			return err
-		//		}
-		//		c.mgr.Info("SPN resumed")
-		//	}
-
-		c.isPausedSPN = false
-	}
-
-	if c.isPaused {
+	if c.pauseInfo.Interception {
 		modulesToResume := []mgr.Module{
 			c.instance.Interception(),
 			c.instance.Compat(),
 		}
-
 		for _, m := range modulesToResume {
 			if err := m.Start(); err != nil {
 				return err
 			}
 		}
 		c.mgr.Info("interception resumed")
-		c.isPaused = false
+		c.pauseInfo.Interception = false
+	}
+
+	if c.pauseInfo.SPN {
+		enabled := config.GetAsBool("spn/enable", false)
+		if !enabled() {
+			config.SetConfigOption("spn/enable", true)
+			c.mgr.Info("SPN resumed")
+		}
+		c.pauseInfo.SPN = false
 	}
 
 	return nil
@@ -165,28 +134,90 @@ func (c *Control) impl_resume() error {
 // stopResumeWorker stops any existing resume worker.
 // No thread safety, caller must hold c.locker.
 func (c *Control) stopResumeWorker() {
-	c.pauseStartTime = time.Time{}
-	c.pauseDuration = 0
+	c.pauseInfo.TillTime = time.Time{}
 
-	if c.pauseWorker != nil {
-		c.pauseWorker.Stop()
-		c.pauseWorker = nil
+	if c.resumeWorker != nil {
+		c.resumeWorker.Stop()
+		c.resumeWorker = nil
 	}
 }
 
 // startResumeWorker starts a worker that will resume normal operation after the specified duration.
 // No thread safety, caller must hold c.locker.
 func (c *Control) startResumeWorker(duration time.Duration) {
-	c.pauseStartTime = time.Now()
-	c.pauseDuration = duration
+	c.pauseInfo.TillTime = time.Now().Add(duration)
 
-	c.mgr.Info(fmt.Sprintf("Scheduling resume in %v", duration))
+	resumerWorkerFunc := func(wc *mgr.WorkerCtx) error {
+		wc.Info(fmt.Sprintf("Scheduling resume in %v", duration))
 
-	c.pauseWorker = c.mgr.NewWorkerMgr(
-		fmt.Sprintf("resume in %v", duration),
-		func(wc *mgr.WorkerCtx) error {
-			wc.Info("Resuming...")
-			return c.impl_resume()
+		// Subscribe to config changes to detect SPN enable.
+		cfgChangeEvt := c.instance.Config().EventConfigChange.Subscribe("control: spn enable check", 10)
+		// Make sure to cancel subscription when worker stops.
+		defer cfgChangeEvt.Cancel()
+
+		for {
+			select {
+			case <-wc.Ctx().Done():
+				return nil
+			case <-cfgChangeEvt.Events():
+				spnEnabled := config.GetAsBool("spn/enable", false)
+				if spnEnabled() {
+					wc.Info("SPN enabled by user, resuming...")
+					return c.resume()
+				}
+			case <-time.After(duration):
+				wc.Info("Resuming...")
+				return c.resume()
+			}
+		}
+	}
+
+	c.resumeWorker = c.mgr.NewWorkerMgr("resumer", resumerWorkerFunc, nil)
+	c.resumeWorker.Go()
+}
+
+// updateStatesAndNotify updates the paused states and sends notifications accordingly.
+// No thread safety, caller must hold c.locker.
+func (c *Control) updateStatesAndNotify() {
+	if !c.pauseInfo.Interception && !c.pauseInfo.SPN {
+		if c.pauseNotification != nil {
+			c.pauseNotification.Delete()
+			c.pauseNotification = nil
+		}
+		return
+	}
+
+	title := ""
+	nType := notifications.Warning
+	if c.pauseInfo.Interception && c.pauseInfo.SPN {
+		title = "Portmaster and SPN paused"
+	} else if c.pauseInfo.Interception {
+		title = "Portmaster paused"
+	} else if c.pauseInfo.SPN {
+		title = "SPN paused"
+		nType = notifications.Info // less severe notification for SPN-only pause
+	}
+	message := fmt.Sprintf("%s till %v", title, c.pauseInfo.TillTime.Format(time.TimeOnly))
+
+	c.pauseNotification = &notifications.Notification{
+		EventID:      "control:paused",
+		Type:         nType,
+		Title:        title,
+		Message:      message,
+		ShowOnSystem: true,
+		EventData:    &c.pauseInfo,
+		AvailableActions: []*notifications.Action{
+			{
+				Text: "Resume",
+				Type: notifications.ActionTypeWebhook,
+				Payload: &notifications.ActionTypeWebhookPayload{
+					URL:          APIEndpointResume,
+					ResultAction: "display",
+				},
+			},
 		},
-		nil).Delay(duration)
+	}
+
+	notifications.Notify(c.pauseNotification)
+	c.pauseNotification.SyncWithState(c.states)
 }
