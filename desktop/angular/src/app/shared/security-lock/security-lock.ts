@@ -69,7 +69,7 @@ export class SecurityLockComponent implements OnInit {
           if (pauseData.Interception === true) {
             this.lockLevel.displayText = 'Insecure: PAUSED';
           } else if (pauseData.SPN === true) {
-            this.lockLevel.displayText = 'Secure: SPN Paused';
+            this.lockLevel.displayText = 'Secure (SPN Paused)';
           }
         }
 

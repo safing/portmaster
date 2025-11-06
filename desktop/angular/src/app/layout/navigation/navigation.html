@@ -229,13 +229,13 @@
         <hr/>
       </div>
 
-      <app-menu-item (click)="pauseSPN($event, 60*3)" [disabled]="isPausedInterception">Pause SPN for 3 minutes</app-menu-item>
-      <app-menu-item (click)="pauseSPN($event, 60*15)" [disabled]="isPausedInterception">Pause SPN for 15 minutes</app-menu-item>
-      <app-menu-item (click)="pauseSPN($event, 60*60)" [disabled]="isPausedInterception">Pause SPN for 1 hour</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*3)" *ngIf="spnEnabled" [disabled]="isPausedInterception">Pause SPN for 3 minutes</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*15)" *ngIf="spnEnabled" [disabled]="isPausedInterception">Pause SPN for 15 minutes</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*60)" *ngIf="spnEnabled" [disabled]="isPausedInterception">Pause SPN for 1 hour</app-menu-item>
       <hr/>
-      <app-menu-item (click)="pause($event, 60*3)">Pause for 3 minutes</app-menu-item>
-      <app-menu-item (click)="pause($event, 60*15)">Pause for 15 minutes</app-menu-item>
-      <app-menu-item (click)="pause($event, 60*60)">Pause for 1 hour</app-menu-item>      
+      <app-menu-item (click)="pause($event, 60*3)">Pause Portmaster for 3 minutes</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*15)">Pause Portmaster for 15 minutes</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*60)">Pause Portmaster for 1 hour</app-menu-item>
       <hr/>
       <app-menu-item (click)="resume($event)" [disabled]="!isPaused">Resume</app-menu-item>
   </app-menu>

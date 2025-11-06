@@ -1,7 +1,7 @@
 import { INTEGRATION_SERVICE, IntegrationService } from 'src/app/integration';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Inject, OnInit, Output, inject } from '@angular/core';
-import { ConfigService, DebugAPI, PortapiService, SPNService, StringSetting } from '@safing/portmaster-api';
+import { ConfigService, DebugAPI, PortapiService, SPNService, StringSetting, BoolSetting } from '@safing/portmaster-api';
 import { tap } from 'rxjs/operators';
 import { AppComponent } from 'src/app/app.component';
 import { NotificationType, NotificationsService, StatusService, VersionStatus, GetModuleState, ControlPauseStateData } from 'src/app/services';
@@ -59,6 +59,9 @@ export class NavigationComponent implements OnInit {
 
   /** Whether or not prompting is globally enabled. */
   globalPromptingEnabled = false;
+
+  /** Whether or not the SPN is currently enabled */
+  spnEnabled = false;
 
   @Output()
   sideDashChange = new EventEmitter<'collapsed' | 'expanded' | 'force-overlay'>();
@@ -120,6 +123,12 @@ export class NavigationComponent implements OnInit {
         this.globalPromptingEnabled = defaultAction === 'ask';
         this.cdr.markForCheck();
       })
+    
+    this.configService.watch<BoolSetting>("spn/enable")
+      .subscribe(value => {
+        this.spnEnabled = value;
+        this.cdr.markForCheck();
+      });
 
     this.notificationService.new$
       .subscribe(notif => {
