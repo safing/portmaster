@@ -8,8 +8,6 @@ import (
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/notifications"
-	"github.com/safing/portmaster/service/compat"
-	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -32,8 +30,7 @@ type Control struct {
 
 type instance interface {
 	Config() *config.Config
-	Interception() *interception.Interception
-	Compat() *compat.Compat
+	InterceptionGroup() *mgr.GroupModule
 	SPNGroup() *mgr.ExtendedGroup
 	IsShuttingDown() bool
 }

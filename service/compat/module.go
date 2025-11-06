@@ -78,14 +78,20 @@ func prep() error {
 }
 
 func start() error {
-	isActive.Store(true)
+	// Create fresh worker managers on Start() to enable clean restarts after Stop().
+	// (after module.Manager().Stop() has been called, all workers are stopped and cannot be reused)
+	module.selfcheckWorkerMgr = module.Manager().NewWorkerMgr("compatibility self-check", selfcheckTaskFunc, nil)
+	module.cleanNotifyThresholdWorkerMgr = module.Manager().NewWorkerMgr("clean notify thresholds", cleanNotifyThreshold, nil)
 
 	startNotify()
 
 	selfcheckNetworkChangedFlag.Refresh()
+
+	// Schedule periodic self-checks.
 	module.selfcheckWorkerMgr.Repeat(5 * time.Minute).Delay(selfcheckTaskRetryAfter)
 	module.cleanNotifyThresholdWorkerMgr.Repeat(1 * time.Hour)
 
+	// Add network change callback to trigger immediate self-check.
 	module.instance.NetEnv().EventNetworkChange.AddCallback("trigger compat self-check", func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
 		module.selfcheckWorkerMgr.Delay(selfcheckTaskRetryAfter)
 		return false, nil
@@ -94,16 +100,11 @@ func start() error {
 }
 
 func stop() error {
-	isActive.Store(false)
 	resetSelfCheckState()
-
 	return nil
 }
 
 func selfcheckTaskFunc(wc *mgr.WorkerCtx) error {
-	if !isActive.Load() {
-		return nil
-	}
 
 	// Create tracing logger.
 	ctx, tracer := log.AddTracer(wc.Ctx())
@@ -166,9 +167,6 @@ func SelfCheckIsFailing() bool {
 var (
 	module     *Compat
 	shimLoaded atomic.Bool
-	// isActive is a simple shutdown flag to prevent self-check worker from executing during stop().
-	// TODO: consider correct start/stop of the workers instead.
-	isActive atomic.Bool
 )
 
 // New returns a new Compat module.
@@ -180,11 +178,7 @@ func New(instance instance) (*Compat, error) {
 	module = &Compat{
 		mgr:      m,
 		instance: instance,
-
-		selfcheckWorkerMgr:            m.NewWorkerMgr("compatibility self-check", selfcheckTaskFunc, nil),
-		cleanNotifyThresholdWorkerMgr: m.NewWorkerMgr("clean notify thresholds", cleanNotifyThreshold, nil),
-
-		states: mgr.NewStateMgr(m),
+		states:   mgr.NewStateMgr(m),
 	}
 	if err := prep(); err != nil {
 		return nil, err

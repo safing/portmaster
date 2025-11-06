@@ -58,7 +58,8 @@ type Instance struct {
 	shutdownCtx       context.Context
 	cancelShutdownCtx context.CancelFunc
 
-	serviceGroup *mgr.Group
+	serviceGroup             *mgr.Group
+	serviceGroupInterception *mgr.GroupModule
 
 	binDir  string
 	dataDir string
@@ -313,6 +314,12 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		return instance, fmt.Errorf("create terminal module: %w", err)
 	}
 
+	// Grouped interception modules that can be paused/resumed together.
+	instance.serviceGroupInterception = mgr.NewGroupModule("Interception Group",
+		instance.interception,
+		instance.dnsmonitor,
+		instance.compat)
+
 	// Add all modules to instance group.
 	instance.serviceGroup = mgr.NewGroup(
 		instance.base,
@@ -340,10 +347,13 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.resolver,
 		instance.filterLists,
 		instance.customlist,
-		instance.interception,
-		instance.dnsmonitor,
 
-		instance.compat,
+		// Grouped interception modules:
+		// 		instance.interception,
+		// 		instance.dnsmonitor,
+		// 		instance.compat
+		instance.serviceGroupInterception,
+
 		instance.status,
 		instance.broadcasts,
 		instance.sync,
@@ -547,6 +557,11 @@ func (i *Instance) FilterLists() *filterlists.FilterLists {
 // Interception returns the interception module.
 func (i *Instance) Interception() *interception.Interception {
 	return i.interception
+}
+
+// InterceptionGroup returns the grouped interception modules that can be paused together.
+func (i *Instance) InterceptionGroup() *mgr.GroupModule {
+	return i.serviceGroupInterception
 }
 
 // DNSMonitor returns the dns-listener module.

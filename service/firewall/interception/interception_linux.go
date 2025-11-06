@@ -34,11 +34,6 @@ func startInterception(packets chan packet.Packet) error {
 
 // stop starts the interception.
 func stopInterception() error {
-	// TODO: stop ebpf workers gracefully
-	// E.g.:
-	// 		module.mgr.Cancel()
-	// 		<-m.Done()
-
 	return StopNfqueueInterception()
 }
 

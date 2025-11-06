@@ -68,16 +68,9 @@ func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
 	}
 
 	if !c.pauseInfo.Interception {
-		modulesToResume := []mgr.Module{
-			c.instance.Compat(),
-			c.instance.Interception(),
+		if err := c.instance.InterceptionGroup().Stop(); err != nil {
+			return err
 		}
-		for _, m := range modulesToResume {
-			if err := m.Stop(); err != nil {
-				return err
-			}
-		}
-
 		c.mgr.Info("interception paused")
 		c.pauseInfo.Interception = true
 	}
@@ -106,14 +99,8 @@ func (c *Control) resume() (retErr error) {
 	c.stopResumeWorker()
 
 	if c.pauseInfo.Interception {
-		modulesToResume := []mgr.Module{
-			c.instance.Interception(),
-			c.instance.Compat(),
-		}
-		for _, m := range modulesToResume {
-			if err := m.Start(); err != nil {
-				return err
-			}
+		if err := c.instance.InterceptionGroup().Start(); err != nil {
+			return err
 		}
 		c.mgr.Info("interception resumed")
 		c.pauseInfo.Interception = false
