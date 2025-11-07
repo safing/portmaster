@@ -31,7 +31,6 @@ type Control struct {
 type instance interface {
 	Config() *config.Config
 	InterceptionGroup() *mgr.GroupModule
-	SPNGroup() *mgr.ExtendedGroup
 	IsShuttingDown() bool
 }
 

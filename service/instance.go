@@ -317,7 +317,11 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	// Grouped interception modules that can be paused/resumed together.
 	instance.serviceGroupInterception = mgr.NewGroupModule("Interception Group",
 		instance.interception,
-		instance.dnsmonitor,
+
+		// TODO: The dnsmonitor is currently not part of this group, as it has inconsistent issue when stopping.
+		// 		 Fix chars-issue of this module and re-add it here.
+		//instance.dnsmonitor,
+
 		instance.compat)
 
 	// Add all modules to instance group.
@@ -348,11 +352,12 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.filterLists,
 		instance.customlist,
 
-		// Grouped interception modules:
+		// Grouped pausable interception modules:
 		// 		instance.interception,
 		// 		instance.dnsmonitor,
 		// 		instance.compat
 		instance.serviceGroupInterception,
+		instance.dnsmonitor, // TODO: Remove when re-added to serviceGroupInterception group.
 
 		instance.status,
 		instance.broadcasts,

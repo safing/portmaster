@@ -32,15 +32,18 @@ func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
 		return errors.New("invalid pause duration")
 	}
 
+	spn_enabled := config.GetAsBool("spn/enable", false)
 	if onlySPN {
 		if c.pauseInfo.Interception {
 			return errors.New("cannot pause SPN separately when core is paused")
 		}
-		if !c.pauseInfo.SPN && !c.instance.SPNGroup().Ready() {
+		// If SPN is not running and not already paused, cannot pause it or change pause duration.
+		if !spn_enabled() && !c.pauseInfo.SPN {
 			return errors.New("cannot pause SPN when it is not running")
 		}
 	}
 
+	// Stop resume worker if running and start a new one later.
 	c.stopResumeWorker()
 	defer func() {
 		if retErr == nil {
@@ -49,18 +52,16 @@ func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
 		}
 	}()
 
+	// Pause SPN if not already paused.
 	if !c.pauseInfo.SPN {
-		if c.instance.SPNGroup().Ready() {
-			enabled := config.GetAsBool("spn/enable", false)
-			if enabled() {
-				// TODO: the 'pause' state must not make permanent config changes.
-				// Consider possibility to not store permanent config changes.
-				// E.g. SPN enabled -> pause SPN -> restart PC/Portmaster -> SPN should be enabled again.
-				config.SetConfigOption("spn/enable", false)
-				c.mgr.Info("SPN paused")
-			}
-			c.pauseInfo.SPN = true
+		if spn_enabled() {
+			// TODO: the 'pause' state must not make permanent config changes.
+			// Consider possibility to not store permanent config changes.
+			// E.g. SPN enabled -> pause SPN -> restart PC/Portmaster -> SPN should be enabled again.
+			config.SetConfigOption("spn/enable", false)
+			c.mgr.Info("SPN paused")
 		}
+		c.pauseInfo.SPN = true
 	}
 
 	if onlySPN {
