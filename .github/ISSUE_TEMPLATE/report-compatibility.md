@@ -30,6 +30,6 @@ Paste debug information below if reporting a problem:
 This is easiest to do in the preview mode.
 
 If needed, additional logs can be found here:
-- Linux: `/opt/safing/portmaster/logs`
+- Linux: `/var/lib/portmaster/log`
 - Windows: `%PROGRAMDATA%\Safing\Portmaster\logs`
 -->
