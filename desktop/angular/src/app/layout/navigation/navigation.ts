@@ -42,11 +42,11 @@ export class NavigationComponent implements OnInit {
   get isPausedSPN(): boolean { return this.pauseState?.SPN===true; }
   get pauseInfo(): string {
     if (this.pauseState?.Interception===true && this.pauseState?.SPN===true) 
-      return 'Portmaster and SPN';
+      return 'Portmaster and SPN are paused';
     else if (this.pauseState?.Interception===true)
-      return 'Portmaster';
+      return 'Portmaster is paused';
     else if (this.pauseState?.SPN===true)
-      return 'SPN';
+      return 'SPN is paused';
     return '';
   }
   get pauseInfoTillTime(): string {

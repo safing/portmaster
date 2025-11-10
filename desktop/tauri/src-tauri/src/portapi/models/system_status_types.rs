@@ -45,7 +45,7 @@ pub struct WorstState {
     pub state: State,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SystemStatus {
     #[serde(rename = "Modules")]
     pub modules: Vec<StateUpdate>,
@@ -54,4 +54,28 @@ pub struct SystemStatus {
 
     // add more fields when needed
     // ...
+}
+
+// PauseInfo represents pause status data from "control:paused" state in Control module
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PauseInfo {
+    #[serde(rename = "Interception")]
+    pub interception: bool,
+    #[serde(rename = "SPN")]  
+    pub spn: bool,
+    #[serde(rename = "TillTime")]
+    pub till_time: String, // time.Time serialized as string by GoLang
+}
+
+
+impl SystemStatus {
+    pub fn get_module_state(&self, module_name: &str, state_id: &str) -> Option<&State> {
+        if let Some(module) = self.modules.iter().find(|m| m.module == module_name) {
+            if let Some(states) = &module.states {
+                return states.iter().find(|s| s.id == state_id);
+            }
+        }
+        None
+    }
+    
 }
