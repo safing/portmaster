@@ -278,7 +278,7 @@ fn build_tray_menu(
 pub fn setup_tray_menu(
     app: &mut tauri::App,
 ) -> core::result::Result<AppIcon, Box<dyn std::error::Error>> {
-    let menu = build_tray_menu(app.handle(), "Secured", "disabled", &system_status_types::PauseInfo::default())?;
+    let menu = build_tray_menu(app.handle(), "unknown", "disabled", &system_status_types::PauseInfo::default())?;
 
     let icon = TrayIconBuilder::with_id(PM_TRAY_ICON_ID)
         .icon(Image::from_bytes(get_red_icon()).unwrap())

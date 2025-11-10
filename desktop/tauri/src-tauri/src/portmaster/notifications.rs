@@ -134,8 +134,10 @@ pub async fn show_notification(cli: &PortAPI, key: String, n: Notification) {
                         ))
                         .await;
                 });
+            } else {               
+                error!("Notification clicked but no action associated.");
+                // TODO(vladimir): If Action is None, the user clicked on the notification. Focus on the UI.
             }
-            // TODO(vladimir): If Action is None, the user clicked on the notification. Focus on the UI.
             Ok(())
         });
     }

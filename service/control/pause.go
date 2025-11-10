@@ -60,8 +60,8 @@ func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
 			// E.g. SPN enabled -> pause SPN -> restart PC/Portmaster -> SPN should be enabled again.
 			config.SetConfigOption("spn/enable", false)
 			c.mgr.Info("SPN paused")
+			c.pauseInfo.SPN = true
 		}
-		c.pauseInfo.SPN = true
 	}
 
 	if onlySPN {
@@ -192,7 +192,7 @@ func (c *Control) updateStatesAndNotify() {
 		Type:         nType,
 		Title:        title,
 		Message:      message,
-		ShowOnSystem: true,
+		ShowOnSystem: false, // TODO: Before enabling, ensure that UI client (Tauri implementation) supports ActionTypeWebhook.
 		EventData:    &c.pauseInfo,
 		AvailableActions: []*notifications.Action{
 			{
