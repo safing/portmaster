@@ -8,7 +8,9 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
+	"time"
 
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/integration"
 	"golang.org/x/sys/windows"
 )
@@ -19,6 +21,8 @@ type ETWSession struct {
 	shutdownGuard atomic.Bool
 	shutdownMutex sync.Mutex
 
+	traceEnded chan struct{}
+
 	state uintptr
 }
 
@@ -28,7 +32,8 @@ func NewSession(etwInterface *integration.ETWFunctions, callback func(domain str
 		return nil, fmt.Errorf("etw interface was nil")
 	}
 	etwSession := &ETWSession{
-		i: etwInterface,
+		i:          etwInterface,
+		traceEnded: make(chan struct{}),
 	}
 
 	// Make sure session from previous instances are not running.
@@ -43,6 +48,8 @@ func NewSession(etwInterface *integration.ETWFunctions, callback func(domain str
 	etwSession.state = etwSession.i.CreateState(win32Callback)
 
 	// Make sure DestroySession is called even if caller forgets to call it.
+	// TODO: (stenya) Finalizer directly calls i.DestroySession() bypassing synchronization in DestroySession().
+	//                This could crash if StartTrace() is running. Consider using s.DestroySession() instead.
 	runtime.SetFinalizer(etwSession, func(s *ETWSession) {
 		_ = s.i.DestroySession(s.state)
 	})
@@ -58,6 +65,7 @@ func NewSession(etwInterface *integration.ETWFunctions, callback func(domain str
 
 // StartTrace starts the tracing session of dns events. This is a blocking call. It will not return until the trace is stopped.
 func (l *ETWSession) StartTrace() error {
+	defer close(l.traceEnded)
 	return l.i.StartTrace(l.state)
 }
 
@@ -98,6 +106,13 @@ func (l *ETWSession) DestroySession() error {
 
 	if l.shutdownGuard.Swap(true) {
 		return nil
+	}
+
+	// Waiting for StartTrace() to return
+	select {
+	case <-l.traceEnded:
+	case <-time.After(15 * time.Second):
+		log.Warning("DNSMonitor: (ETWSession) Timeout waiting for trace to end before destroying session")
 	}
 
 	err := l.i.DestroySession(l.state)
