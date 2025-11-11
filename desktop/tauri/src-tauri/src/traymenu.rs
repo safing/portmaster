@@ -423,7 +423,7 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
         Ok(rx) => rx,
         Err(err) => {
             error!(
-                "cancel try_handler: failed to subscribe to 'runtime:subsystems': {}",
+                "cancel try_handler: failed to subscribe to 'runtime:system/status': {}",
                 err
             );
             return;
@@ -594,7 +594,18 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
             }
         }
     }
+
+    update_icon_nostate(icon.clone());
+}
+
+pub fn update_icon_nostate(icon: AppIcon) {
     update_icon_color(&icon, IconColor::Red);
+
+    if let Ok(menu) = build_tray_menu(icon.app_handle(), "unknown",  "unknown", &system_status_types::PauseInfo::default()) {
+        if let Err(err) = icon.set_menu(Some(menu)) {
+            error!("failed to set menu on tray icon: {}", err.to_string());
+        }
+    }
 }
 
 fn update_icon_color(icon: &AppIcon, new_color: IconColor) {

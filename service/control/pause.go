@@ -155,7 +155,26 @@ func (c *Control) startResumeWorker(duration time.Duration) {
 				}
 			case <-time.After(duration):
 				wc.Info("Resuming...")
-				return c.resume()
+
+				err := c.resume()
+				if err == nil {
+					n := &notifications.Notification{
+						EventID:      "control:resumed",
+						Type:         notifications.Info,
+						Title:        "Resumed",
+						Message:      "Automatically resumed from pause state",
+						ShowOnSystem: true,
+						Expires:      time.Now().Add(15 * time.Second).Unix(),
+						AvailableActions: []*notifications.Action{
+							{
+								ID:   "ack",
+								Text: "OK",
+							},
+						},
+					}
+					notifications.Notify(n)
+				}
+				return err
 			}
 		}
 	}
