@@ -36,7 +36,7 @@ futures-util = { version = "0.3", features = ["sink"] }
 dirs = "1.0"
 rust-ini = "0.20.0"
 dataurl = "0.1.2"
-uuid = "1.6.1"
+uuid = { version = "1.6.1", features = ["v4"] }
 lazy_static = "1.4.0"
 tokio = { version = "1.44.2", features = ["macros"] }
 cached = "0.46.1"
