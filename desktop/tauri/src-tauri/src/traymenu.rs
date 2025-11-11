@@ -43,7 +43,7 @@ enum IconColor {
 }
 
 static CURRENT_ICON_COLOR: RwLock<IconColor> = RwLock::new(IconColor::Red);
-pub static USER_THEME: RwLock<dark_light::Mode> = RwLock::new(dark_light::Mode::Default);
+pub static USER_THEME: RwLock<dark_light::Mode> = RwLock::new(dark_light::Mode::Unspecified);
 const OPEN_KEY: &str = "open";
 const EXIT_UI_KEY: &str = "exit_ui";
 const SPN_STATUS_KEY: &str = "spn_status";
@@ -65,7 +65,7 @@ fn get_theme_mode() -> dark_light::Mode {
     if let Ok(value) = USER_THEME.read() {
         return *value.deref();
     }
-    dark_light::detect()
+    dark_light::detect().unwrap_or(dark_light::Mode::Unspecified)
 }
 
 fn get_green_icon() -> &'static [u8] {
@@ -247,7 +247,7 @@ pub fn setup_tray_menu(
             SHUTDOWN_KEY => {
                 app.portmaster().trigger_shutdown();
             }
-            SYSTEM_THEME_KEY => update_icon_theme(app, dark_light::Mode::Default),
+            SYSTEM_THEME_KEY => update_icon_theme(app, dark_light::Mode::Unspecified),
             DARK_THEME_KEY => update_icon_theme(app, dark_light::Mode::Dark),
             LIGHT_THEME_KEY => update_icon_theme(app, dark_light::Mode::Light),
             other => {
@@ -538,7 +538,7 @@ fn load_theme(app: &tauri::AppHandle) {
             let theme = match config.theme {
                 config::Theme::Light => dark_light::Mode::Light,
                 config::Theme::Dark => dark_light::Mode::Dark,
-                config::Theme::System => dark_light::Mode::Default,
+                config::Theme::System => dark_light::Mode::Unspecified,
             };
 
             if let Ok(mut value) = USER_THEME.write() {
@@ -555,7 +555,7 @@ fn save_theme(app: &tauri::AppHandle, mode: dark_light::Mode) {
             let theme = match mode {
                 dark_light::Mode::Dark => config::Theme::Dark,
                 dark_light::Mode::Light => config::Theme::Light,
-                dark_light::Mode::Default => config::Theme::System,
+                dark_light::Mode::Unspecified => config::Theme::System,
             };
             config.theme = theme;
             if let Err(err) = config::save(app, config) {
