@@ -99,6 +99,14 @@ navTools:
   title: Version and Tools
   content: |
     View the Portmaster's version and use special actions and tools.
+  nextKey: navPause
+
+navPause:
+  title: Pause and Resume
+  content: |
+    Temporarily disable Portmaster's protection and network monitoring.
+    
+    Choose to pause SPN only or disable all protection completely.
   nextKey: navPower
 
 navPower:

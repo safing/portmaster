@@ -1,10 +1,10 @@
 import { INTEGRATION_SERVICE, IntegrationService } from 'src/app/integration';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Inject, OnInit, Output, inject } from '@angular/core';
-import { ConfigService, DebugAPI, PortapiService, SPNService, StringSetting } from '@safing/portmaster-api';
+import { ConfigService, DebugAPI, PortapiService, SPNService, StringSetting, BoolSetting } from '@safing/portmaster-api';
 import { tap } from 'rxjs/operators';
 import { AppComponent } from 'src/app/app.component';
-import { NotificationType, NotificationsService, StatusService, VersionStatus } from 'src/app/services';
+import { NotificationType, NotificationsService, StatusService, VersionStatus, GetModuleState, ControlPauseStateData } from 'src/app/services';
 import { ActionIndicatorService } from 'src/app/shared/action-indicator';
 import { fadeInAnimation, fadeOutAnimation } from 'src/app/shared/animations';
 import { ExitService } from 'src/app/shared/exit-screen';
@@ -36,11 +36,33 @@ export class NavigationComponent implements OnInit {
   /** The color to use for the notifcation-available hint (dot) */
   notificationColor: string = 'text-green-300';
 
+  pauseState: ControlPauseStateData | null = null;
+  get isPaused(): boolean { return this.pauseState?.Interception===true || this.pauseState?.SPN===true; }
+  get isPausedInterception(): boolean { return this.pauseState?.Interception===true; }
+  get isPausedSPN(): boolean { return this.pauseState?.SPN===true; }
+  get pauseInfo(): string {
+    if (this.pauseState?.Interception===true && this.pauseState?.SPN===true) 
+      return 'Portmaster and SPN are paused';
+    else if (this.pauseState?.Interception===true)
+      return 'Portmaster is paused';
+    else if (this.pauseState?.SPN===true)
+      return 'SPN is paused';
+    return '';
+  }
+  get pauseInfoTillTime(): string {
+    if (this.isPaused && this.pauseState?.TillTime)
+      return new Date(this.pauseState.TillTime).toLocaleTimeString(undefined, { hour12: false });
+    return '';
+  }
+
   /** Whether or not we have new, unseen prompts */
   hasNewPrompts = false;
 
   /** Whether or not prompting is globally enabled. */
   globalPromptingEnabled = false;
+
+  /** Whether or not the SPN is currently enabled */
+  spnEnabled = false;
 
   @Output()
   sideDashChange = new EventEmitter<'collapsed' | 'expanded' | 'force-overlay'>();
@@ -93,11 +115,21 @@ export class NavigationComponent implements OnInit {
         this.cdr.markForCheck();
       });
 
+    this.statusService.status$.subscribe(status => {
+      this.pauseState = GetModuleState(status, 'Control', 'control:paused')?.Data || null;
+    });
+
     this.configService.watch<StringSetting>('filter/defaultAction')
       .subscribe(defaultAction => {
         this.globalPromptingEnabled = defaultAction === 'ask';
         this.cdr.markForCheck();
       })
+    
+    this.configService.watch<BoolSetting>("spn/enable")
+      .subscribe(value => {
+        this.spnEnabled = value;
+        this.cdr.markForCheck();
+      });
 
     this.notificationService.new$
       .subscribe(notif => {
@@ -251,6 +283,43 @@ export class NavigationComponent implements OnInit {
       ))
   }
 
+   pause(event: Event, duration: number) {
+    // prevent default and stop-propagation to avoid
+    // expanding the accordion body.
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.portapi.pause(duration, false)
+      .subscribe(this.actionIndicator.httpObserver(
+        'Pausing ...',
+        'Failed to Pause',
+      ))
+  }
+  pauseSPN(event: Event, duration: number) {
+    // prevent default and stop-propagation to avoid
+    // expanding the accordion body.
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.portapi.pause(duration, true)
+      .subscribe(this.actionIndicator.httpObserver(
+        'Pausing SPN...',
+        'Failed to Pause SPN',
+      ))
+  }
+  resume(event: Event) {
+    // prevent default and stop-propagation to avoid
+    // expanding the accordion body.
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.portapi.resume()
+      .subscribe(this.actionIndicator.httpObserver(
+        'Resuming ...',
+        'Failed to Resume',
+      ))
+  }
+    
   /**
    * @private
    * Opens the data-directory of the portmaster installation.

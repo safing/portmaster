@@ -27,7 +27,7 @@ export function getOnlineStatusString(stat: OnlineStatus): string {
 export interface CoreStatus extends Record {
   OnlineStatus: OnlineStatus;
   CaptivePortal: CaptivePortal;
-  // Modules: []ModuleState; // TODO: Do we need all modules?
+  Modules: StateUpdate[]; // TODO: Do we need all modules?
   WorstState: {
     Module: string,
     ID: string,
@@ -37,6 +37,20 @@ export interface CoreStatus extends Record {
     // Time: time.Time, // TODO: How do we best use Go's time.Time?
     Data: any
   }
+}
+
+export interface StateUpdate {
+  Module: string;
+  States: State[];
+}
+
+export interface State {  
+  ID: string;             // Program-unique identifier  
+  Name: string;           // State name (may serve as notification title)  
+  Message?: string;       // Detailed message about the state  
+  Type?: ModuleStateType; // State type  
+  Time?: Date;            // Creation time  
+  Data?: any;             // Additional data for processing
 }
 
 export enum ModuleStateType {
@@ -109,4 +123,56 @@ export interface VersionStatus extends Record {
   Resources: {
     [key: string]: Resource
   }
+}
+
+function getModuleStates(status: CoreStatus, moduleID: string): State[] {
+  const module = status.Modules?.find(m => m.Module === moduleID);
+  return module?.States || [];  
+}
+
+/**
+ * Retrieves a specific state from a module within the CoreStatus.
+ * @param status The CoreStatus object containing module states.
+ * @param moduleID The identifier of the module to search within.
+ * @param stateID The identifier of the state to retrieve.
+ * @returns The State object if found; otherwise, null.
+ * @example
+ * ```typescript
+ * const state = GetModuleState(status, 'Control', 'control:paused');
+ * if (state) {
+ *   console.log(`State found: ${state.Name}`);
+ * } else {
+ *   console.log('State not found');
+ * }
+ * ```
+ */
+export function GetModuleState(status: CoreStatus, moduleID: string, stateID: string): State | null {
+  const states = getModuleStates(status, moduleID);
+  for (const state of states) {
+    if (state.ID === stateID) {
+      return state;
+    }
+  }
+  return null;
+}
+
+/**
+ * Data structure for the 'control:paused' state from the 'Control' module.
+ * 
+ * This interface defines the expected structure of the Data field when Portmaster
+ * or its components are temporarily paused by the user.
+ * 
+ * @example
+ * ```typescript
+ * const pausedState = GetModuleState(status, 'Control', 'control:paused');
+ * if (pausedState?.Data) {
+ *   const pauseData = pausedState.Data as ControlPauseStateData;
+ *   console.log(`SPN paused: ${pauseData.SPN}`);
+ * }
+ * ```
+ */
+export interface ControlPauseStateData { 
+    Interception: boolean;  // Whether Portmaster interception is paused
+    SPN:          boolean;  // Whether SPN is paused    
+    TillTime:     string;   // When the pause will end (JSON date as string, has to be converted to Date)
 }

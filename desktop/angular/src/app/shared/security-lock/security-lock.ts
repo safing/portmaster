@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, Input, OnInit, inject } from "@angular/core";
 import { SecurityLevel } from "@safing/portmaster-api";
 import { combineLatest } from "rxjs";
-import { StatusService, ModuleStateType } from "src/app/services";
+import { StatusService, ModuleStateType, GetModuleState, ControlPauseStateData } from "src/app/services";
 import { fadeInAnimation, fadeOutAnimation } from "../animations";
 
 interface SecurityOption {
@@ -60,6 +60,17 @@ export class SecurityLockComponent implements OnInit {
               displayText: 'Insecure'
             }
             break;
+        }
+
+        // Checking for Control:Paused state
+        const pausedState = GetModuleState(status, 'Control', 'control:paused');
+        if (pausedState?.Data) {
+          const pauseData = pausedState.Data as ControlPauseStateData;
+          if (pauseData.Interception === true) {
+            this.lockLevel.displayText = 'Insecure: PAUSED';
+          } else if (pauseData.SPN === true) {
+            this.lockLevel.displayText = 'Secure (SPN Paused)';
+          }
         }
 
         this.cdr.markForCheck();

@@ -1,10 +1,10 @@
 package interception
 
 import (
-	"flag"
 	"fmt"
 	"sort"
 	"strings"
+	"sync/atomic"
 
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/hashicorp/go-multierror"
@@ -30,14 +30,9 @@ var (
 	out6Queue nfQueue
 	in6Queue  nfQueue
 
+	isRunning      atomic.Bool
 	shutdownSignal = make(chan struct{})
-
-	experimentalNfqueueBackend bool
 )
-
-func init() {
-	flag.BoolVar(&experimentalNfqueueBackend, "experimental-nfqueue", false, "(deprecated flag; always used)")
-}
 
 // nfQueue encapsulates nfQueue providers.
 type nfQueue interface {
@@ -262,11 +257,12 @@ func deactivateIPTables(protocol iptables.Protocol, rules, chains []string) erro
 
 // StartNfqueueInterception starts the nfqueue interception.
 func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
-	// @deprecated, remove in v1
-	if experimentalNfqueueBackend {
-		log.Warningf("[DEPRECATED] --experimental-nfqueue has been deprecated as the backend is now used by default")
-		log.Warningf("[DEPRECATED] please remove the flag from your configuration!")
+	if !isRunning.CompareAndSwap(false, true) {
+		return nil // already running
 	}
+
+	// Reset shutdown signal
+	shutdownSignal = make(chan struct{})
 
 	err = activateNfqueueFirewall()
 	if err != nil {
@@ -305,6 +301,11 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 
 // StopNfqueueInterception stops the nfqueue interception.
 func StopNfqueueInterception() error {
+	if !isRunning.CompareAndSwap(true, false) {
+		return nil // not running
+	}
+
+	// Signal shutdown to packet handler
 	defer close(shutdownSignal)
 
 	if out4Queue != nil {

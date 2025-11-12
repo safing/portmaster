@@ -1,4 +1,4 @@
 pub mod config;
 pub mod spn;
 pub mod notification;
-pub mod subsystem;
+pub mod system_status_types;

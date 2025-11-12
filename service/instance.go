@@ -16,6 +16,7 @@ import (
 	"github.com/safing/portmaster/base/utils"
 	"github.com/safing/portmaster/service/broadcasts"
 	"github.com/safing/portmaster/service/compat"
+	"github.com/safing/portmaster/service/control"
 	"github.com/safing/portmaster/service/core"
 	"github.com/safing/portmaster/service/core/base"
 	"github.com/safing/portmaster/service/firewall"
@@ -57,7 +58,8 @@ type Instance struct {
 	shutdownCtx       context.Context
 	cancelShutdownCtx context.CancelFunc
 
-	serviceGroup *mgr.Group
+	serviceGroup             *mgr.Group
+	serviceGroupInterception *mgr.GroupModule
 
 	binDir  string
 	dataDir string
@@ -95,6 +97,7 @@ type Instance struct {
 	process       *process.ProcessModule
 	resolver      *resolver.ResolverModule
 	sync          *sync.Sync
+	control       *control.Control
 
 	access *access.Access
 
@@ -264,6 +267,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create sync module: %w", err)
 	}
+	instance.control, err = control.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create control module: %w", err)
+	}
 	instance.access, err = access.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create access module: %w", err)
@@ -307,6 +314,12 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		return instance, fmt.Errorf("create terminal module: %w", err)
 	}
 
+	// Grouped interception modules that can be paused/resumed together.
+	instance.serviceGroupInterception = mgr.NewGroupModule("Interception Group",
+		instance.interception,
+		instance.dnsmonitor,
+		instance.compat)
+
 	// Add all modules to instance group.
 	instance.serviceGroup = mgr.NewGroup(
 		instance.base,
@@ -334,14 +347,18 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.resolver,
 		instance.filterLists,
 		instance.customlist,
-		instance.interception,
-		instance.dnsmonitor,
 
-		instance.compat,
+		// Grouped pausable interception modules:
+		// 		instance.interception,
+		// 		instance.dnsmonitor,
+		// 		instance.compat
+		instance.serviceGroupInterception,
+
 		instance.status,
 		instance.broadcasts,
 		instance.sync,
 		instance.ui,
+		instance.control,
 
 		instance.access,
 	)
@@ -540,6 +557,11 @@ func (i *Instance) FilterLists() *filterlists.FilterLists {
 // Interception returns the interception module.
 func (i *Instance) Interception() *interception.Interception {
 	return i.interception
+}
+
+// InterceptionGroup returns the grouped interception modules that can be paused together.
+func (i *Instance) InterceptionGroup() *mgr.GroupModule {
+	return i.serviceGroupInterception
 }
 
 // DNSMonitor returns the dns-listener module.
