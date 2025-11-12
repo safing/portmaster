@@ -73,6 +73,7 @@ func start() error {
 	if err != nil {
 		log.Errorf("interception: failed to start module: %q", err)
 		log.Debug("interception: cleaning up after failed start...")
+		metrics.stop()
 		if e := stopInterception(); e != nil {
 			log.Debugf("interception: error cleaning up after failed start: %q", e.Error())
 		}
