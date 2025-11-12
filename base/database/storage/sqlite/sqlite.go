@@ -182,7 +182,7 @@ func (db *SQLite) putRecord(r record.Record, tx *bob.Tx) (record.Record, error) 
 		return nil, err
 	}
 	// Prepare for setter.
-	setFormat := omitnull.From(int16(format))
+	setFormat := omitnull.From(int64(format))
 	setData := omitnull.From(data)
 	if len(data) == 0 {
 		setFormat.Null()
@@ -259,7 +259,7 @@ func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error
 					}
 				} else {
 					// Finalize transcation.
-					errs <- tx.Commit()
+					errs <- tx.Commit(db.ctx)
 					return
 				}
 
@@ -269,7 +269,7 @@ func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error
 		}
 
 		// Rollback transaction.
-		errs <- tx.Rollback()
+		errs <- tx.Rollback(db.ctx)
 	}()
 
 	return batch, errs
