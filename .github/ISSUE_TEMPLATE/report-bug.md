@@ -39,5 +39,5 @@ This is easiest to do in the preview mode.
 
 Additional logs can be found here:
 - Linux: `/var/lib/portmaster/log`
-- Windows: `%PROGRAMDATA%\Safing\Portmaster\logs`
+- Windows: `%PROGRAMDATA%\Portmaster\logs`
 -->
