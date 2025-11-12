@@ -65,7 +65,7 @@ func (db *SQLite) putManyWithPreparedStmts(shadowDelete bool) (chan<- record.Rec
 					}
 				} else {
 					// Finalize transcation.
-					errs <- tx.Commit()
+					errs <- tx.Commit(db.ctx)
 					return
 				}
 
@@ -75,7 +75,7 @@ func (db *SQLite) putManyWithPreparedStmts(shadowDelete bool) (chan<- record.Rec
 		}
 
 		// Rollback transaction.
-		errs <- tx.Rollback()
+		errs <- tx.Rollback(db.ctx)
 	}()
 
 	return batch, errs

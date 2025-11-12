@@ -40,6 +40,7 @@ var (
 	BandwidthUpdates = make(chan *packet.BandwidthUpdate, 1000)
 
 	disableInterception bool
+	isStarted           atomic.Bool
 )
 
 func init() {
@@ -53,6 +54,10 @@ func start() error {
 		return nil
 	}
 
+	if !isStarted.CompareAndSwap(false, true) {
+		return nil // already running
+	}
+
 	inputPackets := Packets
 	if packetMetricsDestination != "" {
 		go metrics.writeMetrics()
@@ -64,7 +69,17 @@ func start() error {
 		}()
 	}
 
-	return startInterception(inputPackets)
+	err := startInterception(inputPackets)
+	if err != nil {
+		log.Errorf("interception: failed to start module: %q", err)
+		log.Debug("interception: cleaning up after failed start...")
+		metrics.stop()
+		if e := stopInterception(); e != nil {
+			log.Debugf("interception: error cleaning up after failed start: %q", e.Error())
+		}
+		isStarted.Store(false)
+	}
+	return err
 }
 
 // Stop starts the interception.
@@ -73,7 +88,11 @@ func stop() error {
 		return nil
 	}
 
-	close(metrics.done)
+	if !isStarted.CompareAndSwap(true, false) {
+		return nil // not running
+	}
+
+	metrics.stop()
 	if err := stopInterception(); err != nil {
 		log.Errorf("failed to stop interception module: %s", err)
 	}

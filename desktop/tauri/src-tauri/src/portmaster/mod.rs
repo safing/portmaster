@@ -217,6 +217,47 @@ impl<R: Runtime> PortmasterInterface<R> {
         });
     }
 
+    pub fn set_resume(&self) {
+        tauri::async_runtime::spawn(async move {
+            let client = reqwest::Client::new();
+            match client
+                .post(format!("{}control/resume", PORTMASTER_BASE_URL))
+                .send()
+                .await
+            {
+                Ok(v) => {
+                    debug!("resume request sent {:?}", v);
+                }
+                Err(err) => {
+                    error!("failed to send resume request {}", err);
+                }
+            }
+        });
+    }
+
+
+    pub fn set_pause(&self, duration_seconds: u64, spn_only: bool) {
+        tauri::async_runtime::spawn(async move {
+            let client = reqwest::Client::new();
+            match client
+                .post(format!("{}control/pause", PORTMASTER_BASE_URL))
+                .json(&serde_json::json!({
+                "duration": duration_seconds,
+                "onlySPN": spn_only
+            }))
+                .send()
+                .await
+            {
+                Ok(v) => {
+                    debug!("pause request sent {:?}", v);
+                }
+                Err(err) => {
+                    error!("failed to send pause request {}", err);
+                }
+            }
+        });
+    }
+
     //// Internal functions
     fn start_notification_handler(&self) {
         if let Some(api) = self.get_api() {

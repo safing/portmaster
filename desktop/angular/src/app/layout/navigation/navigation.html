@@ -153,7 +153,7 @@
   </div>
 </div>
 <div class="nav-lower-list">
-  <div class="relative link" sfngTipUpTrigger="navTools" sfngTipUpPassive tooltip="Version and Tools"
+  <div class="relative link" sfngTipUpTrigger="navTools" sfngTipUpPassive sfng-tooltip="Version and Tools"
     sfngTooltipDelay="1000" snfgTooltipPosition="right" (click)="settingsMenu.dropdown.toggle(settingsMenuTrigger)"
     cdkOverlayOrigin #settingsMenuTrigger="cdkOverlayOrigin" [class.active]="settingsMenu.dropdown.isOpen">
 
@@ -202,8 +202,47 @@
     <app-menu-item (click)="cleanupHistory($event)">Cleanup Network History</app-menu-item>
   </app-menu>
 
+  <!-- Pause Menu -->
+  <div sfngTipUpTrigger="navPause" sfngTipUpPassive sfng-tooltip="Pause and Resume" sfngTooltipDelay="1000"
+    snfgTooltipPosition="right" class="link" (click)="pauseMenu.dropdown.toggle(pauseMenuTrigger)" cdkOverlayOrigin
+    #pauseMenuTrigger="cdkOverlayOrigin" [class.active]="pauseMenu.dropdown.isOpen">
+
+    <svg viewBox="0 0 24 24" class="help" xmlns="http://www.w3.org/2000/svg">
+      <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"> 
+        <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"></path> 
+        <path d="M14 9L14 15"></path> 
+        <path d="M10 9L10 15"></path> 
+      </g>
+    </svg>
+
+  </div>
+  <app-menu #pauseMenu offsetY="0" offsetX="10" overlayClass="rounded-t">
+      <div *ngIf="isPaused">
+        <div class="flex flex-col p-4 text-xxs">            
+          <span class="text-secondary">
+            <span class="text-secondary">{{ pauseInfo }} </span>
+          </span>
+          <span class="text-secondary">
+            Auto-resume at <span class="text-secondary">{{ pauseInfoTillTime }} </span>
+          </span>            
+        </div>
+        <hr/>
+      </div>
+
+      <!-- we show 'Pause SPN...' items even when isPausedSPN to allow pause time modification-->
+      <app-menu-item (click)="pauseSPN($event, 60*5)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">Pause SPN for 5 minutes</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*15)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">Pause SPN for 15 minutes</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*60)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">Pause SPN for 1 hour</app-menu-item>
+      <hr/>
+      <app-menu-item (click)="pause($event, 60*5)">Pause for 5 minutes</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*15)">Pause for 15 minutes</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*60)">Pause for 1 hour</app-menu-item>
+      <hr/>
+      <app-menu-item (click)="resume($event)" [disabled]="!isPaused">Resume now</app-menu-item>
+  </app-menu>
+
   <!-- Power Menu -->
-  <div sfngTipUpTrigger="navPower" sfngTipUpPassive tooltip="Shutdown and Restart" sfngTooltipDelay="1000"
+  <div sfngTipUpTrigger="navPower" sfngTipUpPassive sfng-tooltip="Shutdown and Restart" sfngTooltipDelay="1000"
     snfgTooltipPosition="right" class="link" (click)="powerMenu.dropdown.toggle(powerMenuTrigger)" cdkOverlayOrigin
     #powerMenuTrigger="cdkOverlayOrigin" [class.active]="powerMenu.dropdown.isOpen">
 

@@ -24,10 +24,26 @@ func (i *Instance) GetWorkerInfo() (*mgr.WorkerInfo, error) {
 	for _, m := range i.serviceGroup.Modules() {
 		wi, _ := m.Manager().WorkerInfo(snapshot) // Does not fail when we provide a snapshot.
 		infos = append(infos, wi)
+
+		// Check if module is a nested modules group
+		if gm, ok := m.(*mgr.GroupModule); ok {
+			for _, sm := range gm.Modules() {
+				wi, _ := sm.Manager().WorkerInfo(snapshot) // Does not fail when we provide a snapshot.
+				infos = append(infos, wi)
+			}
+		}
 	}
 	for _, m := range i.SpnGroup.Modules() {
 		wi, _ := m.Manager().WorkerInfo(snapshot) // Does not fail when we provide a snapshot.
 		infos = append(infos, wi)
+
+		// Check if module is a nested modules group
+		if gm, ok := m.(*mgr.GroupModule); ok {
+			for _, sm := range gm.Modules() {
+				wi, _ := sm.Manager().WorkerInfo(snapshot) // Does not fail when we provide a snapshot.
+				infos = append(infos, wi)
+			}
+		}
 	}
 
 	return mgr.MergeWorkerInfo(infos...), nil

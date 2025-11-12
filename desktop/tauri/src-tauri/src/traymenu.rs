@@ -1,7 +1,8 @@
 use std::ops::Deref;
 use std::sync::atomic::AtomicBool;
 use std::sync::RwLock;
-use std::{collections::HashMap, sync::atomic::Ordering};
+use std::{sync::atomic::Ordering};
+use chrono::{DateTime};
 
 use log::{debug, error};
 use tauri::{
@@ -16,11 +17,11 @@ use crate::config;
 use crate::{
     portapi::{
         client::PortAPI,
-        message::ParseError,
+        message::{ParseError},
         models::{
             config::BooleanValue,
             spn::SPNStatus,
-            subsystem::{self, Subsystem},
+            system_status_types::{self, SystemStatus},
         },
         types::{Request, Response},
     },
@@ -58,6 +59,16 @@ const FORCE_SHOW_KEY: &str = "force-show";
 
 const PM_TRAY_ICON_ID: &str = "pm_icon";
 const PM_TRAY_MENU_ID: &str = "pm_tray_menu";
+
+const PAUSE_SPN_5_KEY: &str = "pause_spn_5";
+const PAUSE_SPN_15_KEY: &str = "pause_spn_15";
+const PAUSE_SPN_60_KEY: &str = "pause_spn_60";
+const PAUSE_PM_5_KEY: &str = "pause_pm_5";
+const PAUSE_PM_15_KEY: &str = "pause_pm_15";
+const PAUSE_PM_60_KEY: &str = "pause_pm_60";
+const RESUME_KEY: &str = "resume_all";
+const PAUSE_INFO_KEY: &str = "pause_info";
+const PAUSE_INFO_TIME_KEY: &str = "pause_info_time";
 
 // Icons
 
@@ -125,6 +136,7 @@ fn build_tray_menu(
     app: &tauri::AppHandle,
     status: &str,
     spn_status_text: &str,
+    pause_info: &system_status_types::PauseInfo,
 ) -> core::result::Result<ContextMenu, Box<dyn std::error::Error>> {
     load_theme(app);
 
@@ -132,26 +144,51 @@ fn build_tray_menu(
     let exit_ui_btn = MenuItemBuilder::with_id(EXIT_UI_KEY, "Exit UI").build(app)?;
     let shutdown_btn = MenuItemBuilder::with_id(SHUTDOWN_KEY, "Shut Down Portmaster").build(app)?;
 
-    let global_status = MenuItemBuilder::with_id(GLOBAL_STATUS_KEY, format!("Status: {}", status))
+    // Global status
+    let global_status_text = if pause_info.interception {
+        format!("Status: {} (PAUSED)", status)
+    } else {
+        format!("Status: {}", status)
+    };
+    let global_status = MenuItemBuilder::with_id(GLOBAL_STATUS_KEY, global_status_text)
         .enabled(false)
         .build(app)
         .unwrap();
 
-    // Setup SPN status
-    let spn_status = MenuItemBuilder::with_id(SPN_STATUS_KEY, format!("SPN: {}", spn_status_text))
-        .enabled(false)
-        .build(app)
-        .unwrap();
+    // Pause items
+    let (pause_status_item, pause_status_time_item, resume_item) = if pause_info.interception || pause_info.spn {
+        let status_text = match (pause_info.interception, pause_info.spn) {
+            (true, true) => "Portmaster and SPN are paused",
+            (true, false) => "Portmaster is paused", 
+            (false, true) => "SPN is paused",
+            _ => unreachable!(), // We already checked at least one is true
+        };
+        let status_item = MenuItemBuilder::with_id(PAUSE_INFO_KEY, status_text).enabled(false).build(app)?;
+        
+        let formatted_time = DateTime::parse_from_rfc3339(&pause_info.till_time)
+            .map(|dt| dt.with_timezone(&chrono::Local).format("%H:%M:%S").to_string())
+            .unwrap_or_else(|_| pause_info.till_time.clone());
+        let time_item = MenuItemBuilder::with_id(PAUSE_INFO_TIME_KEY, format!("Auto-resume at {}", formatted_time)).enabled(false).build(app)?;
+        let resume_item = MenuItemBuilder::with_id(RESUME_KEY, "Resume now").build(app)?;
+        (Some(status_item), Some(time_item), Some(resume_item))
+    } else {
+        (None, None, None)
+    };
 
     // Setup SPN button
     let spn_button_text = match spn_status_text {
         "disabled" => "Enable SPN",
         _ => "Disable SPN",
-    };
+    };    
+    let spn_status = MenuItemBuilder::with_id(SPN_STATUS_KEY, format!("SPN: {}", spn_status_text))
+        .enabled(false)
+        .build(app)
+        .unwrap();
     let spn_button = MenuItemBuilder::with_id(SPN_BUTTON_KEY, spn_button_text)
         .build(app)
         .unwrap();
 
+    // Setup Icon theme submenu
     let system_theme = MenuItemBuilder::with_id(SYSTEM_THEME_KEY, "System")
         .build(app)
         .unwrap();
@@ -165,27 +202,74 @@ fn build_tray_menu(
         .items(&[&system_theme, &light_theme, &dark_theme])
         .build()?;
 
+
+    // Setup Pause/Resume menu items
+    let disabled_spn_pause = (spn_status_text == "disabled" && !pause_info.spn) || pause_info.interception;
+    let pause_spn_5min_item = MenuItemBuilder::with_id(PAUSE_SPN_5_KEY, "Pause SPN for 5 minutes").enabled(!disabled_spn_pause).build(app)?;
+    let pause_spn_15min_item = MenuItemBuilder::with_id(PAUSE_SPN_15_KEY, "Pause SPN for 15 minutes").enabled(!disabled_spn_pause).build(app)?;
+    let pause_spn_1hour_item = MenuItemBuilder::with_id(PAUSE_SPN_60_KEY, "Pause SPN for 1 hour").enabled(!disabled_spn_pause).build(app)?;
+
+    let pause_pm_5min_item = MenuItemBuilder::with_id(PAUSE_PM_5_KEY, "Pause for 5 minutes").build(app)?;
+    let pause_pm_15min_item = MenuItemBuilder::with_id(PAUSE_PM_15_KEY, "Pause for 15 minutes").build(app)?;
+    let pause_pm_1hour_item = MenuItemBuilder::with_id(PAUSE_PM_60_KEY, "Pause for 1 hour").build(app)?;
+
+    let pause_menu = SubmenuBuilder::new(app, "Pause")
+        .items(&[
+            &pause_spn_5min_item,
+            &pause_spn_15min_item,
+            &pause_spn_1hour_item,
+            &PredefinedMenuItem::separator(app)?,
+            &pause_pm_5min_item,
+            &pause_pm_15min_item,
+            &pause_pm_1hour_item,
+        ])
+        .build()?;
+
+    /* DEV MENU
     let force_show_window = MenuItemBuilder::with_id(FORCE_SHOW_KEY, "Force Show UI").build(app)?;
     let reload_btn = MenuItemBuilder::with_id(RELOAD_KEY, "Reload User Interface").build(app)?;
     let developer_menu = SubmenuBuilder::new(app, "Developer")
         .items(&[&reload_btn, &force_show_window])
         .build()?;
+    */
+    
+    // Assemble menu items
+    let s = PredefinedMenuItem::separator(app)?;
+    let mut items: Vec<&dyn tauri::menu::IsMenuItem<Wry>> = Vec::new();
 
+
+
+    items.push(&global_status);    
+    items.push(&s);
+
+    if let Some(ref pause_status_item) = pause_status_item {
+        items.push(pause_status_item);
+    }
+    if let Some(ref pause_status_time_item) = pause_status_time_item {
+        items.push(pause_status_time_item);
+    }
+    if let Some(ref resume_item) = resume_item {
+        items.push(resume_item);
+    }
+    items.push(&pause_menu);
+    items.push(&s);
+
+    items.push(&spn_status);
+    items.push(&spn_button);
+    items.push(&s);
+
+    items.push(&theme_menu);
+    items.push(&s);
+    
+    items.push(&open_btn);
+    items.push(&s);
+
+    items.push(&exit_ui_btn);
+    items.push(&shutdown_btn);
+    //items.push(&developer_menu);
+    
     let menu = MenuBuilder::with_id(app, PM_TRAY_MENU_ID)
-        .items(&[
-            &open_btn,
-            &PredefinedMenuItem::separator(app)?,
-            &global_status,
-            &PredefinedMenuItem::separator(app)?,
-            &spn_status,
-            &spn_button,
-            &PredefinedMenuItem::separator(app)?,
-            &theme_menu,
-            &PredefinedMenuItem::separator(app)?,
-            &exit_ui_btn,
-            &shutdown_btn,
-            &developer_menu,
-        ])
+        .items(&items)
         .build()?;
 
     return Ok(menu);
@@ -194,7 +278,7 @@ fn build_tray_menu(
 pub fn setup_tray_menu(
     app: &mut tauri::App,
 ) -> core::result::Result<AppIcon, Box<dyn std::error::Error>> {
-    let menu = build_tray_menu(app.handle(), "Secured", "disabled")?;
+    let menu = build_tray_menu(app.handle(), "unknown", "disabled", &system_status_types::PauseInfo::default())?;
 
     let icon = TrayIconBuilder::with_id(PM_TRAY_ICON_ID)
         .icon(Image::from_bytes(get_red_icon()).unwrap())
@@ -250,6 +334,15 @@ pub fn setup_tray_menu(
             SYSTEM_THEME_KEY => update_icon_theme(app, dark_light::Mode::Unspecified),
             DARK_THEME_KEY => update_icon_theme(app, dark_light::Mode::Dark),
             LIGHT_THEME_KEY => update_icon_theme(app, dark_light::Mode::Light),
+
+            PAUSE_SPN_5_KEY => app.portmaster().set_pause(60*5, true),
+            PAUSE_SPN_15_KEY => app.portmaster().set_pause(60*15, true),
+            PAUSE_SPN_60_KEY => app.portmaster().set_pause(60*60, true),
+            PAUSE_PM_5_KEY => app.portmaster().set_pause(60*5, false),
+            PAUSE_PM_15_KEY => app.portmaster().set_pause(60*15, false),
+            PAUSE_PM_60_KEY => app.portmaster().set_pause(60*60, false),
+            RESUME_KEY => app.portmaster().set_resume(),
+
             other => {
                 error!("unknown menu event id: {}", other);
             }
@@ -275,36 +368,35 @@ pub fn setup_tray_menu(
     Ok(icon)
 }
 
-pub fn update_icon(icon: AppIcon, subsystems: HashMap<String, Subsystem>, spn_status: String) {
-    // iterate over the subsystems and check if there's a module failure
-    let failure = subsystems.values().map(|s| &s.module_status).fold(
-        (subsystem::FAILURE_NONE, "".to_string()),
-        |mut acc, s| {
-            for m in s {
-                if m.failure_status > acc.0 {
-                    acc = (m.failure_status, m.failure_msg.clone())
-                }
-            }
-            acc
-        },
-    );
+pub fn update_icon(icon: AppIcon, system_status: SystemStatus, spn_status: String) {
+    // Extract the worst state type 
+    let worst_state_type = system_status.worst_state
+        .as_ref()
+        .and_then(|ws| ws.state.state_type.clone())
+        .unwrap_or(system_status_types::StateType::Undefined);
 
-    let mut status = "Secured".to_owned();
-
-    if failure.0 != subsystem::FAILURE_NONE {
-        status = failure.1;
-    }
-
-    let icon_color = match failure.0 {
-        subsystem::FAILURE_WARNING => IconColor::Yellow,
-        subsystem::FAILURE_ERROR => IconColor::Red,
-        _ => match spn_status.as_str() {
-            "connected" | "connecting" => IconColor::Blue,
-            _ => IconColor::Green,
-        },
+    // Determine status and icon color in a single match expression
+    let (status, icon_color) = match worst_state_type {
+        system_status_types::StateType::Error => ("Insecure", IconColor::Red),
+        system_status_types::StateType::Warning => ("Insecure", IconColor::Yellow),
+        _ => {
+            let color = match spn_status.as_str() {
+                "connected" | "connecting" => IconColor::Blue,
+                _ => IconColor::Green,
+            };
+            ("Secured", color)
+        }
     };
 
-    if let Ok(menu) = build_tray_menu(icon.app_handle(), status.as_ref(), spn_status.as_str()) {
+    // Extract pause info from system status
+    let pause_info = system_status
+        .get_module_state("Control", "control:paused")
+        .and_then(|state| state.data.as_ref())
+        .and_then(|data| serde_json::from_value::<system_status_types::PauseInfo>(data.clone()).ok())
+        .unwrap_or_default();
+
+    // Rebuild and set the tray menu
+    if let Ok(menu) = build_tray_menu(icon.app_handle(), status, spn_status.as_str(), &pause_info) {
         if let Err(err) = icon.set_menu(Some(menu)) {
             error!("failed to set menu on tray icon: {}", err.to_string());
         }
@@ -322,16 +414,16 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
         }
     };
 
-    let mut subsystem_subscription = match cli
+    let mut system_status_subscription = match cli
         .request(Request::QuerySubscribe(
-            "query runtime:subsystems/".to_string(),
+            "query runtime:system/status".to_string(),
         ))
         .await
     {
         Ok(rx) => rx,
         Err(err) => {
             error!(
-                "cancel try_handler: failed to subscribe to 'runtime:subsystems': {}",
+                "cancel try_handler: failed to subscribe to 'runtime:system/status': {}",
                 err
             );
             return;
@@ -388,12 +480,12 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
 
     update_icon_color(&icon, IconColor::Blue);
 
-    let mut subsystems: HashMap<String, Subsystem> = HashMap::new();
+    let mut system_status = SystemStatus::default();
     let mut spn_status: String = "".to_string();
 
     loop {
         tokio::select! {
-            msg = subsystem_subscription.recv() => {
+            msg = system_status_subscription.recv() => {
                 let msg = match msg {
                     Some(m) => m,
                     None => { break }
@@ -407,17 +499,17 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                 };
 
                 if let Some((_, payload)) = res {
-                    match payload.parse::<Subsystem>() {
-                        Ok(n) => {
-                            subsystems.insert(n.id.clone(), n);
-                            update_icon(icon.clone(), subsystems.clone(), spn_status.clone());
+                    match payload.parse::<SystemStatus>() {
+                        Ok(system_status_update) => {
+                            system_status.clone_from(&system_status_update);
+                            update_icon(icon.clone(), system_status.clone(), spn_status.clone());
                         },
                         Err(err) => match err {
                             ParseError::Json(err) => {
-                                error!("failed to parse subsystem: {}", err);
+                                error!("failed to parse SystemStatus: {}", err);
                             }
                             _ => {
-                                error!("unknown error when parsing notifications payload");
+                                error!("unknown error when parsing SystemStatus payload");
                             }
                         },
                     }
@@ -441,7 +533,7 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                         Ok(value) => {
                             debug!("SPN status update: {}", value.status);
                             spn_status.clone_from(&value.status);
-                            update_icon(icon.clone(), subsystems.clone(), spn_status.clone());
+                            update_icon(icon.clone(), system_status.clone(), spn_status.clone());
                         },
                         Err(err) => match err {
                             ParseError::Json(err) => {
@@ -502,7 +594,18 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
             }
         }
     }
+
+    update_icon_nostate(icon.clone());
+}
+
+pub fn update_icon_nostate(icon: AppIcon) {
     update_icon_color(&icon, IconColor::Red);
+
+    if let Ok(menu) = build_tray_menu(icon.app_handle(), "unknown",  "unknown", &system_status_types::PauseInfo::default()) {
+        if let Err(err) = icon.set_menu(Some(menu)) {
+            error!("failed to set menu on tray icon: {}", err.to_string());
+        }
+    }
 }
 
 fn update_icon_color(icon: &AppIcon, new_color: IconColor) {

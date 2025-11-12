@@ -13,10 +13,7 @@ export class StatusService {
    */
   static trackSubsystem: TrackByFunction<Subsystem> = trackById;
   readonly trackSubsystem = StatusService.trackSubsystem;
-
-  readonly statusPrefix = "runtime:"
-  readonly subsystemPrefix = this.statusPrefix + "subsystems/"
-
+  
   /**
    * status$ watches the global core status. It's mutlicasted using a BehaviorSubject so new
    * subscribers will automatically get the latest version while only one subscription
@@ -47,49 +44,5 @@ export class StatusService {
     return this.portapi.update(`runtime:system/security-level`, {
       SelectedSecurityLevel: securityLevel,
     });
-  }
-
-
-  /**
-   * Loads the current status of a subsystem.
-   *
-   * @param name The ID of the subsystem
-   */
-  getSubsystemStatus(id: string): Observable<Subsystem> {
-    return this.portapi.get(this.subsystemPrefix + id);
-  }
-
-  /**
-   * Loads the current status of all subsystems matching idPrefix.
-   * If idPrefix is an empty string all subsystems are returned.
-   *
-   * @param idPrefix An optional ID prefix to limit the returned subsystems
-   */
-  querySubsystem(idPrefix: string = ''): Observable<Subsystem[]> {
-    return this.portapi.query<Subsystem>(this.subsystemPrefix + idPrefix)
-      .pipe(
-        map(reply => reply.data),
-        toArray(),
-      )
-  }
-
-  /**
-   * Watch a subsystem for changes. Completes when the subsystem is
-   * deleted. See {@method PortAPI.watch} for more information.
-   *
-   * @param id The ID of the subsystem to watch.
-   * @param opts Additional options for portapi.watch().
-   */
-  watchSubsystem(id: string, opts?: WatchOpts): Observable<Subsystem> {
-    return this.portapi.watch(this.subsystemPrefix + id, opts);
-  }
-
-  /**
-   * Watch for subsystem changes
-   *
-   * @param opts Additional options for portapi.sub().
-   */
-  watchSubsystems(opts?: RetryableOpts): Observable<Subsystem[]> {
-    return this.portapi.watchAll<Subsystem>(this.subsystemPrefix, opts);
   }
 }

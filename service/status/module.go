@@ -35,10 +35,6 @@ func (s *Status) Manager() *mgr.Manager {
 
 // Start starts the module.
 func (s *Status) Start() error {
-	if err := s.setupRuntimeProvider(); err != nil {
-		return err
-	}
-
 	s.mgr.Go("status publisher", s.statusPublisher)
 
 	s.instance.NetEnv().EventOnlineStatusChange.AddCallback("update online status in system status",
@@ -64,6 +60,14 @@ func (s *Status) Start() error {
 
 // Stop stops the module.
 func (s *Status) Stop() error {
+	return nil
+}
+
+func (s *Status) prep() error {
+	// register status provider as soon as possible
+	if err := s.setupRuntimeProvider(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -94,6 +98,10 @@ func New(instance instance) (*Status, error) {
 		triggerUpdate: make(chan struct{}, 1),
 		states:        make(map[string]mgr.StateUpdate),
 		notifications: make(map[string]map[string]*notifications.Notification),
+	}
+
+	if err := module.prep(); err != nil {
+		return nil, err
 	}
 
 	return module, nil

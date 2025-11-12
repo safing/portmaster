@@ -12,9 +12,7 @@ import (
 
 var (
 	packetMetricsDestination string
-	metrics                  = &packetMetrics{
-		done: make(chan struct{}),
-	}
+	metrics                  = &packetMetrics{}
 )
 
 func init() {
@@ -40,12 +38,28 @@ func (pm *packetMetrics) record(tp *tracedPacket, verdict string) {
 		pm.l.Lock()
 		defer pm.l.Unlock()
 
+		if pm.done == nil {
+			return
+		}
+
 		pm.records = append(pm.records, &performanceRecord{
 			start:    start,
 			duration: duration,
 			verdict:  verdict,
 		})
 	}(tp.start.UnixNano(), time.Since(tp.start))
+}
+
+func (pm *packetMetrics) stop() {
+	pm.l.Lock()
+	defer pm.l.Unlock()
+
+	if pm.done == nil {
+		return
+	}
+
+	close(pm.done)
+	pm.done = nil
 }
 
 func (pm *packetMetrics) writeMetrics() {
@@ -62,9 +76,14 @@ func (pm *packetMetrics) writeMetrics() {
 		_ = f.Close()
 	}()
 
+	pm.l.Lock()
+	pm.done = make(chan struct{})
+	done := pm.done
+	pm.l.Unlock()
+
 	for {
 		select {
-		case <-pm.done:
+		case <-done:
 			return
 		case <-time.After(time.Second * 5):
 		}

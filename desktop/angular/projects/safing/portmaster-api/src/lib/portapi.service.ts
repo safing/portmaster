@@ -167,6 +167,23 @@ export class PortapiService {
     });
   }
 
+  /** Triggers a pause of the portmaster or SPN service
+   * @param duration The duration of the pause in seconds
+   * @param onlySPN Whether or not only the SPN should be paused
+   */
+  pause(duration: number, onlySPN: boolean): Observable<any> {
+    return this.http.post(`${this.httpEndpoint}/v1/control/pause`, { duration, onlySPN }, {
+      observe: 'response',
+      responseType: 'arraybuffer',
+    });
+  }
+  /** Triggers a resume of the portmaster (and SPN) service */
+  resume(): Observable<any> {
+    return this.http.post(`${this.httpEndpoint}/v1/control/resume`, undefined, {
+      observe: 'response',
+      responseType: 'arraybuffer',
+    });
+  }  
   /** Force the portmaster to check for updates */
   checkForUpdates(): Observable<any> {
     return this.http.post(`${this.httpEndpoint}/v1/updates/check`, undefined, {
