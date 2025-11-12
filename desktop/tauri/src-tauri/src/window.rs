@@ -143,11 +143,11 @@ pub fn set_window_icon(window: &WebviewWindow) {
     let mut mode = if let Ok(value) = traymenu::USER_THEME.read() {
         *value
     } else {
-        dark_light::Mode::Default
+        dark_light::Mode::Unspecified
     };
 
-    if mode == dark_light::Mode::Default {
-        mode = dark_light::detect();
+    if mode == dark_light::Mode::Unspecified {
+        mode = dark_light::detect().unwrap_or(dark_light::Mode::Dark);
     }
 
     let _ = match mode {

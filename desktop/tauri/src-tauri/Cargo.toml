@@ -54,7 +54,7 @@ rfd = { version = "*", default-features = false, features = [ "tokio", "gtk3", "
 open = "5.1.3"
 chrono = { version = "0.4", features = ["serde"] }
 
-dark-light = { path = "../rust-dark-light" }
+dark-light = "2.0.0"
 
 # Linux only
 [target.'cfg(target_os = "linux")'.dependencies]
