@@ -21,7 +21,7 @@ require (
 	github.com/fogleman/gg v1.3.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/gobwas/glob v0.2.3
-	github.com/godbus/dbus/v5 v5.1.0
+	github.com/godbus/dbus/v5 v5.2.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/google/gopacket v1.1.19
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -31,6 +31,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
 	github.com/jackc/puddle/v2 v2.2.2
+	github.com/jaswdr/faker/v2 v2.9.0
 	github.com/lmittmann/tint v1.1.2
 	github.com/maruel/panicparse/v2 v2.5.0
 	github.com/mattn/go-colorable v0.1.14
@@ -75,7 +76,6 @@ require (
 	al.essio.dev/pkg/shellescape v1.6.0 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/jaswdr/faker/v2 v2.9.0 // indirect
 	github.com/sergeymakinen/go-bmp v1.0.0 // indirect
 	github.com/stephenafamo/sqlparser v0.0.0-20250521201114-5cfed001272d // indirect
 )
