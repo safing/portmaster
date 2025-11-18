@@ -31,6 +31,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
 	github.com/jackc/puddle/v2 v2.2.2
+	github.com/jaswdr/faker/v2 v2.9.0
 	github.com/lmittmann/tint v1.1.2
 	github.com/maruel/panicparse/v2 v2.5.0
 	github.com/mattn/go-colorable v0.1.14
@@ -67,7 +68,7 @@ require (
 	golang.org/x/sync v0.18.0
 	golang.org/x/sys v0.38.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.40.0
+	modernc.org/sqlite v1.40.1
 	zombiezen.com/go/sqlite v1.4.2
 )
 
@@ -75,7 +76,6 @@ require (
 	al.essio.dev/pkg/shellescape v1.6.0 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/jaswdr/faker/v2 v2.9.0 // indirect
 	github.com/sergeymakinen/go-bmp v1.0.0 // indirect
 	github.com/stephenafamo/sqlparser v0.0.0-20250521201114-5cfed001272d // indirect
 )
