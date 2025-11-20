@@ -175,11 +175,12 @@ fn build_tray_menu(
         (None, None, None)
     };
 
-    // Setup SPN button
-    let spn_button_text = match spn_status_text {
-        "disabled" => "Enable SPN",
-        _ => "Disable SPN",
-    };    
+    // SPN button    
+    let (spn_enabled, spn_button_text ) = match spn_status_text {
+        "disabled" => { (false, "Enable SPN") }
+        _ => { (true, "Disable SPN") },
+    };
+    
     let spn_status = MenuItemBuilder::with_id(SPN_STATUS_KEY, format!("SPN: {}", spn_status_text))
         .enabled(false)
         .build(app)
@@ -204,7 +205,7 @@ fn build_tray_menu(
 
 
     // Setup Pause/Resume menu items
-    let disabled_spn_pause = (spn_status_text == "disabled" && !pause_info.spn) || pause_info.interception;
+    let disabled_spn_pause = (!spn_enabled && !pause_info.spn) || pause_info.interception;
     let pause_spn_5min_item = MenuItemBuilder::with_id(PAUSE_SPN_5_KEY, "Pause SPN for 5 minutes").enabled(!disabled_spn_pause).build(app)?;
     let pause_spn_15min_item = MenuItemBuilder::with_id(PAUSE_SPN_15_KEY, "Pause SPN for 15 minutes").enabled(!disabled_spn_pause).build(app)?;
     let pause_spn_1hour_item = MenuItemBuilder::with_id(PAUSE_SPN_60_KEY, "Pause SPN for 1 hour").enabled(!disabled_spn_pause).build(app)?;
@@ -213,17 +214,27 @@ fn build_tray_menu(
     let pause_pm_15min_item = MenuItemBuilder::with_id(PAUSE_PM_15_KEY, "Pause for 15 minutes").build(app)?;
     let pause_pm_1hour_item = MenuItemBuilder::with_id(PAUSE_PM_60_KEY, "Pause for 1 hour").build(app)?;
 
-    let pause_menu = SubmenuBuilder::new(app, "Pause")
-        .items(&[
-            &pause_spn_5min_item,
-            &pause_spn_15min_item,
-            &pause_spn_1hour_item,
-            &PredefinedMenuItem::separator(app)?,
-            &pause_pm_5min_item,
-            &pause_pm_15min_item,
-            &pause_pm_1hour_item,
-        ])
-        .build()?;
+    let pause_menu =  if !spn_enabled && !pause_info.spn {
+        SubmenuBuilder::new(app, "Pause")
+            .items(&[
+                &pause_pm_5min_item,
+                &pause_pm_15min_item,
+                &pause_pm_1hour_item,
+            ])
+            .build()?
+    } else {
+        SubmenuBuilder::new(app, "Pause")
+            .items(&[
+                &pause_spn_5min_item,
+                &pause_spn_15min_item,
+                &pause_spn_1hour_item,
+                &PredefinedMenuItem::separator(app)?,
+                &pause_pm_5min_item,
+                &pause_pm_15min_item,
+                &pause_pm_1hour_item,
+            ])
+            .build()?
+    };
 
     /* DEV MENU
     let force_show_window = MenuItemBuilder::with_id(FORCE_SHOW_KEY, "Force Show UI").build(app)?;
