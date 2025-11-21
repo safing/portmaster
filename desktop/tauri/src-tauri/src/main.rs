@@ -87,10 +87,21 @@ impl portmaster::Handler for WsHandler {
             error!("failed to close splash window: {}", err.to_string());
         }
 
-        let handle = self.handle.clone();
-        tauri::async_runtime::spawn(async move {
-            traymenu::tray_handler(cli, handle).await;
-        });
+        // Cancel the previous tray handler task if it exists
+        let portmaster = self.handle.portmaster();
+        if let Ok(mut task_guard) = portmaster.tray_handler_task.lock() {
+            if let Some(old_task) = task_guard.take() {
+                debug!("Aborting previous tray handler task");
+                old_task.abort();
+            }
+
+            // Start new tray handler and store the task handle
+            let handle = self.handle.clone();
+            let task = tauri::async_runtime::spawn(async move {
+                traymenu::tray_handler(cli, handle).await;
+            });
+            *task_guard = Some(task);
+        }
     }
 
     fn on_disconnect(&mut self) {
@@ -252,40 +263,47 @@ fn main() {
         .expect("error while running tauri application");
 
     app.run(|handle, e| {
-        if let RunEvent::WindowEvent { label, event, .. } = e {
-            if label != "main" {
-                // We only have one window at most so any other label is unexpected
-                return;
-            }
+        match e {
+            RunEvent::WindowEvent { label, event, .. } => {
+                if label != "main" {
+                    // We only have one window at most so any other label is unexpected
+                    return;
+                }
 
-            // Do not let the user close the window, instead send an event to the main
-            // window so we can show the "will not stop portmaster" dialog and let the window
-            // close itself using
-            //
-            //    window.__TAURI__.window.getCurrent().close()
-            //
-            // Note: the above javascript does NOT trigger the CloseRequested event so
-            // there's no need to handle that case here.
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                debug!(
-                    "window (label={}) close request received, forwarding to user-interface.",
-                    label
-                );
+                // Do not let the user close the window, instead send an event to the main
+                // window so we can show the "will not stop portmaster" dialog and let the window
+                // close itself using
+                //
+                //    window.__TAURI__.window.getCurrent().close()
+                //
+                // Note: the above javascript does NOT trigger the CloseRequested event so
+                // there's no need to handle that case here.
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    debug!(
+                        "window (label={}) close request received, forwarding to user-interface.",
+                        label
+                    );
 
-                // Manually save the window state on close attempt. 
-                // This ensures the state is saved since we prevent the close event.
-                let _ = handle.save_window_state(WINDOW_STATE_FLAGS_TO_SAVE);
+                    // Manually save the window state on close attempt. 
+                    // This ensures the state is saved since we prevent the close event.
+                    let _ = handle.save_window_state(WINDOW_STATE_FLAGS_TO_SAVE);
 
-                api.prevent_close();
-                if let Some(window) = handle.get_webview_window(label.as_str()) {
-                    let result = window.emit("exit-requested", "");
-                    if let Err(err) = result {
-                        error!("failed to emit event: {}", err.to_string());
+                    api.prevent_close();
+                    if let Some(window) = handle.get_webview_window(label.as_str()) {
+                        let result = window.emit("exit-requested", "");
+                        if let Err(err) = result {
+                            error!("failed to emit event: {}", err.to_string());
+                        }
+                    } else {
+                        error!("window was None");
                     }
-                } else {
-                    error!("window was None");
                 }
             }
+            RunEvent::ExitRequested { .. } => {
+                debug!("Application exit requested, shutting down websocket");
+                portmaster::websocket::shutdown_websocket();
+            }
+            _ => {}
         }
     });
 }
