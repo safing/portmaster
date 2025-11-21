@@ -18,7 +18,7 @@ pub mod commands;
 // The websocket module spawns an async function on tauri's runtime that manages
 // a persistent connection to the Portmaster websocket API and updates the tauri Portmaster
 // Plugin instance.
-mod websocket;
+pub mod websocket;
 
 // The notification module manages system notifications from portmaster.
 mod notifications;
@@ -72,6 +72,9 @@ pub struct PortmasterInterface<R: Runtime> {
     // whether or not the angular application should call window.show after it
     // finished bootstrapping.
     should_show_after_bootstrap: AtomicBool,
+
+    // handle to the tray handler task so we can abort it when reconnecting
+    pub tray_handler_task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
 }
 
 impl<R: Runtime> PortmasterInterface<R> {
@@ -300,6 +303,14 @@ impl<R: Runtime> PortmasterInterface<R> {
     fn on_disconnect(&self) {
         self.is_reachable.store(false, Ordering::Relaxed);
 
+        // Abort the tray handler task if it's running
+        if let Ok(mut task_guard) = self.tray_handler_task.lock() {
+            if let Some(task) = task_guard.take() {
+                debug!("Aborting tray handler task");
+                task.abort();
+            }
+        }
+
         // clear the current api client reference.
         {
             let mut guard = self.api.lock().unwrap();
@@ -337,6 +348,7 @@ pub fn setup(app: AppHandle) {
         handle_notifications: AtomicBool::new(false),
         handle_prompts: AtomicBool::new(false),
         should_show_after_bootstrap: AtomicBool::new(true),
+        tray_handler_task: Mutex::new(None),
     };
 
     app.manage(interface);
