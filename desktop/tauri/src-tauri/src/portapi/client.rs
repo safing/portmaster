@@ -5,7 +5,9 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::RwLock;
+use tokio::time::{interval, Duration, Instant};
 use tokio_websockets::{ClientBuilder, Error};
+use bytes::Bytes;
 
 use super::message::*;
 use super::types::*;
@@ -51,9 +53,36 @@ pub async fn connect(uri: &str) -> Result<PortAPI, Error> {
     tauri::async_runtime::spawn(async move {
         let subscribers: SubscriberMap = RwLock::new(HashMap::new());
         let next_id = AtomicUsize::new(0);
+        
+        // Ping/pong keep-alive mechanism
+        let mut ping_interval = interval(Duration::from_secs(10));  // Send ping every 10 seconds
+        let mut timeout_check = interval(Duration::from_secs(1));   // Check for timeout every 1 second
+        let mut last_ping = Instant::now();
+        let mut last_pong = Instant::now();
+        const PONG_TIMEOUT: Duration = Duration::from_secs(5);      // Declare connection dead if no pong within 5 seconds after ping
 
         loop {
             tokio::select! {
+                _ = ping_interval.tick() => {
+                    // Send ping frame
+                    if let Err(err) = client.send(tokio_websockets::Message::ping(Bytes::new())).await {
+                        error!("failed to send ping: {}", err);
+                        dispatch.close();
+                        return;
+                    }
+                    last_ping = Instant::now();
+                    // debug!("sent websocket ping");
+                },
+
+                _ = timeout_check.tick() => {
+                    // Check if pong timeout expired after last ping
+                    if last_ping > last_pong && last_ping.elapsed() > PONG_TIMEOUT {
+                        warn!("no pong received for {:?} after ping, connection appears dead", PONG_TIMEOUT);
+                        dispatch.close();
+                        return;
+                    }
+                },
+
                 msg = client.next() => {
                     let msg = match msg {
                         Some(msg) => msg,
@@ -73,6 +102,18 @@ pub async fn connect(uri: &str) -> Result<PortAPI, Error> {
                             return;
                         },
                         Ok(msg) => {
+                            // Handle pong frames
+                            if msg.is_pong() {
+                                last_pong = Instant::now();
+                                // debug!("received websocket pong");
+                                continue;
+                            }
+
+                            if msg.is_ping() {
+                                // debug!("received websocket ping");
+                                continue;
+                            }
+                            
                             let text = unsafe {
                                 std::str::from_utf8_unchecked(msg.as_payload())
                             };
