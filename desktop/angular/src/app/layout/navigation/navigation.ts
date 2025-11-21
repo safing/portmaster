@@ -313,9 +313,17 @@ export class NavigationComponent implements OnInit {
     event.preventDefault();
     event.stopPropagation();
 
+    let msg = 'Resuming ...';
+    if (this.pauseState?.Interception===true && this.pauseState?.SPN===true) 
+      msg = 'Resuming Portmaster and SPN ...';
+    else if (this.pauseState?.Interception===true)
+      msg = 'Resuming Portmaster ...';
+    else if (this.pauseState?.SPN===true)
+      msg = 'Resuming SPN ...';
+
     this.portapi.resume()
       .subscribe(this.actionIndicator.httpObserver(
-        'Resuming ...',
+        msg,
         'Failed to Resume',
       ))
   }

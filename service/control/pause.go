@@ -204,7 +204,7 @@ func (c *Control) updateStatesAndNotify() {
 		title = "SPN paused"
 		nType = notifications.Info // less severe notification for SPN-only pause
 	}
-	message := fmt.Sprintf("%s till %v", title, c.pauseInfo.TillTime.Format(time.TimeOnly))
+	message := fmt.Sprintf("%s until %v", title, c.pauseInfo.TillTime.Format(time.TimeOnly))
 
 	c.pauseNotification = &notifications.Notification{
 		EventID:      "control:paused",
