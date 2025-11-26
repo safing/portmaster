@@ -364,6 +364,22 @@ func fastTrackedPermit(conn *network.Connection, pkt packet.Packet) (verdict net
 			return network.VerdictAccept, conn.PID != process.UndefinedProcessID
 		}
 
+		// Handle rare case where PM UI connection to WebSocket API lost it's verdict (e.g., cleared conntrack entries).
+		// Fast-tracking keeps the UI connection seamless when resuming from paused state.
+		if meta.SrcPort == apiPort && // connections made from API port
+			meta.Protocol == packet.TCP && // Portmaster API is TCP only
+			apiPortSet && // API port is set
+			meta.Src.Equal(apiIP) { // initiated from API IP
+
+			// Only fast-track local requests.
+			isToMe, _ := netenv.IsMyIP(meta.Dst)
+			if isToMe {
+				// Log and permit.
+				log.Tracer(pkt.Ctx()).Debugf("filter: fast-track accepting api-outbound packet: %s", pkt)
+				return network.VerdictAccept, false
+			}
+		}
+
 	case compat.SystemIntegrationCheckProtocol:
 		if pkt.Info().Dst.Equal(compat.SystemIntegrationCheckDstIP) {
 			compat.SubmitSystemIntegrationCheckPacket(pkt)
