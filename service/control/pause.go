@@ -89,11 +89,11 @@ func (c *Control) resume() (retErr error) {
 	defer c.locker.Unlock()
 
 	defer func() {
-		// update states after resume attempt
-		c.updateStatesAndNotify()
-		// log error if resume failed
 		if retErr != nil {
-			c.mgr.Error("Failed to resume: " + retErr.Error())
+			c.updateStatesAndNotifyError("Resume operation failed", retErr)
+			c.mgr.Error("Error occurred while resuming: " + retErr.Error())
+		} else {
+			c.updateStatesAndNotify()
 		}
 	}()
 
@@ -225,6 +225,29 @@ func (c *Control) updateStatesAndNotify() {
 		},
 	}
 
+	notifications.Notify(c.pauseNotification)
+	c.pauseNotification.SyncWithState(c.states)
+}
+
+// updateStatesAndNotifyError updates the paused states and sends an error notification.
+// No thread safety, caller must hold c.locker.
+func (c *Control) updateStatesAndNotifyError(errDescription string, err error) {
+	if err == nil {
+		return
+	}
+
+	if errDescription == "" {
+		errDescription = "Error"
+	}
+
+	// Error notification
+	c.pauseNotification = &notifications.Notification{
+		EventID:   "control:error",
+		Type:      notifications.Error,
+		Title:     errDescription,
+		Message:   err.Error(),
+		EventData: &c.pauseInfo,
+	}
 	notifications.Notify(c.pauseNotification)
 	c.pauseNotification.SyncWithState(c.states)
 }

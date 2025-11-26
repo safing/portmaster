@@ -2,7 +2,7 @@ use std::ops::Deref;
 use std::sync::atomic::AtomicBool;
 use std::sync::RwLock;
 use std::{sync::atomic::Ordering};
-use chrono::{DateTime};
+use chrono::{DateTime, Local};
 
 use log::{debug, error};
 use tauri::{
@@ -163,14 +163,22 @@ fn build_tray_menu(
             (false, true) => "SPN is paused",
             _ => unreachable!(), // We already checked at least one is true
         };
-        let status_item = MenuItemBuilder::with_id(PAUSE_INFO_KEY, status_text).enabled(false).build(app)?;
+        let status_item = MenuItemBuilder::with_id(PAUSE_INFO_KEY, status_text).enabled(false).build(app).ok();
         
-        let formatted_time = DateTime::parse_from_rfc3339(&pause_info.till_time)
-            .map(|dt| dt.with_timezone(&chrono::Local).format("%H:%M:%S").to_string())
-            .unwrap_or_else(|_| pause_info.till_time.clone());
-        let time_item = MenuItemBuilder::with_id(PAUSE_INFO_TIME_KEY, format!("Auto-resume at {}", formatted_time)).enabled(false).build(app)?;
-        let resume_item = MenuItemBuilder::with_id(RESUME_KEY, "Resume now").build(app)?;
-        (Some(status_item), Some(time_item), Some(resume_item))
+        let time_item = if let Ok(resume_time) = DateTime::parse_from_rfc3339(&pause_info.till_time) {
+            let resume_time_local = resume_time.with_timezone(&Local);            
+            if resume_time_local > Local::now() {
+                let formatted_time = resume_time_local.format("%H:%M:%S").to_string();
+                MenuItemBuilder::with_id(PAUSE_INFO_TIME_KEY, format!("Auto-resume at {}", formatted_time)).enabled(false).build(app).ok()
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        
+        let resume_item = MenuItemBuilder::with_id(RESUME_KEY, "Resume now").build(app).ok();
+        (status_item, time_item, resume_item)
     } else {
         (None, None, None)
     };

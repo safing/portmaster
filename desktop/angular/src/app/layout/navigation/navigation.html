@@ -222,8 +222,8 @@
           <span class="text-secondary">
             <span class="text-secondary">{{ pauseInfo }} </span>
           </span>
-          <span class="text-secondary">
-            Auto-resume at <span class="text-secondary">{{ pauseInfoTillTime }} </span>
+          <span class="text-secondary" *ngIf="pauseInfoTillTime">
+            {{ pauseInfoTillTime }}
           </span>            
         </div>
         <hr/>

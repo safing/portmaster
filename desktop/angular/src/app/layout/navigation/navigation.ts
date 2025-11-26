@@ -50,8 +50,12 @@ export class NavigationComponent implements OnInit {
     return '';
   }
   get pauseInfoTillTime(): string {
-    if (this.isPaused && this.pauseState?.TillTime)
-      return new Date(this.pauseState.TillTime).toLocaleTimeString(undefined, { hour12: false });
+    if (this.isPaused && this.pauseState?.TillTime) {
+      const date = new Date(this.pauseState.TillTime);
+      if (isNaN(date.getTime()) || date.getTime() < Date.now())
+        return '';    
+      return `Auto-resume at ${date.toLocaleTimeString(undefined, { hour12: false })}`;
+    }
     return '';
   }
 
