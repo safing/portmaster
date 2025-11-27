@@ -133,50 +133,65 @@ func (c *Control) stopResumeWorker() {
 // startResumeWorker starts a worker that will resume normal operation after the specified duration.
 // No thread safety, caller must hold c.locker.
 func (c *Control) startResumeWorker(duration time.Duration) {
-	c.pauseInfo.TillTime = time.Now().Add(duration)
+	deadline := time.Now().Add(duration)
+	c.pauseInfo.TillTime = deadline
 
 	resumerWorkerFunc := func(wc *mgr.WorkerCtx) error {
 		wc.Info(fmt.Sprintf("Scheduling resume in %v", duration))
 
 		// Subscribe to config changes to detect SPN enable.
 		cfgChangeEvt := c.instance.Config().EventConfigChange.Subscribe("control: spn enable check", 10)
-		// Make sure to cancel subscription when worker stops.
 		defer cfgChangeEvt.Cancel()
 
-		for {
+		// Timer for the deadline.
+		timer := time.NewTimer(time.Until(deadline))
+		defer timer.Stop()
+		// Periodically check resume time to handle unexpected wall-clock changes.
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+
+		// Wait until duration elapses or SPN is enabled by user.
+		needToAutoResume := false
+		for !needToAutoResume {
 			select {
 			case <-wc.Ctx().Done():
 				return nil
 			case <-cfgChangeEvt.Events():
 				spnEnabled := config.GetAsBool("spn/enable", false)
 				if spnEnabled() {
-					wc.Info("SPN enabled by user, resuming...")
-					return c.resume()
+					wc.Info("SPN enabled by user. Auto-resume initiated.")
+					needToAutoResume = true
 				}
-			case <-time.After(duration):
-				wc.Info("Resuming...")
-
-				err := c.resume()
-				if err == nil {
-					n := &notifications.Notification{
-						EventID:      "control:resumed",
-						Type:         notifications.Info,
-						Title:        "Resumed",
-						Message:      "Automatically resumed from pause state",
-						ShowOnSystem: true,
-						Expires:      time.Now().Add(15 * time.Second).Unix(),
-						AvailableActions: []*notifications.Action{
-							{
-								ID:   "ack",
-								Text: "OK",
-							},
-						},
-					}
-					notifications.Notify(n)
+			case <-ticker.C:
+				if time.Now().After(deadline) {
+					needToAutoResume = true
 				}
-				return err
+			case <-timer.C:
+				needToAutoResume = true
 			}
 		}
+
+		// Time to resume
+		wc.Info("Resuming...")
+		err := c.resume()
+		if err == nil {
+			n := &notifications.Notification{
+				EventID:      "control:resumed",
+				Type:         notifications.Info,
+				Title:        "Resumed",
+				Message:      "Automatically resumed from pause state",
+				ShowOnSystem: true,
+				Expires:      time.Now().Add(15 * time.Second).Unix(),
+				AvailableActions: []*notifications.Action{
+					{
+						ID:   "ack",
+						Text: "OK",
+					},
+				},
+			}
+			notifications.Notify(n)
+		}
+		return err
 	}
 
 	c.resumeWorker = c.mgr.NewWorkerMgr("resumer", resumerWorkerFunc, nil)
