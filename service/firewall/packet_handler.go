@@ -376,7 +376,7 @@ func fastTrackedPermit(conn *network.Connection, pkt packet.Packet) (verdict net
 			if isToMe {
 				// Log and permit.
 				log.Tracer(pkt.Ctx()).Debugf("filter: fast-track accepting api-outbound packet: %s", pkt)
-				return network.VerdictAccept, false
+				return network.VerdictAccept, true
 			}
 		}
 
