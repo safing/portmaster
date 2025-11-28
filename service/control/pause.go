@@ -32,13 +32,12 @@ func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
 		return errors.New("invalid pause duration")
 	}
 
-	spn_enabled := config.GetAsBool("spn/enable", false)
 	if onlySPN {
 		if c.pauseInfo.Interception {
 			return errors.New("cannot pause SPN separately when core is paused")
 		}
 		// If SPN is not running and not already paused, cannot pause it or change pause duration.
-		if !spn_enabled() && !c.pauseInfo.SPN {
+		if !c.cfgSpnEnabled() && !c.pauseInfo.SPN {
 			return errors.New("cannot pause SPN when it is not running")
 		}
 	}
@@ -54,11 +53,21 @@ func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
 
 	// Pause SPN if not already paused.
 	if !c.pauseInfo.SPN {
-		if spn_enabled() {
+		if c.cfgSpnEnabled() {
+			// "spn/access" module is responsible for starting/stopping SPN service.
+			// Here we just change the config to notify it to stop SPN.
 			// TODO: the 'pause' state must not make permanent config changes.
-			// Consider possibility to not store permanent config changes.
-			// E.g. SPN enabled -> pause SPN -> restart PC/Portmaster -> SPN should be enabled again.
+			//       Consider possibility to not store permanent config changes.
+			//       E.g. SPN enabled -> pause SPN -> restart PC/Portmaster -> SPN should be enabled again.
 			config.SetConfigOption("spn/enable", false)
+
+			// Wait until SPN is fully stopped with timeout 30s.
+			err := c.waitSPNStopped(time.Second * 30)
+			if err != nil {
+				config.SetConfigOption("spn/enable", true) // revert config change on error
+				return err
+			}
+
 			c.mgr.Info("SPN paused")
 			c.pauseInfo.SPN = true
 		}
@@ -108,8 +117,9 @@ func (c *Control) resume() (retErr error) {
 	}
 
 	if c.pauseInfo.SPN {
-		enabled := config.GetAsBool("spn/enable", false)
-		if !enabled() {
+		// "spn/access" module is responsible for starting/stopping SPN service.
+		// Here we just change the config to notify it to start SPN.
+		if !c.cfgSpnEnabled() {
 			config.SetConfigOption("spn/enable", true)
 			c.mgr.Info("SPN resumed")
 		}
@@ -133,50 +143,65 @@ func (c *Control) stopResumeWorker() {
 // startResumeWorker starts a worker that will resume normal operation after the specified duration.
 // No thread safety, caller must hold c.locker.
 func (c *Control) startResumeWorker(duration time.Duration) {
-	c.pauseInfo.TillTime = time.Now().Add(duration)
+	deadline := time.Now().Add(duration)
+	c.pauseInfo.TillTime = deadline
 
 	resumerWorkerFunc := func(wc *mgr.WorkerCtx) error {
 		wc.Info(fmt.Sprintf("Scheduling resume in %v", duration))
 
 		// Subscribe to config changes to detect SPN enable.
 		cfgChangeEvt := c.instance.Config().EventConfigChange.Subscribe("control: spn enable check", 10)
-		// Make sure to cancel subscription when worker stops.
 		defer cfgChangeEvt.Cancel()
 
-		for {
+		// Timer for the deadline.
+		timer := time.NewTimer(time.Until(deadline))
+		defer timer.Stop()
+		// Periodically check resume time to handle unexpected wall-clock changes.
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+
+		// Wait until duration elapses or SPN is enabled by user.
+		needToAutoResume := false
+		for !needToAutoResume {
 			select {
 			case <-wc.Ctx().Done():
 				return nil
 			case <-cfgChangeEvt.Events():
-				spnEnabled := config.GetAsBool("spn/enable", false)
-				if spnEnabled() {
-					wc.Info("SPN enabled by user, resuming...")
-					return c.resume()
+				if c.cfgSpnEnabled() {
+					cfgChangeEvt.Cancel() // we do not need it anymore (no problem to cancel multiple times)
+					wc.Info("SPN enabled by user. Auto-resume initiated.")
+					needToAutoResume = true
 				}
-			case <-time.After(duration):
-				wc.Info("Resuming...")
-
-				err := c.resume()
-				if err == nil {
-					n := &notifications.Notification{
-						EventID:      "control:resumed",
-						Type:         notifications.Info,
-						Title:        "Resumed",
-						Message:      "Automatically resumed from pause state",
-						ShowOnSystem: true,
-						Expires:      time.Now().Add(15 * time.Second).Unix(),
-						AvailableActions: []*notifications.Action{
-							{
-								ID:   "ack",
-								Text: "OK",
-							},
-						},
-					}
-					notifications.Notify(n)
+			case <-ticker.C:
+				if time.Now().After(deadline) {
+					needToAutoResume = true
 				}
-				return err
+			case <-timer.C:
+				needToAutoResume = true
 			}
 		}
+
+		// Time to resume
+		wc.Info("Resuming...")
+		err := c.resume()
+		if err == nil {
+			n := &notifications.Notification{
+				EventID:      "control:resumed",
+				Type:         notifications.Info,
+				Title:        "Resumed",
+				Message:      "Automatically resumed from pause state",
+				ShowOnSystem: true,
+				Expires:      time.Now().Add(15 * time.Second).Unix(),
+				AvailableActions: []*notifications.Action{
+					{
+						ID:   "ack",
+						Text: "OK",
+					},
+				},
+			}
+			notifications.Notify(n)
+		}
+		return err
 	}
 
 	c.resumeWorker = c.mgr.NewWorkerMgr("resumer", resumerWorkerFunc, nil)
@@ -250,4 +275,51 @@ func (c *Control) updateStatesAndNotifyError(errDescription string, err error) {
 	}
 	notifications.Notify(c.pauseNotification)
 	c.pauseNotification.SyncWithState(c.states)
+}
+
+func (c *Control) showNotification(title, message string) *notifications.Notification {
+	n := &notifications.Notification{
+		EventID: "control:status_info",
+		Type:    notifications.Info,
+		Title:   title,
+		Message: message,
+	}
+	notifications.Notify(n)
+	return n
+}
+
+func (c *Control) waitSPNStopped(stopTimeout time.Duration) error {
+	var notification *notifications.Notification
+	defer func() {
+		if notification != nil {
+			notification.Delete()
+		}
+	}()
+
+	startTime := time.Now()
+	isStopped, _ := c.instance.SPNGroup().IsStopped()
+	for !isStopped {
+		var err error
+
+		time.Sleep(200 * time.Millisecond)
+
+		if c.mgr.IsDone() || c.instance.IsShuttingDown() {
+			return errors.New("shutting down")
+		}
+
+		isStopped, err = c.instance.SPNGroup().IsStopped()
+		if err != nil {
+			return fmt.Errorf("failed to stop SPN: %w", err)
+		}
+		if time.Since(startTime) > stopTimeout {
+			return errors.New("timeout waiting for SPN to stop")
+		}
+		if notification == nil && time.Since(startTime) > time.Second {
+			notification = c.showNotification("Waiting for SPN to stop...", "")
+		}
+		if c.cfgSpnEnabled() {
+			return errors.New("SPN enabled again")
+		}
+	}
+	return nil
 }

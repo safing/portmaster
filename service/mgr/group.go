@@ -159,6 +159,16 @@ func (g *Group) Start() error {
 	return nil
 }
 
+// IsStopped returns whether the group is stopped.
+// It returns an error if the group is in an invalid state.
+func (g *Group) IsStopped() (bool, error) {
+	state := g.state.Load()
+	if state == groupStateInvalid {
+		return false, errors.New("invalid group state")
+	}
+	return state == groupStateOff, nil
+}
+
 // Stop stops all modules in the group in the reverse order.
 func (g *Group) Stop() error {
 	// Check group state.
