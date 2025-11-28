@@ -166,7 +166,7 @@ func (g *Group) IsStopped() (bool, error) {
 	if state == groupStateInvalid {
 		return false, errors.New("invalid group state")
 	}
-	return g.state.Load() == groupStateOff, nil
+	return state == groupStateOff, nil
 }
 
 // Stop stops all modules in the group in the reverse order.
