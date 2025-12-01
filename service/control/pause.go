@@ -143,7 +143,9 @@ func (c *Control) stopResumeWorker() {
 // startResumeWorker starts a worker that will resume normal operation after the specified duration.
 // No thread safety, caller must hold c.locker.
 func (c *Control) startResumeWorker(duration time.Duration) {
-	deadline := time.Now().Add(duration)
+	// Strip monotonic clock from deadline to force wall-clock comparison.
+	// This is critical for VM suspend/resume and system sleep scenarios.
+	deadline := time.Now().Round(0).Add(duration)
 	c.pauseInfo.TillTime = deadline
 
 	resumerWorkerFunc := func(wc *mgr.WorkerCtx) error {
@@ -173,7 +175,8 @@ func (c *Control) startResumeWorker(duration time.Duration) {
 					needToAutoResume = true
 				}
 			case <-ticker.C:
-				if time.Now().After(deadline) {
+				// Check wall-clock time.
+				if time.Now().Round(0).After(deadline) {
 					needToAutoResume = true
 				}
 			case <-timer.C:
