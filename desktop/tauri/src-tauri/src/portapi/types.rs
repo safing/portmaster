@@ -186,14 +186,3 @@ impl std::convert::TryFrom<Response> for Message {
         }
     }
 }
-
-
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub struct Record {
-    pub created: u64,
-    pub deleted: u64,
-    pub expires: u64,
-    pub modified: u64,
-    pub key: String,
-}

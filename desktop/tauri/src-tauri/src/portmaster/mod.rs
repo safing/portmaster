@@ -329,9 +329,6 @@ pub trait PortmasterExt<R: Runtime> {
     fn portmaster(&self) -> &PortmasterInterface<R>;
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-pub struct Config {}
-
 impl<R: Runtime, T: Manager<R>> PortmasterExt<R> for T {
     fn portmaster(&self) -> &PortmasterInterface<R> {
         self.state::<PortmasterInterface<R>>().inner()

@@ -3,7 +3,7 @@ use dataurl::DataUrl;
 use gdk_pixbuf::{Pixbuf, PixbufError};
 use gtk_sys::{
     gtk_icon_info_free, gtk_icon_info_get_filename, gtk_icon_theme_get_default,
-    gtk_icon_theme_lookup_icon, GtkIconTheme,
+    gtk_icon_theme_lookup_icon,
 };
 use log::{debug, error};
 use std::collections::HashMap;
@@ -19,8 +19,6 @@ use std::{
 use thiserror::Error;
 
 use ini::{Ini, ParseOption};
-
-static mut GTK_DEFAULT_THEME: Option<*mut GtkIconTheme> = None;
 
 lazy_static! {
     static ref APP_INFO_CACHE: Arc<RwLock<HashMap<String, Option<AppInfo>>>> =
@@ -352,17 +350,10 @@ fn parse_app_info(props: &ini::Properties) -> AppInfo {
 }
 
 fn get_icon_as_png_dataurl(name: &str, size: i8) -> Result<(String, String)> {
-    unsafe {
-        if GTK_DEFAULT_THEME.is_none() {
-            let theme = gtk_icon_theme_get_default();
-            if theme.is_null() {
-                debug!("You have to initialize GTK!");
-                return Err(Error::new(ErrorKind::Other, "You have to initialize GTK!").into());
-            }
-
-            let theme = gtk_icon_theme_get_default();
-            GTK_DEFAULT_THEME = Some(theme);
-        }
+    // gtk_icon_theme_get_default() is lightweight - it returns a borrowed reference to GTK's singleton icon theme
+    let theme = unsafe { gtk_icon_theme_get_default() };
+    if theme.is_null() {
+        return Err(Error::new(ErrorKind::Other, "GTK not initialized").into());
     }
 
     let mut icons = Vec::new();
@@ -402,7 +393,7 @@ fn get_icon_as_png_dataurl(name: &str, size: i8) -> Result<(String, String)> {
             let c_str = CString::new(name).unwrap();
 
             let icon_info = gtk_icon_theme_lookup_icon(
-                GTK_DEFAULT_THEME.unwrap(),
+                theme,
                 c_str.as_ptr() as *const c_char,
                 size as c_int,
                 0,
