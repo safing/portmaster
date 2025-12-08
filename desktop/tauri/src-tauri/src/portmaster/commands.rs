@@ -91,14 +91,19 @@ pub fn get_app_info<R: Runtime>(
     }
     let cloned = id.clone();
 
-    std::thread::spawn(move || match crate::xdg::get_app_info(info) {
-        Ok(info) => window.emit(&id, info),
-        Err(err) => window.emit(
-            &id,
-            Error {
-                error: err.to_string(),
-            },
-        ),
+    // GTK calls are not thread-safe and must run on the main thread. 
+    // Schedule the work on the GTK/GLib main thread to avoid random segfaults.
+    glib::idle_add_local(move || {
+        let _ = match crate::xdg::get_app_info(info.clone()) {
+            Ok(info) => window.emit(&id, info),
+            Err(err) => window.emit(
+                &id,
+                Error {
+                    error: err.to_string(),
+                },
+            ),
+        };
+        glib::ControlFlow::Break
     });
 
     Ok(cloned)
