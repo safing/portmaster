@@ -48,11 +48,14 @@ func updateSPNIntel(_ context.Context, _ interface{}) (err error) {
 		return fmt.Errorf("failed to get SPN intel update: %w", err)
 	}
 
-	// Check if file is newer.
-	// Continue on check failure.
-	newer, ok := file.IsNewerThan(intelResource)
-	if ok && !newer {
-		return nil
+	// If intel is not initialized, skip version comparison.
+	if navigator.Main.GetIntel() != nil {
+		// Check if file is newer.
+		// Continue on check failure.
+		newer, ok := file.IsNewerThan(intelResource)
+		if ok && !newer {
+			return nil
+		}
 	}
 
 	// Load intel file from disk.
