@@ -359,7 +359,7 @@ assets:
 
     WORKDIR /app/assets
     COPY --keep-ts ./assets/data .
-    RUN zip -r -9 -db assets.zip *
+    RUN zip -r -9 -db -X assets.zip *
 
     SAVE ARTIFACT --keep-ts "assets.zip" AS LOCAL "${outputDir}/all/assets.zip"
 
