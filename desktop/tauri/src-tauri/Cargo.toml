@@ -1,6 +1,6 @@
 [package]
 name = "portmaster"
-version = "2.0.25"
+version = "2.1.7"
 description = "Portmaster UI"
 authors = ["Safing"]
 license = ""
