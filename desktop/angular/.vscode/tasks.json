@@ -1,0 +1,152 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "ui-library-watch",
+            "type": "npm",
+            "script": "build-ui:dev:watch",
+            "isBackground": true,
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "group": "dev-libraries"
+            },
+            "group": {
+                "kind": "build"
+            },
+            "problemMatcher": {
+                "owner": "typescript",
+                "source": "ts",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": "$tsc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Building Angular Package",
+                    "endsPattern": "Compilation complete\\. Watching for file changes\\.\\.\\."
+                }
+            }
+        },
+        {
+            "label": "api-library-watch",
+            "type": "npm",
+            "script": "build-api:dev:watch",
+            "isBackground": true,
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "group": "dev-libraries"
+            },
+            "group": {
+                "kind": "build"
+            },
+            "problemMatcher": {
+                "owner": "typescript",
+                "source": "ts",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": "$tsc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Building Angular Package",
+                    "endsPattern": "Compilation complete\\. Watching for file changes\\.\\.\\."
+                }
+            }
+        },
+        {
+            "label": "build-libs-first",
+            "type": "npm",
+            "script": "build-libs:dev",
+            "isBackground": false,
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "group": {
+                "kind": "build"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "debugproj",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "build-libs-first",
+                "ui-library-watch",
+                "api-library-watch",
+                "main-app-with-polling"
+            ],
+            "isBackground": true,
+            "presentation": {
+                "echo": false,
+                "reveal": "never",
+                "focus": false,
+                "panel": "shared"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "main-app-with-polling",
+            "type": "npm",
+            "script": "serve-with-lib-watch",
+            "isBackground": true,
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "group": "dev-main"
+            },
+            "group": {
+                "kind": "build"
+            },
+            "problemMatcher": {
+                "owner": "typescript",
+                "source": "ts",
+                "applyTo": "closedDocuments",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": "$tsc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Generating browser application bundles",
+                    "endsPattern": "Compiled successfully\\.|Failed to compile\\."
+                }
+            }
+        },
+        {
+            "label": "killnode",
+            "type": "process",
+            "windows": {
+                "command": "taskkill",
+                "args": ["/F", "/IM", "node.exe"]
+            },
+            "osx":{
+                "command": "killall",
+                "args": ["node"]
+            },
+            "linux":{
+                "command": "killall",
+                "args": ["node"]
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "group": {
+                "kind": "build"
+            },
+            "isBackground": false,
+            "problemMatcher": []
+        }
+    ]
+}
