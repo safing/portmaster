@@ -6,6 +6,11 @@
     "start": "npm install && npm run build-libs:dev && ng serve --proxy-config ./proxy.json",
     "build-libs": "cross-env NODE_ENV=production ng build --configuration production @safing/ui && cross-env NODE_ENV=production ng build --configuration production @safing/portmaster-api",
     "build-libs:dev": "ng build --configuration development @safing/ui && ng build --configuration development @safing/portmaster-api",
+
+    "build-ui:dev:watch": "ng build --configuration development @safing/ui --watch",
+    "build-api:dev:watch": "ng build --configuration development @safing/portmaster-api --watch",
+    "serve-with-lib-watch": "ng serve --proxy-config ./proxy.json --poll=2000",
+
     "serve": "npm run build-libs:dev && ng serve --proxy-config ./proxy.json",
     "build:dev": "npm run build-libs:dev && ng build",
     "test": "ng test",
