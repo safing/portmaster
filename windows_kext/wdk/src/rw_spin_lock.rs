@@ -26,7 +26,7 @@ impl RwSpinLock {
     ///
     /// This method blocks until a read lock can be acquired.
     /// Returns a `RwLockGuard` that represents the acquired read lock.
-    pub fn read_lock(&self) -> RwLockGuard {
+    pub fn read_lock(&self) -> RwLockGuard<'_> {
         let irq = unsafe { ExAcquireSpinLockShared(self.data.get()) };
         RwLockGuard {
             data: &self.data,
@@ -39,7 +39,7 @@ impl RwSpinLock {
     ///
     /// This method blocks until a write lock can be acquired.
     /// Returns a `RwLockGuard` that represents the acquired write lock.
-    pub fn write_lock(&self) -> RwLockGuard {
+    pub fn write_lock(&self) -> RwLockGuard<'_> {
         let irq = unsafe { ExAcquireSpinLockExclusive(self.data.get()) };
         RwLockGuard {
             data: &self.data,

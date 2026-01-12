@@ -16,7 +16,7 @@ pub struct ReadRequest<'a> {
 }
 
 impl ReadRequest<'_> {
-    pub fn new(irp: &mut IRP) -> ReadRequest {
+    pub fn new(irp: &mut IRP) -> ReadRequest<'_> {
         unsafe {
             let irp_sp = irp.Tail.Overlay.Anonymous2.Anonymous.CurrentStackLocation;
             let device_io = (*irp_sp).Parameters.Read;
@@ -79,7 +79,7 @@ pub struct WriteRequest<'a> {
 }
 
 impl WriteRequest<'_> {
-    pub fn new(irp: &mut IRP) -> WriteRequest {
+    pub fn new(irp: &mut IRP) -> WriteRequest<'_> {
         unsafe {
             let irp_sp = irp.Tail.Overlay.Anonymous2.Anonymous.CurrentStackLocation;
             let device_io = (*irp_sp).Parameters.Write;
@@ -131,7 +131,7 @@ struct DeviceIOControlParams {
 }
 
 impl DeviceControlRequest<'_> {
-    pub fn new(irp: &mut IRP) -> DeviceControlRequest {
+    pub fn new(irp: &mut IRP) -> DeviceControlRequest<'_> {
         unsafe {
             let irp_sp = irp.Tail.Overlay.Anonymous2.Anonymous.CurrentStackLocation;
             // Use the struct directly when replaced with proper version.
