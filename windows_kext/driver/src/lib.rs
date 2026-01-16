@@ -4,6 +4,7 @@
 
 extern crate alloc;
 
+mod ale_redirect_callouts;
 mod ale_callouts;
 mod array_holder;
 mod bandwidth;
@@ -15,6 +16,7 @@ mod connection_map;
 mod device;
 mod entry;
 mod id_cache;
+mod id_cache_generic;
 pub mod logger;
 mod packet_callouts;
 mod packet_util;

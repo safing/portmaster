@@ -16,7 +16,7 @@ use windows_sys::{
 };
 
 use crate::filter_engine::{
-    classify::ClassifyOut, layer::IncomingValues, metadata::FwpsIncomingMetadataValues,
+    classify::ClassifyOut, layer::IncomingValues, metadata::FwpsIncomingMetadataValues, sockaddr::SOCKADDR_STORAGE,
 };
 
 pub(crate) type FwpsCalloutClassifyFn = unsafe extern "C" fn(
@@ -143,6 +143,30 @@ pub(crate) const FWPS_INJECTION_TYPE_VSWITCH_TRANSPORT: u32 = 0x00000020;
 
 pub(crate) const NDIS_OBJECT_TYPE_DEFAULT: u8 = 0x80; // used when object type is implicit in the API call
 pub(crate) const NET_BUFFER_LIST_POOL_PARAMETERS_REVISION_1: u8 = 1;
+
+/// The FWPS_CONNECTION_REDIRECT_STATE enumeration type specifies the redirection state of a connection
+#[allow(non_camel_case_types)]
+#[repr(C)]
+pub enum FWPS_CONNECTION_REDIRECT_STATE {
+    FWPS_CONNECTION_NOT_REDIRECTED,
+    FWPS_CONNECTION_REDIRECTED_BY_SELF,
+    FWPS_CONNECTION_REDIRECTED_BY_OTHER,
+    FWPS_CONNECTION_PREVIOUSLY_REDIRECTED_BY_SELF,
+    FWPS_CONNECTION_REDIRECT_STATE_MAX
+}
+
+#[repr(C)]
+pub struct FWPS_CONNECT_REQUEST0 {
+    pub local_address_and_port: SOCKADDR_STORAGE,
+    pub remote_address_and_port: SOCKADDR_STORAGE,
+    pub port_reservation_token: u64,
+    pub local_redirect_target_pid: u32,       // PID of local proxy (if redirecting locally)
+    pub previous_version: *const FWPS_CONNECT_REQUEST0,  // Previous request state
+    pub modifier_filter_id: u64,              // Filter ID that last modified this
+    pub local_redirect_handle: *mut c_void,   // REQUIRED for local redirection
+    pub local_redirect_context: *mut c_void,  // Custom context (original destination)
+    pub local_redirect_context_size: usize,   // Size of context
+}
 
 /// The NBListHeader is the header of NET_BUFFER_LIST struct.
 #[repr(C)]
@@ -340,7 +364,7 @@ extern "C" {
         classify_handle: u64,
         filterId: u64,
         flags: u32, // Must be zero.
-        classifyOut: *const ClassifyOut,
+        classifyOut: *mut ClassifyOut,
     ) -> NTSTATUS;
 
     /// A callout driver calls FwpsCompleteClassify0 to asynchronously complete a pended classify request. The callout driver's classifyFn function must have previously called FwpsPendClassify0 to pend the classify request.
@@ -534,4 +558,21 @@ extern "C" {
     /// The KeQuerySystemTime routine obtains the current system time.
     /// System time is a count of 100-nanosecond intervals since January 1, 1601. System time is typically updated approximately every ten milliseconds. This value is computed for the GMT time zone.
     pub(crate) fn pm_QuerySystemTime() -> u64;
+
+    /// The FwpsRedirectHandleCreate0 function creates a redirect handle that is used to identify redirection operations for a connection.
+    pub(crate) fn FwpsRedirectHandleCreate0(
+        provider_guid: *const u128,
+        flags: u32,
+        redirect_handle: *mut *mut c_void,
+    ) -> i32;
+    
+    /// The FwpsRedirectHandleDestroy0 function destroys a redirect handle that was previously created by a call to the FwpsRedirectHandleCreate0 function.
+    pub(crate) fn FwpsRedirectHandleDestroy0(redirect_handle: *mut c_void);
+    
+    /// The FwpsQueryConnectionRedirectState0 function is called by a callout to query the redirection state of a connection.
+    pub(crate) fn FwpsQueryConnectionRedirectState0(
+        redirect_records: *const c_void,    // HANDLE redirectRecords: handle indicated to ALE_CONNECT_REDIRECT callout by the classify metadata.
+        redirect_handle: *const c_void,     // HANDLE redirectHandle: created by a call to the FwpsRedirectHandleCreate0 function.
+        redirect_context: *mut *mut c_void, // (optional) void **redirectContext (output)
+    ) -> FWPS_CONNECTION_REDIRECT_STATE;
 }

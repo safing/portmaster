@@ -10,7 +10,8 @@ use windows_sys::Win32::{
             FWPS_METADATA_FIELD_COMPLETION_HANDLE, FWPS_METADATA_FIELD_FRAGMENT_DATA,
             FWPS_METADATA_FIELD_PROCESS_ID, FWPS_METADATA_FIELD_PROCESS_PATH,
             FWPS_METADATA_FIELD_REMOTE_SCOPE_ID, FWPS_METADATA_FIELD_TRANSPORT_CONTROL_DATA,
-            FWPS_METADATA_FIELD_TRANSPORT_ENDPOINT_HANDLE, FWP_BYTE_BLOB, FWP_DIRECTION,
+            FWPS_METADATA_FIELD_TRANSPORT_ENDPOINT_HANDLE, FWPS_METADATA_FIELD_REDIRECT_RECORD_HANDLE,
+            FWP_BYTE_BLOB, FWP_DIRECTION,
         },
     },
     Networking::WinSock::SCOPE_ID,
@@ -85,6 +86,8 @@ pub(crate) struct FwpsIncomingMetadataValues {
     reserved1: u64,
 }
 
+// See metadata fields at each filtering layer
+// https://learn.microsoft.com/en-us/windows-hardware/drivers/network/metadata-fields-at-each-filtering-layer
 impl FwpsIncomingMetadataValues {
     pub(crate) fn has_field(&self, field: u32) -> bool {
         self.current_metadata_values & field > 0
@@ -153,6 +156,14 @@ impl FwpsIncomingMetadataValues {
             let ptr = NonNull::new(self.control_data as *mut u8).unwrap();
             let slice = NonNull::slice_from_raw_parts(ptr, self.control_data_length as usize);
             return Some(slice);
+        }
+
+        None
+    }
+
+    pub(crate) unsafe fn get_redirect_records(&self) -> Option<HANDLE> {
+        if self.has_field(FWPS_METADATA_FIELD_REDIRECT_RECORD_HANDLE) {
+            return Some(self.redirect_records);
         }
 
         None

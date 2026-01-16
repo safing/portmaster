@@ -5,18 +5,20 @@ use smoltcp::wire::{IpAddress, IpProtocol, Ipv4Address, Ipv6Address};
 use wdk::{
     driver::Driver,
     filter_engine::{
-        callout_data::ClassifyDefer,
-        net_buffer::{NetBufferList, NetworkAllocator},
-        packet::{InjectInfo, Injector},
-        FilterEngine,
+        FilterEngine, 
+        callout_data::ClassifyDefer, 
+        net_buffer::{NetBufferList, NetworkAllocator}, 
+        packet::{InjectInfo, Injector}, 
+        redirect::{RedirectController}
     },
     ioqueue::{self, IOQueue},
     irp_helpers::{ReadRequest, WriteRequest},
 };
 
 use crate::{
-    array_holder::ArrayHolder, bandwidth::Bandwidth, callouts, connection_cache::ConnectionCache,
-    connection_map::Key, dbg, err, id_cache::IdCache, logger, packet_util::Redirect,
+    ale_redirect_callouts, array_holder::ArrayHolder, bandwidth::Bandwidth, callouts, 
+    connection_cache::ConnectionCache, connection_map::Key, dbg, err, id_cache::IdCache, 
+    id_cache_generic::GenericIdCache, logger, packet_util::Redirect
 };
 
 pub enum Packet {
@@ -28,20 +30,32 @@ pub enum Packet {
 pub struct Device {
     pub(crate) filter_engine: FilterEngine,
     pub(crate) read_leftover: ArrayHolder,
-    pub(crate) event_queue: IOQueue<Info>,
-    pub(crate) packet_cache: IdCache,
-    pub(crate) connection_cache: ConnectionCache,
+    pub(crate) event_queue: IOQueue<Info>,          // Queue for events to user-space
+    pub(crate) packet_cache: IdCache,               // Cache of pending packets waiting for verdict
+    pub(crate) connection_cache: ConnectionCache,   // Cache of connections and their verdicts
     pub(crate) injector: Injector,
     pub(crate) network_allocator: NetworkAllocator,
     pub(crate) bandwidth_stats: Bandwidth,
+    
+    // Split-tunnel support (Redirection)
+    pub(crate) redirect_controller: RedirectController,
+    pub(crate) redirect_cache: GenericIdCache<ale_redirect_callouts::PendedRedirect>, // Cache of pending redirects
 }
+
+// Sub-Layer GUID for Portmaster. Also used as provider GUID, when needed.
+const PORTMASTER_SUBLAYER_GUID: u128 = 0x7dab1057_8e2b_40c4_9b85_693e381d7896;
 
 impl Device {
     /// Initialize all members of the device. Memory is handled by windows.
     /// Make sure everything is initialized here.
     pub fn new(driver: &Driver) -> Result<Self, String> {
+        let redirect_controller = match RedirectController::new(PORTMASTER_SUBLAYER_GUID) {
+            Ok(handle) => handle,
+            Err(status) => return Err(alloc::format!("Failed to create redirect handle: NTSTATUS {:#x}", status)),            
+        };
+
         let mut filter_engine =
-            match FilterEngine::new(driver, 0x7dab1057_8e2b_40c4_9b85_693e381d7896) {
+            match FilterEngine::new(driver, PORTMASTER_SUBLAYER_GUID) {
                 Ok(fe) => fe,
                 Err(err) => return Err(alloc::format!("filter engine error: {}", err)),
             };
@@ -57,6 +71,9 @@ impl Device {
             injector: Injector::new(),
             network_allocator: NetworkAllocator::new(),
             bandwidth_stats: Bandwidth::new(),
+
+            redirect_controller: redirect_controller,
+            redirect_cache: GenericIdCache::new(),
         })
     }
 

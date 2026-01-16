@@ -892,6 +892,7 @@ pub enum FieldsAleBindRedirectV6 {
     Max,
 }
 
+/// See FWPS_FIELDS_ALE_CONNECT_REDIRECT_V4 in fwpsk.h
 #[repr(usize)]
 pub enum FieldsAleConnectRedirectV4 {
     AleAppId,
@@ -911,6 +912,7 @@ pub enum FieldsAleConnectRedirectV4 {
     Max,
 }
 
+/// See FWPS_FIELDS_ALE_CONNECT_REDIRECT_V6 in fwpsk.h
 #[repr(usize)]
 pub enum FieldsAleConnectRedirectV6 {
     AleAppId,
@@ -930,6 +932,7 @@ pub enum FieldsAleConnectRedirectV6 {
     Max,
 }
 
+/// See FWPS_FIELDS_ALE_CONNECT_REDIRECT_V4 in fwpsk.h
 #[repr(usize)]
 pub enum FieldsAleAuthConnectV4 {
     AleAppId,
@@ -979,6 +982,7 @@ pub enum FieldsAleAuthConnectV4 {
     Max,
 }
 
+/// See FWPS_FIELDS_ALE_CONNECT_REDIRECT_V6 in fwpsk.h
 #[repr(usize)]
 pub enum FieldsAleAuthConnectV6 {
     AleAppId,

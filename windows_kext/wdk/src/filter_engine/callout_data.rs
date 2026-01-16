@@ -53,14 +53,17 @@ impl ClassifyDefer {
     //     }
     // }
 }
-
+/*
+https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fwpsk/nc-fwpsk-fwps_callout_classify_fn3
+*/
 pub struct CalloutData<'a> {
     pub layer: Layer,
-    pub(crate) callout_id: usize,
-    pub(crate) values: &'a [Value],
-    pub(crate) metadata: *const FwpsIncomingMetadataValues,
-    pub(crate) classify_out: *mut ClassifyOut,
-    pub(crate) layer_data: *mut c_void,
+    pub(crate) callout_id: usize,                           // FWPS_FILTER2.context
+    pub(crate) filter_id: u64,                              // FWPS_FILTER2.filterId
+    pub(crate) values: &'a [Value],                         // const FWPS_INCOMING_VALUES0 *inFixedValues,
+    pub(crate) metadata: *const FwpsIncomingMetadataValues, // const FWPS_INCOMING_METADATA_VALUES0 *inMetaValues,
+    pub(crate) classify_out: *mut ClassifyOut,              // FWPS_CLASSIFY_OUT0 *classifyOut,
+    pub(crate) layer_data: *mut c_void,                     // void *layerData. Data depends from layer (e.g. NET_BUFFER_LIST for packet layers or StreamCalloutIoPacket for stream layers).
 }
 
 impl<'a> CalloutData<'a> {
@@ -117,6 +120,12 @@ impl<'a> CalloutData<'a> {
     pub fn get_control_data(&self) -> Option<NonNull<[u8]>> {
         unsafe {
             return (*self.metadata).get_control_data();
+        }
+    }
+
+    pub fn get_redirect_records(&self) -> Option<HANDLE> {
+        unsafe {
+            return (*self.metadata).get_redirect_records();
         }
     }
 
@@ -204,5 +213,9 @@ impl<'a> CalloutData<'a> {
 
     pub fn get_callout_id(&self) -> usize {
         self.callout_id
+    }
+
+    pub fn get_filter_id(&self) -> u64 {
+        self.filter_id
     }
 }

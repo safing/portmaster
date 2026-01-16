@@ -26,9 +26,10 @@ pub mod layer;
 pub(crate) mod metadata;
 pub mod net_buffer;
 pub mod packet;
+pub mod redirect;
+pub mod sockaddr;
 pub mod stream_data;
 pub mod transaction;
-// Helper functions for ALE Readirect layers. Not needed for the current implementation.
 // pub mod connect_request;
 
 pub struct FilterEngine {
@@ -194,6 +195,19 @@ impl Drop for FilterEngine {
     }
 }
 
+/*
+https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fwpsk/nc-fwpsk-fwps_callout_classify_fn3
+
+void FwpsCalloutClassifyFn3(
+  const FWPS_INCOMING_VALUES0 *inFixedValues,
+  const FWPS_INCOMING_METADATA_VALUES0 *inMetaValues,
+  void *layerData,
+  const void *classifyContext,
+  const FWPS_FILTER3 *filter,
+  UINT64 flowContext,
+  FWPS_CLASSIFY_OUT0 *classifyOut
+)
+*/
 #[no_mangle]
 unsafe extern "C" fn catch_all_callout(
     fixed_values: *const IncomingValues,
@@ -217,7 +231,10 @@ unsafe extern "C" fn catch_all_callout(
         let data = CalloutData {
             layer: callout.layer,
             callout_id: filter.context as usize,
+            filter_id: filter.filterId,
             values: array,
+            // Metadata fields at each filtering layer:
+            // https://learn.microsoft.com/en-us/windows-hardware/drivers/network/metadata-fields-at-each-filtering-layer
             metadata: meta_values,
             classify_out,
             layer_data,

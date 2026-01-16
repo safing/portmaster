@@ -291,6 +291,7 @@ name = "wdk"
 version = "0.0.0"
 dependencies = [
  "ntstatus",
+ "smoltcp",
  "widestring",
  "windows-sys",
 ]

@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 ntstatus = { version = "0.1.2", default-features = false }
+smoltcp = { version = "0.10", default-features = false, features = ["proto-ipv4", "proto-ipv6"] }
 
 [dependencies.widestring]
 version = "1.0.2"

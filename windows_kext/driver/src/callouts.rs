@@ -5,10 +5,31 @@ use wdk::{
     filter_engine::{callout::Callout, layer::Layer},
 };
 
-use crate::{ale_callouts, packet_callouts, stream_callouts};
+use crate::{ale_redirect_callouts, ale_callouts, packet_callouts, stream_callouts};
 
 pub fn get_callout_vec() -> Vec<Callout> {
     alloc::vec![
+        // -----------------------------------------
+        // ALE Redirect layer (runs before ALE Auth)
+        // This layer allows modifying connection parameters before establishment, required for split-tunneling
+        Callout::new(
+            "Portmaster Connect Redirect IPv4",
+            "Portmaster uses this layer to redirect outbound connections to specific interfaces (IPv4)",
+            0x2B1F8CA0_63C1_4D35_A3ED_78E82B207C41,
+            Layer::AleConnectRedirectV4,
+            consts::FWP_ACTION_CALLOUT_TERMINATING,
+            FilterType::NonResettable,
+            ale_redirect_callouts::connect_redirect_v4,
+        ),
+        Callout::new(
+            "Portmaster Connect Redirect IPv6",
+            "Portmaster uses this layer to redirect outbound connections to specific interfaces (IPv6)",
+            0xA92A4E61_1A22_43E9_9901_ABE3697AA388,
+            Layer::AleConnectRedirectV6,
+            consts::FWP_ACTION_CALLOUT_TERMINATING,
+            FilterType::NonResettable,
+            ale_redirect_callouts::connect_redirect_v6,
+        ),
         // -----------------------------------------
         // ALE Auth layers
         Callout::new(
