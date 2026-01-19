@@ -31,6 +31,8 @@ const (
 	CommandBandwidthStats        = 6
 	CommandPrintMemoryStats      = 7
 	CommandCleanEndedConnections = 8
+	CommandRedirectV4            = 9
+	CommandRedirectV6            = 10
 )
 
 // KextVerdict is the verdict ID used with the kext.
@@ -82,13 +84,15 @@ func (v KextVerdict) String() string {
 
 // Info types from driver
 const (
-	InfoLogLine              = 0
-	InfoConnectionIpv4       = 1
-	InfoConnectionIpv6       = 2
-	InfoConnectionEndEventV4 = 3
-	InfoConnectionEndEventV6 = 4
-	InfoBandwidthStatsV4     = 5
-	InfoBandwidthStatsV6     = 6
+	InfoLogLine               = 0
+	InfoConnectionIpv4        = 1
+	InfoConnectionIpv6        = 2
+	InfoConnectionEndEventV4  = 3
+	InfoConnectionEndEventV6  = 4
+	InfoBandwidthStatsV4      = 5
+	InfoBandwidthStatsV6      = 6
+	InfoRedirectionRequestV4  = 7
+	InfoRedirectionRequestV6  = 8
 )
 
 var (
@@ -184,6 +188,46 @@ type LogLine struct {
 	Line     string
 }
 
+// RedirectionRequestV4 received from driver - requests a redirect decision for IPv4 connection
+type RedirectionRequestV4 struct {
+	ID         uint64
+	ProcessID  uint64
+	Direction  byte
+	Protocol   byte
+	LocalIP    [4]byte
+	RemoteIP   [4]byte
+	LocalPort  uint16
+	RemotePort uint16
+}
+
+// RedirectionRequestV6 received from driver - requests a redirect decision for IPv6 connection
+type RedirectionRequestV6 struct {
+	ID         uint64
+	ProcessID  uint64
+	Direction  byte
+	Protocol   byte
+	LocalIP    [16]byte
+	RemoteIP   [16]byte
+	LocalPort  uint16
+	RemotePort uint16
+}
+
+// RedirectV4 command structure - response to RedirectionRequestV4
+type RedirectV4 struct {
+	Command      uint8
+	ID           uint64
+	Redirect     uint8   // 0 = no redirect (permit), 1 = redirect to LocalAddress
+	LocalAddress [4]byte // Local interface IP to redirect to (when Redirect = 1)
+}
+
+// RedirectV6 command structure - response to RedirectionRequestV6
+type RedirectV6 struct {
+	Command      uint8
+	ID           uint64
+	Redirect     uint8    // 0 = no redirect (permit), 1 = redirect to LocalAddress
+	LocalAddress [16]byte // Local interface IP to redirect to (when Redirect = 1)
+}
+
 // Log severity levels
 const (
 	SeverityTrace    = 1
@@ -215,11 +259,13 @@ func SeverityString(s byte) string {
 
 // Info represents a parsed info packet from driver
 type Info struct {
-	ConnectionV4    *ConnectionV4
-	ConnectionV6    *ConnectionV6
-	ConnectionEndV4 *ConnectionEndV4
-	ConnectionEndV6 *ConnectionEndV6
-	LogLine         *LogLine
+	ConnectionV4         *ConnectionV4
+	ConnectionV6         *ConnectionV6
+	ConnectionEndV4      *ConnectionEndV4
+	ConnectionEndV6      *ConnectionEndV6
+	LogLine              *LogLine
+	RedirectionRequestV4 *RedirectionRequestV4
+	RedirectionRequestV6 *RedirectionRequestV6
 }
 
 // KextService manages the kernel driver service
@@ -648,6 +694,10 @@ func RecvInfo(r io.Reader) (*Info, error) {
 	case InfoBandwidthStatsV4, InfoBandwidthStatsV6:
 		// Skip bandwidth stats for now
 		return nil, nil
+	case InfoRedirectionRequestV4:
+		return parseRedirectionRequestV4(h)
+	case InfoRedirectionRequestV6:
+		return parseRedirectionRequestV6(h)
 	}
 	return nil, ErrUnknownInfoType
 }
@@ -775,4 +825,52 @@ func parseLogLine(h *readHelper) (*Info, error) {
 			Line:     string(lineBytes),
 		},
 	}, nil
+}
+
+func parseRedirectionRequestV4(h *readHelper) (*Info, error) {
+	var req RedirectionRequestV4
+	if err := h.readData(&req); err != nil {
+		return nil, fmt.Errorf("failed to parse RedirectionRequestV4: %w", err)
+	}
+	return &Info{RedirectionRequestV4: &req}, nil
+}
+
+func parseRedirectionRequestV6(h *readHelper) (*Info, error) {
+	var req RedirectionRequestV6
+	if err := h.readData(&req); err != nil {
+		return nil, fmt.Errorf("failed to parse RedirectionRequestV6: %w", err)
+	}
+	return &Info{RedirectionRequestV6: &req}, nil
+}
+
+// SendRedirectV4Command sends a redirect decision for an IPv4 connection
+// If redirect is true, the connection will be redirected through the specified localAddress interface
+// If redirect is false, the connection proceeds without modification (permit)
+func SendRedirectV4Command(w io.Writer, id uint64, redirect bool, localAddress [4]byte) error {
+	cmd := RedirectV4{
+		Command:      CommandRedirectV4,
+		ID:           id,
+		Redirect:     0,
+		LocalAddress: localAddress,
+	}
+	if redirect {
+		cmd.Redirect = 1
+	}
+	return binary.Write(w, binary.LittleEndian, cmd)
+}
+
+// SendRedirectV6Command sends a redirect decision for an IPv6 connection
+// If redirect is true, the connection will be redirected through the specified localAddress interface
+// If redirect is false, the connection proceeds without modification (permit)
+func SendRedirectV6Command(w io.Writer, id uint64, redirect bool, localAddress [16]byte) error {
+	cmd := RedirectV6{
+		Command:      CommandRedirectV6,
+		ID:           id,
+		Redirect:     0,
+		LocalAddress: localAddress,
+	}
+	if redirect {
+		cmd.Redirect = 1
+	}
+	return binary.Write(w, binary.LittleEndian, cmd)
 }

@@ -27,7 +27,7 @@ const (
 	defaultDriverName    = "PortmasterKext"
 	defaultDriverRelPath = "..\\_out\\PortmasterKext_test.sys"
 	readBufferSize       = 64 * 1024
-	logPollInterval      = 1 * time.Second
+	logPollInterval      = 50 * time.Millisecond //1 * time.Second
 )
 
 // App holds the application state
@@ -623,6 +623,10 @@ func (app *App) handleInfo(info *kext.Info, file *kext.KextFile) {
 		app.handleConnectionEndV6(info.ConnectionEndV6)
 	} else if info.LogLine != nil {
 		app.handleLogLine(info.LogLine)
+	} else if info.RedirectionRequestV4 != nil {
+		app.handleRedirectionRequestV4(info.RedirectionRequestV4, file)
+	} else if info.RedirectionRequestV6 != nil {
+		app.handleRedirectionRequestV6(info.RedirectionRequestV6, file)
 	}
 }
 
@@ -694,11 +698,6 @@ func (app *App) determineVerdict(protocol byte, remotePort uint16) kext.KextVerd
 		return kext.VerdictPermanentAccept
 	}
 
-	// If redirecting and it's TCP(6) or UDP(17), redirect to tunnel
-	if app.redirecting.Load() && (protocol == 6 || protocol == 17) {
-		return kext.VerdictRerouteToTunnel
-	}
-
 	// Default: PermanentAccept
 	return kext.VerdictPermanentAccept
 }
@@ -756,4 +755,113 @@ func protocolString(p byte) string {
 	default:
 		return fmt.Sprintf("PROTO-%d", p)
 	}
+}
+
+func (app *App) handleRedirectionRequestV4(req *kext.RedirectionRequestV4, file *kext.KextFile) {
+	localIP := net.IP(req.LocalIP[:])
+	remoteIP := net.IP(req.RemoteIP[:])
+	direction := directionString(req.Direction)
+	protocol := protocolString(req.Protocol)
+
+	// Determine if we should redirect
+	shouldRedirect, redirectIP := app.determineRedirect(req.Protocol, req.RemotePort)
+
+	if shouldRedirect && redirectIP != nil {
+		// Get IPv4 address bytes
+		ipv4 := redirectIP.To4()
+		if ipv4 != nil {
+			var localAddr [4]byte
+			copy(localAddr[:], ipv4)
+
+			app.connLog.Info("[REDIRECT V4] ID=%d PID=%d %s %s %s:%d -> %s:%d REDIRECT_TO=%s",
+				req.ID, req.ProcessID, direction, protocol,
+				localIP, req.LocalPort, remoteIP, req.RemotePort,
+				redirectIP.String())
+
+			if err := kext.SendRedirectV4Command(file, req.ID, true, localAddr); err != nil {
+				app.appLog.Error("Failed to send redirect command for ID %d: %v", req.ID, err)
+			}
+		} else {
+			app.appLog.Error("Redirect IP is not IPv4: %s", redirectIP.String())
+			// Permit without redirect
+			if err := kext.SendRedirectV4Command(file, req.ID, false, [4]byte{}); err != nil {
+				app.appLog.Error("Failed to send permit command for ID %d: %v", req.ID, err)
+			}
+		}
+	} else {
+		app.connLog.Info("[REDIRECT V4] ID=%d PID=%d %s %s %s:%d -> %s:%d PERMIT (no redirect)",
+			req.ID, req.ProcessID, direction, protocol,
+			localIP, req.LocalPort, remoteIP, req.RemotePort)
+
+		// Permit without redirect
+		if err := kext.SendRedirectV4Command(file, req.ID, false, [4]byte{}); err != nil {
+			app.appLog.Error("Failed to send permit command for ID %d: %v", req.ID, err)
+		}
+	}
+}
+
+func (app *App) handleRedirectionRequestV6(req *kext.RedirectionRequestV6, file *kext.KextFile) {
+	localIP := net.IP(req.LocalIP[:])
+	remoteIP := net.IP(req.RemoteIP[:])
+	direction := directionString(req.Direction)
+	protocol := protocolString(req.Protocol)
+
+	// Determine if we should redirect
+	shouldRedirect, redirectIP := app.determineRedirect(req.Protocol, req.RemotePort)
+
+	if shouldRedirect && redirectIP != nil {
+		// Get IPv6 address bytes
+		ipv6 := redirectIP.To16()
+		if ipv6 != nil && redirectIP.To4() == nil { // Make sure it's actually IPv6
+			var localAddr [16]byte
+			copy(localAddr[:], ipv6)
+
+			app.connLog.Info("[REDIRECT V6] ID=%d PID=%d %s %s [%s]:%d -> [%s]:%d REDIRECT_TO=%s",
+				req.ID, req.ProcessID, direction, protocol,
+				localIP, req.LocalPort, remoteIP, req.RemotePort,
+				redirectIP.String())
+
+			if err := kext.SendRedirectV6Command(file, req.ID, true, localAddr); err != nil {
+				app.appLog.Error("Failed to send redirect command for ID %d: %v", req.ID, err)
+			}
+		} else {
+			app.appLog.Error("Redirect IP is not IPv6: %s", redirectIP.String())
+			// Permit without redirect
+			if err := kext.SendRedirectV6Command(file, req.ID, false, [16]byte{}); err != nil {
+				app.appLog.Error("Failed to send permit command for ID %d: %v", req.ID, err)
+			}
+		}
+	} else {
+		app.connLog.Info("[REDIRECT V6] ID=%d PID=%d %s %s [%s]:%d -> [%s]:%d PERMIT (no redirect)",
+			req.ID, req.ProcessID, direction, protocol,
+			localIP, req.LocalPort, remoteIP, req.RemotePort)
+
+		// Permit without redirect
+		if err := kext.SendRedirectV6Command(file, req.ID, false, [16]byte{}); err != nil {
+			app.appLog.Error("Failed to send permit command for ID %d: %v", req.ID, err)
+		}
+	}
+}
+
+// determineRedirect decides whether to redirect a connection and to which IP
+// Returns (shouldRedirect, redirectIP)
+func (app *App) determineRedirect(protocol byte, remotePort uint16) (bool, net.IP) {
+	// DNS traffic (port 53) - never redirect ???
+	if remotePort == 53 {
+		return false, nil
+	}
+
+	// If redirecting is enabled and it's TCP(6) or UDP(17)
+	if app.redirecting.Load() && (protocol == 6 || protocol == 17) {
+		app.mu.RLock()
+		redirectIP := app.redirectIP
+		app.mu.RUnlock()
+
+		if redirectIP != nil {
+			return true, redirectIP
+		}
+	}
+
+	// Default: no redirect
+	return false, nil
 }
