@@ -64,6 +64,7 @@ pub struct CalloutData<'a> {
     pub(crate) metadata: *const FwpsIncomingMetadataValues, // const FWPS_INCOMING_METADATA_VALUES0 *inMetaValues,
     pub(crate) classify_out: *mut ClassifyOut,              // FWPS_CLASSIFY_OUT0 *classifyOut,
     pub(crate) layer_data: *mut c_void,                     // void *layerData. Data depends from layer (e.g. NET_BUFFER_LIST for packet layers or StreamCalloutIoPacket for stream layers).
+    pub(crate) classify_context: * const c_void,            // const void *classifyContext
 }
 
 impl<'a> CalloutData<'a> {

@@ -16,6 +16,8 @@ pub enum CommandType {
     GetBandwidthStats     = 6,
     PrintMemoryStats      = 7,
     CleanEndedConnections = 8,
+    RedirectV4            = 9,
+    RedirectV6            = 10,
 }
 
 #[repr(C, packed)]
@@ -53,6 +55,22 @@ pub struct UpdateV6 {
     pub verdict: u8,
 }
 
+#[repr(C, packed)]
+#[derive(Debug, PartialEq, Eq)]
+pub struct RedirectV4 {
+    pub id: u64,
+    pub redirect: u8,                      // 0 = no redirect (permit), 1 = redirect to local_address
+    pub local_address: [u8; 4],            // Local interface IP to redirect to (when redirect = 1)
+}
+
+#[repr(C, packed)]
+#[derive(Debug, PartialEq, Eq)]
+pub struct RedirectV6 {
+    pub id: u64,
+    pub redirect: u8,                      // 0 = no redirect (permit), 1 = redirect to local_address
+    pub local_address: [u8; 16],           // Local interface IP to redirect to (when redirect = 1)
+}
+
 pub fn parse_type(bytes: &[u8]) -> Option<CommandType> {
     FromPrimitive::from_u8(bytes[0])
 }
@@ -66,6 +84,14 @@ pub fn parse_update_v4(bytes: &[u8]) -> &UpdateV4 {
 }
 
 pub fn parse_update_v6(bytes: &[u8]) -> &UpdateV6 {
+    as_type(bytes)
+}
+
+pub fn parse_redirect_v4(bytes: &[u8]) -> &RedirectV4 {
+    as_type(bytes)
+}
+
+pub fn parse_redirect_v6(bytes: &[u8]) -> &RedirectV6 {
     as_type(bytes)
 }
 
@@ -150,6 +176,8 @@ fn test_go_command_file() {
                 CommandType::GetBandwidthStats => {}
                 CommandType::PrintMemoryStats => {}
                 CommandType::CleanEndedConnections => {}
+                CommandType::RedirectV4 => {}
+                CommandType::RedirectV6 => {}
             }
         } else {
             panic!("Unknown command: {}", command[0]);

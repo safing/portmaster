@@ -89,4 +89,9 @@ impl ClassifyOut {
     pub fn clear_write_flag(&mut self) {
         self.rights &= !FWPS_RIGHT_ACTION_WRITE;
     }
+
+    // Set the write flag permission. Next filter in the chain can change the action.
+    pub fn set_write_flag(&mut self) {
+        self.rights |= FWPS_RIGHT_ACTION_WRITE;
+    }
 }

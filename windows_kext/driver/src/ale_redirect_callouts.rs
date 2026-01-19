@@ -1,3 +1,4 @@
+use protocol::info::Info;
 use wdk::{
     filter_engine::{ 
         callout_data::CalloutData, 
@@ -10,6 +11,8 @@ use smoltcp::wire::{ IpAddress, IpProtocol, Ipv4Address, Ipv6Address };
 use windows_sys::Win32::{ Foundation::HANDLE, };
 use core::ffi::c_void;
 use alloc::format;
+
+use crate::connection::Direction;
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct RedirectInfo {    
     pub(crate)  local_ip: IpAddress,
@@ -43,9 +46,7 @@ fn get_ipv6_address(data: &CalloutData, index: usize) -> IpAddress {
 /// Data stored for each pended redirect operation
 pub struct PendedRedirect {
     pub pend_redirect_result: PendRedirectResult,
-
-    pub info: RedirectInfo,
-    pub is_ipv6: bool,
+    // ... add more fields if needed
 }
 
 pub fn connect_redirect_v4(data: CalloutData) {
@@ -86,6 +87,10 @@ pub fn connect_redirect_v6(data: CalloutData) {
     ale_layer_connect_redirect(data, &ale_redirect_data);
 }
 
+/// Common ALE layer connect redirect handling
+///
+/// Using Bind or Connect Redirection:
+/// https://learn.microsoft.com/en-us/windows-hardware/drivers/network/using-bind-or-connect-redirection
 fn ale_layer_connect_redirect(mut data: CalloutData, ale_data: &AleRedirectData) {
     let Some(device) = crate::entry::get_device() else {
         crate::dbg!("ERROR: ALE Connect Redirect: No device available.");
@@ -116,7 +121,7 @@ fn ale_layer_connect_redirect(mut data: CalloutData, ale_data: &AleRedirectData)
         );
 
     // Check if already redirected
-    let is_redirected = device.redirect_controller.get_connection_is_redirected_state(
+    let is_redirected = device.redirector.get_connection_is_redirected_state(
         ale_data.redirect_records.unwrap_or(0 as HANDLE), 
         data.get_layer_data() as *const c_void);
 
@@ -126,12 +131,8 @@ fn ale_layer_connect_redirect(mut data: CalloutData, ale_data: &AleRedirectData)
         return;            
     }
 
-    // TODO: For testing, permit all connections.
-    data.action_permit();
-    return; // Do not redirect for now (work in progress).
-
     // Pend the redirect operation
-    let pr_result = match device.redirect_controller.pend(&mut data) {
+    let pr_result = match device.redirector.pend(&mut data) {
         Ok(res) => res,
         Err(err_code) => {
             crate::err!("ALE Connect Redirect: pend failed: {:#x}", err_code);
@@ -144,18 +145,34 @@ fn ale_layer_connect_redirect(mut data: CalloutData, ale_data: &AleRedirectData)
     let pr_cache_id = device.redirect_cache.push(
         PendedRedirect {
             pend_redirect_result: pr_result,
-            info: ale_data.info,
-            is_ipv6: ale_data.is_ipv6,
         });
 
+    crate::dbg!("ALE Connect Redirect: Pended redirect stored in cache with ID {} (cache size: {})", pr_cache_id, device.redirect_cache.get_entries_count());
 
-    // Prepare & Send request to userspace via event queue
+    let info = build_info(pr_cache_id, ale_data);
+    if let Some(info) = info {
+        if let Err(e) = device.event_queue.push(info) {
+            // TODO: ... handle error?
+            crate::err!("ALE Connect Redirect: Failed to push redirection request to event queue: {:?}", e);
+        }
+    } else {
+        // TODO: ...invalid IP version combination?
+        crate::err!("ALE Connect Redirect: Failed to build redirection request info: invalid IP version combination.");
+    }
+
+    // Block the operation until completed
+    data.action_block();
+    data.clear_write_flag();
+}
+
+/// Build redirection request info from ALE redirect data to be sent to user-mode.
+fn build_info(pr_cache_id: u64, ale_data: &AleRedirectData) -> Option<Info> {
     let info = match (ale_data.info.local_ip, ale_data.info.remote_ip) {
         (IpAddress::Ipv6(local_ip), IpAddress::Ipv6(remote_ip)) if ale_data.is_ipv6 => {
             Some(protocol::info::redirection_request_v6(
                 pr_cache_id,
                 ale_data.info.process_id,
-                0 as u8, // TODO
+                Direction::Outbound as u8,
                 u8::from(ale_data.info.protocol),
                 local_ip.0,
                 remote_ip.0,
@@ -167,7 +184,7 @@ fn ale_layer_connect_redirect(mut data: CalloutData, ale_data: &AleRedirectData)
             Some(protocol::info::redirection_request_v4(
                 pr_cache_id,
                 ale_data.info.process_id,
-                0 as u8, // TODO
+                Direction::Outbound as u8,
                 u8::from(ale_data.info.protocol),
                 local_ip.0,
                 remote_ip.0,
@@ -179,17 +196,5 @@ fn ale_layer_connect_redirect(mut data: CalloutData, ale_data: &AleRedirectData)
             None
         }
     };
-
-    if let Some(info) = info {
-        if let Err(e) = device.event_queue.push(info) {
-            // TODO: ... handle error?
-            crate::err!("ALE Connect Redirect: Failed to push redirection request to event queue: {:?}", e);
-        }
-    } else {
-        // TODO: ...invalid IP version combination?
-    }
-
-    // Block the operation until completed
-    data.action_block();
-    data.clear_write_flag();
+    info
 }

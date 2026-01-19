@@ -1,4 +1,5 @@
 use core::ffi::c_void;
+use smoltcp::wire::IpAddress;
 
 use crate::ffi::{    
     FwpsRedirectHandleCreate0, 
@@ -7,10 +8,13 @@ use crate::ffi::{
     FwpsAcquireClassifyHandle0,
     FwpsReleaseClassifyHandle0,
     FwpsPendClassify0,
+    FwpsAcquireWritableLayerDataPointer0,
+    FwpsApplyModifiedLayerData0,
+    FwpsCompleteClassify0,
     FWPS_CONNECT_REQUEST0,
     FWPS_CONNECTION_REDIRECT_STATE::* };
 
-use super::{callout_data::CalloutData};
+use super::{callout_data::CalloutData, classify::ClassifyOut};
 
 pub struct PendRedirectResult {
     pub classify_handle: u64,       // FwpsClassifyHandle from FwpsAcquireClassifyHandle0()
@@ -25,11 +29,11 @@ pub struct PendRedirectResult {
 /// Wrapper for WFP redirect handle.
 /// The redirect handle is required for local address modification in CONNECT_REDIRECT.
 /// It must be created once at initialization and destroyed on cleanup.
-pub struct RedirectController {
+pub struct Redirector {
     redirect_handle: *mut c_void, // from FwpsRedirectHandleCreate0
 }
 
-impl RedirectController {
+impl Redirector {
     /// Create a new redirect handle.
     /// The provider_guid should match your WFP provider GUID.
     pub fn new(provider_guid: u128) -> Result<Self, i32> {
@@ -85,11 +89,12 @@ impl RedirectController {
         false
     }
 
+    /// Pend a redirect operation for later completion.    
     pub fn pend(&self, data: &mut CalloutData) -> Result<PendRedirectResult, i32> {
         // Acquire classify handle
         let mut classify_handle: u64 = 0;
         let status = unsafe {
-            FwpsAcquireClassifyHandle0(data.classify_out as *mut c_void, 0, &mut classify_handle)
+            FwpsAcquireClassifyHandle0(data.classify_context, 0, &mut classify_handle)
         };
         if status != 0 {
             crate::err!("FwpsAcquireClassifyHandle0 failed: {:#x}", status);
@@ -116,9 +121,106 @@ impl RedirectController {
             classify_out: data.classify_out as *mut c_void,
         });
     }
+
+    /// Complete a pended redirect operation.
+    /// 
+    /// If `new_local_ip` is Some, the connection's local address will be modified
+    /// to route through the specified interface. If None, the connection proceeds
+    /// without modification (permit).
+    /// 
+    /// This function handles:
+    /// 1. Acquiring writable layer data (if redirect needed)
+    /// 2. Modifying the local address
+    /// 3. Applying the modifications
+    /// 4. Completing the pended classify operation
+    /// 5. Releasing the classify handle
+    pub fn complete_redirect(
+        &self,
+        pend_result: PendRedirectResult,
+        new_local_ip: Option<IpAddress>,
+    ) -> Result<(), i32> {
+        let classify_out = pend_result.classify_out as *mut ClassifyOut;
+
+        // If redirect is requested, modify the connection's local address
+        if let Some(ref ip) = new_local_ip {
+            if let Err(e) = self.apply_redirect_modification(&pend_result, ip) {
+                crate::err!("Failed to apply redirect modification: {:#x}", e);
+                // Continue to complete and release handle even on failure
+            }
+        }
+
+        // Complete the pended classify operation (permit the connection)
+        unsafe {            
+            FwpsCompleteClassify0(
+                pend_result.classify_handle,
+                0,  // flags
+                classify_out,
+            );
+
+            // Set action to permit
+            (*classify_out).action_permit();
+            (*classify_out).set_write_flag();            
+        }
+
+        // Release the classify handle
+        unsafe {
+            FwpsReleaseClassifyHandle0(pend_result.classify_handle);
+        }
+
+        Ok(())
+    }
+
+    /// Apply the actual address modification to redirect the connection
+    fn apply_redirect_modification(
+        &self,
+        pend_result: &PendRedirectResult,
+        new_local_ip: &IpAddress,
+    ) -> Result<(), i32> {
+        // Acquire writable layer data pointer
+        let mut writable_data: *mut c_void = core::ptr::null_mut();
+        let classify_out = pend_result.classify_out as *mut ClassifyOut;
+        
+        let status = unsafe {
+            FwpsAcquireWritableLayerDataPointer0(
+                pend_result.classify_handle,
+                pend_result.filter_id,
+                0,  // flags
+                &mut writable_data,
+                classify_out,
+            )
+        };
+        if status != 0 {
+            crate::err!("FwpsAcquireWritableLayerDataPointer0 failed: {:#x}", status);
+            return Err(status);
+        }
+
+        // Modify the local address in the connection request
+        let conn_req = writable_data as *mut FWPS_CONNECT_REQUEST0;
+        unsafe {
+            // Set the new local IP address
+            if let Err(e) = (*conn_req).local_address_and_port.set_ip(new_local_ip) {
+                crate::err!("Failed to set IP address: {}", e);
+                return Err(-1);
+            }
+
+            // No necessary to update local_redirect_handle, since we are not redirecting to a local proxy
+            // (*conn_req).local_redirect_handle = self.redirect_handle;
+        }
+
+        // Apply the modifications (this function returns void)
+        unsafe {
+            FwpsApplyModifiedLayerData0(
+                pend_result.classify_handle,
+                writable_data,
+                0,  // flags
+            );
+        }
+
+        Ok(())
+    }
 }
 
-impl Drop for RedirectController {
+impl Drop for Redirector {
     fn drop(&mut self) {
         if !self.redirect_handle.is_null() {
             unsafe {

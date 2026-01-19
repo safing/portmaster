@@ -23,7 +23,7 @@ pub(crate) type FwpsCalloutClassifyFn = unsafe extern "C" fn(
     inFixedValues: *const IncomingValues,
     inMetaValues: *const FwpsIncomingMetadataValues,
     layerData: *mut c_void,
-    classifyContext: *mut c_void,
+    classifyContext: *const c_void,
     filter: *const FWPS_FILTER2,
     flowContext: u64,
     classifyOut: *mut ClassifyOut,
@@ -351,7 +351,7 @@ extern "C" {
 
     /// The FwpsAcquireClassifyHandle0 function generates a classification handle that is used to identify asynchronous classification operations and requests for writable layer data.
     pub(crate) fn FwpsAcquireClassifyHandle0(
-        classify_context: *mut c_void,
+        classify_context: *const c_void,
         reserved: u32, // Must be zero.
         classify_handle: *mut u64,
     ) -> NTSTATUS;
@@ -379,14 +379,14 @@ extern "C" {
         classify_handle: u64,
         filter_id: u64,
         flags: u32,
-        writable_layer_data: *mut c_void,
+        writable_layer_data: *mut *mut c_void,
         classify_out: *mut ClassifyOut,
     ) -> NTSTATUS;
 
     /// The FwpsApplyModifiedLayerData0 function applies changes to layer-specific data made after a call to FwpsAcquireWritableLayerDataPointer0.
     pub(crate) fn FwpsApplyModifiedLayerData0(
         classifyHandle: u64,
-        modifiedLayerData: *mut *mut c_void,
+        modifiedLayerData: *mut c_void,
         flags: u32,
     );
 

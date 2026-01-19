@@ -9,7 +9,7 @@ use wdk::{
         callout_data::ClassifyDefer, 
         net_buffer::{NetBufferList, NetworkAllocator}, 
         packet::{InjectInfo, Injector}, 
-        redirect::{RedirectController}
+        redirect::{Redirector}
     },
     ioqueue::{self, IOQueue},
     irp_helpers::{ReadRequest, WriteRequest},
@@ -38,7 +38,7 @@ pub struct Device {
     pub(crate) bandwidth_stats: Bandwidth,
     
     // Split-tunnel support (Redirection)
-    pub(crate) redirect_controller: RedirectController,
+    pub(crate) redirector: Redirector,
     pub(crate) redirect_cache: GenericIdCache<ale_redirect_callouts::PendedRedirect>, // Cache of pending redirects
 }
 
@@ -49,7 +49,7 @@ impl Device {
     /// Initialize all members of the device. Memory is handled by windows.
     /// Make sure everything is initialized here.
     pub fn new(driver: &Driver) -> Result<Self, String> {
-        let redirect_controller = match RedirectController::new(PORTMASTER_SUBLAYER_GUID) {
+        let redirect_controller = match Redirector::new(PORTMASTER_SUBLAYER_GUID) {
             Ok(handle) => handle,
             Err(status) => return Err(alloc::format!("Failed to create redirect handle: NTSTATUS {:#x}", status)),            
         };
@@ -72,7 +72,7 @@ impl Device {
             network_allocator: NetworkAllocator::new(),
             bandwidth_stats: Bandwidth::new(),
 
-            redirect_controller: redirect_controller,
+            redirector: redirect_controller,
             redirect_cache: GenericIdCache::new(),
         })
     }
@@ -310,6 +310,64 @@ impl Device {
                 wdk::dbg!("CleanEndedConnections command");
                 self.connection_cache.clean_ended_connections();
             }
+            CommandType::RedirectV4 => {
+                let redirect = protocol::command::parse_redirect_v4(buffer);
+                dbg!("RedirectV4 command: {:?}", redirect);
+
+                // Pop the pended redirect from cache
+                if let Some(pended) = self.redirect_cache.pop_id(redirect.id) {
+                    let new_local_ip = if redirect.redirect != 0 {
+                        // Redirect to specified local interface IP
+                        Some(IpAddress::Ipv4(Ipv4Address::from_bytes(&redirect.local_address)))
+                    } else {
+                        // No redirect - permit without modification
+                        None
+                    };
+
+                    dbg!("Completing redirect for {:?}", redirect);
+                    
+                    // Complete the pended redirect operation
+                    if let Err(e) = self.redirector.complete_redirect(
+                        pended.pend_redirect_result,
+                        new_local_ip,
+                    ) {
+                        err!("Failed to complete redirect: {:#x}", e);
+                    } else {
+                        dbg!("Redirect completed successfully for {:?}", redirect);
+                    }
+                } else {
+                    err!("RedirectV4 invalid id: {:?}", redirect);
+                }
+            }
+            CommandType::RedirectV6 => {
+                let redirect = protocol::command::parse_redirect_v6(buffer);
+                dbg!("RedirectV6 command: {:?}", redirect);
+                
+                // Pop the pended redirect from cache
+                if let Some(pended) = self.redirect_cache.pop_id(redirect.id) {
+                    let new_local_ip = if redirect.redirect != 0 {
+                        // Redirect to specified local interface IP
+                        Some(IpAddress::Ipv6(Ipv6Address::from_bytes(&redirect.local_address)))
+                    } else {
+                        // No redirect - permit without modification
+                        None
+                    };
+
+                    dbg!("Completing redirect for {:?}", redirect);
+                    
+                    // Complete the pended redirect operation
+                    if let Err(e) = self.redirector.complete_redirect(
+                        pended.pend_redirect_result,
+                        new_local_ip,
+                    ) {
+                        err!("Failed to complete redirect: {:#x}", e);
+                    } else {
+                        dbg!("Redirect completed successfully for {:?}", redirect);
+                    }
+                } else {
+                    err!("RedirectV6 invalid id: {:?}", redirect);
+                }
+            }
         }
     }
 
@@ -327,6 +385,19 @@ impl Device {
                 .connection_cache
                 .update_connection(key, crate::connection::Verdict::PermanentBlock);
             _ = self.inject_packet(packet, true); // Blocked must be set, so it only handles the ALE layer.
+        }
+
+        // Resolve all pending redirects. This is important for proper driver unload.
+        let pending_redirects = self.redirect_cache.pop_all();
+        for el in pending_redirects {
+            let pended = el.value;
+            // Complete without redirect (permit) to release the pended operation
+            if let Err(e) = self.redirector.complete_redirect(
+                pended.pend_redirect_result,
+                None, // No redirect on shutdown - just permit
+            ) {
+                err!("Failed to complete redirect on shutdown: {:#x}", e);
+            }
         }
     }
 

@@ -213,7 +213,7 @@ unsafe extern "C" fn catch_all_callout(
     fixed_values: *const IncomingValues,
     meta_values: *const FwpsIncomingMetadataValues,
     layer_data: *mut c_void,
-    _context: *mut c_void,
+    classify_context: *const c_void,
     filter: *const FWPS_FILTER2,
     _flow_context: u64,
     classify_out: *mut ClassifyOut,
@@ -238,6 +238,7 @@ unsafe extern "C" fn catch_all_callout(
             metadata: meta_values,
             classify_out,
             layer_data,
+            classify_context,
         };
         // Call the defined function.
         (callout.callout_fn)(data);
