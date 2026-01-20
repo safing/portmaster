@@ -140,7 +140,7 @@ fn ale_layer_connect_redirect(mut data: CalloutData, ale_data: &AleRedirectData)
     // Store the pended redirect info in the redirect cache
     let pr_cache_id = device.redirect_cache.push( PendedRedirect{pend_redirect_result} );
 
-    crate::dbg!( "ALE Connect Redirect: PID={} Protocol={:?} IPv6={} Local={} Remote={} (filter_id: {}, cache_id: {} cache_size: {})",
+    crate::dbg!( "ALE Connect Redirect: PID={} p={:?} IPv6={} l={} r={} (filter_id: {}, cache_id: {} cache_size: {})",
             ale_data.info.process_id, ale_data.info.protocol, ale_data.is_ipv6,
             format!("{}:{}", ale_data.info.local_ip, ale_data.info.local_port),
             format!("{}:{}", ale_data.info.remote_ip, ale_data.info.remote_port),
@@ -148,26 +148,22 @@ fn ale_layer_connect_redirect(mut data: CalloutData, ale_data: &AleRedirectData)
             pr_cache_id,
             device.redirect_cache.get_entries_count()
         );
-    
-    let mut is_error = false;
-    
+        
     // Build redirection request info to be sent to user-mode
-    let info = build_info(pr_cache_id, ale_data);
-    match info {
+    //let info = build_info(pr_cache_id, ale_data);
+    let result = match build_info(pr_cache_id, ale_data) {
         Ok(info) => {
-            // Push the redirection request info to the event queue to be sent to user-mode
-            if let Err(e) = device.event_queue.push(info) {                
-                crate::err!("ALE Connect Redirect: Failed to push redirection request to event queue: {:?}", e);
-                is_error = true;
-            }
+             // Push the redirection request info to the event queue to be sent to user-mode
+            device.event_queue.push(info)
+                .map_err(|e| { crate::err!("ALE Connect Redirect: Failed to push redirection request to event queue: {:?}", e); })
         }
         Err(err) => {
             crate::err!("ALE Connect Redirect: Failed to build redirection request info: {}", err);
-            is_error = true;
-        }
-    }
+            Err(())
+        }    
+    };
 
-    if is_error {
+    if result.is_err() {
         // An error occurred, cancel the pended redirect operation
         // Pop the redirect cache entry
         let pr = device.redirect_cache.pop_id(pr_cache_id); 

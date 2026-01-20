@@ -156,33 +156,36 @@ impl Redirector {
     ) -> Result<(), i32> {
         let classify_out = pend_result.classify_out as *mut ClassifyOut;
 
-        // If redirect is requested, modify the connection's local address
-        if let Some(ref ip) = new_local_ip {
-            if let Err(e) = self.apply_redirect_modification(&pend_result, ip) {
-                crate::err!("Failed to apply redirect modification: {:#x}", e);
-                // Continue to complete and release handle even on failure
-            }
-        }
-
-        // Complete the pended classify operation (permit the connection)
-        unsafe {            
+        let result = if let Some(ref ip) = new_local_ip { 
+            self.apply_redirect_modification(&pend_result, ip)
+                .map_err(|err| { crate::err!("Failed to apply redirect modification: {:#x}", err); err})
+                    // Continue to complete and release handle even on failure
+        } else {
+            Ok(())  // Local address not defined, no modification needed
+        };
+        
+        unsafe {
+            // Complete the pended classify operation (permit the connection)
             FwpsCompleteClassify0(
                 pend_result.classify_handle,
                 0,  // flags
                 classify_out,
             );
+        
+            // Set action based on result
+            if result.is_ok() {
+                (*classify_out).action_permit();
+                (*classify_out).set_write_flag();
+            } else {
+                (*classify_out).action_block();
+                (*classify_out).clear_write_flag();
+            }        
 
-            // Set action to permit
-            (*classify_out).action_permit();
-            (*classify_out).set_write_flag();            
-        }
-
-        // Release the classify handle
-        unsafe {
+            // Release the classify handle        
             FwpsReleaseClassifyHandle0(pend_result.classify_handle);
         }
 
-        Ok(())
+        result
     }
 
     /// Apply the actual address modification to redirect the connection
@@ -208,21 +211,26 @@ impl Redirector {
             crate::err!("FwpsAcquireWritableLayerDataPointer0 failed: {:#x}", status);
             return Err(status);
         }
-
+                
         // Modify the local address in the connection request
         let conn_req = writable_data as *mut FWPS_CONNECT_REQUEST0;
-        unsafe {
+        let result = unsafe {
             // Set the new local IP address
-            if let Err(e) = (*conn_req).local_address_and_port.set_ip(new_local_ip) {
-                crate::err!("Failed to set IP address: {}", e);
-                return Err(-1);
-            }
+            let ret = (*conn_req).local_address_and_port.set_ip(new_local_ip);
+            match ret {
+                Ok(_) => {
+                    // No necessary to update local_redirect_handle, since we are not redirecting to a local proxy
+                    // (*conn_req).local_redirect_handle = self.redirect_handle;
+                    Ok(())
+                },
+                Err(e) => {
+                    crate::err!("Failed to set IP address: {}", e);
+                    Err(-1)
+                }
+            }            
+        };
 
-            // No necessary to update local_redirect_handle, since we are not redirecting to a local proxy
-            // (*conn_req).local_redirect_handle = self.redirect_handle;
-        }
-
-        // Apply the modifications (this function returns void)
+        // Apply the modifications
         unsafe {
             FwpsApplyModifiedLayerData0(
                 pend_result.classify_handle,
@@ -231,7 +239,7 @@ impl Redirector {
             );
         }
 
-        Ok(())
+        result
     }
 }
 
