@@ -122,6 +122,21 @@ impl Redirector {
         });
     }
 
+    /// Cancel a pended redirect operation and release resources.
+    pub fn cancel_pend(&self, pend_result: PendRedirectResult) {
+        let classify_out = pend_result.classify_out as *mut ClassifyOut;
+
+        unsafe {                
+            FwpsCompleteClassify0(
+                pend_result.classify_handle,
+                0,  // flags
+                classify_out,
+            );
+
+            FwpsReleaseClassifyHandle0(pend_result.classify_handle);
+        }
+    }
+
     /// Complete a pended redirect operation.
     /// 
     /// If `new_local_ip` is Some, the connection's local address will be modified
