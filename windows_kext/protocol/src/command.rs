@@ -18,6 +18,18 @@ pub enum CommandType {
     CleanEndedConnections = 8,
     RedirectV4            = 9,
     RedirectV6            = 10,
+    /// Enables split tunneling functionality.
+    /// 
+    /// When enabled, the driver will:
+    /// - Send RedirectionRequestV4/V6 notifications for outbound connections
+    /// - Allow RedirectV4/V6 commands to modify connection routing
+    EnableSplitTunnel     = 11,
+    /// Disables split tunneling functionality.
+    /// 
+    /// When disabled, the driver will:
+    /// - Stop sending RedirectionRequestV4/V6 notifications
+    /// - RedirectV4/V6 commands will not have any effect.
+    DisableSplitTunnel    = 12,
 }
 
 #[repr(C, packed)]
@@ -178,6 +190,8 @@ fn test_go_command_file() {
                 CommandType::CleanEndedConnections => {}
                 CommandType::RedirectV4 => {}
                 CommandType::RedirectV6 => {}
+                CommandType::EnableSplitTunnel => {}
+                CommandType::DisableSplitTunnel => {}
             }
         } else {
             panic!("Unknown command: {}", command[0]);

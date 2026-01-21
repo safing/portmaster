@@ -11,7 +11,7 @@ use alloc::{format, vec::Vec};
 use windows_sys::Wdk::Foundation::DEVICE_OBJECT;
 use windows_sys::Win32::Foundation::{HANDLE, INVALID_HANDLE_VALUE};
 
-use self::callout::{Callout, FilterType};
+use self::callout::{Callout, FilterType, FunctionType};
 use self::callout_data::CalloutData;
 use self::classify::ClassifyOut;
 use self::layer::IncomingValues;
@@ -143,6 +143,74 @@ impl FilterEngine {
                         return Err(format!("filter_engine: {}", err));
                     }
                 }
+            }
+        }
+        // Commit transaction.
+        filter_engine.commit()?;
+        return Ok(());
+    }
+
+    /// Unregister all filters of the specified function type.
+    pub fn unregister_filters(&mut self, function: FunctionType) -> Result<(), String> {  
+        if matches!(function, FunctionType::Core) {
+            return Err("Cannot unregister core callouts".to_owned());
+        }
+        // Begin to write transaction. This is also a lock guard. It will abort if transaction is not committed.
+        let mut filter_engine = match Transaction::begin_write(self) {
+            Ok(transaction) => transaction,
+            Err(err) => {
+                return Err(err);
+            }
+        };
+        let filter_engine_handle = filter_engine.handle;
+        if let Some(callouts) = &mut filter_engine.callouts {
+            for callout in callouts {
+                if function != callout.function_type {
+                    continue;
+                }
+                if callout.filter_id != 0 {
+                    // Remove filter.
+                    if let Err(err) = ffi::unregister_filter(filter_engine_handle, callout.filter_id) {
+                        return Err(format!("filter_engine: {}", err));
+                    }
+                    callout.filter_id = 0;
+                    dbg!("unregistered filter for callout {}", callout.name);
+                }
+            }
+        }
+        // Commit transaction.
+        filter_engine.commit()?;
+        return Ok(());
+    }
+
+    /// Register all filters of the specified function type.
+    pub fn register_filters(&mut self, function: FunctionType) -> Result<(), String> {  
+        if matches!(function, FunctionType::Core) {
+            return Err("Cannot re-register core callouts".to_owned());
+        }
+        // Begin to write transaction. This is also a lock guard. It will abort if transaction is not committed.
+        let mut filter_engine = match Transaction::begin_write(self) {
+            Ok(transaction) => transaction,
+            Err(err) => {
+                return Err(err);
+            }
+        };
+        let filter_engine_handle = filter_engine.handle;
+        let sublayer_guid = filter_engine.sublayer_guid;
+        if let Some(callouts) = &mut filter_engine.callouts {
+            for callout in callouts {
+                if function != callout.function_type {
+                    continue;
+                }
+                if callout.filter_id != 0 {
+                    dbg!("callout {} already has filter id {}, skipping", callout.name, callout.filter_id);
+                    continue;
+                }
+                // Create new filter.
+                if let Err(err) = callout.register_filter(filter_engine_handle, sublayer_guid) {
+                    return Err(format!("filter_engine: {}", err));
+                }
+                dbg!("registered filter for callout {} -> {}", callout.name, callout.filter_id);
             }
         }
         // Commit transaction.

@@ -8,6 +8,18 @@ pub enum FilterType {
     NonResettable,
 }
 
+/// Specifies the type of a callout function.
+/// Determines whether a callout can be activated or deactivated at runtime.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum FunctionType {
+    /// Core callout providing essential functionality.
+    /// Cannot be disabled at runtime.
+    Core,
+    /// Redirect callout, used for traffic redirection (e.g., split tunneling).
+    /// Can be enabled or disabled dynamically.
+    Redirect,
+}
+
 pub struct Callout {
     pub(crate) id: u32,
     pub(super) address: u64,
@@ -19,6 +31,7 @@ pub struct Callout {
     pub(crate) registered: bool,
     pub(crate) filter_type: FilterType,
     pub(crate) filter_id: u64,
+    pub(crate) function_type: FunctionType,
     pub(crate) callout_fn: fn(CalloutData),
 }
 
@@ -30,6 +43,7 @@ impl Callout {
         layer: Layer,
         action: u32,
         filter_type: FilterType,
+        function_type: FunctionType,
         callout_fn: fn(CalloutData),
     ) -> Self {
         Self {
@@ -43,6 +57,7 @@ impl Callout {
             registered: false,
             filter_type,
             filter_id: 0,
+            function_type,
             callout_fn,
         }
     }

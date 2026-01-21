@@ -6,6 +6,7 @@ use wdk::{
     driver::Driver,
     filter_engine::{
         FilterEngine, 
+        callout::FunctionType,
         callout_data::ClassifyDefer, 
         net_buffer::{NetBufferList, NetworkAllocator}, 
         packet::{InjectInfo, Injector}, 
@@ -49,9 +50,9 @@ impl Device {
     /// Initialize all members of the device. Memory is handled by windows.
     /// Make sure everything is initialized here.
     pub fn new(driver: &Driver) -> Result<Self, String> {
-        let redirect_controller = match Redirector::new(PORTMASTER_SUBLAYER_GUID) {
-            Ok(handle) => handle,
-            Err(status) => return Err(alloc::format!("Failed to create redirect handle: NTSTATUS {:#x}", status)),            
+        let redirector = match Redirector::new(PORTMASTER_SUBLAYER_GUID) {
+            Ok(result) => result,
+            Err(err) => return Err(alloc::format!("Failed to create redirect handle: {}", err)),            
         };
 
         let mut filter_engine =
@@ -72,7 +73,7 @@ impl Device {
             network_allocator: NetworkAllocator::new(),
             bandwidth_stats: Bandwidth::new(),
 
-            redirector: redirect_controller,
+            redirector,
             redirect_cache: GenericIdCache::new(),
         })
     }
@@ -312,19 +313,15 @@ impl Device {
             }
             CommandType::RedirectV4 => {
                 let redirect = protocol::command::parse_redirect_v4(buffer);
-                dbg!("RedirectV4 command: {:?}", redirect);
+                wdk::dbg!("RedirectV4 command: {:?}", redirect);
 
                 // Pop the pended redirect from cache
                 if let Some(pended) = self.redirect_cache.pop_id(redirect.id) {
                     let new_local_ip = if redirect.redirect != 0 {
-                        // Redirect to specified local interface IP
                         Some(IpAddress::Ipv4(Ipv4Address::from_bytes(&redirect.local_address)))
-                    } else {
-                        // No redirect - permit without modification
-                        None
+                    } else {                        
+                        None // No redirect - permit without modification
                     };
-
-                    dbg!("Completing redirect for {:?}", redirect);
                     
                     // Complete the pended redirect operation
                     if let Err(e) = self.redirector.complete_redirect(
@@ -333,7 +330,7 @@ impl Device {
                     ) {
                         err!("Failed to complete redirect: {:#x}", e);
                     } else {
-                        dbg!("Redirect completed successfully for {:?}", redirect);
+                        wdk::dbg!("Redirect completed successfully for {:?}", redirect);
                     }
                 } else {
                     err!("RedirectV4 invalid id: {:?}", redirect);
@@ -341,19 +338,15 @@ impl Device {
             }
             CommandType::RedirectV6 => {
                 let redirect = protocol::command::parse_redirect_v6(buffer);
-                dbg!("RedirectV6 command: {:?}", redirect);
+                wdk::dbg!("RedirectV6 command: {:?}", redirect);
                 
                 // Pop the pended redirect from cache
                 if let Some(pended) = self.redirect_cache.pop_id(redirect.id) {
                     let new_local_ip = if redirect.redirect != 0 {
-                        // Redirect to specified local interface IP
                         Some(IpAddress::Ipv6(Ipv6Address::from_bytes(&redirect.local_address)))
-                    } else {
-                        // No redirect - permit without modification
-                        None
+                    } else {                        
+                        None // No redirect - permit without modification
                     };
-
-                    dbg!("Completing redirect for {:?}", redirect);
                     
                     // Complete the pended redirect operation
                     if let Err(e) = self.redirector.complete_redirect(
@@ -362,11 +355,29 @@ impl Device {
                     ) {
                         err!("Failed to complete redirect: {:#x}", e);
                     } else {
-                        dbg!("Redirect completed successfully for {:?}", redirect);
+                        wdk::dbg!("Redirect completed successfully for {:?}", redirect);
                     }
                 } else {
                     err!("RedirectV6 invalid id: {:?}", redirect);
                 }
+            }
+            CommandType::EnableSplitTunnel => {
+                wdk::dbg!("EnableSplitTunnel command");
+                if let Err(err) = self.filter_engine.register_filters(FunctionType::Redirect) {
+                    err!("failed to enable split tunnel filters: {}", err);
+                } else {
+                    dbg!("Split tunnel filters enabled successfully");
+                }
+                self.connection_cache.clear();
+            }
+            CommandType::DisableSplitTunnel => {
+                wdk::dbg!("DisableSplitTunnel command");
+                if let Err(err) = self.filter_engine.unregister_filters(FunctionType::Redirect) {
+                    err!("failed to disable split tunnel filters: {}", err);
+                } else {
+                    dbg!("Split tunnel filters disabled successfully");
+                }
+                self.connection_cache.clear();
             }
         }
     }

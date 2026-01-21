@@ -11,7 +11,6 @@ use wdk::{
 use smoltcp::wire::{ IpAddress, IpProtocol, Ipv4Address, Ipv6Address };
 use windows_sys::Win32::{ Foundation::HANDLE, };
 use core::ffi::c_void;
-use alloc::format;
 
 use crate::connection::Direction;
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
@@ -123,7 +122,7 @@ fn ale_layer_connect_redirect(mut data: CalloutData, ale_data: &AleRedirectData)
         data.get_layer_data() as *const c_void);
 
     if is_redirected {
-        crate::dbg!("ALE Connect Redirect: Connection already redirected by us or another local proxy, permitting.");
+        // ALE Connect Redirect: Connection already redirected by us or another local proxy, permitting.
         data.action_permit();
         return;            
     }
@@ -140,17 +139,22 @@ fn ale_layer_connect_redirect(mut data: CalloutData, ale_data: &AleRedirectData)
     // Store the pended redirect info in the redirect cache
     let pr_cache_id = device.redirect_cache.push( PendedRedirect{pend_redirect_result} );
 
-    crate::dbg!( "ALE Connect Redirect: PID={} p={:?} IPv6={} l={} r={} (filter_id: {}, cache_id: {} cache_size: {})",
-            ale_data.info.process_id, ale_data.info.protocol, ale_data.is_ipv6,
-            format!("{}:{}", ale_data.info.local_ip, ale_data.info.local_port),
-            format!("{}:{}", ale_data.info.remote_ip, ale_data.info.remote_port),
-            data.get_filter_id(),
-            pr_cache_id,
-            device.redirect_cache.get_entries_count()
-        );
+    crate::dbg!(
+        "ALE Connect Redirect: PID={} {:?} {}:{} -> {}:{} (id={})",
+        ale_data.info.process_id,
+        ale_data.info.protocol,
+        ale_data.info.local_ip,
+        ale_data.info.local_port,
+        ale_data.info.remote_ip,
+        ale_data.info.remote_port,
+        pr_cache_id
+    );
+
+    if device.redirect_cache.get_entries_count() >= 1000 {
+        crate::warn!("ALE Connect Redirect: WARNING - redirect cache size is large: {}", device.redirect_cache.get_entries_count());
+    }
         
     // Build redirection request info to be sent to user-mode
-    //let info = build_info(pr_cache_id, ale_data);
     let result = match build_info(pr_cache_id, ale_data) {
         Ok(info) => {
              // Push the redirection request info to the event queue to be sent to user-mode

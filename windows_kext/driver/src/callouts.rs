@@ -1,5 +1,5 @@
 use alloc::vec::Vec;
-use wdk::filter_engine::callout::FilterType;
+use wdk::filter_engine::callout::{FilterType, FunctionType};
 use wdk::{
     consts,
     filter_engine::{callout::Callout, layer::Layer},
@@ -19,6 +19,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::AleConnectRedirectV4,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
             FilterType::NonResettable,
+            FunctionType::Redirect,
             ale_redirect_callouts::connect_redirect_v4,
         ),
         Callout::new(
@@ -28,6 +29,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::AleConnectRedirectV6,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
             FilterType::NonResettable,
+            FunctionType::Redirect,
             ale_redirect_callouts::connect_redirect_v6,
         ),
         // -----------------------------------------
@@ -39,6 +41,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::AleAuthConnectV4,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
             FilterType::Resettable,
+            FunctionType::Core,
             ale_callouts::ale_layer_connect_v4,
         ),
         Callout::new(
@@ -48,6 +51,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::AleAuthConnectV6,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
             FilterType::Resettable,
+            FunctionType::Core,
             ale_callouts::ale_layer_connect_v6,
         ),
         // -----------------------------------------
@@ -59,6 +63,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::AleEndpointClosureV4,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
             FilterType::NonResettable,
+            FunctionType::Core,
             ale_callouts::endpoint_closure_v4,
         ),
         Callout::new(
@@ -68,6 +73,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::AleEndpointClosureV6,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
             FilterType::NonResettable,
+            FunctionType::Core,
             ale_callouts::endpoint_closure_v6,
         ),
         // -----------------------------------------
@@ -88,6 +94,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::AleResourceReleaseV4,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
             FilterType::NonResettable,
+            FunctionType::Core,
             ale_callouts::ale_resource_monitor,
         ),
         // Callout::new(
@@ -106,6 +113,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::AleResourceReleaseV6,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
             FilterType::NonResettable,
+            FunctionType::Core,
             ale_callouts::ale_resource_monitor,
         ),
         // -----------------------------------------
@@ -117,6 +125,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::StreamV4,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
             FilterType::NonResettable,
+            FunctionType::Core,
             stream_callouts::stream_layer_tcp_v4,
         ),
         Callout::new(
@@ -126,6 +135,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::StreamV6,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
             FilterType::NonResettable,
+            FunctionType::Core,
             stream_callouts::stream_layer_tcp_v6,
         ),
         Callout::new(
@@ -135,6 +145,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::DatagramDataV4,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
             FilterType::NonResettable,
+            FunctionType::Core,
             stream_callouts::stream_layer_udp_v4,
         ),
         Callout::new(
@@ -144,6 +155,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::DatagramDataV6,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
             FilterType::NonResettable,
+            FunctionType::Core,
             stream_callouts::stream_layer_udp_v6,
         ),
         // -----------------------------------------
@@ -155,6 +167,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::OutboundIppacketV4,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
             FilterType::NonResettable,
+            FunctionType::Core,
             packet_callouts::ip_packet_layer_outbound_v4,
         ),
         Callout::new(
@@ -164,6 +177,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::InboundIppacketV4,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
             FilterType::NonResettable,
+            FunctionType::Core,
             packet_callouts::ip_packet_layer_inbound_v4,
         ),
         Callout::new(
@@ -173,6 +187,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::OutboundIppacketV6,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
             FilterType::NonResettable,
+            FunctionType::Core,
             packet_callouts::ip_packet_layer_outbound_v6,
         ),
         Callout::new(
@@ -182,6 +197,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
             Layer::InboundIppacketV6,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
             FilterType::NonResettable,
+            FunctionType::Core,
             packet_callouts::ip_packet_layer_inbound_v6,
         )
     ]

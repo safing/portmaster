@@ -487,8 +487,20 @@ func (app *App) startRedirect(ipStr string) {
 	app.mu.Unlock()
 
 	app.redirecting.Store(true)
-	app.appLog.Info("Redirect started: routing traffic through %s", ipStr)
-	app.appLog.Info("Note: All TCP/UDP (non-DNS) connections will use VerdictRerouteToTunnel")
+
+	app.mu.RLock()
+	file := app.file
+	app.mu.RUnlock()
+
+	if file != nil {
+		if err := kext.SendEnableSplitTunnelCommand(file); err != nil {
+			app.appLog.Error("Failed to request SendEnableSplitTunnelCommand: %v", err)
+		} else {
+			app.appLog.Info("Sent SendEnableSplitTunnelCommand to driver")
+			app.appLog.Info("Redirect started: routing traffic through %s", ipStr)
+			app.appLog.Info("Note: All TCP/UDP (non-DNS) connections will use VerdictRerouteToTunnel")
+		}
+	}
 }
 
 func (app *App) stopRedirect() {
@@ -498,7 +510,18 @@ func (app *App) stopRedirect() {
 	}
 
 	app.redirecting.Store(false)
-	app.appLog.Info("Redirect stopped")
+
+	app.mu.RLock()
+	file := app.file
+	app.mu.RUnlock()
+
+	if file != nil {
+		if err := kext.SendDisableSplitTunnelCommand(file); err != nil {
+			app.appLog.Error("Failed to request SendDisableSplitTunnelCommand: %v", err)
+		} else {
+			app.appLog.Info("Sent SendDisableSplitTunnelCommand to driver")
+		}
+	}
 }
 
 func (app *App) toggleConsoleLogs() {
@@ -637,7 +660,7 @@ func (app *App) handleConnectionV4(conn *kext.ConnectionV4, file *kext.KextFile)
 	protocol := protocolString(conn.Protocol)
 
 	// Determine verdict
-	verdict := app.determineVerdict(conn.Protocol, conn.RemotePort)
+	verdict := app.determineVerdict(conn.Protocol, remoteIP, conn.RemotePort)
 
 	app.connLog.Info("[V4] ID=%d PID=%d %s %s %s:%d -> %s:%d verdict=%s",
 		conn.ID, conn.ProcessID, direction, protocol,
@@ -657,7 +680,7 @@ func (app *App) handleConnectionV6(conn *kext.ConnectionV6, file *kext.KextFile)
 	protocol := protocolString(conn.Protocol)
 
 	// Determine verdict
-	verdict := app.determineVerdict(conn.Protocol, conn.RemotePort)
+	verdict := app.determineVerdict(conn.Protocol, remoteIP, conn.RemotePort)
 
 	app.connLog.Info("[V6] ID=%d PID=%d %s %s [%s]:%d -> [%s]:%d verdict=%s",
 		conn.ID, conn.ProcessID, direction, protocol,
@@ -692,11 +715,25 @@ func (app *App) handleLogLine(log *kext.LogLine) {
 	app.drvLog.Info("[%s] %s", kext.SeverityString(log.Severity), log.Line)
 }
 
-func (app *App) determineVerdict(protocol byte, remotePort uint16) kext.KextVerdict {
+func (app *App) determineVerdict(protocol byte, remoteIp net.IP, remotePort uint16) kext.KextVerdict {
+
 	// DNS traffic (port 53) - always accept
 	if remotePort == 53 {
 		return kext.VerdictPermanentAccept
 	}
+
+	if protocol != 6 && protocol != 17 {
+		// Non-TCP/UDP traffic - accept
+		return kext.VerdictPermanentAccept
+	}
+
+	if remoteIp.IsLoopback() || remoteIp.IsPrivate() {
+		// Local traffic - accept
+		return kext.VerdictPermanentAccept
+	}
+
+	// TODO: this is a test
+	//return kext.VerdictAccept
 
 	// Default: PermanentAccept
 	return kext.VerdictPermanentAccept

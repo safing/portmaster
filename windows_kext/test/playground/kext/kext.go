@@ -33,6 +33,8 @@ const (
 	CommandCleanEndedConnections = 8
 	CommandRedirectV4            = 9
 	CommandRedirectV6            = 10
+	CommandEnableSplitTunnel     = 11
+	CommandDisableSplitTunnel    = 12
 )
 
 // KextVerdict is the verdict ID used with the kext.
@@ -84,15 +86,15 @@ func (v KextVerdict) String() string {
 
 // Info types from driver
 const (
-	InfoLogLine               = 0
-	InfoConnectionIpv4        = 1
-	InfoConnectionIpv6        = 2
-	InfoConnectionEndEventV4  = 3
-	InfoConnectionEndEventV6  = 4
-	InfoBandwidthStatsV4      = 5
-	InfoBandwidthStatsV6      = 6
-	InfoRedirectionRequestV4  = 7
-	InfoRedirectionRequestV6  = 8
+	InfoLogLine              = 0
+	InfoConnectionIpv4       = 1
+	InfoConnectionIpv6       = 2
+	InfoConnectionEndEventV4 = 3
+	InfoConnectionEndEventV6 = 4
+	InfoBandwidthStatsV4     = 5
+	InfoBandwidthStatsV6     = 6
+	InfoRedirectionRequestV4 = 7
+	InfoRedirectionRequestV6 = 8
 )
 
 var (
@@ -873,4 +875,13 @@ func SendRedirectV6Command(w io.Writer, id uint64, redirect bool, localAddress [
 		cmd.Redirect = 1
 	}
 	return binary.Write(w, binary.LittleEndian, cmd)
+}
+
+func SendEnableSplitTunnelCommand(w io.Writer) error {
+	_, err := w.Write([]byte{CommandEnableSplitTunnel})
+	return err
+}
+func SendDisableSplitTunnelCommand(w io.Writer) error {
+	_, err := w.Write([]byte{CommandDisableSplitTunnel})
+	return err
 }
