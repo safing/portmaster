@@ -19,7 +19,7 @@ use super::{callout_data::CalloutData, classify::ClassifyOut};
 pub struct PendRedirectResult {
     pub classify_handle: u64,       // FwpsClassifyHandle from FwpsAcquireClassifyHandle0()
     pub filter_id: u64,             // Filter ID used for the pend operation
-    pub classify_out: *mut c_void,  // ClassifyOut from FwpsPendClassify0()
+    pub classify_out: ClassifyOut,  // ClassifyOut from FwpsPendClassify0() (DEEP COPY! The original classifyOut is on the stack)
 }
 
 // ============================================================================
@@ -71,11 +71,16 @@ impl Redirector {
                 },        
                 FWPS_CONNECTION_REDIRECTED_BY_OTHER => {                    
                     // Another callout redirected this - check if it's a local proxy
+                    // layer_data is only needed here
+                    if layer_data.is_null() {
+                        return false;
+                    }
                     let conn_req = layer_data as *const FWPS_CONNECT_REQUEST0;
-                    if !(*conn_req).previous_version.is_null() &&
-                    !(*(*conn_req).previous_version).local_redirect_handle.is_null() {
-                        // Connection redirected by another callout to local proxy, permitting
-                        return true;                   
+                    if let Some(prev) = (*conn_req).previous_version.as_ref() {
+                        if !prev.local_redirect_handle.is_null() {
+                            // Connection redirected by another callout to local proxy, permitting
+                            return true;                   
+                        }
                     }
                 },
                 FWPS_CONNECTION_NOT_REDIRECTED => {
@@ -115,22 +120,25 @@ impl Redirector {
             return Err(status);
         }
 
+        // Deep copy classify_out, NOT just store the pointer!
+        // The original classifyOut is on the stack of the classifyFn callback.
+        // After this function returns and the callout returns to WFP, that stack memory becomes invalid.
+        let classify_out_copy = unsafe { *data.classify_out };
+
         return Ok(PendRedirectResult {
             classify_handle,
             filter_id: data.filter_id,
-            classify_out: data.classify_out as *mut c_void,
+            classify_out: classify_out_copy,
         });
     }
 
     /// Cancel a pended redirect operation and release resources.
     pub fn cancel_pend(&self, pend_result: PendRedirectResult) {
-        let classify_out = pend_result.classify_out as *mut ClassifyOut;
-
         unsafe {                
             FwpsCompleteClassify0(
                 pend_result.classify_handle,
                 0,  // flags
-                classify_out,
+                &pend_result.classify_out,
             );
 
             FwpsReleaseClassifyHandle0(pend_result.classify_handle);
@@ -151,13 +159,11 @@ impl Redirector {
     /// 5. Releasing the classify handle
     pub fn complete_redirect(
         &self,
-        pend_result: PendRedirectResult,
+        mut pend_result: PendRedirectResult,
         new_local_ip: Option<IpAddress>,
     ) -> Result<(), i32> {
-        let classify_out = pend_result.classify_out as *mut ClassifyOut;
-
         let result = if let Some(ref ip) = new_local_ip { 
-            self.apply_redirect_modification(&pend_result, ip)
+            self.apply_redirect_modification(&mut pend_result, ip)
                 .map_err(|err| { crate::err!("Failed to apply redirect modification: {:#x}", err); err})
                     // Continue to complete and release handle even on failure
         } else {
@@ -165,20 +171,20 @@ impl Redirector {
         };
         
         unsafe {
-            // Complete the pended classify operation (permit the connection)
+            // Complete the pended classify operation
             FwpsCompleteClassify0(
                 pend_result.classify_handle,
                 0,  // flags
-                classify_out,
+                &pend_result.classify_out,
             );
         
             // Set action based on result
             if result.is_ok() {
-                (*classify_out).action_permit();
-                (*classify_out).set_write_flag();
+                pend_result.classify_out.action_permit();
+                pend_result.classify_out.set_write_flag();
             } else {
-                (*classify_out).action_block();
-                (*classify_out).clear_write_flag();
+                pend_result.classify_out.action_block();
+                pend_result.classify_out.clear_write_flag();
             }        
 
             // Release the classify handle        
@@ -191,12 +197,11 @@ impl Redirector {
     /// Apply the actual address modification to redirect the connection
     fn apply_redirect_modification(
         &self,
-        pend_result: &PendRedirectResult,
+        pend_result: &mut PendRedirectResult,
         new_local_ip: &IpAddress,
     ) -> Result<(), i32> {
         // Acquire writable layer data pointer
         let mut writable_data: *mut c_void = core::ptr::null_mut();
-        let classify_out = pend_result.classify_out as *mut ClassifyOut;
         
         let status = unsafe {
             FwpsAcquireWritableLayerDataPointer0(
@@ -204,7 +209,7 @@ impl Redirector {
                 pend_result.filter_id,
                 0,  // flags
                 &mut writable_data,
-                classify_out,
+                &mut pend_result.classify_out,
             )
         };
         if status != 0 {
