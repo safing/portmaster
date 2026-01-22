@@ -46,7 +46,7 @@ func main() {
 
 	// Create loggers (always log to files, overwrite on start)
 	appLog, err := logger.New(logger.Config{
-		ToConsole: *logToConsole,
+		ToConsole: true, // appLog always logs to console
 		ToFile:    true,
 		FilePath:  effectiveAppLogFile,
 		Prefix:    "APP",

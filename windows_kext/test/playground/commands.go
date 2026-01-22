@@ -139,7 +139,7 @@ func (app *App) toggleConsoleLogs() {
 	newValue := !current
 	app.consoleLogging.Store(newValue)
 
-	app.appLog.SetConsoleOutput(newValue)
+	// app.appLog.SetConsoleOutput(newValue) - app log is always console output
 	app.drvLog.SetConsoleOutput(newValue)
 	app.connLog.SetConsoleOutput(newValue)
 

@@ -127,11 +127,6 @@ func (app *App) startRedirect(ipStr string) {
 		return
 	}
 
-	if app.redirecting.Load() {
-		app.appLog.Warn("Redirect is already active. Stop it first.")
-		return
-	}
-
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
 		app.appLog.Error("Invalid IP address: %s", ipStr)
@@ -146,22 +141,30 @@ func (app *App) startRedirect(ipStr string) {
 
 	app.mu.Lock()
 	app.redirectIP = ip
+	file := app.file
 	app.mu.Unlock()
+
+	if file == nil {
+		app.appLog.Error("Driver communication channel is not available")
+		return
+	}
+
+	if app.redirecting.Load() {
+		if err := kext.SendDisableSplitTunnelCommand(file); err != nil {
+			app.appLog.Error("Failed to request SendDisableSplitTunnelCommand: %v", err)
+		} else {
+			app.appLog.Info("Sent SendDisableSplitTunnelCommand to driver")
+		}
+	}
 
 	app.redirecting.Store(true)
 
-	app.mu.RLock()
-	file := app.file
-	app.mu.RUnlock()
-
-	if file != nil {
-		if err := kext.SendEnableSplitTunnelCommand(file); err != nil {
-			app.appLog.Error("Failed to request SendEnableSplitTunnelCommand: %v", err)
-		} else {
-			app.appLog.Info("Sent SendEnableSplitTunnelCommand to driver")
-			app.appLog.Info("Redirect started: routing traffic through %s", ipStr)
-			app.appLog.Info("Note: All TCP/UDP (non-DNS) connections will use VerdictRerouteToTunnel")
-		}
+	if err := kext.SendEnableSplitTunnelCommand(file); err != nil {
+		app.appLog.Error("Failed to request SendEnableSplitTunnelCommand: %v", err)
+	} else {
+		app.appLog.Info("Sent SendEnableSplitTunnelCommand to driver")
+		app.appLog.Info("Redirect started: routing traffic through %s", ipStr)
+		app.appLog.Info("Note: All TCP/UDP (non-DNS) connections will use VerdictRerouteToTunnel")
 	}
 }
 
