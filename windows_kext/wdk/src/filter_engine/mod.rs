@@ -81,6 +81,7 @@ impl FilterEngine {
                 let mut callout = Box::new(callout);
                 callout.address = callout.as_ref() as *const Callout as u64;
 
+                // Register callout
                 if let Err(err) = callout.register_callout(
                     filter_engine.handle,
                     filter_engine.device_object,
@@ -89,19 +90,19 @@ impl FilterEngine {
                     // This will destroy the callout structs.
                     return Err(err);
                 }
-                if let Err(err) =
-                    callout.register_filter(filter_engine.handle, filter_engine.sublayer_guid)
-                {
-                    // This will destroy the callout structs.
-                    return Err(err);
+
+                // Register filters only for core callouts here                
+                if callout.function_type == FunctionType::Core {                    
+                    if let Err(err) =  callout.register_filter(filter_engine.handle, filter_engine.sublayer_guid) {
+                        // This will destroy the callout structs.
+                        return Err(err);
+                    }                
+                    dbg!("registering callout: {} -> {}", callout.name, callout.filter_id);
                 }
-                dbg!(
-                    "registering callout: {} -> {}",
-                    callout.name,
-                    callout.filter_id
-                );
+
                 boxed_callouts.push(callout)
             }
+
             if let Some(callouts) = &mut filter_engine.callouts {
                 callouts.append(&mut boxed_callouts);
             } else {
