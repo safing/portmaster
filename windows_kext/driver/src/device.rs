@@ -18,6 +18,7 @@ use wdk::{
 
 use crate::{
     ale_redirect_callouts, array_holder::ArrayHolder, bandwidth::Bandwidth, callouts, 
+    connection::{ConnectionV4, ConnectionV6},
     connection_cache::ConnectionCache, connection_map::Key, dbg, err, id_cache::IdCache, 
     id_cache_generic::GenericIdCache, logger, packet_util::Redirect
 };
@@ -318,6 +319,12 @@ impl Device {
                 // Pop the pended redirect from cache
                 if let Some(pended) = self.redirect_cache.pop_id(redirect.id) {
                     let new_local_ip = if redirect.redirect != 0 {
+                        // Pre-create connection with redirected_by_us=true BEFORE complete_redirect.
+                        // This ensures ALE_AUTH_CONNECT will find it with the flag already set.
+                        if let Ok(mut conn) = ConnectionV4::from_key(&pended.key, pended.process_id, pended.direction) {
+                            conn.redirected_by_us = true;
+                            self.connection_cache.add_connection_v4(conn);
+                        }
                         Some(IpAddress::Ipv4(Ipv4Address::from_bytes(&redirect.local_address)))
                     } else {                        
                         None // No redirect - permit without modification
@@ -343,6 +350,12 @@ impl Device {
                 // Pop the pended redirect from cache
                 if let Some(pended) = self.redirect_cache.pop_id(redirect.id) {
                     let new_local_ip = if redirect.redirect != 0 {
+                        // Pre-create connection with redirected_by_us=true BEFORE complete_redirect.
+                        // This ensures ALE_AUTH_CONNECT will find it with the flag already set.
+                        if let Ok(mut conn) = ConnectionV6::from_key(&pended.key, pended.process_id, pended.direction) {
+                            conn.redirected_by_us = true;
+                            self.connection_cache.add_connection_v6(conn);
+                        }
                         Some(IpAddress::Ipv6(Ipv6Address::from_bytes(&redirect.local_address)))
                     } else {                        
                         None // No redirect - permit without modification

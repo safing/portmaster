@@ -13,6 +13,8 @@ use windows_sys::Win32::{ Foundation::HANDLE, };
 use core::ffi::c_void;
 
 use crate::connection::Direction;
+use crate::connection_map::Key;
+
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct RedirectInfo {    
     pub(crate)  local_ip: IpAddress,
@@ -46,7 +48,9 @@ fn get_ipv6_address(data: &CalloutData, index: usize) -> IpAddress {
 /// Data stored for each pended redirect operation
 pub struct PendedRedirect {
     pub pend_redirect_result: PendRedirectResult,
-    // ... add more fields if needed
+    pub key: Key,
+    pub process_id: u64,
+    pub direction: Direction,
 }
 
 pub fn connect_redirect_v4(data: CalloutData) {
@@ -136,8 +140,22 @@ fn ale_layer_connect_redirect(mut data: CalloutData, ale_data: &AleRedirectData)
         }
     }; 
 
+    // Build connection key for later use 
+    let key = Key {
+        protocol: ale_data.info.protocol,
+        local_address: ale_data.info.local_ip,
+        local_port: ale_data.info.local_port,
+        remote_address: ale_data.info.remote_ip,
+        remote_port: ale_data.info.remote_port,
+    };
+
     // Store the pended redirect info in the redirect cache
-    let pr_cache_id = device.redirect_cache.push( PendedRedirect{pend_redirect_result} );
+    let pr_cache_id = device.redirect_cache.push(PendedRedirect {
+        pend_redirect_result,
+        key,
+        process_id: ale_data.info.process_id,
+        direction: Direction::Outbound,
+    });
 
     crate::dbg!(
         "ALE Connect Redirect: PID={} {:?} {}:{} -> {}:{} (id={})",

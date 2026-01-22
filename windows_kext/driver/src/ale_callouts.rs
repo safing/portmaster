@@ -136,22 +136,22 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
 
     let key = ale_data.as_key();
 
-    // Check if connection is already in cache.
-    let verdict = if ale_data.is_ipv6 {
+    // Check if connection is already in cache, also get redirected_by_us flag.
+    let (verdict, redirected_by_us) = if ale_data.is_ipv6 {
         device
             .connection_cache
-            .read_connection_v6(&key, |conn| -> Option<Verdict> {
+            .read_connection_v6(&key, |conn| -> Option<(Verdict, bool)> {
                 // Function is behind spin lock, just copy and return.
-                Some(conn.verdict)
+                Some((conn.verdict, conn.redirected_by_us))
             })
     } else {
         device
             .connection_cache
-            .read_connection_v4(&ale_data.as_key(), |conn| -> Option<Verdict> {
+            .read_connection_v4(&key, |conn| -> Option<(Verdict, bool)> {
                 // Function is behind spin lock, just copy and return.
-                Some(conn.verdict)
+                Some((conn.verdict, conn.redirected_by_us))
             })
-    };
+    }.unzip();
 
     // Connection already in cache.
     if let Some(verdict) = verdict {
@@ -186,6 +186,13 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
             | Verdict::RedirectTunnel => {
                 // Continue to packet layer.
                 data.action_permit();
+                if redirected_by_us.unwrap_or(false) {
+                    // Finalize verdict by clearing the write flag.
+                    // This prevents lower-weight WFP filters from overriding our permit decision.
+                    // For example, this ensures IVPN's Firewall won't block connections we redirected.
+                    crate::dbg!("finalizing verdict for redirected connection: {}", key);
+                    data.clear_write_flag();
+                }
             }
             Verdict::PermanentBlock | Verdict::Undeterminable | Verdict::Failed => {
                 // Packet layer will not see this connection.
