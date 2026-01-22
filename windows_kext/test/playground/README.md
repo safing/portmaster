@@ -1,5 +1,7 @@
 # Driver Test Playground
 
+> ⚠️ **Notice**: This project was primarily generated with the assistance of AI and may contain errors or inaccuracies. It is intended solely for local testing and development and must not be used in production.
+
 A simple Go console application for testing the Portmaster Windows kernel driver.
 
 ## Features
