@@ -31,7 +31,11 @@ func (v *VersionInfo) String() string {
 }
 
 // Handler transforms received packets to the Packet interface.
-func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate chan *packet.BandwidthUpdate) {
+func Handler(ctx context.Context,
+	packets chan<- packet.Packet,
+	bandwidthUpdate chan<- *packet.BandwidthUpdate,
+	redirectRequests chan<- packet.RedirectRequest) {
+
 	for {
 		packetInfo, err := RecvVerdictRequest()
 
@@ -200,6 +204,38 @@ func Handler(ctx context.Context, packets chan packet.Packet, bandwidthUpdate ch
 					}
 					bandwidthUpdate <- update
 				}
+			}
+		case packetInfo.RedirectionRequestV4 != nil:
+			{
+				req := packetInfo.RedirectionRequestV4
+				redirectReq := &ConnectRedirectRequest{
+					Request_ID: req.ID,
+					ProcID:     req.ProcessID,
+					Inbound:    req.Direction > 0,
+					IpVersion:  packet.IPv4,
+					Protocol:   packet.IPProtocol(req.Protocol),
+					LocalIP:    net.IP(req.LocalIP[:]),
+					RemoteIP:   net.IP(req.RemoteIP[:]),
+					LocalPort:  req.LocalPort,
+					RemotePort: req.RemotePort,
+				}
+				redirectRequests <- redirectReq
+			}
+		case packetInfo.RedirectionRequestV6 != nil:
+			{
+				req := packetInfo.RedirectionRequestV6
+				redirectReq := &ConnectRedirectRequest{
+					Request_ID: req.ID,
+					ProcID:     req.ProcessID,
+					Inbound:    req.Direction > 0,
+					IpVersion:  packet.IPv6,
+					Protocol:   packet.IPProtocol(req.Protocol),
+					LocalIP:    net.IP(req.LocalIP[:]),
+					RemoteIP:   net.IP(req.RemoteIP[:]),
+					LocalPort:  req.LocalPort,
+					RemotePort: req.RemotePort,
+				}
+				redirectRequests <- redirectReq
 			}
 		}
 	}

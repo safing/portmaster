@@ -58,7 +58,7 @@ func startInterception(packets chan packet.Packet) error {
 
 		// Start packet handler.
 		module.mgr.Go("kext packet handler", func(w *mgr.WorkerCtx) error {
-			kext2.Handler(w.Ctx(), packets, BandwidthUpdates)
+			kext2.Handler(w.Ctx(), packets, BandwidthUpdates, RedirectRequests)
 			return nil
 		})
 

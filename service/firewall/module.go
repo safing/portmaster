@@ -119,6 +119,7 @@ func start() error {
 
 	module.mgr.Go("packet handler", packetHandler)
 	module.mgr.Go("bandwidth update handler", bandwidthUpdateHandler)
+	module.mgr.Go("redirect requests handler", redirectRequestsHandler)
 
 	// Start stat logger if logging is set to trace.
 	if log.GetLogLevel() == log.TraceLevel {

@@ -39,6 +39,10 @@ var (
 	// BandwidthUpdates is a stream of bandwidth usage update for connections.
 	BandwidthUpdates = make(chan *packet.BandwidthUpdate, 1000)
 
+	// RedirectRequests is a stream of connection redirect requests
+	// In use for split tunneling decisions.
+	RedirectRequests = make(chan packet.RedirectRequest, 1000)
+
 	disableInterception bool
 	isStarted           atomic.Bool
 )

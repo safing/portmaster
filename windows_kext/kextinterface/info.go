@@ -15,6 +15,8 @@ const (
 	InfoConnectionEndEventV6 = 4
 	InfoBandwidthStatsV4     = 5
 	InfoBandwidthStatsV6     = 6
+	InfoRedirectRequestV4    = 7
+	InfoRedirectRequestV6    = 8
 )
 
 var (
@@ -128,13 +130,39 @@ type BandwidthStatsArray struct {
 	ValuesV6 []BandwidthValueV6
 }
 
+// RedirectionRequestV4 represents a redirection (split-tunneling) request for IPv4.
+type RedirectionRequestV4 struct {
+	ID         uint64
+	ProcessID  uint64
+	Direction  byte
+	Protocol   byte
+	LocalIP    [4]byte
+	RemoteIP   [4]byte
+	LocalPort  uint16
+	RemotePort uint16
+}
+
+// RedirectionRequestV6 represents a redirection (split-tunneling) request for IPv6.
+type RedirectionRequestV6 struct {
+	ID         uint64
+	ProcessID  uint64
+	Direction  byte
+	Protocol   byte
+	LocalIP    [16]byte
+	RemoteIP   [16]byte
+	LocalPort  uint16
+	RemotePort uint16
+}
+
 type Info struct {
-	ConnectionV4    *ConnectionV4
-	ConnectionV6    *ConnectionV6
-	ConnectionEndV4 *ConnectionEndV4
-	ConnectionEndV6 *ConnectionEndV6
-	LogLine         *LogLine
-	BandwidthStats  *BandwidthStatsArray
+	ConnectionV4         *ConnectionV4
+	ConnectionV6         *ConnectionV6
+	ConnectionEndV4      *ConnectionEndV4
+	ConnectionEndV6      *ConnectionEndV6
+	LogLine              *LogLine
+	BandwidthStats       *BandwidthStatsArray
+	RedirectionRequestV4 *RedirectionRequestV4
+	RedirectionRequestV6 *RedirectionRequestV6
 }
 
 type readHelper struct {
@@ -376,6 +404,24 @@ func RecvInfo(reader io.Reader) (*Info, error) {
 			}
 
 			return &Info{BandwidthStats: &BandwidthStatsArray{Protocol: protocol, ValuesV6: statsArray}}, nil
+		}
+	case InfoRedirectRequestV4:
+		{
+			var request RedirectionRequestV4
+			err = helper.ReadData(&request)
+			if err != nil {
+				return nil, errors.New("failed to parse InfoRedirectRequestV4")
+			}
+			return &Info{RedirectionRequestV4: &request}, nil
+		}
+	case InfoRedirectRequestV6:
+		{
+			var request RedirectionRequestV6
+			err = helper.ReadData(&request)
+			if err != nil {
+				return nil, errors.New("failed to parse InfoRedirectRequestV6")
+			}
+			return &Info{RedirectionRequestV6: &request}, nil
 		}
 	}
 
