@@ -174,6 +174,8 @@ impl<'a> CalloutData<'a> {
 
     pub fn action_block(&mut self) {
         unsafe {
+            // Make the verdict immutable so the next layer can't change it
+            (*self.classify_out).clear_write_flag();
             (*self.classify_out).action_block();
             (*self.classify_out).clear_absorb_flag();
         }
@@ -188,6 +190,8 @@ impl<'a> CalloutData<'a> {
 
     pub fn block_and_absorb(&mut self) {
         unsafe {
+            // Make the verdict immutable so the next layer can't change it
+            (*self.classify_out).clear_write_flag();
             (*self.classify_out).action_block();
             (*self.classify_out).set_absorb();
         }
