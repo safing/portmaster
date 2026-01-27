@@ -184,7 +184,6 @@ pub struct ConnectionV4 {
     pub(crate) remote_port: u16,
     pub(crate) verdict: Verdict,
     pub(crate) process_id: u64,
-    pub(crate) redirected_by_us: bool,
     pub(crate) last_accessed_timestamp: AtomicU64,
     pub(crate) extra: Box<ConnectionExtra>,
 }
@@ -197,7 +196,6 @@ pub struct ConnectionV6 {
     pub(crate) remote_port: u16,
     pub(crate) verdict: Verdict,
     pub(crate) process_id: u64,
-    pub(crate) redirected_by_us: bool,
     pub(crate) last_accessed_timestamp: AtomicU64,
     pub(crate) extra: Box<ConnectionExtra>,
 }
@@ -233,7 +231,6 @@ impl ConnectionV4 {
             remote_port: key.remote_port,
             verdict: Verdict::Undecided,
             process_id,
-            redirected_by_us: false,
             last_accessed_timestamp: AtomicU64::new(timestamp),
             extra: Box::new(ConnectionExtra {
                 direction,
@@ -350,7 +347,6 @@ impl Clone for ConnectionV4 {
             remote_port: self.remote_port,
             verdict: self.verdict,
             process_id: self.process_id,
-            redirected_by_us: self.redirected_by_us,
             last_accessed_timestamp: AtomicU64::new(
                 self.last_accessed_timestamp.load(Ordering::Relaxed),
             ),
@@ -379,7 +375,6 @@ impl ConnectionV6 {
             remote_port: key.remote_port,
             verdict: Verdict::Undecided,
             process_id,
-            redirected_by_us: false,
             last_accessed_timestamp: AtomicU64::new(timestamp),
             extra: Box::new(ConnectionExtra {
                 direction,
@@ -495,7 +490,6 @@ impl Clone for ConnectionV6 {
             remote_port: self.remote_port,
             verdict: self.verdict,
             process_id: self.process_id,
-            redirected_by_us: self.redirected_by_us,
             last_accessed_timestamp: AtomicU64::new(
                 self.last_accessed_timestamp.load(Ordering::Relaxed),
             ),

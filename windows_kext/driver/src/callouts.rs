@@ -10,28 +10,30 @@ use crate::{ale_redirect_callouts, ale_callouts, packet_callouts, stream_callout
 pub fn get_callout_vec() -> Vec<Callout> {
     alloc::vec![
         // -----------------------------------------
-        // ALE Redirect layer (runs before ALE Auth)
-        // This layer allows modifying connection parameters before establishment, required for split-tunneling
+        // ALE Bind Redirect layer
+        //
+        // This filtering layer allows for the modification of the local address 
+        // and/or port during the bind operation on a TCP or UDP socket.
         Callout::new(
-            "Portmaster Connect Redirect IPv4",
-            "Portmaster uses this layer to redirect outbound connections to specific interfaces (IPv4)",
-            0x2B1F8CA0_63C1_4D35_A3ED_78E82B207C41,
-            Layer::AleConnectRedirectV4,
+            "Portmaster Bind Redirect IPv4",
+            "Portmaster uses this layer to redirect UDP socket binds to specific interfaces (IPv4)",            
+            0x68309231_F0C9_4CF5_83A5_C44251FC36E3,
+            Layer::AleBindRedirectV4,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
             FilterType::NonResettable,
             FunctionType::Redirect,
-            ale_redirect_callouts::connect_redirect_v4,
+            ale_redirect_callouts::bind_redirect_v4,
         ),
         Callout::new(
-            "Portmaster Connect Redirect IPv6",
-            "Portmaster uses this layer to redirect outbound connections to specific interfaces (IPv6)",
-            0xA92A4E61_1A22_43E9_9901_ABE3697AA388,
-            Layer::AleConnectRedirectV6,
+            "Portmaster Bind Redirect IPv6",
+            "Portmaster uses this layer to redirect UDP socket binds to specific interfaces (IPv6)",
+            0x2BE7399E_994E_40B1_B236_227F4E12B379,
+            Layer::AleBindRedirectV6,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
             FilterType::NonResettable,
             FunctionType::Redirect,
-            ale_redirect_callouts::connect_redirect_v6,
-        ),
+            ale_redirect_callouts::bind_redirect_v6,
+        ),       
         // -----------------------------------------
         // ALE Auth layers
         Callout::new(

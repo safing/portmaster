@@ -862,6 +862,7 @@ pub enum FieldsAleAuthRecvAcceptV6 {
     Max,
 }
 
+// See FWPS_FIELDS_ALE_BIND_REDIRECT_V4 in fwpsk.h
 #[repr(usize)]
 pub enum FieldsAleBindRedirectV4 {
     AleAppId,
@@ -877,6 +878,7 @@ pub enum FieldsAleBindRedirectV4 {
     Max,
 }
 
+// See FWPS_FIELDS_ALE_BIND_REDIRECT_V6 in fwpsk.h
 #[repr(usize)]
 pub enum FieldsAleBindRedirectV6 {
     AleAppId,

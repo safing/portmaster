@@ -289,66 +289,48 @@ pub fn connection_end_event_v6_info(
 pub fn redirection_request_v4(
     id: u64,
     process_id: u64,
-    direction: u8,
     protocol: u8,
     local_ip: [u8; 4],
-    remote_ip: [u8; 4],
-    local_port: u16,    
-    remote_port: u16,
+    local_port: u16,
 ) -> Info {
     let size = get_combined_size!(
         id,
         process_id,
-        direction,
         protocol,
         local_ip,
-        local_port,
-        remote_ip,
-        remote_port);
-
+        local_port);
     let mut info = Info::new(InfoType::RedirectionRequestV4, size);
     let vec = &mut info.0;
     push_bytes!(vec, id);
-    push_bytes!(vec, process_id);
-    push_bytes!(vec, direction);
+    push_bytes!(vec, process_id);    
     push_bytes!(vec, protocol);
     push_bytes!(vec, local_ip);
-    push_bytes!(vec, remote_ip);
-    push_bytes!(vec, local_port);    
-    push_bytes!(vec, remote_port);
+    push_bytes!(vec, local_port);
     info
 }
 
 pub fn redirection_request_v6(
     id: u64,
     process_id: u64,
-    direction: u8,
     protocol: u8,
     local_ip: [u8; 16],
-    remote_ip: [u8; 16],
-    local_port: u16,    
-    remote_port: u16,
+    local_port: u16,
 ) -> Info {
     let size = get_combined_size!(
         id,
         process_id,
-        direction,
         protocol,
         local_ip,
-        local_port,
-        remote_ip,
-        remote_port);
+        local_port);
 
     let mut info = Info::new(InfoType::RedirectionRequestV6, size);
     let vec = &mut info.0;
     push_bytes!(vec, id);
-    push_bytes!(vec, process_id);
-    push_bytes!(vec, direction);
+    push_bytes!(vec, process_id);    
     push_bytes!(vec, protocol);
     push_bytes!(vec, local_ip);
-    push_bytes!(vec, remote_ip);
     push_bytes!(vec, local_port);    
-    push_bytes!(vec, remote_port);
+    
     info
 }
 

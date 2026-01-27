@@ -168,6 +168,14 @@ pub struct FWPS_CONNECT_REQUEST0 {
     pub local_redirect_context_size: usize,   // Size of context
 }
 
+#[repr(C)]
+pub struct FWPS_BIND_REQUEST0 {
+    pub local_address_and_port: SOCKADDR_STORAGE,
+    pub port_reservation_token: u64,
+    pub previous_version: *const FWPS_BIND_REQUEST0,  // Previous request state
+    pub modifier_filter_id: u64,              // Filter ID that last modified this
+}
+
 /// The NBListHeader is the header of NET_BUFFER_LIST struct.
 #[repr(C)]
 pub(crate) struct NBListHeader {
