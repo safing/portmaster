@@ -132,26 +132,20 @@ type BandwidthStatsArray struct {
 
 // RedirectionRequestV4 represents a redirection (split-tunneling) request for IPv4.
 type RedirectionRequestV4 struct {
-	ID         uint64
-	ProcessID  uint64
-	Direction  byte
-	Protocol   byte
-	LocalIP    [4]byte
-	RemoteIP   [4]byte
-	LocalPort  uint16
-	RemotePort uint16
+	ID        uint64
+	ProcessID uint64
+	Protocol  byte
+	LocalIP   [4]byte
+	LocalPort uint16
 }
 
 // RedirectionRequestV6 represents a redirection (split-tunneling) request for IPv6.
 type RedirectionRequestV6 struct {
-	ID         uint64
-	ProcessID  uint64
-	Direction  byte
-	Protocol   byte
-	LocalIP    [16]byte
-	RemoteIP   [16]byte
-	LocalPort  uint16
-	RemotePort uint16
+	ID        uint64
+	ProcessID uint64
+	Protocol  byte
+	LocalIP   [16]byte
+	LocalPort uint16
 }
 
 type Info struct {

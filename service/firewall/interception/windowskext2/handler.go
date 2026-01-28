@@ -208,32 +208,26 @@ func Handler(ctx context.Context,
 		case packetInfo.RedirectionRequestV4 != nil:
 			{
 				req := packetInfo.RedirectionRequestV4
-				redirectReq := &ConnectRedirectRequest{
+				redirectReq := &BindRedirectRequest{
 					Request_ID: req.ID,
 					ProcID:     req.ProcessID,
-					Inbound:    req.Direction > 0,
 					IpVersion:  packet.IPv4,
 					Protocol:   packet.IPProtocol(req.Protocol),
 					LocalIP:    net.IP(req.LocalIP[:]),
-					RemoteIP:   net.IP(req.RemoteIP[:]),
 					LocalPort:  req.LocalPort,
-					RemotePort: req.RemotePort,
 				}
 				redirectRequests <- redirectReq
 			}
 		case packetInfo.RedirectionRequestV6 != nil:
 			{
 				req := packetInfo.RedirectionRequestV6
-				redirectReq := &ConnectRedirectRequest{
+				redirectReq := &BindRedirectRequest{
 					Request_ID: req.ID,
 					ProcID:     req.ProcessID,
-					Inbound:    req.Direction > 0,
 					IpVersion:  packet.IPv6,
 					Protocol:   packet.IPProtocol(req.Protocol),
 					LocalIP:    net.IP(req.LocalIP[:]),
-					RemoteIP:   net.IP(req.RemoteIP[:]),
 					LocalPort:  req.LocalPort,
-					RemotePort: req.RemotePort,
 				}
 				redirectRequests <- redirectReq
 			}

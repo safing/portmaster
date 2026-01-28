@@ -14,11 +14,8 @@ type RedirectRequest interface {
 	// Getters:
 
 	ProcessID() uint64
-	IsInbound() bool
 	IsIPv6() bool
 	ProtocolType() IPProtocol
 	LocalAddress() net.IP
-	RemoteAddress() net.IP
 	LocalPortNumber() uint16
-	RemotePortNumber() uint16
 }

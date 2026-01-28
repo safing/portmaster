@@ -37,27 +37,53 @@ func handleRedirectRequest(req packet.RedirectRequest) {
 		}
 	}()
 
+	pid := req.ProcessID()
+	if pid <= 0 {
+		return // Cannot identify process, so cannot apply any profile-based rules.
+	}
+
+	// TODO: WIP...
+
 	/*
-		fmt.Printf("=================== REDIRECT REQUEST: %v\n", req)
-
-		if req.RemoteAddress().IsLoopback() {
+		// Split-tunneling only applies to TCP and UDP traffic.
+		// TODO: Verify whether this check is still needed after the Linux implementation,
+		// as the Windows driver only sends RedirectRequest notifications for TCP/UDP.
+		switch req.ProtocolType() {
+		case packet.TCP, packet.UDP:
+		default:
 			return
 		}
 
-		if req.ProtocolType() != packet.TCP && req.ProtocolType() != packet.UDP {
+		proc, err := process.GetProcessWithProfile(context.Background(), int(pid))
+		if err != nil {
+			log.Errorf("redirect request: failed to get process for PID %d: %s", pid, err)
 			return
 		}
 
-		if req.RemotePortNumber() == 53 {
+		profile := proc.Profile()
+		if profile == nil {
+			log.Tracef("redirect request: process PID %d has no profile, cannot apply split-tunneling", pid)
 			return
 		}
+		ifIP := strings.TrimSpace(profile.SplitTunnelInterface())
+		if len(ifIP) == 0 {
+			return // No split-tunneling interface set.
+		}
 
+		// TODO: DELME!!! This is just for testing. The correspond interface address should be used here.
 		if req.IsIPv6() {
 			return
 		}
 
-		redirectTo = &redirectAddr
+		ip := net.ParseIP(ifIP)
+		if ip == nil {
+			log.Tracef("redirect request: process PID %d profile has no split-tunnel interface set, cannot apply split-tunneling", pid)
+			return
+		}
 
-		//if req.LocalAddress().Equal()
+		fmt.Printf("REDIRECT: %s to '%v'\n", profile.LocalProfile().Name, ip)
+
+
+		redirectTo = &ip
 	*/
 }

@@ -170,7 +170,7 @@ func DisableSplitTunnel() error {
 // If localInterfaceIP is nil, no redirection will be performed (i.e., the connection will go through as normal).
 // If localInterfaceIP is non-nil, the connection will be redirected to the specified local interface IP.
 // Note: in case of problems with IP conversion, an error will be returned and no command will be sent to the kext.
-func SendRedirectResponseCommand(request *ConnectRedirectRequest, localInterfaceIP *net.IP) error {
+func SendRedirectResponseCommand(request *BindRedirectRequest, localInterfaceIP *net.IP) error {
 	// IPv6
 	if request.IsIPv6() {
 		if localInterfaceIP == nil {
