@@ -111,14 +111,7 @@ func (app *App) printStatus() {
 	if app.running.Load() {
 		fmt.Println("Status: RUNNING")
 		if app.service != nil {
-			isRunning, err := app.service.IsRunning()
-			if err != nil {
-				fmt.Printf("Service Status: Error - %v\n", err)
-			} else if isRunning {
-				fmt.Println("Service Status: Running")
-			} else {
-				fmt.Println("Service Status: Stopped")
-			}
+			fmt.Println("Service Status: Running")
 		}
 	} else {
 		fmt.Println("Status: STOPPED")

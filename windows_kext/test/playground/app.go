@@ -10,8 +10,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"playground/kext"
 	"playground/logger"
+
+	"github.com/safing/portmaster/windows_kext/kextinterface"
 )
 
 // App holds the application state
@@ -19,8 +20,8 @@ type App struct {
 	mu sync.RWMutex
 
 	// Driver state
-	service    *kext.KextService
-	file       *kext.KextFile
+	service    *kextinterface.KextService
+	file       *kextinterface.KextFile
 	driverPath string
 	driverName string
 	running    atomic.Bool

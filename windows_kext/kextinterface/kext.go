@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/safing/portmaster/base/log"
 	"golang.org/x/sys/windows"
 )
 
@@ -222,7 +221,6 @@ func CreateKextService(driverName string, driverPath string) (*KextService, erro
 	// Check if there is an old service.
 	service, err := windows.OpenService(manager, &driverNameU16[0], windows.SERVICE_ALL_ACCESS)
 	if err == nil {
-		log.Warning("kext: old driver service was found")
 		oldService := &KextService{handle: service, driverName: driverName}
 		oldService.Stop(true)
 		err = oldService.Delete()
@@ -235,7 +233,6 @@ func CreateKextService(driverName string, driverPath string) (*KextService, erro
 		}
 
 		service = windows.InvalidHandle
-		log.Warning("kext: old driver service was deleted successfully")
 	}
 
 	driverPathU16, err := syscall.UTF16FromString(driverPath)

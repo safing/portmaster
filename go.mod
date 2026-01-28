@@ -31,6 +31,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
 	github.com/jackc/puddle/v2 v2.2.2
+	github.com/jaswdr/faker/v2 v2.9.0
 	github.com/lmittmann/tint v1.1.2
 	github.com/maruel/panicparse/v2 v2.5.0
 	github.com/mattn/go-colorable v0.1.14
@@ -44,6 +45,7 @@ require (
 	github.com/rot256/pblind v0.0.0-20250826112722-8244c3966ed3
 	github.com/rubenv/sql-migrate v1.8.0
 	github.com/safing/jess v0.3.5
+	github.com/safing/portmaster/windows_kext/kextinterface v0.0.0-00010101000000-000000000000
 	github.com/safing/structures v1.2.0
 	github.com/seehuhn/fortuna v1.0.2
 	github.com/shirou/gopsutil v3.21.11+incompatible
@@ -75,7 +77,6 @@ require (
 	al.essio.dev/pkg/shellescape v1.6.0 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/jaswdr/faker/v2 v2.9.0 // indirect
 	github.com/sergeymakinen/go-bmp v1.0.0 // indirect
 	github.com/stephenafamo/sqlparser v0.0.0-20250521201114-5cfed001272d // indirect
 )
@@ -177,3 +178,5 @@ tool (
 	github.com/rubenv/sql-migrate/sql-migrate
 	github.com/stephenafamo/bob/gen/bobgen-sqlite
 )
+
+replace github.com/safing/portmaster/windows_kext/kextinterface => ./windows_kext/kextinterface

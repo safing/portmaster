@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"playground/kext"
+	"github.com/safing/portmaster/windows_kext/kextinterface"
 )
 
 func (app *App) startDriver(customPath string) {
@@ -37,7 +37,7 @@ func (app *App) startDriver(customPath string) {
 	app.appLog.Info("Starting driver from: %s", driverPath)
 
 	// Create service
-	service, err := kext.NewKextService(app.driverName, driverPath)
+	service, err := kextinterface.CreateKextService(app.driverName, driverPath)
 	if err != nil {
 		app.appLog.Error("Failed to create driver service: %v", err)
 		return
@@ -97,7 +97,7 @@ func (app *App) stopDriver() {
 
 	// Send shutdown command
 	if app.file != nil {
-		if err := kext.SendShutdownCommand(app.file); err != nil {
+		if err := kextinterface.SendShutdownCommand(app.file); err != nil {
 			app.appLog.Warn("Failed to send shutdown command: %v", err)
 		}
 		if err := app.file.Close(); err != nil {
@@ -114,7 +114,6 @@ func (app *App) stopDriver() {
 		if err := app.service.Delete(); err != nil {
 			app.appLog.Warn("Failed to delete driver service: %v", err)
 		}
-		_ = app.service.Close()
 		app.service = nil
 	}
 
@@ -150,7 +149,7 @@ func (app *App) startRedirect(ipStr string) {
 	}
 
 	if app.redirecting.Load() {
-		if err := kext.SendDisableSplitTunnelCommand(file); err != nil {
+		if err := kextinterface.SendDisableSplitTunnelCommand(file); err != nil {
 			app.appLog.Error("Failed to request SendDisableSplitTunnelCommand: %v", err)
 		} else {
 			app.appLog.Info("Sent SendDisableSplitTunnelCommand to driver")
@@ -159,7 +158,7 @@ func (app *App) startRedirect(ipStr string) {
 
 	app.redirecting.Store(true)
 
-	if err := kext.SendEnableSplitTunnelCommand(file); err != nil {
+	if err := kextinterface.SendEnableSplitTunnelCommand(file); err != nil {
 		app.appLog.Error("Failed to request SendEnableSplitTunnelCommand: %v", err)
 	} else {
 		app.appLog.Info("Sent SendEnableSplitTunnelCommand to driver")
@@ -181,7 +180,7 @@ func (app *App) stopRedirect() {
 	app.mu.RUnlock()
 
 	if file != nil {
-		if err := kext.SendDisableSplitTunnelCommand(file); err != nil {
+		if err := kextinterface.SendDisableSplitTunnelCommand(file); err != nil {
 			app.appLog.Error("Failed to request SendDisableSplitTunnelCommand: %v", err)
 		} else {
 			app.appLog.Info("Sent SendDisableSplitTunnelCommand to driver")
@@ -236,7 +235,7 @@ func (app *App) logPoller() {
 			}
 
 			// Request logs from driver
-			if err := kext.SendGetLogsCommand(file); err != nil {
+			if err := kextinterface.SendGetLogsCommand(file); err != nil {
 				if app.running.Load() {
 					app.appLog.Error("Failed to request driver logs: %v", err)
 				}
