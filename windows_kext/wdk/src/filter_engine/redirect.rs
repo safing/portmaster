@@ -1,9 +1,7 @@
 use core::ffi::c_void;
 use smoltcp::wire::IpAddress;
 
-use crate::ffi::{    
-    FwpsRedirectHandleCreate0, 
-    FwpsRedirectHandleDestroy0,
+use crate::ffi::{
     FwpsAcquireClassifyHandle0,
     FwpsReleaseClassifyHandle0,
     FwpsPendClassify0,
@@ -20,33 +18,18 @@ pub struct PendRedirectResult {
     pub classify_out: ClassifyOut,  // ClassifyOut from FwpsPendClassify0() (DEEP COPY! The original classifyOut is on the stack)
 }
 
-// ============================================================================
-// Redirect Handle Management
-// ============================================================================
-
-/// Wrapper for WFP redirect handle.
-/// The redirect handle is required for local address modification in BIND_REDIRECT layers.
-/// It must be created once at initialization and destroyed on cleanup.
+/// Wrapper for WFP redirect operations.
 pub struct Redirector {
-    redirect_handle: *mut c_void, // from FwpsRedirectHandleCreate0
+    // Since we only use ALE_BIND_REDIRECT layers for changing the local address on bind,
+    // no need to store redirect_handle here (from FwpsRedirectHandleCreate0()).
+    // 
+    // But we keep this empty struct for logical grouping of redirect-related functions.
 }
 
 impl Redirector {
-    /// Create a new redirect handle.
-    /// The provider_guid should match your WFP provider GUID.
-    pub fn new(provider_guid: u128) -> Result<Self, i32> {
-        let mut handle: *mut c_void = core::ptr::null_mut();
-        let status = unsafe {
-            FwpsRedirectHandleCreate0(
-                provider_guid as *const u128,
-                0, // Reserved. Set to zero.
-                &mut handle,
-            )
-        };
-        if status != 0 {
-            return Err(status);
-        }
-        Ok(Self { redirect_handle: handle })
+    /// Create a new Redirector instance.
+    pub fn new() -> Result<Self, i32> {
+        Ok(Self { })
     }
 
     /// Pend a redirect operation for later completion.
@@ -88,8 +71,8 @@ impl Redirector {
         });
     }
 
-    /// Cancel a pended redirect operation and release resources (e.g. fallback function to release resources).
-    /// Must be called from classify function of a BIND_REDIRECT layer callout.
+    /// Cancel a pended redirect operation and release resources.
+    /// Must be called from classify function of a BIND_REDIRECT layer callout to cancel the pend.
     pub fn cancel_pend(&self, pend_result: PendRedirectResult) {
         unsafe {                
             FwpsCompleteClassify0(
@@ -103,7 +86,7 @@ impl Redirector {
     }
 
     /// Complete a pended bind redirect operation.
-    /// Must be called from asynchronous feedback (e.g. user-mode response handler).
+    /// Must be called from asynchronous function (e.g. user-mode response handler).
     /// 
     /// If `new_local_ip` is Some, the socket's local address will be modified
     /// to bind to the specified interface. If None, the bind proceeds without modification.
@@ -198,11 +181,6 @@ impl Redirector {
 
 impl Drop for Redirector {
     fn drop(&mut self) {
-        if !self.redirect_handle.is_null() {
-            unsafe {
-                FwpsRedirectHandleDestroy0(self.redirect_handle);
-            }
-            self.redirect_handle = core::ptr::null_mut();
-        }
+        // Nothing to destroy
     }
 }

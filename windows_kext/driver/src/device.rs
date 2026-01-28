@@ -50,7 +50,7 @@ impl Device {
     /// Initialize all members of the device. Memory is handled by windows.
     /// Make sure everything is initialized here.
     pub fn new(driver: &Driver) -> Result<Self, String> {
-        let redirector = match Redirector::new(PORTMASTER_SUBLAYER_GUID) {
+        let redirector = match Redirector::new() {
             Ok(result) => result,
             Err(err) => return Err(alloc::format!("Failed to create redirect handle: {}", err)),            
         };
