@@ -19,6 +19,7 @@ pub struct PendRedirectResult {
 }
 
 /// Wrapper for WFP redirect operations.
+/// https://learn.microsoft.com/en-us/windows-hardware/drivers/network/using-bind-or-connect-redirection
 pub struct Redirector {
     // Since we only use ALE_BIND_REDIRECT layers for changing the local address on bind,
     // no need to store redirect_handle here (from FwpsRedirectHandleCreate0()).
@@ -30,6 +31,47 @@ impl Redirector {
     /// Create a new Redirector instance.
     pub fn new() -> Result<Self, i32> {
         Ok(Self { })
+    }
+
+    /// Apply a redirect modification immediately.
+    /// Must be called from classify function of a BIND_REDIRECT layer callout.
+    pub fn redirect(&self, data: &mut CalloutData, new_local_ip: IpAddress) -> Result<(), i32> {
+        // Acquire classify handle
+        let mut classify_handle: u64 = 0;
+        let status = unsafe {
+            FwpsAcquireClassifyHandle0(data.classify_context, 0, &mut classify_handle)
+        };
+        if status != 0 {
+            crate::err!("FwpsAcquireClassifyHandle0 failed: {:#x}", status);
+            return Err(status);
+        }
+
+        let result = unsafe {
+            self.apply_redirect_modification(
+                classify_handle,
+                data.filter_id,
+                &mut *data.classify_out,
+                &new_local_ip
+                )
+                .map_err(|err| { crate::err!("Failed to apply bind redirect modification: {:#x}", err); err})
+        };
+
+        // Set action based on result
+        unsafe {
+            if result.is_ok() {
+                (*data.classify_out).action_permit();
+                (*data.classify_out).set_write_flag();
+            } else {
+                (*data.classify_out).action_block();
+                (*data.classify_out).clear_write_flag();
+            }
+        }
+        
+        // Release the classify handle        
+        unsafe {
+            FwpsReleaseClassifyHandle0(classify_handle);
+        }
+        return result;
     }
 
     /// Pend a redirect operation for later completion.
@@ -85,18 +127,23 @@ impl Redirector {
         }
     }
 
-    /// Complete a pended bind redirect operation.
+    /// Complete a pended bind redirect operation, initiated by `pend()`.
     /// Must be called from asynchronous function (e.g. user-mode response handler).
     /// 
     /// If `new_local_ip` is Some, the socket's local address will be modified
     /// to bind to the specified interface. If None, the bind proceeds without modification.
-    pub fn complete_redirect(
+    pub fn complete_pend(
         &self,
         mut pend_result: PendRedirectResult,
         new_local_ip: Option<IpAddress>,
     ) -> Result<(), i32> {
         let result = if let Some(ref ip) = new_local_ip { 
-            self.apply_redirect_modification(&mut pend_result, ip)
+            self.apply_redirect_modification(
+                pend_result.classify_handle,
+                pend_result.filter_id,
+                &mut pend_result.classify_out,
+                ip
+            )
                 .map_err(|err| { crate::err!("Failed to apply bind redirect modification: {:#x}", err); err})
         } else {
             Ok(())  // No modification needed
@@ -129,19 +176,20 @@ impl Redirector {
     /// Apply the actual address modification for bind redirect (BIND_REDIRECT layer)
     fn apply_redirect_modification(
         &self,
-        pend_result: &mut PendRedirectResult,
-        new_local_ip: &IpAddress,
-    ) -> Result<(), i32> {
+        classify_handle: u64,           // FwpsClassifyHandle from FwpsAcquireClassifyHandle0()
+        filter_id: u64,                 // Filter ID 
+        classify_out: &mut ClassifyOut, // ClassifyOut from FwpsPendClassify0()
+        new_local_ip: &IpAddress,       // New local IP address to set
+    ) -> Result<(), i32> {        
         // Acquire writable layer data pointer
-        let mut writable_data: *mut c_void = core::ptr::null_mut();
-        
+        let mut writable_data: *mut c_void = core::ptr::null_mut();        
         let status = unsafe {
             FwpsAcquireWritableLayerDataPointer0(
-                pend_result.classify_handle,
-                pend_result.filter_id,
+                classify_handle,
+                filter_id,
                 0,  // flags
                 &mut writable_data,
-                &mut pend_result.classify_out,
+                classify_out,
             )
         };
         if status != 0 {
@@ -169,7 +217,7 @@ impl Redirector {
         // Apply the modifications
         unsafe {
             FwpsApplyModifiedLayerData0(
-                pend_result.classify_handle,
+                classify_handle,
                 writable_data,
                 0,  // flags
             );

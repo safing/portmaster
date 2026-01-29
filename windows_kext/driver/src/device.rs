@@ -17,7 +17,7 @@ use wdk::{
 };
 
 use crate::{
-    ale_redirect_callouts, array_holder::ArrayHolder, bandwidth::Bandwidth, callouts, 
+    ale_redirect_callouts, are_redirects_cache, array_holder::ArrayHolder, bandwidth::Bandwidth, callouts, 
     connection_cache::ConnectionCache, connection_map::Key, dbg, err, id_cache::IdCache, 
     id_cache_generic::GenericIdCache, logger, packet_util::Redirect
 };
@@ -40,7 +40,8 @@ pub struct Device {
     
     // Split-tunnel support (Redirection)
     pub(crate) redirector: Redirector,
-    pub(crate) redirect_cache: GenericIdCache<ale_redirect_callouts::PendedRedirect>, // Cache of pending redirects
+    pub(crate) redirect_cache: GenericIdCache<ale_redirect_callouts::PendedRedirect>,   // Cache of pending redirects
+    pub(crate) bind_redirect_cache: are_redirects_cache::BindRedirectCache,             // Cache of bind redirect verdicts
 }
 
 // Sub-Layer GUID for Portmaster. Also used as provider GUID, when needed.
@@ -75,6 +76,7 @@ impl Device {
 
             redirector,
             redirect_cache: GenericIdCache::new(),
+            bind_redirect_cache: are_redirects_cache::BindRedirectCache::new(),
         })
     }
 
@@ -310,6 +312,11 @@ impl Device {
             CommandType::CleanEndedConnections => {
                 wdk::dbg!("CleanEndedConnections command");
                 self.connection_cache.clean_ended_connections();
+
+                let removed = self.bind_redirect_cache.cleanup_old_entries();
+                if removed > 0 {
+                    dbg!("Cleaned up {} old bind redirect cache entries", removed);
+                }
             }
             CommandType::RedirectV4 => {
                 let redirect = protocol::command::parse_redirect_v4(buffer);
@@ -317,22 +324,26 @@ impl Device {
 
                 // Pop the pended redirect from cache
                 if let Some(pended) = self.redirect_cache.pop_id(redirect.id) {
-                    let new_local_ip = if redirect.redirect != 0 {
+                    let new_local_address = if redirect.redirect != 0 {
                         Some(IpAddress::Ipv4(Ipv4Address::from_bytes(&redirect.local_address)))
                     } else {                        
                         None // No redirect - permit without modification
                     };
-                    
-                    // Complete the pended redirect operation                    
+
+                    // If redirection is requested, store the redirect verdict in the bind redirect cache.
+                    // So, the ALE_CONNECT and ALE_BIND_REDIRECT callouts will know about it                    
+                    if let Some(local_address) = new_local_address {
+                        self.bind_redirect_cache.add(pended.key, local_address);
+                    }
+
+                    // Complete the pended redirect operation
                     dbg!("Completing BIND redirect for {:?}", redirect);
-                    let result = self.redirector.complete_redirect(
+                    let result = self.redirector.complete_pend(
                             pended.pend_redirect_result,
-                            new_local_ip);
+                            new_local_address);
                     
                     if let Err(e) = result {
                         err!("Failed to complete redirect: {:#x}", e);
-                    } else {
-                        dbg!("Redirect completed successfully for {:?}", redirect);
                     }
                 } else {
                     err!("RedirectV4 invalid id: {:?}", redirect);
@@ -344,21 +355,26 @@ impl Device {
                 
                 // Pop the pended redirect from cache
                 if let Some(pended) = self.redirect_cache.pop_id(redirect.id) {
-                    let new_local_ip = if redirect.redirect != 0 {
+                    let new_local_address = if redirect.redirect != 0 {
                         Some(IpAddress::Ipv6(Ipv6Address::from_bytes(&redirect.local_address)))
                     } else {                        
                         None // No redirect - permit without modification
                     };
                     
+                    // If redirection is requested, store the redirect verdict in the bind redirect cache.
+                    // So, the ALE_CONNECT and ALE_BIND_REDIRECT callouts will know about it                    
+                    if let Some(local_address) = new_local_address {
+                        self.bind_redirect_cache.add(pended.key, local_address);
+                    }
+
                     // Complete the pended redirect operation
-                    let result = self.redirector.complete_redirect(
+                    dbg!("Completing BIND redirect for {:?}", redirect);
+                    let result = self.redirector.complete_pend(
                         pended.pend_redirect_result,
-                        new_local_ip);
+                        new_local_address);
                     
                     if let Err(e) = result {
                         err!("Failed to complete redirect: {:#x}", e);
-                    } else {
-                        dbg!("Redirect completed successfully for {:?}", redirect);
                     }
                 } else {
                     err!("RedirectV6 invalid id: {:?}", redirect);
@@ -372,6 +388,7 @@ impl Device {
                     dbg!("Split tunnel filters enabled successfully");
                 }
                 self.connection_cache.clear();
+                self.bind_redirect_cache.cleanup_old_entries();
             }
             CommandType::DisableSplitTunnel => {
                 wdk::dbg!("DisableSplitTunnel command");
@@ -380,7 +397,8 @@ impl Device {
                 } else {
                     dbg!("Split tunnel filters disabled successfully");
                 }
-                self.connection_cache.clear();
+                self.connection_cache.clear();                
+                self.bind_redirect_cache.cleanup_old_entries();
             }
         }
     }
@@ -406,7 +424,7 @@ impl Device {
         for el in pending_redirects {
             let pended = el.value;
             // Complete without redirect (permit) to release the pended operation
-            let result =self.redirector.complete_redirect(
+            let result =self.redirector.complete_pend(
                     pended.pend_redirect_result,
                     None, // No redirect on shutdown - just permit
                 );            
@@ -414,6 +432,9 @@ impl Device {
                 err!("Failed to complete redirect on shutdown: {:#x}", e);
             }
         }
+
+        // Clean up old bind redirect cache entries
+        self.bind_redirect_cache.cleanup_old_entries();
     }
 
     pub fn inject_packet(&mut self, packet: Packet, blocked: bool) -> Result<(), String> {

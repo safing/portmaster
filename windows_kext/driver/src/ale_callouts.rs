@@ -1,3 +1,4 @@
+use crate::are_redirects_cache::BindRedirectKey;
 use crate::connection::{Connection, ConnectionV4, ConnectionV6, Direction, Verdict};
 use crate::connection_map::Key;
 use crate::device::{Device, Packet};
@@ -186,13 +187,17 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
             | Verdict::RedirectTunnel => {
                 // Continue to packet layer.
                 data.action_permit();
-                //if redirected_by_us.unwrap_or(false) {
-                    // Finalize verdict by clearing the write flag.
-                    // This prevents lower-weight WFP filters from overriding our permit decision.
-                    // For example, this ensures IVPN's Firewall won't block connections we redirected.
-                //    crate::dbg!("finalizing verdict for redirected connection: {}", key);
-                //    data.clear_write_flag();
-                //}
+
+                // If we had redirected the connection, finalize the verdict here.
+                // This prevents lower-weight WFP filters from overriding our permit decision.
+                // For example, this ensures IVPN's Firewall won't block connections we redirected.
+                let bind_key = BindRedirectKey::new(ale_data.process_id, ale_data.protocol, ale_data.is_ipv6);
+                if let Some(bind_verdict) = device.bind_redirect_cache.get(bind_key) {
+                    if bind_verdict.local_address.eq(&ale_data.local_ip) {
+                        crate::dbg!("finalizing verdict for redirected connection: PID={} {}", ale_data.process_id, key);
+                        data.clear_write_flag();
+                    }
+                } 
             }
             Verdict::PermanentBlock | Verdict::Undeterminable | Verdict::Failed => {
                 // Packet layer will not see this connection.

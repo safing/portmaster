@@ -5,6 +5,7 @@
 extern crate alloc;
 
 mod ale_redirect_callouts;
+mod are_redirects_cache;
 mod ale_callouts;
 mod array_holder;
 mod bandwidth;
