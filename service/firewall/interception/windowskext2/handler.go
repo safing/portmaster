@@ -205,29 +205,12 @@ func Handler(ctx context.Context,
 					bandwidthUpdate <- update
 				}
 			}
-		case packetInfo.RedirectionRequestV4 != nil:
+		case packetInfo.BindRequest != nil:
 			{
-				req := packetInfo.RedirectionRequestV4
+				req := packetInfo.BindRequest
 				redirectReq := &BindRedirectRequest{
 					Request_ID: req.ID,
 					ProcID:     req.ProcessID,
-					IpVersion:  packet.IPv4,
-					Protocol:   packet.IPProtocol(req.Protocol),
-					LocalIP:    net.IP(req.LocalIP[:]),
-					LocalPort:  req.LocalPort,
-				}
-				redirectRequests <- redirectReq
-			}
-		case packetInfo.RedirectionRequestV6 != nil:
-			{
-				req := packetInfo.RedirectionRequestV6
-				redirectReq := &BindRedirectRequest{
-					Request_ID: req.ID,
-					ProcID:     req.ProcessID,
-					IpVersion:  packet.IPv6,
-					Protocol:   packet.IPProtocol(req.Protocol),
-					LocalIP:    net.IP(req.LocalIP[:]),
-					LocalPort:  req.LocalPort,
 				}
 				redirectRequests <- redirectReq
 			}

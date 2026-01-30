@@ -1,4 +1,4 @@
-use crate::are_redirects_cache::BindRedirectKey;
+use crate::ale_redirects_cache::BindRedirectKey;
 use crate::connection::{Connection, ConnectionV4, ConnectionV6, Direction, Verdict};
 use crate::connection_map::Key;
 use crate::device::{Device, Packet};
@@ -191,11 +191,13 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
                 // If we had redirected the connection, finalize the verdict here.
                 // This prevents lower-weight WFP filters from overriding our permit decision.
                 // For example, this ensures IVPN's Firewall won't block connections we redirected.
-                let bind_key = BindRedirectKey::new(ale_data.process_id, ale_data.protocol, ale_data.is_ipv6);
+                let bind_key = BindRedirectKey::new(ale_data.process_id);
                 if let Some(bind_verdict) = device.bind_redirect_cache.get(bind_key) {
-                    if bind_verdict.local_address.eq(&ale_data.local_ip) {
-                        crate::dbg!("finalizing verdict for redirected connection: PID={} {}", ale_data.process_id, key);
-                        data.clear_write_flag();
+                    if let Some(local_addr) = bind_verdict.get_address(ale_data.is_ipv6) {
+                        if local_addr.eq(&ale_data.local_ip) {
+                            crate::dbg!("finalizing verdict for redirected connection: PID={} {}", ale_data.process_id, key);
+                            data.clear_write_flag();
+                        }
                     }
                 } 
             }

@@ -16,20 +16,26 @@ pub enum CommandType {
     GetBandwidthStats     = 6,
     PrintMemoryStats      = 7,
     CleanEndedConnections = 8,
-    RedirectV4            = 9,
-    RedirectV6            = 10,
+
     /// Enables split tunneling functionality.
     /// 
     /// When enabled, the driver will:
-    /// - Send RedirectionRequestV4/V6 notifications for outbound connections
-    /// - Allow RedirectV4/V6 commands to modify connection routing
-    EnableSplitTunnel     = 11,
+    /// - Send BindRequest notifications for new connections
+    /// - Allow SplitTunnel command to modify connection routing
+    EnableSplitTunnel     = 9,
     /// Disables split tunneling functionality.
     /// 
     /// When disabled, the driver will:
-    /// - Stop sending RedirectionRequestV4/V6 notifications
-    /// - RedirectV4/V6 commands will not have any effect.
-    DisableSplitTunnel    = 12,
+    /// - Stop sending BindRequest notifications
+    /// - SplitTunnel command will not have any effect.
+    DisableSplitTunnel    = 10,
+    /// Response to a bind redirect request (Split-Tunneling verdict).
+    /// 
+    /// This command is sent from user-space to the driver in response to
+    /// BindRequest notifications. It tells the driver whether to:
+    /// - Allow the original bind operation (no redirect)
+    /// - Redirect the bind to a specific local IP address
+    SplitTunnel           = 11,
 }
 
 #[repr(C, packed)]
@@ -67,20 +73,21 @@ pub struct UpdateV6 {
     pub verdict: u8,
 }
 
+/// Response to a bind redirect request.
+/// Contains the verdict on how to handle the bind operation.
 #[repr(C, packed)]
 #[derive(Debug, PartialEq, Eq)]
-pub struct RedirectV4 {
+pub struct SplitTunnel {
+    /// ID from the original InfoBindRequest notification
     pub id: u64,
-    pub redirect: u8,                      // 0 = no redirect (permit), 1 = redirect to local_address
-    pub local_address: [u8; 4],            // Local interface IP to redirect to (when redirect = 1)
-}
-
-#[repr(C, packed)]
-#[derive(Debug, PartialEq, Eq)]
-pub struct RedirectV6 {
-    pub id: u64,
-    pub redirect: u8,                      // 0 = no redirect (permit), 1 = redirect to local_address
-    pub local_address: [u8; 16],           // Local interface IP to redirect to (when redirect = 1)
+    /// IPv4 local address to bind to.
+    /// - Unspecified (0.0.0.0) - Allow original bind without redirect
+    /// - Specific address - Redirect bind to this IPv4 address
+    pub local_address_ipv4: [u8; 4],    
+    /// IPv6 local address to bind to.
+    /// - Unspecified (::) - Allow original bind without redirect
+    /// - Specific address - Redirect bind to this IPv6 address
+    pub local_address_ipv6: [u8; 16],    
 }
 
 pub fn parse_type(bytes: &[u8]) -> Option<CommandType> {
@@ -99,11 +106,7 @@ pub fn parse_update_v6(bytes: &[u8]) -> &UpdateV6 {
     as_type(bytes)
 }
 
-pub fn parse_redirect_v4(bytes: &[u8]) -> &RedirectV4 {
-    as_type(bytes)
-}
-
-pub fn parse_redirect_v6(bytes: &[u8]) -> &RedirectV6 {
+pub fn parse_split_tunnel(bytes: &[u8]) -> &SplitTunnel {
     as_type(bytes)
 }
 
@@ -188,8 +191,7 @@ fn test_go_command_file() {
                 CommandType::GetBandwidthStats => {}
                 CommandType::PrintMemoryStats => {}
                 CommandType::CleanEndedConnections => {}
-                CommandType::RedirectV4 => {}
-                CommandType::RedirectV6 => {}
+                CommandType::SplitTunnel => {}
                 CommandType::EnableSplitTunnel => {}
                 CommandType::DisableSplitTunnel => {}
             }

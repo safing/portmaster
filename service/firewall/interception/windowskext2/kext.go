@@ -166,58 +166,33 @@ func DisableSplitTunnel() error {
 	return kextinterface.SendDisableSplitTunnelCommand(kextFile)
 }
 
-// SendRedirectResponseCommand sends a no-redirect response for the request.
-// If localInterfaceIP is nil, no redirection will be performed (i.e., the connection will go through as normal).
+// SendRedirectResponseCommand sends a redirect response for the request.
+// If localInterfaceIP is nil (or zeroed 0.0.0.0), no redirection will be performed (i.e., the connection will go through as normal).
 // If localInterfaceIP is non-nil, the connection will be redirected to the specified local interface IP.
 // Note: in case of problems with IP conversion, an error will be returned and no command will be sent to the kext.
-func SendRedirectResponseCommand(request *BindRedirectRequest, localInterfaceIP *net.IP) error {
-	// IPv6
-	if request.IsIPv6() {
-		if localInterfaceIP == nil {
-			// No redirect
-			redirectCommand := kextinterface.RedirectV6{
-				ID:           request.Request_ID,
-				Redirect:     0, // false
-				LocalAddress: [16]byte{},
-			}
-			return kextinterface.SendRedirectV6Command(kextFile, redirectCommand)
-		}
-
-		ip := localInterfaceIP.To16()
-		if ip == nil {
-			return fmt.Errorf("invalid IPv6 address: %s", localInterfaceIP)
-		}
-		// Redirect
-		redirectCommand := kextinterface.RedirectV6{
-			ID:           request.Request_ID,
-			Redirect:     1, // true
-			LocalAddress: [16]byte(localInterfaceIP.To16()),
-		}
-		return kextinterface.SendRedirectV6Command(kextFile, redirectCommand)
+func SendRedirectResponseCommand(request *BindRedirectRequest, localInterface_IPv4 *net.IP, localInterface_IPv6 *net.IP) error {
+	if localInterface_IPv4 != nil && localInterface_IPv4.To4() == nil {
+		return fmt.Errorf("invalid IPv4 address: %s", localInterface_IPv4)
+	}
+	if localInterface_IPv6 != nil && localInterface_IPv6.To16() == nil {
+		return fmt.Errorf("invalid IPv6 address: %s", localInterface_IPv6)
 	}
 
-	// IPv4
-	if localInterfaceIP == nil {
-		// No redirect
-		redirectCommand := kextinterface.RedirectV4{
-			ID:           request.Request_ID,
-			Redirect:     0, // true
-			LocalAddress: [4]byte{},
-		}
-		return kextinterface.SendRedirectV4Command(kextFile, redirectCommand)
+	if localInterface_IPv4 == nil {
+		zeroed := net.IPv4zero
+		localInterface_IPv4 = &zeroed
+	}
+	if localInterface_IPv6 == nil {
+		zeroed := net.IPv6zero
+		localInterface_IPv6 = &zeroed
 	}
 
-	// Redirect
-	ip := localInterfaceIP.To4()
-	if ip == nil {
-		return fmt.Errorf("invalid IPv4 address: %s", localInterfaceIP)
+	command := kextinterface.SplitTunnel{
+		ID:                request.Request_ID,
+		LocalAddress_IPv4: [4]byte(localInterface_IPv4.To4()),
+		LocalAddress_IPv6: [16]byte(localInterface_IPv6.To16()),
 	}
-	redirectCommand := kextinterface.RedirectV4{
-		ID:           request.Request_ID,
-		Redirect:     1, // true
-		LocalAddress: [4]byte(localInterfaceIP.To4()),
-	}
-	return kextinterface.SendRedirectV4Command(kextFile, redirectCommand)
+	return kextinterface.SendSplitTunnelCommand(kextFile, command)
 }
 
 func getKextVerdictFromConnection(conn *network.Connection) kextinterface.KextVerdict {

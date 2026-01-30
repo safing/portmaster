@@ -1,4 +1,4 @@
-use alloc::string::{String, ToString};
+use alloc::string::{String};
 use protocol::info::Info;
 use wdk::{
     filter_engine::{ 
@@ -9,7 +9,7 @@ use wdk::{
 };
 use smoltcp::wire::{ IpAddress, IpProtocol, Ipv4Address, Ipv6Address };
 
-use crate::are_redirects_cache::BindRedirectKey;
+use crate::ale_redirects_cache::BindRedirectKey;
 
 fn get_protocol(data: &CalloutData, index: usize) -> IpProtocol {
     IpProtocol::from(data.get_value_u8(index))
@@ -28,7 +28,8 @@ fn get_ipv6_address(data: &CalloutData, index: usize) -> IpAddress {
 /// Data stored for each pended redirect operation
 pub struct PendedRedirect {
     pub pend_redirect_result: PendRedirectResult,
-    pub key: BindRedirectKey
+    pub key: BindRedirectKey,
+    pub ipv6: bool
 }
 
 // ============================================================================
@@ -88,29 +89,47 @@ fn ale_layer_bind_redirect(mut data: CalloutData, bind_data: &AleBindRedirectDat
         return;
     }
 
-    let bind_key = BindRedirectKey::new(bind_data.process_id, bind_data.protocol, bind_data.is_ipv6);
+    // Skip localhost/loopback addresses - no need to redirect
+    let is_loopback = match bind_data.local_address {
+            IpAddress::Ipv4(ip) => ip.is_loopback(),
+            IpAddress::Ipv6(ip) => ip.is_loopback(),
+        };
+    if is_loopback {
+        data.action_permit();
+        return;
+    }
+    
+    // Check if we already have bind verdict for this PID
+    let bind_key = BindRedirectKey::new(bind_data.process_id);
     if let Some(bind_verdict) = device.bind_redirect_cache.get(bind_key) {
-        
-        if bind_verdict.local_address.eq(&bind_data.local_address) {
-            // cached verdict matches requested local address - permit, no redirection needed    
-            data.action_permit();
-            return;
-        }
-            
-        // We have already valid redirection verdict for this bind. 
-        // Do redirection and do not notify user-mode again.
-        match device.redirector.redirect(&mut data, bind_verdict.local_address)
-        {
-            Ok(()) => {
-                crate::dbg!("ALE Bind Redirect: pid={} {} ipv6={} => {} (apply cached redirection)",
-                  bind_data.process_id, bind_data.protocol, bind_data.is_ipv6, bind_verdict.local_address );
-                return
-            },
-            Err(err_code) => {
-                crate::err!("ALE Bind Redirect: redirect failed (cached verdict): {:#x}", err_code);
-                // Fall through to pending redirect so user-mode can decide again.
+        match bind_verdict.get_address(bind_data.is_ipv6) {
+            None => {
+                // No bind redirect. Allow original bind
+                data.action_permit();
+                return;
             }
-        }        
+            Some(addr) => {
+                if addr.eq(&bind_data.local_address) {
+                    // cached verdict matches requested local address - permit, no redirection needed    
+                    data.action_permit();
+                    return;
+                }
+                // We have already valid redirection verdict for this bind.
+                // Do redirection and do not notify user-mode again.
+                match device.redirector.redirect(&mut data, addr)
+                {
+                    Ok(()) => {
+                        crate::dbg!("ALE Bind Redirect: pid={} {} => {} (apply cached redirection)",
+                            bind_data.process_id, bind_data.protocol, addr );
+                        return
+                    },
+                    Err(err_code) => {
+                        crate::err!("ALE Bind Redirect: redirect failed (cached verdict): {:#x}", err_code);
+                        // Fall through to pending redirect so user-mode can decide again.
+                    }
+                } 
+            }
+        }
     }
 
     // Pend the bind redirect operation
@@ -126,6 +145,7 @@ fn ale_layer_bind_redirect(mut data: CalloutData, bind_data: &AleBindRedirectDat
     let pr_cache_id = device.redirect_cache.push(PendedRedirect {
             pend_redirect_result,
             key: bind_key,
+            ipv6: bind_data.is_ipv6,
         });
 
     crate::dbg!("ALE Bind Redirect: PID={} {:?} {}:{} (id={})",
@@ -170,31 +190,5 @@ fn ale_layer_bind_redirect(mut data: CalloutData, bind_data: &AleBindRedirectDat
 
 /// Build bind redirection request info to be sent to user-mode.
 fn build_bind_info(pr_cache_id: u64, bind_data: &AleBindRedirectData) -> Result<Info, String> {
-    // Reuse the same redirection_request format, but with unspecified remote address
-    let info = if bind_data.is_ipv6 {
-        let local_ip = match bind_data.local_address {
-            IpAddress::Ipv6(ip) => ip.0,
-            _ => return Err("Expected IPv6 address".to_string()),
-        };
-        Ok(protocol::info::redirection_request_v6(
-            pr_cache_id,
-            bind_data.process_id,
-            u8::from(bind_data.protocol),            
-            local_ip,               // in fact, unusable because usually zeroed at this stage
-            bind_data.local_port,   // in fact, unusable because usually zeroed at this stage
-        ))
-    } else {
-        let local_ip = match bind_data.local_address {
-            IpAddress::Ipv4(ip) => ip.0,
-            _ => return Err("Expected IPv4 address".to_string()),
-        };
-        Ok(protocol::info::redirection_request_v4(
-            pr_cache_id,
-            bind_data.process_id,
-            u8::from(bind_data.protocol),
-            local_ip,               // in fact, unusable because usually zeroed at this stage
-            bind_data.local_port,   // in fact, unusable because usually zeroed at this stage
-        ))
-    };
-    info
+    Ok(protocol::info::bind_request(pr_cache_id, bind_data.process_id))
 }

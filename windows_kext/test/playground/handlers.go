@@ -119,10 +119,8 @@ func (app *App) connectionHandler() {
 			app.handleConnectionEndV6(info.ConnectionEndV6)
 		case info.LogLine != nil:
 			app.drvLog.Info("[%s] %s", severityString(info.LogLine.Severity), info.LogLine.Line)
-		case info.RedirectionRequestV4 != nil:
-			app.handleRedirectionRequestV4(info.RedirectionRequestV4, file)
-		case info.RedirectionRequestV6 != nil:
-			app.handleRedirectionRequestV6(info.RedirectionRequestV6, file)
+		case info.BindRequest != nil:
+			app.handleBindRequest(info.BindRequest, file)
 		}
 	}
 }
@@ -177,63 +175,18 @@ func (app *App) handleConnectionEndV6(conn *kextinterface.ConnectionEndV6) {
 		localIP, conn.LocalPort, remoteIP, conn.RemotePort)
 }
 
-func (app *App) handleRedirectionRequestV4(req *kextinterface.RedirectionRequestV4, file *kextinterface.KextFile) {
-	localIP := net.IP(req.LocalIP[:])
-	shouldRedirect, redirectIP := app.determineRedirect(req.Protocol, 0) // Note: RedirectionRequest doesn't have RemotePort
+func (app *App) handleBindRequest(req *kextinterface.BindRequest, file *kextinterface.KextFile) {
+	addr_v4, addr_v6 := app.determineRedirect()
 
-	if shouldRedirect && redirectIP != nil {
-		app.connLog.Info("[REDIRECT V4] ID=%d PID=%d %s %s:%d REDIRECT_TO=%s",
-			req.ID, req.ProcessID,
-			protocolString(req.Protocol),
-			localIP, req.LocalPort,
-			redirectIP.String())
-	} else {
-		app.connLog.Info("[REDIRECT V4] ID=%d PID=%d %s %s:%d PERMIT",
-			req.ID, req.ProcessID,
-			protocolString(req.Protocol),
-			localIP, req.LocalPort)
-	}
+	app.connLog.Info("[REDIRECT] ID=%d PID=%d REDIRECT_TO=%s / %s",
+		req.ID, req.ProcessID, addr_v4.String(), addr_v6.String())
 
-	cmd := kextinterface.RedirectV4{
-		ID:       req.ID,
-		Redirect: 0,
-	}
-	if shouldRedirect && redirectIP != nil {
-		cmd.Redirect = 1
-		copy(cmd.LocalAddress[:], redirectIP.To4())
-	}
-	if err := kextinterface.SendRedirectV4Command(file, cmd); err != nil {
-		app.appLog.Error("Failed to send redirect command for ID %d: %v", req.ID, err)
-	}
-}
+	cmd := kextinterface.SplitTunnel{ID: req.ID}
+	copy(cmd.LocalAddress_IPv4[:], addr_v4.To4())
+	copy(cmd.LocalAddress_IPv6[:], addr_v6.To16())
 
-func (app *App) handleRedirectionRequestV6(req *kextinterface.RedirectionRequestV6, file *kextinterface.KextFile) {
-	localIP := net.IP(req.LocalIP[:])
-	shouldRedirect, redirectIP := app.determineRedirect(req.Protocol, 0) // Note: RedirectionRequest doesn't have RemotePort
-
-	if shouldRedirect && redirectIP != nil {
-		app.connLog.Info("[REDIRECT V6] ID=%d PID=%d %s %s:%d REDIRECT_TO=%s",
-			req.ID, req.ProcessID,
-			protocolString(req.Protocol),
-			localIP, req.LocalPort,
-			redirectIP.String())
-	} else {
-		app.connLog.Info("[REDIRECT V6] ID=%d PID=%d %s %s:%d PERMIT",
-			req.ID, req.ProcessID,
-			protocolString(req.Protocol),
-			localIP, req.LocalPort)
-	}
-
-	cmd := kextinterface.RedirectV6{
-		ID:       req.ID,
-		Redirect: 0,
-	}
-	if shouldRedirect && redirectIP != nil {
-		cmd.Redirect = 1
-		copy(cmd.LocalAddress[:], redirectIP.To16())
-	}
-	if err := kextinterface.SendRedirectV6Command(file, cmd); err != nil {
-		app.appLog.Error("Failed to send redirect command for ID %d: %v", req.ID, err)
+	if err := kextinterface.SendSplitTunnelCommand(file, cmd); err != nil {
+		app.appLog.Error("Failed to send SplitTunnel command for ID %d: %v", req.ID, err)
 	}
 }
 
@@ -254,19 +207,21 @@ func (app *App) determineVerdict(protocol byte, remoteIP net.IP, remotePort uint
 }
 
 // determineRedirect decides whether to redirect a connection and to which IP
-func (app *App) determineRedirect(protocol byte, remotePort uint16) (bool, net.IP) {
-	// DNS traffic (port 53) - never redirect
-	if remotePort == 53 {
-		return false, nil
-	}
+func (app *App) determineRedirect() (ipv4_addr net.IP, ipv6_addr net.IP) {
+	ipv4_addr = net.IPv4zero
+	ipv6_addr = net.IPv6zero
+
 	// Only redirect TCP/UDP when redirecting is enabled
-	if app.redirecting.Load() && (protocol == 6 || protocol == 17) {
+	if app.redirecting.Load() {
 		app.mu.RLock()
-		redirectIP := app.redirectIP
-		app.mu.RUnlock()
-		if redirectIP != nil {
-			return true, redirectIP
+		if app.redirectIP != nil {
+			if app.redirectIP.To4() != nil {
+				ipv4_addr = app.redirectIP
+			} else if app.redirectIP.To16() != nil {
+				ipv6_addr = app.redirectIP
+			}
 		}
+		app.mu.RUnlock()
 	}
-	return false, nil
+	return
 }

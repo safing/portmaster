@@ -19,22 +19,25 @@ const (
 
 	// Split tunneling related commands
 
-	// RedirectV4 command to send a redirect (split tunneling) decision for an IPv4 connection.
-	CommandRedirectV4 = 9
-	// RedirectV6 command to send a redirect (split tunneling) decision for an IPv6 connection.
-	CommandRedirectV6 = 10
 	// Enables split tunneling functionality.
 	//
 	// When enabled, the driver will:
-	// - Send RedirectionRequestV4/V6 notifications for outbound connections
-	// - Allow RedirectV4/V6 commands to modify connection routing
-	CommandEnableSplitTunnel = 11
+	// - Send BindRequest notifications for new connections
+	// - Allow SplitTunnel commands to modify connection routing
+	CommandEnableSplitTunnel = 9
 	// Disables split tunneling functionality.
 	//
 	// When disabled, the driver will:
-	// - Stop sending RedirectionRequestV4/V6 notifications
-	// - RedirectV4/V6 commands will not have any effect.
-	CommandDisableSplitTunnel = 12
+	// - Stop sending BindRequest notifications
+	// - SplitTunnel commands will not have any effect.
+	CommandDisableSplitTunnel = 10
+	// Response to a bind redirect request (Split-Tunneling verdict).
+	//
+	// This command is sent from user-space to the driver in response to
+	// BindRequest notifications. It tells the driver whether to:
+	// - Allow the original bind operation (no redirect)
+	// - Redirect the bind to a specific local IP address
+	CommandSplitTunnel = 11
 )
 
 // KextVerdict is the verdict ID used to with the kext.
@@ -84,19 +87,17 @@ type UpdateV6 struct {
 }
 
 // RedirectV4 command structure - response to RedirectionRequestV4
-type RedirectV4 struct {
-	Command      uint8
-	ID           uint64
-	Redirect     uint8   // 0 = no redirect (permit), 1 = redirect to LocalAddress
-	LocalAddress [4]byte // Local interface IP to redirect to (when Redirect = 1)
-}
-
-// RedirectV6 command structure - response to RedirectionRequestV6
-type RedirectV6 struct {
-	Command      uint8
-	ID           uint64
-	Redirect     uint8    // 0 = no redirect (permit), 1 = redirect to LocalAddress
-	LocalAddress [16]byte // Local interface IP to redirect to (when Redirect = 1)
+type SplitTunnel struct {
+	Command uint8
+	ID      uint64
+	// IPv4 local address to bind to.
+	// - Unspecified (0.0.0.0) - Allow original bind without redirect
+	// - Specific address - Redirect bind to this IPv4 address
+	LocalAddress_IPv4 [4]byte // Local interface IP to redirect to (when Redirect = 1)
+	// IPv6 local address to bind to.
+	// - Unspecified (::) - Allow original bind without redirect
+	// - Specific address - Redirect bind to this IPv6 address
+	LocalAddress_IPv6 [16]byte
 }
 
 // SendShutdownCommand sends a Shutdown command to the kext.
@@ -166,13 +167,7 @@ func SendDisableSplitTunnelCommand(writer io.Writer) error {
 }
 
 // SendRedirectV4Command sends a redirect (split-tunnel) decision for a connection
-func SendRedirectV4Command(writer io.Writer, redirect RedirectV4) error {
-	redirect.Command = CommandRedirectV4
-	return binary.Write(writer, binary.LittleEndian, redirect)
-}
-
-// SendRedirectV6Command sends a redirect (split-tunnel) decision for a connection
-func SendRedirectV6Command(writer io.Writer, redirect RedirectV6) error {
-	redirect.Command = CommandRedirectV6
+func SendSplitTunnelCommand(writer io.Writer, redirect SplitTunnel) error {
+	redirect.Command = CommandSplitTunnel
 	return binary.Write(writer, binary.LittleEndian, redirect)
 }
