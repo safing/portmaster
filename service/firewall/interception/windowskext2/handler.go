@@ -34,7 +34,7 @@ func (v *VersionInfo) String() string {
 func Handler(ctx context.Context,
 	packets chan<- packet.Packet,
 	bandwidthUpdate chan<- *packet.BandwidthUpdate,
-	redirectRequests chan<- packet.RedirectRequest) {
+	redirectRequests chan<- packet.BindRequest) {
 
 	for {
 		packetInfo, err := RecvVerdictRequest()

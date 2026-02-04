@@ -5,6 +5,7 @@ import (
 	"flag"
 	"sync/atomic"
 
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/packet"
@@ -24,6 +25,11 @@ func (i *Interception) Manager() *mgr.Manager {
 
 // Start starts the module.
 func (i *Interception) Start() error {
+	if err := prep(); err != nil {
+		log.Errorf("Failed to prepare interception module %q", err)
+		return err
+	}
+
 	return start()
 }
 
@@ -39,9 +45,9 @@ var (
 	// BandwidthUpdates is a stream of bandwidth usage update for connections.
 	BandwidthUpdates = make(chan *packet.BandwidthUpdate, 1000)
 
-	// RedirectRequests is a stream of connection redirect requests
+	// BindRequests is a stream of connection bind requests.
 	// In use for split tunneling decisions.
-	RedirectRequests = make(chan packet.RedirectRequest, 1000)
+	BindRequests = make(chan packet.BindRequest, 1000)
 
 	disableInterception bool
 	isStarted           atomic.Bool
@@ -49,6 +55,26 @@ var (
 
 func init() {
 	flag.BoolVar(&disableInterception, "disable-interception", false, "disable packet interception; this breaks a lot of functionality")
+}
+
+func ensureSplitTunnelState() error {
+	enabled := splitTunEnable()
+	if err := EnableSplitTunnel(enabled); err != nil {
+		log.Criticalf("failed to configure Split Tunneling state: %v", err)
+		return err
+	} else {
+		log.Infof("Split Tunneling active: %v", enabled)
+	}
+	return nil
+}
+
+func prep() error {
+	// Enable or disable split tunneling when the config changes
+	module.instance.Config().EventConfigChange.AddCallback("split tunneling enable check", func(w *mgr.WorkerCtx, _ struct{}) (bool, error) {
+		ensureSplitTunnelState()
+		return false, nil
+	})
+	return nil
 }
 
 // Start starts the interception.
@@ -74,6 +100,12 @@ func start() error {
 	}
 
 	err := startInterception(inputPackets)
+
+	if err == nil {
+		// Enable Split Tunneling according to current config
+		err = ensureSplitTunnelState()
+	}
+
 	if err != nil {
 		log.Errorf("interception: failed to start module: %q", err)
 		log.Debug("interception: cleaning up after failed start...")
@@ -83,6 +115,7 @@ func start() error {
 		}
 		isStarted.Store(false)
 	}
+
 	return err
 }
 
@@ -118,9 +151,15 @@ func New(instance instance) (*Interception, error) {
 		mgr:      m,
 		instance: instance,
 	}
+
+	if err := registerConfig(); err != nil {
+		return nil, err
+	}
+
 	return module, nil
 }
 
 type instance interface {
+	Config() *config.Config
 	BinaryUpdates() *updates.Updater
 }

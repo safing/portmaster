@@ -3,6 +3,7 @@ package interception
 import (
 	"time"
 
+	"github.com/safing/portmaster/base/log"
 	bandwidth "github.com/safing/portmaster/service/firewall/interception/ebpf/bandwidth"
 	conn_listener "github.com/safing/portmaster/service/firewall/interception/ebpf/connection_listener"
 	"github.com/safing/portmaster/service/firewall/interception/nfq"
@@ -45,4 +46,9 @@ func ResetVerdictOfAllConnections() error {
 // UpdateVerdictOfConnection deletes the verdict of the given connection so it can be initialized again with the next packet.
 func UpdateVerdictOfConnection(conn *network.Connection) error {
 	return nfq.DeleteMarkedConnection(conn)
+}
+
+func EnableSplitTunnel(enable bool) error {
+	log.Critical("interception: split tunneling is not supported on this platform")
+	return nil
 }

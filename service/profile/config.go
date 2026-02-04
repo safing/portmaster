@@ -103,6 +103,16 @@ var (
 	cfgOptionDisableAutoPermit      config.BoolOption
 	cfgOptionDisableAutoPermitOrder = 65
 
+	// Split Tunneling.
+
+	CfgOptionSplitTunInterfaceKey   = "splittun/localInterface"
+	cfgOptionSplitTunInterface      config.StringOption
+	cfgOptionSplitTunInterfaceOrder = 72
+
+	CfgOptionSplitTunBlockOnFallbackKey   = "splittun/blockOnFallback"
+	cfgOptionSplitTunBlockOnFallback      config.BoolOption
+	cfgOptionSplitTunBlockOnFallbackOrder = 74
+
 	// Setting "Permanent Verdicts" at order 80.
 
 	// Network History.
@@ -674,6 +684,56 @@ Please note that DNS bypass attempts might be additionally blocked in the System
 	}
 	cfgOptionPreventBypassing = config.Concurrent.GetAsBool(CfgOptionPreventBypassingKey, true)
 	cfgBoolOptions[CfgOptionPreventBypassingKey] = cfgOptionPreventBypassing
+
+	// Split Tunnel: Interface
+	err = config.Register(&config.Option{
+		Name: "Local Interface",
+		Key:  CfgOptionSplitTunInterfaceKey,
+		Description: `Local interface to route connections through. Can be specified as an interface name or its IP address (IPv4 or IPv6).
+
+This setting only applies when Split Tunneling is enabled in global settings.
+
+When left empty, split tunneling is disabled for this profile and connections use the default routing.
+
+Examples:
+- "en0" or "Ethernet" (interface name)
+- "192.168.1.1" (IPv4 address)`,
+		OptType:        config.OptTypeString,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   "",
+		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation: true,
+			config.DisplayOrderAnnotation:   cfgOptionSplitTunInterfaceOrder,
+			config.CategoryAnnotation:       "General",
+		},
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionSplitTunInterface = config.Concurrent.GetAsString(CfgOptionSplitTunInterfaceKey, "")
+	cfgStringOptions[CfgOptionSplitTunInterfaceKey] = cfgOptionSplitTunInterface
+
+	// Split Tunnel: Block When Interface Unavailable
+	err = config.Register(&config.Option{
+		Name:           "Block When Local Interface Unavailable",
+		Key:            CfgOptionSplitTunBlockOnFallbackKey,
+		Description:    "Block connections when the specified local interface is not available, rather than allowing them through another interface.",
+		OptType:        config.OptTypeBool,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   true,
+		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation: true,
+			config.DisplayOrderAnnotation:   cfgOptionSplitTunBlockOnFallbackOrder,
+			config.CategoryAnnotation:       "General",
+		},
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionSplitTunBlockOnFallback = config.Concurrent.GetAsBool(CfgOptionSplitTunBlockOnFallbackKey, true)
+	cfgBoolOptions[CfgOptionSplitTunBlockOnFallbackKey] = cfgOptionSplitTunBlockOnFallback
 
 	// Use SPN
 	err = config.Register(&config.Option{

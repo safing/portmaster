@@ -212,6 +212,31 @@ export var subsystems : SubsystemWithExpertise[] = [
     minimumExpertise: ExpertiseLevelNumber.developer,
     isDisabled: false,
     hasUserDefinedValues: false,
+    ID: "splittun",
+    Name: "Split Tunnel",
+    Description: "Split Tunnel Connections",
+    Modules: [
+      {
+        Name: "splittun",
+        Enabled: false
+      }
+    ],
+    ToggleOptionKey: "",
+    ExpertiseLevel: "user",
+    ConfigKeySpace: "config:splittun/",
+    ReleaseLevel: 0,
+    _meta: {
+      Created: 0,
+      Modified: 0,
+      Expires: 0,
+      Deleted: 0,
+      Key: "runtime:subsystems/splittun"
+    }
+  },
+  {
+    minimumExpertise: ExpertiseLevelNumber.developer,
+    isDisabled: false,
+    hasUserDefinedValues: false,
     ID: "spn",
     Name: "SPN",
     Description: "Safing Privacy Network",

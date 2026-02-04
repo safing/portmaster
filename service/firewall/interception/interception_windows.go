@@ -58,7 +58,7 @@ func startInterception(packets chan packet.Packet) error {
 
 		// Start packet handler.
 		module.mgr.Go("kext packet handler", func(w *mgr.WorkerCtx) error {
-			kext2.Handler(w.Ctx(), packets, BandwidthUpdates, RedirectRequests)
+			kext2.Handler(w.Ctx(), packets, BandwidthUpdates, BindRequests)
 			return nil
 		})
 
@@ -138,6 +138,18 @@ func UpdateVerdictOfConnection(conn *network.Connection) error {
 		return kext1.UpdateVerdict(conn)
 	}
 	return kext2.UpdateVerdict(conn)
+}
+
+func EnableSplitTunnel(enable bool) error {
+	if useOldKext {
+		return fmt.Errorf("Split Tunnel functionality is not supported with old kext")
+	}
+
+	if enable {
+		return kext2.EnableSplitTunnel()
+	} else {
+		return kext2.DisableSplitTunnel()
+	}
 }
 
 // GetKextVersion returns the version of the kernel extension.

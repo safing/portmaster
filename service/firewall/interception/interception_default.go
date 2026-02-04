@@ -28,3 +28,8 @@ func ResetVerdictOfAllConnections() error {
 func UpdateVerdictOfConnection(conn *network.Connection) error {
 	return nil
 }
+
+func EnableSplitTunnel(enable bool) error {
+	log.Critical("interception: split tunneling is not supported on this platform")
+	return nil
+}

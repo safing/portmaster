@@ -512,6 +512,11 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 }
 
 // FilterConnection runs all the filtering (and tunneling) procedures.
+//
+// If checkTunnel is true, it also checks if the connection should be
+// tunneled through SPN or split-tunneled through a local interface.
+// Split-tunneling takes precedence over SPN tunneling, so a connection
+// will not use SPN if it matches split-tunnel criteria.
 func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet, checkFilter, checkTunnel bool) {
 	// Skip if data is not complete.
 	if !conn.DataIsComplete() {
@@ -543,9 +548,20 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 		conn.Encrypted = true
 	}
 
-	// Check if connection should be tunneled.
 	if checkTunnel {
-		checkTunneling(ctx, conn)
+		// Check connection if it split-tunneled correctly.
+		splittun_local_ip := GetSplitTunVerdictForConnection(conn)
+		if splittun_local_ip != nil {
+			if !conn.LocalIP.Equal(*splittun_local_ip) {
+				conn.Block("split-tunneling violation: local address mismatch", "")
+			}
+		}
+
+		// Check if connection should be tunneled through SPN.
+		// Split-tunneling takes precedence over SPN tunneling.
+		if splittun_local_ip == nil {
+			checkTunneling(ctx, conn)
+		}
 	}
 
 	// Request tunneling if no tunnel is set and connection should be tunneled.
@@ -845,6 +861,17 @@ func packetHandler(w *mgr.WorkerCtx) error {
 			} else {
 				return errors.New("received nil packet from interception")
 			}
+		}
+	}
+}
+
+func redirectRequestsHandler(w *mgr.WorkerCtx) error {
+	for {
+		select {
+		case <-w.Done():
+			return nil
+		case rq := <-interception.BindRequests:
+			handleRedirectRequest(rq)
 		}
 	}
 }
