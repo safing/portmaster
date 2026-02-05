@@ -714,9 +714,9 @@ Examples:
 	cfgOptionSplitTunInterface = config.Concurrent.GetAsString(CfgOptionSplitTunInterfaceKey, "")
 	cfgStringOptions[CfgOptionSplitTunInterfaceKey] = cfgOptionSplitTunInterface
 
-	// Split Tunnel: Block When Interface Unavailable
+	// Split Tunnel: Block On Fallback
 	err = config.Register(&config.Option{
-		Name:           "Block When Local Interface Unavailable",
+		Name:           "Block On Fallback",
 		Key:            CfgOptionSplitTunBlockOnFallbackKey,
 		Description:    "Block connections when the specified local interface is not available, rather than allowing them through another interface.",
 		OptType:        config.OptTypeBool,

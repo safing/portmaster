@@ -550,8 +550,10 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 
 	if checkTunnel {
 		// Check connection if it split-tunneled correctly.
-		splittun_local_ip := GetSplitTunVerdictForConnection(conn)
-		if splittun_local_ip != nil {
+		splittun_local_ip, blockReason := GetSplitTunVerdictForConnection(conn)
+		if blockReason != "" {
+			conn.Block(blockReason, "")
+		} else if splittun_local_ip != nil {
 			if !conn.LocalIP.Equal(*splittun_local_ip) {
 				conn.Block("split-tunneling violation: local address mismatch", "")
 			}

@@ -46,11 +46,13 @@ type LayeredProfile struct {
 	FilterCNAMEs        config.BoolOption   `json:"-"`
 	PreventBypassing    config.BoolOption   `json:"-"`
 	DomainHeuristics    config.BoolOption   `json:"-"`
-	SplitTunInterface   config.StringOption `json:"-"`
 	UseSPN              config.BoolOption   `json:"-"`
 	SPNRoutingAlgorithm config.StringOption `json:"-"`
 	EnableHistory       config.BoolOption   `json:"-"`
 	KeepHistory         config.IntOption    `json:"-"`
+
+	SplitTunInterface       config.StringOption `json:"-"`
+	SplitTunBlockOnFallback config.BoolOption   `json:"-"`
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -117,6 +119,10 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	lp.SplitTunInterface = lp.wrapStringOption(
 		CfgOptionSplitTunInterfaceKey,
 		cfgOptionSplitTunInterface,
+	)
+	lp.SplitTunBlockOnFallback = lp.wrapBoolOption(
+		CfgOptionSplitTunBlockOnFallbackKey,
+		cfgOptionSplitTunBlockOnFallback,
 	)
 	lp.UseSPN = lp.wrapBoolOption(
 		CfgOptionUseSPNKey,
