@@ -66,14 +66,22 @@ echo "[ ] Initializing binary files"
 # Upon initial install, /usr/bin/portmaster gets foisted from archive unpacking.
 # Upon reconfiguration or reinstall, this state is undefined.
 cksum(){
-	# Checksum command nomrally dumps other info besides the actual checksum
+	# Checksum command normally dumps other info besides the actual checksum
 	# which clobbers shell comparisons. This is functional and POSIX compliant
 	command cksum "$@" | tr '[:space:]' "\n" | head -n 1;
 }
-if test "$(cksum /usr/bin/portmaster)" != "$(cksum /usr/lib/portmaster/ui-wrapper)"; then
+
+# protects from early installer termination via SIGKILL or SIGINT
+# leading to broken package state after dpkg-reconfigure or apt --fix-broken
+if test -f "/usr/bin/portmaster"; then
+	UI_CKSUM="$(cksum /usr/bin/portmaster)";
+	WRAP_CKSUM="$(cksum /usr/lib/portmaster/ui-wrapper)";
+
 	# When /usr/bin/portmaster is not the ui-wrapper, the state must be either
 	# a reinstall or upgrade and not reconfigure.
-	mv /usr/bin/portmaster /usr/lib/portmaster/portmaster-ui;
+	if test "$UI_CKSUM" != "$WRAP_CKSUM"; then 
+		mv /usr/bin/portmaster /usr/lib/portmaster/portmaster-ui;
+	fi;
 fi;
 chmod +x /usr/lib/portmaster/ui-wrapper;
 ln -srf /usr/lib/portmaster/ui-wrapper /usr/bin/portmaster;
