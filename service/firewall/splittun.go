@@ -38,6 +38,11 @@ func getSplitTunVerdictForPid(processID uint64) (redirectTo_ipv4 *net.IP, redire
 		return nil, nil
 	}
 
+	// Check if the layered profile needs updating.
+	if profile.NeedsUpdate() {
+		profile.Update(proc.MatchingData(), proc.CreateProfileCallback)
+	}
+
 	redirectTo_ipv4, redirectTo_ipv6, _ = getSplitTunVerdict(profile)
 	return redirectTo_ipv4, redirectTo_ipv6
 }
@@ -46,7 +51,26 @@ func getSplitTunVerdictForPid(processID uint64) (redirectTo_ipv4 *net.IP, redire
 // It returns the IP address to which traffic should be redirected, or nil if no redirection is needed (permit).
 // If 'blockReason' is non-empty, the connection should be blocked for that reason.
 func GetSplitTunVerdictForConnection(conn *network.Connection) (redirectToAddress *net.IP, blockReason string) {
-	local_ipv4, local_ipv6, blockReason := getSplitTunVerdict(conn.Process().Profile())
+
+	// Don't apply split-tunneling to loopback connections.
+	if conn.Entity.IP.IsLoopback() {
+		return nil, ""
+	}
+
+	layeredProfile := conn.Process().Profile()
+
+	// Check if the layered profile needs updating.
+	if layeredProfile != nil && layeredProfile.NeedsUpdate() {
+		// Update revision counter in connection.
+		conn.ProfileRevisionCounter = layeredProfile.Update(
+			conn.Process().MatchingData(),
+			conn.Process().CreateProfileCallback,
+		)
+		conn.SaveWhenFinished()
+	}
+
+	// Get split-tunneling verdict
+	local_ipv4, local_ipv6, blockReason := getSplitTunVerdict(layeredProfile)
 	local_ip := local_ipv4
 	if conn.IPVersion == packet.IPv6 {
 		local_ip = local_ipv6

@@ -16,7 +16,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
         // and/or port during the bind operation on a TCP or UDP socket.
         Callout::new(
             "Portmaster Bind Redirect IPv4",
-            "Portmaster uses this layer to redirect UDP socket binds to specific interfaces (IPv4)",            
+            "Portmaster uses this layer for split-tunneling (IPv4)",
             0x68309231_F0C9_4CF5_83A5_C44251FC36E3,
             Layer::AleBindRedirectV4,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
@@ -26,7 +26,7 @@ pub fn get_callout_vec() -> Vec<Callout> {
         ),
         Callout::new(
             "Portmaster Bind Redirect IPv6",
-            "Portmaster uses this layer to redirect UDP socket binds to specific interfaces (IPv6)",
+            "Portmaster uses this layer for split-tunneling (IPv6)",
             0x2BE7399E_994E_40B1_B236_227F4E12B379,
             Layer::AleBindRedirectV6,
             consts::FWP_ACTION_CALLOUT_TERMINATING,
