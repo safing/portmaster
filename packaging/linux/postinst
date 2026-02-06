@@ -63,9 +63,20 @@ if command -V semanage >/dev/null 2>&1; then
 fi
 
 echo "[ ] Initializing binary files"
-mv /usr/bin/portmaster /usr/lib/portmaster/portmaster-ui;
+# Upon initial install, /usr/bin/portmaster gets foisted from archive unpacking.
+# Upon reconfiguration or reinstall, this state is undefined.
+cksum(){
+	# Checksum command nomrally dumps other info besides the actual checksum
+	# which clobbers shell comparisons. This is functional and POSIX compliant
+	command cksum "$@" | tr '[:space:]' "\n" | head -n 1;
+}
+if test "$(cksum /usr/bin/portmaster)" != "$(cksum /usr/lib/portmaster/ui-wrapper)"; then
+	# When /usr/bin/portmaster is not the ui-wrapper, the state must be either
+	# a reinstall or upgrade and not reconfigure.
+	mv /usr/bin/portmaster /usr/lib/portmaster/portmaster-ui;
+fi;
 chmod +x /usr/lib/portmaster/ui-wrapper;
-ln -sr /usr/lib/portmaster/ui-wrapper /usr/bin/portmaster;
+ln -srf /usr/lib/portmaster/ui-wrapper /usr/bin/portmaster;
 
 chmod +x /usr/lib/portmaster/portmaster-core
 

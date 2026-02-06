@@ -2,7 +2,7 @@
 
 # NOTE: This is a workaround for a WebkitGTK issue detailed in:
 #   -> https://github.com/flusterIO/fluster/issues/11
-if command -v "loginctl" 1>&2 2>/dev/null; then
+if command -v "loginctl" >/dev/null 2>&1; then
 	case "$(loginctl -P Type show-session auto)" in
 		("x11")
 			exec /usr/lib/portmaster/portmaster-ui "$@"; 
@@ -14,7 +14,7 @@ if command -v "loginctl" 1>&2 2>/dev/null; then
 		;;
 	esac;
 else
-	# Assume worst case scenario for compatability with Wayland in
+	# Assume worst case scenario for compatibility with Wayland in
 	# distributions that choose to avoid Systemd.
 	WEBKIT_DISABLE_DMABUF_RENDERER=1 \
 	WEBKIT_DISABLE_COMPOSITING_MODE=1 \
