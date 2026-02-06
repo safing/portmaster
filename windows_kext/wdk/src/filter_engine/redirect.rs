@@ -8,7 +8,8 @@ use crate::ffi::{
     FwpsAcquireWritableLayerDataPointer0,
     FwpsApplyModifiedLayerData0,
     FwpsCompleteClassify0,
-    FWPS_BIND_REQUEST0};
+    FWPS_BIND_REQUEST0,
+    FWPS_CONNECT_REQUEST0};
 
 use super::{callout_data::CalloutData, classify::ClassifyOut};
 
@@ -16,6 +17,12 @@ pub struct PendRedirectResult {
     pub classify_handle: u64,       // FwpsClassifyHandle from FwpsAcquireClassifyHandle0()
     pub filter_id: u64,             // Filter ID used for the pend operation
     pub classify_out: ClassifyOut,  // ClassifyOut from FwpsPendClassify0() (DEEP COPY! The original classifyOut is on the stack)
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum RedirectLayer {
+    BindRedirect,
+    ConnectRedirect,    
 }
 
 /// Wrapper for WFP redirect operations.
@@ -34,15 +41,16 @@ impl Redirector {
     }
 
     /// Apply a redirect modification immediately.
-    /// Must be called from classify function of a BIND_REDIRECT layer callout.
-    pub fn redirect(&self, data: &mut CalloutData, new_local_ip: IpAddress) -> Result<(), i32> {
+    /// In general, it must be called from classify function of a BIND_REDIRECT layer callout.
+    /// But can also be called from CONNECT_REDIRECT layer callout (try to avoid this if possible).
+    pub fn redirect(&self, data: &mut CalloutData, new_local_ip: IpAddress, layer: RedirectLayer) -> Result<(), i32> {
         // Acquire classify handle
         let mut classify_handle: u64 = 0;
         let status = unsafe {
             FwpsAcquireClassifyHandle0(data.classify_context, 0, &mut classify_handle)
         };
         if status != 0 {
-            crate::err!("FwpsAcquireClassifyHandle0 failed: {:#x}", status);
+            crate::err!("FwpsAcquireClassifyHandle0 ({:?}) failed: {:#x}", layer, status);
             return Err(status);
         }
 
@@ -51,9 +59,10 @@ impl Redirector {
                 classify_handle,
                 data.filter_id,
                 &mut *data.classify_out,
-                &new_local_ip
+                &new_local_ip,
+                layer
                 )
-                .map_err(|err| { crate::err!("Failed to apply bind redirect modification: {:#x}", err); err})
+                .map_err(|err| { crate::err!("Failed to apply {:?} redirect modification: {:#x}", layer, err); err})
         };
 
         // Set action based on result
@@ -142,7 +151,8 @@ impl Redirector {
                 pend_result.classify_handle,
                 pend_result.filter_id,
                 &mut pend_result.classify_out,
-                ip
+                ip,
+                RedirectLayer::BindRedirect
             )
                 .map_err(|err| { crate::err!("Failed to apply bind redirect modification: {:#x}", err); err})
         } else {
@@ -180,6 +190,7 @@ impl Redirector {
         filter_id: u64,                 // Filter ID 
         classify_out: &mut ClassifyOut, // ClassifyOut from FwpsPendClassify0()
         new_local_ip: &IpAddress,       // New local IP address to set
+        layer: RedirectLayer
     ) -> Result<(), i32> {        
         // Acquire writable layer data pointer
         let mut writable_data: *mut c_void = core::ptr::null_mut();        
@@ -193,25 +204,47 @@ impl Redirector {
             )
         };
         if status != 0 {
-            crate::err!("FwpsAcquireWritableLayerDataPointer0 (bind) failed: {:#x}", status);
+            crate::err!("FwpsAcquireWritableLayerDataPointer0 ({:?}) failed: {:#x}", layer, status);
             return Err(status);
         }
                 
-        // Modify the local address in the bind request
-        let bind_req = writable_data as *mut FWPS_BIND_REQUEST0;
         let result = unsafe {
-            // Set the new local IP address
-            let ret = (*bind_req).local_address_and_port.set_ip(new_local_ip);
-            match ret {
-                Ok(_) => {
-                    crate::dbg!("Bind redirect: set local IP to {:?}", new_local_ip);
-                    Ok(())
-                },
-                Err(e) => {
-                    crate::err!("Failed to set bind IP address: {}", e);
-                    Err(-1)
+            match layer {
+                RedirectLayer::BindRedirect => {
+                    // Modify the local address in the bind request
+                    let bind_req = writable_data as *mut FWPS_BIND_REQUEST0;
+                    
+                    // Set the new local IP address
+                    let ret = (*bind_req).local_address_and_port.set_ip(new_local_ip);
+                    match ret {
+                        Ok(_) => {
+                            crate::dbg!("Bind redirect: set local IP to {:?}", new_local_ip);
+                            Ok(())
+                        },
+                        Err(e) => {
+                            crate::err!("(bind) Failed to set local IP address : {}", e);
+                            Err(-1)
+                        }
+                    }
                 }
-            }            
+                RedirectLayer::ConnectRedirect => {
+                    let conn_req = writable_data as *mut FWPS_CONNECT_REQUEST0;
+                    
+                    // Set the new local IP address
+                    let ret = (*conn_req).local_address_and_port.set_ip(new_local_ip);
+                    match ret {
+                        Ok(_) => {
+                            // No necessary to update local_redirect_handle, since we are not redirecting to a local proxy
+                            // (*conn_req).local_redirect_handle = self.redirect_handle;
+                            Ok(())
+                        },
+                        Err(e) => {
+                            crate::err!("(connect) Failed to set local IP address: {}", e);
+                            Err(-1)
+                        }
+                    }
+                }
+            }
         };
 
         // Apply the modifications

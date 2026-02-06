@@ -3,13 +3,17 @@ use protocol::info::Info;
 use wdk::{
     filter_engine::{ 
         callout_data::CalloutData, 
-        layer::{FieldsAleBindRedirectV4, FieldsAleBindRedirectV6},
+        layer::{FieldsAleBindRedirectV4, FieldsAleBindRedirectV6, FieldsAleConnectRedirectV4, FieldsAleConnectRedirectV6},
         redirect::PendRedirectResult,
+        redirect::RedirectLayer,
     },
 };
 use smoltcp::wire::{ IpAddress, IpProtocol, Ipv4Address, Ipv6Address };
 
 use crate::ale_redirects_cache::BindRedirectKey;
+
+const IPV4_LOOPBACK: IpAddress = IpAddress::Ipv4(Ipv4Address([127, 0, 0, 1]));
+const IPV6_LOOPBACK: IpAddress = IpAddress::Ipv6(Ipv6Address::LOOPBACK);
 
 fn get_protocol(data: &CalloutData, index: usize) -> IpProtocol {
     IpProtocol::from(data.get_value_u8(index))
@@ -116,7 +120,7 @@ fn ale_layer_bind_redirect(mut data: CalloutData, bind_data: &AleBindRedirectDat
                 }
                 // We have already valid redirection verdict for this bind.
                 // Do redirection and do not notify user-mode again.
-                match device.redirector.redirect(&mut data, addr)
+                match device.redirector.redirect(&mut data, addr, RedirectLayer::BindRedirect)
                 {
                     Ok(()) => {
                         crate::dbg!("ALE Bind Redirect: pid={} {} => {} (apply cached redirection)",
@@ -191,4 +195,124 @@ fn ale_layer_bind_redirect(mut data: CalloutData, bind_data: &AleBindRedirectDat
 /// Build bind redirection request info to be sent to user-mode.
 fn build_bind_info(pr_cache_id: u64, bind_data: &AleBindRedirectData) -> Result<Info, String> {
     Ok(protocol::info::bind_request(pr_cache_id, bind_data.process_id))
+}
+
+// ============================================================================
+// CONNECT_REDIRECT Layer Callouts
+// ============================================================================
+/// Connect redirect data (has local and remote address info)
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
+pub struct AleConnectRedirectData {
+    is_ipv6: bool,
+    pub(crate)  local_ip: IpAddress,
+    pub(crate)  local_port: u16,
+    pub(crate)  remote_ip: IpAddress,
+    pub(crate)  remote_port: u16,
+    pub(crate)  protocol: IpProtocol,
+    pub(crate)  process_id: u64,
+}
+
+pub fn connect_redirect_v4(data: CalloutData) {
+    type Fields = FieldsAleConnectRedirectV4;
+
+    let ale_redirect_data = AleConnectRedirectData {
+        is_ipv6: false,
+        //redirect_records: data.get_redirect_records(),
+        process_id: data.get_process_id().unwrap_or(0),
+        protocol: get_protocol(&data, Fields::IpProtocol as usize),
+        local_ip: get_ipv4_address(&data, Fields::IpLocalAddress as usize),
+        local_port: data.get_value_u16(Fields::IpLocalPort as usize),
+        remote_ip: get_ipv4_address(&data, Fields::IpRemoteAddress as usize),
+        remote_port: data.get_value_u16(Fields::IpRemotePort as usize),
+    };
+
+    ale_layer_connect_redirect(data, &ale_redirect_data);
+}
+
+pub fn connect_redirect_v6(data: CalloutData) {
+    type Fields = FieldsAleConnectRedirectV6;
+
+    let ale_redirect_data = AleConnectRedirectData {
+        is_ipv6: true,
+        //redirect_records: data.get_redirect_records(),
+        process_id: data.get_process_id().unwrap_or(0),
+        protocol: get_protocol(&data, Fields::IpProtocol as usize),
+        local_ip: get_ipv6_address(&data, Fields::IpLocalAddress as usize),
+        local_port: data.get_value_u16(Fields::IpLocalPort as usize),
+        remote_ip: get_ipv6_address(&data, Fields::IpRemoteAddress as usize),
+        remote_port: data.get_value_u16(Fields::IpRemotePort as usize),
+    };
+
+    ale_layer_connect_redirect(data, &ale_redirect_data);
+}
+
+fn ale_layer_connect_redirect(mut data: CalloutData, ale_data: &AleConnectRedirectData) {
+    // Make the default path as permit.
+    data.action_permit();
+
+    let Some(device) = crate::entry::get_device() else {
+        return;
+    };
+
+    if !matches!(ale_data.protocol, IpProtocol::Tcp | IpProtocol::Udp) {
+        return;
+    }
+
+    let is_remote_loopback = match &ale_data.remote_ip {
+        IpAddress::Ipv4(ip) => ip.is_loopback(),
+        IpAddress::Ipv6(ip) => ip.is_loopback(),
+    };
+
+    // Check only one specific case:
+    // - Remote is loopback but local is not loopback.
+    // Other cases are ignored.
+
+    if !is_remote_loopback {
+        // Remote is not loopback, no special handling needed.
+        return;
+    }
+    
+    let is_local_loopback = match &ale_data.local_ip {
+        IpAddress::Ipv4(ip) => ip.is_loopback(),
+        IpAddress::Ipv6(ip) => ip.is_loopback(),
+    };
+
+    if is_local_loopback {
+        // Local is loopback, remote is loopback - looks like normal local connection, nothing to do.
+        return;
+    }
+
+    // Looks like collision with loopback address:
+    // destination loopback address should not be used in with non-loopback local address.
+    // It seems we changed local address in ALE_BIND_REDIRECT layer.
+    // If so - revert source address to loopback.
+    
+    // Check if we already have bind verdict for this PID
+    let bind_key = BindRedirectKey::new(ale_data.process_id);
+    if let Some(bind_verdict) = device.bind_redirect_cache.get(bind_key) {
+        match bind_verdict.get_address(ale_data.is_ipv6) {
+            None => {
+                // We did not touch local address in bind redirect.
+                // Nothing to revert.
+            }
+            Some(_) => {
+                // We have already valid redirection verdict for this bind.
+                // So the local address was changed by us in bind redirect. 
+                // We should revert it back to loopback.
+                let loopback_addr = if ale_data.is_ipv6 { IPV6_LOOPBACK } else { IPV4_LOOPBACK };
+
+                match device.redirector.redirect(&mut data, loopback_addr, RedirectLayer::ConnectRedirect)
+                {
+                    Ok(()) => {
+                        crate::dbg!("ALE Connect Redirect: restore source to loopback. pid={} {:?} {}:{} => {}:{}",
+                            ale_data.process_id, ale_data.protocol, loopback_addr, ale_data.local_port, ale_data.remote_ip, ale_data.remote_port );
+                    },
+                    Err(err_code) => {
+                        crate::err!("ALE Connect Redirect: restore source to loopback failed (pid={} {:?} {}:{} => {}:{}): {:#x}",
+                            ale_data.process_id, ale_data.protocol, loopback_addr, ale_data.local_port, ale_data.remote_ip, ale_data.remote_port, err_code );
+                    }
+                } 
+            }
+        }
+    }
 }
