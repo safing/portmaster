@@ -115,6 +115,9 @@
           "/var/lib/portmaster/intel/notifications.yaml": "intel/notifications.yaml",
           "/var/lib/portmaster/intel/news.yaml"         : "intel/news.yaml",
 
+          // Scripts
+          "/usr/lib/portmaster/ui-wrapper": "../../../packaging/linux/ui-wrapper",
+
           // Shortcut
           "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
         },
