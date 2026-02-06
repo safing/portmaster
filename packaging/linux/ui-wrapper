@@ -1,0 +1,22 @@
+#!/bin/sh -e
+
+# NOTE: This is a workaround for a WebkitGTK issue detailed in:
+#   -> https://github.com/flusterIO/fluster/issues/11
+if command -v "loginctl" 1>&2 2>/dev/null; then
+	case "$(loginctl -P Type show-session auto)" in
+		("x11")
+			exec /usr/lib/portmaster/portmaster-ui "$@"; 
+		;;
+		(*)
+			WEBKIT_DISABLE_DMABUF_RENDERER=1 \
+			WEBKIT_DISABLE_COMPOSITING_MODE=1 \
+			exec /usr/lib/portmaster/portmaster-ui "$@";
+		;;
+	esac;
+else
+	# Assume worst case scenario for compatability with Wayland in
+	# distributions that choose to avoid Systemd.
+	WEBKIT_DISABLE_DMABUF_RENDERER=1 \
+	WEBKIT_DISABLE_COMPOSITING_MODE=1 \
+	exec /usr/lib/portmaster/portmaster-ui "$@";
+fi;

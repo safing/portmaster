@@ -63,8 +63,9 @@ if command -V semanage >/dev/null 2>&1; then
 fi
 
 echo "[ ] Initializing binary files"
-mv /usr/bin/portmaster /usr/lib/portmaster/portmaster
-ln -s /usr/lib/portmaster/portmaster /usr/bin/portmaster 
+mv /usr/bin/portmaster /usr/lib/portmaster/portmaster-ui;
+chmod +x /usr/lib/portmaster/ui-wrapper;
+ln -sr /usr/lib/portmaster/ui-wrapper /usr/bin/portmaster;
 
 chmod +x /usr/lib/portmaster/portmaster-core
 
