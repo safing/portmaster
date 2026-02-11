@@ -37,22 +37,21 @@ pub struct PendedRedirect {
 // ============================================================================
 /// Bind redirect data (only has local address info, no remote)
 struct AleBindRedirectData {
-    is_ipv6: bool,
-    pub process_id: u64,
-    pub protocol: IpProtocol,
-    pub local_address: IpAddress,   // usually zeroed at ALE_BIND_REDIRECT stage
-    pub local_port: u16,            // usually zeroed at ALE_BIND_REDIRECT stage
+    is_ipv6: bool, 
+    key: BindRedirectKey,
 }
-
+    
 pub fn bind_redirect_v4(data: CalloutData) {
     type Fields = FieldsAleBindRedirectV4;
 
     let bind_data = AleBindRedirectData {
         is_ipv6: false,
-        process_id: data.get_process_id().unwrap_or(0),
-        protocol: get_protocol(&data, Fields::IpProtocol as usize),
-        local_address: get_ipv4_address(&data, Fields::IpLocalAddress as usize),
-        local_port: data.get_value_u16(Fields::IpLocalPort as usize),
+        key: BindRedirectKey::new(
+            data.get_process_id().unwrap_or(0),
+            get_protocol(&data, Fields::IpProtocol as usize),
+            get_ipv4_address(&data, Fields::IpLocalAddress as usize),
+            data.get_value_u16(Fields::IpLocalPort as usize),
+        ),
     };
 
     ale_layer_bind_redirect(data, &bind_data);
@@ -63,10 +62,12 @@ pub fn bind_redirect_v6(data: CalloutData) {
 
     let bind_data = AleBindRedirectData {
         is_ipv6: true,
-        process_id: data.get_process_id().unwrap_or(0),
-        protocol: get_protocol(&data, Fields::IpProtocol as usize),
-        local_address: get_ipv6_address(&data, Fields::IpLocalAddress as usize),
-        local_port: data.get_value_u16(Fields::IpLocalPort as usize),
+        key: BindRedirectKey::new(
+            data.get_process_id().unwrap_or(0),
+            get_protocol(&data, Fields::IpProtocol as usize),
+            get_ipv6_address(&data, Fields::IpLocalAddress as usize),
+            data.get_value_u16(Fields::IpLocalPort as usize),
+        ),
     };
 
     ale_layer_bind_redirect(data, &bind_data);
@@ -84,13 +85,13 @@ fn ale_layer_bind_redirect(mut data: CalloutData, bind_data: &AleBindRedirectDat
     };
 
     // Only handle TCP and UDP protocols
-    if !matches!(bind_data.protocol, IpProtocol::Tcp | IpProtocol::Udp) {        
+    if !matches!(bind_data.key.protocol, IpProtocol::Tcp | IpProtocol::Udp) {        
         data.action_permit();
         return;
     }
 
     // Skip localhost/loopback addresses - no need to redirect
-    let is_loopback = match bind_data.local_address {
+    let is_loopback = match bind_data.key.local_address {
             IpAddress::Ipv4(ip) => ip.is_loopback(),
             IpAddress::Ipv6(ip) => ip.is_loopback(),
         };
@@ -98,10 +99,22 @@ fn ale_layer_bind_redirect(mut data: CalloutData, bind_data: &AleBindRedirectDat
         data.action_permit();
         return;
     }
-    
+/*
+    if bind_data.key.local_port == 817 || bind_data.key.local_port == 717 {
+        crate::dbg!("ALE Bind Redirect: Skipping redirection for port {} - {} {:?} {}:{}", bind_data.key.local_port,
+        bind_data.key.process_id,
+        bind_data.key.protocol,
+        bind_data.key.local_address,
+        bind_data.key.local_port
+    );
+        data.action_permit();
+        return;
+    }
+*/
+
     // Check if we already have bind verdict for this PID
-    let bind_key = BindRedirectKey::new(bind_data.process_id);
-    if let Some(bind_verdict) = device.bind_redirect_cache.get(bind_key) {
+    //let bind_key = BindRedirectKey::new(bind_data.process_id);
+    if let Some(bind_verdict) = device.bind_redirect_cache.get(bind_data.key) {
         match bind_verdict.get_address(bind_data.is_ipv6) {
             None => {
                 // No bind redirect. Allow original bind
@@ -109,7 +122,7 @@ fn ale_layer_bind_redirect(mut data: CalloutData, bind_data: &AleBindRedirectDat
                 return;
             }
             Some(addr) => {
-                if addr.eq(&bind_data.local_address) {
+                if addr.eq(&bind_data.key.local_address) {
                     // cached verdict matches requested local address - permit, no redirection needed    
                     data.action_permit();
                     return;
@@ -120,7 +133,7 @@ fn ale_layer_bind_redirect(mut data: CalloutData, bind_data: &AleBindRedirectDat
                 {
                     Ok(()) => {
                         crate::dbg!("ALE Bind Redirect: pid={} {} => {} (apply cached redirection)",
-                            bind_data.process_id, bind_data.protocol, addr );
+                            bind_data.key.process_id, bind_data.key.protocol, addr );
                         return
                     },
                     Err(err_code) => {
@@ -144,15 +157,15 @@ fn ale_layer_bind_redirect(mut data: CalloutData, bind_data: &AleBindRedirectDat
     // Store the pended redirect info in the redirect cache
     let pr_cache_id = device.redirect_cache.push(PendedRedirect {
             pend_redirect_result,
-            key: bind_key,
-            ipv6: bind_data.is_ipv6,
+            key: bind_data.key,
+            ipv6: bind_data.is_ipv6, //bind_data.key.local_address.version() == IpVersion::Ipv6,
         });
 
     crate::dbg!("ALE Bind Redirect: PID={} {:?} {}:{} (id={})",
-        bind_data.process_id,
-        bind_data.protocol,
-        bind_data.local_address,
-        bind_data.local_port,
+        bind_data.key.process_id,
+        bind_data.key.protocol,
+        bind_data.key.local_address,
+        bind_data.key.local_port,
         pr_cache_id
     );
 
@@ -190,5 +203,22 @@ fn ale_layer_bind_redirect(mut data: CalloutData, bind_data: &AleBindRedirectDat
 
 /// Build bind redirection request info to be sent to user-mode.
 fn build_bind_info(pr_cache_id: u64, bind_data: &AleBindRedirectData) -> Result<Info, String> {
-    Ok(protocol::info::bind_request(pr_cache_id, bind_data.process_id))
+        match bind_data.key.local_address {
+        IpAddress::Ipv4(ip) => {
+            Ok(protocol::info::bind_request_v4(
+                pr_cache_id, 
+                bind_data.key.process_id, 
+                u8::from(bind_data.key.protocol), 
+                ip.0, 
+                bind_data.key.local_port))
+        }
+        IpAddress::Ipv6(ip) => {
+            Ok(protocol::info::bind_request_v6(
+                pr_cache_id, 
+                bind_data.key.process_id, 
+                u8::from(bind_data.key.protocol), 
+                ip.0, 
+                bind_data.key.local_port))
+        }
+    }
 }

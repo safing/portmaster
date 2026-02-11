@@ -191,7 +191,13 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
                 // If we had redirected the connection, finalize the verdict here.
                 // This prevents lower-weight WFP filters from overriding our permit decision.
                 // For example, this ensures IVPN's Firewall won't block connections we redirected.
-                let bind_key = BindRedirectKey::new(ale_data.process_id);
+                let bind_key = BindRedirectKey::new(
+                    ale_data.process_id,
+                    ale_data.protocol,
+                    ale_data.local_ip,
+                    ale_data.local_port
+                );
+
                 if let Some(bind_verdict) = device.bind_redirect_cache.get(bind_key) {
                     if let Some(local_addr) = bind_verdict.get_address(ale_data.is_ipv6) {
                         if local_addr.eq(&ale_data.local_ip) {

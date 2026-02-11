@@ -10,7 +10,8 @@ enum InfoType {
     ConnectionEndEventV6 = 4,
     BandwidthStatsV4 = 5,
     BandwidthStatsV6 = 6,
-    BindRequest =7,
+    BindRequestV4 = 7,
+    BindRequestV6 = 8,
 }
 
 // Fallow this pattern when adding new packets: [InfoType: u8, data_size_in_bytes: u32, data: ...]
@@ -284,17 +285,51 @@ pub fn connection_end_event_v6_info(
     info
 }
 
-pub fn bind_request(
+pub fn bind_request_v4(
     id: u64,
     process_id: u64,
+    protocol: u8,
+    local_ip: [u8; 4],
+    local_port: u16,
 ) -> Info {
     let size = get_combined_size!(
         id,
-        process_id);
-    let mut info = Info::new(InfoType::BindRequest, size);
+        process_id,
+        protocol,
+        local_ip,
+        local_port
+    );
+    let mut info = Info::new(InfoType::BindRequestV4, size);
     let vec = &mut info.0;
     push_bytes!(vec, id);
     push_bytes!(vec, process_id);
+    push_bytes!(vec, protocol);
+    push_bytes!(vec, local_ip);
+    push_bytes!(vec, local_port);
+    info
+}
+
+pub fn bind_request_v6(
+    id: u64,
+    process_id: u64,
+    protocol: u8,
+    local_ip: [u8; 16],
+    local_port: u16,
+) -> Info {
+    let size = get_combined_size!(
+        id,
+        process_id,
+        protocol,
+        local_ip,
+        local_port
+    );
+    let mut info = Info::new(InfoType::BindRequestV6, size);
+    let vec = &mut info.0;
+    push_bytes!(vec, id);
+    push_bytes!(vec, process_id);
+    push_bytes!(vec, protocol);
+    push_bytes!(vec, local_ip);
+    push_bytes!(vec, local_port);
     info
 }
 
@@ -498,7 +533,6 @@ fn generate_test_info_file() -> Result<(), std::io::Error> {
                 info.assert_size();
                 info.0
             }
-
             InfoType::ConnectionIpv6 => {
                 let info = connection_info_v6(
                     1,
@@ -577,6 +611,8 @@ fn generate_test_info_file() -> Result<(), std::io::Error> {
                 info.assert_size();
                 info.0
             }
+            InfoType::BindRequestV4 => todo!(),
+            InfoType::BindRequestV6 => todo!(),
         })?;
     }
 

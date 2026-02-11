@@ -35,7 +35,8 @@ pub enum CommandType {
     /// BindRequest notifications. It tells the driver whether to:
     /// - Allow the original bind operation (no redirect)
     /// - Redirect the bind to a specific local IP address
-    SplitTunnel           = 11,
+    SplitTunnelV4           = 11,
+    SplitTunnelV6           = 12,
 }
 
 #[repr(C, packed)]
@@ -77,17 +78,26 @@ pub struct UpdateV6 {
 /// Contains the verdict on how to handle the bind operation.
 #[repr(C, packed)]
 #[derive(Debug, PartialEq, Eq)]
-pub struct SplitTunnel {
+pub struct SplitTunnelV4 {
     /// ID from the original InfoBindRequest notification
     pub id: u64,
     /// IPv4 local address to bind to.
     /// - Unspecified (0.0.0.0) - Allow original bind without redirect
     /// - Specific address - Redirect bind to this IPv4 address
-    pub local_address_ipv4: [u8; 4],    
+    pub local_address: [u8; 4],
+}
+
+/// Response to a bind redirect request.
+/// Contains the verdict on how to handle the bind operation.
+#[repr(C, packed)]
+#[derive(Debug, PartialEq, Eq)]
+pub struct SplitTunnelV6 {
+    /// ID from the original InfoBindRequest notification
+    pub id: u64,   
     /// IPv6 local address to bind to.
     /// - Unspecified (::) - Allow original bind without redirect
     /// - Specific address - Redirect bind to this IPv6 address
-    pub local_address_ipv6: [u8; 16],    
+    pub local_address: [u8; 16],
 }
 
 pub fn parse_type(bytes: &[u8]) -> Option<CommandType> {
@@ -106,7 +116,11 @@ pub fn parse_update_v6(bytes: &[u8]) -> &UpdateV6 {
     as_type(bytes)
 }
 
-pub fn parse_split_tunnel(bytes: &[u8]) -> &SplitTunnel {
+pub fn parse_split_tunnel_v4(bytes: &[u8]) -> &SplitTunnelV4 {
+    as_type(bytes)
+}
+
+pub fn parse_split_tunnel_v6(bytes: &[u8]) -> &SplitTunnelV6 {
     as_type(bytes)
 }
 
@@ -190,10 +204,11 @@ fn test_go_command_file() {
                 CommandType::GetLogs => {}
                 CommandType::GetBandwidthStats => {}
                 CommandType::PrintMemoryStats => {}
-                CommandType::CleanEndedConnections => {}
-                CommandType::SplitTunnel => {}
+                CommandType::CleanEndedConnections => {}                
                 CommandType::EnableSplitTunnel => {}
                 CommandType::DisableSplitTunnel => {}
+                CommandType::SplitTunnelV4 => {}
+                CommandType::SplitTunnelV6 => {}
             }
         } else {
             panic!("Unknown command: {}", command[0]);

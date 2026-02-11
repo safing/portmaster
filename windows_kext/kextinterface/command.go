@@ -37,7 +37,8 @@ const (
 	// BindRequest notifications. It tells the driver whether to:
 	// - Allow the original bind operation (no redirect)
 	// - Redirect the bind to a specific local IP address
-	CommandSplitTunnel = 11
+	CommandSplitTunnelV4 = 11
+	CommandSplitTunnelV6 = 12
 )
 
 // KextVerdict is the verdict ID used to with the kext.
@@ -86,14 +87,20 @@ type UpdateV6 struct {
 	Verdict       uint8
 }
 
-// RedirectV4 command structure - response to RedirectionRequestV4
-type SplitTunnel struct {
+// SplitTunnelV4 command structure - response to BindRequestV4
+type SplitTunnelV4 struct {
 	Command uint8
 	ID      uint64
 	// IPv4 local address to bind to.
 	// - Unspecified (0.0.0.0) - Allow original bind without redirect
 	// - Specific address - Redirect bind to this IPv4 address
 	LocalAddress_IPv4 [4]byte // Local interface IP to redirect to (when Redirect = 1)
+}
+
+// SplitTunnelV6 command structure - response to BindRequestV6
+type SplitTunnelV6 struct {
+	Command uint8
+	ID      uint64
 	// IPv6 local address to bind to.
 	// - Unspecified (::) - Allow original bind without redirect
 	// - Specific address - Redirect bind to this IPv6 address
@@ -166,8 +173,14 @@ func SendDisableSplitTunnelCommand(writer io.Writer) error {
 	return err
 }
 
-// SendRedirectV4Command sends a redirect (split-tunnel) decision for a connection
-func SendSplitTunnelCommand(writer io.Writer, redirect SplitTunnel) error {
-	redirect.Command = CommandSplitTunnel
+// SendSplitTunnelCommandV4 sends a redirect (split-tunnel) decision for a connection
+func SendSplitTunnelCommandV4(writer io.Writer, redirect SplitTunnelV4) error {
+	redirect.Command = CommandSplitTunnelV4
+	return binary.Write(writer, binary.LittleEndian, redirect)
+}
+
+// SendSplitTunnelCommandV6 sends a redirect (split-tunnel) decision for a connection
+func SendSplitTunnelCommandV6(writer io.Writer, redirect SplitTunnelV6) error {
+	redirect.Command = CommandSplitTunnelV6
 	return binary.Write(writer, binary.LittleEndian, redirect)
 }

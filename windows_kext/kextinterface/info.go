@@ -15,7 +15,8 @@ const (
 	InfoConnectionEndEventV6 = 4
 	InfoBandwidthStatsV4     = 5
 	InfoBandwidthStatsV6     = 6
-	InfoBindRequest          = 7
+	InfoBindRequestV4        = 7
+	InfoBindRequestV6        = 8
 )
 
 var (
@@ -129,10 +130,22 @@ type BandwidthStatsArray struct {
 	ValuesV6 []BandwidthValueV6
 }
 
-// BindRequest represents a redirection (split-tunneling) request
-type BindRequest struct {
+// BindRequestV4 represents a redirection (split-tunneling) request
+type BindRequestV4 struct {
 	ID        uint64
 	ProcessID uint64
+	Protocol  byte
+	LocalIP   [4]byte
+	LocalPort uint16
+}
+
+// BindRequestV6 represents a redirection (split-tunneling) request
+type BindRequestV6 struct {
+	ID        uint64
+	ProcessID uint64
+	Protocol  byte
+	LocalIP   [16]byte
+	LocalPort uint16
 }
 
 type Info struct {
@@ -142,7 +155,8 @@ type Info struct {
 	ConnectionEndV6 *ConnectionEndV6
 	LogLine         *LogLine
 	BandwidthStats  *BandwidthStatsArray
-	BindRequest     *BindRequest
+	BindRequestV4   *BindRequestV4
+	BindRequestV6   *BindRequestV6
 }
 
 type readHelper struct {
@@ -385,14 +399,23 @@ func RecvInfo(reader io.Reader) (*Info, error) {
 
 			return &Info{BandwidthStats: &BandwidthStatsArray{Protocol: protocol, ValuesV6: statsArray}}, nil
 		}
-	case InfoBindRequest:
+	case InfoBindRequestV4:
 		{
-			var request BindRequest
+			var request BindRequestV4
 			err = helper.ReadData(&request)
 			if err != nil {
-				return nil, errors.New("failed to parse InfoRedirectRequestV4")
+				return nil, errors.New("failed to parse InfoBindRequestV4")
 			}
-			return &Info{BindRequest: &request}, nil
+			return &Info{BindRequestV4: &request}, nil
+		}
+	case InfoBindRequestV6:
+		{
+			var request BindRequestV6
+			err = helper.ReadData(&request)
+			if err != nil {
+				return nil, errors.New("failed to parse InfoBindRequestV6")
+			}
+			return &Info{BindRequestV6: &request}, nil
 		}
 	}
 

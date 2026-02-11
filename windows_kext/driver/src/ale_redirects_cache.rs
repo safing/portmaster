@@ -1,5 +1,5 @@
 use alloc::collections::BTreeMap;
-use smoltcp::wire::{IpAddress, Ipv4Address, Ipv6Address};
+use smoltcp::wire::{IpAddress, IpProtocol, IpVersion};
 use wdk::rw_spin_lock::RwSpinLock;
 
 /// Maximum allowed age for a bind redirect record in cache
@@ -10,11 +10,14 @@ const MAX_RECORD_AGE_MS: u64 = 60_000; // 60 seconds
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BindRedirectKey {
     pub process_id: u64,
+    pub protocol: IpProtocol,
+    pub local_address: IpAddress,   // usually zeroed at ALE_BIND_REDIRECT stage
+    pub local_port: u16,            // usually zeroed at ALE_BIND_REDIRECT stage
 }
 
 impl BindRedirectKey {
-    pub fn new(process_id: u64) -> Self {
-        Self { process_id }
+    pub fn new(process_id: u64, protocol: IpProtocol, local_address: IpAddress, local_port: u16) -> Self {
+        Self { process_id, protocol, local_address, local_port }
     }
 }
 
@@ -23,44 +26,37 @@ impl BindRedirectKey {
 pub struct BindRedirectValue {
     /// Timestamp when the entry was added, just for internal use (cleanup)    
     timestamp: u64, 
-    /// Verdict. Local address used in the bind redirect.
-    local_address_ipv4: Option<Ipv4Address>,
-    local_address_ipv6: Option<Ipv6Address>,
+    /// Verdict. Local address used in the bind redirect.    
+    local_address: Option<IpAddress>,
 }
 
 impl BindRedirectValue {
     /// Creates a new bind redirect verdict.
     /// 
     /// # Arguments
-    /// * `addr_ipv4` - IPv4 redirect decision:
-    ///     - Unspecified (0.0.0.0) - Allow original bind without redirect
-    ///     - Specific address - Redirect bind to this IPv4 address
-    /// 
-    /// * `addr_ipv6` - IPv6 redirect decision (same semantics as IPv4)
-    pub fn new(addr_ipv4: Ipv4Address, addr_ipv6: Ipv6Address) -> Self {
-        let local_address_ipv4 = if addr_ipv4.is_unspecified() { None } else { Some(addr_ipv4) };
-        let local_address_ipv6 = if addr_ipv6.is_unspecified() { None } else { Some(addr_ipv6) };
+    /// * `addr` - Redirect decision:
+    ///     - Unspecified (0.0.0.0 or ::) - Allow original bind without redirect
+    ///     - Specific address - Redirect bind to this address
+    pub fn new(addr: IpAddress) -> Self {
+        let local_address = if addr.is_unspecified() { None } else { Some(addr) };
+        
         Self {
             timestamp: wdk::utils::get_system_timestamp_ms(),
-            local_address_ipv4,
-            local_address_ipv6,
+            local_address,
         }
     }
 
     /// Returns the redirect address for the specified IP version.
     /// 
     /// # Arguments
-    /// * `ipv6` - `true` for IPv6, `false` for IPv4
+    /// * `ip_ver_expected` - Expected IP version
     /// 
     /// # Returns
     /// - `None` - Allow original bind (no redirect)
     /// - `Some(specific_ip)` - Redirect to specific IPv4 address
-    pub fn get_address(&self, ipv6: bool) -> Option<IpAddress> {
-        if ipv6 {
-            self.local_address_ipv6.map(|addr| IpAddress::Ipv6(addr))
-        } else {
-            self.local_address_ipv4.map(|addr| IpAddress::Ipv4(addr))
-        }
+    pub fn get_address(&self, is_ip_v6_expected: bool) -> Option<IpAddress> {
+        let ip_ver_expected = if is_ip_v6_expected { IpVersion::Ipv6 } else { IpVersion::Ipv4 };
+        self.local_address.filter(|addr| addr.version() == ip_ver_expected)
     }
 }
 

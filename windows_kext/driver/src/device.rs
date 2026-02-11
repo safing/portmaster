@@ -318,29 +318,43 @@ impl Device {
                     dbg!("Cleaned up {} old bind redirect cache entries", removed);
                 }
             }
-            CommandType::SplitTunnel => {
-                let redirect = protocol::command::parse_split_tunnel(buffer);
-                wdk::dbg!("SplitTunnel command: {:?}", redirect);
-
+            CommandType::SplitTunnelV4 => {
+                let redirect = protocol::command::parse_split_tunnel_v4(buffer);
+                wdk::dbg!("SplitTunnelV4 command: {:?}", redirect);
                 // Pop the pended redirect from cache
                 if let Some(pended) = self.redirect_cache.pop_id(redirect.id) {
-
                     // Store the redirect verdict in the bind redirect cache.
-                    // So, the ALE_CONNECT and ALE_BIND_REDIRECT callouts will know about it   
-                    let val = BindRedirectValue::new(
-                        Ipv4Address::from_bytes(&redirect.local_address_ipv4),
-                        Ipv6Address::from_bytes(&redirect.local_address_ipv6));                        
+                    let val = BindRedirectValue::new(IpAddress::Ipv4(Ipv4Address::from_bytes(&redirect.local_address)));
                     self.bind_redirect_cache.add(pended.key, val);
-
                     // Determine which local address to use for completing the pend operation.
                     let new_local_address = val.get_address(pended.ipv6);
-
                     // Complete the pended redirect operation
                     dbg!("Completing ALE Bind Redirect redirect for {:?}", redirect);
                     let result = self.redirector.complete_pend(
                             pended.pend_redirect_result,
                             new_local_address);
-                    
+                    if let Err(e) = result {
+                        err!("Failed to complete ALE Bind Redirect: {:#x}", e);
+                    }
+                } else {
+                    err!("SplitTunnel invalid id: {:?}", redirect);
+                }
+            }
+            CommandType::SplitTunnelV6 => {
+                let redirect = protocol::command::parse_split_tunnel_v6(buffer);
+                wdk::dbg!("SplitTunnelV6 command: {:?}", redirect);
+                // Pop the pended redirect from cache
+                if let Some(pended) = self.redirect_cache.pop_id(redirect.id) {
+                    // Store the redirect verdict in the bind redirect cache.
+                    let val = BindRedirectValue::new(IpAddress::Ipv6(Ipv6Address::from_bytes(&redirect.local_address)));
+                    self.bind_redirect_cache.add(pended.key, val);
+                    // Determine which local address to use for completing the pend operation.
+                    let new_local_address = val.get_address(pended.ipv6);
+                    // Complete the pended redirect operation
+                    dbg!("Completing ALE Bind Redirect redirect for {:?}", redirect);
+                    let result = self.redirector.complete_pend(
+                            pended.pend_redirect_result,
+                            new_local_address);
                     if let Err(e) = result {
                         err!("Failed to complete ALE Bind Redirect: {:#x}", e);
                     }

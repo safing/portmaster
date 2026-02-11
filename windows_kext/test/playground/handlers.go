@@ -119,8 +119,10 @@ func (app *App) connectionHandler() {
 			app.handleConnectionEndV6(info.ConnectionEndV6)
 		case info.LogLine != nil:
 			app.drvLog.Info("[%s] %s", severityString(info.LogLine.Severity), info.LogLine.Line)
-		case info.BindRequest != nil:
-			app.handleBindRequest(info.BindRequest, file)
+		case info.BindRequestV4 != nil:
+			app.handleBindRequestV4(info.BindRequestV4, file)
+		case info.BindRequestV6 != nil:
+			app.handleBindRequestV6(info.BindRequestV6, file)
 		}
 	}
 }
@@ -175,17 +177,30 @@ func (app *App) handleConnectionEndV6(conn *kextinterface.ConnectionEndV6) {
 		localIP, conn.LocalPort, remoteIP, conn.RemotePort)
 }
 
-func (app *App) handleBindRequest(req *kextinterface.BindRequest, file *kextinterface.KextFile) {
+func (app *App) handleBindRequestV4(req *kextinterface.BindRequestV4, file *kextinterface.KextFile) {
 	addr_v4, addr_v6 := app.determineRedirect()
 
 	app.connLog.Info("[REDIRECT] ID=%d PID=%d REDIRECT_TO=%s / %s",
 		req.ID, req.ProcessID, addr_v4.String(), addr_v6.String())
 
-	cmd := kextinterface.SplitTunnel{ID: req.ID}
+	cmd := kextinterface.SplitTunnelV4{ID: req.ID}
 	copy(cmd.LocalAddress_IPv4[:], addr_v4.To4())
+
+	if err := kextinterface.SendSplitTunnelCommandV4(file, cmd); err != nil {
+		app.appLog.Error("Failed to send SplitTunnel command for ID %d: %v", req.ID, err)
+	}
+}
+
+func (app *App) handleBindRequestV6(req *kextinterface.BindRequestV6, file *kextinterface.KextFile) {
+	addr_v4, addr_v6 := app.determineRedirect()
+
+	app.connLog.Info("[REDIRECT] ID=%d PID=%d REDIRECT_TO=%s / %s",
+		req.ID, req.ProcessID, addr_v4.String(), addr_v6.String())
+
+	cmd := kextinterface.SplitTunnelV6{ID: req.ID}
 	copy(cmd.LocalAddress_IPv6[:], addr_v6.To16())
 
-	if err := kextinterface.SendSplitTunnelCommand(file, cmd); err != nil {
+	if err := kextinterface.SendSplitTunnelCommandV6(file, cmd); err != nil {
 		app.appLog.Error("Failed to send SplitTunnel command for ID %d: %v", req.ID, err)
 	}
 }
