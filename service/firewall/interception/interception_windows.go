@@ -140,16 +140,20 @@ func UpdateVerdictOfConnection(conn *network.Connection) error {
 	return kext2.UpdateVerdict(conn)
 }
 
-func EnableSplitTunnel(enable bool) error {
+// EnableSplitTunnel enables split tunnel
+// PM_PID is the Portmaster process ID
+func EnableSplitTunnel(PM_PID uint64) error {
 	if useOldKext {
 		return fmt.Errorf("Split Tunnel functionality is not supported with old kext")
 	}
+	return kext2.EnableSplitTunnel(PM_PID)
+}
 
-	if enable {
-		return kext2.EnableSplitTunnel()
-	} else {
-		return kext2.DisableSplitTunnel()
+func DisableSplitTunnel() error {
+	if useOldKext {
+		return fmt.Errorf("Split Tunnel functionality is not supported with old kext")
 	}
+	return kext2.DisableSplitTunnel()
 }
 
 // GetKextVersion returns the version of the kernel extension.

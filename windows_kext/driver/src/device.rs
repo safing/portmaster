@@ -42,6 +42,9 @@ pub struct Device {
     pub(crate) redirector: Redirector,
     pub(crate) redirect_cache: GenericIdCache<ale_redirect_callouts::PendedRedirect>,   // Cache of pending redirects
     pub(crate) bind_redirect_cache: ale_redirects_cache::BindRedirectCache,             // Cache of bind redirect verdicts
+    // Process ID of the Portmaster process, used for preventing split-tunneling for its specific connections (SPN and UI local ports)
+    // Initialized before split-tunnel filters are enabled, so it is thread-safe to access from callouts without extra synchronization.
+    pub(crate) pm_process_id: u64, 
 }
 
 // Sub-Layer GUID for Portmaster. Also used as provider GUID, when needed.
@@ -77,6 +80,7 @@ impl Device {
             redirector,
             redirect_cache: GenericIdCache::new(),
             bind_redirect_cache: ale_redirects_cache::BindRedirectCache::new(),
+            pm_process_id: 0,
         })
     }
 
@@ -350,6 +354,9 @@ impl Device {
             }
             CommandType::EnableSplitTunnel => {
                 wdk::dbg!("EnableSplitTunnel command");
+                let cmd = protocol::command::parse_enable_split_tunnel(buffer);
+                self.pm_process_id = cmd.pm_process_id; // Set the Portmaster process ID for split-tunnel support
+
                 if let Err(err) = self.filter_engine.register_filters(FunctionType::Redirect) {
                     err!("failed to enable split tunnel filters: {}", err);
                 } else {

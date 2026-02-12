@@ -158,7 +158,7 @@ func (app *App) startRedirect(ipStr string) {
 
 	app.redirecting.Store(true)
 
-	if err := kextinterface.SendEnableSplitTunnelCommand(file); err != nil {
+	if err := kextinterface.SendEnableSplitTunnelCommand(file, 0); err != nil {
 		app.appLog.Error("Failed to request SendEnableSplitTunnelCommand: %v", err)
 	} else {
 		app.appLog.Info("Sent SendEnableSplitTunnelCommand to driver")

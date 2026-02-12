@@ -13,6 +13,7 @@ use crate::connection_map::Key;
 
 pub static PM_DNS_PORT: u16 = 53;
 pub static PM_SPN_PORT: u16 = 717;
+pub static PM_UI_PORT: u16 = 817;
 
 // Make sure this in sync with the Go version
 #[derive(Copy, Clone, FromPrimitive)]

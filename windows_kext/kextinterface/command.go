@@ -86,6 +86,11 @@ type UpdateV6 struct {
 	Verdict       uint8
 }
 
+type EnableSplitTunnel struct {
+	Command uint8
+	PM_PID  uint64
+}
+
 // RedirectV4 command structure - response to RedirectionRequestV4
 type SplitTunnel struct {
 	Command uint8
@@ -155,9 +160,12 @@ func SendCleanEndedConnectionsCommand(writer io.Writer) error {
 }
 
 // SendEnableSplitTunnelCommand enables split tunneling in the driver
-func SendEnableSplitTunnelCommand(writer io.Writer) error {
-	_, err := writer.Write([]byte{CommandEnableSplitTunnel})
-	return err
+func SendEnableSplitTunnelCommand(writer io.Writer, pm_pid uint64) error {
+	cmd := EnableSplitTunnel{
+		Command: CommandEnableSplitTunnel,
+		PM_PID:  pm_pid,
+	}
+	return binary.Write(writer, binary.LittleEndian, cmd)
 }
 
 // SendDisableSplitTunnelCommand disables split tunneling in the driver

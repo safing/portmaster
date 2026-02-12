@@ -3,6 +3,7 @@ package interception
 import (
 	"errors"
 	"flag"
+	"os"
 	"sync/atomic"
 
 	"github.com/safing/portmaster/base/config"
@@ -59,7 +60,15 @@ func init() {
 
 func ensureSplitTunnelState() error {
 	enabled := splitTunEnable()
-	if err := EnableSplitTunnel(enabled); err != nil {
+
+	var err error = nil
+	if enabled {
+		err = EnableSplitTunnel(uint64(os.Getpid()))
+	} else {
+		err = DisableSplitTunnel()
+	}
+
+	if err != nil {
 		log.Criticalf("failed to configure Split Tunneling state: %v", err)
 		return err
 	} else {

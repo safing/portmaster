@@ -73,6 +73,13 @@ pub struct UpdateV6 {
     pub verdict: u8,
 }
 
+#[repr(C, packed)]
+#[derive(Debug, PartialEq, Eq)]
+pub struct EnableSplitTunnel {
+    /// PID of the Portmaster process used for preventing split-tunneling for it's specific connections (SPN and UI local ports)
+    pub pm_process_id: u64,
+}
+
 /// Response to a bind redirect request.
 /// Contains the verdict on how to handle the bind operation.
 #[repr(C, packed)]
@@ -103,6 +110,10 @@ pub fn parse_update_v4(bytes: &[u8]) -> &UpdateV4 {
 }
 
 pub fn parse_update_v6(bytes: &[u8]) -> &UpdateV6 {
+    as_type(bytes)
+}
+
+pub fn parse_enable_split_tunnel(bytes: &[u8]) -> &EnableSplitTunnel {
     as_type(bytes)
 }
 

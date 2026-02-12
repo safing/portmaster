@@ -157,8 +157,9 @@ func UpdateVerdict(conn *network.Connection) error {
 }
 
 // EnableSplitTunnel enables split tunneling in the driver
-func EnableSplitTunnel() error {
-	return kextinterface.SendEnableSplitTunnelCommand(kextFile)
+// PM_PID is the Portmaster process ID
+func EnableSplitTunnel(PM_PID uint64) error {
+	return kextinterface.SendEnableSplitTunnelCommand(kextFile, PM_PID)
 }
 
 // DisableSplitTunnel disables split tunneling in the driver

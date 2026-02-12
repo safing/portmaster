@@ -10,6 +10,7 @@ use wdk::{
 use smoltcp::wire::{ IpAddress, IpProtocol, Ipv4Address, Ipv6Address };
 
 use crate::ale_redirects_cache::BindRedirectKey;
+use crate::connection::{ PM_SPN_PORT, PM_UI_PORT, PM_DNS_PORT };
 
 fn get_protocol(data: &CalloutData, index: usize) -> IpProtocol {
     IpProtocol::from(data.get_value_u8(index))
@@ -97,6 +98,18 @@ fn ale_layer_bind_redirect(mut data: CalloutData, bind_data: &AleBindRedirectDat
     if is_loopback {
         data.action_permit();
         return;
+    }
+
+    // Skip Portmaster's own traffic on known local ports    
+    if device.pm_process_id != 0 && bind_data.process_id == device.pm_process_id {        
+        if bind_data.local_port == PM_SPN_PORT 
+            || bind_data.local_port == PM_UI_PORT 
+            || bind_data.local_port == PM_DNS_PORT {
+            crate::dbg!("ALE Bind Redirect: Skipping Portmaster process connection (PID={}) to local port {}",
+                bind_data.process_id, bind_data.local_port);
+            data.action_permit();
+            return;
+        }        
     }
     
     // Check if we already have bind verdict for this PID
