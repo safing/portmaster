@@ -29,10 +29,16 @@ import (
 	"github.com/safing/portmaster/spn/access"
 )
 
+type ExtVerdictHandlerFunc func(conn *network.Connection) (verdict network.Verdict, reason string, skipTunnel bool)
+
 var (
 	nameserverIPMatcher      func(ip net.IP) bool
 	nameserverIPMatcherSet   = abool.New()
 	nameserverIPMatcherReady = abool.New()
+
+	externalVerdictHandler      ExtVerdictHandlerFunc
+	externalVerdictHandlerSet   atomic.Bool
+	externalVerdictHandlerReady atomic.Bool
 
 	packetsAccepted = new(uint64)
 	packetsBlocked  = new(uint64)
@@ -185,6 +191,15 @@ func SetNameserverIPMatcher(fn func(ip net.IP) bool) error {
 
 	nameserverIPMatcher = fn
 	nameserverIPMatcherReady.Set()
+	return nil
+}
+
+func SetExternalVerdictHandler(fn ExtVerdictHandlerFunc) error {
+	if !externalVerdictHandlerSet.CompareAndSwap(false, true) {
+		return errors.New("external verdict handler already set")
+	}
+	externalVerdictHandler = fn
+	externalVerdictHandlerReady.Store(true)
 	return nil
 }
 
@@ -453,6 +468,7 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	filterConnection := true
+	checkTunnel := true
 
 	// Check for special (internal) connection cases.
 	switch {
@@ -491,10 +507,21 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 
 		issueVerdict(conn, pkt, 0, true)
 		return
+
+	// Check if external verdict handler is set and ready, and if so, run it.
+	case externalVerdictHandlerReady.Load():
+		verdict, reason, skipTunnel := externalVerdictHandler(conn)
+		switch verdict {
+		case network.VerdictAccept, network.VerdictBlock:
+			conn.SetVerdict(verdict, reason, "", nil)
+			filterConnection = false
+			checkTunnel = !skipTunnel
+			log.Tracer(pkt.Ctx()).Infof("filter: special verdict %s %q %s for connection", verdict, reason, conn)
+		}
 	}
 
 	// Apply privacy filter and check tunneling.
-	FilterConnection(pkt.Ctx(), conn, pkt, filterConnection, true)
+	FilterConnection(pkt.Ctx(), conn, pkt, filterConnection, checkTunnel)
 
 	// Decide how to continue handling connection.
 	switch {
