@@ -27,11 +27,12 @@ type instance interface {
 
 // Module for interoperability with third-party applications
 type Interoperability struct {
-	mgr               *mgr.Manager
-	instance          instance
-	cfgDnsNameServers config.StringArrayOption
-	dnsListenAddress  string
-	interopModules    []interopModule
+	mgr                      *mgr.Manager
+	instance                 instance
+	cfgDnsNameServers        config.StringArrayOption
+	dnsListenAddress         string
+	interopModules           []interopModule
+	verdictHandlerRegistered atomic.Bool
 }
 
 // Manager returns the module manager.
@@ -110,10 +111,14 @@ func New(instance instance) (*Interoperability, error) {
 
 func (i *Interoperability) prep() error {
 	i.interopModules = append(i.interopModules, ivpn.NewInteropIvpn(i))
-
-	// Register external verdict handler for firewall module.
-	// This allows interoperability modules to provide input on firewall decisions.
-	firewall.SetExternalVerdictHandler(i.verdict_handler)
-
 	return i.registerAPIEndpoints()
+}
+
+// EnsureVerdictHandlerRegistered registers the interoperability module's verdict handler with the firewall module if not already registered.
+// We do this lazily here only when we need it.
+func (i *Interoperability) EnsureVerdictHandlerRegistered() {
+	// Register external verdict handler for firewall module if not already registered.
+	if i.verdictHandlerRegistered.CompareAndSwap(false, true) {
+		firewall.SetExternalVerdictHandler(i.verdict_handler)
+	}
 }

@@ -36,9 +36,7 @@ var (
 	nameserverIPMatcherSet   = abool.New()
 	nameserverIPMatcherReady = abool.New()
 
-	externalVerdictHandler      ExtVerdictHandlerFunc
-	externalVerdictHandlerSet   atomic.Bool
-	externalVerdictHandlerReady atomic.Bool
+	externalVerdictHandler atomic.Pointer[ExtVerdictHandlerFunc]
 
 	packetsAccepted = new(uint64)
 	packetsBlocked  = new(uint64)
@@ -195,11 +193,9 @@ func SetNameserverIPMatcher(fn func(ip net.IP) bool) error {
 }
 
 func SetExternalVerdictHandler(fn ExtVerdictHandlerFunc) error {
-	if !externalVerdictHandlerSet.CompareAndSwap(false, true) {
+	if !externalVerdictHandler.CompareAndSwap(nil, &fn) {
 		return errors.New("external verdict handler already set")
 	}
-	externalVerdictHandler = fn
-	externalVerdictHandlerReady.Store(true)
 	return nil
 }
 
@@ -508,15 +504,18 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 		issueVerdict(conn, pkt, 0, true)
 		return
 
-	// Check if external verdict handler is set and ready, and if so, run it.
-	case externalVerdictHandlerReady.Load():
-		verdict, reason, skipTunnel := externalVerdictHandler(conn)
-		switch verdict {
-		case network.VerdictAccept, network.VerdictBlock:
-			conn.SetVerdict(verdict, reason, "", nil)
-			filterConnection = false
-			checkTunnel = !skipTunnel
-			log.Tracer(pkt.Ctx()).Infof("filter: special verdict %s %q %s for connection", verdict, reason, conn)
+	default:
+		// Check if external verdict handler is set, and if so, run it.
+		if extHandler := externalVerdictHandler.Load(); extHandler != nil {
+			verdict, reason, skipTunnel := (*extHandler)(conn)
+			switch verdict {
+			// Accept and Block - only these verdicts are supported to be returned by the external handler.
+			case network.VerdictAccept, network.VerdictBlock:
+				conn.SetVerdict(verdict, reason, "", nil)
+				filterConnection = false
+				checkTunnel = !skipTunnel
+				log.Tracer(pkt.Ctx()).Infof("filter: special verdict %s %q %s for connection", verdict, reason, conn)
+			}
 		}
 	}
 
