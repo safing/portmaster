@@ -100,6 +100,7 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	// Send hello request, which is required to start receiving messages.
 	hello := client.InitHelloRequest()
 	hello.GetServiceBinaryPath = true
+	hello.GetActiveRemoteEndpoint = true
 	var helloResp ivpnclient.HelloResp
 	err = client.SendRecv(&hello, &helloResp)
 	if err != nil {

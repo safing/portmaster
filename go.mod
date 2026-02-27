@@ -30,7 +30,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
-	github.com/ivpn/desktop-app/daemon/protocol/ivpnclient v0.0.0-20260225101447-506b40fbfb8b
+	github.com/ivpn/desktop-app/daemon/protocol/ivpnclient v0.0.0-20260225145040-b0ada5c578f3
 	github.com/jackc/puddle/v2 v2.2.2
 	github.com/jaswdr/faker/v2 v2.9.0
 	github.com/lmittmann/tint v1.1.2
