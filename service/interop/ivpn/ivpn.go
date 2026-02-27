@@ -112,9 +112,10 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 
 	wc.Debug(fmt.Sprintf("Connected to IVPN client %s", helloResp.Version))
 
-	// Store IVPN client binary path for use in firewall verdict reasons.
-	i.setServiceBinary(helloResp.ServiceBinary)
-	defer i.setServiceBinary("") // do not leave stale binary path if client disconnects
+	// Store IVPN client binary path
+	i.status.Store(&clientStatus{serviceBinary: helloResp.ServiceBinary})
+	// Clear status on disconnect to avoid stale info in firewall verdicts
+	defer i.status.Store(nil)
 
 	// Configure IVPN client DNS settings based on current Portmaster config at startup
 	customDnsActive := i.updateIvpnClientDnsSettings(wc, client, false)
@@ -132,9 +133,7 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 		}
 	}
 
-	i.resetVpnConnectionInfo()
 	wc.Debug("IVPN client disconnected")
-
 	return nil
 }
 
@@ -218,12 +217,12 @@ func (i *InteropIvpn) setServiceBinary(serviceBinary string) {
 }
 
 func (i *InteropIvpn) resetVpnConnectionInfo() {
-	next := clientStatus{}
+	status := clientStatus{}
 	if old := i.status.Load(); old != nil {
-		next = *old // copy before mutating
+		status = *old // copy before mutating
 	}
-	next.vpnConnection = vpnConnectionInfo{}
-	i.status.Store(&next)
+	status.vpnConnection = vpnConnectionInfo{}
+	i.status.Store(&status)
 }
 
 // VerdictHandler provides firewall verdicts for IVPN client connections
@@ -239,7 +238,9 @@ func (i *InteropIvpn) VerdictHandler(conn *network.Connection) (network.Verdict,
 	if status.vpnConnection.dstPort != 0 {
 		if !conn.Inbound &&
 			conn.Entity.Port == status.vpnConnection.dstPort &&
-			conn.Entity.Protocol == status.vpnConnection.protocol {
+			conn.Entity.Protocol == status.vpnConnection.protocol &&
+			conn.Entity.IP.Equal(status.vpnConnection.dstAddress) {
+
 			return network.VerdictAccept, "IVPN VPN connection", false
 		}
 	}
