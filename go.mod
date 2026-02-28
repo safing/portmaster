@@ -180,4 +180,5 @@ tool (
 )
 
 // TODO: Remove this when the ivpnclient package is published and available via a normal go get.
-replace github.com/ivpn/desktop-app/daemon/protocol/ivpnclient => ../../IVPN/desktop-app/daemon/protocol/ivpnclient
+replace github.com/ivpn/desktop-app/daemon/protocol/ivpnclient => ../../ivpn/desktop-app/daemon/protocol/ivpnclient
+

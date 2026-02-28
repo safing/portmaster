@@ -11,6 +11,9 @@
             "mode": "auto",
             "program": "${workspaceFolder}/cmds/portmaster-core",
 
+            "console": "integratedTerminal", // required to debug as root
+            "asRoot": true, // required to debug as root
+
             "windows": {
                 "args": ["--bin-dir=C:\\Program Files\\Portmaster", "--log-stdout", "--log", "trace"]                
             },
@@ -25,6 +28,9 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmds/portmaster-core",
+
+            "console": "integratedTerminal", // required to debug as root
+            "asRoot": true, // required to debug as root
 
             "windows": {
                 "args": ["--bin-dir=C:\\Program Files\\Portmaster", "--log-stdout", "--log", "trace", "--disable-interception=true"]
