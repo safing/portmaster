@@ -9,6 +9,7 @@ import (
 
 	"github.com/ivpn/desktop-app/daemon/protocol/ivpnclient"
 	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/packet"
@@ -23,6 +24,7 @@ type interopBase interface {
 	DnsListenAddress() string
 	DnsNameServers() []string
 	EvtConfigChange() <-chan struct{}
+	Interception() *interception.Interception
 	Manager() *mgr.Manager
 }
 
@@ -121,9 +123,14 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	// Configure IVPN client DNS settings based on current Portmaster config at startup
 	customDnsActive := i.updateIvpnClientDnsSettings(wc, client, false)
 
+	interceptionStatus := i.owner.Interception().EventStartStopState.Subscribe("ivpn", 10)
+	defer interceptionStatus.Cancel()
+
 	done := false
 	for !done {
 		select {
+		case <-interceptionStatus.Events():
+			customDnsActive = i.updateIvpnClientDnsSettings(wc, client, customDnsActive)
 		case <-i.owner.EvtConfigChange():
 			customDnsActive = i.updateIvpnClientDnsSettings(wc, client, customDnsActive)
 		case <-wc.Done():
@@ -148,7 +155,9 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 //   - The new state of whether custom DNS is active in the IVPN client after attempting to update the settings.
 //     (New value of customDnsActive should be used by the caller to keep track of the current state).
 func (i *InteropIvpn) updateIvpnClientDnsSettings(wc *mgr.WorkerCtx, client *ivpnclient.Client, customDnsActive bool) (retCustomDnsActive bool) {
-	wantCustomDns := len(i.owner.DnsNameServers()) > 0
+	// Custom DNS should be applied only if there are any custom DNS servers configured in Portmaster,
+	// and interception is active (PM not in Paused state).
+	wantCustomDns := len(i.owner.DnsNameServers()) > 0 && i.owner.Interception().IsStarted()
 	if wantCustomDns == customDnsActive {
 		return customDnsActive // Already in the desired state, nothing to do.
 	}

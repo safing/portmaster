@@ -7,6 +7,7 @@ import (
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/service/firewall"
+	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/interop/ivpn"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network"
@@ -23,6 +24,7 @@ type interopModule interface {
 
 type instance interface {
 	Config() *config.Config
+	Interception() *interception.Interception
 }
 
 // Module for interoperability with third-party applications
@@ -58,6 +60,9 @@ func (u *Interoperability) DnsNameServers() []string {
 }
 func (u *Interoperability) EvtConfigChange() <-chan struct{} {
 	return u.instance.Config().EventConfigChange.Subscribe("interoperability: config change detection", 10).Events()
+}
+func (u *Interoperability) Interception() *interception.Interception {
+	return u.instance.Interception()
 }
 
 func start() error {
