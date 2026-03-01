@@ -354,6 +354,8 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.filterLists,
 		instance.customlist,
 
+		instance.interop, // required to start before interception
+
 		// Grouped pausable interception modules:
 		// 		instance.interception,
 		// 		instance.dnsmonitor,
@@ -365,7 +367,6 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.sync,
 		instance.ui,
 		instance.control,
-		instance.interop,
 
 		instance.access,
 	)

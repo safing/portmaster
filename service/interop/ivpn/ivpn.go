@@ -31,15 +31,15 @@ type interopBase interface {
 // vpnConnectionInfo holds information about the active VPN connection of the IVPN client,
 // used for identifying VPN traffic in firewall verdicts.
 type vpnConnectionInfo struct {
-	dstPort    uint16 // Port of the active VPN connection, used for identifying VPN traffic in firewall verdicts.
-	dstAddress net.IP // Destination address of the active VPN connection, used for identifying VPN traffic in firewall verdicts.
+	dstPort    uint16
+	dstAddress net.IP
 	protocol   uint8
 }
 
 // clientStatus holds information about the connected IVPN client
 // and its current VPN connection status, used for providing context in firewall verdicts.
 type clientStatus struct {
-	serviceBinary string // Path to the IVPN client binary, used for identifying client connections in firewall verdicts.
+	serviceBinary string
 	vpnConnection vpnConnectionInfo
 }
 
@@ -47,10 +47,11 @@ type clientStatus struct {
 // allowing Portmaster to receive information about IVPN VPN connections
 // and adjust firewall verdicts accordingly for better compatibility and user experience.
 type InteropIvpn struct {
-	owner       interopBase
-	connHandler *mgr.WorkerMgr
-
-	status atomic.Pointer[clientStatus]
+	owner             interopBase
+	connHandler       *mgr.WorkerMgr
+	status            atomic.Pointer[clientStatus]
+	isCustomDnsActive atomic.Bool
+	firstTryDone      atomic.Pointer[chan struct{}]
 }
 
 func NewInteropIvpn(owner interopBase) *InteropIvpn {
@@ -61,7 +62,17 @@ func NewInteropIvpn(owner interopBase) *InteropIvpn {
 
 func (i *InteropIvpn) Start() error {
 	i.connHandler = i.owner.Manager().NewWorkerMgr("ivpn client interoperability", i.connectIvpnClient, nil)
-	i.PingHandler()
+
+	firstTryChan := make(chan struct{})
+	i.firstTryDone.Store(&firstTryChan)
+
+	i.connHandler.Go()
+
+	// Wait for the first connection attempt to complete.
+	// The 'status' must be initialized before allowing firewall verdicts to proceed.
+	// The wait is bounded by the connection timeouts inside connectIvpnClient.
+	<-firstTryChan
+
 	return nil
 }
 
@@ -70,17 +81,42 @@ func (i *InteropIvpn) PingHandler() error {
 	return nil
 }
 
+func (i *InteropIvpn) setFirstTryDone() {
+	if chanPtr := i.firstTryDone.Load(); chanPtr != nil {
+		close(*chanPtr)
+		i.firstTryDone.Store(nil)
+	}
+}
+
+func (i *InteropIvpn) setServiceBinary(path string) {
+	status := clientStatus{}
+	if old := i.status.Load(); old != nil {
+		status = *old
+	}
+	status.serviceBinary = path
+	i.status.Store(&status)
+}
+
 // Synchronously connects to the IVPN client, sets up message handlers
 func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
+	defer func() {
+		// Clear client status on disconnect
+		i.status.Store(nil)
+		// Reset DNS tracking state
+		i.isCustomDnsActive.Store(false)
+		// Mark that the first connection attempt is done, even if it failed
+		i.setFirstTryDone()
+	}()
+
 	ci := ivpnclient.ClientInfo{
 		Type:    ivpnclient.ClientPortmaster,
 		Name:    "Portmaster",
 		Version: info.Version()}
 
 	// Create client.
+	// Ignoring error here, since it is expected that the client may not be in running state
 	client, err := ivpnclient.NewClientAsRoot(nil, time.Second*10, ci)
 	if err != nil {
-		// do not log this as an error, since it is expected that the client may not be installed
 		return nil
 	}
 
@@ -93,9 +129,9 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	})
 
 	// Connect to client.
-	err = client.Connect()
+	// Ignoring error here, since it is expected that the client may not be in running state
+	err = client.Connect(time.Second * 2)
 	if err != nil {
-		// do not log this as an error, since it is expected that the client may not be in running state
 		return nil
 	}
 
@@ -110,19 +146,19 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 		return err
 	}
 
+	// Save ServiceBinary.
+	i.setServiceBinary(helloResp.ServiceBinary)
+	// The status.vpnConnection must be already initialized (ConnectionStarting message already received).
+	i.setFirstTryDone()
 	// Notify owner that we can now provide verdicts for firewall module
 	i.owner.EnsureVerdictHandlerRegistered()
 
 	wc.Debug(fmt.Sprintf("Connected to IVPN client %s", helloResp.Version))
 
-	// Store IVPN client binary path
-	i.status.Store(&clientStatus{serviceBinary: helloResp.ServiceBinary})
-	// Clear status on disconnect to avoid stale info in firewall verdicts
-	defer i.status.Store(nil)
-
 	// Configure IVPN client DNS settings based on current Portmaster config at startup
-	customDnsActive := i.updateIvpnClientDnsSettings(wc, client, false)
+	i.updateIvpnClientDnsSettings(wc, client)
 
+	// Subscribe to interception start/stop events to update IVPN client DNS settings
 	interceptionStatus := i.owner.Interception().EventStartStopState.Subscribe("ivpn", 10)
 	defer interceptionStatus.Cancel()
 
@@ -130,9 +166,9 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	for !done {
 		select {
 		case <-interceptionStatus.Events():
-			customDnsActive = i.updateIvpnClientDnsSettings(wc, client, customDnsActive)
+			i.updateIvpnClientDnsSettings(wc, client)
 		case <-i.owner.EvtConfigChange():
-			customDnsActive = i.updateIvpnClientDnsSettings(wc, client, customDnsActive)
+			i.updateIvpnClientDnsSettings(wc, client)
 		case <-wc.Done():
 			client.Disconnect()
 			done = true
@@ -145,21 +181,14 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	return nil
 }
 
-// updateIvpnClientDnsSettings configures the IVPN client to use Portmaster's local DNS resolver if custom DNS servers are configured in Portmaster.
-// Parameter:
-//   - customDnsActive: Whether the IVPN client is currently configured to use custom DNS.
-//     It is a cached value that should be updated with the new state after attempting to update the settings,
-//     and is used to avoid unnecessary updates if the desired state is already active.
-//
-// Returns:
-//   - The new state of whether custom DNS is active in the IVPN client after attempting to update the settings.
-//     (New value of customDnsActive should be used by the caller to keep track of the current state).
-func (i *InteropIvpn) updateIvpnClientDnsSettings(wc *mgr.WorkerCtx, client *ivpnclient.Client, customDnsActive bool) (retCustomDnsActive bool) {
+// updateIvpnClientDnsSettings configures the IVPN client to use Portmaster's local DNS resolver
+// when custom DNS servers are configured in Portmaster and interception is active.
+func (i *InteropIvpn) updateIvpnClientDnsSettings(wc *mgr.WorkerCtx, client *ivpnclient.Client) {
 	// Custom DNS should be applied only if there are any custom DNS servers configured in Portmaster,
 	// and interception is active (PM not in Paused state).
 	wantCustomDns := len(i.owner.DnsNameServers()) > 0 && i.owner.Interception().IsStarted()
-	if wantCustomDns == customDnsActive {
-		return customDnsActive // Already in the desired state, nothing to do.
+	if wantCustomDns == i.isCustomDnsActive.Load() {
+		return
 	}
 
 	if wantCustomDns {
@@ -168,25 +197,27 @@ func (i *InteropIvpn) updateIvpnClientDnsSettings(wc *mgr.WorkerCtx, client *ivp
 		customDns := ivpnclient.DnsSettings{Servers: []ivpnclient.DnsServerConfig{{Address: i.owner.DnsListenAddress()}}}
 		if err := client.SetTempPrioritizedDns(customDns, DNS_LOCKED_DESCRIPTION); err != nil {
 			wc.Warn(fmt.Sprintf("IVPN: Failed to set manual DNS: %v", err))
-			return customDnsActive // Preserve last known state; will retry on next config change.
+			return
 		}
 		wc.Debug(fmt.Sprintf("IVPN: Manual DNS set successfully to %q", i.owner.DnsListenAddress()))
-		return true
+		i.isCustomDnsActive.Store(true)
+		return
 	}
 
 	// Reset IVPN back to its default DNS handling.
 	if err := client.SetTempPrioritizedDns(ivpnclient.DnsSettings{}, ""); err != nil {
 		wc.Warn(fmt.Sprintf("IVPN: Failed to restore manual DNS: %v", err))
-		return customDnsActive // Preserve last known state; will retry on next config change.
+		return
 	}
+
+	i.isCustomDnsActive.Store(false)
 	wc.Debug("IVPN: Manual DNS restored successfully")
-	return false
 }
 
 // notification handler: VPN connection is going to start
 func (i *InteropIvpn) onConnectionStarting(wc *mgr.WorkerCtx, _ string, messageData string) {
-	info := ivpnclient.ConnectionStarting{}
-	err := json.Unmarshal([]byte(messageData), &info)
+	connInfo := ivpnclient.ConnectionStarting{}
+	err := json.Unmarshal([]byte(messageData), &connInfo)
 	if err != nil {
 		wc.Warn(fmt.Sprintf("IVPN: Failed to parse ConnectionStarting message: %v", err))
 		return
@@ -198,9 +229,9 @@ func (i *InteropIvpn) onConnectionStarting(wc *mgr.WorkerCtx, _ string, messageD
 		status = *old // Preserve existing status fields
 	}
 	conn := vpnConnectionInfo{
-		dstPort:    info.Port,
-		dstAddress: net.ParseIP(info.Address),
-		protocol:   info.Protocol,
+		dstPort:    connInfo.Port,
+		dstAddress: net.ParseIP(connInfo.Address),
+		protocol:   connInfo.Protocol,
 	}
 	if conn.dstAddress == nil {
 		conn.dstPort = 0 // Invalidate port if address is invalid, to avoid false matches in firewall verdicts.
@@ -208,31 +239,18 @@ func (i *InteropIvpn) onConnectionStarting(wc *mgr.WorkerCtx, _ string, messageD
 	status.vpnConnection = conn
 	i.status.Store(&status)
 
-	wc.Debug(fmt.Sprintf("IVPN: VPN connection starting %s:%d %s", info.Address, info.Port, packet.IPProtocol(info.Protocol)))
+	wc.Debug(fmt.Sprintf("IVPN: VPN connection starting %s:%d %s", connInfo.Address, connInfo.Port, packet.IPProtocol(connInfo.Protocol)))
 }
 
 // notification handler: VPN connection stopped
 func (i *InteropIvpn) onConnectionStopped(wc *mgr.WorkerCtx, _ string, messageData string) {
-	i.resetVpnConnectionInfo()
-	wc.Debug("IVPN: VPN connection stopped")
-}
-
-func (i *InteropIvpn) setServiceBinary(serviceBinary string) {
 	status := clientStatus{}
 	if old := i.status.Load(); old != nil {
-		status = *old // Preserve existing status fields
-	}
-	status.serviceBinary = serviceBinary
-	i.status.Store(&status)
-}
-
-func (i *InteropIvpn) resetVpnConnectionInfo() {
-	status := clientStatus{}
-	if old := i.status.Load(); old != nil {
-		status = *old // copy before mutating
+		status = *old
 	}
 	status.vpnConnection = vpnConnectionInfo{}
 	i.status.Store(&status)
+	wc.Debug("IVPN: VPN connection stopped")
 }
 
 // VerdictHandler provides firewall verdicts for IVPN client connections
@@ -246,12 +264,15 @@ func (i *InteropIvpn) VerdictHandler(conn *network.Connection) (network.Verdict,
 	}
 
 	if status.vpnConnection.dstPort != 0 {
-		if !conn.Inbound &&
-			conn.Entity.Port == status.vpnConnection.dstPort &&
+		if conn.Entity.Port == status.vpnConnection.dstPort &&
 			conn.Entity.Protocol == status.vpnConnection.protocol &&
 			conn.Entity.IP.Equal(status.vpnConnection.dstAddress) {
-
-			return network.VerdictAccept, "IVPN VPN connection", false
+			// By default, we accept outbound connections.
+			// But UDP traffic is bidirectional, so we also accept inbound connections
+			// to avoid breaking incoming UDP responses from the VPN server.
+			if !conn.Inbound || status.vpnConnection.protocol == uint8(packet.UDP) {
+				return network.VerdictAccept, "IVPN VPN connection", false
+			}
 		}
 	}
 

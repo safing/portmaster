@@ -119,10 +119,10 @@ func (i *Interoperability) prep() error {
 	return i.registerAPIEndpoints()
 }
 
-// EnsureVerdictHandlerRegistered registers the interoperability module's verdict handler with the firewall module if not already registered.
+// EnsureVerdictHandlerRegistered registers the interoperability module's verdict handler
+// with the firewall module if not already registered.
 // We do this lazily here only when we need it.
 func (i *Interoperability) EnsureVerdictHandlerRegistered() {
-	// Register external verdict handler for firewall module if not already registered.
 	if i.verdictHandlerRegistered.CompareAndSwap(false, true) {
 		firewall.SetExternalVerdictHandler(i.verdict_handler)
 	}
