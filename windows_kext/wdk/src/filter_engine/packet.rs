@@ -2,7 +2,7 @@ use alloc::{
     boxed::Box,
     string::{String, ToString},
 };
-use core::{ffi::c_void, mem::MaybeUninit, ptr::NonNull};
+use core::{ffi::c_void, mem::MaybeUninit};
 use windows_sys::Win32::{
     Foundation::{HANDLE, INVALID_HANDLE_VALUE},
     Networking::WinSock::{AF_INET, AF_INET6, AF_UNSPEC, SCOPE_ID},
@@ -28,7 +28,9 @@ pub struct TransportPacketList {
     remote_ip: [u8; 16],
     endpoint_handle: u64,
     remote_scope_id: SCOPE_ID,
-    control_data: Option<NonNull<[u8]>>,
+    // Owned copy of the WFP control data. The original WFP pointer is only
+    // valid during the ALE classify callback; the bytes are copied here so they outlive it.
+    control_data: Option<Box<[u8]>>,
     inbound: bool,
     interface_index: u32,
     sub_interface_index: u32,
@@ -104,9 +106,10 @@ impl Injector {
         interface_index: u32,
         sub_interface_index: u32,
     ) -> TransportPacketList {
-        let mut control_data = None;
-        if let Some(cd) = callout_data.get_control_data() {            
-            control_data = Some(cd);
+        let mut control_data: Option<Box<[u8]>> = None;
+        if let Some(cd) = callout_data.get_control_data() {
+            // Copy the bytes while the WFP pointer is still valid (we are inside the callout).
+            control_data = Some(unsafe { cd.as_ref() }.to_vec().into_boxed_slice());
         }
         let mut remote_ip: [u8; 16] = [0; 16];
         if ipv6 {
