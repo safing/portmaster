@@ -1,6 +1,7 @@
 use crate::common::ControlCode;
 use crate::device;
 use alloc::boxed::Box;
+use core::sync::atomic::{AtomicPtr, Ordering};
 use num_traits::FromPrimitive;
 use wdk::irp_helpers::{DeviceControlRequest, ReadRequest, WriteRequest};
 use wdk::{err, info, interface};
@@ -9,9 +10,18 @@ use windows_sys::Win32::Foundation::{NTSTATUS, STATUS_SUCCESS};
 
 static VERSION: [u8; 4] = include!("../../kextinterface/version.txt");
 
-static mut DEVICE: *mut device::Device = core::ptr::null_mut();
+/// Global device pointer.
+///
+/// We use `AtomicPtr` to ensure thread safety.
+/// - **Safety**: Prevents data races and acts as a compiler barrier against dangerous optimizations
+///   (e.g., load hoisting), ensuring concurrent callouts see a valid, up-to-date pointer.
+/// - **Performance**: Negligible overhead. On x64, `Acquire` is free (same as a normal load).
+///   On ARM64, it uses efficient hardware-supported load-acquire instructions.
+static DEVICE: AtomicPtr<device::Device> = AtomicPtr::new(core::ptr::null_mut());
+
 pub fn get_device() -> Option<&'static mut device::Device> {
-    return unsafe { DEVICE.as_mut() };
+    // Acquire pairs with the Release store in driver_entry and the AcqRel swap in driver_unload.
+    unsafe { DEVICE.load(Ordering::Acquire).as_mut() }
 }
 
 // DriverEntry is the entry point of the driver (main function). Will be called when driver is loaded.
@@ -44,16 +54,16 @@ pub extern "system" fn driver_entry(
     driver.set_device_control_fn(Some(device_control));
 
     // Initialize device.
-    unsafe {
-        let device = match device::Device::new(&driver) {
-            Ok(device) => Box::new(device),
-            Err(err) => {
-                wdk::err!("filed to initialize device: {}", err);
-                return -1;
-            }
-        };
-        DEVICE = Box::into_raw(device);
-    }
+    let device = match device::Device::new(&driver) {
+        Ok(device) => Box::new(device),
+        Err(err) => {
+            wdk::err!("filed to initialize device: {}", err);
+            return -1;
+        }
+    };
+    // Release: makes the fully-constructed Device visible to all cores that subsequently
+    // perform an Acquire load.
+    DEVICE.store(Box::into_raw(device), Ordering::Release);
 
     STATUS_SUCCESS
 }
@@ -61,10 +71,18 @@ pub extern "system" fn driver_entry(
 // driver_unload function is called when service delete is called from user-space.
 unsafe extern "system" fn driver_unload(_object: *const DRIVER_OBJECT) {
     info!("Unloading complete");
-    unsafe {
-        if !DEVICE.is_null() {
-            _ = Box::from_raw(DEVICE);
-        }
+    // Atomically null the pointer before freeing. Any core that performs an Acquire load
+    // *after* this swap will see null and bail out safely. Any core that already loaded a
+    // non-null pointer before this swap is protected by the OS-level serialisation:
+    //   - WFP callouts: FilterEngine::drop() (field declared first in Device) calls the WFP
+    //     unregister APIs which block until every in-flight classify callback has returned,
+    //     so no callout thread holds a live reference by the time the memory is freed.
+    //   - IRP dispatch (read/write/ioctl): the I/O Manager guarantees no dispatch routine
+    //     is executing when driver_unload is called.
+    // The swap is executed exactly once, on the unload path.
+    let ptr = DEVICE.swap(core::ptr::null_mut(), Ordering::AcqRel);
+    if !ptr.is_null() {
+        unsafe { drop(Box::from_raw(ptr)); }
     }
 }
 
