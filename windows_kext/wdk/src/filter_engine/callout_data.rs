@@ -37,7 +37,21 @@ impl ClassifyDefer {
                 }
                 ClassifyDefer::Reauthorization(_callout_id, packet_list) => {
                     // There is no way to reset single filter. If another request for filter reset is trigger at the same time it will fail.
-                    filter_engine.reset_all_filters()?;
+                    //
+                    // Resetting all filters forces WFP to re-evaluate (reauthorize) all existing connections 
+                    // using the updated verdict cache.
+                    // If STATUS_FWP_TXN_IN_PROGRESS is returned, another reset_all_filters() call is
+                    // already running concurrently, which will trigger the same WFP reauthorization.
+                    // It is safe to ignore this specific error and proceed with injecting the packet:
+                    // the verdict for this connection is already in the connection_cache, so the callout
+                    // will apply the correct verdict when the injected packet passes through.
+                    match filter_engine.reset_all_filters() {
+                        Ok(_) => {}
+                        Err(err) if err.contains("STATUS_FWP_TXN_IN_PROGRESS") => {
+                            // Another transaction is already in progress and will handle reauthorization.
+                        }
+                        Err(err) => return Err(err),
+                    }
                     return Ok(packet_list);
                 }
             }
