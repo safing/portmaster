@@ -186,10 +186,14 @@ impl<'a> CalloutData<'a> {
         }
     }
 
-    pub fn action_block(&mut self) {
+    // Block action and clear the write flag. 
+    // This will block the packet and prevent next filter in the chain to change the action.
+    pub fn action_block_hard(&mut self) {
         unsafe {
             (*self.classify_out).action_block();
             (*self.classify_out).clear_absorb_flag();
+            // Next filter in the chain will not change the action.
+            (*self.classify_out).clear_write_flag(); 
         }
     }
 
