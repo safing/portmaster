@@ -1,4 +1,5 @@
 use alloc::string::String;
+use core::sync::atomic::{AtomicU32, Ordering};
 use num_traits::FromPrimitive;
 use protocol::{command::CommandType, info::Info};
 use smoltcp::wire::{IpAddress, IpProtocol, Ipv4Address, Ipv6Address};
@@ -34,6 +35,10 @@ pub struct Device {
     pub(crate) injector: Injector,
     pub(crate) network_allocator: NetworkAllocator,
     pub(crate) bandwidth_stats: Bandwidth,
+    /// PID of the user-space process that currently holds the device handle open.
+    /// Written once on IRP_MJ_CREATE, cleared on IRP_MJ_CLEANUP.
+    /// AtomicU32 gives lock-free reads in callouts with zero overhead.
+    pub(crate) owner_pid: AtomicU32,
 }
 
 impl Device {
@@ -57,7 +62,14 @@ impl Device {
             injector: Injector::new(),
             network_allocator: NetworkAllocator::new(),
             bandwidth_stats: Bandwidth::new(),
+            owner_pid: AtomicU32::new(0),
         })
+    }
+
+    /// Returns the PID of the process that currently has the device handle open, or 0 if none.
+    pub fn is_owner_pid(&self, pid: u32) -> bool {
+        let p = self.owner_pid.load(Ordering::Acquire);
+        p != 0 && p == pid
     }
 
     /// Cleanup is called just before drop.

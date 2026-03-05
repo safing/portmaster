@@ -2,7 +2,7 @@ use crate::common::ControlCode;
 use crate::device;
 use alloc::boxed::Box;
 use num_traits::FromPrimitive;
-use wdk::irp_helpers::{DeviceControlRequest, ReadRequest, WriteRequest};
+use wdk::irp_helpers::{CleanupRequest, CreateRequest, DeviceControlRequest, ReadRequest, WriteRequest};
 use wdk::{err, info, interface};
 use windows_sys::Wdk::Foundation::{DEVICE_OBJECT, DRIVER_OBJECT, IRP};
 use windows_sys::Win32::Foundation::{NTSTATUS, STATUS_SUCCESS};
@@ -39,6 +39,8 @@ pub extern "system" fn driver_entry(
 
     // Set driver functions.
     driver.set_driver_unload(Some(driver_unload));
+    driver.set_create_fn(Some(driver_create));
+    driver.set_cleanup_fn(Some(driver_cleanup));
     driver.set_read_fn(Some(driver_read));
     driver.set_write_fn(Some(driver_write));
     driver.set_device_control_fn(Some(device_control));
@@ -66,6 +68,35 @@ unsafe extern "system" fn driver_unload(_object: *const DRIVER_OBJECT) {
             _ = Box::from_raw(DEVICE);
         }
     }
+}
+
+/// driver_create is triggered when user-space opens a handle to the device (CreateFile).
+unsafe extern "system" fn driver_create(
+    _device_object: *const DEVICE_OBJECT,
+    irp: *mut IRP,
+) -> NTSTATUS {
+    let mut create_request = CreateRequest::new(irp.as_mut().unwrap());
+    if let Some(device) = get_device() {
+        let pid = create_request.get_requestor_pid();
+        device.owner_pid.store(pid, core::sync::atomic::Ordering::Release);
+        info!("Device opened by PID {}", pid);
+    }
+    create_request.complete();
+    create_request.get_status()
+}
+
+/// driver_cleanup is triggered when user-space closes the last handle to the device.
+unsafe extern "system" fn driver_cleanup(
+    _device_object: *const DEVICE_OBJECT,
+    irp: *mut IRP,
+) -> NTSTATUS {
+    let mut cleanup_request = CleanupRequest::new(irp.as_mut().unwrap());
+    if let Some(device) = get_device() {
+        let old_pid = device.owner_pid.swap(0, core::sync::atomic::Ordering::Release);
+        info!("Device closed by PID {}", old_pid);
+    }
+    cleanup_request.complete();
+    cleanup_request.get_status()
 }
 
 // driver_read event triggered from user-space on file.Read.
