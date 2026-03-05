@@ -183,7 +183,8 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
             Verdict::PermanentAccept
             | Verdict::Accept
             | Verdict::RedirectNameServer
-            | Verdict::RedirectTunnel => {
+            | Verdict::RedirectTunnel
+            | Verdict::RedirectSplitTunnel => {
                 // Continue to packet layer.
                 data.action_permit();
             }

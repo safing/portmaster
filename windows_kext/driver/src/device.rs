@@ -162,7 +162,8 @@ impl Device {
                                 }
                             }
                             crate::connection::Verdict::RedirectNameServer
-                            | crate::connection::Verdict::RedirectTunnel => {
+                            | crate::connection::Verdict::RedirectTunnel
+                            | crate::connection::Verdict::RedirectSplitTunnel => {
                                 if let Some(redirect_info) = redirect_info {
                                     // Will not redirect packets from ALE layer
                                     if let Err(err) = packet.redirect(redirect_info) {
