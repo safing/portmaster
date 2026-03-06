@@ -29,9 +29,9 @@ pub enum Packet {
 pub struct Device {
     pub(crate) filter_engine: FilterEngine,
     pub(crate) read_leftover: ArrayHolder,
-    pub(crate) event_queue: IOQueue<Info>,
-    pub(crate) packet_cache: IdCache,
-    pub(crate) connection_cache: ConnectionCache,
+    pub(crate) event_queue: IOQueue<Info>,          // Queue for events to user-space
+    pub(crate) packet_cache: IdCache,               // Cache of pending packets waiting for verdict
+    pub(crate) connection_cache: ConnectionCache,   // Cache of connections and their verdicts
     pub(crate) injector: Injector,
     pub(crate) network_allocator: NetworkAllocator,
     pub(crate) bandwidth_stats: Bandwidth,
