@@ -31,6 +31,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
 	github.com/jackc/puddle/v2 v2.2.2
+	github.com/jaswdr/faker/v2 v2.9.0
 	github.com/lmittmann/tint v1.1.2
 	github.com/maruel/panicparse/v2 v2.5.0
 	github.com/mattn/go-colorable v0.1.14
@@ -75,7 +76,6 @@ require (
 	al.essio.dev/pkg/shellescape v1.6.0 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/jaswdr/faker/v2 v2.9.0 // indirect
 	github.com/sergeymakinen/go-bmp v1.0.0 // indirect
 	github.com/stephenafamo/sqlparser v0.0.0-20250521201114-5cfed001272d // indirect
 )
@@ -161,7 +161,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zalando/go-keyring v0.2.6 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
-	golang.org/x/crypto v0.44.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
