@@ -19,6 +19,7 @@ export interface BaseAction {
   // Possible values are:
   // - "": Action is always visible.
   // - "detailed": Action is only visible in the detailed view of a notification.
+  // - "in-app-only": Visible only in the UI app, never on the system level (if ShowOnSystem is true).
   Visibility: string; 
 }
 

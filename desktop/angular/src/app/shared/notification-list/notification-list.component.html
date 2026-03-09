@@ -16,7 +16,7 @@
       </span>
       <div class="buttons">
         <ng-container *ngFor="let action of notif!.AvailableActions">
-          <button *ngIf="action.Visibility !== 'detailed'" (click)="execute(notif!, action, $event)">
+          <button *ngIf="!action.Visibility || action.Visibility === 'in-app-only'" (click)="execute(notif!, action, $event)">
             {{action.Text}}
           </button>
         </ng-container>

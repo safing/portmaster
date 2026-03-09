@@ -136,6 +136,8 @@ const (
 	// Visible only in extended view
 	// (when user clicks on notification to read full message)
 	ActionVisibilityDetailed ActionVisibility = "detailed"
+	// Visible only in the UI app, never on the system level (if ShowOnSystem is true).
+	ActionVisibilityInAppOnly ActionVisibility = "in-app-only"
 )
 
 // ActionType defines a specific type of action.

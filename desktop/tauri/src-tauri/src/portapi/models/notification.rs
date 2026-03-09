@@ -51,6 +51,9 @@ pub struct Action {
 
     #[serde(rename = "Payload")]
     pub payload: serde_json::Value,
+
+    #[serde(rename = "Visibility")]
+    pub visibility:  String, // "" - default, "detailed" - only show if the notification is expanded
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
