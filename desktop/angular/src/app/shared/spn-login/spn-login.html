@@ -28,29 +28,29 @@
       </svg>
     </div>
     <span class="flex flex-col items-start justify-start">
-      Safing Account Login
+      {{ 'account.login.title' | translate }}
       <a class="text-xs font-medium text-tertiary" href="https://safing.io/spn?source=Portmaster" target="_blank">
-        Unlock powerful features.
+        {{ 'account.login.unlockFeatures' | translate }}
       </a>
     </span>
   </h2>
 
 
   <div *ngIf="forcedLogout" class="w-full px-4 py-2 mb-4 text-center rounded bg-info-red">
-    You have been logged out by the account server.
+    {{ 'account.login.forcedLogout' | translate }}
     <br />
-    Please check <a class="underline text-primary" href="https://account.safing.io/?source=Portmaster">your account</a>.
+    {{ 'account.login.checkAccount' | translate }} <a class="underline text-primary" href="https://account.safing.io/?source=Portmaster">{{ 'account.login.yourAccount' | translate }}</a>.
   </div>
 
   <form (ngSubmit)="login()">
     <div class="flex flex-col items-stretch mt-4 space-y-6">
       <div class="flex flex-col justify-items-start">
-        <label for="username" class="font-semibold text-primary">Username</label>
+        <label for="username" class="font-semibold text-primary">{{ 'account.username' | translate }}</label>
         <input type="text" name="username" autocomplete="off" class="custom-form-input" [(ngModel)]="username">
       </div>
 
       <div class="flex flex-col justify-items-start">
-        <label for="password" class="font-semibold text-primary">Password</label>
+        <label for="password" class="font-semibold text-primary">{{ 'account.password' | translate }}</label>
         <input type="password" name="password" autocomplete="off" class="custom-form-input" [(ngModel)]="password">
       </div>
 
@@ -58,11 +58,10 @@
         <button
           class="relative w-full p-2 bg-opacity-75 rounded-full custom text-primary bg-blue hover:bg-blue bg-opacity-702"
           [disabled]="!username || !password" type="submit">
-          SIGN IN
+          {{ 'account.login.signIn' | translate }}
         </button>
         <div class="w-full mt-6 text-xs font-semibold text-center text-tertiary">
-          <span><a class="underline" href="https://account.safing.io/?source=Portmaster">Sign Up and
-              Subscribe</a></span>
+          <span><a class="underline" href="https://account.safing.io/?source=Portmaster">{{ 'account.login.signUpSubscribe' | translate }}</a></span>
         </div>
       </div>
     </div>

@@ -3,3 +3,4 @@ dist
 dist-extension
 dist-lib
 .angular
+src/assets

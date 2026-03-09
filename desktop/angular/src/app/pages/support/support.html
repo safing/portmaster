@@ -1,6 +1,6 @@
 <div class="header">
   <h4 class="breadcrumbs">
-    <span>Get Help</span>
+    <span>{{ 'support.getHelp' | translate }}</span>
   </h4>
   <app-expertise></app-expertise>
 </div>
@@ -31,7 +31,7 @@ TODO: Remove when not needed anymore.
       <h4 class="text-lg text-primary -mt-1.5">FAQ</h4>
     </div>
 
-    <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="searchFaqs.next($event)" placeholder="Search FAQs"
+    <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="searchFaqs.next($event)" [placeholder]="'search.searchFaqs' | translate"
       class="mb-2">
 
     <div class="flex flex-col gap-2">

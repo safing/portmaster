@@ -9,12 +9,9 @@
     <sfng-tab>
       <section *sfngTabContent>
         <div>
-          <h1>Get
-            Multiple Identities for Each App</h1>
+          <h1>{{ 'spn.carousel.multipleIdentities' | translate }}</h1>
           <span>
-            Automatically get a vast amount of identities (IP addresses). The SPN calculates an individual path for
-            every
-            connection through the privacy network. Spread your connections across the globe, without any effort.
+            {{ 'spn.carousel.multipleIdentitiesDesc' | translate }}
           </span>
         </div>
         <img src="/assets/img/spn-feature-carousel/multiple-identities-for-each-app.png">
@@ -38,11 +35,9 @@
     <sfng-tab>
       <section *sfngTabContent>
         <div>
-          <h1>Easily Adjust <span class="text-blue">Your Privacy</span></h1>
+          <h1>{{ 'spn.carousel.adjustPrivacy' | translate }} <span class="text-blue">{{ 'spn.carousel.yourPrivacy' | translate }}</span></h1>
           <span>
-            SPN just works and does the heavy lifting for you. But of course you can easily configure the settings, so
-            it fits your needs: Exclude certain apps and domains from the SPN. Or never exit in specific countries. And
-            so much more...
+            {{ 'spn.carousel.adjustPrivacyDesc' | translate }}
           </span>
         </div>
         <img src="/assets/img/spn-feature-carousel/easily-control-your-privacy.png">
@@ -52,10 +47,9 @@
     <sfng-tab>
       <section *sfngTabContent class="reverse">
         <div>
-          <h1>Built from Scratch, for <span class="text-blue">Your Privacy</span></h1>
+          <h1>{{ 'spn.carousel.builtFromScratch' | translate }} <span class="text-blue">{{ 'spn.carousel.yourPrivacy' | translate }}</span></h1>
           <span>
-            SPN is built from the ground up. Privacy is cooked right into it. Inspired by Tor, it comes with onion
-            routing and state of the art encryption. Fully open source so all our claims can be validated.
+            {{ 'spn.carousel.builtFromScratchDesc' | translate }}
           </span>
         </div>
         <img class="-top-16" src="/assets/img/spn-feature-carousel/built-from-the-ground-up.png">
@@ -65,11 +59,9 @@
     <sfng-tab>
       <section *sfngTabContent>
         <div>
-          <h1>Bye Bye, VPNs</h1>
+          <h1>{{ 'spn.carousel.byeByeVpns' | translate }}</h1>
           <span>
-            VPN technology was NOT built for user privacy, but for company security. Because of that, you can only trust
-            a VPN provider's policy - and many have been caught abusing user data. Honestly, the best way forward: just
-            stop paying for outdated technology.
+            {{ 'spn.carousel.byeByeVpnsDesc' | translate }}
           </span>
         </div>
         <img src="/assets/img/spn-feature-carousel/bye-bye-vpns.png">
@@ -148,9 +140,9 @@
               <th></th>
               <th>
                 <a href="https://safing.io/blog/2022/09/06/spn-vs-vpns/?source=Portmaster">
-                  Most VPNs
+                  {{ 'spn.carousel.mostVpns' | translate }}
                   <br>
-                  <span class="text-xs underline text-blue">Read Comparison Blog</span>
+                  <span class="text-xs underline text-blue">{{ 'spn.carousel.readComparisonBlog' | translate }}</span>
                 </a>
               </th>
               <th>SPN</th>
@@ -159,7 +151,7 @@
           </thead>
           <tbody>
             <tr>
-              <td>Multiple Identities (simultaneous)</td>
+              <td>{{ 'spn.carousel.multipleIdentitiesSimultaneous' | translate }}</td>
               <td>
                 <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
               </td>
@@ -183,7 +175,7 @@
               </td>
             </tr> -->
             <tr>
-              <td>Individual Apps Settings</td>
+              <td>{{ 'spn.carousel.individualAppsSettings' | translate }}</td>
               <td>
                 <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
               </td>
@@ -195,17 +187,17 @@
               </td>
             </tr>
             <tr>
-              <td>Easy Setup</td>
+              <td>{{ 'spn.carousel.easySetup' | translate }}</td>
               <td>
                 <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
               </td>
               <td>
                 <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
               </td>
-              <td><strong>Browser Only</strong></td>
+              <td><strong>{{ 'spn.carousel.browserOnly' | translate }}</strong></td>
             </tr>
             <tr>
-              <td>Availabilty</td>
+              <td>{{ 'spn.carousel.availability' | translate }}</td>
               <td>
                 <div class="flex flex-row items-center justify-center gap-2">
                   <ng-container *ngTemplateOutlet="windows"></ng-container>
@@ -230,7 +222,7 @@
               </td>
             </tr>
             <tr>
-              <td>Open Source</td>
+              <td>{{ 'spn.carousel.openSource' | translate }}</td>
               <td>
                 <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
               </td>
@@ -242,7 +234,7 @@
               </td>
             </tr>
             <tr>
-              <td>Built for Privacy</td>
+              <td>{{ 'spn.carousel.builtForPrivacy' | translate }}</td>
               <td>
                 <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
               </td>

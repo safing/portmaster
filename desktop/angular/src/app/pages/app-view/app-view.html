@@ -3,7 +3,7 @@
   <div class="flex justify-between items-center p-4 px-12 text-xxs">
     <!-- Breadcrumbs -->
     <div class="flex items-center">
-      <div class="cursor-pointer text-secondary hover:text-primary" [routerLink]="['/app/overview']">Apps</div>
+      <div class="cursor-pointer text-secondary hover:text-primary" [routerLink]="['/app/overview']">{{ 'nav.appsAndProfiles' | translate }}</div>
       <svg viewBox="0 0 24 24" class="inline-block w-4 h-4 text-secondary">
         <g fill="none" class="inner" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M10 16l4-4-4-4" />
@@ -32,31 +32,31 @@
         <!-- App Metadata -->
         <div class="text-tertiary text-xxs" *ngIf="!collapseHeader" [@fadeIn] [@fadeOut]>
           <div class="space-x-2" *ngIf="!!applicationDirectory">
-            <span>Path:</span>
+            <span>{{ 'apps.path' | translate }}:</span>
             <span class="text-opacity-75 text-primary">
               {{ applicationDirectory }}
             </span>
           </div>
           <div class="space-x-2" *ngIf="!!binaryName">
-            <span>Binary:</span>
+            <span>{{ 'apps.binary' | translate }}:</span>
             <span class="text-opacity-75 text-primary">
               {{ binaryName }}
             </span>
           </div>
           <div class="space-x-2">
-            <span>Active Connections:</span>
+            <span>{{ 'apps.activeConnections' | translate }}:</span>
             <span class="text-opacity-75 text-primary">{{stats?.countAliveConnections || 0}}</span>
           </div>
           <div class="space-x-2">
-            <span>Network History:</span>
+            <span>{{ 'apps.networkHistory' | translate }}:</span>
             <ng-container *ngIf="historyAvailableSince">
-              <span class="text-opacity-75 text-primary">As of {{ historyAvailableSince | date }}</span>
+              <span class="text-opacity-75 text-primary">{{ 'apps.asOf' | translate }} {{ historyAvailableSince | date }}</span>
               <span class="-mt-3 underline cursor-pointer text-primary hover:text-secondary text-xxs"
-                (click)="cleanProfileHistory()">Remove all {{ connectionsInHistory }} Connections</span>
+                (click)="cleanProfileHistory()">{{ 'apps.removeConnections' | translate }} {{ connectionsInHistory }} {{ 'apps.connections' | translate }}</span>
             </ng-container>
             <ng-container *ngIf="!historyAvailableSince">
               <span class="text-opacity-75 text-primary"
-                sfng-tooltip="Network History feature is available in Portmaster Plus">None</span>
+                [sfng-tooltip]="'apps.networkHistoryTooltip' | translate">{{ 'apps.none' | translate }}</span>
             </ng-container>
           </div>
         </div>
@@ -82,13 +82,13 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
 
-            More
+            {{ 'apps.more' | translate }}
           </button>
 
           <app-menu #profileMenu>
-            <app-menu-item (click)="editProfile()">Edit App Profile</app-menu-item>
-            <app-menu-item (click)="exportProfile()">Export App Profile</app-menu-item>
-            <app-menu-item (click)="deleteProfile()">Delete App Profile</app-menu-item>
+            <app-menu-item (click)="editProfile()">{{ 'apps.editAppProfile' | translate }}</app-menu-item>
+            <app-menu-item (click)="exportProfile()">{{ 'apps.exportAppProfile' | translate }}</app-menu-item>
+            <app-menu-item (click)="deleteProfile()">{{ 'apps.deleteAppProfile' | translate }}</app-menu-item>
           </app-menu>
 
           <sfng-tipup key="appSettings-QuickSettings"></sfng-tipup>
@@ -103,7 +103,7 @@
           }"
           class="flex flex-col justify-center items-center px-4 py-1 w-24 bg-gray-300 bg-opacity-75 rounded border border-gray-300 shadow transition-all duration-200">
           <h2 class="p-0 m-0 text-lg sfng-lg:text-xl text-primary">{{ stats!.size | prettyCount }}</h2>
-          <span class="text-secondary">Connections</span>
+          <span class="text-secondary">{{ 'apps.connections' | translate }}</span>
         </div>
 
         <div [ngClass]="{
@@ -112,7 +112,7 @@
           class="flex flex-col justify-center items-center px-4 py-1 w-24 bg-gray-300 bg-opacity-75 rounded border border-gray-300 shadow transition-all duration-200">
           <h2 class="p-0 m-0 text-lg sfng-lg:text-xl text-primary">{{ (100 / stats!.size) * (stats!.size
             - stats!.countAllowed) | number:'1.0-1' }}%</h2>
-          <span class="text-secondary">Blocked</span>
+          <span class="text-secondary">{{ 'apps.blocked' | translate }}</span>
         </div>
 
         <div [ngClass]="{
@@ -126,10 +126,10 @@
           <ng-template #cannotViewBW>
             <span routerLink="/dashboard"
               class="p-0 pb-2.5 m-0 text-opacity-50 whitespace-nowrap text-xxs sfng-lg:text-xs text-tertiary hover:underline">
-              Available in Plus
+              {{ 'apps.availableInPlus' | translate }}
             </span>
           </ng-template>
-          <span class="text-secondary">Received</span>
+          <span class="text-secondary">{{ 'apps.received' | translate }}</span>
         </div>
 
         <div [ngClass]="{
@@ -140,7 +140,7 @@
             class="p-0 m-0 text-lg whitespace-nowrap sfng-lg:text-xl text-primary">
             {{ stats.bytes_sent | bytes }}
           </h2>
-          <span class="text-secondary">Sent</span>
+          <span class="text-secondary">{{ 'apps.sent' | translate }}</span>
         </div>
 
       </div>
@@ -157,7 +157,7 @@
 
   <sfng-tab-group class="flex overflow-hidden flex-col flex-grow p-4 px-12 w-full">
     <!-- Connections -->
-    <sfng-tab id="connections" title="Connections">
+    <sfng-tab id="connections" [title]="'apps.connections' | translate">
       <div *sfngTabContent>
         <sfng-netquery-viewer [filters]="['allowed', 'as_owner', 'country', 'domain']"
           [mergeFilter]="{profile: appProfile.Source + '/' + appProfile.ID}">
@@ -165,11 +165,11 @@
       </div>
     </sfng-tab>
     <!-- App Settings -->
-    <sfng-tab id="settings" title="Settings">
+    <sfng-tab id="settings" [title]="'apps.settings' | translate">
       <div *sfngTabContent class="overflow-auto py-4" cdkScrollable>
 
         <div class="flex flex-row items-center pr-2 mb-4 space-x-4">
-          <input type="text" [(ngModel)]="searchTerm" placeholder="Search Settings">
+          <input type="text" [(ngModel)]="searchTerm" [placeholder]="'apps.searchSettings' | translate">
 
           <a href="https://docs.safing.io/portmaster/settings?source=Portmaster"
             class="flex flex-row gap-1 justify-center items-center self-stretch px-2 whitespace-nowrap bg-gray-300 rounded hover:bg-gray-200 text-blue">
@@ -178,7 +178,7 @@
               <path stroke-linecap="round" stroke-linejoin="round"
                 d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
             </svg>
-            Get Help
+            {{ 'apps.getHelp' | translate }}
           </a>
 
           <!--
@@ -200,7 +200,7 @@
 
         <div class="flex items-center text-tertiary">
           <div class="inline-flex items-center" sfngTipUpAnchor=>
-            <span class="mr-3 text-xxs">App Specific Settings</span>
+            <span class="mr-3 text-xxs">{{ 'apps.appSpecificSettings' | translate }}</span>
             <sfng-tipup key="appSettings"></sfng-tipup>
           </div>
         </div>
@@ -208,7 +208,7 @@
         <ng-container *ngIf="settings.length > 0; else: noSettingsTemplate">
           <app-settings-view [searchTerm]="searchTerm" [availableSettings]="settings" compactView="true"
             [highlightKey]="highlightSettingKey" userSettingsMarker="true" (save)="saveSetting($event)"
-            resetLabelText="Use global setting" lockDefaults="true" displayStackable="true" [scope]="appProfile.Source + '/' + appProfile.ID">
+            [resetLabelText]="'settings.useGlobalSetting' | translate" lockDefaults="true" displayStackable="true" [scope]="appProfile.Source + '/' + appProfile.ID">
           </app-settings-view>
         </ng-container>
 
@@ -225,40 +225,40 @@
               <span class="text-primary">
                 {{ appProfile!.Name }}
               </span>
-              is fully using the global settings.
+              {{ 'apps.usingGlobalSettings' | translate }}
             </p>
             <p class="mb-4 text-sm">
-              Start creating exceptions for it now.
+              {{ 'apps.startCreatingExceptions' | translate }}
             </p>
-            <button (click)="viewSettingChange.next('all')">Edit Settings</button>
+            <button (click)="viewSettingChange.next('all')">{{ 'apps.editSettings' | translate }}</button>
           </div>
         </ng-template>
       </div>
     </sfng-tab>
 
     <!-- Details -->
-    <sfng-tab id="details" title="Details" [warning]="displayWarning">
+    <sfng-tab id="details" [title]="'apps.details' | translate" [warning]="displayWarning">
       <div *sfngTabContent class="overflow-auto py-4 space-y-8" cdkScrollable>
 
         <div class="grid grid-cols-2 gap-4 text-primary text-xxs">
           <div class="flex flex-col justify-center p-4 bg-gray-200 rounded">
             <p class="space-x-2">
-              <label class="text-secondary">Name:</label>
+              <label class="text-secondary">{{ 'apps.name' | translate }}:</label>
               <span>{{appProfile!.Name}}</span>
             </p>
             <p class="space-x-2">
-              <label class="text-secondary">Path:</label>
+              <label class="text-secondary">{{ 'apps.path' | translate }}:</label>
               <span>{{appProfile!.PresentationPath}}</span>
             </p>
           </div>
 
           <div class="flex flex-col justify-center p-4 bg-gray-200 rounded">
             <p class="space-x-2">
-              <label class="text-secondary">Created:</label>
+              <label class="text-secondary">{{ 'time.created' | translate }}:</label>
               <span>{{appProfile!.Created * 1000 | date:'medium'}}</span>
             </p>
             <p class="space-x-2">
-              <label class="text-secondary">Last Edited:</label>
+              <label class="text-secondary">{{ 'time.lastEdited' | translate }}:</label>
               <span *ngIf="!!appProfile.LastEdited">{{appProfile!.LastEdited * 1000 | date:'medium'}}</span>
               <span *ngIf="!appProfile.LastEdited">N/A</span>
             </p>
@@ -267,11 +267,11 @@
           <ng-container *appExpertiseLevel="'developer'">
             <div class="flex flex-col justify-center p-4 bg-gray-200 rounded">
               <p class="space-x-2">
-                <label class="text-secondary">Internal:</label>
-                <span>{{!!appProfile!.Internal ? 'yes' : 'no'}}</span>
+                <label class="text-secondary">{{ 'apps.internal' | translate }}:</label>
+                <span>{{!!appProfile!.Internal ? ('common.yes' | translate) : ('common.no' | translate)}}</span>
               </p>
               <p class="space-x-2">
-                <label class="text-secondary">Source:</label>
+                <label class="text-secondary">{{ 'apps.source' | translate }}:</label>
                 <span>{{appProfile!.Source}}</span>
               </p>
               <p class="space-x-2">
@@ -282,11 +282,11 @@
 
             <div class="flex flex-col justify-center p-4 bg-gray-200 rounded">
               <p class="space-x-2">
-                <label class="text-secondary">Revision:</label>
+                <label class="text-secondary">{{ 'apps.revision' | translate }}:</label>
                 <span>{{layeredProfile?.RevisionCounter}}</span>
               </p>
               <p class="space-x-2">
-                <label class="text-secondary">Layers:</label>
+                <label class="text-secondary">{{ 'apps.layers' | translate }}:</label>
                 <span>
                   <ol class="inline-block">
                     <li *ngFor="let layer of layeredProfile?.LayerIDs"
@@ -308,7 +308,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span class="mr-2 text-xxs">Description</span>
+            <span class="mr-2 text-xxs">{{ 'apps.description' | translate }}</span>
             <span class="inline-block flex-grow border-b border-gray-400"></span>
           </h2>
 
@@ -325,7 +325,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <span class="mr-2 text-xxs">Warning</span>
+            <span class="mr-2 text-xxs">{{ 'common.warning' | translate }}</span>
             <span class="inline-block flex-grow border-b border-gray-400"></span>
           </h2>
 
@@ -345,12 +345,11 @@
                 d="M7.864 4.243A7.5 7.5 0 0119.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 004.5 10.5a7.464 7.464 0 01-1.15 3.993m1.989 3.559A11.209 11.209 0 008.25 10.5a3.75 3.75 0 117.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 01-3.6 9.75m6.633-4.596a18.666 18.666 0 01-2.485 5.33" />
             </svg>
 
-            <span class="mr-2 text-xxs">Fingerprints</span>
+            <span class="mr-2 text-xxs">{{ 'apps.fingerprints' | translate }}</span>
             <span class="inline-block flex-grow border-b border-gray-400"></span>
           </h2>
 
-          <span class="text-xs text-secondary">This profile will be applied to processes that match one of the following
-            fingerprints:</span>
+          <span class="text-xs text-secondary">{{ 'apps.fingerprintsDescription' | translate }}</span>
 
           <div
             class="flex relative flex-row gap-2 items-center p-2 mx-3 bg-gray-200 border-r border-l border-gray-500 w-fit"
@@ -365,7 +364,7 @@
             <span class="inline-block px-2 py-1 bg-gray-400 rounded">{{ fp.Type }}</span>
 
             <ng-container *ngIf="!!fp.Key">
-              <span class="text-secondary">where</span>
+              <span class="text-secondary">{{ 'common.where' | translate }}</span>
               <span
                 class="inline-block px-2 py-1 bg-gray-400 rounded">{{ fp.Type === 'tag' ? (tagNames[fp.Key] || fp.Key) : fp.Key }}</span>
             </ng-container>
@@ -383,16 +382,13 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
-            <span class="mr-2 text-xxs">Delete Profile</span>
+            <span class="mr-2 text-xxs">{{ 'apps.deleteProfile' | translate }}</span>
             <span class="inline-block flex-grow border-b border-gray-400"></span>
           </h2>
 
-          <span class="text-secondary">You can completely delete this profile to get rid of any settings. The profile
-            will
-            be automatically re-created with default settings as soon as the application starts to use the
-            network.</span>
+          <span class="text-secondary">{{ 'apps.deleteProfileDescription' | translate }}</span>
 
-          <button class="block mt-2" (click)="deleteProfile()">Delete Profile</button>
+          <button class="block mt-2" (click)="deleteProfile()">{{ 'apps.deleteProfile' | translate }}</button>
         </div>
 
         <!-- Debug Section -->
@@ -405,19 +401,17 @@
               </g>
             </svg>
 
-            <span class="mr-2 text-xxs">Debugging</span>
+            <span class="mr-2 text-xxs">{{ 'apps.debugging' | translate }}</span>
             <span class="inline-block flex-grow border-b border-gray-400"></span>
           </h2>
 
-          <span class="text-secondary">When reporting issues with this app please make sure to include the
-            following
-            debug information:</span>
+          <span class="text-secondary">{{ 'apps.debuggingDescription' | translate }}</span>
 
-          <button class="block mt-2" (click)="copyDebugInfo()">Copy Debug Information</button>
+          <button class="block mt-2" (click)="copyDebugInfo()">{{ 'apps.copyDebugInfo' | translate }}</button>
         </div>
       </div>
     </sfng-tab>
-    <sfng-tab id="insights" title="Insights">
+    <sfng-tab id="insights" [title]="'apps.insights' | translate">
       <div *sfngTabContent class="py-4 space-y-8 overflow-auto" cdkScrollable>
         <app-app-insights [profile]="appProfile"></app-app-insights>
       </div>

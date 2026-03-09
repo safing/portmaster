@@ -27,19 +27,19 @@
       </ng-template>
     </ng-container>
     <li *ngIf="!!others" (click)="scrollTo('config:other')" [class.active]="activeSection === 'config:other'">
-      Other
+      {{ 'common.other' | translate }}
     </li>
   </ul>
 
   <ul class="bottom-0 mb-7">
     <li class="mt-3" *ngIf="!exportMode">
-      <button class="bg-grey text-white w-full" (click)="openImportDialog()">Import Settings</button>
+      <button class="bg-grey text-white w-full" (click)="openImportDialog()">{{ 'dialogs.importSettings' | translate }}</button>
     </li>
     <li *ngIf="exportMode" class="mt-3">
-      <button class="bg-grey text-white w-full" (click)="generateExport()">Save</button>
+      <button class="bg-grey text-white w-full" (click)="generateExport()">{{ 'common.save' | translate }}</button>
     </li>
     <li>
-      <button [ngClass]="{'bg-grey': !exportMode, 'bg-gray-400': exportMode}" class="text-white w-full" (click)="toggleExportMode()">{{ !exportMode ? 'Export Settings' : 'Cancel Export' }}</button>
+      <button [ngClass]="{'bg-grey': !exportMode, 'bg-gray-400': exportMode}" class="text-white w-full" (click)="toggleExportMode()">{{ !exportMode ? ('dialogs.exportSettings' | translate) : ('settings.cancelExport' | translate) }}</button>
     </li>
   </ul>
 

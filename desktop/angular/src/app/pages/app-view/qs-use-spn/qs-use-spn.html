@@ -3,11 +3,11 @@
   snfgTooltipPosition="right"
   [sfng-tooltip]="interferingSettings.length > 0 ? tooltipTemplate : null">
   <span class="text-primary" [class.cursor-pointer]="interferingSettings.length > 0">
-    Use SPN
+    {{ 'apps.useSPN' | translate }}
   </span>
 
   <span *ngIf="!canUse" routerLink="/dashboard" class="cursor-pointer text-tertiary hover:underline">
-    Get Pro
+    {{ 'common.getPro' | translate }}
   </span>
 
   <sfng-toggle *ngIf="canUse && spnDisabled === false"
@@ -16,8 +16,8 @@
 
   <span *ngIf="canUse && spnDisabled === true"
     routerLink="/spn" class="cursor-pointer text-tertiary hover:underline"
-    sfng-tooltip="Enable SPN to start using.">
-      Disabled
+    [sfng-tooltip]="'spn.enableToStart' | translate">
+      {{ 'spn.disabled' | translate }}
   </span>
 
   <ng-template *ngIf="canUse && spnDisabled === null">

@@ -1,14 +1,14 @@
 <h1 class="flex flex-row items-center gap-2">
-  Process Details
+  {{ 'dialogs.processDetails.title' | translate }}
 </h1>
 
 <sfng-tab-group linkRouter="false" class="flex-grow">
-  <sfng-tab title="General">
+  <sfng-tab [title]="'dialogs.processDetails.general' | translate">
     <div *sfngTabContent>
       <table class="custom">
         <tbody>
           <tr>
-            <th>Name</th>
+            <th>{{ 'dialogs.processDetails.name' | translate }}</th>
             <td>
               <div class="flex flex-row items-center gap-1">
                 <app-icon [profile]="process"></app-icon>
@@ -18,35 +18,35 @@
             <td></td>
           </tr>
           <tr>
-            <th>User</th>
+            <th>{{ 'dialogs.processDetails.user' | translate }}</th>
             <td>{{ process.UserName }} <span class="text-tertiary" *appExpertiseLevel="'expert'">({{ process.UserID
                 }})</span></td>
             <td></td>
           </tr>
           <tr *appExpertiseLevel="'expert'">
-            <th>Process ID</th>
+            <th>{{ 'dialogs.processDetails.processId' | translate }}</th>
             <td>{{ process.Pid }}</td>
             <td></td>
           </tr>
 
           <tr *appExpertiseLevel="'expert'">
-            <th>Process Group ID</th>
+            <th>{{ 'dialogs.processDetails.processGroupId' | translate }}</th>
             <td (click)="openGroup()">{{ process.Pgid }}</td>
             <td></td>
           </tr>
 
           <tr *appExpertiseLevel="'expert'">
-            <th>Parent Process ID</th>
+            <th>{{ 'dialogs.processDetails.parentProcessId' | translate }}</th>
             <td (click)="openParent()">{{ process.ParentPid }}</td>
             <td></td>
           </tr>
           <tr>
-            <th>Path</th>
+            <th>{{ 'dialogs.processDetails.path' | translate }}</th>
             <td>{{ process.Path }} <span *ngIf="process.MatchingPath" class="text-tertiary">({{ process.MatchingPath
                 }})</span></td>
             <td>
               <button (click)="createProfileForPath()"
-                sfng-tooltip="Create a new profile for all processes with this path">
+                [sfng-tooltip]="'dialogs.processDetails.createProfileForPath' | translate">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                   stroke="currentColor" class="w-4 h-4">
                   <path stroke-linecap="round" stroke-linejoin="round"
@@ -56,16 +56,16 @@
             </td>
           </tr>
           <tr>
-            <th>Executable Name</th>
+            <th>{{ 'dialogs.processDetails.executableName' | translate }}</th>
             <td>{{ process.ExecName }}</td>
             <td></td>
           </tr>
           <tr>
-            <th>Command Line</th>
+            <th>{{ 'dialogs.processDetails.commandLine' | translate }}</th>
             <td>{{ process.CmdLine }}</td>
             <td>
               <button (click)="createProfileForCmdline()"
-                sfng-tooltip="Create a new profile for all processes with this command line">
+                [sfng-tooltip]="'dialogs.processDetails.createProfileForCmdline' | translate">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                   stroke="currentColor" class="w-4 h-4">
                   <path stroke-linecap="round" stroke-linejoin="round"
@@ -77,12 +77,12 @@
           <tr>
             <th>
               <div class="flex flex-row items-center gap-2">
-                Tags
+                {{ 'dialogs.processDetails.tags' | translate }}
                 <sfng-tipup key="process-tags"></sfng-tipup>
               </div>
             </th>
             <td>
-              <span *ngIf="!process.Tags?.length">This process does not have any tags.</span>
+              <span *ngIf="!process.Tags?.length">{{ 'dialogs.processDetails.noTags' | translate }}</span>
               <ul>
                 <li *ngFor="let tag of process.Tags"
                   class="flex flex-row bg-gray-100 border border-gray-500 rounded-sm text-xxs w-fit">
@@ -98,10 +98,10 @@
     </div>
   </sfng-tab>
 
-  <sfng-tab title="Environment">
+  <sfng-tab [title]="'dialogs.processDetails.environment' | translate">
     <div *sfngTabContent>
       <div *ngIf="!(process.Env | keyvalue)?.length" class="p-2 text-xs text-center">
-        <span class="text-secondary">This process does not have any environment variables.</span>
+        <span class="text-secondary">{{ 'dialogs.processDetails.noEnvVars' | translate }}</span>
       </div>
 
       <table class="custom">
@@ -111,7 +111,7 @@
             <td>{{ env.value }}</td>
             <td class="w-8">
               <button (click)="createProfileForEnv(env)"
-                sfng-tooltip="Create a new profile for all processes with this environment variable">
+                [sfng-tooltip]="'dialogs.processDetails.createProfileForEnv' | translate">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                   stroke="currentColor" class="w-4 h-4">
                   <path stroke-linecap="round" stroke-linejoin="round"
@@ -127,5 +127,5 @@
 </sfng-tab-group>
 
 <div class="flex flex-row justify-end gap-2">
-  <button (click)="close()">Close</button>
+  <button (click)="close()">{{ 'common.close' | translate }}</button>
 </div>

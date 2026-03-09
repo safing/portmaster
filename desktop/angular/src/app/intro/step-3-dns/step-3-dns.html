@@ -1,9 +1,8 @@
-<h1>Secure DNS for All Connections</h1>
+<h1>{{ 'intro.step3.title' | translate }}</h1>
 
-<p>Portmaster automatically encrypts all your DNS queries to safeguard them from prying eyes. Portmaster sets a default
-  provider, but you can always switch to a custom DNS-over-TLS provider in the global settings.</p>
+<p>{{ 'intro.step3.description' | translate }}</p>
 
-<sfng-dropdown label="Customize" class="w-full" maxHeight="300px" maxWidth="600px" offsetY="0">
+<sfng-dropdown [label]="'common.customize' | translate" class="w-full" maxHeight="300px" maxWidth="600px" offsetY="0">
   <div class="flex flex-wrap items-center justify-center w-full gap-6 px-8 py-8">
     <button *ngFor="let button of quickSettings" [style.minWidth]="'6rem'" (click)="applyQuickSetting(button)"
       [disabled]="isCustomValue" [class.bg-blue]="button.active" class="px-4 py-3">
@@ -11,7 +10,7 @@
     </button>
 
     <button class="w-24 px-4 py-3 bg-blue" *ngIf="isCustomValue">
-      Custom
+      {{ 'common.custom' | translate }}
     </button>
   </div>
 </sfng-dropdown>

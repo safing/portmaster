@@ -7,7 +7,7 @@
     </svg>
   </div>
   <input [cdkTrapFocus]="false" [cdkTrapFocusAutoCapture]="true" class="w-full !pl-7 rounded-tr-sm" type="text"
-    [(ngModel)]="textSearch" placeholder="Search for connections, press ENTER to apply"
+    [(ngModel)]="textSearch" [placeholder]="'search.placeholder' | translate"
     (keydown)="onSearchKeyDown($event)" (blur)="onFocusLost($event)" (ngModelChange)="onSearchModelChange($event)"
     #searchBar>
 </div>
@@ -26,7 +26,7 @@
       [sfngSuggestion]="{field: '_textsearch', values: []}" #suggestion="sfngNetquerySuggestion"
       class="flex flex-row justify-between w-full gap-2 px-2 py-1 rounded-sm cursor-pointer hover:bg-gray-400"
       [ngClass]="{'bg-gray-400': suggestion.active}">
-      <span class="text-secondary text-xxs">Full-Text Search: <span
+      <span class="text-secondary text-xxs">{{ 'search.fullTextSearch' | translate }}: <span
           class="text-xs text-primary">{{ textSearch }}</span></span>
     </li>
   </ul>

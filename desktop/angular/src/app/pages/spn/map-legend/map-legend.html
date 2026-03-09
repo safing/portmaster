@@ -3,7 +3,7 @@
       <tr>
         <td class="p-2 font-normal">
           <spn-node-icon bySafing="true"></spn-node-icon>
-          Safing Nodes
+          {{ 'spn.safingNodes' | translate }}
         </td>
         <td class="p-2">{{ safingNodeCount }}</td>
       </tr>
@@ -11,7 +11,7 @@
         <td class="p-2">
           <span class="pl-5">
             <spn-node-icon bySafing="true" isActive="true"></spn-node-icon>
-            used as Transit
+            {{ 'spn.usedAsTransit' | translate }}
           </span>
         </td>
         <td class="p-2">{{ safingActiveCount }}</td>
@@ -20,7 +20,7 @@
         <td class="p-2">
           <span class="pl-5">
             <spn-node-icon bySafing="true" isExit="true"></spn-node-icon>
-            used as Exit
+            {{ 'spn.usedAsExit' | translate }}
           </span>
         </td>
         <td class="p-2">{{ safingExitCount }}</td>
@@ -28,7 +28,7 @@
       <tr>
         <td class="p-2 font-normal">
           <spn-node-icon bySafing="false"></spn-node-icon>
-          Community Nodes
+          {{ 'spn.communityNodes' | translate }}
         </td>
         <td class="p-2">{{ communityNodeCount }}</td>
       </tr>
@@ -36,7 +36,7 @@
         <td class="p-2">
           <span class="pl-5">
             <spn-node-icon bySafing="false" isActive="true"></spn-node-icon>
-            used as Transit
+            {{ 'spn.usedAsTransit' | translate }}
           </span>
         </td>
         <td class="p-2">{{ communityActiveCount }}</td>
@@ -45,7 +45,7 @@
         <td class="p-2">
           <span class="pl-5">
             <spn-node-icon bySafing="false" isExit="true"></spn-node-icon>
-            used as Exit
+            {{ 'spn.usedAsExit' | translate }}
           </span>
         </td>
         <td class="p-2">{{ communityExitCount }}</td>

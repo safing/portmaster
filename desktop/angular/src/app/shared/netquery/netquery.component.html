@@ -6,7 +6,7 @@
 
   <div
     class="flex items-center justify-center h-full px-3 py-2 bg-gray-200 rounded-r-sm cursor-pointer hover:text-primary text-tertiary"
-    (click)="copyQuery()" sfng-tooltip="Copy query to clipboard" snfgTooltipPosition="left">
+    (click)="copyQuery()" [sfng-tooltip]="'monitor.copyQueryToClipboard' | translate" snfgTooltipPosition="left">
     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
       stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round"
@@ -15,14 +15,14 @@
   </div>
 
   <button class="bg-transparent hover:bg-transparent ml-2 cursor-pointer text-tertiary text-xxs hover:text-primary p-2" (click)="clearQuery()" (keyup.enter)="clearQuery()">
-    Clear All
+    {{ 'common.clearAll' | translate }}
   </button>
 </div>
 
 <div class="flex flex-row items-center w-full gap-2">
   <sfng-netquery-searchbar [(ngModel)]="textSearch" (ngModelChange)="performSearch()" class="block w-full"
     [labels]="keyTranslation" (fieldsParsed)="onFieldsParsed($event)"></sfng-netquery-searchbar>
-  <button type="button" class="h-full rounded-r-sm btn" (click)="performSearch()">Reload</button>
+  <button type="button" class="h-full rounded-r-sm btn" (click)="performSearch()">{{ 'common.reload' | translate }}</button>
 </div>
 
 <div class="flex flex-row flex-wrap items-center w-full gap-3">
@@ -38,7 +38,7 @@
         (ngModelChange)="performSearch()" (opened)="loadSuggestion(field.key)"
         [dynamicValueTemplate]="dynamicValueTemplate" [sortBy]="sortByCount">
         <ng-container *ngIf="field.value?.loading">
-          <sfng-select-item *sfngSelectValue="null; disabled: true" class="text-secondary">Loading ...
+          <sfng-select-item *sfngSelectValue="null; disabled: true" class="text-secondary">{{ 'common.loading' | translate }}
           </sfng-select-item>
         </ng-container>
 
@@ -78,7 +78,7 @@
   <!-- The combinded "more" drop-down that should look like a select component -->
   <ng-template #selectTemplate>
     <button class="sfng-select" [class.active]="customDropdown.isOpen">
-      <span>More</span>
+      <span>{{ 'common.more' | translate }}</span>
       <div class="arrow">
         <svg viewBox="0 0 24 24" class="arrow-icon">
           <g fill="none" class="inner">
@@ -127,7 +127,7 @@
     </nz-range-picker>
 
     <ng-template #customTimeRange>
-      <span class="py-2 uppercase text-xxs text-secondary">Quick Settings</span>
+      <span class="py-2 uppercase text-xxs text-secondary">{{ 'settings.quickSettings' | translate }}</span>
       <ul class="grid grid-flow-row grid-cols-3 py-2 text-xs">
         <li tabindex="0" *ngFor="let qds of quickDateSettings" (click)="applyQuickDateSetting(qds)" (keyup.enter)="applyQuickDateSetting(qds)"
           class="cursor-pointer text-secondary hover:text-primary px-2 py-1.5 hover:bg-gray-500 hover:bg-opacity-50 rounded-md">
@@ -141,7 +141,7 @@
     <!--
       Group-By selection
     -->
-    <sfng-select mode="multi" itemName="Group By" placeholder="Group By" allowSearch="false" [(ngModel)]="groupByKeys"
+    <sfng-select mode="multi" [itemName]="'common.groupBy' | translate" [placeholder]="'common.groupBy' | translate" allowSearch="false" [(ngModel)]="groupByKeys"
       (ngModelChange)="performSearch()">
       <ng-container *ngFor="let value of allowedGroupBy">
         <sfng-select-item *sfngSelectValue="value">
@@ -153,7 +153,7 @@
     <!--
       Order-By selection
     -->
-    <sfng-select mode="multi" itemName="Sort" placeholder="Sort" allowSearch="false" [(ngModel)]="orderByKeys"
+    <sfng-select mode="multi" [itemName]="'common.sort' | translate" [placeholder]="'common.sort' | translate" allowSearch="false" [(ngModel)]="orderByKeys"
       (ngModelChange)="performSearch()">
       <ng-container *ngFor="let value of allowedOrderBy">
         <sfng-select-item *sfngSelectValue="value">
@@ -167,14 +167,14 @@
 
 <div class="relative flex-shrink-0 my-1 bg-gray-200 p-2 rounded grid" [class.grid-cols-2]="featureBw$ | async">
   <div>
-    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">Connections</h2>
+    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">{{ 'monitor.connections' | translate }}</h2>
     <div class="h-32">
       <sfng-netquery-line-chart [data]="connectionChartData" class="h-full" *ngIf="connectionChartData.length > 0" [@fadeIn]></sfng-netquery-line-chart>
     </div>
   </div>
 
   <div *ngIf="featureBw$ | async">
-    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">Data Usage</h2>
+    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">{{ 'monitor.dataUsage' | translate }}</h2>
     <div class="h-32">
       <sfng-netquery-line-chart [config]="bwChartConfig" [data]="bwChartData" class="h-full" *ngIf="!!bwChartData?.length" [@fadeIn]></sfng-netquery-line-chart>
     </div>
@@ -245,7 +245,7 @@
       <div>
         <app-menu-trigger [menu]="groupedMenu"></app-menu-trigger>
         <app-menu #groupedMenu>
-          <app-menu-item (activate)="useAsFilter(data)">Use as filter</app-menu-item>
+          <app-menu-item (activate)="useAsFilter(data)">{{ 'monitor.useAsFilter' | translate }}</app-menu-item>
           <app-menu-item *ngIf="data.__profile"
             (activate)="router.navigate(['/app', data.__profile.Source, data.__profile.ID])">App Settings
           </app-menu-item>
@@ -271,8 +271,8 @@
 <!-- "Total connections & LastReload info "-->
 <div class="flex flex-row items-center justify-start gap-3">
 
-  <span class="text-xxs text-primary" *ngIf="!loading">{{ totalResultCount }} Results
-    <span class="text-secondary">of {{totalConnCount}} total connections</span>
+  <span class="text-xxs text-primary" *ngIf="!loading">{{ totalResultCount }} {{ 'monitor.results' | translate }}
+    <span class="text-secondary">{{ 'monitor.ofTotalConnections' | translate:{count: totalConnCount} }}</span>
   </span>
   <span class="flex-grow"></span>
 
@@ -300,7 +300,7 @@
             'text-yellow-300': ((lastReloadTicker|async)||0) > 60,
             'text-red-300': ((lastReloadTicker|async)||0) > 600
           }">
-          Last Reload: {{ lastReload | timeAgo:(lastReloadTicker|async) }}
+          {{ 'common.lastReload' | translate }}: {{ lastReload | timeAgo:(lastReloadTicker|async) }}
           </span>
 
           <svg xmlns="http://www.w3.org/2000/svg" 
@@ -414,16 +414,13 @@
 </ng-template>
 
 <ng-template #proTip>
-  Use
-  <pre>Shift + Click</pre> to add connection attributes to the current filter.
+  {{ 'monitor.proTipShiftClick' | translate }}
 </ng-template>
 
 <ng-template #proTip>
-  Hold
-  <pre>Shift</pre> to highlight attributes that can be used in the filter.
+  {{ 'monitor.proTipShiftHighlight' | translate }}
 </ng-template>
 
 <ng-template #proTip>
-  Hold
-  <pre>CTRL</pre> and click attributes to copy them to the clipboard.
+  {{ 'monitor.proTipCtrlCopy' | translate }}
 </ng-template>

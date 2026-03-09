@@ -1,19 +1,16 @@
 <div class="content-wrapper">
-  <caption>Tip</caption>
+  <caption>{{ 'common.tip' | translate }}</caption>
   <fa-icon class="close-icon" icon="times" (click)="cancel()"></fa-icon>
 
-  <h1>Close User Interface</h1>
+  <h1>{{ 'dialogs.closeUI' | translate }}</h1>
 
-  <span class="message">Closing the User Interface does not shut down the Portmaster. You can shut down the Portmaster
-    in the Settings or the Tray Notifier.</span>
+  <span class="message">{{ 'dialogs.closeUIMessage' | translate }}</span>
 
   <div class="actions">
     <span>
-      <input name="neveragain" id="neveragain" [(ngModel)]="neveragain" type="checkbox"> <label for="neveragain">Never
-        Show
-        Again</label>
+      <input name="neveragain" id="neveragain" [(ngModel)]="neveragain" type="checkbox"> <label for="neveragain">{{ 'dialogs.neverShowAgain' | translate }}</label>
     </span>
 
-    <button (click)="closeUI()" type="button">Close UI</button>
+    <button (click)="closeUI()" type="button">{{ 'dialogs.closeUIButton' | translate }}</button>
   </div>
 </div>

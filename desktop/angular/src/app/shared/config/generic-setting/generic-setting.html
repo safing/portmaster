@@ -13,9 +13,9 @@
 
   <div class="flex flex-col flex-grow">
     <div class="flex flex-row items-center justify-start space-x-2 w-fit" *ngIf="showHeader">
-      <h3 [innerHTML]="setting?.Name | safe:'html'" class="mb-0 name"></h3>
-      <sfng-tipup *ngIf="setting?.Description" [key]="setting!.Key" [text]="setting?.Description"
-        [buttons]="sfngTipUpButtons" [title]="setting?.Name"></sfng-tipup>
+      <h3 [innerHTML]="translatedName | safe:'html'" class="mb-0 name"></h3>
+      <sfng-tipup *ngIf="setting?.Description" [key]="setting!.Key" [text]="translatedDescription"
+        [buttons]="sfngTipUpButtons" [title]="translatedName"></sfng-tipup>
 
       <span *ngIf="changeAccepted || restartPending || (changeAccepted && uiReloadRequired)" (click)="restartNow()"
         class="px-1.5 py-0.5 border  rounded inline-flex justify-evenly items-center text-xxs mb-0.5" [ngClass]="{
@@ -29,7 +29,7 @@
             clip-rule="evenodd" />
         </svg>
 
-        Saved {{ _setting?.RequiresRestart ? ' - Restart required' : (uiReloadRequired ? ' - Reload required' : '') }}
+        {{ 'common.saved' | translate }} {{ _setting?.RequiresRestart ? (' - ' + ('common.restartRequired' | translate)) : (uiReloadRequired ? (' - ' + ('common.reloadRequired' | translate)) : '') }}
       </span>
 
       <span *ngIf="rejected" (click)="abortChange()"
@@ -39,7 +39,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
-        Invalid Value: {{ rejected }}
+        {{ 'common.invalidValue' | translate }}: {{ rejected }}
       </span>
 
       <span *ngIf="_upgradeRequired" (click)="openAccountDetails()"
@@ -61,16 +61,16 @@
         *appExpertiseLevel="'developer'">{{setting?.Key}}</span>
 
       <span class="inline-block px-1.5 py-0.5 text-gray-100 bg-yellow-300 rounded text-xxs"
-        *ngIf="setting?.ReleaseLevel === releaseLevel.Beta">Beta</span>
+        *ngIf="setting?.ReleaseLevel === releaseLevel.Beta">{{ 'common.beta' | translate }}</span>
 
       <span class="inline-block px-1.5 py-0.5 text-white bg-red-300 rounded text-xxs"
-        *ngIf="setting?.ReleaseLevel === releaseLevel.Experimental">Experimental</span>
+        *ngIf="setting?.ReleaseLevel === releaseLevel.Experimental">{{ 'common.experimental' | translate }}</span>
 
       <span class="inline-block px-1.5 py-0.5 bg-gray-400 rounded text-xxs text-secondary"
-        *ngIf="setting?.ExpertiseLevel === expertise.expert">Advanced</span>
+        *ngIf="setting?.ExpertiseLevel === expertise.expert">{{ 'common.advanced' | translate }}</span>
 
       <span class="inline-block px-1.5 py-0.5 text-gray-100 bg-yellow-300 rounded text-xxs"
-        *ngIf="setting?.ExpertiseLevel === expertise.developer">Developer</span>
+        *ngIf="setting?.ExpertiseLevel === expertise.developer">{{ 'common.developer' | translate }}</span>
 
     </span>
   </div>
@@ -84,7 +84,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
           d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
       </svg>
-      <span class="ml-1 text-xs">Quick Settings</span>
+      <span class="ml-1 text-xs">{{ 'settings.quickSettings' | translate }}</span>
     </app-menu-trigger>
 
     <app-menu #quickSettingsMenu>
@@ -103,8 +103,8 @@
         (ngModelChange)="updateValue($event, true)" [symbolMap]="symbolMap"></app-rule-list>
 
       <div class="stacked-values" *ngIf="showStackable">
-        <h4>This setting stacks on top of the following <a class="underline text-tertiary hover:text-primary"
-            routerLink="/settings" [queryParams]="{setting: setting?.Key}">global setting</a>:</h4>
+        <h4>{{ 'settings.stackedOnGlobal' | translate }} <a class="underline text-tertiary hover:text-primary"
+            routerLink="/settings" [queryParams]="{setting: setting?.Key}">{{ 'settings.globalSetting' | translate }}</a>:</h4>
         <app-rule-list class="w-full mt-4" [readonly]="true" [symbolMap]="symbolMap" [ngModel]="setting?.GlobalDefault">
         </app-rule-list>
       </div>
@@ -123,8 +123,8 @@
         [readonly]="disabled"></app-ordered-list>
 
       <div class="stacked-values" *ngIf="showStackable">
-        <h4>This setting stacks on top of the following <a class="underline text-tertiary hover:text-primary"
-            routerLink="/settings" [queryParams]="{setting: setting?.Key}">global setting</a>:</h4>
+        <h4>{{ 'settings.stackedOnGlobal' | translate }} <a class="underline text-tertiary hover:text-primary"
+            routerLink="/settings" [queryParams]="{setting: setting?.Key}">{{ 'settings.globalSettings' | translate }}</a>:</h4>
         <app-ordered-list class="w-full mt-4" [ngModel]="setting?.GlobalDefault" [readonly]="true"></app-ordered-list>
       </div>
     </ng-container>
@@ -138,8 +138,8 @@
         </app-ordered-list>
 
         <div class="stacked-values" *ngIf="showStackable">
-          <h4>This setting stacks on top of the following <a class="underline text-tertiary hover:text-primary"
-              routerLink="/settings" [queryParams]="{setting: setting?.Key}">global setting</a>:</h4>
+          <h4>{{ 'settings.stackedOnGlobal' | translate }} <a class="underline text-tertiary hover:text-primary"
+              routerLink="/settings" [queryParams]="{setting: setting?.Key}">{{ 'settings.globalSettings' | translate }}</a>:</h4>
           <app-ordered-list class="w-full mt-4" fixedOrder="true" [ngModel]="setting?.GlobalDefault" [readonly]="true">
           </app-ordered-list>
         </div>
@@ -178,11 +178,11 @@
 
   <ng-template #lockTooltip>
     <ng-template [ngIf]="isLocked" [ngIfElse]="unlockedTooltip">
-      Inherited from <a [routerLink]="['/settings']" [queryParams]="{setting: setting?.Key}"
-        class="cursor-pointer hover:underline">Global Settings</a>
+      {{ 'settings.inheritedFromGlobal' | translate }} <a [routerLink]="['/settings']" [queryParams]="{setting: setting?.Key}"
+        class="cursor-pointer hover:underline">{{ 'settings.globalSettings' | translate }}</a>
     </ng-template>
     <ng-template #unlockedTooltip>
-      App specific configuration
+      {{ 'settings.appSpecificConfig' | translate }}
     </ng-template>
   </ng-template>
 </div>

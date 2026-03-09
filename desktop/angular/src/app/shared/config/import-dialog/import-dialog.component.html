@@ -1,6 +1,6 @@
 <header class="flex flex-row justify-between items-center mb-2">
   <h1 class="m-0 text-sm font-light">
-    Import {{ dialogRef.data.type === "setting" ? "Settings" : "Profile" }}
+    {{ dialogRef.data.type === "setting" ? ('dialogs.importDialog.importSettings' | translate) : ('dialogs.importDialog.importProfile' | translate) }}
   </h1>
 
   <svg role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"
@@ -11,35 +11,34 @@
   </svg>
 </header>
 
-<span class="text-xs font-light">Please paste the "Export Content" or use "Choose File" to select one from
-  your hard disk.</span>
+<span class="text-xs font-light">{{ 'dialogs.importDialog.pasteContent' | translate }}</span>
 
 <pre tabindex="0" class="block flex-grow w-full rounded border border-gray-500 language-yaml overflow-auto outline-none"
   #codeBlock id="yaml" contenteditable="true" (blur)="onBlur()" (mouseleave)="onBlur()" (paste)="onPaste($event)"></pre>
 
 <fieldset class="p-2 text-xs font-light bg-gray-400 rounded border border-gray-500 border-solid">
-  <legend class="px-2 py-1 m-0 text-xs w-fit">Configuration</legend>
+  <legend class="px-2 py-1 m-0 text-xs w-fit">{{ 'dialogs.importDialog.configuration' | translate }}</legend>
 
   <div class="p-2 space-y-2">
     <div class="flex flex-row gap-2" *ngIf="dialogRef.data.type === 'setting'">
       <input type="checkbox" [(ngModel)]="reset" id="reset" />
-      <label class="text-primary" for="reset">Reset all settings to default before importing</label>
+      <label class="text-primary" for="reset">{{ 'dialogs.importDialog.resetSettings' | translate }}</label>
     </div>
 
     <div class="flex flex-row gap-2" *ngIf="result?.containsUnknown">
       <input type="checkbox" id="allowUnknown" [(ngModel)]="allowUnknown" />
-      <label class="text-primary" for="allowUnknown">Allow unknown settings</label>
+      <label class="text-primary" for="allowUnknown">{{ 'dialogs.importDialog.allowUnknown' | translate }}</label>
     </div>
 
     <!-- Replacing existing profile must be explicitly accepted for profile (but not for settings...) -->
     <div class="flex flex-row gap-2" *ngIf="result?.replacesExisting && dialogRef.data.type === 'profile'">
       <input type="checkbox" id="allowUnknown" [(ngModel)]="allowReplace" />
-      <label class="text-primary" for="allowUnknown">Allow replacing an existing profile</label>
+      <label class="text-primary" for="allowUnknown">{{ 'dialogs.importDialog.allowReplace' | translate }}</label>
     </div>
 
     <div class="flex flex-row gap-2" *ngIf="result?.restartRequired">
       <input type="checkbox" id="restart" [(ngModel)]="triggerRestart" />
-      <label class="text-primary" for="restart">Automatically restart Portmaster after a successfull import</label>
+      <label class="text-primary" for="restart">{{ 'dialogs.importDialog.autoRestart' | translate }}</label>
     </div>
   </div>
 </fieldset>
@@ -51,7 +50,7 @@
         result.replacesExisting ||
         result.restartRequired))
   ">
-  <legend class="px-2 py-1 m-0 text-xs w-fit">Warning</legend>
+  <legend class="px-2 py-1 m-0 text-xs w-fit">{{ 'common.warning' | translate }}</legend>
 
   <div *ngIf="!!errorMessage" class="flex flex-row gap-2 items-center p-2 w-full text-xs font-normal">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
@@ -64,35 +63,34 @@
 
   <ul *ngIf="result" class="px-2 py-2 pl-7 list-disc">
     <li *ngIf="result.containsUnknown">
-      This export contains unknown settings. To import it, you must enable
-      "Allow unknown settings".
+      {{ 'dialogs.importDialog.warningUnknown' | translate }}
     </li>
 
     <li *ngIf="result.replacesExisting">
       {{
       dialogRef.data.type === "setting"
-      ? "This export will overwrite settings that have been changed by you."
-      : "This export will overwrite an existing profile."
+      ? ('dialogs.importDialog.warningOverwriteSettings' | translate)
+      : ('dialogs.importDialog.warningOverwriteProfile' | translate)
       }}
 
       <ng-container *ngIf="replacedProfiles.length as count">
-        And deletes {{ count }} previously merged profile{{ count > 1 ? 's' : '' }}
+        {{ 'dialogs.importDialog.deleteMergedProfiles' | translate:{ count: count } }}
       </ng-container>
     </li>
 
     <li *ngIf="result.restartRequired">
-      This export will require a restart of the Portmaster to take effect.
+      {{ 'dialogs.importDialog.warningRestart' | translate }}
     </li>
   </ul>
 </fieldset>
 
 <div class="flex flex-row justify-between">
   <button>
-    <label class="block" for="avatarInput"> Choose File </label>
+    <label class="block" for="avatarInput">{{ 'dialogs.importDialog.chooseFile' | translate }}</label>
   </button>
 
   <button class="text-white bg-blue" (click)="import()" [disabled]="!result">
-    Import
+    {{ 'common.import' | translate }}
   </button>
 </div>
 

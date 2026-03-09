@@ -1,7 +1,7 @@
 <!-- Progress Indicator -->
 <div *ngIf="state !== 'error' && state !== 'done'">
 
-  <caption class="text-xxs text-secondary">Status</caption>
+  <caption class="text-xxs text-secondary">{{ 'dialogs.progress.status' | translate }}</caption>
 
   <div class="flex flex-row gap-2">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
@@ -13,17 +13,17 @@
     <div [ngSwitch]="state">
       <!-- Uploading debug data -->
       <ng-template ngSwitchCase="debug-info">
-        <span>Uploading debug data ....</span>
+        <span>{{ 'dialogs.progress.uploadingDebug' | translate }}</span>
       </ng-template>
 
       <!-- Github Issue -->
       <ng-template ngSwitchCase="create-issue">
-        <span>Creating GitHub issue ...</span>
+        <span>{{ 'dialogs.progress.creatingIssue' | translate }}</span>
       </ng-template>
 
       <!-- Private ticket -->
       <ng-template ngSwitchCase="create-ticket">
-        <span>Creating private support ticket ...</span>
+        <span>{{ 'dialogs.progress.creatingTicket' | translate }}</span>
       </ng-template>
     </div>
   </div>
@@ -41,30 +41,30 @@
 
     <span class="text-base text-primary">
       <ng-template [ngIf]="dialogRef.data.type === 'github' && dialogRef.data.generateUrl">
-        Ticket prepared successfully
+        {{ 'dialogs.progress.ticketPrepared' | translate }}
       </ng-template>
 
       <ng-template [ngIf]="dialogRef.data.type !== 'github' || !dialogRef.data.generateUrl">
-        Ticket created successfully!
+        {{ 'dialogs.progress.ticketCreated' | translate }}
       </ng-template>
     </span>
   </span>
 
   <div *ngIf="dialogRef.data.type === 'github' && dialogRef.data.generateUrl">
-    <span>Use the following button to open the pre-filled GitHub issue form:</span>
+    <span>{{ 'dialogs.progress.useButtonToOpen' | translate }}</span>
 
     <br />
 
     <div class="flex flex-row items-center justify-center p-4">
-      <button class="bg-blue" (click)="integration.openExternal(url)">Create Issue</button>
+      <button class="bg-blue" (click)="integration.openExternal(url)">{{ 'dialogs.progress.createIssue' | translate }}</button>
     </div>
   </div>
 
   <div *ngIf="dialogRef.data.type === 'github' && !dialogRef.data.generateUrl" class="flex flex-col">
     <span>
-      We successfully create the issue on GitHub for you.
+      {{ 'dialogs.progress.issueCreatedSuccess' | translate }}
       <br />
-      Use the following link to check for updates:
+      {{ 'dialogs.progress.useFollowingLink' | translate }}
     </span>
 
     <span class="inline-block w-full text-center mt-4 underline text-secondary"
@@ -72,7 +72,7 @@
   </div>
 
   <span *ngIf="dialogRef.data.type === 'private' && dialogRef.data.email">
-    We will contact you as soon as possbile.
+    {{ 'dialogs.progress.willContactYou' | translate }}
   </span>
 </ng-template>
 
@@ -87,17 +87,17 @@
     </svg>
 
     <span class="text-base text-primary">
-      Failed to create Support Ticket
+      {{ 'dialogs.progress.failedToCreate' | translate }}
     </span>
   </span>
 
 
   <span>
-    An error occured while creating your support ticket:
+    {{ 'dialogs.progress.errorOccurred' | translate }}
   </span>
 
   <span class="text-red block w-full text-center">
-    {{ error || 'Unknown Error' }}
+    {{ error || ('errors.unknownError' | translate) }}
   </span>
 </div>
 
@@ -105,10 +105,10 @@
 <div class="flex flex-row justify-center items-center gap-2">
 
   <button *ngIf="state === 'done' && !!url && dialogRef.data.type === 'github' && !dialogRef.data.generateUrl "
-    class="bg-blue" (click)="integration.openExternal(url)">Open Issue</button>
+    class="bg-blue" (click)="integration.openExternal(url)">{{ 'dialogs.progress.openIssue' | translate }}</button>
 
   <button *ngIf="state === 'done' && !!url && dialogRef.data.type === 'github' && !dialogRef.data.generateUrl "
-    (click)="copyUrl()">Copy URL</button>
+    (click)="copyUrl()">{{ 'dialogs.progress.copyUrl' | translate }}</button>
 
-  <button (click)="dialogRef.close()" class="btn">Close</button>
+  <button (click)="dialogRef.close()" class="btn">{{ 'common.close' | translate }}</button>
 </div>

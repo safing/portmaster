@@ -6,6 +6,7 @@ import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { TranslateModule } from '@ngx-translate/core';
 import { SfngToggleSwitchModule, SfngTooltipModule, TabModule } from '@safing/ui';
 import { SfngAppIconModule } from 'src/app/shared/app-icon';
 import { CountIndicatorModule } from 'src/app/shared/count-indicator';
@@ -45,6 +46,7 @@ import { SPNFeatureCarouselComponent } from './spn-feature-carousel';
     CommonPipesModule,
     DragDropModule,
     RouterModule,
+    TranslateModule,
   ],
   declarations: [
     MapRendererComponent,

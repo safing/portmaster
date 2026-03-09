@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/safing/portmaster/base/i18n"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -23,6 +24,12 @@ func init() {
 }
 
 func prep() error {
+	// Initialize i18n system
+	if err := i18n.Init(); err != nil {
+		// Log warning but don't fail - translations are optional
+		_ = err
+	}
+
 	// Register endpoints.
 	if err := registerConfig(); err != nil {
 		return err

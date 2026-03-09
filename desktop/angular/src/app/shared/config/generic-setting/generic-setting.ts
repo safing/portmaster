@@ -8,6 +8,7 @@ import { SfngDialogRef, SfngDialogService } from '@safing/ui';
 import { Button } from 'js-yaml-loader!../../../i18n/helptexts.yaml';
 import { Subject } from 'rxjs';
 import { debounceTime, tap } from 'rxjs/operators';
+import { TranslateService } from '@ngx-translate/core';
 import { ActionIndicatorService } from '../../action-indicator';
 import { fadeInAnimation, fadeOutAnimation } from '../../animations';
 import { ExpertiseService } from '../../expertise/expertise.service';
@@ -453,6 +454,27 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
     return this.expertiseService.change;
   }
 
+  /**
+   * Returns translated name for the setting, falling back to original if not found.
+   */
+  get translatedName(): string {
+    if (!this.setting?.Key) return '';
+    const key = `config.${this.setting.Key}.name`;
+    const translated = this.translate.instant(key);
+    // If translation returns the key itself, fallback to original
+    return (translated === key) ? (this.setting?.Name || '') : translated;
+  }
+
+  /**
+   * Returns translated description for the setting, falling back to original if not found.
+   */
+  get translatedDescription(): string {
+    if (!this.setting?.Key) return '';
+    const key = `config.${this.setting.Key}.description`;
+    const translated = this.translate.instant(key);
+    return (translated === key) ? (this.setting?.Description || '') : translated;
+  }
+
   constructor(
     private expertiseService: ExpertiseService,
     private configService: ConfigService,
@@ -463,6 +485,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
     private spn: SPNService,
     private viewRef: ViewContainerRef,
     private destryoRef: DestroyRef,
+    private translate: TranslateService,
   ) { }
 
   ngOnInit() {
