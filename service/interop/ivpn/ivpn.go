@@ -155,6 +155,12 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 
 	wc.Debug(fmt.Sprintf("Connected to IVPN client %s", helloResp.Version))
 
+	// Show UI notification if not suppressed by user
+	if !isNotificationSuppressed() {
+		notification := i.initAndShowNotification()
+		defer notification.Delete()
+	}
+
 	// Configure IVPN client DNS settings based on current Portmaster config at startup
 	i.updateIvpnClientDnsSettings(wc, client)
 

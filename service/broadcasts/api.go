@@ -10,6 +10,7 @@ import (
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/accessor"
+	"github.com/safing/portmaster/service/interop/ivpn"
 )
 
 func registerAPIEndpoints() error {
@@ -28,8 +29,8 @@ func registerAPIEndpoints() error {
 		Write:       api.PermitAdmin,
 		WriteMethod: http.MethodPost,
 		ActionFunc:  handleResetState,
-		Name:        "Resets the Broadcast Notification States",
-		Description: "Delete the cache of Broadcast Notifications, making them appear again.",
+		Name:        "Reset Notification States",
+		Description: "Deletes the cached state of broadcast and other notifications, causing them to appear again.",
 	}); err != nil {
 		return err
 	}
@@ -62,9 +63,12 @@ func handleMatchingData(ar *api.Request) (i interface{}, err error) {
 
 func handleResetState(ar *api.Request) (msg string, err error) {
 	err = db.Delete(broadcastStatesDBKey)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return "", err
 	}
+
+	_ = db.Delete(ivpn.Notification_DB_ID_IvpnDetectSuppressed)
+
 	return "Reset complete.", nil
 }
 
