@@ -16,9 +16,7 @@ func (i *InteropIvpn) initAndShowNotification() *notifications.Notification {
 		EventID: "interop:ivpn",
 		Type:    notifications.Info,
 		Title:   "IVPN Client detected",
-		Message: `Portmaster has detected the IVPN Client and will allow its VPN and service connections.
-
-If Portmaster is running a local DNS resolver, the IVPN Client will automatically use it.`,
+		Message: `Portmaster has detected the IVPN Client and will allow its VPN and service connections.`,
 		AvailableActions: []*notifications.Action{
 			{
 				ID:   "ack",
@@ -26,7 +24,7 @@ If Portmaster is running a local DNS resolver, the IVPN Client will automaticall
 			},
 			{
 				ID:         actionSuppressID,
-				Text:       "Do not notify me anymore",
+				Text:       "Don't show again",
 				Visibility: notifications.ActionVisibilityDetailed,
 			},
 		},
