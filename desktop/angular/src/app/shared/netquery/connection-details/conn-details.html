@@ -162,12 +162,12 @@
     <span *ngIf="!conn.domain">
       <span>Scope:</span>
       <ng-container [ngSwitch]="conn.scope">
-        <span *ngSwitchCase="scopes.Global">Internet Peer-to-Peer</span>
-        <span *ngSwitchCase="scopes.GlobalMulitcast">Internet Multicast</span>
-        <span *ngSwitchCase="scopes.HostLocal">Device-Local</span>
-        <span *ngSwitchCase="scopes.LinkLocal">LAN Peer-to-Peer</span>
-        <span *ngSwitchCase="scopes.LocalMulticast">LAN Multicast</span>
-        <span *ngSwitchCase="scopes.SiteLocal">LAN Peer-to-Peer</span>
+        <span *ngSwitchCase="scopes.Global">{{ 'monitor.internetPeerToPeer' | translate }}</span>
+        <span *ngSwitchCase="scopes.GlobalMulitcast">{{ 'monitor.internetMulticast' | translate }}</span>
+        <span *ngSwitchCase="scopes.HostLocal">{{ 'monitor.deviceLocal' | translate }}</span>
+        <span *ngSwitchCase="scopes.LinkLocal">{{ 'monitor.lanPeerToPeer' | translate }}</span>
+        <span *ngSwitchCase="scopes.LocalMulticast">{{ 'monitor.lanMulticast' | translate }}</span>
+        <span *ngSwitchCase="scopes.SiteLocal">{{ 'monitor.lanPeerToPeer' | translate }}</span>
 
         <span class="text-tertiary" *ngSwitchCase="scopes.Invalid">N/A</span>
         <span class="text-tertiary" *ngSwitchCase="scopes.Undefined">N/A</span>
@@ -222,7 +222,7 @@
   </div>
 
   <div *ngIf="conn.scope === scopes.Global">
-    <h3 class="text-primary text-xxs">SPN Tunnel</h3>
+    <h3 class="text-primary text-xxs">{{ 'monitor.spnTunnel' | translate }}</h3>
     <ng-container [ngSwitch]="true">
       <span *ngSwitchCase="!conn.tunneled" class="inline-flex items-center gap-2 text-secondary">
         This connection has not been routed through the Safing Privacy Network.
@@ -256,7 +256,7 @@
   </div>
 
   <div *ngIf="!!bwData.length" class="col-span-3 block border-t border-gray-400 py-2">
-    <h2 class="text-secondary uppercase w-full text-center text-xxs">Data Usage</h2>
+    <h2 class="text-secondary uppercase w-full text-center text-xxs">{{ 'monitor.dataUsage' | translate }}</h2>
     <sfng-netquery-line-chart class="block w-full !h-36" [data]="bwData" [config]="{
       series: {
         incoming: {
@@ -292,7 +292,7 @@
 <div class="flex justify-end border-t border-gray-300 pt-0.5 mt-0.5" *ngIf="!!conn">
   <button *ngIf="!!process" (click)="openProcessDetails()" class="btn-outline">Process
     Details</button>
-  <button class="btn-outline" *appExpertiseLevel="'expert'" (click)="helper.dumpConnection(conn)">Copy JSON</button>
+  <button class="btn-outline" *appExpertiseLevel="'expert'" (click)="helper.dumpConnection(conn)">{{ 'monitor.copyJSON' | translate }}</button>
   <button class="btn-outline" *ngIf="(conn | isBlocked); else blockAction"
     (click)="helper.unblockAll(conn.domain || conn.remote_ip, conn)" [disabled]="!(conn | canUseRules)">
     Allow {{ conn.domain ? 'Domain' : 'IP'}}

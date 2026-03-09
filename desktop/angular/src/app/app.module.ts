@@ -4,8 +4,11 @@ import { PortalModule } from '@angular/cdk/portal';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { CdkTableModule } from '@angular/cdk/table';
 import { CommonModule, registerLocaleData } from '@angular/common';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 import { APP_INITIALIZER, LOCALE_ID, NgModule } from '@angular/core';
+import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
+import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
@@ -15,7 +18,8 @@ import { far } from '@fortawesome/free-regular-svg-icons';
 import { fas } from '@fortawesome/free-solid-svg-icons';
 import { ConfigService, PortmasterAPIModule, StringSetting, getActualValue } from '@safing/portmaster-api';
 import { OverlayStepperModule, SfngAccordionModule, SfngDialogModule, SfngDropDownModule, SfngPaginationModule, SfngSelectModule, SfngTipUpModule, SfngToggleSwitchModule, SfngTooltipModule, TabModule, UiModule } from '@safing/ui';
-import MyYamlFile from 'js-yaml-loader!../i18n/helptexts.yaml';
+import helptextsEn from 'js-yaml-loader!../i18n/helptexts.yaml';
+import helptextsRu from 'js-yaml-loader!../i18n/helptexts.ru.yaml';
 import * as i18n from 'ng-zorro-antd/i18n';
 import { MarkdownModule } from 'ngx-markdown';
 import { firstValueFrom } from 'rxjs';
@@ -69,6 +73,12 @@ import { MergeProfileDialogComponent } from './pages/app-view/merge-profile-dial
 import { AppInsightsComponent } from './pages/app-view/app-insights/app-insights.component';
 import { INTEGRATION_SERVICE, integrationServiceFactory } from './integration';
 import { SupportProgressDialogComponent } from './pages/support/progress-dialog';
+import { LanguageSelectorComponent } from './shared/language-selector/language-selector.component';
+
+// Factory for ngx-translate HttpLoader
+export function HttpLoaderFactory(http: HttpClient) {
+  return new TranslateHttpLoader(http, './assets/i18n/', '.json');
+}
 
 function loadAndSetLocaleInitializer(configService: ConfigService) {
   return async function () {
@@ -88,6 +98,11 @@ function loadAndSetLocaleInitializer(configService: ConfigService) {
           angularLocaleID = 'en-GB'
           nzLocaleID = 'en_GB'
           break;
+        case 'ru':
+        case 'ru-RU':
+          angularLocaleID = 'ru'
+          nzLocaleID = 'ru_RU'
+          break;
 
         default:
           console.error(`Unsupported locale value: ${currentValue}, defaulting to en-GB`)
@@ -103,18 +118,38 @@ function loadAndSetLocaleInitializer(configService: ConfigService) {
         localeModuleID = "en";
       }
 
-      /* webpackInclude: /(en|en-GB)\.mjs$/ */
+      /* webpackInclude: /(en|en-GB|ru)\.mjs$/ */
       /* webpackChunkName: "./l10n-base/[request]"*/
       await import(`../../node_modules/@angular/common/locales/${localeModuleID}.mjs`)
         .then(locale => {
           registerLocaleData(locale.default)
 
           localeConfig.localeId = angularLocaleID;
-          localeConfig.nzLocale = (i18n as any)[nzLocaleID];
+          localeConfig.nzLocale = (i18n as any)[nzLocaleID] || i18n.en_GB;
         })
     } catch (err) {
       console.error(`failed to load locale module for ${angularLocaleID}:`, err)
     }
+  }
+}
+
+// Get stored language for helptexts selection
+function getStoredLanguage(): string {
+  try {
+    return localStorage.getItem('portmaster-language') || 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+// Select helptexts based on stored language
+function getHelpTexts() {
+  const lang = getStoredLanguage();
+  switch (lang) {
+    case 'ru':
+      return helptextsRu;
+    default:
+      return helptextsEn;
   }
 }
 
@@ -167,6 +202,15 @@ const localeConfig = {
     BrowserAnimationsModule,
     FormsModule,
     ReactiveFormsModule,
+    HttpClientModule,
+    TranslateModule.forRoot({
+      defaultLanguage: 'en',
+      loader: {
+        provide: TranslateLoader,
+        useFactory: HttpLoaderFactory,
+        deps: [HttpClient]
+      }
+    }),
     AppRoutingModule,
     FontAwesomeModule,
     OverlayModule,
@@ -177,7 +221,7 @@ const localeConfig = {
     ScrollingModule,
     SfngAccordionModule,
     TabModule,
-    SfngTipUpModule.forRoot(MyYamlFile, NotificationsService),
+    SfngTipUpModule.forRoot(getHelpTexts(), NotificationsService),
     SfngTooltipModule,
     ActionIndicatorModule,
     SfngDialogModule,
@@ -199,6 +243,7 @@ const localeConfig = {
     CommonPipesModule,
     UiModule,
     SPNModule,
+    LanguageSelectorComponent,
     PortmasterAPIModule.forRoot({
       httpAPI: environment.httpAPI,
       websocketAPI: environment.portAPI,

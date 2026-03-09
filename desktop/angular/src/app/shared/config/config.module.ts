@@ -11,6 +11,7 @@ import {
   SfngTooltipModule,
 } from '@safing/ui';
 import { MarkdownModule } from 'ngx-markdown';
+import { TranslateModule } from '@ngx-translate/core';
 import { ExpertiseModule } from '../expertise/expertise.module';
 import { SfngFocusModule } from '../focus';
 import { SfngMenuModule } from '../menu';
@@ -47,7 +48,8 @@ import { SfngAppIconModule } from '../app-icon';
     ExpertiseModule,
     SfngToggleSwitchModule,
     MarkdownModule,
-    SfngAppIconModule
+    SfngAppIconModule,
+    TranslateModule
   ],
   declarations: [
     BasicSettingComponent,

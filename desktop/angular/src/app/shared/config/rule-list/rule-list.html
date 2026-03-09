@@ -14,7 +14,7 @@
 
 <div class="button-list" *ngIf="selectedItems.length === 0">
   <div class="dotted" *ngIf="!entries?.length && readonly">
-    No entries available
+    {{ 'rules.noEntries' | translate }}
   </div>
 
   <button class="new-entry dotted" (click)="addEntry()"
@@ -23,7 +23,7 @@
       <path fill-rule="evenodd"
         d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
     </svg>
-    <span>Add Rule</span>
+    <span>{{ 'rules.addRule' | translate }}</span>
   </button>
 </div>
 
@@ -40,7 +40,7 @@
   </span>
 
   <app-menu #selectionMenu>
-    <app-menu-item (click)="removeSelectedItems()">Remove Rules</app-menu-item>
-    <app-menu-item (click)="abortSelection()">Cancel</app-menu-item>
+    <app-menu-item (click)="removeSelectedItems()">{{ 'rules.removeRules' | translate }}</app-menu-item>
+    <app-menu-item (click)="abortSelection()">{{ 'common.cancel' | translate }}</app-menu-item>
   </app-menu>
 </div>

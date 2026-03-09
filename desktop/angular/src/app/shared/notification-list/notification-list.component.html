@@ -1,4 +1,4 @@
-<caption class="text-xs text-secondary" *ngIf="!!notifications.length">Notifications</caption>
+<caption class="text-xs text-secondary" *ngIf="!!notifications.length">{{ 'notifications.title' | translate }}</caption>
 
 <div class="flex flex-col w-full gap-2">
   <div class="row" (click)="toggelView(notif)" *ngFor="let notif of notifications; trackBy: trackBy">

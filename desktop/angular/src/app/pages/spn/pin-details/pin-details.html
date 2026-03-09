@@ -9,38 +9,38 @@
 </h1>
 
 <span class="text-sm inline-block mt-.5 mb-2 font-thin" *ngIf="pin as pin">
-  This SPN Node is run by
-  <svg sfng-tooltip="Verified operator: {{pin.pin.VerifiedOwner}}" *ngIf="!!pin.pin.VerifiedOwner"
+  {{ 'spn.nodeRunBy' | translate }}
+  <svg [sfng-tooltip]="'spn.verifiedOperator' | translate:{owner: pin.pin.VerifiedOwner}" *ngIf="!!pin.pin.VerifiedOwner"
     xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
     class="inline-block w-4 h-4 mx-1 -mt-1 text-green-300">
     <path stroke-linecap="round" stroke-linejoin="round"
       d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
   </svg>
-  <span class="font-normal">{{ pin.pin.VerifiedOwner || 'Community' }}</span>
+  <span class="font-normal">{{ pin.pin.VerifiedOwner || ('spn.community' | translate) }}</span>
 </span>
 
 <div *ngIf="pin?.isOffline" class="text-sm mt-.5 mb-2 font-thin text-red-300">
-  Node is Offline
+  {{ 'spn.nodeOffline' | translate }}
 </div>
 <div *ngIf="pin?.hasIssues && !pin?.isOffline" class="text-sm mt-.5 mb-2 font-thin text-yellow-300">
-  Node has Issues
+  {{ 'spn.nodeHasIssues' | translate }}
 </div>
 
 <sfng-tab-group *ngIf="pin as pin" linkRouter="false">
-  <sfng-tab id="details" title="Details">
+  <sfng-tab id="details" [title]="'spn.details' | translate">
     <table *sfngTabContent class="custom">
       <tr>
         <td class="p-2 font-thin">ID</td>
         <td>{{ pin.pin.ID }}</td>
       </tr>
       <tr>
-        <td class="p-2 font-thin">Verified Owner</td>
+        <td class="p-2 font-thin">{{ 'spn.verifiedOwner' | translate }}</td>
         <td>
           <pre>{{ pin.pin.VerifiedOwner }}</pre>
         </td>
       </tr>
       <tr>
-        <td class="p-2 font-thin">First Seen</td>
+        <td class="p-2 font-thin">{{ 'spn.firstSeen' | translate }}</td>
         <td>{{ pin.pin.FirstSeen | date:'medium' }}</td>
       </tr>
       <tr>
@@ -74,30 +74,30 @@
         </td>
       </tr>
       <tr>
-        <td class="p-2 font-thin">States</td>
+        <td class="p-2 font-thin">{{ 'spn.states' | translate }}</td>
         <td>
           <pre>{{ pin.pin.States.join(", ") }}</pre>
         </td>
       </tr>
       <tr>
-        <td class="p-2 font-thin">SessionActive</td>
+        <td class="p-2 font-thin">{{ 'spn.sessionActive' | translate }}</td>
         <td>
           <pre>{{ pin.pin.SessionActive }}</pre>
         </td>
       </tr>
       <tr>
-        <td class="p-2 font-thin">HopDistance</td>
+        <td class="p-2 font-thin">{{ 'spn.hopDistance' | translate }}</td>
         <td>
           <pre>{{ pin.pin.HopDistance }}</pre>
         </td>
       </tr>
       <tr>
-        <td class="p-2 font-thin">Exit Connections</td>
+        <td class="p-2 font-thin">{{ 'spn.exitConnections' | translate }}</td>
         <td>
           <div class="flex flex-row items-center gap-2 cursor-pointer" [routerLink]="['/monitor']"
             [queryParams]="{q: 'exit_node:' + pin.pin.ID}" (click)="dialogRef?.close()">
             <pre>{{ exitConnectionCount }}</pre>
-            <svg viewBox="0 0 24 24" class="w-4 h-4" sfng-tooltip="Show exit connections in monitor."
+            <svg viewBox="0 0 24 24" class="w-4 h-4" [sfng-tooltip]="'spn.showExitInMonitor' | translate"
               *ngIf="exitConnectionCount > 0">
               <g fill="none" stroke="currentColor">
                 <path shape-rendering="geometricPrecision" stroke-linecap="round" stroke-linejoin="round"
@@ -114,13 +114,13 @@
     </table>
   </sfng-tab>
 
-  <sfng-tab id="routeHome" title="Route" *ngIf="!!pin.pin.Route">
+  <sfng-tab id="routeHome" [title]="'spn.route' | translate" *ngIf="!!pin.pin.Route">
     <div *sfngTabContent>
       <sfng-spn-pin-route [route]="pin.pin.Route"></sfng-spn-pin-route>
     </div>
   </sfng-tab>
 
-  <sfng-tab id="connectedHubs" title="Connected Nodes">
+  <sfng-tab id="connectedHubs" [title]="'spn.connectedNodes' | translate">
     <spn-pin-list *sfngTabContent [pins]="connectedPins" allowHover="false" allowClick="false"></spn-pin-list>
   </sfng-tab>
 

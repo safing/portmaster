@@ -1,0 +1,937 @@
+{
+  "common": {
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "close": "Закрыть",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "add": "Добавить",
+    "remove": "Убрать",
+    "confirm": "Подтвердить",
+    "yes": "Да",
+    "no": "Нет",
+    "ok": "ОК",
+    "loading": "Загрузка...",
+    "search": "Поиск",
+    "filter": "Фильтр",
+    "clear": "Очистить",
+    "reset": "Сбросить",
+    "apply": "Применить",
+    "back": "Назад",
+    "next": "Далее",
+    "previous": "Предыдущий",
+    "enabled": "Включено",
+    "enable": "Включить",
+    "disabled": "Отключено",
+    "active": "Активно",
+    "inactive": "Неактивно",
+    "all": "Все",
+    "none": "Нет",
+    "other": "Другое",
+    "unknown": "Неизвестно",
+    "never": "никогда",
+    "now": "сейчас",
+    "today": "сегодня",
+    "yesterday": "вчера",
+    "error": "Ошибка",
+    "warning": "Предупреждение",
+    "info": "Информация",
+    "success": "Успех",
+    "import": "Импортировать",
+    "customize": "Настроить",
+    "custom": "Пользовательский",
+    "tip": "Совет",
+    "status": "Статус",
+    "apps": "Приложения",
+    "copy": "Копировать",
+    "title": "Заголовок",
+    "faq": "ЧаВо",
+    "where": "где",
+    "by": "от",
+    "beta": "Бета",
+    "experimental": "Экспериментальный",
+    "advanced": "Расширенный",
+    "developer": "Разработчик",
+    "home": "Домашний",
+    "exit": "Выходной",
+    "noLocation": "Местоположение неизвестно",
+    "community": "Сообщество",
+    "prompting": "Запрос",
+    "destination": "Назначение",
+    "interferingSettings": "Следующие включённые настройки могут влиять на работу",
+    "groupBy": "Группировать по",
+    "sort": "Сортировка",
+    "automatic": "Автоматически",
+    "getPro": "Получить Pro",
+    "yourDevice": "Ваше устройство",
+    "asOrgNotInDB": "Организация AS отсутствует в БД",
+    "logout": "Выйти",
+    "refresh": "Обновить",
+    "reload": "Перезагрузить",
+    "clearAll": "Очистить всё",
+    "openAccountPage": "Открыть страницу аккаунта",
+    "saved": "Сохранено",
+    "restartRequired": "Требуется перезапуск",
+    "reloadRequired": "Требуется перезагрузка",
+    "invalidValue": "Недопустимое значение",
+    "lastReload": "Последняя загрузка",
+    "showMore": "Показать больше идентичностей",
+    "showLess": "Показать меньше идентичностей",
+    "more": "Ещё",
+    "comingSoon": "скоро будет",
+    "availableIn": "Доступно в",
+    "upgrade": "Улучшить"
+  },
+  "search": {
+    "placeholder": "Поиск соединений, нажмите ENTER для применения",
+    "fullTextSearch": "Полнотекстовый поиск",
+    "filterBy": "Фильтр по",
+    "searchFaqs": "Поиск по ЧаВо",
+    "summarizeReport": "Опишите вашу проблему"
+  },
+  "nav": {
+    "dashboard": "Панель управления",
+    "networkActivity": "Сетевая активность",
+    "appsAndProfiles": "Приложения и профили",
+    "spn": "Сеть конфиденциальности Safing",
+    "globalSettings": "Глобальные настройки",
+    "getHelp": "Получить помощь",
+    "versionAndTools": "Версия и инструменты",
+    "version": "Версия",
+    "releaseChannel": "Канал обновлений",
+    "shutdown": "Выключить",
+    "restart": "Перезапустить",
+    "pause": "Приостановить",
+    "resume": "Возобновить",
+    "pauseSpn": "Приостановить SPN",
+    "pauseAll": "Приостановить всю защиту",
+    "notifications": "Уведомления",
+    "language": "Язык",
+    "checkUpdates": "Проверить обновления",
+    "viewChangelog": "Просмотр изменений",
+    "reloadUI": "Перезагрузить интерфейс",
+    "showIntro": "Показать вступление",
+    "reinitSPN": "Переинициализировать SPN",
+    "logoutCompletely": "Полный выход",
+    "resetBroadcast": "Сбросить состояние рассылки",
+    "clearDNS": "Очистить кэш DNS",
+    "openDataDir": "Открыть папку данных",
+    "copyDebugInfo": "Копировать отладочную информацию",
+    "cleanupHistory": "Очистить историю сети",
+    "pauseSpn5min": "Приостановить SPN на 5 минут",
+    "pauseSpn15min": "Приостановить SPN на 15 минут",
+    "pauseSpn1hour": "Приостановить SPN на 1 час",
+    "pause5min": "Приостановить на 5 минут",
+    "pause15min": "Приостановить на 15 минут",
+    "pause1hour": "Приостановить на 1 час",
+    "resumeNow": "Возобновить сейчас",
+    "pauseAndResume": "Пауза и возобновление",
+    "shutdownAndRestart": "Выключение и перезапуск"
+  },
+  "dashboard": {
+    "title": "Панель управления",
+    "welcomeBack": "С возвращением",
+    "welcomeBackUser": "С возвращением, {{username}}!",
+    "currentPlan": "Ваш текущий план",
+    "portmasterFree": "Portmaster Бесплатный",
+    "endsIn": "заканчивается через",
+    "endsNever": "никогда",
+    "autoRenewsIn": "автопродление через",
+    "accountDetails": "Данные аккаунта",
+    "loginSubscribe": "Войти / Подписаться",
+    "features": "Функции",
+    "recentActivity": "Последняя активность",
+    "connectionsBlocked": "Заблокировано соединений",
+    "activeConnections": "Активных соединений",
+    "activeApps": "Активных приложений",
+    "dataReceived": "Получено данных",
+    "dataSent": "Отправлено данных",
+    "spnIdentities": "Идентификаторы SPN",
+    "availableInPlus": "Доступно в Portmaster Plus",
+    "availableInPro": "Доступно в Portmaster Pro",
+    "activeBlockedConnections": "Активные/Заблокированные соединения",
+    "connectionsTunneledSpn": "Соединения через SPN",
+    "recentConnectionsPerCountry": "Последние соединения по странам",
+    "recentlyBlockedApps": "Недавно заблокированные приложения",
+    "noBlockedApps": "За последние 10 минут приложения не блокировались.",
+    "recentConnectionCountries": "Страны последних соединений",
+    "recentTopConsumers": "Недавние крупные потребители",
+    "recentBandwidthUsage": "Недавнее использование трафика",
+    "news": "Новости",
+    "newsUnavailable": "Новости доступны только при включённых обновлениях данных",
+    "newsLoading": "Секунду, загружаем последние новости..."
+  },
+  "monitor": {
+    "title": "Монитор сети",
+    "networkActivity": "Сетевая активность",
+    "connections": "соединений",
+    "historyAvailable": "Данные истории сети доступны с",
+    "noHistoryData": "Данные истории сети недоступны.",
+    "searchHint": "Используйте строку поиска и фильтры для поиска и фильтрации сетевого трафика за последние 10 минут. При включённой истории можно искать по всем данным.",
+    "blocked": "Заблокировано",
+    "allowed": "Разрешено",
+    "failed": "Ошибка",
+    "tunneled": "Туннелировано",
+    "encrypted": "Зашифровано",
+    "internal": "Внутреннее",
+    "details": "Подробности",
+    "process": "Процесс",
+    "domain": "Домен",
+    "ip": "IP-адрес",
+    "port": "Порт",
+    "protocol": "Протокол",
+    "country": "Страна",
+    "started": "Начато",
+    "ended": "Завершено",
+    "duration": "Длительность",
+    "bytesIn": "Получено байт",
+    "bytesOut": "Отправлено байт",
+    "verdict": "Вердикт",
+    "reason": "Причина",
+    "profile": "Профиль",
+    "scope": "Область",
+    "exitNode": "Выходной узел",
+    "entryNode": "Входной узел",
+    "route": "Маршрут",
+    "dataUsage": "Использование данных",
+    "copyJSON": "Копировать JSON",
+    "internetPeerToPeer": "Интернет (P2P)",
+    "internetMulticast": "Интернет (мультикаст)",
+    "deviceLocal": "Локальное устройство",
+    "lanPeerToPeer": "LAN (P2P)",
+    "lanMulticast": "LAN (мультикаст)",
+    "spnTunnel": "SPN туннель",
+    "results": "Результатов",
+    "ofTotalConnections": "из {{count}} всего соединений",
+    "useAsFilter": "Использовать как фильтр",
+    "copyQueryToClipboard": "Копировать запрос в буфер",
+    "internalConnectionsDevMode": "Внутренние соединения отображаются только в режиме разработчика",
+    "app": "Приложение",
+    "global": "Глобальный",
+    "proTipShiftClick": "Используйте <pre>Shift + Click</pre> чтобы добавить атрибуты соединения в текущий фильтр.",
+    "proTipShiftHighlight": "Удерживайте <pre>Shift</pre> чтобы подсветить атрибуты, которые можно использовать в фильтре.",
+    "proTipCtrlCopy": "Удерживайте <pre>CTRL</pre> и кликните по атрибутам, чтобы скопировать их в буфер обмена."
+  },
+  "apps": {
+    "title": "Приложения",
+    "overview": "Обзор",
+    "settings": "Настройки",
+    "history": "История",
+    "active": "Активные",
+    "recentlyUsed": "Недавно использованные",
+    "recentlyEdited": "Недавно изменённые",
+    "other": "Другие",
+    "allApps": "Все приложения",
+    "noApps": "Приложения не найдены",
+    "noAppsMatch": "Приложения не соответствуют поисковому запросу.",
+    "blockConnections": "Блокировать соединения",
+    "useSPN": "Использовать SPN",
+    "keepHistory": "Сохранять историю",
+    "viewActive": "Показать активные",
+    "viewAll": "Показать все",
+    "quickSettings": "Быстрые настройки",
+    "appSettings": "Настройки приложения",
+    "globalDefault": "Глобальные по умолчанию",
+    "appSpecific": "Для приложения",
+    "createProfile": "Создать профиль",
+    "importProfile": "Импортировать профиль",
+    "mergeOrDelete": "Объединить или удалить профили",
+    "manage": "Управление",
+    "mergeProfiles": "Объединить профили",
+    "deleteProfiles": "Удалить профили",
+    "selected": "выбрано",
+    "settingsEdited": "Настройки изменены",
+    "connections": "Соединения",
+    "dataUsage": "Использование данных",
+    "countries": "Страны",
+    "blocked": "Заблокировано",
+    "received": "Получено",
+    "sent": "Отправлено",
+    "availableInPlus": "Доступно в Plus",
+    "more": "Ещё",
+    "editAppProfile": "Редактировать профиль",
+    "exportAppProfile": "Экспортировать профиль",
+    "deleteAppProfile": "Удалить профиль",
+    "searchSettings": "Поиск настроек",
+    "getHelp": "Помощь",
+    "sortBy": "Сортировать по",
+    "appSpecificSettings": "Настройки приложения",
+    "usingGlobalSettings": "полностью использует глобальные настройки.",
+    "startCreatingExceptions": "Начните создавать исключения сейчас.",
+    "editSettings": "Редактировать настройки",
+    "details": "Подробности",
+    "name": "Имя",
+    "path": "Путь",
+    "binary": "Бинарный файл",
+    "activeConnections": "Активные соединения",
+    "networkHistory": "История сети",
+    "asOf": "С",
+    "removeConnections": "Удалить все",
+    "none": "Нет",
+    "networkHistoryTooltip": "Функция истории сети доступна в Portmaster Plus",
+    "internal": "Внутренний",
+    "source": "Источник",
+    "revision": "Ревизия",
+    "layers": "Слои",
+    "description": "Описание",
+    "fingerprints": "Отпечатки",
+    "fingerprintsDescription": "Этот профиль будет применён к процессам, которые соответствуют одному из следующих отпечатков:",
+    "deleteProfile": "Удалить профиль",
+    "deleteProfileDescription": "Вы можете полностью удалить этот профиль вместе со всеми настройками. Профиль будет автоматически создан заново с настройками по умолчанию, как только приложение начнёт использовать сеть.",
+    "debugging": "Отладка",
+    "debuggingDescription": "При сообщении о проблемах с этим приложением обязательно включите следующую отладочную информацию:",
+    "copyDebugInfo": "Скопировать отладочную информацию",
+    "insights": "Аналитика",
+    "delete": "Удалить"
+  },
+  "settings": {
+    "title": "Глобальные настройки",
+    "general": "Общие",
+    "privacy": "Конфиденциальность",
+    "security": "Безопасность",
+    "network": "Сеть",
+    "dns": "DNS",
+    "connections": "Соединения",
+    "filter": "Фильтр",
+    "spn": "SPN",
+    "advanced": "Дополнительно",
+    "resetToDefault": "Сбросить по умолчанию",
+    "importSettings": "Импорт настроек",
+    "exportSettings": "Экспорт настроек",
+    "searchSettings": "Поиск настроек...",
+    "openSettings": "Открыть настройки",
+    "useGlobalSetting": "Использовать глобальную настройку",
+    "cancelExport": "Отмена экспорта",
+    "quickSettings": "Быстрые настройки",
+    "globalSettings": "Глобальные настройки",
+    "stackedOnGlobal": "Эта настройка дополняет следующую",
+    "globalSetting": "глобальную настройку",
+    "inheritedFromGlobal": "Унаследовано от",
+    "appSpecificConfig": "Настройка для приложения"
+  },
+  "rules": {
+    "addRule": "Добавить правило",
+    "removeRules": "Удалить правила",
+    "noEntries": "Нет записей",
+    "applied": "применено",
+    "fromGlobalSettings": "из глобальных настроек",
+    "fromAppSettings": "из настроек приложения"
+  },
+  "spn": {
+    "title": "Сеть конфиденциальности Safing",
+    "status": "Статус",
+    "connected": "Подключено",
+    "disconnected": "Отключено",
+    "connecting": "Подключение",
+    "disabled": "Выключено",
+    "enableToStart": "Включите SPN для использования.",
+    "exit": "Выход SPN",
+    "increaseProtection": "Повысить защиту конфиденциальности",
+    "youreProtected": "Вы защищены",
+    "connectingToSPN": "Подключение к SPN ...",
+    "map": "Карта",
+    "nodes": "Узлы",
+    "routes": "Маршруты",
+    "identities": "Идентификаторы",
+    "home": "Домой",
+    "exitNode": "Выходной узел",
+    "entryNode": "Входной узел",
+    "transit": "Транзит",
+    "load": "Нагрузка",
+    "latency": "Задержка",
+    "countries": "Страны",
+    "loadingData": "Загрузка данных, пожалуйста подождите...",
+    "login": "Войти",
+    "enableSPN": "Включить SPN",
+    "pricing": "Тарифы",
+    "proTip": "Совет",
+    "statistics": "Статистика",
+    "totalNodes": "Всего узлов",
+    "bySafing": "от Safing",
+    "byCommunity": "от сообщества",
+    "safingNodes": "Узлы Safing",
+    "communityNodes": "Узлы сообщества",
+    "usedAsTransit": "используется как транзит",
+    "usedAsExit": "используется как выход",
+    "clickCountryForDetails": "Нажмите на страну для подробностей",
+    "exitNodes": "Выходные узлы",
+    "nodesInUse": "Используемые узлы",
+    "appsExitingInCountry": "Следующие приложения имеют соединения, которые маршрутизируются через SPN и используют выходной узел в {{countryName}} ({{countryCode}}):",
+    "connections": "соединений",
+    "name": "Имя",
+    "operator": "Оператор",
+    "usedAs": "Используется как",
+    "capacity": "Ёмкость",
+    "homeNode": "Домашний узел",
+    "transitNode": "Транзитный узел",
+    "showDetails": "Показать детали",
+    "showExitConnections": "Показать выходные соединения",
+    "copyNodeID": "Скопировать ID узла",
+    "runBy": "Управляется",
+    "nodeRunBy": "Этот SPN узел управляется",
+    "verifiedOperator": "Верифицированный оператор: {{owner}}",
+    "community": "Сообщество",
+    "nodeOffline": "Узел не в сети",
+    "nodeHasIssues": "Узел имеет проблемы",
+    "details": "Детали",
+    "verifiedOwner": "Верифицированный владелец",
+    "firstSeen": "Первое обнаружение",
+    "states": "Состояния",
+    "sessionActive": "Сессия активна",
+    "hopDistance": "Количество переходов",
+    "hops": "ПЕРЕХОДЫ",
+    "exitConnections": "Выходные соединения",
+    "showExitInMonitor": "Показать выходные соединения в мониторе.",
+    "route": "Маршрут",
+    "connectedNodes": "Подключённые узлы",
+    "homeNodeHelp": "Этот узел не знает назначения ваших соединений, но может знать, где вы находитесь",
+    "exitNodeHelp": "Этот узел не знает, кто вы, но знает назначение соединений, для которых он используется как выходной узел",
+    "transitNodeHelp": "Этот узел не знает, кто вы и куда вы подключаетесь",
+    "failsafeBlocking": "Аварийная блокировка включена",
+    "failedToConnect": "Не удалось подключиться к SPN",
+    "homeEntryNode": "Домашний (входной) узел SPN",
+    "connectedTo": "Подключено к",
+    "uplinkEncrypted": "Исходящий канал всегда зашифрован",
+    "builtWithTransport": "Использует транспорт/маскировку",
+    "tips": {
+      "ctrlClick": "Удерживайте <b><pre>CTRL</pre></b> и кликните на узел на карте, чтобы сразу открыть диалог с деталями узла.",
+      "shiftClick": "Удерживайте <b><pre>SHIFT</pre></b>, чтобы открыть несколько оверлеев узлов при клике на иконку узла.",
+      "moveOverlay": "Чтобы оставить оверлей узла открытым, переместите его с помощью иконки перемещения. Дважды кликните, чтобы вернуть оверлей в исходное положение на карте.",
+      "countryClick": "Кликните на страну, чтобы получить информацию обо всех узлах в этой стране и список приложений, использующих узлы этой страны как идентификатор."
+    },
+    "carousel": {
+      "multipleIdentities": "Множество идентичностей для каждого приложения",
+      "multipleIdentitiesDesc": "Автоматически получайте множество идентичностей (IP-адресов). SPN вычисляет индивидуальный путь для каждого соединения через сеть конфиденциальности. Распределяйте соединения по всему миру без усилий.",
+      "accessRegional": "Легкий доступ к региональному контенту",
+      "accessRegionalDesc": "Сайт заблокирован или ограничен в вашей стране? Поскольку SPN выводит соединение рядом с целевым сервером, контент автоматически разблокируется. SPN лучше всего покрывает Европу и Северную Америку.",
+      "adjustPrivacy": "Легко настраивайте",
+      "yourPrivacy": "Вашу конфиденциальность",
+      "adjustPrivacyDesc": "SPN просто работает и делает всю тяжёлую работу за вас. Но конечно, вы можете легко настроить параметры под свои нужды: исключить определённые приложения и домены из SPN, запретить выход в определённых странах и многое другое...",
+      "builtFromScratch": "Создан с нуля для",
+      "builtFromScratchDesc": "SPN создан с нуля. Конфиденциальность встроена в его основу. Вдохновлённый Tor, он использует луковую маршрутизацию и современное шифрование. Полностью открытый исходный код позволяет проверить все наши заявления.",
+      "byeByeVpns": "Прощай, VPN",
+      "byeByeVpnsDesc": "Технология VPN создавалась НЕ для конфиденциальности пользователей, а для безопасности компаний. Поэтому вы можете только доверять политике VPN-провайдера — и многих уже ловили на злоупотреблении данными пользователей. Честно говоря, лучше просто перестать платить за устаревшие технологии.",
+      "mostVpns": "Большинство VPN",
+      "readComparisonBlog": "Читать сравнение",
+      "multipleIdentitiesSimultaneous": "Множество идентичностей (одновременно)",
+      "individualAppsSettings": "Индивидуальные настройки приложений",
+      "easySetup": "Простая настройка",
+      "browserOnly": "Только браузер",
+      "availability": "Доступность",
+      "openSource": "Открытый исходный код",
+      "builtForPrivacy": "Создан для конфиденциальности"
+    },
+    "networkStatus": {
+      "title": "Состояние сети",
+      "loading": "Загрузка состояния сети ...",
+      "openOnGithub": "Открыть на Github",
+      "opened": "открыт",
+      "closed": "закрыт",
+      "by": "от"
+    }
+  },
+  "support": {
+    "title": "Поддержка",
+    "getHelp": "Получить помощь",
+    "reportBug": "Сообщить об ошибке",
+    "documentation": "Документация",
+    "community": "Сообщество",
+    "email": "Email поддержка",
+    "github": "GitHub Issues",
+    "discord": "Discord",
+    "includedDebugInfo": "Включённая отладочная информация",
+    "ticket": "Тикет поддержки",
+    "submitTicket": "Отправить тикет",
+    "debugInfo": "Отладочная информация",
+    "systemInfo": "Системная информация",
+    "logs": "Логи",
+    "copyToClipboard": "Копировать в буфер",
+    "downloadLogs": "Скачать логи",
+    "openOnGithub": "Открыть на GitHub",
+    "createOnGithub": "Создать на GitHub",
+    "sendPrivateTicket": "Отправить приватный тикет",
+    "relatedIssues": "Связанные вопросы",
+    "publicIssuesRelated": "Публичные вопросы, связанные с вашей темой:",
+    "noRelatedIssuesFound": "Связанных вопросов не найдено.",
+    "opened": "открыт",
+    "closed": "закрыт",
+    "debugInfoDescription": "Следующая отладочная информация будет отправлена вместе с вашим отчётом. Пожалуйста, проверьте её и удалите потенциально конфиденциальные данные. Отладочная информация сохраняется на pastebin-сервере Safing и доступна по созданной ссылке. Данные автоматически удаляются через один месяц.",
+    "portmasterVersion": "Версия Portmaster",
+    "builtOn": "собрана"
+  },
+  "notifications": {
+    "title": "Уведомления",
+    "notification": "Уведомление",
+    "broadcastNotification": "Широковещательное уведомление",
+    "noNotifications": "Нет уведомлений",
+    "markAllRead": "Отметить все как прочитанные",
+    "clearAll": "Очистить все",
+    "new": "Новые",
+    "read": "Прочитанные"
+  },
+  "prompts": {
+    "title": "Запросы соединений",
+    "noPrompts": "Нет запросов",
+    "allow": "Разрешить",
+    "block": "Заблокировать",
+    "allowOnce": "Разрешить один раз",
+    "blockOnce": "Заблокировать один раз",
+    "allowAlways": "Всегда разрешать",
+    "blockAlways": "Всегда блокировать",
+    "remember": "Запомнить выбор",
+    "perConnection": "Для каждого соединения",
+    "allowAll": "Разрешить всё",
+    "blockAll": "Заблокировать всё",
+    "defaultAction": "Действие по умолчанию",
+    "allowApp": "Разрешить приложение",
+    "blockApp": "Заблокировать приложение",
+    "changeDefault": "Изменить по умолчанию",
+    "more": "ещё",
+    "showLess": "Показать меньше"
+  },
+  "network": {
+    "rating": "Рейтинг сети",
+    "trusted": "Доверенная",
+    "untrusted": "Недоверенная",
+    "danger": "Опасная",
+    "home": "Домашняя",
+    "public": "Публичная",
+    "unknown": "Неизвестная"
+  },
+  "security": {
+    "status": "Статус безопасности",
+    "secure": "Защищено",
+    "warning": "Предупреждение",
+    "critical": "Критично",
+    "protection": "Защита",
+    "enabled": "Включена",
+    "disabled": "Отключена",
+    "paused": "Приостановлена"
+  },
+  "time": {
+    "created": "Создано",
+    "lastEdited": "Последнее изменение",
+    "seconds": "{{count}} секунд",
+    "minutes": "{{count}} минут",
+    "hours": "{{count}} часов",
+    "days": "{{count}} дней",
+    "weeks": "{{count}} недель",
+    "months": "{{count}} месяцев",
+    "years": "{{count}} лет",
+    "ago": "назад",
+    "in": "через"
+  },
+  "account": {
+    "details": "Детали аккаунта",
+    "yourPackage": "Ваш пакет",
+    "accessUntil": "Доступ до",
+    "yourSubscription": "Ваша подписка",
+    "nextPaymentDate": "Дата следующего платежа",
+    "accessPaidUntil": "Доступ оплачен до",
+    "username": "Имя пользователя",
+    "password": "Пароль",
+    "deviceName": "Имя устройства",
+    "accountState": "Состояние аккаунта",
+    "features": "Функции",
+    "deviceID": "ID устройства",
+    "loggedInSince": "Авторизован с",
+    "login": {
+      "title": "Вход в аккаунт Safing",
+      "unlockFeatures": "Разблокируйте мощные функции.",
+      "forcedLogout": "Вы были отключены сервером аккаунтов.",
+      "checkAccount": "Пожалуйста, проверьте ваш аккаунт.",
+      "yourAccount": "ваш аккаунт",
+      "signIn": "ВОЙТИ",
+      "signUpSubscribe": "Зарегистрироваться и подписаться"
+    }
+  },
+  "errors": {
+    "connectionFailed": "Ошибка соединения",
+    "loadingFailed": "Не удалось загрузить данные",
+    "saveFailed": "Не удалось сохранить",
+    "unknownError": "Произошла неизвестная ошибка",
+    "networkError": "Сетевая ошибка",
+    "serverError": "Ошибка сервера",
+    "notFound": "Не найдено",
+    "unauthorized": "Не авторизован",
+    "forbidden": "Доступ запрещён"
+  },
+  "service": {
+    "connecting": "Подключение к системной службе ...",
+    "notRunning": "Системная служба Portmaster не запущена:",
+    "startNow": "Запустить",
+    "notFound": "Не удалось найти системную службу Portmaster.",
+    "reinstall": "Пожалуйста, переустановите приложение.",
+    "getHelp": "Получить помощь",
+    "unsupportedManager": "Ваш менеджер системных служб не поддерживается. Убедитесь, что Portmaster запущен.",
+    "unknownError": "Неизвестная ошибка:"
+  },
+  "intro": {
+    "step1": {
+      "title": "Portmaster защищает вашу конфиденциальность",
+      "description": "Portmaster повышает вашу конфиденциальность с мощными настройками по умолчанию — никакой конфигурации не требуется! Конечно, вы можете настроить всё под свои потребности.",
+      "quickSetup": "Быстрая настройка"
+    },
+    "step2": {
+      "title": "Трекеры блокируются по всей системе",
+      "description": "Portmaster автоматически блокирует рекламу, трекеры и вредоносные хосты на всём вашем устройстве. Portmaster знает, что блокировать, благодаря доверенным спискам доменов, которые также используются блокировщиками рекламы в браузерах. Вы всегда можете настроить это в параметрах."
+    },
+    "step3": {
+      "title": "Безопасный DNS для всех соединений",
+      "description": "Portmaster автоматически шифрует все ваши DNS-запросы, чтобы защитить их от посторонних глаз. Portmaster устанавливает провайдера по умолчанию, но вы всегда можете переключиться на пользовательский DNS-over-TLS провайдер в глобальных настройках."
+    },
+    "step4": {
+      "title": "Узнавайте больше по мере изучения",
+      "description": "Portmaster предлагает гораздо больше. Когда вы решите углубиться, вы всегда можете нажать на иконку информации, чтобы узнать больше о конкретной функции. Обращайте на них внимание!",
+      "clickMe": "Нажми на меня!"
+    }
+  },
+  "dialogs": {
+    "mergeProfileDescription": "Выберите основной профиль. Все остальные выбранные профили будут объединены с основным путём копирования метаданных, отпечатков и иконок в новый профиль. Только настройки основного профиля будут сохранены.",
+    "primaryProfile": "Основной профиль",
+    "newProfileName": "Имя нового профиля",
+    "newProfileNamePlaceholder": "Имя нового профиля",
+    "merge": "Объединить",
+    "editAppProfile": "Редактировать профиль приложения",
+    "createNewAppProfile": "Создать новый профиль приложения",
+    "general": "Основные",
+    "processMatching": "Сопоставление процессов",
+    "configureBasicInfo": "Настройте основную информацию о профиле: название, описание и, при желании, иконку профиля.",
+    "chooseIcon": "Выбрать иконку",
+    "resetIcon": "Сбросить иконку",
+    "iconRequirements": "Иконка должна быть меньше 10КБ, а её размеры не должны превышать 512x512 пикселей. Поддерживаются только файлы JPG и PNG.",
+    "fingerprintDescription": "Этот профиль будет применён к процессам, которые соответствуют одному из следующих отпечатков:",
+    "noFingerprints": "Отпечатки не настроены. Нажмите 'Добавить новый' для начала.",
+    "addNew": "Добавить новый",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "confirmDelete": "Вы уверены, что хотите удалить это?",
+    "import": "Импорт",
+    "export": "Экспорт",
+    "importSettings": "Импорт настроек",
+    "exportSettings": "Экспорт настроек",
+    "selectFile": "Выбрать файл",
+    "downloadFile": "Скачать файл",
+    "closeUI": "Закрыть интерфейс",
+    "closeUIMessage": "Закрытие интерфейса не останавливает Portmaster. Вы можете остановить Portmaster в настройках или через иконку в трее.",
+    "neverShowAgain": "Больше не показывать",
+    "closeUIButton": "Закрыть UI",
+    "progress": {
+      "status": "Статус",
+      "uploadingDebug": "Загрузка отладочных данных ...",
+      "creatingIssue": "Создание GitHub-issue ...",
+      "creatingTicket": "Создание приватного тикета поддержки ...",
+      "ticketPrepared": "Тикет успешно подготовлен",
+      "ticketCreated": "Тикет успешно создан!",
+      "useButtonToOpen": "Используйте кнопку ниже для открытия предзаполненной формы GitHub issue:",
+      "createIssue": "Создать Issue",
+      "issueCreatedSuccess": "Мы успешно создали issue на GitHub для вас.",
+      "useFollowingLink": "Используйте следующую ссылку для отслеживания обновлений:",
+      "willContactYou": "Мы свяжемся с вами как можно скорее.",
+      "failedToCreate": "Не удалось создать тикет поддержки",
+      "errorOccurred": "Произошла ошибка при создании тикета поддержки:",
+      "openIssue": "Открыть Issue",
+      "copyUrl": "Скопировать URL"
+    },
+    "exportDialog": {
+      "settingsExport": "Экспорт настроек",
+      "profileExport": "Экспорт профиля",
+      "copyToClipboard": "Скопировать в буфер обмена"
+    },
+    "importDialog": {
+      "importSettings": "Импорт настроек",
+      "importProfile": "Импорт профиля",
+      "pasteContent": "Вставьте \"Экспортированный контент\" или нажмите \"Выбрать файл\" для выбора файла с диска.",
+      "configuration": "Конфигурация",
+      "resetSettings": "Сбросить все настройки до значений по умолчанию перед импортом",
+      "allowUnknown": "Разрешить неизвестные настройки",
+      "allowReplace": "Разрешить замену существующего профиля",
+      "autoRestart": "Автоматически перезапустить Portmaster после успешного импорта",
+      "warningUnknown": "Этот экспорт содержит неизвестные настройки. Для импорта необходимо включить \"Разрешить неизвестные настройки\".",
+      "warningOverwriteSettings": "Этот экспорт перезапишет настройки, которые были изменены вами.",
+      "warningOverwriteProfile": "Этот экспорт перезапишет существующий профиль.",
+      "deleteMergedProfiles": "И удаляет {{count}} ранее объединённых профилей",
+      "warningRestart": "Этот экспорт потребует перезапуска Portmaster для применения изменений.",
+      "chooseFile": "Выбрать файл"
+    },
+    "processDetails": {
+      "title": "Детали процесса",
+      "general": "Основные",
+      "name": "Имя",
+      "user": "Пользователь",
+      "processId": "ID процесса",
+      "processGroupId": "ID группы процессов",
+      "parentProcessId": "ID родительского процесса",
+      "path": "Путь",
+      "createProfileForPath": "Создать новый профиль для всех процессов с этим путём",
+      "executableName": "Имя исполняемого файла",
+      "commandLine": "Командная строка",
+      "createProfileForCmdline": "Создать новый профиль для всех процессов с этой командной строкой",
+      "tags": "Теги",
+      "noTags": "У этого процесса нет тегов.",
+      "environment": "Окружение",
+      "noEnvVars": "У этого процесса нет переменных окружения.",
+      "createProfileForEnv": "Создать новый профиль для всех процессов с этой переменной окружения"
+    },
+    "edit": {
+      "idPlaceholder": "Уникальный идентификатор профиля. Оставьте пустым для автоматической генерации.",
+      "name": "Название",
+      "namePlaceholder": "Название профиля",
+      "description": "Описание",
+      "descriptionPlaceholder": "Опциональное описание профиля",
+      "icon": "Иконка",
+      "tag": "Тег",
+      "commandLine": "Командная строка",
+      "environment": "Окружение",
+      "path": "Путь",
+      "key": "Ключ",
+      "equals": "Равно",
+      "prefix": "Префикс",
+      "regex": "Регулярное выражение",
+      "value": "Значение",
+      "copySettings": "Копировать настройки",
+      "selectProfileToCopy": "Выберите профиль для копирования настроек:",
+      "searchProfiles": "Поиск профилей",
+      "add": "Добавить",
+      "copySettingsInfo": "Настройки будут скопированы из всех указанных профилей по порядку, при этом настройки из верхних профилей имеют приоритет. Существующие настройки могут быть перезаписаны."
+    }
+  },
+  "config": {
+    "core/apiKeys": {
+      "name": "API Ключи",
+      "description": "Определите API ключи для доступа к API"
+    },
+    "core/automaticIntelUpdates": {
+      "name": "Авто-обновления Данных",
+      "description": "Автоматически скачивать обновления данных"
+    },
+    "core/automaticUpdates": {
+      "name": "Авто-обновления ПО",
+      "description": "Автоматически скачивать обновления ПО"
+    },
+    "core/devMode": {
+      "name": "Режим Разработчика",
+      "description": "Снять ограничения безопасности для отладки"
+    },
+    "core/enableProcessDetection": {
+      "name": "Определение Процессов",
+      "description": "Привязка сетевого трафика к процессам"
+    },
+    "core/expertiseLevel": {
+      "name": "Режим Интерфейса",
+      "description": "Объём отображаемых настроек"
+    },
+    "core/listenAddress": {
+      "name": "Адрес API",
+      "description": "IP и порт внутреннего API"
+    },
+    "core/locale": {
+      "name": "Формат Времени",
+      "description": "Формат времени и даты"
+    },
+    "core/log/level": {
+      "name": "Уровень Логирования",
+      "description": "Уровень детализации журнала"
+    },
+    "core/metrics/comment": {
+      "name": "Комментарий Метрик",
+      "description": "Метка комментария метрик"
+    },
+    "core/metrics/instance": {
+      "name": "Экземпляр Метрик",
+      "description": "Имя экземпляра prometheus"
+    },
+    "core/metrics/push": {
+      "name": "Отправка Метрик",
+      "description": "URL для отправки метрик"
+    },
+    "core/networkService": {
+      "name": "Сетевой Сервис",
+      "description": "Использовать как сетевой сервис"
+    },
+    "core/releaseChannel": {
+      "name": "Канал Релиза",
+      "description": "Stable для стабильности, Beta для новых функций"
+    },
+    "core/releaseLevel": {
+      "name": "Стабильность Функций",
+      "description": "Экспериментировать с нестабильными функциями"
+    },
+    "core/useSystemNotifications": {
+      "name": "Уведомления",
+      "description": "Отправлять уведомления на рабочий стол"
+    },
+    "dns/dontResolveSpecialDomains": {
+      "name": "Блокировать Спец. TLD",
+      "description": "Блокировать .onion, .i2p и др."
+    },
+    "dns/listenAddress": {
+      "name": "Адрес DNS Сервера",
+      "description": "IP и порт внутреннего DNS"
+    },
+    "dns/nameserverRetryRate": {
+      "name": "Повтор DNS Серверов",
+      "description": "Интервал повтора к отказавшим DNS"
+    },
+    "dns/nameservers": {
+      "name": "DNS Серверы",
+      "description": "Серверы для разрешения DNS"
+    },
+    "dns/noAssignedNameservers": {
+      "name": "Игн. Системные DNS",
+      "description": "Игнорировать системные DNS"
+    },
+    "dns/noInsecureProtocols": {
+      "name": "Только Безопасные DNS",
+      "description": "Не использовать обычный DNS"
+    },
+    "dns/noMulticastDNS": {
+      "name": "Игн. Multicast DNS",
+      "description": "Не использовать mDNS"
+    },
+    "dns/useStaleCache": {
+      "name": "Использовать DNS Кэш",
+      "description": "Использовать кэш даже если истёк"
+    },
+    "filter/askTimeout": {
+      "name": "Таймаут Запроса",
+      "description": "Время ожидания ответа на запрос"
+    },
+    "filter/askWithSystemNotifications": {
+      "name": "Запросы на Рабочий Стол",
+      "description": "Отправлять запросы на рабочий стол"
+    },
+    "filter/blockInbound": {
+      "name": "Блокировать Входящие",
+      "description": "Блокировать входящие соединения"
+    },
+    "filter/blockInternet": {
+      "name": "Блокировать Интернет",
+      "description": "Блокировать доступ в Интернет"
+    },
+    "filter/blockLAN": {
+      "name": "Блокировать LAN",
+      "description": "Блокировать локальную сеть"
+    },
+    "filter/blockLocal": {
+      "name": "Блокировать Localhost",
+      "description": "Блокировать внутренние соединения"
+    },
+    "filter/blockP2P": {
+      "name": "Блокировать P2P",
+      "description": "Блокировать прямые соединения"
+    },
+    "filter/customListFile": {
+      "name": "Свой Список Фильтров",
+      "description": "Путь к файлу фильтров"
+    },
+    "filter/defaultAction": {
+      "name": "Действие по Умолчанию",
+      "description": "Действие когда ничего не подходит"
+    },
+    "filter/disableAutoPermit": {
+      "name": "Откл. Авто-Разрешение",
+      "description": "Отключить авторазрешение"
+    },
+    "filter/dnsQueryInterception": {
+      "name": "Бесшовный DNS",
+      "description": "Перехват DNS запросов"
+    },
+    "filter/domainHeuristics": {
+      "name": "Эвристика Доменов",
+      "description": "Блокировать подозрительные домены"
+    },
+    "filter/enable": {
+      "name": "Фильтр Приватности",
+      "description": "Включить фильтр приватности"
+    },
+    "filter/endpoints": {
+      "name": "Исходящие Правила",
+      "description": "Правила для исходящих соединений"
+    },
+    "filter/includeCNAMEs": {
+      "name": "Блок. Алиасы Доменов",
+      "description": "Блокировать CNAME алиасы"
+    },
+    "filter/includeSubdomains": {
+      "name": "Блокировать Поддомены",
+      "description": "Блокировать поддомены из списков"
+    },
+    "filter/lists": {
+      "name": "Списки Фильтров",
+      "description": "Включить списки блокировки"
+    },
+    "filter/permanentVerdicts": {
+      "name": "Постоянные Вердикты",
+      "description": "Улучшить производительность"
+    },
+    "filter/preventBypassing": {
+      "name": "Защита от Обхода DNS",
+      "description": "Предотвратить обход DNS"
+    },
+    "filter/removeBlockedDNS": {
+      "name": "Отклонять Блок. IP",
+      "description": "Отклонять заблокированные IP"
+    },
+    "filter/removeOutOfScopeDNS": {
+      "name": "Split-View DNS",
+      "description": "Разделение глобальных/приватных DNS"
+    },
+    "filter/serviceEndpoints": {
+      "name": "Входящие Правила",
+      "description": "Правила для входящих соединений"
+    },
+    "history/enable": {
+      "name": "История Сети",
+      "description": "Сохранять историю соединений"
+    },
+    "history/keep": {
+      "name": "Хранить Историю",
+      "description": "Дней хранения истории"
+    },
+    "spn/dnsExitPolicy": {
+      "name": "Правила DNS Выхода",
+      "description": "Страны для DNS выходных узлов"
+    },
+    "spn/enable": {
+      "name": "Модуль SPN",
+      "description": "Включить SPN модуль"
+    },
+    "spn/exitHubPolicy": {
+      "name": "Правила Выхода",
+      "description": "Страны для выходных узлов"
+    },
+    "spn/homePolicy": {
+      "name": "Правила Домашнего Узла",
+      "description": "Страны для домашнего узла"
+    },
+    "spn/routingAlgorithm": {
+      "name": "Алгоритм SPN",
+      "description": "Баланс скорости и приватности"
+    },
+    "spn/specialAccessCode": {
+      "name": "Код Доступа SPN",
+      "description": "Код для тестового доступа"
+    },
+    "spn/transitHubPolicy": {
+      "name": "Транзитные Узлы",
+      "description": "Страны для транзитных узлов"
+    },
+    "spn/trustNodes": {
+      "name": "Доверенные Узлы",
+      "description": "Узлы сообщества для доверия"
+    },
+    "spn/usagePolicy": {
+      "name": "Правила SPN",
+      "description": "Сайты для маршрутизации через SPN"
+    },
+    "spn/use": {
+      "name": "Использовать SPN",
+      "description": "Защитить трафик через SPN"
+    },
+    "spn/useCommunityNodes": {
+      "name": "Узлы Сообщества",
+      "description": "Использовать узлы не от Safing"
+    }
+  }
+}

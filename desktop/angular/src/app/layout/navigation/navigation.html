@@ -89,7 +89,7 @@
 
 <div class="nav-list">
   <!-- Network Activity -->
-  <div sfng-tooltip="Network Activity" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
+  <div [sfng-tooltip]="'nav.networkActivity' | translate" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
     routerLink="monitor" class="link" sfngTipUpTrigger="navMonitor" sfngTipUpPassive>
     <svg viewBox="0 0 24 24" class="monitor">
       <g fill="none">
@@ -102,7 +102,7 @@
   </div>
 
   <!-- App View -->
-  <div sfng-tooltip="Apps and Profiles" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
+  <div [sfng-tooltip]="'nav.appsAndProfiles' | translate" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
     routerLink="app" class="link" sfngTipUpTrigger="navApps" sfngTipUpPassive>
     <svg xmlns="http://www.w3.org/2000/svg" data-name="Layer 1" viewBox="0 0 24 24" class="app" fill="none">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" fill="currentColor"
@@ -113,7 +113,7 @@
   </div>
 
   <!-- SPN -->
-  <div sfng-tooltip="Safing Privacy Network" sfngTooltipDelay="1000" snfgTooltipPosition="right"
+  <div [sfng-tooltip]="'nav.spn' | translate" sfngTooltipDelay="1000" snfgTooltipPosition="right"
     routerLinkActive="active" routerLink="spn" class="link" sfngTipUpTrigger="navMap" sfngTipUpPassive>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="spn" stroke="currentColor">
       <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -126,7 +126,7 @@
   </div>
 
   <!-- Global Settings -->
-  <div sfng-tooltip="Global Settings" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
+  <div [sfng-tooltip]="'nav.globalSettings' | translate" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
     routerLink="settings" class="link" sfngTipUpTrigger="navSettings" sfngTipUpPassive>
     <svg viewBox="0 0 24 24" class="settings">
       <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -140,7 +140,7 @@
 
   <div class="w-full border-t border-gray-400"></div>
 
-  <div sfng-tooltip="Get Help" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLink="support"
+  <div [sfng-tooltip]="'nav.getHelp' | translate" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLink="support"
     routerLinkActive="active" class="link" sfngTipUpTrigger="navSupport" sfngTipUpPassive>
     <svg viewBox="0 0 24 24" class="help">
       <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -153,7 +153,7 @@
   </div>
 </div>
 <div class="nav-lower-list">
-  <div class="relative link" sfngTipUpTrigger="navTools" sfngTipUpPassive sfng-tooltip="Version and Tools"
+  <div class="relative link" sfngTipUpTrigger="navTools" sfngTipUpPassive [sfng-tooltip]="'nav.versionAndTools' | translate"
     sfngTooltipDelay="1000" snfgTooltipPosition="right" (click)="settingsMenu.dropdown.toggle(settingsMenuTrigger)"
     cdkOverlayOrigin #settingsMenuTrigger="cdkOverlayOrigin" [class.active]="settingsMenu.dropdown.isOpen">
 
@@ -178,32 +178,37 @@
   <app-menu #settingsMenu offsetY="0" offsetX="10" overlayClass="rounded-t">
     <div class="flex flex-col p-4 text-xxs">
       <span class="text-secondary">
-        Version: <span class="text-primary">{{ versions?.Core?.Version }} </span>
+        {{ 'nav.version' | translate }}: <span class="text-primary">{{ versions?.Core?.Version }} </span>
       </span>
       <span class="text-secondary">
-        Release Channel:
+        {{ 'nav.releaseChannel' | translate }}:
         <span class="uppercase text-primary"
           [class.text-yellow-300]="versions?.Channel !== 'stable'">{{ versions?.Channel }}</span>
       </span>
     </div>
 
-    <app-menu-item (click)="downloadUpdates($event)">Check for Updates</app-menu-item>
-    <app-menu-item (click)="openChangeLog()">View Changelog</app-menu-item>
-    <app-menu-item (click)="reloadUI($event)">Reload UI</app-menu-item>
+    <div class="flex items-center justify-between px-4 py-2 text-xxs">
+      <span class="text-secondary">{{ 'nav.language' | translate }}:</span>
+      <app-language-selector></app-language-selector>
+    </div>
+
+    <app-menu-item (click)="downloadUpdates($event)">{{ 'nav.checkUpdates' | translate }}</app-menu-item>
+    <app-menu-item (click)="openChangeLog()">{{ 'nav.viewChangelog' | translate }}</app-menu-item>
+    <app-menu-item (click)="reloadUI($event)">{{ 'nav.reloadUI' | translate }}</app-menu-item>
     <app-menu-item *appExpertiseLevel="'developer'" (click)="showIntro()">
-      Show Intro Screen
+      {{ 'nav.showIntro' | translate }}
     </app-menu-item>
-    <app-menu-item (click)="reinitSPN($event)">Re-Initialize SPN</app-menu-item>
-    <app-menu-item (click)="logoutCompletely($event)">Logout Completely</app-menu-item>
-    <app-menu-item (click)="resetBroadcastState()">Reset Broadcast State</app-menu-item>
-    <app-menu-item (click)="clearDNSCache($event)">Clear DNS Cache</app-menu-item>
-    <app-menu-item (click)="openDataDir($event)">Open Data Directory</app-menu-item>
-    <app-menu-item (click)="copyDebugInfo($event)">Copy Debug Info</app-menu-item>
-    <app-menu-item (click)="cleanupHistory($event)">Cleanup Network History</app-menu-item>
+    <app-menu-item (click)="reinitSPN($event)">{{ 'nav.reinitSPN' | translate }}</app-menu-item>
+    <app-menu-item (click)="logoutCompletely($event)">{{ 'nav.logoutCompletely' | translate }}</app-menu-item>
+    <app-menu-item (click)="resetBroadcastState()">{{ 'nav.resetBroadcast' | translate }}</app-menu-item>
+    <app-menu-item (click)="clearDNSCache($event)">{{ 'nav.clearDNS' | translate }}</app-menu-item>
+    <app-menu-item (click)="openDataDir($event)">{{ 'nav.openDataDir' | translate }}</app-menu-item>
+    <app-menu-item (click)="copyDebugInfo($event)">{{ 'nav.copyDebugInfo' | translate }}</app-menu-item>
+    <app-menu-item (click)="cleanupHistory($event)">{{ 'nav.cleanupHistory' | translate }}</app-menu-item>
   </app-menu>
 
   <!-- Pause Menu -->
-  <div sfngTipUpTrigger="navPause" sfngTipUpPassive sfng-tooltip="Pause and Resume" sfngTooltipDelay="1000"
+  <div sfngTipUpTrigger="navPause" sfngTipUpPassive [sfng-tooltip]="'nav.pauseAndResume' | translate" sfngTooltipDelay="1000"
     snfgTooltipPosition="right" class="link" (click)="pauseMenu.dropdown.toggle(pauseMenuTrigger)" cdkOverlayOrigin
     #pauseMenuTrigger="cdkOverlayOrigin" [class.active]="pauseMenu.dropdown.isOpen">
 
@@ -230,19 +235,19 @@
       </div>
 
       <!-- we show 'Pause SPN...' items even when isPausedSPN to allow pause time modification-->
-      <app-menu-item (click)="pauseSPN($event, 60*5)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">Pause SPN for 5 minutes</app-menu-item>
-      <app-menu-item (click)="pauseSPN($event, 60*15)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">Pause SPN for 15 minutes</app-menu-item>
-      <app-menu-item (click)="pauseSPN($event, 60*60)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">Pause SPN for 1 hour</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*5)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">{{ 'nav.pauseSpn5min' | translate }}</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*15)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">{{ 'nav.pauseSpn15min' | translate }}</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*60)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">{{ 'nav.pauseSpn1hour' | translate }}</app-menu-item>
       <hr/>
-      <app-menu-item (click)="pause($event, 60*5)">Pause for 5 minutes</app-menu-item>
-      <app-menu-item (click)="pause($event, 60*15)">Pause for 15 minutes</app-menu-item>
-      <app-menu-item (click)="pause($event, 60*60)">Pause for 1 hour</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*5)">{{ 'nav.pause5min' | translate }}</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*15)">{{ 'nav.pause15min' | translate }}</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*60)">{{ 'nav.pause1hour' | translate }}</app-menu-item>
       <hr/>
-      <app-menu-item (click)="resume($event)" [disabled]="!isPaused">Resume now</app-menu-item>
+      <app-menu-item (click)="resume($event)" [disabled]="!isPaused">{{ 'nav.resumeNow' | translate }}</app-menu-item>
   </app-menu>
 
   <!-- Power Menu -->
-  <div sfngTipUpTrigger="navPower" sfngTipUpPassive sfng-tooltip="Shutdown and Restart" sfngTooltipDelay="1000"
+  <div sfngTipUpTrigger="navPower" sfngTipUpPassive [sfng-tooltip]="'nav.shutdownAndRestart' | translate" sfngTooltipDelay="1000"
     snfgTooltipPosition="right" class="link" (click)="powerMenu.dropdown.toggle(powerMenuTrigger)" cdkOverlayOrigin
     #powerMenuTrigger="cdkOverlayOrigin" [class.active]="powerMenu.dropdown.isOpen">
 
@@ -262,8 +267,8 @@
 
   </div>
   <app-menu #powerMenu offsetY="0" offsetX="10" overlayClass="rounded-t">
-    <app-menu-item (click)="shutdown($event)">Shutdown</app-menu-item>
-    <app-menu-item (click)="restart($event)">Restart</app-menu-item>
+    <app-menu-item (click)="shutdown($event)">{{ 'nav.shutdown' | translate }}</app-menu-item>
+    <app-menu-item (click)="restart($event)">{{ 'nav.restart' | translate }}</app-menu-item>
   </app-menu>
 
 </div>

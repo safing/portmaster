@@ -1,8 +1,8 @@
 <div class="flex flex-col items-start">
-  <caption *ngIf="!notification.isBroadcast">Notification</caption>
+  <caption *ngIf="!notification.isBroadcast">{{ 'notifications.notification' | translate }}</caption>
 
   <caption *ngIf="notification.isBroadcast" sfngTipUpAnchor class="flex flex-row gap-2 items-center">
-    Broadcast Notification
+    {{ 'notifications.broadcastNotification' | translate }}
     <sfng-tipup key="broadcast-info"></sfng-tipup>
   </caption>
 

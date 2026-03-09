@@ -4,9 +4,9 @@
   cdkDrag (cdkDragReleased)="onDragRelease($event)" (cdkDragStart)="onDragStart()">
   <div class="flex flex-row items-center justify-start w-full gap-1">
     <app-menu #pinUseMenu>
-      <app-menu-item (click)="openPinDetails()">Show Details</app-menu-item>
-      <app-menu-item (click)="showExitConnections()">Show exit connections</app-menu-item>
-      <app-menu-item (click)="copyNodeID()">Copy Node ID</app-menu-item>
+      <app-menu-item (click)="openPinDetails()">{{ 'spn.showDetails' | translate }}</app-menu-item>
+      <app-menu-item (click)="showExitConnections()">{{ 'spn.showExitConnections' | translate }}</app-menu-item>
+      <app-menu-item (click)="copyNodeID()">{{ 'spn.copyNodeID' | translate }}</app-menu-item>
     </app-menu>
     <app-menu-trigger class="mr-0 -ml-2" useContent="true" [menu]="pinUseMenu">
       <span class="flex flex-row items-center gap-1 -ml-2 -mr-2">
@@ -45,7 +45,7 @@
     <span>{{ mapPin.pin.EntityV6?.IP  || 'N/A' }}</span>
   </div>
   <div class="flex flex-row items-center gap-2">
-    <span class="inline-block w-12 font-thin text-secondary">Run By</span>
+    <span class="inline-block w-12 font-thin text-secondary">{{ 'spn.runBy' | translate }}</span>
 
     <span class="inline-flex flex-row items-center gap-1">
       <svg *ngIf="!!mapPin.pin.VerifiedOwner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
@@ -58,7 +58,7 @@
     </span>
   </div>
   <div class="flex flex-row items-start w-full gap-2 " *ngIf="mapPin.isExit || mapPin.isHome || mapPin.isTransit">
-    <span class="inline-block w-12 font-thin text-secondary">Used As</span>
+    <span class="inline-block w-12 font-thin text-secondary">{{ 'spn.usedAs' | translate }}</span>
 
     <div class="inline-flex flex-col flex-grow gap-1">
       <span class="flex flex-row items-center w-full gap-1" *ngIf="mapPin.isHome">
@@ -69,9 +69,9 @@
             d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
         </svg>
 
-        <span class="flex-grow">Home Node</span>
+        <span class="flex-grow">{{ 'spn.homeNode' | translate }}</span>
         <ng-container
-          *ngTemplateOutlet="helpText; context: {$implicit: 'This node does not know the destinations of you connections but may know where you are'}">
+          *ngTemplateOutlet="helpText; context: {$implicit: ('spn.homeNodeHelp' | translate)}">
         </ng-container>
       </span>
 
@@ -82,9 +82,9 @@
             d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
         </svg>
 
-        <span class="flex-grow">Exit Node</span>
+        <span class="flex-grow">{{ 'spn.exitNode' | translate }}</span>
         <ng-container
-          *ngTemplateOutlet="helpText; context: {$implicit: 'This node does not know who you are but knows the destination of connections for which it is used as an exit node'}">
+          *ngTemplateOutlet="helpText; context: {$implicit: ('spn.exitNodeHelp' | translate)}">
         </ng-container>
       </span>
 
@@ -95,9 +95,9 @@
             d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
         </svg>
 
-        <span class="flex-grow">Transit Node</span>
+        <span class="flex-grow">{{ 'spn.transitNode' | translate }}</span>
         <ng-container
-          *ngTemplateOutlet="helpText; context: {$implicit: 'This node does not know who you are and where you are connecting to'}">
+          *ngTemplateOutlet="helpText; context: {$implicit: ('spn.transitNodeHelp' | translate)}">
         </ng-container>
       </span>
 

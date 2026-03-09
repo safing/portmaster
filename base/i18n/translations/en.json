@@ -1,0 +1,241 @@
+{
+  "config": {
+    "core/apiKeys": {
+      "name": "API Keys",
+      "description": "Define API keys for privileged access to the API."
+    },
+    "core/automaticIntelUpdates": {
+      "name": "Automatic Intelligence Data Updates",
+      "description": "Automatically check for and download intelligence data updates."
+    },
+    "core/automaticUpdates": {
+      "name": "Automatic Software Updates",
+      "description": "Automatically check for and download software updates."
+    },
+    "core/devMode": {
+      "name": "Development Mode",
+      "description": "In Development Mode, security restrictions are lifted/softened."
+    },
+    "core/enableProcessDetection": {
+      "name": "Process Detection",
+      "description": "This option enables the attribution of network traffic to processes."
+    },
+    "core/expertiseLevel": {
+      "name": "UI Mode",
+      "description": "Control the default amount of settings and information shown."
+    },
+    "core/listenAddress": {
+      "name": "API Listen Address",
+      "description": "Defines the IP address and port on which the internal API listens."
+    },
+    "core/locale": {
+      "name": "Time and Date Format",
+      "description": "Configures the time and date format for the user interface."
+    },
+    "core/log/level": {
+      "name": "Log Level",
+      "description": "Configure the logging level."
+    },
+    "core/metrics/comment": {
+      "name": "Metrics Comment Label",
+      "description": "Define a metrics comment label."
+    },
+    "core/metrics/instance": {
+      "name": "Metrics Instance Name",
+      "description": "Define the prometheus instance label for all exported metrics."
+    },
+    "core/metrics/push": {
+      "name": "Push Prometheus Metrics",
+      "description": "Push metrics to this URL in the prometheus format."
+    },
+    "core/networkService": {
+      "name": "Network Service",
+      "description": "Use the Portmaster as a network service."
+    },
+    "core/releaseChannel": {
+      "name": "Release Channel",
+      "description": "Use \"Stable\" for the best experience."
+    },
+    "core/releaseLevel": {
+      "name": "Feature Stability",
+      "description": "Decide if you want to experiment with unstable features."
+    },
+    "core/useSystemNotifications": {
+      "name": "Desktop Notifications",
+      "description": "In addition to showing notifications in the Portmaster App, also send them to the Desktop."
+    },
+    "dns/dontResolveSpecialDomains": {
+      "name": "Block Unofficial TLDs",
+      "description": "Block .onion, .i2p, .loki, .bit, .eth and other unofficial domains."
+    },
+    "dns/listenAddress": {
+      "name": "Internal DNS Server Listen Address",
+      "description": "Defines the IP address and port on which the internal DNS Server listens."
+    },
+    "dns/nameserverRetryRate": {
+      "name": "Retry Failing DNS Servers",
+      "description": "Duration in seconds how often failing DNS server should be retried."
+    },
+    "dns/nameservers": {
+      "name": "DNS Servers",
+      "description": "DNS servers to use for resolving DNS requests."
+    },
+    "dns/noAssignedNameservers": {
+      "name": "Ignore System/Network Servers",
+      "description": "Ignore DNS servers configured in your system or network."
+    },
+    "dns/noInsecureProtocols": {
+      "name": "Use Secure Protocols Only",
+      "description": "Never resolve using insecure protocols, ie. plain DNS."
+    },
+    "dns/noMulticastDNS": {
+      "name": "Ignore Multicast DNS",
+      "description": "Do not resolve using Multicast DNS."
+    },
+    "dns/useStaleCache": {
+      "name": "Always Use DNS Cache",
+      "description": "Always use the DNS cache, even if entries have expired."
+    },
+    "filter/askTimeout": {
+      "name": "Prompt Timeout",
+      "description": "How long the Portmaster will wait for a reply to a prompt notification."
+    },
+    "filter/askWithSystemNotifications": {
+      "name": "Prompt Desktop Notifications",
+      "description": "In addition to showing prompt notifications in the Portmaster App, also send them to the Desktop."
+    },
+    "filter/blockInbound": {
+      "name": "Force Block Incoming Connections",
+      "description": "Connections initiated towards your device from the LAN or Internet."
+    },
+    "filter/blockInternet": {
+      "name": "Force Block Internet Access",
+      "description": "Force Block connections from and to the Internet."
+    },
+    "filter/blockLAN": {
+      "name": "Force Block LAN",
+      "description": "Force Block all connections from and to the Local Area Network."
+    },
+    "filter/blockLocal": {
+      "name": "Force Block Device-Local Connections",
+      "description": "Force Block all internal connections on your own device."
+    },
+    "filter/blockP2P": {
+      "name": "Force Block P2P/Direct Connections",
+      "description": "These are connections that are established directly to an IP address."
+    },
+    "filter/customListFile": {
+      "name": "Custom Filter List",
+      "description": "Specify the file path to a custom filter list (.txt)."
+    },
+    "filter/defaultAction": {
+      "name": "Default Network Action",
+      "description": "The default network action is applied when nothing else allows or blocks a connection."
+    },
+    "filter/disableAutoPermit": {
+      "name": "Disable Auto Allow",
+      "description": "Auto Allow searches for a relation between an app and the destination of a connection."
+    },
+    "filter/dnsQueryInterception": {
+      "name": "Seamless DNS Integration",
+      "description": "Intercept and redirect astray DNS queries to the Portmaster's internal DNS server."
+    },
+    "filter/domainHeuristics": {
+      "name": "Enable Domain Heuristics",
+      "description": "Checks for suspicious domain names and blocks them."
+    },
+    "filter/enable": {
+      "name": "Enable Privacy Filter",
+      "description": "Enable the Privacy Filter. If turned off, all privacy filter protections are fully disabled."
+    },
+    "filter/endpoints": {
+      "name": "Outgoing Rules",
+      "description": "Rules that apply to outgoing network connections."
+    },
+    "filter/includeCNAMEs": {
+      "name": "Block Domain Aliases",
+      "description": "Block a domain if a resolved CNAME (alias) is blocked by a rule."
+    },
+    "filter/includeSubdomains": {
+      "name": "Block Subdomains of Filter List Entries",
+      "description": "Additionally block all subdomains of entries in selected filter lists."
+    },
+    "filter/lists": {
+      "name": "Filter Lists",
+      "description": "Block connections that match enabled filter lists."
+    },
+    "filter/permanentVerdicts": {
+      "name": "Permanent Verdicts",
+      "description": "Making these verdicts permanent brings a major performance increase."
+    },
+    "filter/preventBypassing": {
+      "name": "Block Secure DNS Bypassing",
+      "description": "Prevent apps from bypassing Portmaster's Secure DNS resolver."
+    },
+    "filter/removeBlockedDNS": {
+      "name": "Reject Blocked IPs",
+      "description": "Reject blocked IP addresses directly from the DNS response."
+    },
+    "filter/removeOutOfScopeDNS": {
+      "name": "Enforce Global/Private Split-View",
+      "description": "Reject private IP addresses from public DNS responses."
+    },
+    "filter/serviceEndpoints": {
+      "name": "Incoming Rules",
+      "description": "Rules that apply to incoming network connections."
+    },
+    "history/enable": {
+      "name": "Enable Network History",
+      "description": "Save connections in a database to view and search them later."
+    },
+    "history/keep": {
+      "name": "Keep Network History",
+      "description": "Specify how many days the network history data should be kept."
+    },
+    "spn/dnsExitPolicy": {
+      "name": "DNS Exit Node Rules",
+      "description": "Customize which countries should be used as DNS Exit Nodes."
+    },
+    "spn/enable": {
+      "name": "SPN Module",
+      "description": "Start the Safing Privacy Network module."
+    },
+    "spn/exitHubPolicy": {
+      "name": "Exit Node Rules",
+      "description": "Customize which countries should be used for your Exit Nodes."
+    },
+    "spn/homePolicy": {
+      "name": "Home Node Rules",
+      "description": "Customize which countries should be used for your Home Node."
+    },
+    "spn/routingAlgorithm": {
+      "name": "Select SPN Routing Algorithm",
+      "description": "Select the routing algorithm for your connections through the SPN."
+    },
+    "spn/specialAccessCode": {
+      "name": "Special Access Code",
+      "description": "Special Access Codes grant access to the SPN for testing."
+    },
+    "spn/transitHubPolicy": {
+      "name": "Transit Node Rules",
+      "description": "Customize which countries should be used as Transit Nodes."
+    },
+    "spn/trustNodes": {
+      "name": "Trust Nodes",
+      "description": "Specify which community nodes to additionally trust."
+    },
+    "spn/usagePolicy": {
+      "name": "SPN Rules",
+      "description": "Customize which websites should be routed through the SPN."
+    },
+    "spn/use": {
+      "name": "Use SPN",
+      "description": "Protect network traffic with the Safing Privacy Network."
+    },
+    "spn/useCommunityNodes": {
+      "name": "Use Community Nodes",
+      "description": "Use nodes (servers) not operated by Safing themselves."
+    }
+  },
+  "ui": {}
+}

@@ -13,12 +13,12 @@
 
   <ng-template #promptingTemplate>
     <span class="mr-2 outline-none cursor-pointer text-secondary hover:underline" [routerLink]="[]"
-      [queryParams]="{setting: 'filter/defaultAction', tab: 'settings'}">Prompting</span>
+      [queryParams]="{setting: 'filter/defaultAction', tab: 'settings'}">{{ 'common.prompting' | translate }}</span>
   </ng-template>
 </div>
 
 <ng-template #tooltipTemplate>
-  The following enabled settings may interfere:
+  {{ 'common.interferingSettings' | translate }}:
   <ul class="pl-4 list-disc">
     <ng-container *ngFor="let setting of interferingSettings">
       <li class="cursor-pointer hover:underline" [routerLink]="[]"

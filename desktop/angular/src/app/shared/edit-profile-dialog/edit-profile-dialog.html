@@ -5,16 +5,15 @@
     class="w-8 h-8 rounded-full border border-gray-400"
   />
 
-  {{ isEditMode ? 'Edit App Profile' : 'Create New App Profile' }}
+  {{ isEditMode ? ('dialogs.editAppProfile' | translate) : ('dialogs.createNewAppProfile' | translate) }}
 </h1>
 
 <form #profileForm="ngForm">
   <sfng-tab-group customHeader="false" linkRouter="false">
-    <sfng-tab title="General">
+    <sfng-tab [title]="'dialogs.general' | translate">
       <div *sfngTabContent class="tab-content">
         <span class="py-2 text-secondary">
-          Configure basic profile information like the profile name, it's
-          description and optionally the profile icon.
+          {{ 'dialogs.configureBasicInfo' | translate }}
         </span>
 
         <div class="input" *appExpertiseLevel="'developer'">
@@ -24,53 +23,52 @@
             name="id"
             pattern="[a-zA-Z0-9\-\._]*"
             [(ngModel)]="profile.ID"
-            placeholder="A unique identifier for profile. Leave empty to generate a random one."
+            [placeholder]="'dialogs.edit.idPlaceholder' | translate"
           />
         </div>
 
         <div class="input">
-          <label>Name *</label>
+          <label>{{ 'dialogs.edit.name' | translate }} *</label>
           <input
             type="text"
             required
             name="name"
             [(ngModel)]="profile.Name"
-            placeholder="A name for labele profile"
+            [placeholder]="'dialogs.edit.namePlaceholder' | translate"
           />
         </div>
 
         <div class="input">
-          <label>Description</label>
+          <label>{{ 'dialogs.edit.description' | translate }}</label>
           <input
             type="text"
             name="description"
             [(ngModel)]="profile.Description"
-            placeholder="An optional description of the profile"
+            [placeholder]="'dialogs.edit.descriptionPlaceholder' | translate"
           />
         </div>
 
         <div class="flex flex-row justify-between">
           <div class="input">
-            <label>Icon</label>
+            <label>{{ 'dialogs.edit.icon' | translate }}</label>
             <div class="flex flex-col gap-2 justify-start">
               <div class="flex flex-row gap-3">
                 <label
                   for="icon-upload"
                   class="inline-block p-1 px-4 font-medium whitespace-nowrap bg-opacity-80 rounded-sm cursor-pointer outline-none bg-blue hover:bg-blue text-xxs w-fit"
                 >
-                  Choose Icon
+                  {{ 'dialogs.chooseIcon' | translate }}
                 </label>
                 <button
                   *ngIf="!!iconData && profile.Icons?.length"
                   (click)="resetIcon()"
                   class="bg-red-300"
                 >
-                  Reset Icon
+                  {{ 'dialogs.resetIcon' | translate }}
                 </button>
               </div>
               <span class="pl-2 break-normal text-tertiary"
-                >The icon must be smaller than 10kB and it's dimensions must not
-                exceed 512x512 px. Only JPG and PNG files are supported.</span
+                >{{ 'dialogs.iconRequirements' | translate }}</span
               >
             </div>
             <input
@@ -93,15 +91,14 @@
       </div>
     </sfng-tab>
 
-    <sfng-tab title="Process Matching">
+    <sfng-tab [title]="'dialogs.processMatching' | translate">
       <div *sfngTabContent class="flex flex-col tab-content text-xxs">
         <span class="text-xs text-secondary"
-          >This profile will be applied to processes that match one of the
-          following fingerprints:</span
+          >{{ 'dialogs.fingerprintDescription' | translate }}</span
         >
 
         <div *ngIf="!profile.Fingerprints?.length">
-          No fingerprints configured. Please press "Add New" to get started.
+          {{ 'dialogs.noFingerprints' | translate }}
         </div>
         <div class="flex overflow-auto flex-col flex-grow gap-2 px-1">
           <div
@@ -127,36 +124,36 @@
               [ngModelOptions]="{standalone: true}"
             >
               <sfng-select-item
-                *sfngSelectValue="fingerPrintTypes.Tag; label: 'Tag'"
+                *sfngSelectValue="fingerPrintTypes.Tag; label: ('dialogs.edit.tag' | translate)"
               >
-                Tag
+                {{ 'dialogs.edit.tag' | translate }}
                 <sfng-tipup key="process-tags"></sfng-tipup>
               </sfng-select-item>
               <sfng-select-item
-                *sfngSelectValue="fingerPrintTypes.Cmdline; label: 'Command Line'"
-                >Command Line
+                *sfngSelectValue="fingerPrintTypes.Cmdline; label: ('dialogs.edit.commandLine' | translate)"
+                >{{ 'dialogs.edit.commandLine' | translate }}
               </sfng-select-item>
               <sfng-select-item
-                *sfngSelectValue="fingerPrintTypes.Env; label: 'Environment'"
-                >Environment
+                *sfngSelectValue="fingerPrintTypes.Env; label: ('dialogs.edit.environment' | translate)"
+                >{{ 'dialogs.edit.environment' | translate }}
               </sfng-select-item>
               <sfng-select-item
-                *sfngSelectValue="fingerPrintTypes.Path; label: 'Path'"
-                >Path</sfng-select-item
+                *sfngSelectValue="fingerPrintTypes.Path; label: ('dialogs.edit.path' | translate)"
+                >{{ 'dialogs.edit.path' | translate }}</sfng-select-item
               >
             </sfng-select>
 
             <input
               type="text"
               [(ngModel)]="fp.Key"
-              placeholder="Key"
+              [placeholder]="'dialogs.edit.key' | translate"
               [ngModelOptions]="{standalone: true}"
               *ngIf="fp.Type === 'env'"
             />
 
             <sfng-select
               [(ngModel)]="fp.Key"
-              placeholder="Key"
+              [placeholder]="'dialogs.edit.key' | translate"
               [ngModelOptions]="{standalone: true}"
               *ngIf="fp.Type === 'tag'"
             >
@@ -172,20 +169,20 @@
               [ngModelOptions]="{standalone: true}"
             >
               <sfng-select-item *sfngSelectValue="fingerPrintOperations.Equal"
-                >Equals</sfng-select-item
+                >{{ 'dialogs.edit.equals' | translate }}</sfng-select-item
               >
               <sfng-select-item *sfngSelectValue="fingerPrintOperations.Prefix"
-                >Prefix</sfng-select-item
+                >{{ 'dialogs.edit.prefix' | translate }}</sfng-select-item
               >
               <sfng-select-item *sfngSelectValue="fingerPrintOperations.Regex"
-                >Regex</sfng-select-item
+                >{{ 'dialogs.edit.regex' | translate }}</sfng-select-item
               >
             </sfng-select>
 
             <input
               type="text"
               [(ngModel)]="fp.Value"
-              placeholder="Value"
+              [placeholder]="'dialogs.edit.value' | translate"
               [ngModelOptions]="{standalone: true}"
             />
 
@@ -211,15 +208,15 @@
           </div>
         </div>
 
-        <button (click)="addFingerprint()">Add New</button>
+        <button (click)="addFingerprint()">{{ 'dialogs.addNew' | translate }}</button>
       </div>
     </sfng-tab>
 
-    <sfng-tab title="Copy Settings">
+    <sfng-tab [title]="'dialogs.edit.copySettings' | translate">
       <div *sfngTabContent class="flex flex-col gap-2 tab-content">
         <div class="flex flex-row gap-2 items-center p-2 bg-gray-200">
           <span class="text-secondary"
-            >Select a Profile to copy settings from:</span
+            >{{ 'dialogs.edit.selectProfileToCopy' | translate }}</span
           >
           <div class="flex-grow"></div>
           <sfng-select
@@ -227,7 +224,7 @@
             [ngModelOptions]="{standalone: true}"
             class="flex-grow"
             [allowSearch]="true"
-            searchPlaceholder="Search Profiles"
+            [searchPlaceholder]="'dialogs.edit.searchProfiles' | translate"
           >
             <ng-container *ngFor="let p of allProfiles">
               <sfng-select-item
@@ -243,7 +240,7 @@
             [disabled]="selectedCopyFrom === null"
             (click)="addCopyFrom()"
           >
-            Add
+            {{ 'dialogs.edit.add' | translate }}
           </button>
         </div>
 
@@ -297,9 +294,7 @@
           </div>
         </div>
         <span class="block text-center break-normal text-secondary text-xxs">
-          Settings will be copied from all specified profiles in order with
-          settings from higher profiles taking precedence. <br />
-          Existing settings may be overwritten.
+          {{ 'dialogs.edit.copySettingsInfo' | translate }}
         </span>
       </div>
     </sfng-tab>
@@ -308,15 +303,15 @@
 
 <div class="flex flex-row gap-2 justify-end items-center">
   <button *ngIf="isEditMode" (click)="deleteProfile()" class="bg-red">
-    Delete
+    {{ 'apps.delete' | translate }}
   </button>
   <div class="flex-grow"></div>
-  <button (click)="abort()" class="">Cancel</button>
+  <button (click)="abort()" class="">{{ 'dialogs.cancel' | translate }}</button>
   <button
     (click)="save()"
     [disabled]="!profileForm.valid"
     class="bg-opacity-80 bg-blue hover:bg-blue"
   >
-    Save
+    {{ 'dialogs.save' | translate }}
   </button>
 </div>

@@ -34,15 +34,15 @@ var (
 
 func registerConfig() error {
 	err := config.Register(&config.Option{
-		Name:           "Enable Privacy Filter",
+		Name:           "Включить Фильтр Приватности",
 		Key:            CfgOptionEnableFilterKey,
-		Description:    "Enable the Privacy Filter. If turned off, all privacy filter protections are fully disabled on this device. Not meant to be disabled in production - only turn off for testing.",
+		Description:    "Включить фильтр приватности. При отключении все защитные функции фильтра полностью отключаются на этом устройстве. Не предназначено для отключения в продакшене - отключайте только для тестирования.",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   true,
 		Annotations: config.Annotations{
-			config.CategoryAnnotation: "General",
+			config.CategoryAnnotation: "Основные",
 		},
 	})
 	if err != nil {
@@ -51,16 +51,16 @@ func registerConfig() error {
 	filterEnabled = config.Concurrent.GetAsBool(CfgOptionEnableFilterKey, true)
 
 	err = config.Register(&config.Option{
-		Name:           "Permanent Verdicts",
+		Name:           "Постоянные Решения",
 		Key:            CfgOptionPermanentVerdictsKey,
-		Description:    "The Portmaster's system integration intercepts every single packet. Usually the first packet is enough for the Portmaster to set the verdict for a connection - ie. to allow or deny it. Making these verdicts permanent means that the Portmaster will tell the system integration that is does not want to see any more packets of that single connection. This brings a major performance increase.",
+		Description:    "Системная интеграция Portmaster перехватывает каждый пакет. Обычно первого пакета достаточно для принятия решения о соединении - разрешить или запретить. Постоянные решения означают, что Portmaster сообщит системе, что больше не хочет видеть пакеты этого соединения. Это значительно повышает производительность.",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionPermanentVerdictsOrder,
-			config.CategoryAnnotation:     "Advanced",
+			config.CategoryAnnotation:     "Расширенные",
 		},
 	})
 	if err != nil {
@@ -69,16 +69,16 @@ func registerConfig() error {
 	permanentVerdicts = config.Concurrent.GetAsBool(CfgOptionPermanentVerdictsKey, true)
 
 	err = config.Register(&config.Option{
-		Name:           "Seamless DNS Integration",
+		Name:           "Бесшовная DNS Интеграция",
 		Key:            CfgOptionDNSQueryInterceptionKey,
-		Description:    "Intercept and redirect astray DNS queries to the Portmaster's internal DNS server. This enables seamless DNS integration without having to configure the system or other software. However, this may lead to compatibility issues with other software that attempts the same.",
+		Description:    "Перехватывать и перенаправлять DNS-запросы на внутренний DNS-сервер Portmaster. Это обеспечивает бесшовную интеграцию DNS без необходимости настройки системы или другого ПО. Однако это может вызвать проблемы совместимости с другими программами, которые делают то же самое.",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionDNSQueryInterceptionOrder,
-			config.CategoryAnnotation:     "Advanced",
+			config.CategoryAnnotation:     "Расширенные",
 		},
 	})
 	if err != nil {
@@ -87,15 +87,15 @@ func registerConfig() error {
 	dnsQueryInterception = config.Concurrent.GetAsBool(CfgOptionDNSQueryInterceptionKey, true)
 
 	err = config.Register(&config.Option{
-		Name:           "Prompt Desktop Notifications",
+		Name:           "Уведомления на Рабочий Стол",
 		Key:            CfgOptionAskWithSystemNotificationsKey,
-		Description:    `In addition to showing prompt notifications in the Portmaster App, also send them to the Desktop. This requires the Portmaster Notifier to be running. Requires Desktop Notifications to be enabled.`,
+		Description:    `Помимо показа уведомлений в приложении Portmaster, также отправлять их на рабочий стол. Требуется запущенный Portmaster Notifier. Должны быть включены уведомления на рабочий стол.`,
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionAskWithSystemNotificationsOrder,
-			config.CategoryAnnotation:     "General",
+			config.CategoryAnnotation:     "Основные",
 			config.RequiresAnnotation: config.ValueRequirement{
 				Key:   notifications.CfgUseSystemNotificationsKey,
 				Value: true,
@@ -108,16 +108,16 @@ func registerConfig() error {
 	askWithSystemNotifications = config.Concurrent.GetAsBool(CfgOptionAskWithSystemNotificationsKey, true)
 
 	err = config.Register(&config.Option{
-		Name:           "Prompt Timeout",
+		Name:           "Таймаут Уведомлений",
 		Key:            CfgOptionAskTimeoutKey,
-		Description:    "How long the Portmaster will wait for a reply to a prompt notification. Please note that Desktop Notifications might not respect this or have their own limits.",
+		Description:    "Как долго Portmaster будет ждать ответа на уведомление. Обратите внимание, что уведомления на рабочем столе могут не учитывать это или иметь собственные ограничения.",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   60,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionAskTimeoutOrder,
-			config.UnitAnnotation:         "seconds",
-			config.CategoryAnnotation:     "General",
+			config.UnitAnnotation:         "секунд",
+			config.CategoryAnnotation:     "Основные",
 		},
 		ValidationRegex: `^[1-9][0-9]{1,5}$`,
 	})

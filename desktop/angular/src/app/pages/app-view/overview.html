@@ -1,7 +1,7 @@
 <div class="flex flex-row justify-between items-center mb-4">
   <input
     type="text"
-    placeholder="Search"
+    [placeholder]="'common.search' | translate"
     [ngModel]="searchTerm"
     (ngModelChange)="searchApps($event)"
     [autoFocus]="true"
@@ -11,16 +11,16 @@
 
 <div class="header-title">
   <h1>
-    All Apps
+    {{ 'apps.allApps' | translate }}
     <sfng-tipup key="appsTitle"></sfng-tipup>
   </h1>
   <div class="flex-grow"></div>
 
   <app-menu #profileMenu>
-    <app-menu-item (click)="createProfile()">Create profile</app-menu-item>
-    <app-menu-item (click)="importProfile()">Import Profile</app-menu-item>
+    <app-menu-item (click)="createProfile()">{{ 'apps.createProfile' | translate }}</app-menu-item>
+    <app-menu-item (click)="importProfile()">{{ 'apps.importProfile' | translate }}</app-menu-item>
     <app-menu-item (click)="selectMode = true"
-      >Merge or Delete profiles</app-menu-item
+      >{{ 'apps.mergeOrDelete' | translate }}</app-menu-item
     >
   </app-menu>
 
@@ -31,7 +31,7 @@
       useContent="true"
     >
       <div class="flex flex-row gap-2 items-center text-xs font-light">
-        Manage
+        {{ 'apps.manage' | translate }}
 
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -53,17 +53,17 @@
     <ng-container *ngIf="selectMode">
       <app-menu #selectionMenu>
         <app-menu-item (click)="openMergeDialog()"
-          >Merge Profiles</app-menu-item
+          >{{ 'apps.mergeProfiles' | translate }}</app-menu-item
         >
         <app-menu-item (click)="deleteSelectedProfiles()"
-          >Delete Profiles</app-menu-item
+          >{{ 'apps.deleteProfiles' | translate }}</app-menu-item
         >
-        <app-menu-item (click)="selectMode = false">Cancel</app-menu-item>
+        <app-menu-item (click)="selectMode = false">{{ 'common.cancel' | translate }}</app-menu-item>
       </app-menu>
 
       <app-menu-trigger [menu]="selectionMenu" useContent="true">
         <div class="flex flex-row gap-2 items-center text-xs font-light">
-          {{ selectedProfileCount}} selected
+          {{ selectedProfileCount}} {{ 'apps.selected' | translate }}
 
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -88,7 +88,7 @@
 <div class="scrollable" [@fadeInList]="total">
   <ng-container *ngIf="runningProfiles.length > 0">
     <div class="scrollable-header">
-      <h4>Active</h4>
+      <h4>{{ 'apps.active' | translate }}</h4>
     </div>
     <ng-container
       *ngTemplateOutlet="profileList; context: {$implicit: runningProfiles}"
@@ -97,7 +97,7 @@
 
   <ng-container *ngIf="recentlyEdited.length > 0">
     <div class="scrollable-header">
-      <h4>Recently Edited</h4>
+      <h4>{{ 'apps.recentlyEdited' | translate }}</h4>
     </div>
     <ng-container
       *ngTemplateOutlet="profileList; context: {$implicit: recentlyEdited}"
@@ -106,7 +106,7 @@
 
   <ng-container *ngIf="profiles.length > 0">
     <div class="scrollable-header">
-      <h4>All</h4>
+      <h4>{{ 'common.all' | translate }}</h4>
     </div>
     <ng-container
       *ngTemplateOutlet="profileList; context: {$implicit: profiles}"
@@ -142,7 +142,7 @@
 
         <span
           *ngIf="profile.hasConfigChanges"
-          sfng-tooltip="Settings Edited"
+          [sfng-tooltip]="'apps.settingsEdited' | translate"
           class="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue"
         ></span>
       </div>
@@ -189,5 +189,5 @@
   *ngIf="total === 0 && searchTerm !== ''"
   class="flex justify-center items-center p-2 bg-gray-200 text-secondary"
 >
-  No applications match your search term.
+  {{ 'apps.noAppsMatch' | translate }}
 </div>

@@ -3,6 +3,7 @@ import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { SfngDropDownModule, SfngTipUpModule, StepperConfig } from "@safing/ui";
+import { TranslateModule } from "@ngx-translate/core";
 import { ConfigModule } from "../shared/config";
 import { Step1WelcomeComponent } from "./step-1-welcome";
 import { Step2TrackersComponent } from "./step-2-trackers";
@@ -24,6 +25,7 @@ const steps = [
     SfngDropDownModule,
     ConfigModule,
     SfngTipUpModule,
+    TranslateModule,
   ],
   declarations: steps
 })

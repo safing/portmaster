@@ -1,0 +1,937 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "remove": "Remove",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "loading": "Loading...",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "reset": "Reset",
+    "apply": "Apply",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "enabled": "Enabled",
+    "enable": "Enable",
+    "disabled": "Disabled",
+    "active": "Active",
+    "inactive": "Inactive",
+    "all": "All",
+    "none": "None",
+    "other": "Other",
+    "unknown": "Unknown",
+    "never": "never",
+    "now": "now",
+    "today": "today",
+    "yesterday": "yesterday",
+    "error": "Error",
+    "warning": "Warning",
+    "info": "Info",
+    "success": "Success",
+    "import": "Import",
+    "customize": "Customize",
+    "custom": "Custom",
+    "tip": "Tip",
+    "status": "Status",
+    "apps": "Apps",
+    "copy": "Copy",
+    "title": "Title",
+    "faq": "FAQ",
+    "where": "where",
+    "by": "by",
+    "beta": "Beta",
+    "experimental": "Experimental",
+    "advanced": "Advanced",
+    "developer": "Developer",
+    "home": "Home",
+    "exit": "Exit",
+    "noLocation": "No Location",
+    "community": "Community",
+    "prompting": "Prompting",
+    "destination": "Destination",
+    "interferingSettings": "The following enabled settings may interfere",
+    "groupBy": "Group By",
+    "sort": "Sort",
+    "automatic": "Automatic",
+    "getPro": "Get Pro",
+    "yourDevice": "Your Device",
+    "asOrgNotInDB": "AS Organization not in DB",
+    "logout": "Logout",
+    "refresh": "Refresh",
+    "reload": "Reload",
+    "clearAll": "Clear All",
+    "openAccountPage": "Open Account Page",
+    "saved": "Saved",
+    "restartRequired": "Restart required",
+    "reloadRequired": "Reload required",
+    "invalidValue": "Invalid Value",
+    "lastReload": "Last Reload",
+    "showMore": "Show More Identities",
+    "showLess": "Show Less Identities",
+    "more": "More",
+    "comingSoon": "coming soon",
+    "availableIn": "Available in",
+    "upgrade": "Upgrade"
+  },
+  "search": {
+    "placeholder": "Search for connections, press ENTER to apply",
+    "fullTextSearch": "Full-Text Search",
+    "filterBy": "Filter by",
+    "searchFaqs": "Search FAQs",
+    "summarizeReport": "Summarize your report"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "networkActivity": "Network Activity",
+    "appsAndProfiles": "Apps and Profiles",
+    "spn": "Safing Privacy Network",
+    "globalSettings": "Global Settings",
+    "getHelp": "Get Help",
+    "versionAndTools": "Version and Tools",
+    "version": "Version",
+    "releaseChannel": "Release Channel",
+    "shutdown": "Shutdown",
+    "restart": "Restart",
+    "pause": "Pause",
+    "resume": "Resume",
+    "pauseSpn": "Pause SPN",
+    "pauseAll": "Pause All Protection",
+    "notifications": "Notifications",
+    "language": "Language",
+    "checkUpdates": "Check for Updates",
+    "viewChangelog": "View Changelog",
+    "reloadUI": "Reload UI",
+    "showIntro": "Show Intro Screen",
+    "reinitSPN": "Re-Initialize SPN",
+    "logoutCompletely": "Logout Completely",
+    "resetBroadcast": "Reset Broadcast State",
+    "clearDNS": "Clear DNS Cache",
+    "openDataDir": "Open Data Directory",
+    "copyDebugInfo": "Copy Debug Info",
+    "cleanupHistory": "Cleanup Network History",
+    "pauseSpn5min": "Pause SPN for 5 minutes",
+    "pauseSpn15min": "Pause SPN for 15 minutes",
+    "pauseSpn1hour": "Pause SPN for 1 hour",
+    "pause5min": "Pause for 5 minutes",
+    "pause15min": "Pause for 15 minutes",
+    "pause1hour": "Pause for 1 hour",
+    "resumeNow": "Resume now",
+    "pauseAndResume": "Pause and Resume",
+    "shutdownAndRestart": "Shutdown and Restart"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcomeBack": "Welcome back",
+    "welcomeBackUser": "Welcome back, {{username}}!",
+    "currentPlan": "Your current plan is",
+    "portmasterFree": "Portmaster Free",
+    "endsIn": "and ends in",
+    "endsNever": "never",
+    "autoRenewsIn": "and auto-renews in",
+    "accountDetails": "Account Details",
+    "loginSubscribe": "Login / Subscribe",
+    "features": "Features",
+    "recentActivity": "Recent Activity",
+    "connectionsBlocked": "Connections Blocked",
+    "activeConnections": "Active Connections",
+    "activeApps": "Active Apps",
+    "dataReceived": "Data Received",
+    "dataSent": "Data Sent",
+    "spnIdentities": "SPN Identities",
+    "availableInPlus": "Available in Portmaster Plus",
+    "availableInPro": "Available in Portmaster Pro",
+    "activeBlockedConnections": "Active/Blocked Connections",
+    "connectionsTunneledSpn": "Connections Tunneled through SPN",
+    "recentConnectionsPerCountry": "Recent Connections per Country",
+    "recentlyBlockedApps": "Recently Blocked Applications",
+    "noBlockedApps": "No applications have been blocked in the last 10 minutes.",
+    "recentConnectionCountries": "Recent Connection Countries",
+    "recentTopConsumers": "Recent Top Consumers",
+    "recentBandwidthUsage": "Recent Bandwidth Usage",
+    "news": "News",
+    "newsUnavailable": "News is only available if intel data updates are enabled",
+    "newsLoading": "Just a second, we're loading the latest news..."
+  },
+  "monitor": {
+    "title": "Network Monitor",
+    "networkActivity": "Network Activity",
+    "connections": "connections",
+    "historyAvailable": "Network history data available as of",
+    "noHistoryData": "No network history data available.",
+    "searchHint": "Use the search bar and drop downs to search and filter the last 10 minutes of network traffic. Optionally, search all network history data if enabled.",
+    "blocked": "Blocked",
+    "allowed": "Allowed",
+    "failed": "Failed",
+    "tunneled": "Tunneled",
+    "encrypted": "Encrypted",
+    "internal": "Internal",
+    "details": "Details",
+    "process": "Process",
+    "domain": "Domain",
+    "ip": "IP Address",
+    "port": "Port",
+    "protocol": "Protocol",
+    "country": "Country",
+    "started": "Started",
+    "ended": "Ended",
+    "duration": "Duration",
+    "bytesIn": "Bytes In",
+    "bytesOut": "Bytes Out",
+    "verdict": "Verdict",
+    "reason": "Reason",
+    "profile": "Profile",
+    "scope": "Scope",
+    "exitNode": "Exit Node",
+    "entryNode": "Entry Node",
+    "route": "Route",
+    "dataUsage": "Data Usage",
+    "copyJSON": "Copy JSON",
+    "internetPeerToPeer": "Internet Peer-to-Peer",
+    "internetMulticast": "Internet Multicast",
+    "deviceLocal": "Device-Local",
+    "lanPeerToPeer": "LAN Peer-to-Peer",
+    "lanMulticast": "LAN Multicast",
+    "spnTunnel": "SPN Tunnel",
+    "results": "Results",
+    "ofTotalConnections": "of {{count}} total connections",
+    "useAsFilter": "Use as filter",
+    "copyQueryToClipboard": "Copy query to clipboard",
+    "internalConnectionsDevMode": "Internal connections are only displayed in Developer Mode",
+    "app": "App",
+    "global": "Global",
+    "proTipShiftClick": "Use <pre>Shift + Click</pre> to add connection attributes to the current filter.",
+    "proTipShiftHighlight": "Hold <pre>Shift</pre> to highlight attributes that can be used in the filter.",
+    "proTipCtrlCopy": "Hold <pre>CTRL</pre> and click attributes to copy them to the clipboard."
+  },
+  "apps": {
+    "title": "Applications",
+    "overview": "Overview",
+    "settings": "Settings",
+    "history": "History",
+    "active": "Active",
+    "recentlyUsed": "Recently Used",
+    "recentlyEdited": "Recently Edited",
+    "other": "Other",
+    "allApps": "All Apps",
+    "noApps": "No applications found",
+    "noAppsMatch": "No applications match your search term.",
+    "blockConnections": "Block Connections",
+    "useSPN": "Use SPN",
+    "keepHistory": "Keep History",
+    "viewActive": "View Active",
+    "viewAll": "View All",
+    "quickSettings": "Quick Settings",
+    "appSettings": "App Settings",
+    "globalDefault": "Global Default",
+    "appSpecific": "App Specific",
+    "createProfile": "Create profile",
+    "importProfile": "Import Profile",
+    "mergeOrDelete": "Merge or Delete profiles",
+    "manage": "Manage",
+    "mergeProfiles": "Merge Profiles",
+    "deleteProfiles": "Delete Profiles",
+    "selected": "selected",
+    "settingsEdited": "Settings Edited",
+    "connections": "Connections",
+    "dataUsage": "Data Usage",
+    "countries": "Countries",
+    "blocked": "Blocked",
+    "received": "Received",
+    "sent": "Sent",
+    "availableInPlus": "Available in Plus",
+    "more": "More",
+    "editAppProfile": "Edit App Profile",
+    "exportAppProfile": "Export App Profile",
+    "deleteAppProfile": "Delete App Profile",
+    "searchSettings": "Search Settings",
+    "getHelp": "Get Help",
+    "sortBy": "Sort By",
+    "appSpecificSettings": "App Specific Settings",
+    "usingGlobalSettings": "is fully using the global settings.",
+    "startCreatingExceptions": "Start creating exceptions for it now.",
+    "editSettings": "Edit Settings",
+    "details": "Details",
+    "name": "Name",
+    "path": "Path",
+    "binary": "Binary",
+    "activeConnections": "Active Connections",
+    "networkHistory": "Network History",
+    "asOf": "As of",
+    "removeConnections": "Remove all",
+    "none": "None",
+    "networkHistoryTooltip": "Network History feature is available in Portmaster Plus",
+    "internal": "Internal",
+    "source": "Source",
+    "revision": "Revision",
+    "layers": "Layers",
+    "description": "Description",
+    "fingerprints": "Fingerprints",
+    "fingerprintsDescription": "This profile will be applied to processes that match one of the following fingerprints:",
+    "deleteProfile": "Delete Profile",
+    "deleteProfileDescription": "You can completely delete this profile to get rid of any settings. The profile will be automatically re-created with default settings as soon as the application starts to use the network.",
+    "debugging": "Debugging",
+    "debuggingDescription": "When reporting issues with this app please make sure to include the following debug information:",
+    "copyDebugInfo": "Copy Debug Information",
+    "insights": "Insights",
+    "delete": "Delete"
+  },
+  "settings": {
+    "title": "Global Settings",
+    "general": "General",
+    "privacy": "Privacy",
+    "security": "Security",
+    "network": "Network",
+    "dns": "DNS",
+    "connections": "Connections",
+    "filter": "Filter",
+    "spn": "SPN",
+    "advanced": "Advanced",
+    "resetToDefault": "Reset to Default",
+    "importSettings": "Import Settings",
+    "exportSettings": "Export Settings",
+    "searchSettings": "Search settings...",
+    "openSettings": "Open Settings",
+    "useGlobalSetting": "Use global setting",
+    "cancelExport": "Cancel Export",
+    "quickSettings": "Quick Settings",
+    "globalSettings": "Global Settings",
+    "stackedOnGlobal": "This setting stacks on top of the following",
+    "globalSetting": "global setting",
+    "inheritedFromGlobal": "Inherited from",
+    "appSpecificConfig": "App specific configuration"
+  },
+  "rules": {
+    "addRule": "Add Rule",
+    "removeRules": "Remove Rules",
+    "noEntries": "No entries available",
+    "applied": "applied",
+    "fromGlobalSettings": "from Global Settings",
+    "fromAppSettings": "from Application Settings"
+  },
+  "spn": {
+    "title": "Safing Privacy Network",
+    "status": "Status",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "connecting": "Connecting",
+    "disabled": "Disabled",
+    "enableToStart": "Enable SPN to start using.",
+    "exit": "SPN Exit",
+    "increaseProtection": "Increase privacy protection",
+    "youreProtected": "You're protected",
+    "connectingToSPN": "Connecting to the SPN ...",
+    "map": "Map",
+    "nodes": "Nodes",
+    "routes": "Routes",
+    "identities": "Identities",
+    "home": "Home",
+    "exitNode": "Exit Node",
+    "entryNode": "Entry Node",
+    "transit": "Transit",
+    "load": "Load",
+    "latency": "Latency",
+    "countries": "Countries",
+    "loadingData": "Loading data, please wait ...",
+    "login": "Login",
+    "enableSPN": "Enable the SPN",
+    "pricing": "Pricing",
+    "proTip": "Pro Tip",
+    "statistics": "Statistics",
+    "totalNodes": "Total Nodes",
+    "bySafing": "by Safing",
+    "byCommunity": "by Community",
+    "safingNodes": "Safing Nodes",
+    "communityNodes": "Community Nodes",
+    "usedAsTransit": "used as Transit",
+    "usedAsExit": "used as Exit",
+    "clickCountryForDetails": "Click country for details",
+    "exitNodes": "Exit Nodes",
+    "nodesInUse": "Nodes In Use",
+    "appsExitingInCountry": "The following Apps have connections that are routed through the SPN and use an exit node in {{countryName}} ({{countryCode}}):",
+    "connections": "connections",
+    "name": "Name",
+    "operator": "Operator",
+    "usedAs": "Used As",
+    "capacity": "Capacity",
+    "homeNode": "Home Node",
+    "transitNode": "Transit Node",
+    "showDetails": "Show Details",
+    "showExitConnections": "Show exit connections",
+    "copyNodeID": "Copy Node ID",
+    "runBy": "Run By",
+    "nodeRunBy": "This SPN Node is run by",
+    "verifiedOperator": "Verified operator: {{owner}}",
+    "community": "Community",
+    "nodeOffline": "Node is Offline",
+    "nodeHasIssues": "Node has Issues",
+    "details": "Details",
+    "verifiedOwner": "Verified Owner",
+    "firstSeen": "First Seen",
+    "states": "States",
+    "sessionActive": "Session Active",
+    "hopDistance": "Hop Distance",
+    "hops": "HOPS",
+    "exitConnections": "Exit Connections",
+    "showExitInMonitor": "Show exit connections in monitor.",
+    "route": "Route",
+    "connectedNodes": "Connected Nodes",
+    "homeNodeHelp": "This node does not know the destinations of your connections but may know where you are",
+    "exitNodeHelp": "This node does not know who you are but knows the destination of connections for which it is used as an exit node",
+    "transitNodeHelp": "This node does not know who you are and where you are connecting to",
+    "failsafeBlocking": "Fail-safe blocking enabled",
+    "failedToConnect": "SPN failed to connect",
+    "homeEntryNode": "SPN Home (Entry) Node",
+    "connectedTo": "Connected to",
+    "uplinkEncrypted": "Uplink is always encrypted",
+    "builtWithTransport": "Built with transport/decoy",
+    "tips": {
+      "ctrlClick": "Hold <b><pre>CTRL</pre></b> key and click a node on the map to immediately open the node details dialog.",
+      "shiftClick": "Hold <b><pre>SHIFT</pre></b> key to open more than one node overlay when clicking the node icon.",
+      "moveOverlay": "To keep node overlays open move them using the move icon. Double click to revert the overlay position on the map.",
+      "countryClick": "Click on a country to get more information about all nodes in that country and a list of Apps that use nodes in the country as an identity."
+    },
+    "carousel": {
+      "multipleIdentities": "Get Multiple Identities for Each App",
+      "multipleIdentitiesDesc": "Automatically get a vast amount of identities (IP addresses). The SPN calculates an individual path for every connection through the privacy network. Spread your connections across the globe, without any effort.",
+      "accessRegional": "Simply Access Regional Content",
+      "accessRegionalDesc": "Is a website blocked or restricted in your country? Because SPN makes that connection exit near the destination server, it will automatically unblock the content. SPN has best coverage in Europe and North America.",
+      "adjustPrivacy": "Easily Adjust",
+      "yourPrivacy": "Your Privacy",
+      "adjustPrivacyDesc": "SPN just works and does the heavy lifting for you. But of course you can easily configure the settings, so it fits your needs: Exclude certain apps and domains from the SPN. Or never exit in specific countries. And so much more...",
+      "builtFromScratch": "Built from Scratch, for",
+      "builtFromScratchDesc": "SPN is built from the ground up. Privacy is cooked right into it. Inspired by Tor, it comes with onion routing and state of the art encryption. Fully open source so all our claims can be validated.",
+      "byeByeVpns": "Bye Bye, VPNs",
+      "byeByeVpnsDesc": "VPN technology was NOT built for user privacy, but for company security. Because of that, you can only trust a VPN provider's policy - and many have been caught abusing user data. Honestly, the best way forward: just stop paying for outdated technology.",
+      "mostVpns": "Most VPNs",
+      "readComparisonBlog": "Read Comparison Blog",
+      "multipleIdentitiesSimultaneous": "Multiple Identities (simultaneous)",
+      "individualAppsSettings": "Individual Apps Settings",
+      "easySetup": "Easy Setup",
+      "browserOnly": "Browser Only",
+      "availability": "Availability",
+      "openSource": "Open Source",
+      "builtForPrivacy": "Built for Privacy"
+    },
+    "networkStatus": {
+      "title": "Network Status",
+      "loading": "Loading Network Status ...",
+      "openOnGithub": "Open on Github",
+      "opened": "opened",
+      "closed": "closed",
+      "by": "by"
+    }
+  },
+  "support": {
+    "title": "Support",
+    "getHelp": "Get Help",
+    "reportBug": "Report a Bug",
+    "documentation": "Documentation",
+    "community": "Community",
+    "email": "Email Support",
+    "github": "GitHub Issues",
+    "discord": "Discord",
+    "includedDebugInfo": "Included Debug Info",
+    "ticket": "Support Ticket",
+    "submitTicket": "Submit Ticket",
+    "debugInfo": "Debug Information",
+    "systemInfo": "System Information",
+    "logs": "Logs",
+    "copyToClipboard": "Copy to Clipboard",
+    "downloadLogs": "Download Logs",
+    "openOnGithub": "Open on GitHub",
+    "createOnGithub": "Create on GitHub",
+    "sendPrivateTicket": "Send private Ticket",
+    "relatedIssues": "Related Issues",
+    "publicIssuesRelated": "Public issues related to your title:",
+    "noRelatedIssuesFound": "No related issues were found.",
+    "opened": "opened",
+    "closed": "closed",
+    "debugInfoDescription": "The following debug information will be sent together with your report. Please check it and remove potentially sensitive information. The debug information sent with your reports will be saved on Safing's self-hosted pastebin server and is viewable via its created url. The data is automatically destroyed after one month.",
+    "portmasterVersion": "Portmaster Version",
+    "builtOn": "built on"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "notification": "Notification",
+    "broadcastNotification": "Broadcast Notification",
+    "noNotifications": "No notifications",
+    "markAllRead": "Mark all as read",
+    "clearAll": "Clear all",
+    "new": "New",
+    "read": "Read"
+  },
+  "prompts": {
+    "title": "Connection Prompts",
+    "noPrompts": "No Prompts",
+    "allow": "Allow",
+    "block": "Block",
+    "allowOnce": "Allow Once",
+    "blockOnce": "Block Once",
+    "allowAlways": "Always Allow",
+    "blockAlways": "Always Block",
+    "remember": "Remember this choice",
+    "perConnection": "Per Connection",
+    "allowAll": "Allow All",
+    "blockAll": "Block All",
+    "defaultAction": "Default Action",
+    "allowApp": "Allow App",
+    "blockApp": "Block App",
+    "changeDefault": "Change Default",
+    "more": "more",
+    "showLess": "Show less"
+  },
+  "network": {
+    "rating": "Network Rating",
+    "trusted": "Trusted",
+    "untrusted": "Untrusted",
+    "danger": "Danger",
+    "home": "Home",
+    "public": "Public",
+    "unknown": "Unknown"
+  },
+  "security": {
+    "status": "Security Status",
+    "secure": "Secure",
+    "warning": "Warning",
+    "critical": "Critical",
+    "protection": "Protection",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "paused": "Paused"
+  },
+  "time": {
+    "created": "Created",
+    "lastEdited": "Last Edited",
+    "seconds": "{{count}} seconds",
+    "minutes": "{{count}} minutes",
+    "hours": "{{count}} hours",
+    "days": "{{count}} days",
+    "weeks": "{{count}} weeks",
+    "months": "{{count}} months",
+    "years": "{{count}} years",
+    "ago": "ago",
+    "in": "in"
+  },
+  "account": {
+    "details": "Account Details",
+    "yourPackage": "Your Package",
+    "accessUntil": "Access Until",
+    "yourSubscription": "Your Subscription",
+    "nextPaymentDate": "Next Payment Date",
+    "accessPaidUntil": "Access Paid Until",
+    "username": "Username",
+    "password": "Password",
+    "deviceName": "Device Name",
+    "accountState": "Account State",
+    "features": "Features",
+    "deviceID": "Device ID",
+    "loggedInSince": "Logged in Since",
+    "login": {
+      "title": "Safing Account Login",
+      "unlockFeatures": "Unlock powerful features.",
+      "forcedLogout": "You have been logged out by the account server.",
+      "checkAccount": "Please check your account.",
+      "yourAccount": "your account",
+      "signIn": "SIGN IN",
+      "signUpSubscribe": "Sign Up and Subscribe"
+    }
+  },
+  "errors": {
+    "connectionFailed": "Connection failed",
+    "loadingFailed": "Failed to load data",
+    "saveFailed": "Failed to save",
+    "unknownError": "An unknown error occurred",
+    "networkError": "Network error",
+    "serverError": "Server error",
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Forbidden"
+  },
+  "service": {
+    "connecting": "Connecting to System Service ...",
+    "notRunning": "Portmaster System Service is not running:",
+    "startNow": "Start Now",
+    "notFound": "Failed to find Portmaster System Service.",
+    "reinstall": "Please reinstall the application.",
+    "getHelp": "Get Help",
+    "unsupportedManager": "Your System Service Manager is not supported. Please make sure Portmaster is running.",
+    "unknownError": "Unknown error:"
+  },
+  "intro": {
+    "step1": {
+      "title": "Portmaster Protects Your Privacy",
+      "description": "Portmaster enhances your privacy with powerful defaults - no configuration needed! Of course you can customize everything to your specific needs.",
+      "quickSetup": "Quick Setup"
+    },
+    "step2": {
+      "title": "Trackers Are Blocked System-Wide",
+      "description": "Portmaster automatically blocks ads, trackers and malware hosts on your whole device. Portmaster knows what to block through trusted domain lists, which are also used by Ad-Blockers in browsers, etc. You can always customize this in the settings."
+    },
+    "step3": {
+      "title": "Secure DNS for All Connections",
+      "description": "Portmaster automatically encrypts all your DNS queries to safeguard them from prying eyes. Portmaster sets a default provider, but you can always switch to a custom DNS-over-TLS provider in the global settings."
+    },
+    "step4": {
+      "title": "Learn More as You Explore",
+      "description": "Portmaster has a lot more to offer. When you decide to dive deeper you can always click on an information icon to learn more about a certain feature. Look out for those!",
+      "clickMe": "Click Me!"
+    }
+  },
+  "dialogs": {
+    "mergeProfileDescription": "Please select the primary profile. All other selected profiles will be merged into the primary profile by copying metadata, fingerprints and icons into a new profile. Only the settings of the primary profile will be kept.",
+    "primaryProfile": "Primary Profile",
+    "newProfileName": "Name for the new Profile",
+    "newProfileNamePlaceholder": "New Profile Name",
+    "merge": "Merge",
+    "editAppProfile": "Edit App Profile",
+    "createNewAppProfile": "Create New App Profile",
+    "general": "General",
+    "processMatching": "Process Matching",
+    "configureBasicInfo": "Configure basic profile information like the profile name, its description and optionally the profile icon.",
+    "chooseIcon": "Choose Icon",
+    "resetIcon": "Reset Icon",
+    "iconRequirements": "The icon must be smaller than 10kB and its dimensions must not exceed 512x512 px. Only JPG and PNG files are supported.",
+    "fingerprintDescription": "This profile will be applied to processes that match one of the following fingerprints:",
+    "noFingerprints": "No fingerprints configured. Please press 'Add New' to get started.",
+    "addNew": "Add New",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirmDelete": "Are you sure you want to delete this?",
+    "import": "Import",
+    "export": "Export",
+    "importSettings": "Import Settings",
+    "exportSettings": "Export Settings",
+    "selectFile": "Select File",
+    "downloadFile": "Download File",
+    "closeUI": "Close User Interface",
+    "closeUIMessage": "Closing the User Interface does not shut down the Portmaster. You can shut down the Portmaster in the Settings or the Tray Notifier.",
+    "neverShowAgain": "Never Show Again",
+    "closeUIButton": "Close UI",
+    "progress": {
+      "status": "Status",
+      "uploadingDebug": "Uploading debug data ...",
+      "creatingIssue": "Creating GitHub issue ...",
+      "creatingTicket": "Creating private support ticket ...",
+      "ticketPrepared": "Ticket prepared successfully",
+      "ticketCreated": "Ticket created successfully!",
+      "useButtonToOpen": "Use the following button to open the pre-filled GitHub issue form:",
+      "createIssue": "Create Issue",
+      "issueCreatedSuccess": "We successfully created the issue on GitHub for you.",
+      "useFollowingLink": "Use the following link to check for updates:",
+      "willContactYou": "We will contact you as soon as possible.",
+      "failedToCreate": "Failed to create Support Ticket",
+      "errorOccurred": "An error occurred while creating your support ticket:",
+      "openIssue": "Open Issue",
+      "copyUrl": "Copy URL"
+    },
+    "exportDialog": {
+      "settingsExport": "Settings Export",
+      "profileExport": "Profile Export",
+      "copyToClipboard": "Copy To Clipboard"
+    },
+    "importDialog": {
+      "importSettings": "Import Settings",
+      "importProfile": "Import Profile",
+      "pasteContent": "Please paste the \"Export Content\" or use \"Choose File\" to select one from your hard disk.",
+      "configuration": "Configuration",
+      "resetSettings": "Reset all settings to default before importing",
+      "allowUnknown": "Allow unknown settings",
+      "allowReplace": "Allow replacing an existing profile",
+      "autoRestart": "Automatically restart Portmaster after a successful import",
+      "warningUnknown": "This export contains unknown settings. To import it, you must enable \"Allow unknown settings\".",
+      "warningOverwriteSettings": "This export will overwrite settings that have been changed by you.",
+      "warningOverwriteProfile": "This export will overwrite an existing profile.",
+      "deleteMergedProfiles": "And deletes {{count}} previously merged profile(s)",
+      "warningRestart": "This export will require a restart of the Portmaster to take effect.",
+      "chooseFile": "Choose File"
+    },
+    "processDetails": {
+      "title": "Process Details",
+      "general": "General",
+      "name": "Name",
+      "user": "User",
+      "processId": "Process ID",
+      "processGroupId": "Process Group ID",
+      "parentProcessId": "Parent Process ID",
+      "path": "Path",
+      "createProfileForPath": "Create a new profile for all processes with this path",
+      "executableName": "Executable Name",
+      "commandLine": "Command Line",
+      "createProfileForCmdline": "Create a new profile for all processes with this command line",
+      "tags": "Tags",
+      "noTags": "This process does not have any tags.",
+      "environment": "Environment",
+      "noEnvVars": "This process does not have any environment variables.",
+      "createProfileForEnv": "Create a new profile for all processes with this environment variable"
+    },
+    "edit": {
+      "idPlaceholder": "A unique identifier for profile. Leave empty to generate a random one.",
+      "name": "Name",
+      "namePlaceholder": "A name for the profile",
+      "description": "Description",
+      "descriptionPlaceholder": "An optional description of the profile",
+      "icon": "Icon",
+      "tag": "Tag",
+      "commandLine": "Command Line",
+      "environment": "Environment",
+      "path": "Path",
+      "key": "Key",
+      "equals": "Equals",
+      "prefix": "Prefix",
+      "regex": "Regex",
+      "value": "Value",
+      "copySettings": "Copy Settings",
+      "selectProfileToCopy": "Select a Profile to copy settings from:",
+      "searchProfiles": "Search Profiles",
+      "add": "Add",
+      "copySettingsInfo": "Settings will be copied from all specified profiles in order with settings from higher profiles taking precedence. Existing settings may be overwritten."
+    }
+  },
+  "config": {
+    "core/apiKeys": {
+      "name": "API Keys",
+      "description": "Define API keys for privileged access"
+    },
+    "core/automaticIntelUpdates": {
+      "name": "Auto Intel Updates",
+      "description": "Automatically download intelligence data"
+    },
+    "core/automaticUpdates": {
+      "name": "Auto Software Updates",
+      "description": "Automatically download software updates"
+    },
+    "core/devMode": {
+      "name": "Development Mode",
+      "description": "Lift security restrictions for debugging"
+    },
+    "core/enableProcessDetection": {
+      "name": "Process Detection",
+      "description": "Attribute network traffic to processes"
+    },
+    "core/expertiseLevel": {
+      "name": "UI Mode",
+      "description": "Amount of settings shown"
+    },
+    "core/listenAddress": {
+      "name": "API Address",
+      "description": "IP and port for internal API"
+    },
+    "core/locale": {
+      "name": "Time Format",
+      "description": "Time and date format"
+    },
+    "core/log/level": {
+      "name": "Log Level",
+      "description": "Logging detail level"
+    },
+    "core/metrics/comment": {
+      "name": "Metrics Comment",
+      "description": "Metrics comment label"
+    },
+    "core/metrics/instance": {
+      "name": "Metrics Instance",
+      "description": "Prometheus instance name"
+    },
+    "core/metrics/push": {
+      "name": "Push Metrics",
+      "description": "URL for metrics push"
+    },
+    "core/networkService": {
+      "name": "Network Service",
+      "description": "Use as network service"
+    },
+    "core/releaseChannel": {
+      "name": "Release Channel",
+      "description": "Stable for stability, Beta for new features"
+    },
+    "core/releaseLevel": {
+      "name": "Feature Stability",
+      "description": "Experiment with unstable features"
+    },
+    "core/useSystemNotifications": {
+      "name": "Notifications",
+      "description": "Send desktop notifications"
+    },
+    "dns/dontResolveSpecialDomains": {
+      "name": "Block Special TLDs",
+      "description": "Block .onion, .i2p, etc."
+    },
+    "dns/listenAddress": {
+      "name": "DNS Server Address",
+      "description": "IP and port for internal DNS"
+    },
+    "dns/nameserverRetryRate": {
+      "name": "DNS Server Retry",
+      "description": "Retry interval for failing DNS"
+    },
+    "dns/nameservers": {
+      "name": "DNS Servers",
+      "description": "Servers for DNS resolution"
+    },
+    "dns/noAssignedNameservers": {
+      "name": "Ignore System DNS",
+      "description": "Ignore system DNS servers"
+    },
+    "dns/noInsecureProtocols": {
+      "name": "Secure DNS Only",
+      "description": "Don't use plain DNS"
+    },
+    "dns/noMulticastDNS": {
+      "name": "Ignore Multicast DNS",
+      "description": "Don't use mDNS"
+    },
+    "dns/useStaleCache": {
+      "name": "Use DNS Cache",
+      "description": "Use cache even if expired"
+    },
+    "filter/askTimeout": {
+      "name": "Prompt Timeout",
+      "description": "Time to wait for prompt reply"
+    },
+    "filter/askWithSystemNotifications": {
+      "name": "Desktop Prompts",
+      "description": "Send prompts to desktop"
+    },
+    "filter/blockInbound": {
+      "name": "Block Incoming",
+      "description": "Block incoming connections"
+    },
+    "filter/blockInternet": {
+      "name": "Block Internet",
+      "description": "Block internet access"
+    },
+    "filter/blockLAN": {
+      "name": "Block LAN",
+      "description": "Block local network"
+    },
+    "filter/blockLocal": {
+      "name": "Block Localhost",
+      "description": "Block internal connections"
+    },
+    "filter/blockP2P": {
+      "name": "Block P2P",
+      "description": "Block direct connections"
+    },
+    "filter/customListFile": {
+      "name": "Custom Filter List",
+      "description": "Path to filter file"
+    },
+    "filter/defaultAction": {
+      "name": "Default Action",
+      "description": "Action when no rule matches"
+    },
+    "filter/disableAutoPermit": {
+      "name": "Disable Auto Allow",
+      "description": "Disable automatic allowing"
+    },
+    "filter/dnsQueryInterception": {
+      "name": "Seamless DNS",
+      "description": "Intercept DNS queries"
+    },
+    "filter/domainHeuristics": {
+      "name": "Domain Heuristics",
+      "description": "Block suspicious domains"
+    },
+    "filter/enable": {
+      "name": "Privacy Filter",
+      "description": "Enable the privacy filter"
+    },
+    "filter/endpoints": {
+      "name": "Outgoing Rules",
+      "description": "Rules for outgoing connections"
+    },
+    "filter/includeCNAMEs": {
+      "name": "Block Domain Aliases",
+      "description": "Block CNAME aliases"
+    },
+    "filter/includeSubdomains": {
+      "name": "Block Subdomains",
+      "description": "Block subdomains from lists"
+    },
+    "filter/lists": {
+      "name": "Filter Lists",
+      "description": "Enable filter lists"
+    },
+    "filter/permanentVerdicts": {
+      "name": "Permanent Verdicts",
+      "description": "Improve performance"
+    },
+    "filter/preventBypassing": {
+      "name": "Prevent DNS Bypass",
+      "description": "Prevent DNS bypass"
+    },
+    "filter/removeBlockedDNS": {
+      "name": "Reject Blocked IPs",
+      "description": "Reject blocked IP addresses"
+    },
+    "filter/removeOutOfScopeDNS": {
+      "name": "Split-View DNS",
+      "description": "Split global/private DNS"
+    },
+    "filter/serviceEndpoints": {
+      "name": "Incoming Rules",
+      "description": "Rules for incoming connections"
+    },
+    "history/enable": {
+      "name": "Network History",
+      "description": "Save connection history"
+    },
+    "history/keep": {
+      "name": "Keep History",
+      "description": "Days to keep history"
+    },
+    "spn/dnsExitPolicy": {
+      "name": "DNS Exit Rules",
+      "description": "Countries for DNS exit nodes"
+    },
+    "spn/enable": {
+      "name": "SPN Module",
+      "description": "Enable SPN module"
+    },
+    "spn/exitHubPolicy": {
+      "name": "Exit Rules",
+      "description": "Countries for exit nodes"
+    },
+    "spn/homePolicy": {
+      "name": "Home Node Rules",
+      "description": "Countries for home node"
+    },
+    "spn/routingAlgorithm": {
+      "name": "SPN Algorithm",
+      "description": "Balance speed and privacy"
+    },
+    "spn/specialAccessCode": {
+      "name": "SPN Access Code",
+      "description": "Code for test access"
+    },
+    "spn/transitHubPolicy": {
+      "name": "Transit Nodes",
+      "description": "Countries for transit nodes"
+    },
+    "spn/trustNodes": {
+      "name": "Trust Nodes",
+      "description": "Community nodes to trust"
+    },
+    "spn/usagePolicy": {
+      "name": "SPN Rules",
+      "description": "Sites to route through SPN"
+    },
+    "spn/use": {
+      "name": "Use SPN",
+      "description": "Protect traffic through SPN"
+    },
+    "spn/useCommunityNodes": {
+      "name": "Community Nodes",
+      "description": "Use non-Safing nodes"
+    }
+  }
+}

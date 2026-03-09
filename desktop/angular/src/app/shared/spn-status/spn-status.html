@@ -17,16 +17,16 @@
 
     <span [ngSwitch]="spnStatus?.Status" class="-mt-1 text-xs font-medium text-secondary">
       <ng-template ngSwitchCase="disabled">
-        Increase privacy protection
+        {{ 'spn.increaseProtection' | translate }}
       </ng-template>
       <ng-template ngSwitchCase="failed">
-        Failed to connect
+        {{ 'spn.failedToConnect' | translate }}
       </ng-template>
       <ng-template ngSwitchCase="connecting">
-        Connecting to the SPN ...
+        {{ 'spn.connectingToSPN' | translate }}
       </ng-template>
       <ng-template ngSwitchCase="connected">
-        You're protected
+        {{ 'spn.youreProtected' | translate }}
       </ng-template>
     </span>
     <ng-container *ngIf="spnEnabled">
@@ -41,13 +41,13 @@
     <div *ngIf="!packageHasSPN">
       <button class="px-3 py-1.5 uppercase rounded outline-none text-xxs custom bg-blue hover:bg-blue bg-opacity-70"
         (click)="openOrLogin()">
-        Upgrade
+        {{ 'common.upgrade' | translate }}
       </button>
     </div>
   </div>
   <div class="relative flex flex-col items-end justify-end flex-grow pb-4" *ngIf="spnEnabled">
     <div class="flex flex-col items-center">
-      <span class="-mb-1 leading-3 uppercase text-xxs text-secondary">Identities</span>
+      <span class="-mb-1 leading-3 uppercase text-xxs text-secondary">{{ 'spn.identities' | translate }}</span>
       <span class="text-lg text-primary">{{ identities }}</span>
     </div>
   </div>

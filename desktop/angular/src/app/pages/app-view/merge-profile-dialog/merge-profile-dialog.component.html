@@ -1,6 +1,6 @@
 <header class="flex flex-row items-center justify-between mb-2">
   <h1 class="text-sm font-light m-0">
-    Merge Profiles
+    {{ 'apps.mergeProfiles' | translate }}
   </h1>
 
   <svg role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" class="w-3 h-3 text-secondary hover:text-primary cursor-pointer" (click)="dialogRef.close()">
@@ -9,12 +9,11 @@
 </header>
 
 <span class="py-2 text-secondary text-xxs">
-  Please select the primary profile. All other selected profiles will be merged into the primary profile by copying metadata, fingerprints and icons into a new profile.
-  Only the settings of the primary profile will be kept.
+  {{ 'dialogs.mergeProfileDescription' | translate }}
 </span>
 
 <div class="flex flex-row gap-2 justify-between border-b border-gray-500 p-2 items-center">
-  <label class="text-primary text-xxs relative">Primary Profile:</label>
+  <label class="text-primary text-xxs relative">{{ 'dialogs.primaryProfile' | translate }}:</label>
   <sfng-select [(ngModel)]="primary" (ngModelChange)="newName = newName || primary?.Name || ''" class="border border-gray-500">
     <ng-container *ngFor="let p of profiles; trackBy: trackProfile">
       <sfng-select-item *sfngSelectValue="p; label:p.Name" class="flex flex-row items-center gap-2">
@@ -26,11 +25,11 @@
 </div>
 
 <div class="flex flex-row gap-2 justify-between items-center p-2">
-  <label class="text-primary text-xxs relative">Name for the new Profile</label>
-  <input type="text" [(ngModel)]="newName" placeholder="New Profile Name" class="!border !border-gray-500 flex-grow">
+  <label class="text-primary text-xxs relative">{{ 'dialogs.newProfileName' | translate }}</label>
+  <input type="text" [(ngModel)]="newName" [placeholder]="'dialogs.newProfileNamePlaceholder' | translate" class="!border !border-gray-500 flex-grow">
 </div>
 
 <div class="flex flex-row justify-end gap-2">
-  <button (click)="dialogRef.close()">Cancel</button>
-  <button class="bg-blue text-white" (click)="mergeProfiles()" [disabled]="!primary || !newName">Merge</button>
+  <button (click)="dialogRef.close()">{{ 'common.cancel' | translate }}</button>
+  <button class="bg-blue text-white" (click)="mergeProfiles()" [disabled]="!primary || !newName">{{ 'dialogs.merge' | translate }}</button>
 </div>

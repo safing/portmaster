@@ -1,6 +1,6 @@
 <div class="flex flex-row items-center gap-2">
   <div class="relative w-full">
-    <input type="text" placeholder="SEARCH" [(ngModel)]="searchTerm" (ngModelChange)="triggerSearch.next($event)"
+    <input type="text" [placeholder]="'common.search' | translate | uppercase" [(ngModel)]="searchTerm" (ngModelChange)="triggerSearch.next($event)"
       class="!pl-7 !pr-16">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
       class="absolute w-4 h-4 top-1.5 left-1.5">
@@ -24,7 +24,7 @@
 
   <sfng-dropdown [triggerTemplate]="settingsTrigger">
     <div class="flex flex-col gap-2 p-2">
-      <h4>Sort By</h4>
+      <h4>{{ 'apps.sortBy' | translate }}</h4>
       <sfng-select displayMode="inline" [ngModel]="sortOrder" (ngModelChange)="updateSortOrder($event)">
         <ng-container *ngFor="let sortMethod of sortTypes">
           <sfng-select-item
@@ -82,12 +82,12 @@
             [queryParams]="{q: 'groupby:\'\' exit_node:' + identity.ID + ' profile:'+profile.ID}"
             (click)="$event.stopPropagation()">
             {{ identity.count }}
-            <span class="font-light text-secondary">Connections</span>
+            <span class="font-light text-secondary">{{ 'monitor.connections' | translate }}</span>
           </span>
           <span
             class="p-2 bg-gray-300 bg-opacity-50 rounded-br outline-none cursor-pointer text-primary text-xxs hover:bg-gray-400"
             [routerLink]="['/spn']" [queryParams]="{app: profile.ID, pin: identity.ID}">
-            <span class="font-light text-secondary">HOPS:</span>
+            <span class="font-light text-secondary">{{ 'spn.hops' | translate }}:</span>
             {{ identity.HopDistance }}
           </span>
         </div>
@@ -96,7 +96,7 @@
 
     <span class="block w-full text-center text-secondary text-xxs" *ngIf="profile.exitPins.length > 4"
       (click)="profile.showMore = !profile.showMore">
-      {{ profile.showMore ? 'Show Less Identities' : 'Show More Identities'}}
+      {{ profile.showMore ? ('common.showLess' | translate) : ('common.showMore' | translate) }}
     </span>
   </sfng-accordion>
 </sfng-accordion-group>
