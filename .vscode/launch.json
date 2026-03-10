@@ -11,10 +11,15 @@
             "mode": "auto",
             "program": "${workspaceFolder}/cmds/portmaster-core",
 
+
+
             "windows": {
                 "args": ["--bin-dir=C:\\Program Files\\Portmaster", "--log-stdout", "--log", "trace"]                
             },
             "linux": {
+                "console": "integratedTerminal", // required to debug as root
+                "asRoot": true, // required to debug as root
+
                 "args": ["--bin-dir=/usr/lib/portmaster", "--log-stdout", "--log", "trace"]
                 
             },            
@@ -30,6 +35,9 @@
                 "args": ["--bin-dir=C:\\Program Files\\Portmaster", "--log-stdout", "--log", "trace", "--disable-interception=true"]
             },
             "linux": {
+                "console": "integratedTerminal", // required to debug as root
+                "asRoot": true, // required to debug as root
+                
                 "args": ["--bin-dir=/usr/lib/portmaster", "--log-stdout", "--log", "trace", "--disable-interception=true"]
             },
         }

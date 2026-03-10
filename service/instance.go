@@ -26,6 +26,7 @@ import (
 	"github.com/safing/portmaster/service/intel/customlists"
 	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/intel/geoip"
+	"github.com/safing/portmaster/service/interop"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/nameserver"
 	"github.com/safing/portmaster/service/netenv"
@@ -98,6 +99,7 @@ type Instance struct {
 	resolver      *resolver.ResolverModule
 	sync          *sync.Sync
 	control       *control.Control
+	interop       *interop.Interoperability
 
 	access *access.Access
 
@@ -271,6 +273,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create control module: %w", err)
 	}
+	instance.interop, err = interop.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create interop module: %w", err)
+	}
 	instance.access, err = access.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create access module: %w", err)
@@ -347,6 +353,8 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.resolver,
 		instance.filterLists,
 		instance.customlist,
+
+		instance.interop, // required to start before interception
 
 		// Grouped pausable interception modules:
 		// 		instance.interception,
