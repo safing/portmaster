@@ -215,6 +215,45 @@ fn redirect_inbound_packet(
     }
 }
 
+pub fn recalc_header_checksums(packet: &mut [u8], ipv6: bool) {
+    if ipv6 {
+        if let Ok(mut ip_packet) = Ipv6Packet::new_checked(packet) {
+            let src_addr = ip_packet.src_addr();
+            let dst_addr = ip_packet.dst_addr();
+            if ip_packet.next_header() == IpProtocol::Udp {
+                if let Ok(mut udp_packet) = UdpPacket::new_checked(ip_packet.payload_mut()) {
+                    udp_packet
+                        .fill_checksum(&IpAddress::Ipv6(src_addr), &IpAddress::Ipv6(dst_addr));
+                }
+            }
+            if ip_packet.next_header() == IpProtocol::Tcp {
+                if let Ok(mut tcp_packet) = TcpPacket::new_checked(ip_packet.payload_mut()) {
+                    tcp_packet
+                        .fill_checksum(&IpAddress::Ipv6(src_addr), &IpAddress::Ipv6(dst_addr));
+                }
+            }
+        }
+    } else {
+        if let Ok(mut ip_packet) = Ipv4Packet::new_checked(packet) {
+            ip_packet.fill_checksum();
+            let src_addr = ip_packet.src_addr();
+            let dst_addr = ip_packet.dst_addr();
+            if ip_packet.next_header() == IpProtocol::Udp {
+                if let Ok(mut udp_packet) = UdpPacket::new_checked(ip_packet.payload_mut()) {
+                    udp_packet
+                        .fill_checksum(&IpAddress::Ipv4(src_addr), &IpAddress::Ipv4(dst_addr));
+                }
+            }
+            if ip_packet.next_header() == IpProtocol::Tcp {
+                if let Ok(mut tcp_packet) = TcpPacket::new_checked(ip_packet.payload_mut()) {
+                    tcp_packet
+                        .fill_checksum(&IpAddress::Ipv4(src_addr), &IpAddress::Ipv4(dst_addr));
+                }
+            }
+        }
+    }
+}
+
 #[allow(dead_code)]
 fn print_packet(packet: &[u8]) {
     if let Ok(ip_packet) = Ipv4Packet::new_checked(packet) {

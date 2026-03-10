@@ -12,7 +12,9 @@ use crate::connection::{
 use crate::connection_cache::ConnectionCache;
 use crate::connection_map::Key;
 use crate::device::{Device, Packet};
-use crate::packet_util::{get_key_from_nbl_v4, get_key_from_nbl_v6, Redirect};
+use crate::packet_util::{
+    get_key_from_nbl_v4, get_key_from_nbl_v6, recalc_header_checksums, Redirect,
+};
 
 // IP packet layers
 pub fn ip_packet_layer_outbound_v4(data: CalloutData) {
@@ -265,11 +267,22 @@ fn clone_packet(
     interface_index: u32,
     sub_interface_index: u32,
 ) -> Result<Packet, String> {
-    let clone = nbl.clone(&device.network_allocator)?;
+    let mut clone = nbl.clone(&device.network_allocator)?;
     let inbound = match direction {
         Direction::Outbound => false,
         Direction::Inbound => true,
     };
+
+    if let Some(data) = clone.get_data_mut() {
+        // Outbound packets intercepted at the IP layer may carry only a partial
+        // pseudo-header checksum because the TCP/IP stack relies on NIC hardware
+        // checksum offload to fill in the real value before transmission.
+        // When this clone is later re-injected via FwpsInjectNetwork*Async (on
+        // Accept/PermanentAccept verdict), it bypasses the NIC entirely, so offload
+        // never runs. We must compute the full software checksum here.
+        recalc_header_checksums(data, ipv6);
+    }
+
     Ok(Packet::PacketLayer(
         clone,
         InjectInfo {
