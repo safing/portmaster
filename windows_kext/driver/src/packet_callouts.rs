@@ -188,7 +188,7 @@ fn ip_packet_layer(
                         send_request_to_portmaster = false;
                         data.block_and_absorb();
                     }
-                    Verdict::RedirectNameServer | Verdict::RedirectTunnel => {
+                    Verdict::RedirectNameServer | Verdict::RedirectTunnel | Verdict::RedirectSplitTunnel => {
                         if let Some(redirect_info) = conn_info.redirect_info.take() {
                             match clone_packet(
                                 device,

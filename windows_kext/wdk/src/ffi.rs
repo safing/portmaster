@@ -534,4 +534,8 @@ extern "C" {
     /// The KeQuerySystemTime routine obtains the current system time.
     /// System time is a count of 100-nanosecond intervals since January 1, 1601. System time is typically updated approximately every ten milliseconds. This value is computed for the GMT time zone.
     pub(crate) fn pm_QuerySystemTime() -> u64;
+
+    /// Returns the process identifier of the current process.
+    /// This is safe to call from IRP_MJ_CREATE handlers, which always execute in the context of the initiating user-space process.
+    pub(crate) fn PsGetCurrentProcessId() -> HANDLE;
 }

@@ -183,9 +183,17 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
             Verdict::PermanentAccept
             | Verdict::Accept
             | Verdict::RedirectNameServer
-            | Verdict::RedirectTunnel => {
+            | Verdict::RedirectTunnel
+            | Verdict::RedirectSplitTunnel => {
                 // Continue to packet layer.
                 data.action_permit();
+
+                if device.is_owner_pid(ale_data.process_id as u32) && matches!(ale_data.direction, Direction::Outbound) {
+                    // If this is Portmaster's own outbound connection, clear the write flag
+                    // to prevent subsequent filters in the chain from overriding the permit action.
+                    // This prevents other firewall applications from blocking Portmaster's own connections.
+                    data.clear_write_flag();
+                }
             }
             Verdict::PermanentBlock | Verdict::Undeterminable | Verdict::Failed => {
                 // Packet layer will not see this connection.

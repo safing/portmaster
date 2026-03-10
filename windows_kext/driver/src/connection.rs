@@ -11,8 +11,9 @@ use smoltcp::wire::{IpAddress, IpProtocol, Ipv4Address, Ipv6Address};
 
 use crate::connection_map::Key;
 
-pub static PM_DNS_PORT: u16 = 53;
-pub static PM_SPN_PORT: u16 = 717;
+pub static PM_DNS_PORT:       u16 = 53;
+pub static PM_SPN_PORT:       u16 = 717;
+pub static PM_SPLIT_TUN_PORT: u16 = 719;
 
 // Make sure this in sync with the Go version
 #[derive(Copy, Clone, FromPrimitive)]
@@ -27,9 +28,11 @@ pub enum Verdict {
     PermanentBlock     = 5,
     Drop               = 6,
     PermanentDrop      = 7,
-    RedirectNameServer = 8,
-    RedirectTunnel     = 9,
+    RedirectNameServer = 8,  // redirect to PM_DNS_PORT port
+    RedirectTunnel     = 9,  // redirect to PM_SPN_PORT port
     Failed             = 10,
+    RedirectSplitTunnel= 11, // redirect to PM_SPLIT_TUN_PORT port
+    // RedirectSplitTunnel must stay last: older Portmaster versions only know verdicts 0–10 and would never send this value.
 }
 
 impl Display for Verdict {
@@ -46,28 +49,9 @@ impl Display for Verdict {
             Verdict::PermanentDrop      => write!(f, "PermanentDrop"),
             Verdict::RedirectNameServer => write!(f, "RedirectNameServer"),
             Verdict::RedirectTunnel     => write!(f, "RedirectTunnel"),
+            Verdict::RedirectSplitTunnel=> write!(f, "RedirectSplitTunnel"),
             Verdict::Failed             => write!(f, "Failed"),
         }
-    }
-}
-
-#[allow(dead_code)]
-impl Verdict {
-    /// Returns true if the verdict is a redirect.
-    pub fn is_redirect(&self) -> bool {
-        matches!(self, Verdict::RedirectNameServer | Verdict::RedirectTunnel)
-    }
-
-    /// Returns true if the verdict is a permanent verdict.
-    pub fn is_permanent(&self) -> bool {
-        matches!(
-            self,
-            Verdict::PermanentAccept
-                | Verdict::PermanentBlock
-                | Verdict::PermanentDrop
-                | Verdict::RedirectNameServer
-                | Verdict::RedirectTunnel
-        )
     }
 }
 
@@ -122,6 +106,14 @@ pub trait Connection {
                 remote_address: self.get_remote_address(),
                 remote_port: self.get_remote_port(),
                 redirect_port: PM_SPN_PORT,
+                unify: true,
+                redirect_address,
+            }),
+            Verdict::RedirectSplitTunnel => Some(RedirectInfo {
+                local_address: self.get_local_address(),
+                remote_address: self.get_remote_address(),
+                remote_port: self.get_remote_port(),
+                redirect_port: PM_SPLIT_TUN_PORT,
                 unify: true,
                 redirect_address,
             }),
@@ -279,6 +271,12 @@ impl Connection for ConnectionV4 {
                 }
                 key.local_address.eq(&key.remote_address)
             }
+            Verdict::RedirectSplitTunnel => {
+                if key.remote_port != PM_SPLIT_TUN_PORT {
+                    return false;
+                }
+                key.local_address.eq(&key.remote_address)
+            }
             _ => false,
         }
     }
@@ -418,6 +416,12 @@ impl Connection for ConnectionV6 {
             }
             Verdict::RedirectTunnel => {
                 if key.remote_port != PM_SPN_PORT {
+                    return false;
+                }
+                key.local_address.eq(&key.remote_address)
+            }
+            Verdict::RedirectSplitTunnel => {
+                if key.remote_port != PM_SPLIT_TUN_PORT {
                     return false;
                 }
                 key.local_address.eq(&key.remote_address)
