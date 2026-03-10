@@ -182,7 +182,7 @@ fn ip_packet_layer(
                     }
                     Verdict::PermanentBlock => {
                         send_request_to_portmaster = false;
-                        data.action_block();
+                        data.action_block_hard();
                     }
                     Verdict::Undeterminable | Verdict::PermanentDrop | Verdict::Failed => {
                         send_request_to_portmaster = false;

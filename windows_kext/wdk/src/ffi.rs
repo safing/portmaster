@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use core::ffi::c_void;
 
 use windows_sys::{

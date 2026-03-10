@@ -190,7 +190,7 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
             Verdict::PermanentBlock | Verdict::Undeterminable | Verdict::Failed => {
                 // Packet layer will not see this connection.
                 crate::dbg!("permanent block {}", key);
-                data.action_block();
+                data.action_block_hard();
             }
             Verdict::PermanentDrop => {
                 // Packet layer will not see this connection.
@@ -203,7 +203,7 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
                     data.action_permit();
                 } else {
                     // packet layer will still see the packets.
-                    data.action_block();
+                    data.action_block_hard();
                 }
             }
             Verdict::Drop => {
