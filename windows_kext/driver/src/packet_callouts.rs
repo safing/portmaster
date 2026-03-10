@@ -274,6 +274,12 @@ fn clone_packet(
     };
 
     if let Some(data) = clone.get_data_mut() {
+        // Outbound packets intercepted at the IP layer may carry only a partial
+        // pseudo-header checksum because the TCP/IP stack relies on NIC hardware
+        // checksum offload to fill in the real value before transmission.
+        // When this clone is later re-injected via FwpsInjectNetwork*Async (on
+        // Accept/PermanentAccept verdict), it bypasses the NIC entirely, so offload
+        // never runs. We must compute the full software checksum here.
         recalc_header_checksums(data, ipv6);
     }
 
