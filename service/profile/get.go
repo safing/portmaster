@@ -322,7 +322,7 @@ func notifyConflictingProfiles(a, b record.Record, md MatchingData) {
 		fmt.Sprintf("profiles:match-conflict:%s:%s", idA, idB),
 		"App Settings Match Conflict",
 		fmt.Sprintf(
-			"Multiple app settings match the app at %q with the same priority, please change on of them: %q or %q",
+			"Multiple app settings match the app at %q with the same priority, please change one of them: %q or %q",
 			md.Path(),
 			nameA,
 			nameB,
