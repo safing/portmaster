@@ -3,11 +3,31 @@ package ivpn
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/notifications"
 )
+
+func (i *InteropIvpn) showNotificationWarnOldVersion() *notifications.Notification {
+	notification := &notifications.Notification{
+		EventID:      "interop:ivpn-old-version",
+		Type:         notifications.Warning,
+		Title:        "IVPN Client Compatibility Notice",
+		Message:      `Portmaster has detected the IVPN Client, but the installed version may not be fully compatible when running alongside Portmaster. Some features may not work as expected. Please consider updating to the latest version of the IVPN Client.`,
+		ShowOnSystem: true,
+		Expires:      time.Now().Add(5 * time.Minute).Unix(),
+		AvailableActions: []*notifications.Action{
+			{
+				ID:   "ack",
+				Text: "OK",
+			},
+		},
+	}
+	notifications.Notify(notification)
+	return notification
+}
 
 func (i *InteropIvpn) initAndShowNotification() *notifications.Notification {
 	const actionSuppressID = "suppress"

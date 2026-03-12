@@ -9,6 +9,7 @@ import (
 
 	"github.com/ivpn/desktop-app/daemon/protocol/ivpnclient"
 	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network"
@@ -97,6 +98,8 @@ func (i *InteropIvpn) setServiceBinary(path string) {
 	i.status.Store(&status)
 }
 
+var notifWarnOldVersion atomic.Pointer[notifications.Notification]
+
 // Synchronously connects to the IVPN client, sets up message handlers
 func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	defer func() {
@@ -107,6 +110,12 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 		// Mark that the first connection attempt is done, even if it failed
 		i.setFirstTryDone()
 	}()
+
+	notifWarn := notifWarnOldVersion.Load()
+	if notifWarn != nil {
+		notifWarn.Delete()
+		notifWarnOldVersion.Store(nil)
+	}
 
 	ci := ivpnclient.ClientInfo{
 		Type:    ivpnclient.ClientPortmaster,
@@ -144,6 +153,14 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	if err != nil {
 		client.Disconnect()
 		return err
+	}
+
+	if helloResp.ServiceBinary == "" {
+		// IVPN client version > v3.15.0 must provide the service binary path in the hello response.
+		wc.Warn(fmt.Sprintf("Detected IVPN Client version '%v' is incompatible. The hello response did not include all required fields.", helloResp.Version))
+		notif := i.showNotificationWarnOldVersion()
+		notifWarnOldVersion.Store(notif)
+		return nil
 	}
 
 	// Save ServiceBinary.
