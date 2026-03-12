@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync/atomic"
 
 	"github.com/safing/portmaster/base/utils/debug"
 	"github.com/safing/portmaster/service/mgr"
@@ -32,6 +33,9 @@ func prep() error {
 	return registerBasicOptions()
 }
 
+// true - when config is initialized (from disk). So no new options can be registered anymore.
+var cfgInitialized atomic.Bool
+
 func start() error {
 	configFilePath = filepath.Join(module.instance.DataDir(), "config.json")
 
@@ -45,6 +49,9 @@ func start() error {
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
+
+	// mark config as loaded, so that options can react on this in their registration and prevent registration of options after loading.
+	cfgInitialized.Store(true)
 
 	err = loadConfig(false)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
