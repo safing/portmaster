@@ -207,14 +207,10 @@ func activateIPTables(protocol iptables.Protocol, rules, once, chains []string) 
 
 	for _, rule := range once {
 		splittedRule := strings.Split(rule, " ")
-		ok, err := tbls.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
+
+		err := tbls.InsertUnique(splittedRule[0], splittedRule[1], 1, splittedRule[2:]...)
 		if err != nil {
 			return err
-		}
-		if !ok {
-			if err = tbls.Insert(splittedRule[0], splittedRule[1], 1, splittedRule[2:]...); err != nil {
-				return err
-			}
 		}
 	}
 
