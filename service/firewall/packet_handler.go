@@ -464,7 +464,6 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	filterConnection := true
-	checkTunnel := true
 
 	// Check for special (internal) connection cases.
 	switch {
@@ -503,24 +502,10 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 
 		issueVerdict(conn, pkt, 0, true)
 		return
-
-	default:
-		// Check if external verdict handler is set, and if so, run it.
-		if extHandler := externalVerdictHandler.Load(); extHandler != nil {
-			verdict, reason, skipTunnel := (*extHandler)(conn)
-			switch verdict {
-			// Accept and Block - only these verdicts are supported to be returned by the external handler.
-			case network.VerdictAccept, network.VerdictBlock:
-				conn.SetVerdict(verdict, reason, "", nil)
-				filterConnection = false
-				checkTunnel = !skipTunnel
-				log.Tracer(pkt.Ctx()).Infof("filter: special verdict %s %q %s for connection", verdict, reason, conn)
-			}
-		}
 	}
 
 	// Apply privacy filter and check tunneling.
-	FilterConnection(pkt.Ctx(), conn, pkt, filterConnection, checkTunnel)
+	FilterConnection(pkt.Ctx(), conn, pkt, filterConnection, true)
 
 	// Decide how to continue handling connection.
 	switch {
@@ -542,6 +527,20 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 	// Skip if data is not complete.
 	if !conn.DataIsComplete() {
 		return
+	}
+
+	// Check if external verdict handler is set, and if so, run it.
+	// Note! This block can override the filter and tunnel check flags!
+	if extHandler := externalVerdictHandler.Load(); extHandler != nil {
+		verdict, reason, skipTunnel := (*extHandler)(conn)
+		switch verdict {
+		// Accept and Block - only these verdicts are supported to be returned by the external handler.
+		case network.VerdictAccept, network.VerdictBlock:
+			conn.SetVerdict(verdict, reason, "", nil)
+			checkFilter = false
+			checkTunnel = !skipTunnel
+			log.Tracer(ctx).Infof("filter: special verdict %s %q %s for connection", verdict, reason, conn)
+		}
 	}
 
 	if checkFilter {
