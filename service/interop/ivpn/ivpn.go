@@ -280,7 +280,7 @@ func (i *InteropIvpn) onConnectionStopped(wc *mgr.WorkerCtx, _ string, messageDa
 // based on the current VPN connection status and client binary path.
 // It is registered with the firewall module to be called for firewall decisions,
 // allowing it to adjust verdicts for better compatibility and user experience with the IVPN client.
-func (i *InteropIvpn) VerdictHandler(conn *network.Connection) (network.Verdict, string, bool) {
+func (i *InteropIvpn) VerdictHandler(conn *network.Connection) (verdict network.Verdict, reason string, skipTunnel bool) {
 	status := i.status.Load()
 	if status == nil {
 		return network.VerdictUndecided, "", false
@@ -294,13 +294,13 @@ func (i *InteropIvpn) VerdictHandler(conn *network.Connection) (network.Verdict,
 			// But UDP traffic is bidirectional, so we also accept inbound connections
 			// to avoid breaking incoming UDP responses from the VPN server.
 			if !conn.Inbound || status.vpnConnection.protocol == uint8(packet.UDP) {
-				return network.VerdictAccept, "IVPN VPN connection", false
+				return network.VerdictAccept, "IVPN VPN connection", true
 			}
 		}
 	}
 
 	if status.serviceBinary != "" && conn.Process().Path == status.serviceBinary {
-		return network.VerdictAccept, "IVPN Service connection", false
+		return network.VerdictAccept, "IVPN Service connection", true
 	}
 
 	return network.VerdictUndecided, "", false
