@@ -123,12 +123,12 @@ type Index struct {
 
 	versionNum *semver.Version
 
-	// isLocallyGenerated indicates whether the index was generated from a local directory.
+	// isLocallyGenerated indicates whether the index was generated from a local directory
+	// rather than downloaded from an official release channel.
 	//
-	// When true:
-	//   - The `Published` field represents the generation time, not a formal release date.
-	//     This timestamp should be ignored when checking for online updates.
-	//   - Downgrades from this locally generated version to an online index should be prevented.
+	// When true, the Published field reflects the local generation time rather than an
+	// official release date. Time-based sanity checks (version/date mismatch detection)
+	// are therefore skipped when this index is the current one.
 	isLocallyGenerated bool
 }
 
@@ -249,24 +249,24 @@ func (index *Index) ShouldUpgradeTo(newIndex *Index) error {
 			"new index name (%q) does not match current index name (%q)",
 			newIndex.Name, index.Name,
 		)
+	case index.versionNum.LessThan(newIndex.versionNum) && index.Published.After(newIndex.Published) && !index.isLocallyGenerated:
+		// The new index is newer in version (upgrade), but older in publish date. This is suspicious and should be prevented.
+		return errors.New("new index has newer version but older publish date")
 
-	case index.isLocallyGenerated:
-		if newIndex.versionNum.GreaterThan(index.versionNum) {
-			// Upgrade! (from a locally generated index to an online index)
-			return nil
-		} else {
-			// "Do nothing".
-			return ErrSameIndex
-		}
-
-	case index.Published.After(newIndex.Published):
-		return errors.New("new index is older (time)")
+	case index.versionNum.GreaterThan(newIndex.versionNum) && index.Published.Before(newIndex.Published) && !index.isLocallyGenerated:
+		// The new index is older in version (downgrade), but newer in publish date. This is suspicious and should be prevented.
+		return errors.New("new index has older version but newer publish date")
 
 	case index.versionNum.Segments()[0] > newIndex.versionNum.Segments()[0]:
 		// Downgrades are allowed, if they are not breaking changes.
 		return errors.New("new index is a breaking change downgrade")
 
 	case index.Published.Equal(newIndex.Published):
+		// "Do nothing".
+		return ErrSameIndex
+
+	case index.versionNum.Equal(newIndex.versionNum) && index.isLocallyGenerated:
+		// This is especially important for locally generated indexes, where the publish date is not a reliable indicator of the index's age.
 		// "Do nothing".
 		return ErrSameIndex
 
