@@ -1,13 +1,13 @@
 package ivpn
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"sync/atomic"
 	"time"
 
 	"github.com/ivpn/desktop-app/daemon/protocol/ivpnclient"
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/info"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/firewall/interception"
@@ -41,7 +41,8 @@ type vpnConnectionInfo struct {
 // and its current VPN connection status, used for providing context in firewall verdicts.
 type clientStatus struct {
 	serviceBinary string
-	vpnConnection vpnConnectionInfo
+	vpnConnection vpnConnectionInfo         // VPN server endpoint
+	connectedInfo *ivpnclient.ConnectedResp // info about already established VPN connection, if any
 }
 
 // InteropIvpn handles interoperability with the IVPN client application,
@@ -53,12 +54,26 @@ type InteropIvpn struct {
 	status            atomic.Pointer[clientStatus]
 	isCustomDnsActive atomic.Bool
 	firstTryDone      atomic.Pointer[chan struct{}]
+	cfgSpnEnabled     config.BoolOption
+	extra             platformSpecific // holds platform-specific fields
 }
 
 func NewInteropIvpn(owner interopBase) *InteropIvpn {
 	return &InteropIvpn{
-		owner: owner,
+		owner:         owner,
+		cfgSpnEnabled: config.GetAsBool("spn/enable", false),
 	}
+}
+
+func (i *InteropIvpn) getStatus() *clientStatus {
+	if old := i.status.Load(); old != nil {
+		return old // Preserve existing status fields
+	}
+	return &clientStatus{}
+}
+
+func (i *InteropIvpn) setStatus(status *clientStatus) {
+	i.status.Store(status)
 }
 
 func (i *InteropIvpn) Start() error {
@@ -89,22 +104,13 @@ func (i *InteropIvpn) setFirstTryDone() {
 	}
 }
 
-func (i *InteropIvpn) setServiceBinary(path string) {
-	status := clientStatus{}
-	if old := i.status.Load(); old != nil {
-		status = *old
-	}
-	status.serviceBinary = path
-	i.status.Store(&status)
-}
-
 var notifWarnOldVersion atomic.Pointer[notifications.Notification]
 
 // Synchronously connects to the IVPN client, sets up message handlers
 func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	defer func() {
 		// Clear client status on disconnect
-		i.status.Store(nil)
+		i.setStatus(nil)
 		// Reset DNS tracking state
 		i.isCustomDnsActive.Store(false)
 		// Mark that the first connection attempt is done, even if it failed
@@ -130,11 +136,14 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	}
 
 	// Register handler for VPN connection messages
-	client.SetMessageEventHandler("ConnectionStarting", func(messageName string, messageData string) {
+	client.SetMessageEventHandler(ivpnclient.GetTypeName(ivpnclient.ConnectionStarting{}), func(messageName string, messageData string) {
 		i.onConnectionStarting(wc, messageName, messageData)
 	})
-	client.SetMessageEventHandler("ConnectionStopped", func(messageName string, messageData string) {
+	client.SetMessageEventHandler(ivpnclient.GetTypeName(ivpnclient.ConnectionStopped{}), func(messageName string, messageData string) {
 		i.onConnectionStopped(wc, messageName, messageData)
+	})
+	client.SetMessageEventHandler(ivpnclient.GetTypeName(ivpnclient.ConnectedResp{}), func(messageName string, messageData string) {
+		i.onConnectedResp(wc, messageName, messageData)
 	})
 
 	// Connect to client.
@@ -164,7 +173,10 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	}
 
 	// Save ServiceBinary.
-	i.setServiceBinary(helloResp.ServiceBinary)
+	status := *i.getStatus()
+	status.serviceBinary = helloResp.ServiceBinary
+	i.setStatus(&status)
+
 	// The status.vpnConnection must be already initialized (ConnectionStarting message already received).
 	i.setFirstTryDone()
 	// Notify owner that we can now provide verdicts for firewall module
@@ -192,6 +204,7 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 			i.updateIvpnClientDnsSettings(wc, client)
 		case <-i.owner.EvtConfigChange():
 			i.updateIvpnClientDnsSettings(wc, client)
+			i.ensureSPNCompatibility(wc)
 		case <-wc.Done():
 			client.Disconnect()
 			done = true
@@ -235,45 +248,6 @@ func (i *InteropIvpn) updateIvpnClientDnsSettings(wc *mgr.WorkerCtx, client *ivp
 
 	i.isCustomDnsActive.Store(false)
 	wc.Debug("IVPN: Manual DNS restored successfully")
-}
-
-// notification handler: VPN connection is going to start
-func (i *InteropIvpn) onConnectionStarting(wc *mgr.WorkerCtx, _ string, messageData string) {
-	connInfo := ivpnclient.ConnectionStarting{}
-	err := json.Unmarshal([]byte(messageData), &connInfo)
-	if err != nil {
-		wc.Warn(fmt.Sprintf("IVPN: Failed to parse ConnectionStarting message: %v", err))
-		return
-	}
-
-	// Update/Store VPN connection info for use in firewall verdicts
-	status := clientStatus{}
-	if old := i.status.Load(); old != nil {
-		status = *old // Preserve existing status fields
-	}
-	conn := vpnConnectionInfo{
-		dstPort:    connInfo.Port,
-		dstAddress: net.ParseIP(connInfo.Address),
-		protocol:   connInfo.Protocol,
-	}
-	if conn.dstAddress == nil {
-		conn.dstPort = 0 // Invalidate port if address is invalid, to avoid false matches in firewall verdicts.
-	}
-	status.vpnConnection = conn
-	i.status.Store(&status)
-
-	wc.Debug(fmt.Sprintf("IVPN: VPN connection starting %s:%d %s", connInfo.Address, connInfo.Port, packet.IPProtocol(connInfo.Protocol)))
-}
-
-// notification handler: VPN connection stopped
-func (i *InteropIvpn) onConnectionStopped(wc *mgr.WorkerCtx, _ string, messageData string) {
-	status := clientStatus{}
-	if old := i.status.Load(); old != nil {
-		status = *old
-	}
-	status.vpnConnection = vpnConnectionInfo{}
-	i.status.Store(&status)
-	wc.Debug("IVPN: VPN connection stopped")
 }
 
 // VerdictHandler provides firewall verdicts for IVPN client connections
