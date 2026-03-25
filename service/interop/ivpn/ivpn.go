@@ -115,6 +115,9 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 		i.isCustomDnsActive.Store(false)
 		// Mark that the first connection attempt is done, even if it failed
 		i.setFirstTryDone()
+
+		// Ensure SPN compatibility rules are removed when Portmaster disconnects from IVPN client, either due to shutdown or connection failure.
+		i.ensureSPNCompatibility(wc)
 	}()
 
 	notifWarn := notifWarnOldVersion.Load()

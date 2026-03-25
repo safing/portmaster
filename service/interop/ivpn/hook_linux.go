@@ -16,6 +16,7 @@ import (
 
 type platformSpecific struct {
 	spnWgNftRuleHandle atomic.Int32 // nft rule handle we registered for SPN compatibility with WireGuard
+	spnWgIptRuleIP     atomic.Value // last WG local IP used for iptables fallback rule (string)
 }
 
 const (
@@ -33,28 +34,59 @@ func (i *InteropIvpn) ensureSPNCompatibility(wc *mgr.WorkerCtx) error {
 
 // SPN compatibility workaround for WireGuard kill-switch rules.
 //
-// WireGuard (wg-quick) installs a prerouting/raw kill-switch nft rule that drops packets
-// destined to the WG local address when they arrive from non-WG interfaces.
-// Portmaster SPN reverse-NAT replies are delivered via loopback (iif lo) with a non-local
-// source, which matches that drop pattern and breaks the TCP handshake (SYN-SENT/SYN-RECV).
-// Insert an allow rule before the wg-quick drop to permit this specific loopback reverse path.
-// More info:
-//   - check WG drop rule:
-//     `sudo nft list chain ip wg-quick-wgivpn preraw`
-//     you will see something like this:
-//     `iifname != "wgivpn" ip daddr <WG_LOCAL_IP> fib saddr type != local drop`
-//   - the rule we need to insert before that would be:
-//     `iifname "lo" ip daddr <WG_LOCAL_IP> fib saddr type != local accept comment "portmaster-spn-lo-rnat"`
+// WireGuard (wg-quick) installs a prerouting/raw kill-switch rule that drops
+// packets destined to the WG local address when they arrive from non-WG interfaces.
+// Portmaster SPN reverse-NAT replies are delivered via loopback (iif lo) with a
+// non-local source, which matches that drop pattern and breaks the TCP handshake
+// (SYN-SENT/SYN-RECV).
 //
-// NOTE! here we use some constant values:
-//   - wg-quick-wgivpn: IVPN Client creates a WireGuard interface named "wgivpn", and wg-quick creates a chain named "wg-quick-wgivpn" for it.
-//     If IVPN changes the interface name, this will need to be updated.
+// To preserve the kill-switch behavior while allowing SPN reverse-NAT, Portmaster
+// inserts a narrow exception rule before the wg-quick drop:
+//   - nft path (preferred):
+//     `iifname "lo" ip daddr <WG_LOCAL_IP> fib saddr type != local accept`
+//   - iptables fallback (when nft is unavailable):
+//     `-t raw -I PREROUTING 1 -d <WG_LOCAL_IP>/32 -i lo -m addrtype ! --src-type LOCAL -j ACCEPT`
+//
+// Rule lifecycle is managed here:
+//   - Remove previously managed rule (nft/iptables) first.
+//   - Recreate only when WireGuard is connected and SPN is enabled.
+//
+// NOTE: The nft table/chain name is currently tied to IVPN's wg-quick setup.
+// If IVPN changes the WG interface naming, this constant may need adjustment.
 func (i *InteropIvpn) reconcileWgCompatRule(wc *mgr.WorkerCtx) error {
 	status := i.getStatus()
 	connectedInfo := status.connectedInfo
 
+	nftPath, _ := exec.LookPath("nft")
+	iptablesPath, _ := exec.LookPath("iptables")
+
+	// Always clean previously managed rules first. This keeps behavior idempotent
+	// across reconnects, interface IP changes, and SPN config toggles.
+	if nftPath != "" {
+		oldRuleHandle := i.extra.spnWgNftRuleHandle.Load()
+		if oldRuleHandle != 0 {
+			_ = exec.Command(nftPath, "delete", "rule", "ip", nftTableWgQuickIvpn, "preraw", "handle", strconv.Itoa(int(oldRuleHandle))).Run()
+			i.extra.spnWgNftRuleHandle.Store(0)
+		}
+	}
+
+	if iptablesPath != "" {
+		if oldRuleIP, ok := i.extra.spnWgIptRuleIP.Load().(string); ok && oldRuleIP != "" {
+			_ = exec.Command(
+				iptablesPath,
+				"-t", "raw",
+				"-D", "PREROUTING",
+				"-d", oldRuleIP+"/32",
+				"-i", "lo",
+				"-m", "addrtype", "!", "--src-type", "LOCAL",
+				"-m", "comment", "--comment", nftRuleCommentSPNCompat,
+				"-j", "ACCEPT",
+			).Run()
+			i.extra.spnWgIptRuleIP.Store("")
+		}
+	}
+
 	if connectedInfo == nil || connectedInfo.VpnType != ivpnclient.WireGuard {
-		i.extra.spnWgNftRuleHandle.Store(0)
 		return nil
 	}
 
@@ -65,41 +97,52 @@ func (i *InteropIvpn) reconcileWgCompatRule(wc *mgr.WorkerCtx) error {
 
 	wgLocalIP := vpnIP.String()
 
-	nftPath, err := exec.LookPath("nft")
-	if err != nil {
-		return nil // silently return if 'nft' is not available
-	}
-
-	// Remove OLD existing rule (if any)
-	// 		delete rule by handle: `sudo nft delete rule ip wg-quick-wgivpn preraw handle <handle>`
-	oldRuleHandle := i.extra.spnWgNftRuleHandle.Load()
-	if oldRuleHandle != 0 {
-		_ = exec.Command(nftPath, "delete", "rule", "ip", nftTableWgQuickIvpn, "preraw", "handle", strconv.Itoa(int(oldRuleHandle))).Run()
-		i.extra.spnWgNftRuleHandle.Store(0)
-	}
-
 	// If SPN not enabled -we do not need the rule
 	if !i.cfgSpnEnabled() {
 		return nil
 	}
 
-	// Insert rule by executing command:
-	// 		sudo nft --echo --json insert rule ip wg-quick-wgivpn preraw iifname "lo" ip daddr 1.2.3.4 fib saddr type != local accept comment "portmaster-spn-lo-rnat"
-	out, err := exec.Command(nftPath, "--echo", "--json", "insert", "rule", "ip", nftTableWgQuickIvpn, "preraw",
-		"iifname", "lo", "ip", "daddr", wgLocalIP, "fib", "saddr", "type", "!=", "local", "accept",
-		"comment", nftRuleCommentSPNCompat).Output()
-	if err != nil {
-		return fmt.Errorf("failed to insert nft rule: %w", err)
+	if nftPath != "" {
+		// Insert rule by executing command:
+		// 		sudo nft --echo --json insert rule ip wg-quick-wgivpn preraw iifname "lo" ip daddr 1.2.3.4 fib saddr type != local accept comment "portmaster-spn-lo-rnat"
+		out, err := exec.Command(nftPath, "--echo", "--json", "insert", "rule", "ip", nftTableWgQuickIvpn, "preraw",
+			"iifname", "lo", "ip", "daddr", wgLocalIP, "fib", "saddr", "type", "!=", "local", "accept",
+			"comment", nftRuleCommentSPNCompat).Output()
+		if err != nil {
+			return fmt.Errorf("failed to insert nft rule: %w", err)
+		}
+
+		handle, parseErr := parseNftInsertHandle(out)
+		if parseErr != nil {
+			return fmt.Errorf("failed to parse nft rule handle: %w", parseErr)
+		}
+
+		i.extra.spnWgNftRuleHandle.Store(int32(handle))
+		wc.Debug(fmt.Sprintf("IVPN: Inserted nft SPN compatibility rule for WireGuard (handle %d, addr %s)", handle, wgLocalIP))
+		return nil
 	}
 
-	handle, parseErr := parseNftInsertHandle(out)
-	if parseErr != nil {
-		return fmt.Errorf("failed to parse nft rule handle: %w", parseErr)
+	if iptablesPath != "" {
+		// Fallback for systems without nft where wg-quick uses iptables/raw rules.
+		// Equivalent strict exception to allow SPN reverse-NAT loopback path.
+		err := exec.Command(
+			iptablesPath,
+			"-t", "raw",
+			"-I", "PREROUTING", "1",
+			"-d", wgLocalIP+"/32",
+			"-i", "lo",
+			"-m", "addrtype", "!", "--src-type", "LOCAL",
+			"-m", "comment", "--comment", nftRuleCommentSPNCompat,
+			"-j", "ACCEPT",
+		).Run()
+		if err != nil {
+			return fmt.Errorf("failed to insert iptables fallback rule: %w", err)
+		}
+
+		i.extra.spnWgIptRuleIP.Store(wgLocalIP)
+		wc.Debug(fmt.Sprintf("IVPN: Inserted iptables SPN compatibility rule for WireGuard (addr %s)", wgLocalIP))
 	}
 
-	i.extra.spnWgNftRuleHandle.Store(int32(handle))
-
-	wc.Debug(fmt.Sprintf("IVPN: Inserted nft SPN compatibility rule for WireGuard (handle %d, addr %s)", handle, wgLocalIP))
 	return nil
 }
 
