@@ -44,6 +44,7 @@ import (
 	"github.com/safing/portmaster/spn/captain"
 	"github.com/safing/portmaster/spn/crew"
 	"github.com/safing/portmaster/spn/docks"
+	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/navigator"
 	"github.com/safing/portmaster/spn/patrol"
 	"github.com/safing/portmaster/spn/ships"
@@ -642,6 +643,10 @@ func (i *Instance) SPNGroup() *mgr.ExtendedGroup {
 // GetEventSPNConnected return the event manager for the SPN connected event.
 func (i *Instance) GetEventSPNConnected() *mgr.EventMgr[struct{}] {
 	return i.captain.EventSPNConnected
+}
+
+func (i *Instance) GetHookSPNConnecting() *mgr.HookMgr[hub.Announcement] {
+	return i.captain.HookSPNConnecting
 }
 
 // Special functions

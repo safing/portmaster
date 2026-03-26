@@ -11,6 +11,7 @@ import (
 	"github.com/safing/portmaster/service/interop/ivpn"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network"
+	"github.com/safing/portmaster/spn/hub"
 )
 
 // Interface for separate interoperability objects.
@@ -25,6 +26,7 @@ type interopModule interface {
 type instance interface {
 	Config() *config.Config
 	Interception() *interception.Interception
+	GetHookSPNConnecting() *mgr.HookMgr[hub.Announcement]
 }
 
 // Module for interoperability with third-party applications
@@ -63,6 +65,9 @@ func (u *Interoperability) EvtConfigChange() <-chan struct{} {
 }
 func (u *Interoperability) Interception() *interception.Interception {
 	return u.instance.Interception()
+}
+func (u *Interoperability) GetHookSPNConnecting() *mgr.HookMgr[hub.Announcement] {
+	return u.instance.GetHookSPNConnecting()
 }
 
 func start() error {

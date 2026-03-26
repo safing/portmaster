@@ -18,14 +18,14 @@ import (
 // See TODO on packet.mark() on their relevance
 // and a possibility to remove most IPtables rules.
 const (
-	MarkAccept       = 1700
-	MarkBlock        = 1701
-	MarkDrop         = 1702
-	MarkAcceptAlways = 1710
-	MarkBlockAlways  = 1711
-	MarkDropAlways   = 1712
-	MarkRerouteNS    = 1799
-	MarkRerouteSPN   = 1717
+	MarkAccept       = 1700 // 0x6a4
+	MarkBlock        = 1701 // 0x6a5
+	MarkDrop         = 1702 // 0x6a6
+	MarkAcceptAlways = 1710 // 0x6ae
+	MarkBlockAlways  = 1711 // 0x6af
+	MarkDropAlways   = 1712 // 0x6b0
+	MarkRerouteNS    = 1799 // 0x707
+	MarkRerouteSPN   = 1717 // 0x6b5
 )
 
 func markToString(mark int) string {

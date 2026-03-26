@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -16,6 +17,7 @@ import (
 
 var (
 	gateways                   = make([]net.IP, 0)
+	gatewaysInfo               = make([]GatewayInfo, 0) // same as gateways but with additional info
 	gatewaysLock               sync.Mutex
 	gatewaysNetworkChangedFlag = GetNetworkChangedFlag()
 
@@ -24,24 +26,47 @@ var (
 	nameserversNetworkChangedFlag = GetNetworkChangedFlag()
 )
 
+type GatewayInfo struct {
+	IP        net.IP
+	Interface string
+	Mask      net.IPMask
+}
+
 // Gateways returns the currently active gateways.
 func Gateways() []net.IP {
 	gatewaysLock.Lock()
 	defer gatewaysLock.Unlock()
-	// Check if the network changed, if not, return cache.
+	refreshGatewaysCache()
+
+	return gateways
+}
+
+// GatewaysInfo returns the currently active gateways with interface metadata.
+func GatewaysInfo() []GatewayInfo {
+	gatewaysLock.Lock()
+	defer gatewaysLock.Unlock()
+
+	refreshGatewaysCache()
+
+	return gatewaysInfo
+}
+
+func refreshGatewaysCache() {
+	// Check if the network changed, if not, keep cache.
 	if !gatewaysNetworkChangedFlag.IsSet() {
-		return gateways
+		return
 	}
 	gatewaysNetworkChangedFlag.Refresh()
 
 	gateways = make([]net.IP, 0)
+	gatewaysInfo = make([]GatewayInfo, 0)
 	var decoded []byte
 
 	// open file
 	route, err := os.Open("/proc/net/route")
 	if err != nil {
 		log.Warningf("environment: could not read /proc/net/route: %s", err)
-		return gateways
+		return
 	}
 	defer func() {
 		_ = route.Close()
@@ -53,10 +78,11 @@ func Gateways() []net.IP {
 
 	// parse
 	for scanner.Scan() {
-		line := strings.SplitN(scanner.Text(), "\t", 4)
+		line := strings.Fields(scanner.Text())
 		if len(line) < 4 {
 			continue
 		}
+		iface := line[0]
 		if line[1] == "00000000" {
 			decoded, err = hex.DecodeString(line[2])
 			if err != nil {
@@ -68,7 +94,17 @@ func Gateways() []net.IP {
 				continue
 			}
 			gate := net.IPv4(decoded[3], decoded[2], decoded[1], decoded[0])
+			mask := net.IPv4Mask(0, 0, 0, 0)
+			if len(line) > 7 {
+				decodedMask, decodeMaskErr := hex.DecodeString(line[7])
+				if decodeMaskErr != nil {
+					log.Warningf("environment: could not parse netmask %s from /proc/net/route: %s", line[7], decodeMaskErr)
+				} else if len(decodedMask) == 4 {
+					mask = net.IPv4Mask(decodedMask[3], decodedMask[2], decodedMask[1], decodedMask[0])
+				}
+			}
 			gateways = append(gateways, gate)
+			gatewaysInfo = append(gatewaysInfo, GatewayInfo{IP: gate, Interface: iface, Mask: mask})
 		}
 	}
 
@@ -76,7 +112,7 @@ func Gateways() []net.IP {
 	v6route, err := os.Open("/proc/net/ipv6_route")
 	if err != nil {
 		log.Warningf("environment: could not read /proc/net/ipv6_route: %s", err)
-		return gateways
+		return
 	}
 	defer func() {
 		_ = v6route.Close()
@@ -88,11 +124,17 @@ func Gateways() []net.IP {
 
 	// parse
 	for scanner.Scan() {
-		line := strings.SplitN(scanner.Text(), " ", 6)
+		line := strings.Fields(scanner.Text())
 		if len(line) < 6 {
 			continue
 		}
+		iface := line[len(line)-1]
 		if line[0] == "00000000000000000000000000000000" && line[4] != "00000000000000000000000000000000" {
+			mask := net.CIDRMask(0, 128)
+			prefixLength, parsePrefixLengthErr := strconv.ParseInt(line[1], 16, 32)
+			if parsePrefixLengthErr == nil {
+				mask = net.CIDRMask(int(prefixLength), 128)
+			}
 			decoded, err := hex.DecodeString(line[4])
 			if err != nil {
 				log.Warningf("environment: could not parse gateway %s from /proc/net/ipv6_route: %s", line[2], err)
@@ -104,10 +146,9 @@ func Gateways() []net.IP {
 			}
 			gate := net.IP(decoded)
 			gateways = append(gateways, gate)
+			gatewaysInfo = append(gatewaysInfo, GatewayInfo{IP: gate, Interface: iface, Mask: mask})
 		}
 	}
-
-	return gateways
 }
 
 // Nameservers returns the currently active nameservers.
