@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/spn/hub"
@@ -115,6 +116,9 @@ var notifWarnOldVersion atomic.Pointer[notifications.Notification]
 // Synchronously connects to the IVPN client, sets up message handlers
 func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	defer func() {
+		// Re-enable network-derived location methods when disconnecting from IVPN client, since VPN is no longer active.
+		netenv.DisableNetworkDerivedLocation(false)
+
 		// Clear client status on disconnect
 		i.setStatus(nil)
 		// Reset DNS tracking state

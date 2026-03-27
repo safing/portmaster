@@ -7,11 +7,17 @@ import (
 
 	"github.com/ivpn/desktop-app/daemon/protocol/ivpnclient"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/packet"
 )
 
 // notification handler: VPN connection is going to start
 func (i *InteropIvpn) onConnectionStarting(wc *mgr.WorkerCtx, _ string, messageData string) {
+	// While VPN is active, ignore network-derived location sources.
+	// Virtual VPN interfaces/IPs can skew detected device location
+	// and lead to selecting an incorrect SPN home hub.
+	netenv.DisableNetworkDerivedLocation(true)
+
 	connInfo := ivpnclient.ConnectionStarting{}
 	err := json.Unmarshal([]byte(messageData), &connInfo)
 	if err != nil {
@@ -38,6 +44,9 @@ func (i *InteropIvpn) onConnectionStarting(wc *mgr.WorkerCtx, _ string, messageD
 
 // notification handler: VPN connection stopped
 func (i *InteropIvpn) onConnectionStopped(wc *mgr.WorkerCtx, _ string, _ string) {
+	// Re-enable network-derived location methods now that VPN is inactive.
+	netenv.DisableNetworkDerivedLocation(false)
+
 	status := *i.getStatus()
 	status.vpnConnection = vpnConnectionInfo{}
 	status.connectedInfo = nil
