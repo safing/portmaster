@@ -16,7 +16,7 @@ import (
 
 // Gateways returns the currently active gateways.
 func Gateways() []net.IP {
-	defaultIf := getDefaultInterface()
+	defaultIf := GetDefaultInterface()
 	if defaultIf == nil {
 		return nil
 	}
@@ -35,7 +35,7 @@ func Gateways() []net.IP {
 
 // Nameservers returns the currently active nameservers.
 func Nameservers() []Nameserver {
-	defaultIf := getDefaultInterface()
+	defaultIf := GetDefaultInterface()
 	if defaultIf == nil {
 		return nil
 	}
@@ -68,12 +68,12 @@ const (
 )
 
 var (
-	defaultInterface                   *defaultNetInterface
+	defaultInterface                   *DefaultNetInterface
 	defaultInterfaceLock               sync.Mutex
 	defaultInterfaceNetworkChangedFlag = GetNetworkChangedFlag()
 )
 
-type defaultNetInterface struct {
+type DefaultNetInterface struct {
 	InterfaceIndex     string
 	IPv6Address        net.IP
 	IPv4Address        net.IP
@@ -88,7 +88,7 @@ type dnsServerConfig struct {
 	SuffixSearchList []string
 }
 
-func getDefaultInterface() *defaultNetInterface {
+func GetDefaultInterface() *DefaultNetInterface {
 	defaultInterfaceLock.Lock()
 	defer defaultInterfaceLock.Unlock()
 	// Check if the network changed, if not, return cache.
@@ -107,7 +107,7 @@ func getDefaultInterface() *defaultNetInterface {
 	// TODO: It would be great to get this as json. Powershell can do this,
 	// but it just spits out lots of weird data instead of the same strings
 	// seen in the list.
-	newIf := &defaultNetInterface{}
+	newIf := &DefaultNetInterface{}
 
 	// Scan data for needed fields.
 	scanner := bufio.NewScanner(bytes.NewBuffer(interfaceData))
