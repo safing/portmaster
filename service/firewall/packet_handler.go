@@ -787,6 +787,10 @@ func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {
 }
 
 func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.Verdict, allowPermanent bool) {
+	type permanentAcceptFinaler interface {
+		PermanentAcceptFinal() error
+	}
+
 	// Check if packed was already fast-tracked by the OS integration.
 	if pkt.FastTrackedByIntegration() {
 		return
@@ -808,7 +812,17 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	case network.VerdictAccept:
 		atomic.AddUint64(packetsAccepted, 1)
 		if conn.VerdictPermanent {
-			err = pkt.PermanentAccept()
+			// Portmaster-owned outbound connections should be finalized to avoid
+			// later third-party OUTPUT rules from overriding the allow decision.
+			if !conn.Inbound && conn.PID == ownPID {
+				if finaler, ok := pkt.(permanentAcceptFinaler); ok {
+					err = finaler.PermanentAcceptFinal()
+				} else {
+					err = pkt.PermanentAccept()
+				}
+			} else {
+				err = pkt.PermanentAccept()
+			}
 		} else {
 			err = pkt.Accept()
 		}

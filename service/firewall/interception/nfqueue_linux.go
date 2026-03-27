@@ -55,17 +55,20 @@ func init() {
 		// This rule is placed before `CONNMARK --restore-mark` to prevent overwriting the original mark.
 		// (Example: WireGuard/wg-quick relies on packet marks; changing them would break its routing).
 		"mangle PORTMASTER-INGEST-OUTPUT -m mark ! --mark 0 -m connmark --mark 1710 -j RETURN",
+		"mangle PORTMASTER-INGEST-OUTPUT -m mark ! --mark 0 -m connmark --mark 1709 -j RETURN",
 		"mangle PORTMASTER-INGEST-OUTPUT -j CONNMARK --restore-mark",
 		"mangle PORTMASTER-INGEST-OUTPUT -m mark --mark 0 -j NFQUEUE --queue-num 17040 --queue-bypass",
 
 		// stenya: Preserve original packet marks, similar to the OUTPUT chain (not sure if this is really needed for INPUT).
 		"mangle PORTMASTER-INGEST-INPUT -m mark ! --mark 0 -m connmark --mark 1710 -j RETURN",
+		"mangle PORTMASTER-INGEST-INPUT -m mark ! --mark 0 -m connmark --mark 1709 -j RETURN",
 		"mangle PORTMASTER-INGEST-INPUT -j CONNMARK --restore-mark",
 		"mangle PORTMASTER-INGEST-INPUT -m mark --mark 0 -j NFQUEUE --queue-num 17140 --queue-bypass",
 
 		"filter PORTMASTER-FILTER -m mark --mark 0 -j DROP",
 		// stenya: Preserve original packet marks.
 		"filter PORTMASTER-FILTER -m connmark --mark 1710 -j RETURN",
+		"filter PORTMASTER-FILTER -m connmark --mark 1709 -j ACCEPT",
 		"filter PORTMASTER-FILTER -m mark --mark 1700 -j RETURN",
 		// Accepting ICMP packets with mark 1701 is required for rejecting to work,
 		// as the rejection ICMP packet will have the same mark. Blocked ICMP
@@ -75,6 +78,7 @@ func init() {
 		"filter PORTMASTER-FILTER -m mark --mark 1702 -j DROP",
 		"filter PORTMASTER-FILTER -j CONNMARK --save-mark",
 		"filter PORTMASTER-FILTER -m mark --mark 1710 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1709 -j ACCEPT",
 		// Accepting ICMP packets with mark 1711 is required for rejecting to work,
 		// as the rejection ICMP packet will have the same mark. Blocked ICMP
 		// packets will always result in a drop within the Portmaster.
@@ -106,21 +110,25 @@ func init() {
 
 	v6rules = []string{
 		"mangle PORTMASTER-INGEST-OUTPUT -m mark ! --mark 0 -m connmark --mark 1710 -j RETURN",
+		"mangle PORTMASTER-INGEST-OUTPUT -m mark ! --mark 0 -m connmark --mark 1709 -j RETURN",
 		"mangle PORTMASTER-INGEST-OUTPUT -j CONNMARK --restore-mark",
 		"mangle PORTMASTER-INGEST-OUTPUT -m mark --mark 0 -j NFQUEUE --queue-num 17060 --queue-bypass",
 
 		"mangle PORTMASTER-INGEST-INPUT -m mark ! --mark 0 -m connmark --mark 1710 -j RETURN",
+		"mangle PORTMASTER-INGEST-INPUT -m mark ! --mark 0 -m connmark --mark 1709 -j RETURN",
 		"mangle PORTMASTER-INGEST-INPUT -j CONNMARK --restore-mark",
 		"mangle PORTMASTER-INGEST-INPUT -m mark --mark 0 -j NFQUEUE --queue-num 17160 --queue-bypass",
 
 		"filter PORTMASTER-FILTER -m mark --mark 0 -j DROP",
 		"filter PORTMASTER-FILTER -m connmark --mark 1710 -j RETURN",
+		"filter PORTMASTER-FILTER -m connmark --mark 1709 -j ACCEPT",
 		"filter PORTMASTER-FILTER -m mark --mark 1700 -j RETURN",
 		"filter PORTMASTER-FILTER -m mark --mark 1701 -p icmpv6 -j RETURN",
 		"filter PORTMASTER-FILTER -m mark --mark 1701 -j REJECT --reject-with icmp6-adm-prohibited",
 		"filter PORTMASTER-FILTER -m mark --mark 1702 -j DROP",
 		"filter PORTMASTER-FILTER -j CONNMARK --save-mark",
 		"filter PORTMASTER-FILTER -m mark --mark 1710 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1709 -j ACCEPT",
 		"filter PORTMASTER-FILTER -m mark --mark 1711 -p icmpv6 -j RETURN",
 		"filter PORTMASTER-FILTER -m mark --mark 1711 -j REJECT --reject-with icmp6-adm-prohibited",
 		"filter PORTMASTER-FILTER -m mark --mark 1712 -j DROP",

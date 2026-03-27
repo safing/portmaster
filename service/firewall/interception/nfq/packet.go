@@ -21,6 +21,7 @@ const (
 	MarkAccept       = 1700 // 0x6a4
 	MarkBlock        = 1701 // 0x6a5
 	MarkDrop         = 1702 // 0x6a6
+	MarkAcceptFinal  = 1709 // 0x6ad Accept and finalize the decision in iptables. This should only be used for Portmaster-owned outbound connections.
 	MarkAcceptAlways = 1710 // 0x6ae
 	MarkBlockAlways  = 1711 // 0x6af
 	MarkDropAlways   = 1712 // 0x6b0
@@ -36,6 +37,8 @@ func markToString(mark int) string {
 		return "Block"
 	case MarkDrop:
 		return "Drop"
+	case MarkAcceptFinal:
+		return "AcceptFinal"
 	case MarkAcceptAlways:
 		return "AcceptAlways"
 	case MarkBlockAlways:
@@ -153,6 +156,19 @@ func (pkt *packet) PermanentAccept() error {
 	}
 
 	return pkt.mark(MarkAcceptAlways)
+}
+
+// PermanentAcceptFinal accepts the packet and finalizes the decision in iptables.
+// This should only be used for Portmaster-owned outbound connections.
+func (pkt *packet) PermanentAcceptFinal() error {
+	// If the packet is localhost only, do not permanently accept the outgoing
+	// packet, as the packet mark will be copied to the connection mark, which
+	// will stick and it will bypass the incoming queue.
+	if !pkt.Info().Inbound && pkt.Info().Dst.IsLoopback() {
+		return pkt.Accept()
+	}
+
+	return pkt.mark(MarkAcceptFinal)
 }
 
 func (pkt *packet) PermanentBlock() error {
