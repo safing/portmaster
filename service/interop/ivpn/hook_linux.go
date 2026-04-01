@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 
 	"github.com/ivpn/desktop-app/daemon/protocol/ivpnclient"
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/spn/hub"
@@ -111,7 +112,8 @@ func (i *InteropIvpn) ensureWgSpnCompatRule(wc *mgr.WorkerCtx) error {
 	wgLocalIP := vpnIP.String()
 
 	// If SPN not enabled -we do not need the rule
-	if !i.cfgSpnEnabled() {
+	cfgSpnEnabled := config.GetAsBool("spn/enable", false)
+	if !cfgSpnEnabled() {
 		return nil
 	}
 
@@ -231,7 +233,8 @@ func (i *InteropIvpn) ensureSpnHubBypassVpnRoutes(wc *mgr.WorkerCtx, hubInfo *hu
 
 	// If SPN not enabled - we do not need the rule
 	// And erase stale info about the spnHub
-	if !i.cfgSpnEnabled() || hubInfo == nil {
+	cfgSpnEnabled := config.GetAsBool("spn/enable", false)
+	if !cfgSpnEnabled() || hubInfo == nil {
 		i.extra.spnHubInfo.Store(nil)
 		return nil
 	}

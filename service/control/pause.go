@@ -32,12 +32,14 @@ func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
 		return errors.New("invalid pause duration")
 	}
 
+	cfgSpnEnabled := config.GetAsBool("spn/enable", false)
+
 	if onlySPN {
 		if c.pauseInfo.Interception {
 			return errors.New("cannot pause SPN separately when core is paused")
 		}
 		// If SPN is not running and not already paused, cannot pause it or change pause duration.
-		if !c.cfgSpnEnabled() && !c.pauseInfo.SPN {
+		if !cfgSpnEnabled() && !c.pauseInfo.SPN {
 			return errors.New("cannot pause SPN when it is not running")
 		}
 	}
@@ -53,7 +55,7 @@ func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
 
 	// Pause SPN if not already paused.
 	if !c.pauseInfo.SPN {
-		if c.cfgSpnEnabled() {
+		if cfgSpnEnabled() {
 			// "spn/access" module is responsible for starting/stopping SPN service.
 			// Here we just change the config to notify it to stop SPN.
 			// TODO: the 'pause' state must not make permanent config changes.
@@ -117,9 +119,10 @@ func (c *Control) resume() (retErr error) {
 	}
 
 	if c.pauseInfo.SPN {
+		cfgSpnEnabled := config.GetAsBool("spn/enable", false)
 		// "spn/access" module is responsible for starting/stopping SPN service.
 		// Here we just change the config to notify it to start SPN.
-		if !c.cfgSpnEnabled() {
+		if !cfgSpnEnabled() {
 			config.SetConfigOption("spn/enable", true)
 			c.mgr.Info("SPN resumed")
 		}
@@ -162,6 +165,8 @@ func (c *Control) startResumeWorker(duration time.Duration) {
 		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
 
+		cfgSpnEnabled := config.GetAsBool("spn/enable", false)
+
 		// Wait until duration elapses or SPN is enabled by user.
 		needToAutoResume := false
 		for !needToAutoResume {
@@ -169,7 +174,7 @@ func (c *Control) startResumeWorker(duration time.Duration) {
 			case <-wc.Ctx().Done():
 				return nil
 			case <-cfgChangeEvt.Events():
-				if c.cfgSpnEnabled() {
+				if cfgSpnEnabled() {
 					cfgChangeEvt.Cancel() // we do not need it anymore (no problem to cancel multiple times)
 					wc.Info("SPN enabled by user. Auto-resume initiated.")
 					needToAutoResume = true
@@ -299,6 +304,7 @@ func (c *Control) waitSPNStopped(stopTimeout time.Duration) error {
 		}
 	}()
 
+	cfgSpnEnabled := config.GetAsBool("spn/enable", false)
 	startTime := time.Now()
 	isStopped, _ := c.instance.SPNGroup().IsStopped()
 	for !isStopped {
@@ -320,7 +326,7 @@ func (c *Control) waitSPNStopped(stopTimeout time.Duration) error {
 		if notification == nil && time.Since(startTime) > time.Second {
 			notification = c.showNotification("Waiting for SPN to stop...", "")
 		}
-		if c.cfgSpnEnabled() {
+		if cfgSpnEnabled() {
 			return errors.New("SPN enabled again")
 		}
 	}

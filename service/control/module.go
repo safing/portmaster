@@ -26,8 +26,6 @@ type Control struct {
 	resumeWorker      *mgr.WorkerMgr
 	pauseNotification *notifications.Notification
 	pauseInfo         PauseInfo
-
-	cfgSpnEnabled config.BoolOption
 }
 
 type instance interface {
@@ -48,10 +46,9 @@ func New(instance instance) (*Control, error) {
 
 	m := mgr.New("Control")
 	module := &Control{
-		mgr:           m,
-		instance:      instance,
-		states:        mgr.NewStateMgr(m),
-		cfgSpnEnabled: config.GetAsBool("spn/enable", false),
+		mgr:      m,
+		instance: instance,
+		states:   mgr.NewStateMgr(m),
 	}
 	if err := module.prep(); err != nil {
 		return nil, err

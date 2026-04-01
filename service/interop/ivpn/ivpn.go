@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/ivpn/desktop-app/daemon/protocol/ivpnclient"
-	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/info"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/firewall/interception"
@@ -57,14 +56,12 @@ type InteropIvpn struct {
 	status            atomic.Pointer[clientStatus]
 	isCustomDnsActive atomic.Bool
 	firstTryDone      atomic.Pointer[chan struct{}]
-	cfgSpnEnabled     config.BoolOption
 	extra             platformSpecific // holds platform-specific fields
 }
 
 func NewInteropIvpn(owner interopBase) *InteropIvpn {
 	return &InteropIvpn{
-		owner:         owner,
-		cfgSpnEnabled: config.GetAsBool("spn/enable", false),
+		owner: owner,
 	}
 }
 
