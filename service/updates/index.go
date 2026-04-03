@@ -261,6 +261,13 @@ func (index *Index) ShouldUpgradeTo(newIndex *Index) error {
 		// Downgrades are allowed, if they are not breaking changes.
 		return errors.New("new index is a breaking change downgrade")
 
+	case index.versionNum.GreaterThan(newIndex.versionNum) && index.Published.After(time.Now().Add(-time.Minute*20)):
+		// Downgrade. Special case for preventing CDN caching issues:
+		// If the current index is newer in version and has a publish date that is very recent (just updated),
+		// the new index is likely an older version being served due to CDN caching.
+		// Prevent downgrade in this case.
+		return ErrSameIndex
+
 	case index.Published.Equal(newIndex.Published):
 		// "Do nothing".
 		return ErrSameIndex
