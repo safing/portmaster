@@ -13,6 +13,7 @@ import (
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network"
+	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/spn/hub"
 )
@@ -43,6 +44,7 @@ type vpnConnectionInfo struct {
 // and its current VPN connection status, used for providing context in firewall verdicts.
 type clientStatus struct {
 	serviceBinary string
+	servicePort   uint16
 	vpnConnection vpnConnectionInfo         // VPN server endpoint
 	connectedInfo *ivpnclient.ConnectedResp // info about already established VPN connection, if any
 }
@@ -133,14 +135,28 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 		notifWarnOldVersion.Store(nil)
 	}
 
-	ci := ivpnclient.ClientInfo{
-		Type:    ivpnclient.ClientPortmaster,
-		Name:    "Portmaster",
-		Version: info.Version()}
+	servicePort, _, err := ivpnclient.GetConnectionPortInfo()
+	if err != nil {
+		return err
+	}
+	// Save ServicePort.
+	status := *i.getStatus()
+	status.servicePort = uint16(servicePort)
+	i.setStatus(&status)
+	// Now we know the service port, we can register the verdict handler
+	// to allow accepting connections to the IVPN client service port while the client is connecting.
+	// This is needed for case when Portmaster default action is to block unknown connections.
+	i.owner.EnsureVerdictHandlerRegistered()
 
 	// Create client.
 	// Ignoring error here, since it is expected that the client may not be in running state
-	client, err := ivpnclient.NewClientAsRoot(nil, time.Second*10, ci)
+	client, err := ivpnclient.NewClientAsRoot(
+		nil,
+		time.Second*10,
+		ivpnclient.ClientInfo{
+			Type:    ivpnclient.ClientPortmaster,
+			Name:    "Portmaster",
+			Version: info.Version()})
 	if err != nil {
 		return nil
 	}
@@ -183,15 +199,12 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	}
 
 	// Save ServiceBinary.
-	status := *i.getStatus()
+	status = *i.getStatus()
 	status.serviceBinary = helloResp.ServiceBinary
 	i.setStatus(&status)
 
 	// The status.vpnConnection must be already initialized (ConnectionStarting message already received).
 	i.setFirstTryDone()
-	// Notify owner that we can now provide verdicts for firewall module
-	i.owner.EnsureVerdictHandlerRegistered()
-
 	wc.Debug(fmt.Sprintf("Connected to IVPN client %s", helloResp.Version))
 
 	// Show UI notification if not suppressed by user
@@ -270,6 +283,7 @@ func (i *InteropIvpn) VerdictHandler(conn *network.Connection) (verdict network.
 		return network.VerdictUndecided, "", false
 	}
 
+	// Connection to remote VPN server
 	if status.vpnConnection.dstPort != 0 {
 		if conn.Entity.Port == status.vpnConnection.dstPort &&
 			conn.Entity.Protocol == status.vpnConnection.protocol &&
@@ -283,6 +297,17 @@ func (i *InteropIvpn) VerdictHandler(conn *network.Connection) (verdict network.
 		}
 	}
 
+	// connections to IVPN service port
+	if conn.LocalIPScope == netutils.HostLocal && conn.IPProtocol == packet.TCP {
+		if conn.Inbound && conn.LocalPort == status.servicePort {
+			return network.VerdictAccept, "IVPN Local Service connection", true
+		}
+		if !conn.Inbound && conn.Entity.Port == status.servicePort {
+			return network.VerdictAccept, "IVPN Local Service connection", true
+		}
+	}
+
+	// Connections from/to IVPN service (only when serviceBinary initialized)
 	if status.serviceBinary != "" && conn.Process().Path == status.serviceBinary {
 		return network.VerdictAccept, "IVPN Service connection", true
 	}
