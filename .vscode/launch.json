@@ -10,8 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmds/portmaster-core",
-
-
+            "output": "${workspaceFolder}/__portmaster-core-debug",
 
             "windows": {
                 "args": ["--bin-dir=C:\\Program Files\\Portmaster", "--log-stdout", "--log", "trace"]                
@@ -30,6 +29,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmds/portmaster-core",
+            "output": "${workspaceFolder}/__portmaster-core-debug",
 
             "windows": {
                 "args": ["--bin-dir=C:\\Program Files\\Portmaster", "--log-stdout", "--log", "trace", "--disable-interception=true"]
