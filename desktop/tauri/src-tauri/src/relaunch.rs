@@ -1,5 +1,6 @@
 use std::{
     ffi::OsString,
+    path::Path,
     process::{Command, Stdio},
     thread,
     time::Duration,
@@ -10,6 +11,54 @@ use log::{debug, error, warn};
 const UI_RELAUNCH_HELPER_ENV: &str = "PORTMASTER_UI_RELAUNCH_HELPER";
 const RELAUNCH_RETRY_COUNT: usize = 40;
 const RELAUNCH_RETRY_DELAY: Duration = Duration::from_millis(500);
+
+fn current_process_argv0() -> Option<OsString> {
+    std::env::args_os().next()
+}
+
+fn is_usable_launch_program(program: &OsString) -> bool {
+    let path = Path::new(program);
+
+    // Fail closed for command-only values (for example, "portmaster"): we cannot
+    // verify where they resolve to, so do not use them for relaunch.
+    if !path.is_absolute() && path.components().count() <= 1 {
+        return false;
+    }
+
+    if !path.exists() || !path.is_file() {
+        return false;
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        if let Ok(meta) = std::fs::metadata(path) {
+            return meta.permissions().mode() & 0o111 != 0;
+        }
+        return false;
+    }
+
+    #[cfg(not(unix))]
+    {
+        true
+    }
+}
+
+fn resolve_launch_program() -> Result<OsString, String> {
+    let current_exe = std::env::current_exe().ok().map(|p| p.into_os_string());
+    let argv0 = current_process_argv0();
+
+    if let Some(program) = current_exe.as_ref().filter(|p| is_usable_launch_program(p)) {
+        return Ok(program.clone());
+    }
+
+    if let Some(program) = argv0.as_ref().filter(|p| is_usable_launch_program(p)) {
+        return Ok(program.clone());
+    }
+
+    Err("failed to determine relaunch executable: no verified launchable file path from current_exe or argv0".to_string())
+}
 
 fn current_process_args() -> Vec<OsString> {
     std::env::args_os()
@@ -23,8 +72,7 @@ fn current_process_args() -> Vec<OsString> {
 }
 
 pub fn request_ui_relaunch() -> Result<(), String> {
-    let exe = std::env::current_exe()
-        .map_err(|err| format!("failed to get current executable path: {}", err))?;
+    let exe = resolve_launch_program()?;
     let args = current_process_args();
 
     let mut cmd = Command::new(&exe);
@@ -53,8 +101,7 @@ pub fn run_relaunch_helper_if_requested() {
 }
 
 fn run_relaunch_helper() -> Result<(), String> {
-    let exe = std::env::current_exe()
-        .map_err(|err| format!("failed to get current executable path in relaunch helper: {}", err))?;
+    let exe = resolve_launch_program()?;
     let args = current_process_args();
 
     debug!("[tauri] relaunch helper started");

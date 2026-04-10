@@ -66,11 +66,16 @@ impl portmaster::Handler for WsHandler {
         // relaunch the UI process now that the core is reachable again.
         if self.handle.portmaster().consume_restart_ui_proc_requested() {
             info!("restart-ui-process pending, relaunching UI process");
-            if let Err(err) = relaunch::request_ui_relaunch() {
-                error!("failed to relaunch UI process after upgrade: {}", err);
+            match relaunch::request_ui_relaunch() {
+                Ok(()) => {
+                    self.handle.exit(0);
+                    return;
+                }
+                Err(err) => {
+                    error!("failed to relaunch UI process after upgrade: {}", err);
+                    error!("continuing with current UI process");
+                }
             }
-            self.handle.exit(0);
-            return;
         }
 
         // we successfully connected to Portmaster. Set is_first_connect to false
