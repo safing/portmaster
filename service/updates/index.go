@@ -377,7 +377,8 @@ func copyAndCheckSHA256Sum(src, dst, sha256sum string, filePermission utils.FSPe
 	// Check expected hash.
 	var expectedDigest []byte
 	if sha256sum != "" {
-		expectedDigest, err := hex.DecodeString(sha256sum)
+		var err error
+		expectedDigest, err = hex.DecodeString(sha256sum)
 		if err != nil {
 			return fmt.Errorf("invalid hex encoding for expected hash %s: %w", sha256sum, err)
 		}
