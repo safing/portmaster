@@ -497,6 +497,22 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
         }
     };
 
+    let mut portmaster_restart_ui_proc_event_subscription = match cli
+        .request(Request::Subscribe(
+            "query runtime:modules/core/event/restart-ui-process".to_string(),
+        ))
+        .await
+    {
+        Ok(rx) => rx,
+        Err(err) => {
+            error!(
+                "cancel try_handler: failed to subscribe to 'runtime:modules/core/event/restart-ui-process': {}",
+                err
+            );
+            return;
+        }
+    };
+
     update_icon_color(&icon, IconColor::Blue);
 
     let mut system_status = SystemStatus::default();
@@ -607,6 +623,20 @@ pub async fn tray_handler(cli: PortAPI, app: tauri::AppHandle) {
                         }
                         debug!("shutting down: {}", msg);
                         app.exit(0)
+                    },
+                    _ => {},
+                }
+            },
+            msg = portmaster_restart_ui_proc_event_subscription.recv() => {
+                let msg = match msg {
+                    Some(m) => m,
+                    None => { break }
+                };
+
+                debug!("Upgrade restart event received: {:?}", msg);
+                match msg {
+                    Response::Ok(_, _) | Response::New(_, _) | Response::Update(_, _) => {
+                        app.portmaster().mark_restart_ui_proc_requested();
                     },
                     _ => {},
                 }

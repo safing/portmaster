@@ -75,6 +75,10 @@ pub struct PortmasterInterface<R: Runtime> {
 
     // handle to the tray handler task so we can abort it when reconnecting
     pub tray_handler_task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
+
+    // Marks that a UI process restart event was observed (e.g. on upgrade) 
+    // and the UI process should relaunch after the next successful reconnect.
+    pending_restart: AtomicBool,
 }
 
 impl<R: Runtime> PortmasterInterface<R> {
@@ -261,6 +265,16 @@ impl<R: Runtime> PortmasterInterface<R> {
         });
     }
 
+    /// Marks that a UI process restart has been requested.
+    pub fn mark_restart_ui_proc_requested(&self) {
+        self.pending_restart.store(true, Ordering::Release);
+    }
+
+    /// Returns whether a UI process restart was requested and clears the flag.
+    pub fn consume_restart_ui_proc_requested(&self) -> bool {
+        self.pending_restart.swap(false, Ordering::AcqRel)
+    }
+
     //// Internal functions
     fn start_notification_handler(&self) {
         if let Some(api) = self.get_api() {
@@ -346,6 +360,7 @@ pub fn setup(app: AppHandle) {
         handle_prompts: AtomicBool::new(false),
         should_show_after_bootstrap: AtomicBool::new(true),
         tray_handler_task: Mutex::new(None),
+        pending_restart: AtomicBool::new(false),
     };
 
     app.manage(interface);

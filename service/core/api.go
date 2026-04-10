@@ -180,8 +180,13 @@ func shutdown(_ *api.Request) (msg string, err error) {
 }
 
 // restart restarts the Portmaster.
-func restart(_ *api.Request) (msg string, err error) {
+func restart(ar *api.Request) (msg string, err error) {
 	log.Info("core: user requested restart via action")
+
+	// If the restart request came from an upgrade, also trigger a module event to restart the UI process, so that it can restart itself as well.
+	if ar != nil && ar.Request != nil && ar.Request.URL.Query().Get("source") == "upgrade" {
+		pushModuleEvent("core", "restart-ui-process", false, nil)
+	}
 
 	// Trigger restart
 	module.instance.Restart()
