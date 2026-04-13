@@ -127,7 +127,7 @@ func TestPublicSuffix(t *testing.T) {
 	testSuffix(t, "foo.org.", "foo.org.", true)
 	testSuffix(t, "foo.co.uk.", "foo.co.uk.", true)
 	testSuffix(t, "foo.dyndns.org.", "foo.dyndns.org.", true)
-	testSuffix(t, "foo.blogspot.co.uk.", "foo.blogspot.co.uk.", true)
+	testSuffix(t, "foo.blogspot.co.uk.", "blogspot.co.uk.", true)
 	testSuffix(t, "there.is.no.such-tld.", "no.such-tld.", false)
 	testSuffix(t, "www.some.bit.", "some.bit.", false)
 	testSuffix(t, "cromulent.", "", false)
@@ -137,7 +137,7 @@ func TestPublicSuffix(t *testing.T) {
 	testSuffix(t, "ip6.arpa.", "", true)
 	testSuffix(t, "1.ip6.arpa.", "1.ip6.arpa.", true)
 	testSuffix(t, "www.some.arpa.", "some.arpa.", true)
-	testSuffix(t, "www.some.home.arpa.", "home.arpa.", true)
+	testSuffix(t, "www.some.home.arpa.", "some.home.arpa.", true)
 	testSuffix(t, ".", "", false)
 	testSuffix(t, "", "", false)
 
