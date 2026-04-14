@@ -29,10 +29,14 @@ import (
 	"github.com/safing/portmaster/spn/access"
 )
 
+type ExtVerdictHandlerFunc func(conn *network.Connection) (verdict network.Verdict, reason string, skipTunnel bool)
+
 var (
 	nameserverIPMatcher      func(ip net.IP) bool
 	nameserverIPMatcherSet   = abool.New()
 	nameserverIPMatcherReady = abool.New()
+
+	externalVerdictHandler atomic.Pointer[ExtVerdictHandlerFunc]
 
 	packetsAccepted = new(uint64)
 	packetsBlocked  = new(uint64)
@@ -185,6 +189,13 @@ func SetNameserverIPMatcher(fn func(ip net.IP) bool) error {
 
 	nameserverIPMatcher = fn
 	nameserverIPMatcherReady.Set()
+	return nil
+}
+
+func SetExternalVerdictHandler(fn ExtVerdictHandlerFunc) error {
+	if !externalVerdictHandler.CompareAndSwap(nil, &fn) {
+		return errors.New("external verdict handler already set")
+	}
 	return nil
 }
 
@@ -518,6 +529,20 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 		return
 	}
 
+	// Check if external verdict handler is set, and if so, run it.
+	// Note! This block can override the filter and tunnel check flags!
+	if extHandler := externalVerdictHandler.Load(); extHandler != nil {
+		verdict, reason, skipTunnel := (*extHandler)(conn)
+		switch verdict {
+		// Accept and Block - only these verdicts are supported to be returned by the external handler.
+		case network.VerdictAccept, network.VerdictBlock:
+			conn.SetVerdict(verdict, reason, "", nil)
+			checkFilter = false
+			checkTunnel = !skipTunnel
+			log.Tracer(ctx).Infof("filter: special verdict %s %q %s for connection", verdict, reason, conn)
+		}
+	}
+
 	if checkFilter {
 		if filterEnabled() {
 			log.Tracer(ctx).Trace("filter: starting decision process")
@@ -762,6 +787,10 @@ func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {
 }
 
 func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.Verdict, allowPermanent bool) {
+	type permanentAcceptFinaler interface {
+		PermanentAcceptFinal() error
+	}
+
 	// Check if packed was already fast-tracked by the OS integration.
 	if pkt.FastTrackedByIntegration() {
 		return
@@ -783,7 +812,17 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 	case network.VerdictAccept:
 		atomic.AddUint64(packetsAccepted, 1)
 		if conn.VerdictPermanent {
-			err = pkt.PermanentAccept()
+			// Portmaster-owned outbound connections should be finalized to avoid
+			// later third-party OUTPUT rules from overriding the allow decision.
+			if !conn.Inbound && conn.PID == ownPID {
+				if finaler, ok := pkt.(permanentAcceptFinaler); ok {
+					err = finaler.PermanentAcceptFinal()
+				} else {
+					err = pkt.PermanentAccept()
+				}
+			} else {
+				err = pkt.PermanentAccept()
+			}
 		} else {
 			err = pkt.Accept()
 		}

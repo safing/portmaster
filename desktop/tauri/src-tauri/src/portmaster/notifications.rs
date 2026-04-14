@@ -57,6 +57,9 @@ pub async fn show_notification(cli: &PortAPI, key: String, n: Notification) {
     notif.icon("portmaster");
 
     for action in n.actions {
+        if !action.visibility.is_empty() {
+            continue
+        }
         notif.action(&action.id, &action.text);
     }
 
@@ -113,6 +116,9 @@ pub async fn show_notification(cli: &PortAPI, key: String, n: Notification) {
         .duration(Duration::Long);
 
     for action in n.actions {
+        if !action.visibility.is_empty() {
+            continue
+        }
         toast = toast.add_button(&action.text, &action.id);
     }
     {

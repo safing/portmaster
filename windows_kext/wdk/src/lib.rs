@@ -13,7 +13,6 @@ pub mod interface;
 pub mod ioqueue;
 pub mod irp_helpers;
 pub mod rw_spin_lock;
-pub mod spin_lock;
 pub mod utils;
 
 #[allow(dead_code)]

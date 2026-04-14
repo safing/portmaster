@@ -25,10 +25,6 @@ func (n *Notifications) States() *mgr.StateMgr {
 }
 
 func (n *Notifications) Start() error {
-	if err := prep(); err != nil {
-		return err
-	}
-
 	return start()
 }
 
@@ -144,6 +140,10 @@ func New(instance instance) (*Notifications, error) {
 		instance: instance,
 
 		states: mgr.NewStateMgr(m),
+	}
+
+	if err := prep(); err != nil {
+		return nil, err
 	}
 
 	return module, nil

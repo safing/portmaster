@@ -19,6 +19,7 @@ mod portmaster;
 mod traymenu;
 mod window;
 mod commands;
+mod relaunch;
 
 use log::{debug, error, info};
 use portmaster::PortmasterExt;
@@ -60,6 +61,22 @@ impl portmaster::Handler for WsHandler {
 
     fn on_connect(&mut self, cli: portapi::client::PortAPI) {
         info!("connection established, creating main window");
+
+        // If an restart-ui-process was observed before disconnect (e.g. on upgrade),
+        // relaunch the UI process now that the core is reachable again.
+        if self.handle.portmaster().consume_restart_ui_proc_requested() {
+            info!("restart-ui-process pending, relaunching UI process");
+            match relaunch::request_ui_relaunch() {
+                Ok(()) => {
+                    self.handle.exit(0);
+                    return;
+                }
+                Err(err) => {
+                    error!("failed to relaunch UI process after upgrade: {}", err);
+                    error!("continuing with current UI process");
+                }
+            }
+        }
 
         // we successfully connected to Portmaster. Set is_first_connect to false
         // so we don't show the splash-screen when we loose connection.
@@ -141,6 +158,8 @@ fn show_webview_not_installed_dialog() -> i32 {
 }
 
 fn main() {
+    relaunch::run_relaunch_helper_if_requested();
+
     if tauri::webview_version().is_err() {
         std::process::exit(show_webview_not_installed_dialog());
     }

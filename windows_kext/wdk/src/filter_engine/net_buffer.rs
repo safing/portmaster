@@ -166,7 +166,7 @@ impl NetBufferList {
     }
 
     /// Advances the MDL of the buffer.
-    pub fn advance(&self, size: u32) {
+    pub fn advance(&mut self, size: u32) {
         unsafe {
             if let Some(nbl) = self.nbl.as_mut() {
                 if let Some(nb) = nbl.Header.first_net_buffer.as_mut() {

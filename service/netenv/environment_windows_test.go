@@ -3,7 +3,7 @@ package netenv
 import "testing"
 
 func TestWindowsEnvironment(t *testing.T) {
-	defaultIf := getDefaultInterface()
+	defaultIf := GetDefaultInterface()
 	if defaultIf == nil {
 		t.Error("failed to get default interface")
 	}

@@ -62,6 +62,7 @@ func GetOption(name string) (*Option, error) {
 }
 
 // Register registers a new configuration option.
+// Note: Option must be registered before initial loading config from disk.
 func Register(option *Option) error {
 	if option.Name == "" {
 		return fmt.Errorf("failed to register option: please set option.Name")
@@ -74,6 +75,9 @@ func Register(option *Option) error {
 	}
 	if option.OptType == 0 {
 		return fmt.Errorf("failed to register option: please set option.OptType")
+	}
+	if cfgInitialized.Load() {
+		return fmt.Errorf("cannot register option '%s': config already initialized", option.Key)
 	}
 
 	if option.ValidationRegex == "" && option.PossibleValues != nil {

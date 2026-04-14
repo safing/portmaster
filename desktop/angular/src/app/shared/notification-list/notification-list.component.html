@@ -15,9 +15,11 @@
         {{notif.Title || notif.Message}}
       </span>
       <div class="buttons">
-        <button *ngFor="let action of notif!.AvailableActions" (click)="execute(notif!, action, $event)">
-          {{action.Text}}
-        </button>
+        <ng-container *ngFor="let action of notif!.AvailableActions">
+          <button *ngIf="!action.Visibility || action.Visibility === 'in-app-only'" (click)="execute(notif!, action, $event)">
+            {{action.Text}}
+          </button>
+        </ng-container>
       </div>
     </div>
   </div>

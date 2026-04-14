@@ -355,6 +355,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
             ID: '',
             Text: '',
             Type: 'ui',
+            Visibility: '',
             Run: async () => {
               if (!this.helpTemplate) {
                 return;

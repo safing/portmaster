@@ -124,7 +124,21 @@ type Action struct {
 	Type ActionType
 	// Payload holds additional data for special action types.
 	Payload interface{}
+	// Visibility specifies where the action should be visible. Default is always visible.
+	Visibility ActionVisibility
 }
+
+type ActionVisibility string
+
+const (
+	// Default visibility, action is always visible.
+	ActionVisibilityDefault ActionVisibility = "" // default visibility
+	// Visible only in extended view
+	// (when user clicks on notification to read full message)
+	ActionVisibilityDetailed ActionVisibility = "detailed"
+	// Visible only in the UI app, never on the system level (if ShowOnSystem is true).
+	ActionVisibilityInAppOnly ActionVisibility = "in-app-only"
+)
 
 // ActionType defines a specific type of action.
 type ActionType string

@@ -139,6 +139,13 @@ func connectToHomeHub(wCtx *mgr.WorkerCtx, dst *hub.Hub) error {
 	ctx, cancel := context.WithTimeout(wCtx.Ctx(), 5*time.Minute)
 	defer cancel()
 
+	// Invoke hooks (if any) before opening connection
+	if dst.Info != nil {
+		if err := module.HookSPNConnecting.Invoke(wCtx, *dst.Info); err != nil {
+			return fmt.Errorf("pre-connect hook rejected: %w", err)
+		}
+	}
+
 	// Set and clean up exceptions.
 	setExceptions(dst.Info.IPv4, dst.Info.IPv6)
 	defer setExceptions(nil, nil)

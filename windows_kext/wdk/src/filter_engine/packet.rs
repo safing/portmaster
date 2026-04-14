@@ -2,7 +2,7 @@ use alloc::{
     boxed::Box,
     string::{String, ToString},
 };
-use core::{ffi::c_void, mem::MaybeUninit, ptr::NonNull};
+use core::{ffi::c_void, mem::MaybeUninit};
 use windows_sys::Win32::{
     Foundation::{HANDLE, INVALID_HANDLE_VALUE},
     Networking::WinSock::{AF_INET, AF_INET6, AF_UNSPEC, SCOPE_ID},
@@ -28,10 +28,17 @@ pub struct TransportPacketList {
     remote_ip: [u8; 16],
     endpoint_handle: u64,
     remote_scope_id: SCOPE_ID,
-    control_data: Option<NonNull<[u8]>>,
+    // Owned copy of the WFP control data. The original WFP pointer is only
+    // valid during the ALE classify callback; the bytes are copied here so they outlive it.
+    control_data: Option<Box<[u8]>>,
     inbound: bool,
     interface_index: u32,
     sub_interface_index: u32,
+    // send_params and remote_ip must outlive inject_packet_list_transport
+    // because FwpsInjectTransportSendAsync1 may read them after the function returns.
+    // Storing send_params here ensures it lives on the heap inside Box<TransportPacketList>
+    // until the WFP completion callback (free_transport_packet) drops it.
+    send_params: FWPS_TRANSPORT_SEND_PARAMS1,
 }
 
 pub struct InjectInfo {
@@ -99,9 +106,10 @@ impl Injector {
         interface_index: u32,
         sub_interface_index: u32,
     ) -> TransportPacketList {
-        let mut control_data = None;
+        let mut control_data: Option<Box<[u8]>> = None;
         if let Some(cd) = callout_data.get_control_data() {
-            control_data = Some(cd);
+            // Copy the bytes while the WFP pointer is still valid (we are inside the callout).
+            control_data = Some(unsafe { cd.as_ref() }.to_vec().into_boxed_slice());
         }
         let mut remote_ip: [u8; 16] = [0; 16];
         if ipv6 {
@@ -122,6 +130,8 @@ impl Injector {
             inbound,
             interface_index,
             sub_interface_index,
+            // Populated with valid pointers in inject_packet_list_transport after boxing.
+            send_params: unsafe { MaybeUninit::zeroed().assume_init() },
         }
     }
 
@@ -133,34 +143,37 @@ impl Injector {
         if self.transport_inject_handle == INVALID_HANDLE_VALUE {
             return Err("failed to inject packet: invalid handle value".to_string());
         }
+        // Box the entire packet_list so that remote_ip and send_params
+        // are heap-allocated. Their addresses remain stable until free_transport_packet
+        // drops the Box after WFP calls the completion callback.
+        let mut boxed = Box::new(packet_list);
+        let raw_nbl = boxed.net_buffer_list.nbl;
+
         unsafe {
+            // Populate send_params with pointers into the boxed struct.
+            // These addresses are stable because the Box will not move until freed.
             let mut control_data_length = 0;
-            let control_data = match &packet_list.control_data {
+            let control_data: *mut c_void = match &boxed.control_data {
                 Some(cd) => {
                     control_data_length = cd.len();
-                    cd.as_ptr().cast()
+                    cd.as_ptr() as *mut c_void
                 }
                 None => core::ptr::null_mut(),
             };
-
-            let mut send_params = FWPS_TRANSPORT_SEND_PARAMS1 {
-                remote_address: &packet_list.remote_ip as _,
-                remote_scope_id: packet_list.remote_scope_id,
-                control_data: control_data as _,
+            boxed.send_params = FWPS_TRANSPORT_SEND_PARAMS1 {
+                remote_address: boxed.remote_ip.as_ptr(),
+                remote_scope_id: boxed.remote_scope_id,
+                control_data,
                 control_data_length: control_data_length as u32,
                 header_include_header: core::ptr::null_mut(),
                 header_include_header_length: 0,
             };
-            let address_family = if packet_list.ipv6 { AF_INET6 } else { AF_INET };
 
-            let net_buffer_list = packet_list.net_buffer_list;
-            // Escape the stack. Packet buffer should be valid until the packet is injected.
-            let boxed_nbl = Box::new(net_buffer_list);
-            let raw_nbl = boxed_nbl.nbl;
-            let raw_ptr = Box::into_raw(boxed_nbl);
+            let address_family = if boxed.ipv6 { AF_INET6 } else { AF_INET };
+            let raw_ptr = Box::into_raw(boxed);
 
-            // Inject
-            let status = if packet_list.inbound {
+            // Inject. Context is *mut TransportPacketList; freed by free_transport_packet.
+            let status = if (*raw_ptr).inbound {
                 FwpsInjectTransportReceiveAsync0(
                     self.transport_inject_handle,
                     core::ptr::null_mut(),
@@ -168,23 +181,23 @@ impl Injector {
                     0,
                     address_family,
                     UNSPECIFIED_COMPARTMENT_ID,
-                    packet_list.interface_index,
-                    packet_list.sub_interface_index,
+                    (*raw_ptr).interface_index,
+                    (*raw_ptr).sub_interface_index,
                     raw_nbl,
-                    free_packet,
+                    free_transport_packet,
                     raw_ptr as _,
                 )
             } else {
                 FwpsInjectTransportSendAsync1(
                     self.transport_inject_handle,
                     core::ptr::null_mut(),
-                    packet_list.endpoint_handle,
+                    (*raw_ptr).endpoint_handle,
                     0,
-                    &mut send_params,
+                    &mut (*raw_ptr).send_params,
                     address_family,
                     UNSPECIFIED_COMPARTMENT_ID,
                     raw_nbl,
-                    free_packet,
+                    free_transport_packet,
                     raw_ptr as _,
                 )
             };
@@ -343,4 +356,22 @@ unsafe extern "C" fn free_packet(
         }
     }
     _ = Box::from_raw(context as *mut NetBufferList);
+}
+
+/// Completion callback for transport inject paths (both inbound and outbound).
+/// The context is a `Box<TransportPacketList>` cast to `*mut c_void`.
+/// Dropping it also correctly drops the inner `NetBufferList`.
+unsafe extern "C" fn free_transport_packet(
+    context: *mut c_void,
+    net_buffer_list: *mut NET_BUFFER_LIST,
+    _dispatch_level: bool,
+) {
+    if let Some(nbl) = net_buffer_list.as_ref() {
+        if let Err(err) = check_ntstatus(nbl.Status) {
+            crate::err!("inject status: {}", err);
+        } else {
+            crate::dbg!("inject status: Ok");
+        }
+    }
+    _ = Box::from_raw(context as *mut TransportPacketList);
 }

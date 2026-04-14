@@ -32,6 +32,7 @@ impl<'a> Transaction<'a> {
     }
 
     /// Creates a read/write guard for filter engine transaction.
+    /// Note! If another transaction is already in progress, it will return an error STATUS_FWP_TXN_IN_PROGRESS. 
     pub(super) fn begin_write(filter_engine: &'a mut FilterEngine) -> Result<Self, String> {
         return Self::begin(filter_engine, 0);
     }

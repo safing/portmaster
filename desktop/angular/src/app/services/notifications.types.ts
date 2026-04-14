@@ -15,6 +15,12 @@ export interface BaseAction {
   ID: string;
   // Text is the (default) text for the action label.
   Text: string;
+  // Visibility specifies where the action should be visible. Default is always visible.
+  // Possible values are:
+  // - "": Action is always visible.
+  // - "detailed": Action is only visible in the detailed view of a notification.
+  // - "in-app-only": Visible only in the UI app, never on the system level (if ShowOnSystem is true).
+  Visibility: string; 
 }
 
 export interface GenericAction extends BaseAction {

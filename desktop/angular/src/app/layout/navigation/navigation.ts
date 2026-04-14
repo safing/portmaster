@@ -354,8 +354,8 @@ export class NavigationComponent implements OnInit {
   resetBroadcastState() {
     this.portapi.resetBroadcastState()
       .subscribe(this.actionIndicator.httpObserver(
-        'Broadcast State Cleared',
-        'Failed to Reset Broadcast State.',
+        'Notifications State Cleared',
+        'Failed to Reset Notifications State.',
       ))
   }
 

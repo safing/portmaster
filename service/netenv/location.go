@@ -6,6 +6,7 @@ import (
 	"net"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/gopacket/layers"
@@ -33,11 +34,24 @@ var (
 	locationsLock              sync.Mutex
 	gettingLocationsLock       sync.Mutex
 	locationNetworkChangedFlag = GetNetworkChangedFlag()
+
+	// disableNetworkDerivedLocation disables location methods that depend on network
+	// configuration, such as reading interface IPs or using traceroute.
+	// Use this when a VPN is known to be active and network-derived location would
+	// reflect VPN egress rather than the device's physical uplink.
+	disableNetworkDerivedLocation atomic.Bool
 )
 
 func prepLocation() (err error) {
 	locationTestingIPv4Addr, err = net.ResolveIPAddr("ip", locationTestingIPv4)
 	return err
+}
+
+// DisableNetworkDerivedLocation disables or enables location methods that depend on network
+// configuration, such as reading interface IPs or using traceroute. Use this when a VPN is known to be active and
+// network-derived location would reflect VPN egress rather than the device's physical uplink.
+func DisableNetworkDerivedLocation(disable bool) {
+	disableNetworkDerivedLocation.Store(disable)
 }
 
 // DeviceLocations holds multiple device locations.
@@ -332,6 +346,10 @@ func GetInternetLocation() (deviceLocations *DeviceLocations, ok bool) {
 }
 
 func getLocationFromInterfaces(dls *DeviceLocations) (v4ok, v6ok bool) {
+	if disableNetworkDerivedLocation.Load() {
+		return false, false
+	}
+
 	globalIPv4, globalIPv6, err := GetAssignedGlobalAddresses()
 	if err != nil {
 		log.Warningf("netenv: location: failed to get assigned global addresses: %s", err)
@@ -362,6 +380,10 @@ func getLocationFromUPnP() (ok bool) {
 */
 
 func getLocationFromTraceroute(dls *DeviceLocations) (dl *DeviceLocation, err error) {
+	if disableNetworkDerivedLocation.Load() {
+		return nil, fmt.Errorf("skipped network-derived location")
+	}
+
 	// Create connection.
 	conn, err := icmp.ListenPacket("ip4:icmp", "")
 	if err != nil {

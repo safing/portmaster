@@ -18,6 +18,7 @@ import (
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/crew"
+	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/navigator"
 	"github.com/safing/portmaster/spn/patrol"
 	"github.com/safing/portmaster/spn/ships"
@@ -25,6 +26,9 @@ import (
 
 // SPNConnectedEvent is the name of the event that is fired when the SPN has connected and is ready.
 const SPNConnectedEvent = "spn connect"
+
+// SPNConnectingHook is the name of the hook that is invoked synchronously before the SPN connects to a remote hub.
+const SPNConnectingHook = "spn connecting"
 
 // Captain is the main module of the SPN.
 type Captain struct {
@@ -38,6 +42,7 @@ type Captain struct {
 
 	states            *mgr.StateMgr
 	EventSPNConnected *mgr.EventMgr[struct{}]
+	HookSPNConnecting *mgr.HookMgr[hub.Announcement] // Called before SPN connects to a remote hub
 }
 
 // Manager returns the module manager.
@@ -237,6 +242,7 @@ func New(instance instance) (*Captain, error) {
 
 		states:            mgr.NewStateMgr(m),
 		EventSPNConnected: mgr.NewEventMgr[struct{}](SPNConnectedEvent, m),
+		HookSPNConnecting: mgr.NewHookMgr[hub.Announcement](SPNConnectingHook, m),
 
 		publicIdentityUpdater: m.NewWorkerMgr("maintain public identity", maintainPublicIdentity, nil),
 		statusUpdater:         m.NewWorkerMgr("maintain public status", maintainPublicStatus, nil),

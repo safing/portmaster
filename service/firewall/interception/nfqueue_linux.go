@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/hashicorp/go-multierror"
@@ -54,17 +55,20 @@ func init() {
 		// This rule is placed before `CONNMARK --restore-mark` to prevent overwriting the original mark.
 		// (Example: WireGuard/wg-quick relies on packet marks; changing them would break its routing).
 		"mangle PORTMASTER-INGEST-OUTPUT -m mark ! --mark 0 -m connmark --mark 1710 -j RETURN",
+		"mangle PORTMASTER-INGEST-OUTPUT -m mark ! --mark 0 -m connmark --mark 1709 -j RETURN",
 		"mangle PORTMASTER-INGEST-OUTPUT -j CONNMARK --restore-mark",
 		"mangle PORTMASTER-INGEST-OUTPUT -m mark --mark 0 -j NFQUEUE --queue-num 17040 --queue-bypass",
 
 		// stenya: Preserve original packet marks, similar to the OUTPUT chain (not sure if this is really needed for INPUT).
 		"mangle PORTMASTER-INGEST-INPUT -m mark ! --mark 0 -m connmark --mark 1710 -j RETURN",
+		"mangle PORTMASTER-INGEST-INPUT -m mark ! --mark 0 -m connmark --mark 1709 -j RETURN",
 		"mangle PORTMASTER-INGEST-INPUT -j CONNMARK --restore-mark",
 		"mangle PORTMASTER-INGEST-INPUT -m mark --mark 0 -j NFQUEUE --queue-num 17140 --queue-bypass",
 
 		"filter PORTMASTER-FILTER -m mark --mark 0 -j DROP",
 		// stenya: Preserve original packet marks.
 		"filter PORTMASTER-FILTER -m connmark --mark 1710 -j RETURN",
+		"filter PORTMASTER-FILTER -m connmark --mark 1709 -j ACCEPT",
 		"filter PORTMASTER-FILTER -m mark --mark 1700 -j RETURN",
 		// Accepting ICMP packets with mark 1701 is required for rejecting to work,
 		// as the rejection ICMP packet will have the same mark. Blocked ICMP
@@ -74,6 +78,7 @@ func init() {
 		"filter PORTMASTER-FILTER -m mark --mark 1702 -j DROP",
 		"filter PORTMASTER-FILTER -j CONNMARK --save-mark",
 		"filter PORTMASTER-FILTER -m mark --mark 1710 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1709 -j ACCEPT",
 		// Accepting ICMP packets with mark 1711 is required for rejecting to work,
 		// as the rejection ICMP packet will have the same mark. Blocked ICMP
 		// packets will always result in a drop within the Portmaster.
@@ -105,21 +110,25 @@ func init() {
 
 	v6rules = []string{
 		"mangle PORTMASTER-INGEST-OUTPUT -m mark ! --mark 0 -m connmark --mark 1710 -j RETURN",
+		"mangle PORTMASTER-INGEST-OUTPUT -m mark ! --mark 0 -m connmark --mark 1709 -j RETURN",
 		"mangle PORTMASTER-INGEST-OUTPUT -j CONNMARK --restore-mark",
 		"mangle PORTMASTER-INGEST-OUTPUT -m mark --mark 0 -j NFQUEUE --queue-num 17060 --queue-bypass",
 
 		"mangle PORTMASTER-INGEST-INPUT -m mark ! --mark 0 -m connmark --mark 1710 -j RETURN",
+		"mangle PORTMASTER-INGEST-INPUT -m mark ! --mark 0 -m connmark --mark 1709 -j RETURN",
 		"mangle PORTMASTER-INGEST-INPUT -j CONNMARK --restore-mark",
 		"mangle PORTMASTER-INGEST-INPUT -m mark --mark 0 -j NFQUEUE --queue-num 17160 --queue-bypass",
 
 		"filter PORTMASTER-FILTER -m mark --mark 0 -j DROP",
 		"filter PORTMASTER-FILTER -m connmark --mark 1710 -j RETURN",
+		"filter PORTMASTER-FILTER -m connmark --mark 1709 -j ACCEPT",
 		"filter PORTMASTER-FILTER -m mark --mark 1700 -j RETURN",
 		"filter PORTMASTER-FILTER -m mark --mark 1701 -p icmpv6 -j RETURN",
 		"filter PORTMASTER-FILTER -m mark --mark 1701 -j REJECT --reject-with icmp6-adm-prohibited",
 		"filter PORTMASTER-FILTER -m mark --mark 1702 -j DROP",
 		"filter PORTMASTER-FILTER -j CONNMARK --save-mark",
 		"filter PORTMASTER-FILTER -m mark --mark 1710 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1709 -j ACCEPT",
 		"filter PORTMASTER-FILTER -m mark --mark 1711 -p icmpv6 -j RETURN",
 		"filter PORTMASTER-FILTER -m mark --mark 1711 -j REJECT --reject-with icmp6-adm-prohibited",
 		"filter PORTMASTER-FILTER -m mark --mark 1712 -j DROP",
@@ -207,18 +216,96 @@ func activateIPTables(protocol iptables.Protocol, rules, once, chains []string) 
 
 	for _, rule := range once {
 		splittedRule := strings.Split(rule, " ")
-		ok, err := tbls.Exists(splittedRule[0], splittedRule[1], splittedRule[2:]...)
+
+		err := tbls.InsertUnique(splittedRule[0], splittedRule[1], 1, splittedRule[2:]...)
 		if err != nil {
 			return err
-		}
-		if !ok {
-			if err = tbls.Insert(splittedRule[0], splittedRule[1], 1, splittedRule[2:]...); err != nil {
-				return err
-			}
 		}
 	}
 
 	return nil
+}
+
+// ensureJumpRulesAtTop ensures that all "once" rules (the jump rules
+// into Portmaster chains) are at the first position in their respective chains
+// for both IPv4 and IPv6. It returns the list of rules that were out of position
+// and had to be reinserted.
+func ensureJumpRulesAtTop() (reinsertedRules []string, err error) {
+	reinsertedRules, err = reinsertDisplacedRules(iptables.ProtocolIPv4, v4once)
+	if err != nil {
+		return nil, err
+	}
+
+	if netenv.IPv6Enabled() {
+		v6ReinsertedRules, err := reinsertDisplacedRules(iptables.ProtocolIPv6, v6once)
+		if err != nil {
+			return nil, err
+		}
+		reinsertedRules = append(reinsertedRules, v6ReinsertedRules...)
+	}
+
+	return reinsertedRules, nil
+}
+
+// reinsertDisplacedRules checks each rule in once and, if it is not already
+// at position 1 of its chain, moves it there. To avoid a window where packets
+// can bypass the firewall, a temporary placeholder rule is inserted first,
+// then the original rule is deleted and reinserted at position 1, and finally
+// the placeholder is removed. Returns the subset of rules that required moving.
+// Required rules format example: "filter OUTPUT -j PORTMASTER-FILTER"
+func reinsertDisplacedRules(protocol iptables.Protocol, once []string) (reinsertedRules []string, err error) {
+	tbls, err := iptables.NewWithProtocol(protocol)
+	if err != nil {
+		return nil, err
+	}
+	var rulesToUpdate []string
+	for _, onceRule := range once {
+		splittedRule := strings.Split(onceRule, " ")
+		table := splittedRule[0]
+		chain := splittedRule[1]
+		// get the first rule of the chain
+		firstRule, err := tbls.ListById(table, chain, 1)
+		if err != nil {
+			return nil, err
+		}
+		// check if the first rule of the chain is the portmaster rule
+		pmChainName := splittedRule[len(splittedRule)-1]
+		if !strings.HasSuffix(firstRule, pmChainName) {
+			rulesToUpdate = append(rulesToUpdate, onceRule)
+		}
+	}
+
+	comment := []string{"-m", "comment", "--comment", `TEMPORARY_RULE`}
+	for _, rule := range rulesToUpdate {
+		splittedRule := strings.Split(rule, " ")
+		table := splittedRule[0]     // "filter"
+		chain := splittedRule[1]     // "OUTPUT"
+		ruleSpec := splittedRule[2:] // "-j PORTMASTER-FILTER"
+
+		tmpRuleSpec := append(append([]string{}, comment...), ruleSpec...) // "-m comment --comment "TEMPORARY_RULE" -j PORTMASTER-FILTER"
+
+		// Insert the temporary rule on the first position
+		err = tbls.Insert(table, chain, 1, tmpRuleSpec...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to insert temporary rule '%s' into chain '%s' in table '%s': %w", tmpRuleSpec, chain, table, err)
+		}
+		// delete the original rule and re-insert it on the first position
+		err = tbls.Delete(table, chain, ruleSpec...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete original rule '%s' from chain '%s' in table '%s': %w", ruleSpec, chain, table, err)
+		}
+		err = tbls.Insert(table, chain, 1, ruleSpec...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to re-insert original rule '%s' into chain '%s' in table '%s': %w", ruleSpec, chain, table, err)
+		}
+		// delete the temporary rule
+		err = tbls.Delete(table, chain, tmpRuleSpec...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete temporary rule '%s' from chain '%s' in table '%s': %w", tmpRuleSpec, chain, table, err)
+		}
+	}
+
+	return rulesToUpdate, nil
 }
 
 func deactivateIPTables(protocol iptables.Protocol, rules, chains []string) error {
@@ -296,6 +383,32 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 	module.mgr.Go("nfqueue packet handler", func(_ *mgr.WorkerCtx) error {
 		return handleInterception(packets)
 	})
+
+	// Safety check: ensure Portmaster's iptables jump rules remain at the top of their chains.
+	// During system boot, other services may insert their own iptables rules, potentially
+	// displacing Portmaster's rules and causing traffic to bypass the firewall.
+	// The check runs a few times after startup with increasing delays to cover this window.
+	// A continuous periodic check is intentionally avoided - it would not react immediately
+	// to rule changes anyway, and the overhead is not justified after the boot stage.
+	// TODO: consider a more reactive approach using netlink to detect iptables changes in real time.
+	module.mgr.Go("iptables rule order maintenance (startup)", func(w *mgr.WorkerCtx) error {
+		for _, d := range []time.Duration{5 * time.Second, 10 * time.Second, 30 * time.Second} {
+			select {
+			case <-time.After(d):
+			case <-w.Done():
+				return nil
+			case <-shutdownSignal:
+				return nil
+			}
+			if updatedRules, err := ensureJumpRulesAtTop(); err != nil {
+				log.Errorf("interception: failed to ensure iptables jump rules at top: %v", err)
+			} else if len(updatedRules) > 0 {
+				log.Warningf("interception: the following iptables rules were found out of position and have been reinserted at the top of their chains: %v", updatedRules)
+			}
+		}
+		return nil
+	})
+
 	return nil
 }
 

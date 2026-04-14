@@ -15,6 +15,8 @@ import (
 type Interception struct {
 	mgr      *mgr.Manager
 	instance instance
+
+	EventStartStopState *mgr.EventMgr[bool] // true if started, false if stopped
 }
 
 // Manager returns the module manager.
@@ -24,12 +26,19 @@ func (i *Interception) Manager() *mgr.Manager {
 
 // Start starts the module.
 func (i *Interception) Start() error {
+	defer func() { i.EventStartStopState.Submit(isStarted.Load()) }()
 	return start()
 }
 
 // Stop stops the module.
 func (i *Interception) Stop() error {
+	defer func() { i.EventStartStopState.Submit(isStarted.Load()) }()
 	return stop()
+}
+
+// IsStarted returns whether the interception is currently started.
+func (i *Interception) IsStarted() bool {
+	return isStarted.Load()
 }
 
 var (
@@ -111,8 +120,9 @@ func New(instance instance) (*Interception, error) {
 	}
 	m := mgr.New("Interception")
 	module = &Interception{
-		mgr:      m,
-		instance: instance,
+		mgr:                 m,
+		instance:            instance,
+		EventStartStopState: mgr.NewEventMgr[bool]("IsStarted", m),
 	}
 	return module, nil
 }

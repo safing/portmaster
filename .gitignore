@@ -64,3 +64,6 @@ desktop/tauri/src-tauri/gen/
 #Binaries used for installer gereneration for Windows
 desktop/tauri/src-tauri/binary/
 desktop/tauri/src-tauri/intel/
+windows_kext/test/_testcert/
+windows_kext/test/_out/
+windows_kext/test/_delme/
