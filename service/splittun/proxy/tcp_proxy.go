@@ -19,6 +19,7 @@ type TCPProxy struct {
 	decider DeciderFunc
 	log     Logger
 	cfg     Config
+	network string
 
 	listener    net.Listener
 	bufPool     sync.Pool
@@ -34,12 +35,20 @@ type TCPProxy struct {
 // It uses DefaultConfig for tuning parameters.
 //
 // The proxy begins accepting connections immediately; call Shutdown to stop it.
-func NewTCPProxy(listenAddr string, decider DeciderFunc, logger Logger) (*TCPProxy, error) {
-	return NewTCPProxyWithConfig(listenAddr, decider, logger, DefaultConfig())
+//
+// Parameters:
+//   - listenAddr: the local address to listen on (e.g. "0.0.0.0:719")
+//   - network: the network type to listen on (e.g. "tcp4", "tcp6", "udp4", "udp6")
+//   - decider: a function that determines the upstream destination for each
+//     accepted connection.  See DeciderFunc for details.
+//   - logger: an optional Logger for debug/info/warn messages.  If nil, a
+//     default logger is used.
+func NewTCPProxy(listenAddr string, network string, decider DeciderFunc, logger Logger) (*TCPProxy, error) {
+	return NewTCPProxyWithConfig(listenAddr, network, decider, logger, DefaultConfig())
 }
 
 // NewTCPProxyWithConfig is like NewTCPProxy but accepts a custom Config.
-func NewTCPProxyWithConfig(listenAddr string, decider DeciderFunc, logger Logger, cfg Config) (*TCPProxy, error) {
+func NewTCPProxyWithConfig(listenAddr string, network string, decider DeciderFunc, logger Logger, cfg Config) (*TCPProxy, error) {
 	if decider == nil {
 		return nil, errors.New("proxy: decider must not be nil")
 	}
@@ -57,7 +66,7 @@ func NewTCPProxyWithConfig(listenAddr string, decider DeciderFunc, logger Logger
 		cfg.WriteTimeout = DEFAULT_WRITE_TIMEOUT
 	}
 
-	ln, err := net.Listen("tcp", listenAddr)
+	ln, err := net.Listen(network, listenAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +76,7 @@ func NewTCPProxyWithConfig(listenAddr string, decider DeciderFunc, logger Logger
 		decider:     decider,
 		log:         resolveLogger(logger),
 		cfg:         cfg,
+		network:     network,
 		listener:    ln,
 		cache:       newSessionCache(),
 		shutdownCtx: ctx,
@@ -93,6 +103,13 @@ func (p *TCPProxy) Addr() net.Addr {
 // Metrics returns a snapshot of the session cache statistics.
 func (p *TCPProxy) Metrics() Metrics {
 	return p.cache.metrics()
+}
+
+// FindProxiedEgressConnection returns all active (including establishing)
+// sessions whose upstream destination matches destIP and destPort.
+// Returns nil if no matching session exists.
+func (p *TCPProxy) FindProxiedEgressConnection(destIP net.IP, destPort uint16) []*ConnContext {
+	return p.cache.findByDest(destIP, destPort)
 }
 
 // Shutdown stops accepting new connections, signals all active sessions to
@@ -129,6 +146,7 @@ func (p *TCPProxy) Shutdown(ctx context.Context) error {
 
 func (p *TCPProxy) acceptLoop() {
 	defer p.wg.Done()
+	var backoff time.Duration
 	for {
 		conn, err := p.listener.Accept()
 		if err != nil {
@@ -136,12 +154,19 @@ func (p *TCPProxy) acceptLoop() {
 			case <-p.shutdownCtx.Done():
 				return
 			default:
-				// Transient OS error (e.g. EMFILE).  Back off briefly.
+				// Transient OS error (e.g. EMFILE).  Back off exponentially so
+				// a sustained error produces at most ~1 log line per second.
+				if backoff == 0 {
+					backoff = 5 * time.Millisecond
+				} else {
+					backoff = min(backoff*2, time.Second)
+				}
 				p.log.Errorf("tcp proxy: accept: %v", err)
-				time.Sleep(5 * time.Millisecond)
+				time.Sleep(backoff)
 				continue
 			}
 		}
+		backoff = 0 // reset on success
 
 		if p.cfg.MaxSessions > 0 && p.cache.len() >= p.cfg.MaxSessions {
 			p.log.Warnf("tcp proxy: max sessions (%d) reached, rejecting %s",
@@ -162,52 +187,56 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 	defer clientConn.Close()
 
 	// Determine upstream destination.
-	dest, localAddr, err := p.decider(p.listener.Addr(), clientConn.RemoteAddr())
+	destIP, destPort, localAddr, extraInfo, err := p.decider(p.listener.Addr(), clientConn.RemoteAddr())
 	if err != nil {
 		p.log.Warnf("tcp proxy: decider rejected %s: %v", clientConn.RemoteAddr(), err)
 		return
 	}
+	destAddr := (&net.TCPAddr{IP: destIP, Port: int(destPort)}).String()
+
+	// Register the session immediately so FindProxiedEgressConnection can
+	// locate it before the upstream dial completes.
+	sessCtx, cancel := context.WithCancel(p.shutdownCtx)
+	connCtx := newConnContext(
+		nextID(),
+		clientConn.RemoteAddr(),
+		destIP,
+		destPort,
+		cancel,
+		extraInfo,
+	)
+	p.cache.add(connCtx)
+
+	defer func() {
+		cancel()
+		p.cache.remove(connCtx)
+		p.log.Debugf("tcp proxy: session %d [%s:%d] closed — in=%d out=%d",
+			connCtx.id, connCtx.destIP, connCtx.destPort, connCtx.BytesIn.Load(), connCtx.BytesOut.Load())
+	}()
 
 	// DialContext is cancelled immediately if the proxy is shut down.
 	dialer := net.Dialer{Timeout: p.cfg.DialTimeout}
 	if localAddr != "" {
-		tcpAddr, resolveErr := net.ResolveTCPAddr("tcp", localAddr)
+		tcpAddr, resolveErr := net.ResolveTCPAddr(p.network, localAddr)
 		if resolveErr != nil {
 			p.log.Errorf("tcp proxy: resolve local addr %q: %v", localAddr, resolveErr)
 			return
 		}
 		dialer.LocalAddr = tcpAddr
 	}
-	upstreamConn, err := dialer.DialContext(p.shutdownCtx, "tcp", dest)
+	upstreamConn, err := dialer.DialContext(p.shutdownCtx, p.network, destAddr)
 	if err != nil {
 		if p.shutdownCtx.Err() != nil {
 			// Proxy is shutting down; this is expected, not an error.
 			return
 		}
-		p.log.Errorf("tcp proxy: dial %q: %v", dest, err)
+		p.log.Errorf("tcp proxy: dial %q: %v", destAddr, err)
 		return
 	}
 	defer upstreamConn.Close()
 
-	// Register the session.
-	sessCtx, cancel := context.WithCancel(p.shutdownCtx)
-	connCtx := newConnContext(
-		nextID(),
-		clientConn.RemoteAddr(),
-		dest,
-		cancel,
-	)
-	p.cache.add(connCtx)
-
-	defer func() {
-		cancel()
-		p.cache.remove(connCtx.ID)
-		p.log.Debugf("tcp proxy: session %d closed — in=%d out=%d",
-			connCtx.ID, connCtx.BytesIn.Load(), connCtx.BytesOut.Load())
-	}()
-
-	p.log.Debugf("tcp proxy: session %d  %s → %s", connCtx.ID,
-		clientConn.RemoteAddr(), dest)
+	p.log.Debugf("tcp proxy: session %d  %s → %s", connCtx.id,
+		clientConn.RemoteAddr(), destAddr)
 
 	// Watchdog: when the proxy shuts down (or the caller cancels the session),
 	// force-close both ends so the copy goroutines unblock immediately.
@@ -262,18 +291,18 @@ func (p *TCPProxy) pipe(dst, src net.Conn, connCtx *ConnContext) int64 {
 			total += int64(nw)
 			if writeErr != nil {
 				if errors.Is(writeErr, os.ErrDeadlineExceeded) {
-					p.log.Debugf("tcp proxy: session %d write timeout (%v)", connCtx.ID, p.cfg.WriteTimeout)
+					p.log.Debugf("tcp proxy: session %d [%s:%d] write timeout (%v)", connCtx.id, connCtx.destIP, connCtx.destPort, p.cfg.WriteTimeout)
 				} else if !isClosedConnErr(writeErr) {
-					p.log.Debugf("tcp proxy: session %d write error: %v", connCtx.ID, writeErr)
+					p.log.Debugf("tcp proxy: session %d [%s:%d] write error: %v", connCtx.id, connCtx.destIP, connCtx.destPort, writeErr)
 				}
 				break
 			}
 		}
 		if readErr != nil {
 			if errors.Is(readErr, os.ErrDeadlineExceeded) {
-				p.log.Debugf("tcp proxy: session %d read timeout (%v)", connCtx.ID, p.cfg.ReadTimeout)
+				p.log.Debugf("tcp proxy: session %d [%s:%d] read timeout (%v)", connCtx.id, connCtx.destIP, connCtx.destPort, p.cfg.ReadTimeout)
 			} else if !isClosedConnErr(readErr) {
-				p.log.Debugf("tcp proxy: session %d read error: %v", connCtx.ID, readErr)
+				p.log.Debugf("tcp proxy: session %d [%s:%d] read error: %v", connCtx.id, connCtx.destIP, connCtx.destPort, readErr)
 			}
 			break
 		}
@@ -290,20 +319,8 @@ func halfClose(conn net.Conn) {
 	}
 }
 
-// isClosedConnErr returns true for errors that arise from an already-closed
-// connection or a clean EOF — these are expected during shutdown.
+// isClosedConnErr reports whether err is a clean EOF or a closed-socket error
+// that is expected during normal session teardown or proxy shutdown.
 func isClosedConnErr(err error) bool {
-	if err == nil {
-		return false
-	}
-	if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
-		return true
-	}
-	var netErr *net.OpError
-	if errors.As(err, &netErr) {
-		// "use of closed network connection" and "connection reset by peer"
-		// are both acceptable on shutdown.
-		return true
-	}
-	return false
+	return errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed)
 }

@@ -28,12 +28,16 @@ shutdown.
 
 ```go
 // DeciderFunc is called once per new session to determine the upstream
-// address and the optional local address to bind the outgoing connection to.
+// destination and an optional local address to bind the outgoing connection to.
 // local is the proxy's listen address; peer is the connecting client's address.
-// Return a non-empty localAddr to pin the outgoing connection to a specific
-// source address; return "" to let the OS choose.
-// Return an error to reject the session.
-type DeciderFunc func(local net.Addr, peer net.Addr) (dest string, localAddr string, err error)
+// Return a non-nil error to reject the session.
+type DeciderFunc func(local net.Addr, peer net.Addr) (
+    remoteIP   net.IP,
+    remotePort uint16,
+    localAddr  string, // "host:port" to pin source address, or "" for OS default
+    extraInfo  any,    // optional value attached to the session's ConnContext
+    err        error,
+)
 
 // Logger is the minimal interface accepted by both proxies.
 // Pass nil to suppress all log output.
@@ -43,22 +47,41 @@ type Logger interface {
     Warnf(format string, args ...interface{})
     Errorf(format string, args ...interface{})
 }
+
+// ConnContext holds observable state for one proxy session.
+// Counters are updated atomically and safe for concurrent reads.
+type ConnContext struct {
+    BytesIn    atomic.Uint64 // bytes forwarded upstream → client
+    BytesOut   atomic.Uint64 // bytes forwarded client → upstream
+    PacketsIn  atomic.Uint64 // UDP datagrams upstream → client
+    PacketsOut atomic.Uint64 // UDP datagrams client → upstream
+    // ...
+}
+
+func (c *ConnContext) ID()        uint64
+func (c *ConnContext) PeerAddr()  net.Addr
+func (c *ConnContext) DestIP()    net.IP
+func (c *ConnContext) DestPort()  uint16
+func (c *ConnContext) CreatedAt() time.Time
+func (c *ConnContext) LastSeen()  time.Time
+func (c *ConnContext) ExtraInfo() any
+func (c *ConnContext) Close()            // cancels the session
 ```
 
 ### Constructors
 
 ```go
 // TCP — uses DefaultConfig
-func NewTCPProxy(listenAddr string, decider DeciderFunc, logger Logger) (*TCPProxy, error)
+func NewTCPProxy(listenAddr string, network string, decider DeciderFunc, logger Logger) (*TCPProxy, error)
 
 // TCP — custom configuration
-func NewTCPProxyWithConfig(listenAddr string, decider DeciderFunc, logger Logger, cfg Config) (*TCPProxy, error)
+func NewTCPProxyWithConfig(listenAddr string, network string, decider DeciderFunc, logger Logger, cfg Config) (*TCPProxy, error)
 
 // UDP — uses DefaultConfig
-func NewUDPProxy(listenAddr string, decider DeciderFunc, logger Logger) (*UDPProxy, error)
+func NewUDPProxy(listenAddr string, network string, decider DeciderFunc, logger Logger) (*UDPProxy, error)
 
 // UDP — custom configuration
-func NewUDPProxyWithConfig(listenAddr string, decider DeciderFunc, logger Logger, cfg Config) (*UDPProxy, error)
+func NewUDPProxyWithConfig(listenAddr string, network string, decider DeciderFunc, logger Logger, cfg Config) (*UDPProxy, error)
 ```
 
 Both constructors bind the socket and start background goroutines immediately.
@@ -107,6 +130,15 @@ Closes the listen socket, cancels all active sessions, and waits for
 goroutines to drain.  If `ctx` expires first, the method returns
 `ctx.Err()` but goroutines are still cleaning up (they are not leaked).
 
+### Session lookup
+
+```go
+// Returns all active sessions whose upstream destination matches destIP:destPort.
+// Returns nil if none exist.
+func (p *TCPProxy) FindProxiedEgressConnection(destIP net.IP, destPort uint16) []*ConnContext
+func (p *UDPProxy) FindProxiedEgressConnection(destIP net.IP, destPort uint16) []*ConnContext
+```
+
 ### Metrics
 
 ```go
@@ -127,11 +159,11 @@ func (p *UDPProxy) Metrics() Metrics
 ### Transparent TCP proxy (always route to a fixed backend)
 
 ```go
-decider := func(local, peer net.Addr) (string, string, error) {
-    return "backend.internal:8080", "", nil
+decider := func(local, peer net.Addr) (net.IP, uint16, string, any, error) {
+    return net.ParseIP("192.168.1.10"), 8080, "", nil, nil
 }
 
-proxy, err := proxy.NewTCPProxy(":8080", decider, nil)
+p, err := proxy.NewTCPProxy(":8080", "tcp4", decider, nil)
 if err != nil {
     log.Fatal(err)
 }
@@ -143,32 +175,32 @@ signal.Notify(sig, syscall.SIGTERM)
 
 ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 defer cancel()
-proxy.Shutdown(ctx)
+p.Shutdown(ctx)
 ```
 
 ### Per-client routing with source-address binding (split tunnelling)
 
 ```go
-decider := func(local, peer net.Addr) (string, string, error) {
+decider := func(local, peer net.Addr) (net.IP, uint16, string, any, error) {
     host, _, _ := net.SplitHostPort(peer.String())
     if isTunnelledIP(host) {
-        // Route through VPN interface, binding source to its address.
-        return "vpn-gateway:443", "10.0.0.1:0", nil
+        // Route through VPN interface, binding source to its local address.
+        return vpnGatewayIP, 443, "10.0.0.1:0", nil, nil
     }
-    return "direct-gateway:443", "", nil
+    return directGatewayIP, 443, "", nil, nil
 }
 
-proxy, err := proxy.NewTCPProxy(":443", decider, myLogger)
+p, err := proxy.NewTCPProxy(":443", "tcp4", decider, myLogger)
 ```
 
 ### UDP proxy with custom timeouts
 
 ```go
 cfg := proxy.DefaultConfig()
-cfg.ReadTimeout  = 30 * time.Second
-cfg.MaxSessions  = 1024
+cfg.ReadTimeout = 30 * time.Second
+cfg.MaxSessions = 1024
 
-p, err := proxy.NewUDPProxyWithConfig(":5353", decider, myLogger, cfg)
+p, err := proxy.NewUDPProxyWithConfig(":5353", "udp4", decider, myLogger, cfg)
 ```
 
 ---
@@ -183,7 +215,9 @@ go test ./...
 go test -race ./...
 
 # Benchmarks with allocation reporting
-go test -run='^$' -bench=. -benchmem ./...
+go test -run='^$' -bench=Benchmark -benchmem    # All benchmarks
+go test -run='^$' -bench=BenchmarkTCP -benchmem # TCP only
+go test -run='^$' -bench=BenchmarkUDP -benchmem # UDP only
 ```
 
 ---

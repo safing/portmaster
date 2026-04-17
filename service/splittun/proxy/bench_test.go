@@ -17,7 +17,7 @@ func BenchmarkTCPProxy_Throughput(b *testing.B) {
 	echoAddr, stopEcho := startTCPEchoServer(b)
 	defer stopEcho()
 
-	proxy, err := NewTCPProxy("127.0.0.1:0", passThroughDecider(echoAddr), nil)
+	proxy, err := NewTCPProxy("127.0.0.1:0", "tcp4", passThroughDecider(echoAddr), nil)
 	if err != nil {
 		b.Fatalf("NewTCPProxy: %v", err)
 	}
@@ -53,7 +53,7 @@ func BenchmarkTCPProxy_NewSession(b *testing.B) {
 	echoAddr, stopEcho := startTCPEchoServer(b)
 	defer stopEcho()
 
-	proxy, err := NewTCPProxy("127.0.0.1:0", passThroughDecider(echoAddr), nil)
+	proxy, err := NewTCPProxy("127.0.0.1:0", "tcp4", passThroughDecider(echoAddr), nil)
 	if err != nil {
 		b.Fatalf("NewTCPProxy: %v", err)
 	}
@@ -84,7 +84,7 @@ func BenchmarkUDPProxy_Throughput(b *testing.B) {
 
 	cfg := DefaultConfig()
 	cfg.ReadTimeout = 30 * time.Second
-	proxy, err := NewUDPProxyWithConfig("127.0.0.1:0", passThroughDecider(echoAddr), nil, cfg)
+	proxy, err := NewUDPProxyWithConfig("127.0.0.1:0", "udp4", passThroughDecider(echoAddr), nil, cfg)
 	if err != nil {
 		b.Fatalf("NewUDPProxy: %v", err)
 	}
@@ -97,7 +97,7 @@ func BenchmarkUDPProxy_Throughput(b *testing.B) {
 	defer clientConn.Close()
 	clientConn.SetDeadline(time.Now().Add(10 * time.Minute)) //nolint:errcheck
 
-	const msgSize = 1024
+	const msgSize = 1024 * (64 - 1)
 	payload := bytes.Repeat([]byte("U"), msgSize)
 	recv := make([]byte, 64*1024)
 
@@ -123,7 +123,7 @@ func BenchmarkUDPProxy_NewSession(b *testing.B) {
 
 	cfg := DefaultConfig()
 	cfg.ReadTimeout = 100 * time.Millisecond
-	proxy, err := NewUDPProxyWithConfig("127.0.0.1:0", passThroughDecider(echoAddr), nil, cfg)
+	proxy, err := NewUDPProxyWithConfig("127.0.0.1:0", "udp4", passThroughDecider(echoAddr), nil, cfg)
 	if err != nil {
 		b.Fatalf("NewUDPProxy: %v", err)
 	}

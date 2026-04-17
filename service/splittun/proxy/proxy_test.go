@@ -15,14 +15,18 @@ import (
 
 // passThroughDecider always routes to dest.
 func passThroughDecider(dest string) DeciderFunc {
-	return func(_, _ net.Addr) (string, string, error) {
-		return dest, "", nil
+	addr, _ := net.ResolveTCPAddr("tcp", dest)
+	return func(_, _ net.Addr) (net.IP, uint16, string, any, error) {
+		if addr == nil {
+			return nil, 0, "", nil, fmt.Errorf("invalid dest %q", dest)
+		}
+		return addr.IP, uint16(addr.Port), "", nil, nil
 	}
 }
 
 // refuseDecider always rejects sessions.
-func refuseDecider(_ net.Addr, _ net.Addr) (string, string, error) {
-	return "", "", fmt.Errorf("rejected")
+func refuseDecider(_ net.Addr, _ net.Addr) (net.IP, uint16, string, any, error) {
+	return nil, 0, "", nil, fmt.Errorf("rejected")
 }
 
 // startTCPEchoServer starts a TCP echo server on a random port.
@@ -85,7 +89,7 @@ func TestTCPProxy_ConnectAndForward(t *testing.T) {
 	echoAddr, stopEcho := startTCPEchoServer(t)
 	defer stopEcho()
 
-	proxy, err := NewTCPProxy("127.0.0.1:0", passThroughDecider(echoAddr), nil)
+	proxy, err := NewTCPProxy("127.0.0.1:0", "tcp4", passThroughDecider(echoAddr), nil)
 	if err != nil {
 		t.Fatalf("NewTCPProxy: %v", err)
 	}
@@ -116,7 +120,7 @@ func TestTCPProxy_BidirectionalBytes(t *testing.T) {
 	echoAddr, stopEcho := startTCPEchoServer(t)
 	defer stopEcho()
 
-	proxy, err := NewTCPProxy("127.0.0.1:0", passThroughDecider(echoAddr), nil)
+	proxy, err := NewTCPProxy("127.0.0.1:0", "tcp4", passThroughDecider(echoAddr), nil)
 	if err != nil {
 		t.Fatalf("NewTCPProxy: %v", err)
 	}
@@ -153,7 +157,7 @@ func TestTCPProxy_SessionCleanupOnClose(t *testing.T) {
 	echoAddr, stopEcho := startTCPEchoServer(t)
 	defer stopEcho()
 
-	proxy, err := NewTCPProxy("127.0.0.1:0", passThroughDecider(echoAddr), nil)
+	proxy, err := NewTCPProxy("127.0.0.1:0", "tcp4", passThroughDecider(echoAddr), nil)
 	if err != nil {
 		t.Fatalf("NewTCPProxy: %v", err)
 	}
@@ -195,7 +199,7 @@ func TestTCPProxy_SessionCleanupOnClose(t *testing.T) {
 }
 
 func TestTCPProxy_DeciderRejectsSession(t *testing.T) {
-	proxy, err := NewTCPProxy("127.0.0.1:0", refuseDecider, nil)
+	proxy, err := NewTCPProxy("127.0.0.1:0", "tcp4", refuseDecider, nil)
 	if err != nil {
 		t.Fatalf("NewTCPProxy: %v", err)
 	}
@@ -221,7 +225,7 @@ func TestTCPProxy_MaxSessions(t *testing.T) {
 
 	cfg := DefaultConfig()
 	cfg.MaxSessions = 1
-	proxy, err := NewTCPProxyWithConfig("127.0.0.1:0", passThroughDecider(echoAddr), nil, cfg)
+	proxy, err := NewTCPProxyWithConfig("127.0.0.1:0", "tcp4", passThroughDecider(echoAddr), nil, cfg)
 	if err != nil {
 		t.Fatalf("NewTCPProxyWithConfig: %v", err)
 	}
@@ -256,7 +260,7 @@ func TestTCPProxy_GracefulShutdown(t *testing.T) {
 	echoAddr, stopEcho := startTCPEchoServer(t)
 	defer stopEcho()
 
-	proxy, err := NewTCPProxy("127.0.0.1:0", passThroughDecider(echoAddr), nil)
+	proxy, err := NewTCPProxy("127.0.0.1:0", "tcp4", passThroughDecider(echoAddr), nil)
 	if err != nil {
 		t.Fatalf("NewTCPProxy: %v", err)
 	}
@@ -274,7 +278,7 @@ func TestUDPProxy_SessionCreation(t *testing.T) {
 	echoAddr, stopEcho := startUDPEchoServer(t)
 	defer stopEcho()
 
-	proxy, err := NewUDPProxy("127.0.0.1:0", passThroughDecider(echoAddr), nil)
+	proxy, err := NewUDPProxy("127.0.0.1:0", "udp4", passThroughDecider(echoAddr), nil)
 	if err != nil {
 		t.Fatalf("NewUDPProxy: %v", err)
 	}
@@ -320,7 +324,7 @@ func TestUDPProxy_ReplyRouting(t *testing.T) {
 	echoAddr, stopEcho := startUDPEchoServer(t)
 	defer stopEcho()
 
-	proxy, err := NewUDPProxy("127.0.0.1:0", passThroughDecider(echoAddr), nil)
+	proxy, err := NewUDPProxy("127.0.0.1:0", "udp4", passThroughDecider(echoAddr), nil)
 	if err != nil {
 		t.Fatalf("NewUDPProxy: %v", err)
 	}
@@ -377,7 +381,7 @@ func TestUDPProxy_IdleTimeoutCleanup(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.ReadTimeout = 200 * time.Millisecond
 
-	proxy, err := NewUDPProxyWithConfig("127.0.0.1:0", passThroughDecider(echoAddr), nil, cfg)
+	proxy, err := NewUDPProxyWithConfig("127.0.0.1:0", "udp4", passThroughDecider(echoAddr), nil, cfg)
 	if err != nil {
 		t.Fatalf("NewUDPProxy: %v", err)
 	}
@@ -430,17 +434,17 @@ func TestUDPProxy_MaxSessions(t *testing.T) {
 	// Count how many sessions the decider accepts; reject beyond limit.
 	var accepted atomic.Int32
 	const limit = 2
-	decider := func(local, peer net.Addr) (string, string, error) {
+	decider := func(local, peer net.Addr) (net.IP, uint16, string, any, error) {
 		if accepted.Load() >= limit {
-			return "", "", fmt.Errorf("max sessions")
+			return nil, 0, "", nil, fmt.Errorf("max sessions")
 		}
 		accepted.Add(1)
-		return "", "", fmt.Errorf("no upstream needed for this test")
+		return nil, 0, "", nil, fmt.Errorf("no upstream needed for this test")
 	}
 
 	cfg := DefaultConfig()
 	cfg.MaxSessions = limit
-	proxy, err := NewUDPProxyWithConfig("127.0.0.1:0", decider, nil, cfg)
+	proxy, err := NewUDPProxyWithConfig("127.0.0.1:0", "udp4", decider, nil, cfg)
 	if err != nil {
 		t.Fatalf("NewUDPProxy: %v", err)
 	}
@@ -457,7 +461,7 @@ func TestUDPProxy_GracefulShutdown(t *testing.T) {
 	echoAddr, stopEcho := startUDPEchoServer(t)
 	defer stopEcho()
 
-	proxy, err := NewUDPProxy("127.0.0.1:0", passThroughDecider(echoAddr), nil)
+	proxy, err := NewUDPProxy("127.0.0.1:0", "udp4", passThroughDecider(echoAddr), nil)
 	if err != nil {
 		t.Fatalf("NewUDPProxy: %v", err)
 	}
@@ -474,17 +478,17 @@ func TestUDPProxy_GracefulShutdown(t *testing.T) {
 func TestNilLogger(t *testing.T) {
 	echoAddr, stopEcho := startTCPEchoServer(t)
 	defer stopEcho()
-	_, err := NewTCPProxy("127.0.0.1:0", passThroughDecider(echoAddr), nil)
+	_, err := NewTCPProxy("127.0.0.1:0", "tcp4", passThroughDecider(echoAddr), nil)
 	if err != nil {
 		t.Fatalf("nil Logger should be accepted but got: %v", err)
 	}
 }
 
 func TestNilDeciderRejected(t *testing.T) {
-	if _, err := NewTCPProxy("127.0.0.1:0", nil, nil); err == nil {
+	if _, err := NewTCPProxy("127.0.0.1:0", "tcp4", nil, nil); err == nil {
 		t.Fatal("nil DeciderFunc should be rejected")
 	}
-	if _, err := NewUDPProxy("127.0.0.1:0", nil, nil); err == nil {
+	if _, err := NewUDPProxy("127.0.0.1:0", "udp4", nil, nil); err == nil {
 		t.Fatal("nil DeciderFunc should be rejected")
 	}
 }
