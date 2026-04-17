@@ -459,6 +459,7 @@ export class Netquery {
             case Verdict.Accept:
             case Verdict.RerouteToNs:
             case Verdict.RerouteToTunnel:
+            case Verdict.RerouteToSplitTun:
             case Verdict.Undeterminable:
               stats.size += res.totalCount
               stats.countAllowed += res.totalCount;

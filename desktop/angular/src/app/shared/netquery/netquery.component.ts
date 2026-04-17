@@ -1206,7 +1206,8 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
                 $in: [
                   Verdict.Accept,
                   Verdict.RerouteToNs,
-                  Verdict.RerouteToTunnel
+                  Verdict.RerouteToTunnel,
+                  Verdict.RerouteToSplitTun
                 ],
               }
             },

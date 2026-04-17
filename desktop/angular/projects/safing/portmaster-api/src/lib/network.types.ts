@@ -8,7 +8,8 @@ export enum Verdict {
   Drop = 4,
   RerouteToNs = 5,
   RerouteToTunnel = 6,
-  Failed = 7
+  Failed = 7,
+  RerouteToSplitTun = 8
 }
 
 export enum IPProtocol {

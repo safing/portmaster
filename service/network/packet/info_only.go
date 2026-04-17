@@ -74,4 +74,8 @@ func (pkt *InfoPacket) RerouteToTunnel() error {
 	return ErrInfoOnlyPacket
 }
 
+func (pkt *InfoPacket) RerouteToSplitTun() error {
+	return ErrInfoOnlyPacket
+}
+
 var _ Packet = &InfoPacket{}

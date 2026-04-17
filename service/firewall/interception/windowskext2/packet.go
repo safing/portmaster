@@ -140,3 +140,11 @@ func (pkt *Packet) RerouteToTunnel() error {
 	}
 	return nil
 }
+
+// RerouteToSplitTun permanently reroutes the connection to the local split tunnel entrypoint (and the current packet).
+func (pkt *Packet) RerouteToSplitTun() error {
+	if pkt.verdictSet.SetToIf(false, true) {
+		return SetVerdict(pkt, kextinterface.VerdictRerouteToSplitTun)
+	}
+	return nil
+}

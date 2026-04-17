@@ -15,6 +15,7 @@ const (
 	VerdictRerouteToNameserver Verdict = 5
 	VerdictRerouteToTunnel     Verdict = 6
 	VerdictFailed              Verdict = 7
+	VerdictRerouteToSplitTun   Verdict = 8
 )
 
 func (v Verdict) String() string {
@@ -33,6 +34,8 @@ func (v Verdict) String() string {
 		return "RerouteToNameserver"
 	case VerdictRerouteToTunnel:
 		return "RerouteToTunnel"
+	case VerdictRerouteToSplitTun:
+		return "RerouteToSplitTun"
 	case VerdictFailed:
 		return "Failed"
 	default:
@@ -57,6 +60,8 @@ func (v Verdict) Verb() string {
 		return "redirected to nameserver"
 	case VerdictRerouteToTunnel:
 		return "tunneled"
+	case VerdictRerouteToSplitTun:
+		return "split tunneled"
 	case VerdictFailed:
 		return "failed"
 	default:

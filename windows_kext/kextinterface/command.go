@@ -36,6 +36,7 @@ const (
 	VerdictRerouteToNameserver KextVerdict = 8
 	VerdictRerouteToTunnel     KextVerdict = 9
 	VerdictFailed              KextVerdict = 10
+	VerdictRerouteToSplitTun   KextVerdict = 11
 )
 
 type Verdict struct {

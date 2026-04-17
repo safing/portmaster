@@ -844,6 +844,8 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 		err = pkt.RerouteToNameserver()
 	case network.VerdictRerouteToTunnel:
 		err = pkt.RerouteToTunnel()
+	case network.VerdictRerouteToSplitTun:
+		err = pkt.RerouteToSplitTun()
 	case network.VerdictFailed:
 		atomic.AddUint64(packetsFailed, 1)
 		err = pkt.Drop()

@@ -183,6 +183,8 @@ func getKextVerdictFromConnection(conn *network.Connection) kextinterface.KextVe
 		return kextinterface.VerdictRerouteToNameserver
 	case network.VerdictRerouteToTunnel:
 		return kextinterface.VerdictRerouteToTunnel
+	case network.VerdictRerouteToSplitTun:
+		return kextinterface.VerdictRerouteToSplitTun
 	case network.VerdictFailed:
 		return kextinterface.VerdictFailed
 	}

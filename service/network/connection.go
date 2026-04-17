@@ -795,7 +795,7 @@ func (conn *Connection) Save() {
 
 	// nolint:exhaustive
 	switch conn.Verdict {
-	case VerdictAccept, VerdictRerouteToNameserver:
+	case VerdictAccept, VerdictRerouteToNameserver, VerdictRerouteToSplitTun:
 		conn.ConnectionEstablished = true
 	case VerdictRerouteToTunnel:
 		// this is already handled when the connection tunnel has been
