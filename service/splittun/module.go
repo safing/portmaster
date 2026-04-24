@@ -61,6 +61,7 @@ func (s *SplitTunModule) Start() error {
 
 func (s *SplitTunModule) Stop() error {
 	ready.Store(false)
+	clearPendingRequests()
 	return stopProxies()
 }
 

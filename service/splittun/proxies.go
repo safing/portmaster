@@ -1,6 +1,7 @@
 package splittun
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
@@ -74,23 +75,47 @@ func startProxies(mgr *mgr.Manager) error {
 
 	_ = stopProxies()
 
+	// Ensure any partially-started proxies are shut down if we return an error.
+	var startErr error
+	defer func() {
+		if startErr != nil {
+			ctx := mgr.Ctx()
+			if tcp4 != nil {
+				tcp4.Shutdown(ctx)
+			}
+			if udp4 != nil {
+				udp4.Shutdown(ctx)
+			}
+			if tcp6 != nil {
+				tcp6.Shutdown(ctx)
+			}
+			if udp6 != nil {
+				udp6.Shutdown(ctx)
+			}
+		}
+	}()
+
 	tcp4, err = proxy.NewTCPProxy(fmt.Sprintf("0.0.0.0:%d", SplitTunPort), "tcp4", proxyDecider, &proxyLogger{prefix: "tcp4", mgr: mgr})
 	if err != nil {
-		return fmt.Errorf("failed to start TCPv4 proxy: %w", err)
+		startErr = fmt.Errorf("failed to start TCPv4 proxy: %w", err)
+		return startErr
 	}
-	tcp6, err = proxy.NewTCPProxy(fmt.Sprintf("[::]:%d", SplitTunPort), "tcp6", proxyDecider, &proxyLogger{prefix: "tcp6", mgr: mgr})
+	udp4, err = proxy.NewUDPProxy(fmt.Sprintf("0.0.0.0:%d", SplitTunPort), "udp4", proxyDecider, &proxyLogger{prefix: "udp4", mgr: mgr})
 	if err != nil {
-		return fmt.Errorf("failed to start TCPv6 proxy: %w", err)
+		startErr = fmt.Errorf("failed to start UDPv4 proxy: %w", err)
+		return startErr
 	}
 
 	if netenv.IPv6Enabled() {
-		udp4, err = proxy.NewUDPProxy(fmt.Sprintf("0.0.0.0:%d", SplitTunPort), "udp4", proxyDecider, &proxyLogger{prefix: "udp4", mgr: mgr})
+		tcp6, err = proxy.NewTCPProxy(fmt.Sprintf("[::]:%d", SplitTunPort), "tcp6", proxyDecider, &proxyLogger{prefix: "tcp6", mgr: mgr})
 		if err != nil {
-			return fmt.Errorf("failed to start UDPv4 proxy: %w", err)
+			startErr = fmt.Errorf("failed to start TCPv6 proxy: %w", err)
+			return startErr
 		}
 		udp6, err = proxy.NewUDPProxy(fmt.Sprintf("[::]:%d", SplitTunPort), "udp6", proxyDecider, &proxyLogger{prefix: "udp6", mgr: mgr})
 		if err != nil {
-			return fmt.Errorf("failed to start UDPv6 proxy: %w", err)
+			startErr = fmt.Errorf("failed to start UDPv6 proxy: %w", err)
+			return startErr
 		}
 	}
 
@@ -118,17 +143,24 @@ func stopProxies() error {
 	udp6Proxy = nil
 	proxiesLocker.Unlock()
 
+	var ctx context.Context
+	if mgr != nil {
+		ctx = mgr.Ctx()
+	} else {
+		ctx = context.Background()
+	}
+
 	if tcp4 != nil {
-		tcp4.Shutdown(mgr.Ctx())
+		tcp4.Shutdown(ctx)
 	}
 	if tcp6 != nil {
-		tcp6.Shutdown(mgr.Ctx())
+		tcp6.Shutdown(ctx)
 	}
 	if udp4 != nil {
-		udp4.Shutdown(mgr.Ctx())
+		udp4.Shutdown(ctx)
 	}
 	if udp6 != nil {
-		udp6.Shutdown(mgr.Ctx())
+		udp6.Shutdown(ctx)
 	}
 
 	return nil

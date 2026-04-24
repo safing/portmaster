@@ -5,20 +5,30 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"sync/atomic"
+	"time"
 
+	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/packet"
 )
 
+// pendingRequestTTL is the maximum time a pending request waits for the proxy
+// to accept the redirected connection. If the OS drops/resets the connection
+// before it reaches the proxy, the entry would otherwise leak indefinitely.
+const pendingRequestTTL = 30 * time.Second
+
 type request struct {
-	connInfo *network.Connection
-	bindIP   net.IP
+	connInfo  *network.Connection
+	bindIP    net.IP
+	expiresAt time.Time
 }
 
 var (
-	requestsLock    sync.Mutex
-	pendingRequests map[string]*request = make(map[string]*request) // key: "localIP:localPort"
+	requestsLock     sync.Mutex
+	pendingRequests  map[string]*request = make(map[string]*request) // key: "localIP:localPort"
+	cleanupScheduled atomic.Bool
 )
 
 // AwaitRequest registers a connection for handling when it arrives at the proxy.
@@ -43,11 +53,11 @@ func AwaitRequest(connInfo *network.Connection, bindInterface string) (*network.
 		if connInfo.IPVersion == packet.IPv6 && ifaces.ForIPv6 != nil {
 			selectedIface = ifaces.ForIPv6
 			bindIP = selectedIface.IPv6
-		} else if ifaces.ForIPv4 != nil {
+		} else if connInfo.IPVersion == packet.IPv4 && ifaces.ForIPv4 != nil {
 			selectedIface = ifaces.ForIPv4
 			bindIP = selectedIface.IPv4
 		} else {
-			return nil, fmt.Errorf("no suitable default physical interface found for IP version %d", connInfo.IPVersion)
+			return nil, fmt.Errorf("no suitable default physical interface found for %s", connInfo.IPVersion)
 		}
 		interfaceName = selectedIface.Interface.Name
 	} else {
@@ -63,12 +73,15 @@ func AwaitRequest(connInfo *network.Connection, bindInterface string) (*network.
 			bindIP = iface.IPv4
 		}
 		if bindIP == nil {
-			return nil, fmt.Errorf("interface %q has no usable address for IP version %d", bindInterface, connInfo.IPVersion)
+			return nil, fmt.Errorf("interface %q has no usable address for %s", bindInterface, connInfo.IPVersion)
 		}
 		interfaceName = iface.Interface.Name
 	}
 
 	// Create unique key for the pending connection
+	if connInfo.LocalIP == nil {
+		return nil, fmt.Errorf("connection has no local IP")
+	}
 	key := net.JoinHostPort(connInfo.LocalIP.String(), strconv.Itoa(int(connInfo.LocalPort)))
 
 	requestsLock.Lock()
@@ -80,16 +93,72 @@ func AwaitRequest(connInfo *network.Connection, bindInterface string) (*network.
 	}
 
 	pendingRequests[key] = &request{
-		connInfo: connInfo,
-		bindIP:   bindIP,
+		connInfo:  connInfo,
+		bindIP:    bindIP,
+		expiresAt: time.Now().Add(pendingRequestTTL),
 	}
+
+	// Schedule deferred cleanup outside of the hot path.
+	// The goroutine only starts if none is already running.
+	scheduleCleanup()
+
 	return &network.SplitTunContext{
 		Interface: interfaceName,
 		IP:        bindIP,
 	}, nil
 }
 
+// scheduleCleanup starts a deferred cleanup goroutine if one is not already
+// running. The goroutine wakes after pendingRequestTTL+1s, sweeps expired
+// entries, and reschedules itself if unexpired entries remain. It exits
+// immediately when the module's manager context is cancelled.
+func scheduleCleanup() {
+	if !cleanupScheduled.CompareAndSwap(false, true) {
+		return // already scheduled; it will sweep our entry too
+	}
+	module.mgr.Go("pending-requests-cleanup", func(w *mgr.WorkerCtx) error {
+		select {
+		case <-w.Done():
+			cleanupScheduled.Store(false)
+			return nil
+		case <-time.After(pendingRequestTTL + time.Second):
+		}
+
+		requestsLock.Lock()
+		sweepPendingRequestsLocked()
+		nonEmpty := len(pendingRequests) > 0
+		requestsLock.Unlock()
+
+		// Reset flag before potential reschedule to avoid a gap where
+		// a concurrent AwaitRequest could miss starting a new goroutine.
+		cleanupScheduled.Store(false)
+		if nonEmpty {
+			scheduleCleanup()
+		}
+		return nil
+	})
+}
+
+// sweepPendingRequestsLocked removes any pending requests that have exceeded
+// the TTL. The caller must hold requestsLock.
+func sweepPendingRequestsLocked() {
+	now := time.Now()
+	for key, r := range pendingRequests {
+		if now.After(r.expiresAt) {
+			delete(pendingRequests, key)
+		}
+	}
+}
+
+// clearPendingRequests removes all pending requests. Called on module stop.
+func clearPendingRequests() {
+	requestsLock.Lock()
+	pendingRequests = make(map[string]*request)
+	requestsLock.Unlock()
+}
+
 // consumeRequest retrieves and removes a pending request for the given address.
+// Returns an error if the request has expired.
 func consumeRequest(address string) (r *request, err error) {
 	requestsLock.Lock()
 
@@ -97,6 +166,9 @@ func consumeRequest(address string) (r *request, err error) {
 	if ok {
 		delete(pendingRequests, address)
 		requestsLock.Unlock()
+		if time.Now().After(r.expiresAt) {
+			return nil, fmt.Errorf("pending request for %s has expired", address)
+		}
 		return r, nil
 	}
 
