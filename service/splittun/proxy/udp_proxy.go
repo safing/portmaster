@@ -235,15 +235,8 @@ func (p *UDPProxy) handlePacket(clientAddr *net.UDPAddr, data []byte) {
 
 	remoteAddr := &net.UDPAddr{IP: destIP, Port: int(destPort)}
 	var localUDPAddr *net.UDPAddr
-	if localAddr != "" {
-		var resolveErr error
-		localUDPAddr, resolveErr = net.ResolveUDPAddr("udp", localAddr)
-		if resolveErr != nil {
-			p.cache.remove(connCtx)
-			cancel()
-			p.log.Errorf("udp proxy: resolve local addr %q: %v", localAddr, resolveErr)
-			return
-		}
+	if localAddr != nil {
+		localUDPAddr = &net.UDPAddr{IP: localAddr}
 	}
 	remoteConn, err := net.DialUDP("udp", localUDPAddr, remoteAddr)
 	if err != nil {

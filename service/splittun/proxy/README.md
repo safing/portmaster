@@ -28,13 +28,13 @@ shutdown.
 
 ```go
 // DeciderFunc is called once per new session to determine the upstream
-// destination and an optional local address to bind the outgoing connection to.
+// destination and an optional local IP to bind the outgoing connection to.
 // local is the proxy's listen address; peer is the connecting client's address.
 // Return a non-nil error to reject the session.
 type DeciderFunc func(local net.Addr, peer net.Addr) (
     remoteIP   net.IP,
     remotePort uint16,
-    localAddr  string, // "host:port" to pin source address, or "" for OS default
+    localIP    net.IP, // source IP to pin, or nil for OS default
     extraInfo  any,    // optional value attached to the session's ConnContext
     err        error,
 )
@@ -86,6 +86,15 @@ func NewUDPProxyWithConfig(listenAddr string, network string, decider DeciderFun
 
 Both constructors bind the socket and start background goroutines immediately.
 They return an error if binding fails or if `decider` is nil.
+
+### Address
+
+```go
+func (p *TCPProxy) Addr() net.Addr
+func (p *UDPProxy) Addr() net.Addr
+```
+
+Returns the address the proxy is currently listening on.
 
 ### Configuration
 
@@ -159,8 +168,8 @@ func (p *UDPProxy) Metrics() Metrics
 ### Transparent TCP proxy (always route to a fixed backend)
 
 ```go
-decider := func(local, peer net.Addr) (net.IP, uint16, string, any, error) {
-    return net.ParseIP("192.168.1.10"), 8080, "", nil, nil
+decider := func(local, peer net.Addr) (net.IP, uint16, net.IP, any, error) {
+    return net.ParseIP("192.168.1.10"), 8080, nil, nil, nil
 }
 
 p, err := proxy.NewTCPProxy(":8080", "tcp4", decider, nil)
@@ -181,13 +190,13 @@ p.Shutdown(ctx)
 ### Per-client routing with source-address binding (split tunnelling)
 
 ```go
-decider := func(local, peer net.Addr) (net.IP, uint16, string, any, error) {
+decider := func(local, peer net.Addr) (net.IP, uint16, net.IP, any, error) {
     host, _, _ := net.SplitHostPort(peer.String())
     if isTunnelledIP(host) {
         // Route through VPN interface, binding source to its local address.
-        return vpnGatewayIP, 443, "10.0.0.1:0", nil, nil
+        return vpnGatewayIP, 443, net.ParseIP("10.0.0.1"), nil, nil
     }
-    return directGatewayIP, 443, "", nil, nil
+    return directGatewayIP, 443, nil, nil, nil
 }
 
 p, err := proxy.NewTCPProxy(":443", "tcp4", decider, myLogger)

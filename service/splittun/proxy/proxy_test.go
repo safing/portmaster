@@ -16,17 +16,17 @@ import (
 // passThroughDecider always routes to dest.
 func passThroughDecider(dest string) DeciderFunc {
 	addr, _ := net.ResolveTCPAddr("tcp", dest)
-	return func(_, _ net.Addr) (net.IP, uint16, string, any, error) {
+	return func(_, _ net.Addr) (net.IP, uint16, net.IP, any, error) {
 		if addr == nil {
-			return nil, 0, "", nil, fmt.Errorf("invalid dest %q", dest)
+			return nil, 0, nil, nil, fmt.Errorf("invalid dest %q", dest)
 		}
-		return addr.IP, uint16(addr.Port), "", nil, nil
+		return addr.IP, uint16(addr.Port), nil, nil, nil
 	}
 }
 
 // refuseDecider always rejects sessions.
-func refuseDecider(_ net.Addr, _ net.Addr) (net.IP, uint16, string, any, error) {
-	return nil, 0, "", nil, fmt.Errorf("rejected")
+func refuseDecider(_ net.Addr, _ net.Addr) (net.IP, uint16, net.IP, any, error) {
+	return nil, 0, nil, nil, fmt.Errorf("rejected")
 }
 
 // startTCPEchoServer starts a TCP echo server on a random port.
@@ -434,12 +434,12 @@ func TestUDPProxy_MaxSessions(t *testing.T) {
 	// Count how many sessions the decider accepts; reject beyond limit.
 	var accepted atomic.Int32
 	const limit = 2
-	decider := func(local, peer net.Addr) (net.IP, uint16, string, any, error) {
+	decider := func(local, peer net.Addr) (net.IP, uint16, net.IP, any, error) {
 		if accepted.Load() >= limit {
-			return nil, 0, "", nil, fmt.Errorf("max sessions")
+			return nil, 0, nil, nil, fmt.Errorf("max sessions")
 		}
 		accepted.Add(1)
-		return nil, 0, "", nil, fmt.Errorf("no upstream needed for this test")
+		return nil, 0, nil, nil, fmt.Errorf("no upstream needed for this test")
 	}
 
 	cfg := DefaultConfig()

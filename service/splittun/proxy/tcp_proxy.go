@@ -216,13 +216,8 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 
 	// DialContext is cancelled immediately if the proxy is shut down.
 	dialer := net.Dialer{Timeout: p.cfg.DialTimeout}
-	if localAddr != "" {
-		tcpAddr, resolveErr := net.ResolveTCPAddr(p.network, localAddr)
-		if resolveErr != nil {
-			p.log.Errorf("tcp proxy: resolve local addr %q: %v", localAddr, resolveErr)
-			return
-		}
-		dialer.LocalAddr = tcpAddr
+	if localAddr != nil {
+		dialer.LocalAddr = &net.TCPAddr{IP: localAddr}
 	}
 	upstreamConn, err := dialer.DialContext(p.shutdownCtx, p.network, destAddr)
 	if err != nil {

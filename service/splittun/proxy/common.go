@@ -20,10 +20,10 @@ import (
 // It returns:
 //   - remoteIP: required upstream IP address
 //   - remotePort: required upstream port
-//   - localAddr: optional local "host:port" (empty string = OS chooses source)
+//   - localIP: optional local IP to use as the source address (nil = OS chooses)
 //   - extraInfo: optional user-defined object attached to the session context
 //   - err: non-nil rejects the session
-type DeciderFunc func(local net.Addr, peer net.Addr) (remoteIP net.IP, remotePort uint16, localAddr string, extraInfo any, err error)
+type DeciderFunc func(local net.Addr, peer net.Addr) (remoteIP net.IP, remotePort uint16, localIP net.IP, extraInfo any, err error)
 
 // Logger is the minimal structured logging interface expected by the proxies.
 // Pass nil to disable all logging.
