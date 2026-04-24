@@ -29,11 +29,14 @@ func getTestInterface(t *testing.T) net.Interface {
 		t.Fatalf("net.Interfaces() failed: %v", err)
 	}
 
-	var loopback *net.Interface
 	for i := range ifaces {
 		iface := ifaces[i]
 
 		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+		// Mirror the cache filter: loopback is excluded.
+		if iface.Flags&net.FlagLoopback != 0 {
 			continue
 		}
 
@@ -56,19 +59,10 @@ func getTestInterface(t *testing.T) net.Interface {
 			continue
 		}
 
-		if iface.Flags&net.FlagLoopback != 0 {
-			if loopback == nil {
-				loopback = &iface
-			}
-			continue
-		}
 		return iface
 	}
 
-	if loopback != nil {
-		return *loopback
-	}
-	t.Skip("no usable network interface found – skipping test")
+	t.Skip("no usable non-loopback network interface found – skipping test")
 	panic("unreachable")
 }
 
@@ -91,6 +85,44 @@ func firstRoutableIP(iface net.Interface) net.IP {
 	return nil
 }
 
+// firstRoutableIPv4 returns the first routable IPv4 address on iface, or nil.
+func firstRoutableIPv4(iface net.Interface) net.IP {
+	addrs, _ := iface.Addrs()
+	for _, addr := range addrs {
+		var ip net.IP
+		switch v := addr.(type) {
+		case *net.IPNet:
+			ip = v.IP
+		case *net.IPAddr:
+			ip = v.IP
+		}
+		if isRoutableIP(ip) {
+			if ip4 := ip.To4(); ip4 != nil {
+				return ip4
+			}
+		}
+	}
+	return nil
+}
+
+// firstRoutableIPv6 returns the first routable IPv6 address on iface, or nil.
+func firstRoutableIPv6(iface net.Interface) net.IP {
+	addrs, _ := iface.Addrs()
+	for _, addr := range addrs {
+		var ip net.IP
+		switch v := addr.(type) {
+		case *net.IPNet:
+			ip = v.IP
+		case *net.IPAddr:
+			ip = v.IP
+		}
+		if isRoutableIP(ip) && ip.To4() == nil {
+			return ip
+		}
+	}
+	return nil
+}
+
 // ---- GetInterfaceByName -------------------------------------------------------
 
 func TestGetInterfaceByName(t *testing.T) {
@@ -102,8 +134,8 @@ func TestGetInterfaceByName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetInterfaceByName(%q): unexpected error: %v", want.Name, err)
 	}
-	if got.Name != want.Name {
-		t.Errorf("GetInterfaceByName(%q): got %q", want.Name, got.Name)
+	if got.Interface.Name != want.Name {
+		t.Errorf("GetInterfaceByName(%q): got %q", want.Name, got.Interface.Name)
 	}
 }
 
@@ -131,8 +163,8 @@ func TestGetInterfaceByIP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetInterfaceByIP(%s): unexpected error: %v", ip, err)
 	}
-	if got.Name != iface.Name {
-		t.Errorf("GetInterfaceByIP(%s): got interface %q, want %q", ip, got.Name, iface.Name)
+	if got.Interface.Name != iface.Name {
+		t.Errorf("GetInterfaceByIP(%s): got interface %q, want %q", ip, got.Interface.Name, iface.Name)
 	}
 }
 
@@ -161,9 +193,9 @@ func TestGetInterfaceByMAC(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetInterfaceByMAC(%s): unexpected error: %v", iface.HardwareAddr, err)
 	}
-	if got.Name != iface.Name {
+	if got.Interface.Name != iface.Name {
 		t.Errorf("GetInterfaceByMAC(%s): got interface %q, want %q",
-			iface.HardwareAddr, got.Name, iface.Name)
+			iface.HardwareAddr, got.Interface.Name, iface.Name)
 	}
 }
 
@@ -178,8 +210,8 @@ func TestGetInterface_ByName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetInterface(%q) by name: unexpected error: %v", want.Name, err)
 	}
-	if got.Name != want.Name {
-		t.Errorf("GetInterface(%q): got %q", want.Name, got.Name)
+	if got.Interface.Name != want.Name {
+		t.Errorf("GetInterface(%q): got %q", want.Name, got.Interface.Name)
 	}
 }
 
@@ -197,8 +229,8 @@ func TestGetInterface_ByIP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetInterface(%q) by IP: unexpected error: %v", ipStr, err)
 	}
-	if got.Name != iface.Name {
-		t.Errorf("GetInterface(%q): got %q, want %q", ipStr, got.Name, iface.Name)
+	if got.Interface.Name != iface.Name {
+		t.Errorf("GetInterface(%q): got %q, want %q", ipStr, got.Interface.Name, iface.Name)
 	}
 }
 
@@ -215,8 +247,8 @@ func TestGetInterface_ByMAC(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetInterface(%q) by MAC: unexpected error: %v", macStr, err)
 	}
-	if got.Name != iface.Name {
-		t.Errorf("GetInterface(%q): got %q, want %q", macStr, got.Name, iface.Name)
+	if got.Interface.Name != iface.Name {
+		t.Errorf("GetInterface(%q): got %q, want %q", macStr, got.Interface.Name, iface.Name)
 	}
 }
 
@@ -270,7 +302,132 @@ func TestGetInterface_RepeatedCall(t *testing.T) {
 		t.Fatalf("second GetInterface(%q): %v", want.Name, err)
 	}
 
-	if got1.Name != got2.Name {
-		t.Errorf("inconsistent results: got %q then %q", got1.Name, got2.Name)
+	if got1.Interface.Name != got2.Interface.Name {
+		t.Errorf("inconsistent results: got %q then %q", got1.Interface.Name, got2.Interface.Name)
 	}
+}
+
+// ---- InterfaceInfo bind-address fields ---------------------------------------
+
+// TestGetInterfaceByIP_MatchedIPv4InInfo verifies that when an interface is
+// found by an IPv4 address, that exact IP is returned in InterfaceInfo.IPv4.
+func TestGetInterfaceByIP_MatchedIPv4InInfo(t *testing.T) {
+	t.Parallel()
+
+	iface := getTestInterface(t)
+	ip := firstRoutableIPv4(iface)
+	if ip == nil {
+		t.Skipf("interface %q has no routable IPv4 address – skipping", iface.Name)
+	}
+
+	info, err := GetInterfaceByIP(ip)
+	if err != nil {
+		t.Fatalf("GetInterfaceByIP(%s): unexpected error: %v", ip, err)
+	}
+	if !info.IPv4.Equal(ip) {
+		t.Errorf("InterfaceInfo.IPv4: got %s, want %s", info.IPv4, ip)
+	}
+}
+
+// TestGetInterfaceByIP_MatchedIPv6InInfo verifies that when an interface is
+// found by an IPv6 address, that exact IP is returned in InterfaceInfo.IPv6.
+func TestGetInterfaceByIP_MatchedIPv6InInfo(t *testing.T) {
+	t.Parallel()
+
+	iface := getTestInterface(t)
+	ip := firstRoutableIPv6(iface)
+	if ip == nil {
+		t.Skipf("interface %q has no routable IPv6 address – skipping", iface.Name)
+	}
+
+	info, err := GetInterfaceByIP(ip)
+	if err != nil {
+		t.Fatalf("GetInterfaceByIP(%s): unexpected error: %v", ip, err)
+	}
+	if !info.IPv6.Equal(ip) {
+		t.Errorf("InterfaceInfo.IPv6: got %s, want %s", info.IPv6, ip)
+	}
+}
+
+// TestGetInterfaceByName_IPv4InInfo verifies that when an interface is found
+// by name, InterfaceInfo.IPv4 is populated with the first routable IPv4 address.
+func TestGetInterfaceByName_IPv4InInfo(t *testing.T) {
+	t.Parallel()
+
+	iface := getTestInterface(t)
+	expectedIPv4 := firstRoutableIPv4(iface)
+	if expectedIPv4 == nil {
+		t.Skipf("interface %q has no routable IPv4 address – skipping", iface.Name)
+	}
+
+	info, err := GetInterfaceByName(iface.Name)
+	if err != nil {
+		t.Fatalf("GetInterfaceByName(%q): unexpected error: %v", iface.Name, err)
+	}
+	if !info.IPv4.Equal(expectedIPv4) {
+		t.Errorf("InterfaceInfo.IPv4: got %s, want %s", info.IPv4, expectedIPv4)
+	}
+}
+
+// ---- GetBestPhysicalDefaultInterfaces() -----------------------------------------------------
+
+// TestGetBestPhysicalDefaultInterfaces verifies that GetBestPhysicalDefaultInterfaces
+// returns at least one valid physical interface and that each non-nil result
+// has a routable address for its respective family.
+func TestGetBestPhysicalDefaultInterfaces(t *testing.T) {
+	t.Parallel()
+
+	result, err := GetBestPhysicalDefaultInterfaces()
+	if err != nil {
+		t.Fatalf("GetBestPhysicalDefaultInterfaces: unexpected error: %v", err)
+	}
+
+	// At least one family must be resolved on any connected machine.
+	if result.ForIPv4 == nil && result.ForIPv6 == nil {
+		t.Fatal("GetBestPhysicalDefaultInterfaces: both ForIPv4 and ForIPv6 are nil; expected at least one")
+	}
+
+	if result.ForIPv4 != nil && !hasRoutableIPv4(result.ForIPv4.Interface) {
+		t.Errorf("GetBestPhysicalDefaultInterfaces: ForIPv4 interface %q has no routable IPv4 address", result.ForIPv4.Interface.Name)
+	}
+
+	if result.ForIPv6 != nil && !hasRoutableIPv6(result.ForIPv6.Interface) {
+		t.Errorf("GetBestPhysicalDefaultInterfaces: ForIPv6 interface %q has no routable IPv6 address", result.ForIPv6.Interface.Name)
+	}
+}
+
+// TestGetBestPhysicalDefaultInterfaces_Repeated verifies that repeated calls
+// return consistent results (exercises the cache fast-path).
+func TestGetBestPhysicalDefaultInterfaces_Repeated(t *testing.T) {
+	t.Parallel()
+
+	first, err := GetBestPhysicalDefaultInterfaces()
+	if err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+	second, err := GetBestPhysicalDefaultInterfaces()
+	if err != nil {
+		t.Fatalf("second call: %v", err)
+	}
+
+	firstName4 := ifaceName(first.ForIPv4)
+	firstName6 := ifaceName(first.ForIPv6)
+	secondName4 := ifaceName(second.ForIPv4)
+	secondName6 := ifaceName(second.ForIPv6)
+
+	if firstName4 != secondName4 {
+		t.Errorf("IPv4: inconsistent results across calls: %q then %q", firstName4, secondName4)
+	}
+	if firstName6 != secondName6 {
+		t.Errorf("IPv6: inconsistent results across calls: %q then %q", firstName6, secondName6)
+	}
+}
+
+// ifaceName returns the interface name or "<nil>" for a nil InterfaceInfo.
+// Used to produce readable test failure messages.
+func ifaceName(info *InterfaceInfo) string {
+	if info == nil {
+		return "<nil>"
+	}
+	return info.Interface.Name
 }
