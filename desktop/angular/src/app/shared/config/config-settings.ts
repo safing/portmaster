@@ -427,11 +427,16 @@ export class ConfigSettingsViewComponent
                   (s) => s.Key === subsys.ToggleOptionKey
                 );
                 if (!!toggleOption) {
-                  if (
-                    (toggleOption.Value !== undefined && !toggleOption.Value) ||
-                    (toggleOption.Value === undefined &&
-                      !toggleOption.DefaultValue)
-                  ) {
+                  // Determine the effective enabled state: per-app value takes
+                  // priority, then the globally-configured value (GlobalDefault),
+                  // and finally the hardcoded DefaultValue.
+                  const effectiveEnabled =
+                    toggleOption.Value !== undefined
+                      ? !!toggleOption.Value
+                      : toggleOption.GlobalDefault !== undefined
+                        ? !!toggleOption.GlobalDefault
+                        : !!toggleOption.DefaultValue;
+                  if (!effectiveEnabled) {
                     subsys.isDisabled = true;
 
                     // remove all settings for all subsystem categories

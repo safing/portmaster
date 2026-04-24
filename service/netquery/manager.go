@@ -226,6 +226,10 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		c.ExitNode = &exitNode
 	}
 
+	if conn.SplitTunContext != nil {
+		extraData["split_tun"] = conn.SplitTunContext
+	}
+
 	if conn.DNSContext != nil {
 		extraData["dns"] = conn.DNSContext
 	}

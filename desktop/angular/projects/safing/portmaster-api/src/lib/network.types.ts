@@ -210,6 +210,13 @@ export interface TunnelContext {
   RoutingAlg: 'default';
 }
 
+export interface SplitTunContext {
+  // Interface is the name of the network interface the connection is bound to.
+  Interface: string;
+  // IP is the IP address used to bind the connection to the interface.
+  IP: string;
+}
+
 export interface GeoIPInfo {
   IP: string;
   Country: string;

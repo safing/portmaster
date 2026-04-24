@@ -141,6 +141,19 @@ var (
 	cfgOptionExitHubPolicyOrder = 147
 
 	// Setting "DNS Exit Node Rules" at order 148.
+
+	// Split Tunnel.
+	CfgOptionSplitTunUseKey   = "splittun/use"
+	cfgOptionSplitTunUse      config.BoolOption
+	cfgOptionSplitTunUseOrder = 210
+
+	CfgOptionSplitTunInterfaceKey   = "splittun/networkInterface"
+	cfgOptionSplitTunInterface      config.StringOption
+	cfgOptionSplitTunInterfaceOrder = 211
+
+	CfgOptionSplitTunUsagePolicyKey   = "splittun/usagePolicy"
+	cfgOptionSplitTunUsagePolicy      config.StringArrayOption
+	cfgOptionSplitTunUsagePolicyOrder = 212
 )
 
 var (
@@ -818,6 +831,93 @@ By default, the Portmaster tries to choose the node closest to the destination a
 	}
 	cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(CfgOptionRoutingAlgorithmKey, DefaultRoutingProfileID)
 	cfgStringOptions[CfgOptionRoutingAlgorithmKey] = cfgOptionRoutingAlgorithm
+
+	//
+	// Split Tunnel
+	//
+
+	// Split Tunnel: Use
+	err = config.Register(&config.Option{
+		Name: "Use Split Tunnel",
+		Key:  CfgOptionSplitTunUseKey,
+		Description: `Route specific traffic through a different network interface, bypassing default system routing (useful for avoiding VPNs for certain apps).
+
+Important: SPN overrides Split Tunnel when enabled, so this option has no effect on SPN connections.`,
+		OptType:      config.OptTypeBool,
+		DefaultValue: false,
+		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation: true,
+			config.DisplayOrderAnnotation:   cfgOptionSplitTunUseOrder,
+			config.CategoryAnnotation:       "General",
+		},
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionSplitTunUse = config.Concurrent.GetAsBool(CfgOptionSplitTunUseKey, false)
+	cfgBoolOptions[CfgOptionSplitTunUseKey] = cfgOptionSplitTunUse
+
+	// Split Tunnel: Network Interface
+	err = config.Register(&config.Option{
+		Name: "Network Interface",
+		Key:  CfgOptionSplitTunInterfaceKey,
+		Description: `Specify the network interface to route Split Tunnel traffic through. You can define it by:
+- Interface name: "Ethernet", "Wi-Fi", "wlan0", etc.
+- Interface IP address: "192.168.1.1", "10.0.0.1", etc.
+- Interface MAC address: "00:1A:2B:3C:4D:5E", "01:23:45:67:89:AB", etc.
+
+Leave empty or set to 'auto' to let Portmaster detect the physical network interface and ignore virtual VPN interfaces. This helps bypass VPN tunnels. For better reliability, you can specify the interface manually if 'auto' does not work as expected.
+
+Important: The connection will be dropped if the network interface cannot be detected or becomes unavailable.
+
+Important: SPN overrides Split Tunnel when enabled, so this option has no effect on SPN connections.`,
+		Sensitive:    true,
+		OptType:      config.OptTypeString,
+		DefaultValue: "auto",
+		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation: true,
+			config.DisplayOrderAnnotation:   cfgOptionSplitTunInterfaceOrder,
+			config.CategoryAnnotation:       "General",
+		},
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionSplitTunInterface = config.Concurrent.GetAsString(CfgOptionSplitTunInterfaceKey, "")
+	cfgStringOptions[CfgOptionSplitTunInterfaceKey] = cfgOptionSplitTunInterface
+
+	// Split Tunnel: Rules
+	splitTunRulesVerdictNames := map[string]string{
+		"-": "Exclude", // Default.
+		"+": "Allow",
+	}
+
+	err = config.Register(&config.Option{
+		Name: "Split Tunnel Rules",
+		Key:  CfgOptionSplitTunUsagePolicyKey,
+		Description: `Customize which websites should or should not be routed through the Split Tunnel. Only active if "Use Split Tunnel" is enabled.
+		
+Important: SPN overrides Split Tunnel when enabled, so this option has no effect on SPN connections.`,
+		Help:         rulesHelp,
+		Sensitive:    true,
+		OptType:      config.OptTypeStringArray,
+		DefaultValue: []string{},
+		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation:              true,
+			config.StackableAnnotation:                   true,
+			config.CategoryAnnotation:                    "General",
+			config.DisplayOrderAnnotation:                cfgOptionSplitTunUsagePolicyOrder,
+			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
+			endpoints.EndpointListVerdictNamesAnnotation: splitTunRulesVerdictNames,
+		},
+		ValidationRegex: endpoints.ListEntryValidationRegex,
+		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionSplitTunUsagePolicy = config.Concurrent.GetAsStringArray(CfgOptionSplitTunUsagePolicyKey, []string{})
+	cfgStringArrayOptions[CfgOptionSplitTunUsagePolicyKey] = cfgOptionSplitTunUsagePolicy
 
 	return nil
 }

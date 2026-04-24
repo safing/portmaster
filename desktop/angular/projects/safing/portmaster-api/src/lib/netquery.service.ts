@@ -4,7 +4,7 @@ import { Observable, forkJoin, of } from "rxjs";
 import { catchError, map, mergeMap } from "rxjs/operators";
 import { AppProfileService } from "./app-profile.service";
 import { AppProfile } from "./app-profile.types";
-import { DNSContext, IPScope, Reason, TLSContext, TunnelContext, Verdict } from "./network.types";
+import { DNSContext, IPScope, Reason, SplitTunContext, TLSContext, TunnelContext, Verdict } from "./network.types";
 import { PORTMASTER_HTTP_API_ENDPOINT, PortapiService } from "./portapi.service";
 import { Container } from "postcss";
 
@@ -162,6 +162,7 @@ export interface NetqueryConnection {
     blockedEntities?: string[];
     reason?: Reason;
     tunnel?: TunnelContext;
+    split_tun?: SplitTunContext;
     dns?: DNSContext;
     tls?: TLSContext;
   };

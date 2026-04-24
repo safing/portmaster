@@ -255,6 +255,17 @@
     </ng-container>
   </div>
 
+  <div *ngIf="!!conn.extra_data?.split_tun">
+    <h3 class="text-primary text-xxs">Split Tunnel</h3>
+    <div *ngIf="conn.extra_data?.split_tun as splitTun" class="meta">
+      <span class="inline-flex items-center gap-1 flex-wrap">
+        <span class="text-secondary">This connection is forcibly routed through interface</span>
+        <span>{{ splitTun.Interface }}</span>
+        <span class="text-secondary">({{ splitTun.IP }})</span>
+      </span>      
+    </div>
+  </div>
+
   <div *ngIf="!!bwData.length" class="col-span-3 block border-t border-gray-400 py-2">
     <h2 class="text-secondary uppercase w-full text-center text-xxs">Data Usage</h2>
     <sfng-netquery-line-chart class="block w-full !h-36" [data]="bwData" [config]="{

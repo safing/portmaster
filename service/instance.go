@@ -35,6 +35,7 @@ import (
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/service/resolver"
+	"github.com/safing/portmaster/service/splittun"
 	"github.com/safing/portmaster/service/status"
 	"github.com/safing/portmaster/service/sync"
 	"github.com/safing/portmaster/service/ui"
@@ -101,6 +102,8 @@ type Instance struct {
 	sync          *sync.Sync
 	control       *control.Control
 	interop       *interop.Interoperability
+
+	splittun *splittun.SplitTunModule
 
 	access *access.Access
 
@@ -283,6 +286,11 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		return instance, fmt.Errorf("create access module: %w", err)
 	}
 
+	instance.splittun, err = splittun.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create splittun module: %w", err)
+	}
+
 	// SPN modules
 	instance.cabin, err = cabin.New(instance)
 	if err != nil {
@@ -354,6 +362,8 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.resolver,
 		instance.filterLists,
 		instance.customlist,
+
+		instance.splittun,
 
 		instance.interop, // required to start before interception
 

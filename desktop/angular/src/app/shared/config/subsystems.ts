@@ -7,7 +7,7 @@ export interface SubsystemWithExpertise extends Subsystem {
   hasUserDefinedValues: boolean;
 }
 
-export var subsystems : SubsystemWithExpertise[] = [
+export const subsystems : SubsystemWithExpertise[] = [
   {
     minimumExpertise: ExpertiseLevelNumber.developer,
     isDisabled: false,
@@ -268,5 +268,30 @@ export var subsystems : SubsystemWithExpertise[] = [
       Deleted: 0,
       Key: "runtime:subsystems/spn"
     }
+  },
+  {
+  minimumExpertise: ExpertiseLevelNumber.user,  // User level since UI is user-facing
+  isDisabled: false,
+  hasUserDefinedValues: false,
+  ID: "splittun",
+  Name: "Split Tunnel",
+  Description: "Route traffic through specified interface to bypass default routing",
+  Modules: [
+    {
+      Name: "splittun",
+      Enabled: true
+    }
+  ],
+  ToggleOptionKey: "splittun/use",  // Links to the boolean enable/disable option
+  ExpertiseLevel: "user",
+  ReleaseLevel: 0,
+  ConfigKeySpace: "config:splittun/",
+  _meta: {
+    Created: 0,
+    Modified: 0,
+    Expires: 0,
+    Deleted: 0,
+    Key: "runtime:subsystems/splittun"
   }
+}
 ];

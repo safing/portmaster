@@ -56,6 +56,15 @@ type ProcessContext struct {
 	Source string
 }
 
+// SplitTunContext holds additional information about the split tunnel
+// that a connection is routed through.
+type SplitTunContext struct {
+	// Interface is the name of the network interface the connection is bound to.
+	Interface string
+	// IP is the IP address used to bind the connection to the interface.
+	IP net.IP
+}
+
 // ConnectionType is a type of connection.
 type ConnectionType int8
 
@@ -170,6 +179,10 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 		GetExitNodeID() string
 		StopTunnel() error
 	}
+	// SplitTunContext holds additional information about the split tunnel
+	// that this connection is routed through. It is set when the connection
+	// verdict is VerdictRerouteToSplitTun and the interface has been resolved.
+	SplitTunContext *SplitTunContext
 
 	// HistoryEnabled is set to true when the connection should be persisted
 	// in the history database.
