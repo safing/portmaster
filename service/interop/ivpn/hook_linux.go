@@ -32,18 +32,18 @@ const (
 	spnSlitTunRulePriority  = "717"
 )
 
-func (i *InteropIvpn) spnConnectingHook(wc *mgr.WorkerCtx, homeHub hub.Announcement) (cancel bool, err error) {
-	err = i.ensureWgSpnCompatRule(wc)
+func (i *InteropIvpn) spnConnectingHook(wc *mgr.WorkerCtx, homeHub hub.Announcement) (cancel bool, retErr error) {
+	err := i.ensureWgSpnCompatRule(wc)
 	if err != nil {
+		// Could happen, for example, if IVPN Client is paused
 		wc.Warn(fmt.Sprintf("IVPN: failed to ensure WireGuard compatibility rule: %v", err))
-		return false, err
 	}
 
 	err = i.ensureSpnHubBypassVpnRoutes(wc, &homeHub)
 	if err != nil {
 		wc.Warn(fmt.Sprintf("IVPN: failed to ensure VPN and SPN tunnel routes: %v", err))
 	}
-	return false, err
+	return false, nil
 }
 
 func (i *InteropIvpn) ensureSPNCompatibility(wc *mgr.WorkerCtx) error {
