@@ -33,7 +33,17 @@ const (
 )
 
 func (i *InteropIvpn) spnConnectingHook(wc *mgr.WorkerCtx, homeHub hub.Announcement) (cancel bool, err error) {
-	return false, i.ensureSpnHubBypassVpnRoutes(wc, &homeHub)
+	err = i.ensureWgSpnCompatRule(wc)
+	if err != nil {
+		wc.Warn(fmt.Sprintf("IVPN: failed to ensure WireGuard compatibility rule: %v", err))
+		return false, err
+	}
+
+	err = i.ensureSpnHubBypassVpnRoutes(wc, &homeHub)
+	if err != nil {
+		wc.Warn(fmt.Sprintf("IVPN: failed to ensure VPN and SPN tunnel routes: %v", err))
+	}
+	return false, err
 }
 
 func (i *InteropIvpn) ensureSPNCompatibility(wc *mgr.WorkerCtx) error {
@@ -201,7 +211,7 @@ func (i *InteropIvpn) ensureSpnHubBypassVpnRoutes(wc *mgr.WorkerCtx, hubInfo *hu
 
 	ipPath, _ := exec.LookPath("ip")
 	if ipPath == "" {
-		return fmt.Errorf("failed to ensure VPN and SPN tunnel routes: ip command not found")
+		return fmt.Errorf("ip command not found")
 	}
 
 	deleteRule := func(family, destination string) {
@@ -244,7 +254,8 @@ func (i *InteropIvpn) ensureSpnHubBypassVpnRoutes(wc *mgr.WorkerCtx, hubInfo *hu
 	// - the VPN connection gateway (interface) must be ignored
 	var gw *netenv.GatewayInfo = nil
 	gateways := netenv.GatewaysInfo()
-	for _, g := range gateways {
+	for idx := range gateways {
+		g := &gateways[idx]
 		if g.Mask == nil || g.IP == nil || g.Interface == "" {
 			continue
 		}
@@ -256,10 +267,14 @@ func (i *InteropIvpn) ensureSpnHubBypassVpnRoutes(wc *mgr.WorkerCtx, hubInfo *hu
 			}
 			// in case more than 1 default gateway exists, we can not be sure which one is correct
 			if gw != nil {
-				return nil
+				return fmt.Errorf("multiple default gateways found, unable to determine correct one")
 			}
-			gw = &g
+			gw = g
 		}
+	}
+
+	if gw == nil {
+		return fmt.Errorf("failed to find default gateway for SPN hub bypass route")
 	}
 
 	// Initialize route table
