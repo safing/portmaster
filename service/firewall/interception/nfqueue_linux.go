@@ -85,12 +85,14 @@ func init() {
 		"filter PORTMASTER-FILTER -m mark --mark 1711 -p icmp -j RETURN",
 		"filter PORTMASTER-FILTER -m mark --mark 1711 -j REJECT --reject-with icmp-admin-prohibited",
 		"filter PORTMASTER-FILTER -m mark --mark 1712 -j DROP",
-		"filter PORTMASTER-FILTER -m mark --mark 1717 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1717 -j RETURN", // informational (non-functional) RETURN verdicts at the end of the chain
+		"filter PORTMASTER-FILTER -m mark --mark 1719 -j RETURN", // informational (non-functional) RETURN verdicts at the end of the chain
 
 		"nat PORTMASTER-REDIRECT -m mark --mark 1799 -p udp -j DNAT --to 127.0.0.17:53",
 		"nat PORTMASTER-REDIRECT -m mark --mark 1717 -p tcp -j DNAT --to 127.0.0.17:717",
 		"nat PORTMASTER-REDIRECT -m mark --mark 1717 -p udp -j DNAT --to 127.0.0.17:717",
-		// "nat PORTMASTER-REDIRECT -m mark --mark 1717 ! -p tcp ! -p udp -j DNAT --to 127.0.0.17",
+		"nat PORTMASTER-REDIRECT -m mark --mark 1719 -p tcp -j DNAT --to 127.0.0.17:719",
+		"nat PORTMASTER-REDIRECT -m mark --mark 1719 -p udp -j DNAT --to 127.0.0.17:719",
 	}
 
 	v4once = []string{
@@ -132,12 +134,14 @@ func init() {
 		"filter PORTMASTER-FILTER -m mark --mark 1711 -p icmpv6 -j RETURN",
 		"filter PORTMASTER-FILTER -m mark --mark 1711 -j REJECT --reject-with icmp6-adm-prohibited",
 		"filter PORTMASTER-FILTER -m mark --mark 1712 -j DROP",
-		"filter PORTMASTER-FILTER -m mark --mark 1717 -j RETURN",
+		"filter PORTMASTER-FILTER -m mark --mark 1717 -j RETURN", // informational (non-functional) RETURN verdicts at the end of the chain
+		"filter PORTMASTER-FILTER -m mark --mark 1719 -j RETURN", // informational (non-functional) RETURN verdicts at the end of the chain
 
 		"nat PORTMASTER-REDIRECT -m mark --mark 1799 -p udp -j DNAT --to [::1]:53",
 		"nat PORTMASTER-REDIRECT -m mark --mark 1717 -p tcp -j DNAT --to [::1]:717",
 		"nat PORTMASTER-REDIRECT -m mark --mark 1717 -p udp -j DNAT --to [::1]:717",
-		// "nat PORTMASTER-REDIRECT -m mark --mark 1717 ! -p tcp ! -p udp -j DNAT --to [::1]",
+		"nat PORTMASTER-REDIRECT -m mark --mark 1719 -p tcp -j DNAT --to [::1]:719",
+		"nat PORTMASTER-REDIRECT -m mark --mark 1719 -p udp -j DNAT --to [::1]:719",
 	}
 
 	v6once = []string{
