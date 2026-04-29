@@ -108,9 +108,8 @@ func refreshIfaceCache() error {
 				if ip4 := ip.To4(); ip4 != nil {
 					ip = ip4
 				}
-				// Skip link-local addresses (169.254.x.x / fe80::) — they are
-				// non-routable and cannot be used for tunneling to remote hosts.
-				if netutils.GetIPScope(ip) == netutils.LinkLocal {
+				// Keep only routable unicast addresses (site-local or global).
+				if !isRoutableUnicastIP(ip) {
 					continue
 				}
 				entry.addrs = append(entry.addrs, ip)
@@ -319,6 +318,16 @@ func normalizeIP(ip net.IP) net.IP {
 	return ip
 }
 
+// isRoutableUnicastIP reports whether ip is a routable unicast address useful
+// for real network communication: site-local (RFC 1918 / ULA) or globally
+// routable. All other scopes — link-local, loopback, unspecified, multicast,
+// and documentation/test ranges — are excluded.
+// ip must already be in its canonical form (4-byte for IPv4, see normalizeIP).
+func isRoutableUnicastIP(ip net.IP) bool {
+	scope := netutils.GetIPScope(ip)
+	return scope == netutils.SiteLocal || scope == netutils.Global
+}
+
 // searchIfaceByIP returns the cache entry whose address list contains ip, or nil.
 // The caller must hold ifaceCacheLock for reading or writing.
 func searchIfaceByIP(ip net.IP) *cachedNetInterface {
@@ -473,7 +482,7 @@ func interfaceToInfo(iface *net.Interface) *InterfaceInfo {
 
 // buildInterfaceInfoDirect constructs an InterfaceInfo by calling iface.Addrs()
 // directly, without using the cache. Used as a fallback when the cache is
-// unavailable. It mirrors the address-selection logic of refreshIfaceCache.
+// unavailable. Uses the same isRoutableUnicastIP predicate as refreshIfaceCache.
 func buildInterfaceInfoDirect(iface *net.Interface) *InterfaceInfo {
 	info := &InterfaceInfo{Interface: iface}
 	addrs, err := iface.Addrs()
@@ -491,12 +500,19 @@ func buildInterfaceInfoDirect(iface *net.Interface) *InterfaceInfo {
 		if ip == nil {
 			continue
 		}
+		// Normalize to 4-byte form so isRoutableUnicastIP and family checks are consistent.
 		if ip4 := ip.To4(); ip4 != nil {
-			if info.IPv4 == nil && !ip4.IsUnspecified() && !ip4.IsLoopback() && !ip4.IsLinkLocalUnicast() {
-				info.IPv4 = ip4
+			ip = ip4
+		}
+		if !isRoutableUnicastIP(ip) {
+			continue
+		}
+		if ip.To4() != nil {
+			if info.IPv4 == nil {
+				info.IPv4 = ip
 			}
 		} else {
-			if info.IPv6 == nil && !ip.IsUnspecified() && !ip.IsLoopback() && !ip.IsLinkLocalUnicast() {
+			if info.IPv6 == nil {
 				info.IPv6 = ip
 			}
 		}
@@ -532,7 +548,7 @@ func hasRoutableIPv4(iface *net.Interface) bool {
 		if ip4 == nil {
 			continue
 		}
-		if !ip4.IsUnspecified() && !ip4.IsLoopback() && !ip4.IsLinkLocalUnicast() {
+		if isRoutableUnicastIP(ip4) {
 			return true
 		}
 	}
@@ -559,7 +575,7 @@ func hasRoutableIPv6(iface *net.Interface) bool {
 		if ip == nil || ip.To4() != nil {
 			continue
 		}
-		if !ip.IsUnspecified() && !ip.IsLoopback() && !ip.IsLinkLocalUnicast() {
+		if isRoutableUnicastIP(ip) {
 			return true
 		}
 	}

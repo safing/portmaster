@@ -7,7 +7,8 @@ import (
 	"github.com/safing/portmaster/service/network/netutils"
 )
 
-// isRoutableIP returns true for IPs that the cache keeps: non-nil, non-link-local.
+// isRoutableIP returns true for IPs that the cache keeps: site-local or global.
+// Matches the isRoutableUnicastIP predicate used in production code.
 func isRoutableIP(ip net.IP) bool {
 	if ip == nil {
 		return false
@@ -15,7 +16,8 @@ func isRoutableIP(ip net.IP) bool {
 	if ip4 := ip.To4(); ip4 != nil {
 		ip = ip4
 	}
-	return netutils.GetIPScope(ip) != netutils.LinkLocal
+	scope := netutils.GetIPScope(ip)
+	return scope == netutils.SiteLocal || scope == netutils.Global
 }
 
 // getTestInterface picks the first network interface that matches the same
@@ -369,6 +371,35 @@ func TestGetInterfaceByName_IPv4InInfo(t *testing.T) {
 	}
 }
 
+// ---- Helper functions for logging -------------------------------------------------------
+
+// logInterfaceInfo logs IPv4 and IPv6 interface info from PhysicalDefaultInterfaces.
+func logInterfaceInfo(t *testing.T, label string, result PhysicalDefaultInterfaces) {
+	logIP := func(version string, info *InterfaceInfo) {
+		if info == nil {
+			t.Logf("%s - %s: <nil>", label, version)
+			return
+		}
+
+		var ip net.IP
+		if version == "IPv4" {
+			ip = info.IPv4
+		} else {
+			ip = info.IPv6
+		}
+
+		name := info.Interface.Name
+		if ip != nil {
+			t.Logf("%s - %s: %s (%s)", label, version, name, ip)
+		} else {
+			t.Logf("%s - %s: %s", label, version, name)
+		}
+	}
+
+	logIP("IPv4", result.ForIPv4)
+	logIP("IPv6", result.ForIPv6)
+}
+
 // ---- GetBestPhysicalDefaultInterfaces() -----------------------------------------------------
 
 // TestGetBestPhysicalDefaultInterfaces verifies that GetBestPhysicalDefaultInterfaces
@@ -381,6 +412,9 @@ func TestGetBestPhysicalDefaultInterfaces(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetBestPhysicalDefaultInterfaces: unexpected error: %v", err)
 	}
+
+	// Print found interfaces
+	logInterfaceInfo(t, "Result", PhysicalDefaultInterfaces{ForIPv4: result.ForIPv4, ForIPv6: result.ForIPv6})
 
 	// At least one family must be resolved on any connected machine.
 	if result.ForIPv4 == nil && result.ForIPv6 == nil {
@@ -414,6 +448,10 @@ func TestGetBestPhysicalDefaultInterfaces_Repeated(t *testing.T) {
 	firstName6 := ifaceName(first.ForIPv6)
 	secondName4 := ifaceName(second.ForIPv4)
 	secondName6 := ifaceName(second.ForIPv6)
+
+	// Print found interfaces from both calls
+	logInterfaceInfo(t, "First call", first)
+	logInterfaceInfo(t, "Second call", second)
 
 	if firstName4 != secondName4 {
 		t.Errorf("IPv4: inconsistent results across calls: %q then %q", firstName4, secondName4)
