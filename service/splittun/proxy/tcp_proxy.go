@@ -187,7 +187,7 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 	defer clientConn.Close()
 
 	// Determine upstream destination.
-	destIP, destPort, localAddr, extraInfo, err := p.decider(p.listener.Addr(), clientConn.RemoteAddr())
+	destIP, destPort, binding, extraInfo, err := p.decider(p.listener.Addr(), clientConn.RemoteAddr())
 	if err != nil {
 		p.log.Warnf("tcp proxy: decider rejected %s: %v", clientConn.RemoteAddr(), err)
 		return
@@ -216,8 +216,11 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 
 	// DialContext is cancelled immediately if the proxy is shut down.
 	dialer := net.Dialer{Timeout: p.cfg.DialTimeout}
-	if localAddr != nil {
-		dialer.LocalAddr = &net.TCPAddr{IP: localAddr}
+	if binding != nil && binding.IP != nil {
+		dialer.LocalAddr = &net.TCPAddr{IP: binding.IP}
+	}
+	if binding != nil {
+		applyBindToDevice(&dialer, binding.Interface)
 	}
 	upstreamConn, err := dialer.DialContext(p.shutdownCtx, p.network, destAddr)
 	if err != nil {

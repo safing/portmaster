@@ -10,20 +10,33 @@ import (
 
 // ─── Public API types ────────────────────────────────────────────────────────
 
+// LocalBinding carries the local-side binding parameters for an outbound proxy
+// connection.  Both fields are optional and may be set independently.
+type LocalBinding struct {
+	// IP is the local source address to bind the outgoing socket to.
+	// If nil, the OS selects an appropriate source address.
+	IP net.IP
+
+	// Interface is the name of the network interface (e.g. "eth0") to bind
+	// the outgoing socket to via SO_BINDTODEVICE (Linux only).
+	// An empty string disables interface-level binding.
+	Interface string
+}
+
 // DeciderFunc is called once per new session to determine the upstream
-// destination address, the optional local address to bind the outgoing
-// connection to, and an optional extra context object.
+// destination and optional local binding parameters for the outgoing socket.
 //
-// local is the proxy's listen address; peer is the connecting client's
-// address.
+// local is the proxy's listen address; peer is the connecting client's address.
 //
 // It returns:
-//   - remoteIP: required upstream IP address
-//   - remotePort: required upstream port
-//   - localIP: optional local IP to use as the source address (nil = OS chooses)
-//   - extraInfo: optional user-defined object attached to the session context
-//   - err: non-nil rejects the session
-type DeciderFunc func(local net.Addr, peer net.Addr) (remoteIP net.IP, remotePort uint16, localIP net.IP, extraInfo any, err error)
+//   - remoteIP: required upstream IP address.
+//   - remotePort: required upstream port.
+//   - binding: optional local binding; nil lets the OS choose freely.
+//     Set binding.IP to pin the source address, binding.Interface to restrict
+//     the socket to a specific network device (Linux only).
+//   - extraInfo: optional caller-defined value attached to the session's ConnContext.
+//   - err: non-nil rejects the session without dialling upstream.
+type DeciderFunc func(local net.Addr, peer net.Addr) (remoteIP net.IP, remotePort uint16, binding *LocalBinding, extraInfo any, err error)
 
 // Logger is the minimal structured logging interface expected by the proxies.
 // Pass nil to disable all logging.

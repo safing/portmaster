@@ -12,6 +12,7 @@ shutdown.
 |---------|-----|-----|
 | Routing via `DeciderFunc` | ✓ | ✓ |
 | Optional source-address binding | ✓ | ✓ |
+| Interface binding via `SO_BINDTODEVICE` (Linux) | ✓ | ✓ |
 | Session tracking + metrics | ✓ | ✓ |
 | Pooled copy buffers | ✓ | ✓ |
 | Graceful shutdown | ✓ | ✓ |
@@ -27,15 +28,37 @@ shutdown.
 ### Types
 
 ```go
+// LocalBinding carries the local-side binding parameters for an outbound proxy
+// connection.  Both fields are optional and may be set independently.
+type LocalBinding struct {
+    // IP is the local source address to bind the outgoing socket to.
+    // If nil, the OS selects an appropriate source address.
+    IP net.IP
+
+    // Interface is the name of the network interface (e.g. "eth0") to bind
+    // the outgoing socket to via SO_BINDTODEVICE (Linux only).
+    // An empty string disables interface-level binding.
+    Interface string
+}
+
 // DeciderFunc is called once per new session to determine the upstream
-// destination and an optional local IP to bind the outgoing connection to.
+// destination and optional local binding parameters for the outgoing socket.
+//
 // local is the proxy's listen address; peer is the connecting client's address.
-// Return a non-nil error to reject the session.
+//
+// It returns:
+//   - remoteIP:   required upstream IP address.
+//   - remotePort: required upstream port.
+//   - binding:    optional local binding; nil lets the OS choose freely.
+//                 Set binding.IP to pin the source address, binding.Interface
+//                 to restrict the socket to a specific network device (Linux).
+//   - extraInfo:  optional caller-defined value attached to the session's ConnContext.
+//   - err:        non-nil rejects the session without dialling upstream.
 type DeciderFunc func(local net.Addr, peer net.Addr) (
     remoteIP   net.IP,
     remotePort uint16,
-    localIP    net.IP, // source IP to pin, or nil for OS default
-    extraInfo  any,    // optional value attached to the session's ConnContext
+    binding    *LocalBinding,
+    extraInfo  any,
     err        error,
 )
 
@@ -55,7 +78,6 @@ type ConnContext struct {
     BytesOut   atomic.Uint64 // bytes forwarded client → upstream
     PacketsIn  atomic.Uint64 // UDP datagrams upstream → client
     PacketsOut atomic.Uint64 // UDP datagrams client → upstream
-    // ...
 }
 
 func (c *ConnContext) ID()        uint64
@@ -168,7 +190,7 @@ func (p *UDPProxy) Metrics() Metrics
 ### Transparent TCP proxy (always route to a fixed backend)
 
 ```go
-decider := func(local, peer net.Addr) (net.IP, uint16, net.IP, any, error) {
+decider := func(local, peer net.Addr) (net.IP, uint16, *proxy.LocalBinding, any, error) {
     return net.ParseIP("192.168.1.10"), 8080, nil, nil, nil
 }
 
@@ -187,16 +209,20 @@ defer cancel()
 p.Shutdown(ctx)
 ```
 
-### Per-client routing with source-address binding (split tunnelling)
+### Per-client routing with source-address and interface binding (split tunnelling)
 
 ```go
-decider := func(local, peer net.Addr) (net.IP, uint16, net.IP, any, error) {
+decider := func(local, peer net.Addr) (net.IP, uint16, *proxy.LocalBinding, any, error) {
     host, _, _ := net.SplitHostPort(peer.String())
     if isTunnelledIP(host) {
-        // Route through VPN interface, binding source to its local address.
-        return vpnGatewayIP, 443, net.ParseIP("10.0.0.1"), nil, nil
+        // Route through the physical interface, binding the source address and
+        // restricting the socket to that device so traffic bypasses the VPN.
+        return directGatewayIP, 443, &proxy.LocalBinding{
+            IP:        net.ParseIP("192.168.1.5"), // physical interface address
+            Interface: "eth0",                     // Linux: SO_BINDTODEVICE
+        }, nil, nil
     }
-    return directGatewayIP, 443, nil, nil, nil
+    return vpnGatewayIP, 443, nil, nil, nil
 }
 
 p, err := proxy.NewTCPProxy(":443", "tcp4", decider, myLogger)
@@ -236,10 +262,11 @@ go test -run='^$' -bench=BenchmarkUDP -benchmem # UDP only
 * **Pooled buffers** — TCP pipes use a `sync.Pool` of 32 KiB `[]byte` slices;
   the UDP path uses a separate pool of 64 KiB slices (maximum UDP payload).
   Both avoid per-transfer heap allocations in steady state.
-* **Goroutine budget** — the TCP proxy spawns two goroutines per session (one
-  per direction) plus a shutdown watchdog; the UDP proxy spawns one goroutine
-  per session (upstream reader) plus a shared cleanup loop.  All goroutines are
-  tracked via a `sync.WaitGroup`.
+* **Goroutine budget** — the TCP proxy spawns four goroutines per session: one
+  session handler, two bidirectional copy goroutines (one per direction), and
+  one watchdog; the UDP proxy spawns one goroutine per session (upstream
+  reader) plus two shared goroutines (inbound read loop and idle cleanup loop).
+  All goroutines are tracked via a `sync.WaitGroup`.
 * **Half-close** — when one TCP peer closes its write side, the proxy attempts
   `CloseWrite` on the upstream, enabling proper FIN propagation.
 * **NAT session table** — UDP sessions are keyed by the client's `"ip:port"`
@@ -253,3 +280,10 @@ go test -run='^$' -bench=BenchmarkUDP -benchmem # UDP only
 * **Context propagation** — the proxy's top-level `context.Context` is the
   parent of every session context, so a single `Shutdown` call cascades to
   all live sessions.
+* **Interface binding (Linux)** — when `LocalBinding.Interface` is non-empty,
+  `SO_BINDTODEVICE` is set on the outgoing socket via `net.Dialer.Control`
+  before `connect(2)`.  This forces the kernel to route the connection through
+  the named device regardless of the routing table, which is required for
+  split-tunnelling when a default VPN route would otherwise capture the traffic.
+  On non-Linux platforms the field is ignored (no-op).
+

@@ -12,7 +12,9 @@ import (
 type udpSession struct {
 	connCtx *ConnContext
 	// remote is the per-session UDP socket dialled to the upstream.
-	remote *net.UDPConn
+	// net.Conn is used so platform-specific dialers (e.g. SO_BINDTODEVICE on
+	// Linux) can return different concrete types without changing the callers.
+	remote net.Conn
 }
 
 // UDPProxy is a Layer-4 UDP proxy.  It uses a single listening UDPConn and
@@ -221,7 +223,7 @@ func (p *UDPProxy) handlePacket(clientAddr *net.UDPAddr, data []byte) {
 		return
 	}
 
-	destIP, destPort, localAddr, extraInfo, err := p.decider(p.conn.LocalAddr(), clientAddr)
+	destIP, destPort, binding, extraInfo, err := p.decider(p.conn.LocalAddr(), clientAddr)
 	if err != nil {
 		p.log.Warnf("udp proxy: decider rejected %s: %v", key, err)
 		return
@@ -234,11 +236,14 @@ func (p *UDPProxy) handlePacket(clientAddr *net.UDPAddr, data []byte) {
 	p.cache.add(connCtx)
 
 	remoteAddr := &net.UDPAddr{IP: destIP, Port: int(destPort)}
-	var localUDPAddr *net.UDPAddr
-	if localAddr != nil {
-		localUDPAddr = &net.UDPAddr{IP: localAddr}
+	d := net.Dialer{}
+	if binding != nil && binding.IP != nil {
+		d.LocalAddr = &net.UDPAddr{IP: binding.IP}
 	}
-	remoteConn, err := net.DialUDP("udp", localUDPAddr, remoteAddr)
+	if binding != nil {
+		applyBindToDevice(&d, binding.Interface)
+	}
+	remoteConn, err := d.DialContext(sessCtx, "udp", remoteAddr.String())
 	if err != nil {
 		p.cache.remove(connCtx)
 		cancel()
