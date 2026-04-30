@@ -33,7 +33,7 @@ const (
 )
 
 func (i *InteropIvpn) spnConnectingHook(wc *mgr.WorkerCtx, homeHub hub.Announcement) (cancel bool, retErr error) {
-	err := i.ensureWgSpnCompatRule(wc)
+	err := i.ensureWgCompatRule(wc)
 	if err != nil {
 		// Could happen, for example, if IVPN Client is paused
 		wc.Warn(fmt.Sprintf("IVPN: failed to ensure WireGuard compatibility rule: %v", err))
@@ -47,7 +47,7 @@ func (i *InteropIvpn) spnConnectingHook(wc *mgr.WorkerCtx, homeHub hub.Announcem
 }
 
 func (i *InteropIvpn) ensureSPNCompatibility(wc *mgr.WorkerCtx) error {
-	err := i.ensureWgSpnCompatRule(wc)
+	err := i.ensureWgCompatRule(wc)
 	if err != nil {
 		wc.Warn(fmt.Sprintf("IVPN: failed to ensure WireGuard compatibility rule: %v", err))
 	}
@@ -59,15 +59,15 @@ func (i *InteropIvpn) ensureSPNCompatibility(wc *mgr.WorkerCtx) error {
 	return nil
 }
 
-// SPN compatibility workaround for WireGuard kill-switch rules.
+// SPN and SplitTunnel (ST) compatibility workaround for WireGuard kill-switch rules.
 //
 // WireGuard (wg-quick) installs a prerouting/raw kill-switch rule that drops
 // packets destined to the WG local address when they arrive from non-WG interfaces.
-// Portmaster SPN reverse-NAT replies are delivered via loopback (iif lo) with a
+// Portmaster SPN/ST reverse-NAT replies are delivered via loopback (iif lo) with a
 // non-local source, which matches that drop pattern and breaks the TCP handshake
 // (SYN-SENT/SYN-RECV).
 //
-// To preserve the kill-switch behavior while allowing SPN reverse-NAT, Portmaster
+// To preserve the kill-switch behavior while allowing SPN/ST reverse-NAT, Portmaster
 // inserts a narrow exception rule before the wg-quick drop:
 //   - nft path (preferred):
 //     `iifname "lo" ip daddr <WG_LOCAL_IP> fib saddr type != local accept`
@@ -76,8 +76,8 @@ func (i *InteropIvpn) ensureSPNCompatibility(wc *mgr.WorkerCtx) error {
 //
 // Rule lifecycle is managed here:
 //   - Remove previously managed rule (nft/iptables) first.
-//   - Recreate only when WireGuard is connected and SPN is enabled.
-func (i *InteropIvpn) ensureWgSpnCompatRule(wc *mgr.WorkerCtx) error {
+//   - Recreate only when WireGuard is connected and SPN/ST is enabled.
+func (i *InteropIvpn) ensureWgCompatRule(wc *mgr.WorkerCtx) error {
 	status := i.getStatus()
 	connectedInfo := status.connectedInfo
 
@@ -123,7 +123,8 @@ func (i *InteropIvpn) ensureWgSpnCompatRule(wc *mgr.WorkerCtx) error {
 
 	// If SPN not enabled -we do not need the rule
 	cfgSpnEnabled := config.GetAsBool("spn/enable", false)
-	if !cfgSpnEnabled() {
+	cfgSplittunEnabled := config.GetAsBool("splittun/enable", false)
+	if !cfgSpnEnabled() && !cfgSplittunEnabled() {
 		return nil
 	}
 
