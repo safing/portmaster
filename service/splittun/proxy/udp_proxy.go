@@ -22,14 +22,15 @@ type udpSession struct {
 // upstream socket.  Sessions are evicted after Config.ReadTimeout of inactivity
 // (default 5 min).
 type UDPProxy struct {
-	decider DeciderFunc
-	log     Logger
-	cfg     Config
+	decider   DeciderFunc
+	log       Logger
+	cfg       Config
+	logPrefix string
 
 	conn  *net.UDPConn // listener
 	cache *sessionCache
 
-	// sessions maps clientAddr.String() → *udpSession.
+	// sessions maps clientAddr.String() → *udpSession
 	mu       sync.RWMutex
 	sessions map[string]*udpSession
 
@@ -61,12 +62,14 @@ var udpBufPool = sync.Pool{
 //     accepted connection.  See DeciderFunc for details.
 //   - logger: an optional Logger for debug/info/warn messages.  If nil, a
 //     default logger is used.
-func NewUDPProxy(listenAddr string, network string, decider DeciderFunc, logger Logger) (*UDPProxy, error) {
-	return NewUDPProxyWithConfig(listenAddr, network, decider, logger, DefaultConfig())
+//   - logPrefix: a string prepended to every log message (e.g. "udp proxy IPv4").
+//     Pass an empty string to log messages without a prefix.
+func NewUDPProxy(listenAddr string, network string, decider DeciderFunc, logger Logger, logPrefix string) (*UDPProxy, error) {
+	return NewUDPProxyWithConfig(listenAddr, network, decider, logger, DefaultConfig(), logPrefix)
 }
 
 // NewUDPProxyWithConfig is like NewUDPProxy but accepts a custom Config.
-func NewUDPProxyWithConfig(listenAddr string, network string, decider DeciderFunc, logger Logger, cfg Config) (*UDPProxy, error) {
+func NewUDPProxyWithConfig(listenAddr string, network string, decider DeciderFunc, logger Logger, cfg Config, logPrefix string) (*UDPProxy, error) {
 	if decider == nil {
 		return nil, errors.New("proxy: decider must not be nil")
 	}
@@ -91,6 +94,7 @@ func NewUDPProxyWithConfig(listenAddr string, network string, decider DeciderFun
 		decider:     decider,
 		log:         resolveLogger(logger),
 		cfg:         cfg,
+		logPrefix:   resolveLogPrefix(logPrefix),
 		conn:        conn,
 		cache:       newSessionCache(),
 		sessions:    make(map[string]*udpSession, 64),
@@ -102,7 +106,7 @@ func NewUDPProxyWithConfig(listenAddr string, network string, decider DeciderFun
 	go p.readLoop()
 	go p.cleanupLoop()
 
-	p.log.Infof("udp proxy: listening on %s", conn.LocalAddr())
+	p.log.Debug(p.logPrefix+"listening", "addr", conn.LocalAddr())
 	return p, nil
 }
 
@@ -128,8 +132,6 @@ func (p *UDPProxy) FindProxiedEgressConnection(destIP net.IP, destPort uint16) [
 func (p *UDPProxy) Shutdown(ctx context.Context) error {
 	var retErr error
 	p.once.Do(func() {
-		p.log.Infof("udp proxy: shutting down (%v)", p.cache.metrics())
-
 		// Signal all goroutines and unblock ReadFromUDP.
 		p.shutdown()
 		p.conn.Close()
@@ -142,10 +144,10 @@ func (p *UDPProxy) Shutdown(ctx context.Context) error {
 
 		select {
 		case <-done:
-			p.log.Infof("udp proxy: shutdown complete")
+			p.log.Debug(p.logPrefix+"shutdown complete", "metrics", p.cache.metrics())
 		case <-ctx.Done():
 			retErr = ctx.Err()
-			p.log.Warnf("udp proxy: forced shutdown: %v", retErr)
+			p.log.Warn(p.logPrefix+"forced shutdown", "err", retErr)
 		}
 	})
 	return retErr
@@ -165,9 +167,10 @@ func (p *UDPProxy) readLoop() {
 			case <-p.shutdownCtx.Done():
 				return
 			default:
-				// Permanent: socket itself was closed outside of shutdown.
 				if errors.Is(err, net.ErrClosed) {
-					p.log.Errorf("udp proxy: read: socket closed: %v", err)
+					if p.shutdownCtx.Err() == nil {
+						p.log.Error(p.logPrefix+"socket unexpectedly closed", "err", err)
+					}
 					return
 				}
 				// Transient (e.g. ENOBUFS, ICMP-delivered ECONNREFUSED).
@@ -178,7 +181,7 @@ func (p *UDPProxy) readLoop() {
 				} else {
 					backoff = min(backoff*2, time.Second)
 				}
-				p.log.Errorf("udp proxy: read: %v", err)
+				p.log.Error(p.logPrefix+"read error", "err", err)
 				time.Sleep(backoff)
 				continue
 			}
@@ -207,7 +210,7 @@ func (p *UDPProxy) handlePacket(clientAddr *net.UDPAddr, data []byte) {
 		_ = sess.remote.SetWriteDeadline(time.Now().Add(p.cfg.WriteTimeout))
 		if _, err := sess.remote.Write(data); err != nil {
 			if !isClosedConnErr(err) {
-				p.log.Warnf("udp proxy: write to upstream for %s: %v", key, err)
+				p.log.Warn(p.logPrefix+"write to upstream failed", "client", key, "err", err)
 			}
 			return
 		}
@@ -218,14 +221,13 @@ func (p *UDPProxy) handlePacket(clientAddr *net.UDPAddr, data []byte) {
 
 	// Slow path: new client — enforce session limit before allocating.
 	if p.cfg.MaxSessions > 0 && p.cache.len() >= p.cfg.MaxSessions {
-		p.log.Warnf("udp proxy: max sessions (%d) reached, dropping packet from %s",
-			p.cfg.MaxSessions, key)
+		p.log.Warn(p.logPrefix+"max sessions reached, dropping packet", "max", p.cfg.MaxSessions, "client", key)
 		return
 	}
 
 	destIP, destPort, binding, extraInfo, err := p.decider(p.conn.LocalAddr(), clientAddr)
 	if err != nil {
-		p.log.Warnf("udp proxy: decider rejected %s: %v", key, err)
+		p.log.Warn(p.logPrefix+"decider rejected connection", "client", key, "err", err)
 		return
 	}
 
@@ -247,7 +249,7 @@ func (p *UDPProxy) handlePacket(clientAddr *net.UDPAddr, data []byte) {
 	if err != nil {
 		p.cache.remove(connCtx)
 		cancel()
-		p.log.Errorf("udp proxy: dial %q: %v", remoteAddr, err)
+		p.log.Error(p.logPrefix+"dial failed", "addr", remoteAddr, "err", err)
 		return
 	}
 
@@ -265,7 +267,7 @@ func (p *UDPProxy) handlePacket(clientAddr *net.UDPAddr, data []byte) {
 		existing.connCtx.touch()
 		_ = existing.remote.SetWriteDeadline(time.Now().Add(p.cfg.WriteTimeout))
 		if _, err := existing.remote.Write(data); err != nil {
-			p.log.Warnf("udp proxy: write to upstream for %s: %v", key, err)
+			p.log.Warn(p.logPrefix+"write to upstream failed", "client", key, "err", err)
 			return
 		}
 		existing.connCtx.PacketsOut.Add(1)
@@ -275,7 +277,7 @@ func (p *UDPProxy) handlePacket(clientAddr *net.UDPAddr, data []byte) {
 	p.sessions[key] = sess
 	p.mu.Unlock()
 
-	p.log.Debugf("udp proxy: session %d  %s → %s", connCtx.id, key, remoteAddr)
+	p.log.Debug(p.logPrefix+"session started", "session", connCtx.id, "from", key, "to", remoteAddr)
 
 	// Launch reverse-direction goroutine (upstream → client).
 	p.wg.Add(1)
@@ -285,7 +287,7 @@ func (p *UDPProxy) handlePacket(clientAddr *net.UDPAddr, data []byte) {
 	connCtx.touch()
 	_ = remoteConn.SetWriteDeadline(time.Now().Add(p.cfg.WriteTimeout))
 	if _, err := remoteConn.Write(data); err != nil {
-		p.log.Warnf("udp proxy: initial write to upstream: %v", err)
+		p.log.Warn(p.logPrefix+"initial write to upstream failed", "err", err)
 		return
 	}
 	connCtx.PacketsOut.Add(1)
@@ -322,11 +324,11 @@ func (p *UDPProxy) forwardFromRemote(ctx context.Context, sess *udpSession, clie
 				return
 			default:
 				if isTimeoutErr(err) {
-					p.log.Debugf("udp proxy: session %d [%s:%d] idle timeout (%s)", sess.connCtx.id, sess.connCtx.destIP, sess.connCtx.destPort, clientAddr)
+					p.log.Debug(p.logPrefix+"session idle timeout", "session", sess.connCtx.id, "dest_ip", sess.connCtx.destIP, "dest_port", sess.connCtx.destPort, "client", clientAddr)
 					return
 				}
 				if !isClosedConnErr(err) {
-					p.log.Debugf("udp proxy: session %d [%s:%d] read error: %v", sess.connCtx.id, sess.connCtx.destIP, sess.connCtx.destPort, err)
+					p.log.Debug(p.logPrefix+"session read error", "session", sess.connCtx.id, "dest_ip", sess.connCtx.destIP, "dest_port", sess.connCtx.destPort, "err", err)
 				}
 				return
 			}
@@ -346,7 +348,7 @@ func (p *UDPProxy) forwardFromRemote(ctx context.Context, sess *udpSession, clie
 				return
 			default:
 				if !isClosedConnErr(writeErr) {
-					p.log.Warnf("udp proxy: write to client %s: %v", clientAddr, writeErr)
+					p.log.Warn(p.logPrefix+"write to client failed", "client", clientAddr, "err", writeErr)
 				}
 				return
 			}
@@ -368,8 +370,7 @@ func (p *UDPProxy) removeSession(sess *udpSession, key string) {
 	p.mu.Unlock()
 
 	p.cache.remove(sess.connCtx)
-	p.log.Debugf("udp proxy: session %d [%s:%d] removed — in=%d out=%d",
-		sess.connCtx.id, sess.connCtx.destIP, sess.connCtx.destPort, sess.connCtx.BytesIn.Load(), sess.connCtx.BytesOut.Load())
+	p.log.Debug(p.logPrefix+"session removed", "session", sess.connCtx.id, "dest_ip", sess.connCtx.destIP, "dest_port", sess.connCtx.destPort, "bytes_in", sess.connCtx.BytesIn.Load(), "bytes_out", sess.connCtx.BytesOut.Load())
 }
 
 // ─── Idle cleanup loop ────────────────────────────────────────────────────────
@@ -415,7 +416,7 @@ func (p *UDPProxy) evictIdle() {
 
 	for key, sess := range p.sessions {
 		if sess.connCtx.LastSeen().Before(threshold) {
-			p.log.Debugf("udp proxy: evicting idle session %d (%s)", sess.connCtx.ID(), key)
+			p.log.Debug(p.logPrefix+"evicting idle session", "session", sess.connCtx.ID(), "client", key)
 			sess.connCtx.Close()
 			// Wake the blocked Read so the goroutine notices ctx.Done().
 			_ = sess.remote.SetReadDeadline(time.Now())

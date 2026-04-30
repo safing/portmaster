@@ -16,10 +16,11 @@ import (
 // It is safe to call Shutdown from any goroutine and from multiple goroutines
 // simultaneously (only the first call has effect).
 type TCPProxy struct {
-	decider DeciderFunc
-	log     Logger
-	cfg     Config
-	network string
+	decider   DeciderFunc
+	log       Logger
+	cfg       Config
+	network   string
+	logPrefix string
 
 	listener    net.Listener
 	bufPool     sync.Pool
@@ -43,12 +44,14 @@ type TCPProxy struct {
 //     accepted connection.  See DeciderFunc for details.
 //   - logger: an optional Logger for debug/info/warn messages.  If nil, a
 //     default logger is used.
-func NewTCPProxy(listenAddr string, network string, decider DeciderFunc, logger Logger) (*TCPProxy, error) {
-	return NewTCPProxyWithConfig(listenAddr, network, decider, logger, DefaultConfig())
+//   - logPrefix: a string prepended to every log message (e.g. "tcp proxy IPv4").
+//     Pass an empty string to log messages without a prefix.
+func NewTCPProxy(listenAddr string, network string, decider DeciderFunc, logger Logger, logPrefix string) (*TCPProxy, error) {
+	return NewTCPProxyWithConfig(listenAddr, network, decider, logger, DefaultConfig(), logPrefix)
 }
 
 // NewTCPProxyWithConfig is like NewTCPProxy but accepts a custom Config.
-func NewTCPProxyWithConfig(listenAddr string, network string, decider DeciderFunc, logger Logger, cfg Config) (*TCPProxy, error) {
+func NewTCPProxyWithConfig(listenAddr string, network string, decider DeciderFunc, logger Logger, cfg Config, logPrefix string) (*TCPProxy, error) {
 	if decider == nil {
 		return nil, errors.New("proxy: decider must not be nil")
 	}
@@ -77,6 +80,7 @@ func NewTCPProxyWithConfig(listenAddr string, network string, decider DeciderFun
 		log:         resolveLogger(logger),
 		cfg:         cfg,
 		network:     network,
+		logPrefix:   resolveLogPrefix(logPrefix),
 		listener:    ln,
 		cache:       newSessionCache(),
 		shutdownCtx: ctx,
@@ -91,7 +95,7 @@ func NewTCPProxyWithConfig(listenAddr string, network string, decider DeciderFun
 	p.wg.Add(1)
 	go p.acceptLoop()
 
-	p.log.Infof("tcp proxy: listening on %s", ln.Addr())
+	p.log.Debug(p.logPrefix+"listening", "addr", ln.Addr())
 	return p, nil
 }
 
@@ -119,11 +123,8 @@ func (p *TCPProxy) FindProxiedEgressConnection(destIP net.IP, destPort uint16) [
 func (p *TCPProxy) Shutdown(ctx context.Context) error {
 	var retErr error
 	p.once.Do(func() {
-		p.log.Infof("tcp proxy: shutting down (%v)", p.cache.metrics())
-
-		// Unblock Accept and signal all per-session goroutines.
-		p.listener.Close()
 		p.shutdown()
+		p.listener.Close()
 
 		done := make(chan struct{})
 		go func() {
@@ -133,10 +134,10 @@ func (p *TCPProxy) Shutdown(ctx context.Context) error {
 
 		select {
 		case <-done:
-			p.log.Infof("tcp proxy: shutdown complete (%v)", p.cache.metrics())
+			p.log.Debug(p.logPrefix+"shutdown complete", "metrics", p.cache.metrics())
 		case <-ctx.Done():
 			retErr = ctx.Err()
-			p.log.Warnf("tcp proxy: forced shutdown: %v", retErr)
+			p.log.Warn(p.logPrefix+"forced shutdown", "err", retErr)
 		}
 	})
 	return retErr
@@ -161,7 +162,7 @@ func (p *TCPProxy) acceptLoop() {
 				} else {
 					backoff = min(backoff*2, time.Second)
 				}
-				p.log.Errorf("tcp proxy: accept: %v", err)
+				p.log.Error(p.logPrefix+"accept error", "err", err)
 				time.Sleep(backoff)
 				continue
 			}
@@ -169,8 +170,7 @@ func (p *TCPProxy) acceptLoop() {
 		backoff = 0 // reset on success
 
 		if p.cfg.MaxSessions > 0 && p.cache.len() >= p.cfg.MaxSessions {
-			p.log.Warnf("tcp proxy: max sessions (%d) reached, rejecting %s",
-				p.cfg.MaxSessions, conn.RemoteAddr())
+			p.log.Warn(p.logPrefix+"max sessions reached, rejecting connection", "max", p.cfg.MaxSessions, "addr", conn.RemoteAddr())
 			conn.Close()
 			continue
 		}
@@ -189,7 +189,7 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 	// Determine upstream destination.
 	destIP, destPort, binding, extraInfo, err := p.decider(p.listener.Addr(), clientConn.RemoteAddr())
 	if err != nil {
-		p.log.Warnf("tcp proxy: decider rejected %s: %v", clientConn.RemoteAddr(), err)
+		p.log.Warn(p.logPrefix+"decider rejected connection", "addr", clientConn.RemoteAddr(), "err", err)
 		return
 	}
 	destAddr := (&net.TCPAddr{IP: destIP, Port: int(destPort)}).String()
@@ -210,8 +210,7 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 	defer func() {
 		cancel()
 		p.cache.remove(connCtx)
-		p.log.Debugf("tcp proxy: session %d [%s:%d] closed — in=%d out=%d",
-			connCtx.id, connCtx.destIP, connCtx.destPort, connCtx.BytesIn.Load(), connCtx.BytesOut.Load())
+		p.log.Debug(p.logPrefix+"session closed", "session", connCtx.id, "dest_ip", connCtx.destIP, "dest_port", connCtx.destPort, "bytes_in", connCtx.BytesIn.Load(), "bytes_out", connCtx.BytesOut.Load())
 	}()
 
 	// DialContext is cancelled immediately if the proxy is shut down.
@@ -228,13 +227,12 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 			// Proxy is shutting down; this is expected, not an error.
 			return
 		}
-		p.log.Errorf("tcp proxy: dial %q: %v", destAddr, err)
+		p.log.Error(p.logPrefix+"dial failed", "addr", destAddr, "err", err)
 		return
 	}
 	defer upstreamConn.Close()
 
-	p.log.Debugf("tcp proxy: session %d  %s → %s", connCtx.id,
-		clientConn.RemoteAddr(), destAddr)
+	p.log.Debug(p.logPrefix+"session started", "session", connCtx.id, "from", clientConn.RemoteAddr(), "to", destAddr)
 
 	// Watchdog: when the proxy shuts down (or the caller cancels the session),
 	// force-close both ends so the copy goroutines unblock immediately.
@@ -289,18 +287,18 @@ func (p *TCPProxy) pipe(dst, src net.Conn, connCtx *ConnContext) int64 {
 			total += int64(nw)
 			if writeErr != nil {
 				if errors.Is(writeErr, os.ErrDeadlineExceeded) {
-					p.log.Debugf("tcp proxy: session %d [%s:%d] write timeout (%v)", connCtx.id, connCtx.destIP, connCtx.destPort, p.cfg.WriteTimeout)
+					p.log.Debug(p.logPrefix+"session write timeout", "session", connCtx.id, "dest_ip", connCtx.destIP, "dest_port", connCtx.destPort, "timeout", p.cfg.WriteTimeout)
 				} else if !isClosedConnErr(writeErr) {
-					p.log.Debugf("tcp proxy: session %d [%s:%d] write error: %v", connCtx.id, connCtx.destIP, connCtx.destPort, writeErr)
+					p.log.Debug(p.logPrefix+"session write error", "session", connCtx.id, "dest_ip", connCtx.destIP, "dest_port", connCtx.destPort, "err", writeErr)
 				}
 				break
 			}
 		}
 		if readErr != nil {
 			if errors.Is(readErr, os.ErrDeadlineExceeded) {
-				p.log.Debugf("tcp proxy: session %d [%s:%d] read timeout (%v)", connCtx.id, connCtx.destIP, connCtx.destPort, p.cfg.ReadTimeout)
+				p.log.Debug(p.logPrefix+"session read timeout", "session", connCtx.id, "dest_ip", connCtx.destIP, "dest_port", connCtx.destPort, "timeout", p.cfg.ReadTimeout)
 			} else if !isClosedConnErr(readErr) {
-				p.log.Debugf("tcp proxy: session %d [%s:%d] read error: %v", connCtx.id, connCtx.destIP, connCtx.destPort, readErr)
+				p.log.Debug(p.logPrefix+"session read error", "session", connCtx.id, "dest_ip", connCtx.destIP, "dest_port", connCtx.destPort, "err", readErr)
 			}
 			break
 		}

@@ -41,19 +41,19 @@ type DeciderFunc func(local net.Addr, peer net.Addr) (remoteIP net.IP, remotePor
 // Logger is the minimal structured logging interface expected by the proxies.
 // Pass nil to disable all logging.
 type Logger interface {
-	Debugf(format string, args ...interface{})
-	Infof(format string, args ...interface{})
-	Warnf(format string, args ...interface{})
-	Errorf(format string, args ...interface{})
+	Debug(msg string, args ...any)
+	Info(msg string, args ...any)
+	Warn(msg string, args ...any)
+	Error(msg string, args ...any)
 }
 
 // noopLogger silently discards every log message.
 type noopLogger struct{}
 
-func (noopLogger) Debugf(_ string, _ ...interface{}) {}
-func (noopLogger) Infof(_ string, _ ...interface{})  {}
-func (noopLogger) Warnf(_ string, _ ...interface{})  {}
-func (noopLogger) Errorf(_ string, _ ...interface{}) {}
+func (noopLogger) Debug(_ string, _ ...any) {}
+func (noopLogger) Info(_ string, _ ...any)  {}
+func (noopLogger) Warn(_ string, _ ...any)  {}
+func (noopLogger) Error(_ string, _ ...any) {}
 
 // resolveLogger returns l unchanged if non-nil, otherwise a noopLogger.
 func resolveLogger(l Logger) Logger {
@@ -61,6 +61,13 @@ func resolveLogger(l Logger) Logger {
 		return noopLogger{}
 	}
 	return l
+}
+
+func resolveLogPrefix(prefix string) string {
+	if prefix == "" {
+		return ""
+	}
+	return prefix + ": "
 }
 
 // ─── Configuration ────────────────────────────────────────────────────────────

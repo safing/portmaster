@@ -95,24 +95,24 @@ func startProxies(mgr *mgr.Manager) error {
 		}
 	}()
 
-	tcp4, err = proxy.NewTCPProxy(fmt.Sprintf("0.0.0.0:%d", SplitTunPort), "tcp4", proxyDecider, &proxyLogger{prefix: "tcp4", mgr: mgr})
+	tcp4, err = proxy.NewTCPProxy(fmt.Sprintf("0.0.0.0:%d", SplitTunPort), "tcp4", proxyDecider, mgr, "TCP-IPv4-proxy")
 	if err != nil {
 		startErr = fmt.Errorf("failed to start TCPv4 proxy: %w", err)
 		return startErr
 	}
-	udp4, err = proxy.NewUDPProxy(fmt.Sprintf("0.0.0.0:%d", SplitTunPort), "udp4", proxyDecider, &proxyLogger{prefix: "udp4", mgr: mgr})
+	udp4, err = proxy.NewUDPProxy(fmt.Sprintf("0.0.0.0:%d", SplitTunPort), "udp4", proxyDecider, mgr, "UDP-IPv4-proxy")
 	if err != nil {
 		startErr = fmt.Errorf("failed to start UDPv4 proxy: %w", err)
 		return startErr
 	}
 
 	if netenv.IPv6Enabled() {
-		tcp6, err = proxy.NewTCPProxy(fmt.Sprintf("[::]:%d", SplitTunPort), "tcp6", proxyDecider, &proxyLogger{prefix: "tcp6", mgr: mgr})
+		tcp6, err = proxy.NewTCPProxy(fmt.Sprintf("[::]:%d", SplitTunPort), "tcp6", proxyDecider, mgr, "TCP-IPv6-proxy")
 		if err != nil {
 			startErr = fmt.Errorf("failed to start TCPv6 proxy: %w", err)
 			return startErr
 		}
-		udp6, err = proxy.NewUDPProxy(fmt.Sprintf("[::]:%d", SplitTunPort), "udp6", proxyDecider, &proxyLogger{prefix: "udp6", mgr: mgr})
+		udp6, err = proxy.NewUDPProxy(fmt.Sprintf("[::]:%d", SplitTunPort), "udp6", proxyDecider, mgr, "UDP-IPv6-proxy")
 		if err != nil {
 			startErr = fmt.Errorf("failed to start UDPv6 proxy: %w", err)
 			return startErr
@@ -164,26 +164,4 @@ func stopProxies() error {
 	}
 
 	return nil
-}
-
-// PROXY LOGGER WRAPPER
-type proxyLogger struct {
-	prefix string
-	mgr    *mgr.Manager
-}
-
-func (l proxyLogger) Debugf(format string, args ...interface{}) {
-	l.mgr.Debug(l.getLogLine(format, args...))
-}
-func (l proxyLogger) Warnf(format string, args ...interface{}) {
-	l.mgr.Warn(l.getLogLine(format, args...))
-}
-func (l proxyLogger) Infof(format string, args ...interface{}) {
-	l.mgr.Info(l.getLogLine(format, args...))
-}
-func (l proxyLogger) Errorf(format string, args ...interface{}) {
-	l.mgr.Error(l.getLogLine(format, args...))
-}
-func (l proxyLogger) getLogLine(format string, args ...interface{}) string {
-	return fmt.Sprintf("%s: "+format, append([]interface{}{l.prefix}, args...)...)
 }

@@ -65,10 +65,10 @@ type DeciderFunc func(local net.Addr, peer net.Addr) (
 // Logger is the minimal interface accepted by both proxies.
 // Pass nil to suppress all log output.
 type Logger interface {
-    Debugf(format string, args ...interface{})
-    Infof(format string, args ...interface{})
-    Warnf(format string, args ...interface{})
-    Errorf(format string, args ...interface{})
+    Debug(msg string, args ...any)
+    Info(msg string, args ...any)
+    Warn(msg string, args ...any)
+    Error(msg string, args ...any)
 }
 
 // ConnContext holds observable state for one proxy session.
@@ -94,16 +94,16 @@ func (c *ConnContext) Close()            // cancels the session
 
 ```go
 // TCP — uses DefaultConfig
-func NewTCPProxy(listenAddr string, network string, decider DeciderFunc, logger Logger) (*TCPProxy, error)
+func NewTCPProxy(listenAddr string, network string, decider DeciderFunc, logger Logger, logPrefix string) (*TCPProxy, error)
 
 // TCP — custom configuration
-func NewTCPProxyWithConfig(listenAddr string, network string, decider DeciderFunc, logger Logger, cfg Config) (*TCPProxy, error)
+func NewTCPProxyWithConfig(listenAddr string, network string, decider DeciderFunc, logger Logger, cfg Config, logPrefix string) (*TCPProxy, error)
 
 // UDP — uses DefaultConfig
-func NewUDPProxy(listenAddr string, network string, decider DeciderFunc, logger Logger) (*UDPProxy, error)
+func NewUDPProxy(listenAddr string, network string, decider DeciderFunc, logger Logger, logPrefix string) (*UDPProxy, error)
 
 // UDP — custom configuration
-func NewUDPProxyWithConfig(listenAddr string, network string, decider DeciderFunc, logger Logger, cfg Config) (*UDPProxy, error)
+func NewUDPProxyWithConfig(listenAddr string, network string, decider DeciderFunc, logger Logger, cfg Config, logPrefix string) (*UDPProxy, error)
 ```
 
 Both constructors bind the socket and start background goroutines immediately.
@@ -194,7 +194,7 @@ decider := func(local, peer net.Addr) (net.IP, uint16, *proxy.LocalBinding, any,
     return net.ParseIP("192.168.1.10"), 8080, nil, nil, nil
 }
 
-p, err := proxy.NewTCPProxy(":8080", "tcp4", decider, nil)
+p, err := proxy.NewTCPProxy(":8080", "tcp4", decider, nil, "tcp proxy IPv4")
 if err != nil {
     log.Fatal(err)
 }
@@ -225,7 +225,7 @@ decider := func(local, peer net.Addr) (net.IP, uint16, *proxy.LocalBinding, any,
     return vpnGatewayIP, 443, nil, nil, nil
 }
 
-p, err := proxy.NewTCPProxy(":443", "tcp4", decider, myLogger)
+p, err := proxy.NewTCPProxy(":443", "tcp4", decider, myLogger, "tcp proxy IPv4")
 ```
 
 ### UDP proxy with custom timeouts
@@ -235,7 +235,7 @@ cfg := proxy.DefaultConfig()
 cfg.ReadTimeout = 30 * time.Second
 cfg.MaxSessions = 1024
 
-p, err := proxy.NewUDPProxyWithConfig(":5353", "udp4", decider, myLogger, cfg)
+p, err := proxy.NewUDPProxyWithConfig(":5353", "udp4", decider, myLogger, cfg, "udp proxy IPv4")
 ```
 
 ---
