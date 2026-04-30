@@ -145,15 +145,15 @@ var (
 	// Split Tunnel.
 	CfgOptionSplitTunUseKey   = "splittun/use"
 	cfgOptionSplitTunUse      config.BoolOption
-	cfgOptionSplitTunUseOrder = 210
+	cfgOptionSplitTunUseOrder = 212
 
 	CfgOptionSplitTunInterfaceKey   = "splittun/networkInterface"
 	cfgOptionSplitTunInterface      config.StringOption
-	cfgOptionSplitTunInterfaceOrder = 211
+	cfgOptionSplitTunInterfaceOrder = 214
 
 	CfgOptionSplitTunUsagePolicyKey   = "splittun/usagePolicy"
 	cfgOptionSplitTunUsagePolicy      config.StringArrayOption
-	cfgOptionSplitTunUsagePolicyOrder = 212
+	cfgOptionSplitTunUsagePolicyOrder = 216
 )
 
 var (

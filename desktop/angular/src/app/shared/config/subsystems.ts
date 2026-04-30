@@ -282,7 +282,7 @@ export const subsystems : SubsystemWithExpertise[] = [
       Enabled: true
     }
   ],
-  ToggleOptionKey: "splittun/use",  // Links to the boolean enable/disable option
+  ToggleOptionKey: "splittun/enable",  // Links to the boolean enable/disable option
   ExpertiseLevel: "user",
   ReleaseLevel: 0,
   ConfigKeySpace: "config:splittun/",

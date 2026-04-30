@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync/atomic"
 
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/service/mgr"
 )
 
@@ -43,7 +44,7 @@ func New(instance instance) (*SplitTunModule, error) {
 }
 
 func prep() error {
-	return nil
+	return prepConfig()
 }
 
 func (s *SplitTunModule) Manager() *mgr.Manager {
@@ -51,19 +52,56 @@ func (s *SplitTunModule) Manager() *mgr.Manager {
 }
 
 func (s *SplitTunModule) Start() error {
-	err := startProxies(s.mgr)
-	if err != nil {
-		return err
+	module.instance.Config().EventConfigChange.AddCallback("splittun enable check", func(wc *mgr.WorkerCtx, t struct{}) (bool, error) {
+		if cfgOptionSplitTunEnable() {
+			s.enable()
+		} else {
+			s.disable()
+		}
+		return false, nil
+	})
+
+	if cfgOptionSplitTunEnable() {
+		s.enable()
 	}
-	ready.Store(true)
+
 	return nil
 }
 
 func (s *SplitTunModule) Stop() error {
-	ready.Store(false)
+	return s.disable()
+}
+
+func (s *SplitTunModule) enable() error {
+	if !ready.CompareAndSwap(false, true) {
+		return nil // already enabled
+	}
+	s.mgr.Info("splittun: enabling Split Tunnel functionality")
+
+	err := startProxies(s.mgr)
+	if err != nil {
+		s.mgr.Error("splittun: failed to start Split Tunnel proxies: ", err)
+		ready.Store(false)
+	}
+
+	return err
+}
+
+func (s *SplitTunModule) disable() error {
+	if !ready.CompareAndSwap(true, false) {
+		return nil // already disabled
+	}
+	s.mgr.Info("splittun: disabling Split Tunnel functionality")
+
 	clearPendingRequests()
-	return stopProxies()
+	err := stopProxies()
+	if err != nil {
+		s.mgr.Error("splittun: failed to stop Split Tunnel proxies: ", err)
+	}
+	return err
 }
 
 // INSTANCE
-type instance interface{}
+type instance interface {
+	Config() *config.Config
+}
