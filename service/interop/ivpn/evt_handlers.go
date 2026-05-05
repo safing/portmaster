@@ -54,7 +54,7 @@ func (i *InteropIvpn) onConnectionStopped(wc *mgr.WorkerCtx, _ string, _ string)
 
 	wc.Debug("IVPN: VPN connection stopped")
 
-	_ = i.ensureSPNCompatibility(wc)
+	i.reconcileCompatibilityState(wc)
 }
 
 // notification handler: VPN connection established successfully
@@ -73,5 +73,5 @@ func (i *InteropIvpn) onConnectedResp(wc *mgr.WorkerCtx, _ string, messageData s
 	wc.Debug(fmt.Sprintf("IVPN: VPN connection established (vpnType:%v; localIPv4:%v; localIPv6:%v)",
 		connectedResp.VpnType, connectedResp.ClientIP, connectedResp.ClientIPv6))
 
-	_ = i.ensureSPNCompatibility(wc)
+	i.reconcileCompatibilityState(wc)
 }

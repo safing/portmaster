@@ -26,37 +26,38 @@ type platformSpecific struct {
 const (
 	// NOTE: The nft table name is currently tied to IVPN's wg-quick setup.
 	// If IVPN changes the WG interface naming, this constant may need adjustment.
-	nftTableWgQuickIvpn     = "wg-quick-wgivpn"
-	nftRuleCommentSPNCompat = "portmaster-spn-lo-rnat"
-	spnSlitTunRouteTableID  = "717"
-	spnSlitTunRulePriority  = "717"
+	nftTableWgQuickIvpn       = "wg-quick-wgivpn"
+	wgKillswitchBypassComment = "portmaster-wg-ks-bypass"
+	spnSlitTunRouteTableID    = "717"
+	spnSlitTunRulePriority    = "717"
 )
 
+// spnConnectingHook is called when SPN is connecting to a hub.
 func (i *InteropIvpn) spnConnectingHook(wc *mgr.WorkerCtx, homeHub hub.Announcement) (cancel bool, retErr error) {
+	i.doReconcileCompatibilityState(wc, &homeHub)
+	return false, nil
+}
+
+func (i *InteropIvpn) reconcileCompatibilityState(wc *mgr.WorkerCtx) {
+	i.doReconcileCompatibilityState(wc, i.extra.spnHubInfo.Load())
+}
+
+// doReconcileCompatibilityState reconciles WireGuard firewall and routing rules
+// to maintain SPN and SplitTunnel compatibility with the current IVPN connection state.
+func (i *InteropIvpn) doReconcileCompatibilityState(wc *mgr.WorkerCtx, hubInfo *hub.Announcement) {
+	// Ensure WireGuard-specific firewall rule is in place or removed as needed based on current VPN and SPN/ST state.
 	err := i.ensureWgCompatRule(wc)
 	if err != nil {
 		// Could happen, for example, if IVPN Client is paused
 		wc.Warn(fmt.Sprintf("IVPN: failed to ensure WireGuard compatibility rule: %v", err))
 	}
 
-	err = i.ensureSpnHubBypassVpnRoutes(wc, &homeHub)
+	// Ensure routing rules are in place to keep SPN hub traffic outside the VPN tunnel when connected,
+	// or clean up stale rules when disconnected.
+	err = i.ensureSpnHubBypassVpnRoutes(wc, hubInfo)
 	if err != nil {
 		wc.Warn(fmt.Sprintf("IVPN: failed to ensure VPN and SPN tunnel routes: %v", err))
 	}
-	return false, nil
-}
-
-func (i *InteropIvpn) ensureSPNCompatibility(wc *mgr.WorkerCtx) error {
-	err := i.ensureWgCompatRule(wc)
-	if err != nil {
-		wc.Warn(fmt.Sprintf("IVPN: failed to ensure WireGuard compatibility rule: %v", err))
-	}
-
-	err = i.ensureSpnHubBypassVpnRoutes(wc, i.extra.spnHubInfo.Load())
-	if err != nil {
-		wc.Warn(fmt.Sprintf("IVPN: failed to ensure VPN and SPN tunnel routes: %v", err))
-	}
-	return nil
 }
 
 // SPN and SplitTunnel (ST) compatibility workaround for WireGuard kill-switch rules.
@@ -103,7 +104,7 @@ func (i *InteropIvpn) ensureWgCompatRule(wc *mgr.WorkerCtx) error {
 				"-d", oldRuleIP+"/32",
 				"-i", "lo",
 				"-m", "addrtype", "!", "--src-type", "LOCAL",
-				"-m", "comment", "--comment", nftRuleCommentSPNCompat,
+				"-m", "comment", "--comment", wgKillswitchBypassComment,
 				"-j", "ACCEPT",
 			).Run()
 			i.extra.spnWgIptRuleIP.Store("")
@@ -133,7 +134,7 @@ func (i *InteropIvpn) ensureWgCompatRule(wc *mgr.WorkerCtx) error {
 		// 		sudo nft --echo --json insert rule ip wg-quick-wgivpn preraw iifname "lo" ip daddr 1.2.3.4 fib saddr type != local accept comment "portmaster-spn-lo-rnat"
 		out, err := exec.Command(nftPath, "--echo", "--json", "insert", "rule", "ip", nftTableWgQuickIvpn, "preraw",
 			"iifname", "lo", "ip", "daddr", wgLocalIP, "fib", "saddr", "type", "!=", "local", "accept",
-			"comment", nftRuleCommentSPNCompat).Output()
+			"comment", wgKillswitchBypassComment).Output()
 		if err != nil {
 			return fmt.Errorf("failed to insert nft rule: %w", err)
 		}
@@ -158,7 +159,7 @@ func (i *InteropIvpn) ensureWgCompatRule(wc *mgr.WorkerCtx) error {
 			"-d", wgLocalIP+"/32",
 			"-i", "lo",
 			"-m", "addrtype", "!", "--src-type", "LOCAL",
-			"-m", "comment", "--comment", nftRuleCommentSPNCompat,
+			"-m", "comment", "--comment", wgKillswitchBypassComment,
 			"-j", "ACCEPT",
 		).Run()
 		if err != nil {
