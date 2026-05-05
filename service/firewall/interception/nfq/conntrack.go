@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network"
+	pmpacket "github.com/safing/portmaster/service/network/packet"
 )
 
 var nfct *ct.Nfct // Conntrack handler. NFCT: Network Filter Connection Tracking.
@@ -70,8 +71,8 @@ func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) (deleted int) {
 		}
 
 		for _, connection := range currentConnections {
-			deleteError = nfct.Delete(ct.Conntrack, ct.IPv4, connection)
-			if err != nil {
+			deleteError = nfct.Delete(ct.Conntrack, f, connection)
+			if deleteError != nil {
 				numberOfErrors++
 			} else {
 				deleted++
@@ -102,7 +103,13 @@ func DeleteMarkedConnection(conn *network.Connection) error {
 			},
 		},
 	}
-	connections, err := nfct.Get(ct.Conntrack, ct.IPv4, con)
+
+	family := ct.IPv4
+	if conn.IPVersion == pmpacket.IPv6 {
+		family = ct.IPv6
+	}
+
+	connections, err := nfct.Get(ct.Conntrack, family, con)
 	if err != nil {
 		return fmt.Errorf("nfq: failed to find entry for connection %s: %w", conn.String(), err)
 	}
@@ -112,7 +119,7 @@ func DeleteMarkedConnection(conn *network.Connection) error {
 	}
 
 	for _, connection := range connections {
-		deleteErr := nfct.Delete(ct.Conntrack, ct.IPv4, connection)
+		deleteErr := nfct.Delete(ct.Conntrack, family, connection)
 		if err == nil {
 			err = deleteErr
 		}
