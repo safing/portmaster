@@ -171,7 +171,20 @@ func activateNfqueueFirewall() error {
 	if err := nfq.InitNFCT(); err != nil {
 		return err
 	}
+	// Remove stale conntrack entries carrying Portmaster marks.
+	// This is required to prevent conflicts with existing entries if Portmaster was not cleanly stopped,
+	// and to ensure a clean state on firewall activation.
 	_ = nfq.DeleteAllMarkedConnection()
+
+	// Force re-evaluation of connections that bypassed Portmaster while it was
+	// stopped or paused. Without this, DNAT rules (SPN) would
+	// never apply to already-established connections, as the nat table is only
+	// traversed for new connections.
+	//
+	// NOTE: This will disconnect all existing non-loopback connections with mark=0!
+	//
+	// TODO: normally, this is only necessary when DNAT-based routing features are active (e.g. SPN)
+	_ = nfq.DeleteUnmarkedConnections()
 
 	return nil
 }
