@@ -214,6 +214,23 @@ func (c *sessionCache) findByDest(destIP net.IP, destPort uint16) []*ConnContext
 	return result
 }
 
+// hasByDest checks if there is an active session whose upstream destination
+// matches destIP and destPort.  Returns false if no matching session exists.
+func (c *sessionCache) hasByDest(destIP net.IP, destPort uint16) bool {
+	ip16 := destIP.To16()
+	if ip16 == nil {
+		return false
+	}
+	var k destKey
+	copy(k.ip[:], ip16)
+	k.port = destPort
+
+	c.mu.RLock()
+	has := len(c.byDest[k]) > 0
+	c.mu.RUnlock()
+	return has
+}
+
 // get retrieves a session by ID.
 func (c *sessionCache) get(id uint64) (*ConnContext, bool) {
 	c.mu.RLock()

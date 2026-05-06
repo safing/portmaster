@@ -127,6 +127,12 @@ func (p *UDPProxy) FindProxiedEgressConnection(destIP net.IP, destPort uint16) [
 	return p.cache.findByDest(destIP, destPort)
 }
 
+// HasProxiedEgressConnection checks if there is an active session whose
+// upstream destination matches destIP and destPort.
+func (p *UDPProxy) HasProxiedEgressConnection(destIP net.IP, destPort uint16) bool {
+	return p.cache.hasByDest(destIP, destPort)
+}
+
 // Shutdown tears down the proxy.  It closes the listen socket, cancels all
 // sessions, and waits for goroutines to exit or until ctx expires.
 func (p *UDPProxy) Shutdown(ctx context.Context) error {

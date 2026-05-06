@@ -116,6 +116,12 @@ func (p *TCPProxy) FindProxiedEgressConnection(destIP net.IP, destPort uint16) [
 	return p.cache.findByDest(destIP, destPort)
 }
 
+// HasProxiedEgressConnection checks if there is an active session whose
+// upstream destination matches destIP and destPort.
+func (p *TCPProxy) HasProxiedEgressConnection(destIP net.IP, destPort uint16) bool {
+	return p.cache.hasByDest(destIP, destPort)
+}
+
 // Shutdown stops accepting new connections, signals all active sessions to
 // close, and waits for them to finish.  If ctx expires before all sessions
 // drain, it returns ctx.Err() but does not leak goroutines — connections are

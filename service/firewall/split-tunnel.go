@@ -101,3 +101,21 @@ func requestSplitTunneling(ctx context.Context, conn *network.Connection) error 
 	log.Tracer(ctx).Trace("filter: split tunneling requested")
 	return nil
 }
+
+func isOwnSplitTunnelProxyConnection(conn *network.Connection) bool {
+	switch {
+	case conn.Process().Pid != ownPID:
+		// Proxies are running only in our own process.
+		return false
+	case conn.Entity.IPScope.IsLocalhost():
+		// Local connections are not proxied.
+		return false
+	case conn.IPProtocol != packet.TCP && conn.IPProtocol != packet.UDP:
+		// Unsupported protocol.
+		return false
+	case !splittun.IsReady():
+		return false
+	}
+
+	return splittun.IsProxiedConnectionInfo(conn)
+}

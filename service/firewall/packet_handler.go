@@ -475,6 +475,13 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 		filterConnection = false
 		log.Tracer(pkt.Ctx()).Infof("filter: granting own pre-authenticated connection %s", conn)
 
+	case !conn.Inbound && isOwnSplitTunnelProxyConnection(conn):
+		// Approve connection.
+		conn.Accept("split tunnel connection proxied by Portmaster", noReasonOptionKey)
+		conn.Internal = true
+		filterConnection = false
+		log.Tracer(pkt.Ctx()).Infof("filter: granting own pre-authenticated proxied split tunnel connection %s", conn)
+
 	// Redirect outbound DNS packets if enabled,
 	case dnsQueryInterception() &&
 		!module.instance.Resolver().IsDisabled() &&

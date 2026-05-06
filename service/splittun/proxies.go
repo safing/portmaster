@@ -23,7 +23,7 @@ var (
 )
 
 type proxiedEgressFinder interface {
-	FindProxiedEgressConnection(destIP net.IP, destPort uint16) []*proxy.ConnContext
+	HasProxiedEgressConnection(destIP net.IP, destPort uint16) bool
 }
 
 func IsProxiedConnectionInfo(connInfo *network.Connection) bool {
@@ -56,10 +56,7 @@ func IsProxiedConnectionInfo(connInfo *network.Connection) bool {
 		return false
 	}
 
-	// TODO: The current FindProxiedEgressConnection path allocates a slice on each lookup in cache.go.
-	//		 Consider adding a HasProxiedEgressConnection boolean method in the cache/proxy layer
-	//		 to avoid allocating a result slice when only existence is needed. This can reduce GC pressure under load.
-	isProxied := len(finder.FindProxiedEgressConnection(connInfo.Entity.IP, connInfo.Entity.Port)) > 0
+	isProxied := finder.HasProxiedEgressConnection(connInfo.Entity.IP, connInfo.Entity.Port)
 	proxiesLocker.RUnlock()
 	return isProxied
 }
