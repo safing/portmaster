@@ -177,13 +177,13 @@ func activateNfqueueFirewall() error {
 	_ = nfq.DeleteAllMarkedConnection()
 
 	// Force re-evaluation of connections that bypassed Portmaster while it was
-	// stopped or paused. Without this, DNAT rules (SPN) would
+	// stopped or paused. Without this, DNAT rules (SPN, Split-Tunneling) would
 	// never apply to already-established connections, as the nat table is only
 	// traversed for new connections.
 	//
 	// NOTE: This will disconnect all existing non-loopback connections with mark=0!
 	//
-	// TODO: normally, this is only necessary when DNAT-based routing features are active (e.g. SPN)
+	// TODO: normally, this is only necessary when DNAT-based routing features are active (e.g. SPN, Split-Tunneling)
 	_ = nfq.DeleteUnmarkedConnections()
 
 	return nil

@@ -41,7 +41,7 @@ func TeardownNFCT() {
 //
 // The Linux netfilter nat table applies DNAT only to the first packet of a NEW
 // connection. ESTABLISHED connections bypass the nat table entirely, so any
-// routing decision (e.g. MarkRerouteSPN) would never take
+// routing decision (e.g. MarkRerouteSPN, MarkRerouteSplitTun) would never take
 // effect for them. Removing their conntrack entries forces applications to
 // reconnect; the resulting SYN is processed by NFQUEUE as a new connection and
 // the correct DNAT rule fires.
@@ -139,7 +139,7 @@ func DeleteAllMarkedConnection() error {
 
 func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) (deleted int) {
 	// initialize variables
-	permanentFlags := []uint32{MarkAcceptAlways, MarkBlockAlways, MarkDropAlways, MarkRerouteNS, MarkRerouteSPN}
+	permanentFlags := []uint32{MarkAcceptAlways, MarkBlockAlways, MarkDropAlways, MarkRerouteNS, MarkRerouteSPN, MarkRerouteSplitTun}
 	filter := ct.FilterAttr{}
 	filter.MarkMask = []byte{0xFF, 0xFF, 0xFF, 0xFF}
 	filter.Mark = []byte{0x00, 0x00, 0x00, 0x00} // 4 zeros starting value
