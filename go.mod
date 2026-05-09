@@ -21,7 +21,7 @@ require (
 	github.com/fogleman/gg v1.3.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/gobwas/glob v0.2.3
-	github.com/godbus/dbus/v5 v5.1.0
+	github.com/godbus/dbus/v5 v5.2.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/google/gopacket v1.1.19
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
