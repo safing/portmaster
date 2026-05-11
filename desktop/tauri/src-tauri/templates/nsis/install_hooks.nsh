@@ -70,7 +70,7 @@ var dataDir
   ;   4. Start Type: "2" for SERVICE_AUTO_START
   ;   5. Binary Path: Executable with arguments.
   ;   6 & 7. Dependencies and account info (empty uses defaults).
-  SimpleSC::InstallService "PortmasterCore" "Portmaster Core" 16 2 "$INSTDIR\portmaster-core.exe --log-dir=%PROGRAMDATA%\Portmaster\logs" "" "" ""
+  SimpleSC::InstallService "PortmasterCore" "Portmaster Core" 16 2 '"$INSTDIR\portmaster-core.exe" --log-dir=%PROGRAMDATA%\Portmaster\logs' "" "" ""
   Pop $0  ; returns error code (0 on success)
   ${If} $0 != 0
     SimpleSC::GetErrorMessage $0
