@@ -221,7 +221,7 @@
     </span>
   </div>
 
-  <div *ngIf="conn.scope === scopes.Global">
+  <div *ngIf="conn.scope === scopes.Global && !!conn.tunneled">
     <h3 class="text-primary text-xxs">SPN Tunnel</h3>
     <ng-container [ngSwitch]="true">
       <span *ngSwitchCase="!conn.tunneled" class="inline-flex items-center gap-2 text-secondary">
