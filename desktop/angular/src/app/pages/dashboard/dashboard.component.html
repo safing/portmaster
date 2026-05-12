@@ -6,6 +6,9 @@
         <sfng-tipup key="dashboardIntro" placement="left"></sfng-tipup>
       </h1>
 
+    <!--
+      \\ DISABLED because: Displaying the SPN username in a prominent location may raise security and privacy concerns for some users.
+      
       <span class="text-sm font-normal text-secondary">
         <ng-container *ngIf="!!profile; else: noUsername">
           Welcome back, <span class="text-primary">{{ profile.username }}</span>!
@@ -16,6 +19,7 @@
           Welcome back!
         </ng-template>
       </span>
+    -->
     </div>
 
     <div class="flex flex-row gap-8">
