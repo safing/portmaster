@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/safing/portmaster/base/config"
@@ -842,6 +843,8 @@ By default, the Portmaster tries to choose the node closest to the destination a
 		Key:  CfgOptionSplitTunUseKey,
 		Description: `Route specific traffic through a different network interface, bypassing default system routing (useful for avoiding VPNs for certain apps).
 
+When you enable this and the Network Interface option is empty, Portmaster will try to route your traffic through the default physical network interface.
+
 Important: SPN overrides Split Tunnel when enabled, so this option has no effect on SPN connections.`,
 		OptType:      config.OptTypeBool,
 		DefaultValue: false,
@@ -866,18 +869,24 @@ Important: SPN overrides Split Tunnel when enabled, so this option has no effect
 - Interface IP address: "192.168.1.1", "10.0.0.1", etc.
 - Interface MAC address: "00:1A:2B:3C:4D:5E", "01:23:45:67:89:AB", etc.
 
-Leave empty or set to 'auto' to let Portmaster detect the physical network interface and ignore virtual VPN interfaces. This helps bypass VPN tunnels. For better reliability, you can specify the interface manually if 'auto' does not work as expected.
+Leave empty to let Portmaster detect the physical network interface and ignore virtual VPN interfaces. This helps bypass VPN tunnels. For better reliability, you can specify the interface manually if empty value does not work as expected.
 
 Important: The connection will be dropped if the network interface cannot be detected or becomes unavailable.
 
 Important: SPN overrides Split Tunnel when enabled, so this option has no effect on SPN connections.`,
 		Sensitive:    true,
 		OptType:      config.OptTypeString,
-		DefaultValue: "auto",
+		DefaultValue: "",
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayOrderAnnotation:   cfgOptionSplitTunInterfaceOrder,
 			config.CategoryAnnotation:       "General",
+		},
+		ValidationFunc: func(value interface{}) error {
+			if s, ok := value.(string); ok && s != "" && strings.TrimSpace(s) == "" {
+				return errors.New("network interface cannot contain only whitespace characters")
+			}
+			return nil
 		},
 	})
 	if err != nil {

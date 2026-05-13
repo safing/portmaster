@@ -37,12 +37,12 @@ var (
 // - interface local IP address (e.g. "192.168.1.1")
 // - interface name (e.g. "eth0")
 // - MAC address (e.g. "00:1A:2B:3C:4D:5E")
-// - "auto" - to try detecting "default" (non-VPN) interface automatically (not reliable)
+// - empty - to try detecting "default" (non-VPN) interface automatically (not reliable)
 func AwaitRequest(connInfo *network.Connection, bindInterface string) (*network.SplitTunContext, error) {
 
 	var binding proxy.LocalBinding
-	if bindInterface == "" || bindInterface == "auto" {
-		// "auto" is the default and means to try detecting the "default" (non-VPN) interface automatically.
+	if bindInterface == "" {
+		// empty - is the default and means to try detecting the "default" (non-VPN) interface automatically.
 		// This is not reliable, but can be convenient for users who don't want to configure an interface.
 		ifaces, err := netenv.GetBestPhysicalDefaultInterfaces()
 		if err != nil {
