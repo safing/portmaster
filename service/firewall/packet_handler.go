@@ -465,6 +465,7 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	filterConnection := true
+	checkTunnel := true
 
 	// Check for special (internal) connection cases.
 	switch {
@@ -476,10 +477,11 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 		log.Tracer(pkt.Ctx()).Infof("filter: granting own pre-authenticated connection %s", conn)
 
 	case !conn.Inbound && isOwnSplitTunnelProxyConnection(conn):
-		// Approve connection.
+		// Approve connection and skip tunnel check.
 		conn.Accept("split tunnel connection proxied by Portmaster", noReasonOptionKey)
 		conn.Internal = true
 		filterConnection = false
+		checkTunnel = false
 		log.Tracer(pkt.Ctx()).Infof("filter: granting own pre-authenticated proxied split tunnel connection %s", conn)
 
 	// Redirect outbound DNS packets if enabled,
@@ -513,7 +515,7 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	// Apply privacy filter and check tunneling.
-	FilterConnection(pkt.Ctx(), conn, pkt, filterConnection, true)
+	FilterConnection(pkt.Ctx(), conn, pkt, filterConnection, checkTunnel)
 
 	// Decide how to continue handling connection.
 	switch {
