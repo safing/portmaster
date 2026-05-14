@@ -6,7 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/profile/binmeta"
 )
 
@@ -101,4 +103,62 @@ func addFingerprints(existing, add []Fingerprint, from string) []Fingerprint {
 	}
 
 	return existing
+}
+
+// migrateProfileOnFingerprintChange creates a new profile whose ID is derived
+// from the updated fingerprints, copies all settings from the old profile,
+// deletes the old profile, and emits EventMigrated. This mirrors the pattern
+// used by MergeProfiles and ensures that:
+//   - history DB entries are migrated (via EventMigrated → netquery handler)
+//   - active connections are re-attributed (via EventDelete → reAttributeConnections)
+//   - future connections find the profile via normal fingerprint matching
+func migrateProfileOnFingerprintChange(old *Profile) error {
+	newDerivedID := DeriveProfileID(old.Fingerprints)
+
+	// Abort if a profile with the target ID already exists — the user may have
+	// set fingerprints that conflict with another existing profile.
+	_, existsErr := profileDB.Get(ProfilesDBPath + MakeScopedID(old.Source, newDerivedID))
+	if existsErr == nil {
+		log.Debugf("profile: skipping rename of %s: target ID %s already exists", old.ScopedID(), newDerivedID)
+		return nil
+	}
+	if !errors.Is(existsErr, database.ErrNotFound) {
+		return fmt.Errorf("failed to check for existing profile %s: %w", newDerivedID, existsErr)
+	}
+
+	// Build the new profile. ID is left empty so New() derives it from Fingerprints.
+	newProfile := New(&Profile{
+		Source:              old.Source,
+		Name:                old.Name,
+		Description:         old.Description,
+		Warning:             old.Warning,
+		WarningLastUpdated:  old.WarningLastUpdated,
+		Homepage:            old.Homepage,
+		Icon:                old.Icon,
+		IconType:            old.IconType,
+		Icons:               old.Icons,
+		LinkedPath:          old.LinkedPath,
+		PresentationPath:    old.PresentationPath,
+		UsePresentationPath: old.UsePresentationPath,
+		Fingerprints:        old.Fingerprints,
+		Config:              old.Config,
+		LastEdited:          time.Now().Unix(),
+		Internal:            old.Internal,
+	})
+	// Preserve the original creation timestamp (New() always overwrites it).
+	newProfile.Created = old.Created
+
+	if err := newProfile.Save(); err != nil {
+		return fmt.Errorf("failed to save renamed profile: %w", err)
+	}
+
+	if err := old.delete(); err != nil {
+		return fmt.Errorf("failed to delete old profile %s: %w", old.ScopedID(), err)
+	}
+
+	module.EventMigrated.Submit([]string{old.ScopedID(), newProfile.ScopedID()})
+	log.Infof("profile: renamed profile %q from %s to %s due to fingerprint change",
+		old.Name, old.ScopedID(), newProfile.ScopedID())
+
+	return nil
 }

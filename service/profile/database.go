@@ -2,6 +2,7 @@ package profile
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/safing/portmaster/base/config"
@@ -61,8 +62,26 @@ func startProfileUpdateChecker() error {
 					return errors.New("subscription canceled")
 				}
 
-				// Get active profile.
 				scopedID := strings.TrimPrefix(r.Key(), ProfilesDBPath)
+
+				// Check if fingerprints changed such that the profile ID needs to be
+				// re-derived. This must run before the activeProfile lookup so that it
+				// also applies when the app is not currently running.
+				if !r.Meta().IsDeleted() {
+					if receivedProfile, parseErr := EnsureProfile(r); parseErr == nil && !receivedProfile.savedInternally {
+						if len(receivedProfile.Fingerprints) > 0 &&
+							DeriveProfileID(receivedProfile.Fingerprints) != receivedProfile.ID {
+							if renameErr := migrateProfileOnFingerprintChange(receivedProfile); renameErr != nil {
+								log.Errorf("profile: failed to rename profile %s after fingerprint change: %s", scopedID, renameErr)
+							}
+							// The rename saves a new profile and deletes the old one, each of
+							// which produces its own feed event. Skip further processing here.
+							continue profileFeed
+						}
+					}
+				}
+
+				// Get active profile.
 				activeProfile := getActiveProfile(scopedID)
 				if activeProfile == nil {
 					// Check if profile is being deleted.
@@ -109,7 +128,7 @@ type databaseHook struct {
 	database.HookBase
 }
 
-// UsesPrePut implements the Hook interface and returns false.
+// UsesPrePut implements the Hook interface and returns true.
 func (h *databaseHook) UsesPrePut() bool {
 	return true
 }
