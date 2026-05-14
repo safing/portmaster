@@ -132,6 +132,12 @@ func (e *Entity) DstPort() uint16 {
 	return e.dstPort
 }
 
+// FetchLocation fetches GeoIP location data for the entity.
+// It is safe to call multiple times; the lookup runs only once.
+func (e *Entity) FetchLocation(ctx context.Context) {
+	e.getLocation(ctx)
+}
+
 // FetchData fetches additional information, meant to be called before persisting an entity record.
 func (e *Entity) FetchData(ctx context.Context) {
 	e.getLocation(ctx)

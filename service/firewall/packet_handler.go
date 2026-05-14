@@ -539,6 +539,10 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 		return
 	}
 
+	// Always fetch location data so Country/ASN/ASOrg are available in the UI
+	// regardless of whether filtering or tunneling is active.
+	conn.Entity.FetchLocation(ctx)
+
 	// Check if external verdict handler is set, and if so, run it.
 	// Note! This block can override the filter and tunnel check flags!
 	if extHandler := externalVerdictHandler.Load(); extHandler != nil {
