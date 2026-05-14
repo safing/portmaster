@@ -133,6 +133,13 @@ func (h *databaseHook) PrePut(r record.Record) (record.Record, error) {
 	// prepare profile
 	profile.prepProfile()
 
+	// Validate fingerprints: reject saves with unparseable fingerprints (e.g. bad regex)
+	// to prevent a profile from being saved in a state where it can never match.
+	_, fpErr := ParseFingerprints(profile.Fingerprints, profile.LinkedPath)
+	if fpErr != nil {
+		return nil, fmt.Errorf("invalid fingerprint: %w", fpErr)
+	}
+
 	// parse config
 	err = profile.parseConfig()
 	if err != nil {
