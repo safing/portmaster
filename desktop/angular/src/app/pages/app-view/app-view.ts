@@ -275,15 +275,33 @@ export class AppViewComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const source = this.appProfile.Source;
+    const id = this.appProfile.ID;
+
     this.dialog
       .create(EditProfileDialog, {
         backdrop: true,
         autoclose: false,
-        data: `${this.appProfile.Source}/${this.appProfile.ID}`,
+        data: `${source}/${id}`,
       })
       .onAction('deleted', () => {
         // navigate to the app overview if it has been deleted.
         this.router.navigate(['/app/']);
+      })
+      .onAction('saved', () => {
+        // After save, the backend may have migrated the profile to a new ID
+        // (when fingerprints changed). Verify it still exists at the same ID;
+        // if not, navigate to the overview so the user can re-open the app
+        // and the component reinitializes with the correct new profile.
+        this.profileService.getAppProfile(`${source}/${id}`).subscribe({
+          error: () => {
+            this.actionIndicator.info(
+              'Profile ID Changed',
+              'The fingerprint change caused the profile to be re-keyed. You can find the app in the app list to continue editing.'
+            );
+            this.router.navigate(['/app/']);
+          },
+        });
       });
   }
 
