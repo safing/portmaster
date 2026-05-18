@@ -83,6 +83,28 @@ func writeVersion() {
 	}
 }
 
+func writeLogLevelChange(from, to string) {
+	if GlobalWriter == nil {
+		return
+	}
+	if GlobalWriter.isStdout {
+		fmt.Fprintf(GlobalWriter, "%s%s%s log level changed from %s%s%s to %s%s%s\n",
+			dimColor(),
+			time.Now().Format(timeFormat),
+			endDimColor(),
+
+			blueColor(),
+			from,
+			endColor(),
+
+			blueColor(),
+			to,
+			endColor())
+	} else {
+		fmt.Fprintf(GlobalWriter, "%s log level changed from %s to %s\n", time.Now().Format(timeFormat), from, to)
+	}
+}
+
 func writerManager() {
 	defer shutdownWaitGroup.Done()
 

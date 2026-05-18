@@ -18,15 +18,16 @@ import (
 // See TODO on packet.mark() on their relevance
 // and a possibility to remove most IPtables rules.
 const (
-	MarkAccept       = 1700 // 0x6a4
-	MarkBlock        = 1701 // 0x6a5
-	MarkDrop         = 1702 // 0x6a6
-	MarkAcceptFinal  = 1709 // 0x6ad Accept and finalize the decision in iptables. This should only be used for Portmaster-owned outbound connections.
-	MarkAcceptAlways = 1710 // 0x6ae
-	MarkBlockAlways  = 1711 // 0x6af
-	MarkDropAlways   = 1712 // 0x6b0
-	MarkRerouteNS    = 1799 // 0x707
-	MarkRerouteSPN   = 1717 // 0x6b5
+	MarkAccept          = 1700 // 0x6a4
+	MarkBlock           = 1701 // 0x6a5
+	MarkDrop            = 1702 // 0x6a6
+	MarkAcceptFinal     = 1709 // 0x6ad Accept and finalize the decision in iptables. This should only be used for Portmaster-owned outbound connections.
+	MarkAcceptAlways    = 1710 // 0x6ae
+	MarkBlockAlways     = 1711 // 0x6af
+	MarkDropAlways      = 1712 // 0x6b0
+	MarkRerouteNS       = 1799 // 0x707
+	MarkRerouteSPN      = 1717 // 0x6b5
+	MarkRerouteSplitTun = 1719 // 0x6b7
 )
 
 func markToString(mark int) string {
@@ -49,6 +50,8 @@ func markToString(mark int) string {
 		return "RerouteNS"
 	case MarkRerouteSPN:
 		return "RerouteSPN"
+	case MarkRerouteSplitTun:
+		return "RerouteSplitTun"
 	}
 	return "unknown"
 }
@@ -191,4 +194,8 @@ func (pkt *packet) RerouteToNameserver() error {
 
 func (pkt *packet) RerouteToTunnel() error {
 	return pkt.mark(MarkRerouteSPN)
+}
+
+func (pkt *packet) RerouteToSplitTun() error {
+	return pkt.mark(MarkRerouteSplitTun)
 }

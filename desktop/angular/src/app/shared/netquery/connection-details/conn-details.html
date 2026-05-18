@@ -221,7 +221,7 @@
     </span>
   </div>
 
-  <div *ngIf="conn.scope === scopes.Global">
+  <div *ngIf="conn.scope === scopes.Global && !!conn.tunneled">
     <h3 class="text-primary text-xxs">SPN Tunnel</h3>
     <ng-container [ngSwitch]="true">
       <span *ngSwitchCase="!conn.tunneled" class="inline-flex items-center gap-2 text-secondary">
@@ -253,6 +253,17 @@
         reloading the connections.
       </span>
     </ng-container>
+  </div>
+
+  <div *ngIf="!!conn.extra_data?.split_tun">
+    <h3 class="text-primary text-xxs">Split Tunnel</h3>
+    <div *ngIf="conn.extra_data?.split_tun as splitTun" class="meta">
+      <span class="inline-flex items-center gap-1 flex-wrap">
+        <span class="text-secondary">This connection is routed through interface</span>
+        <span>{{ splitTun.Interface }}</span>
+        <span class="text-secondary">({{ splitTun.IP }})</span>
+      </span>      
+    </div>
   </div>
 
   <div *ngIf="!!bwData.length" class="col-span-3 block border-t border-gray-400 py-2">

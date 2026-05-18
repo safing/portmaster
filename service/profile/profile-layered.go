@@ -50,6 +50,8 @@ type LayeredProfile struct {
 	SPNRoutingAlgorithm config.StringOption `json:"-"`
 	EnableHistory       config.BoolOption   `json:"-"`
 	KeepHistory         config.IntOption    `json:"-"`
+	UseSplitTun         config.BoolOption   `json:"-"`
+	SplitTunInterface   config.StringOption `json:"-"`
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -112,6 +114,14 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	lp.DomainHeuristics = lp.wrapBoolOption(
 		CfgOptionDomainHeuristicsKey,
 		cfgOptionDomainHeuristics,
+	)
+	lp.UseSplitTun = lp.wrapBoolOption(
+		CfgOptionSplitTunUseKey,
+		cfgOptionSplitTunUse,
+	)
+	lp.SplitTunInterface = lp.wrapStringOption(
+		CfgOptionSplitTunInterfaceKey,
+		cfgOptionSplitTunInterface,
 	)
 	lp.UseSPN = lp.wrapBoolOption(
 		CfgOptionUseSPNKey,
@@ -347,6 +357,22 @@ func (lp *LayeredProfile) MatchServiceEndpoint(ctx context.Context, entity *inte
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
 	return cfgServiceEndpoints.Match(ctx, entity)
+}
+
+// MatchSplitTunUsagePolicy checks if the given endpoint matches an entry in any Split Tunnel usage policy in any of the profiles. This functions requires the layered profile to be read locked.
+func (lp *LayeredProfile) MatchSplitTunUsagePolicy(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
+	for _, layer := range lp.layers {
+		if layer.splitTunUsagePolicy.IsSet() {
+			result, reason := layer.splitTunUsagePolicy.Match(ctx, entity)
+			if endpoints.IsDecision(result) {
+				return result, reason
+			}
+		}
+	}
+
+	cfgLock.RLock()
+	defer cfgLock.RUnlock()
+	return cfgSplitTunUsagePolicy.Match(ctx, entity)
 }
 
 // MatchSPNUsagePolicy checks if the given endpoint matches an entry in any of the profiles. This functions requires the layered profile to be read locked.

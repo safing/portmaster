@@ -7,7 +7,7 @@ use wdk::filter_engine::packet::InjectInfo;
 
 use crate::connection::{
     Connection, ConnectionV4, ConnectionV6, Direction, RedirectInfo, Verdict, PM_DNS_PORT,
-    PM_SPN_PORT,
+    PM_SPN_PORT, PM_SPLIT_TUN_PORT,
 };
 use crate::connection_cache::ConnectionCache;
 use crate::connection_map::Key;
@@ -88,18 +88,9 @@ impl ConnectionInfo {
     }
 }
 
-fn fast_track_pm_packets(key: &Key, direction: Direction) -> bool {
-    match direction {
-        Direction::Outbound => {
-            if key.local_port == PM_DNS_PORT || key.local_port == PM_SPN_PORT {
-                return key.local_address == key.remote_address;
-            }
-        }
-        Direction::Inbound => {
-            if key.local_port == PM_DNS_PORT || key.local_port == PM_SPN_PORT {
-                return key.local_address == key.remote_address;
-            }
-        }
+fn fast_track_pm_packets(key: &Key, _: Direction) -> bool {
+    if key.local_port == PM_DNS_PORT || key.local_port == PM_SPN_PORT || key.local_port == PM_SPLIT_TUN_PORT {
+        return key.local_address == key.remote_address;
     }
 
     return false;

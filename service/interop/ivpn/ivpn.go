@@ -125,8 +125,8 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 		// Mark that the first connection attempt is done, even if it failed
 		i.setFirstTryDone()
 
-		// Ensure SPN compatibility rules are removed when Portmaster disconnects from IVPN client, either due to shutdown or connection failure.
-		i.ensureSPNCompatibility(wc)
+		// Ensure compatibility rules are removed when Portmaster disconnects from IVPN client, either due to shutdown or connection failure.
+		i.reconcileCompatibilityState(wc)
 	}()
 
 	notifWarn := notifWarnOldVersion.Load()
@@ -217,17 +217,17 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	i.updateIvpnClientDnsSettings(wc, client)
 
 	// Subscribe to interception start/stop events to update IVPN client DNS settings
-	interceptionStatus := i.owner.Interception().EventStartStopState.Subscribe("ivpn", 10)
-	defer interceptionStatus.Cancel()
+	interceptionStartStopStatus := i.owner.Interception().EventStartStopState.Subscribe("ivpn", 10)
+	defer interceptionStartStopStatus.Cancel()
 
 	done := false
 	for !done {
 		select {
-		case <-interceptionStatus.Events():
+		case <-interceptionStartStopStatus.Events():
 			i.updateIvpnClientDnsSettings(wc, client)
 		case <-i.owner.EvtConfigChange():
 			i.updateIvpnClientDnsSettings(wc, client)
-			i.ensureSPNCompatibility(wc)
+			i.reconcileCompatibilityState(wc)
 		case <-wc.Done():
 			client.Disconnect()
 			done = true

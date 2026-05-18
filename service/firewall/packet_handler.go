@@ -25,6 +25,7 @@ import (
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/process"
+	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/portmaster/spn/access"
 )
@@ -464,6 +465,7 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	filterConnection := true
+	checkTunnel := true
 
 	// Check for special (internal) connection cases.
 	switch {
@@ -473,6 +475,14 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 		conn.Internal = true
 		filterConnection = false
 		log.Tracer(pkt.Ctx()).Infof("filter: granting own pre-authenticated connection %s", conn)
+
+	case !conn.Inbound && isOwnSplitTunnelProxyConnection(conn):
+		// Approve connection and skip tunnel check.
+		conn.Accept("split tunnel connection proxied by Portmaster", noReasonOptionKey)
+		conn.Internal = true
+		filterConnection = false
+		checkTunnel = false
+		log.Tracer(pkt.Ctx()).Infof("filter: granting own pre-authenticated proxied split tunnel connection %s", conn)
 
 	// Redirect outbound DNS packets if enabled,
 	case dnsQueryInterception() &&
@@ -505,7 +515,7 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 
 	// Apply privacy filter and check tunneling.
-	FilterConnection(pkt.Ctx(), conn, pkt, filterConnection, true)
+	FilterConnection(pkt.Ctx(), conn, pkt, filterConnection, checkTunnel)
 
 	// Decide how to continue handling connection.
 	switch {
@@ -528,6 +538,10 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 	if !conn.DataIsComplete() {
 		return
 	}
+
+	// Always fetch location data so Country/ASN/ASOrg are available in the UI
+	// regardless of whether filtering or tunneling is active.
+	conn.Entity.FetchLocation(ctx)
 
 	// Check if external verdict handler is set, and if so, run it.
 	// Note! This block can override the filter and tunnel check flags!
@@ -571,6 +585,11 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 	// Check if connection should be tunneled.
 	if checkTunnel {
 		checkTunneling(ctx, conn)
+
+		if conn.Verdict != network.VerdictRerouteToTunnel {
+			// SPN takes precedence over Split Tunnel, so only check split tunneling if not already set to tunnel.
+			checkSplitTunneling(ctx, conn)
+		}
 	}
 
 	// Request tunneling if no tunnel is set and connection should be tunneled.
@@ -584,6 +603,12 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 			// The tunneling data makes connection easy to recognize as a failed SPN
 			// connection and the data will help with debugging and displaying in the UI.
 			conn.Failed(fmt.Sprintf("failed to request tunneling: %s", err), "")
+		}
+	} else if conn.Verdict == network.VerdictRerouteToSplitTun {
+		// Request split tunneling
+		err := requestSplitTunneling(ctx, conn)
+		if err != nil {
+			conn.Failed(fmt.Sprintf("failed to request split-tunneling: %s", err), profile.CfgOptionSplitTunUseKey)
 		}
 	}
 }
@@ -844,6 +869,8 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 		err = pkt.RerouteToNameserver()
 	case network.VerdictRerouteToTunnel:
 		err = pkt.RerouteToTunnel()
+	case network.VerdictRerouteToSplitTun:
+		err = pkt.RerouteToSplitTun()
 	case network.VerdictFailed:
 		atomic.AddUint64(packetsFailed, 1)
 		err = pkt.Drop()

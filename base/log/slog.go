@@ -5,51 +5,62 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"sync"
 
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
 )
 
+// slogLevel is the shared log level variable for the default slog logger.
+// All loggers derived from slog.Default() (e.g. via .With()) share the same
+// underlying handler and therefore respect changes to this variable immediately.
+var (
+	slogLevel     = new(slog.LevelVar)
+	slogSetupOnce sync.Once
+)
+
 func setupSLog(level Severity) {
-	// TODO: Changes in the log level are not yet reflected onto the slog handlers in the modules.
+	// Update the shared level variable. All existing handlers and derived
+	// loggers read from this pointer, so they pick up the change instantly.
+	slogLevel.Set(level.toSLogLevel())
 
-	// Set highest possible level, so it can be changed in runtime.
-	handlerLogLevel := level.toSLogLevel()
+	// Create the handler and set slog.Default() exactly once, so that
+	// managers created after startup always hold a logger whose underlying
+	// handler is controlled by slogLevel.
+	slogSetupOnce.Do(func() {
+		var logHandler slog.Handler
+		switch runtime.GOOS {
+		case "windows":
+			logHandler = tint.NewHandler(
+				windowsColoring(GlobalWriter), // Enable coloring on Windows.
+				&tint.Options{
+					AddSource:  true,
+					Level:      slogLevel,
+					TimeFormat: timeFormat,
+					NoColor:    !( /* Color: */ GlobalWriter.IsStdout() && isatty.IsTerminal(GlobalWriter.file.Fd())),
+				},
+			)
 
-	// Create handler depending on OS.
-	var logHandler slog.Handler
-	switch runtime.GOOS {
-	case "windows":
-		logHandler = tint.NewHandler(
-			windowsColoring(GlobalWriter), // Enable coloring on Windows.
-			&tint.Options{
+		case "linux":
+			logHandler = tint.NewHandler(GlobalWriter, &tint.Options{
 				AddSource:  true,
-				Level:      handlerLogLevel,
+				Level:      slogLevel,
 				TimeFormat: timeFormat,
 				NoColor:    !( /* Color: */ GlobalWriter.IsStdout() && isatty.IsTerminal(GlobalWriter.file.Fd())),
-			},
-		)
+			})
 
-	case "linux":
-		logHandler = tint.NewHandler(GlobalWriter, &tint.Options{
-			AddSource:  true,
-			Level:      handlerLogLevel,
-			TimeFormat: timeFormat,
-			NoColor:    !( /* Color: */ GlobalWriter.IsStdout() && isatty.IsTerminal(GlobalWriter.file.Fd())),
-		})
+		default:
+			logHandler = tint.NewHandler(os.Stdout, &tint.Options{
+				AddSource:  true,
+				Level:      slogLevel,
+				TimeFormat: timeFormat,
+				NoColor:    true,
+			})
+		}
 
-	default:
-		logHandler = tint.NewHandler(os.Stdout, &tint.Options{
-			AddSource:  true,
-			Level:      handlerLogLevel,
-			TimeFormat: timeFormat,
-			NoColor:    true,
-		})
-	}
-
-	// Set as default logger.
-	slog.SetDefault(slog.New(logHandler))
+		slog.SetDefault(slog.New(logHandler))
+	})
 }
 
 func windowsColoring(lw *LogWriter) io.Writer {

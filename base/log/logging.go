@@ -145,10 +145,18 @@ func GetLogLevel() Severity {
 
 // SetLogLevel sets a new log level. Only effective after Start().
 func SetLogLevel(level Severity) {
+	previous := GetLogLevel()
+
 	atomic.StoreUint32(logLevel, uint32(level))
 
 	// Setup slog here for the transition period.
 	setupSLog(level)
+
+	// Write directly to GlobalWriter (bypassing the level filter) so the
+	// message is always visible regardless of the current or new level.
+	if previous != level {
+		writeLogLevelChange(previous.Name(), level.Name())
+	}
 }
 
 // Name returns the name of the log level.

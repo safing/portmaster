@@ -124,6 +124,7 @@ type Profile struct { //nolint:maligned // not worth the effort
 	spnUsagePolicy      endpoints.Endpoints
 	spnTransitHubPolicy endpoints.Endpoints
 	spnExitHubPolicy    endpoints.Endpoints
+	splitTunUsagePolicy endpoints.Endpoints
 
 	// Lifecycle Management
 	outdated   *abool.AtomicBool
@@ -200,6 +201,15 @@ func (profile *Profile) parseConfig() error {
 			log.Warningf("profiles: failed to resolve filter list IDs: %s", err)
 		} else {
 			profile.filterListsSet = true
+		}
+	}
+
+	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionSplitTunUsagePolicyKey)
+	profile.splitTunUsagePolicy = nil
+	if ok {
+		profile.splitTunUsagePolicy, err = endpoints.ParseEndpoints(list)
+		if err != nil {
+			lastErr = err
 		}
 	}
 

@@ -167,6 +167,7 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 		switch conn.Verdict { //nolint:exhaustive
 		case VerdictAccept,
 			VerdictRerouteToNameserver,
+			VerdictRerouteToSplitTun,
 			VerdictRerouteToTunnel:
 
 			accepted++

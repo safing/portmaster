@@ -28,7 +28,8 @@ span.verdict {
 
   &.accept,
   &.reroutetons,
-  &.reroutetotunnel {
+  &.reroutetotunnel,
+  &.reroutetosplittun {
     --bg-color: theme('colors.info.green');
   }
 

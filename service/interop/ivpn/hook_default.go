@@ -12,6 +12,5 @@ type platformSpecific struct{}
 func (i *InteropIvpn) spnConnectingHook(w *mgr.WorkerCtx, hookCtx hub.Announcement) (cancel bool, err error) {
 	return true, nil
 }
-func (i *InteropIvpn) ensureSPNCompatibility(wc *mgr.WorkerCtx) error {
-	return nil
+func (i *InteropIvpn) reconcileCompatibilityState(wc *mgr.WorkerCtx) {
 }

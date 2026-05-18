@@ -28,6 +28,5 @@ func (i *InteropIvpn) spnConnectingHook(w *mgr.WorkerCtx, hookCtx hub.Announceme
 
 	return false, nil
 }
-func (i *InteropIvpn) ensureSPNCompatibility(wc *mgr.WorkerCtx) error {
-	return nil
+func (i *InteropIvpn) reconcileCompatibilityState(wc *mgr.WorkerCtx) {
 }

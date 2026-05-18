@@ -92,15 +92,19 @@ var (
 			`,
 		},
 		{
-			Name:              "Safing Support",
-			ID:                string(account.FeatureSafingSupport),
-			RequiredFeatureID: account.FeatureSafingSupport,
-			InPackage:         packagePlus,
+			Name:        "Split Tunneling",
+			ID:          "splittun",
+			ConfigKey:   "splittun/enable",
+			ConfigScope: "splittun/",
+			InPackage:   packageFree,
 			icon: `
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round"
-        d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-    </svg>	
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+	<g stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">    
+		<path d="M8.5 12h3" />    
+		<path d="M11 12c4-2 6-4 6.5-4.5" /> <path d="M11 12c4 2 6 4 6.5 4.5" />		
+		<circle cx="19" cy="6" r="2" /> <circle cx="19" cy="18" r="2" /> <circle cx="4" cy="12" r="2" />
+	</g>
+	</svg>
 			`,
 		},
 		{

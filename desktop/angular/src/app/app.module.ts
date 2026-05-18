@@ -29,6 +29,7 @@ import { AppOverviewComponent, AppViewComponent, QuickSettingInternetButtonCompo
 import { QsHistoryComponent } from './pages/app-view/qs-history/qs-history.component';
 import { QuickSettingSelectExitButtonComponent } from './pages/app-view/qs-select-exit/qs-select-exit';
 import { QuickSettingUseSPNButtonComponent } from './pages/app-view/qs-use-spn/qs-use-spn';
+import { QuickSettingUseSplitTunButtonComponent } from './pages/app-view/qs-use-splittun/qs-use-splittun';
 import { DashboardPageComponent } from './pages/dashboard/dashboard.component';
 import { FeatureCardComponent } from './pages/dashboard/feature-card/feature-card.component';
 import { MonitorPageComponent } from './pages/monitor';
@@ -138,6 +139,7 @@ const localeConfig = {
     QuickSettingInternetButtonComponent,
     QuickSettingUseSPNButtonComponent,
     QuickSettingSelectExitButtonComponent,
+    QuickSettingUseSplitTunButtonComponent,
     AppOverviewComponent,
     PlaceholderComponent,
     LoadingComponent,

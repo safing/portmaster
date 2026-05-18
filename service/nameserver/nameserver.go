@@ -205,7 +205,8 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		switch conn.Verdict {
 		// We immediately save blocked, dropped or failed verdicts so
 		// they pop up in the UI.
-		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed, network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel:
+		case network.VerdictBlock, network.VerdictDrop, network.VerdictFailed,
+			network.VerdictRerouteToNameserver, network.VerdictRerouteToTunnel, network.VerdictRerouteToSplitTun:
 			conn.Save()
 
 		// For undecided or accepted connections we don't save them yet, because

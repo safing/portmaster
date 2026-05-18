@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network"
+	pmpacket "github.com/safing/portmaster/service/network/packet"
 )
 
 var nfct *ct.Nfct // Conntrack handler. NFCT: Network Filter Connection Tracking.
@@ -31,6 +32,91 @@ func TeardownNFCT() {
 	if nfct != nil {
 		_ = nfct.Close()
 	}
+}
+
+// DeleteUnmarkedConnections deletes all conntrack entries with connmark=0,
+// excluding loopback connections.
+// These entries represent connections established while Portmaster was not
+// running or was paused and therefore never received a verdict mark.
+//
+// The Linux netfilter nat table applies DNAT only to the first packet of a NEW
+// connection. ESTABLISHED connections bypass the nat table entirely, so any
+// routing decision (e.g. MarkRerouteSPN, MarkRerouteSplitTun) would never take
+// effect for them. Removing their conntrack entries forces applications to
+// reconnect; the resulting SYN is processed by NFQUEUE as a new connection and
+// the correct DNAT rule fires.
+//
+// Loopback connections (source or destination is 127.x.x.x / ::1) are skipped.
+// They always carry connmark=0 because Portmaster never saves a permanent mark
+// for loopback-destined packets. Flushing them would needlessly disconnect apps
+// talking to local services (databases, dev servers, local APIs, etc.).
+//
+// Connections already processed by Portmaster carry a non-zero connmark and
+// are handled via CONNMARK --restore-mark; they are unaffected.
+func DeleteUnmarkedConnections() error {
+	if nfct == nil {
+		return errors.New("nfq: nfct not initialized")
+	}
+
+	deleted := deleteUnmarkedConnections(nfct, ct.IPv4)
+
+	if netenv.IPv6Enabled() {
+		deleted += deleteUnmarkedConnections(nfct, ct.IPv6)
+	}
+
+	log.Infof("nfq: deleted %d unmarked conntrack entries to force re-evaluation on firewall activation", deleted)
+	return nil
+}
+
+func deleteUnmarkedConnections(nfct *ct.Nfct, f ct.Family) (deleted int) {
+	filter := ct.FilterAttr{
+		Mark:     []byte{0x00, 0x00, 0x00, 0x00},
+		MarkMask: []byte{0xFF, 0xFF, 0xFF, 0xFF},
+	}
+
+	connections, err := nfct.Query(ct.Conntrack, f, filter)
+	if err != nil {
+		log.Warningf("nfq: error querying unmarked conntrack entries: %s", err)
+		return 0
+	}
+
+	var lastErr error
+	for _, connection := range connections {
+		if isLoopbackConnection(connection) {
+			continue
+		}
+		if err := nfct.Delete(ct.Conntrack, f, connection); err != nil {
+			lastErr = err
+		} else {
+			deleted++
+		}
+	}
+
+	if lastErr != nil {
+		log.Warningf("nfq: some unmarked conntrack entries could not be deleted, last error: %s", lastErr)
+	}
+	return deleted
+}
+
+// isLoopbackConnection reports whether a conntrack entry involves a loopback address.
+func isLoopbackConnection(c ct.Con) bool {
+	if c.Origin != nil {
+		if c.Origin.Src != nil && c.Origin.Src.IsLoopback() {
+			return true
+		}
+		if c.Origin.Dst != nil && c.Origin.Dst.IsLoopback() {
+			return true
+		}
+	}
+	if c.Reply != nil {
+		if c.Reply.Src != nil && c.Reply.Src.IsLoopback() {
+			return true
+		}
+		if c.Reply.Dst != nil && c.Reply.Dst.IsLoopback() {
+			return true
+		}
+	}
+	return false
 }
 
 // DeleteAllMarkedConnection deletes all marked entries from the conntrack table.
@@ -53,7 +139,7 @@ func DeleteAllMarkedConnection() error {
 
 func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) (deleted int) {
 	// initialize variables
-	permanentFlags := []uint32{MarkAcceptAlways, MarkBlockAlways, MarkDropAlways, MarkRerouteNS, MarkRerouteSPN}
+	permanentFlags := []uint32{MarkAcceptAlways, MarkBlockAlways, MarkDropAlways, MarkRerouteNS, MarkRerouteSPN, MarkRerouteSplitTun}
 	filter := ct.FilterAttr{}
 	filter.MarkMask = []byte{0xFF, 0xFF, 0xFF, 0xFF}
 	filter.Mark = []byte{0x00, 0x00, 0x00, 0x00} // 4 zeros starting value
@@ -70,8 +156,8 @@ func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) (deleted int) {
 		}
 
 		for _, connection := range currentConnections {
-			deleteError = nfct.Delete(ct.Conntrack, ct.IPv4, connection)
-			if err != nil {
+			deleteError = nfct.Delete(ct.Conntrack, f, connection)
+			if deleteError != nil {
 				numberOfErrors++
 			} else {
 				deleted++
@@ -102,7 +188,13 @@ func DeleteMarkedConnection(conn *network.Connection) error {
 			},
 		},
 	}
-	connections, err := nfct.Get(ct.Conntrack, ct.IPv4, con)
+
+	family := ct.IPv4
+	if conn.IPVersion == pmpacket.IPv6 {
+		family = ct.IPv6
+	}
+
+	connections, err := nfct.Get(ct.Conntrack, family, con)
 	if err != nil {
 		return fmt.Errorf("nfq: failed to find entry for connection %s: %w", conn.String(), err)
 	}
@@ -112,7 +204,7 @@ func DeleteMarkedConnection(conn *network.Connection) error {
 	}
 
 	for _, connection := range connections {
-		deleteErr := nfct.Delete(ct.Conntrack, ct.IPv4, connection)
+		deleteErr := nfct.Delete(ct.Conntrack, family, connection)
 		if err == nil {
 			err = deleteErr
 		}

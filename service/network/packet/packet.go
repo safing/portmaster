@@ -231,6 +231,7 @@ type Packet interface {
 	PermanentDrop() error
 	RerouteToNameserver() error
 	RerouteToTunnel() error
+	RerouteToSplitTun() error
 	FastTrackedByIntegration() bool
 	InfoOnly() bool
 	ExpectInfo() bool

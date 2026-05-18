@@ -73,10 +73,10 @@ export class FeatureCardComponent implements OnChanges, OnDestroy {
     }
 
     let key: string | undefined;
-    if (this.feature?.ConfigScope) {
-      key = 'config:' + this.feature?.ConfigScope;
+    if (this.feature?.ConfigKey) {
+      key = this.feature?.ConfigKey;      
     } else {
-      key = this.feature?.ConfigKey;
+      key = 'config:' + this.feature?.ConfigScope;
     }
 
     if (!key) {

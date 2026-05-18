@@ -1,0 +1,120 @@
+// Package proxy provides minimal, Layer-4 TCP and UDP proxies
+// with injected routing decisions (DeciderFunc), structured logging, session
+// tracking, and graceful shutdown.
+package proxy
+
+import (
+	"net"
+	"time"
+)
+
+// ─── Public API types ────────────────────────────────────────────────────────
+
+// LocalBinding carries the local-side binding parameters for an outbound proxy
+// connection.  Both fields are optional and may be set independently.
+type LocalBinding struct {
+	// IP is the local source address to bind the outgoing socket to.
+	// If nil, the OS selects an appropriate source address.
+	IP net.IP
+
+	// Interface is the name of the network interface (e.g. "eth0") to bind
+	// the outgoing socket to via SO_BINDTODEVICE (Linux only).
+	// An empty string disables interface-level binding.
+	Interface string
+}
+
+// DeciderFunc is called once per new session to determine the upstream
+// destination and optional local binding parameters for the outgoing socket.
+//
+// local is the proxy's listen address; peer is the connecting client's address.
+//
+// It returns:
+//   - remoteIP: required upstream IP address.
+//   - remotePort: required upstream port.
+//   - binding: optional local binding; nil lets the OS choose freely.
+//     Set binding.IP to pin the source address, binding.Interface to restrict
+//     the socket to a specific network device (Linux only).
+//   - extraInfo: optional caller-defined value attached to the session's ConnContext.
+//   - err: non-nil rejects the session without dialling upstream.
+type DeciderFunc func(local net.Addr, peer net.Addr) (remoteIP net.IP, remotePort uint16, binding *LocalBinding, extraInfo any, err error)
+
+// Logger is the minimal structured logging interface expected by the proxies.
+// Pass nil to disable all logging.
+type Logger interface {
+	Debug(msg string, args ...any)
+	Info(msg string, args ...any)
+	Warn(msg string, args ...any)
+	Error(msg string, args ...any)
+}
+
+// noopLogger silently discards every log message.
+type noopLogger struct{}
+
+func (noopLogger) Debug(_ string, _ ...any) {}
+func (noopLogger) Info(_ string, _ ...any)  {}
+func (noopLogger) Warn(_ string, _ ...any)  {}
+func (noopLogger) Error(_ string, _ ...any) {}
+
+// resolveLogger returns l unchanged if non-nil, otherwise a noopLogger.
+func resolveLogger(l Logger) Logger {
+	if l == nil {
+		return noopLogger{}
+	}
+	return l
+}
+
+func resolveLogPrefix(prefix string) string {
+	if prefix == "" {
+		return ""
+	}
+	return prefix + ": "
+}
+
+// ─── Configuration ────────────────────────────────────────────────────────────
+
+// Config holds tunable parameters shared by both proxy types.
+type Config struct {
+	// MaxSessions is the maximum number of concurrent sessions (0 = unlimited).
+	MaxSessions int
+
+	// ReadTimeout closes a session after this duration with no bytes received
+	// from src.  The deadline is rolled forward on every successful read, so
+	// only truly silent sessions are evicted.
+	// Constructors default to 5 min for both TCP and UDP.
+	ReadTimeout time.Duration
+
+	// WriteTimeout is the maximum time allowed for a single write to complete
+	// before the session is torn down.  It guards against a stalled destination
+	// holding a goroutine open indefinitely.
+	// Constructors default to 30s for TCP and UDP.
+	WriteTimeout time.Duration
+
+	// BufferSize is the size of copy buffers used by TCP pipes (bytes).
+	// Not used by UDP (UDP always uses 64 KiB buffers to handle max-sized datagrams).
+	// Each TCP session uses two buffers for bidirectional copying.
+	// Defaults to 32 KiB when <= 0.
+	BufferSize int
+
+	// DialTimeout is the maximum time the TCP proxy waits when dialling the
+	// upstream destination for a new session.  The dial is also cancelled
+	// immediately whenever Shutdown is called, regardless of this value.
+	// Defaults to 10 s when <= 0.
+	DialTimeout time.Duration
+}
+
+const DEFAULT_DIAL_TIMEOUT = 10 * time.Second
+const DEFAULT_BUFFER_SIZE = 32 * 1024
+const DEFAULT_MAX_SESSIONS = 2048
+const DEFAULT_READ_TIMEOUT = 5 * time.Minute
+const DEFAULT_WRITE_TIMEOUT = 30 * time.Second
+
+// DefaultConfig returns a sensible default Config.
+func DefaultConfig() Config {
+	return Config{
+		MaxSessions:  DEFAULT_MAX_SESSIONS,
+		BufferSize:   DEFAULT_BUFFER_SIZE,
+		DialTimeout:  DEFAULT_DIAL_TIMEOUT,
+		ReadTimeout:  DEFAULT_READ_TIMEOUT,
+		WriteTimeout: DEFAULT_WRITE_TIMEOUT,
+	}
+}

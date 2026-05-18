@@ -216,10 +216,10 @@ func (conn *Connection) ReplyWithDNS(ctx context.Context, request *dns.Msg) *dns
 		return nil // Do not respond to request.
 	case VerdictFailed:
 		return nsutil.BlockIP().ReplyWithDNS(ctx, request)
-	case VerdictUndecided, VerdictUndeterminable,
-		VerdictAccept, VerdictRerouteToNameserver, VerdictRerouteToTunnel:
-		fallthrough
 	default:
+		// ReplyWithDNS is called when a DNS response to a DNS message is
+		// crafted because the request is either denied or blocked.
+		// So, other verdicts are not expected here.
 		reply := nsutil.ServerFailure().ReplyWithDNS(ctx, request)
 		nsutil.AddMessagesToReply(ctx, reply, log.ErrorLevel, "INTERNAL ERROR: incorrect use of Connection DNS Responder")
 		return reply
@@ -233,10 +233,6 @@ func (conn *Connection) GetExtraRRs(ctx context.Context, request *dns.Msg) []dns
 	switch conn.Verdict {
 	case VerdictFailed:
 		level = log.ErrorLevel
-	case VerdictUndecided, VerdictUndeterminable,
-		VerdictAccept, VerdictBlock, VerdictDrop,
-		VerdictRerouteToNameserver, VerdictRerouteToTunnel:
-		fallthrough
 	default:
 		level = log.InfoLevel
 	}

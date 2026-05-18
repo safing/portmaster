@@ -8,7 +8,8 @@ export enum Verdict {
   Drop = 4,
   RerouteToNs = 5,
   RerouteToTunnel = 6,
-  Failed = 7
+  Failed = 7,
+  RerouteToSplitTun = 8
 }
 
 export enum IPProtocol {
@@ -207,6 +208,13 @@ export interface TunnelContext {
   Path: TunnelNode[];
   PathCost: number;
   RoutingAlg: 'default';
+}
+
+export interface SplitTunContext {
+  // Interface is the name of the network interface the connection is bound to.
+  Interface: string;
+  // IP is the IP address used to bind the connection to the interface.
+  IP: string;
 }
 
 export interface GeoIPInfo {
