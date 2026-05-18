@@ -712,7 +712,7 @@ Please note that DNS bypass attempts might be additionally blocked in the System
 	err = config.Register(&config.Option{
 		Name:         "SPN Rules",
 		Key:          CfgOptionSPNUsagePolicyKey,
-		Description:  `Customize which websites should or should not be routed through the SPN. Only active if "Use SPN" is enabled.`,
+		Description:  `Customize rules which connections should or should not be routed through the SPN. Only active if "Use SPN" is enabled.`,
 		Help:         rulesHelp,
 		Sensitive:    true,
 		OptType:      config.OptTypeStringArray,
@@ -845,7 +845,7 @@ By default, the Portmaster tries to choose the node closest to the destination a
 
 When you enable this and the Network Interface option is empty, Portmaster will try to route your traffic through the default physical network interface.
 
-Important: SPN overrides Split Tunnel when enabled, so this option has no effect on SPN connections.`,
+Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN, configure SPN on a per-app basis or define exceptions that allow Split Tunnel to take effect.`,
 		OptType:      config.OptTypeBool,
 		DefaultValue: false,
 		Annotations: config.Annotations{
@@ -873,7 +873,7 @@ Leave empty to let Portmaster detect the physical network interface and ignore v
 
 Important: The connection will be dropped if the network interface cannot be detected or becomes unavailable.
 
-Important: SPN overrides Split Tunnel when enabled, so this option has no effect on SPN connections.`,
+Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN, configure SPN on a per-app basis or define exceptions that allow Split Tunnel to take effect.`,
 		Sensitive:    true,
 		OptType:      config.OptTypeString,
 		DefaultValue: "",
@@ -904,9 +904,9 @@ Important: SPN overrides Split Tunnel when enabled, so this option has no effect
 	err = config.Register(&config.Option{
 		Name: "Split Tunnel Rules",
 		Key:  CfgOptionSplitTunUsagePolicyKey,
-		Description: `Customize which websites should or should not be routed through the Split Tunnel. Only active if "Use Split Tunnel" is enabled.
+		Description: `Customize rules which connections should or should not be routed through the Split Tunnel. Only active if "Use Split Tunnel" is enabled.
 		
-Important: SPN overrides Split Tunnel when enabled, so this option has no effect on SPN connections.`,
+Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN, configure SPN on a per-app basis or define exceptions that allow Split Tunnel to take effect.`,
 		Help:         rulesHelp,
 		Sensitive:    true,
 		OptType:      config.OptTypeStringArray,

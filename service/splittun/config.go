@@ -11,11 +11,11 @@ var (
 )
 
 func prepConfig() error {
-	// Register spn module setting.
+	// Register split tunnel module setting.
 	err := config.Register(&config.Option{
 		Name:         "Split Tunnel Module",
 		Key:          CfgOptionSplitTunEnableKey,
-		Description:  "Start the Split Tunnel module. If turned off, the Split Tunnel is fully disabled on this device.",
+		Description:  "Start the Split Tunnel module. If turned off, the Split Tunnel functionality is fully disabled on this device.",
 		OptType:      config.OptTypeBool,
 		DefaultValue: false,
 		Annotations: config.Annotations{
