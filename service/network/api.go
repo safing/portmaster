@@ -16,6 +16,8 @@ import (
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/portmaster/service/status"
+	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/profile"
 )
 
 func registerAPIEndpoints() error {
@@ -61,7 +63,77 @@ func registerAPIEndpoints() error {
 		return err
 	}
 
+	// HIDS/HIPS Endpoints
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path:        "hids/alert",
+		Write:       api.PermitUser,
+		StructFunc:  handleHidsAlert,
+		Name:        "HIDS Anomaly Alert",
+		Description: "Receives anomaly alerts from the ML sidecar.",
+		Parameters: []api.Parameter{
+			{Method: http.MethodPost, Field: "pid", Description: "The Process ID."},
+			{Method: http.MethodPost, Field: "binaryPath", Description: "Path to binary."},
+			{Method: http.MethodPost, Field: "destIP", Description: "Destination IP."},
+			{Method: http.MethodPost, Field: "score", Description: "Anomaly Score."},
+		},
+	}); err != nil {
+		return err
+	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
+		Path:        "hids/quarantine",
+		Write:       api.PermitUser,
+		StructFunc:  handleHidsQuarantine,
+		Name:        "Quarantine App",
+		Description: "Quarantines a specific profile by forcing the block default action.",
+		Parameters: []api.Parameter{
+			{Method: http.MethodPost, Field: "profile", Description: "The Profile ID to quarantine."},
+		},
+	}); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func handleHidsAlert(ar *api.Request) (i interface{}, err error) {
+	pid := ar.Request.FormValue("pid")
+	binaryPath := ar.Request.FormValue("binaryPath")
+	score := ar.Request.FormValue("score")
+
+	// This would typically broadcast an event or update an alert state table for the UI to consume.
+	// For this transformation, we simply log it loudly.
+	log.Warningf("HIDS ALERT: Suspicious activity detected for PID %s (%s) with score %s", pid, binaryPath, score)
+	return map[string]string{"status": "alert_received"}, nil
+}
+
+func handleHidsQuarantine(ar *api.Request) (i interface{}, err error) {
+	profileID := ar.Request.FormValue("profile")
+	if profileID == "" {
+		return nil, fmt.Errorf("missing profile parameter")
+	}
+
+	// Fetch profile using profile.GetLocalProfile
+	// Since we only have the profile ID from the frontend, we use nil matching data.
+	// Profile source is expected to be local.
+	prof, err := profile.GetLocalProfile(profileID, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get profile: %v", err)
+	}
+	if prof == nil {
+		return nil, fmt.Errorf("profile not found")
+	}
+
+	// Force default action to block in the configuration tree
+	config.PutValueIntoHierarchicalConfig(prof.Config, "filter/defaultAction", "block")
+
+	err = prof.Save()
+	if err != nil {
+		return nil, fmt.Errorf("failed to save quarantined profile: %v", err)
+	}
+
+	log.Warningf("HIDS: Quarantined profile %s", profileID)
+	return map[string]string{"status": "quarantined", "profile": profileID}, nil
 }
 
 // debugInfo returns the debugging information for support requests.
