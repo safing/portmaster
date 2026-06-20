@@ -6,6 +6,7 @@ import { StatusService, VersionStatus } from 'src/app/services';
 import { ActionIndicatorService } from 'src/app/shared/action-indicator';
 import { fadeInAnimation } from 'src/app/shared/animations';
 import { SaveSettingEvent } from 'src/app/shared/config/generic-setting/generic-setting';
+import { t } from 'src/app/i18n/static-translate';
 
 @Component({
   templateUrl: './settings.html',
@@ -16,6 +17,8 @@ import { SaveSettingEvent } from 'src/app/shared/config/generic-setting/generic-
   animations: [fadeInAnimation]
 })
 export class SettingsComponent implements OnInit, OnDestroy {
+  readonly t = t;
+
   /** @private The current search term for the settings. */
   searchTerm: string = '';
 

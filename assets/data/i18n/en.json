@@ -1,0 +1,9 @@
+{
+  "nav_tooltip_monitor": "Network Activity",
+  "nav_tooltip_apps": "Apps and Profiles",
+  "nav_tooltip_settings": "Global Settings",
+  "nav_tooltip_pause": "Pause and Resume",
+  "nav_tooltip_power": "Shutdown and Restart",
+  "settings_title_global": "Global Settings",
+  "nav_test_fallback": "English Only"
+}

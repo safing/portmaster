@@ -9,6 +9,7 @@ import { ActionIndicatorService } from 'src/app/shared/action-indicator';
 import { fadeInAnimation, fadeOutAnimation } from 'src/app/shared/animations';
 import { ExitService } from 'src/app/shared/exit-screen';
 import { TauriIntegrationService } from 'src/app/integration/taur-app';
+import { getUiLanguage, setUiLanguage, t, UiLang } from '../../i18n/static-translate';
 
 @Component({
   selector: 'app-navigation',
@@ -23,6 +24,8 @@ import { TauriIntegrationService } from 'src/app/integration/taur-app';
 })
 export class NavigationComponent implements OnInit {
   private readonly integration = inject(INTEGRATION_SERVICE);
+
+  readonly t = t;
 
   /** Emits the current portapi connection state on changes. */
   readonly connected$ = this.portapi.connected$;
@@ -186,6 +189,17 @@ export class NavigationComponent implements OnInit {
     }
 
     this.sideDashChange.next(notify);
+  }
+
+  get uiLanguage(): UiLang {
+    return getUiLanguage();
+  }
+
+  setLanguage(lang: UiLang, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    setUiLanguage(lang);
+    this.cdr.markForCheck();
   }
 
   /**

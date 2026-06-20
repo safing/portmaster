@@ -54,6 +54,13 @@
     </div>
   </div>
 
+  <div class="flex gap-1 px-1 py-2 text-xxs nav-list">
+    <button type="button" class="px-1 rounded link" [class.active]="uiLanguage === 'en'"
+      (click)="setLanguage('en', $event)">EN</button>
+    <button type="button" class="px-1 rounded link" [class.active]="uiLanguage === 'ja'"
+      (click)="setLanguage('ja', $event)">JA</button>
+  </div>
+
   <div class="pt-1 border-t border-gray-400 nav-list">
     <!-- The notification drop-down -->
     <div sfngTipUpTrigger="navNotifications" sfngTipUpPassive class="relative mt-3" (click)="toggleSideDash($event)"
@@ -89,7 +96,7 @@
 
 <div class="nav-list">
   <!-- Network Activity -->
-  <div sfng-tooltip="Network Activity" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
+  <div [sfng-tooltip]="t('nav_tooltip_monitor', 'Network Activity')" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
     routerLink="monitor" class="link" sfngTipUpTrigger="navMonitor" sfngTipUpPassive>
     <svg viewBox="0 0 24 24" class="monitor">
       <g fill="none">
@@ -102,7 +109,7 @@
   </div>
 
   <!-- App View -->
-  <div sfng-tooltip="Apps and Profiles" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
+  <div [sfng-tooltip]="t('nav_tooltip_apps', 'Apps and Profiles')" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
     routerLink="app" class="link" sfngTipUpTrigger="navApps" sfngTipUpPassive>
     <svg xmlns="http://www.w3.org/2000/svg" data-name="Layer 1" viewBox="0 0 24 24" class="app" fill="none">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" fill="currentColor"
@@ -126,7 +133,7 @@
   </div>
 
   <!-- Global Settings -->
-  <div sfng-tooltip="Global Settings" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
+  <div [sfng-tooltip]="t('nav_tooltip_settings', 'Global Settings')" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
     routerLink="settings" class="link" sfngTipUpTrigger="navSettings" sfngTipUpPassive>
     <svg viewBox="0 0 24 24" class="settings">
       <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -203,7 +210,7 @@
   </app-menu>
 
   <!-- Pause Menu -->
-  <div sfngTipUpTrigger="navPause" sfngTipUpPassive sfng-tooltip="Pause and Resume" sfngTooltipDelay="1000"
+  <div sfngTipUpTrigger="navPause" sfngTipUpPassive [sfng-tooltip]="t('nav_tooltip_pause', 'Pause and Resume')" sfngTooltipDelay="1000"
     snfgTooltipPosition="right" class="link" (click)="pauseMenu.dropdown.toggle(pauseMenuTrigger)" cdkOverlayOrigin
     #pauseMenuTrigger="cdkOverlayOrigin" [class.active]="pauseMenu.dropdown.isOpen">
 
@@ -242,7 +249,7 @@
   </app-menu>
 
   <!-- Power Menu -->
-  <div sfngTipUpTrigger="navPower" sfngTipUpPassive sfng-tooltip="Shutdown and Restart" sfngTooltipDelay="1000"
+  <div sfngTipUpTrigger="navPower" sfngTipUpPassive [sfng-tooltip]="t('nav_tooltip_power', 'Shutdown and Restart')" sfngTooltipDelay="1000"
     snfgTooltipPosition="right" class="link" (click)="powerMenu.dropdown.toggle(powerMenuTrigger)" cdkOverlayOrigin
     #powerMenuTrigger="cdkOverlayOrigin" [class.active]="powerMenu.dropdown.isOpen">
 
