@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ConfigService, Setting } from '@safing/portmaster-api';
 import { Subscription } from 'rxjs';
@@ -6,7 +6,7 @@ import { StatusService, VersionStatus } from 'src/app/services';
 import { ActionIndicatorService } from 'src/app/shared/action-indicator';
 import { fadeInAnimation } from 'src/app/shared/animations';
 import { SaveSettingEvent } from 'src/app/shared/config/generic-setting/generic-setting';
-import { t } from 'src/app/i18n/static-translate';
+import { getUiLanguage, setUiLanguage, t, UiLang } from 'src/app/i18n/static-translate';
 
 @Component({
   templateUrl: './settings.html',
@@ -42,7 +42,18 @@ export class SettingsComponent implements OnInit, OnDestroy {
     public statusService: StatusService,
     private actionIndicator: ActionIndicatorService,
     private route: ActivatedRoute,
+    private cdr: ChangeDetectorRef,
   ) { }
+
+  get uiLanguage(): UiLang {
+    return getUiLanguage();
+  }
+
+  setLanguage(lang: UiLang): void {
+    setUiLanguage(lang);
+    window.dispatchEvent(new Event('portmaster-ui-lang-change'));
+    this.cdr.markForCheck();
+  }
 
   ngOnInit(): void {
     this.subscription = new Subscription();

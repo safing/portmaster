@@ -54,13 +54,6 @@
     </div>
   </div>
 
-  <div class="flex gap-1 px-1 py-2 text-xxs nav-list">
-    <button type="button" class="px-1 rounded link" [class.active]="uiLanguage === 'en'"
-      (click)="setLanguage('en', $event)">EN</button>
-    <button type="button" class="px-1 rounded link" [class.active]="uiLanguage === 'ja'"
-      (click)="setLanguage('ja', $event)">JA</button>
-  </div>
-
   <div class="pt-1 border-t border-gray-400 nav-list">
     <!-- The notification drop-down -->
     <div sfngTipUpTrigger="navNotifications" sfngTipUpPassive class="relative mt-3" (click)="toggleSideDash($event)"
