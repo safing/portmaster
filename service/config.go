@@ -76,6 +76,27 @@ func (sc *ServiceConfig) Init() error {
 	sc.DataDir = os.ExpandEnv(sc.DataDir)
 	sc.LogDir = os.ExpandEnv(sc.LogDir)
 
+	// Resolve symlinks in BinDir so the daemon, the index updater and the
+	// firewall authenticator all agree on the canonical location. This is
+	// needed wherever the path contains a symlink (merged-/usr layouts
+	// where /usr/lib or /usr/lib64 is a symlink to /var/usrlocal/lib etc.,
+	// but also simpler cases like a user-symlinked BinDir). Without it, the
+	// user may pass --bin-dir=/usr/lib/portmaster but the index and
+	// binaries end up at the resolved path (e.g. /usr/lib64/portmaster),
+	// and the daemon does not find its own files. The firewall
+	// authenticator already does this (see service/firewall/api.go), so
+	// this change brings the rest of the daemon in line with it.
+	//
+	// EvalSymlinks can fail if the directory does not exist yet (e.g. on a
+	// fresh install before any binary has been placed); in that case we
+	// leave BinDir as the user-supplied value and let downstream code
+	// surface a clearer error.
+	if resolved, err := filepath.EvalSymlinks(sc.BinDir); err == nil {
+		sc.BinDir = resolved
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("resolve bin dir symlinks: %w", err)
+	}
+
 	// Apply defaults for required fields.
 	if len(sc.BinariesIndexURLs) == 0 {
 		sc.BinariesIndexURLs = configure.DefaultStableBinaryIndexURLs

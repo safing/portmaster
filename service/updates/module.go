@@ -207,7 +207,19 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 	if err == nil {
 		// Verify artifacts.
 		if err := index.VerifyArtifacts(cfg.Directory); err != nil {
-			module.corruptedInstallation = fmt.Errorf("invalid artifact: %w", err)
+			// The "files corrupted" notification that this error surfaces to
+			// the user is alarming and, in practice, frequently triggered by
+			// mismatched installation paths rather than actual corruption.
+			// Common cases include: a symlinked BinDir where the resolved
+			// path's file hash differs from the index hash, or a re-install
+			// that swapped the bundled binaries without rebuilding the
+			// index. Wrap with a hint that points users at the install
+			// mismatch first and the reinstall option second.
+			module.corruptedInstallation = fmt.Errorf(
+				"file hash mismatch in %s (this usually means the install was upgraded outside of the Portmaster updater or that the bundled index does not match the binaries - try re-installing from the official package): %w",
+				cfg.Directory,
+				err,
+			)
 		}
 
 		// Save index to module and return.

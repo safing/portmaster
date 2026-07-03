@@ -588,6 +588,14 @@ installer-linux:
     COPY (+release-prep/output/binary/all/portmaster.zip) ./binary/portmaster.zip
     COPY (+release-prep/output/binary/all/assets.zip) ./binary/assets.zip
 
+    # Generate the binary update index from the bundled files. Without this,
+    # the daemon's first start on a fresh install reports "files corrupted"
+    # because no index.json is shipped alongside the binaries in the
+    # installer payload. The updatemgr "scan" subcommand emits the same
+    # JSON shape the daemon loads from <BinDir>/index.json at startup.
+    COPY (+go-build/output/updatemgr --GOARCH=amd64 --GOOS=linux --CMDS=updatemgr) ./updatemgr
+    RUN ./updatemgr scan --dir ./binary > ./binary/index.json
+
     # Download the intel data
     RUN mkdir -p intel
     COPY (+release-prep/output/intel/*) ./intel/

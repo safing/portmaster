@@ -1,7 +1,11 @@
 [Desktop Entry]
 Name=Portmaster
 GenericName=Application Firewall
-Exec={{exec}} --data=/opt/safing/portmaster --with-prompts --with-notifications 
+# Note: do not embed v1 paths (e.g. --data=/opt/safing/portmaster) or Tauri-only
+# flags (--with-prompts, --with-notifications) here. The Tauri GUI silently
+# accepts them, but the v2 daemon rejects them. The postinst script is
+# responsible for substituting {{exec}} and {{icon}} at install time.
+Exec={{exec}}
 Icon={{icon}}
 StartupWMClass=portmaster
 Terminal=false
