@@ -136,6 +136,69 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
 
     let key = ale_data.as_key();
 
+    // Outbound UDP is decided at the IP packet layer, not here.
+    //
+    // Holding a datagram at this layer corrupts the send status seen by the
+    // application. Both ways of holding it are broken for Registered I/O:
+    // pend_operation freezes the endpoint, so datagrams submitted concurrently
+    // are completed with WSAEINVAL and never reach the stack at all; absorbing
+    // instead keeps every datagram (they are re-injected once a verdict arrives)
+    // but still completes them with WSAEINVAL, so the application is told a
+    // delivered datagram failed. A caller that retries on error duplicates it.
+    //
+    // The IP packet layer sits below the socket, so by the time a datagram is
+    // absorbed there its send has already completed successfully. Verified with
+    // RIOSendEx: six concurrent datagrams all report success, all six are
+    // delivered, and the packet layer still gets to decide each one.
+    //
+    // Register the connection here so the process ID is recorded while it is
+    // available - the packet layer has no access to it and would store 0 - then
+    // permit and let the packet layer classify. Inbound is unaffected: it is
+    // already decided at the packet layer before reaching this one.
+    if matches!(ale_data.protocol, IpProtocol::Udp)
+        && matches!(ale_data.direction, Direction::Outbound)
+    {
+        // Only register once. A cached connection may already carry a verdict,
+        // and overwriting it with Undecided would send it for a decision again.
+        let known = if ale_data.is_ipv6 {
+            device
+                .connection_cache
+                .read_connection_v6(&key, |_| -> Option<()> { Some(()) })
+        } else {
+            device
+                .connection_cache
+                .read_connection_v4(&key, |_| -> Option<()> { Some(()) })
+        };
+
+        if known.is_none() {
+            crate::dbg!(
+                "ale layer registering udp connection for packet layer: {} PID: {}",
+                key,
+                ale_data.process_id
+            );
+            if ale_data.is_ipv6 {
+                match ConnectionV6::from_key(&key, ale_data.process_id, ale_data.direction) {
+                    Ok(conn) => device.connection_cache.add_connection_v6(conn),
+                    Err(err) => crate::err!("failed to build connection: {}", err),
+                }
+            } else {
+                match ConnectionV4::from_key(&key, ale_data.process_id, ale_data.direction) {
+                    Ok(conn) => device.connection_cache.add_connection_v4(conn),
+                    Err(err) => crate::err!("failed to build connection: {}", err),
+                }
+            }
+        }
+
+        data.action_permit();
+
+        if device.is_owner_pid(ale_data.process_id as u32) {
+            // Keep other firewalls from overriding the permit on Portmaster's own
+            // traffic, matching the cached-verdict path below.
+            data.clear_write_flag();
+        }
+        return;
+    }
+
     // Check if connection is already in cache.
     let verdict = if ale_data.is_ipv6 {
         device
@@ -227,6 +290,11 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
     } else {
         crate::dbg!("pending connection: {} {}", key, ale_data.direction);
         // Only first packet of a connection can be pended: reauthorize == false
+        //
+        // Outbound UDP never reaches this point - it returns above and is decided
+        // at the packet layer, because holding a datagram at this layer breaks the
+        // send status reported to the application. Inbound UDP still arrives here
+        // and is safe to pend: there is no application send operation to freeze.
         let can_pend_connection = !ale_data.reauthorize;
         match save_packet(device, &mut data, &ale_data, can_pend_connection) {
             Ok(packet) => {
