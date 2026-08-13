@@ -178,13 +178,17 @@ pub fn stream_layer_udp_v4(data: CalloutData) {
     if data.get_value_u32(Fields::Direction as usize) == 0 {
         direction = Direction::Outbound;
     }
-    let mut data_length: usize = 0;
-    for nbl in NetBufferListIter::new(data.get_layer_data() as _) {
-        data_length += nbl.get_data_length() as usize;
+
+    // Skip only the outbound re-injected copy: it is the second indication of a
+    // datagram already counted when the original was indicated. Inbound copies are
+    // the only indication their datagram gets and must be counted.
+    if matches!(direction, Direction::Outbound) && is_self_injected(device, &data, false) {
+        return;
     }
-    let mut direction = Direction::Inbound;
-    if data.get_value_u8(Fields::Direction as usize) == 0 {
-        direction = Direction::Outbound;
+
+    let data_length = get_datagram_payload_length(&data, direction);
+    if data_length == 0 {
+        return;
     }
 
     let local_ip = Ipv4Address::from_bytes(
@@ -246,13 +250,14 @@ pub fn stream_layer_udp_v6(data: CalloutData) {
         direction = Direction::Outbound;
     }
 
-    let mut data_length: usize = 0;
-    for nbl in NetBufferListIter::new(data.get_layer_data() as _) {
-        data_length += nbl.get_data_length() as usize;
+    // See stream_layer_udp_v4.
+    if matches!(direction, Direction::Outbound) && is_self_injected(device, &data, true) {
+        return;
     }
-    let mut direction = Direction::Inbound;
-    if data.get_value_u8(Fields::Direction as usize) == 0 {
-        direction = Direction::Outbound;
+
+    let data_length = get_datagram_payload_length(&data, direction);
+    if data_length == 0 {
+        return;
     }
 
     let local_ip =
