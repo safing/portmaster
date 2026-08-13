@@ -115,6 +115,16 @@ pub fn stream_layer_udp_v4(data: CalloutData) {
     let Some(device) = crate::entry::get_device() else {
         return;
     };
+
+    // The datagram data layer is not UDP only: raw sockets and ICMP are
+    // indicated here as well. Their bytes must not be attributed to UDP,
+    // especially since ICMP reports type/code in the port fields, which would
+    // corrupt the counters of an unrelated UDP connection.
+	let protocol = smoltcp::wire::IpProtocol::from(data.get_value_u8(Fields::IpProtocol as usize));
+    if protocol != smoltcp::wire::IpProtocol::Udp {
+        return;
+    }
+
     let mut data_length: usize = 0;
     for nbl in NetBufferListIter::new(data.get_layer_data() as _) {
         data_length += nbl.get_data_length() as usize;
@@ -168,6 +178,11 @@ pub fn stream_layer_udp_v6(data: CalloutData) {
     let Some(device) = crate::entry::get_device() else {
         return;
     };
+
+	let protocol = smoltcp::wire::IpProtocol::from(data.get_value_u8(Fields::IpProtocol as usize));
+    if protocol != smoltcp::wire::IpProtocol::Udp {
+        return;
+    }
     let mut data_length: usize = 0;
     for nbl in NetBufferListIter::new(data.get_layer_data() as _) {
         data_length += nbl.get_data_length() as usize;
