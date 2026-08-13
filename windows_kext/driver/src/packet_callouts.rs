@@ -161,6 +161,40 @@ impl ConnectionInfo {
     }
 }
 
+/// Resolves the process that owns the local endpoint of `key`, using the table
+/// filled at the bind layer.
+///
+/// Returns `None` when the port is unknown, which is the case for sockets that
+/// were bound before the driver loaded.
+///
+/// The port to look up is the local one, and which side of the key that is
+/// depends on the direction. `get_key_from_nbl_*` builds the key from the packet
+/// as it appears on the wire: for an outbound packet the local endpoint is the
+/// source, for an inbound packet it is the destination. Both end up in
+/// `key.local_*` for that reason, so `local_port` is correct either way - the
+/// direction is taken as an argument only to keep that reasoning checkable at
+/// the call site rather than implied.
+/// `ipv6` selects the address family, which is part of the key: the same port
+/// number can be held by two unrelated processes at once, one on each family.
+fn lookup_endpoint_pid(
+    device: &Device,
+    key: &Key,
+    ipv6: bool,
+    _direction: Direction,
+) -> Option<u64> {
+    let pid = device
+        .endpoint_pid_cache
+        .get(ipv6, key.protocol, key.local_port)?;
+
+    // A stored 0 carries no information; report it as unknown so callers do not
+    // treat it as a resolved process.
+    if pid == 0 {
+        return None;
+    }
+
+    Some(pid)
+}
+
 fn fast_track_pm_packets(key: &Key, _: Direction) -> bool {
     if key.local_port == PM_DNS_PORT || key.local_port == PM_SPN_PORT || key.local_port == PM_SPLIT_TUN_PORT {
         return key.local_address == key.remote_address;
@@ -249,6 +283,91 @@ fn ip_packet_layer(
         let mut send_request_to_portmaster = true;
         let mut process_id = 0;
 
+        // For loopback ICMP echo reply, WFP reports it as OUTBOUND but it is
+        // semantically INBOUND. Track the effective direction separately.
+        let mut effective_direction = direction;
+
+        // Protocols without ports - ICMP above all - are never resolved by the
+        // machinery below: they are not classified at the ALE layers, and the
+        // endpoint table is keyed by port, which they do not have. They used to be
+        // reported with PID 0 for that reason.
+        //
+        // For an outbound packet the originator is available anyway, from the
+        // thread this callout runs on. An application sending an echo request
+        // travels down the stack synchronously on its own thread, so the current
+        // process *is* the sender.
+        //
+        // Measured on Windows 11 with three concurrent `ping` processes: every
+        // outbound ICMP indication carried the PID of the process that sent it, and
+        // two pings to the same destination were told apart - which the destination
+        // address alone cannot do. IRQL was DISPATCH_LEVEL throughout, where
+        // PsGetCurrentProcessId is legal.
+        //
+        // Deliberately restricted to outbound. The same measurement showed inbound
+        // indications carrying PID 0, System, and unrelated processes, because
+        // receive processing happens in an arbitrary context - there the thread says
+        // nothing about the packet. Measuring the transport and flow-established
+        // layers did not help either: an echo reply is not indicated there at all,
+        // because no socket is associated with it.
+        //
+        // An inbound echo reply is therefore matched against the request that caused
+        // it, using the identifier the sender chose and the responder echoed back.
+        if !matches!(
+            key.protocol,
+            smoltcp::wire::IpProtocol::Tcp | smoltcp::wire::IpProtocol::Udp
+        ) {
+            match direction {
+                Direction::Outbound => {
+                    // Check if this is an ICMP echo reply first. For loopback traffic,
+                    // WFP reports both the request and the reply as OUTBOUND. An echo
+                    // reply must be attributed to the process that sent the request,
+                    // not to the current context (which would be System or arbitrary).
+                    if let Some(echo) = get_icmp_echo_from_nbl(&nbl, ipv6) {
+                        if !echo.is_request {
+                            // This is a reply reported as OUTBOUND (loopback behavior).
+                            // Correct the direction to INBOUND for semantic accuracy.
+                            effective_direction = Direction::Inbound;
+
+                            // Look up the PID of the process that sent the request.
+                            // key.remote_address is the responder (the address the
+                            // request was sent to).
+                            process_id = device
+                                .icmp_echo_cache
+                                .take_request_pid(key.remote_address, echo.identifier)
+                                .unwrap_or(0);
+                        } else {
+                            // This is a request. Use the current process as the sender.
+                            process_id = wdk::utils::current_process_id();
+
+                            // Remember the request so its reply can be attributed.
+                            device.icmp_echo_cache.insert_request(
+                                key.remote_address,
+                                echo.identifier,
+                                process_id,
+                            );
+                        }
+                    } else {
+                        // Not an ICMP echo (request or reply), but still outbound
+                        // non-TCP/UDP (e.g., ICMP destination unreachable, ICMPv6
+                        // neighbor discovery). Use the current process.
+                        process_id = wdk::utils::current_process_id();
+                    }
+                }
+                Direction::Inbound => {
+                    // key.remote_address is the responder, which is the address the
+                    // request was sent to - the same value used as the key above.
+                    if let Some(echo) = get_icmp_echo_from_nbl(&nbl, ipv6) {
+                        if !echo.is_request {
+                            process_id = device
+                                .icmp_echo_cache
+                                .take_request_pid(key.remote_address, echo.identifier)
+                                .unwrap_or(0);
+                        }
+                    }
+                }
+            }
+        }
+
         if matches!(
             key.protocol,
             smoltcp::wire::IpProtocol::Tcp | smoltcp::wire::IpProtocol::Udp
@@ -257,6 +376,17 @@ fn ip_packet_layer(
                 get_connection_info(&mut device.connection_cache, &key, ipv6)
             {
                 process_id = conn_info.process_id;
+
+                // A cached connection can carry PID 0 when this layer was the one
+                // that created it - either before the owning process bound its
+                // port, or on a build that had no way to resolve it at all. Fall
+                // back to the bind-layer lookup so those connections stop
+                // reporting 0 once the information becomes available.
+                if process_id == 0 {
+                    if let Some(pid) = lookup_endpoint_pid(device, &key, ipv6, direction) {
+                        process_id = pid;
+                    }
+                }
                 // Check if there is action for this connection.
                 match conn_info.verdict {
                     Verdict::Undecided | Verdict::Accept | Verdict::Block | Verdict::Drop => {}
@@ -277,7 +407,7 @@ fn ip_packet_layer(
                             match clone_packet(
                                 device,
                                 nbl,
-                                direction,
+                                effective_direction,
                                 ipv6,
                                 key.is_loopback(),
                                 interface_index,
@@ -299,13 +429,25 @@ fn ip_packet_layer(
                     }
                 }
             } else {
-                // Connections is not in the cache.
-                crate::dbg!("packet layer adding connection: {} PID: 0", key);
+                // Connection is not in the cache.
+                //
+                // This layer has no process ID of its own: no socket is
+                // associated with the packet at the inbound IP packet layer, so
+                // WFP supplies none. The owning process is resolved from the
+                // endpoint recorded at the bind layer instead. It stays 0 when
+                // the port was bound before the driver loaded.
+                process_id = lookup_endpoint_pid(device, &key, ipv6, effective_direction).unwrap_or(0);
+
+                crate::dbg!(
+                    "packet layer adding connection: {} PID: {}",
+                    key,
+                    process_id
+                );
                 if ipv6 {
-                    let conn = ConnectionV6::from_key(&key, 0, direction).unwrap();
+                    let conn = ConnectionV6::from_key(&key, process_id, effective_direction).unwrap();
                     device.connection_cache.add_connection_v6(conn);
                 } else {
-                    let conn = ConnectionV4::from_key(&key, 0, direction).unwrap();
+                    let conn = ConnectionV4::from_key(&key, process_id, effective_direction).unwrap();
                     device.connection_cache.add_connection_v4(conn);
                 }
             }
@@ -316,7 +458,7 @@ fn ip_packet_layer(
             let packet = match clone_packet(
                 device,
                 nbl,
-                direction,
+                effective_direction,
                 ipv6,
                 key.is_loopback(),
                 interface_index,
@@ -331,7 +473,7 @@ fn ip_packet_layer(
 
             let info = device
                 .packet_cache
-                .push((key, packet), process_id, direction, false);
+                .push((key, packet), process_id, effective_direction, false);
 
             // Send to Portmaster
             if let Some(info) = info {

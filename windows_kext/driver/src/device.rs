@@ -17,8 +17,8 @@ use wdk::{
 
 use crate::{
     array_holder::ArrayHolder, bandwidth::Bandwidth, callouts, connection_cache::ConnectionCache,
-    connection_map::Key, dbg, err,
-    id_cache::IdCache, logger,
+    connection_map::Key, dbg, endpoint_pid_cache::EndpointPidCache, err,
+    icmp_echo_cache::IcmpEchoCache, id_cache::IdCache, logger,
     packet_util::Redirect,
 };
 
@@ -34,6 +34,14 @@ pub struct Device {
     pub(crate) event_queue: IOQueue<Info>,          // Queue for events to user-space
     pub(crate) packet_cache: IdCache,               // Cache of pending packets waiting for verdict
     pub(crate) connection_cache: ConnectionCache,   // Cache of connections and their verdicts
+    /// Local endpoint -> owning PID, filled at the bind layer.
+    /// The inbound packet layer has no access to the process ID and relies on
+    /// this to report anything other than 0.
+    pub(crate) endpoint_pid_cache: EndpointPidCache,
+    /// (remote address, echo identifier) -> PID that sent the request.
+    /// An inbound echo reply has no process of its own to read, so it is matched
+    /// against the outbound request that caused it.
+    pub(crate) icmp_echo_cache: IcmpEchoCache,
     pub(crate) injector: Injector,
     pub(crate) network_allocator: NetworkAllocator,
     pub(crate) bandwidth_stats: Bandwidth,
@@ -61,6 +69,8 @@ impl Device {
             event_queue: IOQueue::new(),
             packet_cache: IdCache::new(),
             connection_cache: ConnectionCache::new(),
+            endpoint_pid_cache: EndpointPidCache::new(),
+            icmp_echo_cache: IcmpEchoCache::new(),
             injector: Injector::new(),
             network_allocator: NetworkAllocator::new(),
             bandwidth_stats: Bandwidth::new(),
@@ -254,6 +264,24 @@ impl Device {
             CommandType::ClearCache => {
                 wdk::dbg!("ClearCache command");
                 self.connection_cache.clear();
+                // The endpoint PID table is deliberately NOT cleared here.
+                //
+                // This command means "forget decided verdicts so the rules can be
+                // re-evaluated" - it is sent on config, SPN and account changes.
+                // The verdict cache is decided state and belongs to the driver, so
+                // dropping it is correct. The endpoint table is not: it records an
+                // observed fact about the OS, namely which process owns which local
+                // port, and a verdict reset does not change that fact.
+                //
+                // Clearing it would also be unrecoverable. Entries are only ever
+                // created by a bind indication, and a bind is not repeated for a
+                // socket that is already bound, so a long-lived listening service
+                // would report PID 0 for the rest of its life - exactly the gap
+                // this table exists to close.
+                //
+                // Staleness is already handled where it actually arises: the entry
+                // is dropped when the port is released, and a later bind on the
+                // same endpoint overwrites it.
                 if let Err(err) = self.filter_engine.reset_all_filters() {
                     err!("failed to reset filters: {}", err);
                 }
@@ -307,6 +335,13 @@ impl Device {
             CommandType::CleanEndedConnections => {
                 wdk::dbg!("CleanEndedConnections command");
                 self.connection_cache.clean_ended_connections();
+                // Same intent for the ICMP echo table: an unanswered request is
+                // state that is no longer needed. Expired entries only, so that
+                // requests still in flight keep their process attribution.
+                //
+                // Doing it here also keeps the sweep off the packet path - the
+                // only other one runs inside a callout at DISPATCH_LEVEL.
+                self.icmp_echo_cache.clean_expired_entries();
             }
         }
     }

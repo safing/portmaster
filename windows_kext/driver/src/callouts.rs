@@ -50,6 +50,31 @@ pub fn get_callout_vec() -> Vec<Callout> {
             ale_callouts::endpoint_closure_v6,
         ),
         // -----------------------------------------
+        // Bind layers. These record which process owns a local port, because the
+        // inbound packet layer cannot determine it: no socket is associated with
+        // a packet at FWPM_LAYER_INBOUND_IPPACKET_V4/V6, so WFP supplies no
+        // process ID there.
+        //
+        // Inspection action: these take no part in permit/block decisions.
+        Callout::new(
+            "Portmaster port assignment IPv4",
+            "Portmaster uses this layer to learn which process owns an IPv4 local port",
+            0x3f1c9a52_7b48_4d61_9e35_c0a7f2d8b114,
+            Layer::AleResourceAssignmentV4,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_resource_assignment_monitor,
+        ),
+        Callout::new(
+            "Portmaster port assignment IPv6",
+            "Portmaster uses this layer to learn which process owns an IPv6 local port",
+            0x8d2e4b17_c093_4a75_bf62_1e5a9c3d7f20,
+            Layer::AleResourceAssignmentV6,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_resource_assignment_monitor,
+        ),
+        // -----------------------------------------
         // ALE resource assignment and release.
         // Callout::new(
         //     "AleResourceAssignmentV4",

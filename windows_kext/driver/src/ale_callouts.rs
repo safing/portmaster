@@ -495,10 +495,157 @@ pub fn endpoint_closure_v6(data: CalloutData) {
     }
 }
 
+/// Records the owning process of a newly bound local endpoint.
+///
+/// This exists because the inbound IP packet layer cannot determine the process
+/// itself. At FWPM_LAYER_INBOUND_IPPACKET_V4/V6 no socket is associated with the
+/// packet yet, so WFP supplies no process ID and every inbound connection the
+/// packet layer created was reported with PID 0.
+///
+/// The bind layer is the earliest point where the PID is known, and it runs well
+/// before the traffic does. Measured on Windows 11 with a listener on
+/// 0.0.0.0:1234: bind indicated the correct PID 4.4 seconds ahead of the first
+/// datagram.
+///
+/// The address cannot be part of the key: a bind to a wildcard address leaves
+/// IpLocalAddress as FWP_EMPTY. The address family can and must be, because the
+/// two families have independent port spaces.
+///
+/// Only ports the application named itself are recorded. The layer also fires for
+/// stack-assigned ephemeral ports - bind() with port 0, or an implicit bind from
+/// connect()/sendto() - and those are skipped; see the comment on the
+/// IS_WILDCARD_BIND check below for why they are neither needed nor harmless.
+///
+/// Registered as an inspection callout, so it never alters a permit/block
+/// decision. A failure to record a PID degrades to the old behaviour rather than
+/// affecting traffic.
+pub fn ale_resource_assignment_monitor(data: CalloutData) {
+    let Some(device) = crate::entry::get_device() else {
+        return;
+    };
+
+    // The address family is taken from the layer, not from the address field:
+    // a wildcard bind leaves the address empty, and the family still has to be
+    // known because the two port spaces are independent.
+    let (ipv6, port, protocol, flags) = match data.layer {
+        layer::Layer::AleResourceAssignmentV4 => {
+            type Fields = layer::FieldsAleResourceAssignmentV4;
+            (
+                false,
+                data.get_value_u16(Fields::IpLocalPort as usize),
+                data.get_value_u8(Fields::IpProtocol as usize),
+                data.get_value_u32(Fields::Flags as usize),
+            )
+        }
+        layer::Layer::AleResourceAssignmentV6 => {
+            type Fields = layer::FieldsAleResourceAssignmentV6;
+            (
+                true,
+                data.get_value_u16(Fields::IpLocalPort as usize),
+                data.get_value_u8(Fields::IpProtocol as usize),
+                data.get_value_u32(Fields::Flags as usize),
+            )
+        }
+        _ => return,
+    };
+
+    // Only TCP and UDP are tracked. The connection cache is keyed by protocol
+    // and port, and other protocols carry no ports - raw sockets and promiscuous
+    // mode requests are indicated at this layer as well.
+    let protocol = IpProtocol::from(protocol);
+    if !matches!(protocol, IpProtocol::Udp | IpProtocol::Tcp) {
+        return;
+    }
+
+    // Port 0 is never a usable key. When an application asks for any port -
+    // bind() with port 0, or no bind() at all - WFP indicates the assignment
+    // with the port the stack actually picked and sets
+    // FWP_CONDITION_FLAG_IS_WILDCARD_BIND. So a zero here means the field was
+    // not populated as expected rather than a real assignment.
+    if port == 0 {
+        return;
+    }
+
+    // Track only ports the application asked for by number.
+    //
+    // FWP_CONDITION_FLAG_IS_WILDCARD_BIND is set exactly when the application let
+    // the stack pick the port - bind() with port 0, or no bind() at all before a
+    // send or connect. Measured over the full (address x port) matrix: the flag
+    // follows the port, never the address, and stays clear for a named port even
+    // when the address is 0.0.0.0 or [::]. (A wildcard address shows up
+    // separately, as IpLocalAddress being FWP_EMPTY.)
+    //
+    // Those stack-assigned ports are the ephemeral local ports of outbound
+    // connections, and they do not need this table: outbound traffic is
+    // classified at the ALE connect layer, which supplies the process ID
+    // directly. Recording them only adds churn - a short-lived entry per
+    // outbound connection - and creates the chance of a stale entry colliding
+    // with a service that later binds that port number by name.
+    //
+    // FWP_CONDITION_FLAG_IS_IMPLICIT_BIND would be the more direct test, but it
+    // is unusable: it never appeared in any measurement, including sendto and
+    // connect on an unbound socket, consistent with being documented as
+    // Vista/Server 2008 only.
+    if flags & wdk::consts::FWP_CONDITION_FLAG_IS_WILDCARD_BIND != 0 {
+        return;
+    }
+
+    // Only store a PID that WFP actually supplied. get_process_id returns None
+    // when the metadata field is absent, and storing 0 for that case would
+    // overwrite a good entry from an earlier bind on a reused port with a value
+    // that means "unknown".
+    let Some(process_id) = data.get_process_id() else {
+        return;
+    };
+
+    device
+        .endpoint_pid_cache
+        .insert(ipv6, protocol, port, process_id);
+}
+
 pub fn ale_resource_monitor(data: CalloutData) {
     let Some(device) = crate::entry::get_device() else {
         return;
     };
+
+    // Drop the endpoint -> PID entry for a released port.
+    //
+    // Done here, before the per-layer handling below, because that handling is
+    // conditional on the connection cache having live connections on the port
+    // while this entry exists independently of them: it is created on bind, and a
+    // socket that never carried traffic has no connection to end. Leaving it
+    // behind would attribute a later process's traffic to a dead PID once the
+    // port is reused.
+    //
+    // IpProtocol and IpLocalPort were FwpUint8/FwpUint16 in every release
+    // observed, never FWP_EMPTY, so the union reads above are sound at this layer.
+    if matches!(
+        data.layer,
+        layer::Layer::AleResourceReleaseV4 | layer::Layer::AleResourceReleaseV6
+    ) {
+        type Fields = layer::FieldsAleResourceReleaseV4; // Same field order for V6.
+        let ipv6 = matches!(data.layer, layer::Layer::AleResourceReleaseV6);
+        let protocol = get_protocol(&data, Fields::IpProtocol as usize);
+        let port = data.get_value_u16(Fields::IpLocalPort as usize);
+
+        // Mirror the guards used when inserting. Without the protocol test a
+        // release for a raw or other non-TCP/UDP socket would be folded into the
+        // TCP plane by slot_index and could zero an unrelated live TCP entry;
+        // port 0 is never a key on the insert side either.
+        //
+        // The PID is passed so the entry is only dropped for the owner it was
+        // recorded for: with SO_REUSEADDR two processes share one endpoint, and an
+        // unconditional remove let the first one to exit clear the survivor's
+        // entry. See EndpointPidCache::remove.
+        if matches!(protocol, IpProtocol::Udp | IpProtocol::Tcp) && port != 0 {
+            if let Some(process_id) = data.get_process_id() {
+                device
+                    .endpoint_pid_cache
+                    .remove(ipv6, protocol, port, process_id);
+            }
+        }
+    }
+
     match data.layer {
         layer::Layer::AleResourceAssignmentV4Discard => {
             type Fields = layer::FieldsAleResourceAssignmentV4;

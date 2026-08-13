@@ -20,3 +20,18 @@ pub fn get_system_timestamp_ms() -> u64 {
     // 100 nano seconds units -> device by 10 -> micro seconds -> divide by 1000 -> milliseconds
     unsafe { ffi::pm_QuerySystemTime() / 10_000 }
 }
+
+/// Process ID of the thread context this code is running in.
+///
+/// This is the *current thread's* process, not a property of any packet or
+/// connection, so it only identifies an originator where the caller knows the
+/// work is being done synchronously on the originating thread. Sending from an
+/// application is such a path; receiving is not - inbound processing runs in an
+/// arbitrary or DPC context, where the answer is whichever thread happened to be
+/// interrupted.
+///
+/// Safe at IRQL <= DISPATCH_LEVEL.
+pub fn current_process_id() -> u64 {
+    unsafe { ffi::PsGetCurrentProcessId() as u64 }
+}
+
