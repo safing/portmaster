@@ -3,6 +3,8 @@ name: Go
 on:
   push:
     paths:
+      - '.golangci.yml'
+      - '.github/workflows/go.yml'
       - '**.go'
       - 'cmds/**'
       - 'runtime/**'
@@ -16,6 +18,8 @@ on:
 
   pull_request:
     paths:
+      - '.golangci.yml'
+      - '.github/workflows/go.yml'
       - '**.go'
       - 'cmds/**'
       - 'runtime/**'
@@ -69,3 +73,4 @@ jobs:
 
     - name: Run Go Tests & Build
       run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +go-ci
+
