@@ -2,6 +2,7 @@ use core::{fmt::Display, time::Duration};
 
 use crate::connection::{is_redirect_port, Connection};
 use alloc::{collections::BTreeMap, vec::Vec};
+use core::ops::Range;
 use smoltcp::wire::{IpAddress, IpProtocol};
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
@@ -62,7 +63,38 @@ impl Key {
     }
 }
 
+/// Connections grouped by `(protocol, local port)`.
+///
+/// Each vector is kept sorted by `Connection::remote_key()`, so a lookup by
+/// remote endpoint is a binary search rather than a scan of the whole port. That
+/// matters for ports carrying many connections at once - a busy listener, or an
+/// inbound flood - where every packet used to walk the entire vector while
+/// holding a spin lock at DISPATCH_LEVEL.
+///
+/// The invariant is maintained by `add` alone. Nothing else inserts, `retain`
+/// preserves relative order, and the only field callers mutate through
+/// `get_mut` is the verdict, which is not part of the sort key. Should that ever
+/// change, lookups would start missing silently.
+///
+/// The sort key is deliberately *not* unique. Several connections can share a
+/// remote endpoint on the same local port: an ended entry still awaiting cleanup
+/// in front of its live replacement, or entries that differ only in local
+/// address. Lookups therefore resolve the whole run of equal keys and apply the
+/// same first-match rules as before, in insertion order.
 pub struct ConnectionMap<T: Connection>(BTreeMap<(IpProtocol, u16), Vec<T>>);
+
+/// Returns the range of entries whose remote endpoint equals `target`.
+///
+/// `partition_point` is used twice instead of `binary_search_by`, because the
+/// sort key is not unique: `binary_search_by` returns an arbitrary index inside
+/// a run of equal keys, and picking that one entry would reintroduce the bug
+/// documented on `end` - a stale ended entry shadowing the live connection
+/// behind it. The two bounds give the whole run, in insertion order.
+fn equal_range<T: Connection>(connections: &[T], target: (IpAddress, u16)) -> Range<usize> {
+    let start = connections.partition_point(|conn| conn.remote_key() < target);
+    let end = connections.partition_point(|conn| conn.remote_key() <= target);
+    start..end
+}
 
 impl<T: Connection + Clone> ConnectionMap<T> {
     pub fn new() -> Self {
@@ -72,7 +104,13 @@ impl<T: Connection + Clone> ConnectionMap<T> {
     pub fn add(&mut self, conn: T) {
         let key = conn.get_key().small();
         if let Some(connections) = self.0.get_mut(&key) {
-            connections.push(conn);
+            // Insert *after* any entries with the same remote endpoint. That keeps
+            // the vector in insertion order within a run of equal keys, which the
+            // lookups rely on: `end` expects to reach a live connection that was
+            // added behind an ended one, and `read` returning the oldest match
+            // preserves the previous behaviour of scanning from the front.
+            let index = connections.partition_point(|c| c.remote_key() <= conn.remote_key());
+            connections.insert(index, conn);
         } else {
             self.0.insert(key, alloc::vec![conn]);
         }
@@ -80,7 +118,8 @@ impl<T: Connection + Clone> ConnectionMap<T> {
 
     pub fn get_mut(&mut self, key: &Key) -> Option<&mut T> {
         if let Some(connections) = self.0.get_mut(&key.small()) {
-            for conn in connections {
+            let range = equal_range(connections, (key.remote_address, key.remote_port));
+            for conn in &mut connections[range] {
                 if conn.remote_equals(key) {
                     conn.set_last_accessed_time(wdk::utils::get_system_timestamp_ms());
                     return Some(conn);
@@ -93,14 +132,31 @@ impl<T: Connection + Clone> ConnectionMap<T> {
 
     pub fn read<C>(&self, key: &Key, read_connection: fn(&T) -> Option<C>) -> Option<C> {
         if let Some(connections) = self.0.get(&key.small()) {
-            for conn in connections {
+            // Exact remote match first, over the run of equal keys only.
+            let range = equal_range(connections, (key.remote_address, key.remote_port));
+            for conn in &connections[range] {
                 if conn.remote_equals(key) {
                     conn.set_last_accessed_time(wdk::utils::get_system_timestamp_ms());
                     return read_connection(conn);
                 }
-                if conn.redirect_equals(key) {
-                    conn.set_last_accessed_time(wdk::utils::get_system_timestamp_ms());
-                    return read_connection(conn);
+            }
+
+            // A redirected connection cannot be found by the search above: it is
+            // stored under its real remote endpoint, while the packet that comes
+            // back carries the redirect target instead (loopback:53 for a DNS
+            // redirect, for example). Those are found by scanning.
+            //
+            // The scan is guarded by the port test so it does not run on every
+            // miss. `redirect_equals` only ever accepts one of the three redirect
+            // ports, so for any other remote port the scan cannot match and is
+            // skipped - which is what keeps an inbound flood, where every lookup
+            // misses, off the O(n) path.
+            if is_redirect_port(key.remote_port) {
+                for conn in connections {
+                    if conn.redirect_equals(key) {
+                        conn.set_last_accessed_time(wdk::utils::get_system_timestamp_ms());
+                        return read_connection(conn);
+                    }
                 }
             }
         }
@@ -108,10 +164,27 @@ impl<T: Connection + Clone> ConnectionMap<T> {
         None
     }
 
+    /// Ends the connection matching `key` and returns a copy of it, or `None` if
+    /// there is no live match.
+    ///
+    /// Already-ended entries are skipped rather than ended again. Two layers can
+    /// report the same close: `endpoint_closure_*` (this path) and
+    /// `ale_resource_monitor` on the resource-release layer, which goes through
+    /// `end_all_on_port`. Without the check the second one to arrive emitted a
+    /// duplicate connection-end event for a connection that was already closed -
+    /// observed on IPv6, where Windows indicates both.
+    ///
+    /// The search continues past ended entries instead of stopping at the first
+    /// address match. `add` inserts without replacing, and ended entries are only
+    /// removed later by `clean_ended_connections`, so a stale closed entry can sit
+    /// in front of a live one with the same 5-tuple - returning `None` on the
+    /// first match would then leave the live connection open forever. This is why
+    /// the whole run of equal remote keys is examined and not just one entry of it.
     pub fn end(&mut self, key: Key) -> Option<T> {
         if let Some(connections) = self.0.get_mut(&key.small()) {
-            for conn in connections.iter_mut() {
-                if conn.remote_equals(&key) {
+            let range = equal_range(connections, (key.remote_address, key.remote_port));
+            for conn in &mut connections[range] {
+                if conn.remote_equals(&key) && !conn.has_ended() {
                     conn.end(wdk::utils::get_system_timestamp_ms());
                     return Some(conn.clone());
                 }
@@ -145,6 +218,8 @@ impl<T: Connection + Clone> ConnectionMap<T> {
         let before_one_minute = now - Duration::from_secs(60).as_millis() as u64;
 
         for (_, connections) in self.0.iter_mut() {
+            // `retain` preserves the relative order of the entries it keeps, so
+            // the sort order the lookups depend on survives the sweep.
             connections.retain(|c| {
                 if c.has_ended() && c.get_end_time() < before_one_minute {
                     // Ended more than 1 minute ago

@@ -146,6 +146,17 @@ pub trait Connection {
         }
     }
 
+    /// Returns the remote endpoint as an orderable tuple.
+    ///
+    /// This is the sort key of the per-port vectors in `ConnectionMap`, and it
+    /// must stay consistent with `remote_equals`: two connections compare equal
+    /// here exactly when `remote_equals` accepts a key carrying that endpoint.
+    /// `IpAddress` orders by variant first, so a key of the wrong address family
+    /// compares unequal, which matches `remote_equals` rejecting it.
+    fn remote_key(&self) -> (IpAddress, u16) {
+        (self.get_remote_address(), self.get_remote_port())
+    }
+
     /// Returns true if the connection is equal to the given key. The key is considered equal if the remote port and address are equal.
     fn remote_equals(&self, key: &Key) -> bool;
     /// Returns true if the connection is equal to the given key for redirecting. The key is considered equal if the remote port and address are equal.
