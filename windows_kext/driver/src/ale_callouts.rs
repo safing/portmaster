@@ -609,6 +609,13 @@ pub fn ale_resource_assignment_monitor(data: CalloutData) {
     // is unusable: it never appeared in any measurement, including sendto and
     // connect on an unbound socket, consistent with being documented as
     // Vista/Server 2008 only.
+    //
+    // The one case this drops that does need the table is a server that asked for
+    // any port and then listened on it: its bind is a wildcard bind, but its
+    // accepted connections are inbound and are only ever seen at the packet layer.
+    // Those are picked up at the listen layer instead - see `ale_listen_monitor`,
+    // which fires on `listen()` and so cannot be confused with the source port of
+    // an outbound connection.
     if flags & wdk::consts::FWP_CONDITION_FLAG_IS_WILDCARD_BIND != 0 {
         return;
     }
@@ -620,6 +627,82 @@ pub fn ale_resource_assignment_monitor(data: CalloutData) {
     let Some(process_id) = data.get_process_id() else {
         return;
     };
+
+    device
+        .endpoint_pid_cache
+        .insert(ipv6, protocol, port, process_id);
+}
+
+/// Records the owning process of a socket entering the listening state.
+///
+/// This covers the endpoints `ale_resource_assignment_monitor` deliberately
+/// skips. That handler ignores every bind carrying
+/// FWP_CONDITION_FLAG_IS_WILDCARD_BIND, because such a bind is normally the
+/// stack picking an ephemeral source port for an outbound connection, which the
+/// connect layer already attributes. A server that calls `bind(addr, 0)` and then
+/// `listen()` is indistinguishable from that at the bind layer: measured on
+/// Windows 11, a Firefox IPC listener on 127.0.0.1:45565 was indicated with
+/// flags=0x9 (WILDCARD_BIND | IS_LOOPBACK) and the correct PID, while the client
+/// socket of the same pair carried flags=0x8 - the only difference being the
+/// loopback bit, which says nothing about the role of the socket. So the flags
+/// cannot separate the two cases and the listener's PID was dropped.
+///
+/// Its inbound half is then only ever seen at the inbound IP packet layer, which
+/// has no process ID of its own, and the connection was reported with PID 0. In
+/// the same capture the accepting side never appeared at the connect layer at all
+/// - no indication for `l: 127.0.0.1:45565` exists - so this layer is the only
+/// place where that PID is available before the traffic arrives.
+///
+/// `listen()` has no UDP equivalent, so this covers TCP only. A UDP server on an
+/// ephemeral port is still missed; it has no listen state to observe.
+///
+/// The entry is removed by the existing release handler, which filters on
+/// protocol and port and does not look at the wildcard flag.
+///
+/// Registered as an inspection callout, so it never alters a permit/block
+/// decision.
+pub fn ale_listen_monitor(data: CalloutData) {
+    let Some(device) = crate::entry::get_device() else {
+        return;
+    };
+
+    // The address family comes from the layer: a listener on a wildcard address
+    // leaves IpLocalAddress empty, and the two families have independent port
+    // spaces, so the family has to be part of the key.
+    let (ipv6, port) = match data.layer {
+        layer::Layer::AleAuthListenV4 => {
+            type Fields = layer::FieldsAleAuthListenV4;
+            (false, data.get_value_u16(Fields::IpLocalPort as usize))
+        }
+        layer::Layer::AleAuthListenV6 => {
+            type Fields = layer::FieldsAleAuthListenV6;
+            (true, data.get_value_u16(Fields::IpLocalPort as usize))
+        }
+        _ => return,
+    };
+
+    // The listen layers carry no IpProtocol field - reaching them at all means
+    // TCP, since only a stream socket can listen.
+    let protocol = IpProtocol::Tcp;
+
+    // Port 0 is never a usable key. A listening socket always has a port by this
+    // point, so a zero here means the field was not populated as expected.
+    if port == 0 {
+        return;
+    }
+
+    // Only store a PID that WFP actually supplied: storing 0 would overwrite a
+    // good entry with a value that means "unknown".
+    let Some(process_id) = data.get_process_id() else {
+        return;
+    };
+
+    crate::dbg!(
+        "listen layer recording endpoint: ipv6={} port={} PID={}",
+        ipv6,
+        port,
+        process_id
+    );
 
     device
         .endpoint_pid_cache

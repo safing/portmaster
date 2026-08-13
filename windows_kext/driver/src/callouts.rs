@@ -75,6 +75,32 @@ pub fn get_callout_vec() -> Vec<Callout> {
             ale_callouts::ale_resource_assignment_monitor,
         ),
         // -----------------------------------------
+        // Listen layers. These cover the endpoints the bind layers above
+        // deliberately skip: a socket that asked the stack for any port and then
+        // called listen() is a server on an ephemeral port, and its bind carries
+        // FWP_CONDITION_FLAG_IS_WILDCARD_BIND just like the source port of an
+        // outbound connection does. See ale_listen_monitor for the measurement.
+        //
+        // Inspection action: these take no part in permit/block decisions.
+        Callout::new(
+            "Portmaster listen IPv4",
+            "Portmaster uses this layer to learn which process listens on an IPv4 local port",
+            0x2a7e91c4_5db3_4e08_a1f6_9b4d3c85e207,
+            Layer::AleAuthListenV4,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_listen_monitor,
+        ),
+        Callout::new(
+            "Portmaster listen IPv6",
+            "Portmaster uses this layer to learn which process listens on an IPv6 local port",
+            0xc4b80f6d_1e29_4a37_85db_7f0a2e6c93b1,
+            Layer::AleAuthListenV6,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_listen_monitor,
+        ),
+        // -----------------------------------------
         // ALE resource assignment and release.
         // Callout::new(
         //     "AleResourceAssignmentV4",

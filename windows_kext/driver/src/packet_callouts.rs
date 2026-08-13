@@ -385,6 +385,11 @@ fn ip_packet_layer(
                 if process_id == 0 {
                     if let Some(pid) = lookup_endpoint_pid(device, &key, ipv6, direction) {
                         process_id = pid;
+                        // Write it back, so the entry stops reporting 0 and later
+                        // packets of this connection do not repeat the lookup. The
+                        // update only applies to a stored 0, so a PID that is
+                        // already known is never replaced.
+                        device.connection_cache.update_process_id(&key, pid);
                     }
                 }
                 // Check if there is action for this connection.
