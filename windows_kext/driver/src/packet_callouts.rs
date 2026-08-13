@@ -185,10 +185,28 @@ fn ip_packet_layer(
     // retreat in the loop.
     let wfp_ip_header_size = data.get_ip_header_size();
 
-    // Block all fragment data. No easy way to keep track of the origin and they are rarely used.
-    if data.is_fragment_data() {
-        data.block_and_absorb();
-        crate::err!("blocked fragment packet");
+    // A fragmented datagram is indicated twice at this layer: once per individual
+    // fragment, and once more as the reassembled whole (verified on Windows 11:
+    // the reassembled indication carries FWP_CONDITION_FLAG_IS_REASSEMBLED and the
+    // full 3028-byte length, while the fragments carry only 1500).
+    //
+    // Only the reassembled indication has a usable transport header. Individual
+    // fragments other than the first begin directly with payload bytes, so reading
+    // ports at the transport offset returns payload data - that is where the bogus
+    // `0 -> 0` connection keys came from.
+    //
+    // Skip the individual fragments and decide on the reassembled packet, which
+    // gives Portmaster the correct ports and the true datagram size.
+    //
+    // Note: the fragment flag is not set on every fragment indication (the first
+    // pass reports flags=0x0), so the IP header's own fragment fields are the
+    // reliable discriminator. A packet is an individual fragment when it either
+    // has a non-zero offset or has the more-fragments bit set; an unfragmented
+    // packet has neither, and the reassembled one is explicitly flagged.
+    if !data.is_reassembled(flags_index)
+        && is_ip_fragment(&data, ipv6, direction, wfp_ip_header_size)
+    {
+        data.action_permit();
         return;
     }
 
