@@ -1,6 +1,6 @@
 use core::{fmt::Display, time::Duration};
 
-use crate::connection::Connection;
+use crate::connection::{is_redirect_port, Connection};
 use alloc::{collections::BTreeMap, vec::Vec};
 use smoltcp::wire::{IpAddress, IpProtocol};
 

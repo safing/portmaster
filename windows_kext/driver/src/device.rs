@@ -17,7 +17,9 @@ use wdk::{
 
 use crate::{
     array_holder::ArrayHolder, bandwidth::Bandwidth, callouts, connection_cache::ConnectionCache,
-    connection_map::Key, dbg, err, id_cache::IdCache, logger, packet_util::Redirect,
+    connection_map::Key, dbg, err,
+    id_cache::IdCache, logger,
+    packet_util::Redirect,
 };
 
 pub enum Packet {

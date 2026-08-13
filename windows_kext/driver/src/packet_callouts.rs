@@ -13,7 +13,9 @@ use crate::connection_cache::ConnectionCache;
 use crate::connection_map::Key;
 use crate::device::{Device, Packet};
 use crate::packet_util::{
-    get_key_from_nbl_v4, get_key_from_nbl_v6, recalc_header_checksums, Redirect,
+    get_icmp_echo_from_nbl, get_key_from_nbl_v4, get_key_from_nbl_v6, is_fragment_v4,
+    is_fragment_v6, recalc_header_checksums,
+    Redirect,
 };
 
 // IP packet layers
@@ -28,6 +30,7 @@ pub fn ip_packet_layer_outbound_v4(data: CalloutData) {
         Direction::Outbound,
         interface_index,
         sub_interface_index,
+        Fields::Flags as usize,
     );
 }
 
@@ -41,6 +44,7 @@ pub fn ip_packet_layer_inbound_v4(data: CalloutData) {
         Direction::Inbound,
         interface_index,
         sub_interface_index,
+        Fields::Flags as usize,
     );
 }
 
@@ -55,6 +59,7 @@ pub fn ip_packet_layer_outbound_v6(data: CalloutData) {
         Direction::Outbound,
         interface_index,
         sub_interface_index,
+        Fields::Flags as usize,
     );
 }
 
@@ -69,7 +74,75 @@ pub fn ip_packet_layer_inbound_v6(data: CalloutData) {
         Direction::Inbound,
         interface_index,
         sub_interface_index,
+        Fields::Flags as usize,
     );
+}
+
+/// Largest retreat accepted from WFP metadata.
+///
+/// `NdisRetreatNetBufferDataStart` can fail, and its return value is discarded in
+/// `NetBufferList::retreat`, so an oversized request would silently not happen and
+/// leave the buffer positioned wrongly in the other direction. IPv4 headers cap at
+/// 60 bytes (IHL is 4 bits of 32-bit words); IPv6 base plus a realistic extension
+/// header chain is bounded well below this.
+const MAX_IP_HEADER_RETREAT: u32 = 128;
+
+/// Retreats an inbound net buffer to the start of the IP header.
+///
+/// At the inbound packet layers the buffer starts past the IP header. The amount
+/// to move back is *not* a constant: with IPv4 options the header is IHL*4 up to
+/// 60 bytes, and for IPv6 the size reported by WFP includes any extension header
+/// chain. Retreating a fixed 20 or 40 bytes leaves the buffer pointing inside the
+/// header, so everything downstream parses option or extension bytes as an IP
+/// header - which produced keys with protocol 0 and address 0.0.0.0.
+///
+/// `wfp_ip_header_size` is FWPS_METADATA_FIELD_IP_HEADER_SIZE, which is
+/// authoritative for both families. It falls back to the fixed base header size
+/// when absent, preserving the previous behaviour rather than guessing.
+fn retreat_to_ip_header(
+    nbl: &mut NetBufferList,
+    ipv6: bool,
+    wfp_ip_header_size: Option<u32>,
+) {
+    let base = if ipv6 { IPV6_HEADER_LEN } else { IPV4_HEADER_LEN } as u32;
+
+    // A value below the base header size cannot be right; treat it as missing.
+    let size = match wfp_ip_header_size {
+        Some(size) if size >= base && size <= MAX_IP_HEADER_RETREAT => size,
+        _ => base,
+    };
+
+    nbl.retreat(size, true);
+}
+
+/// Returns true if the packet described by this indication is an individual IP
+/// fragment rather than a whole datagram.
+///
+/// Reads the fragment fields from the IP header itself. For inbound packets the
+/// header sits before the current data pointer, so the buffer is retreated first;
+/// the retreat is undone when the local `NetBufferList` goes out of scope.
+///
+/// For IPv6 the fragment information sits in an extension header after the base
+/// header, so the chain is walked rather than reading a fixed field.
+fn is_ip_fragment(
+    data: &CalloutData,
+    ipv6: bool,
+    direction: Direction,
+    wfp_ip_header_size: Option<u32>,
+) -> bool {
+    let Some(mut nbl) = NetBufferListIter::new(data.get_layer_data() as _).next() else {
+        return false;
+    };
+
+    if let Direction::Inbound = direction {
+        retreat_to_ip_header(&mut nbl, ipv6, wfp_ip_header_size);
+    }
+
+    if ipv6 {
+        is_fragment_v6(&nbl)
+    } else {
+        is_fragment_v4(&nbl)
+    }
 }
 
 struct ConnectionInfo {
@@ -102,9 +175,15 @@ fn ip_packet_layer(
     direction: Direction,
     interface_index: u32,
     sub_interface_index: u32,
+    flags_index: usize,
 ) {
     // Make the default path as drop.
     data.block_and_absorb();
+
+	// How far back an inbound buffer has to be moved to reach the IP header.
+    // Read once here: it is needed both by the fragment check below and by every
+    // retreat in the loop.
+    let wfp_ip_header_size = data.get_ip_header_size();
 
     // Block all fragment data. No easy way to keep track of the origin and they are rarely used.
     if data.is_fragment_data() {
@@ -128,11 +207,7 @@ fn ip_packet_layer(
         if let Direction::Inbound = direction {
             // The header is not part of the NBL for incoming packets. Move the beginning of the buffer back so we get access to it.
             // The NBL will auto advance after it loses scope.
-            if ipv6 {
-                nbl.retreat(IPV6_HEADER_LEN as u32, true);
-            } else {
-                nbl.retreat(IPV4_HEADER_LEN as u32, true);
-            }
+            retreat_to_ip_header(&mut nbl, ipv6, wfp_ip_header_size);
         }
 
         // Get key from packet.

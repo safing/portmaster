@@ -8,8 +8,9 @@ use windows_sys::Win32::{
         IpHelper::IP_ADDRESS_PREFIX,
         WindowsFilteringPlatform::{
             FWPS_METADATA_FIELD_COMPLETION_HANDLE, FWPS_METADATA_FIELD_FRAGMENT_DATA,
-            FWPS_METADATA_FIELD_PROCESS_ID, FWPS_METADATA_FIELD_PROCESS_PATH,
-            FWPS_METADATA_FIELD_REMOTE_SCOPE_ID, FWPS_METADATA_FIELD_TRANSPORT_CONTROL_DATA,
+            FWPS_METADATA_FIELD_IP_HEADER_SIZE, FWPS_METADATA_FIELD_PROCESS_ID,
+            FWPS_METADATA_FIELD_PROCESS_PATH, FWPS_METADATA_FIELD_REMOTE_SCOPE_ID,
+            FWPS_METADATA_FIELD_TRANSPORT_CONTROL_DATA,
             FWPS_METADATA_FIELD_TRANSPORT_ENDPOINT_HANDLE, FWP_BYTE_BLOB, FWP_DIRECTION,
         },
     },
@@ -132,6 +133,19 @@ impl FwpsIncomingMetadataValues {
     pub(crate) fn get_remote_scope_id(&self) -> Option<SCOPE_ID> {
         if self.has_field(FWPS_METADATA_FIELD_REMOTE_SCOPE_ID) {
             return Some(self.remote_scope_id);
+        }
+
+        None
+    }
+
+    /// Size of the IP header for this indication, as reported by WFP.
+    ///
+    /// At the inbound packet layers the net buffer starts past the IP header, and
+    /// this is how far back it has to be retreated to reach it. It reflects any
+    /// IP options actually present, unlike the fixed IPV4_HEADER_LEN.
+    pub(crate) fn get_ip_header_size(&self) -> Option<u32> {
+        if self.has_field(FWPS_METADATA_FIELD_IP_HEADER_SIZE) {
+            return Some(self.ip_header_size);
         }
 
         None

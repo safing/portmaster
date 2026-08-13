@@ -11,6 +11,7 @@ use super::{
     stream_data::StreamCalloutIoPacket,
     FilterEngine,
 };
+use crate::consts::FWP_CONDITION_FLAG_IS_REASSEMBLED;
 use alloc::string::{String, ToString};
 use core::{ffi::c_void, ptr::NonNull};
 use windows_sys::Win32::{
@@ -151,6 +152,11 @@ impl<'a> CalloutData<'a> {
         unsafe { (*self.metadata).is_fragment_data() }
     }
 
+    /// Size of the IP header for this indication, if WFP provided it.
+    pub fn get_ip_header_size(&self) -> Option<u32> {
+        unsafe { (*self.metadata).get_ip_header_size() }
+    }
+
     pub fn pend_operation(
         &mut self,
         packet_list: Option<TransportPacketList>,
@@ -218,6 +224,21 @@ impl<'a> CalloutData<'a> {
 
     pub fn is_reauthorize(&self, flags_index: usize) -> bool {
         self.get_value_u32(flags_index) & FWP_CONDITION_FLAG_IS_REAUTHORIZE > 0
+    }
+
+    /// Returns true if WFP indicated this packet as a reassembled datagram, i.e.
+    /// the individual fragments have been merged back into one packet with a
+    /// complete transport header.
+    ///
+    /// Reads false when the FLAGS field is not a u32, so an unexpected layout
+    /// cannot cause a fragment to be mistaken for a reassembled packet.
+    pub fn is_reassembled(&self, flags_index: usize) -> bool {
+        match self.get_value_type(flags_index) {
+            ValueType::FwpUint32 => {
+                self.get_value_u32(flags_index) & FWP_CONDITION_FLAG_IS_REASSEMBLED > 0
+            }
+            _ => false,
+        }
     }
 
     pub fn get_callout_id(&self) -> usize {

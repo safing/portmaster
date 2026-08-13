@@ -150,6 +150,37 @@ impl NetBufferList {
             }
         }
     }
+	
+    /// Sums the data length of every net buffer in the list, excluding
+    /// `header_len` leading bytes of each one.
+    ///
+    /// The header is subtracted per net buffer, not once for the whole list,
+    /// because a single net buffer list may carry several independent packets
+    /// (for example batched datagram sends), each with its own header.
+    pub fn get_data_length_excluding_header(&self, header_len: u32) -> usize {
+        unsafe {
+            let Some(nbl) = self.nbl.as_ref() else {
+                return 0;
+            };
+
+            let mut nb = nbl.Header.first_net_buffer;
+            let mut length: usize = 0;
+            while !nb.is_null() {
+                let mut next = core::ptr::null_mut();
+                if let Some(buffer) = nb.as_ref() {
+                    // Saturating: a net buffer shorter than the header would be
+                    // malformed, never report a negative payload for it.
+                    length += buffer.nbSize.DataLength.saturating_sub(header_len) as usize;
+                    next = buffer.Next;
+                }
+                nb = next;
+            }
+
+            length
+        }
+    }
+
+
 
     /// Retreats the mnl of the buffer. Does not auto advance multiple retreats.
     pub fn retreat(&mut self, size: u32, auto_advance: bool) {

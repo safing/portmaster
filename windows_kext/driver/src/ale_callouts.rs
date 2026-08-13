@@ -55,6 +55,18 @@ fn get_protocol(data: &CalloutData, index: usize) -> IpProtocol {
     IpProtocol::from(data.get_value_u8(index))
 }
 
+/// Reads a `FWP_UINT32` field, returning 0 when the field is not populated.
+///
+/// Several fields are only filled in at some layers. Reading the union member
+/// regardless yields an unrelated value rather than an error, so the type is
+/// checked first.
+fn get_u32_or_zero(data: &CalloutData, index: usize) -> u32 {
+    match data.get_value_type(index) {
+        ValueType::FwpUint32 => data.get_value_u32(index),
+        _ => 0,
+    }
+}
+
 fn get_ipv4_address(data: &CalloutData, index: usize) -> IpAddress {
     IpAddress::Ipv4(Ipv4Address::from_bytes(
         &data.get_value_u32(index).to_be_bytes(),
@@ -97,8 +109,13 @@ pub fn ale_layer_connect_v6(data: CalloutData) {
         local_port: data.get_value_u16(Fields::IpLocalPort as usize),
         remote_ip: get_ipv6_address(&data, Fields::IpRemoteAddress as usize),
         remote_port: data.get_value_u16(Fields::IpRemotePort as usize),
-        interface_index: data.get_value_u32(Fields::InterfaceIndex as usize),
-        sub_interface_index: data.get_value_u32(Fields::SubInterfaceIndex as usize),
+        // Read only when actually populated. WFP reports SubInterfaceIndex as
+        // FWP_EMPTY at the connect authorization layer - there is no interface
+        // binding yet at that point - so reading it unconditionally returned
+        // whatever the union held, and that value went on to be used as an
+        // injection parameter. The v4 path already passes zeros here.
+        interface_index: get_u32_or_zero(&data, Fields::InterfaceIndex as usize),
+        sub_interface_index: get_u32_or_zero(&data, Fields::SubInterfaceIndex as usize),
     };
 
     ale_layer_auth(data, ale_data);
@@ -370,11 +387,20 @@ fn create_packet_list(
     let mut nbl = NetBufferList::new(callout_data.get_layer_data() as _);
     let mut inbound = false;
     if let Direction::Inbound = ale_data.direction {
-        if ale_data.is_ipv6 {
-            nbl.retreat(IPV6_HEADER_LEN as u32, true);
+        // Retreat by the size WFP reports, not the fixed base header length: with
+        // IPv4 options, or an IPv6 extension header chain, the header is longer and
+        // a fixed retreat leaves the buffer inside it. See retreat_to_ip_header in
+        // packet_callouts.rs for the full reasoning.
+        let base = if ale_data.is_ipv6 {
+            IPV6_HEADER_LEN
         } else {
-            nbl.retreat(IPV4_HEADER_LEN as u32, true);
-        }
+            IPV4_HEADER_LEN
+        } as u32;
+        let size = match callout_data.get_ip_header_size() {
+            Some(size) if size >= base && size <= 128 => size,
+            _ => base,
+        };
+        nbl.retreat(size, true);
         inbound = true;
     }
 

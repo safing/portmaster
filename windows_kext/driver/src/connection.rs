@@ -15,6 +15,20 @@ pub static PM_DNS_PORT:       u16 = 53;
 pub static PM_SPN_PORT:       u16 = 717;
 pub static PM_SPLIT_TUN_PORT: u16 = 719;
 
+/// Returns true if `remote_port` is a port that `redirect_equals` can match on.
+///
+/// Every arm of `redirect_equals` rejects the key unless its remote port equals
+/// the port belonging to that redirect verdict, so a key with any other remote
+/// port cannot match a redirected connection at all. `ConnectionMap::read` uses
+/// this to skip the linear redirect scan entirely, which is what keeps the
+/// binary-searched lookup path from degrading to O(n) on every miss.
+///
+/// Keep in sync with `redirect_equals`: a new redirect verdict needs its port
+/// added here, or connections carrying it will never be found.
+pub fn is_redirect_port(remote_port: u16) -> bool {
+    remote_port == PM_DNS_PORT || remote_port == PM_SPN_PORT || remote_port == PM_SPLIT_TUN_PORT
+}
+
 // Make sure this in sync with the Go version
 #[derive(Copy, Clone, FromPrimitive)]
 #[repr(u8)]
