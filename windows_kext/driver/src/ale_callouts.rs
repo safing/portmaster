@@ -428,7 +428,20 @@ pub fn endpoint_closure_v4(data: CalloutData) {
         return;
     };
     let ip_address_type = data.get_value_type(Fields::IpLocalAddress as usize);
-    if let ValueType::FwpUint32 = ip_address_type {
+    // The remote endpoint is checked as well, not just the local one. WFP leaves
+    // IpRemoteAddress and IpRemotePort as FWP_EMPTY for closures that have no
+    // remote peer (a listening socket, for example). Reading them regardless
+    // returns whatever the union happens to hold, and the resulting key either
+    // matches no cached connection - so the entry is never removed and the cache
+    // grows - or matches an unrelated one and ends the wrong connection.
+    //
+    // The v6 path already validates both addresses; this brings v4 in line.
+    let remote_address_type = data.get_value_type(Fields::IpRemoteAddress as usize);
+    let remote_port_type = data.get_value_type(Fields::IpRemotePort as usize);
+    let remote_present = matches!(remote_address_type, ValueType::FwpUint32)
+        && matches!(remote_port_type, ValueType::FwpUint16);
+
+    if matches!(ip_address_type, ValueType::FwpUint32) && remote_present {
         let key = Key {
             protocol: get_protocol(&data, Fields::IpProtocol as usize),
             local_address: get_ipv4_address(&data, Fields::IpLocalAddress as usize),
@@ -467,9 +480,19 @@ pub fn endpoint_closure_v6(data: CalloutData) {
     };
     let local_ip_address_type = data.get_value_type(Fields::IpLocalAddress as usize);
     let remote_ip_address_type = data.get_value_type(Fields::IpRemoteAddress as usize);
+    // Ports are validated too: the addresses being present does not guarantee the
+    // port fields are, and an unpopulated port would silently become part of the
+    // key. See endpoint_closure_v4 for the consequences.
+    let ports_present = matches!(
+        data.get_value_type(Fields::IpLocalPort as usize),
+        ValueType::FwpUint16
+    ) && matches!(
+        data.get_value_type(Fields::IpRemotePort as usize),
+        ValueType::FwpUint16
+    );
 
     if let ValueType::FwpByteArray16Type = local_ip_address_type {
-        if let ValueType::FwpByteArray16Type = remote_ip_address_type {
+        if matches!(remote_ip_address_type, ValueType::FwpByteArray16Type) && ports_present {
             let key = Key {
                 protocol: get_protocol(&data, Fields::IpProtocol as usize),
                 local_address: get_ipv6_address(&data, Fields::IpLocalAddress as usize),
