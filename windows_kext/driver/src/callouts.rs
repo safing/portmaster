@@ -101,6 +101,28 @@ pub fn get_callout_vec() -> Vec<Callout> {
             ale_callouts::ale_listen_monitor,
         ),
         // -----------------------------------------
+        // Receive-accept layers. Besides identifying the concrete accepted flow,
+        // these run for listeners that existed before the driver loaded and fill
+        // the endpoint PID table immediately before packet classification.
+        Callout::new(
+            "Portmaster receive accept IPv4",
+            "Portmaster uses this layer to learn which process accepts an IPv4 connection",
+            0x17d4a8f2_6c31_4b95_ae07_53f9c2d8614e,
+            Layer::AleAuthRecvAcceptV4,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_recv_accept_monitor,
+        ),
+        Callout::new(
+            "Portmaster receive accept IPv6",
+            "Portmaster uses this layer to learn which process accepts an IPv6 connection",
+            0x9b62e1f4_38ad_47c0_8e15_d7a4935fb206,
+            Layer::AleAuthRecvAcceptV6,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_recv_accept_monitor,
+        ),
+        // -----------------------------------------
         // ALE resource assignment and release.
         // Callout::new(
         //     "AleResourceAssignmentV4",

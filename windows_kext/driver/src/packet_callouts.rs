@@ -14,8 +14,7 @@ use crate::connection_map::Key;
 use crate::device::{Device, Packet};
 use crate::packet_util::{
     get_icmp_echo_from_nbl, get_key_from_nbl_v4, get_key_from_nbl_v6, is_fragment_v4,
-    is_fragment_v6, recalc_header_checksums,
-    Redirect,
+    is_fragment_v6, recalc_header_checksums, Redirect,
 };
 
 // IP packet layers
@@ -439,9 +438,10 @@ fn ip_packet_layer(
                 // This layer has no process ID of its own: no socket is
                 // associated with the packet at the inbound IP packet layer, so
                 // WFP supplies none. The owning process is resolved from the
-                // endpoint recorded at the bind layer instead. It stays 0 when
-                // the port was bound before the driver loaded.
-                process_id = lookup_endpoint_pid(device, &key, ipv6, effective_direction).unwrap_or(0);
+                // endpoint ownership recorded by the ALE monitor instead. It stays 0
+                // when no usable endpoint indication supplied a PID.
+                process_id = lookup_endpoint_pid(device, &key, ipv6, effective_direction)
+                    .unwrap_or(0);
 
                 crate::dbg!(
                     "packet layer adding connection: {} PID: {}",

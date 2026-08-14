@@ -89,8 +89,8 @@ pub fn ale_layer_connect_v4(data: CalloutData) {
         local_port: data.get_value_u16(Fields::IpLocalPort as usize),
         remote_ip: get_ipv4_address(&data, Fields::IpRemoteAddress as usize),
         remote_port: data.get_value_u16(Fields::IpRemotePort as usize),
-        interface_index: 0,
-        sub_interface_index: 0,
+        interface_index: get_u32_or_zero(&data, Fields::InterfaceIndex as usize),
+        sub_interface_index: get_u32_or_zero(&data, Fields::SubInterfaceIndex as usize),
     };
 
     ale_layer_auth(data, ale_data);
@@ -697,16 +697,65 @@ pub fn ale_listen_monitor(data: CalloutData) {
         return;
     };
 
-    crate::dbg!(
-        "listen layer recording endpoint: ipv6={} port={} PID={}",
-        ipv6,
-        port,
-        process_id
-    );
-
     device
         .endpoint_pid_cache
         .insert(ipv6, protocol, port, process_id);
+}
+
+
+/// Records the owning process of a concrete accepted TCP flow.
+///
+/// Unlike the listen layer, receive-accept is indicated for listeners that were
+/// already running when the driver loaded. This closes that startup gap without a
+/// socket snapshot: measured with Firefox already running, WFP indicated
+/// `127.0.0.1:18540 <- 127.0.0.1:18541` here with PID 6568 immediately before the
+/// packet layer created the same key. No listen indication existed because the
+/// listener predated the driver.
+///
+/// The endpoint table is keyed by the local port rather than the complete flow,
+/// so the accepted flow refreshes the listener's entry. The indication identifies
+/// the process that actually accepted this connection and arrives before packet
+/// classification; the subsequent endpoint lookup therefore creates the
+/// connection with this PID instead of 0.
+///
+/// Registered as an inspection callout, so it never alters the authorization
+/// result. Only a usable TCP port and a PID WFP actually supplied are recorded.
+pub fn ale_recv_accept_monitor(data: CalloutData) {
+    let Some(device) = crate::entry::get_device() else {
+        return;
+    };
+
+    let (ipv6, local_port, protocol) = match data.layer {
+        layer::Layer::AleAuthRecvAcceptV4 => {
+            type Fields = layer::FieldsAleAuthRecvAcceptV4;
+            (
+                false,
+                data.get_value_u16(Fields::IpLocalPort as usize),
+                get_protocol(&data, Fields::IpProtocol as usize),
+            )
+        }
+        layer::Layer::AleAuthRecvAcceptV6 => {
+            type Fields = layer::FieldsAleAuthRecvAcceptV6;
+            (
+                true,
+                data.get_value_u16(Fields::IpLocalPort as usize),
+                get_protocol(&data, Fields::IpProtocol as usize),
+            )
+        }
+        _ => return,
+    };
+
+    if protocol != IpProtocol::Tcp || local_port == 0 {
+        return;
+    }
+
+    let Some(process_id) = data.get_process_id() else {
+        return;
+    };
+
+    device
+        .endpoint_pid_cache
+        .insert(ipv6, protocol, local_port, process_id);
 }
 
 pub fn ale_resource_monitor(data: CalloutData) {
@@ -722,6 +771,24 @@ pub fn ale_resource_monitor(data: CalloutData) {
     // socket that never carried traffic has no connection to end. Leaving it
     // behind would attribute a later process's traffic to a dead PID once the
     // port is reused.
+    //
+    // Measured on Windows 11, one case per port, to establish when a release
+    // actually arrives:
+    //
+    //   accept/close (tcp 1235) - one assignment at bind, one release at listener
+    //     close, nothing in between for three accepted connections. An accepted
+    //     socket shares the listener's port rather than acquiring it, so it is not
+    //     a resource assignment event and the listener keeps its entry.
+    //   abrupt termination (udp 1241) - TerminateProcess on the owner still
+    //     produced a release with the correct PID. No stale entry.
+    //   TCP TIME_WAIT (tcp 1242) - release arrives at close, and an immediate
+    //     rebind of the same port succeeded, so the port was not held.
+    //   SO_REUSEADDR (udp 1243, and 1245 across two processes) - both binds are
+    //     indicated, and the first release arrives while the other owner is still
+    //     bound. This is why the remove below is conditional on the PID.
+    //   dual-stack [::] without IPV6_V6ONLY (udp 1244) - indicated on BOTH the v4
+    //     and the v6 assignment layers, so each family gets its own entry and
+    //     inbound IPv4 traffic to such a listener resolves correctly.
     //
     // IpProtocol and IpLocalPort were FwpUint8/FwpUint16 in every release
     // observed, never FWP_EMPTY, so the union reads above are sound at this layer.
