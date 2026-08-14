@@ -758,6 +758,87 @@ pub fn ale_recv_accept_monitor(data: CalloutData) {
         .insert(ipv6, protocol, local_port, process_id);
 }
 
+/// Records the owning process when a TCP flow completes its three-way handshake.
+///
+/// This layer fires after the SYN/SYN-ACK/ACK handshake completes, for both
+/// outbound and inbound connections. It provides a second opportunity to attribute
+/// flows that were created at the packet layer with PID=0 - either because the
+/// packet layer saw them before any ALE indication, or because of a race between
+/// the packet and ALE layers during connection setup.
+///
+/// For outbound flows, the connect layer already runs before any packet is sent,
+/// so this adds no new information. For inbound flows, the packet layer creates
+/// the connection when it sees the first packet (often the SYN), and this layer
+/// fires immediately after the handshake completes, giving one more chance to
+/// resolve a PID=0 entry before user-visible logging.
+///
+/// This does NOT help connections that were fully established before the driver
+/// loaded - their handshake already finished, so this layer never fires for them.
+///
+/// Registered as an inspection callout.
+pub fn ale_flow_established_monitor(data: CalloutData) {
+    let Some(device) = crate::entry::get_device() else {
+        return;
+    };
+
+    let (ipv6, local_ip, local_port, remote_ip, remote_port, protocol) = match data.layer {
+        layer::Layer::AleFlowEstablishedV4 => {
+            type Fields = layer::FieldsAleFlowEstablishedV4;
+            (
+                false,
+                get_ipv4_address(&data, Fields::IpLocalAddress as usize),
+                data.get_value_u16(Fields::IpLocalPort as usize),
+                get_ipv4_address(&data, Fields::IpRemoteAddress as usize),
+                data.get_value_u16(Fields::IpRemotePort as usize),
+                get_protocol(&data, Fields::IpProtocol as usize),
+            )
+        }
+        layer::Layer::AleFlowEstablishedV6 => {
+            type Fields = layer::FieldsAleFlowEstablishedV6;
+            (
+                true,
+                get_ipv6_address(&data, Fields::IpLocalAddress as usize),
+                data.get_value_u16(Fields::IpLocalPort as usize),
+                get_ipv6_address(&data, Fields::IpRemoteAddress as usize),
+                data.get_value_u16(Fields::IpRemotePort as usize),
+                get_protocol(&data, Fields::IpProtocol as usize),
+            )
+        }
+        _ => return,
+    };
+
+    if protocol != IpProtocol::Tcp {
+        return;
+    }
+
+    let Some(process_id) = data.get_process_id() else {
+        return;
+    };
+
+    let key = Key {
+        protocol,
+        local_address: local_ip,
+        local_port,
+        remote_address: remote_ip,
+        remote_port,
+    };
+
+    // Check if connection exists in cache with PID=0, and if so, update it.
+    let cached_pid = if ipv6 {
+        device
+            .connection_cache
+            .read_connection_v6(&key, |conn| -> Option<u64> { Some(conn.process_id) })
+    } else {
+        device
+            .connection_cache
+            .read_connection_v4(&key, |conn| -> Option<u64> { Some(conn.process_id) })
+    };
+
+    if let Some(0) = cached_pid {
+        device.connection_cache.update_process_id(&key, process_id);
+    }
+}
+
 pub fn ale_resource_monitor(data: CalloutData) {
     let Some(device) = crate::entry::get_device() else {
         return;

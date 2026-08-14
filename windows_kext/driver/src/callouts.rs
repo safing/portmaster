@@ -123,6 +123,28 @@ pub fn get_callout_vec() -> Vec<Callout> {
             ale_callouts::ale_recv_accept_monitor,
         ),
         // -----------------------------------------
+        // Flow established layers. These fire after TCP three-way handshake
+        // completes, providing a second chance to attribute connections that were
+        // created at the packet layer with PID=0.
+        Callout::new(
+            "Portmaster flow established IPv4",
+            "Portmaster uses this layer to attribute IPv4 TCP flows after handshake completion",
+            0x5a1f8d3e_9c42_4b87_a6d1_2e7f4c9b3a58,
+            Layer::AleFlowEstablishedV4,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_flow_established_monitor,
+        ),
+        Callout::new(
+            "Portmaster flow established IPv6",
+            "Portmaster uses this layer to attribute IPv6 TCP flows after handshake completion",
+            0x7b2e9f4a_1d53_4c98_b8e2_3f8a5d6c4b79,
+            Layer::AleFlowEstablishedV6,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_flow_established_monitor,
+        ),
+        // -----------------------------------------
         // ALE resource assignment and release.
         // Callout::new(
         //     "AleResourceAssignmentV4",
