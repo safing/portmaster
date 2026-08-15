@@ -1,4 +1,4 @@
-use alloc::string::String;
+use alloc::{string::String, vec::Vec};
 use core::sync::atomic::{AtomicU32, Ordering};
 use num_traits::FromPrimitive;
 use protocol::{command::CommandType, info::Info};
@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub enum Packet {
-    PacketLayer(NetBufferList, InjectInfo),
+    PacketLayer(Vec<NetBufferList>, InjectInfo),
     AleLayer(ClassifyDefer),
 }
 
@@ -365,12 +365,13 @@ impl Device {
 
     pub fn inject_packet(&mut self, packet: Packet, blocked: bool) -> Result<(), String> {
         match packet {
-            Packet::PacketLayer(nbl, inject_info) => {
+            Packet::PacketLayer(nbls, inject_info) => {
                 if !blocked {
-                    self.injector.inject_net_buffer_list(nbl, inject_info)
-                } else {
-                    Ok(())
+                    for nbl in nbls {
+                        self.injector.inject_net_buffer_list(nbl, inject_info)?;
+                    }
                 }
+                Ok(())
             }
             Packet::AleLayer(defer) => {
                 let packet_list = defer.complete(&mut self.filter_engine)?;

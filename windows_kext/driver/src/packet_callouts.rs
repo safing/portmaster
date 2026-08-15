@@ -498,24 +498,26 @@ fn clone_packet(
     interface_index: u32,
     sub_interface_index: u32,
 ) -> Result<Packet, String> {
-    let mut clone = nbl.clone(&device.network_allocator)?;
+    let mut clones = nbl.clone_all(&device.network_allocator)?;
     let inbound = match direction {
         Direction::Outbound => false,
         Direction::Inbound => true,
     };
 
-    if let Some(data) = clone.get_data_mut() {
-        // Outbound packets intercepted at the IP layer may carry only a partial
-        // pseudo-header checksum because the TCP/IP stack relies on NIC hardware
-        // checksum offload to fill in the real value before transmission.
-        // When this clone is later re-injected via FwpsInjectNetwork*Async (on
-        // Accept/PermanentAccept verdict), it bypasses the NIC entirely, so offload
-        // never runs. We must compute the full software checksum here.
-        recalc_header_checksums(data, ipv6);
+    for clone in &mut clones {
+        if let Some(data) = clone.get_data_mut() {
+            // Outbound packets intercepted at the IP layer may carry only a partial
+            // pseudo-header checksum because the TCP/IP stack relies on NIC hardware
+            // checksum offload to fill in the real value before transmission.
+            // When this clone is later re-injected via FwpsInjectNetwork*Async (on
+            // Accept/PermanentAccept verdict), it bypasses the NIC entirely, so offload
+            // never runs. We must compute the full software checksum here.
+            recalc_header_checksums(data, ipv6);
+        }
     }
 
     Ok(Packet::PacketLayer(
-        clone,
+        clones,
         InjectInfo {
             ipv6,
             inbound,

@@ -32,25 +32,27 @@ pub trait Redirect {
 
 impl Redirect for Packet {
     fn redirect(&mut self, redirect_info: RedirectInfo) -> Result<(), String> {
-        if let Packet::PacketLayer(nbl, inject_info) = self {
-            let Some(data) = nbl.get_data_mut() else {
-                return Err("trying to redirect immutable NBL".to_string());
-            };
+        if let Packet::PacketLayer(nbls, inject_info) = self {
+            for nbl in nbls {
+                let Some(data) = nbl.get_data_mut() else {
+                    return Err("trying to redirect immutable NBL".to_string());
+                };
 
-            if inject_info.inbound {
-                redirect_inbound_packet(
-                    data,
-                    redirect_info.local_address,
-                    redirect_info.remote_address,
-                    redirect_info.remote_port,
-                )
-            } else {
-                redirect_outbound_packet(
-                    data,
-                    redirect_info.redirect_address,
-                    redirect_info.redirect_port,
-                    redirect_info.unify,
-                )
+                if inject_info.inbound {
+                    redirect_inbound_packet(
+                        data,
+                        redirect_info.local_address,
+                        redirect_info.remote_address,
+                        redirect_info.remote_port,
+                    );
+                } else {
+                    redirect_outbound_packet(
+                        data,
+                        redirect_info.redirect_address,
+                        redirect_info.redirect_port,
+                        redirect_info.unify,
+                    );
+                }
             }
             return Ok(());
         }
