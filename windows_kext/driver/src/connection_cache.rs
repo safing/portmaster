@@ -4,7 +4,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 
-use smoltcp::wire::IpProtocol;
+use smoltcp::wire::{IpAddress, IpProtocol};
 use wdk::rw_spin_lock::RwSpinLock;
 
 pub struct ConnectionCache {
@@ -119,14 +119,26 @@ impl ConnectionCache {
         self.connections_v6.end(key)
     }
 
-    pub fn end_all_on_port_v4(&mut self, key: (IpProtocol, u16)) -> Option<Vec<ConnectionV4>> {
+    pub fn end_all_on_endpoint_v4(
+        &mut self,
+        key: (IpProtocol, u16),
+        local_address: Option<IpAddress>,
+        process_id: Option<u64>,
+    ) -> Option<Vec<ConnectionV4>> {
         let _guard = self.lock_v4.write_lock();
-        self.connections_v4.end_all_on_port(key)
+        self.connections_v4
+            .end_all_on_endpoint(key, local_address, process_id)
     }
 
-    pub fn end_all_on_port_v6(&mut self, key: (IpProtocol, u16)) -> Option<Vec<ConnectionV6>> {
+    pub fn end_all_on_endpoint_v6(
+        &mut self,
+        key: (IpProtocol, u16),
+        local_address: Option<IpAddress>,
+        process_id: Option<u64>,
+    ) -> Option<Vec<ConnectionV6>> {
         let _guard = self.lock_v6.write_lock();
-        self.connections_v6.end_all_on_port(key)
+        self.connections_v6
+            .end_all_on_endpoint(key, local_address, process_id)
     }
 
     pub fn clean_ended_connections(&mut self) {

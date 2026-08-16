@@ -73,8 +73,18 @@ fn get_ipv4_address(data: &CalloutData, index: usize) -> IpAddress {
     ))
 }
 
+fn get_ipv4_address_if_present(data: &CalloutData, index: usize) -> Option<IpAddress> {
+    matches!(data.get_value_type(index), ValueType::FwpUint32)
+        .then(|| get_ipv4_address(data, index))
+}
+
 fn get_ipv6_address(data: &CalloutData, index: usize) -> IpAddress {
     IpAddress::Ipv6(Ipv6Address::from_bytes(data.get_value_byte_array16(index)))
+}
+
+fn get_ipv6_address_if_present(data: &CalloutData, index: usize) -> Option<IpAddress> {
+    matches!(data.get_value_type(index), ValueType::FwpByteArray16Type)
+        .then(|| get_ipv6_address(data, index))
 }
 
 pub fn ale_layer_connect_v4(data: CalloutData) {
@@ -903,10 +913,14 @@ pub fn ale_resource_monitor(data: CalloutData) {
     match data.layer {
         layer::Layer::AleResourceAssignmentV4Discard => {
             type Fields = layer::FieldsAleResourceAssignmentV4;
-            if let Some(conns) = device.connection_cache.end_all_on_port_v4((
-                get_protocol(&data, Fields::IpProtocol as usize),
-                data.get_value_u16(Fields::IpLocalPort as usize),
-            )) {
+            if let Some(conns) = device.connection_cache.end_all_on_endpoint_v4(
+                (
+                    get_protocol(&data, Fields::IpProtocol as usize),
+                    data.get_value_u16(Fields::IpLocalPort as usize),
+                ),
+                get_ipv4_address_if_present(&data, Fields::IpLocalAddress as usize),
+                data.get_process_id().filter(|pid| *pid != 0),
+            ) {
                 let process_id = data.get_process_id().unwrap_or(0);
                 info!(
                     "Port {}/{} Ipv4 assign request discarded pid={}",
@@ -930,10 +944,14 @@ pub fn ale_resource_monitor(data: CalloutData) {
         }
         layer::Layer::AleResourceAssignmentV6Discard => {
             type Fields = layer::FieldsAleResourceAssignmentV6;
-            if let Some(conns) = device.connection_cache.end_all_on_port_v6((
-                get_protocol(&data, Fields::IpProtocol as usize),
-                data.get_value_u16(Fields::IpLocalPort as usize),
-            )) {
+            if let Some(conns) = device.connection_cache.end_all_on_endpoint_v6(
+                (
+                    get_protocol(&data, Fields::IpProtocol as usize),
+                    data.get_value_u16(Fields::IpLocalPort as usize),
+                ),
+                get_ipv6_address_if_present(&data, Fields::IpLocalAddress as usize),
+                data.get_process_id().filter(|pid| *pid != 0),
+            ) {
                 let process_id = data.get_process_id().unwrap_or(0);
                 info!(
                     "Port {}/{} Ipv6 assign request discarded pid={}",
@@ -957,10 +975,14 @@ pub fn ale_resource_monitor(data: CalloutData) {
         }
         layer::Layer::AleResourceReleaseV4 => {
             type Fields = layer::FieldsAleResourceReleaseV4;
-            if let Some(conns) = device.connection_cache.end_all_on_port_v4((
-                get_protocol(&data, Fields::IpProtocol as usize),
-                data.get_value_u16(Fields::IpLocalPort as usize),
-            )) {
+            if let Some(conns) = device.connection_cache.end_all_on_endpoint_v4(
+                (
+                    get_protocol(&data, Fields::IpProtocol as usize),
+                    data.get_value_u16(Fields::IpLocalPort as usize),
+                ),
+                get_ipv4_address_if_present(&data, Fields::IpLocalAddress as usize),
+                data.get_process_id().filter(|pid| *pid != 0),
+            ) {
                 let process_id = data.get_process_id().unwrap_or(0);
                 info!(
                     "Port {}/{} released pid={}",
@@ -984,10 +1006,14 @@ pub fn ale_resource_monitor(data: CalloutData) {
         }
         layer::Layer::AleResourceReleaseV6 => {
             type Fields = layer::FieldsAleResourceReleaseV6;
-            if let Some(conns) = device.connection_cache.end_all_on_port_v6((
-                get_protocol(&data, Fields::IpProtocol as usize),
-                data.get_value_u16(Fields::IpLocalPort as usize),
-            )) {
+            if let Some(conns) = device.connection_cache.end_all_on_endpoint_v6(
+                (
+                    get_protocol(&data, Fields::IpProtocol as usize),
+                    data.get_value_u16(Fields::IpLocalPort as usize),
+                ),
+                get_ipv6_address_if_present(&data, Fields::IpLocalAddress as usize),
+                data.get_process_id().filter(|pid| *pid != 0),
+            ) {
                 let process_id = data.get_process_id().unwrap_or(0);
                 info!(
                     "Port {}/{} released pid={}",

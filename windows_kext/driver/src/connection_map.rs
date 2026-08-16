@@ -169,8 +169,8 @@ impl<T: Connection + Clone> ConnectionMap<T> {
     ///
     /// Already-ended entries are skipped rather than ended again. Two layers can
     /// report the same close: `endpoint_closure_*` (this path) and
-    /// `ale_resource_monitor` on the resource-release layer, which goes through
-    /// `end_all_on_port`. Without the check the second one to arrive emitted a
+    /// `ale_resource_monitor` on the resource-release layer, which performs an
+    /// endpoint sweep. Without the check the second one to arrive emitted a
     /// duplicate connection-end event for a connection that was already closed -
     /// observed on IPv6, where Windows indicates both.
     ///
@@ -193,11 +193,35 @@ impl<T: Connection + Clone> ConnectionMap<T> {
         return None;
     }
 
-    pub fn end_all_on_port(&mut self, key: (IpProtocol, u16)) -> Option<Vec<T>> {
+    /// Ends live connections for one local endpoint and returns copies of them.
+    ///
+    /// The map is grouped by protocol and local port, but that grouping is not a
+    /// sufficient identity: two local addresses can listen on the same port, and
+    /// multiple processes can share an endpoint with `SO_REUSEADDR`. The optional
+    /// address and PID filters are supplied by the ALE resource indication.
+    ///
+    /// A connection with PID 0 is treated as an unknown owner and is eligible when
+    /// a release carries a PID. Otherwise a PID-0 connection would remain stale
+    /// forever when it was created before attribution became available. A missing
+    /// local address (WFP `FWP_EMPTY` for a wildcard bind) deliberately means
+    /// "all local addresses", leaving the PID as the disambiguating field.
+    pub fn end_all_on_endpoint(
+        &mut self,
+        key: (IpProtocol, u16),
+        local_address: Option<IpAddress>,
+        process_id: Option<u64>,
+    ) -> Option<Vec<T>> {
         if let Some(connections) = self.0.get_mut(&key) {
             let mut vec = Vec::with_capacity(connections.len());
             for conn in connections.iter_mut() {
-                if !conn.has_ended() {
+                let address_matches = local_address
+                    .map(|address| conn.get_local_address() == address)
+                    .unwrap_or(true);
+                let process_matches = process_id
+                    .map(|pid| conn.get_process_id() == 0 || conn.get_process_id() == pid)
+                    .unwrap_or(true);
+
+                if !conn.has_ended() && address_matches && process_matches {
                     conn.end(wdk::utils::get_system_timestamp_ms());
                     vec.push(conn.clone());
                 }
