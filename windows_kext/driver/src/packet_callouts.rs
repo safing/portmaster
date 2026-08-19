@@ -317,23 +317,34 @@ fn ip_packet_layer(
         ) {
             match direction {
                 Direction::Outbound => {
-                    // Check if this is an ICMP echo reply first. For loopback traffic,
-                    // WFP reports both the request and the reply as OUTBOUND. An echo
-                    // reply must be attributed to the process that sent the request,
-                    // not to the current context (which would be System or arbitrary).
                     if let Some(echo) = get_icmp_echo_from_nbl(&nbl, ipv6) {
                         if !echo.is_request {
-                            // This is a reply reported as OUTBOUND (loopback behavior).
-                            // Correct the direction to INBOUND for semantic accuracy.
-                            effective_direction = Direction::Inbound;
-
-                            // Look up the PID of the process that sent the request.
-                            // key.remote_address is the responder (the address the
-                            // request was sent to).
-                            process_id = device
+                            // This is an echo reply reported as OUTBOUND. Two cases:
+                            // 1. Reply to our own request (loopback or external): we
+                            //    sent a request, this is the answer coming back. WFP
+                            //    reports it as OUTBOUND (routing quirk). Semantically
+                            //    it's inbound, and we have the request cached.
+                            // 2. Our reply to someone else's request: they sent us a
+                            //    request, this is our answer going out. WFP correctly
+                            //    reports it as OUTBOUND, and we have no cached request.
+                            //
+                            // Distinguish by checking if we have a cached request.
+                            let request_pid = device
                                 .icmp_echo_cache
-                                .take_request_pid(key.remote_address, echo.identifier)
-                                .unwrap_or(0);
+                                .take_request_pid(key.remote_address, echo.identifier);
+
+                            if let Some(pid) = request_pid {
+                                // Case 1: Found our request > this is a reply to us.
+                                // Correct direction to INBOUND for semantic accuracy.
+                                effective_direction = Direction::Inbound;
+                                process_id = pid;
+                            } else {
+                                // Case 2: No cached request > this is our reply to them.
+                                // This is a kernel stack reply (automatic ICMP response).
+                                // current_process_id() would return arbitrary DPC context,
+                                // so use 0 (System/kernel) instead.
+                                process_id = 0;
+                            }
                         } else {
                             // This is a request. Use the current process as the sender.
                             process_id = wdk::utils::current_process_id();
@@ -348,13 +359,16 @@ fn ip_packet_layer(
                     } else {
                         // Not an ICMP echo (request or reply), but still outbound
                         // non-TCP/UDP (e.g., ICMP destination unreachable, ICMPv6
-                        // neighbor discovery). Use the current process.
-                        process_id = wdk::utils::current_process_id();
+                        // neighbor discovery, router advertisement). These are kernel
+                        // stack originated. current_process_id() returns arbitrary
+                        // DPC context, so use 0 (System/kernel).
+                        process_id = 0;
                     }
                 }
                 Direction::Inbound => {
-                    // key.remote_address is the responder, which is the address the
-                    // request was sent to - the same value used as the key above.
+                    // Inbound ICMP echo replies are straightforward: someone sent us
+                    // a request, they're getting their reply back. Try to attribute
+                    // it to their original request if we cached it.
                     if let Some(echo) = get_icmp_echo_from_nbl(&nbl, ipv6) {
                         if !echo.is_request {
                             process_id = device
