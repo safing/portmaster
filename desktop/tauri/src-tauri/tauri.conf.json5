@@ -65,7 +65,6 @@
           "/usr/lib/portmaster/portmaster-core": "binary/portmaster-core",
           "/usr/lib/portmaster/portmaster.zip": "binary/portmaster.zip",
           "/usr/lib/portmaster/assets.zip": "binary/assets.zip",
-
           // Intel files
           "/var/lib/portmaster/intel/index.json": "intel/index.json",
           "/var/lib/portmaster/intel/base.dsdl": "intel/base.dsdl",
@@ -78,6 +77,9 @@
           "/var/lib/portmaster/intel/main-intel.yaml"   : "intel/main-intel.yaml",
           "/var/lib/portmaster/intel/notifications.yaml": "intel/notifications.yaml",
           "/var/lib/portmaster/intel/news.yaml"         : "intel/news.yaml",
+
+          // Scripts
+          "/usr/lib/portmaster/ui-wrapper": "../../../packaging/linux/ui-wrapper",
 
           // Shortcut
           "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
@@ -112,6 +114,9 @@
           "/var/lib/portmaster/intel/main-intel.yaml"   : "intel/main-intel.yaml",
           "/var/lib/portmaster/intel/notifications.yaml": "intel/notifications.yaml",
           "/var/lib/portmaster/intel/news.yaml"         : "intel/news.yaml",
+
+          // Scripts
+          "/usr/lib/portmaster/ui-wrapper": "../../../packaging/linux/ui-wrapper",
 
           // Shortcut
           "/etc/xdg/autostart/portmaster.desktop": "../../../packaging/linux/portmaster-autostart.desktop"
