@@ -11,12 +11,21 @@
     Get Help
   </a>
 
+  <div class="flex gap-1 items-center text-xxs">
+    <button type="button" class="px-2 py-1 rounded bg-gray-300 hover:bg-gray-200"
+      [class.font-semibold]="uiLanguage === 'en'"
+      (click)="setLanguage('en')">EN</button>
+    <button type="button" class="px-2 py-1 rounded bg-gray-300 hover:bg-gray-200"
+      [class.font-semibold]="uiLanguage === 'ja'"
+      (click)="setLanguage('ja')">JA</button>
+  </div>
+
   <app-expertise></app-expertise>
 </div>
 
 <div class="header-title">
   <h1>
-    Global Settings
+    {{ t('settings_title_global', 'Global Settings') }}
     <sfng-tipup key="globalSettings"></sfng-tipup>
   </h1>
 </div>

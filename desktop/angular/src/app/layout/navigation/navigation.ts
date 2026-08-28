@@ -1,6 +1,6 @@
 import { INTEGRATION_SERVICE, IntegrationService } from 'src/app/integration';
 import { ConnectedPosition } from '@angular/cdk/overlay';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Inject, OnInit, Output, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Inject, OnDestroy, OnInit, Output, inject } from '@angular/core';
 import { ConfigService, DebugAPI, PortapiService, SPNService, StringSetting, BoolSetting } from '@safing/portmaster-api';
 import { tap } from 'rxjs/operators';
 import { AppComponent } from 'src/app/app.component';
@@ -9,6 +9,7 @@ import { ActionIndicatorService } from 'src/app/shared/action-indicator';
 import { fadeInAnimation, fadeOutAnimation } from 'src/app/shared/animations';
 import { ExitService } from 'src/app/shared/exit-screen';
 import { TauriIntegrationService } from 'src/app/integration/taur-app';
+import { t } from '../../i18n/static-translate';
 
 @Component({
   selector: 'app-navigation',
@@ -21,8 +22,12 @@ import { TauriIntegrationService } from 'src/app/integration/taur-app';
     fadeOutAnimation,
   ]
 })
-export class NavigationComponent implements OnInit {
+export class NavigationComponent implements OnInit, OnDestroy {
   private readonly integration = inject(INTEGRATION_SERVICE);
+
+  readonly t = t;
+
+  private langChangeHandler = () => this.cdr.markForCheck();
 
   /** Emits the current portapi connection state on changes. */
   readonly connected$ = this.portapi.connected$;
@@ -97,6 +102,8 @@ export class NavigationComponent implements OnInit {
   ]
 
   ngOnInit() {
+    window.addEventListener('portmaster-ui-lang-change', this.langChangeHandler);
+
     const mql = window.matchMedia('(max-width: 1200px)');
 
     if (mql.matches) {
@@ -169,6 +176,10 @@ export class NavigationComponent implements OnInit {
 
         this.cdr.markForCheck();
       })
+  }
+
+  ngOnDestroy() {
+    window.removeEventListener('portmaster-ui-lang-change', this.langChangeHandler);
   }
 
   toggleSideDash(event: MouseEvent) {
