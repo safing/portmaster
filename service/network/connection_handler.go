@@ -128,6 +128,10 @@ func (conn *Connection) packetHandlerWorker(ctx *mgr.WorkerCtx) error {
 			}
 			pktSeq++
 
+			// Holds a real packet that was pulled off the queue while looking for an
+			// info-only packet, so that it can be handled in the order it arrived.
+			var pushback packet.Packet
+
 			// Attempt to optimize packet handling order by handling info-only packets first.
 			switch {
 			case pktSeq > 1:
@@ -159,8 +163,14 @@ func (conn *Connection) packetHandlerWorker(ctx *mgr.WorkerCtx) error {
 					if infoPkt != nil {
 						// DEBUG:
 						// log.Debugf("filter: packet #%d [pulled forward] info=%v PID=%d packet: %s", pktSeq, infoPkt.InfoOnly(), infoPkt.Info().PID, pkt)
-						packetHandlerHandleConn(ctx.Ctx(), conn, infoPkt)
-						pktSeq++
+						if infoPkt.InfoOnly() {
+							// Info-only packets never get a verdict, so handling one early
+							// only applies its process info and reorders nothing.
+							packetHandlerHandleConn(ctx.Ctx(), conn, infoPkt)
+							pktSeq++
+						} else {
+							pushback = infoPkt
+						}
 					}
 				case <-time.After(1 * time.Millisecond):
 				}
@@ -179,6 +189,11 @@ func (conn *Connection) packetHandlerWorker(ctx *mgr.WorkerCtx) error {
 			// }
 
 			packetHandlerHandleConn(ctx.Ctx(), conn, pkt)
+
+			if pushback != nil {
+				pktSeq++
+				packetHandlerHandleConn(ctx.Ctx(), conn, pushback)
+			}
 
 		case <-ctx.Done():
 			return nil
