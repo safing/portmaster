@@ -429,16 +429,25 @@ var tooOldTimestamp = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
 // NewIncompleteConnection creates a new incomplete connection with only minimal information.
 func NewIncompleteConnection(pkt packet.Packet) *Connection {
 	info := pkt.Info()
+	connID := pkt.GetConnectionID()
+
+	// Adopt the process attribution that an info-only packet reported earlier.
+	pid := info.PID
+	if pid == process.UndefinedProcessID {
+		if hintedPID, ok := takePIDHint(connID); ok {
+			pid = hintedPID
+		}
+	}
 
 	// Create new connection object.
 	// We do not yet know the direction of the connection for sure, so we can only set minimal information.
 	conn := &Connection{
-		ID:           pkt.GetConnectionID(),
+		ID:           connID,
 		Type:         IPConnection,
 		IPVersion:    info.Version,
 		IPProtocol:   info.Protocol,
 		Started:      info.SeenAt.Unix(),
-		PID:          info.PID,
+		PID:          pid,
 		Inbound:      info.Inbound,
 		dataComplete: abool.NewBool(false),
 	}

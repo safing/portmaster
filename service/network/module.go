@@ -28,6 +28,7 @@ type Network struct {
 
 	dnsRequestTicker        *mgr.SleepyTicker
 	connectionCleanerTicker *mgr.SleepyTicker
+	pidHintTicker           *mgr.SleepyTicker
 
 	EventConnectionReattributed *mgr.EventMgr[string]
 }
@@ -50,6 +51,9 @@ func (n *Network) SetSleep(enabled bool) {
 	}
 	if n.connectionCleanerTicker != nil {
 		n.connectionCleanerTicker.SetSleep(enabled)
+	}
+	if n.pidHintTicker != nil {
+		n.pidHintTicker.SetSleep(enabled)
 	}
 }
 
@@ -83,6 +87,7 @@ func start() error {
 
 	module.mgr.Go("clean connections", connectionCleaner)
 	module.mgr.Go("write open dns requests", openDNSRequestWriter)
+	module.mgr.Go("rotate pid hints", pidHintRotator)
 	module.instance.Profile().EventDelete.AddCallback("re-attribute connections from deleted profile", reAttributeConnections)
 
 	return nil
