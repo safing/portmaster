@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -33,6 +34,11 @@ var (
 
 	isRunning      atomic.Bool
 	shutdownSignal = make(chan struct{})
+
+	// iptablesLock serializes the multi-step iptables sequences of activation,
+	// deactivation and jump rule maintenance against each other.
+	// Only ever held by one of those three; never acquired recursively.
+	iptablesLock sync.Mutex
 )
 
 // nfQueue encapsulates nfQueue providers.
@@ -158,6 +164,9 @@ func init() {
 }
 
 func activateNfqueueFirewall() error {
+	iptablesLock.Lock()
+	defer iptablesLock.Unlock()
+
 	if err := activateIPTables(iptables.ProtocolIPv4, v4rules, v4once, v4chains); err != nil {
 		return err
 	}
@@ -192,6 +201,9 @@ func activateNfqueueFirewall() error {
 // DeactivateNfqueueFirewall drops portmaster related IP tables rules.
 // Any errors encountered accumulated into a *multierror.Error.
 func DeactivateNfqueueFirewall() error {
+	iptablesLock.Lock()
+	defer iptablesLock.Unlock()
+
 	// IPv4
 	var result *multierror.Error
 	if err := deactivateIPTables(iptables.ProtocolIPv4, v4once, v4chains); err != nil {
@@ -248,6 +260,19 @@ func activateIPTables(protocol iptables.Protocol, rules, once, chains []string) 
 // for both IPv4 and IPv6. It returns the list of rules that were out of position
 // and had to be reinserted.
 func ensureJumpRulesAtTop() (reinsertedRules []string, err error) {
+	// Never wait for the lock: an in-flight activation/deactivation supersedes this
+	// maintenance check, and iptables calls may block for a long time on the xtables lock.
+	if !iptablesLock.TryLock() {
+		return nil, nil
+	}
+	defer iptablesLock.Unlock()
+
+	// Interception may have been stopped while this check was scheduled. Re-adding
+	// jump rules now would resurrect rules for already deleted Portmaster chains.
+	if !isRunning.Load() {
+		return nil, nil
+	}
+
 	reinsertedRules, err = reinsertDisplacedRules(iptables.ProtocolIPv4, v4once)
 	if err != nil {
 		return nil, err
@@ -277,16 +302,22 @@ func reinsertDisplacedRules(protocol iptables.Protocol, once []string) (reinsert
 	}
 	var rulesToUpdate []string
 	for _, onceRule := range once {
-		splittedRule := strings.Split(onceRule, " ")
-		table := splittedRule[0]
-		chain := splittedRule[1]
-		// get the first rule of the chain
-		firstRule, err := tbls.ListById(table, chain, 1)
+		splittedRule := strings.Split(onceRule, " ")     // Example: onceRule="filter OUTPUT -j PORTMASTER-FILTER",
+		table := splittedRule[0]                         // Example: filter
+		chain := splittedRule[1]                         // Example: OUTPUT
+		pmChainName := splittedRule[len(splittedRule)-1] // Example: PORTMASTER-FILTER
+		// get rules of the chain
+		rules, err := tbls.List(table, chain)
 		if err != nil {
 			return nil, err
 		}
+		// get the first rule of the chain (if any)
+		firstRule := ""
+		if len(rules) >= 2 {
+			// rules[0] is the chain-policy operation, rules[1] is the first rule
+			firstRule = rules[1]
+		}
 		// check if the first rule of the chain is the portmaster rule
-		pmChainName := splittedRule[len(splittedRule)-1]
 		if !strings.HasSuffix(firstRule, pmChainName) {
 			rulesToUpdate = append(rulesToUpdate, onceRule)
 		}
@@ -294,6 +325,13 @@ func reinsertDisplacedRules(protocol iptables.Protocol, once []string) (reinsert
 
 	comment := []string{"-m", "comment", "--comment", `TEMPORARY_RULE`}
 	for _, rule := range rulesToUpdate {
+		// Stop early when interception is shutting down: the teardown is waiting for the
+		// lock and will remove these rules anyway. Checked between rules, never inside a
+		// move sequence, so no temporary rule can be left behind.
+		if !isRunning.Load() {
+			break
+		}
+
 		splittedRule := strings.Split(rule, " ")
 		table := splittedRule[0]     // "filter"
 		chain := splittedRule[1]     // "OUTPUT"
@@ -307,7 +345,7 @@ func reinsertDisplacedRules(protocol iptables.Protocol, once []string) (reinsert
 			return nil, fmt.Errorf("failed to insert temporary rule '%s' into chain '%s' in table '%s': %w", tmpRuleSpec, chain, table, err)
 		}
 		// delete the original rule and re-insert it on the first position
-		err = tbls.Delete(table, chain, ruleSpec...)
+		err = tbls.DeleteIfExists(table, chain, ruleSpec...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to delete original rule '%s' from chain '%s' in table '%s': %w", ruleSpec, chain, table, err)
 		}
@@ -320,9 +358,11 @@ func reinsertDisplacedRules(protocol iptables.Protocol, once []string) (reinsert
 		if err != nil {
 			return nil, fmt.Errorf("failed to delete temporary rule '%s' from chain '%s' in table '%s': %w", tmpRuleSpec, chain, table, err)
 		}
+
+		reinsertedRules = append(reinsertedRules, rule)
 	}
 
-	return rulesToUpdate, nil
+	return reinsertedRules, nil
 }
 
 func deactivateIPTables(protocol iptables.Protocol, rules, chains []string) error {
