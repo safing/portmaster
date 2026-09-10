@@ -15,6 +15,20 @@ pub static PM_DNS_PORT:       u16 = 53;
 pub static PM_SPN_PORT:       u16 = 717;
 pub static PM_SPLIT_TUN_PORT: u16 = 719;
 
+/// Returns true if `remote_port` is a port that `redirect_equals` can match on.
+///
+/// Every arm of `redirect_equals` rejects the key unless its remote port equals
+/// the port belonging to that redirect verdict, so a key with any other remote
+/// port cannot match a redirected connection at all. `ConnectionMap::read` uses
+/// this to skip the linear redirect scan entirely, which is what keeps the
+/// binary-searched lookup path from degrading to O(n) on every miss.
+///
+/// Keep in sync with `redirect_equals`: a new redirect verdict needs its port
+/// added here, or connections carrying it will never be found.
+pub fn is_redirect_port(remote_port: u16) -> bool {
+    remote_port == PM_DNS_PORT || remote_port == PM_SPN_PORT || remote_port == PM_SPLIT_TUN_PORT
+}
+
 // Make sure this in sync with the Go version
 #[derive(Copy, Clone, FromPrimitive)]
 #[repr(u8)]
@@ -132,9 +146,25 @@ pub trait Connection {
         }
     }
 
-    /// Returns true if the connection is equal to the given key. The key is considered equal if the remote port and address are equal.
+    /// Returns the remote endpoint as an orderable tuple.
+    ///
+    /// This is the coarse sort key of the per-port vectors in `ConnectionMap`.
+    /// Every connection that `remote_equals` can accept must compare equal here,
+    /// but the converse is intentionally not true: entries with the same remote
+    /// endpoint can still differ in local address and are disambiguated by
+    /// `remote_equals`. `IpAddress` orders by variant first, so a key of the wrong
+    /// address family does not enter the candidate range.
+    fn remote_key(&self) -> (IpAddress, u16) {
+        (self.get_remote_address(), self.get_remote_port())
+    }
+
+    /// Returns true if the connection has the same local and remote endpoint as
+    /// the given key. The map already groups by protocol and local port, but the
+    /// local address still has to be checked here: two local addresses can use
+    /// the same port and remote endpoint at the same time.
     fn remote_equals(&self, key: &Key) -> bool;
-    /// Returns true if the connection is equal to the given key for redirecting. The key is considered equal if the remote port and address are equal.
+    /// Returns true if the connection is equal to the given key for redirecting.
+    /// The key is considered equal if it matches the redirect endpoint.
     fn redirect_equals(&self, key: &Key) -> bool;
     /// Returns the protocol of the connection.
     fn get_protocol(&self) -> IpProtocol;
@@ -234,7 +264,17 @@ impl ConnectionV4 {
 
 impl Connection for ConnectionV4 {
     fn remote_equals(&self, key: &Key) -> bool {
-        if self.remote_port != key.remote_port {
+        if self.protocol != key.protocol
+            || self.local_port != key.local_port
+            || self.remote_port != key.remote_port
+        {
+            return false;
+        }
+        if let IpAddress::Ipv4(local_address) = &key.local_address {
+            if self.local_address != *local_address {
+                return false;
+            }
+        } else {
             return false;
         }
         if let IpAddress::Ipv4(remote_address) = &key.remote_address {
@@ -384,7 +424,17 @@ impl ConnectionV6 {
 
 impl Connection for ConnectionV6 {
     fn remote_equals(&self, key: &Key) -> bool {
-        if self.remote_port != key.remote_port {
+        if self.protocol != key.protocol
+            || self.local_port != key.local_port
+            || self.remote_port != key.remote_port
+        {
+            return false;
+        }
+        if let IpAddress::Ipv6(local_address) = &key.local_address {
+            if self.local_address != *local_address {
+                return false;
+            }
+        } else {
             return false;
         }
         if let IpAddress::Ipv6(remote_address) = &key.remote_address {

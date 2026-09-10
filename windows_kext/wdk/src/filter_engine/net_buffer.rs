@@ -116,6 +116,50 @@ impl NetBufferList {
         }
     }
 
+    /// Clones every NET_BUFFER in this NBL into an independent packet.
+    ///
+    /// WFP may batch multiple packets in one NET_BUFFER_LIST. Each returned
+    /// NBL owns its packet data and can be injected independently.
+    pub fn clone_all(&self, net_allocator: &NetworkAllocator) -> Result<Vec<NetBufferList>, String> {
+        unsafe {
+            let Some(nbl) = self.nbl.as_ref() else {
+                return Err("net buffer list is null".to_string());
+            };
+
+            let mut packets = Vec::new();
+            let mut nb = nbl.Header.first_net_buffer;
+            while !nb.is_null() {
+                let nb_ref = nb.as_ref().unwrap();
+                let data_length = nb_ref.nbSize.DataLength;
+                if data_length == 0 {
+                    return Err("can't clone empty packet".to_string());
+                }
+
+                let mut buffer = alloc::vec![0_u8; data_length as usize];
+                let buffer_ptr = buffer.as_mut_ptr();
+                let ptr = NdisGetDataBuffer(nb, data_length, buffer_ptr, 1, 0);
+                if ptr.is_null() {
+                    return Err("failed to copy packet buffer".to_string());
+                }
+                if ptr != buffer_ptr {
+                    buffer.copy_from_slice(core::slice::from_raw_parts(ptr, data_length as usize));
+                }
+
+                let new_nbl = net_allocator.wrap_packet_in_nbl(&buffer)?;
+                packets.push(NetBufferList {
+                    nbl: new_nbl,
+                    data: Some(buffer),
+                    advance_on_drop: None,
+                });
+                nb = nb_ref.Next;
+            }
+
+            if packets.is_empty() {
+                return Err("net buffer list has no packets".to_string());
+            }
+            Ok(packets)
+        }
+    }
     pub fn get_data_mut(&mut self) -> Option<&mut [u8]> {
         if let Some(data) = &mut self.data {
             return Some(data.as_mut_slice());
@@ -150,6 +194,37 @@ impl NetBufferList {
             }
         }
     }
+	
+    /// Sums the data length of every net buffer in the list, excluding
+    /// `header_len` leading bytes of each one.
+    ///
+    /// The header is subtracted per net buffer, not once for the whole list,
+    /// because a single net buffer list may carry several independent packets
+    /// (for example batched datagram sends), each with its own header.
+    pub fn get_data_length_excluding_header(&self, header_len: u32) -> usize {
+        unsafe {
+            let Some(nbl) = self.nbl.as_ref() else {
+                return 0;
+            };
+
+            let mut nb = nbl.Header.first_net_buffer;
+            let mut length: usize = 0;
+            while !nb.is_null() {
+                let mut next = core::ptr::null_mut();
+                if let Some(buffer) = nb.as_ref() {
+                    // Saturating: a net buffer shorter than the header would be
+                    // malformed, never report a negative payload for it.
+                    length += buffer.nbSize.DataLength.saturating_sub(header_len) as usize;
+                    next = buffer.Next;
+                }
+                nb = next;
+            }
+
+            length
+        }
+    }
+
+
 
     /// Retreats the mnl of the buffer. Does not auto advance multiple retreats.
     pub fn retreat(&mut self, size: u32, auto_advance: bool) {

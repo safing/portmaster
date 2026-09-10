@@ -50,6 +50,101 @@ pub fn get_callout_vec() -> Vec<Callout> {
             ale_callouts::endpoint_closure_v6,
         ),
         // -----------------------------------------
+        // Bind layers. These record which process owns a local port, because the
+        // inbound packet layer cannot determine it: no socket is associated with
+        // a packet at FWPM_LAYER_INBOUND_IPPACKET_V4/V6, so WFP supplies no
+        // process ID there.
+        //
+        // Inspection action: these take no part in permit/block decisions.
+        Callout::new(
+            "Portmaster port assignment IPv4",
+            "Portmaster uses this layer to learn which process owns an IPv4 local port",
+            0x3f1c9a52_7b48_4d61_9e35_c0a7f2d8b114,
+            Layer::AleResourceAssignmentV4,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_resource_assignment_monitor,
+        ),
+        Callout::new(
+            "Portmaster port assignment IPv6",
+            "Portmaster uses this layer to learn which process owns an IPv6 local port",
+            0x8d2e4b17_c093_4a75_bf62_1e5a9c3d7f20,
+            Layer::AleResourceAssignmentV6,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_resource_assignment_monitor,
+        ),
+        // -----------------------------------------
+        // Listen layers. These cover the endpoints the bind layers above
+        // deliberately skip: a socket that asked the stack for any port and then
+        // called listen() is a server on an ephemeral port, and its bind carries
+        // FWP_CONDITION_FLAG_IS_WILDCARD_BIND just like the source port of an
+        // outbound connection does. See ale_listen_monitor for the measurement.
+        //
+        // Inspection action: these take no part in permit/block decisions.
+        Callout::new(
+            "Portmaster listen IPv4",
+            "Portmaster uses this layer to learn which process listens on an IPv4 local port",
+            0x2a7e91c4_5db3_4e08_a1f6_9b4d3c85e207,
+            Layer::AleAuthListenV4,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_listen_monitor,
+        ),
+        Callout::new(
+            "Portmaster listen IPv6",
+            "Portmaster uses this layer to learn which process listens on an IPv6 local port",
+            0xc4b80f6d_1e29_4a37_85db_7f0a2e6c93b1,
+            Layer::AleAuthListenV6,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_listen_monitor,
+        ),
+        // -----------------------------------------
+        // Receive-accept layers. Besides identifying the concrete accepted flow,
+        // these run for listeners that existed before the driver loaded and fill
+        // the endpoint PID table immediately before packet classification.
+        Callout::new(
+            "Portmaster receive accept IPv4",
+            "Portmaster uses this layer to learn which process accepts an IPv4 connection",
+            0x17d4a8f2_6c31_4b95_ae07_53f9c2d8614e,
+            Layer::AleAuthRecvAcceptV4,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_recv_accept_monitor,
+        ),
+        Callout::new(
+            "Portmaster receive accept IPv6",
+            "Portmaster uses this layer to learn which process accepts an IPv6 connection",
+            0x9b62e1f4_38ad_47c0_8e15_d7a4935fb206,
+            Layer::AleAuthRecvAcceptV6,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_recv_accept_monitor,
+        ),
+        // -----------------------------------------
+        // Flow established layers. These fire after TCP three-way handshake
+        // completes, providing a second chance to attribute connections that were
+        // created at the packet layer with PID=0.
+        Callout::new(
+            "Portmaster flow established IPv4",
+            "Portmaster uses this layer to attribute IPv4 TCP flows after handshake completion",
+            0x5a1f8d3e_9c42_4b87_a6d1_2e7f4c9b3a58,
+            Layer::AleFlowEstablishedV4,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_flow_established_monitor,
+        ),
+        Callout::new(
+            "Portmaster flow established IPv6",
+            "Portmaster uses this layer to attribute IPv6 TCP flows after handshake completion",
+            0x7b2e9f4a_1d53_4c98_b8e2_3f8a5d6c4b79,
+            Layer::AleFlowEstablishedV6,
+            consts::FWP_ACTION_CALLOUT_INSPECTION,
+            FilterType::NonResettable,
+            ale_callouts::ale_flow_established_monitor,
+        ),
+        // -----------------------------------------
         // ALE resource assignment and release.
         // Callout::new(
         //     "AleResourceAssignmentV4",

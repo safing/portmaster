@@ -68,7 +68,7 @@ impl IdCache {
 
 fn get_payload(packet: &Packet) -> Option<&[u8]> {
     match packet {
-        Packet::PacketLayer(nbl, _) => nbl.get_data(),
+        Packet::PacketLayer(nbls, _) => nbls.first().and_then(|nbl| nbl.get_data()),
         Packet::AleLayer(defer) => {
             let p = match defer {
                 wdk::filter_engine::callout_data::ClassifyDefer::Initial(_, p) => p,

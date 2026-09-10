@@ -41,6 +41,7 @@ pub struct TransportPacketList {
     send_params: FWPS_TRANSPORT_SEND_PARAMS1,
 }
 
+#[derive(Clone, Copy)]
 pub struct InjectInfo {
     pub ipv6: bool,
     pub inbound: bool,
