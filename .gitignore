@@ -67,3 +67,5 @@ desktop/tauri/src-tauri/intel/
 windows_kext/test/_testcert/
 windows_kext/test/_out/
 windows_kext/test/_delme/
+portmaster-ui/node_modules/
+portmaster-ui/dist/
