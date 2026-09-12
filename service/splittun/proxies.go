@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"runtime"
 	"sync"
 
 	"github.com/safing/portmaster/service/mgr"
@@ -71,6 +72,11 @@ func startProxies(mgr *mgr.Manager) error {
 	)
 
 	_ = stopProxies()
+	udp4Addr, udp6Addr := "0.0.0.0", "::"
+	if runtime.GOOS == "linux" {
+		udp4Addr = "127.0.0.17"
+		udp6Addr = "::1"
+	}
 
 	// Ensure any partially-started proxies are shut down if we return an error.
 	var startErr error
@@ -97,7 +103,7 @@ func startProxies(mgr *mgr.Manager) error {
 		startErr = fmt.Errorf("failed to start TCPv4 proxy: %w", err)
 		return startErr
 	}
-	udp4, err = proxy.NewUDPProxy(fmt.Sprintf("0.0.0.0:%d", SplitTunPort), "udp4", proxyDecider, mgr, "UDP-IPv4-proxy")
+	udp4, err = proxy.NewUDPProxy(fmt.Sprintf("%s:%d", udp4Addr, SplitTunPort), "udp4", proxyDecider, mgr, "UDP-IPv4-proxy")
 	if err != nil {
 		startErr = fmt.Errorf("failed to start UDPv4 proxy: %w", err)
 		return startErr
@@ -109,7 +115,7 @@ func startProxies(mgr *mgr.Manager) error {
 			startErr = fmt.Errorf("failed to start TCPv6 proxy: %w", err)
 			return startErr
 		}
-		udp6, err = proxy.NewUDPProxy(fmt.Sprintf("[::]:%d", SplitTunPort), "udp6", proxyDecider, mgr, "UDP-IPv6-proxy")
+		udp6, err = proxy.NewUDPProxy(fmt.Sprintf("[%s]:%d", udp6Addr, SplitTunPort), "udp6", proxyDecider, mgr, "UDP-IPv6-proxy")
 		if err != nil {
 			startErr = fmt.Errorf("failed to start UDPv6 proxy: %w", err)
 			return startErr
