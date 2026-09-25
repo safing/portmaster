@@ -25,6 +25,7 @@ func init() {
 		Release:   releaseLocalPort,
 	})
 	netenv.SetLocalAddrFactory(PermittedAddr)
+	netenv.SetLocalPortReleaser(releaseLocalPort)
 }
 
 // PermittedAddr returns an already permitted local address for the given network for reliable connectivity.
