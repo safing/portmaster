@@ -36,6 +36,10 @@ var (
 	ErrFailure = errors.New("query failed")
 	// ErrContinue is returned when the resolver has no answer, and the next resolver should be asked.
 	ErrContinue = errors.New("resolver has no answer")
+	// ErrLocalBind is returned when the local port for a connection to the
+	// resolver could not be bound. The query never left the host, so this
+	// wraps ErrContinue: the next resolver is asked and no failure is counted.
+	ErrLocalBind = fmt.Errorf("%w: failed to bind local port", ErrContinue)
 	// ErrShuttingDown is returned when the resolver is shutting down.
 	ErrShuttingDown = errors.New("resolver is shutting down")
 
