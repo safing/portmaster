@@ -72,6 +72,11 @@ func startProxies(mgr *mgr.Manager) error {
 	)
 
 	_ = stopProxies()
+
+	// On Linux, traffic reaches the proxy via iptables DNAT to 127.0.0.17 / ::1 (see nfqueue_linux.go).
+	// A wildcard-bound UDP socket may reply from a different source IP (e.g. 127.0.0.1), which breaks
+	// conntrack's reverse NAT, so bind UDP to the exact DNAT target. On Windows the kext rewrites
+	// packets itself, so the wildcard address works. TCP is unaffected.
 	udp4Addr, udp6Addr := "0.0.0.0", "::"
 	if runtime.GOOS == "linux" {
 		udp4Addr = "127.0.0.17"
