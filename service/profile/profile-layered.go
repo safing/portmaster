@@ -281,14 +281,16 @@ func (lp *LayeredProfile) Update(md MatchingData, createProfileCallback func() *
 			changed = true
 			newLayer, err := GetLocalProfile(layer.ID, md, createProfileCallback)
 			if err != nil {
+				// Keep the outdated layer (and local profile reference), so
+				// the update is retried next time.
 				log.Errorf("profiles: failed to update profile %s: %s", layer.ScopedID(), err)
 			} else {
 				lp.layers[i] = newLayer
-			}
 
-			// Update local profile reference.
-			if i == 0 {
-				lp.localProfile = newLayer
+				// Update local profile reference.
+				if i == 0 {
+					lp.localProfile = newLayer
+				}
 			}
 		}
 	}

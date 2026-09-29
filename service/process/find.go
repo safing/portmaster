@@ -46,7 +46,7 @@ func GetProcessWithProfile(ctx context.Context, pid int) (process *Process, err 
 		process.Save()
 	}
 
-	return process, nil
+	return process, err
 }
 
 // GetPidOfConnection returns the PID of the process that owns the described connection.

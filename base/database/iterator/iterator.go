@@ -29,14 +29,16 @@ func New() *Iterator {
 
 // Finish is called be the storage to signal the end of the query results.
 func (it *Iterator) Finish(err error) {
+	// Store the error before closing the channels, so that a consumer
+	// calling Err() right after Next is closed is guaranteed to see it.
+	it.errLock.Lock()
+	it.err = err
+	it.errLock.Unlock()
+
 	close(it.Next)
 	if it.doneClosed.SetToIf(false, true) {
 		close(it.Done)
 	}
-
-	it.errLock.Lock()
-	defer it.errLock.Unlock()
-	it.err = err
 }
 
 // Cancel is called by the iteration consumer to cancel the running query.

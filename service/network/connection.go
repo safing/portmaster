@@ -550,8 +550,8 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 	}
 
 	// Find domain and DNS context of entity.
-	if conn.Entity.Domain == "" && conn.process.Profile() != nil {
-		profileScope := conn.process.Profile().LocalProfile().ID
+	if localProfile := conn.process.Profile().LocalProfile(); conn.Entity.Domain == "" && localProfile != nil {
+		profileScope := localProfile.ID
 		// check if we can find a domain for that IP
 		ipinfo, err := resolver.GetIPInfo(profileScope, pkt.Info().RemoteIP().String())
 		if err != nil {
@@ -614,8 +614,13 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 		// We need a full packet.
 	case conn.process == nil:
 		// We need a process.
-	case conn.process.Profile() == nil:
-		// We need a profile.
+
+	// case conn.process.Profile() == nil:
+	//		Do not wait for a profile: the profile lookup is done once per
+	// 		connection and is not retried, so waiting would leave the connection
+	// 		without a verdict forever (#2275). A missing profile is denied by
+	// 		the filter ("unknown process or profile"), same as for DNS requests.
+
 	case conn.Entity == nil:
 		// We need an entity.
 	default:

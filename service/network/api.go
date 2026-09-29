@@ -148,8 +148,12 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 			found := false
 
 			// Get layer IDs and search for a match.
-			layerIDs := conn.Process().Profile().LayerIDs
-			for _, layerID := range layerIDs {
+			// Skip connections that are not attributed to a profile (yet).
+			lp := conn.Process().Profile()
+			if lp == nil {
+				continue
+			}
+			for _, layerID := range lp.LayerIDs {
 				if profile == layerID {
 					found = true
 					break

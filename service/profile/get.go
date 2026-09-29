@@ -236,7 +236,7 @@ profileFeed:
 	}
 
 	// Check if there was an error while iterating.
-	if it.Err() != nil {
+	if err := it.Err(); err != nil {
 		return nil, fmt.Errorf("failed to iterate over profiles: %w", err)
 	}
 
