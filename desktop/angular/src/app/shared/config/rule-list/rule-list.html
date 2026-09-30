@@ -7,6 +7,7 @@
     </svg>
     <app-rule-list-item [symbolMap]="symbolMap" [readonly]="readonly" [value]="entry"
       (valueChange)="updateValue(index, $event)" (selectedChange)="selectItem(index, $event)"
+      [selected]="selectedItems.includes(index)"
       (delete)="deleteEntry(index)">
     </app-rule-list-item>
   </div>

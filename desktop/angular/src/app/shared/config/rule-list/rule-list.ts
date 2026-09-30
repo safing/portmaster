@@ -1,9 +1,8 @@
 import { coerceBooleanProperty } from '@angular/cdk/coercion';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, forwardRef, HostBinding, HostListener, Input, QueryList, ViewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, forwardRef, HostBinding, HostListener, Input } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { SfngDialogService } from '@safing/ui';
-import { RuleListItemComponent } from './list-item';
 
 @Component({
   selector: 'app-rule-list',
@@ -23,10 +22,12 @@ export class RuleListComponent implements ControlValueAccessor {
   @HostBinding('tabindex')
   readonly tabindex = 0;
 
-  @ViewChildren(RuleListItemComponent)
-  renderedRules!: QueryList<RuleListItemComponent>;
-
-  /** A list of selected rule indexes */
+  /**
+   * A list of selected rule indexes. This is the single source of truth for
+   * the selection: the item checkboxes are bound to it. It is cleared
+   * whenever rows are removed, moved or replaced with different rules, as the
+   * indexes would be stale otherwise. Editing a rule in place keeps the selection.
+   */
   selectedItems: number[] = [];
 
   /**
@@ -97,6 +98,7 @@ export class RuleListComponent implements ControlValueAccessor {
   deleteEntry(index: number) {
     this.entries = [...this.entries];
     this.entries.splice(index, 1);
+    this.abortSelection();
     this.onChange(this.entries);
   }
 
@@ -126,8 +128,18 @@ export class RuleListComponent implements ControlValueAccessor {
    * @param value The new value set via [ngModel]
    */
   writeValue(value: string[]) {
-    this.entries = value;
+    // The settings view hands out deep copies of the settings (it passes them
+    // through the fuzzy-search highlighter, e.g. after every save), so the same
+    // rules may arrive as a new array. The selected indexes are only stale if
+    // the rules themselves changed.
+    const unchanged = Array.isArray(value) && Array.isArray(this.entries)
+      && value.length === this.entries.length
+      && value.every((entry, idx) => entry === this.entries[idx]);
+    if (!unchanged) {
+      this.abortSelection();
+    }
 
+    this.entries = value;
     this.changeDetector.markForCheck();
   }
 
@@ -172,6 +184,7 @@ export class RuleListComponent implements ControlValueAccessor {
       .onAction('delete', () => {
         this.entries = this.entries.filter((_, idx: number) => !this.selectedItems.includes(idx))
         this.abortSelection();
+        this.changeDetector.markForCheck();
         this.onChange(this.entries);
       })
 
@@ -179,7 +192,7 @@ export class RuleListComponent implements ControlValueAccessor {
 
   /** Aborts the current selection */
   abortSelection() {
-    this.selectedItems.forEach(itemIdx => this.renderedRules.get(itemIdx)?.toggleSelection())
+    // The item checkboxes are bound to selectedItems, so clearing it unchecks them.
     this.selectedItems = [];
   }
 
@@ -214,6 +227,7 @@ export class RuleListComponent implements ControlValueAccessor {
     // create a copy of the array
     this.entries = [...this.entries];
     moveItemInArray(this.entries, event.previousIndex, event.currentIndex);
+    this.abortSelection();
 
     this.changeDetector.markForCheck();
     this.onChange(this.entries);
