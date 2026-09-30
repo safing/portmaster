@@ -72,11 +72,20 @@ const PAUSE_INFO_TIME_KEY: &str = "pause_info_time";
 
 // Icons
 
-fn get_theme_mode() -> dark_light::Mode {
-    if let Ok(value) = USER_THEME.read() {
-        return *value.deref();
+/// Returns the icon theme to use: the user's choice, or the detected OS
+/// theme when the user chose "System".
+pub(crate) fn get_theme_mode() -> dark_light::Mode {
+    let mode = if let Ok(value) = USER_THEME.read() {
+        *value.deref()
+    } else {
+        dark_light::Mode::Unspecified
+    };
+
+    // "System" is stored as Unspecified: detect the current OS theme.
+    if mode == dark_light::Mode::Unspecified {
+        return dark_light::detect().unwrap_or(dark_light::Mode::Dark);
     }
-    dark_light::detect().unwrap_or(dark_light::Mode::Unspecified)
+    mode
 }
 
 fn get_green_icon() -> &'static [u8] {
