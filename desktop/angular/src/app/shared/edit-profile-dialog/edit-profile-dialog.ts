@@ -17,6 +17,7 @@ import {
   PortapiService,
   Record,
   TagDescription,
+  deepClone,
   mergeDeep,
 } from '@safing/portmaster-api';
 import { SFNG_DIALOG_REF, SfngDialogRef, SfngDialogService } from '@safing/ui';
@@ -97,14 +98,16 @@ export class EditProfileDialog implements OnInit, OnDestroy {
       this.profileService
         .getAppProfile(this.dialgoRef.data)
         .subscribe((profile) => {
-          this.profile = profile;
+          // Work on a copy: the watched profile object is shared with the
+          // app page, and edits must not leak before "Save" is pressed.
+          this.profile = deepClone(profile);
           this.loadIcon();
         });
     } else if (
       !!this.dialgoRef.data &&
       typeof this.dialgoRef.data === 'object'
     ) {
-      this.profile = this.dialgoRef.data;
+      this.profile = deepClone(this.dialgoRef.data);
       this.loadIcon();
     }
   }
