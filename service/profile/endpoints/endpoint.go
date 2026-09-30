@@ -34,6 +34,26 @@ func (ep *EndpointBase) match(s fmt.Stringer, entity *intel.Entity, value, desc 
 	return result, ep.makeReason(s, value, desc, keyval...)
 }
 
+// matchWithoutData returns the result for a rule that cannot be evaluated
+// because the data it depends on (eg. geoip) is not available.
+func (ep *EndpointBase) matchWithoutData(s fmt.Stringer, entity *intel.Entity, value, desc string) (EPResult, Reason) {
+	// If protocol or port do not match, the rule cannot apply to the
+	// connection at all, regardless of the missing data.
+	if ep.matchesPPP(entity) == NoMatch {
+		return NoMatch, nil
+	}
+
+	// An allow rule that cannot be evaluated must not decide anything.
+	// Skip it and let the following rules and the default action decide.
+	if ep.Permitted {
+		return NoMatch, nil
+	}
+
+	// A deny rule that cannot be evaluated fails safe, eg. the firewall
+	// blocks on MatchError.
+	return MatchError, ep.makeReason(s, value, desc)
+}
+
 func (ep *EndpointBase) makeReason(s fmt.Stringer, value, desc string, keyval ...interface{}) Reason {
 	r := &reason{
 		description: desc,

@@ -30,7 +30,7 @@ func (ep *EndpointCountry) Matches(ctx context.Context, entity *intel.Entity) (E
 
 	countryInfo := entity.GetCountryInfo(ctx)
 	if countryInfo == nil {
-		return MatchError, ep.makeReason(ep, "", "country data not available to match")
+		return ep.matchWithoutData(ep, entity, "", "country data not available to match")
 	}
 
 	if ep.CountryCode == countryInfo.Code {

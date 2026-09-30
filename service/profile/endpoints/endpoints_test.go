@@ -539,3 +539,57 @@ func getLineNumberOfCaller(levels int) int {
 	_, _, line, _ := runtime.Caller(levels + 1) //nolint:dogsled
 	return line
 }
+
+func TestEndpointMatchingWithoutGeoIPData(t *testing.T) {
+	t.Parallel()
+
+	// An entity with a preset LocationError makes GetASN and GetCountryInfo
+	// report missing data, regardless of the geoip database state.
+	// The entities are reused, as each new entity waits for its geoip lookup.
+	noData := func(protocol uint8, port uint16) *intel.Entity {
+		return (&intel.Entity{
+			IP:            net.ParseIP("104.82.234.109"),
+			Protocol:      protocol,
+			Port:          port,
+			LocationError: "geoip data not available (test)",
+		}).Init(0)
+	}
+	tcp443 := noData(6, 443)
+	udp27015 := noData(17, 27015)
+
+	for _, tc := range []struct {
+		rule     string
+		entity   *intel.Entity
+		expected EPResult
+	}{
+		// Allow rules that cannot be evaluated are skipped.
+		{"+ AS32590", tcp443, NoMatch},
+		{"+ AS32590 UDP/27015-27250", udp27015, NoMatch},
+		{"+ DE", tcp443, NoMatch},
+		{"+ C:EU", tcp443, NoMatch},
+
+		// Deny rules that cannot be evaluated fail safe.
+		{"- AS32590", tcp443, MatchError},
+		{"- DE", tcp443, MatchError},
+		{"- C:EU", tcp443, MatchError},
+
+		// Rules whose protocol/port do not fit never apply, even without data.
+		{"+ AS32590 UDP/27015-27250", tcp443, NoMatch}, // Case from issue #2138.
+		{"- AS32590 UDP/27015-27250", tcp443, NoMatch},
+		{"- DE TCP/80", tcp443, NoMatch},
+	} {
+		ep, err := parseEndpoint(tc.rule)
+		if err != nil {
+			t.Fatal(err)
+		}
+		testEndpointMatch(t, ep, tc.entity, tc.expected)
+	}
+
+	// A skipped allow rule lets the following rules decide.
+	list, err := ParseEndpoints([]string{"+ AS32590", "- *"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, _ := list.Match(context.TODO(), tcp443)
+	assert.Equal(t, Denied, result)
+}

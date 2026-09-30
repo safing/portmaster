@@ -32,7 +32,7 @@ func (ep *EndpointASN) Matches(ctx context.Context, entity *intel.Entity) (EPRes
 	asn, ok := entity.GetASN(ctx)
 	if !ok {
 		asnStr := strconv.Itoa(int(ep.ASN))
-		return MatchError, ep.makeReason(ep, asnStr, "ASN data not available to match")
+		return ep.matchWithoutData(ep, entity, asnStr, "ASN data not available to match")
 	}
 
 	if asn == ep.ASN {
