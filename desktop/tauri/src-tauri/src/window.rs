@@ -48,7 +48,7 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
                     debug!("[tauri] blocking navigation to about:blank");
                     return false;
                 }
-                return true;
+                true
             })
             .build();
 
@@ -76,7 +76,7 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
                 win
             }
             Err(err) => {
-                error!("[tauri] failed to create main window: {}", err.to_string());
+                error!("[tauri] failed to create main window: {}", err);
 
                 return Err(err);
             }
@@ -92,7 +92,7 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
         debug!("[tauri] TAURI_SHOW_IMMEDIATELY is set, opening window");
 
         if let Err(err) = window.show() {
-            error!("[tauri] failed to show window: {}", err.to_string());
+            error!("[tauri] failed to show window: {}", err);
         }
     }
 

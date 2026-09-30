@@ -62,14 +62,14 @@ impl SystemdServiceManager {
 
                     error!(
                         "systemctl binary found but invalid permissions: {}",
-                        md.permissions().mode().to_string()
+                        md.permissions().mode()
                     );
                 }
                 Err(err) => {
                     error!(
                         "failed to check systemctl binary at {}: {}",
                         path,
-                        err.to_string()
+                        err
                     );
 
                     continue;
@@ -112,7 +112,7 @@ impl ServiceManager for SystemdServiceManager {
                         return Ok(StatusResult::Stopped);
                     }
                 } else {
-                    error!("failed to run 'systemctl is-active': {}", e.to_string());
+                    error!("failed to run 'systemctl is-active': {}", e);
                 }
 
                 // Failed to check if the unit is running

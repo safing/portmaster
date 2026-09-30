@@ -300,7 +300,7 @@ fn build_tray_menu(
         .items(&items)
         .build()?;
 
-    return Ok(menu);
+    Ok(menu)
 }
 
 pub fn setup_tray_menu(
@@ -341,11 +341,11 @@ pub fn setup_tray_menu(
                     Ok(mut win) => {
                         may_navigate_to_ui(&mut win, true);
                         if let Err(err) = win.show() {
-                            error!("[tauri] failed to show window: {}", err.to_string());
+                            error!("[tauri] failed to show window: {}", err);
                         };
                     }
                     Err(err) => {
-                        error!("[tauri] failed to create main window: {}", err.to_string());
+                        error!("[tauri] failed to create main window: {}", err);
                     }
                 };
             }
@@ -426,7 +426,7 @@ pub fn update_icon(icon: AppIcon, system_status: SystemStatus, spn_status: Strin
     // Rebuild and set the tray menu
     if let Ok(menu) = build_tray_menu(icon.app_handle(), status, spn_status.as_str(), &pause_info) {
         if let Err(err) = icon.set_menu(Some(menu)) {
-            error!("failed to set menu on tray icon: {}", err.to_string());
+            error!("failed to set menu on tray icon: {}", err);
         }
     }
 
@@ -661,7 +661,7 @@ pub fn update_icon_nostate(icon: AppIcon) {
 
     if let Ok(menu) = build_tray_menu(icon.app_handle(), "unknown",  "unknown", &system_status_types::PauseInfo::default()) {
         if let Err(err) = icon.set_menu(Some(menu)) {
-            error!("failed to set menu on tray icon: {}", err.to_string());
+            error!("failed to set menu on tray icon: {}", err);
         }
     }
 }

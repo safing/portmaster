@@ -139,7 +139,7 @@ impl<R: Runtime> PortmasterInterface<R> {
         }
     }
 
-    /// Feature functions (enable/disable certain features).
+    // Feature functions (enable/disable certain features).
 
     /// Configures whether or not our tauri app should show system
     /// notifications. This excludes connection prompts. Use
@@ -183,7 +183,7 @@ impl<R: Runtime> PortmasterInterface<R> {
         self.set_show_after_bootstrap(true);
 
         if let Err(err) = self.app.emit("portmaster:show", "") {
-            error!("failed to emit show event: {}", err.to_string());
+            error!("failed to emit show event: {}", err);
         }
     }
 

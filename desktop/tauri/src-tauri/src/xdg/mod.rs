@@ -196,7 +196,7 @@ fn get_application_directories() -> Result<Vec<PathBuf>> {
     };
 
     let extra_application_dirs = match env::var_os("XDG_DATA_DIRS") {
-        Some(paths) => env::split_paths(&paths).map(PathBuf::from).collect(),
+        Some(paths) => env::split_paths(&paths).collect(),
         None => {
             // Fallback if XDG_DATA_DIRS is not set. If it's set, it normally already contains /usr/share and
             // /usr/local/share
@@ -473,7 +473,7 @@ fn read_and_convert_pixbuf(result: String) -> std::result::Result<String, glib::
     let pixbuf = match Pixbuf::from_file(result.clone()) {
         Ok(data) => Ok(data),
         Err(err) => {
-            error!("failed to load icon pixbuf: {}", err.to_string());
+            error!("failed to load icon pixbuf: {}", err);
 
             Pixbuf::from_resource(result.clone().as_str())
         }
@@ -489,12 +489,10 @@ fn read_and_convert_pixbuf(result: String) -> std::result::Result<String, glib::
 
                 Ok(du.to_string())
             }
-            Err(err) => {
-                return Err(glib::Error::new(
-                    PixbufError::Failed,
-                    err.to_string().as_str(),
-                ));
-            }
+            Err(err) => Err(glib::Error::new(
+                PixbufError::Failed,
+                err.to_string().as_str(),
+            )),
         },
         Err(err) => Err(err),
     }

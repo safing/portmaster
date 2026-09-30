@@ -92,21 +92,21 @@ impl portmaster::Handler for WsHandler {
 
         // Hide splash screen. Will be closed after main window is created.
         if let Err(err) = hide_splash_window(&self.handle) {
-            error!("failed to close splash window: {}", err.to_string());
+            error!("failed to close splash window: {}", err);
         }
 
         // create the main window now. It's not automatically visible by default.
         // Rather, the angular application will show the window itself when it finished
         // bootstrapping.
         if let Err(err) = create_main_window(&self.handle) {
-            error!("failed to create main window: {}", err.to_string());
+            error!("failed to create main window: {}", err);
         } else {
             debug!("created main window")
         }
 
         // Now it is safe to destroy the splash window.
         if let Err(err) = close_splash_window(&self.handle) {
-            error!("failed to close splash window: {}", err.to_string());
+            error!("failed to close splash window: {}", err);
         }
 
         // Cancel the previous tray handler task if it exists
@@ -327,7 +327,7 @@ fn main() {
                     if let Some(window) = handle.get_webview_window(label.as_str()) {
                         let result = window.emit("exit-requested", "");
                         if let Err(err) = result {
-                            error!("failed to emit event: {}", err.to_string());
+                            error!("failed to emit event: {}", err);
                         }
                     } else {
                         error!("window was None");

@@ -36,7 +36,7 @@ fn is_usable_launch_program(program: &OsString) -> bool {
         if let Ok(meta) = std::fs::metadata(path) {
             return meta.permissions().mode() & 0o111 != 0;
         }
-        return false;
+        false
     }
 
     #[cfg(not(unix))]
