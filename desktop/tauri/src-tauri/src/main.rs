@@ -246,6 +246,7 @@ fn main() {
             portmaster::commands::should_show,
             portmaster::commands::should_handle_prompts,
             commands::tauri_http::send_tauri_http_request,
+            commands::open_dir::open_dir,
         ])
         // Setup the app an any listeners
         .setup(move |app| {

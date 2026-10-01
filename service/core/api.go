@@ -114,6 +114,16 @@ func registerAPIEndpoints() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
+		Path:        "core/paths",
+		Read:        api.PermitUser,
+		StructFunc:  getPaths,
+		Name:        "Get Directories",
+		Description: "Returns the directories used by Portmaster: binaries (bin), variable data (data) and log files (logs).",
+	}); err != nil {
+		return err
+	}
+
+	if err := api.RegisterEndpoint(api.Endpoint{
 		Path:        "updates/check",
 		WriteMethod: "POST",
 		Write:       api.PermitUser,
@@ -344,6 +354,14 @@ func getSavePermission(p string) api.Permission {
 	default:
 		return api.NotSupported
 	}
+}
+
+func getPaths(_ *api.Request) (interface{}, error) {
+	return map[string]string{
+		"bin":  module.instance.BinDir(),
+		"data": module.instance.DataDir(),
+		"logs": module.instance.LogDir(),
+	}, nil
 }
 
 func getMyProfile(ar *api.Request) (interface{}, error) {

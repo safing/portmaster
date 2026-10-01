@@ -35,7 +35,7 @@ use log::{debug, error};
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-const PORTMASTER_BASE_URL: &str = "http://127.0.0.1:817/api/v1/";
+pub(crate) const PORTMASTER_BASE_URL: &str = "http://127.0.0.1:817/api/v1/";
 
 pub trait Handler {
     fn on_connect(&mut self, cli: PortAPI);

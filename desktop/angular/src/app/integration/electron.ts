@@ -1,5 +1,5 @@
 import { BrowserIntegrationService } from "./browser";
-import { AppInfo, ProcessInfo } from "./integration";
+import { AppInfo, PortmasterDir, ProcessInfo } from "./integration";
 
 export class ElectronIntegrationService extends BrowserIntegrationService {
 
@@ -11,12 +11,16 @@ export class ElectronIntegrationService extends BrowserIntegrationService {
     return Promise.reject('No electron API available')
   }
 
-  getInstallDir(): Promise<string> {
-    if (!!window.app) {
-      return window.app.getInstallDir()
+  openDir(kind: PortmasterDir): Promise<void> {
+    if (!window.app) {
+      return Promise.reject('No electron API available')
+    }
+    if (kind !== 'data') {
+      return Promise.reject('Not supported in electron')
     }
 
-    return Promise.reject('No electron API available')
+    return window.app.getInstallDir()
+      .then(dir => window.app.openExternal(dir));
   }
 
   getAppIcon(info: ProcessInfo): Promise<string> {
