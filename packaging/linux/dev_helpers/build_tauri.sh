@@ -3,7 +3,8 @@ set -euo pipefail
 
 # This script builds the Tauri application for Portmaster on Linux.
 # It optionally builds the required Angular tauri-builtin project first.
-# The script assumes that all necessary dependencies (Node.js, Angular CLI, Rust, cargo-tauri) are installed.
+# The script assumes that all necessary dependencies (Node.js, Rust, cargo-tauri) are installed
+# and that 'npm install' has been run in desktop/angular (the project-local Angular CLI is used).
 # Output file: dist/portmaster
 
 # Resolve script directory and project root
@@ -22,16 +23,19 @@ have() { command -v "$1" >/dev/null 2>&1; }
 read -r -p "Build Angular tauri-builtin project? (Y/N, default: Y) " REPLY
 REPLY=${REPLY:-Y}
 if [[ ! ${REPLY} =~ ^[Nn]$ ]]; then
-  # Ensure Angular CLI is available
-  if ! have ng; then
-    echo "Error: Angular CLI 'ng' not found in PATH." >&2
-    echo "Install via: npm install -g @angular/cli" >&2
+  ANGULAR_DIR="${PROJECT_ROOT}/desktop/angular"
+  # Use the project-local Angular CLI so the version matches package.json
+  # and an unrelated 'ng' on PATH (e.g. the ng-common editor) is never used.
+  NG="${ANGULAR_DIR}/node_modules/.bin/ng"
+  if [[ ! -x "${NG}" ]]; then
+    echo "Error: Angular CLI not found at ${NG}." >&2
+    echo "Run 'npm install' in ${ANGULAR_DIR} first." >&2
     exit 1
   fi
   # Navigate to Angular project
-  pushd "${PROJECT_ROOT}/desktop/angular" >/dev/null
+  pushd "${ANGULAR_DIR}" >/dev/null
   # Build tauri-builtin with production config
-  ng build --configuration production --base-href / tauri-builtin || {
+  "${NG}" build --configuration production --base-href / tauri-builtin || {
     popd >/dev/null
     cd "${ORIGINAL_DIR}"
     exit 1
