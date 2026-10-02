@@ -60,6 +60,28 @@ impl CleanupRequest<'_> {
     }
 }
 
+/// Wraps an IRP_MJ_CLOSE request (sent when the last reference to a file
+/// object is released, after IRP_MJ_CLEANUP).
+pub struct CloseRequest<'a> {
+    irp: &'a mut IRP,
+}
+
+impl CloseRequest<'_> {
+    pub fn new(irp: &mut IRP) -> CloseRequest<'_> {
+        CloseRequest { irp }
+    }
+
+    pub fn complete(&mut self) {
+        self.irp.IoStatus.Information = 0;
+        self.irp.IoStatus.Anonymous.Status = STATUS_SUCCESS;
+        unsafe { IofCompleteRequest(self.irp, IO_NO_INCREMENT as i8) };
+    }
+
+    pub fn get_status(&self) -> NTSTATUS {
+        unsafe { self.irp.IoStatus.Anonymous.Status }
+    }
+}
+
 pub struct ReadRequest<'a> {
     irp: &'a mut IRP,
     buffer: &'a mut [u8],
