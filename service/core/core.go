@@ -119,4 +119,7 @@ type instance interface {
 	Config() *config.Config
 	BinaryUpdates() *updates.Updater
 	IntelUpdates() *updates.Updater
+	BinDir() string
+	DataDir() string
+	LogDir() string
 }

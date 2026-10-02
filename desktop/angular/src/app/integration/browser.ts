@@ -1,4 +1,4 @@
-import { AppInfo, IntegrationService, ProcessInfo } from "./integration";
+import { AppInfo, IntegrationService, PortmasterDir, ProcessInfo } from "./integration";
 
 export class BrowserIntegrationService implements IntegrationService {
   writeToClipboard(text: string): Promise<void> {
@@ -15,7 +15,7 @@ export class BrowserIntegrationService implements IntegrationService {
     return Promise.resolve();
   }
 
-  getInstallDir(): Promise<string> {
+  openDir(_: PortmasterDir): Promise<void> {
     return Promise.reject('Not supported in browser')
   }
 
