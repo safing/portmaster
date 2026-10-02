@@ -124,6 +124,7 @@
       "nsis": {
         "installMode": "perMachine",
         "installerHooks": "templates/nsis/install_hooks.nsh",
+        "languages": ["SimpChinese", "English"],
         "installerIcon": "../../../assets/data/icons/pm_light_contrast.ico"
       },
       "wix": {

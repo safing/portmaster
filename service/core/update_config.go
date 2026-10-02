@@ -83,7 +83,7 @@ func registerUpdateConfig() error {
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		RequiresRestart: false,
-		DefaultValue:    true,
+		DefaultValue:    false, // Disabled so official (English) updates do not overwrite the localized build.
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: -12,
 			config.CategoryAnnotation:     "更新",
@@ -116,7 +116,7 @@ func registerUpdateConfig() error {
 
 func initUpdateConfig() {
 	releaseChannel = config.Concurrent.GetAsString(ReleaseChannelKey, ReleaseChannelStable)
-	enableSoftwareUpdates = config.Concurrent.GetAsBool(enableSoftwareUpdatesKey, true)
+	enableSoftwareUpdates = config.Concurrent.GetAsBool(enableSoftwareUpdatesKey, false)
 	enableIntelUpdates = config.Concurrent.GetAsBool(enableIntelUpdatesKey, true)
 
 	initialReleaseChannel = releaseChannel()
