@@ -326,4 +326,5 @@ type instance interface {
 	NetEnv() *netenv.NetEnv
 	Config() *config.Config
 	GetEventSPNConnected() *mgr.EventMgr[struct{}]
+	ShuttingDown() <-chan struct{}
 }

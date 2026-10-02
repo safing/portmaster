@@ -148,6 +148,17 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		}
 	}
 
+	// Do not dial a new upstream connection once the instance has started
+	// shutting down. The instance shuts down before this module does, and
+	// once interception has stopped a new connection could be pended by the
+	// kernel extension and never complete (#2104). Existing connections are
+	// still used above.
+	select {
+	case <-module.instance.ShuttingDown():
+		return nil, ErrShuttingDown
+	default:
+	}
+
 	// Create a new if no active one is available.
 	conn, err := tr.dial(ctx)
 	if err != nil {

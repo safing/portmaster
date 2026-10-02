@@ -1,6 +1,7 @@
 package nameserver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/miekg/dns"
 
@@ -42,10 +44,15 @@ func (ns *NameServer) Stop() error {
 	return stop()
 }
 
+// listenerShutdownTimeout bounds how long stop() waits for in-flight DNS
+// requests to finish. Requests that are still running afterwards are
+// abandoned; the module manager cancels and waits for them separately.
+const listenerShutdownTimeout = 10 * time.Second
+
 var (
 	stopListeners     bool
-	stopListener1     func() error
-	stopListener2     func() error
+	stopListener1     func(ctx context.Context) error
+	stopListener2     func(ctx context.Context) error
 	stopListenersLock sync.Mutex
 
 	eventIDConflictingService = "nameserver:conflicting-service"
@@ -136,9 +143,9 @@ func startListener(ip net.IP, port uint16, first bool) {
 
 			// Register stop function.
 			if first {
-				stopListener1 = dnsServer.Shutdown
+				stopListener1 = dnsServer.ShutdownContext
 			} else {
-				stopListener2 = dnsServer.Shutdown
+				stopListener2 = dnsServer.ShutdownContext
 			}
 		}()
 
@@ -264,13 +271,24 @@ func stop() error {
 
 	// Stop listeners.
 	stopListeners = true
+
+	// Shutting down a dns.Server stops reading from its socket and then waits
+	// for all in-flight request handlers to return before closing the socket.
+	// A handler can be stuck in an upstream connect that the kernel never
+	// completes: a connection pended by a firewall driver (our own kernel
+	// extension after interception already stopped, see #2104, or a
+	// third-party one) cannot be cancelled. Without a bound, such a handler
+	// would block the whole shutdown forever.
+	ctx, cancel := context.WithTimeout(context.Background(), listenerShutdownTimeout)
+	defer cancel()
+
 	if stopListener1 != nil {
-		if err := stopListener1(); err != nil {
+		if err := stopListener1(ctx); err != nil {
 			log.Warningf("nameserver: failed to stop listener1: %s", err)
 		}
 	}
 	if stopListener2 != nil {
-		if err := stopListener2(); err != nil {
+		if err := stopListener2(ctx); err != nil {
 			log.Warningf("nameserver: failed to stop listener2: %s", err)
 		}
 	}

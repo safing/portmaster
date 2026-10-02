@@ -34,6 +34,7 @@ func (stub *testInstance) Ready() bool                        { return true }
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
 func (stub *testInstance) UI() *ui.UI                         { return nil }
 func (stub *testInstance) DataDir() string                    { return _dataDir }
+func (stub *testInstance) ShuttingDown() <-chan struct{}      { return nil }
 
 var _dataDir string
 
