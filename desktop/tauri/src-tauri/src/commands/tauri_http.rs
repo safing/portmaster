@@ -17,6 +17,10 @@ pub fn create_http_client() -> Client {
         // Enable cookie support
         .cookie_store(true)
         .user_agent("Portmaster UI")
+        // Ignore system proxy settings: requests to the Portmaster Core (127.0.0.1)
+        // must not be routed through a local proxy, since the Portmaster UI
+        // profile blocks localhost connections other than to the Core.
+        .no_proxy()
         .build()
         .expect("failed to build HTTP client")
 }

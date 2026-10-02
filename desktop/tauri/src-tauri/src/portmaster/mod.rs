@@ -208,7 +208,7 @@ impl<R: Runtime> PortmasterInterface<R> {
     /// Send Shutdown request to portmaster
     pub fn trigger_shutdown(&self) {
         tauri::async_runtime::spawn(async move {
-            let client = reqwest::Client::new();
+            let client = reqwest::Client::builder().no_proxy().build().unwrap_or_default(); // Never route requests to the Core through a system proxy.
             match client
                 .post(format!("{}core/shutdown", PORTMASTER_BASE_URL))
                 .send()
@@ -226,7 +226,7 @@ impl<R: Runtime> PortmasterInterface<R> {
 
     pub fn set_resume(&self) {
         tauri::async_runtime::spawn(async move {
-            let client = reqwest::Client::new();
+            let client = reqwest::Client::builder().no_proxy().build().unwrap_or_default(); // Never route requests to the Core through a system proxy.
             match client
                 .post(format!("{}control/resume", PORTMASTER_BASE_URL))
                 .send()
@@ -245,7 +245,7 @@ impl<R: Runtime> PortmasterInterface<R> {
 
     pub fn set_pause(&self, duration_seconds: u64, spn_only: bool) {
         tauri::async_runtime::spawn(async move {
-            let client = reqwest::Client::new();
+            let client = reqwest::Client::builder().no_proxy().build().unwrap_or_default(); // Never route requests to the Core through a system proxy.
             match client
                 .post(format!("{}control/pause", PORTMASTER_BASE_URL))
                 .json(&serde_json::json!({
