@@ -85,3 +85,32 @@ custom-protocol = [ "tauri/custom-protocol" ]
 
 [package.metadata.clippy]
 allow = ["clippy::collapsible_else_if"]
+
+# ---------------------------------------------------------------------------
+# Temporary tao patch: fix for random UI crashes on Windows
+#   https://github.com/safing/portmaster/issues/2185
+#   https://github.com/safing/portmaster/issues/2255
+# Patched tao 0.32.8: Rc -> Arc for the Windows event-loop runner refcount.
+# Full explanation: https://github.com/safing/portmaster-tauri-tao-patch and
+# src/windows_tao_patch.rs (which also guards against this patch being dropped).
+#
+# Everything belonging to the patch is in this block. To remove the patch:
+# delete this block, delete src/windows_tao_patch.rs and its two references in
+# src/main.rs, run `cargo check`. Remove once one of these ships in a release:
+#   https://github.com/tauri-apps/tauri/pull/15411
+#   https://github.com/tauri-apps/tao/pull/1334
+# ---------------------------------------------------------------------------
+
+# 1. Direct dependency (Windows only) whose sole purpose is to reach the patched
+#    tao for the compile-time guard in src/windows_tao_patch.rs.
+[target.'cfg(target_os = "windows")'.dependencies.tauri-runtime-wry]
+version = "2"
+
+# 2. The patched tao itself, pinned to one commit of the fork. A [patch] is
+#    global by Cargo design (one dependency graph for all platforms); Linux and
+#    macOS compile unchanged upstream code from the fork, only fetched from
+#    GitHub instead of crates.io.
+[patch.crates-io]
+tao = { git = "https://github.com/safing/portmaster-tauri-tao-patch", rev = "205d3b80f50e577d575e2f79a9d318941cecb254" } # tag tao-v0.32.8-portmaster.1
+#tao = { path = "../../../../portmaster-tauri-tao-patch" }
+# ------------------------------- end of tao patch --------------------------
