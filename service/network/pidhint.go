@@ -72,6 +72,9 @@ func takePIDHint(connID string) (int, bool) {
 
 	if pid, ok := pidHints.cur[connID]; ok {
 		delete(pidHints.cur, connID)
+		// An older hint for the same connection may have survived a rotation.
+		// Drop it too, so that a later take does not return it.
+		delete(pidHints.prev, connID)
 		return pid, true
 	}
 	if pid, ok := pidHints.prev[connID]; ok {

@@ -99,6 +99,37 @@ func TestPIDHintRotation(t *testing.T) { //nolint:paralleltest // Mutates packag
 	}
 }
 
+func TestPIDHintTakeRemovesBothGenerations(t *testing.T) { //nolint:paralleltest // Mutates package state.
+	resetPIDHints()
+
+	// The same connection reports a hint before and after a rotation, so both
+	// generations hold an entry for it.
+	oldPkt := packet.NewInfoPacket(testPacketInfo(10002, 443, 4243, false))
+	newPkt := packet.NewInfoPacket(testPacketInfo(10002, 443, 4244, false))
+	SavePIDHint(oldPkt)
+	pidHints.lock.Lock()
+	rotatePIDHints()
+	pidHints.lock.Unlock()
+	SavePIDHint(newPkt)
+
+	// The newest hint wins.
+	pid, ok := takePIDHint(newPkt.GetConnectionID())
+	if !ok {
+		t.Fatal("expected to find pid hint")
+	}
+	if pid != 4244 {
+		t.Errorf("expected newest pid 4244, got %d", pid)
+	}
+
+	// Taking the hint removes the older one as well.
+	if pid, ok := takePIDHint(newPkt.GetConnectionID()); ok {
+		t.Errorf("expected no pid hint after taking it, got stale pid %d", pid)
+	}
+	if n := countPIDHints(); n != 0 {
+		t.Errorf("expected no remaining pid hints, got %d", n)
+	}
+}
+
 func TestPIDHintMaxEntries(t *testing.T) { //nolint:paralleltest // Mutates package state.
 	resetPIDHints()
 
