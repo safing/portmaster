@@ -9,6 +9,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/network/packet"
+	"github.com/safing/portmaster/service/process"
 )
 
 // SetFirewallHandler sets the firewall handler for this link, and starts a
@@ -93,6 +94,8 @@ func (conn *Connection) HandlePacket(pkt packet.Packet) {
 	}
 }
 
+// infoOnlyPacketsActive signifies that info-only packets have been observed and
+// may be expected for new connections. Set by SavePIDHint.
 var infoOnlyPacketsActive = abool.New()
 
 // packetHandlerWorker sequentially handles queued packets.
@@ -106,6 +109,14 @@ func (conn *Connection) packetHandlerWorker(ctx *mgr.WorkerCtx) error {
 		pktQueue = conn.pktQueue
 	}()
 
+	// Skip waiting for an info-only packet if the process is already known.
+	var pidKnown bool
+	if infoOnlyPacketsActive.IsSet() {
+		conn.Lock()
+		pidKnown = conn.PID != process.UndefinedProcessID
+		conn.Unlock()
+	}
+
 	// pktSeq counts the seen packets.
 	var pktSeq int
 
@@ -117,12 +128,19 @@ func (conn *Connection) packetHandlerWorker(ctx *mgr.WorkerCtx) error {
 			}
 			pktSeq++
 
+			// Holds a real packet that was pulled off the queue while looking for an
+			// info-only packet, so that it can be handled in the order it arrived.
+			var pushback packet.Packet
+
 			// Attempt to optimize packet handling order by handling info-only packets first.
 			switch {
 			case pktSeq > 1:
 				// Order correction is only for first packet.
 
 			case pkt.InfoOnly():
+				// Note: Actually, this branch is unreachable, and infoOnlyPacketsActive is in practice set only by SavePIDHint().
+				//       Keep it here as a defensive fallback.
+
 				// Correct order only if first packet is not info-only.
 
 				// We have observed a first packet that is info-only.
@@ -133,7 +151,7 @@ func (conn *Connection) packetHandlerWorker(ctx *mgr.WorkerCtx) error {
 				// Packet itself tells us that we should expect an info-only packet.
 				fallthrough
 
-			case infoOnlyPacketsActive.IsSet() && pkt.IsOutbound():
+			case infoOnlyPacketsActive.IsSet() && pkt.IsOutbound() && !pidKnown:
 				// Info-only packets are active and the packet is outbound.
 				// The probability is high that we will also get an info-only packet for this connection.
 				// TODO: Do not do this for forwarded packets in the future.
@@ -145,8 +163,14 @@ func (conn *Connection) packetHandlerWorker(ctx *mgr.WorkerCtx) error {
 					if infoPkt != nil {
 						// DEBUG:
 						// log.Debugf("filter: packet #%d [pulled forward] info=%v PID=%d packet: %s", pktSeq, infoPkt.InfoOnly(), infoPkt.Info().PID, pkt)
-						packetHandlerHandleConn(ctx.Ctx(), conn, infoPkt)
-						pktSeq++
+						if infoPkt.InfoOnly() {
+							// Info-only packets never get a verdict, so handling one early
+							// only applies its process info and reorders nothing.
+							packetHandlerHandleConn(ctx.Ctx(), conn, infoPkt)
+							pktSeq++
+						} else {
+							pushback = infoPkt
+						}
 					}
 				case <-time.After(1 * time.Millisecond):
 				}
@@ -165,6 +189,11 @@ func (conn *Connection) packetHandlerWorker(ctx *mgr.WorkerCtx) error {
 			// }
 
 			packetHandlerHandleConn(ctx.Ctx(), conn, pkt)
+
+			if pushback != nil {
+				pktSeq++
+				packetHandlerHandleConn(ctx.Ctx(), conn, pushback)
+			}
 
 		case <-ctx.Done():
 			return nil

@@ -209,6 +209,14 @@ func handlePacket(pkt packet.Packet) {
 		return
 	}
 
+	// Info-only packets do not represent an actual packet and can never complete
+	// a connection. Only keep the reported process attribution, so that the first
+	// real packet - if there ever is one - can skip the state table lookup.
+	if pkt.InfoOnly() {
+		network.SavePIDHint(pkt)
+		return
+	}
+
 	// Else create new incomplete connection from the packet and start the new handler.
 	conn = network.NewIncompleteConnection(pkt)
 	conn.Lock()
