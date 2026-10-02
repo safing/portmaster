@@ -3,6 +3,7 @@ package resolver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/netenv"
+	"github.com/safing/portmaster/service/network/netutils"
 )
 
 var (
@@ -18,6 +20,8 @@ var (
 	defaultConnectTimeout = 5 * time.Second // tcp/tls
 	maxRequestTimeout     = 5 * time.Second
 )
+
+var errUnexpectedLocalAddr = errors.New("unexpected local address of udp connection")
 
 // PlainResolver is a resolver using plain DNS.
 type PlainResolver struct {
@@ -58,17 +62,20 @@ func (pr *PlainResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 	dnsClient := &dns.Client{
 		UDPSize: 1024,
 		Timeout: timeout,
-		Dialer: &net.Dialer{
-			Timeout:   timeout,
-			LocalAddr: getLocalAddr("udp"),
-		},
 	}
 
 	// query server
-	reply, ttl, err := dnsClient.Exchange(dnsQuery, pr.resolver.ServerAddress)
+	reply, ttl, err := pr.exchange(ctx, dnsClient, dnsQuery)
 	log.Tracer(ctx).Tracef("resolver: query took %s", ttl)
 	// error handling
 	if err != nil {
+		// Nothing left the host if the local port could not be bound. Do not
+		// count this against the resolver or the network.
+		if netutils.IsLocalBindError(err) {
+			log.Tracer(ctx).Debugf("resolver: failed to bind local port for query to %s: %s", pr.resolver.Info.DescriptiveName(), err)
+			return nil, fmt.Errorf("%w for query to %s: %w", ErrLocalBind, pr.resolver.Info.DescriptiveName(), err)
+		}
+
 		// Hint network environment at failed connection if err is not a timeout.
 		var nErr net.Error
 		if errors.As(err, &nErr) && !nErr.Timeout() {
@@ -106,3 +113,31 @@ func (pr *PlainResolver) Query(ctx context.Context, q *Query) (*RRCache, error) 
 // ForceReconnect forces the resolver to re-establish the connection to the server.
 // Does nothing for PlainResolver, as every request uses its own connection.
 func (pr *PlainResolver) ForceReconnect(_ context.Context) {}
+
+// exchange sends the query over a fresh UDP socket and returns the reply.
+//
+// The local port is chosen by the OS, which never hands out a port that is
+// in use or reserved (e.g. by Hyper-V excluded port ranges on Windows). The
+// port is pre-authenticated after the socket is bound and before the first
+// packet leaves, so the firewall attributes the query to Portmaster itself.
+func (pr *PlainResolver) exchange(ctx context.Context, dnsClient *dns.Client, dnsQuery *dns.Msg) (*dns.Msg, time.Duration, error) {
+	dialer := &net.Dialer{Timeout: dnsClient.Timeout}
+	rawConn, err := dialer.DialContext(ctx, networkUDP, pr.resolver.ServerAddress)
+	if err != nil {
+		return nil, 0, err
+	}
+	conn := &dns.Conn{Conn: rawConn, UDPSize: dnsClient.UDPSize}
+	defer func() { _ = conn.Close() }()
+
+	localAddr, ok := rawConn.LocalAddr().(*net.UDPAddr)
+	if !ok {
+		return nil, 0, fmt.Errorf("%w: %v", errUnexpectedLocalAddr, rawConn.LocalAddr())
+	}
+	localPort := uint16(localAddr.Port) //nolint:gosec // Ports of net.Addr are within the uint16 range.
+	authorizeLocalPort(networkUDP, localPort)
+	// The first packet consumes the pre-authentication. Release it afterwards
+	// in case no packet was sent, which is a no-op otherwise.
+	defer releaseLocalPort(networkUDP, localPort, false)
+
+	return dnsClient.ExchangeWithConnContext(ctx, dnsQuery, conn)
+}
