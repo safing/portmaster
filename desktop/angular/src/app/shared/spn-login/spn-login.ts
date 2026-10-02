@@ -48,7 +48,7 @@ export class SPNLoginComponent implements OnInit {
       .pipe(finalize(() => {
         this.password = '';
       }))
-      .subscribe(this.uai.httpObserver('SPN Login', 'SPN Login'))
+      .subscribe(this.uai.httpObserver('SPN 登录', 'SPN 登录'))
   }
 
   ngOnInit(): void {

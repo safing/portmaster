@@ -77,7 +77,7 @@ export class ConfigSettingsViewComponent
   loading = true;
 
   @Input()
-  resetLabelText = 'Reset to system default';
+  resetLabelText = '重置为系统默认值';
 
   @Input()
   set compactView(v: any) {
@@ -223,8 +223,8 @@ export class ConfigSettingsViewComponent
 
     if (this.exportMode) {
       this.actionIndicator.info(
-        'Settings Export',
-        'Please select all settings you want to export and press "Save" to generate the export. Note that settings with system defaults cannot be exported and are hidden.'
+        '导出设置',
+        '请选择所有要导出的设置，然后点击“保存”生成导出文件。请注意，使用系统默认值的设置无法导出，已被隐藏。'
       );
     }
   }
@@ -272,7 +272,7 @@ export class ConfigSettingsViewComponent
       },
       error: (err) => {
         const msg = this.actionIndicator.getErrorMessgae(err);
-        this.actionIndicator.error('Failed To Generate Export', msg);
+        this.actionIndicator.error('生成导出失败', msg);
       },
     });
   }

@@ -202,7 +202,7 @@ func handleBroadcast(bn *BroadcastNotification, matchingDataAccessor accessor.Ac
 	if !bn.Permanent {
 		n.AvailableActions = append(n.AvailableActions, &notifications.Action{
 			ID:   "ack",
-			Text: "Got it!",
+			Text: "知道了！",
 		})
 	}
 	n.SetActionFunction(markBroadcastAsRead)

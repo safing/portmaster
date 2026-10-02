@@ -115,18 +115,18 @@ export class ImportDialogComponent {
         if (result.restartRequired) {
           if (this.triggerRestart) {
             this.portapi.restartPortmaster().subscribe();
-            msg = 'Portmaster will be restarted now.';
+            msg = 'Portmaster 即将重启。';
           } else {
-            msg = 'Please restart Portmaster to apply the new settings.';
+            msg = '请重启 Portmaster 以应用新设置。';
           }
         }
 
-        this.uai.success('Settings Imported Successfully', msg);
+        this.uai.success('设置导入成功', msg);
         this.dialogRef.close();
       },
       error: (err) => {
         this.uai.error(
-          'Failed To Import Settings',
+          '导入设置失败',
           this.uai.getErrorMessgae(err)
         );
       },

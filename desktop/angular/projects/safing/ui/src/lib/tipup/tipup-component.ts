@@ -15,7 +15,7 @@ export class SfngTipUpComponent implements OnInit, TipUp<any> {
   nextKey?: string;
   buttons?: Button<any>[];
   url?: string;
-  urlText: string = 'Read More';
+  urlText: string = '阅读更多';
 
   constructor(
     @Inject(TIPUP_TOKEN) public readonly token: string,
@@ -28,7 +28,7 @@ export class SfngTipUpComponent implements OnInit, TipUp<any> {
     const doc = this.tipupService.getTipUp(this.token);
     if (!!doc) {
       Object.assign(this, doc);
-      this.urlText = doc.urlText || 'Read More';
+      this.urlText = doc.urlText || '阅读更多';
     }
   }
 

@@ -37,9 +37,9 @@ func init() {
 
 func registerExpertiseLevelOption() {
 	expertiseLevelOption = &Option{
-		Name:           "UI Mode",
+		Name:           "界面模式",
 		Key:            expertiseLevelKey,
-		Description:    "Control the default amount of settings and information shown. Hidden settings are still in effect. Can be changed temporarily in the top right corner.",
+		Description:    "控制默认显示的设置和信息的数量。隐藏的设置仍然有效。可以在右上角临时更改。",
 		OptType:        OptTypeString,
 		ExpertiseLevel: ExpertiseLevelUser,
 		ReleaseLevel:   ReleaseLevelStable,
@@ -47,23 +47,23 @@ func registerExpertiseLevelOption() {
 		Annotations: Annotations{
 			DisplayOrderAnnotation: -16,
 			DisplayHintAnnotation:  DisplayHintOneOf,
-			CategoryAnnotation:     "User Interface",
+			CategoryAnnotation:     "用户界面",
 		},
 		PossibleValues: []PossibleValue{
 			{
-				Name:        "Simple Interface",
+				Name:        "简单界面",
 				Value:       ExpertiseLevelNameUser,
-				Description: "Hide complex settings and information.",
+				Description: "隐藏复杂的设置和信息。",
 			},
 			{
-				Name:        "Advanced Interface",
+				Name:        "高级界面",
 				Value:       ExpertiseLevelNameExpert,
-				Description: "Show technical details.",
+				Description: "显示技术细节。",
 			},
 			{
-				Name:        "Developer Interface",
+				Name:        "开发者界面",
 				Value:       ExpertiseLevelNameDeveloper,
-				Description: "Developer mode. Please be careful!",
+				Description: "开发者模式。请谨慎操作！",
 			},
 		},
 	}

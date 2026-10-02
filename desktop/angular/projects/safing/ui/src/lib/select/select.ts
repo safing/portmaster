@@ -111,7 +111,7 @@ export class SfngSelectComponent<T> implements AfterViewInit, ControlValueAccess
 
   /** The placehodler to show when nothing is selected */
   @Input()
-  placeholder = 'Select'
+  placeholder = '请选择'
 
   /** The type of item to show in multi mode when more than one value is selected */
   @Input()

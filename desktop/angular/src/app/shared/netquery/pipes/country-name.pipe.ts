@@ -36,7 +36,7 @@ export class CountryNameService {
             });
         },
         error: err => {
-          this.uai.error('Failed to fetch country data', this.uai.getErrorMessage(err));
+          this.uai.error('获取国家/地区数据失败', this.uai.getErrorMessage(err));
         }
       })
   }

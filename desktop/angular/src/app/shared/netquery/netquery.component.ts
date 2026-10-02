@@ -63,10 +63,10 @@ const orderByKeys: (keyof Partial<NetqueryConnection>)[] = [
 ]
 
 export const reloadIntervalValues: { [key: string]: number } = {
-  "⏸\u00A0\u00A0Don't auto-reload": 0,
-  "↻\u00A0\u00A0Reload every 10 seconds": 10,
-  "↻\u00A0\u00A0Reload every 1 minute": 60,
-  "↻\u00A0\u00A0Reload every 5 minutes": 300,
+  "⏸\u00A0\u00A0不自动重新加载": 0,
+  "↻\u00A0\u00A0每 10 秒重新加载": 10,
+  "↻\u00A0\u00A0每 1 分钟重新加载": 60,
+  "↻\u00A0\u00A0每 5 分钟重新加载": 300,
 }
 
 interface LocalQueryResult extends QueryResult {
@@ -149,7 +149,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
   /** @private A list of quick-date settings for the nz-range-picker */
   quickDateSettings: QuickDateSetting[] = [
     {
-      name: 'Today',
+      name: '今天',
       apply: () => {
         const now = new Date();
         return [
@@ -159,7 +159,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       }
     },
     {
-      name: 'Last 24 Hours',
+      name: '最近 24 小时',
       apply: () => {
         const now = new Date();
         return [
@@ -169,7 +169,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       }
     },
     {
-      name: 'Last 7 Days',
+      name: '最近 7 天',
       apply: () => {
         const now = new Date();
         return [
@@ -179,7 +179,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       }
     },
     {
-      name: 'Last Month',
+      name: '最近一个月',
       apply: () => {
         const now = new Date();
         return [
@@ -494,7 +494,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     encrypted: {},
     scope: {
       visible: 'combinedMenu',
-      menuTitle: 'Network Scope',
+      menuTitle: '网络范围',
       suggestions: objKeys(IPScopeNames)
         .sort()
         .filter(key => key !== IPScope.Undefined)
@@ -518,16 +518,16 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     ip_protocol: {},
     direction: {
       visible: 'combinedMenu',
-      menuTitle: 'Direction',
+      menuTitle: '方向',
       suggestions: [
         {
-          Name: 'Inbound',
+          Name: '入站',
           Value: 'inbound',
           Description: '',
           count: 0,
         },
         {
-          Name: 'Outbound',
+          Name: '出站',
           Value: 'outbound',
           Description: '',
           count: 0,
@@ -538,7 +538,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     asn: {},
     active: {
       visible: 'combinedMenu',
-      menuTitle: 'Active',
+      menuTitle: '活动',
       suggestions: booleanSuggestionValues(),
     },
     tunneled: {
@@ -673,8 +673,8 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
                 .pipe(
                   catchError(err => {
                     this.actionIndicator.error(
-                      'Internal Error',
-                      'Failed to load chart: ' + this.actionIndicator.getErrorMessgae(err)
+                      '内部错误',
+                      '加载图表失败：' + this.actionIndicator.getErrorMessgae(err)
                     );
 
                     return of([] as ChartResult[]);
@@ -1020,7 +1020,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
             }
 
             if (!allowedKeys.has(val as any)) {
-              this.actionIndicator.error("Invalid search query", "Column " + val + " is not allowed for groupby")
+              this.actionIndicator.error("无效的搜索查询", "列 " + val + " 不允许用于分组")
               return false;
             }
             return true;
@@ -1033,7 +1033,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
         this.orderByKeys = (fields.orderBy || this.orderByKeys)
           .filter(val => {
             if (!allowedKeys.has(val as any)) {
-              this.actionIndicator.error("Invalid search query", "Column " + val + " is not allowed for orderby")
+              this.actionIndicator.error("无效的搜索查询", "列 " + val + " 不允许用于排序")
               return false;
             }
             return true;
@@ -1043,7 +1043,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       }
 
       if (!allowedKeys.has(key)) {
-        this.actionIndicator.error("Invalid search query", "Column " + key + " is not allowed for filtering");
+        this.actionIndicator.error("无效的搜索查询", "列 " + key + " 不允许用于过滤");
         return;
       }
 
@@ -1129,10 +1129,10 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
   copyQuery() {
     this.integration.writeToClipboard(this.getQueryString())
       .then(() => {
-        this.actionIndicator.success("Query copied to clipboard", 'Go ahead and share your query!')
+        this.actionIndicator.success("查询已复制到剪贴板", '快去分享你的查询吧！')
       })
       .catch((err) => {
-        this.actionIndicator.error('Failed to copy to clipboard', this.actionIndicator.getErrorMessgae(err))
+        this.actionIndicator.error('复制到剪贴板失败', this.actionIndicator.getErrorMessgae(err))
       })
   }
 
@@ -1342,13 +1342,13 @@ function initializeModels(models: { [key: string]: Partial<Model<any>> }): { [ke
 function booleanSuggestionValues(): Suggestion<any>[] {
   return [
     {
-      Name: 'Yes',
+      Name: '是',
       Value: true,
       Description: '',
       count: 0,
     },
     {
-      Name: 'No',
+      Name: '否',
       Value: false,
       Description: '',
       count: 0,

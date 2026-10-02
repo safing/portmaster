@@ -15,7 +15,7 @@
 
 <div class="button-list" *ngIf="selectedItems.length === 0">
   <div class="dotted" *ngIf="!entries?.length && readonly">
-    No entries available
+    暂无条目
   </div>
 
   <button class="new-entry dotted" (click)="addEntry()"
@@ -24,14 +24,14 @@
       <path fill-rule="evenodd"
         d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
     </svg>
-    <span>Add Rule</span>
+    <span>添加规则</span>
   </button>
 </div>
 
 <div class="flex justify-end button-list" *ngIf="selectedItems.length > 0">
   <span>
     <app-menu-trigger [menu]="selectionMenu" [useContent]="true">
-      {{ selectedItems.length }} Rule{{ selectedItems.length > 1 ? 's' : ''}} selected
+      已选择 {{ selectedItems.length }} 条规则
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
         <path fill-rule="evenodd"
           d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
@@ -41,7 +41,7 @@
   </span>
 
   <app-menu #selectionMenu>
-    <app-menu-item (click)="removeSelectedItems()">Remove Rules</app-menu-item>
-    <app-menu-item (click)="abortSelection()">Cancel</app-menu-item>
+    <app-menu-item (click)="removeSelectedItems()">移除规则</app-menu-item>
+    <app-menu-item (click)="abortSelection()">取消</app-menu-item>
   </app-menu>
 </div>

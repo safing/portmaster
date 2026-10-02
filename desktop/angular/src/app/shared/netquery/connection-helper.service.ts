@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { Inject, Injectable, Renderer2, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AppProfile, AppProfileService, ConfigService, IPScope, NetqueryConnection, Pin, PossilbeValue, QueryResult, SPNService, Verdict, deepClone, flattenProfileConfig, getAppSetting, setAppSetting } from '@safing/portmaster-api';
+import { AppProfile, AppProfileService, ConfigService, IPScope, NetqueryConnection, Pin, PossilbeValue, QueryResult, SPNService, Verdict, VerdictTranslation, deepClone, flattenProfileConfig, getAppSetting, setAppSetting } from '@safing/portmaster-api';
 import { BehaviorSubject, Observable, OperatorFunction, Subject, combineLatest } from 'rxjs';
 import { distinctUntilChanged, filter, map, switchMap, take, takeUntil } from 'rxjs/operators';
 import { ActionIndicatorService } from '../action-indicator';
@@ -10,14 +10,14 @@ import { SfngSearchbarFields } from './searchbar';
 import { INTEGRATION_SERVICE } from 'src/app/integration';
 
 export const IPScopeNames: { [key in IPScope]: string } = {
-  [IPScope.Invalid]: "Invalid",
-  [IPScope.Undefined]: "Undefined",
-  [IPScope.HostLocal]: "Device Local",
-  [IPScope.LinkLocal]: "Link Local",
-  [IPScope.SiteLocal]: "LAN",
-  [IPScope.Global]: "Internet",
-  [IPScope.LocalMulticast]: "LAN Multicast",
-  [IPScope.GlobalMulitcast]: "Internet Multicast"
+  [IPScope.Invalid]: "无效",
+  [IPScope.Undefined]: "未定义",
+  [IPScope.HostLocal]: "本机",
+  [IPScope.LinkLocal]: "链路本地",
+  [IPScope.SiteLocal]: "局域网",
+  [IPScope.Global]: "互联网",
+  [IPScope.LocalMulticast]: "局域网多播",
+  [IPScope.GlobalMulitcast]: "互联网多播"
 }
 
 export interface LocalAppProfile extends AppProfile {
@@ -242,7 +242,7 @@ export class NetqueryHelper {
             }
 
             return {
-              Name: Verdict[item.verdict!],
+              Name: VerdictTranslation[item.verdict!],
               Value: item.verdict,
               Description: '',
               ...item
@@ -275,7 +275,7 @@ export class NetqueryHelper {
             .filter(item => typeof item.allowed === 'boolean')
             .map(item => {
               return {
-                Name: item.allowed ? 'Yes' : 'No',
+                Name: item.allowed ? '是' : '否',
                 Value: item.allowed,
                 Description: '',
                 ...item
@@ -292,7 +292,7 @@ export class NetqueryHelper {
             return {
               Name: pin?.Name || item.exit_node,
               Value: item.exit_node,
-              Description: 'Operated by ' + (pin?.VerifiedOwner || 'N/A'),
+              Description: '运营者：' + (pin?.VerifiedOwner || 'N/A'),
               ...item
             }
           })
@@ -418,9 +418,9 @@ export class NetqueryHelper {
     // Copy to clip-board if supported
     try {
       await this.integration.writeToClipboard(JSON.stringify(conn, undefined, "    "))
-      this.actionIndicator.info("Copied to Clipboard")
+      this.actionIndicator.info("已复制到剪贴板")
     } catch (err: any) {
-      this.actionIndicator.error("Copy to Clipboard Failed", err?.message || JSON.stringify(err))
+      this.actionIndicator.error("复制到剪贴板失败", err?.message || JSON.stringify(err))
     }
   }
 
@@ -500,13 +500,13 @@ export class NetqueryHelper {
       .subscribe({
         next: () => {
           if (add) {
-            this.actionIndicator.success('Rules Updated', 'Successfully created a new rule.')
+            this.actionIndicator.success('规则已更新', '已成功创建新规则。')
           } else {
-            this.actionIndicator.success('Rules Updated', 'Successfully removed matching rule.')
+            this.actionIndicator.success('规则已更新', '已成功移除匹配的规则。')
           }
         },
         error: err => {
-          this.actionIndicator.error('Failed to update rules', JSON.stringify(err))
+          this.actionIndicator.error('更新规则失败', JSON.stringify(err))
         }
       });
   }

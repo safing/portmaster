@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, inject } from "@angular/core";
-import { BandwidthChartResult, ConnectionBandwidthChartResult, IPProtocol, IPScope, IsDenied, IsDNSRequest, Netquery, NetqueryConnection, PortapiService, Process, Verdict } from "@safing/portmaster-api";
+import { BandwidthChartResult, ConnectionBandwidthChartResult, IPProtocol, IPScope, IsDenied, IsDNSRequest, Netquery, NetqueryConnection, PortapiService, Process, Verdict, VerdictTranslation } from "@safing/portmaster-api";
 import { SfngDialogService } from '@safing/ui';
 import { Subscription } from "rxjs";
 import { ProcessDetailsDialogComponent } from '../../process-details-dialog';
@@ -28,7 +28,7 @@ export class SfngNetqueryConnectionDetailsComponent implements OnInit, OnDestroy
   process: Process | null = null;
 
   readonly IsDNS = IsDNSRequest;
-  readonly verdict = Verdict;
+  readonly verdict = VerdictTranslation;
   readonly Protocols = IPProtocol;
   readonly scopes = IPScope;
   private _subscription = Subscription.EMPTY;
@@ -36,20 +36,20 @@ export class SfngNetqueryConnectionDetailsComponent implements OnInit, OnDestroy
   formatBytes = (n: d3.NumberValue, seriesKey?: string) => {
     let prefix = '';
     if (seriesKey !== undefined) {
-      prefix = seriesKey === 'incoming' ? 'Received: ' : 'Sent: '
+      prefix = seriesKey === 'incoming' ? '已接收：' : '已发送：'
     }
     return prefix + new BytesPipe().transform(n.valueOf())
   }
 
   formatTime = (n: Date) => {
     const diff = Math.floor(new Date().getTime() - n.getTime())
-    return formatDuration(diff, false, true) + " ago"
+    return formatDuration(diff, false, true) + "前"
   }
 
   tooltipFormat = (n: BandwidthChartResult<any>) => {
     const bytes = new BytesPipe().transform
-    const received = `Received: ${bytes(n?.incoming || 0)}`;
-    const sent = `Sent: ${bytes(n?.outgoing || 0)}`
+    const received = `已接收：${bytes(n?.incoming || 0)}`;
+    const sent = `已发送：${bytes(n?.outgoing || 0)}`
 
     if ((n?.incoming || 0) > (n?.outgoing || 0)) {
       return `${received}\n${sent}`
@@ -132,16 +132,16 @@ export class SfngNetqueryConnectionDetailsComponent implements OnInit, OnDestroy
     }
 
     if (this.conn!.verdict === Verdict.Failed) {
-      this.connectionNotice = 'Failed with previous settings.'
+      this.connectionNotice = '在先前的设置下失败。'
       return;
     }
 
     if (IsDenied(this.conn!.verdict)) {
-      this.connectionNotice = 'Blocked by previous settings.';
+      this.connectionNotice = '已被先前的设置阻止。';
     } else {
-      this.connectionNotice = 'Allowed by previous settings.';
+      this.connectionNotice = '已被先前的设置允许。';
     }
 
-    this.connectionNotice += ' You current settings could decide differently.'
+    this.connectionNotice += '您当前的设置可能会做出不同的判定。'
   }
 }

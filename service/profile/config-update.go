@@ -150,8 +150,8 @@ func updateGlobalConfigProfile(_ context.Context) error {
 		// Add module warning to inform user.
 		module.states.Add(mgr.State{
 			ID:      globalConfigProfileErrorID,
-			Name:    "Internal Settings Failure",
-			Message: fmt.Sprintf("Some global settings might not be applied correctly. You can try restarting the Portmaster to resolve this problem. Error: %s", lastErr),
+			Name:    "内部设置故障",
+			Message: fmt.Sprintf("部分全局设置可能未正确应用。您可以尝试重启 Portmaster 来解决此问题。错误：%s", lastErr),
 			Type:    mgr.StateTypeWarning,
 		})
 	}

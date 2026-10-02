@@ -142,17 +142,19 @@ impl portmaster::Handler for WsHandler {
 fn show_webview_not_installed_dialog() -> i32 {
     use rfd::MessageDialog;
 
+    const INSTALL_BUTTON_TEXT: &str = "前往安装页面";
+
     let result = MessageDialog::new()
         .set_title("Portmaster")
-        .set_description("Webkit is not installed. Please install it and run portmaster again")
+        .set_description("未安装 WebKit。请安装后重新运行 Portmaster")
         .set_buttons(rfd::MessageButtons::OkCancelCustom(
-            "Go to install page".to_owned(),
-            "Use old UI".to_owned(),
+            INSTALL_BUTTON_TEXT.to_owned(),
+            "使用旧版界面".to_owned(),
         ))
         .show();
     println!("{:?}", result);
     if let rfd::MessageDialogResult::Custom(result) = result {
-        if result.eq("Go to install page") {
+        if result.eq(INSTALL_BUTTON_TEXT) {
             _ = open::that("https://wiki.safing.io/en/Portmaster/Install/Webview");
             std::thread::sleep(Duration::from_secs(2));
             return 0;

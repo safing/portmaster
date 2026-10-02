@@ -8,7 +8,7 @@
         <fa-icon far icon="dot-circle"></fa-icon>
       </span>
       <span class="hop-title text-tertiary">
-        Your Device
+        你的设备
       </span>
     </li>
 
@@ -18,22 +18,22 @@
         <!-- TODO: use hop icon instead if unknown -->
         <span class="country unknown"></span>
       </ng-template>
-      <span>{{ node.entity.Country || 'No Location' }}</span>
+      <span>{{ node.entity.Country || '未知位置' }}</span>
       <span class="ip text-tertiary">{{ node.entity.IP || ''
         }}</span>
-      <span class="node-tag" *ngIf="first">Home</span>
-      <span class="node-tag" *ngIf="last">Exit</span>
+      <span class="node-tag" *ngIf="first">主节点</span>
+      <span class="node-tag" *ngIf="last">出口</span>
       <span *appExpertiseLevel="'expert'" class="text-tertiary"><br />{{ node.pin.Name }}
 
         <span class="ml-2">
-          by
+          运营者
           <spn-node-icon [bySafing]="node.pin.VerifiedOwner === 'Safing'" isActive="true" isExit="last"></spn-node-icon>
-          {{ node.pin.VerifiedOwner || 'Community' }}
+          {{ node.pin.VerifiedOwner || '社区' }}
         </span>
       </span>
 
       <span *appExpertiseLevel="'expert'" class="text-tertiary"><br />AS{{ node.entity.ASN }} - {{ node.entity.ASOrg ||
-          'AS Organization not in DB'
+          '数据库中无 AS 组织'
           }}</span>
 
       <span *appExpertiseLevel="'developer'" class="text-tertiary"><br />{{ node.pin.ID }}</span>
@@ -45,7 +45,7 @@
         <!-- TODO: use destination country flag instead if known -->
       </span>
       <span class="hop-title text-tertiary">
-        Destination
+        目标
       </span>
       <!-- TODO: add destination details? (Would be duplicate information from above.) -->
     </li>

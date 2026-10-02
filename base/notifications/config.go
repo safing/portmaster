@@ -12,16 +12,16 @@ var (
 
 func registerConfig() error {
 	if err := config.Register(&config.Option{
-		Name:           "Desktop Notifications",
+		Name:           "桌面通知",
 		Key:            CfgUseSystemNotificationsKey,
-		Description:    "In addition to showing notifications in the Portmaster App, also send them to the Desktop. This requires the Portmaster Notifier to be running.",
+		Description:    "除了在 Portmaster 应用中显示通知外，还将通知发送到桌面。这需要 Portmaster Notifier 正在运行。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   true, // TODO: turn off by default on unsupported systems
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: -15,
-			config.CategoryAnnotation:     "User Interface",
+			config.CategoryAnnotation:     "用户界面",
 		},
 	}); err != nil {
 		return err

@@ -37,24 +37,24 @@ var (
 
 	systemIntegrationIssue = &systemIssue{
 		id:      "compat:system-integration-issue",
-		title:   "Detected System Integration Issue",
-		message: "Portmaster detected a problem with its system integration. You can try to restart or reinstall the Portmaster. If that does not help, [get support here](https://safing.io/support/).",
+		title:   "检测到系统集成问题",
+		message: "Portmaster 检测到其系统集成存在问题。您可以尝试重启或重新安装 Portmaster。如果仍无法解决，请[在此获取支持](https://safing.io/support/)。",
 		level:   notifications.Error,
 	}
 	systemCompatibilityIssue = &systemIssue{
 		id:      "compat:compatibility-issue",
-		title:   "Detected Compatibility Issue",
-		message: "Portmaster detected that something is interfering with its operation. This could be a VPN, an Anti-Virus or another network protection software. Please check if you are running an incompatible [VPN client](https://docs.safing.io/portmaster/install/status/vpn-compatibility) or [software](https://docs.safing.io/portmaster/install/status/software-compatibility) and disable it. If that does not help, [get support here](https://safing.io/support/).",
+		title:   "检测到兼容性问题",
+		message: "Portmaster 检测到有程序正在干扰其运行。这可能是 VPN、杀毒软件或其他网络防护软件。请检查您是否正在运行不兼容的 [VPN 客户端](https://docs.safing.io/portmaster/install/status/vpn-compatibility)或[软件](https://docs.safing.io/portmaster/install/status/software-compatibility)，并将其禁用。如果仍无法解决，请[在此获取支持](https://safing.io/support/)。",
 		level:   notifications.Error,
 	}
 	// manualDNSSetupRequired is additionally initialized in startNotify().
 	manualDNSSetupRequired = &systemIssue{
 		id:    "compat:manual-dns-setup-required",
-		title: "Manual DNS Setup Required",
+		title: "需要手动设置 DNS",
 		level: notifications.Error,
 		actions: []*notifications.Action{
 			{
-				Text: "Revert",
+				Text: "撤销更改",
 				Type: notifications.ActionTypeOpenSetting,
 				Payload: &notifications.ActionTypeOpenSettingPayload{
 					Key: cfgOptionDNSQueryInterceptionKey,
@@ -62,20 +62,20 @@ var (
 			},
 		},
 	}
-	manualDNSSetupRequiredMessage = "You have disabled Seamless DNS Integration. As a result, Portmaster can no longer protect you or filter connections reliably. To fix this, you have to manually configure %s as the DNS Server in your system and in any conflicting application. This message will disappear some time after correct configuration."
+	manualDNSSetupRequiredMessage = "您已禁用无缝 DNS 集成。因此，Portmaster 无法再可靠地保护您或过滤连接。要解决此问题，您必须在系统和任何有冲突的应用中手动将 %s 配置为 DNS 服务器。正确配置后，此消息将在一段时间后消失。"
 
 	secureDNSBypassIssue = &appIssue{
 		id:      "compat:secure-dns-bypass-%s",
-		title:   "Blocked Bypass Attempt by %s",
-		message: `[APPNAME] is using its own Secure DNS resolver, which would bypass Portmaster's firewall protections. If [APPNAME] experiences problems, disable Secure DNS within [APPNAME] to restore functionality. Rest assured that Portmaster handles Secure DNS for your whole device, including [APPNAME].`,
+		title:   "已阻止 %s 的绕过尝试",
+		message: `[APPNAME] 正在使用其自己的安全 DNS 解析器，这会绕过 Portmaster 的防火墙保护。如果 [APPNAME] 出现问题，请在 [APPNAME] 中禁用安全 DNS 以恢复功能。请放心，Portmaster 会为您的整台设备（包括 [APPNAME]）处理安全 DNS。`,
 		// TODO: Add this when the new docs page is finished:
 		// , or [find out about other options](link to new docs page)
 		level: notifications.Warning,
 	}
 	multiPeerUDPTunnelIssue = &appIssue{
 		id:      "compat:multi-peer-udp-tunnel-%s",
-		title:   "Detected SPN Incompatibility in %s",
-		message: "Portmaster detected that [APPNAME] is trying to connect to multiple servers via the SPN using a single UDP connection. This is common for technologies such as torrents. Unfortunately, the SPN does not support this feature currently. You can try to change this behavior within the affected app or you could exempt it from using the SPN.",
+		title:   "检测到 %s 与 SPN 不兼容",
+		message: "Portmaster 检测到 [APPNAME] 正尝试通过 SPN 使用单个 UDP 连接连接到多个服务器。这在 BT 下载等技术中很常见。遗憾的是，SPN 目前不支持此功能。您可以尝试在受影响的应用中更改此行为，或将其排除在 SPN 之外。",
 		level:   notifications.Warning,
 	}
 )
@@ -203,7 +203,7 @@ func (issue *appIssue) notify(proc *process.Process) {
 		n.AvailableActions = []*notifications.Action{
 			{
 				ID:   "ack",
-				Text: "OK",
+				Text: "确定",
 			},
 		}
 	}

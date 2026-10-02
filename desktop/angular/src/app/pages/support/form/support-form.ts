@@ -119,7 +119,7 @@ export class SupportFormComponent implements OnInit {
           this.debugapi.getCoreDebugInfo('github')
             .subscribe({
               next: data => this.debugData = data,
-              error: err => this.uai.error('Failed to get Debug Data', this.uai.getErrorMessgae(err))
+              error: err => this.uai.error('获取调试数据失败', this.uai.getErrorMessgae(err))
             })
         }
       })
@@ -144,8 +144,8 @@ export class SupportFormComponent implements OnInit {
 
   copyToClipboard(what: string) {
     this.integration.writeToClipboard(what)
-      .then(() => this.uai.success("Copied to Clipboard"))
-      .catch(() => this.uai.error('Failed to Copy to Clipboard'));
+      .then(() => this.uai.success("已复制到剪贴板"))
+      .catch(() => this.uai.error('复制到剪贴板失败'));
   }
 
   validate(): boolean {
@@ -209,12 +209,12 @@ export class SupportFormComponent implements OnInit {
     if (genUrl === undefined) {
       this.dialog.confirm({
         canCancel: true,
-        caption: 'Caution',
-        header: 'Create Issue on GitHub',
-        message: 'You can easily create the issue with your own GitHub account. Or create the GitHub issue privately, but then we will have no way to communicate with you for further information.',
+        caption: '注意',
+        header: '在 GitHub 上创建 Issue',
+        message: '你可以使用自己的 GitHub 账户轻松创建 issue。也可以匿名创建 GitHub issue，但这样我们将无法与你联系以获取更多信息。',
         buttons: [
-          { id: 'createWithout', text: 'Create Without Account', class: 'outline' },
-          { id: 'openGithub', text: 'Use My Account' },
+          { id: 'createWithout', text: '不使用账户创建', class: 'outline' },
+          { id: 'openGithub', text: '使用我的账户' },
         ]
       })
         .onAction('openGithub', () => {
@@ -237,16 +237,16 @@ export class SupportFormComponent implements OnInit {
     }
 
     const opts: ConfirmDialogConfig = {
-      caption: 'Info',
+      caption: '信息',
       canCancel: true,
-      header: 'How should we stay in touch?',
-      message: 'Please enter your email address so we can write back and forth until the issue is concluded.',
+      header: '我们应如何与你保持联系？',
+      message: '请输入你的电子邮件地址，以便我们在问题解决之前与你保持沟通。',
       inputModel: '',
-      inputPlaceholder: 'Optional Email',
+      inputPlaceholder: '电子邮件（可选）',
       inputType: 'text',
       buttons: [
-        { id: '', class: 'outline', text: 'Cancel' },
-        { id: 'create', text: 'Create Ticket' },
+        { id: '', class: 'outline', text: '取消' },
+        { id: 'create', text: '创建工单' },
       ],
     }
     this.dialog.confirm(opts)

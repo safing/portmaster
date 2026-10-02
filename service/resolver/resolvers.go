@@ -420,16 +420,16 @@ func loadResolvers() {
 			log.Warning("resolver: no (valid) dns server found in config or system, falling back to global defaults")
 			module.states.Add(mgr.State{
 				ID:      missingResolversErrorID,
-				Name:    "Using Factory Default DNS Servers",
-				Message: "The Portmaster could not find any (valid) DNS servers in the settings or system. In order to prevent being disconnected, the factory defaults are being used instead. If you just switched your network, this should be resolved shortly.",
+				Name:    "正在使用出厂默认 DNS 服务器",
+				Message: "Portmaster 在设置或系统中找不到任何（有效的）DNS 服务器。为防止断开连接，现改用出厂默认设置。如果您刚刚切换了网络，此问题应会很快解决。",
 				Type:    mgr.StateTypeWarning,
 			})
 		} else {
 			log.Critical("resolver: no (valid) dns server found in config, system or global defaults")
 			module.states.Add(mgr.State{
 				ID:      missingResolversErrorID,
-				Name:    "No DNS Servers Configured",
-				Message: "The Portmaster could not find any (valid) DNS servers in the settings or system. You will experience severe connectivity problems until resolved. If you just switched your network, this should be resolved shortly.",
+				Name:    "未配置 DNS 服务器",
+				Message: "Portmaster 在设置或系统中找不到任何（有效的）DNS 服务器。在问题解决之前，您将遇到严重的连接问题。如果您刚刚切换了网络，此问题应会很快解决。",
 				Type:    mgr.StateTypeError,
 			})
 		}

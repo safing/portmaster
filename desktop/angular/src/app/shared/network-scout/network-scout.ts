@@ -47,6 +47,20 @@ const bandwidthSorts: SortTypes[] = [
 export class NetworkScoutComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
+  /** Display labels for the sort types (the enum values are persisted and must not change) */
+  readonly sortLabels: { [key: string]: string } = {
+    [SortTypes.static]: '固定',
+    [SortTypes.aToZ]: 'A-Z',
+    [SortTypes.zToA]: 'Z-A',
+    [SortTypes.totalConnections]: '连接总数',
+    [SortTypes.connectionsDenied]: '已阻止的连接',
+    [SortTypes.connectionsAllowed]: '已允许的连接',
+    [SortTypes.spnIdentities]: 'SPN 身份',
+    [SortTypes.bytesSent]: '已发送字节',
+    [SortTypes.bytesReceived]: '已接收字节',
+    [SortTypes.totalBytes]: '总字节数',
+  };
+
   sortTypes = [
     SortTypes.static,
     SortTypes.aToZ,

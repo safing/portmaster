@@ -232,12 +232,12 @@ func notifyOnlineStatus(status OnlineStatus) {
 	switch status { //nolint:exhaustive // Checking for selection only.
 	case StatusOffline:
 		eventID = "netenv:online-status:offline"
-		title = "Device is Offline"
-		message = "Portmaster did not detect any network connectivity."
+		title = "设备已离线"
+		message = "Portmaster 未检测到任何网络连接。"
 	case StatusLimited:
 		eventID = "netenv:online-status:limited"
-		title = "Limited network connectivity."
-		message = "Portmaster did detect local network connectivity, but could not detect connectivity to the Internet."
+		title = "网络连接受限。"
+		message = "Portmaster 检测到局域网连接，但未检测到互联网连接。"
 	default:
 		// Delete notification, if present.
 		if onlineStatusNotification != nil {
@@ -303,19 +303,19 @@ func setCaptivePortal(portalURL *url.URL) {
 	captivePortalNotification = notifications.Notify(&notifications.Notification{
 		EventID:      "netenv:captive-portal",
 		Type:         notifications.Info,
-		Title:        "Captive Portal Detected",
-		Message:      "The Portmaster detected a captive portal. You might experience limited network connectivity until the portal is handled.",
+		Title:        "检测到强制门户",
+		Message:      "Portmaster 检测到强制门户（Captive Portal）。在处理该门户之前，您的网络连接可能会受限。",
 		ShowOnSystem: true,
 		EventData:    captivePortal,
 		AvailableActions: []*notifications.Action{
 			{
-				Text:    "Open Portal",
+				Text:    "打开门户",
 				Type:    notifications.ActionTypeOpenURL,
 				Payload: captivePortal.URL,
 			},
 			{
 				ID:   "ack",
-				Text: "Ignore",
+				Text: "忽略",
 			},
 		},
 	})

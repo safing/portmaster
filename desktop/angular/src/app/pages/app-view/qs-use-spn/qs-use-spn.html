@@ -3,11 +3,11 @@
   snfgTooltipPosition="right"
   [sfng-tooltip]="interferingSettings.length > 0 ? tooltipTemplate : null">
   <span class="text-primary" [class.cursor-pointer]="interferingSettings.length > 0">
-    Use SPN
+    使用 SPN
   </span>
 
   <span *ngIf="!canUse" routerLink="/dashboard" class="cursor-pointer text-tertiary hover:underline">
-    Get Pro
+    获取 Pro
   </span>
 
   <sfng-toggle *ngIf="canUse && spnDisabled === false"
@@ -16,8 +16,8 @@
 
   <span *ngIf="canUse && spnDisabled === true"
     routerLink="/spn" class="cursor-pointer text-tertiary hover:underline"
-    sfng-tooltip="Enable SPN to start using.">
-      Disabled
+    sfng-tooltip="启用 SPN 以开始使用。">
+      已禁用
   </span>
 
   <ng-template *ngIf="canUse && spnDisabled === null">
@@ -30,7 +30,7 @@
 </div>
 
 <ng-template #tooltipTemplate>
-  The following enabled settings may interfere:
+  以下已启用的设置可能会产生干扰：
   <ul class="pl-4 list-disc">
     <ng-container *ngFor="let setting of interferingSettings">
       <li class="cursor-pointer hover:underline" [routerLink]="[]"

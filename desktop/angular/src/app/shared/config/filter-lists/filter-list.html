@@ -16,7 +16,7 @@
         </label>
 
         <span class="details">
-          {{ !!node.license ? 'License: ' + node.license : '' }}
+          {{ !!node.license ? '许可证：' + node.license : '' }}
         </span>
         <span class="details">
           <a *ngIf="!!node.website" href="{{node.website}}">
@@ -29,11 +29,11 @@
         <div class="expand" (click)="node.expanded = !node.expanded">
           <ng-container *ngIf="!node.expanded">
             <fa-icon icon="chevron-right"></fa-icon>
-            Expand
+            展开
           </ng-container>
           <ng-container *ngIf="node.expanded">
             <fa-icon icon="chevron-down"></fa-icon>
-            Collapse
+            收起
           </ng-container>
         </div>
       </div>

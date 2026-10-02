@@ -84,18 +84,18 @@ export const DefaultBandwidthChartConfig: ChartConfig<BandwidthChartResult<any>>
   valueFormat: (n: d3.NumberValue, seriesKey?: string) => {
     let prefix = '';
     if (seriesKey !== undefined) {
-      prefix = seriesKey === 'incoming' ? 'Received: ' : 'Sent: '
+      prefix = seriesKey === 'incoming' ? '已接收：' : '已发送：'
     }
     return prefix + new BytesPipe().transform(n.valueOf())
   },
   timeFormat: (n: Date) => {
     const diff = Math.floor(new Date().getTime() - n.getTime())
-    return formatDuration(diff, false, true) + " ago"
+    return formatDuration(diff, false, true) + "前"
   },
   tooltipFormat: (n: BandwidthChartResult<any>) => {
     const bytes = new BytesPipe().transform
-    const received = `Received: ${bytes(n?.incoming || 0)}`;
-    const sent = `Sent: ${bytes(n?.outgoing || 0)}`
+    const received = `已接收：${bytes(n?.incoming || 0)}`;
+    const sent = `已发送：${bytes(n?.outgoing || 0)}`
 
     if ((n?.incoming || 0) > (n?.outgoing || 0)) {
       return `${received}\n${sent}`

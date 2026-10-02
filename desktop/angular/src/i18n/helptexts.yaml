@@ -2,127 +2,127 @@
 ### Example
 
 myKey:
-  title: Tipup Example
+  title: 提示示例
   content: |
-    This is the Markdown formatted content.
+    这是 Markdown 格式的内容。
 
-    This is a super cool, new feature that you will love!
-    It even supports markdown features like:
-    - order lists
-    - with multiple items
+    这是一项超酷的新功能，你一定会喜欢！
+    它甚至支持以下 Markdown 功能：
+    - 有序列表
+    - 包含多个条目
 
-    And :rocket: emojis
+    以及 :rocket: 表情
 
     ### :tada: :facepalm:
   url: https://docs.safing.io/?source=Portmaster
-  urlText: Show me!
+  urlText: 给我看看！
   nextKey: navMonitor
 
 ##############
 ### Navigation
 
 introTipup:
-  title: Hey there!
+  title: 你好！
   content: |
-    Thanks for installing the Portmaster.
+    感谢安装 Portmaster。
 
 intro:
-  title: Portmaster Tips
+  title: Portmaster 提示
   content: |
-    Open tips to learn how the Portmaster work.
+    打开提示，了解 Portmaster 的工作原理。
 
-    Tips like this one are found throughout the Portmaster. With some tips you can tour an element or a feature, like this:
+    像这样的提示遍布 Portmaster 各处。部分提示可以带你浏览某个元素或功能，例如：
   nextKey: navShield
 
 navShield:
-  title: Status Shield & Dashboard
+  title: 状态盾牌与仪表盘
   content: |
-    The shield gives you a high level overview of Portmaster's status. If turns any other color than green, look for a notification that tells you what is going on.
+    盾牌为你提供 Portmaster 状态的总体概览。如果它变成绿色以外的其他颜色，请查看通知了解发生了什么。
 
-    __Click the shield in order to open the dashboard.__
+    __点击盾牌即可打开仪表盘。__
   nextKey: navMonitor
 
 navMonitor:
-  title: Network Monitor
+  title: 网络监控
   content: |
-    Oversee and investigate everything happening on your device.
+    查看并调查设备上发生的一切。
   nextKey: navApps
   buttons:
-    - name: Take the tour
+    - name: 开始导览
       action:
         Type: open-page
         Payload: monitor
       nextKey: networkMonitor
 
 navApps:
-  title: Per-App Settings
+  title: 应用设置
   content: |
-    Configure per-app settings which override the global default.
+    配置单个应用的设置，这些设置会覆盖全局默认值。
   nextKey: navMap
   buttons:
-    - name: Take the tour
+    - name: 开始导览
       action:
         Type: open-page
         Payload: apps
       nextKey: appsTitle
 
 navMap:
-  title: SPN Map
+  title: SPN 地图
   content: |
-    View the SPN map and see how your connections are routed.
+    查看 SPN 地图，了解你的连接是如何路由的。
   nextKey: navSettings
 
 navSettings:
-  title: Global Settings
+  title: 全局设置
   content: |
-    Configure global Portmaster settings.
+    配置 Portmaster 的全局设置。
   nextKey: navSupport
   buttons:
-    - name: Take the tour
+    - name: 开始导览
       action:
         Type: open-page
         Payload: settings
       nextKey: globalSettings
 
 navSupport:
-  title: Get Help
+  title: 获取帮助
   content: |
-    Report a bug, contact support or view the extended Portmaster docs.
+    报告错误、联系支持或查看完整的 Portmaster 文档。
   nextKey: navTools
   buttons:
-    - name: Open Page
+    - name: 打开页面
       action:
         Type: open-page
         Payload: support
 
 navTools:
-  title: Version and Tools
+  title: 版本与工具
   content: |
-    View the Portmaster's version and use special actions and tools.
+    查看 Portmaster 的版本，并使用特殊操作和工具。
   nextKey: navPause
 
 navPause:
-  title: Pause and Resume
+  title: 暂停与恢复
   content: |
-    Temporarily disable Portmaster's protection and network monitoring.
-    
-    Choose to pause SPN only or disable all protection completely.
+    临时禁用 Portmaster 的保护和网络监控。
+
+    可选择仅暂停 SPN，或完全禁用所有保护。
   nextKey: navPower
 
 navPower:
-  title: Shutdown and Restart
+  title: 关闭与重启
   content: |
-    Shutdown or Restart Portmaster.
+    关闭或重启 Portmaster。
   nextKey: uiMode
 
 uiMode:
-  title: UI Mode
+  title: 界面模式
   content: |
-    Quickly change the amount of settings and information shown.
+    快速调整显示的设置和信息数量。
 
-    Hidden settings are still in effect. After closing the User Interface it changes back to the default.
+    隐藏的设置仍然有效。关闭用户界面后，会恢复为默认模式。
   buttons:
-    - name: Change Default UI Mode
+    - name: 更改默认界面模式
       action:
         Type: "open-setting"
         Payload:
@@ -132,71 +132,71 @@ uiMode:
 ### Sidedash
 
 pilot-widget:
-  title: Portmaster Status
+  title: Portmaster 状态
   content: |
-    This shield shows you the current state of the Portmaster:
+    此盾牌显示 Portmaster 的当前状态：
 
-    - 🟢 all is well
-    - 🟡 something is off, please investigate
-    - 🔴 dangerous condition, respond immediately
+    - 🟢 一切正常
+    - 🟡 有些异常，请检查
+    - 🔴 危险状况，请立即处理
 
-    This color code is also displayed as part of the icon in the system tray.
+    此颜色代码也会显示在系统托盘的图标中。
 
 pilot-widget-NetworkRating:
-  title: Network Rating
+  title: 网络评级
   content: |
-    Control your privacy even when connecting to new networks.
+    即使连接到新网络，也能掌控你的隐私。
 
-    In the Portmaster you configure settings to be active in one environment but not in the other, like allowing sensitive connections at home but not at the public library.
+    在 Portmaster 中，你可以让设置在某一环境中生效、而在另一环境中不生效，例如在家中允许敏感连接，而在公共图书馆则不允许。
 
-    The only thing you have to do is to change the network rating whenever you connect to a different network.
+    你唯一需要做的，就是在连接到不同网络时更改网络评级。
   nextKey: pilot-widget-NetworkRating-Trusted
 
 pilot-widget-NetworkRating-Trusted:
-  title: "Network Rating: Trusted"
+  title: "网络评级：可信"
   content: |
-    You trust the current network to be secure and protect you.
+    你相信当前网络是安全的，能够保护你。
 
-    Examples:
-     - your home network
-     - network of a trusted friends
+    例如：
+     - 你的家庭网络
+     - 可信朋友的网络
   nextKey: pilot-widget-NetworkRating-Untrusted
 
 pilot-widget-NetworkRating-Untrusted:
-  title: "Network Rating: Untrusted"
+  title: "网络评级：不可信"
   content: |
-    You do not trust the current network and question if it will keep you secure and private.
+    你不信任当前网络，怀疑它能否保障你的安全和隐私。
 
-    Examples:
-     - public WiFi of a coffeeshop, a library, a train, a hotel, ...
-     - network of a non-tech-savvy relative
+    例如：
+     - 咖啡店、图书馆、火车、酒店等场所的公共 WiFi……
+     - 不熟悉技术的亲戚的网络
   nextKey: pilot-widget-NetworkRating-Danger
 
 pilot-widget-NetworkRating-Danger:
-  title: "Network Rating: Danger"
+  title: "网络评级：危险"
   content: |
-    You think that the current network is hacked or otherwise hostile towards you.
+    你认为当前网络已被入侵或对你存在敌意。
 
-    Examples:
-     - something suspicious is going on in your home network
+    例如：
+     - 你的家庭网络中出现了可疑情况
 
-    <small>_Note: In the "Danger" rating the Portmaster will become very protective. This might break functionality of apps or render them useless._</small>
+    <small>_注意：在“危险”评级下，Portmaster 会采取非常严格的保护措施。这可能会破坏应用的功能，甚至导致应用无法使用。_</small>
 
 broadcast-info:
-  title: Broadcast Notifications
+  title: 广播通知
   content: |
-    Broadcast Notifications are public messages downloaded by the Portmaster when checking for updates.
+    广播通知是 Portmaster 在检查更新时下载的公开消息。
 
-    The Portmaster then locally decides which messages should be displayed.
+    随后由 Portmaster 在本地决定应显示哪些消息。
   url: https://github.com/safing/portmaster/issues/703
-  urlText: Learn More
+  urlText: 了解更多
 
 # TODO
 # prompt-widget:
 #   title: Prompts
 #   content: |
 #     This is where you can more easily control the
-#     connections for the specific app for the time being.
+#     connections for the specific app for the time being.
 
 #     How to use? In App settings, search for "Default Action"
 #     and set it to "Prompt".
@@ -216,21 +216,21 @@ broadcast-info:
 ### Dashboard
 
 dashboardIntro:
-  title: Dashboard
+  title: 仪表盘
   content: |
-    The Dashboard gives you a first overview of Portmaster's active features and what is happening on your device.
+    仪表盘为你提供 Portmaster 已启用功能以及设备上正在发生的情况的初步概览。
 
-    Unless noted otherwise, all graphs and statistics shown are based on what Portmaster has seen in the last 10 minutes and are refreshed every 10 seconds.
+    除非另有说明，所有图表和统计数据均基于 Portmaster 在过去 10 分钟内观察到的内容，并每 10 秒刷新一次。
 
 ########################
 ### Network Monitor Page
 
 networkMonitor:
-  title: Network Activity
+  title: 网络活动
   content: |
-    Oversee everything happening on your device.
+    查看设备上发生的一切。
 
-    Look at all network connections of all applications and processes that were active in the last 10 minutes. Click on any app or process to investigate further.
+    查看过去 10 分钟内所有活跃应用和进程的全部网络连接。点击任意应用或进程以进一步调查。
 
 # TODO: Wait for overview to be more useful.
 # networkMonitor-Overview:
@@ -258,9 +258,9 @@ networkMonitor:
 #     allowed and blocked in the app.
 
 networkMonitor-App-Focus-connection-history:
-  title: Network Activity
+  title: 网络活动
   content: |
-    Monitor connections as they happen. Click on any connection to view details and to take action.
+    实时监控连接。点击任意连接可查看详情并执行操作。
     <br /><br />
     <span class="inline-block">
       <span class="pill-container">
@@ -269,110 +269,110 @@ networkMonitor-App-Focus-connection-history:
           <span class="percentage"></span>
         </span>
       </span>
-    </span> <b>Status Summary</b>
+    </span> <b>状态摘要</b>
     <br /><br />
-    Grouped connections have a colored bar showing the total amount of connections,
-    as well as the percentage between allowed (green) and blocked/failed connections (grey).
+    分组的连接带有一个彩色条，显示连接总数，
+    以及已允许（绿色）与已阻止/失败（灰色）连接之间的比例。
     <br /><br />
-    An individual connection has three states:<br />
-    <span class="verdict accept"></span><span class="verdict accept outdated"></span> <b>Allowed</b> <br />
-    <span class="block verdict"></span><span class="block verdict outdated"></span> <b>Blocked</b> <br />
-    <span class="verdict failed"></span><span class="verdict failed outdated"></span> <b>Failed</b> <br />
+    单个连接有三种状态：<br />
+    <span class="verdict accept"></span><span class="verdict accept outdated"></span> <b>已允许</b> <br />
+    <span class="block verdict"></span><span class="block verdict outdated"></span> <b>已阻止</b> <br />
+    <span class="verdict failed"></span><span class="verdict failed outdated"></span> <b>失败</b> <br />
 
-    If the circle is full, your _current_ settings allowed or blocked the connection.<br />
-    If the circle is empty, _previous_ settings allowed or blocked the connection.
-    Your current settings could decide differently.
+    如果圆圈是实心的，表示是你*当前*的设置允许或阻止了该连接。<br />
+    如果圆圈是空心的，表示是*之前*的设置允许或阻止了该连接。
+    你当前的设置可能会做出不同的决定。
 
 ########################
 ### Global Settings Page
 
 globalSettings:
-  title: Global Settings
+  title: 全局设置
   content: |
-    Here you can set system-wide preferences and configure default rules for all your apps and connections.
+    你可以在这里设置系统范围的偏好，并为所有应用和连接配置默认规则。
 
-    It is easy to create a stricter global ruleset and then create exceptions in the app settings, which override the global default.
+    你可以轻松创建一套更严格的全局规则，然后在应用设置中创建例外，应用设置会覆盖全局默认值。
 
 #########################
 ### Per-App Settings Page
 
 appsTitle:
-  title: Application Overview
+  title: 应用概览
   content: |
-    All applications or processes that the Portmaster saw being active on the network are listed and can be configured here.
+    Portmaster 观察到在网络上活跃过的所有应用或进程都会列在这里，并可在此进行配置。
 
-    Apps are categorized and only appear once:
+    应用按类别划分，且每个应用只会出现一次：
 
-    - **Active:** apps that are currently active and visible in the Network Monitor
-    - **Recently Used:** apps that were active some time within the last week
-    - **Recently Edited:** apps whose settings were edited within the last week
-    - **Other:** all other apps
+    - **活跃**：当前处于活跃状态、并在网络监控中可见的应用
+    - **最近使用**：在过去一周内某个时间活跃过的应用
+    - **最近编辑**：在过去一周内编辑过设置的应用
+    - **其他**：所有其他应用
 
 appSettings:
-  title: App Settings
+  title: 应用设置
   content: |
-    Here you can configure app-specific settings which override the global settings.
+    你可以在这里配置应用专属设置，这些设置会覆盖全局设置。
 
-    It is easy to create a stricter global ruleset and then create exceptions in the app settings, which override the global default.
+    你可以轻松创建一套更严格的全局规则，然后在应用设置中创建例外，应用设置会覆盖全局默认值。
   nextKey: appSettings-Filter
 
 appSettings-Filter:
-  title: Display Mode
+  title: 显示模式
   content: |
-    Quickly change what settings are displayed:
+    快速切换要显示的设置：
 
-    **View Active:**<br>
-    Only show app-specific settings which override the global default.
+    **仅显示已生效：**<br>
+    只显示覆盖全局默认值的应用专属设置。
 
-    **View All:**<br>
-    Show all settings. App-specific settings which override the global default are highlighted.
+    **显示全部：**<br>
+    显示所有设置。覆盖全局默认值的应用专属设置会被高亮显示。
 
 appSettings-QuickSettings:
-  title: Quickly Change the Most Important Settings
+  title: 快速更改最重要的设置
   content: |
-    __Block Connections__
+    __阻止连接__
 
-    Set the default action for when nothing else allows or blocks an outgoing connection.
+    设置当没有其他规则允许或阻止出站连接时的默认操作。
 
-    When other settings might overwrite this, a yellow dot next to the toggle will inform you of possible exceptions.
+    当其他设置可能覆盖此项时，开关旁会出现一个黄点，提示你可能存在例外。
 
     __SPN__
 
-    Quickly enable or disable SPN for this app.
+    快速为此应用启用或禁用 SPN。
 
-    When other settings might overwrite this, a yellow dot next to the toggle will inform you of possible exceptions.
+    当其他设置可能覆盖此项时，开关旁会出现一个黄点，提示你可能存在例外。
 
-    __Keep History__
+    __保留历史记录__
 
-    Save connections in a database (on disk) in order to view and search them later.
-    
-    Changes might take a couple minutes to apply to all connections.
+    将连接保存到（磁盘上的）数据库中，以便日后查看和搜索。
+
+    更改可能需要几分钟才能应用到所有连接。
 
 #########################
 ### Support Page
 
 support-page-related-issues:
-  title: Local Issue Search
+  title: 本地问题搜索
   content: |
-    Public issues are only searched for locally so no data leaves your device until you decide so.
+    公开问题仅在本地搜索，因此在你决定之前，不会有任何数据离开你的设备。
 
-    The public GitHub issues are downloaded via our support system to prevent exposure to GitHub.
+    公开的 GitHub 问题通过我们的支持系统下载，以避免你直接暴露给 GitHub。
 
 #########################
 ### Configuration Options
 
 spn:
-  title: Safing Privacy Network
+  title: Safing 隐私网络
   content: |
-    The Safing Privacy Network (SPN) is a Portmaster Add-On that protects your identity
-    and Internet traffic from prying eyes. It spreads your connections over multiple server,
-    letting you access the Internet from many places at once in order to effectively hide
-    your tracks.
+    Safing 隐私网络（SPN）是 Portmaster 的一个附加组件，可保护你的身份
+    和互联网流量免遭窥探。它将你的连接分散到多台服务器上，
+    让你同时从多个地点访问互联网，从而有效地隐藏
+    你的踪迹。
   url: https://safing.io/spn/?source=Portmaster
-  urlText: Learn More
+  urlText: 了解更多
 
 ###########################
 # Process Matching and Fingerprints
 process-tags:
-  title: Process Tags
-  content: Tags holds special metadata of processes and are gathered by Portmaster. You can use these tags in fingerprints to better match processes, which would otherwise be a lot more difficult or impossible to match correctly.
+  title: 进程标签
+  content: 标签保存了进程的特殊元数据，由 Portmaster 收集。你可以在指纹中使用这些标签来更好地匹配进程，否则这些进程将很难甚至无法被正确匹配。

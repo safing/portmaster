@@ -185,6 +185,6 @@ export class PinOverlayComponent implements OnInit {
 
   async copyNodeID() {
     await this.integration.writeToClipboard(this.mapPin?.pin.ID)
-    this.actionIndicator.success("Copied to Clipboard")
+    this.actionIndicator.success("已复制到剪贴板")
   }
 }

@@ -101,7 +101,7 @@ func (c *Control) resume() (retErr error) {
 
 	defer func() {
 		if retErr != nil {
-			c.updateStatesAndNotifyError("Resume operation failed", retErr)
+			c.updateStatesAndNotifyError("恢复操作失败", retErr)
 			c.mgr.Error("Error occurred while resuming: " + retErr.Error())
 		} else {
 			c.updateStatesAndNotify()
@@ -196,14 +196,14 @@ func (c *Control) startResumeWorker(duration time.Duration) {
 			n := &notifications.Notification{
 				EventID:      "control:resumed",
 				Type:         notifications.Info,
-				Title:        "Resumed",
-				Message:      "Automatically resumed from pause state",
+				Title:        "已恢复",
+				Message:      "已自动从暂停状态恢复",
 				ShowOnSystem: true,
 				Expires:      time.Now().Add(15 * time.Second).Unix(),
 				AvailableActions: []*notifications.Action{
 					{
 						ID:   "ack",
-						Text: "OK",
+						Text: "确定",
 					},
 				},
 			}
@@ -230,14 +230,14 @@ func (c *Control) updateStatesAndNotify() {
 	title := ""
 	nType := notifications.Warning
 	if c.pauseInfo.Interception && c.pauseInfo.SPN {
-		title = "Portmaster and SPN paused"
+		title = "Portmaster 和 SPN 已暂停"
 	} else if c.pauseInfo.Interception {
-		title = "Portmaster paused"
+		title = "Portmaster 已暂停"
 	} else if c.pauseInfo.SPN {
-		title = "SPN paused"
+		title = "SPN 已暂停"
 		nType = notifications.Info // less severe notification for SPN-only pause
 	}
-	message := fmt.Sprintf("%s until %v", title, c.pauseInfo.TillTime.Format(time.TimeOnly))
+	message := fmt.Sprintf("%s，直到 %v", title, c.pauseInfo.TillTime.Format(time.TimeOnly))
 
 	c.pauseNotification = &notifications.Notification{
 		EventID:      "control:paused",
@@ -248,7 +248,7 @@ func (c *Control) updateStatesAndNotify() {
 		EventData:    &c.pauseInfo,
 		AvailableActions: []*notifications.Action{
 			{
-				Text: "Resume",
+				Text: "恢复",
 				Type: notifications.ActionTypeWebhook,
 				Payload: &notifications.ActionTypeWebhookPayload{
 					URL:          APIEndpointResume,
@@ -270,7 +270,7 @@ func (c *Control) updateStatesAndNotifyError(errDescription string, err error) {
 	}
 
 	if errDescription == "" {
-		errDescription = "Error"
+		errDescription = "错误"
 	}
 
 	// Error notification
@@ -324,7 +324,7 @@ func (c *Control) waitSPNStopped(stopTimeout time.Duration) error {
 			return errors.New("timeout waiting for SPN to stop")
 		}
 		if notification == nil && time.Since(startTime) > time.Second {
-			notification = c.showNotification("Waiting for SPN to stop...", "")
+			notification = c.showNotification("正在等待 SPN 停止…", "")
 		}
 		if cfgSpnEnabled() {
 			return errors.New("SPN enabled again")

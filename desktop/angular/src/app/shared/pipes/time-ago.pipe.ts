@@ -12,12 +12,12 @@ export class TimeAgoPipe implements PipeTransform {
 
 export const timeCeilings = [
   { ceiling: 1, text: "" },
-  { ceiling: 60, text: "sec" },
-  { ceiling: 3600, text: "min" },
-  { ceiling: 86400, text: "hour" },
-  { ceiling: 2629744, text: "day" },
-  { ceiling: 31556926, text: "month" },
-  { ceiling: Infinity, text: "year" }
+  { ceiling: 60, text: "秒" },
+  { ceiling: 3600, text: "分钟" },
+  { ceiling: 86400, text: "小时" },
+  { ceiling: 2629744, text: "天" },
+  { ceiling: 31556926, text: "个月" },
+  { ceiling: Infinity, text: "年" }
 ]
 
 export function timeAgo(value: number | Date | string) {
@@ -29,7 +29,7 @@ export function timeAgo(value: number | Date | string) {
     value = value.valueOf() / 1000;
   }
 
-  let suffix = 'ago'
+  let suffix = '前'
 
   let diffInSeconds = Math.floor(((new Date()).valueOf() - (value * 1000)) / 1000);
   if (diffInSeconds < 0) {
@@ -42,15 +42,12 @@ export function timeAgo(value: number | Date | string) {
     let n = Math.floor(diffInSeconds / f.ceiling);
     if (n > 0) {
       if (i < 1) {
-        return `< 1 min ` + suffix;
+        return `< 1 分钟` + suffix;
       }
       let text = timeCeilings[i + 1].text;
-      if (n > 1) {
-        text += 's';
-      }
-      return `${n} ${text} ` + suffix
+      return `${n} ${text}` + suffix
     }
   }
 
-  return "< 1 min " + suffix // actually just now (diffInSeconds == 0)
+  return "< 1 分钟" + suffix // actually just now (diffInSeconds == 0)
 }

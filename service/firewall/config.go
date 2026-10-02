@@ -34,15 +34,15 @@ var (
 
 func registerConfig() error {
 	err := config.Register(&config.Option{
-		Name:           "Enable Privacy Filter",
+		Name:           "启用隐私过滤器",
 		Key:            CfgOptionEnableFilterKey,
-		Description:    "Enable the Privacy Filter. If turned off, all privacy filter protections are fully disabled on this device. Not meant to be disabled in production - only turn off for testing.",
+		Description:    "启用隐私过滤器。如果关闭，此设备上的所有隐私过滤保护都将完全禁用。不应在正式使用中禁用 —— 仅在测试时关闭。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   true,
 		Annotations: config.Annotations{
-			config.CategoryAnnotation: "General",
+			config.CategoryAnnotation: "常规",
 		},
 	})
 	if err != nil {
@@ -51,16 +51,16 @@ func registerConfig() error {
 	filterEnabled = config.Concurrent.GetAsBool(CfgOptionEnableFilterKey, true)
 
 	err = config.Register(&config.Option{
-		Name:           "Permanent Verdicts",
+		Name:           "永久判定",
 		Key:            CfgOptionPermanentVerdictsKey,
-		Description:    "The Portmaster's system integration intercepts every single packet. Usually the first packet is enough for the Portmaster to set the verdict for a connection - ie. to allow or deny it. Making these verdicts permanent means that the Portmaster will tell the system integration that is does not want to see any more packets of that single connection. This brings a major performance increase.",
+		Description:    "Portmaster 的系统集成会拦截每一个数据包。通常第一个数据包就足以让 Portmaster 对连接做出判定 —— 即允许或拒绝。将这些判定设为永久，意味着 Portmaster 会告知系统集成不再需要查看该连接的后续数据包。这会带来显著的性能提升。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionPermanentVerdictsOrder,
-			config.CategoryAnnotation:     "Advanced",
+			config.CategoryAnnotation:     "高级",
 		},
 	})
 	if err != nil {
@@ -69,16 +69,16 @@ func registerConfig() error {
 	permanentVerdicts = config.Concurrent.GetAsBool(CfgOptionPermanentVerdictsKey, true)
 
 	err = config.Register(&config.Option{
-		Name:           "Seamless DNS Integration",
+		Name:           "无缝 DNS 集成",
 		Key:            CfgOptionDNSQueryInterceptionKey,
-		Description:    "Intercept and redirect astray DNS queries to the Portmaster's internal DNS server. This enables seamless DNS integration without having to configure the system or other software. However, this may lead to compatibility issues with other software that attempts the same.",
+		Description:    "拦截游离的 DNS 查询并将其重定向到 Portmaster 的内部 DNS 服务器。这样无需配置系统或其他软件即可实现无缝 DNS 集成。但这可能与尝试执行相同操作的其他软件产生兼容性问题。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionDNSQueryInterceptionOrder,
-			config.CategoryAnnotation:     "Advanced",
+			config.CategoryAnnotation:     "高级",
 		},
 	})
 	if err != nil {
@@ -87,15 +87,15 @@ func registerConfig() error {
 	dnsQueryInterception = config.Concurrent.GetAsBool(CfgOptionDNSQueryInterceptionKey, true)
 
 	err = config.Register(&config.Option{
-		Name:           "Prompt Desktop Notifications",
+		Name:           "询问桌面通知",
 		Key:            CfgOptionAskWithSystemNotificationsKey,
-		Description:    `In addition to showing prompt notifications in the Portmaster App, also send them to the Desktop. This requires the Portmaster Notifier to be running. Requires Desktop Notifications to be enabled.`,
+		Description:    `除了在 Portmaster 应用中显示询问通知外，还将其发送到桌面。这需要 Portmaster Notifier 正在运行，并且需要启用桌面通知。`,
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionAskWithSystemNotificationsOrder,
-			config.CategoryAnnotation:     "General",
+			config.CategoryAnnotation:     "常规",
 			config.RequiresAnnotation: config.ValueRequirement{
 				Key:   notifications.CfgUseSystemNotificationsKey,
 				Value: true,
@@ -108,16 +108,16 @@ func registerConfig() error {
 	askWithSystemNotifications = config.Concurrent.GetAsBool(CfgOptionAskWithSystemNotificationsKey, true)
 
 	err = config.Register(&config.Option{
-		Name:           "Prompt Timeout",
+		Name:           "询问超时",
 		Key:            CfgOptionAskTimeoutKey,
-		Description:    "How long the Portmaster will wait for a reply to a prompt notification. Please note that Desktop Notifications might not respect this or have their own limits.",
+		Description:    "Portmaster 等待询问通知回复的时长。请注意，桌面通知可能不遵守此设置，或有其自身的限制。",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   60,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionAskTimeoutOrder,
-			config.UnitAnnotation:         "seconds",
-			config.CategoryAnnotation:     "General",
+			config.UnitAnnotation:         "秒",
+			config.CategoryAnnotation:     "常规",
 		},
 		ValidationRegex: `^[1-9][0-9]{1,5}$`,
 	})

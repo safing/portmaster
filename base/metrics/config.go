@@ -44,9 +44,9 @@ func init() {
 
 func prepConfig() error {
 	err := config.Register(&config.Option{
-		Name:            "Metrics Instance Name",
+		Name:            "指标实例名称",
 		Key:             CfgOptionInstanceKey,
-		Description:     "Define the prometheus instance label for all exported metrics. Please note that changing the metrics instance name will reset persisted metrics.",
+		Description:     "为所有导出的指标定义 Prometheus 实例标签。请注意，更改指标实例名称将重置已持久化的指标。",
 		Sensitive:       true,
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
@@ -55,7 +55,7 @@ func prepConfig() error {
 		RequiresRestart: true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionInstanceOrder,
-			config.CategoryAnnotation:     "Metrics",
+			config.CategoryAnnotation:     "指标",
 		},
 		ValidationRegex: "^(" + prometheusBaseFormt + ")?$",
 	})
@@ -65,9 +65,9 @@ func prepConfig() error {
 	instanceOption = config.Concurrent.GetAsString(CfgOptionInstanceKey, instanceFlag)
 
 	err = config.Register(&config.Option{
-		Name:            "Metrics Comment Label",
+		Name:            "指标注释标签",
 		Key:             CfgOptionCommentKey,
-		Description:     "Define a metrics comment label, which is added to the info metric.",
+		Description:     "定义一个指标注释标签，它将被添加到 info 指标中。",
 		Sensitive:       true,
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
@@ -76,7 +76,7 @@ func prepConfig() error {
 		RequiresRestart: true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionCommentOrder,
-			config.CategoryAnnotation:     "Metrics",
+			config.CategoryAnnotation:     "指标",
 		},
 	})
 	if err != nil {
@@ -85,9 +85,9 @@ func prepConfig() error {
 	commentOption = config.Concurrent.GetAsString(CfgOptionCommentKey, commentFlag)
 
 	err = config.Register(&config.Option{
-		Name:            "Push Prometheus Metrics",
+		Name:            "推送 Prometheus 指标",
 		Key:             CfgOptionPushKey,
-		Description:     "Push metrics to this URL in the prometheus format.",
+		Description:     "以 Prometheus 格式将指标推送到此 URL。",
 		Sensitive:       true,
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
@@ -96,7 +96,7 @@ func prepConfig() error {
 		RequiresRestart: true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionPushOrder,
-			config.CategoryAnnotation:     "Metrics",
+			config.CategoryAnnotation:     "指标",
 		},
 	})
 	if err != nil {

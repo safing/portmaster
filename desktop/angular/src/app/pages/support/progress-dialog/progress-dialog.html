@@ -1,7 +1,7 @@
 <!-- Progress Indicator -->
 <div *ngIf="state !== 'error' && state !== 'done'">
 
-  <caption class="text-xxs text-secondary">Status</caption>
+  <caption class="text-xxs text-secondary">状态</caption>
 
   <div class="flex flex-row gap-2">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
@@ -13,17 +13,17 @@
     <div [ngSwitch]="state">
       <!-- Uploading debug data -->
       <ng-template ngSwitchCase="debug-info">
-        <span>Uploading debug data ....</span>
+        <span>正在上传调试数据...</span>
       </ng-template>
 
       <!-- Github Issue -->
       <ng-template ngSwitchCase="create-issue">
-        <span>Creating GitHub issue ...</span>
+        <span>正在创建 GitHub issue...</span>
       </ng-template>
 
       <!-- Private ticket -->
       <ng-template ngSwitchCase="create-ticket">
-        <span>Creating private support ticket ...</span>
+        <span>正在创建私密支持工单...</span>
       </ng-template>
     </div>
   </div>
@@ -41,30 +41,30 @@
 
     <span class="text-base text-primary">
       <ng-template [ngIf]="dialogRef.data.type === 'github' && dialogRef.data.generateUrl">
-        Ticket prepared successfully
+        工单已准备就绪
       </ng-template>
 
       <ng-template [ngIf]="dialogRef.data.type !== 'github' || !dialogRef.data.generateUrl">
-        Ticket created successfully!
+        工单创建成功！
       </ng-template>
     </span>
   </span>
 
   <div *ngIf="dialogRef.data.type === 'github' && dialogRef.data.generateUrl">
-    <span>Use the following button to open the pre-filled GitHub issue form:</span>
+    <span>使用下面的按钮打开预填写的 GitHub issue 表单：</span>
 
     <br />
 
     <div class="flex flex-row items-center justify-center p-4">
-      <button class="bg-blue" (click)="integration.openExternal(url)">Create Issue</button>
+      <button class="bg-blue" (click)="integration.openExternal(url)">创建 Issue</button>
     </div>
   </div>
 
   <div *ngIf="dialogRef.data.type === 'github' && !dialogRef.data.generateUrl" class="flex flex-col">
     <span>
-      We successfully create the issue on GitHub for you.
+      我们已成功为你在 GitHub 上创建了 issue。
       <br />
-      Use the following link to check for updates:
+      使用以下链接查看后续进展：
     </span>
 
     <span class="inline-block w-full text-center mt-4 underline text-secondary"
@@ -72,7 +72,7 @@
   </div>
 
   <span *ngIf="dialogRef.data.type === 'private' && dialogRef.data.email">
-    We will contact you as soon as possbile.
+    我们会尽快与你联系。
   </span>
 </ng-template>
 
@@ -87,17 +87,17 @@
     </svg>
 
     <span class="text-base text-primary">
-      Failed to create Support Ticket
+      创建支持工单失败
     </span>
   </span>
 
 
   <span>
-    An error occured while creating your support ticket:
+    创建支持工单时发生错误：
   </span>
 
   <span class="text-red block w-full text-center">
-    {{ error || 'Unknown Error' }}
+    {{ error || '未知错误' }}
   </span>
 </div>
 
@@ -105,10 +105,10 @@
 <div class="flex flex-row justify-center items-center gap-2">
 
   <button *ngIf="state === 'done' && !!url && dialogRef.data.type === 'github' && !dialogRef.data.generateUrl "
-    class="bg-blue" (click)="integration.openExternal(url)">Open Issue</button>
+    class="bg-blue" (click)="integration.openExternal(url)">打开 Issue</button>
 
   <button *ngIf="state === 'done' && !!url && dialogRef.data.type === 'github' && !dialogRef.data.generateUrl "
-    (click)="copyUrl()">Copy URL</button>
+    (click)="copyUrl()">复制 URL</button>
 
-  <button (click)="dialogRef.close()" class="btn">Close</button>
+  <button (click)="dialogRef.close()" class="btn">关闭</button>
 </div>

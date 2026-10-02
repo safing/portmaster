@@ -19,11 +19,11 @@ export class AppFingerprintPipe implements PipeTransform {
     if (Type === FingerprintType.Path) {
       return Operation === FingerpringOperation.Equal
         ? Value
-        : `[Path:${Operation.charAt(0).toUpperCase()}${Operation.slice(1)}] ${Value}`;
+        : `[路径:${Operation.charAt(0).toUpperCase()}${Operation.slice(1)}] ${Value}`;
     }
 
     if (Type === FingerprintType.Cmdline) {
-      return `[Command${opSuffix}] ${Value}`;
+      return `[命令${opSuffix}] ${Value}`;
     }
 
     return null;

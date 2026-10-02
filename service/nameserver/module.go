@@ -226,13 +226,13 @@ func showListenErrorNotification(err error, ip net.IP, port uint16, primaryListe
 		n = notifications.Notify(&notifications.Notification{
 			EventID: eventIDConflictingService + secondaryEventIDSuffix,
 			Type:    notifications.Error,
-			Title:   "Conflicting DNS Software",
-			Message: "Restart Portmaster after you have deactivated or properly configured the conflicting software: " +
+			Title:   "存在冲突的 DNS 软件",
+			Message: "请在停用或正确配置以下冲突软件后重启 Portmaster：" +
 				cfDescription,
 			ShowOnSystem: true,
 			AvailableActions: []*notifications.Action{
 				{
-					Text:    "Open Docs",
+					Text:    "打开文档",
 					Type:    notifications.ActionTypeOpenURL,
 					Payload: "https://docs.safing.io/portmaster/install/status/software-compatibility",
 				},
@@ -243,9 +243,9 @@ func showListenErrorNotification(err error, ip net.IP, port uint16, primaryListe
 		n = notifications.Notify(&notifications.Notification{
 			EventID: eventIDListenerFailed + secondaryEventIDSuffix,
 			Type:    notifications.Error,
-			Title:   "Secure DNS Error",
+			Title:   "安全 DNS 错误",
 			Message: fmt.Sprintf(
-				"The internal DNS server failed. Restart Portmaster to try again. Error: %s",
+				"内部 DNS 服务器发生故障。请重启 Portmaster 后重试。错误：%s",
 				err,
 			),
 			ShowOnSystem: true,

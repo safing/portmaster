@@ -134,10 +134,10 @@ export class SpnPageComponent implements OnInit, OnDestroy, AfterViewInit {
    * at the view
    */
   readonly spnStatusTranslation: Readonly<Record<SPNStatus['Status'], string>> = {
-    connected: 'Connected',
-    connecting: 'Connecting',
-    disabled: 'Disabled',
-    failed: 'Failure'
+    connected: '已连接',
+    connecting: '正在连接',
+    disabled: '已禁用',
+    failed: '失败'
   }
 
 

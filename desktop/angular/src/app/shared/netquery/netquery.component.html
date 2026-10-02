@@ -6,7 +6,7 @@
 
   <div
     class="flex items-center justify-center h-full px-3 py-2 bg-gray-200 rounded-r-sm cursor-pointer hover:text-primary text-tertiary"
-    (click)="copyQuery()" sfng-tooltip="Copy query to clipboard" snfgTooltipPosition="left">
+    (click)="copyQuery()" sfng-tooltip="复制查询到剪贴板" snfgTooltipPosition="left">
     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
       stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round"
@@ -15,14 +15,14 @@
   </div>
 
   <button class="bg-transparent hover:bg-transparent ml-2 cursor-pointer text-tertiary text-xxs hover:text-primary p-2" (click)="clearQuery()" (keyup.enter)="clearQuery()">
-    Clear All
+    全部清除
   </button>
 </div>
 
 <div class="flex flex-row items-center w-full gap-2">
   <sfng-netquery-searchbar [(ngModel)]="textSearch" (ngModelChange)="performSearch()" class="block w-full"
     [labels]="keyTranslation" (fieldsParsed)="onFieldsParsed($event)"></sfng-netquery-searchbar>
-  <button type="button" class="h-full rounded-r-sm btn" (click)="performSearch()">Reload</button>
+  <button type="button" class="h-full rounded-r-sm btn" (click)="performSearch()">重新加载</button>
 </div>
 
 <div class="flex flex-row flex-wrap items-center w-full gap-3">
@@ -34,11 +34,11 @@
       <sfng-select mode="multi" [itemName]="keyTranslation[field.key] || field.key" dynamicValues="true"
         [placeholder]="keyTranslation[field.key] || field.key" [(ngModel)]="field.value!.searchValues"
         allowSearch="true" searchItemThreshold="5" itemLimit="10"
-        [searchPlaceholder]="'Search' + (keyTranslation[field.key] || field.key)" minWidth="400" minHeight="300"
+        [searchPlaceholder]="'搜索' + (keyTranslation[field.key] || field.key)" minWidth="400" minHeight="300"
         (ngModelChange)="performSearch()" (opened)="loadSuggestion(field.key)"
         [dynamicValueTemplate]="dynamicValueTemplate" [sortBy]="sortByCount">
         <ng-container *ngIf="field.value?.loading">
-          <sfng-select-item *sfngSelectValue="null; disabled: true" class="text-secondary">Loading ...
+          <sfng-select-item *sfngSelectValue="null; disabled: true" class="text-secondary">加载中...
           </sfng-select-item>
         </ng-container>
 
@@ -53,7 +53,7 @@
               </span>
             </span>
             <span class="pr-3 text-xxs text-tertiary whitespace-nowrap">
-              #{{ value.count }} connections
+              #{{ value.count }} 个连接
             </span>
           </sfng-select-item>
 
@@ -78,7 +78,7 @@
   <!-- The combinded "more" drop-down that should look like a select component -->
   <ng-template #selectTemplate>
     <button class="sfng-select" [class.active]="customDropdown.isOpen">
-      <span>More</span>
+      <span>更多</span>
       <div class="arrow">
         <svg viewBox="0 0 24 24" class="arrow-icon">
           <g fill="none" class="inner">
@@ -93,7 +93,7 @@
     <ng-container *ngFor="let model of (models | keyvalue | combinedMenu); let last=last">
       <div class="border-gray-400 sfng-select-dropdown" [class.border-r]="!last">
         <h3 class="flex items-center gap-2 px-3 py-0.5 mb-0 border-b border-gray-300 text-xxs text-secondary">
-          <span>Filter by {{ model.value!.menuTitle || model.key }}</span>
+          <span>按{{ model.value!.menuTitle || model.key }}过滤</span>
           <sfng-tipup [key]="model.value!.tipupKey" *ngIf="!!model.value!.tipupKey"></sfng-tipup>
         </h3>
         <ul>
@@ -121,13 +121,13 @@
 
   <div class="flex flex-row items-center gap-2 px-2 bg-gray-300 border border-gray-300 rounded text-xxs"
     *ngIf="(canUseHistory$ | async)">
-    Search History:
+    搜索历史记录：
     <nz-range-picker [nzShowTime]="false" class="py-0" [nzRenderExtraFooter]="customTimeRange" [(ngModel)]="dateFilter"
       [nzBorderless]="true" (ngModelChange)="onDateRangeChange($event)" [nzAllowClear]="true" [nzFormat]="dateFormat">
     </nz-range-picker>
 
     <ng-template #customTimeRange>
-      <span class="py-2 uppercase text-xxs text-secondary">Quick Settings</span>
+      <span class="py-2 uppercase text-xxs text-secondary">快捷设置</span>
       <ul class="grid grid-flow-row grid-cols-3 py-2 text-xs">
         <li tabindex="0" *ngFor="let qds of quickDateSettings" (click)="applyQuickDateSetting(qds)" (keyup.enter)="applyQuickDateSetting(qds)"
           class="cursor-pointer text-secondary hover:text-primary px-2 py-1.5 hover:bg-gray-500 hover:bg-opacity-50 rounded-md">
@@ -141,7 +141,7 @@
     <!--
       Group-By selection
     -->
-    <sfng-select mode="multi" itemName="Group By" placeholder="Group By" allowSearch="false" [(ngModel)]="groupByKeys"
+    <sfng-select mode="multi" itemName="分组依据" placeholder="分组依据" allowSearch="false" [(ngModel)]="groupByKeys"
       (ngModelChange)="performSearch()">
       <ng-container *ngFor="let value of allowedGroupBy">
         <sfng-select-item *sfngSelectValue="value">
@@ -153,7 +153,7 @@
     <!--
       Order-By selection
     -->
-    <sfng-select mode="multi" itemName="Sort" placeholder="Sort" allowSearch="false" [(ngModel)]="orderByKeys"
+    <sfng-select mode="multi" itemName="排序方式" placeholder="排序方式" allowSearch="false" [(ngModel)]="orderByKeys"
       (ngModelChange)="performSearch()">
       <ng-container *ngFor="let value of allowedOrderBy">
         <sfng-select-item *sfngSelectValue="value">
@@ -167,14 +167,14 @@
 
 <div class="relative flex-shrink-0 my-1 bg-gray-200 p-2 rounded grid" [class.grid-cols-2]="featureBw$ | async">
   <div>
-    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">Connections</h2>
+    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">连接</h2>
     <div class="h-32">
       <sfng-netquery-line-chart [data]="connectionChartData" class="h-full" *ngIf="connectionChartData.length > 0" [@fadeIn]></sfng-netquery-line-chart>
     </div>
   </div>
 
   <div *ngIf="featureBw$ | async">
-    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">Data Usage</h2>
+    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">数据用量</h2>
     <div class="h-32">
       <sfng-netquery-line-chart [config]="bwChartConfig" [data]="bwChartData" class="h-full" *ngIf="!!bwChartData?.length" [@fadeIn]></sfng-netquery-line-chart>
     </div>
@@ -182,7 +182,7 @@
 
   <div class="absolute top-0 bottom-0 left-0 right-0 flex items-center justify-center text-secondary"
     *ngIf="loading || connectionChartData.length === 0">
-    Loading Chart
+    正在加载图表
   </div>
 </div>
 
@@ -245,9 +245,9 @@
       <div>
         <app-menu-trigger [menu]="groupedMenu"></app-menu-trigger>
         <app-menu #groupedMenu>
-          <app-menu-item (activate)="useAsFilter(data)">Use as filter</app-menu-item>
+          <app-menu-item (activate)="useAsFilter(data)">用作过滤条件</app-menu-item>
           <app-menu-item *ngIf="data.__profile"
-            (activate)="router.navigate(['/app', data.__profile.Source, data.__profile.ID])">App Settings
+            (activate)="router.navigate(['/app', data.__profile.Source, data.__profile.ID])">应用设置
           </app-menu-item>
         </app-menu>
       </div>
@@ -271,8 +271,8 @@
 <!-- "Total connections & LastReload info "-->
 <div class="flex flex-row items-center justify-start gap-3">
 
-  <span class="text-xxs text-primary" *ngIf="!loading">{{ totalResultCount }} Results
-    <span class="text-secondary">of {{totalConnCount}} total connections</span>
+  <span class="text-xxs text-primary" *ngIf="!loading">{{ totalResultCount }} 条结果
+    <span class="text-secondary">（共 {{totalConnCount}} 个连接）</span>
   </span>
   <span class="flex-grow"></span>
 
@@ -290,7 +290,7 @@
             
             <span *ngIf="(autoReloadInterval$ | async) as interval">
               <span *ngIf="interval > 0 && interval <= 30">
-                (in {{interval}} sec)
+                （{{interval}} 秒后）
               </span>
             </span>            
           </span>
@@ -300,7 +300,7 @@
             'text-yellow-300': ((lastReloadTicker|async)||0) > 60,
             'text-red-300': ((lastReloadTicker|async)||0) > 600
           }">
-          Last Reload: {{ lastReload | timeAgo:(lastReloadTicker|async) }}
+          上次加载：{{ lastReload | timeAgo:(lastReloadTicker|async) }}
           </span>
 
           <svg xmlns="http://www.w3.org/2000/svg" 
@@ -340,7 +340,7 @@
               singleMode="false">
 
               <div class="flex flex-row items-center p-2 text-secondary" *ngIf="connsPaginator.total === 0">
-                All connections ended more than 10 minutes ago and have been removed.
+                所有连接均已在 10 分钟前结束，并已被移除。
               </div>
 
               <sfng-pagination [source]="connsPaginator" class="flex flex-col flex-grow gap-2">
@@ -380,7 +380,7 @@
         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
       </path>
     </svg>
-    Loading connections ...
+    正在加载连接...
   </div>
 </ng-template>
 
@@ -390,40 +390,40 @@
     <path
       d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
   </svg>
-  <span class="font-semibold text-primary">Pro Tip:</span>
+  <span class="font-semibold text-primary">专业提示：</span>
   <span class="flex items-center gap-1 protip">
     <ng-container *ngTemplateOutlet="proTips?.get(proTipIdx) || null"></ng-container>
   </span>
 </div>
 
 <ng-template #proTip>
-  Press
+  在任意页面按下
   <pre>CTRL + Space</pre>
-  on any page to bring up the quick search box.
+  即可打开快速搜索框。
 </ng-template>
 
 <ng-template #proTip>
-  Use your keyboard arrows to navigate through the search suggestions. Press
-  <pre>ENTER</pre> to search for the suggestion or use
-  <pre>Shift + Enter</pre> to add it to the search text.
+  使用键盘方向键浏览搜索建议。按下
+  <pre>ENTER</pre> 搜索该建议，或使用
+  <pre>Shift + Enter</pre> 将其添加到搜索文本中。
 </ng-template>
 
 <ng-template #proTip>
-  Inside the search box, use
-  <pre>Ctrl + Space</pre> to force loading suggestions.
+  在搜索框内，使用
+  <pre>Ctrl + Space</pre> 强制加载建议。
 </ng-template>
 
 <ng-template #proTip>
-  Use
-  <pre>Shift + Click</pre> to add connection attributes to the current filter.
+  使用
+  <pre>Shift + Click</pre> 将连接属性添加到当前过滤条件。
 </ng-template>
 
 <ng-template #proTip>
-  Hold
-  <pre>Shift</pre> to highlight attributes that can be used in the filter.
+  按住
+  <pre>Shift</pre> 高亮显示可用于过滤的属性。
 </ng-template>
 
 <ng-template #proTip>
-  Hold
-  <pre>CTRL</pre> and click attributes to copy them to the clipboard.
+  按住
+  <pre>CTRL</pre> 并点击属性，即可将其复制到剪贴板。
 </ng-template>

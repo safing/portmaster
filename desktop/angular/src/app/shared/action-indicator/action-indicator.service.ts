@@ -274,11 +274,11 @@ export class ActionIndicatorService {
 
       console.error(`Unexpected error type`, resp)
 
-      return `Unknown error: ${resp}`
+      return `未知错误：${resp}`
 
     } catch (err: any) {
       console.error(err)
-      return `Unknown error: ${resp}`
+      return `未知错误：${resp}`
     }
   }
 }

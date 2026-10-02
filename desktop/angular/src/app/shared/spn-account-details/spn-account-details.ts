@@ -54,7 +54,7 @@ export class SPNAccountDetailsComponent implements OnInit {
   logout() {
     this.spnService.logout()
       .pipe(tap(() => this.dialogRef?.close()))
-      .subscribe(this.uai.httpObserver('SPN Logout', 'SPN Logout'))
+      .subscribe(this.uai.httpObserver('SPN 退出登录', 'SPN 退出登录'))
   }
 
   ngOnInit(): void {

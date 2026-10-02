@@ -41,8 +41,8 @@ export class RuleListComponent implements ControlValueAccessor {
 
   @Input()
   symbolMap = {
-    '+': 'Allow',
-    '-': 'Block',
+    '+': '允许',
+    '-': '阻止',
   }
 
   /**
@@ -167,19 +167,19 @@ export class RuleListComponent implements ControlValueAccessor {
       buttons: [
         {
           id: 'abort',
-          text: 'Cancel',
+          text: '取消',
           class: 'outline'
         },
         {
           id: 'delete',
-          text: 'Delete Rules',
+          text: '删除规则',
           class: 'danger'
         }
       ],
       canCancel: true,
-      caption: 'Caution',
-      header: 'Rule Deletion',
-      message: 'Do you want to delete the selected rules'
+      caption: '注意',
+      header: '删除规则',
+      message: '您要删除所选规则吗？'
     })
       .onAction('delete', () => {
         this.entries = this.entries.filter((_, idx: number) => !this.selectedItems.includes(idx))

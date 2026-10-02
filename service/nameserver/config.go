@@ -35,9 +35,9 @@ func init() {
 
 func registerConfig() error {
 	err := config.Register(&config.Option{
-		Name:            "Internal DNS Server Listen Address",
+		Name:            "内部 DNS 服务器监听地址",
 		Key:             CfgDefaultNameserverAddressKey,
-		Description:     "Defines the IP address and port on which the internal DNS Server listens.",
+		Description:     "定义内部 DNS 服务器监听的 IP 地址和端口。",
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelDeveloper,
 		ReleaseLevel:    config.ReleaseLevelStable,
@@ -46,7 +46,7 @@ func registerConfig() error {
 		RequiresRestart: true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 514,
-			config.CategoryAnnotation:     "Development",
+			config.CategoryAnnotation:     "开发",
 		},
 	})
 	if err != nil {

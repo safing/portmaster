@@ -175,20 +175,20 @@ func notifyAboutFailingResolvers() {
 	n := &notifications.Notification{
 		EventID: failingResolverErrorID,
 		Type:    notifications.Error,
-		Title:   "Configured DNS Servers Failing",
-		Message: `All configured DNS servers in Portmaster are failing.
+		Title:   "已配置的 DNS 服务器均失效",
+		Message: `Portmaster 中所有已配置的 DNS 服务器均无法正常工作。
 
-You might not be able to connect to these servers, or all of these servers are offline.  
-Choosing different DNS servers might fix this problem.
+您可能无法连接到这些服务器，或者这些服务器全部处于离线状态。  
+选择其他 DNS 服务器可能会解决此问题。
 
-While the issue persists, Portmaster will use the DNS servers from your system or network, if permitted by configuration.
+在问题持续期间，如果配置允许，Portmaster 将使用系统或网络中的 DNS 服务器。
 
-Alternatively, there might be something on your device that is interfering with Portmaster. This could be a firewall or another secure DNS resolver software. If that is your suspicion, please [check if you are running incompatible software here](https://docs.safing.io/portmaster/install/status/software-compatibility).
+另外，您的设备上也可能有某些程序正在干扰 Portmaster，例如防火墙或其他安全 DNS 解析软件。如果您有此怀疑，请[在此检查您是否运行了不兼容的软件](https://docs.safing.io/portmaster/install/status/software-compatibility)。
 
-This notification will go away when Portmaster detects a working configured DNS server.`,
+当 Portmaster 检测到可用的已配置 DNS 服务器时，此通知将自动消失。`,
 		ShowOnSystem: true,
 		AvailableActions: []*notifications.Action{{
-			Text: "Change DNS Servers",
+			Text: "更改 DNS 服务器",
 			Type: notifications.ActionTypeOpenSetting,
 			Payload: &notifications.ActionTypeOpenSettingPayload{
 				Key: CfgOptionNameServersKey,

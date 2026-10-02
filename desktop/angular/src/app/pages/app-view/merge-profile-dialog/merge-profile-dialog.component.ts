@@ -50,12 +50,12 @@ export class MergeProfileDialogComponent implements OnInit {
       .subscribe({
         next: newID => {
           this.router.navigate(['/app/' + newID])
-          this.uai.success('Profiles Merged Successfully', 'All selected profiles have been merged')
+          this.uai.success('配置文件合并成功', '所有选中的配置文件均已合并')
 
           this.dialogRef.close()
         },
         error: err => {
-          this.uai.error('Failed To Merge Profiles', this.uai.getErrorMessgae(err))
+          this.uai.error('合并配置文件失败', this.uai.getErrorMessgae(err))
         }
       })
   }

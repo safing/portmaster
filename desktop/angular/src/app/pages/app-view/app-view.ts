@@ -245,7 +245,7 @@ export class AppViewComponent implements OnInit, OnDestroy {
         }
 
         console.error(err);
-        this.actionIndicator.error('Failed to save setting', err);
+        this.actionIndicator.error('保存设置失败', err);
       },
     });
   }
@@ -300,8 +300,8 @@ export class AppViewComponent implements OnInit, OnDestroy {
     }
 
     const observer = this.actionIndicator.httpObserver(
-      'History successfully removed',
-      'Failed to remove history'
+      '历史记录已成功移除',
+      '移除历史记录失败'
     );
 
     this.netquery
@@ -362,7 +362,7 @@ export class AppViewComponent implements OnInit, OnDestroy {
             });
 
             this.actionIndicator.error(
-              'Failed To Get Profile',
+              '获取配置文件失败',
               this.actionIndicator.getErrorMessgae(err)
             );
 
@@ -393,8 +393,8 @@ export class AppViewComponent implements OnInit, OnDestroy {
                   complete: () => {
                     if (fingerprintsChanged) {
                       this.actionIndicator.info(
-                        'Profile ID Changed',
-                        'The fingerprint change caused the profile to be re-keyed. You can find the app in the app list to continue editing.'
+                        '配置文件 ID 已更改',
+                        '指纹变更导致配置文件被重新分配了 ID。你可以在应用列表中找到该应用以继续编辑。'
                       );
                     }
                     this.router.navigate(['/app/']);
@@ -636,7 +636,7 @@ export class AppViewComponent implements OnInit, OnDestroy {
         console.log(data);
         // Copy to clip-board if supported
         await this.integration.writeToClipboard(data);
-        this.actionIndicator.success('Copied to Clipboard');
+        this.actionIndicator.success('已复制到剪贴板');
       });
   }
 
@@ -656,21 +656,21 @@ export class AppViewComponent implements OnInit, OnDestroy {
     this.dialog
       .confirm({
         canCancel: true,
-        caption: 'Caution',
-        header: 'Deleting Profile ' + this.appProfile.Name,
+        caption: '注意',
+        header: '正在删除配置文件 ' + this.appProfile.Name,
         message:
-          'Do you really want to delete this profile? All settings will be lost.',
+          '确定要删除此配置文件吗？所有设置都将丢失。',
         buttons: [
-          { id: '', text: 'Cancel', class: 'outline' },
-          { id: 'delete', class: 'danger', text: 'Yes, delete it' },
+          { id: '', text: '取消', class: 'outline' },
+          { id: 'delete', class: 'danger', text: '是的，删除' },
         ],
       })
       .onAction('delete', () => {
         this.profileService.deleteProfile(this.appProfile!).subscribe(() => {
           this.router.navigate(['/app/overview']);
           this.actionIndicator.success(
-            'Profile Deleted',
-            'Successfully deleted profile ' + this.appProfile?.Name
+            '配置文件已删除',
+            '已成功删除配置文件 ' + this.appProfile?.Name
           );
         });
       });

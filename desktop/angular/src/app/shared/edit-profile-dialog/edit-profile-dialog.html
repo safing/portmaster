@@ -5,16 +5,15 @@
     class="w-8 h-8 rounded-full border border-gray-400"
   />
 
-  {{ isEditMode ? 'Edit App Profile' : 'Create New App Profile' }}
+  {{ isEditMode ? '编辑应用配置文件' : '创建新的应用配置文件' }}
 </h1>
 
 <form #profileForm="ngForm">
   <sfng-tab-group customHeader="false" linkRouter="false">
-    <sfng-tab title="General">
+    <sfng-tab title="常规">
       <div *sfngTabContent class="tab-content">
         <span class="py-2 text-secondary">
-          Configure basic profile information like the profile name, it's
-          description and optionally the profile icon.
+          配置基本的配置文件信息，例如配置文件名称、描述以及（可选的）配置文件图标。
         </span>
 
         <div class="input" *appExpertiseLevel="'developer'">
@@ -24,41 +23,41 @@
             name="id"
             pattern="[a-zA-Z0-9\-\._]*"
             [(ngModel)]="profile.ID"
-            placeholder="A unique identifier for profile. Leave empty to generate a random one."
+            placeholder="配置文件的唯一标识符。留空将随机生成。"
           />
         </div>
 
         <div class="input">
-          <label>Name *</label>
+          <label>名称 *</label>
           <input
             type="text"
             required
             name="name"
             [(ngModel)]="profile.Name"
-            placeholder="A name for labele profile"
+            placeholder="配置文件的名称"
           />
         </div>
 
         <div class="input">
-          <label>Description</label>
+          <label>描述</label>
           <input
             type="text"
             name="description"
             [(ngModel)]="profile.Description"
-            placeholder="An optional description of the profile"
+            placeholder="配置文件的可选描述"
           />
         </div>
 
         <div class="flex flex-row justify-between">
           <div class="input">
-            <label>Icon</label>
+            <label>图标</label>
             <div class="flex flex-col gap-2 justify-start">
               <div class="flex flex-row gap-3">
                 <label
                   for="icon-upload"
                   class="inline-block p-1 px-4 font-medium whitespace-nowrap bg-opacity-80 rounded-sm cursor-pointer outline-none bg-blue hover:bg-blue text-xxs w-fit"
                 >
-                  Choose Icon
+                  选择图标
                 </label>
                 <button
                   type="button"
@@ -66,12 +65,11 @@
                   (click)="resetIcon()"
                   class="bg-red-300"
                 >
-                  Reset Icon
+                  重置图标
                 </button>
               </div>
               <span class="pl-2 break-normal text-tertiary"
-                >The icon must be smaller than 10kB and it's dimensions must not
-                exceed 512x512 px. Only JPG and PNG files are supported.</span
+                >图标必须小于 10kB，且尺寸不得超过 512x512 像素。仅支持 JPG 和 PNG 文件。</span
               >
             </div>
             <input
@@ -94,15 +92,14 @@
       </div>
     </sfng-tab>
 
-    <sfng-tab title="Process Matching">
+    <sfng-tab title="进程匹配">
       <div *sfngTabContent class="flex flex-col tab-content text-xxs">
         <span class="text-xs text-secondary"
-          >This profile will be applied to processes that match one of the
-          following fingerprints:</span
+          >此配置文件将应用于匹配以下任一指纹的进程：</span
         >
 
         <div *ngIf="!profile.Fingerprints?.length">
-          No fingerprints configured. Please press "Add New" to get started.
+          尚未配置指纹。请点击“新增”开始。
         </div>
         <div class="flex overflow-auto flex-col flex-grow gap-2 px-1">
           <div
@@ -128,36 +125,36 @@
               [ngModelOptions]="{standalone: true}"
             >
               <sfng-select-item
-                *sfngSelectValue="fingerPrintTypes.Tag; label: 'Tag'"
+                *sfngSelectValue="fingerPrintTypes.Tag; label: '标签'"
               >
-                Tag
+                标签
                 <sfng-tipup key="process-tags"></sfng-tipup>
               </sfng-select-item>
               <sfng-select-item
-                *sfngSelectValue="fingerPrintTypes.Cmdline; label: 'Command Line'"
-                >Command Line
+                *sfngSelectValue="fingerPrintTypes.Cmdline; label: '命令行'"
+                >命令行
               </sfng-select-item>
               <sfng-select-item
-                *sfngSelectValue="fingerPrintTypes.Env; label: 'Environment'"
-                >Environment
+                *sfngSelectValue="fingerPrintTypes.Env; label: '环境变量'"
+                >环境变量
               </sfng-select-item>
               <sfng-select-item
-                *sfngSelectValue="fingerPrintTypes.Path; label: 'Path'"
-                >Path</sfng-select-item
+                *sfngSelectValue="fingerPrintTypes.Path; label: '路径'"
+                >路径</sfng-select-item
               >
             </sfng-select>
 
             <input
               type="text"
               [(ngModel)]="fp.Key"
-              placeholder="Key"
+              placeholder="键"
               [ngModelOptions]="{standalone: true}"
               *ngIf="fp.Type === 'env'"
             />
 
             <sfng-select
               [(ngModel)]="fp.Key"
-              placeholder="Key"
+              placeholder="键"
               [ngModelOptions]="{standalone: true}"
               *ngIf="fp.Type === 'tag'"
             >
@@ -173,20 +170,20 @@
               [ngModelOptions]="{standalone: true}"
             >
               <sfng-select-item *sfngSelectValue="fingerPrintOperations.Equal"
-                >Equals</sfng-select-item
+                >等于</sfng-select-item
               >
               <sfng-select-item *sfngSelectValue="fingerPrintOperations.Prefix"
-                >Prefix</sfng-select-item
+                >前缀</sfng-select-item
               >
               <sfng-select-item *sfngSelectValue="fingerPrintOperations.Regex"
-                >Regex</sfng-select-item
+                >正则表达式</sfng-select-item
               >
             </sfng-select>
 
             <input
               type="text"
               [(ngModel)]="fp.Value"
-              placeholder="Value"
+              placeholder="值"
               [ngModelOptions]="{standalone: true}"
             />
 
@@ -213,15 +210,15 @@
           </div>
         </div>
 
-        <button type="button" (click)="addFingerprint()">Add New</button>
+        <button type="button" (click)="addFingerprint()">新增</button>
       </div>
     </sfng-tab>
 
-    <sfng-tab title="Copy Settings">
+    <sfng-tab title="复制设置">
       <div *sfngTabContent class="flex flex-col gap-2 tab-content">
         <div class="flex flex-row gap-2 items-center p-2 bg-gray-200">
           <span class="text-secondary"
-            >Select a Profile to copy settings from:</span
+            >选择要从中复制设置的配置文件：</span
           >
           <div class="flex-grow"></div>
           <sfng-select
@@ -229,7 +226,7 @@
             [ngModelOptions]="{standalone: true}"
             class="flex-grow"
             [allowSearch]="true"
-            searchPlaceholder="Search Profiles"
+            searchPlaceholder="搜索配置文件"
           >
             <ng-container *ngFor="let p of allProfiles">
               <sfng-select-item
@@ -246,7 +243,7 @@
             [disabled]="selectedCopyFrom === null"
             (click)="addCopyFrom()"
           >
-            Add
+            添加
           </button>
         </div>
 
@@ -301,9 +298,8 @@
           </div>
         </div>
         <span class="block text-center break-normal text-secondary text-xxs">
-          Settings will be copied from all specified profiles in order with
-          settings from higher profiles taking precedence. <br />
-          Existing settings may be overwritten.
+          将按顺序从所有指定的配置文件复制设置，排在上方的配置文件优先。<br />
+          现有设置可能会被覆盖。
         </span>
       </div>
     </sfng-tab>
@@ -312,15 +308,15 @@
 
 <div class="flex flex-row gap-2 justify-end items-center">
   <button *ngIf="isEditMode" (click)="deleteProfile()" class="bg-red">
-    Delete
+    删除
   </button>
   <div class="flex-grow"></div>
-  <button (click)="abort()" class="">Cancel</button>
+  <button (click)="abort()" class="">取消</button>
   <button
     (click)="save()"
     [disabled]="!profileForm.valid"
     class="bg-opacity-80 bg-blue hover:bg-blue"
   >
-    Save
+    保存
   </button>
 </div>

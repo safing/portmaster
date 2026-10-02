@@ -9,9 +9,9 @@ import { ActionIndicatorService } from '../action-indicator';
 import { ExitScreenComponent } from './exit-screen';
 import { INTEGRATION_SERVICE } from 'src/app/integration';
 
-const MessageConnecting = 'Connecting to Portmaster';
-const MessageShutdown = 'Shutting Down Portmaster';
-const MessageRestart = 'Restarting Portmaster';
+const MessageConnecting = '正在连接 Portmaster';
+const MessageShutdown = '正在关闭 Portmaster';
+const MessageRestart = '正在重启 Portmaster';
 const MessageHidden = '';
 
 export type OverlayMessage = typeof MessageConnecting
@@ -87,8 +87,8 @@ export class ExitService {
               })
             )
             .subscribe(this.uai.httpObserver(
-              'Reloading UI ...',
-              'Failed to Reload UI',
+              '正在重新加载界面……',
+              '重新加载界面失败',
             ))
         }
       })
@@ -124,22 +124,22 @@ export class ExitService {
   shutdownPortmaster() {
     this.dialog.confirm({
       canCancel: true,
-      header: 'Shutting Down Portmaster',
-      message: 'Shutting down the Portmaster will stop all Portmaster components and will leave your system unprotected!',
-      caption: 'Caution',
+      header: '关闭 Portmaster',
+      message: '关闭 Portmaster 将停止所有 Portmaster 组件，您的系统将不再受到保护！',
+      caption: '警告',
       buttons: [
         {
           id: 'shutdown',
           class: 'danger',
-          text: 'Shut Down Portmaster'
+          text: '关闭 Portmaster'
         }
       ]
     })
       .onAction('shutdown', () => {
         this.portapi.shutdownPortmaster()
           .subscribe(this.uai.httpObserver(
-            'Shutting Down ...',
-            'Failed to Shut Down',
+            '正在关闭……',
+            '关闭失败',
           ))
       })
   }

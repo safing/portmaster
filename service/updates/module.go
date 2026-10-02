@@ -281,13 +281,13 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 					u.instance.Notifications().Notify(&notifications.Notification{
 						EventID: noNewUpdateNotificationID,
 						Type:    notifications.Info,
-						Title:   "Portmaster Is Up-To-Date",
-						Message: "Portmaster v" + index.Version + " is the newest version.",
+						Title:   "Portmaster 已是最新版本",
+						Message: "Portmaster v" + index.Version + " 是最新版本。",
 						Expires: time.Now().Add(1 * time.Minute).Unix(),
 						AvailableActions: []*notifications.Action{
 							{
 								ID:   "ack",
-								Text: "OK",
+								Text: "确定",
 							},
 						},
 					})
@@ -298,13 +298,13 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 					u.instance.Notifications().Notify(&notifications.Notification{
 						EventID: noNewUpdateNotificationID,
 						Type:    notifications.Info,
-						Title:   "Portmaster Is Up-To-Date*",
-						Message: "While Portmaster v" + index.Version + " is the newest version, there is an internal issue with checking for updates: " + err.Error(),
+						Title:   "Portmaster 已是最新版本*",
+						Message: "虽然 Portmaster v" + index.Version + " 是最新版本，但检查更新时出现了内部问题：" + err.Error(),
 						Expires: time.Now().Add(1 * time.Minute).Unix(),
 						AvailableActions: []*notifications.Action{
 							{
 								ID:   "ack",
-								Text: "OK",
+								Text: "确定",
 							},
 						},
 					})
@@ -321,16 +321,16 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 			u.instance.Notifications().Notify(&notifications.Notification{
 				EventID: updateAvailableNotificationID,
 				Type:    notifications.Info,
-				Title:   "New Update Available",
-				Message: "Portmaster v" + downloader.index.Version + " is available. Click Upgrade to download and upgrade now.",
+				Title:   "有可用的新更新",
+				Message: "Portmaster v" + downloader.index.Version + " 已可用。点击“立即升级”以下载并升级。",
 				AvailableActions: []*notifications.Action{
 					{
 						ID:   "ack",
-						Text: "OK",
+						Text: "确定",
 					},
 					{
 						ID:   "upgrade",
-						Text: "Upgrade Now",
+						Text: "立即升级",
 						Type: notifications.ActionTypeWebhook,
 						Payload: notifications.ActionTypeWebhookPayload{
 							Method: "POST",
@@ -367,16 +367,16 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 			u.instance.Notifications().Notify(&notifications.Notification{
 				EventID: updateAvailableNotificationID,
 				Type:    notifications.Info,
-				Title:   "New Update Ready",
-				Message: "Portmaster v" + downloader.index.Version + " is available. Click Upgrade to upgrade now.",
+				Title:   "新更新已就绪",
+				Message: "Portmaster v" + downloader.index.Version + " 已可用。点击“立即升级”以升级。",
 				AvailableActions: []*notifications.Action{
 					{
 						ID:   "ack",
-						Text: "OK",
+						Text: "确定",
 					},
 					{
 						ID:   "upgrade",
-						Text: "Upgrade Now",
+						Text: "立即升级",
 						Type: notifications.ActionTypeWebhook,
 						Payload: notifications.ActionTypeWebhookPayload{
 							Method: "POST",
@@ -422,16 +422,16 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 			u.instance.Notifications().Notify(&notifications.Notification{
 				EventID: restartRequiredNotificationID,
 				Type:    notifications.Info,
-				Title:   "Restart Required",
-				Message: "Portmaster v" + downloader.index.Version + " is installed. Restart to use new version.",
+				Title:   "需要重启",
+				Message: "Portmaster v" + downloader.index.Version + " 已安装。重启以使用新版本。",
 				AvailableActions: []*notifications.Action{
 					{
 						ID:   "ack",
-						Text: "Later",
+						Text: "稍后",
 					},
 					{
 						ID:   "restart",
-						Text: "Restart Now",
+						Text: "立即重启",
 						Type: notifications.ActionTypeWebhook,
 						Payload: notifications.ActionTypeWebhookPayload{
 							Method: "POST",
@@ -562,8 +562,8 @@ func (u *Updater) Start() error {
 	if u.corruptedInstallation != nil && u.cfg.Notify && u.instance.Notifications() != nil {
 		u.states.Add(mgr.State{
 			ID:      corruptInstallationNotificationID,
-			Name:    "Install Corruption",
-			Message: "Portmaster has detected that one or more of its own files have been corrupted. Please re-install the software. Error: " + u.corruptedInstallation.Error(),
+			Name:    "安装已损坏",
+			Message: "Portmaster 检测到其自身的一个或多个文件已损坏。请重新安装该软件。错误：" + u.corruptedInstallation.Error(),
 			Type:    mgr.StateTypeError,
 			Data:    u.corruptedInstallation,
 		})

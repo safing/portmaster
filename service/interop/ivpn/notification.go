@@ -14,14 +14,14 @@ func (i *InteropIvpn) showNotificationWarnOldVersion() *notifications.Notificati
 	notification := &notifications.Notification{
 		EventID:      "interop:ivpn-old-version",
 		Type:         notifications.Warning,
-		Title:        "IVPN Client Compatibility Notice",
-		Message:      `Portmaster has detected the IVPN Client, but the installed version may not be fully compatible when running alongside Portmaster. Some features may not work as expected. Please consider updating to the latest version of the IVPN Client.`,
+		Title:        "IVPN 客户端兼容性提示",
+		Message:      `Portmaster 检测到 IVPN 客户端，但已安装的版本在与 Portmaster 同时运行时可能无法完全兼容，部分功能可能无法按预期工作。请考虑将 IVPN 客户端更新到最新版本。`,
 		ShowOnSystem: true,
 		Expires:      time.Now().Add(5 * time.Minute).Unix(),
 		AvailableActions: []*notifications.Action{
 			{
 				ID:   "ack",
-				Text: "OK",
+				Text: "确定",
 			},
 		},
 	}
@@ -35,16 +35,16 @@ func (i *InteropIvpn) initAndShowNotification() *notifications.Notification {
 	notification := &notifications.Notification{
 		EventID: "interop:ivpn",
 		Type:    notifications.Info,
-		Title:   "IVPN Client detected",
-		Message: `Portmaster has detected the IVPN Client and will allow its VPN and service connections.`,
+		Title:   "检测到 IVPN 客户端",
+		Message: `Portmaster 检测到 IVPN 客户端，并将允许其 VPN 和服务连接。`,
 		AvailableActions: []*notifications.Action{
 			{
 				ID:   "ack",
-				Text: "OK",
+				Text: "确定",
 			},
 			{
 				ID:         actionSuppressID,
-				Text:       "Don't show again",
+				Text:       "不再显示",
 				Visibility: notifications.ActionVisibilityDetailed,
 			},
 		},

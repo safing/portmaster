@@ -1,5 +1,5 @@
 <div class="flex flex-col items-start">
-  <caption>Tip</caption>
+  <caption>提示</caption>
   <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 close-icon" viewBox="0 0 20 20" fill="currentColor"
     (click)="close()">
     <path fill-rule="evenodd"
@@ -17,6 +17,6 @@
     <div class="actions">
       <button *ngFor="let btn of buttons" (click)="runAction(btn)">{{ btn.name }}</button>
     </div>
-    <button *ngIf="!!nextKey" class="btn" (click)="next()">Next</button>
+    <button *ngIf="!!nextKey" class="btn" (click)="next()">下一步</button>
   </div>
 </div>

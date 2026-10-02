@@ -35,9 +35,9 @@ var (
 
 func registerUpdateConfig() error {
 	err := config.Register(&config.Option{
-		Name:            "Release Channel",
+		Name:            "发布渠道",
 		Key:             ReleaseChannelKey,
-		Description:     `Use "Stable" for the best experience. The "Beta" channel will have the newest features and fixes, but may also break and cause interruption. Use others only temporarily and when instructed.`,
+		Description:     `使用“稳定”渠道可获得最佳体验。“测试”渠道包含最新的功能和修复，但也可能出现故障并导致中断。其他渠道请仅在得到指示时临时使用。`,
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
@@ -45,30 +45,30 @@ func registerUpdateConfig() error {
 		DefaultValue:    ReleaseChannelStable,
 		PossibleValues: []config.PossibleValue{
 			{
-				Name:        "Stable",
-				Description: "Production releases.",
+				Name:        "稳定",
+				Description: "正式发布版本。",
 				Value:       ReleaseChannelStable,
 			},
 			{
-				Name:        "Beta",
-				Description: "Production releases for testing new features that may break and cause interruption.",
+				Name:        "测试",
+				Description: "用于测试新功能的正式发布版本，可能出现故障并导致中断。",
 				Value:       ReleaseChannelBeta,
 			},
 			{
-				Name:        "Support",
-				Description: "Support releases or version changes for troubleshooting. Only use temporarily and when instructed.",
+				Name:        "支持",
+				Description: "用于故障排除的支持版本或版本变更。请仅在得到指示时临时使用。",
 				Value:       ReleaseChannelSupport,
 			},
 			{
-				Name:        "Staging",
-				Description: "Dangerous development releases for testing random things and experimenting. Only use temporarily and when instructed.",
+				Name:        "预发布",
+				Description: "用于测试和实验的危险开发版本。请仅在得到指示时临时使用。",
 				Value:       ReleaseChannelStaging,
 			},
 		},
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: -4,
 			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
-			config.CategoryAnnotation:     "Updates",
+			config.CategoryAnnotation:     "更新",
 		},
 	})
 	if err != nil {
@@ -76,9 +76,9 @@ func registerUpdateConfig() error {
 	}
 
 	err = config.Register(&config.Option{
-		Name:            "Automatic Software Updates",
+		Name:            "自动软件更新",
 		Key:             enableSoftwareUpdatesKey,
-		Description:     "Automatically check for and download software updates. This does not include intelligence data updates.",
+		Description:     "自动检查并下载软件更新。这不包括情报数据更新。",
 		OptType:         config.OptTypeBool,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
@@ -86,7 +86,7 @@ func registerUpdateConfig() error {
 		DefaultValue:    true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: -12,
-			config.CategoryAnnotation:     "Updates",
+			config.CategoryAnnotation:     "更新",
 		},
 	})
 	if err != nil {
@@ -94,9 +94,9 @@ func registerUpdateConfig() error {
 	}
 
 	err = config.Register(&config.Option{
-		Name:            "Automatic Intelligence Data Updates",
+		Name:            "自动情报数据更新",
 		Key:             enableIntelUpdatesKey,
-		Description:     "Automatically check for and download intelligence data updates. This includes filter lists, geo-ip data, and more. Does not include software updates.",
+		Description:     "自动检查并下载情报数据更新，包括过滤列表、地理 IP 数据等。不包括软件更新。",
 		OptType:         config.OptTypeBool,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
@@ -104,7 +104,7 @@ func registerUpdateConfig() error {
 		DefaultValue:    true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: -11,
-			config.CategoryAnnotation:     "Updates",
+			config.CategoryAnnotation:     "更新",
 		},
 	})
 	if err != nil {

@@ -1,7 +1,7 @@
 <div class="flex flex-row justify-between items-center mb-4">
   <input
     type="text"
-    placeholder="Search"
+    placeholder="搜索"
     [ngModel]="searchTerm"
     (ngModelChange)="searchApps($event)"
     [autoFocus]="true"
@@ -11,16 +11,16 @@
 
 <div class="header-title">
   <h1>
-    All Apps
+    所有应用
     <sfng-tipup key="appsTitle"></sfng-tipup>
   </h1>
   <div class="flex-grow"></div>
 
   <app-menu #profileMenu>
-    <app-menu-item (click)="createProfile()">Create profile</app-menu-item>
-    <app-menu-item (click)="importProfile()">Import Profile</app-menu-item>
+    <app-menu-item (click)="createProfile()">创建配置文件</app-menu-item>
+    <app-menu-item (click)="importProfile()">导入配置文件</app-menu-item>
     <app-menu-item (click)="selectMode = true"
-      >Merge or Delete profiles</app-menu-item
+      >合并或删除配置文件</app-menu-item
     >
   </app-menu>
 
@@ -31,7 +31,7 @@
       useContent="true"
     >
       <div class="flex flex-row gap-2 items-center text-xs font-light">
-        Manage
+        管理
 
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -53,17 +53,17 @@
     <ng-container *ngIf="selectMode">
       <app-menu #selectionMenu>
         <app-menu-item (click)="openMergeDialog()"
-          >Merge Profiles</app-menu-item
+          >合并配置文件</app-menu-item
         >
         <app-menu-item (click)="deleteSelectedProfiles()"
-          >Delete Profiles</app-menu-item
+          >删除配置文件</app-menu-item
         >
-        <app-menu-item (click)="selectMode = false">Cancel</app-menu-item>
+        <app-menu-item (click)="selectMode = false">取消</app-menu-item>
       </app-menu>
 
       <app-menu-trigger [menu]="selectionMenu" useContent="true">
         <div class="flex flex-row gap-2 items-center text-xs font-light">
-          {{ selectedProfileCount}} selected
+          已选择 {{ selectedProfileCount}} 个
 
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -88,7 +88,7 @@
 <div class="scrollable" [@fadeInList]="total">
   <ng-container *ngIf="runningProfiles.length > 0">
     <div class="scrollable-header">
-      <h4>Active</h4>
+      <h4>活动</h4>
     </div>
     <ng-container
       *ngTemplateOutlet="profileList; context: {$implicit: runningProfiles}"
@@ -97,7 +97,7 @@
 
   <ng-container *ngIf="recentlyEdited.length > 0">
     <div class="scrollable-header">
-      <h4>Recently Edited</h4>
+      <h4>最近编辑</h4>
     </div>
     <ng-container
       *ngTemplateOutlet="profileList; context: {$implicit: recentlyEdited}"
@@ -106,7 +106,7 @@
 
   <ng-container *ngIf="profiles.length > 0">
     <div class="scrollable-header">
-      <h4>All</h4>
+      <h4>全部</h4>
     </div>
     <ng-container
       *ngTemplateOutlet="profileList; context: {$implicit: profiles}"
@@ -143,7 +143,7 @@
 
         <span
           *ngIf="profile.hasConfigChanges"
-          sfng-tooltip="Settings Edited"
+          sfng-tooltip="设置已修改"
           class="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue"
         ></span>
       </div>
@@ -190,5 +190,5 @@
   *ngIf="total === 0 && searchTerm !== ''"
   class="flex justify-center items-center p-2 bg-gray-200 text-secondary"
 >
-  No applications match your search term.
+  没有与搜索词匹配的应用。
 </div>

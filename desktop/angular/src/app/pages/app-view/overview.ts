@@ -158,18 +158,18 @@ export class AppOverviewComponent implements OnInit, OnDestroy {
   deleteSelectedProfiles() {
     this.dialog
       .confirm({
-        header: 'Confirm Profile Deletion',
-        message: `Are you sure you want to delete all ${this.selectedProfileCount} selected profiles?`,
-        caption: 'Attention',
+        header: '确认删除配置文件',
+        message: `确定要删除所选的全部 ${this.selectedProfileCount} 个配置文件吗？`,
+        caption: '注意',
         buttons: [
           {
             id: 'no',
-            text: 'Cancel',
+            text: '取消',
             class: 'outline',
           },
           {
             id: 'yes',
-            text: 'Delete',
+            text: '删除',
             class: 'danger',
           },
         ],
@@ -182,14 +182,14 @@ export class AppOverviewComponent implements OnInit, OnDestroy {
         ).subscribe({
           next: () => {
             this.actionIndicator.success(
-              'Selected Profiles Delete',
-              'All selected profiles have been deleted'
+              '所选配置文件已删除',
+              '所有选中的配置文件均已删除'
             );
           },
           error: (err) => {
             this.actionIndicator.error(
-              'Failed To Delete Profiles',
-              `An error occured while deleting some profiles: ${this.actionIndicator.getErrorMessgae(
+              '删除配置文件失败',
+              `删除部分配置文件时发生错误：${this.actionIndicator.getErrorMessgae(
                 err
               )}`
             );

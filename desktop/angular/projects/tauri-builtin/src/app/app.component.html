@@ -41,20 +41,20 @@
     }">
 
   <ng-template [ngSwitchCase]="null">
-    Connecting to System Service ...
+    正在连接系统服务……
   </ng-template>
 
   <ng-template [ngSwitchCase]="'Running'">
-    Connecting to System Service ...
+    正在连接系统服务……
   </ng-template>
 
   <ng-template [ngSwitchCase]="'Stopped'">
 
-    Portmaster System Service is not running:
+    Portmaster 系统服务未运行：
 
     <button (click)="startService()"
       class="px-2 py-1 rounded uppercase text-xs block self-end btn bg-white bg-opacity-25 text-white hover:bg-red-100 cursor-pointer">
-      Start Now
+      立即启动
     </button>
 
   </ng-template>
@@ -67,14 +67,13 @@
     </svg>
 
     <span>
-      Failed to find Portmaster System Service.
+      找不到 Portmaster 系统服务。
       <br />
-      Please reinstall the application.
+      请重新安装此应用。
     </span>
 
     <button (click)="getHelp()"
-      class="px-2 py-1 rounded uppercase text-xs block self-end btn bg-white bg-opacity-25 text-white hover:bg-red-100 cursor-pointer">Get
-      Help</button>
+      class="px-2 py-1 rounded uppercase text-xs block self-end btn bg-white bg-opacity-25 text-white hover:bg-red-100 cursor-pointer">获取帮助</button>
   </ng-template>
 
   <ng-template [ngSwitchCase]="'unsupported service manager'">
@@ -85,7 +84,7 @@
     </svg>
 
     <span>
-      Your System Service Manager is not supported. Please make sure Portmaster is running.
+      不支持您的系统服务管理器。请确保 Portmaster 正在运行。
     </span>
   </ng-template>
 
@@ -97,9 +96,9 @@
     </svg>
 
     <span>
-      Your System Service Manager is not supported. Please make sure Portmaster is running.
+      不支持您的系统服务管理器。请确保 Portmaster 正在运行。
     </span>
   </ng-template>
 
-  <span *ngSwitchDefault>Unknown error: {{ status }}</span>
+  <span *ngSwitchDefault>未知错误：{{ status }}</span>
 </div>

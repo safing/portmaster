@@ -132,8 +132,8 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 		// run for the profile IDs and we absolutely need to know if anything went wrong.
 		module.states.Add(mgr.State{
 			ID:      "migration-failed-icons",
-			Name:    "Profile Migration Failed",
-			Message: fmt.Sprintf("Failed to migrate icons of %d profiles (out of %d pending). The last error was: %s\n\nPlease restart Portmaster to try the migration again.", failed, total, lastErr),
+			Name:    "配置文件迁移失败",
+			Message: fmt.Sprintf("有 %d 个配置文件的图标迁移失败（共 %d 个待迁移）。最后一个错误为：%s\n\n请重启 Portmaster 以重试迁移。", failed, total, lastErr),
 			Type:    mgr.StateTypeError,
 		})
 		return fmt.Errorf("failed to migrate %d profiles (out of %d pending) - last error: %w", failed, total, lastErr)
@@ -221,8 +221,8 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 	if lastErr != nil {
 		module.states.Add(mgr.State{
 			ID:      "migration-failed-derived-IDs",
-			Name:    "Profile Migration Failed",
-			Message: fmt.Sprintf("Failed to migrate profile IDs of %d profiles (out of %d pending). The last error was: %s\n\nPlease restart Portmaster to try the migration again.", failed, total, lastErr),
+			Name:    "配置文件迁移失败",
+			Message: fmt.Sprintf("有 %d 个配置文件的 ID 迁移失败（共 %d 个待迁移）。最后一个错误为：%s\n\n请重启 Portmaster 以重试迁移。", failed, total, lastErr),
 			Type:    mgr.StateTypeError,
 		})
 		return fmt.Errorf("failed to migrate %d profiles (out of %d pending) - last error: %w", failed, total, lastErr)

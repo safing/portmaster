@@ -7,7 +7,7 @@
     </svg>
   </div>
   <input [cdkTrapFocus]="false" [cdkTrapFocusAutoCapture]="true" class="w-full !pl-7 rounded-tr-sm" type="text"
-    [(ngModel)]="textSearch" placeholder="Search for connections, press ENTER to apply"
+    [(ngModel)]="textSearch" placeholder="搜索连接，按 ENTER 应用"
     (keydown)="onSearchKeyDown($event)" (blur)="onFocusLost($event)" (ngModelChange)="onSearchModelChange($event)"
     #searchBar>
 </div>
@@ -26,7 +26,7 @@
       [sfngSuggestion]="{field: '_textsearch', values: []}" #suggestion="sfngNetquerySuggestion"
       class="flex flex-row justify-between w-full gap-2 px-2 py-1 rounded-sm cursor-pointer hover:bg-gray-400"
       [ngClass]="{'bg-gray-400': suggestion.active}">
-      <span class="text-secondary text-xxs">Full-Text Search: <span
+      <span class="text-secondary text-xxs">全文搜索：<span
           class="text-xs text-primary">{{ textSearch }}</span></span>
     </li>
   </ul>
@@ -37,7 +37,7 @@
     <ng-container *ngFor="let sug of suggestions; trackBy: trackSuggestion">
       <div class="flex flex-col items-start self-stretch justify-start gap-1">
         <h3 class="flex flex-row items-center w-full gap-2 text-xxs text-tertiary">
-          Filter by {{ labels[sug.field] || sug.field }}
+          按{{ labels[sug.field] || sug.field }}过滤
         </h3>
         <ul class="self-stretch">
           <li *ngFor="let val of sug.values" (click)="applySuggestion(sug.field, val.value, $event, sug.start)"
@@ -45,7 +45,7 @@
             class="flex flex-row justify-between w-full gap-2 px-2 py-1 rounded-sm cursor-pointer hover:bg-gray-400"
             [ngClass]="{'bg-gray-400': suggestion.active}">
             <span class="text-primary">{{ val.display || (val.value === '' ? 'N/A' : val.value) }}</span>
-            <span class="text-secondary">#{{ val.count }} connections</span>
+            <span class="text-secondary">#{{ val.count }} 个连接</span>
           </li>
         </ul>
       </div>
@@ -60,16 +60,15 @@
           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
         </path>
       </svg>
-      Loading suggestions ...
+      正在加载建议...
     </div>
 
     <ng-container *ngIf="!suggestions?.length && !loading">
       <span>
-        There are no suggestions for your query. Press
+        没有与您的查询匹配的建议。按
         <pre
           class="inline-block px-0.5 font-mono uppercase bg-gray-500 bg-opacity-25 rounded-sm border border-gray-500 text-xxs">Enter</pre>
-        to
-        perform a full text search.
+        执行全文搜索。
       </span>
     </ng-container>
   </div>

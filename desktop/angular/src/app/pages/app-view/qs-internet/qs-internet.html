@@ -2,7 +2,7 @@
   class="relative flex flex-wrap items-center justify-center w-full h-full gap-2 px-3 py-2 bg-gray-300 border border-gray-300 rounded shadow"
   snfgTooltipPosition="right" [sfng-tooltip]="interferingSettings.length > 0 ? tooltipTemplate : null">
   <span class="text-primary" [class.cursor-pointer]="interferingSettings.length > 0">
-    Block Connections
+    阻止连接
   </span>
 
   <sfng-toggle *ngIf="currentValue !== 'ask'; else: promptingTemplate" [ngModel]="currentValue === 'block'"
@@ -13,12 +13,12 @@
 
   <ng-template #promptingTemplate>
     <span class="mr-2 outline-none cursor-pointer text-secondary hover:underline" [routerLink]="[]"
-      [queryParams]="{setting: 'filter/defaultAction', tab: 'settings'}">Prompting</span>
+      [queryParams]="{setting: 'filter/defaultAction', tab: 'settings'}">询问中</span>
   </ng-template>
 </div>
 
 <ng-template #tooltipTemplate>
-  The following enabled settings may interfere:
+  以下已启用的设置可能会产生干扰：
   <ul class="pl-4 list-disc">
     <ng-container *ngFor="let setting of interferingSettings">
       <li class="cursor-pointer hover:underline" [routerLink]="[]"

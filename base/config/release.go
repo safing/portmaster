@@ -35,9 +35,9 @@ func init() {
 
 func registerReleaseLevelOption() {
 	releaseLevelOption = &Option{
-		Name:           "Feature Stability",
+		Name:           "功能稳定性",
 		Key:            releaseLevelKey,
-		Description:    `May break things. Decide if you want to experiment with unstable features. "Beta" has been tested roughly by the Safing team while "Experimental" is really raw. When "Beta" or "Experimental" are disabled, their settings use the default again.`,
+		Description:    `可能导致问题。决定是否要尝试不稳定的功能。“测试”功能已经过 Safing 团队的初步测试，而“实验”功能则非常不成熟。禁用“测试”或“实验”后，其设置将恢复为默认值。`,
 		OptType:        OptTypeString,
 		ExpertiseLevel: ExpertiseLevelDeveloper,
 		ReleaseLevel:   ReleaseLevelStable,
@@ -45,23 +45,23 @@ func registerReleaseLevelOption() {
 		Annotations: Annotations{
 			DisplayOrderAnnotation: -8,
 			DisplayHintAnnotation:  DisplayHintOneOf,
-			CategoryAnnotation:     "Updates",
+			CategoryAnnotation:     "更新",
 		},
 		PossibleValues: []PossibleValue{
 			{
-				Name:        "Stable",
+				Name:        "稳定",
 				Value:       ReleaseLevelNameStable,
-				Description: "Only show stable features.",
+				Description: "仅显示稳定功能。",
 			},
 			{
-				Name:        "Beta",
+				Name:        "测试",
 				Value:       ReleaseLevelNameBeta,
-				Description: "Show stable and beta features.",
+				Description: "显示稳定和测试功能。",
 			},
 			{
-				Name:        "Experimental",
+				Name:        "实验",
 				Value:       ReleaseLevelNameExperimental,
-				Description: "Show all features",
+				Description: "显示所有功能",
 			},
 		},
 	}

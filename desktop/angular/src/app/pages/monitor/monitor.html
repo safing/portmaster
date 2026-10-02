@@ -1,6 +1,6 @@
 <div class="header">
   <div class="breadcrumbs">
-    <span routerLink="/monitor">Network Activity</span>
+    <span routerLink="/monitor">网络活动</span>
   </div>
   <app-expertise></app-expertise>
 </div>
@@ -8,7 +8,7 @@
 
   <div class="flex flex-col items-start justify-center py-6">
     <h1 class="flex flex-row items-center gap-2 text-xl font-semibold text-primary">
-      Network Activity
+      网络活动
       <sfng-tipup key="networkMonitor-App-Focus-connection-history"></sfng-tipup>
     </h1>
 
@@ -16,27 +16,27 @@
       <ng-container *ngIf="(history | async) as data; else: noHistory">
         <ng-container *ngIf="!!data">
           <span>
-            Network history data available as of {{ data.first | date }}. ({{ data.count }} connections)
+            自 {{ data.first | date }} 起的网络历史数据可用。（{{ data.count }} 个连接）
           </span>
-          <a class="text-xs underline cursor-pointer text-primary" (click)="clearHistoryData()">Clear</a>
+          <a class="text-xs underline cursor-pointer text-primary" (click)="clearHistoryData()">清除</a>
         </ng-container>
       </ng-container>
       <ng-template #noHistory>
         <span>
-          No network history data available.
+          没有可用的网络历史数据。
           <ng-container *ngIf="(canUseHistory | async) && (historyEnabled | async) === false">
-            <a class="text-xs underline cursor-pointer text-primary" (click)="enableHistory()">Enable</a>
+            <a class="text-xs underline cursor-pointer text-primary" (click)="enableHistory()">启用</a>
           </ng-container>
           <ng-container *ngIf="(canUseHistory | async) === false">
-            <a class="text-xs underline cursor-pointer text-opacity-75" href="https://safing.io/pricing/?source=Portmaster">Available in Portmaster Plus</a>
+            <a class="text-xs underline cursor-pointer text-opacity-75" href="https://safing.io/pricing/?source=Portmaster">Portmaster Plus 中可用</a>
           </ng-container>
         </span>
       </ng-template>
     </span>
 
     <span class="text-secondary">
-      Use the search bar and drop downs to search and filter the last 10 minutes of network traffic.
-      Optionally, search all network history data if enabled.
+      使用搜索栏和下拉菜单来搜索和过滤最近 10 分钟的网络流量。
+      如果已启用，也可以搜索所有网络历史数据。
     </span>
   </div>
 

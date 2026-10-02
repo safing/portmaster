@@ -40,7 +40,7 @@ func (s *Status) deriveNotificationsFromStateUpdate(update mgr.StateUpdate) {
 			Message: state.Message,
 			AvailableActions: []*notifications.Action{
 				{
-					Text:    "Get Help",
+					Text:    "获取帮助",
 					Type:    notifications.ActionTypeOpenURL,
 					Payload: "https://safing.io/support/",
 				},

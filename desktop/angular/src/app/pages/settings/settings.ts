@@ -125,7 +125,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
             event.rejected(err);
           }
 
-          this.actionIndicator.error('Failed to save setting', err);
+          this.actionIndicator.error('保存设置失败', err);
           console.error(err);
         }
       })

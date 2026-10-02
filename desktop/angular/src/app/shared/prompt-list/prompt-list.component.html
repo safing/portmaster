@@ -6,19 +6,19 @@
       <span class="prompt-count info-circle">{{ profile.prompts.length }}</span>
       <app-menu-trigger [menu]="menu"></app-menu-trigger>
       <app-menu #menu>
-        <app-menu-group>Per Connection</app-menu-group>
-        <app-menu-item (click)="allowAll(profile)">Allow All</app-menu-item>
-        <app-menu-item (click)="denyAll(profile)">Block All</app-menu-item>
+        <app-menu-group>按连接</app-menu-group>
+        <app-menu-item (click)="allowAll(profile)">全部允许</app-menu-item>
+        <app-menu-item (click)="denyAll(profile)">全部阻止</app-menu-item>
 
-        <app-menu-group>Default Action</app-menu-group>
-        <app-menu-item (click)="changeDefault(profile, 'permit')">Allow App</app-menu-item>
-        <app-menu-item (click)="changeDefault(profile, 'block')">Block App</app-menu-item>
+        <app-menu-group>默认操作</app-menu-group>
+        <app-menu-item (click)="changeDefault(profile, 'permit')">允许应用</app-menu-item>
+        <app-menu-item (click)="changeDefault(profile, 'block')">阻止应用</app-menu-item>
 
         <app-menu-item class="item-seperator" [routerLink]="['/', 'app', profile.Source, profile.ID]"
-          [queryParams]="{setting: 'filter/defaultAction', tab: 'settings'}">Change Default</app-menu-item>
+          [queryParams]="{setting: 'filter/defaultAction', tab: 'settings'}">更改默认操作</app-menu-item>
 
         <app-menu-item class="item-seperator" [routerLink]="['/', 'app', profile.Source, profile.ID]">
-          App Settings
+          应用设置
         </app-menu-item>
       </app-menu>
     </div>
@@ -39,18 +39,17 @@
           </span>
 
           <span class="actions">
-            <button (click)="allow(prompt)">Allow</button>
-            <button (click)="block(prompt)">Block</button>
+            <button (click)="allow(prompt)">允许</button>
+            <button (click)="block(prompt)">阻止</button>
           </span>
         </div>
         <div class="more-available" *ngIf="!profile.showAll" (click)="profile.showAll = true">
-          {{ profile.prompts.length - profile.promptsLimited.length }}
-          more
+          还有 {{ profile.prompts.length - profile.promptsLimited.length }} 条
         </div>
 
         <div class="more-available" *ngIf="profile.showAll && profile.promptsLimited.length < profile.prompts.length"
           (click)="profile.showAll = false">
-          Show less
+          收起
         </div>
       </div>
     </div>
@@ -63,6 +62,6 @@
         d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 
-    No Prompts
+    暂无询问
   </div>
 </div>

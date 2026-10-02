@@ -85,36 +85,36 @@ var (
 
 func prepConfig() error {
 	err := config.Register(&config.Option{
-		Name:        "DNS Servers",
+		Name:        "DNS 服务器",
 		Key:         CfgOptionNameServersKey,
-		Description: "DNS servers to use for resolving DNS requests.",
-		Help: strings.ReplaceAll(`DNS servers are used in the order as entered. The first one will be used as the primary DNS Server. Only if it fails, will the other servers be used as a fallback - in their respective order. If all fail, or if no DNS Server is configured here, the Portmaster will use the one configured in your system or network.
+		Description: "用于解析 DNS 请求的 DNS 服务器。",
+		Help: strings.ReplaceAll(`DNS 服务器按输入的顺序使用。第一个将作为主 DNS 服务器。只有当它失败时，才会按各自的顺序使用其他服务器作为备用。如果全部失败，或此处未配置任何 DNS 服务器，Portmaster 将使用系统或网络中配置的 DNS 服务器。
 
-Additionally, if it is more likely that the DNS server of your system or network has a (better) answer to a request, they will be asked first. This will be the case for special local domains and domain spaces announced on the current network.
+此外，如果系统或网络的 DNS 服务器更有可能对某个请求给出（更好的）答复，则会优先询问它们。这适用于特殊的本地域名以及当前网络中公布的域名空间。
 
-DNS servers are configured in a URL format. This allows you to specify special settings for a resolver. If you just want to use a resolver at IP 10.2.3.4, please enter: "dns://10.2.3.4"  
-The format is: "protocol://host:port?parameter=value&parameter=value"  
+DNS 服务器以 URL 格式配置。这使您可以为解析器指定特殊设置。如果您只想使用 IP 为 10.2.3.4 的解析器，请输入："dns://10.2.3.4"  
+格式为："protocol://host:port?parameter=value&parameter=value"  
 
-For DoH servers, you can also just paste the URL given by the DNS provider.  
-When referring to the DNS server using a domain name, as with DoH, it is highly recommended to also specify the IP address using the "ip" parameter, so Portmaster does not have to resolve it.
+对于 DoH 服务器，您也可以直接粘贴 DNS 提供商给出的 URL。  
+当使用域名引用 DNS 服务器时（例如 DoH），强烈建议同时使用 "ip" 参数指定 IP 地址，这样 Portmaster 就无需再解析它。
 
-- Protocol
-	- "dot": DNS-over-TLS (or "tls"; recommended)  
-	- "doh": DNS-over-HTTPS (or "https")
-	- "dns": plain old DNS  
-	- "tcp": plain old DNS over TCP
-- Host: specify the domain or IP of the resolver
-- Port: optionally define a custom port
-- Parameters:
-	- "name": give your DNS Server a name that is used for messages and logs
-	- "verify": domain name to verify for "dot", only valid for "dot" and "doh"
-	- "ip": IP address (if using a domain), so Portmaster does not need to resolve it using the system resolver - this is highly recommended
-	- "blockedif": detect if the name server blocks a query, options:
-		- "empty": server replies with NXDomain status, but without any other record in any section
-		- "refused": server replies with Refused status
-		- "zeroip": server replies with an IP address, but it is zero
-	- "search": specify prioritized domains/TLDs for this resolver (delimited by ",")
-	- "search-only": use this resolver for domains in the "search" parameter only (no value)
+- 协议（protocol）
+	- "dot"：DNS-over-TLS（或 "tls"；推荐）  
+	- "doh"：DNS-over-HTTPS（或 "https"）
+	- "dns"：传统的明文 DNS  
+	- "tcp"：基于 TCP 的传统明文 DNS
+- 主机（host）：指定解析器的域名或 IP
+- 端口（port）：可选，定义自定义端口
+- 参数（parameter）：
+	- "name"：为您的 DNS 服务器命名，该名称用于消息和日志
+	- "verify"：用于 "dot" 验证的域名，仅对 "dot" 和 "doh" 有效
+	- "ip"：IP 地址（如果使用域名），这样 Portmaster 无需通过系统解析器解析它 —— 强烈推荐
+	- "blockedif"：检测域名服务器是否阻止了查询，选项：
+		- "empty"：服务器以 NXDomain 状态回复，但任何部分中都没有其他记录
+		- "refused"：服务器以 Refused 状态回复
+		- "zeroip"：服务器回复了 IP 地址，但该地址为零
+	- "search"：为此解析器指定优先的域名/顶级域（以 "," 分隔）
+	- "search-only"：仅将此解析器用于 "search" 参数中的域名（无需值）
 `, `"`, "`"),
 		Sensitive:       true,
 		OptType:         config.OptTypeStringArray,
@@ -126,10 +126,10 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 		Annotations: config.Annotations{
 			config.DisplayHintAnnotation:  config.DisplayHintOrdered,
 			config.DisplayOrderAnnotation: cfgOptionNameServersOrder,
-			config.CategoryAnnotation:     "Servers",
+			config.CategoryAnnotation:     "服务器",
 			config.QuickSettingsAnnotation: []config.QuickSetting{
 				{
-					Name:   "Set Cloudflare (with Malware Filter)",
+					Name:   "设为 Cloudflare（含恶意软件过滤）",
 					Action: config.QuickReplace,
 					Value: []string{
 						"dot://cloudflare-dns.com?ip=1.1.1.2&name=Cloudflare&blockedif=zeroip",
@@ -137,7 +137,7 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 					},
 				},
 				{
-					Name:   "Set Quad9",
+					Name:   "设为 Quad9",
 					Action: config.QuickReplace,
 					Value: []string{
 						"dot://dns.quad9.net?ip=9.9.9.9&name=Quad9&blockedif=empty",
@@ -145,7 +145,7 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 					},
 				},
 				{
-					Name:   "Set AdGuard",
+					Name:   "设为 AdGuard",
 					Action: config.QuickReplace,
 					Value: []string{
 						"dot://dns.adguard.com?ip=94.140.14.14&name=AdGuard&blockedif=zeroip",
@@ -153,14 +153,14 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 					},
 				},
 				{
-					Name:   "Set Foundation for Applied Privacy",
+					Name:   "设为 Foundation for Applied Privacy",
 					Action: config.QuickReplace,
 					Value: []string{
 						"dot://dot1.applied-privacy.net?ip=146.255.56.98&name=AppliedPrivacy",
 					},
 				},
 				{
-					Name:   "Add Cloudflare (as fallback)",
+					Name:   "添加 Cloudflare（作为备用）",
 					Action: config.QuickMergeBottom,
 					Value: []string{
 						"dot://cloudflare-dns.com?ip=1.1.1.1&name=Cloudflare&blockedif=zeroip",
@@ -178,17 +178,17 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 	configuredNameServers = config.Concurrent.GetAsStringArray(CfgOptionNameServersKey, defaultNameServers)
 
 	err = config.Register(&config.Option{
-		Name:           "Retry Failing DNS Servers",
+		Name:           "重试失败的 DNS 服务器",
 		Key:            CfgOptionNameserverRetryRateKey,
-		Description:    "Duration in seconds how often failing DNS server should be retried. This is done continuously in the background.",
+		Description:    "重试失败 DNS 服务器的间隔时间（秒）。此操作会在后台持续进行。",
 		OptType:        config.OptTypeInt,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   300,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionNameserverRetryRateOrder,
-			config.UnitAnnotation:         "seconds",
-			config.CategoryAnnotation:     "Servers",
+			config.UnitAnnotation:         "秒",
+			config.CategoryAnnotation:     "服务器",
 		},
 		ValidationRegex: `^[1-9][0-9]{1,5}$`,
 	})
@@ -198,9 +198,9 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 	nameserverRetryRate = config.Concurrent.GetAsInt(CfgOptionNameserverRetryRateKey, 300)
 
 	err = config.Register(&config.Option{
-		Name:           "Ignore System/Network Servers",
+		Name:           "忽略系统/网络 DNS 服务器",
 		Key:            CfgOptionNoAssignedNameserversKey,
-		Description:    "Ignore DNS servers configured in your system or network. This may break domains from your local network.",
+		Description:    "忽略系统或网络中配置的 DNS 服务器。这可能导致局域网中的域名无法解析。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
@@ -208,7 +208,7 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation:   cfgOptionNoAssignedNameserversOrder,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
-			config.CategoryAnnotation:       "Servers",
+			config.CategoryAnnotation:       "服务器",
 			"self:detail:specialUseDomains": specialUseDomains,
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
@@ -219,16 +219,16 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 	noAssignedNameservers = config.Concurrent.GetAsBool(CfgOptionNoAssignedNameserversKey, false)
 
 	useStaleCacheConfigOption = &config.Option{
-		Name:           "Always Use DNS Cache",
+		Name:           "始终使用 DNS 缓存",
 		Key:            CfgOptionUseStaleCacheKey,
-		Description:    "Always use the DNS cache, even if entries have expired. Expired entries are refreshed afterwards in the background. This can improve DNS resolving performance a lot, but may lead to occasional connection errors due to outdated DNS records.",
+		Description:    "始终使用 DNS 缓存，即使条目已过期。过期条目随后会在后台刷新。这可以大幅提升 DNS 解析性能，但可能因 DNS 记录过时而偶尔导致连接错误。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionUseStaleCacheOrder,
-			config.CategoryAnnotation:     "Resolving",
+			config.CategoryAnnotation:     "解析",
 		},
 	}
 	err = config.Register(useStaleCacheConfigOption)
@@ -238,9 +238,9 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 	useStaleCache = config.Concurrent.GetAsBool(CfgOptionUseStaleCacheKey, false)
 
 	err = config.Register(&config.Option{
-		Name:           "Ignore Multicast DNS",
+		Name:           "忽略多播 DNS",
 		Key:            CfgOptionNoMulticastDNSKey,
-		Description:    "Do not resolve using Multicast DNS. This may break certain Plug and Play devices and services.",
+		Description:    "不使用多播 DNS 进行解析。这可能导致某些即插即用设备和服务无法正常工作。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
@@ -248,7 +248,7 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation:  cfgOptionNoMulticastDNSOrder,
 			config.DisplayHintAnnotation:   status.DisplayHintSecurityLevel,
-			config.CategoryAnnotation:      "Resolving",
+			config.CategoryAnnotation:      "解析",
 			"self:detail:multicastDomains": multicastDomains,
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
@@ -259,9 +259,9 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 	noMulticastDNS = config.Concurrent.GetAsBool(CfgOptionNoMulticastDNSKey, false)
 
 	err = config.Register(&config.Option{
-		Name:           "Use Secure Protocols Only",
+		Name:           "仅使用安全协议",
 		Key:            CfgOptionNoInsecureProtocolsKey,
-		Description:    "Never resolve using insecure protocols, ie. plain DNS. This may break certain local DNS services, which always use plain DNS.",
+		Description:    "绝不使用不安全的协议（即明文 DNS）进行解析。这可能导致某些始终使用明文 DNS 的本地 DNS 服务无法正常工作。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelStable,
@@ -269,7 +269,7 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionNoInsecureProtocolsOrder,
 			config.DisplayHintAnnotation:  status.DisplayHintSecurityLevel,
-			config.CategoryAnnotation:     "Resolving",
+			config.CategoryAnnotation:     "解析",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -279,10 +279,10 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 	noInsecureProtocols = config.Concurrent.GetAsBool(CfgOptionNoInsecureProtocolsKey, false)
 
 	err = config.Register(&config.Option{
-		Name: "Block Unofficial TLDs",
+		Name: "阻止非官方顶级域",
 		Key:  CfgOptionDontResolveSpecialDomainsKey,
 		Description: fmt.Sprintf(
-			"Block %s. Unofficial domains may pose a security risk. This setting does not affect .onion domains in the Tor Browser.",
+			"阻止 %s。非官方域名可能带来安全风险。此设置不影响 Tor 浏览器中的 .onion 域名。",
 			formatScopeList(specialServiceDomains),
 		),
 		OptType:        config.OptTypeBool,
@@ -292,7 +292,7 @@ When referring to the DNS server using a domain name, as with DoH, it is highly 
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation:       cfgOptionDontResolveSpecialDomainsOrder,
 			config.DisplayHintAnnotation:        status.DisplayHintSecurityLevel,
-			config.CategoryAnnotation:           "Resolving",
+			config.CategoryAnnotation:           "解析",
 			"self:detail:specialServiceDomains": specialServiceDomains,
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},

@@ -12,7 +12,7 @@ export class ConnectionLocationPipe implements PipeTransform {
     }
     if (!!conn.country) {
       if (conn.country === "__") {
-        return "Anycast"
+        return "任播"
       }
       return conn.country;
     }
@@ -20,15 +20,15 @@ export class ConnectionLocationPipe implements PipeTransform {
     const scope = conn.scope;
 
     if (IsGlobalScope(scope)) {
-      return 'Internet'
+      return '互联网'
     }
 
     if (IsLANScope(scope)) {
-      return 'LAN';
+      return '局域网';
     }
 
     if (IsLocalhost(scope)) {
-      return 'Device'
+      return '本机'
     }
 
     return '';

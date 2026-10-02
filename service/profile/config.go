@@ -160,23 +160,23 @@ var (
 var (
 	// SPNRulesQuickSettings are now generated automatically shorty after start.
 	SPNRulesQuickSettings = []config.QuickSetting{
-		{Name: "Loading...", Action: config.QuickMergeTop, Value: []string{""}},
+		{Name: "加载中...", Action: config.QuickMergeTop, Value: []string{""}},
 	}
 
 	// SPNRulesVerdictNames defines the verdicts names to be used for SPN Rules.
 	SPNRulesVerdictNames = map[string]string{
-		"-": "Exclude", // Default.
-		"+": "Allow",
+		"-": "排除", // Default.
+		"+": "允许",
 	}
 
 	// SPNRulesHelp defines the help text for SPN related Hub selection rules.
-	SPNRulesHelp = strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match the following attributes of SPN Nodes:
+	SPNRulesHelp = strings.ReplaceAll(`规则按从上到下的顺序检查，在第一个匹配项处停止。规则可以匹配 SPN 节点的以下属性：
 
-- Country (based on IPs): "US" (two-letter country codes according to ISO 3166-1 alpha-2)
-- AS number: "AS123456"
-- Address: "192.168.0.1"
-- Network: "192.168.0.1/24"
-- Anything: "*"
+- 国家/地区（基于 IP）："US"（依据 ISO 3166-1 alpha-2 的两字母国家/地区代码）
+- AS 编号："AS123456"
+- 地址："192.168.0.1"
+- 网络："192.168.0.1/24"
+- 任意："*"
 `, `"`, "`")
 )
 
@@ -186,32 +186,32 @@ func registerConfiguration() error { //nolint:maintidx
 	// ask - ask mode: if not verdict is found, the user is consulted
 	// block - allowlist mode: everything is blocked unless explicitly allowed
 	err := config.Register(&config.Option{
-		Name:         "Default Network Action",
+		Name:         "默认网络操作",
 		Key:          CfgOptionDefaultActionKey,
-		Description:  `The default network action is applied when nothing else allows or blocks a connection. This affects both outgoing and incoming connections. This setting is the weakest of all and is commonly overruled by Force Block settings or Rules.`,
+		Description:  `当没有其他设置允许或阻止某个连接时，将应用默认网络操作。此设置同时影响出站和入站连接。它是所有设置中优先级最低的，通常会被“强制阻止”类设置或规则覆盖。`,
 		OptType:      config.OptTypeString,
 		DefaultValue: DefaultActionPermitValue,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    config.DisplayHintOneOf,
 			config.DisplayOrderAnnotation:   cfgOptionDefaultActionOrder,
-			config.CategoryAnnotation:       "General",
+			config.CategoryAnnotation:       "常规",
 		},
 		PossibleValues: []config.PossibleValue{
 			{
-				Name:        "Allow",
+				Name:        "允许",
 				Value:       DefaultActionPermitValue,
-				Description: "Allow all connections",
+				Description: "允许所有连接",
 			},
 			{
-				Name:        "Block",
+				Name:        "阻止",
 				Value:       DefaultActionBlockValue,
-				Description: "Block all connections",
+				Description: "阻止所有连接",
 			},
 			{
-				Name:        "Prompt",
+				Name:        "询问",
 				Value:       DefaultActionAskValue,
-				Description: "Prompt for decisions",
+				Description: "询问由您决定",
 			},
 		},
 	})
@@ -224,9 +224,9 @@ func registerConfiguration() error { //nolint:maintidx
 	// Disable Auto Permit
 	err = config.Register(&config.Option{
 		// TODO: Check how to best handle negation here.
-		Name:         "Disable Auto Allow",
+		Name:         "禁用自动允许",
 		Key:          CfgOptionDisableAutoPermitKey,
-		Description:  `Auto Allow searches for a relation between an app and the destination of a connection - if there is a correlation, the connection will be allowed.`,
+		Description:  `自动允许会查找应用与连接目标之间的关联——如果存在关联，该连接将被允许。`,
 		OptType:      config.OptTypeBool,
 		ReleaseLevel: config.ReleaseLevelBeta,
 		DefaultValue: true,
@@ -234,7 +234,7 @@ func registerConfiguration() error { //nolint:maintidx
 			config.SettablePerAppAnnotation: true,
 			config.DisplayOrderAnnotation:   cfgOptionDisableAutoPermitOrder,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
-			config.CategoryAnnotation:       "Advanced",
+			config.CategoryAnnotation:       "高级",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -246,11 +246,11 @@ func registerConfiguration() error { //nolint:maintidx
 
 	// Enable History
 	err = config.Register(&config.Option{
-		Name: "Enable Network History",
+		Name: "启用网络历史",
 		Key:  CfgOptionEnableHistoryKey,
-		Description: `Save connections in a database (on disk) in order to view and search them later. Changes might take a couple minutes to apply to all connections.
+		Description: `将连接保存到（磁盘上的）数据库中，以便日后查看和搜索。更改可能需要几分钟才能应用到所有连接。
 
-In order to reduce noise optimize performance, internal and device-only (localhost) connections are not saved to history.`,
+为了减少干扰并优化性能，内部连接和仅限本设备（localhost）的连接不会保存到历史记录中。`,
 		OptType:        config.OptTypeBool,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		ExpertiseLevel: config.ExpertiseLevelUser,
@@ -258,7 +258,7 @@ In order to reduce noise optimize performance, internal and device-only (localho
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation:    true,
 			config.DisplayOrderAnnotation:      cfgOptionEnableHistoryOrder,
-			config.CategoryAnnotation:          "General",
+			config.CategoryAnnotation:          "常规",
 			config.RequiresFeatureIDAnnotation: account.FeatureHistory,
 		},
 	})
@@ -269,22 +269,22 @@ In order to reduce noise optimize performance, internal and device-only (localho
 	cfgBoolOptions[CfgOptionEnableHistoryKey] = cfgOptionEnableHistory
 
 	err = config.Register(&config.Option{
-		Name: "Keep Network History",
+		Name: "保留网络历史",
 		Key:  CfgOptionKeepHistoryKey,
-		Description: `Specify how many days the network history data should be kept. Please keep in mind that more available history data makes reports (coming soon) a lot more useful.
+		Description: `指定网络历史数据保留的天数。请注意，可用的历史数据越多，报告（即将推出）就越有用。
 		
-Older data is deleted in intervals and cleared from the database continually. If in a hurry, shutdown or restart Portmaster to clear deleted entries immediately.
+较旧的数据会定期删除，并持续从数据库中清除。如需立即清除已删除的条目，请关闭或重启 Portmaster。
 
-Set to 0 days to keep network history forever. Depending on your device, this might affect performance.`,
+设置为 0 天表示永久保留网络历史。根据您的设备情况，这可能会影响性能。`,
 		OptType:        config.OptTypeInt,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   30,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation:    true,
-			config.UnitAnnotation:              "Days",
+			config.UnitAnnotation:              "天",
 			config.DisplayOrderAnnotation:      cfgOptionKeepHistoryOrder,
-			config.CategoryAnnotation:          "General",
+			config.CategoryAnnotation:          "常规",
 			config.RequiresFeatureIDAnnotation: account.FeatureHistory,
 		},
 	})
@@ -294,53 +294,53 @@ Set to 0 days to keep network history forever. Depending on your device, this mi
 	cfgOptionKeepHistory = config.Concurrent.GetAsInt(CfgOptionKeepHistoryKey, 30)
 	cfgIntOptions[CfgOptionKeepHistoryKey] = cfgOptionKeepHistory
 
-	rulesHelp := strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match:
+	rulesHelp := strings.ReplaceAll(`规则按从上到下的顺序检查，在第一个匹配项处停止。规则可以按以下方式匹配：
 
-- By address: "192.168.0.1"
-- By network: "192.168.0.0/24"
-- By network scope: "Localhost", "LAN" or "Internet"
-- By domain:
-	- Matching a distinct domain: "example.com"
-	- Matching a domain with subdomains: ".example.com"
-	- Matching with a wildcard prefix: "*xample.com"
-	- Matching with a wildcard suffix: "example.*"
-	- Matching domains containing text: "*example*"
-- By country (based on IP): "US" ([two-letter country codes according to ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))
-- By continent (based on IP): "C:US" (prefix "AF", "AN", "AS", "EU", "NA", "OC", or "SA" with "C:")
-- By AS number: "AS123456"
-- By filter list - use the filterlist ID prefixed with "L:": "L:MAL"
-- Match anything: "*"
+- 按地址："192.168.0.1"
+- 按网络："192.168.0.0/24"
+- 按网络范围："Localhost"、"LAN" 或 "Internet"
+- 按域名：
+	- 匹配特定域名："example.com"
+	- 匹配域名及其子域名：".example.com"
+	- 使用通配符前缀匹配："*xample.com"
+	- 使用通配符后缀匹配："example.*"
+	- 匹配包含指定文本的域名："*example*"
+- 按国家/地区（基于 IP）："US"（[依据 ISO 3166-1 alpha-2 的两字母国家/地区代码](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)）
+- 按大洲（基于 IP）："C:US"（在 "AF"、"AN"、"AS"、"EU"、"NA"、"OC" 或 "SA" 前加上前缀 "C:"）
+- 按 AS 编号："AS123456"
+- 按过滤列表——使用带 "L:" 前缀的过滤列表 ID："L:MAL"
+- 匹配任意内容："*"
 
-Additionally, you may supply a protocol and port using this format: "<host> <IP protocol>/<port>".
+此外，您还可以使用以下格式指定协议和端口："<主机> <IP 协议>/<端口>"。
 
-Protocols and ports may be specified using numbers ("6/80") or names ("TCP/HTTP").  
-Port ranges are defined by using a hyphen ("TCP/1-1024"). Omit the port to match any.  
-Use a "*" for matching any protocol. If matching ports with any protocol, protocols without ports will not match.  
-Rules with protocol and port definitions only match if the protocol and port also match.  
-Ports are always compared to the destination port, thus, the local listening port for incoming connections.  
+协议和端口可以使用数字（"6/80"）或名称（"TCP/HTTP"）指定。  
+端口范围使用连字符定义（"TCP/1-1024"）。省略端口则匹配任意端口。  
+使用 "*" 匹配任意协议。如果使用任意协议匹配端口，则没有端口的协议不会被匹配。  
+带有协议和端口定义的规则，只有在协议和端口也匹配时才会生效。  
+端口始终与目标端口进行比较，因此对于入站连接，比较的是本地监听端口。  
 
-Examples:
+示例：
 - "192.168.0.1 TCP/HTTP"
 - "LAN UDP/50000-55000"
 - "example.com */HTTPS"
 - "1.1.1.1 ICMP"
 
-Important: DNS Requests are only matched against domain and filter list rules, all others require an IP address and are checked only with the following IP connection.
+重要提示：DNS 请求仅与域名和过滤列表规则进行匹配，其他所有规则都需要 IP 地址，因此只会在随后的 IP 连接中进行检查。
 
-Pro Tip: You can use "#" to add a comment to a rule.
+专业提示：您可以使用 "#" 为规则添加注释。
 `, `"`, "`")
 
 	// rulesVerdictNames defines the verdicts names to be used for filter rules.
 	rulesVerdictNames := map[string]string{
-		"-": "Block", // Default.
-		"+": "Allow",
+		"-": "阻止", // Default.
+		"+": "允许",
 	}
 
 	// Endpoint Filter List
 	err = config.Register(&config.Option{
-		Name:         "Outgoing Rules",
+		Name:         "出站规则",
 		Key:          CfgOptionEndpointsKey,
-		Description:  "Rules that apply to outgoing network connections. Cannot overrule Network Scopes and Connection Types (see above).",
+		Description:  "适用于出站网络连接的规则。无法覆盖网络范围和连接类型设置（见上文）。",
 		Help:         rulesHelp,
 		Sensitive:    true,
 		OptType:      config.OptTypeStringArray,
@@ -350,7 +350,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 			config.StackableAnnotation:                   true,
 			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
 			config.DisplayOrderAnnotation:                cfgOptionEndpointsOrder,
-			config.CategoryAnnotation:                    "Rules",
+			config.CategoryAnnotation:                    "规则",
 			endpoints.EndpointListVerdictNamesAnnotation: rulesVerdictNames,
 		},
 		ValidationRegex: endpoints.ListEntryValidationRegex,
@@ -364,9 +364,9 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Service Endpoint Filter List
 	err = config.Register(&config.Option{
-		Name:           "Incoming Rules",
+		Name:           "入站规则",
 		Key:            CfgOptionServiceEndpointsKey,
-		Description:    "Rules that apply to incoming network connections. Cannot overrule Network Scopes and Connection Types (see above).",
+		Description:    "适用于入站网络连接的规则。无法覆盖网络范围和连接类型设置（见上文）。",
 		Help:           rulesHelp,
 		Sensitive:      true,
 		OptType:        config.OptTypeStringArray,
@@ -377,36 +377,36 @@ Pro Tip: You can use "#" to add a comment to a rule.
 			config.StackableAnnotation:                   true,
 			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
 			config.DisplayOrderAnnotation:                cfgOptionServiceEndpointsOrder,
-			config.CategoryAnnotation:                    "Rules",
+			config.CategoryAnnotation:                    "规则",
 			endpoints.EndpointListVerdictNamesAnnotation: rulesVerdictNames,
 			config.QuickSettingsAnnotation: []config.QuickSetting{
 				{
-					Name:   "Allow SSH",
+					Name:   "允许 SSH",
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ * tcp/22"},
 				},
 				{
-					Name:   "Allow HTTP/s",
+					Name:   "允许 HTTP/s",
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ * tcp/80", "+ * tcp/443"},
 				},
 				{
-					Name:   "Allow RDP",
+					Name:   "允许 RDP",
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ * */3389"},
 				},
 				{
-					Name:   "Allow all from LAN",
+					Name:   "允许来自局域网的所有连接",
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ LAN"},
 				},
 				{
-					Name:   "Allow all from Internet",
+					Name:   "允许来自互联网的所有连接",
 					Action: config.QuickMergeTop,
 					Value:  []string{"+ Internet"},
 				},
 				{
-					Name:   "Block everything else",
+					Name:   "阻止其他所有连接",
 					Action: config.QuickMergeBottom,
 					Value:  []string{"- *"},
 				},
@@ -424,16 +424,16 @@ Pro Tip: You can use "#" to add a comment to a rule.
 	// Filter list IDs
 	defaultFilterListsValue := []string{"TRAC", "MAL", "BAD", "UNBREAK"}
 	err = config.Register(&config.Option{
-		Name:         "Filter Lists",
+		Name:         "过滤列表",
 		Key:          CfgOptionFilterListsKey,
-		Description:  "Block connections that match enabled filter lists.",
+		Description:  "阻止与已启用的过滤列表匹配的连接。",
 		OptType:      config.OptTypeStringArray,
 		DefaultValue: defaultFilterListsValue,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    "filter list",
 			config.DisplayOrderAnnotation:   cfgOptionFilterListsOrder,
-			config.CategoryAnnotation:       "Filter Lists",
+			config.CategoryAnnotation:       "过滤列表",
 		},
 		ValidationRegex: `^[a-zA-Z0-9\-]+$`,
 	})
@@ -445,9 +445,9 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Include CNAMEs
 	err = config.Register(&config.Option{
-		Name:           "Block Domain Aliases",
+		Name:           "阻止域名别名",
 		Key:            CfgOptionFilterCNAMEKey,
-		Description:    "Block a domain if a resolved CNAME (alias) is blocked by a rule or filter list.",
+		Description:    "如果解析出的 CNAME（别名）被规则或过滤列表阻止，则同时阻止该域名。",
 		OptType:        config.OptTypeBool,
 		DefaultValue:   true,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
@@ -455,7 +455,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionFilterCNAMEOrder,
-			config.CategoryAnnotation:       "DNS Filtering",
+			config.CategoryAnnotation:       "DNS 过滤",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -467,16 +467,16 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Include subdomains
 	err = config.Register(&config.Option{
-		Name:         "Block Subdomains of Filter List Entries",
+		Name:         "阻止过滤列表条目的子域名",
 		Key:          CfgOptionFilterSubDomainsKey,
-		Description:  "Additionally block all subdomains of entries in selected filter lists.",
+		Description:  "额外阻止所选过滤列表中条目的所有子域名。",
 		OptType:      config.OptTypeBool,
 		DefaultValue: true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionFilterSubDomainsOrder,
-			config.CategoryAnnotation:       "Filter Lists",
+			config.CategoryAnnotation:       "过滤列表",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -488,9 +488,9 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Block Scope Local
 	err = config.Register(&config.Option{
-		Name:           "Force Block Device-Local Connections",
+		Name:           "强制阻止本设备内部连接",
 		Key:            CfgOptionBlockScopeLocalKey,
-		Description:    "Force Block all internal connections on your own device, ie. localhost. Is stronger than Rules (see below).",
+		Description:    "强制阻止您设备上的所有内部连接，即 localhost。优先级高于规则（见下文）。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		DefaultValue:   false,
@@ -498,7 +498,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockScopeLocalOrder,
-			config.CategoryAnnotation:       "Network Scope",
+			config.CategoryAnnotation:       "网络范围",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -510,16 +510,16 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Block Scope LAN
 	err = config.Register(&config.Option{
-		Name:         "Force Block LAN",
+		Name:         "强制阻止局域网",
 		Key:          CfgOptionBlockScopeLANKey,
-		Description:  "Force Block all connections from and to the Local Area Network. Is stronger than Rules (see below).",
+		Description:  "强制阻止所有来自和发往局域网的连接。优先级高于规则（见下文）。",
 		OptType:      config.OptTypeBool,
 		DefaultValue: false,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockScopeLANOrder,
-			config.CategoryAnnotation:       "Network Scope",
+			config.CategoryAnnotation:       "网络范围",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -531,16 +531,16 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Block Scope Internet
 	err = config.Register(&config.Option{
-		Name:         "Force Block Internet Access",
+		Name:         "强制阻止互联网访问",
 		Key:          CfgOptionBlockScopeInternetKey,
-		Description:  "Force Block connections from and to the Internet. Is stronger than Rules (see below).",
+		Description:  "强制阻止所有来自和发往互联网的连接。优先级高于规则（见下文）。",
 		OptType:      config.OptTypeBool,
 		DefaultValue: false,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockScopeInternetOrder,
-			config.CategoryAnnotation:       "Network Scope",
+			config.CategoryAnnotation:       "网络范围",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -552,16 +552,16 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Block Peer to Peer Connections
 	err = config.Register(&config.Option{
-		Name:         "Force Block P2P/Direct Connections",
+		Name:         "强制阻止 P2P/直接连接",
 		Key:          CfgOptionBlockP2PKey,
-		Description:  "These are connections that are established directly to an IP address or peer on the Internet without resolving a domain name via DNS first. Is stronger than Rules (see below).",
+		Description:  "指未先通过 DNS 解析域名、而直接与互联网上的 IP 地址或对等方建立的连接。优先级高于规则（见下文）。",
 		OptType:      config.OptTypeBool,
 		DefaultValue: false,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockP2POrder,
-			config.CategoryAnnotation:       "Connection Types",
+			config.CategoryAnnotation:       "连接类型",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -573,16 +573,16 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Block Inbound Connections
 	err = config.Register(&config.Option{
-		Name:         "Force Block Incoming Connections",
+		Name:         "强制阻止入站连接",
 		Key:          CfgOptionBlockInboundKey,
-		Description:  "Connections initiated towards your device from the LAN or Internet. This will usually only be the case if you are running a network service or are using peer to peer software. Is stronger than Rules (see below).",
+		Description:  "指从局域网或互联网发起、指向您设备的连接。通常只有在您运行网络服务或使用 P2P 软件时才会出现。优先级高于规则（见下文）。",
 		OptType:      config.OptTypeBool,
 		DefaultValue: true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionBlockInboundOrder,
-			config.CategoryAnnotation:       "Connection Types",
+			config.CategoryAnnotation:       "连接类型",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -594,9 +594,9 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Filter Out-of-Scope DNS Records
 	err = config.Register(&config.Option{
-		Name:           "Enforce Global/Private Split-View",
+		Name:           "强制公网/私网分离视图",
 		Key:            CfgOptionRemoveOutOfScopeDNSKey,
-		Description:    "Reject private IP addresses (RFC1918 et al.) from public DNS responses. If the system resolver is in use, the resulting connection will be blocked instead of the DNS request.",
+		Description:    "拒绝公共 DNS 响应中的私有 IP 地址（RFC1918 等）。如果正在使用系统解析器，则会阻止随后产生的连接，而不是 DNS 请求。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		DefaultValue:   true,
@@ -604,7 +604,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionRemoveOutOfScopeDNSOrder,
-			config.CategoryAnnotation:       "DNS Filtering",
+			config.CategoryAnnotation:       "DNS 过滤",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -616,9 +616,9 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Filter DNS Records that would be blocked
 	err = config.Register(&config.Option{
-		Name:           "Reject Blocked IPs",
+		Name:           "拒绝被阻止的 IP",
 		Key:            CfgOptionRemoveBlockedDNSKey,
-		Description:    "Reject blocked IP addresses directly from the DNS response instead of handing them over to the app and blocking a resulting connection. This settings does not affect privacy and only takes effect when the system resolver is not in use.",
+		Description:    "直接从 DNS 响应中剔除被阻止的 IP 地址，而不是先交给应用再阻止随后产生的连接。此设置不影响隐私，且仅在未使用系统解析器时生效。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
 		DefaultValue:   true,
@@ -626,7 +626,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionRemoveBlockedDNSOrder,
-			config.CategoryAnnotation:       "DNS Filtering",
+			config.CategoryAnnotation:       "DNS 过滤",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -638,9 +638,9 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Domain heuristics
 	err = config.Register(&config.Option{
-		Name:           "Enable Domain Heuristics",
+		Name:           "启用域名启发式检测",
 		Key:            CfgOptionDomainHeuristicsKey,
-		Description:    "Checks for suspicious domain names and blocks them. This option currently targets domain names generated by malware and DNS data exfiltration channels.",
+		Description:    "检查可疑域名并将其阻止。此选项目前针对由恶意软件生成的域名以及 DNS 数据外泄通道。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		DefaultValue:   true,
@@ -648,7 +648,7 @@ Pro Tip: You can use "#" to add a comment to a rule.
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionDomainHeuristicsOrder,
-			config.CategoryAnnotation:       "DNS Filtering",
+			config.CategoryAnnotation:       "DNS 过滤",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -660,17 +660,17 @@ Pro Tip: You can use "#" to add a comment to a rule.
 
 	// Bypass prevention
 	err = config.Register(&config.Option{
-		Name: "Block Secure DNS Bypassing",
+		Name: "阻止绕过安全 DNS",
 		Key:  CfgOptionPreventBypassingKey,
-		Description: `Prevent apps from bypassing Portmaster's Secure DNS resolver.
-If disabled, Portmaster might have reduced information to correctly enforce rules and filter lists.
-Important: Portmaster's firewall itself cannot be bypassed.
+		Description: `防止应用绕过 Portmaster 的安全 DNS 解析器。
+如果禁用，Portmaster 可能缺少足够的信息来正确执行规则和过滤列表。
+重要提示：Portmaster 的防火墙本身无法被绕过。
 
-Current Features:  
-- Disable Firefox' internal DNS-over-HTTPs resolver
-- Block direct access to public DNS resolvers
+当前功能：  
+- 禁用 Firefox 内置的 DNS-over-HTTPS 解析器
+- 阻止直接访问公共 DNS 解析器
 
-Please note that DNS bypass attempts might be additionally blocked in the System DNS Client App.`,
+请注意，DNS 绕过尝试还可能在“System DNS Client”应用中被额外阻止。`,
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelStable,
@@ -679,7 +679,7 @@ Please note that DNS bypass attempts might be additionally blocked in the System
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    status.DisplayHintSecurityLevel,
 			config.DisplayOrderAnnotation:   cfgOptionPreventBypassingOrder,
-			config.CategoryAnnotation:       "Advanced",
+			config.CategoryAnnotation:       "高级",
 		},
 		Migrations: []config.MigrationFunc{status.MigrateSecurityLevelToBoolean},
 	})
@@ -691,15 +691,15 @@ Please note that DNS bypass attempts might be additionally blocked in the System
 
 	// Use SPN
 	err = config.Register(&config.Option{
-		Name:         "Use SPN",
+		Name:         "使用 SPN",
 		Key:          CfgOptionUseSPNKey,
-		Description:  "Protect network traffic with the Safing Privacy Network. If the SPN is not available or the connection is interrupted, network traffic will be blocked.",
+		Description:  "使用 Safing 隐私网络（SPN）保护网络流量。如果 SPN 不可用或连接中断，网络流量将被阻止。",
 		OptType:      config.OptTypeBool,
 		DefaultValue: true,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayOrderAnnotation:   cfgOptionUseSPNOrder,
-			config.CategoryAnnotation:       "General",
+			config.CategoryAnnotation:       "常规",
 		},
 	})
 	if err != nil {
@@ -710,9 +710,9 @@ Please note that DNS bypass attempts might be additionally blocked in the System
 
 	// SPN Rules
 	err = config.Register(&config.Option{
-		Name:         "SPN Rules",
+		Name:         "SPN 规则",
 		Key:          CfgOptionSPNUsagePolicyKey,
-		Description:  `Customize rules which connections should or should not be routed through the SPN. Only active if "Use SPN" is enabled.`,
+		Description:  `自定义哪些连接应当或不应当通过 SPN 路由的规则。仅在启用“使用 SPN”时生效。`,
 		Help:         rulesHelp,
 		Sensitive:    true,
 		OptType:      config.OptTypeStringArray,
@@ -720,7 +720,7 @@ Please note that DNS bypass attempts might be additionally blocked in the System
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation:              true,
 			config.StackableAnnotation:                   true,
-			config.CategoryAnnotation:                    "General",
+			config.CategoryAnnotation:                    "常规",
 			config.DisplayOrderAnnotation:                cfgOptionSPNUsagePolicyOrder,
 			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
 			endpoints.EndpointListVerdictNamesAnnotation: SPNRulesVerdictNames,
@@ -736,9 +736,9 @@ Please note that DNS bypass attempts might be additionally blocked in the System
 
 	// Transit Node Rules
 	err = config.Register(&config.Option{
-		Name:           "Transit Node Rules",
+		Name:           "中转节点规则",
 		Key:            CfgOptionTransitHubPolicyKey,
-		Description:    `Customize which countries should or should not be used as Transit Nodes. Transit Nodes are used to transit the SPN from your Home to your Exit Node.`,
+		Description:    `自定义哪些国家/地区应当或不应当用作中转节点。中转节点用于在 SPN 中从您的主节点中转到出口节点。`,
 		Help:           SPNRulesHelp,
 		Sensitive:      true,
 		OptType:        config.OptTypeStringArray,
@@ -747,7 +747,7 @@ Please note that DNS bypass attempts might be additionally blocked in the System
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation:              true,
 			config.StackableAnnotation:                   true,
-			config.CategoryAnnotation:                    "Routing",
+			config.CategoryAnnotation:                    "路由",
 			config.DisplayOrderAnnotation:                cfgOptionTransitHubPolicyOrder,
 			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
 			config.QuickSettingsAnnotation:               SPNRulesQuickSettings,
@@ -764,11 +764,11 @@ Please note that DNS bypass attempts might be additionally blocked in the System
 
 	// Exit Node Rules
 	err = config.Register(&config.Option{
-		Name: "Exit Node Rules",
+		Name: "出口节点规则",
 		Key:  CfgOptionExitHubPolicyKey,
-		Description: `Customize which countries should or should not be used for your Exit Nodes. Exit Nodes are used to exit the SPN and establish a connection to your destination.
+		Description: `自定义哪些国家/地区应当或不应当用作出口节点。出口节点用于离开 SPN 并与您的目标建立连接。
 
-By default, the Portmaster tries to choose the node closest to the destination as the Exit Node. This reduces your exposure to the open Internet. Exit Nodes are chosen for every destination separately.`,
+默认情况下，Portmaster 会尝试选择离目标最近的节点作为出口节点，以减少您在开放互联网上的暴露。每个目标都会单独选择出口节点。`,
 		Help:         SPNRulesHelp,
 		Sensitive:    true,
 		OptType:      config.OptTypeStringArray,
@@ -776,7 +776,7 @@ By default, the Portmaster tries to choose the node closest to the destination a
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation:              true,
 			config.StackableAnnotation:                   true,
-			config.CategoryAnnotation:                    "Routing",
+			config.CategoryAnnotation:                    "路由",
 			config.DisplayOrderAnnotation:                cfgOptionExitHubPolicyOrder,
 			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
 			config.QuickSettingsAnnotation:               SPNRulesQuickSettings,
@@ -793,37 +793,37 @@ By default, the Portmaster tries to choose the node closest to the destination a
 
 	// Select SPN Routing Algorithm
 	err = config.Register(&config.Option{
-		Name:         "Select SPN Routing Algorithm",
+		Name:         "选择 SPN 路由算法",
 		Key:          CfgOptionRoutingAlgorithmKey,
-		Description:  "Select the routing algorithm for your connections through the SPN. Configure your preferred balance between speed and privacy. Portmaster may automatically upgrade the routing algorithm if necessary to protect your privacy.",
+		Description:  "为通过 SPN 的连接选择路由算法，在速度与隐私之间设置您偏好的平衡。必要时，Portmaster 可能会自动升级路由算法以保护您的隐私。",
 		OptType:      config.OptTypeString,
 		DefaultValue: DefaultRoutingProfileID,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayHintAnnotation:    config.DisplayHintOneOf,
 			config.DisplayOrderAnnotation:   cfgOptionRoutingAlgorithmOrder,
-			config.CategoryAnnotation:       "Routing",
+			config.CategoryAnnotation:       "路由",
 		},
 		PossibleValues: []config.PossibleValue{
 			{
-				Name:        "Plain VPN Mode",
+				Name:        "普通 VPN 模式",
 				Value:       "home",
-				Description: "Always connect to the destination directly from the Home Hub. Only provides very basic privacy, as the Home Hub both knows where you are coming from and where you are connecting to.",
+				Description: "始终从主节点直接连接到目标。仅提供非常基础的隐私保护，因为主节点既知道您来自哪里，也知道您要连接到哪里。",
 			},
 			{
-				Name:        "Speed Focused",
+				Name:        "速度优先",
 				Value:       "single-hop",
-				Description: "Optimize routes with a minimum of one hop. Provides good speeds. This will often use the Home Hub to connect to destinations near you, but will use more hops to far away destinations for better privacy over long distances.",
+				Description: "以至少一跳优化路由，提供良好的速度。对于离您较近的目标通常会使用主节点直接连接，而对于较远的目标会使用更多跳数，以在长距离上获得更好的隐私。",
 			},
 			{
-				Name:        "Balanced",
+				Name:        "均衡",
 				Value:       "double-hop",
-				Description: "Optimize routes with a minimum of two hops. Provides good privacy as well as good speeds. No single node knows where you are coming from *and* where you are connecting to.",
+				Description: "以至少两跳优化路由，兼顾良好的隐私和速度。没有任何单个节点能同时知道您来自哪里*以及*您要连接到哪里。",
 			},
 			{
-				Name:        "Privacy Focused",
+				Name:        "隐私优先",
 				Value:       "triple-hop",
-				Description: "Optimize routes with a minimum of three hops. Provides very good privacy. No single node knows where you are coming from *and* where you are connecting to - with an additional hop just to be sure.",
+				Description: "以至少三跳优化路由，提供非常好的隐私保护。没有任何单个节点能同时知道您来自哪里*以及*您要连接到哪里——并额外增加一跳以确保万无一失。",
 			},
 		},
 	})
@@ -839,19 +839,19 @@ By default, the Portmaster tries to choose the node closest to the destination a
 
 	// Split Tunnel: Use
 	err = config.Register(&config.Option{
-		Name: "Use Split Tunnel",
+		Name: "使用分离隧道",
 		Key:  CfgOptionSplitTunUseKey,
-		Description: `Route specific traffic through a different network interface, bypassing default system routing (useful for avoiding VPNs for certain apps).
+		Description: `将特定流量通过其他网络接口路由，绕过系统默认路由（适用于让某些应用不经过 VPN）。
 
-When you enable this and the Network Interface option is empty, Portmaster will try to route your traffic through the default physical network interface.
+启用此选项且“网络接口”选项为空时，Portmaster 会尝试通过默认的物理网络接口路由您的流量。
 
-Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN, configure SPN on a per-app basis or define exceptions that allow Split Tunnel to take effect.`,
+重要提示：SPN 优先于分离隧道。若要将分离隧道与 SPN 一起使用，请按应用配置 SPN，或定义允许分离隧道生效的例外规则。`,
 		OptType:      config.OptTypeBool,
 		DefaultValue: false,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayOrderAnnotation:   cfgOptionSplitTunUseOrder,
-			config.CategoryAnnotation:       "General",
+			config.CategoryAnnotation:       "常规",
 		},
 	})
 	if err != nil {
@@ -862,25 +862,25 @@ Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN,
 
 	// Split Tunnel: Network Interface
 	err = config.Register(&config.Option{
-		Name: "Network Interface",
+		Name: "网络接口",
 		Key:  CfgOptionSplitTunInterfaceKey,
-		Description: `Specify the network interface to route Split Tunnel traffic through. You can define it by:
-- Interface name: "Ethernet", "Wi-Fi", "wlan0", etc.
-- Interface IP address: "192.168.1.1", "10.0.0.1", etc.
-- Interface MAC address: "00:1A:2B:3C:4D:5E", "01:23:45:67:89:AB", etc.
+		Description: `指定用于路由分离隧道流量的网络接口。可以通过以下方式定义：
+- 接口名称："Ethernet"、"Wi-Fi"、"wlan0" 等
+- 接口 IP 地址："192.168.1.1"、"10.0.0.1" 等
+- 接口 MAC 地址："00:1A:2B:3C:4D:5E"、"01:23:45:67:89:AB" 等
 
-Leave empty to let Portmaster detect the physical network interface and ignore virtual VPN interfaces. This helps bypass VPN tunnels. For better reliability, you can specify the interface manually if empty value does not work as expected.
+留空则由 Portmaster 自动检测物理网络接口并忽略虚拟 VPN 接口，这有助于绕过 VPN 隧道。如果留空无法按预期工作，可以手动指定接口以提高可靠性。
 
-Important: The connection will be dropped if the network interface cannot be detected or becomes unavailable.
+重要提示：如果无法检测到网络接口或网络接口不可用，连接将被丢弃。
 
-Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN, configure SPN on a per-app basis or define exceptions that allow Split Tunnel to take effect.`,
+重要提示：SPN 优先于分离隧道。若要将分离隧道与 SPN 一起使用，请按应用配置 SPN，或定义允许分离隧道生效的例外规则。`,
 		Sensitive:    true,
 		OptType:      config.OptTypeString,
 		DefaultValue: "",
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation: true,
 			config.DisplayOrderAnnotation:   cfgOptionSplitTunInterfaceOrder,
-			config.CategoryAnnotation:       "General",
+			config.CategoryAnnotation:       "常规",
 		},
 		ValidationFunc: func(value interface{}) error {
 			if s, ok := value.(string); ok && s != "" && strings.TrimSpace(s) == "" {
@@ -897,16 +897,16 @@ Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN,
 
 	// Split Tunnel: Rules
 	splitTunRulesVerdictNames := map[string]string{
-		"-": "Exclude", // Default.
-		"+": "Allow",
+		"-": "排除", // Default.
+		"+": "允许",
 	}
 
 	err = config.Register(&config.Option{
-		Name: "Split Tunnel Rules",
+		Name: "分离隧道规则",
 		Key:  CfgOptionSplitTunUsagePolicyKey,
-		Description: `Customize rules which connections should or should not be routed through the Split Tunnel. Only active if "Use Split Tunnel" is enabled.
+		Description: `自定义哪些连接应当或不应当通过分离隧道路由的规则。仅在启用“使用分离隧道”时生效。
 		
-Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN, configure SPN on a per-app basis or define exceptions that allow Split Tunnel to take effect.`,
+重要提示：SPN 优先于分离隧道。若要将分离隧道与 SPN 一起使用，请按应用配置 SPN，或定义允许分离隧道生效的例外规则。`,
 		Help:         rulesHelp,
 		Sensitive:    true,
 		OptType:      config.OptTypeStringArray,
@@ -914,7 +914,7 @@ Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN,
 		Annotations: config.Annotations{
 			config.SettablePerAppAnnotation:              true,
 			config.StackableAnnotation:                   true,
-			config.CategoryAnnotation:                    "General",
+			config.CategoryAnnotation:                    "常规",
 			config.DisplayOrderAnnotation:                cfgOptionSplitTunUsagePolicyOrder,
 			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
 			endpoints.EndpointListVerdictNamesAnnotation: splitTunRulesVerdictNames,

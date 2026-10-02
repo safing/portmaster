@@ -27,19 +27,19 @@
       </ng-template>
     </ng-container>
     <li *ngIf="!!others" (click)="scrollTo('config:other')" [class.active]="activeSection === 'config:other'">
-      Other
+      其他
     </li>
   </ul>
 
   <ul class="bottom-0 mb-7">
     <li class="mt-3" *ngIf="!exportMode">
-      <button class="bg-grey text-white w-full" (click)="openImportDialog()">Import Settings</button>
+      <button class="bg-grey text-white w-full" (click)="openImportDialog()">导入设置</button>
     </li>
     <li *ngIf="exportMode" class="mt-3">
-      <button class="bg-grey text-white w-full" (click)="generateExport()">Save</button>
+      <button class="bg-grey text-white w-full" (click)="generateExport()">保存</button>
     </li>
     <li>
-      <button [ngClass]="{'bg-grey': !exportMode, 'bg-gray-400': exportMode}" class="text-white w-full" (click)="toggleExportMode()">{{ !exportMode ? 'Export Settings' : 'Cancel Export' }}</button>
+      <button [ngClass]="{'bg-grey': !exportMode, 'bg-gray-400': exportMode}" class="text-white w-full" (click)="toggleExportMode()">{{ !exportMode ? '导出设置' : '取消导出' }}</button>
     </li>
   </ul>
 
@@ -95,7 +95,7 @@
 
     <ng-container *ngIf="!!others">
       <h2 id="config:other" #navLink>
-        Other
+        其他
       </h2>
       <div class="category">
         <ng-container *ngFor="let setting of others; trackBy: configService.trackBy">

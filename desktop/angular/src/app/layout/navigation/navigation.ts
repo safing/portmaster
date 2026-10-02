@@ -42,11 +42,11 @@ export class NavigationComponent implements OnInit {
   get isPausedSPN(): boolean { return this.pauseState?.SPN===true; }
   get pauseInfo(): string {
     if (this.pauseState?.Interception===true && this.pauseState?.SPN===true) 
-      return 'Portmaster and SPN are paused';
+      return 'Portmaster 和 SPN 已暂停';
     else if (this.pauseState?.Interception===true)
-      return 'Portmaster is paused';
+      return 'Portmaster 已暂停';
     else if (this.pauseState?.SPN===true)
-      return 'SPN is paused';
+      return 'SPN 已暂停';
     return '';
   }
   get pauseInfoTillTime(): string {
@@ -54,7 +54,7 @@ export class NavigationComponent implements OnInit {
       const date = new Date(this.pauseState.TillTime);
       if (isNaN(date.getTime()) || date.getTime() < Date.now())
         return '';    
-      return `Auto-resume at ${date.toLocaleTimeString(undefined, { hour12: false })}`;
+      return `将于 ${date.toLocaleTimeString(undefined, { hour12: false })} 自动恢复`;
     }
     return '';
   }
@@ -202,8 +202,8 @@ export class NavigationComponent implements OnInit {
         })
       )
       .subscribe(this.actionIndicator.httpObserver(
-        'Reloading UI ...',
-        'Failed to Reload UI',
+        '正在重新加载界面……',
+        '重新加载界面失败',
       ))
   }
 
@@ -211,8 +211,8 @@ export class NavigationComponent implements OnInit {
   reinitSPN(_: Event) {
     this.portapi.reinitSPN()
       .subscribe(this.actionIndicator.httpObserver(
-        'Re-initialized SPN',
-        'Failed to re-initialize the SPN'
+        '已重新初始化 SPN',
+        '重新初始化 SPN 失败'
       ))
   }
 
@@ -220,8 +220,8 @@ export class NavigationComponent implements OnInit {
   logoutCompletely(_: Event) {
     this.spnService.logout(true)
       .subscribe(this.actionIndicator.httpObserver(
-        'Logout',
-        'You have been logged out of the SPN completely.'
+        '退出登录',
+        '您已完全退出 SPN 登录。'
       ))
   }
 
@@ -232,16 +232,16 @@ export class NavigationComponent implements OnInit {
   clearDNSCache(_: Event) {
     this.portapi.clearDNSCache()
       .subscribe(this.actionIndicator.httpObserver(
-        'DNS Cache Cleared',
-        'Failed to Clear DNS Cache.',
+        'DNS 缓存已清除',
+        '清除 DNS 缓存失败。',
       ))
   }
 
   cleanupHistory(_: Event) {
     this.portapi.cleanupHistory()
       .subscribe(this.actionIndicator.httpObserver(
-        'Network History Cleaned Up',
-        'Failed to Cleanup Network History.'
+        '网络历史记录已清理',
+        '清理网络历史记录失败。'
       ))
   }
 
@@ -254,8 +254,8 @@ export class NavigationComponent implements OnInit {
   downloadUpdates(event: Event) {
     this.portapi.checkForUpdates()
       .subscribe(this.actionIndicator.httpObserver(
-        'Downloading Updates ...',
-        'Failed to Check for Updates',
+        '正在下载更新……',
+        '检查更新失败',
       ))
   }
 
@@ -282,8 +282,8 @@ export class NavigationComponent implements OnInit {
 
     this.portapi.restartPortmaster()
       .subscribe(this.actionIndicator.httpObserver(
-        'Restarting ...',
-        'Failed to Restart',
+        '正在重启……',
+        '重启失败',
       ))
   }
 
@@ -295,8 +295,8 @@ export class NavigationComponent implements OnInit {
 
     this.portapi.pause(duration, false)
       .subscribe(this.actionIndicator.httpObserver(
-        'Pausing ...',
-        'Failed to Pause',
+        '正在暂停……',
+        '暂停失败',
       ))
   }
   pauseSPN(event: Event, duration: number) {
@@ -307,8 +307,8 @@ export class NavigationComponent implements OnInit {
 
     this.portapi.pause(duration, true)
       .subscribe(this.actionIndicator.httpObserver(
-        'Pausing SPN...',
-        'Failed to Pause SPN',
+        '正在暂停 SPN……',
+        '暂停 SPN 失败',
       ))
   }
   resume(event: Event) {
@@ -317,18 +317,18 @@ export class NavigationComponent implements OnInit {
     event.preventDefault();
     event.stopPropagation();
 
-    let msg = 'Resuming ...';
+    let msg = '正在恢复……';
     if (this.pauseState?.Interception===true && this.pauseState?.SPN===true) 
-      msg = 'Resuming Portmaster and SPN ...';
+      msg = '正在恢复 Portmaster 和 SPN……';
     else if (this.pauseState?.Interception===true)
-      msg = 'Resuming Portmaster ...';
+      msg = '正在恢复 Portmaster……';
     else if (this.pauseState?.SPN===true)
-      msg = 'Resuming SPN ...';
+      msg = '正在恢复 SPN……';
 
     this.portapi.resume()
       .subscribe(this.actionIndicator.httpObserver(
         msg,
-        'Failed to Resume',
+        '恢复失败',
       ))
   }
     
@@ -354,8 +354,8 @@ export class NavigationComponent implements OnInit {
   resetBroadcastState() {
     this.portapi.resetBroadcastState()
       .subscribe(this.actionIndicator.httpObserver(
-        'Notifications State Cleared',
-        'Failed to Reset Notifications State.',
+        '通知状态已清除',
+        '重置通知状态失败。',
       ))
   }
 
@@ -372,7 +372,7 @@ export class NavigationComponent implements OnInit {
         },
         err => {
           console.error(err);
-          this.actionIndicator.error('Failed loading debug data', err);
+          this.actionIndicator.error('加载调试数据失败', err);
         }
       )
   }

@@ -392,18 +392,18 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 	n := notifications.Notification{
 		Type:         notifications.Prompt,
 		EventID:      "core:authorize-app-" + time.Now().String(),
-		Title:        "An app requests access to the Portmaster",
-		Message:      "Allow " + appName + " (" + proc.Profile().LocalProfile().Name + ") to query and modify the Portmaster?\n\nBinary: " + proc.Path,
+		Title:        "有应用请求访问 Portmaster",
+		Message:      "是否允许 " + appName + "（" + proc.Profile().LocalProfile().Name + "）查询和修改 Portmaster？\n\n二进制文件：" + proc.Path,
 		ShowOnSystem: true,
 		Expires:      time.Now().Add(time.Minute).Unix(),
 		AvailableActions: []*notifications.Action{
 			{
 				ID:   "allow",
-				Text: "Authorize",
+				Text: "授权",
 			},
 			{
 				ID:   "deny",
-				Text: "Deny",
+				Text: "拒绝",
 			},
 		},
 	}

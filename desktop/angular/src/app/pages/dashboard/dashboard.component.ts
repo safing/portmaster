@@ -88,9 +88,9 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
     seriesKey: 'series',
     seriesLabel: d => {
       if (d === 'sent') {
-        return 'Bytes Sent'
+        return '已发送字节'
       }
-      return 'Bytes Received'
+      return '已接收字节'
     },
     value: 'value',
     ticks: 3,
@@ -108,7 +108,7 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
     },
     formatValue: (stack, series, value, data) => {
       const bytes = new BytesPipe().transform
-      return `${stack}\nSent: ${bytes(data?.sent)}\nReceived: ${bytes(data?.received)}`
+      return `${stack}\n已发送：${bytes(data?.sent)}\n已接收：${bytes(data?.received)}`
     },
     formatStack: (sel, data) => {
       const bytes = new BytesPipe().transform
@@ -476,8 +476,8 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
   logoutCompletely(_: Event) {
     this.spn.logout(true)
       .subscribe(this.actionIndicator.httpObserver(
-        'Logout',
-        'You have been logged out of the SPN completely.'
+        '退出登录',
+        '你已完全退出 SPN 登录。'
       ))
   }
 }

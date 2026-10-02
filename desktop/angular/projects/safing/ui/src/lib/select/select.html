@@ -21,7 +21,7 @@
 
     <ng-template #multiTemplate>
       <span>
-        {{ itemName ? itemName + ': ' : '' }}{{currentItems.length}} selected
+        {{ itemName ? itemName + ': ' : '' }}已选择 {{currentItems.length}} 项
       </span>
     </ng-template>
 
@@ -62,7 +62,7 @@
       (click)="selectItem({selected: false, value: searchText})" class="pl-1 pr-5">
       <sfng-select-item>
         <span>
-          <span class="mx-2 text-tertiary">Add </span> {{ searchText }}
+          <span class="mx-2 text-tertiary">添加 </span> {{ searchText }}
         </span>
       </sfng-select-item>
     </li>

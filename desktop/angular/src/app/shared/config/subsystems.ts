@@ -13,8 +13,8 @@ export const subsystems : SubsystemWithExpertise[] = [
     isDisabled: false,
     hasUserDefinedValues: false,
     ID: "core",
-    Name: "Core",
-    Description: "Base Structure and System Integration",
+    Name: "核心",
+    Description: "基础结构与系统集成",
     Modules: [
       {
         Name: "core",
@@ -66,8 +66,8 @@ export const subsystems : SubsystemWithExpertise[] = [
     isDisabled: false,
     hasUserDefinedValues: false,
     ID: "dns",
-    Name: "Secure DNS",
-    Description: "DNS resolver with scoping and DNS-over-TLS",
+    Name: "安全 DNS",
+    Description: "支持范围划分和 DNS-over-TLS 的 DNS 解析器",
     Modules: [
       {
         Name: "nameserver",
@@ -95,8 +95,8 @@ export const subsystems : SubsystemWithExpertise[] = [
     isDisabled: false,
     hasUserDefinedValues: false,
     ID: "filter",
-    Name: "Privacy Filter",
-    Description: "DNS and Network Filter",
+    Name: "隐私过滤器",
+    Description: "DNS 与网络过滤器",
     Modules: [
       {
         Name: "filter",
@@ -188,8 +188,8 @@ export const subsystems : SubsystemWithExpertise[] = [
     isDisabled: false,
     hasUserDefinedValues: false,
     ID: "history",
-    Name: "Network History",
-    Description: "Keep Network History Data",
+    Name: "网络历史",
+    Description: "保留网络历史数据",
     Modules: [
       {
         Name: "netquery",
@@ -214,7 +214,7 @@ export const subsystems : SubsystemWithExpertise[] = [
     hasUserDefinedValues: false,
     ID: "spn",
     Name: "SPN",
-    Description: "Safing Privacy Network",
+    Description: "Safing 隐私网络",
     Modules: [
       {
         Name: "captain",
@@ -274,8 +274,8 @@ export const subsystems : SubsystemWithExpertise[] = [
   isDisabled: false,
   hasUserDefinedValues: false,
   ID: "splittun",
-  Name: "Split Tunnel",
-  Description: "Route traffic through specified interface to bypass default routing",
+  Name: "分离隧道",
+  Description: "通过指定接口路由流量，以绕过默认路由",
   Modules: [
     {
       Name: "splittun",

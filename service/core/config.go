@@ -32,41 +32,41 @@ func init() {
 
 func registerConfig() error {
 	if err := config.Register(&config.Option{
-		Name:           "Network Service",
+		Name:           "网络服务",
 		Key:            CfgNetworkServiceKey,
-		Description:    "Use the Portmaster as a network service, where applicable. You will have to take care of lots of network setup yourself in order to run this properly and securely.",
+		Description:    "在适用的情况下，将 Portmaster 用作网络服务。您需要自行处理大量网络设置，才能正确且安全地运行此功能。",
 		OptType:        config.OptTypeBool,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		ReleaseLevel:   config.ReleaseLevelExperimental,
 		DefaultValue:   defaultNetworkServiceMode,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 513,
-			config.CategoryAnnotation:     "Network Service",
+			config.CategoryAnnotation:     "网络服务",
 		},
 	}); err != nil {
 		return err
 	}
 
 	if err := config.Register(&config.Option{
-		Name:           "Time and Date Format",
+		Name:           "时间和日期格式",
 		Key:            CfgLocaleKey,
-		Description:    "Configures the time and date format for the user interface. Selection is an example and correct formatting in the UI is a continual work in progress.",
+		Description:    "配置用户界面的时间和日期格式。选项仅为示例，界面中的正确格式化仍在持续完善中。",
 		OptType:        config.OptTypeString,
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		ReleaseLevel:   config.ReleaseLevelStable,
 		DefaultValue:   getDefaultLocale(),
 		PossibleValues: []config.PossibleValue{
 			{
-				Name:  "24h DD-MM-YYYY",
+				Name:  "24 小时制 DD-MM-YYYY",
 				Value: enGBLocale,
 			},
 			{
-				Name:  "12h MM/DD/YYYY",
+				Name:  "12 小时制 MM/DD/YYYY",
 				Value: enUSLocale,
 			},
 		},
 		Annotations: config.Annotations{
-			config.CategoryAnnotation:         "User Interface",
+			config.CategoryAnnotation:         "用户界面",
 			config.DisplayHintAnnotation:      config.DisplayHintOneOf,
 			config.RequiresUIReloadAnnotation: true,
 		},

@@ -178,7 +178,7 @@ func createPrompt(ctx context.Context, conn *network.Connection) (n *notificatio
 	n = &notifications.Notification{
 		EventID:      nID,
 		Type:         notifications.Prompt,
-		Title:        "Connection Prompt",
+		Title:        "连接询问",
 		Category:     "Privacy Filter",
 		ShowOnSystem: askWithSystemNotifications(),
 		EventData: &promptData{
@@ -209,39 +209,39 @@ func createPrompt(ctx context.Context, conn *network.Connection) (n *notificatio
 	// add message and actions
 	switch {
 	case conn.Inbound:
-		n.Message = fmt.Sprintf("%s wants to accept connections from %s (%d/%d)", profileName, conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
+		n.Message = fmt.Sprintf("%s 想要接受来自 %s 的连接（%d/%d）", profileName, conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
 		n.AvailableActions = []*notifications.Action{
 			{
 				ID:   allowServingIP,
-				Text: "Allow",
+				Text: "允许",
 			},
 			{
 				ID:   blockServingIP,
-				Text: "Block",
+				Text: "阻止",
 			},
 		}
 	case conn.Entity.Domain == "": // direct connection
-		n.Message = fmt.Sprintf("%s wants to connect to %s (%d/%d)", profileName, conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
+		n.Message = fmt.Sprintf("%s 想要连接到 %s（%d/%d）", profileName, conn.Entity.IP.String(), conn.Entity.Protocol, conn.Entity.Port)
 		n.AvailableActions = []*notifications.Action{
 			{
 				ID:   allowIP,
-				Text: "Allow",
+				Text: "允许",
 			},
 			{
 				ID:   blockIP,
-				Text: "Block",
+				Text: "阻止",
 			},
 		}
 	default: // connection to domain
-		n.Message = fmt.Sprintf("%s wants to connect to %s", profileName, conn.Entity.Domain)
+		n.Message = fmt.Sprintf("%s 想要连接到 %s", profileName, conn.Entity.Domain)
 		n.AvailableActions = []*notifications.Action{
 			{
 				ID:   allowDomainAll,
-				Text: "Allow",
+				Text: "允许",
 			},
 			{
 				ID:   blockDomainAll,
-				Text: "Block",
+				Text: "阻止",
 			},
 		}
 	}

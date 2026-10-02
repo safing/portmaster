@@ -1,10 +1,10 @@
 <div class="relative flex flex-wrap items-center justify-center w-full h-full gap-2 px-3 py-2 bg-gray-300 border border-gray-300 rounded shadow">
   <span class="text-primary">
-    Keep History
+    保留历史记录
   </span>
 
   <span *ngIf="!canUse" routerLink="/dashboard" class="cursor-pointer text-tertiary hover:underline">
-    Get Plus
+    获取 Plus
   </span>
 
   <sfng-toggle *ngIf="canUse" [ngModel]="currentValue" (ngModelChange)="updateHistoryEnabled($event)"

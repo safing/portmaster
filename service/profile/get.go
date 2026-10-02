@@ -320,26 +320,26 @@ func notifyConflictingProfiles(a, b record.Record, md MatchingData) {
 	// Notify user about conflict.
 	notifications.NotifyWarn(
 		fmt.Sprintf("profiles:match-conflict:%s:%s", idA, idB),
-		"App Settings Match Conflict",
+		"应用设置匹配冲突",
 		fmt.Sprintf(
-			"Multiple app settings match the app at %q with the same priority, please change one of them: %q or %q",
+			"有多个应用设置以相同优先级匹配了位于 %q 的应用，请修改其中之一：%q 或 %q",
 			md.Path(),
 			nameA,
 			nameB,
 		),
 		notifications.Action{
-			Text:    "Change (1)",
+			Text:    "修改 (1)",
 			Type:    notifications.ActionTypeOpenProfile,
 			Payload: idA,
 		},
 		notifications.Action{
-			Text:    "Change (2)",
+			Text:    "修改 (2)",
 			Type:    notifications.ActionTypeOpenProfile,
 			Payload: idB,
 		},
 		notifications.Action{
 			ID:   "ack",
-			Text: "OK",
+			Text: "确定",
 		},
 	)
 }

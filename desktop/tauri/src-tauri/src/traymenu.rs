@@ -141,6 +141,31 @@ fn get_icon(icon: IconColor) -> &'static [u8] {
     }
 }
 
+/// Returns the localized display text for the global status passed to
+/// `build_tray_menu` (the raw value is kept as-is for internal use).
+fn status_display_text(status: &str) -> &str {
+    match status {
+        "Secured" => "安全",
+        "Insecure" => "不安全",
+        "unknown" => "未知",
+        other => other,
+    }
+}
+
+/// Returns the localized display text for an SPN status value. The raw
+/// value is still used for matching (e.g. "disabled").
+fn spn_status_display_text(status: &str) -> &str {
+    match status {
+        "disabled" => "已禁用",
+        "connected" => "已连接",
+        "connecting" => "连接中",
+        "failed" => "失败",
+        "unknown" => "未知",
+        "" => "未知",
+        other => other,
+    }
+}
+
 fn build_tray_menu(
     app: &tauri::AppHandle,
     status: &str,
@@ -149,15 +174,15 @@ fn build_tray_menu(
 ) -> core::result::Result<ContextMenu, Box<dyn std::error::Error>> {
     load_theme(app);
 
-    let open_btn = MenuItemBuilder::with_id(OPEN_KEY, "Open App").build(app)?;
-    let exit_ui_btn = MenuItemBuilder::with_id(EXIT_UI_KEY, "Exit UI").build(app)?;
-    let shutdown_btn = MenuItemBuilder::with_id(SHUTDOWN_KEY, "Shut Down Portmaster").build(app)?;
+    let open_btn = MenuItemBuilder::with_id(OPEN_KEY, "打开应用").build(app)?;
+    let exit_ui_btn = MenuItemBuilder::with_id(EXIT_UI_KEY, "退出界面").build(app)?;
+    let shutdown_btn = MenuItemBuilder::with_id(SHUTDOWN_KEY, "关闭 Portmaster").build(app)?;
 
     // Global status
     let global_status_text = if pause_info.interception {
-        format!("Status: {} (PAUSED)", status)
+        format!("状态：{}（已暂停）", status_display_text(status))
     } else {
-        format!("Status: {}", status)
+        format!("状态：{}", status_display_text(status))
     };
     let global_status = MenuItemBuilder::with_id(GLOBAL_STATUS_KEY, global_status_text)
         .enabled(false)
@@ -167,9 +192,9 @@ fn build_tray_menu(
     // Pause items
     let (pause_status_item, pause_status_time_item, resume_item) = if pause_info.interception || pause_info.spn {
         let status_text = match (pause_info.interception, pause_info.spn) {
-            (true, true) => "Portmaster and SPN are paused",
-            (true, false) => "Portmaster is paused", 
-            (false, true) => "SPN is paused",
+            (true, true) => "Portmaster 和 SPN 已暂停",
+            (true, false) => "Portmaster 已暂停", 
+            (false, true) => "SPN 已暂停",
             _ => unreachable!(), // We already checked at least one is true
         };
         let status_item = MenuItemBuilder::with_id(PAUSE_INFO_KEY, status_text).enabled(false).build(app).ok();
@@ -178,7 +203,7 @@ fn build_tray_menu(
             let resume_time_local = resume_time.with_timezone(&Local);            
             if resume_time_local > Local::now() {
                 let formatted_time = resume_time_local.format("%H:%M:%S").to_string();
-                MenuItemBuilder::with_id(PAUSE_INFO_TIME_KEY, format!("Auto-resume at {}", formatted_time)).enabled(false).build(app).ok()
+                MenuItemBuilder::with_id(PAUSE_INFO_TIME_KEY, format!("将于 {} 自动恢复", formatted_time)).enabled(false).build(app).ok()
             } else {
                 None
             }
@@ -186,7 +211,7 @@ fn build_tray_menu(
             None
         };
         
-        let resume_item = MenuItemBuilder::with_id(RESUME_KEY, "Resume now").build(app).ok();
+        let resume_item = MenuItemBuilder::with_id(RESUME_KEY, "立即恢复").build(app).ok();
         (status_item, time_item, resume_item)
     } else {
         (None, None, None)
@@ -194,11 +219,11 @@ fn build_tray_menu(
 
     // SPN button    
     let (spn_enabled, spn_button_text ) = match spn_status_text {
-        "disabled" => { (false, "Enable SPN") }
-        _ => { (true, "Disable SPN") },
+        "disabled" => { (false, "启用 SPN") }
+        _ => { (true, "禁用 SPN") },
     };
     
-    let spn_status = MenuItemBuilder::with_id(SPN_STATUS_KEY, format!("SPN: {}", spn_status_text))
+    let spn_status = MenuItemBuilder::with_id(SPN_STATUS_KEY, format!("SPN：{}", spn_status_display_text(spn_status_text)))
         .enabled(false)
         .build(app)
         .unwrap();
@@ -207,32 +232,32 @@ fn build_tray_menu(
         .unwrap();
 
     // Setup Icon theme submenu
-    let system_theme = MenuItemBuilder::with_id(SYSTEM_THEME_KEY, "System")
+    let system_theme = MenuItemBuilder::with_id(SYSTEM_THEME_KEY, "跟随系统")
         .build(app)
         .unwrap();
-    let light_theme = MenuItemBuilder::with_id(LIGHT_THEME_KEY, "Light")
+    let light_theme = MenuItemBuilder::with_id(LIGHT_THEME_KEY, "浅色")
         .build(app)
         .unwrap();
-    let dark_theme = MenuItemBuilder::with_id(DARK_THEME_KEY, "Dark")
+    let dark_theme = MenuItemBuilder::with_id(DARK_THEME_KEY, "深色")
         .build(app)
         .unwrap();
-    let theme_menu = SubmenuBuilder::new(app, "Icon Theme")
+    let theme_menu = SubmenuBuilder::new(app, "图标主题")
         .items(&[&system_theme, &light_theme, &dark_theme])
         .build()?;
 
 
     // Setup Pause/Resume menu items
     let disabled_spn_pause = (!spn_enabled && !pause_info.spn) || pause_info.interception;
-    let pause_spn_5min_item = MenuItemBuilder::with_id(PAUSE_SPN_5_KEY, "Pause SPN for 5 minutes").enabled(!disabled_spn_pause).build(app)?;
-    let pause_spn_15min_item = MenuItemBuilder::with_id(PAUSE_SPN_15_KEY, "Pause SPN for 15 minutes").enabled(!disabled_spn_pause).build(app)?;
-    let pause_spn_1hour_item = MenuItemBuilder::with_id(PAUSE_SPN_60_KEY, "Pause SPN for 1 hour").enabled(!disabled_spn_pause).build(app)?;
+    let pause_spn_5min_item = MenuItemBuilder::with_id(PAUSE_SPN_5_KEY, "暂停 SPN 5 分钟").enabled(!disabled_spn_pause).build(app)?;
+    let pause_spn_15min_item = MenuItemBuilder::with_id(PAUSE_SPN_15_KEY, "暂停 SPN 15 分钟").enabled(!disabled_spn_pause).build(app)?;
+    let pause_spn_1hour_item = MenuItemBuilder::with_id(PAUSE_SPN_60_KEY, "暂停 SPN 1 小时").enabled(!disabled_spn_pause).build(app)?;
 
-    let pause_pm_5min_item = MenuItemBuilder::with_id(PAUSE_PM_5_KEY, "Pause for 5 minutes").build(app)?;
-    let pause_pm_15min_item = MenuItemBuilder::with_id(PAUSE_PM_15_KEY, "Pause for 15 minutes").build(app)?;
-    let pause_pm_1hour_item = MenuItemBuilder::with_id(PAUSE_PM_60_KEY, "Pause for 1 hour").build(app)?;
+    let pause_pm_5min_item = MenuItemBuilder::with_id(PAUSE_PM_5_KEY, "暂停 5 分钟").build(app)?;
+    let pause_pm_15min_item = MenuItemBuilder::with_id(PAUSE_PM_15_KEY, "暂停 15 分钟").build(app)?;
+    let pause_pm_1hour_item = MenuItemBuilder::with_id(PAUSE_PM_60_KEY, "暂停 1 小时").build(app)?;
 
     let pause_menu =  if !spn_enabled && !pause_info.spn {
-        SubmenuBuilder::new(app, "Pause")
+        SubmenuBuilder::new(app, "暂停")
             .items(&[
                 &pause_pm_5min_item,
                 &pause_pm_15min_item,
@@ -240,7 +265,7 @@ fn build_tray_menu(
             ])
             .build()?
     } else {
-        SubmenuBuilder::new(app, "Pause")
+        SubmenuBuilder::new(app, "暂停")
             .items(&[
                 &pause_spn_5min_item,
                 &pause_spn_15min_item,
@@ -315,11 +340,11 @@ pub fn setup_tray_menu(
             EXIT_UI_KEY => {
                 let handle = app.clone();
                 app.dialog()
-                    .message("This does not stop the Portmaster system service")
-                    .title("Do you really want to quit the user interface?")
+                    .message("这不会停止 Portmaster 系统服务")
+                    .title("确定要退出用户界面吗？")
                     .buttons(MessageDialogButtons::OkCancelCustom(
-                        "Yes, exit".to_owned(),
-                        "No".to_owned(),
+                        "是，退出".to_owned(),
+                        "否".to_owned(),
                     ))
                     .show(move |answer| {
                         if answer {

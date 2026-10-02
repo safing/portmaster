@@ -42,8 +42,8 @@ func tryListUpdate(ctx context.Context) error {
 		if !hasWarningState {
 			module.states.Add(mgr.State{
 				ID:      filterlistsUpdateFailed,
-				Name:    "Filter Lists Update Failed",
-				Message: fmt.Sprintf("The Portmaster failed to process a filter lists update. Filtering capabilities are currently either impaired or not available at all. Error: %s", err.Error()),
+				Name:    "过滤列表更新失败",
+				Message: fmt.Sprintf("Portmaster 处理过滤列表更新失败。过滤功能目前受损或完全不可用。错误：%s", err.Error()),
 				Type:    mgr.StateTypeWarning,
 			})
 		}
@@ -138,8 +138,8 @@ func performUpdate(ctx context.Context) error {
 			// we'll try again during the next update.
 			module.states.Add(mgr.State{
 				ID:      filterlistsStaleDataSurvived,
-				Name:    "Filter Lists May Overblock",
-				Message: fmt.Sprintf("The Portmaster failed to delete outdated filter list data. Filtering capabilities are fully available, but overblocking may occur. Error: %s", err.Error()), //nolint:misspell // overblocking != overclocking
+				Name:    "过滤列表可能过度阻止",
+				Message: fmt.Sprintf("Portmaster 删除过时的过滤列表数据失败。过滤功能完全可用，但可能会出现过度阻止。错误：%s", err.Error()), //nolint:misspell // overblocking != overclocking
 				Type:    mgr.StateTypeWarning,
 			})
 			return fmt.Errorf("failed to cleanup stale cache records: %w", err)

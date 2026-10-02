@@ -11,7 +11,7 @@
 
   <svg xmlns="http://www.w3.org/2000/svg" name="internal" class="flex-grow-0 flex-shrink-0 w-4 h-4 text-tertiary"
     fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" *ngIf="conn.internal"
-    sfng-tooltip="Internal connections are only displayed in Developer Mode">
+    sfng-tooltip="内部连接仅在开发者模式下显示">
     <path stroke-linecap="round" stroke-linejoin="round"
       d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
   </svg>
@@ -20,19 +20,19 @@
     <span sfngAddToFilter="scope" [sfngAddToFilterValue]="conn.scope" name="scope"
       class="overflow-hidden text-ellipsis">
       <ng-container [ngSwitch]="conn.scope">
-        <span *ngSwitchCase="scopes.Global">Internet Peer-to-Peer</span>
-        <span *ngSwitchCase="scopes.GlobalMulitcast">Internet Multicast</span>
-        <span *ngSwitchCase="scopes.HostLocal">Device-Local</span>
-        <span *ngSwitchCase="scopes.LinkLocal">LAN Peer-to-Peer</span>
-        <span *ngSwitchCase="scopes.LocalMulticast">LAN Multicast</span>
-        <span *ngSwitchCase="scopes.SiteLocal">LAN Peer-to-Peer</span>
+        <span *ngSwitchCase="scopes.Global">互联网 P2P</span>
+        <span *ngSwitchCase="scopes.GlobalMulitcast">互联网多播</span>
+        <span *ngSwitchCase="scopes.HostLocal">本机</span>
+        <span *ngSwitchCase="scopes.LinkLocal">局域网 P2P</span>
+        <span *ngSwitchCase="scopes.LocalMulticast">局域网多播</span>
+        <span *ngSwitchCase="scopes.SiteLocal">局域网 P2P</span>
 
         <span class="text-tertiary" *ngSwitchCase="scopes.Invalid">N/A</span>
         <span class="text-tertiary" *ngSwitchCase="scopes.Undefined">N/A</span>
         <span class="text-tertiary" *ngSwitchDefault>N/A</span>
       </ng-container>
 
-      <span>{{ conn.direction === 'inbound' ? ' Incoming' : ' Outgoing'}}</span>
+      <span>{{ conn.direction === 'inbound' ? ' 入站' : ' 出站'}}</span>
     </span>
   </ng-template>
 </div>
@@ -68,19 +68,19 @@
   </span>
   <ng-template #dnsRequest>
     <span class="text-secondary" sfngAddToFilter="type" sfngAddToFilterValue="dns">
-      DNS Request
+      DNS 请求
     </span>
   </ng-template>
 </div>
 
-<div class="hidden sfng-md:block text-secondary" [sfng-tooltip]="'Started ' + (conn.started | timeAgo:timeAgoTicker)">
+<div class="hidden sfng-md:block text-secondary" [sfng-tooltip]="'开始于 ' + (conn.started | timeAgo:timeAgoTicker)">
   <ng-container *ngIf="!!conn.ended">
-    <span class="hidden sfng-xl:inline">ended&nbsp;&nbsp;</span>
+    <span class="hidden sfng-xl:inline">结束于&nbsp;&nbsp;</span>
     {{ conn.ended | timeAgo:timeAgoTicker }}
   </ng-container>
 
   <ng-container *ngIf="!conn.ended">
-    <span class="hidden sfng-xl:inline">started&nbsp;&nbsp;</span>
+    <span class="hidden sfng-xl:inline">开始于&nbsp;&nbsp;</span>
     {{ conn.started | timeAgo:timeAgoTicker }}
   </ng-container>
 </div>
@@ -88,10 +88,10 @@
 <div name="reason" class="flex-row items-center justify-start hidden gap-2 sfng-lg:flex">
   <ng-container *ngIf="conn.extra_data?.reason as reason">
     <ng-container *ngIf="reason.OptionKey">
-      <span class="hidden sfng-2xl:inline text-tertiary">applied</span>
+      <span class="hidden sfng-2xl:inline text-tertiary">已应用</span>
       <span class="text-primary">{{ helper.settings[reason.OptionKey] || '' }}</span>
 
-      <svg viewBox="0 0 24 24" class="w-4 h-4" *ngIf="!reason.Profile" sfng-tooltip="from Global Settings">
+      <svg viewBox="0 0 24 24" class="w-4 h-4" *ngIf="!reason.Profile" sfng-tooltip="来自全局设置">
         <g fill="none" stroke-linecap="round" stroke="currentColor" stroke-linejoin="round" stroke-width="2">
           <path shape-rendering="geometricPrecision"
             d="M13.7678 10.2322c.976311.976311.976311 2.55922 0 3.53553-.976311.976311-2.55922.976311-3.53553 0-.976311-.976311-.976311-2.55922 0-3.53553.976311-.976311 2.55922-.976311 3.53553 0" />
@@ -100,7 +100,7 @@
         </g>
       </svg>
 
-      <svg *ngIf="!!reason.Profile" sfng-tooltip="from Application Settings" xmlns="http://www.w3.org/2000/svg"
+      <svg *ngIf="!!reason.Profile" sfng-tooltip="来自应用设置" xmlns="http://www.w3.org/2000/svg"
         data-name="Layer 1" viewBox="0 0 24 24" class="w-4 h-4" stroke="currentColor" fill="none">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" fill="currentColor"
           d="M19 21h-3a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2Z" />
@@ -108,7 +108,7 @@
           d="M19 9h-3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2ZM5 3h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM5 15h3a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2Z" />
       </svg>
 
-      <span class="hidden sfng-xl:inline text-secondary">{{ reason.Profile ? 'App' : 'Global' }}</span>
+      <span class="hidden sfng-xl:inline text-secondary">{{ reason.Profile ? '应用' : '全局' }}</span>
     </ng-container>
   </ng-container>
 </div>
@@ -118,11 +118,11 @@
   <app-menu #ungroupedConnectionMenu>
     <ng-container *ngIf="conn.extra_data?.reason as reason">
       <app-menu-item (activate)="helper.redirectToSetting('', conn)" *ngIf="!!reason.OptionKey">
-        App Setting
+        应用设置
       </app-menu-item>
 
       <app-menu-item (activate)="helper.redirectToSetting('', conn, true)" *ngIf="!!reason.OptionKey">
-        Global Setting
+        全局设置
       </app-menu-item>
     </ng-container>
 
@@ -130,17 +130,17 @@
 
     <app-menu-item *ngIf="(conn | isBlocked); else blockAction"
       (activate)="helper.unblockAll(conn.domain || conn.remote_ip, conn)" [disabled]="!(conn | canUseRules)">
-      Allow {{ conn.domain ? 'Domain' : 'IP'}}
+      允许{{ conn.domain ? '域名' : ' IP'}}
     </app-menu-item>
 
     <ng-template #blockAction>
       <app-menu-item (activate)="helper.blockAll(conn.domain || conn.remote_ip, conn)"
         [disabled]="!(conn | canUseRules)">
-        Block {{ conn.domain ? 'Domain' : 'IP '}}
+        阻止{{ conn.domain ? '域名' : ' IP'}}
       </app-menu-item>
     </ng-template>
 
 
-    <app-menu-item *appExpertiseLevel="'expert'" (click)="helper.dumpConnection(conn)">Copy JSON</app-menu-item>
+    <app-menu-item *appExpertiseLevel="'expert'" (click)="helper.dumpConnection(conn)">复制 JSON</app-menu-item>
   </app-menu>
 </div>

@@ -202,7 +202,7 @@ export class PromptListComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         error: (err) => {
-          this.uai.error('Failed to change App Settings', this.uai.getErrorMessage(err));
+          this.uai.error('更改应用设置失败', this.uai.getErrorMessage(err));
         }
       })
 

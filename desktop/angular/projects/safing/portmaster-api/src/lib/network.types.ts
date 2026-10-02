@@ -12,6 +12,19 @@ export enum Verdict {
   RerouteToSplitTun = 8
 }
 
+// VerdictTranslation holds display names for verdicts.
+export const VerdictTranslation: { [key in Verdict]: string } = {
+  [Verdict.Undecided]: "未决定",
+  [Verdict.Undeterminable]: "无法判定",
+  [Verdict.Accept]: "允许",
+  [Verdict.Block]: "阻止",
+  [Verdict.Drop]: "丢弃",
+  [Verdict.RerouteToNs]: "重定向到名称服务器",
+  [Verdict.RerouteToTunnel]: "重定向到 SPN 隧道",
+  [Verdict.Failed]: "失败",
+  [Verdict.RerouteToSplitTun]: "重定向到分离隧道",
+}
+
 export enum IPProtocol {
   ICMP = 1,
   IGMP = 2,
@@ -143,12 +156,12 @@ export enum ScopeIdentifier {
 }
 
 export const ScopeTranslation: { [key: string]: string } = {
-  [ScopeIdentifier.IncomingHost]: "Device-Local Incoming",
-  [ScopeIdentifier.IncomingLAN]: "LAN Incoming",
-  [ScopeIdentifier.IncomingInternet]: "Internet Incoming",
-  [ScopeIdentifier.PeerHost]: "Device-Local Outgoing",
-  [ScopeIdentifier.PeerLAN]: "LAN Peer-to-Peer",
-  [ScopeIdentifier.PeerInternet]: "Internet Peer-to-Peer",
+  [ScopeIdentifier.IncomingHost]: "本机入站",
+  [ScopeIdentifier.IncomingLAN]: "局域网入站",
+  [ScopeIdentifier.IncomingInternet]: "互联网入站",
+  [ScopeIdentifier.PeerHost]: "本机出站",
+  [ScopeIdentifier.PeerLAN]: "局域网点对点",
+  [ScopeIdentifier.PeerInternet]: "互联网点对点",
   [ScopeIdentifier.IncomingInvalid]: "N/A",
   [ScopeIdentifier.PeerInvalid]: "N/A",
 }

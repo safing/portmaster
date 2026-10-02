@@ -89,7 +89,7 @@
 
 <div class="nav-list">
   <!-- Network Activity -->
-  <div sfng-tooltip="Network Activity" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
+  <div sfng-tooltip="网络活动" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
     routerLink="monitor" class="link" sfngTipUpTrigger="navMonitor" sfngTipUpPassive>
     <svg viewBox="0 0 24 24" class="monitor">
       <g fill="none">
@@ -102,7 +102,7 @@
   </div>
 
   <!-- App View -->
-  <div sfng-tooltip="Apps and Profiles" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
+  <div sfng-tooltip="应用和配置文件" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
     routerLink="app" class="link" sfngTipUpTrigger="navApps" sfngTipUpPassive>
     <svg xmlns="http://www.w3.org/2000/svg" data-name="Layer 1" viewBox="0 0 24 24" class="app" fill="none">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" fill="currentColor"
@@ -113,7 +113,7 @@
   </div>
 
   <!-- SPN -->
-  <div sfng-tooltip="Safing Privacy Network" sfngTooltipDelay="1000" snfgTooltipPosition="right"
+  <div sfng-tooltip="Safing 隐私网络" sfngTooltipDelay="1000" snfgTooltipPosition="right"
     routerLinkActive="active" routerLink="spn" class="link" sfngTipUpTrigger="navMap" sfngTipUpPassive>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="spn" stroke="currentColor">
       <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -126,7 +126,7 @@
   </div>
 
   <!-- Global Settings -->
-  <div sfng-tooltip="Global Settings" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
+  <div sfng-tooltip="全局设置" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
     routerLink="settings" class="link" sfngTipUpTrigger="navSettings" sfngTipUpPassive>
     <svg viewBox="0 0 24 24" class="settings">
       <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -140,7 +140,7 @@
 
   <div class="w-full border-t border-gray-400"></div>
 
-  <div sfng-tooltip="Get Help" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLink="support"
+  <div sfng-tooltip="获取帮助" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLink="support"
     routerLinkActive="active" class="link" sfngTipUpTrigger="navSupport" sfngTipUpPassive>
     <svg viewBox="0 0 24 24" class="help">
       <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -153,7 +153,7 @@
   </div>
 </div>
 <div class="nav-lower-list">
-  <div class="relative link" sfngTipUpTrigger="navTools" sfngTipUpPassive sfng-tooltip="Version and Tools"
+  <div class="relative link" sfngTipUpTrigger="navTools" sfngTipUpPassive sfng-tooltip="版本和工具"
     sfngTooltipDelay="1000" snfgTooltipPosition="right" (click)="settingsMenu.dropdown.toggle(settingsMenuTrigger)"
     cdkOverlayOrigin #settingsMenuTrigger="cdkOverlayOrigin" [class.active]="settingsMenu.dropdown.isOpen">
 
@@ -178,36 +178,36 @@
   <app-menu #settingsMenu offsetY="0" offsetX="10" overlayClass="rounded-t">
     <div class="flex flex-col p-4 text-xxs">
       <span class="text-secondary">
-        Version: <span class="text-primary">{{ versions?.Core?.Version }} </span>
+        版本：<span class="text-primary">{{ versions?.Core?.Version }} </span>
       </span>
       <span class="text-secondary">
-        Release Channel:
+        发布渠道：
         <span class="uppercase text-primary"
           [class.text-yellow-300]="versions?.Channel !== 'stable'">{{ versions?.Channel }}</span>
       </span>
     </div>
 
-    <app-menu-item (click)="downloadUpdates($event)" sfng-tooltip="Trigger a check for available Portmaster and intelligence updates">Check for Updates</app-menu-item>
-    <app-menu-item (click)="openChangeLog()" sfng-tooltip="Browse all Portmaster release notes on GitHub">View Changelog</app-menu-item>
+    <app-menu-item (click)="downloadUpdates($event)" sfng-tooltip="检查可用的 Portmaster 及情报数据更新">检查更新</app-menu-item>
+    <app-menu-item (click)="openChangeLog()" sfng-tooltip="在 GitHub 上浏览所有 Portmaster 发行说明">查看更新日志</app-menu-item>
     <hr/>
-    <app-menu-item (click)="reloadUI($event)" sfng-tooltip="Reload the Portmaster UI without restarting the service">Reload UI</app-menu-item>
-    <app-menu-item *appExpertiseLevel="'developer'" (click)="showIntro()" sfng-tooltip="Replay the welcome introduction screens">
-      Show Intro Screen
+    <app-menu-item (click)="reloadUI($event)" sfng-tooltip="重新加载 Portmaster 界面，而不重启服务">重新加载界面</app-menu-item>
+    <app-menu-item *appExpertiseLevel="'developer'" (click)="showIntro()" sfng-tooltip="重新播放欢迎介绍页面">
+      显示介绍页面
     </app-menu-item>
     <hr/>
-    <app-menu-item (click)="reinitSPN($event)" sfng-tooltip="Stop the SPN, clear all caches, and restart it; account and settings are unchanged">Re-Initialize SPN</app-menu-item>
-    <app-menu-item (click)="logoutCompletely($event)" sfng-tooltip="Sign out and purge all local SPN account data from this device">Logout Completely</app-menu-item>
+    <app-menu-item (click)="reinitSPN($event)" sfng-tooltip="停止 SPN、清除所有缓存并重新启动；账户和设置保持不变">重新初始化 SPN</app-menu-item>
+    <app-menu-item (click)="logoutCompletely($event)" sfng-tooltip="退出登录并从此设备清除所有本地 SPN 账户数据">完全退出登录</app-menu-item>
     <hr/>
-    <app-menu-item (click)="resetBroadcastState()" sfng-tooltip="Clear the dismissed state so all notifications appear again">Reset Notifications State</app-menu-item>
-    <app-menu-item (click)="clearDNSCache($event)" sfng-tooltip="Flush the local DNS resolver cache">Clear DNS Cache</app-menu-item>
-    <app-menu-item (click)="cleanupHistory($event)" sfng-tooltip="Apply the history retention settings to remove outdated connection records">Cleanup Network History</app-menu-item>
+    <app-menu-item (click)="resetBroadcastState()" sfng-tooltip="清除已忽略状态，使所有通知重新显示">重置通知状态</app-menu-item>
+    <app-menu-item (click)="clearDNSCache($event)" sfng-tooltip="清空本地 DNS 解析器缓存">清除 DNS 缓存</app-menu-item>
+    <app-menu-item (click)="cleanupHistory($event)" sfng-tooltip="应用历史记录保留设置以删除过期的连接记录">清理网络历史记录</app-menu-item>
     <hr/>
-    <app-menu-item (click)="openDataDir($event)" sfng-tooltip="Open the folder where Portmaster stores its data">Open Data Directory</app-menu-item>
-    <app-menu-item (click)="copyDebugInfo($event)" sfng-tooltip="Copy diagnostic information to the clipboard for support">Copy Debug Info</app-menu-item>
+    <app-menu-item (click)="openDataDir($event)" sfng-tooltip="打开 Portmaster 存储数据的文件夹">打开数据目录</app-menu-item>
+    <app-menu-item (click)="copyDebugInfo($event)" sfng-tooltip="将诊断信息复制到剪贴板以便获取支持">复制调试信息</app-menu-item>
   </app-menu>
 
   <!-- Pause Menu -->
-  <div sfngTipUpTrigger="navPause" sfngTipUpPassive sfng-tooltip="Pause and Resume" sfngTooltipDelay="1000"
+  <div sfngTipUpTrigger="navPause" sfngTipUpPassive sfng-tooltip="暂停和恢复" sfngTooltipDelay="1000"
     snfgTooltipPosition="right" class="link" (click)="pauseMenu.dropdown.toggle(pauseMenuTrigger)" cdkOverlayOrigin
     #pauseMenuTrigger="cdkOverlayOrigin" [class.active]="pauseMenu.dropdown.isOpen">
 
@@ -234,19 +234,19 @@
       </div>
 
       <!-- we show 'Pause SPN...' items even when isPausedSPN to allow pause time modification-->
-      <app-menu-item (click)="pauseSPN($event, 60*5)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">Pause SPN for 5 minutes</app-menu-item>
-      <app-menu-item (click)="pauseSPN($event, 60*15)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">Pause SPN for 15 minutes</app-menu-item>
-      <app-menu-item (click)="pauseSPN($event, 60*60)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">Pause SPN for 1 hour</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*5)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">暂停 SPN 5 分钟</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*15)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">暂停 SPN 15 分钟</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*60)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">暂停 SPN 1 小时</app-menu-item>
       <hr/>
-      <app-menu-item (click)="pause($event, 60*5)">Pause for 5 minutes</app-menu-item>
-      <app-menu-item (click)="pause($event, 60*15)">Pause for 15 minutes</app-menu-item>
-      <app-menu-item (click)="pause($event, 60*60)">Pause for 1 hour</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*5)">暂停 5 分钟</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*15)">暂停 15 分钟</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*60)">暂停 1 小时</app-menu-item>
       <hr/>
-      <app-menu-item (click)="resume($event)" [disabled]="!isPaused">Resume now</app-menu-item>
+      <app-menu-item (click)="resume($event)" [disabled]="!isPaused">立即恢复</app-menu-item>
   </app-menu>
 
   <!-- Power Menu -->
-  <div sfngTipUpTrigger="navPower" sfngTipUpPassive sfng-tooltip="Shutdown and Restart" sfngTooltipDelay="1000"
+  <div sfngTipUpTrigger="navPower" sfngTipUpPassive sfng-tooltip="关闭和重启" sfngTooltipDelay="1000"
     snfgTooltipPosition="right" class="link" (click)="powerMenu.dropdown.toggle(powerMenuTrigger)" cdkOverlayOrigin
     #powerMenuTrigger="cdkOverlayOrigin" [class.active]="powerMenu.dropdown.isOpen">
 
@@ -266,8 +266,8 @@
 
   </div>
   <app-menu #powerMenu offsetY="0" offsetX="10" overlayClass="rounded-t">
-    <app-menu-item (click)="shutdown($event)">Shutdown</app-menu-item>
-    <app-menu-item (click)="restart($event)">Restart</app-menu-item>
+    <app-menu-item (click)="shutdown($event)">关闭</app-menu-item>
+    <app-menu-item (click)="restart($event)">重启</app-menu-item>
   </app-menu>
 
 </div>

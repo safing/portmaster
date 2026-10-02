@@ -14,9 +14,9 @@
 
 <ng-template #defaultButtonTemplate>
   <div class="flex flex-row justify-between">
-    <button class="w-32 py-2" (click)="goBack()">Go Back</button>
+    <button class="w-32 py-2" (click)="goBack()">返回</button>
     <button class="w-32 py-2 custom bg-blue hover:bg-blue hover:bg-opacity-75 active:shadow-inner"
       [disabled]="(currentStep?.validChange | async) === false" (click)="next()">
-      {{ currentStep?.nextButtonLabel ||  (!isLast ? 'Next' : 'Finish') }}</button>
+      {{ currentStep?.nextButtonLabel ||  (!isLast ? '下一步' : '完成') }}</button>
   </div>
 </ng-template>

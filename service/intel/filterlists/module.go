@@ -123,8 +123,8 @@ func stop() error {
 func warnAboutDisabledFilterLists() {
 	module.states.Add(mgr.State{
 		ID:      filterlistsDisabled,
-		Name:    "Filter Lists Are Initializing",
-		Message: "Filter lists are being downloaded and set up in the background. They will be activated as configured when finished.",
+		Name:    "过滤列表正在初始化",
+		Message: "过滤列表正在后台下载和设置。完成后将按配置启用。",
 		Type:    mgr.StateTypeWarning,
 	})
 }

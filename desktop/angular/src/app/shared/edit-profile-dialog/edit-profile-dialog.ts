@@ -188,19 +188,19 @@ export class EditProfileDialog implements OnInit, OnDestroy {
   deleteProfile() {
     this.dialog
       .confirm({
-        caption: 'Caution',
-        header: 'Confirm Profile Deletion',
-        message: 'Do you want to delete this profile?',
+        caption: '警告',
+        header: '确认删除配置文件',
+        message: '您确定要删除此配置文件吗？',
         buttons: [
           {
             id: 'delete',
             class: 'danger',
-            text: 'Delete',
+            text: '删除',
           },
           {
             id: 'abort',
             class: 'outline',
-            text: 'Cancel',
+            text: '取消',
           },
         ],
       })
@@ -210,7 +210,7 @@ export class EditProfileDialog implements OnInit, OnDestroy {
           .subscribe({
             next: () => this.dialgoRef.close('deleted'),
             error: (err) => {
-              this.actionIndicator.error('Failed to delete profile', err);
+              this.actionIndicator.error('删除配置文件失败', err);
             },
           });
       });
@@ -292,12 +292,12 @@ export class EditProfileDialog implements OnInit, OnDestroy {
         next: () => {
           this.actionIndicator.success(
             this.profile.Name!,
-            'Profile saved successfully'
+            '配置文件已成功保存'
           );
           this.dialgoRef.close('saved');
         },
         error: (err) => {
-          this.actionIndicator.error('Failed to save profile', err);
+          this.actionIndicator.error('保存配置文件失败', err);
         },
       });
   }
@@ -325,11 +325,11 @@ export class EditProfileDialog implements OnInit, OnDestroy {
       const file: File = fileInput.target.files[0];
 
       if (file.size > max_size) {
-        this.imageError = 'Maximum size allowed is ' + max_size / 1000 + 'KB';
+        this.imageError = '允许的最大大小为 ' + max_size / 1000 + 'KB';
       }
 
       if (!allowed_types.includes(file.type)) {
-        this.imageError = 'Only JPG, PNG, SVG, GIF or Tiff files are allowed';
+        this.imageError = '仅允许 JPG、PNG、SVG、GIF 或 Tiff 文件';
       }
 
       this.iconType = file.type;
@@ -349,7 +349,7 @@ export class EditProfileDialog implements OnInit, OnDestroy {
 
           if (img_height > max_height && img_width > max_width) {
             this.imageError =
-              'Maximum dimentions allowed ' +
+              '允许的最大尺寸为 ' +
               max_height +
               '*' +
               max_width +
@@ -363,7 +363,7 @@ export class EditProfileDialog implements OnInit, OnDestroy {
 
         image.onerror = (err: any) => {
           this.actionIndicator.error(
-            'Failed to get image',
+            '获取图片失败',
             this.actionIndicator.getErrorMessgae(err)
           );
         };
@@ -373,7 +373,7 @@ export class EditProfileDialog implements OnInit, OnDestroy {
 
       reader.onerror = (err: any) => {
         this.actionIndicator.error(
-          'Failed to get image',
+          '获取图片失败',
           this.actionIndicator.getErrorMessgae(err)
         );
       };

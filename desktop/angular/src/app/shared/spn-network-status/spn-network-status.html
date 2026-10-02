@@ -1,17 +1,17 @@
   <!-- What's new on the SPN -->
   <div class="flex items-center mb-4 justify-items-center w-80">
-    <h4 class="mr-4">Network Status</h4>
+    <h4 class="mr-4">网络状态</h4>
     <span class="flex-grow inline-block border-b border-buttons-light"></span>
   </div>
 
-  <span class="text-secondary" *ngIf="!spnIssues.length">Loading Network Status ...</span>
+  <span class="text-secondary" *ngIf="!spnIssues.length">正在加载网络状态……</span>
   <div class="issue-list">
     <ul [@fadeInList]="spnIssues.slice(0, 8).length">
       <li *ngFor="let issue of spnIssues.slice(0, 8); trackBy: trackIssue" (click)="issue.expanded = !issue.expanded"
         class="issue" [class.expanded]="issue.expanded">
         <div class="header">
           <span class="title">{{ issue.title }}</span>
-          <span class="meta">{{ issue.closed ? 'closed' : 'opened'}} by <u>{{ issue.user }}</u>
+          <span class="meta">由 <u>{{ issue.user }}</u> {{ issue.closed ? '关闭' : '创建'}}于
             {{
             issue.createdAt | timeAgo
             }}</span>
@@ -20,7 +20,7 @@
         <div class="body" *ngIf="issue.expanded">
           <markdown emoji [data]="issue.body"></markdown>
           <div>
-            <a class="underline text-primary" (click)="openIssue(issue)">Open on Github</a>
+            <a class="underline text-primary" (click)="openIssue(issue)">在 GitHub 上打开</a>
           </div>
         </div>
       </li>

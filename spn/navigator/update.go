@@ -622,7 +622,7 @@ func (m *Map) updateQuickSettingExcludeCountryList(ctx context.Context, configKe
 	quickSettings := make([]config.QuickSetting, 0, len(countries))
 	for _, country := range countryList {
 		quickSettings = append(quickSettings, config.QuickSetting{
-			Name:   fmt.Sprintf("Exclude %s (%s)", country.Name, country.Code),
+			Name:   fmt.Sprintf("排除 %s (%s)", country.Name, country.Code),
 			Value:  []string{"- " + country.Code},
 			Action: config.QuickMergeTop,
 		})
@@ -682,7 +682,7 @@ func (m *Map) updateSelectRuleCountryList(ctx context.Context, configKey string,
 	// Add EU as special region.
 	selections = append(selections, selectCountry{
 		QuickSetting: config.QuickSetting{
-			Name:   "European Union",
+			Name:   "欧盟",
 			Value:  []string{"+ AT", "+ BE", "+ BG", "+ CY", "+ CZ", "+ DE", "+ DK", "+ EE", "+ ES", "+ FI", "+ FR", "+ GR", "+ HR", "+ HU", "+ IE", "+ IT", "+ LT", "+ LU", "+ LV", "+ MT", "+ NL", "+ PL", "+ PT", "+ RO", "+ SE", "+ SI", "+ SK", "- *"},
 			Action: config.QuickReplace,
 		},
@@ -690,7 +690,7 @@ func (m *Map) updateSelectRuleCountryList(ctx context.Context, configKey string,
 	})
 	selections = append(selections, selectCountry{
 		QuickSetting: config.QuickSetting{
-			Name:   "US and Canada",
+			Name:   "美国和加拿大",
 			Value:  []string{"+ US", "+ CA", "- *"},
 			Action: config.QuickReplace,
 		},
@@ -761,7 +761,7 @@ func (m *Map) updateQuickSettingVerifiedOwnerList(ctx context.Context, configKey
 	quickSettings := make([]config.QuickSetting, 0, len(verifiedOwners))
 	for _, vo := range verifiedOwners {
 		quickSettings = append(quickSettings, config.QuickSetting{
-			Name:   fmt.Sprintf("Trust %s", vo),
+			Name:   fmt.Sprintf("信任 %s", vo),
 			Value:  []string{vo},
 			Action: config.QuickMergeBottom,
 		})

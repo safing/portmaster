@@ -58,14 +58,14 @@ var (
 func prepConfig() error {
 	// Register spn module setting.
 	err := config.Register(&config.Option{
-		Name:         "SPN Module",
+		Name:         "SPN 模块",
 		Key:          CfgOptionEnableSPNKey,
-		Description:  "Start the Safing Privacy Network module. If turned off, the SPN is fully disabled on this device.",
+		Description:  "启动 Safing 隐私网络（SPN）模块。如果关闭，SPN 将在此设备上完全禁用。",
 		OptType:      config.OptTypeBool,
 		DefaultValue: false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionEnableSPNOrder,
-			config.CategoryAnnotation:     "General",
+			config.CategoryAnnotation:     "常规",
 		},
 	})
 	if err != nil {
@@ -74,13 +74,13 @@ func prepConfig() error {
 
 	// Home Node Rules
 	err = config.Register(&config.Option{
-		Name: "Home Node Rules",
+		Name: "主节点规则",
 		Key:  CfgOptionHomeHubPolicyKey,
-		Description: `Customize which countries should or should not be used for your Home Node. The Home Node is your entry into the SPN. You connect directly to it and all your connections are routed through it.
+		Description: `自定义哪些国家/地区应该或不应该用作您的主节点。主节点是您进入 SPN 的入口。您直接连接到它，您的所有连接都会经由它路由。
 
-By default, the Portmaster tries to choose the nearest node as your Home Node in order to reduce your exposure to the open Internet.
+默认情况下，Portmaster 会尝试选择最近的节点作为您的主节点，以减少您在开放互联网上的暴露。
 
-Reconnect to the SPN in order to apply new rules.`,
+重新连接 SPN 以应用新规则。`,
 		Help:            profile.SPNRulesHelp,
 		Sensitive:       true,
 		OptType:         config.OptTypeStringArray,
@@ -88,7 +88,7 @@ Reconnect to the SPN in order to apply new rules.`,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		DefaultValue:    []string{},
 		Annotations: config.Annotations{
-			config.CategoryAnnotation:                    "Routing",
+			config.CategoryAnnotation:                    "路由",
 			config.DisplayOrderAnnotation:                cfgOptionHomeHubPolicyOrder,
 			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
 			config.QuickSettingsAnnotation:               profile.SPNRulesQuickSettings,
@@ -104,13 +104,13 @@ Reconnect to the SPN in order to apply new rules.`,
 
 	// DNS Exit Node Rules
 	err = config.Register(&config.Option{
-		Name: "DNS Exit Node Rules",
+		Name: "DNS 出口节点规则",
 		Key:  CfgOptionDNSExitHubPolicyKey,
-		Description: `Customize which countries should or should not be used as DNS Exit Nodes.
+		Description: `自定义哪些国家/地区应该或不应该用作 DNS 出口节点。
 
-By default, the Portmaster will exit DNS requests directly at your Home Node in order to keep them fast and close to your location. This is important, as DNS resolution often takes your approximate location into account when deciding which optimized DNS records are returned to you. As the Portmaster encrypts your DNS requests by default, you effectively gain a two-hop security level for your DNS requests in order to protect your privacy.
+默认情况下，Portmaster 会直接在您的主节点处发出 DNS 请求，以保持快速并靠近您的位置。这一点很重要，因为 DNS 解析在决定向您返回哪些优化的 DNS 记录时，通常会考虑您的大致位置。由于 Portmaster 默认会加密您的 DNS 请求，您的 DNS 请求实际上获得了两跳级别的安全性，从而保护您的隐私。
 
-This setting mainly exists for when you need to simulate your presence in another location on a lower level too. This might be necessary to defeat more intelligent geo-blocking systems.`,
+此设置主要用于您需要在更底层也模拟自己位于其他位置的情况。这可能是绕过更智能的地理封锁系统所必需的。`,
 		Help:            profile.SPNRulesHelp,
 		Sensitive:       true,
 		OptType:         config.OptTypeStringArray,
@@ -118,7 +118,7 @@ This setting mainly exists for when you need to simulate your presence in anothe
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		DefaultValue:    []string{},
 		Annotations: config.Annotations{
-			config.CategoryAnnotation:                    "Routing",
+			config.CategoryAnnotation:                    "路由",
 			config.DisplayOrderAnnotation:                cfgOptionDNSExitHubPolicyOrder,
 			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
 			config.QuickSettingsAnnotation:               profile.SPNRulesQuickSettings,
@@ -133,16 +133,16 @@ This setting mainly exists for when you need to simulate your presence in anothe
 	cfgOptionDNSExitHubPolicy = config.Concurrent.GetAsStringArray(CfgOptionDNSExitHubPolicyKey, []string{})
 
 	err = config.Register(&config.Option{
-		Name:            "Use Community Nodes",
+		Name:            "使用社区节点",
 		Key:             CfgOptionUseCommunityNodesKey,
-		Description:     "Use nodes (servers) not operated by Safing themselves. The use of community nodes is recommended as it diversifies the ownership of the nodes you use for your connections and further strengthens your privacy. Plain connections (eg. http, smtp, ...) will never exit via community nodes, making this setting safe to use.",
+		Description:     "使用并非由 Safing 自己运营的节点（服务器）。建议使用社区节点，因为它能使您的连接所用节点的所有权更加多样化，并进一步增强您的隐私。明文连接（例如 http、smtp 等）永远不会经由社区节点出口，因此可以放心使用此设置。",
 		Sensitive:       true,
 		OptType:         config.OptTypeBool,
 		RequiresRestart: true,
 		DefaultValue:    true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionUseCommunityNodesOrder,
-			config.CategoryAnnotation:     "Routing",
+			config.CategoryAnnotation:     "路由",
 		},
 	})
 	if err != nil {
@@ -151,17 +151,17 @@ This setting mainly exists for when you need to simulate your presence in anothe
 	cfgOptionUseCommunityNodes = config.Concurrent.GetAsBool(CfgOptionUseCommunityNodesKey, true)
 
 	err = config.Register(&config.Option{
-		Name:           "Trust Nodes",
+		Name:           "信任节点",
 		Key:            CfgOptionTrustNodeNodesKey,
-		Description:    "Specify which community nodes to additionally trust. These nodes may then also be used as a Home Node, as well as an Exit Node for unencrypted connections.",
-		Help:           "You can specify nodes by their ID or their verified operator.",
+		Description:    "指定额外信任哪些社区节点。这些节点随后也可以用作主节点，以及未加密连接的出口节点。",
+		Help:           "您可以通过节点 ID 或其经过验证的运营者来指定节点。",
 		Sensitive:      true,
 		OptType:        config.OptTypeStringArray,
 		ExpertiseLevel: config.ExpertiseLevelExpert,
 		DefaultValue:   []string{},
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionTrustNodeNodesOrder,
-			config.CategoryAnnotation:     "Routing",
+			config.CategoryAnnotation:     "路由",
 		},
 	})
 	if err != nil {
@@ -170,15 +170,15 @@ This setting mainly exists for when you need to simulate your presence in anothe
 	cfgOptionTrustNodeNodes = config.Concurrent.GetAsStringArray(CfgOptionTrustNodeNodesKey, []string{})
 
 	err = config.Register(&config.Option{
-		Name:         "Special Access Code",
+		Name:         "特殊访问码",
 		Key:          cfgOptionSpecialAccessCodeKey,
-		Description:  "Special Access Codes grant access to the SPN for testing or evaluation purposes.",
+		Description:  "特殊访问码可授予出于测试或评估目的访问 SPN 的权限。",
 		Sensitive:    true,
 		OptType:      config.OptTypeString,
 		DefaultValue: cfgOptionSpecialAccessCodeDefault,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: cfgOptionSpecialAccessCodeOrder,
-			config.CategoryAnnotation:     "Advanced",
+			config.CategoryAnnotation:     "高级",
 		},
 	})
 	if err != nil {
@@ -188,9 +188,9 @@ This setting mainly exists for when you need to simulate your presence in anothe
 
 	if conf.PublicHub() {
 		err = config.Register(&config.Option{
-			Name:            "Connect From Advertised IPs Only",
+			Name:            "仅从公布的 IP 连接",
 			Key:             cfgOptionBindToAdvertisedKey,
-			Description:     "Only connect from (bind to) the advertised IP addresses.",
+			Description:     "仅从公布的 IP 地址发起连接（绑定到这些地址）。",
 			OptType:         config.OptTypeBool,
 			ExpertiseLevel:  config.ExpertiseLevelExpert,
 			DefaultValue:    cfgOptionBindToAdvertisedDefault,

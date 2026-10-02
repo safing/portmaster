@@ -17,21 +17,21 @@
 
     <span [ngSwitch]="spnStatus?.Status" class="-mt-1 text-xs font-medium text-secondary">
       <ng-template ngSwitchCase="disabled">
-        Increase privacy protection
+        增强隐私保护
       </ng-template>
       <ng-template ngSwitchCase="failed">
-        Failed to connect
+        连接失败
       </ng-template>
       <ng-template ngSwitchCase="connecting">
-        Connecting to the SPN ...
+        正在连接 SPN……
       </ng-template>
       <ng-template ngSwitchCase="connected">
-        You're protected
+        您已受到保护
       </ng-template>
     </span>
     <ng-container *ngIf="spnEnabled">
       <span class="text-secondary text-xxs" *appExpertiseLevel="'developer'">
-        Home: <u>{{ spnStatus?.ConnectedIP }}</u> via <u>{{ spnStatus?.ConnectedTransport}}</u>
+        主节点：<u>{{ spnStatus?.ConnectedIP }}</u>，经由 <u>{{ spnStatus?.ConnectedTransport}}</u>
       </span>
     </ng-container>
 
@@ -41,13 +41,13 @@
     <div *ngIf="!packageHasSPN">
       <button class="px-3 py-1.5 uppercase rounded outline-none text-xxs custom bg-blue hover:bg-blue bg-opacity-70"
         (click)="openOrLogin()">
-        Upgrade
+        升级
       </button>
     </div>
   </div>
   <div class="relative flex flex-col items-end justify-end flex-grow pb-4" *ngIf="spnEnabled">
     <div class="flex flex-col items-center">
-      <span class="-mb-1 leading-3 uppercase text-xxs text-secondary">Identities</span>
+      <span class="-mb-1 leading-3 uppercase text-xxs text-secondary">身份</span>
       <span class="text-lg text-primary">{{ identities }}</span>
     </div>
   </div>

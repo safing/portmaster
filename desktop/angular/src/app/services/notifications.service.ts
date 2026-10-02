@@ -279,7 +279,7 @@ export class NotificationsService {
         }
       } catch (err: any) {
         const msg = this.actionIndicator.getErrorMessgae(err);
-        this.actionIndicator.error('Internal Error', 'Failed to perform action: ' + msg)
+        this.actionIndicator.error('内部错误', '执行操作失败：' + msg)
       }
     })
   }
@@ -292,7 +292,7 @@ export class NotificationsService {
         console.log(action);
         await handler(action);
       } else {
-        this.actionIndicator.error('Internal Error', 'Cannot handle action type ' + action.Type)
+        this.actionIndicator.error('内部错误', '无法处理操作类型 ' + action.Type)
       }
     }
   }

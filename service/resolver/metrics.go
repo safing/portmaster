@@ -88,13 +88,13 @@ func suggestUsingStaleCacheTask(_ *mgr.WorkerCtx) error {
 		suggestUsingStaleCacheNotification = &notifications.Notification{
 			EventID:      "resolver:suggest-using-stale-cache",
 			Type:         notifications.Info,
-			Title:        "Speed Up Website Loading",
-			Message:      "Portmaster has detected that websites may load slower because DNS queries are currently slower than expected. You may want to switch your DNS provider or enable using expired DNS cache entries for better performance.",
+			Title:        "加快网站加载速度",
+			Message:      "Portmaster 检测到由于 DNS 查询当前比预期慢，网站加载速度可能会变慢。您可以更换 DNS 提供商，或启用过期 DNS 缓存条目以获得更好的性能。",
 			ShowOnSystem: isFirstNotification && getSlowQueriesSensorValue() > 500*time.Millisecond,
 			Expires:      time.Now().Add(10 * time.Minute).Unix(),
 			AvailableActions: []*notifications.Action{
 				{
-					Text: "Open Setting",
+					Text: "打开设置",
 					Type: notifications.ActionTypeOpenSetting,
 					Payload: &notifications.ActionTypeOpenSettingPayload{
 						Key: CfgOptionUseStaleCacheKey,
@@ -103,12 +103,12 @@ func suggestUsingStaleCacheTask(_ *mgr.WorkerCtx) error {
 				},
 				{
 					ID:         actionSuppressID,
-					Text:       "Don't show again",
+					Text:       "不再显示",
 					Visibility: notifications.ActionVisibilityDetailed,
 				},
 				{
 					ID:   "ack",
-					Text: "Got it!",
+					Text: "知道了！",
 				},
 			},
 		}

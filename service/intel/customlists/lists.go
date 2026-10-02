@@ -82,7 +82,7 @@ func parseFile(filePath string) error {
 		log.Warningf("intel/customlists: failed to parse file %s", err)
 		module.states.Add(mgr.State{
 			ID:      parseWarningNotificationID,
-			Name:    "Failed to open custom filter list",
+			Name:    "无法打开自定义过滤列表",
 			Message: err.Error(),
 			Type:    mgr.StateTypeWarning,
 		})
@@ -117,9 +117,9 @@ func parseFile(filePath string) error {
 		log.Warning("intel/customlists: Too many invalid lines")
 		module.states.Add(mgr.State{
 			ID:   zeroIPNotificationID,
-			Name: "Custom filter list has many invalid lines",
-			Message: fmt.Sprintf(`%d out of %d lines are invalid.
-			 Check if you are using the correct file format and if the path to the custom filter list is correct.`, invalidLinesCount, allLinesCount),
+			Name: "自定义过滤列表包含大量无效行",
+			Message: fmt.Sprintf(`%[2]d 行中有 %[1]d 行无效。
+			 请检查您是否使用了正确的文件格式，以及自定义过滤列表的路径是否正确。`, invalidLinesCount, allLinesCount),
 			Type: mgr.StateTypeWarning,
 		})
 	} else {
@@ -130,12 +130,12 @@ func parseFile(filePath string) error {
 	log.Infof("intel/customlists: loaded %d entries from %s", allEntriesCount, filePath)
 
 	notifications.NotifyInfo(parseStatusNotificationID,
-		"Custom filter list loaded successfully.",
-		fmt.Sprintf(`Custom filter list loaded from file %s:  
-%d Domains  
-%d IPs  
-%d Autonomous Systems  
-%d Countries`,
+		"自定义过滤列表加载成功。",
+		fmt.Sprintf(`已从文件 %s 加载自定义过滤列表：  
+%d 个域名  
+%d 个 IP  
+%d 个自治系统  
+%d 个国家/地区`,
 			filePath,
 			len(domainsFilterList),
 			len(ipAddressesFilterList),

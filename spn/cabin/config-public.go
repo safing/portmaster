@@ -96,9 +96,9 @@ var (
 
 func prepPublicHubConfig() error {
 	err := config.Register(&config.Option{
-		Name:            "Name",
+		Name:            "名称",
 		Key:             publicCfgOptionNameKey,
-		Description:     "Human readable name of the Hub.",
+		Description:     "节点的可读名称。",
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		RequiresRestart: true,
@@ -113,9 +113,9 @@ func prepPublicHubConfig() error {
 	publicCfgOptionName = config.GetAsString(publicCfgOptionNameKey, publicCfgOptionNameDefault)
 
 	err = config.Register(&config.Option{
-		Name:            "Group",
+		Name:            "组",
 		Key:             publicCfgOptionGroupKey,
-		Description:     "Name of the hub group this Hub belongs to.",
+		Description:     "此节点所属节点组的名称。",
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		RequiresRestart: true,
@@ -130,9 +130,9 @@ func prepPublicHubConfig() error {
 	publicCfgOptionGroup = config.GetAsString(publicCfgOptionGroupKey, publicCfgOptionGroupDefault)
 
 	err = config.Register(&config.Option{
-		Name:            "Contact Address",
+		Name:            "联系地址",
 		Key:             publicCfgOptionContactAddressKey,
-		Description:     "Contact address where the Hub operator can be reached.",
+		Description:     "可联系到节点运营者的联系地址。",
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		RequiresRestart: true,
@@ -147,9 +147,9 @@ func prepPublicHubConfig() error {
 	publicCfgOptionContactAddress = config.GetAsString(publicCfgOptionContactAddressKey, publicCfgOptionContactAddressDefault)
 
 	err = config.Register(&config.Option{
-		Name:            "Contact Service",
+		Name:            "联系服务",
 		Key:             publicCfgOptionContactServiceKey,
-		Description:     "Name of the service the contact address corresponds to, if not email.",
+		Description:     "联系地址所对应的服务名称（如果不是电子邮件）。",
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		RequiresRestart: true,
@@ -164,9 +164,9 @@ func prepPublicHubConfig() error {
 	publicCfgOptionContactService = config.GetAsString(publicCfgOptionContactServiceKey, publicCfgOptionContactServiceDefault)
 
 	err = config.Register(&config.Option{
-		Name:            "Hosters",
+		Name:            "托管方",
 		Key:             publicCfgOptionHostersKey,
-		Description:     "List of all involved entities and organisations that are involved in hosting this Hub.",
+		Description:     "参与托管此节点的所有实体和组织的列表。",
 		OptType:         config.OptTypeStringArray,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		RequiresRestart: true,
@@ -181,9 +181,9 @@ func prepPublicHubConfig() error {
 	publicCfgOptionHosters = config.GetAsStringArray(publicCfgOptionHostersKey, publicCfgOptionHostersDefault)
 
 	err = config.Register(&config.Option{
-		Name:            "Datacenter",
+		Name:            "数据中心",
 		Key:             publicCfgOptionDatacenterKey,
-		Description:     "Identifier of the datacenter this Hub is hosted in.",
+		Description:     "托管此节点的数据中心标识符。",
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		RequiresRestart: true,
@@ -200,7 +200,7 @@ func prepPublicHubConfig() error {
 	err = config.Register(&config.Option{
 		Name:            "IPv4",
 		Key:             publicCfgOptionIPv4Key,
-		Description:     "IPv4 address of this Hub. Must be globally reachable.",
+		Description:     "此节点的 IPv4 地址。必须可全局访问。",
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		RequiresRestart: true,
@@ -217,7 +217,7 @@ func prepPublicHubConfig() error {
 	err = config.Register(&config.Option{
 		Name:            "IPv6",
 		Key:             publicCfgOptionIPv6Key,
-		Description:     "IPv6 address of this Hub. Must be globally reachable.",
+		Description:     "此节点的 IPv6 地址。必须可全局访问。",
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		RequiresRestart: true,
@@ -232,9 +232,9 @@ func prepPublicHubConfig() error {
 	publicCfgOptionIPv6 = config.GetAsString(publicCfgOptionIPv6Key, publicCfgOptionIPv6Default)
 
 	err = config.Register(&config.Option{
-		Name:            "Transports",
+		Name:            "传输方式",
 		Key:             publicCfgOptionTransportsKey,
-		Description:     "List of transports this Hub supports.",
+		Description:     "此节点支持的传输方式列表。",
 		OptType:         config.OptTypeStringArray,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		RequiresRestart: true,
@@ -261,9 +261,9 @@ func prepPublicHubConfig() error {
 	publicCfgOptionTransports = config.GetAsStringArray(publicCfgOptionTransportsKey, publicCfgOptionTransportsDefault)
 
 	err = config.Register(&config.Option{
-		Name:            "Entry",
+		Name:            "入口",
 		Key:             publicCfgOptionEntryKey,
-		Description:     "Define an entry policy. The format is the same for the endpoint lists. Default is permit.",
+		Description:     "定义入口策略。格式与端点列表相同。默认为允许。",
 		OptType:         config.OptTypeStringArray,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		RequiresRestart: true,
@@ -279,9 +279,9 @@ func prepPublicHubConfig() error {
 	publicCfgOptionEntry = config.GetAsStringArray(publicCfgOptionEntryKey, publicCfgOptionEntryDefault)
 
 	err = config.Register(&config.Option{
-		Name:            "Exit",
+		Name:            "出口",
 		Key:             publicCfgOptionExitKey,
-		Description:     "Define an exit policy. The format is the same for the endpoint lists. Default is permit.",
+		Description:     "定义出口策略。格式与端点列表相同。默认为允许。",
 		OptType:         config.OptTypeStringArray,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		RequiresRestart: true,
@@ -297,9 +297,9 @@ func prepPublicHubConfig() error {
 	publicCfgOptionExit = config.GetAsStringArray(publicCfgOptionExitKey, publicCfgOptionExitDefault)
 
 	err = config.Register(&config.Option{
-		Name:            "Allow Unencrypted Connections",
+		Name:            "允许未加密连接",
 		Key:             publicCfgOptionAllowUnencryptedKey,
-		Description:     "Advertise that this Hub is available for handling unencrypted connections, as detected by clients.",
+		Description:     "公布此节点可用于处理（由客户端检测到的）未加密连接。",
 		OptType:         config.OptTypeBool,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		RequiresRestart: true,

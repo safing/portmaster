@@ -32,16 +32,16 @@
 
       <span [ngSwitch]="spnStatus?.Status" [sfng-tooltip]="spnStatus?.Status === 'connected' ? spnTooltipTemplate : null">
         <ng-template ngSwitchCase="disabled">
-          SPN is connecting...<br>
-          Fail-safe blocking enabled
+          SPN 正在连接……<br>
+          已启用故障安全阻止
         </ng-template>
         <ng-template ngSwitchCase="failed">
-          <span class="text-red-300">SPN failed to connect</span><br>
-          Fail-safe blocking enabled
+          <span class="text-red-300">SPN 连接失败</span><br>
+          已启用故障安全阻止
         </ng-template>
         <ng-template ngSwitchCase="connecting">
-          SPN is connecting...<br>
-          Fail-safe blocking enabled
+          SPN 正在连接……<br>
+          已启用故障安全阻止
         </ng-template>
         <ng-template ngSwitchCase="connected">
           <svg xmlns="http://www.w3.org/2000/svg" width="12px" height="12px" fill="currentColor" viewBox="0 0 16 16"
@@ -50,7 +50,7 @@
           </svg>
           {{ spnStatus?.HomeHubName }}
           <span class="text-tertiary">
-            in
+            位于
           </span>
           <span *ngIf="!!spnStatus?.ConnectedCountry?.Code" [appCountryFlags]="spnStatus!.ConnectedCountry!.Code"></span>
           {{ spnStatus?.ConnectedCountry?.Name }}
@@ -97,10 +97,10 @@
 </ng-container>
 
 <ng-template #spnTooltipTemplate>
-  SPN Home (Entry) Node
+  SPN 主（入口）节点
   <ul class="pl-4 list-disc">
-    <li>Connected to {{ spnStatus?.ConnectedIP }}</li>
-    <li>Uplink is always encrypted</li>
-    <li>Built with transport/decoy {{ spnStatus?.ConnectedTransport }}</li>
+    <li>已连接到 {{ spnStatus?.ConnectedIP }}</li>
+    <li>上行链路始终加密</li>
+    <li>使用传输/伪装协议 {{ spnStatus?.ConnectedTransport }} 建立</li>
   </ul>
 </ng-template>

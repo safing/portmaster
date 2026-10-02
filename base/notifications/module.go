@@ -98,8 +98,8 @@ func showConfigLoadingErrors() {
 	// Trigger a module error for more awareness.
 	module.states.Add(mgr.State{
 		ID:      "config:validation-errors-on-load",
-		Name:    "Invalid Settings",
-		Message: "Some current settings are invalid. Please update them and restart the Portmaster.",
+		Name:    "无效设置",
+		Message: "当前部分设置无效。请更新这些设置并重启 Portmaster。",
 		Type:    mgr.StateTypeError,
 	})
 
@@ -107,15 +107,15 @@ func showConfigLoadingErrors() {
 	for _, validationError := range config.GetLoadedConfigValidationErrors() {
 		NotifyError(
 			fmt.Sprintf("config:validation-error:%s", validationError.Option.Key),
-			fmt.Sprintf("Invalid Setting for %s", validationError.Option.Name),
-			fmt.Sprintf(`Your current setting for %s is invalid: %s
+			fmt.Sprintf("%s 的设置无效", validationError.Option.Name),
+			fmt.Sprintf(`您当前对 %s 的设置无效：%s
 
-Please update the setting and restart the Portmaster, until then the default value is used.`,
+请更新该设置并重启 Portmaster，在此之前将使用默认值。`,
 				validationError.Option.Name,
 				validationError.Err.Error(),
 			),
 			Action{
-				Text: "Change",
+				Text: "修改",
 				Type: ActionTypeOpenSetting,
 				Payload: &ActionTypeOpenSettingPayload{
 					Key: validationError.Option.Key,

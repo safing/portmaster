@@ -69,8 +69,8 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
   /** Returns the symbolMap annoation for endpoint-lists */
   get symbolMap() {
     return this.setting?.Annotations[WellKnown.EndpointListVerdictNames] || {
-      '+': 'Allow',
-      '-': 'Block'
+      '+': '允许',
+      '-': '阻止'
     };
   }
 
@@ -131,7 +131,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
 
   /** The label to display in the reset-value button */
   @Input()
-  resetLabelText = 'Reset';
+  resetLabelText = '重置';
 
   /** Emits an event whenever the setting should be saved. */
   @Output()
@@ -350,7 +350,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
     if (this._setting?.Help) {
       this.sfngTipUpButtons = [
         {
-          name: 'Show More',
+          name: '显示更多',
           action: {
             ID: '',
             Text: '',
@@ -552,17 +552,17 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
   restartNow() {
     if (this._setting?.RequiresRestart) {
       this.dialog.confirm({
-        header: 'Restart Portmaster',
-        message: 'Do you want to restart the Portmaster now?',
+        header: '重启 Portmaster',
+        message: '您要立即重启 Portmaster 吗？',
         buttons: [
           {
             id: 'no',
-            text: 'Maybe Later',
+            text: '稍后再说',
             class: 'outline',
           },
           {
             id: 'restart',
-            text: 'Restart',
+            text: '重启',
             class: 'danger'
           }
         ]
@@ -570,8 +570,8 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
         .onAction('restart', () =>
           this.portapi.restartPortmaster()
             .subscribe(this.actionIndicator.httpObserver(
-              'Restarting ...',
-              'Failed to Restart',
+              '正在重启...',
+              '重启失败',
             ))
         )
         .onAction('no', () => {
@@ -590,8 +590,8 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
           })
         )
         .subscribe(this.actionIndicator.httpObserver(
-          'Reloading UI ...',
-          'Failed to Reload UI',
+          '正在重新加载界面...',
+          '重新加载界面失败',
         ))
     }
   }

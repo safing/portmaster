@@ -50,12 +50,12 @@ func notifyOfPackageEnd(u *UserRecord) {
 		// Notify 4, 3 and 2 weeks before end - on long running packages.
 
 		// Get names and messages.
-		packageNameTitle := "Portmaster Package"
+		packageNameTitle := "Portmaster 套餐"
 		if u.CurrentPlan != nil {
 			packageNameTitle = u.CurrentPlan.Name
 		}
 		packageNameBody := packageNameTitle
-		if !strings.HasSuffix(packageNameBody, " Package") {
+		if !strings.HasSuffix(packageNameBody, " Package") && !strings.HasSuffix(packageNameBody, "套餐") {
 			packageNameBody += " Package"
 		}
 
@@ -63,33 +63,33 @@ func notifyOfPackageEnd(u *UserRecord) {
 		daysUntilEnd := untilEnd / day
 		switch daysUntilEnd { //nolint:exhaustive
 		case 0:
-			endsText = "today"
+			endsText = "今天"
 		case 1:
-			endsText = "tomorrow"
+			endsText = "明天"
 		default:
-			endsText = fmt.Sprintf("in %d days", daysUntilEnd)
+			endsText = fmt.Sprintf("%d 天后", daysUntilEnd)
 		}
 
 		// Send notification.
 		notifications.Notify(&notifications.Notification{
 			EventID: endOfPackageNearNotifID,
 			Type:    notifType,
-			Title:   fmt.Sprintf("%s About to Expire", packageNameTitle),
+			Title:   fmt.Sprintf("%s 即将到期", packageNameTitle),
 			Message: fmt.Sprintf(
-				"Your current %s ends %s. Extend it to keep your full privacy protections.",
+				"您当前的 %s 将于%s到期。请续订以继续享受完整的隐私保护。",
 				packageNameBody,
 				endsText,
 			),
 			ShowOnSystem: notifType == notifications.Warning,
 			AvailableActions: []*notifications.Action{
 				{
-					Text:    "Open Account Page",
+					Text:    "打开账户页面",
 					Type:    notifications.ActionTypeOpenURL,
 					Payload: "https://account.safing.io",
 				},
 				{
 					ID:   "ack",
-					Text: "Got it!",
+					Text: "知道了！",
 				},
 			},
 		})

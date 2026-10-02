@@ -24,12 +24,12 @@ var (
 	ready = abool.New()
 
 	spnLoginButton = notifications.Action{
-		Text:    "Login",
+		Text:    "登录",
 		Type:    notifications.ActionTypeOpenPage,
 		Payload: "spn",
 	}
 	spnOpenAccountPage = notifications.Action{
-		Text:    "Open Account Page",
+		Text:    "打开账户页面",
 		Type:    notifications.ActionTypeOpenURL,
 		Payload: "https://account.safing.io",
 	}
@@ -83,8 +83,8 @@ func clientManager(ctx *mgr.WorkerCtx) error {
 
 	module.states.Add(mgr.State{
 		ID:      "spn:establishing-home-hub",
-		Name:    "Connecting to SPN...",
-		Message: "Connecting to the SPN network is in progress.",
+		Name:    "正在连接 SPN...",
+		Message: "正在连接到 SPN 网络。",
 		Type:    mgr.StateTypeHint,
 	})
 
@@ -224,8 +224,8 @@ func clientCheckAccountAndTokens(ctx *mgr.WorkerCtx) clientComponentResult {
 	if err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
 		notifications.NotifyError(
 			"spn:failed-to-get-user",
-			"SPN Internal Error",
-			`Please restart Portmaster.`,
+			"SPN 内部错误",
+			`请重新启动 Portmaster。`,
 			// TODO: Add restart button.
 			// TODO: Use special UI restart action in order to reload UI on restart.
 		).SyncWithState(module.states)
@@ -238,8 +238,8 @@ func clientCheckAccountAndTokens(ctx *mgr.WorkerCtx) clientComponentResult {
 	if user == nil || !user.IsLoggedIn() {
 		notifications.NotifyWarn(
 			"spn:not-logged-in",
-			"SPN Login Required",
-			`Please log in to access the SPN.`,
+			"需要登录 SPN",
+			`请登录以使用 SPN。`,
 			spnLoginButton,
 		).SyncWithState(module.states)
 		resetSPNStatus(StatusFailed, true)
@@ -257,8 +257,8 @@ func clientCheckAccountAndTokens(ctx *mgr.WorkerCtx) clientComponentResult {
 			if err != nil {
 				notifications.NotifyError(
 					"spn:failed-to-update-user",
-					"SPN Account Server Error",
-					fmt.Sprintf(`The status of your SPN account could not be updated: %s`, err),
+					"SPN 账户服务器错误",
+					fmt.Sprintf(`无法更新您的 SPN 账户状态：%s`, err),
 				).SyncWithState(module.states)
 				resetSPNStatus(StatusFailed, true)
 				log.Errorf("spn/captain: failed to update ineligible account: %s", err)
@@ -273,8 +273,8 @@ func clientCheckAccountAndTokens(ctx *mgr.WorkerCtx) clientComponentResult {
 			if user.MayUse("") {
 				notifications.NotifyError(
 					"spn:package-not-eligible",
-					"SPN Not Included In Package",
-					"Your current Portmaster Package does not include access to the SPN. Please upgrade your package on the Account Page.",
+					"套餐不包含 SPN",
+					"您当前的 Portmaster 套餐不包含 SPN 访问权限。请在账户页面升级您的套餐。",
 					spnOpenAccountPage,
 				).SyncWithState(module.states)
 				resetSPNStatus(StatusFailed, true)
@@ -282,14 +282,14 @@ func clientCheckAccountAndTokens(ctx *mgr.WorkerCtx) clientComponentResult {
 			}
 
 			// Otherwise, include the message from the user view.
-			message := "There is an issue with your Portmaster Package. Please check the Account Page."
+			message := "您的 Portmaster 套餐存在问题。请检查账户页面。"
 			if user.View != nil && user.View.Message != "" {
 				message = user.View.Message
 			}
 			notifications.NotifyError(
 				"spn:subscription-inactive",
-				"Portmaster Package Issue",
-				"Cannot enable SPN: "+message,
+				"Portmaster 套餐问题",
+				"无法启用 SPN："+message,
 				spnOpenAccountPage,
 			).SyncWithState(module.states)
 			resetSPNStatus(StatusFailed, true)
@@ -309,8 +309,8 @@ func clientCheckAccountAndTokens(ctx *mgr.WorkerCtx) clientComponentResult {
 			if regular == 0 /* && fallback == 0 */ { // TODO: Add fallback token check when fallback was tested on servers.
 				notifications.NotifyError(
 					"spn:tokens-exhausted",
-					"SPN Access Tokens Exhausted",
-					`The Portmaster failed to get new access tokens to access the SPN. The Portmaster will automatically retry to get new access tokens.`,
+					"SPN 访问令牌已耗尽",
+					`Portmaster 未能获取用于访问 SPN 的新访问令牌。Portmaster 将自动重试获取新的访问令牌。`,
 				).SyncWithState(module.states)
 				resetSPNStatus(StatusFailed, false)
 			}
@@ -354,10 +354,10 @@ func clientConnectToHomeHub(ctx *mgr.WorkerCtx) clientComponentResult {
 		case errors.Is(err, ErrAllHomeHubsExcluded):
 			notifications.NotifyError(
 				"spn:all-home-hubs-excluded",
-				"All Home Nodes Excluded",
-				"Your current Home Node Rules exclude all available and eligible SPN Nodes. Please change your rules to allow for at least one available and eligible Home Node.",
+				"所有主节点均被排除",
+				"您当前的主节点规则排除了所有可用且符合条件的 SPN 节点。请修改您的规则，以至少允许一个可用且符合条件的主节点。",
 				notifications.Action{
-					Text: "Configure",
+					Text: "配置",
 					Type: notifications.ActionTypeOpenSetting,
 					Payload: &notifications.ActionTypeOpenSettingPayload{
 						Key: CfgOptionHomeHubPolicyKey,
@@ -368,11 +368,11 @@ func clientConnectToHomeHub(ctx *mgr.WorkerCtx) clientComponentResult {
 		case errors.Is(err, ErrReInitSPNSuggested):
 			notifications.NotifyError(
 				"spn:cannot-bootstrap",
-				"SPN Cannot Bootstrap",
-				"The local state of the SPN network is likely outdated. Portmaster was not able to identify a server to connect to. Please re-initialize the SPN using the tools menu or the button on the notification.",
+				"SPN 无法引导",
+				"SPN 网络的本地状态可能已过时。Portmaster 无法找到可连接的服务器。请使用工具菜单或通知上的按钮重新初始化 SPN。",
 				notifications.Action{
 					ID:   "re-init",
-					Text: "Re-Init SPN",
+					Text: "重新初始化 SPN",
 					Type: notifications.ActionTypeWebhook,
 					Payload: &notifications.ActionTypeWebhookPayload{
 						URL:          apiPathForSPNReInit,
@@ -384,8 +384,8 @@ func clientConnectToHomeHub(ctx *mgr.WorkerCtx) clientComponentResult {
 		default:
 			notifications.NotifyWarn(
 				"spn:home-hub-failure",
-				"SPN Failed to Connect",
-				fmt.Sprintf("Failed to connect to a home hub: %s. The Portmaster will retry to connect automatically.", err),
+				"SPN 连接失败",
+				fmt.Sprintf("连接主节点失败：%s。Portmaster 将自动重试连接。", err),
 			).SyncWithState(module.states)
 		}
 

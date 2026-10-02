@@ -42,9 +42,9 @@ func getDefaultListenAddress() string {
 
 func registerConfig() error {
 	err := config.Register(&config.Option{
-		Name:            "API Listen Address",
+		Name:            "API 监听地址",
 		Key:             CfgDefaultListenAddressKey,
-		Description:     "Defines the IP address and port on which the internal API listens.",
+		Description:     "定义内部 API 监听的 IP 地址和端口。",
 		OptType:         config.OptTypeString,
 		ExpertiseLevel:  config.ExpertiseLevelDeveloper,
 		ReleaseLevel:    config.ReleaseLevelStable,
@@ -53,7 +53,7 @@ func registerConfig() error {
 		RequiresRestart: true,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 513,
-			config.CategoryAnnotation:     "Development",
+			config.CategoryAnnotation:     "开发",
 		},
 	})
 	if err != nil {
@@ -62,9 +62,9 @@ func registerConfig() error {
 	listenAddressConfig = config.GetAsString(CfgDefaultListenAddressKey, getDefaultListenAddress())
 
 	err = config.Register(&config.Option{
-		Name:           "API Keys",
+		Name:           "API 密钥",
 		Key:            CfgAPIKeys,
-		Description:    "Define API keys for privileged access to the API. Every entry is a separate API key with respective permissions. Format is `<key>?read=<perm>&write=<perm>`. Permissions are `anyone`, `user` and `admin`, and may be omitted.",
+		Description:    "定义用于特权访问 API 的 API 密钥。每个条目都是一个具有相应权限的独立 API 密钥。格式为 `<key>?read=<perm>&write=<perm>`。权限可以是 `anyone`、`user` 和 `admin`，也可以省略。",
 		Sensitive:      true,
 		OptType:        config.OptTypeStringArray,
 		ExpertiseLevel: config.ExpertiseLevelDeveloper,
@@ -72,7 +72,7 @@ func registerConfig() error {
 		DefaultValue:   []string{},
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: 514,
-			config.CategoryAnnotation:     "Development",
+			config.CategoryAnnotation:     "开发",
 		},
 	})
 	if err != nil {

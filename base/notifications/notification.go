@@ -251,7 +251,7 @@ func notify(nType Type, id, title, msg string, showOnSystem bool, actions ...Act
 		acts = []*Action{
 			{
 				ID:   "ack",
-				Text: "OK",
+				Text: "确定",
 			},
 		}
 	} else {

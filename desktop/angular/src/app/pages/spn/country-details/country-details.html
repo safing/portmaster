@@ -11,19 +11,19 @@
 
 <sfng-tab-group linkRouter="false" class="h-full">
   <!-- Tab that displays all nodes in that country -->
-  <sfng-tab id="pins" title="Nodes">
+  <sfng-tab id="pins" title="节点">
     <spn-pin-list *sfngTabContent [pins]="pins" (pinHover)="pinHover.next($event)" (pinClick)="openPinDetails($event)"
       allowClick="true">
     </spn-pin-list>
   </sfng-tab>
 
   <!-- Tab that displays generale statistics about the country -->
-  <sfng-tab id="Statistics" title="Statistics">
+  <sfng-tab id="Statistics" title="统计">
     <div *sfngTabContent class="flex flex-col gap-3">
       <table>
         <tr>
           <th>
-            <span class="text-primary">Total Nodes</span>
+            <span class="text-primary">节点总数</span>
           </th>
           <td>{{ totalAliveCount }}</td>
         </tr>
@@ -31,7 +31,7 @@
           <th>
             <span class="inline-block pl-4">
               <spn-node-icon bySafing="true" isActive="true"></spn-node-icon>
-              by Safing
+              由 Safing 运营
             </span>
           </th>
           <td>{{ safingNodeCount }}</td>
@@ -40,14 +40,14 @@
           <th>
             <span class="inline-block pl-4">
               <spn-node-icon bySafing="false" isActive="true"></spn-node-icon>
-              by Community
+              由社区运营
             </span>
           </th>
           <td>{{ communityNodeCount }}</td>
         </tr>
         <tr>
           <th>
-            <span class="text-primary">Exit Nodes</span>
+            <span class="text-primary">出口节点</span>
           </th>
           <td>{{ exitNodeCount }}</td>
         </tr>
@@ -55,7 +55,7 @@
           <th>
             <span class="inline-block pl-4">
               <spn-node-icon bySafing="true" isExit="true"></spn-node-icon>
-              by Safing
+              由 Safing 运营
             </span>
           </th>
           <td>{{ safingExitNodeCount }}</td>
@@ -64,14 +64,14 @@
           <th>
             <span class="inline-block pl-4">
               <spn-node-icon bySafing="false" isExit="true"></spn-node-icon>
-              by Community
+              由社区运营
             </span>
           </th>
           <td>{{ communityExitNodeCount }}</td>
         </tr>
         <tr>
           <th>
-            <span class="text-primary">Nodes In Use</span>
+            <span class="text-primary">使用中的节点</span>
           </th>
           <td>{{ activeNodeCount }}</td>
         </tr>
@@ -79,7 +79,7 @@
           <th>
             <span class="inline-block pl-4">
               <spn-node-icon bySafing="true" isActive="true"></spn-node-icon>
-              by Safing
+              由 Safing 运营
             </span>
           </th>
           <td>{{ activeSafingNodeCount }}</td>
@@ -88,7 +88,7 @@
           <th>
             <span class="inline-block pl-4">
               <spn-node-icon bySafing="false" isActive="true"></spn-node-icon>
-              by Community
+              由社区运营
             </span>
           </th>
           <td>{{ activeCommunityNodeCount }}</td>
@@ -99,11 +99,10 @@
 
 
   <!-- Tab that displays all apps that exit in this country -->
-  <sfng-tab id="profiles" title="Apps">
+  <sfng-tab id="profiles" title="应用">
     <div *sfngTabContent>
-      <span class="inline-block p-2 mb-2 text-tertiary">The following Apps have connections that are routed through the
-        SPN and use an
-        exit node in {{ countryName }} ({{ countryCode }}):</span>
+      <span class="inline-block p-2 mb-2 text-tertiary">以下应用的连接经由 SPN 路由，并使用位于
+        {{ countryName }} ({{ countryCode }}) 的出口节点：</span>
       <table class="w-full custom ">
         <tbody>
           <tr *ngFor="let app of profiles; trackBy: trackProfile"
@@ -113,7 +112,7 @@
               {{ app.profile.Name }}
             </td>
             <td class="p-2">
-              {{ app.count }} <span class="text-tertiary">connections</span>
+              {{ app.count }} <span class="text-tertiary">个连接</span>
             </td>
             <td class="w-10 p-2">
               <div class="flex flex-row items-center gap-2 ">

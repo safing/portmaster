@@ -18,33 +18,33 @@ export function formatDuration(millis: number, skipDays = false, skipMillis = fa
   if (!skipDays) {
     const days = Math.floor(val / day)
     if (days > 0) {
-      str += days.toString() + 'd ';
+      str += days.toString() + '天 ';
       val -= days * day;
     }
   }
 
   const hours = Math.floor(val / hour);
   if (hours > 0) {
-    str += hours.toString() + 'h ';
+    str += hours.toString() + '小时 ';
     val -= hours * hour;
   }
 
   const minutes = Math.floor(val / minute);
   if (minutes > 0) {
-    str += minutes.toString() + 'm ';
+    str += minutes.toString() + '分 ';
     val -= minutes * minute;
   }
 
   const seconds = Math.floor(val / second);
   if (seconds > 0) {
-    str += seconds.toString() + 's ';
+    str += seconds.toString() + '秒 ';
     val -= seconds * second;
   }
 
   if (!skipMillis) {
     const ms = Math.floor(val / millisecond)
     if (ms > 0) {
-      str += ms.toString() + 'ms '
+      str += ms.toString() + '毫秒 '
       val -= ms * millisecond
     }
   }
@@ -95,7 +95,7 @@ export class DurationPipe implements PipeTransform {
 
     const result = formatDuration(value);
     if (result === '0') {
-      return '< 1s'
+      return '< 1秒'
     }
 
     return result
